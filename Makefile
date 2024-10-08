@@ -29,17 +29,25 @@ init: ## Set up git hooks and ignored revisions
 
 .PHONY: style
 style: ## Run the code styler
-	@fourmolu -q -i Cabal Cabal-syntax cabal-install
+	@fourmolu -q -i Cabal Cabal-syntax cabal-install cabal-validate
 
 .PHONY: style-modified
 style-modified: ## Run the code styler on modified files
-	@git ls-files --modified Cabal Cabal-syntax cabal-install \
+	@git ls-files --modified Cabal Cabal-syntax cabal-install cabal-validate \
 		| grep '.hs$$' | xargs -P $(PROCS) -I {} fourmolu -q -i {}
 
 .PHONY: style-commit
 style-commit: ## Run the code styler on the previous commit
-	@git diff --name-only HEAD $(COMMIT) Cabal Cabal-syntax cabal-install \
+	@git diff --name-only HEAD $(COMMIT) Cabal Cabal-syntax cabal-install cabal-validate \
 		| grep '.hs$$' | xargs -P $(PROCS) -I {} fourmolu -q -i {}
+
+.PHONY: whitespace
+whitespace: ## Run fix-whitespace in check mode
+	fix-whitespace --check --verbose
+
+.PHONY: fix-whitespace
+fix-whitespace: ## Run fix-whitespace in fix mode
+	fix-whitespace --verbose
 
 # source generation: SPDX
 

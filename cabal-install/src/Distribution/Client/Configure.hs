@@ -116,6 +116,9 @@ import Distribution.Simple.Utils as Utils
 import Distribution.System
   ( Platform
   )
+import Distribution.Types.DependencySatisfaction
+  ( DependencySatisfaction (..)
+  )
 import Distribution.Types.GivenComponent
   ( GivenComponent (..)
   )
@@ -555,7 +558,7 @@ configurePackage
       pkg = case finalizePD
         flags
         (enableStanzas stanzas)
-        (const True)
+        (const Satisfied)
         platform
         comp
         []

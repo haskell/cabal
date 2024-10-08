@@ -250,6 +250,7 @@ import System.Directory
   , getDirectoryContents
   , getModificationTime
   , getPermissions
+  , getTemporaryDirectory
   , removeDirectoryRecursive
   , removeFile
   )
@@ -1733,23 +1734,17 @@ defaultTempFileOptions = TempFileOptions{optKeepTempFiles = False}
 
 -- | Use a temporary filename that doesn't already exist
 withTempFile
-  :: FilePath
-  -- ^ Temp dir to create the file in
-  -> String
+  :: String
   -- ^ File name template. See 'openTempFile'.
   -> (FilePath -> Handle -> IO a)
   -> IO a
-withTempFile tmpDir template f = withFrozenCallStack $
-  withTempFileCwd Nothing (makeSymbolicPath tmpDir) template $
+withTempFile template f = withFrozenCallStack $
+  withTempFileCwd template $
     \fp h -> f (getSymbolicPath fp) h
 
 -- | Use a temporary filename that doesn't already exist.
 withTempFileCwd
-  :: Maybe (SymbolicPath CWD (Dir Pkg))
-  -- ^ Working directory
-  -> SymbolicPath Pkg (Dir tmpDir)
-  -- ^ Temp dir to create the file in
-  -> String
+  :: String
   -- ^ File name template. See 'openTempFile'.
   -> (SymbolicPath Pkg File -> Handle -> IO a)
   -> IO a
@@ -1758,20 +1753,17 @@ withTempFileCwd = withFrozenCallStack $ withTempFileEx defaultTempFileOptions
 -- | A version of 'withTempFile' that additionally takes a 'TempFileOptions'
 -- argument.
 withTempFileEx
-  :: forall a tmpDir
+  :: forall a
    . TempFileOptions
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
-  -- ^ Working directory
-  -> SymbolicPath Pkg (Dir tmpDir)
-  -- ^ Temp dir to create the file in
   -> String
   -- ^ File name template. See 'openTempFile'.
   -> (SymbolicPath Pkg File -> Handle -> IO a)
   -> IO a
-withTempFileEx opts mbWorkDir tmpDir template action =
+withTempFileEx opts template action = do
+  tmp <- getTemporaryDirectory
   withFrozenCallStack $
     Exception.bracket
-      (openTempFile (i tmpDir) template)
+      (openTempFile tmp template)
       ( \(name, handle) -> do
           hClose handle
           unless (optKeepTempFiles opts) $
@@ -1779,12 +1771,11 @@ withTempFileEx opts mbWorkDir tmpDir template action =
               removeFile $
                 name
       )
-      (withLexicalCallStack (\(fn, h) -> action (mkRelToPkg fn) h))
+      (withLexicalCallStack (\(fn, h) -> action (mkRelToPkg tmp fn) h))
   where
-    i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
-    mkRelToPkg :: FilePath -> SymbolicPath Pkg File
-    mkRelToPkg fp =
-      tmpDir </> makeRelativePathEx (takeFileName fp)
+    mkRelToPkg :: FilePath -> FilePath -> SymbolicPath Pkg File
+    mkRelToPkg tmp fp =
+      makeSymbolicPath tmp </> makeRelativePathEx (takeFileName fp)
 
 -- 'openTempFile' returns a path of the form @i tmpDir </> fn@, but we
 -- want 'withTempFileEx' to return @tmpDir </> fn@. So we split off

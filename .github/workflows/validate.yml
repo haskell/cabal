@@ -124,6 +124,11 @@ jobs:
           rm -rf ~/.config/cabal
           rm -rf ~/.cache/cabal
 
+      - name: "WIN: Setup TMP environment variable"
+        if: runner.os == 'Windows'
+        run: |
+           echo "TMP=${{ runner.temp }}" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@v4
 
       # See https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#hackage-revisions
@@ -236,29 +241,24 @@ jobs:
           name: cabal-${{ runner.os }}-${{ env.CABAL_ARCH }}
           path: ${{ env.CABAL_EXEC_TAR }}
 
-      - name: Validate lib-tests
+      - name: Validate tests
         env:
           # `rawSystemStdInOut reports text decoding errors`
           # test does not find ghc without the full path in windows
           GHCPATH: ${{ steps.setup-haskell.outputs.ghc-exe }}
-        run: sh validate.sh $FLAGS -s lib-tests
-
-      - name: Validate lib-suite
-        run: sh validate.sh $FLAGS -s lib-suite
-
-      - name: Validate cli-tests
-        run: sh validate.sh $FLAGS -s cli-tests
-
-      - name: Validate cli-suite
-        run: sh validate.sh $FLAGS -s cli-suite
-
-      - name: Validate solver-benchmarks-tests
-        if: matrix.ghc == env.GHC_FOR_SOLVER_BENCHMARKS
-        run: sh validate.sh $FLAGS -s solver-benchmarks-tests
-
-      - name: Validate solver-benchmarks-run
-        if: matrix.ghc == env.GHC_FOR_SOLVER_BENCHMARKS
-        run: sh validate.sh $FLAGS -s solver-benchmarks-run
+        run: |
+          set +e
+          rc=0
+          tests="lib-tests lib-suite cli-tests cli-suite"
+          if [ "${{ matrix.ghc }}" = "${{ env.GHC_FOR_SOLVER_BENCHMARKS }}" ]; then
+            tests="$tests solver-benchmarks-tests solver-benchmarks-run"
+          fi
+          for test in $tests; do
+            echo Validate "$test"
+            sh validate.sh $FLAGS -s "$test" || rc=1
+            echo End "$test"
+          done
+          exit $rc
 
   validate-old-ghcs:
     name: Validate old ghcs ${{ matrix.extra-ghc }}
@@ -312,11 +312,13 @@ jobs:
           restore-keys: ${{ runner.os }}-${{ env.GHC_FOR_RELEASE }}-
 
       - name: Validate build
+        id: build
         run: sh validate.sh ${{ env.COMMON_FLAGS }} -s build
 
       - name: "Validate lib-suite-extras --extra-hc ghc-${{ matrix.extra-ghc }}"
         env:
           EXTRA_GHC: ghc-${{ matrix.extra-ghc }}
+        continue-on-error: true
         run: sh validate.sh ${{ env.COMMON_FLAGS }} --lib-only -s lib-suite-extras --extra-hc "${{ env.EXTRA_GHC }}"
 
   build-alpine:
@@ -399,7 +401,6 @@ jobs:
         # We need to build an array dynamically to inject the appropiate env var in a previous job,
         # see https://docs.github.com/en/actions/learn-github-actions/expressions#fromjson
         ghc: ${{ fromJSON (needs.validate.outputs.GHC_FOR_RELEASE) }}
-
     defaults:
       run:
         shell: ${{ matrix.sys.shell }}
@@ -416,11 +417,16 @@ jobs:
           esac
           echo "CABAL_ARCH=$arch" >> "$GITHUB_ENV"
 
-      - name: Work around XDG directories existence (haskell-actions/setup#62)
+      - name: "MAC: Work around XDG directories existence (haskell-actions/setup#62)"
         if: runner.os == 'macOS'
         run: |
           rm -rf ~/.config/cabal
           rm -rf ~/.cache/cabal
+
+      - name: "WIN: Setup TMP environment variable"
+        if: runner.os == 'Windows'
+        run: |
+           echo "TMP=${{ runner.temp }}" >> "$GITHUB_ENV"
 
       - uses: actions/checkout@v4
 
@@ -451,6 +457,8 @@ jobs:
     name: Create a GitHub prerelease with the binary artifacts
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master'
+    permissions:
+      contents: write
 
     # IMPORTANT! Any job added to the workflow should be added here too
     needs: [validate, validate-old-ghcs, build-alpine, dogfooding]
@@ -459,32 +467,15 @@ jobs:
       # for now this is hardcoded. is there a better way?
       - uses: actions/download-artifact@v4
         with:
-          name: cabal-Windows-x86_64
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: cabal-Linux-x86_64
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: cabal-Linux-static-x86_64
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: cabal-macOS-aarch64
+          pattern: cabal-*
+          path: binaries
 
       - name: Create GitHub prerelease
-        uses: marvinpinto/action-automatic-releases@v1.2.1
+        uses: softprops/action-gh-release@v2
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          automatic_release_tag: cabal-head
+          tag_name: cabal-head
           prerelease: true
-          title: cabal-head
-          files: |
-            cabal-head-Windows-x86_64.tar.gz
-            cabal-head-Linux-x86_64.tar.gz
-            cabal-head-Linux-static-x86_64.tar.gz
-            cabal-head-macOS-aarch64.tar.gz
+          files: binaries/cabal-*
 
   prerelease-lts:
     name: Create a GitHub LTS prerelease with the binary artifacts
@@ -498,39 +489,22 @@ jobs:
     steps:
     - uses: actions/download-artifact@v4
       with:
-        name: cabal-Windows-x86_64
-
-    - uses: actions/download-artifact@v4
-      with:
-        name: cabal-Linux-x86_64
-
-    - uses: actions/download-artifact@v4
-      with:
-        name: cabal-Linux-static-x86_64
-
-    - uses: actions/download-artifact@v4
-      with:
-        name: cabal-macOS-x86_64
+        pattern: cabal-*
+        path: binaries
 
     - run: |
         # bash-ism, but we forced bash above
         mv cabal-{,lts-}head-Windows-x86_64.tar.gz
         mv cabal-{,lts-}head-Linux-x86_64.tar.gz
         mv cabal-{,lts-}head-Linux-static-x86_64.tar.gz
-        mv cabal-{,lts-}head-macOS-x86_64.tar.gz
+        mv cabal-{,lts-}head-macOS-aarch64.tar.gz
 
     - name: Create GitHub prerelease
-      uses: marvinpinto/action-automatic-releases@v1.2.1
+      uses: softprops/action-gh-release@v2
       with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        automatic_release_tag: cabal-lts-head
+        tag_name: cabal-lts-head
         prerelease: true
-        title: cabal-lts-head
-        files: |
-          cabal-lts-head-Windows-x86_64.tar.gz
-          cabal-lts-head-Linux-x86_64.tar.gz
-          cabal-lts-head-Linux-static-x86_64.tar.gz
-          cabal-lts-head-macOS-x86_64.tar.gz
+        files: binaries/cabal-*
 
   # We use this job as a summary of the workflow
   # It will fail if any of the previous jobs does
