@@ -126,6 +126,9 @@ import Distribution.System
   ( Platform
   )
 import Distribution.Types.Dependency
+import Distribution.Types.DependencySatisfaction
+  ( DependencySatisfaction (..)
+  )
 import Distribution.Verbosity
   ( normal
   )
@@ -1075,7 +1078,7 @@ configuredPackageProblems
         case finalizePD
           specifiedFlags
           compSpec
-          (const True)
+          (const Satisfied)
           platform
           cinfo
           []

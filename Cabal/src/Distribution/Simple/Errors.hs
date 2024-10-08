@@ -30,6 +30,7 @@ import Distribution.Simple.PreProcess.Types (Suffix)
 import Distribution.System (OS)
 import Distribution.Types.BenchmarkType
 import Distribution.Types.LibraryName
+import Distribution.Types.MissingDependency (MissingDependency)
 import Distribution.Types.PkgconfigVersion
 import Distribution.Types.TestType
 import Distribution.Types.VersionRange.Internal ()
@@ -127,7 +128,7 @@ data CabalException
   | CantFindForeignLibraries [String]
   | ExpectedAbsoluteDirectory FilePath
   | FlagsNotSpecified [FlagName]
-  | EncounteredMissingDependency [Dependency]
+  | EncounteredMissingDependency [MissingDependency]
   | CompilerDoesn'tSupportThinning
   | CompilerDoesn'tSupportReexports
   | CompilerDoesn'tSupportBackpack
@@ -553,7 +554,7 @@ exceptionMessage e = case e of
             . nest 4
             . sep
             . punctuate comma
-            . map (pretty . simplifyDependency)
+            . map pretty
             $ missing
          )
   CompilerDoesn'tSupportThinning ->

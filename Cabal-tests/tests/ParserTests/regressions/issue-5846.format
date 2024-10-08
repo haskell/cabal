@@ -5,7 +5,7 @@ version:       5846
 library
     default-language: Haskell2010
     build-depends:
-        lib1:{a, b},
+        lib1:{a,b},
         lib2:c,
         lib3:d >=1,
-        lib4:{a, b} >=1
+        lib4:{a,b} >=1
