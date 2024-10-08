@@ -32,7 +32,7 @@ import qualified Text.PrettyPrint as Disp
 
 -- | SPDX License Exceptions identifiers list v3.25
 data LicenseExceptionId
-    = DS389_exception -- ^ @389-exception@, 389 Directory Server Exception
+    = N_389_exception -- ^ @389-exception@, 389 Directory Server Exception
     | Asterisk_exception -- ^ @Asterisk-exception@, Asterisk exception, SPDX License List 3.23, SPDX License List 3.25
     | Asterisk_linking_protocols_exception -- ^ @Asterisk-linking-protocols-exception@, Asterisk linking protocols exception, SPDX License List 3.25
     | Autoconf_exception_2_0 -- ^ @Autoconf-exception-2.0@, Autoconf exception 2.0
@@ -137,7 +137,7 @@ instance NFData LicenseExceptionId where
 
 -- | License SPDX identifier, e.g. @"BSD-3-Clause"@.
 licenseExceptionId :: LicenseExceptionId -> String
-licenseExceptionId DS389_exception = "389-exception"
+licenseExceptionId N_389_exception = "389-exception"
 licenseExceptionId Asterisk_exception = "Asterisk-exception"
 licenseExceptionId Asterisk_linking_protocols_exception = "Asterisk-linking-protocols-exception"
 licenseExceptionId Autoconf_exception_2_0 = "Autoconf-exception-2.0"
@@ -212,7 +212,7 @@ licenseExceptionId X11vnc_openssl_exception = "x11vnc-openssl-exception"
 
 -- | License name, e.g. @"GNU General Public License v2.0 only"@
 licenseExceptionName :: LicenseExceptionId -> String
-licenseExceptionName DS389_exception = "389 Directory Server Exception"
+licenseExceptionName N_389_exception = "389 Directory Server Exception"
 licenseExceptionName Asterisk_exception = "Asterisk exception"
 licenseExceptionName Asterisk_linking_protocols_exception = "Asterisk linking protocols exception"
 licenseExceptionName Autoconf_exception_2_0 = "Autoconf exception 2.0"
@@ -504,7 +504,7 @@ stringLookup_3_25 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
 --  | License exceptions in all SPDX License lists
 bulkOfLicenses :: [LicenseExceptionId]
 bulkOfLicenses =
-    [ DS389_exception
+    [ N_389_exception
     , Autoconf_exception_2_0
     , Autoconf_exception_3_0
     , Bison_exception_2_2

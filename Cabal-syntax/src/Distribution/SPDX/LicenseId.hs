@@ -35,8 +35,8 @@ import qualified Text.PrettyPrint as Disp
 
 -- | SPDX License identifiers list v3.25
 data LicenseId
-    = NullBSD -- ^ @0BSD@, BSD Zero Clause License
-    | X3D_Slicer_1_0 -- ^ @3D-Slicer-1.0@, 3D Slicer License v1.0, SPDX License List 3.25
+    = N_0BSD -- ^ @0BSD@, BSD Zero Clause License
+    | N_3D_Slicer_1_0 -- ^ @3D-Slicer-1.0@, 3D Slicer License v1.0, SPDX License List 3.25
     | AAL -- ^ @AAL@, Attribution Assurance License
     | Abstyles -- ^ @Abstyles@, Abstyles License
     | AdaCore_doc -- ^ @AdaCore-doc@, AdaCore Doc License, SPDX License List 3.23, SPDX License List 3.25
@@ -756,8 +756,8 @@ licenseIdMigrationMessage = go where
 
 -- | License SPDX identifier, e.g. @"BSD-3-Clause"@.
 licenseId :: LicenseId -> String
-licenseId NullBSD = "0BSD"
-licenseId X3D_Slicer_1_0 = "3D-Slicer-1.0"
+licenseId N_0BSD = "0BSD"
+licenseId N_3D_Slicer_1_0 = "3D-Slicer-1.0"
 licenseId AAL = "AAL"
 licenseId Abstyles = "Abstyles"
 licenseId AdaCore_doc = "AdaCore-doc"
@@ -1398,8 +1398,8 @@ licenseId ZPL_2_1 = "ZPL-2.1"
 
 -- | License name, e.g. @"GNU General Public License v2.0 only"@
 licenseName :: LicenseId -> String
-licenseName NullBSD = "BSD Zero Clause License"
-licenseName X3D_Slicer_1_0 = "3D Slicer License v1.0"
+licenseName N_0BSD = "BSD Zero Clause License"
+licenseName N_3D_Slicer_1_0 = "3D Slicer License v1.0"
 licenseName AAL = "Attribution Assurance License"
 licenseName Abstyles = "Abstyles License"
 licenseName AdaCore_doc = "AdaCore Doc License"
@@ -2042,7 +2042,7 @@ licenseName ZPL_2_1 = "Zope Public License 2.1"
 --
 -- See <https://opensource.org/licenses/alphabetical>.
 licenseIsOsiApproved :: LicenseId -> Bool
-licenseIsOsiApproved NullBSD = True
+licenseIsOsiApproved N_0BSD = True
 licenseIsOsiApproved AAL = True
 licenseIsOsiApproved AFL_1_1 = True
 licenseIsOsiApproved AFL_1_2 = True
@@ -2886,7 +2886,7 @@ licenseIdList LicenseListVersion_3_23 =
     ]
     ++ bulkOfLicenses
 licenseIdList LicenseListVersion_3_25 =
-    [ X3D_Slicer_1_0
+    [ N_3D_Slicer_1_0
     , AdaCore_doc
     , Adobe_Display_PostScript
     , Adobe_Utopia
@@ -3232,7 +3232,7 @@ stringLookup_3_25 = Map.fromList $ map (\i -> (licenseId i, i)) $
 --  | Licenses in all SPDX License lists
 bulkOfLicenses :: [LicenseId]
 bulkOfLicenses =
-    [ NullBSD
+    [ N_0BSD
     , AAL
     , Abstyles
     , Adobe_2006
