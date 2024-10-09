@@ -111,7 +111,6 @@ data HaddockFlags = HaddockFlags
   , haddockHscolourCss :: Flag FilePath
   , haddockContents :: Flag PathTemplate
   , haddockIndex :: Flag PathTemplate
-  , haddockKeepTempFiles :: Flag Bool
   , haddockBaseUrl :: Flag String
   , haddockResourcesDir :: Flag String
   , haddockOutputDir :: Flag FilePath
@@ -166,7 +165,6 @@ defaultHaddockFlags =
     , haddockQuickJump = Flag False
     , haddockHscolourCss = NoFlag
     , haddockContents = NoFlag
-    , haddockKeepTempFiles = Flag False
     , haddockIndex = NoFlag
     , haddockBaseUrl = NoFlag
     , haddockResourcesDir = NoFlag
@@ -219,13 +217,6 @@ haddockOptions showOrParseArgs =
     (\c f -> f{haddockCommonFlags = c})
     showOrParseArgs
     [ option
-        ""
-        ["keep-temp-files"]
-        "Keep temporary files"
-        haddockKeepTempFiles
-        (\b flags -> flags{haddockKeepTempFiles = b})
-        trueArg
-    , option
         ""
         ["hoogle"]
         "Generate a hoogle database"
@@ -413,7 +404,8 @@ data Visibility = Visible | Hidden
   deriving (Eq, Show)
 
 data HaddockProjectFlags = HaddockProjectFlags
-  { haddockProjectHackage :: Flag Bool
+  { haddockProjectCommonFlags :: !CommonSetupFlags
+  , haddockProjectHackage :: Flag Bool
   -- ^ a shortcut option which builds documentation linked to hackage.  It implies:
   -- * `--html-location='https://hackage.haskell.org/package/$prg-$version/docs'
   -- * `--quickjump`
@@ -446,9 +438,7 @@ data HaddockProjectFlags = HaddockProjectFlags
   , -- haddockContent is not supported, a fixed value is provided
     -- haddockIndex is not supported, a fixed value is provided
     -- haddockDistPerf is not supported, note: it changes location of the haddocks
-    haddockProjectKeepTempFiles :: Flag Bool
-  , haddockProjectVerbosity :: Flag Verbosity
-  , -- haddockBaseUrl is not supported, a fixed value is provided
+    -- haddockBaseUrl is not supported, a fixed value is provided
     haddockProjectResourcesDir :: Flag String
   , haddockProjectUseUnicode :: Flag Bool
   }
@@ -457,7 +447,8 @@ data HaddockProjectFlags = HaddockProjectFlags
 defaultHaddockProjectFlags :: HaddockProjectFlags
 defaultHaddockProjectFlags =
   HaddockProjectFlags
-    { haddockProjectHackage = Flag False
+    { haddockProjectCommonFlags = defaultCommonSetupFlags
+    , haddockProjectHackage = Flag False
     , haddockProjectDir = Flag "./haddocks"
     , haddockProjectPrologue = NoFlag
     , haddockProjectTestSuites = Flag False
@@ -471,8 +462,6 @@ defaultHaddockProjectFlags =
     , haddockProjectInternal = Flag False
     , haddockProjectCss = NoFlag
     , haddockProjectHscolourCss = NoFlag
-    , haddockProjectKeepTempFiles = Flag False
-    , haddockProjectVerbosity = Flag normal
     , haddockProjectResourcesDir = NoFlag
     , haddockProjectInterfaces = NoFlag
     , haddockProjectUseUnicode = NoFlag
@@ -517,140 +506,134 @@ haddockProjectCommand =
           emptyProgramDb
 
 haddockProjectOptions :: ShowOrParseArgs -> [OptionField HaddockProjectFlags]
-haddockProjectOptions _showOrParseArgs =
-  [ option
-      ""
-      ["hackage"]
-      ( concat
-          [ "A short-cut option to build documentation linked to hackage."
-          ]
-      )
-      haddockProjectHackage
-      (\v flags -> flags{haddockProjectHackage = v})
-      trueArg
-  , option
-      ""
-      ["output"]
-      "Output directory"
-      haddockProjectDir
-      (\v flags -> flags{haddockProjectDir = v})
-      (optArg' "DIRECTORY" maybeToFlag (fmap Just . flagToList))
-  , option
-      ""
-      ["prologue"]
-      "File path to a prologue file in haddock format"
-      haddockProjectPrologue
-      (\v flags -> flags{haddockProjectPrologue = v})
-      (optArg' "PATH" maybeToFlag (fmap Just . flagToList))
-  , option
-      ""
-      ["hoogle"]
-      "Generate a hoogle database"
-      haddockProjectHoogle
-      (\v flags -> flags{haddockProjectHoogle = v})
-      trueArg
-  , option
-      ""
-      ["html-location"]
-      "Location of HTML documentation for pre-requisite packages"
-      haddockProjectHtmlLocation
-      (\v flags -> flags{haddockProjectHtmlLocation = v})
-      (reqArgFlag "URL")
-  , option
-      ""
-      ["executables"]
-      "Run haddock for Executables targets"
-      haddockProjectExecutables
-      (\v flags -> flags{haddockProjectExecutables = v})
-      trueArg
-  , option
-      ""
-      ["tests"]
-      "Run haddock for Test Suite targets"
-      haddockProjectTestSuites
-      (\v flags -> flags{haddockProjectTestSuites = v})
-      trueArg
-  , option
-      ""
-      ["benchmarks"]
-      "Run haddock for Benchmark targets"
-      haddockProjectBenchmarks
-      (\v flags -> flags{haddockProjectBenchmarks = v})
-      trueArg
-  , option
-      ""
-      ["foreign-libraries"]
-      "Run haddock for Foreign Library targets"
-      haddockProjectForeignLibs
-      (\v flags -> flags{haddockProjectForeignLibs = v})
-      trueArg
-  , option
-      ""
-      ["all", "haddock-all"]
-      "Run haddock for all targets"
-      ( \f ->
-          allFlags
-            [ haddockProjectExecutables f
-            , haddockProjectTestSuites f
-            , haddockProjectBenchmarks f
-            , haddockProjectForeignLibs f
+haddockProjectOptions showOrParseArgs =
+  withCommonSetupOptions
+    haddockProjectCommonFlags
+    (\c f -> f{haddockProjectCommonFlags = c})
+    showOrParseArgs
+    [ option
+        ""
+        ["hackage"]
+        ( concat
+            [ "A short-cut option to build documentation linked to hackage."
             ]
-      )
-      ( \v flags ->
-          flags
-            { haddockProjectExecutables = v
-            , haddockProjectTestSuites = v
-            , haddockProjectBenchmarks = v
-            , haddockProjectForeignLibs = v
-            }
-      )
-      trueArg
-  , option
-      ""
-      ["internal"]
-      "Run haddock for internal modules and include all symbols"
-      haddockProjectInternal
-      (\v flags -> flags{haddockProjectInternal = v})
-      trueArg
-  , option
-      ""
-      ["css"]
-      "Use PATH as the haddock stylesheet"
-      haddockProjectCss
-      (\v flags -> flags{haddockProjectCss = v})
-      (reqArgFlag "PATH")
-  , option
-      ""
-      ["hscolour-css"]
-      "Use PATH as the HsColour stylesheet"
-      haddockProjectHscolourCss
-      (\v flags -> flags{haddockProjectHscolourCss = v})
-      (reqArgFlag "PATH")
-  , option
-      ""
-      ["keep-temp-files"]
-      "Keep temporary files"
-      haddockProjectKeepTempFiles
-      (\b flags -> flags{haddockProjectKeepTempFiles = b})
-      trueArg
-  , optionVerbosity
-      haddockProjectVerbosity
-      (\v flags -> flags{haddockProjectVerbosity = v})
-  , option
-      ""
-      ["resources-dir"]
-      "location of Haddocks static / auxiliary files"
-      haddockProjectResourcesDir
-      (\v flags -> flags{haddockProjectResourcesDir = v})
-      (reqArgFlag "DIR")
-  , option
-      ""
-      ["use-unicode"]
-      "Pass --use-unicode option to haddock"
-      haddockProjectUseUnicode
-      (\v flags -> flags{haddockProjectUseUnicode = v})
-      trueArg
-  ]
+        )
+        haddockProjectHackage
+        (\v flags -> flags{haddockProjectHackage = v})
+        trueArg
+    , option
+        ""
+        ["output"]
+        "Output directory"
+        haddockProjectDir
+        (\v flags -> flags{haddockProjectDir = v})
+        (optArg' "DIRECTORY" maybeToFlag (fmap Just . flagToList))
+    , option
+        ""
+        ["prologue"]
+        "File path to a prologue file in haddock format"
+        haddockProjectPrologue
+        (\v flags -> flags{haddockProjectPrologue = v})
+        (optArg' "PATH" maybeToFlag (fmap Just . flagToList))
+    , option
+        ""
+        ["hoogle"]
+        "Generate a hoogle database"
+        haddockProjectHoogle
+        (\v flags -> flags{haddockProjectHoogle = v})
+        trueArg
+    , option
+        ""
+        ["html-location"]
+        "Location of HTML documentation for pre-requisite packages"
+        haddockProjectHtmlLocation
+        (\v flags -> flags{haddockProjectHtmlLocation = v})
+        (reqArgFlag "URL")
+    , option
+        ""
+        ["executables"]
+        "Run haddock for Executables targets"
+        haddockProjectExecutables
+        (\v flags -> flags{haddockProjectExecutables = v})
+        trueArg
+    , option
+        ""
+        ["tests"]
+        "Run haddock for Test Suite targets"
+        haddockProjectTestSuites
+        (\v flags -> flags{haddockProjectTestSuites = v})
+        trueArg
+    , option
+        ""
+        ["benchmarks"]
+        "Run haddock for Benchmark targets"
+        haddockProjectBenchmarks
+        (\v flags -> flags{haddockProjectBenchmarks = v})
+        trueArg
+    , option
+        ""
+        ["foreign-libraries"]
+        "Run haddock for Foreign Library targets"
+        haddockProjectForeignLibs
+        (\v flags -> flags{haddockProjectForeignLibs = v})
+        trueArg
+    , option
+        ""
+        ["all", "haddock-all"]
+        "Run haddock for all targets"
+        ( \f ->
+            allFlags
+              [ haddockProjectExecutables f
+              , haddockProjectTestSuites f
+              , haddockProjectBenchmarks f
+              , haddockProjectForeignLibs f
+              ]
+        )
+        ( \v flags ->
+            flags
+              { haddockProjectExecutables = v
+              , haddockProjectTestSuites = v
+              , haddockProjectBenchmarks = v
+              , haddockProjectForeignLibs = v
+              }
+        )
+        trueArg
+    , option
+        ""
+        ["internal"]
+        "Run haddock for internal modules and include all symbols"
+        haddockProjectInternal
+        (\v flags -> flags{haddockProjectInternal = v})
+        trueArg
+    , option
+        ""
+        ["css"]
+        "Use PATH as the haddock stylesheet"
+        haddockProjectCss
+        (\v flags -> flags{haddockProjectCss = v})
+        (reqArgFlag "PATH")
+    , option
+        ""
+        ["hscolour-css"]
+        "Use PATH as the HsColour stylesheet"
+        haddockProjectHscolourCss
+        (\v flags -> flags{haddockProjectHscolourCss = v})
+        (reqArgFlag "PATH")
+    , option
+        ""
+        ["resources-dir"]
+        "location of Haddocks static / auxiliary files"
+        haddockProjectResourcesDir
+        (\v flags -> flags{haddockProjectResourcesDir = v})
+        (reqArgFlag "DIR")
+    , option
+        ""
+        ["use-unicode"]
+        "Pass --use-unicode option to haddock"
+        haddockProjectUseUnicode
+        (\v flags -> flags{haddockProjectUseUnicode = v})
+        trueArg
+    ]
 
 emptyHaddockProjectFlags :: HaddockProjectFlags
 emptyHaddockProjectFlags = mempty
