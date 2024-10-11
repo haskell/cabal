@@ -71,7 +71,7 @@ jobs:
       matrix:
         sys:
           - { os: windows-latest, shell: "C:/msys64/usr/bin/bash.exe -e {0}" }
-          - { os: ubuntu-latest, shell: bash }
+          - { os: ubuntu-22.04, shell: bash }
           - { os: macos-latest, shell: bash }
         # If you remove something from here, then add it to the old-ghcs job.
         # Also a removed GHC from here means that we are actually dropping
@@ -262,7 +262,7 @@ jobs:
 
   validate-old-ghcs:
     name: Validate old ghcs ${{ matrix.extra-ghc }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: validate
 
     strategy:
@@ -395,7 +395,7 @@ jobs:
       matrix:
         sys:
           - { os: windows-latest, shell: "C:/msys64/usr/bin/bash.exe -e {0}" }
-          - { os: ubuntu-latest, shell: bash }
+          - { os: ubuntu-22.04, shell: bash }
           - { os: macos-latest, shell: bash }
         # We only use one ghc version the used one for the next release (defined at top of the workflow)
         # We need to build an array dynamically to inject the appropiate env var in a previous job,
