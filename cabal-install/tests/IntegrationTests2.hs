@@ -49,7 +49,7 @@ import qualified Distribution.Client.CmdListBin        as CmdListBin
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
-import Distribution.Simple.Setup (toFlag, HaddockFlags(..), defaultHaddockFlags)
+import Distribution.Simple.Setup (toFlag, CommonSetupFlags(..), HaddockFlags(..), defaultHaddockFlags, defaultCommonSetupFlags)
 import Distribution.Client.Setup (globalCommand)
 import Distribution.Client.Config (loadConfig, SavedConfig(savedGlobalFlags), createDefaultConfigFile)
 import Distribution.Simple.Compiler
@@ -2289,7 +2289,12 @@ testHaddockProjectDependencies config = do
       cleanHaddockProject testdir
       withCurrentDirectory dir $ do
         CmdHaddockProject.haddockProjectAction
-          defaultHaddockProjectFlags { haddockProjectVerbosity = Flag verbosity }
+          defaultHaddockProjectFlags
+            { haddockProjectCommonFlags =
+                defaultCommonSetupFlags
+                  { setupVerbosity = Flag verbosity
+                  }
+            }
           ["all"]
           defaultGlobalFlags { globalStoreDir = Flag "store" }
 
