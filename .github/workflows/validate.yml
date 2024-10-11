@@ -76,7 +76,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-13, windows-latest]
+        os: [ubuntu-22.04, macos-13, windows-latest]
         # If you remove something from here, then add it to the old-ghcs job.
         # Also a removed GHC from here means that we are actually dropping
         # support, so the PR *must* have a changelog entry.
@@ -231,7 +231,7 @@ jobs:
 
   validate-old-ghcs:
     name: Validate old ghcs ${{ matrix.extra-ghc }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: validate
 
     strategy:
@@ -361,7 +361,7 @@ jobs:
     needs: validate
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-13, windows-latest]
+        os: [ubuntu-22.04, macos-13, windows-latest]
         # We only use one ghc version the used one for the next release (defined at top of the workflow)
         # We need to build an array dynamically to inject the appropiate env var in a previous job,
         # see https://docs.github.com/en/actions/learn-github-actions/expressions#fromjson
