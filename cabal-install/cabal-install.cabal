@@ -51,7 +51,7 @@ common warnings
       ghc-options: -Wunused-packages
 
 common base-dep
-    build-depends: base >=4.11 && <4.21
+    build-depends: base >=4.11 && <4.22
 
 common cabal-dep
     build-depends: Cabal ^>=3.12.1.0
