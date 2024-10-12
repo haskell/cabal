@@ -89,3 +89,17 @@ jobs:
             echo No matching bootlib Cabal version to test against.
             exit 0
           fi
+
+  check-sdist-post-job:
+    if: always()
+    name: Check sdist post job
+    runs-on: ubuntu-latest
+    # IMPORTANT! Any job added to the workflow should be added here too
+    needs: [dogfood-sdists]
+
+    steps:
+      - run: |
+          echo "jobs info: ${{ toJSON(needs) }}"
+      - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
+
