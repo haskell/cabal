@@ -234,9 +234,11 @@ resolveOpts opts = do
 
       tastyArgs' =
         "--hide-successes"
-          : case rawTastyPattern opts of
-            Just tastyPattern -> ["--pattern", tastyPattern]
-            Nothing -> []
+          : maybe
+            []
+            (\tastyPattern -> ["--pattern", tastyPattern])
+            (rawTastyPattern opts)
+          ++ rawTastyArgs opts
 
   when (rawListSteps opts) $ do
     -- TODO: This should probably list _all_ available steps, not just the selected ones!
@@ -279,6 +281,7 @@ data RawOpts = RawOpts
   , rawCabal :: FilePath
   , rawExtraCompilers :: [FilePath]
   , rawTastyPattern :: Maybe String
+  , rawTastyArgs :: [String]
   , rawDoctest :: Bool
   , rawSteps :: [Step]
   , rawListSteps :: Bool
@@ -342,6 +345,12 @@ rawOptsParser =
           <> long "pattern"
           <> help "Pattern to filter tests by"
           <> value Nothing
+      )
+    <*> many
+      ( strOption
+          ( long "tasty-arg"
+              <> help "Extra arguments to pass to Tasty test suites"
+          )
       )
     <*> boolOption
       False
