@@ -239,6 +239,12 @@ jobs:
             echo End "$test"
           done
           exit $rc
+      # The above ensures all the tests get run, for a single platform+ghc.
+      # Trying to ensure they run for *all* combinations but still fail
+      # at the end seems to be extremely difficult at best. It's doable,
+      # but it requires a continuously growing stack of conditions and
+      # one possibly nightmarish final conditional. 'fail-fast' gets us
+      # partway there, at least, but is still imperfect.
 
   validate-old-ghcs:
     name: Validate old ghcs ${{ matrix.extra-ghc }}
@@ -298,8 +304,9 @@ jobs:
       - name: "Validate lib-suite-extras --extra-hc ghc-${{ matrix.extra-ghc }}"
         env:
           EXTRA_GHC: ghc-${{ matrix.extra-ghc }}
-        continue-on-error: true
         run: sh validate.sh ${{ env.COMMON_FLAGS }} --lib-only -s lib-suite-extras --extra-hc "${{ env.EXTRA_GHC }}"
+      # See the comment above about running all tests but still failing if one
+      # of them does; it also applies here.
 
   build-alpine:
     name: Build statically linked using alpine
