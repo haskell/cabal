@@ -26,7 +26,7 @@ common shared
   default-language: Haskell2010
 
   build-depends:
-    , base >= 4.11 && < 4.21
+    , base >= 4.11 && < 4.22
     -- this needs to match the in-tree lib:Cabal version
     , Cabal ^>= 3.15.0.0
 
