@@ -3,6 +3,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -270,13 +271,10 @@ getSourcePackagesAtIndexState verbosity repoCtxt _ _
         )
 getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState mb_activeRepos = do
   pkgss <- for (repoContextRepos repoCtxt) $ \r -> do
-    let RepoName rname = repoName r
-    info verbosity ("Reading available packages of " ++ rname ++ "...")
-
-    case r of
-      RepoLocalNoIndex{} -> getRepoLocalNoIndexDataAtIndexState verbosity mb_idxState repoCtxt r
-      RepoRemote{} -> getRepoRemoteDataAtIndexState verbosity mb_idxState repoCtxt r
-      RepoSecure{} -> getRepoSecureDataAtIndexState verbosity mb_idxState repoCtxt r
+    let rname = repoName r
+    info verbosity $ "Reading available packages of " ++ prettyShow rname ++ "..."
+    let mb_repoIdxState = lookupIndexState rname <$> mb_idxState
+    getRepoIndexState verbosity repoCtxt r mb_repoIdxState
 
   let activeRepos :: ActiveRepos
       activeRepos = fromMaybe defaultActiveRepos mb_activeRepos
@@ -326,6 +324,7 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState mb_activeRepos = do
   _ <- evaluate pkgs
   _ <- evaluate prefs
   _ <- evaluate totalIndexState
+
   return
     ( SourcePackageDb
         { packageIndex = pkgs
@@ -335,139 +334,116 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState mb_activeRepos = do
     , activeRepos'
     )
 
-getRepoLocalNoIndexDataAtIndexState
+-- | Read the repository data corresponding at a particular repository
+-- index-state.
+getRepoIndexState
   :: Verbosity
-  -> Maybe TotalIndexState
   -> RepoContext
   -> Repo
+  -> Maybe RepoIndexState
+  -- ^ The index-state specified by the user. 'Nothing' if not specified.
   -> IO RepoData
-getRepoLocalNoIndexDataAtIndexState verbosity mb_idxState repoCtxt r = do
-  let RepoName rname = repoName r
+getRepoIndexState verbosity repoCtxt r mb_idxState = do
+  let rname = repoName r
 
-  -- NOTE: This is what the code used to do. I think calling this here is wrong.
-  idxState <- resolveRepoIndexState verbosity repoCtxt r mb_idxState
-  -- NOTE: ^^^
-
-  unless (idxState == IndexStateHead) $
-    warn verbosity "index-state ignored for file+noindex repositories"
-
-  (pis, deps, isi) <- readRepoIndex verbosity repoCtxt r IndexStateHead
-  info verbosity ("index-state(" ++ rname ++ ") = " ++ prettyShow (isiHeadTime isi))
-
-  pure
-    RepoData
-      { rdRepoName = repoName r
-      , rdTimeStamp = isiMaxTime isi
-      , rdIndex = pis
-      , rdPreferences = deps
-      }
-
-getRepoRemoteDataAtIndexState
-  :: Verbosity
-  -> Maybe TotalIndexState
-  -> RepoContext
-  -> Repo
-  -> IO RepoData
-getRepoRemoteDataAtIndexState verbosity mb_idxState repoCtxt r = do
-  let RepoName rname = repoName r
-
-  -- NOTE: This is what the code used to do. I think calling this here is wrong.
-  idxState <- resolveRepoIndexState verbosity repoCtxt r mb_idxState
-  -- NOTE: ^^^
-
-  unless (idxState == IndexStateHead) $
-    warn verbosity ("index-state ignored for old-format (remote repository '" ++ rname ++ "')")
-
-  (pis, deps, isi) <- readRepoIndex verbosity repoCtxt r IndexStateHead
-  info verbosity ("index-state(" ++ rname ++ ") = " ++ prettyShow (isiHeadTime isi))
-
-  pure
-    RepoData
-      { rdRepoName = repoName r
-      , rdTimeStamp = isiMaxTime isi
-      , rdIndex = pis
-      , rdPreferences = deps
-      }
-
-getRepoSecureDataAtIndexState
-  :: Verbosity
-  -> Maybe TotalIndexState
-  -> RepoContext
-  -> Repo
-  -> IO RepoData
-getRepoSecureDataAtIndexState verbosity mb_idxState repoCtxt r = do
-  let RepoName rname = repoName r
-
+  -- Determine the index state to use
   repoIdxState <- resolveRepoIndexState verbosity repoCtxt r mb_idxState
-  (pis, deps, isi) <- readRepoIndex verbosity repoCtxt r repoIdxState
 
-  case repoIdxState of
-    IndexStateHead -> do
-      info verbosity ("index-state(" ++ rname ++ ") = " ++ prettyShow (isiHeadTime isi))
-      return ()
-    IndexStateTime ts0 ->
-      -- isiMaxTime is the latest timestamp in the filtered view returned by
-      -- `readRepoIndex` above. It is always true that isiMaxTime is less or
-      -- equal to a requested IndexStateTime. When `isiMaxTime isi /= ts0` (or
-      -- equivalently `isiMaxTime isi < ts0`) it means that ts0 falls between
-      -- two timestamps in the index.
-      when (isiMaxTime isi /= ts0) $
-        let commonMsg =
-              "There is no index-state for '"
-                ++ rname
-                ++ "' exactly at the requested timestamp ("
-                ++ prettyShow ts0
-                ++ "). "
-         in if isNothing $ timestampToUTCTime (isiMaxTime isi)
-              then
-                warn verbosity $
-                  commonMsg
-                    ++ "Also, there are no index-states before the one requested, so the repository '"
-                    ++ rname
-                    ++ "' will be empty."
-              else
-                info verbosity $
-                  commonMsg
-                    ++ "Falling back to the previous index-state that exists: "
-                    ++ prettyShow (isiMaxTime isi)
+  -- Read the repository
+  (pis, deps, isi) <- readRepoIndex verbosity repoCtxt r repoIdxState
+  info verbosity $ "index-state(" ++ prettyShow rname ++ ") = " ++ prettyShow (isiHeadTime isi)
+
+  -- Compare the requested and the effective index state and warn the user if necessary
+  repoIndexStateWarnings verbosity r repoIdxState isi
+
   pure
     RepoData
-      { rdRepoName = repoName r
+      { rdRepoName = rname
       , rdTimeStamp = isiMaxTime isi
       , rdIndex = pis
       , rdPreferences = deps
       }
 
+-- | Determine what index-state to use for a repository, taking into
+-- account the one specified by the user and the timestamp file written by
+-- cabal update.
 resolveRepoIndexState
   :: Verbosity
   -> RepoContext
   -> Repo
-  -> Maybe TotalIndexState
+  -> Maybe RepoIndexState
+  -- ^ The index-state specified by the user. 'Nothing' if not specified.
   -> IO RepoIndexState
-resolveRepoIndexState verbosity repoCtxt r mb_idxState =
-  case mb_idxState of
-    Just totalIdxState -> do
-      let idxState = lookupIndexState (repoName r) totalIdxState
-      info verbosity $
-        "Using "
-          ++ describeState idxState
-          ++ " as explicitly requested (via command line / project configuration)"
+--
+-- Secure repositories.
+--
+-- If the user specified an index-state, we use it. Otherwise, we try
+-- to read one from the timestamp file. Lastly, we fall back to the most
+-- recent state.
+--
+resolveRepoIndexState verbosity _repoCtxt RepoSecure{} (Just idxState) = do
+  info verbosity $ "Using " ++ describeState idxState ++ " as explicitly requested (via command line / project configuration)"
+  return idxState
+resolveRepoIndexState verbosity repoCtxt r@RepoSecure{} Nothing = do
+  mb_idxState' <- readIndexTimestamp verbosity (RepoIndex repoCtxt r)
+  case mb_idxState' of
+    Just idxState -> do
+      info verbosity $ "Using " ++ describeState idxState ++ " specified from most recent cabal update"
       return idxState
     Nothing -> do
-      mb_idxState' <- readIndexTimestamp verbosity (RepoIndex repoCtxt r)
-      case mb_idxState' of
-        Nothing -> do
-          info verbosity "Using most recent state (could not read timestamp file)"
-          return IndexStateHead
-        Just idxState -> do
-          info verbosity $
-            "Using "
-              ++ describeState idxState
-              ++ " specified from most recent cabal update"
-          return idxState
-  where
-    describeState IndexStateHead = "most recent state"
-    describeState (IndexStateTime time) = "historical state as of " ++ prettyShow time
+      info verbosity "Using most recent state (could not read timestamp file)"
+      return IndexStateHead
+--
+-- Legacy and local+noindex repositories do not support index-state. We
+-- always use the most recent state.
+--
+resolveRepoIndexState _verbosity _repoCtxt _r _mb_idxState = do
+  return IndexStateHead
+
+describeState :: RepoIndexState -> String
+describeState IndexStateHead = "most recent state"
+describeState (IndexStateTime time) = "historical state as of " ++ prettyShow time
+
+repoIndexStateWarnings
+  :: Verbosity
+  -> Repo
+  -> RepoIndexState
+  -- ^ The index-state specified by the user. 'Nothing' if not specified.
+  -> IndexStateInfo
+  -- ^ The index-state information as reported by the repository.
+  -> IO ()
+repoIndexStateWarnings verbosity r@RepoSecure{} (IndexStateTime ts) isi = do
+  -- isiMaxTime is the latest timestamp in the filtered view returned by
+  -- `readRepoIndex` above. It is always true that isiMaxTime is less or
+  -- equal to a requested IndexStateTime. When `isiMaxTime isi /= ts0` (or
+  -- equivalently `isiMaxTime isi < ts0`) it means that ts0 falls between
+  -- two timestamps in the index.
+  when (isiMaxTime isi /= ts) $
+    let commonMsg =
+          "There is no index-state for '"
+            ++ prettyShow (repoName r)
+            ++ "' exactly at the requested timestamp ("
+            ++ prettyShow ts
+            ++ "). "
+     in if isNothing $ timestampToUTCTime (isiMaxTime isi)
+          then
+            warn verbosity $
+              commonMsg
+                ++ "Also, there are no index-states before the one requested, so the repository '"
+                ++ prettyShow (repoName r)
+                ++ "' will be empty."
+          else
+            info verbosity $
+              commonMsg
+                ++ "Falling back to the previous index-state that exists: "
+                ++ prettyShow (isiMaxTime isi)
+repoIndexStateWarnings verbosity r@RepoRemote{} (IndexStateTime _) _ =
+  warn verbosity $
+    "index-state ignored for old-format (remote repository '" ++ prettyShow (repoName r) ++ "')"
+repoIndexStateWarnings verbosity r@RepoLocalNoIndex{} (IndexStateTime _) _ =
+  warn verbosity $
+    "index-state ignored for file+noindex repositories (remote repository '" ++ prettyShow (repoName r) ++ "')"
+repoIndexStateWarnings _verbosity _r _repoIdxState _isi = return ()
 
 -- auxiliary data used in getSourcePackagesAtIndexState
 data RepoData = RepoData
