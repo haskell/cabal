@@ -1,0 +1,10 @@
+synopsis: Deprecate `cabal format`
+packages: cabal-install
+prs: #10469
+significance:
+
+description: {
+
+- Deprecate `cabal format` in favor of `cabal dump-package-description` which is still a hidden, internal command.
+
+}

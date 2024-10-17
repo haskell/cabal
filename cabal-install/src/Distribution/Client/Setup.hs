@@ -73,6 +73,7 @@ module Distribution.Client.Setup
   , checkCommand
   , CheckFlags (..)
   , formatCommand
+  , dumpPackageDescriptionCommand
   , uploadCommand
   , UploadFlags (..)
   , IsCandidate (..)
@@ -301,6 +302,7 @@ globalCommand commands =
               , "hscolour"
               , "exec"
               , "path"
+              , "format"
               , "new-build"
               , "new-configure"
               , "new-repl"
@@ -405,6 +407,7 @@ globalCommand commands =
                 , startGroup "deprecated"
                 , addCmd "unpack"
                 , addCmd "hscolour"
+                , addCmd "format"
                 , par
                 , startGroup "new-style projects (forwards-compatible aliases)"
                 , addCmd "v2-build"
@@ -1745,14 +1748,41 @@ cleanCommand =
         "Usage: " ++ pname ++ " v1-clean [FLAGS]\n"
     }
 
+-- If you read this comment after cabal-install 3.16 has already been released,
+-- it seems we forgot to delete the command, which we said we would do for 3.16.
+-- So please: do remove this command.
 formatCommand :: CommandUI (Flag Verbosity)
 formatCommand =
   CommandUI
     { commandName = "format"
-    , commandSynopsis = "Reformat the .cabal file using the standard style."
-    , commandDescription = Nothing
+    , commandSynopsis = "Rewrite the .cabal file using the parsed package description."
+    , commandDescription = Just $ \_ ->
+        wrapText $
+          "cabal-install parses the .cabal file into its internal package description "
+            ++ "datatype. This command rewrites the file with the parsed description.\n"
+            ++ "\n"
+            ++ "Note that the parsed description does not include the comments "
+            ++ "in the original file nor the common stanzas, which are expanded "
+            ++ "during the package description resolution.\n"
+            ++ "\n"
+            ++ "This command is barely a raw formatter. Its functionality has "
+            ++ "been moved to `cabal dump-package-description` which will not "
+            ++ "overwrite the file. In cabal-install 3.16 this command will be "
+            ++ "removed."
     , commandNotes = Nothing
     , commandUsage = usageAlternatives "format" ["[FILE]"]
+    , commandDefaultFlags = toFlag normal
+    , commandOptions = \_ -> []
+    }
+
+dumpPackageDescriptionCommand :: CommandUI (Flag Verbosity)
+dumpPackageDescriptionCommand =
+  CommandUI
+    { commandName = "dump-package-description"
+    , commandSynopsis = "Dump the parsed package description to stdout"
+    , commandDescription = Nothing
+    , commandNotes = Nothing
+    , commandUsage = usageAlternatives "dump-package-description" ["[FILE]"]
     , commandDefaultFlags = toFlag normal
     , commandOptions = \_ -> []
     }
