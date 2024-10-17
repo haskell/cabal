@@ -50,6 +50,7 @@ import Distribution.Client.Setup
   , copyCommand
   , defaultConfigExFlags
   , defaultInstallFlags
+  , dumpPackageDescriptionCommand
   , fetchCommand
   , filterCommonFlags
   , formatCommand
@@ -187,7 +188,8 @@ import Distribution.Client.Errors
 import Distribution.Compat.ResponseFile
 import qualified Distribution.Make as Make
 import Distribution.PackageDescription.PrettyPrint
-  ( writeGenericPackageDescription
+  ( showGenericPackageDescription
+  , writeGenericPackageDescription
   )
 import qualified Distribution.Simple as Simple
 import Distribution.Simple.Build
@@ -433,10 +435,11 @@ mainWorker args = do
       , regularCmd genBoundsCommand genBoundsAction
       , regularCmd CmdOutdated.outdatedCommand CmdOutdated.outdatedAction
       , wrapperCmd hscolourCommand hscolourCommonFlags
-      , hiddenCmd formatCommand formatAction
+      , regularCmd formatCommand formatAction
       , hiddenCmd actAsSetupCommand actAsSetupAction
       , hiddenCmd manpageCommand (manpageAction commandSpecs)
       , regularCmd CmdListBin.listbinCommand CmdListBin.listbinAction
+      , hiddenCmd dumpPackageDescriptionCommand dumpPackageDescriptionAction
       ]
         ++ concat
           [ newCmd CmdConfigure.configureCommand CmdConfigure.configureAction
@@ -1342,6 +1345,7 @@ checkAction checkFlags extraArgs _globalFlags = do
 
 formatAction :: Flag Verbosity -> [String] -> Action
 formatAction verbosityFlag extraArgs _globalFlags = do
+  hPutStrLn stderr "WARNING: `cabal format` is deprecated and will be removed in 3.16"
   let verbosity = fromFlag verbosityFlag
   path <- case extraArgs of
     [] -> relativeSymbolicPath <$> tryFindPackageDesc verbosity Nothing
@@ -1349,6 +1353,15 @@ formatAction verbosityFlag extraArgs _globalFlags = do
   pkgDesc <- readGenericPackageDescription verbosity Nothing path
   -- Uses 'writeFileAtomic' under the hood.
   writeGenericPackageDescription (getSymbolicPath path) pkgDesc
+
+dumpPackageDescriptionAction :: Flag Verbosity -> [String] -> Action
+dumpPackageDescriptionAction verbosityFlag extraArgs _globalFlags = do
+  let verbosity = fromFlag verbosityFlag
+  path <- case extraArgs of
+    [] -> relativeSymbolicPath <$> tryFindPackageDesc verbosity Nothing
+    (p : _) -> return $ makeSymbolicPath p
+  pkgDesc <- readGenericPackageDescription verbosity Nothing path
+  putStrLn $ showGenericPackageDescription pkgDesc
 
 reportAction :: ReportFlags -> [String] -> Action
 reportAction reportFlags extraArgs globalFlags = do
