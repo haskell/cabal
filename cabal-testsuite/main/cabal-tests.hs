@@ -23,7 +23,19 @@ import Control.Exception
 import Control.Monad
 import GHC.Conc (numCapabilities)
 import Data.List
+import Data.Proxy (Proxy(Proxy))
+import qualified Data.Sequence as Seq (fromList)
 import Text.Printf
+import qualified Test.Tasty.Options as Tasty
+  ( OptionSet
+  , OptionDescription (Option)
+  , lookupOption
+  )
+import qualified Test.Tasty.Runners as Tasty
+  ( optionParser
+  , TestPattern
+  , testPatternMatches
+  )
 import qualified System.Clock as Clock
 import System.IO
 import System.FilePath
@@ -72,7 +84,8 @@ data MainArgs = MainArgs {
         mainArgQuiet   :: Bool,
         mainArgDistDir :: Maybe FilePath,
         mainArgCabalSpec :: Maybe CabalLibSpec,
-        mainCommonArgs :: CommonArgs
+        mainCommonArgs :: CommonArgs,
+        mainTastyArgs :: Tasty.OptionSet
     }
 
 data CabalLibSpec = BootCabalLib | InTreeCabalLib FilePath FilePath | SpecificCabalLib String FilePath
@@ -117,6 +130,17 @@ mainArgParser = MainArgs
        <> metavar "DIR"))
     <*> optional cabalLibSpecParser
     <*> commonArgParser
+    <*> tastyArgParser
+
+tastyArgParser :: Parser Tasty.OptionSet
+tastyArgParser =
+  let (warnings, parser) =
+        Tasty.optionParser
+          [ Tasty.Option (Proxy @Tasty.TestPattern)
+          ]
+   in if null warnings
+         then parser
+         else error $ unlines ("Failed to create parser for Tasty CLI options:" : warnings)
 
 -- Unpack and build a specific released version of Cabal and Cabal-syntax libraries
 buildCabalLibsProject :: String -> Verbosity -> Maybe FilePath -> FilePath -> IO [FilePath]
@@ -184,6 +208,7 @@ main = do
     -- Parse arguments.  N.B. 'helper' adds the option `--help`.
     args <- execParser $ info (mainArgParser <**> helper) mempty
     let verbosity = if mainArgVerbose args then verbose else normal
+        testPattern = Tasty.lookupOption @Tasty.TestPattern (mainTastyArgs args)
 
     pkg_dbs <-
       -- Not path to cabal-install so we're not going to run cabal-install tests so we
@@ -264,7 +289,7 @@ main = do
             -- NB: getDirectoryContentsRecursive is lazy IO, but it
             -- doesn't handle directories disappearing gracefully. Fix
             -- this!
-            (single_tests, multi_tests) <- evaluate (partitionTests test_scripts)
+            (single_tests, multi_tests) <- evaluate (partitionTests testPattern test_scripts)
             let all_tests = multi_tests ++ single_tests
                 margin = maximum (map length all_tests) + 2
             hPutStrLn stderr $ "tests to run: " ++ show (length all_tests)
@@ -381,10 +406,19 @@ main = do
 findTests :: IO [FilePath]
 findTests = getDirectoryContentsRecursive "."
 
-partitionTests :: [FilePath] -> ([FilePath], [FilePath])
-partitionTests = go [] []
+-- | Partition a list of paths into a tuple of test paths and multi-test paths.
+--
+-- Non-test paths and test paths that don't match the given `Tasty.TestPattern` are dropped.
+partitionTests :: Tasty.TestPattern -> [FilePath] -> ([FilePath], [FilePath])
+partitionTests testPattern paths =
+  go [] [] paths
   where
-    go ts ms [] = (ts, ms)
+    -- Filter a list, keeping only paths that match the @pattern@.
+    keepPatternMatches = filter (Tasty.testPatternMatches testPattern . toTastyPath)
+
+    toTastyPath path = Seq.fromList $ splitDirectories path
+
+    go ts ms [] = (keepPatternMatches ts, keepPatternMatches ms)
     go ts ms (f:fs) =
         -- NB: Keep this synchronized with isTestFile
         case takeExtensions f of
