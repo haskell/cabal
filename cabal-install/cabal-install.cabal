@@ -52,7 +52,7 @@ common warnings
       ghc-options: -Wnoncanonical-monadfail-instances
 
 common base-dep
-    build-depends: base >=4.13 && <4.21
+    build-depends: base >=4.13 && <4.22
 
 common cabal-dep
     build-depends: Cabal ^>=3.15
