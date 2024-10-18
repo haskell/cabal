@@ -170,3 +170,8 @@ queue_rules:
     update_bot_account: Mikolaj
     merge_method: squash
     update_method: merge
+
+defaults:
+  actions:
+    backport:
+      title: "Backport #{{ number }}: {{ title }}"
