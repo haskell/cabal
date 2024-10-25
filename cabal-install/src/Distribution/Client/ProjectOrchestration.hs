@@ -245,6 +245,7 @@ data ProjectBaseContext = ProjectBaseContext
   , currentCommand :: CurrentCommand
   , installedPackages :: Maybe InstalledPackageIndex
   }
+  deriving Show
 
 establishProjectBaseContext
   :: Verbosity
@@ -346,6 +347,7 @@ data ProjectBuildContext = ProjectBuildContext
   -- ^ The targets selected by @selectPlanSubset@. This is useful eg. in
   -- CmdRun, where we need a valid target to execute.
   }
+  deriving Show
 
 -- | Pre-build phase: decide what to do.
 withInstallPlan

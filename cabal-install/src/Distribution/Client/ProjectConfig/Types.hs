@@ -481,3 +481,6 @@ data BuildTimeSettings = BuildTimeSettings
   , buildSettingProgPathExtra :: [FilePath]
   , buildSettingHaddockOpen :: Bool
   }
+
+instance Show BuildTimeSettings where
+  show _ = "BuildTimeSettings"

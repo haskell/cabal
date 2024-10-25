@@ -271,6 +271,7 @@ data InstallCfg = InstallCfg
   , installConfigFlags :: ConfigFlags
   , installClientFlags :: ClientInstallFlags
   }
+  deriving Show
 
 -- | A record of install method, install directory and file path functions
 -- needed by actions that either check if an install is possible or actually

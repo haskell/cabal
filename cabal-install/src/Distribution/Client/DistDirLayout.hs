@@ -117,6 +117,10 @@ data DistDirLayout = DistDirLayout
   -- ^ Is needed when `--haddock-output-dir` flag is used.
   }
 
+instance Show DistDirLayout where
+  show _ = "DistDirLayout"
+
+
 -- | The layout of a cabal nix-style store.
 data StoreDirLayout = StoreDirLayout
   { storeDirectory :: Compiler -> FilePath
@@ -127,6 +131,9 @@ data StoreDirLayout = StoreDirLayout
   , storeIncomingDirectory :: Compiler -> FilePath
   , storeIncomingLock :: Compiler -> UnitId -> FilePath
   }
+
+instance Show StoreDirLayout where
+  show _ = "StoreDirLayout"
 
 -- TODO: move to another module, e.g. CabalDirLayout?
 -- or perhaps rename this module to DirLayouts.
@@ -140,6 +147,7 @@ data CabalDirLayout = CabalDirLayout
   { cabalStoreDirLayout :: StoreDirLayout
   , cabalLogsDirectory :: FilePath
   }
+  deriving Show
 
 -- | Information about the root directory of the project.
 --

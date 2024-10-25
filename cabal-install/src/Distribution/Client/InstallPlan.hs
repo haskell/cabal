@@ -258,7 +258,7 @@ data GenericInstallPlan ipkg srcpkg = GenericInstallPlan
   { planGraph :: !(Graph (GenericPlanPackage ipkg srcpkg))
   , planIndepGoals :: !IndependentGoals
   }
-  deriving (Typeable)
+  deriving (Show, Typeable)
 
 -- | 'GenericInstallPlan' specialised to most commonly used types.
 type InstallPlan =
