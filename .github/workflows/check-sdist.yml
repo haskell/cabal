@@ -62,9 +62,9 @@ jobs:
           # (don't look at this too closely)
           sdist="$(ls dist-newstyle/sdist/cabal-install-*.tar.gz | sed -n '\,^dist-newstyle/sdist/cabal-install-[0-9.]*\.tar\.gz$,{;p;q;}')"
           # extract the cabal-install major version
-          ver="$(echo "$sdist" | sed -n 's,^dist-newstyle/sdist/cabal-install-\([0-9][0-9]*\.[0-9][0-9]*\)\.[0-9.]*$,\1,p')"
+          ver="$(echo "$sdist" | sed -n 's,^dist-newstyle/sdist/cabal-install-\([0-9][0-9]*\.[0-9][0-9]*\)\.[0-9.]*\.tar\.gz$,\1,p')"
           # dunno if this will ever be extended to freebsd, but grep -q is a gnu-ism
-          if ghc-pkg --global --simple-output list Cabal | grep "^Cabal-$cbl\\." >/dev/null; then
+          if ghc-pkg --global --simple-output list Cabal | grep "^Cabal-$ver\\." >/dev/null; then
             # sigh, someone broke installing from tarballs
             rm -rf cabal*.project Cabal Cabal-syntax cabal-install-solver cabal-install
             tar xfz "$sdist"
