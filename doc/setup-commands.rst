@@ -1429,29 +1429,25 @@ of other modules, if required.
 
 Flags for repl:
 
-.. option:: -h, --help
-
-    Show this help text
-
 .. option:: -v, --verbose[=n]
 
-    Control verbosity (n is 0--3, default verbosity level is 1)
+    Control verbosity (n is 0--3, default verbosity level is 1).
 
 .. option:: --builddir=DIR
 
-    The directory where Cabal puts generated build files (default dist)
+    The directory where Cabal puts generated build files (default dist).
 
 .. option:: --with-PROG=PATH
 
-    give the path to PROG
+    Give the path to PROG.
 
 .. option:: --PROG-option=OPT
 
-    give an extra option to PROG (no need to quote options containing spaces)
+    Give an extra option to PROG (no need to quote options containing spaces).
 
 .. option:: --PROG-options=OPTS
 
-    give extra options to PROG
+    Give extra options to PROG.
 
 .. option:: --repl-no-load
 
@@ -1459,4 +1455,4 @@ Flags for repl:
 
 .. option:: --repl-options=FLAG
 
-    Use the option(s) for the repl
+    Use the option(s) for the repl.
