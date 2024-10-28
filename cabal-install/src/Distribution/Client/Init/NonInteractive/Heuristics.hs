@@ -175,7 +175,8 @@ guessGitInfo target =
             ExitSuccess -> return $ Just (trim $ snd' globalInfo)
             _ -> return Nothing
         else return $ Just (trim $ snd' localInfo)
-  ) `catch` const @_ @IOError (pure Nothing)
+  )
+    `catch` const @_ @IOError (pure Nothing)
   where
     fst' (x, _, _) = x
     snd' (_, x, _) = x
