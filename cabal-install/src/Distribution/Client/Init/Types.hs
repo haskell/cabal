@@ -390,7 +390,7 @@ instance Interactive PromptIO where
   doesFileExist = liftIO <$> P.doesFileExist
   canonicalizePathNoThrow = liftIO <$> P.canonicalizePathNoThrow
   readProcessWithExitCode a b c = liftIO $ Process.readProcessWithExitCode a b c
-  maybeReadProcessWithExitCode a b c = liftIO $ (Just <$> Process.readProcessWithExitCode a b c) `catch` const @_ @IOError (pure Nothing)
+  maybeReadProcessWithExitCode a b c = liftIO $ (Just <$> Process.readProcessWithExitCode a b c) `P.catch` const @_ @IOError (pure Nothing)
   getEnvironment = liftIO P.getEnvironment
   getCurrentYear = liftIO P.getCurrentYear
   listFilesInside test dir = do
