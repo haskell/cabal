@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TypeApplications #-}
 
 -----------------------------------------------------------------------------
 
@@ -163,16 +164,18 @@ guessAuthorName = guessGitInfo "user.name"
 guessAuthorEmail :: Interactive m => m (Maybe String)
 guessAuthorEmail = guessGitInfo "user.email"
 
-guessGitInfo :: Interactive m => String -> m (Maybe String)
-guessGitInfo target = do
-  localInfo <- readProcessWithExitCode "git" ["config", "--local", target] ""
-  if null $ snd' localInfo
-    then do
-      globalInfo <- readProcessWithExitCode "git" ["config", "--global", target] ""
-      case fst' globalInfo of
-        ExitSuccess -> return $ Just (trim $ snd' globalInfo)
-        _ -> return Nothing
-    else return $ Just (trim $ snd' localInfo)
+guessGitInfo :: String -> IO (Maybe String)
+guessGitInfo target =
+  ( do
+      localInfo <- readProcessWithExitCode "git" ["config", "--local", target] ""
+      if null $ snd' localInfo
+        then do
+          globalInfo <- readProcessWithExitCode "git" ["config", "--global", target] ""
+          case fst' globalInfo of
+            ExitSuccess -> return $ Just (trim $ snd' globalInfo)
+            _ -> return Nothing
+        else return $ Just (trim $ snd' localInfo)
+  ) `catch` const @_ @IOError (pure Nothing)
   where
     fst' (x, _, _) = x
     snd' (_, x, _) = x
