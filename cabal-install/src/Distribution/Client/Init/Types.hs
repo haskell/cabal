@@ -346,6 +346,7 @@ class Monad m => Interactive m where
   doesFileExist :: FilePath -> m Bool
   canonicalizePathNoThrow :: FilePath -> m FilePath
   readProcessWithExitCode :: FilePath -> [String] -> String -> m (ExitCode, String, String)
+  maybeReadProcessWithExitCode :: FilePath -> [String] -> String -> m (Maybe (ExitCode, String, String))
   getEnvironment :: m [(String, String)]
   getCurrentYear :: m Integer
   listFilesInside :: (FilePath -> m Bool) -> FilePath -> m [FilePath]
@@ -389,6 +390,7 @@ instance Interactive PromptIO where
   doesFileExist = liftIO <$> P.doesFileExist
   canonicalizePathNoThrow = liftIO <$> P.canonicalizePathNoThrow
   readProcessWithExitCode a b c = liftIO $ Process.readProcessWithExitCode a b c
+  maybeReadProcessWithExitCode a b c = liftIO $ (Just <$> Process.readProcessWithExitCode a b c) `catch` const @_ @IOError (pure Nothing)
   getEnvironment = liftIO P.getEnvironment
   getCurrentYear = liftIO P.getCurrentYear
   listFilesInside test dir = do
@@ -438,6 +440,7 @@ instance Interactive PurePrompt where
   readProcessWithExitCode !_ !_ !_ = do
     input <- pop
     return (ExitSuccess, input, "")
+  maybeReadProcessWithExitCode = Just <$> readProcessWithExitCode
   getEnvironment = fmap (map read) popList
   getCurrentYear = fmap read pop
   listFilesInside pred' !_ = do
