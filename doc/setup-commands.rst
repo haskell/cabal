@@ -1412,8 +1412,7 @@ Usage:
 .. program:: runhaskell Setup.hs repl [COMPONENT] [FLAGS]
 
 If the current directory contains no package, ignores COMPONENT parameters and
-opens an interactive interpreter session; if a sandbox is present, its package
-database will be used.
+opens an interactive interpreter session.
 
 Otherwise, (re)configures with the given or default flags, and loads the
 interpreter with the relevant modules. For executables, tests and benchmarks,
