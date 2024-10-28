@@ -1399,3 +1399,63 @@ This command takes the following option:
 
 
 .. include:: references.inc
+
+runhaskell Setup.hs repl 
+------------------------
+
+Open an interpreter session for the given component.
+
+Usage: 
+
+.. program:: runhaskell Setup.hs repl [COMPONENT] [FLAGS]
+
+If the current directory contains no package, ignores COMPONENT parameters and
+opens an interactive interpreter session; if a sandbox is present, its package
+database will be used.
+
+Otherwise, (re)configures with the given or default flags, and loads the
+interpreter with the relevant modules. For executables, tests and benchmarks,
+loads the main module (and its dependencies); for libraries all exposed/other
+modules.
+
+The default component is the library itself, or the executable if that is the
+only component.
+
+Support for loading specific modules is planned but not implemented yet. For
+certain scenarios, ``Setup.hs exec -- ghci :l Foo`` may be used instead. Note
+that ``exec`` will not (re)configure and you will have to specify the location
+of other modules, if required.
+
+Flags for repl:
+
+.. option:: -h, --help
+
+    Show this help text
+
+.. option:: -v, --verbose[=n]
+
+    Control verbosity (n is 0--3, default verbosity level is 1)
+
+.. option:: --builddir=DIR
+    
+    The directory where Cabal puts generated build files (default dist)
+
+.. option:: --with-PROG=PATH
+    
+    give the path to PROG
+
+.. option:: --PROG-option=OPT
+    
+    give an extra option to PROG (no need to quote options containing spaces)
+
+.. option:: --PROG-options=OPTS
+    
+    give extra options to PROG
+
+.. option:: --repl-no-load
+    
+    Disable loading of project modules at REPL startup.
+
+.. option:: --repl-options=FLAG
+    
+    Use the option(s) for the repl
