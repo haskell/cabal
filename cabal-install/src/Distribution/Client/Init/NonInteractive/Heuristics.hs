@@ -164,7 +164,7 @@ guessAuthorName = guessGitInfo "user.name"
 guessAuthorEmail :: Interactive m => m (Maybe String)
 guessAuthorEmail = guessGitInfo "user.email"
 
-guessGitInfo :: String -> IO (Maybe String)
+guessGitInfo :: Interactive m => String -> m (Maybe String)
 guessGitInfo target =
   ( do
       localInfo <- readProcessWithExitCode "git" ["config", "--local", target] ""
