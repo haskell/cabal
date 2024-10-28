@@ -441,7 +441,7 @@ instance Interactive PurePrompt where
   readProcessWithExitCode !_ !_ !_ = do
     input <- pop
     return (ExitSuccess, input, "")
-  maybeReadProcessWithExitCode = Just <$> readProcessWithExitCode
+  maybeReadProcessWithExitCode a b c = Just <$> readProcessWithExitCode a b c
   getEnvironment = fmap (map read) popList
   getCurrentYear = fmap read pop
   listFilesInside pred' !_ = do
