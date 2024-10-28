@@ -1400,12 +1400,14 @@ This command takes the following option:
 
 .. include:: references.inc
 
-runhaskell Setup.hs repl 
+.. _setup-repl:
+
+runhaskell Setup.hs repl
 ------------------------
 
 Open an interpreter session for the given component.
 
-Usage: 
+Usage:
 
 .. program:: runhaskell Setup.hs repl [COMPONENT] [FLAGS]
 
@@ -1437,25 +1439,25 @@ Flags for repl:
     Control verbosity (n is 0--3, default verbosity level is 1)
 
 .. option:: --builddir=DIR
-    
+
     The directory where Cabal puts generated build files (default dist)
 
 .. option:: --with-PROG=PATH
-    
+
     give the path to PROG
 
 .. option:: --PROG-option=OPT
-    
+
     give an extra option to PROG (no need to quote options containing spaces)
 
 .. option:: --PROG-options=OPTS
-    
+
     give extra options to PROG
 
 .. option:: --repl-no-load
-    
+
     Disable loading of project modules at REPL startup.
 
 .. option:: --repl-options=FLAG
-    
+
     Use the option(s) for the repl
