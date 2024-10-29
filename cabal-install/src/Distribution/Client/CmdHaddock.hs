@@ -65,6 +65,12 @@ import Distribution.Simple.Utils
   , notice
   , wrapText
   )
+import Distribution.Solver.Types.ConstraintSource
+  ( ConstraintSource (..)
+  )
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
+  )
 import Distribution.Verbosity
   ( normal
   )
@@ -163,8 +169,11 @@ haddockAction relFlags targetStrings globalFlags = do
   let baseCtx = relBaseCtx{projectConfig = absProjectConfig}
 
   targetSelectors <-
-    either (reportTargetSelectorProblems verbosity) return
-      =<< readTargetSelectors (localPackages baseCtx) Nothing targetStrings
+    either (reportTargetSelectorProblems verbosity . map constraintInner) return
+      =<< readTargetSelectors
+        (localPackages baseCtx)
+        Nothing
+        (map (\target -> WithConstraintSource{constraintInner = target, constraintSource = ConstraintSourceCommandlineFlag}) targetStrings)
 
   buildCtx <-
     runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
@@ -174,7 +183,7 @@ haddockAction relFlags targetStrings globalFlags = do
       -- When we interpret the targets on the command line, interpret them as
       -- haddock targets
       targets <-
-        either (reportBuildDocumentationTargetProblems verbosity) return $
+        either (reportBuildDocumentationTargetProblems verbosity . map constraintInner) return $
           resolveTargets
             (selectPackageTargets haddockFlags)
             selectComponentTarget

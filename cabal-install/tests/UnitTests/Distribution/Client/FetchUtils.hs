@@ -14,6 +14,12 @@ import Distribution.Client.HttpUtils (HttpCode, HttpTransport (..))
 import Distribution.Client.Types.PackageLocation (PackageLocation (..), ResolvedPkgLoc)
 import Distribution.Client.Types.Repo (Repo (..), emptyRemoteRepo)
 import Distribution.Client.Types.RepoName (RepoName (..))
+import Distribution.Solver.Types.ConstraintSource
+  ( ConstraintSource (..)
+  )
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
+  )
 import Distribution.Types.PackageId (PackageIdentifier (..))
 import Distribution.Types.PackageName (mkPackageName)
 import qualified Distribution.Verbosity as Verbosity
@@ -61,18 +67,30 @@ testEmpty = do
 testPassLocalPackage :: Assertion
 testPassLocalPackage = do
   let repoCtxt = error "repoCtxt undefined"
-      loc = LocalUnpackedPackage "a"
+      loc =
+        WithConstraintSource
+          { constraintInner = LocalUnpackedPackage "a"
+          , constraintSource = ConstraintSourceUnknown
+          }
   res <- asyncFetchPackages verbosity repoCtxt [loc] $ \downloadMap ->
     waitAsyncFetchPackage verbosity downloadMap loc
-  res @?= LocalUnpackedPackage "a"
+  res
+    @?= WithConstraintSource
+      { constraintInner = LocalUnpackedPackage "a"
+      , constraintSource = ConstraintSourceUnknown
+      }
 
 testHttp :: Assertion
 testHttp = withFakeRepoCtxt get200 $ \repoCtxt repo -> do
   let pkgId = mkPkgId "foo"
-      loc = RepoTarballPackage repo pkgId Nothing
+      loc =
+        WithConstraintSource
+          { constraintInner = RepoTarballPackage repo pkgId Nothing
+          , constraintSource = ConstraintSourceUnknown
+          }
   res <- asyncFetchPackages verbosity repoCtxt [loc] $ \downloadMap ->
     waitAsyncFetchPackage verbosity downloadMap loc
-  case res of
+  case constraintInner res of
     RepoTarballPackage repo' pkgId' _ -> do
       repo' @?= repo
       pkgId' @?= pkgId
@@ -94,7 +112,11 @@ testGetException = testGetAny $ userError "some error"
 -- 3. third download keeps running
 testGetAny :: Exception e => e -> Assertion
 testGetAny exc = withFakeRepoCtxt get $ \repoCtxt repo -> do
-  let loc pkgId = RepoTarballPackage repo pkgId Nothing
+  let loc pkgId =
+        WithConstraintSource
+          { constraintInner = RepoTarballPackage repo pkgId Nothing
+          , constraintSource = ConstraintSourceUnknown
+          }
       pkgLocs = [loc throws, loc slowA, loc slowB]
 
   start <- getCurrentTime
@@ -120,7 +142,11 @@ testGetAny exc = withFakeRepoCtxt get $ \repoCtxt repo -> do
 -- we still abort directly.
 testUncollectedInterrupt :: Assertion
 testUncollectedInterrupt = withFakeRepoCtxt get $ \repoCtxt repo -> do
-  let loc pkgId = RepoTarballPackage repo pkgId Nothing
+  let loc pkgId =
+        WithConstraintSource
+          { constraintInner = RepoTarballPackage repo pkgId Nothing
+          , constraintSource = ConstraintSourceUnknown
+          }
       pkgLocs = [loc throws, loc slowA, loc slowB]
 
   start <- getCurrentTime
@@ -147,14 +173,18 @@ testUncollectedInterrupt = withFakeRepoCtxt get $ \repoCtxt repo -> do
 -- the download and handle its exception.)
 testUncollectedException :: Assertion
 testUncollectedException = withFakeRepoCtxt get $ \repoCtxt repo -> do
-  let loc pkgId = RepoTarballPackage repo pkgId Nothing
+  let loc pkgId =
+        WithConstraintSource
+          { constraintInner = RepoTarballPackage repo pkgId Nothing
+          , constraintSource = ConstraintSourceUnknown
+          }
       pkgLocs = [loc throws, loc foo]
 
   start <- getCurrentTime
   res <- asyncFetchPackages verbosity repoCtxt pkgLocs $ \downloadMap -> do
     waitAsyncFetchPackage verbosity downloadMap (loc foo)
   assertFaster start shortDelta
-  case res of
+  case constraintInner res of
     RepoTarballPackage repo' pkgId' _ -> do
       repo' @?= repo
       pkgId' @?= foo

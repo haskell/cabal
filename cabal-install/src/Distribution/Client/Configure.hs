@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
 -----------------------------------------------------------------------------
 
@@ -72,6 +73,11 @@ import Distribution.Solver.Types.PkgConfigDb
   )
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SourcePackage
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
+  , showWithConstraintSource
+  , withUnknownConstraint
+  )
 
 import Distribution.Client.SavedFlags (readCommandFlags, writeCommandFlags)
 import Distribution.Package
@@ -212,13 +218,15 @@ configure
         let installPlan = InstallPlan.configureInstallPlan configFlags installPlan0
          in case fst (InstallPlan.ready installPlan) of
               [ pkg@( ReadyPackage
-                        ( ConfiguredPackage
-                            _
-                            (SourcePackage _ _ (LocalUnpackedPackage _) _)
-                            _
-                            _
-                            _
-                          )
+                        ConfiguredPackage
+                          { confPkgSource =
+                            SourcePackage
+                              { srcpkgSource =
+                                WithConstraintSource
+                                  { constraintInner = LocalUnpackedPackage _
+                                  }
+                              }
+                          }
                       )
                 ] -> do
                   configurePackage
@@ -365,26 +373,26 @@ checkConfigExFlags verbosity installedPkgIndex sourcePkgIndex flags = do
   for_ (safeHead unknownConstraints) $ \h ->
     warn verbosity $
       "Constraint refers to an unknown package: "
-        ++ showConstraint h
+        ++ showWithConstraintSource prettyShow h
   for_ (safeHead unknownPreferences) $ \h ->
     warn verbosity $
       "Preference refers to an unknown package: "
-        ++ prettyShow h
+        ++ showWithConstraintSource prettyShow h
   where
     unknownConstraints =
-      filter (unknown . userConstraintPackageName . fst) $
+      filter (unknown . userConstraintPackageName . constraintInner) $
         configExConstraints flags
     unknownPreferences =
-      filter (unknown . \(PackageVersionConstraint name _) -> name) $
+      filter (unknown . (\(PackageVersionConstraint name _) -> name) . constraintInner) $
         configPreferences flags
     unknown pkg =
       null (PackageIndex.lookupPackageName installedPkgIndex pkg)
         && not (elemByPackageName sourcePkgIndex pkg)
-    showConstraint (uc, src) =
-      prettyShow uc ++ " (" ++ showConstraintSource src ++ ")"
 
 -- | Make an 'InstallPlan' for the unpacked package in the current directory,
 -- and all its dependencies.
+--
+-- NOTE: This is only used in the legacy v1 commands.
 planLocalPackage
   :: Verbosity
   -> Compiler
@@ -416,7 +424,7 @@ planLocalPackage
         SourcePackage
           { srcpkgPackageId = packageId pkg
           , srcpkgDescription = pkg
-          , srcpkgSource = LocalUnpackedPackage "."
+          , srcpkgSource = withUnknownConstraint (LocalUnpackedPackage ".")
           , srcpkgDescrOverride = Nothing
           }
 
@@ -435,14 +443,14 @@ planLocalPackage
           . addPreferences
             -- preferences from the config file or command line
             [ PackageVersionPreference name ver
-            | PackageVersionConstraint name ver <- configPreferences configExFlags
+            | PackageVersionConstraint name ver <- map constraintInner $ configPreferences configExFlags
             ]
           . addConstraints
             -- version constraints from the config file or command line
             -- TODO: should warn or error on constraints that are not on direct
             -- deps or flag constraints not on the package in question.
-            [ LabeledPackageConstraint (userToPackageConstraint uc) src
-            | (uc, src) <- configExConstraints configExFlags
+            [ LabeledPackageConstraint (userToPackageConstraint constraintInner) constraintSource
+            | WithConstraintSource{constraintSource, constraintInner} <- configExConstraints configExFlags
             ]
           . addConstraints
             -- package flags from the config file or command line

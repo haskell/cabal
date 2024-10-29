@@ -38,6 +38,9 @@ import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.PackageConstraint
   ( PackageProperty (..)
   )
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
+  )
 
 import Distribution.Client.Setup
   ( CommonSetupFlags (setupVerbosity)
@@ -192,7 +195,7 @@ projectFreezeConfig elaboratedPlan totalIndexState activeRepos0 =
 -- solver picks the same solution again in future in different environments.
 projectFreezeConstraints
   :: ElaboratedInstallPlan
-  -> Map PackageName [(UserConstraint, ConstraintSource)]
+  -> Map PackageName [WithConstraintSource UserConstraint]
 projectFreezeConstraints plan =
   --
   -- TODO: [required eventually] this is currently an underapproximation
@@ -211,14 +214,14 @@ projectFreezeConstraints plan =
   deleteLocalPackagesVersionConstraints
     (Map.unionWith (++) versionConstraints flagConstraints)
   where
-    versionConstraints :: Map PackageName [(UserConstraint, ConstraintSource)]
+    versionConstraints :: Map PackageName [WithConstraintSource UserConstraint]
     versionConstraints =
       Map.mapWithKey
         ( \p v ->
-            [
-              ( UserConstraint (UserAnyQualifier p) (PackagePropertyVersion v)
-              , ConstraintSourceFreeze
-              )
+            [ WithConstraintSource
+                { constraintInner = UserConstraint (UserAnyQualifier p) (PackagePropertyVersion v)
+                , constraintSource = ConstraintSourceFreeze
+                }
             ]
         )
         versionRanges
@@ -234,14 +237,14 @@ projectFreezeConstraints plan =
                | InstallPlan.Configured pkg <- InstallPlan.toList plan
                ]
 
-    flagConstraints :: Map PackageName [(UserConstraint, ConstraintSource)]
+    flagConstraints :: Map PackageName [WithConstraintSource UserConstraint]
     flagConstraints =
       Map.mapWithKey
         ( \p f ->
-            [
-              ( UserConstraint (UserQualified UserQualToplevel p) (PackagePropertyFlags f)
-              , ConstraintSourceFreeze
-              )
+            [ WithConstraintSource
+                { constraintInner = UserConstraint (UserQualified UserQualToplevel p) (PackagePropertyFlags f)
+                , constraintSource = ConstraintSourceFreeze
+                }
             ]
         )
         flagAssignments
@@ -259,12 +262,12 @@ projectFreezeConstraints plan =
     -- As described above, remove the version constraints on local packages,
     -- but leave any flag constraints.
     deleteLocalPackagesVersionConstraints
-      :: Map PackageName [(UserConstraint, ConstraintSource)]
-      -> Map PackageName [(UserConstraint, ConstraintSource)]
+      :: Map PackageName [WithConstraintSource UserConstraint]
+      -> Map PackageName [WithConstraintSource UserConstraint]
     deleteLocalPackagesVersionConstraints =
       Map.mergeWithKey
         ( \_pkgname () constraints ->
-            case filter (not . isVersionConstraint . fst) constraints of
+            case filter (not . isVersionConstraint . constraintInner) constraints of
               [] -> Nothing
               constraints' -> Just constraints'
         )
