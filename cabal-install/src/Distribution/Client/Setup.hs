@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -210,6 +211,10 @@ import Distribution.Simple.Setup
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
   ( wrapText
+  )
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
+  , showWithConstraintSource
   )
 import Distribution.System (Platform)
 import Distribution.Types.GivenComponent
@@ -908,8 +913,8 @@ data ConfigExFlags = ConfigExFlags
   { configCabalVersion :: Flag Version
   , configAppend :: Flag Bool
   , configBackup :: Flag Bool
-  , configExConstraints :: [(UserConstraint, ConstraintSource)]
-  , configPreferences :: [PackageVersionConstraint]
+  , configExConstraints :: [WithConstraintSource UserConstraint]
+  , configPreferences :: [WithConstraintSource PackageVersionConstraint]
   , configSolver :: Flag PreSolver
   , configAllowNewer :: Maybe AllowNewer
   , configAllowOlder :: Maybe AllowOlder
@@ -948,7 +953,7 @@ configureExOptions
   :: ShowOrParseArgs
   -> ConstraintSource
   -> [OptionField ConfigExFlags]
-configureExOptions _showOrParseArgs src =
+configureExOptions _showOrParseArgs constraint =
   [ option
       []
       ["cabal-lib-version"]
@@ -987,8 +992,10 @@ configureExOptions _showOrParseArgs src =
       (\v flags -> flags{configExConstraints = v})
       ( reqArg
           "CONSTRAINT"
-          ((\x -> [(x, src)]) `fmap` ReadE readUserConstraint)
-          (map $ prettyShow . fst)
+          ( (\pkg -> [WithConstraintSource{constraintInner = pkg, constraintSource = constraint}])
+              `fmap` ReadE readUserConstraint
+          )
+          (map $ showWithConstraintSource prettyShow)
       )
   , option
       []
@@ -1000,9 +1007,11 @@ configureExOptions _showOrParseArgs src =
           "CONSTRAINT"
           ( parsecToReadE
               (const "dependency expected")
-              (fmap (\x -> [x]) parsec)
+              ( (\pkg -> [WithConstraintSource{constraintInner = pkg, constraintSource = constraint}])
+                  `fmap` parsec
+              )
           )
-          (map prettyShow)
+          (map $ showWithConstraintSource prettyShow)
       )
   , optionSolver configSolver (\v flags -> flags{configSolver = v})
   , option

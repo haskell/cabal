@@ -38,7 +38,10 @@ import Distribution.Client.ParseUtils (parseFields, ppFields, ppSection)
 import Distribution.Client.Setup
   ( ConfigExFlags (..)
   )
-import Distribution.Client.Targets (userConstraintPackageName)
+import Distribution.Client.Targets
+  ( UserConstraint (..)
+  , userConstraintPackageName
+  )
 import Distribution.Deprecated.ParseUtils
   ( FieldDescr (..)
   , ParseResult (..)
@@ -60,6 +63,9 @@ import Distribution.Simple.Setup
   )
 import Distribution.Simple.Utils (debug, warn)
 import Distribution.Solver.Types.ConstraintSource
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
+  )
 import System.Directory (doesFileExist)
 import System.FilePath ((</>))
 import System.IO.Error (isDoesNotExistError)
@@ -171,8 +177,10 @@ pkgEnvFieldDescrs :: ConstraintSource -> [FieldDescr PackageEnvironment]
 pkgEnvFieldDescrs src =
   [ commaNewLineListFieldParsec
       "constraints"
-      (pretty . fst)
-      ((\pc -> (pc, src)) `fmap` parsec)
+      pretty
+      ( (\userConstraint -> WithConstraintSource{constraintInner = userConstraint, constraintSource = src})
+          `fmap` parsec
+      )
       ( sortConstraints
           . configExConstraints
           . savedConfigureExFlags
@@ -186,7 +194,9 @@ pkgEnvFieldDescrs src =
   , commaListFieldParsec
       "preferences"
       pretty
-      parsec
+      ( (\preference -> WithConstraintSource{constraintInner = preference, constraintSource = src})
+          `fmap` parsec
+      )
       (configPreferences . savedConfigureExFlags . pkgEnvSavedConfig)
       ( \v pkgEnv ->
           updateConfigureExFlags
@@ -223,7 +233,8 @@ pkgEnvFieldDescrs src =
               }
         }
 
-    sortConstraints = sortBy (comparing $ userConstraintPackageName . fst)
+    sortConstraints :: [WithConstraintSource UserConstraint] -> [WithConstraintSource UserConstraint]
+    sortConstraints = sortBy (comparing $ userConstraintPackageName . constraintInner)
 
 -- | Read the package environment file.
 readPackageEnvironmentFile

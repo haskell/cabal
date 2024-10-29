@@ -89,7 +89,13 @@ Configuration is affected by the following files:
     imported by: noncyclical-same-filename-b.project
 - same-filename/noncyclical-same-filename-b.config
     imported by: noncyclical-same-filename-b.project
-Up to date
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - my-0.1 (lib:my) (configuration changed)
+Configuring my-0.1...
+Preprocessing library for my-0.1...
+Building library for my-0.1...
 # checking that cyclical check catches a same file name that imports itself
 # cabal v2-build
 Error: [Cabal-7090]
@@ -175,7 +181,13 @@ Configuration is affected by the following files:
     imported by: hops-2.config
     imported by: hops/hops-1.config
     imported by: hops-0.project
-Up to date
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - my-0.1 (lib:my) (configuration changed)
+Configuring my-0.1...
+Preprocessing library for my-0.1...
+Building library for my-0.1...
 # checking conflicting constraints skipping into a subfolder and then back out again and again
 # cabal v2-build
 Configuration is affected by the following files:
@@ -378,7 +390,13 @@ Configuration is affected by the following files:
     imported by: yops-2.config
     imported by: yops/yops-1.config
     imported by: yops-0.project
-Up to date
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - my-0.1 (lib:my) (configuration changed)
+Configuring my-0.1...
+Preprocessing library for my-0.1...
+Building library for my-0.1...
 # checking bad conditional
 # cabal v2-build
 Error: [Cabal-7090]
