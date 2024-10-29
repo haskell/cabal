@@ -634,7 +634,9 @@ runReplOrWriteFlags ghcProg lbi rflags ghcOpts pkg_name target =
           src_dir <- getCurrentDirectory
           let uid = componentUnitId clbi
               this_unit = prettyShow uid
-              reexported_modules = [mn | LibComponentLocalBuildInfo{} <- [clbi], IPI.ExposedModule mn (Just{}) <- componentExposedModules clbi]
+              reexported_modules =
+                [ mn | LibComponentLocalBuildInfo{componentExposedModules = exposed_mods} <- [clbi], IPI.ExposedModule mn (Just{}) <- exposed_mods
+                ]
               hidden_modules = otherModules bi
               extra_opts =
                 concat $
