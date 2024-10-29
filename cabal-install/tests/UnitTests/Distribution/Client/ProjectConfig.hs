@@ -52,9 +52,11 @@ import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.ProjectConfigPath
 import Distribution.Solver.Types.Settings
+import Distribution.Solver.Types.WithConstraintSource
 
 import Distribution.Client.ProjectConfig
 import Distribution.Client.ProjectConfig.Legacy
+import Distribution.Client.ProjectConfig.Types
 
 import UnitTests.Distribution.Client.ArbitraryInstances
 import UnitTests.Distribution.Client.TreeDiffInstances ()
@@ -305,10 +307,10 @@ prop_roundtrip_printparse_packages
 prop_roundtrip_printparse_packages pkglocstrs1 pkglocstrs2 repos named =
   roundtrip_printparse
     mempty
-      { projectPackages = map getPackageLocationString pkglocstrs1
-      , projectPackagesOptional = map getPackageLocationString pkglocstrs2
-      , projectPackagesRepo = repos
-      , projectPackagesNamed = named
+      { projectPackages = map (withProjectConfigConstraintSource . getPackageLocationString) pkglocstrs1
+      , projectPackagesOptional = map (withProjectConfigConstraintSource . getPackageLocationString) pkglocstrs2
+      , projectPackagesRepo = map withProjectConfigConstraintSource repos
+      , projectPackagesNamed = map withProjectConfigConstraintSource named
       }
 
 prop_roundtrip_printparse_buildonly :: ProjectConfigBuildOnly -> Property
@@ -344,7 +346,7 @@ hackProjectConfigShared config =
     , projectConfigConstraints =
         -- TODO: [required eventually] parse ambiguity in constraint
         -- "pkgname -any" as either any version or disabled flag "any".
-        let ambiguous (UserConstraint _ (PackagePropertyFlags flags), _) =
+        let ambiguous (WithConstraintSource{constraintInner = UserConstraint _ (PackagePropertyFlags flags)}) =
               (not . null)
                 [ () | (name, False) <- unFlagAssignment flags, "any" `isPrefixOf` unFlagName name
                 ]
@@ -418,10 +420,10 @@ prop_roundtrip_printparse_RelaxDeps' rdep =
 instance Arbitrary ProjectConfig where
   arbitrary =
     ProjectConfig
-      <$> (map getPackageLocationString <$> arbitrary)
-      <*> (map getPackageLocationString <$> arbitrary)
-      <*> shortListOf 3 arbitrary
-      <*> arbitrary
+      <$> (map (fmap getPackageLocationString) <$> arbitraryWithConstraintSources)
+      <*> (map (fmap getPackageLocationString) <$> arbitraryWithConstraintSources)
+      <*> shortListOf 3 arbitraryWithConstraintSource
+      <*> arbitraryWithConstraintSources
       <*> arbitrary
       <*> arbitrary
       <*> arbitrary
@@ -617,8 +619,8 @@ instance Arbitrary ProjectConfigShared where
     projectConfigActiveRepos <- arbitrary
     projectConfigIndexState <- arbitrary
     projectConfigStoreDir <- arbitraryFlag arbitraryShortToken
-    projectConfigConstraints <- arbitraryConstraints
-    projectConfigPreferences <- shortListOf 2 arbitrary
+    projectConfigConstraints <- arbitraryWithConstraintSources
+    projectConfigPreferences <- shortListOf 2 arbitraryWithConstraintSource
     projectConfigCabalVersion <- arbitrary
     projectConfigSolver <- arbitrary
     projectConfigAllowOlder <- arbitrary
@@ -639,9 +641,6 @@ instance Arbitrary ProjectConfigShared where
     projectConfigMultiRepl <- arbitrary
     return ProjectConfigShared{..}
     where
-      arbitraryConstraints :: Gen [(UserConstraint, ConstraintSource)]
-      arbitraryConstraints =
-        fmap (\uc -> (uc, projectConfigConstraintSource)) <$> arbitrary
       fixInstallDirs x = x{InstallDirs.includedir = mempty, InstallDirs.mandir = mempty, InstallDirs.flibdir = mempty}
 
   shrink ProjectConfigShared{..} =
@@ -684,11 +683,35 @@ instance Arbitrary ProjectConfigShared where
         <*> shrinker projectConfigProgPathExtra
         <*> shrinker projectConfigMultiRepl
     where
-      preShrink_Constraints = map fst
-      postShrink_Constraints = map (\uc -> (uc, projectConfigConstraintSource))
+      preShrink_Constraints = map constraintInner
+      postShrink_Constraints =
+        map
+          ( \uc ->
+              WithConstraintSource
+                { constraintInner = uc
+                , constraintSource = projectConfigConstraintSource
+                }
+          )
 
 projectConfigConstraintSource :: ConstraintSource
 projectConfigConstraintSource = ConstraintSourceProjectConfig nullProjectConfigPath
+
+withProjectConfigConstraintSource :: a -> WithConstraintSource a
+withProjectConfigConstraintSource inner =
+  WithConstraintSource
+    { constraintInner = inner
+    , constraintSource = projectConfigConstraintSource
+    }
+
+-- | The constraint sources are not and cannot be displayed in the textual representation
+-- of the project configuration, so we need to make sure they're replaced with a constant
+-- for our round trip tests.
+arbitraryWithConstraintSource :: Arbitrary a => Gen (WithConstraintSource a)
+arbitraryWithConstraintSource =
+  withProjectConfigConstraintSource <$> arbitrary
+
+arbitraryWithConstraintSources :: Arbitrary a => Gen [WithConstraintSource a]
+arbitraryWithConstraintSources = listOf arbitraryWithConstraintSource
 
 instance Arbitrary ProjectConfigProvenance where
   arbitrary = elements [Implicit, Explicit (ProjectConfigPath $ "cabal.project" :| [])]

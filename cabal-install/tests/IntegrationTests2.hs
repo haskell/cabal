@@ -37,12 +37,18 @@ import Distribution.Client.Types
   , UnresolvedSourcePackage
   )
 import Distribution.Solver.Types.ConstraintSource
-  ( ConstraintSource (ConstraintSourceUnknown)
+  ( ConstraintSource (..)
   )
 import Distribution.Solver.Types.PackageConstraint
   ( PackageProperty (PackagePropertySource)
   )
+import Distribution.Solver.Types.ProjectConfigPath
+  ( ProjectConfigPath (..)
+  )
 import Distribution.Solver.Types.SourcePackage as SP
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
+  )
 
 import qualified Distribution.Client.CmdBench as CmdBench
 import qualified Distribution.Client.CmdBuild as CmdBuild
@@ -190,194 +196,305 @@ testTargetSelectors reportSubCase = do
   reportSubCase "cwd"
   do
     Right ts <- readTargetSelectors' []
-    ts @?= [TargetPackage TargetImplicitCwd ["p-0.1"] Nothing]
+    ts
+      @?= [ WithConstraintSource
+              { constraintInner = TargetPackage TargetImplicitCwd ["p-0.1"] Nothing
+              , constraintSource = ConstraintSourceImplicitTarget
+              }
+          ]
 
   reportSubCase "all"
   do
     Right ts <-
       readTargetSelectors'
-        ["all", ":all"]
-    ts @?= replicate 2 (TargetAllPackages Nothing)
+        [ WithConstraintSource
+            { constraintInner = "all"
+            , constraintSource = ConstraintSourceCommandlineFlag
+            }
+        , WithConstraintSource
+            { constraintInner = ":all"
+            , constraintSource = ConstraintSourceCommandlineFlag
+            }
+        ]
+    ts
+      @?= replicate
+        2
+        ( WithConstraintSource
+            { constraintInner = TargetAllPackages Nothing
+            , constraintSource = ConstraintSourceCommandlineFlag
+            }
+        )
 
   reportSubCase "filter"
   do
     Right ts <-
-      readTargetSelectors'
-        [ "libs"
-        , ":cwd:libs"
-        , "flibs"
-        , ":cwd:flibs"
-        , "exes"
-        , ":cwd:exes"
-        , "tests"
-        , ":cwd:tests"
-        , "benchmarks"
-        , ":cwd:benchmarks"
-        ]
+      readTargetSelectors' $
+        map
+          ( \target ->
+              WithConstraintSource
+                { constraintInner = target
+                , constraintSource = ConstraintSourceCommandlineFlag
+                }
+          )
+          [ "libs"
+          , ":cwd:libs"
+          , "flibs"
+          , ":cwd:flibs"
+          , "exes"
+          , ":cwd:exes"
+          , "tests"
+          , ":cwd:tests"
+          , "benchmarks"
+          , ":cwd:benchmarks"
+          ]
     zipWithM_
       (@?=)
       ts
-      [ TargetPackage TargetImplicitCwd ["p-0.1"] (Just kind)
+      [ WithConstraintSource
+        { constraintInner = TargetPackage TargetImplicitCwd ["p-0.1"] (Just kind)
+        , constraintSource = ConstraintSourceCommandlineFlag
+        }
       | kind <- concatMap (replicate 2) [LibKind ..]
       ]
 
   reportSubCase "all:filter"
   do
     Right ts <-
-      readTargetSelectors'
-        [ "all:libs"
-        , ":all:libs"
-        , "all:flibs"
-        , ":all:flibs"
-        , "all:exes"
-        , ":all:exes"
-        , "all:tests"
-        , ":all:tests"
-        , "all:benchmarks"
-        , ":all:benchmarks"
-        ]
+      readTargetSelectors' $
+        map
+          ( \target ->
+              WithConstraintSource
+                { constraintInner = target
+                , constraintSource = ConstraintSourceCommandlineFlag
+                }
+          )
+          [ "all:libs"
+          , ":all:libs"
+          , "all:flibs"
+          , ":all:flibs"
+          , "all:exes"
+          , ":all:exes"
+          , "all:tests"
+          , ":all:tests"
+          , "all:benchmarks"
+          , ":all:benchmarks"
+          ]
     zipWithM_
       (@?=)
       ts
-      [ TargetAllPackages (Just kind)
+      [ WithConstraintSource
+        { constraintInner = TargetAllPackages (Just kind)
+        , constraintSource = ConstraintSourceCommandlineFlag
+        }
       | kind <- concatMap (replicate 2) [LibKind ..]
       ]
 
   reportSubCase "pkg"
   do
     Right ts <-
-      readTargetSelectors'
-        [ ":pkg:p"
-        , "."
-        , "./"
-        , "p.cabal"
-        , "q"
-        , ":pkg:q"
-        , "q/"
-        , "./q/"
-        , "q/q.cabal"
-        ]
+      readTargetSelectors' $
+        map
+          ( \target ->
+              WithConstraintSource
+                { constraintInner = target
+                , constraintSource = ConstraintSourceCommandlineFlag
+                }
+          )
+          [ ":pkg:p"
+          , "."
+          , "./"
+          , "p.cabal"
+          , "q"
+          , ":pkg:q"
+          , "q/"
+          , "./q/"
+          , "q/q.cabal"
+          ]
     ts
-      @?= replicate 4 (mkTargetPackage "p-0.1")
-        ++ replicate 5 (mkTargetPackage "q-0.1")
+      @?= replicate
+        4
+        ( WithConstraintSource
+            { constraintInner = mkTargetPackage "p-0.1"
+            , constraintSource = ConstraintSourceCommandlineFlag
+            }
+        )
+        ++ replicate
+          5
+          ( WithConstraintSource
+              { constraintInner = mkTargetPackage "q-0.1"
+              , constraintSource = ConstraintSourceCommandlineFlag
+              }
+          )
 
   reportSubCase "pkg:filter"
   do
     Right ts <-
-      readTargetSelectors'
-        [ "p:libs"
-        , ".:libs"
-        , ":pkg:p:libs"
-        , "p:flibs"
-        , ".:flibs"
-        , ":pkg:p:flibs"
-        , "p:exes"
-        , ".:exes"
-        , ":pkg:p:exes"
-        , "p:tests"
-        , ".:tests"
-        , ":pkg:p:tests"
-        , "p:benchmarks"
-        , ".:benchmarks"
-        , ":pkg:p:benchmarks"
-        , "q:libs"
-        , "q/:libs"
-        , ":pkg:q:libs"
-        , "q:flibs"
-        , "q/:flibs"
-        , ":pkg:q:flibs"
-        , "q:exes"
-        , "q/:exes"
-        , ":pkg:q:exes"
-        , "q:tests"
-        , "q/:tests"
-        , ":pkg:q:tests"
-        , "q:benchmarks"
-        , "q/:benchmarks"
-        , ":pkg:q:benchmarks"
-        ]
+      readTargetSelectors' $
+        map
+          ( \target ->
+              WithConstraintSource
+                { constraintInner = target
+                , constraintSource = ConstraintSourceCommandlineFlag
+                }
+          )
+          [ "p:libs"
+          , ".:libs"
+          , ":pkg:p:libs"
+          , "p:flibs"
+          , ".:flibs"
+          , ":pkg:p:flibs"
+          , "p:exes"
+          , ".:exes"
+          , ":pkg:p:exes"
+          , "p:tests"
+          , ".:tests"
+          , ":pkg:p:tests"
+          , "p:benchmarks"
+          , ".:benchmarks"
+          , ":pkg:p:benchmarks"
+          , "q:libs"
+          , "q/:libs"
+          , ":pkg:q:libs"
+          , "q:flibs"
+          , "q/:flibs"
+          , ":pkg:q:flibs"
+          , "q:exes"
+          , "q/:exes"
+          , ":pkg:q:exes"
+          , "q:tests"
+          , "q/:tests"
+          , ":pkg:q:tests"
+          , "q:benchmarks"
+          , "q/:benchmarks"
+          , ":pkg:q:benchmarks"
+          ]
     zipWithM_ (@?=) ts $
-      [ TargetPackage TargetExplicitNamed ["p-0.1"] (Just kind)
+      [ WithConstraintSource
+        { constraintInner = TargetPackage TargetExplicitNamed ["p-0.1"] (Just kind)
+        , constraintSource = ConstraintSourceCommandlineFlag
+        }
       | kind <- concatMap (replicate 3) [LibKind ..]
       ]
-        ++ [ TargetPackage TargetExplicitNamed ["q-0.1"] (Just kind)
+        ++ [ WithConstraintSource
+            { constraintInner = TargetPackage TargetExplicitNamed ["q-0.1"] (Just kind)
+            , constraintSource = ConstraintSourceCommandlineFlag
+            }
            | kind <- concatMap (replicate 3) [LibKind ..]
            ]
 
   reportSubCase "component"
   do
     Right ts <-
-      readTargetSelectors'
-        [ "p"
-        , "lib:p"
-        , "p:lib:p"
-        , ":pkg:p:lib:p"
-        , "lib:q"
-        , "q:lib:q"
-        , ":pkg:q:lib:q"
-        ]
+      readTargetSelectors' $
+        map
+          ( \target ->
+              WithConstraintSource
+                { constraintInner = target
+                , constraintSource = ConstraintSourceCommandlineFlag
+                }
+          )
+          [ "p"
+          , "lib:p"
+          , "p:lib:p"
+          , ":pkg:p:lib:p"
+          , "lib:q"
+          , "q:lib:q"
+          , ":pkg:q:lib:q"
+          ]
     ts
-      @?= replicate 4 (TargetComponent "p-0.1" (CLibName LMainLibName) WholeComponent)
-        ++ replicate 3 (TargetComponent "q-0.1" (CLibName LMainLibName) WholeComponent)
+      @?= replicate
+        4
+        ( WithConstraintSource
+            { constraintInner = TargetComponent "p-0.1" (CLibName LMainLibName) WholeComponent
+            , constraintSource = ConstraintSourceCommandlineFlag
+            }
+        )
+        ++ replicate
+          3
+          ( WithConstraintSource
+              { constraintInner = TargetComponent "q-0.1" (CLibName LMainLibName) WholeComponent
+              , constraintSource = ConstraintSourceCommandlineFlag
+              }
+          )
 
   reportSubCase "module"
   do
     Right ts <-
-      readTargetSelectors'
-        [ "P"
-        , "lib:p:P"
-        , "p:p:P"
-        , ":pkg:p:lib:p:module:P"
-        , "QQ"
-        , "lib:q:QQ"
-        , "q:q:QQ"
-        , ":pkg:q:lib:q:module:QQ"
-        , "pexe:PMain" -- p:P or q:QQ would be ambiguous here
-        , "qexe:QMain" -- package p vs component p
-        ]
+      readTargetSelectors' $
+        map
+          ( \target ->
+              WithConstraintSource
+                { constraintInner = target
+                , constraintSource = ConstraintSourceCommandlineFlag
+                }
+          )
+          [ "P"
+          , "lib:p:P"
+          , "p:p:P"
+          , ":pkg:p:lib:p:module:P"
+          , "QQ"
+          , "lib:q:QQ"
+          , "q:q:QQ"
+          , ":pkg:q:lib:q:module:QQ"
+          , "pexe:PMain" -- p:P or q:QQ would be ambiguous here
+          , "qexe:QMain" -- package p vs component p
+          ]
     ts
-      @?= replicate 4 (TargetComponent "p-0.1" (CLibName LMainLibName) (ModuleTarget "P"))
-        ++ replicate 4 (TargetComponent "q-0.1" (CLibName LMainLibName) (ModuleTarget "QQ"))
-        ++ [ TargetComponent "p-0.1" (CExeName "pexe") (ModuleTarget "PMain")
-           , TargetComponent "q-0.1" (CExeName "qexe") (ModuleTarget "QMain")
+      @?= replicate 4 (WithConstraintSource{constraintInner = TargetComponent "p-0.1" (CLibName LMainLibName) (ModuleTarget "P"), constraintSource = ConstraintSourceCommandlineFlag})
+        ++ replicate 4 (WithConstraintSource{constraintInner = TargetComponent "q-0.1" (CLibName LMainLibName) (ModuleTarget "QQ"), constraintSource = ConstraintSourceCommandlineFlag})
+        ++ [ WithConstraintSource
+              { constraintInner = TargetComponent "p-0.1" (CExeName "pexe") (ModuleTarget "PMain")
+              , constraintSource = ConstraintSourceCommandlineFlag
+              }
+           , WithConstraintSource
+              { constraintInner = TargetComponent "q-0.1" (CExeName "qexe") (ModuleTarget "QMain")
+              , constraintSource = ConstraintSourceCommandlineFlag
+              }
            ]
 
   reportSubCase "file"
   do
     Right ts <-
-      readTargetSelectors'
-        [ "./P.hs"
-        , "p:P.lhs"
-        , "lib:p:P.hsc"
-        , "p:p:P.hsc"
-        , ":pkg:p:lib:p:file:P.y"
-        , "q/QQ.hs"
-        , "q:QQ.lhs"
-        , "lib:q:QQ.hsc"
-        , "q:q:QQ.hsc"
-        , ":pkg:q:lib:q:file:QQ.y"
-        , "q/Q.hs"
-        , "q:Q.lhs"
-        , "lib:q:Q.hsc"
-        , "q:q:Q.hsc"
-        , ":pkg:q:lib:q:file:Q.y"
-        , "app/Main.hs"
-        , "p:app/Main.hs"
-        , "exe:ppexe:app/Main.hs"
-        , "p:ppexe:app/Main.hs"
-        , ":pkg:p:exe:ppexe:file:app/Main.hs"
-        , "a p p/Main.hs"
-        , "p:a p p/Main.hs"
-        , "exe:pppexe:a p p/Main.hs"
-        , "p:pppexe:a p p/Main.hs"
-        , ":pkg:p:exe:pppexe:file:a p p/Main.hs"
-        ]
+      readTargetSelectors' $
+        map
+          ( \target ->
+              WithConstraintSource
+                { constraintInner = target
+                , constraintSource = ConstraintSourceCommandlineFlag
+                }
+          )
+          [ "./P.hs"
+          , "p:P.lhs"
+          , "lib:p:P.hsc"
+          , "p:p:P.hsc"
+          , ":pkg:p:lib:p:file:P.y"
+          , "q/QQ.hs"
+          , "q:QQ.lhs"
+          , "lib:q:QQ.hsc"
+          , "q:q:QQ.hsc"
+          , ":pkg:q:lib:q:file:QQ.y"
+          , "q/Q.hs"
+          , "q:Q.lhs"
+          , "lib:q:Q.hsc"
+          , "q:q:Q.hsc"
+          , ":pkg:q:lib:q:file:Q.y"
+          , "app/Main.hs"
+          , "p:app/Main.hs"
+          , "exe:ppexe:app/Main.hs"
+          , "p:ppexe:app/Main.hs"
+          , ":pkg:p:exe:ppexe:file:app/Main.hs"
+          , "a p p/Main.hs"
+          , "p:a p p/Main.hs"
+          , "exe:pppexe:a p p/Main.hs"
+          , "p:pppexe:a p p/Main.hs"
+          , ":pkg:p:exe:pppexe:file:a p p/Main.hs"
+          ]
     ts
-      @?= replicate 5 (TargetComponent "p-0.1" (CLibName LMainLibName) (FileTarget "P"))
-        ++ replicate 5 (TargetComponent "q-0.1" (CLibName LMainLibName) (FileTarget "QQ"))
-        ++ replicate 5 (TargetComponent "q-0.1" (CLibName LMainLibName) (FileTarget "Q"))
-        ++ replicate 5 (TargetComponent "p-0.1" (CExeName "ppexe") (FileTarget ("app" </> "Main.hs")))
-        ++ replicate 5 (TargetComponent "p-0.1" (CExeName "pppexe") (FileTarget ("a p p" </> "Main.hs")))
+      @?= replicate 5 (WithConstraintSource{constraintInner = TargetComponent "p-0.1" (CLibName LMainLibName) (FileTarget "P"), constraintSource = ConstraintSourceCommandlineFlag})
+        ++ replicate 5 (WithConstraintSource{constraintInner = TargetComponent "q-0.1" (CLibName LMainLibName) (FileTarget "QQ"), constraintSource = ConstraintSourceCommandlineFlag})
+        ++ replicate 5 (WithConstraintSource{constraintInner = TargetComponent "q-0.1" (CLibName LMainLibName) (FileTarget "Q"), constraintSource = ConstraintSourceCommandlineFlag})
+        ++ replicate 5 (WithConstraintSource{constraintInner = TargetComponent "p-0.1" (CExeName "ppexe") (FileTarget ("app" </> "Main.hs")), constraintSource = ConstraintSourceCommandlineFlag})
+        ++ replicate 5 (WithConstraintSource{constraintInner = TargetComponent "p-0.1" (CExeName "pppexe") (FileTarget ("a p p" </> "Main.hs")), constraintSource = ConstraintSourceCommandlineFlag})
   -- Note there's a bit of an inconsistency here: for the single-part
   -- syntax the target has to point to a file that exists, whereas for
   -- all the other forms we don't require that.
@@ -391,15 +508,25 @@ testTargetSelectorBadSyntax :: Assertion
 testTargetSelectorBadSyntax = do
   (_, _, _, localPackages, _) <- configureProject testdir config
   let targets =
-        [ "foo:"
-        , "foo::bar"
-        , " :foo"
-        , "foo: :bar"
-        , "a:b:c:d:e:f"
-        , "a:b:c:d:e:f:g:h"
-        ]
+        map
+          ( \target ->
+              WithConstraintSource
+                { constraintInner = target
+                , constraintSource = ConstraintSourceCommandlineFlag
+                }
+          )
+          [ "foo:"
+          , "foo::bar"
+          , " :foo"
+          , "foo: :bar"
+          , "a:b:c:d:e:f"
+          , "a:b:c:d:e:f:g:h"
+          ]
   Left errs <- readTargetSelectors localPackages Nothing targets
-  zipWithM_ (@?=) errs (map TargetSelectorUnrecognised targets)
+  zipWithM_
+    (@?=)
+    errs
+    (map (fmap TargetSelectorUnrecognised) targets)
   cleanProject testdir
   where
     testdir = "targets/empty"
@@ -574,12 +701,32 @@ testTargetSelectorAmbiguous reportSubCase = do
       res <-
         readTargetSelectorsWith
           fakeDirActions
-          (map SpecificSourcePackage pkgs)
+          ( map
+              ( SpecificSourcePackage
+                  . fmap
+                    ( \loc ->
+                        WithConstraintSource
+                          { constraintInner = loc
+                          , constraintSource = ConstraintSourceCommandlineFlag
+                          }
+                    )
+              )
+              pkgs
+          )
           Nothing
-          [str]
+          [ WithConstraintSource
+              { constraintInner = str
+              , constraintSource = ConstraintSourceCommandlineFlag
+              }
+          ]
       case res of
-        Left [TargetSelectorAmbiguous _ tss'] ->
-          sort (map snd tss') @?= sort tss
+        Left
+          [ WithConstraintSource
+              { constraintInner = TargetSelectorAmbiguous _ tss'
+              , constraintSource = ConstraintSourceCommandlineFlag
+              }
+            ] ->
+            sort (map snd tss') @?= sort tss
         _ ->
           assertFailure $
             "expected Left [TargetSelectorAmbiguous _ _], "
@@ -595,11 +742,32 @@ testTargetSelectorAmbiguous reportSubCase = do
       res <-
         readTargetSelectorsWith
           fakeDirActions
-          (map SpecificSourcePackage pkgs)
+          ( map
+              ( SpecificSourcePackage
+                  . fmap
+                    ( \loc ->
+                        WithConstraintSource
+                          { constraintInner = loc
+                          , constraintSource = ConstraintSourceCommandlineFlag
+                          }
+                    )
+              )
+              pkgs
+          )
           Nothing
-          [str]
+          [ WithConstraintSource
+              { constraintInner = str
+              , constraintSource = ConstraintSourceCommandlineFlag
+              }
+          ]
       case res of
-        Right [ts'] -> ts' @?= ts
+        Right [ts'] ->
+          ts'
+            @?= ( WithConstraintSource
+                    { constraintInner = ts
+                    , constraintSource = ConstraintSourceCommandlineFlag
+                    }
+                )
         _ ->
           assertFailure $
             "expected Right [Target...], "
@@ -694,24 +862,31 @@ testTargetSelectorNoCurrentPackage = do
           localPackages
           Nothing
       targets =
-        [ "libs"
-        , ":cwd:libs"
-        , "flibs"
-        , ":cwd:flibs"
-        , "exes"
-        , ":cwd:exes"
-        , "tests"
-        , ":cwd:tests"
-        , "benchmarks"
-        , ":cwd:benchmarks"
-        ]
+        map
+          ( \target ->
+              WithConstraintSource
+                { constraintInner = target
+                , constraintSource = ConstraintSourceCommandlineFlag
+                }
+          )
+          [ "libs"
+          , ":cwd:libs"
+          , "flibs"
+          , ":cwd:flibs"
+          , "exes"
+          , ":cwd:exes"
+          , "tests"
+          , ":cwd:tests"
+          , "benchmarks"
+          , ":cwd:benchmarks"
+          ]
   Left errs <- readTargetSelectors' targets
   zipWithM_
     (@?=)
     errs
-    [ TargetSelectorNoCurrentPackage ts
+    [ fmap TargetSelectorNoCurrentPackage ts
     | target <- targets
-    , let ts = fromMaybe (error $ "failed to parse target string " ++ target) $ parseTargetString target
+    , let ts = fromMaybe (error $ "failed to parse target string " ++ constraintInner target) $ parseTargetString target
     ]
   cleanProject testdir
   where
@@ -722,7 +897,12 @@ testTargetSelectorNoTargets :: Assertion
 testTargetSelectorNoTargets = do
   (_, _, _, localPackages, _) <- configureProject testdir config
   Left errs <- readTargetSelectors localPackages Nothing []
-  errs @?= [TargetSelectorNoTargetsInCwd True]
+  errs
+    @?= [ WithConstraintSource
+            { constraintInner = TargetSelectorNoTargetsInCwd True
+            , constraintSource = ConstraintSourceImplicitTarget
+            }
+        ]
   cleanProject testdir
   where
     testdir = "targets/complex"
@@ -732,7 +912,12 @@ testTargetSelectorProjectEmpty :: Assertion
 testTargetSelectorProjectEmpty = do
   (_, _, _, localPackages, _) <- configureProject testdir config
   Left errs <- readTargetSelectors localPackages Nothing []
-  errs @?= [TargetSelectorNoTargetsInProject]
+  errs
+    @?= [ WithConstraintSource
+            { constraintInner = TargetSelectorNoTargetsInProject
+            , constraintSource = ConstraintSourceImplicitTarget
+            }
+        ]
   cleanProject testdir
   where
     testdir = "targets/empty"
@@ -754,7 +939,12 @@ testTargetSelectorCanonicalizedPath = do
     ( do
         let dirActions' = (dirActions symlink){TS.getCurrentDirectory = return virtcwd}
         Right ts <- readTargetSelectorsWith dirActions' localPackages Nothing []
-        ts @?= [TargetPackage TargetImplicitCwd ["p-0.1"] Nothing]
+        ts
+          @?= [ WithConstraintSource
+                  { constraintInner = TargetPackage TargetImplicitCwd ["p-0.1"] Nothing
+                  , constraintSource = ConstraintSourceImplicitTarget
+                  }
+              ]
     )
   cleanProject testdir
   where
@@ -848,10 +1038,10 @@ testTargetProblemsCommon config0 = do
         , projectConfigShared =
             (projectConfigShared config0)
               { projectConfigConstraints =
-                  [
-                    ( UserConstraint (UserAnyQualifier "filepath") PackagePropertySource
-                    , ConstraintSourceUnknown
-                    )
+                  [ WithConstraintSource
+                      { constraintInner = UserConstraint (UserAnyQualifier "filepath") PackagePropertySource
+                      , constraintSource = ConstraintSourceUnknown
+                      }
                   ]
               }
         }
@@ -1753,7 +1943,15 @@ assertProjectDistinctTargets
           selectComponentTarget
           elaboratedPlan
           Nothing
-          targetSelectors
+          ( map
+              ( \target ->
+                  WithConstraintSource
+                    { constraintInner = target
+                    , constraintSource = ConstraintSourceUnknown
+                    }
+              )
+              targetSelectors
+          )
 
 assertProjectTargetProblems
   :: forall err
@@ -1803,10 +2001,23 @@ assertTargetProblems elaboratedPlan selectPackageTargets selectComponentTarget =
               selectComponentTarget
               elaboratedPlan
               Nothing
-              [targetSelector]
+              [ WithConstraintSource
+                  { constraintInner = targetSelector
+                  , constraintSource = ConstraintSourceUnknown
+                  }
+              ]
        in case res of
             Left [problem] ->
-              problem @?= expected targetSelector
+              problem
+                @?= ( ( \problem' ->
+                          WithConstraintSource
+                            { constraintInner = problem'
+                            , constraintSource = ConstraintSourceUnknown
+                            }
+                      )
+                        . expected
+                    )
+                  targetSelector
             unexpected ->
               assertFailure $
                 "expected resolveTargets result: (Left [problem]) "
@@ -1820,8 +2031,12 @@ testExceptionInFindingPackage config = do
       void $
         planProject testdir config
   case locs of
-    [BadLocGlobEmptyMatch "./*.cabal"] -> return ()
-    _ -> assertFailure "expected BadLocGlobEmptyMatch"
+    [ WithConstraintSource
+        { constraintInner = BadLocGlobEmptyMatch "./*.cabal"
+        , constraintSource = ConstraintSourceMainConfig "."
+        }
+      ] -> return ()
+    _ -> assertFailure $ "expected BadLocGlobEmptyMatch, found " <> show locs
   cleanProject testdir
   where
     testdir = "exception/no-pkg"
@@ -1833,7 +2048,11 @@ testExceptionInFindingPackage2 config = do
       void $
         planProject testdir config
   case locs of
-    [BadPackageLocationFile (BadLocDirNoCabalFile ".")] -> return ()
+    [ WithConstraintSource
+        { constraintInner = BadPackageLocationFile (BadLocDirNoCabalFile ".")
+        , constraintSource = ConstraintSourceProjectConfig (ProjectConfigPath ("cabal.project" :| []))
+        }
+      ] -> return ()
     _ -> assertFailure $ "expected BadLocDirNoCabalFile, got " ++ show locs
   cleanProject testdir
   where

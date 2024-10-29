@@ -52,8 +52,8 @@ import Distribution.Client.CmdInstall.ClientInstallFlags
   ( ClientInstallFlags (..)
   )
 
-import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.Settings
+import Distribution.Solver.Types.WithConstraintSource
 
 import Distribution.Package
   ( PackageId
@@ -124,19 +124,19 @@ newtype ProjectConfigToParse = ProjectConfigToParse BS.ByteString
 -- features then the gap between configuration as written in the config file
 -- and resolved settings we actually use will become even bigger.
 data ProjectConfig = ProjectConfig
-  { projectPackages :: [String]
+  { projectPackages :: [WithConstraintSource String]
   -- ^ Packages in this project, including local dirs, local .cabal files
   -- local and remote tarballs. When these are file globs, they must
   -- match at least one package.
-  , projectPackagesOptional :: [String]
+  , projectPackagesOptional :: [WithConstraintSource String]
   -- ^ Like 'projectConfigPackageGlobs' but /optional/ in the sense that
   -- file globs are allowed to match nothing. The primary use case for
   -- this is to be able to say @optional-packages: */@ to automagically
   -- pick up deps that we unpack locally without erroring when
   -- there aren't any.
-  , projectPackagesRepo :: [SourceRepoList]
+  , projectPackagesRepo :: [WithConstraintSource SourceRepoList]
   -- ^ Packages in this project from remote source repositories.
-  , projectPackagesNamed :: [PackageVersionConstraint]
+  , projectPackagesNamed :: [WithConstraintSource PackageVersionConstraint]
   -- ^ Packages in this project from hackage repositories.
   , -- See respective types for an explanation of what these
     -- values are about:
@@ -206,8 +206,8 @@ data ProjectConfigShared = ProjectConfigShared
   , projectConfigIndexState :: Flag TotalIndexState
   , projectConfigStoreDir :: Flag FilePath
   , -- solver configuration
-    projectConfigConstraints :: [(UserConstraint, ConstraintSource)]
-  , projectConfigPreferences :: [PackageVersionConstraint]
+    projectConfigConstraints :: [WithConstraintSource UserConstraint]
+  , projectConfigPreferences :: [WithConstraintSource PackageVersionConstraint]
   , projectConfigCabalVersion :: Flag Version -- TODO: [required eventually] unused
   , projectConfigSolver :: Flag PreSolver
   , projectConfigAllowOlder :: Maybe AllowOlder
@@ -409,8 +409,8 @@ data SolverSettings = SolverSettings
   { solverSettingRemoteRepos :: [RemoteRepo]
   -- ^ Available Hackage servers.
   , solverSettingLocalNoIndexRepos :: [LocalRepo]
-  , solverSettingConstraints :: [(UserConstraint, ConstraintSource)]
-  , solverSettingPreferences :: [PackageVersionConstraint]
+  , solverSettingConstraints :: [WithConstraintSource UserConstraint]
+  , solverSettingPreferences :: [WithConstraintSource PackageVersionConstraint]
   , solverSettingFlagAssignment :: FlagAssignment
   -- ^ For all local packages
   , solverSettingFlagAssignments :: Map PackageName FlagAssignment

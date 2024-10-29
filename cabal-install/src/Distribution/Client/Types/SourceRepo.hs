@@ -15,7 +15,7 @@ module Distribution.Client.Types.SourceRepo
   , srpHoist
   , srpToProxy
   , srpFanOut
-  , sourceRepositoryPackageGrammar
+  , constraintSourceRepositoryPackageGrammar
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -23,6 +23,12 @@ import Distribution.Compat.Lens (Lens, Lens')
 import Prelude ()
 
 import Distribution.FieldGrammar
+import Distribution.Solver.Types.ConstraintSource
+  ( ConstraintSource
+  )
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
+  )
 import Distribution.Types.SourceRepo (RepoType (..))
 
 -- | @source-repository-package@ definition
@@ -59,7 +65,7 @@ srpToProxy s = s{srpSubdir = Proxy}
 
 -- | Split single @source-repository-package@ declaration with multiple subdirs,
 -- into multiple ones with at most single subdir.
-srpFanOut :: SourceRepositoryPackage [] -> NonEmpty (SourceRepositoryPackage Maybe)
+srpFanOut :: SourceRepoList -> NonEmpty SourceRepoMaybe
 srpFanOut s@SourceRepositoryPackage{srpSubdir = []} =
   s{srpSubdir = Nothing} :| []
 srpFanOut s@SourceRepositoryPackage{srpSubdir = d : ds} = f d :| map f ds
@@ -118,3 +124,21 @@ sourceRepositoryPackageGrammar =
     pcc = optionalFieldAla "post-checkout-command" (alaNonEmpty' NoCommaFSep Token) srpCommandLensNE
 {-# SPECIALIZE sourceRepositoryPackageGrammar :: ParsecFieldGrammar' SourceRepoList #-}
 {-# SPECIALIZE sourceRepositoryPackageGrammar :: PrettyFieldGrammar' SourceRepoList #-}
+
+constraintSourceRepositoryPackageGrammar
+  :: ( FieldGrammar c g
+     , Applicative (g SourceRepoList)
+     , Applicative (g (WithConstraintSource SourceRepoList))
+     , c (Identity RepoType)
+     , c (List NoCommaFSep FilePathNT String)
+     , c (NonEmpty' NoCommaFSep Token String)
+     )
+  => ConstraintSource
+  -> g (WithConstraintSource SourceRepoList) (WithConstraintSource SourceRepoList)
+constraintSourceRepositoryPackageGrammar source =
+  (\pkg -> WithConstraintSource{constraintInner = pkg, constraintSource = source})
+    <$> blurFieldGrammar
+      (\f s -> fmap (\x -> s{constraintInner = x}) (f (constraintInner s)))
+      sourceRepositoryPackageGrammar
+{-# SPECIALIZE constraintSourceRepositoryPackageGrammar :: ConstraintSource -> ParsecFieldGrammar' (WithConstraintSource SourceRepoList) #-}
+{-# SPECIALIZE constraintSourceRepositoryPackageGrammar :: ConstraintSource -> PrettyFieldGrammar' (WithConstraintSource SourceRepoList) #-}

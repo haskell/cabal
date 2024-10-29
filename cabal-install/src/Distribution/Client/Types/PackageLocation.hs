@@ -3,6 +3,7 @@
 
 module Distribution.Client.Types.PackageLocation
   ( PackageLocation (..)
+  , PackageLocationProvenance
   , UnresolvedPkgLoc
   , ResolvedPkgLoc
   , UnresolvedSourcePackage
@@ -18,10 +19,18 @@ import Distribution.Types.PackageId (PackageId)
 import Distribution.Client.Types.Repo
 import Distribution.Client.Types.SourceRepo (SourceRepoMaybe)
 import Distribution.Solver.Types.SourcePackage (SourcePackage)
+import Distribution.Solver.Types.WithConstraintSource (WithConstraintSource (..))
 
-type UnresolvedPkgLoc = PackageLocation (Maybe FilePath)
+type UnresolvedPkgLoc = PackageLocationProvenance (Maybe FilePath)
 
-type ResolvedPkgLoc = PackageLocation FilePath
+type ResolvedPkgLoc = PackageLocationProvenance FilePath
+
+-- | Convenience alias for 'SourcePackage UnresolvedPkgLoc'.
+type UnresolvedSourcePackage = SourcePackage UnresolvedPkgLoc
+
+-- | A package location combined with provenance information indicating why
+-- the package is being imported or built.
+type PackageLocationProvenance local = WithConstraintSource (PackageLocation local)
 
 data PackageLocation local
   = -- | An unpacked package in the given dir, or current dir
@@ -41,6 +50,3 @@ data PackageLocation local
 
 instance Binary local => Binary (PackageLocation local)
 instance Structured local => Structured (PackageLocation local)
-
--- | Convenience alias for 'SourcePackage UnresolvedPkgLoc'.
-type UnresolvedSourcePackage = SourcePackage UnresolvedPkgLoc

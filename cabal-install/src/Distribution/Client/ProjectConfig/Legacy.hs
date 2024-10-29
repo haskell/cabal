@@ -41,7 +41,10 @@ import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Types.AllowNewer (AllowNewer (..), AllowOlder (..))
 import Distribution.Client.Types.Repo (LocalRepo (..), RemoteRepo (..), emptyRemoteRepo)
 import Distribution.Client.Types.RepoName (RepoName (..), unRepoName)
-import Distribution.Client.Types.SourceRepo (SourceRepoList, sourceRepositoryPackageGrammar)
+import Distribution.Client.Types.SourceRepo
+  ( SourceRepoList
+  , constraintSourceRepositoryPackageGrammar
+  )
 
 import Distribution.Client.Config
   ( SavedConfig (..)
@@ -59,6 +62,9 @@ import Distribution.Compat.Lens (toListOf, view)
 
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.ProjectConfigPath
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
+  )
 
 import Distribution.Client.NixStyleOptions (NixStyleFlags (..))
 import Distribution.Client.ProjectFlags (ProjectFlags (..), defaultProjectFlags, projectFlagsOptions)
@@ -383,10 +389,10 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
 -- Ultimately if\/when this project-based approach becomes the default then we
 -- can redefine the parsers directly for the new types.
 data LegacyProjectConfig = LegacyProjectConfig
-  { legacyPackages :: [String]
-  , legacyPackagesOptional :: [String]
-  , legacyPackagesRepo :: [SourceRepoList]
-  , legacyPackagesNamed :: [PackageVersionConstraint]
+  { legacyPackages :: [WithConstraintSource String]
+  , legacyPackagesOptional :: [WithConstraintSource String]
+  , legacyPackagesRepo :: [WithConstraintSource SourceRepoList]
+  , legacyPackagesNamed :: [WithConstraintSource PackageVersionConstraint]
   , legacySharedConfig :: LegacySharedConfig
   , legacyAllConfig :: LegacyPackageConfig
   , legacyLocalConfig :: LegacyPackageConfig
@@ -1257,7 +1263,7 @@ parseLegacyProjectConfigFields (ConstraintSourceProjectConfig -> constraintSrc) 
   parseFieldsAndSections
     (legacyProjectConfigFieldDescrs constraintSrc)
     legacyPackageConfigSectionDescrs
-    legacyPackageConfigFGSectionDescrs
+    (legacyPackageConfigFGSectionDescrs constraintSrc)
     mempty
 
 parseLegacyProjectConfig :: FilePath -> BS.ByteString -> ParseResult LegacyProjectConfig
@@ -1270,7 +1276,7 @@ showLegacyProjectConfig config =
     showConfig
       (legacyProjectConfigFieldDescrs constraintSrc)
       legacyPackageConfigSectionDescrs
-      legacyPackageConfigFGSectionDescrs
+      (legacyPackageConfigFGSectionDescrs constraintSrc)
       config
       $+$ Disp.text ""
   where
@@ -1283,20 +1289,26 @@ legacyProjectConfigFieldDescrs :: ConstraintSource -> [FieldDescr LegacyProjectC
 legacyProjectConfigFieldDescrs constraintSrc =
   [ newLineListField
       "packages"
-      (Disp.text . renderPackageLocationToken)
-      parsePackageLocationTokenQ
+      (Disp.text . renderPackageLocationToken . constraintInner)
+      ( (\pkg -> WithConstraintSource{constraintInner = pkg, constraintSource = constraintSrc})
+          `fmap` parsePackageLocationTokenQ
+      )
       legacyPackages
       (\v flags -> flags{legacyPackages = v})
   , newLineListField
       "optional-packages"
-      (Disp.text . renderPackageLocationToken)
-      parsePackageLocationTokenQ
+      (Disp.text . renderPackageLocationToken . constraintInner)
+      ( (\pkg -> WithConstraintSource{constraintInner = pkg, constraintSource = constraintSrc})
+          `fmap` parsePackageLocationTokenQ
+      )
       legacyPackagesOptional
       (\v flags -> flags{legacyPackagesOptional = v})
   , commaNewLineListFieldParsec
       "extra-packages"
-      pretty
-      parsec
+      (pretty . constraintInner)
+      ( (\pkg -> WithConstraintSource{constraintInner = pkg, constraintSource = constraintSrc})
+          `fmap` parsec
+      )
       legacyPackagesNamed
       (\v flags -> flags{legacyPackagesNamed = v})
   ]
@@ -1415,14 +1427,18 @@ legacySharedConfigFieldDescrs constraintSrc =
         . addFields
           [ commaNewLineListFieldParsec
               "constraints"
-              (pretty . fst)
-              (fmap (\constraint -> (constraint, constraintSrc)) parsec)
+              (pretty . constraintInner)
+              ( (\constraint -> WithConstraintSource{constraintInner = constraint, constraintSource = constraintSrc})
+                  `fmap` parsec
+              )
               configExConstraints
               (\v conf -> conf{configExConstraints = v})
           , commaNewLineListFieldParsec
               "preferences"
-              pretty
-              parsec
+              (pretty . constraintInner)
+              ( (\preference -> WithConstraintSource{constraintInner = preference, constraintSource = constraintSrc})
+                  `fmap` parsec
+              )
               configPreferences
               (\v conf -> conf{configPreferences = v})
           , monoidFieldParsec
@@ -1777,14 +1793,16 @@ legacyPackageConfigFieldDescrs =
 
 legacyPackageConfigFGSectionDescrs
   :: ( FieldGrammar c g
+     , Applicative (g (WithConstraintSource SourceRepoList))
      , Applicative (g SourceRepoList)
      , c (Identity RepoType)
      , c (List NoCommaFSep FilePathNT String)
      , c (NonEmpty' NoCommaFSep Token String)
      )
-  => [FGSectionDescr g LegacyProjectConfig]
-legacyPackageConfigFGSectionDescrs =
-  [ packageRepoSectionDescr
+  => ConstraintSource
+  -> [FGSectionDescr g LegacyProjectConfig]
+legacyPackageConfigFGSectionDescrs constraintSource =
+  [ (packageRepoSectionDescr constraintSource)
   ]
 
 legacyPackageConfigSectionDescrs :: [SectionDescr LegacyProjectConfig]
@@ -1809,16 +1827,18 @@ legacyPackageConfigSectionDescrs =
 
 packageRepoSectionDescr
   :: ( FieldGrammar c g
+     , Applicative (g (WithConstraintSource SourceRepoList))
      , Applicative (g SourceRepoList)
      , c (Identity RepoType)
      , c (List NoCommaFSep FilePathNT String)
      , c (NonEmpty' NoCommaFSep Token String)
      )
-  => FGSectionDescr g LegacyProjectConfig
-packageRepoSectionDescr =
+  => ConstraintSource
+  -> FGSectionDescr g LegacyProjectConfig
+packageRepoSectionDescr constraintSource =
   FGSectionDescr
     { fgSectionName = "source-repository-package"
-    , fgSectionGrammar = sourceRepositoryPackageGrammar
+    , fgSectionGrammar = constraintSourceRepositoryPackageGrammar constraintSource
     , fgSectionGet = map (\x -> ("", x)) . legacyPackagesRepo
     , fgSectionSet =
         \lineno unused pkgrepo projconf -> do

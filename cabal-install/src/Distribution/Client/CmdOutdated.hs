@@ -68,6 +68,9 @@ import Distribution.Client.Types.SourcePackageDb as SourcePackageDb
 import Distribution.Solver.Types.PackageConstraint
   ( packageConstraintToDependency
   )
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
+  )
 import Distribution.Utils.Generic
   ( safeLast
   , wrapText
@@ -401,7 +404,7 @@ depsFromFreezeFile verbosity = do
   cwd <- getCurrentDirectory
   userConfig <- loadUserConfig verbosity cwd Nothing
   let ucnstrs =
-        map fst . configExConstraints . savedConfigureExFlags $
+        map constraintInner . configExConstraints . savedConfigureExFlags $
           userConfig
       deps = userConstraintsToDependencies ucnstrs
   debug verbosity "Reading the list of dependencies from the freeze file"
@@ -422,7 +425,7 @@ depsFromNewFreezeFile verbosity httpTransport compiler (Platform arch os) mproje
     pcs <- readProjectLocalFreezeConfig verbosity httpTransport distDirLayout
     pure $ instantiateProjectConfigSkeletonWithCompiler os arch (compilerInfo compiler) mempty pcs
   let ucnstrs =
-        map fst . projectConfigConstraints . projectConfigShared $
+        map constraintInner . projectConfigConstraints . projectConfigShared $
           projectConfig
       deps = userConstraintsToDependencies ucnstrs
       freezeFile = distProjectFile distDirLayout "freeze"

@@ -1,4 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveFunctor #-}
+
 module Distribution.Solver.Types.SourcePackage
     ( PackageDescriptionOverride
     , SourcePackage(..)
@@ -24,7 +26,7 @@ data SourcePackage loc = SourcePackage
   , srcpkgSource        :: loc
   , srcpkgDescrOverride :: PackageDescriptionOverride
   }
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Show, Functor, Generic)
 
 instance Binary loc => Binary (SourcePackage loc)
 instance Structured loc => Structured (SourcePackage loc)

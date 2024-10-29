@@ -121,6 +121,7 @@ import qualified Distribution.PackageDescription.Parsec as PackageDesc.Parse
 import Distribution.Solver.Types.PackageIndex (PackageIndex)
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
 import Distribution.Solver.Types.SourcePackage
+import Distribution.Solver.Types.WithConstraintSource (withUnknownConstraint)
 
 import qualified Codec.Compression.GZip as GZip
 import Control.Exception
@@ -443,11 +444,12 @@ readRepoIndex verbosity repoCtxt repo idxState =
       dieIfRequestedIdxIsNewer isi
     pure ret
   where
+    mkAvailablePackage :: PackageEntry -> UnresolvedSourcePackage
     mkAvailablePackage pkgEntry =
       SourcePackage
         { srcpkgPackageId = pkgid
         , srcpkgDescription = pkgdesc
-        , srcpkgSource = case pkgEntry of
+        , srcpkgSource = withUnknownConstraint $ case pkgEntry of
             NormalPackage _ _ _ _ -> RepoTarballPackage repo pkgid Nothing
             BuildTreeRef _ _ _ path _ -> LocalUnpackedPackage path
         , srcpkgDescrOverride = case pkgEntry of

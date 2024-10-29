@@ -56,6 +56,12 @@ import Distribution.Simple.Utils
   , warn
   , wrapText
   )
+import Distribution.Solver.Types.ConstraintSource
+  ( ConstraintSource (..)
+  )
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
+  )
 import Distribution.Verbosity
   ( normal
   )
@@ -115,8 +121,11 @@ benchAction flags@NixStyleFlags{..} targetStrings globalFlags = do
   baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
 
   targetSelectors <-
-    either (reportTargetSelectorProblems verbosity) return
-      =<< readTargetSelectors (localPackages baseCtx) (Just BenchKind) targetStrings
+    either (reportTargetSelectorProblems verbosity . map constraintInner) return
+      =<< readTargetSelectors
+        (localPackages baseCtx)
+        (Just BenchKind)
+        (map (\target -> WithConstraintSource{constraintInner = target, constraintSource = ConstraintSourceUserTarget}) targetStrings)
 
   buildCtx <-
     runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
@@ -131,7 +140,7 @@ benchAction flags@NixStyleFlags{..} targetStrings globalFlags = do
       -- Interpret the targets on the command line as bench targets
       -- (as opposed to say build or haddock targets).
       targets <-
-        either (reportTargetProblems verbosity) return $
+        either (reportTargetProblems verbosity . map constraintInner) return $
           resolveTargets
             selectPackageTargets
             selectComponentTarget

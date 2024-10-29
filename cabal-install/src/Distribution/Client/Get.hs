@@ -25,7 +25,12 @@ module Distribution.Client.Get
   ) where
 
 import Distribution.Client.Compat.Prelude hiding (get)
-import Distribution.Client.Types.SourceRepo (SourceRepoProxy, SourceRepositoryPackage (..), srpToProxy)
+import Distribution.Client.Types.SourceRepo
+  ( SourceRepoMaybe
+  , SourceRepoProxy
+  , SourceRepositoryPackage (..)
+  , srpToProxy
+  )
 import Distribution.Compat.Directory
   ( listDirectory
   )
@@ -74,6 +79,9 @@ import Distribution.PackageDescription.PrettyPrint
   ( writeGenericPackageDescription
   )
 import Distribution.Solver.Types.SourcePackage
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
+  )
 
 import Control.Monad (mapM_)
 import qualified Data.Map as Map
@@ -176,7 +184,7 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
             descOverride
               | usePristine = Nothing
               | otherwise = srcpkgDescrOverride pkg
-        case location of
+        case constraintInner location of
           LocalTarballPackage tarballPath ->
             unpackPackage verbosity prefix pkgid descOverride tarballPath
           RemoteTarballPackage _tarballURL tarballPath ->
@@ -365,12 +373,12 @@ clonePackagesFromSourceRepo
 
     -- Now execute all the required commands for each repo
     sequence_
-      [ cloneSourceRepo verbosity vcs' repo destDir
+      [ cloneSourceRepo verbosity vcs' (constraintInner repo) destDir
         `catch` \exitcode ->
           throwIO
             ( ClonePackageFailedWithExitCode
                 pkgid
-                (srpToProxy repo)
+                (srpToProxy $ constraintInner repo)
                 (programName (vcsProgram vcs))
                 exitcode
             )
@@ -380,7 +388,7 @@ clonePackagesFromSourceRepo
     where
       preCloneChecks
         :: (PackageId, [PD.SourceRepo])
-        -> IO (PackageId, SourceRepositoryPackage Maybe, VCS Program, FilePath)
+        -> IO (PackageId, WithConstraintSource SourceRepoMaybe, VCS Program, FilePath)
       preCloneChecks (pkgid, repos) = do
         repo <- case selectPackageSourceRepo preferredRepoKind repos of
           Just repo -> return repo

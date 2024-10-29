@@ -74,6 +74,9 @@ import Distribution.Package
 import Distribution.Simple.Compiler
 import Distribution.Simple.Program
 import qualified Distribution.Simple.Register as Cabal
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
+  )
 
 import Distribution.Compat.Graph (IsNode (..))
 import Distribution.Simple.Utils
@@ -186,7 +189,7 @@ rebuildTargetsDryRun distDirLayout@DistDirLayout{..} shared =
       return BuildStatusInstalled
     dryRunPkg (InstallPlan.Configured pkg) depsBuildStatus = do
       mloc <- checkFetched (elabPkgSourceLocation pkg)
-      case mloc of
+      case constraintInner <$> mloc of
         Nothing -> return BuildStatusDownload
         Just (LocalUnpackedPackage srcdir) ->
           -- For the case of a user-managed local dir, irrespective of the
@@ -449,7 +452,10 @@ rebuildTargets
 
       packagesToDownload :: [ElaboratedConfiguredPackage]
       packagesToDownload =
-        [ elab | InstallPlan.Configured elab <- InstallPlan.reverseTopologicalOrder installPlan, isRemote $ elabPkgSourceLocation elab
+        [ elab
+        | InstallPlan.Configured elab <-
+            InstallPlan.reverseTopologicalOrder installPlan
+        , isRemote $ constraintInner $ elabPkgSourceLocation elab
         ]
         where
           isRemote :: PackageLocation a -> Bool
@@ -637,7 +643,7 @@ asyncDownloadPackages verbosity withRepoCtx installPlan pkgsBuildStatus body
         pkgsToDownload
         body
   where
-    pkgsToDownload :: [PackageLocation (Maybe FilePath)]
+    pkgsToDownload :: [PackageLocationProvenance (Maybe FilePath)]
     pkgsToDownload =
       ordNub $
         [ elabPkgSourceLocation elab
@@ -670,10 +676,10 @@ data DownloadedSourceLocation = DownloadedTarball FilePath
 -- TODO: [nice to have] git/darcs repos etc
 
 downloadedSourceLocation
-  :: PackageLocation FilePath
+  :: PackageLocationProvenance FilePath
   -> Maybe DownloadedSourceLocation
 downloadedSourceLocation pkgloc =
-  case pkgloc of
+  case constraintInner pkgloc of
     RemoteTarballPackage _ tarball -> Just (DownloadedTarball tarball)
     RepoTarballPackage _ _ tarball -> Just (DownloadedTarball tarball)
     _ -> Nothing

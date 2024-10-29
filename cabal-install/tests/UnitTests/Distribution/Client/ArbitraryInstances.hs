@@ -1,5 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module UnitTests.Distribution.Client.ArbitraryInstances
@@ -39,8 +41,11 @@ import Distribution.Client.Targets
 import Distribution.Client.Types (RepoName (..), WriteGhcEnvironmentFilesPolicy)
 import Distribution.Client.Types.AllowNewer
 import Distribution.Client.Types.OverwritePolicy (OverwritePolicy)
+import Distribution.Solver.Types.ConstraintSource (ConstraintSource (..))
 import Distribution.Solver.Types.OptionalStanza (OptionalStanza (..), OptionalStanzaMap, OptionalStanzaSet, optStanzaSetFromList, optStanzaTabulate)
 import Distribution.Solver.Types.PackageConstraint (PackageProperty (..))
+import Distribution.Solver.Types.ProjectConfigPath (ProjectConfigPath (..))
+import Distribution.Solver.Types.WithConstraintSource (WithConstraintSource (..))
 
 import Data.Coerce (Coercible, coerce)
 import Network.URI (URI (..), URIAuth (..), isUnreserved)
@@ -445,3 +450,36 @@ instance Arbitrary GlobPiece where
 
 globLiteralChars :: [Char]
 globLiteralChars = ['\0' .. '\128'] \\ "*{},/\\"
+
+-------------------------------------------------------------------------------
+-- ConstraintSource
+-------------------------------------------------------------------------------
+
+instance Arbitrary a => Arbitrary (NonEmpty a) where
+  arbitrary = do
+    xs' <- arbitrary @(NonEmptyList _)
+    case getNonEmpty xs' of
+      x : xs -> pure (x :| xs)
+      _ -> error "unreachable"
+
+  -- No way to shrink a 1-element list.
+  shrink (_ :| []) = []
+  shrink (x :| xs) =
+    let possibilities = shrink (NonEmpty (x : xs))
+     in [ case getNonEmpty possibility of
+          x' : xs' -> x' :| xs'
+          _ -> error "unreachable"
+        | possibility <- possibilities
+        ]
+
+instance Arbitrary ProjectConfigPath where
+  arbitrary = genericArbitrary
+  shrink = genericShrink
+
+instance Arbitrary ConstraintSource where
+  arbitrary = genericArbitrary
+  shrink = genericShrink
+
+instance Arbitrary a => Arbitrary (WithConstraintSource a) where
+  arbitrary = genericArbitrary
+  shrink = genericShrink

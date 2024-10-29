@@ -112,6 +112,8 @@ import Distribution.Simple.Utils
   , wrapText
   )
 
+import Distribution.Solver.Types.ConstraintSource (ConstraintSource (..))
+import Distribution.Solver.Types.WithConstraintSource (WithConstraintSource (..))
 import Distribution.Types.ComponentName
   ( componentNameRaw
   )
@@ -206,159 +208,169 @@ runCommand =
 -- "Distribution.Client.ProjectOrchestration"
 runAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
 runAction flags@NixStyleFlags{..} targetAndArgs globalFlags =
-  withContextAndSelectors RejectNoTargets (Just ExeKind) flags targetStr globalFlags OtherCommand $ \targetCtx ctx targetSelectors -> do
-    (baseCtx, defaultVerbosity) <- case targetCtx of
-      ProjectContext -> return (ctx, normal)
-      GlobalContext -> return (ctx, normal)
-      ScriptContext path exemeta -> (,silent) <$> updateContextAndWriteProjectFile ctx path exemeta
+  withContextAndSelectors
+    RejectNoTargets
+    (Just ExeKind)
+    flags
+    ( map
+        (\target -> WithConstraintSource{constraintInner = target, constraintSource = ConstraintSourceUserTarget})
+        targetStr
+    )
+    globalFlags
+    OtherCommand
+    $ \targetCtx ctx targetSelectors -> do
+      (baseCtx, defaultVerbosity) <- case targetCtx of
+        ProjectContext -> return (ctx, normal)
+        GlobalContext -> return (ctx, normal)
+        ScriptContext path exemeta -> (,silent) <$> updateContextAndWriteProjectFile ctx path exemeta
 
-    let verbosity = fromFlagOrDefault defaultVerbosity (setupVerbosity $ configCommonFlags configFlags)
+      let verbosity = fromFlagOrDefault defaultVerbosity (setupVerbosity $ configCommonFlags configFlags)
 
-    buildCtx <-
-      runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
-        when (buildSettingOnlyDeps (buildSettings baseCtx)) $
-          dieWithException verbosity NoSupportForRunCommand
+      buildCtx <-
+        runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
+          when (buildSettingOnlyDeps (buildSettings baseCtx)) $
+            dieWithException verbosity NoSupportForRunCommand
 
-        fullArgs <- getFullArgs
-        when (occursOnlyOrBefore fullArgs "+RTS" "--") $
-          warn verbosity $
-            giveRTSWarning "run"
+          fullArgs <- getFullArgs
+          when (occursOnlyOrBefore fullArgs "+RTS" "--") $
+            warn verbosity $
+              giveRTSWarning "run"
 
-        -- Interpret the targets on the command line as build targets
-        -- (as opposed to say repl or haddock targets).
-        targets <-
-          either (reportTargetProblems verbosity) return $
-            resolveTargets
-              selectPackageTargets
-              selectComponentTarget
-              elaboratedPlan
-              Nothing
-              targetSelectors
-
-        -- Reject multiple targets, or at least targets in different
-        -- components. It is ok to have two module/file targets in the
-        -- same component, but not two that live in different components.
-        --
-        -- Note that we discard the target and return the whole 'TargetsMap',
-        -- so this check will be repeated (and must succeed) after
-        -- the 'runProjectPreBuildPhase'. Keep it in mind when modifying this.
-        _ <-
-          singleExeOrElse
-            ( reportTargetProblems
-                verbosity
-                [multipleTargetsProblem targets]
-            )
-            targets
-
-        let elaboratedPlan' =
-              pruneInstallPlanToTargets
-                TargetActionBuild
-                targets
+          -- Interpret the targets on the command line as build targets
+          -- (as opposed to say repl or haddock targets).
+          targets <-
+            either (reportTargetProblems verbosity . map constraintInner) return $
+              resolveTargets
+                selectPackageTargets
+                selectComponentTarget
                 elaboratedPlan
-        return (elaboratedPlan', targets)
+                Nothing
+                targetSelectors
 
-    (selectedUnitId, selectedComponent) <-
-      -- Slight duplication with 'runProjectPreBuildPhase'.
-      singleExeOrElse
-        ( dieWithException verbosity RunPhaseReached
-        )
-        $ targetsMap buildCtx
+          -- Reject multiple targets, or at least targets in different
+          -- components. It is ok to have two module/file targets in the
+          -- same component, but not two that live in different components.
+          --
+          -- Note that we discard the target and return the whole 'TargetsMap',
+          -- so this check will be repeated (and must succeed) after
+          -- the 'runProjectPreBuildPhase'. Keep it in mind when modifying this.
+          _ <-
+            singleExeOrElse
+              ( reportTargetProblems
+                  verbosity
+                  [multipleTargetsProblem targets]
+              )
+              targets
 
-    printPlan verbosity baseCtx buildCtx
+          let elaboratedPlan' =
+                pruneInstallPlanToTargets
+                  TargetActionBuild
+                  targets
+                  elaboratedPlan
+          return (elaboratedPlan', targets)
 
-    buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
-    runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
+      (selectedUnitId, selectedComponent) <-
+        -- Slight duplication with 'runProjectPreBuildPhase'.
+        singleExeOrElse
+          ( dieWithException verbosity RunPhaseReached
+          )
+          $ targetsMap buildCtx
 
-    let elaboratedPlan = elaboratedPlanToExecute buildCtx
-        matchingElaboratedConfiguredPackages =
-          matchingPackagesByUnitId
-            selectedUnitId
-            elaboratedPlan
+      printPlan verbosity baseCtx buildCtx
 
-    let exeName = unUnqualComponentName selectedComponent
+      buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
+      runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
 
-    -- In the common case, we expect @matchingElaboratedConfiguredPackages@
-    -- to consist of a single element that provides a single way of building
-    -- an appropriately-named executable. In that case we take that
-    -- package and continue.
-    --
-    -- However, multiple packages/components could provide that
-    -- executable, or it's possible we don't find the executable anywhere
-    -- in the build plan. I suppose in principle it's also possible that
-    -- a single package provides an executable in two different ways,
-    -- though that's probably a bug if. Anyway it's a good lint to report
-    -- an error in all of these cases, even if some seem like they
-    -- shouldn't happen.
-    pkg <- case matchingElaboratedConfiguredPackages of
-      [] -> dieWithException verbosity $ UnknownExecutable exeName selectedUnitId
-      [elabPkg] -> do
-        info verbosity $
-          "Selecting "
-            ++ prettyShow selectedUnitId
-            ++ " to supply "
-            ++ exeName
-        return elabPkg
-      elabPkgs ->
-        dieWithException verbosity $
-          MultipleMatchingExecutables exeName (fmap (\p -> " - in package " ++ prettyShow (elabUnitId p)) elabPkgs)
+      let elaboratedPlan = elaboratedPlanToExecute buildCtx
+          matchingElaboratedConfiguredPackages =
+            matchingPackagesByUnitId
+              selectedUnitId
+              elaboratedPlan
 
-    let defaultExePath =
-          binDirectoryFor
-            (distDirLayout baseCtx)
-            (elaboratedShared buildCtx)
-            pkg
-            exeName
-            </> exeName
-        exePath = fromMaybe defaultExePath (movedExePath selectedComponent (distDirLayout baseCtx) (elaboratedShared buildCtx) pkg)
+      let exeName = unUnqualComponentName selectedComponent
 
-    let dryRun =
-          buildSettingDryRun (buildSettings baseCtx)
-            || buildSettingOnlyDownload (buildSettings baseCtx)
+      -- In the common case, we expect @matchingElaboratedConfiguredPackages@
+      -- to consist of a single element that provides a single way of building
+      -- an appropriately-named executable. In that case we take that
+      -- package and continue.
+      --
+      -- However, multiple packages/components could provide that
+      -- executable, or it's possible we don't find the executable anywhere
+      -- in the build plan. I suppose in principle it's also possible that
+      -- a single package provides an executable in two different ways,
+      -- though that's probably a bug if. Anyway it's a good lint to report
+      -- an error in all of these cases, even if some seem like they
+      -- shouldn't happen.
+      pkg <- case matchingElaboratedConfiguredPackages of
+        [] -> dieWithException verbosity $ UnknownExecutable exeName selectedUnitId
+        [elabPkg] -> do
+          info verbosity $
+            "Selecting "
+              ++ prettyShow selectedUnitId
+              ++ " to supply "
+              ++ exeName
+          return elabPkg
+        elabPkgs ->
+          dieWithException verbosity $
+            MultipleMatchingExecutables exeName (fmap (\p -> " - in package " ++ prettyShow (elabUnitId p)) elabPkgs)
 
-    let
-      -- HACK alert: when doing a per-package build (e.g. with a Custom setup),
-      -- 'elabExeDependencyPaths' will not contain any internal executables
-      -- (they are deliberately filtered out; and even if they weren't, they have the wrong paths).
-      -- We add them back in here to ensure that any "build-tool-depends" of
-      -- the current executable is available in PATH at runtime.
-      internalToolDepsOfThisExe
-        | ElabPackage{} <- elabPkgOrComp pkg
-        , let pkg_descr = elabPkgDescription pkg
-        , thisExe : _ <- filter ((== exeName) . unUnqualComponentName . PD.exeName) $ PD.executables pkg_descr
-        , let thisExeBI = PD.buildInfo thisExe =
-            [ binDirectoryFor (distDirLayout baseCtx) (elaboratedShared buildCtx) pkg depExeNm
-            | depExe <- getAllInternalToolDependencies pkg_descr thisExeBI
-            , let depExeNm = unUnqualComponentName depExe
-            ]
-        | otherwise =
-            []
-      extraPath =
-        elabExeDependencyPaths pkg
-          ++ ( fromNubList
-                . projectConfigProgPathExtra
-                . projectConfigShared
-                . projectConfig
-                $ baseCtx
-             )
-          ++ internalToolDepsOfThisExe
+      let defaultExePath =
+            binDirectoryFor
+              (distDirLayout baseCtx)
+              (elaboratedShared buildCtx)
+              pkg
+              exeName
+              </> exeName
+          exePath = fromMaybe defaultExePath (movedExePath selectedComponent (distDirLayout baseCtx) (elaboratedShared buildCtx) pkg)
 
-    logExtraProgramSearchPath verbosity extraPath
-    progPath <- programSearchPathAsPATHVar (map ProgramSearchPathDir extraPath ++ defaultProgramSearchPath)
+      let dryRun =
+            buildSettingDryRun (buildSettings baseCtx)
+              || buildSettingOnlyDownload (buildSettings baseCtx)
 
-    if dryRun
-      then notice verbosity "Running of executable suppressed by flag(s)"
-      else
-        runProgramInvocation
-          verbosity
-          emptyProgramInvocation
-            { progInvokePath = exePath
-            , progInvokeArgs = args
-            , progInvokeEnv =
-                ("PATH", Just $ progPath)
-                  : dataDirsEnvironmentForPlan
-                    (distDirLayout baseCtx)
-                    elaboratedPlan
-            }
+      let
+        -- HACK alert: when doing a per-package build (e.g. with a Custom setup),
+        -- 'elabExeDependencyPaths' will not contain any internal executables
+        -- (they are deliberately filtered out; and even if they weren't, they have the wrong paths).
+        -- We add them back in here to ensure that any "build-tool-depends" of
+        -- the current executable is available in PATH at runtime.
+        internalToolDepsOfThisExe
+          | ElabPackage{} <- elabPkgOrComp pkg
+          , let pkg_descr = elabPkgDescription pkg
+          , thisExe : _ <- filter ((== exeName) . unUnqualComponentName . PD.exeName) $ PD.executables pkg_descr
+          , let thisExeBI = PD.buildInfo thisExe =
+              [ binDirectoryFor (distDirLayout baseCtx) (elaboratedShared buildCtx) pkg depExeNm
+              | depExe <- getAllInternalToolDependencies pkg_descr thisExeBI
+              , let depExeNm = unUnqualComponentName depExe
+              ]
+          | otherwise =
+              []
+        extraPath =
+          elabExeDependencyPaths pkg
+            ++ ( fromNubList
+                  . projectConfigProgPathExtra
+                  . projectConfigShared
+                  . projectConfig
+                  $ baseCtx
+               )
+            ++ internalToolDepsOfThisExe
+
+      logExtraProgramSearchPath verbosity extraPath
+      progPath <- programSearchPathAsPATHVar (map ProgramSearchPathDir extraPath ++ defaultProgramSearchPath)
+
+      if dryRun
+        then notice verbosity "Running of executable suppressed by flag(s)"
+        else
+          runProgramInvocation
+            verbosity
+            emptyProgramInvocation
+              { progInvokePath = exePath
+              , progInvokeArgs = args
+              , progInvokeEnv =
+                  ("PATH", Just $ progPath)
+                    : dataDirsEnvironmentForPlan
+                      (distDirLayout baseCtx)
+                      elaboratedPlan
+              }
   where
     (targetStr, args) = splitAt 1 targetAndArgs
 

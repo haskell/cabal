@@ -113,13 +113,16 @@ import Distribution.Simple.Utils
   , wrapText
   )
 import Distribution.Solver.Types.ConstraintSource
-  ( ConstraintSource (ConstraintSourceMultiRepl)
+  ( ConstraintSource (..)
   )
 import Distribution.Solver.Types.PackageConstraint
   ( PackageProperty (PackagePropertyVersion)
   )
 import Distribution.Solver.Types.SourcePackage
   ( SourcePackage (..)
+  )
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
   )
 import Distribution.Types.BuildInfo
   ( BuildInfo (..)
@@ -285,220 +288,230 @@ multiReplDecision ctx compiler flags =
 -- "Distribution.Client.ProjectOrchestration"
 replAction :: NixStyleFlags ReplFlags -> [String] -> GlobalFlags -> IO ()
 replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings globalFlags =
-  withContextAndSelectors AcceptNoTargets (Just LibKind) flags targetStrings globalFlags ReplCommand $ \targetCtx ctx targetSelectors -> do
-    when (buildSettingOnlyDeps (buildSettings ctx)) $
-      dieWithException verbosity ReplCommandDoesn'tSupport
-    let projectRoot = distProjectRootDirectory $ distDirLayout ctx
-        distDir = distDirectory $ distDirLayout ctx
+  withContextAndSelectors
+    AcceptNoTargets
+    (Just LibKind)
+    flags
+    ( map
+        (\target -> WithConstraintSource{constraintInner = target, constraintSource = ConstraintSourceUserTarget})
+        targetStrings
+    )
+    globalFlags
+    ReplCommand
+    $ \targetCtx ctx targetSelectors -> do
+      when (buildSettingOnlyDeps (buildSettings ctx)) $
+        dieWithException verbosity ReplCommandDoesn'tSupport
+      let projectRoot = distProjectRootDirectory $ distDirLayout ctx
+          distDir = distDirectory $ distDirLayout ctx
 
-    baseCtx <- case targetCtx of
-      ProjectContext -> return ctx
-      GlobalContext -> do
-        unless (null targetStrings) $
-          dieWithException verbosity $
-            ReplTakesNoArguments targetStrings
-        let
-          sourcePackage =
-            fakeProjectSourcePackage projectRoot
-              & lSrcpkgDescription . L.condLibrary
-                .~ Just (CondNode library [baseDep] [])
-          library = emptyLibrary{libBuildInfo = lBuildInfo}
-          lBuildInfo =
-            emptyBuildInfo
-              { targetBuildDepends = [baseDep]
-              , defaultLanguage = Just Haskell2010
-              }
-          baseDep = Dependency "base" anyVersion mainLibSet
+      baseCtx <- case targetCtx of
+        ProjectContext -> return ctx
+        GlobalContext -> do
+          unless (null targetStrings) $
+            dieWithException verbosity $
+              ReplTakesNoArguments targetStrings
+          let
+            sourcePackage =
+              fakeProjectSourcePackage projectRoot
+                & lSrcpkgDescription . L.condLibrary
+                  .~ Just (CondNode library [baseDep] [])
+            library = emptyLibrary{libBuildInfo = lBuildInfo}
+            lBuildInfo =
+              emptyBuildInfo
+                { targetBuildDepends = [baseDep]
+                , defaultLanguage = Just Haskell2010
+                }
+            baseDep = Dependency "base" anyVersion mainLibSet
 
-        updateContextAndWriteProjectFile' ctx sourcePackage
-      ScriptContext scriptPath scriptExecutable -> do
-        unless (length targetStrings == 1) $
-          dieWithException verbosity $
-            ReplTakesSingleArgument targetStrings
-        existsScriptPath <- doesFileExist scriptPath
-        unless existsScriptPath $
-          dieWithException verbosity $
-            ReplTakesSingleArgument targetStrings
+          updateContextAndWriteProjectFile' ctx sourcePackage
+        ScriptContext scriptPath scriptExecutable -> do
+          unless (length targetStrings == 1) $
+            dieWithException verbosity $
+              ReplTakesSingleArgument targetStrings
+          existsScriptPath <- doesFileExist scriptPath
+          unless existsScriptPath $
+            dieWithException verbosity $
+              ReplTakesSingleArgument targetStrings
 
-        updateContextAndWriteProjectFile ctx scriptPath scriptExecutable
+          updateContextAndWriteProjectFile ctx scriptPath scriptExecutable
 
-    -- If multi-repl is used, we need a Cabal recent enough to handle it.
-    -- We need to do this before solving, but the compiler version is only known
-    -- after solving (phaseConfigureCompiler), so instead of using
-    -- multiReplDecision we just check the flag.
-    let baseCtx' =
-          if fromFlagOrDefault False $
-            projectConfigMultiRepl (projectConfigShared $ projectConfig baseCtx)
-              <> replUseMulti
-            then
-              baseCtx
-                & lProjectConfig . lProjectConfigShared . lProjectConfigConstraints
-                  %~ (multiReplCabalConstraint :)
-            else baseCtx
+      -- If multi-repl is used, we need a Cabal recent enough to handle it.
+      -- We need to do this before solving, but the compiler version is only known
+      -- after solving (phaseConfigureCompiler), so instead of using
+      -- multiReplDecision we just check the flag.
+      let baseCtx' =
+            if fromFlagOrDefault False $
+              projectConfigMultiRepl (projectConfigShared $ projectConfig baseCtx)
+                <> replUseMulti
+              then
+                baseCtx
+                  & lProjectConfig . lProjectConfigShared . lProjectConfigConstraints
+                    %~ (multiReplCabalConstraint :)
+              else baseCtx
 
-    (originalComponent, baseCtx'') <-
-      if null (envPackages replEnvFlags)
-        then return (Nothing, baseCtx')
-        else -- Unfortunately, the best way to do this is to let the normal solver
-        -- help us resolve the targets, but that isn't ideal for performance,
-        -- especially in the no-project case.
-        withInstallPlan (lessVerbose verbosity) baseCtx' $ \elaboratedPlan sharedConfig -> do
-          -- targets should be non-empty map, but there's no NonEmptyMap yet.
-          targets <- validatedTargets (projectConfigShared (projectConfig ctx)) (pkgConfigCompiler sharedConfig) elaboratedPlan targetSelectors
+      (originalComponent, baseCtx'') <-
+        if null (envPackages replEnvFlags)
+          then return (Nothing, baseCtx')
+          else -- Unfortunately, the best way to do this is to let the normal solver
+          -- help us resolve the targets, but that isn't ideal for performance,
+          -- especially in the no-project case.
+          withInstallPlan (lessVerbose verbosity) baseCtx' $ \elaboratedPlan sharedConfig -> do
+            -- targets should be non-empty map, but there's no NonEmptyMap yet.
+            targets <- validatedTargets (projectConfigShared (projectConfig ctx)) (pkgConfigCompiler sharedConfig) elaboratedPlan targetSelectors
+
+            let
+              (unitId, _) = fromMaybe (error "panic: targets should be non-empty") $ safeHead $ Map.toList targets
+              originalDeps = installedUnitId <$> InstallPlan.directDeps elaboratedPlan unitId
+              oci = OriginalComponentInfo unitId originalDeps
+              pkgId = fromMaybe (error $ "cannot find " ++ prettyShow unitId) $ packageId <$> InstallPlan.lookup elaboratedPlan unitId
+              baseCtx'' = addDepsToProjectTarget (envPackages replEnvFlags) pkgId baseCtx'
+
+            return (Just oci, baseCtx'')
+
+      -- Now, we run the solver again with the added packages. While the graph
+      -- won't actually reflect the addition of transitive dependencies,
+      -- they're going to be available already and will be offered to the REPL
+      -- and that's good enough.
+      --
+      -- In addition, to avoid a *third* trip through the solver, we are
+      -- replicating the second half of 'runProjectPreBuildPhase' by hand
+      -- here.
+      (buildCtx, compiler, replOpts', targets) <- withInstallPlan verbosity baseCtx'' $
+        \elaboratedPlan elaboratedShared' -> do
+          let ProjectBaseContext{..} = baseCtx''
+
+          -- Recalculate with updated project.
+          targets <- validatedTargets (projectConfigShared projectConfig) (pkgConfigCompiler elaboratedShared') elaboratedPlan targetSelectors
 
           let
-            (unitId, _) = fromMaybe (error "panic: targets should be non-empty") $ safeHead $ Map.toList targets
-            originalDeps = installedUnitId <$> InstallPlan.directDeps elaboratedPlan unitId
-            oci = OriginalComponentInfo unitId originalDeps
-            pkgId = fromMaybe (error $ "cannot find " ++ prettyShow unitId) $ packageId <$> InstallPlan.lookup elaboratedPlan unitId
-            baseCtx'' = addDepsToProjectTarget (envPackages replEnvFlags) pkgId baseCtx'
+            elaboratedPlan' =
+              pruneInstallPlanToTargets
+                TargetActionRepl
+                targets
+                elaboratedPlan
+            includeTransitive = fromFlagOrDefault True (envIncludeTransitive replEnvFlags)
 
-          return (Just oci, baseCtx'')
+          pkgsBuildStatus <-
+            rebuildTargetsDryRun
+              distDirLayout
+              elaboratedShared'
+              elaboratedPlan'
 
-    -- Now, we run the solver again with the added packages. While the graph
-    -- won't actually reflect the addition of transitive dependencies,
-    -- they're going to be available already and will be offered to the REPL
-    -- and that's good enough.
-    --
-    -- In addition, to avoid a *third* trip through the solver, we are
-    -- replicating the second half of 'runProjectPreBuildPhase' by hand
-    -- here.
-    (buildCtx, compiler, replOpts', targets) <- withInstallPlan verbosity baseCtx'' $
-      \elaboratedPlan elaboratedShared' -> do
-        let ProjectBaseContext{..} = baseCtx''
+          let elaboratedPlan'' =
+                improveInstallPlanWithUpToDatePackages
+                  pkgsBuildStatus
+                  elaboratedPlan'
+          debugNoWrap verbosity (showElaboratedInstallPlan elaboratedPlan'')
 
-        -- Recalculate with updated project.
-        targets <- validatedTargets (projectConfigShared projectConfig) (pkgConfigCompiler elaboratedShared') elaboratedPlan targetSelectors
+          let
+            buildCtx =
+              ProjectBuildContext
+                { elaboratedPlanOriginal = elaboratedPlan
+                , elaboratedPlanToExecute = elaboratedPlan''
+                , elaboratedShared = elaboratedShared'
+                , pkgsBuildStatus
+                , targetsMap = targets
+                }
 
-        let
-          elaboratedPlan' =
-            pruneInstallPlanToTargets
-              TargetActionRepl
-              targets
-              elaboratedPlan
-          includeTransitive = fromFlagOrDefault True (envIncludeTransitive replEnvFlags)
+            ElaboratedSharedConfig{pkgConfigCompiler = compiler} = elaboratedShared'
 
-        pkgsBuildStatus <-
-          rebuildTargetsDryRun
-            distDirLayout
-            elaboratedShared'
-            elaboratedPlan'
+            repl_flags = case originalComponent of
+              Just oci -> generateReplFlags includeTransitive elaboratedPlan' oci
+              Nothing -> []
 
-        let elaboratedPlan'' =
-              improveInstallPlanWithUpToDatePackages
-                pkgsBuildStatus
-                elaboratedPlan'
-        debugNoWrap verbosity (showElaboratedInstallPlan elaboratedPlan'')
+          return (buildCtx, compiler, configureReplOptions & lReplOptionsFlags %~ (++ repl_flags), targets)
 
-        let
-          buildCtx =
-            ProjectBuildContext
-              { elaboratedPlanOriginal = elaboratedPlan
-              , elaboratedPlanToExecute = elaboratedPlan''
-              , elaboratedShared = elaboratedShared'
-              , pkgsBuildStatus
-              , targetsMap = targets
-              }
+      -- Multi Repl implementation see: https://well-typed.com/blog/2023/03/cabal-multi-unit/ for
+      -- a high-level overview about how everything fits together.
+      if Set.size (distinctTargetComponents targets) > 1
+        then withTempDirectoryEx verbosity tempFileOptions distDir "multi-out" $ \dir' -> do
+          -- multi target repl
+          dir <- makeAbsolute dir'
+          -- Modify the replOptions so that the ./Setup repl command will write options
+          -- into the multi-out directory.
+          replOpts'' <- case targetCtx of
+            ProjectContext -> return $ replOpts'{replOptionsFlagOutput = Flag dir}
+            _ -> usingGhciScript compiler projectRoot replOpts'
 
-          ElaboratedSharedConfig{pkgConfigCompiler = compiler} = elaboratedShared'
+          let buildCtx' = buildCtx & lElaboratedShared . lPkgConfigReplOptions .~ replOpts''
+          printPlan verbosity baseCtx'' buildCtx'
 
-          repl_flags = case originalComponent of
-            Just oci -> generateReplFlags includeTransitive elaboratedPlan' oci
-            Nothing -> []
+          -- The project build phase will call `./Setup repl` but write the options
+          -- out into a file without starting a repl.
+          buildOutcomes <- runProjectBuildPhase verbosity baseCtx'' buildCtx'
+          runProjectPostBuildPhase verbosity baseCtx'' buildCtx' buildOutcomes
 
-        return (buildCtx, compiler, configureReplOptions & lReplOptionsFlags %~ (++ repl_flags), targets)
+          -- calculate PATH, we construct a PATH which is the union of all paths from
+          -- the units which have been loaded. This is not quite right but usually works fine.
+          path_files <- listDirectory (dir </> "paths")
 
-    -- Multi Repl implementation see: https://well-typed.com/blog/2023/03/cabal-multi-unit/ for
-    -- a high-level overview about how everything fits together.
-    if Set.size (distinctTargetComponents targets) > 1
-      then withTempDirectoryEx verbosity tempFileOptions distDir "multi-out" $ \dir' -> do
-        -- multi target repl
-        dir <- makeAbsolute dir'
-        -- Modify the replOptions so that the ./Setup repl command will write options
-        -- into the multi-out directory.
-        replOpts'' <- case targetCtx of
-          ProjectContext -> return $ replOpts'{replOptionsFlagOutput = Flag dir}
-          _ -> usingGhciScript compiler projectRoot replOpts'
+          -- Note: decode is partial. Should we use Structured here?
+          -- This might blow up with @build-type: Custom@ stuff.
+          ghcProgs <- mapM (\f -> decode @ConfiguredProgram <$> BS.readFile (dir </> "paths" </> f)) path_files
 
-        let buildCtx' = buildCtx & lElaboratedShared . lPkgConfigReplOptions .~ replOpts''
-        printPlan verbosity baseCtx'' buildCtx'
+          let all_paths = concatMap programOverrideEnv ghcProgs
+          let sp = intercalate [searchPathSeparator] (map fst (sortBy (comparing @Int snd) $ Map.toList (combine_search_paths all_paths)))
+          -- HACK: Just combine together all env overrides, placing the most common things last
 
-        -- The project build phase will call `./Setup repl` but write the options
-        -- out into a file without starting a repl.
-        buildOutcomes <- runProjectBuildPhase verbosity baseCtx'' buildCtx'
-        runProjectPostBuildPhase verbosity baseCtx'' buildCtx' buildOutcomes
+          -- ghc program with overriden PATH
+          (ghcProg, _) <- requireProgram verbosity ghcProgram (pkgConfigCompilerProgs (elaboratedShared buildCtx'))
+          let ghcProg' = ghcProg{programOverrideEnv = [("PATH", Just sp)]}
 
-        -- calculate PATH, we construct a PATH which is the union of all paths from
-        -- the units which have been loaded. This is not quite right but usually works fine.
-        path_files <- listDirectory (dir </> "paths")
+          -- Find what the unit files are, and start a repl based on all the response
+          -- files which have been created in the directory.
+          -- unit files for components
+          unit_files <- listDirectory dir
 
-        -- Note: decode is partial. Should we use Structured here?
-        -- This might blow up with @build-type: Custom@ stuff.
-        ghcProgs <- mapM (\f -> decode @ConfiguredProgram <$> BS.readFile (dir </> "paths" </> f)) path_files
+          -- Order the unit files so that the find target becomes the active unit
+          let active_unit_fp :: Maybe FilePath
+              active_unit_fp = do
+                -- Get the first target selectors from the cli
+                activeTarget <- safeHead targetSelectors
+                -- Lookup the targets :: Map UnitId [(ComponentTarget, NonEmpty TargetSelector)]
+                unitId <-
+                  Map.toList targets
+                    -- Keep the UnitId matching the desired target selector
+                    & find (\(_, xs) -> any (\(_, selectors) -> activeTarget `elem` selectors) xs)
+                    & fmap fst
+                -- Convert to filename (adapted from 'storePackageDirectory')
+                pure (prettyShow unitId)
+              unit_files_ordered :: [FilePath]
+              unit_files_ordered =
+                let (active_unit_files, other_units) = partition (\fp -> Just fp == active_unit_fp) unit_files
+                 in -- GHC considers the last unit passed to be the active one
+                    other_units ++ active_unit_files
 
-        let all_paths = concatMap programOverrideEnv ghcProgs
-        let sp = intercalate [searchPathSeparator] (map fst (sortBy (comparing @Int snd) $ Map.toList (combine_search_paths all_paths)))
-        -- HACK: Just combine together all env overrides, placing the most common things last
+              render_j Serial = "1"
+              render_j (UseSem n) = show @Int n
+              render_j (NumJobs mn) = maybe "" (show @Int) mn
 
-        -- ghc program with overridden PATH
-        (ghcProg, _) <- requireProgram verbosity ghcProgram (pkgConfigCompilerProgs (elaboratedShared buildCtx'))
-        let ghcProg' = ghcProg{programOverrideEnv = [("PATH", Just sp)]}
+          -- run ghc --interactive with
+          runProgramInvocation verbosity $
+            programInvocation ghcProg' $
+              concat $
+                [ "--interactive"
+                , "-package-env"
+                , "-" -- to ignore ghc.environment.* files
+                , "-j"
+                , render_j (buildSettingNumJobs (buildSettings ctx))
+                ]
+                  : [ ["-unit", "@" ++ dir </> unit]
+                    | unit <- unit_files_ordered
+                    , unit /= "paths"
+                    ]
 
-        -- Find what the unit files are, and start a repl based on all the response
-        -- files which have been created in the directory.
-        -- unit files for components
-        unit_files <- listDirectory dir
+          pure ()
+        else do
+          -- single target repl
+          replOpts'' <- case targetCtx of
+            ProjectContext -> return replOpts'
+            _ -> usingGhciScript compiler projectRoot replOpts'
 
-        -- Order the unit files so that the find target becomes the active unit
-        let active_unit_fp :: Maybe FilePath
-            active_unit_fp = do
-              -- Get the first target selectors from the cli
-              activeTarget <- safeHead targetSelectors
-              -- Lookup the targets :: Map UnitId [(ComponentTarget, NonEmpty TargetSelector)]
-              unitId <-
-                Map.toList targets
-                  -- Keep the UnitId matching the desired target selector
-                  & find (\(_, xs) -> any (\(_, selectors) -> activeTarget `elem` selectors) xs)
-                  & fmap fst
-              -- Convert to filename (adapted from 'storePackageDirectory')
-              pure (prettyShow unitId)
-            unit_files_ordered :: [FilePath]
-            unit_files_ordered =
-              let (active_unit_files, other_units) = partition (\fp -> Just fp == active_unit_fp) unit_files
-               in -- GHC considers the last unit passed to be the active one
-                  other_units ++ active_unit_files
+          let buildCtx' = buildCtx & lElaboratedShared . lPkgConfigReplOptions .~ replOpts''
+          printPlan verbosity baseCtx'' buildCtx'
 
-            render_j Serial = "1"
-            render_j (UseSem n) = show @Int n
-            render_j (NumJobs mn) = maybe "" (show @Int) mn
-
-        -- run ghc --interactive with
-        runProgramInvocation verbosity $
-          programInvocation ghcProg' $
-            concat $
-              [ "--interactive"
-              , "-package-env"
-              , "-" -- to ignore ghc.environment.* files
-              , "-j"
-              , render_j (buildSettingNumJobs (buildSettings ctx))
-              ]
-                : [ ["-unit", "@" ++ dir </> unit]
-                  | unit <- unit_files_ordered
-                  , unit /= "paths"
-                  ]
-
-        pure ()
-      else do
-        -- single target repl
-        replOpts'' <- case targetCtx of
-          ProjectContext -> return replOpts'
-          _ -> usingGhciScript compiler projectRoot replOpts'
-
-        let buildCtx' = buildCtx & lElaboratedShared . lPkgConfigReplOptions .~ replOpts''
-        printPlan verbosity baseCtx'' buildCtx'
-
-        buildOutcomes <- runProjectBuildPhase verbosity baseCtx'' buildCtx'
-        runProjectPostBuildPhase verbosity baseCtx'' buildCtx' buildOutcomes
+          buildOutcomes <- runProjectBuildPhase verbosity baseCtx'' buildCtx'
+          runProjectPostBuildPhase verbosity baseCtx'' buildCtx' buildOutcomes
   where
     combine_search_paths paths =
       foldl' go Map.empty paths
@@ -514,7 +527,7 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
       -- Interpret the targets on the command line as repl targets
       -- (as opposed to say build or haddock targets).
       targets <-
-        either (reportTargetProblems verbosity) return $
+        either (reportTargetProblems verbosity . map constraintInner) return $
           resolveTargets
             (selectPackageTargets multi_repl_enabled)
             selectComponentTarget
@@ -538,11 +551,13 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
     -- but that would require another solver run for marginal advantages that
     -- will further shrink as 3.11 is adopted.
     multiReplCabalConstraint =
-      ( UserConstraint
-          (UserAnySetupQualifier (mkPackageName "Cabal"))
-          (PackagePropertyVersion $ orLaterVersion $ mkVersion [3, 11])
-      , ConstraintSourceMultiRepl
-      )
+      WithConstraintSource
+        { constraintInner =
+            UserConstraint
+              (UserAnySetupQualifier (mkPackageName "Cabal"))
+              (PackagePropertyVersion $ orLaterVersion $ mkVersion [3, 11])
+        , constraintSource = ConstraintSourceMultiRepl
+        }
 
 -- | First version of GHC which supports multiple home packages
 minMultipleHomeUnitsVersion :: Version
@@ -866,6 +881,6 @@ lProjectConfigShared :: Lens' ProjectConfig ProjectConfigShared
 lProjectConfigShared f s = fmap (\x -> s{projectConfigShared = x}) (f (projectConfigShared s))
 {-# INLINE lProjectConfigShared #-}
 
-lProjectConfigConstraints :: Lens' ProjectConfigShared [(UserConstraint, ConstraintSource)]
+lProjectConfigConstraints :: Lens' ProjectConfigShared [WithConstraintSource UserConstraint]
 lProjectConfigConstraints f s = fmap (\x -> s{projectConfigConstraints = x}) (f (projectConfigConstraints s))
 {-# INLINE lProjectConfigConstraints #-}

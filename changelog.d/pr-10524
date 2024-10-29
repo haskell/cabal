@@ -1,0 +1,21 @@
+---
+synopsis: "Show constraint sources in dependency solver errors"
+packages: [cabal-install, cabal-install-solver]
+prs: 10524
+---
+
+When solving dependencies fails, constraints will be labeled with their source.
+For example, in this error message, a `source-repository-package` in
+`cabal.project` has fixed the version of `memory` to `0.17.0`:
+
+```
+[__0] rejecting: memory-0.18.0
+  (constraint from cabal.project requires ==0.17.0)
+```
+
+Previously, these error messages would just specify that the constraint came
+from a "user target", which was unclear and misleading:
+
+```
+[__0] rejecting: memory-0.18.0 (constraint from user target requires ==0.17.0)
+```

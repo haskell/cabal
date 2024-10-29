@@ -141,6 +141,10 @@ import Distribution.Simple.Utils
 import Distribution.Solver.Types.SourcePackage as SP
   ( SourcePackage (..)
   )
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
+  , withUnknownConstraint
+  )
 import Distribution.System
   ( Platform (..)
   )
@@ -196,6 +200,9 @@ import qualified Data.ByteString.Char8 as BS
 import Data.ByteString.Lazy ()
 import qualified Data.Set as S
 import Distribution.Client.Errors
+import Distribution.Solver.Types.ConstraintSource
+  ( ConstraintSource (..)
+  )
 import Distribution.Utils.Path
   ( unsafeMakeSymbolicPath
   )
@@ -287,13 +294,13 @@ withContextAndSelectors
   -- ^ A target filter
   -> NixStyleFlags a
   -- ^ Command line flags
-  -> [String]
+  -> [WithConstraintSource String]
   -- ^ Target strings or a script and args.
   -> GlobalFlags
   -- ^ Global flags.
   -> CurrentCommand
   -- ^ Current Command (usually for error reporting).
-  -> (TargetContext -> ProjectBaseContext -> [TargetSelector] -> IO b)
+  -> (TargetContext -> ProjectBaseContext -> [WithConstraintSource TargetSelector] -> IO b)
   -- ^ The body of your command action.
   -> IO b
 withContextAndSelectors noTargets kind flags@NixStyleFlags{..} targetStrings globalFlags cmd act =
@@ -307,32 +314,37 @@ withContextAndSelectors noTargets kind flags@NixStyleFlags{..} targetStrings glo
     (tc', ctx', sels) <- case targetStrings of
       -- Only script targets may end with ':'.
       -- Trying to readTargetSelectors such a target leads to a parse error.
-      [target] | ":" `isSuffixOf` target -> do
-        scriptOrError target [TargetSelectorNoScript $ TargetString1 target]
+      [target] | ":" `isSuffixOf` constraintInner target -> do
+        scriptOrError
+          (constraintInner target)
+          [ TargetSelectorNoScript . TargetString1 <$> target
+          ]
       _ -> do
         -- In the case where a selector is both a valid target and script, assume it is a target,
         -- because you can disambiguate the script with "./script"
-        readTargetSelectors (localPackages ctx) kind targetStrings >>= \case
+        eitherTargetSelectors <- readTargetSelectors (localPackages ctx) kind targetStrings
+
+        case eitherTargetSelectors of
           -- If there are no target selectors and no targets are fine, return
           -- the context
-          Left (TargetSelectorNoTargetsInCwd{} : _)
+          Left (WithConstraintSource{constraintInner = TargetSelectorNoTargetsInCwd{}} : _)
             | [] <- targetStrings
             , AcceptNoTargets <- noTargets ->
                 return (tc, ctx, defaultTarget)
-          Left err@(TargetSelectorNoTargetsInProject : _)
+          Left err@(WithConstraintSource{constraintInner = TargetSelectorNoTargetsInProject} : _)
             -- If there are no target selectors and no targets are fine, return
             -- the context
             | [] <- targetStrings
             , AcceptNoTargets <- noTargets ->
                 return (tc, ctx, defaultTarget)
-            | (script : _) <- targetStrings -> scriptOrError script err
-          Left err@(TargetSelectorNoSuch t _ : _)
+            | (script : _) <- targetStrings -> scriptOrError (constraintInner script) err
+          Left err@(WithConstraintSource{constraintInner = TargetSelectorNoSuch t _} : _)
             | TargetString1 script <- t -> scriptOrError script err
-          Left err@(TargetSelectorExpected t _ _ : _)
+          Left err@(WithConstraintSource{constraintInner = TargetSelectorExpected t _ _} : _)
             | TargetString1 script <- t -> scriptOrError script err
-          Left err@(MatchingInternalError _ _ _ : _) -- Handle ':' in middle of script name.
-            | [script] <- targetStrings -> scriptOrError script err
-          Left err -> reportTargetSelectorProblems verbosity err
+          Left err@(WithConstraintSource{constraintInner = MatchingInternalError _ _ _} : _) -- Handle ':' in middle of script name.
+            | [script] <- targetStrings -> scriptOrError (constraintInner script) err
+          Left err -> reportTargetSelectorProblems verbosity (map constraintInner err)
           Right sels -> return (tc, ctx, sels)
 
     act tc' ctx' sels
@@ -341,7 +353,12 @@ withContextAndSelectors noTargets kind flags@NixStyleFlags{..} targetStrings glo
     ignoreProject = flagIgnoreProject projectFlags
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
-    defaultTarget = [TargetPackage TargetExplicitNamed [fakePackageId] Nothing]
+    defaultTarget =
+      [ WithConstraintSource
+          { constraintInner = TargetPackage TargetExplicitNamed [fakePackageId] Nothing
+          , constraintSource = ConstraintSourceImplicitTarget
+          }
+      ]
 
     withProject = do
       ctx <- establishProjectBaseContext verbosity cliConfig cmd
@@ -358,6 +375,10 @@ withContextAndSelectors noTargets kind flags@NixStyleFlags{..} targetStrings glo
       distDirLayout <- establishDummyDistDirLayout verbosity cfg rootDir
       establishDummyProjectBaseContext verbosity cfg distDirLayout [] cmd
 
+    scriptOrError
+      :: FilePath
+      -> [WithConstraintSource TargetSelectorProblem]
+      -> IO (TargetContext, ProjectBaseContext, [WithConstraintSource TargetSelector])
     scriptOrError script err = do
       exists <- doesFileExist script
       if exists
@@ -397,7 +418,7 @@ withContextAndSelectors noTargets kind flags@NixStyleFlags{..} targetStrings glo
           createDirectoryIfMissingVerbose verbosity True (takeDirectory exePath)
 
           return (ScriptContext script executable', ctx', defaultTarget)
-        else reportTargetSelectorProblems verbosity err
+        else reportTargetSelectorProblems verbosity (map constraintInner err)
 
 withTemporaryTempDirectory :: (IO FilePath -> IO a) -> IO a
 withTemporaryTempDirectory act = newEmptyMVar >>= \m -> bracket (getMkTmp m) (rmTmp m) act
@@ -453,6 +474,10 @@ updateContextAndWriteProjectFile' ctx srcPkg = do
       packageFile = projectRoot </> fakePackageCabalFileName
       contents = showGenericPackageDescription (srcpkgDescription srcPkg)
       writePackageFile = writeUTF8File packageFile contents
+      srcPkg' =
+        srcPkg
+          { srcpkgSource = withUnknownConstraint $ srcpkgSource srcPkg
+          }
   -- TODO This is here to prevent reconfiguration of cached repl packages.
   -- It's worth investigating why it's needed in the first place.
   packageFileExists <- doesFileExist packageFile
@@ -463,7 +488,7 @@ updateContextAndWriteProjectFile' ctx srcPkg = do
         (cached /= contents)
         writePackageFile
     else writePackageFile
-  return (ctx & lLocalPackages %~ (++ [SpecificSourcePackage srcPkg]))
+  return (ctx & lLocalPackages %~ (++ [SpecificSourcePackage srcPkg']))
 
 -- | Add the executable metadata to the context and write a .cabal file.
 updateContextAndWriteProjectFile :: ProjectBaseContext -> FilePath -> Executable -> IO ProjectBaseContext

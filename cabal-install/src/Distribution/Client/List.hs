@@ -65,9 +65,15 @@ import Distribution.Version
 
 import qualified Distribution.SPDX as SPDX
 
+import Distribution.Solver.Types.NamedPackage
+  ( NamedPackage (..)
+  )
 import Distribution.Solver.Types.PackageConstraint
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
 import Distribution.Solver.Types.SourcePackage
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
+  )
 
 import Distribution.Client.FetchUtils
   ( isFetched
@@ -317,7 +323,7 @@ info
         prefs
         installedPkgIndex
         sourcePkgIndex
-        (NamedPackage name props)
+        (Named (WithConstraintSource{constraintInner = NamedPackage name props}))
           | null (selectedInstalledPkgs) && null (selectedSourcePkgs) =
               Left $ GatherPkgInfo name (simplifyVersionRange verConstraint)
           | otherwise =

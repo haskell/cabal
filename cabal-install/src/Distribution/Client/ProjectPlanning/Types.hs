@@ -109,6 +109,9 @@ import Distribution.Simple.Utils (ordNub)
 import Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.OptionalStanza
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
+  )
 import Distribution.System
 import Distribution.Types.ComponentRequestedSpec
 import qualified Distribution.Types.LocalBuildConfig as LBC
@@ -222,7 +225,7 @@ data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
   , elabFlagDefaults :: Cabal.FlagAssignment
   -- ^ The original default flag assignment, used only for reporting.
   , elabPkgDescription :: Cabal.PackageDescription
-  , elabPkgSourceLocation :: PackageLocation (Maybe FilePath)
+  , elabPkgSourceLocation :: UnresolvedPkgLoc
   -- ^ Where the package comes from, e.g. tarball, local dir etc. This
   --   is not the same as where it may be unpacked to for the build.
   , elabPkgSourceHash :: Maybe PackageSourceHash
@@ -459,15 +462,16 @@ dataDirEnvVarForPackage distDirLayout pkg =
         , Just dataDirPath
         )
   where
-    srcPath (LocalUnpackedPackage path) = path
-    srcPath (LocalTarballPackage _path) = unpackedPath
-    srcPath (RemoteTarballPackage _uri _localTar) = unpackedPath
-    srcPath (RepoTarballPackage _repo _packageId _localTar) = unpackedPath
-    srcPath (RemoteSourceRepoPackage _sourceRepo (Just localCheckout)) = localCheckout
-    -- TODO: see https://github.com/haskell/cabal/wiki/Potential-Refactors#unresolvedpkgloc
-    srcPath (RemoteSourceRepoPackage _sourceRepo Nothing) =
-      error
-        "calling dataDirEnvVarForPackage on a not-downloaded repo is an error"
+    srcPath location = case constraintInner location of
+      LocalUnpackedPackage path -> path
+      LocalTarballPackage _path -> unpackedPath
+      RemoteTarballPackage _uri _localTar -> unpackedPath
+      RepoTarballPackage _repo _packageId _localTar -> unpackedPath
+      RemoteSourceRepoPackage _sourceRepo (Just localCheckout) -> localCheckout
+      -- TODO: see https://github.com/haskell/cabal/wiki/Potential-Refactors#unresolvedpkgloc
+      RemoteSourceRepoPackage _sourceRepo Nothing ->
+        error
+          "calling dataDirEnvVarForPackage on a not-downloaded repo is an error"
     unpackedPath =
       distUnpackedSrcDirectory distDirLayout $ elabPkgSourceId pkg
     rawDataDir = getSymbolicPath $ dataDir (elabPkgDescription pkg)

@@ -76,11 +76,13 @@ library
     Distribution.Solver.Modular.WeightedPSQ
     Distribution.Solver.Types.ComponentDeps
     Distribution.Solver.Types.ConstraintSource
+    Distribution.Solver.Types.WithConstraintSource
     Distribution.Solver.Types.DependencyResolver
     Distribution.Solver.Types.Flag
     Distribution.Solver.Types.InstalledPreference
     Distribution.Solver.Types.InstSolverPackage
     Distribution.Solver.Types.LabeledPackageConstraint
+    Distribution.Solver.Types.NamedPackage
     Distribution.Solver.Types.OptionalStanza
     Distribution.Solver.Types.PackageConstraint
     Distribution.Solver.Types.PackageFixedDeps

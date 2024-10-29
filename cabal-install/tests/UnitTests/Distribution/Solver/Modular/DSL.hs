@@ -87,6 +87,7 @@ import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.Flag
 import Distribution.Solver.Types.LabeledPackageConstraint
+import Distribution.Solver.Types.NamedPackage
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
 import qualified Distribution.Solver.Types.PackageIndex as CI.PackageIndex
@@ -96,6 +97,7 @@ import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SolverPackage
 import Distribution.Solver.Types.SourcePackage
 import Distribution.Solver.Types.Variable
+import Distribution.Solver.Types.WithConstraintSource
 
 {-------------------------------------------------------------------------------
   Example package database DSL
@@ -432,7 +434,11 @@ exAvSrcPkg ex =
       package =
         SourcePackage
           { srcpkgPackageId = pkgId
-          , srcpkgSource = LocalTarballPackage "<<path>>"
+          , srcpkgSource =
+              WithConstraintSource
+                { constraintInner = LocalTarballPackage "<<path>>"
+                , constraintSource = ConstraintSourceUnknown
+                }
           , srcpkgDescrOverride = Nothing
           , srcpkgDescription =
               C.GenericPackageDescription
@@ -849,7 +855,18 @@ exResolve
               )
               (exDbPkgs db)
         | otherwise = []
-      targets' = fmap (\p -> NamedPackage (C.mkPackageName p) []) targets
+      targets' =
+        fmap
+          ( \p ->
+              Named
+                ( WithConstraintSource
+                    { constraintInner =
+                        NamedPackage (C.mkPackageName p) []
+                    , constraintSource = ConstraintSourceUnknown
+                    }
+                )
+          )
+          targets
       params =
         addConstraints (fmap toConstraint constraints) $
           addConstraints (fmap toLpc enableTests) $

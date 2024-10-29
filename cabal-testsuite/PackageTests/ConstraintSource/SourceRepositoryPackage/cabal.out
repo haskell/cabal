@@ -1,0 +1,16 @@
+# cabal v2-update
+Downloading the latest package list from test-local-repo
+# cabal v2-build
+Configuration is affected by the following files:
+- cabal.project
+Resolving dependencies...
+Error: [Cabal-7107]
+Could not resolve dependencies:
+[__0] next goal: my-lib (user goal)
+[__0] rejecting: my-lib; 2.0, 1.0
+      (constraint from cabal.project requires ==0.9)
+[__0] trying: my-lib-0.9
+[__1] next goal: plain (user goal)
+[__1] rejecting: plain-0.1.0.0 (conflict: my-lib==0.9, plain => my-lib>1)
+[__1] fail (backjumping, conflict set: my-lib, plain)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: my-lib (4), plain (2)

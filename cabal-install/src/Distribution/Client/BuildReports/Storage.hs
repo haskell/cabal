@@ -39,6 +39,9 @@ import Distribution.Client.Types
 
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.SourcePackage
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
+  )
 
 import Distribution.Compiler
   ( CompilerId (..)
@@ -200,8 +203,16 @@ fromPlanPackage
       , extractRepo srcPkg
       )
     where
-      extractRepo (SourcePackage{srcpkgSource = RepoTarballPackage repo _ _}) =
-        Just repo
+      extractRepo
+        ( SourcePackage
+            { srcpkgSource =
+              WithConstraintSource
+                { constraintInner =
+                  RepoTarballPackage repo _ _
+                }
+            }
+          ) =
+          Just repo
       extractRepo _ = Nothing
 fromPlanPackage _ _ _ _ = Nothing
 
