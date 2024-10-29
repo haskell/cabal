@@ -198,7 +198,6 @@ resolveOpts opts = do
         concat
           [
             [ "Cabal"
-            , "Cabal-hooks"
             , "cabal-testsuite"
             , "Cabal-tests"
             , "Cabal-QuickCheck"
