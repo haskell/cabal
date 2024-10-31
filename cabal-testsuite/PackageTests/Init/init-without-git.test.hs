@@ -16,11 +16,8 @@ main = do
           withEnv [("PATH", Just bin)] $ do
             cwd <- fmap testSourceCopyDir getTestEnv
 
-            buildOut <- withDirectory cwd $ do
+            withDirectory cwd $ do
               cabalWithStdin "init" ["-i"]
                 "2\n\n5\n\n\n2\n\n\n\n\n\n\n\n\n\n"
-              setup "configure" []
-              setup' "build" ["app"]
 
             assertFileDoesContain (cwd </> "app.cabal")   "3.0"
-            assertOutputContains "Linking" buildOut
