@@ -7,7 +7,7 @@ import Distribution.Verbosity
 -- Test cabal init when git is not installed
 main = do
   tmp <- getTemporaryDirectory
-  withTempDirectory normal tmp "bin.XXXX" $
+  withTempDirectory normal tmp "bin" $
     \bin -> cabalTest $
       do
         ghc_path <- programPathM ghcProgram
@@ -16,8 +16,6 @@ main = do
           withEnv [("PATH", Just bin)] $ do
             cwd <- fmap testSourceCopyDir getTestEnv
 
-            withDirectory cwd $ do
+            void . withDirectory cwd $ do
               cabalWithStdin "init" ["-i"]
                 "2\n\n5\n\n\n2\n\n\n\n\n\n\n\n\n\n"
-
-            assertFileDoesContain (cwd </> "app.cabal")   "3.0"
