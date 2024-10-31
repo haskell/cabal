@@ -468,30 +468,36 @@ jobs:
     name: Create a GitHub LTS prerelease with the binary artifacts
     runs-on: ubuntu-latest
     # The LTS branch is hardcoded for now, update it on a new LTS!
-    if: github.ref == 'refs/heads/3.12'
+    #if: github.ref == 'refs/heads/3.12'
+    permissions:
+      contents: write
 
     # IMPORTANT! Any job added to the workflow should be added here too
     needs: [validate, validate-old-ghcs, build-alpine, dogfooding]
 
     steps:
+    - run: echo "|${{ github.ref }}|${{ github.base_ref }}|"
+
     - uses: actions/download-artifact@v4
       with:
         pattern: cabal-*
         path: binaries
 
     - run: |
+        cd binaries
+        ls
         # bash-ism, but we forced bash above
-        mv cabal-{,lts-}head-Windows-x86_64.tar.gz
-        mv cabal-{,lts-}head-Linux-x86_64.tar.gz
-        mv cabal-{,lts-}head-Linux-static-x86_64.tar.gz
-        mv cabal-{,lts-}head-macOS-x86_64.tar.gz
+        mv cabal-{,lts-}Windows-x86_64
+        mv cabal-{,lts-}Linux-x86_64
+        mv cabal-{,lts-}Linux-static-x86_64
+        mv cabal-{,lts-}macOS-x86_64
 
-    - name: Create GitHub prerelease
-      uses: softprops/action-gh-release@v2
-      with:
-        tag_name: cabal-lts-head
-        prerelease: true
-        files: binaries/cabal-*
+    #- name: Create GitHub prerelease
+    #  uses: softprops/action-gh-release@v2
+    #  with:
+    #    tag_name: cabal-lts-head
+    #    prerelease: true
+    #    files: binaries/cabal-*
 
   # We use this job as a summary of the workflow
   # It will fail if any of the previous jobs does
