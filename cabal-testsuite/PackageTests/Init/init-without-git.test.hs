@@ -8,7 +8,7 @@ import Distribution.Verbosity
 main = do
   tmp <- getTemporaryDirectory
   withTempDirectory normal tmp "bin.XXXX" $
-    \bin -> cabalTest . withSourceCopyDir "app" $
+    \bin -> cabalTest $
       do
         ghc_path <- programPathM ghcProgram
         cabal_path <- programPathM cabalProgram
