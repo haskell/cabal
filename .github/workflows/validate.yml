@@ -443,7 +443,7 @@ jobs:
   prerelease-head:
     name: Create a GitHub prerelease with the binary artifacts
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master'
+    if: "always() && github.ref == 'refs/heads/master'"
     permissions:
       contents: write
 
@@ -468,7 +468,7 @@ jobs:
     name: Create a GitHub LTS prerelease with the binary artifacts
     runs-on: ubuntu-latest
     # The LTS branch is hardcoded for now, update it on a new LTS!
-    #if: github.ref == 'refs/heads/3.12'
+    if: "always() && contains(github.ref, '3.12')"
     permissions:
       contents: write
 
