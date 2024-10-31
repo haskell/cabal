@@ -6,6 +6,7 @@ import Distribution.Verbosity
 
 -- Test cabal init when git is not installed
 main = do
+  skipIfWindows "Might fail on windows."
   tmp <- getTemporaryDirectory
   withTempDirectory normal tmp "bin" $
     \bin -> cabalTest $
