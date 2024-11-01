@@ -89,6 +89,9 @@ parserTests =
     , testCase "test program-options concatenation" testProgramOptionsConcat
     , testCase "test allow-newer and allow-older concatenation" testRelaxDepsConcat
     , testCase "test library-coverage overwrites coverage" testLibraryCoverage
+    , testCase "test haddock-all flag" testHaddockAll
+    , testCase "test override haddock-all: True" testHaddockAllOverwriteTrue
+    , testCase "test override haddock-all: False" testHaddockAllOverwriteFalse
     ]
 
 testPackages :: Assertion
@@ -513,6 +516,32 @@ testLibraryCoverage :: Assertion
 testLibraryCoverage = do
   (config, legacy) <- readConfigDefault "library-coverage"
   assertConfigEquals (Flag False) config legacy (packageConfigCoverage . projectConfigLocalPackages . condTreeData)
+
+testHaddockAll :: Assertion
+testHaddockAll = do
+  (config, legacy) <- readConfigDefault "haddock-all"
+  assertConfigEquals (Flag True) config legacy (packageConfigHaddockExecutables . projectConfigLocalPackages . condTreeData)
+  assertConfigEquals (Flag True) config legacy (packageConfigHaddockTestSuites . projectConfigLocalPackages . condTreeData)
+  assertConfigEquals (Flag True) config legacy (packageConfigHaddockBenchmarks . projectConfigLocalPackages . condTreeData)
+  assertConfigEquals (Flag True) config legacy (packageConfigHaddockForeignLibs . projectConfigLocalPackages . condTreeData)
+
+-- | Tests that an explicitly set field can override a value inherited from haddock-all.
+testHaddockAllOverwriteTrue :: Assertion
+testHaddockAllOverwriteTrue = do
+  (config, legacy) <- readConfigDefault "haddock-all-overwrite-true"
+  assertConfigEquals (Flag True) config legacy (packageConfigHaddockExecutables . projectConfigLocalPackages . condTreeData)
+  assertConfigEquals (Flag True) config legacy (packageConfigHaddockTestSuites . projectConfigLocalPackages . condTreeData)
+  assertConfigEquals (Flag True) config legacy (packageConfigHaddockBenchmarks . projectConfigLocalPackages . condTreeData)
+  assertConfigEquals (Flag False) config legacy (packageConfigHaddockForeignLibs . projectConfigLocalPackages . condTreeData)
+
+testHaddockAllOverwriteFalse :: Assertion
+testHaddockAllOverwriteFalse = do
+  (config, legacy) <- readConfigDefault "haddock-all-overwrite-false"
+  assertConfigEquals (Flag True) config legacy (packageConfigHaddockExecutables . projectConfigLocalPackages . condTreeData)
+  assertConfigEquals (Flag False) config legacy (packageConfigHaddockTestSuites . projectConfigLocalPackages . condTreeData)
+  assertConfigEquals (Flag False) config legacy (packageConfigHaddockBenchmarks . projectConfigLocalPackages . condTreeData)
+  assertConfigEquals (Flag False) config legacy (packageConfigHaddockForeignLibs . projectConfigLocalPackages . condTreeData)
+
 -------------------------------------------------------------------------------
 -- Test Utilities
 -------------------------------------------------------------------------------

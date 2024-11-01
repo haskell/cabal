@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 
 -- | 'ProjectConfig' Field descriptions
 module Distribution.Client.ProjectConfig.FieldGrammar
@@ -109,8 +110,10 @@ projectConfigSharedFieldGrammar source =
 
 packageConfigFieldGrammar :: [String] -> ParsecFieldGrammar' PackageConfig
 packageConfigFieldGrammar knownPrograms =
-  PackageConfig
-    <$> pure mempty -- program-options stanza
+  mkPackageConfig
+    <$> optionalFieldDef "haddock-all" noopLens mempty
+      ^^^ hiddenField
+    <*> pure mempty -- program-options stanza
     <*> pure mempty -- program-locations stanza
     <*> monoidalFieldAla "extra-prog-path" (alaNubList' FSep FilePathNT) L.packageConfigProgramPathExtra
     <*> monoidalField "flags" L.packageConfigFlagAssignment
@@ -177,6 +180,81 @@ packageConfigFieldGrammar knownPrograms =
     -- When declared at top level (packageConfigLocalPackages), the PackageConfig must contain a program-options stanza/program-locations for these fields.
     <* traverse_ (knownField . BS.pack . (<> "-options")) knownPrograms
     <* traverse_ (knownField . BS.pack . (<> "-location")) knownPrograms
+  where
+    noopLens f s = s <$ f mempty
+    mkPackageConfig
+      haddockAll
+      packageConfigProgramPaths
+      packageConfigProgramArgs
+      packageConfigProgramPathExtra
+      packageConfigFlagAssignment
+      packageConfigVanillaLib
+      packageConfigSharedLib
+      packageConfigStaticLib
+      packageConfigDynExe
+      packageConfigFullyStaticExe
+      packageConfigProf
+      packageConfigProfLib
+      packageConfigProfShared
+      packageConfigProfExe
+      packageConfigProfDetail
+      packageConfigProfLibDetail
+      packageConfigConfigureArgs
+      packageConfigOptimization
+      packageConfigProgPrefix
+      packageConfigProgSuffix
+      packageConfigExtraLibDirs
+      packageConfigExtraLibDirsStatic
+      packageConfigExtraFrameworkDirs
+      packageConfigExtraIncludeDirs
+      packageConfigGHCiLib
+      packageConfigSplitSections
+      packageConfigSplitObjs
+      packageConfigStripExes
+      packageConfigStripLibs
+      packageConfigTests
+      packageConfigBenchmarks
+      packageConfigCoverage
+      packageConfigRelocatable
+      packageConfigDebugInfo
+      packageConfigDumpBuildInfo
+      packageConfigRunTests
+      packageConfigDocumentation
+      packageConfigHaddockHoogle
+      packageConfigHaddockHtml
+      packageConfigHaddockHtmlLocation
+      packageConfigHaddockForeignLibs'
+      packageConfigHaddockExecutables'
+      packageConfigHaddockTestSuites'
+      packageConfigHaddockBenchmarks'
+      packageConfigHaddockInternal
+      packageConfigHaddockCss
+      packageConfigHaddockLinkedSource
+      packageConfigHaddockQuickJump
+      packageConfigHaddockHscolourCss
+      packageConfigHaddockContents
+      packageConfigHaddockIndex
+      packageConfigHaddockBaseUrl
+      packageConfigHaddockResourcesDir
+      packageConfigHaddockOutputDir
+      packageConfigHaddockUseUnicode
+      packageConfigHaddockForHackage
+      packageConfigTestHumanLog
+      packageConfigTestMachineLog
+      packageConfigTestShowDetails
+      packageConfigTestKeepTix
+      packageConfigTestWrapper
+      packageConfigTestFailWhenNoTestSuites
+      packageConfigTestTestOptions
+      packageConfigBenchmarkOptions =
+        PackageConfig
+          { -- The haddock-al` field provides a default value, but explicit declarations can override it
+            packageConfigHaddockForeignLibs = haddockAll <> packageConfigHaddockForeignLibs'
+          , packageConfigHaddockExecutables = haddockAll <> packageConfigHaddockExecutables'
+          , packageConfigHaddockTestSuites = haddockAll <> packageConfigHaddockTestSuites'
+          , packageConfigHaddockBenchmarks = haddockAll <> packageConfigHaddockBenchmarks'
+          , ..
+          }
 
 packageConfigCoverageGrammar :: ParsecFieldGrammar PackageConfig (Distribution.Simple.Flag.Flag Bool)
 packageConfigCoverageGrammar =
