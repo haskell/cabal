@@ -358,7 +358,7 @@ instance Parsec DebugInfoLevel where
   parsec = parsecDebugInfoLevel
 
 parsecDebugInfoLevel :: CabalParsing m => m DebugInfoLevel
-parsecDebugInfoLevel = flagToDebugInfoLevel <$> pure <$> parsecToken
+parsecDebugInfoLevel = flagToDebugInfoLevel . pure <$> parsecToken
 
 flagToDebugInfoLevel :: Maybe String -> DebugInfoLevel
 flagToDebugInfoLevel Nothing = NormalDebugInfo
