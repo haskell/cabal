@@ -15,7 +15,7 @@ module Distribution.Fields.ParseResult
   , getCabalSpecVersion
   , setCabalSpecVersion
   , withoutWarnings
-  , liftPR
+  , liftParseResult
   ) where
 
 import Distribution.Compat.Prelude
@@ -63,8 +63,8 @@ runParseResult pr = unPR pr emptyPRState failure success
     success (PRState warns (err : errs) v) _ = (warns, Left (v, err :| errs))
 
 -- | Chain parsing operations that involve 'IO' actions.
-liftPR :: (a -> IO (ParseResult b)) -> ParseResult a -> IO (ParseResult b)
-liftPR f pr = unPR pr emptyPRState failure success
+liftParseResult :: (a -> IO (ParseResult b)) -> ParseResult a -> IO (ParseResult b)
+liftParseResult f pr = unPR pr emptyPRState failure success
   where
     failure s = return $ PR $ \s' failure' _ -> failure' (concatPRState s s')
     success s a = do
