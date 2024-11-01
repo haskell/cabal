@@ -864,8 +864,8 @@ checkGlobFile cv ddir title fp = do
         exist <- doesFileExist po filepath
         return $
           if not exist
-          then [PackageBuildWarning $ GlobNoMatch title filepath ]
-          else []
+            then [PackageBuildWarning $ GlobNoMatch title filepath]
+            else []
     Right (Right parsedGlob) -> do
       liftInt ciPreDistOps $ \po -> do
         rs <- runDirFileGlobM po dir parsedGlob
@@ -1026,20 +1026,23 @@ checkMissingDocs dgs esgs edgs efgs = do
         -- 2. Realise Globs.
         let realGlob t =
               concatMap globMatches
-                <$> mapM (\efpg ->
-                  case efpg of
-                    Left filepath -> do
-                      case mpackageOps of
-                        Nothing ->
-                          pure []
-                        Just packageOps -> do
-                          exist <- doesFileExist packageOps filepath
-                          pure $
-                            if exist
-                            then [GlobMatch filepath]
-                            else [] -- TODO: probably should signal failure here
-                    Right glob ->
-                      runDirFileGlobM ops "" glob) t
+                <$> mapM
+                  ( \efpg ->
+                      case efpg of
+                        Left filepath -> do
+                          case mpackageOps of
+                            Nothing ->
+                              pure []
+                            Just packageOps -> do
+                              exist <- doesFileExist packageOps filepath
+                              pure $
+                                if exist
+                                  then [GlobMatch filepath]
+                                  else [] -- TODO: probably should signal failure here
+                        Right glob ->
+                          runDirFileGlobM ops "" glob
+                  )
+                  t
         rgs <- realGlob dgs
         res <- realGlob esgs
         red <- realGlob edgs

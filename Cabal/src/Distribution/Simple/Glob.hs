@@ -167,7 +167,7 @@ matchDirFileGlobWithDie verbosity rip version mbWorkDir symPath =
         Right (Left filepath) -> do
           exist <- doesFileExist (dir </> filepath)
           if exist
-            then pure [ unsafeMakeSymbolicPath filepath ]
+            then pure [unsafeMakeSymbolicPath filepath]
             else rip verbosity $ MatchDirFileGlobErrors ["The filepath '" <> filepath <> "' listed in Cabal package does not exist on disk."]
         Right (Right glob) -> do
           results <- runDirFileGlob verbosity (Just version) dir glob
@@ -225,7 +225,7 @@ matchDirFileGlobWithDie verbosity rip version mbWorkDir symPath =
 parseFileGlob :: CabalSpecVersion -> FilePath -> Either GlobSyntaxError (Either FilePath Glob)
 parseFileGlob _version filepath
   | all (`notElem` filepath) "*{}," =
-    Right (Left filepath)
+      Right (Left filepath)
 parseFileGlob version filepath = case reverse (splitDirectories filepath) of
   [] ->
     Left EmptyGlob
