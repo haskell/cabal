@@ -1,0 +1,30 @@
+#
+# Configuration for cabal validation and maybe bootstrapping later.
+# Hopefully this will become the central configuration repository
+# for cabal, with workflows, the `Makefile`, etc. pulling from it.
+#
+# This is a simplified YAML with a few extensions of its own, such
+# as being able to reference the values of previously defined keys.
+#
+
+# note: these three must be elements of GHC_FOR_VALIDATE!
+GHC_FOR_RELEASE: "9.10.2"
+GHC_FOR_SOLVER_BENCHMARKS: $(GHC_FOR_RELEASE)
+GHC_FOR_COMPLETE_HACKAGE_TESTS: $(GHC_FOR_RELEASE)
+# these will be decoded with fromJSON, and must be quoted to keep YAML from making objects
+# If you remove something from here, then add it to GHC_FOR_VALIDATE_OLD.
+# Also a removed GHC from here means that we are actually dropping
+# support, so the PR *must* have a changelog entry.
+# validate + bootstrap
+GHC_FOR_VALIDATE: '["9.12.2", "9.10.2", "9.8.4", "9.6.7", "9.4.8", "9.2.8"]'
+# validate only
+GHC_FOR_VALIDATE_ONLY: '["9.0.2", "8.10.7", "8.8.4"]'
+# only check that we can drive their Cabal, not a full validate run
+## GHC 7.10.3 does not install on ubuntu-22.04 with ghcup.
+## Older GHCs are not supported by ghcup in the first place.
+GHC_FOR_VALIDATE_OLD: '["8.6.5", "8.4.4", "8.2.2", "8.0.2"]'
+# @@@ Where's 8.6.5?
+#
+COMMON_FLAGS: "-j 2 -v"
+# not yet used; LTSes now delayed until GHC also comes up with an LTS
+LTS_BRANCH: ""

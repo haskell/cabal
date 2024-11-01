@@ -1,0 +1,61 @@
+#
+# Verify that a `cabal` can build itself. Use the `validate-build` action to
+# build the `cabal` being tested. This is separated out so it can be reused by
+# a future tier-2 job.
+#
+# The only required input is the ghc version to build with (`ghc`). The other inputs are
+# generally for special purposes:
+#
+# - `allow-newer` and `constraints` lines, for manual jobs
+# - shell (override on Windows because the default is the wrong version) (`shell`)
+# - whether to use the cache (`with_cache`)
+#
+# There is only one output: the path to the installed (main) ghc.
+#
+
+name: Dogfooding cabal-install on a ghc/platform
+description: Run a cabal-install uncached validate from a previously built binary
+
+inputs:
+  ghc:
+    description: ghc version to use
+    required: true
+  shell:
+    description: shell to use
+    required: false
+    default: 'bash'
+  allow-newer:
+    description: allow-newer line
+    required: false
+  constraints:
+    description: constraints line
+    required: false
+
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/cabal-setup
+      with:
+        ghc: ${{ inputs.ghc }}
+        shell: ${{ inputs.shell }}
+        allow-newer: ${{ inputs.allow_newer }}
+        constraints: ${{ inputs.constraints }}
+        # We don't use cache to force a build with a fresh store dir and build dir
+        # This way we check cabal can build all its dependencies
+        with_cache: 'false'
+
+    - name: Download cabal executable from workflow artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: cabal-${{ runner.os }}-${{ env.CABAL_ARCH }}
+        path: cabal-head
+
+    - name: Untar the cabal executable
+      shell: ${{ inputs.shell }}
+      run: |
+        tar -xzf "./cabal-head/cabal-head-${{ runner.os }}-$CABAL_ARCH.tar.gz" -C cabal-head
+
+    - name: Build using cabal HEAD
+      shell: ${{ inputs.shell }}
+      run: |
+        sh validate.sh $COMMON_FLAGS --with-cabal ./cabal-head/cabal -s build

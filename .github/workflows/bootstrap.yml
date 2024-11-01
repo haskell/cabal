@@ -15,11 +15,64 @@ on:
       - created
 
 jobs:
+
+  config:
+    runs-on: ubuntu-latest
+    # `matrix` can't access `env`, but it can access `outputs` from `needs` jobs.
+    # So we have to "export" some things here as job outputs. Additionally, we can't
+    # load `env` persistently from here. But we can export a string that can be `run`
+    # to load up the environment for individual jobs. This may change later: GitHub
+    # claims that YAML anchors are coming later in 2025.
+    outputs:
+      # expose the configuration variables for use by jobs
+      GHC_FOR_RELEASE: ${{ steps.conf.outputs['GHC_FOR_RELEASE'] }}
+      GHC_FOR_SOLVER_BENCHMARKS: ${{ steps.conf.outputs['GHC_FOR_SOLVER_BENCHMARKS'] }}
+      GHC_FOR_COMPLETE_HACKAGE_TESTS: ${{ steps.conf.outputs['GHC_FOR_COMPLETE_HACKAGE_TESTS'] }}
+      GHC_FOR_VALIDATE: ${{ steps.conf.outputs['GHC_FOR_VALIDATE'] }}
+      GHC_FOR_VALIDATE_ONLY: ${{ steps.conf.outputs['GHC_FOR_VALIDATE_ONLY'] }}
+      GHC_FOR_VALIDATE_OLD: ${{ steps.conf.outputs['GHC_FOR_VALIDATE_OLD'] }}
+      GHC_FOR_VALIDATE_ALL: ${{ steps.validates.outputs.result }}
+      COMMON_FLAGS: ${{ steps.conf.outputs['COMMON_FLAGS'] }}
+      LTS_RELEASE: ${{ steps.conf.outputs['LTS_RELEASE'] }}
+      # convenience for loading these into the environment
+      env: |
+        echo "GHC_FOR_RELEASE='${{ steps.conf.outputs.GHC_FOR_RELEASE }}'" >> "$GITHUB_ENV"
+        echo "GHC_FOR_SOLVER_BENCHMARKS='${{ steps.conf.outputs.GHC_FOR_SOLVER_BENCHMARKS }}'" >> "$GITHUB_ENV"
+        echo "GHC_FOR_COMPLETE_HACKAGE_TESTS='${{ steps.conf.outputs.GHC_FOR_COMPLETE_HACKAGE_TESTS }}'" >> "$GITHUB_ENV"
+        echo "GHC_FOR_VALIDATE='${{ steps.conf.outputs.GHC_FOR_VALIDATE }}'" >> "$GITHUB_ENV"
+        echo "GHC_FOR_VALIDATE_ONLY='${{ steps.conf.outputs.GHC_FOR_VALIDATE_ONLY }}'" >> "$GITHUB_ENV"
+        echo "GHC_FOR_VALIDATE_ALL='${{ steps.validates.outputs.result }}'" >> "$GITHUB_ENV"
+        echo "GHC_FOR_VALIDATE_OLD='${{ steps.conf.outputs.GHC_FOR_VALIDATE_OLD }}'" >> "$GITHUB_ENV"
+        echo "COMMON_FLAGS='${{ steps.conf.outputs.COMMON_FLAGS }}'" >> "$GITHUB_ENV"
+        echo "LTS_RELEASE='${{ steps.conf.outputs.LTS_RELEASE }}'" >> "$GITHUB_ENV"
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pietrobolcato/action-read-yaml@1.1.0
+        id: conf
+        with:
+          config: ${{ github.workspace }}/.github/config.yml
+
+      # a bit of a hack: combine FOR_VALIDATE and FOR_VALIDATE_ONLY
+      - uses: actions/github-script@v7
+        id: validates
+        env:
+          LIST1: ${{ steps.conf.outputs['GHC_FOR_VALIDATE'] }}
+          LIST2: ${{ steps.conf.outputs['GHC_FOR_VALIDATE_ONLY'] }}
+        with:
+          script: |
+            const list1 = process.env.LIST1
+            const list2 = process.env.LIST2
+            return [...JSON.parse(list1), ...JSON.parse(list2)]
+
   bootstrap:
+    needs: config
     strategy:
       matrix:
         os: [ubuntu-latest]
-        ghc: ["9.2.8", "9.4.8", "9.6.7", "9.8.4", "9.10.2", "9.12.2"]
+        # see .github/config.yml
+        ghc: ${{ fromJSON(needs.config.outputs.GHC_FOR_VALIDATE) }}
+#        ghc: ${{ fromJSON('["9.12.2", "9.10.2", "9.8.4", "9.6.7", "9.4.8", "9.2.8"]') }}
         include:
           - os: macos-latest
             ghc: "9.2.8"
@@ -41,6 +94,7 @@ jobs:
           restore-keys: bootstrap-${{ runner.os }}-${{ matrix.ghc }}-20221115-
 
       - uses: actions/checkout@v5
+
       - uses: haskell-actions/setup@v2
         with:
           ghc-version: ${{ matrix.ghc }}

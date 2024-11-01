@@ -1,0 +1,55 @@
+#
+# Validate that `cabal` can drive older ghc versions' `Cabal` libraries. Assumes it
+# is being run in an Ubuntu container. This is separated out so it can be reused by
+# a future tier-2 job.
+#
+# Inputs:
+# - the ghc to use to build `cabal` (`ghc`)
+# - the old ghc version to test (`extra-ghc`)
+# - shell (not typically needed here because this only runs on Ubuntu)
+#
+
+name: Validate old ghcs
+description: Run a Cabal-only validate on an older ghc version
+
+inputs:
+  ghc:
+    description: ghc version to use
+    required: true
+  extra-ghc:
+    description: old ghc version to test
+    required: true
+  shell:
+    description: shell to use
+    required: false
+    default: 'bash'
+
+runs:
+  using: composite
+  steps:
+    - name: Install prerequisites for old GHCs
+      shell: ${{ inputs.shell }}
+      run: |
+        sudo apt-get update
+        sudo apt-get install libncurses5 libtinfo5
+
+    - uses: ./.github/actions/cabal-setup
+      with:
+        ghc: ${{ inputs.ghc }}
+        extra-ghc: ${{ inputs.extra-ghc }}
+
+    - name: GHC versions
+      shell: ${{ inputs.shell }}
+      run: |
+        ghc --version
+        "ghc-${{ inputs.extra-ghc }}" --version
+
+    - name: Validate build
+      shell: ${{ inputs.shell }}
+      run: |
+        sh validate.sh $COMMON_FLAGS -s build
+
+    - name: "Validate lib-suite-extras --extra-hc ghc-${{ inputs.extra-ghc }}"
+      shell: ${{ inputs.shell }}
+      run: |
+        sh validate.sh $COMMON_FLAGS --lib-only -s lib-suite-extras --extra-hc "ghc-${{ inputs.extra-ghc }}"
