@@ -181,6 +181,6 @@ packageConfigFieldGrammar knownPrograms =
 packageConfigCoverageGrammar :: ParsecFieldGrammar PackageConfig (Distribution.Simple.Flag.Flag Bool)
 packageConfigCoverageGrammar =
   (<>)
-    <$> optionalFieldDef "library-coverage" L.packageConfigCoverage mempty
+    <$> optionalFieldDef "coverage" L.packageConfigCoverage mempty
+    <*> optionalFieldDef "library-coverage" L.packageConfigCoverage mempty
       ^^^ deprecatedSince CabalSpecV1_22 "Please use 'coverage' field instead."
-    <*> optionalFieldDef "coverage" L.packageConfigCoverage mempty

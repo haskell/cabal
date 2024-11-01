@@ -88,6 +88,7 @@ parserTests =
     , testCase "test program-locations concatenation" testProgramLocationsConcat
     , testCase "test program-options concatenation" testProgramOptionsConcat
     , testCase "test allow-newer and allow-older concatenation" testRelaxDepsConcat
+    , testCase "test library-coverage overwrites coverage" testLibraryCoverage
     ]
 
 testPackages :: Assertion
@@ -507,6 +508,11 @@ testRelaxDepsConcat = do
             , RelaxedDep (RelaxDepScopePackageId (PackageIdentifier (mkPackageName "containers") (mkVersion [0, 7]))) RelaxDepModNone (RelaxDepSubjectPkg (mkPackageName "array"))
             ]
 
+-- | Tests that if both library-coverage and coverage flags are specified, library-coverage is used.
+testLibraryCoverage :: Assertion
+testLibraryCoverage = do
+  (config, legacy) <- readConfigDefault "library-coverage"
+  assertConfigEquals (Flag False) config legacy (packageConfigCoverage . projectConfigLocalPackages . condTreeData)
 -------------------------------------------------------------------------------
 -- Test Utilities
 -------------------------------------------------------------------------------
