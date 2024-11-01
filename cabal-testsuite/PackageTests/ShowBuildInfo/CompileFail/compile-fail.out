@@ -1,4 +1,6 @@
 # cabal build
+Configuration is affected by the following files:
+- cabal.project
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
@@ -13,6 +15,8 @@ Building test suite 'CompileFail-test' for CompileFail-0.1.0.0...
 Error: [Cabal-7125]
 Failed to build CompileFail-0.1.0.0-inplace-CompileFail-test.
 # cabal build
+Configuration is affected by the following files:
+- cabal.project
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - CompileFail-0.1.0.0 (lib:failing) (first run)

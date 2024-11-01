@@ -111,7 +111,7 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   --          +-- hops/hops-9.config (no further imports so not cyclical)
   log "checking that imports work skipping into a subfolder and then back out again and again"
   hopping <- cabal' "v2-build" [ "--project-file=hops-0.project" ]
-  assertOutputContains "this build was affected by the following (project) config files:" hopping
+  assertOutputContains "Configuration is affected by the following files" hopping
   assertOutputContains "- hops-0.project" hopping
 
   assertOutputContains

@@ -1,4 +1,6 @@
 # cabal v2-build
+Configuration is affected by the following files:
+- cabal.project
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
@@ -11,12 +13,16 @@ Configuring executable 'qexe' for q-1.0...
 Preprocessing executable 'qexe' for q-1.0...
 Building executable 'qexe' for q-1.0...
 # cabal v2-build
+Configuration is affected by the following files:
+- cabal.project
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - p-1.0 (lib) (file P.hs changed)
 Preprocessing library for p-1.0...
 Building library for p-1.0...
 # cabal v2-build
+Configuration is affected by the following files:
+- cabal.project
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - q-1.0 (exe:qexe) (file <ROOT>/cabal.dist/work/dist/build/<ARCH>/ghc-<GHCVER>/p-1.0/cache/build changed)
