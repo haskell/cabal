@@ -1,3 +1,5 @@
 # cabal v2-sdist
+Configuration is affected by the following files:
+- cabal.project
 Error: [Cabal-7151]
 It is not possible to package only the test suites from a package for distribution. Only entire packages may be packaged for distribution.

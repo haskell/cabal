@@ -1,4 +1,6 @@
 # cabal v2-build
+Configuration is affected by the following files:
+- cabal.project
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
@@ -9,6 +11,8 @@ Building executable 'q' for q-0.1.0.0...
 Error: [Cabal-7125]
 Failed to build q-0.1.0.0-inplace-q.
 # cabal v2-build
+Configuration is affected by the following files:
+- cabal.project
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:

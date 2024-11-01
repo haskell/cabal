@@ -1,4 +1,6 @@
 # cabal v2-run
+Configuration is affected by the following files:
+- cabal.project
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
@@ -7,9 +9,19 @@ Configuring executable 'foo' for Single-1.0...
 Preprocessing executable 'foo' for Single-1.0...
 Building executable 'foo' for Single-1.0...
 # cabal v2-run
+Configuration is affected by the following files:
+- cabal.project
 # cabal v2-run
+Configuration is affected by the following files:
+- cabal.project
 # cabal v2-run
+Configuration is affected by the following files:
+- cabal.project
 # cabal v2-run
+Configuration is affected by the following files:
+- cabal.project
 # cabal v2-run
+Configuration is affected by the following files:
+- cabal.project
 Error: [Cabal-7070]
 Cannot run the package bar, it is not in this project (either directly or indirectly). If you want to add it to the project then edit the cabal.project file.
