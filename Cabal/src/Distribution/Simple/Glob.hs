@@ -164,7 +164,12 @@ matchDirFileGlobWithDie verbosity rip version mbWorkDir symPath =
       dir = maybe "." getSymbolicPath mbWorkDir
    in case parseFileGlob version rawFilePath of
         Left err -> rip verbosity $ MatchDirFileGlob (explainGlobSyntaxError rawFilePath err)
-        Right glob -> do
+        Right (Left filepath) -> do
+          exist <- doesFileExist (dir </> filepath)
+          if exist
+            then pure [ unsafeMakeSymbolicPath filepath ]
+            else rip verbosity $ MatchDirFileGlobErrors ["The filepath '" <> filepath <> "' listed in Cabal package does not exist on disk."]
+        Right (Right glob) -> do
           results <- runDirFileGlob verbosity (Just version) dir glob
           let missingDirectories =
                 [missingDir | GlobMissingDirectory missingDir <- results]
@@ -213,7 +218,14 @@ matchDirFileGlobWithDie verbosity rip version mbWorkDir symPath =
 
 -- ** Parsing globs in a cabal package
 
-parseFileGlob :: CabalSpecVersion -> FilePath -> Either GlobSyntaxError Glob
+-- | This function returns a nested 'Either' - If the resulting 'Glob'
+-- would be a completely literal file-path, then we return a @'Right'
+-- ('Left' filepath)@. This allows code to avoid going through an expensive
+-- 'Glob' match when a much faster filepath operation is available.
+parseFileGlob :: CabalSpecVersion -> FilePath -> Either GlobSyntaxError (Either FilePath Glob)
+parseFileGlob _version filepath
+  | all (`notElem` filepath) "*{}," =
+    Right (Left filepath)
 parseFileGlob version filepath = case reverse (splitDirectories filepath) of
   [] ->
     Left EmptyGlob
@@ -230,7 +242,7 @@ parseFileGlob version filepath = case reverse (splitDirectories filepath) of
             | otherwise ->
                 Left LiteralFileNameGlobStar
 
-        foldM addStem finalSegment segments
+        Right <$> foldM addStem finalSegment segments
     | otherwise -> Left VersionDoesNotSupportGlobStar
   (filename : segments) -> do
     pat <- case splitExtensions filename of
@@ -244,7 +256,7 @@ parseFileGlob version filepath = case reverse (splitDirectories filepath) of
         | '*' `elem` filename -> Left StarInFileName
         | otherwise -> Right (GlobFile [Literal filename])
 
-    foldM addStem pat segments
+    Right <$> foldM addStem pat segments
   where
     addStem pat seg
       | '*' `elem` seg = Left StarInDirectory

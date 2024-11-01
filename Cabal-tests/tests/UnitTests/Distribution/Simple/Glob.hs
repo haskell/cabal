@@ -11,7 +11,7 @@ import Data.Maybe (mapMaybe)
 import Distribution.Simple.Glob
 import qualified Distribution.Verbosity as Verbosity
 import Distribution.CabalSpecVersion
-import System.Directory (createDirectoryIfMissing)
+import System.Directory (createDirectoryIfMissing, doesFileExist)
 import System.FilePath ((</>), splitFileName, normalise)
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Tasty
@@ -101,14 +101,23 @@ testMatchesVersion version pat expected = do
   checkIO globPat
   where
     isEqual = (==) `on` (sort . fmap (fmap normalise))
-    checkPure globPat = do
+    checkPure (Left filepath) = do
+      unless (expected == [GlobMatch filepath]) $ do
+        assertFailure $ "Literal filepath did not match glob given: '" <> filepath <> "', globs: " <> show expected
+    checkPure (Right globPat) = do
       let actual = mapMaybe (\p -> (p <$) <$> fileGlobMatches version globPat p) sampleFileNames
           -- We drop directory matches from the expected results since the pure
           -- check can't identify that kind of match.
           expected' = filter (\case GlobMatchesDirectory _ -> False; _ -> True) expected
       unless (sort expected' == sort actual) $
         assertFailure $ "Unexpected result (pure matcher): " ++ show actual
-    checkIO globPat =
+    checkIO (Left filepath) = do
+      withSystemTempDirectory "globstar-sample" $ \tmpdir -> do
+        makeSampleFiles tmpdir
+        exist <- doesFileExist (tmpdir </> filepath)
+        unless exist $
+          assertFailure $ "Literal filepath did not exist: (impure matcher): " ++ show filepath
+    checkIO (Right globPat) =
       withSystemTempDirectory "globstar-sample" $ \tmpdir -> do
         makeSampleFiles tmpdir
         actual <- runDirFileGlob Verbosity.normal (Just version) tmpdir globPat

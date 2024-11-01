@@ -859,7 +859,14 @@ checkGlobFile cv ddir title fp = do
   case parseFileGlob cv fp of
     -- We just skip over parse errors here; they're reported elsewhere.
     Left _ -> return ()
-    Right parsedGlob -> do
+    Right (Left filepath) -> do
+      liftInt ciPackageOps $ \po -> do
+        exist <- doesFileExist po filepath
+        return $
+          if not exist
+          then [PackageBuildWarning $ GlobNoMatch title filepath ]
+          else []
+    Right (Right parsedGlob) -> do
       liftInt ciPreDistOps $ \po -> do
         rs <- runDirFileGlobM po dir parsedGlob
         return $ checkGlobResult title fp rs
@@ -999,14 +1006,14 @@ pd2gpd pd = gpd
 -- present in our .cabal file.
 checkMissingDocs
   :: Monad m
-  => [Glob] -- data-files globs.
-  -> [Glob] -- extra-source-files globs.
-  -> [Glob] -- extra-doc-files globs.
-  -> [Glob] -- extra-files globs.
+  => [Either FilePath Glob] -- data-files globs.
+  -> [Either FilePath Glob] -- extra-source-files globs.
+  -> [Either FilePath Glob] -- extra-doc-files globs.
+  -> [Either FilePath Glob] -- extra-files globs.
   -> CheckM m ()
 checkMissingDocs dgs esgs edgs efgs = do
   extraDocSupport <- (>= CabalSpecV1_18) <$> asksCM ccSpecVersion
-
+  mpackageOps <- asksCM $ ciPackageOps . ccInterface
   -- Everything in this block uses CheckPreDistributionOps interface.
   liftInt
     ciPreDistOps
@@ -1019,7 +1026,20 @@ checkMissingDocs dgs esgs edgs efgs = do
         -- 2. Realise Globs.
         let realGlob t =
               concatMap globMatches
-                <$> mapM (runDirFileGlobM ops "") t
+                <$> mapM (\efpg ->
+                  case efpg of
+                    Left filepath -> do
+                      case mpackageOps of
+                        Nothing ->
+                          pure []
+                        Just packageOps -> do
+                          exist <- doesFileExist packageOps filepath
+                          pure $
+                            if exist
+                            then [GlobMatch filepath]
+                            else [] -- TODO: probably should signal failure here
+                    Right glob ->
+                      runDirFileGlobM ops "" glob) t
         rgs <- realGlob dgs
         res <- realGlob esgs
         red <- realGlob edgs

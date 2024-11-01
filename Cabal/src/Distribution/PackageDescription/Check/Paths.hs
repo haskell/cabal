@@ -169,7 +169,7 @@ checkGlob
   :: Monad m
   => CabalField -- .cabal field we are checking.
   -> FilePath -- glob filepath pattern
-  -> CheckM m (Maybe Glob)
+  -> CheckM m (Maybe (Either FilePath Glob))
 checkGlob title pat = do
   ver <- asksCM ccSpecVersion
 
@@ -181,7 +181,9 @@ checkGlob title pat = do
             GlobSyntaxError title (explainGlobSyntaxError pat e)
         )
       return Nothing
-    Right wglob -> do
+    Right (Left filepath) -> do
+      pure (Just (Left filepath))
+    Right (Right wglob) -> do
       -- \* Miscellaneous checks on sane glob.
       -- Checks for recursive glob in root.
       checkP
@@ -189,7 +191,7 @@ checkGlob title pat = do
         ( PackageDistSuspiciousWarn $
             RecursiveGlobInRoot title pat
         )
-      return (Just wglob)
+      return (Just (Right wglob))
 
 -- | Whether a path is a good relative path.  We aren't worried about perfect
 -- cross-platform compatibility here; this function just checks the paths in
