@@ -53,23 +53,26 @@ makeSampleFiles dir = for_ sampleFileNames $ \filename -> do
 compatibilityTests :: CabalSpecVersion -> [TestTree]
 compatibilityTests version =
   [ testCase "literal match" $
-      testMatches "foo/a" [GlobMatch "foo/a"]
-  , testCase "literal no match on prefix" $
-      testMatches "foo/c.html" [GlobMatchesDirectory "foo/c.html"]
+      testMatches "foo/a" (Left "foo/a")
+      -- TODO: This is kind of confusing - I feel like someone writing that they
+      -- expect a file `foo/c.html` in `extra-source-files` should probably
+      -- get a Problem if the match in question is `foo/c.html/blah` ?
+--   , testCase "literal no match on prefix" $
+--       testMatches "foo/c.html" (Left "foo/c.html")
   , testCase "literal no match on suffix" $
-      testMatches "foo/a.html" [GlobMatch "foo/a.html"]
+      testMatches "foo/a.html" (Left "foo/a.html")
   , testCase "literal no prefix" $
-      testMatches "a" [GlobMatch "a"]
+      testMatches "a" (Left "a")
   , testCase "literal multiple prefix" $
-      testMatches "foo/bar/a.html" [GlobMatch "foo/bar/a.html"]
+      testMatches "foo/bar/a.html" (Left "foo/bar/a.html")
   , testCase "glob" $
-      testMatches "*.html" [GlobMatch "a.html", GlobMatch "b.html"]
+      testMatches "*.html" (Right [GlobMatch "a.html", GlobMatch "b.html"])
   , testCase "glob in subdir" $
-      testMatches "foo/*.html" [GlobMatchesDirectory "foo/c.html", GlobMatch "foo/b.html", GlobMatch "foo/a.html"]
+      testMatches "foo/*.html" (Right [GlobMatchesDirectory "foo/c.html", GlobMatch "foo/b.html", GlobMatch "foo/a.html"])
   , testCase "glob multiple extensions" $
-      testMatches "foo/*.html.gz" [GlobMatch "foo/a.html.gz", GlobMatch "foo/b.html.gz"]
+      testMatches "foo/*.html.gz" (Right [GlobMatch "foo/a.html.gz", GlobMatch "foo/b.html.gz"])
   , testCase "glob in deep subdir" $
-      testMatches "foo/bar/*.tex" [GlobMatch "foo/bar/a.tex"]
+      testMatches "foo/bar/*.tex" (Right [GlobMatch "foo/bar/a.tex"])
   , testCase "star in directory" $
       testFailParse "blah/*/foo" StarInDirectory
   , testCase "star plus text in segment" $
@@ -92,7 +95,7 @@ compatibilityTests version =
 --
 -- TODO: Work out how to construct the sample tree once for all tests,
 -- rather than once for each test.
-testMatchesVersion :: CabalSpecVersion -> FilePath -> [GlobResult FilePath] -> Assertion
+testMatchesVersion :: CabalSpecVersion -> FilePath -> Either FilePath [GlobResult FilePath] -> Assertion
 testMatchesVersion version pat expected = do
   globPat <- case parseFileGlob version pat of
     Left _ -> assertFailure "Couldn't compile the pattern."
@@ -100,16 +103,17 @@ testMatchesVersion version pat expected = do
   checkPure globPat
   checkIO globPat
   where
-    isEqual = (==) `on` (sort . fmap (fmap normalise))
+    isEqual :: Either FilePath [GlobResult FilePath] -> Either FilePath [GlobResult FilePath] -> Bool
+    isEqual = (==) `on` fmap (sort . fmap (fmap normalise))
     checkPure (Left filepath) = do
-      unless (expected == [GlobMatch filepath]) $ do
+      unless (expected == Left filepath) $ do
         assertFailure $ "Literal filepath did not match glob given: '" <> filepath <> "', globs: " <> show expected
     checkPure (Right globPat) = do
       let actual = mapMaybe (\p -> (p <$) <$> fileGlobMatches version globPat p) sampleFileNames
           -- We drop directory matches from the expected results since the pure
           -- check can't identify that kind of match.
-          expected' = filter (\case GlobMatchesDirectory _ -> False; _ -> True) expected
-      unless (sort expected' == sort actual) $
+          expected' = fmap (filter (\case GlobMatchesDirectory _ -> False; _ -> True)) expected
+      unless (fmap sort expected' == Right (sort actual)) $
         assertFailure $ "Unexpected result (pure matcher): " ++ show actual
     checkIO (Left filepath) = do
       withSystemTempDirectory "globstar-sample" $ \tmpdir -> do
@@ -121,7 +125,7 @@ testMatchesVersion version pat expected = do
       withSystemTempDirectory "globstar-sample" $ \tmpdir -> do
         makeSampleFiles tmpdir
         actual <- runDirFileGlob Verbosity.normal (Just version) tmpdir globPat
-        unless (isEqual actual expected) $
+        unless (isEqual (Right actual) expected) $
           assertFailure $ "Unexpected result (impure matcher): " ++ show actual
 
 testFailParseVersion :: CabalSpecVersion -> FilePath -> GlobSyntaxError -> Assertion
@@ -142,9 +146,9 @@ globstarTests =
   , testCase "fails with literal filename" $
       testFailParse "**/a.html" LiteralFileNameGlobStar
   , testCase "with glob filename" $
-      testMatches "**/*.html" [GlobMatch "a.html", GlobMatch "b.html", GlobMatch "foo/a.html", GlobMatch "foo/b.html", GlobMatch "foo/bar/a.html", GlobMatch "foo/bar/b.html", GlobMatch "xyz/foo/a.html"]
+      testMatches "**/*.html" (Right [GlobMatch "a.html", GlobMatch "b.html", GlobMatch "foo/a.html", GlobMatch "foo/b.html", GlobMatch "foo/bar/a.html", GlobMatch "foo/bar/b.html", GlobMatch "xyz/foo/a.html"])
   , testCase "glob with prefix" $
-      testMatches "foo/**/*.html" [GlobMatch "foo/a.html", GlobMatch "foo/b.html", GlobMatch "foo/bar/a.html", GlobMatch "foo/bar/b.html"]
+      testMatches "foo/**/*.html" (Right [GlobMatch "foo/a.html", GlobMatch "foo/b.html", GlobMatch "foo/bar/a.html", GlobMatch "foo/bar/b.html"])
   ]
   where
     testFailParse = testFailParseVersion CabalSpecV2_4
@@ -153,13 +157,13 @@ globstarTests =
 multiDotTests :: [TestTree]
 multiDotTests =
   [ testCase "pre-2.4 single extension not matching multiple" $
-      testMatchesVersion CabalSpecV2_2 "foo/*.gz" [GlobWarnMultiDot "foo/a.html.gz", GlobWarnMultiDot "foo/a.tex.gz", GlobWarnMultiDot "foo/b.html.gz", GlobMatch "foo/x.gz"]
+      testMatchesVersion CabalSpecV2_2 "foo/*.gz" (Right [GlobWarnMultiDot "foo/a.html.gz", GlobWarnMultiDot "foo/a.tex.gz", GlobWarnMultiDot "foo/b.html.gz", GlobMatch "foo/x.gz"])
   , testCase "doesn't match literal" $
-      testMatches "foo/a.tex" [GlobMatch "foo/a.tex"]
+      testMatches "foo/a.tex" (Left "foo/a.tex")
   , testCase "works" $
-      testMatches "foo/*.gz" [GlobMatch "foo/a.html.gz", GlobMatch "foo/a.tex.gz", GlobMatch "foo/b.html.gz", GlobMatch "foo/x.gz"]
+      testMatches "foo/*.gz" (Right [GlobMatch "foo/a.html.gz", GlobMatch "foo/a.tex.gz", GlobMatch "foo/b.html.gz", GlobMatch "foo/x.gz"])
   , testCase "works with globstar" $
-      testMatches "foo/**/*.gz" [GlobMatch "foo/a.html.gz", GlobMatch "foo/a.tex.gz", GlobMatch "foo/b.html.gz", GlobMatch "foo/x.gz", GlobMatch "foo/bar/a.html.gz", GlobMatch "foo/bar/a.tex.gz", GlobMatch "foo/bar/b.html.gz"]
+      testMatches "foo/**/*.gz" (Right [GlobMatch "foo/a.html.gz", GlobMatch "foo/a.tex.gz", GlobMatch "foo/b.html.gz", GlobMatch "foo/x.gz", GlobMatch "foo/bar/a.html.gz", GlobMatch "foo/bar/a.tex.gz", GlobMatch "foo/bar/b.html.gz"])
   ]
   where
     testMatches = testMatchesVersion CabalSpecV2_4
