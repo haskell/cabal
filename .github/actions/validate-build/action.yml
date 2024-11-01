@@ -1,0 +1,101 @@
+#
+# Build `cabal` for validation tests
+#
+# The only required input is the ghc version to build with (`ghc`). The other inputs are
+# generally for special purposes:
+#
+# - `allow-newer` and `constraints` lines, for manual jobs
+# - whether to build a static executable (for Alpine) (`static`)
+# - shell (override on Windows because the default is the wrong version) (`shell`)
+# - whether to use the cache (`with_cache`)
+#
+
+name: Validate build
+description: Build for a full validate on a ghc version
+
+inputs:
+  ghc:
+    description: ghc version to use
+    required: true
+  allow-newer:
+    description: allow-newer line
+    required: false
+  constraints:
+    description: constraints line
+    required: false
+  static:
+    description: whether to build statically
+    required: false
+    default: 'false'
+  shell:
+    description: shell to use
+    required: false
+    default: 'bash'
+  with_cache:
+    description: whether to instantiate cache
+    required: false
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/cabal-setup
+      id: cabal-setup
+      with:
+        shell: ${{ inputs.shell }}
+        ghc: ${{ inputs.ghc }}
+        allow-newer: ${{ inputs.allow-newer }}
+        constraints: ${{ inputs.constraints }}
+        static: ${{ inputs.static }}
+        with_cache: ${{ inputs.with_cache }}
+
+    # The tool is not essential to the rest of the test suite. If
+    # hackage-repo-tool is not present, any test that requires it will
+    # be skipped.
+    # We want to keep this in the loop but we don't want to fail if
+    # hackage-repo-tool breaks or fails to support a newer GHC version.
+    - name: Install hackage-repo-tool
+      continue-on-error: true
+      shell: ${{ inputs.shell }}
+      run: |
+        cabal install --ignore-project hackage-repo-tool
+
+    - name: Validate build
+      shell: ${{ inputs.shell }}
+      run: |
+        echo ::group::Build
+        sh validate.sh $FLAGS -s build
+
+    - name: Tar cabal head executable
+      if: inputs.ghc == env.GHC_FOR_RELEASE
+      shell: ${{ inputs.shell }}
+      run: |
+        echo ::group::Tar
+        CABAL_EXEC=$(cabal list-bin --builddir=dist-newstyle-validate-ghc-${{ inputs.ghc }} --project-file=cabal.validate.project cabal-install:exe:cabal)
+        # We have to tar the executable to preserve executable permissions
+        # see https://github.com/actions/upload-artifact/issues/38
+        if [[ "${{ runner.os }}" == "Windows" ]]; then
+          # `cabal list-bin` gives us a windows path but tar needs the posix one
+          CABAL_EXEC=$(cygpath "$CABAL_EXEC")
+        fi
+        if [[ "${{ runner.os }}" == "macOS" ]]; then
+            # Workaround to avoid bsdtar corrupting the executable
+            # such that executing it after untar throws `cannot execute binary file`
+            # see https://github.com/actions/virtual-environments/issues/2619#issuecomment-788397841
+            sudo /usr/sbin/purge
+        fi
+        DIR=$(dirname "$CABAL_EXEC")
+        FILE=$(basename "$CABAL_EXEC")
+        CABAL_EXEC_TAR="cabal-head-${{ runner.os }}${{ inputs.static == 'true' && '-static' || '' }}-$CABAL_ARCH.tar.gz"
+        tar -czvf "$CABAL_EXEC_TAR" -C "$DIR" "$FILE"
+        echo "CABAL_EXEC_TAR=$CABAL_EXEC_TAR" >> "$GITHUB_ENV"
+
+    # We upload the cabal executable built with the ghc used in the release so we can:
+    # - Reuse it in the dogfooding job
+    # - Make it available in the workflow to make easier testing it locally
+    - name: Upload cabal-install executable to workflow artifacts
+      if: inputs.ghc == env.GHC_FOR_RELEASE
+      uses: actions/upload-artifact@v4
+      with:
+        name: cabal-${{ runner.os }}${{ inputs.static == 'true' && '-static' || '' }}-${{ env.CABAL_ARCH }}
+        path: ${{ env.CABAL_EXEC_TAR }}
