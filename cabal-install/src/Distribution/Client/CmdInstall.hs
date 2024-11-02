@@ -1123,8 +1123,8 @@ symlink
       overwritePolicy
       installDir
       (mkSourceBinDir unit)
-      (mkExeName exe)
       (mkFinalExeName exe)
+      (mkExeName exe)
 
 -- |
 -- -- * When 'InstallCheckOnly', warn if install would fail overwrite policy
@@ -1169,7 +1169,7 @@ installCheckUnitExes
       errorMessage installdir exe = case overwritePolicy of
         NeverOverwrite ->
           "Path '"
-            <> (installdir </> prettyShow exe)
+            <> (installdir </> mkFinalExeName exe)
             <> "' already exists. "
             <> "Use --overwrite-policy=always to overwrite."
         -- This shouldn't even be possible, but we keep it in case symlinking or
