@@ -439,6 +439,18 @@ At release time, the entries will be merged with
 In addition, if you're changing the `.cabal` file format specification you should
 add an entry in `doc/file-format-changelog.rst`.
 
+### Is my change `significant`?
+
+Use your best judgement and if unsure ask other maintainers. If your PR fixes
+a specific ticket, how busy was the discussion there? A new command or option
+most likely warrants a `significance: significant` tag, same with command
+line changes that disrupts the workflow of many users or an API change
+that requires substantial time to integrate in a program.
+
+Put yourself in the shoes of the user: would you appreciate seeing this
+change highlighted in the announcement post or release notes overview? If
+so, add `significance: significant`.
+
 ## Communicating
 
 There are a few main venues of communication:
