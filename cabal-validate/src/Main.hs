@@ -362,6 +362,14 @@ cliTests opts = do
   timedCabalBin
     opts
     "cabal-install"
+    "test:parser-tests"
+    ( jobsArgs opts
+        ++ tastyArgs opts
+    )
+
+  timedCabalBin
+    opts
+    "cabal-install"
     "test:long-tests"
     ( jobsArgs opts
         ++ tastyArgs opts
