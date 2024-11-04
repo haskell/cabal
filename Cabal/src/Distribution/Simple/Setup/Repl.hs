@@ -100,8 +100,7 @@ replCommand progDb =
     , commandDescription = Just $ \pname ->
         wrapText $
           "If the current directory contains no package, ignores COMPONENT "
-            ++ "parameters and opens an interactive interpreter session; if a "
-            ++ "sandbox is present, its package database will be used.\n"
+            ++ "parameters and opens an interactive interpreter session.\n"
             ++ "\n"
             ++ "Otherwise, (re)configures with the given or default flags, and "
             ++ "loads the interpreter with the relevant modules. For executables, "

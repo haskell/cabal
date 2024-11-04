@@ -489,9 +489,9 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     { IPI.sourcePackageId = packageId pkg
     , IPI.installedUnitId = componentUnitId clbi
     , IPI.installedComponentId_ = componentComponentId clbi
-    , IPI.instantiatedWith = componentInstantiatedWith clbi
+    , IPI.instantiatedWith = expectLibraryComponent (maybeComponentInstantiatedWith clbi)
     , IPI.sourceLibName = libName lib
-    , IPI.compatPackageKey = componentCompatPackageKey clbi
+    , IPI.compatPackageKey = expectLibraryComponent (maybeComponentCompatPackageKey clbi)
     , -- If GHC >= 8.4 we register with SDPX, otherwise with legacy license
       IPI.license =
         if ghc84
@@ -510,7 +510,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     , IPI.indefinite = componentIsIndefinite clbi
     , IPI.exposed = libExposed lib
     , IPI.exposedModules =
-        componentExposedModules clbi
+        expectLibraryComponent (maybeComponentExposedModules clbi)
           -- add virtual modules into the list of exposed modules for the
           -- package database as well.
           ++ map (\name -> IPI.ExposedModule name Nothing) (virtualModules bi)
@@ -591,7 +591,13 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
           , dynlibdir installDirs : extraLibDirs bi
           )
       | otherwise =
+-- <<<<<<< HEAD
           (libdir installDirs : dynlibdir installDirs : extraLibDirs bi, [])
+-- =======
+--           (libdir installDirs : dynlibdir installDirs : extraLibDirs', [])
+    expectLibraryComponent (Just attribute) = attribute
+    expectLibraryComponent Nothing = (error "generalInstalledPackageInfo: Expected a library component, got something else.")
+-- >>>>>>> 68333b35a (Merge branch 'mattp/skip-glob-filepaths-2' into mattp/cabal-glob-perf-improvements)
 
 -- the compiler doesn't understand the dynamic-library-dirs field so we
 -- add the dyn directory to the "normal" list in the library-dirs field

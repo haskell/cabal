@@ -44,6 +44,7 @@ pull_request_rules:
       - label=squash+merge me
       - label=merge delay passed
       - '#approved-reviews-by>=2'
+      - '-label~=^blocked:'
 
   # merge+no rebase strategy
   - actions:
@@ -55,6 +56,11 @@ pull_request_rules:
       - label=merge+no rebase
       - label=merge delay passed
       - '#approved-reviews-by>=2'
+      - '-label~=^blocked:'
+      # unlike the others, we need to force this one to be up to date
+      # because it's intended for when Mergify doesn't have permission
+      # to rebase
+      - '#commits-behind=0'
 
   # rebase+merge strategy for backports: require 1 approver instead of 2
   - actions:

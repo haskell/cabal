@@ -41,11 +41,12 @@ import qualified Text.PrettyPrint as Disp
 --  > ppTestHandler =
 --  >   PreProcessor {
 --  >     platformIndependent = True,
+--  >     ppOrdering = \_ _ -> return,
 --  >     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
 --  >       do info verbosity (inFile++" has been preprocessed to "++outFile)
 --  >          stuff <- readFile inFile
 --  >          writeFile outFile ("-- preprocessed as a test\n\n" ++ stuff)
---  >          return ExitSuccess
+--  >          return ()
 --
 --  We split the input and output file names into a base directory and the
 --  rest of the file name. The input base dir is the path in the list of search
