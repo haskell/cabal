@@ -439,7 +439,6 @@ runDirFileGlob verbosity mspec rawRoot pat = do
         if exist
           then [GlobMatch filepath]
           else []
-
     Right variablePattern -> do
       debug verbosity $ "Expanding glob '" ++ show (pretty pat) ++ "' in directory '" ++ root ++ "'."
       directoryExists <- doesDirectoryExist (root </> joinedPrefix)
