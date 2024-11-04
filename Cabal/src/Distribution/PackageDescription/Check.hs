@@ -462,18 +462,6 @@ checkPackageDescription
     mapM_ (checkPath False "license-file" PathKindFile) licPaths
     mapM_ checkLicFileExist licenseFiles_
 
-    -- § Globs.
-    dataGlobs <- mapM (checkGlob "data-files") dataFiles_
-    extraGlobs <- mapM (checkGlob "extra-source-files") extraSrcFiles_
-    docGlobs <- mapM (checkGlob "extra-doc-files") extraDocFiles_
-    -- We collect globs to feed them to checkMissingDocs.
-
-    -- § Missing documentation.
-    checkMissingDocs
-      (catMaybes dataGlobs)
-      (catMaybes extraGlobs)
-      (catMaybes docGlobs)
-
     -- § Datafield checks.
     checkSetupBuildInfo setupBuildInfo_
     mapM_ checkTestedWith testedWith_
@@ -513,10 +501,10 @@ checkPackageDescription
       (PackageBuildWarning NoCustomSetup)
 
     -- § Globs.
-    dataGlobs <- catMaybes <$> mapM (checkGlob "data-files" . getSymbolicPath) dataFiles_
-    extraSrcGlobs <- catMaybes <$> mapM (checkGlob "extra-source-files" . getSymbolicPath) extraSrcFiles_
-    docGlobs <- catMaybes <$> mapM (checkGlob "extra-doc-files" . getSymbolicPath) extraDocFiles_
-    extraGlobs <- catMaybes <$> mapM (checkGlob "extra-files" . getSymbolicPath) extraFiles_
+    dataGlobs <- catMaybes <$> mapM (checkGlob "data-files" ) dataFiles_
+    extraSrcGlobs <- catMaybes <$> mapM (checkGlob "extra-source-files" ) extraSrcFiles_
+    docGlobs <- catMaybes <$> mapM (checkGlob "extra-doc-files" ) extraDocFiles_
+    -- extraGlobs <- catMaybes <$> mapM (checkGlob "extra-files" . getSymbolicPath) extraFiles_
 
     -- Contents.
     checkConfigureExists (buildType pkg)
@@ -524,15 +512,14 @@ checkPackageDescription
     checkCabalFile (packageName pkg)
     extraSrcFilesGlobResults <- mapM (checkGlobFile "." "extra-source-files") extraSrcGlobs
     extraDocFilesGlobResults <- mapM (checkGlobFile "." "extra-doc-files") docGlobs
-    extraFilesGlobResults <- mapM (checkGlobFile "." "extra-files") extraGlobs
-    extraDataFilesGlobResults <- mapM (checkGlobFile rawDataDir "data-files") dataGlobs
+    -- extraFilesGlobResults <- mapM (checkGlobFile "." "extra-files") extraGlobs
+    extraDataFilesGlobResults <- mapM (checkGlobFile dataDir_ "data-files") dataGlobs
 
     -- § Missing documentation.
     checkMissingDocs
       extraDataFilesGlobResults
       extraSrcFilesGlobResults
       extraDocFilesGlobResults
-      extraFilesGlobResults
     where
       checkNull
         :: Monad m
@@ -997,7 +984,6 @@ checkMissingDocs
   => [[GlobResult FilePath]] -- data-files globs.
   -> [[GlobResult FilePath]] -- extra-source-files globs.
   -> [[GlobResult FilePath]] -- extra-doc-files globs.
-  -> [[GlobResult FilePath]] -- extra-files globs.
   -> CheckM m ()
 checkMissingDocs dgs esgs edgs = do
   extraDocSupport <- (>= CabalSpecV1_18) <$> asksCM ccSpecVersion
@@ -1017,7 +1003,6 @@ checkMissingDocs dgs esgs edgs = do
         let rgs = realGlob dgs
         let res = realGlob esgs
         let red = realGlob edgs
-        let ref = realGlob efgs
 
         -- 3. Check if anything in 1. is missing in 2.
         let mcs = checkDoc extraDocSupport des (rgs ++ res ++ red)
