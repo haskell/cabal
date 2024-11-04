@@ -873,7 +873,7 @@ checkGlobResult title fp rs = dirCheck ++ catMaybes (map getWarning rs)
   where
     dirCheck
       | all (not . withoutNoMatchesWarning) rs =
-          [PackageDistSuspiciousWarn $ GlobNoMatch title (show fp)]
+          [PackageDistSuspiciousWarn $ GlobNoMatch title (prettyShow fp)]
       | otherwise = []
 
     -- If there's a missing directory in play, since globs in Cabal packages
@@ -892,9 +892,9 @@ checkGlobResult title fp rs = dirCheck ++ catMaybes (map getWarning rs)
     -- suffix. This warning detects when pre-2.4 package descriptions
     -- are omitting files purely because of the stricter check.
     getWarning (GlobWarnMultiDot file) =
-      Just $ PackageDistSuspiciousWarn (GlobExactMatch title (show fp) file)
+      Just $ PackageDistSuspiciousWarn (GlobExactMatch title (prettyShow fp) file)
     getWarning (GlobMissingDirectory dir) =
-      Just $ PackageDistSuspiciousWarn (GlobNoDir title (show fp) dir)
+      Just $ PackageDistSuspiciousWarn (GlobNoDir title (prettyShow fp) dir)
     -- GlobMatchesDirectory is handled elsewhere if relevant;
     -- we can discard it here.
     getWarning (GlobMatchesDirectory _) = Nothing
