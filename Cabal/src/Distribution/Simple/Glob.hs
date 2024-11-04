@@ -432,13 +432,17 @@ runDirFileGlob verbosity mspec rawRoot pat = do
 
   case pathOrVariablePattern of
     Left filename -> do
-      let filepath = root </> joinedPrefix </> filename
-      debug verbosity $ "Treating glob as filepath literal: " ++ filepath
-      exist <- doesFileExist filepath
-      pure $
-        if exist
-          then [GlobMatch filepath]
-          else []
+      let filepath = joinedPrefix </> filename
+      debug verbosity $ "Treating glob as filepath literal '" ++ filepath ++ "' in directory '" ++ root ++ "'."
+      directoryExists <- doesDirectoryExist (root </> filepath)
+      if directoryExists
+        then pure [GlobMatchesDirectory filepath]
+        else do
+          exist <- doesFileExist (root </> filepath)
+          pure $
+            if exist
+              then [GlobMatch filepath]
+              else []
     Right variablePattern -> do
       debug verbosity $ "Expanding glob '" ++ show (pretty pat) ++ "' in directory '" ++ root ++ "'."
       directoryExists <- doesDirectoryExist (root </> joinedPrefix)
