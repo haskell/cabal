@@ -337,7 +337,7 @@ intToOptimisationLevel i
           ++ show maxLevel
   where
     minLevel = fromEnum (minBound :: OptimisationLevel)
-    maxLevel = i <= fromEnum (maxBound :: OptimisationLevel)
+    maxLevel = fromEnum (maxBound :: OptimisationLevel)
 
 -- ------------------------------------------------------------
 
