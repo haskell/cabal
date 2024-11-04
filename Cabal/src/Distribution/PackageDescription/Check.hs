@@ -169,7 +169,9 @@ checkPackageFilesGPD verbosity gpd root =
   where
     checkFilesIO =
       CheckPackageContentOps
-        { doesFileExist = System.doesFileExist . relative
+        { doesFileExist = \fp -> do
+            debug verbosity $ "doesFileExist: " <> fp
+            System.doesFileExist . relative $ fp
         , doesDirectoryExist = System.doesDirectoryExist . relative
         , getDirectoryContents = System.Directory.getDirectoryContents . relative
         , getFileContents = BS.readFile . relative
@@ -1027,8 +1029,8 @@ checkMissingDocs dgs esgs edgs efgs = do
         let realGlob t =
               concatMap globMatches
                 <$> mapM
-                  ( \efpg ->
-                      case efpg of
+                  ( \pathOrGlob ->
+                      case pathOrGlob of
                         Left filepath -> do
                           case mpackageOps of
                             Nothing ->
