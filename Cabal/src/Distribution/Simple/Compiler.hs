@@ -323,14 +323,18 @@ flagToOptimisationLevel (Just s) = case reads s of
 
 intToOptimisationLevel :: Int -> OptimisationLevel
 intToOptimisationLevel i
-  | i >= fromEnum (minBound :: OptimisationLevel)
-      && i <= fromEnum (maxBound :: OptimisationLevel) =
-      toEnum i
+  | i >= minLevel && i <= maxLevel = toEnum i
   | otherwise =
       error $
         "Bad optimisation level: "
           ++ show i
-          ++ ". Valid values are 0..2"
+          ++ ". Valid values are "
+          ++ show minLevel
+          ++ ".."
+          ++ show maxLevel
+  where
+    minLevel = fromEnum (minBound :: OptimisationLevel)
+    maxLevel = i <= fromEnum (maxBound :: OptimisationLevel)
 
 -- ------------------------------------------------------------
 
