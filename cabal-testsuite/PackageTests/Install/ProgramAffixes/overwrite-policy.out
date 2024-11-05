@@ -1,0 +1,160 @@
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - p-1.0 (exe:p) (requires build)
+Configuring p-1.0...
+Preprocessing executable 'p' for p-1.0...
+Building executable 'p' for p-1.0...
+Installing executable p in <PATH>
+Warning: The directory <ROOT>/overwrite-policy.dist/home/.cabal/store/ghc-<GHCVER>/incoming/new-<RAND><ROOT>/overwrite-policy.dist/home/.cabal/store/ghc-<GHCVER>/<PACKAGE>-<HASH>/bin is not in the system search path.
+Symlinking 'p' to '<ROOT>/overwrite-policy.dist/usr/bin/p'
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Error: [Cabal-7149]
+Path '<ROOT>/overwrite-policy.dist/usr/bin/p' already exists. Use --overwrite-policy=always to overwrite.
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Symlinking 'p' to '<ROOT>/overwrite-policy.dist/usr/bin/p'
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Symlinking 'p' to '<ROOT>/overwrite-policy.dist/usr/bin/p'
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Symlinking 'p' to '<ROOT>/overwrite-policy.dist/usr/bin/p-my-suffix'
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Error: [Cabal-7149]
+Path '<ROOT>/overwrite-policy.dist/usr/bin/p-my-suffix' already exists. Use --overwrite-policy=always to overwrite.
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Symlinking 'p' to '<ROOT>/overwrite-policy.dist/usr/bin/p-my-suffix'
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Symlinking 'p' to '<ROOT>/overwrite-policy.dist/usr/bin/p'
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Symlinking 'p' to '<ROOT>/overwrite-policy.dist/usr/bin/p'
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Symlinking 'p' to '<ROOT>/overwrite-policy.dist/usr/bin/my-prefix-p'
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Error: [Cabal-7149]
+Path '<ROOT>/overwrite-policy.dist/usr/bin/my-prefix-p' already exists. Use --overwrite-policy=always to overwrite.
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Symlinking 'p' to '<ROOT>/overwrite-policy.dist/usr/bin/my-prefix-p'
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Symlinking 'p' to '<ROOT>/overwrite-policy.dist/usr/bin/p'
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Symlinking 'p' to '<ROOT>/overwrite-policy.dist/usr/bin/p'
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Symlinking 'p' to '<ROOT>/overwrite-policy.dist/usr/bin/my-prefix-p-my-suffix'
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Error: [Cabal-7149]
+Path '<ROOT>/overwrite-policy.dist/usr/bin/my-prefix-p-my-suffix' already exists. Use --overwrite-policy=always to overwrite.
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Symlinking 'p' to '<ROOT>/overwrite-policy.dist/usr/bin/my-prefix-p-my-suffix'
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Symlinking 'p' to '<ROOT>/overwrite-policy.dist/usr/bin/p'
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Copying 'p' to '<ROOT>/overwrite-policy.dist/usr/bin/p'
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Error: [Cabal-7149]
+Path '<ROOT>/overwrite-policy.dist/usr/bin/p' already exists. Use --overwrite-policy=always to overwrite.
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Copying 'p' to '<ROOT>/overwrite-policy.dist/usr/bin/p'
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Copying 'p' to '<ROOT>/overwrite-policy.dist/usr/bin/p'
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Copying 'p' to '<ROOT>/overwrite-policy.dist/usr/bin/p-my-suffix'
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Error: [Cabal-7149]
+Path '<ROOT>/overwrite-policy.dist/usr/bin/p-my-suffix' already exists. Use --overwrite-policy=always to overwrite.
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Copying 'p' to '<ROOT>/overwrite-policy.dist/usr/bin/p-my-suffix'
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Copying 'p' to '<ROOT>/overwrite-policy.dist/usr/bin/p'
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Copying 'p' to '<ROOT>/overwrite-policy.dist/usr/bin/p'
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Copying 'p' to '<ROOT>/overwrite-policy.dist/usr/bin/my-prefix-p'
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Error: [Cabal-7149]
+Path '<ROOT>/overwrite-policy.dist/usr/bin/my-prefix-p' already exists. Use --overwrite-policy=always to overwrite.
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Copying 'p' to '<ROOT>/overwrite-policy.dist/usr/bin/my-prefix-p'
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Copying 'p' to '<ROOT>/overwrite-policy.dist/usr/bin/p'
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Copying 'p' to '<ROOT>/overwrite-policy.dist/usr/bin/p'
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Copying 'p' to '<ROOT>/overwrite-policy.dist/usr/bin/my-prefix-p-my-suffix'
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Error: [Cabal-7149]
+Path '<ROOT>/overwrite-policy.dist/usr/bin/my-prefix-p-my-suffix' already exists. Use --overwrite-policy=always to overwrite.
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Copying 'p' to '<ROOT>/overwrite-policy.dist/usr/bin/my-prefix-p-my-suffix'
+# cabal install
+Wrote tarball sdist to <ROOT>/overwrite-policy.dist/work/./dist/sdist/p-1.0.tar.gz
+Resolving dependencies...
+Copying 'p' to '<ROOT>/overwrite-policy.dist/usr/bin/p'
