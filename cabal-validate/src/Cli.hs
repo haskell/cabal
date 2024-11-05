@@ -233,8 +233,8 @@ resolveOpts opts = do
           else "cabal.validate.project"
 
       tastyArgs' =
-        "--hide-successes"
-          : maybe
+        optional (rawTastyHideSuccesses opts) "--hide-successes"
+          ++ maybe
             []
             (\tastyPattern -> ["--pattern", tastyPattern])
             (rawTastyPattern opts)
@@ -282,6 +282,7 @@ data RawOpts = RawOpts
   , rawExtraCompilers :: [FilePath]
   , rawTastyPattern :: Maybe String
   , rawTastyArgs :: [String]
+  , rawTastyHideSuccesses :: Bool
   , rawDoctest :: Bool
   , rawSteps :: [Step]
   , rawListSteps :: Bool
@@ -351,6 +352,11 @@ rawOptsParser =
           ( long "tasty-arg"
               <> help "Extra arguments to pass to Tasty test suites"
           )
+      )
+    <*> boolOption
+      True
+      "hide-successes"
+      ( help "Do not print tests that passed successfully"
       )
     <*> boolOption
       False
