@@ -1058,24 +1058,29 @@ reusingGHCCompilationArtifacts
   -> ((SymbolicPath Pkg (Path.Dir Artifacts), SymbolicPath Pkg (Path.Dir Artifacts), SymbolicPath Pkg (Path.Dir Artifacts)) -> IO r)
   -- ^ Continuation
   -> IO r
-reusingGHCCompilationArtifacts verbosity tmpFileOpts mbWorkDir lbi bi clbi version act
-  | version >= mkVersion [2, 28, 0] = do
+reusingGHCCompilationArtifacts verbosity tmpFileOpts mbWorkDir lbi bi clbi version act = do
+  let
+    vanillaOpts = componentGhcOptions normal lbi bi clbi (buildDir lbi)
+    i = interpretSymbolicPath mbWorkDir
+    iopt ghcDir = i $ fromFlag $ ghcDir vanillaOpts
+    copyDir ghcDir tmpDir = copyDirectoryRecursive verbosity (iopt ghcDir) (i tmpDir)
+
+  buildDirsExs <- (&&) <$> doesDirectoryExist (iopt ghcOptObjDir) <*> doesDirectoryExist (iopt ghcOptHiDir)
+
+  if version >= mkVersion [2, 28, 0]
+    && buildDirsExs
+    then do
       withTempDirectoryCwdEx verbosity tmpFileOpts mbWorkDir (distPrefLBI lbi) "haddock-objs" $ \tmpObjDir ->
         withTempDirectoryCwdEx verbosity tmpFileOpts mbWorkDir (distPrefLBI lbi) "haddock-his" $ \tmpHiDir -> do
           -- Re-use ghc's interface and obj files, but first copy them to
           -- somewhere where it is safe if haddock overwrites them
-          let
-            vanillaOpts = componentGhcOptions normal lbi bi clbi (buildDir lbi)
-            i = interpretSymbolicPath mbWorkDir
-            copyDir ghcDir tmpDir = copyDirectoryRecursive verbosity (i $ fromFlag $ ghcDir vanillaOpts) (i tmpDir)
           copyDir ghcOptObjDir tmpObjDir
           copyDir ghcOptHiDir tmpHiDir
           -- copyDir ghcOptStubDir tmpStubDir -- (see W.1 in Note [Hi Haddock Recompilation Avoidance])
 
           act (tmpObjDir, tmpHiDir, fromFlag $ ghcOptHiDir vanillaOpts)
-  | otherwise = do
-      withTempDirectoryCwdEx verbosity tmpFileOpts mbWorkDir (distPrefLBI lbi) "tmp" $
-        \tmpFallback -> act (tmpFallback, tmpFallback, tmpFallback)
+    else withTempDirectoryCwdEx verbosity tmpFileOpts mbWorkDir (distPrefLBI lbi) "tmp" $
+      \tmpFallback -> act (tmpFallback, tmpFallback, tmpFallback)
 
 -- ------------------------------------------------------------------------------
 
