@@ -1,0 +1,12 @@
+synopsis: Fix a bug that causes `cabal init` to crash if `git` is not installed
+packages: cabal-install
+prs: #10486
+issues: #10484 #8478
+significance:
+
+description: {
+
+- `cabal init` tries to use `git config` to guess the user's name and email.
+  It no longer crashes if there is no executable named `git` on $PATH.
+
+}
