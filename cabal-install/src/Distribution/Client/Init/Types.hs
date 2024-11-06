@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TypeApplications #-}
 
 -- |
 -- Module      :  Distribution.Client.Init.Types
@@ -320,6 +321,7 @@ class Monad m => Interactive m where
   doesFileExist :: FilePath -> m Bool
   canonicalizePathNoThrow :: FilePath -> m FilePath
   readProcessWithExitCode :: FilePath -> [String] -> String -> m (ExitCode, String, String)
+  maybeReadProcessWithExitCode :: FilePath -> [String] -> String -> m (Maybe (ExitCode, String, String))
   getEnvironment :: m [(String, String)]
   getCurrentYear :: m Integer
   listFilesInside :: (FilePath -> m Bool) -> FilePath -> m [FilePath]
@@ -357,6 +359,7 @@ instance Interactive IO where
   listFilesInside = P.listFilesInside
   listFilesRecursive = P.listFilesRecursive
 
+<<<<<<< HEAD
   putStr = P.putStr
   putStrLn = P.putStrLn
   createDirectory = P.createDirectory
@@ -366,6 +369,44 @@ instance Interactive IO where
   copyFile = P.copyFile
   renameDirectory = P.renameDirectory
   hFlush = System.IO.hFlush
+=======
+newtype SessionState = SessionState
+  { lastChosenLanguage :: (Maybe String)
+  }
+
+newSessionState :: SessionState
+newSessionState = SessionState{lastChosenLanguage = Nothing}
+
+instance Interactive PromptIO where
+  getLine = liftIO P.getLine
+  readFile = liftIO <$> P.readFile
+  getCurrentDirectory = liftIO P.getCurrentDirectory
+  getHomeDirectory = liftIO P.getHomeDirectory
+  getDirectoryContents = liftIO <$> P.getDirectoryContents
+  listDirectory = liftIO <$> P.listDirectory
+  doesDirectoryExist = liftIO <$> P.doesDirectoryExist
+  doesFileExist = liftIO <$> P.doesFileExist
+  canonicalizePathNoThrow = liftIO <$> P.canonicalizePathNoThrow
+  readProcessWithExitCode a b c = liftIO $ Process.readProcessWithExitCode a b c
+  maybeReadProcessWithExitCode a b c = liftIO $ (Just <$> Process.readProcessWithExitCode a b c) `P.catch` const @_ @IOError (pure Nothing)
+  getEnvironment = liftIO P.getEnvironment
+  getCurrentYear = liftIO P.getCurrentYear
+  listFilesInside test dir = do
+    -- test is run within a new env and not the current env
+    -- all usages of listFilesInside are pure functions actually
+    liftIO $ P.listFilesInside (\f -> liftIO $ runPromptIO (test f)) dir
+  listFilesRecursive = liftIO <$> P.listFilesRecursive
+
+  putStr = liftIO <$> P.putStr
+  putStrLn = liftIO <$> P.putStrLn
+  createDirectory = liftIO <$> P.createDirectory
+  removeDirectory = liftIO <$> P.removeDirectoryRecursive
+  writeFile a b = liftIO $ P.writeFile a b
+  removeExistingFile = liftIO <$> P.removeExistingFile
+  copyFile a b = liftIO $ P.copyFile a b
+  renameDirectory a b = liftIO $ P.renameDirectory a b
+  hFlush = liftIO <$> System.IO.hFlush
+>>>>>>> e7bc62be2 (Catch exception if git is not installed (#10486))
   message q severity msg
     | q == silent = pure ()
     | otherwise = putStrLn $ "[" ++ displaySeverity severity ++ "] " ++ msg
@@ -387,6 +428,7 @@ instance Interactive PurePrompt where
   readProcessWithExitCode !_ !_ !_ = do
     input <- pop
     return (ExitSuccess, input, "")
+  maybeReadProcessWithExitCode a b c = Just <$> readProcessWithExitCode a b c
   getEnvironment = fmap (map read) popList
   getCurrentYear = fmap read pop
   listFilesInside pred' !_ = do
