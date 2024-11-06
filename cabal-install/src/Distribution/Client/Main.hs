@@ -173,7 +173,8 @@ import Distribution.Client.Utils
   , relaxEncodingErrors
   )
 import Distribution.Client.Version
-  ( cabalInstallVersion
+  ( cabalInstallGitInfo
+  , cabalInstallVersion
   )
 
 import Distribution.Package (packageId)
@@ -227,7 +228,8 @@ import Distribution.Simple.Program
 import Distribution.Simple.Program.Db (reconfigurePrograms)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
-  ( cabalVersion
+  ( cabalGitInfo
+  , cabalVersion
   , createDirectoryIfMissingVerbose
   , dieNoVerbosity
   , dieWithException
@@ -414,9 +416,16 @@ mainWorker args = do
       putStrLn $
         "cabal-install version "
           ++ display cabalInstallVersion
+          ++ " "
+          ++ cabalInstallGitInfo
           ++ "\ncompiled using version "
           ++ display cabalVersion
           ++ " of the Cabal library "
+          ++ cabalGitInfo'
+      where
+        cabalGitInfo'
+          | cabalGitInfo == cabalInstallGitInfo = "(in-tree)"
+          | otherwise = cabalGitInfo
 
     commands = map commandFromSpec commandSpecs
     commandSpecs =
