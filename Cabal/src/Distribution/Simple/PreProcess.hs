@@ -51,7 +51,6 @@ import Distribution.Compat.Prelude
 import Distribution.Compat.Stack
 import Prelude ()
 
-import Control.Concurrent.Async
 import Distribution.Backpack.DescribeUnitId
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.ModuleName (ModuleName)
@@ -167,7 +166,7 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers =
                 ++ [autogenComponentModulesDir lbi clbi, autogenPackageModulesDir lbi]
         let hndlrs = localHandlers bi
         mods <- orderingFromHandlers verbosity dirs hndlrs (allLibModules lib clbi)
-        for_  $
+        for_ (map moduleNameSymbolicPath mods) $
           pre dirs (componentBuildDir lbi clbi) hndlrs
       (CFLib flib@ForeignLib{foreignLibBuildInfo = bi}) -> do
         debug verbosity $ "Preprocessing foreign library: " <> prettyShow (foreignLibName flib)
@@ -326,7 +325,6 @@ preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinS
                   ++ getSymbolicPath baseFile
                   ++ " in "
                   ++ intercalate ", " (map getSymbolicPath searchLoc)
-
         Just (psrcLoc, psrcRelFile) -> do
           debug verbosity $ "  Found pre-processable file: " <> prettyShow psrcLoc
           let (srcStem, ext) = splitExtension $ getSymbolicPath psrcRelFile
