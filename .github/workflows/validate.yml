@@ -478,6 +478,7 @@ jobs:
         with:
           pattern: cabal-*
           path: binaries
+          merge-multiple: true
 
       - name: Create GitHub prerelease
         uses: softprops/action-gh-release@v2
@@ -502,6 +503,7 @@ jobs:
       with:
         pattern: cabal-*
         path: binaries
+        merge-multiple: true
 
     - run: |
         # bash-ism, but we forced bash above
