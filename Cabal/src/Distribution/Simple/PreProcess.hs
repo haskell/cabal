@@ -51,11 +51,13 @@ import Distribution.Compat.Prelude
 import Distribution.Compat.Stack
 import Prelude ()
 
+import Control.Concurrent.Async
 import Distribution.Backpack.DescribeUnitId
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.ModuleName (ModuleName)
 import Distribution.Package
 import Distribution.PackageDescription as PD
+import Distribution.Pretty
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.CCompiler
 import Distribution.Simple.Compiler
@@ -159,14 +161,16 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers =
       (Nothing :: Maybe [(ModuleName, Module)])
     case comp of
       (CLib lib@Library{libBuildInfo = bi}) -> do
+        debug verbosity $ "Preprocessing library: " <> show (libName lib)
         let dirs =
               hsSourceDirs bi
                 ++ [autogenComponentModulesDir lbi clbi, autogenPackageModulesDir lbi]
         let hndlrs = localHandlers bi
         mods <- orderingFromHandlers verbosity dirs hndlrs (allLibModules lib clbi)
-        for_ (map moduleNameSymbolicPath mods) $
+        for_  $
           pre dirs (componentBuildDir lbi clbi) hndlrs
       (CFLib flib@ForeignLib{foreignLibBuildInfo = bi}) -> do
+        debug verbosity $ "Preprocessing foreign library: " <> prettyShow (foreignLibName flib)
         let flibDir = flibBuildDir lbi flib
             dirs =
               hsSourceDirs bi
@@ -186,6 +190,7 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers =
                    ]
         let hndlrs = localHandlers bi
         mods <- orderingFromHandlers verbosity dirs hndlrs (otherModules bi)
+        debug verbosity $ "Module count: " <> show (length mods)
         for_ (map moduleNameSymbolicPath mods) $
           pre dirs exeDir hndlrs
         pre (hsSourceDirs bi) exeDir (localHandlers bi) $
@@ -208,8 +213,11 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers =
           BenchmarkUnsupported tt ->
             dieWithException verbosity $ NoSupportForPreProcessingBenchmark tt
   where
-    orderingFromHandlers v d hndlrs mods =
-      foldM (\acc (_, pp) -> ppOrdering pp v d acc) mods hndlrs
+    orderingFromHandlers v d hndlrs mods = do
+      debug v $ "    orderingFromHandlers begin"
+      a <- foldM (\acc (_, pp) -> ppOrdering pp v d acc) mods hndlrs
+      debug v $ "    orderingFromHandlers end"
+      pure a
     builtinCSuffixes = map Suffix cSourceExtensions
     builtinSuffixes = builtinHaskellSuffixes ++ builtinCSuffixes
     localHandlers bi = [(ext, h bi lbi clbi) | (ext, h) <- handlers]
@@ -292,10 +300,11 @@ preprocessFile
   -- ^ fail on missing file
   -> IO ()
 preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinSuffixes handlers failOnMissing = do
+  debug verbosity $ "preprocessFile: " <> prettyShow baseFile
+  bsrcFiles <- findFileCwdWithExtension mbWorkDir builtinSuffixes (searchLoc ++ [buildAsSrcLoc]) baseFile
   -- look for files in the various source dirs with this module name
   -- and a file extension of a known preprocessor
-  psrcFiles <- findFileCwdWithExtension' mbWorkDir (map fst handlers) searchLoc baseFile
-  case psrcFiles of
+  case bsrcFiles of
     -- no preprocessor file exists, look for an ordinary source file
     -- just to make sure one actually exists at all for this module.
 
@@ -307,48 +316,56 @@ preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinS
     -- files generate source modules directly into the build dir without
     -- the rest of the build system being aware of it (somewhat dodgy)
     Nothing -> do
-      bsrcFiles <- findFileCwdWithExtension mbWorkDir builtinSuffixes (buildAsSrcLoc : searchLoc) baseFile
-      case (bsrcFiles, failOnMissing) of
-        (Nothing, True) ->
-          dieWithException verbosity $
-            CantFindSourceForPreProcessFile $
-              "can't find source for "
-                ++ getSymbolicPath baseFile
-                ++ " in "
-                ++ intercalate ", " (map getSymbolicPath searchLoc)
-        _ -> return ()
-    -- found a pre-processable file in one of the source dirs
-    Just (psrcLoc, psrcRelFile) -> do
-      let (srcStem, ext) = splitExtension $ getSymbolicPath psrcRelFile
-          psrcFile = psrcLoc </> psrcRelFile
-          pp =
-            fromMaybe
-              (error "Distribution.Simple.PreProcess: Just expected")
-              (lookup (Suffix $ safeTail ext) handlers)
-      -- Preprocessing files for 'sdist' is different from preprocessing
-      -- for 'build'.  When preprocessing for sdist we preprocess to
-      -- avoid that the user has to have the preprocessors available.
-      -- ATM, we don't have a way to specify which files are to be
-      -- preprocessed and which not, so for sdist we only process
-      -- platform independent files and put them into the 'buildLoc'
-      -- (which we assume is set to the temp. directory that will become
-      -- the tarball).
-      -- TODO: eliminate sdist variant, just supply different handlers
-      when (not forSDist || forSDist && platformIndependent pp) $ do
-        -- look for existing pre-processed source file in the dest dir to
-        -- see if we really have to re-run the preprocessor.
-        ppsrcFiles <- findFileCwdWithExtension mbWorkDir builtinSuffixes [buildAsSrcLoc] baseFile
-        recomp <- case ppsrcFiles of
-          Nothing -> return True
-          Just ppsrcFile ->
-            i psrcFile `moreRecentFile` i ppsrcFile
-        when recomp $ do
-          let destDir = i buildLoc </> takeDirectory srcStem
-          createDirectoryIfMissingVerbose verbosity True destDir
-          runPreProcessorWithHsBootHack
-            pp
-            (getSymbolicPath $ psrcLoc, getSymbolicPath $ psrcRelFile)
-            (getSymbolicPath $ buildLoc, srcStem <.> "hs")
+      psrcFiles <- findFileCwdWithExtension' mbWorkDir (map fst handlers) searchLoc baseFile
+      case psrcFiles of
+        Nothing ->
+          when failOnMissing $ do
+            dieWithException verbosity $
+              CantFindSourceForPreProcessFile $
+                "can't find source for "
+                  ++ getSymbolicPath baseFile
+                  ++ " in "
+                  ++ intercalate ", " (map getSymbolicPath searchLoc)
+
+        Just (psrcLoc, psrcRelFile) -> do
+          debug verbosity $ "  Found pre-processable file: " <> prettyShow psrcLoc
+          let (srcStem, ext) = splitExtension $ getSymbolicPath psrcRelFile
+              psrcFile = psrcLoc </> psrcRelFile
+              pp =
+                fromMaybe
+                  (error "Distribution.Simple.PreProcess: Just expected")
+                  (lookup (Suffix $ safeTail ext) handlers)
+          -- Preprocessing files for 'sdist' is different from preprocessing
+          -- for 'build'.  When preprocessing for sdist we preprocess to
+          -- avoid that the user has to have the preprocessors available.
+          -- ATM, we don't have a way to specify which files are to be
+          -- preprocessed and which not, so for sdist we only process
+          -- platform independent files and put them into the 'buildLoc'
+          -- (which we assume is set to the temp. directory that will become
+          -- the tarball).
+          -- TODO: eliminate sdist variant, just supply different handlers
+          when (not forSDist || forSDist && platformIndependent pp) $ do
+            debug verbosity "  Searching for existing pre-processed source file"
+            -- look for existing pre-processed source file in the dest dir to
+            -- see if we really have to re-run the preprocessor.
+            ppsrcFiles <- findFileCwdWithExtension mbWorkDir builtinSuffixes [buildAsSrcLoc] baseFile
+            recomp <- case ppsrcFiles of
+              Nothing -> return True
+              Just ppsrcFile ->
+                i psrcFile `moreRecentFile` i ppsrcFile
+            when recomp $ do
+              debug verbosity "  Preprocessing file. . ."
+              let destDir = i buildLoc </> takeDirectory srcStem
+              createDirectoryIfMissingVerbose verbosity True destDir
+              runPreProcessorWithHsBootHack
+                pp
+                (getSymbolicPath $ psrcLoc, getSymbolicPath $ psrcRelFile)
+                (getSymbolicPath $ buildLoc, srcStem <.> "hs")
+              debug verbosity $ "Preprocessing file complete: " <> prettyShow baseFile
+
+    -- found a non-processable file in one of the source dirs
+    Just _ -> do
+      pure ()
   where
     i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
     buildAsSrcLoc :: SymbolicPath Pkg (Dir Source)
@@ -897,20 +914,22 @@ preprocessExtras
   -> Component
   -> LocalBuildInfo
   -> IO [SymbolicPath Pkg File]
-preprocessExtras verbosity comp lbi = case comp of
-  CLib _ -> pp $ buildDir lbi
-  (CExe exe@Executable{}) -> pp $ exeBuildDir lbi exe
-  (CFLib flib@ForeignLib{}) -> pp $ flibBuildDir lbi flib
-  CTest test ->
-    case testInterface test of
-      TestSuiteUnsupported tt ->
-        dieWithException verbosity $ NoSupportPreProcessingTestExtras tt
-      _ -> pp $ testBuildDir lbi test
-  CBench bm ->
-    case benchmarkInterface bm of
-      BenchmarkUnsupported tt ->
-        dieWithException verbosity $ NoSupportPreProcessingBenchmarkExtras tt
-      _ -> pp $ benchmarkBuildDir lbi bm
+preprocessExtras verbosity comp lbi = do
+  debug verbosity $ "in preprocessExtras"
+  case comp of
+    CLib _ -> pp $ buildDir lbi
+    (CExe exe@Executable{}) -> pp $ exeBuildDir lbi exe
+    (CFLib flib@ForeignLib{}) -> pp $ flibBuildDir lbi flib
+    CTest test ->
+      case testInterface test of
+        TestSuiteUnsupported tt ->
+          dieWithException verbosity $ NoSupportPreProcessingTestExtras tt
+        _ -> pp $ testBuildDir lbi test
+    CBench bm ->
+      case benchmarkInterface bm of
+        BenchmarkUnsupported tt ->
+          dieWithException verbosity $ NoSupportPreProcessingBenchmarkExtras tt
+        _ -> pp $ benchmarkBuildDir lbi bm
   where
     pp :: SymbolicPath Pkg (Dir Build) -> IO [SymbolicPath Pkg File]
     pp builddir = do
