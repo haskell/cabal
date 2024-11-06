@@ -9,6 +9,9 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+#ifdef GIT_REV
+{-# LANGUAGE TemplateHaskell #-}
+#endif
 
 -----------------------------------------------------------------------------
 
@@ -28,6 +31,7 @@
 -- various directory and file functions that do extra logging.
 module Distribution.Simple.Utils
   ( cabalVersion
+  , cabalGitInfo
 
     -- * logging and errors
   , dieNoVerbosity
@@ -286,6 +290,16 @@ import System.IO.Unsafe
 import qualified System.Process as Process
 import qualified Text.PrettyPrint as Disp
 
+#ifdef GIT_REV
+import Data.Either (isLeft)
+import GitHash
+  ( giHash
+  , giBranch
+  , giCommitDate
+  , tGitInfoCwdTry
+  )
+#endif
+
 -- We only get our own version number when we're building with ourselves
 cabalVersion :: Version
 #if defined(BOOTSTRAPPED_CABAL)
@@ -294,6 +308,28 @@ cabalVersion = mkVersion' Paths_Cabal.version
 cabalVersion = mkVersion [CABAL_VERSION]
 #else
 cabalVersion = mkVersion [3,0]  --used when bootstrapping
+#endif
+
+-- |
+-- `Cabal` Git information. Only filled in if built in a Git tree in
+-- developmnent mode and Template Haskell is available.
+cabalGitInfo :: String
+#ifdef GIT_REV
+cabalGitInfo = concat [ "(commit "
+                      , giHash'
+                      , branchInfo
+                      , ", "
+                      , either (const "") giCommitDate gi'
+                      , ")"
+                      ]
+  where
+    gi' = $$tGitInfoCwdTry
+    giHash' = take 7 . either (const "") giHash $ gi'
+    branchInfo | isLeft gi' = ""
+               | either id giBranch gi' == "master" = ""
+               | otherwise = " on " <> either id giBranch gi'
+#else
+cabalGitInfo = ""
 #endif
 
 -- ----------------------------------------------------------------------------

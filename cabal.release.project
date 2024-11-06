@@ -2,4 +2,15 @@ import: project-cabal/pkgs/cabal.config
 import: project-cabal/pkgs/install.config
 import: project-cabal/pkgs/tests.config
 
+<<<<<<< HEAD
 index-state: hackage.haskell.org 2024-11-20T00:00:00Z
+=======
+index-state: hackage.haskell.org 2024-09-06T14:16:40Z
+
+-- never include this or its TH dependency in a release!
+package cabal-install
+  flags: -git-rev
+
+package Cabal
+  flags: -git-rev
+>>>>>>> 247b9f6a8 (record Git revision in devel builds)
