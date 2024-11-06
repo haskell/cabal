@@ -29,6 +29,11 @@ source-repository head
   location: https://github.com/haskell/cabal/
   subdir:   Cabal
 
+flag git-rev
+  description: include Git revision hash in version
+  default: False
+  manual: True
+
 library
   default-language: Haskell2010
   hs-source-dirs: src
@@ -50,6 +55,10 @@ library
     build-depends: Win32 >= 2.3.0.0 && < 2.15
   else
     build-depends: unix  >= 2.6.0.0 && < 2.9
+
+  if flag(git-rev)
+    build-depends: githash ^>= 0.1.7.0
+    cpp-options: -DGIT_REV
 
   ghc-options:
     -Wall
