@@ -1,3 +1,5 @@
 # cabal v2-run
+Configuration is affected by the following files:
+- cabal.project
 Error: [Cabal-7121]
 Failed extracting script block: `{- cabal:` start marker not found

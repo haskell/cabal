@@ -396,8 +396,8 @@ rebuildProjectConfig
 
     sequence_
       [ do
-        info verbosity . render . vcat $
-          text "this build was affected by the following (project) config files:"
+        notice verbosity . render . vcat $
+          text "Configuration is affected by the following files:"
             : [text "-" <+> docProjectConfigPath path]
       | Explicit path <- Set.toList $ projectConfigProvenance projectConfig
       ]

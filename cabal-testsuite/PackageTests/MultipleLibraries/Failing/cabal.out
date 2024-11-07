@@ -1,4 +1,6 @@
 # cabal v2-build
+Configuration is affected by the following files:
+- cabal.project
 Resolving dependencies...
 Error: [Cabal-7107]
 Could not resolve dependencies:
