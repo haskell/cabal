@@ -333,6 +333,14 @@ cliTests opts = do
         ++ tastyArgs opts
     )
 
+  timedCabalBin
+    opts
+    "cabal-install"
+    "test:parser-tests"
+    ( jobsArgs opts
+        ++ tastyArgs opts
+    )
+
   -- This doesn't work in parallel either.
   timedCabalBin
     opts

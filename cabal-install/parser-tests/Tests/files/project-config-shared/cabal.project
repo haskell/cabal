@@ -1,0 +1,39 @@
+builddir: something
+project-dir: my-project-dir
+project-file: my-project
+store-dir: a/store/dir/path
+per-component: True
+independent-goals: True
+ignore-project: False
+compiler: ghcjs
+with-compiler: /some/path/to/compiler
+with-hc-pkg: /some/path/to/ghc-pkg
+doc-index-file: /path/to/haddock-index
+package-dbs: clear, foo, clear, bar, baz
+active-repositories:
+  , hackage.haskell.org
+  , my-repository:override
+index-state:
+  , hackage.haskell.org 2020-05-06T22:33:27Z
+  , head.hackage 2020-04-29T04:11:05Z
+constraints: bar == 2.1,
+             bar +foo -baz
+preferences: foo == 0.9,
+             baz > 2.0
+cabal-lib-version: 1.24.0.1
+solver: modular
+allow-older: dep, pkga-1.1.2:dep-pkg
+allow-newer: pkgb-1.2.3:dep-pkgb, importantlib
+write-ghc-environment-files: always
+max-backjumps: 42
+reorder-goals: True
+count-conflicts: False
+fine-grained-conflicts: False
+minimize-conflict-set: True
+strong-flags: True
+allow-boot-library-installs: True
+reject-unconstrained-dependencies: all
+prefer-oldest: True
+extra-prog-path: /foo/bar, /baz/quux
+extra-prog-path-shared-only: /foo/bar, /baz/quux
+multi-repl: True
