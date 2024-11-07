@@ -146,9 +146,8 @@ defaultMainWithSetupHooksArgs :: SetupHooks -> [String] -> IO ()
 defaultMainWithSetupHooksArgs setupHooks =
   defaultMainHelper $
     simpleUserHooks
-      { confHook = setup_confHook
-      , buildHook = setup_buildHook
-      , copyHook = setup_copyHook
+      { confHook = setup_confHook, buildHook = setup_buildHook,
+      copyHook = setup_copyHook
       , instHook = setup_installHook
       , replHook = setup_replHook
       , haddockHook = setup_haddockHook
