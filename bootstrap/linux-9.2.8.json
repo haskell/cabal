@@ -25,10 +25,6 @@
             "version": "1.4.6.1"
         },
         {
-            "package": "containers",
-            "version": "0.6.5.1"
-        },
-        {
             "package": "ghc-boot-th",
             "version": "9.2.8"
         },
@@ -43,6 +39,14 @@
         {
             "package": "bytestring",
             "version": "0.11.4.0"
+        },
+        {
+            "package": "containers",
+            "version": "0.6.5.1"
+        },
+        {
+            "package": "binary",
+            "version": "0.8.9.0"
         },
         {
             "package": "transformers",
@@ -63,10 +67,6 @@
         {
             "package": "time",
             "version": "1.11.1.1"
-        },
-        {
-            "package": "binary",
-            "version": "0.8.9.0"
         },
         {
             "package": "text",
@@ -234,42 +234,6 @@
             "version": "4000.4.1"
         },
         {
-            "cabal_sha256": "a4a1975fde77e289b605c45a3ef78d731d8c1834e4cef311152d910a1e94d98c",
-            "component": "lib:data-array-byte",
-            "flags": [],
-            "package": "data-array-byte",
-            "revision": 3,
-            "source": "hackage",
-            "src_sha256": "1bb6eca0b3e02d057fe7f4e14c81ef395216f421ab30fdaa1b18017c9c025600",
-            "version": "0.1.0.1"
-        },
-        {
-            "cabal_sha256": "573f3ab242f75465a0d67ce9d84202650a1606575e6dbd6d31ffcf4767a9a379",
-            "component": "lib:hashable",
-            "flags": [
-                "-arch-native",
-                "+integer-gmp",
-                "-random-initial-seed"
-            ],
-            "package": "hashable",
-            "revision": 0,
-            "source": "hackage",
-            "src_sha256": "3baee4c9027a08830d148ec524cbc0471de645e1e8426d46780ef2758df0e8da",
-            "version": "1.4.7.0"
-        },
-        {
-            "cabal_sha256": "cf9e6afba8e01830ca0d32a12b98d481cf389688762c80d1870a1db2061ebf35",
-            "component": "lib:async",
-            "flags": [
-                "-bench"
-            ],
-            "package": "async",
-            "revision": 2,
-            "source": "hackage",
-            "src_sha256": "1818473ebab9212afad2ed76297aefde5fae8b5d4404daf36939aece6a8f16f7",
-            "version": "2.2.5"
-        },
-        {
             "cabal_sha256": "a694e88f9ec9fc79f0b03f233d3fea592b68f70a34aac2ddb5bcaecb6562e2fd",
             "component": "lib:base16-bytestring",
             "flags": [],
@@ -335,6 +299,18 @@
             "version": "3.15.0.0"
         },
         {
+            "cabal_sha256": "ccce771562c49a2b29a52046ca68c62179e97e8fbeacdae32ca84a85445e8f42",
+            "component": "lib:echo",
+            "flags": [
+                "-example"
+            ],
+            "package": "echo",
+            "revision": 0,
+            "source": "hackage",
+            "src_sha256": "c9fe1bf2904825a65b667251ec644f197b71dc5c209d2d254be5de3d496b0e43",
+            "version": "0.1.4"
+        },
+        {
             "cabal_sha256": "acb64f2af52d81b0bb92c266f11d43def726a7a7b74a2c23d219e160b54edec7",
             "component": "lib:cryptohash-sha256",
             "flags": [
@@ -346,18 +322,6 @@
             "source": "hackage",
             "src_sha256": "73a7dc7163871a80837495039a099967b11f5c4fe70a118277842f7a713c6bf6",
             "version": "0.11.102.1"
-        },
-        {
-            "cabal_sha256": "ccce771562c49a2b29a52046ca68c62179e97e8fbeacdae32ca84a85445e8f42",
-            "component": "lib:echo",
-            "flags": [
-                "-example"
-            ],
-            "package": "echo",
-            "revision": 0,
-            "source": "hackage",
-            "src_sha256": "c9fe1bf2904825a65b667251ec644f197b71dc5c209d2d254be5de3d496b0e43",
-            "version": "0.1.4"
         },
         {
             "cabal_sha256": "48383789821af5cc624498f3ee1d0939a070cda9468c0bfe63c951736be81c75",
@@ -434,6 +398,40 @@
             "version": "0.6.2.6"
         },
         {
+            "cabal_sha256": null,
+            "component": "lib:hooks-exe",
+            "flags": [],
+            "package": "hooks-exe",
+            "revision": null,
+            "source": "local",
+            "src_sha256": null,
+            "version": "0.1"
+        },
+        {
+            "cabal_sha256": "a4a1975fde77e289b605c45a3ef78d731d8c1834e4cef311152d910a1e94d98c",
+            "component": "lib:data-array-byte",
+            "flags": [],
+            "package": "data-array-byte",
+            "revision": 3,
+            "source": "hackage",
+            "src_sha256": "1bb6eca0b3e02d057fe7f4e14c81ef395216f421ab30fdaa1b18017c9c025600",
+            "version": "0.1.0.1"
+        },
+        {
+            "cabal_sha256": "573f3ab242f75465a0d67ce9d84202650a1606575e6dbd6d31ffcf4767a9a379",
+            "component": "lib:hashable",
+            "flags": [
+                "-arch-native",
+                "+integer-gmp",
+                "-random-initial-seed"
+            ],
+            "package": "hashable",
+            "revision": 0,
+            "source": "hackage",
+            "src_sha256": "3baee4c9027a08830d148ec524cbc0471de645e1e8426d46780ef2758df0e8da",
+            "version": "1.4.7.0"
+        },
+        {
             "cabal_sha256": "e4be4a206f5ab6ddb5ae4fbb39101529196e20af5670c5d33326fea6eff886fd",
             "component": "lib:open-browser",
             "flags": [],
@@ -494,6 +492,18 @@
             "source": "hackage",
             "src_sha256": "1c6e6fab021c2ccee5d86112fb1c0bd016d15e0cf70c489dae5fb5ec156ed9e2",
             "version": "1.0.0"
+        },
+        {
+            "cabal_sha256": "cf9e6afba8e01830ca0d32a12b98d481cf389688762c80d1870a1db2061ebf35",
+            "component": "lib:async",
+            "flags": [
+                "-bench"
+            ],
+            "package": "async",
+            "revision": 2,
+            "source": "hackage",
+            "src_sha256": "1818473ebab9212afad2ed76297aefde5fae8b5d4404daf36939aece6a8f16f7",
+            "version": "2.2.5"
         },
         {
             "cabal_sha256": null,

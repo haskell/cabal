@@ -1,6 +1,7 @@
 # cabal v2-update
 Downloading the latest package list from test-local-repo
 # cabal v2-build
+The package description file ./my-local-package.cabal has warnings: my-local-package.cabal:3:23: Packages with 'cabal-version: 1.12' or later should specify a specific version of the Cabal spec of the form 'cabal-version: x.y'. Use 'cabal-version: 1.20'.
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following would be built:
@@ -12,6 +13,7 @@ In order, the following would be built:
 Resolving dependencies...
 Wrote freeze file: <ROOT>/cabal.project.freeze
 # cabal v2-build
+The package description file ./my-local-package.cabal has warnings: my-local-package.cabal:3:23: Packages with 'cabal-version: 1.12' or later should specify a specific version of the Cabal spec of the form 'cabal-version: x.y'. Use 'cabal-version: 1.20'.
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following would be built:

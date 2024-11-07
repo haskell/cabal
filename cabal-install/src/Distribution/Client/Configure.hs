@@ -47,7 +47,8 @@ import Distribution.Client.Setup
   , filterConfigureFlags
   )
 import Distribution.Client.SetupWrapper
-  ( SetupScriptOptions (..)
+  ( SetupRunnerArgs (NotInLibrary)
+  , SetupScriptOptions (..)
   , defaultSetupScriptOptions
   , setupWrapper
   )
@@ -208,6 +209,7 @@ configure
           configCommonFlags
           (const (return configFlags))
           (const extraArgs)
+          NotInLibrary
       Right installPlan0 ->
         let installPlan = InstallPlan.configureInstallPlan configFlags installPlan0
          in case fst (InstallPlan.ready installPlan) of
@@ -251,7 +253,6 @@ configure
               (flagToMaybe (configCabalVersion configExFlags))
           )
           Nothing
-          False
 
       logMsg message rest = debug verbosity message >> rest
 
@@ -263,7 +264,6 @@ configureSetupScript
   -> SymbolicPath Pkg (Dir Dist)
   -> VersionRange
   -> Maybe Lock
-  -> Bool
   -> InstalledPackageIndex
   -> Maybe ReadyPackage
   -> SetupScriptOptions
@@ -275,7 +275,6 @@ configureSetupScript
   distPref
   cabalVersion
   lock
-  forceExternal
   index
   mpkg =
     SetupScriptOptions
@@ -293,7 +292,6 @@ configureSetupScript
       , useExtraEnvOverrides = []
       , setupCacheLock = lock
       , useWin32CleanHack = False
-      , forceExternalSetupMethod = forceExternal
       , -- If we have explicit setup dependencies, list them; otherwise, we give
         -- the empty list of dependencies; ideally, we would fix the version of
         -- Cabal here, so that we no longer need the special case for that in
@@ -510,6 +508,7 @@ configurePackage
       configCommonFlags
       (return . configureFlags)
       (const extraArgs)
+      NotInLibrary
     where
       gpkg :: PkgDesc.GenericPackageDescription
       gpkg = srcpkgDescription spkg

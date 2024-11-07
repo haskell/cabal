@@ -274,6 +274,8 @@ deriving stock instance Eq (RuleData User)
 deriving stock instance Eq (RuleData System)
 deriving anyclass instance Binary (RuleData User)
 deriving anyclass instance Binary (RuleData System)
+deriving anyclass instance Structured (RuleData User)
+deriving anyclass instance Structured (RuleData System)
 
 -- | Trimmed down 'Show' instance, mostly for error messages.
 instance Show RuleBinary where
@@ -679,6 +681,10 @@ data
         -- ^ A 'TypeRep' for the triple @(depsArg,depsRes,arg)@.
        }
     -> RuleCommands scope deps ruleCmd
+
+-- NB: whenever you change this datatype, you **must** also update its
+-- 'Structured' instance. The structure hash is used as a handshake when
+-- communicating with an external hooks executable.
 
 {- Note [Hooks Binary instances]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1087,6 +1093,35 @@ instance
 -- | A token constructor used to define 'Structured' instances on types
 -- that involve existential quantification.
 data family Tok (arg :: Symbol) :: k
+
+instance
+  (Typeable scope, Typeable ruleCmd, Typeable deps)
+  => Structured (RuleCommands scope deps ruleCmd)
+  where
+  structure _ =
+    Structure
+      tr
+      0
+      (show tr)
+      [
+        ( "StaticRuleCommand"
+        ,
+          [ nominalStructure $ Proxy @(ruleCmd scope (Tok "arg") (IO ()))
+          , nominalStructure $ Proxy @(Typeable.TypeRep (Tok "arg" :: Hs.Type))
+          ]
+        )
+      ,
+        ( "DynamicRuleCommands"
+        ,
+          [ nominalStructure $ Proxy @(Static scope (Dict (Binary (Tok "depsRes"), Show (Tok "depsRes"), Eq (Tok "depsRes"))))
+          , nominalStructure $ Proxy @(deps scope (Tok "depsArg") (Tok "depsRes"))
+          , nominalStructure $ Proxy @(ruleCmd scope (Tok "arg") (Tok "depsRes" -> IO ()))
+          , nominalStructure $ Proxy @(Typeable.TypeRep (Tok "depsArg", Tok "depsRes", Tok "arg"))
+          ]
+        )
+      ]
+    where
+      tr = Typeable.SomeTypeRep $ Typeable.typeRep @(RuleCommands scope deps ruleCmd)
 
 instance
   ( forall res. Binary (ruleCmd System LBS.ByteString res)
