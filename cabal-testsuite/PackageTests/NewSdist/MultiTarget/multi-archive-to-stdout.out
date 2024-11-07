@@ -1,3 +1,5 @@
 # cabal v2-sdist
+Configuration is affected by the following files:
+- cabal.project
 Error: [Cabal-7152]
 Can't write multiple tarballs to standard output!
