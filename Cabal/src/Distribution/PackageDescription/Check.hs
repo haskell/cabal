@@ -879,6 +879,8 @@ checkGlobResult
   -- one).
   -> [GlobResult FilePath] -- List of glob results.
   -> [PackageCheck]
+checkGlobResult title fp [] =
+  [PackageDistSuspiciousWarn $ GlobNoMatch title (prettyShow fp)]
 checkGlobResult title fp rs = dirCheck ++ catMaybes (map getWarning rs)
   where
     dirCheck
