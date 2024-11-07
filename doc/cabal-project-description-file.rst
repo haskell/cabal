@@ -767,6 +767,7 @@ The following settings control the behavior of the dependency solver:
    explicitly constrained. When set to `none`, the solver will
    consider all packages.
 
+.. _package-configuration-options:
 
 Package configuration options
 -----------------------------
@@ -1301,6 +1302,8 @@ Foreign function interface options
     The command line variant of this flag is
     ``--extra-framework-dirs=DIR``, which can be specified multiple
     times.
+
+.. _profiling-options:
 
 Profiling options
 ^^^^^^^^^^^^^^^^^
