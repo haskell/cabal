@@ -49,7 +49,7 @@ import qualified Distribution.Client.CmdListBin        as CmdListBin
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
-import Distribution.Simple.Setup (toFlag, HaddockFlags(..), defaultHaddockFlags)
+import Distribution.Simple.Setup (toFlag, CommonSetupFlags(..), HaddockFlags(..), defaultHaddockFlags, defaultCommonSetupFlags)
 import Distribution.Client.Setup (globalCommand)
 import Distribution.Client.Config (loadConfig, SavedConfig(savedGlobalFlags), createDefaultConfigFile)
 import Distribution.Simple.Compiler
@@ -103,7 +103,9 @@ main = do
   removeDirectoryRecursive configDir <|> return ()
   createDirectoryIfMissing True configDir
   -- sigh
-  callProcess "cabal" ["user-config", "init", "-f"]
+  -- NOTE: This is running the `cabal` from the user environment, which is
+  -- generally not the `cabal` being tested!
+  callProcess "cabal" ["-v0", "user-config", "init", "-f"]
   callProcess "cabal" ["update"]
   defaultMainWithIngredients
     (defaultIngredients ++ [includingOptions projectConfigOptionDescriptions])
@@ -1982,230 +1984,272 @@ testNixFlags = do
 -- Tests whether config options are commented or not
 testConfigOptionComments :: Assertion
 testConfigOptionComments = do
-  _ <- createDefaultConfigFile verbosity [] (basedir </> "config" </> "default-config")
-  defaultConfigFile <- readFile (basedir </> "config" </> "default-config")
-
-  "  url" @=? findLineWith False "url" defaultConfigFile
-  "  -- secure" @=? findLineWith True "secure" defaultConfigFile
-  "  -- root-keys" @=? findLineWith True "root-keys" defaultConfigFile
-  "  -- key-threshold" @=? findLineWith True "key-threshold" defaultConfigFile
-
-  "-- ignore-expiry" @=? findLineWith True "ignore-expiry" defaultConfigFile
-  "-- http-transport" @=? findLineWith True "http-transport" defaultConfigFile
-  "-- nix" @=? findLineWith True "nix" defaultConfigFile
-  "-- store-dir" @=? findLineWith True "store-dir" defaultConfigFile
-  "-- active-repositories" @=? findLineWith True "active-repositories" defaultConfigFile
-  "-- local-no-index-repo" @=? findLineWith True "local-no-index-repo" defaultConfigFile
-  "remote-repo-cache"  @=? findLineWith False "remote-repo-cache" defaultConfigFile
-  "-- logs-dir"  @=? findLineWith True "logs-dir" defaultConfigFile
-  "-- default-user-config" @=? findLineWith True "default-user-config" defaultConfigFile
-  "-- verbose" @=? findLineWith True "verbose" defaultConfigFile
-  "-- compiler" @=? findLineWith True "compiler" defaultConfigFile
-  "-- cabal-file" @=? findLineWith True "cabal-file" defaultConfigFile
-  "-- with-compiler" @=? findLineWith True "with-compiler" defaultConfigFile
-  "-- with-hc-pkg" @=? findLineWith True "with-hc-pkg" defaultConfigFile
-  "-- program-prefix" @=? findLineWith True "program-prefix" defaultConfigFile
-  "-- program-suffix" @=? findLineWith True "program-suffix" defaultConfigFile
-  "-- library-vanilla" @=? findLineWith True "library-vanilla" defaultConfigFile
-  "-- library-profiling" @=? findLineWith True "library-profiling" defaultConfigFile
-  "-- shared" @=? findLineWith True "shared" defaultConfigFile
-  "-- static" @=? findLineWith True "static" defaultConfigFile
-  "-- executable-dynamic" @=? findLineWith True "executable-dynamic" defaultConfigFile
-  "-- executable-static" @=? findLineWith True "executable-static" defaultConfigFile
-  "-- profiling" @=? findLineWith True "profiling" defaultConfigFile
-  "-- executable-profiling" @=? findLineWith True "executable-profiling" defaultConfigFile
-  "-- profiling-detail" @=? findLineWith True "profiling-detail" defaultConfigFile
-  "-- library-profiling-detail" @=? findLineWith True "library-profiling-detail" defaultConfigFile
-  "-- optimization" @=? findLineWith True "optimization" defaultConfigFile
-  "-- debug-info" @=? findLineWith True "debug-info" defaultConfigFile
-  "-- build-info" @=? findLineWith True "build-info" defaultConfigFile
-  "-- library-for-ghci" @=? findLineWith True "library-for-ghci" defaultConfigFile
-  "-- split-sections" @=? findLineWith True "split-sections" defaultConfigFile
-  "-- split-objs" @=? findLineWith True "split-objs" defaultConfigFile
-  "-- executable-stripping" @=? findLineWith True "executable-stripping" defaultConfigFile
-  "-- library-stripping" @=? findLineWith True "library-stripping" defaultConfigFile
-  "-- configure-option" @=? findLineWith True "configure-option" defaultConfigFile
-  "-- user-install"  @=? findLineWith True "user-install" defaultConfigFile
-  "-- package-db"  @=? findLineWith True "package-db" defaultConfigFile
-  "-- flags" @=? findLineWith True "flags" defaultConfigFile
-  "-- extra-include-dirs" @=? findLineWith True "extra-include-dirs" defaultConfigFile
-  "-- deterministic" @=? findLineWith True "deterministic" defaultConfigFile
-  "-- cid" @=? findLineWith True "cid" defaultConfigFile
-  "-- extra-lib-dirs" @=? findLineWith True "extra-lib-dirs" defaultConfigFile
-  "-- extra-lib-dirs-static" @=? findLineWith True "extra-lib-dirs-static" defaultConfigFile
-  "-- extra-framework-dirs" @=? findLineWith True "extra-framework-dirs" defaultConfigFile
-  "-- extra-prog-path"  @=? findLineWith False "extra-prog-path" defaultConfigFile
-  "-- instantiate-with" @=? findLineWith True "instantiate-with" defaultConfigFile
-  "-- tests" @=? findLineWith True "tests" defaultConfigFile
-  "-- coverage" @=? findLineWith True "coverage" defaultConfigFile
-  "-- library-coverage" @=? findLineWith True "library-coverage" defaultConfigFile
-  "-- exact-configuration" @=? findLineWith True "exact-configuration" defaultConfigFile
-  "-- benchmarks" @=? findLineWith True "benchmarks" defaultConfigFile
-  "-- relocatable"  @=? findLineWith True "relocatable" defaultConfigFile
-  "-- response-files" @=? findLineWith True "response-files" defaultConfigFile
-  "-- allow-depending-on-private-libs" @=? findLineWith True "allow-depending-on-private-libs" defaultConfigFile
-  "-- cabal-lib-version" @=? findLineWith True "cabal-lib-version" defaultConfigFile
-  "-- append" @=? findLineWith True "append" defaultConfigFile
-  "-- backup" @=? findLineWith True "backup" defaultConfigFile
-  "-- constraint" @=? findLineWith True "constraint" defaultConfigFile
-  "-- preference" @=? findLineWith True "preference" defaultConfigFile
-  "-- solver"  @=? findLineWith True "solver" defaultConfigFile
-  "-- allow-older"  @=? findLineWith True "allow-older" defaultConfigFile
-  "-- allow-newer"  @=? findLineWith True "allow-newer" defaultConfigFile
-  "-- write-ghc-environment-files" @=? findLineWith True "write-ghc-environment-files" defaultConfigFile
-  "-- documentation"  @=? findLineWith True "documentation" defaultConfigFile
-  "-- doc-index-file"  @=? findLineWith True "doc-index-file" defaultConfigFile
-  "-- only-download"  @=? findLineWith True "only-download" defaultConfigFile
-  "-- target-package-db" @=? findLineWith True "target-package-db" defaultConfigFile
-  "-- max-backjumps"  @=? findLineWith True "max-backjumps" defaultConfigFile
-  "-- reorder-goals"  @=? findLineWith True "reorder-goals" defaultConfigFile
-  "-- count-conflicts"  @=? findLineWith True "count-conflicts" defaultConfigFile
-  "-- fine-grained-conflicts"  @=? findLineWith True "fine-grained-conflicts" defaultConfigFile
-  "-- minimize-conflict-set"  @=? findLineWith True "minimize-conflict-set" defaultConfigFile
-  "-- independent-goals"  @=? findLineWith True "independent-goals" defaultConfigFile
-  "-- prefer-oldest"  @=? findLineWith True "prefer-oldest" defaultConfigFile
-  "-- shadow-installed-packages"  @=? findLineWith True "shadow-installed-packages" defaultConfigFile
-  "-- strong-flags"  @=? findLineWith True "strong-flags" defaultConfigFile
-  "-- allow-boot-library-installs"  @=? findLineWith True "allow-boot-library-installs" defaultConfigFile
-  "-- reject-unconstrained-dependencies"  @=? findLineWith True "reject-unconstrained-dependencies" defaultConfigFile
-  "-- reinstall"  @=? findLineWith True "reinstall" defaultConfigFile
-  "-- avoid-reinstalls"  @=? findLineWith True "avoid-reinstalls" defaultConfigFile
-  "-- force-reinstalls"  @=? findLineWith True "force-reinstalls" defaultConfigFile
-  "-- upgrade-dependencies"  @=? findLineWith True "upgrade-dependencies" defaultConfigFile
-  "-- index-state" @=? findLineWith True "index-state" defaultConfigFile
-  "-- root-cmd" @=? findLineWith True "root-cmd" defaultConfigFile
-  "-- symlink-bindir" @=? findLineWith True "symlink-bindir" defaultConfigFile
-  "build-summary"  @=? findLineWith False "build-summary" defaultConfigFile
-  "-- build-log" @=? findLineWith True "build-log" defaultConfigFile
-  "remote-build-reporting"  @=? findLineWith False "remote-build-reporting" defaultConfigFile
-  "-- report-planning-failure"  @=? findLineWith True "report-planning-failure" defaultConfigFile
-  "-- per-component"  @=? findLineWith True "per-component" defaultConfigFile
-  "-- run-tests" @=? findLineWith True "run-tests" defaultConfigFile
-  "jobs"  @=? findLineWith False "jobs" defaultConfigFile
-  "-- keep-going"  @=? findLineWith True "keep-going" defaultConfigFile
-  "-- offline"  @=? findLineWith True "offline" defaultConfigFile
-  "-- lib" @=? findLineWith True "lib" defaultConfigFile
-  "-- package-env" @=? findLineWith True "package-env" defaultConfigFile
-  "-- overwrite-policy" @=? findLineWith True "overwrite-policy" defaultConfigFile
-  "-- install-method" @=? findLineWith True "install-method" defaultConfigFile
-  "installdir"  @=? findLineWith False "installdir" defaultConfigFile
-  "-- token" @=? findLineWith True "token" defaultConfigFile
-  "-- username" @=? findLineWith True "username" defaultConfigFile
-  "-- password" @=? findLineWith True "password" defaultConfigFile
-  "-- password-command" @=? findLineWith True "password-command" defaultConfigFile
-  "-- builddir" @=? findLineWith True "builddir" defaultConfigFile
-
-  "  -- keep-temp-files" @=? findLineWith True "keep-temp-files" defaultConfigFile
-  "  -- hoogle" @=? findLineWith True "hoogle" defaultConfigFile
-  "  -- html" @=? findLineWith True "html" defaultConfigFile
-  "  -- html-location" @=? findLineWith True "html-location" defaultConfigFile
-  "  -- executables" @=? findLineWith True "executables" defaultConfigFile
-  "  -- foreign-libraries" @=? findLineWith True "foreign-libraries" defaultConfigFile
-  "  -- all" @=? findLineWith True "all" defaultConfigFile
-  "  -- internal" @=? findLineWith True "internal" defaultConfigFile
-  "  -- css" @=? findLineWith True "css" defaultConfigFile
-  "  -- hyperlink-source" @=? findLineWith True "hyperlink-source" defaultConfigFile
-  "  -- quickjump" @=? findLineWith True "quickjump" defaultConfigFile
-  "  -- hscolour-css" @=? findLineWith True "hscolour-css" defaultConfigFile
-  "  -- contents-location" @=? findLineWith True "contents-location" defaultConfigFile
-  "  -- index-location" @=? findLineWith True "index-location" defaultConfigFile
-  "  -- base-url" @=? findLineWith True "base-url" defaultConfigFile
-  "  -- resources-dir" @=? findLineWith True "resources-dir" defaultConfigFile
-  "  -- output-dir" @=? findLineWith True "output-dir" defaultConfigFile
-  "  -- use-unicode" @=? findLineWith True "use-unicode" defaultConfigFile
-
-  "  -- interactive" @=? findLineWith True "interactive" defaultConfigFile
-  "  -- quiet" @=? findLineWith True "quiet" defaultConfigFile
-  "  -- no-comments" @=? findLineWith True "no-comments" defaultConfigFile
-  "  -- minimal" @=? findLineWith True "minimal" defaultConfigFile
-  "  -- cabal-version" @=? findLineWith True "cabal-version" defaultConfigFile
-  "  -- license" @=? findLineWith True "license" defaultConfigFile
-  "  -- extra-doc-file" @=? findLineWith True "extra-doc-file" defaultConfigFile
-  "  -- test-dir" @=? findLineWith True "test-dir" defaultConfigFile
-  "  -- simple" @=? findLineWith True "simple" defaultConfigFile
-  "  -- language" @=? findLineWith True "language" defaultConfigFile
-  "  -- application-dir" @=? findLineWith True "application-dir" defaultConfigFile
-  "  -- source-dir" @=? findLineWith True "source-dir" defaultConfigFile
-
-  "  -- prefix"  @=? findLineWith True "prefix" defaultConfigFile
-  "  -- bindir"@=? findLineWith True "bindir" defaultConfigFile
-  "  -- libdir" @=? findLineWith True "libdir" defaultConfigFile
-  "  -- libsubdir" @=? findLineWith True "libsubdir" defaultConfigFile
-  "  -- dynlibdir" @=? findLineWith True "dynlibdir" defaultConfigFile
-  "  -- libexecdir" @=? findLineWith True "libexecdir" defaultConfigFile
-  "  -- libexecsubdir" @=? findLineWith True "libexecsubdir" defaultConfigFile
-  "  -- datadir" @=? findLineWith True "datadir" defaultConfigFile
-  "  -- datasubdir" @=? findLineWith True "datasubdir" defaultConfigFile
-  "  -- docdir" @=? findLineWith True "docdir" defaultConfigFile
-  "  -- htmldir" @=? findLineWith True "htmldir" defaultConfigFile
-  "  -- haddockdir" @=? findLineWith True "haddockdir" defaultConfigFile
-  "  -- sysconfdir" @=? findLineWith True "sysconfdir" defaultConfigFile
-
-  "  -- alex-location" @=? findLineWith True "alex-location" defaultConfigFile
-  "  -- ar-location" @=? findLineWith True "ar-location" defaultConfigFile
-  "  -- c2hs-location" @=? findLineWith True "c2hs-location" defaultConfigFile
-  "  -- cpphs-location" @=? findLineWith True "cpphs-location" defaultConfigFile
-  "  -- doctest-location" @=? findLineWith True "doctest-location" defaultConfigFile
-  "  -- gcc-location" @=? findLineWith True "gcc-location" defaultConfigFile
-  "  -- ghc-location" @=? findLineWith True "ghc-location" defaultConfigFile
-  "  -- ghc-pkg-location" @=? findLineWith True "ghc-pkg-location" defaultConfigFile
-  "  -- ghcjs-location" @=? findLineWith True "ghcjs-location" defaultConfigFile
-  "  -- ghcjs-pkg-location" @=? findLineWith True "ghcjs-pkg-location" defaultConfigFile
-  "  -- greencard-location" @=? findLineWith True "greencard-location" defaultConfigFile
-  "  -- haddock-location" @=? findLineWith True "haddock-location" defaultConfigFile
-  "  -- happy-location" @=? findLineWith True "happy-location" defaultConfigFile
-  "  -- haskell-suite-location" @=? findLineWith True "haskell-suite-location" defaultConfigFile
-  "  -- haskell-suite-pkg-location" @=? findLineWith True "haskell-suite-pkg-location" defaultConfigFile
-  "  -- hmake-location" @=? findLineWith True "hmake-location" defaultConfigFile
-  "  -- hpc-location" @=? findLineWith True "hpc-location" defaultConfigFile
-  "  -- hscolour-location" @=? findLineWith True "hscolour-location" defaultConfigFile
-  "  -- jhc-location" @=? findLineWith True "jhc-location" defaultConfigFile
-  "  -- ld-location" @=? findLineWith True "ld-location" defaultConfigFile
-  "  -- pkg-config-location" @=? findLineWith True "pkg-config-location" defaultConfigFile
-  "  -- runghc-location" @=? findLineWith True "runghc-location" defaultConfigFile
-  "  -- strip-location" @=? findLineWith True "strip-location" defaultConfigFile
-  "  -- tar-location" @=? findLineWith True "tar-location" defaultConfigFile
-  "  -- uhc-location" @=? findLineWith True "uhc-location" defaultConfigFile
-
-  "  -- alex-options" @=? findLineWith True "alex-options" defaultConfigFile
-  "  -- ar-options" @=? findLineWith True "ar-options" defaultConfigFile
-  "  -- c2hs-options" @=? findLineWith True "c2hs-options" defaultConfigFile
-  "  -- cpphs-options" @=? findLineWith True "cpphs-options" defaultConfigFile
-  "  -- doctest-options" @=? findLineWith True "doctest-options" defaultConfigFile
-  "  -- gcc-options" @=? findLineWith True "gcc-options" defaultConfigFile
-  "  -- ghc-options" @=? findLineWith True "ghc-options" defaultConfigFile
-  "  -- ghc-pkg-options" @=? findLineWith True "ghc-pkg-options" defaultConfigFile
-  "  -- ghcjs-options" @=? findLineWith True "ghcjs-options" defaultConfigFile
-  "  -- ghcjs-pkg-options" @=? findLineWith True "ghcjs-pkg-options" defaultConfigFile
-  "  -- greencard-options" @=? findLineWith True "greencard-options" defaultConfigFile
-  "  -- haddock-options" @=? findLineWith True "haddock-options" defaultConfigFile
-  "  -- happy-options" @=? findLineWith True "happy-options" defaultConfigFile
-  "  -- haskell-suite-options" @=? findLineWith True "haskell-suite-options" defaultConfigFile
-  "  -- haskell-suite-pkg-options" @=? findLineWith True "haskell-suite-pkg-options" defaultConfigFile
-  "  -- hmake-options" @=? findLineWith True "hmake-options" defaultConfigFile
-  "  -- hpc-options" @=? findLineWith True "hpc-options" defaultConfigFile
-  "  -- hsc2hs-options" @=? findLineWith True "hsc2hs-options" defaultConfigFile
-  "  -- hscolour-options" @=? findLineWith True "hscolour-options" defaultConfigFile
-  "  -- jhc-options" @=? findLineWith True "jhc-options" defaultConfigFile
-  "  -- ld-options" @=? findLineWith True "ld-options" defaultConfigFile
-  "  -- pkg-config-options" @=? findLineWith True "pkg-config-options" defaultConfigFile
-  "  -- runghc-options" @=? findLineWith True "runghc-options" defaultConfigFile
-  "  -- strip-options" @=? findLineWith True "strip-options" defaultConfigFile
-  "  -- tar-options" @=? findLineWith True "tar-options" defaultConfigFile
-  "  -- uhc-options" @=? findLineWith True "uhc-options" defaultConfigFile
-  where
-    -- | Find lines containing a target string.
+  let
+    -- | Find the first line containing a target setting name.
+    --
+    -- If `isComment` is set, only comment lines will be found.
     findLineWith :: Bool -> String -> String -> String
     findLineWith isComment target text =
       case findLinesWith isComment target text of
         [] -> text
-        (l : _) -> removeCommentValue l
+        (l : _) -> removeColonAndAfter l
+
+    -- | Find lines containing a target setting name.
     findLinesWith :: Bool -> String -> String -> [String]
     findLinesWith isComment target
-      | isComment = filter (isInfixOf (" " ++ target ++ ":")) . lines
+      | isComment = filter (isInfixOf ("-- " ++ target ++ ":")) . lines
       | otherwise = filter (isInfixOf (target ++ ":")) . lines
-    removeCommentValue :: String -> String
-    removeCommentValue = takeWhile (/= ':')
+
+    -- | Transform @-- puppy: doggy@ into @-- puppy@.
+    removeColonAndAfter :: String -> String
+    removeColonAndAfter = takeWhile (/= ':')
+
+  cwd <- getCurrentDirectory
+  let configFile = cwd </> basedir </> "config" </> "default-config"
+  _ <- createDefaultConfigFile verbosity [] configFile
+  defaultConfigFile <- readFile configFile
+
+  let
+    -- TODO: These assertions are fairly weak. Potential improvements:
+    --
+    -- - Include the section name in the assertion, so that (e.g.) a
+    --   `keep-temp-files` setting in the `haddock` section won't be confused
+    --   with a `keep-temp-files` setting in the `init` section.
+    --
+    -- - Check all matching lines to confirm that settings are not listed
+    --   multiple times. For example, `cabal-file` is listed twice right now,
+    --   once under the `haddock` settings!
+    --
+    -- - Consume the file as we go, ensuring that the settings are in a given
+    --   order.
+    --
+    -- - Check the generated config file into Git (replacing e.g. `$HOME` with
+    --   a sentinel value) so changes show up in PR diffs.
+    assertHasLine' :: Bool -> String -> String -> Assertion
+    assertHasLine' isComment expected settingName =
+      let actual = findLineWith isComment settingName defaultConfigFile
+          messagePrefix =
+            "Did not find expected line for setting "
+            <> show settingName
+            <> " in configuration file "
+            <> configFile
+      in assertEqual messagePrefix expected actual
+
+    assertHasLine :: String -> String -> Assertion
+    assertHasLine = assertHasLine' False
+
+    assertHasCommentLine :: String -> String -> Assertion
+    assertHasCommentLine = assertHasLine' True
+
+
+  "  url" `assertHasLine` "url"
+  "  -- secure" `assertHasCommentLine` "secure"
+  "  -- root-keys" `assertHasCommentLine` "root-keys"
+  "  -- key-threshold" `assertHasCommentLine` "key-threshold"
+
+  "-- ignore-expiry" `assertHasCommentLine` "ignore-expiry"
+  "-- http-transport" `assertHasCommentLine` "http-transport"
+  "-- nix" `assertHasCommentLine` "nix"
+  "-- store-dir" `assertHasCommentLine` "store-dir"
+  "-- active-repositories" `assertHasCommentLine` "active-repositories"
+  "-- local-no-index-repo" `assertHasCommentLine` "local-no-index-repo"
+  "remote-repo-cache" `assertHasLine` "remote-repo-cache"
+  "-- logs-dir" `assertHasCommentLine` "logs-dir"
+  "-- default-user-config" `assertHasCommentLine` "default-user-config"
+  "-- verbose" `assertHasCommentLine` "verbose"
+  "-- compiler" `assertHasCommentLine` "compiler"
+  "-- cabal-file" `assertHasCommentLine` "cabal-file"
+  "-- with-compiler" `assertHasCommentLine` "with-compiler"
+  "-- with-hc-pkg" `assertHasCommentLine` "with-hc-pkg"
+  "-- program-prefix" `assertHasCommentLine` "program-prefix"
+  "-- program-suffix" `assertHasCommentLine` "program-suffix"
+  "-- library-vanilla" `assertHasCommentLine` "library-vanilla"
+  "-- library-profiling" `assertHasCommentLine` "library-profiling"
+  "-- shared" `assertHasCommentLine` "shared"
+  "-- static" `assertHasCommentLine` "static"
+  "-- executable-dynamic" `assertHasCommentLine` "executable-dynamic"
+  "-- executable-static" `assertHasCommentLine` "executable-static"
+  "-- profiling" `assertHasCommentLine` "profiling"
+  "-- executable-profiling" `assertHasCommentLine` "executable-profiling"
+  "-- profiling-detail" `assertHasCommentLine` "profiling-detail"
+  "-- library-profiling-detail" `assertHasCommentLine` "library-profiling-detail"
+  "-- optimization" `assertHasCommentLine` "optimization"
+  "-- debug-info" `assertHasCommentLine` "debug-info"
+  "-- build-info" `assertHasCommentLine` "build-info"
+  "-- library-for-ghci" `assertHasCommentLine` "library-for-ghci"
+  "-- split-sections" `assertHasCommentLine` "split-sections"
+  "-- split-objs" `assertHasCommentLine` "split-objs"
+  "-- executable-stripping" `assertHasCommentLine` "executable-stripping"
+  "-- library-stripping" `assertHasCommentLine` "library-stripping"
+  "-- configure-option" `assertHasCommentLine` "configure-option"
+  "-- user-install" `assertHasCommentLine` "user-install"
+  "-- package-db" `assertHasCommentLine` "package-db"
+  "-- flags" `assertHasCommentLine` "flags"
+  "-- extra-include-dirs" `assertHasCommentLine` "extra-include-dirs"
+  "-- deterministic" `assertHasCommentLine` "deterministic"
+  "-- cid" `assertHasCommentLine` "cid"
+  "-- extra-lib-dirs" `assertHasCommentLine` "extra-lib-dirs"
+  "-- extra-lib-dirs-static" `assertHasCommentLine` "extra-lib-dirs-static"
+  "-- extra-framework-dirs" `assertHasCommentLine` "extra-framework-dirs"
+  "-- extra-prog-path" `assertHasLine` "extra-prog-path"
+  "-- instantiate-with" `assertHasCommentLine` "instantiate-with"
+  "-- tests" `assertHasCommentLine` "tests"
+  "-- coverage" `assertHasCommentLine` "coverage"
+  "-- library-coverage" `assertHasCommentLine` "library-coverage"
+  "-- exact-configuration" `assertHasCommentLine` "exact-configuration"
+  "-- benchmarks" `assertHasCommentLine` "benchmarks"
+  "-- relocatable" `assertHasCommentLine` "relocatable"
+  "-- response-files" `assertHasCommentLine` "response-files"
+  "-- allow-depending-on-private-libs" `assertHasCommentLine` "allow-depending-on-private-libs"
+  "-- cabal-lib-version" `assertHasCommentLine` "cabal-lib-version"
+  "-- append" `assertHasCommentLine` "append"
+  "-- backup" `assertHasCommentLine` "backup"
+  "-- constraint" `assertHasCommentLine` "constraint"
+  "-- preference" `assertHasCommentLine` "preference"
+  "-- solver" `assertHasCommentLine` "solver"
+  "-- allow-older" `assertHasCommentLine` "allow-older"
+  "-- allow-newer" `assertHasCommentLine` "allow-newer"
+  "-- write-ghc-environment-files" `assertHasCommentLine` "write-ghc-environment-files"
+  "-- documentation" `assertHasCommentLine` "documentation"
+  "-- doc-index-file" `assertHasCommentLine` "doc-index-file"
+  "-- only-download" `assertHasCommentLine` "only-download"
+  "-- target-package-db" `assertHasCommentLine` "target-package-db"
+  "-- max-backjumps" `assertHasCommentLine` "max-backjumps"
+  "-- reorder-goals" `assertHasCommentLine` "reorder-goals"
+  "-- count-conflicts" `assertHasCommentLine` "count-conflicts"
+  "-- fine-grained-conflicts" `assertHasCommentLine` "fine-grained-conflicts"
+  "-- minimize-conflict-set" `assertHasCommentLine` "minimize-conflict-set"
+  "-- independent-goals" `assertHasCommentLine` "independent-goals"
+  "-- prefer-oldest" `assertHasCommentLine` "prefer-oldest"
+  "-- shadow-installed-packages" `assertHasCommentLine` "shadow-installed-packages"
+  "-- strong-flags" `assertHasCommentLine` "strong-flags"
+  "-- allow-boot-library-installs" `assertHasCommentLine` "allow-boot-library-installs"
+  "-- reject-unconstrained-dependencies" `assertHasCommentLine` "reject-unconstrained-dependencies"
+  "-- reinstall" `assertHasCommentLine` "reinstall"
+  "-- avoid-reinstalls" `assertHasCommentLine` "avoid-reinstalls"
+  "-- force-reinstalls" `assertHasCommentLine` "force-reinstalls"
+  "-- upgrade-dependencies" `assertHasCommentLine` "upgrade-dependencies"
+  "-- index-state" `assertHasCommentLine` "index-state"
+  "-- root-cmd" `assertHasCommentLine` "root-cmd"
+  "-- symlink-bindir" `assertHasCommentLine` "symlink-bindir"
+  "build-summary" `assertHasLine` "build-summary"
+  "-- build-log" `assertHasCommentLine` "build-log"
+  "remote-build-reporting" `assertHasLine` "remote-build-reporting"
+  "-- report-planning-failure" `assertHasCommentLine` "report-planning-failure"
+  "-- per-component" `assertHasCommentLine` "per-component"
+  "-- run-tests" `assertHasCommentLine` "run-tests"
+  "jobs" `assertHasLine` "jobs"
+  "-- keep-going" `assertHasCommentLine` "keep-going"
+  "-- offline" `assertHasCommentLine` "offline"
+  "-- lib" `assertHasCommentLine` "lib"
+  "-- package-env" `assertHasCommentLine` "package-env"
+  "-- overwrite-policy" `assertHasCommentLine` "overwrite-policy"
+  "-- install-method" `assertHasCommentLine` "install-method"
+  "installdir" `assertHasLine` "installdir"
+  "-- token" `assertHasCommentLine` "token"
+  "-- username" `assertHasCommentLine` "username"
+  "-- password" `assertHasCommentLine` "password"
+  "-- password-command" `assertHasCommentLine` "password-command"
+  "-- builddir" `assertHasCommentLine` "builddir"
+
+  "  -- keep-temp-files" `assertHasCommentLine` "keep-temp-files"
+  "  -- hoogle" `assertHasCommentLine` "hoogle"
+  "  -- html" `assertHasCommentLine` "html"
+  "  -- html-location" `assertHasCommentLine` "html-location"
+  "  -- executables" `assertHasCommentLine` "executables"
+  "  -- foreign-libraries" `assertHasCommentLine` "foreign-libraries"
+  "  -- all" `assertHasCommentLine` "all"
+  "  -- internal" `assertHasCommentLine` "internal"
+  "  -- css" `assertHasCommentLine` "css"
+  "  -- hyperlink-source" `assertHasCommentLine` "hyperlink-source"
+  "  -- quickjump" `assertHasCommentLine` "quickjump"
+  "  -- hscolour-css" `assertHasCommentLine` "hscolour-css"
+  "  -- contents-location" `assertHasCommentLine` "contents-location"
+  "  -- index-location" `assertHasCommentLine` "index-location"
+  "  -- base-url" `assertHasCommentLine` "base-url"
+  "  -- resources-dir" `assertHasCommentLine` "resources-dir"
+  "  -- output-dir" `assertHasCommentLine` "output-dir"
+  "  -- use-unicode" `assertHasCommentLine` "use-unicode"
+
+  "  -- interactive" `assertHasCommentLine` "interactive"
+  "  -- quiet" `assertHasCommentLine` "quiet"
+  "  -- no-comments" `assertHasCommentLine` "no-comments"
+  "  -- minimal" `assertHasCommentLine` "minimal"
+  "  -- cabal-version" `assertHasCommentLine` "cabal-version"
+  "  -- license" `assertHasCommentLine` "license"
+  "  -- extra-doc-file" `assertHasCommentLine` "extra-doc-file"
+  "  -- test-dir" `assertHasCommentLine` "test-dir"
+  "  -- simple" `assertHasCommentLine` "simple"
+  "  -- language" `assertHasCommentLine` "language"
+  "  -- application-dir" `assertHasCommentLine` "application-dir"
+  "  -- source-dir" `assertHasCommentLine` "source-dir"
+
+  "  -- prefix" `assertHasCommentLine` "prefix"
+  "  -- bindir" `assertHasCommentLine` "bindir"
+  "  -- libdir" `assertHasCommentLine` "libdir"
+  "  -- libsubdir" `assertHasCommentLine` "libsubdir"
+  "  -- dynlibdir" `assertHasCommentLine` "dynlibdir"
+  "  -- libexecdir" `assertHasCommentLine` "libexecdir"
+  "  -- libexecsubdir" `assertHasCommentLine` "libexecsubdir"
+  "  -- datadir" `assertHasCommentLine` "datadir"
+  "  -- datasubdir" `assertHasCommentLine` "datasubdir"
+  "  -- docdir" `assertHasCommentLine` "docdir"
+  "  -- htmldir" `assertHasCommentLine` "htmldir"
+  "  -- haddockdir" `assertHasCommentLine` "haddockdir"
+  "  -- sysconfdir" `assertHasCommentLine` "sysconfdir"
+
+  "  -- alex-location" `assertHasCommentLine` "alex-location"
+  "  -- ar-location" `assertHasCommentLine` "ar-location"
+  "  -- c2hs-location" `assertHasCommentLine` "c2hs-location"
+  "  -- cpphs-location" `assertHasCommentLine` "cpphs-location"
+  "  -- doctest-location" `assertHasCommentLine` "doctest-location"
+  "  -- gcc-location" `assertHasCommentLine` "gcc-location"
+  "  -- ghc-location" `assertHasCommentLine` "ghc-location"
+  "  -- ghc-pkg-location" `assertHasCommentLine` "ghc-pkg-location"
+  "  -- ghcjs-location" `assertHasCommentLine` "ghcjs-location"
+  "  -- ghcjs-pkg-location" `assertHasCommentLine` "ghcjs-pkg-location"
+  "  -- greencard-location" `assertHasCommentLine` "greencard-location"
+  "  -- haddock-location" `assertHasCommentLine` "haddock-location"
+  "  -- happy-location" `assertHasCommentLine` "happy-location"
+  "  -- haskell-suite-location" `assertHasCommentLine` "haskell-suite-location"
+  "  -- haskell-suite-pkg-location" `assertHasCommentLine` "haskell-suite-pkg-location"
+  "  -- hmake-location" `assertHasCommentLine` "hmake-location"
+  "  -- hpc-location" `assertHasCommentLine` "hpc-location"
+  "  -- hscolour-location" `assertHasCommentLine` "hscolour-location"
+  "  -- jhc-location" `assertHasCommentLine` "jhc-location"
+  "  -- ld-location" `assertHasCommentLine` "ld-location"
+  "  -- pkg-config-location" `assertHasCommentLine` "pkg-config-location"
+  "  -- runghc-location" `assertHasCommentLine` "runghc-location"
+  "  -- strip-location" `assertHasCommentLine` "strip-location"
+  "  -- tar-location" `assertHasCommentLine` "tar-location"
+  "  -- uhc-location" `assertHasCommentLine` "uhc-location"
+
+  "  -- alex-options" `assertHasCommentLine` "alex-options"
+  "  -- ar-options" `assertHasCommentLine` "ar-options"
+  "  -- c2hs-options" `assertHasCommentLine` "c2hs-options"
+  "  -- cpphs-options" `assertHasCommentLine` "cpphs-options"
+  "  -- doctest-options" `assertHasCommentLine` "doctest-options"
+  "  -- gcc-options" `assertHasCommentLine` "gcc-options"
+  "  -- ghc-options" `assertHasCommentLine` "ghc-options"
+  "  -- ghc-pkg-options" `assertHasCommentLine` "ghc-pkg-options"
+  "  -- ghcjs-options" `assertHasCommentLine` "ghcjs-options"
+  "  -- ghcjs-pkg-options" `assertHasCommentLine` "ghcjs-pkg-options"
+  "  -- greencard-options" `assertHasCommentLine` "greencard-options"
+  "  -- haddock-options" `assertHasCommentLine` "haddock-options"
+  "  -- happy-options" `assertHasCommentLine` "happy-options"
+  "  -- haskell-suite-options" `assertHasCommentLine` "haskell-suite-options"
+  "  -- haskell-suite-pkg-options" `assertHasCommentLine` "haskell-suite-pkg-options"
+  "  -- hmake-options" `assertHasCommentLine` "hmake-options"
+  "  -- hpc-options" `assertHasCommentLine` "hpc-options"
+  "  -- hsc2hs-options" `assertHasCommentLine` "hsc2hs-options"
+  "  -- hscolour-options" `assertHasCommentLine` "hscolour-options"
+  "  -- jhc-options" `assertHasCommentLine` "jhc-options"
+  "  -- ld-options" `assertHasCommentLine` "ld-options"
+  "  -- pkg-config-options" `assertHasCommentLine` "pkg-config-options"
+  "  -- runghc-options" `assertHasCommentLine` "runghc-options"
+  "  -- strip-options" `assertHasCommentLine` "strip-options"
+  "  -- tar-options" `assertHasCommentLine` "tar-options"
+  "  -- uhc-options" `assertHasCommentLine` "uhc-options"
 
 testIgnoreProjectFlag :: Assertion
 testIgnoreProjectFlag = do
@@ -2245,7 +2289,12 @@ testHaddockProjectDependencies config = do
       cleanHaddockProject testdir
       withCurrentDirectory dir $ do
         CmdHaddockProject.haddockProjectAction
-          defaultHaddockProjectFlags { haddockProjectVerbosity = Flag verbosity }
+          defaultHaddockProjectFlags
+            { haddockProjectCommonFlags =
+                defaultCommonSetupFlags
+                  { setupVerbosity = Flag verbosity
+                  }
+            }
           ["all"]
           defaultGlobalFlags { globalStoreDir = Flag "store" }
 

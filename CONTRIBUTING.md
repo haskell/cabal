@@ -1,7 +1,6 @@
 # Contributing to Cabal
 
-Building Cabal for hacking
---------------------------
+## Building Cabal for hacking
 
 If you use the `cabal` executable from the latest version of the
 [cabal-install](https://hackage.haskell.org/package/cabal-install) package
@@ -58,10 +57,13 @@ $ cabal build Cabal-tests:unit-tests # build Cabal's unit test suite
 $ cabal build cabal-tests            # etc...
 ```
 
-Running tests
--------------
+## Running tests
 
-**Using GitHub Actions.**
+There are two ways to run tests: in CI with GitHub actions and locally with
+`./validate.sh`.
+
+### Using GitHub Actions.
+
 If you are not in a hurry, the most convenient way to run tests on Cabal
 is to make a branch on GitHub and then open a pull request; our
 continuous integration service on GitHub Actions builds and
@@ -85,7 +87,8 @@ Some tips for using GitHub Actions effectively:
   already failed), be nice to others and cancel the rest of the jobs,
   so that other commits on the build queue can be processed.
 
-**How to debug a failing CI test.**
+### How to debug a failing CI test.
+
 One of the annoying things about running tests on CI is when they
 fail, there is often no easy way to further troubleshoot the broken
 build.  Here are some guidelines for debugging continuous integration
@@ -113,7 +116,11 @@ failures:
 If none of these let you reproduce, there might be some race condition
 or continuous integration breakage; please file a bug.
 
-**Running tests locally.**
+### Running tests locally.
+
+The [`./validate.sh`](./validate.sh) script runs all the test suites. It takes
+various options to restrict the test suites it runs; use `--help` to list them.
+
 To run tests locally with `cabal`, you will need to know the
 name of the test suite you want.  Cabal and cabal-install have
 several.  Also, you'll want to read [Where are my build products?](http://cabal.readthedocs.io/en/latest/nix-local-build.html#where-are-my-build-products)
@@ -150,8 +157,14 @@ For these test executables, `-p` which applies a regex filter to the test
 names. When running `cabal-install` test suites, one need only use `cabal test` or
 `cabal run <test-target>` in order to test locally.
 
-QA Notes
---------
+## Running other checks locally
+
+Various other checks done by CI can be run locally to make sure your code doesn't
+fail annoyingly once you push it. `make checks` will do these checks. The list of
+checks is expected to grow over time, to make it easier to avoid CI turnaround on
+simple problems.
+
+## QA Notes
 
 Manual Quality Assurance (QA) is performed to ensure that the changes impacting
 the command-line interface, whether adding or modifying a behaviour,
@@ -162,39 +175,79 @@ Contributions that touch `cabal-install` are expected to include notes for the Q
 They are a description of an expected result upon calling `cabal-install` with certain parameters,
 and should be written in the body of the ticket or PR under their own heading, like this:
 
-For instance:
+```markdown
+## QA Notes
 
-> \#\# QA Notes
->
-> Calling `cabal haddock-project` should produce documentation for the whole cabal project with the following defaults enabled:
-> * Documentation lives in ./haddocks
-> * The file `./haddocks/index.html` should exist
+Calling `cabal haddock-project` should produce documentation for the whole
+cabal project with the following defaults enabled:
+* Documentation lives in ./haddocks
+* The file `./haddocks/index.html` should exist
+```
 
 Manual QA is not expected to find every possible bug, but to really challenge the assumptions of the contributor, and to verify that their own testing
 of their patch is not influenced by their setup or implicit knowledge of the system.
 
 
-Code Style
----------------
+## Code Style
 
-We use automated formatting with Fourmolu to enforce a unified style across the code bases. It is checked in the CI process.
-After installing Fourmolu 0.12, there are some makefile targets to help formatting
-the code base.
-
+We use automated formatting, checked in the CI process, to enforce a unified
+style across the code bases and include these makefile targets to help with
+formatting:
 
 * `make style` - Format the `Cabal`, `Cabal-syntax` and `cabal-install` directories.
 * `make style-modified` - Format files modified in the current tree.
 * `make style-commit COMMIT=<ref>` - Format files modified between HEAD and the given reference.
 
-Whitespace Conventions
-----------------------
+> [!NOTE]
+> We use `fourmolu-0.12.0.0` for formatting. If installing it with `cabal
+> install`, please make sure to use a version of `GHC >= 9.2.1 && < 9.8`.
+> Its requirement of `GHC2021` sets the lower bound, and its reliance on
+> `ghc-lib-parser` sets the upper bound on GHC versions. A command for
+> installing it this way is:
+>
+> ```
+> $ cabal install fourmolu-0.12.0.0 --overwrite-policy=always --ignore-project
+> ```
+
+> [!Tip]
+> If you have multiple versions of GHC installed with `ghcup`, a series-specific
+> GHC can be used by adding an option of `--with-compiler=ghc-x.y` (for the
+> latest installed `x.y.z` version in the `x.y` series) or an option of
+> `--with-compiler=ghc-x.y.z` to the above install command.
+>
+> ```
+> $ ghc --numeric-version
+> 9.10.1
+>
+> $ ghc-9.6 --numeric-version
+> 9.6.6
+>
+> $ ghc-9.4.8 --numeric-version
+> 9.4.8
+> ```
+>
+> If not using the `--with-compiler` option then the system `ghc` version should
+> be one in the `ghc-9.2`, `ghc-9.4` or `ghc-9.6` series when installing
+> `fourmolu`.
+
+> [!WARNING]
+> If you have need of another `fourmolu` version for other work and want to
+> switch between versions then your options are reinstalling or using a nix shell
+> or something similar. It is not yet possible to specify development
+> environment tools within a package with different constraints on dependencies,
+> see [issue-9230][issue-9230].
+
+[issue-9230]: https://github.com/haskell/cabal/issues/9230
+
+## Whitespace Conventions
 
 We use automated whitespace convention checking. Violations can be fixed by
 running [fix-whitespace](https://hackage.haskell.org/package/fix-whitespace). If
-you push a fix of a whitespace violation, please do so in a _separate commit_.
+you push a fix of a whitespace violation, please do so in a _separate commit_. For convenience,
+`make whitespace` will show violations and `make fix-whitespace` will fix them, if the
+`fix-whitespace` utility is installed.
 
-Other Conventions
------------------
+## Other Conventions
 
 * Format your commit messages [in the standard way](https://chris.beams.io/posts/git-commit/#seven-rules).
 
@@ -254,8 +307,7 @@ Other Conventions
   #endif
   ```
 
-GitHub Ticket Conventions
--------------------
+## GitHub Ticket Conventions
 
 Each major `Cabal`/`cabal-install` release (e.g. 3.4, 3.6, etc.) has a
 corresponding GitHub Project and milestone. A ticket is included in a release's
@@ -268,8 +320,7 @@ accepting a fix in that release, i.e. we would very much appreciate someone
 working on it, but are not committing to actively sourcing someone to work on
 it.
 
-GitHub Pull Request Conventions
--------------------
+## GitHub Pull Request Conventions
 
 Every (non-backport) pull request has to go through a review and get 2
 approvals. After this is done, the author of the pull request is expected to add
@@ -310,8 +361,7 @@ think it does not warrant an issue). Feel free to open a new issue (or new
 issues) when appropriate.
 
 
-Changelog
----------
+## Changelog
 
 Anything that changes `cabal-install:exe:cabal` or changes exports from library
 modules or changes behaviour of functions exported from packages published to
@@ -345,13 +395,37 @@ description: {
 }
 ```
 
+Changelogs may also be written in "markdown-frontmatter" format. This is useful if your
+description contains braces, which must be escaped with backslashes in `.cabal` file
+format. The front matter is in YAML syntax, not `.cabal` file syntax, and the file
+_must_ begin with a line containing only hyphens.
+
+```markdown
+---
+synopsis: Add feature xyz
+packages: [cabal-install]
+prs: 0000
+issues: [0000, 0000]
+significance: significant
+---
+
+- Detail number 1
+- Detail number 2
+
+```
+The package list must be enclosed in square brackets and comma-separated, but this
+isn't needed for `prs` or `issues`; those are free-form and any YAML syntax will
+be accepted. Note that the number signs on PR and issue numbers are required in
+`.cabal` file syntax, but won't work in markdown-frontmatter syntax because they
+signify comments in YAML.
+
 Only the `synopsis` and `prs` fields are required, but you should also set the others where applicable.
 
 | Field          | Description                                                                                                        |
 | -----          | -----------                                                                                                        |
 | `synopsis`     | Brief description of the change. Often just the pr title.                                                          |
 | `description`  | Longer description, with a list of sub-changes. Not needed for small/atomic changes.                               |
-| `packages`     | Packages affected by the change (`cabal-install`, `Cabal`...). Omit if it's an overarching or non-package change.  |
+| `packages`     | Packages affected by the change (`cabal-install`, `Cabal`...). Omit if it's a non-package change.                  |
 | `prs`          | Space-separated hash-prefixed pull request numbers containing the change (usually just one).                       |
 | `issues`       | Space-separated hash-prefixed issue numbers that the change fixes/closes/affects.                                  |
 | `significance` | Set to `significant` if the change is significant, that is if it warrants being put near the top of the changelog. |
@@ -365,8 +439,7 @@ At release time, the entries will be merged with
 In addition, if you're changing the `.cabal` file format specification you should
 add an entry in `doc/file-format-changelog.rst`.
 
-Communicating
--------------
+## Communicating
 
 There are a few main venues of communication:
 
@@ -377,10 +450,9 @@ There are a few main venues of communication:
 
 * Many developers idle on `#hackage` on [`irc.libera.chat`](https://libera.chat). The `#ghc` channel is also a decently good bet.
   * You can join the channel using a web client, even anonymously: https://web.libera.chat/#hackage
-  * Alternatively you can join it using [matrix](https://matrix.org/): https://matrix.to/#/#hackage:libera.chat
+  * Alternatively you can join it using [matrix](https://matrix.org/): https://matrix.to/#/#hackage:matrix.org
 
-Releases
---------
+## Releases
 
 Notes for how to make a release are at the
 wiki page ["Making a release"](https://github.com/haskell/cabal/wiki/Making-a-release).
@@ -388,8 +460,7 @@ Currently, [@emilypi](https://github.com/emilypi), [@fgaz](https://github.com/fg
 `haskell.org/cabal`, and [@Mikolaj](https://github.com/Mikolaj) is the point of contact for getting
 permissions.
 
-Preview Releases
-----------------
+## Preview Releases
 
 We make preview releases available to facilitate testing of development builds.
 
@@ -407,8 +478,7 @@ To reproduce these locally, set up an Alpine build environment using GHCup,
 and then build by calling `cabal build cabal-install --enable-executable-static`.
 
 
-API Documentation
------------------
+## API Documentation
 
 Auto-generated API documentation for the `master` branch of Cabal is automatically uploaded here: http://haskell.github.io/cabal-website/doc/html/Cabal/.
 
@@ -416,8 +486,7 @@ Auto-generated API documentation for the `master` branch of Cabal is automatical
 
 You can contribute by triaging issues which may include reproducing bug reports or asking for vital information, such as version numbers or reproduction instructions. If you would like to start triaging issues, one easy way to get started is to [subscribe to cabal on CodeTriage](https://www.codetriage.com/haskell/cabal).
 
-Hackage Revisions
------------------
+## Hackage Revisions
 
 We are reactive rather than proactive with revising bounds on our dependencies
 for code already released on Hackage. If you would benefit from a version bump,

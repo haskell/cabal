@@ -85,7 +85,7 @@ import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version (Version)
 import Language.Haskell.Extension
-import System.Directory (getDirectoryContents, getTemporaryDirectory)
+import System.Directory (getDirectoryContents)
 import System.Environment (getEnv)
 import System.FilePath
   ( takeDirectory
@@ -221,9 +221,8 @@ configureToolchain _implInfo ghcProg ghcInfo =
     -- we need to find out if ld supports the -x flag
     configureLd' :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
     configureLd' verbosity ldProg = do
-      tempDir <- getTemporaryDirectory
-      ldx <- withTempFile tempDir ".c" $ \testcfile testchnd ->
-        withTempFile tempDir ".o" $ \testofile testohnd -> do
+      ldx <- withTempFile ".c" $ \testcfile testchnd ->
+        withTempFile ".o" $ \testofile testohnd -> do
           hPutStrLn testchnd "int foo() { return 0; }"
           hClose testchnd
           hClose testohnd
@@ -236,7 +235,7 @@ configureToolchain _implInfo ghcProg ghcInfo =
             , "-o"
             , testofile
             ]
-          withTempFile tempDir ".o" $ \testofile' testohnd' ->
+          withTempFile ".o" $ \testofile' testohnd' ->
             do
               hClose testohnd'
               _ <-

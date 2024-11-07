@@ -36,6 +36,7 @@ main = generate =<< O.execParser opts where
         <*> licenses "3.10"
         <*> licenses "3.16"
         <*> licenses "3.23"
+        <*> licenses "3.25"
 
     template = O.strArgument $ mconcat
         [ O.metavar "SPDX.LicenseId.template.hs"

@@ -14,6 +14,11 @@ on:
       - 'doc/**'
       - '**/README.md'
       - 'CONTRIBUTING.md'
+      - "changelog.d/**"
+      # only top level for these, because various test packages have them too
+      - "*/ChangeLog.md"
+      - "*/changelog.md"
+      - "release-notes/**"
     branches:
       - master
   pull_request:
@@ -21,6 +26,10 @@ on:
       - 'doc/**'
       - '**/README.md'
       - 'CONTRIBUTING.md'
+      - "changelog.d/**"
+      - "*/ChangeLog.md"
+      - "*/changelog.md"
+      - "release-notes/**"
   release:
     types:
       - created
@@ -30,7 +39,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        ghc: ["9.0.2", "9.2.8", "9.4.8", "9.6.4", "9.8.2"]
+        ghc: ["9.0.2", "9.2.8", "9.4.8", "9.6.6", "9.8.2"]
         include:
           - os: macos-latest
             ghc: "9.2.8"

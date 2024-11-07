@@ -329,6 +329,7 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
           ]
         , from [8, 2] ["-fmax-uncovered-patterns", "-fmax-errors"]
         , from [8, 4] $ to [8, 6] ["-fmax-valid-substitutions"]
+        , from [9, 12] ["-fmax-forced-spec-args", "-fwrite-if-compression"]
         ]
 
     dropIntFlag :: Bool -> String -> String -> Any

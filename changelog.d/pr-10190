@@ -1,0 +1,11 @@
+synopsis: Fix `cabal clean` permissions on Windows
+packages: cabal-install
+prs: #10190
+issues: #10182
+significance:
+
+description: {
+
+- `cabal clean` now removes the read-only mark recursively in the `dist-newstyle` folder on Windows before attempting to delete it.
+
+}

@@ -29,17 +29,32 @@ init: ## Set up git hooks and ignored revisions
 
 .PHONY: style
 style: ## Run the code styler
-	@fourmolu -q -i Cabal Cabal-syntax cabal-install
+	@fourmolu -q -i Cabal Cabal-syntax cabal-install cabal-validate
 
 .PHONY: style-modified
 style-modified: ## Run the code styler on modified files
-	@git ls-files --modified Cabal Cabal-syntax cabal-install \
+	@git ls-files --modified Cabal Cabal-syntax cabal-install cabal-validate \
 		| grep '.hs$$' | xargs -P $(PROCS) -I {} fourmolu -q -i {}
 
 .PHONY: style-commit
 style-commit: ## Run the code styler on the previous commit
-	@git diff --name-only HEAD $(COMMIT) Cabal Cabal-syntax cabal-install \
+	@git diff --name-only HEAD $(COMMIT) Cabal Cabal-syntax cabal-install cabal-validate \
 		| grep '.hs$$' | xargs -P $(PROCS) -I {} fourmolu -q -i {}
+
+.PHONY: whitespace
+whitespace: ## Run fix-whitespace in check mode
+	fix-whitespace --check --verbose
+
+.PHONY: fix-whitespace
+fix-whitespace: ## Run fix-whitespace in fix mode
+	fix-whitespace --verbose
+
+# local checks
+
+.PHONY: checks
+checks: whitespace style
+	# this should probably be a rule
+	hlint -j --json -- .
 
 # source generation: SPDX
 
@@ -52,7 +67,7 @@ SPDX_EXCEPTION_HS:=Cabal-syntax/src/Distribution/SPDX/LicenseExceptionId.hs
 .PHONY: spdx
 spdx : $(SPDX_LICENSE_HS) $(SPDX_EXCEPTION_HS)
 
-SPDX_LICENSE_VERSIONS:=3.0 3.2 3.6 3.9 3.10 3.16 3.23
+SPDX_LICENSE_VERSIONS:=3.0 3.2 3.6 3.9 3.10 3.16 3.23 3.25
 
 $(SPDX_LICENSE_HS) : templates/SPDX.LicenseId.template.hs cabal-dev-scripts/src/GenUtils.hs cabal-dev-scripts/src/GenSPDX.hs license-list-data/licenses-3.0.json license-list-data/licenses-3.2.json
 	cabal run --builddir=dist-newstyle-meta --project-file=cabal.meta.project gen-spdx -- templates/SPDX.LicenseId.template.hs $(SPDX_LICENSE_VERSIONS:%=license-list-data/licenses-%.json) $(SPDX_LICENSE_HS)
@@ -226,7 +241,7 @@ bootstrap-json-%: phony
 	cd bootstrap && cabal run -v0 cabal-bootstrap-gen -- linux-$*.plan.json \
 		| python3 -m json.tool > linux-$*.json
 
-BOOTSTRAP_GHC_VERSIONS := 9.0.2 9.2.8 9.4.8 9.6.4 9.8.2
+BOOTSTRAP_GHC_VERSIONS := 9.0.2 9.2.8 9.4.8 9.6.6 9.8.2
 
 .PHONY: bootstrap-jsons
 bootstrap-jsons: $(BOOTSTRAP_GHC_VERSIONS:%=bootstrap-json-%)

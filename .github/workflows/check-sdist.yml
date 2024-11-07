@@ -11,6 +11,11 @@ on:
       - "doc/**"
       - "**/README.md"
       - "CONTRIBUTING.md"
+      - "changelog.d/**"
+      # only top level for these, because various test packages have them too
+      - "*/ChangeLog.md"
+      - "*/changelog.md"
+      - "release-notes/**"
     branches:
       - master
   pull_request:
@@ -18,6 +23,10 @@ on:
       - "doc/**"
       - "**/README.md"
       - "CONTRIBUTING.md"
+      - "changelog.d/**"
+      - "*/ChangeLog.md"
+      - "*/changelog.md"
+      - "release-notes/**"
   release:
     types:
       - created
@@ -28,23 +37,17 @@ jobs:
   # No caching, since the point is to verify they can be installed "from scratch"
   # Don't run on master or a PR targeting master, because there's never an installable Cabal
   dogfood-sdists:
-    name: Dogfood sdist on ${{ matrix.os }} ghc-${{ matrix.ghc }}
+    name: Dogfood sdist on ghc-${{ matrix.ghc }}
     if: github.ref != 'refs/heads/master' && github.base_ref != 'master'
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: [ubuntu-latest]
         # this should be kept up to date with the list in validate.yml, but should be the
         # *first* compiler release so we validate against what is hopefully the first
         # release of a corresponding Cabal and friends. it can also be short since it's
         # highly unlikely that we are releasing really old branches.
         ghc:
-          [
-            "9.10.1",
-            "9.8.1",
-            "9.6.1",
-            "9.4.1",
-          ]
+          ["9.10.1", "9.8.1", "9.6.1"]
 
     steps:
 
@@ -80,3 +83,17 @@ jobs:
             echo No matching bootlib Cabal version to test against.
             exit 0
           fi
+
+  check-sdist-post-job:
+    if: always()
+    name: Check sdist post job
+    runs-on: ubuntu-latest
+    # IMPORTANT! Any job added to the workflow should be added here too
+    needs: [dogfood-sdists]
+
+    steps:
+      - run: |
+          echo "jobs info: ${{ toJSON(needs) }}"
+      - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
+

@@ -1,0 +1,11 @@
+synopsis: New licence constructors for SPDX licences starting with a digit
+packages: Cabal-syntax
+prs: #10356
+
+description: {
+
+- LicenseId constructor `NullBSD` is now `N_0BSD`.
+- LicenseId constructor `DS389_exception` is now and `N_389_exception`.
+- LicenseId constructor `X3D_Slicer_1_0` is now and `N_3D_Slicer_1_0`.
+
+}

@@ -1133,8 +1133,6 @@ renderArgs verbosity mbWorkDir tmpFileOpts version comp platform args k = do
                 withResponseFile
                   verbosity
                   tmpFileOpts
-                  mbWorkDir
-                  outputDir
                   "haddock-response.txt"
                   (if haddockSupportsUTF8 then Just utf8 else Nothing)
                   renderedArgs
@@ -1144,7 +1142,7 @@ renderArgs verbosity mbWorkDir tmpFileOpts version comp platform args k = do
     (Flag pfile, _) ->
       withPrologueArgs ["--prologue=" ++ pfile]
     (_, Flag prologueText) ->
-      withTempFileEx tmpFileOpts mbWorkDir outputDir "haddock-prologue.txt" $
+      withTempFileEx tmpFileOpts "haddock-prologue.txt" $
         \prologueFileName h -> do
           when haddockSupportsUTF8 (hSetEncoding h utf8)
           hPutStrLn h prologueText

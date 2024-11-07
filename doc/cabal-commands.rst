@@ -1413,7 +1413,10 @@ A list of all warnings with their constructor:
 - ``missing-conf-script``: missing ``configure`` script with ``build-type: Configure``.
 - ``unknown-directory``: paths refer to a directory which does not exist.
 - ``no-repository``: missing ``source-repository`` section.
-- ``no-docs``: missing expected documentation files (changelog).
+- ``no-docs``: missing expected documentation files. Checks
+  whether there is anything similar to a changelog file in your working
+  directory (e.g. ``CHANGELOG``, ``NEWS``, ``changelog.md``, etc.). If this
+  file is not present in the :pkg-field:`extra-doc-files` field, warns about it.
 - ``doc-place``: documentation files listed in ``extra-source-files`` instead of ``extra-doc-files``.
 
 .. _cabal-sdist:
