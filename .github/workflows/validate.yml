@@ -478,10 +478,10 @@ jobs:
         release_name: 'cabal-head'
 
     - uses: actions/download-artifact@v4
-        with:
-          pattern: cabal-*
-          path: binaries
-          merge-multiple: true
+      with:
+        pattern: cabal-*
+        path: binaries
+        merge-multiple: true
 
       - name: Create GitHub prerelease
         uses: softprops/action-gh-release@v2
