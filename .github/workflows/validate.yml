@@ -473,16 +473,16 @@ jobs:
     needs: [validate, validate-old-ghcs, build-alpine, dogfooding]
 
     steps:
-      - uses: liudonghua123/delete-release-action@v1
-        with:
-          release_name: 'cabal-head'
-  
       - uses: actions/download-artifact@v4
         with:
           pattern: cabal-*
           path: binaries
           merge-multiple: true
 
+      - uses: liudonghua123/delete-release-action@v1
+        with:
+          release_name: 'cabal-head'
+  
       - name: Create GitHub prerelease
         uses: softprops/action-gh-release@v2
         with:
