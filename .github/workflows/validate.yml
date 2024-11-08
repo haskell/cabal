@@ -474,8 +474,8 @@ jobs:
 
     steps:
     - uses: liudonghua123/delete-release-action@v1
-        with:
-          release_name: 'cabal-head'
+      with:
+        release_name: 'cabal-head'
 
     - uses: actions/download-artifact@v4
         with:
