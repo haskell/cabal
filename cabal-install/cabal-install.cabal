@@ -392,6 +392,9 @@ test-suite integration-tests2
   hs-source-dirs: tests
   default-language: Haskell2010
 
+  other-modules:
+    IntegrationTests2.CPP
+
   build-depends:
         bytestring,
         cabal-install,
