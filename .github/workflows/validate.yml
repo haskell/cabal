@@ -464,7 +464,10 @@ jobs:
     needs: [validate, validate-old-ghcs, build-alpine, dogfooding]
 
     steps:
-      # for now this is hardcoded. is there a better way?
+      - uses: liudonghua123/delete-release-action@v1
+        with:
+          release_name: 'cabal-head'
+
       - uses: actions/download-artifact@v4
         with:
           pattern: cabal-*
@@ -490,6 +493,10 @@ jobs:
     needs: [validate, validate-old-ghcs, build-alpine, dogfooding]
 
     steps:
+    - uses: liudonghua123/delete-release-action@v1
+      with:
+        release_name: 'cabal-lts-head'
+
     - uses: actions/download-artifact@v4
       with:
         pattern: cabal-*
