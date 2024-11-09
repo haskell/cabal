@@ -53,8 +53,9 @@ for a package, both for :ref:`package authors<pkg-authors>` and maintainers and
 for :ref:`package consumers<pkg-consumers>`.
 
 A relatively structured set of version control system (VCS) fields, that vary
-depending on the :ref:`VCS kind<vcs-kind>`, enables Cabal commands and other
-tools to interpret and make effective use of this information.
+depending on the :ref:`VCS tool<source-repository-package-type>`,
+enables Cabal commands and other tools to interpret and make effective use of
+this information.
 
 ``source-repository``
    Says where to find the source for a package and is a metadata field of a
@@ -199,8 +200,8 @@ Setting up a *source code* dependency
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 It is easy to copy the fields of ``source-repository`` to set up a
-``source-repository-package`` as they share many of the same :ref:`VCS
-fields<vcs-fields>`. Looking at vector's `package description
+``source-repository-package`` as they share many of the same
+fields. Looking at vector's `package description
 <vector-pkg-desc_>`_ on Hackage we see the ``source-repository`` stanza:
 
 .. code-block:: cabal

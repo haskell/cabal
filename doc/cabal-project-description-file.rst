@@ -216,35 +216,48 @@ Formally, the format is described by the following BNF:
 Taking a dependency from a *source code* repository
 ---------------------------------------------------
 
-Since version 2.4, the ``source-repository-package`` stanza allows for
-specifying packages in a remote version control system that cabal should
-consider during package retrieval. This allows use of a package from a
-remote version control system, rather than looking for that package in
-Hackage.
+Since version 2.4, the ``source-repository-package`` stanza allows you
+to specify packages in a remote version control system (VCS) that Cabal should
+consider during package retrieval. This allows you to use
+a specific package snapshot as a dependency, e.g. one with the latest fix that may not
+yet be published on Hackage, or a package that may not exist on Hackage at all
+for intellectual property reasons in business settings.
 
 Since version 3.4, cabal-install creates tarballs for each package coming from a
 ``source-repository-package`` stanza (effectively applying cabal sdists to such
-packages). It gathers the names of the packages from the appropriate ``.cabal``
-file in the version control repository, and allows their use just like Hackage
+packages). It gathers the names of the packages from the appropriate ``<package>.cabal``
+file in the repository, and allows their use just like Hackage
 or locally defined packages.
 
 There is no command line variant of this stanza.
+
+Here are some examples from a ``cabal.project`` file
+that point to snapshots of different libraries in Git repositories:
 
 .. code-block:: cabal
 
     packages: .
 
+    -- Snapshot via Git commit hash
     source-repository-package
         type: git
         location: https://github.com/hvr/HsYAML.git
         tag: e70cf0c171c9a586b62b3f75d72f1591e4e6aaa1
 
+    -- Snapshot via Git tag
+    source-repository-package
+        type: git
+        location: https://github.com/haskell/cabal
+        tag: cabal-install-v3.12.1.0
+
+    -- Snapshot via Git commit hash in subdirectory of a monorepo
     source-repository-package
         type: git
         location: https://github.com/well-typed/cborg
         tag: 3d274c14ca3077c3a081ba7ad57c5182da65c8c1
         subdir: cborg
 
+    -- Snapshot via Git commit hash with post-checkout command
     source-repository-package
         type: git
         location: https://github.com/haskell/network.git
@@ -253,33 +266,61 @@ There is no command line variant of this stanza.
 
 .. _source-repository-package-fields:
 
-The :ref:`VCS fields<vcs-fields>` of ``source-repository-package`` are:
+The fields of ``source-repository-package`` are:
 
-..
-  data SourceRepositoryPackage f = SourceRepositoryPackage
-    { srpType :: !RepoType
-    , srpLocation :: !String
-    , srpTag :: !(Maybe String)
-    , srpBranch :: !(Maybe String)
-    , srpSubdir :: !(f FilePath)
-    , srpCommand :: ![String]
-    }
+.. _source-repository-package-type:
 
-.. cfg-field:: type: VCS kind
+.. cfg-field:: type: VCS tool
 
-    This field is required.
+    :required: always
+
+    The name of the source control system tool used for a repository.
+    Cabal supports the following common version control systems (VCS):
+
+    -  ``git``
+    -  ``darcs``
+    -  ``svn``
+    -  ``cvs``
+    -  ``mercurial`` (or alias ``hg``)
+    -  ``bazaar`` (or alias ``bzr``)
+    -  ``arch``
+    -  ``monotone``
+    -  ``pijul``
+
+    The chosen VCS type determines what other fields are
+    appropriate to specify for a particular version control system.
 
 .. cfg-field:: location: VCS location
 
-    This field is required.
+    :required: always
+
+    The location of the repository, usually a URL but the exact form of this field
+    depends on the repository type. For example:
+
+    -  Git: ``https://github.com/foo/bar.git``
+    -  Darcs: ``http://code.haskell.org/foo/``
+    -  CVS: ``anoncvs@cvs.foo.org:/cvs``
 
 .. cfg-field:: branch: VCS branch
 
     This field is optional.
+    Many source control systems support the notion of a branch, as a distinct
+    concept from having repositories in separate locations. For example CVS, SVN and
+    git use branches while darcs uses different locations for different branches. If
+    you need to specify a branch to identify a your repository then specify it in
+    this field.
 
 .. cfg-field:: tag: VCS tag
 
-    This field is optional.
+    This field is optional but, if given, specifies a single subdirectory.
+    Otherwise it corresponds to the root directory of the repository and is the same as
+    specifying ``.`` explicitly.
+
+    Some projects are structured as a "monorepo" and put the sources for multiple
+    packages inside a single repository.
+    This field lets you specify the relative path from the root of the
+    repository to the top directory for the package, i.e. to the directory containing
+    the package's ``<package>.cabal`` file.
 
 .. cfg-field:: subdir: VCS subdirectory list
 

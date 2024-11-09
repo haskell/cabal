@@ -2693,87 +2693,137 @@ Starting with Cabal-2.2 it's possible to use common build info stanzas.
 *Source code* repository marker
 -------------------------------
 
-.. pkg-section:: source-repository
+.. pkg-section:: source-repository notation-variant
     :since: 1.6
 
-A marker that points to the *source code* for this package within a
-**source code repository**.
+A metadata marker that helps users of your package find its source code.
+This marker points to a *source code* snapshot within a
+version control systems (VCS) **repository** like Git.
 
-There are two kinds. You can specify one or the other or both at once:
-
--  The ``head`` kind refers to the latest development branch of the
-   package. This may be used for example to track activity of a project
-   or as an indication to outside developers what sources to get for
-   making new contributions.
-
--  The ``this`` kind refers to the branch and tag of a repository that
-   contains the sources for this version or release of a package.  For most
-   source control systems this involves specifying a tag, id or hash of some
-   form and perhaps a branch.
-
-As an example, here are the repositories for the Cabal library. Note that the
-``this`` kind of repository specifies a tag.
+Here are some examples that point to snapshots of the Cabal library in
+its Git repository:
 
 ::
 
+    -- Snapshot via Git commit hash
+    source-repository this
+      type:     git
+      location: https://github.com/haskell/cabal
+      tag: 260ecdc3d848782d4df49e629cb0a5dc9e96ca9e
+
+    -- Snapshot via Git tag
+    source-repository this
+      type:     git
+      location: https://github.com/haskell/cabal
+      tag:      cabal-install-v3.12.1.0
+
+    -- Snapshot via latest commit (head) of the default (master) branch
     source-repository head
       type:     git
       location: https://github.com/haskell/cabal
 
-    source-repository this
+    -- Snapshot via latest commit (head) of the specified branch
+    source-repository head
       type:     git
       location: https://github.com/haskell/cabal
-      tag:      1.6.1
+      branch:   3.12
+
+    -- Snapshot via latest commit (head) in subdirectory of a monorepo
+    source-repository head
+      type:     git
+      location: https://github.com/haskell/vector.git
+      subdir:   vector
+
+Note the two notation variants ``this`` and ``head``:
+
+-  The ``this`` variants refers to a specific snapshot of a repository
+   that contains the sources for this version or release of your package.
+   For most source control systems this involves specifying a tag, id or
+   hash of some commit and perhaps a branch.
+
+-  The ``head`` variant refers to the latest source code snapshot
+   in a repository branch of your package. This may be used for example
+   to track activity of a project or as an indication to outside
+   developers what sources to get for making new contributions.
 
 The :ref:`cabal get<cabal-get>` command uses the kind of repository with
 its ``--source-repository`` option, if provided.
 
 .. _source-repository-fields:
 
-The :ref:`VCS fields<vcs-fields>` of ``source-repository`` are:
+The fields of ``source-repository`` are:
 
-..
-  data SourceRepo = SourceRepo
-    { repoKind :: RepoKind
-    , repoType :: Maybe RepoType
-    , repoLocation :: Maybe String
-    , repoModule :: Maybe String
-    , repoBranch :: Maybe String
-    , repoTag :: Maybe String
-    , repoSubdir :: Maybe FilePath
-    }
+.. pkg-field:: type: VCS tool
 
-.. pkg-field:: type: VCS kind
+    :required: always
 
-    This field is required.
+    The name of the source control system tool used for a repository.
+    Cabal supports the following common version control systems (VCS):
+
+    -  ``git``
+    -  ``darcs``
+    -  ``svn``
+    -  ``cvs``
+    -  ``mercurial`` (or alias ``hg``)
+    -  ``bazaar`` (or alias ``bzr``)
+    -  ``arch``
+    -  ``monotone``
+    -  ``pijul``
+
+    The chosen VCS type determines what other fields are
+    appropriate to specify for a particular version control system.
 
 .. pkg-field:: location: VCS location
 
-    This field is required.
+    :required: always
 
-.. pkg-field:: module: token
+    The location of the repository, usually a URL but the exact form of this field
+    depends on the repository type. For example:
+
+    -  Git: ``https://github.com/foo/bar.git``
+    -  Darcs: ``http://code.haskell.org/foo/``
+    -  CVS: ``anoncvs@cvs.foo.org:/cvs``
+
+.. pkg-field:: branch: VCS branch
+
+    This field is optional.
+    Many source control systems support the notion of a branch, as a distinct
+    concept from having repositories in separate locations. For example CVS, SVN and
+    git use branches while darcs uses different locations for different branches. If
+    you need to specify a branch to identify a your repository then specify it in
+    this field.
+
+.. pkg-field:: tag: VCS tag
+
+    :required: only for the ``this`` notation variant
+
+    A tag identifies a particular snapshot of a source repository.
+    The exact form of the tag depends on the repository type. When using Git
+    this is typically a commit hash or a Git tag.
+    This field might be used to indicate what sources to get if someone needs to fix a
+    bug in an older branch that is no longer an active head branch.
+
+.. pkg-field:: subdir: VCS subdirectory
+
+    This field is optional but, if given, specifies a single subdirectory.
+    Otherwise it corresponds to the root directory of the repository and is the same as
+    specifying ``.`` explicitly.
+
+    Some projects are structured as a "monorepo" and put the sources for multiple
+    packages inside a single repository.
+    This field lets you specify the relative path from the root of the
+    repository to the top directory for the package, i.e. to the directory containing
+    the package's ``<package>.cabal`` file.
+
+.. pkg-field:: module: CVS token
+
+    :required: if repository type is CVS
 
     CVS requires a named module, as each CVS server can host multiple
     named repositories.
 
     This field is required for the CVS repository type and should not be
     used otherwise.
-
-.. pkg-field:: branch: VCS branch
-
-    This field is optional.
-
-.. pkg-field:: tag: VCS tag
-
-    This field is required for the ``this`` repository kind.
-
-    This might be used to indicate what sources to get if someone needs to fix a
-    bug in an older branch that is no longer an active head branch.
-
-.. pkg-field:: subdir: VCS subdirectory
-
-    This field is optional but, if given, specifies a single subdirectory.
-
 
 .. _setup-hooks:
 
