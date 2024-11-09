@@ -479,11 +479,10 @@ jobs:
           path: binaries
           merge-multiple: true
 
-      - uses: liudonghua123/delete-release-action@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: dev-drprasad/delete-tag-and-release@v1.1
         with:
-          release_name: 'cabal-head'
+          tag_name: cabal-head
+          github_token: ${{ secrets.GITHUB_TOKEN }} 
 
       - name: Create GitHub prerelease
         uses: softprops/action-gh-release@v2
