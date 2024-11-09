@@ -482,7 +482,7 @@ jobs:
       - uses: dev-drprasad/delete-tag-and-release@v1.1
         with:
           tag_name: cabal-head
-          github_token: ${{ secrets.GITHUB_TOKEN }} 
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create GitHub prerelease
         uses: softprops/action-gh-release@v2
