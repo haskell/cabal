@@ -1,0 +1,7 @@
+packages: .
+
+import: yops/yops-1.config
+import: yops/yops-3.config
+import: yops/yops-5.config
+import: yops/yops-7.config
+import: yops/yops-9.config
