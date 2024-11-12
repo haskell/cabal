@@ -398,11 +398,13 @@ rebuildProjectConfig
           localPackages <- phaseReadLocalPackages (projectConfig <> cliConfig)
           return (projectConfig, localPackages)
 
-    notice (verboseStderr verbosity) . render . vcat $
-      text "Configuration is affected by the following files:"
-        : [ text "-" <+> docProjectConfigPath path
+    let configfiles =
+          [ text "-" <+> docProjectConfigPath path
           | Explicit path <- Set.toList . (if verbosity >= verbose then id else onlyTopLevelProvenance) $ projectConfigProvenance projectConfig
           ]
+    unless (null configfiles) $
+      notice (verboseStderr verbosity) . render . vcat $
+        text "Configuration is affected by the following files:" : configfiles
 
     return (projectConfig <> cliConfig, localPackages)
     where
