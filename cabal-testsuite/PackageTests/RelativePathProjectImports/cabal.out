@@ -1,7 +1,6 @@
 # cabal build
 Configuration is affected by the following files:
 - cabal.project
-Configuration is affected by the following files:
 - dep/cabal.project
     imported by: cabal.project
 Resolving dependencies...
@@ -22,7 +21,6 @@ Building library for main-0.1...
 # cabal build
 Configuration is affected by the following files:
 - cabal.project
-Configuration is affected by the following files:
 - dep/cabal.project
     imported by: cabal.project
 Resolving dependencies...
