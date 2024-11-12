@@ -401,7 +401,7 @@ rebuildProjectConfig
     notice (verboseStderr verbosity) . render . vcat $
       text "Configuration is affected by the following files:"
         : [ text "-" <+> docProjectConfigPath path
-          | Explicit path <- Set.toList $ projectConfigProvenance projectConfig
+          | Explicit path <- Set.toList . (if verbosity >= verbose then id else onlyTopLevelProvenance) $ projectConfigProvenance projectConfig
           ]
 
     return (projectConfig <> cliConfig, localPackages)
