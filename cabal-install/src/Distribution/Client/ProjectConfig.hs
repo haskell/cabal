@@ -1755,7 +1755,7 @@ checkBadPerPackageCompilerPaths compilerPrograms packagesConfig =
     [] -> return ()
     ps -> throwIO (BadPerPackageCompilerPaths ps)
 
--- | Filter out non-top-level project configs
+-- | Filter out non-top-level project configs.
 onlyTopLevelProvenance :: Set ProjectConfigProvenance -> Set ProjectConfigProvenance
 onlyTopLevelProvenance = Set.filter $ \case
   Implicit -> False
