@@ -1,0 +1,11 @@
+synopsis: Warn on `cabal format`
+packages: cabal-install
+prs: #10549
+issues:
+significance:
+
+description: {
+
+- Despite its name, `cabal format` is not a proper formatter for cabal files. By chance users have sometimes found the command eventhough it is not mentioned in the help text, and they used it to format cabal files. This has some downsides like comments are stripped away or common stanzas are inlined, the command is more like a dump of the resolved package description. There are future plans (#7544) to make it an actual formatter so, rather than going through a deprecation cycle, we decided to keep this command for future use and in the meantime just warn the user about the fact that it is not a proper formatter.
+
+}

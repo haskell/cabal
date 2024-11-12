@@ -236,6 +236,7 @@ import Distribution.Simple.Utils
   , notice
   , topHandler
   , tryFindPackageDesc
+  , warn
   )
 import Distribution.Text
   ( display
@@ -1343,6 +1344,7 @@ checkAction checkFlags extraArgs _globalFlags = do
 formatAction :: Flag Verbosity -> [String] -> Action
 formatAction verbosityFlag extraArgs _globalFlags = do
   let verbosity = fromFlag verbosityFlag
+  warn verbosity "This command is not a full formatter yet"
   path <- case extraArgs of
     [] -> relativeSymbolicPath <$> tryFindPackageDesc verbosity Nothing
     (p : _) -> return $ makeSymbolicPath p
