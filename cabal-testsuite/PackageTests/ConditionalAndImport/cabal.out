@@ -3,7 +3,6 @@ Downloading the latest package list from test-local-repo
 # cabal v2-run
 Configuration is affected by the following files:
 - cabal.project
-Configuration is affected by the following files:
 - extra.project
     imported by: cabal.project
 Resolving dependencies...
@@ -70,9 +69,7 @@ cyclical import of cyclical-2-out-out-self-b.config;
 Configuration is affected by the following files:
 - noncyclical-same-filename-a.config
     imported by: noncyclical-same-filename-a.project
-Configuration is affected by the following files:
 - noncyclical-same-filename-a.project
-Configuration is affected by the following files:
 - same-filename/noncyclical-same-filename-a.config
     imported by: noncyclical-same-filename-a.config
     imported by: noncyclical-same-filename-a.project
@@ -89,9 +86,7 @@ Configuration is affected by the following files:
 - noncyclical-same-filename-b.config
     imported by: same-filename/noncyclical-same-filename-b.config
     imported by: noncyclical-same-filename-b.project
-Configuration is affected by the following files:
 - noncyclical-same-filename-b.project
-Configuration is affected by the following files:
 - same-filename/noncyclical-same-filename-b.config
     imported by: noncyclical-same-filename-b.project
 Up to date
@@ -126,17 +121,14 @@ cyclical import of cyclical-same-filename-out-out-back.config;
 # cabal v2-build
 Configuration is affected by the following files:
 - hops-0.project
-Configuration is affected by the following files:
 - hops-2.config
     imported by: hops/hops-1.config
     imported by: hops-0.project
-Configuration is affected by the following files:
 - hops-4.config
     imported by: hops/hops-3.config
     imported by: hops-2.config
     imported by: hops/hops-1.config
     imported by: hops-0.project
-Configuration is affected by the following files:
 - hops-6.config
     imported by: hops/hops-5.config
     imported by: hops-4.config
@@ -144,7 +136,6 @@ Configuration is affected by the following files:
     imported by: hops-2.config
     imported by: hops/hops-1.config
     imported by: hops-0.project
-Configuration is affected by the following files:
 - hops-8.config
     imported by: hops/hops-7.config
     imported by: hops-6.config
@@ -154,22 +145,18 @@ Configuration is affected by the following files:
     imported by: hops-2.config
     imported by: hops/hops-1.config
     imported by: hops-0.project
-Configuration is affected by the following files:
 - hops/hops-1.config
     imported by: hops-0.project
-Configuration is affected by the following files:
 - hops/hops-3.config
     imported by: hops-2.config
     imported by: hops/hops-1.config
     imported by: hops-0.project
-Configuration is affected by the following files:
 - hops/hops-5.config
     imported by: hops-4.config
     imported by: hops/hops-3.config
     imported by: hops-2.config
     imported by: hops/hops-1.config
     imported by: hops-0.project
-Configuration is affected by the following files:
 - hops/hops-7.config
     imported by: hops-6.config
     imported by: hops/hops-5.config
@@ -178,7 +165,6 @@ Configuration is affected by the following files:
     imported by: hops-2.config
     imported by: hops/hops-1.config
     imported by: hops-0.project
-Configuration is affected by the following files:
 - hops/hops-9.config
     imported by: hops-8.config
     imported by: hops/hops-7.config
@@ -194,17 +180,14 @@ Up to date
 # cabal v2-build
 Configuration is affected by the following files:
 - oops-0.project
-Configuration is affected by the following files:
 - oops-2.config
     imported by: oops/oops-1.config
     imported by: oops-0.project
-Configuration is affected by the following files:
 - oops-4.config
     imported by: oops/oops-3.config
     imported by: oops-2.config
     imported by: oops/oops-1.config
     imported by: oops-0.project
-Configuration is affected by the following files:
 - oops-6.config
     imported by: oops/oops-5.config
     imported by: oops-4.config
@@ -212,7 +195,6 @@ Configuration is affected by the following files:
     imported by: oops-2.config
     imported by: oops/oops-1.config
     imported by: oops-0.project
-Configuration is affected by the following files:
 - oops-8.config
     imported by: oops/oops-7.config
     imported by: oops-6.config
@@ -222,22 +204,18 @@ Configuration is affected by the following files:
     imported by: oops-2.config
     imported by: oops/oops-1.config
     imported by: oops-0.project
-Configuration is affected by the following files:
 - oops/oops-1.config
     imported by: oops-0.project
-Configuration is affected by the following files:
 - oops/oops-3.config
     imported by: oops-2.config
     imported by: oops/oops-1.config
     imported by: oops-0.project
-Configuration is affected by the following files:
 - oops/oops-5.config
     imported by: oops-4.config
     imported by: oops/oops-3.config
     imported by: oops-2.config
     imported by: oops/oops-1.config
     imported by: oops-0.project
-Configuration is affected by the following files:
 - oops/oops-7.config
     imported by: oops-6.config
     imported by: oops/oops-5.config
@@ -246,7 +224,6 @@ Configuration is affected by the following files:
     imported by: oops-2.config
     imported by: oops/oops-1.config
     imported by: oops-0.project
-Configuration is affected by the following files:
 - oops/oops-9.config
     imported by: oops-8.config
     imported by: oops/oops-7.config
@@ -281,31 +258,25 @@ After searching the rest of the dependency tree exhaustively, these were the goa
 # cabal v2-build
 Configuration is affected by the following files:
 - yops-0.project
-Configuration is affected by the following files:
 - yops-2.config
     imported by: yops/yops-1.config
     imported by: yops-0.project
-Configuration is affected by the following files:
 - yops-4.config
     imported by: yops/yops-3.config
     imported by: yops-0.project
-Configuration is affected by the following files:
 - yops-4.config
     imported by: yops/yops-3.config
     imported by: yops-2.config
     imported by: yops/yops-1.config
     imported by: yops-0.project
-Configuration is affected by the following files:
 - yops-6.config
     imported by: yops/yops-5.config
     imported by: yops-0.project
-Configuration is affected by the following files:
 - yops-6.config
     imported by: yops/yops-5.config
     imported by: yops-4.config
     imported by: yops/yops-3.config
     imported by: yops-0.project
-Configuration is affected by the following files:
 - yops-6.config
     imported by: yops/yops-5.config
     imported by: yops-4.config
@@ -313,17 +284,14 @@ Configuration is affected by the following files:
     imported by: yops-2.config
     imported by: yops/yops-1.config
     imported by: yops-0.project
-Configuration is affected by the following files:
 - yops-8.config
     imported by: yops/yops-7.config
     imported by: yops-0.project
-Configuration is affected by the following files:
 - yops-8.config
     imported by: yops/yops-7.config
     imported by: yops-6.config
     imported by: yops/yops-5.config
     imported by: yops-0.project
-Configuration is affected by the following files:
 - yops-8.config
     imported by: yops/yops-7.config
     imported by: yops-6.config
@@ -331,7 +299,6 @@ Configuration is affected by the following files:
     imported by: yops-4.config
     imported by: yops/yops-3.config
     imported by: yops-0.project
-Configuration is affected by the following files:
 - yops-8.config
     imported by: yops/yops-7.config
     imported by: yops-6.config
@@ -341,48 +308,38 @@ Configuration is affected by the following files:
     imported by: yops-2.config
     imported by: yops/yops-1.config
     imported by: yops-0.project
-Configuration is affected by the following files:
 - yops/yops-1.config
     imported by: yops-0.project
-Configuration is affected by the following files:
 - yops/yops-3.config
     imported by: yops-0.project
-Configuration is affected by the following files:
 - yops/yops-3.config
     imported by: yops-2.config
     imported by: yops/yops-1.config
     imported by: yops-0.project
-Configuration is affected by the following files:
 - yops/yops-5.config
     imported by: yops-0.project
-Configuration is affected by the following files:
 - yops/yops-5.config
     imported by: yops-4.config
     imported by: yops/yops-3.config
     imported by: yops-0.project
-Configuration is affected by the following files:
 - yops/yops-5.config
     imported by: yops-4.config
     imported by: yops/yops-3.config
     imported by: yops-2.config
     imported by: yops/yops-1.config
     imported by: yops-0.project
-Configuration is affected by the following files:
 - yops/yops-7.config
     imported by: yops-0.project
-Configuration is affected by the following files:
 - yops/yops-7.config
     imported by: yops-6.config
     imported by: yops/yops-5.config
     imported by: yops-0.project
-Configuration is affected by the following files:
 - yops/yops-7.config
     imported by: yops-6.config
     imported by: yops/yops-5.config
     imported by: yops-4.config
     imported by: yops/yops-3.config
     imported by: yops-0.project
-Configuration is affected by the following files:
 - yops/yops-7.config
     imported by: yops-6.config
     imported by: yops/yops-5.config
@@ -391,22 +348,18 @@ Configuration is affected by the following files:
     imported by: yops-2.config
     imported by: yops/yops-1.config
     imported by: yops-0.project
-Configuration is affected by the following files:
 - yops/yops-9.config
     imported by: yops-0.project
-Configuration is affected by the following files:
 - yops/yops-9.config
     imported by: yops-8.config
     imported by: yops/yops-7.config
     imported by: yops-0.project
-Configuration is affected by the following files:
 - yops/yops-9.config
     imported by: yops-8.config
     imported by: yops/yops-7.config
     imported by: yops-6.config
     imported by: yops/yops-5.config
     imported by: yops-0.project
-Configuration is affected by the following files:
 - yops/yops-9.config
     imported by: yops-8.config
     imported by: yops/yops-7.config
@@ -415,7 +368,6 @@ Configuration is affected by the following files:
     imported by: yops-4.config
     imported by: yops/yops-3.config
     imported by: yops-0.project
-Configuration is affected by the following files:
 - yops/yops-9.config
     imported by: yops-8.config
     imported by: yops/yops-7.config
