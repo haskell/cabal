@@ -24,7 +24,6 @@ Wrote freeze file: <ROOT>/cabal.project.freeze
 # cabal v2-build
 Configuration is affected by the following files:
 - cabal.project
-Configuration is affected by the following files:
 - cabal.project.freeze
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
@@ -41,7 +40,6 @@ Building executable 'my-exe' for my-local-package-1.0...
 # cabal v2-freeze
 Configuration is affected by the following files:
 - cabal.project
-Configuration is affected by the following files:
 - cabal.project.freeze
 Wrote freeze file: <ROOT>/cabal.project.freeze
 # cabal v2-build
