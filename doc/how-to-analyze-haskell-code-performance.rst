@@ -12,7 +12,7 @@ The main steps are to
 3. visualize and analyze that report.
 
 The process of inserting performance measuring code and collecting performance information
-is called "profiling". The main work is done by GHC while Cabal only acts
+is called "profiling". The work is done by GHC while Cabal only acts
 as a build configuration interface and passes corresponding compiler flags to GHC.
 
 Profiling CPU performance
