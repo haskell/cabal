@@ -2,7 +2,7 @@ How to analyze Haskell performance
 ==================================
 
 When a Haskell application is slow or uses too much memory,
-Cabal and `GHC <https://downloads.haskell.org/ghc/latest/docs/users_guide/>`__
+Cabal and `GHC <https://downloads.haskell.org/ghc/latest/docs/users_guide/profiling.html>`__
 can help you understand why.
 
 The main steps are to
