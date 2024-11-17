@@ -1,0 +1,16 @@
+synopsis: Shallow and concurrent cloning of git repos
+packages: cabal-install
+prs: #10254
+
+description: {
+
+- Clone git repositories specified in source-repository-package stanzas
+  shallowly, since to build the package from the repository we only need to
+  read the commit specified. The rest of the repo is not needed.
+  Note that this does not change the behaviour of `cabal get -s`, which will
+  still clone the repository in full.
+- Clone VCS repositories concurrently, with a maximum of two concurrent tasks
+  at the same time (just like when downloading packages asynchronously)
+
+}
+
