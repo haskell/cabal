@@ -269,22 +269,32 @@ The :ref:`VCS fields<vcs-fields>` of ``source-repository-package`` are:
 
     This field is required.
 
+    .. include:: vcs/kind.rst
+
 .. cfg-field:: location: VCS location
 
     This field is required.
+
+    .. include:: vcs/location.rst
 
 .. cfg-field:: branch: VCS branch
 
     This field is optional.
 
+    .. include:: vcs/branch.rst
+
 .. cfg-field:: tag: VCS tag
 
     This field is optional.
+
+    .. include:: vcs/tag.rst
 
 .. cfg-field:: subdir: VCS subdirectory list
 
     Look in one or more subdirectories of the repository for cabal files, rather
     than the root. This field is optional.
+
+    .. include:: vcs/subdir.rst
 
 .. cfg-field:: post-checkout-command: command
 
