@@ -119,7 +119,7 @@ and dependencies are usually not local.
 However, the bottlenecks may be in your dependencies, so you would want to profile those too.
 
 First, to enable ``late``-cost-center profiling of all packages/dependencies in your project,
-add the following to your project’s ``cabal.project`` file:
+add the following to your project’s ``cabal.project.local`` file:
 
 .. code-block:: cabal
 
@@ -138,10 +138,6 @@ Second, rerun your application with ``cabal run``, which also automatically rebu
      - base64-bytestring-1.2.1.0 (lib)  --enable-profiling (requires build)
      - cryptohash-sha256-0.11.102.1 (lib)  --enable-profiling (requires build)
      ...
-
-There's no need to pass profiling flags like ``--enable-profiling``
-to the build or run commands manually this time (as seen in the build log),
-because these settings are now determined via the ``cabal.project`` file.
 
 You should now find more information in the profiling report ``my-app.prof``
 to analyze. More information on how to configure Cabal options can be found in the
