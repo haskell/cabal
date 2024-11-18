@@ -7,12 +7,11 @@ can help you understand why.
 
 The main steps are to
 
-1. let GHC insert performance measuring code into your application (or insert them
-   `manually <https://downloads.haskell.org/ghc/latest/docs/users_guide/profiling.html#inserting-cost-centres-by-hand>`__),
-2. run the application with the right
-   `runtime system (RTS) flags <https://downloads.haskell.org/ghc/latest/docs/users_guide/runtime_control.html>`__
+1. Configure the project in a way that makes GHC insert performance-measuring code into your application (or insert them.
+2. Run the application with the right
+   `runtime system (RTS) flags <https://downloads.haskell.org/ghc/latest/docs/users_guide/runtime_control.html>`__.
    to produce a performance report and
-3. visualize and analyze that report.
+3. Visualize and analyze that report.
 
 The process of inserting performance measuring code and collecting performance information
 is called "profiling". The work is done by GHC while Cabal only acts
