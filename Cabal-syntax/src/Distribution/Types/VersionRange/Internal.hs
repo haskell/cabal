@@ -5,7 +5,9 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- | The only purpose of this module is to prevent the export of
 -- 'VersionRange' constructors from
@@ -25,7 +27,7 @@ module Distribution.Types.VersionRange.Internal
   , intersectVersionRanges
   , withinVersion
   , majorBoundVersion
-  , VersionRangeF (..)
+  , VersionRangeF (.., LEUpperBound, GTLowerBound, TZUpperBound)
   , projectVersionRange
   , embedVersionRange
   , cataVersionRange
@@ -185,6 +187,22 @@ data VersionRangeF a
     , Foldable
     , Traversable
     )
+
+pattern LEUpperBound, GTLowerBound, TZUpperBound :: VersionRangeF a
+pattern LEUpperBound <- OrEarlierVersionF _
+pattern GTLowerBound <- LaterVersionF _
+pattern TZUpperBound <- (upperTrailingZero -> True)
+
+upperTrailingZero :: VersionRangeF a -> Bool
+upperTrailingZero (OrEarlierVersionF x) = trailingZero x
+upperTrailingZero (EarlierVersionF x) = trailingZero x
+upperTrailingZero _ = False
+
+trailingZero :: Version -> Bool
+trailingZero (versionNumbers -> vs)
+  | [0] <- vs = False
+  | 0 : _ <- reverse vs = True
+  | otherwise = False
 
 -- | Generic destructor for 'VersionRange'.
 --
