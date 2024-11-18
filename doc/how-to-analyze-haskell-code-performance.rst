@@ -138,6 +138,8 @@ Second, rerun your application with ``cabal run``, which also automatically rebu
      - base64-bytestring-1.2.1.0 (lib)  --enable-profiling (requires build)
      - cryptohash-sha256-0.11.102.1 (lib)  --enable-profiling (requires build)
      ...
+    <app runs and finishes>
+
 
 You should now find more information in the profiling report ``my-app.prof``
 to analyze. More information on how to configure Cabal options can be found in the
