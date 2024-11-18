@@ -256,6 +256,9 @@ data CheckExplanation
   | UnknownCompiler [String]
   | BaseNoUpperBounds
   | MissingUpperBounds CEType [String]
+  | LEQUpperBounds CEType [String]
+  | TrailingZeroUpperBounds CEType [String]
+  | GTLowerBounds CEType [String]
   | SuspiciousFlagName [String]
   | DeclaredUsedFlags (Set.Set FlagName) (Set.Set FlagName)
   | NonASCIICustomField [String]
@@ -419,6 +422,9 @@ data CheckExplanationID
   | CIUnknownCompiler
   | CIBaseNoUpperBounds
   | CIMissingUpperBounds
+  | CILEQUpperBounds
+  | CITrailingZeroUpperBounds
+  | CIGTLowerBounds
   | CISuspiciousFlagName
   | CIDeclaredUsedFlags
   | CINonASCIICustomField
@@ -561,6 +567,9 @@ checkExplanationId (UnknownArch{}) = CIUnknownArch
 checkExplanationId (UnknownCompiler{}) = CIUnknownCompiler
 checkExplanationId (BaseNoUpperBounds{}) = CIBaseNoUpperBounds
 checkExplanationId (MissingUpperBounds{}) = CIMissingUpperBounds
+checkExplanationId (LEQUpperBounds{}) = CILEQUpperBounds
+checkExplanationId (TrailingZeroUpperBounds{}) = CITrailingZeroUpperBounds
+checkExplanationId (GTLowerBounds{}) = CIGTLowerBounds
 checkExplanationId (SuspiciousFlagName{}) = CISuspiciousFlagName
 checkExplanationId (DeclaredUsedFlags{}) = CIDeclaredUsedFlags
 checkExplanationId (NonASCIICustomField{}) = CINonASCIICustomField
@@ -708,6 +717,9 @@ ppCheckExplanationId CIUnknownArch = "unknown-arch"
 ppCheckExplanationId CIUnknownCompiler = "unknown-compiler"
 ppCheckExplanationId CIBaseNoUpperBounds = "missing-bounds-important"
 ppCheckExplanationId CIMissingUpperBounds = "missing-upper-bounds"
+ppCheckExplanationId CILEQUpperBounds = "less-than-equals-upper-bounds"
+ppCheckExplanationId CITrailingZeroUpperBounds = "trailing-zero-upper-bounds"
+ppCheckExplanationId CIGTLowerBounds = "greater-than-lower-bounds"
 ppCheckExplanationId CISuspiciousFlagName = "suspicious-flag"
 ppCheckExplanationId CIDeclaredUsedFlags = "unused-flag"
 ppCheckExplanationId CINonASCIICustomField = "non-ascii"
@@ -1310,6 +1322,36 @@ ppExplanation (MissingUpperBounds ct names) =
         ++ List.intercalate separator names
         ++ "\n"
         ++ "Please add them. There is more information at https://pvp.haskell.org/"
+ppExplanation (LEQUpperBounds ct names) =
+  let separator = "\n  - "
+   in "On "
+        ++ ppCET ct
+        ++ ", "
+        ++ "these packages have less than or equals (<=) upper bounds:"
+        ++ separator
+        ++ List.intercalate separator names
+        ++ "\n"
+        ++ "Please use less than (<) for upper bounds. There is more information at https://pvp.haskell.org/"
+ppExplanation (TrailingZeroUpperBounds ct names) =
+  let separator = "\n  - "
+   in "On "
+        ++ ppCET ct
+        ++ ", "
+        ++ "these packages have upper bounds with trailing zeros:"
+        ++ separator
+        ++ List.intercalate separator names
+        ++ "\n"
+        ++ "Please avoid trailing zeros for upper bounds. There is more information at https://pvp.haskell.org/"
+ppExplanation (GTLowerBounds ct names) =
+  let separator = "\n  - "
+   in "On "
+        ++ ppCET ct
+        ++ ", "
+        ++ "these packages have greater than (>) lower bounds:"
+        ++ separator
+        ++ List.intercalate separator names
+        ++ "\n"
+        ++ "Please use greater than or equals (>=) for lower bounds. There is more information at https://pvp.haskell.org/"
 ppExplanation (SuspiciousFlagName invalidFlagNames) =
   "Suspicious flag names: "
     ++ unwords invalidFlagNames

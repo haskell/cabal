@@ -331,17 +331,30 @@ checkBuildInfo cet ams ads bi = do
   checkAutogenModules ams bi
 
   -- PVP: we check for base and all other deps.
+  let ds = mergeDependencies $ targetBuildDepends bi
   (ids, rds) <-
     partitionDeps
       ads
       [mkUnqualComponentName "base"]
-      (mergeDependencies $ targetBuildDepends bi)
+      ds
   let ick = const (PackageDistInexcusable BaseNoUpperBounds)
       rck = PackageDistSuspiciousWarn . MissingUpperBounds cet
-  checkPVP ick ids
+      lequck = PackageDistSuspiciousWarn . LEQUpperBounds cet
+      tzuck = PackageDistSuspiciousWarn . TrailingZeroUpperBounds cet
+      gtlck = PackageDistSuspiciousWarn . GTLowerBounds cet
+  checkPVP withoutUpperBound ick ids
   unless
     (isInternalTarget cet)
-    (checkPVPs rck rds)
+    (checkPVPs withoutUpperBound rck rds)
+  unless
+    (isInternalTarget cet)
+    (checkPVPs leqUpperBound lequck ds)
+  unless
+    (isInternalTarget cet)
+    (checkPVPs trailingZeroUpperBound tzuck ds)
+  unless
+    (isInternalTarget cet)
+    (checkPVPs gtLowerBound gtlck ds)
 
   -- Custom fields well-formedness (ASCII).
   mapM_ checkCustomField (customFieldsBI bi)

@@ -1,3 +1,6 @@
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ViewPatterns #-}
+
 -- |
 -- Module      :  Distribution.PackageDescription.Check.Common
 -- Copyright   :  Francesco Ariis 2022
@@ -16,6 +19,10 @@ module Distribution.PackageDescription.Check.Common
   , partitionDeps
   , checkPVP
   , checkPVPs
+  , withoutUpperBound
+  , leqUpperBound
+  , trailingZeroUpperBound
+  , gtLowerBound
   ) where
 
 import Distribution.Compat.Prelude
@@ -116,34 +123,82 @@ partitionDeps ads ns ds = do
 -- for important dependencies like base).
 checkPVP
   :: Monad m
-  => (String -> PackageCheck) -- Warn message depends on name
+  => (Dependency -> Bool)
+  -> (String -> PackageCheck) -- Warn message depends on name
   -- (e.g. "base", "Cabal").
   -> [Dependency]
   -> CheckM m ()
-checkPVP ckf ds = do
-  let ods = checkPVPPrim ds
+checkPVP p ckf ds = do
+  let ods = filter p ds
   mapM_ (tellP . ckf . unPackageName . depPkgName) ods
 
 -- PVP dependency check for a list of dependencies. Some code duplication
 -- is sadly needed to provide more ergonimic error messages.
 checkPVPs
   :: Monad m
-  => ( [String]
+  => (Dependency -> Bool)
+  -> ( [String]
        -> PackageCheck -- Grouped error message, depends on a
        -- set of names.
      )
   -> [Dependency] -- Deps to analyse.
   -> CheckM m ()
-checkPVPs cf ds
+checkPVPs p cf ds
   | null ns = return ()
   | otherwise = tellP (cf ns)
   where
-    ods = checkPVPPrim ds
+    ods = filter p ds
     ns = map (unPackageName . depPkgName) ods
 
--- Returns dependencies without upper bounds.
-checkPVPPrim :: [Dependency] -> [Dependency]
-checkPVPPrim ds = filter withoutUpper ds
-  where
-    withoutUpper :: Dependency -> Bool
-    withoutUpper (Dependency _ ver _) = not . hasUpperBound $ ver
+-- | Is the version range without an upper bound?
+withoutUpperBound :: Dependency -> Bool
+withoutUpperBound (Dependency _ ver _) = not . hasUpperBound $ ver
+
+-- | Is the upper bound version range LEQ (less or equal, <=)?
+leqUpperBound :: Dependency -> Bool
+leqUpperBound (Dependency _ ver _) = isLEQUpperBound ver
+
+-- | Does the upper bound version range have a trailing zero?
+trailingZeroUpperBound :: Dependency -> Bool
+trailingZeroUpperBound (Dependency _ ver _) = isTrailingZeroUpperBound ver
+
+-- | Is the lower bound version range GT (greater than, >)?
+gtLowerBound :: Dependency -> Bool
+gtLowerBound (Dependency _ ver _) = isGTLowerBound ver
+
+pattern IsLEQUpperBound, IsGTLowerBound, IsTrailingZeroUpperBound :: VersionRangeF a
+pattern IsLEQUpperBound <- OrEarlierVersionF _
+pattern IsGTLowerBound <- LaterVersionF _
+pattern IsTrailingZeroUpperBound <- (upperTrailingZero -> True)
+
+upperTrailingZero :: VersionRangeF a -> Bool
+upperTrailingZero (OrEarlierVersionF x) = trailingZero x
+upperTrailingZero (EarlierVersionF x) = trailingZero x
+upperTrailingZero _ = False
+
+trailingZero :: Version -> Bool
+trailingZero (versionNumbers -> vs)
+  | [0] <- vs = False
+  | 0 : _ <- reverse vs = True
+  | otherwise = False
+
+isLEQUpperBound :: VersionRange -> Bool
+isLEQUpperBound (projectVersionRange -> v)
+  | IsLEQUpperBound <- v = True
+  | IntersectVersionRangesF x y <- v = isLEQUpperBound x || isLEQUpperBound y
+  | UnionVersionRangesF x y <- v = isLEQUpperBound x || isLEQUpperBound y
+  | otherwise = False
+
+isGTLowerBound :: VersionRange -> Bool
+isGTLowerBound (projectVersionRange -> v)
+  | IsGTLowerBound <- v = True
+  | IntersectVersionRangesF x y <- v = isGTLowerBound x || isGTLowerBound y
+  | UnionVersionRangesF x y <- v = isGTLowerBound x || isGTLowerBound y
+  | otherwise = False
+
+isTrailingZeroUpperBound :: VersionRange -> Bool
+isTrailingZeroUpperBound (projectVersionRange -> v)
+  | IsTrailingZeroUpperBound <- v = True
+  | IntersectVersionRangesF x y <- v = isTrailingZeroUpperBound x || isTrailingZeroUpperBound y
+  | UnionVersionRangesF x y <- v = isTrailingZeroUpperBound x || isTrailingZeroUpperBound y
+  | otherwise = False
