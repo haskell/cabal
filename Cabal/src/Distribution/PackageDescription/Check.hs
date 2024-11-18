@@ -568,8 +568,20 @@ checkSetupBuildInfo (Just (SetupBuildInfo ds _)) = do
       rck =
         PackageDistSuspiciousWarn
           . MissingUpperBounds CETSetup
-  checkPVP ick is
-  checkPVPs rck rs
+      lequck =
+        PackageDistSuspiciousWarn
+          . LEQUpperBounds CETSetup
+      tzuck =
+        PackageDistSuspiciousWarn
+          . TrailingZeroUpperBounds CETSetup
+      gtlck =
+        PackageDistSuspiciousWarn
+          . GTLowerBounds CETSetup
+  checkPVP withoutUpperBound ick is
+  checkPVPs withoutUpperBound rck rs
+  checkPVPs leqUpperBound lequck ds
+  checkPVPs trailingZeroUpperBound tzuck ds
+  checkPVPs gtLowerBound gtlck ds
 
 checkPackageId :: Monad m => PackageIdentifier -> CheckM m ()
 checkPackageId (PackageIdentifier pkgName_ _pkgVersion_) = do
