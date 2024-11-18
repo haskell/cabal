@@ -3,10 +3,8 @@ Downloading the latest package list from test-local-repo
 # cabal v2-build
 Configuration is affected by the following files:
 - 2-local-constraints-import.project
-Configuration is affected by the following files:
 - hop-local.config
     imported by: 2-local-constraints-import.project
-Configuration is affected by the following files:
 - stackage-local.config
     imported by: hop-local.config
     imported by: 2-local-constraints-import.project
@@ -26,10 +24,8 @@ After searching the rest of the dependency tree exhaustively, these were the goa
 # cabal v2-build
 Configuration is affected by the following files:
 - 2-local-import-constraints.project
-Configuration is affected by the following files:
 - hop-local.config
     imported by: 2-local-import-constraints.project
-Configuration is affected by the following files:
 - stackage-local.config
     imported by: hop-local.config
     imported by: 2-local-import-constraints.project

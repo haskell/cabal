@@ -16,6 +16,7 @@ module Distribution.Solver.Types.ProjectConfigPath
 
     -- * Checks and Normalization
     , isCyclicConfigPath
+    , isTopLevelConfigPath
     , canonicalizeConfigPath
     ) where
 
@@ -137,6 +138,11 @@ nullProjectConfigPath = ProjectConfigPath $ "unused" :| []
 -- the project root directory.
 isCyclicConfigPath :: ProjectConfigPath -> Bool
 isCyclicConfigPath (ProjectConfigPath p) = length p /= length (NE.nub p)
+
+-- | Check if the project config path is top-level, meaning it was not included by
+-- some other project config.
+isTopLevelConfigPath :: ProjectConfigPath -> Bool
+isTopLevelConfigPath (ProjectConfigPath p) = NE.length p == 1
 
 -- | Prepends the path of the importee to the importer path.
 consProjectConfigPath :: FilePath -> ProjectConfigPath -> ProjectConfigPath
