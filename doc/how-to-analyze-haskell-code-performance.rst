@@ -96,7 +96,7 @@ However, you can pass a lot more compiler flags to GHC via the ``cabal.project.l
         -fprof-auto-calls
 
 Add these recommended profiling options to control where and when
-performance measuring code is inserted into your application
+performance measuring code is inserted into your application.
 The setting ``profiling-detail: late-toplevel`` instructs GHC to use so-called
 `late-cost-center profiling <https://downloads.haskell.org/ghc/latest/docs/users_guide/profiling.html#ghc-flag--fprof-late>`__
 and insert measuring code only after important optimisations have been applied to your application code.
