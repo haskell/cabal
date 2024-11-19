@@ -1,3 +1,5 @@
+.. _cabal-project-file:
+
 Project Description — cabal.project File
 ========================================
 

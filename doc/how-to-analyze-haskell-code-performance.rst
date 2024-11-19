@@ -25,7 +25,7 @@ with the following command:
 
     $ cabal configure --enable-profiling
 
-This command creates a `cabal.project.local <cabal-project-file>`__ file with the following content:
+This command creates a ``cabal.project.local`` file with the following content:
 
 .. code-block:: cabal
 
@@ -40,8 +40,8 @@ Further in-depth information on profiling with GHC and its compiler options can 
 
 .. note::
 
-    While `cabal.project <cabal-project-file>`__ is intended for long-time settings
-    that are useful to store in Git, `cabal.project.local` is for short-lived, local experiments
+    While a :ref:`cabal.project <cabal-project-file>` file is intended for long-time settings
+    that are useful to store in Git, ``cabal.project.local`` is for short-lived, local experiments
     (like profiling) that, in general, shouldn't be committed to Git.
 
 Second, run your application with the right runtime system flags and let it create a profiling report:
