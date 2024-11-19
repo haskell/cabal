@@ -103,8 +103,10 @@ The setting ``profiling-detail: late-toplevel`` instructs GHC to use so-called
 and insert measuring code only after important optimisations have been applied to your application code.
 This reduces the performance slow-down of profiling itself and gives you more realistic measurements.
 
+The ``program-options`` section allows you to add more settings like GHC options to the local
+packages of your project (See :ref:`Program options<program_options>`).
 The ``ghc-options`` setting allows you to further control which functions and other bindings
-the GHC compiler should profile or other aspects of profiling.
+the GHC compiler should profile, as well as other aspects of profiling.
 You can find more information and further options in the
 `GHC "cost-center" guide <https://downloads.haskell.org/ghc/latest/docs/users_guide/profiling.html#automatically-placing-cost-centres>`__.
 and the
