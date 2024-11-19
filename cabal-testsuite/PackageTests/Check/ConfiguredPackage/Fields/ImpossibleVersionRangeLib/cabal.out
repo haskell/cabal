@@ -1,4 +1,11 @@
 # cabal check
 The package will not build sanely due to these errors:
 Error: [impossible-dep] The package has an impossible version range for a dependency on an internal library: pkg:internal >1.0 && <2.0. This version range does not include the current package, and must be removed as the current package's library will always be used.
+These warnings may cause trouble when distributing the package:
+Warning: [trailing-zero-upper-bounds] On library, these packages have upper bounds with trailing zeros:
+  - pkg
+Please avoid trailing zeros for upper bounds. There is more information at https://pvp.haskell.org/
+Warning: [greater-than-lower-bounds] On library, these packages have greater than (>) lower bounds:
+  - pkg
+Please use greater than or equals (>=) for lower bounds. There is more information at https://pvp.haskell.org/
 Error: Hackage would reject this package.
