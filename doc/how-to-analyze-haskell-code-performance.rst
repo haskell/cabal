@@ -121,14 +121,22 @@ This happens by default, because Cabal command line options only apply to local 
 and dependencies are usually not local.
 However, the bottlenecks may be in your dependencies, so you would want to profile those too.
 
-First, to enable ``late``-cost-center profiling of all packages/dependencies in your project,
-add the following to your project’s ``cabal.project.local`` file:
+First, to enable ``late``-cost-center profiling for all packages (including dependencies) in your project,
+not just the local ones, add the following to your project’s ``cabal.project.local`` file:
 
 .. code-block:: cabal
 
     package *
         profiling: true
         profiling-detail: late
+
+.. note::
+
+    There are several keywords to specify to which parts of you project settings should be applied:
+
+    - ``program-options`` to apply to :ref:`all local packages<program_options>`.
+    - ``package <package-name>`` to apply to a :ref:`single, specific local package<package-configuration-options>`.
+    - ``package *`` to apply to :ref:`all local and remote packages (dependencies)<package-configuration-options>`.
 
 Second, rerun your application with ``cabal run``, which also automatically rebuilds your application:
 
@@ -143,7 +151,6 @@ Second, rerun your application with ``cabal run``, which also automatically rebu
      ...
     <app runs and finishes>
 
-
-You should now find more information in the profiling report ``my-app.prof``
+You can now find profiling data of dependencies in the report ``my-app.prof``
 to analyze. More information on how to configure Cabal options can be found in the
 :ref:`Cabal options sections <package-configuration-options>`.
