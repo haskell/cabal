@@ -65,11 +65,12 @@ is written to a ``<app-name>.prof`` file, i.e. ``my-app.prof``, in the current d
     - ``-pj`` for a
       `JSON report <https://downloads.haskell.org/ghc/latest/docs/users_guide/profiling.html#json-profile-format>`__
       ``<app-name>.prof``, which can be visualized with `Speedscope <https://speedscope.app>`__.
-    - ``-l-p`` for a binary
+    - ``-l`` for a binary
       `"eventlog" report <https://downloads.haskell.org/ghc/latest/docs/users_guide/runtime_control.html#rts-eventlog>`__
       ``<app-name>.eventlog``, which contains a lot more details and can show you resource usage over time, and can
       be converted to JSON with `hs-speedscope <https://github.com/mpickering/hs-speedscope>`__
       to be visualized with `Speedscope <https://speedscope.app>`__.
+    - ``-l -p`` for both a ``<app-name>.prof`` and a ``<app-name>.eventlog`` report at the same time.
 
 Finally, visualize this JSON report ``my-app.prof`` and analyze it for performance bottlenecks.
 One popular open-source
