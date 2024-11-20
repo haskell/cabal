@@ -116,8 +116,9 @@ section.
 Profiling your dependencies too
 -------------------------------
 
-The setup so far only profiles your local packages, which is usually what you want.
-However, the bottlenecks may be in your dependencies, so you may want to profile those too.
+The profiling setup so far with the ``cabal.project.local`` file only applied to your local packages,
+which is usually what you want.
+However, bottlenecks may also exist in your dependencies, so you may want to profile those too.
 
 First, to enable ``late``-cost-center profiling for all packages (including dependencies) in your project,
 not just the local ones, add the following to your project’s ``cabal.project.local`` file:
@@ -132,7 +133,7 @@ not just the local ones, add the following to your project’s ``cabal.project.l
 
     There are several keywords to specify to which parts of your project some settings should be applied:
 
-    - ``program-options`` to apply to :ref:`all local packages<program_options>` only.
+    - ``program-options`` to apply to :ref:`all local packages<program_options>`.
     - ``package <package-name>`` to apply to a :ref:`single package<package-configuration-options>`, be it local or remote.
     - ``package *`` to apply to :ref:`all local and remote packages (dependencies)<package-configuration-options>`.
 
