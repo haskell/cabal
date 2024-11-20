@@ -241,7 +241,12 @@ resolveOpts opts = do
           else "cabal.validate.project"
 
       tastyArgs' =
-        optional (rawTastyHideSuccesses opts) "--hide-successes"
+        maybe
+          -- If neither `--hide-successes` or `--no-hide-successes` was given, then
+          -- only `--hide-successes` if `--quiet` is given.
+          (optional (rawVerbosity opts <= Quiet) "--hide-successes")
+          (\hideSuccesses -> optional hideSuccesses "--hide-successes")
+          (rawTastyHideSuccesses opts)
           ++ maybe
             []
             (\tastyPattern -> ["--pattern", tastyPattern])
@@ -290,7 +295,7 @@ data RawOpts = RawOpts
   , rawExtraCompilers :: [FilePath]
   , rawTastyPattern :: Maybe String
   , rawTastyArgs :: [String]
-  , rawTastyHideSuccesses :: Bool
+  , rawTastyHideSuccesses :: Maybe Bool
   , rawDoctest :: Bool
   , rawSteps :: [Step]
   , rawListSteps :: Bool
@@ -361,8 +366,7 @@ rawOptsParser =
               <> help "Extra arguments to pass to Tasty test suites"
           )
       )
-    <*> boolOption
-      True
+    <*> maybeBoolOption
       "hide-successes"
       ( help "Do not print tests that passed successfully"
       )
@@ -443,6 +447,12 @@ boolOption' defaultValue trueName falseName modifiers =
 boolOption :: Bool -> String -> Mod FlagFields Bool -> Parser Bool
 boolOption defaultValue trueName =
   boolOption' defaultValue trueName ("no-" <> trueName)
+
+-- | Like `boolOption`, but can tell if an option was passed or not.
+maybeBoolOption :: String -> Mod FlagFields (Maybe Bool) -> Parser (Maybe Bool)
+maybeBoolOption trueName modifiers =
+  flag' (Just True) (modifiers <> long trueName)
+    <|> flag Nothing (Just False) (modifiers <> hidden <> long ("no-" <> trueName))
 
 -- | Full `Parser` for `RawOpts`, which includes a @--help@ argument and
 -- information about the program.
