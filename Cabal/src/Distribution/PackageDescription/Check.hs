@@ -577,11 +577,11 @@ checkSetupBuildInfo (Just (SetupBuildInfo ds _)) = do
       gtlck =
         PackageDistSuspiciousWarn
           . GTLowerBounds CETSetup
-  checkPVP withoutUpperBound ick is
-  checkPVPs withoutUpperBound rck rs
-  checkPVPs leqUpperBound lequck ds
-  checkPVPs trailingZeroUpperBound tzuck ds
-  checkPVPs gtLowerBound gtlck ds
+  checkPVP (checkDependencyVersionRange $ not . hasUpperBound) ick is
+  checkPVPs (checkDependencyVersionRange $ not . hasUpperBound) rck rs
+  checkPVPs (checkDependencyVersionRange hasLEQUpperBound) lequck ds
+  checkPVPs (checkDependencyVersionRange hasTrailingZeroUpperBound) tzuck ds
+  checkPVPs (checkDependencyVersionRange hasGTLowerBound) gtlck ds
 
 checkPackageId :: Monad m => PackageIdentifier -> CheckM m ()
 checkPackageId (PackageIdentifier pkgName_ _pkgVersion_) = do

@@ -19,10 +19,7 @@ module Distribution.PackageDescription.Check.Common
   , partitionDeps
   , checkPVP
   , checkPVPs
-  , withoutUpperBound
-  , leqUpperBound
-  , trailingZeroUpperBound
-  , gtLowerBound
+  , checkDependencyVersionRange
   ) where
 
 import Distribution.Compat.Prelude
@@ -150,55 +147,5 @@ checkPVPs p cf ds
     ods = filter p ds
     ns = map (unPackageName . depPkgName) ods
 
--- | Is the version range without an upper bound?
-withoutUpperBound :: Dependency -> Bool
-withoutUpperBound (Dependency _ ver _) = not . hasUpperBound $ ver
-
--- | Is the upper bound version range LEQ (less or equal, <=)?
-leqUpperBound :: Dependency -> Bool
-leqUpperBound (Dependency _ ver _) = hasLEQUpperBound ver
-
--- | Does the upper bound version range have a trailing zero?
-trailingZeroUpperBound :: Dependency -> Bool
-trailingZeroUpperBound (Dependency _ ver _) = hasTrailingZeroUpperBound ver
-
--- | Is the lower bound version range GT (greater than, >)?
-gtLowerBound :: Dependency -> Bool
-gtLowerBound (Dependency _ ver _) = hasGTLowerBound ver
-
-pattern HasLEQUpperBound, HasGTLowerBound, HasTrailingZeroUpperBound :: VersionRangeF a
-pattern HasLEQUpperBound <- OrEarlierVersionF _
-pattern HasGTLowerBound <- LaterVersionF _
-pattern HasTrailingZeroUpperBound <- (upperTrailingZero -> True)
-
-upperTrailingZero :: VersionRangeF a -> Bool
-upperTrailingZero (OrEarlierVersionF x) = trailingZero x
-upperTrailingZero (EarlierVersionF x) = trailingZero x
-upperTrailingZero _ = False
-
-trailingZero :: Version -> Bool
-trailingZero (versionNumbers -> vs)
-  | [0] <- vs = False
-  | 0 : _ <- reverse vs = True
-  | otherwise = False
-
-hasLEQUpperBound :: VersionRange -> Bool
-hasLEQUpperBound (projectVersionRange -> v)
-  | HasLEQUpperBound <- v = True
-  | IntersectVersionRangesF x y <- v = hasLEQUpperBound x || hasLEQUpperBound y
-  | UnionVersionRangesF x y <- v = hasLEQUpperBound x || hasLEQUpperBound y
-  | otherwise = False
-
-hasGTLowerBound :: VersionRange -> Bool
-hasGTLowerBound (projectVersionRange -> v)
-  | HasGTLowerBound <- v = True
-  | IntersectVersionRangesF x y <- v = hasGTLowerBound x || hasGTLowerBound y
-  | UnionVersionRangesF x y <- v = hasGTLowerBound x || hasGTLowerBound y
-  | otherwise = False
-
-hasTrailingZeroUpperBound :: VersionRange -> Bool
-hasTrailingZeroUpperBound (projectVersionRange -> v)
-  | HasTrailingZeroUpperBound <- v = True
-  | IntersectVersionRangesF x y <- v = hasTrailingZeroUpperBound x || hasTrailingZeroUpperBound y
-  | UnionVersionRangesF x y <- v = hasTrailingZeroUpperBound x || hasTrailingZeroUpperBound y
-  | otherwise = False
+checkDependencyVersionRange :: (VersionRange -> Bool) -> Dependency -> Bool
+checkDependencyVersionRange p (Dependency _ ver _) = p ver
