@@ -1,6 +1,6 @@
 # cabal check
 These warnings may cause trouble when distributing the package:
-Warning: [greater-than-lower-bounds] On custom-setup, these packages have greater than (>) lower bounds:
+Warning: [greater.than(>)-lower-bounds] On custom-setup, these packages have greater than (>) lower bounds:
   - base
 Please use greater than or equals (>=) for lower bounds. There is more information at https://pvp.haskell.org/
 The following errors will cause portability problems on other environments:

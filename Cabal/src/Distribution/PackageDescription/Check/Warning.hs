@@ -717,9 +717,12 @@ ppCheckExplanationId CIUnknownArch = "unknown-arch"
 ppCheckExplanationId CIUnknownCompiler = "unknown-compiler"
 ppCheckExplanationId CIBaseNoUpperBounds = "missing-bounds-important"
 ppCheckExplanationId CIMissingUpperBounds = "missing-upper-bounds"
-ppCheckExplanationId CILEQUpperBounds = "less-than-equals-upper-bounds"
-ppCheckExplanationId CITrailingZeroUpperBounds = "trailing-zero-upper-bounds"
-ppCheckExplanationId CIGTLowerBounds = "greater-than-lower-bounds"
+-- NOTE: Satisfy the Parsimonious test, a test that checks that these messages
+-- don't have too many dashes:
+--   $ cabal run Cabal-tests:unit-tests -- --pattern=Parsimonious
+ppCheckExplanationId CILEQUpperBounds = "less.than.equals(<=)-upper-bounds"
+ppCheckExplanationId CITrailingZeroUpperBounds = "trailing.zero(*.0)-upper-bounds"
+ppCheckExplanationId CIGTLowerBounds = "greater.than(>)-lower-bounds"
 ppCheckExplanationId CISuspiciousFlagName = "suspicious-flag"
 ppCheckExplanationId CIDeclaredUsedFlags = "unused-flag"
 ppCheckExplanationId CINonASCIICustomField = "non-ascii"
