@@ -120,7 +120,7 @@ The profiling setup so far with the ``cabal.project.local`` file only applied to
 which is usually what you want.
 However, bottlenecks may also exist in your dependencies, so you may want to profile those too.
 
-First, to enable ``late``-cost-center profiling for all packages (including dependencies) in your project,
+First, to enable ``late``-cost-center profiling for all packages (including dependencies) concerning your project,
 not just the local ones, add the following to your project’s ``cabal.project.local`` file:
 
 .. code-block:: cabal
