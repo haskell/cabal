@@ -342,19 +342,19 @@ checkBuildInfo cet ams ads bi = do
       lequck = PackageDistSuspiciousWarn . LEQUpperBounds cet
       tzuck = PackageDistSuspiciousWarn . TrailingZeroUpperBounds cet
       gtlck = PackageDistSuspiciousWarn . GTLowerBounds cet
-  checkPVP withoutUpperBound ick ids
+  checkPVP (checkDependencyVersionRange $ not . hasUpperBound) ick ids
   unless
     (isInternalTarget cet)
-    (checkPVPs withoutUpperBound rck rds)
+    (checkPVPs (checkDependencyVersionRange $ not . hasUpperBound) rck rds)
   unless
     (isInternalTarget cet)
-    (checkPVPs leqUpperBound lequck ds)
+    (checkPVPs (checkDependencyVersionRange hasLEQUpperBound) lequck ds)
   unless
     (isInternalTarget cet)
-    (checkPVPs trailingZeroUpperBound tzuck ds)
+    (checkPVPs (checkDependencyVersionRange hasTrailingZeroUpperBound) tzuck ds)
   unless
     (isInternalTarget cet)
-    (checkPVPs gtLowerBound gtlck ds)
+    (checkPVPs (checkDependencyVersionRange hasGTLowerBound) gtlck ds)
 
   -- Custom fields well-formedness (ASCII).
   mapM_ checkCustomField (customFieldsBI bi)

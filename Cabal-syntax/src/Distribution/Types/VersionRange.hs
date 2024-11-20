@@ -1,3 +1,6 @@
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ViewPatterns #-}
+
 module Distribution.Types.VersionRange
   ( -- * Version ranges
     VersionRange
@@ -26,6 +29,9 @@ module Distribution.Types.VersionRange
   , stripParensVersionRange
   , hasUpperBound
   , hasLowerBound
+  , hasLEQUpperBound
+  , hasTrailingZeroUpperBound
+  , hasGTLowerBound
 
     -- ** Cata & ana
   , VersionRangeF (..)
@@ -197,3 +203,43 @@ hasLowerBound =
     (const False)
     (&&)
     (||)
+
+pattern HasLEQUpperBound, HasGTLowerBound, HasTrailingZeroUpperBound :: VersionRangeF a
+pattern HasLEQUpperBound <- OrEarlierVersionF _
+pattern HasGTLowerBound <- LaterVersionF _
+pattern HasTrailingZeroUpperBound <- (upperTrailingZero -> True)
+
+upperTrailingZero :: VersionRangeF a -> Bool
+upperTrailingZero (OrEarlierVersionF x) = trailingZero x
+upperTrailingZero (EarlierVersionF x) = trailingZero x
+upperTrailingZero _ = False
+
+trailingZero :: Version -> Bool
+trailingZero (versionNumbers -> vs)
+  | [0] <- vs = False
+  | 0 : _ <- reverse vs = True
+  | otherwise = False
+
+-- | Is the upper bound version range LEQ (less or equal, <=)?
+hasLEQUpperBound :: VersionRange -> Bool
+hasLEQUpperBound (projectVersionRange -> v)
+  | HasLEQUpperBound <- v = True
+  | IntersectVersionRangesF x y <- v = hasLEQUpperBound x || hasLEQUpperBound y
+  | UnionVersionRangesF x y <- v = hasLEQUpperBound x || hasLEQUpperBound y
+  | otherwise = False
+
+-- | Is the lower bound version range GT (greater than, >)?
+hasGTLowerBound :: VersionRange -> Bool
+hasGTLowerBound (projectVersionRange -> v)
+  | HasGTLowerBound <- v = True
+  | IntersectVersionRangesF x y <- v = hasGTLowerBound x || hasGTLowerBound y
+  | UnionVersionRangesF x y <- v = hasGTLowerBound x || hasGTLowerBound y
+  | otherwise = False
+
+-- | Does the upper bound version range have a trailing zero?
+hasTrailingZeroUpperBound :: VersionRange -> Bool
+hasTrailingZeroUpperBound (projectVersionRange -> v)
+  | HasTrailingZeroUpperBound <- v = True
+  | IntersectVersionRangesF x y <- v = hasTrailingZeroUpperBound x || hasTrailingZeroUpperBound y
+  | UnionVersionRangesF x y <- v = hasTrailingZeroUpperBound x || hasTrailingZeroUpperBound y
+  | otherwise = False
