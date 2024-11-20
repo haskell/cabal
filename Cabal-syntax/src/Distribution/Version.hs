@@ -50,6 +50,9 @@ module Distribution.Version
   , stripParensVersionRange
   , hasUpperBound
   , hasLowerBound
+  , hasLEQUpperBound
+  , hasTrailingZeroUpperBound
+  , hasGTLowerBound
 
     -- ** Cata & ana
   , VersionRangeF (..)
