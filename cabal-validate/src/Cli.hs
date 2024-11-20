@@ -179,11 +179,7 @@ resolveOpts opts = do
           then rawSteps opts
           else
             concat
-              [
-                [ PrintConfig
-                , PrintToolVersions
-                , Build
-                ]
+              [ [Build]
               , optional (rawDoctest opts) Doctest
               , optional (rawRunLibTests opts) LibTests
               , optional (rawRunLibSuite opts) LibSuite
@@ -191,7 +187,6 @@ resolveOpts opts = do
               , optional (rawRunCliTests opts && not (rawLibOnly opts)) CliTests
               , optional (rawRunCliSuite opts && not (rawLibOnly opts)) CliSuite
               , optionals (rawSolverBenchmarks opts) [SolverBenchmarksTests, SolverBenchmarksRun]
-              , [TimeSummary]
               ]
 
       targets' =
