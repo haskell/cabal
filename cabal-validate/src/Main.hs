@@ -173,24 +173,25 @@ printToolVersions opts =
 -- | Run the build step.
 build :: Opts -> IO ()
 build opts = do
-  printHeader "build (dry run)"
-  timed
-    opts
-    (cabal opts)
-    ( cabalNewBuildArgs opts
-        ++ targets opts
-        ++ ["--dry-run"]
-    )
+  when (verbose opts) $ do
+    printHeader "build (dry run)"
+    timed
+      opts
+      (cabal opts)
+      ( cabalNewBuildArgs opts
+          ++ targets opts
+          ++ ["--dry-run"]
+      )
 
-  printHeader "build (full build plan; cached and to-be-built dependencies)"
-  timed
-    opts
-    "jq"
-    [ "-r"
-    , -- TODO: Maybe use `cabal-plan`? It's a heavy dependency though...
-      ".\"install-plan\" | map(.\"pkg-name\" + \"-\" + .\"pkg-version\" + \" \" + .\"component-name\") | join(\"\n\")"
-    , baseBuildDir opts </> "cache" </> "plan.json"
-    ]
+    printHeader "build (full build plan; cached and to-be-built dependencies)"
+    timed
+      opts
+      "jq"
+      [ "-r"
+      , -- TODO: Maybe use `cabal-plan`? It's a heavy dependency though...
+        ".\"install-plan\" | map(.\"pkg-name\" + \"-\" + .\"pkg-version\" + \" \" + .\"component-name\") | join(\"\n\")"
+      , baseBuildDir opts </> "cache" </> "plan.json"
+      ]
 
   printHeader "build (actual build)"
   timed
