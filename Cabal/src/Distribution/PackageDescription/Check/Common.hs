@@ -156,20 +156,20 @@ withoutUpperBound (Dependency _ ver _) = not . hasUpperBound $ ver
 
 -- | Is the upper bound version range LEQ (less or equal, <=)?
 leqUpperBound :: Dependency -> Bool
-leqUpperBound (Dependency _ ver _) = isLEQUpperBound ver
+leqUpperBound (Dependency _ ver _) = hasLEQUpperBound ver
 
 -- | Does the upper bound version range have a trailing zero?
 trailingZeroUpperBound :: Dependency -> Bool
-trailingZeroUpperBound (Dependency _ ver _) = isTrailingZeroUpperBound ver
+trailingZeroUpperBound (Dependency _ ver _) = hasTrailingZeroUpperBound ver
 
 -- | Is the lower bound version range GT (greater than, >)?
 gtLowerBound :: Dependency -> Bool
-gtLowerBound (Dependency _ ver _) = isGTLowerBound ver
+gtLowerBound (Dependency _ ver _) = hasGTLowerBound ver
 
-pattern IsLEQUpperBound, IsGTLowerBound, IsTrailingZeroUpperBound :: VersionRangeF a
-pattern IsLEQUpperBound <- OrEarlierVersionF _
-pattern IsGTLowerBound <- LaterVersionF _
-pattern IsTrailingZeroUpperBound <- (upperTrailingZero -> True)
+pattern HasLEQUpperBound, HasGTLowerBound, HasTrailingZeroUpperBound :: VersionRangeF a
+pattern HasLEQUpperBound <- OrEarlierVersionF _
+pattern HasGTLowerBound <- LaterVersionF _
+pattern HasTrailingZeroUpperBound <- (upperTrailingZero -> True)
 
 upperTrailingZero :: VersionRangeF a -> Bool
 upperTrailingZero (OrEarlierVersionF x) = trailingZero x
@@ -182,23 +182,23 @@ trailingZero (versionNumbers -> vs)
   | 0 : _ <- reverse vs = True
   | otherwise = False
 
-isLEQUpperBound :: VersionRange -> Bool
-isLEQUpperBound (projectVersionRange -> v)
-  | IsLEQUpperBound <- v = True
-  | IntersectVersionRangesF x y <- v = isLEQUpperBound x || isLEQUpperBound y
-  | UnionVersionRangesF x y <- v = isLEQUpperBound x || isLEQUpperBound y
+hasLEQUpperBound :: VersionRange -> Bool
+hasLEQUpperBound (projectVersionRange -> v)
+  | HasLEQUpperBound <- v = True
+  | IntersectVersionRangesF x y <- v = hasLEQUpperBound x || hasLEQUpperBound y
+  | UnionVersionRangesF x y <- v = hasLEQUpperBound x || hasLEQUpperBound y
   | otherwise = False
 
-isGTLowerBound :: VersionRange -> Bool
-isGTLowerBound (projectVersionRange -> v)
-  | IsGTLowerBound <- v = True
-  | IntersectVersionRangesF x y <- v = isGTLowerBound x || isGTLowerBound y
-  | UnionVersionRangesF x y <- v = isGTLowerBound x || isGTLowerBound y
+hasGTLowerBound :: VersionRange -> Bool
+hasGTLowerBound (projectVersionRange -> v)
+  | HasGTLowerBound <- v = True
+  | IntersectVersionRangesF x y <- v = hasGTLowerBound x || hasGTLowerBound y
+  | UnionVersionRangesF x y <- v = hasGTLowerBound x || hasGTLowerBound y
   | otherwise = False
 
-isTrailingZeroUpperBound :: VersionRange -> Bool
-isTrailingZeroUpperBound (projectVersionRange -> v)
-  | IsTrailingZeroUpperBound <- v = True
-  | IntersectVersionRangesF x y <- v = isTrailingZeroUpperBound x || isTrailingZeroUpperBound y
-  | UnionVersionRangesF x y <- v = isTrailingZeroUpperBound x || isTrailingZeroUpperBound y
+hasTrailingZeroUpperBound :: VersionRange -> Bool
+hasTrailingZeroUpperBound (projectVersionRange -> v)
+  | HasTrailingZeroUpperBound <- v = True
+  | IntersectVersionRangesF x y <- v = hasTrailingZeroUpperBound x || hasTrailingZeroUpperBound y
+  | UnionVersionRangesF x y <- v = hasTrailingZeroUpperBound x || hasTrailingZeroUpperBound y
   | otherwise = False
