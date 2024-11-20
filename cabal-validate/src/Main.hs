@@ -7,7 +7,7 @@ module Main
   , runStep
   ) where
 
-import Control.Monad (forM_, when)
+import Control.Monad (forM_)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Data.Text.Lazy as T (toStrict)
@@ -16,7 +16,7 @@ import Data.Version (makeVersion, showVersion)
 import System.FilePath ((</>))
 import System.Process.Typed (proc, readProcessStdout_)
 
-import Cli (Compiler (..), HackageTests (..), Opts (..), parseOpts)
+import Cli (Compiler (..), HackageTests (..), Opts (..), parseOpts, whenVerbose)
 import OutputUtil (printHeader, withTiming)
 import ProcessUtil (timed, timedWithCwd)
 import Step (Step (..), displayStep)
@@ -137,7 +137,7 @@ timedCabalBin opts package component args = do
 -- | Print the configuration for CI logs.
 printConfig :: Opts -> IO ()
 printConfig opts =
-  when (verbose opts) $
+  whenVerbose opts $ do
     printHeader "Configuration"
     putStr $
       unlines
@@ -151,8 +151,8 @@ printConfig opts =
             <> unwords (map displayStep (steps opts))
         , "Hackage tests:     "
             <> show (hackageTests opts)
-        , "verbose:           "
-            <> show (verbose opts)
+        , "verbosity:         "
+            <> show (verbosity opts)
         , "extra compilers:   "
             <> unwords (extraCompilers opts)
         , "extra RTS options: "
@@ -162,7 +162,7 @@ printConfig opts =
 -- | Print the versions of tools being used.
 printToolVersions :: Opts -> IO ()
 printToolVersions opts =
-  when (verbose opts) $ do
+  whenVerbose opts $ do
     printHeader "Tool versions"
     timed opts (cabal opts) ["--version"]
     timed opts (compilerExecutable (compiler opts)) ["--version"]
@@ -173,7 +173,7 @@ printToolVersions opts =
 -- | Run the build step.
 build :: Opts -> IO ()
 build opts = do
-  when (verbose opts) $ do
+  whenVerbose opts $ do
     printHeader "build (dry run)"
     timed
       opts

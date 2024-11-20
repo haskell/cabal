@@ -5,7 +5,7 @@ module ProcessUtil
   ) where
 
 import Control.Exception (throwIO)
-import Control.Monad (unless)
+import Control.Monad (when)
 import Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString.Lazy as ByteString
 import Data.Text (Text)
@@ -18,7 +18,7 @@ import System.Exit (ExitCode (ExitFailure, ExitSuccess))
 import System.Process.Typed (ExitCodeException (..), proc, readProcess, runProcess)
 
 import ANSI (SGR (BrightBlue, BrightGreen, BrightRed, Reset), setSGR)
-import Cli (Opts (..))
+import Cli (Opts (..), Verbosity (..))
 import ClockUtil (diffAbsoluteTime, formatDiffTime, getAbsoluteTime)
 
 -- | Like `timed`, but runs the command in a given directory.
@@ -62,7 +62,7 @@ timed opts command args = do
       <> setSGR [Reset]
 
   (exitCode, rawStdout, rawStderr) <-
-    if verbose opts
+    if verbosity opts >= Verbose
       then do
         exitCode <- runProcess process
         pure (exitCode, ByteString.empty, ByteString.empty)
@@ -81,7 +81,9 @@ timed opts command args = do
 
   case exitCode of
     ExitSuccess -> do
-      unless (verbose opts) $ do
+      -- Output is captured unless `--verbose` is used, so only print it here
+      -- if `--verbose` _isn't_ used.
+      when (verbosity opts <= Info) $ do
         if hiddenLines <= 0
           then T.putStrLn output
           else
@@ -102,7 +104,7 @@ timed opts command args = do
           <> formatDiffTime totalDuration
           <> setSGR [Reset]
     ExitFailure exitCode' -> do
-      unless (verbose opts) $ do
+      when (verbosity opts <= Info) $ do
         T.putStrLn output
 
       putStrLn $
