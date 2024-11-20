@@ -7,7 +7,7 @@ module Main
   , runStep
   ) where
 
-import Control.Monad (forM_)
+import Control.Monad (forM_, when)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Data.Text.Lazy as T (toStrict)
@@ -16,9 +16,7 @@ import Data.Version (makeVersion, showVersion)
 import System.FilePath ((</>))
 import System.Process.Typed (proc, readProcessStdout_)
 
-import ANSI (SGR (Bold, BrightCyan, Reset), setSGR)
 import Cli (Compiler (..), HackageTests (..), Opts (..), parseOpts)
-import ClockUtil (diffAbsoluteTime, formatDiffTime, getAbsoluteTime)
 import OutputUtil (printHeader, withTiming)
 import ProcessUtil (timed, timedWithCwd)
 import Step (Step (..), displayStep)
@@ -27,6 +25,8 @@ import Step (Step (..), displayStep)
 main :: IO ()
 main = do
   opts <- parseOpts
+  printConfig opts
+  printToolVersions opts
   forM_ (steps opts) $ \step -> do
     runStep opts step
 
@@ -36,8 +36,6 @@ runStep opts step = do
   let title = displayStep step
   printHeader title
   let action = case step of
-        PrintConfig -> printConfig opts
-        PrintToolVersions -> printToolVersions opts
         Build -> build opts
         Doctest -> doctest opts
         LibTests -> libTests opts
@@ -47,7 +45,6 @@ runStep opts step = do
         CliTests -> cliTests opts
         SolverBenchmarksTests -> solverBenchmarksTests opts
         SolverBenchmarksRun -> solverBenchmarksRun opts
-        TimeSummary -> timeSummary opts
   withTiming (startTime opts) title action
   T.putStrLn ""
 
@@ -139,35 +136,39 @@ timedCabalBin opts package component args = do
 
 -- | Print the configuration for CI logs.
 printConfig :: Opts -> IO ()
-printConfig opts = do
-  putStr $
-    unlines
-      [ "compiler:          "
-          <> compilerExecutable (compiler opts)
-      , "cabal-install:     "
-          <> cabal opts
-      , "jobs:              "
-          <> show (jobs opts)
-      , "steps:             "
-          <> unwords (map displayStep (steps opts))
-      , "Hackage tests:     "
-          <> show (hackageTests opts)
-      , "verbose:           "
-          <> show (verbose opts)
-      , "extra compilers:   "
-          <> unwords (extraCompilers opts)
-      , "extra RTS options: "
-          <> unwords (rtsArgs opts)
-      ]
+printConfig opts =
+  when (verbose opts) $
+    printHeader "Configuration"
+    putStr $
+      unlines
+        [ "compiler:          "
+            <> compilerExecutable (compiler opts)
+        , "cabal-install:     "
+            <> cabal opts
+        , "jobs:              "
+            <> show (jobs opts)
+        , "steps:             "
+            <> unwords (map displayStep (steps opts))
+        , "Hackage tests:     "
+            <> show (hackageTests opts)
+        , "verbose:           "
+            <> show (verbose opts)
+        , "extra compilers:   "
+            <> unwords (extraCompilers opts)
+        , "extra RTS options: "
+            <> unwords (rtsArgs opts)
+        ]
 
 -- | Print the versions of tools being used.
 printToolVersions :: Opts -> IO ()
-printToolVersions opts = do
-  timed opts (compilerExecutable (compiler opts)) ["--version"]
-  timed opts (cabal opts) ["--version"]
+printToolVersions opts =
+  when (verbose opts) $ do
+    printHeader "Tool versions"
+    timed opts (cabal opts) ["--version"]
+    timed opts (compilerExecutable (compiler opts)) ["--version"]
 
-  forM_ (extraCompilers opts) $ \compiler' -> do
-    timed opts compiler' ["--version"]
+    forM_ (extraCompilers opts) $ \compiler' -> do
+      timed opts compiler' ["--version"]
 
 -- | Run the build step.
 build :: Opts -> IO ()
@@ -413,14 +414,3 @@ solverBenchmarksRun opts = do
     , "--packages=Chart-diagrams"
     , "--print-trials"
     ]
-
--- | Print the total time taken so far.
-timeSummary :: Opts -> IO ()
-timeSummary opts = do
-  endTime <- getAbsoluteTime
-  let totalDuration = diffAbsoluteTime endTime (startTime opts)
-  putStrLn $
-    setSGR [Bold, BrightCyan]
-      <> "!!! Validation completed in "
-      <> formatDiffTime totalDuration
-      <> setSGR [Reset]
