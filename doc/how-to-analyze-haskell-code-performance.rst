@@ -132,7 +132,7 @@ not just the local ones, add the following to your project’s ``cabal.project.l
 
 .. note::
 
-    There are several keywords to specify to which parts of you project settings should be applied:
+    There are several keywords to specify to which parts of your project settings should be applied:
 
     - ``program-options`` to apply to :ref:`all local packages<program_options>`.
     - ``package <package-name>`` to apply to a :ref:`single, specific local package<package-configuration-options>`.
