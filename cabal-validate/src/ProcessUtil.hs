@@ -62,7 +62,7 @@ timed opts command args = do
       <> setSGR [Reset]
 
   (exitCode, rawStdout, rawStderr) <-
-    if verbosity opts >= Verbose
+    if verbosity opts > Quiet
       then do
         exitCode <- runProcess process
         pure (exitCode, ByteString.empty, ByteString.empty)
@@ -81,9 +81,9 @@ timed opts command args = do
 
   case exitCode of
     ExitSuccess -> do
-      -- Output is captured unless `--verbose` is used, so only print it here
-      -- if `--verbose` _isn't_ used.
-      when (verbosity opts <= Info) $ do
+      -- Output is captured when `--quiet` is used, so only print it here
+      -- if `--quiet` _isn't_ used.
+      when (verbosity opts > Quiet) $ do
         if hiddenLines <= 0
           then T.putStrLn output
           else
