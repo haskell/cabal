@@ -135,7 +135,7 @@ not just the local ones, add the following to your project’s ``cabal.project.l
     There are several keywords to specify to which parts of you project settings should be applied:
 
     - ``program-options`` to apply to :ref:`all local packages<program_options>`.
-    - ``package <package-name>`` to apply to a :ref:`single, specific local package<package-configuration-options>`.
+    - ``package <package-name>`` to apply to a :ref:`single package<package-configuration-options>`, weather local or remote.
     - ``package *`` to apply to :ref:`all local and remote packages (dependencies)<package-configuration-options>`.
 
 Second, rerun your application with ``cabal run``, which also automatically rebuilds your application:
