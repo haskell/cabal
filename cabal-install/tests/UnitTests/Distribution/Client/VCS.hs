@@ -56,6 +56,12 @@ import UnitTests.Distribution.Client.ArbitraryInstances
 tests :: MTimeChange -> [TestTree]
 tests mtimeChange =
   map
+    -- Are you tuning performance for these tests? The size of the arbitrary
+    -- instances involved is very significant, because each element generated
+    -- corresponds to one or more Git subcommands being run.
+    --
+    -- See [Tuning Arbitrary Instances] below for more information and
+    -- parameters.
     (localOption $ QuickCheckTests 10)
     [ ignoreInWindows "See issue #8048 and #9519" $
         testGroup
@@ -472,6 +478,7 @@ instance Arbitrary PrngSeed where
 -- VCS commands to make a repository on-disk.
 
 data SubmodulesSupport = SubmodulesSupported | SubmodulesNotSupported
+  deriving (Show, Eq)
 
 class KnownSubmodulesSupport (a :: SubmodulesSupport) where
   submoduleSupport :: SubmodulesSupport
@@ -484,7 +491,11 @@ instance KnownSubmodulesSupport 'SubmodulesNotSupported where
 
 data FileUpdate = FileUpdate FilePath String
   deriving (Show)
-data SubmoduleAdd = SubmoduleAdd FilePath FilePath (Commit 'SubmodulesSupported)
+data SubmoduleAdd = SubmoduleAdd
+  { submodulePath :: FilePath
+  , submoduleSource :: FilePath
+  , submoduleCommit :: Commit 'SubmodulesSupported
+  }
   deriving (Show)
 
 newtype Commit (submodules :: SubmodulesSupport)
@@ -525,40 +536,71 @@ data RepoRecipe submodules
 genFileName :: Gen FilePath
 genFileName = (\c -> "file" </> [c]) <$> choose ('A', 'E')
 
+-- [Tuning Arbitrary Instances]
+--
+-- Arbitrary repo recipes can get quite large due to nesting:
+--
+-- - `RepoRecipes` contain a number of groups (`TaggedCommits` or `BranchCommits`).
+-- - Groups contain a number of `Commit`s.
+-- - Commits contain a number of operations (`FileUpdate` or `SubmoduleAdd`).
+--
+-- There's also another wrinkle in that `SubmoduleAdd`s contain a `Commit`
+-- themselves, so square the `operationsPerCommit` number!
+--
+-- Then, a rough upper bound of the number of `git` calls required for an
+-- arbitrary `RepoRecipe` is
+-- `groupsPerRecipe * commitsPerGroup * operationsPerCommit^2`.
+--
+-- The original implementation of these instances, which chose
+-- reasonable-sounding size parameters of 5-15, led to a maximum of 1875
+-- operations per test case! No wonder they took so long!
+--
+-- In most cases, we only care about one or many operations, so "two" is a fine
+-- stand-in for "many" :)
+groupsPerRecipe :: Int
+groupsPerRecipe = 3
+
+commitsPerGroup :: Int
+commitsPerGroup = 3
+
+operationsPerCommit :: Int
+operationsPerCommit = 3
+
 instance Arbitrary FileUpdate where
-  arbitrary = genOnlyFileUpdate
+  arbitrary = FileUpdate <$> genFileName <*> genFileContent
     where
-      genOnlyFileUpdate = FileUpdate <$> genFileName <*> genFileContent
       genFileContent = vectorOf 10 (choose ('#', '~'))
 
 instance Arbitrary SubmoduleAdd where
-  arbitrary = genOnlySubmoduleAdd
+  arbitrary = SubmoduleAdd <$> genFileName <*> genSubmoduleSrc <*> arbitrary
     where
-      genOnlySubmoduleAdd = SubmoduleAdd <$> genFileName <*> genSubmoduleSrc <*> arbitrary
       genSubmoduleSrc = vectorOf 20 (choose ('a', 'z'))
 
 instance forall submodules. KnownSubmodulesSupport submodules => Arbitrary (Commit submodules) where
-  arbitrary = Commit <$> shortListOf1 5 fileUpdateOrSubmoduleAdd
+  arbitrary = Commit <$> shortListOf1 operationsPerCommit (sized fileUpdateOrSubmoduleAdd)
     where
-      fileUpdateOrSubmoduleAdd =
+      fileUpdateOrSubmoduleAdd 0 = Left <$> arbitrary
+      fileUpdateOrSubmoduleAdd size =
         case submoduleSupport @submodules of
           SubmodulesSupported ->
             frequency
               [ (10, Left <$> arbitrary)
-              , (1, Right <$> arbitrary)
+              , -- A `SubmoduleAdd` contains a `Commit`, so we make sure to scale
+                -- down the size in the recursive call to avoid unbounded nesting.
+                (1, Right <$> resize (size `div` 2) arbitrary)
               ]
           SubmodulesNotSupported -> Left <$> arbitrary
   shrink (Commit writes) = Commit <$> filter (not . null) (shrink writes)
 
 instance KnownSubmodulesSupport submodules => Arbitrary (TaggedCommits submodules) where
-  arbitrary = TaggedCommits <$> genTagName <*> shortListOf1 5 arbitrary
+  arbitrary = TaggedCommits <$> genTagName <*> shortListOf1 commitsPerGroup arbitrary
     where
       genTagName = ("tag_" ++) <$> shortListOf1 5 (choose ('A', 'Z'))
   shrink (TaggedCommits tag commits) =
     TaggedCommits tag <$> filter (not . null) (shrink commits)
 
 instance KnownSubmodulesSupport submodules => Arbitrary (BranchCommits submodules) where
-  arbitrary = BranchCommits <$> genBranchName <*> shortListOf1 5 arbitrary
+  arbitrary = BranchCommits <$> genBranchName <*> shortListOf1 commitsPerGroup arbitrary
     where
       genBranchName =
         sized $ \n ->
@@ -568,12 +610,12 @@ instance KnownSubmodulesSupport submodules => Arbitrary (BranchCommits submodule
     BranchCommits branch <$> filter (not . null) (shrink commits)
 
 instance KnownSubmodulesSupport submodules => Arbitrary (NonBranchingRepoRecipe submodules) where
-  arbitrary = NonBranchingRepoRecipe <$> shortListOf1 15 arbitrary
+  arbitrary = NonBranchingRepoRecipe <$> shortListOf1 groupsPerRecipe arbitrary
   shrink (NonBranchingRepoRecipe xs) =
     NonBranchingRepoRecipe <$> filter (not . null) (shrink xs)
 
 instance KnownSubmodulesSupport submodules => Arbitrary (BranchingRepoRecipe submodules) where
-  arbitrary = BranchingRepoRecipe <$> shortListOf1 15 taggedOrBranch
+  arbitrary = BranchingRepoRecipe <$> shortListOf1 groupsPerRecipe taggedOrBranch
     where
       taggedOrBranch =
         frequency
