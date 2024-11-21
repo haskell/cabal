@@ -850,23 +850,22 @@ vcsTestDriverGit
       { vcsVCS = vcs'
       , vcsRepoRoot = repoRoot
       , vcsIgnoreFiles = Set.empty
-      , vcsInit =
+      , vcsInit = do
+          createDirectoryIfMissing True home
+          gitconfigExists <- doesFileExist gitconfigPath
+          unless gitconfigExists $ do
+            writeFile gitconfigPath gitconfig
           git $ ["init"] ++ verboseArg
       , vcsAddFile = \_ filename ->
           git ["add", filename]
       , vcsCommitChanges = \_state -> do
           git $
-            [ "-c"
-            , "user.name=A"
-            , "-c"
-            , "user.email=a@example.com"
-            , "commit"
+            [ "commit"
             , "--all"
             , "--message=a patch"
-            , "--author=A <a@example.com>"
             ]
               ++ verboseArg
-          commit <- git' ["log", "--format=%H", "-1"]
+          commit <- git' ["rev-parse", "HEAD"]
           let commit' = takeWhile (not . isSpace) commit
           return (Just commit')
       , vcsTagState = \_ tagname ->
@@ -906,6 +905,8 @@ vcsTestDriverGit
           updateSubmodulesAndCleanup
       }
     where
+      home = tmpDir </> "home"
+      gitconfigPath = home </> ".gitconfig"
       -- Git 2.38.1 and newer fails to clone from local paths with `fatal: transport 'file'
       -- not allowed` unless `protocol.file.allow=always` is set.
       --
@@ -913,14 +914,26 @@ vcsTestDriverGit
       --
       -- See: https://github.blog/open-source/git/git-security-vulnerabilities-announced/#fn-67904-1
       -- See: https://git-scm.com/docs/git-config#Documentation/git-config.txt-protocolallow
+      gitconfig =
+        "[protocol.file]\n\
+        \allow = always\n\
+        \[user]\n\
+        \name = Puppy Doggy\n\
+        \email = puppy.doggy@example.com\n"
+
       vcs' =
         vcs
           { vcsProgram =
               (vcsProgram vcs)
-                { programDefaultArgs =
-                    programDefaultArgs (vcsProgram vcs)
-                      ++ [ "-c"
-                         , "protocol.file.allow=always"
+                { programOverrideEnv =
+                    programOverrideEnv (vcsProgram vcs)
+                      ++ [ -- > Whether to skip reading settings from the system-wide $(prefix)/etc/gitconfig file.
+                           ("GIT_CONFIG_NOSYSTEM", Just "1")
+                         , ("GIT_CONFIG_GLOBAL", Just gitconfigPath)
+                         , -- Setting the author and committer dates makes commit hashes deterministic between test runs.
+                           ("GIT_AUTHOR_DATE", Just "1998-04-30T18:25:03-0400")
+                         , ("GIT_COMMITTER_DATE", Just "1998-04-30T18:25:00-0400")
+                         , ("HOME", Just home)
                          ]
                 }
           }
