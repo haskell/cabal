@@ -87,9 +87,12 @@ See the
 `Haskell Optimization Handbook <https://haskell.foundation/hs-opt-handbook.github.io>`__
 on how to optimize your code based on the profiling results afterwards.
 
-So far, we've only used a single GHC compiler option to enable profiling
-in general for your application.
-However, you can pass a lot more compiler flags to GHC via the ``cabal.project.local`` file:
+So far, we’ve only used a single Cabal option to enable profiling in general for your application.
+Leaving ``profiling-detail`` unspecified as before defaults to
+``profiling-detail: exported-functions`` for libraries
+and ``profiling-detail: toplevel-functions`` for executables.
+However, you can specify the profiling detail and provide more compiler flags
+to GHC (such as ``-fno-prof-count-entries``) via the ``cabal.project.local`` file:
 
 .. code-block:: cabal
 
@@ -97,9 +100,7 @@ However, you can pass a lot more compiler flags to GHC via the ``cabal.project.l
     profiling-detail: late-toplevel
     program-options
       ghc-options:
-        -fprof-auto
-        -fno-prof-count-entries
-        -fprof-auto-calls
+        <further options>
 
 Add these recommended profiling options to control where and when
 performance measuring code is inserted into your application.
