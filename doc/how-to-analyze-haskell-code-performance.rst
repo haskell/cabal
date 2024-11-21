@@ -14,7 +14,8 @@ can help you understand why. The main steps are:
 The process of inserting performance measuring code and collecting performance information
 is called "profiling". The work is done by GHC while Cabal only acts
 as a build configuration interface and passes corresponding compiler flags to GHC.
-
+.. note::
+    This documentation describes how to instruct cabal to enable profiling, but to get an understanding of how profiling itself works and getting a mental picture of the overall process it is highly recommended to read in depth the `Profiling section in GHC's User Guide <https://downloads.haskell.org/ghc/latest/docs/users_guide/profiling.html>`__.
 Profiling CPU performance
 -------------------------
 
