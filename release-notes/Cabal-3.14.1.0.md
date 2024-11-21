@@ -8,7 +8,7 @@
   had configured to build profiled library files then your executable modules would also
   be built profiled. Which was a regression in behaviour since `Cabal-3.12`.
 
-- Fix ./setup install command [#10416](https://github.com/haskell/cabal/issues/10416) [#10417](https://github.com/haskell/cabal/pull/10417)
+- Fix `./setup install` command [#10416](https://github.com/haskell/cabal/issues/10416) [#10417](https://github.com/haskell/cabal/pull/10417)
 
   - `./setup install` was failing with a `fromFlag NoFlag` error. It is now fixed.
 
