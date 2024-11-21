@@ -13,8 +13,8 @@ can help you understand why. The main steps are:
 
 The process of inserting performance measuring code and collecting performance information
 is called "profiling".
-This guide describes how to instruct Cabal to pass desired profiling flags to the GHC compiler.
-So, Cabal only acts as a build configuration interface while the actual work is done by GHC.
+This guide describes how to instruct Cabal to pass desired profiling flags to the GHC compiler;
+Cabal acts as a convenient build configuration interface while the work is done by GHC.
 To get a deeper understanding of the overall profiling process itself in GHC,
 it is highly recommended to read in depth the
 `Profiling section in GHC's User Guide <https://downloads.haskell.org/ghc/latest/docs/users_guide/profiling.html>`__.
