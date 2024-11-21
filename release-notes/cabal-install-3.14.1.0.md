@@ -3,7 +3,7 @@
 - Fix a bug that causes `cabal init` to crash if `git` is not installed [#8478](https://github.com/haskell/cabal/issues/8478) [#10484](https://github.com/haskell/cabal/issues/10484) [#10486](https://github.com/haskell/cabal/pull/10486)
 
   - `cabal init` tries to use `git config` to guess the user's name and email.
-    It no longer crashes if there is no executable named `git` on $PATH.
+    It no longer crashes if there is no executable named `git` on `$PATH`.
 
 - Print out which project file we are using with the default verbosity [#8519](https://github.com/haskell/cabal/issues/8519) [#10507](https://github.com/haskell/cabal/pull/10507)
 
