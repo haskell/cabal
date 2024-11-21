@@ -1372,7 +1372,7 @@ Profiling options
     late-toplevel
         Like top-level but costs will be assigned to top level definitions after
         optimization. This lowers profiling overhead massively while giving similar
-        levels of detail as toplevle-functions. However it means functions introduced
+        levels of detail as toplevel-functions. However it means functions introduced
         by GHC during optimization will show up in profiles as well.
         Corresponds to ``-fprof-late`` if supported and ``-fprof-auto-top`` otherwise.
     late
