@@ -492,15 +492,7 @@ exAvSrcPkg ex =
         -- they are not related to this test suite, and are tested
         -- with golden tests.
         let checks = C.checkPackage (srcpkgDescription package)
-         in filter
-              ( \x ->
-                  not (isgtLowerBound x)
-                    && not (isLeqUpperBound x)
-                    && not (isTrailingZeroUpperBound x)
-                    && not (isMissingUpperBound x)
-                    && not (isUnknownLangExt x)
-              )
-              checks
+         in filter (\x -> not (isMissingUpperBound x) && not (isUnknownLangExt x)) checks
    in if null pkgCheckErrors
         then package
         else
@@ -722,18 +714,6 @@ exAvSrcPkg ex =
     isMissingUpperBound :: C.PackageCheck -> Bool
     isMissingUpperBound pc = case C.explanation pc of
       C.MissingUpperBounds{} -> True
-      _ -> False
-    isTrailingZeroUpperBound :: C.PackageCheck -> Bool
-    isTrailingZeroUpperBound pc = case C.explanation pc of
-      C.TrailingZeroUpperBounds{} -> True
-      _ -> False
-    isLeqUpperBound :: C.PackageCheck -> Bool
-    isLeqUpperBound pc = case C.explanation pc of
-      C.LEQUpperBounds{} -> True
-      _ -> False
-    isgtLowerBound :: C.PackageCheck -> Bool
-    isgtLowerBound pc = case C.explanation pc of
-      C.GTLowerBounds{} -> True
       _ -> False
 
 mkSimpleVersion :: ExamplePkgVersion -> C.Version
