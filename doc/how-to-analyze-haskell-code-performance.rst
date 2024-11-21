@@ -8,7 +8,7 @@ can help you understand why. The main steps are:
 1. Configure the project in a way that makes GHC insert performance-measuring code into your application.
 2. Run the application with the right
    `runtime system (RTS) flags <https://downloads.haskell.org/ghc/latest/docs/users_guide/runtime_control.html>`__
-   to produce a performance report and
+   to produce a performance report.
 3. Visualize and analyze that report.
 
 The process of inserting performance measuring code and collecting performance information
