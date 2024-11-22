@@ -260,7 +260,7 @@ Usage example:
 > custom-setup
 >   setup-depends:
 >     base        >= 4.18 && < 5,
->     Cabal-hooks >= 0.1  && < 0.2
+>     Cabal-hooks >= 3.14 && < 3.15
 >
 > The declared Cabal version should also be at least 3.14.
 
