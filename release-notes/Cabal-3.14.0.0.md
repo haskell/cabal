@@ -14,8 +14,6 @@ Cabal and Cabal-syntax 3.14.0.0 changelog and release notes
 
   * `extra-doc-files`: Copied by Haddock to the html directory.
 
-### Other changes
-
 - Include package version when passing `--promised-dependency` flag [#10166](https://github.com/haskell/cabal/issues/10166) [#10248](https://github.com/haskell/cabal/pull/10248)
 
   The `--promised-dependency` flag now expects an argument in the format
