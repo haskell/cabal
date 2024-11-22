@@ -614,11 +614,8 @@ generateCode
   -> Verbosity
   -> IO (SymbolicPath Pkg (Dir Source), [ModuleName.ModuleName])
 generateCode codeGens nm pdesc bi lbi clbi verbosity = do
-  debug verbosity $ "generateCode: " <> prettyShow (package pdesc)
   when (not . null $ codeGens) $ createDirectoryIfMissingVerbose verbosity True $ i tgtDir
-  ret <- (\x -> (tgtDir, x)) . concat <$> mapM go codeGens
-  debug verbosity "generateCode complete"
-  pure ret
+  (\x -> (tgtDir, x)) . concat <$> mapM go codeGens
   where
     allLibs = (maybe id (:) $ library pdesc) (subLibraries pdesc)
     dependencyLibs = filter (const True) allLibs -- intersect with componentPackageDeps of clbi
@@ -628,8 +625,7 @@ generateCode codeGens nm pdesc bi lbi clbi verbosity = do
     i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
     tgtDir = buildDir lbi </> makeRelativePathEx (nm' </> nm' ++ "-gen")
     go :: String -> IO [ModuleName.ModuleName]
-    go codeGenProg = do
-      debug verbosity $ "Performing codegen: " <> codeGenProg
+    go codeGenProg =
       fmap fromString . lines
         <$> getDbProgramOutputCwd
           verbosity

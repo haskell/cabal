@@ -56,7 +56,6 @@ import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.ModuleName (ModuleName)
 import Distribution.Package
 import Distribution.PackageDescription as PD
-import Distribution.Pretty
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.CCompiler
 import Distribution.Simple.Compiler
@@ -160,7 +159,6 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers =
       (Nothing :: Maybe [(ModuleName, Module)])
     case comp of
       (CLib lib@Library{libBuildInfo = bi}) -> do
-        debug verbosity $ "Preprocessing library: " <> show (libName lib)
         let dirs =
               hsSourceDirs bi
                 ++ [autogenComponentModulesDir lbi clbi, autogenPackageModulesDir lbi]
@@ -169,7 +167,6 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers =
         for_ (map moduleNameSymbolicPath mods) $
           pre dirs (componentBuildDir lbi clbi) hndlrs
       (CFLib flib@ForeignLib{foreignLibBuildInfo = bi}) -> do
-        debug verbosity $ "Preprocessing foreign library: " <> prettyShow (foreignLibName flib)
         let flibDir = flibBuildDir lbi flib
             dirs =
               hsSourceDirs bi
@@ -189,7 +186,6 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers =
                    ]
         let hndlrs = localHandlers bi
         mods <- orderingFromHandlers verbosity dirs hndlrs (otherModules bi)
-        debug verbosity $ "Module count: " <> show (length mods)
         for_ (map moduleNameSymbolicPath mods) $
           pre dirs exeDir hndlrs
         pre (hsSourceDirs bi) exeDir (localHandlers bi) $
@@ -212,11 +208,8 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers =
           BenchmarkUnsupported tt ->
             dieWithException verbosity $ NoSupportForPreProcessingBenchmark tt
   where
-    orderingFromHandlers v d hndlrs mods = do
-      debug v $ "    orderingFromHandlers begin"
-      a <- foldM (\acc (_, pp) -> ppOrdering pp v d acc) mods hndlrs
-      debug v $ "    orderingFromHandlers end"
-      pure a
+    orderingFromHandlers v d hndlrs mods =
+      foldM (\acc (_, pp) -> ppOrdering pp v d acc) mods hndlrs
     builtinCSuffixes = map Suffix cSourceExtensions
     builtinSuffixes = builtinHaskellSuffixes ++ builtinCSuffixes
     localHandlers bi = [(ext, h bi lbi clbi) | (ext, h) <- handlers]
@@ -299,7 +292,6 @@ preprocessFile
   -- ^ fail on missing file
   -> IO ()
 preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinSuffixes handlers failOnMissing = do
-  debug verbosity $ "preprocessFile: " <> prettyShow baseFile
   bsrcFiles <- findFileCwdWithExtension mbWorkDir builtinSuffixes (searchLoc ++ [buildAsSrcLoc]) baseFile
   -- look for files in the various source dirs with this module name
   -- and a file extension of a known preprocessor
@@ -326,7 +318,6 @@ preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinS
                   ++ " in "
                   ++ intercalate ", " (map getSymbolicPath searchLoc)
         Just (psrcLoc, psrcRelFile) -> do
-          debug verbosity $ "  Found pre-processable file: " <> prettyShow psrcLoc
           let (srcStem, ext) = splitExtension $ getSymbolicPath psrcRelFile
               psrcFile = psrcLoc </> psrcRelFile
               pp =
@@ -343,7 +334,6 @@ preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinS
           -- the tarball).
           -- TODO: eliminate sdist variant, just supply different handlers
           when (not forSDist || forSDist && platformIndependent pp) $ do
-            debug verbosity "  Searching for existing pre-processed source file"
             -- look for existing pre-processed source file in the dest dir to
             -- see if we really have to re-run the preprocessor.
             ppsrcFiles <- findFileCwdWithExtension mbWorkDir builtinSuffixes [buildAsSrcLoc] baseFile
@@ -352,14 +342,12 @@ preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinS
               Just ppsrcFile ->
                 i psrcFile `moreRecentFile` i ppsrcFile
             when recomp $ do
-              debug verbosity "  Preprocessing file. . ."
               let destDir = i buildLoc </> takeDirectory srcStem
               createDirectoryIfMissingVerbose verbosity True destDir
               runPreProcessorWithHsBootHack
                 pp
                 (getSymbolicPath $ psrcLoc, getSymbolicPath $ psrcRelFile)
                 (getSymbolicPath $ buildLoc, srcStem <.> "hs")
-              debug verbosity $ "Preprocessing file complete: " <> prettyShow baseFile
 
     -- found a non-processable file in one of the source dirs
     Just _ -> do
@@ -912,9 +900,7 @@ preprocessExtras
   -> Component
   -> LocalBuildInfo
   -> IO [SymbolicPath Pkg File]
-preprocessExtras verbosity comp lbi = do
-  debug verbosity $ "in preprocessExtras"
-  case comp of
+preprocessExtras verbosity comp lbi = case comp of
     CLib _ -> pp $ buildDir lbi
     (CExe exe@Executable{}) -> pp $ exeBuildDir lbi exe
     (CFLib flib@ForeignLib{}) -> pp $ flibBuildDir lbi flib
