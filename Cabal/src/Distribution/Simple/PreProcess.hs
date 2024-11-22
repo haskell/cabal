@@ -293,22 +293,25 @@ preprocessFile
   -> IO ()
 preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinSuffixes handlers failOnMissing = do
   bsrcFiles <- findFileCwdWithExtension mbWorkDir builtinSuffixes (searchLoc ++ [buildAsSrcLoc]) baseFile
-  -- look for files in the various source dirs with this module name
-  -- and a file extension of a known preprocessor
   case bsrcFiles of
-    -- no preprocessor file exists, look for an ordinary source file
-    -- just to make sure one actually exists at all for this module.
-
-    -- Note [Dodgy build dirs for preprocessors]
-    -- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    -- By looking in the target/output build dir too, we allow
-    -- source files to appear magically in the target build dir without
-    -- any corresponding "real" source file. This lets custom Setup.hs
-    -- files generate source modules directly into the build dir without
-    -- the rest of the build system being aware of it (somewhat dodgy)
+    -- found a non-processable file in one of the source dirs
+    Just _ -> do
+      pure ()
     Nothing -> do
+      -- look for files in the various source dirs with this module name
+      -- and a file extension of a known preprocessor
       psrcFiles <- findFileCwdWithExtension' mbWorkDir (map fst handlers) searchLoc baseFile
       case psrcFiles of
+        -- no preprocessor file exists, look for an ordinary source file
+        -- just to make sure one actually exists at all for this module.
+
+        -- Note [Dodgy build dirs for preprocessors]
+        -- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        -- By looking in the target/output build dir too, we allow
+        -- source files to appear magically in the target build dir without
+        -- any corresponding "real" source file. This lets custom Setup.hs
+        -- files generate source modules directly into the build dir without
+        -- the rest of the build system being aware of it (somewhat dodgy)
         Nothing ->
           when failOnMissing $ do
             dieWithException verbosity $
@@ -349,9 +352,6 @@ preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinS
                 (getSymbolicPath $ psrcLoc, getSymbolicPath $ psrcRelFile)
                 (getSymbolicPath $ buildLoc, srcStem <.> "hs")
 
-    -- found a non-processable file in one of the source dirs
-    Just _ -> do
-      pure ()
   where
     i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
     buildAsSrcLoc :: SymbolicPath Pkg (Dir Source)
