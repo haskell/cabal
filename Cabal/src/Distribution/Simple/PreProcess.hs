@@ -901,19 +901,19 @@ preprocessExtras
   -> LocalBuildInfo
   -> IO [SymbolicPath Pkg File]
 preprocessExtras verbosity comp lbi = case comp of
-    CLib _ -> pp $ buildDir lbi
-    (CExe exe@Executable{}) -> pp $ exeBuildDir lbi exe
-    (CFLib flib@ForeignLib{}) -> pp $ flibBuildDir lbi flib
-    CTest test ->
-      case testInterface test of
-        TestSuiteUnsupported tt ->
-          dieWithException verbosity $ NoSupportPreProcessingTestExtras tt
-        _ -> pp $ testBuildDir lbi test
-    CBench bm ->
-      case benchmarkInterface bm of
-        BenchmarkUnsupported tt ->
-          dieWithException verbosity $ NoSupportPreProcessingBenchmarkExtras tt
-        _ -> pp $ benchmarkBuildDir lbi bm
+  CLib _ -> pp $ buildDir lbi
+  (CExe exe@Executable{}) -> pp $ exeBuildDir lbi exe
+  (CFLib flib@ForeignLib{}) -> pp $ flibBuildDir lbi flib
+  CTest test ->
+    case testInterface test of
+      TestSuiteUnsupported tt ->
+        dieWithException verbosity $ NoSupportPreProcessingTestExtras tt
+      _ -> pp $ testBuildDir lbi test
+  CBench bm ->
+    case benchmarkInterface bm of
+      BenchmarkUnsupported tt ->
+        dieWithException verbosity $ NoSupportPreProcessingBenchmarkExtras tt
+      _ -> pp $ benchmarkBuildDir lbi bm
   where
     pp :: SymbolicPath Pkg (Dir Build) -> IO [SymbolicPath Pkg File]
     pp builddir = do
