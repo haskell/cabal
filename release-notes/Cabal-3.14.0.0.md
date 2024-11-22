@@ -185,12 +185,11 @@ Cabal and Cabal-syntax 3.14.0.0 changelog and release notes
        someHaddockFlags
     -    { haddockVerbosity = a
     -    , haddockTargets  = b
-         }
     +    { haddockCommonFlags = mempty
     +      { setupVerbosity = a
     +      , setupTargets = b
     +      }
-           }
+         }
     ```
 
   - **Additions to `SymbolicPath`, `RelativePath`**
