@@ -155,6 +155,59 @@ Cabal and Cabal-syntax 3.14.0.0 changelog and release notes
   configure"). This has recently caught out even Cabal devs. Clarify these
   messages. [#9476](https://github.com/haskell/cabal/pull/9476)
 
+- In [#9718](https://github.com/haskell/cabal/pull/9718) constructors
+  `PackageDB`: `GlobalPackageDB`, `UserPackageDB`, `SpecificPackageDB` have
+  been moved to an auxiliary datatatype `PackageDBX`.
+
+  Change imports:
+
+    ```haskell
+    import Distribution.Simple.Compiler
+       (PackageDB, PackageDBX (GlobalPackageDB,
+                               UserPackageDB,
+                               SpecificPackageDB))
+    ```
+
+  - **Fields of `ConfigFlags`, `BuildFlags`, `InstallFlags`, `TestFlags`,
+    `BenchmarkFlags`, `HaddockFlags`, `HscolourFlags`, `SDistFlags`,
+    `CopyFlags`, `RegisterFlags`, `CleanFlags`, `ReplFlags`**
+
+    These fields have partially moved to `CommonFlags`. Use corresponding
+    pattern synonyms and/or Monoid instance of `CommonSetupFlags`.
+
+    Example for haddock command:
+
+    ```diff
+     import Distribution.Simple.Setup (HaddockFlags(..))
+    +import Distribution.Simple.Setup.Common (CommonSetupFlags(..))
+
+     example =
+       someHaddockFlags
+    -    { haddockVerbosity = a
+    -    , haddockTargets  = b
+         }
+    +    { haddockCommonFlags = mempty
+    +      { setupVerbosity = a
+    +      , setupTargets = b
+    +      }
+           }
+    ```
+
+  - **Additions to `SymbolicPath`, `RelativePath`**
+
+    Module
+    [Distribution.Utils.Path](https://hackage.haskell.org/package/Cabal-syntax-3.14.0.0/docs/Distribution-Utils-Path.html),
+    now provides more nuanced API that Cabal uses to keep track of filepath
+    locations. (Hopefully, avoiding confusion which things should go where and
+    how.)
+
+    In your specific circumstance, you'll need to decide how much of that nuance
+    to keep. The function `getSymbolicPath` discards all of it, getting back the
+    raw `FilePath`; but see the linked module's haddocks for caveats and less
+    drastic options.
+
+    It may help to introduce a `CompatSymPath` typeclass.
+
 - Update the SPDX License List to version 3.25
 
   The LicenseId and LicenseExceptionId types are updated to reflect the SPDX
