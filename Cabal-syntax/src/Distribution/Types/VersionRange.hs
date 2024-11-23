@@ -205,22 +205,6 @@ hasLowerBound =
     (&&)
     (||)
 
-pattern HasLEQUpperBound, HasGTLowerBound, HasTrailingZeroUpperBound :: VersionRangeF a
-pattern HasLEQUpperBound <- OrEarlierVersionF _
-pattern HasGTLowerBound <- LaterVersionF _
-pattern HasTrailingZeroUpperBound <- (upperTrailingZero -> True)
-
-upperTrailingZero :: VersionRangeF a -> Bool
-upperTrailingZero (OrEarlierVersionF x) = trailingZero x
-upperTrailingZero (EarlierVersionF x) = trailingZero x
-upperTrailingZero _ = False
-
-trailingZero :: Version -> Bool
-trailingZero (versionNumbers -> vs)
-  | [0] <- vs = False
-  | 0 : _ <- reverse vs = True
-  | otherwise = False
-
 -- | Is the upper bound version range LEQ (less or equal, <=)?
 hasLEQUpperBound :: VersionRange -> Bool
 hasLEQUpperBound = queryVersionRange (\case HasLEQUpperBound -> True; _ -> False) hasLEQUpperBound
