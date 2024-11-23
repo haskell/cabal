@@ -88,11 +88,9 @@ See the
 on how to optimize your code based on the profiling results afterwards.
 
 So far, we’ve only used a single Cabal option to enable profiling in general for your application.
-Leaving ``profiling-detail`` unspecified as before defaults to
-``profiling-detail: exported-functions`` for libraries
-and ``profiling-detail: toplevel-functions`` for executables.
-However, you can specify the profiling detail and provide more compiler flags
-to GHC (such as ``-fno-prof-count-entries``) via the ``cabal.project.local`` file:
+Leaving ``profiling-detail`` unspecified results in a sensible default which differs between libraries and executable.
+See the docs for ``profiling-detail`` to see which other options are available. 
+You can provide profiling-detail settings and more compiler flags to GHC (such as ``-fno-prof-count-entries``) via the ``cabal.project.local`` file:
 
 .. code-block:: cabal
 
