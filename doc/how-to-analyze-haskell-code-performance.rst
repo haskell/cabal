@@ -37,8 +37,10 @@ This command creates a ``cabal.project.local`` file with the following content:
 
 This file stores temporary configuration settings that are passed implicitly to further Cabal commands
 like ``cabal build`` and ``cabal run``.
-The setting ``profiling: True`` tells GHC
-to insert performance measuring code into your application in general,
+The setting ``profiling: True`` tells GHC to build your application (and its dependencies) with profiling enabled,
+and to insert performance measuring code into your application.
+Where exactly such code is inserted can be controlled with settings like ``profiling-detail``
+that are presented later.
 Further in-depth information on profiling with GHC and its compiler options can be found in the
 `GHC profiling guide <https://downloads.haskell.org/ghc/latest/docs/users_guide/profiling.html>`__
 
@@ -88,9 +90,12 @@ See the
 on how to optimize your code based on the profiling results afterwards.
 
 So far, we’ve only used a single Cabal option to enable profiling in general for your application.
-Leaving ``profiling-detail`` unspecified results in a sensible default which differs between libraries and executable.
-See the docs for ``profiling-detail`` to see which other options are available. 
-You can provide profiling-detail settings and more compiler flags to GHC (such as ``-fno-prof-count-entries``) via the ``cabal.project.local`` file:
+Where and when GHC should insert performance measuring code can be controlled with the ``profiling-detail`` setting
+and ``ghc-options``.
+Leaving ``profiling-detail`` unspecified as before results in sensible defaults that differ between libraries and executable.
+See the docs for :ref:`profiling-detail<profiling-detail>` to see which options are available.
+You can provide ``profiling-detail`` settings and more compiler flags to GHC
+(such as ``-fno-prof-count-entries``) via the ``cabal.project.local`` file:
 
 .. code-block:: cabal
 
@@ -100,8 +105,6 @@ You can provide profiling-detail settings and more compiler flags to GHC (such a
       ghc-options:
         <further options>
 
-Add these recommended profiling options to control where and when
-performance measuring code is inserted into your application.
 The setting ``profiling-detail: late-toplevel`` instructs GHC to use so-called
 `late-cost-center profiling <https://downloads.haskell.org/ghc/latest/docs/users_guide/profiling.html#ghc-flag--fprof-late>`__
 and insert measuring code only after important optimisations have been applied to your application code.

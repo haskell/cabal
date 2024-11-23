@@ -1333,6 +1333,8 @@ Profiling options
     The command line variant of this flag is ``--enable-profiling`` and
     ``--disable-profiling``.
 
+.. _profiling-detail:
+
 .. cfg-field:: profiling-detail: level
                --profiling-detail=level
     :synopsis: Profiling detail level.
