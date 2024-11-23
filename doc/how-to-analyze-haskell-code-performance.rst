@@ -130,7 +130,6 @@ not just the local ones, add the following to your project’s ``cabal.project.l
 .. code-block:: cabal
 
     package *
-        profiling: true
         profiling-detail: late-toplevel
 
 .. note::
