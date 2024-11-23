@@ -1,0 +1,6 @@
+packages: .
+
+-- This is an error; a trailing `:` is syntax for a field, not a stanza!
+source-repository-package:
+  type: git
+  location: https://github.com/haskell-hvr/Only

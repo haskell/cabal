@@ -1,6 +1,8 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 -----------------------------------------------------------------------------
 
@@ -53,6 +55,7 @@ import Distribution.Deprecated.ParseUtils
   ( Field (..)
   , FieldDescr (..)
   , LineNo
+  , PError (..)
   , ParseResult (..)
   , liftField
   , lineNo
@@ -292,13 +295,16 @@ parseFieldsAndSections fieldDescrs sectionDescrs fgSectionDescrs =
     setField a (F line name value) =
       case Map.lookup name fieldMap of
         Just (FieldDescr _ _ set) -> set line value a
-        Nothing -> do
-          warning $
-            "Unrecognized field '"
-              ++ name
-              ++ "' on line "
-              ++ show line
-          return a
+        Nothing ->
+          case Left <$> Map.lookup name sectionMap <|> Right <$> Map.lookup name fgSectionMap of
+            Just _ -> ParseFailed $ FieldShouldBeStanza name line
+            Nothing -> do
+              warning $
+                "Unrecognized field '"
+                  ++ name
+                  ++ "' on line "
+                  ++ show line
+              return a
     setField a (Section line name param fields) =
       case Left <$> Map.lookup name sectionMap <|> Right <$> Map.lookup name fgSectionMap of
         Just (Left (SectionDescr _ fieldDescrs' sectionDescrs' _ set sectionEmpty)) -> do

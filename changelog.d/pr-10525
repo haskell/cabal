@@ -1,0 +1,34 @@
+---
+synopsis: "A trailing colon after a stanza name in `cabal.project` is now an error"
+packages: [cabal-install]
+prs: 10525
+---
+
+It is now a hard error to use a trailing colon after a stanza name in
+`cabal.project` or `*.cabal` files:
+
+```
+packages: .
+
+source-repository-package:
+    type: git
+    location: https://github.com/haskell/cabal
+    tag: f34aba976a60940295f41b6649674e9568893894
+```
+
+```
+$ cabal build
+Error parsing project file cabal.project:3:
+'source-repository-package' is a stanza, not a field. Remove the trailing ':' to parse a stanza.
+```
+
+Previously, the warning message was easily ignored and somewhat misleading, as
+the difference between a stanza and a field is not immediately obvious to
+Haskellers used to config languages like JSON and YAML (which don't distinguish
+between fields which have string or list values and stanzas which have nested
+fields):
+
+```
+Warning: cabal.project: Unrecognized field
+'source-repository-package' on line 3
+```
