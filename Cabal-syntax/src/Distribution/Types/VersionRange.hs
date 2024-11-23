@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -222,24 +223,19 @@ trailingZero (versionNumbers -> vs)
 
 -- | Is the upper bound version range LEQ (less or equal, <=)?
 hasLEQUpperBound :: VersionRange -> Bool
-hasLEQUpperBound (projectVersionRange -> v)
-  | HasLEQUpperBound <- v = True
-  | IntersectVersionRangesF x y <- v = hasLEQUpperBound x || hasLEQUpperBound y
-  | UnionVersionRangesF x y <- v = hasLEQUpperBound x || hasLEQUpperBound y
-  | otherwise = False
+hasLEQUpperBound = queryVersionRange (\case HasLEQUpperBound -> True; _ -> False) hasLEQUpperBound
 
 -- | Is the lower bound version range GT (greater than, >)?
 hasGTLowerBound :: VersionRange -> Bool
-hasGTLowerBound (projectVersionRange -> v)
-  | HasGTLowerBound <- v = True
-  | IntersectVersionRangesF x y <- v = hasGTLowerBound x || hasGTLowerBound y
-  | UnionVersionRangesF x y <- v = hasGTLowerBound x || hasGTLowerBound y
-  | otherwise = False
+hasGTLowerBound = queryVersionRange (\case HasGTLowerBound -> True; _ -> False) hasGTLowerBound
 
 -- | Does the upper bound version range have a trailing zero?
 hasTrailingZeroUpperBound :: VersionRange -> Bool
-hasTrailingZeroUpperBound (projectVersionRange -> v)
-  | HasTrailingZeroUpperBound <- v = True
-  | IntersectVersionRangesF x y <- v = hasTrailingZeroUpperBound x || hasTrailingZeroUpperBound y
-  | UnionVersionRangesF x y <- v = hasTrailingZeroUpperBound x || hasTrailingZeroUpperBound y
-  | otherwise = False
+hasTrailingZeroUpperBound = queryVersionRange (\case HasTrailingZeroUpperBound -> True; _ -> False) hasTrailingZeroUpperBound
+
+queryVersionRange :: (VersionRangeF VersionRange -> Bool) -> (VersionRange -> Bool) -> VersionRange -> Bool
+queryVersionRange pf p (projectVersionRange -> v) = let f = queryVersionRange pf p in
+  pf v || case v of
+    IntersectVersionRangesF x y -> f x || f y
+    UnionVersionRangesF x y -> f x || f y
+    _ -> False
