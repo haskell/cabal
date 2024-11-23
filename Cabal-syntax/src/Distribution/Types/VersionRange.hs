@@ -3,8 +3,22 @@
 {-# LANGUAGE ViewPatterns #-}
 
 module Distribution.Types.VersionRange
-  ( -- * Version ranges
+  ( -- * Version Range
     VersionRange
+
+    -- ** Predicates
+    -- $predicate-examples
+
+    -- *** Lower Bound
+  , hasLowerBound
+  , hasGTLowerBound
+    -- *** Upper Bound
+  , hasUpperBound
+  , hasLEQUpperBound
+  , hasTrailingZeroUpperBound
+    -- *** Any Version
+  , isAnyVersion
+  , isAnyVersionLight
 
     -- ** Constructing
   , anyVersion
@@ -20,35 +34,30 @@ module Distribution.Types.VersionRange
   , withinVersion
   , majorBoundVersion
 
-    -- ** Inspection
-
-  --
-  -- See "Distribution.Version" for more utilities.
-  , withinRange
-  , foldVersionRange
+    -- ** Modification
   , normaliseVersionRange
   , stripParensVersionRange
-  , hasUpperBound
-  , hasLowerBound
-  , hasLEQUpperBound
-  , hasTrailingZeroUpperBound
-  , hasGTLowerBound
 
-    -- ** Cata & ana
+    -- ** Inspection
+  , withinRange
+  , foldVersionRange
+
+    -- ** Parser
+  , versionRangeParser
+
+    -- * Version F-Algebra
   , VersionRangeF (..)
+  , projectVersionRange
+  , embedVersionRange
   , cataVersionRange
   , anaVersionRange
   , hyloVersionRange
-  , projectVersionRange
-  , embedVersionRange
 
-    -- ** Utilities
-  , isAnyVersion
-  , isAnyVersionLight
+    -- * Version Utilities
+    -- See "Distribution.Version" for more utilities.
   , wildcardUpperBound
   , majorUpperBound
   , isWildcardRange
-  , versionRangeParser
   ) where
 
 import Distribution.Compat.Prelude
@@ -179,6 +188,9 @@ isWildcardRange ver1 ver2 = check (versionNumbers ver1) (versionNumbers ver2)
 -- | Does the version range have an upper bound?
 --
 -- @since 1.24.0.0
+--
+-- >>> forM ["< 1", ">= 0 && < 1", ">= 0 || < 1", "^>= 4.20.0.0"] (fmap hasUpperBound . simpleParsec)
+-- Just [True,True,False,True]
 hasUpperBound :: VersionRange -> Bool
 hasUpperBound =
   foldVersionRange
@@ -195,6 +207,9 @@ hasUpperBound =
 -- the implicit >=0 lower bound.
 --
 -- @since 1.24.0.0
+--
+-- >>> forM ["< 1", ">= 0 && < 1", ">= 0 || < 1", "^>= 4.20.0.0"] (fmap hasLowerBound . simpleParsec)
+-- Just [False,True,False,True]
 hasLowerBound :: VersionRange -> Bool
 hasLowerBound =
   foldVersionRange
@@ -206,14 +221,23 @@ hasLowerBound =
     (||)
 
 -- | Is the upper bound version range LEQ (less or equal, <=)?
+--
+-- >>> forM ["< 1", "<= 1", ">= 0 && < 1", ">= 0 || < 1", ">= 0 && <= 1", ">= 0 || <= 1", "^>= 4.20.0.0"] (fmap hasLEQUpperBound . simpleParsec)
+-- Just [False,True,False,False,True,True,False]
 hasLEQUpperBound :: VersionRange -> Bool
 hasLEQUpperBound = queryVersionRange (\case HasLEQUpperBound -> True; _ -> False) hasLEQUpperBound
 
 -- | Is the lower bound version range GT (greater than, >)?
+--
+-- >>> forM ["< 1", ">= 0 && < 1", ">= 0 || < 1", "> 0 && < 1", "> 0 || < 1", "^>= 4.20.0.0"] (fmap hasGTLowerBound . simpleParsec)
+-- Just [False,False,False,True,True,False]
 hasGTLowerBound :: VersionRange -> Bool
 hasGTLowerBound = queryVersionRange (\case HasGTLowerBound -> True; _ -> False) hasGTLowerBound
 
 -- | Does the upper bound version range have a trailing zero?
+--
+-- >>> forM ["< 1", "< 1.1", "< 1.0", "< 1.1.0", "^>= 4.20.0.0"] (fmap hasTrailingZeroUpperBound . simpleParsec)
+-- Just [False,False,True,True,False]
 hasTrailingZeroUpperBound :: VersionRange -> Bool
 hasTrailingZeroUpperBound = queryVersionRange (\case HasTrailingZeroUpperBound -> True; _ -> False) hasTrailingZeroUpperBound
 
@@ -223,3 +247,21 @@ queryVersionRange pf p (projectVersionRange -> v) = let f = queryVersionRange pf
     IntersectVersionRangesF x y -> f x || f y
     UnionVersionRangesF x y -> f x || f y
     _ -> False
+
+-- $setup
+-- >>> import Distribution.Parsec
+-- >>> import Data.Traversable
+
+-- $predicate-examples
+--
+-- The parsed 'VersionRange' of each version constraint used in the examples for
+-- 'hasUpperBound' and 'hasLowerBound' are:
+--
+-- >>> simpleParsec "< 1" :: Maybe VersionRange
+-- Just (EarlierVersion (mkVersion [1]))
+-- >>> simpleParsec ">= 0 && < 1" :: Maybe VersionRange
+-- Just (IntersectVersionRanges (OrLaterVersion (mkVersion [0])) (EarlierVersion (mkVersion [1])))
+-- >>> simpleParsec ">= 0 || < 1" :: Maybe VersionRange
+-- Just (UnionVersionRanges (OrLaterVersion (mkVersion [0])) (EarlierVersion (mkVersion [1])))
+-- >>> simpleParsec "^>= 4.20.0.0" :: Maybe VersionRange
+-- Just (MajorBoundVersion (mkVersion [4,20,0,0]))
