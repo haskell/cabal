@@ -49,12 +49,18 @@ whitespace: ## Run fix-whitespace in check mode
 fix-whitespace: ## Run fix-whitespace in fix mode
 	fix-whitespace --verbose
 
+.PHONY: lint
+lint: ## Run HLint
+	hlint -j .
+
+.PHONY: lint-json
+lint-json: ## Run HLint in JSON mode
+	hlint -j --json -- .
+
 # local checks
 
 .PHONY: checks
-checks: whitespace style
-	# this should probably be a rule
-	hlint -j --json -- .
+checks: whitespace style lint-json
 
 # source generation: SPDX
 
