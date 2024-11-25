@@ -1,8 +1,8 @@
 # cabal check
 These warnings may cause trouble when distributing the package:
-Warning: [less.than.equals(<=)-upper-bounds] On library, these packages have less than or equals (<=) upper bounds:
+Warning: [le-upper-bounds] On library, these packages have less than or equals (<=) upper bounds:
   - base
-Please use less than (<) for upper bounds. There is more information at https://pvp.haskell.org/
-Warning: [greater.than(>)-lower-bounds] On library, these packages have greater than (>) lower bounds:
+Please use less than (<) for upper bounds.
+Warning: [gt-lower-bounds] On library, these packages have greater than (>) lower bounds:
   - base
-Please use greater than or equals (>=) for lower bounds. There is more information at https://pvp.haskell.org/
+Please use greater than or equals (>=) for lower bounds.
