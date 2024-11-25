@@ -568,9 +568,9 @@ checkSetupBuildInfo (Just (SetupBuildInfo ds _)) = do
       rck =
         PackageDistSuspiciousWarn
           . MissingUpperBounds CETSetup
-      lequck =
+      leuck =
         PackageDistSuspiciousWarn
-          . LEQUpperBounds CETSetup
+          . LEUpperBounds CETSetup
       tzuck =
         PackageDistSuspiciousWarn
           . TrailingZeroUpperBounds CETSetup
@@ -579,7 +579,7 @@ checkSetupBuildInfo (Just (SetupBuildInfo ds _)) = do
           . GTLowerBounds CETSetup
   checkPVP (checkDependencyVersionRange $ not . hasUpperBound) ick is
   checkPVPs (checkDependencyVersionRange $ not . hasUpperBound) rck rs
-  checkPVPs (checkDependencyVersionRange hasLEQUpperBound) lequck ds
+  checkPVPs (checkDependencyVersionRange hasLEUpperBound) leuck ds
   checkPVPs (checkDependencyVersionRange hasTrailingZeroUpperBound) tzuck ds
   checkPVPs (checkDependencyVersionRange hasGTLowerBound) gtlck ds
 

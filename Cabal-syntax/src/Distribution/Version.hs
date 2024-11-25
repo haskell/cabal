@@ -50,7 +50,7 @@ module Distribution.Version
   , stripParensVersionRange
   , hasUpperBound
   , hasLowerBound
-  , hasLEQUpperBound
+  , hasLEUpperBound
   , hasTrailingZeroUpperBound
   , hasGTLowerBound
 

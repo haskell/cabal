@@ -27,7 +27,7 @@ module Distribution.Types.VersionRange.Internal
   , intersectVersionRanges
   , withinVersion
   , majorBoundVersion
-  , VersionRangeF (.., HasLEQUpperBound, HasGTLowerBound, HasTrailingZeroUpperBound)
+  , VersionRangeF (.., LEUpperBound, GTLowerBound, TZUpperBound)
   , projectVersionRange
   , embedVersionRange
   , cataVersionRange
@@ -189,10 +189,10 @@ data VersionRangeF a
     , Traversable
     )
 
-pattern HasLEQUpperBound, HasGTLowerBound, HasTrailingZeroUpperBound :: VersionRangeF a
-pattern HasLEQUpperBound <- OrEarlierVersionF _
-pattern HasGTLowerBound <- LaterVersionF _
-pattern HasTrailingZeroUpperBound <- (upperTrailingZero -> True)
+pattern LEUpperBound, GTLowerBound, TZUpperBound :: VersionRangeF a
+pattern LEUpperBound <- OrEarlierVersionF _
+pattern GTLowerBound <- LaterVersionF _
+pattern TZUpperBound <- (upperTrailingZero -> True)
 
 upperTrailingZero :: VersionRangeF a -> Bool
 upperTrailingZero (OrEarlierVersionF x) = trailingZero x
