@@ -1424,6 +1424,34 @@ A list of all warnings with their constructor:
 
 .. [#dep-excl] In dependencies excluding test-suites and benchmarks.
 
+.. note::
+
+    ``cabal check`` warns on subexpressions (individual version constraints) of
+    a version range that are of the form, ``> version``, ``<= version``, ``<=
+    version.0[...0]``. These are considered suspicious because they are likely
+    to be mistakes.  Guidelines for individual version constraints within
+    version ranges and examples of mistakes when not following these are:
+
+    "A lower bound should be inclusive."
+
+        Asking for ``base > 4.11`` when you actually want ``base >= 4.12`` is an
+        example of making this mistake.  Versions make a dense space, so there
+        are infinitely many versions that are ``> 4.11`` and ``< 4.12``.
+
+    "An upper bound should be exclusive."
+
+        Asking for ``base <= 4.19.1.0`` when the last published version is
+        ``base-4.19.1.0`` is an example of making this mistake.  This blocks
+        patch releases that should always be fine according to the PVP.  The
+        correct minor bound is ``base < 4.19.2``.
+
+    "An upper bound should not have trailing zeros."
+
+        Asking for ``base < 4.20.0.0`` when you meant allow any ``base-4.19.*``
+        version is an example of making this mistake. In fact, ``base-4.20`` and
+        ``base-4.20.0`` are not excluded by the bound.  The correct bound is ``<
+        4.20``.
+
 .. _cabal-sdist:
 
 cabal sdist
