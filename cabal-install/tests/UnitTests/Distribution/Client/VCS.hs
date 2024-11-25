@@ -915,11 +915,13 @@ vcsTestDriverGit
       -- See: https://github.blog/open-source/git/git-security-vulnerabilities-announced/#fn-67904-1
       -- See: https://git-scm.com/docs/git-config#Documentation/git-config.txt-protocolallow
       gitconfig =
-        "[protocol.file]\n\
-        \allow = always\n\
-        \[user]\n\
-        \name = Puppy Doggy\n\
-        \email = puppy.doggy@example.com\n"
+        unlines
+          [ "[protocol.file]"
+          , "  allow = always"
+          , "[user]"
+          , "  name = Puppy Doggy"
+          , "  email = puppy.doggy@example.com"
+          ]
 
       vcs' =
         vcs
