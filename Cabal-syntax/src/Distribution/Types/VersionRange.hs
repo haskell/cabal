@@ -223,14 +223,14 @@ hasLowerBound =
     (&&)
     (||)
 
--- | Is the upper bound version range LEQ (less or equal, <=)?
+-- | Is the upper bound version range (less than or equal (LE, <=)?
 --
 -- >>> forM ["< 1", "<= 1", ">= 0 && < 1", ">= 0 || < 1", ">= 0 && <= 1", ">= 0 || <= 1", "^>= 4.20.0.0"] (fmap hasLEQUpperBound . simpleParsec)
 -- Just [False,True,False,False,True,True,False]
 hasLEQUpperBound :: VersionRange -> Bool
 hasLEQUpperBound = queryVersionRange (\case HasLEQUpperBound -> True; _ -> False) hasLEQUpperBound
 
--- | Is the lower bound version range GT (greater than, >)?
+-- | Is the lower bound version range greater than (GT, >)?
 --
 -- >>> forM ["< 1", ">= 0 && < 1", ">= 0 || < 1", "> 0 && < 1", "> 0 || < 1", "^>= 4.20.0.0"] (fmap hasGTLowerBound . simpleParsec)
 -- Just [False,False,False,True,True,False]
