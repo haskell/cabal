@@ -534,7 +534,7 @@ verbosityHandle verbosity
 warn :: Verbosity -> String -> IO ()
 warn verbosity msg = warnMessage "Warning" verbosity msg
 
--- | Like 'warn', but prepend @Error: …@ instead of @Waring: …@ before the
+-- | Like 'warn', but prepend @Error: …@ instead of @Warning: …@ before the
 -- the message. Useful when you want to highlight the condition is an error
 -- but do not want to quit the program yet.
 warnError :: Verbosity -> String -> IO ()

@@ -3,10 +3,8 @@ Downloading the latest package list from test-local-repo
 # cabal v2-build
 Configuration is affected by the following files:
 - 1-web-constraints-import.project
-Configuration is affected by the following files:
 - project-stackage/nightly-2023-12-07.config
     imported by: 1-web-constraints-import.project
-Configuration is affected by the following files:
 - with-ghc.config
     imported by: 1-web-constraints-import.project
 Resolving dependencies...
@@ -24,10 +22,8 @@ After searching the rest of the dependency tree exhaustively, these were the goa
 # cabal v2-build
 Configuration is affected by the following files:
 - 1-web-import-constraints.project
-Configuration is affected by the following files:
 - project-stackage/nightly-2023-12-07.config
     imported by: 1-web-import-constraints.project
-Configuration is affected by the following files:
 - with-ghc.config
     imported by: 1-web-import-constraints.project
 Resolving dependencies...

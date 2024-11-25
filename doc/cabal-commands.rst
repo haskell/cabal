@@ -19,7 +19,6 @@ Commands
      [global]
       user-config            Display and update the user's global cabal configuration.
       help                   Help about commands.
-      path                   Display paths used by cabal.
 
      [package database]
       update                 Updates list of known packages.
@@ -36,6 +35,7 @@ Commands
       freeze                 Freeze dependencies.
       gen-bounds             Generate dependency bounds.
       outdated               Check for outdated dependencies.
+      path                   Query for simple project information.
 
      [project building and installing]
       build                  Compile targets within the project.

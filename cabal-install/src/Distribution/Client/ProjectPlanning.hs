@@ -195,6 +195,7 @@ import Distribution.Backpack.LinkedComponent
 import Distribution.Backpack.ModuleShape
 
 import Distribution.Simple.Utils
+import Distribution.Verbosity
 import Distribution.Version
 
 import qualified Distribution.InstalledPackageInfo as IPI
@@ -384,26 +385,25 @@ rebuildProjectConfig
         $ do
           liftIO $ info verbosity "Project settings changed, reconfiguring..."
           projectConfigSkeleton <- phaseReadProjectConfig
-          let fetchCompiler = do
-                -- have to create the cache directory before configuring the compiler
-                liftIO $ createDirectoryIfMissingVerbose verbosity True distProjectCacheDirectory
-                (compiler, Platform arch os, _) <- configureCompiler verbosity distDirLayout (fst (PD.ignoreConditions projectConfigSkeleton) <> cliConfig)
-                pure (os, arch, compilerInfo compiler)
 
-          projectConfig <- instantiateProjectConfigSkeletonFetchingCompiler fetchCompiler mempty projectConfigSkeleton
+          -- have to create the cache directory before configuring the compiler
+          liftIO $ createDirectoryIfMissingVerbose verbosity True distProjectCacheDirectory
+          (compiler, Platform arch os, _) <- configureCompiler verbosity distDirLayout (fst (PD.ignoreConditions projectConfigSkeleton) <> cliConfig)
+
+          let projectConfig = instantiateProjectConfigSkeletonFetchingCompiler (os, arch, compilerInfo compiler) mempty projectConfigSkeleton
           when (projectConfigDistDir (projectConfigShared $ projectConfig) /= NoFlag) $
             liftIO $
               warn verbosity "The builddir option is not supported in project and config files. It will be ignored."
-          localPackages <- phaseReadLocalPackages (projectConfig <> cliConfig)
+          localPackages <- phaseReadLocalPackages compiler (projectConfig <> cliConfig)
           return (projectConfig, localPackages)
 
-    sequence_
-      [ do
-        notice verbosity . render . vcat $
-          text "Configuration is affected by the following files:"
-            : [text "-" <+> docProjectConfigPath path]
-      | Explicit path <- Set.toList $ projectConfigProvenance projectConfig
-      ]
+    let configfiles =
+          [ text "-" <+> docProjectConfigPath path
+          | Explicit path <- Set.toList . (if verbosity >= verbose then id else onlyTopLevelProvenance) $ projectConfigProvenance projectConfig
+          ]
+    unless (null configfiles) $
+      notice (verboseStderr verbosity) . render . vcat $
+        text "Configuration is affected by the following files:" : configfiles
 
     return (projectConfig <> cliConfig, localPackages)
     where
@@ -426,9 +426,11 @@ rebuildProjectConfig
       -- NOTE: These are all packages mentioned in the project configuration.
       -- Whether or not they will be considered local to the project will be decided by `shouldBeLocal`.
       phaseReadLocalPackages
-        :: ProjectConfig
+        :: Compiler
+        -> ProjectConfig
         -> Rebuild [PackageSpecifier UnresolvedSourcePackage]
       phaseReadLocalPackages
+        compiler
         projectConfig@ProjectConfig
           { projectConfigShared
           , projectConfigBuildOnly
@@ -443,6 +445,7 @@ rebuildProjectConfig
           fetchAndReadSourcePackages
             verbosity
             distDirLayout
+            compiler
             projectConfigShared
             projectConfigBuildOnly
             pkgLocations
