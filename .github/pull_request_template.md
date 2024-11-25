@@ -1,25 +1,15 @@
-Please read [Github PR Conventions](https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#github-pull-request-conventions) and then fill in *one* of these two templates.
+<!-- Thanks for your contribution! Please read our CONTRIBUTING.md for more information on coding conventions and tips.
 
----
+How to get your PR reviewed and merged: https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#github-pull-request-conventions
 
-**Template Α: This PR modifies [behaviour or interface](https://github.com/cabalism/cabal/blob/master/CONTRIBUTING.md#changelog)**
+Not all of the checklist items will be applicable for your PR. Use your judgement.
+-->
 
-Include the following checklist in your PR:
-
-* [ ] Patches conform to the [coding conventions](https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#other-conventions).
-* [ ] Any changes that could be relevant to users [have been recorded in the changelog](https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#changelog).
-  * [ ] [Is the change significant?](https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#is-my-change-significant) If so, remember to add `significance: significant` in the changelog file.
-* [ ] The documentation has been updated, if necessary.
-* [ ] [Manual QA notes](https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#qa-notes) have been included.
-* [ ] Tests have been added. (*Ask for help if you don’t know how to write them! Ask for an exemption if tests are too complex for too little coverage!*)
-
----
-
-**Template B: This PR does not modify behaviour or interface**
-
-*E.g. the PR only touches documentation or tests, does refactorings, etc.*
-
-Include the following checklist in your PR:
-
-* [ ] Patches conform to the [coding conventions](https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#other-conventions).
-* [ ] Is this a PR that fixes CI? If so, it will need to be backported to older cabal release branches (ask maintainers for directions).
+- [ ] Tests have been added (Ask for help if you don’t know how to write them)
+  - [ ] Manual QA notes have been added
+- [ ] A changelog entry has been added in `changelog.d/pr-YOUR_PR_NUMBER`
+- [ ] Documentation has been updated
+- [ ] Haddock comments for new top-level definitions have been added
+- [ ] `base` and third-party library imports use qualified imports or explicit import lists
+- [ ] Commit messages are formatted nicely
+- [ ] Post-merge: Backports for older Cabal release branches have been created
