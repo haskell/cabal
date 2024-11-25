@@ -18,11 +18,7 @@ import Test.QuickCheck.Instances.Cabal ()
 tests :: [TestTree]
 tests =
     [ testCase "Unique ignore strings" (uniqueNames @?= True)
-    , testCase "Short ignore identifiers" (longerThan @?=
-      [ "less.than.equals(<=)-upper-bounds"
-      , "trailing.zero(*.0)-upper-bounds"
-      , "greater.than(>)-lower-bounds"
-      ])
+    , testCase "Short ignore identifiers" (longerThan @?= [])
     , testCase "Parsimonious '-' use" (usingTooManyDashes @?= [])
     ]
   where
