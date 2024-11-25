@@ -1390,7 +1390,10 @@ A list of all warnings with their constructor:
 - ``unknown-arch``: unknown architecture in condition.
 - ``unknown-compiler``: unknown compiler in condition.
 - ``missing-bounds-important``: missing upper bounds for important dependencies (``base``, and for ``custom-setup`` ``Cabal`` too).
-- ``missing-upper-bounds``: missing upper bound in dependency (excluding test-suites and benchmarks).
+- ``missing-upper-bounds``: missing upper bound in dependency [#dep-excl]_.
+- ``lte-upper-bounds``: less than or equals (<=) constraint on upper bound in dependency [#dep-excl]_.
+- ``tz-upper-bounds``: trailing zero (\*.0) upper bound in dependency [#dep-excl]_.
+- ``gt-lower-bounds``: greater than (>) constraint on lower bound in dependency [#dep-excl]_.
 - ``suspicious-flag``: troublesome flag name (e.g. starting with a dash).
 - ``unused-flag``: unused user flags.
 - ``non-ascii``: non-ASCII characters in custom field.
@@ -1418,6 +1421,8 @@ A list of all warnings with their constructor:
   directory (e.g. ``CHANGELOG``, ``NEWS``, ``changelog.md``, etc.). If this
   file is not present in the :pkg-field:`extra-doc-files` field, warns about it.
 - ``doc-place``: documentation files listed in ``extra-source-files`` instead of ``extra-doc-files``.
+
+.. [#dep-excl] In dependencies excluding test-suites and benchmarks.
 
 .. _cabal-sdist:
 
