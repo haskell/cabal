@@ -15,7 +15,7 @@ module Distribution.Types.VersionRange
 
     -- *** Upper Bound
   , hasUpperBound
-  , hasLEQUpperBound
+  , hasLEUpperBound
   , hasTrailingZeroUpperBound
 
     -- *** Any Version
@@ -225,24 +225,24 @@ hasLowerBound =
 
 -- | Is the upper bound version range (less than or equal (LE, <=)?
 --
--- >>> forM ["< 1", "<= 1", ">= 0 && < 1", ">= 0 || < 1", ">= 0 && <= 1", ">= 0 || <= 1", "^>= 4.20.0.0"] (fmap hasLEQUpperBound . simpleParsec)
+-- >>> forM ["< 1", "<= 1", ">= 0 && < 1", ">= 0 || < 1", ">= 0 && <= 1", ">= 0 || <= 1", "^>= 4.20.0.0"] (fmap hasLEUpperBound . simpleParsec)
 -- Just [False,True,False,False,True,True,False]
-hasLEQUpperBound :: VersionRange -> Bool
-hasLEQUpperBound = queryVersionRange (\case HasLEQUpperBound -> True; _ -> False) hasLEQUpperBound
+hasLEUpperBound :: VersionRange -> Bool
+hasLEUpperBound = queryVersionRange (\case LEUpperBound -> True; _ -> False) hasLEUpperBound
 
 -- | Is the lower bound version range greater than (GT, >)?
 --
 -- >>> forM ["< 1", ">= 0 && < 1", ">= 0 || < 1", "> 0 && < 1", "> 0 || < 1", "^>= 4.20.0.0"] (fmap hasGTLowerBound . simpleParsec)
 -- Just [False,False,False,True,True,False]
 hasGTLowerBound :: VersionRange -> Bool
-hasGTLowerBound = queryVersionRange (\case HasGTLowerBound -> True; _ -> False) hasGTLowerBound
+hasGTLowerBound = queryVersionRange (\case GTLowerBound -> True; _ -> False) hasGTLowerBound
 
 -- | Does the upper bound version range have a trailing zero?
 --
 -- >>> forM ["< 1", "< 1.1", "< 1.0", "< 1.1.0", "^>= 4.20.0.0"] (fmap hasTrailingZeroUpperBound . simpleParsec)
 -- Just [False,False,True,True,False]
 hasTrailingZeroUpperBound :: VersionRange -> Bool
-hasTrailingZeroUpperBound = queryVersionRange (\case HasTrailingZeroUpperBound -> True; _ -> False) hasTrailingZeroUpperBound
+hasTrailingZeroUpperBound = queryVersionRange (\case TZUpperBound -> True; _ -> False) hasTrailingZeroUpperBound
 
 queryVersionRange :: (VersionRangeF VersionRange -> Bool) -> (VersionRange -> Bool) -> VersionRange -> Bool
 queryVersionRange pf p (projectVersionRange -> v) =

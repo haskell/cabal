@@ -256,7 +256,7 @@ data CheckExplanation
   | UnknownCompiler [String]
   | BaseNoUpperBounds
   | MissingUpperBounds CEType [String]
-  | LEQUpperBounds CEType [String]
+  | LEUpperBounds CEType [String]
   | TrailingZeroUpperBounds CEType [String]
   | GTLowerBounds CEType [String]
   | SuspiciousFlagName [String]
@@ -422,7 +422,7 @@ data CheckExplanationID
   | CIUnknownCompiler
   | CIBaseNoUpperBounds
   | CIMissingUpperBounds
-  | CILEQUpperBounds
+  | CILEUpperBounds
   | CITrailingZeroUpperBounds
   | CIGTLowerBounds
   | CISuspiciousFlagName
@@ -567,7 +567,7 @@ checkExplanationId (UnknownArch{}) = CIUnknownArch
 checkExplanationId (UnknownCompiler{}) = CIUnknownCompiler
 checkExplanationId (BaseNoUpperBounds{}) = CIBaseNoUpperBounds
 checkExplanationId (MissingUpperBounds{}) = CIMissingUpperBounds
-checkExplanationId (LEQUpperBounds{}) = CILEQUpperBounds
+checkExplanationId (LEUpperBounds{}) = CILEUpperBounds
 checkExplanationId (TrailingZeroUpperBounds{}) = CITrailingZeroUpperBounds
 checkExplanationId (GTLowerBounds{}) = CIGTLowerBounds
 checkExplanationId (SuspiciousFlagName{}) = CISuspiciousFlagName
@@ -720,7 +720,7 @@ ppCheckExplanationId CIMissingUpperBounds = "missing-upper-bounds"
 -- NOTE: Satisfy the Parsimonious test, a test that checks that these messages
 -- don't have too many dashes:
 --   $ cabal run Cabal-tests:unit-tests -- --pattern=Parsimonious
-ppCheckExplanationId CILEQUpperBounds = "le-upper-bounds"
+ppCheckExplanationId CILEUpperBounds = "le-upper-bounds"
 ppCheckExplanationId CITrailingZeroUpperBounds = "tz-upper-bounds"
 ppCheckExplanationId CIGTLowerBounds = "gt-lower-bounds"
 ppCheckExplanationId CISuspiciousFlagName = "suspicious-flag"
@@ -1322,7 +1322,7 @@ ppExplanation (MissingUpperBounds ct names) =
     ++ "these packages miss upper bounds:"
     ++ listSep names
     ++ "Please add them. There is more information at https://pvp.haskell.org/"
-ppExplanation (LEQUpperBounds ct names) =
+ppExplanation (LEUpperBounds ct names) =
   "On "
     ++ ppCET ct
     ++ ", "
