@@ -12,10 +12,12 @@ module Distribution.Types.VersionRange
     -- *** Lower Bound
   , hasLowerBound
   , hasGTLowerBound
+
     -- *** Upper Bound
   , hasUpperBound
   , hasLEQUpperBound
   , hasTrailingZeroUpperBound
+
     -- *** Any Version
   , isAnyVersion
   , isAnyVersionLight
@@ -54,7 +56,8 @@ module Distribution.Types.VersionRange
   , hyloVersionRange
 
     -- * Version Utilities
-    -- See "Distribution.Version" for more utilities.
+
+  -- See "Distribution.Version" for more utilities.
   , wildcardUpperBound
   , majorUpperBound
   , isWildcardRange
@@ -242,11 +245,12 @@ hasTrailingZeroUpperBound :: VersionRange -> Bool
 hasTrailingZeroUpperBound = queryVersionRange (\case HasTrailingZeroUpperBound -> True; _ -> False) hasTrailingZeroUpperBound
 
 queryVersionRange :: (VersionRangeF VersionRange -> Bool) -> (VersionRange -> Bool) -> VersionRange -> Bool
-queryVersionRange pf p (projectVersionRange -> v) = let f = queryVersionRange pf p in
-  pf v || case v of
-    IntersectVersionRangesF x y -> f x || f y
-    UnionVersionRangesF x y -> f x || f y
-    _ -> False
+queryVersionRange pf p (projectVersionRange -> v) =
+  let f = queryVersionRange pf p
+   in pf v || case v of
+        IntersectVersionRangesF x y -> f x || f y
+        UnionVersionRangesF x y -> f x || f y
+        _ -> False
 
 -- $setup
 -- >>> import Distribution.Parsec
