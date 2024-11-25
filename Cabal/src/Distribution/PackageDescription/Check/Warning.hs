@@ -720,7 +720,7 @@ ppCheckExplanationId CIMissingUpperBounds = "missing-upper-bounds"
 -- NOTE: Satisfy the Parsimonious test, a test that checks that these messages
 -- don't have too many dashes:
 --   $ cabal run Cabal-tests:unit-tests -- --pattern=Parsimonious
-ppCheckExplanationId CILEQUpperBounds = "lte-upper-bounds"
+ppCheckExplanationId CILEQUpperBounds = "le-upper-bounds"
 ppCheckExplanationId CITrailingZeroUpperBounds = "tz-upper-bounds"
 ppCheckExplanationId CIGTLowerBounds = "gt-lower-bounds"
 ppCheckExplanationId CISuspiciousFlagName = "suspicious-flag"
