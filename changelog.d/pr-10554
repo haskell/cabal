@@ -9,4 +9,4 @@ For dependencies, warns about and checks that version range bounds for:
 
 - lower bounds are inclusive, don't use (>)
 - upper bounds are exclusive, don't use (<=)
-- upper bounds don't have trailing zeros, don't end with (*.0)
+- upper bounds don't have trailing zeros, don't end with (*.0).
