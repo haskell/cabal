@@ -339,7 +339,7 @@ checkBuildInfo cet ams ads bi = do
       ds
   let ick = const (PackageDistInexcusable BaseNoUpperBounds)
       rck = PackageDistSuspiciousWarn . MissingUpperBounds cet
-      lequck = PackageDistSuspiciousWarn . LEQUpperBounds cet
+      leuck = PackageDistSuspiciousWarn . LEUpperBounds cet
       tzuck = PackageDistSuspiciousWarn . TrailingZeroUpperBounds cet
       gtlck = PackageDistSuspiciousWarn . GTLowerBounds cet
   checkPVP (checkDependencyVersionRange $ not . hasUpperBound) ick ids
@@ -348,7 +348,7 @@ checkBuildInfo cet ams ads bi = do
     (checkPVPs (checkDependencyVersionRange $ not . hasUpperBound) rck rds)
   unless
     (isInternalTarget cet)
-    (checkPVPs (checkDependencyVersionRange hasLEQUpperBound) lequck ds)
+    (checkPVPs (checkDependencyVersionRange hasLEUpperBound) leuck ds)
   unless
     (isInternalTarget cet)
     (checkPVPs (checkDependencyVersionRange hasTrailingZeroUpperBound) tzuck ds)
