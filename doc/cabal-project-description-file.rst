@@ -1,3 +1,5 @@
+.. _cabal-project-file:
+
 Project Description — cabal.project File
 ========================================
 
@@ -767,6 +769,7 @@ The following settings control the behavior of the dependency solver:
    explicitly constrained. When set to `none`, the solver will
    consider all packages.
 
+.. _package-configuration-options:
 
 Package configuration options
 -----------------------------
@@ -1302,6 +1305,8 @@ Foreign function interface options
     ``--extra-framework-dirs=DIR``, which can be specified multiple
     times.
 
+.. _profiling-options:
+
 Profiling options
 ^^^^^^^^^^^^^^^^^
 
@@ -1327,6 +1332,8 @@ Profiling options
 
     The command line variant of this flag is ``--enable-profiling`` and
     ``--disable-profiling``.
+
+.. _profiling-detail:
 
 .. cfg-field:: profiling-detail: level
                --profiling-detail=level
@@ -1367,7 +1374,7 @@ Profiling options
     late-toplevel
         Like top-level but costs will be assigned to top level definitions after
         optimization. This lowers profiling overhead massively while giving similar
-        levels of detail as toplevle-functions. However it means functions introduced
+        levels of detail as toplevel-functions. However it means functions introduced
         by GHC during optimization will show up in profiles as well.
         Corresponds to ``-fprof-late`` if supported and ``-fprof-auto-top`` otherwise.
     late
