@@ -1316,45 +1316,33 @@ ppExplanation BaseNoUpperBounds =
     ++ "version. For example if you have tested your package with 'base' "
     ++ "version 4.5 and 4.6 then use 'build-depends: base >= 4.5 && < 4.7'."
 ppExplanation (MissingUpperBounds ct names) =
-  let separator = "\n  - "
-   in "On "
-        ++ ppCET ct
-        ++ ", "
-        ++ "these packages miss upper bounds:"
-        ++ separator
-        ++ List.intercalate separator names
-        ++ "\n"
-        ++ "Please add them. There is more information at https://pvp.haskell.org/"
+  "On "
+    ++ ppCET ct
+    ++ ", "
+    ++ "these packages miss upper bounds:"
+    ++ listSep names
+    ++ "Please add them. There is more information at https://pvp.haskell.org/"
 ppExplanation (LEQUpperBounds ct names) =
-  let separator = "\n  - "
-   in "On "
-        ++ ppCET ct
-        ++ ", "
-        ++ "these packages have less than or equals (<=) upper bounds:"
-        ++ separator
-        ++ List.intercalate separator names
-        ++ "\n"
-        ++ "Please use less than (<) for upper bounds."
+  "On "
+    ++ ppCET ct
+    ++ ", "
+    ++ "these packages have less than or equals (<=) upper bounds:"
+    ++ listSep names
+    ++ "Please use less than (<) for upper bounds."
 ppExplanation (TrailingZeroUpperBounds ct names) =
-  let separator = "\n  - "
-   in "On "
-        ++ ppCET ct
-        ++ ", "
-        ++ "these packages have upper bounds with trailing zeros:"
-        ++ separator
-        ++ List.intercalate separator names
-        ++ "\n"
-        ++ "Please avoid trailing zeros for upper bounds."
+  "On "
+    ++ ppCET ct
+    ++ ", "
+    ++ "these packages have upper bounds with trailing zeros:"
+    ++ listSep names
+    ++ "Please avoid trailing zeros for upper bounds."
 ppExplanation (GTLowerBounds ct names) =
-  let separator = "\n  - "
-   in "On "
-        ++ ppCET ct
-        ++ ", "
-        ++ "these packages have greater than (>) lower bounds:"
-        ++ separator
-        ++ List.intercalate separator names
-        ++ "\n"
-        ++ "Please use greater than or equals (>=) for lower bounds."
+  "On "
+    ++ ppCET ct
+    ++ ", "
+    ++ "these packages have greater than (>) lower bounds:"
+    ++ listSep names
+    ++ "Please use greater than or equals (>=) for lower bounds."
 ppExplanation (SuspiciousFlagName invalidFlagNames) =
   "Suspicious flag names: "
     ++ unwords invalidFlagNames
@@ -1515,6 +1503,11 @@ ppExplanation (WrongFieldForExpectedDocFiles extraDocFileSupport field paths) =
         else "extra-source-files"
 
 -- * Formatting utilities
+
+listSep :: [String] -> String
+listSep names =
+  let separator = "\n  - "
+   in separator ++ List.intercalate separator names ++ "\n"
 
 commaSep :: [String] -> String
 commaSep = List.intercalate ", "
