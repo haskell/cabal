@@ -1334,7 +1334,7 @@ ppExplanation (LEQUpperBounds ct names) =
         ++ separator
         ++ List.intercalate separator names
         ++ "\n"
-        ++ "Please use less than (<) for upper bounds. There is more information at https://pvp.haskell.org/"
+        ++ "Please use less than (<) for upper bounds."
 ppExplanation (TrailingZeroUpperBounds ct names) =
   let separator = "\n  - "
    in "On "
@@ -1344,7 +1344,7 @@ ppExplanation (TrailingZeroUpperBounds ct names) =
         ++ separator
         ++ List.intercalate separator names
         ++ "\n"
-        ++ "Please avoid trailing zeros for upper bounds. There is more information at https://pvp.haskell.org/"
+        ++ "Please avoid trailing zeros for upper bounds."
 ppExplanation (GTLowerBounds ct names) =
   let separator = "\n  - "
    in "On "
@@ -1354,7 +1354,7 @@ ppExplanation (GTLowerBounds ct names) =
         ++ separator
         ++ List.intercalate separator names
         ++ "\n"
-        ++ "Please use greater than or equals (>=) for lower bounds. There is more information at https://pvp.haskell.org/"
+        ++ "Please use greater than or equals (>=) for lower bounds."
 ppExplanation (SuspiciousFlagName invalidFlagNames) =
   "Suspicious flag names: "
     ++ unwords invalidFlagNames
