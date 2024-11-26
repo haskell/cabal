@@ -539,8 +539,38 @@ vcsGit =
       ref <- case srpBranch `mplus` srpTag of
         Nothing -> pure "HEAD"
         Just ref -> do
+          -- /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\
+          -- /!\            MULTIPLE HOURS HAVE BEEN LOST HERE!!             /!\
+          -- /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\
+          --
+          -- If you run `git fetch origin MY_TAG`, then the tag _will_ be
+          -- fetched, but no local ref (e.g. `refs/tags/MY_TAG`) will be
+          -- created.
+          --
+          -- This means that doing `git fetch origin MY_TAG && git reset --hard
+          -- MY_TAG` will fail with a message like `unknown revision MY_TAG`.
+          --
+          -- There are two ways around this:
+          --
+          -- 1. Provide a refmap explicitly:
+          --
+          --        git fetch --refmap="+refs/tags/*:refs/tags/*" origin MYTAG
+          --
+          --    This tells Git to create local tags matching remote tags. It's
+          --    not in the default refmap so you need to set it explicitly.
+          --    (You can also set it with `git config set --local
+          --    remote.origin.fetch ...`.)
+          --
+          -- 2. Use `FETCH_HEAD` directly: Git writes a `FETCH_HEAD` ref
+          --    containing the commit that was just fetched. This feels a bit
+          --    nasty but seems to work reliably, even if nothing was fetched.
+          --    (That is, deleting `FETCH_HEAD` and re-running a `git fetch`
+          --    command will succesfully recreate the `FETCH_HEAD` ref.)
+          --
+          -- Option 2 is what Cabal has done historically, and we're keeping it
+          -- for now. Option 1 is possible but seems to have little benefit.
           git localDir ("fetch" : verboseArg ++ ["origin", ref])
-          pure ref
+          pure "FETCH_HEAD"
 
       -- Then, reset to the appropriate ref.
       git localDir $
