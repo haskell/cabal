@@ -1297,7 +1297,7 @@ A list of all warnings with their constructor:
 - ``unsupported-bench``: unsupported benchmark type.
 - ``bench-unknown-extension``: ``main-is`` for benchmark is neither ``.hs`` nor ``.lhs``.
 - ``invalid-name-win``: invalid package name on Windows.
-- ``reserved-z-prefix``: package with ``z-`` prexif (reseved for Cabal.
+- ``reserved-z-prefix``: package with ``z-`` prefix (reserved for Cabal).
 - ``no-build-type``: missing ``build-type``.
 - ``undeclared-custom-setup``: ``custom-setup`` section without ``build-type: Custom``
 - ``unknown-compiler-tested``: unknown compiler in ``tested-with``.
