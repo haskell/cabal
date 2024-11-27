@@ -216,22 +216,27 @@ prop_syncRepos_hg destRepoDirs syncTargetSetIterations seed =
 
 testSetup
   :: VCS Program
-  -> ( Verbosity
-       -> VCS ConfiguredProgram
-       -> FilePath
-       -> FilePath
-       -> VCSTestDriver
-     )
+  -> (MkVCSTestDriver -> VCSTestDriver)
   -> RepoRecipe submodules
   -> (VCSTestDriver -> FilePath -> RepoState -> IO a)
   -> IO a
 testSetup vcs mkVCSTestDriver repoRecipe theTest = do
-  -- test setup
-  vcs' <- configureVCS verbosity [] vcs
   withTestDir verbosity "vcstest" $ \tmpdir -> do
+    -- test setup
+    vcs' <- configureVCS verbosity [] vcs
+
     let srcRepoPath = tmpdir </> "src"
         submodulesPath = tmpdir </> "submodules"
-        vcsDriver = mkVCSTestDriver verbosity vcs' submodulesPath srcRepoPath
+        vcsDriver =
+          mkVCSTestDriver
+            MkVCSTestDriver
+              { mkVcsVerbosity = verbosity
+              , mkVcsVcs = vcs'
+              , mkVcsSubmoduleDir = submodulesPath
+              , mkVcsRepoRoot = srcRepoPath
+              , mkVcsTmpDir = tmpdir
+              }
+
     repoState <- createRepo vcsDriver repoRecipe
 
     -- actual test
@@ -252,12 +257,7 @@ testSetup vcs mkVCSTestDriver repoRecipe theTest = do
 -- the working state is the same as the pure representation.
 prop_framework
   :: VCS Program
-  -> ( Verbosity
-       -> VCS ConfiguredProgram
-       -> FilePath
-       -> FilePath
-       -> VCSTestDriver
-     )
+  -> (MkVCSTestDriver -> VCSTestDriver)
   -> RepoRecipe submodules
   -> IO ()
 prop_framework vcs mkVCSTestDriver repoRecipe =
@@ -288,12 +288,7 @@ prop_framework vcs mkVCSTestDriver repoRecipe =
 
 prop_cloneRepo
   :: VCS Program
-  -> ( Verbosity
-       -> VCS ConfiguredProgram
-       -> FilePath
-       -> FilePath
-       -> VCSTestDriver
-     )
+  -> (MkVCSTestDriver -> VCSTestDriver)
   -> RepoRecipe submodules
   -> IO ()
 prop_cloneRepo vcs mkVCSTestDriver repoRecipe =
@@ -329,12 +324,7 @@ newtype PrngSeed = PrngSeed Int deriving (Show)
 
 prop_syncRepos
   :: VCS Program
-  -> ( Verbosity
-       -> VCS ConfiguredProgram
-       -> FilePath
-       -> FilePath
-       -> VCSTestDriver
-     )
+  -> (MkVCSTestDriver -> VCSTestDriver)
   -> RepoDirSet
   -> SyncTargetIterations
   -> PrngSeed
@@ -839,237 +829,271 @@ data VCSTestDriver = VCSTestDriver
           (TagName -> FilePath -> IO ())
   }
 
+data MkVCSTestDriver = MkVCSTestDriver
+  { mkVcsVerbosity :: Verbosity
+  , mkVcsVcs :: VCS ConfiguredProgram
+  , mkVcsSubmoduleDir :: FilePath
+  , mkVcsRepoRoot :: FilePath
+  , mkVcsTmpDir :: FilePath
+  }
+
+vcsTestDriverGit :: MkVCSTestDriver -> VCSTestDriver
 vcsTestDriverGit
-  :: Verbosity
-  -> VCS ConfiguredProgram
-  -> FilePath
-  -> FilePath
-  -> VCSTestDriver
-vcsTestDriverGit verbosity vcs submoduleDir repoRoot =
-  VCSTestDriver
-    { vcsVCS = vcs'
-    , vcsRepoRoot = repoRoot
-    , vcsIgnoreFiles = Set.empty
-    , vcsInit =
-        git $ ["init"] ++ verboseArg
-    , vcsAddFile = \_ filename ->
-        git ["add", filename]
-    , vcsCommitChanges = \_state -> do
-        git $
-          [ "-c"
-          , "user.name=A"
-          , "-c"
-          , "user.email=a@example.com"
-          , "commit"
-          , "--all"
-          , "--message=a patch"
-          , "--author=A <a@example.com>"
+  MkVCSTestDriver
+    { mkVcsVerbosity = verbosity
+    , mkVcsVcs = vcs
+    , mkVcsSubmoduleDir = submoduleDir
+    , mkVcsRepoRoot = repoRoot
+    , mkVcsTmpDir = tmpDir
+    } =
+    VCSTestDriver
+      { vcsVCS = vcs'
+      , vcsRepoRoot = repoRoot
+      , vcsIgnoreFiles = Set.empty
+      , vcsInit = do
+          createDirectoryIfMissing True home
+          gitconfigExists <- doesFileExist gitconfigPath
+          unless gitconfigExists $ do
+            writeFile gitconfigPath gitconfig
+          git $ ["init"] ++ verboseArg
+      , vcsAddFile = \_ filename ->
+          git ["add", filename]
+      , vcsCommitChanges = \_state -> do
+          git $
+            [ "commit"
+            , "--all"
+            , "--message=a patch"
+            ]
+              ++ verboseArg
+          commit <- git' ["rev-parse", "HEAD"]
+          let commit' = takeWhile (not . isSpace) commit
+          return (Just commit')
+      , vcsTagState = \_ tagname ->
+          git ["tag", "--force", "--no-sign", tagname]
+      , vcsSubmoduleDriver =
+          \newPath ->
+            pure $
+              vcsTestDriverGit
+                MkVCSTestDriver
+                  { mkVcsVerbosity = verbosity
+                  , mkVcsVcs = vcs'
+                  , mkVcsSubmoduleDir = submoduleDir
+                  , mkVcsRepoRoot = submoduleDir </> newPath
+                  , mkVcsTmpDir = tmpDir
+                  }
+      , vcsAddSubmodule = \_ source dest -> do
+          destExists <-
+            (||)
+              <$> doesFileExist (repoRoot </> dest)
+              <*> doesDirectoryExist (repoRoot </> dest)
+          when destExists $ git ["rm", "-f", dest]
+          -- If there is an old submodule git dir with the same name, remove it.
+          -- It most likely has a different URL and `git submodule add` will fai.
+          submoduleGitDirExists <- doesDirectoryExist $ submoduleGitDir dest
+          when submoduleGitDirExists $ removeDirectoryRecursive (submoduleGitDir dest)
+          git ["submodule", "add", source, dest]
+          git ["submodule", "update", "--init", "--recursive", "--force"]
+      , vcsSwitchBranch = \RepoState{allBranches} branchname -> do
+          deinitAndRemoveCachedSubmodules
+          unless (branchname `Map.member` allBranches) $
+            git ["branch", branchname]
+          git $ ["checkout", branchname] ++ verboseArg
+          updateSubmodulesAndCleanup
+      , vcsCheckoutTag = Left $ \tagname -> do
+          deinitAndRemoveCachedSubmodules
+          git $ ["checkout", "--detach", "--force", tagname] ++ verboseArg
+          updateSubmodulesAndCleanup
+      }
+    where
+      home = tmpDir </> "home"
+      gitconfigPath = home </> ".gitconfig"
+      -- Git 2.38.1 and newer fails to clone from local paths with `fatal: transport 'file'
+      -- not allowed` unless `protocol.file.allow=always` is set.
+      --
+      -- This is not safe in general, but it's fine in the test suite.
+      --
+      -- See: https://github.blog/open-source/git/git-security-vulnerabilities-announced/#fn-67904-1
+      -- See: https://git-scm.com/docs/git-config#Documentation/git-config.txt-protocolallow
+      gitconfig =
+        unlines
+          [ "[protocol.file]"
+          , "  allow = always"
+          , "[user]"
+          , "  name = Puppy Doggy"
+          , "  email = puppy.doggy@example.com"
           ]
-            ++ verboseArg
-        commit <- git' ["log", "--format=%H", "-1"]
-        let commit' = takeWhile (not . isSpace) commit
-        return (Just commit')
-    , vcsTagState = \_ tagname ->
-        git ["tag", "--force", "--no-sign", tagname]
-    , vcsSubmoduleDriver =
-        pure . vcsTestDriverGit verbosity vcs' submoduleDir . (submoduleDir </>)
-    , vcsAddSubmodule = \_ source dest -> do
-        destExists <-
-          (||)
-            <$> doesFileExist (repoRoot </> dest)
-            <*> doesDirectoryExist (repoRoot </> dest)
-        when destExists $ git ["rm", "-f", dest]
-        -- If there is an old submodule git dir with the same name, remove it.
-        -- It most likely has a different URL and `git submodule add` will fai.
-        submoduleGitDirExists <- doesDirectoryExist $ submoduleGitDir dest
-        when submoduleGitDirExists $ removeDirectoryRecursive (submoduleGitDir dest)
-        git ["submodule", "add", source, dest]
-        git ["submodule", "update", "--init", "--recursive", "--force"]
-    , vcsSwitchBranch = \RepoState{allBranches} branchname -> do
-        deinitAndRemoveCachedSubmodules
-        unless (branchname `Map.member` allBranches) $
-          git ["branch", branchname]
-        git $ ["checkout", branchname] ++ verboseArg
-        updateSubmodulesAndCleanup
-    , vcsCheckoutTag = Left $ \tagname -> do
-        deinitAndRemoveCachedSubmodules
-        git $ ["checkout", "--detach", "--force", tagname] ++ verboseArg
-        updateSubmodulesAndCleanup
-    }
-  where
-    -- Git 2.38.1 and newer fails to clone from local paths with `fatal: transport 'file'
-    -- not allowed` unless `protocol.file.allow=always` is set.
-    --
-    -- This is not safe in general, but it's fine in the test suite.
-    --
-    -- See: https://github.blog/open-source/git/git-security-vulnerabilities-announced/#fn-67904-1
-    -- See: https://git-scm.com/docs/git-config#Documentation/git-config.txt-protocolallow
-    vcs' =
-      vcs
-        { vcsProgram =
-            (vcsProgram vcs)
-              { programDefaultArgs =
-                  programDefaultArgs (vcsProgram vcs)
-                    ++ [ "-c"
-                       , "protocol.file.allow=always"
-                       ]
-              }
-        }
-    gitInvocation args =
-      (programInvocation (vcsProgram vcs') args)
-        { progInvokeCwd = Just repoRoot
-        }
-    git = runProgramInvocation verbosity . gitInvocation
-    git' = getProgramInvocationOutput verbosity . gitInvocation
-    verboseArg = ["--quiet" | verbosity < Verbosity.normal]
-    submoduleGitDir path = repoRoot </> ".git" </> "modules" </> path
-    deinitAndRemoveCachedSubmodules = do
-      git $ ["submodule", "deinit", "--force", "--all"] ++ verboseArg
-      let gitModulesDir = repoRoot </> ".git" </> "modules"
-      gitModulesExists <- doesDirectoryExist gitModulesDir
-      when gitModulesExists $ removeDirectoryRecursive gitModulesDir
-    updateSubmodulesAndCleanup = do
-      git $ ["submodule", "sync", "--recursive"] ++ verboseArg
-      git $ ["submodule", "update", "--init", "--recursive", "--force"] ++ verboseArg
-      git $ ["submodule", "foreach", "--recursive"] ++ verboseArg ++ ["git clean -ffxdq"]
-      git $ ["clean", "-ffxdq"] ++ verboseArg
+
+      vcs' =
+        vcs
+          { vcsProgram =
+              (vcsProgram vcs)
+                { programOverrideEnv =
+                    programOverrideEnv (vcsProgram vcs)
+                      ++ [ -- > Whether to skip reading settings from the system-wide $(prefix)/etc/gitconfig file.
+                           ("GIT_CONFIG_NOSYSTEM", Just "1")
+                         , ("GIT_CONFIG_GLOBAL", Just gitconfigPath)
+                         , -- Setting the author and committer dates makes commit hashes deterministic between test runs.
+                           ("GIT_AUTHOR_DATE", Just "1998-04-30T18:25:03-0400")
+                         , ("GIT_COMMITTER_DATE", Just "1998-04-30T18:25:00-0400")
+                         , ("HOME", Just home)
+                         ]
+                }
+          }
+      gitInvocation args =
+        (programInvocation (vcsProgram vcs') args)
+          { progInvokeCwd = Just repoRoot
+          }
+      git = runProgramInvocation verbosity . gitInvocation
+      git' = getProgramInvocationOutput verbosity . gitInvocation
+      verboseArg = ["--quiet" | verbosity < Verbosity.normal]
+      submoduleGitDir path = repoRoot </> ".git" </> "modules" </> path
+      deinitAndRemoveCachedSubmodules = do
+        git $ ["submodule", "deinit", "--force", "--all"] ++ verboseArg
+        let gitModulesDir = repoRoot </> ".git" </> "modules"
+        gitModulesExists <- doesDirectoryExist gitModulesDir
+        when gitModulesExists $ removeDirectoryRecursive gitModulesDir
+      updateSubmodulesAndCleanup = do
+        git $ ["submodule", "sync", "--recursive"] ++ verboseArg
+        git $ ["submodule", "update", "--init", "--recursive", "--force"] ++ verboseArg
+        git $ ["submodule", "foreach", "--recursive"] ++ verboseArg ++ ["git clean -ffxdq"]
+        git $ ["clean", "-ffxdq"] ++ verboseArg
 
 type MTimeChange = Int
 
+vcsTestDriverDarcs :: MTimeChange -> MkVCSTestDriver -> VCSTestDriver
 vcsTestDriverDarcs
-  :: MTimeChange
-  -> Verbosity
-  -> VCS ConfiguredProgram
-  -> FilePath
-  -> FilePath
-  -> VCSTestDriver
-vcsTestDriverDarcs mtimeChange verbosity vcs _ repoRoot =
-  VCSTestDriver
-    { vcsVCS = vcs
-    , vcsRepoRoot = repoRoot
-    , vcsIgnoreFiles = Set.singleton "_darcs"
-    , vcsInit =
-        darcs ["initialize"]
-    , vcsAddFile = \state filename -> do
-        threadDelay mtimeChange
-        unless (filename `Map.member` currentWorking state) $
-          darcs ["add", filename]
-    , -- Darcs's file change tracking relies on mtime changes,
-      -- so we have to be careful with doing stuff too quickly:
+  mtimeChange
+  MkVCSTestDriver
+    { mkVcsVerbosity = verbosity
+    , mkVcsVcs = vcs
+    , mkVcsRepoRoot = repoRoot
+    } =
+    VCSTestDriver
+      { vcsVCS = vcs
+      , vcsRepoRoot = repoRoot
+      , vcsIgnoreFiles = Set.singleton "_darcs"
+      , vcsInit =
+          darcs ["initialize"]
+      , vcsAddFile = \state filename -> do
+          threadDelay mtimeChange
+          unless (filename `Map.member` currentWorking state) $
+            darcs ["add", filename]
+      , -- Darcs's file change tracking relies on mtime changes,
+        -- so we have to be careful with doing stuff too quickly:
 
-      vcsSubmoduleDriver = \_ ->
-        fail "vcsSubmoduleDriver: darcs does not support submodules"
-    , vcsAddSubmodule = \_ _ _ ->
-        fail "vcsAddSubmodule: darcs does not support submodules"
-    , vcsCommitChanges = \_state -> do
-        threadDelay mtimeChange
-        darcs ["record", "--all", "--author=author", "--name=a patch"]
-        return Nothing
-    , vcsTagState = \_ tagname ->
-        darcs ["tag", "--author=author", tagname]
-    , vcsSwitchBranch = \_ _ ->
-        fail "vcsSwitchBranch: darcs does not support branches within a repo"
-    , vcsCheckoutTag = Right $ \tagname dest ->
-        darcs ["clone", "--lazy", "--tag=^" ++ tagname ++ "$", ".", dest]
-    }
-  where
-    darcsInvocation args =
-      (programInvocation (vcsProgram vcs) args)
-        { progInvokeCwd = Just repoRoot
-        }
-    darcs = runProgramInvocation verbosity . darcsInvocation
+        vcsSubmoduleDriver = \_ ->
+          fail "vcsSubmoduleDriver: darcs does not support submodules"
+      , vcsAddSubmodule = \_ _ _ ->
+          fail "vcsAddSubmodule: darcs does not support submodules"
+      , vcsCommitChanges = \_state -> do
+          threadDelay mtimeChange
+          darcs ["record", "--all", "--author=author", "--name=a patch"]
+          return Nothing
+      , vcsTagState = \_ tagname ->
+          darcs ["tag", "--author=author", tagname]
+      , vcsSwitchBranch = \_ _ ->
+          fail "vcsSwitchBranch: darcs does not support branches within a repo"
+      , vcsCheckoutTag = Right $ \tagname dest ->
+          darcs ["clone", "--lazy", "--tag=^" ++ tagname ++ "$", ".", dest]
+      }
+    where
+      darcsInvocation args =
+        (programInvocation (vcsProgram vcs) args)
+          { progInvokeCwd = Just repoRoot
+          }
+      darcs = runProgramInvocation verbosity . darcsInvocation
 
+vcsTestDriverPijul :: MkVCSTestDriver -> VCSTestDriver
 vcsTestDriverPijul
-  :: Verbosity
-  -> VCS ConfiguredProgram
-  -> FilePath
-  -> FilePath
-  -> VCSTestDriver
-vcsTestDriverPijul verbosity vcs _ repoRoot =
-  VCSTestDriver
-    { vcsVCS = vcs
-    , vcsRepoRoot = repoRoot
-    , vcsIgnoreFiles = Set.empty
-    , vcsInit =
-        pijul $ ["init"]
-    , vcsAddFile = \_ filename ->
-        pijul ["add", filename]
-    , vcsSubmoduleDriver = \_ ->
-        fail "vcsSubmoduleDriver: pijul does not support submodules"
-    , vcsAddSubmodule = \_ _ _ ->
-        fail "vcsAddSubmodule: pijul does not support submodules"
-    , vcsCommitChanges = \_state -> do
-        pijul $
-          [ "record"
-          , "-a"
-          , "-m 'a patch'"
-          , "-A 'A <a@example.com>'"
-          ]
-        commit <- pijul' ["log"]
-        let commit' = takeWhile (not . isSpace) commit
-        return (Just commit')
-    , -- tags work differently in pijul...
-      -- so this is wrong
-      vcsTagState = \_ tagname ->
-        pijul ["tag", tagname]
-    , vcsSwitchBranch = \_ branchname -> do
-        --        unless (branchname `Map.member` allBranches) $
-        --          pijul ["from-branch", branchname]
-        pijul $ ["checkout", branchname]
-    , vcsCheckoutTag = Left $ \tagname ->
-        pijul $ ["checkout", tagname]
-    }
-  where
-    gitInvocation args =
-      (programInvocation (vcsProgram vcs) args)
-        { progInvokeCwd = Just repoRoot
-        }
-    pijul = runProgramInvocation verbosity . gitInvocation
-    pijul' = getProgramInvocationOutput verbosity . gitInvocation
+  MkVCSTestDriver
+    { mkVcsVerbosity = verbosity
+    , mkVcsVcs = vcs
+    , mkVcsRepoRoot = repoRoot
+    } =
+    VCSTestDriver
+      { vcsVCS = vcs
+      , vcsRepoRoot = repoRoot
+      , vcsIgnoreFiles = Set.empty
+      , vcsInit =
+          pijul $ ["init"]
+      , vcsAddFile = \_ filename ->
+          pijul ["add", filename]
+      , vcsSubmoduleDriver = \_ ->
+          fail "vcsSubmoduleDriver: pijul does not support submodules"
+      , vcsAddSubmodule = \_ _ _ ->
+          fail "vcsAddSubmodule: pijul does not support submodules"
+      , vcsCommitChanges = \_state -> do
+          pijul $
+            [ "record"
+            , "-a"
+            , "-m 'a patch'"
+            , "-A 'A <a@example.com>'"
+            ]
+          commit <- pijul' ["log"]
+          let commit' = takeWhile (not . isSpace) commit
+          return (Just commit')
+      , -- tags work differently in pijul...
+        -- so this is wrong
+        vcsTagState = \_ tagname ->
+          pijul ["tag", tagname]
+      , vcsSwitchBranch = \_ branchname -> do
+          --        unless (branchname `Map.member` allBranches) $
+          --          pijul ["from-branch", branchname]
+          pijul $ ["checkout", branchname]
+      , vcsCheckoutTag = Left $ \tagname ->
+          pijul $ ["checkout", tagname]
+      }
+    where
+      gitInvocation args =
+        (programInvocation (vcsProgram vcs) args)
+          { progInvokeCwd = Just repoRoot
+          }
+      pijul = runProgramInvocation verbosity . gitInvocation
+      pijul' = getProgramInvocationOutput verbosity . gitInvocation
 
+vcsTestDriverHg :: MkVCSTestDriver -> VCSTestDriver
 vcsTestDriverHg
-  :: Verbosity
-  -> VCS ConfiguredProgram
-  -> FilePath
-  -> FilePath
-  -> VCSTestDriver
-vcsTestDriverHg verbosity vcs _ repoRoot =
-  VCSTestDriver
-    { vcsVCS = vcs
-    , vcsRepoRoot = repoRoot
-    , vcsIgnoreFiles = Set.empty
-    , vcsInit =
-        hg $ ["init"] ++ verboseArg
-    , vcsAddFile = \_ filename ->
-        hg ["add", filename]
-    , vcsSubmoduleDriver = \_ ->
-        fail "vcsSubmoduleDriver: hg submodules not supported"
-    , vcsAddSubmodule = \_ _ _ ->
-        fail "vcsAddSubmodule: hg submodules not supported"
-    , vcsCommitChanges = \_state -> do
-        hg $
-          [ "--user='A <a@example.com>'"
-          , "commit"
-          , "--message=a patch"
-          ]
-            ++ verboseArg
-        commit <- hg' ["log", "--template='{node}\\n' -l1"]
-        let commit' = takeWhile (not . isSpace) commit
-        return (Just commit')
-    , vcsTagState = \_ tagname ->
-        hg ["tag", "--force", tagname]
-    , vcsSwitchBranch = \RepoState{allBranches} branchname -> do
-        unless (branchname `Map.member` allBranches) $
-          hg ["branch", branchname]
-        hg $ ["checkout", branchname] ++ verboseArg
-    , vcsCheckoutTag = Left $ \tagname ->
-        hg $ ["checkout", "--rev", tagname] ++ verboseArg
-    }
-  where
-    hgInvocation args =
-      (programInvocation (vcsProgram vcs) args)
-        { progInvokeCwd = Just repoRoot
-        }
-    hg = runProgramInvocation verbosity . hgInvocation
-    hg' = getProgramInvocationOutput verbosity . hgInvocation
-    verboseArg = ["--quiet" | verbosity < Verbosity.normal]
+  MkVCSTestDriver
+    { mkVcsVerbosity = verbosity
+    , mkVcsVcs = vcs
+    , mkVcsRepoRoot = repoRoot
+    } =
+    VCSTestDriver
+      { vcsVCS = vcs
+      , vcsRepoRoot = repoRoot
+      , vcsIgnoreFiles = Set.empty
+      , vcsInit =
+          hg $ ["init"] ++ verboseArg
+      , vcsAddFile = \_ filename ->
+          hg ["add", filename]
+      , vcsSubmoduleDriver = \_ ->
+          fail "vcsSubmoduleDriver: hg submodules not supported"
+      , vcsAddSubmodule = \_ _ _ ->
+          fail "vcsAddSubmodule: hg submodules not supported"
+      , vcsCommitChanges = \_state -> do
+          hg $
+            [ "--user='A <a@example.com>'"
+            , "commit"
+            , "--message=a patch"
+            ]
+              ++ verboseArg
+          commit <- hg' ["log", "--template='{node}\\n' -l1"]
+          let commit' = takeWhile (not . isSpace) commit
+          return (Just commit')
+      , vcsTagState = \_ tagname ->
+          hg ["tag", "--force", tagname]
+      , vcsSwitchBranch = \RepoState{allBranches} branchname -> do
+          unless (branchname `Map.member` allBranches) $
+            hg ["branch", branchname]
+          hg $ ["checkout", branchname] ++ verboseArg
+      , vcsCheckoutTag = Left $ \tagname ->
+          hg $ ["checkout", "--rev", tagname] ++ verboseArg
+      }
+    where
+      hgInvocation args =
+        (programInvocation (vcsProgram vcs) args)
+          { progInvokeCwd = Just repoRoot
+          }
+      hg = runProgramInvocation verbosity . hgInvocation
+      hg' = getProgramInvocationOutput verbosity . hgInvocation
+      verboseArg = ["--quiet" | verbosity < Verbosity.normal]
