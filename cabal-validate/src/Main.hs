@@ -325,22 +325,6 @@ libSuiteExtras opts = forM_ (extraCompilers opts) $ \compiler' ->
 cliTests :: Opts -> IO ()
 cliTests opts = do
   -- These are sorted in asc time used, quicker tests first.
-  timedCabalBin
-    opts
-    "cabal-install"
-    "test:long-tests"
-    ( jobsArgs opts
-        ++ tastyArgs opts
-    )
-
-  -- This doesn't work in parallel either.
-  timedCabalBin
-    opts
-    "cabal-install"
-    "test:unit-tests"
-    ( ["--num-threads", "1"]
-        ++ tastyArgs opts
-    )
 
   -- Only single job, otherwise we fail with "Heap exhausted"
   timedCabalBin
@@ -352,6 +336,23 @@ cliTests opts = do
     )
 
   -- This test-suite doesn't like concurrency
+  timedCabalBin
+    opts
+    "cabal-install"
+    "test:unit-tests"
+    ( ["--num-threads", "1"]
+        ++ tastyArgs opts
+    )
+
+  timedCabalBin
+    opts
+    "cabal-install"
+    "test:long-tests"
+    ( jobsArgs opts
+        ++ tastyArgs opts
+    )
+
+  -- This doesn't work in parallel either.
   timedCabalBin
     opts
     "cabal-install"
