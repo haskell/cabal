@@ -39,7 +39,7 @@ relative to the respective preceding *published* version.
 ----------------------
 
 * Added field ``code-generators`` to :pkg-section:`test-suite` stanzas. This
-  enumerates executabes (possibly brought into scope by  :pkg-field:`build-tool-depends`) that are run after all other
+  enumerates executables (possibly brought into scope by  :pkg-field:`build-tool-depends`) that are run after all other
   preprocessors. These executables are invoked with a target dir for
   output, a sequence of all source directories with source files of
   local lib components that the given test stanza depends on, and

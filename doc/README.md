@@ -40,6 +40,29 @@ either from the root of the cabal repository or from the `docs/` subdirectory. Y
 
 In some cases, you may have to add a bound manually to `requirements.in`, e.g. `requests >= 2.31.0`.
 
+### How to check spelling
+
+To check for typos, run `make typos` and to fix them, run `make fix-typos`. Fixing might fail.
+
+> If there is any ambiguity (multiple possible corrections),
+> `typos` will just report it to the user and move on.
+>
+> SOURCE: [typos/Getting Started](https://github.com/crate-ci/typos#getting-started)
+
+```
+# spellchecker:off
+$ make users-guide-typos
+cd doc && find . -type f -name '*.rst' | xargs typos
+error: `managable` should be `manageable`, `manageably`
+  --> doc/getting-started.rst:75:6
+   |
+75 | more managable building blocks.
+   |      ^^^^^^^^^
+   |
+make: *** [Makefile: users-guide-typos] Error 2
+# spellchecker:on
+```
+
 ### Gitpod workflow
 
 From a fork of cabal, these docs can be edited online with
