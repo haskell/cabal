@@ -134,11 +134,11 @@ zipDefault ad bd (a : as) (b : bs) = (a, b) : zipDefault ad bd as bs
 -- | Pretty printing of short options.
 -- * With required arguments can be given as:
 --    @-w PATH or -wPATH (but not -w=PATH)@
---   This is dislayed as:
+--   This is displayed as:
 --    @-w PATH or -wPATH@
 -- * With optional but default arguments can be given as:
 --    @-j or -jNUM (but not -j=NUM or -j NUM)@
---   This is dislayed as:
+--   This is displayed as:
 --    @-j[NUM]@
 fmtShort :: ArgDescr a -> Char -> String
 fmtShort (NoArg _) so = "-" ++ [so]
@@ -152,11 +152,11 @@ fmtShort (OptArg _ _ ad) so =
 -- | Pretty printing of long options.
 -- * With required arguments can be given as:
 --    @--with-compiler=PATH (but not --with-compiler PATH)@
---   This is dislayed as:
+--   This is displayed as:
 --    @--with-compiler=PATH@
 -- * With optional but default arguments can be given as:
 --    @--jobs or --jobs=NUM (but not --jobs NUM)@
---   This is dislayed as:
+--   This is displayed as:
 --    @--jobs[=NUM]@
 fmtLong :: ArgDescr a -> String -> String
 fmtLong (NoArg _) lo = "--" ++ lo

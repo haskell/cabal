@@ -70,7 +70,7 @@ import qualified Data.Set as Set
 -- represent it as a 'DefiniteUnitId uid'.
 --
 -- For a source component using Backpack, however, there is more
--- structure as components may be parametrized over some signatures, and
+-- structure as components may be parameterized over some signatures, and
 -- these \"holes\" may be partially or wholly filled.
 --
 -- OpenUnitId plays an important role when we are mix-in linking,

@@ -632,7 +632,7 @@ rebuildInstallPlan
 
       -- Configuring other programs.
       --
-      -- Having configred the compiler, now we configure all the remaining
+      -- Having configured the compiler, now we configure all the remaining
       -- programs. This is to check we can find them, and to monitor them for
       -- changes.
       --
@@ -902,7 +902,7 @@ reportPlanningFailure projectConfig comp platform pkgSpecifiers =
       buildReports
       platform
   where
-    -- TODO may want to handle the projectConfigLogFile paramenter here, or just remove it entirely?
+    -- TODO may want to handle the projectConfigLogFile parameter here, or just remove it entirely?
 
     reportFailure = Cabal.fromFlag . projectConfigReportPlanningFailure . projectConfigBuildOnly $ projectConfig
     pkgids = mapMaybe theSpecifiedPackage pkgSpecifiers

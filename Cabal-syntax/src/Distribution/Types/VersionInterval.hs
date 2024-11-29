@@ -95,7 +95,7 @@ isVersion0 = (==) version0
 stage1 :: VersionRange -> [VersionInterval]
 stage1 = cataVersionRange alg
   where
-    -- version range leafs transform into singleton intervals
+    -- version range leaves transform into singleton intervals
     alg (ThisVersionF v) = [VersionInterval (LowerBound v InclusiveBound) (UpperBound v InclusiveBound)]
     alg (LaterVersionF v) = [VersionInterval (LowerBound v ExclusiveBound) NoUpperBound]
     alg (OrLaterVersionF v) = [VersionInterval (LowerBound v InclusiveBound) NoUpperBound]

@@ -390,7 +390,7 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
   -- NOTE: CmdInstall and project local packages.
   --
   -- CmdInstall always installs packages from a source distribution that, in case of unpackage
-  -- pacakges, is created automatically. This is implemented in getSpecsAndTargetSelectors.
+  -- packages, is created automatically. This is implemented in getSpecsAndTargetSelectors.
   --
   -- This has the inconvenience that the planner will consider all packages as non-local
   -- (see `ProjectPlanning.shouldBeLocal`) and that any project or cli configuration will
@@ -1031,7 +1031,7 @@ installLibraries
 
 -- See ticket #8894. This is safe to include any nonreinstallable boot pkg,
 -- but the particular package users will always expect to be in scope without specific installation
--- is base, so that they can access prelude, regardles of if they specifically asked for it.
+-- is base, so that they can access prelude, regardless of if they specifically asked for it.
 globalPackages :: [PackageName]
 globalPackages = mkPackageName <$> ["base"]
 

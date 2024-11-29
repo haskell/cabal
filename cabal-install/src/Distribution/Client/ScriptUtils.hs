@@ -414,8 +414,8 @@ withTemporaryTempDirectory act = newEmptyMVar >>= \m -> bracket (getMkTmp m) (rm
       return tmpDir
     rmTmp m _ = tryTakeMVar m >>= maybe (return ()) (handleDoesNotExist () . removeDirectoryRecursive)
 
-scriptComponenetName :: IsString s => FilePath -> s
-scriptComponenetName scriptPath = fromString cname
+scriptComponentName :: IsString s => FilePath -> s
+scriptComponentName scriptPath = fromString cname
   where
     cname = "script-" ++ map censor (takeFileName scriptPath)
     censor c
@@ -437,7 +437,7 @@ scriptDistDirParams scriptPath ctx compiler platform =
     , distParamOptimization = fromFlagOrDefault NormalOptimisation optimization
     }
   where
-    cn = scriptComponenetName scriptPath
+    cn = scriptComponentName scriptPath
     cid = mkComponentId $ prettyShow fakePackageId <> "-inplace-" <> prettyShow cn
     optimization = (packageConfigOptimization . projectConfigLocalPackages . projectConfig) ctx
 
@@ -475,7 +475,7 @@ updateContextAndWriteProjectFile ctx scriptPath scriptExecutable = do
     sourcePackage =
       fakeProjectSourcePackage projectRoot
         & lSrcpkgDescription . L.condExecutables
-          .~ [(scriptComponenetName scriptPath, CondNode executable (targetBuildDepends $ buildInfo executable) [])]
+          .~ [(scriptComponentName scriptPath, CondNode executable (targetBuildDepends $ buildInfo executable) [])]
     executable =
       scriptExecutable
         & L.modulePath .~ absScript

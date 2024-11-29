@@ -482,7 +482,7 @@ waySupported :: String -> Compiler -> Maybe Bool
 waySupported way comp =
   case compilerFlavor comp of
     GHC ->
-      -- Infomation about compiler ways is only accurately reported after
+      -- Information about compiler ways is only accurately reported after
       -- 9.10.1. Which is useful as this is before profiling dynamic support
       -- was introduced. (See GHC #24881)
       if compilerVersion comp >= mkVersion [9, 10, 1]

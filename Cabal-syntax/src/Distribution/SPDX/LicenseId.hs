@@ -677,7 +677,7 @@ data LicenseId
   deriving (Eq, Ord, Enum, Bounded, Show, Read, Typeable, Data)
 
 instance Binary LicenseId where
-    -- Word16 is encoded in big endianess
+    -- Word16 is encoded in big endianness
     -- https://github.com/kolmodin/binary/blob/master/src/Data/Binary/Class.hs#L220-LL227
     put = Binary.putWord16be . fromIntegral . fromEnum
     get = do
