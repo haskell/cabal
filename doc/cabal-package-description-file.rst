@@ -2747,21 +2747,27 @@ The :ref:`VCS fields<vcs-fields>` of ``source-repository`` are:
 
     This field is required.
 
+    .. include:: vcs/kind.rst
+
 .. pkg-field:: location: VCS location
 
     This field is required.
 
-.. pkg-field:: module: token
+    .. include:: vcs/location.rst
 
-    CVS requires a named module, as each CVS server can host multiple
-    named repositories.
+.. pkg-field:: module: token
 
     This field is required for the CVS repository type and should not be
     used otherwise.
 
+    CVS requires a named module, as each CVS server can host multiple
+    named repositories.
+
 .. pkg-field:: branch: VCS branch
 
     This field is optional.
+
+    .. include:: vcs/branch.rst
 
 .. pkg-field:: tag: VCS tag
 
@@ -2770,10 +2776,13 @@ The :ref:`VCS fields<vcs-fields>` of ``source-repository`` are:
     This might be used to indicate what sources to get if someone needs to fix a
     bug in an older branch that is no longer an active head branch.
 
+    .. include:: vcs/tag.rst
+
 .. pkg-field:: subdir: VCS subdirectory
 
     This field is optional but, if given, specifies a single subdirectory.
 
+    .. include:: vcs/subdir.rst
 
 .. _setup-hooks:
 

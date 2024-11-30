@@ -91,6 +91,7 @@ data PError
   = AmbiguousParse String LineNo
   | NoParse String LineNo
   | TabsError LineNo
+  | FieldShouldBeStanza String LineNo
   | FromString String (Maybe LineNo)
   deriving (Eq, Show)
 
@@ -186,6 +187,10 @@ locatedErrorMsg (NoParse f n) =
   , "Parse of field '" ++ f ++ "' failed."
   )
 locatedErrorMsg (TabsError n) = (Just n, "Tab used as indentation.")
+locatedErrorMsg (FieldShouldBeStanza name lineNumber) =
+  ( Just lineNumber
+  , "'" ++ name ++ "' is a stanza, not a field. Remove the trailing ':' to parse a stanza."
+  )
 locatedErrorMsg (FromString s n) = (n, s)
 
 syntaxError :: LineNo -> String -> ParseResult a

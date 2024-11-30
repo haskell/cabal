@@ -233,7 +233,7 @@ for the ``tag`` field:
 .. Warning::
 
    Only a commit hash pins to an exact version of the *source code* for Git
-   respositories.
+   repositories.
 
    - If the ``tag`` field is omitted then the latest commit on the Git default branch is used.
    - If the ``tag`` field is a Git branch name then the latest commit on that branch is used.
