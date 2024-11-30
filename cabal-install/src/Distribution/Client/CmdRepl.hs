@@ -27,7 +27,7 @@ import Distribution.Client.CmdErrorMessages
   ( Plural (..)
   , componentKind
   , renderComponentKind
-  , renderListCommaAnd
+  , renderListPretty
   , renderListSemiAnd
   , renderTargetProblem
   , renderTargetSelector
@@ -788,7 +788,7 @@ renderReplProblem (TargetProblemMatchesMultiple decision targetSelector targets)
       [ "the "
         ++ renderComponentKind Plural ckind
         ++ " "
-        ++ renderListCommaAnd
+        ++ renderListPretty
           [ maybe (prettyShow pkgname) prettyShow (componentNameString cname)
           | t <- ts
           , let cname = availableTargetComponentName t
@@ -804,7 +804,7 @@ renderReplProblem (TargetProblemMatchesMultiple decision targetSelector targets)
         . availableTargetComponentName
 renderReplProblem (TargetProblemMultipleTargets multi_decision selectorMap) =
   "Cannot open a repl for multiple components at once. The targets "
-    ++ renderListCommaAnd
+    ++ renderListPretty
       [ "'" ++ showTargetSelector ts ++ "'"
       | ts <- uniqueTargetSelectors selectorMap
       ]
