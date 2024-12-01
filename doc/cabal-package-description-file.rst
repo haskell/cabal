@@ -1344,7 +1344,7 @@ system-dependent values for these fields.
        but ``time-1.12.3`` bumps the lower bound on base to ``>=4.14``.  If we
        still want to compile with a ``ghc-8.8.*`` version of GHC that ships with
        ``base-4.13`` and with later GHC versions, then we can use ``time >=1.12
-       && (time <1.12.3 || time >1.12.3)``.
+       && (<1.12.3 || >1.12.3)``.
 
        Hackage shows deprecated and preferred versions for packages, such as for
        `containers <https://hackage.haskell.org/package/containers/preferred>`_
