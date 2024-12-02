@@ -36,8 +36,8 @@ Cabal and Cabal-syntax 3.12.0.0 changelog and release notes
     package *without* having previously built the dependency.  Instead, we
     promise to the configure phase that we will have built it by the time we
     build the package. This allows us to configure all the packages we intend
-    to load into the repl without building any dependenices which we will load
-    in the same session, because the promise is satisifed due to loading the
+    to load into the repl without building any dependencies which we will load
+    in the same session, because the promise is satisfied due to loading the
     package and its dependency into one multi-session which ensures the
     dependency is built before it is needed.
 
@@ -67,7 +67,7 @@ Cabal and Cabal-syntax 3.12.0.0 changelog and release notes
   prone, as `initialBuildSteps` only handles things like the paths module
   and nothing else.
 
-  To mimick `initialBuildSteps` behaviour when there is no custom Setup, you
+  To mimic `initialBuildSteps` behaviour when there is no custom Setup, you
   can call `repl_setupHooks`.
 
   If you are dealing with a custom setup, you have to invoke
@@ -144,7 +144,7 @@ Cabal and Cabal-syntax 3.12.0.0 changelog and release notes
        large file can reduce overall compile times.
     2. Breaking up the module allows dependent modules to refine their imports
        to just the parts they require, allowing them to start buildling quicker
-       when GHC is run in parrallel make mode ('--ghc-options -j').
+       when GHC is run in parallel make mode ('--ghc-options -j').
 
 - Reimplementing `cabal check` [#7423](https://github.com/haskell/cabal/issues/7423) [#8427](https://github.com/haskell/cabal/pull/8427)
 
@@ -166,7 +166,7 @@ Cabal and Cabal-syntax 3.12.0.0 changelog and release notes
 
     The `./Setup repl` command is modified to allow a user to defer starting
     the repl and instead instruct the command to write the necessary build
-    flags to a directiory. The option is called `--repl-multi-file <DIR>`.
+    flags to a directory. The option is called `--repl-multi-file <DIR>`.
 
     This is useful when starting multi-component sessions, as we want to query
     Setup.hs for the arguments which are needed to build each component but
@@ -264,7 +264,7 @@ Cabal and Cabal-syntax 3.12.0.0 changelog and release notes
     That behavior is desirable to parsing multiline field contents, but it is
     a bit surprising for fields in sections, which we expect to be aligned.
 
-    Such insonsistency seems to be always a mistake, and it's easy to fix once
+    Such inconsistency seems to be always a mistake, and it's easy to fix once
     a machine points it out.
 
 - Add `LexBraces` lexer warning [#8577](https://github.com/haskell/cabal/issues/8577)

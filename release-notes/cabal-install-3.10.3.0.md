@@ -33,7 +33,7 @@ cabal-install and cabal-install-solver 3.10.3.0 changelog and release notes
 
   Previously, cabal-install would crash when `pkg-config --list-all` contained
   invalid Unicode. With this change, invalid unicode in package descriptions is
-  ignored, and unparseable package names are considered nonexistent.
+  ignored, and unparsable package names are considered nonexistent.
 
 - Script cache dir is the base16 hash of the canonical path of the script. [#9459](https://github.com/haskell/cabal/pull/9459)
 

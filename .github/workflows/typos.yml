@@ -1,0 +1,32 @@
+name: Typos
+
+on:
+  pull_request:
+  push:
+    branches: ["master"]
+
+env:
+  TYPOS_VER: v1.28.1
+  TYPOS_PLATFORM: x86_64-unknown-linux-musl
+
+jobs:
+  typos:
+    defaults:
+      run:
+        shell: bash
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - uses: actions/checkout@v4
+
+    - run: |
+        wget -q https://github.com/crate-ci/typos/releases/download/${{ env.TYPOS_VER }}/typos-${{ env.TYPOS_VER }}-${{ env.TYPOS_PLATFORM }}.tar.gz
+        tar -xf typos-${{ env.TYPOS_VER }}-${{ env.TYPOS_PLATFORM }}.tar.gz --one-top-level=typos-${{ env.TYPOS_VER }}
+        mkdir -p "$HOME/.local/bin"
+        mv typos-${{ env.TYPOS_VER }} "$HOME/.local/bin/typos-${{ env.TYPOS_VER }}"
+        chmod +x "$HOME/.local/bin/typos-${{ env.TYPOS_VER }}/typos"
+        echo "$HOME/.local/bin/typos-${{ env.TYPOS_VER }}" >> $GITHUB_PATH
+
+    - run: make users-guide-typos
+    - run: make markdown-typos

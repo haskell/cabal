@@ -60,7 +60,7 @@ lint-json: ## Run HLint in JSON mode
 # local checks
 
 .PHONY: checks
-checks: whitespace style lint-json
+checks: whitespace users-guide-typos markdown-typos style lint-json
 
 # source generation: SPDX
 
@@ -268,3 +268,26 @@ PROCS := $(shell sysctl -n hw.logicalcpu)
 else
 PROCS := $(shell nproc)
 endif
+
+.PHONY: typos-install
+typos-install: ## Install typos-cli for typos target using cargo
+	cargo install typos-cli
+
+GREP_EXCLUDE := grep -v -E 'dist-|cabal-testsuite|python-'
+FIND_NAMED := find . -type f -name
+
+.PHONY: users-guide-typos
+users-guide-typos: ## Find typos in users guide
+	cd doc && $(FIND_NAMED) '*.rst' | xargs typos
+
+.PHONY: users-guide-fix-typos
+users-guide-fix-typos: ## Fix typos in users guide
+	cd doc && $(FIND_NAMED) '*.rst' | xargs typos --write-changes
+
+.PHONY: markdown-typos
+markdown-typos: ## Find typos in markdown files
+	$(FIND_NAMED) '*.md' | $(GREP_EXCLUDE) | xargs typos
+
+.PHONY: markdown-fix-typos
+markdown-fix-typos: ## Fix typos in markdown files
+	$(FIND_NAMED) '*.md' | $(GREP_EXCLUDE) | xargs typos --write-changes

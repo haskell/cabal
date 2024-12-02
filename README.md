@@ -64,7 +64,7 @@ Currently, we only provide binaries for `x86_64` platforms.
 
 
 2. Even more cutting-edge binaries built from pull requests are always available
-   from the `Validate` worklow page on GitHub, at the very bottom of the page,
+   from the `Validate` workflow page on GitHub, at the very bottom of the page,
    or from the `build-alpine` workflow for statically linked Linux builds.
 
 Ways to build `cabal-install` for everyday use

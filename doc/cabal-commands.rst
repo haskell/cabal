@@ -395,7 +395,7 @@ cabal list
 cabal info
 ^^^^^^^^^^
 
-``cabal info [FLAGS] PACKAGES`` displays useful informations about remote
+``cabal info [FLAGS] PACKAGES`` displays useful information about remote
 packages.
 
 .. option:: --package-db=DB
@@ -468,7 +468,7 @@ the source code of ``PACKAGES`` locally. By default the content of the
 packages is unpacked in the current working directory, in named subfolders
 (e.g.  ``./filepath-1.2.0.8/``), use ``--destdir=PATH`` to specify another
 folder. By default the latest version of the package is downloaded, you can
-ask for a spefic one by adding version numbers
+ask for a specific one by adding version numbers
 (``cabal get random-1.0.0.1``).
 
 The ``cabal get`` command supports the following options:
@@ -1384,7 +1384,7 @@ A list of all warnings with their constructor:
 - ``no-autogen-paths``: missing autogen ``Paths_*`` modules in ``autogen-modules`` (``cabal-version`` ≥ 2.0).
 - ``no-autogen-pinfo``: missing autogen ``PackageInfo_*`` modules in ``autogen-modules`` *and* ``exposed-modules``/``other-modules`` (``cabal-version`` ≥ 2.0).
 - ``no-glob-match``: glob pattern not matching any file.
-- ``glob-no-extension``: glob pattern not matching any file becuase of lack of extension matching (`cabal-version` < 2.4).
+- ``glob-no-extension``: glob pattern not matching any file because of lack of extension matching (`cabal-version` < 2.4).
 - ``glob-missing-dir``: glob pattern trying to match a missing directory.
 - ``unknown-os``: unknown operating system name in condition.
 - ``unknown-arch``: unknown architecture in condition.
