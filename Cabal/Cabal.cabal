@@ -415,3 +415,17 @@ library
     TypeOperators
     TypeSynonymInstances
     UndecidableInstances
+
+executable cabal-main-simple
+  default-language: Haskell2010
+  main-is: src/main_simple.hs
+  build-depends:
+    base,
+    Cabal
+
+executable cabal-main-configure
+  default-language: Haskell2010
+  main-is: src/main_configure.hs
+  build-depends:
+    base,
+    Cabal
