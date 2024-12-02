@@ -16,7 +16,7 @@ are somewhat experimental; while fully supported by cabal-install, they are curr
 
 A Backpack package is defined by use of the
 :pkg-field:`library:signatures` field, or by (transitive) dependency on
-a package that defines some requirements.  To define a parametrized
+a package that defines some requirements.  To define a parameterized
 package, define a signature file (file extension ``hsig``) that
 specifies the signature of the module you want to parametrize over, and
 add it to your Cabal file in the :pkg-field:`library:signatures` field.
@@ -31,10 +31,10 @@ add it to your Cabal file in the :pkg-field:`library:signatures` field.
     concat :: [Str] -> Str
 
 .. code-block:: cabal
-    :caption: parametrized.cabal
+    :caption: parameterized.cabal
 
     cabal-version: 2.2
-    name: parametrized
+    name: parameterized
 
     library
       build-depends: base
@@ -45,14 +45,14 @@ You can define any number of regular modules (e.g., ``MyModule``) that
 import signatures and use them as regular modules.
 
 If you are familiar with ML modules, you might now expect there to be
-some way to apply the parametrized package with an implementation of
+some way to apply the parameterized package with an implementation of
 the ``Str`` module to get a concrete instantiation of the package.
 Backpack operates slightly differently with a concept of *mix-in
 linking*, where you provide an implementation of ``Str`` simply by
 bringing another module into scope with the same name as the
 requirement.  For example, if you had a package ``str-impl`` that provided a
-module named ``Str``, instantiating ``parametrized`` is as simple as
-just depending on both ``str-impl`` and ``parametrized``:
+module named ``Str``, instantiating ``parameterized`` is as simple as
+just depending on both ``str-impl`` and ``parameterized``:
 
 .. code-block:: cabal
     :caption: combined.cabal
@@ -61,7 +61,7 @@ just depending on both ``str-impl`` and ``parametrized``:
     name: combined
 
     library
-      build-depends: base, str-impl, parametrized
+      build-depends: base, str-impl, parameterized
 
 Note that due to technical limitations, you cannot directly define
 ``Str`` in the ``combined`` library; it must be placed in its own
@@ -75,7 +75,7 @@ a requirement ``Str`` and an implementation ``Data.Text``, you can
 line up the names in one of two ways:
 
 * Rename the requirement to match the implementation:
-  ``mixins: parametrized requires (Str as Data.Text)``
+  ``mixins: parameterized requires (Str as Data.Text)``
 * Rename the implementation to match the requirement:
   ``mixins: text (Data.Text as Str)``
 
@@ -91,13 +91,13 @@ the requirements and provided modules renamed to be distinct.
     name: double-combined
 
     library
-      build-depends: base, text, bytestring, parametrized
+      build-depends: base, text, bytestring, parameterized
       mixins:
-        parametrized (MyModule as MyModule.Text) requires (Str as Data.Text),
-        parametrized (MyModule as MyModule.BS) requires (Str as Data.ByteString)
+        parameterized (MyModule as MyModule.Text) requires (Str as Data.Text),
+        parameterized (MyModule as MyModule.BS) requires (Str as Data.ByteString)
 
 Intensive use of Backpack sometimes involves creating lots of small
-parametrized libraries; :ref:`Sublibraries <sublibs>` can be used
+parameterized libraries; :ref:`Sublibraries <sublibs>` can be used
 to define all of these libraries in a single package without having to
 create many separate Cabal packages.  You may also find it useful to use
 :pkg-field:`library:reexported-modules` to reexport instantiated

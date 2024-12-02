@@ -773,7 +773,7 @@
   * Many checks added for common mistakes
   * New `--package-db=` option for specific package databases
   * Many internal changes to support cabal-install
-  * Stricter parsing for version strings, eg dissalows "1.05"
+  * Stricter parsing for version strings, eg disallows "1.05"
   * Improved user guide introduction
   * Programatica support removed
   * New options `--program-prefix/suffix` allows eg versioned programs
