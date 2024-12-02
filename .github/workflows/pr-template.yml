@@ -1,0 +1,25 @@
+name: PR Template
+
+on:
+  pull_request:
+  push:
+    branches: ['master']
+
+jobs:
+  templates:
+    defaults:
+      run:
+        shell: bash
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - env:
+        BODY: ${{ github.event.pull_request.body }}
+      run: |
+        body="$(echo "$BODY" |
+                sed 's/~~[^~][^~]*~~//g' |
+                sed -n 's/^\* \[\(.\)\] Patches conform to the .*$/\1/p')"
+        # this ought to be a single space or 'x', but some people include both
+        # templates and either one might be checked
+        echo "$body" | grep -q '^x$'
