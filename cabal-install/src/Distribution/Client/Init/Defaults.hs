@@ -165,7 +165,7 @@ myLibHs =
 
 myExeHs :: [String]
 myExeHs =
-  [ "module Main where"
+  [ "module Main (main) where"
   , ""
   , "main :: IO ()"
   , "main = putStrLn \"Hello, Haskell!\""
@@ -173,7 +173,7 @@ myExeHs =
 
 myLibExeHs :: [String]
 myLibExeHs =
-  [ "module Main where"
+  [ "module Main (main) where"
   , ""
   , "import qualified MyLib (someFunc)"
   , ""
