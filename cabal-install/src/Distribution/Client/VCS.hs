@@ -516,7 +516,7 @@ vcsGit =
       -- is needed because sometimes `git submodule sync` does not actually
       -- update the submodule source URL. Detailed description here:
       -- https://git.coop/-/snippets/85
-      git localDir ["submodule", "deinit", "--force", "--all"]
+      git localDir $ ["submodule", "deinit", "--force", "--all"] ++ verboseArg
       let gitModulesDir = localDir </> ".git" </> "modules"
       gitModulesExists <- doesDirectoryExist gitModulesDir
       when gitModulesExists $

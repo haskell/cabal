@@ -897,16 +897,15 @@ vcsTestDriverGit
           gitconfigExists <- doesFileExist gitconfigPath
           unless gitconfigExists $ do
             writeFile gitconfigPath gitconfig
-          git $ ["init"] ++ verboseArg
+          gitQuiet ["init"]
       , vcsAddFile = \_ filename ->
           git ["add", filename]
       , vcsCommitChanges = \_state -> do
-          git $
+          gitQuiet
             [ "commit"
             , "--all"
             , "--message=a patch"
             ]
-              ++ verboseArg
           commit <- git' ["rev-parse", "HEAD"]
           let commit' = takeWhile (not . isSpace) commit
           return (Just commit')
@@ -928,22 +927,22 @@ vcsTestDriverGit
             (||)
               <$> doesFileExist (repoRoot </> dest)
               <*> doesDirectoryExist (repoRoot </> dest)
-          when destExists $ git ["rm", "-f", dest]
+          when destExists $ gitQuiet ["rm", "--force", dest]
           -- If there is an old submodule git dir with the same name, remove it.
           -- It most likely has a different URL and `git submodule add` will fai.
           submoduleGitDirExists <- doesDirectoryExist $ submoduleGitDir dest
           when submoduleGitDirExists $ removeDirectoryRecursive (submoduleGitDir dest)
-          git ["submodule", "add", source, dest]
-          git ["submodule", "update", "--init", "--recursive", "--force"]
+          gitQuiet ["submodule", "add", source, dest]
+          gitQuiet ["submodule", "update", "--init", "--recursive", "--force"]
       , vcsSwitchBranch = \RepoState{allBranches} branchname -> do
           deinitAndRemoveCachedSubmodules
           unless (branchname `Map.member` allBranches) $
-            git ["branch", branchname]
-          git $ ["checkout", branchname] ++ verboseArg
+            gitQuiet ["branch", branchname]
+          gitQuiet ["checkout", branchname]
           updateSubmodulesAndCleanup
       , vcsCheckoutTag = Left $ \tagname -> do
           deinitAndRemoveCachedSubmodules
-          git $ ["checkout", "--detach", "--force", tagname] ++ verboseArg
+          gitQuiet ["checkout", "--detach", "--force", tagname]
           updateSubmodulesAndCleanup
       }
     where
@@ -981,24 +980,32 @@ vcsTestDriverGit
                          ]
                 }
           }
+
       gitInvocation args =
         (programInvocation (vcsProgram vcs') args)
           { progInvokeCwd = Just repoRoot
           }
+
       git = runProgramInvocation verbosity . gitInvocation
       git' = getProgramInvocationOutput verbosity . gitInvocation
+
+      gitQuiet [] = git []
+      gitQuiet (cmd : args) = git (cmd : verboseArg ++ args)
+
       verboseArg = ["--quiet" | verbosity < Verbosity.normal]
+
       submoduleGitDir path = repoRoot </> ".git" </> "modules" </> path
       deinitAndRemoveCachedSubmodules = do
-        git $ ["submodule", "deinit", "--force", "--all"] ++ verboseArg
+        gitQuiet ["submodule", "deinit", "--force", "--all"]
         let gitModulesDir = repoRoot </> ".git" </> "modules"
         gitModulesExists <- doesDirectoryExist gitModulesDir
         when gitModulesExists $ removeDirectoryRecursive gitModulesDir
       updateSubmodulesAndCleanup = do
-        git $ ["submodule", "sync", "--recursive"] ++ verboseArg
-        git $ ["submodule", "update", "--init", "--recursive", "--force"] ++ verboseArg
-        git $ ["submodule", "foreach", "--recursive"] ++ verboseArg ++ ["git clean -ffxdq"]
-        git $ ["clean", "-ffxdq"] ++ verboseArg
+        gitQuiet ["submodule", "sync", "--recursive"]
+        gitQuiet ["submodule", "update", "--init", "--recursive", "--force"]
+        -- Note: We need to manually add `verboseArg` here so that the embedded `git clean` command includes it as well.
+        gitQuiet $ ["submodule", "foreach", "--recursive", "git clean -ffxdq"] ++ verboseArg
+        gitQuiet ["clean", "-ffxdq"]
 
 type MTimeChange = Int
 
