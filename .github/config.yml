@@ -1,0 +1,15 @@
+# note: GHC_FOR_RELEASE must be an element of GHC_FOR_VALIDATE!
+GHC_FOR_RELEASE: "9.4.8"
+GHC_FOR_SOLVER_BENCHMARKS: $(GHC_FOR_RELEASE)
+GHC_FOR_COMPLETE_HACKAGE_TESTS: $(GHC_FOR_RELEASE)
+# these will be decoded with fromJSON, and must be quoted to keep YAML from making objects
+# If you remove something from here, then add it to GHC_FOR_VALIDATE_OLD.
+# Also a removed GHC from here means that we are actually dropping
+# support, so the PR *must* have a changelog entry.
+GHC_FOR_VALIDATE: '["9.10.1", "9.8.2", "9.6.6", "9.4.8", "9.2.8", "9.0.2", "8.10.7", "8.8.4"]'
+## GHC 7.10.3 does not install on ubuntu-22.04 with ghcup.
+## Older GHCs are not supported by ghcup in the first place.
+GHC_FOR_VALIDATE_OLD: '["8.4.4", "8.2.2", "8.0.2"]'
+#
+COMMON_FLAGS: -j 2 -v
+LTS_BRANCH: '3.12'
