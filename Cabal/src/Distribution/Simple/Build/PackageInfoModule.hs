@@ -10,7 +10,7 @@
 -- Generating the PackageInfo_pkgname module.
 --
 -- This is a module that Cabal generates for the benefit of packages. It
--- enables them to find their package informations.
+-- enables them to find their package information.
 module Distribution.Simple.Build.PackageInfoModule
   ( generatePackageInfoModule
   ) where

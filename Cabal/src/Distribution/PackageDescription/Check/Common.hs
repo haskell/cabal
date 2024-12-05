@@ -79,7 +79,7 @@ partitionDeps ads ns ds = do
     -- shared targets that match
     fads = filter (flip elem dqs . fst) ads
     -- the names of such targets
-    inNam = nub $ map fst fads :: [UnqualComponentName]
+    inName = nub $ map fst fads :: [UnqualComponentName]
     -- the dependencies of such targets
     inDep = concatMap snd fads :: [Dependency]
 
@@ -96,7 +96,7 @@ partitionDeps ads ns ds = do
   --                     text,             ← no warning, inherited
   --                     monadacme         ← warning!
   let fFun d =
-        notElem (unqualName d) inNam
+        notElem (unqualName d) inName
           && notElem
             (unqualName d)
             (map unqualName inDep)
@@ -116,7 +116,7 @@ partitionDeps ads ns ds = do
 -- for important dependencies like base).
 checkPVP
   :: Monad m
-  => (String -> PackageCheck) -- Warn message dependend on name
+  => (String -> PackageCheck) -- Warn message depends on name
   -- (e.g. "base", "Cabal").
   -> [Dependency]
   -> CheckM m ()

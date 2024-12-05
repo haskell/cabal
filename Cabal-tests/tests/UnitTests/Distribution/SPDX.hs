@@ -91,7 +91,7 @@ shouldReject = map License
 --
 -- * "WITH exc" exceptions are rejected
 --
--- * There should be a way to interpert license as (conjunction of)
+-- * There should be a way to interpret license as (conjunction of)
 --   OSI-accepted licenses or CC0
 --
 isAcceptableLicense :: License -> Bool

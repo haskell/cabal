@@ -140,7 +140,7 @@ errorTest fp = cabalGoldenTest fp correct $ do
 
     return $ toUTF8BS $ case x of
         Right gpd ->
-            "UNXPECTED SUCCESS\n" ++
+            "UNEXPECTED SUCCESS\n" ++
             showGenericPackageDescription gpd
         Left (v, errs) ->
             unlines $ ("VERSION: " ++ show v) : map (showPError fp) (NE.toList errs)

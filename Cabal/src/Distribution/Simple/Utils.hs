@@ -388,7 +388,7 @@ die' verbosity msg = withFrozenCallStack $ do
     =<< pure . addErrorPrefix
     =<< prefixWithProgName msg
 
--- Type which will be a wrapper for cabal -expections and cabal-install exceptions
+-- Type which will be a wrapper for cabal -exceptions and cabal-install exceptions
 data VerboseException a = VerboseException CallStack POSIXTime Verbosity a
   deriving (Show, Typeable)
 

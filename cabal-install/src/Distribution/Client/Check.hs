@@ -57,7 +57,7 @@ readGenericPackageDescriptionCheck verbosity fpath = do
       dieWithException verbosity ParseError
     Right x -> return (warnings, x)
 
--- | Checks a packge for common errors. Returns @True@ if the package
+-- | Checks a package for common errors. Returns @True@ if the package
 -- is fit to upload to Hackage, @False@ otherwise.
 -- Note: must be called with the CWD set to the directory containing
 -- the '.cabal' file.

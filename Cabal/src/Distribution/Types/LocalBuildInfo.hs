@@ -447,7 +447,7 @@ buildWays lbi =
   let
     -- enable-library-profiling (enable (static profiling way)) .p_o
     -- enable-shared (enabled dynamic way)  .dyn_o
-    -- enable-profiling-shared (enable dyanmic profilng way) .p_dyn_o
+    -- enable-profiling-shared (enable dynamic profilng way) .p_dyn_o
     -- enable-library-vanilla (enable vanilla way) .o
     --
     -- enable-executable-dynamic => build dynamic executables

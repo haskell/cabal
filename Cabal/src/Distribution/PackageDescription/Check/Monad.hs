@@ -242,7 +242,7 @@ tellCM ck = do
     -- There are some errors which, even though severe, will
     -- be allowed by Hackage *if* under a non-default flag.
     isErrAllowable :: PackageCheck -> Bool
-    isErrAllowable c = case extractCheckExplantion c of
+    isErrAllowable c = case extractCheckExplanation c of
       (WErrorUnneeded _) -> True
       (JUnneeded _) -> True
       (FDeferTypeErrorsUnneeded _) -> True

@@ -174,7 +174,7 @@ readAllTChan qvar = go []
         Nothing -> return (reverse xs)
         Just x -> go (x : xs)
 
--- | Make a 'JobControl' where the parallism is controlled by a semaphore.
+-- | Make a 'JobControl' where the parallelism is controlled by a semaphore.
 --
 -- This uses the GHC -jsem option to allow GHC to take additional semaphore slots
 -- if we are not using them all.

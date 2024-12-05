@@ -408,7 +408,7 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
 
         return (buildCtx, compiler, configureReplOptions & lReplOptionsFlags %~ (++ repl_flags), targets)
 
-    -- Multi Repl implemention see: https://well-typed.com/blog/2023/03/cabal-multi-unit/ for
+    -- Multi Repl implementation see: https://well-typed.com/blog/2023/03/cabal-multi-unit/ for
     -- a high-level overview about how everything fits together.
     if Set.size (distinctTargetComponents targets) > 1
       then withTempDirectoryEx verbosity tempFileOptions distDir "multi-out" $ \dir' -> do
@@ -440,7 +440,7 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
         let sp = intercalate [searchPathSeparator] (map fst (sortBy (comparing @Int snd) $ Map.toList (combine_search_paths all_paths)))
         -- HACK: Just combine together all env overrides, placing the most common things last
 
-        -- ghc program with overriden PATH
+        -- ghc program with overridden PATH
         (ghcProg, _) <- requireProgram verbosity ghcProgram (pkgConfigCompilerProgs (elaboratedShared buildCtx'))
         let ghcProg' = ghcProg{programOverrideEnv = [("PATH", Just sp)]}
 

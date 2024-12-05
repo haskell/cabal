@@ -6,7 +6,7 @@
 
 -- | Cabal-like file AST types: 'Field', 'Section' etc
 --
--- These types are parametrized by an annotation.
+-- These types are parameterized by an annotation.
 module Distribution.Fields.Field
   ( -- * Cabal file
     Field (..)

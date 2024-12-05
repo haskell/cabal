@@ -1102,7 +1102,7 @@ configureArgs bcHack flags =
       (Flag hc, NoFlag) -> [hc_flag_name ++ prettyShow hc]
       (NoFlag, NoFlag) -> []
     hc_flag_name
-      -- TODO kill off thic bc hack when defaultUserHooks is removed.
+      -- TODO kill off this bc hack when defaultUserHooks is removed.
       | bcHack = "--with-hc="
       | otherwise = "--with-compiler="
     optFlag name config_field = case config_field flags of

@@ -679,7 +679,7 @@ processImports v fromBuildInfo commonStanzas = go []
       fields' <- catMaybes <$> traverse (warnImport v) fields
       pure $ (fields', \x -> foldr (mergeCommonStanza fromBuildInfo) x acc)
 
--- | Warn on "import" fields, also map to Maybe, so errorneous fields can be filtered
+-- | Warn on "import" fields, also map to Maybe, so erroneous fields can be filtered
 warnImport :: CabalSpecVersion -> Field Position -> ParseResult (Maybe (Field Position))
 warnImport v (Field (Name pos name) _) | name == "import" = do
   if specHasCommonStanzas v == NoCommonStanzas

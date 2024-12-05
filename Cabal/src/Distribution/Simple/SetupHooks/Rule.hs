@@ -723,7 +723,7 @@ on the build-system side, we don't have access to any of the types, and thus don
 how much to read in order to reconstruct the associated opaque 'ByteString'.
 To ensure we always serialise/deserialise including the length of the data,
 the 'ScopedArgument' newtype is used, with a custom 'Binary' instance that always
-incldues the length. We use this newtype:
+includes the length. We use this newtype:
 
   - in the definition of 'CommandData', for arguments to rules,
   - in the definition of 'DepsRes', for the result of dynamic dependency computations.

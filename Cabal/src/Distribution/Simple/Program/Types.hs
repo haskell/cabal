@@ -143,7 +143,7 @@ data ConfiguredProgram = ConfiguredProgram
   , programMonitorFiles :: [FilePath]
   -- ^ In addition to the 'programLocation' where the program was found,
   -- these are additional locations that were looked at. The combination
-  -- of ths found location and these not-found locations can be used to
+  -- of this found location and these not-found locations can be used to
   -- monitor to detect when the re-configuring the program might give a
   -- different result (e.g. found in a different location).
   }
