@@ -506,6 +506,8 @@ vcsGit =
           | dir <- (primaryLocalDir : map snd secondaryRepos)
           ]
 
+    -- NOTE: Repositories are cloned once, but can be synchronized multiple times.
+    -- Therefore, this code has to work with both `git clone` and `git fetch`.
     vcsSyncRepo verbosity gitProg SourceRepositoryPackage{..} localDir peer = do
       exists <- doesDirectoryExist localDir
       if exists
@@ -532,10 +534,53 @@ vcsGit =
               (removePathForcibly gitModulesDir)
               (\e -> if isPermissionError e then removePathForcibly gitModulesDir else throw e)
           else removeDirectoryRecursive gitModulesDir
-      when (resetTarget /= "HEAD") $ do
-        git localDir fetchArgs -- first fetch the tag if needed
-        git localDir setTagArgs
-      git localDir resetArgs -- only then reset to the commit
+
+      -- If we want a particular branch or tag, fetch it.
+      ref <- case srpBranch `mplus` srpTag of
+        Nothing -> pure "HEAD"
+        Just ref -> do
+          -- /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\
+          -- /!\            MULTIPLE HOURS HAVE BEEN LOST HERE!!             /!\
+          -- /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\
+          --
+          -- If you run `git fetch origin MY_TAG`, then the tag _will_ be
+          -- fetched, but no local ref (e.g. `refs/tags/MY_TAG`) will be
+          -- created.
+          --
+          -- This means that doing `git fetch origin MY_TAG && git reset --hard
+          -- MY_TAG` will fail with a message like `unknown revision MY_TAG`.
+          --
+          -- There are two ways around this:
+          --
+          -- 1. Provide a refmap explicitly:
+          --
+          --        git fetch --refmap="+refs/tags/*:refs/tags/*" origin MYTAG
+          --
+          --    This tells Git to create local tags matching remote tags. It's
+          --    not in the default refmap so you need to set it explicitly.
+          --    (You can also set it with `git config set --local
+          --    remote.origin.fetch ...`.)
+          --
+          -- 2. Use `FETCH_HEAD` directly: Git writes a `FETCH_HEAD` ref
+          --    containing the commit that was just fetched. This feels a bit
+          --    nasty but seems to work reliably, even if nothing was fetched.
+          --    (That is, deleting `FETCH_HEAD` and re-running a `git fetch`
+          --    command will succesfully recreate the `FETCH_HEAD` ref.)
+          --
+          -- Option 2 is what Cabal has done historically, and we're keeping it
+          -- for now. Option 1 is possible but seems to have little benefit.
+          git localDir ("fetch" : verboseArg ++ ["origin", ref])
+          pure "FETCH_HEAD"
+
+      -- Then, reset to the appropriate ref.
+      git localDir $
+        "reset"
+          : verboseArg
+          ++ [ "--hard"
+             , ref
+             , "--"
+             ]
+
       git localDir $ ["submodule", "sync", "--recursive"] ++ verboseArg
       git localDir $ ["submodule", "update", "--force", "--init", "--recursive"] ++ verboseArg
       git localDir $ ["submodule", "foreach", "--recursive"] ++ verboseArg ++ ["git clean -ffxdq"]
@@ -556,15 +601,7 @@ vcsGit =
             ++ verboseArg
           where
             loc = srpLocation
-        -- To checkout/reset to a particular commit, we must first fetch it
-        -- (since the base clone is shallow).
-        fetchArgs = "fetch" : verboseArg ++ ["origin", resetTarget]
-        -- And then create the Tag from the FETCH_HEAD (which we should have just fetched)
-        setTagArgs = ["tag", "-f", resetTarget, "FETCH_HEAD"]
-        -- Then resetting to that tag will work (if we don't create the tag
-        -- locally from FETCH_HEAD, it won't exist).
-        resetArgs = "reset" : verboseArg ++ ["--hard", resetTarget, "--"]
-        resetTarget = fromMaybe "HEAD" (srpBranch `mplus` srpTag)
+
         verboseArg = ["--quiet" | verbosity < Verbosity.normal]
 
 gitProgram :: Program
