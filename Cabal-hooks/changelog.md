@@ -6,7 +6,7 @@
     No changes to `Cabal-hooks` itself; all changes come changes in re-exports
     from `Cabal`.
 
-## 3.14 – December 2023
+## 3.14 – November 2024
 
   * Initial release of the `Hooks` API.
 
