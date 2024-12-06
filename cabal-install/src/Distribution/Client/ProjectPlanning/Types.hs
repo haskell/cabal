@@ -108,6 +108,9 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Utils (ordNub)
 import Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
+import Distribution.Solver.Types.ConstraintSource
+  ( ConstraintSource (..)
+  )
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.WithConstraintSource
   ( WithConstraintSource (..)
@@ -346,7 +349,15 @@ normaliseConfiguredPackage
   -> ElaboratedConfiguredPackage
   -> ElaboratedConfiguredPackage
 normaliseConfiguredPackage ElaboratedSharedConfig{pkgConfigCompilerProgs} pkg =
-  pkg{elabProgramArgs = Map.mapMaybeWithKey lookupFilter (elabProgramArgs pkg)}
+  pkg
+    { elabProgramArgs = Map.mapMaybeWithKey lookupFilter (elabProgramArgs pkg)
+    , -- Wipe the constraint source so that if (e.g.) a project file changes we
+      -- don't necessarily force a rebuild if nothing else changes.
+      elabPkgSourceLocation =
+        (elabPkgSourceLocation pkg)
+          { constraintSource = ConstraintSourceUnknown
+          }
+    }
   where
     knownProgramDb = addKnownPrograms builtinPrograms pkgConfigCompilerProgs
 
