@@ -194,9 +194,7 @@ pkgEnvFieldDescrs src =
   , commaListFieldParsec
       "preferences"
       pretty
-      ( (\preference -> WithConstraintSource{constraintInner = preference, constraintSource = src})
-          `fmap` parsec
-      )
+      parsec
       (configPreferences . savedConfigureExFlags . pkgEnvSavedConfig)
       ( \v pkgEnv ->
           updateConfigureExFlags

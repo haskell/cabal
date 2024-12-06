@@ -208,7 +208,7 @@ data ProjectConfigShared = ProjectConfigShared
   , projectConfigStoreDir :: Flag FilePath
   , -- solver configuration
     projectConfigConstraints :: [WithConstraintSource UserConstraint]
-  , projectConfigPreferences :: [WithConstraintSource PackageVersionConstraint]
+  , projectConfigPreferences :: [PackageVersionConstraint]
   , projectConfigCabalVersion :: Flag Version -- TODO: [required eventually] unused
   , projectConfigSolver :: Flag PreSolver
   , projectConfigAllowOlder :: Maybe AllowOlder
@@ -411,7 +411,7 @@ data SolverSettings = SolverSettings
   -- ^ Available Hackage servers.
   , solverSettingLocalNoIndexRepos :: [LocalRepo]
   , solverSettingConstraints :: [WithConstraintSource UserConstraint]
-  , solverSettingPreferences :: [WithConstraintSource PackageVersionConstraint]
+  , solverSettingPreferences :: [PackageVersionConstraint]
   , solverSettingFlagAssignment :: FlagAssignment
   -- ^ For all local packages
   , solverSettingFlagAssignments :: Map PackageName FlagAssignment

@@ -620,7 +620,7 @@ instance Arbitrary ProjectConfigShared where
     projectConfigIndexState <- arbitrary
     projectConfigStoreDir <- arbitraryFlag arbitraryShortToken
     projectConfigConstraints <- arbitraryWithConstraintSources
-    projectConfigPreferences <- shortListOf 2 arbitraryWithConstraintSource
+    projectConfigPreferences <- shortListOf 2 arbitrary
     projectConfigCabalVersion <- arbitrary
     projectConfigSolver <- arbitrary
     projectConfigAllowOlder <- arbitrary
