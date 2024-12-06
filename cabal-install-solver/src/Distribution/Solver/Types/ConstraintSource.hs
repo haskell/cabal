@@ -60,7 +60,7 @@ data ConstraintSource =
   -- | An implicit constraint added by Cabal, for example if no targets are
   -- listed on the command line.
   | ConstraintSourceImplicitTarget
-  deriving (Show, Eq, Ord, Generic, Typeable)
+  deriving (Show, Eq, Ord, Generic)
 
 instance Binary ConstraintSource
 instance Structured ConstraintSource
