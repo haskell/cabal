@@ -57,8 +57,9 @@ data ConstraintSource =
   -- command line interface requires a maximum upper bound on Cabal
   | ConstraintSetupCabalMaxVersion
 
-  -- | An implicit constraint added by Cabal.
-  | ConstraintSourceImplicit
+  -- | An implicit constraint added by Cabal, for example if no targets are
+  -- listed on the command line.
+  | ConstraintSourceImplicitTarget
   deriving (Show, Eq, Ord, Generic, Typeable)
 
 instance Binary ConstraintSource
@@ -91,5 +92,5 @@ instance Pretty ConstraintSource where
       text "minimum version of Cabal used by Setup.hs"
     ConstraintSetupCabalMaxVersion ->
       text "maximum version of Cabal used by Setup.hs"
-    ConstraintSourceImplicit ->
+    ConstraintSourceImplicitTarget ->
       text "implicit target"

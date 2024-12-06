@@ -356,7 +356,7 @@ withContextAndSelectors noTargets kind flags@NixStyleFlags{..} targetStrings glo
     defaultTarget =
       [ WithConstraintSource
           { constraintInner = TargetPackage TargetExplicitNamed [fakePackageId] Nothing
-          , constraintSource = ConstraintSourceImplicit
+          , constraintSource = ConstraintSourceImplicitTarget
           }
       ]
 
