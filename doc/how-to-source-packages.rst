@@ -239,6 +239,9 @@ for the ``tag`` field:
    - If the ``tag`` field is a Git branch name then the latest commit on that branch is used.
    - If the ``tag`` field is a Git tag then the current commit that tag points to is used.
 
+Note that if the tag is not a full git hash (40 characters, hexadecimal), then
+the source repository must be fully cloned, which is often much slower than
+doing a shallow clone.
 
 *Source code* when dependency vendoring
 ---------------------------------------

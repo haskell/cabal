@@ -549,7 +549,10 @@ vcsGit =
       -- If we want a particular branch or tag, fetch it.
       ref <- case srpBranch `mplus` srpTag of
         Nothing -> pure "HEAD"
-        Just ref -> do
+        -- `doShallow` controls whether we use a shallow clone.
+        -- If the clone is shallow, make sure to fetch specified revisions
+        -- before using them.
+        Just ref | doShallow -> do
           -- /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\
           -- /!\            MULTIPLE HOURS HAVE BEEN LOST HERE!!             /!\
           -- /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\
@@ -582,6 +585,9 @@ vcsGit =
           -- for now. Option 1 is possible but seems to have little benefit.
           git localDir ("fetch" : verboseArg ++ ["origin", ref])
           pure "FETCH_HEAD"
+        Just ref
+          | otherwise ->
+              pure ref
 
       -- Then, reset to the appropriate ref.
       git localDir $
@@ -608,8 +614,30 @@ vcsGit =
               { progInvokeCwd = Just cwd
               }
 
+        -- Beware: if the user supplied revision for the source repository
+        -- package is /not/ a full hash, then we cannot fetch it, which means
+        -- we cannot do a shallow clone (--depth=1).
+        -- See #10605.
+        doShallow
+          | Nothing <- srpTag =
+              -- No tag, OK for shallow
+              True
+          -- full hashes are exactly 40 characters
+          | Just tg <- srpTag
+          , length tg == 40
+          , all (`elem` (['0' .. '9'] ++ ['a' .. 'f'] ++ ['A' .. 'F'])) tg =
+              True
+          | otherwise =
+              False
+
+        depthIs1
+          | doShallow = ["--depth=1"]
+          | otherwise = []
+
         cloneArgs =
-          ["clone", "--depth=1", "--no-checkout", loc, localDir]
+          ["clone"]
+            ++ depthIs1
+            ++ [ "--no-checkout", loc, localDir]
             ++ case peer of
               Nothing -> []
               Just peerLocalDir -> ["--reference", peerLocalDir]
