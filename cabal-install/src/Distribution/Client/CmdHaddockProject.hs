@@ -133,7 +133,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
     RejectNoTargets
     Nothing
     (commandDefaultFlags CmdBuild.buildCommand)
-    [WithConstraintSource{constraintInner = "all", constraintSource = ConstraintSourceImplicit}]
+    [WithConstraintSource{constraintInner = "all", constraintSource = ConstraintSourceImplicitTarget}]
     globalFlags
     HaddockCommand
     $ \targetCtx ctx targetSelectors -> do

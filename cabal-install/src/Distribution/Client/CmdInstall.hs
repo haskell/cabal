@@ -374,7 +374,7 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
         then
           [ WithConstraintSource
               { constraintInner = "."
-              , constraintSource = ConstraintSourceImplicit
+              , constraintSource = ConstraintSourceImplicitTarget
               }
           ]
         else

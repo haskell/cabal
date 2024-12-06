@@ -556,7 +556,7 @@ resolveTargetSelectors (KnownTargets{knownPackagesAll = []}) [] _ =
   (
     [ WithConstraintSource
         { constraintInner = TargetSelectorNoTargetsInProject
-        , constraintSource = ConstraintSourceImplicit
+        , constraintSource = ConstraintSourceImplicitTarget
         }
     ]
   , []
@@ -566,7 +566,7 @@ resolveTargetSelectors (KnownTargets{knownPackagesPrimary = []}) [] ckf =
   (
     [ WithConstraintSource
         { constraintInner = TargetSelectorNoTargetsInCwd (ckf /= Just ExeKind)
-        , constraintSource = ConstraintSourceImplicit
+        , constraintSource = ConstraintSourceImplicitTarget
         }
     ]
   , []
@@ -576,7 +576,7 @@ resolveTargetSelectors (KnownTargets{knownPackagesPrimary}) [] _ =
   ,
     [ WithConstraintSource
         { constraintInner = TargetPackage TargetImplicitCwd pkgids Nothing
-        , constraintSource = ConstraintSourceImplicit
+        , constraintSource = ConstraintSourceImplicitTarget
         }
     ]
   )

@@ -200,7 +200,7 @@ testTargetSelectors reportSubCase = do
     ts
       @?= [ WithConstraintSource
               { constraintInner = TargetPackage TargetImplicitCwd ["p-0.1"] Nothing
-              , constraintSource = ConstraintSourceImplicit
+              , constraintSource = ConstraintSourceImplicitTarget
               }
           ]
 
@@ -901,7 +901,7 @@ testTargetSelectorNoTargets = do
   errs
     @?= [ WithConstraintSource
             { constraintInner = TargetSelectorNoTargetsInCwd True
-            , constraintSource = ConstraintSourceImplicit
+            , constraintSource = ConstraintSourceImplicitTarget
             }
         ]
   cleanProject testdir
@@ -916,7 +916,7 @@ testTargetSelectorProjectEmpty = do
   errs
     @?= [ WithConstraintSource
             { constraintInner = TargetSelectorNoTargetsInProject
-            , constraintSource = ConstraintSourceImplicit
+            , constraintSource = ConstraintSourceImplicitTarget
             }
         ]
   cleanProject testdir
@@ -943,7 +943,7 @@ testTargetSelectorCanonicalizedPath = do
         ts
           @?= [ WithConstraintSource
                   { constraintInner = TargetPackage TargetImplicitCwd ["p-0.1"] Nothing
-                  , constraintSource = ConstraintSourceImplicit
+                  , constraintSource = ConstraintSourceImplicitTarget
                   }
               ]
     )
