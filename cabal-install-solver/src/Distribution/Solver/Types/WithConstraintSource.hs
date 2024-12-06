@@ -24,7 +24,7 @@ data WithConstraintSource pkg =
     , constraintSource :: ConstraintSource
       -- ^ The constraint source for the package.
     }
-  deriving (Show, Functor, Eq, Ord, Traversable, Foldable, Generic, Typeable)
+  deriving (Show, Functor, Eq, Ord, Traversable, Foldable, Generic)
 
 instance Binary pkg => Binary (WithConstraintSource pkg)
 instance Structured pkg => Structured (WithConstraintSource pkg)

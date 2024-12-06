@@ -18,7 +18,7 @@ import Text.PrettyPrint
 
 -- | A package, identified by a name and properties.
 data NamedPackage = NamedPackage PackageName [PackageProperty]
-  deriving (Show, Eq, Ord, Generic, Typeable)
+  deriving (Show, Eq, Ord, Generic)
 
 instance Binary NamedPackage
 instance Structured NamedPackage
