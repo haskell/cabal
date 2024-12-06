@@ -377,13 +377,13 @@ checkConfigExFlags verbosity installedPkgIndex sourcePkgIndex flags = do
   for_ (safeHead unknownPreferences) $ \h ->
     warn verbosity $
       "Preference refers to an unknown package: "
-        ++ showWithConstraintSource prettyShow h
+        ++ prettyShow h
   where
     unknownConstraints =
       filter (unknown . userConstraintPackageName . constraintInner) $
         configExConstraints flags
     unknownPreferences =
-      filter (unknown . (\(PackageVersionConstraint name _) -> name) . constraintInner) $
+      filter (unknown . (\(PackageVersionConstraint name _) -> name)) $
         configPreferences flags
     unknown pkg =
       null (PackageIndex.lookupPackageName installedPkgIndex pkg)
@@ -443,7 +443,7 @@ planLocalPackage
           . addPreferences
             -- preferences from the config file or command line
             [ PackageVersionPreference name ver
-            | PackageVersionConstraint name ver <- map constraintInner $ configPreferences configExFlags
+            | PackageVersionConstraint name ver <- configPreferences configExFlags
             ]
           . addConstraints
             -- version constraints from the config file or command line

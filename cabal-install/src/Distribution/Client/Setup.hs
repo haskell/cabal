@@ -914,7 +914,7 @@ data ConfigExFlags = ConfigExFlags
   , configAppend :: Flag Bool
   , configBackup :: Flag Bool
   , configExConstraints :: [WithConstraintSource UserConstraint]
-  , configPreferences :: [WithConstraintSource PackageVersionConstraint]
+  , configPreferences :: [PackageVersionConstraint]
   , configSolver :: Flag PreSolver
   , configAllowNewer :: Maybe AllowNewer
   , configAllowOlder :: Maybe AllowOlder
@@ -1007,11 +1007,9 @@ configureExOptions _showOrParseArgs constraint =
           "CONSTRAINT"
           ( parsecToReadE
               (const "dependency expected")
-              ( (\pkg -> [WithConstraintSource{constraintInner = pkg, constraintSource = constraint}])
-                  `fmap` parsec
-              )
+              (fmap (\x -> [x]) parsec)
           )
-          (map $ showWithConstraintSource prettyShow)
+          (map prettyShow)
       )
   , optionSolver configSolver (\v flags -> flags{configSolver = v})
   , option

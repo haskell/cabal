@@ -1435,10 +1435,8 @@ legacySharedConfigFieldDescrs constraintSrc =
               (\v conf -> conf{configExConstraints = v})
           , commaNewLineListFieldParsec
               "preferences"
-              (pretty . constraintInner)
-              ( (\preference -> WithConstraintSource{constraintInner = preference, constraintSource = constraintSrc})
-                  `fmap` parsec
-              )
+              pretty
+              parsec
               configPreferences
               (\v conf -> conf{configPreferences = v})
           , monoidFieldParsec

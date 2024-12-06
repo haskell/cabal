@@ -624,7 +624,7 @@ planPackages
           . addPreferences
             -- preferences from the config file or command line
             [ PackageVersionPreference name ver
-            | PackageVersionConstraint name ver <- map constraintInner $ configPreferences configExFlags
+            | PackageVersionConstraint name ver <- configPreferences configExFlags
             ]
           . addConstraints
             -- version constraints from the config file or command line
