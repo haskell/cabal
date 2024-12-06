@@ -98,7 +98,7 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
   let targetProvenance =
         WithConstraintSource
           { constraintInner = target
-          , constraintSource = ConstraintSourceCommandlineFlag
+          , constraintSource = ConstraintSourceUserTarget
           }
 
   -- configure and elaborate target selectors

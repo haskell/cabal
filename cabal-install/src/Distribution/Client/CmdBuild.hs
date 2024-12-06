@@ -197,7 +197,7 @@ buildAction flags@NixStyleFlags{extraFlags = buildFlags, ..} targetStrings globa
         ( \target ->
             WithConstraintSource
               { constraintInner = target
-              , constraintSource = ConstraintSourceCommandlineFlag
+              , constraintSource = ConstraintSourceUserTarget
               }
         )
         targetStrings

@@ -213,7 +213,7 @@ runAction flags@NixStyleFlags{..} targetAndArgs globalFlags =
     (Just ExeKind)
     flags
     ( map
-        (\target -> WithConstraintSource{constraintInner = target, constraintSource = ConstraintSourceCommandlineFlag})
+        (\target -> WithConstraintSource{constraintInner = target, constraintSource = ConstraintSourceUserTarget})
         targetStr
     )
     globalFlags
