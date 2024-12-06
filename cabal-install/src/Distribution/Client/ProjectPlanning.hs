@@ -1298,7 +1298,7 @@ planPackages
           . addPreferences
             -- preferences from the config file or command line
             [ PackageVersionPreference name ver
-            | PackageVersionConstraint name ver <- map constraintInner solverSettingPreferences
+            | PackageVersionConstraint name ver <- solverSettingPreferences
             ]
           . addConstraints
             -- version constraints from the config file or command line
