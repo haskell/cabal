@@ -293,7 +293,7 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
     (Just LibKind)
     flags
     ( map
-        (\target -> WithConstraintSource{constraintInner = target, constraintSource = ConstraintSourceCommandlineFlag})
+        (\target -> WithConstraintSource{constraintInner = target, constraintSource = ConstraintSourceUserTarget})
         targetStrings
     )
     globalFlags

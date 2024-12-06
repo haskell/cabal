@@ -246,7 +246,7 @@ sdistAction (pf@ProjectFlags{..}, SdistFlags{..}) targetStrings globalFlags = do
         localPkgs
         Nothing
         ( map
-            (\target -> WithConstraintSource{constraintInner = target, constraintSource = ConstraintSourceCommandlineFlag})
+            (\target -> WithConstraintSource{constraintInner = target, constraintSource = ConstraintSourceUserTarget})
             targetStrings
         )
 

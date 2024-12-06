@@ -173,7 +173,7 @@ haddockAction relFlags targetStrings globalFlags = do
       =<< readTargetSelectors
         (localPackages baseCtx)
         Nothing
-        (map (\target -> WithConstraintSource{constraintInner = target, constraintSource = ConstraintSourceCommandlineFlag}) targetStrings)
+        (map (\target -> WithConstraintSource{constraintInner = target, constraintSource = ConstraintSourceUserTarget}) targetStrings)
 
   buildCtx <-
     runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do

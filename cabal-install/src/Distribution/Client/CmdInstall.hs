@@ -382,7 +382,7 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
             ( \target ->
                 WithConstraintSource
                   { constraintInner = target
-                  , constraintSource = ConstraintSourceCommandlineFlag
+                  , constraintSource = ConstraintSourceUserTarget
                   }
             )
             targetStrings

@@ -67,7 +67,7 @@ import qualified System.Exit (exitSuccess)
 
 import Distribution.Client.Errors
 import Distribution.Client.Setup (CommonSetupFlags (..))
-import Distribution.Solver.Types.ConstraintSource (ConstraintSource (ConstraintSourceCommandlineFlag))
+import Distribution.Solver.Types.ConstraintSource (ConstraintSource (ConstraintSourceUserTarget))
 import Distribution.Solver.Types.WithConstraintSource (WithConstraintSource (..))
 import GHC.Environment
   ( getFullArgs
@@ -132,7 +132,7 @@ testAction flags@NixStyleFlags{..} targetStrings globalFlags = do
           ( \target ->
               WithConstraintSource
                 { constraintInner = target
-                , constraintSource = ConstraintSourceCommandlineFlag
+                , constraintSource = ConstraintSourceUserTarget
                 }
           )
           targetStrings
