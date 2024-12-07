@@ -31,6 +31,7 @@ import System.FilePath
 import qualified Data.List.NonEmpty as NE
 import Distribution.Solver.Modular.Version (VR)
 import Distribution.Pretty (prettyShow)
+import Distribution.Utils.String (trim)
 import Text.PrettyPrint
 
 -- | Path to a configuration file, either a singleton project root, or a longer
@@ -61,8 +62,12 @@ instance Structured ProjectConfigPath
 -- "D.config\n  imported by: C.config\n  imported by: B.config\n  imported by: A.project"
 docProjectConfigPath :: ProjectConfigPath -> Doc
 docProjectConfigPath (ProjectConfigPath (p :| [])) = text p
-docProjectConfigPath (ProjectConfigPath (p :| ps)) = vcat $
-    text p : [ text " " <+> text "imported by:" <+> text l | l <- ps ]
+docProjectConfigPath (ProjectConfigPath (p :| ps)) = vcat $ quoteUntrimmed p :
+    [ text " " <+> text "imported by:" <+> quoteUntrimmed l | l <- ps ]
+
+-- | If the path has leading or trailing spaces then show it quoted.
+quoteUntrimmed :: FilePath -> Doc
+quoteUntrimmed s = if trim s /= s then quotes (text s) else text s
 
 -- | Renders the paths as a list without showing which path imports another,
 -- like this;
