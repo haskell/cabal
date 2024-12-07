@@ -141,6 +141,7 @@ import Distribution.Utils.NubList
   , overNubList
   , toNubList
   )
+import Distribution.Utils.String (trim)
 
 import Distribution.Client.HttpUtils
 import Distribution.Client.ParseUtils
@@ -342,7 +343,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
       fetch pci
 
     fetch :: FilePath -> IO BS.ByteString
-    fetch pci = case parseURI pci of
+    fetch pci = case parseURI $ trim pci of
       Just uri -> do
         let fp = cacheDir </> map (\x -> if isPathSeparator x then '_' else x) (makeValid $ show uri)
         createDirectoryIfMissing True cacheDir

@@ -34,6 +34,7 @@ import System.FilePath
 import qualified Data.List.NonEmpty as NE
 import Distribution.Solver.Modular.Version (VR)
 import Distribution.Pretty (prettyShow)
+import Distribution.Utils.String (trim)
 import Text.PrettyPrint
 import Distribution.Simple.Utils (ordNub)
 
@@ -98,9 +99,13 @@ instance Structured ProjectConfigPath
 -- >>> render . docProjectConfigPath $ ProjectConfigPath $ "D.config" :| ["C.config", "B.config", "A.project"]
 -- "D.config\n  imported by: C.config\n  imported by: B.config\n  imported by: A.project"
 docProjectConfigPath :: ProjectConfigPath -> Doc
-docProjectConfigPath (ProjectConfigPath (p :| [])) = text p
-docProjectConfigPath (ProjectConfigPath (p :| ps)) = vcat $
-    text p : [ text " " <+> text "imported by:" <+> text l | l <- ps ]
+docProjectConfigPath (ProjectConfigPath (p :| [])) = quoteUntrimmed p
+docProjectConfigPath (ProjectConfigPath (p :| ps)) = vcat $ quoteUntrimmed p :
+    [ text " " <+> text "imported by:" <+> quoteUntrimmed l | l <- ps ]
+
+-- | If the path has leading or trailing spaces then show it quoted.
+quoteUntrimmed :: FilePath -> Doc
+quoteUntrimmed s = if trim s /= s then quotes (text s) else text s
 
 -- | Renders the paths as a list without showing which path imports another,
 -- like this;
@@ -196,7 +201,7 @@ unconsProjectConfigPath ps = fmap ProjectConfigPath <$> NE.uncons (coerce ps)
 makeRelativeConfigPath :: FilePath -> ProjectConfigPath -> ProjectConfigPath
 makeRelativeConfigPath dir (ProjectConfigPath p) =
     ProjectConfigPath
-    $ (\segment -> (if isURI segment then segment else makeRelative dir segment))
+    $ (\segment@(trim -> trimSegment) -> (if isURI trimSegment then trimSegment else makeRelative dir segment))
     <$> p
 
 -- | Normalizes and canonicalizes a path removing '.' and '..' indirections.
@@ -273,11 +278,25 @@ makeRelativeConfigPath dir (ProjectConfigPath p) =
 --     return $ expected == render (docProjectConfigPath p) ++ "\n"
 -- :}
 -- True
+--
+-- "A string is a valid URL potentially surrounded by spaces if, after stripping leading and trailing whitespace from it, it is a valid URL."
+-- [W3C/HTML5/URLs](https://www.w3.org/TR/2010/WD-html5-20100624/urls.html)
+--
+-- Trailing spaces for @ProjectConfigPath@ URLs are trimmed.
+--
+-- >>> p <- canonicalizeConfigPath "" (ProjectConfigPath $ ("https://www.stackage.org/nightly-2024-12-05/cabal.config ") :| [])
+-- >>> render $ docProjectConfigPath p
+-- "https://www.stackage.org/nightly-2024-12-05/cabal.config"
+--
+-- >>> let d = testDir
+-- >>> p <- canonicalizeConfigPath d (ProjectConfigPath $ ("https://www.stackage.org/nightly-2024-12-05/cabal.config ") :| [d </> "cabal.project"])
+-- >>> render $ docProjectConfigPath p
+-- "https://www.stackage.org/nightly-2024-12-05/cabal.config\n  imported by: cabal.project"
 canonicalizeConfigPath :: FilePath -> ProjectConfigPath -> IO ProjectConfigPath
 canonicalizeConfigPath d (ProjectConfigPath p) = do
-    xs <- sequence $ NE.scanr (\importee -> (>>= \importer ->
-            if isURI importee
-                then pure importee
+    xs <- sequence $ NE.scanr (\importee@(trim -> trimImportee) -> (>>= \importer@(trim -> trimImporter) ->
+            if isURI trimImportee || isURI trimImporter
+                then pure trimImportee
                 else canonicalizePath $ d </> takeDirectory importer </> importee))
             (pure ".") p
     return . makeRelativeConfigPath d . ProjectConfigPath . NE.fromList $ NE.init xs
