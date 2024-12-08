@@ -51,12 +51,12 @@ instance Binary ProjectConfigPath
 instance Structured ProjectConfigPath
 
 -- | Renders the path like this;
--- @
--- D.config
---   imported by: C.config
---   imported by: B.config
---   imported by: A.project
--- @
+--
+-- >D.config
+-- >  imported by: C.config
+-- >  imported by: B.config
+-- >  imported by: A.project
+--
 -- >>> render . docProjectConfigPath $ ProjectConfigPath $ "D.config" :| ["C.config", "B.config", "A.project"]
 -- "D.config\n  imported by: C.config\n  imported by: B.config\n  imported by: A.project"
 docProjectConfigPath :: ProjectConfigPath -> Doc
@@ -66,19 +66,19 @@ docProjectConfigPath (ProjectConfigPath (p :| ps)) = vcat $
 
 -- | Renders the paths as a list without showing which path imports another,
 -- like this;
--- @
--- - cabal.project
--- - project-cabal/constraints.config
--- - project-cabal/ghc-latest.config
--- - project-cabal/ghc-options.config
--- - project-cabal/pkgs.config
--- - project-cabal/pkgs/benchmarks.config
--- - project-cabal/pkgs/buildinfo.config
--- - project-cabal/pkgs/cabal.config
--- - project-cabal/pkgs/install.config
--- - project-cabal/pkgs/integration-tests.config
--- - project-cabal/pkgs/tests.config
--- @
+--
+-- >- cabal.project
+-- >- project-cabal/constraints.config
+-- >- project-cabal/ghc-latest.config
+-- >- project-cabal/ghc-options.config
+-- >- project-cabal/pkgs.config
+-- >- project-cabal/pkgs/benchmarks.config
+-- >- project-cabal/pkgs/buildinfo.config
+-- >- project-cabal/pkgs/cabal.config
+-- >- project-cabal/pkgs/install.config
+-- >- project-cabal/pkgs/integration-tests.config
+-- >- project-cabal/pkgs/tests.config
+--
 --
 -- >>> :{
 --   do
@@ -161,32 +161,30 @@ makeRelativeConfigPath dir (ProjectConfigPath p) =
 -- instead of relative to the file it was imported from.
 --
 -- It converts paths like this:
--- @
--- └─ hops-0.project
---    └─ hops/hops-1.config
---       └─ ../hops-2.config
---          └─ hops/hops-3.config
---             └─ ../hops-4.config
---                └─ hops/hops-5.config
---                   └─ ../hops-6.config
---                      └─ hops/hops-7.config
---                         └─ ../hops-8.config
---                            └─ hops/hops-9.config
--- @
+--
+-- >   hops-0.project
+-- >   └─ hops/hops-1.config
+-- >      └─ ../hops-2.config
+-- >         └─ hops/hops-3.config
+-- >            └─ ../hops-4.config
+-- >               └─ hops/hops-5.config
+-- >                  └─ ../hops-6.config
+-- >                     └─ hops/hops-7.config
+-- >                        └─ ../hops-8.config
+-- >                           └─ hops/hops-9.config
 --
 -- Into paths like this:
--- @
--- └─ hops-0.project
---    └─ hops/hops-1.config
---       └─ hops-2.config
---          └─ hops/hops-3.config
---             └─ hops-4.config
---                └─ hops/hops-5.config
---                   └─ hops-6.config
---                      └─ hops/hops-7.config
---                         └─ hops-8.config
---                            └─ hops/hops-9.config
--- @
+--
+-- >   hops-0.project
+-- >   └─ hops/hops-1.config
+-- >      └─ hops-2.config
+-- >         └─ hops/hops-3.config
+-- >            └─ hops-4.config
+-- >               └─ hops/hops-5.config
+-- >                  └─ hops-6.config
+-- >                     └─ hops/hops-7.config
+-- >                        └─ hops-8.config
+-- >                           └─ hops/hops-9.config
 --
 -- That way we have @hops-8.config@ instead of
 -- @./hops/../hops/../hops/../hops/../hops-8.config@.
