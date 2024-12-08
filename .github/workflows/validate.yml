@@ -192,12 +192,6 @@ jobs:
           fi
           echo "FLAGS=$FLAGS" >> "$GITHUB_ENV"
 
-      - name: Validate print-config
-        run: sh validate.sh $FLAGS -s print-config
-
-      - name: Validate print-tool-versions
-        run: sh validate.sh $FLAGS -s print-tool-versions
-
       - name: Validate build
         run: sh validate.sh $FLAGS -s build
 
@@ -453,9 +447,6 @@ jobs:
 
       - name: Untar the cabal executable
         run: tar -xzf "./cabal-head/cabal-head-${{ runner.os }}-$CABAL_ARCH.tar.gz" -C cabal-head
-
-      - name: print-config using cabal HEAD
-        run: sh validate.sh ${{ env.COMMON_FLAGS }} --with-cabal ./cabal-head/cabal -s print-config
 
       # We dont use cache to force a build with a fresh store dir and build dir
       # This way we check cabal can build all its dependencies
