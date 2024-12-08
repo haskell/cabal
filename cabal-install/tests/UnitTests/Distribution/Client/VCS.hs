@@ -923,10 +923,7 @@ vcsTestDriverGit
                   , mkVcsTmpDir = tmpDir
                   }
       , vcsAddSubmodule = \_ source dest -> do
-          destExists <-
-            (||)
-              <$> doesFileExist (repoRoot </> dest)
-              <*> doesDirectoryExist (repoRoot </> dest)
+          destExists <- doesPathExist $ repoRoot </> dest
           when destExists $ gitQuiet ["rm", "--force", dest]
           -- If there is an old submodule git dir with the same name, remove it.
           -- It most likely has a different URL and `git submodule add` will fai.
@@ -995,16 +992,23 @@ vcsTestDriverGit
       verboseArg = ["--quiet" | verbosity < Verbosity.normal]
 
       submoduleGitDir path = repoRoot </> ".git" </> "modules" </> path
+
+      dotGitModulesPath = repoRoot </> ".git" </> "modules"
+      gitModulesPath = repoRoot </> ".gitmodules"
+
       deinitAndRemoveCachedSubmodules = do
-        gitQuiet ["submodule", "deinit", "--force", "--all"]
-        let gitModulesDir = repoRoot </> ".git" </> "modules"
-        gitModulesExists <- doesDirectoryExist gitModulesDir
-        when gitModulesExists $ removeDirectoryRecursive gitModulesDir
+        dotGitModulesExists <- doesDirectoryExist dotGitModulesPath
+        when dotGitModulesExists $ do
+          git $ ["submodule", "deinit", "--force", "--all"] ++ verboseArg
+          removeDirectoryRecursive dotGitModulesPath
+
       updateSubmodulesAndCleanup = do
-        gitQuiet ["submodule", "sync", "--recursive"]
-        gitQuiet ["submodule", "update", "--init", "--recursive", "--force"]
-        -- Note: We need to manually add `verboseArg` here so that the embedded `git clean` command includes it as well.
-        gitQuiet $ ["submodule", "foreach", "--recursive", "git clean -ffxdq"] ++ verboseArg
+        gitModulesExists <- doesFileExist gitModulesPath
+        when gitModulesExists $ do
+          gitQuiet ["submodule", "sync", "--recursive"]
+          gitQuiet ["submodule", "update", "--init", "--recursive", "--force"]
+          -- Note: We need to manually add `verboseArg` here so that the embedded `git clean` command includes it as well.
+          gitQuiet $ ["submodule", "foreach", "--recursive", "git clean -ffxdq"] ++ verboseArg
         gitQuiet ["clean", "-ffxdq"]
 
 type MTimeChange = Int

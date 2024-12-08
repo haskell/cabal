@@ -96,6 +96,7 @@ import qualified Data.List as List
 import qualified Data.Map as Map
 import System.Directory
   ( doesDirectoryExist
+  , doesFileExist
   , removeDirectoryRecursive
   , removePathForcibly
   )
@@ -468,11 +469,18 @@ vcsGit =
       [programInvocation prog cloneArgs]
         -- And if there's a tag, we have to do that in a second step:
         ++ [git (resetArgs tag) | tag <- maybeToList (srpTag repo)]
-        ++ [ git (["submodule", "sync", "--recursive"] ++ verboseArg)
-           , git (["submodule", "update", "--init", "--force", "--recursive"] ++ verboseArg)
+        ++ [ whenGitModulesExists $ git $ ["submodule", "sync", "--recursive"] ++ verboseArg
+           , whenGitModulesExists $ git $ ["submodule", "update", "--init", "--force", "--recursive"] ++ verboseArg
            ]
       where
         git args = (programInvocation prog args){progInvokeCwd = Just destdir}
+
+        gitModulesPath = destdir </> ".gitmodules"
+        whenGitModulesExists invocation =
+          invocation
+            { progInvokeWhen = doesFileExist gitModulesPath
+            }
+
         cloneArgs =
           ["clone", srcuri, destdir]
             ++ branchArgs
@@ -518,22 +526,25 @@ vcsGit =
       -- is needed because sometimes `git submodule sync` does not actually
       -- update the submodule source URL. Detailed description here:
       -- https://git.coop/-/snippets/85
-      git localDir $ ["submodule", "deinit", "--force", "--all"] ++ verboseArg
-      let gitModulesDir = localDir </> ".git" </> "modules"
-      gitModulesExists <- doesDirectoryExist gitModulesDir
-      when gitModulesExists $
+      let dotGitModulesPath = localDir </> ".git" </> "modules"
+          gitModulesPath = localDir </> ".gitmodules"
+
+      -- Remove any `.git/modules` if they exist.
+      dotGitModulesExists <- doesDirectoryExist dotGitModulesPath
+      when dotGitModulesExists $ do
+        git localDir $ ["submodule", "deinit", "--force", "--all"] ++ verboseArg
         if buildOS == Windows
           then do
             -- Windows can't delete some git files #10182
             void $
               Process.createProcess_ "attrib" $
                 Process.shell $
-                  "attrib -s -h -r " <> gitModulesDir <> "\\*.* /s /d"
+                  "attrib -s -h -r " <> dotGitModulesPath <> "\\*.* /s /d"
 
             catch
-              (removePathForcibly gitModulesDir)
-              (\e -> if isPermissionError e then removePathForcibly gitModulesDir else throw e)
-          else removeDirectoryRecursive gitModulesDir
+              (removePathForcibly dotGitModulesPath)
+              (\e -> if isPermissionError e then removePathForcibly dotGitModulesPath else throw e)
+          else removeDirectoryRecursive dotGitModulesPath
 
       -- If we want a particular branch or tag, fetch it.
       ref <- case srpBranch `mplus` srpTag of
@@ -581,9 +592,13 @@ vcsGit =
              , "--"
              ]
 
-      git localDir $ ["submodule", "sync", "--recursive"] ++ verboseArg
-      git localDir $ ["submodule", "update", "--force", "--init", "--recursive"] ++ verboseArg
-      git localDir $ ["submodule", "foreach", "--recursive"] ++ verboseArg ++ ["git clean -ffxdq"]
+      -- We need to check if `.gitmodules` exists _after_ the `git reset` call.
+      gitModulesExists <- doesFileExist gitModulesPath
+      when gitModulesExists $ do
+        git localDir $ ["submodule", "sync", "--recursive"] ++ verboseArg
+        git localDir $ ["submodule", "update", "--force", "--init", "--recursive"] ++ verboseArg
+        git localDir $ ["submodule", "foreach", "--recursive"] ++ verboseArg ++ ["git clean -ffxdq"]
+
       git localDir $ ["clean", "-ffxdq"]
       where
         git :: FilePath -> [String] -> IO ()

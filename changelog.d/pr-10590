@@ -1,0 +1,14 @@
+---
+synopsis: "Don't run submodule commands unless necessary"
+packages: [cabal-install]
+prs: 10590
+---
+
+When `cabal` clones a Git repo for a `source-repository-package` listed in a
+`cabal.project`, it will run various commands to check out the correct
+revision, initialize submodules if they're present, and so on.
+
+Now, `cabal` will avoid running `git submodule` commands unless the cloned
+repository contains a `.gitmodules` file. This will declutter `cabal`'s debug
+output by running fewer commands.
+
