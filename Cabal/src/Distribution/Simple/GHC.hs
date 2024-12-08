@@ -627,6 +627,8 @@ startInterpreter verbosity progdb comp platform packageDBs = do
           }
   checkPackageDbStack verbosity comp packageDBs
   (ghcProg, _) <- requireProgram verbosity ghcProgram progdb
+  -- This doesn't pass source file arguments to GHC, so we don't have to worry
+  -- about using a response file here.
   runGHC verbosity ghcProg comp platform Nothing replOpts
 
 -- -----------------------------------------------------------------------------
