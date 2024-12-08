@@ -58,6 +58,10 @@ stripLib verbosity (Platform arch os) progdb path = do
     IOS -> return ()
     AIX -> return ()
     Solaris -> return ()
+    OpenBSD ->
+      -- '--strip-unneeded' sometimes strips too much on OpenBSD.
+      -- -- See https://cvsweb.openbsd.org/cgi-bin/cvsweb/~checkout~/ports/lang/ghc/patches/patch-libraries_Cabal_Cabal_Distribution_Simple_Program_Strip_hs
+      return ()
     Windows ->
       -- Stripping triggers a bug in 'strip.exe' for
       -- libraries with lots identically named modules. See
