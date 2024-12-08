@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -211,6 +212,10 @@ import Distribution.Simple.Setup
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
   ( wrapText
+  )
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
+  , showWithConstraintSource
   )
 import Distribution.System (Platform)
 import Distribution.Types.GivenComponent
@@ -909,7 +914,7 @@ data ConfigExFlags = ConfigExFlags
   { configCabalVersion :: Flag Version
   , configAppend :: Flag Bool
   , configBackup :: Flag Bool
-  , configExConstraints :: [(UserConstraint, ConstraintSource)]
+  , configExConstraints :: [WithConstraintSource UserConstraint]
   , configPreferences :: [PackageVersionConstraint]
   , configSolver :: Flag PreSolver
   , configAllowNewer :: Maybe AllowNewer
@@ -949,7 +954,7 @@ configureExOptions
   :: ShowOrParseArgs
   -> ConstraintSource
   -> [OptionField ConfigExFlags]
-configureExOptions _showOrParseArgs src =
+configureExOptions _showOrParseArgs constraint =
   [ option
       []
       ["cabal-lib-version"]
@@ -988,8 +993,10 @@ configureExOptions _showOrParseArgs src =
       (\v flags -> flags{configExConstraints = v})
       ( reqArg
           "CONSTRAINT"
-          ((\x -> [(x, src)]) `fmap` ReadE readUserConstraint)
-          (map $ prettyShow . fst)
+          ( (\pkg -> [WithConstraintSource{constraintInner = pkg, constraintSource = constraint}])
+              `fmap` ReadE readUserConstraint
+          )
+          (map $ showWithConstraintSource prettyShow)
       )
   , option
       []
