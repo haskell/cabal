@@ -12,6 +12,7 @@ module Distribution.Solver.Types.ProjectConfigPath
     , docProjectConfigPath
     , docProjectConfigPaths
     , cyclicalImportMsg
+    , duplicateImportMsg
     , docProjectConfigPathFailReason
 
     -- * Checks and Normalization
@@ -102,13 +103,24 @@ docProjectConfigPaths :: [ProjectConfigPath] -> Doc
 docProjectConfigPaths ps = vcat
     [ text "-" <+> text p | ProjectConfigPath (p :| _) <- ps ]
 
--- | A message for a cyclical import, assuming the head of the path is the
--- duplicate.
+-- | A message for a cyclical import, a "cyclical import of".
 cyclicalImportMsg :: ProjectConfigPath -> Doc
-cyclicalImportMsg path@(ProjectConfigPath (duplicate :| _)) =
+cyclicalImportMsg path@(ProjectConfigPath (duplicate :| _)) = seenImportMsg "cyclical" duplicate path []
+
+-- | A message for a duplicate import, a "duplicate import of".
+duplicateImportMsg :: FilePath -> ProjectConfigPath -> [(FilePath, ProjectConfigPath)] -> Doc
+duplicateImportMsg = seenImportMsg "duplicate"
+
+seenImportMsg :: String -> FilePath -> ProjectConfigPath -> [(FilePath, ProjectConfigPath)] -> Doc
+seenImportMsg seen duplicate path seenImportsBy =
     vcat
-    [ text "cyclical import of" <+> text duplicate <> semi
+    [ text seen <+> text "import of" <+> text duplicate <> semi
     , nest 2 (docProjectConfigPath path)
+    , nest 2 $
+        vcat
+        [ docProjectConfigPath dib
+        | (_, dib) <- filter ((duplicate ==) . fst) seenImportsBy
+        ]
     ]
 
 docProjectConfigPathFailReason :: VR -> ProjectConfigPath -> Doc

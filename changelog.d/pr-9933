@@ -1,0 +1,23 @@
+synopsis: Detect non-cyclical duplicate project imports
+description:
+  Detect and report on duplicate imports that are non-cyclical and expand the
+  detail in cyclical import reporting, being more explicit and consistent with
+  non-cyclical duplicate reporting.
+
+  ```
+  $ cabal build --project-file=yops-0.project
+  ...
+  Error: [Cabal-7090]
+  Error parsing project file yops-0.project:
+  duplicate import of yops/yops-3.config;
+    yops/yops-3.config
+      imported by: yops-0.project
+    yops/yops-3.config
+      imported by: yops-2.config
+      imported by: yops/yops-1.config
+      imported by: yops-0.project
+  ```
+
+packages: cabal-install-solver cabal-install
+prs: #9578 #9933
+issues: #9562
