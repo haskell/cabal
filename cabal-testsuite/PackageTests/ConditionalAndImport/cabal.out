@@ -67,9 +67,9 @@ cyclical import of cyclical-2-out-out-self-b.config;
 # checking that cyclical check doesn't false-positive on same file names in different folders; hoping within a folder and then into a subfolder
 # cabal v2-build
 Configuration is affected by the following files:
+- noncyclical-same-filename-a.project
 - noncyclical-same-filename-a.config
     imported by: noncyclical-same-filename-a.project
-- noncyclical-same-filename-a.project
 - same-filename/noncyclical-same-filename-a.config
     imported by: noncyclical-same-filename-a.config
     imported by: noncyclical-same-filename-a.project
@@ -83,10 +83,10 @@ Building library for my-0.1...
 # checking that cyclical check doesn't false-positive on same file names in different folders; hoping into a subfolder and then back out again
 # cabal v2-build
 Configuration is affected by the following files:
+- noncyclical-same-filename-b.project
 - noncyclical-same-filename-b.config
     imported by: same-filename/noncyclical-same-filename-b.config
     imported by: noncyclical-same-filename-b.project
-- noncyclical-same-filename-b.project
 - same-filename/noncyclical-same-filename-b.config
     imported by: noncyclical-same-filename-b.project
 Up to date
@@ -379,6 +379,283 @@ Configuration is affected by the following files:
     imported by: yops/yops-1.config
     imported by: yops-0.project
 Up to date
+# checking if we detect when the same config is imported via many different paths (we don't)
+# cabal v2-build
+Configuration is affected by the following files:
+- woops-0.project
+- with-ghc.config
+    imported by: woops-0.project
+- woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+- woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-0.project
+- woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+- woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-0.project
+- woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-0.project
+- woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+- woops-8.config
+    imported by: woops/woops-7.config
+    imported by: woops-0.project
+- woops-8.config
+    imported by: woops/woops-7.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-0.project
+- woops-8.config
+    imported by: woops/woops-7.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-0.project
+- woops-8.config
+    imported by: woops/woops-7.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+- woops/woops-1.config
+    imported by: woops-0.project
+- woops/woops-3.config
+    imported by: woops-0.project
+- woops/woops-3.config
+    imported by: woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+- woops/woops-5.config
+    imported by: woops-0.project
+- woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-0.project
+- woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+- woops/woops-7.config
+    imported by: woops-0.project
+- woops/woops-7.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-0.project
+- woops/woops-7.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-0.project
+- woops/woops-7.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+- woops/woops-9.config
+    imported by: woops-0.project
+- woops/woops-9.config
+    imported by: woops-8.config
+    imported by: woops/woops-7.config
+    imported by: woops-0.project
+- woops/woops-9.config
+    imported by: woops-8.config
+    imported by: woops/woops-7.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-0.project
+- woops/woops-9.config
+    imported by: woops-8.config
+    imported by: woops/woops-7.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-0.project
+- woops/woops-9.config
+    imported by: woops-8.config
+    imported by: woops/woops-7.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+- https://www.stackage.org/lts-21.25/cabal.config
+    imported by: woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+- https://www.stackage.org/lts-21.25/cabal.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-0.project
+- https://www.stackage.org/lts-21.25/cabal.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+- https://www.stackage.org/lts-21.25/cabal.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-0.project
+- https://www.stackage.org/lts-21.25/cabal.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-0.project
+- https://www.stackage.org/lts-21.25/cabal.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+- https://www.stackage.org/lts-21.25/cabal.config
+    imported by: woops-8.config
+    imported by: woops/woops-7.config
+    imported by: woops-0.project
+- https://www.stackage.org/lts-21.25/cabal.config
+    imported by: woops-8.config
+    imported by: woops/woops-7.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-0.project
+- https://www.stackage.org/lts-21.25/cabal.config
+    imported by: woops-8.config
+    imported by: woops/woops-7.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-0.project
+- https://www.stackage.org/lts-21.25/cabal.config
+    imported by: woops-8.config
+    imported by: woops/woops-7.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+- https://www.stackage.org/lts-21.25/cabal.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+- https://www.stackage.org/lts-21.25/cabal.config
+    imported by: woops/woops-3.config
+    imported by: woops-0.project
+- https://www.stackage.org/lts-21.25/cabal.config
+    imported by: woops/woops-3.config
+    imported by: woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+- https://www.stackage.org/lts-21.25/cabal.config
+    imported by: woops/woops-5.config
+    imported by: woops-0.project
+- https://www.stackage.org/lts-21.25/cabal.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-0.project
+- https://www.stackage.org/lts-21.25/cabal.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+- https://www.stackage.org/lts-21.25/cabal.config
+    imported by: woops/woops-7.config
+    imported by: woops-0.project
+- https://www.stackage.org/lts-21.25/cabal.config
+    imported by: woops/woops-7.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-0.project
+- https://www.stackage.org/lts-21.25/cabal.config
+    imported by: woops/woops-7.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-0.project
+- https://www.stackage.org/lts-21.25/cabal.config
+    imported by: woops/woops-7.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+- https://www.stackage.org/lts-21.25/cabal.config
+    imported by: woops/woops-9.config
+    imported by: woops-0.project
+- https://www.stackage.org/lts-21.25/cabal.config
+    imported by: woops/woops-9.config
+    imported by: woops-8.config
+    imported by: woops/woops-7.config
+    imported by: woops-0.project
+- https://www.stackage.org/lts-21.25/cabal.config
+    imported by: woops/woops-9.config
+    imported by: woops-8.config
+    imported by: woops/woops-7.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-0.project
+- https://www.stackage.org/lts-21.25/cabal.config
+    imported by: woops/woops-9.config
+    imported by: woops-8.config
+    imported by: woops/woops-7.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-0.project
+- https://www.stackage.org/lts-21.25/cabal.config
+    imported by: woops/woops-9.config
+    imported by: woops-8.config
+    imported by: woops/woops-7.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+Resolving dependencies...
+Up to date
+# checking "using config from message" without URI imports
+# cabal v2-build
+# checking "using config from message" with URI imports
+# cabal v2-build
 # checking bad conditional
 # cabal v2-build
 Error: [Cabal-7090]

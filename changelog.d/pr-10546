@@ -1,0 +1,10 @@
+---
+synopsis: Add an Ord instance for ProjectConfigPath
+packages: [cabal-install-solver]
+prs: 10546
+---
+
+Add an `Ord` instance for `ProjectConfigPath` that sorts URIs after local paths
+and longer paths after shorter ones. Deduplicate the printing of "Configuration is
+affected by the following files" messages.
+

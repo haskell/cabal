@@ -258,6 +258,78 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   log "checking if we detect when the same config is imported via many different paths (we don't)"
   yopping <- cabal' "v2-build" [ "--project-file=yops-0.project" ]
 
+  log "checking if we detect when the same config is imported via many different paths (we don't)"
+  woopping <- cabal' "v2-build" [ "--project-file=woops-0.project" ]
+
+  log "checking \"using config from message\" without URI imports"
+  withDirectory "yops" $ do
+    yopping <- fails $ cabal' "v2-build" [ "--dry-run", "--project-file=../yops-0.project" ]
+
+    -- Use assertRegex when the output is tainted by the temp directory, like
+    -- this:
+    --
+    --   When using configuration from:
+    --   - /tmp/cabal-testsuite-286573/yops-0.project
+    --   - /tmp/cabal-testsuite-286573/yops-2.config etc
+    --
+    -- The addition of the /tmp/cabal-testsuite-*/ prefix, I observed on Ubuntu
+    -- but not on Windows.
+    assertRegex
+      "Project configuration without URI imports is listed in full"
+      "When using configuration from:(\n|\r\n) \
+        \ .*yops-0\\.project(\n|\r\n) \
+        \ .*yops-2\\.config(\n|\r\n) \
+        \ .*yops-4\\.config(\n|\r\n) \
+        \ .*yops-6\\.config(\n|\r\n) \
+        \ .*yops-8\\.config(\n|\r\n) \
+        \ .*yops-1\\.config(\n|\r\n) \
+        \ .*yops-3\\.config(\n|\r\n) \
+        \ .*yops-5\\.config(\n|\r\n) \
+        \ .*yops-7\\.config(\n|\r\n) \
+        \ .*yops-9\\.config(\n|\r\n)"
+      yopping
+
+    assertOutputContains
+      "The following errors occurred: \
+      \  - The package directory '.' does not contain any .cabal file."
+      yopping
+
+    return ()
+
+  log "checking \"using config from message\" with URI imports"
+  withDirectory "woops" $ do
+    woopping <- fails $ cabal' "v2-build" [ "--dry-run", "--project-file=../woops-0.project" ]
+
+    -- Use assertRegex when the output is tainted by the temp directory, like
+    -- this:
+    --
+    --   When using configuration from:
+    --   - /tmp/cabal-testsuite-282695/woops-0.project
+    --   - /tmp/cabal-testsuite-282695/woops-2.config etc
+    assertRegex
+      "Project configuration with URI imports is listed in full"
+      "When using configuration from:(\n|\r\n) \
+        \ .*woops-0\\.project(\n|\r\n) \
+        \ .*with-ghc\\.config(\n|\r\n) \
+        \ .*woops-2\\.config(\n|\r\n) \
+        \ .*woops-4\\.config(\n|\r\n) \
+        \ .*woops-6\\.config(\n|\r\n) \
+        \ .*woops-8\\.config(\n|\r\n) \
+        \ .*woops-1\\.config(\n|\r\n) \
+        \ .*woops-3\\.config(\n|\r\n) \
+        \ .*woops-5\\.config(\n|\r\n) \
+        \ .*woops-7\\.config(\n|\r\n) \
+        \ .*woops-9\\.config(\n|\r\n) \
+        \ .*https://www.stackage.org/lts-21.25/cabal.config(\n|\r\n)"
+      woopping
+
+    assertOutputContains
+      "The following errors occurred: \
+      \  - The package directory '.' does not contain any .cabal file."
+      woopping
+
+    return ()
+
   log "checking bad conditional"
   badIf <- fails $ cabal' "v2-build" [ "--project-file=bad-conditional.project" ]
   assertOutputContains "Cannot set compiler in a conditional clause of a cabal project file" badIf
