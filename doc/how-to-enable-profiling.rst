@@ -1,4 +1,4 @@
-How to analyze Haskell performance
+How to enable profiling
 ==================================
 
 When a Haskell application is slow or uses too much memory,
