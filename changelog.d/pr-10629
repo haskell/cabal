@@ -1,0 +1,9 @@
+---
+synopsis: "Report trailing spaces in project import URIs"
+packages: [cabal-install, cabal-install-solver]
+prs: 10629
+issues: 10622
+---
+
+A URI that has trailing spaces is valid. We now warn about this. Fixes a problem
+of mistaking such a URI for a file path.
