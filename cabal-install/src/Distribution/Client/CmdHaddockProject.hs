@@ -51,6 +51,12 @@ import Distribution.Client.Setup
   , GlobalFlags (..)
   )
 import Distribution.Client.TargetProblem (TargetProblem (..))
+import Distribution.Solver.Types.ConstraintSource
+  ( ConstraintSource (..)
+  )
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
+  )
 
 import Distribution.Simple.BuildPaths
   ( haddockBenchmarkDirPath
@@ -127,7 +133,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
     RejectNoTargets
     Nothing
     (commandDefaultFlags CmdBuild.buildCommand)
-    ["all"]
+    [WithConstraintSource{constraintInner = "all", constraintSource = ConstraintSourceImplicitTarget}]
     globalFlags
     HaddockCommand
     $ \targetCtx ctx targetSelectors -> do

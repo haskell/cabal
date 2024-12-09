@@ -1,0 +1,7 @@
+packages: .
+
+-- This is `my-lib` 0.9.
+source-repository-package
+  type: git
+  location: https://github.com/9999years/cabal-testsuite-my-lib.git
+  tag: 9a0af0aa81325c71e744def11db06265840ffb5f

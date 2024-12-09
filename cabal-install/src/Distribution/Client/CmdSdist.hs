@@ -63,8 +63,14 @@ import Distribution.Client.Types
   , PackageSpecifier (..)
   , UnresolvedSourcePackage
   )
+import Distribution.Solver.Types.ConstraintSource
+  ( ConstraintSource (..)
+  )
 import Distribution.Solver.Types.SourcePackage
   ( SourcePackage (..)
+  )
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
   )
 import Distribution.Utils.Path hiding
   ( (<.>)
@@ -131,6 +137,7 @@ import Distribution.Verbosity
   ( normal
   )
 
+import Data.Bifunctor (bimap)
 import qualified Data.ByteString.Lazy.Char8 as BSL
 import System.Directory
   ( createDirectoryIfMissing
@@ -234,8 +241,14 @@ sdistAction (pf@ProjectFlags{..}, SdistFlags{..}) targetStrings globalFlags = do
   let localPkgs = localPackages baseCtx
 
   targetSelectors <-
-    either (reportTargetSelectorProblems verbosity) return
-      =<< readTargetSelectors localPkgs Nothing targetStrings
+    either (reportTargetSelectorProblems verbosity . map constraintInner) return
+      =<< readTargetSelectors
+        localPkgs
+        Nothing
+        ( map
+            (\target -> WithConstraintSource{constraintInner = target, constraintSource = ConstraintSourceUserTarget})
+            targetStrings
+        )
 
   -- elaborate path, create target directory
   mOutputPath' <- case mOutputPath of
@@ -268,7 +281,12 @@ sdistAction (pf@ProjectFlags{..}, SdistFlags{..}) targetStrings globalFlags = do
           | otherwise -> distSdistFile distDirLayout (packageId pkg)
 
   case reifyTargetSelectors localPkgs targetSelectors of
-    Left errs -> dieWithException verbosity $ SdistActionException . fmap renderTargetProblem $ errs
+    Left errs ->
+      dieWithException verbosity $
+        SdistActionException $
+          map
+            (renderTargetProblem . constraintInner)
+            errs
     Right pkgs
       | length pkgs > 1
       , not listSources
@@ -323,7 +341,7 @@ data OutputFormat
 packageToSdist :: Verbosity -> FilePath -> OutputFormat -> FilePath -> UnresolvedSourcePackage -> IO ()
 packageToSdist verbosity projectRootDir format outputFile pkg = do
   let death = dieWithException verbosity $ ImpossibleHappened (show pkg)
-  dir0 <- case srcpkgSource pkg of
+  dir0 <- case constraintInner $ srcpkgSource pkg of
     LocalUnpackedPackage path -> pure (Right path)
     RemoteSourceRepoPackage _ (Just tgz) -> pure (Left tgz)
     RemoteSourceRepoPackage{} -> death
@@ -367,7 +385,10 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
 
 --
 
-reifyTargetSelectors :: [PackageSpecifier UnresolvedSourcePackage] -> [TargetSelector] -> Either [TargetProblem] [UnresolvedSourcePackage]
+reifyTargetSelectors
+  :: [PackageSpecifier UnresolvedSourcePackage]
+  -> [WithConstraintSource TargetSelector]
+  -> Either [WithConstraintSource TargetProblem] [UnresolvedSourcePackage]
 reifyTargetSelectors pkgs sels =
   case partitionEithers (foldMap go sels) of
     ([], sels') -> Right sels'
@@ -388,14 +409,24 @@ reifyTargetSelectors pkgs sels =
       Just pkg -> Right pkg
       Nothing -> error "The impossible happened: we have a reference to a local package that isn't in localPackages."
 
-    go :: TargetSelector -> [Either TargetProblem UnresolvedSourcePackage]
-    go (TargetPackage _ pids Nothing) = fmap getPkg pids
-    go (TargetAllPackages Nothing) = Right <$> pkgs'
-    go (TargetPackage _ _ (Just kind)) = [Left (AllComponentsOnly kind)]
-    go (TargetAllPackages (Just kind)) = [Left (AllComponentsOnly kind)]
-    go (TargetPackageNamed pname _) = [Left (NonlocalPackageNotAllowed pname)]
-    go (TargetComponentUnknown pname _ _) = [Left (NonlocalPackageNotAllowed pname)]
-    go (TargetComponent _ cname _) = [Left (ComponentsNotAllowed cname)]
+    go :: WithConstraintSource TargetSelector -> [Either (WithConstraintSource TargetProblem) UnresolvedSourcePackage]
+    go selector =
+      map
+        ( bimap
+            (\problem -> selector{constraintInner = problem})
+            id
+        )
+        inner
+      where
+        inner =
+          case constraintInner selector of
+            (TargetPackage _ pids Nothing) -> fmap getPkg pids
+            (TargetAllPackages Nothing) -> Right <$> pkgs'
+            (TargetPackage _ _ (Just kind)) -> [Left (AllComponentsOnly kind)]
+            (TargetAllPackages (Just kind)) -> [Left (AllComponentsOnly kind)]
+            (TargetPackageNamed pname _) -> [Left (NonlocalPackageNotAllowed pname)]
+            (TargetComponentUnknown pname _ _) -> [Left (NonlocalPackageNotAllowed pname)]
+            (TargetComponent _ cname _) -> [Left (ComponentsNotAllowed cname)]
 
 data TargetProblem
   = AllComponentsOnly ComponentKind

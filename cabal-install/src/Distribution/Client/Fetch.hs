@@ -38,6 +38,9 @@ import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb, readPkgConfigDb)
 import Distribution.Solver.Types.SolverPackage
 import Distribution.Solver.Types.SourcePackage
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
+  )
 
 import Distribution.Client.Errors
 import Distribution.Package
@@ -146,7 +149,7 @@ fetch
               unlines $
                 "The following packages would be fetched:"
                   : map (prettyShow . packageId) pkgs'
-          else traverse_ (fetchPackage verbosity repoCtxt . srcpkgSource) pkgs'
+          else traverse_ (fetchPackage verbosity repoCtxt . constraintInner . srcpkgSource) pkgs'
     where
       dryRun = fromFlag (fetchDryRun fetchFlags)
 

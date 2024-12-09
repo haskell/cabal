@@ -542,7 +542,7 @@ removeBounds relKind relDeps params =
     sourcePkgIndex' :: PackageIndex.PackageIndex UnresolvedSourcePackage
     sourcePkgIndex' = relaxDeps <$> depResolverSourcePkgIndex params
 
-    relaxDeps :: UnresolvedSourcePackage -> UnresolvedSourcePackage
+    relaxDeps :: SourcePackage a -> SourcePackage a
     relaxDeps srcPkg =
       srcPkg
         { srcpkgDescription = relaxPackageDeps relKind relDeps (srcpkgDescription srcPkg)

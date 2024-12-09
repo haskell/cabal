@@ -18,6 +18,7 @@ import Distribution.Compat.CharParsing (char, optional)
 import Distribution.Package
 import Distribution.Simple.LocalBuildInfo (ComponentName (CExeName))
 import Distribution.Simple.Utils (dieWithException)
+import Distribution.Solver.Types.ConstraintSource (ConstraintSource (..))
 
 data WithoutProjectTargetSelector
   = WoPackageId PackageId
@@ -55,6 +56,6 @@ woPackageTargets (WoURI _) =
   TargetAllPackages (Just ExeKind)
 
 woPackageSpecifiers :: WithoutProjectTargetSelector -> Either URI (PackageSpecifier pkg)
-woPackageSpecifiers (WoPackageId pid) = Right (mkNamedPackage pid)
-woPackageSpecifiers (WoPackageComponent pid _) = Right (mkNamedPackage pid)
+woPackageSpecifiers (WoPackageId pid) = Right (mkNamedPackage ConstraintSourceUnknown pid)
+woPackageSpecifiers (WoPackageComponent pid _) = Right (mkNamedPackage ConstraintSourceUnknown pid)
 woPackageSpecifiers (WoURI uri) = Left uri

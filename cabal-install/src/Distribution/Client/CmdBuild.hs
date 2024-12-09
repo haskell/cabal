@@ -25,6 +25,12 @@ import Distribution.Client.TargetProblem
   ( TargetProblem (..)
   , TargetProblem'
   )
+import Distribution.Solver.Types.ConstraintSource
+  ( ConstraintSource (..)
+  )
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
+  )
 
 import qualified Data.Map as Map
 import Distribution.Client.Errors
@@ -135,7 +141,7 @@ defaultBuildFlags =
 -- "Distribution.Client.ProjectOrchestration"
 buildAction :: NixStyleFlags BuildFlags -> [String] -> GlobalFlags -> IO ()
 buildAction flags@NixStyleFlags{extraFlags = buildFlags, ..} targetStrings globalFlags =
-  withContextAndSelectors RejectNoTargets Nothing flags targetStrings globalFlags BuildCommand $ \targetCtx ctx targetSelectors -> do
+  withContextAndSelectors RejectNoTargets Nothing flags constraintTargets globalFlags BuildCommand $ \targetCtx ctx targetSelectors -> do
     -- TODO: This flags defaults business is ugly
     let onlyConfigure =
           fromFlag
@@ -156,7 +162,7 @@ buildAction flags@NixStyleFlags{extraFlags = buildFlags, ..} targetStrings globa
         -- Interpret the targets on the command line as build targets
         -- (as opposed to say repl or haddock targets).
         targets <-
-          either (reportBuildTargetProblems verbosity) return $
+          either (reportBuildTargetProblems verbosity . map constraintInner) return $
             resolveTargets
               selectPackageTargets
               selectComponentTarget
@@ -186,6 +192,15 @@ buildAction flags@NixStyleFlags{extraFlags = buildFlags, ..} targetStrings globa
     runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
   where
     verbosity = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags)
+    constraintTargets =
+      map
+        ( \target ->
+            WithConstraintSource
+              { constraintInner = target
+              , constraintSource = ConstraintSourceUserTarget
+              }
+        )
+        targetStrings
 
 -- | This defines what a 'TargetSelector' means for the @bench@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
