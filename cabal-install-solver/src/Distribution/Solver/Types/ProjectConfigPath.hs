@@ -158,10 +158,10 @@ cyclicalImportMsg path@(ProjectConfigPath (duplicate :| _)) =
     ]
 
 -- | A message for an import that has leading or trailing spaces.
-untrimmedUriImportMsg :: ProjectConfigPath -> Doc
-untrimmedUriImportMsg path =
+untrimmedUriImportMsg :: Doc -> ProjectConfigPath -> Doc
+untrimmedUriImportMsg intro path =
     vcat
-    [ text "import has whitespace" <> semi
+    [ intro <+> text "import has leading or trailing whitespace" <> semi
     , nest 2 (docProjectConfigPath path)
     ]
 
