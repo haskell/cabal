@@ -14,11 +14,13 @@ module Distribution.Solver.Types.ProjectConfigPath
     , docProjectConfigPath
     , docProjectConfigFiles
     , cyclicalImportMsg
+    , untrimmedUriImportMsg
     , docProjectConfigPathFailReason
 
     -- * Checks and Normalization
     , isCyclicConfigPath
     , isTopLevelConfigPath
+    , isUntrimmedUriConfigPath
     , canonicalizeConfigPath
     ) where
 
@@ -155,6 +157,14 @@ cyclicalImportMsg path@(ProjectConfigPath (duplicate :| _)) =
     , nest 2 (docProjectConfigPath path)
     ]
 
+-- | A message for an import that has leading or trailing spaces.
+untrimmedUriImportMsg :: Doc -> ProjectConfigPath -> Doc
+untrimmedUriImportMsg intro path =
+    vcat
+    [ intro <+> text "import has leading or trailing whitespace" <> semi
+    , nest 2 (docProjectConfigPath path)
+    ]
+
 docProjectConfigPathFailReason :: VR -> ProjectConfigPath -> Doc
 docProjectConfigPathFailReason vr pcp
     | ProjectConfigPath (p :| []) <- pcp =
@@ -182,6 +192,11 @@ nullProjectConfigPath = ProjectConfigPath $ "unused" :| []
 -- the project root directory.
 isCyclicConfigPath :: ProjectConfigPath -> Bool
 isCyclicConfigPath (ProjectConfigPath p) = length p /= length (NE.nub p)
+
+-- | Check if the last segment of the path (root or importee) is a URI that has
+-- leading or trailing spaces.
+isUntrimmedUriConfigPath :: ProjectConfigPath -> Bool
+isUntrimmedUriConfigPath (ProjectConfigPath (p :| _)) = let p' = trim p in p' /= p && isURI p'
 
 -- | Check if the project config path is top-level, meaning it was not included by
 -- some other project config.
