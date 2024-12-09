@@ -1,0 +1,14 @@
+# checking project import with trailing space
+# cabal v2-build
+Error: [Cabal-7090]
+Error parsing project file <ROOT>/trailing-space.project:
+import has whitespace;
+  'https://www.stackage.org/nightly-2024-12-05/cabal.config '
+    imported by: trailing-space.project
+# checking project import with tabs and spaces
+# cabal v2-build
+Error: [Cabal-7090]
+Error parsing project file <ROOT>/tabs-and-spaces.project:
+import has whitespace;
+  'https://www.stackage.org/nightly-2024-12-05/cabal.config		   '
+    imported by: tabs-and-spaces.project
