@@ -473,12 +473,16 @@ jobs:
     needs: [validate, validate-old-ghcs, build-alpine, dogfooding]
 
     steps:
-      # for now this is hardcoded. is there a better way?
       - uses: actions/download-artifact@v4
         with:
           pattern: cabal-*
           path: binaries
           merge-multiple: true
+
+      - uses: dev-drprasad/delete-tag-and-release@v1.1
+        with:
+          tag_name: cabal-head
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create GitHub prerelease
         uses: softprops/action-gh-release@v2
