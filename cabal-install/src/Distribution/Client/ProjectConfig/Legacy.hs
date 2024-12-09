@@ -1,6 +1,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -272,14 +273,17 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
 
         debug verbosity $ "\nimport path, normalized\n=======================\n" ++ render (docProjectConfigPath normLocPath)
 
-        if isCyclicConfigPath normLocPath
-          then pure . parseFail $ ParseUtils.FromString (render $ cyclicalImportMsg normLocPath) Nothing
-          else do
-            normSource <- canonicalizeConfigPath projectDir source
-            let fs = (\z -> CondNode z [normLocPath] mempty) <$> fieldsToConfig normSource (reverse acc)
-            res <- parseProjectSkeleton cacheDir httpTransport verbosity projectDir importLocPath . ProjectConfigToParse =<< fetchImportConfig normLocPath
-            rest <- go [] xs
-            pure . fmap mconcat . sequence $ [fs, res, rest]
+        if
+            | isUntrimmedUriConfigPath importLocPath ->
+                pure . parseFail $ ParseUtils.FromString (render $ untrimmedUriImportMsg importLocPath) Nothing
+            | isCyclicConfigPath normLocPath ->
+                pure . parseFail $ ParseUtils.FromString (render $ cyclicalImportMsg normLocPath) Nothing
+            | otherwise -> do
+                normSource <- canonicalizeConfigPath projectDir source
+                let fs = (\z -> CondNode z [normLocPath] mempty) <$> fieldsToConfig normSource (reverse acc)
+                res <- parseProjectSkeleton cacheDir httpTransport verbosity projectDir importLocPath . ProjectConfigToParse =<< fetchImportConfig normLocPath
+                rest <- go [] xs
+                pure . fmap mconcat . sequence $ [fs, res, rest]
       (ParseUtils.Section l "if" p xs') -> do
         subpcs <- go [] xs'
         let fs = singletonProjectConfigSkeleton <$> fieldsToConfig source (reverse acc)
