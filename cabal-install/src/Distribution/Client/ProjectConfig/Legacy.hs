@@ -127,6 +127,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Utils
   ( debug
   , lowercase
+  , noticeDoc
   )
 import Distribution.Types.CondTree
   ( CondBranch (..)
@@ -273,17 +274,17 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
 
         debug verbosity $ "\nimport path, normalized\n=======================\n" ++ render (docProjectConfigPath normLocPath)
 
-        if
-            | isUntrimmedUriConfigPath importLocPath ->
-                pure . parseFail $ ParseUtils.FromString (render $ untrimmedUriImportMsg importLocPath) Nothing
-            | isCyclicConfigPath normLocPath ->
-                pure . parseFail $ ParseUtils.FromString (render $ cyclicalImportMsg normLocPath) Nothing
-            | otherwise -> do
-                normSource <- canonicalizeConfigPath projectDir source
-                let fs = (\z -> CondNode z [normLocPath] mempty) <$> fieldsToConfig normSource (reverse acc)
-                res <- parseProjectSkeleton cacheDir httpTransport verbosity projectDir importLocPath . ProjectConfigToParse =<< fetchImportConfig normLocPath
-                rest <- go [] xs
-                pure . fmap mconcat . sequence $ [fs, res, rest]
+        if isCyclicConfigPath normLocPath
+          then pure . parseFail $ ParseUtils.FromString (render $ cyclicalImportMsg normLocPath) Nothing
+          else do
+            when
+              (isUntrimmedUriConfigPath importLocPath)
+              (noticeDoc verbosity $ untrimmedUriImportMsg (Disp.text "Warning:") importLocPath)
+            normSource <- canonicalizeConfigPath projectDir source
+            let fs = (\z -> CondNode z [normLocPath] mempty) <$> fieldsToConfig normSource (reverse acc)
+            res <- parseProjectSkeleton cacheDir httpTransport verbosity projectDir importLocPath . ProjectConfigToParse =<< fetchImportConfig normLocPath
+            rest <- go [] xs
+            pure . fmap mconcat . sequence $ [fs, res, rest]
       (ParseUtils.Section l "if" p xs') -> do
         subpcs <- go [] xs'
         let fs = singletonProjectConfigSkeleton <$> fieldsToConfig source (reverse acc)
