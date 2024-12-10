@@ -1,12 +1,12 @@
 Getting Started
 ===============
 
-Installing Cabal
-----------------
+Installing :term:`cabal`
+------------------------
 
 The easiest and recommended way to install the :term:`cabal` command-line tool
 on Linux, macOS, FreeBSD or Windows is through `ghcup <https://www.haskell.org/ghcup/>`__.
-It installs the “Haskell toolchain”, which includes Cabal,
+It installs the “Haskell toolchain”, which includes :term:`cabal`,
 the Haskell compiler `GHC <https://www.haskell.org/ghc/>`__
 and optionally other useful Haskell tools.
 
@@ -258,7 +258,7 @@ See more in the documentation for :ref:`cabal run`.
 What Next?
 ----------
 
-Now that you know how to set up a simple Haskell package using Cabal, check out
+Now that you know how to set up a simple Haskell package using :term:`cabal`, check out
 some of the resources on the Haskell website's `documentation page
 <https://www.haskell.org/documentation/>`__ or read more about packages and
 Cabal on the :doc:`What Cabal does <cabal-context>` page.
