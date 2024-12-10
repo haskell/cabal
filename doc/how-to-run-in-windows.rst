@@ -62,7 +62,7 @@ Ensure that Cabal can call the tools it needs
 Cabal sometimes needs to call tools that do not come with Windows (such as
 ``make`` or even ``git``). The MSYS2 project makes many of them available on
 Windows. The directories where those are located need to be made visible in the
-``PATH`` when executing ``cabal``. For that, Cabal provides the
+``PATH`` when executing :term:`cabal`. For that, Cabal provides the
 ``extra-prog-path`` configuration option. Your :ref:`global configuration
 <config-file-discovery>` should include this option:
 
