@@ -1,0 +1,3 @@
+packages: woops
+
+import: woops-0.config
