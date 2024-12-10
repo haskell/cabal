@@ -951,7 +951,7 @@ renderBadPackageLocations (BadPackageLocations provenance bpls)
 
     renderExplicit =
       "When using configuration from:\n"
-        ++ render (nest 2 . docProjectConfigPaths $ mapMaybe getExplicit (Set.toList provenance))
+        ++ render (nest 2 . docProjectConfigFiles $ mapMaybe getExplicit (Set.toList provenance))
         ++ "\nThe following errors occurred:\n"
         ++ render (nest 2 $ vcat ((text "-" <+>) . text <$> map renderBadPackageLocation bpls))
 
