@@ -5,7 +5,7 @@ Haskell_ software. It helps people to
 configure, build and install Haskell software and to distribute it
 easily to other users and developers.
 
-There is a command line tool called ``cabal`` for working with Cabal
+There is a command line tool called :term:`cabal` for working with Cabal
 packages. It helps with installing existing packages and also helps
 people developing their own packages. It can be used to work with local
 packages or to install packages from online package archives, including
@@ -52,7 +52,7 @@ other Haskell implementations).
 A tool for working with packages
 --------------------------------
 
-There is a command line tool, called "``cabal``", that users and
+There is a command line tool, called ":term:`cabal`", that users and
 developers can use to build and install Cabal packages. It can be used
 for both local packages and for packages available remotely over the
 network. It can automatically install Cabal packages plus any other
@@ -76,7 +76,7 @@ It is also possible to install several local packages at once, e.g.
     $ cabal install foo/ bar/
 
 Developers and users can use the tool to install packages from remote
-Cabal package archives. By default, the ``cabal`` tool is configured to
+Cabal package archives. By default, the :term:`cabal` tool is configured to
 use the central Haskell package archive called
 Hackage_ but it is possible to use it
 with any other suitable archive.
@@ -102,7 +102,7 @@ which Haskell implementation to use and whether to build optimised code
 or build with the ability to profile code. It is not expected that users
 will have to modify any of the information in the ``.cabal`` file.
 
-Note that ``cabal`` is not the only tool for working with Cabal
+Note that :term:`cabal` is not the only tool for working with Cabal
 packages. Due to the standardised format and a library for reading
 ``.cabal`` files, there are several other special-purpose tools.
 
@@ -134,7 +134,7 @@ Cabal and its associated tools and websites covers:
 -  packaging for distribution
 -  automated package management
 
-   -  natively using the ``cabal`` command line tool; or
+   -  natively using the :term:`cabal` command line tool; or
    -  by translation into native package formats such as RPM or deb
 
 -  web and local Cabal package archives
