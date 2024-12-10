@@ -42,7 +42,7 @@ directories when there is none in the current directory.
 Conditionals and imports
 ------------------------
 
-As of ``cabal-install`` version 3.8, cabal supports conditional logic and
+As of :term:`cabal-install:exe:cabal` version 3.8, cabal supports conditional logic and
 imports in ``cabal.project`` files.
 
     .. warning::
@@ -92,7 +92,7 @@ You *must* provide a non-empty list of local packages in your project, filling
 out either a ``packages`` field or an ``optional-packages`` field or both to
 satisfy this requirement.
 
-When ``cabal.project`` doesn't exist, ``cabal-install`` fabricates an ephemeral
+When ``cabal.project`` doesn't exist, :term:`cabal-install:exe:cabal` fabricates an ephemeral
 project for its own use with this simple content, a glob that will find any (but
 expects to find one) package in the current directory:
 
@@ -315,7 +315,7 @@ package, and thus apply globally:
 
     :default: 1
 
-    Control the verbosity of ``cabal`` commands, valid values are from 0
+    Control the verbosity of :term:`cabal` commands, valid values are from 0
     to 3.
 
     The command line variant of this field is ``--verbose=2``; a short
@@ -346,7 +346,7 @@ package, and thus apply globally:
     This option instructs cabal to control parallelism by creating a new system semaphore,
     whose number of tokens is specified by ``--jobs`` (or ``-j``).
     This semaphore is passed to GHC, which allows it to use any leftover parallelism
-    that ``cabal-install`` is not using.
+    that :term:`cabal-install:exe:cabal` is not using.
 
     Requires ``ghc >= 9.8``.
 
@@ -420,9 +420,9 @@ package, and thus apply globally:
     :since: 3.7
 
     By modifying ``package-dbs`` you can modify the default package environment
-    which ``cabal`` will see. The package databases you add using ``package-dbs``
+    which :term:`cabal` will see. The package databases you add using ``package-dbs``
     will not be written into and only used as immutable package stores to initialise
-    the environment with additional packages that ``cabal`` can choose to use.
+    the environment with additional packages that :term:`cabal` can choose to use.
 
     There are three package databases involved with most builds:
 
