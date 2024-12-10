@@ -143,7 +143,7 @@ Explicit dependencies and automatic package management
 
 Cabal takes the approach that all packages dependencies are specified
 explicitly and specified in a declarative way. The point is to enable
-automatic package management. This means tools like ``cabal`` can
+automatic package management. This means tools like :term:`cabal` can
 resolve dependencies and install a package plus all of its dependencies
 automatically. Alternatively, it is possible to mechanically (or mostly
 mechanically) translate Cabal packages into system packages and let the
