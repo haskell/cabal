@@ -14,6 +14,7 @@ import qualified Data.Text.Lazy as T (toStrict)
 import qualified Data.Text.Lazy.Encoding as T (decodeUtf8)
 import Data.Version (makeVersion, showVersion)
 import System.FilePath ((</>))
+import System.IO (BufferMode (LineBuffering), hSetBuffering, stderr, stdout)
 import System.Process.Typed (proc, readProcessStdout_)
 
 import Cli (Compiler (..), HackageTests (..), Opts (..), parseOpts, whenVerbose)
@@ -24,6 +25,18 @@ import Step (Step (..), displayStep)
 -- | Entry-point for @cabal-validate@.
 main :: IO ()
 main = do
+  -- You'd _think_ that line-buffering for stdout and stderr would be the
+  -- default behavior, and the documentation makes gestures at it, but it
+  -- appears to not be the case!
+  --
+  -- > For most implementations, physical files will normally be
+  -- > block-buffered and terminals will normally be line-buffered.
+  --
+  -- However, on GitHub Actions and on my machine (macOS M1), adding these
+  -- lines makes output appear in the correct order!
+  hSetBuffering stdout LineBuffering
+  hSetBuffering stderr LineBuffering
+
   opts <- parseOpts
   printConfig opts
   printToolVersions opts
@@ -103,11 +116,11 @@ cabalListBinArgs opts = "list-bin" : cabalArgs opts
 cabalListBin :: Opts -> String -> IO FilePath
 cabalListBin opts target = do
   let args = cabalListBinArgs opts ++ [target]
-  stdout <-
+  stdout' <-
     readProcessStdout_ $
       proc (cabal opts) args
 
-  pure (T.unpack $ T.strip $ T.toStrict $ T.decodeUtf8 stdout)
+  pure (T.unpack $ T.strip $ T.toStrict $ T.decodeUtf8 stdout')
 
 -- | Get the RTS arguments for invoking test suites.
 --
