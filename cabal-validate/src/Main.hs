@@ -14,11 +14,10 @@ import qualified Data.Text.Lazy as T (toStrict)
 import qualified Data.Text.Lazy.Encoding as T (decodeUtf8)
 import Data.Version (makeVersion, showVersion)
 import System.FilePath ((</>))
+import System.IO (BufferMode (LineBuffering), hSetBuffering, stderr, stdout)
 import System.Process.Typed (proc, readProcessStdout_)
 
-import ANSI (SGR (Bold, BrightCyan, Reset), setSGR)
-import Cli (Compiler (..), HackageTests (..), Opts (..), parseOpts)
-import ClockUtil (diffAbsoluteTime, formatDiffTime, getAbsoluteTime)
+import Cli (Compiler (..), HackageTests (..), Opts (..), parseOpts, whenVerbose)
 import OutputUtil (printHeader, withTiming)
 import ProcessUtil (timed, timedWithCwd)
 import Step (Step (..), displayStep)
@@ -26,7 +25,21 @@ import Step (Step (..), displayStep)
 -- | Entry-point for @cabal-validate@.
 main :: IO ()
 main = do
+  -- You'd _think_ that line-buffering for stdout and stderr would be the
+  -- default behavior, and the documentation makes gestures at it, but it
+  -- appears to not be the case!
+  --
+  -- > For most implementations, physical files will normally be
+  -- > block-buffered and terminals will normally be line-buffered.
+  --
+  -- However, on GitHub Actions and on my machine (macOS M1), adding these
+  -- lines makes output appear in the correct order!
+  hSetBuffering stdout LineBuffering
+  hSetBuffering stderr LineBuffering
+
   opts <- parseOpts
+  printConfig opts
+  printToolVersions opts
   forM_ (steps opts) $ \step -> do
     runStep opts step
 
@@ -36,8 +49,6 @@ runStep opts step = do
   let title = displayStep step
   printHeader title
   let action = case step of
-        PrintConfig -> printConfig opts
-        PrintToolVersions -> printToolVersions opts
         Build -> build opts
         Doctest -> doctest opts
         LibTests -> libTests opts
@@ -47,7 +58,6 @@ runStep opts step = do
         CliTests -> cliTests opts
         SolverBenchmarksTests -> solverBenchmarksTests opts
         SolverBenchmarksRun -> solverBenchmarksRun opts
-        TimeSummary -> timeSummary opts
   withTiming (startTime opts) title action
   T.putStrLn ""
 
@@ -106,11 +116,11 @@ cabalListBinArgs opts = "list-bin" : cabalArgs opts
 cabalListBin :: Opts -> String -> IO FilePath
 cabalListBin opts target = do
   let args = cabalListBinArgs opts ++ [target]
-  stdout <-
+  stdout' <-
     readProcessStdout_ $
       proc (cabal opts) args
 
-  pure (T.unpack $ T.strip $ T.toStrict $ T.decodeUtf8 stdout)
+  pure (T.unpack $ T.strip $ T.toStrict $ T.decodeUtf8 stdout')
 
 -- | Get the RTS arguments for invoking test suites.
 --
@@ -139,57 +149,62 @@ timedCabalBin opts package component args = do
 
 -- | Print the configuration for CI logs.
 printConfig :: Opts -> IO ()
-printConfig opts = do
-  putStr $
-    unlines
-      [ "compiler:          "
-          <> compilerExecutable (compiler opts)
-      , "cabal-install:     "
-          <> cabal opts
-      , "jobs:              "
-          <> show (jobs opts)
-      , "steps:             "
-          <> unwords (map displayStep (steps opts))
-      , "Hackage tests:     "
-          <> show (hackageTests opts)
-      , "verbose:           "
-          <> show (verbose opts)
-      , "extra compilers:   "
-          <> unwords (extraCompilers opts)
-      , "extra RTS options: "
-          <> unwords (rtsArgs opts)
-      ]
+printConfig opts =
+  whenVerbose opts $ do
+    printHeader "Configuration"
+    putStr $
+      unlines
+        [ "compiler:          "
+            <> compilerExecutable (compiler opts)
+        , "cabal-install:     "
+            <> cabal opts
+        , "jobs:              "
+            <> show (jobs opts)
+        , "steps:             "
+            <> unwords (map displayStep (steps opts))
+        , "Hackage tests:     "
+            <> show (hackageTests opts)
+        , "verbosity:         "
+            <> show (verbosity opts)
+        , "extra compilers:   "
+            <> unwords (extraCompilers opts)
+        , "extra RTS options: "
+            <> unwords (rtsArgs opts)
+        ]
 
 -- | Print the versions of tools being used.
 printToolVersions :: Opts -> IO ()
-printToolVersions opts = do
-  timed opts (compilerExecutable (compiler opts)) ["--version"]
-  timed opts (cabal opts) ["--version"]
+printToolVersions opts =
+  whenVerbose opts $ do
+    printHeader "Tool versions"
+    timed opts (cabal opts) ["--version"]
+    timed opts (compilerExecutable (compiler opts)) ["--version"]
 
-  forM_ (extraCompilers opts) $ \compiler' -> do
-    timed opts compiler' ["--version"]
+    forM_ (extraCompilers opts) $ \compiler' -> do
+      timed opts compiler' ["--version"]
 
 -- | Run the build step.
 build :: Opts -> IO ()
 build opts = do
-  printHeader "build (dry run)"
-  timed
-    opts
-    (cabal opts)
-    ( cabalNewBuildArgs opts
-        ++ targets opts
-        ++ ["--dry-run"]
-    )
+  whenVerbose opts $ do
+    printHeader "build (dry run)"
+    timed
+      opts
+      (cabal opts)
+      ( cabalNewBuildArgs opts
+          ++ targets opts
+          ++ ["--dry-run"]
+      )
 
-  printHeader "build (full build plan; cached and to-be-built dependencies)"
-  timed
-    opts
-    "jq"
-    [ "-r"
-    , -- TODO: Maybe use `cabal-plan`? It's a heavy dependency though...
-      ".\"install-plan\" | map(.\"pkg-name\" + \"-\" + .\"pkg-version\" + \" \" + .\"component-name\") | join(\"\n\")"
-    , baseBuildDir opts </> "cache" </> "plan.json"
-    ]
+    printHeader "build (full build plan; cached and to-be-built dependencies)"
+    timed
+      opts
+      "jq"
+      [ "-r"
+      , -- TODO: Maybe use `cabal-plan`? It's a heavy dependency though...
+        ".\"install-plan\" | map(.\"pkg-name\" + \"-\" + .\"pkg-version\" + \" \" + .\"component-name\") | join(\"\n\")"
+      , baseBuildDir opts </> "cache" </> "plan.json"
+      ]
 
   printHeader "build (actual build)"
   timed
@@ -413,14 +428,3 @@ solverBenchmarksRun opts = do
     , "--packages=Chart-diagrams"
     , "--print-trials"
     ]
-
--- | Print the total time taken so far.
-timeSummary :: Opts -> IO ()
-timeSummary opts = do
-  endTime <- getAbsoluteTime
-  let totalDuration = diffAbsoluteTime endTime (startTime opts)
-  putStrLn $
-    setSGR [Bold, BrightCyan]
-      <> "!!! Validation completed in "
-      <> formatDiffTime totalDuration
-      <> setSGR [Reset]
