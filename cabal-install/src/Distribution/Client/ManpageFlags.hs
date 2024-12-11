@@ -1,5 +1,4 @@
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE LambdaCase #-}
 
 module Distribution.Client.ManpageFlags
   ( ManpageFlags (..)

@@ -29,7 +29,6 @@
 - ignore: {name: "Redundant return"} # 9 hints
 - ignore: {name: "Replace case with fromMaybe"} # 6 hints
 - ignore: {name: "Replace case with maybe"} # 10 hints
-- ignore: {name: "Unused LANGUAGE pragma"} # 168 hints
 - ignore: {name: "Use $>"} # 5 hints
 - ignore: {name: "Use ++"} # 4 hints
 - ignore: {name: "Use :"} # 30 hints
@@ -96,9 +95,21 @@
 
 - arguments:
     - --ignore-glob=Cabal-syntax/src/Distribution/Fields/Lexer.hs
+    - --ignore-glob=cabal-testsuite/PackageTests/BuildWays/q/app/Main.hs
     - --ignore-glob=cabal-testsuite/PackageTests/CmmSources/src/Demo.hs
     - --ignore-glob=cabal-testsuite/PackageTests/CmmSourcesDyn/src/Demo.hs
     - --ignore-glob=cabal-testsuite/PackageTests/CmmSourcesExe/src/Demo.hs
+    - --ignore-glob=cabal-testsuite/PackageTests/NewBuild/CmdRun/Script/script.hs
+    - --ignore-glob=cabal-testsuite/PackageTests/NewBuild/CmdRun/ScriptLiterate/script.lhs
+    - --ignore-glob=cabal-testsuite/PackageTests/Regression/T5309/lib/Bio/Character/Exportable/Class.hs
+    - --ignore-glob=cabal-testsuite/PackageTests/SetupHooks/SetupHooksC2HsRules/SetupHooks.hs
+    - --ignore-glob=cabal-testsuite/PackageTests/SetupHooks/SetupHooksDuplicateRuleId/SetupHooks.hs
+    - --ignore-glob=cabal-testsuite/PackageTests/SetupHooks/SetupHooksInvalidRuleOutputIndex/SetupHooks.hs
+    - --ignore-glob=cabal-testsuite/PackageTests/SetupHooks/SetupHooksRuleOrdering/SetupHooks.hs
+    - --ignore-glob=cabal-testsuite/PackageTests/SetupHooks/SetupHooksUnusedRules/SetupHooks.hs
+    - --ignore-glob=cabal-testsuite/PackageTests/TemplateHaskell/dynamic/TH.hs
+    - --ignore-glob=cabal-testsuite/PackageTests/TemplateHaskell/profiling/TH.hs
+    - --ignore-glob=cabal-testsuite/PackageTests/TemplateHaskell/vanilla/TH.hs
     - --ignore-glob=templates/Paths_pkg.template.hs
     - --ignore-glob=templates/SPDX.LicenseExceptionId.template.hs
     - --ignore-glob=templates/SPDX.LicenseId.template.hs

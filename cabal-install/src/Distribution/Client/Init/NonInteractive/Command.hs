@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-
 module Distribution.Client.Init.NonInteractive.Command
   ( genPkgDescription
   , genLibTarget

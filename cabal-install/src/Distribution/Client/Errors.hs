@@ -1,8 +1,6 @@
 {-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# OPTIONS_GHC -fno-warn-incomplete-uni-patterns #-}
 
 -----------------------------------------------------------------------------
@@ -26,8 +24,8 @@ import qualified Data.ByteString.Base16 as Base16
 import qualified Data.ByteString.Char8 as BS8
 import Data.List (groupBy)
 import Distribution.Client.IndexUtils.Timestamp
-import Distribution.Client.Types.Repo
-import Distribution.Client.Types.RepoName (RepoName (..))
+import qualified Distribution.Client.Types.Repo as Repo
+import qualified Distribution.Client.Types.RepoName as RepoName
 import Distribution.Compat.Prelude
 import Distribution.Deprecated.ParseUtils (PWarning, showPWarning)
 import Distribution.Package
@@ -182,8 +180,8 @@ data CabalInstallException
   | FreezeException String
   | PkgSpecifierException [String]
   | CorruptedIndexCache String
-  | UnusableIndexState RemoteRepo Timestamp Timestamp
-  | MissingPackageList RemoteRepo
+  | UnusableIndexState Repo.RemoteRepo Timestamp Timestamp
+  | MissingPackageList Repo.RemoteRepo
   | CmdPathAcceptsNoTargets
   | CmdPathCommandDoesn'tSupportDryRun
   deriving (Show, Typeable)
@@ -841,7 +839,7 @@ exceptionMessageCabalInstall e = case e of
   CorruptedIndexCache str -> str
   UnusableIndexState repoRemote maxFound requested ->
     "Latest known index-state for '"
-      ++ unRepoName (remoteRepoName repoRemote)
+      ++ RepoName.unRepoName (Repo.remoteRepoName repoRemote)
       ++ "' ("
       ++ prettyShow maxFound
       ++ ") is older than the requested index-state ("
@@ -851,7 +849,7 @@ exceptionMessageCabalInstall e = case e of
       ++ "."
   MissingPackageList repoRemote ->
     "The package list for '"
-      ++ unRepoName (remoteRepoName repoRemote)
+      ++ RepoName.unRepoName (Repo.remoteRepoName repoRemote)
       ++ "' does not exist. Run 'cabal update' to download it."
   CmdPathAcceptsNoTargets ->
     "The 'path' command accepts no target arguments."

@@ -1,7 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE NondecreasingIndentation #-}
 -- | A GHC run-server, which supports running multiple GHC scripts
 -- without having to restart from scratch.
