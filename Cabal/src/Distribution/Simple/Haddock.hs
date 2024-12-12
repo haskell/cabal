@@ -617,6 +617,7 @@ fromHaddockProjectFlags flags =
     , argInterfaces = fromFlagOrDefault [] (haddockProjectInterfaces flags)
     , argLinkedSource = Flag True
     , argResourcesDir = haddockProjectResourcesDir flags
+    , argCssFile = haddockProjectCss flags
     }
 
 fromPackageDescription :: HaddockTarget -> PackageDescription -> HaddockArgs
