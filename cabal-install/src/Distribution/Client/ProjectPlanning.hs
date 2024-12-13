@@ -7,6 +7,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- /Elaborated: worked out with great care and nicety of detail; executed with great minuteness: elaborate preparations; elaborate care./
@@ -113,6 +114,9 @@ import Distribution.Client.JobControl
 import Distribution.Client.PackageHash
 import Distribution.Client.ProjectConfig
 import Distribution.Client.ProjectConfig.Legacy
+import Distribution.Client.ProjectConfig.Types
+  ( ProjectConfigProvenance (..)
+  )
 import Distribution.Client.ProjectPlanOutput
 import Distribution.Client.ProjectPlanning.SetupPolicy
   ( NonSetupLibDepSolverPlanPackage (..)
@@ -148,12 +152,18 @@ import qualified Hackage.Security.Client as Sec
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.InstSolverPackage
 import Distribution.Solver.Types.LabeledPackageConstraint
+import Distribution.Solver.Types.NamedPackage
+  ( NamedPackage (..)
+  )
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PkgConfigDb
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SolverId
 import Distribution.Solver.Types.SolverPackage
 import Distribution.Solver.Types.SourcePackage
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
+  )
 
 import Distribution.ModuleName
 import Distribution.Package
@@ -784,7 +794,7 @@ rebuildInstallPlan
         -> (Compiler, Platform, ProgramDb)
         -> Maybe PkgConfigDb
         -> SolverInstallPlan
-        -> [PackageSpecifier (SourcePackage (PackageLocation loc))]
+        -> [PackageSpecifier (SourcePackage (PackageLocationProvenance loc))]
         -> Rebuild
             ( ElaboratedInstallPlan
             , ElaboratedSharedConfig
@@ -917,9 +927,14 @@ reportPlanningFailure projectConfig comp platform pkgSpecifiers =
     theSpecifiedPackage :: Package pkg => PackageSpecifier pkg -> Maybe PackageId
     theSpecifiedPackage pkgSpec =
       case pkgSpec of
-        NamedPackage name [PackagePropertyVersion version] ->
-          PackageIdentifier name <$> trivialRange version
-        NamedPackage _ _ -> Nothing
+        Named
+          ( WithConstraintSource
+              { constraintInner = namedPackage
+              }
+            ) -> case namedPackage of
+            NamedPackage name [PackagePropertyVersion version] ->
+              PackageIdentifier name <$> trivialRange version
+            _ -> Nothing
         SpecificSourcePackage pkg -> Just $ packageId pkg
     -- \| If a range includes only a single version, return Just that version.
     trivialRange :: VersionRange -> Maybe Version
@@ -1027,7 +1042,7 @@ getPkgConfigDb verbosity progdb = do
 -- | Select the config values to monitor for changes package source hashes.
 packageLocationsSignature
   :: SolverInstallPlan
-  -> [(PackageId, PackageLocation (Maybe FilePath))]
+  -> [(PackageId, PackageLocationProvenance (Maybe FilePath))]
 packageLocationsSignature solverPlan =
   [ (packageId pkg, srcpkgSource pkg)
   | SolverInstallPlan.Configured (SolverPackage{solverPkgSource = pkg}) <-
@@ -1046,7 +1061,7 @@ getPackageSourceHashes
 getPackageSourceHashes verbosity withRepoCtx solverPlan = do
   -- Determine if and where to get the package's source hash from.
   --
-  let allPkgLocations :: [(PackageId, PackageLocation (Maybe FilePath))]
+  let allPkgLocations :: [(PackageId, PackageLocationProvenance (Maybe FilePath))]
       allPkgLocations =
         [ (packageId pkg, srcpkgSource pkg)
         | SolverInstallPlan.Configured (SolverPackage{solverPkgSource = pkg}) <-
@@ -1058,20 +1073,20 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
       localTarballPkgs :: [(PackageId, FilePath)]
       localTarballPkgs =
         [ (pkgid, tarball)
-        | (pkgid, LocalTarballPackage tarball) <- allPkgLocations
+        | (pkgid, constraintInner -> LocalTarballPackage tarball) <- allPkgLocations
         ]
 
       -- Tarballs from remote URLs. We must have downloaded these already
       -- (since we extracted the .cabal file earlier)
       remoteTarballPkgs =
         [ (pkgid, tarball)
-        | (pkgid, RemoteTarballPackage _ (Just tarball)) <- allPkgLocations
+        | (pkgid, constraintInner -> RemoteTarballPackage _ (Just tarball)) <- allPkgLocations
         ]
 
       -- tarballs from source-repository-package stanzas
       sourceRepoTarballPkgs =
         [ (pkgid, tarball)
-        | (pkgid, RemoteSourceRepoPackage _ (Just tarball)) <- allPkgLocations
+        | (pkgid, constraintInner -> RemoteSourceRepoPackage _ (Just tarball)) <- allPkgLocations
         ]
 
       -- Tarballs from repositories, either where the repository provides
@@ -1086,7 +1101,7 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
             [ case repo of
               RepoSecure{} -> Left (repo, [pkgid])
               _ -> Right (repo, pkgid)
-            | (pkgid, RepoTarballPackage repo _ _) <- allPkgLocations
+            | (pkgid, constraintInner -> RepoTarballPackage repo _ _) <- allPkgLocations
             ]
 
       -- Group up the unvalidated packages by repo so we only read the remote
@@ -1289,7 +1304,11 @@ planPackages
           . addConstraints
             -- version constraints from the config file or command line
             [ LabeledPackageConstraint (userToPackageConstraint pc) src
-            | (pc, src) <- solverSettingConstraints
+            | WithConstraintSource
+                { constraintInner = pc
+                , constraintSource = src
+                } <-
+                solverSettingConstraints
             ]
           . addPreferences
             -- enable stanza preference unilaterally, regardless if the user asked
@@ -1543,7 +1562,7 @@ elaborateInstallPlan
   -> DistDirLayout
   -> StoreDirLayout
   -> SolverInstallPlan
-  -> [PackageSpecifier (SourcePackage (PackageLocation loc))]
+  -> [PackageSpecifier (SourcePackage (PackageLocationProvenance loc))]
   -> Map PackageId PackageSourceHash
   -> InstallDirs.InstallDirTemplates
   -> ProjectConfigShared
@@ -2530,9 +2549,9 @@ elaborateInstallPlan
 
 -- TODO: Drop matchPlanPkg/matchElabPkg in favor of mkCCMapping
 
-shouldBeLocal :: PackageSpecifier (SourcePackage (PackageLocation loc)) -> Maybe PackageId
-shouldBeLocal NamedPackage{} = Nothing
-shouldBeLocal (SpecificSourcePackage pkg) = case srcpkgSource pkg of
+shouldBeLocal :: PackageSpecifier (SourcePackage (PackageLocationProvenance loc)) -> Maybe PackageId
+shouldBeLocal (Named _) = Nothing
+shouldBeLocal (SpecificSourcePackage pkg) = case constraintInner $ srcpkgSource pkg of
   LocalUnpackedPackage _ -> Just (packageId pkg)
   _ -> Nothing
 

@@ -64,6 +64,10 @@ import Distribution.Simple.Program
 import Distribution.Simple.Program.Db
   ( prependProgramSearchPath
   )
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
+  , withUnknownConstraint
+  )
 import Distribution.System
   ( OS (Windows)
   , buildOS
@@ -155,31 +159,36 @@ data SourceRepoProblem
 --
 -- | It also returns the 'VCS' driver we should use to work with it.
 validateSourceRepo
-  :: SourceRepositoryPackage f
-  -> Either SourceRepoProblem (SourceRepositoryPackage f, String, RepoType, VCS Program)
-validateSourceRepo = \repo -> do
-  let rtype = srpType repo
-  vcs <- Map.lookup rtype knownVCSs ?! SourceRepoRepoTypeUnsupported (srpToProxy repo) rtype
-  let uri = srpLocation repo
-  return (repo, uri, rtype, vcs)
-  where
-    a ?! e = maybe (Left e) Right a
+  :: WithConstraintSource (SourceRepositoryPackage f)
+  -> Either SourceRepoProblem (WithConstraintSource (SourceRepositoryPackage f), String, RepoType, VCS Program)
+validateSourceRepo
+  withConstraint@WithConstraintSource
+    { constraintInner = repo
+    } =
+    do
+      let rtype = srpType repo
+      vcs <- Map.lookup rtype knownVCSs ?! SourceRepoRepoTypeUnsupported (srpToProxy repo) rtype
+      let uri = srpLocation repo
+      return (withConstraint, uri, rtype, vcs)
+    where
+      a ?! e = maybe (Left e) Right a
 
 validatePDSourceRepo
   :: PD.SourceRepo
-  -> Either SourceRepoProblem (SourceRepoMaybe, String, RepoType, VCS Program)
+  -> Either SourceRepoProblem (WithConstraintSource SourceRepoMaybe, String, RepoType, VCS Program)
 validatePDSourceRepo repo = do
   rtype <- PD.repoType repo ?! SourceRepoRepoTypeUnspecified
   uri <- PD.repoLocation repo ?! SourceRepoLocationUnspecified
-  validateSourceRepo
-    SourceRepositoryPackage
-      { srpType = rtype
-      , srpLocation = uri
-      , srpTag = PD.repoTag repo
-      , srpBranch = PD.repoBranch repo
-      , srpSubdir = PD.repoSubdir repo
-      , srpCommand = mempty
-      }
+  validateSourceRepo $
+    withUnknownConstraint
+      SourceRepositoryPackage
+        { srpType = rtype
+        , srpLocation = uri
+        , srpTag = PD.repoTag repo
+        , srpBranch = PD.repoBranch repo
+        , srpSubdir = PD.repoSubdir repo
+        , srpCommand = mempty
+        }
   where
     a ?! e = maybe (Left e) Right a
 
@@ -187,20 +196,20 @@ validatePDSourceRepo repo = do
 -- things in a convenient form to pass to 'configureVCSs', or to report
 -- problems.
 validateSourceRepos
-  :: [SourceRepositoryPackage f]
+  :: [WithConstraintSource (SourceRepositoryPackage f)]
   -> Either
-      [(SourceRepositoryPackage f, SourceRepoProblem)]
-      [(SourceRepositoryPackage f, String, RepoType, VCS Program)]
+      [(WithConstraintSource (SourceRepositoryPackage f), SourceRepoProblem)]
+      [(WithConstraintSource (SourceRepositoryPackage f), String, RepoType, VCS Program)]
 validateSourceRepos rs =
   case partitionEithers (map validateSourceRepo' rs) of
     (problems@(_ : _), _) -> Left problems
     ([], vcss) -> Right vcss
   where
     validateSourceRepo'
-      :: SourceRepositoryPackage f
+      :: WithConstraintSource (SourceRepositoryPackage f)
       -> Either
-          (SourceRepositoryPackage f, SourceRepoProblem)
-          (SourceRepositoryPackage f, String, RepoType, VCS Program)
+          (WithConstraintSource (SourceRepositoryPackage f), SourceRepoProblem)
+          (WithConstraintSource (SourceRepositoryPackage f), String, RepoType, VCS Program)
     validateSourceRepo' r =
       either
         (Left . (,) r)

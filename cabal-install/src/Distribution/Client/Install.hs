@@ -239,6 +239,12 @@ import Distribution.Simple.Utils as Utils
   , warn
   , withTempDirectory
   )
+import Distribution.Solver.Types.NamedPackage
+  ( NamedPackage (..)
+  )
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
+  )
 import Distribution.System
   ( OS (Windows)
   , Platform
@@ -623,7 +629,11 @@ planPackages
           . addConstraints
             -- version constraints from the config file or command line
             [ LabeledPackageConstraint (userToPackageConstraint pc) src
-            | (pc, src) <- configExConstraints configExFlags
+            | WithConstraintSource
+                { constraintInner = pc
+                , constraintSource = src
+                } <-
+                configExConstraints configExFlags
             ]
           . addConstraints
             -- FIXME: this just applies all flags to all targets which
@@ -1100,9 +1110,14 @@ reportPlanningFailure
 theSpecifiedPackage :: Package pkg => PackageSpecifier pkg -> Maybe PackageId
 theSpecifiedPackage pkgSpec =
   case pkgSpec of
-    NamedPackage name [PackagePropertyVersion version] ->
-      PackageIdentifier name <$> trivialRange version
-    NamedPackage _ _ -> Nothing
+    Named
+      ( WithConstraintSource
+          { constraintInner =
+            NamedPackage name [PackagePropertyVersion version]
+          }
+        ) ->
+        PackageIdentifier name <$> trivialRange version
+    Named _ -> Nothing
     SpecificSourcePackage pkg -> Just $ packageId pkg
   where
     -- \| If a range includes only a single version, return Just that version.
@@ -1712,7 +1727,7 @@ installLocalPackage
   -> (Maybe FilePath -> IO BuildOutcome)
   -> IO BuildOutcome
 installLocalPackage verbosity pkgid location distPref installPkg =
-  case location of
+  case constraintInner location of
     LocalUnpackedPackage dir ->
       installPkg (Just dir)
     RemoteSourceRepoPackage _repo dir ->
