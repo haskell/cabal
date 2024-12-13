@@ -9,10 +9,8 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE QuantifiedConstraints #-}
@@ -612,9 +610,9 @@ mkCommand
   -> StaticPtr (arg -> res)
   -> arg
   -> Command arg res
-mkCommand dict actionPtr arg =
+mkCommand dict action arg =
   Command
-    { actionPtr = UserStatic actionPtr
+    { actionPtr = UserStatic action
     , actionArg = ScopedArgument arg
     , cmdInstances = UserStatic dict
     }
@@ -824,9 +822,9 @@ runRuleDynDepsCmd = \case
     }
       | Dict <- deRefStaticPtr instsPtr ->
           Just $ do
-            (deps, depsRes) <- runCommand depsCmd
+            (deps, dynDeps) <- runCommand depsCmd
             -- See Note [Hooks Binary instances]
-            return $ (deps, Binary.encode $ ScopedArgument @User depsRes)
+            return $ (deps, Binary.encode $ ScopedArgument @User dynDeps)
 
 -- | Project out the command for running the rule, passing in the result of
 -- the dependency computation if there was one.

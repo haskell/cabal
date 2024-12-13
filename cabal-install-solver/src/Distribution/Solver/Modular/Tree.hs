@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
+{-# LANGUAGE DeriveTraversable #-}
 module Distribution.Solver.Modular.Tree
     ( POption(..)
     , Tree(..)

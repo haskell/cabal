@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-
 -----------------------------------------------------------------------------
 
 -- Module      :  Distribution.Simple.Errors

@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE LambdaCase #-}
 
 module UnitTests.Distribution.Client.Init.Golden
   ( tests

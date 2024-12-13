@@ -1,8 +1,6 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE NondecreasingIndentation #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE NoMonoLocalBinds #-}
@@ -37,7 +35,7 @@ import Distribution.InstalledPackageInfo
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.ModuleName
 import Distribution.Package
-import Distribution.PackageDescription
+import Distribution.PackageDescription (FlagAssignment, PackageDescription (..), libName)
 import Distribution.Simple.Compiler
 import Distribution.Simple.Flag
 import Distribution.Simple.LocalBuildInfo
