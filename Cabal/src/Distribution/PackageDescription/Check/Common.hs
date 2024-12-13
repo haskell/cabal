@@ -1,6 +1,3 @@
-{-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE ViewPatterns #-}
-
 -- |
 -- Module      :  Distribution.PackageDescription.Check.Common
 -- Copyright   :  Francesco Ariis 2022
