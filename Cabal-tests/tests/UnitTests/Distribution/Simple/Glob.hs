@@ -107,13 +107,13 @@ testMatchesVersion version pat expected = do
           -- check can't identify that kind of match.
           expected' = filter (\case GlobMatchesDirectory _ -> False; _ -> True) expected
       unless (sort expected' == sort actual) $
-        assertFailure $ "Unexpected result (pure matcher): " ++ show actual
+        assertFailure $ "Unexpected result (pure matcher): " ++ show actual ++ "\nExpected: " ++ show expected
     checkIO globPat =
       withSystemTempDirectory "globstar-sample" $ \tmpdir -> do
         makeSampleFiles tmpdir
         actual <- runDirFileGlob Verbosity.normal (Just version) tmpdir globPat
         unless (isEqual actual expected) $
-          assertFailure $ "Unexpected result (impure matcher): " ++ show actual
+          assertFailure $ "Unexpected result (impure matcher): " ++ show actual ++ "\nExpected: " ++ show expected
 
 testFailParseVersion :: CabalSpecVersion -> FilePath -> GlobSyntaxError -> Assertion
 testFailParseVersion version pat expected =
