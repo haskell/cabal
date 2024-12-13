@@ -637,10 +637,11 @@ vcsGit =
         cloneArgs =
           ["clone"]
             ++ depthIs1
-            ++ [ "--no-checkout", loc, localDir]
-            ++ case peer of
-              Nothing -> []
-              Just peerLocalDir -> ["--reference", peerLocalDir]
+            ++ ["--no-checkout", loc, localDir]
+            ++ ( case peer of
+                  Nothing -> []
+                  Just peerLocalDir -> ["--reference", peerLocalDir]
+               )
             ++ verboseArg
           where
             loc = srpLocation
