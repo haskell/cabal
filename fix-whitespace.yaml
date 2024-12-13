@@ -87,6 +87,7 @@ included-files:
   - "*.yaml"
   - "*.yml"
   - "*.zinza"
+  - "changelog.d/*"
 
 excluded-files:
 # Exceptions
