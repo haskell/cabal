@@ -9,17 +9,17 @@ module Distribution.Deprecated.ProjectParseUtils
 import Distribution.Client.Compat.Prelude hiding (get)
 import Prelude ()
 
-import Distribution.Deprecated.ParseUtils
+import qualified Distribution.Deprecated.ParseUtils as Pkg (PError, PWarning, ParseResult (..))
 import Distribution.Solver.Types.ProjectConfigPath (ProjectConfigPath)
 
 data ProjectParseResult a
-  = ProjectParseFailed (Maybe ProjectConfigPath, PError)
-  | ProjectParseOk [(ProjectConfigPath, PWarning)] a
+  = ProjectParseFailed (Maybe ProjectConfigPath, Pkg.PError)
+  | ProjectParseOk [(ProjectConfigPath, Pkg.PWarning)] a
   deriving (Show)
 
-projectParse :: ProjectConfigPath -> ParseResult a -> ProjectParseResult a
-projectParse path (ParseFailed err) = ProjectParseFailed (Just path, err)
-projectParse path (ParseOk ws x) = ProjectParseOk [(path, w) | w <- ws] x
+projectParse :: ProjectConfigPath -> Pkg.ParseResult a -> ProjectParseResult a
+projectParse path (Pkg.ParseFailed err) = ProjectParseFailed (Just path, err)
+projectParse path (Pkg.ParseOk ws x) = ProjectParseOk [(path, w) | w <- ws] x
 
 instance Functor ProjectParseResult where
   fmap _ (ProjectParseFailed err) = ProjectParseFailed err
@@ -36,5 +36,5 @@ instance Monad ProjectParseResult where
     ProjectParseFailed err -> ProjectParseFailed err
     ProjectParseOk ws' x' -> ProjectParseOk (ws' ++ ws) x'
 
-projectParseFail :: Maybe ProjectConfigPath -> PError -> ProjectParseResult a
+projectParseFail :: Maybe ProjectConfigPath -> Pkg.PError -> ProjectParseResult a
 projectParseFail = curry ProjectParseFailed
