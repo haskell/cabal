@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 -----------------------------------------------------------------------------
 
 -----------------------------------------------------------------------------
@@ -844,6 +846,7 @@ resolveDependencies platform comp pkgConfigDB params =
           then params
           else dontInstallNonReinstallablePackages params
 
+
     preferences :: PackageName -> PackagePreferences
     preferences = interpretPackagesPreference targets defpref prefs
 
@@ -966,7 +969,7 @@ planPackagesProblems
   -> [PlanPackageProblem]
 planPackagesProblems platform cinfo pkgs =
   [ InvalidConfiguredPackage pkg packageProblems
-  | Configured pkg <- pkgs
+  | Configured pkg _ <- pkgs
   , let packageProblems = configuredPackageProblems platform cinfo pkg
   , not (null packageProblems)
   ]
