@@ -29,10 +29,7 @@ module Distribution.Deprecated.ParseUtils
   , warning
   , runP
   , runE
-  , ProjectParseResult (..)
   , ParseResult (..)
-  , projectParseFail
-  , projectParse
   , parseFail
   , showPWarning
   , Field (..)
@@ -83,7 +80,6 @@ import qualified Distribution.Fields as Fields
 import qualified Distribution.Fields.Field as Fields
 import qualified Distribution.Fields.LexerMonad as Fields
 import qualified Distribution.Parsec as Parsec
-import Distribution.Solver.Types.ProjectConfigPath (ProjectConfigPath)
 import qualified Text.Parsec.Error as PE
 import qualified Text.Parsec.Pos as PP
 
@@ -118,29 +114,12 @@ showPWarning fpath (UTFWarning line fname) =
 data ParseResult a = ParseFailed PError | ParseOk [PWarning] a
   deriving (Show)
 
-data ProjectParseResult a
-  = ProjectParseFailed (Maybe ProjectConfigPath, PError)
-  | ProjectParseOk [(ProjectConfigPath, PWarning)] a
-  deriving (Show)
-
-projectParse :: ProjectConfigPath -> ParseResult a -> ProjectParseResult a
-projectParse path (ParseFailed err) = ProjectParseFailed (Just path, err)
-projectParse path (ParseOk ws x) = ProjectParseOk [(path, w) | w <- ws] x
-
 instance Functor ParseResult where
   fmap _ (ParseFailed err) = ParseFailed err
   fmap f (ParseOk ws x) = ParseOk ws $ f x
 
-instance Functor ProjectParseResult where
-  fmap _ (ProjectParseFailed err) = ProjectParseFailed err
-  fmap f (ProjectParseOk ws x) = ProjectParseOk ws $ f x
-
 instance Applicative ParseResult where
   pure = ParseOk []
-  (<*>) = ap
-
-instance Applicative ProjectParseResult where
-  pure = ProjectParseOk []
   (<*>) = ap
 
 instance Monad ParseResult where
@@ -149,13 +128,6 @@ instance Monad ParseResult where
   ParseOk ws x >>= f = case f x of
     ParseFailed err -> ParseFailed err
     ParseOk ws' x' -> ParseOk (ws' ++ ws) x'
-
-instance Monad ProjectParseResult where
-  return = pure
-  ProjectParseFailed err >>= _ = ProjectParseFailed err
-  ProjectParseOk ws x >>= f = case f x of
-    ProjectParseFailed err -> ProjectParseFailed err
-    ProjectParseOk ws' x' -> ProjectParseOk (ws' ++ ws) x'
 
 instance Foldable ParseResult where
   foldMap _ (ParseFailed _) = mempty
@@ -173,9 +145,6 @@ parseResultFail s = parseFail (FromString s Nothing)
 
 parseFail :: PError -> ParseResult a
 parseFail = ParseFailed
-
-projectParseFail :: Maybe ProjectConfigPath -> PError -> ProjectParseResult a
-projectParseFail = curry ProjectParseFailed
 
 runP :: LineNo -> String -> ReadP a a -> String -> ParseResult a
 runP line fieldname p s =

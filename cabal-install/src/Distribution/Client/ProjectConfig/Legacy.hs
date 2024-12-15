@@ -150,19 +150,21 @@ import Distribution.Deprecated.ParseUtils
   ( PError (..)
   , PWarning (..)
   , ParseResult (..)
-  , ProjectParseResult (..)
   , commaNewLineListFieldParsec
   , newLineListField
   , parseFail
   , parseHaskellString
   , parseTokenQ
-  , projectParse
-  , projectParseFail
   , showToken
   , simpleFieldParsec
   , syntaxError
   )
 import qualified Distribution.Deprecated.ParseUtils as ParseUtils
+import Distribution.Deprecated.ProjectParseUtils
+  ( ProjectParseResult (..)
+  , projectParse
+  , projectParseFail
+  )
 import Distribution.Deprecated.ReadP
   ( ReadP
   , (+++)

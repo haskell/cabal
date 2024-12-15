@@ -136,9 +136,11 @@ import Distribution.Client.Utils
   ( determineNumJobs
   )
 import qualified Distribution.Deprecated.ParseUtils as OldParser
-  ( ProjectParseResult (..)
-  , locatedErrorMsg
+  ( locatedErrorMsg
   , showPWarning
+  )
+import qualified Distribution.Deprecated.ProjectParseUtils as OldParser
+  ( ProjectParseResult (..)
   )
 import Distribution.Fields
   ( PError
