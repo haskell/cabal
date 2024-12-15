@@ -1,6 +1,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -189,6 +190,7 @@ import Distribution.Utils.Path hiding
   )
 
 import qualified Data.ByteString.Char8 as BS
+import Data.Functor ((<&>))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Network.URI (URI (..), parseURI)
@@ -247,11 +249,14 @@ parseProject
   -> ProjectConfigToParse
   -- ^ The contents of the file to parse
   -> IO (ProjectParseResult ProjectConfigSkeleton)
-parseProject rootPath cacheDir httpTransport verbosity configToParse = do
-  let (dir, projectFileName) = splitFileName rootPath
-  projectDir <- makeAbsolute dir
-  projectPath <- canonicalizeConfigPath projectDir (ProjectConfigPath $ projectFileName :| [])
-  parseProjectSkeleton cacheDir httpTransport verbosity projectDir projectPath configToParse
+parseProject rootPath cacheDir httpTransport verbosity configToParse =
+  do
+    let (dir, projectFileName) = splitFileName rootPath
+    projectDir <- makeAbsolute dir
+    projectPath <- canonicalizeConfigPath projectDir (ProjectConfigPath $ projectFileName :| [])
+    parseProjectSkeleton cacheDir httpTransport verbosity projectDir projectPath configToParse
+    -- NOTE: Reverse the warnings so they are in line number order.
+    <&> \case ProjectParseOk ws x -> ProjectParseOk (reverse ws) x; x -> x
 
 parseProjectSkeleton
   :: FilePath
