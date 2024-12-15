@@ -18,4 +18,4 @@ Notes:
 - RTS options (like `+RTS -H32m -S -RTS`) will not be included in response
   files.
 - For reproducing commands after Cabal exits, `--keep-temp-files` can be used
-  to prevent the response files from being deleted. 
+  to prevent the response files from being deleted.
