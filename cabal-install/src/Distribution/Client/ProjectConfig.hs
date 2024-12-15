@@ -892,10 +892,11 @@ reportParseResult verbosity _filetype projectFile (OldParser.ProjectParseOk warn
             , cat [nest 2 $ text "-" <+> text m | m <- ordNub msgs]
             ]
   return x
-reportParseResult verbosity filetype filename (OldParser.ProjectParseFailed (_, err)) =
+reportParseResult verbosity filetype filename (OldParser.ProjectParseFailed (p, err)) =
   let (line, msg) = OldParser.locatedErrorMsg err
       errLineNo = maybe "" (\n -> ':' : show n) line
-   in dieWithException verbosity $ ReportParseResult filetype filename errLineNo msg
+      sourceFile = maybe filename (fst . unconsProjectConfigPath) p
+   in dieWithException verbosity $ ReportParseResult filetype sourceFile errLineNo (" - " ++ msg)
 
 ---------------------------------------------
 -- Finding packages in the project
