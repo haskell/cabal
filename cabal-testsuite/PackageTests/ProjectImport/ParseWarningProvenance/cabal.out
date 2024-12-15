@@ -1,0 +1,10 @@
+# cabal v2-build
+Warnings found while parsing the project file, cabal.project:
+  - y.config: Unrecognized section '-' on line 123
+  - x.config: Unrecognized section '-' on line 3
+  - x.config: Unrecognized section '-' on line 2
+  - x.config: Unrecognized section '-' on line 1
+  - dir-y/a.config: Unrecognized section '-' on line 123
+  - dir-x/a.config: Unrecognized section '-' on line 3
+  - dir-x/a.config: Unrecognized section '-' on line 2
+  - dir-x/a.config: Unrecognized section '-' on line 1

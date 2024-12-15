@@ -1,5 +1,3 @@
 packages: no-pkg-dir
 import: dir-x/a.config
-import: dir-y/a.config
 import: x.config
-import: y.config
