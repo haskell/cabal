@@ -279,13 +279,13 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
           then pure . projectParseFail (Just source) $ ParseUtils.FromString (render $ cyclicalImportMsg normLocPath) Nothing
           else do
             normSource <- canonicalizeConfigPath projectDir source
-            let fs :: ParseResult ProjectConfigSkeleton = (\z -> CondNode z [normLocPath] mempty) <$> fieldsToConfig normSource (reverse acc)
+            let fs = (\z -> CondNode z [normLocPath] mempty) <$> fieldsToConfig normSource (reverse acc)
             res <- parseProjectSkeleton cacheDir httpTransport verbosity projectDir importLocPath . ProjectConfigToParse =<< fetchImportConfig normLocPath
             rest <- go [] xs
             pure . fmap mconcat . sequence $ [projectParse normSource fs, res, rest]
       (ParseUtils.Section l "if" p xs') -> do
         subpcs <- go [] xs'
-        let fs :: ParseResult ProjectConfigSkeleton = singletonProjectConfigSkeleton <$> fieldsToConfig source (reverse acc)
+        let fs = singletonProjectConfigSkeleton <$> fieldsToConfig source (reverse acc)
         (elseClauses, rest) <- parseElseClauses xs
         let condNode =
               (\c pcs e -> CondNode mempty mempty [CondBranch c pcs e])
@@ -330,7 +330,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
     addProvenance :: ProjectConfigPath -> ProjectConfig -> ProjectConfig
     addProvenance sourcePath x = x{projectConfigProvenance = Set.singleton $ Explicit sourcePath}
 
-    adaptParseError :: Show a => ParseUtils.LineNo -> Either a b -> ParseResult b
+    adaptParseError :: Show e => ParseUtils.LineNo -> Either e a -> ParseResult a
     adaptParseError _ (Right x) = pure x
     adaptParseError l (Left e) = parseFail $ ParseUtils.FromString (show e) (Just l)
 
