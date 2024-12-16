@@ -1,3 +1,0 @@
-packages: no-pkg-dir
-import: dir-x/a.config
-import: x.config

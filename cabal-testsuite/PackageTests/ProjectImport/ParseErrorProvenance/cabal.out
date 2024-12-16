@@ -1,10 +1,13 @@
 # cabal v2-build
-Warnings found while parsing the project file, cabal.project:
-  - y.config: Unrecognized section '-' on line 123
-  - x.config: Unrecognized section '-' on line 3
-  - x.config: Unrecognized section '-' on line 2
-  - x.config: Unrecognized section '-' on line 1
-  - dir-y/a.config: Unrecognized section '-' on line 123
-  - dir-x/a.config: Unrecognized section '-' on line 3
-  - dir-x/a.config: Unrecognized section '-' on line 2
-  - dir-x/a.config: Unrecognized section '-' on line 1
+Error: [Cabal-7090]
+Error parsing project file dir-if/if.config:3:
+  - Failed to parse 'if(_)' with error:
+    "<condition>" (line 1, column 1): unexpected SecArgName (Position 1 4) "_"
+# cabal v2-build
+Error: [Cabal-7090]
+Error parsing project file dir-elif/elif.config:4:
+  - Failed to parse 'else(_)' with error:
+    "<condition>" (line 1, column 1): unexpected SecArgName (Position 1 6) "_"
+# cabal v2-build
+Warnings found while parsing the project file, else.project:
+  - dir-else/else.config: Unrecognized section '_' on line 3
