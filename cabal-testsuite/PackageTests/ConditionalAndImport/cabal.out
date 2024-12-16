@@ -17,14 +17,14 @@ Warning: The directory <ROOT>/cabal.dist/home/.cabal/store/ghc-<GHCVER>/incoming
 # checking cyclical loopback of a project importing itself
 # cabal v2-build
 Error: [Cabal-7090]
-Error parsing project file <ROOT>/cyclical-0-self.project:
+Error parsing project file cyclical-0-self.project:
 cyclical import of cyclical-0-self.project;
   cyclical-0-self.project
     imported by: cyclical-0-self.project
 # checking cyclical with hops; out and back
 # cabal v2-build
 Error: [Cabal-7090]
-Error parsing project file <ROOT>/cyclical-1-out-back.project:
+Error parsing project file cyclical-1-out-back.config:
 cyclical import of cyclical-1-out-back.project;
   cyclical-1-out-back.project
     imported by: cyclical-1-out-back.config
@@ -32,7 +32,7 @@ cyclical import of cyclical-1-out-back.project;
 # checking cyclical with hops; out to a config that imports itself
 # cabal v2-build
 Error: [Cabal-7090]
-Error parsing project file <ROOT>/cyclical-1-out-self.project:
+Error parsing project file cyclical-1-out-self.config:
 cyclical import of cyclical-1-out-self.config;
   cyclical-1-out-self.config
     imported by: cyclical-1-out-self.config
@@ -40,7 +40,7 @@ cyclical import of cyclical-1-out-self.config;
 # checking cyclical with hops; out, out, twice back
 # cabal v2-build
 Error: [Cabal-7090]
-Error parsing project file <ROOT>/cyclical-2-out-out-backback.project:
+Error parsing project file cyclical-2-out-out-backback-b.config:
 cyclical import of cyclical-2-out-out-backback.project;
   cyclical-2-out-out-backback.project
     imported by: cyclical-2-out-out-backback-b.config
@@ -49,7 +49,7 @@ cyclical import of cyclical-2-out-out-backback.project;
 # checking cyclical with hops; out, out, once back
 # cabal v2-build
 Error: [Cabal-7090]
-Error parsing project file <ROOT>/cyclical-2-out-out-back.project:
+Error parsing project file cyclical-2-out-out-back-b.config:
 cyclical import of cyclical-2-out-out-back-a.config;
   cyclical-2-out-out-back-a.config
     imported by: cyclical-2-out-out-back-b.config
@@ -58,7 +58,7 @@ cyclical import of cyclical-2-out-out-back-a.config;
 # checking cyclical with hops; out, out to a config that imports itself
 # cabal v2-build
 Error: [Cabal-7090]
-Error parsing project file <ROOT>/cyclical-2-out-out-self.project:
+Error parsing project file cyclical-2-out-out-self-b.config:
 cyclical import of cyclical-2-out-out-self-b.config;
   cyclical-2-out-out-self-b.config
     imported by: cyclical-2-out-out-self-b.config
@@ -93,7 +93,7 @@ Up to date
 # checking that cyclical check catches a same file name that imports itself
 # cabal v2-build
 Error: [Cabal-7090]
-Error parsing project file <ROOT>/cyclical-same-filename-out-out-self.project:
+Error parsing project file same-filename/cyclical-same-filename-out-out-self.config:
 cyclical import of same-filename/cyclical-same-filename-out-out-self.config;
   same-filename/cyclical-same-filename-out-out-self.config
     imported by: same-filename/cyclical-same-filename-out-out-self.config
@@ -102,7 +102,7 @@ cyclical import of same-filename/cyclical-same-filename-out-out-self.config;
 # checking that cyclical check catches importing its importer (with the same file name)
 # cabal v2-build
 Error: [Cabal-7090]
-Error parsing project file <ROOT>/cyclical-same-filename-out-out-backback.project:
+Error parsing project file same-filename/cyclical-same-filename-out-out-backback.config:
 cyclical import of cyclical-same-filename-out-out-backback.project;
   cyclical-same-filename-out-out-backback.project
     imported by: same-filename/cyclical-same-filename-out-out-backback.config
@@ -111,7 +111,7 @@ cyclical import of cyclical-same-filename-out-out-backback.project;
 # checking that cyclical check catches importing its importer's importer (hopping over same file names)
 # cabal v2-build
 Error: [Cabal-7090]
-Error parsing project file <ROOT>/cyclical-same-filename-out-out-back.project:
+Error parsing project file same-filename/cyclical-same-filename-out-out-back.config:
 cyclical import of cyclical-same-filename-out-out-back.config;
   cyclical-same-filename-out-out-back.config
     imported by: same-filename/cyclical-same-filename-out-out-back.config
