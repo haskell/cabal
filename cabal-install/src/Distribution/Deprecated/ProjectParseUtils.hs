@@ -1,7 +1,7 @@
 {-# OPTIONS_HADDOCK hide #-}
 
 module Distribution.Deprecated.ProjectParseUtils
-  ( ProjectParseError
+  ( ProjectParseError (..)
   , ProjectParseWarning
   , ProjectParseResult (..)
   , projectParseFail
@@ -14,8 +14,14 @@ import Prelude ()
 import qualified Distribution.Deprecated.ParseUtils as Pkg (PError, PWarning, ParseResult (..))
 import Distribution.Solver.Types.ProjectConfigPath (ProjectConfigPath)
 
-type ProjectParseError = ((Maybe ProjectConfigPath, Pkg.PError), Maybe String)
 type ProjectParseWarning = (ProjectConfigPath, Pkg.PWarning)
+
+data ProjectParseError = ProjectParseError
+  { projectParseSnippet :: Maybe String
+  , projectParseSource :: Maybe ProjectConfigPath
+  , projectParseError :: Pkg.PError
+  }
+  deriving (Show)
 
 data ProjectParseResult a
   = ProjectParseFailed ProjectParseError
@@ -23,7 +29,7 @@ data ProjectParseResult a
   deriving (Show)
 
 projectParse :: Maybe String -> ProjectConfigPath -> Pkg.ParseResult a -> ProjectParseResult a
-projectParse s path (Pkg.ParseFailed err) = ProjectParseFailed ((Just path, err), s)
+projectParse s path (Pkg.ParseFailed err) = ProjectParseFailed $ ProjectParseError s (Just path) err
 projectParse _ path (Pkg.ParseOk ws x) = ProjectParseOk [(path, w) | w <- ws] x
 
 instance Functor ProjectParseResult where
@@ -42,4 +48,4 @@ instance Monad ProjectParseResult where
     ProjectParseOk ws' x' -> ProjectParseOk (ws' ++ ws) x'
 
 projectParseFail :: Maybe String -> Maybe ProjectConfigPath -> Pkg.PError -> ProjectParseResult a
-projectParseFail s p e = ProjectParseFailed ((p, e), s)
+projectParseFail s p e = ProjectParseFailed $ ProjectParseError s p e

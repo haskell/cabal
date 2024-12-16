@@ -244,7 +244,7 @@ import System.IO
   , withBinaryFile
   )
 
-import Distribution.Deprecated.ProjectParseUtils (ProjectParseWarning)
+import Distribution.Deprecated.ProjectParseUtils (ProjectParseError (..), ProjectParseWarning)
 import Distribution.Solver.Types.ProjectConfigPath
 
 ----------------------------------------
@@ -897,7 +897,7 @@ reportParseResult :: Verbosity -> String -> FilePath -> OldParser.ProjectParseRe
 reportParseResult verbosity _filetype projectFile (OldParser.ProjectParseOk warnings x) = do
   reportProjectParseWarnings verbosity projectFile warnings
   return x
-reportParseResult verbosity filetype projectFile (OldParser.ProjectParseFailed ((rootOrImportee, err), s)) = do
+reportParseResult verbosity filetype projectFile (OldParser.ProjectParseFailed (ProjectParseError snippet rootOrImportee err)) = do
   let (line, msg) = OldParser.locatedErrorMsg err
   let errLineNo = maybe "" (\n -> ':' : show n) line
   let (sourceFile, provenance) =
@@ -909,12 +909,12 @@ reportParseResult verbosity filetype projectFile (OldParser.ProjectParseFailed (
               )
           )
           rootOrImportee
-  let doc = nest 2 $ case s of
+  let doc = nest 2 $ case snippet of
         Nothing -> text "-" <+> hsep (text <$> lines msg)
-        Just s' ->
+        Just s ->
           vcat
             [ provenance
-            , text "-" <+> text "Failed to parse" <+> quotes (text s') <+> (text "with error" <> colon)
+            , text "-" <+> text "Failed to parse" <+> quotes (text s) <+> (text "with error" <> colon)
             , nest 2 $ hsep $ text <$> lines msg
             ]
   dieWithException verbosity $ ReportParseResult filetype sourceFile errLineNo (render doc)

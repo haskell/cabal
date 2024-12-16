@@ -350,7 +350,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
       where
         addWarnings (ProjectParseOk ws' x') = ProjectParseOk (ws' ++ ((p,) <$> ws)) x'
         addWarnings x' = x'
-    liftPR p _ (ParseFailed e) = pure $ ProjectParseFailed ((Just p, e), Nothing)
+    liftPR p _ (ParseFailed e) = pure $ projectParseFail Nothing (Just p) e
 
     fetchImportConfig :: ProjectConfigPath -> IO BS.ByteString
     fetchImportConfig (ProjectConfigPath (pci :| _)) = do
