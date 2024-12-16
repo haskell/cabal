@@ -376,7 +376,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
     sanityWalkPCS :: Bool -> ProjectConfigSkeleton -> ProjectParseResult ProjectConfigSkeleton
     sanityWalkPCS underConditional t@(CondNode d (listToMaybe -> c) comps)
       | underConditional && modifiesCompiler d =
-          projectParseFail (Just $ show d) c $ ParseUtils.FromString "Cannot set compiler in a conditional clause of a cabal project file" Nothing
+          projectParseFail Nothing c $ ParseUtils.FromString "Cannot set compiler in a conditional clause of a cabal project file" Nothing
       | otherwise =
           mapM_ sanityWalkBranch comps >> pure t
 
