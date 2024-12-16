@@ -38,7 +38,7 @@ mixing configuration files and URIs together.
     import: https://www.stackage.org/lts-21.25/cabal.config
     import: https://www.stackage.org/lts-21.25/cabal.config
 
-    $ cat z-empty.config 
+    $ cat z-empty.config
     - This file is intentionally empty, just this comment.
     ```
 
