@@ -65,9 +65,9 @@ module Distribution.Client.ProjectConfig
   , maxNumFetchJobs
   ) where
 
-import Distribution.Client.Compat.Prelude
+import Distribution.Client.Compat.Prelude hiding (empty)
 import Distribution.Simple.Utils (ordNub)
-import Text.PrettyPrint (cat, colon, comma, nest, render, text, vcat)
+import Text.PrettyPrint (cat, colon, comma, hsep, nest, quotes, render, text, vcat)
 import Prelude ()
 
 import Distribution.Client.Glob
@@ -244,8 +244,8 @@ import System.IO
   , withBinaryFile
   )
 
-import Distribution.Solver.Types.ProjectConfigPath
 import Distribution.Deprecated.ProjectParseUtils (ProjectParseWarning)
+import Distribution.Solver.Types.ProjectConfigPath
 
 ----------------------------------------
 -- Resolving configuration to settings
@@ -897,11 +897,18 @@ reportParseResult :: Verbosity -> String -> FilePath -> OldParser.ProjectParseRe
 reportParseResult verbosity _filetype projectFile (OldParser.ProjectParseOk warnings x) = do
   reportProjectParseWarnings verbosity projectFile warnings
   return x
-reportParseResult verbosity filetype projectFile (OldParser.ProjectParseFailed (p, err)) = do
+reportParseResult verbosity filetype projectFile (OldParser.ProjectParseFailed ((p, err), s)) = do
   let (line, msg) = OldParser.locatedErrorMsg err
   let errLineNo = maybe "" (\n -> ':' : show n) line
   let sourceFile = maybe projectFile (fst . unconsProjectConfigPath) p
-  dieWithException verbosity $ ReportParseResult filetype sourceFile errLineNo (" - " ++ msg)
+  let doc = nest 2 $ case s of
+        Nothing -> text "-" <+> hsep (text <$> lines msg)
+        Just s' ->
+          vcat
+            [ text "-" <+> text "Failed to parse" <+> quotes (text s') <+> (text "with error" <> colon)
+            , nest 2 $ hsep $ text <$> lines msg
+            ]
+  dieWithException verbosity $ ReportParseResult filetype sourceFile errLineNo (render doc)
 
 ---------------------------------------------
 -- Finding packages in the project
