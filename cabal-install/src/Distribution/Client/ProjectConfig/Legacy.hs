@@ -320,7 +320,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
         (elseClauses, rest) <- parseElseClauses xs
         let condNode =
               (\c pcs e -> CondNode mempty mempty [CondBranch c pcs e])
-                <$> ( let s = "else(" <> p <> ")"
+                <$> ( let s = "elif(" <> p <> ")"
                        in projectParse (Just s) source (adaptParseError l (parseConditionConfVarFromClause $ BS.pack s))
                     )
                 <*> subpcs
