@@ -909,15 +909,16 @@ reportParseResult verbosity filetype projectFile (OldParser.ProjectParseFailed (
               )
           )
           rootOrImportee
-  let doc = nest 2 $ case snippet of
-        Nothing -> text "-" <+> hsep (text <$> lines msg)
+  let doc = case snippet of
+        Nothing -> msg
         Just s ->
-          vcat
-            [ provenance
-            , text "-" <+> text "Failed to parse" <+> quotes (text s) <+> (text "with error" <> colon)
-            , nest 2 $ hsep $ text <$> lines msg
-            ]
-  dieWithException verbosity $ ReportParseResult filetype sourceFile errLineNo (render doc)
+          render . nest 2 $
+            vcat
+              [ provenance
+              , text "-" <+> text "Failed to parse" <+> quotes (text s) <+> (text "with error" <> colon)
+              , nest 2 $ hsep $ text <$> lines msg
+              ]
+  dieWithException verbosity $ ReportParseResult filetype sourceFile errLineNo doc
 
 ---------------------------------------------
 -- Finding packages in the project
