@@ -1,7 +1,9 @@
 {-# OPTIONS_HADDOCK hide #-}
 
 module Distribution.Deprecated.ProjectParseUtils
-  ( ProjectParseResult (..)
+  ( ProjectParseError
+  , ProjectParseWarning
+  , ProjectParseResult (..)
   , projectParseFail
   , projectParse
   ) where
@@ -13,11 +15,11 @@ import qualified Distribution.Deprecated.ParseUtils as Pkg (PError, PWarning, Pa
 import Distribution.Solver.Types.ProjectConfigPath (ProjectConfigPath)
 
 type ProjectParseError = (Maybe ProjectConfigPath, Pkg.PError)
-type ProjectParseWarnings = [(ProjectConfigPath, Pkg.PWarning)]
+type ProjectParseWarning = (ProjectConfigPath, Pkg.PWarning)
 
 data ProjectParseResult a
   = ProjectParseFailed ProjectParseError
-  | ProjectParseOk ProjectParseWarnings a
+  | ProjectParseOk [ProjectParseWarning] a
   deriving (Show)
 
 projectParse :: ProjectConfigPath -> Pkg.ParseResult a -> ProjectParseResult a

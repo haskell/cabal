@@ -245,6 +245,7 @@ import System.IO
   )
 
 import Distribution.Solver.Types.ProjectConfigPath
+import Distribution.Deprecated.ProjectParseUtils (ProjectParseWarning)
 
 ----------------------------------------
 -- Resolving configuration to settings
@@ -878,8 +879,8 @@ readGlobalConfig verbosity configFileFlag = do
   monitorFiles [monitorFileHashed configFile]
   return (convertLegacyGlobalConfig config)
 
-reportParseResult :: Verbosity -> String -> FilePath -> OldParser.ProjectParseResult ProjectConfigSkeleton -> IO ProjectConfigSkeleton
-reportParseResult verbosity _filetype projectFile (OldParser.ProjectParseOk warnings x) = do
+reportProjectParseWarnings :: Verbosity -> FilePath -> [ProjectParseWarning] -> IO ()
+reportProjectParseWarnings verbosity projectFile warnings =
   unless (null warnings) $
     let msgs =
           [ OldParser.showPWarning pFilename w
@@ -891,12 +892,16 @@ reportParseResult verbosity _filetype projectFile (OldParser.ProjectParseOk warn
             [ (text "Warnings found while parsing the project file" <> comma) <+> (text (takeFileName projectFile) <> colon)
             , cat [nest 2 $ text "-" <+> text m | m <- ordNub msgs]
             ]
+
+reportParseResult :: Verbosity -> String -> FilePath -> OldParser.ProjectParseResult ProjectConfigSkeleton -> IO ProjectConfigSkeleton
+reportParseResult verbosity _filetype projectFile (OldParser.ProjectParseOk warnings x) = do
+  reportProjectParseWarnings verbosity projectFile warnings
   return x
-reportParseResult verbosity filetype filename (OldParser.ProjectParseFailed (p, err)) =
+reportParseResult verbosity filetype projectFile (OldParser.ProjectParseFailed (p, err)) = do
   let (line, msg) = OldParser.locatedErrorMsg err
-      errLineNo = maybe "" (\n -> ':' : show n) line
-      sourceFile = maybe filename (fst . unconsProjectConfigPath) p
-   in dieWithException verbosity $ ReportParseResult filetype sourceFile errLineNo (" - " ++ msg)
+  let errLineNo = maybe "" (\n -> ':' : show n) line
+  let sourceFile = maybe projectFile (fst . unconsProjectConfigPath) p
+  dieWithException verbosity $ ReportParseResult filetype sourceFile errLineNo (" - " ++ msg)
 
 ---------------------------------------------
 -- Finding packages in the project
