@@ -67,7 +67,7 @@ module Distribution.Client.ProjectConfig
 
 import Distribution.Client.Compat.Prelude hiding (empty)
 import Distribution.Simple.Utils (ordNub)
-import Text.PrettyPrint (cat, colon, comma, hsep, nest, quotes, render, text, vcat)
+import Text.PrettyPrint (cat, colon, comma, empty, hsep, nest, quotes, render, text, vcat)
 import Prelude ()
 
 import Distribution.Client.Glob
@@ -897,15 +897,24 @@ reportParseResult :: Verbosity -> String -> FilePath -> OldParser.ProjectParseRe
 reportParseResult verbosity _filetype projectFile (OldParser.ProjectParseOk warnings x) = do
   reportProjectParseWarnings verbosity projectFile warnings
   return x
-reportParseResult verbosity filetype projectFile (OldParser.ProjectParseFailed ((p, err), s)) = do
+reportParseResult verbosity filetype projectFile (OldParser.ProjectParseFailed ((rootOrImportee, err), s)) = do
   let (line, msg) = OldParser.locatedErrorMsg err
   let errLineNo = maybe "" (\n -> ':' : show n) line
-  let sourceFile = maybe projectFile (fst . unconsProjectConfigPath) p
+  let (sourceFile, provenance) =
+        maybe
+          (projectFile, empty)
+          ( \p ->
+              ( fst $ unconsProjectConfigPath p
+              , if isTopLevelConfigPath p then empty else hsep [text "-", nest 2 $ docProjectConfigPath p]
+              )
+          )
+          rootOrImportee
   let doc = nest 2 $ case s of
         Nothing -> text "-" <+> hsep (text <$> lines msg)
         Just s' ->
           vcat
-            [ text "-" <+> text "Failed to parse" <+> quotes (text s') <+> (text "with error" <> colon)
+            [ provenance
+            , text "-" <+> text "Failed to parse" <+> quotes (text s') <+> (text "with error" <> colon)
             , nest 2 $ hsep $ text <$> lines msg
             ]
   dieWithException verbosity $ ReportParseResult filetype sourceFile errLineNo (render doc)
