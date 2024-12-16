@@ -26,7 +26,8 @@ cat <<EOF > /dev/stdout
       viTags:
         - Latest
       viChangeLog: https://github.com/haskell/cabal/blob/master/release-notes/cabal-install-$RELEASE.md
-      viPostInstall: *cabal-${RELEASE//./}-post-install
+      # uncomment viPostInstall if the release needs a post-install message
+      # viPostInstall: &cabal-${RELEASE//./}-post-install |
       viArch:
         A_64:
           Linux_UnknownLinux:
@@ -42,15 +43,15 @@ cat <<EOF > /dev/stdout
             dlSubdir: cabal-install-$RELEASE
             dlHash: $(sha256sum "cabal-install-$RELEASE-x86_64-linux-centos7.tar.xz" | awk '{ print $1 }')
           Linux_Debian:
-            ' ( >= 9 && < 10)': &cabal-${RELEASE//./}-64-debian
+            '( >= 9 && < 10)': &cabal-${RELEASE//./}-64-debian
               dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-x86_64-linux-deb9.tar.xz
               dlSubdir: cabal-install-$RELEASE
               dlHash: $(sha256sum "cabal-install-$RELEASE-x86_64-linux-deb9.tar.xz" | awk '{ print $1 }')
-            ' ( == 10 && < 11)':
+            '( == 10 && < 11)':
               dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-x86_64-linux-deb10.tar.xz
               dlSubdir: cabal-install-$RELEASE
               dlHash: $(sha256sum "cabal-install-$RELEASE-x86_64-linux-deb10.tar.xz" | awk '{ print $1 }')
-            ' ( >= 11)':
+            '( >= 11)':
               dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-x86_64-linux-deb11.tar.xz
               dlSubdir: cabal-install-$RELEASE
               dlHash: $(sha256sum "cabal-install-$RELEASE-x86_64-linux-deb11.tar.xz" | awk '{ print $1 }')
@@ -111,7 +112,7 @@ cat <<EOF > /dev/stdout
               dlSubdir: cabal-install-$RELEASE
               dlHash: $(sha256sum "cabal-install-$RELEASE-aarch64-darwin.tar.xz" | awk '{ print $1 }')
           Linux_Debian:
-            '( >= 10 && < 11)': &cabal-31020-arm64
+            '( >= 10 && < 11)': &cabal-${RELEASE//./}-arm64
               dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-aarch64-linux-deb10.tar.xz
               dlSubdir: cabal-install-$RELEASE
               dlHash: $(sha256sum "cabal-install-$RELEASE-aarch64-linux-deb10.tar.xz" | awk '{ print $1 }')
