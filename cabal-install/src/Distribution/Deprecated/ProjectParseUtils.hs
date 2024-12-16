@@ -12,9 +12,12 @@ import Prelude ()
 import qualified Distribution.Deprecated.ParseUtils as Pkg (PError, PWarning, ParseResult (..))
 import Distribution.Solver.Types.ProjectConfigPath (ProjectConfigPath)
 
+type ProjectParseError = (Maybe ProjectConfigPath, Pkg.PError)
+type ProjectParseWarnings = [(ProjectConfigPath, Pkg.PWarning)]
+
 data ProjectParseResult a
-  = ProjectParseFailed (Maybe ProjectConfigPath, Pkg.PError)
-  | ProjectParseOk [(ProjectConfigPath, Pkg.PWarning)] a
+  = ProjectParseFailed ProjectParseError
+  | ProjectParseOk ProjectParseWarnings a
   deriving (Show)
 
 projectParse :: ProjectConfigPath -> Pkg.ParseResult a -> ProjectParseResult a
