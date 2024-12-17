@@ -105,6 +105,10 @@ cat <<EOF > /dev/stdout
               dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-aarch64-linux-deb11.tar.xz
               dlHash: $(sha256sum "cabal-install-$RELEASE-aarch64-linux-deb11.tar.xz" | awk '{ print $1 }')
             unknown_versioning: *cabal-${RELEASE//./}-arm64
+          Linux_Alpine:
+            unknown_versioning:
+              dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-aarch64-linux-alpine3_18.tar.xz
+              dlHash: $(sha256sum "cabal-install-$RELEASE-aarch64-linux-alpine3_18.tar.xz" | awk '{ print $1 }')
           Linux_UnknownLinux:
             unknown_versioning: *cabal-${RELEASE//./}-arm64
 EOF
