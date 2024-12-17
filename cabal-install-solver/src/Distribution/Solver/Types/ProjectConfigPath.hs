@@ -27,11 +27,19 @@ import Data.Coerce (coerce)
 import Data.List.NonEmpty ((<|))
 import Network.URI (parseURI)
 import System.Directory
-import System.FilePath
+import System.FilePath hiding (splitPath)
+import qualified System.FilePath as FP (splitPath)
+import qualified System.FilePath.Posix as Posix
+import qualified System.FilePath.Windows as Windows
 import qualified Data.List.NonEmpty as NE
 import Distribution.Solver.Modular.Version (VR)
 import Distribution.Pretty (prettyShow)
 import Text.PrettyPrint
+<<<<<<< HEAD
+=======
+import Distribution.Simple.Utils (ordNub)
+import Distribution.System (OS(Windows), buildOS)
+>>>>>>> d0bd687a2 (Use OS-specific splitPath before comparing projects)
 
 -- | Path to a configuration file, either a singleton project root, or a longer
 -- list representing a path to an import.  The path is a non-empty list that we
@@ -45,7 +53,63 @@ import Text.PrettyPrint
 -- List elements are relative to each other but once canonicalized, elements are
 -- relative to the directory of the project root.
 newtype ProjectConfigPath = ProjectConfigPath (NonEmpty FilePath)
+<<<<<<< HEAD
     deriving (Eq, Ord, Show, Generic)
+=======
+    deriving (Eq, Show, Generic)
+
+-- | Sorts URIs after local file paths and longer file paths after shorter ones
+-- as measured by the number of path segments. If still equal, then sorting is
+-- lexical.
+--
+-- The project itself, a single element root path, compared to any of the
+-- configuration paths it imports, should always sort first. Comparing one
+-- project root path against another is done lexically.
+--
+-- For comparison purposes, path separators are normalized to the @buildOS@
+-- platform's path separator.
+--
+-- >>> let abFwd = ProjectConfigPath $ "a/b.config" :| []
+-- >>> let abBwd = ProjectConfigPath $ "a\\b.config" :| []
+-- >>> compare abFwd abBwd
+-- EQ
+instance Ord ProjectConfigPath where
+    compare pa@(ProjectConfigPath (NE.toList -> as)) pb@(ProjectConfigPath (NE.toList -> bs)) =
+        case (as, bs) of
+            -- There should only ever be one root project path, only one path
+            -- with length 1. Comparing it to itself should be EQ. Don't assume
+            -- this though, do a comparison anyway when both sides have length
+            -- 1.  The root path, the project itself, should always be the first
+            -- path in a sorted listing.
+            ([a], [b]) -> compare (splitPath a) (splitPath b)
+            ([_], _) -> LT
+            (_, [_]) -> GT
+
+            (a:_, b:_) -> case (parseAbsoluteURI a, parseAbsoluteURI b) of
+                (Just ua, Just ub) -> compare ua ub P.<> compare aImporters bImporters
+                (Just _, Nothing) -> GT
+                (Nothing, Just _) -> LT
+                (Nothing, Nothing) -> compare (splitPath a) (splitPath b) P.<> compare aImporters bImporters
+            _ ->
+                compare (length as) (length bs)
+                P.<> compare (length aPaths) (length bPaths)
+                P.<> compare aPaths bPaths
+        where
+            splitPath = FP.splitPath . normSep where
+                normSep p =
+                    if buildOS == Windows
+                        then
+                            Windows.joinPath $ Windows.splitDirectories
+                            [if Posix.isPathSeparator c then Windows.pathSeparator else c| c <- p]
+                        else
+                            Posix.joinPath $ Posix.splitDirectories
+                            [if Windows.isPathSeparator c then Posix.pathSeparator else c| c <- p]
+
+            aPaths = splitPath <$> as
+            bPaths = splitPath <$> bs
+            aImporters = snd $ unconsProjectConfigPath pa
+            bImporters = snd $ unconsProjectConfigPath pb
+>>>>>>> d0bd687a2 (Use OS-specific splitPath before comparing projects)
 
 instance Binary ProjectConfigPath
 instance Structured ProjectConfigPath
