@@ -278,18 +278,19 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
         let importLocPath = importLoc `consProjectConfigPath` source
 
         -- Once we canonicalize the import path, we can check for cyclical imports
+        normSource <- canonicalizeConfigPath projectDir source
         normLocPath <- canonicalizeConfigPath projectDir importLocPath
         debug verbosity $ "\nimport path, normalized\n=======================\n" ++ render (docProjectConfigPath normLocPath)
 
         if isCyclicConfigPath normLocPath
-          then pure . projectParseFail Nothing (Just source) $ ParseUtils.FromString (render $ cyclicalImportMsg normLocPath) Nothing
+          then pure . projectParseFail Nothing (Just normSource) $ ParseUtils.FromString (render $ cyclicalImportMsg normLocPath) Nothing
           else do
-            normSource <- canonicalizeConfigPath projectDir source
             let fs = (\z -> CondNode z [normLocPath] mempty) <$> fieldsToConfig normSource (reverse acc)
             res <- parseProjectSkeleton cacheDir httpTransport verbosity projectDir importLocPath . ProjectConfigToParse =<< fetchImportConfig normLocPath
             rest <- go [] xs
-            pure . fmap mconcat . sequence $ [projectParse Nothing source fs, res, rest]
+            pure . fmap mconcat . sequence $ [projectParse Nothing normSource fs, res, rest]
       (ParseUtils.Section l "if" p xs') -> do
+        normSource <- canonicalizeConfigPath projectDir source
         subpcs <- go [] xs'
         let fs = singletonProjectConfigSkeleton <$> fieldsToConfig source (reverse acc)
         (elseClauses, rest) <- parseElseClauses xs
@@ -298,15 +299,15 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
                 <$>
                 -- we rewrap as as a section so the readFields lexer of the conditional parser doesn't get confused
                 ( let s = "if(" <> p <> ")"
-                   in projectParse (Just s) source (adaptParseError l (parseConditionConfVarFromClause $ BS.pack s))
+                   in projectParse (Just s) normSource (adaptParseError l (parseConditionConfVarFromClause $ BS.pack s))
                 )
                 <*> subpcs
                 <*> elseClauses
-        pure . fmap mconcat . sequence $ [projectParse Nothing source fs, condNode, rest]
+        pure . fmap mconcat . sequence $ [projectParse Nothing normSource fs, condNode, rest]
       _ -> go (x : acc) xs
     go acc [] = do
       normSource <- canonicalizeConfigPath projectDir source
-      pure . fmap singletonProjectConfigSkeleton . projectParse Nothing source . fieldsToConfig normSource $ reverse acc
+      pure . fmap singletonProjectConfigSkeleton . projectParse Nothing normSource . fieldsToConfig normSource $ reverse acc
 
     parseElseClauses :: [ParseUtils.Field] -> IO (ProjectParseResult (Maybe ProjectConfigSkeleton), ProjectParseResult ProjectConfigSkeleton)
     parseElseClauses x = case x of
@@ -315,12 +316,13 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
         rest <- go [] xs
         pure (Just <$> subpcs, rest)
       (ParseUtils.Section l "elif" p xs' : xs) -> do
+        normSource <- canonicalizeConfigPath projectDir source
         subpcs <- go [] xs'
         (elseClauses, rest) <- parseElseClauses xs
         let condNode =
               (\c pcs e -> CondNode mempty mempty [CondBranch c pcs e])
                 <$> ( let s = "elif(" <> p <> ")"
-                       in projectParse (Just s) source (adaptParseError l (parseConditionConfVarFromClause $ BS.pack s))
+                       in projectParse (Just s) normSource (adaptParseError l (parseConditionConfVarFromClause $ BS.pack s))
                     )
                 <*> subpcs
                 <*> elseClauses
