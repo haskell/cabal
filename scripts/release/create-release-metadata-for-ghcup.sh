@@ -32,16 +32,14 @@ cat <<EOF > /dev/stdout
         A_64:
           Linux_UnknownLinux:
             unknown_versioning: &cabal-${RELEASE//./}-64
-            dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-x86_64-linux-alpine3_12.tar.xz
-            dlSubdir: cabal-install-$RELEASE
-            dlHash: $(sha256sum "cabal-install-$RELEASE-x86_64-linux-alpine3_12.tar.xz" | awk '{ print $1 }')
+              dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-x86_64-linux-alpine3_12.tar.xz
+              dlHash: $(sha256sum "cabal-install-$RELEASE-x86_64-linux-alpine3_12.tar.xz" | awk '{ print $1 }')
           Linux_Alpine:
-            unknown_versioning: &cabal-${RELEASE//./}-64
+            unknown_versioning: *cabal-${RELEASE//./}-64
           Linux_CentOS:
             unknown_versioning: &cabal-${RELEASE//./}-64-centos7
-            dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-x86_64-linux-centos7.tar.xz
-            dlSubdir: cabal-install-$RELEASE
-            dlHash: $(sha256sum "cabal-install-$RELEASE-x86_64-linux-centos7.tar.xz" | awk '{ print $1 }')
+              dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-x86_64-linux-centos7.tar.xz
+              dlHash: $(sha256sum "cabal-install-$RELEASE-x86_64-linux-centos7.tar.xz" | awk '{ print $1 }')
           Linux_Debian:
             '( >= 9 && < 10)': &cabal-${RELEASE//./}-64-debian
               dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-x86_64-linux-deb9.tar.xz
@@ -52,12 +50,12 @@ cat <<EOF > /dev/stdout
             '( >= 11)':
               dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-x86_64-linux-deb11.tar.xz
               dlHash: $(sha256sum "cabal-install-$RELEASE-x86_64-linux-deb11.tar.xz" | awk '{ print $1 }')
-            unknown_versioning: &cabal-${RELEASE//./}-64-debian
+            unknown_versioning: *cabal-${RELEASE//./}-64-debian
           Linux_Fedora:
             '>= 33':
               dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-x86_64-linux-fedora33.tar.xz
               dlHash: $(sha256sum "cabal-install-$RELEASE-x86_64-linux-fedora33.tar.xz" | awk '{ print $1 }')
-            unknown_versioning: &cabal-${RELEASE//./}-64-centos7
+            unknown_versioning: *cabal-${RELEASE//./}-64-centos7
           Linux_Ubuntu:
             '< 20': &cabal-${RELEASE//./}-64-ubuntu18
               dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-x86_64-linux-ubuntu18_04.tar.xz
@@ -80,8 +78,8 @@ cat <<EOF > /dev/stdout
               dlHash: $(sha256sum "cabal-install-$RELEASE-x86_64-windows.zip" | awk '{ print $1 }')
           FreeBSD:
             unknown_versioning:
-              dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-x86_64-freebsd.tar.xz
-              dlHash: $(sha256sum "cabal-install-$RELEASE-x86_64-freebsd.tar.xz" | awk '{ print $1 }')
+              dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-x86_64-freebsd-14.tar.xz
+              dlHash: $(sha256sum "cabal-install-$RELEASE-x86_64-freebsd-14.tar.xz" | awk '{ print $1 }')
         A_32:
           Linux_UnknownLinux:
             unknown_versioning: &cabal-${RELEASE//./}-32
