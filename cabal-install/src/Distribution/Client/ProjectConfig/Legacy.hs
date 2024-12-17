@@ -288,7 +288,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
             let fs = (\z -> CondNode z [normLocPath] mempty) <$> fieldsToConfig normSource (reverse acc)
             res <- parseProjectSkeleton cacheDir httpTransport verbosity projectDir importLocPath . ProjectConfigToParse =<< fetchImportConfig normLocPath
             rest <- go [] xs
-            pure . fmap mconcat . sequence $ [projectParse Nothing normSource fs, res, rest]
+            pure . fmap mconcat . sequence $ [projectParse Nothing source fs, res, rest]
       (ParseUtils.Section l "if" p xs') -> do
         subpcs <- go [] xs'
         let fs = singletonProjectConfigSkeleton <$> fieldsToConfig source (reverse acc)
