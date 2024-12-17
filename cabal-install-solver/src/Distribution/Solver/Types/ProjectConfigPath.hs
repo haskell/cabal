@@ -97,10 +97,10 @@ instance Ord ProjectConfigPath where
                     if buildOS == Windows
                         then
                             Windows.joinPath $ Windows.splitDirectories
-                            [if c == Posix.pathSeparator then Windows.pathSeparator else c| c <- p]
+                            [if Posix.isPathSeparator c then Windows.pathSeparator else c| c <- p]
                         else
                             Posix.joinPath $ Posix.splitDirectories
-                            [if c == Windows.pathSeparator then Posix.pathSeparator else c| c <- p]
+                            [if Windows.isPathSeparator c then Posix.pathSeparator else c| c <- p]
 
             aPaths = splitPath <$> as
             bPaths = splitPath <$> bs
