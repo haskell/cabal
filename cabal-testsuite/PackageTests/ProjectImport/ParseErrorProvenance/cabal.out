@@ -1,22 +1,22 @@
 # cabal v2-build
 Error: [Cabal-7090]
 Error parsing project file cabal.project:3:
-  - Failed to parse 'if(_)' with error:
-    "<condition>" (line 1, column 1): unexpected SecArgName (Position 1 4) "_"
+ - Failed to parse 'if(_)' with error:
+     "<condition>" (line 1, column 1): unexpected SecArgName (Position 1 4) "_"
 # cabal v2-build
 Error: [Cabal-7090]
 Error parsing project file dir-if/if.config:3:
-  - dir-if/if.config
-      imported by: if.project
-  - Failed to parse 'if(_)' with error:
-    "<condition>" (line 1, column 1): unexpected SecArgName (Position 1 4) "_"
+ - dir-if/if.config
+     imported by: if.project
+   Failed to parse 'if(_)' with error:
+     "<condition>" (line 1, column 1): unexpected SecArgName (Position 1 4) "_"
 # cabal v2-build
 Error: [Cabal-7090]
 Error parsing project file dir-elif/elif.config:4:
-  - dir-elif/elif.config
-      imported by: elif.project
-  - Failed to parse 'elif(_)' with error:
-    "<condition>" (line 1, column 1): unexpected SecArgName (Position 1 6) "_"
+ - dir-elif/elif.config
+     imported by: elif.project
+   Failed to parse 'elif(_)' with error:
+     "<condition>" (line 1, column 1): unexpected SecArgName (Position 1 6) "_"
 # cabal v2-build
 Warnings found while parsing the project file, else.project:
-  - dir-else/else.config: Unrecognized section '_' on line 3
+ - dir-else/else.config: Unrecognized section '_' on line 3
