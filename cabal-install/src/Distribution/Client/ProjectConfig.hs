@@ -890,7 +890,7 @@ reportProjectParseWarnings verbosity projectFile warnings =
      in noticeDoc verbosity $
           vcat
             [ (text "Warnings found while parsing the project file" <> comma) <+> (text (takeFileName projectFile) <> colon)
-            , cat [nest 2 $ text "-" <+> text m | m <- ordNub msgs]
+            , cat [nest 1 $ text "-" <+> text m | m <- ordNub msgs]
             ]
 
 reportParseResult :: Verbosity -> String -> FilePath -> OldParser.ProjectParseResult ProjectConfigSkeleton -> IO ProjectConfigSkeleton
@@ -905,19 +905,18 @@ reportParseResult verbosity filetype projectFile (OldParser.ProjectParseFailed (
           (projectFile, empty)
           ( \p ->
               ( fst $ unconsProjectConfigPath p
-              , if isTopLevelConfigPath p then empty else hsep [text "-", nest 2 $ docProjectConfigPath p]
+              , if isTopLevelConfigPath p then empty else docProjectConfigPath p
               )
           )
           rootOrImportee
   let doc = case snippet of
-        Nothing -> msg
+        Nothing -> vcat (text <$> lines msg)
         Just s ->
-          render . nest 2 $
-            vcat
-              [ provenance
-              , text "-" <+> text "Failed to parse" <+> quotes (text s) <+> (text "with error" <> colon)
-              , nest 2 $ hsep $ text <$> lines msg
-              ]
+          vcat
+            [ provenance
+            , text "Failed to parse" <+> quotes (text s) <+> (text "with error" <> colon)
+            , nest 2 $ hsep $ text <$> lines msg
+            ]
   dieWithException verbosity $ ReportParseResult filetype sourceFile errLineNo doc
 
 ---------------------------------------------
