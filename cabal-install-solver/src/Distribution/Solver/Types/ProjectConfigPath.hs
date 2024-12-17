@@ -95,8 +95,12 @@ instance Ord ProjectConfigPath where
             splitPath = FP.splitPath . normSep where
                 normSep p =
                     if buildOS == Windows
-                        then Windows.joinPath $ Windows.splitDirectories [if c == '/' then '\\' else c| c <- p]
-                        else Posix.joinPath $ Posix.splitDirectories [if c == '\\' then '/' else c| c <- p]
+                        then
+                            Windows.joinPath $ Windows.splitDirectories
+                            [if c == Posix.pathSeparator then Windows.pathSeparator else c| c <- p]
+                        else
+                            Posix.joinPath $ Posix.splitDirectories
+                            [if c == Windows.pathSeparator then Posix.pathSeparator else c| c <- p]
 
             aPaths = splitPath <$> as
             bPaths = splitPath <$> bs
