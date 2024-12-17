@@ -7,7 +7,9 @@ main = cabalTest . recordMode RecordMarked $ do
   assertOutputContains
     (normalizeWindowsOutput "When using configuration from: \
     \  - else.project \
-    \  - dir-else/else.config")
+    \  - dir-else/else.config \
+    \The following errors occurred: \
+    \  - The package location 'no-pkg-here' does not exist.")
     outElse
 
   return ()
