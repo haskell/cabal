@@ -62,6 +62,31 @@ pull_request_rules:
       - check-success=Bootstrap post job
       - 'check-success=docs/readthedocs.org:cabal'
 
+  # label when Mergify didn't trigger a merge automatically
+  - actions:
+      label:
+        add:
+          - waiting too long
+    name: Mergify hasn't merged a PR yet
+    conditions:
+      - base=master
+      - -draft
+      - -closed
+      - -merged
+      - '#approved-reviews-by>=2'
+      - '#changes-requested-reviews-by=0'
+      - updated-at<4 days ago
+      - label=merge delay passed
+      # oy
+      # lifted these from branch protection imports
+      - check-success=fourmolu
+      - check-success=hlint
+      - check-success=Meta checks
+      - check-success=Doctest Cabal
+      - check-success=Validate post job
+      - check-success=Bootstrap post job
+      - 'check-success=docs/readthedocs.org:cabal'
+
   # rebase+merge strategy
   - actions:
       queue:
