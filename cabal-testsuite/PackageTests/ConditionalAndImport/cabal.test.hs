@@ -1,4 +1,5 @@
 import Test.Cabal.Prelude
+import Data.Function ((&))
 
 main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   let log = recordHeader . pure
@@ -108,89 +109,64 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   --          +-- hops/hops-9.config (no further imports so not cyclical)
   log "checking that imports work skipping into a subfolder and then back out again and again"
   hopping <- cabal' "v2-build" [ "--project-file=hops-0.project" ]
-  assertOutputContains "Configuration is affected by the following files" hopping
-  assertOutputContains "- hops-0.project" hopping
 
-  assertOutputContains
-    (normalizeWindowsOutput "- hops-2.config \
-    \    imported by: hops/hops-1.config \
-    \    imported by: hops-0.project")
-    hopping
-
-  assertOutputContains
-    (normalizeWindowsOutput "- hops-4.config \
-    \    imported by: hops/hops-3.config \
-    \    imported by: hops-2.config \
-    \    imported by: hops/hops-1.config \
-    \    imported by: hops-0.project")
-    hopping
-
-  assertOutputContains
-    (normalizeWindowsOutput "- hops-6.config \
-    \    imported by: hops/hops-5.config \
-    \    imported by: hops-4.config \
-    \    imported by: hops/hops-3.config \
-    \    imported by: hops-2.config \
-    \    imported by: hops/hops-1.config \
-    \    imported by: hops-0.project")
-    hopping
-
-  assertOutputContains
-    (normalizeWindowsOutput "- hops-8.config \
-    \    imported by: hops/hops-7.config \
-    \    imported by: hops-6.config \
-    \    imported by: hops/hops-5.config \
-    \    imported by: hops-4.config \
-    \    imported by: hops/hops-3.config \
-    \    imported by: hops-2.config \
-    \    imported by: hops/hops-1.config \
-    \    imported by: hops-0.project")
-    hopping
-
-  assertOutputContains
-    (normalizeWindowsOutput "- hops/hops-1.config \
-    \    imported by: hops-0.project")
-    hopping
-
-  assertOutputContains
-    (normalizeWindowsOutput "- hops/hops-3.config \
-    \    imported by: hops-2.config \
-    \    imported by: hops/hops-1.config \
-    \    imported by: hops-0.project")
-    hopping
-
-  assertOutputContains
-    (normalizeWindowsOutput "- hops/hops-5.config \
-    \    imported by: hops-4.config \
-    \    imported by: hops/hops-3.config \
-    \    imported by: hops-2.config \
-    \    imported by: hops/hops-1.config \
-    \    imported by: hops-0.project")
-    hopping
-
-  assertOutputContains
-    (normalizeWindowsOutput "- hops/hops-7.config \
-    \    imported by: hops-6.config \
-    \    imported by: hops/hops-5.config \
-    \    imported by: hops-4.config \
-    \    imported by: hops/hops-3.config \
-    \    imported by: hops-2.config \
-    \    imported by: hops/hops-1.config \
-    \    imported by: hops-0.project")
-    hopping
-
-  assertOutputContains
-    (normalizeWindowsOutput "- hops/hops-9.config \
-    \    imported by: hops-8.config \
-    \    imported by: hops/hops-7.config \
-    \    imported by: hops-6.config \
-    \    imported by: hops/hops-5.config \
-    \    imported by: hops-4.config \
-    \    imported by: hops/hops-3.config \
-    \    imported by: hops-2.config \
-    \    imported by: hops/hops-1.config \
-    \    imported by: hops-0.project")
-    hopping
+  "Configuration is affected by the following files:\n\
+  \- hops-0.project\n\
+  \- hops-2.config\n\
+  \    imported by: hops/hops-1.config\n\
+  \    imported by: hops-0.project\n\
+  \- hops-4.config\n\
+  \    imported by: hops/hops-3.config\n\
+  \    imported by: hops-2.config\n\
+  \    imported by: hops/hops-1.config\n\
+  \    imported by: hops-0.project\n\
+  \- hops-6.config\n\
+  \    imported by: hops/hops-5.config\n\
+  \    imported by: hops-4.config\n\
+  \    imported by: hops/hops-3.config\n\
+  \    imported by: hops-2.config\n\
+  \    imported by: hops/hops-1.config\n\
+  \    imported by: hops-0.project\n\
+  \- hops-8.config\n\
+  \    imported by: hops/hops-7.config\n\
+  \    imported by: hops-6.config\n\
+  \    imported by: hops/hops-5.config\n\
+  \    imported by: hops-4.config\n\
+  \    imported by: hops/hops-3.config\n\
+  \    imported by: hops-2.config\n\
+  \    imported by: hops/hops-1.config\n\
+  \    imported by: hops-0.project\n\
+  \- hops/hops-1.config\n\
+  \    imported by: hops-0.project\n\
+  \- hops/hops-3.config\n\
+  \    imported by: hops-2.config\n\
+  \    imported by: hops/hops-1.config\n\
+  \    imported by: hops-0.project\n\
+  \- hops/hops-5.config\n\
+  \    imported by: hops-4.config\n\
+  \    imported by: hops/hops-3.config\n\
+  \    imported by: hops-2.config\n\
+  \    imported by: hops/hops-1.config\n\
+  \    imported by: hops-0.project\n\
+  \- hops/hops-7.config\n\
+  \    imported by: hops-6.config\n\
+  \    imported by: hops/hops-5.config\n\
+  \    imported by: hops-4.config\n\
+  \    imported by: hops/hops-3.config\n\
+  \    imported by: hops-2.config\n\
+  \    imported by: hops/hops-1.config\n\
+  \    imported by: hops-0.project\n\
+  \- hops/hops-9.config\n\
+  \    imported by: hops-8.config\n\
+  \    imported by: hops/hops-7.config\n\
+  \    imported by: hops-6.config\n\
+  \    imported by: hops/hops-5.config\n\
+  \    imported by: hops-4.config\n\
+  \    imported by: hops/hops-3.config\n\
+  \    imported by: hops-2.config\n\
+  \    imported by: hops/hops-1.config\n\
+  \    imported by: hops-0.project"
+    & flip assertOutputContainsMultiline hopping
 
   -- The project is named oops as it is like hops but has conflicting constraints.
   -- +-- oops-0.project
@@ -205,22 +181,24 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   --          +-- oops/oops-9.config (has conflicting constraints)
   log "checking conflicting constraints skipping into a subfolder and then back out again and again"
   oopsing <- fails $ cabal' "v2-build" [ "all", "--project-file=oops-0.project" ]
-  assertOutputContains "rejecting: hashable-1.4.2.0" oopsing
-  assertOutputContains "rejecting: hashable-1.4.3.0" oopsing
-  assertOutputContains "(constraint from oops-0.project requires ==1.4.3.0)" oopsing
 
-  assertOutputContains
-    (normalizeWindowsOutput "      (constraint from oops/oops-9.config requires ==1.4.2.0) \
-    \        imported by: oops-8.config \
-    \        imported by: oops/oops-7.config \
-    \        imported by: oops-6.config \
-    \        imported by: oops/oops-5.config \
-    \        imported by: oops-4.config \
-    \        imported by: oops/oops-3.config \
-    \        imported by: oops-2.config \
-    \        imported by: oops/oops-1.config \
-    \        imported by: oops-0.project")
-    oopsing
+  "Could not resolve dependencies:\n\
+  \[__0] trying: oops-0.1 (user goal)\n\
+  \[__1] next goal: hashable (dependency of oops)\n\
+  \[__1] rejecting: hashable-1.4.3.0\n\
+  \      (constraint from oops/oops-9.config requires ==1.4.2.0)\n\
+  \        imported by: oops-8.config\n\
+  \        imported by: oops/oops-7.config\n\
+  \        imported by: oops-6.config\n\
+  \        imported by: oops/oops-5.config\n\
+  \        imported by: oops-4.config\n\
+  \        imported by: oops/oops-3.config\n\
+  \        imported by: oops-2.config\n\
+  \        imported by: oops/oops-1.config\n\
+  \        imported by: oops-0.project\n\
+  \[__1] rejecting: hashable-1.4.2.0\n\
+  \      (constraint from oops-0.project requires ==1.4.3.0)"
+    & flip assertOutputContainsMultiline oopsing
 
   -- The project is named yops as it is like hops but with y's for forks.
   -- +-- yops-0.project
@@ -261,13 +239,13 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
 
   log "checking that missing package message lists configuration provenance"
   missing <- fails $ cabal' "v2-build" [ "--project-file=cabal-missing-package.project" ]
-  assertOutputContains
-    (normalizeWindowsOutput "When using configuration from: \
-    \  - cabal-missing-package.project \
-    \  - missing/pkgs.config \
-    \  - missing/pkgs/default.config \
-    \The following errors occurred: \
-    \  - The package location 'pkg-doesnt-exist' does not exist.")
-    missing
+
+  "When using configuration from:\n\
+  \  - cabal-missing-package.project\n\
+  \  - missing/pkgs.config\n\
+  \  - missing/pkgs/default.config\n\
+  \The following errors occurred:\n\
+  \  - The package location 'pkg-doesnt-exist' does not exist."
+    & flip assertOutputContainsMultiline missing
 
   return ()
