@@ -795,27 +795,27 @@ recordMode mode = withReaderT (\env -> env {
     testRecordUserMode = Just mode
     })
 
-assertOutputContainsOn :: MonadIO m => WithCallStack ((String -> String) -> String -> Result -> m ())
-assertOutputContainsOn f needle result =
+assertOutputContainsOn :: MonadIO m => WithCallStack ((String -> String) -> (String -> String) -> (String -> String) -> String -> Result -> m ())
+assertOutputContainsOn unN unO o needle result =
     withFrozenCallStack $
     unless (needle `isInfixOf` output) $
-    assertFailure $ "\n -  expected: " ++ needle ++
-                    "\n - in output: " ++ output
-  where output = f $ resultOutput result
+    assertFailure $ "expected:\n" ++ unN needle ++
+                    "\nin output:\n" ++ unO output
+  where output = o $ resultOutput result
 
-assertOutputDoesNotContainOn :: MonadIO m => WithCallStack ((String -> String) -> String -> Result -> m ())
-assertOutputDoesNotContainOn f needle result =
+assertOutputDoesNotContainOn :: MonadIO m => WithCallStack ((String -> String) -> (String -> String) -> (String -> String) -> String -> Result -> m ())
+assertOutputDoesNotContainOn unN unO o needle result =
     withFrozenCallStack $
     when (needle `isInfixOf` output) $
-    assertFailure $ "\n - unexpected: " ++ needle ++
-                    "\n -  in output: " ++ output
-  where output = f $ resultOutput result
+    assertFailure $ "unexpected:\n" ++ unN needle ++
+                    "\nin output:\n" ++ unO output
+  where output = o $ resultOutput result
 
 assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputContains = assertOutputContainsOn concatOutput
+assertOutputContains = assertOutputContainsOn id unConcatOutput concatOutput
 
 assertOutputDoesNotContain :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputDoesNotContain = assertOutputDoesNotContainOn concatOutput
+assertOutputDoesNotContain = assertOutputDoesNotContainOn id unConcatOutput concatOutput
 
 assertFindInFile :: MonadIO m => WithCallStack (String -> FilePath -> m ())
 assertFindInFile needle path =
@@ -869,9 +869,21 @@ assertNoFileContains paths needle =
         \path ->
           assertFileDoesNotContain path needle
 
--- | Replace line breaks with spaces, correctly handling "\r\n".
+-- | Replace line breaks with <LF>, correctly handling "\r\n".
 concatOutput :: String -> String
-concatOutput = unwords . lines . filter ((/=) '\r')
+concatOutput = unwords . (fmap (++ "<LF>")) . lines . filter ((/=) '\r')
+
+-- | Replace <LF> markers with line breaks and wrap lines with ^ and $ markers
+-- for the start and end.
+unConcatOutput :: String -> String
+unConcatOutput = unlines . (fmap ('^' :)) . lines .
+    foldr
+        (\c acc ->
+            if (c == '<') && ("LF>" `isPrefixOf` acc)
+                then "$\n" ++ drop 3 acc
+                else c : acc
+        )
+        ""
 
 -- | The directory where script build artifacts are expected to be cached
 getScriptCacheDirectory :: FilePath -> TestM FilePath
