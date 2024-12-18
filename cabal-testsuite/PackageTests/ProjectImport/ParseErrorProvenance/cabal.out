@@ -1,2 +1,10 @@
 # cabal v2-build
 Warning: <ROOT>/else.project, else.project: Unrecognized section '_' on line 3
+# Multiline string marking:
+# ^When using configuration from:$
+# ^  - else.project$
+# ^  - dir-else/else.config$
+# ^The following errors occurred:$
+# ^  - The package location 'no-pkg-here' does not exist.
+# Pseudo multiline string marking:
+# ^When using configuration from:  - else.project  - dir-else/else.configThe following errors occurred:  - The package location 'no-pkg-here' does not exist.$
