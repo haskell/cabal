@@ -1,4 +1,5 @@
 import Test.Cabal.Prelude
+import Data.Function ((&))
 
 main = cabalTest . recordMode RecordMarked $ do
   let log = recordHeader . pure
@@ -31,12 +32,12 @@ main = cabalTest . recordMode RecordMarked $ do
     out
 
   log "checking that package directories and locations are reported in order"
-  assertOutputContains
-    "The following errors occurred: \
-    \  - The package directory 'no-pkg-1' does not contain any .cabal file. \
-    \  - The package location 'no-pkg-2-dir' does not exist. \
-    \  - The package directory 'no-pkg-3' does not contain any .cabal file. \
-    \  - The package location 'no-pkg-4-dir' does not exist."
-    out
+
+  "The following errors occurred:\n\
+  \  - The package directory 'no-pkg-1' does not contain any .cabal file.\n\
+  \  - The package location 'no-pkg-2-dir' does not exist.\n\
+  \  - The package directory 'no-pkg-3' does not contain any .cabal file.\n\
+  \  - The package location 'no-pkg-4-dir' does not exist."
+    & flip assertOutputContainsMultiline out
 
   return ()
