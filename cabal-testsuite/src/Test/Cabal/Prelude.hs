@@ -798,18 +798,18 @@ recordMode mode = withReaderT (\env -> env {
 assertOutputContainsOn :: MonadIO m => WithCallStack ((String -> String) -> String -> Result -> m ())
 assertOutputContainsOn f needle result =
     withFrozenCallStack $
-    unless (needle `isInfixOf` (f output)) $
+    unless (needle `isInfixOf` output) $
     assertFailure $ "\n -  expected: " ++ needle ++
                     "\n - in output: " ++ output
-  where output = resultOutput result
+  where output = f $ resultOutput result
 
 assertOutputDoesNotContainOn :: MonadIO m => WithCallStack ((String -> String) -> String -> Result -> m ())
 assertOutputDoesNotContainOn f needle result =
     withFrozenCallStack $
-    when (needle `isInfixOf` (f output)) $
+    when (needle `isInfixOf` output) $
     assertFailure $ "\n - unexpected: " ++ needle ++
                     "\n -  in output: " ++ output
-  where output = resultOutput result
+  where output = f $ resultOutput result
 
 assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
 assertOutputContains = assertOutputContainsOn concatOutput
