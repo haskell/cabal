@@ -14,7 +14,7 @@ main = cabalTest $ do
               ++ "an upper bound on the version number"
 
         -- Asserts for the desired check messages after configure.
-        assertOutputContains libError1 checkResult
-        assertOutputContains libError2 checkResult
+        assertOutputContainsWrapped libError1 checkResult
+        assertOutputContainsWrapped libError2 checkResult
 
         return ()
