@@ -37,6 +37,7 @@ module Distribution.Client.ProjectConfig
   , writeProjectLocalFreezeConfig
   , writeProjectConfigFile
   , commandLineFlagsToProjectConfig
+  , onlyTopLevelProvenance
 
     -- * Packages within projects
   , ProjectPackageLocation (..)
@@ -96,6 +97,7 @@ import Distribution.Client.GlobalFlags
   ( RepoContext (..)
   , withRepoContext'
   )
+import Distribution.Client.HashValue
 import Distribution.Client.HttpUtils
   ( HttpTransport
   , configureTransport
@@ -185,6 +187,10 @@ import Distribution.Types.PackageVersionConstraint
 import Distribution.Types.SourceRepo
   ( RepoType (..)
   )
+import Distribution.Utils.Generic
+  ( toUTF8BS
+  , toUTF8LBS
+  )
 import Distribution.Utils.NubList
   ( fromNubList
   )
@@ -203,11 +209,9 @@ import Control.Exception (handle)
 import Control.Monad.Trans (liftIO)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
-import qualified Data.Hashable as Hashable
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Numeric (showHex)
 
 import Network.URI
   ( URI (..)
@@ -1655,7 +1659,7 @@ localFileNameForRemoteTarball :: URI -> FilePath
 localFileNameForRemoteTarball uri =
   mangleName uri
     ++ "-"
-    ++ showHex locationHash ""
+    ++ showHashValue locationHash
   where
     mangleName =
       truncateString 10
@@ -1665,15 +1669,15 @@ localFileNameForRemoteTarball uri =
         . dropTrailingPathSeparator
         . uriPath
 
-    locationHash :: Word
-    locationHash = fromIntegral (Hashable.hash (uriToString id uri ""))
+    locationHash :: HashValue
+    locationHash = hashValue (toUTF8LBS (uriToString id uri ""))
 
 -- | The name to use for a local file or dir for a remote 'SourceRepo'.
 -- This is deterministic based on the source repo identity details, and
 -- intended to produce non-clashing file names for different repos.
 localFileNameForRemoteRepo :: SourceRepoList -> FilePath
 localFileNameForRemoteRepo SourceRepositoryPackage{srpType, srpLocation} =
-  mangleName srpLocation ++ "-" ++ showHex locationHash ""
+  mangleName srpLocation ++ "-" ++ showHashValue locationHash
   where
     mangleName =
       truncateString 10
@@ -1682,9 +1686,10 @@ localFileNameForRemoteRepo SourceRepositoryPackage{srpType, srpLocation} =
         . dropTrailingPathSeparator
 
     -- just the parts that make up the "identity" of the repo
-    locationHash :: Word
+    locationHash :: HashValue
     locationHash =
-      fromIntegral (Hashable.hash (show srpType, srpLocation))
+      hashValue $
+        LBS.fromChunks [toUTF8BS srpLocation, toUTF8BS (show srpType)]
 
 -- | Truncate a string, with a visual indication that it is truncated.
 truncateString :: Int -> String -> String
@@ -1749,3 +1754,9 @@ checkBadPerPackageCompilerPaths compilerPrograms packagesConfig =
        ] of
     [] -> return ()
     ps -> throwIO (BadPerPackageCompilerPaths ps)
+
+-- | Filter out non-top-level project configs.
+onlyTopLevelProvenance :: Set ProjectConfigProvenance -> Set ProjectConfigProvenance
+onlyTopLevelProvenance = Set.filter $ \case
+  Implicit -> False
+  Explicit ps -> isTopLevelConfigPath ps

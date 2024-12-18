@@ -161,12 +161,10 @@ buildCabalLibsSpecific ver verb mbGhc builddir_rel = do
   csgot <- doesDirectoryExist (dir </> "Cabal-syntax-" ++ ver)
   unless csgot $
     runProgramInvocation verb ((programInvocation cabal ["get", "Cabal-syntax-" ++ ver]) { progInvokeCwd = Just dir })
-  let hooksVerFromVer _ = "0.1"
-      hooksVer = hooksVerFromVer ver
-  chgot <- doesDirectoryExist (dir </> "Cabal-hooks-" ++ hooksVer)
+  chgot <- doesDirectoryExist (dir </> "Cabal-hooks-" ++ ver)
   unless chgot $
-    runProgramInvocation verb ((programInvocation cabal ["get", "Cabal-hooks-" ++ hooksVer]) { progInvokeCwd = Just dir })
-  buildCabalLibsProject ("packages: Cabal-" ++ ver ++ " Cabal-syntax-" ++ ver ++ " Cabal-hooks-" ++ hooksVer) verb mbGhc dir
+    runProgramInvocation verb ((programInvocation cabal ["get", "Cabal-hooks-" ++ ver]) { progInvokeCwd = Just dir })
+  buildCabalLibsProject ("packages: Cabal-" ++ ver ++ " Cabal-syntax-" ++ ver ++ " Cabal-hooks-" ++ ver) verb mbGhc dir
 
 
 buildCabalLibsIntree :: String -> Verbosity -> Maybe FilePath -> FilePath -> IO [FilePath]

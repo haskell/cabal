@@ -1,6 +1,6 @@
 cabal-version: 2.2
 name:          cabal-install-solver
-version:       3.14.0.0
+version:       3.14.1.0
 synopsis:      The solver component of cabal-install
 description:
   The solver component used in the cabal-install command-line program.
@@ -99,7 +99,7 @@ library
 
   build-depends:
     , array         >=0.4      && <0.6
-    , base          >=4.13     && <4.21
+    , base          >=4.13     && <4.22
     , bytestring    >=0.10.6.0 && <0.13
     , Cabal         ^>=3.14
     , Cabal-syntax  ^>=3.14
@@ -131,7 +131,7 @@ Test-Suite unit-tests
      UnitTests.Distribution.Solver.Modular.MessageUtils
 
    build-depends:
-     , base        >= 4.13  && <4.21
+     , base        >= 4.13  && <4.22
      , Cabal-syntax
      , cabal-install-solver
      , tasty       >= 1.2.3 && <1.6
