@@ -1,0 +1,10 @@
+---
+synopsis: 'Improve "Cannot read .cabal file inside ..." errors'
+packages: [cabal-install]
+prs: 10647
+---
+
+The error message printed when Cabal fails to read a `.cabal` file inside an
+index (like the Hackage index) has been greatly improved. Additionally,
+warnings in `.cabal` files in indexes are printed instead of being silently
+discarded.

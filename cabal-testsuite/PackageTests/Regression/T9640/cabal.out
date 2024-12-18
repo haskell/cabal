@@ -1,6 +1,7 @@
 # cabal v2-update
 Downloading the latest package list from test-local-repo
 # cabal build
+Warning: The package description file ./depend-on-custom-with-exe.cabal has warnings: depend-on-custom-with-exe.cabal:16:1: Ignoring trailing fields after sections: "ghc-options"
 Configuration is affected by the following files:
 - cabal.project
 Resolving dependencies...

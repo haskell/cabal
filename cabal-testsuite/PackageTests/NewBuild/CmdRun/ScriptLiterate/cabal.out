@@ -1,4 +1,5 @@
 # cabal v2-run
+Warning: The package description file ./script.cabal has warnings: script.cabal:0:0: A package using 'cabal-version: >=1.10' must use section syntax. See the Cabal user guide for details.
 Configuration is affected by the following files:
 - cabal.project
 Resolving dependencies...

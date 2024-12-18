@@ -37,6 +37,9 @@ module Distribution.Client.ProjectConfig
   , writeProjectConfigFile
   , commandLineFlagsToProjectConfig
   , onlyTopLevelProvenance
+  , readSourcePackageCabalFile
+  , readSourcePackageCabalFile'
+  , CabalFileParseError (..)
 
     -- * Packages within projects
   , ProjectPackageLocation (..)
@@ -173,7 +176,6 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose
   , dieWithException
-  , info
   , maybeExit
   , notice
   , rawSystemIOWithEnv
@@ -1610,10 +1612,22 @@ readSourcePackageCabalFile
   -> BS.ByteString
   -> IO GenericPackageDescription
 readSourcePackageCabalFile verbosity pkgfilename content =
+  readSourcePackageCabalFile' (warn verbosity) pkgfilename content
+
+-- | Like `readSourcePackageCabalFile`, but the `warn` function is an argument.
+--
+-- This is used when reading @.cabal@ files in indexes, where warnings should
+-- generally be ignored.
+readSourcePackageCabalFile'
+  :: (String -> IO ())
+  -> FilePath
+  -> BS.ByteString
+  -> IO GenericPackageDescription
+readSourcePackageCabalFile' logWarnings pkgfilename content =
   case runParseResult (parseGenericPackageDescription content) of
     (warnings, Right pkg) -> do
       unless (null warnings) $
-        info verbosity (formatWarnings warnings)
+        logWarnings (formatWarnings warnings)
       return pkg
     (warnings, Left (mspecVersion, errors)) ->
       throwIO $ CabalFileParseError pkgfilename content errors mspecVersion warnings

@@ -564,11 +564,9 @@ src `archiveTo` dst = do
 
 infixr 4 `archiveTo`
 
--- | Given a directory (relative to the 'testCurrentDir') containing
--- a series of directories representing packages, generate an
--- external repository corresponding to all of these packages
-withRepo :: FilePath -> TestM a -> TestM a
-withRepo repo_dir m = do
+-- | Like 'withRepo', but doesn't run @cabal update@.
+withRepoNoUpdate :: FilePath -> TestM a -> TestM a
+withRepoNoUpdate repo_dir m = do
     env <- getTestEnv
 
     -- 1. Initialize repo directory
@@ -606,11 +604,7 @@ withRepo repo_dir m = do
     liftIO $ print $ testUserCabalConfigFile env
     liftIO $ print =<< readFile (testUserCabalConfigFile env)
 
-    -- 4. Update our local index
-    -- Note: this doesn't do anything for file+noindex repositories.
-    cabal "v2-update" ["-z"]
-
-    -- 5. Profit
+    -- 4. Profit
     withReaderT (\env' -> env' { testHaveRepo = True }) m
     -- TODO: Arguably should undo everything when we're done...
   where
@@ -619,6 +613,17 @@ withRepo repo_dir m = do
                                             '\\' -> '/'
                                             _ -> x)
                                         else id) (testRepoDir env)
+
+-- | Given a directory (relative to the 'testCurrentDir') containing
+-- a series of directories representing packages, generate an
+-- external repository corresponding to all of these packages
+withRepo :: FilePath -> TestM a -> TestM a
+withRepo repo_dir m = do
+    withRepoNoUpdate repo_dir $ do
+        -- Update our local index
+        -- Note: this doesn't do anything for file+noindex repositories.
+        cabal "v2-update" ["-z"]
+        m
 
 -- | Given a directory (relative to the 'testCurrentDir') containing
 -- a series of directories representing packages, generate an
@@ -798,15 +803,29 @@ recordMode mode = withReaderT (\env -> env {
 assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
 assertOutputContains needle result =
     withFrozenCallStack $
-    unless (needle `isInfixOf` (concatOutput output)) $
+    unless (needle `isInfixOf` concatOutput output) $
     assertFailure $ " expected: " ++ needle
   where output = resultOutput result
 
 assertOutputDoesNotContain :: MonadIO m => WithCallStack (String -> Result -> m ())
 assertOutputDoesNotContain needle result =
     withFrozenCallStack $
-    when (needle `isInfixOf` (concatOutput output)) $
+    when (needle `isInfixOf` concatOutput output) $
     assertFailure $ "unexpected: " ++ needle
+  where output = resultOutput result
+
+assertOutputMatches :: MonadIO m => WithCallStack (String -> Result -> m ())
+assertOutputMatches regex result =
+    withFrozenCallStack $
+    unless (concatOutput output =~ regex) $
+    assertFailure $ "expected regex match: " ++ regex
+  where output = resultOutput result
+
+assertOutputDoesNotMatch :: MonadIO m => WithCallStack (String -> Result -> m ())
+assertOutputDoesNotMatch regex result =
+    withFrozenCallStack $
+    when (concatOutput output =~ regex) $
+    assertFailure $ "unexpected regex match: " ++ regex
   where output = resultOutput result
 
 assertFindInFile :: MonadIO m => WithCallStack (String -> FilePath -> m ())
