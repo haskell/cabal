@@ -29,7 +29,4 @@ main = cabalTest . recordMode RecordMarked $ do
   assertOutputContainsOn decodeLfMarkLines encodeLf decodeLfMarkLines encodeLf expectMulti outElse
   assertOutputDoesNotContainOn id id decodeLfMarkLines encodeLf expectSingle outElse
 
-  assertOutputContainsOn id id id id expectMulti outElse
-  assertOutputDoesNotContainOn id id id id expectSingle outElse
-
   return ()
