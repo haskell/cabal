@@ -40,7 +40,7 @@ build-type: Hooks
 
 custom-setup
   setup-depends:
-    Cabal-hooks >= 0.1 && < 0.2
+    Cabal-hooks >= 3.14 && < 3.15
 ```
 
 and your `SetupHooks.hs` file should look like:
