@@ -30,7 +30,7 @@ jobs:
         # release of a corresponding Cabal and friends. it can also be short since it's
         # highly unlikely that we are releasing really old branches.
         ghc:
-          ["9.10.1", "9.8.1", "9.6.1"]
+          ["9.12.1", "9.10.1", "9.8.1", "9.6.1"]
 
     steps:
 
