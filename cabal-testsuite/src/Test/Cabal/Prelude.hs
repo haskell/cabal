@@ -799,16 +799,16 @@ assertOutputContainsOn :: MonadIO m => WithCallStack ((String -> String) -> Stri
 assertOutputContainsOn f needle result =
     withFrozenCallStack $
     unless (needle `isInfixOf` (f output)) $
-    assertFailure $ " expected: " ++ needle ++ "\n" ++
-                    "in output: " ++ output
+    assertFailure $ "\n -  expected: " ++ needle ++
+                    "\n - in output: " ++ output
   where output = resultOutput result
 
 assertOutputDoesNotContainOn :: MonadIO m => WithCallStack ((String -> String) -> String -> Result -> m ())
 assertOutputDoesNotContainOn f needle result =
     withFrozenCallStack $
     when (needle `isInfixOf` (f output)) $
-    assertFailure $ "unexpected: " ++ needle ++ "\n" ++
-                    " in output: " ++ output
+    assertFailure $ "\n - unexpected: " ++ needle ++
+                    "\n -  in output: " ++ output
   where output = resultOutput result
 
 assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
