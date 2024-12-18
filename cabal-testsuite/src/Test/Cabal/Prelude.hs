@@ -795,19 +795,25 @@ recordMode mode = withReaderT (\env -> env {
     testRecordUserMode = Just mode
     })
 
-assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputContains needle result =
+assertOutputContainsOn :: MonadIO m => WithCallStack ((String -> String) -> String -> Result -> m ())
+assertOutputContainsOn f needle result =
     withFrozenCallStack $
-    unless (needle `isInfixOf` (concatOutput output)) $
+    unless (needle `isInfixOf` (f output)) $
     assertFailure $ " expected: " ++ needle
   where output = resultOutput result
 
-assertOutputDoesNotContain :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputDoesNotContain needle result =
+assertOutputDoesNotContainOn :: MonadIO m => WithCallStack ((String -> String) -> String -> Result -> m ())
+assertOutputDoesNotContainOn f needle result =
     withFrozenCallStack $
-    when (needle `isInfixOf` (concatOutput output)) $
+    when (needle `isInfixOf` (f output)) $
     assertFailure $ "unexpected: " ++ needle
   where output = resultOutput result
+
+assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
+assertOutputContains = assertOutputContainsOn concatOutput
+
+assertOutputDoesNotContain :: MonadIO m => WithCallStack (String -> Result -> m ())
+assertOutputDoesNotContain = assertOutputDoesNotContainOn concatOutput
 
 assertFindInFile :: MonadIO m => WithCallStack (String -> FilePath -> m ())
 assertFindInFile needle path =
