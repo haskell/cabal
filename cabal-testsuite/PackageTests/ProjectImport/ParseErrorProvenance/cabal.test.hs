@@ -5,7 +5,7 @@ main = cabalTest . recordMode RecordMarked $ do
 
   outElse <- fails $ cabal' "v2-build" [ "all", "--dry-run", "--project-file=else.project" ]
   assertOutputContains
-    (normalizeWindowsOutput "When using configuration from: \
+    (concatOutput $ normalizeWindowsOutput "When using configuration from: \
     \  - else.project \
     \  - dir-else/else.config \
     \The following errors occurred: \
