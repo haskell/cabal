@@ -3,6 +3,7 @@
 {-# LANGUAGE NondecreasingIndentation #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- | Generally useful definitions that we expect most test scripts
 -- to use.
@@ -795,27 +796,31 @@ recordMode mode = withReaderT (\env -> env {
     testRecordUserMode = Just mode
     })
 
-assertOutputContainsOn :: MonadIO m => WithCallStack ((String -> String) -> (String -> String) -> (String -> String) -> String -> Result -> m ())
-assertOutputContainsOn unN unO o needle result =
+assertOutputContainsOn :: MonadIO m => WithCallStack ((String -> String) -> (String -> String) -> (String -> String) -> (String -> String) -> String -> Result -> m ())
+assertOutputContainsOn unN n unO o (n -> needle) (o . resultOutput -> output) =
     withFrozenCallStack $
-    unless (needle `isInfixOf` output) $
+    unless (n needle `isInfixOf` output) $
     assertFailure $ "expected:\n" ++ unN needle ++
                     "\nin output:\n" ++ unO output
-  where output = o $ resultOutput result
 
-assertOutputDoesNotContainOn :: MonadIO m => WithCallStack ((String -> String) -> (String -> String) -> (String -> String) -> String -> Result -> m ())
-assertOutputDoesNotContainOn unN unO o needle result =
+assertOutputDoesNotContainOn :: MonadIO m => WithCallStack ((String -> String) -> (String -> String) -> (String -> String) -> (String -> String) -> String -> Result -> m ())
+assertOutputDoesNotContainOn unN n unO o (n -> needle) (o . resultOutput -> output) =
     withFrozenCallStack $
     when (needle `isInfixOf` output) $
     assertFailure $ "unexpected:\n" ++ unN needle ++
                     "\nin output:\n" ++ unO output
-  where output = o $ resultOutput result
 
 assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputContains = assertOutputContainsOn id unConcatOutput concatOutput
+assertOutputContains = assertOutputContainsOn id id unConcatOutput concatOutput
 
 assertOutputDoesNotContain :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputDoesNotContain = assertOutputDoesNotContainOn id unConcatOutput concatOutput
+assertOutputDoesNotContain = assertOutputDoesNotContainOn id id unConcatOutput concatOutput
+
+assertOutputContainsMultiline :: MonadIO m => WithCallStack (String -> Result -> m ())
+assertOutputContainsMultiline = assertOutputContainsOn unConcatOutput concatOutput unConcatOutput concatOutput
+
+assertOutputDoesNotContainMultiline :: MonadIO m => WithCallStack (String -> Result -> m ())
+assertOutputDoesNotContainMultiline = assertOutputDoesNotContainOn unConcatOutput concatOutput unConcatOutput concatOutput
 
 assertFindInFile :: MonadIO m => WithCallStack (String -> FilePath -> m ())
 assertFindInFile needle path =
@@ -871,19 +876,27 @@ assertNoFileContains paths needle =
 
 -- | Replace line breaks with <LF>, correctly handling "\r\n".
 concatOutput :: String -> String
-concatOutput = unwords . (fmap (++ "<LF>")) . lines . filter ((/=) '\r')
+concatOutput =
+    (\s -> if "<LF>" `isPrefixOf` s then drop 4 s else s) .
+    concat . (fmap ("<LF>" ++)) . lines . filter ((/=) '\r')
 
 -- | Replace <LF> markers with line breaks and wrap lines with ^ and $ markers
 -- for the start and end.
 unConcatOutput :: String -> String
-unConcatOutput = unlines . (fmap ('^' :)) . lines .
-    foldr
-        (\c acc ->
-            if (c == '<') && ("LF>" `isPrefixOf` acc)
-                then "$\n" ++ drop 3 acc
-                else c : acc
-        )
-        ""
+unConcatOutput output =
+    (\xs -> case lines xs of [line0] -> line0 ++ "$"; _ -> xs)
+    . unlines
+    . (fmap ('^' :))
+    . lines
+    . (\s -> if "<LF>" `isPrefixOf` s then drop 4 s else s)
+    $ foldr
+            (\c acc -> c :
+                if ("<LF>" `isPrefixOf` acc)
+                    then "$\n" ++ drop 4 acc
+                    else acc
+            )
+            ""
+    output
 
 -- | The directory where script build artifacts are expected to be cached
 getScriptCacheDirectory :: FilePath -> TestM FilePath
