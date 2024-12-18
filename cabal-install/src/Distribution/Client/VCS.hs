@@ -583,7 +583,7 @@ vcsGit =
           --
           -- Option 2 is what Cabal has done historically, and we're keeping it
           -- for now. Option 1 is possible but seems to have little benefit.
-          git localDir ("fetch" : verboseArg ++ ["origin", ref])
+          git localDir ("fetch" : verboseArg ++ ["--depth=1", "origin", ref])
           pure "FETCH_HEAD"
         Just ref
           | otherwise ->
