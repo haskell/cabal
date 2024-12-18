@@ -811,16 +811,16 @@ assertOutputDoesNotContainOn unN n unO o (n -> needle) (o . resultOutput -> outp
                     "\nin output:\n" ++ unO output
 
 assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputContains = assertOutputContainsOn id id unConcatOutput concatOutput
+assertOutputContains = assertOutputContainsOn id id decodeLfMarkLines encodeLf
 
 assertOutputDoesNotContain :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputDoesNotContain = assertOutputDoesNotContainOn id id unConcatOutput concatOutput
+assertOutputDoesNotContain = assertOutputDoesNotContainOn id id decodeLfMarkLines encodeLf
 
 assertOutputContainsMultiline :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputContainsMultiline = assertOutputContainsOn unConcatOutput concatOutput unConcatOutput concatOutput
+assertOutputContainsMultiline = assertOutputContainsOn decodeLfMarkLines encodeLf decodeLfMarkLines encodeLf
 
 assertOutputDoesNotContainMultiline :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputDoesNotContainMultiline = assertOutputDoesNotContainOn unConcatOutput concatOutput unConcatOutput concatOutput
+assertOutputDoesNotContainMultiline = assertOutputDoesNotContainOn decodeLfMarkLines encodeLf decodeLfMarkLines encodeLf
 
 assertFindInFile :: MonadIO m => WithCallStack (String -> FilePath -> m ())
 assertFindInFile needle path =
@@ -874,16 +874,20 @@ assertNoFileContains paths needle =
         \path ->
           assertFileDoesNotContain path needle
 
+-- | Replace line breaks with spaces, correctly handling "\r\n".
+lineBreaksToSpaces :: String -> String
+lineBreaksToSpaces = unwords . lines . filter ((/=) '\r')
+
 -- | Replace line breaks with <LF>, correctly handling "\r\n".
-concatOutput :: String -> String
-concatOutput =
+encodeLf :: String -> String
+encodeLf =
     (\s -> if "<LF>" `isPrefixOf` s then drop 4 s else s) .
     concat . (fmap ("<LF>" ++)) . lines . filter ((/=) '\r')
 
 -- | Replace <LF> markers with line breaks and wrap lines with ^ and $ markers
 -- for the start and end.
-unConcatOutput :: String -> String
-unConcatOutput output =
+decodeLfMarkLines:: String -> String
+decodeLfMarkLines output =
     (\xs -> case lines xs of [line0] -> line0 ++ "$"; _ -> xs)
     . unlines
     . (fmap ('^' :))
