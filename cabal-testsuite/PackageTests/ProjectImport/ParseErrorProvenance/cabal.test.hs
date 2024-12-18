@@ -15,10 +15,10 @@ main = cabalTest . recordMode RecordMarked $ do
   let expectSingle = filter (/= '\n') expectMulti
 
   log "Multiline string marking:"
-  mapM_ log (lines . unConcatOutput $ concatOutput expectMulti)
+  mapM_ log (lines . decodeLfMarkLines $ encodeLf expectMulti)
 
   log "Pseudo multiline string marking:"
-  mapM_ log (lines . unConcatOutput $ concatOutput expectSingle)
+  mapM_ log (lines . decodeLfMarkLines $ encodeLf expectSingle)
 
   assertOutputContainsMultiline expectMulti outElse
   assertOutputDoesNotContainMultiline expectSingle outElse
@@ -26,8 +26,8 @@ main = cabalTest . recordMode RecordMarked $ do
   assertOutputDoesNotContain expectMulti outElse
   assertOutputDoesNotContain expectSingle outElse
 
-  assertOutputContainsOn unConcatOutput concatOutput unConcatOutput concatOutput expectMulti outElse
-  assertOutputDoesNotContainOn id id unConcatOutput concatOutput expectSingle outElse
+  assertOutputContainsOn decodeLfMarkLines encodeLf decodeLfMarkLines encodeLf expectMulti outElse
+  assertOutputDoesNotContainOn id id decodeLfMarkLines encodeLf expectSingle outElse
 
   assertOutputContainsOn id id id id expectMulti outElse
   assertOutputDoesNotContainOn id id id id expectSingle outElse
