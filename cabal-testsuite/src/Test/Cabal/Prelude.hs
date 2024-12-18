@@ -810,6 +810,9 @@ assertOutputDoesNotContainOn unN n unO o (n -> needle) (o . resultOutput -> outp
     assertFailure $ "unexpected:\n" ++ unN needle ++
                     "\nin output:\n" ++ unO output
 
+assertOutputContainsWrapped :: MonadIO m => WithCallStack (String -> Result -> m ())
+assertOutputContainsWrapped = assertOutputContainsOn id id id lineBreaksToSpaces
+
 assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
 assertOutputContains = assertOutputContainsOn id id decodeLfMarkLines encodeLf
 
