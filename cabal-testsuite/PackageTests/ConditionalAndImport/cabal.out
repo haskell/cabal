@@ -1,6 +1,10 @@
 # cabal v2-update
 Downloading the latest package list from test-local-repo
 # cabal v2-run
+Configuration is affected by the following files:
+- cabal.project
+- extra.project
+    imported by: cabal.project
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
@@ -62,6 +66,13 @@ cyclical import of cyclical-2-out-out-self-b.config;
     imported by: cyclical-2-out-out-self.project
 # checking that cyclical check doesn't false-positive on same file names in different folders; hoping within a folder and then into a subfolder
 # cabal v2-build
+Configuration is affected by the following files:
+- noncyclical-same-filename-a.config
+    imported by: noncyclical-same-filename-a.project
+- noncyclical-same-filename-a.project
+- same-filename/noncyclical-same-filename-a.config
+    imported by: noncyclical-same-filename-a.config
+    imported by: noncyclical-same-filename-a.project
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
@@ -71,6 +82,13 @@ Preprocessing library for my-0.1...
 Building library for my-0.1...
 # checking that cyclical check doesn't false-positive on same file names in different folders; hoping into a subfolder and then back out again
 # cabal v2-build
+Configuration is affected by the following files:
+- noncyclical-same-filename-b.config
+    imported by: same-filename/noncyclical-same-filename-b.config
+    imported by: noncyclical-same-filename-b.project
+- noncyclical-same-filename-b.project
+- same-filename/noncyclical-same-filename-b.config
+    imported by: noncyclical-same-filename-b.project
 Up to date
 # checking that cyclical check catches a same file name that imports itself
 # cabal v2-build
@@ -101,9 +119,121 @@ cyclical import of cyclical-same-filename-out-out-back.config;
     imported by: cyclical-same-filename-out-out-back.project
 # checking that imports work skipping into a subfolder and then back out again and again
 # cabal v2-build
+Configuration is affected by the following files:
+- hops-0.project
+- hops-2.config
+    imported by: hops/hops-1.config
+    imported by: hops-0.project
+- hops-4.config
+    imported by: hops/hops-3.config
+    imported by: hops-2.config
+    imported by: hops/hops-1.config
+    imported by: hops-0.project
+- hops-6.config
+    imported by: hops/hops-5.config
+    imported by: hops-4.config
+    imported by: hops/hops-3.config
+    imported by: hops-2.config
+    imported by: hops/hops-1.config
+    imported by: hops-0.project
+- hops-8.config
+    imported by: hops/hops-7.config
+    imported by: hops-6.config
+    imported by: hops/hops-5.config
+    imported by: hops-4.config
+    imported by: hops/hops-3.config
+    imported by: hops-2.config
+    imported by: hops/hops-1.config
+    imported by: hops-0.project
+- hops/hops-1.config
+    imported by: hops-0.project
+- hops/hops-3.config
+    imported by: hops-2.config
+    imported by: hops/hops-1.config
+    imported by: hops-0.project
+- hops/hops-5.config
+    imported by: hops-4.config
+    imported by: hops/hops-3.config
+    imported by: hops-2.config
+    imported by: hops/hops-1.config
+    imported by: hops-0.project
+- hops/hops-7.config
+    imported by: hops-6.config
+    imported by: hops/hops-5.config
+    imported by: hops-4.config
+    imported by: hops/hops-3.config
+    imported by: hops-2.config
+    imported by: hops/hops-1.config
+    imported by: hops-0.project
+- hops/hops-9.config
+    imported by: hops-8.config
+    imported by: hops/hops-7.config
+    imported by: hops-6.config
+    imported by: hops/hops-5.config
+    imported by: hops-4.config
+    imported by: hops/hops-3.config
+    imported by: hops-2.config
+    imported by: hops/hops-1.config
+    imported by: hops-0.project
 Up to date
 # checking conflicting constraints skipping into a subfolder and then back out again and again
 # cabal v2-build
+Configuration is affected by the following files:
+- oops-0.project
+- oops-2.config
+    imported by: oops/oops-1.config
+    imported by: oops-0.project
+- oops-4.config
+    imported by: oops/oops-3.config
+    imported by: oops-2.config
+    imported by: oops/oops-1.config
+    imported by: oops-0.project
+- oops-6.config
+    imported by: oops/oops-5.config
+    imported by: oops-4.config
+    imported by: oops/oops-3.config
+    imported by: oops-2.config
+    imported by: oops/oops-1.config
+    imported by: oops-0.project
+- oops-8.config
+    imported by: oops/oops-7.config
+    imported by: oops-6.config
+    imported by: oops/oops-5.config
+    imported by: oops-4.config
+    imported by: oops/oops-3.config
+    imported by: oops-2.config
+    imported by: oops/oops-1.config
+    imported by: oops-0.project
+- oops/oops-1.config
+    imported by: oops-0.project
+- oops/oops-3.config
+    imported by: oops-2.config
+    imported by: oops/oops-1.config
+    imported by: oops-0.project
+- oops/oops-5.config
+    imported by: oops-4.config
+    imported by: oops/oops-3.config
+    imported by: oops-2.config
+    imported by: oops/oops-1.config
+    imported by: oops-0.project
+- oops/oops-7.config
+    imported by: oops-6.config
+    imported by: oops/oops-5.config
+    imported by: oops-4.config
+    imported by: oops/oops-3.config
+    imported by: oops-2.config
+    imported by: oops/oops-1.config
+    imported by: oops-0.project
+- oops/oops-9.config
+    imported by: oops-8.config
+    imported by: oops/oops-7.config
+    imported by: oops-6.config
+    imported by: oops/oops-5.config
+    imported by: oops-4.config
+    imported by: oops/oops-3.config
+    imported by: oops-2.config
+    imported by: oops/oops-1.config
+    imported by: oops-0.project
 Resolving dependencies...
 Error: [Cabal-7107]
 Could not resolve dependencies:

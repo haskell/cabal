@@ -1,4 +1,6 @@
 # cabal v2-sdist
+Configuration is affected by the following files:
+- cabal.project
 a/Main.hs
 a/a.cabal
 a/doc/index.html

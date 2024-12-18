@@ -192,6 +192,7 @@ import Distribution.Backpack.LinkedComponent
 import Distribution.Backpack.ModuleShape
 
 import Distribution.Simple.Utils
+import Distribution.Verbosity
 import Distribution.Version
 
 import qualified Distribution.InstalledPackageInfo as IPI
@@ -394,13 +395,13 @@ rebuildProjectConfig
           localPackages <- phaseReadLocalPackages (projectConfig <> cliConfig)
           return (projectConfig, localPackages)
 
-    sequence_
-      [ do
-        info verbosity . render . vcat $
-          text "this build was affected by the following (project) config files:"
-            : [text "-" <+> docProjectConfigPath path]
-      | Explicit path <- Set.toList $ projectConfigProvenance projectConfig
-      ]
+    let configfiles =
+          [ text "-" <+> docProjectConfigPath path
+          | Explicit path <- Set.toList . (if verbosity >= verbose then id else onlyTopLevelProvenance) $ projectConfigProvenance projectConfig
+          ]
+    unless (null configfiles) $
+      notice (verboseStderr verbosity) . render . vcat $
+        text "Configuration is affected by the following files:" : configfiles
 
     return (projectConfig <> cliConfig, localPackages)
     where
