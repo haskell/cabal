@@ -38,6 +38,6 @@ main = cabalTest . recordMode RecordMarked $ do
   \  - The package location 'no-pkg-2-dir' does not exist.\n\
   \  - The package directory 'no-pkg-3' does not contain any .cabal file.\n\
   \  - The package location 'no-pkg-4-dir' does not exist."
-    & flip assertOutputContainsMultiline out
+    & flip (assertOn multilineNeedleHaystack) out
 
   return ()

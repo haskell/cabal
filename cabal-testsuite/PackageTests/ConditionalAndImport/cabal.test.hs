@@ -168,7 +168,7 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   \    imported by: hops/hops-1.config\n\
   \    imported by: hops-0.project"
     & normalizeWindowsOutput
-    & flip assertOutputContainsMultiline hopping
+    & flip (assertOn multilineNeedleHaystack) hopping
 
   -- The project is named oops as it is like hops but has conflicting constraints.
   -- +-- oops-0.project
@@ -201,7 +201,7 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   \[__1] rejecting: hashable-1.4.2.0\n\
   \      (constraint from oops-0.project requires ==1.4.3.0)"
     & normalizeWindowsOutput
-    & flip assertOutputContainsMultiline oopsing
+    & flip (assertOn multilineNeedleHaystack) oopsing
 
   -- The project is named yops as it is like hops but with y's for forks.
   -- +-- yops-0.project
@@ -250,6 +250,6 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   \The following errors occurred:\n\
   \  - The package location 'pkg-doesnt-exist' does not exist."
     & normalizeWindowsOutput
-    & flip assertOutputContainsMultiline missing
+    & flip (assertOn multilineNeedleHaystack) missing
 
   return ()
