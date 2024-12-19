@@ -1,8 +1,10 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE NondecreasingIndentation #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- | Generally useful definitions that we expect most test scripts
 -- to use.
@@ -795,19 +797,68 @@ recordMode mode = withReaderT (\env -> env {
     testRecordUserMode = Just mode
     })
 
-assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputContains needle result =
+-- | Transformations for the search strings and the text to search in.
+data TxContains =
+    TxContains
+        {
+            -- | Reverse conversion for display, applied to the forward converted value.
+            txBwd :: (String -> String),
+            -- | Forward conversion for comparison.
+            txFwd :: (String -> String)
+        }
+
+txContainsId :: TxContains
+txContainsId = TxContains id id
+
+-- | Conversions of the needle and haystack strings, the seach string and the
+-- text to search in.
+data NeedleHaystack =
+    NeedleHaystack
+        {
+            expectNeedleInHaystack :: Bool,
+            displayHaystack :: Bool,
+            txNeedle :: TxContains,
+            txHaystack :: TxContains
+        }
+
+-- | Symmetric needle and haystack functions, the same conversion for each going
+-- forward and the same coversion for each going backward.
+symNeedleHaystack :: (String -> String) -> (String -> String) -> NeedleHaystack
+symNeedleHaystack bwd fwd = let tx = TxContains bwd fwd in NeedleHaystack True False tx tx
+
+multilineNeedleHaystack :: NeedleHaystack
+multilineNeedleHaystack = symNeedleHaystack decodeLfMarkLines encodeLf
+
+-- | Needle and haystack functions that do not change the strings. Set up for
+-- finding the needle in the haystack and not displaying the line-delimited
+-- haystack.
+needleHaystack :: NeedleHaystack
+needleHaystack = NeedleHaystack True False txContainsId txContainsId
+
+assertOn :: MonadIO m => WithCallStack (NeedleHaystack -> String -> Result -> m ())
+assertOn NeedleHaystack{..} (txFwd txNeedle -> needle) (txFwd txHaystack. resultOutput -> output) =
     withFrozenCallStack $
-    unless (needle `isInfixOf` (concatOutput output)) $
-    assertFailure $ " expected: " ++ needle
-  where output = resultOutput result
+    if expectNeedleInHaystack
+        then unless (needle `isInfixOf` output)
+            $ assertFailure $ "expected:\n" ++ (txBwd txNeedle needle) ++
+            if displayHaystack
+                then "\nin output:\n" ++ (txBwd txHaystack output)
+                else ""
+        else when (needle `isInfixOf` output)
+            $ assertFailure $ "unexpected:\n" ++ (txBwd txNeedle needle) ++
+            if displayHaystack
+                then "\nin output:\n" ++ (txBwd txHaystack output)
+                else ""
+
+assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
+assertOutputContains = assertOn needleHaystack{txHaystack = TxContains{txBwd = decodeLfMarkLines, txFwd = encodeLf}}
 
 assertOutputDoesNotContain :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputDoesNotContain needle result =
-    withFrozenCallStack $
-    when (needle `isInfixOf` (concatOutput output)) $
-    assertFailure $ "unexpected: " ++ needle
-  where output = resultOutput result
+assertOutputDoesNotContain = assertOn
+    needleHaystack
+        { expectNeedleInHaystack = False
+        , txHaystack = TxContains{txBwd = decodeLfMarkLines, txFwd = encodeLf}
+        }
 
 assertFindInFile :: MonadIO m => WithCallStack (String -> FilePath -> m ())
 assertFindInFile needle path =
@@ -862,8 +913,40 @@ assertNoFileContains paths needle =
           assertFileDoesNotContain path needle
 
 -- | Replace line breaks with spaces, correctly handling "\r\n".
-concatOutput :: String -> String
-concatOutput = unwords . lines . filter ((/=) '\r')
+lineBreaksToSpaces :: String -> String
+lineBreaksToSpaces = unwords . lines . filter ((/=) '\r')
+
+-- | Replace line breaks with <EOL>, correctly handling "\r\n".
+encodeLf :: String -> String
+encodeLf =
+    (\s -> if "<EOL>" `isPrefixOf` s then drop 5 s else s)
+    . concat
+    . (fmap ("<EOL>" ++))
+    . lines
+    . filter ((/=) '\r')
+
+-- | Replace <LF> markers with line breaks and wrap lines with ^ and $ markers
+-- for the start and end.
+decodeLfMarkLines:: String -> String
+decodeLfMarkLines output =
+    (\xs -> case reverse $ lines xs of
+        [] -> xs
+        [line0] -> line0 ++ "$"
+        lineN : ys ->
+            let lineN' = lineN ++ "$"
+            in unlines $ reverse (lineN' : ys))
+    . unlines
+    . (fmap ('^' :))
+    . lines
+    . (\s -> if "<EOL>" `isPrefixOf` s then drop 5 s else s)
+    $ foldr
+            (\c acc -> c :
+                if ("<EOL>" `isPrefixOf` acc)
+                    then "$\n" ++ drop 5 acc
+                    else acc
+            )
+            ""
+    output
 
 -- | The directory where script build artifacts are expected to be cached
 getScriptCacheDirectory :: FilePath -> TestM FilePath
@@ -1092,6 +1175,9 @@ flakyIfCI ticket m = do
 
 flakyIfWindows :: IssueID -> TestM a -> TestM a
 flakyIfWindows ticket m = flakyIf isWindows ticket m
+
+normalizeWindowsOutput :: String -> String
+normalizeWindowsOutput = if isWindows then map (\x -> case x of '/' -> '\\'; _ -> x) else id
 
 getOpenFilesLimit :: TestM (Maybe Integer)
 #ifdef mingw32_HOST_OS
