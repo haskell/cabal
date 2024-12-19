@@ -797,35 +797,43 @@ recordMode mode = withReaderT (\env -> env {
     testRecordUserMode = Just mode
     })
 
+-- | Transformations for the search strings and the text to search in.
+data TxContains =
+    TxContains
+        {
+            -- | Reverse conversion for display, applied to the forward converted value.
+            txBwd :: (String -> String),
+            -- | Forward conversion for comparison.
+            txFwd :: (String -> String)
+        }
+
+txContainsId :: TxContains
+txContainsId = TxContains id id
+
 -- | Conversions of the needle and haystack strings, the seach string and the
 -- text to search in.
 data NeedleHaystack =
-    NeedleHaystack {
-        expectNeedleInHaystack :: Bool,
-        -- | Reverse conversion for display purposes, applied to the forward converted value.
-        needleBwd :: (String -> String),
-        -- | Conversion for comparison.
-        needleFwd :: (String -> String),
-        -- | Reverse conversion for display purposes, applied to the forward converted value.
-        haystackBwd :: (String -> String),
-        -- | Conversion for comparison.
-        haystackFwd :: (String -> String)
-    }
+    NeedleHaystack
+        {
+            expectNeedleInHaystack :: Bool,
+            txNeedle :: TxContains,
+            txHaystack :: TxContains
+        }
 
 -- | Symmetric needle and haystack functions, the same conversion for each going
 -- forward and the same coversion for each going backward.
 symNeedleHaystack :: (String -> String) -> (String -> String) -> NeedleHaystack
-symNeedleHaystack bwd fwd = NeedleHaystack True bwd fwd bwd fwd
+symNeedleHaystack bwd fwd = let tx = TxContains bwd fwd in NeedleHaystack True tx tx
 
 multilineNeedleHaystack :: NeedleHaystack
 multilineNeedleHaystack = symNeedleHaystack decodeLfMarkLines encodeLf
 
 -- | Needle and haystack functions that do not change the strings.
 needleHaystack :: NeedleHaystack
-needleHaystack = NeedleHaystack True id id id id
+needleHaystack = NeedleHaystack True txContainsId txContainsId
 
 assertOn :: MonadIO m => WithCallStack (NeedleHaystack -> String -> Result -> m ())
-assertOn NeedleHaystack{..} (needleFwd -> needle) (haystackFwd . resultOutput -> output) =
+assertOn NeedleHaystack{..} (txFwd txNeedle -> needle) (txFwd txHaystack. resultOutput -> output) =
     withFrozenCallStack $
     if expectNeedleInHaystack
         then unless (needle `isInfixOf` output)
@@ -836,10 +844,14 @@ assertOn NeedleHaystack{..} (needleFwd -> needle) (haystackFwd . resultOutput ->
                               "\nin output:\n" ++ output
 
 assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputContains = assertOn needleHaystack{haystackBwd = decodeLfMarkLines, haystackFwd = encodeLf}
+assertOutputContains = assertOn needleHaystack{txHaystack = TxContains{txBwd = decodeLfMarkLines, txFwd = encodeLf}}
 
 assertOutputDoesNotContain :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputDoesNotContain = assertOn needleHaystack{expectNeedleInHaystack = False, haystackBwd = decodeLfMarkLines, haystackFwd = encodeLf}
+assertOutputDoesNotContain = assertOn
+    needleHaystack
+        { expectNeedleInHaystack = False
+        , txHaystack = TxContains{txBwd = decodeLfMarkLines, txFwd = encodeLf}
+        }
 
 assertFindInFile :: MonadIO m => WithCallStack (String -> FilePath -> m ())
 assertFindInFile needle path =
