@@ -114,6 +114,7 @@ import Distribution.Types.MissingDependencyReason (MissingDependencyReason (..))
 import Distribution.Types.PackageVersionConstraint
 import Distribution.Utils.LogProgress
 import Distribution.Utils.NubList
+import Distribution.Utils.String (trim)
 import Distribution.Verbosity
 import Distribution.Version
 
@@ -2397,7 +2398,6 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
         pkgconfig ["--modversion", pkg]
           `catchIO` (\_ -> dieWithException verbosity $ PkgConfigNotFound pkg versionRequirement)
           `catchExit` (\_ -> dieWithException verbosity $ PkgConfigNotFound pkg versionRequirement)
-      let trim = dropWhile isSpace . dropWhileEnd isSpace
       let v = PkgconfigVersion (toUTF8BS $ trim version)
       if not (withinPkgconfigVersionRange v range)
         then dieWithException verbosity $ BadVersion pkg versionRequirement v
