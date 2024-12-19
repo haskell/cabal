@@ -816,6 +816,7 @@ data NeedleHaystack =
     NeedleHaystack
         {
             expectNeedleInHaystack :: Bool,
+            displayHaystack :: Bool,
             txNeedle :: TxContains,
             txHaystack :: TxContains
         }
@@ -823,14 +824,16 @@ data NeedleHaystack =
 -- | Symmetric needle and haystack functions, the same conversion for each going
 -- forward and the same coversion for each going backward.
 symNeedleHaystack :: (String -> String) -> (String -> String) -> NeedleHaystack
-symNeedleHaystack bwd fwd = let tx = TxContains bwd fwd in NeedleHaystack True tx tx
+symNeedleHaystack bwd fwd = let tx = TxContains bwd fwd in NeedleHaystack True False tx tx
 
 multilineNeedleHaystack :: NeedleHaystack
 multilineNeedleHaystack = symNeedleHaystack decodeLfMarkLines encodeLf
 
--- | Needle and haystack functions that do not change the strings.
+-- | Needle and haystack functions that do not change the strings. Set up for
+-- finding the needle in the haystack and not displaying the line-delimited
+-- haystack.
 needleHaystack :: NeedleHaystack
-needleHaystack = NeedleHaystack True txContainsId txContainsId
+needleHaystack = NeedleHaystack True False txContainsId txContainsId
 
 assertOn :: MonadIO m => WithCallStack (NeedleHaystack -> String -> Result -> m ())
 assertOn NeedleHaystack{..} (txFwd txNeedle -> needle) (txFwd txHaystack. resultOutput -> output) =
@@ -838,10 +841,14 @@ assertOn NeedleHaystack{..} (txFwd txNeedle -> needle) (txFwd txHaystack. result
     if expectNeedleInHaystack
         then unless (needle `isInfixOf` output)
             $ assertFailure $ "expected:\n" ++ (txBwd txNeedle needle) ++
-                              "\nin output:\n" ++ (txBwd txHaystack output)
+            if displayHaystack
+                then "\nin output:\n" ++ (txBwd txHaystack output)
+                else ""
         else when (needle `isInfixOf` output)
             $ assertFailure $ "unexpected:\n" ++ (txBwd txNeedle needle) ++
-                              "\nin output:\n" ++ (txBwd txHaystack output)
+            if displayHaystack
+                then "\nin output:\n" ++ (txBwd txHaystack output)
+                else ""
 
 assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
 assertOutputContains = assertOn needleHaystack{txHaystack = TxContains{txBwd = decodeLfMarkLines, txFwd = encodeLf}}
