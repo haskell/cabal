@@ -39,6 +39,11 @@ Flag lukko
   default:      True
   manual:       True
 
+flag git-rev
+  description: include Git revision hash in version
+  default: False
+  manual: True
+
 common warnings
     ghc-options:
       -Wall
@@ -269,6 +274,9 @@ library
     if impl(ghc >=8.2)
       build-depends: process >= 1.6.15.0
 
+    if flag(git-rev)
+      build-depends: githash ^>= 0.1.7.0
+      cpp-options: -DGIT_REV
 
 executable cabal
     import: warnings, base-dep
@@ -281,6 +289,9 @@ executable cabal
     -- On AIX, some legacy BSD operations such as flock(2) are provided by libbsd.a
     if os(aix)
         extra-libraries: bsd
+
+    if flag(git-rev)
+      cpp-options: -DGIT_REV
 
     build-depends:
         cabal-install
