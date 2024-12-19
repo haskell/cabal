@@ -22,8 +22,8 @@ main = cabalTest $ withShorterPathForNewBuildStore $ do
       \ - build-tool-pkg-2 (lib) (requires build)\n\
       \ - build-tool-pkg-2 (exe:build-tool-exe) (requires build)\n\
       \ - pkg-1.0 (exe:my-exe) (first run)"
-        & flip assertOutputContainsMultiline r1
+        & flip (assertOn multilineNeedleHaystack) r1
 
       withPlan $ do
         r2 <- runPlanExe' "pkg" "my-exe" []
-        assertOutputContainsMultiline "build-tool library version: 1,\nbuild-tool exe version: 2" r2
+        assertOn multilineNeedleHaystack "build-tool library version: 1,\nbuild-tool exe version: 2" r2

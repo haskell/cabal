@@ -802,9 +802,13 @@ recordMode mode = withReaderT (\env -> env {
 data NeedleHaystack =
     NeedleHaystack {
         expectNeedleInHaystack :: Bool,
+        -- | Reverse conversion for display purposes, applied to the forward converted value.
         needleBwd :: (String -> String),
+        -- | Conversion for comparison.
         needleFwd :: (String -> String),
+        -- | Reverse conversion for display purposes, applied to the forward converted value.
         haystackBwd :: (String -> String),
+        -- | Conversion for comparison.
         haystackFwd :: (String -> String)
     }
 
@@ -812,6 +816,9 @@ data NeedleHaystack =
 -- forward and the same coversion for each going backward.
 symNeedleHaystack :: (String -> String) -> (String -> String) -> NeedleHaystack
 symNeedleHaystack bwd fwd = NeedleHaystack True bwd fwd bwd fwd
+
+multilineNeedleHaystack :: NeedleHaystack
+multilineNeedleHaystack = symNeedleHaystack decodeLfMarkLines encodeLf
 
 -- | Needle and haystack functions that do not change the strings.
 needleHaystack :: NeedleHaystack
@@ -828,20 +835,11 @@ assertOn NeedleHaystack{..} (needleFwd -> needle) (haystackFwd . resultOutput ->
             $ assertFailure $ "unexpected:\n" ++ needle ++
                               "\nin output:\n" ++ output
 
-assertOutputContainsWrapped :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputContainsWrapped = assertOn needleHaystack{haystackFwd = lineBreaksToSpaces}
-
 assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
 assertOutputContains = assertOn needleHaystack{haystackBwd = decodeLfMarkLines, haystackFwd = encodeLf}
 
 assertOutputDoesNotContain :: MonadIO m => WithCallStack (String -> Result -> m ())
 assertOutputDoesNotContain = assertOn needleHaystack{expectNeedleInHaystack = False, haystackBwd = decodeLfMarkLines, haystackFwd = encodeLf}
-
-assertOutputContainsMultiline :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputContainsMultiline = assertOn (symNeedleHaystack decodeLfMarkLines encodeLf)
-
-assertOutputDoesNotContainMultiline :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputDoesNotContainMultiline = assertOn (symNeedleHaystack decodeLfMarkLines encodeLf){expectNeedleInHaystack = False}
 
 assertFindInFile :: MonadIO m => WithCallStack (String -> FilePath -> m ())
 assertFindInFile needle path =
