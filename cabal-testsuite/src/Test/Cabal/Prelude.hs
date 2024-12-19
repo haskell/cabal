@@ -837,11 +837,11 @@ assertOn NeedleHaystack{..} (txFwd txNeedle -> needle) (txFwd txHaystack. result
     withFrozenCallStack $
     if expectNeedleInHaystack
         then unless (needle `isInfixOf` output)
-            $ assertFailure $ "expected:\n" ++ needle ++
-                              "\nin output:\n" ++ output
+            $ assertFailure $ "expected:\n" ++ (txBwd txNeedle needle) ++
+                              "\nin output:\n" ++ (txBwd txHaystack output)
         else when (needle `isInfixOf` output)
-            $ assertFailure $ "unexpected:\n" ++ needle ++
-                              "\nin output:\n" ++ output
+            $ assertFailure $ "unexpected:\n" ++ (txBwd txNeedle needle) ++
+                              "\nin output:\n" ++ (txBwd txHaystack output)
 
 assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
 assertOutputContains = assertOn needleHaystack{txHaystack = TxContains{txBwd = decodeLfMarkLines, txFwd = encodeLf}}
