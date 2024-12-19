@@ -4,6 +4,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE RecordWildCards #-}
 
 -- | Generally useful definitions that we expect most test scripts
 -- to use.
@@ -796,34 +797,53 @@ recordMode mode = withReaderT (\env -> env {
     testRecordUserMode = Just mode
     })
 
-assertOutputContainsOn :: MonadIO m => WithCallStack ((String -> String) -> (String -> String) -> (String -> String) -> (String -> String) -> String -> Result -> m ())
-assertOutputContainsOn unN n unO o (n -> needle) (o . resultOutput -> output) =
+-- | Conversions of the needle and haystack strings, the seach string and the
+-- text to search in.
+data NeedleHaystack =
+    NeedleHaystack {
+        needleBwd :: (String -> String),
+        needleFwd :: (String -> String),
+        haystackBwd :: (String -> String),
+        haystackFwd :: (String -> String)
+    }
+
+-- | Symmetric needle and haystack functions, the same conversion for each going
+-- forward and the same coversion for each going backward.
+symNeedleHaystack :: (String -> String) -> (String -> String) -> NeedleHaystack
+symNeedleHaystack bwd fwd = NeedleHaystack bwd fwd bwd fwd
+
+-- | Needle and haystack functions that do not change the strings.
+needleHaystack :: NeedleHaystack
+needleHaystack = NeedleHaystack id id id id
+
+assertOutputContainsOn :: MonadIO m => WithCallStack (NeedleHaystack -> String -> Result -> m ())
+assertOutputContainsOn NeedleHaystack{..} (needleFwd -> needle) (haystackFwd . resultOutput -> output) =
     withFrozenCallStack $
     unless (needle `isInfixOf` output) $
-    assertFailure $ "expected:\n" ++ unN needle ++
-                    "\nin output:\n" ++ unO output
+    assertFailure $ "expected:\n" ++ needleBwd needle ++
+                    "\nin output:\n" ++ haystackBwd output
 
-assertOutputDoesNotContainOn :: MonadIO m => WithCallStack ((String -> String) -> (String -> String) -> (String -> String) -> (String -> String) -> String -> Result -> m ())
-assertOutputDoesNotContainOn unN n unO o (n -> needle) (o . resultOutput -> output) =
+assertOutputDoesNotContainOn :: MonadIO m => WithCallStack (NeedleHaystack -> String -> Result -> m ())
+assertOutputDoesNotContainOn NeedleHaystack{..} (needleFwd -> needle) (haystackFwd . resultOutput -> output) =
     withFrozenCallStack $
     when (needle `isInfixOf` output) $
-    assertFailure $ "unexpected:\n" ++ unN needle ++
-                    "\nin output:\n" ++ unO output
+    assertFailure $ "unexpected:\n" ++ needleBwd needle ++
+                    "\nin output:\n" ++ haystackBwd output
 
 assertOutputContainsWrapped :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputContainsWrapped = assertOutputContainsOn id id id lineBreaksToSpaces
+assertOutputContainsWrapped = assertOutputContainsOn needleHaystack{haystackFwd = lineBreaksToSpaces}
 
 assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputContains = assertOutputContainsOn id id decodeLfMarkLines encodeLf
+assertOutputContains = assertOutputContainsOn needleHaystack{haystackBwd = decodeLfMarkLines, haystackFwd = encodeLf}
 
 assertOutputDoesNotContain :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputDoesNotContain = assertOutputDoesNotContainOn id id decodeLfMarkLines encodeLf
+assertOutputDoesNotContain = assertOutputDoesNotContainOn needleHaystack{haystackBwd = decodeLfMarkLines, haystackFwd = encodeLf}
 
 assertOutputContainsMultiline :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputContainsMultiline = assertOutputContainsOn decodeLfMarkLines encodeLf decodeLfMarkLines encodeLf
+assertOutputContainsMultiline = assertOutputContainsOn (symNeedleHaystack decodeLfMarkLines encodeLf)
 
 assertOutputDoesNotContainMultiline :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputDoesNotContainMultiline = assertOutputDoesNotContainOn decodeLfMarkLines encodeLf decodeLfMarkLines encodeLf
+assertOutputDoesNotContainMultiline = assertOutputDoesNotContainOn (symNeedleHaystack decodeLfMarkLines encodeLf)
 
 assertFindInFile :: MonadIO m => WithCallStack (String -> FilePath -> m ())
 assertFindInFile needle path =
