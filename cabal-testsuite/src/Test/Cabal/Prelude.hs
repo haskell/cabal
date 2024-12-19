@@ -799,7 +799,7 @@ recordMode mode = withReaderT (\env -> env {
 assertOutputContainsOn :: MonadIO m => WithCallStack ((String -> String) -> (String -> String) -> (String -> String) -> (String -> String) -> String -> Result -> m ())
 assertOutputContainsOn unN n unO o (n -> needle) (o . resultOutput -> output) =
     withFrozenCallStack $
-    unless (n needle `isInfixOf` output) $
+    unless (needle `isInfixOf` output) $
     assertFailure $ "expected:\n" ++ unN needle ++
                     "\nin output:\n" ++ unO output
 
