@@ -12,7 +12,7 @@ Field syntax is described as they are in the latest cabal file format version.
 
   .. math::
 
-      \mathord{"}\mathtt{example}\mathord{"}
+      \mathord{``}\mathtt{example}\mathord{"}
 
 * non-terminals are type set in italic:
 
@@ -25,13 +25,13 @@ Field syntax is described as they are in the latest cabal file format version.
 
   .. math::
 
-      [ \mathord{"}\mathtt{1}\mathord{"} \cdots \mathord{"}\mathtt{9}\mathord{"} ]
+      [ \mathord{``}\mathtt{1}\mathord{"} \cdots \mathord{``}\mathtt{9}\mathord{"} ]
 
   Character set complements have :math:`c` superscript:
 
   .. math::
 
-      [ \mathord{"}\mathtt{1}\mathord{"} \cdots \mathord{"}\mathtt{9}\mathord{"} ]^c
+      [ \mathord{``}\mathtt{1}\mathord{"} \cdots \mathord{``}\mathtt{9}\mathord{"} ]^c
 
 * repetition is type set using regular expression inspired notation.
   Superscripts tell how many time to repeat:
@@ -134,10 +134,13 @@ hs-string
         \mathop{\mathord{``}\mathtt{\text{"}}\mathord{"}}{\left\{ {[\mathop{\mathord{``}\mathtt{\text{"}}\mathord{"}}\mathop{\mathord{``}\mathtt{\text{\\}}\mathord{"}}]^c}\mid\left\{ \begin{gathered}\mathop{\mathord{``}\mathtt{\text{\\}\text{&}}\mathord{"}}\\\mathop{\mathord{``}\mathtt{\text{\\}\text{\\}}\mathord{"}}\\\left\{ \mathop{\mathord{``}\mathtt{\text{\\}n}\mathord{"}}\mid\mathop{\mathit{escapes}} \right\}\\\mathop{\mathord{``}\mathtt{\text{\\}}\mathord{"}}[\mathop{\mathord{``}\mathtt{0}\mathord{"}}\cdots\mathop{\mathord{``}\mathtt{9}\mathord{"}}]\\\mathop{\mathord{``}\mathtt{\text{\\}o}\mathord{"}}[\mathop{\mathord{``}\mathtt{0}\mathord{"}}\cdots\mathop{\mathord{``}\mathtt{7}\mathord{"}}]\\\mathop{\mathord{``}\mathtt{\text{\\}x}\mathord{"}}[\mathop{\mathord{``}\mathtt{0}\mathord{"}}\cdots\mathop{\mathord{``}\mathtt{9}\mathord{"}}\mathop{\mathord{``}\mathtt{A}\mathord{"}}\cdots\mathop{\mathord{``}\mathtt{F}\mathord{"}}\mathop{\mathord{``}\mathtt{a}\mathord{"}}\cdots\mathop{\mathord{``}\mathtt{f}\mathord{"}}]\\\left\{ \mathop{\mathord{``}\mathtt{\text{\\}\text{^}\text{@}}\mathord{"}}\mid\mathop{\mathit{control}} \right\}\\\left\{ \mathop{\mathord{``}\mathtt{\text{\\}NUL}\mathord{"}}\mid\mathop{\mathit{ascii}} \right\}\end{gathered} \right\} \right\}}^\ast_{}\mathop{\mathord{``}\mathtt{\text{"}}\mathord{"}}
 
 unqual-name
-    Unqualified component names are used for package names, component names etc. but not flag names. Unqualified component name consist of components separated by dash, each component is non-empty alphanumeric string, with at least one alphabetic character. In other words, component may not look like a number.
+    Unqualified component names are used for package names, component names etc. but not flag names. An unqualified component name consists of components separated by a hyphen, each component is a non-empty alphanumeric string, with at least one character that is not the digits ``0`` to ``9``. In other words, a component may not look like a number.
 
     .. math::
-        {\left({\mathop{\mathit{alpha\text{-}num}}}^\ast_{}\mathop{\mathit{alpha}}{\mathop{\mathit{alpha\text{-}num}}}^\ast_{}\right)}^+_{\mathop{\mathord{``}\mathtt{\text{-}}\mathord{"}}}
+        {\left({\mathop{\mathit{alpha\text{-}num}}}^\ast_{}{\mathop{\mathit{alpha\text{-}num\text{-}not\text{-}digit}}}\:{\mathop{\mathit{alpha\text{-}num}}}^\ast_{}\right)}^+_{\mathop{\mathord{``}\mathtt{\text{-}}\mathord{"}}}
+
+    .. math::
+        {\mathop{\mathit{alpha\text{-}num\text{-}not\text{-}digit}}} = {\mathop{\mathit{alpha\text{-}num}}}\cap{[ \mathord{``}\mathtt{0}\mathord{"} \cdots \mathord{``}\mathtt{9}\mathord{"} ]^c}
 
 module-name
     Haskell module name as recognized by Cabal parser.
