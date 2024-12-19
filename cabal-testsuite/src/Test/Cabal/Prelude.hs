@@ -932,9 +932,9 @@ decodeLfMarkLines:: String -> String
 decodeLfMarkLines output =
     (\xs -> case reverse $ lines xs of
         [] -> xs
-        [line0] -> reverse ('$' : reverse line0)
+        [line0] -> line0 ++ "$"
         lineN : ys ->
-            let lineN' = reverse ('$' : reverse lineN)
+            let lineN' = lineN ++ "$"
             in unlines $ reverse (lineN' : ys))
     . unlines
     . (fmap ('^' :))
