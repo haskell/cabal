@@ -20,13 +20,10 @@ main = cabalTest . recordMode RecordMarked $ do
   log "Pseudo multiline string marking:"
   mapM_ log (lines . decodeLfMarkLines $ encodeLf expectSingle)
 
-  assertOutputContainsMultiline expectMulti outElse
-  assertOutputDoesNotContainMultiline expectSingle outElse
+  assertOn multilineNeedleHaystack expectMulti outElse
+  assertOn multilineNeedleHaystack{expectNeedleInHaystack = False} expectSingle outElse
 
   assertOutputDoesNotContain expectMulti outElse
   assertOutputDoesNotContain expectSingle outElse
-
-  assertOutputContainsOn decodeLfMarkLines encodeLf decodeLfMarkLines encodeLf expectMulti outElse
-  assertOutputDoesNotContainOn id id decodeLfMarkLines encodeLf expectSingle outElse
 
   return ()
