@@ -1,4 +1,5 @@
 import Test.Cabal.Prelude
+import Test.Cabal.OutputNormalizer
 import Data.Function ((&))
 
 main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
@@ -166,6 +167,7 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   \    imported by: hops-2.config\n\
   \    imported by: hops/hops-1.config\n\
   \    imported by: hops-0.project"
+    & normalizeWindowsOutput
     & flip assertOutputContainsMultiline hopping
 
   -- The project is named oops as it is like hops but has conflicting constraints.
@@ -198,6 +200,7 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   \        imported by: oops-0.project\n\
   \[__1] rejecting: hashable-1.4.2.0\n\
   \      (constraint from oops-0.project requires ==1.4.3.0)"
+    & normalizeWindowsOutput
     & flip assertOutputContainsMultiline oopsing
 
   -- The project is named yops as it is like hops but with y's for forks.
@@ -246,6 +249,7 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   \  - missing/pkgs/default.config\n\
   \The following errors occurred:\n\
   \  - The package location 'pkg-doesnt-exist' does not exist."
+    & normalizeWindowsOutput
     & flip assertOutputContainsMultiline missing
 
   return ()
