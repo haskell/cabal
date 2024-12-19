@@ -801,6 +801,7 @@ recordMode mode = withReaderT (\env -> env {
 -- text to search in.
 data NeedleHaystack =
     NeedleHaystack {
+        expectNeedleInHaystack :: Bool,
         needleBwd :: (String -> String),
         needleFwd :: (String -> String),
         haystackBwd :: (String -> String),
@@ -810,40 +811,37 @@ data NeedleHaystack =
 -- | Symmetric needle and haystack functions, the same conversion for each going
 -- forward and the same coversion for each going backward.
 symNeedleHaystack :: (String -> String) -> (String -> String) -> NeedleHaystack
-symNeedleHaystack bwd fwd = NeedleHaystack bwd fwd bwd fwd
+symNeedleHaystack bwd fwd = NeedleHaystack True bwd fwd bwd fwd
 
 -- | Needle and haystack functions that do not change the strings.
 needleHaystack :: NeedleHaystack
-needleHaystack = NeedleHaystack id id id id
+needleHaystack = NeedleHaystack True id id id id
 
-assertOutputContainsOn :: MonadIO m => WithCallStack (NeedleHaystack -> String -> Result -> m ())
-assertOutputContainsOn NeedleHaystack{..} (needleFwd -> needle) (haystackFwd . resultOutput -> output) =
+assertOn :: MonadIO m => WithCallStack (NeedleHaystack -> String -> Result -> m ())
+assertOn NeedleHaystack{..} (needleFwd -> needle) (haystackFwd . resultOutput -> output) =
     withFrozenCallStack $
-    unless (needle `isInfixOf` output) $
-    assertFailure $ "expected:\n" ++ needleBwd needle ++
-                    "\nin output:\n" ++ haystackBwd output
-
-assertOutputDoesNotContainOn :: MonadIO m => WithCallStack (NeedleHaystack -> String -> Result -> m ())
-assertOutputDoesNotContainOn NeedleHaystack{..} (needleFwd -> needle) (haystackFwd . resultOutput -> output) =
-    withFrozenCallStack $
-    when (needle `isInfixOf` output) $
-    assertFailure $ "unexpected:\n" ++ needleBwd needle ++
-                    "\nin output:\n" ++ haystackBwd output
+    if expectNeedleInHaystack
+        then unless (needle `isInfixOf` output)
+            $ assertFailure $ "expected:\n" ++ needle ++
+                              "\nin output:\n" ++ output
+        else when (needle `isInfixOf` output)
+            $ assertFailure $ "unexpected:\n" ++ needle ++
+                              "\nin output:\n" ++ output
 
 assertOutputContainsWrapped :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputContainsWrapped = assertOutputContainsOn needleHaystack{haystackFwd = lineBreaksToSpaces}
+assertOutputContainsWrapped = assertOn needleHaystack{haystackFwd = lineBreaksToSpaces}
 
 assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputContains = assertOutputContainsOn needleHaystack{haystackBwd = decodeLfMarkLines, haystackFwd = encodeLf}
+assertOutputContains = assertOn needleHaystack{haystackBwd = decodeLfMarkLines, haystackFwd = encodeLf}
 
 assertOutputDoesNotContain :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputDoesNotContain = assertOutputDoesNotContainOn needleHaystack{haystackBwd = decodeLfMarkLines, haystackFwd = encodeLf}
+assertOutputDoesNotContain = assertOn needleHaystack{expectNeedleInHaystack = False, haystackBwd = decodeLfMarkLines, haystackFwd = encodeLf}
 
 assertOutputContainsMultiline :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputContainsMultiline = assertOutputContainsOn (symNeedleHaystack decodeLfMarkLines encodeLf)
+assertOutputContainsMultiline = assertOn (symNeedleHaystack decodeLfMarkLines encodeLf)
 
 assertOutputDoesNotContainMultiline :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputDoesNotContainMultiline = assertOutputDoesNotContainOn (symNeedleHaystack decodeLfMarkLines encodeLf)
+assertOutputDoesNotContainMultiline = assertOn (symNeedleHaystack decodeLfMarkLines encodeLf){expectNeedleInHaystack = False}
 
 assertFindInFile :: MonadIO m => WithCallStack (String -> FilePath -> m ())
 assertFindInFile needle path =
