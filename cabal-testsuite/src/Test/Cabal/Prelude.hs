@@ -1,10 +1,11 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE NondecreasingIndentation #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- | Generally useful definitions that we expect most test scripts
 -- to use.
@@ -916,25 +917,33 @@ assertNoFileContains paths needle =
 lineBreaksToSpaces :: String -> String
 lineBreaksToSpaces = unwords . lines . filter ((/=) '\r')
 
--- | Replace line breaks with <LF>, correctly handling "\r\n".
+-- | Replace line breaks with <EOL>, correctly handling "\r\n".
 encodeLf :: String -> String
 encodeLf =
-    (\s -> if "<LF>" `isPrefixOf` s then drop 4 s else s) .
-    concat . (fmap ("<LF>" ++)) . lines . filter ((/=) '\r')
+    (\s -> if "<EOL>" `isPrefixOf` s then drop 5 s else s)
+    . concat
+    . (fmap ("<EOL>" ++))
+    . lines
+    . filter ((/=) '\r')
 
 -- | Replace <LF> markers with line breaks and wrap lines with ^ and $ markers
 -- for the start and end.
 decodeLfMarkLines:: String -> String
 decodeLfMarkLines output =
-    (\xs -> case lines xs of [line0] -> line0 ++ "$"; _ -> xs)
+    (\xs -> case reverse $ lines xs of
+        [] -> xs
+        [line0] -> reverse ('$' : reverse line0)
+        lineN : ys ->
+            let lineN' = reverse ('$' : reverse lineN)
+            in unlines $ reverse (lineN' : ys))
     . unlines
     . (fmap ('^' :))
     . lines
-    . (\s -> if "<LF>" `isPrefixOf` s then drop 4 s else s)
+    . (\s -> if "<EOL>" `isPrefixOf` s then drop 5 s else s)
     $ foldr
             (\c acc -> c :
-                if ("<LF>" `isPrefixOf` acc)
-                    then "$\n" ++ drop 4 acc
+                if ("<EOL>" `isPrefixOf` acc)
+                    then "$\n" ++ drop 5 acc
                     else acc
             )
             ""
