@@ -913,10 +913,28 @@ assertNoFileContains paths needle =
           assertFileDoesNotContain path needle
 
 -- | Replace line breaks with spaces, correctly handling "\r\n".
+--
+-- >>> lineBreaksToSpaces "foo\nbar\r\nbaz"
+-- "foo bar baz"
+--
+-- >>> lineBreaksToSpaces "foo\nbar\r\nbaz\n"
+-- "foo bar baz"
+--
+-- >>> lineBreaksToSpaces "\nfoo\nbar\r\nbaz\n"
+-- " foo bar baz"
 lineBreaksToSpaces :: String -> String
 lineBreaksToSpaces = unwords . lines . filter ((/=) '\r')
 
 -- | Replace line breaks with <EOL>, correctly handling "\r\n".
+--
+-- >>> encodeLf "foo\nbar\r\nbaz"
+-- "foo<EOL>bar<EOL>baz"
+--
+-- >>> encodeLf "foo\nbar\r\nbaz\n"
+-- "foo<EOL>bar<EOL>baz"
+--
+-- >>> encodeLf "\nfoo\nbar\r\nbaz\n"
+-- "<EOL>foo<EOL>bar<EOL>baz"
 encodeLf :: String -> String
 encodeLf =
     (\s -> if "<EOL>" `isPrefixOf` s then drop 5 s else s)
@@ -927,6 +945,12 @@ encodeLf =
 
 -- | Replace <LF> markers with line breaks and wrap lines with ^ and $ markers
 -- for the start and end.
+--
+-- >>> decodeLfMarkLines "foo<EOL>bar<EOL>baz"
+-- "^foo$\n^bar$\n^baz$\n"
+--
+-- >>> decodeLfMarkLines "<EOL>foo<EOL>bar<EOL>baz"
+-- "^foo$\n^bar$\n^baz$\n"
 decodeLfMarkLines:: String -> String
 decodeLfMarkLines output =
     (\xs -> case reverse $ lines xs of
