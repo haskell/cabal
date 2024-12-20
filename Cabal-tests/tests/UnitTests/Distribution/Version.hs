@@ -21,7 +21,6 @@ import Test.Tasty                      (TestTree)
 import Test.Tasty.QuickCheck           (testProperty)
 
 import qualified Distribution.Types.VersionInterval        as New
-import qualified Distribution.Types.VersionInterval.Legacy as Old
 import qualified Text.PrettyPrint                          as Disp
 
 versionTests :: [TestTree]
@@ -42,7 +41,6 @@ versionTests =
     , tp "normaliseVersionRange involutive"                    prop_normalise_inv
     , tp "normaliseVersionRange equivalent"                    prop_normalise_equiv
     , tp "normaliseVersionRange caretequiv"                    prop_normalise_caret_equiv
-    , tp "normaliseVersionRange model"                         prop_normalise_model
 
     , tp "simplifyVersionRange involutive"                     prop_simplify_inv
     , tp "simplifyVersionRange equivalent"                     prop_simplify_equiv
@@ -157,18 +155,6 @@ prop_normalise_caret_equiv :: VersionRange -> Version -> Property
 prop_normalise_caret_equiv vr = prop_equivalentVersionRange
     (transformCaretUpper vr)
     (transformCaretUpper (normaliseVersionRange vr))
-
-prop_normalise_model :: VersionRange -> Property
-prop_normalise_model vr =
-    oldNormaliseVersionRange vr' === newNormaliseVersionRange vr'
-  where
-    vr' = transformCaret vr
-
-    oldNormaliseVersionRange :: VersionRange -> VersionRange
-    oldNormaliseVersionRange = Old.fromVersionIntervals . Old.toVersionIntervals
-
-    newNormaliseVersionRange :: VersionRange -> VersionRange
-    newNormaliseVersionRange = New.normaliseVersionRange2
 
 prop_simplify_inv :: VersionRange -> Property
 prop_simplify_inv vr =

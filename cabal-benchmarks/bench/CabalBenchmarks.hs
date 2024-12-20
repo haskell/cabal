@@ -8,7 +8,6 @@ import Distribution.Version
 
 import qualified Data.ByteString as BS
 
-import qualified Distribution.Types.VersionInterval.Legacy as Old
 import qualified Distribution.Types.VersionInterval        as New
 
 -------------------------------------------------------------------------------
@@ -38,7 +37,6 @@ main = defaultMain
                 , env bigVersionRangeA $ \vr -> bench "pat4" $ nf f vr
                 ]
         in  [ suite "def" normaliseVersionRange
-            , suite "old" oldNormaliseVersionRange
             , suite "new" newNormaliseVersionRange
             ]
     ]
@@ -46,9 +44,6 @@ main = defaultMain
 -------------------------------------------------------------------------------
 -- VersionRanges normalisation
 -------------------------------------------------------------------------------
-
-oldNormaliseVersionRange :: VersionRange -> VersionRange
-oldNormaliseVersionRange = Old.fromVersionIntervals . Old.toVersionIntervals
 
 newNormaliseVersionRange :: VersionRange -> VersionRange
 newNormaliseVersionRange = New.normaliseVersionRange2

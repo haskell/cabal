@@ -13,7 +13,6 @@ module Distribution.Described (
     reMunch1CS,
     -- * Variables
     reVar0,
-    reVar1,
     -- * Special expressions
     reDot,
     reComma,

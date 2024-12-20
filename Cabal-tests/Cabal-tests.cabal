@@ -30,7 +30,6 @@ test-suite unit-tests
   hs-source-dirs:   tests
   other-modules:
     Test.Laws
-    Test.QuickCheck.Utils
     UnitTests.Distribution.CabalSpecVersion
     UnitTests.Distribution.Compat.Graph
     UnitTests.Distribution.Compat.Time
