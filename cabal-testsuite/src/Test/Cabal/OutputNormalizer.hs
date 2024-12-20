@@ -21,7 +21,7 @@ normalizeOutput :: NormalizerEnv -> String -> String
 normalizeOutput nenv =
     -- Normalize backslashes to forward slashes to normalize
     -- file paths
-    map (\c -> if c == '\\' then '/' else c)
+    backslashToSlash
     -- Install path frequently has architecture specific elements, so
     -- nub it out
   . resub "Installing (.+) in .+" "Installing \\1 in <PATH>"
@@ -46,6 +46,24 @@ normalizeOutput nenv =
   . resub (posixRegexEscape "tmp/src-" ++ "[0-9]+") "<TMPDIR>"
   . resub (posixRegexEscape (normalizerTmpDir nenv) ++ sameDir) "<ROOT>/"
   . resub (posixRegexEscape (normalizerCanonicalTmpDir nenv) ++ sameDir) "<ROOT>/"
+  . (if buildOS == Windows
+        then
+          -- OK. Here's the deal. In `./Prelude.hs`, `withRepoNoUpdate` sets
+          -- `repoUri` to the tmpdir but with backslashes replaced with
+          -- slashes. This is because Windows treats backslashes and forward
+          -- slashes largely the same in paths, and backslashes aren't allowed
+          -- in a URL like `file+noindex://...`.
+          --
+          -- But that breaks the regexes above, which expect the paths to have
+          -- backslashes.
+          --
+          -- Honestly this whole `normalizeOutput` thing is super janky and
+          -- worth rewriting from the ground up. To you, poor soul in the
+          -- future, here is one more hack upon a great pile. Hey, at least all
+          -- the `PackageTests` function as a test suite for this thing...
+            resub (posixRegexEscape (backslashToSlash $ normalizerTmpDir nenv) ++ sameDir) "<ROOT>/"
+          . resub (posixRegexEscape (backslashToSlash $ normalizerCanonicalTmpDir nenv) ++ sameDir) "<ROOT>/"
+        else id)
       -- Munge away C: prefix on filenames (Windows). We convert C:\\ to \\.
   . (if buildOS == Windows then resub "([A-Z]):\\\\" "\\\\" else id)
   . appEndo (F.fold (map (Endo . packageIdRegex) (normalizerKnownPackages nenv)))
@@ -153,6 +171,9 @@ posixSpecialChars = ".^$*+?()[{\\|"
 
 posixRegexEscape :: String -> String
 posixRegexEscape = concatMap (\c -> if c `elem` posixSpecialChars then ['\\', c] else [c])
+
+backslashToSlash :: String -> String
+backslashToSlash = map (\c -> if c == '\\' then '/' else c)
 
 -- From regex-compat-tdfa by Christopher Kuklewicz and shelarcy, BSD-3-Clause
 -------------------------

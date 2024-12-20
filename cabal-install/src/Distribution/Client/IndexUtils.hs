@@ -66,6 +66,10 @@ import Distribution.Client.Types
 import Distribution.Parsec (simpleParsecBS)
 import Distribution.Verbosity
 
+import Distribution.Client.ProjectConfig
+  ( CabalFileParseError
+  , readSourcePackageCabalFile'
+  )
 import Distribution.Client.Setup
   ( RepoContext (..)
   )
@@ -97,6 +101,7 @@ import Distribution.Simple.Utils
   , fromUTF8LBS
   , info
   , warn
+  , warnError
   )
 import Distribution.Types.Dependency
 import Distribution.Types.PackageName (PackageName)
@@ -880,14 +885,22 @@ withIndexEntries verbosity (RepoIndex _repoCtxt (RepoLocalNoIndex (LocalRepo nam
         where
           cabalPath = prettyShow pkgid ++ ".cabal"
       Just pkgId -> do
+        let tarFile = localDir </> file
         -- check for the right named .cabal file in the compressed tarball
-        tarGz <- BS.readFile (localDir </> file)
+        tarGz <- BS.readFile tarFile
         let tar = GZip.decompress tarGz
             entries = Tar.read tar
+            expectFilename = prettyShow pkgId FilePath.</> prettyShow (packageName pkgId) ++ ".cabal"
 
-        case Tar.foldEntries (readCabalEntry pkgId) Nothing (const Nothing) entries of
+        tarballPackageDescription <-
+          Tar.foldEntries
+            (readCabalEntry tarFile expectFilename)
+            (pure Nothing)
+            (handleTarFormatError tarFile)
+            entries
+        case tarballPackageDescription of
           Just ce -> return (Just ce)
-          Nothing -> dieWithException verbosity $ CannotReadCabalFile file
+          Nothing -> dieWithException verbosity $ CannotReadCabalFile expectFilename tarFile
 
   let (prefs, gpds) =
         partitionEithers $
@@ -918,16 +931,55 @@ withIndexEntries verbosity (RepoIndex _repoCtxt (RepoLocalNoIndex (LocalRepo nam
 
     stripSuffix sfx str = fmap reverse (stripPrefix (reverse sfx) (reverse str))
 
-    -- look for <pkgid>/<pkgname>.cabal inside the tarball
-    readCabalEntry :: PackageIdentifier -> Tar.Entry -> Maybe NoIndexCacheEntry -> Maybe NoIndexCacheEntry
-    readCabalEntry pkgId entry Nothing
-      | filename == Tar.entryPath entry
-      , Tar.NormalFile contents _ <- Tar.entryContent entry =
-          let bs = BS.toStrict contents
-           in ((`CacheGPD` bs) <$> parseGenericPackageDescriptionMaybe bs)
-      where
-        filename = prettyShow pkgId FilePath.</> prettyShow (packageName pkgId) ++ ".cabal"
-    readCabalEntry _ _ x = x
+    handleTarFormatError :: FilePath -> Tar.FormatError -> IO (Maybe NoIndexCacheEntry)
+    handleTarFormatError tarFile formatError = do
+      -- This is printed at warning-level because malformed `.tar.gz`s in
+      -- indexes are unexpected and we want users to tell us about them.
+      warnError verbosity $
+        "Failed to parse "
+          <> tarFile
+          <> ": "
+          <> displayException formatError
+      pure Nothing
+
+    -- look for `expectFilename` inside the tarball
+    readCabalEntry
+      :: FilePath
+      -> FilePath
+      -> Tar.Entry
+      -> IO (Maybe NoIndexCacheEntry)
+      -> IO (Maybe NoIndexCacheEntry)
+    readCabalEntry tarFile expectFilename entry previous' = do
+      previous <- previous'
+      case previous of
+        Just _entry -> pure previous
+        Nothing -> do
+          if expectFilename /= Tar.entryPath entry
+            then pure Nothing
+            else case Tar.entryContent entry of
+              Tar.NormalFile contents _fileSize -> do
+                let bytes = BS.toStrict contents
+                maybePackageDescription
+                  :: Either CabalFileParseError GenericPackageDescription <-
+                  -- Warnings while parsing `.cabal` files are only shown in
+                  -- verbose mode because people are allowed to upload packages
+                  -- with warnings to Hackage (and we may _add_ warnings by
+                  -- shipping new versions of Cabal). You probably don't care
+                  -- if there's a warning in some random package in your
+                  -- transitive dependency tree, as long as it's not causing
+                  -- issues. If it is causing issues, you can add `-v` to see
+                  -- the warnings!
+                  try $ readSourcePackageCabalFile' (info verbosity) expectFilename bytes
+                case maybePackageDescription of
+                  Left exception -> do
+                    -- Here we show the _failure_ to parse the `.cabal` file as
+                    -- a warning. This will impact which versions/packages are
+                    -- available in your index, so users should know!
+                    warn verbosity $ "In " <> tarFile <> ": " <> displayException exception
+                    pure Nothing
+                  Right genericPackageDescription ->
+                    pure $ Just $ CacheGPD genericPackageDescription bytes
+              _ -> pure Nothing
 withIndexEntries verbosity index callback _ = do
   -- non-secure repositories
   withFile (indexFile index) ReadMode $ \h -> do

@@ -70,7 +70,7 @@ data CabalInstallException
   | ReportTargetProblems String
   | ListBinTargetException String
   | ResolveWithoutDependency String
-  | CannotReadCabalFile FilePath
+  | CannotReadCabalFile FilePath FilePath
   | ErrorUpdatingIndex FilePath IOException
   | InternalError FilePath
   | ReadIndexCache FilePath
@@ -390,7 +390,11 @@ exceptionMessageCabalInstall e = case e of
   ReportTargetProblems problemsMsg -> problemsMsg
   ListBinTargetException errorStr -> errorStr
   ResolveWithoutDependency errorStr -> errorStr
-  CannotReadCabalFile file -> "Cannot read .cabal file inside " ++ file
+  CannotReadCabalFile expect file ->
+    "Failed to read "
+      ++ expect
+      ++ " from archive "
+      ++ file
   ErrorUpdatingIndex name ioe -> "Error while updating index for " ++ name ++ " repository " ++ show ioe
   InternalError msg ->
     "internal error when reading package index: "
