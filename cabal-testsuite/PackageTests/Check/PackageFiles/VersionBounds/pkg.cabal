@@ -1,0 +1,25 @@
+cabal-version: 3.0
+name: pkg
+synopsis: synopsis
+description: description
+version: 0
+category: example
+maintainer: none@example.com
+license: GPL-3.0-or-later
+
+library
+  exposed-modules: Foo
+  default-language: Haskell2010
+  build-depends:
+    , base ^>= 4.20.0.0
+
+    , missing-upper >= 0
+    , missing-lower < 1
+
+    , exclusive-minimums-missing-upper > 0
+    , and-exclusive-minimums > 0 && < 1
+    , or-exclusive-minimums-missing-upper > 0 || < 1
+
+    , inclusive-maximums <= 1
+    , and-inclusive-maximums >= 0 && <= 1
+    , or-inclusive-maximums-missing-upper >= 0 || <= 1
