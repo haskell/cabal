@@ -342,6 +342,12 @@ jobs:
       - run: ${{ needs.config.outputs.env }}
         shell: bash
 
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cabal-*
+          path: binaries
+          merge-multiple: true
+
       - uses: actions/checkout@v4
 
       - uses: ./.github/actions/validate-old

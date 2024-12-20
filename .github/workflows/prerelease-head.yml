@@ -120,9 +120,8 @@ jobs:
       - uses: liudonghua123/delete-release-action@v1
         with:
           release_name: 'cabal-head'
-          token: ${{ github.token }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      # for now this is hardcoded. is there a better way?
       - uses: actions/download-artifact@v4
         with:
           pattern: cabal-*
