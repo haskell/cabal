@@ -67,7 +67,6 @@ module Distribution.Client.ProjectConfig
   ) where
 
 import Distribution.Client.Compat.Prelude
-import Text.PrettyPrint (nest, render, text, vcat)
 import Prelude ()
 
 import Distribution.Client.Glob
@@ -224,6 +223,7 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import Text.PrettyPrint (Doc, hang, nest, text, vcat, ($$))
 
 import Network.URI
   ( URI (..)
@@ -925,9 +925,40 @@ data BadPackageLocations
   deriving (Show)
 
 instance Exception BadPackageLocations where
-  displayException = renderBadPackageLocations
+  displayException = prettyShow
 
 -- TODO: [nice to have] custom exception subclass for Doc rendering, colour etc
+
+instance Pretty BadPackageLocations where
+  pretty (BadPackageLocations provenance bpls)
+    -- There is no provenance information,
+    -- render standard bad package error information.
+    | Set.null provenance = renderErrors renderBadPackageLocation
+    -- The configuration is implicit, render bad package locations
+    -- using possibly specialized error messages.
+    | Set.singleton Implicit == provenance =
+        renderErrors renderImplicitBadPackageLocation
+    -- The configuration contains both implicit and explicit provenance.
+    -- This should not occur, and a message is output to assist debugging.
+    | Implicit `Set.member` provenance =
+        text "Warning: both implicit and explicit configuration is present."
+          $$ renderExplicit
+    -- The configuration was read from one or more explicit path(s),
+    -- list the locations and render the bad package error information.
+    -- The intent is to supersede this with the relevant location information
+    -- per package error.
+    | otherwise = renderExplicit
+    where
+      renderErrors f = vcat (map f bpls)
+
+      renderExplicit =
+        text "When using configuration from:"
+          $$ nest 2 (docProjectConfigFiles $ mapMaybe getExplicit $ Set.toList provenance)
+          $$ text "The following errors occurred:"
+          $$ nest 2 (vcat $ map (hang (text "-") 2 . renderBadPackageLocation) bpls)
+
+      getExplicit (Explicit path) = Just path
+      getExplicit Implicit = Nothing
 
 data BadPackageLocation
   = BadPackageLocationFile BadPackageLocationMatch
@@ -945,37 +976,6 @@ data BadPackageLocationMatch
   | BadLocDirManyCabalFiles String
   deriving (Show)
 
-renderBadPackageLocations :: BadPackageLocations -> String
-renderBadPackageLocations (BadPackageLocations provenance bpls)
-  -- There is no provenance information,
-  -- render standard bad package error information.
-  | Set.null provenance = renderErrors renderBadPackageLocation
-  -- The configuration is implicit, render bad package locations
-  -- using possibly specialized error messages.
-  | Set.singleton Implicit == provenance =
-      renderErrors renderImplicitBadPackageLocation
-  -- The configuration contains both implicit and explicit provenance.
-  -- This should not occur, and a message is output to assist debugging.
-  | Implicit `Set.member` provenance =
-      "Warning: both implicit and explicit configuration is present."
-        ++ renderExplicit
-  -- The configuration was read from one or more explicit path(s),
-  -- list the locations and render the bad package error information.
-  -- The intent is to supersede this with the relevant location information
-  -- per package error.
-  | otherwise = renderExplicit
-  where
-    renderErrors f = unlines (map f bpls)
-
-    renderExplicit =
-      "When using configuration from:\n"
-        ++ render (nest 2 . docProjectConfigFiles $ mapMaybe getExplicit (Set.toList provenance))
-        ++ "\nThe following errors occurred:\n"
-        ++ render (nest 2 $ vcat ((text "-" <+>) . text <$> map renderBadPackageLocation bpls))
-
-    getExplicit (Explicit path) = Just path
-    getExplicit Implicit = Nothing
-
 -- TODO: [nice to have] keep track of the config file (and src loc) packages
 -- were listed, to use in error messages
 
@@ -986,7 +986,7 @@ renderBadPackageLocations (BadPackageLocations provenance bpls)
 -- cases handled. More cases should be added with informative help text
 -- about the issues related specifically when having no project configuration
 -- is present.
-renderImplicitBadPackageLocation :: WithConstraintSource BadPackageLocation -> String
+renderImplicitBadPackageLocation :: WithConstraintSource BadPackageLocation -> Doc
 renderImplicitBadPackageLocation
   ( WithConstraintSource
       { constraintInner = bpl
@@ -994,30 +994,31 @@ renderImplicitBadPackageLocation
       }
     ) =
     inner
-      ++ "\nFrom "
-      ++ showConstraintSource constraint
+      $$ text "From"
+      <+> pretty constraint
     where
       inner =
         case bpl of
           BadLocGlobEmptyMatch pkglocstr ->
-            "No cabal.project file or cabal file matching the default glob '"
-              ++ pkglocstr
-              ++ "' was found.\n"
-              ++ "Please create a package description file <pkgname>.cabal "
-              ++ "or a cabal.project file referencing the packages you "
-              ++ "want to build."
-          _ -> renderBadPackageLocationInner bpl
+            text $
+              "No cabal.project file or cabal file matching the default glob '"
+                ++ pkglocstr
+                ++ "' was found.\n"
+                ++ "Please create a package description file <pkgname>.cabal "
+                ++ "or a cabal.project file referencing the packages you "
+                ++ "want to build."
+          _ -> text $ renderBadPackageLocationInner bpl
 
-renderBadPackageLocation :: WithConstraintSource BadPackageLocation -> String
+renderBadPackageLocation :: WithConstraintSource BadPackageLocation -> Doc
 renderBadPackageLocation
   ( WithConstraintSource
       { constraintInner = bpl
       , constraintSource = constraint
       }
     ) =
-    renderBadPackageLocationInner bpl
-      ++ "\nFrom "
-      ++ showConstraintSource constraint
+    text (renderBadPackageLocationInner bpl)
+      $$ text "From"
+      <+> pretty constraint
 
 renderBadPackageLocationInner :: BadPackageLocation -> String
 renderBadPackageLocationInner bpl = case bpl of
