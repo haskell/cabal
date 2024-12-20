@@ -133,16 +133,6 @@ runs:
         fi
         echo "FLAGS=$FLAGS" >> "$GITHUB_ENV"
 
-    - name: Validate print-config
-      shell: ${{ inputs.shell }}
-      run: |
-        sh validate.sh $FLAGS -s print-config
-
-    - name: Validate print-tool-versions
-      shell: ${{ inputs.shell }}
-      run: |
-        sh validate.sh $FLAGS -s print-tool-versions
-
     - name: Canonicalize architecture
       shell: ${{ inputs.shell }}
       run: |

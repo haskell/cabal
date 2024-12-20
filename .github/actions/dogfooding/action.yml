@@ -39,11 +39,6 @@ runs:
       run: |
         tar -xzf "./cabal-head/cabal-head-${{ runner.os }}-$CABAL_ARCH.tar.gz" -C cabal-head
 
-    - name: print-config using cabal HEAD
-      shell: ${{ inputs.shell }}
-      run: |
-        sh validate.sh $COMMON_FLAGS --with-cabal ./cabal-head/cabal -s print-config
-
     - name: Build using cabal HEAD
       shell: ${{ inputs.shell }}
       run: |
