@@ -467,6 +467,7 @@ jobs:
       - uses: liudonghua123/delete-release-action@v1
         with:
           release_name: 'cabal-head'
+          token: ${{ github.token }}
 
       - uses: actions/download-artifact@v4
         with:
@@ -485,7 +486,7 @@ jobs:
     name: Create a GitHub LTS prerelease with the binary artifacts
     runs-on: ubuntu-latest
     # The LTS branch is hardcoded for now, update it on a new LTS!
-    # if: github.ref == 'refs/heads/3.12'
+    if: github.ref == 'refs/heads/3.12'
     permissions:
       contents: write
 
@@ -496,6 +497,7 @@ jobs:
     - uses: liudonghua123/delete-release-action@v1
       with:
         release_name: 'cabal-lts-head'
+        token: ${{ github.token }}
 
     - uses: actions/download-artifact@v4
       with:
@@ -510,10 +512,7 @@ jobs:
           mv "$f" "cabal-lts-${f##cabal-}"
         done
 
-    - run: echo ${{ github.ref }}
-
     - name: Create GitHub prerelease
-      if: github.ref == 'refs/heads/3.12'
       uses: softprops/action-gh-release@v2
       with:
         tag_name: cabal-lts-head
