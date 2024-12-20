@@ -268,8 +268,6 @@ checkGenericPackageDescription
       checkP
         (not . null $ dups names)
         (PackageBuildImpossible $ DuplicateSections dupes)
-      -- PackageDescription checks.
-      checkPackageDescription packageDescription_
       -- Flag names.
       mapM_ checkFlagName genPackageFlags_
 
