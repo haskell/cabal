@@ -454,6 +454,7 @@ jobs:
       - uses: liudonghua123/delete-release-action@v1
         with:
           release_name: 'cabal-head'
+          token: ${{ github.token }}
 
       - uses: actions/download-artifact@v4
         with:
@@ -471,7 +472,7 @@ jobs:
     name: Create a GitHub LTS prerelease with the binary artifacts
     runs-on: ubuntu-latest
     # The LTS branch is hardcoded for now, update it on a new LTS!
-    if: "always() && contains(github.ref, '3.12')"
+    if: github.ref == 'refs/heads/3.12'
     permissions:
       contents: write
 
@@ -482,6 +483,7 @@ jobs:
     - uses: liudonghua123/delete-release-action@v1
       with:
         release_name: 'cabal-lts-head'
+        token: ${{ github.token }}
 
     - uses: actions/download-artifact@v4
       with:
@@ -497,12 +499,12 @@ jobs:
         mv cabal-{,lts-}Linux-static-x86_64
         mv cabal-{,lts-}macOS-x86_64
 
-    #- name: Create GitHub prerelease
-    #  uses: softprops/action-gh-release@v2
-    #  with:
-    #    tag_name: cabal-lts-head
-    #    prerelease: true
-    #    files: binaries/cabal-*
+    - name: Create GitHub prerelease
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: cabal-lts-head
+        prerelease: true
+        files: binaries/cabal-*
 
   # We use this job as a summary of the workflow
   # It will fail if any of the previous jobs does
