@@ -45,6 +45,7 @@ library
     Test.Cabal.CheckArMetadata
     Test.Cabal.DecodeShowBuildInfo
     Test.Cabal.Monad
+    Test.Cabal.NeedleHaystack
     Test.Cabal.OutputNormalizer
     Test.Cabal.Plan
     Test.Cabal.Prelude
