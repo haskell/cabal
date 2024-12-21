@@ -1,9 +1,13 @@
+{-# LANGUAGE MultiWayIf #-}
+
 module Test.Cabal.NeedleHaystack where
 
+import Data.Maybe (isJust)
 import Distribution.System
 import Data.List (isPrefixOf)
 import qualified System.FilePath.Posix as Posix
 import qualified System.FilePath.Windows as Windows
+import Network.URI (parseURI)
 
 -- | Transformations for the search strings and the text to search in.
 data TxContains =
@@ -58,11 +62,14 @@ lineBreaksToSpaces = unwords . lines . filter ((/=) '\r')
 
 normalizePathSeparator :: FilePath -> FilePath
 normalizePathSeparator p =
-    if buildOS == Windows
-        then
+    if | isURI p -> p
+       | buildOS == Windows ->
             [if Posix.isPathSeparator c then Windows.pathSeparator else c| c <- p]
-        else
+       | otherwise ->
             [if Windows.isPathSeparator c then Posix.pathSeparator else c| c <- p]
+
+isURI :: FilePath -> Bool
+isURI = isJust . parseURI
 
 normalizeWindowsOutput :: String -> String
 normalizeWindowsOutput = unlines . map normalizePathSeparator . lines
