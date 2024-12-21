@@ -1,6 +1,9 @@
 module Test.Cabal.NeedleHaystack where
 
+import Distribution.System
 import Data.List (isPrefixOf)
+import qualified System.FilePath.Posix as Posix
+import qualified System.FilePath.Windows as Windows
 
 -- | Transformations for the search strings and the text to search in.
 data TxContains =
@@ -52,6 +55,17 @@ needleHaystack = NeedleHaystack True False txContainsId txContainsId
 -- " foo bar baz"
 lineBreaksToSpaces :: String -> String
 lineBreaksToSpaces = unwords . lines . filter ((/=) '\r')
+
+normalizePathSeparator :: FilePath -> FilePath
+normalizePathSeparator p =
+    if buildOS == Windows
+        then
+            [if Posix.isPathSeparator c then Windows.pathSeparator else c| c <- p]
+        else
+            [if Windows.isPathSeparator c then Posix.pathSeparator else c| c <- p]
+
+normalizeWindowsOutput :: String -> String
+normalizeWindowsOutput = unlines . map normalizePathSeparator . lines
 
 -- | Replace line breaks with <EOL>, correctly handling "\r\n".
 --
