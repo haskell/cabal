@@ -1,3 +1,17 @@
+When using configuration from:
+  - no-pkgs.project
+  - 0.config
+  - 2.config
+  - 4.config
+  - 6.config
+  - 8.config
+  - cfg/1.config
+  - cfg/3.config
+  - cfg/5.config
+  - cfg/7.config
+  - cfg/9.config
+  - with-ghc.config
+  - https://www.stackage.org/lts-21.25/cabal.config
 The following errors occurred:
   - The package directory 'no-pkg-1' does not contain any .cabal file.
   - The package location 'no-pkg-2-dir' does not exist.
