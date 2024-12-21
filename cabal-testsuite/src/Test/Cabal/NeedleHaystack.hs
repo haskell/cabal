@@ -5,7 +5,7 @@
 -- breaks or delimiting lines. Both LF and CRLF line breaks are recognized.
 module Test.Cabal.NeedleHaystack where
 
-import Data.List (tails, unsnoc)
+import Data.List (tails)
 import Data.Maybe (isJust)
 import Distribution.System
 import Data.List (isPrefixOf)
@@ -90,6 +90,11 @@ normalizePathSeparators =
                     [if Posix.isPathSeparator c then Windows.pathSeparator else c| c <- p]
                | otherwise ->
                     [if Windows.isPathSeparator c then Posix.pathSeparator else c| c <- p]
+
+        -- NOTE: unsnoc is only in base >= 4.19 so we copy its definition here
+        -- rather than use CPP to conditionally import because we want to avoid
+        -- CPP as that interferes with string gaps in doctests.
+        unsnoc = foldr (\x -> Just . maybe ([], x) (\(~(a, b)) -> (x : a, b))) Nothing
 
 -- | Replace line breaks, be they @"\\r\\n"@ or @"\\n"@, with @"\<EOL\>"@.
 --
