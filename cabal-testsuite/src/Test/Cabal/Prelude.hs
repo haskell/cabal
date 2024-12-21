@@ -1106,9 +1106,6 @@ flakyIfCI ticket m = do
 flakyIfWindows :: IssueID -> TestM a -> TestM a
 flakyIfWindows ticket m = flakyIf isWindows ticket m
 
-normalizeWindowsOutput :: String -> String
-normalizeWindowsOutput = if isWindows then map (\x -> case x of '/' -> '\\'; _ -> x) else id
-
 getOpenFilesLimit :: TestM (Maybe Integer)
 #ifdef mingw32_HOST_OS
 -- No MS-specified limit, was determined experimentally on Windows 10 Pro x64,
