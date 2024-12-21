@@ -61,8 +61,10 @@ needleHaystack = NeedleHaystack True False txContainsId txContainsId
 lineBreaksToSpaces :: String -> String
 lineBreaksToSpaces = unwords . lines . filter ((/=) '\r')
 
-normalizeWindowsOutput :: String -> String
-normalizeWindowsOutput = unlines . map normalizePathSeparator . lines
+-- | Expecting not more than one file path per line, replaces path separators
+-- found with those of the current OS, URL-like paths excluded.
+normalizePathSeparators :: String -> String
+normalizePathSeparators = unlines . map normalizePathSeparator . lines
     where
         normalizePathSeparator p =
             if | any (isJust . parseURI) (tails p) -> p
