@@ -33,11 +33,7 @@ main = cabalTest . recordMode RecordMarked $ do
 
   log "checking that package directories and locations are reported in order"
 
-  "The following errors occurred:\n\
-  \  - The package directory 'no-pkg-1' does not contain any .cabal file.\n\
-  \  - The package location 'no-pkg-2-dir' does not exist.\n\
-  \  - The package directory 'no-pkg-3' does not contain any .cabal file.\n\
-  \  - The package location 'no-pkg-4-dir' does not exist."
-    & flip (assertOn multilineNeedleHaystack) out
+  readVerbatimFile "errors.expect.txt"
+    >>= flip (assertOn multilineNeedleHaystack) out
 
   return ()
