@@ -1,29 +1,28 @@
 import Test.Cabal.Prelude
+import System.Directory
 
 main = cabalTest . recordMode RecordMarked $ do
   let log = recordHeader . pure
-
-  let expectMulti =
-        "When using configuration from:\n\
-        \  - else.project\n\
-        \  - dir-else/else.config\n\
-        \The following errors occurred:\n\
-        \  - The package location 'no-pkg-here' does not exist."
+  cwd <- liftIO getCurrentDirectory
+  env <- getTestEnv
+  let testDir = testCurrentDir env
+  liftIO . putStrLn $ "Current working directory: " ++ cwd
+  msg <- liftIO . readFile $ testDir </> "msg.txt"
 
   outElse <- fails $ cabal' "v2-build" [ "all", "--dry-run", "--project-file=else.project" ]
 
-  let expectSingle = filter (/= '\n') expectMulti
+  let msgSingle = filter (/= '\n') msg
 
   log "Multiline string marking:"
-  mapM_ log (lines . decodeLfMarkLines $ encodeLf expectMulti)
+  mapM_ log (lines . decodeLfMarkLines $ encodeLf msg)
 
   log "Pseudo multiline string marking:"
-  mapM_ log (lines . decodeLfMarkLines $ encodeLf expectSingle)
+  mapM_ log (lines . decodeLfMarkLines $ encodeLf msgSingle)
 
-  assertOn multilineNeedleHaystack expectMulti outElse
-  assertOn multilineNeedleHaystack{expectNeedleInHaystack = False} expectSingle outElse
+  assertOn multilineNeedleHaystack msg outElse
+  assertOn multilineNeedleHaystack{expectNeedleInHaystack = False} msgSingle outElse
 
-  assertOutputDoesNotContain expectMulti outElse
-  assertOutputDoesNotContain expectSingle outElse
+  assertOutputDoesNotContain msg outElse
+  assertOutputDoesNotContain msgSingle outElse
 
   return ()
