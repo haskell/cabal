@@ -63,6 +63,12 @@ lineBreaksToSpaces = unwords . lines . filter ((/=) '\r')
 
 -- | Replaces path separators found with those of the current OS, URL-like paths
 -- excluded.
+--
+-- >>> buildOS
+-- Linux
+--
+-- >>> normalizePathSeparators "foo\\bar\\baz"
+-- "foo/bar/baz"
 normalizePathSeparators :: String -> String
 normalizePathSeparators =
     -- WARNING: unlines will add a trailing newline if there isn't one already.
