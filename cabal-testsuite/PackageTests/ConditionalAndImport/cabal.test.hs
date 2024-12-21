@@ -79,7 +79,7 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   --    +-- etc
   log "checking that cyclical check catches a same file name that imports itself"
   cyclical4a <- fails $ cabal' "v2-build" [ "--project-file=cyclical-same-filename-out-out-self.project" ]
-  assertOutputContains (normalizeWindowsOutput "cyclical import of same-filename/cyclical-same-filename-out-out-self.config") cyclical4a
+  assertOutputContains (normalizePathSeparators "cyclical import of same-filename/cyclical-same-filename-out-out-self.config") cyclical4a
 
   -- +-- cyclical-same-filename-out-out-backback.project
   --  +-- cyclical-same-filename-out-out-backback.config
@@ -113,7 +113,7 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   hopping <- cabal' "v2-build" [ "--project-file=hops-0.project" ]
 
   readVerbatimFile "hops.expect.txt" >>=
-    flip (assertOn multilineNeedleHaystack) hopping .  normalizeWindowsOutput
+    flip (assertOn multilineNeedleHaystack) hopping .  normalizePathSeparators
 
   -- The project is named oops as it is like hops but has conflicting constraints.
   -- +-- oops-0.project
@@ -130,7 +130,7 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   oopsing <- fails $ cabal' "v2-build" [ "all", "--project-file=oops-0.project" ]
 
   readVerbatimFile "oops.expect.txt"
-    >>= flip (assertOn multilineNeedleHaystack) oopsing . normalizeWindowsOutput
+    >>= flip (assertOn multilineNeedleHaystack) oopsing . normalizePathSeparators
 
   -- The project is named yops as it is like hops but with y's for forks.
   -- +-- yops-0.project
@@ -173,6 +173,6 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   missing <- fails $ cabal' "v2-build" [ "--project-file=cabal-missing-package.project" ]
 
   readVerbatimFile "cabal-missing-package.expect.txt"
-    >>= flip (assertOn multilineNeedleHaystack) missing . normalizeWindowsOutput
+    >>= flip (assertOn multilineNeedleHaystack) missing . normalizePathSeparators
 
   return ()

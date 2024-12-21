@@ -11,6 +11,6 @@ main = cabalTest . recordMode RecordMarked $ do
   log "check package directories and locations are reported in order"
 
   readVerbatimFile "errors.expect.txt"
-    >>= flip (assertOn multilineNeedleHaystack) out . normalizeWindowsOutput  
+    >>= flip (assertOn multilineNeedleHaystack) out . normalizePathSeparators  
 
   return ()
