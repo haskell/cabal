@@ -229,13 +229,8 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   log "checking that missing package message lists configuration provenance"
   missing <- fails $ cabal' "v2-build" [ "--project-file=cabal-missing-package.project" ]
 
-  "When using configuration from:\n\
-  \  - cabal-missing-package.project\n\
-  \  - missing/pkgs.config\n\
-  \  - missing/pkgs/default.config\n\
-  \The following errors occurred:\n\
-  \  - The package location 'pkg-doesnt-exist' does not exist."
-    & normalizeWindowsOutput
-    & flip (assertOn multilineNeedleHaystack) missing
+  readVerbatimFile "cabal-missing-package.expect.txt"
+    <&> normalizeWindowsOutput
+    >>= flip (assertOn multilineNeedleHaystack) missing
 
   return ()
