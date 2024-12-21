@@ -1271,3 +1271,21 @@ findDependencyInStore pkgName = do
                       [] -> error $ "Could not find " <> pkgName' <> " when searching for " <> pkgName' <> " in\n" <> show packageDirs
                       (dir:_) -> dir
       pure (storeDir </> storeDirForGhcVersion </> libDir)
+
+-- | It can easier to paste expected output verbatim into a text file,
+-- especially if it is a multiline string, rather than encoding it as a multiline
+-- string in Haskell source code.
+--
+-- With `-XMultilineStrings` triple quoted strings with line breaks will be
+-- easier to write in source code but then this will only work with ghc-9.12.1
+-- and later, in which case we'd have to use CPP with test scripts to support
+-- older GHC versions. CPP doesn't play nicely with multiline strings using
+-- string gaps. None of our test script import other modules. That might be a
+-- way to avoid CPP in a module that uses multiline strings.
+--
+-- In summary, it is easier to read multiline strings from a file. That is what
+-- this function facilitates.
+readVerbatimFile :: FilePath -> TestM String
+readVerbatimFile filename = do
+  testDir <- testCurrentDir <$> getTestEnv
+  liftIO . readFile $ testDir </> filename
