@@ -2,7 +2,7 @@
 
 module Test.Cabal.NeedleHaystack where
 
-import Data.List (tails)
+import Data.List (tails, unsnoc)
 import Data.Maybe (isJust)
 import Distribution.System
 import Data.List (isPrefixOf)
@@ -61,10 +61,18 @@ needleHaystack = NeedleHaystack True False txContainsId txContainsId
 lineBreaksToSpaces :: String -> String
 lineBreaksToSpaces = unwords . lines . filter ((/=) '\r')
 
--- | Expecting not more than one file path per line, replaces path separators
--- found with those of the current OS, URL-like paths excluded.
+-- | Replaces path separators found with those of the current OS, URL-like paths
+-- excluded.
 normalizePathSeparators :: String -> String
-normalizePathSeparators = unlines . map normalizePathSeparator . lines
+normalizePathSeparators =
+    -- WARNING: unlines will add a trailing newline if there isn't one already.
+    --
+    -- >>> lines "abc"
+    -- ["abc"]
+    --
+    -- >>> unlines $ lines "abc"
+    ---"abc\n"
+    maybe "" fst . unsnoc . unlines . map normalizePathSeparator . lines
     where
         normalizePathSeparator p =
             if | any (isJust . parseURI) (tails p) -> p
