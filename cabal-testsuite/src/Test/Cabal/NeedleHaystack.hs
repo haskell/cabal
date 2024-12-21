@@ -1,5 +1,8 @@
 {-# LANGUAGE MultiWayIf #-}
 
+-- | Functions for searching for a needle in a haystack, with transformations
+-- for the strings to search in and the search strings such as reencoding line
+-- breaks or delimiting lines. Both LF and CRLF line breaks are recognized.
 module Test.Cabal.NeedleHaystack where
 
 import Data.List (tails, unsnoc)
@@ -20,6 +23,8 @@ data TxContains =
             txFwd :: (String -> String)
         }
 
+-- | Identity transformation for the search strings and the text to search in,
+-- leaves them unchanged.
 txContainsId :: TxContains
 txContainsId = TxContains id id
 
@@ -39,16 +44,18 @@ data NeedleHaystack =
 symNeedleHaystack :: (String -> String) -> (String -> String) -> NeedleHaystack
 symNeedleHaystack bwd fwd = let tx = TxContains bwd fwd in NeedleHaystack True False tx tx
 
+-- | Multiline needle and haystack functions with symmetric conversions. Going
+-- forward converts line breaks to @"\<EOL\>"@.  Going backward replaces
+-- @"\<EOL\>"@ markers with line breaks and wrap lines with @^@ and @$@ markers.
 multilineNeedleHaystack :: NeedleHaystack
 multilineNeedleHaystack = symNeedleHaystack decodeLfMarkLines encodeLf
 
--- | Needle and haystack functions that do not change the strings. Set up for
--- finding the needle in the haystack and not displaying the line-delimited
--- haystack.
+-- | Minimal set up for finding the needle in the haystack. Doesn't change the
+-- strings and doesn't displaying the haystack in any assertion failure message.
 needleHaystack :: NeedleHaystack
 needleHaystack = NeedleHaystack True False txContainsId txContainsId
 
--- | Replace line breaks with spaces, correctly handling "\r\n".
+-- | Replace line breaks with spaces, correctly handling @"\\r\\n"@.
 --
 -- >>> lineBreaksToSpaces "foo\nbar\r\nbaz"
 -- "foo bar baz"
@@ -64,11 +71,8 @@ lineBreaksToSpaces = unwords . lines . filter ((/=) '\r')
 -- | Replaces path separators found with those of the current OS, URL-like paths
 -- excluded.
 --
--- >>> buildOS
--- Linux
---
--- >>> normalizePathSeparators "foo\\bar\\baz"
--- "foo/bar/baz"
+-- > buildOS == Linux; normalizePathSeparators "foo\bar\baz" => "foo/bar/baz"
+-- > buildOS == Windows; normalizePathSeparators "foo/bar/baz" => "foo\bar\baz"
 normalizePathSeparators :: String -> String
 normalizePathSeparators =
     -- WARNING: unlines will add a trailing newline if there isn't one already.
@@ -87,7 +91,7 @@ normalizePathSeparators =
                | otherwise ->
                     [if Windows.isPathSeparator c then Posix.pathSeparator else c| c <- p]
 
--- | Replace line breaks with <EOL>, correctly handling "\r\n".
+-- | Replace line breaks, be they @"\\r\\n"@ or @"\\n"@, with @"\<EOL\>"@.
 --
 -- >>> encodeLf "foo\nbar\r\nbaz"
 -- "foo<EOL>bar<EOL>baz"
@@ -105,8 +109,8 @@ encodeLf =
     . lines
     . filter ((/=) '\r')
 
--- | Replace <LF> markers with line breaks and wrap lines with ^ and $ markers
--- for the start and end.
+-- | Replace @"\<EOL\>"@ markers with @"\\n"@ line breaks and wrap lines with
+-- @^@ and @$@ markers for the start and end.
 --
 -- >>> decodeLfMarkLines "foo<EOL>bar<EOL>baz"
 -- "^foo$\n^bar$\n^baz$\n"
