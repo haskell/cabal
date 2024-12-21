@@ -1,0 +1,5 @@
+The following errors occurred:
+  - The package directory 'no-pkg-1' does not contain any .cabal file.
+  - The package location 'no-pkg-2-dir' does not exist.
+  - The package directory 'no-pkg-3' does not contain any .cabal file.
+  - The package location 'no-pkg-4-dir' does not exist.
