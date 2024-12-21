@@ -1,4 +1,5 @@
 {-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 
 -- | Functions for searching for a needle in a haystack, with transformations
 -- for the strings to search in and the search strings such as reencoding line
@@ -16,6 +17,8 @@ module Test.Cabal.NeedleHaystack
     , decodeLfMarkLines
     ) where
 
+import Prelude hiding (unlines)
+import qualified Prelude (unlines)
 import Data.List (tails)
 import Data.Maybe (isJust)
 import Distribution.System
@@ -86,14 +89,7 @@ lineBreaksToSpaces = unwords . lines . filter ((/=) '\r')
 -- > buildOS == Windows; normalizePathSeparators "foo/bar/baz" => "foo\bar\baz"
 normalizePathSeparators :: String -> String
 normalizePathSeparators =
-    -- WARNING: unlines will add a trailing newline if there isn't one already.
-    --
-    -- >>> lines "abc"
-    -- ["abc"]
-    --
-    -- >>> unlines $ lines "abc"
-    ---"abc\n"
-    maybe "" fst . unsnoc . unlines . map normalizePathSeparator . lines
+    unlines . map normalizePathSeparator . lines
     where
         normalizePathSeparator p =
             if | any (isJust . parseURI) (tails p) -> p
@@ -102,10 +98,25 @@ normalizePathSeparators =
                | otherwise ->
                     [if Windows.isPathSeparator c then Posix.pathSeparator else c| c <- p]
 
-        -- NOTE: unsnoc is only in base >= 4.19 so we copy its definition here
-        -- rather than use CPP to conditionally import because we want to avoid
-        -- CPP as that interferes with string gaps in doctests.
-        unsnoc = foldr (\x -> Just . maybe ([], x) (\(~(a, b)) -> (x : a, b))) Nothing
+-- | @unlines@ from base will add a trailing newline if there isn't one already
+-- but this one doesn't
+--
+-- >>> lines "abc"
+-- ["abc"]
+--
+-- >>> Data.List.unlines $ lines "abc"
+-- "abc\n"
+--
+-- >>> unlines $ lines "abc"
+-- "abc"
+unlines :: [String] -> String
+unlines = maybe "" fst . unsnoc . Prelude.unlines
+
+-- | @unsnoc@ is only in base >= 4.19 so we copy its definition here rather than
+-- use CPP to conditionally import because we want to avoid CPP as that
+-- interferes with string gaps in doctests.
+unsnoc :: [a] -> Maybe ([a], a)
+unsnoc = foldr (\x -> Just . maybe ([], x) (\(~(a, b)) -> (x : a, b))) Nothing
 
 -- | Replace line breaks, be they @"\\r\\n"@ or @"\\n"@, with @"\<EOL\>"@.
 --
@@ -129,10 +140,19 @@ encodeLf =
 -- @^@ and @$@ markers for the start and end.
 --
 -- >>> decodeLfMarkLines "foo<EOL>bar<EOL>baz"
--- "^foo$\n^bar$\n^baz$\n"
+-- "^foo$\n^bar$\n^baz$"
 --
 -- >>> decodeLfMarkLines "<EOL>foo<EOL>bar<EOL>baz"
--- "^foo$\n^bar$\n^baz$\n"
+-- "^foo$\n^bar$\n^baz$"
+--
+-- >>> decodeLfMarkLines $ encodeLf "foo\nbar\r\nbaz"
+-- "^foo$\n^bar$\n^baz$"
+--
+-- >>> decodeLfMarkLines $ encodeLf "foo\nbar\r\nbaz\n"
+-- "^foo$\n^bar$\n^baz$"
+--
+-- >>> decodeLfMarkLines $ encodeLf "\nfoo\nbar\r\nbaz\n"
+-- "^foo$\n^bar$\n^baz$"
 decodeLfMarkLines:: String -> String
 decodeLfMarkLines output =
     (\xs -> case reverse $ lines xs of
