@@ -1,0 +1,34 @@
+---
+synopsis: Deduplicate path separator duplicates
+packages: [cabal-install-solver]
+prs: 10646
+issues: 10645
+---
+
+The "using configuration from" message no longer has duplicates on Windows when
+the `cabal.project` uses forward slashes for its imports but the message reports
+imports with backslashes.
+
+```diff
+$ cat cabal.project
+import: dir-a/b.config
+
+$ cabal build all --dry-run
+...
+When using configuration from:
+-   - dir-a/b.config
+    - dir-a\b.config
+    - cabal.project
+```
+
+## Ord ProjectConfigPath Instance Changes
+
+For comparison purposes, path separators are normalized to the @buildOS@
+platform's path separator.
+
+```haskell
+-- >>> let abFwd = ProjectConfigPath $ "a/b.config" :| []
+-- >>> let abBwd = ProjectConfigPath $ "a\\b.config" :| []
+-- >>> compare abFwd abBwd
+-- EQ
+```
