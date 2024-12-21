@@ -3,7 +3,18 @@
 -- | Functions for searching for a needle in a haystack, with transformations
 -- for the strings to search in and the search strings such as reencoding line
 -- breaks or delimiting lines. Both LF and CRLF line breaks are recognized.
-module Test.Cabal.NeedleHaystack where
+module Test.Cabal.NeedleHaystack
+    ( TxContains(..)
+    , txContainsId
+    , NeedleHaystack(..)
+    , symNeedleHaystack
+    , multilineNeedleHaystack
+    , needleHaystack
+    , lineBreaksToSpaces
+    , normalizePathSeparators
+    , encodeLf
+    , decodeLfMarkLines
+    ) where
 
 import Data.List (tails)
 import Data.Maybe (isJust)
