@@ -1,6 +1,7 @@
 import Test.Cabal.Prelude
 import Test.Cabal.OutputNormalizer
 import Data.Function ((&))
+import Data.Functor ((<&>))
 
 main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   let log = recordHeader . pure
@@ -184,24 +185,9 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   log "checking conflicting constraints skipping into a subfolder and then back out again and again"
   oopsing <- fails $ cabal' "v2-build" [ "all", "--project-file=oops-0.project" ]
 
-  "Could not resolve dependencies:\n\
-  \[__0] trying: oops-0.1 (user goal)\n\
-  \[__1] next goal: hashable (dependency of oops)\n\
-  \[__1] rejecting: hashable-1.4.3.0\n\
-  \      (constraint from oops/oops-9.config requires ==1.4.2.0)\n\
-  \        imported by: oops-8.config\n\
-  \        imported by: oops/oops-7.config\n\
-  \        imported by: oops-6.config\n\
-  \        imported by: oops/oops-5.config\n\
-  \        imported by: oops-4.config\n\
-  \        imported by: oops/oops-3.config\n\
-  \        imported by: oops-2.config\n\
-  \        imported by: oops/oops-1.config\n\
-  \        imported by: oops-0.project\n\
-  \[__1] rejecting: hashable-1.4.2.0\n\
-  \      (constraint from oops-0.project requires ==1.4.3.0)"
-    & normalizeWindowsOutput
-    & flip (assertOn multilineNeedleHaystack) oopsing
+  readVerbatimFile "oops.expect.txt"
+    <&> normalizeWindowsOutput
+    >>= flip (assertOn multilineNeedleHaystack) oopsing
 
   -- The project is named yops as it is like hops but with y's for forks.
   -- +-- yops-0.project
