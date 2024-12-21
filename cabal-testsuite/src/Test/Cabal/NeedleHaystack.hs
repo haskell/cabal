@@ -2,6 +2,7 @@
 
 module Test.Cabal.NeedleHaystack where
 
+import Data.List (tails)
 import Data.Maybe (isJust)
 import Distribution.System
 import Data.List (isPrefixOf)
@@ -60,19 +61,15 @@ needleHaystack = NeedleHaystack True False txContainsId txContainsId
 lineBreaksToSpaces :: String -> String
 lineBreaksToSpaces = unwords . lines . filter ((/=) '\r')
 
-normalizePathSeparator :: FilePath -> FilePath
-normalizePathSeparator p =
-    if | isURI p -> p
-       | buildOS == Windows ->
-            [if Posix.isPathSeparator c then Windows.pathSeparator else c| c <- p]
-       | otherwise ->
-            [if Windows.isPathSeparator c then Posix.pathSeparator else c| c <- p]
-
-isURI :: FilePath -> Bool
-isURI = isJust . parseURI
-
 normalizeWindowsOutput :: String -> String
 normalizeWindowsOutput = unlines . map normalizePathSeparator . lines
+    where
+        normalizePathSeparator p =
+            if | any (isJust . parseURI) (tails p) -> p
+               | buildOS == Windows ->
+                    [if Posix.isPathSeparator c then Windows.pathSeparator else c| c <- p]
+               | otherwise ->
+                    [if Windows.isPathSeparator c then Posix.pathSeparator else c| c <- p]
 
 -- | Replace line breaks with <EOL>, correctly handling "\r\n".
 --
