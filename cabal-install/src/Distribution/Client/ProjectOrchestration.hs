@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -170,8 +171,12 @@ import Distribution.Types.UnqualComponentName
   )
 
 import Distribution.Solver.Types.OptionalStanza
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
+  )
 
 import Control.Exception (assert)
+import Data.Bifunctor (bimap)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -564,11 +569,11 @@ runProjectPostBuildPhase
 -- matched this target. Typically this is exactly one, but in general it is
 -- possible to for different selectors to match the same target. This extra
 -- information is primarily to help make helpful error messages.
-type TargetsMap = Map UnitId [(ComponentTarget, NonEmpty TargetSelector)]
+type TargetsMap = Map UnitId [(ComponentTarget, NonEmpty (WithConstraintSource TargetSelector))]
 
 -- | Get all target selectors.
 allTargetSelectors :: TargetsMap -> [TargetSelector]
-allTargetSelectors = concatMap (NE.toList . snd) . concat . Map.elems
+allTargetSelectors = concatMap (map constraintInner . NE.toList . snd) . concat . Map.elems
 
 -- | Get all unique target selectors.
 uniqueTargetSelectors :: TargetsMap -> [TargetSelector]
@@ -619,8 +624,8 @@ resolveTargets
      )
   -> ElaboratedInstallPlan
   -> Maybe (SourcePackageDb)
-  -> [TargetSelector]
-  -> Either [TargetProblem err] TargetsMap
+  -> [WithConstraintSource TargetSelector]
+  -> Either [WithConstraintSource (TargetProblem err)] TargetsMap
 resolveTargets
   selectPackageTargets
   selectComponentTarget
@@ -632,7 +637,7 @@ resolveTargets
       . map (\ts -> (,) ts <$> checkTarget ts)
     where
       mkTargetsMap
-        :: [(TargetSelector, [(UnitId, ComponentTarget)])]
+        :: [(WithConstraintSource TargetSelector, [(UnitId, ComponentTarget)])]
         -> TargetsMap
       mkTargetsMap targets =
         Map.map nubComponentTargets $
@@ -645,76 +650,87 @@ resolveTargets
 
       AvailableTargetIndexes{..} = availableTargetIndexes installPlan
 
-      checkTarget :: TargetSelector -> Either (TargetProblem err) [(UnitId, ComponentTarget)]
+      checkTarget :: WithConstraintSource TargetSelector -> Either (WithConstraintSource (TargetProblem err)) [(UnitId, ComponentTarget)]
 
       -- We can ask to build any whole package, project-local or a dependency
-      checkTarget bt@(TargetPackage _ (ordNub -> [pkgid]) mkfilter)
-        | Just ats <-
-            fmap (maybe id filterTargetsKind mkfilter) $
-              Map.lookup pkgid availableTargetsByPackageId =
-            fmap (componentTargets WholeComponent) $
-              selectPackageTargets bt ats
-        | otherwise =
-            Left (TargetProblemNoSuchPackage pkgid)
-      checkTarget (TargetPackage _ pkgids _) =
-        error
-          ( "TODO: add support for multiple packages in a directory.  Got\n"
-              ++ unlines (map prettyShow pkgids)
-          )
-      -- For the moment this error cannot happen here, because it gets
-      -- detected when the package config is being constructed. This case
-      -- will need handling properly when we do add support.
-      --
-      -- TODO: how should this use case play together with the
-      -- '--cabal-file' option of 'configure' which allows using multiple
-      -- .cabal files for a single package?
+      checkTarget
+        ( withConstraint@WithConstraintSource
+            { constraintInner = targetSelector
+            }
+          ) =
+          bimap
+            (\problem -> withConstraint{constraintInner = problem})
+            id
+            $ case targetSelector of
+              bt@(TargetPackage _ (ordNub -> [pkgid]) mkfilter) ->
+                case fmap (maybe id filterTargetsKind mkfilter) $
+                  Map.lookup pkgid availableTargetsByPackageId of
+                  Just ats ->
+                    fmap (componentTargets WholeComponent) $
+                      selectPackageTargets bt ats
+                  _ -> Left (TargetProblemNoSuchPackage pkgid)
+              TargetPackage _ pkgids _ ->
+                error
+                  ( "TODO: add support for multiple packages in a directory.  Got\n"
+                      ++ unlines (map prettyShow pkgids)
+                  )
+              -- For the moment this error cannot happen here, because it gets
+              -- detected when the package config is being constructed. This case
+              -- will need handling properly when we do add support.
+              --
+              -- TODO: how should this use case play together with the
+              -- '--cabal-file' option of 'configure' which allows using multiple
+              -- .cabal files for a single package?
 
-      checkTarget bt@(TargetAllPackages mkfilter) =
-        fmap (componentTargets WholeComponent)
-          . selectPackageTargets bt
-          . maybe id filterTargetsKind mkfilter
-          . filter availableTargetLocalToProject
-          $ concat (Map.elems availableTargetsByPackageId)
-      checkTarget (TargetComponent pkgid cname subtarget)
-        | Just ats <-
-            Map.lookup
-              (pkgid, cname)
-              availableTargetsByPackageIdAndComponentName =
-            fmap (componentTargets subtarget) $
-              selectComponentTargets subtarget ats
-        | Map.member pkgid availableTargetsByPackageId =
-            Left (TargetProblemNoSuchComponent pkgid cname)
-        | otherwise =
-            Left (TargetProblemNoSuchPackage pkgid)
-      checkTarget (TargetComponentUnknown pkgname ecname subtarget)
-        | Just ats <- case ecname of
-            Left ucname ->
-              Map.lookup
-                (pkgname, ucname)
-                availableTargetsByPackageNameAndUnqualComponentName
-            Right cname ->
-              Map.lookup
-                (pkgname, cname)
-                availableTargetsByPackageNameAndComponentName =
-            fmap (componentTargets subtarget) $
-              selectComponentTargets subtarget ats
-        | Map.member pkgname availableTargetsByPackageName =
-            Left (TargetProblemUnknownComponent pkgname ecname)
-        | otherwise =
-            Left (TargetNotInProject pkgname)
-      checkTarget bt@(TargetPackageNamed pkgname mkfilter)
-        | Just ats <-
-            fmap (maybe id filterTargetsKind mkfilter) $
-              Map.lookup pkgname availableTargetsByPackageName =
-            fmap (componentTargets WholeComponent)
-              . selectPackageTargets bt
-              $ ats
-        | Just SourcePackageDb{packageIndex} <- mPkgDb
-        , let pkg = lookupPackageName packageIndex pkgname
-        , not (null pkg) =
-            Left (TargetAvailableInIndex pkgname)
-        | otherwise =
-            Left (TargetNotInProject pkgname)
+              bt@(TargetAllPackages mkfilter) ->
+                fmap (componentTargets WholeComponent)
+                  . selectPackageTargets bt
+                  . maybe id filterTargetsKind mkfilter
+                  . filter availableTargetLocalToProject
+                  $ concat (Map.elems availableTargetsByPackageId)
+              TargetComponent pkgid cname subtarget ->
+                if
+                    | Just ats <-
+                        Map.lookup
+                          (pkgid, cname)
+                          availableTargetsByPackageIdAndComponentName ->
+                        fmap (componentTargets subtarget) $
+                          selectComponentTargets subtarget ats
+                    | Map.member pkgid availableTargetsByPackageId ->
+                        Left (TargetProblemNoSuchComponent pkgid cname)
+                    | otherwise ->
+                        Left (TargetProblemNoSuchPackage pkgid)
+              TargetComponentUnknown pkgname ecname subtarget ->
+                if
+                    | Just ats <- case ecname of
+                        Left ucname ->
+                          Map.lookup
+                            (pkgname, ucname)
+                            availableTargetsByPackageNameAndUnqualComponentName
+                        Right cname ->
+                          Map.lookup
+                            (pkgname, cname)
+                            availableTargetsByPackageNameAndComponentName ->
+                        fmap (componentTargets subtarget) $
+                          selectComponentTargets subtarget ats
+                    | Map.member pkgname availableTargetsByPackageName ->
+                        Left (TargetProblemUnknownComponent pkgname ecname)
+                    | otherwise ->
+                        Left (TargetNotInProject pkgname)
+              bt@(TargetPackageNamed pkgname mkfilter) ->
+                if
+                    | Just ats <-
+                        fmap (maybe id filterTargetsKind mkfilter) $
+                          Map.lookup pkgname availableTargetsByPackageName ->
+                        fmap (componentTargets WholeComponent)
+                          . selectPackageTargets bt
+                          $ ats
+                    | Just SourcePackageDb{packageIndex} <- mPkgDb
+                    , let pkg = lookupPackageName packageIndex pkgname
+                    , not (null pkg) ->
+                        Left (TargetAvailableInIndex pkgname)
+                    | otherwise ->
+                        Left (TargetNotInProject pkgname)
 
       componentTargets
         :: SubComponentTarget
@@ -1163,7 +1179,24 @@ writeBuildReports settings buildContext plan buildOutcomes = do
               Right br -> case buildResultTests br of
                 TestsNotTried -> BuildReports.NotTried
                 TestsOk -> BuildReports.Ok
-         in Just $ (BuildReports.BuildReport (packageId pkg) os arch (compilerId comp) cabalInstallID (elabFlagAssignment pkg) (map (packageId . fst) $ elabLibDependencies pkg) installOutcome docsOutcome testsOutcome, getRepo . elabPkgSourceLocation $ pkg) -- TODO handle failure log files?
+         in -- TODO handle failure log files?
+            Just $
+              ( BuildReports.BuildReport
+                  { package = packageId pkg
+                  , os
+                  , arch
+                  , compiler = compilerId comp
+                  , client = cabalInstallID
+                  , flagAssignment = elabFlagAssignment pkg
+                  , dependencies = map (packageId . fst) $ elabLibDependencies pkg
+                  , installOutcome
+                  , docsOutcome
+                  , testsOutcome
+                  }
+              , getRepo $
+                  constraintInner $
+                    elabPkgSourceLocation pkg
+              )
       fromPlanPackage _ _ = Nothing
       buildReports = mapMaybe (\x -> fromPlanPackage x (InstallPlan.lookupBuildOutcome x buildOutcomes)) $ InstallPlan.toList plan
 
