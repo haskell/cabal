@@ -1,28 +1,31 @@
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
+
 module Distribution.Solver.Types.SourcePackage
-    ( PackageDescriptionOverride
-    , SourcePackage(..)
-    ) where
+  ( PackageDescriptionOverride
+  , SourcePackage (..)
+  ) where
 
 import Distribution.Solver.Compat.Prelude
 import Prelude ()
 
 import Distribution.Package
-         ( PackageId, Package(..) )
+  ( Package (..)
+  , PackageId
+  )
 import Distribution.PackageDescription
-         ( GenericPackageDescription(..) )
+  ( GenericPackageDescription (..)
+  )
 
 import Data.ByteString.Lazy (ByteString)
 
 -- | A package description along with the location of the package sources.
---
 data SourcePackage loc = SourcePackage
-  { srcpkgPackageId     :: PackageId
-  , srcpkgDescription   :: GenericPackageDescription
-    -- ^ Note, this field is lazy, e.g. when reading in hackage index
-    --   we parse only what we need, not whole index.
-  , srcpkgSource        :: loc
+  { srcpkgPackageId :: PackageId
+  , srcpkgDescription :: GenericPackageDescription
+  -- ^ Note, this field is lazy, e.g. when reading in hackage index
+  --   we parse only what we need, not whole index.
+  , srcpkgSource :: loc
   , srcpkgDescrOverride :: PackageDescriptionOverride
   }
   deriving (Eq, Show, Generic, Typeable)

@@ -1,7 +1,11 @@
-module UnitTests.Distribution.Solver.Modular.MessageUtils ( tests ) where
+module UnitTests.Distribution.Solver.Modular.MessageUtils (tests) where
 
 import Distribution.Solver.Modular.MessageUtils
-    (allKnownExtensions, cutoffRange, withinRange, mostSimilarElement)
+  ( allKnownExtensions
+  , cutoffRange
+  , mostSimilarElement
+  , withinRange
+  )
 import Language.Haskell.Extension (knownLanguages)
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -57,7 +61,7 @@ rangeAssertions = map (testRange cutoffRange extensionStrings) outOfBounds
 isOutOfBounds :: Int -> String -> String -> Bool
 isOutOfBounds range a b = not $ withinRange range a b
 
-testRange :: Int -> [String] -> String ->  Assertion
+testRange :: Int -> [String] -> String -> Assertion
 testRange range elems erroneousElement = assertBool "String should be out of bounds to make a spelling suggestion" (isOutOfBounds range erroneousElement suggestion)
   where
     suggestion = mostSimilarElement erroneousElement elems

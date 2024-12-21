@@ -1,8 +1,3 @@
--- This is Distribution.Extra.Doctest module from cabal-doctest-1.0.4
--- This isn't technically a Custom-Setup script, but it /was/.
-
-{-# LANGUAGE FlexibleInstances #-}
-
 {-
 
 Copyright (c) 2017, Oleg Grenrus
@@ -37,9 +32,13 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 -}
-
-{-# LANGUAGE CPP               #-}
+{-# LANGUAGE CPP #-}
+-- This is Distribution.Extra.Doctest module from cabal-doctest-1.0.4
+-- This isn't technically a Custom-Setup script, but it /was/.
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
+{- FOURMOLU_DISABLE -}
+
 -- | The provided 'generateBuildModule' generates 'Build_doctests' module.
 -- That module exports enough configuration, so your doctests could be simply
 --

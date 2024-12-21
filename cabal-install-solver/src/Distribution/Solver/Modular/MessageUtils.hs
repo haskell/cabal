@@ -1,20 +1,23 @@
 -- | Utility functions providing extra context to cabal error messages
-
-module Distribution.Solver.Modular.MessageUtils (
-  allKnownExtensions,
-  cutoffRange,
-  mostSimilarElement,
-  showUnsupportedExtension,
-  showUnsupportedLanguage,
-  withinRange
-) where
+module Distribution.Solver.Modular.MessageUtils
+  ( allKnownExtensions
+  , cutoffRange
+  , mostSimilarElement
+  , showUnsupportedExtension
+  , showUnsupportedLanguage
+  , withinRange
+  ) where
 
 import Data.Foldable (minimumBy)
 import Data.Ord (comparing)
 import Distribution.Pretty (prettyShow) -- from Cabal
 import Language.Haskell.Extension
-         ( Extension(..), Language(..), knownLanguages, knownExtensions )
-import Text.EditDistance ( defaultEditCosts, levenshteinDistance )
+  ( Extension (..)
+  , Language (..)
+  , knownExtensions
+  , knownLanguages
+  )
+import Text.EditDistance (defaultEditCosts, levenshteinDistance)
 
 showUnsupportedExtension :: Extension -> String
 showUnsupportedExtension (UnknownExtension extStr) = formatMessage cutoffRange "extension" extStr (mostSimilarElement extStr allKnownExtensions)
@@ -28,7 +31,7 @@ allKnownExtensions :: [String]
 allKnownExtensions = enabledExtensions ++ disabledExtensions
   where
     enabledExtensions = map (prettyShow . EnableExtension) knownExtensions
-    disabledExtensions =  map (prettyShow . DisableExtension) knownExtensions
+    disabledExtensions = map (prettyShow . DisableExtension) knownExtensions
 
 -- Measure the Levenshtein distance between two strings
 distance :: String -> String -> Int
@@ -48,7 +51,7 @@ cutoffRange = 10
 formatMessage :: Int -> String -> String -> String -> String
 formatMessage range elementType element suggestion
   | withinRange range element suggestion =
-    unwords ["unknown", elementType, element ++ ";", "did you mean", suggestion ++ "?"]
+      unwords ["unknown", elementType, element ++ ";", "did you mean", suggestion ++ "?"]
   | otherwise = unwords ["unknown", elementType, element]
 
 -- Check whether the strings are within cutoff range

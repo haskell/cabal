@@ -1,21 +1,22 @@
 module Distribution.Solver.Modular.Version
-    ( Ver
-    , VR
-    , anyVR
-    , checkVR
-    , eqVR
-    , showVer
-    , showVR
-    , simplifyVR
-    , (.&&.)
-    , (.||.)
-    ) where
+  ( Ver
+  , VR
+  , anyVR
+  , checkVR
+  , eqVR
+  , showVer
+  , showVR
+  , simplifyVR
+  , (.&&.)
+  , (.||.)
+  ) where
 
 import Distribution.Solver.Compat.Prelude
 import Prelude ()
 
-import qualified Distribution.Version as CV -- from Cabal
+-- from Cabal
 import Distribution.Pretty (prettyShow)
+import qualified Distribution.Version as CV
 
 -- | Preliminary type for versions.
 type Ver = CV.Version

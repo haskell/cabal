@@ -2,7 +2,6 @@ module Test.QuickCheck.Utils where
 
 import Test.QuickCheck.Gen
 
-
 -- | Adjust the size of the generated value.
 --
 -- In general the size gets bigger and bigger linearly. For some types
@@ -24,6 +23,5 @@ import Test.QuickCheck.Gen
 --
 -- Not only do we put a limit on the length but we also scale the growth to
 -- prevent it from hitting the maximum size quite so early.
---
 adjustSize :: (Int -> Int) -> Gen a -> Gen a
 adjustSize adjust gen = sized (\n -> resize (adjust n) gen)

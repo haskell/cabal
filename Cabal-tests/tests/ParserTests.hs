@@ -1,4 +1,6 @@
 {-# LANGUAGE CPP #-}
+{- FOURMOLU_DISABLE -}
+
 module Main
     ( main
     ) where
