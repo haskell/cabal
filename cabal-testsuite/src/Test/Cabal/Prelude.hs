@@ -799,6 +799,18 @@ recordMode mode = withReaderT (\env -> env {
     testRecordUserMode = Just mode
     })
 
+assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
+assertOutputContains = assertOn
+    needleHaystack
+        {txHaystack = TxContains{txBwd = decodeLfMarkLines, txFwd = encodeLf}}
+
+assertOutputDoesNotContain :: MonadIO m => WithCallStack (String -> Result -> m ())
+assertOutputDoesNotContain = assertOn
+    needleHaystack
+        { expectNeedleInHaystack = False
+        , txHaystack = TxContains{txBwd = decodeLfMarkLines, txFwd = encodeLf}
+        }
+
 assertOn :: MonadIO m => WithCallStack (NeedleHaystack -> String -> Result -> m ())
 assertOn NeedleHaystack{..} (txFwd txNeedle -> needle) (txFwd txHaystack. resultOutput -> output) =
     withFrozenCallStack $
@@ -813,16 +825,6 @@ assertOn NeedleHaystack{..} (txFwd txNeedle -> needle) (txFwd txHaystack. result
             if displayHaystack
                 then "\nin output:\n" ++ (txBwd txHaystack output)
                 else ""
-
-assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputContains = assertOn needleHaystack{txHaystack = TxContains{txBwd = decodeLfMarkLines, txFwd = encodeLf}}
-
-assertOutputDoesNotContain :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputDoesNotContain = assertOn
-    needleHaystack
-        { expectNeedleInHaystack = False
-        , txHaystack = TxContains{txBwd = decodeLfMarkLines, txFwd = encodeLf}
-        }
 
 assertFindInFile :: MonadIO m => WithCallStack (String -> FilePath -> m ())
 assertFindInFile needle path =
