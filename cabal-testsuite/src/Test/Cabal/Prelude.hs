@@ -1285,7 +1285,18 @@ findDependencyInStore pkgName = do
 --
 -- In summary, it is easier to read multiline strings from a file. That is what
 -- this function facilitates.
+--
+-- The contents of the file are read strictly to avoid problems seen on Windows
+-- deleting the file:
+--
+-- > cabal.test.hs:
+-- > C:\Users\<username>\AppData\Local\Temp\cabal-testsuite-8376\errors.expect.txt:
+-- > removePathForcibly:DeleteFile
+-- > "\\\\?\\C:\\Users\\<username>\\AppData\\Local\\Temp\\cabal-testsuite-8376\\errors.expect.txt":
+-- > permission denied (The process cannot access the file because it is being
+-- > used by another process.)
 readVerbatimFile :: FilePath -> TestM String
 readVerbatimFile filename = do
   testDir <- testCurrentDir <$> getTestEnv
-  liftIO . readFile $ testDir </> filename
+  s <- liftIO . readFile $ testDir </> filename
+  length s `seq` return s
