@@ -1,6 +1,4 @@
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveFunctor #-}
 
 module Distribution.Solver.Types.NamedPackage
   ( NamedPackage (..)
