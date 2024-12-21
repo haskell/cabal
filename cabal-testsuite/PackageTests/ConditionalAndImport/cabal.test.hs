@@ -112,64 +112,9 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   log "checking that imports work skipping into a subfolder and then back out again and again"
   hopping <- cabal' "v2-build" [ "--project-file=hops-0.project" ]
 
-  "Configuration is affected by the following files:\n\
-  \- hops-0.project\n\
-  \- hops-2.config\n\
-  \    imported by: hops/hops-1.config\n\
-  \    imported by: hops-0.project\n\
-  \- hops-4.config\n\
-  \    imported by: hops/hops-3.config\n\
-  \    imported by: hops-2.config\n\
-  \    imported by: hops/hops-1.config\n\
-  \    imported by: hops-0.project\n\
-  \- hops-6.config\n\
-  \    imported by: hops/hops-5.config\n\
-  \    imported by: hops-4.config\n\
-  \    imported by: hops/hops-3.config\n\
-  \    imported by: hops-2.config\n\
-  \    imported by: hops/hops-1.config\n\
-  \    imported by: hops-0.project\n\
-  \- hops-8.config\n\
-  \    imported by: hops/hops-7.config\n\
-  \    imported by: hops-6.config\n\
-  \    imported by: hops/hops-5.config\n\
-  \    imported by: hops-4.config\n\
-  \    imported by: hops/hops-3.config\n\
-  \    imported by: hops-2.config\n\
-  \    imported by: hops/hops-1.config\n\
-  \    imported by: hops-0.project\n\
-  \- hops/hops-1.config\n\
-  \    imported by: hops-0.project\n\
-  \- hops/hops-3.config\n\
-  \    imported by: hops-2.config\n\
-  \    imported by: hops/hops-1.config\n\
-  \    imported by: hops-0.project\n\
-  \- hops/hops-5.config\n\
-  \    imported by: hops-4.config\n\
-  \    imported by: hops/hops-3.config\n\
-  \    imported by: hops-2.config\n\
-  \    imported by: hops/hops-1.config\n\
-  \    imported by: hops-0.project\n\
-  \- hops/hops-7.config\n\
-  \    imported by: hops-6.config\n\
-  \    imported by: hops/hops-5.config\n\
-  \    imported by: hops-4.config\n\
-  \    imported by: hops/hops-3.config\n\
-  \    imported by: hops-2.config\n\
-  \    imported by: hops/hops-1.config\n\
-  \    imported by: hops-0.project\n\
-  \- hops/hops-9.config\n\
-  \    imported by: hops-8.config\n\
-  \    imported by: hops/hops-7.config\n\
-  \    imported by: hops-6.config\n\
-  \    imported by: hops/hops-5.config\n\
-  \    imported by: hops-4.config\n\
-  \    imported by: hops/hops-3.config\n\
-  \    imported by: hops-2.config\n\
-  \    imported by: hops/hops-1.config\n\
-  \    imported by: hops-0.project"
-    & normalizeWindowsOutput
-    & flip (assertOn multilineNeedleHaystack) hopping
+  readVerbatimFile "hops.expect.txt"
+    <&> normalizeWindowsOutput
+    >>= flip (assertOn multilineNeedleHaystack) hopping
 
   -- The project is named oops as it is like hops but has conflicting constraints.
   -- +-- oops-0.project
