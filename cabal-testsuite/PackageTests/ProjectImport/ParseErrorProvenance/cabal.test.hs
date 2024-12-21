@@ -11,7 +11,7 @@ main = cabalTest . recordMode RecordMarked $ do
 
   outElse <- fails $ cabal' "v2-build" [ "all", "--dry-run", "--project-file=else.project" ]
 
-  let msgSingle = filter (/= '\n') msg
+  let msgSingle = lineBreaksToSpaces msg
 
   log "Multiline string marking:"
   mapM_ log (lines . decodeLfMarkLines $ encodeLf msg)
