@@ -112,9 +112,8 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   log "checking that imports work skipping into a subfolder and then back out again and again"
   hopping <- cabal' "v2-build" [ "--project-file=hops-0.project" ]
 
-  readVerbatimFile "hops.expect.txt"
-    <&> normalizeWindowsOutput
-    >>= flip (assertOn multilineNeedleHaystack) hopping
+  readVerbatimFile "hops.expect.txt" >>=
+    flip (assertOn multilineNeedleHaystack) hopping .  normalizeWindowsOutput
 
   -- The project is named oops as it is like hops but has conflicting constraints.
   -- +-- oops-0.project
@@ -131,8 +130,7 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   oopsing <- fails $ cabal' "v2-build" [ "all", "--project-file=oops-0.project" ]
 
   readVerbatimFile "oops.expect.txt"
-    <&> normalizeWindowsOutput
-    >>= flip (assertOn multilineNeedleHaystack) oopsing
+    >>= flip (assertOn multilineNeedleHaystack) oopsing . normalizeWindowsOutput
 
   -- The project is named yops as it is like hops but with y's for forks.
   -- +-- yops-0.project
@@ -175,7 +173,6 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   missing <- fails $ cabal' "v2-build" [ "--project-file=cabal-missing-package.project" ]
 
   readVerbatimFile "cabal-missing-package.expect.txt"
-    <&> normalizeWindowsOutput
-    >>= flip (assertOn multilineNeedleHaystack) missing
+    >>= flip (assertOn multilineNeedleHaystack) missing . normalizeWindowsOutput
 
   return ()
