@@ -1,8 +1,9 @@
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- | Functions for searching for a needle in a haystack, with transformations
--- for the strings to search in and the search strings such as reencoding line
+-- for the strings to search in and the search strings such as re-encoding line
 -- breaks or delimiting lines. Both LF and CRLF line breaks are recognized.
 module Test.Cabal.NeedleHaystack
     ( TxContains(..)
@@ -59,8 +60,8 @@ symNeedleHaystack :: (String -> String) -> (String -> String) -> NeedleHaystack
 symNeedleHaystack bwd fwd = let tx = TxContains bwd fwd in NeedleHaystack True False tx tx
 
 -- | Multiline needle and haystack functions with symmetric conversions. Going
--- forward converts line breaks to @"\<EOL\>"@.  Going backward replaces
--- @"\<EOL\>"@ markers with line breaks and wrap lines with @^@ and @$@ markers.
+-- forward converts line breaks to @"\\n"@.  Going backward adds visible
+-- delimiters to lines.
 multilineNeedleHaystack :: NeedleHaystack
 multilineNeedleHaystack = symNeedleHaystack decodeLfMarkLines encodeLf
 
@@ -118,58 +119,65 @@ unlines = maybe "" fst . unsnoc . Prelude.unlines
 unsnoc :: [a] -> Maybe ([a], a)
 unsnoc = foldr (\x -> Just . maybe ([], x) (\(~(a, b)) -> (x : a, b))) Nothing
 
--- | Replace line breaks, be they @"\\r\\n"@ or @"\\n"@, with @"\<EOL\>"@.
+-- | Replace line CRLF line breaks with LF line breaks.
 --
 -- >>> encodeLf "foo\nbar\r\nbaz"
--- "foo<EOL>bar<EOL>baz"
+-- "foo\nbar\nbaz"
 --
 -- >>> encodeLf "foo\nbar\r\nbaz\n"
--- "foo<EOL>bar<EOL>baz"
+-- "foo\nbar\nbaz\n"
 --
 -- >>> encodeLf "\nfoo\nbar\r\nbaz\n"
--- "<EOL>foo<EOL>bar<EOL>baz"
+-- "\nfoo\nbar\nbaz\n"
+--
+-- >>> encodeLf "\n\n\n"
+-- "\n\n\n"
 encodeLf :: String -> String
-encodeLf =
-    (\s -> if "<EOL>" `isPrefixOf` s then drop 5 s else s)
-    . concat
-    . (fmap ("<EOL>" ++))
-    . lines
-    . filter ((/=) '\r')
+encodeLf = filter (/= '\r')
 
--- | Replace @"\<EOL\>"@ markers with @"\\n"@ line breaks and wrap lines with
--- @^@ and @$@ markers for the start and end.
+-- | Mark lines with visible delimiters, @^@ at the start and @$@ at the end.
 --
--- >>> decodeLfMarkLines "foo<EOL>bar<EOL>baz"
--- "^foo$\n^bar$\n^baz$"
+-- >>> decodeLfMarkLines ""
+-- "^$"
+-- 
+-- >>> decodeLfMarkLines "\n"
+-- "^$\n"
 --
--- >>> decodeLfMarkLines "<EOL>foo<EOL>bar<EOL>baz"
--- "^foo$\n^bar$\n^baz$"
+-- >>> decodeLfMarkLines "\n\n"
+-- "^$\n^$\n"
+--
+-- >>> decodeLfMarkLines "\n\n\n"
+-- "^$\n^$\n^$\n"
 --
 -- >>> decodeLfMarkLines $ encodeLf "foo\nbar\r\nbaz"
 -- "^foo$\n^bar$\n^baz$"
 --
 -- >>> decodeLfMarkLines $ encodeLf "foo\nbar\r\nbaz\n"
--- "^foo$\n^bar$\n^baz$"
+-- "^foo$\n^bar$\n^baz$\n"
 --
 -- >>> decodeLfMarkLines $ encodeLf "\nfoo\nbar\r\nbaz\n"
--- "^foo$\n^bar$\n^baz$"
+-- "^$\n^foo$\n^bar$\n^baz$\n"
 decodeLfMarkLines:: String -> String
-decodeLfMarkLines output =
-    (\xs -> case reverse $ lines xs of
-        [] -> xs
-        [line0] -> line0 ++ "$"
-        lineN : ys ->
-            let lineN' = lineN ++ "$"
-            in unlines $ reverse (lineN' : ys))
-    . unlines
-    . (fmap ('^' :))
-    . lines
-    . (\s -> if "<EOL>" `isPrefixOf` s then drop 5 s else s)
-    $ foldr
+decodeLfMarkLines "" = "^$"
+decodeLfMarkLines "\n" = "^$\n"
+decodeLfMarkLines ('\n' : xs) = "^$\n" ++ decodeLfMarkLines xs
+decodeLfMarkLines output = fixupStart . fixupEnd $
+    foldr
             (\c acc -> c :
-                if ("<EOL>" `isPrefixOf` acc)
-                    then "$\n" ++ drop 5 acc
-                    else acc
+                if | "\n" == acc -> "$\n"
+                   |("\n" `isPrefixOf` acc) -> "$\n^" ++ drop 1 acc
+                   | otherwise -> acc
             )
             ""
     output
+    where
+        fixupStart :: String -> String
+        fixupStart s@[] = s
+        fixupStart s@('^' : _) = s
+        fixupStart s = '^' : s
+
+        fixupEnd :: String -> String
+        fixupEnd s@[] = s
+        fixupEnd s@(reverse -> '$' : _) = s
+        fixupEnd s@(reverse -> '\n' : '$' : _) = s
+        fixupEnd s = s ++ "$"

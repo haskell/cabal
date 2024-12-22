@@ -18,7 +18,7 @@ main = cabalTest . recordMode RecordMarked $ do
   assertOn multilineNeedleHaystack msg outElse
   assertOn multilineNeedleHaystack{expectNeedleInHaystack = False} msgSingle outElse
 
-  assertOutputDoesNotContain msg outElse
+  assertOutputContains msg outElse
   assertOutputDoesNotContain msgSingle outElse
 
   return ()
