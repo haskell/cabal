@@ -1,5 +1,5 @@
-How to analyze Haskell performance
-==================================
+How to enable collection of performance statistics (profiling)
+==============================================================
 
 When a Haskell application is slow or uses too much memory,
 Cabal and `GHC <https://downloads.haskell.org/ghc/latest/docs/users_guide/profiling.html>`__
