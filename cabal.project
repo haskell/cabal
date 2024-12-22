@@ -4,3 +4,11 @@ import: project-cabal/pkgs.config
 import: project-cabal/constraints.config
 
 tests: True
+
+-- if you are developing on a system without TH, use a `cabal.project.local`
+-- to disable this
+package cabal-install
+  flags: +git-rev
+
+package Cabal
+  flags: +git-rev
