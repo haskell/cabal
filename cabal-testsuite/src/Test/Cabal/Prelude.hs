@@ -802,13 +802,13 @@ recordMode mode = withReaderT (\env -> env {
 assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
 assertOutputContains = assertOn
     needleHaystack
-        {txHaystack = TxContains{txBwd = decodeLfMarkLines, txFwd = encodeLf}}
+        {txHaystack = TxContains{txBwd = delimitLines, txFwd = encodeLf}}
 
 assertOutputDoesNotContain :: MonadIO m => WithCallStack (String -> Result -> m ())
 assertOutputDoesNotContain = assertOn
     needleHaystack
         { expectNeedleInHaystack = False
-        , txHaystack = TxContains{txBwd = decodeLfMarkLines, txFwd = encodeLf}
+        , txHaystack = TxContains{txBwd = delimitLines, txFwd = encodeLf}
         }
 
 assertOn :: MonadIO m => WithCallStack (NeedleHaystack -> String -> Result -> m ())

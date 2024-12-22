@@ -10,10 +10,10 @@ main = cabalTest . recordMode RecordMarked $ do
   let msgSingle = lineBreaksToSpaces msg
 
   log "Multiline string marking:"
-  mapM_ log (lines . decodeLfMarkLines $ encodeLf msg)
+  mapM_ log (lines . delimitLines $ encodeLf msg)
 
   log "Pseudo multiline string marking:"
-  mapM_ log (lines . decodeLfMarkLines $ encodeLf msgSingle)
+  mapM_ log (lines . delimitLines $ encodeLf msgSingle)
 
   assertOn multilineNeedleHaystack msg outElse
   assertOn multilineNeedleHaystack{expectNeedleInHaystack = False} msgSingle outElse

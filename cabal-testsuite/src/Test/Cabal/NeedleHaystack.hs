@@ -15,7 +15,7 @@ module Test.Cabal.NeedleHaystack
     , lineBreaksToSpaces
     , normalizePathSeparators
     , encodeLf
-    , decodeLfMarkLines
+    , delimitLines
     ) where
 
 import Prelude hiding (unlines)
@@ -63,7 +63,7 @@ symNeedleHaystack bwd fwd = let tx = TxContains bwd fwd in NeedleHaystack True F
 -- forward converts line breaks to @"\\n"@.  Going backward adds visible
 -- delimiters to lines.
 multilineNeedleHaystack :: NeedleHaystack
-multilineNeedleHaystack = symNeedleHaystack decodeLfMarkLines encodeLf
+multilineNeedleHaystack = symNeedleHaystack delimitLines encodeLf
 
 -- | Minimal set up for finding the needle in the haystack. Doesn't change the
 -- strings and doesn't displaying the haystack in any assertion failure message.
@@ -137,31 +137,31 @@ encodeLf = filter (/= '\r')
 
 -- | Mark lines with visible delimiters, @^@ at the start and @$@ at the end.
 --
--- >>> decodeLfMarkLines ""
+-- >>> delimitLines ""
 -- "^$"
 -- 
--- >>> decodeLfMarkLines "\n"
+-- >>> delimitLines "\n"
 -- "^$\n"
 --
--- >>> decodeLfMarkLines "\n\n"
+-- >>> delimitLines "\n\n"
 -- "^$\n^$\n"
 --
--- >>> decodeLfMarkLines "\n\n\n"
+-- >>> delimitLines "\n\n\n"
 -- "^$\n^$\n^$\n"
 --
--- >>> decodeLfMarkLines $ encodeLf "foo\nbar\r\nbaz"
+-- >>> delimitLines $ encodeLf "foo\nbar\r\nbaz"
 -- "^foo$\n^bar$\n^baz$"
 --
--- >>> decodeLfMarkLines $ encodeLf "foo\nbar\r\nbaz\n"
+-- >>> delimitLines $ encodeLf "foo\nbar\r\nbaz\n"
 -- "^foo$\n^bar$\n^baz$\n"
 --
--- >>> decodeLfMarkLines $ encodeLf "\nfoo\nbar\r\nbaz\n"
+-- >>> delimitLines $ encodeLf "\nfoo\nbar\r\nbaz\n"
 -- "^$\n^foo$\n^bar$\n^baz$\n"
-decodeLfMarkLines:: String -> String
-decodeLfMarkLines "" = "^$"
-decodeLfMarkLines "\n" = "^$\n"
-decodeLfMarkLines ('\n' : xs) = "^$\n" ++ decodeLfMarkLines xs
-decodeLfMarkLines output = fixupStart . fixupEnd $
+delimitLines:: String -> String
+delimitLines "" = "^$"
+delimitLines "\n" = "^$\n"
+delimitLines ('\n' : xs) = "^$\n" ++ delimitLines xs
+delimitLines output = fixupStart . fixupEnd $
     foldr
             (\c acc -> c :
                 if | "\n" == acc -> "$\n"
