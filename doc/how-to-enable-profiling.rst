@@ -1,4 +1,4 @@
-How to enable profiling
+How to enable collection of performance statistics (profiling)
 ==================================
 
 When a Haskell application is slow or uses too much memory,
