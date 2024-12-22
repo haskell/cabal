@@ -267,7 +267,7 @@ instance HasBuildInfo BuildInfo where
   cSources f s = fmap (\x -> s{T.cSources = x}) (f (T.cSources s))
   {-# INLINE cSources #-}
 
-  cxxSources f s = fmap (\x -> s{T.cSources = x}) (f (T.cxxSources s))
+  cxxSources f s = fmap (\x -> s{T.cxxSources = x}) (f (T.cxxSources s))
   {-# INLINE cxxSources #-}
 
   jsSources f s = fmap (\x -> s{T.jsSources = x}) (f (T.jsSources s))
