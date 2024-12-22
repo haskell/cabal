@@ -171,7 +171,9 @@ configure verbosity hcPath hcPkgPath conf0 = do
       "Unknown/unsupported 'ghc' version detected "
         ++ "(Cabal "
         ++ prettyShow cabalVersion
-        ++ " supports 'ghc' version < " ++ prettyShow maxGhcVersion ++ "): "
+        ++ " supports 'ghc' version < "
+        ++ prettyShow maxGhcVersion
+        ++ "): "
         ++ programPath ghcProg
         ++ " is version "
         ++ prettyShow ghcVersion
