@@ -139,7 +139,7 @@ encodeLf = filter (/= '\r')
 --
 -- >>> delimitLines ""
 -- "^$"
--- 
+--
 -- >>> delimitLines "\n"
 -- "^$\n"
 --
