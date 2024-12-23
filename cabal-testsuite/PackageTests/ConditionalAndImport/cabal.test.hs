@@ -112,7 +112,7 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   log "checking that imports work skipping into a subfolder and then back out again and again"
   hopping <- cabal' "v2-build" [ "--project-file=hops-0.project" ]
 
-  readVerbatimFile "hops.expect.txt" >>=
+  readFileVerbatim "hops.expect.txt" >>=
     flip (assertOn multilineNeedleHaystack) hopping .  normalizePathSeparators
 
   -- The project is named oops as it is like hops but has conflicting constraints.
@@ -129,7 +129,7 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   log "checking conflicting constraints skipping into a subfolder and then back out again and again"
   oopsing <- fails $ cabal' "v2-build" [ "all", "--project-file=oops-0.project" ]
 
-  readVerbatimFile "oops.expect.txt"
+  readFileVerbatim "oops.expect.txt"
     >>= flip (assertOn multilineNeedleHaystack) oopsing . normalizePathSeparators
 
   -- The project is named yops as it is like hops but with y's for forks.
@@ -172,7 +172,7 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   log "checking that missing package message lists configuration provenance"
   missing <- fails $ cabal' "v2-build" [ "--project-file=cabal-missing-package.project" ]
 
-  readVerbatimFile "cabal-missing-package.expect.txt"
+  readFileVerbatim "cabal-missing-package.expect.txt"
     >>= flip (assertOn multilineNeedleHaystack) missing . normalizePathSeparators
 
   return ()

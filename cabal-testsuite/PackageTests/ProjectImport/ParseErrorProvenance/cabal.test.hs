@@ -6,7 +6,7 @@ main = cabalTest . recordMode RecordMarked $ do
 
   outElse <- fails $ cabal' "v2-build" [ "all", "--dry-run", "--project-file=else.project" ]
 
-  msg <- readVerbatimFile "msg.expect.txt"
+  msg <- readFileVerbatim "msg.expect.txt"
   let msgSingle = lineBreaksToSpaces msg
 
   log "Multiline string marking:"

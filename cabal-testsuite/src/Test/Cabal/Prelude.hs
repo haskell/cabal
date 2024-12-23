@@ -1292,8 +1292,8 @@ findDependencyInStore pkgName = do
 -- > "\\\\?\\C:\\Users\\<username>\\AppData\\Local\\Temp\\cabal-testsuite-8376\\errors.expect.txt":
 -- > permission denied (The process cannot access the file because it is being
 -- > used by another process.)
-readVerbatimFile :: FilePath -> TestM String
-readVerbatimFile filename = do
+readFileVerbatim :: FilePath -> TestM String
+readFileVerbatim filename = do
   testDir <- testCurrentDir <$> getTestEnv
   s <- liftIO . readFile $ testDir </> filename
   length s `seq` return s

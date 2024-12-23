@@ -10,7 +10,7 @@ main = cabalTest . recordMode RecordMarked $ do
   log "check project configuration with URI imports is listed in full and"
   log "check package directories and locations are reported in order"
 
-  readVerbatimFile "errors.expect.txt"
+  readFileVerbatim "errors.expect.txt"
     >>= flip (assertOn multilineNeedleHaystack) out . normalizePathSeparators
 
   return ()
