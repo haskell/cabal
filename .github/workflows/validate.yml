@@ -465,9 +465,10 @@ jobs:
 
     steps:
       - uses: liudonghua123/delete-release-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           release_name: 'cabal-head'
-          token: ${{ github.token }}
 
       - uses: actions/download-artifact@v4
         with:
@@ -495,9 +496,10 @@ jobs:
 
     steps:
     - uses: liudonghua123/delete-release-action@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         release_name: 'cabal-lts-head'
-        token: ${{ github.token }}
 
     - uses: actions/download-artifact@v4
       with:
