@@ -126,6 +126,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Utils
   ( debug
   , lowercase
+  , noticeDoc
   )
 import Distribution.Types.CondTree
   ( CondBranch (..)
@@ -141,6 +142,7 @@ import Distribution.Utils.NubList
   , overNubList
   , toNubList
   )
+import Distribution.Utils.String (trim)
 
 import Distribution.Client.HttpUtils
 import Distribution.Client.ParseUtils
@@ -274,6 +276,9 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
         if isCyclicConfigPath normLocPath
           then pure . parseFail $ ParseUtils.FromString (render $ cyclicalImportMsg normLocPath) Nothing
           else do
+            when
+              (isUntrimmedUriConfigPath importLocPath)
+              (noticeDoc verbosity $ untrimmedUriImportMsg (Disp.text "Warning:") importLocPath)
             normSource <- canonicalizeConfigPath projectDir source
             let fs = (\z -> CondNode z [normLocPath] mempty) <$> fieldsToConfig normSource (reverse acc)
             res <- parseProjectSkeleton cacheDir httpTransport verbosity projectDir importLocPath . ProjectConfigToParse =<< fetchImportConfig normLocPath
@@ -342,7 +347,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
       fetch pci
 
     fetch :: FilePath -> IO BS.ByteString
-    fetch pci = case parseURI pci of
+    fetch pci = case parseURI $ trim pci of
       Just uri -> do
         let fp = cacheDir </> map (\x -> if isPathSeparator x then '_' else x) (makeValid $ show uri)
         createDirectoryIfMissing True cacheDir
