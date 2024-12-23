@@ -40,7 +40,7 @@ data ModuleRenaming
   | -- | Hiding renaming, e.g., @hiding (A, B)@, bringing all
     -- exported modules into scope except the hidden ones.
     HidingRenaming [ModuleName]
-  deriving (Show, Read, Eq, Ord, Typeable, Data, Generic)
+  deriving (Show, Read, Eq, Ord, Data, Generic)
 
 -- | Interpret a 'ModuleRenaming' as a partial map from 'ModuleName'
 -- to 'ModuleName'.  For efficiency, you should partially apply it

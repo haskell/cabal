@@ -40,7 +40,7 @@ import qualified Text.PrettyPrint as Disp
 
 -- | A valid Haskell module name.
 newtype ModuleName = ModuleName ShortText
-  deriving (Eq, Generic, Ord, Read, Show, Typeable, Data)
+  deriving (Eq, Generic, Ord, Read, Show, Data)
 
 unModuleName :: ModuleName -> String
 unModuleName (ModuleName s) = fromShortText s

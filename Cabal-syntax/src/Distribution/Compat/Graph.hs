@@ -1,6 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -122,7 +121,6 @@ data Graph a = Graph
   , graphKeyToVertex :: Key a -> Maybe G.Vertex
   , graphBroken :: [(a, [Key a])]
   }
-  deriving (Typeable)
 
 -- NB: Not a Functor! (or Traversable), because you need
 -- to restrict Key a ~ Key b.  We provide our own mapping

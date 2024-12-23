@@ -89,7 +89,7 @@ data OpenUnitId
     -- MUST NOT be for an indefinite component; an 'OpenUnitId'
     -- is guaranteed not to have any holes.
     DefiniteUnitId DefUnitId
-  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
+  deriving (Generic, Read, Show, Eq, Ord, Data)
 
 -- TODO: cache holes?
 
@@ -163,7 +163,7 @@ mkDefUnitId cid insts =
 data OpenModule
   = OpenModule OpenUnitId ModuleName
   | OpenModuleVar ModuleName
-  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
+  deriving (Generic, Read, Show, Eq, Ord, Data)
 
 instance Binary OpenModule
 instance Structured OpenModule

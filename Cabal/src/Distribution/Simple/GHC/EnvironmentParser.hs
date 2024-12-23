@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 
@@ -41,7 +40,7 @@ parseEnvironmentFileLine =
     clearDb = P.string "clear-package-db"
 
 newtype ParseErrorExc = ParseErrorExc P.ParseError
-  deriving (Show, Typeable)
+  deriving (Show)
 
 instance Exception ParseErrorExc
 

@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -669,7 +668,7 @@ data BadProjectRoot
   | BadProjectRootAbsoluteFileNotFound FilePath
   | BadProjectRootDirFileNotFound FilePath FilePath
   | BadProjectRootFileBroken FilePath
-  deriving (Show, Typeable, Eq)
+  deriving (Show, Eq)
 
 instance Exception BadProjectRoot where
   displayException = renderBadProjectRoot
@@ -904,7 +903,7 @@ data ProjectPackageLocation
 -- | Exception thrown by 'findProjectPackages'.
 data BadPackageLocations
   = BadPackageLocations (Set ProjectConfigProvenance) [BadPackageLocation]
-  deriving (Show, Typeable)
+  deriving (Show)
 
 instance Exception BadPackageLocations where
   displayException = renderBadPackageLocations
@@ -1579,7 +1578,6 @@ data CabalFileParseError
       -- ^ We might discover the spec version the package needs
       [PWarning]
       -- ^ warnings
-  deriving (Typeable)
 
 -- | Manual instance which skips file contents
 instance Show CabalFileParseError where
@@ -1631,7 +1629,7 @@ readSourcePackageCabalFile verbosity pkgfilename content =
 data CabalFileSearchFailure
   = NoCabalFileFound FilePath
   | MultipleCabalFilesFound FilePath
-  deriving (Show, Typeable)
+  deriving (Show)
 
 instance Exception CabalFileSearchFailure
 
@@ -1741,7 +1739,7 @@ truncateString n s
 
 data BadPerPackageCompilerPaths
   = BadPerPackageCompilerPaths [(PackageName, String)]
-  deriving (Show, Typeable)
+  deriving (Show)
 
 instance Exception BadPerPackageCompilerPaths where
   displayException = renderBadPerPackageCompilerPaths

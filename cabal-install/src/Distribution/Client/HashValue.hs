@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 module Distribution.Client.HashValue
@@ -38,7 +37,7 @@ import System.IO (IOMode (..), withBinaryFile)
 -- package ids.
 
 newtype HashValue = HashValue BS.ByteString
-  deriving (Eq, Generic, Show, Typeable)
+  deriving (Eq, Generic, Show)
 
 -- Cannot do any sensible validation here. Although we use SHA256
 -- for stuff we hash ourselves, we can also get hashes from TUF

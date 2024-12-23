@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-
 module Distribution.Client.SavedFlags
   ( readCommandFlags
   , writeCommandFlags
@@ -67,7 +65,6 @@ data SavedArgsError
   = SavedArgsErrorHelp Args
   | SavedArgsErrorList Args
   | SavedArgsErrorOther Args [String]
-  deriving (Typeable)
 
 instance Show SavedArgsError where
   show (SavedArgsErrorHelp args) =

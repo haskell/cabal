@@ -692,7 +692,7 @@ data PreferredVersionsParseError = PreferredVersionsParseError
   , preferredVersionsOriginalDependency :: String
   -- ^ Original input that produced the parser error.
   }
-  deriving (Generic, Read, Show, Eq, Ord, Typeable)
+  deriving (Generic, Read, Show, Eq, Ord)
 
 -- | Parse `preferred-versions` file, collecting parse errors that can be shown
 -- in error messages.

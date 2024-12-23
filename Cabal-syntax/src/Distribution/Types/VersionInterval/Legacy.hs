@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-
 -- | This module implements a view of a 'VersionRange' as a finite
 -- list of separated version intervals and provides the Boolean
 -- algebra operations union, intersection, and complement.
@@ -96,7 +94,7 @@ asVersionIntervals = versionIntervals . toVersionIntervals
 -- predicates for translation into foreign packaging systems that do not
 -- support complex version range expressions.
 newtype VersionIntervals = VersionIntervals [VersionInterval]
-  deriving (Eq, Show, Typeable)
+  deriving (Eq, Show)
 
 -- | Inspect the list of version intervals.
 versionIntervals :: VersionIntervals -> [VersionInterval]

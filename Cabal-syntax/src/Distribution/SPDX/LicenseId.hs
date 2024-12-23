@@ -674,7 +674,7 @@ data LicenseId
     | ZPL_1_1 -- ^ @ZPL-1.1@, Zope Public License 1.1
     | ZPL_2_0 -- ^ @ZPL-2.0@, Zope Public License 2.0
     | ZPL_2_1 -- ^ @ZPL-2.1@, Zope Public License 2.1
-  deriving (Eq, Ord, Enum, Bounded, Show, Read, Typeable, Data)
+  deriving (Eq, Ord, Enum, Bounded, Show, Read, Data)
 
 instance Binary LicenseId where
     -- Word16 is encoded in big endianness

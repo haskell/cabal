@@ -61,9 +61,9 @@ data ForeignLib = ForeignLib
   -- This is a list rather than a maybe field so that we can flatten
   -- the condition trees (for instance, when creating an sdist)
   }
-  deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
+  deriving (Generic, Show, Read, Eq, Ord, Data)
 
-data LibVersionInfo = LibVersionInfo Int Int Int deriving (Data, Eq, Generic, Typeable)
+data LibVersionInfo = LibVersionInfo Int Int Int deriving (Data, Eq, Generic)
 
 instance Ord LibVersionInfo where
   LibVersionInfo c r _ `compare` LibVersionInfo c' r' _ =

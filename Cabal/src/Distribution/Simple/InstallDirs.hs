@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -101,7 +100,7 @@ data InstallDirs dir = InstallDirs
   , haddockdir :: dir
   , sysconfdir :: dir
   }
-  deriving (Eq, Read, Show, Functor, Generic, Typeable)
+  deriving (Eq, Read, Show, Functor, Generic)
 
 instance Binary dir => Binary (InstallDirs dir)
 instance Structured dir => Structured (InstallDirs dir)
@@ -389,7 +388,7 @@ prefixRelativeInstallDirs pkgId libname compilerId platform dirs =
 -- | An abstract path, possibly containing variables that need to be
 -- substituted for to get a real 'FilePath'.
 newtype PathTemplate = PathTemplate [PathComponent]
-  deriving (Eq, Ord, Generic, Typeable)
+  deriving (Eq, Ord, Generic)
 
 instance Binary PathTemplate
 instance Structured PathTemplate

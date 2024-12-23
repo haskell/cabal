@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 module Main
     ( main
     ) where
@@ -7,7 +6,6 @@ import Test.Tasty
 import Test.Tasty.Options
 
 import Data.Proxy
-import Data.Typeable
 
 import Distribution.Simple.Utils
 import Distribution.Verbosity
@@ -90,7 +88,6 @@ extraOptions =
   ]
 
 newtype OptionMtimeChangeDelay = OptionMtimeChangeDelay Int
-  deriving Typeable
 
 instance IsOption OptionMtimeChangeDelay where
   defaultValue   = OptionMtimeChangeDelay 0
@@ -100,7 +97,6 @@ instance IsOption OptionMtimeChangeDelay where
                    ++ "file modification, in microseconds"
 
 newtype GhcPath = GhcPath FilePath
-  deriving Typeable
 
 instance IsOption GhcPath where
   defaultValue = GhcPath "ghc"

@@ -26,7 +26,7 @@ import qualified Text.PrettyPrint as PP
 --
 -- @since 3.0
 newtype PkgconfigVersion = PkgconfigVersion BS.ByteString
-  deriving (Generic, Read, Show, Typeable, Data)
+  deriving (Generic, Read, Show, Data)
 
 instance Eq PkgconfigVersion where
   PkgconfigVersion a == PkgconfigVersion b = rpmvercmp a b == EQ

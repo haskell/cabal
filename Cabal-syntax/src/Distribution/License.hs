@@ -111,7 +111,7 @@ data License
     OtherLicense
   | -- | Indicates an erroneous license name.
     UnknownLicense String
-  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
+  deriving (Generic, Read, Show, Eq, Ord, Data)
 
 instance Binary License
 instance Structured License

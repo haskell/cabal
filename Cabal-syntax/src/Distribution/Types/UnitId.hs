@@ -64,7 +64,7 @@ import Text.PrettyPrint (text)
 -- flag, use the 'display' function, which will work on all
 -- versions of Cabal.
 newtype UnitId = UnitId ShortText
-  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data, NFData)
+  deriving (Generic, Read, Show, Eq, Ord, Data, NFData)
 
 instance Binary UnitId
 instance Structured UnitId
@@ -118,7 +118,7 @@ getHSLibraryName uid = "HS" ++ prettyShow uid
 -- that a 'UnitId' identified this way is definite; i.e., it has no
 -- unfilled holes.
 newtype DefUnitId = DefUnitId {unDefUnitId :: UnitId}
-  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data, Binary, NFData, Pretty)
+  deriving (Generic, Read, Show, Eq, Ord, Data, Binary, NFData, Pretty)
 
 instance Structured DefUnitId
 

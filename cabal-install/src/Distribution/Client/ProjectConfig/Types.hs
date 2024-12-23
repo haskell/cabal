@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
@@ -152,7 +151,7 @@ data ProjectConfig = ProjectConfig
   -- any packages which are explicitly named in `cabal.project`.
   , projectConfigSpecificPackage :: MapMappend PackageName PackageConfig
   }
-  deriving (Eq, Show, Generic, Typeable)
+  deriving (Eq, Show, Generic)
 
 -- | That part of the project configuration that only affects /how/ we build
 -- and not the /value/ of the things we build. This means this information
@@ -338,7 +337,7 @@ instance Structured PackageConfig
 -- | Newtype wrapper for 'Map' that provides a 'Monoid' instance that takes
 -- the last value rather than the first value for overlapping keys.
 newtype MapLast k v = MapLast {getMapLast :: Map k v}
-  deriving (Eq, Show, Functor, Generic, Binary, Typeable)
+  deriving (Eq, Show, Functor, Generic, Binary)
 
 instance (Structured k, Structured v) => Structured (MapLast k v)
 
@@ -354,7 +353,7 @@ instance Ord k => Semigroup (MapLast k v) where
 -- | Newtype wrapper for 'Map' that provides a 'Monoid' instance that
 -- 'mappend's values of overlapping keys rather than taking the first.
 newtype MapMappend k v = MapMappend {getMapMappend :: Map k v}
-  deriving (Eq, Show, Functor, Generic, Binary, Typeable)
+  deriving (Eq, Show, Functor, Generic, Binary)
 
 instance (Structured k, Structured v) => Structured (MapMappend k v)
 
@@ -439,7 +438,7 @@ data SolverSettings = SolverSettings
   -- solverSettingOverrideReinstall :: Bool,
   -- solverSettingUpgradeDeps       :: Bool
   }
-  deriving (Eq, Show, Generic, Typeable)
+  deriving (Eq, Show, Generic)
 
 instance Binary SolverSettings
 instance Structured SolverSettings

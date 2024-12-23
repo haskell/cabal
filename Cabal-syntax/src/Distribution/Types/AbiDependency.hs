@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 module Distribution.Types.AbiDependency where
@@ -27,7 +26,7 @@ data AbiDependency = AbiDependency
   { depUnitId :: Package.UnitId
   , depAbiHash :: Package.AbiHash
   }
-  deriving (Eq, Generic, Read, Show, Typeable)
+  deriving (Eq, Generic, Read, Show)
 
 instance Pretty AbiDependency where
   pretty (AbiDependency uid abi) =
