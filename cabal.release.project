@@ -10,3 +10,8 @@ package cabal-install
 
 package Cabal
   flags: -git-rev
+
+-- https://github.com/haskell/ghcup-hs/issues/1107
+-- https://github.com/haskell/unix/pull/318
+if arch(arm) || arch(i386)
+  constraints: unix >= 2.8.6.0
