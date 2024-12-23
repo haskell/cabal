@@ -1675,7 +1675,7 @@ data CheckFlags = CheckFlags
   { checkVerbosity :: Flag Verbosity
   , checkIgnore :: [CheckExplanationIDString]
   }
-  deriving (Show, Typeable)
+  deriving (Show)
 
 defaultCheckFlags :: CheckFlags
 defaultCheckFlags =

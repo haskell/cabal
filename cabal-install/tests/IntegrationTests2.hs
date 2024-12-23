@@ -1,5 +1,4 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -2287,7 +2286,6 @@ mkProjectConfig (GhcPath ghcPath) =
     maybeToFlag = maybe mempty toFlag
 
 data GhcPath = GhcPath (Maybe FilePath)
-  deriving (Typeable)
 
 instance IsOption GhcPath where
   defaultValue = GhcPath Nothing

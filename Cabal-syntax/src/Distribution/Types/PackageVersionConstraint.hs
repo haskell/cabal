@@ -26,7 +26,7 @@ import qualified Distribution.Compat.CharParsing as P
 -- There are a few places in the codebase where 'Dependency' was used where
 -- 'PackageVersionConstraint' is not used instead (#5570).
 data PackageVersionConstraint = PackageVersionConstraint PackageName VersionRange
-  deriving (Generic, Read, Show, Eq, Typeable, Data)
+  deriving (Generic, Read, Show, Eq, Data)
 
 instance Binary PackageVersionConstraint
 instance Structured PackageVersionConstraint

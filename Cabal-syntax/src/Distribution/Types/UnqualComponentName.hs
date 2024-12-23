@@ -33,7 +33,6 @@ newtype UnqualComponentName = UnqualComponentName ShortText
     , Show
     , Eq
     , Ord
-    , Typeable
     , Data
     , Semigroup
     , Monoid -- TODO: bad enabler of bad monoids
