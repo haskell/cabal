@@ -163,8 +163,7 @@ configure verbosity hcPath hcPkgPath conf0 = do
       (userMaybeSpecifyPath "ghc" hcPath conf0)
   let implInfo = ghcVersionImplInfo ghcVersion
 
-  -- Cabal currently supports GHC up to `maxGhcVersion`
-  -- ... and the following odd development version
+  -- Cabal currently supports GHC less than `maxGhcVersion`
   let maxGhcVersion = mkVersion [9, 14]
   unless (ghcVersion < maxGhcVersion) $
     warn verbosity $
