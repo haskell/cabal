@@ -2,4 +2,9 @@ import: project-cabal/pkgs/cabal.config
 import: project-cabal/pkgs/install.config
 import: project-cabal/pkgs/tests.config
 
-index-state: hackage.haskell.org 2024-09-05T17:19:45Z
+index-state: hackage.haskell.org 2024-09-06T14:16:40Z
+
+-- https://github.com/haskell/ghcup-hs/issues/1107
+-- https://github.com/haskell/unix/pull/318
+if arch(arm) || arch(i386)
+  constraints: unix >= 2.8.6.0
