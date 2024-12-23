@@ -1,0 +1,76 @@
+name: Check GHC prereleases
+
+# See: https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#concurrency.
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  release:
+    types:
+      - created
+
+jobs:
+
+  # Make sure we support the latest prerelease GHC. This means validating that Cabal doesn't
+  # output a warning that the GHC is too new.
+  #
+  # It's generally pointless to run this when not around a release, but there's no good way
+  # to automate checking for that so we just run pointlessly. (If it doesn't succeed, we have
+  # bigger problems.)
+
+  ghc-prerelease:
+    name: Check compatibility with latest GHC prerelease
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # install both ghc versions (release and prerelease)
+      # note that there is no way to access the actual version of the prerelease
+      # *or* a version-specific binary location (no, `ghc-version` doesn't work; it
+      # regurgitates the input version unchanged, which in our case is a ghcup tag),
+      # so we must install it second and rely on it being the default ghc. Since we
+      # know the version of the other ghc, we *can* access it.
+
+      - uses: haskell-actions/setup@v2
+        id: release-ghc
+        with:
+          # NOTE: for CI rewrite, use GHC_FOR_RELEASE
+          ghc-version: "9.4.8"
+          cabal-version: latest
+
+      # setup overwrites ghc, so we have to do this first *and* use the ghc-path output
+      # (not ghc-exe, which points to the overwritten ghc which is usually the wrong one)
+      - uses: haskell-actions/setup@v2
+        id: prerelease-ghc
+        with:
+          ghc-version: latest-prerelease
+          ghcup-release-channel: "https://raw.githubusercontent.com/haskell/ghcup-metadata/master/ghcup-prereleases-0.0.8.yaml"
+
+      # first, build cabal-install
+      - uses: actions/checkout@v4
+
+      # use the release project to silence the prerelease warning, to make
+      # checking for the too-new-GHC warning easier
+      - run: cabal build cabal --project-file=cabal.release.project -w ghc-${{ steps.release-ghc.outputs.ghc-version }}
+
+      # dry run build of Cabal with the prerelease
+      # if there is a problem, the first two lines of the output will be a warning
+      # note: as above, we must use the default ghc here because we can't get the
+      # prerelease's actual name
+      - run: |
+          cabal update
+          $(cabal list-bin cabal -w ghc-${{ steps.release-ghc.outputs.ghc-version }}) build Cabal --dry-run -w ghc 2>&1 | tee build.log
+        shell: bash
+
+      - run: |
+          if grep -q unknown/unsupported build.log; then
+            echo Cabal does not support latest GHC prerelease
+            exit 1
+          fi
+          exit 0
+        shell: bash
