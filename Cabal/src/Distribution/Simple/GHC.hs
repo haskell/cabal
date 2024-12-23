@@ -79,7 +79,8 @@ module Distribution.Simple.GHC
   , getImplInfo
   , GhcImplInfo (..)
   ) where
-
+if arch(arm) || arch(i386)
+  constraints: unix >= 2.8.6.0
 import Distribution.Compat.Prelude
 import Prelude ()
 
