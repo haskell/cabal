@@ -23,6 +23,7 @@ import qualified Prelude (unlines)
 import Data.List (tails)
 import Data.Maybe (isJust)
 import Distribution.System
+import Distribution.Utils.Generic (unsnoc)
 import Data.List (isPrefixOf)
 import qualified System.FilePath.Posix as Posix
 import qualified System.FilePath.Windows as Windows
@@ -112,12 +113,6 @@ normalizePathSeparators =
 -- "abc"
 unlines :: [String] -> String
 unlines = maybe "" fst . unsnoc . Prelude.unlines
-
--- | @unsnoc@ is only in base >= 4.19 so we copy its definition here rather than
--- use CPP to conditionally import because we want to avoid CPP as that
--- interferes with string gaps in doctests.
-unsnoc :: [a] -> Maybe ([a], a)
-unsnoc = foldr (\x -> Just . maybe ([], x) (\(~(a, b)) -> (x : a, b))) Nothing
 
 -- | Replace line CRLF line breaks with LF line breaks.
 --
