@@ -1269,7 +1269,7 @@ findDependencyInStore pkgName = do
                       (dir:_) -> dir
       pure (storeDir </> storeDirForGhcVersion </> libDir)
 
--- | It can easier to paste expected output verbatim into a text file,
+-- | It can be easier to paste expected output verbatim into a text file,
 -- especially if it is a multiline string, rather than encoding it as a multiline
 -- string in Haskell source code.
 --
