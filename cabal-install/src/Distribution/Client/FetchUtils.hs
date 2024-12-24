@@ -68,6 +68,9 @@ import Distribution.Simple.Utils
   , notice
   , warn
   )
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
+  )
 import Distribution.Verbosity
   ( verboseUnmarkOutput
   )
@@ -99,6 +102,7 @@ import System.IO
   )
 
 import Control.Monad (forM)
+import Control.Monad.Trans.Maybe (MaybeT (..))
 import Distribution.Client.Errors
 import qualified Hackage.Security.Client as Sec
 import qualified Hackage.Security.Util.Checked as Sec
@@ -113,7 +117,7 @@ import qualified Hackage.Security.Util.Path as Sec
 -- | Returns @True@ if the package has already been fetched
 -- or does not need fetching.
 isFetched :: UnresolvedPkgLoc -> IO Bool
-isFetched loc = case loc of
+isFetched loc = case constraintInner loc of
   LocalUnpackedPackage _dir -> return True
   LocalTarballPackage _file -> return True
   RemoteTarballPackage _uri local -> return (isJust local)
@@ -126,23 +130,26 @@ isFetched loc = case loc of
 checkFetched
   :: UnresolvedPkgLoc
   -> IO (Maybe ResolvedPkgLoc)
-checkFetched loc = case loc of
-  LocalUnpackedPackage dir ->
-    return (Just $ LocalUnpackedPackage dir)
-  LocalTarballPackage file ->
-    return (Just $ LocalTarballPackage file)
-  RemoteTarballPackage uri (Just file) ->
-    return (Just $ RemoteTarballPackage uri file)
-  RepoTarballPackage repo pkgid (Just file) ->
-    return (Just $ RepoTarballPackage repo pkgid file)
-  RemoteSourceRepoPackage repo (Just file) ->
-    return (Just $ RemoteSourceRepoPackage repo file)
-  RemoteTarballPackage _uri Nothing -> return Nothing
-  RemoteSourceRepoPackage _repo Nothing -> return Nothing
-  RepoTarballPackage repo pkgid Nothing ->
-    fmap
-      (fmap (RepoTarballPackage repo pkgid))
-      (checkRepoTarballFetched repo pkgid)
+checkFetched loc = runMaybeT $ do
+  packageLocation <-
+    case constraintInner loc of
+      LocalUnpackedPackage dir ->
+        return (LocalUnpackedPackage dir)
+      LocalTarballPackage file ->
+        return (LocalTarballPackage file)
+      RemoteTarballPackage uri (Just file) ->
+        return (RemoteTarballPackage uri file)
+      RepoTarballPackage repo pkgid (Just file) ->
+        return (RepoTarballPackage repo pkgid file)
+      RemoteSourceRepoPackage repo (Just file) ->
+        return (RemoteSourceRepoPackage repo file)
+      RemoteTarballPackage _uri Nothing -> empty
+      RemoteSourceRepoPackage _repo Nothing -> empty
+      RepoTarballPackage repo pkgid Nothing -> do
+        fetched <- MaybeT $ checkRepoTarballFetched repo pkgid
+        return (RepoTarballPackage repo pkgid fetched)
+
+  return loc{constraintInner = packageLocation}
 
 -- | Like 'checkFetched' but for the specific case of a 'RepoTarballPackage'.
 checkRepoTarballFetched :: Repo -> PackageId -> IO (Maybe FilePath)
@@ -220,25 +227,29 @@ fetchPackage
   -> RepoContext
   -> UnresolvedPkgLoc
   -> IO ResolvedPkgLoc
-fetchPackage verbosity repoCtxt loc = case loc of
-  LocalUnpackedPackage dir ->
-    return (LocalUnpackedPackage dir)
-  LocalTarballPackage file ->
-    return (LocalTarballPackage file)
-  RemoteTarballPackage uri (Just file) ->
-    return (RemoteTarballPackage uri file)
-  RepoTarballPackage repo pkgid (Just file) ->
-    return (RepoTarballPackage repo pkgid file)
-  RemoteSourceRepoPackage repo (Just dir) ->
-    return (RemoteSourceRepoPackage repo dir)
-  RemoteTarballPackage uri Nothing -> do
-    path <- downloadTarballPackage uri
-    return (RemoteTarballPackage uri path)
-  RepoTarballPackage repo pkgid Nothing -> do
-    local <- fetchRepoTarball verbosity repoCtxt repo pkgid
-    return (RepoTarballPackage repo pkgid local)
-  RemoteSourceRepoPackage _repo Nothing ->
-    dieWithException verbosity FetchPackageErr
+fetchPackage verbosity repoCtxt loc = do
+  packageLocation <-
+    case constraintInner loc of
+      LocalUnpackedPackage dir ->
+        return (LocalUnpackedPackage dir)
+      LocalTarballPackage file ->
+        return (LocalTarballPackage file)
+      RemoteTarballPackage uri (Just file) ->
+        return (RemoteTarballPackage uri file)
+      RepoTarballPackage repo pkgid (Just file) ->
+        return (RepoTarballPackage repo pkgid file)
+      RemoteSourceRepoPackage repo (Just dir) ->
+        return (RemoteSourceRepoPackage repo dir)
+      RemoteTarballPackage uri Nothing -> do
+        path <- downloadTarballPackage uri
+        return (RemoteTarballPackage uri path)
+      RepoTarballPackage repo pkgid Nothing -> do
+        local <- fetchRepoTarball verbosity repoCtxt repo pkgid
+        return (RepoTarballPackage repo pkgid local)
+      RemoteSourceRepoPackage _repo Nothing ->
+        dieWithException verbosity FetchPackageErr
+
+  return loc{constraintInner = packageLocation}
   where
     downloadTarballPackage :: URI -> IO FilePath
     downloadTarballPackage uri = do

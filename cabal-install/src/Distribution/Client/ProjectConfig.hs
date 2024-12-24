@@ -12,7 +12,6 @@ module Distribution.Client.ProjectConfig
   , ProjectConfigToParse (..)
   , ProjectConfigBuildOnly (..)
   , ProjectConfigShared (..)
-  , ProjectConfigProvenance (..)
   , PackageConfig (..)
   , MapLast (..)
   , MapMappend (..)
@@ -66,7 +65,6 @@ module Distribution.Client.ProjectConfig
   ) where
 
 import Distribution.Client.Compat.Prelude
-import Text.PrettyPrint (nest, render, text, vcat)
 import Prelude ()
 
 import Distribution.Client.Glob
@@ -113,9 +111,15 @@ import Distribution.Client.Types
 import Distribution.Client.Utils.Parsec (renderParseError)
 
 import Distribution.Solver.Types.ConstraintSource
+import Distribution.Solver.Types.NamedPackage
+  ( NamedPackage (..)
+  )
 import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SourcePackage
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
+  )
 
 import Distribution.Client.Errors
 import Distribution.Client.Setup
@@ -128,6 +132,7 @@ import Distribution.Client.SrcDist
 import Distribution.Client.Targets
 import Distribution.Client.Types.SourceRepo
   ( SourceRepoList
+  , SourceRepoMaybe
   , SourceRepositoryPackage (..)
   , srpFanOut
   )
@@ -217,6 +222,7 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import Text.PrettyPrint (Doc, hang, nest, text, vcat, ($$))
 
 import Network.URI
   ( URI (..)
@@ -328,11 +334,13 @@ resolveSolverSettings
       cabalPkgname = mkPackageName "Cabal"
 
       profilingDynamicConstraint =
-        ( UserConstraint
-            (UserAnySetupQualifier cabalPkgname)
-            (PackagePropertyVersion $ orLaterVersion (mkVersion [3, 13, 0]))
-        , ConstraintSourceProfiledDynamic
-        )
+        WithConstraintSource
+          { constraintInner =
+              UserConstraint
+                (UserAnySetupQualifier cabalPkgname)
+                (PackagePropertyVersion $ orLaterVersion (mkVersion [3, 13, 0]))
+          , constraintSource = ConstraintSourceProfiledDynamic
+          }
 
       profDynEnabledGlobally = fromFlagOrDefault False (packageConfigProfShared projectConfigLocalPackages)
 
@@ -597,7 +605,9 @@ findProjectRoot verbosity mprojectDir mprojectFile = do
           getProjectRootUsability file >>= \case
             ProjectRootUsabilityPresentAndUsable ->
               uncurry projectRoot
-                =<< first dropTrailingPathSeparator . splitFileName <$> canonicalizePath file
+                =<< first dropTrailingPathSeparator
+                  . splitFileName
+                  <$> canonicalizePath file
             ProjectRootUsabilityNotPresent ->
               left (BadProjectRootExplicitFileNotFound file)
             ProjectRootUsabilityPresentAndUnusable ->
@@ -736,7 +746,7 @@ withProjectOrGlobalConfig' with without = do
         , let
             isGlobErr (BadLocGlobEmptyMatch _) = True
             isGlobErr _ = False
-        , any isGlobErr locs -> do
+        , any (isGlobErr . constraintInner) locs -> do
             without
       err -> throwIO err
 
@@ -781,7 +791,13 @@ defaultImplicitProjectConfig :: ProjectConfig
 defaultImplicitProjectConfig =
   mempty
     { -- We expect a package in the current directory.
-      projectPackages = ["./*.cabal"]
+      projectPackages =
+        [ WithConstraintSource
+            { constraintInner = "./*.cabal"
+            , -- TODO: Is a relative path OK here?
+              constraintSource = ConstraintSourceMainConfig "."
+            }
+        ]
     , projectConfigProvenance = Set.singleton Implicit
     }
 
@@ -840,7 +856,8 @@ readProjectFileSkeleton
 
       readExtensionFile =
         reportParseResult verbosity extensionDescription extensionFile
-          =<< parseProject extensionFile distDownloadSrcDirectory httpTransport verbosity . ProjectConfigToParse
+          =<< parseProject extensionFile distDownloadSrcDirectory httpTransport verbosity
+            . ProjectConfigToParse
           =<< BS.readFile extensionFile
 
 -- | Render the 'ProjectConfig' format.
@@ -903,13 +920,44 @@ data ProjectPackageLocation
 
 -- | Exception thrown by 'findProjectPackages'.
 data BadPackageLocations
-  = BadPackageLocations (Set ProjectConfigProvenance) [BadPackageLocation]
+  = BadPackageLocations (Set ProjectConfigProvenance) [WithConstraintSource BadPackageLocation]
   deriving (Show, Typeable)
 
 instance Exception BadPackageLocations where
-  displayException = renderBadPackageLocations
+  displayException = prettyShow
 
 -- TODO: [nice to have] custom exception subclass for Doc rendering, colour etc
+
+instance Pretty BadPackageLocations where
+  pretty (BadPackageLocations provenance bpls)
+    -- There is no provenance information,
+    -- render standard bad package error information.
+    | Set.null provenance = renderErrors renderBadPackageLocation
+    -- The configuration is implicit, render bad package locations
+    -- using possibly specialized error messages.
+    | Set.singleton Implicit == provenance =
+        renderErrors renderImplicitBadPackageLocation
+    -- The configuration contains both implicit and explicit provenance.
+    -- This should not occur, and a message is output to assist debugging.
+    | Implicit `Set.member` provenance =
+        text "Warning: both implicit and explicit configuration is present."
+          $$ renderExplicit
+    -- The configuration was read from one or more explicit path(s),
+    -- list the locations and render the bad package error information.
+    -- The intent is to supersede this with the relevant location information
+    -- per package error.
+    | otherwise = renderExplicit
+    where
+      renderErrors f = vcat (map f bpls)
+
+      renderExplicit =
+        text "When using configuration from:"
+          $$ nest 2 (docProjectConfigFiles $ mapMaybe getExplicit $ Set.toList provenance)
+          $$ text "The following errors occurred:"
+          $$ nest 2 (vcat $ map (hang (text "-") 2 . renderBadPackageLocation) bpls)
+
+      getExplicit (Explicit path) = Just path
+      getExplicit Implicit = Nothing
 
 data BadPackageLocation
   = BadPackageLocationFile BadPackageLocationMatch
@@ -927,37 +975,6 @@ data BadPackageLocationMatch
   | BadLocDirManyCabalFiles String
   deriving (Show)
 
-renderBadPackageLocations :: BadPackageLocations -> String
-renderBadPackageLocations (BadPackageLocations provenance bpls)
-  -- There is no provenance information,
-  -- render standard bad package error information.
-  | Set.null provenance = renderErrors renderBadPackageLocation
-  -- The configuration is implicit, render bad package locations
-  -- using possibly specialized error messages.
-  | Set.singleton Implicit == provenance =
-      renderErrors renderImplicitBadPackageLocation
-  -- The configuration contains both implicit and explicit provenance.
-  -- This should not occur, and a message is output to assist debugging.
-  | Implicit `Set.member` provenance =
-      "Warning: both implicit and explicit configuration is present."
-        ++ renderExplicit
-  -- The configuration was read from one or more explicit path(s),
-  -- list the locations and render the bad package error information.
-  -- The intent is to supersede this with the relevant location information
-  -- per package error.
-  | otherwise = renderExplicit
-  where
-    renderErrors f = unlines (map f bpls)
-
-    renderExplicit =
-      "When using configuration from:\n"
-        ++ render (nest 2 . docProjectConfigFiles $ mapMaybe getExplicit (Set.toList provenance))
-        ++ "\nThe following errors occurred:\n"
-        ++ render (nest 2 $ vcat ((text "-" <+>) . text <$> map renderBadPackageLocation bpls))
-
-    getExplicit (Explicit path) = Just path
-    getExplicit Implicit = Nothing
-
 -- TODO: [nice to have] keep track of the config file (and src loc) packages
 -- were listed, to use in error messages
 
@@ -968,19 +985,42 @@ renderBadPackageLocations (BadPackageLocations provenance bpls)
 -- cases handled. More cases should be added with informative help text
 -- about the issues related specifically when having no project configuration
 -- is present.
-renderImplicitBadPackageLocation :: BadPackageLocation -> String
-renderImplicitBadPackageLocation bpl = case bpl of
-  BadLocGlobEmptyMatch pkglocstr ->
-    "No cabal.project file or cabal file matching the default glob '"
-      ++ pkglocstr
-      ++ "' was found.\n"
-      ++ "Please create a package description file <pkgname>.cabal "
-      ++ "or a cabal.project file referencing the packages you "
-      ++ "want to build."
-  _ -> renderBadPackageLocation bpl
+renderImplicitBadPackageLocation :: WithConstraintSource BadPackageLocation -> Doc
+renderImplicitBadPackageLocation
+  ( WithConstraintSource
+      { constraintInner = bpl
+      , constraintSource = constraint
+      }
+    ) =
+    inner
+      $$ text "From"
+      <+> pretty constraint
+    where
+      inner =
+        case bpl of
+          BadLocGlobEmptyMatch pkglocstr ->
+            text $
+              "No cabal.project file or cabal file matching the default glob '"
+                ++ pkglocstr
+                ++ "' was found.\n"
+                ++ "Please create a package description file <pkgname>.cabal "
+                ++ "or a cabal.project file referencing the packages you "
+                ++ "want to build."
+          _ -> text $ renderBadPackageLocationInner bpl
 
-renderBadPackageLocation :: BadPackageLocation -> String
-renderBadPackageLocation bpl = case bpl of
+renderBadPackageLocation :: WithConstraintSource BadPackageLocation -> Doc
+renderBadPackageLocation
+  ( WithConstraintSource
+      { constraintInner = bpl
+      , constraintSource = constraint
+      }
+    ) =
+    text (renderBadPackageLocationInner bpl)
+      $$ text "From"
+      <+> pretty constraint
+
+renderBadPackageLocationInner :: BadPackageLocation -> String
+renderBadPackageLocationInner bpl = case bpl of
   BadPackageLocationFile badmatch ->
     renderBadPackageLocationMatch badmatch
   BadLocGlobEmptyMatch pkglocstr ->
@@ -1006,27 +1046,27 @@ renderBadPackageLocation bpl = case bpl of
       ++ "be a valid absolute URI."
   BadLocUnrecognised pkglocstr ->
     "The package location syntax '" ++ pkglocstr ++ "' is not recognised."
-
-renderBadPackageLocationMatch :: BadPackageLocationMatch -> String
-renderBadPackageLocationMatch bplm = case bplm of
-  BadLocUnexpectedFile pkglocstr ->
-    "The package location '"
-      ++ pkglocstr
-      ++ "' is not recognised. The "
-      ++ "supported file targets are .cabal files, .tar.gz tarballs or package "
-      ++ "directories (i.e. directories containing a .cabal file)."
-  BadLocNonexistantFile pkglocstr ->
-    "The package location '" ++ pkglocstr ++ "' does not exist."
-  BadLocDirNoCabalFile pkglocstr ->
-    "The package directory '"
-      ++ pkglocstr
-      ++ "' does not contain any "
-      ++ ".cabal file."
-  BadLocDirManyCabalFiles pkglocstr ->
-    "The package directory '"
-      ++ pkglocstr
-      ++ "' contains multiple "
-      ++ ".cabal files (which is not currently supported)."
+  where
+    renderBadPackageLocationMatch :: BadPackageLocationMatch -> String
+    renderBadPackageLocationMatch bplm = case bplm of
+      BadLocUnexpectedFile pkglocstr ->
+        "The package location '"
+          ++ pkglocstr
+          ++ "' is not recognised. The "
+          ++ "supported file targets are .cabal files, .tar.gz tarballs or package "
+          ++ "directories (i.e. directories containing a .cabal file)."
+      BadLocNonexistantFile pkglocstr ->
+        "The package location '" ++ pkglocstr ++ "' does not exist."
+      BadLocDirNoCabalFile pkglocstr ->
+        "The package directory '"
+          ++ pkglocstr
+          ++ "' does not contain any "
+          ++ ".cabal file."
+      BadLocDirManyCabalFiles pkglocstr ->
+        "The package directory '"
+          ++ pkglocstr
+          ++ "' contains multiple "
+          ++ ".cabal files (which is not currently supported)."
 
 -- | Determines the location of all packages mentioned in the project configuration.
 --
@@ -1034,18 +1074,21 @@ renderBadPackageLocationMatch bplm = case bplm of
 findProjectPackages
   :: DistDirLayout
   -> ProjectConfig
-  -> Rebuild [ProjectPackageLocation]
+  -> Rebuild [WithConstraintSource ProjectPackageLocation]
 findProjectPackages
   DistDirLayout{distProjectRootDirectory}
   ProjectConfig{..} = do
     requiredPkgs <- findPackageLocations True projectPackages
     optionalPkgs <- findPackageLocations False projectPackagesOptional
-    let repoPkgs = map ProjectPackageRemoteRepo projectPackagesRepo
-        namedPkgs = map ProjectPackageNamed projectPackagesNamed
+    let repoPkgs = map (fmap ProjectPackageRemoteRepo) projectPackagesRepo
+        namedPkgs = map (fmap ProjectPackageNamed) projectPackagesNamed
 
     return (concat [requiredPkgs, optionalPkgs, repoPkgs, namedPkgs])
     where
-      findPackageLocations :: Bool -> [String] -> Rebuild [ProjectPackageLocation]
+      findPackageLocations
+        :: Bool
+        -> [WithConstraintSource String]
+        -> Rebuild [WithConstraintSource ProjectPackageLocation]
       findPackageLocations required pkglocstr = do
         (problems, pkglocs) <-
           partitionEithers <$> traverse (findPackageLocation required) pkglocstr
@@ -1057,31 +1100,43 @@ findProjectPackages
 
       findPackageLocation
         :: Bool
-        -> String
-        -> Rebuild (Either BadPackageLocation [ProjectPackageLocation])
-      findPackageLocation _required@True pkglocstr =
+        -> WithConstraintSource String
+        -> Rebuild
+            ( Either
+                (WithConstraintSource BadPackageLocation)
+                [WithConstraintSource ProjectPackageLocation]
+            )
+      findPackageLocation _required@True pkgloc =
         -- strategy: try first as a file:// or http(s):// URL.
         -- then as a file glob (usually encompassing single file)
         -- finally as a single file, for files that fail to parse as globs
-        checkIsUriPackage pkglocstr
-          `mplusMaybeT` checkIsFileGlobPackage pkglocstr
-          `mplusMaybeT` checkIsSingleFilePackage pkglocstr
-          >>= maybe (return (Left (BadLocUnrecognised pkglocstr))) return
-      findPackageLocation _required@False pkglocstr = do
+        checkIsUriPackage pkgloc
+          `mplusMaybeT` checkIsFileGlobPackage pkgloc
+          `mplusMaybeT` checkIsSingleFilePackage pkgloc
+          >>= maybe
+            (return (Left ((\pkglocstr -> BadLocUnrecognised pkglocstr) <$> pkgloc)))
+            return
+      findPackageLocation _required@False pkgloc = do
         -- just globs for optional case
-        res <- checkIsFileGlobPackage pkglocstr
+        res <- checkIsFileGlobPackage pkgloc
         case res of
-          Nothing -> return (Left (BadLocUnrecognised pkglocstr))
+          Nothing -> return (Left ((\pkglocstr -> BadLocUnrecognised pkglocstr) <$> pkgloc))
           Just (Left _) -> return (Right []) -- it's optional
           Just (Right pkglocs) -> return (Right pkglocs)
 
       checkIsUriPackage
         , checkIsFileGlobPackage
         , checkIsSingleFilePackage
-          :: String
-          -> Rebuild (Maybe (Either BadPackageLocation [ProjectPackageLocation]))
-      checkIsUriPackage pkglocstr =
-        case parseAbsoluteURI pkglocstr of
+          :: WithConstraintSource String
+          -> Rebuild
+              ( Maybe
+                  ( Either
+                      (WithConstraintSource BadPackageLocation)
+                      [WithConstraintSource ProjectPackageLocation]
+                  )
+              )
+      checkIsUriPackage pkgloc =
+        case parseAbsoluteURI $ constraintInner pkgloc of
           Just
             uri@URI
               { uriScheme = scheme
@@ -1091,22 +1146,25 @@ findProjectPackages
               , uriFragment = frag
               }
               | recognisedScheme && not (null host) ->
-                  return (Just (Right [ProjectPackageRemoteTarball uri]))
+                  return (Just (Right [const (ProjectPackageRemoteTarball uri) <$> pkgloc]))
               | scheme == "file:" && null host && null query && null frag ->
-                  checkIsSingleFilePackage path
+                  checkIsSingleFilePackage (const path <$> pkgloc)
               | not recognisedScheme && not (null host) ->
-                  return (Just (Left (BadLocUnexpectedUriScheme pkglocstr)))
+                  return (Just (Left (BadLocUnexpectedUriScheme <$> pkgloc)))
               | recognisedScheme && null host ->
-                  return (Just (Left (BadLocUnrecognisedUri pkglocstr)))
+                  return (Just (Left (BadLocUnrecognisedUri <$> pkgloc)))
               where
                 recognisedScheme =
-                  scheme == "http:"
-                    || scheme == "https:"
-                    || scheme == "file:"
+                  scheme
+                    == "http:"
+                    || scheme
+                      == "https:"
+                    || scheme
+                      == "file:"
           _ -> return Nothing
 
-      checkIsFileGlobPackage pkglocstr =
-        case simpleParsec pkglocstr of
+      checkIsFileGlobPackage pkgloc =
+        case simpleParsec $ constraintInner pkgloc of
           Nothing -> return Nothing
           Just glob -> liftM Just $ do
             matches <- matchFileGlob glob
@@ -1116,45 +1174,58 @@ findProjectPackages
                     return
                       ( Left
                           ( BadPackageLocationFile
-                              (BadLocNonexistantFile pkglocstr)
+                              . BadLocNonexistantFile
+                              <$> pkgloc
                           )
                       )
-              [] -> return (Left (BadLocGlobEmptyMatch pkglocstr))
+              [] -> return (Left (BadLocGlobEmptyMatch <$> pkgloc))
               _ -> do
                 (failures, pkglocs) <-
                   partitionEithers
-                    <$> traverse checkFilePackageMatch matches
+                    <$> traverse
+                      ( checkFilePackageMatch
+                          . (\match -> pkgloc{constraintInner = match})
+                      )
+                      matches
                 return $! case (failures, pkglocs) of
                   ([failure], [])
                     | isJust (isTrivialRootedGlob glob) ->
-                        Left (BadPackageLocationFile failure)
-                  (_, []) -> Left (BadLocGlobBadMatches pkglocstr failures)
+                        Left (BadPackageLocationFile <$> failure)
+                  (_, []) ->
+                    -- Note: The `ConstraintSources` we're dropping here are all
+                    -- copied from `pkgloc` anyways, so we don't lose information.
+                    Left
+                      ( (\pkglocstr -> BadLocGlobBadMatches pkglocstr (map constraintInner failures))
+                          <$> pkgloc
+                      )
                   _ -> Right pkglocs
 
-      checkIsSingleFilePackage pkglocstr = do
-        let filename = distProjectRootDirectory </> pkglocstr
+      checkIsSingleFilePackage pkgloc = do
+        let pkglocstr = constraintInner pkgloc
+            filename = distProjectRootDirectory </> pkglocstr
         isFile <- liftIO $ doesFileExist filename
         isDir <- liftIO $ doesDirectoryExist filename
         if isFile || isDir
           then
-            checkFilePackageMatch pkglocstr
+            checkFilePackageMatch pkgloc
               >>= either
-                (return . Just . Left . BadPackageLocationFile)
+                (return . Just . Left . fmap BadPackageLocationFile)
                 (return . Just . Right . (\x -> [x]))
           else return Nothing
 
       checkFilePackageMatch
-        :: String
+        :: WithConstraintSource String
         -> Rebuild
             ( Either
-                BadPackageLocationMatch
-                ProjectPackageLocation
+                (WithConstraintSource BadPackageLocationMatch)
+                (WithConstraintSource ProjectPackageLocation)
             )
-      checkFilePackageMatch pkglocstr = do
+      checkFilePackageMatch pkgloc = do
         -- The pkglocstr may be absolute or may be relative to the project root.
         -- Either way, </> does the right thing here. We return relative paths if
         -- they were relative in the first place.
-        let abspath = distProjectRootDirectory </> pkglocstr
+        let pkglocstr = constraintInner pkgloc
+            abspath = distProjectRootDirectory </> pkglocstr
         isFile <- liftIO $ doesFileExist abspath
         isDir <- liftIO $ doesDirectoryExist abspath
         parentDirExists <- case takeDirectory abspath of
@@ -1169,27 +1240,30 @@ findProjectPackages
                     [cabalFile] ->
                       return
                         ( Right
-                            ( ProjectPackageLocalDirectory
-                                pkglocstr
-                                cabalFile
+                            ( pkgloc
+                                { constraintInner =
+                                    ProjectPackageLocalDirectory pkglocstr cabalFile
+                                }
                             )
                         )
-                    [] -> return (Left (BadLocDirNoCabalFile pkglocstr))
-                    _ -> return (Left (BadLocDirManyCabalFiles pkglocstr))
+                    [] -> return (Left (BadLocDirNoCabalFile <$> pkgloc))
+                    _ -> return (Left (BadLocDirManyCabalFiles <$> pkgloc))
             | extensionIsTarGz pkglocstr ->
-                return (Right (ProjectPackageLocalTarball pkglocstr))
+                return (Right (ProjectPackageLocalTarball <$> pkgloc))
             | takeExtension pkglocstr == ".cabal" ->
-                return (Right (ProjectPackageLocalCabalFile pkglocstr))
+                return (Right (ProjectPackageLocalCabalFile <$> pkgloc))
             | isFile ->
-                return (Left (BadLocUnexpectedFile pkglocstr))
+                return (Left (BadLocUnexpectedFile <$> pkgloc))
             | parentDirExists ->
-                return (Left (BadLocNonexistantFile pkglocstr))
+                return (Left (BadLocNonexistantFile <$> pkgloc))
             | otherwise ->
-                return (Left (BadLocUnexpectedFile pkglocstr))
+                return (Left (BadLocUnexpectedFile <$> pkgloc))
 
       extensionIsTarGz f =
-        takeExtension f == ".gz"
-          && takeExtension (dropExtension f) == ".tar"
+        takeExtension f
+          == ".gz"
+          && takeExtension (dropExtension f)
+            == ".tar"
 
 -- | A glob to find all the cabal files in a directory.
 --
@@ -1230,7 +1304,7 @@ fetchAndReadSourcePackages
   -> Compiler
   -> ProjectConfigShared
   -> ProjectConfigBuildOnly
-  -> [ProjectPackageLocation]
+  -> [WithConstraintSource ProjectPackageLocation]
   -> Rebuild [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
 fetchAndReadSourcePackages
   verbosity
@@ -1241,15 +1315,23 @@ fetchAndReadSourcePackages
   pkgLocations = do
     pkgsLocalDirectory <-
       sequenceA
-        [ readSourcePackageLocalDirectory verbosity dir cabalFile
-        | location <- pkgLocations
+        [ readSourcePackageLocalDirectory verbosity constraint dir cabalFile
+        | WithConstraintSource
+            { constraintInner = location
+            , constraintSource = constraint
+            } <-
+            pkgLocations
         , (dir, cabalFile) <- projectPackageLocal location
         ]
 
     pkgsLocalTarball <-
       sequenceA
-        [ readSourcePackageLocalTarball verbosity path
-        | ProjectPackageLocalTarball path <- pkgLocations
+        [ readSourcePackageLocalTarball verbosity constraint path
+        | WithConstraintSource
+            { constraintInner = ProjectPackageLocalTarball path
+            , constraintSource = constraint
+            } <-
+            pkgLocations
         ]
 
     pkgsRemoteTarball <- do
@@ -1262,10 +1344,15 @@ fetchAndReadSourcePackages
       sequenceA
         [ fetchAndReadSourcePackageRemoteTarball
           verbosity
+          constraint
           distDirLayout
           getTransport
           uri
-        | ProjectPackageRemoteTarball uri <- pkgLocations
+        | WithConstraintSource
+            { constraintInner = ProjectPackageRemoteTarball uri
+            , constraintSource = constraint
+            } <-
+            pkgLocations
         ]
 
     pkgsRemoteRepo <-
@@ -1276,11 +1363,20 @@ fetchAndReadSourcePackages
         projectConfigShared
         projectConfigBuildOnly
         (fromFlag (projectConfigOfflineMode projectConfigBuildOnly))
-        [repo | ProjectPackageRemoteRepo repo <- pkgLocations]
+        [ withConstraint{constraintInner = repo}
+        | withConstraint@WithConstraintSource
+            { constraintInner = ProjectPackageRemoteRepo repo
+            } <-
+            pkgLocations
+        ]
 
     let pkgsNamed =
-          [ NamedPackage pkgname [PackagePropertyVersion verrange]
-          | ProjectPackageNamed (PackageVersionConstraint pkgname verrange) <- pkgLocations
+          [ Named (withConstraint{constraintInner = NamedPackage pkgname [PackagePropertyVersion verrange]})
+          | withConstraint@WithConstraintSource
+              { constraintInner =
+                ProjectPackageNamed (PackageVersionConstraint pkgname verrange)
+              } <-
+              pkgLocations
           ]
 
     return $
@@ -1307,15 +1403,20 @@ fetchAndReadSourcePackages
 -- We simply read the @.cabal@ file.
 readSourcePackageLocalDirectory
   :: Verbosity
+  -> ConstraintSource
   -> FilePath
   -- ^ The package directory
   -> FilePath
   -- ^ The package @.cabal@ file
   -> Rebuild (PackageSpecifier (SourcePackage UnresolvedPkgLoc))
-readSourcePackageLocalDirectory verbosity dir cabalFile = do
+readSourcePackageLocalDirectory verbosity constraintSource dir cabalFile = do
   monitorFiles [monitorFileHashed cabalFile]
   root <- askRoot
-  let location = LocalUnpackedPackage (root </> dir)
+  let location =
+        WithConstraintSource
+          { constraintInner = LocalUnpackedPackage (root </> dir)
+          , constraintSource
+          }
   liftIO $
     fmap (mkSpecificSourcePackage location)
       . readSourcePackageCabalFile verbosity cabalFile
@@ -1326,12 +1427,17 @@ readSourcePackageLocalDirectory verbosity dir cabalFile = do
 -- the @.cabal@ file and read that.
 readSourcePackageLocalTarball
   :: Verbosity
+  -> ConstraintSource
   -> FilePath
   -> Rebuild (PackageSpecifier (SourcePackage UnresolvedPkgLoc))
-readSourcePackageLocalTarball verbosity tarballFile = do
+readSourcePackageLocalTarball verbosity constraintSource tarballFile = do
   monitorFiles [monitorFile tarballFile]
   root <- askRoot
-  let location = LocalTarballPackage (root </> tarballFile)
+  let location =
+        WithConstraintSource
+          { constraintInner = LocalTarballPackage (root </> tarballFile)
+          , constraintSource
+          }
   liftIO $
     fmap (mkSpecificSourcePackage location)
       . uncurry (readSourcePackageCabalFile verbosity)
@@ -1342,12 +1448,14 @@ readSourcePackageLocalTarball verbosity tarballFile = do
 -- and after that handle it like the local tarball case.
 fetchAndReadSourcePackageRemoteTarball
   :: Verbosity
+  -> ConstraintSource
   -> DistDirLayout
   -> Rebuild HttpTransport
   -> URI
   -> Rebuild (PackageSpecifier (SourcePackage UnresolvedPkgLoc))
 fetchAndReadSourcePackageRemoteTarball
   verbosity
+  constraintSource
   DistDirLayout
     { distDownloadSrcDirectory
     }
@@ -1370,7 +1478,11 @@ fetchAndReadSourcePackageRemoteTarball
 
       -- Read
       monitorFiles [monitorFile tarballFile]
-      let location = RemoteTarballPackage tarballUri tarballFile
+      let location =
+            WithConstraintSource
+              { constraintInner = RemoteTarballPackage tarballUri tarballFile
+              , constraintSource
+              }
       liftIO $
         fmap (mkSpecificSourcePackage location)
           . uncurry (readSourcePackageCabalFile verbosity)
@@ -1395,7 +1507,7 @@ syncAndReadSourcePackagesRemoteRepos
   -> ProjectConfigShared
   -> ProjectConfigBuildOnly
   -> Bool
-  -> [SourceRepoList]
+  -> [WithConstraintSource SourceRepoList]
   -> Rebuild [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
 syncAndReadSourcePackagesRemoteRepos
   verbosity
@@ -1419,11 +1531,13 @@ syncAndReadSourcePackagesRemoteRepos
     let reposByLocation
           :: Map
               (RepoType, String)
-              [(SourceRepoList, RepoType)]
+              [(WithConstraintSource SourceRepoList, RepoType)]
         reposByLocation =
           Map.fromListWith
             (++)
-            [ ((rtype, rloc), [(repo, vcsRepoType vcs)])
+            [ ( (rtype, rloc)
+              , [(repo, vcsRepoType vcs)]
+              )
             | (repo, rloc, rtype, vcs) <- repos'
             ]
 
@@ -1446,10 +1560,10 @@ syncAndReadSourcePackagesRemoteRepos
         , let repoGroup' = map fst repoGroup
               pathStem =
                 distDownloadSrcDirectory
-                  </> localFileNameForRemoteRepo primaryRepo
+                  </> localFileNameForRemoteRepo (constraintInner primaryRepo)
               monitor
                 :: FileMonitor
-                    [SourceRepoList]
+                    [WithConstraintSource SourceRepoList]
                     [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
               monitor = newFileMonitor (pathStem <.> "cache")
         ]
@@ -1458,7 +1572,7 @@ syncAndReadSourcePackagesRemoteRepos
       syncRepoGroupAndReadSourcePackages
         :: VCS ConfiguredProgram
         -> FilePath
-        -> [SourceRepoList]
+        -> [WithConstraintSource SourceRepoList]
         -> Rebuild [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
       syncRepoGroupAndReadSourcePackages vcs pathStem repoGroup = do
         liftIO $
@@ -1497,13 +1611,23 @@ syncAndReadSourcePackagesRemoteRepos
         where
           -- So to do both things above, we pair them up here.
           repoGroupWithPaths
-            :: [(SourceRepositoryPackage Proxy, NonEmpty (SourceRepositoryPackage Maybe), FilePath)]
+            :: [ ( SourceRepositoryPackage Proxy
+                 , NonEmpty (WithConstraintSource SourceRepoMaybe)
+                 , FilePath
+                 )
+               ]
           repoGroupWithPaths =
             zipWith
               (\(x, y) z -> (x, y, z))
               ( mapGroup
-                  [ (repo{srpSubdir = Proxy}, repo)
-                  | repo <- foldMap (NE.toList . srpFanOut) repoGroup
+                  [ ( repoWithSubdir{srpSubdir = Proxy}
+                    , withConstraint{constraintInner = repoWithSubdir}
+                    )
+                  | withConstraint@WithConstraintSource
+                      { constraintInner = repo
+                      } <-
+                      repoGroup
+                  , repoWithSubdir <- NE.toList (srpFanOut repo)
                   ]
               )
               repoPaths
@@ -1519,11 +1643,12 @@ syncAndReadSourcePackagesRemoteRepos
               : [pathStem ++ "-" ++ show (i :: Int) | i <- [2 ..]]
 
       readPackageFromSourceRepo
-        :: SourceRepositoryPackage Maybe
+        :: WithConstraintSource SourceRepoMaybe
         -> FilePath
-        -> Rebuild (PackageSpecifier (SourcePackage UnresolvedPkgLoc))
-      readPackageFromSourceRepo repo repoPath = do
-        let packageDir :: FilePath
+        -> Rebuild (PackageSpecifier UnresolvedSourcePackage)
+      readPackageFromSourceRepo withConstraint repoPath = do
+        let repo = constraintInner withConstraint
+            packageDir :: FilePath
             packageDir = maybe repoPath (repoPath </>) (srpSubdir repo)
 
         entries <- liftIO $ getDirectoryContents packageDir
@@ -1541,28 +1666,31 @@ syncAndReadSourcePackagesRemoteRepos
             let tarballPath = repoPath ++ "-" ++ prettyShow (packageId gpd) ++ ".tar.gz"
             liftIO $ LBS.writeFile tarballPath tarball
 
-            let location = RemoteSourceRepoPackage repo tarballPath
+            let location =
+                  withConstraint
+                    { constraintInner = RemoteSourceRepoPackage repo tarballPath
+                    }
             return $ mkSpecificSourcePackage location gpd
 
-      reportSourceRepoProblems :: [(SourceRepoList, SourceRepoProblem)] -> Rebuild a
+      reportSourceRepoProblems :: [(WithConstraintSource SourceRepoList, SourceRepoProblem)] -> Rebuild a
       reportSourceRepoProblems = liftIO . dieWithException verbosity . ReportSourceRepoProblems . renderSourceRepoProblems
 
-      renderSourceRepoProblems :: [(SourceRepoList, SourceRepoProblem)] -> String
+      renderSourceRepoProblems :: [(WithConstraintSource SourceRepoList, SourceRepoProblem)] -> String
       renderSourceRepoProblems = unlines . map show -- "TODO: the repo problems"
 
 -- | Utility used by all the helpers of 'fetchAndReadSourcePackages' to make an
 -- appropriate @'PackageSpecifier' ('SourcePackage' (..))@ for a given package
 -- from a given location.
 mkSpecificSourcePackage
-  :: PackageLocation FilePath
+  :: PackageLocationProvenance FilePath
   -> GenericPackageDescription
-  -> PackageSpecifier (SourcePackage UnresolvedPkgLoc)
+  -> PackageSpecifier UnresolvedSourcePackage
 mkSpecificSourcePackage location pkg =
   SpecificSourcePackage
     SourcePackage
       { srcpkgPackageId = packageId pkg
       , srcpkgDescription = pkg
-      , srcpkgSource = fmap Just location
+      , srcpkgSource = fmap (fmap Just) location
       , srcpkgDescrOverride = Nothing
       }
 

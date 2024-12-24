@@ -48,6 +48,7 @@ import Prelude ()
 
 import Distribution.Client.Types
   ( PackageLocation (..)
+  , PackageLocationProvenance
   , PackageSpecifier (..)
   )
 import Distribution.Package
@@ -91,8 +92,17 @@ import Distribution.Simple.LocalBuildInfo
   , componentName
   , pkgComponents
   )
+import Distribution.Solver.Types.ConstraintSource
+  ( ConstraintSource (..)
+  )
+import Distribution.Solver.Types.NamedPackage
+  ( NamedPackage (..)
+  )
 import Distribution.Solver.Types.SourcePackage
   ( SourcePackage (..)
+  )
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
   )
 import Distribution.Types.ForeignLib
 
@@ -100,6 +110,7 @@ import Control.Arrow ((&&&))
 import Control.Monad hiding
   ( mfilter
   )
+import Data.Bifunctor (bimap)
 #if MIN_VERSION_base(4,20,0)
 import Data.Functor as UZ (unzip)
 #else
@@ -245,24 +256,24 @@ instance Structured SubComponentTarget
 -- error if any are unrecognised. The possible target selectors are based on
 -- the available packages (and their locations).
 readTargetSelectors
-  :: [PackageSpecifier (SourcePackage (PackageLocation a))]
+  :: [PackageSpecifier (SourcePackage (PackageLocationProvenance a))]
   -> Maybe ComponentKindFilter
   -- ^ This parameter is used when there are ambiguous selectors.
   --   If it is 'Just', then we attempt to resolve ambiguity
   --   by applying it, since otherwise there is no way to allow
   --   contextually valid yet syntactically ambiguous selectors.
   --   (#4676, #5461)
-  -> [String]
-  -> IO (Either [TargetSelectorProblem] [TargetSelector])
+  -> [WithConstraintSource String]
+  -> IO (Either [WithConstraintSource TargetSelectorProblem] [WithConstraintSource TargetSelector])
 readTargetSelectors = readTargetSelectorsWith defaultDirActions
 
 readTargetSelectorsWith
   :: (Applicative m, Monad m)
   => DirActions m
-  -> [PackageSpecifier (SourcePackage (PackageLocation a))]
+  -> [PackageSpecifier (SourcePackage (PackageLocationProvenance a))]
   -> Maybe ComponentKindFilter
-  -> [String]
-  -> m (Either [TargetSelectorProblem] [TargetSelector])
+  -> [WithConstraintSource String]
+  -> m (Either [WithConstraintSource TargetSelectorProblem] [WithConstraintSource TargetSelector])
 readTargetSelectorsWith dirActions@DirActions{} pkgs mfilter targetStrs =
   case parseTargetStrings targetStrs of
     ([], usertargets) -> do
@@ -271,7 +282,7 @@ readTargetSelectorsWith dirActions@DirActions{} pkgs mfilter targetStrs =
       case resolveTargetSelectors knowntargets usertargets' mfilter of
         ([], btargets) -> return (Right btargets)
         (problems, _) -> return (Left problems)
-    (strs, _) -> return (Left (map TargetSelectorUnrecognised strs))
+    (strs, _) -> return (Left (map (fmap TargetSelectorUnrecognised) strs))
 
 data DirActions m = DirActions
   { doesFileExist :: FilePath -> m Bool
@@ -316,14 +327,15 @@ data TargetString
   deriving (Show, Eq)
 
 -- | Parse a bunch of 'TargetString's (purely without throwing exceptions).
-parseTargetStrings :: [String] -> ([String], [TargetString])
+parseTargetStrings :: [WithConstraintSource String] -> ([WithConstraintSource String], [WithConstraintSource TargetString])
 parseTargetStrings =
   partitionEithers
     . map (\str -> maybe (Left str) Right (parseTargetString str))
 
-parseTargetString :: String -> Maybe TargetString
-parseTargetString =
-  readPToMaybe parseTargetApprox
+parseTargetString :: WithConstraintSource String -> Maybe (WithConstraintSource TargetString)
+parseTargetString target =
+  (\parsed -> target{constraintInner = parsed})
+    <$> readPToMaybe parseTargetApprox (constraintInner target)
   where
     parseTargetApprox :: Parse.ReadP r TargetString
     parseTargetApprox =
@@ -456,22 +468,23 @@ noFileStatus = FileStatusNotExists False
 getTargetStringFileStatus
   :: (Applicative m, Monad m)
   => DirActions m
-  -> TargetString
-  -> m TargetStringFileStatus
+  -> WithConstraintSource TargetString
+  -> m (WithConstraintSource TargetStringFileStatus)
 getTargetStringFileStatus DirActions{..} t =
-  case t of
-    TargetString1 s1 ->
-      (\f1 -> TargetStringFileStatus1 s1 f1) <$> fileStatus s1
-    TargetString2 s1 s2 ->
-      (\f1 -> TargetStringFileStatus2 s1 f1 s2) <$> fileStatus s1
-    TargetString3 s1 s2 s3 ->
-      (\f1 -> TargetStringFileStatus3 s1 f1 s2 s3) <$> fileStatus s1
-    TargetString4 s1 s2 s3 s4 ->
-      return (TargetStringFileStatus4 s1 s2 s3 s4)
-    TargetString5 s1 s2 s3 s4 s5 ->
-      return (TargetStringFileStatus5 s1 s2 s3 s4 s5)
-    TargetString7 s1 s2 s3 s4 s5 s6 s7 ->
-      return (TargetStringFileStatus7 s1 s2 s3 s4 s5 s6 s7)
+  (\result -> t{constraintInner = result})
+    <$> case constraintInner t of
+      TargetString1 s1 ->
+        (\f1 -> TargetStringFileStatus1 s1 f1) <$> fileStatus s1
+      TargetString2 s1 s2 ->
+        (\f1 -> TargetStringFileStatus2 s1 f1 s2) <$> fileStatus s1
+      TargetString3 s1 s2 s3 ->
+        (\f1 -> TargetStringFileStatus3 s1 f1 s2 s3) <$> fileStatus s1
+      TargetString4 s1 s2 s3 s4 ->
+        return (TargetStringFileStatus4 s1 s2 s3 s4)
+      TargetString5 s1 s2 s3 s4 s5 ->
+        return (TargetStringFileStatus5 s1 s2 s3 s4 s5)
+      TargetString7 s1 s2 s3 s4 s5 s6 s7 ->
+        return (TargetStringFileStatus7 s1 s2 s3 s4 s5 s6 s7)
   where
     fileStatus f = do
       fexists <- doesFileExist f
@@ -532,19 +545,40 @@ copyFileStatus src dst =
 -- refer to.
 resolveTargetSelectors
   :: KnownTargets
-  -> [TargetStringFileStatus]
+  -> [WithConstraintSource TargetStringFileStatus]
   -> Maybe ComponentKindFilter
-  -> ( [TargetSelectorProblem]
-     , [TargetSelector]
+  -> ( [WithConstraintSource TargetSelectorProblem]
+     , [WithConstraintSource TargetSelector]
      )
 -- default local dir target if there's no given target:
 resolveTargetSelectors (KnownTargets{knownPackagesAll = []}) [] _ =
-  ([TargetSelectorNoTargetsInProject], [])
+  (
+    [ WithConstraintSource
+        { constraintInner = TargetSelectorNoTargetsInProject
+        , constraintSource = ConstraintSourceImplicitTarget
+        }
+    ]
+  , []
+  )
 -- if the component kind filter is just exes, we don't want to suggest "all" as a target.
 resolveTargetSelectors (KnownTargets{knownPackagesPrimary = []}) [] ckf =
-  ([TargetSelectorNoTargetsInCwd (ckf /= Just ExeKind)], [])
+  (
+    [ WithConstraintSource
+        { constraintInner = TargetSelectorNoTargetsInCwd (ckf /= Just ExeKind)
+        , constraintSource = ConstraintSourceImplicitTarget
+        }
+    ]
+  , []
+  )
 resolveTargetSelectors (KnownTargets{knownPackagesPrimary}) [] _ =
-  ([], [TargetPackage TargetImplicitCwd pkgids Nothing])
+  ( []
+  ,
+    [ WithConstraintSource
+        { constraintInner = TargetPackage TargetImplicitCwd pkgids Nothing
+        , constraintSource = ConstraintSourceImplicitTarget
+        }
+    ]
+  )
   where
     pkgids = [pinfoId | KnownPackage{pinfoId} <- knownPackagesPrimary]
 resolveTargetSelectors knowntargets targetStrs mfilter =
@@ -555,35 +589,40 @@ resolveTargetSelectors knowntargets targetStrs mfilter =
 resolveTargetSelector
   :: KnownTargets
   -> Maybe ComponentKindFilter
-  -> TargetStringFileStatus
-  -> Either TargetSelectorProblem TargetSelector
+  -> WithConstraintSource TargetStringFileStatus
+  -> Either
+      (WithConstraintSource TargetSelectorProblem)
+      (WithConstraintSource TargetSelector)
 resolveTargetSelector knowntargets@KnownTargets{..} mfilter targetStrStatus =
-  case findMatch (matcher targetStrStatus) of
-    Unambiguous _
-      | projectIsEmpty -> Left TargetSelectorNoTargetsInProject
-    Unambiguous (TargetPackage TargetImplicitCwd [] _) ->
-      Left (TargetSelectorNoCurrentPackage targetStr)
-    Unambiguous target -> Right target
-    None errs
-      | projectIsEmpty -> Left TargetSelectorNoTargetsInProject
-      | otherwise -> Left (classifyMatchErrors errs)
-    Ambiguous _ targets
-      | Just kfilter <- mfilter
-      , [target] <- applyKindFilter kfilter targets ->
-          Right target
-    Ambiguous exactMatch targets ->
-      case disambiguateTargetSelectors
-        matcher
-        targetStrStatus
-        exactMatch
-        targets of
-        Right targets' -> Left (TargetSelectorAmbiguous targetStr targets')
-        Left ((m, ms) : _) -> Left (MatchingInternalError targetStr m ms)
-        Left [] -> internalError "resolveTargetSelector"
+  bimap
+    (\problem -> fmap (const problem) targetStrStatus)
+    (\selector -> fmap (const selector) targetStrStatus)
+    $ case findMatch $ matcher $ constraintInner targetStrStatus of
+      Unambiguous _
+        | projectIsEmpty -> Left TargetSelectorNoTargetsInProject
+      Unambiguous (TargetPackage TargetImplicitCwd [] _) ->
+        Left (TargetSelectorNoCurrentPackage targetStr)
+      Unambiguous target -> Right target
+      None errs
+        | projectIsEmpty -> Left TargetSelectorNoTargetsInProject
+        | otherwise -> Left (classifyMatchErrors errs)
+      Ambiguous _ targets
+        | Just kfilter <- mfilter
+        , [target] <- applyKindFilter kfilter targets ->
+            Right target
+      Ambiguous exactMatch targets ->
+        case disambiguateTargetSelectors
+          matcher
+          targetStrStatus
+          exactMatch
+          targets of
+          Right targets' -> Left (TargetSelectorAmbiguous targetStr targets')
+          Left ((m, ms) : _) -> Left (MatchingInternalError targetStr m ms)
+          Left [] -> internalError "resolveTargetSelector"
   where
     matcher = matchTargetSelector knowntargets
 
-    targetStr = forgetFileStatus targetStrStatus
+    targetStr = forgetFileStatus $ constraintInner targetStrStatus
 
     projectIsEmpty = null knownPackagesAll
 
@@ -692,7 +731,7 @@ data QualLevel
 
 disambiguateTargetSelectors
   :: (TargetStringFileStatus -> Match TargetSelector)
-  -> TargetStringFileStatus
+  -> WithConstraintSource TargetStringFileStatus
   -> MatchClass
   -> [TargetSelector]
   -> Either
@@ -718,7 +757,8 @@ disambiguateTargetSelectors matcher matchInput exactMatch matchResults =
       [ (matchResult, matchRenderings)
       | matchResult <- matchResults
       , let matchRenderings =
-              [ copyFileStatus matchInput rendering
+              -- TODO: Should we propagate `ConstraintSource` information here?
+              [ copyFileStatus (constraintInner matchInput) rendering
               | ql <- [QL1 .. QLFull]
               , rendering <- renderTargetSelector ql matchResult
               ]
@@ -733,7 +773,7 @@ disambiguateTargetSelectors matcher matchInput exactMatch matchResults =
     memoisedMatches =
       -- avoid recomputing the main one if it was an exact match
       ( if exactMatch == Exact
-          then Map.insert matchInput (Match Exact 0 matchResults)
+          then Map.insert (constraintInner matchInput) (Match Exact 0 matchResults)
           else id
       )
         $ Map.Lazy.fromList
@@ -799,21 +839,27 @@ reportTargetSelectorProblems verbosity problems = do
     [] -> return ()
     targets -> dieWithException verbosity $ ReportTargetSelectorProblems targets
 
-  case [(t, m, ms) | MatchingInternalError t m ms <- problems] of
-    [] -> return ()
-    ((target, originalMatch, renderingsAndMatches) : _) ->
-      dieWithException verbosity
-        $ MatchingInternalErrorErr
-          (showTargetString target)
-          (showTargetSelector originalMatch)
-          (showTargetSelectorKind originalMatch)
-        $ map
-          ( \(rendering, matches) ->
-              ( showTargetString rendering
-              , (map (\match -> showTargetSelector match ++ " (" ++ showTargetSelectorKind match ++ ")") matches)
+  case [ let
+          renderedMatches =
+            map
+              ( \(rendering, matches) ->
+                  ( showTargetString rendering
+                  , (map (\match -> showTargetSelector match ++ " (" ++ showTargetSelectorKind match ++ ")") matches)
+                  )
               )
-          )
-          renderingsAndMatches
+              renderingsAndMatches
+          in
+          MatchingInternalErrorErr
+            (showTargetString target)
+            (showTargetSelector originalMatch)
+            (showTargetSelectorKind originalMatch)
+            renderedMatches
+       | MatchingInternalError target originalMatch renderingsAndMatches <-
+          problems
+       ] of
+    [] -> return ()
+    (err : _) ->
+      dieWithException verbosity err
 
   case [(t, e, g) | TargetSelectorExpected t e g <- problems] of
     [] -> return ()
@@ -1838,7 +1884,7 @@ getKnownTargets
   :: forall m a
    . (Applicative m, Monad m)
   => DirActions m
-  -> [PackageSpecifier (SourcePackage (PackageLocation a))]
+  -> [PackageSpecifier (SourcePackage (PackageLocationProvenance a))]
   -> m KnownTargets
 getKnownTargets dirActions@DirActions{..} pkgs = do
   pinfo <- traverse (collectKnownPackageInfo dirActions) pkgs
@@ -1874,10 +1920,16 @@ getKnownTargets dirActions@DirActions{..} pkgs = do
 collectKnownPackageInfo
   :: (Applicative m, Monad m)
   => DirActions m
-  -> PackageSpecifier (SourcePackage (PackageLocation a))
+  -> PackageSpecifier (SourcePackage (PackageLocationProvenance a))
   -> m KnownPackage
-collectKnownPackageInfo _ (NamedPackage pkgname _props) =
-  return (KnownPackageName pkgname)
+collectKnownPackageInfo
+  _
+  ( Named
+      ( WithConstraintSource
+          { constraintInner = NamedPackage pkgname _props
+          }
+        )
+    ) = return (KnownPackageName pkgname)
 collectKnownPackageInfo
   dirActions@DirActions{..}
   ( SpecificSourcePackage
@@ -1887,7 +1939,7 @@ collectKnownPackageInfo
         }
     ) = do
     (pkgdir, pkgfile) <-
-      case loc of
+      case constraintInner loc of
         -- TODO: local tarballs, remote tarballs etc
         LocalUnpackedPackage dir -> do
           dirabs <- canonicalizePath dir

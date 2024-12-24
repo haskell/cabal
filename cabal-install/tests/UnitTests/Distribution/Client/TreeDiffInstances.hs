@@ -5,10 +5,12 @@
 module UnitTests.Distribution.Client.TreeDiffInstances () where
 
 import Distribution.Solver.Types.ConstraintSource
+import Distribution.Solver.Types.NamedPackage
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.ProjectConfigPath
 import Distribution.Solver.Types.Settings
+import Distribution.Solver.Types.WithConstraintSource
 
 import Distribution.Client.BuildReports.Types
 import Distribution.Client.CmdInstall.ClientInstallFlags
@@ -30,6 +32,7 @@ import Network.URI
 
 instance (ToExpr k, ToExpr v) => ToExpr (MapMappend k v)
 instance (ToExpr k, ToExpr v) => ToExpr (MapLast k v)
+instance ToExpr a => ToExpr (WithConstraintSource a)
 
 instance ToExpr (f FilePath) => ToExpr (SourceRepositoryPackage f)
 
@@ -43,6 +46,7 @@ instance ToExpr ClientInstallFlags
 instance ToExpr CombineStrategy
 instance ToExpr ProjectConfigPath
 instance ToExpr ConstraintSource
+instance ToExpr NamedPackage
 instance ToExpr CountConflicts
 instance ToExpr FineGrainedConflicts
 instance ToExpr IndependentGoals
