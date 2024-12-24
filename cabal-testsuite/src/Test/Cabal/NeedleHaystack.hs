@@ -66,7 +66,7 @@ multilineNeedleHaystack :: NeedleHaystack
 multilineNeedleHaystack = symNeedleHaystack delimitLines encodeLf
 
 -- | Minimal set up for finding the needle in the haystack. Doesn't change the
--- strings and doesn't displaying the haystack in any assertion failure message.
+-- strings and doesn't display the haystack in any assertion failure message.
 needleHaystack :: NeedleHaystack
 needleHaystack = NeedleHaystack True False txContainsId txContainsId
 
