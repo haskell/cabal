@@ -82,6 +82,7 @@ library
         -- this modules are moved from Cabal
         -- they are needed for as long until cabal-install moves to parsec parser
         Distribution.Deprecated.ParseUtils
+        Distribution.Deprecated.ProjectParseUtils
         Distribution.Deprecated.ReadP
         Distribution.Deprecated.ViewAsFieldDescr
 

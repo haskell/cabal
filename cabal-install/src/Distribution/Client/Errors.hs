@@ -33,6 +33,8 @@ import Distribution.Pretty
 import Distribution.Simple (VersionRange)
 import Distribution.Simple.Utils
 import Network.URI
+import Text.PrettyPrint hiding (render, (<>))
+import qualified Text.PrettyPrint as PP
 import Text.Regex.Posix.ByteString (WrapError)
 
 data CabalInstallException
@@ -112,7 +114,7 @@ data CabalInstallException
   | ParseExtraLinesFailedErr String String
   | ParseExtraLinesOkError [PWarning]
   | FetchPackageErr
-  | ReportParseResult String FilePath String String
+  | ReportParseResult String FilePath String Doc
   | ReportSourceRepoProblems String
   | BenchActionException
   | RenderBenchTargetProblem [String]
@@ -491,13 +493,12 @@ exceptionMessageCabalInstall e = case e of
   ParseExtraLinesOkError ws -> unlines (map (showPWarning "Error parsing additional config lines") ws)
   FetchPackageErr -> "fetchPackage: source repos not supported"
   ReportParseResult filetype filename line msg ->
-    "Error parsing "
-      ++ filetype
-      ++ " "
-      ++ filename
-      ++ line
-      ++ ":\n"
-      ++ msg
+    PP.render $
+      vcat
+        -- NOTE: As given to us, the line number string is prefixed by a colon.
+        [ text "Error parsing" <+> text filetype <+> text filename PP.<> text line PP.<> colon
+        , nest 1 $ text "-" <+> msg
+        ]
   ReportSourceRepoProblems errorStr -> errorStr
   BenchActionException ->
     "The bench command does not support '--only-dependencies'. "
