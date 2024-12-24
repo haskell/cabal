@@ -1,0 +1,6 @@
+When using configuration from:
+  - cabal-missing-package.project
+  - missing/pkgs.config
+  - missing/pkgs/default.config
+The following errors occurred:
+  - The package location 'pkg-doesnt-exist' does not exist.
