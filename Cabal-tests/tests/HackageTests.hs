@@ -1,10 +1,11 @@
-{-# LANGUAGE BangPatterns        #-}
-{-# LANGUAGE CPP                 #-}
-{-# LANGUAGE Rank2Types          #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 #if !MIN_VERSION_deepseq(1,4,0)
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 #endif
+{- FOURMOLU_DISABLE -}
 
 module Main where
 

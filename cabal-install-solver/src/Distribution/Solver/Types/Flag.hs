@@ -1,6 +1,6 @@
 module Distribution.Solver.Types.Flag
-    ( FlagType(..)
-    ) where
+  ( FlagType (..)
+  ) where
 
 import Prelude (Eq, Show)
 

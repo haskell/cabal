@@ -1,12 +1,12 @@
 module UnitTests.Distribution.Utils.ShortText
-    ( tests
-    ) where
+  ( tests
+  ) where
 
 import Data.Monoid as Mon
 import Test.Tasty
 import Test.Tasty.QuickCheck
 
-import Distribution.Compat.Binary (encode, decode)
+import Distribution.Compat.Binary (decode, encode)
 
 import Distribution.Utils.ShortText
 
@@ -26,8 +26,8 @@ prop_ShortTextBinaryId a = (decode . encode) a' == a'
 
 tests :: [TestTree]
 tests =
-    [ testProperty "ShortText Id" prop_ShortTextId
-    , testProperty "ShortText Ord" prop_ShortTextOrd
-    , testProperty "ShortText Monoid" prop_ShortTextMonoid
-    , testProperty "ShortText BinaryId" prop_ShortTextBinaryId
-    ]
+  [ testProperty "ShortText Id" prop_ShortTextId
+  , testProperty "ShortText Ord" prop_ShortTextOrd
+  , testProperty "ShortText Monoid" prop_ShortTextMonoid
+  , testProperty "ShortText BinaryId" prop_ShortTextBinaryId
+  ]

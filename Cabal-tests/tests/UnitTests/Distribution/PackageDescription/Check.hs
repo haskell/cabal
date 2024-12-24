@@ -14,24 +14,24 @@ import Test.Tasty.HUnit
 -- instances
 import Test.QuickCheck.Instances.Cabal ()
 
-
 tests :: [TestTree]
 tests =
-    [ testCase "Unique ignore strings" (uniqueNames @?= True)
-    , testCase "Short ignore identifiers" (longerThan @?= [])
-    , testCase "Parsimonious '-' use" (usingTooManyDashes @?= [])
-    ]
+  [ testCase "Unique ignore strings" (uniqueNames @?= True)
+  , testCase "Short ignore identifiers" (longerThan @?= [])
+  , testCase "Parsimonious '-' use" (usingTooManyDashes @?= [])
+  ]
   where
     allExplanationIdStrings :: [CheckExplanationIDString]
-    allExplanationIdStrings = map ppCheckExplanationId [minBound..maxBound]
+    allExplanationIdStrings = map ppCheckExplanationId [minBound .. maxBound]
 
     uniqueNames :: Bool
     uniqueNames = length allExplanationIdStrings == length (nub allExplanationIdStrings)
 
     longerThan :: [CheckExplanationIDString]
-    longerThan = filter ((>25). length) allExplanationIdStrings
+    longerThan = filter ((> 25) . length) allExplanationIdStrings
 
     usingTooManyDashes :: [CheckExplanationIDString]
-    usingTooManyDashes = filter ((>2) . length . filter (=='-'))
-                           allExplanationIdStrings
-
+    usingTooManyDashes =
+      filter
+        ((> 2) . length . filter (== '-'))
+        allExplanationIdStrings
