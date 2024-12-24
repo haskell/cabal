@@ -104,7 +104,7 @@ data LicenseExceptionId
     | Vsftpd_openssl_exception -- ^ @vsftpd-openssl-exception@, vsftpd OpenSSL exception, SPDX License List 3.23, SPDX License List 3.25
     | WxWindows_exception_3_1 -- ^ @WxWindows-exception-3.1@, WxWindows Library Exception 3.1
     | X11vnc_openssl_exception -- ^ @x11vnc-openssl-exception@, x11vnc OpenSSL Exception, SPDX License List 3.23, SPDX License List 3.25
-  deriving (Eq, Ord, Enum, Bounded, Show, Read, Typeable, Data, Generic)
+  deriving (Eq, Ord, Enum, Bounded, Show, Read, Data, Generic)
 
 instance Binary LicenseExceptionId where
     put = Binary.putWord8 . fromIntegral . fromEnum

@@ -13,7 +13,6 @@ where
 import Control.Applicative (Alternative (many, (<|>)), (<**>))
 import Control.Exception (Exception (displayException), throw)
 import Control.Monad (forM_, when)
-import Data.Data (Typeable)
 import Data.Maybe (listToMaybe)
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as T (toStrict)
@@ -136,7 +135,7 @@ data VersionParseException = VersionParseException
   , versionExecutable :: FilePath
   -- ^ The compiler which produced the string.
   }
-  deriving (Typeable, Show)
+  deriving (Show)
 
 instance Exception VersionParseException where
   displayException exception =

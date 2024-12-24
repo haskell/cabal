@@ -1121,7 +1121,7 @@ checkDirectoryModificationTime dir mtime =
 handleErrorCall :: a -> IO a -> IO a
 handleErrorCall e = handle handler
   where
-    handler (ErrorCallWithLocation _ _) = return e
+    handler (ErrorCall _) = return e
 
 -- | Run an IO computation, returning @e@ if there is any 'IOException'.
 --

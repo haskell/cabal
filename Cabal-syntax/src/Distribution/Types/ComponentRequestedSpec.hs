@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 module Distribution.Types.ComponentRequestedSpec
@@ -67,7 +66,7 @@ data ComponentRequestedSpec
       , benchmarksRequested :: Bool
       }
   | OneComponentRequestedSpec ComponentName
-  deriving (Generic, Read, Show, Eq, Typeable)
+  deriving (Generic, Read, Show, Eq)
 
 instance Binary ComponentRequestedSpec
 instance Structured ComponentRequestedSpec

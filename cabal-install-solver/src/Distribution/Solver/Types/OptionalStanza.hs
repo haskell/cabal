@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
 module Distribution.Solver.Types.OptionalStanza (
     -- * OptionalStanza
@@ -38,7 +37,7 @@ import Distribution.Utils.Structured (Structured (..), nominalStructure)
 data OptionalStanza
     = TestStanzas
     | BenchStanzas
-  deriving (Eq, Ord, Enum, Bounded, Show, Generic, Typeable)
+  deriving (Eq, Ord, Enum, Bounded, Show, Generic)
 
 -- | String representation of an OptionalStanza.
 showStanza :: OptionalStanza -> String

@@ -37,7 +37,7 @@ data PackageLocation local
     RepoTarballPackage Repo PackageId local
   | -- | A package available from a version control system source repository
     RemoteSourceRepoPackage SourceRepoMaybe local
-  deriving (Show, Functor, Eq, Ord, Generic, Typeable)
+  deriving (Show, Functor, Eq, Ord, Generic)
 
 instance Binary local => Binary (PackageLocation local)
 instance Structured local => Structured (PackageLocation local)

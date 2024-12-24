@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
@@ -17,7 +16,6 @@ module Test.Cabal.TestCode (
 ) where
 
 import Control.Exception (Exception (..))
-import Data.Typeable     (Typeable)
 
 -------------------------------------------------------------------------------
 -- TestCode
@@ -31,7 +29,7 @@ data TestCode
     | TestCodeFail
     | TestCodeFlakyFailed IssueID
     | TestCodeFlakyPassed IssueID
-  deriving (Eq, Show, Read, Typeable)
+  deriving (Eq, Show, Read)
 
 instance Exception TestCode
   where
@@ -53,7 +51,7 @@ isTestCodeSkip _                = False
 type TestPassed = Bool
 
 newtype IssueID = IssueID Int
-  deriving newtype (Eq, Typeable, Num, Show, Read)
+  deriving newtype (Eq, Num, Show, Read)
 
 data FlakyStatus
   = NotFlaky

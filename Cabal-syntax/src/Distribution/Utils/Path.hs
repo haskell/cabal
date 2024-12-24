@@ -201,7 +201,7 @@ data AllowAbsolute
 -- until we interpret them (using e.g. 'interpretSymbolicPath').
 newtype SymbolicPathX (allowAbsolute :: AllowAbsolute) (from :: Type) (to :: FileOrDir)
   = SymbolicPath FilePath
-  deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
+  deriving (Generic, Show, Read, Eq, Ord, Data)
 
 type role SymbolicPathX nominal nominal nominal
 

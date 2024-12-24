@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -203,7 +202,6 @@ data ConfigStateFileError
       PackageIdentifier
       PackageIdentifier
       (Either ConfigStateFileError LocalBuildInfo)
-  deriving (Typeable)
 
 -- | Format a 'ConfigStateFileError' as a user-facing error message.
 dispConfigStateFileError :: ConfigStateFileError -> Doc

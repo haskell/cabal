@@ -1,6 +1,5 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
@@ -51,7 +50,7 @@ data GlobalFlags = GlobalFlags
   , globalNumericVersion :: Flag Bool
   , globalWorkingDir :: Flag (SymbolicPath CWD (Dir Pkg))
   }
-  deriving (Generic, Typeable)
+  deriving (Generic)
 
 defaultGlobalFlags :: GlobalFlags
 defaultGlobalFlags =

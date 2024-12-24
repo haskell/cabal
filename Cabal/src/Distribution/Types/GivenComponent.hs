@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 module Distribution.Types.GivenComponent
@@ -25,7 +24,7 @@ data GivenComponent = GivenComponent
   -- only, not for any component
   , givenComponentId :: ComponentId
   }
-  deriving (Generic, Read, Show, Eq, Typeable)
+  deriving (Generic, Read, Show, Eq)
 
 instance Binary GivenComponent
 instance Structured GivenComponent
@@ -42,7 +41,7 @@ data PromisedComponent = PromisedComponent
   -- only, not for any component
   , promisedComponentId :: ComponentId
   }
-  deriving (Generic, Read, Show, Eq, Typeable)
+  deriving (Generic, Read, Show, Eq)
 
 instance Binary PromisedComponent
 instance Structured PromisedComponent

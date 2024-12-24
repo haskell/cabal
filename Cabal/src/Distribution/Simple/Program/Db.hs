@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 
@@ -106,7 +105,6 @@ data ProgramDb = ProgramDb
   , progOverrideEnv :: [(String, Maybe String)]
   , configuredProgs :: ConfiguredProgs
   }
-  deriving (Typeable)
 
 type UnconfiguredProgram = (Program, Maybe FilePath, [ProgArg])
 type UnconfiguredProgs = Map.Map String UnconfiguredProgram

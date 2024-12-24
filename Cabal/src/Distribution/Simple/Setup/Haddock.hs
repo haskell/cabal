@@ -1,6 +1,5 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
@@ -76,7 +75,7 @@ import qualified Text.PrettyPrint as Disp
 --    from documentation tarballs, and we might also want to use different
 --    flags than for development builds, so in this case we store the generated
 --    documentation in @<dist>/doc/html/<package id>-docs@.
-data HaddockTarget = ForHackage | ForDevelopment deriving (Eq, Show, Generic, Typeable)
+data HaddockTarget = ForHackage | ForDevelopment deriving (Eq, Show, Generic)
 
 instance Binary HaddockTarget
 instance Structured HaddockTarget
@@ -116,7 +115,7 @@ data HaddockFlags = HaddockFlags
   , haddockOutputDir :: Flag FilePath
   , haddockUseUnicode :: Flag Bool
   }
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic)
 
 pattern HaddockCommonFlags
   :: Flag Verbosity
@@ -442,7 +441,7 @@ data HaddockProjectFlags = HaddockProjectFlags
     haddockProjectResourcesDir :: Flag String
   , haddockProjectUseUnicode :: Flag Bool
   }
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic)
 
 defaultHaddockProjectFlags :: HaddockProjectFlags
 defaultHaddockProjectFlags =

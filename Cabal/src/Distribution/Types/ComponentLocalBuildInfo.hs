@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -110,7 +109,7 @@ data ComponentLocalBuildInfo
       , componentExeDeps :: [UnitId]
       , componentInternalDeps :: [UnitId]
       }
-  deriving (Generic, Read, Show, Typeable)
+  deriving (Generic, Read, Show)
 
 instance Binary ComponentLocalBuildInfo
 instance Structured ComponentLocalBuildInfo

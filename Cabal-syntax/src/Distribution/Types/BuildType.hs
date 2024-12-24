@@ -30,7 +30,7 @@ data BuildType
   | -- | uses user-supplied @Setup.hs@ or @Setup.lhs@ (default)
     Custom
   | Hooks
-  deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
+  deriving (Generic, Show, Read, Eq, Ord, Data)
 
 instance Binary BuildType
 instance Structured BuildType

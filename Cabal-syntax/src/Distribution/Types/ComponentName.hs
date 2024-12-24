@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE PatternSynonyms #-}
 
@@ -25,14 +24,14 @@ import qualified Text.PrettyPrint as Disp
 data ComponentName
   = CLibName LibraryName
   | CNotLibName NotLibComponentName
-  deriving (Eq, Generic, Ord, Read, Show, Typeable)
+  deriving (Eq, Generic, Ord, Read, Show)
 
 data NotLibComponentName
   = CNLFLibName {toCompName :: UnqualComponentName}
   | CNLExeName {toCompName :: UnqualComponentName}
   | CNLTestName {toCompName :: UnqualComponentName}
   | CNLBenchName {toCompName :: UnqualComponentName}
-  deriving (Eq, Generic, Ord, Read, Show, Typeable)
+  deriving (Eq, Generic, Ord, Read, Show)
 
 pattern CFLibName :: UnqualComponentName -> ComponentName
 pattern CFLibName n = CNotLibName (CNLFLibName n)

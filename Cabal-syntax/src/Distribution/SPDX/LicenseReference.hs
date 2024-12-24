@@ -24,7 +24,7 @@ data LicenseRef = LicenseRef
   { _lrDocument :: !(Maybe String)
   , _lrLicense :: !String
   }
-  deriving (Show, Read, Eq, Ord, Typeable, Data, Generic)
+  deriving (Show, Read, Eq, Ord, Data, Generic)
 
 -- | License reference.
 licenseRef :: LicenseRef -> String

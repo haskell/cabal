@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -22,7 +21,7 @@ import qualified Text.Read as R
 
 -- | NubList : A de-duplicated list that maintains the original order.
 newtype NubList a = NubList {fromNubList :: [a]}
-  deriving (Eq, Generic, Typeable)
+  deriving (Eq, Generic)
 
 -- NubList assumes that nub retains the list order while removing duplicate
 -- elements (keeping the first occurrence). Documentation for "Data.List.nub"
