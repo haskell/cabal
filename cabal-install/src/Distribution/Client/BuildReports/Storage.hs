@@ -186,7 +186,7 @@ fromPlanPackage
 fromPlanPackage
   (Platform arch os)
   comp
-  (InstallPlan.Configured (ConfiguredPackage _ srcPkg flags _ deps))
+  (InstallPlan.Configured (ConfiguredPackage _ srcPkg flags _ deps) _)
   (Just buildResult) =
     Just
       ( newBuildReport
