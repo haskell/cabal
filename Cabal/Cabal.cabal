@@ -54,7 +54,7 @@ library
   if os(windows)
     build-depends: Win32 >= 2.3.0.0 && < 2.15
   else
-    build-depends: unix  >= 2.6.0.0 && < 2.9
+    build-depends: unix  >= 2.8.6.0 && < 2.9
 
   if flag(git-rev)
     build-depends: githash ^>= 0.1.7.0
