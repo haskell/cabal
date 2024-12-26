@@ -25,7 +25,7 @@ data ExeDependency
       PackageName
       UnqualComponentName -- name of executable component of package
       VersionRange
-  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
+  deriving (Generic, Read, Show, Eq, Ord, Data)
 
 instance Binary ExeDependency
 instance Structured ExeDependency

@@ -62,7 +62,7 @@ import Prelude ()
 -- 'NoFlag' and later flags override earlier ones.
 --
 -- Isomorphic to 'Maybe' a.
-data Flag a = Flag a | NoFlag deriving (Eq, Generic, Show, Read, Typeable, Foldable, Traversable)
+data Flag a = Flag a | NoFlag deriving (Eq, Generic, Show, Read, Foldable, Traversable)
 
 instance Binary a => Binary (Flag a)
 instance Structured a => Structured (Flag a)

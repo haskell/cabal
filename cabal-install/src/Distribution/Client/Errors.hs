@@ -186,7 +186,7 @@ data CabalInstallException
   | MissingPackageList RemoteRepo
   | CmdPathAcceptsNoTargets
   | CmdPathCommandDoesn'tSupportDryRun
-  deriving (Show, Typeable)
+  deriving (Show)
 
 exceptionCodeCabalInstall :: CabalInstallException -> Int
 exceptionCodeCabalInstall e = case e of

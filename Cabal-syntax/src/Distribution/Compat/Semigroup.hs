@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -18,7 +17,6 @@ module Distribution.Compat.Semigroup
   , gmempty
   ) where
 
-import Data.Typeable (Typeable)
 import Distribution.Compat.Binary (Binary)
 import Distribution.Utils.Structured (Structured)
 
@@ -39,7 +37,7 @@ instance Semigroup (First' a) where
 
 -- | A copy of 'Data.Semigroup.Last'.
 newtype Last' a = Last' {getLast' :: a}
-  deriving (Eq, Ord, Read, Show, Generic, Binary, Typeable)
+  deriving (Eq, Ord, Read, Show, Generic, Binary)
 
 instance Structured a => Structured (Last' a)
 
@@ -52,7 +50,7 @@ instance Functor Last' where
 -- | A wrapper around 'Maybe', providing the 'Semigroup' and 'Monoid' instances
 -- implemented for 'Maybe' since @base-4.11@.
 newtype Option' a = Option' {getOption' :: Maybe a}
-  deriving (Eq, Ord, Read, Show, Binary, Generic, Functor, Typeable)
+  deriving (Eq, Ord, Read, Show, Binary, Generic, Functor)
 
 instance Structured a => Structured (Option' a)
 

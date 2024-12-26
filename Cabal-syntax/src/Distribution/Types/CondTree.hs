@@ -61,7 +61,7 @@ data CondTree v c a = CondNode
   , condTreeConstraints :: c
   , condTreeComponents :: [CondBranch v c a]
   }
-  deriving (Show, Eq, Typeable, Data, Generic, Functor, Foldable, Traversable)
+  deriving (Show, Eq, Data, Generic, Functor, Foldable, Traversable)
 
 instance (Binary v, Binary c, Binary a) => Binary (CondTree v c a)
 instance (Structured v, Structured c, Structured a) => Structured (CondTree v c a)
@@ -82,7 +82,7 @@ data CondBranch v c a = CondBranch
   , condBranchIfTrue :: CondTree v c a
   , condBranchIfFalse :: Maybe (CondTree v c a)
   }
-  deriving (Show, Eq, Typeable, Data, Generic, Functor, Traversable)
+  deriving (Show, Eq, Data, Generic, Functor, Traversable)
 
 -- This instance is written by hand because GHC 8.0.1/8.0.2 infinite
 -- loops when trying to derive it with optimizations.  See

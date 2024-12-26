@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 
 module Distribution.Client.Compat.Semaphore
@@ -22,13 +21,12 @@ import Control.Exception (mask_, onException)
 import Control.Monad (join, unless)
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
-import Data.Typeable (Typeable)
 
 -- | 'QSem' is a quantity semaphore in which the resource is acquired
 -- and released in units of one. It provides guaranteed FIFO ordering
 -- for satisfying blocked `waitQSem` calls.
 data QSem = QSem !(TVar Int) !(TVar [TVar Bool]) !(TVar [TVar Bool])
-  deriving (Eq, Typeable)
+  deriving (Eq)
 
 newQSem :: Int -> IO QSem
 newQSem i = atomically $ do

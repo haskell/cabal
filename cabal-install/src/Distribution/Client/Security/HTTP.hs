@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -180,7 +179,6 @@ mkReqHeaders reqHeaders mRange' =
 -------------------------------------------------------------------------------}
 
 data UnexpectedResponse = UnexpectedResponse URI Int
-  deriving (Typeable)
 
 instance HC.Pretty UnexpectedResponse where
   pretty (UnexpectedResponse uri code) =

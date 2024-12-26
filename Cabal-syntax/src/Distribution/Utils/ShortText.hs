@@ -93,7 +93,7 @@ null :: ShortText -> Bool
 -- @since 2.0.0.2
 #if HAVE_SHORTBYTESTRING
 newtype ShortText = ST { unST :: BS.Short.ShortByteString }
-                  deriving (Eq,Ord,Generic,Data,Typeable)
+                  deriving (Eq,Ord,Generic,Data)
 
 # if MIN_VERSION_binary(0,8,1)
 instance Binary ShortText where
@@ -115,7 +115,7 @@ unsafeFromUTF8BS = ST . BS.Short.toShort
 null = BS.Short.null . unST
 #else
 newtype ShortText = ST { unST :: String }
-                  deriving (Eq,Ord,Generic,Data,Typeable)
+                  deriving (Eq,Ord,Generic,Data)
 
 instance Binary ShortText where
     put = put . encodeStringUtf8 . unST

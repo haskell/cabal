@@ -78,8 +78,9 @@ jobs:
         # support, so the PR *must* have a changelog entry.
         ghc:
           [
+            "9.12.1",
             "9.10.1",
-            "9.8.2",
+            "9.8.4",
             "9.6.6",
             "9.4.8",
             "9.2.8",

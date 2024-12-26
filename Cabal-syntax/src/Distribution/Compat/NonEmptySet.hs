@@ -32,7 +32,6 @@ import Control.DeepSeq (NFData (..))
 import Data.Data (Data)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Semigroup (Semigroup (..))
-import Data.Typeable (Typeable)
 
 import qualified Data.Foldable as F
 import qualified Data.Set as Set
@@ -48,7 +47,7 @@ import Control.Monad (fail)
 
 -- | @since 3.4.0.0
 newtype NonEmptySet a = NES (Set.Set a)
-  deriving (Eq, Ord, Typeable, Data, Read)
+  deriving (Eq, Ord, Data, Read)
 
 -------------------------------------------------------------------------------
 -- Instances

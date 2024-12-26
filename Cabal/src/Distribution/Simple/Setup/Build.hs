@@ -1,6 +1,5 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
@@ -62,7 +61,7 @@ data BuildFlags = BuildFlags
   , buildNumJobs :: Flag (Maybe Int)
   , buildUseSemaphore :: Flag String
   }
-  deriving (Read, Show, Generic, Typeable)
+  deriving (Read, Show, Generic)
 
 pattern BuildCommonFlags
   :: Flag Verbosity

@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 -----------------------------------------------------------------------------
@@ -92,7 +91,7 @@ data Verbosity = Verbosity
   , vFlags :: Set VerbosityFlag
   , vQuiet :: Bool
   }
-  deriving (Generic, Show, Read, Typeable)
+  deriving (Generic, Show, Read)
 
 mkVerbosity :: VerbosityLevel -> Verbosity
 mkVerbosity l = Verbosity{vLevel = l, vFlags = Set.empty, vQuiet = False}

@@ -31,7 +31,7 @@ data Mixin = Mixin
   , mixinLibraryName :: LibraryName
   , mixinIncludeRenaming :: IncludeRenaming
   }
-  deriving (Show, Read, Eq, Ord, Typeable, Data, Generic)
+  deriving (Show, Read, Eq, Ord, Data, Generic)
 
 instance Binary Mixin
 instance Structured Mixin

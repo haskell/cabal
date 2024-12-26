@@ -1,6 +1,5 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
@@ -235,7 +234,7 @@ data ConfigFlags = ConfigFlags
   -- `build-tool-depends` will be ignored. This allows a Cabal package with
   -- build-tool-dependencies to be built even if the tool is not found.
   }
-  deriving (Generic, Read, Show, Typeable)
+  deriving (Generic, Read, Show)
 
 pattern ConfigCommonFlags
   :: Flag Verbosity
