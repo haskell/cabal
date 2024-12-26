@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -55,7 +54,7 @@ import System.Posix.Files ( modificationTime )
 -- | An opaque type representing a file's modification time, represented
 -- internally as a 64-bit unsigned integer in the Windows UTC format.
 newtype ModTime = ModTime Word64
-  deriving (Binary, Generic, Bounded, Eq, Ord, Typeable)
+  deriving (Binary, Generic, Bounded, Eq, Ord)
 
 instance Structured ModTime
 

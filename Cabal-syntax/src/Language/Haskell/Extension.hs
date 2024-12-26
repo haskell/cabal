@@ -59,7 +59,7 @@ data Language
     GHC2024
   | -- | An unknown language, identified by its name.
     UnknownLanguage String
-  deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
+  deriving (Generic, Show, Read, Eq, Ord, Data)
 
 instance Binary Language
 instance Structured Language
@@ -115,7 +115,7 @@ data Extension
   | -- | An unknown extension, identified by the name of its @LANGUAGE@
     -- pragma.
     UnknownExtension String
-  deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
+  deriving (Generic, Show, Read, Eq, Ord, Data)
 
 instance Binary Extension
 instance Structured Extension
@@ -556,7 +556,7 @@ data KnownExtension
   | -- | Allow use of or-pattern syntax, condensing multiple patterns
     -- into a single one.
     OrPatterns
-  deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
+  deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Data)
 
 instance Binary KnownExtension
 instance Structured KnownExtension

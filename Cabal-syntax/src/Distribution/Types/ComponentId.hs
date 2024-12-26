@@ -32,7 +32,7 @@ import Text.PrettyPrint (text)
 --
 -- @since 2.0.0.2
 newtype ComponentId = ComponentId ShortText
-  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
+  deriving (Generic, Read, Show, Eq, Ord, Data)
 
 -- | Construct a 'ComponentId' from a 'String'
 --

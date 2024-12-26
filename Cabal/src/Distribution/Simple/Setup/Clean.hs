@@ -1,6 +1,5 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
@@ -54,7 +53,7 @@ data CleanFlags = CleanFlags
   { cleanCommonFlags :: !CommonSetupFlags
   , cleanSaveConf :: Flag Bool
   }
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic)
 
 pattern CleanCommonFlags
   :: Flag Verbosity

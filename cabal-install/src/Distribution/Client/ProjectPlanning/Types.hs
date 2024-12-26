@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -193,7 +192,7 @@ data ElaboratedSharedConfig = ElaboratedSharedConfig
   -- used.
   , pkgConfigReplOptions :: ReplOptions
   }
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic)
 
 -- TODO: [code cleanup] no Eq instance
 
@@ -338,7 +337,7 @@ data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
     elabPkgOrComp :: ElaboratedPackageOrComponent
   -- ^ Component/package specific information
   }
-  deriving (Eq, Show, Generic, Typeable)
+  deriving (Eq, Show, Generic)
 
 normaliseConfiguredPackage
   :: ElaboratedSharedConfig
@@ -934,7 +933,7 @@ data SetupScriptStyle
   | SetupCustomImplicitDeps
   | SetupNonCustomExternalLib
   | SetupNonCustomInternalLib
-  deriving (Eq, Show, Generic, Typeable)
+  deriving (Eq, Show, Generic)
 
 instance Binary SetupScriptStyle
 instance Structured SetupScriptStyle

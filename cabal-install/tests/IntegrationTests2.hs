@@ -1,7 +1,6 @@
 {- FOURMOLU_DISABLE -}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -1818,7 +1817,6 @@ mkProjectConfig (GhcPath ghcPath) =
 
 
 data GhcPath = GhcPath (Maybe FilePath)
-  deriving Typeable
 
 instance IsOption GhcPath where
   defaultValue = GhcPath Nothing

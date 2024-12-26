@@ -1,6 +1,5 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
@@ -59,7 +58,7 @@ data ReplOptions = ReplOptions
   , replOptionsNoLoad :: Flag Bool
   , replOptionsFlagOutput :: Flag FilePath
   }
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic)
 
 pattern ReplCommonFlags
   :: Flag Verbosity
@@ -102,7 +101,7 @@ data ReplFlags = ReplFlags
   , replReload :: Flag Bool
   , replReplOptions :: ReplOptions
   }
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic)
 
 instance Binary ReplFlags
 instance Structured ReplFlags
