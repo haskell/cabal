@@ -35,7 +35,7 @@ data CabalSpecVersion
   | -- 3.10: no changes
     CabalSpecV3_12
   | CabalSpecV3_14
-  deriving (Eq, Ord, Show, Read, Enum, Bounded, Typeable, Data, Generic)
+  deriving (Eq, Ord, Show, Read, Enum, Bounded, Data, Generic)
 
 instance Binary CabalSpecVersion
 instance Structured CabalSpecVersion

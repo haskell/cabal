@@ -151,7 +151,7 @@ data PackageDescription = PackageDescription
   , extraDocFiles :: [RelativePath Pkg File]
   , extraFiles :: [RelativePath Pkg File]
   }
-  deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
+  deriving (Generic, Show, Read, Eq, Ord, Data)
 
 instance Binary PackageDescription
 instance Structured PackageDescription

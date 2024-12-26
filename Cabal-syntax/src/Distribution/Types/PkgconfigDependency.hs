@@ -23,7 +23,7 @@ data PkgconfigDependency
   = PkgconfigDependency
       PkgconfigName
       PkgconfigVersionRange
-  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
+  deriving (Generic, Read, Show, Eq, Ord, Data)
 
 instance Binary PkgconfigDependency
 instance Structured PkgconfigDependency

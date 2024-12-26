@@ -35,7 +35,7 @@ import qualified Text.PrettyPrint as Disp
 -- | SPDX License identifiers list v3.25
 data LicenseId
 {{ licenseIds }}
-  deriving (Eq, Ord, Enum, Bounded, Show, Read, Typeable, Data)
+  deriving (Eq, Ord, Enum, Bounded, Show, Read, Data)
 
 instance Binary LicenseId where
     -- Word16 is encoded in big endianness

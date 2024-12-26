@@ -424,7 +424,7 @@ die' verbosity msg = withFrozenCallStack $ do
 
 -- Type which will be a wrapper for cabal -exceptions and cabal-install exceptions
 data VerboseException a = VerboseException CallStack POSIXTime Verbosity a
-  deriving (Show, Typeable)
+  deriving (Show)
 
 -- Function which will replace the existing die' call sites
 dieWithException :: (HasCallStack, Show a1, Typeable a1, Exception (VerboseException a1)) => Verbosity -> a1 -> IO a

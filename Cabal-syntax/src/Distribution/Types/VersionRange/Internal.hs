@@ -56,7 +56,7 @@ data VersionRange
   | MajorBoundVersion Version -- @^>= ver@ (same as >= ver && < MAJ(ver)+1)
   | UnionVersionRanges VersionRange VersionRange
   | IntersectVersionRanges VersionRange VersionRange
-  deriving (Data, Eq, Ord, Generic, Read, Show, Typeable)
+  deriving (Data, Eq, Ord, Generic, Read, Show)
 
 instance Binary VersionRange
 instance Structured VersionRange
@@ -179,7 +179,6 @@ data VersionRangeF a
     , Generic
     , Read
     , Show
-    , Typeable
     , Functor
     , Foldable
     , Traversable

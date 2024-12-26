@@ -1,6 +1,5 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
@@ -61,7 +60,7 @@ import qualified Text.PrettyPrint as Disp
 -- ------------------------------------------------------------
 
 data TestShowDetails = Never | Failures | Always | Streaming | Direct
-  deriving (Eq, Ord, Enum, Bounded, Generic, Show, Typeable)
+  deriving (Eq, Ord, Enum, Bounded, Generic, Show)
 
 instance Binary TestShowDetails
 instance Structured TestShowDetails
@@ -102,7 +101,7 @@ data TestFlags = TestFlags
   , -- TODO: think about if/how options are passed to test exes
     testOptions :: [PathTemplate]
   }
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic)
 
 pattern TestCommonFlags
   :: Flag Verbosity

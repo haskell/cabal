@@ -1,6 +1,5 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
@@ -56,7 +55,7 @@ data BenchmarkFlags = BenchmarkFlags
   { benchmarkCommonFlags :: !CommonSetupFlags
   , benchmarkOptions :: [PathTemplate]
   }
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic)
 
 pattern BenchmarkCommonFlags
   :: Flag Verbosity

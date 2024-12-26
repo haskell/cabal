@@ -1,6 +1,5 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
@@ -57,7 +56,7 @@ data SDistFlags = SDistFlags
   , sDistDirectory :: Flag FilePath
   , sDistListSources :: Flag FilePath
   }
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic)
 
 pattern SDistCommonFlags
   :: Flag Verbosity
