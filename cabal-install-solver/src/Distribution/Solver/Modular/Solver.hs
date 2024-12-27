@@ -171,6 +171,7 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
 --
 -- This only does something if the @debug-tracetree@ configure argument was
 -- given; otherwise this is just the identity function.
+{- FOURMOLU_DISABLE -}
 traceTree ::
 #ifdef DEBUG_TRACETREE
   GSimpleTree a =>
@@ -183,6 +184,7 @@ traceTree = gtraceJson
 #else
 traceTree _ _ = id
 #endif
+{- FOURMOLU_ENABLE -}
 
 #ifdef DEBUG_TRACETREE
 instance GSimpleTree (Tree d c) where
