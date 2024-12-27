@@ -113,7 +113,9 @@ member c (CS m) = go (IM.toList m)
     i = ord c
 
 -- | Insert 'Char' into 'CharSet'.
+{- FOURMOLU_DISABLE -}
 insert :: Char -> CharSet -> CharSet
+{- FOURMOLU_ENABLE -}
 insert c (CS m) = normalise (IM.insert (ord c) (ord c) m)
 
 -- | Union of two 'CharSet's.
