@@ -30,23 +30,29 @@ init: ## Set up git hooks and ignored revisions.
 # NOTE: Keep this in sync with `.github/workflows/format.yml`.
 FORMAT_DIRS := \
 	Cabal \
+	Cabal-syntax \
+	cabal-install \
+	cabal-validate
+
+FORMAT_DIRS_TODO := \
 	Cabal-QuickCheck \
 	Cabal-described \
 	Cabal-hooks \
-	Cabal-syntax \
 	Cabal-tests \
 	Cabal-tree-diff \
 	bootstrap \
 	buildinfo-reference-generator \
 	cabal-benchmarks \
 	cabal-dev-scripts \
-	cabal-install \
 	cabal-install-solver \
 	cabal-testsuite/main \
 	cabal-testsuite/src \
 	cabal-testsuite/static \
-	cabal-validate \
 	solver-benchmarks
+
+.PHONY: style-todo
+style-todo: ## Configured for fourmolu, avoiding GHC parser failures
+	@fourmolu -q $(FORMAT_DIRS_TODO) > /dev/null
 
 .PHONY: style
 style: ## Run the code styler
