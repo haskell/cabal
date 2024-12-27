@@ -92,12 +92,14 @@ idrisCmd local = Px.joinPath $ splitDirectories $ ".." Px.</> ".." Px.</> bd Px.
 #else
 idrisCmd local = ".." </> ".." </> bd </> "idris" </> "idris"
 #endif
+{- FOURMOLU_DISABLE -}
   where
     bd =
 #if MIN_VERSION_Cabal(3,11,0)
         getSymbolicPath $
 #endif
         buildDir local
+{- FOURMOLU_ENABLE -}
 
 -- -----------------------------------------------------------------------------
 -- Make Commands
@@ -223,6 +225,7 @@ generateToolchainModule verbosity srcDir toolDir = do
     createDirectoryIfMissingVerbose verbosity True srcDir
     rewriteFileEx verbosity toolPath (commonContent ++ toolContent)
 
+{- FOURMOLU_DISABLE -}
 idrisConfigure _ flags pkgdesc local = do
     configureRTS
     withLibLBI pkgdesc local $ \_ libcfg -> do
@@ -256,6 +259,7 @@ idrisConfigure _ flags pkgdesc local = do
 #if !(MIN_VERSION_Cabal(2,0,0))
       autogenComponentModulesDir lbi _ = autogenModulesDir lbi
 #endif
+{- FOURMOLU_ENABLE -}
 
 #if !MIN_VERSION_Cabal(3,0,0)
 idrisPreSDist args flags = do
@@ -372,6 +376,7 @@ idrisInstall verbosity copy pkg local
 -- We want it to be the install directory where we put the idris libraries.
 fixPkg pkg target = pkg { dataDir = target }
 
+{- FOURMOLU_DISABLE -}
 idrisTestHook args pkg local hooks flags = do
   let target =
 #if MIN_VERSION_Cabal(3,11,0)
@@ -403,3 +408,4 @@ main = defaultMainWithHooks $ simpleUserHooks
 #endif
    , testHook = idrisTestHook
    }
+{- FOURMOLU_ENABLE -}
