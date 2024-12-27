@@ -29,25 +29,24 @@ init: ## Set up git hooks and ignored revisions.
 
 # NOTE: Keep this in sync with `.github/workflows/format.yml`.
 FORMAT_DIRS := \
-	bootstrap \
-	buildinfo-reference-generator \
 	Cabal \
-	Cabal-benchmarks \
-	Cabal-described \
-	Cabal-dev-scripts \
-	Cabal-hooks \
-	cabal-install \
-	cabal-install-solver \
 	Cabal-QuickCheck \
+	Cabal-described \
+	Cabal-hooks \
 	Cabal-syntax \
 	Cabal-tests \
-	Cabal-testsuite/src \
-	Cabal-testsuite/main \
-	Cabal-testsuite/static \
 	Cabal-tree-diff \
+	bootstrap \
+	buildinfo-reference-generator \
+	cabal-benchmarks \
+	cabal-dev-scripts \
+	cabal-install \
+	cabal-install-solver \
+	cabal-testsuite/main \
+	cabal-testsuite/src \
+	cabal-testsuite/static \
 	cabal-validate \
 	solver-benchmarks
-
 
 .PHONY: style
 style: ## Run the code styler
