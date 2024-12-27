@@ -55,16 +55,16 @@ style-todo: ## Configured for fourmolu, avoiding GHC parser failures
 	@fourmolu -q $(FORMAT_DIRS_TODO) > /dev/null
 
 .PHONY: style
-style: ## Run the code styler
+style: ## Run the code styler.
 	@fourmolu -q -i $(FORMAT_DIRS)
 
 .PHONY: style-modified
-style-modified: ## Run the code styler on modified files
+style-modified: ## Run the code styler on modified files.
 	@git ls-files --modified $(FORMAT_DIRS) \
 		| grep '.hs$$' | xargs -P $(PROCS) -I {} fourmolu -q -i {}
 
 .PHONY: style-commit
-style-commit: ## Run the code styler on the previous commit
+style-commit: ## Run the code styler on the previous commit.
 	@git diff --name-only HEAD $(COMMIT) -- $(FORMAT_DIRS) \
 		| grep '.hs$$' | xargs -P $(PROCS) -I {} fourmolu -q -i {}
 
