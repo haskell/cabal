@@ -295,9 +295,9 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
 
     baseCtx <- case targetCtx of
       ProjectContext -> do
-        when (null targetStrings) $
-          let pkgs = projectPackages $ projectConfig ctx
-              intro punct = text "With a project, the REPL command requires a single target" <> punct
+        let pkgs = projectPackages $ projectConfig ctx
+        when (null targetStrings && length pkgs /= 1) $
+          let intro punct = text "With a project, the REPL command requires a single target" <> punct
               project punct = case projectConfigProjectFile . projectConfigShared $ projectConfig ctx of
                 Flag projectName -> comma <+> (quotes (text projectName) <> punct)
                 _ -> Pretty.empty
