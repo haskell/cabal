@@ -310,8 +310,8 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
                 else
                   intro (char '.')
                   <+> (text "The packages in this project" <> project comma)
-                  <+> text "are:"
-                  $+$ (nest 1 $ vcat [text "-" <+> text pkg | pkg <- sort pkgs])
+                  <+> (text "are" <> colon)
+                  $+$ nest 1 (vcat [text "-" <+> text pkg | pkg <- sort pkgs])
            in dieWithException verbosity $ RenderReplTargetProblem [render msg]
         return ctx
       GlobalContext -> do
