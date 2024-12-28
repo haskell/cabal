@@ -167,8 +167,8 @@ import Data.List
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Distribution.Client.ProjectConfig
-  ( ProjectConfig (projectConfigShared)
-  , ProjectConfigShared (projectConfigConstraints, projectConfigMultiRepl)
+  ( ProjectConfig (..)
+  , ProjectConfigShared (..)
   )
 import Distribution.Client.ReplFlags
   ( EnvFlags (envIncludeTransitive, envPackages)
@@ -198,6 +198,7 @@ import System.FilePath
   , splitSearchPath
   , (</>)
   )
+import Text.PrettyPrint hiding ((<>))
 
 replCommand :: CommandUI (NixStyleFlags ReplFlags)
 replCommand =
@@ -292,7 +293,20 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
         distDir = distDirectory $ distDirLayout ctx
 
     baseCtx <- case targetCtx of
-      ProjectContext -> return ctx
+      ProjectContext -> do
+        when (null targetStrings) $
+          let pkgs = projectPackages $ projectConfig ctx
+              intro = text "With a project, the REPL command requires a target."
+              msg = case projectConfigProjectFile . projectConfigShared $ projectConfig ctx of
+                Flag project ->
+                  intro
+                    <+> (text "The packages in this project" <> comma)
+                    <+> (quotes (text project) <> comma)
+                    <+> text "are:"
+                    $+$ (nest 1 $ vcat [text "-" <+> text pkg | pkg <- sort pkgs])
+                _ -> intro
+           in dieWithException verbosity $ RenderReplTargetProblem [render msg]
+        return ctx
       GlobalContext -> do
         unless (null targetStrings) $
           dieWithException verbosity $
