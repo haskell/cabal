@@ -199,6 +199,7 @@ import System.FilePath
   , (</>)
   )
 import Text.PrettyPrint hiding ((<>))
+import qualified Text.PrettyPrint as Pretty
 
 replCommand :: CommandUI (NixStyleFlags ReplFlags)
 replCommand =
@@ -297,14 +298,14 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
         when (null targetStrings) $
           let pkgs = projectPackages $ projectConfig ctx
               intro = text "With a project, the REPL command requires a target."
-              msg = case projectConfigProjectFile . projectConfigShared $ projectConfig ctx of
-                Flag project ->
-                  intro
-                    <+> (text "The packages in this project" <> comma)
-                    <+> (quotes (text project) <> comma)
-                    <+> text "are:"
-                    $+$ (nest 1 $ vcat [text "-" <+> text pkg | pkg <- sort pkgs])
-                _ -> intro
+              project = case projectConfigProjectFile . projectConfigShared $ projectConfig ctx of
+                Flag projectName -> comma <+> (quotes (text projectName) <> comma)
+                _ -> Pretty.empty
+              msg =
+                intro
+                  <+> (text "The packages in this project" <> project)
+                  <+> text "are:"
+                  $+$ (nest 1 $ vcat [text "-" <+> text pkg | pkg <- sort pkgs])
            in dieWithException verbosity $ RenderReplTargetProblem [render msg]
         return ctx
       GlobalContext -> do
