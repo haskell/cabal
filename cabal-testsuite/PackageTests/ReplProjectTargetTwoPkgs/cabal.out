@@ -33,7 +33,19 @@ There are no packages in 'empty.project'. Please add a package to the project an
 # cabal repl
 # checking repl command with a missing 'missing.project'
 # cabal repl
-# checking repl command with the 'all' target
+# checking multi-repl command with the 'all' target
+# cabal repl
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - pkg-one-0.1 (interactive) (first run)
+ - pkg-two-0.1 (interactive) (first run)
+Configuring pkg-one-0.1...
+Preprocessing library for pkg-one-0.1...
+Configuring pkg-two-0.1...
+Preprocessing library for pkg-two-0.1...
+# checking multi-repl command with no target, should default to the 'all' target
+# cabal clean
 # cabal repl
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
