@@ -286,8 +286,22 @@ multiReplDecision ctx compiler flags =
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 replAction :: NixStyleFlags ReplFlags -> [String] -> GlobalFlags -> IO ()
-replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings globalFlags =
-  withContextAndSelectors AcceptNoTargets (Just LibKind) flags targetStrings globalFlags ReplCommand $ \targetCtx ctx targetSelectors -> do
+replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings' globalFlags = do
+  let withCtx strings = withContextAndSelectors AcceptNoTargets (Just LibKind) flags strings globalFlags ReplCommand
+
+  -- NOTE: The REPL will work with no targets in the context of a project if a
+  -- sole package is in the same directory as the project file. To have the same
+  -- behaviour when the package is somewhere else we adjust the targets.
+  targetStrings <- withCtx targetStrings' $ \targetCtx ctx _ ->
+    return . fromMaybe targetStrings' $ case targetCtx of
+      ProjectContext ->
+        let pkgs = projectPackages $ projectConfig ctx
+         in if length pkgs == 1
+              then pure <$> listToMaybe pkgs
+              else Nothing
+      _ -> Nothing
+
+  withCtx targetStrings $ \targetCtx ctx targetSelectors -> do
     when (buildSettingOnlyDeps (buildSettings ctx)) $
       dieWithException verbosity ReplCommandDoesn'tSupport
     let projectRoot = distProjectRootDirectory $ distDirLayout ctx
