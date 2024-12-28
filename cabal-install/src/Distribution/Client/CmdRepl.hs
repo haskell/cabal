@@ -157,6 +157,7 @@ import Distribution.Utils.Generic
 import Distribution.Verbosity
   ( lessVerbose
   , normal
+  , silent
   )
 import Language.Haskell.Extension
   ( Language (..)
@@ -170,8 +171,8 @@ import Data.List
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Distribution.Client.ProjectConfig
-  ( ProjectConfig (projectConfigShared)
-  , ProjectConfigShared (projectConfigConstraints, projectConfigMultiRepl)
+  ( ProjectConfig (..)
+  , ProjectConfigShared (..)
   )
 import Distribution.Client.ReplFlags
   ( EnvFlags (envIncludeTransitive, envPackages)
@@ -195,6 +196,8 @@ import System.FilePath
   , splitSearchPath
   , (</>)
   )
+import Text.PrettyPrint hiding ((<>))
+import qualified Text.PrettyPrint as Pretty
 
 replCommand :: CommandUI (NixStyleFlags ReplFlags)
 replCommand =
@@ -281,15 +284,50 @@ multiReplDecision ctx compiler flags =
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 replAction :: NixStyleFlags ReplFlags -> [String] -> GlobalFlags -> IO ()
-replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings globalFlags =
-  withContextAndSelectors verbosity AcceptNoTargets (Just LibKind) flags targetStrings globalFlags ReplCommand $ \targetCtx ctx targetSelectors -> do
+replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings' globalFlags = do
+  -- NOTE: The REPL will work with no targets in the context of a project if a
+  -- sole package is in the same directory as the project file. To have the same
+  -- behaviour when the package is somewhere else we adjust the targets.
+  targetStrings <-
+    if null targetStrings'
+      then withCtx silent targetStrings' $ \targetCtx ctx _ ->
+        return . fromMaybe [] $ case targetCtx of
+          ProjectContext ->
+            let pkgs = projectPackages $ projectConfig ctx
+             in if length pkgs == 1
+                  then pure <$> listToMaybe pkgs
+                  else Nothing
+          _ -> Nothing
+      else return targetStrings'
+
+  withCtx verbosity targetStrings $ \targetCtx ctx targetSelectors -> do
     when (buildSettingOnlyDeps (buildSettings ctx)) $
       dieWithException verbosity ReplCommandDoesn'tSupport
     let projectRoot = distProjectRootDirectory $ distDirLayout ctx
         distDir = distDirectory $ distDirLayout ctx
 
     baseCtx <- case targetCtx of
-      ProjectContext -> return ctx
+      ProjectContext -> do
+        let pkgs = projectPackages $ projectConfig ctx
+        when (null targetStrings && length pkgs /= 1) $
+          let singleTarget = text "With a project, the REPL command requires a single target"
+              project = case projectConfigProjectFile . projectConfigShared $ projectConfig ctx of
+                Flag projectName -> comma <+> (quotes (text projectName))
+                _ -> Pretty.empty
+              msg =
+                if null pkgs
+                  then
+                    (singleTarget <> comma)
+                      <+> (text "but there are no packages in this project" <> project <> comma)
+                      <+> text "to choose a package (library) or other component from"
+                      <+> "as the target for this command."
+                  else
+                    (singleTarget <> (char '.'))
+                      <+> (text "The packages in this project" <> project <> comma)
+                      <+> (text "are" <> colon)
+                      $+$ nest 1 (vcat [text "-" <+> text pkg | pkg <- sort pkgs])
+           in dieWithException verbosity $ RenderReplTargetProblem [render msg]
+        return ctx
       GlobalContext -> do
         unless (null targetStrings) $
           dieWithException verbosity $
@@ -517,6 +555,9 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
       where
         go m ("PATH", Just s) = foldl' (\m' f -> Map.insertWith (+) f 1 m') m (splitSearchPath s)
         go m _ = m
+
+    withCtx ctxVerbosity strings =
+      withContextAndSelectors ctxVerbosity AcceptNoTargets (Just LibKind) flags strings globalFlags ReplCommand
 
     verbosity = cfgVerbosity normal flags
     tempFileOptions = commonSetupTempFileOptions $ configCommonFlags configFlags
