@@ -301,17 +301,18 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
               project punct = case projectConfigProjectFile . projectConfigShared $ projectConfig ctx of
                 Flag projectName -> comma <+> (quotes (text projectName) <> punct)
                 _ -> Pretty.empty
-              msg = if null pkgs
-                then
-                  intro Pretty.empty
-                  <+> (text "but there are no packages in this project" <> project comma)
-                  <+> text "to choose a package (library) or other component from"
-                  <+> "as the target for this command."
-                else
-                  intro (char '.')
-                  <+> (text "The packages in this project" <> project comma)
-                  <+> (text "are" <> colon)
-                  $+$ nest 1 (vcat [text "-" <+> text pkg | pkg <- sort pkgs])
+              msg =
+                if null pkgs
+                  then
+                    intro Pretty.empty
+                      <+> (text "but there are no packages in this project" <> project comma)
+                      <+> text "to choose a package (library) or other component from"
+                      <+> "as the target for this command."
+                  else
+                    intro (char '.')
+                      <+> (text "The packages in this project" <> project comma)
+                      <+> (text "are" <> colon)
+                      $+$ nest 1 (vcat [text "-" <+> text pkg | pkg <- sort pkgs])
            in dieWithException verbosity $ RenderReplTargetProblem [render msg]
         return ctx
       GlobalContext -> do
