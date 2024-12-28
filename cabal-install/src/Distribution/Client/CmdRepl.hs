@@ -297,13 +297,19 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
       ProjectContext -> do
         when (null targetStrings) $
           let pkgs = projectPackages $ projectConfig ctx
-              intro = text "With a project, the REPL command requires a target."
-              project = case projectConfigProjectFile . projectConfigShared $ projectConfig ctx of
-                Flag projectName -> comma <+> (quotes (text projectName) <> comma)
+              intro punct = text "With a project, the REPL command requires a single target" <> punct
+              project punct = case projectConfigProjectFile . projectConfigShared $ projectConfig ctx of
+                Flag projectName -> comma <+> (quotes (text projectName) <> punct)
                 _ -> Pretty.empty
-              msg =
-                intro
-                  <+> (text "The packages in this project" <> project)
+              msg = if null pkgs
+                then
+                  intro Pretty.empty
+                  <+> (text "but there are no packages in this project" <> project comma)
+                  <+> text "to choose a package (library) or other component from"
+                  <+> "as the target for this command."
+                else
+                  intro (char '.')
+                  <+> (text "The packages in this project" <> project comma)
                   <+> text "are:"
                   $+$ (nest 1 $ vcat [text "-" <+> text pkg | pkg <- sort pkgs])
            in dieWithException verbosity $ RenderReplTargetProblem [render msg]
