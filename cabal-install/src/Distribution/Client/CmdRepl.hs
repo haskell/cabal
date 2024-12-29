@@ -102,7 +102,8 @@ import Distribution.Simple.Compiler
   , compilerCompatVersion
   )
 import Distribution.Simple.Setup
-  ( ReplOptions (..)
+  ( CommonSetupFlags (..)
+  , ReplOptions (..)
   , commonSetupTempFileOptions
   , setupVerbosity
   )
@@ -154,6 +155,7 @@ import Distribution.Utils.Generic
 import Distribution.Verbosity
   ( lessVerbose
   , normal
+  , silent
   )
 import Language.Haskell.Extension
   ( Language (..)
@@ -177,7 +179,7 @@ import Distribution.Client.ReplFlags
   , topReplOptions
   )
 import Distribution.Compat.Binary (decode)
-import Distribution.Simple.Flag (Flag (Flag), fromFlagOrDefault)
+import Distribution.Simple.Flag (Flag (Flag), fromFlagOrDefault, toFlag)
 import Distribution.Simple.Program.Builtin (ghcProgram)
 import Distribution.Simple.Program.Db (requireProgram)
 import Distribution.Simple.Program.Run
@@ -287,21 +289,43 @@ multiReplDecision ctx compiler flags =
 -- "Distribution.Client.ProjectOrchestration"
 replAction :: NixStyleFlags ReplFlags -> [String] -> GlobalFlags -> IO ()
 replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings' globalFlags = do
-  let withCtx strings = withContextAndSelectors AcceptNoTargets (Just LibKind) flags strings globalFlags ReplCommand
+  let withCtx verbosity' strings =
+        let flags' =
+              maybe
+                flags
+                ( \v ->
+                    let NixStyleFlags{configFlags = f1} = flags
+                        ConfigFlags{configCommonFlags = f2} = f1
+                     in flags
+                          { configFlags =
+                              f1
+                                { configCommonFlags =
+                                    f2
+                                      { setupVerbosity = v
+                                      }
+                                }
+                          }
+                )
+                verbosity'
+         in withContextAndSelectors AcceptNoTargets (Just LibKind) flags' strings globalFlags ReplCommand
 
   -- NOTE: The REPL will work with no targets in the context of a project if a
   -- sole package is in the same directory as the project file. To have the same
   -- behaviour when the package is somewhere else we adjust the targets.
-  targetStrings <- withCtx targetStrings' $ \targetCtx ctx _ ->
-    return . fromMaybe targetStrings' $ case targetCtx of
-      ProjectContext ->
-        let pkgs = projectPackages $ projectConfig ctx
-         in if length pkgs == 1
-              then pure <$> listToMaybe pkgs
-              else Nothing
-      _ -> Nothing
+  targetStrings <-
+    if null targetStrings'
+      then
+        withCtx (Just $ toFlag silent) targetStrings' $ \targetCtx ctx _ ->
+        return . fromMaybe [] $ case targetCtx of
+          ProjectContext ->
+            let pkgs = projectPackages $ projectConfig ctx
+            in if length pkgs == 1
+                  then pure <$> listToMaybe pkgs
+                  else Nothing
+          _ -> Nothing
+      else return targetStrings'
 
-  withCtx targetStrings $ \targetCtx ctx targetSelectors -> do
+  withCtx Nothing targetStrings $ \targetCtx ctx targetSelectors -> do
     when (buildSettingOnlyDeps (buildSettings ctx)) $
       dieWithException verbosity ReplCommandDoesn'tSupport
     let projectRoot = distProjectRootDirectory $ distDirLayout ctx
