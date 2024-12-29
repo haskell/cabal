@@ -206,13 +206,13 @@ runCommand =
 -- "Distribution.Client.ProjectOrchestration"
 runAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
 runAction flags@NixStyleFlags{..} targetAndArgs globalFlags =
-  withContextAndSelectors RejectNoTargets (Just ExeKind) flags targetStr globalFlags OtherCommand $ \targetCtx ctx targetSelectors -> do
+  withContextAndSelectors (cfgVerbosity normal) RejectNoTargets (Just ExeKind) flags targetStr globalFlags OtherCommand $ \targetCtx ctx targetSelectors -> do
     (baseCtx, defaultVerbosity) <- case targetCtx of
       ProjectContext -> return (ctx, normal)
       GlobalContext -> return (ctx, normal)
       ScriptContext path exemeta -> (,silent) <$> updateContextAndWriteProjectFile ctx path exemeta
 
-    let verbosity = fromFlagOrDefault defaultVerbosity (setupVerbosity $ configCommonFlags configFlags)
+    let verbosity = cfgVerbosity defaultVerbosity
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
@@ -360,6 +360,7 @@ runAction flags@NixStyleFlags{..} targetAndArgs globalFlags =
                     elaboratedPlan
             }
   where
+    cfgVerbosity v = fromFlagOrDefault v (setupVerbosity $ configCommonFlags configFlags)
     (targetStr, args) = splitAt 1 targetAndArgs
 
 -- | Used by the main CLI parser as heuristic to decide whether @cabal@ was
