@@ -127,6 +127,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
   --
 
   withContextAndSelectors
+    verbosity
     RejectNoTargets
     Nothing
     (commandDefaultFlags CmdBuild.buildCommand)
