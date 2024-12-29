@@ -179,7 +179,7 @@ import Distribution.Client.ReplFlags
   , topReplOptions
   )
 import Distribution.Compat.Binary (decode)
-import Distribution.Simple.Flag (Flag (Flag), fromFlagOrDefault, toFlag)
+import Distribution.Simple.Flag (Flag (Flag), fromFlagOrDefault)
 import Distribution.Simple.Program.Builtin (ghcProgram)
 import Distribution.Simple.Program.Db (requireProgram)
 import Distribution.Simple.Program.Run
@@ -289,33 +289,13 @@ multiReplDecision ctx compiler flags =
 -- "Distribution.Client.ProjectOrchestration"
 replAction :: NixStyleFlags ReplFlags -> [String] -> GlobalFlags -> IO ()
 replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings' globalFlags = do
-  let withCtx verbosity' strings =
-        let flags' =
-              maybe
-                flags
-                ( \v ->
-                    let NixStyleFlags{configFlags = f1} = flags
-                        ConfigFlags{configCommonFlags = f2} = f1
-                     in flags
-                          { configFlags =
-                              f1
-                                { configCommonFlags =
-                                    f2
-                                      { setupVerbosity = v
-                                      }
-                                }
-                          }
-                )
-                verbosity'
-         in withContextAndSelectors AcceptNoTargets (Just LibKind) flags' strings globalFlags ReplCommand
-
   -- NOTE: The REPL will work with no targets in the context of a project if a
   -- sole package is in the same directory as the project file. To have the same
   -- behaviour when the package is somewhere else we adjust the targets.
   targetStrings <-
     if null targetStrings'
       then
-        withCtx (Just $ toFlag silent) targetStrings' $ \targetCtx ctx _ ->
+        withCtx silent targetStrings' $ \targetCtx ctx _ ->
         return . fromMaybe [] $ case targetCtx of
           ProjectContext ->
             let pkgs = projectPackages $ projectConfig ctx
@@ -325,7 +305,7 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings' 
           _ -> Nothing
       else return targetStrings'
 
-  withCtx Nothing targetStrings $ \targetCtx ctx targetSelectors -> do
+  withCtx verbosity targetStrings $ \targetCtx ctx targetSelectors -> do
     when (buildSettingOnlyDeps (buildSettings ctx)) $
       dieWithException verbosity ReplCommandDoesn'tSupport
     let projectRoot = distProjectRootDirectory $ distDirLayout ctx
@@ -565,6 +545,9 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings' 
       where
         go m ("PATH", Just s) = foldl' (\m' f -> Map.insertWith (+) f 1 m') m (splitSearchPath s)
         go m _ = m
+
+    withCtx ctxVerbosity strings =
+        withContextAndSelectors ctxVerbosity AcceptNoTargets (Just LibKind) flags strings globalFlags ReplCommand
 
     verbosity = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags)
     tempFileOptions = commonSetupTempFileOptions $ configCommonFlags configFlags
