@@ -1,6 +1,5 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE RecordWildCards #-}
 
 -- | cabal-install CLI command: freeze
 module Distribution.Client.CmdFreeze
@@ -18,6 +17,7 @@ import Distribution.Client.IndexUtils (ActiveRepos, TotalIndexState, filterSkipp
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
+  , cfgVerbosity
   , defaultNixStyleFlags
   , nixStyleOptions
   )
@@ -41,9 +41,7 @@ import Distribution.Solver.Types.PackageConstraint
   )
 
 import Distribution.Client.Setup
-  ( CommonSetupFlags (setupVerbosity)
-  , ConfigFlags (..)
-  , GlobalFlags
+  ( GlobalFlags
   )
 import Distribution.Package
   ( PackageName
@@ -126,7 +124,7 @@ freezeCommand =
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 freezeAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
-freezeAction flags@NixStyleFlags{..} extraArgs globalFlags = do
+freezeAction flags extraArgs globalFlags = do
   unless (null extraArgs) $
     dieWithException verbosity $
       FreezeAction extraArgs
@@ -161,7 +159,7 @@ freezeAction flags@NixStyleFlags{..} extraArgs globalFlags = do
       notice verbosity $
         "Wrote freeze file: " ++ (distProjectFile distDirLayout "freeze")
   where
-    verbosity = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags)
+    verbosity = cfgVerbosity normal flags
     cliConfig =
       commandLineFlagsToProjectConfig
         globalFlags

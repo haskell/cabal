@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TupleSections #-}
 
 -- | cabal-install CLI command: run
@@ -43,6 +42,7 @@ import Distribution.Client.InstallPlan
   )
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
+  , cfgVerbosity
   , defaultNixStyleFlags
   , nixStyleOptions
   )
@@ -50,7 +50,8 @@ import Distribution.Client.ProjectConfig.Types
   ( ProjectConfig (projectConfigShared)
   , ProjectConfigShared (projectConfigProgPathExtra)
   )
-import Distribution.Client.ProjectOrchestration
+import Distribution.Client.ProjectOrchestration hiding (targetsMap)
+import qualified Distribution.Client.ProjectOrchestration as Orchestration (targetsMap)
 import Distribution.Client.ProjectPlanning
   ( ElaboratedConfiguredPackage (..)
   , ElaboratedInstallPlan
@@ -70,9 +71,7 @@ import Distribution.Client.ScriptUtils
   , withContextAndSelectors
   )
 import Distribution.Client.Setup
-  ( CommonSetupFlags (setupVerbosity)
-  , ConfigFlags (..)
-  , GlobalFlags (..)
+  ( GlobalFlags (..)
   )
 import Distribution.Client.TargetProblem
   ( TargetProblem (..)
@@ -88,9 +87,6 @@ import Distribution.Simple.BuildToolDepends
 import Distribution.Simple.Command
   ( CommandUI (..)
   , usageAlternatives
-  )
-import Distribution.Simple.Flag
-  ( fromFlagOrDefault
   )
 import Distribution.Simple.Program.Find
   ( ProgramSearchPathEntry (ProgramSearchPathDir)
@@ -115,7 +111,7 @@ import Distribution.Simple.Utils
 import Distribution.Types.ComponentName
   ( componentNameRaw
   )
-import Distribution.Types.Executable as PD
+import qualified Distribution.Types.Executable as PD
   ( buildInfo
   , exeName
   )
@@ -205,14 +201,14 @@ runCommand =
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 runAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
-runAction flags@NixStyleFlags{..} targetAndArgs globalFlags =
-  withContextAndSelectors (cfgVerbosity normal) RejectNoTargets (Just ExeKind) flags targetStr globalFlags OtherCommand $ \targetCtx ctx targetSelectors -> do
+runAction flags targetAndArgs globalFlags =
+  withContextAndSelectors (cfgVerbosity normal flags) RejectNoTargets (Just ExeKind) flags targetStr globalFlags OtherCommand $ \targetCtx ctx targetSelectors -> do
     (baseCtx, defaultVerbosity) <- case targetCtx of
       ProjectContext -> return (ctx, normal)
       GlobalContext -> return (ctx, normal)
       ScriptContext path exemeta -> (,silent) <$> updateContextAndWriteProjectFile ctx path exemeta
 
-    let verbosity = cfgVerbosity defaultVerbosity
+    let verbosity = cfgVerbosity defaultVerbosity flags
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
@@ -262,7 +258,7 @@ runAction flags@NixStyleFlags{..} targetAndArgs globalFlags =
       singleExeOrElse
         ( dieWithException verbosity RunPhaseReached
         )
-        $ targetsMap buildCtx
+        $ Orchestration.targetsMap buildCtx
 
     printPlan verbosity baseCtx buildCtx
 
@@ -360,7 +356,6 @@ runAction flags@NixStyleFlags{..} targetAndArgs globalFlags =
                     elaboratedPlan
             }
   where
-    cfgVerbosity v = fromFlagOrDefault v (setupVerbosity $ configCommonFlags configFlags)
     (targetStr, args) = splitAt 1 targetAndArgs
 
 -- | Used by the main CLI parser as heuristic to decide whether @cabal@ was

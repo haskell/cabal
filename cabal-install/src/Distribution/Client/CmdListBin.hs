@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module Distribution.Client.CmdListBin
   ( listbinCommand
@@ -30,10 +29,12 @@ import Distribution.Client.CmdErrorMessages
 import Distribution.Client.DistDirLayout (DistDirLayout (..))
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
+  , cfgVerbosity
   , defaultNixStyleFlags
   , nixStyleOptions
   )
-import Distribution.Client.ProjectOrchestration
+import Distribution.Client.ProjectOrchestration hiding (distDirLayout, targetsMap)
+import qualified Distribution.Client.ProjectOrchestration as Orchestration (distDirLayout, targetsMap)
 import Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.ScriptUtils
   ( AcceptNoTargets (..)
@@ -46,7 +47,6 @@ import Distribution.Client.Setup (GlobalFlags (..))
 import Distribution.Client.TargetProblem (TargetProblem (..))
 import Distribution.Simple.BuildPaths (dllExtension, exeExtension)
 import Distribution.Simple.Command (CommandUI (..))
-import Distribution.Simple.Setup (configCommonFlags, fromFlagOrDefault, setupVerbosity)
 import Distribution.Simple.Utils (dieWithException, withOutputMarker, wrapText)
 import Distribution.System (Platform)
 import Distribution.Types.ComponentName (showComponentName)
@@ -86,7 +86,7 @@ listbinCommand =
 -------------------------------------------------------------------------------
 
 listbinAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
-listbinAction flags@NixStyleFlags{..} args globalFlags = do
+listbinAction flags args globalFlags = do
   -- fail early if multiple target selectors specified
   target <- case args of
     [] -> dieWithException verbosity NoTargetProvided
@@ -140,7 +140,7 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
       singleComponentOrElse
         ( dieWithException verbosity ThisIsABug
         )
-        $ targetsMap buildCtx
+        $ Orchestration.targetsMap buildCtx
 
     printPlan verbosity baseCtx buildCtx
 
@@ -150,7 +150,7 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
         return $
           IP.foldPlanPackage
             (const []) -- IPI don't have executables
-            (elaboratedPackage (distDirLayout baseCtx) (elaboratedShared buildCtx) selectedComponent)
+            (elaboratedPackage (Orchestration.distDirLayout baseCtx) (elaboratedShared buildCtx) selectedComponent)
             gpp
 
     case binfiles of
@@ -170,7 +170,7 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
       _ -> dieWithException verbosity MultipleTargetsFound
   where
     defaultVerbosity = verboseStderr silent
-    verbosity = fromFlagOrDefault defaultVerbosity (setupVerbosity $ configCommonFlags configFlags)
+    verbosity = cfgVerbosity defaultVerbosity flags
 
     -- this is copied from
     elaboratedPackage
