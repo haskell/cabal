@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-
 -- | cabal-install CLI command: build
 module Distribution.Client.CmdBuild
   ( -- * The @build@ CLI and action
@@ -30,6 +28,7 @@ import qualified Data.Map as Map
 import Distribution.Client.Errors
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
+  , cfgVerbosity
   , defaultNixStyleFlags
   , nixStyleOptions
   )
@@ -40,9 +39,7 @@ import Distribution.Client.ScriptUtils
   , withContextAndSelectors
   )
 import Distribution.Client.Setup
-  ( CommonSetupFlags (..)
-  , ConfigFlags (..)
-  , GlobalFlags
+  ( GlobalFlags
   , yesNoOpt
   )
 import Distribution.Simple.Command
@@ -50,7 +47,7 @@ import Distribution.Simple.Command
   , option
   , usageAlternatives
   )
-import Distribution.Simple.Flag (Flag (..), fromFlag, fromFlagOrDefault, toFlag)
+import Distribution.Simple.Flag (Flag (..), fromFlag, toFlag)
 import Distribution.Simple.Utils
   ( dieWithException
   , wrapText
@@ -134,7 +131,7 @@ defaultBuildFlags =
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 buildAction :: NixStyleFlags BuildFlags -> [String] -> GlobalFlags -> IO ()
-buildAction flags@NixStyleFlags{extraFlags = buildFlags, ..} targetStrings globalFlags =
+buildAction flags@NixStyleFlags{extraFlags = buildFlags} targetStrings globalFlags =
   withContextAndSelectors verbosity RejectNoTargets Nothing flags targetStrings globalFlags BuildCommand $ \targetCtx ctx targetSelectors -> do
     -- TODO: This flags defaults business is ugly
     let onlyConfigure =
@@ -185,7 +182,7 @@ buildAction flags@NixStyleFlags{extraFlags = buildFlags, ..} targetStrings globa
     buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
     runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
   where
-    verbosity = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags)
+    verbosity = cfgVerbosity normal flags
 
 -- | This defines what a 'TargetSelector' means for the @bench@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
