@@ -1,9 +1,6 @@
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE ViewPatterns #-}
 
 module Distribution.Client.CmdTarget
   ( targetCommand
@@ -22,12 +19,6 @@ import Distribution.Client.NixStyleOptions
   , defaultNixStyleFlags
   )
 import Distribution.Client.ProjectOrchestration
-import Distribution.Client.ScriptUtils
-  ( AcceptNoTargets (..)
-  , TargetContext (..)
-  , updateContextAndWriteProjectFile
-  , withContextAndSelectors
-  )
 import Distribution.Client.Setup
   ( ConfigFlags (..)
   , GlobalFlags
@@ -106,45 +97,49 @@ targetCommand =
 
 targetAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
 targetAction flags@NixStyleFlags{..} ts globalFlags = do
-  let targetStrings = if null ts then ["all"] else ts
-  withContextAndSelectors RejectNoTargets Nothing flags targetStrings globalFlags BuildCommand $ \targetCtx ctx targetSelectors -> do
-    baseCtx <- case targetCtx of
-      ProjectContext -> return ctx
-      GlobalContext -> return ctx
-      ScriptContext path exemeta -> updateContextAndWriteProjectFile ctx path exemeta
+  baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
 
-    buildCtx <-
-      runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
-        -- Interpret the targets on the command line as build targets
-        -- (as opposed to say repl or haddock targets).
-        targets <-
-          either (reportBuildTargetProblems verbosity) return $
-            resolveTargets
-              selectPackageTargets
-              selectComponentTarget
-              elaboratedPlan
-              Nothing
-              targetSelectors
+  targetSelectors <-
+    either (reportTargetSelectorProblems verbosity) return
+      =<< readTargetSelectors (localPackages baseCtx) Nothing targetStrings
 
-        let elaboratedPlan' =
-              pruneInstallPlanToTargets
-                TargetActionConfigure
-                targets
-                elaboratedPlan
-        elaboratedPlan'' <-
-          if buildSettingOnlyDeps (buildSettings baseCtx)
-            then
-              either (reportCannotPruneDependencies verbosity) return $
-                pruneInstallPlanToDependencies
-                  (Map.keysSet targets)
-                  elaboratedPlan'
-            else return elaboratedPlan'
+  buildCtx <- runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
+    -- Interpret the targets on the command line as build targets
+    -- (as opposed to say repl or haddock targets).
+    targets <-
+      either (reportBuildTargetProblems verbosity) return $
+        resolveTargets
+          selectPackageTargets
+          selectComponentTarget
+          elaboratedPlan
+          Nothing
+          targetSelectors
 
-        return (elaboratedPlan'', targets)
+    let elaboratedPlan' =
+          pruneInstallPlanToTargets
+            TargetActionConfigure
+            targets
+            elaboratedPlan
+    elaboratedPlan'' <-
+      if buildSettingOnlyDeps (buildSettings baseCtx)
+        then
+          either (reportCannotPruneDependencies verbosity) return $
+            pruneInstallPlanToDependencies
+              (Map.keysSet targets)
+              elaboratedPlan'
+        else return elaboratedPlan'
 
-    printPlanTargetForms verbosity buildCtx
+    return (elaboratedPlan'', targets)
+
+  printPlanTargetForms verbosity buildCtx
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    targetStrings = if null ts then ["all"] else ts
+    cliConfig =
+      commandLineFlagsToProjectConfig
+        globalFlags
+        flags
+        mempty -- ClientInstallFlags, not needed here
 
 reportBuildTargetProblems :: Verbosity -> [TargetProblem'] -> IO a
 reportBuildTargetProblems verbosity problems =
