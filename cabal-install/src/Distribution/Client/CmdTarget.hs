@@ -143,8 +143,7 @@ targetAction flags@NixStyleFlags{..} ts globalFlags = do
         mempty
 
 reportBuildTargetProblems :: Verbosity -> [TargetProblem'] -> IO a
-reportBuildTargetProblems verbosity problems =
-  reportTargetProblems verbosity "target" problems
+reportBuildTargetProblems verbosity = reportTargetProblems verbosity "target"
 
 printTargetForms :: TargetsMap -> ElaboratedInstallPlan -> IO ()
 printTargetForms targets elaboratedPlan = do
@@ -167,6 +166,6 @@ printTargetForms targets elaboratedPlan = do
         catMaybes
           [ targetForm ct pkgs
           | (u :: UnitId, xs) <- Map.toAscList targets
-          , (ct :: ComponentTarget, _) <- xs
           , let pkgs = filter ((== u) . elabUnitId) localPkgs
+          , (ct :: ComponentTarget, _) <- xs
           ]
