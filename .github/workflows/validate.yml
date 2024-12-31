@@ -372,17 +372,8 @@ jobs:
         run: |
           echo 'executable-static: true' >> cabal.validate.project
 
-      # Try to figure out why we have no git info, part 1
-      - run: git status
-
       - name: Build
         run: sh validate.sh $FLAGS -s build
-
-      # Try to figure out why we have no git info, part 2
-      - run: |
-          if $(cabal list-bin --builddir=dist-newstyle-validate-ghc-${{ env.GHC_FOR_RELEASE }} --project-file=cabal.validate.project cabal-install:exe:cabal) --version 2>&1 | grep ' , '; then
-            exit 1
-          fi
 
       - name: Tar cabal head executable
         run: |
