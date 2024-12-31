@@ -120,20 +120,23 @@ targetAction flags@NixStyleFlags{..} ts globalFlags = do
       localPackages
       Nothing
 
-  targetSelectors <-
-    either (reportTargetSelectorProblems verbosity) return
-      =<< readTargetSelectors localPackages Nothing targetStrings
+  if any (== "everything") targetStrings
+    then printEveryTargetForm elaboratedPlan
+    else do
+      targetSelectors <-
+        either (reportTargetSelectorProblems verbosity) return
+          =<< readTargetSelectors localPackages Nothing targetStrings
 
-  targets :: TargetsMap <-
-    either (reportBuildTargetProblems verbosity) return $
-      resolveTargets
-        selectPackageTargets
-        selectComponentTarget
-        elaboratedPlan
-        Nothing
-        targetSelectors
+      targets :: TargetsMap <-
+        either (reportBuildTargetProblems verbosity) return $
+          resolveTargets
+            selectPackageTargets
+            selectComponentTarget
+            elaboratedPlan
+            Nothing
+            targetSelectors
 
-  printTargetForms targets elaboratedPlan
+      printTargetForms targets elaboratedPlan
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     targetStrings = if null ts then ["all"] else ts
@@ -169,3 +172,11 @@ printTargetForms targets elaboratedPlan =
           , let pkg = safeHead $ filter ((== u) . elabUnitId) localPkgs
           , (ct :: ComponentTarget, _) <- xs
           ]
+
+printEveryTargetForm :: ElaboratedInstallPlan -> IO ()
+printEveryTargetForm elaboratedPlan =
+  putStrLn . render $
+    vcat
+      [ text "Fully qualified target forms" Pretty.<> colon
+      , nest 1 $ vcat [text "-" <+> text tf | tf <- planTargetForms elaboratedPlan]
+      ]
