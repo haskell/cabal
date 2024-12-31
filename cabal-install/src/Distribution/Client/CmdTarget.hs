@@ -36,7 +36,8 @@ import Distribution.Simple.Command
   )
 import Distribution.Simple.Flag (fromFlagOrDefault)
 import Distribution.Simple.Utils
-  ( wrapText
+  ( safeHead
+  , wrapText
   )
 import Distribution.Verbosity
   ( normal
@@ -156,16 +157,15 @@ printTargetForms targets elaboratedPlan =
     localPkgs =
       [x | Configured x@ElaboratedConfiguredPackage{elabLocalToProject = True} <- InstallPlan.toList elaboratedPlan]
 
-    targetForm _ [] = Nothing
-    targetForm ct (x : _) =
+    targetForm ct x =
       let pkgId@PackageIdentifier{pkgName = n} = elabPkgSourceId x
-       in Just . render $ pretty n Pretty.<> colon Pretty.<> text (showComponentTarget pkgId ct)
+       in render $ pretty n Pretty.<> colon Pretty.<> text (showComponentTarget pkgId ct)
 
     targetForms =
       sort $
         catMaybes
-          [ targetForm ct pkgs
+          [ targetForm ct <$> pkg
           | (u :: UnitId, xs) <- Map.toAscList targets
-          , let pkgs = filter ((== u) . elabUnitId) localPkgs
+          , let pkg = safeHead $ filter ((== u) . elabUnitId) localPkgs
           , (ct :: ComponentTarget, _) <- xs
           ]
