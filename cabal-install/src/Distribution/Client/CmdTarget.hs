@@ -146,7 +146,7 @@ reportBuildTargetProblems :: Verbosity -> [TargetProblem'] -> IO a
 reportBuildTargetProblems verbosity = reportTargetProblems verbosity "target"
 
 printTargetForms :: TargetsMap -> ElaboratedInstallPlan -> IO ()
-printTargetForms targets elaboratedPlan = do
+printTargetForms targets elaboratedPlan =
   putStrLn . render $
     vcat
       [ text "Fully qualified target forms" Pretty.<> colon
