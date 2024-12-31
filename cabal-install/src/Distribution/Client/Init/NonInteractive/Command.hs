@@ -262,7 +262,7 @@ packageDirHeuristics = getPackageDir
 --   The spec version can be specified by the InitFlags cabalVersion field. If
 --   none is specified then the default version is used.
 cabalVersionHeuristics :: Interactive m => InitFlags -> m CabalSpecVersion
-cabalVersionHeuristics flags = getCabalVersion flags guessCabalSpecVersion
+cabalVersionHeuristics flags = getCabalVersion flags $ return defaultCabalVersion
 
 -- | Get the package name: use the package directory (supplied, or the current
 --   directory by default) as a guess. It looks at the SourcePackageDb to avoid

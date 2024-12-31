@@ -21,7 +21,6 @@ module Distribution.Client.Init.NonInteractive.Heuristics
   , guessExtraDocFiles
   , guessAuthorName
   , guessAuthorEmail
-  , guessCabalSpecVersion
   , guessLanguage
   , guessPackageType
   , guessSourceDirectories
@@ -34,7 +33,6 @@ import Distribution.Simple.Setup (fromFlagOrDefault)
 
 import qualified Data.List as L
 import qualified Data.Set as Set
-import Distribution.CabalSpecVersion
 import Distribution.Client.Init.Defaults
 import Distribution.Client.Init.FlagExtractors (getCabalVersionNoPrompt)
 import Distribution.Client.Init.Types
@@ -58,18 +56,6 @@ guessMainFile pkgDir = do
           [] -> defaultMainIs
           (f : _) -> toHsFilePath f
     else return defaultMainIs
-
--- | Juggling characters around to guess the desired cabal version based on
---   the system's cabal version.
-guessCabalSpecVersion :: Interactive m => m CabalSpecVersion
-guessCabalSpecVersion = do
-  (_, verString, _) <- readProcessWithExitCode "cabal" ["--version"] ""
-  case simpleParsec $ takeWhile (not . isSpace) $ dropWhile (not . isDigit) verString of
-    Just v -> pure $ fromMaybe defaultCabalVersion $ case versionNumbers v of
-      [x, y, _, _] -> cabalSpecFromVersionDigits [x, y]
-      [x, y, _] -> cabalSpecFromVersionDigits [x, y]
-      _ -> Just defaultCabalVersion
-    Nothing -> pure defaultCabalVersion
 
 -- | Guess the language specification based on the GHC version
 guessLanguage :: Interactive m => Compiler -> m Language
