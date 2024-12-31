@@ -148,12 +148,10 @@ reportBuildTargetProblems verbosity problems =
 
 printTargetForms :: TargetsMap -> ElaboratedInstallPlan -> IO ()
 printTargetForms targets elaboratedPlan = do
-  putStrLn . render . nest 1 . vcat . ((text "-" <+>) . text <$>) . sort $
-    catMaybes
-      [ targetForm ct pkgs
-      | (u :: UnitId, xs) <- Map.toAscList targets
-      , (ct :: ComponentTarget, _) <- xs
-      , let pkgs = filter ((== u) . elabUnitId) localPkgs
+  putStrLn . render $
+    vcat
+      [ text "Fully qualified target forms" Pretty.<> colon
+      , nest 1 $ vcat [text "-" <+> text tf | tf <- targetForms]
       ]
   where
     localPkgs =
@@ -163,3 +161,12 @@ printTargetForms targets elaboratedPlan = do
     targetForm ct (x : _) =
       let pkgId@PackageIdentifier{pkgName = n} = elabPkgSourceId x
        in Just . render $ pretty n Pretty.<> colon Pretty.<> text (showComponentTarget pkgId ct)
+
+    targetForms =
+      sort $
+        catMaybes
+          [ targetForm ct pkgs
+          | (u :: UnitId, xs) <- Map.toAscList targets
+          , (ct :: ComponentTarget, _) <- xs
+          , let pkgs = filter ((== u) . elabUnitId) localPkgs
+          ]
