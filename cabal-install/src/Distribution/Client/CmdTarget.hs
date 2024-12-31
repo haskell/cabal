@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -13,12 +14,14 @@ import Prelude ()
 import qualified Data.Map as Map
 import Distribution.Client.CmdBuild (selectComponentTarget, selectPackageTargets)
 import Distribution.Client.CmdErrorMessages
-import Distribution.Client.Errors
+import Distribution.Client.InstallPlan
+import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
   , defaultNixStyleFlags
   )
 import Distribution.Client.ProjectOrchestration
+import Distribution.Client.ProjectPlanning
 import Distribution.Client.Setup
   ( ConfigFlags (..)
   , GlobalFlags
@@ -26,18 +29,20 @@ import Distribution.Client.Setup
 import Distribution.Client.TargetProblem
   ( TargetProblem'
   )
+import Distribution.Package
 import Distribution.Simple.Command
   ( CommandUI (..)
   , usageAlternatives
   )
 import Distribution.Simple.Flag (fromFlagOrDefault)
 import Distribution.Simple.Utils
-  ( dieWithException
-  , wrapText
+  ( wrapText
   )
 import Distribution.Verbosity
   ( normal
   )
+import Text.PrettyPrint
+import qualified Text.PrettyPrint as Pretty
 
 -------------------------------------------------------------------------------
 -- Command
@@ -97,41 +102,37 @@ targetCommand =
 
 targetAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
 targetAction flags@NixStyleFlags{..} ts globalFlags = do
-  baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
+  ProjectBaseContext
+    { distDirLayout
+    , cabalDirLayout
+    , projectConfig
+    , localPackages
+    } <-
+    establishProjectBaseContext verbosity cliConfig OtherCommand
+
+  (_, elaboratedPlan, _, _, _) <-
+    rebuildInstallPlan
+      verbosity
+      distDirLayout
+      cabalDirLayout
+      projectConfig
+      localPackages
+      Nothing
 
   targetSelectors <-
     either (reportTargetSelectorProblems verbosity) return
-      =<< readTargetSelectors (localPackages baseCtx) Nothing targetStrings
+      =<< readTargetSelectors localPackages Nothing targetStrings
 
-  buildCtx <- runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
-    -- Interpret the targets on the command line as build targets
-    -- (as opposed to say repl or haddock targets).
-    targets <-
-      either (reportBuildTargetProblems verbosity) return $
-        resolveTargets
-          selectPackageTargets
-          selectComponentTarget
-          elaboratedPlan
-          Nothing
-          targetSelectors
+  targets :: TargetsMap <-
+    either (reportBuildTargetProblems verbosity) return $
+      resolveTargets
+        selectPackageTargets
+        selectComponentTarget
+        elaboratedPlan
+        Nothing
+        targetSelectors
 
-    let elaboratedPlan' =
-          pruneInstallPlanToTargets
-            TargetActionConfigure
-            targets
-            elaboratedPlan
-    elaboratedPlan'' <-
-      if buildSettingOnlyDeps (buildSettings baseCtx)
-        then
-          either (reportCannotPruneDependencies verbosity) return $
-            pruneInstallPlanToDependencies
-              (Map.keysSet targets)
-              elaboratedPlan'
-        else return elaboratedPlan'
-
-    return (elaboratedPlan'', targets)
-
-  printPlanTargetForms verbosity buildCtx
+  printTargetForms targets elaboratedPlan
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     targetStrings = if null ts then ["all"] else ts
@@ -139,12 +140,26 @@ targetAction flags@NixStyleFlags{..} ts globalFlags = do
       commandLineFlagsToProjectConfig
         globalFlags
         flags
-        mempty -- ClientInstallFlags, not needed here
+        mempty
 
 reportBuildTargetProblems :: Verbosity -> [TargetProblem'] -> IO a
 reportBuildTargetProblems verbosity problems =
   reportTargetProblems verbosity "target" problems
 
-reportCannotPruneDependencies :: Verbosity -> CannotPruneDependencies -> IO a
-reportCannotPruneDependencies verbosity =
-  dieWithException verbosity . ReportCannotPruneDependencies . renderCannotPruneDependencies
+printTargetForms :: TargetsMap -> ElaboratedInstallPlan -> IO ()
+printTargetForms targets elaboratedPlan = do
+  putStrLn . render . nest 1 . vcat . ((text "-" <+>) . text <$>) . sort $
+    catMaybes
+      [ targetForm ct pkgs
+      | (u :: UnitId, xs) <- Map.toAscList targets
+      , (ct :: ComponentTarget, _) <- xs
+      , let pkgs = filter ((== u) . elabUnitId) localPkgs
+      ]
+  where
+    localPkgs =
+      [x | Configured x@ElaboratedConfiguredPackage{elabLocalToProject = True} <- InstallPlan.toList elaboratedPlan]
+
+    targetForm _ [] = Nothing
+    targetForm ct (x : _) =
+      let pkgId@PackageIdentifier{pkgName = n} = elabPkgSourceId x
+       in Just . render $ pretty n Pretty.<> colon Pretty.<> text (showComponentTarget pkgId ct)
