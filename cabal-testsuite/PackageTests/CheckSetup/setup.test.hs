@@ -13,8 +13,12 @@ main = cabalTest $ do
               "The dependency 'setup-depends: 'base' does not specify "
               ++ "an upper bound on the version number"
 
+        -- Replace line breaks with spaces in the haystack so that we can search
+        -- for a string that wraps lines.
+        let lineBreakBlind = needleHaystack{txHaystack = txContainsId{txFwd = lineBreaksToSpaces}}
+
         -- Asserts for the desired check messages after configure.
-        assertOutputContains libError1 checkResult
-        assertOutputContains libError2 checkResult
+        assertOn lineBreakBlind libError1 checkResult
+        assertOn lineBreakBlind libError2 checkResult
 
         return ()
