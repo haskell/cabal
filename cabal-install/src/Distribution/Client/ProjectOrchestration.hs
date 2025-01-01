@@ -90,7 +90,6 @@ module Distribution.Client.ProjectOrchestration
   , pruneInstallPlanToDependencies
   , CannotPruneDependencies (..)
   , printPlan
-  , planTargetForms
 
     -- * Build phase: now do it.
   , runProjectBuildPhase
@@ -935,56 +934,6 @@ distinctTargetComponents targetsMap =
 
 ------------------------------------------------------------------------------
 -- Displaying what we plan to do
-
--- | Print available target forms.
-planTargetForms :: ElaboratedInstallPlan -> [String]
-planTargetForms elaboratedPlan
-  | not (null pkgs) = map showPkgAndReason pkgs
-  | otherwise = []
-  where
-    pkgs :: [GenericReadyPackage ElaboratedConfiguredPackage]
-    pkgs =
-      sortBy
-        (compare `on` showPkgAndReason)
-        (InstallPlan.executionOrder elaboratedPlan)
-
-    showPkgAndReason :: ElaboratedReadyPackage -> String
-    showPkgAndReason (ReadyPackage elab) =
-      unwords $
-        filter (not . null) $
-          [ concat . filter (not . null) $
-              [ prettyShow $ packageName (packageId elab)
-              , case elabPkgOrComp elab of
-                  ElabPackage _ -> showTargets elab
-                  ElabComponent comp -> ":" ++ showComp elab comp
-              ]
-          ]
-
-    showComp :: ElaboratedConfiguredPackage -> ElaboratedComponent -> String
-    showComp elab comp =
-      maybe "custom" prettyShow (compComponentName comp)
-        ++ if Map.null (elabInstantiatedWith elab)
-          then ""
-          else
-            " with "
-              ++ intercalate
-                ", "
-                -- TODO: Abbreviate the UnitIds
-                [ prettyShow k ++ "=" ++ prettyShow v
-                | (k, v) <- Map.toList (elabInstantiatedWith elab)
-                ]
-
-    showTargets :: ElaboratedConfiguredPackage -> String
-    showTargets elab
-      | null (elabBuildTargets elab) = ""
-      | otherwise =
-          "("
-            ++ intercalate
-              ", "
-              [ showComponentTarget (packageId elab) t
-              | t <- elabBuildTargets elab
-              ]
-            ++ ")"
 
 -- | Print a user-oriented presentation of the install plan, indicating what
 -- will be built.
