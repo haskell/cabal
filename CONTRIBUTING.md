@@ -395,9 +395,12 @@ description: {
 }
 ```
 
-Changelogs may also be written in "markdown-frontmatter" format. This is useful if your
-description contains braces, which must be escaped with backslashes in `.cabal` file
-format. The front matter is in YAML syntax, not `.cabal` file syntax, and the file
+Changelogs may also be written in "markdown-frontmatter" format. This is useful
+if your description contains braces, which must be escaped with backslashes in
+`.cabal` file format. Another benefit of using an `.md` extension with your
+changelog is that it will be checked for typos.
+
+The front matter is in YAML syntax, not `.cabal` file syntax, and the file
 _must_ begin with a line containing only hyphens.
 
 ```markdown
