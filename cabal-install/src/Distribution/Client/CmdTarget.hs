@@ -53,49 +53,76 @@ targetCommand :: CommandUI (NixStyleFlags ())
 targetCommand =
   CommandUI
     { commandName = "v2-target"
-    , commandSynopsis = "Target disclosure."
+    , commandSynopsis = "Disclose selected targets."
     , commandUsage = usageAlternatives "v2-target" ["[TARGETS]"]
-    , commandDescription = Just $ \_ ->
-        wrapText $
-          "Reveal the targets of build plan. "
-            ++ "If no [TARGETS] are given 'all' will be used for selecting a build plan.\n\n"
-            ++ "A [TARGETS] item can be one of these target forms;\n"
-            ++ "- a package target (e.g. [pkg:]package)\n"
-            ++ "- a component target (e.g. [package:][ctype:]component)\n"
-            ++ "- all packages (e.g. all)\n"
-            ++ "- components of a particular type (e.g. package:ctypes or all:ctypes)\n"
-            ++ "- a module target: (e.g. [package:][ctype:]module)\n"
-            ++ "- a filepath target: (e.g. [package:][ctype:]filepath)\n"
-            ++ "- a script target: (e.g. path/to/script)\n\n"
-            ++ "The ctypes can be one of: "
-            ++ "libs or libraries, "
-            ++ "exes or executables, "
-            ++ "tests, "
-            ++ "benches or benchmarks, "
-            ++ " and flibs or foreign-libraries."
-    , commandNotes = Just $ \pname ->
-        "Examples:\n"
-          ++ "  "
-          ++ pname
-          ++ " v2-target all\n"
-          ++ "    Targets of the package in the current directory "
-          ++ "or all packages in the project\n"
-          ++ "  "
-          ++ pname
-          ++ " v2-target pkgname\n"
-          ++ "    Targets of the package named pkgname in the project\n"
-          ++ "  "
-          ++ pname
-          ++ " v2-target ./pkgfoo\n"
-          ++ "    Targets of the package in the ./pkgfoo directory\n"
-          ++ "  "
-          ++ pname
-          ++ " v2-target cname\n"
-          ++ "    Targets of the component named cname in the project\n"
-          ++ "  "
+    , commandDescription =
+        Just . const . render $
+          vcat
+            [ intro
+            , vcat $ punctuate (text "\n") [targetForms, ctypes, Pretty.empty]
+            ]
+    , commandNotes = Just $ \pname -> render $ examples pname
     , commandDefaultFlags = defaultNixStyleFlags ()
     , commandOptions = const []
     }
+  where
+    intro =
+      text . wrapText $
+        "Discover targets in a project for use with other commands taking [TARGETS].\n\n"
+          ++ "Discloses fully-qualified targets from a selection of target form"
+          ++ " [TARGETS] (or 'all' if none given).  Can also check if a target form is"
+          ++ " unique as some commands require a unique TARGET."
+
+    targetForms =
+      vcat
+        [ text "A [TARGETS] item can be one of these target forms:"
+        , nest 1 . vcat $
+            (char '-' <+>)
+              <$> [ text "a package target (e.g. [pkg:]package)"
+                  , text "a component target (e.g. [package:][ctype:]component)"
+                  , text "all packages (e.g. all)"
+                  , text "components of a particular type (e.g. package:ctypes or all:ctypes)"
+                  , text "a module target: (e.g. [package:][ctype:]module)"
+                  , text "a filepath target: (e.g. [package:][ctype:]filepath)"
+                  ]
+        ]
+
+    ctypes =
+      vcat
+        [ text "The ctypes can be one of:"
+        , nest 1 . vcat $
+            (char '-' <+>)
+              <$> [ "libs" <+> parens "libraries"
+                  , "exes" <+> parens "executables"
+                  , "tests"
+                  , "benches" <+> parens "benchmarks"
+                  , "flibs" <+> parens "foreign-libraries"
+                  ]
+        ]
+
+    examples pname =
+      vcat
+        [ text "Examples" Pretty.<> colon
+        , nest 2 $
+            vcat
+              [ vcat
+                  [ text pname <+> text "v2-target all"
+                  , nest 2 $ text "Targets of the package in the current directory or all packages in the project"
+                  ]
+              , vcat
+                  [ text pname <+> text "v2-target pkgname"
+                  , nest 2 $ text "Targets of the package named pkgname in the project"
+                  ]
+              , vcat
+                  [ text pname <+> text "v2-target ./pkgfoo"
+                  , nest 2 $ text "Targets of the package in the ./pkgfoo directory"
+                  ]
+              , vcat
+                  [ text pname <+> text "v2-target cname"
+                  , nest 2 $ text "Targets of the component named cname in the project"
+                  ]
+              ]
+        ]
 
 -------------------------------------------------------------------------------
 -- Action
