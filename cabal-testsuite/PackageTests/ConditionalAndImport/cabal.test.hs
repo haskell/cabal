@@ -1,6 +1,7 @@
 import Test.Cabal.Prelude
 import Test.Cabal.OutputNormalizer
 import Data.Function ((&))
+import Data.Functor ((<&>))
 
 main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   let log = recordHeader . pure
@@ -78,7 +79,7 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   --    +-- etc
   log "checking that cyclical check catches a same file name that imports itself"
   cyclical4a <- fails $ cabal' "v2-build" [ "--project-file=cyclical-same-filename-out-out-self.project" ]
-  assertOutputContains (normalizeWindowsOutput "cyclical import of same-filename/cyclical-same-filename-out-out-self.config") cyclical4a
+  assertOutputContains (normalizePathSeparators "cyclical import of same-filename/cyclical-same-filename-out-out-self.config") cyclical4a
 
   -- +-- cyclical-same-filename-out-out-backback.project
   --  +-- cyclical-same-filename-out-out-backback.config
@@ -111,64 +112,8 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   log "checking that imports work skipping into a subfolder and then back out again and again"
   hopping <- cabal' "v2-build" [ "--project-file=hops-0.project" ]
 
-  "Configuration is affected by the following files:\n\
-  \- hops-0.project\n\
-  \- hops-2.config\n\
-  \    imported by: hops/hops-1.config\n\
-  \    imported by: hops-0.project\n\
-  \- hops-4.config\n\
-  \    imported by: hops/hops-3.config\n\
-  \    imported by: hops-2.config\n\
-  \    imported by: hops/hops-1.config\n\
-  \    imported by: hops-0.project\n\
-  \- hops-6.config\n\
-  \    imported by: hops/hops-5.config\n\
-  \    imported by: hops-4.config\n\
-  \    imported by: hops/hops-3.config\n\
-  \    imported by: hops-2.config\n\
-  \    imported by: hops/hops-1.config\n\
-  \    imported by: hops-0.project\n\
-  \- hops-8.config\n\
-  \    imported by: hops/hops-7.config\n\
-  \    imported by: hops-6.config\n\
-  \    imported by: hops/hops-5.config\n\
-  \    imported by: hops-4.config\n\
-  \    imported by: hops/hops-3.config\n\
-  \    imported by: hops-2.config\n\
-  \    imported by: hops/hops-1.config\n\
-  \    imported by: hops-0.project\n\
-  \- hops/hops-1.config\n\
-  \    imported by: hops-0.project\n\
-  \- hops/hops-3.config\n\
-  \    imported by: hops-2.config\n\
-  \    imported by: hops/hops-1.config\n\
-  \    imported by: hops-0.project\n\
-  \- hops/hops-5.config\n\
-  \    imported by: hops-4.config\n\
-  \    imported by: hops/hops-3.config\n\
-  \    imported by: hops-2.config\n\
-  \    imported by: hops/hops-1.config\n\
-  \    imported by: hops-0.project\n\
-  \- hops/hops-7.config\n\
-  \    imported by: hops-6.config\n\
-  \    imported by: hops/hops-5.config\n\
-  \    imported by: hops-4.config\n\
-  \    imported by: hops/hops-3.config\n\
-  \    imported by: hops-2.config\n\
-  \    imported by: hops/hops-1.config\n\
-  \    imported by: hops-0.project\n\
-  \- hops/hops-9.config\n\
-  \    imported by: hops-8.config\n\
-  \    imported by: hops/hops-7.config\n\
-  \    imported by: hops-6.config\n\
-  \    imported by: hops/hops-5.config\n\
-  \    imported by: hops-4.config\n\
-  \    imported by: hops/hops-3.config\n\
-  \    imported by: hops-2.config\n\
-  \    imported by: hops/hops-1.config\n\
-  \    imported by: hops-0.project"
-    & normalizeWindowsOutput
-    & flip (assertOn multilineNeedleHaystack) hopping
+  readFileVerbatim "hops.expect.txt" >>=
+    flip (assertOn multilineNeedleHaystack) hopping .  normalizePathSeparators
 
   -- The project is named oops as it is like hops but has conflicting constraints.
   -- +-- oops-0.project
@@ -184,24 +129,8 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   log "checking conflicting constraints skipping into a subfolder and then back out again and again"
   oopsing <- fails $ cabal' "v2-build" [ "all", "--project-file=oops-0.project" ]
 
-  "Could not resolve dependencies:\n\
-  \[__0] trying: oops-0.1 (user goal)\n\
-  \[__1] next goal: hashable (dependency of oops)\n\
-  \[__1] rejecting: hashable-1.4.3.0\n\
-  \      (constraint from oops/oops-9.config requires ==1.4.2.0)\n\
-  \        imported by: oops-8.config\n\
-  \        imported by: oops/oops-7.config\n\
-  \        imported by: oops-6.config\n\
-  \        imported by: oops/oops-5.config\n\
-  \        imported by: oops-4.config\n\
-  \        imported by: oops/oops-3.config\n\
-  \        imported by: oops-2.config\n\
-  \        imported by: oops/oops-1.config\n\
-  \        imported by: oops-0.project\n\
-  \[__1] rejecting: hashable-1.4.2.0\n\
-  \      (constraint from oops-0.project requires ==1.4.3.0)"
-    & normalizeWindowsOutput
-    & flip (assertOn multilineNeedleHaystack) oopsing
+  readFileVerbatim "oops.expect.txt"
+    >>= flip (assertOn multilineNeedleHaystack) oopsing . normalizePathSeparators
 
   -- The project is named yops as it is like hops but with y's for forks.
   -- +-- yops-0.project
@@ -243,13 +172,7 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   log "checking that missing package message lists configuration provenance"
   missing <- fails $ cabal' "v2-build" [ "--project-file=cabal-missing-package.project" ]
 
-  "When using configuration from:\n\
-  \  - cabal-missing-package.project\n\
-  \  - missing/pkgs.config\n\
-  \  - missing/pkgs/default.config\n\
-  \The following errors occurred:\n\
-  \  - The package location 'pkg-doesnt-exist' does not exist."
-    & normalizeWindowsOutput
-    & flip (assertOn multilineNeedleHaystack) missing
+  readFileVerbatim "cabal-missing-package.expect.txt"
+    >>= flip (assertOn multilineNeedleHaystack) missing . normalizePathSeparators
 
   return ()
