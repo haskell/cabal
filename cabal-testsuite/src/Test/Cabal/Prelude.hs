@@ -1,14 +1,17 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE NondecreasingIndentation #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- | Generally useful definitions that we expect most test scripts
 -- to use.
 module Test.Cabal.Prelude (
     module Test.Cabal.Prelude,
     module Test.Cabal.Monad,
+    module Test.Cabal.NeedleHaystack,
     module Test.Cabal.Run,
     module System.FilePath,
     module Distribution.Utils.Path,
@@ -18,6 +21,7 @@ module Test.Cabal.Prelude (
     module Distribution.Simple.Program,
 ) where
 
+import Test.Cabal.NeedleHaystack
 import Test.Cabal.Script
 import Test.Cabal.Run
 import Test.Cabal.Monad
@@ -794,20 +798,64 @@ recordMode mode = withReaderT (\env -> env {
     testRecordUserMode = Just mode
     })
 
+-- See Note [Multiline Needles]
 assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
+<<<<<<< HEAD
 assertOutputContains needle result =
     withFrozenCallStack $
     unless (needle `isInfixOf` (concatOutput output)) $
     assertFailure $ " expected: " ++ needle
   where output = resultOutput result
+=======
+assertOutputContains = assertOn
+    needleHaystack
+        {txHaystack = TxContains{txBwd = delimitLines, txFwd = encodeLf}}
+>>>>>>> 30f5d3f21 (Needle in haystack multiline expectations)
 
 assertOutputDoesNotContain :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputDoesNotContain needle result =
+assertOutputDoesNotContain = assertOn
+    needleHaystack
+        { expectNeedleInHaystack = False
+        , txHaystack = TxContains{txBwd = delimitLines, txFwd = encodeLf}
+        }
+
+-- See Note [Multiline Needles]
+assertOn :: MonadIO m => WithCallStack (NeedleHaystack -> String -> Result -> m ())
+assertOn NeedleHaystack{..} (txFwd txNeedle -> needle) (txFwd txHaystack. resultOutput -> output) =
     withFrozenCallStack $
+<<<<<<< HEAD
     when (needle `isInfixOf` (concatOutput output)) $
     assertFailure $ "unexpected: " ++ needle
   where output = resultOutput result
 
+=======
+    if expectNeedleInHaystack
+        then unless (needle `isInfixOf` output)
+            $ assertFailure $ "expected:\n" ++ (txBwd txNeedle needle) ++
+            if displayHaystack
+                then "\nin output:\n" ++ (txBwd txHaystack output)
+                else ""
+        else when (needle `isInfixOf` output)
+            $ assertFailure $ "unexpected:\n" ++ (txBwd txNeedle needle) ++
+            if displayHaystack
+                then "\nin output:\n" ++ (txBwd txHaystack output)
+                else ""
+
+assertOutputMatches :: MonadIO m => WithCallStack (String -> Result -> m ())
+assertOutputMatches regex result =
+    withFrozenCallStack $
+    unless (encodeLf output =~ regex) $
+    assertFailure $ "expected regex match: " ++ regex
+  where output = resultOutput result
+
+assertOutputDoesNotMatch :: MonadIO m => WithCallStack (String -> Result -> m ())
+assertOutputDoesNotMatch regex result =
+    withFrozenCallStack $
+    when (encodeLf output =~ regex) $
+    assertFailure $ "unexpected regex match: " ++ regex
+  where output = resultOutput result
+
+>>>>>>> 30f5d3f21 (Needle in haystack multiline expectations)
 assertFindInFile :: MonadIO m => WithCallStack (String -> FilePath -> m ())
 assertFindInFile needle path =
     withFrozenCallStack $
@@ -835,9 +883,36 @@ assertFileDoesNotContain path needle =
                        (assertFailure ("expected: " ++ needle ++ "\n" ++
                                        " in file: " ++ path)))
 
+<<<<<<< HEAD
 -- | Replace line breaks with spaces, correctly handling "\r\n".
 concatOutput :: String -> String
 concatOutput = unwords . lines . filter ((/=) '\r')
+=======
+-- | Assert that at least one of the given paths contains the given search string.
+assertAnyFileContains :: MonadIO m => WithCallStack ([FilePath] -> String -> m ())
+assertAnyFileContains paths needle = do
+    let findOne found path =
+            if found
+               then pure found
+               else withFileContents path $ \contents ->
+                   pure $! needle `isInfixOf` contents
+    foundNeedle <- liftIO $ foldM findOne False paths
+    withFrozenCallStack $
+      unless foundNeedle $
+        assertFailure $
+          "expected: " <>
+          needle <>
+          "\nin one of:\n" <>
+          unlines (map ("* " <>) paths)
+
+-- | Assert that none of the given paths contains the given search string.
+assertNoFileContains :: MonadIO m => WithCallStack ([FilePath] -> String -> m ())
+assertNoFileContains paths needle =
+    liftIO $
+      forM_ paths $
+        \path ->
+          assertFileDoesNotContain path needle
+>>>>>>> 30f5d3f21 (Needle in haystack multiline expectations)
 
 -- | The directory where script build artifacts are expected to be cached
 getScriptCacheDirectory :: FilePath -> TestM FilePath
@@ -1177,3 +1252,32 @@ findDependencyInStore pkgName = do
                       [] -> error $ "Could not find " <> pkgName' <> " when searching for " <> pkgName' <> " in\n" <> show packageDirs
                       (dir:_) -> dir
       pure (storeDir </> storeDirForGhcVersion </> libDir)
+
+-- | It can be easier to paste expected output verbatim into a text file,
+-- especially if it is a multiline string, rather than encoding it as a multiline
+-- string in Haskell source code.
+--
+-- With `-XMultilineStrings` triple quoted strings with line breaks will be
+-- easier to write in source code but then this will only work with ghc-9.12.1
+-- and later, in which case we'd have to use CPP with test scripts to support
+-- older GHC versions. CPP doesn't play nicely with multiline strings using
+-- string gaps. None of our test script import other modules. That might be a
+-- way to avoid CPP in a module that uses multiline strings.
+--
+-- In summary, it is easier to read multiline strings from a file. That is what
+-- this function facilitates.
+--
+-- The contents of the file are read strictly to avoid problems seen on Windows
+-- deleting the file:
+--
+-- > cabal.test.hs:
+-- > C:\Users\<username>\AppData\Local\Temp\cabal-testsuite-8376\errors.expect.txt:
+-- > removePathForcibly:DeleteFile
+-- > "\\\\?\\C:\\Users\\<username>\\AppData\\Local\\Temp\\cabal-testsuite-8376\\errors.expect.txt":
+-- > permission denied (The process cannot access the file because it is being
+-- > used by another process.)
+readFileVerbatim :: FilePath -> TestM String
+readFileVerbatim filename = do
+  testDir <- testCurrentDir <$> getTestEnv
+  s <- liftIO . readFile $ testDir </> filename
+  length s `seq` return s
