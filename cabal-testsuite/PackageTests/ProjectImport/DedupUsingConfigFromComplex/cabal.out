@@ -1,3 +1,4 @@
-# checking "using config from message" with URI imports
+# check "using config from message" with URI imports
 # cabal v2-build
-# checking that package directories and locations are reported in order
+# check project configuration with URI imports is listed in full and
+# check package directories and locations are reported in order
