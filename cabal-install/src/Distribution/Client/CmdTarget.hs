@@ -89,7 +89,7 @@ targetCommand =
 
     ctypes =
       vcat
-        [ text "The ctypes can be one of:"
+        [ text "The ctypes, in short form and (long form), can be one of:"
         , nest 1 . vcat $
             (char '-' <+>)
               <$> [ "libs" <+> parens "libraries"
