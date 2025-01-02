@@ -38,3 +38,9 @@ main = do
     cabal "v2-target" ["a"]
     cabal "clean" []
     cabal "v2-target" ["a", "--enable-tests", "--enable-benchmarks"]
+
+  cabalTest' "path-target" $ do
+    cabal "clean" []
+    cabal "v2-target" ["dir-a/"]
+    cabal "clean" []
+    cabal "v2-target" ["dir-a/", "--enable-tests", "--enable-benchmarks"]
