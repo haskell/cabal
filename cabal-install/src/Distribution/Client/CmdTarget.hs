@@ -37,7 +37,8 @@ import Distribution.Simple.Command
   )
 import Distribution.Simple.Flag (fromFlagOrDefault)
 import Distribution.Simple.Utils
-  ( safeHead
+  ( notice
+  , safeHead
   , wrapText
   )
 import Distribution.Verbosity
@@ -161,7 +162,7 @@ targetAction flags@NixStyleFlags{..} ts globalFlags = do
         Nothing
         targetSelectors
 
-  printTargetForms targets elaboratedPlan
+  printTargetForms verbosity targets elaboratedPlan
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     targetStrings = if null ts then ["all"] else ts
@@ -174,9 +175,9 @@ targetAction flags@NixStyleFlags{..} ts globalFlags = do
 reportBuildTargetProblems :: Verbosity -> [TargetProblem'] -> IO a
 reportBuildTargetProblems verbosity = reportTargetProblems verbosity "target"
 
-printTargetForms :: TargetsMap -> ElaboratedInstallPlan -> IO ()
-printTargetForms targets elaboratedPlan =
-  putStrLn . render $
+printTargetForms :: Verbosity -> TargetsMap -> ElaboratedInstallPlan -> IO ()
+printTargetForms verbosity targets elaboratedPlan =
+  notice verbosity . render $
     vcat
       [ text "Fully qualified target forms" Pretty.<> colon
       , nest 1 $ vcat [text "-" <+> text tf | tf <- targetForms]
