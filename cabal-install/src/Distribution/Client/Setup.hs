@@ -382,9 +382,9 @@ globalCommand commands =
                 , addCmd "gen-bounds"
                 , addCmd "outdated"
                 , addCmd "path"
+                , addCmd "target"
                 , par
                 , startGroup "project building and installing"
-                , addCmd "target"
                 , addCmd "build"
                 , addCmd "install"
                 , addCmd "haddock"
