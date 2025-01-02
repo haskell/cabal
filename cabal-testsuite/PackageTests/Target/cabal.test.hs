@@ -16,3 +16,7 @@ main = do
   cabalTest' "all-tests" $ do
     cabal "clean" []
     cabal "v2-target" ["all:tests"]
+
+  cabalTest' "all-benches" $ do
+    cabal "clean" []
+    cabal "v2-target" ["all:benches"]

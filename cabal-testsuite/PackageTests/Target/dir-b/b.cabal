@@ -10,3 +10,6 @@ executable b-exe
 test-suite b-test
     type: exitcode-stdio-1.0
     main-is: Test.hs
+benchmark b-bench
+    type: exitcode-stdio-1.0
+    main-is: Bench.hs
