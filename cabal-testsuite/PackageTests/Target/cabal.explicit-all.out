@@ -10,3 +10,4 @@ Fully qualified target forms:
  - b:exe:b-exe
  - b:lib:b
  - b:lib:b-sublib
+ - c:lib:c
