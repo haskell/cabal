@@ -62,6 +62,7 @@ targetCommand =
           vcat
             [ intro
             , vcat $ punctuate (text "\n") [targetForms, ctypes, Pretty.empty]
+            , caution
             ]
     , commandNotes = Just $ \pname -> render $ examples pname
     , commandDefaultFlags = defaultNixStyleFlags ()
@@ -101,6 +102,13 @@ targetCommand =
                   , "flibs" <+> parens "foreign-libraries"
                   ]
         ]
+
+    caution =
+        text . wrapText $
+          "For a package, all, module or filepath target, cabal target [TARGETS] \
+          \ will *only* show 'libs' and 'exes' of the [TARGETS]. To also show \
+          \ tests and benchmarks, enable them with '--enable-tests' and \
+          \ '--enable-benchmarks'."
 
     examples pname =
       vcat
