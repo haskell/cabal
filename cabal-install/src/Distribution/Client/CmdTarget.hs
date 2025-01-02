@@ -19,6 +19,7 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
   , defaultNixStyleFlags
+  , nixStyleOptions
   )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning
@@ -63,7 +64,7 @@ targetCommand =
             ]
     , commandNotes = Just $ \pname -> render $ examples pname
     , commandDefaultFlags = defaultNixStyleFlags ()
-    , commandOptions = const []
+    , commandOptions = nixStyleOptions (const [])
     }
   where
     intro =
