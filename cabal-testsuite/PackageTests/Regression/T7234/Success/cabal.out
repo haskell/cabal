@@ -1,4 +1,5 @@
 # cabal v2-build
+Warning: The package description file ./issue7234.cabal has warnings: issue7234.cabal:14:3: The field "other-extensions" is available only since the Cabal specification version 1.10.
 Configuration is affected by the following files:
 - cabal.project
 Resolving dependencies...
