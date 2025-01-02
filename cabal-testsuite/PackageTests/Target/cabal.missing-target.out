@@ -1,0 +1,21 @@
+# cabal clean
+# cabal v2-target
+Configuration is affected by the following files:
+- cabal.project
+Resolving dependencies...
+Error: [Cabal-7127]
+Cannot target the executables in the package c-0.1 because it does not contain any executables. Check the .cabal file for the package and make sure that it properly declares the components that you expect.
+# cabal clean
+# cabal v2-target
+Configuration is affected by the following files:
+- cabal.project
+Resolving dependencies...
+Error: [Cabal-7127]
+Cannot target the test suites in the package c-0.1 because it does not contain any test suites. Check the .cabal file for the package and make sure that it properly declares the components that you expect.
+# cabal clean
+# cabal v2-target
+Configuration is affected by the following files:
+- cabal.project
+Resolving dependencies...
+Error: [Cabal-7127]
+Cannot target the benchmarks in the package c-0.1 because it does not contain any benchmarks. Check the .cabal file for the package and make sure that it properly declares the components that you expect.

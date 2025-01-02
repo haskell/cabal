@@ -86,3 +86,11 @@ main = do
     cabal "v2-target" ["a:tests"]
     cabal "clean" []
     cabal "v2-target" ["a:benches"]
+
+  cabalTest' "missing-target" $ do
+    cabal "clean" []
+    fails $ cabal "v2-target" ["c:exes"]
+    cabal "clean" []
+    fails $ cabal "v2-target" ["c:tests"]
+    cabal "clean" []
+    fails $ cabal "v2-target" ["c:benches"]
