@@ -55,7 +55,7 @@ Library
                      , bytestring >=0.9.1.0 && <0.11
 
   if !os(windows)
-    Build-depends:     unix  >=2.4.2.0 && <2.8
+    Build-depends:     unix  >=2.4.2.0
 
   if os(windows)
     Build-depends:     Win32 >=2.2.0.2 && <2.7
