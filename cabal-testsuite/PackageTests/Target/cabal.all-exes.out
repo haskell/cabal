@@ -5,8 +5,4 @@ Configuration is affected by the following files:
 Resolving dependencies...
 Fully qualified target forms:
  - a:exe:a-exe
- - a:lib:a
- - a:lib:a-sublib
  - b:exe:b-exe
- - b:lib:b
- - b:lib:b-sublib

@@ -1,9 +1,12 @@
 name:           b
 version:        0.1
 license:        BSD3
-cabal-version:  >= 1.2
+cabal-version:  >= 1.8
 build-type:     Simple
 
 library
-    exposed-modules:    Foo
-    build-depends:      base
+library b-sublib
+executable b-exe
+test-suite b-test
+    type: exitcode-stdio-1.0
+    main-is: Test.hs

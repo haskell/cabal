@@ -4,9 +4,5 @@ Configuration is affected by the following files:
 - cabal.project
 Resolving dependencies...
 Fully qualified target forms:
- - a:exe:a-exe
- - a:lib:a
- - a:lib:a-sublib
- - b:exe:b-exe
- - b:lib:b
- - b:lib:b-sublib
+ - a:test:a-test
+ - b:test:b-test
