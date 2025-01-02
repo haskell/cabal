@@ -303,6 +303,7 @@ globalCommand commands =
               , "path"
               , "new-build"
               , "new-configure"
+              , "new-target"
               , "new-repl"
               , "new-freeze"
               , "new-run"
