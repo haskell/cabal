@@ -1,0 +1,21 @@
+# cabal clean
+# cabal v2-target
+Configuration is affected by the following files:
+- cabal.project
+Resolving dependencies...
+Fully qualified target forms:
+ - a:bench:a-bench
+# cabal clean
+# cabal v2-target
+Configuration is affected by the following files:
+- cabal.project
+Resolving dependencies...
+Fully qualified target forms:
+ - a:bench:a-bench
+# cabal clean
+# cabal v2-target
+Configuration is affected by the following files:
+- cabal.project
+Resolving dependencies...
+Fully qualified target forms:
+ - a:bench:a-bench

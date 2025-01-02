@@ -44,3 +44,45 @@ main = do
     cabal "v2-target" ["dir-a/"]
     cabal "clean" []
     cabal "v2-target" ["dir-a/", "--enable-tests", "--enable-benchmarks"]
+
+  cabalTest' "component-target-lib" $ do
+    cabal "clean" []
+    cabal "v2-target" ["a:lib:a"]
+    cabal "clean" []
+    cabal "v2-target" ["lib:a"]
+    cabal "clean" []
+    cabal "v2-target" ["a:a"]
+
+  cabalTest' "component-target-exe" $ do
+    cabal "clean" []
+    cabal "v2-target" ["a:exe:a-exe"]
+    cabal "clean" []
+    cabal "v2-target" ["exe:a-exe"]
+    cabal "clean" []
+    cabal "v2-target" ["a:a-exe"]
+
+  cabalTest' "component-target-bench" $ do
+    cabal "clean" []
+    cabal "v2-target" ["a:bench:a-bench"]
+    cabal "clean" []
+    cabal "v2-target" ["bench:a-bench"]
+    cabal "clean" []
+    cabal "v2-target" ["a:a-bench"]
+
+  cabalTest' "component-target-test" $ do
+    cabal "clean" []
+    cabal "v2-target" ["a:test:a-test"]
+    cabal "clean" []
+    cabal "v2-target" ["test:a-test"]
+    cabal "clean" []
+    cabal "v2-target" ["a:a-test"]
+
+  cabalTest' "ctype-target" $ do
+    cabal "clean" []
+    cabal "v2-target" ["a:libs"]
+    cabal "clean" []
+    cabal "v2-target" ["a:exes"]
+    cabal "clean" []
+    cabal "v2-target" ["a:tests"]
+    cabal "clean" []
+    cabal "v2-target" ["a:benches"]
