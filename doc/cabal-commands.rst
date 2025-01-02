@@ -36,6 +36,7 @@ Commands
       gen-bounds             Generate dependency bounds.
       outdated               Check for outdated dependencies.
       path                   Query for simple project information.
+      target                 Disclose selected targets.
 
      [project building and installing]
       build                  Compile targets within the project.
