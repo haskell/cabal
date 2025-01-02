@@ -32,3 +32,9 @@ main = do
   cabalTest' "all-benches" $ do
     cabal "clean" []
     cabal "v2-target" ["all:benches"]
+
+  cabalTest' "package-target" $ do
+    cabal "clean" []
+    cabal "v2-target" ["a"]
+    cabal "clean" []
+    cabal "v2-target" ["a", "--enable-tests", "--enable-benchmarks"]
