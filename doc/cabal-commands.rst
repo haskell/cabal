@@ -213,6 +213,8 @@ Arguments and flags common to some or all commands are:
 
     Already generated `build-info.json` files will be removed since they would be stale otherwise.
 
+.. _target-forms:
+
 Target Forms
 ------------
 
@@ -734,6 +736,40 @@ Examples:
     of ``pkg`` on Hackage satisfying ``pkg > 1.9 && < 2.0``. ``--minor`` can also
     be used without arguments, in that case major version bumps are ignored for
     all packages.
+
+cabal target
+^^^^^^^^^^^^
+
+``cabal target [TARGETS]`` discloses fully-qualified targets from a selection of
+targets and is useful for discovering targets in a project for use with other
+commands taking [TARGETS]. This command can also check if a :ref:`target
+form<target-forms>` is unique as some commands require a unique TARGET.
+
+Any target forms except for a script target can be used with ``cabal target``.
+
+.. code-block:: console
+
+    $ cabal target all:tests
+    ...
+    Fully qualified target forms:
+    - Cabal-tests:test:check-tests
+    - Cabal-tests:test:custom-setup-tests
+    - Cabal-tests:test:hackage-tests
+    - Cabal-tests:test:no-thunks-test
+    - Cabal-tests:test:parser-tests
+    - Cabal-tests:test:rpmvercmp
+    - Cabal-tests:test:unit-tests
+    - cabal-benchmarks:test:cabal-benchmarks
+    - cabal-install-solver:test:unit-tests
+    - cabal-install:test:integration-tests2
+    - cabal-install:test:long-tests
+    - cabal-install:test:mem-use-tests
+    - cabal-install:test:unit-tests
+    - solver-benchmarks:test:unit-tests
+
+For a package, all, module or filepath target, cabal target [TARGETS] will
+**only** show ``libs`` and ``exes`` of the [TARGETS]. To also show tests and
+benchmarks, enable them with ``--enable-tests`` and ``--enable-benchmarks``.
 
 .. _command-group-build:
 
