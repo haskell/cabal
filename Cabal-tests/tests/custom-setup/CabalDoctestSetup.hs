@@ -283,6 +283,7 @@ addDoctestsUserHook testsuiteName uh = uh
 
 -- | Convert only flags used by 'generateBuildModule'.
 haddockToBuildFlags :: HaddockFlags -> BuildFlags
+{- FOURMOLU_DISABLE -}
 haddockToBuildFlags f =
 #if MIN_VERSION_Cabal(3,11,0)
   emptyBuildFlags
@@ -293,6 +294,7 @@ haddockToBuildFlags f =
     , buildDistPref  = haddockDistPref f
     }
 #endif
+{- FOURMOLU_ENABLE -}
 
 data Name = NameLib (Maybe String) | NameExe String deriving (Eq, Show)
 
@@ -331,6 +333,7 @@ data Component = Component Name [String] [String] [String]
 generateBuildModule
     :: String -- ^ doctests test-suite name
     -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO ()
+{- FOURMOLU_DISABLE -}
 generateBuildModule testSuiteName flags pkg lbi = do
   let verbosity = fromFlag (buildVerbosity flags)
   let distPref = fromFlag (buildDistPref flags)
@@ -581,6 +584,7 @@ generateBuildModule testSuiteName flags pkg lbi = do
 #else
     executableName = exeName
 #endif
+{- FOURMOLU_ENABLE -}
 
 -- | In compat settings it's better to omit the type-signature
 testDeps :: ComponentLocalBuildInfo -> ComponentLocalBuildInfo
