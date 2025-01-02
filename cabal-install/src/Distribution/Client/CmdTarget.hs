@@ -37,7 +37,7 @@ import Distribution.Simple.Command
   )
 import Distribution.Simple.Flag (fromFlagOrDefault)
 import Distribution.Simple.Utils
-  ( notice
+  ( noticeDoc
   , safeHead
   , wrapText
   )
@@ -185,7 +185,7 @@ reportBuildTargetProblems verbosity = reportTargetProblems verbosity "target"
 
 printTargetForms :: Verbosity -> TargetsMap -> ElaboratedInstallPlan -> IO ()
 printTargetForms verbosity targets elaboratedPlan =
-  notice verbosity . render $
+  noticeDoc verbosity $
     vcat
       [ text "Fully qualified target forms" Pretty.<> colon
       , nest 1 $ vcat [text "-" <+> text tf | tf <- targetForms]

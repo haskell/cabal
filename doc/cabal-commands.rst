@@ -752,20 +752,20 @@ Any target forms except for a script target can be used with ``cabal target``.
     $ cabal target all:tests
     ...
     Fully qualified target forms:
-    - Cabal-tests:test:check-tests
-    - Cabal-tests:test:custom-setup-tests
-    - Cabal-tests:test:hackage-tests
-    - Cabal-tests:test:no-thunks-test
-    - Cabal-tests:test:parser-tests
-    - Cabal-tests:test:rpmvercmp
-    - Cabal-tests:test:unit-tests
-    - cabal-benchmarks:test:cabal-benchmarks
-    - cabal-install-solver:test:unit-tests
-    - cabal-install:test:integration-tests2
-    - cabal-install:test:long-tests
-    - cabal-install:test:mem-use-tests
-    - cabal-install:test:unit-tests
-    - solver-benchmarks:test:unit-tests
+     - Cabal-tests:test:check-tests
+     - Cabal-tests:test:custom-setup-tests
+     - Cabal-tests:test:hackage-tests
+     - Cabal-tests:test:no-thunks-test
+     - Cabal-tests:test:parser-tests
+     - Cabal-tests:test:rpmvercmp
+     - Cabal-tests:test:unit-tests
+     - cabal-benchmarks:test:cabal-benchmarks
+     - cabal-install-solver:test:unit-tests
+     - cabal-install:test:integration-tests2
+     - cabal-install:test:long-tests
+     - cabal-install:test:mem-use-tests
+     - cabal-install:test:unit-tests
+     - solver-benchmarks:test:unit-tests
 
 For a package, all, module or filepath target, cabal target [TARGETS] will
 **only** show ``libs`` and ``exes`` of the [TARGETS]. To also show tests and
