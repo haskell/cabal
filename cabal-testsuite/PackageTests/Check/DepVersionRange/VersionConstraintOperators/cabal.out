@@ -1,0 +1,18 @@
+# cabal check
+These warnings may cause trouble when distributing the package:
+Warning: [missing-upper-bounds] On library, these packages miss upper bounds:
+  - missing-upper
+  - exclusive-minimums-missing-upper
+  - or-exclusive-minimums-missing-upper
+  - or-inclusive-maximums-missing-upper
+Please add them. There is more information at https://pvp.haskell.org/
+Warning: [le-upper-bounds] On library, these packages have less than or equals (<=) upper bounds:
+  - inclusive-maximums
+  - and-inclusive-maximums
+  - or-inclusive-maximums-missing-upper
+Please use less than (<) for upper bounds.
+Warning: [gt-lower-bounds] On library, these packages have greater than (>) lower bounds:
+  - exclusive-minimums-missing-upper
+  - and-exclusive-minimums
+  - or-exclusive-minimums-missing-upper
+Please use greater than or equals (>=) for lower bounds.

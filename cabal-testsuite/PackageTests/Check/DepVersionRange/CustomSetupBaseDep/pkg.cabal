@@ -9,7 +9,7 @@ maintainer: none@example.com
 license: GPL-3.0-or-later
 
 custom-setup
-  setup-depends: base > 1
+  setup-depends: base >= 1
 
 library
   exposed-modules: Foo
