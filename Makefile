@@ -27,18 +27,40 @@ init: ## Set up git hooks and ignored revisions.
 	@git config core.hooksPath .githooks
 	## TODO
 
+# NOTE: Keep this in sync with `.github/workflows/format.yml`.
+FORMAT_DIRS := \
+	bootstrap \
+	buildinfo-reference-generator \
+	Cabal \
+	Cabal-QuickCheck \
+	Cabal-described \
+	Cabal-hooks \
+	Cabal-syntax \
+	Cabal-tests \
+	Cabal-testsuite/main \
+	Cabal-testsuite/src \
+	Cabal-testsuite/static \
+	Cabal-tree-diff \
+	cabal-benchmarks \
+	cabal-dev-scripts \
+	cabal-install \
+	cabal-install-solver \
+	cabal-validate \
+	solver-benchmarks
+
+
 .PHONY: style
 style: ## Run the code styler.
-	@fourmolu -q -i Cabal Cabal-syntax cabal-install cabal-validate
+	@fourmolu -q -i $(FORMAT_DIRS)
 
 .PHONY: style-modified
 style-modified: ## Run the code styler on modified files.
-	@git ls-files --modified Cabal Cabal-syntax cabal-install cabal-validate \
+	@git ls-files --modified $(FORMAT_DIRS) \
 		| grep '.hs$$' | xargs -P $(PROCS) -I {} fourmolu -q -i {}
 
 .PHONY: style-commit
 style-commit: ## Run the code styler on the previous commit.
-	@git diff --name-only HEAD $(COMMIT) Cabal Cabal-syntax cabal-install cabal-validate \
+	@git diff --name-only HEAD $(COMMIT) -- $(FORMAT_DIRS) \
 		| grep '.hs$$' | xargs -P $(PROCS) -I {} fourmolu -q -i {}
 
 .PHONY: whitespace
