@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveFunctor #-}
-module Distribution.Solver.Modular.Var (
-    Var(..)
+
+module Distribution.Solver.Modular.Var
+  ( Var (..)
   , showVar
   , varPN
   ) where
@@ -29,6 +30,6 @@ showVar (S qsn) = showQSN qsn
 
 -- | Extract the package name from a Var
 varPN :: Var qpn -> qpn
-varPN (P qpn)        = qpn
+varPN (P qpn) = qpn
 varPN (F (FN qpn _)) = qpn
 varPN (S (SN qpn _)) = qpn

@@ -4,25 +4,25 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 #endif
 module Distribution.Solver.Modular.Solver
-    ( SolverConfig(..)
-    , solve
-    , PruneAfterFirstSuccess(..)
-    ) where
+  ( SolverConfig (..)
+  , solve
+  , PruneAfterFirstSuccess (..)
+  ) where
 
 import Distribution.Solver.Compat.Prelude
 import Prelude ()
 
-import qualified Data.Map as M
 import qualified Data.List as L
+import qualified Data.Map as M
 import qualified Data.Set as S
 import Distribution.Verbosity
 
 import Distribution.Compiler (CompilerInfo)
 
+import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.PackagePreferences
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb)
-import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.Variable
 
@@ -32,18 +32,18 @@ import Distribution.Solver.Modular.Cycles
 import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Explore
 import Distribution.Solver.Modular.Index
+import Distribution.Solver.Modular.Linking
 import Distribution.Solver.Modular.Log
 import Distribution.Solver.Modular.Message
+import Distribution.Solver.Modular.PSQ (PSQ)
+import qualified Distribution.Solver.Modular.PSQ as PSQ
 import Distribution.Solver.Modular.Package
 import qualified Distribution.Solver.Modular.Preference as P
-import Distribution.Solver.Modular.Validate
-import Distribution.Solver.Modular.Linking
-import Distribution.Solver.Modular.PSQ (PSQ)
 import Distribution.Solver.Modular.RetryLog
 import Distribution.Solver.Modular.Tree
-import qualified Distribution.Solver.Modular.PSQ as PSQ
+import Distribution.Solver.Modular.Validate
 
-import Distribution.Simple.Setup (BooleanFlag(..))
+import Distribution.Simple.Setup (BooleanFlag (..))
 
 #ifdef DEBUG_TRACETREE
 import qualified Distribution.Solver.Modular.ConflictSet as CS
@@ -57,23 +57,23 @@ import Debug.Trace.Tree.Assoc (Assoc(..))
 #endif
 
 -- | Various options for the modular solver.
-data SolverConfig = SolverConfig {
-  reorderGoals           :: ReorderGoals,
-  countConflicts         :: CountConflicts,
-  fineGrainedConflicts   :: FineGrainedConflicts,
-  minimizeConflictSet    :: MinimizeConflictSet,
-  independentGoals       :: IndependentGoals,
-  avoidReinstalls        :: AvoidReinstalls,
-  shadowPkgs             :: ShadowPkgs,
-  strongFlags            :: StrongFlags,
-  onlyConstrained        :: OnlyConstrained,
-  maxBackjumps           :: Maybe Int,
-  enableBackjumping      :: EnableBackjumping,
-  solveExecutables       :: SolveExecutables,
-  goalOrder              :: Maybe (Variable QPN -> Variable QPN -> Ordering),
-  solverVerbosity        :: Verbosity,
-  pruneAfterFirstSuccess :: PruneAfterFirstSuccess
-}
+data SolverConfig = SolverConfig
+  { reorderGoals :: ReorderGoals
+  , countConflicts :: CountConflicts
+  , fineGrainedConflicts :: FineGrainedConflicts
+  , minimizeConflictSet :: MinimizeConflictSet
+  , independentGoals :: IndependentGoals
+  , avoidReinstalls :: AvoidReinstalls
+  , shadowPkgs :: ShadowPkgs
+  , strongFlags :: StrongFlags
+  , onlyConstrained :: OnlyConstrained
+  , maxBackjumps :: Maybe Int
+  , enableBackjumping :: EnableBackjumping
+  , solveExecutables :: SolveExecutables
+  , goalOrder :: Maybe (Variable QPN -> Variable QPN -> Ordering)
+  , solverVerbosity :: Verbosity
+  , pruneAfterFirstSuccess :: PruneAfterFirstSuccess
+  }
 
 -- | Whether to remove all choices after the first successful choice at each
 -- level in the search tree.
@@ -87,64 +87,80 @@ newtype PruneAfterFirstSuccess = PruneAfterFirstSuccess Bool
 -- There is one exception, though, and that is cycle detection, which
 -- has been added relatively recently. Cycles are only removed directly
 -- before exploration.
---
-solve :: SolverConfig                         -- ^ solver parameters
-      -> CompilerInfo
-      -> Index                                -- ^ all available packages as an index
-      -> Maybe PkgConfigDb                    -- ^ available pkg-config pkgs
-      -> (PN -> PackagePreferences)           -- ^ preferences
-      -> M.Map PN [LabeledPackageConstraint]  -- ^ global constraints
-      -> S.Set PN                             -- ^ global goals
-      -> RetryLog Message SolverFailure (Assignment, RevDepMap)
+solve
+  :: SolverConfig
+  -- ^ solver parameters
+  -> CompilerInfo
+  -> Index
+  -- ^ all available packages as an index
+  -> Maybe PkgConfigDb
+  -- ^ available pkg-config pkgs
+  -> (PN -> PackagePreferences)
+  -- ^ preferences
+  -> M.Map PN [LabeledPackageConstraint]
+  -- ^ global constraints
+  -> S.Set PN
+  -- ^ global goals
+  -> RetryLog Message SolverFailure (Assignment, RevDepMap)
 solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
-  explorePhase      .
-  traceTree "cycles.json" id .
-  detectCycles      .
-  traceTree "heuristics.json" id .
-  trav (
-   heuristicsPhase  .
-   preferencesPhase .
-   validationPhase
-  ) .
-  traceTree "semivalidated.json" id .
-  validationCata    .
-  traceTree "pruned.json" id .
-  trav prunePhase   .
-  traceTree "build.json" id $
-  buildPhase
+  explorePhase
+    . traceTree "cycles.json" id
+    . detectCycles
+    . traceTree "heuristics.json" id
+    . trav
+      ( heuristicsPhase
+          . preferencesPhase
+          . validationPhase
+      )
+    . traceTree "semivalidated.json" id
+    . validationCata
+    . traceTree "pruned.json" id
+    . trav prunePhase
+    . traceTree "build.json" id
+    $ buildPhase
   where
-    explorePhase     = backjumpAndExplore (maxBackjumps sc)
-                                          (enableBackjumping sc)
-                                          (fineGrainedConflicts sc)
-                                          (countConflicts sc)
-                                          idx
-    detectCycles     = detectCyclesPhase
-    heuristicsPhase  =
+    explorePhase =
+      backjumpAndExplore
+        (maxBackjumps sc)
+        (enableBackjumping sc)
+        (fineGrainedConflicts sc)
+        (countConflicts sc)
+        idx
+    detectCycles = detectCyclesPhase
+    heuristicsPhase =
       let
-          sortGoals = case goalOrder sc of
-                        Nothing -> goalChoiceHeuristics .
-                                   P.deferSetupExeChoices .
-                                   P.deferWeakFlagChoices .
-                                   P.preferBaseGoalChoice
-                        Just order -> P.firstGoal .
-                                      P.sortGoals order
-          PruneAfterFirstSuccess prune = pruneAfterFirstSuccess sc
-      in sortGoals .
-         (if prune then P.pruneAfterFirstSuccess else id)
-    preferencesPhase = P.preferLinked .
-                       P.preferPackagePreferences userPrefs
-    validationPhase  = P.enforcePackageConstraints userConstraints .
-                       P.enforceManualFlags userConstraints
-    validationCata   = P.enforceSingleInstanceRestriction .
-                       validateLinking idx .
-                       validateTree cinfo idx pkgConfigDB
-    prunePhase       = (if asBool (avoidReinstalls sc) then P.avoidReinstalls (const True) else id) .
-                       (case onlyConstrained sc of
-                          OnlyConstrainedAll ->
-                            P.onlyConstrained pkgIsExplicit
-                          OnlyConstrainedNone ->
-                            id)
-    buildPhase       = buildTree idx (independentGoals sc) (S.toList userGoals)
+        sortGoals = case goalOrder sc of
+          Nothing ->
+            goalChoiceHeuristics
+              . P.deferSetupExeChoices
+              . P.deferWeakFlagChoices
+              . P.preferBaseGoalChoice
+          Just order ->
+            P.firstGoal
+              . P.sortGoals order
+        PruneAfterFirstSuccess prune = pruneAfterFirstSuccess sc
+       in
+        sortGoals
+          . (if prune then P.pruneAfterFirstSuccess else id)
+    preferencesPhase =
+      P.preferLinked
+        . P.preferPackagePreferences userPrefs
+    validationPhase =
+      P.enforcePackageConstraints userConstraints
+        . P.enforceManualFlags userConstraints
+    validationCata =
+      P.enforceSingleInstanceRestriction
+        . validateLinking idx
+        . validateTree cinfo idx pkgConfigDB
+    prunePhase =
+      (if asBool (avoidReinstalls sc) then P.avoidReinstalls (const True) else id)
+        . ( case onlyConstrained sc of
+              OnlyConstrainedAll ->
+                P.onlyConstrained pkgIsExplicit
+              OnlyConstrainedNone ->
+                id
+          )
+    buildPhase = buildTree idx (independentGoals sc) (S.toList userGoals)
 
     allExplicit = M.keysSet userConstraints `S.union` userGoals
 
@@ -165,7 +181,7 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
     --
     goalChoiceHeuristics
       | asBool (reorderGoals sc) = P.preferReallyEasyGoalChoices
-      | otherwise                = id {- P.firstGoal -}
+      | otherwise = id {- P.firstGoal -}
 
 -- | Dump solver tree to a file (in debugging mode)
 --
@@ -233,22 +249,24 @@ instance GSimpleTree (Tree d c) where
 _removeGR :: Tree d c -> Tree d QGoalReason
 _removeGR = trav go
   where
-   go :: TreeF d c (Tree d QGoalReason) -> TreeF d QGoalReason (Tree d QGoalReason)
-   go (PChoiceF qpn rdm _       psq) = PChoiceF qpn rdm dummy       psq
-   go (FChoiceF qfn rdm _ a b d psq) = FChoiceF qfn rdm dummy a b d psq
-   go (SChoiceF qsn rdm _ a     psq) = SChoiceF qsn rdm dummy a     psq
-   go (GoalChoiceF  rdm         psq) = GoalChoiceF  rdm             (goG psq)
-   go (DoneF rdm s)                  = DoneF rdm s
-   go (FailF cs reason)              = FailF cs reason
+    go :: TreeF d c (Tree d QGoalReason) -> TreeF d QGoalReason (Tree d QGoalReason)
+    go (PChoiceF qpn rdm _ psq) = PChoiceF qpn rdm dummy psq
+    go (FChoiceF qfn rdm _ a b d psq) = FChoiceF qfn rdm dummy a b d psq
+    go (SChoiceF qsn rdm _ a psq) = SChoiceF qsn rdm dummy a psq
+    go (GoalChoiceF rdm psq) = GoalChoiceF rdm (goG psq)
+    go (DoneF rdm s) = DoneF rdm s
+    go (FailF cs reason) = FailF cs reason
 
-   goG :: PSQ (Goal QPN) (Tree d QGoalReason) -> PSQ (Goal QPN) (Tree d QGoalReason)
-   goG = PSQ.fromList
-       . L.map (\(Goal var _, subtree) -> (Goal var dummy, subtree))
-       . PSQ.toList
+    goG :: PSQ (Goal QPN) (Tree d QGoalReason) -> PSQ (Goal QPN) (Tree d QGoalReason)
+    goG =
+      PSQ.fromList
+        . L.map (\(Goal var _, subtree) -> (Goal var dummy, subtree))
+        . PSQ.toList
 
-   dummy :: QGoalReason
-   dummy =
-       DependencyGoal $
-       DependencyReason
-           (Q (PackagePath DefaultNamespace QualToplevel) (mkPackageName "$"))
-           M.empty S.empty
+    dummy :: QGoalReason
+    dummy =
+      DependencyGoal $
+        DependencyReason
+          (Q (PackagePath DefaultNamespace QualToplevel) (mkPackageName "$"))
+          M.empty
+          S.empty

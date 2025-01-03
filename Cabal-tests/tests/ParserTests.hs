@@ -1,32 +1,33 @@
 {-# LANGUAGE CPP #-}
-module Main
-    ( main
-    ) where
 
-import Prelude ()
+module Main
+  ( main
+  ) where
+
 import Prelude.Compat
+import Prelude ()
 
 import Test.Tasty
 import Test.Tasty.Golden.Advanced (goldenTest)
 import Test.Tasty.HUnit
 
-import Control.Monad                               (unless, void)
-import Data.Algorithm.Diff                         (PolyDiff (..), getGroupedDiff)
-import Data.Maybe                                  (isNothing)
-import Distribution.Fields                         (runParseResult)
-import Distribution.PackageDescription             (GenericPackageDescription)
-import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription)
+import Control.Monad (unless, void)
+import Data.Algorithm.Diff (PolyDiff (..), getGroupedDiff)
+import Data.Maybe (isNothing)
+import Distribution.Fields (runParseResult)
+import Distribution.PackageDescription (GenericPackageDescription)
+import Distribution.PackageDescription.Parsec (parseGenericPackageDescription)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
-import Distribution.Parsec                         (PWarnType (..), PWarning (..), showPError, showPWarning)
-import Distribution.Pretty                         (prettyShow)
-import Distribution.Utils.Generic                  (fromUTF8BS, toUTF8BS)
-import System.Directory                            (setCurrentDirectory)
-import System.Environment                          (getArgs, withArgs)
-import System.FilePath                             (replaceExtension, (</>))
+import Distribution.Parsec (PWarnType (..), PWarning (..), showPError, showPWarning)
+import Distribution.Pretty (prettyShow)
+import Distribution.Utils.Generic (fromUTF8BS, toUTF8BS)
+import System.Directory (setCurrentDirectory)
+import System.Environment (getArgs, withArgs)
+import System.FilePath (replaceExtension, (</>))
 
-import qualified Data.ByteString       as BS
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
-import qualified Data.List.NonEmpty    as NE
+import qualified Data.List.NonEmpty as NE
 
 import qualified Distribution.InstalledPackageInfo as IPI
 
@@ -37,7 +38,9 @@ import Data.TreeDiff.Instances.Cabal ()
 #endif
 
 tests :: TestTree
-tests = testGroup "parsec tests"
+tests =
+  testGroup
+    "parsec tests"
     [ regressionTests
     , warningTests
     , errorTests
@@ -50,54 +53,58 @@ tests = testGroup "parsec tests"
 
 -- Verify that we trigger warnings
 warningTests :: TestTree
-warningTests = testGroup "warnings triggered"
-    [ warningTest PWTLexBOM            "bom.cabal"
-    , warningTest PWTLexNBSP           "nbsp.cabal"
-    , warningTest PWTLexTab            "tab.cabal"
-    , warningTest PWTUTF               "utf8.cabal"
-    , warningTest PWTBoolCase          "bool.cabal"
-    , warningTest PWTVersionTag        "versiontag.cabal"
-    , warningTest PWTNewSyntax         "newsyntax.cabal"
-    , warningTest PWTOldSyntax         "oldsyntax.cabal"
-    , warningTest PWTDeprecatedField   "deprecatedfield.cabal"
+warningTests =
+  testGroup
+    "warnings triggered"
+    [ warningTest PWTLexBOM "bom.cabal"
+    , warningTest PWTLexNBSP "nbsp.cabal"
+    , warningTest PWTLexTab "tab.cabal"
+    , warningTest PWTUTF "utf8.cabal"
+    , warningTest PWTBoolCase "bool.cabal"
+    , warningTest PWTVersionTag "versiontag.cabal"
+    , warningTest PWTNewSyntax "newsyntax.cabal"
+    , warningTest PWTOldSyntax "oldsyntax.cabal"
+    , warningTest PWTDeprecatedField "deprecatedfield.cabal"
     , warningTest PWTInvalidSubsection "subsection.cabal"
-    , warningTest PWTUnknownField      "unknownfield.cabal"
-    , warningTest PWTUnknownSection    "unknownsection.cabal"
-    , warningTest PWTTrailingFields    "trailingfield.cabal"
-    , warningTest PWTDoubleDash        "doubledash.cabal"
+    , warningTest PWTUnknownField "unknownfield.cabal"
+    , warningTest PWTUnknownSection "unknownsection.cabal"
+    , warningTest PWTTrailingFields "trailingfield.cabal"
+    , warningTest PWTDoubleDash "doubledash.cabal"
     , warningTest PWTMultipleSingularField "multiplesingular.cabal"
-    , warningTest PWTVersionWildcard   "wildcard.cabal"
-    , warningTest PWTVersionOperator   "operator.cabal"
-    , warningTest PWTSpecVersion       "specversion-a.cabal"
-    , warningTest PWTSpecVersion       "specversion-b.cabal"
-    , warningTest PWTSpecVersion       "specversion-c.cabal"
+    , warningTest PWTVersionWildcard "wildcard.cabal"
+    , warningTest PWTVersionOperator "operator.cabal"
+    , warningTest PWTSpecVersion "specversion-a.cabal"
+    , warningTest PWTSpecVersion "specversion-b.cabal"
+    , warningTest PWTSpecVersion "specversion-c.cabal"
     -- TODO: not implemented yet
     -- , warningTest PWTExtraTestModule   "extratestmodule.cabal"
     ]
 
 warningTest :: PWarnType -> FilePath -> TestTree
 warningTest wt fp = testCase (show wt) $ do
-    contents <- BS.readFile $ "tests" </> "ParserTests" </> "warnings" </> fp
+  contents <- BS.readFile $ "tests" </> "ParserTests" </> "warnings" </> fp
 
-    let res =  parseGenericPackageDescription contents
-    let (warns, x) = runParseResult res
+  let res = parseGenericPackageDescription contents
+  let (warns, x) = runParseResult res
 
-    assertBool ("should parse successfully: " ++ show x) $ isRight x
+  assertBool ("should parse successfully: " ++ show x) $ isRight x
 
-    case warns of
-        [PWarning wt' _ _] -> assertEqual "warning type" wt wt'
-        []                 -> assertFailure "got no warnings"
-        _                  -> assertFailure $ "got multiple warnings: " ++ show warns
+  case warns of
+    [PWarning wt' _ _] -> assertEqual "warning type" wt wt'
+    [] -> assertFailure "got no warnings"
+    _ -> assertFailure $ "got multiple warnings: " ++ show warns
   where
     isRight (Right _) = True
-    isRight _         = False
+    isRight _ = False
 
 -------------------------------------------------------------------------------
 -- Errors
 -------------------------------------------------------------------------------
 
 errorTests :: TestTree
-errorTests = testGroup "errors"
+errorTests =
+  testGroup
+    "errors"
     [ errorTest "common1.cabal"
     , errorTest "common2.cabal"
     , errorTest "common3.cabal"
@@ -134,16 +141,16 @@ errorTests = testGroup "errors"
 
 errorTest :: FilePath -> TestTree
 errorTest fp = cabalGoldenTest fp correct $ do
-    contents <- BS.readFile input
-    let res =  parseGenericPackageDescription contents
-    let (_, x) = runParseResult res
+  contents <- BS.readFile input
+  let res = parseGenericPackageDescription contents
+  let (_, x) = runParseResult res
 
-    return $ toUTF8BS $ case x of
-        Right gpd ->
-            "UNEXPECTED SUCCESS\n" ++
-            showGenericPackageDescription gpd
-        Left (v, errs) ->
-            unlines $ ("VERSION: " ++ show v) : map (showPError fp) (NE.toList errs)
+  return $ toUTF8BS $ case x of
+    Right gpd ->
+      "UNEXPECTED SUCCESS\n"
+        ++ showGenericPackageDescription gpd
+    Left (v, errs) ->
+      unlines $ ("VERSION: " ++ show v) : map (showPError fp) (NE.toList errs)
   where
     input = "tests" </> "ParserTests" </> "errors" </> fp
     correct = replaceExtension input "errors"
@@ -153,7 +160,9 @@ errorTest fp = cabalGoldenTest fp correct $ do
 -------------------------------------------------------------------------------
 
 regressionTests :: TestTree
-regressionTests = testGroup "regressions"
+regressionTests =
+  testGroup
+    "regressions"
     [ regressionTest "encoding-0.8.cabal"
     , regressionTest "Octree-0.5.cabal"
     , regressionTest "nothing-unicode.cabal"
@@ -211,19 +220,19 @@ regressionTest fp = testGroup fp
 
 formatGoldenTest :: FilePath -> TestTree
 formatGoldenTest fp = cabalGoldenTest "format" correct $ do
-    contents <- BS.readFile input
-    let res = parseGenericPackageDescription contents
-    let (warns, x) = runParseResult res
+  contents <- BS.readFile input
+  let res = parseGenericPackageDescription contents
+  let (warns, x) = runParseResult res
 
-    return $ toUTF8BS $ case x of
-        Right gpd ->
-            unlines (map (showPWarning fp) warns)
-            ++ showGenericPackageDescription gpd
-        Left (csv, errs) ->
-            unlines $
-                "ERROR" :
-                maybe "unknown-version" prettyShow csv :
-                map (showPError fp) (NE.toList errs)
+  return $ toUTF8BS $ case x of
+    Right gpd ->
+      unlines (map (showPWarning fp) warns)
+        ++ showGenericPackageDescription gpd
+    Left (csv, errs) ->
+      unlines $
+        "ERROR"
+          : maybe "unknown-version" prettyShow csv
+          : map (showPError fp) (NE.toList errs)
   where
     input = "tests" </> "ParserTests" </> "regressions" </> fp
     correct = replaceExtension input "format"
@@ -244,12 +253,12 @@ treeDiffGoldenTest fp = ediffGolden goldenTest "expr" exprFile $ do
 
 formatRoundTripTest :: FilePath -> TestTree
 formatRoundTripTest fp = testCase "roundtrip" $ do
-    contents <- BS.readFile input
-    x <- parse contents
-    let contents' = showGenericPackageDescription x
-    y <- parse (toUTF8BS contents')
-    -- previously we mangled licenses a bit
-    let y' = y
+  contents <- BS.readFile input
+  x <- parse contents
+  let contents' = showGenericPackageDescription x
+  y <- parse (toUTF8BS contents')
+  -- previously we mangled licenses a bit
+  let y' = y
 {- FOURMOLU_DISABLE -}
     unless (x == y') $
 #ifdef MIN_VERSION_tree_diff
@@ -283,7 +292,9 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
 -------------------------------------------------------------------------------
 
 ipiTests :: TestTree
-ipiTests = testGroup "ipis"
+ipiTests =
+  testGroup
+    "ipis"
     [ ipiTest "transformers.cabal"
     , ipiTest "Includes2.cabal"
     , ipiTest "issue-2276-ghc-9885.cabal"
@@ -303,12 +314,12 @@ ipiTest fp = testGroup fp $
 
 ipiFormatGoldenTest :: FilePath -> TestTree
 ipiFormatGoldenTest fp = cabalGoldenTest "format" correct $ do
-    contents <- BS.readFile input
-    let res = IPI.parseInstalledPackageInfo contents
-    return $ toUTF8BS $ case res of
-        Left err -> "ERROR " ++ show err
-        Right (ws, ipi)  ->
-            unlines ws ++ IPI.showInstalledPackageInfo ipi
+  contents <- BS.readFile input
+  let res = IPI.parseInstalledPackageInfo contents
+  return $ toUTF8BS $ case res of
+    Left err -> "ERROR " ++ show err
+    Right (ws, ipi) ->
+      unlines ws ++ IPI.showInstalledPackageInfo ipi
   where
     input = "tests" </> "ParserTests" </> "ipi" </> fp
     correct = replaceExtension input "format"
@@ -328,30 +339,29 @@ ipiTreeDiffGoldenTest fp = ediffGolden goldenTest "expr" exprFile $ do
 
 ipiFormatRoundTripTest :: FilePath -> TestTree
 ipiFormatRoundTripTest fp = testCase "roundtrip" $ do
-    contents <- BS.readFile input
-    x <- parse contents
-    let contents' = IPI.showInstalledPackageInfo x
-    y <- parse (toUTF8BS contents')
+  contents <- BS.readFile input
+  x <- parse contents
+  let contents' = IPI.showInstalledPackageInfo x
+  y <- parse (toUTF8BS contents')
 
-    -- ghc-pkg prints pkgroot itself, based on cli arguments!
-    let x' = x { IPI.pkgRoot = Nothing }
-    let y' = y
-    assertBool "pkgRoot isn't shown" (isNothing (IPI.pkgRoot y))
-    assertEqual "re-parsed doesn't match" x' y'
+  -- ghc-pkg prints pkgroot itself, based on cli arguments!
+  let x' = x{IPI.pkgRoot = Nothing}
+  let y' = y
+  assertBool "pkgRoot isn't shown" (isNothing (IPI.pkgRoot y))
+  assertEqual "re-parsed doesn't match" x' y'
 
-    -- Complete round-trip
-    let contents2 = IPI.showFullInstalledPackageInfo x
-    z <- parse (toUTF8BS contents2)
-    assertEqual "re-parsed doesn't match" x z
-
+  -- Complete round-trip
+  let contents2 = IPI.showFullInstalledPackageInfo x
+  z <- parse (toUTF8BS contents2)
+  assertEqual "re-parsed doesn't match" x z
   where
     parse :: BS.ByteString -> IO IPI.InstalledPackageInfo
     parse c = do
-        case IPI.parseInstalledPackageInfo c of
-            Right (_, ipi) -> return ipi
-            Left err       -> do
-              void $ assertFailure $ show err
-              fail "failure"
+      case IPI.parseInstalledPackageInfo c of
+        Right (_, ipi) -> return ipi
+        Left err -> do
+          void $ assertFailure $ show err
+          fail "failure"
     input = "tests" </> "ParserTests" </> "ipi" </> fp
 
 -------------------------------------------------------------------------------
@@ -360,22 +370,25 @@ ipiFormatRoundTripTest fp = testCase "roundtrip" $ do
 
 main :: IO ()
 main = do
-    args <- getArgs
-    case args of
-        ("--cwd" : cwd : args') -> do
-            setCurrentDirectory cwd
-            withArgs args' $ defaultMain tests
-        _ -> defaultMain tests
+  args <- getArgs
+  case args of
+    ("--cwd" : cwd : args') -> do
+      setCurrentDirectory cwd
+      withArgs args' $ defaultMain tests
+    _ -> defaultMain tests
 
 cabalGoldenTest :: TestName -> FilePath -> IO BS.ByteString -> TestTree
 cabalGoldenTest name ref act = goldenTest name (BS.readFile ref) act cmp upd
   where
     upd = BS.writeFile ref
     cmp x y | x == y = return Nothing
-    cmp x y = return $ Just $ unlines $
-        concatMap f (getGroupedDiff (BS8.lines x) (BS8.lines y))
+    cmp x y =
+      return $
+        Just $
+          unlines $
+            concatMap f (getGroupedDiff (BS8.lines x) (BS8.lines y))
       where
-        f (First xs)  = map (cons3 '-' . fromUTF8BS) xs
+        f (First xs) = map (cons3 '-' . fromUTF8BS) xs
         f (Second ys) = map (cons3 '+' . fromUTF8BS) ys
         -- we print unchanged lines too. It shouldn't be a problem while we have
         -- reasonably small examples

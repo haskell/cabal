@@ -1,5 +1,4 @@
 -- This is Setup.hs script from idris-1.1.1
-
 {-
 
 Copyright (c) 2011 Edwin Brady
@@ -33,43 +32,42 @@ WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-*** End of disclaimer. ***
+\*** End of disclaimer. ***
 
 -}
-
 {-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -w #-}
+
 module IdrisSetup (main) where
 
 #if !defined(MIN_VERSION_Cabal)
 # define MIN_VERSION_Cabal(x,y,z) 0
 #endif
 
+import Control.Exception (SomeException, catch)
 import Control.Monad
 import Data.IORef
-import Control.Exception (SomeException, catch)
 import Data.String (fromString)
 
+import Distribution.Compiler
+import Distribution.PackageDescription
 import Distribution.Simple
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.InstallDirs as I
 import Distribution.Simple.LocalBuildInfo as L
-import qualified Distribution.Simple.Setup as S
 import qualified Distribution.Simple.Program as P
-import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, notice, installOrdinaryFiles)
-import Distribution.Simple.Utils (rewriteFileEx)
-import Distribution.Compiler
-import Distribution.PackageDescription
+import qualified Distribution.Simple.Setup as S
+import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, installOrdinaryFiles, notice, rewriteFileEx)
 import Distribution.Text
 #if MIN_VERSION_Cabal(3,11,0)
 import Distribution.Utils.Path
   (getSymbolicPath, makeSymbolicPath)
 #endif
 
+import System.Directory
 import System.Environment
 import System.Exit
-import System.FilePath ((</>), splitDirectories,isAbsolute)
-import System.Directory
+import System.FilePath (isAbsolute, splitDirectories, (</>))
 import qualified System.FilePath.Posix as Px
 import System.Process
 
@@ -113,8 +111,9 @@ mymake = "make"
 #endif
 
 make verbosity dir args =
-  P.runProgramInvocation verbosity $ P.simpleProgramInvocation mymake $
-    [ "-C", dir ] ++ args
+  P.runProgramInvocation verbosity $
+    P.simpleProgramInvocation mymake $
+      ["-C", dir] ++ args
 
 #ifdef mingw32_HOST_OS
 windres verbosity =
@@ -139,10 +138,10 @@ execOnly flags =
 
 isRelease :: S.ConfigFlags -> Bool
 isRelease flags =
-    case lookup (mkFlagName "release") (configConfigurationsFlags flags) of
-      Just True -> True
-      Just False -> False
-      Nothing -> False
+  case lookup (mkFlagName "release") (configConfigurationsFlags flags) of
+    Just True -> True
+    Just False -> False
+    Nothing -> False
 
 isFreestanding :: S.ConfigFlags -> Bool
 isFreestanding flags =
@@ -160,70 +159,85 @@ mkFlagName = FlagName
 -- Clean
 
 idrisClean _ flags _ _ = cleanStdLib
-   where
-      verbosity = S.fromFlag $ S.cleanVerbosity flags
+  where
+    verbosity = S.fromFlag $ S.cleanVerbosity flags
 
-      cleanStdLib = makeClean "libs"
+    cleanStdLib = makeClean "libs"
 
-      makeClean dir = make verbosity dir [ "clean", "IDRIS=idris" ]
+    makeClean dir = make verbosity dir ["clean", "IDRIS=idris"]
 
 -- -----------------------------------------------------------------------------
 -- Configure
 
 gitHash :: IO String
-gitHash = do h <- Control.Exception.catch (readProcess "git" ["rev-parse", "--short", "HEAD"] "")
-                  (\e -> let e' = (e :: SomeException) in return "PRE")
-             return $ takeWhile (/= '\n') h
+gitHash = do
+  h <-
+    Control.Exception.catch
+      (readProcess "git" ["rev-parse", "--short", "HEAD"] "")
+      (\e -> let e' = (e :: SomeException) in return "PRE")
+  return $ takeWhile (/= '\n') h
 
 -- Put the Git hash into a module for use in the program
 -- For release builds, just put the empty string in the module
 generateVersionModule verbosity dir release = do
-    hash <- gitHash
-    let versionModulePath = dir </> "Version_idris" Px.<.> "hs"
-    putStrLn $ "Generating " ++ versionModulePath ++
-             if release then " for release" else " for prerelease " ++ hash
-    createDirectoryIfMissingVerbose verbosity True dir
-    rewriteFileEx verbosity versionModulePath (versionModuleContents hash)
-
-  where versionModuleContents h = "module Version_idris where\n\n" ++
-                                  "gitHash :: String\n" ++
-                                  if release
-                                    then "gitHash = \"\"\n"
-                                    else "gitHash = \"git:" ++ h ++ "\"\n"
+  hash <- gitHash
+  let versionModulePath = dir </> "Version_idris" Px.<.> "hs"
+  putStrLn $
+    "Generating "
+      ++ versionModulePath
+      ++ if release then " for release" else " for prerelease " ++ hash
+  createDirectoryIfMissingVerbose verbosity True dir
+  rewriteFileEx verbosity versionModulePath (versionModuleContents hash)
+  where
+    versionModuleContents h =
+      "module Version_idris where\n\n"
+        ++ "gitHash :: String\n"
+        ++ if release
+          then "gitHash = \"\"\n"
+          else "gitHash = \"git:" ++ h ++ "\"\n"
 
 -- Generate a module that contains the lib path for a freestanding Idris
 generateTargetModule verbosity dir targetDir = do
-    let absPath = isAbsolute targetDir
-    let targetModulePath = dir </> "Target_idris" Px.<.> "hs"
-    putStrLn $ "Generating " ++ targetModulePath
-    createDirectoryIfMissingVerbose verbosity True dir
-    rewriteFileEx verbosity targetModulePath (versionModuleContents absPath targetDir)
-            where versionModuleContents absolute td = "module Target_idris where\n\n" ++
-                                    "import System.FilePath\n" ++
-                                    "import System.Environment\n" ++
-                                    "getDataDir :: IO String\n" ++
-                                    if absolute
-                                        then "getDataDir = return \"" ++ td ++ "\"\n"
-                                        else "getDataDir = do \n" ++
-                                             "   expath <- getExecutablePath\n" ++
-                                             "   execDir <- return $ dropFileName expath\n" ++
-                                             "   return $ execDir ++ \"" ++ td ++ "\"\n"
-                                    ++ "getDataFileName :: FilePath -> IO FilePath\n"
-                                    ++ "getDataFileName name = do\n"
-                                    ++ "   dir <- getDataDir\n"
-                                    ++ "   return (dir ++ \"/\" ++ name)"
+  let absPath = isAbsolute targetDir
+  let targetModulePath = dir </> "Target_idris" Px.<.> "hs"
+  putStrLn $ "Generating " ++ targetModulePath
+  createDirectoryIfMissingVerbose verbosity True dir
+  rewriteFileEx verbosity targetModulePath (versionModuleContents absPath targetDir)
+  where
+    versionModuleContents absolute td =
+      "module Target_idris where\n\n"
+        ++ "import System.FilePath\n"
+        ++ "import System.Environment\n"
+        ++ "getDataDir :: IO String\n"
+        ++ if absolute
+          then "getDataDir = return \"" ++ td ++ "\"\n"
+          else
+            "getDataDir = do \n"
+              ++ "   expath <- getExecutablePath\n"
+              ++ "   execDir <- return $ dropFileName expath\n"
+              ++ "   return $ execDir ++ \""
+              ++ td
+              ++ "\"\n"
+              ++ "getDataFileName :: FilePath -> IO FilePath\n"
+              ++ "getDataFileName name = do\n"
+              ++ "   dir <- getDataDir\n"
+              ++ "   return (dir ++ \"/\" ++ name)"
 
 -- a module that has info about existence and location of a bundled toolchain
 generateToolchainModule verbosity srcDir toolDir = do
-    let commonContent = "module Tools_idris where\n\n"
-    let toolContent = case toolDir of
-                        Just dir -> "hasBundledToolchain = True\n" ++
-                                    "getToolchainDir = \"" ++ dir ++ "\"\n"
-                        Nothing -> "hasBundledToolchain = False\n" ++
-                                   "getToolchainDir = \"\""
-    let toolPath = srcDir </> "Tools_idris" Px.<.> "hs"
-    createDirectoryIfMissingVerbose verbosity True srcDir
-    rewriteFileEx verbosity toolPath (commonContent ++ toolContent)
+  let commonContent = "module Tools_idris where\n\n"
+  let toolContent = case toolDir of
+        Just dir ->
+          "hasBundledToolchain = True\n"
+            ++ "getToolchainDir = \""
+            ++ dir
+            ++ "\"\n"
+        Nothing ->
+          "hasBundledToolchain = False\n"
+            ++ "getToolchainDir = \"\""
+  let toolPath = srcDir </> "Tools_idris" Px.<.> "hs"
+  createDirectoryIfMissingVerbose verbosity True srcDir
+  rewriteFileEx verbosity toolPath (commonContent ++ toolContent)
 
 {- FOURMOLU_DISABLE -}
 idrisConfigure _ flags pkgdesc local = do
@@ -297,9 +311,9 @@ idrisPostSDist args flags desc lbi = do
 
 getVersion :: Args -> S.BuildFlags -> IO HookedBuildInfo
 getVersion args flags = do
-      hash <- gitHash
-      let buildinfo = (emptyBuildInfo { cppOptions = ["-DVERSION="++hash] }) :: BuildInfo
-      return (Just buildinfo, [])
+  hash <- gitHash
+  let buildinfo = (emptyBuildInfo{cppOptions = ["-DVERSION=" ++ hash]}) :: BuildInfo
+  return (Just buildinfo, [])
 
 idrisPreBuild args flags = do
 #ifdef mingw32_HOST_OS
@@ -320,52 +334,56 @@ idrisPreBuild args flags = do
         return (Nothing, [])
 #endif
 
-idrisBuild _ flags _ local
-   = if (execOnly (configFlags local)) then buildRTS
-        else do buildStdLib
-                buildRTS
-   where
-      verbosity = S.fromFlag $ S.buildVerbosity flags
+idrisBuild _ flags _ local =
+  if (execOnly (configFlags local))
+    then buildRTS
+    else do
+      buildStdLib
+      buildRTS
+  where
+    verbosity = S.fromFlag $ S.buildVerbosity flags
 
-      buildStdLib = do
-            putStrLn "Building libraries..."
-            makeBuild "libs"
-         where
-            makeBuild dir = make verbosity dir ["IDRIS=" ++ idrisCmd local]
+    buildStdLib = do
+      putStrLn "Building libraries..."
+      makeBuild "libs"
+      where
+        makeBuild dir = make verbosity dir ["IDRIS=" ++ idrisCmd local]
 
-      buildRTS = make verbosity "rts" $ gmpflag (usesGMP (configFlags local))
+    buildRTS = make verbosity "rts" $ gmpflag (usesGMP (configFlags local))
 
-      gmpflag False = []
-      gmpflag True = ["GMP=-DIDRIS_GMP"]
+    gmpflag False = []
+    gmpflag True = ["GMP=-DIDRIS_GMP"]
 
 -- -----------------------------------------------------------------------------
 -- Copy/Install
 
-idrisInstall verbosity copy pkg local
-   = if (execOnly (configFlags local)) then installRTS
-        else do installStdLib
-                installRTS
-                installManPage
-   where
-      target = datadir $ L.absoluteInstallDirs pkg local copy
+idrisInstall verbosity copy pkg local =
+  if (execOnly (configFlags local))
+    then installRTS
+    else do
+      installStdLib
+      installRTS
+      installManPage
+  where
+    target = datadir $ L.absoluteInstallDirs pkg local copy
 
-      installStdLib = do
-        let target' = target -- </> "libs"
-        putStrLn $ "Installing libraries in " ++ target'
-        makeInstall "libs" target'
+    installStdLib = do
+      let target' = target -- </> "libs"
+      putStrLn $ "Installing libraries in " ++ target'
+      makeInstall "libs" target'
 
-      installRTS = do
-         let target' = target </> "rts"
-         putStrLn $ "Installing run time system in " ++ target'
-         makeInstall "rts" target'
+    installRTS = do
+      let target' = target </> "rts"
+      putStrLn $ "Installing run time system in " ++ target'
+      makeInstall "rts" target'
 
-      installManPage = do
-         let mandest = mandir (L.absoluteInstallDirs pkg local copy) ++ "/man1"
-         notice verbosity $ unwords ["Copying man page to", mandest]
-         installOrdinaryFiles verbosity mandest [("man", "idris.1")]
+    installManPage = do
+      let mandest = mandir (L.absoluteInstallDirs pkg local copy) ++ "/man1"
+      notice verbosity $ unwords ["Copying man page to", mandest]
+      installOrdinaryFiles verbosity mandest [("man", "idris.1")]
 
-      makeInstall src target =
-         make verbosity src [ "install", "TARGET=" ++ target, "IDRIS=" ++ idrisCmd local]
+    makeInstall src target =
+      make verbosity src ["install", "TARGET=" ++ target, "IDRIS=" ++ idrisCmd local]
 
 -- -----------------------------------------------------------------------------
 -- Test
@@ -374,7 +392,7 @@ idrisInstall verbosity copy pkg local
 -- When fetching modules, idris uses the second path (in the pkg record),
 -- which by default is the root folder of the project.
 -- We want it to be the install directory where we put the idris libraries.
-fixPkg pkg target = pkg { dataDir = target }
+fixPkg pkg target = pkg{dataDir = target}
 
 {- FOURMOLU_DISABLE -}
 idrisTestHook args pkg local hooks flags = do

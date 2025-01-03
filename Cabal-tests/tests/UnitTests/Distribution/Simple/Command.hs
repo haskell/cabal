@@ -1,6 +1,6 @@
 module UnitTests.Distribution.Simple.Command
-    ( tests
-    ) where
+  ( tests
+  ) where
 
 import Distribution.Simple.Command
 import qualified Distribution.Simple.Flag as Flag
@@ -21,21 +21,22 @@ argumentTests =
   where
     -- evaluate command parse result, to force possible exceptions in 'f'
     evalParse p = case p of
-      CommandErrors _         -> Left "errors"
-      CommandHelp _           -> Left "help"
-      CommandList _           -> Left "list"
+      CommandErrors _ -> Left "errors"
+      CommandHelp _ -> Left "help"
+      CommandList _ -> Left "list"
       CommandReadyToGo (f, _) -> Right $ f Flag.NoFlag
     verbose = Flag.Flag Verbosity.verbose
     isGlobal = True
-    cmdUI = CommandUI
-      { commandName = "cmd"
-      , commandSynopsis = "the command"
-      , commandUsage = \name -> name ++ " cmd -v[N]"
-      , commandDescription = Nothing
-      , commandNotes = Nothing
-      , commandDefaultFlags = Flag.NoFlag
-      , commandOptions = const [ optField ]
-      }
+    cmdUI =
+      CommandUI
+        { commandName = "cmd"
+        , commandSynopsis = "the command"
+        , commandUsage = \name -> name ++ " cmd -v[N]"
+        , commandDescription = Nothing
+        , commandNotes = Nothing
+        , commandDefaultFlags = Flag.NoFlag
+        , commandOptions = const [optField]
+        }
     optField = optionVerbosity id const
 
 tests :: [TestTree]

@@ -7,18 +7,18 @@ module Test.Utils.TempTestDir
   ) where
 
 import Distribution.Compat.Internal.TempFile (createTempDirectory)
-import Distribution.Simple.Utils (warn, TempFileOptions (..), defaultTempFileOptions)
+import Distribution.Simple.Utils (TempFileOptions (..), defaultTempFileOptions, warn)
 import Distribution.Verbosity
 
 import Control.Concurrent (threadDelay)
 import Control.Exception (throwIO, try)
 import Control.Monad (when)
-import Control.Monad.Catch ( bracket, MonadMask)
+import Control.Monad.Catch (MonadMask, bracket)
 import Control.Monad.IO.Class
 
 import System.Directory
-import System.IO.Error
 import System.FilePath ((</>))
+import System.IO.Error
 import qualified System.Info (os)
 
 -- | Much like 'withTemporaryDirectory' but with a number of hacks to make
@@ -35,15 +35,17 @@ withTestDir' verbosity tempFileOpts template action = do
     -- /private/var/folders/... which will work.
     liftIO $ canonicalizePath =<< getTemporaryDirectory
   bracket
-    ( do { tmpRelDir <- liftIO $ createTempDirectory systmpdir template
-         ; return $ systmpdir </> tmpRelDir } )
-    (liftIO
-      -- This ensures that the temp files are not deleted at the end of the test.
-      -- It replicates the behavior of @withTempDirectoryEx@.
-      . when (not (optKeepTempFiles tempFileOpts))
-      -- This is the bit that helps with Windows deleting all files.
-      . removeDirectoryRecursiveHack verbosity
-      )
+    ( do
+        tmpRelDir <- liftIO $ createTempDirectory systmpdir template
+        return $ systmpdir </> tmpRelDir
+    )
+    ( liftIO
+        -- This ensures that the temp files are not deleted at the end of the test.
+        -- It replicates the behavior of @withTempDirectoryEx@.
+        . when (not (optKeepTempFiles tempFileOpts))
+        -- This is the bit that helps with Windows deleting all files.
+        . removeDirectoryRecursiveHack verbosity
+    )
     action
 
 -- | On Windows, file locks held by programs we run (in this case VCSs)
