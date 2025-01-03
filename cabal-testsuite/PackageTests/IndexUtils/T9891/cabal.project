@@ -1,0 +1,3 @@
+packages: pkg
+repository local
+    url: file+noindex://repo
