@@ -1,12 +1,17 @@
 {-# LANGUAGE DeriveFunctor #-}
+
 module Distribution.Solver.Modular.Package
-  ( I(..)
-  , Loc(..)
+  ( I (..)
+  , Loc (..)
   , PackageId
-  , PackageIdentifier(..)
-  , PackageName, mkPackageName, unPackageName
-  , PkgconfigName, mkPkgconfigName, unPkgconfigName
-  , PI(..)
+  , PackageIdentifier (..)
+  , PackageName
+  , mkPackageName
+  , unPackageName
+  , PkgconfigName
+  , mkPkgconfigName
+  , unPkgconfigName
+  , PI (..)
   , PN
   , QPV
   , instI
@@ -18,8 +23,8 @@ module Distribution.Solver.Modular.Package
   , unPN
   ) where
 
-import Prelude ()
 import Distribution.Solver.Compat.Prelude
+import Prelude ()
 
 import Distribution.Package -- from Cabal
 import Distribution.Pretty (prettyShow)
@@ -57,13 +62,13 @@ data I = I Ver Loc
 
 -- | String representation of an instance.
 showI :: I -> String
-showI (I v InRepo)   = showVer v
+showI (I v InRepo) = showVer v
 showI (I v (Inst uid)) = showVer v ++ "/installed" ++ extractPackageAbiHash uid
   where
     extractPackageAbiHash xs =
-      case first reverse $ break (=='-') $ reverse (prettyShow xs) of
+      case first reverse $ break (== '-') $ reverse (prettyShow xs) of
         (ys, []) -> ys
-        (ys, _)  -> '-' : ys
+        (ys, _) -> '-' : ys
 
 -- | Package instance. A package name and an instance.
 data PI qpn = PI qpn I
@@ -75,7 +80,7 @@ showPI (PI qpn i) = showQPN qpn ++ "-" ++ showI i
 
 instI :: I -> Bool
 instI (I _ (Inst _)) = True
-instI _              = False
+instI _ = False
 
 -- | Is the package in the primary group of packages.  This is used to
 -- determine (1) if we should try to establish stanza preferences
@@ -83,22 +88,20 @@ instI _              = False
 -- should apply to this dependency (grep 'primaryPP' to see the
 -- use sites).  In particular this does not include packages pulled in
 -- as setup deps.
---
 primaryPP :: PackagePath -> Bool
 primaryPP (PackagePath _ns q) = go q
   where
-    go QualToplevel    = True
-    go (QualBase  _)   = True
-    go (QualSetup _)   = False
-    go (QualExe _ _)   = False
+    go QualToplevel = True
+    go (QualBase _) = True
+    go (QualSetup _) = False
+    go (QualExe _ _) = False
 
 -- | Is the package a dependency of a setup script.  This is used to
 -- establish whether or not certain constraints should apply to this
 -- dependency (grep 'setupPP' to see the use sites).
---
 setupPP :: PackagePath -> Bool
 setupPP (PackagePath _ns (QualSetup _)) = True
-setupPP (PackagePath _ns _)         = False
+setupPP (PackagePath _ns _) = False
 
 -- | Qualify a target package with its own name so that its dependencies are not
 -- required to be consistent with other targets.

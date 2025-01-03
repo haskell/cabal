@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP #-}
-module Distribution.Client.Utils.Assertion (expensiveAssert) where
 
+module Distribution.Client.Utils.Assertion (expensiveAssert) where
 
 #ifdef DEBUG_EXPENSIVE_ASSERTIONS
 import Prelude (Bool)

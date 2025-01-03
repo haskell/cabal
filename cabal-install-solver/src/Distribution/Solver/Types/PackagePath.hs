@@ -1,19 +1,19 @@
 module Distribution.Solver.Types.PackagePath
-    ( PackagePath(..)
-    , Namespace(..)
-    , Qualifier(..)
-    , dispQualifier
-    , Qualified(..)
-    , QPN
-    , dispQPN
-    , showQPN
-    ) where
+  ( PackagePath (..)
+  , Namespace (..)
+  , Qualifier (..)
+  , dispQualifier
+  , Qualified (..)
+  , QPN
+  , dispQPN
+  , showQPN
+  ) where
 
-import Distribution.Solver.Compat.Prelude
-import Prelude ()
 import Distribution.Package (PackageName)
-import Distribution.Pretty (pretty, flatStyle)
+import Distribution.Pretty (flatStyle, pretty)
+import Distribution.Solver.Compat.Prelude
 import qualified Text.PrettyPrint as Disp
+import Prelude ()
 
 -- | A package path consists of a namespace and a package path inside that
 -- namespace.
@@ -24,12 +24,11 @@ data PackagePath = PackagePath Namespace Qualifier
 --
 -- Package choices in different namespaces are considered completely independent
 -- by the solver.
-data Namespace =
-    -- | The default namespace
+data Namespace
+  = -- | The default namespace
     DefaultNamespace
-
-    -- | A namespace for a specific build target
-  | Independent PackageName
+  | -- | A namespace for a specific build target
+    Independent PackageName
   deriving (Eq, Ord, Show)
 
 -- | Pretty-prints a namespace. The result is either empty or
@@ -39,25 +38,22 @@ dispNamespace DefaultNamespace = Disp.empty
 dispNamespace (Independent i) = pretty i <<>> Disp.text "."
 
 -- | Qualifier of a package within a namespace (see 'PackagePath')
-data Qualifier =
-    -- | Top-level dependency in this namespace
+data Qualifier
+  = -- | Top-level dependency in this namespace
     QualToplevel
-
-    -- | Any dependency on base is considered independent
+  | -- | Any dependency on base is considered independent
     --
     -- This makes it possible to have base shims.
-  | QualBase PackageName
-
-    -- | Setup dependency
+    QualBase PackageName
+  | -- | Setup dependency
     --
     -- By rights setup dependencies ought to be nestable; after all, the setup
     -- dependencies of a package might themselves have setup dependencies, which
     -- are independent from everything else. However, this very quickly leads to
     -- infinite search trees in the solver. Therefore we limit ourselves to
     -- a single qualifier (within a given namespace).
-  | QualSetup PackageName
-
-    -- | If we depend on an executable from a package (via
+    QualSetup PackageName
+  | -- | If we depend on an executable from a package (via
     -- @build-tools@), we should solve for the dependencies of that
     -- package separately (since we're not going to actually try to
     -- link it.)  We qualify for EACH package separately; e.g.,
@@ -67,7 +63,7 @@ data Qualifier =
     -- of the depended upon executables from a package; if we
     -- tracked only @pn2@, that would require us to pick only one
     -- version of an executable over the entire install plan.)
-  | QualExe PackageName PackageName
+    QualExe PackageName PackageName
   deriving (Eq, Ord, Show)
 
 -- | Pretty-prints a qualifier. The result is either empty or
@@ -80,10 +76,13 @@ data Qualifier =
 -- 'Base' qualifier, will always be @base@).
 dispQualifier :: Qualifier -> Disp.Doc
 dispQualifier QualToplevel = Disp.empty
-dispQualifier (QualSetup pn)  = pretty pn <<>> Disp.text ":setup."
-dispQualifier (QualExe pn pn2) = pretty pn <<>> Disp.text ":" <<>>
-                                 pretty pn2 <<>> Disp.text ":exe."
-dispQualifier (QualBase pn)  = pretty pn <<>> Disp.text "."
+dispQualifier (QualSetup pn) = pretty pn <<>> Disp.text ":setup."
+dispQualifier (QualExe pn pn2) =
+  pretty pn
+    <<>> Disp.text ":"
+    <<>> pretty pn2
+    <<>> Disp.text ":exe."
+dispQualifier (QualBase pn) = pretty pn <<>> Disp.text "."
 
 -- | A qualified entity. Pairs a package path with the entity.
 data Qualified a = Q PackagePath a

@@ -2,27 +2,26 @@
 {-# LANGUAGE ViewPatterns #-}
 
 module Distribution.Solver.Types.ProjectConfigPath
-    (
-    -- * Project Config Path Manipulation
-      ProjectConfigPath(..)
-    , projectConfigPathRoot
-    , nullProjectConfigPath
-    , consProjectConfigPath
-    , unconsProjectConfigPath
+  ( -- * Project Config Path Manipulation
+    ProjectConfigPath (..)
+  , projectConfigPathRoot
+  , nullProjectConfigPath
+  , consProjectConfigPath
+  , unconsProjectConfigPath
 
     -- * Messages
-    , docProjectConfigPath
-    , docProjectConfigFiles
-    , cyclicalImportMsg
-    , untrimmedUriImportMsg
-    , docProjectConfigPathFailReason
+  , docProjectConfigPath
+  , docProjectConfigFiles
+  , cyclicalImportMsg
+  , untrimmedUriImportMsg
+  , docProjectConfigPathFailReason
 
     -- * Checks and Normalization
-    , isCyclicConfigPath
-    , isTopLevelConfigPath
-    , isUntrimmedUriConfigPath
-    , canonicalizeConfigPath
-    ) where
+  , isCyclicConfigPath
+  , isTopLevelConfigPath
+  , isUntrimmedUriConfigPath
+  , canonicalizeConfigPath
+  ) where
 
 import Distribution.Solver.Compat.Prelude hiding (toList, (<>))
 import qualified Distribution.Solver.Compat.Prelude as P ((<>))
@@ -30,15 +29,15 @@ import Prelude (sequence)
 
 import Data.Coerce (coerce)
 import Data.List.NonEmpty ((<|))
-import Network.URI (parseURI, parseAbsoluteURI)
+import qualified Data.List.NonEmpty as NE
+import Distribution.Pretty (prettyShow)
+import Distribution.Simple.Utils (ordNub)
+import Distribution.Solver.Modular.Version (VR)
+import Distribution.Utils.String (trim)
+import Network.URI (parseAbsoluteURI, parseURI)
 import System.Directory
 import System.FilePath
-import qualified Data.List.NonEmpty as NE
-import Distribution.Solver.Modular.Version (VR)
-import Distribution.Pretty (prettyShow)
-import Distribution.Utils.String (trim)
 import Text.PrettyPrint
-import Distribution.Simple.Utils (ordNub)
 
 -- | Path to a configuration file, either a singleton project root, or a longer
 -- list representing a path to an import.  The path is a non-empty list that we
@@ -52,7 +51,7 @@ import Distribution.Simple.Utils (ordNub)
 -- List elements are relative to each other but once canonicalized, elements are
 -- relative to the directory of the project root.
 newtype ProjectConfigPath = ProjectConfigPath (NonEmpty FilePath)
-    deriving (Eq, Show, Generic)
+  deriving (Eq, Show, Generic)
 
 -- | Sorts URIs after local file paths and longer file paths after shorter ones
 -- as measured by the number of path segments. If still equal, then sorting is
@@ -62,31 +61,30 @@ newtype ProjectConfigPath = ProjectConfigPath (NonEmpty FilePath)
 -- configuration paths it imports, should always sort first. Comparing one
 -- project root path against another is done lexically.
 instance Ord ProjectConfigPath where
-    compare pa@(ProjectConfigPath (NE.toList -> as)) pb@(ProjectConfigPath (NE.toList -> bs)) =
-        case (as, bs) of
-            -- There should only ever be one root project path, only one path
-            -- with length 1. Comparing it to itself should be EQ. Don't assume
-            -- this though, do a comparison anyway when both sides have length
-            -- 1.  The root path, the project itself, should always be the first
-            -- path in a sorted listing.
-            ([a], [b]) -> compare a b
-            ([_], _) -> LT
-            (_, [_]) -> GT
-
-            (a:_, b:_) -> case (parseAbsoluteURI a, parseAbsoluteURI b) of
-                (Just ua, Just ub) -> compare ua ub P.<> compare aImporters bImporters
-                (Just _, Nothing) -> GT
-                (Nothing, Just _) -> LT
-                (Nothing, Nothing) -> compare (splitPath a) (splitPath b) P.<> compare aImporters bImporters
-            _ ->
-                compare (length as) (length bs)
-                P.<> compare (length aPaths) (length bPaths)
-                P.<> compare aPaths bPaths
-        where
-            aPaths = splitPath <$> as
-            bPaths = splitPath <$> bs
-            aImporters = snd $ unconsProjectConfigPath pa
-            bImporters = snd $ unconsProjectConfigPath pb
+  compare pa@(ProjectConfigPath (NE.toList -> as)) pb@(ProjectConfigPath (NE.toList -> bs)) =
+    case (as, bs) of
+      -- There should only ever be one root project path, only one path
+      -- with length 1. Comparing it to itself should be EQ. Don't assume
+      -- this though, do a comparison anyway when both sides have length
+      -- 1.  The root path, the project itself, should always be the first
+      -- path in a sorted listing.
+      ([a], [b]) -> compare a b
+      ([_], _) -> LT
+      (_, [_]) -> GT
+      (a : _, b : _) -> case (parseAbsoluteURI a, parseAbsoluteURI b) of
+        (Just ua, Just ub) -> compare ua ub P.<> compare aImporters bImporters
+        (Just _, Nothing) -> GT
+        (Nothing, Just _) -> LT
+        (Nothing, Nothing) -> compare (splitPath a) (splitPath b) P.<> compare aImporters bImporters
+      _ ->
+        compare (length as) (length bs)
+          P.<> compare (length aPaths) (length bPaths)
+          P.<> compare aPaths bPaths
+    where
+      aPaths = splitPath <$> as
+      bPaths = splitPath <$> bs
+      aImporters = snd $ unconsProjectConfigPath pa
+      bImporters = snd $ unconsProjectConfigPath pb
 
 instance Binary ProjectConfigPath
 instance Structured ProjectConfigPath
@@ -102,8 +100,10 @@ instance Structured ProjectConfigPath
 -- "D.config\n  imported by: C.config\n  imported by: B.config\n  imported by: A.project"
 docProjectConfigPath :: ProjectConfigPath -> Doc
 docProjectConfigPath (ProjectConfigPath (p :| [])) = quoteUntrimmed p
-docProjectConfigPath (ProjectConfigPath (p :| ps)) = vcat $ quoteUntrimmed p :
-    [ text " " <+> text "imported by:" <+> quoteUntrimmed l | l <- ps ]
+docProjectConfigPath (ProjectConfigPath (p :| ps)) =
+  vcat $
+    quoteUntrimmed p
+      : [text " " <+> text "imported by:" <+> quoteUntrimmed l | l <- ps]
 
 -- | If the path has leading or trailing spaces then show it quoted.
 quoteUntrimmed :: FilePath -> Doc
@@ -144,15 +144,16 @@ quoteUntrimmed s = if trim s /= s then quotes (text s) else text s
 -- :}
 -- "- cabal.project\n- project-cabal/constraints.config\n- project-cabal/ghc-latest.config\n- project-cabal/ghc-options.config\n- project-cabal/pkgs.config\n- project-cabal/pkgs/benchmarks.config\n- project-cabal/pkgs/buildinfo.config\n- project-cabal/pkgs/cabal.config\n- project-cabal/pkgs/install.config\n- project-cabal/pkgs/integration-tests.config\n- project-cabal/pkgs/tests.config"
 docProjectConfigFiles :: [ProjectConfigPath] -> Doc
-docProjectConfigFiles ps = vcat
+docProjectConfigFiles ps =
+  vcat
     [ text "-" <+> text p
-    | p <- ordNub [ p | ProjectConfigPath (p :| _) <- ps ]
+    | p <- ordNub [p | ProjectConfigPath (p :| _) <- ps]
     ]
 
 -- | A message for a cyclical import, a "cyclical import of".
 cyclicalImportMsg :: ProjectConfigPath -> Doc
 cyclicalImportMsg path@(ProjectConfigPath (duplicate :| _)) =
-    vcat
+  vcat
     [ text "cyclical import of" <+> text duplicate <> semi
     , nest 2 (docProjectConfigPath path)
     ]
@@ -160,22 +161,23 @@ cyclicalImportMsg path@(ProjectConfigPath (duplicate :| _)) =
 -- | A message for an import that has leading or trailing spaces.
 untrimmedUriImportMsg :: Doc -> ProjectConfigPath -> Doc
 untrimmedUriImportMsg intro path =
-    vcat
+  vcat
     [ intro <+> text "import has leading or trailing whitespace" <> semi
     , nest 2 (docProjectConfigPath path)
     ]
 
 docProjectConfigPathFailReason :: VR -> ProjectConfigPath -> Doc
 docProjectConfigPathFailReason vr pcp
-    | ProjectConfigPath (p :| []) <- pcp =
-        constraint p
-    | ProjectConfigPath (p :| ps) <- pcp = vcat
+  | ProjectConfigPath (p :| []) <- pcp =
+      constraint p
+  | ProjectConfigPath (p :| ps) <- pcp =
+      vcat
         [ constraint p
-        , cat [nest 2 $ text "imported by:" <+> text l | l <- ps ]
+        , cat [nest 2 $ text "imported by:" <+> text l | l <- ps]
         ]
-    where
-        pathRequiresVersion p = text p <+> text "requires" <+> text (prettyShow vr)
-        constraint p = parens $ text "constraint from" <+> pathRequiresVersion p
+  where
+    pathRequiresVersion p = text p <+> text "requires" <+> text (prettyShow vr)
+    constraint p = parens $ text "constraint from" <+> pathRequiresVersion p
 
 -- | The root of the path, the project itself.
 projectConfigPathRoot :: ProjectConfigPath -> FilePath
@@ -215,9 +217,9 @@ unconsProjectConfigPath ps = fmap ProjectConfigPath <$> NE.uncons (coerce ps)
 -- relative to the file they were imported from.
 makeRelativeConfigPath :: FilePath -> ProjectConfigPath -> ProjectConfigPath
 makeRelativeConfigPath dir (ProjectConfigPath p) =
-    ProjectConfigPath
-    $ (\segment@(trim -> trimSegment) -> (if isURI trimSegment then trimSegment else makeRelative dir segment))
-    <$> p
+  ProjectConfigPath $
+    (\segment@(trim -> trimSegment) -> (if isURI trimSegment then trimSegment else makeRelative dir segment))
+      <$> p
 
 -- | Normalizes and canonicalizes a path removing '.' and '..' indirections.
 -- Makes the path relative to the given directory (typically the project root)
@@ -309,12 +311,20 @@ makeRelativeConfigPath dir (ProjectConfigPath p) =
 -- "https://www.stackage.org/nightly-2024-12-05/cabal.config\n  imported by: cabal.project"
 canonicalizeConfigPath :: FilePath -> ProjectConfigPath -> IO ProjectConfigPath
 canonicalizeConfigPath d (ProjectConfigPath p) = do
-    xs <- sequence $ NE.scanr (\importee@(trim -> trimImportee) -> (>>= \importer@(trim -> trimImporter) ->
-            if isURI trimImportee || isURI trimImporter
-                then pure trimImportee
-                else canonicalizePath $ d </> takeDirectory importer </> importee))
-            (pure ".") p
-    return . makeRelativeConfigPath d . ProjectConfigPath . NE.fromList $ NE.init xs
+  xs <-
+    sequence $
+      NE.scanr
+        ( \importee@(trim -> trimImportee) ->
+            ( >>=
+                \importer@(trim -> trimImporter) ->
+                  if isURI trimImportee || isURI trimImporter
+                    then pure trimImportee
+                    else canonicalizePath $ d </> takeDirectory importer </> importee
+            )
+        )
+        (pure ".")
+        p
+  return . makeRelativeConfigPath d . ProjectConfigPath . NE.fromList $ NE.init xs
 
 isURI :: FilePath -> Bool
 isURI = isJust . parseURI

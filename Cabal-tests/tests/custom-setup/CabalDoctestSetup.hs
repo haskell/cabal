@@ -1,8 +1,3 @@
--- This is Distribution.Extra.Doctest module from cabal-doctest-1.0.4
--- This isn't technically a Custom-Setup script, but it /was/.
-
-{-# LANGUAGE FlexibleInstances #-}
-
 {-
 
 Copyright (c) 2017, Oleg Grenrus
@@ -37,9 +32,12 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 -}
-
-{-# LANGUAGE CPP               #-}
+{-# LANGUAGE CPP #-}
+-- This is Distribution.Extra.Doctest module from cabal-doctest-1.0.4
+-- This isn't technically a Custom-Setup script, but it /was/.
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
+
 -- | The provided 'generateBuildModule' generates 'Build_doctests' module.
 -- That module exports enough configuration, so your doctests could be simply
 --
@@ -70,14 +68,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --
 -- /Note:/ you don't need to depend on @Cabal@  if you use only
 -- 'defaultMainWithDoctests' in the @Setup.hs@.
---
-module CabalDoctestSetup (
-    defaultMainWithDoctests,
-    defaultMainAutoconfWithDoctests,
-    addDoctestsUserHook,
-    doctestsUserHooks,
-    generateBuildModule,
-    ) where
+module CabalDoctestSetup
+  ( defaultMainWithDoctests
+  , defaultMainAutoconfWithDoctests
+  , addDoctestsUserHook
+  , doctestsUserHooks
+  , generateBuildModule
+  ) where
 
 -- Hacky way to suppress few deprecation warnings.
 #if MIN_VERSION_Cabal(1,24,0)
@@ -85,45 +82,79 @@ module CabalDoctestSetup (
 #endif
 
 import Control.Monad
-       (when)
+  ( when
+  )
 import Data.IORef
-       (modifyIORef, newIORef, readIORef)
+  ( modifyIORef
+  , newIORef
+  , readIORef
+  )
 import Data.List
-       (nub)
+  ( nub
+  )
 import Data.Maybe
-       (mapMaybe, maybeToList)
+  ( mapMaybe
+  , maybeToList
+  )
 import Data.String
-       (fromString)
+  ( fromString
+  )
 import Distribution.Package
-       (InstalledPackageId, Package (..))
+  ( InstalledPackageId
+  , Package (..)
+  )
 import Distribution.PackageDescription
-       (BuildInfo (..), Executable (..), GenericPackageDescription,
-       Library (..), PackageDescription, TestSuite (..))
+  ( BuildInfo (..)
+  , Executable (..)
+  , GenericPackageDescription
+  , Library (..)
+  , PackageDescription
+  , TestSuite (..)
+  )
 import Distribution.Simple
-       (UserHooks (..), autoconfUserHooks, defaultMainWithHooks,
-       simpleUserHooks)
+  ( UserHooks (..)
+  , autoconfUserHooks
+  , defaultMainWithHooks
+  , simpleUserHooks
+  )
 import Distribution.Simple.Compiler
-       (CompilerFlavor (GHC), CompilerId (..), PackageDB, PackageDBX (..), compilerId)
+  ( CompilerFlavor (GHC)
+  , CompilerId (..)
+  , PackageDB
+  , PackageDBX (..)
+  , compilerId
+  )
 import Distribution.Simple.LocalBuildInfo
-       (ComponentLocalBuildInfo (componentPackageDeps), LocalBuildInfo,
-       compiler, withExeLBI, withLibLBI, withPackageDB, withTestLBI
-       )
+  ( ComponentLocalBuildInfo (componentPackageDeps)
+  , LocalBuildInfo
+  , compiler
+  , withExeLBI
+  , withLibLBI
+  , withPackageDB
+  , withTestLBI
+  )
 import Distribution.Simple.Setup
-       ( CommonSetupFlags(..)
-       , BuildFlags(..)
-       , HaddockFlags (..)
-       , emptyBuildFlags,
-       fromFlag)
+  ( BuildFlags (..)
+  , CommonSetupFlags (..)
+  , HaddockFlags (..)
+  , emptyBuildFlags
+  , fromFlag
+  )
 import Distribution.Simple.Utils
-       (createDirectoryIfMissingVerbose, info)
+  ( createDirectoryIfMissingVerbose
+  , info
+  )
 import Distribution.Text
-       (display)
+  ( display
+  )
 import Distribution.Verbosity
 
-import qualified Data.Foldable    as F
-                 (for_)
+import qualified Data.Foldable as F
+  ( for_
+  )
 import qualified Data.Traversable as T
-                 (traverse)
+  ( traverse
+  )
 
 #if MIN_VERSION_Cabal(1,25,0)
 import Distribution.Simple.BuildPaths
@@ -243,38 +274,42 @@ instance CompatPath (SymbolicPath from to) where
 -- main = defaultMainWithDoctests "doctests"
 -- @
 defaultMainWithDoctests
-    :: String  -- ^ doctests test-suite name
-    -> IO ()
+  :: String
+  -- ^ doctests test-suite name
+  -> IO ()
 defaultMainWithDoctests = defaultMainWithHooks . doctestsUserHooks
 
 -- | Like 'defaultMainWithDoctests', for 'build-type: Configure' packages.
 --
 -- @since 1.0.2
 defaultMainAutoconfWithDoctests
-    :: String  -- ^ doctests test-suite name
-    -> IO ()
+  :: String
+  -- ^ doctests test-suite name
+  -> IO ()
 defaultMainAutoconfWithDoctests n =
-    defaultMainWithHooks (addDoctestsUserHook n autoconfUserHooks)
+  defaultMainWithHooks (addDoctestsUserHook n autoconfUserHooks)
 
 -- | 'simpleUserHooks' with 'generateBuildModule' prepended to the 'buildHook'.
 doctestsUserHooks
-    :: String  -- ^ doctests test-suite name
-    -> UserHooks
+  :: String
+  -- ^ doctests test-suite name
+  -> UserHooks
 doctestsUserHooks testsuiteName =
-    addDoctestsUserHook testsuiteName simpleUserHooks
+  addDoctestsUserHook testsuiteName simpleUserHooks
 
 -- |
 --
 -- @since 1.0.2
 addDoctestsUserHook :: String -> UserHooks -> UserHooks
-addDoctestsUserHook testsuiteName uh = uh
+addDoctestsUserHook testsuiteName uh =
+  uh
     { buildHook = \pkg lbi hooks flags -> do
         generateBuildModule testsuiteName flags pkg lbi
         buildHook uh pkg lbi hooks flags
-    -- We use confHook to add "Build_Doctests" to otherModules and autogenModules.
-    --
-    -- We cannot use HookedBuildInfo as it let's alter only the library and executables.
-    , confHook = \(gpd, hbi) flags ->
+    , -- We use confHook to add "Build_Doctests" to otherModules and autogenModules.
+      --
+      -- We cannot use HookedBuildInfo as it let's alter only the library and executables.
+      confHook = \(gpd, hbi) flags ->
         confHook uh (amendGPD testsuiteName gpd, hbi) flags
     , haddockHook = \pkg lbi hooks flags -> do
         generateBuildModule testsuiteName (haddockToBuildFlags flags) pkg lbi
@@ -283,6 +318,7 @@ addDoctestsUserHook testsuiteName uh = uh
 
 -- | Convert only flags used by 'generateBuildModule'.
 haddockToBuildFlags :: HaddockFlags -> BuildFlags
+{- FOURMOLU_DISABLE -}
 haddockToBuildFlags f =
 #if MIN_VERSION_Cabal(3,11,0)
   emptyBuildFlags
@@ -293,6 +329,7 @@ haddockToBuildFlags f =
     , buildDistPref  = haddockDistPref f
     }
 #endif
+{- FOURMOLU_ENABLE -}
 
 data Name = NameLib (Maybe String) | NameExe String deriving (Eq, Show)
 
@@ -308,10 +345,10 @@ nameToString n = case n of
     -- allowed in Haskell identifier names.
     fixchar :: Char -> Char
     fixchar '-' = '_'
-    fixchar c   = c
+    fixchar c = c
 
 data Component = Component Name [String] [String] [String]
-  deriving Show
+  deriving (Show)
 
 -- | Generate a build module for the test suite.
 --
@@ -329,8 +366,13 @@ data Component = Component Name [String] [String] [String]
 --     }
 -- @
 generateBuildModule
-    :: String -- ^ doctests test-suite name
-    -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO ()
+  :: String
+  -- ^ doctests test-suite name
+  -> BuildFlags
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> IO ()
+{- FOURMOLU_DISABLE -}
 generateBuildModule testSuiteName flags pkg lbi = do
   let verbosity = fromFlag (buildVerbosity flags)
   let distPref = fromFlag (buildDistPref flags)
@@ -581,6 +623,7 @@ generateBuildModule testSuiteName flags pkg lbi = do
 #else
     executableName = exeName
 #endif
+{- FOURMOLU_ENABLE -}
 
 -- | In compat settings it's better to omit the type-signature
 testDeps :: ComponentLocalBuildInfo -> ComponentLocalBuildInfo
@@ -592,9 +635,10 @@ testDeps :: ComponentLocalBuildInfo -> ComponentLocalBuildInfo
 testDeps xs ys = nub $ componentPackageDeps xs ++ componentPackageDeps ys
 
 amendGPD
-    :: String -- ^ doctests test-suite name
-    -> GenericPackageDescription
-    -> GenericPackageDescription
+  :: String
+  -- ^ doctests test-suite name
+  -> GenericPackageDescription
+  -> GenericPackageDescription
 #if !(MIN_VERSION_Cabal(2,0,0))
 amendGPD _ gpd = gpd
 #else

@@ -1,6 +1,6 @@
 module Distribution.Solver.Modular.Configured
-    ( CP(..)
-    ) where
+  ( CP (..)
+  ) where
 
 import Distribution.PackageDescription (FlagAssignment)
 
