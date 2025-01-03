@@ -63,7 +63,7 @@ setEnv_ key value = withCWString key $ \k -> withCWString value $ \v -> do
 {- FOURMOLU_DISABLE -}
 # if defined(i386_HOST_ARCH)
 #  define WINDOWS_CCONV stdcall
-# elif defined(x86_64_HOST_ARCH)
+# elif defined(x86_64_HOST_ARCH) || defined(aarch64_HOST_ARCH)
 #  define WINDOWS_CCONV ccall
 # else
 #  error Unknown mingw32 arch
