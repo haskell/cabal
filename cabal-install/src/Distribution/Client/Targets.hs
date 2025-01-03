@@ -50,6 +50,7 @@ import Prelude ()
 
 import Distribution.Client.Types
   ( PackageLocation (..)
+  , PackageLocationProvenance
   , PackageSpecifier (..)
   , ResolvedPkgLoc
   , UnresolvedSourcePackage
@@ -62,12 +63,20 @@ import Distribution.Package
   , unPackageName
   )
 
+import Distribution.Solver.Types.NamedPackage
+  ( NamedPackage (..)
+  , NamedPackageConstraint
+  )
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.PackageIndex (PackageIndex)
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.SourcePackage
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
+  , withUnknownConstraint
+  )
 
 import qualified Codec.Archive.Tar as Tar
 import qualified Codec.Archive.Tar.Entry as Tar
@@ -288,7 +297,7 @@ resolveUserTargets verbosity repoCtxt available userTargets = do
   -- package references
   packageTargets <-
     traverse (readPackageTarget verbosity)
-      =<< traverse (fetchPackageTarget verbosity repoCtxt) . concat
+      =<< traverse (fetchPackageTarget verbosity repoCtxt)
       =<< traverse (expandUserTarget verbosity) userTargets
 
   -- users are allowed to give package names case-insensitively, so we must
@@ -316,10 +325,10 @@ resolveUserTargets verbosity repoCtxt available userTargets = do
 -- | An intermediate between a 'UserTarget' and a resolved 'PackageSpecifier'.
 -- Unlike a 'UserTarget', a 'PackageTarget' refers only to a single package.
 data PackageTarget pkg
-  = PackageTargetNamed PackageName [PackageProperty] UserTarget
+  = PackageTargetNamed NamedPackageConstraint UserTarget
   | -- | A package identified by name, but case insensitively, so it needs
     -- to be resolved to the right case-sensitive name.
-    PackageTargetNamedFuzzy PackageName [PackageProperty] UserTarget
+    PackageTargetNamedFuzzy NamedPackageConstraint UserTarget
   | PackageTargetLocation pkg
   deriving (Show, Functor, Foldable, Traversable)
 
@@ -334,24 +343,25 @@ data PackageTarget pkg
 expandUserTarget
   :: Verbosity
   -> UserTarget
-  -> IO [PackageTarget (PackageLocation ())]
-expandUserTarget verbosity userTarget = case userTarget of
-  UserTargetNamed (PackageVersionConstraint name vrange) ->
-    let props =
-          [ PackagePropertyVersion vrange
-          | not (isAnyVersion vrange)
-          ]
-     in return [PackageTargetNamedFuzzy name props userTarget]
-  UserTargetLocalDir dir ->
-    return [PackageTargetLocation (LocalUnpackedPackage dir)]
-  UserTargetLocalCabalFile file -> do
-    let dir = takeDirectory file
-    _ <- tryReadGenericPackageDesc verbosity (makeSymbolicPath dir) (localPackageError dir) -- just as a check
-    return [PackageTargetLocation (LocalUnpackedPackage dir)]
-  UserTargetLocalTarball tarballFile ->
-    return [PackageTargetLocation (LocalTarballPackage tarballFile)]
-  UserTargetRemoteTarball tarballURL ->
-    return [PackageTargetLocation (RemoteTarballPackage tarballURL ())]
+  -> IO (PackageTarget (PackageLocationProvenance ()))
+expandUserTarget verbosity userTarget =
+  case userTarget of
+    UserTargetNamed (PackageVersionConstraint name vrange) ->
+      let props =
+            [ PackagePropertyVersion vrange
+            | not (isAnyVersion vrange)
+            ]
+       in return $ PackageTargetNamedFuzzy (withUnknownConstraint $ NamedPackage name props) userTarget
+    UserTargetLocalDir dir ->
+      return $ PackageTargetLocation $ withUnknownConstraint $ LocalUnpackedPackage dir
+    UserTargetLocalCabalFile file -> do
+      let dir = takeDirectory file
+      _ <- tryReadGenericPackageDesc verbosity (makeSymbolicPath dir) (localPackageError dir) -- just as a check
+      return $ PackageTargetLocation $ withUnknownConstraint $ LocalUnpackedPackage dir
+    UserTargetLocalTarball tarballFile ->
+      return $ PackageTargetLocation $ withUnknownConstraint $ LocalTarballPackage tarballFile
+    UserTargetRemoteTarball tarballURL ->
+      return $ PackageTargetLocation $ withUnknownConstraint $ RemoteTarballPackage tarballURL ()
 
 localPackageError :: FilePath -> String
 localPackageError dir =
@@ -367,11 +377,11 @@ localPackageError dir =
 fetchPackageTarget
   :: Verbosity
   -> RepoContext
-  -> PackageTarget (PackageLocation ())
+  -> PackageTarget (PackageLocationProvenance ())
   -> IO (PackageTarget ResolvedPkgLoc)
 fetchPackageTarget verbosity repoCtxt =
   traverse $
-    fetchPackage verbosity repoCtxt . fmap (const Nothing)
+    fetchPackage verbosity repoCtxt . fmap (fmap $ const Nothing)
 
 -- | Given a package target that has been fetched, read the .cabal file.
 --
@@ -383,14 +393,14 @@ readPackageTarget
 readPackageTarget verbosity = traverse modifyLocation
   where
     modifyLocation :: ResolvedPkgLoc -> IO UnresolvedSourcePackage
-    modifyLocation location = case location of
+    modifyLocation location = case constraintInner location of
       LocalUnpackedPackage dir -> do
         pkg <- tryReadGenericPackageDesc verbosity (makeSymbolicPath dir) (localPackageError dir)
         return
           SourcePackage
             { srcpkgPackageId = packageId pkg
             , srcpkgDescription = pkg
-            , srcpkgSource = fmap Just location
+            , srcpkgSource = fmap Just <$> location
             , srcpkgDescrOverride = Nothing
             }
       LocalTarballPackage tarballFile ->
@@ -423,7 +433,7 @@ readPackageTarget verbosity = traverse modifyLocation
             SourcePackage
               { srcpkgPackageId = packageId pkg
               , srcpkgDescription = pkg
-              , srcpkgSource = fmap Just location
+              , srcpkgSource = fmap Just <$> location
               , srcpkgDescrOverride = Nothing
               }
 
@@ -497,11 +507,11 @@ disambiguatePackageTargets availablePkgIndex availableExtra targets =
   where
     disambiguatePackageTarget packageTarget = case packageTarget of
       PackageTargetLocation pkg -> Right (SpecificSourcePackage pkg)
-      PackageTargetNamed pkgname props userTarget
+      PackageTargetNamed (withConstraint@WithConstraintSource{constraintInner = (NamedPackage pkgname _)}) userTarget
         | null (PackageIndex.lookupPackageName availablePkgIndex pkgname) ->
             Left (PackageNameUnknown pkgname userTarget)
-        | otherwise -> Right (NamedPackage pkgname props)
-      PackageTargetNamedFuzzy pkgname props userTarget ->
+        | otherwise -> Right (Named withConstraint)
+      PackageTargetNamedFuzzy (withConstraint@WithConstraintSource{constraintInner = (NamedPackage pkgname _)}) userTarget ->
         case disambiguatePackageName packageNameEnv pkgname of
           None ->
             Left
@@ -516,7 +526,7 @@ disambiguatePackageTargets availablePkgIndex availableExtra targets =
                   pkgnames
                   userTarget
               )
-          Unambiguous pkgname' -> Right (NamedPackage pkgname' props)
+          Unambiguous _ -> Right (Named withConstraint)
 
     -- use any extra specific available packages to help us disambiguate
     packageNameEnv :: PackageNameEnv

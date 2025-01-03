@@ -22,7 +22,9 @@ import Distribution.Client.HashValue (hashValue, showHashValue)
 import Distribution.Client.ProjectBuilding.Types
 import Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.Types.ConfiguredId (confInstId)
-import Distribution.Client.Types.PackageLocation (PackageLocation (..))
+import Distribution.Client.Types.PackageLocation
+  ( PackageLocation (..)
+  )
 import Distribution.Client.Types.Repo (RemoteRepo (..), Repo (..))
 import Distribution.Client.Types.SourceRepo (SourceRepoMaybe, SourceRepositoryPackage (..))
 import Distribution.Client.Version (cabalInstallVersion)
@@ -32,6 +34,9 @@ import qualified Distribution.Client.Utils.Json as J
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 
 import qualified Distribution.Solver.Types.ComponentDeps as ComponentDeps
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
+  )
 
 import qualified Distribution.Compat.Binary as Binary
 import Distribution.Compat.Graph (Graph, Node)
@@ -164,7 +169,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
               | (fn, v) <- PD.unFlagAssignment (elabFlagAssignment elab)
               ]
         , "style" J..= J.String (style2str (elabLocalToProject elab) (elabBuildStyle elab))
-        , "pkg-src" J..= packageLocationToJ (elabPkgSourceLocation elab)
+        , "pkg-src" J..= packageLocationToJ (constraintInner $ elabPkgSourceLocation elab)
         ]
           ++ [ "pkg-cabal-sha256" J..= J.String (showHashValue hash)
              | Just hash <- [fmap hashValue (elabPkgDescriptionOverride elab)]

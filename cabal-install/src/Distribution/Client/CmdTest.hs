@@ -67,9 +67,12 @@ import qualified System.Exit (exitSuccess)
 
 import Distribution.Client.Errors
 import Distribution.Client.Setup (CommonSetupFlags (..))
+import Distribution.Solver.Types.ConstraintSource (ConstraintSource (ConstraintSourceUserTarget))
+import Distribution.Solver.Types.WithConstraintSource (WithConstraintSource (..))
 import GHC.Environment
   ( getFullArgs
   )
+import qualified Text.PrettyPrint as PP
 
 testCommand :: CommandUI (NixStyleFlags ())
 testCommand =
@@ -124,11 +127,21 @@ testCommand =
 -- "Distribution.Client.ProjectOrchestration"
 testAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
 testAction flags@NixStyleFlags{..} targetStrings globalFlags = do
+  let targetStrings' =
+        map
+          ( \target ->
+              WithConstraintSource
+                { constraintInner = target
+                , constraintSource = ConstraintSourceUserTarget
+                }
+          )
+          targetStrings
+
   baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
 
   targetSelectors <-
-    either (reportTargetSelectorProblems verbosity) return
-      =<< readTargetSelectors (localPackages baseCtx) (Just TestKind) targetStrings
+    either (reportTargetSelectorProblems verbosity . map constraintInner) return
+      =<< readTargetSelectors (localPackages baseCtx) (Just TestKind) targetStrings'
 
   buildCtx <-
     runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
@@ -256,17 +269,22 @@ isSubComponentProblem pkgid name subcomponent =
   CustomTargetProblem $
     TargetProblemIsSubComponent pkgid name subcomponent
 
-reportTargetProblems :: Verbosity -> Flag Bool -> [TestTargetProblem] -> IO a
+reportTargetProblems :: Verbosity -> Flag Bool -> [WithConstraintSource TestTargetProblem] -> IO a
 reportTargetProblems verbosity failWhenNoTestSuites problems =
   case (failWhenNoTestSuites, problems) of
-    (Flag True, [CustomTargetProblem (TargetProblemNoTests _)]) ->
-      dieWithException verbosity $ ReportTargetProblems problemsMessage
-    (_, [CustomTargetProblem (TargetProblemNoTests selector)]) -> do
+    ( Flag True
+      , [ WithConstraintSource
+            { constraintInner = CustomTargetProblem (TargetProblemNoTests _)
+            }
+          ]
+      ) ->
+        dieWithException verbosity $ ReportTargetProblems problemsMessage
+    (_, [WithConstraintSource{constraintInner = CustomTargetProblem (TargetProblemNoTests selector)}]) -> do
       notice verbosity (renderAllowedNoTestsProblem selector)
       System.Exit.exitSuccess
     (_, _) -> dieWithException verbosity $ ReportTargetProblems problemsMessage
   where
-    problemsMessage = unlines . map renderTestTargetProblem $ problems
+    problemsMessage = unlines . map (prettyShow . fmap (PP.text . renderTestTargetProblem)) $ problems
 
 -- | Unless @--test-fail-when-no-test-suites@ flag is passed, we don't
 --   @die@ when the target problem is 'TargetProblemNoTests'.

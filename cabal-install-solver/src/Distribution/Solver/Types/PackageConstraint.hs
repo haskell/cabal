@@ -93,7 +93,7 @@ data PackageProperty
    | PackagePropertySource
    | PackagePropertyFlags     FlagAssignment
    | PackagePropertyStanzas   [OptionalStanza]
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance Binary PackageProperty
 instance Structured PackageProperty

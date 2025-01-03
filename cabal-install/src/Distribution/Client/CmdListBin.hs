@@ -61,6 +61,8 @@ import Distribution.Client.Errors
 import qualified Distribution.Client.InstallPlan as IP
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.Solver.Types.ComponentDeps as CD
+import Distribution.Solver.Types.ConstraintSource (ConstraintSource (..))
+import Distribution.Solver.Types.WithConstraintSource (WithConstraintSource (..))
 
 -------------------------------------------------------------------------------
 -- Command
@@ -93,8 +95,14 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
     [x] -> return x
     _ -> dieWithException verbosity OneTargetRequired
 
+  let targetProvenance =
+        WithConstraintSource
+          { constraintInner = target
+          , constraintSource = ConstraintSourceUserTarget
+          }
+
   -- configure and elaborate target selectors
-  withContextAndSelectors RejectNoTargets (Just ExeKind) flags [target] globalFlags OtherCommand $ \targetCtx ctx targetSelectors -> do
+  withContextAndSelectors RejectNoTargets (Just ExeKind) flags [targetProvenance] globalFlags OtherCommand $ \targetCtx ctx targetSelectors -> do
     baseCtx <- case targetCtx of
       ProjectContext -> return ctx
       GlobalContext -> return ctx
@@ -105,7 +113,7 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
         -- Interpret the targets on the command line as build targets
         -- (as opposed to say repl or haddock targets).
         targets <-
-          either (reportTargetProblems verbosity) return $
+          either (reportTargetProblems verbosity . map constraintInner) return $
             resolveTargets
               selectPackageTargets
               selectComponentTarget
