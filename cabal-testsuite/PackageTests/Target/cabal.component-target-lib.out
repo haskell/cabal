@@ -1,0 +1,16 @@
+# cabal v2-target
+Configuration is affected by the following files:
+- cabal.project
+Resolving dependencies...
+Fully qualified target forms:
+ - a:lib:a
+# cabal v2-target
+Configuration is affected by the following files:
+- cabal.project
+Fully qualified target forms:
+ - a:lib:a
+# cabal v2-target
+Configuration is affected by the following files:
+- cabal.project
+Fully qualified target forms:
+ - a:lib:a

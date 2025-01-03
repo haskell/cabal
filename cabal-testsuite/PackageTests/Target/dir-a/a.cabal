@@ -1,0 +1,15 @@
+name:           a
+version:        0.1
+license:        BSD3
+cabal-version:  >= 1.8
+build-type:     Simple
+
+library
+library a-sublib
+executable a-exe
+test-suite a-test
+    type: exitcode-stdio-1.0
+    main-is: Test.hs
+benchmark a-bench
+    type: exitcode-stdio-1.0
+    main-is: Bench.hs
