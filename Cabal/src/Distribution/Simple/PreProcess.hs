@@ -645,6 +645,7 @@ ppHsc2hs bi lbi clbi =
         hacked_index
         (map fst (componentPackageDeps clbi)) of
         Left index' -> index'
+        Right [] -> hacked_index
         Right inf ->
           error ("ppHsc2hs: broken closure: " ++ show inf)
     isOSX = case buildOS of OSX -> True; _ -> False
