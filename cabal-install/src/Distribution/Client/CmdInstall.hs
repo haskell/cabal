@@ -175,6 +175,12 @@ import Distribution.Simple.Utils
   , withTempDirectory
   , wrapText
   )
+import Distribution.Solver.Types.ConstraintSource
+  ( ConstraintSource (..)
+  )
+import Distribution.Solver.Types.NamedPackage
+  ( NamedPackage (..)
+  )
 import Distribution.Solver.Types.PackageConstraint
   ( PackageProperty (..)
   )
@@ -184,6 +190,10 @@ import Distribution.Solver.Types.PackageIndex
   )
 import Distribution.Solver.Types.SourcePackage
   ( SourcePackage (..)
+  )
+import Distribution.Solver.Types.WithConstraintSource
+  ( WithConstraintSource (..)
+  , withUnknownConstraint
   )
 import Distribution.System
   ( OS (Windows)
@@ -259,7 +269,7 @@ type InstallAction =
   Verbosity
   -> OverwritePolicy
   -> InstallExe
-  -> (UnitId, [(ComponentTarget, NonEmpty TargetSelector)])
+  -> (UnitId, [(ComponentTarget, NonEmpty (WithConstraintSource TargetSelector))])
   -> IO ()
 
 data InstallCfg = InstallCfg
@@ -359,7 +369,23 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
   let
     installLibs = fromFlagOrDefault False (cinstInstallLibs clientInstallFlags)
 
-    normalisedTargetStrings = if null targetStrings then ["."] else targetStrings
+    normalisedTargetStrings =
+      if null targetStrings
+        then
+          [ WithConstraintSource
+              { constraintInner = "."
+              , constraintSource = ConstraintSourceImplicitTarget
+              }
+          ]
+        else
+          map
+            ( \target ->
+                WithConstraintSource
+                  { constraintInner = target
+                  , constraintSource = ConstraintSourceUserTarget
+                  }
+            )
+            targetStrings
 
   -- Note the logic here is rather goofy. Target selectors of the form "foo:bar" also parse as uris.
   -- However, we want install to also take uri arguments. Hence, we only parse uri arguments in the case where
@@ -470,7 +496,7 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
           compiler
           (projectConfigShared config)
           (projectConfigBuildOnly config)
-          [ProjectPackageRemoteTarball uri | uri <- uris]
+          (map (fmap ProjectPackageRemoteTarball) uris)
 
     -- check for targets already in env
     let getPackageName :: PackageSpecifier UnresolvedSourcePackage -> PackageName
@@ -563,9 +589,9 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
 withProject
   :: Verbosity
   -> ProjectConfig
-  -> [String]
+  -> [WithConstraintSource String]
   -> Bool
-  -> IO ([PackageSpecifier UnresolvedSourcePackage], [TargetSelector], ProjectConfig)
+  -> IO ([PackageSpecifier UnresolvedSourcePackage], [WithConstraintSource TargetSelector], ProjectConfig)
 withProject verbosity cliConfig targetStrings installLibs = do
   -- First, we need to learn about what's available to be installed.
   baseCtx <- establishProjectBaseContext reducedVerbosity cliConfig InstallCommand
@@ -589,7 +615,7 @@ withProject verbosity cliConfig targetStrings installLibs = do
   -- We want to apply the local configuration only to the actual targets.
   let config =
         addLocalConfigToPkgs (projectConfig baseCtx) $
-          concatMap (targetPkgNames $ localPackages baseCtx) targetSelectors
+          concatMap (targetPkgNames (localPackages baseCtx) . constraintInner) targetSelectors
   return (pkgSpecs, targetSelectors, config)
   where
     reducedVerbosity = lessVerbose verbosity
@@ -598,19 +624,28 @@ withProject verbosity cliConfig targetStrings installLibs = do
     -- The ones who don't parse will have to be resolved in the project context.
     (unresolvedTargetStrings, parsedPackageIds) =
       partitionEithers $
-        flip map targetStrings $ \s ->
-          case eitherParsec s of
+        flip map targetStrings $ \target ->
+          case eitherParsec $ constraintInner target of
             Right pkgId@PackageIdentifier{pkgVersion}
               | pkgVersion /= nullVersion ->
-                  pure pkgId
-            _ -> Left s
+                  pure $ target{constraintInner = pkgId}
+            _ -> Left target
 
     -- For each packageId, we output a NamedPackage specifier (i.e. a package only known by
     -- its name) and a target selector.
     (parsedPkgSpecs, parsedTargets) =
       unzip
-        [ (mkNamedPackage pkgId, TargetPackageNamed (pkgName pkgId) targetFilter)
-        | pkgId <- parsedPackageIds
+        [ ( mkNamedPackage src pkgId
+          , withConstraint
+              { constraintInner =
+                  TargetPackageNamed (pkgName pkgId) targetFilter
+              }
+          )
+        | withConstraint@WithConstraintSource
+            { constraintInner = pkgId
+            , constraintSource = src
+            } <-
+            parsedPackageIds
         ]
 
     targetFilter = if installLibs then Just LibKind else Just ExeKind
@@ -618,9 +653,9 @@ withProject verbosity cliConfig targetStrings installLibs = do
 resolveTargetSelectorsInProjectBaseContext
   :: Verbosity
   -> ProjectBaseContext
-  -> [String]
+  -> [WithConstraintSource String]
   -> Maybe ComponentKindFilter
-  -> IO ([PackageSpecifier UnresolvedSourcePackage], [TargetSelector])
+  -> IO ([PackageSpecifier UnresolvedSourcePackage], [WithConstraintSource TargetSelector])
 resolveTargetSelectorsInProjectBaseContext verbosity baseCtx targetStrings targetFilter = do
   let reducedVerbosity = lessVerbose verbosity
 
@@ -633,7 +668,7 @@ resolveTargetSelectorsInProjectBaseContext verbosity baseCtx targetStrings targe
   targetSelectors <-
     readTargetSelectors (localPackages baseCtx) Nothing targetStrings
       >>= \case
-        Left problems -> reportTargetSelectorProblems verbosity problems
+        Left problems -> reportTargetSelectorProblems verbosity (map constraintInner problems)
         Right ts -> return ts
 
   getSpecsAndTargetSelectors
@@ -648,10 +683,20 @@ resolveTargetSelectorsInProjectBaseContext verbosity baseCtx targetStrings targe
 withoutProject
   :: Verbosity
   -> ProjectConfig
-  -> [String]
-  -> IO ([PackageSpecifier UnresolvedSourcePackage], [URI], [TargetSelector], ProjectConfig)
+  -> [WithConstraintSource String]
+  -> IO
+      ( [PackageSpecifier UnresolvedSourcePackage]
+      , [WithConstraintSource URI]
+      , [WithConstraintSource TargetSelector]
+      , ProjectConfig
+      )
 withoutProject verbosity globalConfig targetStrings = do
-  tss <- traverse (parseWithoutProjectTargetSelector verbosity) targetStrings
+  tss <-
+    traverse
+      ( sequenceA
+          . fmap (parseWithoutProjectTargetSelector verbosity)
+      )
+      targetStrings
   let
     ProjectConfigBuildOnly
       { projectConfigLogsDir
@@ -674,7 +719,7 @@ withoutProject verbosity globalConfig targetStrings = do
       buildSettings
       (getSourcePackages verbosity)
 
-  for_ (concatMap woPackageNames tss) $ \name -> do
+  for_ (concatMap (woPackageNames . constraintInner) tss) $ \name -> do
     when (null (lookupPackageName packageIndex name)) $ do
       let xs = searchByName packageIndex (unPackageName name)
       let emptyIf True _ = []
@@ -688,14 +733,20 @@ withoutProject verbosity globalConfig targetStrings = do
       dieWithException verbosity $ WithoutProject (unPackageName name) str2
 
   let
-    packageSpecifiers :: [PackageSpecifier UnresolvedSourcePackage]
-    (uris, packageSpecifiers) = partitionEithers $ map woPackageSpecifiers tss
-    packageTargets = map woPackageTargets tss
+    outerEither :: WithConstraintSource (Either a b) -> Either (WithConstraintSource a) (WithConstraintSource b)
+    outerEither (withConstraint@WithConstraintSource{constraintInner = either'}) =
+      case either' of
+        Left inner -> Left (withConstraint{constraintInner = inner})
+        Right inner -> Right (withConstraint{constraintInner = inner})
+
+    packageSpecifiers :: [WithConstraintSource (PackageSpecifier UnresolvedSourcePackage)]
+    (uris, packageSpecifiers) = partitionEithers $ map (outerEither . fmap woPackageSpecifiers) tss
+    packageTargets = map (fmap woPackageTargets) tss
 
   -- Apply the local configuration (e.g. cli flags) to all direct targets of install command,
   -- see note in 'installAction'
-  let config = addLocalConfigToPkgs globalConfig (concatMap woPackageNames tss)
-  return (packageSpecifiers, uris, packageTargets, config)
+  let config = addLocalConfigToPkgs globalConfig (concatMap (woPackageNames . constraintInner) tss)
+  return (map constraintInner packageSpecifiers, uris, packageTargets, config)
 
 addLocalConfigToPkgs :: ProjectConfig -> [PackageName] -> ProjectConfig
 addLocalConfigToPkgs config pkgs =
@@ -750,11 +801,11 @@ getSpecsAndTargetSelectors
   :: Verbosity
   -> Verbosity
   -> SourcePackageDb
-  -> [TargetSelector]
+  -> [WithConstraintSource TargetSelector]
   -> DistDirLayout
   -> ProjectBaseContext
   -> Maybe ComponentKindFilter
-  -> IO ([PackageSpecifier UnresolvedSourcePackage], [TargetSelector])
+  -> IO ([PackageSpecifier UnresolvedSourcePackage], [WithConstraintSource TargetSelector])
 getSpecsAndTargetSelectors verbosity reducedVerbosity sourcePkgDb targetSelectors distDirLayout baseCtx targetFilter =
   withInstallPlan reducedVerbosity baseCtx $ \elaboratedPlan _ -> do
     -- Split into known targets and hackage packages.
@@ -772,7 +823,13 @@ getSpecsAndTargetSelectors verbosity reducedVerbosity sourcePkgDb targetSelector
         SpecificSourcePackage spkg'
         where
           sdistPath = distSdistFile distDirLayout (packageId spkg)
-          spkg' = spkg{srcpkgSource = LocalTarballPackage sdistPath}
+          spkg' =
+            spkg
+              { srcpkgSource =
+                  (srcpkgSource spkg)
+                    { constraintInner = LocalTarballPackage sdistPath
+                    }
+              }
       sdistize named = named
 
       localPkgs = sdistize <$> localPackages baseCtx
@@ -783,13 +840,19 @@ getSpecsAndTargetSelectors verbosity reducedVerbosity sourcePkgDb targetSelector
           targetUnit = Map.findWithDefault (error "cannot find target unit") targetId planMap
           PackageIdentifier{..} = packageId targetUnit
 
-      localTargets = map gatherTargets (Map.keys targetsMap)
+      localTargets = map (withUnknownConstraint . gatherTargets) (Map.keys targetsMap)
 
       hackagePkgs :: [PackageSpecifier UnresolvedSourcePackage]
-      hackagePkgs = [NamedPackage pn [] | pn <- hackageNames]
+      hackagePkgs =
+        [ Named (withConstraint{constraintInner = NamedPackage packageName []})
+        | withConstraint@WithConstraintSource{constraintInner = packageName} <- hackageNames
+        ]
 
-      hackageTargets :: [TargetSelector]
-      hackageTargets = [TargetPackageNamed pn targetFilter | pn <- hackageNames]
+      hackageTargets :: [WithConstraintSource TargetSelector]
+      hackageTargets =
+        [ withConstraint{constraintInner = TargetPackageNamed packageName targetFilter}
+        | withConstraint@WithConstraintSource{constraintInner = packageName} <- hackageNames
+        ]
 
     createDirectoryIfMissing True (distSdistDirectory distDirLayout)
 
@@ -801,7 +864,7 @@ getSpecsAndTargetSelectors verbosity reducedVerbosity sourcePkgDb targetSelector
           TarGzArchive
           (distSdistFile distDirLayout (packageId pkg))
           pkg
-      NamedPackage _ _ ->
+      Named _ ->
         -- This may happen if 'extra-packages' are listed in the project file.
         -- We don't need to do extra work for NamedPackages since they will be
         -- fetched from Hackage rather than locally 'sdistize'-d. Note how,
@@ -821,8 +884,8 @@ partitionToKnownTargetsAndHackagePackages
   :: Verbosity
   -> SourcePackageDb
   -> ElaboratedInstallPlan
-  -> [TargetSelector]
-  -> IO (TargetsMap, [PackageName])
+  -> [WithConstraintSource TargetSelector]
+  -> IO (TargetsMap, [WithConstraintSource PackageName])
 partitionToKnownTargetsAndHackagePackages verbosity pkgDb elaboratedPlan targetSelectors = do
   let mTargets =
         resolveTargets
@@ -838,8 +901,8 @@ partitionToKnownTargetsAndHackagePackages verbosity pkgDb elaboratedPlan targetS
     Left errs -> do
       -- Not everything is local.
       let
-        (errs', hackageNames) = partitionEithers . flip fmap errs $ \case
-          TargetAvailableInIndex name -> Right name
+        (errs', hackageNames) = partitionEithers . flip fmap errs $ \problem -> case constraintInner problem of
+          TargetAvailableInIndex name -> Right problem{constraintInner = name}
           err -> Left err
 
       -- report incorrect case for known package.
@@ -854,17 +917,17 @@ partitionToKnownTargetsAndHackagePackages verbosity pkgDb elaboratedPlan targetS
       when (not . null $ errs') $ reportBuildTargetProblems verbosity errs'
 
       let
-        targetSelectors' = flip filter targetSelectors $ \case
+        targetSelectors' = flip filter targetSelectors $ \target -> case constraintInner target of
           TargetComponentUnknown name _ _
-            | name `elem` hackageNames -> False
+            | name `elem` (map constraintInner hackageNames) -> False
           TargetPackageNamed name _
-            | name `elem` hackageNames -> False
+            | name `elem` (map constraintInner hackageNames) -> False
           _ -> True
 
       -- This can't fail, because all of the errors are
       -- removed (or we've given up).
       targets <-
-        either (reportBuildTargetProblems verbosity) return $
+        either (reportBuildTargetProblems verbosity . map constraintInner) return $
           resolveTargets
             selectPackageTargets
             selectComponentTarget
@@ -878,13 +941,13 @@ constructProjectBuildContext
   :: Verbosity
   -> ProjectBaseContext
   -- ^ The synthetic base context to use to produce the full build context.
-  -> [TargetSelector]
+  -> [WithConstraintSource TargetSelector]
   -> IO ProjectBuildContext
 constructProjectBuildContext verbosity baseCtx targetSelectors = do
   runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
     -- Interpret the targets on the command line as build targets
     targets <-
-      either (reportBuildTargetProblems verbosity) return $
+      either (reportBuildTargetProblems verbosity . map constraintInner) return $
         resolveTargets
           selectPackageTargets
           selectComponentTarget
@@ -1046,11 +1109,11 @@ warnIfNoExes verbosity buildCtx =
         <> "The command \"cabal install [TARGETS]\" doesn't expose libraries.\n"
         <> "* You might have wanted to add them as dependencies to your package."
         <> " In this case add \""
-        <> intercalate ", " (showTargetSelector <$> selectors)
+        <> intercalate ", " (map (showTargetSelector . constraintInner) selectors)
         <> "\" to the build-depends field(s) of your package's .cabal file.\n"
         <> "* You might have wanted to add them to a GHC environment. In this case"
         <> " use \"cabal install --lib "
-        <> unwords (showTargetSelector <$> selectors)
+        <> unwords (map (showTargetSelector . constraintInner) selectors)
         <> "\". "
         <> " The \"--lib\" flag is provisional: see"
         <> " https://github.com/haskell/cabal/issues/6481 for more information."
@@ -1092,7 +1155,17 @@ environmentFileToSpecifiers ipi = foldMap $ \case
             NamedPackage
               pkgName
               [PackagePropertyVersion (thisVersion pkgVersion)] ->
-        ([pkgSpec], [(pkgName, GhcEnvFilePackageId installedUnitId)])
+        (
+          [ Named
+              ( WithConstraintSource
+                  { constraintInner =
+                      pkgSpec
+                  , constraintSource = ConstraintSourceUnknown
+                  }
+              )
+          ]
+        , [(pkgName, GhcEnvFilePackageId installedUnitId)]
+        )
   _ -> ([], [])
 
 -- | Disables tests and benchmarks if they weren't explicitly enabled.
@@ -1253,13 +1326,13 @@ installBuiltExe
 entriesForLibraryComponents :: TargetsMap -> [GhcEnvironmentFileEntry FilePath]
 entriesForLibraryComponents = Map.foldrWithKey' (\k v -> mappend (go k v)) []
   where
-    hasLib :: (ComponentTarget, NonEmpty TargetSelector) -> Bool
+    hasLib :: (ComponentTarget, NonEmpty (WithConstraintSource TargetSelector)) -> Bool
     hasLib (ComponentTarget (CLibName _) _, _) = True
     hasLib _ = False
 
     go
       :: UnitId
-      -> [(ComponentTarget, NonEmpty TargetSelector)]
+      -> [(ComponentTarget, NonEmpty (WithConstraintSource TargetSelector))]
       -> [GhcEnvironmentFileEntry FilePath]
     go unitId targets
       | any hasLib targets = [GhcEnvFilePackageId unitId]

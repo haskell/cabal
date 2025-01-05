@@ -1,10 +1,13 @@
 import Test.Cabal.Prelude
 
-main = cabalTest . recordMode RecordMarked $ do
+main = cabalTest $ do
   let log = recordHeader . pure
 
   log "checking \"using config from message\" with URI imports"
   out <- fails $ cabal' "v2-build" [ "all", "--dry-run", "--project-file=no-pkgs.project" ]
+
+  -- TODO: Make `BadPackageLocations` a `CabalInstallException` so that we can
+  -- use the normal output recording here.
 
   -- Use assertRegex when the output is tainted by the temp directory, like
   -- this:
@@ -34,9 +37,13 @@ main = cabalTest . recordMode RecordMarked $ do
   assertOutputContains
     "The following errors occurred: \
     \  - The package directory 'no-pkg-1' does not contain any .cabal file. \
+    \    From project config no-pkgs.project \
     \  - The package location 'no-pkg-2-dir' does not exist. \
+    \    From project config no-pkgs.project \
     \  - The package directory 'no-pkg-3' does not contain any .cabal file. \
-    \  - The package location 'no-pkg-4-dir' does not exist."
+    \    From project config no-pkgs.project \
+    \  - The package location 'no-pkg-4-dir' does not exist. \
+    \    From project config no-pkgs.project"
     out
 
   return ()

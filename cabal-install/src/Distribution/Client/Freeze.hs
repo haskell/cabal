@@ -52,6 +52,7 @@ import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PkgConfigDb
 import Distribution.Solver.Types.SolverId
+import Distribution.Solver.Types.WithConstraintSource
 
 import Distribution.Client.Errors
 import Distribution.Package
@@ -183,7 +184,7 @@ getFreezePkgs
     where
       sanityCheck :: [PackageSpecifier UnresolvedSourcePackage] -> IO ()
       sanityCheck pkgSpecifiers = do
-        when (not . null $ [n | n@(NamedPackage _ _) <- pkgSpecifiers]) $
+        when (not . null $ [n | n@(Named _) <- pkgSpecifiers]) $
           dieWithException verbosity UnexpectedNamedPkgSpecifiers
         when (length pkgSpecifiers /= 1) $
           dieWithException verbosity UnexpectedSourcePkgSpecifiers
@@ -314,9 +315,10 @@ freezePackages verbosity globalFlags pkgs = do
               }
         }
     constraint pkg =
-      ( pkgIdToConstraint $ packageId pkg
-      , ConstraintSourceUserConfig userPackageEnvironmentFile
-      )
+      WithConstraintSource
+        { constraintInner = pkgIdToConstraint $ packageId pkg
+        , constraintSource = ConstraintSourceUserConfig userPackageEnvironmentFile
+        }
       where
         pkgIdToConstraint pkgId =
           UserConstraint
