@@ -9,7 +9,7 @@ license:     GPL-3.0-or-later
 
 library
   exposed-modules: Foo
-  build-depends:  text < 5.0
+  build-depends:  text < 5
   default-language: Haskell2010
 
 executable prova

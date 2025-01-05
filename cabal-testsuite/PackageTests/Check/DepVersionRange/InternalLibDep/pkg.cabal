@@ -9,12 +9,12 @@ license: GPL-3.0-or-later
 
 library
   exposed-modules: Foo
-  build-depends: base <= 3.10,
+  build-depends: base < 3.10,
                  int-lib
   default-language: Haskell2010
 
 library int-lib
   exposed-modules: Bar
-  build-depends: text > 1
+  build-depends: text >= 1
   default-language: Haskell2010
 

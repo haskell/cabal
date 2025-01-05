@@ -1,0 +1,12 @@
+---
+synopsis: Adds more version range checks to `cabal check`.
+packages: [Cabal-syntax, Cabal]
+prs: 10554
+issues: 9806
+---
+
+For dependencies, warns about and checks that version range bounds for:
+
+- lower bounds are inclusive, don't use (>)
+- upper bounds are exclusive, don't use (<=)
+- upper bounds don't have trailing zeros, don't end with (*.0).
