@@ -1,39 +1,48 @@
 module Distribution.Solver.Modular.IndexConversion
-    ( convPIs
-    ) where
+  ( convPIs
+  ) where
 
 import Distribution.Solver.Compat.Prelude
 import Prelude ()
 
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
-import qualified Distribution.Compat.NonEmptySet as NonEmptySet
 import qualified Data.Set as S
+import qualified Distribution.Compat.NonEmptySet as NonEmptySet
 
-import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Compiler
-import Distribution.Package                          -- from Cabal
-import Distribution.Simple.BuildToolDepends          -- from Cabal
-import Distribution.Types.ExeDependency              -- from Cabal
-import Distribution.Types.PkgconfigDependency        -- from Cabal
-import Distribution.Types.ComponentName              -- from Cabal
-import Distribution.Types.CondTree                   -- from Cabal
-import Distribution.Types.MungedPackageId            -- from Cabal
-import Distribution.Types.MungedPackageName          -- from Cabal
-import Distribution.PackageDescription               -- from Cabal
+import qualified Distribution.InstalledPackageInfo as IPI
+import Distribution.Package -- from Cabal
+-- from Cabal
+-- from Cabal
+-- from Cabal
+-- from Cabal
+-- from Cabal
+-- from Cabal
+-- from Cabal
+import Distribution.PackageDescription -- from Cabal
 import Distribution.PackageDescription.Configuration
+import Distribution.Simple.BuildToolDepends
 import qualified Distribution.Simple.PackageIndex as SI
 import Distribution.System
+import Distribution.Types.ComponentName
+import Distribution.Types.CondTree
+import Distribution.Types.ExeDependency
+import Distribution.Types.MungedPackageId
+import Distribution.Types.MungedPackageName
+import Distribution.Types.PkgconfigDependency
 
-import           Distribution.Solver.Types.ComponentDeps
-                   ( Component(..), componentNameToComponent )
-import           Distribution.Solver.Types.Flag
-import           Distribution.Solver.Types.LabeledPackageConstraint
-import           Distribution.Solver.Types.OptionalStanza
-import           Distribution.Solver.Types.PackageConstraint
+import Distribution.Solver.Types.ComponentDeps
+  ( Component (..)
+  , componentNameToComponent
+  )
+import Distribution.Solver.Types.Flag
+import Distribution.Solver.Types.LabeledPackageConstraint
+import Distribution.Solver.Types.OptionalStanza
+import Distribution.Solver.Types.PackageConstraint
 import qualified Distribution.Solver.Types.PackageIndex as CI
-import           Distribution.Solver.Types.Settings
-import           Distribution.Solver.Types.SourcePackage
+import Distribution.Solver.Types.Settings
+import Distribution.Solver.Types.SourcePackage
 
 import Distribution.Solver.Modular.Dependency as D
 import Distribution.Solver.Modular.Flag as F
@@ -53,59 +62,69 @@ import Distribution.Solver.Modular.Version
 -- resolving these situations. However, the right thing to do is to
 -- fix the problem there, so for now, shadowing is only activated if
 -- explicitly requested.
-convPIs :: OS -> Arch -> CompilerInfo -> Map PN [LabeledPackageConstraint]
-        -> ShadowPkgs -> StrongFlags -> SolveExecutables
-        -> SI.InstalledPackageIndex -> CI.PackageIndex (SourcePackage loc)
-        -> Index
+convPIs
+  :: OS
+  -> Arch
+  -> CompilerInfo
+  -> Map PN [LabeledPackageConstraint]
+  -> ShadowPkgs
+  -> StrongFlags
+  -> SolveExecutables
+  -> SI.InstalledPackageIndex
+  -> CI.PackageIndex (SourcePackage loc)
+  -> Index
 convPIs os arch comp constraints sip strfl solveExes iidx sidx =
   mkIndex $
-  convIPI' sip iidx ++ convSPI' os arch comp constraints strfl solveExes sidx
+    convIPI' sip iidx ++ convSPI' os arch comp constraints strfl solveExes sidx
 
 -- | Convert a Cabal installed package index to the simpler,
 -- more uniform index format of the solver.
 convIPI' :: ShadowPkgs -> SI.InstalledPackageIndex -> [(PN, I, PInfo)]
 convIPI' (ShadowPkgs sip) idx =
-    -- apply shadowing whenever there are multiple installed packages with
-    -- the same version
-    [ maybeShadow (convIP idx pkg)
-    -- IMPORTANT to get internal libraries. See
-    -- Note [Index conversion with internal libraries]
-    | (_, pkgs) <- SI.allPackagesBySourcePackageIdAndLibName idx
-    , (maybeShadow, pkg) <- zip (id : repeat shadow) pkgs ]
+  -- apply shadowing whenever there are multiple installed packages with
+  -- the same version
+  [ maybeShadow (convIP idx pkg)
+  | -- IMPORTANT to get internal libraries. See
+  -- Note [Index conversion with internal libraries]
+  (_, pkgs) <- SI.allPackagesBySourcePackageIdAndLibName idx
+  , (maybeShadow, pkg) <- zip (id : repeat shadow) pkgs
+  ]
   where
-
     -- shadowing is recorded in the package info
     shadow (pn, i, PInfo fdeps comps fds _)
       | sip = (pn, i, PInfo fdeps comps fds (Just Shadowed))
-    shadow x                                     = x
+    shadow x = x
 
 -- | Extract/recover the package ID from an installed package info, and convert it to a solver's I.
 convId :: IPI.InstalledPackageInfo -> (PN, I)
 convId ipi = (pn, I ver $ Inst $ IPI.installedUnitId ipi)
-  where MungedPackageId mpn ver = mungedId ipi
-        -- HACK. See Note [Index conversion with internal libraries]
-        pn = encodeCompatPackageName mpn
+  where
+    MungedPackageId mpn ver = mungedId ipi
+    -- HACK. See Note [Index conversion with internal libraries]
+    pn = encodeCompatPackageName mpn
 
 -- | Convert a single installed package into the solver-specific format.
 convIP :: SI.InstalledPackageIndex -> IPI.InstalledPackageInfo -> (PN, I, PInfo)
 convIP idx ipi =
   case traverse (convIPId (DependencyReason pn M.empty S.empty) comp idx) (IPI.depends ipi) of
-        Left u    -> (pn, i, PInfo [] M.empty M.empty (Just (Broken u)))
-        Right fds -> (pn, i, PInfo fds components M.empty Nothing)
- where
-  -- TODO: Handle sub-libraries and visibility.
-  components =
-      M.singleton (ExposedLib LMainLibName)
-                  ComponentInfo {
-                      compIsVisible = IsVisible True
-                    , compIsBuildable = IsBuildable True
-                    }
+    Left u -> (pn, i, PInfo [] M.empty M.empty (Just (Broken u)))
+    Right fds -> (pn, i, PInfo fds components M.empty Nothing)
+  where
+    -- TODO: Handle sub-libraries and visibility.
+    components =
+      M.singleton
+        (ExposedLib LMainLibName)
+        ComponentInfo
+          { compIsVisible = IsVisible True
+          , compIsBuildable = IsBuildable True
+          }
 
-  (pn, i) = convId ipi
+    (pn, i) = convId ipi
 
-  -- 'sourceLibName' is unreliable, but for now we only really use this for
-  -- primary libs anyways
-  comp = componentNameToComponent $ CLibName $ IPI.sourceLibName ipi
+    -- 'sourceLibName' is unreliable, but for now we only really use this for
+    -- primary libs anyways
+    comp = componentNameToComponent $ CLibName $ IPI.sourceLibName ipi
+
 -- TODO: Installed packages should also store their encapsulations!
 
 -- Note [Index conversion with internal libraries]
@@ -144,101 +163,146 @@ convIP idx ipi =
 convIPId :: DependencyReason PN -> Component -> SI.InstalledPackageIndex -> UnitId -> Either UnitId (FlaggedDep PN)
 convIPId dr comp idx ipid =
   case SI.lookupUnitId idx ipid of
-    Nothing  -> Left ipid
-    Just ipi -> let (pn, i) = convId ipi
-                    name = ExposedLib LMainLibName  -- TODO: Handle sub-libraries.
-                in  Right (D.Simple (LDep dr (Dep (PkgComponent pn name) (Fixed i))) comp)
-                -- NB: something we pick up from the
-                -- InstalledPackageIndex is NEVER an executable
+    Nothing -> Left ipid
+    Just ipi ->
+      let (pn, i) = convId ipi
+          name = ExposedLib LMainLibName -- TODO: Handle sub-libraries.
+       in Right (D.Simple (LDep dr (Dep (PkgComponent pn name) (Fixed i))) comp)
+
+-- NB: something we pick up from the
+-- InstalledPackageIndex is NEVER an executable
 
 -- | Convert a cabal-install source package index to the simpler,
 -- more uniform index format of the solver.
-convSPI' :: OS -> Arch -> CompilerInfo -> Map PN [LabeledPackageConstraint]
-         -> StrongFlags -> SolveExecutables
-         -> CI.PackageIndex (SourcePackage loc) -> [(PN, I, PInfo)]
+convSPI'
+  :: OS
+  -> Arch
+  -> CompilerInfo
+  -> Map PN [LabeledPackageConstraint]
+  -> StrongFlags
+  -> SolveExecutables
+  -> CI.PackageIndex (SourcePackage loc)
+  -> [(PN, I, PInfo)]
 convSPI' os arch cinfo constraints strfl solveExes =
-    L.map (convSP os arch cinfo constraints strfl solveExes) . CI.allPackages
+  L.map (convSP os arch cinfo constraints strfl solveExes) . CI.allPackages
 
 -- | Convert a single source package into the solver-specific format.
-convSP :: OS -> Arch -> CompilerInfo -> Map PN [LabeledPackageConstraint]
-       -> StrongFlags -> SolveExecutables -> SourcePackage loc -> (PN, I, PInfo)
+convSP
+  :: OS
+  -> Arch
+  -> CompilerInfo
+  -> Map PN [LabeledPackageConstraint]
+  -> StrongFlags
+  -> SolveExecutables
+  -> SourcePackage loc
+  -> (PN, I, PInfo)
 convSP os arch cinfo constraints strfl solveExes (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
   let i = I pv InRepo
       pkgConstraints = fromMaybe [] $ M.lookup pn constraints
-  in  (pn, i, convGPD os arch cinfo pkgConstraints strfl solveExes pn gpd)
+   in (pn, i, convGPD os arch cinfo pkgConstraints strfl solveExes pn gpd)
 
 -- We do not use 'flattenPackageDescription' or 'finalizePD'
 -- from 'Distribution.PackageDescription.Configuration' here, because we
 -- want to keep the condition tree, but simplify much of the test.
 
 -- | Convert a generic package description to a solver-specific 'PInfo'.
-convGPD :: OS -> Arch -> CompilerInfo -> [LabeledPackageConstraint]
-        -> StrongFlags -> SolveExecutables -> PN -> GenericPackageDescription
-        -> PInfo
-convGPD os arch cinfo constraints strfl solveExes pn
-        (GenericPackageDescription pkg scannedVersion flags mlib sub_libs flibs exes tests benchs) =
-  let
-    fds  = flagInfo strfl flags
+convGPD
+  :: OS
+  -> Arch
+  -> CompilerInfo
+  -> [LabeledPackageConstraint]
+  -> StrongFlags
+  -> SolveExecutables
+  -> PN
+  -> GenericPackageDescription
+  -> PInfo
+convGPD
+  os
+  arch
+  cinfo
+  constraints
+  strfl
+  solveExes
+  pn
+  (GenericPackageDescription pkg scannedVersion flags mlib sub_libs flibs exes tests benchs) =
+    let
+      fds = flagInfo strfl flags
 
+      conv
+        :: Monoid a
+        => Component
+        -> (a -> BuildInfo)
+        -> DependencyReason PN
+        -> CondTree ConfVar [Dependency] a
+        -> FlaggedDeps PN
+      conv comp getInfo dr =
+        convCondTree M.empty dr pkg os arch cinfo pn fds comp getInfo solveExes
+          . addBuildableCondition getInfo
 
-    conv :: Monoid a => Component -> (a -> BuildInfo) -> DependencyReason PN ->
-            CondTree ConfVar [Dependency] a -> FlaggedDeps PN
-    conv comp getInfo dr =
-        convCondTree M.empty dr pkg os arch cinfo pn fds comp getInfo solveExes .
-        addBuildableCondition getInfo
+      initDR = DependencyReason pn M.empty S.empty
 
-    initDR = DependencyReason pn M.empty S.empty
+      flagged_deps =
+        concatMap (\ds -> conv ComponentLib libBuildInfo initDR ds) (maybeToList mlib)
+          ++ concatMap (\(nm, ds) -> conv (ComponentSubLib nm) libBuildInfo initDR ds) sub_libs
+          ++ concatMap (\(nm, ds) -> conv (ComponentFLib nm) foreignLibBuildInfo initDR ds) flibs
+          ++ concatMap (\(nm, ds) -> conv (ComponentExe nm) buildInfo initDR ds) exes
+          ++ prefix
+            (Stanza (SN pn TestStanzas))
+            ( L.map
+                (\(nm, ds) -> conv (ComponentTest nm) testBuildInfo (addStanza TestStanzas initDR) ds)
+                tests
+            )
+          ++ prefix
+            (Stanza (SN pn BenchStanzas))
+            ( L.map
+                (\(nm, ds) -> conv (ComponentBench nm) benchmarkBuildInfo (addStanza BenchStanzas initDR) ds)
+                benchs
+            )
+          ++ maybe [] (convSetupBuildInfo pn) (setupBuildInfo pkg)
 
-    flagged_deps
-        = concatMap (\ds ->       conv ComponentLib         libBuildInfo        initDR ds) (maybeToList mlib)
-       ++ concatMap (\(nm, ds) -> conv (ComponentSubLib nm) libBuildInfo        initDR ds) sub_libs
-       ++ concatMap (\(nm, ds) -> conv (ComponentFLib nm)   foreignLibBuildInfo initDR ds) flibs
-       ++ concatMap (\(nm, ds) -> conv (ComponentExe nm)    buildInfo           initDR ds) exes
-       ++ prefix (Stanza (SN pn TestStanzas))
-            (L.map  (\(nm, ds) -> conv (ComponentTest nm)   testBuildInfo (addStanza TestStanzas initDR) ds)
-                    tests)
-       ++ prefix (Stanza (SN pn BenchStanzas))
-            (L.map  (\(nm, ds) -> conv (ComponentBench nm)  benchmarkBuildInfo (addStanza BenchStanzas initDR) ds)
-                    benchs)
-       ++ maybe []  (convSetupBuildInfo pn) (setupBuildInfo pkg)
+      addStanza :: Stanza -> DependencyReason pn -> DependencyReason pn
+      addStanza s (DependencyReason pn' fs ss) = DependencyReason pn' fs (S.insert s ss)
 
-    addStanza :: Stanza -> DependencyReason pn -> DependencyReason pn
-    addStanza s (DependencyReason pn' fs ss) = DependencyReason pn' fs (S.insert s ss)
-
-    -- | A too-new specVersion is turned into a global 'FailReason'
-    -- which prevents the solver from selecting this release (and if
-    -- forced to, emit a meaningful solver error message).
-    fr = case scannedVersion of
+      -- \| A too-new specVersion is turned into a global 'FailReason'
+      -- which prevents the solver from selecting this release (and if
+      -- forced to, emit a meaningful solver error message).
+      fr = case scannedVersion of
         Just ver -> Just (UnsupportedSpecVer ver)
-        Nothing  -> Nothing
+        Nothing -> Nothing
 
-    components :: Map ExposedComponent ComponentInfo
-    components = M.fromList $ libComps ++ subLibComps ++ exeComps
-      where
-        libComps = [ (ExposedLib LMainLibName, libToComponentInfo lib)
-                   | lib <- maybeToList mlib ]
-        subLibComps = [ (ExposedLib (LSubLibName name), libToComponentInfo lib)
-                      | (name, lib) <- sub_libs ]
-        exeComps = [ ( ExposedExe name
-                     , ComponentInfo {
-                           compIsVisible = IsVisible True
-                         , compIsBuildable = IsBuildable $ testCondition (buildable . buildInfo) exe /= Just False
-                         }
-                     )
-                   | (name, exe) <- exes ]
+      components :: Map ExposedComponent ComponentInfo
+      components = M.fromList $ libComps ++ subLibComps ++ exeComps
+        where
+          libComps =
+            [ (ExposedLib LMainLibName, libToComponentInfo lib)
+            | lib <- maybeToList mlib
+            ]
+          subLibComps =
+            [ (ExposedLib (LSubLibName name), libToComponentInfo lib)
+            | (name, lib) <- sub_libs
+            ]
+          exeComps =
+            [ ( ExposedExe name
+              , ComponentInfo
+                  { compIsVisible = IsVisible True
+                  , compIsBuildable = IsBuildable $ testCondition (buildable . buildInfo) exe /= Just False
+                  }
+              )
+            | (name, exe) <- exes
+            ]
 
-        libToComponentInfo lib =
-            ComponentInfo {
-                compIsVisible = IsVisible $ testCondition (isPrivate . libVisibility) lib /= Just True
+          libToComponentInfo lib =
+            ComponentInfo
+              { compIsVisible = IsVisible $ testCondition (isPrivate . libVisibility) lib /= Just True
               , compIsBuildable = IsBuildable $ testCondition (buildable . libBuildInfo) lib /= Just False
               }
 
-        testCondition = testConditionForComponent os arch cinfo constraints
+          testCondition = testConditionForComponent os arch cinfo constraints
 
-        isPrivate LibraryVisibilityPrivate = True
-        isPrivate LibraryVisibilityPublic  = False
-
-  in PInfo flagged_deps components fds fr
+          isPrivate LibraryVisibilityPrivate = True
+          isPrivate LibraryVisibilityPublic = False
+     in
+      PInfo flagged_deps components fds fr
 
 -- | Applies the given predicate (for example, testing buildability or
 -- visibility) to the given component and environment. Values are combined with
@@ -246,24 +310,27 @@ convGPD os arch cinfo constraints strfl solveExes pn
 -- before dependency solving. Additionally, this function only considers flags
 -- that are set by unqualified flag constraints, and it doesn't check the
 -- intra-package dependencies of a component.
-testConditionForComponent :: OS
-                          -> Arch
-                          -> CompilerInfo
-                          -> [LabeledPackageConstraint]
-                          -> (a -> Bool)
-                          -> CondTree ConfVar [Dependency] a
-                          -> Maybe Bool
+testConditionForComponent
+  :: OS
+  -> Arch
+  -> CompilerInfo
+  -> [LabeledPackageConstraint]
+  -> (a -> Bool)
+  -> CondTree ConfVar [Dependency] a
+  -> Maybe Bool
 testConditionForComponent os arch cinfo constraints p tree =
-    case go $ extractCondition p tree of
-      Lit True  -> Just True
-      Lit False -> Just False
-      _         -> Nothing
+  case go $ extractCondition p tree of
+    Lit True -> Just True
+    Lit False -> Just False
+    _ -> Nothing
   where
     flagAssignment :: [(FlagName, Bool)]
     flagAssignment =
-        mconcat [ unFlagAssignment fa
-                | PackageConstraint (ScopeAnyQualifier _) (PackagePropertyFlags fa)
-                    <- L.map unlabelPackageConstraint constraints]
+      mconcat
+        [ unFlagAssignment fa
+        | PackageConstraint (ScopeAnyQualifier _) (PackagePropertyFlags fa) <-
+            L.map unlabelPackageConstraint constraints
+        ]
 
     -- Simplify the condition, using the current environment. Most of this
     -- function was copied from convBranch and
@@ -272,52 +339,56 @@ testConditionForComponent os arch cinfo constraints p tree =
     go (Var (OS os')) = Lit (os == os')
     go (Var (Arch arch')) = Lit (arch == arch')
     go (Var (Impl cf cvr))
-        | matchImpl (compilerInfoId cinfo) ||
-              -- fixme: Nothing should be treated as unknown, rather than empty
-              --        list. This code should eventually be changed to either
-              --        support partial resolution of compiler flags or to
-              --        complain about incompletely configured compilers.
-          any matchImpl (fromMaybe [] $ compilerInfoCompat cinfo) = Lit True
-        | otherwise = Lit False
+      | matchImpl (compilerInfoId cinfo)
+          ||
+          -- fixme: Nothing should be treated as unknown, rather than empty
+          --        list. This code should eventually be changed to either
+          --        support partial resolution of compiler flags or to
+          --        complain about incompletely configured compilers.
+          any matchImpl (fromMaybe [] $ compilerInfoCompat cinfo) =
+          Lit True
+      | otherwise = Lit False
       where
         matchImpl (CompilerId cf' cv) = cf == cf' && checkVR cvr cv
     go (Var (PackageFlag f))
-        | Just b <- L.lookup f flagAssignment = Lit b
+      | Just b <- L.lookup f flagAssignment = Lit b
     go (Var v) = Var v
     go (Lit b) = Lit b
     go (CNot c) =
-        case go c of
-          Lit True -> Lit False
-          Lit False -> Lit True
-          c' -> CNot c'
+      case go c of
+        Lit True -> Lit False
+        Lit False -> Lit True
+        c' -> CNot c'
     go (COr c d) =
-        case (go c, go d) of
-          (Lit False, d') -> d'
-          (Lit True, _)   -> Lit True
-          (c', Lit False) -> c'
-          (_, Lit True)   -> Lit True
-          (c', d')        -> COr c' d'
+      case (go c, go d) of
+        (Lit False, d') -> d'
+        (Lit True, _) -> Lit True
+        (c', Lit False) -> c'
+        (_, Lit True) -> Lit True
+        (c', d') -> COr c' d'
     go (CAnd c d) =
-        case (go c, go d) of
-          (Lit False, _) -> Lit False
-          (Lit True, d') -> d'
-          (_, Lit False) -> Lit False
-          (c', Lit True) -> c'
-          (c', d')       -> CAnd c' d'
+      case (go c, go d) of
+        (Lit False, _) -> Lit False
+        (Lit True, d') -> d'
+        (_, Lit False) -> Lit False
+        (c', Lit True) -> c'
+        (c', d') -> CAnd c' d'
 
 -- | Create a flagged dependency tree from a list @fds@ of flagged
 -- dependencies, using @f@ to form the tree node (@f@ will be
 -- something like @Stanza sn@).
-prefix :: (FlaggedDeps qpn -> FlaggedDep qpn)
-       -> [FlaggedDeps qpn] -> FlaggedDeps qpn
-prefix _ []  = []
+prefix
+  :: (FlaggedDeps qpn -> FlaggedDep qpn)
+  -> [FlaggedDeps qpn]
+  -> FlaggedDeps qpn
+prefix _ [] = []
 prefix f fds = [f (concat fds)]
 
 -- | Convert flag information. Automatic flags are now considered weak
 -- unless strong flags have been selected explicitly.
 flagInfo :: StrongFlags -> [PackageFlag] -> FlagInfo
 flagInfo (StrongFlags strfl) =
-    M.fromList . L.map (\ (MkPackageFlag fn _ b m) -> (fn, FInfo b (flagType m) (weak m)))
+  M.fromList . L.map (\(MkPackageFlag fn _ b m) -> (fn, FInfo b (flagType m) (weak m)))
   where
     weak m = WeakOrTrivial $ not (strfl || m)
     flagType m = if m then Manual else Automatic
@@ -325,41 +396,50 @@ flagInfo (StrongFlags strfl) =
 -- | Convert condition trees to flagged dependencies.  Mutually
 -- recursive with 'convBranch'.  See 'convBranch' for an explanation
 -- of all arguments preceding the input 'CondTree'.
-convCondTree :: Map FlagName Bool -> DependencyReason PN -> PackageDescription -> OS -> Arch -> CompilerInfo -> PN -> FlagInfo ->
-                Component ->
-                (a -> BuildInfo) ->
-                SolveExecutables ->
-                CondTree ConfVar [Dependency] a -> FlaggedDeps PN
+convCondTree
+  :: Map FlagName Bool
+  -> DependencyReason PN
+  -> PackageDescription
+  -> OS
+  -> Arch
+  -> CompilerInfo
+  -> PN
+  -> FlagInfo
+  -> Component
+  -> (a -> BuildInfo)
+  -> SolveExecutables
+  -> CondTree ConfVar [Dependency] a
+  -> FlaggedDeps PN
 convCondTree flags dr pkg os arch cinfo pn fds comp getInfo solveExes@(SolveExecutables solveExes') (CondNode info ds branches) =
-             -- Merge all library and build-tool dependencies at every level in
-             -- the tree of flagged dependencies. Otherwise 'extractCommon'
-             -- could create duplicate dependencies, and the number of
-             -- duplicates could grow exponentially from the leaves to the root
-             -- of the tree.
-             mergeSimpleDeps $
-                 [ D.Simple singleDep comp
-                 | dep <- ds
-                 , singleDep <- convLibDeps dr dep ]  -- unconditional package dependencies
-
-              ++ L.map (\e -> D.Simple (LDep dr (Ext  e)) comp) (allExtensions bi) -- unconditional extension dependencies
-              ++ L.map (\l -> D.Simple (LDep dr (Lang l)) comp) (allLanguages  bi) -- unconditional language dependencies
-              ++ L.map (\(PkgconfigDependency pkn vr) -> D.Simple (LDep dr (Pkg pkn vr)) comp) (pkgconfigDepends bi) -- unconditional pkg-config dependencies
-              ++ concatMap (convBranch flags dr pkg os arch cinfo pn fds comp getInfo solveExes) branches
-              -- build-tools dependencies
-              -- NB: Only include these dependencies if SolveExecutables
-              -- is True.  It might be false in the legacy solver
-              -- codepath, in which case there won't be any record of
-              -- an executable we need.
-              ++ [ D.Simple (convExeDep dr exeDep) comp
-                 | solveExes'
-                 , exeDep <- getAllToolDependencies pkg bi
-                 , not $ isInternal pkg exeDep
-                 ]
+  -- Merge all library and build-tool dependencies at every level in
+  -- the tree of flagged dependencies. Otherwise 'extractCommon'
+  -- could create duplicate dependencies, and the number of
+  -- duplicates could grow exponentially from the leaves to the root
+  -- of the tree.
+  mergeSimpleDeps $
+    [ D.Simple singleDep comp
+    | dep <- ds
+    , singleDep <- convLibDeps dr dep -- unconditional package dependencies
+    ]
+      ++ L.map (\e -> D.Simple (LDep dr (Ext e)) comp) (allExtensions bi) -- unconditional extension dependencies
+      ++ L.map (\l -> D.Simple (LDep dr (Lang l)) comp) (allLanguages bi) -- unconditional language dependencies
+      ++ L.map (\(PkgconfigDependency pkn vr) -> D.Simple (LDep dr (Pkg pkn vr)) comp) (pkgconfigDepends bi) -- unconditional pkg-config dependencies
+      ++ concatMap (convBranch flags dr pkg os arch cinfo pn fds comp getInfo solveExes) branches
+      -- build-tools dependencies
+      -- NB: Only include these dependencies if SolveExecutables
+      -- is True.  It might be false in the legacy solver
+      -- codepath, in which case there won't be any record of
+      -- an executable we need.
+      ++ [ D.Simple (convExeDep dr exeDep) comp
+         | solveExes'
+         , exeDep <- getAllToolDependencies pkg bi
+         , not $ isInternal pkg exeDep
+         ]
   where
     bi = getInfo info
 
-data SimpleFlaggedDepKey qpn =
-    SimpleFlaggedDepKey (PkgComponent qpn) Component
+data SimpleFlaggedDepKey qpn
+  = SimpleFlaggedDepKey (PkgComponent qpn) Component
   deriving (Eq, Ord)
 
 data SimpleFlaggedDepValue qpn = SimpleFlaggedDepValue (DependencyReason qpn) VR
@@ -386,29 +466,34 @@ mergeSimpleDeps deps = L.map (uncurry toFlaggedDep) (M.toList merged) ++ unmerge
   where
     (merged, unmerged) = L.foldl' f (M.empty, []) deps
       where
-        f :: Ord qpn
+        f
+          :: Ord qpn
           => (Map (SimpleFlaggedDepKey qpn) (SimpleFlaggedDepValue qpn), FlaggedDeps qpn)
           -> FlaggedDep qpn
           -> (Map (SimpleFlaggedDepKey qpn) (SimpleFlaggedDepValue qpn), FlaggedDeps qpn)
         f (merged', unmerged') (D.Simple (LDep dr (Dep dep (Constrained vr))) comp) =
-            ( M.insertWith mergeValues
-                           (SimpleFlaggedDepKey dep comp)
-                           (SimpleFlaggedDepValue dr vr)
-                           merged'
-            , unmerged')
+          ( M.insertWith
+              mergeValues
+              (SimpleFlaggedDepKey dep comp)
+              (SimpleFlaggedDepValue dr vr)
+              merged'
+          , unmerged'
+          )
         f (merged', unmerged') unmergeableDep = (merged', unmergeableDep : unmerged')
 
-        mergeValues :: SimpleFlaggedDepValue qpn
-                    -> SimpleFlaggedDepValue qpn
-                    -> SimpleFlaggedDepValue qpn
+        mergeValues
+          :: SimpleFlaggedDepValue qpn
+          -> SimpleFlaggedDepValue qpn
+          -> SimpleFlaggedDepValue qpn
         mergeValues (SimpleFlaggedDepValue dr1 vr1) (SimpleFlaggedDepValue dr2 vr2) =
-            SimpleFlaggedDepValue (unionDRs dr1 dr2) (vr1 .&&. vr2)
+          SimpleFlaggedDepValue (unionDRs dr1 dr2) (vr1 .&&. vr2)
 
-    toFlaggedDep :: SimpleFlaggedDepKey qpn
-                 -> SimpleFlaggedDepValue qpn
-                 -> FlaggedDep qpn
+    toFlaggedDep
+      :: SimpleFlaggedDepKey qpn
+      -> SimpleFlaggedDepValue qpn
+      -> FlaggedDep qpn
     toFlaggedDep (SimpleFlaggedDepKey dep comp) (SimpleFlaggedDepValue dr vr) =
-        D.Simple (LDep dr (Dep dep (Constrained vr))) comp
+      D.Simple (LDep dr (Dep dep (Constrained vr))) comp
 
 -- | Branch interpreter.  Mutually recursive with 'convCondTree'.
 --
@@ -450,71 +535,84 @@ mergeSimpleDeps deps = L.map (uncurry toFlaggedDep) (M.toList merged) ++ unmerge
 --
 --      8. The set of package names which should be considered internal
 --         dependencies, and thus not handled as dependencies.
-convBranch :: Map FlagName Bool
-           -> DependencyReason PN
-           -> PackageDescription
-           -> OS
-           -> Arch
-           -> CompilerInfo
-           -> PN
-           -> FlagInfo
-           -> Component
-           -> (a -> BuildInfo)
-           -> SolveExecutables
-           -> CondBranch ConfVar [Dependency] a
-           -> FlaggedDeps PN
+convBranch
+  :: Map FlagName Bool
+  -> DependencyReason PN
+  -> PackageDescription
+  -> OS
+  -> Arch
+  -> CompilerInfo
+  -> PN
+  -> FlagInfo
+  -> Component
+  -> (a -> BuildInfo)
+  -> SolveExecutables
+  -> CondBranch ConfVar [Dependency] a
+  -> FlaggedDeps PN
 convBranch flags dr pkg os arch cinfo pn fds comp getInfo solveExes (CondBranch c' t' mf') =
-    go c'
-       (\flags' dr' ->           convCondTree flags' dr' pkg os arch cinfo pn fds comp getInfo solveExes  t')
-       (\flags' dr' -> maybe [] (convCondTree flags' dr' pkg os arch cinfo pn fds comp getInfo solveExes) mf')
-       flags dr
+  go
+    c'
+    (\flags' dr' -> convCondTree flags' dr' pkg os arch cinfo pn fds comp getInfo solveExes t')
+    (\flags' dr' -> maybe [] (convCondTree flags' dr' pkg os arch cinfo pn fds comp getInfo solveExes) mf')
+    flags
+    dr
   where
-    go :: Condition ConfVar
-       -> (Map FlagName Bool -> DependencyReason PN -> FlaggedDeps PN)
-       -> (Map FlagName Bool -> DependencyReason PN -> FlaggedDeps PN)
-       ->  Map FlagName Bool -> DependencyReason PN -> FlaggedDeps PN
-    go (Lit True)  t _ = t
+    go
+      :: Condition ConfVar
+      -> (Map FlagName Bool -> DependencyReason PN -> FlaggedDeps PN)
+      -> (Map FlagName Bool -> DependencyReason PN -> FlaggedDeps PN)
+      -> Map FlagName Bool
+      -> DependencyReason PN
+      -> FlaggedDeps PN
+    go (Lit True) t _ = t
     go (Lit False) _ f = f
-    go (CNot c)    t f = go c f t
-    go (CAnd c d)  t f = go c (go d t f) f
-    go (COr  c d)  t f = go c t (go d t f)
+    go (CNot c) t f = go c f t
+    go (CAnd c d) t f = go c (go d t f) f
+    go (COr c d) t f = go c t (go d t f)
     go (Var (PackageFlag fn)) t f = \flags' ->
-        case M.lookup fn flags' of
-          Just True  -> t flags'
-          Just False -> f flags'
-          Nothing    -> \dr' ->
-            -- Add each flag to the DependencyReason for all dependencies below,
-            -- including any extracted dependencies. Extracted dependencies are
-            -- introduced by both flag values (FlagBoth). Note that we don't
-            -- actually need to add the flag to the extracted dependencies for
-            -- correct backjumping; the information only improves log messages
-            -- by giving the user the full reason for each dependency.
-            let addFlagValue v = addFlagToDependencyReason fn v dr'
-                addFlag v = M.insert fn v flags'
-            in extractCommon (t (addFlag True)  (addFlagValue FlagBoth))
-                             (f (addFlag False) (addFlagValue FlagBoth))
-                ++ [ Flagged (FN pn fn) (fds M.! fn) (t (addFlag True)  (addFlagValue FlagTrue))
-                                                     (f (addFlag False) (addFlagValue FlagFalse)) ]
+      case M.lookup fn flags' of
+        Just True -> t flags'
+        Just False -> f flags'
+        Nothing -> \dr' ->
+          -- Add each flag to the DependencyReason for all dependencies below,
+          -- including any extracted dependencies. Extracted dependencies are
+          -- introduced by both flag values (FlagBoth). Note that we don't
+          -- actually need to add the flag to the extracted dependencies for
+          -- correct backjumping; the information only improves log messages
+          -- by giving the user the full reason for each dependency.
+          let addFlagValue v = addFlagToDependencyReason fn v dr'
+              addFlag v = M.insert fn v flags'
+           in extractCommon
+                (t (addFlag True) (addFlagValue FlagBoth))
+                (f (addFlag False) (addFlagValue FlagBoth))
+                ++ [ Flagged
+                      (FN pn fn)
+                      (fds M.! fn)
+                      (t (addFlag True) (addFlagValue FlagTrue))
+                      (f (addFlag False) (addFlagValue FlagFalse))
+                   ]
     go (Var (OS os')) t f
-      | os == os'      = t
-      | otherwise      = f
+      | os == os' = t
+      | otherwise = f
     go (Var (Arch arch')) t f
-      | arch == arch'  = t
-      | otherwise      = f
+      | arch == arch' = t
+      | otherwise = f
     go (Var (Impl cf cvr)) t f
-      | matchImpl (compilerInfoId cinfo) ||
-            -- fixme: Nothing should be treated as unknown, rather than empty
-            --        list. This code should eventually be changed to either
-            --        support partial resolution of compiler flags or to
-            --        complain about incompletely configured compilers.
-        any matchImpl (fromMaybe [] $ compilerInfoCompat cinfo) = t
-      | otherwise      = f
+      | matchImpl (compilerInfoId cinfo)
+          ||
+          -- fixme: Nothing should be treated as unknown, rather than empty
+          --        list. This code should eventually be changed to either
+          --        support partial resolution of compiler flags or to
+          --        complain about incompletely configured compilers.
+          any matchImpl (fromMaybe [] $ compilerInfoCompat cinfo) =
+          t
+      | otherwise = f
       where
         matchImpl (CompilerId cf' cv) = cf == cf' && checkVR cvr cv
 
     addFlagToDependencyReason :: FlagName -> FlagValue -> DependencyReason pn -> DependencyReason pn
     addFlagToDependencyReason fn v (DependencyReason pn' fs ss) =
-        DependencyReason pn' (M.insert fn v fs) ss
+      DependencyReason pn' (M.insert fn v fs) ss
 
     -- If both branches contain the same package as a simple dep, we lift it to
     -- the next higher-level, but with the union of version ranges. This
@@ -529,26 +627,27 @@ convBranch flags dr pkg os arch cinfo pn fds comp getInfo solveExes (CondBranch 
     -- WARNING: This is quadratic!
     extractCommon :: Eq pn => FlaggedDeps pn -> FlaggedDeps pn -> FlaggedDeps pn
     extractCommon ps ps' =
-        -- Union the DependencyReasons, because the extracted dependency can be
-        -- avoided by removing the dependency from either side of the
-        -- conditional.
-        [ D.Simple (LDep (unionDRs vs1 vs2) (Dep dep1 (Constrained $ vr1 .||. vr2))) comp
-        | D.Simple (LDep vs1                (Dep dep1 (Constrained vr1))) _ <- ps
-        , D.Simple (LDep vs2                (Dep dep2 (Constrained vr2))) _ <- ps'
-        , dep1 == dep2
-        ]
+      -- Union the DependencyReasons, because the extracted dependency can be
+      -- avoided by removing the dependency from either side of the
+      -- conditional.
+      [ D.Simple (LDep (unionDRs vs1 vs2) (Dep dep1 (Constrained $ vr1 .||. vr2))) comp
+      | D.Simple (LDep vs1 (Dep dep1 (Constrained vr1))) _ <- ps
+      , D.Simple (LDep vs2 (Dep dep2 (Constrained vr2))) _ <- ps'
+      , dep1 == dep2
+      ]
 
 -- | Merge DependencyReasons by unioning their variables.
 unionDRs :: DependencyReason pn -> DependencyReason pn -> DependencyReason pn
 unionDRs (DependencyReason pn' fs1 ss1) (DependencyReason _ fs2 ss2) =
-    DependencyReason pn' (M.union fs1 fs2) (S.union ss1 ss2)
+  DependencyReason pn' (M.union fs1 fs2) (S.union ss1 ss2)
 
 -- | Convert a Cabal dependency on a set of library components (from a single
 -- package) to solver-specific dependencies.
 convLibDeps :: DependencyReason PN -> Dependency -> [LDep PN]
 convLibDeps dr (Dependency pn vr libs) =
-    [ LDep dr $ Dep (PkgComponent pn (ExposedLib lib)) (Constrained vr)
-    | lib <- NonEmptySet.toList libs ]
+  [ LDep dr $ Dep (PkgComponent pn (ExposedLib lib)) (Constrained vr)
+  | lib <- NonEmptySet.toList libs
+  ]
 
 -- | Convert a Cabal dependency on an executable (build-tools) to a solver-specific dependency.
 convExeDep :: DependencyReason PN -> ExeDependency -> LDep PN
@@ -557,6 +656,7 @@ convExeDep dr (ExeDependency pn exe vr) = LDep dr $ Dep (PkgComponent pn (Expose
 -- | Convert setup dependencies
 convSetupBuildInfo :: PN -> SetupBuildInfo -> FlaggedDeps PN
 convSetupBuildInfo pn nfo =
-    [ D.Simple singleDep ComponentSetup
-    | dep <- setupDepends nfo
-    , singleDep <- convLibDeps (DependencyReason pn M.empty S.empty) dep ]
+  [ D.Simple singleDep ComponentSetup
+  | dep <- setupDepends nfo
+  , singleDep <- convLibDeps (DependencyReason pn M.empty S.empty) dep
+  ]
