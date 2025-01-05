@@ -218,6 +218,10 @@ variants of a command (e.g., `cabal'` rather than `cabal`) and use
 `assertOutputContains`.  Note that this will search over BOTH stdout
 and stderr.
 
+For convenience, paste expected multiline string values verbatim into a text
+file and read these with `readFileVerbatim`. The suggested extension for these
+files are `.expect.txt`.
+
 **How do I skip running a test in some environments?**  Use the
 `skipIf` and `skipUnless` combinators.  Useful parameters to test
 these with include `hasSharedLibraries`, `hasProfiledLibraries`,
