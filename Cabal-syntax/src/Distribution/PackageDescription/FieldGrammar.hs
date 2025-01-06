@@ -621,6 +621,7 @@ buildInfoFieldGrammar =
     <*> monoidalFieldAla "cc-options" (alaList' NoCommaFSep Token') L.ccOptions
     <*> monoidalFieldAla "cxx-options" (alaList' NoCommaFSep Token') L.cxxOptions
       ^^^ availableSince CabalSpecV2_2 []
+    <*> monoidalFieldAla "js-options" (alaList' NoCommaFSep Token') L.jsOptions
     <*> monoidalFieldAla "ld-options" (alaList' NoCommaFSep Token') L.ldOptions
     <*> monoidalFieldAla "hsc2hs-options" (alaList' NoCommaFSep Token') L.hsc2hsOptions
       ^^^ availableSince CabalSpecV3_6 []
