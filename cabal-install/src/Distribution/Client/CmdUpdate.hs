@@ -1,6 +1,9 @@
+<<<<<<< HEAD
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
+=======
+>>>>>>> 7965c7fce (Remove redundant -XCPP)
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}

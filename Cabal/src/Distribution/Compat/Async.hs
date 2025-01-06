@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 -- | 'Async', yet using 'MVar's.
 --
 -- Adopted from @async@ library

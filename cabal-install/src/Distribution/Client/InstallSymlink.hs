@@ -1,11 +1,10 @@
+<<<<<<< HEAD
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveGeneric #-}
+=======
+>>>>>>> 7965c7fce (Remove redundant -XCPP)
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
-
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Client.InstallSymlink

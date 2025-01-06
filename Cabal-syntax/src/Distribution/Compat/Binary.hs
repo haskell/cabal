@@ -1,6 +1,9 @@
+<<<<<<< HEAD
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE PatternSynonyms #-}
 
+=======
+>>>>>>> 7965c7fce (Remove redundant -XCPP)
 module Distribution.Compat.Binary
   ( decodeOrFailIO
   , decodeFileOrFail'

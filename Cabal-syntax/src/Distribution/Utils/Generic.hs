@@ -1,11 +1,12 @@
 {-# LANGUAGE BangPatterns #-}
+<<<<<<< HEAD
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveGeneric #-}
+=======
+>>>>>>> 7965c7fce (Remove redundant -XCPP)
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Utils.Generic
