@@ -1,7 +1,7 @@
 # Warnings currently triggered by your code
 - ignore: {name: "Avoid NonEmpty.unzip"} # 1 hint
 - ignore: {name: "Avoid lambda"} # 47 hints
-- ignore: {name: "Avoid lambda using `infix`"} # 22 hints
+- ignore: {name: "Avoid lambda using `infix`"} # 23 hints
 - ignore: {name: "Eta reduce"} # 124 hints
 - ignore: {name: "Evaluate"} # 10 hints
 - ignore: {name: "Functor law"} # 10 hints
@@ -16,11 +16,11 @@
 - ignore: {name: "Monoid law, right identity"} # 3 hints
 - ignore: {name: "Move filter"} # 4 hints
 - ignore: {name: "Move guards forward"} # 4 hints
-- ignore: {name: "Redundant $"} # 179 hints
+- ignore: {name: "Redundant $"} # 178 hints
 - ignore: {name: "Redundant $!"} # 1 hint
 - ignore: {name: "Redundant <$>"} # 16 hints
 - ignore: {name: "Redundant =="} # 1 hint
-- ignore: {name: "Redundant bracket"} # 239 hints
+- ignore: {name: "Redundant bracket"} # 240 hints
 - ignore: {name: "Redundant fmap"} # 1 hint
 - ignore: {name: "Redundant guard"} # 2 hints
 - ignore: {name: "Redundant if"} # 6 hints
@@ -49,7 +49,7 @@
 - ignore: {name: "Use const"} # 36 hints
 - ignore: {name: "Use elem"} # 2 hints
 - ignore: {name: "Use first"} # 4 hints
-- ignore: {name: "Use fmap"} # 26 hints
+- ignore: {name: "Use fmap"} # 25 hints
 - ignore: {name: "Use fold"} # 1 hint
 - ignore: {name: "Use for"} # 1 hint
 - ignore: {name: "Use forM_"} # 1 hint
@@ -65,7 +65,7 @@
 - ignore: {name: "Use isNothing"} # 1 hint
 - ignore: {name: "Use lambda-case"} # 55 hints
 - ignore: {name: "Use lefts"} # 1 hint
-- ignore: {name: "Use list comprehension"} # 18 hints
+- ignore: {name: "Use list comprehension"} # 19 hints
 - ignore: {name: "Use list literal"} # 3 hints
 - ignore: {name: "Use list literal pattern"} # 11 hints
 - ignore: {name: "Use map once"} # 7 hints
