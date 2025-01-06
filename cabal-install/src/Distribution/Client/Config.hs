@@ -49,7 +49,10 @@ module Distribution.Client.Config
   ) where
 
 import Distribution.Client.Compat.Prelude
-import Distribution.Compat.Environment (lookupEnv)
+import Distribution.Compat.Environment
+  ( getEnvironment
+  , lookupEnv
+  )
 import Prelude ()
 
 import Language.Haskell.Extension (Language (Haskell2010))
@@ -126,9 +129,6 @@ import Distribution.Client.Version
   ( cabalInstallVersion
   )
 import qualified Distribution.Compat.CharParsing as P
-import Distribution.Compat.Environment
-  ( getEnvironment
-  )
 import Distribution.Compiler
   ( CompilerFlavor (..)
   , defaultCompilerFlavor

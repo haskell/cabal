@@ -41,13 +41,14 @@ import System.Win32.Types ( BOOL, DWORD, LPCTSTR, LPVOID, withTString )
 
 #else
 
-import System.Posix.Files ( FileStatus, getFileStatus )
-
+import System.Posix.Files
+  ( FileStatus, getFileStatus
 #if MIN_VERSION_unix(2,6,0)
-import System.Posix.Files ( modificationTimeHiRes )
+  , modificationTimeHiRes
 #else
-import System.Posix.Files ( modificationTime )
+  , modificationTime
 #endif
+  )
 
 #endif
 

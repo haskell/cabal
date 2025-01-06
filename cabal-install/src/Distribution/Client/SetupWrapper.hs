@@ -143,7 +143,10 @@ import Distribution.Simple.Program.GHC
   , renderGhcOptions
   )
 import Distribution.Simple.Setup
-  ( Flag (..), CommonSetupFlags (..), GlobalFlags (..)
+  ( CommonSetupFlags (..)
+  , Flag (..)
+  , GlobalFlags (..)
+  , globalCommand
   )
 import Distribution.Simple.Utils
   ( cabalVersion
@@ -175,7 +178,6 @@ import Distribution.Verbosity
 
 import Data.List (foldl1')
 import qualified Data.Map.Lazy as Map
-import Distribution.Simple.Setup (globalCommand)
 import Distribution.Client.Compat.ExecutablePath (getExecutablePath)
 import Distribution.Compat.Process (proc)
 import System.Directory (doesFileExist)
