@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE Rank2Types #-}
 -----------------------------------------------------------------------------
 -- This module is meant to be local-only to Distribution...

@@ -1,10 +1,5 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
-
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Client.InstallSymlink

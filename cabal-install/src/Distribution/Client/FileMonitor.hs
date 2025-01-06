@@ -1,5 +1,4 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
