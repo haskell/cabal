@@ -20,11 +20,10 @@ module Test.Cabal.NeedleHaystack
 
 import Prelude hiding (unlines)
 import qualified Prelude (unlines)
-import Data.List (tails)
 import Data.Maybe (isJust)
 import Distribution.System
 import Distribution.Utils.Generic (unsnoc)
-import Data.List (isPrefixOf)
+import Data.List (isPrefixOf, tails)
 import qualified System.FilePath.Posix as Posix
 import qualified System.FilePath.Windows as Windows
 import Network.URI (parseURI)

@@ -54,7 +54,11 @@ import qualified Distribution.Client.CmdTest as CmdTest
 
 import qualified Distribution.Client.CmdHaddockProject as CmdHaddockProject
 import Distribution.Client.Config (SavedConfig (savedGlobalFlags), createDefaultConfigFile, loadConfig)
-import Distribution.Client.GlobalFlags (defaultGlobalFlags)
+import Distribution.Client.GlobalFlags
+  ( GlobalFlags
+  , defaultGlobalFlags
+  , globalNix
+  )
 import Distribution.Client.Setup (globalCommand, globalStoreDir)
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.ModuleName (ModuleName)
@@ -90,7 +94,6 @@ import Test.Tasty.Options
 
 import qualified Data.ByteString as BS
 import Data.Maybe (fromJust)
-import Distribution.Client.GlobalFlags (GlobalFlags, globalNix)
 import Distribution.Simple.Flag (Flag (Flag, NoFlag))
 import Distribution.Types.ParStrat
 

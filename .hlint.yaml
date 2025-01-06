@@ -48,7 +48,6 @@
 - ignore: {name: "Use concatMap"} # 2 hints
 - ignore: {name: "Use const"} # 36 hints
 - ignore: {name: "Use elem"} # 2 hints
-- ignore: {name: "Use fewer imports"} # 13 hints
 - ignore: {name: "Use first"} # 4 hints
 - ignore: {name: "Use fmap"} # 26 hints
 - ignore: {name: "Use fold"} # 1 hint
@@ -95,6 +94,8 @@
 
 - arguments:
     - --ignore-glob=Cabal-syntax/src/Distribution/Fields/Lexer.hs
+    - --ignore-glob=Cabal-tests/tests/custom-setup/CabalDoctestSetup.hs
+    - --ignore-glob=Cabal-tests/tests/custom-setup/IdrisSetup.hs
     - --ignore-glob=cabal-testsuite/PackageTests/BuildWays/q/app/Main.hs
     - --ignore-glob=cabal-testsuite/PackageTests/CmmSources/src/Demo.hs
     - --ignore-glob=cabal-testsuite/PackageTests/CmmSourcesDyn/src/Demo.hs

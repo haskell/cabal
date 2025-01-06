@@ -47,8 +47,7 @@ import System.FilePath
 import Lukko
 #else
 import System.IO (openFile, IOMode(ReadWriteMode), hClose)
-import GHC.IO.Handle.Lock (hLock, hTryLock, LockMode(ExclusiveLock))
-import GHC.IO.Handle.Lock (hUnlock)
+import GHC.IO.Handle.Lock (LockMode (ExclusiveLock), hLock, hTryLock, hUnlock)
 #endif
 
 -- $concurrency
