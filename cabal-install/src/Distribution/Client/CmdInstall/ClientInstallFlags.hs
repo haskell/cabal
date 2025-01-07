@@ -79,7 +79,7 @@ clientInstallOptions _ =
       []
       ["lib"]
       ( "Install libraries rather than executables from the target package "
-          <> "(provisional, see https://github.com/haskell/cabal/issues\/6481 for more information)."
+          <> "(provisional, see https://github.com/haskell/cabal/issues/6481 for more information)."
       )
       cinstInstallLibs
       (\v flags -> flags{cinstInstallLibs = v})
