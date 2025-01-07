@@ -9,6 +9,7 @@ module Test.Cabal.NeedleHaystack
     ( TxContains(..)
     , txContainsId
     , NeedleHaystack(..)
+    , NeedleHaystackCompare
     , symNeedleHaystack
     , multilineNeedleHaystack
     , needleHaystack
@@ -126,6 +127,8 @@ With @assertOn@, supplying string transformation to both the needle and haystack
 before comparison and before display can help find out why an expected value is
 or isn't found in the test output.
 -}
+
+type NeedleHaystackCompare = String -> String -> Bool
 
 -- | Transformations for the search strings and the text to search in.
 data TxContains =

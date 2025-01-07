@@ -809,23 +809,23 @@ recordMode mode = withReaderT (\env -> env {
 
 -- See Note [Multiline Needles]
 assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputContains = assertOn
+assertOutputContains = assertOn isInfixOf
     needleHaystack
         {txHaystack = TxContains{txBwd = delimitLines, txFwd = encodeLf}}
 
 assertOutputDoesNotContain :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputDoesNotContain = assertOn
+assertOutputDoesNotContain = assertOn isInfixOf
     needleHaystack
         { expectNeedleInHaystack = False
         , txHaystack = TxContains{txBwd = delimitLines, txFwd = encodeLf}
         }
 
 -- See Note [Multiline Needles]
-assertOn :: MonadIO m => WithCallStack (NeedleHaystack -> String -> Result -> m ())
-assertOn NeedleHaystack{..} (txFwd txNeedle -> needle) (txFwd txHaystack. resultOutput -> output) =
+assertOn :: MonadIO m => WithCallStack (NeedleHaystackCompare -> NeedleHaystack -> String -> Result -> m ())
+assertOn isIn NeedleHaystack{..} (txFwd txNeedle -> needle) (txFwd txHaystack. resultOutput -> output) =
     withFrozenCallStack $
     if expectNeedleInHaystack
-        then unless (needle `isInfixOf` output)
+        then unless (needle `isIn` output)
             $ assertFailure $ "expected:\n" ++ (txBwd txNeedle needle) ++
             if displayHaystack
                 then "\nin output:\n" ++ (txBwd txHaystack output)
