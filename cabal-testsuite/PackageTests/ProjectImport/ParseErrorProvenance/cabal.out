@@ -1,14 +1,6 @@
 # cabal v2-build
 Warnings found while parsing the project file, else.project:
  - dir-else/else.config: Unrecognized section '_' on line 3
-# Multiline string marking:
-# ^When using configuration from:$
-# ^  - else.project$
-# ^  - dir-else/else.config$
-# ^The following errors occurred:$
-# ^  - The package location 'no-pkg-here' does not exist.$
-# Pseudo multiline string marking:
-# ^When using configuration from:   - else.project   - dir-else/else.config The following errors occurred:   - The package location 'no-pkg-here' does not exist.$
 # cabal v2-build
 Error: [Cabal-7090]
 Error parsing project file cabal.project:3:
