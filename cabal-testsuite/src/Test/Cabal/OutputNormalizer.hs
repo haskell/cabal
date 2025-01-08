@@ -46,7 +46,7 @@ normalizeOutput nenv =
   . resub (posixRegexEscape "tmp/src-" ++ "[0-9]+") "<TMPDIR>"
   . resub (posixRegexEscape (normalizerTmpDir nenv) ++ sameDir) "<ROOT>/"
   . resub (posixRegexEscape (normalizerCanonicalTmpDir nenv) ++ sameDir) "<ROOT>/"
-      -- Munge away C: prefix on filenames (Windows). We convert C:\\ to \\.
+    -- Munge away C:\ prefix on filenames (Windows). We convert C:\ to \.
   . (if buildOS == Windows then resub "([A-Z]):\\\\" "\\\\" else id)
   . appEndo (F.fold (map (Endo . packageIdRegex) (normalizerKnownPackages nenv)))
     -- Look for 0.1/installed-0d6uzW7Ubh1Fb4TB5oeQ3G
@@ -78,6 +78,14 @@ normalizeOutput nenv =
         else id)
   . normalizeBuildInfoJson
   . maybe id normalizePathCmdOutput (normalizerCabalInstallVersion nenv)
+    -- Munge away \\.\C:/ prefix on paths (Windows). We convert @\\.\C:/@ to
+    -- @\@. We need to do this before the step above as that one would convert
+    -- @\\.\@ to @\.\@.
+    --
+    -- These paths might come up in file+noindex URIs due to @filepath@
+    -- normalizing @//./C:/foo.txt@ paths to @\\.\C:/foo.txt@, see
+    -- (filepath#247).
+  . (if buildOS == Windows then resub "\\\\\\\\\\.\\\\([A-Z]):/" "\\\\" else id)
   -- hackage-security locks occur non-deterministically
   . resub "(Released|Acquired|Waiting) .*hackage-security-lock\n" ""
   where
