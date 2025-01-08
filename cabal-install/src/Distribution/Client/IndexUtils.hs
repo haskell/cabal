@@ -466,7 +466,7 @@ readRepoIndex verbosity repoCtxt repo idxState =
             RepoSecure{..} -> warn verbosity $ exceptionMessageCabalInstall $ MissingPackageList repoRemote
             RepoLocalNoIndex local _ ->
               warn verbosity $
-                "Error during construction of local+noindex "
+                "Error during construction of file+noindex "
                   ++ unRepoName (localRepoName local)
                   ++ " repository index: "
                   ++ show e
@@ -526,7 +526,7 @@ whenCacheOutOfDate index action = do
     then action
     else
       if localNoIndex index
-        then return () -- TODO: don't update cache for local+noindex repositories
+        then return () -- TODO: don't update cache for file+noindex repositories
         else do
           indexTime <- getModTime $ indexFile index
           cacheTime <- getModTime $ cacheFile index

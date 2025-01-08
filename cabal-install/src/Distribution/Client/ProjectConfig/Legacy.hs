@@ -175,7 +175,7 @@ import Distribution.Simple.Command
   , option
   , reqArg'
   )
-import Distribution.System (Arch, OS)
+import Distribution.System (Arch, OS (Windows), buildOS)
 import Distribution.Types.PackageVersionConstraint
   ( PackageVersionConstraint
   )
@@ -187,7 +187,7 @@ import Distribution.Utils.Path hiding
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Network.URI (URI (..), parseURI)
+import Network.URI (URI (..), nullURIAuth, parseURI)
 import System.Directory (createDirectoryIfMissing, makeAbsolute)
 import System.FilePath (isAbsolute, isPathSeparator, makeValid, splitFileName, (</>))
 import Text.PrettyPrint
@@ -2040,8 +2040,29 @@ remoteRepoSectionDescr =
     localToRemote :: LocalRepo -> RemoteRepo
     localToRemote (LocalRepo name path sharedCache) =
       (emptyRemoteRepo name)
-        { remoteRepoURI = URI "file+noindex:" Nothing path "" (if sharedCache then "#shared-cache" else "")
+        { remoteRepoURI =
+            normaliseFileNoIndexURI buildOS $
+              URI
+                "file+noindex:"
+                (Just nullURIAuth)
+                path
+                ""
+                (if sharedCache then "#shared-cache" else "")
         }
+
+-- | When on Windows, we need to convert the path to be POSIX-style.
+--
+-- >>> normaliseFileNoIndexURI Windows (URI "file+noindex:" (Just nullURIAuth) "\\\\.\\C:\\dev\\foo" "" "")
+-- file+noindex:////./C:/dev/foo
+--
+-- See haddocks of 'asPosixPath' for some examples of why this is needed for
+-- @network-uri@.
+normaliseFileNoIndexURI :: OS -> URI -> URI
+normaliseFileNoIndexURI os uri@(URI scheme auth path query fragment)
+  | "file+noindex:" <- scheme
+  , Windows <- os =
+      URI scheme auth (asPosixPath path) query fragment
+  | otherwise = uri
 
 -------------------------------
 -- Local field utils

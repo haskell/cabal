@@ -33,6 +33,7 @@ import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Utils (toUTF8BS)
+import Distribution.System (OS (Windows), buildOS)
 import Distribution.Types.PackageVersionConstraint
 import Distribution.Version
 
@@ -1016,7 +1017,10 @@ instance Arbitrary LocalRepo where
   arbitrary =
     LocalRepo
       <$> arbitrary
-      <*> elements ["/tmp/foo", "/tmp/bar"] -- TODO: generate valid absolute paths
+      <*> elements
+        ( (if buildOS == Windows then map (normalise . ("//./C:" ++)) else id)
+            ["/tmp/foo", "/tmp/bar"]
+        ) -- TODO: generate valid absolute paths
       <*> arbitrary
 
 instance Arbitrary PreSolver where
