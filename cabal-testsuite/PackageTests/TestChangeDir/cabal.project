@@ -1,0 +1,3 @@
+packages: regression-simple
+
+tests: True
