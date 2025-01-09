@@ -21,6 +21,8 @@ main = cabalTest . recordMode RecordMarked $ do
   assertOutputMatches "no[-]{1,1}pkg-here" out
   assertOutputMatches "else\\.project" out
   assertOutputMatches "else\\/else" out
+  assertOutputMatches "^The f[lo]{4,}wing errors occurred[:]*$" out
+  assertOutputDoesNotMatch "error occurred" out
 
   log "Pseudo multiline string marking:"
   mapM_ log (lines . delimitLines $ encodeLf msgSingle)
