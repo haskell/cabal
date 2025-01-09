@@ -6,8 +6,8 @@
 -- for the strings to search in and the search strings such as re-encoding line
 -- breaks or delimiting lines. Both LF and CRLF line breaks are recognized.
 module Test.Cabal.NeedleHaystack
-    ( TxContains(..)
-    , txContainsId
+    ( TxFwdBwd(..)
+    , txFwdBwdId
     , NeedleHaystack(..)
     , NeedleHaystackCompare
     , symNeedleHaystack
@@ -131,8 +131,8 @@ or isn't found in the test output.
 type NeedleHaystackCompare = String -> String -> Bool
 
 -- | Transformations for the search strings and the text to search in.
-data TxContains =
-    TxContains
+data TxFwdBwd =
+    TxFwdBwd
         {
             -- | Reverse conversion for display, applied to the forward converted value.
             txBwd :: (String -> String),
@@ -142,8 +142,8 @@ data TxContains =
 
 -- | Identity transformation for the search strings and the text to search in,
 -- leaves them unchanged.
-txContainsId :: TxContains
-txContainsId = TxContains id id
+txFwdBwdId :: TxFwdBwd
+txFwdBwdId = TxFwdBwd id id
 
 -- | Conversions of the needle and haystack strings, the seach string and the
 -- text to search in.
@@ -152,14 +152,14 @@ data NeedleHaystack =
         {
             expectNeedleInHaystack :: Bool,
             displayHaystack :: Bool,
-            txNeedle :: TxContains,
-            txHaystack :: TxContains
+            txNeedle :: TxFwdBwd,
+            txHaystack :: TxFwdBwd
         }
 
 -- | Symmetric needle and haystack functions, the same conversion for each going
 -- forward and the same coversion for each going backward.
 symNeedleHaystack :: (String -> String) -> (String -> String) -> NeedleHaystack
-symNeedleHaystack bwd fwd = let tx = TxContains bwd fwd in NeedleHaystack True False tx tx
+symNeedleHaystack bwd fwd = let tx = TxFwdBwd bwd fwd in NeedleHaystack True False tx tx
 
 -- | Multiline needle and haystack functions with symmetric conversions. Going
 -- forward converts line breaks to @"\\n"@.  Going backward adds visible
@@ -170,7 +170,7 @@ multilineNeedleHaystack = symNeedleHaystack delimitLines encodeLf
 -- | Minimal set up for finding the needle in the haystack. Doesn't change the
 -- strings and doesn't display the haystack in any assertion failure message.
 needleHaystack :: NeedleHaystack
-needleHaystack = NeedleHaystack True False txContainsId txContainsId
+needleHaystack = NeedleHaystack True False txFwdBwdId txFwdBwdId
 
 -- | Replace line breaks with spaces, correctly handling @"\\r\\n"@.
 --

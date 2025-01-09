@@ -15,7 +15,7 @@ main = cabalTest $ do
 
         -- Replace line breaks with spaces in the haystack so that we can search
         -- for a string that wraps lines.
-        let lineBreakBlind = needleHaystack{txHaystack = txContainsId{txFwd = lineBreaksToSpaces}}
+        let lineBreakBlind = needleHaystack{txHaystack = txFwdBwdId{txFwd = lineBreaksToSpaces}}
 
         -- Asserts for the desired check messages after configure.
         assertOn lineBreakBlind libError1 checkResult

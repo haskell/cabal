@@ -810,12 +810,12 @@ recordMode mode = withReaderT (\env -> env {
 -- See Note [Multiline Needles]
 assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
 assertOutputContains = assertOn isInfixOf needleHaystack
-    {txHaystack = TxContains{txBwd = delimitLines, txFwd = encodeLf}}
+    {txHaystack = TxFwdBwd{txBwd = delimitLines, txFwd = encodeLf}}
 
 assertOutputDoesNotContain :: MonadIO m => WithCallStack (String -> Result -> m ())
 assertOutputDoesNotContain = assertOn isInfixOf needleHaystack
     { expectNeedleInHaystack = False
-    , txHaystack = TxContains{txBwd = delimitLines, txFwd = encodeLf}
+    , txHaystack = TxFwdBwd{txBwd = delimitLines, txFwd = encodeLf}
     }
 
 -- See Note [Multiline Needles]
@@ -836,15 +836,15 @@ assertOn isIn NeedleHaystack{..} (txFwd txNeedle -> needle) (txFwd txHaystack. r
 
 assertOutputMatches :: MonadIO m => WithCallStack (String -> Result -> m ())
 assertOutputMatches = assertOn (flip (=~)) needleHaystack
-    { txNeedle = TxContains{txBwd = ("regex match with '" ++) . (++ "'"), txFwd = id}
-    , txHaystack = TxContains{txBwd = delimitLines, txFwd = encodeLf}
+    { txNeedle = TxFwdBwd{txBwd = ("regex match with '" ++) . (++ "'"), txFwd = id}
+    , txHaystack = TxFwdBwd{txBwd = delimitLines, txFwd = encodeLf}
     }
 
 assertOutputDoesNotMatch :: MonadIO m => WithCallStack (String -> Result -> m ())
 assertOutputDoesNotMatch = assertOn (flip (=~)) needleHaystack
     { expectNeedleInHaystack = False
-    , txNeedle = TxContains{txBwd = ("regex match with '" ++) . (++ "'"), txFwd = id}
-    , txHaystack = TxContains{txBwd = delimitLines, txFwd = encodeLf}
+    , txNeedle = TxFwdBwd{txBwd = ("regex match with '" ++) . (++ "'"), txFwd = id}
+    , txHaystack = TxFwdBwd{txBwd = delimitLines, txFwd = encodeLf}
     }
 
 assertFindInFile :: MonadIO m => WithCallStack (String -> FilePath -> m ())
