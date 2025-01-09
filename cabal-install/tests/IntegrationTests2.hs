@@ -45,8 +45,6 @@ import qualified Distribution.Client.CmdBench          as CmdBench
 import qualified Distribution.Client.CmdHaddock        as CmdHaddock
 import qualified Distribution.Client.CmdListBin        as CmdListBin
 
-<<<<<<< HEAD
-=======
 import qualified Distribution.Client.CmdHaddockProject as CmdHaddockProject
 import Distribution.Client.Config (SavedConfig (savedGlobalFlags), createDefaultConfigFile, loadConfig)
 import Distribution.Client.GlobalFlags
@@ -57,7 +55,6 @@ import Distribution.Client.GlobalFlags
 import Distribution.Client.Setup (globalCommand, globalStoreDir)
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.ModuleName (ModuleName)
->>>>>>> 217f08ac5 (Follow hlint suggestion: use fewer imports)
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
@@ -96,11 +93,7 @@ import Test.Tasty.Options
 import Data.Tagged (Tagged(..))
 
 import qualified Data.ByteString as BS
-<<<<<<< HEAD
-import Distribution.Client.GlobalFlags (GlobalFlags, globalNix)
-=======
 import Data.Maybe (fromJust)
->>>>>>> 217f08ac5 (Follow hlint suggestion: use fewer imports)
 import Distribution.Simple.Flag (Flag (Flag, NoFlag))
 import Distribution.Types.ParStrat
 import Data.Maybe (fromJust)
