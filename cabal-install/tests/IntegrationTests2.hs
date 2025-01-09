@@ -53,25 +53,18 @@ import Distribution.Client.GlobalFlags
   , globalNix
   )
 import Distribution.Client.Setup (globalCommand, globalStoreDir)
-import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.ModuleName (ModuleName)
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Simple.Setup (toFlag, HaddockFlags(..), defaultHaddockFlags)
-import Distribution.Client.Setup (globalCommand)
-import Distribution.Client.Config (loadConfig, SavedConfig(savedGlobalFlags), createDefaultConfigFile)
 import Distribution.Simple.Compiler
 import Distribution.Simple.Command
 import qualified Distribution.Simple.Flag as Flag
 import Distribution.System
 import Distribution.Version
-import Distribution.ModuleName (ModuleName)
 import Distribution.Text
 import Distribution.Utils.Path (unsafeMakeSymbolicPath)
-import qualified Distribution.Client.CmdHaddockProject as CmdHaddockProject
-import Distribution.Client.Setup (globalStoreDir)
-import Distribution.Client.GlobalFlags (defaultGlobalFlags)
 import Distribution.Simple.Setup (HaddockProjectFlags(..), defaultHaddockProjectFlags)
 
 import qualified Data.Map as Map
@@ -96,7 +89,6 @@ import qualified Data.ByteString as BS
 import Data.Maybe (fromJust)
 import Distribution.Simple.Flag (Flag (Flag, NoFlag))
 import Distribution.Types.ParStrat
-import Data.Maybe (fromJust)
 
 #if !MIN_VERSION_directory(1,2,7)
 removePathForcibly :: FilePath -> IO ()
