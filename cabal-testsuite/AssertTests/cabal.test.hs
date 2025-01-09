@@ -17,12 +17,20 @@ main = cabalTest . recordMode RecordMarked $ do
   mapM_ log (lines . delimitLines $ encodeLf msg)
   assertOn isInfixOf multilineNeedleHaystack msg out
   assertOutputContains msg out
+
   assertOutputMatches "^When.*from:$" out
   assertOutputMatches "no[-]{1,1}pkg-here" out
+
   assertOutputMatches "else\\.project" out
   assertOutputMatches "else\\/else" out
-  assertOutputMatches "^The f[lo]{4,}wing errors occurred[:]*$" out
-  assertOutputDoesNotMatch "error occurred" out
+
+  assertOutputMatches "^The f[lo]{4,}wing[[:space:]]errors[ ]{1,1}occurred[:]*$" out
+
+  assertOutputMatches " errors " out
+  assertOutputDoesNotMatch " error " out
+
+  assertOutputMatches "[[:space:]]+errors[[:space:]]+" out
+  assertOutputDoesNotMatch "[[:space:]]+error[[:space:]]+" out
 
   log "Pseudo multiline string marking:"
   mapM_ log (lines . delimitLines $ encodeLf msgSingle)
