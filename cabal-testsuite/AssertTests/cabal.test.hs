@@ -17,6 +17,10 @@ main = cabalTest . recordMode RecordMarked $ do
   mapM_ log (lines . delimitLines $ encodeLf msg)
   assertOn isInfixOf multilineNeedleHaystack msg out
   assertOutputContains msg out
+  assertOutputMatches "^When.*from:$" out
+  assertOutputMatches "no[-]{1,1}pkg-here" out
+  assertOutputMatches "else\\.project" out
+  assertOutputMatches "else\\/else" out
 
   log "Pseudo multiline string marking:"
   mapM_ log (lines . delimitLines $ encodeLf msgSingle)
