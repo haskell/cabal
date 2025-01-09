@@ -57,7 +57,12 @@ import Distribution.ModuleName (ModuleName)
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
-import Distribution.Simple.Setup (toFlag, HaddockFlags(..), defaultHaddockFlags)
+import Distribution.Simple.Setup
+ ( toFlag,
+ HaddockFlags(..),
+ defaultHaddockFlags,
+ HaddockProjectFlags(..),
+ defaultHaddockProjectFlags )
 import Distribution.Simple.Compiler
 import Distribution.Simple.Command
 import qualified Distribution.Simple.Flag as Flag
@@ -65,7 +70,6 @@ import Distribution.System
 import Distribution.Version
 import Distribution.Text
 import Distribution.Utils.Path (unsafeMakeSymbolicPath)
-import Distribution.Simple.Setup (HaddockProjectFlags(..), defaultHaddockProjectFlags)
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
