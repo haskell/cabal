@@ -836,14 +836,14 @@ assertOn isIn NeedleHaystack{..} (txFwd txNeedle -> needle) (txFwd txHaystack. r
 
 assertOutputMatches :: MonadIO m => WithCallStack (String -> Result -> m ())
 assertOutputMatches = assertOn (flip (=~)) needleHaystack
-    { txNeedle = TxContains{txBwd = ("regex match with " ++), txFwd = id}
+    { txNeedle = TxContains{txBwd = ("regex match with '" ++) . (++ "'"), txFwd = id}
     , txHaystack = TxContains{txBwd = delimitLines, txFwd = encodeLf}
     }
 
 assertOutputDoesNotMatch :: MonadIO m => WithCallStack (String -> Result -> m ())
 assertOutputDoesNotMatch = assertOn (flip (=~)) needleHaystack
     { expectNeedleInHaystack = False
-    , txNeedle = TxContains{txBwd = ("regex match with " ++), txFwd = id}
+    , txNeedle = TxContains{txBwd = ("regex match with '" ++) . (++ "'"), txFwd = id}
     , txHaystack = TxContains{txBwd = delimitLines, txFwd = encodeLf}
     }
 
