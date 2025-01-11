@@ -1,4 +1,5 @@
 import Test.Cabal.Prelude
+import Data.List (isInfixOf)
 
 -- Test that setup shows all the 'autogen-modules' warnings.
 main = cabalTest $ do
@@ -18,7 +19,7 @@ main = cabalTest $ do
         let lineBreakBlind = needleHaystack{txHaystack = txFwdBwdId{txFwd = lineBreaksToSpaces}}
 
         -- Asserts for the desired check messages after configure.
-        assertOn lineBreakBlind libError1 checkResult
-        assertOn lineBreakBlind libError2 checkResult
+        assertOn isInfixOf lineBreakBlind libError1 checkResult
+        assertOn isInfixOf lineBreakBlind libError2 checkResult
 
         return ()
