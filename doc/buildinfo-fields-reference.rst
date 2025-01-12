@@ -271,6 +271,14 @@ cxx-options
     .. math::
         {\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}]^c}}^+_{} \right\}}^\ast_{\bullet}
 
+js-options
+    * Monoidal field
+    * Available since ``cabal-version: 3.14``.
+    * Documentation of :pkg-field:`library:js-options`
+
+    .. math::
+        {\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}]^c}}^+_{} \right\}}^\ast_{\bullet}
+
 cxx-sources
     * Monoidal field
     * Available since ``cabal-version: 2.2``.
