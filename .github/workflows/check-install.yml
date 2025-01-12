@@ -33,7 +33,6 @@ jobs:
 
   cabal-install-dry-run:
     name: cabal install with ghc-${{ matrix.ghc }}
-    if: github.ref != 'refs/heads/master' && github.base_ref != 'master'
     runs-on: ubuntu-latest
     strategy:
       matrix:
