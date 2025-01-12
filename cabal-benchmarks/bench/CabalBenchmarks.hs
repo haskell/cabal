@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -fno-warn-deprecations #-}
+{-# OPTIONS_GHC -Wno-deprecations #-}
 module Main where
 
 import Test.Tasty.Bench                       (bench, bgroup, defaultMain, env, nf, whnf)

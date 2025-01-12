@@ -66,10 +66,10 @@ library
   ghc-options:
     -Wall
     -fno-ignore-asserts
-    -fwarn-tabs
-    -fwarn-incomplete-uni-patterns
-    -fwarn-incomplete-record-updates
-    -fno-warn-unticked-promoted-constructors
+    -Wtabs
+    -Wincomplete-uni-patterns
+    -Wincomplete-record-updates
+    -Wno-unticked-promoted-constructors
 
   if impl(ghc >= 8.0)
     ghc-options: -Wcompat -Wnoncanonical-monad-instances

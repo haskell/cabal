@@ -26,7 +26,7 @@ test-suite cabal-benchmarks
   type:             exitcode-stdio-1.0
   main-is:          CabalBenchmarks.hs
   hs-source-dirs:   bench
-  ghc-options:      -threaded -Wall -fwarn-tabs
+  ghc-options:      -threaded -Wall -Wtabs
   build-depends:
       base
     , bytestring
