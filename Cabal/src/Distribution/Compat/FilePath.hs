@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP #-}
-{-# OPTIONS_GHC -fno-warn-unused-imports #-}
+{-# OPTIONS_GHC -Wno-unused-imports #-}
 
 module Distribution.Compat.FilePath
   ( isExtensionOf

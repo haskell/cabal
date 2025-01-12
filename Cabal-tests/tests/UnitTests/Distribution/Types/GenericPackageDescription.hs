@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -fno-warn-deprecations #-}   -- for importing "Distribution.Compat.Prelude.Internal"
+{-# OPTIONS_GHC -Wno-deprecations #-}   -- for importing "Distribution.Compat.Prelude.Internal"
 
 module UnitTests.Distribution.Types.GenericPackageDescription where
 

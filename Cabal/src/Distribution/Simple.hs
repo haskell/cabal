@@ -13,7 +13,7 @@ libraries/Cabal/Distribution/Simple.hs:78:0:
              (imported from Distribution.Simple.UserHooks):
              Deprecated: "Please use the new testing interface instead!"
 -}
-{-# OPTIONS_GHC -fno-warn-deprecations #-}
+{-# OPTIONS_GHC -Wno-deprecations #-}
 
 -- |
 -- Module      :  Distribution.Simple

@@ -2,7 +2,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 -- TODO: remove this
-{-# OPTIONS -fno-warn-incomplete-uni-patterns #-}
+{-# OPTIONS -Wno-incomplete-uni-patterns #-}
 module Distribution.Solver.Modular.Linking (
     validateLinking
   ) where
