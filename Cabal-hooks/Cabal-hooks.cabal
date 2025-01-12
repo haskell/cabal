@@ -15,7 +15,7 @@ category:       Distribution
 build-type:     Simple
 
 extra-source-files:
-  readme.md changelog.md
+  README.md CHANGELOG.md
 
 source-repository head
   type:     git
