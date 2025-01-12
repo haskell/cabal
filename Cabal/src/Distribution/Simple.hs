@@ -4,7 +4,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 -----------------------------------------------------------------------------
 {-
 Work around this warning:
@@ -14,6 +13,7 @@ libraries/Cabal/Distribution/Simple.hs:78:0:
              Deprecated: "Please use the new testing interface instead!"
 -}
 {-# OPTIONS_GHC -Wno-deprecations #-}
+{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 
 -- |
 -- Module      :  Distribution.Simple
