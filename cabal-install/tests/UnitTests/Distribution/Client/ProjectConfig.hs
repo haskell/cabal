@@ -1018,7 +1018,7 @@ instance Arbitrary LocalRepo where
     LocalRepo
       <$> arbitrary
       <*> elements
-        ( (if buildOS == Windows then map (normalise . ("//./C:" ++)) else id)
+        ( (if buildOS == Windows then map (normalise . ("C:" ++)) else id)
             ["/tmp/foo", "/tmp/bar"]
         ) -- TODO: generate valid absolute paths
       <*> arbitrary
