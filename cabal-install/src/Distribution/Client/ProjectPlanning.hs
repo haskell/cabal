@@ -471,6 +471,7 @@ configureCompiler
     let fileMonitorCompiler = newFileMonitor $ distProjectCacheFile "compiler"
 
     progsearchpath <- liftIO $ getSystemSearchPath
+
     rerunIfChanged
       verbosity
       fileMonitorCompiler
@@ -486,7 +487,7 @@ configureCompiler
         let extraPath = fromNubList packageConfigProgramPathExtra
         progdb <- liftIO $ prependProgramSearchPath verbosity extraPath [] defaultProgramDb
         let progdb' = userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths)) progdb
-        (comp, plat, progdb'') <-
+        result@(_, _, progdb'') <-
           liftIO $
             Cabal.configCompilerEx
               hcFlavor
@@ -503,16 +504,54 @@ configureCompiler
         -- programs it cares about, and those are the ones we monitor here.
         monitorFiles (programsMonitorFiles progdb'')
 
-        -- Configure the unconfigured programs in the program database,
-        -- as we can't serialise unconfigured programs.
-        -- See also #2241 and #9840.
-        finalProgDb <- liftIO $ configureAllKnownPrograms verbosity progdb''
+        -- Note: There is currently a bug here: we are dropping unconfigured
+        -- programs from the 'ProgramDb' when we re-use the cache created by
+        -- 'rerunIfChanged'.
+        --
+        -- See Note [Caching the result of configuring the compiler]
 
-        return (comp, plat, finalProgDb)
+        return result
     where
       hcFlavor = flagToMaybe projectConfigHcFlavor
       hcPath = flagToMaybe projectConfigHcPath
       hcPkg = flagToMaybe projectConfigHcPkg
+
+{- Note [Caching the result of configuring the compiler]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+We can't straightforwardly cache anything that contains a 'ProgramDb', because
+the 'Binary' instance for 'ProgramDb' discards all unconfigured programs.
+See that instance, as well as 'restoreProgramDb', for a few more details.
+
+This means that if we try to cache the result of configuring the compiler (which
+contains a 'ProgramDb'):
+
+ - On the first run, we will obtain a 'ProgramDb' which may contain several
+   unconfigured programs. In particular, configuring GHC will add tools such
+   as `ar` and `ld` as unconfigured programs to the 'ProgramDb', with custom
+   logic for finding their location based on the location of the GHC binary.
+ - On subsequent runs, if we use the cache created by 'rerunIfChanged', we will
+   deserialise the 'ProgramDb' from disk, which means it won't include any
+   unconfigured programs, which might mean we are unable to find 'ar' or 'ld'.
+
+This is not currently a huge problem because, in the Cabal library, we eagerly
+re-run the configureCompiler step (thus recovering any lost information), but
+this is wasted work that we should stop doing in Cabal, given that cabal-install
+has already figured out all the necessary information about the compiler.
+
+To fix this bug, we can't simply eagerly configure all unconfigured programs,
+as was originally attempted, for a couple of reasons:
+
+ - it does more work than necessary, by configuring programs that we may not
+   end up needing,
+ - it means that we prioritise system executables for built-in build tools
+   (such as `alex` and `happy`), instead of using the proper version for a
+   package or package component, as specified by a `build-tool-depends` stanza
+   or by package-level `extra-prog-path` arguments.
+   This lead to bug reports #10633 and #10692.
+
+See #9840 for more information about the problems surrounding the lossly
+Binary ProgramDb instance.
+-}
 
 ------------------------------------------------------------------------------
 
