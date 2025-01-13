@@ -125,7 +125,7 @@ ghcid-cli: ## Run ghcid for the cabal-install executable.
 
 .PHONY: doctest
 doctest: ## Run doctests.
-	cd Cabal-syntax && $(DOCTEST)
+	cd Cabal-syntax && $(DOCTEST) --build-depends=network-uri
 	cd Cabal-described && $(DOCTEST)
 	cd Cabal && $(DOCTEST)
 	cd cabal-install-solver && $(DOCTEST)

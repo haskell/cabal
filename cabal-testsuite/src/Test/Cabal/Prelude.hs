@@ -48,7 +48,7 @@ import Distribution.PackageDescription
 import Test.Utils.TempTestDir (withTestDir)
 import Distribution.Verbosity (normal)
 import Distribution.Utils.Path
-  ( makeSymbolicPath, relativeSymbolicPath, interpretSymbolicPathCWD )
+  ( asPosixPath, makeSymbolicPath, relativeSymbolicPath, interpretSymbolicPathCWD )
 
 import Distribution.Compat.Stack
 
@@ -613,9 +613,7 @@ withRepoNoUpdate repo_dir m = do
     -- TODO: Arguably should undo everything when we're done...
   where
     repoUri env ="file+noindex://" ++ (if isWindows
-                                        then map (\x -> case x of
-                                            '\\' -> '/'
-                                            _ -> x)
+                                        then joinDrive "//./" . asPosixPath
                                         else id) (testRepoDir env)
 
 -- | Given a directory (relative to the 'testCurrentDir') containing

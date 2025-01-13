@@ -200,6 +200,10 @@ repository.
 ``package-name-version.tar.gz`` files in the directory, and will use optional
 corresponding ``package-name-version.cabal`` files as new revisions.
 
+.. note::
+   On Windows systems, the path has to be prefixed by ``//./`` as in
+   ``url: file+noindex:////./C:/absolute/path/to/directory``.
+
 For example, if ``/absolute/path/to/directory`` looks like
 ::
 
