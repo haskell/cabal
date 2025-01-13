@@ -43,11 +43,11 @@ style-commit: ## Run the code styler on the previous commit.
 
 .PHONY: whitespace
 whitespace: ## Run fix-whitespace in check mode.
-	fix-whitespace --check --verbose
+	fix-whitespace --check
 
 .PHONY: fix-whitespace
 fix-whitespace: ## Run fix-whitespace in fix mode.
-	fix-whitespace --verbose
+	fix-whitespace
 
 .PHONY: lint
 lint: ## Run HLint.
