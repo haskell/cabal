@@ -1698,8 +1698,6 @@ postProcessRepo lineno reponameStr repo0 = do
         Left $
           LocalRepo
             reponame
-            -- Normalization of Windows paths that use @//./@ does not fully
-            -- normalize the path (see filepath#247), but it is still usable.
             (normalise (uriPath uri))
             (uriFragment uri == "#shared-cache")
     _ -> do
