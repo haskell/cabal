@@ -15,6 +15,9 @@ module Distribution.Client.Types.Repo
   , repoName
   , isRepoRemote
   , maybeRepoRemote
+
+    -- * Windows
+  , normaliseFileNoIndexURI
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -23,6 +26,7 @@ import Prelude ()
 import Network.URI (URI (..), nullURI, parseAbsoluteURI, uriToString)
 
 import Distribution.Simple.Utils (toUTF8BS)
+import Distribution.System (OS (Windows))
 
 import Distribution.Client.HashValue (hashValue, showHashValue, truncateHash)
 
@@ -31,6 +35,9 @@ import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
 import Distribution.Client.Types.RepoName
+
+import qualified System.FilePath.Posix as Posix
+import qualified System.FilePath.Windows as Windows
 
 -------------------------------------------------------------------------------
 -- Remote repository
@@ -190,3 +197,41 @@ repoName :: Repo -> RepoName
 repoName (RepoLocalNoIndex r _) = localRepoName r
 repoName (RepoRemote r _) = remoteRepoName r
 repoName (RepoSecure r _) = remoteRepoName r
+
+-------------------------------------------------------------------------------
+
+-- * Windows utils
+
+-------------------------------------------------------------------------------
+
+-- | When on Windows, we need to convert the paths in URIs to be POSIX-style.
+--
+-- >>> import Network.URI
+-- >>> normaliseFileNoIndexURI Windows (URI "file+noindex:" (Just nullURIAuth) "C:\\dev\\foo" "" "")
+-- file+noindex:C:/dev/foo
+--
+-- Other formats of file paths are not understood by @network-uri@:
+--
+-- >>> import Network.URI
+-- >>> uriPath <$> parseURI "file+noindex://C:/foo.txt"
+-- Just "/foo.txt"
+-- >>> parseURI "file+noindex://C:\foo.txt"
+-- Nothing
+-- >>> uriPath <$> parseURI "file+noindex:///C:/foo.txt"
+-- Just "/C:/foo.txt"
+-- >>> uriPath <$> parseURI "file+noindex:C:/foo.txt"
+-- Just "C:/foo.txt"
+--
+-- Out of the ones above, only the last one can be used from anywhere in the
+-- system.
+normaliseFileNoIndexURI :: OS -> URI -> URI
+normaliseFileNoIndexURI os uri@(URI scheme _auth path query fragment)
+  | "file+noindex:" <- scheme
+  , Windows <- os =
+      URI scheme Nothing (asPosixPath path) query fragment
+  | otherwise = uri
+  where
+    asPosixPath p =
+      -- We don't use 'isPathSeparator' because @Windows.isPathSeparator
+      -- Posix.pathSeparator == True@.
+      [if x == Windows.pathSeparator then Posix.pathSeparator else x | x <- p]

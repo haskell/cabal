@@ -1,14 +1,14 @@
 synopsis: Fix `file+noindex` URI usage on Windows
 packages: cabal-install
-prs: #10728
+prs: #10728 #10746
 issues: #10703
 significance:
 
 description: {
 
-- `file+noindex` repositories in Windows systems must use the format `file+noindex:////./C:/path/to/repo`.
-  This syntax comes from https://learn.microsoft.com/en-us/dotnet/standard/io/file-path-formats#dos-device-paths,
-  and is the only syntax for DOS paths fully supported by the `network-uri` package, which Cabal uses to
-  interpret URIs in repository stanzas.
+- `file+noindex` repositories in Windows systems must use the format
+  `file+noindex:C:/path/to/repo`.  This is the only syntax for DOS paths fully
+  supported by the `network-uri` package, which Cabal uses to interpret URIs in
+  repository stanzas.
 
 }
