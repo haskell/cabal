@@ -256,6 +256,9 @@ data CheckExplanation
   | UnknownCompiler [String]
   | BaseNoUpperBounds
   | MissingUpperBounds CEType [String]
+  | LEUpperBounds CEType [String]
+  | TrailingZeroUpperBounds CEType [String]
+  | GTLowerBounds CEType [String]
   | SuspiciousFlagName [String]
   | DeclaredUsedFlags (Set.Set FlagName) (Set.Set FlagName)
   | NonASCIICustomField [String]
@@ -419,6 +422,9 @@ data CheckExplanationID
   | CIUnknownCompiler
   | CIBaseNoUpperBounds
   | CIMissingUpperBounds
+  | CILEUpperBounds
+  | CITrailingZeroUpperBounds
+  | CIGTLowerBounds
   | CISuspiciousFlagName
   | CIDeclaredUsedFlags
   | CINonASCIICustomField
@@ -561,6 +567,9 @@ checkExplanationId (UnknownArch{}) = CIUnknownArch
 checkExplanationId (UnknownCompiler{}) = CIUnknownCompiler
 checkExplanationId (BaseNoUpperBounds{}) = CIBaseNoUpperBounds
 checkExplanationId (MissingUpperBounds{}) = CIMissingUpperBounds
+checkExplanationId (LEUpperBounds{}) = CILEUpperBounds
+checkExplanationId (TrailingZeroUpperBounds{}) = CITrailingZeroUpperBounds
+checkExplanationId (GTLowerBounds{}) = CIGTLowerBounds
 checkExplanationId (SuspiciousFlagName{}) = CISuspiciousFlagName
 checkExplanationId (DeclaredUsedFlags{}) = CIDeclaredUsedFlags
 checkExplanationId (NonASCIICustomField{}) = CINonASCIICustomField
@@ -588,11 +597,20 @@ checkExplanationId (WrongFieldForExpectedDocFiles{}) = CIWrongFieldForExpectedDo
 
 type CheckExplanationIDString = String
 
+<<<<<<< HEAD
 -- A one-word identifier for each CheckExplanation
 --
 -- ☞ N.B: if you modify anything here, remeber to change the documentation
 -- in @doc/cabal-commands.rst@!
+=======
+-- | A one-word identifier for each @CheckExplanation@.
+>>>>>>> d46f325c5 (Add version range constraint operator checks)
 ppCheckExplanationId :: CheckExplanationID -> CheckExplanationIDString
+-- NOTE: If you modify anything here, remember to change the documentation
+-- in @doc/cabal-commands.rst@!
+-- NOTE: These strings will have to satisfy a test that these messages don't
+-- have too many dashes:
+--   $ cabal run Cabal-tests:unit-tests -- --pattern=Parsimonious
 ppCheckExplanationId CIParseWarning = "parser-warning"
 ppCheckExplanationId CINoNameField = "no-name-field"
 ppCheckExplanationId CINoVersionField = "no-version-field"
@@ -708,6 +726,9 @@ ppCheckExplanationId CIUnknownArch = "unknown-arch"
 ppCheckExplanationId CIUnknownCompiler = "unknown-compiler"
 ppCheckExplanationId CIBaseNoUpperBounds = "missing-bounds-important"
 ppCheckExplanationId CIMissingUpperBounds = "missing-upper-bounds"
+ppCheckExplanationId CILEUpperBounds = "le-upper-bounds"
+ppCheckExplanationId CITrailingZeroUpperBounds = "tz-upper-bounds"
+ppCheckExplanationId CIGTLowerBounds = "gt-lower-bounds"
 ppCheckExplanationId CISuspiciousFlagName = "suspicious-flag"
 ppCheckExplanationId CIDeclaredUsedFlags = "unused-flag"
 ppCheckExplanationId CINonASCIICustomField = "non-ascii"
@@ -1301,15 +1322,33 @@ ppExplanation BaseNoUpperBounds =
     ++ "version. For example if you have tested your package with 'base' "
     ++ "version 4.5 and 4.6 then use 'build-depends: base >= 4.5 && < 4.7'."
 ppExplanation (MissingUpperBounds ct names) =
-  let separator = "\n  - "
-   in "On "
-        ++ ppCET ct
-        ++ ", "
-        ++ "these packages miss upper bounds:"
-        ++ separator
-        ++ List.intercalate separator names
-        ++ "\n"
-        ++ "Please add them. There is more information at https://pvp.haskell.org/"
+  "On "
+    ++ ppCET ct
+    ++ ", "
+    ++ "these packages miss upper bounds:"
+    ++ listSep names
+    ++ "Please add them. There is more information at https://pvp.haskell.org/"
+ppExplanation (LEUpperBounds ct names) =
+  "On "
+    ++ ppCET ct
+    ++ ", "
+    ++ "these packages have less than or equals (<=) upper bounds:"
+    ++ listSep names
+    ++ "Please use less than (<) for upper bounds."
+ppExplanation (TrailingZeroUpperBounds ct names) =
+  "On "
+    ++ ppCET ct
+    ++ ", "
+    ++ "these packages have upper bounds with trailing zeros:"
+    ++ listSep names
+    ++ "Please avoid trailing zeros for upper bounds."
+ppExplanation (GTLowerBounds ct names) =
+  "On "
+    ++ ppCET ct
+    ++ ", "
+    ++ "these packages have greater than (>) lower bounds:"
+    ++ listSep names
+    ++ "Please use greater than or equals (>=) for lower bounds."
 ppExplanation (SuspiciousFlagName invalidFlagNames) =
   "Suspicious flag names: "
     ++ unwords invalidFlagNames
@@ -1470,6 +1509,11 @@ ppExplanation (WrongFieldForExpectedDocFiles extraDocFileSupport field paths) =
         else "extra-source-files"
 
 -- * Formatting utilities
+
+listSep :: [String] -> String
+listSep names =
+  let separator = "\n  - "
+   in separator ++ List.intercalate separator names ++ "\n"
 
 commaSep :: [String] -> String
 commaSep = List.intercalate ", "
