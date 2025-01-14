@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -fno-warn-deprecations #-}
 module UnitTests.Distribution.CabalSpecVersion (tests) where
 
