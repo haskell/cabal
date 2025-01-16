@@ -67,9 +67,6 @@ module Distribution.Utils.Path
 
     -- ** Module names
   , moduleNameSymbolicPath
-
-    -- * Windows
-  , asPosixPath
   ) where
 
 import Distribution.Compat.Prelude
@@ -89,8 +86,6 @@ import qualified Distribution.Compat.CharParsing as P
 
 import qualified System.Directory as Directory
 import qualified System.FilePath as FilePath
-import qualified System.FilePath.Posix as Posix
-import qualified System.FilePath.Windows as Windows
 
 import Data.Kind
   ( Type
@@ -536,38 +531,3 @@ data Response
 --
 -- See Note [Symbolic paths] in Distribution.Utils.Path.
 data PkgConf
-
--------------------------------------------------------------------------------
-
--- * Windows utils
-
--------------------------------------------------------------------------------
-
--- | Sometimes we need to represent a Windows path (that might have been
--- normalized) as a POSIX path, for example in URIs, as that is what
--- @network-uri@ understands. Furthermore they need to use the @\\\\.\\@ DOS
--- device syntax or otherwise the filepath will be unusable.
---
--- >>> import Network.URI
--- >>> uriPath <$> parseURI "file+noindex://C:/foo.txt"
--- Just "/foo.txt"
--- >>> parseURI "file+noindex://C:\foo.txt"
--- Nothing
--- >>> uriPath <$> parseURI "file+noindex:///C:/foo.txt"
--- Just "/C:/foo.txt"
--- >>> uriPath <$> parseURI "file+noindex:////./C:/foo.txt"
--- Just "//./C:/foo.txt"
---
--- Out of the ones above, only the last one can be used from anywhere in the
--- system, after normalization into @"\\\\.\\C:/foo.txt"@ (see filepath#247 for
--- why there is a forward slash there):
---
--- >>> import Network.URI
--- >>> import qualified System.FilePath.Windows as Windows
--- >>> Windows.normalise . uriPath <$> parseURI "file+noindex:////./C:/foo.txt"
--- Just "\\\\.\\C:/foo.txt"
-asPosixPath :: FilePath -> FilePath
-asPosixPath p =
-  -- We don't use 'isPathSeparator' because @Windows.isPathSeparator
-  -- Posix.pathSeparator == True@.
-  [if x == Windows.pathSeparator then Posix.pathSeparator else x | x <- p]
