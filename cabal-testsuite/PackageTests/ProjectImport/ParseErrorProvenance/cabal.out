@@ -1,5 +1,6 @@
 # cabal v2-build
 Warning: <ROOT>/else.project, else.project: Unrecognized section '_' on line 3
+Warning: dir-else/else.config:3:5: Invalid subsection "_"
 # Multiline string marking:
 # ^When using configuration from:$
 # ^  - else.project$

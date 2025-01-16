@@ -4,6 +4,10 @@ module Distribution.Client.Types.Repo
   ( -- * Remote repository
     RemoteRepo (..)
   , emptyRemoteRepo
+  , remoteRepoKeyThresholdLens
+  , remoteRepoRootKeysLens
+  , remoteRepoSecureLens
+  , remoteRepoURILens
 
     -- * Local repository (no-index)
   , LocalRepo (..)
@@ -29,6 +33,7 @@ import Distribution.Simple.Utils (toUTF8BS)
 import Distribution.System (OS (Windows))
 
 import Distribution.Client.HashValue (hashValue, showHashValue, truncateHash)
+import Distribution.Compat.Lens
 
 import qualified Data.ByteString.Lazy.Char8 as LBS
 import qualified Distribution.Compat.CharParsing as P
@@ -96,6 +101,22 @@ instance Parsec RemoteRepo where
 -- | Construct a partial 'RemoteRepo' value to fold the field parser list over.
 emptyRemoteRepo :: RepoName -> RemoteRepo
 emptyRemoteRepo name = RemoteRepo name nullURI Nothing [] 0 False
+
+remoteRepoURILens :: Lens' RemoteRepo URI
+remoteRepoURILens f s = fmap (\x -> s{remoteRepoURI = x}) (f (remoteRepoURI s))
+{-# INLINE remoteRepoURILens #-}
+
+remoteRepoSecureLens :: Lens' RemoteRepo (Maybe Bool)
+remoteRepoSecureLens f s = fmap (\x -> s{remoteRepoSecure = x}) (f (remoteRepoSecure s))
+{-# INLINE remoteRepoSecureLens #-}
+
+remoteRepoRootKeysLens :: Lens' RemoteRepo [String]
+remoteRepoRootKeysLens f s = fmap (\x -> s{remoteRepoRootKeys = x}) (f (remoteRepoRootKeys s))
+{-# INLINE remoteRepoRootKeysLens #-}
+
+remoteRepoKeyThresholdLens :: Lens' RemoteRepo Int
+remoteRepoKeyThresholdLens f s = fmap (\x -> s{remoteRepoKeyThreshold = x}) (f (remoteRepoKeyThreshold s))
+{-# INLINE remoteRepoKeyThresholdLens #-}
 
 -------------------------------------------------------------------------------
 -- Local repository
