@@ -465,24 +465,21 @@ jobs:
     needs: [validate, validate-old-ghcs, build-alpine, dogfooding]
 
     steps:
-      - uses: liudonghua123/delete-release-action@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          release_name: 'cabal-head'
-
       - uses: actions/download-artifact@v4
         with:
           pattern: cabal-*
           path: binaries
           merge-multiple: true
 
-      - name: Create GitHub prerelease
-        uses: softprops/action-gh-release@v2
+      - name: (Re)Create GitHub prerelease
+        uses: andelf/nightly-release@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: cabal-head
+          name: cabal-head
           prerelease: true
-          files: binaries/cabal-*
+          files: "binaries/cabal-*"
 
   prerelease-lts:
     name: Create a GitHub LTS prerelease with the binary artifacts
@@ -496,12 +493,6 @@ jobs:
     needs: [validate, validate-old-ghcs, build-alpine, dogfooding]
 
     steps:
-    - uses: liudonghua123/delete-release-action@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        release_name: 'cabal-lts-head'
-
     - uses: actions/download-artifact@v4
       with:
         pattern: cabal-*
@@ -515,12 +506,15 @@ jobs:
           mv "$f" "cabal-lts-${f##cabal-}"
         done
 
-    - name: Create GitHub prerelease
-      uses: softprops/action-gh-release@v2
+    - name: (Re)Create GitHub prerelease
+      uses: andelf/nightly-release@main
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: cabal-lts-head
+        name: cabal-lts-head
         prerelease: true
-        files: binaries/cabal-*
+        files: "binaries/cabal-*"
 
   # We use this job as a summary of the workflow
   # It will fail if any of the previous jobs does
