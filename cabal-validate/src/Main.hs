@@ -290,7 +290,7 @@ runHackageTests opts
 
       let
         -- See #10284 for why this value is pinned.
-        hackageTestsIndexState = "--index-state=2024-08-25"
+        hackageTestsIndexState = "--index-state=2025-01-12"
 
         hackageTest args =
           timedWithCwd
