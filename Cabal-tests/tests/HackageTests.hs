@@ -301,6 +301,7 @@ roundtripTest testFieldsTransform fpath bs = do
         putStrLn bs'
         exitFailure
 
+{- FOURMOLU_DISABLE -}
     parse phase c = do
         let (_, x') = Parsec.runParseResult $
                       Parsec.parseGenericPackageDescription c
@@ -311,6 +312,7 @@ roundtripTest testFieldsTransform fpath bs = do
                 traverse_ print errs
                 B.putStr c
                 fail "parse error"
+{- FOURMOLU_ENABLE -}
 
 -------------------------------------------------------------------------------
 -- Main
