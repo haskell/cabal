@@ -1172,7 +1172,9 @@ readNoIndexCache verbosity index = do
     Left msg -> do
       warn verbosity $
         concat
-          [ "Parsing the index cache failed ("
+          [ "Parsing the index cache for repo \""
+          , unRepoName (repoName repo)
+          , "\" failed ("
           , msg
           , "). "
           , "Trying to regenerate the index cache..."
@@ -1184,6 +1186,8 @@ readNoIndexCache verbosity index = do
 
     -- we don't hash cons local repository cache, they are hopefully small
     Right res -> return res
+  where
+    RepoIndex _ctxt repo = index
 
 -- | Read the 'Index' cache from the filesystem. Throws IO exceptions
 -- if any arise and returns Left on invalid input.
@@ -1195,7 +1199,11 @@ readIndexCache' index
       Right . read00IndexCache <$> BSS.readFile (cacheFile index)
 
 readNoIndexCache' :: Index -> IO (Either String NoIndexCache)
-readNoIndexCache' index = structuredDecodeFileOrFail (cacheFile index)
+readNoIndexCache' index = do
+  exists <- doesFileExist (cacheFile index)
+  if exists
+    then structuredDecodeFileOrFail (cacheFile index)
+    else pure $ Left "No index cache exists yet"
 
 -- | Write the 'Index' cache to the filesystem
 writeIndexCache :: Index -> Cache -> IO ()
