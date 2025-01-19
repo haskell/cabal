@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -fno-warn-missing-signatures #-}
+{-# OPTIONS_GHC -Wno-missing-signatures #-}
 module Test.Laws where
 
 import Prelude hiding (Num((+), (*)))
