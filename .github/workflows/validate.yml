@@ -336,7 +336,11 @@ jobs:
           apk add bash curl sudo jq pkgconfig \
           zlib-dev zlib-static binutils-gold curl \
           gcc g++ gmp-dev libc-dev libffi-dev make \
-          musl-dev ncurses-dev perl tar xz
+          musl-dev ncurses-dev perl tar xz git
+
+      # Apparently there's some permissions thing inside vs. outside the container
+      # that Alpine's git doesn't like. Hack around it.
+      - run: git config --global --add safe.directory $(pwd)
 
       - uses: actions/checkout@v4
 
