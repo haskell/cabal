@@ -177,7 +177,9 @@ import Text.PrettyPrint
   , char
   , colon
   , hsep
+  , int
   , nest
+  , parens
   , quotes
   , renderStyle
   , text
@@ -899,10 +901,11 @@ configurePackage cfg lbc0 pkg_descr00 flags enabled comp platform programDb0 pac
     (merged, ds@(dup : _)) ->
       noticeDoc verbosity $
         vcat
-          [ (text "The build tool" <+> quotes (text $ nameOf dup) <+> "has multiple versions specified") <> colon
-          , nest 2 $ vcat [char '-' <+> text (prettyShow $ versionOf d) | d <- ds]
-          , text "These versions have been combined as" <> colon
-          , nest 2 $ quotes (text $ prettyShow merged)
+          [ (text "As the build tool" <+> quotes (text $ nameOf dup) <+> "was specified more than once") <> colon
+          , nest 2 $ vcat [char '-' <+> versionOfDoc d | d <- ds]
+          , (text "We'll use the effective intersection of these" <+> int (length ds) <+> "version ranges") <> colon
+          , nest 2 $ char '-' <+> versionOfDoc merged
+          , text "Please specify build tool dependencies only once."
           ]
 
   programDb1 <-
@@ -959,6 +962,12 @@ nameOf (LegacyExeDependency n _) = n
 
 versionOf :: LegacyExeDependency -> VersionRange
 versionOf (LegacyExeDependency _ v) = v
+
+versionOfDoc :: LegacyExeDependency -> Doc
+versionOfDoc (LegacyExeDependency _ v) =
+  if v == anyVersion
+    then text (prettyShow v) <+> parens (text "any version")
+    else text $ prettyShow v
 
 -- | Any duplicates in the list has their version range merged by intersection.
 -- The second list has the build tool with its merged version range and its list
