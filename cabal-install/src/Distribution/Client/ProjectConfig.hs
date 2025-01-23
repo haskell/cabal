@@ -66,8 +66,18 @@ module Distribution.Client.ProjectConfig
   , maxNumFetchJobs
   ) where
 
-import Distribution.Client.Compat.Prelude
-import Text.PrettyPrint (nest, render, text, vcat)
+import Distribution.Client.Compat.Prelude hiding (empty)
+import Distribution.Simple.Utils
+  ( createDirectoryIfMissingVerbose
+  , dieWithException
+  , maybeExit
+  , notice
+  , noticeDoc
+  , ordNub
+  , rawSystemIOWithEnv
+  , warn
+  )
+import Text.PrettyPrint (cat, colon, comma, empty, hsep, nest, quotes, render, text, vcat)
 import Prelude ()
 
 import Distribution.Client.Glob
@@ -136,9 +146,11 @@ import Distribution.Client.Utils
   ( determineNumJobs
   )
 import qualified Distribution.Deprecated.ParseUtils as OldParser
-  ( ParseResult (..)
-  , locatedErrorMsg
+  ( locatedErrorMsg
   , showPWarning
+  )
+import qualified Distribution.Deprecated.ProjectParseUtils as OldParser
+  ( ProjectParseResult (..)
   )
 import Distribution.Fields
   ( PError
@@ -171,14 +183,6 @@ import Distribution.Simple.Setup
   , fromFlag
   , fromFlagOrDefault
   , toFlag
-  )
-import Distribution.Simple.Utils
-  ( createDirectoryIfMissingVerbose
-  , dieWithException
-  , maybeExit
-  , notice
-  , rawSystemIOWithEnv
-  , warn
   )
 import Distribution.System
   ( Platform
@@ -240,6 +244,7 @@ import System.IO
   , withBinaryFile
   )
 
+import Distribution.Deprecated.ProjectParseUtils (ProjectParseError (..), ProjectParseWarning)
 import Distribution.Solver.Types.ProjectConfigPath
 
 ----------------------------------------
@@ -874,16 +879,45 @@ readGlobalConfig verbosity configFileFlag = do
   monitorFiles [monitorFileHashed configFile]
   return (convertLegacyGlobalConfig config)
 
-reportParseResult :: Verbosity -> String -> FilePath -> OldParser.ParseResult ProjectConfigSkeleton -> IO ProjectConfigSkeleton
-reportParseResult verbosity _filetype filename (OldParser.ParseOk warnings x) = do
+reportProjectParseWarnings :: Verbosity -> FilePath -> [ProjectParseWarning] -> IO ()
+reportProjectParseWarnings verbosity projectFile warnings =
   unless (null warnings) $
-    let msg = unlines (map (OldParser.showPWarning (intercalate ", " $ filename : (projectConfigPathRoot <$> projectSkeletonImports x))) warnings)
-     in warn verbosity msg
+    let msgs =
+          [ OldParser.showPWarning pFilename w
+          | (p, w) <- warnings
+          , let pFilename = fst $ unconsProjectConfigPath p
+          ]
+     in noticeDoc verbosity $
+          vcat
+            [ (text "Warnings found while parsing the project file" <> comma) <+> (text (takeFileName projectFile) <> colon)
+            , cat [nest 1 $ text "-" <+> text m | m <- ordNub msgs]
+            ]
+
+reportParseResult :: Verbosity -> String -> FilePath -> OldParser.ProjectParseResult ProjectConfigSkeleton -> IO ProjectConfigSkeleton
+reportParseResult verbosity _filetype projectFile (OldParser.ProjectParseOk warnings x) = do
+  reportProjectParseWarnings verbosity projectFile warnings
   return x
-reportParseResult verbosity filetype filename (OldParser.ParseFailed err) =
+reportParseResult verbosity filetype projectFile (OldParser.ProjectParseFailed (ProjectParseError snippet rootOrImportee err)) = do
   let (line, msg) = OldParser.locatedErrorMsg err
-      errLineNo = maybe "" (\n -> ':' : show n) line
-   in dieWithException verbosity $ ReportParseResult filetype filename errLineNo msg
+  let errLineNo = maybe "" (\n -> ':' : show n) line
+  let (sourceFile, provenance) =
+        maybe
+          (projectFile, empty)
+          ( \p ->
+              ( fst $ unconsProjectConfigPath p
+              , if isTopLevelConfigPath p then empty else docProjectConfigPath p
+              )
+          )
+          rootOrImportee
+  let doc = case snippet of
+        Nothing -> vcat (text <$> lines msg)
+        Just s ->
+          vcat
+            [ provenance
+            , text "Failed to parse" <+> quotes (text s) <+> (text "with error" <> colon)
+            , nest 2 $ hsep $ text <$> lines msg
+            ]
+  dieWithException verbosity $ ReportParseResult filetype sourceFile errLineNo doc
 
 ---------------------------------------------
 -- Finding packages in the project

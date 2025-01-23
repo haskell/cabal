@@ -1,4 +1,4 @@
 # cabal build
 Error: [Cabal-7090]
-Error parsing project file <ROOT>/cabal.project:4:
-'source-repository-package' is a stanza, not a field. Remove the trailing ':' to parse a stanza.
+Error parsing project file cabal.project:4:
+  - 'source-repository-package' is a stanza, not a field. Remove the trailing ':' to parse a stanza.
