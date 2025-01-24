@@ -1,9 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
-import qualified Data.ByteString as BS
+-- | Tests for the project file parser
+module Tests.ParserTests (parserTests) where
+
+import Control.Monad.IO.Class
+  ( MonadIO (liftIO)
+  )
 import Data.Either (fromRight)
-import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.Map as Map
 import Data.Maybe (fromJust)
 import qualified Data.Set as Set
@@ -15,7 +19,6 @@ import Distribution.Client.HttpUtils
 import Distribution.Client.IndexUtils.ActiveRepos (ActiveRepoEntry (..), ActiveRepos (..), CombineStrategy (..))
 import Distribution.Client.IndexUtils.IndexState (RepoIndexState (..), headTotalIndexState, insertIndexState)
 import Distribution.Client.ProjectConfig
-import Distribution.Client.ProjectConfig.Parsec
 import Distribution.Client.RebuildMonad (runRebuild)
 import Distribution.Client.Targets (readUserConstraint)
 import Distribution.Client.Types.AllowNewer (AllowNewer (..), AllowOlder (..), RelaxDepMod (..), RelaxDepScope (..), RelaxDepSubject (..), RelaxDeps (..), RelaxedDep (..))
@@ -25,12 +28,13 @@ import Distribution.Client.Types.Repo (LocalRepo (..), RemoteRepo (..))
 import Distribution.Client.Types.RepoName (RepoName (..))
 import Distribution.Client.Types.SourceRepo
 import Distribution.Client.Types.WriteGhcEnvironmentFilesPolicy (WriteGhcEnvironmentFilesPolicy (..))
+import Distribution.Compat.Prelude
 import Distribution.Compiler (CompilerFlavor (..))
 import Distribution.Parsec (simpleParsec)
 import Distribution.Simple.Compiler (DebugInfoLevel (..), OptimisationLevel (..), PackageDB (..), ProfDetailLevel (..))
 import Distribution.Simple.Flag
 import Distribution.Simple.InstallDirs (InstallDirs (..), toPathTemplate)
-import Distribution.Simple.Setup (DumpBuildInfo (..), Flag, HaddockTarget (..), TestShowDetails (..))
+import Distribution.Simple.Setup (DumpBuildInfo (..), HaddockTarget (..), TestShowDetails (..))
 import Distribution.Solver.Types.ConstraintSource (ConstraintSource (..))
 import Distribution.Solver.Types.ProjectConfigPath (ProjectConfigPath (..))
 import Distribution.Solver.Types.Settings
@@ -45,7 +49,7 @@ import Distribution.Solver.Types.Settings
   , StrongFlags (..)
   )
 import Distribution.Types.CondTree (CondTree (..))
-import Distribution.Types.Flag (FlagAssignment (..), FlagName, mkFlagAssignment)
+import Distribution.Types.Flag (mkFlagAssignment)
 import Distribution.Types.PackageId (PackageIdentifier (..))
 import Distribution.Types.PackageName
 import Distribution.Types.PackageVersionConstraint (PackageVersionConstraint (..))
@@ -56,81 +60,87 @@ import Distribution.Utils.NubList
 import Distribution.Verbosity
 import Network.URI (parseURI)
 import System.Directory (canonicalizePath, doesFileExist)
+import System.FilePath ((</>))
+import Prelude ()
 
-import Test.Cabal.Prelude hiding (cabal)
-import qualified Test.Cabal.Prelude as P
+import Test.Tasty (TestTree, testGroup)
+import Test.Tasty.HUnit (Assertion, assertBool, assertEqual, testCase)
 
-main = do
-  cabalTest' "read packages" testPackages
-  cabalTest' "read optional-packages" testOptionalPackages
-  cabalTest' "read extra-packages" testExtraPackages
-  cabalTest' "read source-repository-package" testSourceRepoList
-  cabalTest' "read project-config-build-only" testProjectConfigBuildOnly
-  cabalTest' "read project-config-shared" testProjectConfigShared
-  cabalTest' "read install-dirs" testInstallDirs
-  cabalTest' "read remote-repos" testRemoteRepos
-  cabalTest' "read local-no-index-repos" testLocalNoIndexRepos
-  cabalTest' "set explicit provenance" testProjectConfigProvenance
-  cabalTest' "read project-config-local-packages" testProjectConfigLocalPackages
-  cabalTest' "read project-config-all-packages" testProjectConfigAllPackages
-  cabalTest' "read project-config-specific-packages" testProjectConfigSpecificPackages
-  cabalTest' "test projectConfigAllPackages concatenation" testAllPackagesConcat
-  cabalTest' "test projectConfigSpecificPackages concatenation" testSpecificPackagesConcat
-  cabalTest' "test program-locations concatenation" testProgramLocationsConcat
-  cabalTest' "test program-options concatenation" testProgramOptionsConcat
+parserTests :: TestTree
+parserTests =
+  testGroup
+    "project files parsec tests"
+    [ testCase "read packages" testPackages
+    , testCase "read optional-packages" testOptionalPackages
+    , testCase "read extra-packages" testExtraPackages
+    , testCase "read source-repository-package" testSourceRepoList
+    , testCase "read project-config-build-only" testProjectConfigBuildOnly
+    , testCase "read project-config-shared" testProjectConfigShared
+    , testCase "read install-dirs" testInstallDirs
+    , testCase "read remote-repos" testRemoteRepos
+    , testCase "read local-no-index-repos" testLocalNoIndexRepos
+    , testCase "set explicit provenance" testProjectConfigProvenance
+    , testCase "read project-config-local-packages" testProjectConfigLocalPackages
+    , testCase "read project-config-all-packages" testProjectConfigAllPackages
+    , testCase "read project-config-specific-packages" testProjectConfigSpecificPackages
+    , testCase "test projectConfigAllPackages concatenation" testAllPackagesConcat
+    , testCase "test projectConfigSpecificPackages concatenation" testSpecificPackagesConcat
+    , testCase "test program-locations concatenation" testProgramLocationsConcat
+    , testCase "test program-options concatenation" testProgramOptionsConcat
+    ]
 
-testPackages :: TestM ()
+testPackages :: Assertion
 testPackages = do
   let expected = [".", "packages/packages.cabal"]
-  -- Note that I currently also run the legacy parser to make sure my expected values
-  -- do not differ from the non-Parsec implementation, this will be removed in the future
   (config, legacy) <- readConfigDefault "packages"
-  assertConfig expected config legacy (projectPackages . condTreeData)
+  assertConfigEquals expected config legacy (projectPackages . condTreeData)
 
-testOptionalPackages :: TestM ()
+testOptionalPackages :: Assertion
 testOptionalPackages = do
   let expected = [".", "packages/packages.cabal"]
   (config, legacy) <- readConfigDefault "optional-packages"
-  assertConfig expected config legacy (projectPackagesOptional . condTreeData)
+  assertConfigEquals expected config legacy (projectPackagesOptional . condTreeData)
 
-testSourceRepoList :: TestM ()
+testSourceRepoList :: Assertion
 testSourceRepoList = do
-  let expected =
-        [ SourceRepositoryPackage
-            { srpType = KnownRepoType Git
-            , srpLocation = "https://example.com/Project.git"
-            , srpTag = Just "1234"
-            , srpBranch = Nothing
-            , srpSubdir = []
-            , srpCommand = []
-            }
-        , SourceRepositoryPackage
-            { srpType = KnownRepoType Git
-            , srpLocation = "https://example.com/example-dir/"
-            , srpTag = Just "12345"
-            , srpBranch = Nothing
-            , srpSubdir = ["subproject"]
-            , srpCommand = []
-            }
-        ]
   (config, legacy) <- readConfigDefault "source-repository-packages"
-  assertConfig expected config legacy (projectPackagesRepo . condTreeData)
-
-testExtraPackages :: TestM ()
-testExtraPackages = do
-  let expected =
-        [ PackageVersionConstraint (mkPackageName "a") (OrLaterVersion (mkVersion [0]))
-        , PackageVersionConstraint (mkPackageName "b") (IntersectVersionRanges (OrLaterVersion (mkVersion [0, 7, 3])) (EarlierVersion (mkVersion [0, 9])))
-        ]
-  (config, legacy) <- readConfigDefault "extra-packages"
-  assertConfig expected config legacy (projectPackagesNamed . condTreeData)
-
-testProjectConfigBuildOnly :: TestM ()
-testProjectConfigBuildOnly = do
-  let expected = ProjectConfigBuildOnly{..}
-  (config, legacy) <- readConfigDefault "project-config-build-only"
-  assertConfig expected config legacy (projectConfigBuildOnly . condTreeData)
+  assertConfigEquals expected config legacy (projectPackagesRepo . condTreeData)
   where
+    expected =
+      [ SourceRepositoryPackage
+          { srpType = KnownRepoType Git
+          , srpLocation = "https://example.com/Project.git"
+          , srpTag = Just "1234"
+          , srpBranch = Nothing
+          , srpSubdir = []
+          , srpCommand = []
+          }
+      , SourceRepositoryPackage
+          { srpType = KnownRepoType Git
+          , srpLocation = "https://example.com/example-dir/"
+          , srpTag = Just "12345"
+          , srpBranch = Nothing
+          , srpSubdir = ["subproject"]
+          , srpCommand = []
+          }
+      ]
+
+testExtraPackages :: Assertion
+testExtraPackages = do
+  (config, legacy) <- readConfigDefault "extra-packages"
+  assertConfigEquals expected config legacy (projectPackagesNamed . condTreeData)
+  where
+    expected =
+      [ PackageVersionConstraint (mkPackageName "a") (OrLaterVersion (mkVersion [0]))
+      , PackageVersionConstraint (mkPackageName "b") (IntersectVersionRanges (OrLaterVersion (mkVersion [0, 7, 3])) (EarlierVersion (mkVersion [0, 9])))
+      ]
+
+testProjectConfigBuildOnly :: Assertion
+testProjectConfigBuildOnly = do
+  (config, legacy) <- readConfigDefault "project-config-build-only"
+  assertConfigEquals expected config legacy (projectConfigBuildOnly . condTreeData)
+  where
+    expected = ProjectConfigBuildOnly{..}
     projectConfigVerbosity = toFlag (toEnum 2)
     projectConfigDryRun = mempty -- cli only
     projectConfigOnlyDeps = mempty -- cli only
@@ -158,16 +168,12 @@ testProjectConfigBuildOnly = do
         , cinstInstalldir = Flag "path/to/installdir"
         }
 
-testProjectConfigShared :: TestM ()
+testProjectConfigShared :: Assertion
 testProjectConfigShared = do
-  let rootFp = "project-config-shared"
-  testDir <- testDirInfo rootFp "cabal.project"
-  let
-    projectConfigConstraints = getProjectConfigConstraints (testDirProjectConfigFp testDir)
-    expected = ProjectConfigShared{..}
-  (config, legacy) <- readConfigDefault rootFp
-  assertConfig expected config legacy (projectConfigShared . condTreeData)
+  (config, legacy) <- readConfigDefault "project-config-shared"
+  assertConfigEquals expected config legacy (projectConfigShared . condTreeData)
   where
+    expected = ProjectConfigShared{..}
     projectConfigDistDir = toFlag "something"
     projectConfigConfigFile = mempty -- cli only
     projectConfigProjectDir = toFlag "my-project-dir"
@@ -191,7 +197,7 @@ testProjectConfigShared = do
        in
         toFlag indexState''
     projectConfigStoreDir = toFlag "a/store/dir/path" -- cli only
-    getProjectConfigConstraints projectFileFp =
+    projectConfigConstraints =
       let
         bar = fromRight (error "error parsing bar") $ readUserConstraint "bar == 2.1"
         barFlags = fromRight (error "error parsing bar flags") $ readUserConstraint "bar +foo -baz"
@@ -218,11 +224,10 @@ testProjectConfigShared = do
     projectConfigProgPathExtra = toNubList ["/foo/bar", "/baz/quux"]
     projectConfigMultiRepl = toFlag True
 
-testInstallDirs :: TestM ()
+testInstallDirs :: Assertion
 testInstallDirs = do
-  let rootFp = "install-dirs"
-  (config, legacy) <- readConfigDefault rootFp
-  assertConfig expected config legacy (projectConfigInstallDirs . projectConfigShared . condTreeData)
+  (config, legacy) <- readConfigDefault "install-dirs"
+  assertConfigEquals expected config legacy (projectConfigInstallDirs . projectConfigShared . condTreeData)
   where
     expected =
       InstallDirs
@@ -244,13 +249,12 @@ testInstallDirs = do
         , sysconfdir = Flag $ toPathTemplate "sys/conf/dir"
         }
 
-testRemoteRepos :: TestM ()
+testRemoteRepos :: Assertion
 testRemoteRepos = do
-  let rootFp = "remote-repos"
-  (config, legacy) <- readConfigDefault rootFp
+  (config, legacy) <- readConfigDefault "remote-repos"
   let actualRemoteRepos = (fromNubList . projectConfigRemoteRepos . projectConfigShared . condTreeData) config
   assertBool "Expected RemoteRepos do not match parsed values" $ compareLists expected actualRemoteRepos compareRemoteRepos
-  assertConfig mempty config legacy (projectConfigLocalNoIndexRepos . projectConfigShared . condTreeData)
+  assertConfigEquals mempty config legacy (projectConfigLocalNoIndexRepos . projectConfigShared . condTreeData)
   where
     expected = [packagesRepository, morePackagesRepository, secureLocalRepository]
     packagesRepository =
@@ -281,22 +285,12 @@ testRemoteRepos = do
         , remoteRepoShouldTryHttps = False
         }
 
--- We do not parse remoteRepoShouldTryHttps, so we skip it
-compareRemoteRepos :: RemoteRepo -> RemoteRepo -> Bool
-compareRemoteRepos repo1 repo2 =
-  remoteRepoName repo1 == remoteRepoName repo2
-    && remoteRepoURI repo1 == remoteRepoURI repo2
-    && remoteRepoSecure repo1 == remoteRepoSecure repo2
-    && remoteRepoRootKeys repo1 == remoteRepoRootKeys repo2
-    && remoteRepoKeyThreshold repo1 == remoteRepoKeyThreshold repo2
-
-testLocalNoIndexRepos :: TestM ()
+testLocalNoIndexRepos :: Assertion
 testLocalNoIndexRepos = do
-  let rootFp = "local-no-index-repos"
-  (config, legacy) <- readConfigDefault rootFp
+  (config, legacy) <- readConfigDefault "local-no-index-repos"
   let actualLocalRepos = (fromNubList . projectConfigLocalNoIndexRepos . projectConfigShared . condTreeData) config
   assertBool "Expected LocalNoIndexRepos do not match parsed values" $ compareLists expected actualLocalRepos compareLocalRepos
-  assertConfig mempty config legacy (projectConfigRemoteRepos . projectConfigShared . condTreeData)
+  assertConfigEquals mempty config legacy (projectConfigRemoteRepos . projectConfigShared . condTreeData)
   where
     expected = [myRepository, mySecureRepository]
     myRepository =
@@ -312,27 +306,18 @@ testLocalNoIndexRepos = do
         , localRepoSharedCache = False
         }
 
--- We do not parse localRepoSharedCache, so we skip it
-compareLocalRepos :: LocalRepo -> LocalRepo -> Bool
-compareLocalRepos repo1 repo2 =
-  localRepoName repo1 == localRepoName repo2
-    && localRepoPath repo1 == localRepoPath repo2
-
-testProjectConfigProvenance :: TestM ()
+testProjectConfigProvenance :: Assertion
 testProjectConfigProvenance = do
-  let rootFp = "empty"
-  let
-    expected = Set.singleton (Explicit (ProjectConfigPath $ "cabal.project" :| []))
-  (config, legacy) <- readConfigDefault rootFp
-  assertConfig expected config legacy (projectConfigProvenance . condTreeData)
+  let expected = Set.singleton (Explicit (ProjectConfigPath $ "cabal.project" :| []))
+  (config, legacy) <- readConfigDefault "empty"
+  assertConfigEquals expected config legacy (projectConfigProvenance . condTreeData)
 
-testProjectConfigLocalPackages :: TestM ()
+testProjectConfigLocalPackages :: Assertion
 testProjectConfigLocalPackages = do
-  let rootFp = "project-config-local-packages"
-  let expected = PackageConfig{..}
-  (config, legacy) <- readConfigDefault rootFp
-  assertConfig expected config legacy (projectConfigLocalPackages . condTreeData)
+  (config, legacy) <- readConfigDefault "project-config-local-packages"
+  assertConfigEquals expected config legacy (projectConfigLocalPackages . condTreeData)
   where
+    expected = PackageConfig{..}
     packageConfigProgramPaths = MapLast $ Map.fromList [("ghc", "/tmp/bin/ghc"), ("gcc", "/tmp/bin/gcc")]
     packageConfigProgramArgs = MapMappend $ Map.fromList [("ghc", ["-fno-state-hack", "-foo"]), ("gcc", ["-baz", "-quux"])]
     packageConfigProgramPathExtra = toNubList ["/tmp/bin/extra", "/usr/local/bin"]
@@ -398,11 +383,10 @@ testProjectConfigLocalPackages = do
     packageConfigTestTestOptions = [toPathTemplate "--some-option", toPathTemplate "42"]
     packageConfigBenchmarkOptions = [toPathTemplate "--some-benchmark-option", toPathTemplate "--another-option"]
 
-testProjectConfigAllPackages :: TestM ()
+testProjectConfigAllPackages :: Assertion
 testProjectConfigAllPackages = do
-  let rootFp = "project-config-all-packages"
-  (config, legacy) <- readConfigDefault rootFp
-  assertConfig expected config legacy (projectConfigAllPackages . condTreeData)
+  (config, legacy) <- readConfigDefault "project-config-all-packages"
+  assertConfigEquals expected config legacy (projectConfigAllPackages . condTreeData)
   where
     expected :: PackageConfig
     expected =
@@ -411,11 +395,10 @@ testProjectConfigAllPackages = do
         , packageConfigProfLibDetail = Flag ProfDetailExportedFunctions
         }
 
-testProjectConfigSpecificPackages :: TestM ()
+testProjectConfigSpecificPackages :: Assertion
 testProjectConfigSpecificPackages = do
-  let rootFp = "project-config-specific-packages"
-  (config, legacy) <- readConfigDefault rootFp
-  assertConfig expected config legacy (projectConfigSpecificPackage . condTreeData)
+  (config, legacy) <- readConfigDefault "project-config-specific-packages"
+  assertConfigEquals expected config legacy (projectConfigSpecificPackage . condTreeData)
   where
     expected = MapMappend $ Map.fromList [("foo", expectedFoo), ("bar", expectedBar), ("baz", expectedBaz)]
     expectedFoo :: PackageConfig
@@ -438,11 +421,10 @@ testProjectConfigSpecificPackages = do
         { packageConfigSharedLib = Flag True
         }
 
-testAllPackagesConcat :: TestM ()
+testAllPackagesConcat :: Assertion
 testAllPackagesConcat = do
-  let rootFp = "all-packages-concat"
-  (config, legacy) <- readConfigDefault rootFp
-  assertConfig expected config legacy (projectConfigAllPackages . condTreeData)
+  (config, legacy) <- readConfigDefault "all-packages-concat"
+  assertConfigEquals expected config legacy (projectConfigAllPackages . condTreeData)
   where
     expected :: PackageConfig
     expected =
@@ -452,11 +434,10 @@ testAllPackagesConcat = do
         , packageConfigProgramArgs = MapMappend $ Map.fromList [("ghc", ["-fwarn-tabs", "-Wall"])]
         }
 
-testSpecificPackagesConcat :: TestM ()
+testSpecificPackagesConcat :: Assertion
 testSpecificPackagesConcat = do
-  let rootFp = "specific-packages-concat"
-  (config, legacy) <- readConfigDefault rootFp
-  assertConfig expected config legacy (projectConfigSpecificPackage . condTreeData)
+  (config, legacy) <- readConfigDefault "specific-packages-concat"
+  assertConfigEquals expected config legacy (projectConfigSpecificPackage . condTreeData)
   where
     expected = MapMappend $ Map.fromList [("foo", expectedFoo)]
     expectedFoo :: PackageConfig
@@ -467,11 +448,10 @@ testSpecificPackagesConcat = do
         , packageConfigProgramArgs = MapMappend $ Map.fromList [("ghc", ["-fno-state-hack", "-threaded"])]
         }
 
-testProgramLocationsConcat :: TestM ()
+testProgramLocationsConcat :: Assertion
 testProgramLocationsConcat = do
-  let rootFp = "program-locations-concat"
-  (config, legacy) <- readConfigDefault rootFp
-  assertConfig expected config legacy (projectConfigLocalPackages . condTreeData)
+  (config, legacy) <- readConfigDefault "program-locations-concat"
+  assertConfigEquals expected config legacy (projectConfigLocalPackages . condTreeData)
   where
     expected :: PackageConfig
     expected =
@@ -479,11 +459,10 @@ testProgramLocationsConcat = do
         { packageConfigProgramPaths = MapLast $ Map.fromList [("gcc", "/tmp/bin/gcc"), ("ghc", "/tmp/bin/ghc")]
         }
 
-testProgramOptionsConcat :: TestM ()
+testProgramOptionsConcat :: Assertion
 testProgramOptionsConcat = do
-  let rootFp = "program-options-concat"
-  (config, legacy) <- readConfigDefault rootFp
-  assertConfig expected config legacy (projectConfigLocalPackages . condTreeData)
+  (config, legacy) <- readConfigDefault "program-options-concat"
+  assertConfigEquals expected config legacy (projectConfigLocalPackages . condTreeData)
   where
     expected :: PackageConfig
     expected =
@@ -491,10 +470,19 @@ testProgramOptionsConcat = do
         { packageConfigProgramArgs = MapMappend $ Map.fromList [("ghc", ["-threaded", "-Wall", "-fno-state-hack"]), ("gcc", ["-baz", "-foo", "-bar"])]
         }
 
-readConfigDefault :: FilePath -> TestM (ProjectConfigSkeleton, ProjectConfigSkeleton)
+-------------------------------------------------------------------------------
+-- Test Utilities
+-------------------------------------------------------------------------------
+baseDir :: FilePath
+baseDir = "parser-tests" </> "Tests" </> "files"
+
+verbosity :: Verbosity
+verbosity = normal
+
+readConfigDefault :: FilePath -> IO (ProjectConfigSkeleton, ProjectConfigSkeleton)
 readConfigDefault testSubDir = readConfig testSubDir "cabal.project"
 
-readConfig :: FilePath -> FilePath -> TestM (ProjectConfigSkeleton, ProjectConfigSkeleton)
+readConfig :: FilePath -> FilePath -> IO (ProjectConfigSkeleton, ProjectConfigSkeleton)
 readConfig testSubDir projectFileName = do
   (TestDir testRootFp projectConfigFp distDirLayout) <- testDirInfo testSubDir projectFileName
   exists <- liftIO $ doesFileExist projectConfigFp
@@ -512,38 +500,48 @@ readConfig testSubDir projectFileName = do
         readProjectFileSkeletonLegacy verbosity httpTransport distDirLayout extensionName extensionDescription
   return (parsec, legacy)
 
-data TestDir = TestDir
-  { testDirTestRootFp :: FilePath
-  -- ^ Every test has its own root in ./tests/<test-title>
-  , testDirProjectConfigFp :: FilePath
-  -- ^ Every test has a project config in testDirTestRootFp/cabal.project
-  , testDirDistDirLayout :: DistDirLayout
-  }
-
-testDirInfo :: FilePath -> FilePath -> TestM TestDir
-testDirInfo testSubDir projectFileName = do
-  testEnv <- getTestEnv
-  testRootFp <- liftIO $ canonicalizePath (testCurrentDir testEnv </> "tests" </> testSubDir)
-  let
-    projectRoot = ProjectRootExplicit testRootFp projectFileName
-    distDirLayout = defaultDistDirLayout projectRoot Nothing Nothing
-    extensionName = ""
-    projectConfigFp = distProjectFile distDirLayout extensionName
-  return $ TestDir testRootFp projectConfigFp distDirLayout
-  where
-    extensionName = ""
-
-assertConfig :: (Eq a, Show a) => a -> ProjectConfigSkeleton -> ProjectConfigSkeleton -> (ProjectConfigSkeleton -> a) -> TestM ()
-assertConfig expected config configLegacy access = do
+assertConfigEquals :: (Eq a, Show a) => a -> ProjectConfigSkeleton -> ProjectConfigSkeleton -> (ProjectConfigSkeleton -> a) -> Assertion
+assertConfigEquals expected config configLegacy access = do
   assertEqual "Expectation does not match result of Legacy parser" expected actualLegacy
   assertEqual "Parsed Config does not match expected" expected actual
   where
     actual = access config
     actualLegacy = access configLegacy
 
--- | Test Utilities
-verbosity :: Verbosity
-verbosity = normal -- minBound --normal --verbose --maxBound --minBound
+-- | Represents the directory structure and associated file paths for a test
+data TestDir = TestDir
+  { _testDirTestRootFp :: FilePath
+  -- ^ Every test has a root directory in ./files/<test-title>
+  , _testDirProjectConfigFp :: FilePath
+  -- ^ Every test has a project config in testDirTestRootFp/cabal.project
+  , _testDirDistDirLayout :: DistDirLayout
+  }
 
+testDirInfo :: FilePath -> FilePath -> IO TestDir
+testDirInfo testSubDir projectFileName = do
+  projectRootDir <- canonicalizePath (baseDir </> testSubDir)
+  let
+    projectRoot = ProjectRootExplicit projectRootDir projectFileName
+    distDirLayout = defaultDistDirLayout projectRoot Nothing Nothing
+    extensionName = ""
+    projectConfigFp = distProjectFile distDirLayout extensionName
+  return $ TestDir projectRootDir projectConfigFp distDirLayout
+
+-- | Compares two lists element-wise using a comparison function.
 compareLists :: [a] -> [a] -> (a -> a -> Bool) -> Bool
-compareLists xs ys compare = length xs == length ys && all (uncurry compare) (zip xs ys)
+compareLists xs ys compare' = length xs == length ys && all (uncurry compare') (zip xs ys)
+
+-- | Compares LocalRepos ignoring field 'localRepoSharedCache' because we do not parse it.
+compareLocalRepos :: LocalRepo -> LocalRepo -> Bool
+compareLocalRepos repo1 repo2 =
+  localRepoName repo1 == localRepoName repo2
+    && localRepoPath repo1 == localRepoPath repo2
+
+-- | Compares RemoteRepos ignoring field 'remoteRepoShouldTryHttps' because we do not parse it.
+compareRemoteRepos :: RemoteRepo -> RemoteRepo -> Bool
+compareRemoteRepos repo1 repo2 =
+  remoteRepoName repo1 == remoteRepoName repo2
+    && remoteRepoURI repo1 == remoteRepoURI repo2
+    && remoteRepoSecure repo1 == remoteRepoSecure repo2
+    && remoteRepoRootKeys repo1 == remoteRepoRootKeys repo2
+    && remoteRepoKeyThreshold repo1 == remoteRepoKeyThreshold repo2

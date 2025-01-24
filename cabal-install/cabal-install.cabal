@@ -381,6 +381,26 @@ test-suite unit-tests
       , tree-diff
       , QuickCheck >= 2.14.3 && <2.16
 
+-- Tests for the project file parser
+test-suite parser-tests
+    import: warnings, base-dep, cabal-dep, cabal-syntax-dep, cabal-install-solver-dep
+    default-language: Haskell2010
+    ghc-options: -rtsopts -threaded
+
+    type: exitcode-stdio-1.0
+    main-is: Tests.hs
+    hs-source-dirs: parser-tests
+    build-depends:
+      , cabal-install
+      , containers
+      , directory
+      , filepath
+      , network-uri >= 2.6.2.0 && <2.7
+      , tasty >= 1.2.3 && <1.6
+      , tasty-hunit >= 0.10
+    other-modules:
+      Tests.ParserTests
+
 -- Tests to run with a limited stack and heap size
 -- The test suite name must be keep short cause a longer one
 -- could make the build generating paths which exceeds the windows
