@@ -1,8 +1,10 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeApplications #-}
+{-# OPTIONS_GHC -Wno-unused-matches #-}
 
 -- | Handling project configuration.
 module Distribution.Client.ProjectConfig
@@ -127,7 +129,9 @@ import Distribution.Client.HttpUtils
   )
 import Distribution.Client.Types
 import Distribution.Client.Utils.Parsec (renderParseError)
+#ifdef LEGACY_COMPARISON
 import GHC.Stack (HasCallStack, callStack)
+#endif
 
 import Distribution.Simple.Errors
 import Distribution.Simple.PackageDescription (flattenDups)
@@ -837,29 +841,43 @@ readProjectLocalFreezeConfig verbosity httpTransport distDirLayout =
     "project freeze file"
 
 -- | Reads a named extended (with imports and conditionals) config file in the given project root dir, or returns empty.
+#ifdef LEGACY_COMPARISON
 readProjectFileSkeleton :: HasCallStack => Verbosity -> HttpTransport -> DistDirLayout -> String -> String -> Rebuild ProjectConfigSkeleton
+#else
+readProjectFileSkeleton :: Verbosity -> HttpTransport -> DistDirLayout -> String -> String -> Rebuild ProjectConfigSkeleton
+#endif
 readProjectFileSkeleton
   verbosity
   httpTransport
-  dir@DistDirLayout{distProjectFile, distDownloadSrcDirectory}
+  dir
   extensionName
-  extensionDescription = do
-    legacyPcs <- readProjectFileSkeletonLegacy verbosity httpTransport dir extensionName extensionDescription
-    exists <- liftIO $ doesFileExist extensionFile
-    if exists
-      then do
-        monitorFiles [monitorFileHashed extensionFile]
+  extensionDescription =
+    do
+      exists <- liftIO $ doesFileExist extensionFile
+      if exists
+        then do
+          monitorFiles [monitorFileHashed extensionFile]
+          parseConfig
+        else do
+          monitorFiles [monitorNonExistentFile extensionFile]
+          return mempty
+    where
+      extensionFile = (distProjectFile dir) extensionName
+      readExtensionFile :: Verbosity -> FilePath -> IO ProjectConfigSkeleton
+      readExtensionFile verbosity' file = readAndParseFile (Parsec.parseProject extensionFile (distDownloadSrcDirectory dir) httpTransport verbosity' . ProjectConfigToParse) verbosity' file
+#ifdef LEGACY_COMPARISON
+      parseConfig = do
+        legacyPcs <- readProjectFileSkeletonLegacy verbosity httpTransport dir extensionName extensionDescription
         pcs <- liftIO $ readExtensionFile verbosity extensionFile
         monitorFiles $ map monitorFileHashed (projectConfigPathRoot <$> projectSkeletonImports pcs)
         unless (legacyPcs == pcs) (error (show callStack ++ "\nParsec: " ++ show pcs ++ "\nLegacy: " ++ show legacyPcs))
-        pure pcs
-      else do
-        monitorFiles [monitorNonExistentFile extensionFile]
-        return mempty
-    where
-      extensionFile = distProjectFile extensionName
-      readExtensionFile :: Verbosity -> FilePath -> IO ProjectConfigSkeleton
-      readExtensionFile verbosity' file = readAndParseFile (Parsec.parseProject extensionFile distDownloadSrcDirectory httpTransport verbosity' . ProjectConfigToParse) verbosity' file
+        return pcs
+#else
+      parseConfig = do
+        pcs <- liftIO $ readExtensionFile verbosity extensionFile
+        monitorFiles $ map monitorFileHashed (projectConfigPathRoot <$> projectSkeletonImports pcs)
+        return pcs
+#endif
 
 readAndParseFile
   :: (BS.ByteString -> IO (Parsec.ParseResult a))
