@@ -23,7 +23,7 @@ source-repository head
   subdir:   solver-benchmarks
 
 library
-  ghc-options: -Wall -fwarn-tabs
+  ghc-options: -Wall -Wtabs
   exposed-modules:
     HackageBenchmark
   build-depends:
@@ -44,7 +44,7 @@ library
 executable hackage-benchmark
   main-is: hackage-benchmark.hs
   hs-source-dirs: main
-  ghc-options: -threaded -Wall -fwarn-tabs
+  ghc-options: -threaded -Wall -Wtabs
   build-depends:
     , base
     , solver-benchmarks
@@ -54,7 +54,7 @@ test-suite unit-tests
   type: exitcode-stdio-1.0
   main-is: HackageBenchmarkTest.hs
   hs-source-dirs: tests
-  ghc-options: -threaded -Wall -fwarn-tabs
+  ghc-options: -threaded -Wall -Wtabs
   build-depends:
     , base
     , solver-benchmarks

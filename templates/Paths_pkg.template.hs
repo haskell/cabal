@@ -12,7 +12,7 @@
 {-# OPTIONS_GHC -Wno-prepositive-qualified-module #-}
 #endif
 {% endif %}
-{-# OPTIONS_GHC -fno-warn-missing-import-lists #-}
+{-# OPTIONS_GHC -Wno-missing-import-lists #-}
 {-# OPTIONS_GHC -w #-}
 module Paths_{{ manglePkgName packageName }} (
     version,

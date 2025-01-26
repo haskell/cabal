@@ -1,5 +1,5 @@
 {-# OPTIONS_GHC -freduction-depth=0 #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Data.TreeDiff.Instances.CabalSPDX () where
 
 import Data.TreeDiff

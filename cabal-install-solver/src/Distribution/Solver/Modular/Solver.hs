@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
 #ifdef DEBUG_TRACETREE
 {-# LANGUAGE FlexibleInstances #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 #endif
 module Distribution.Solver.Modular.Solver
     ( SolverConfig(..)

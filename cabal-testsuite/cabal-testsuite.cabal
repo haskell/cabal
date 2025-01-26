@@ -32,9 +32,9 @@ common shared
 
   ghc-options:
     -Wall
-    -fwarn-tabs
-    -fwarn-incomplete-uni-patterns
-    -fno-warn-unticked-promoted-constructors
+    -Wtabs
+    -Wincomplete-uni-patterns
+    -Wno-unticked-promoted-constructors
 
 
 library
