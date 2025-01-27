@@ -41,6 +41,7 @@ import Distribution.Simple.Program.Types (programName)
 import Distribution.Simple.Setup (Flag (..), splitArgs)
 import Distribution.Simple.Utils (debug, warn)
 import Distribution.Solver.Types.ProjectConfigPath
+import Distribution.System (buildOS)
 import Distribution.Types.CondTree (CondBranch (..), CondTree (..))
 import Distribution.Types.ConfVar (ConfVar (..))
 import Distribution.Types.PackageName (PackageName)
@@ -300,7 +301,7 @@ postProcessRemoteRepo pos repo = case uriScheme (remoteRepoURI repo) of
   -- TODO: check that there are no authority, query or fragment
   -- Note: the trailing colon is important
   "file+noindex:" -> do
-    let uri = remoteRepoURI repo
+    let uri = normaliseFileNoIndexURI buildOS $ remoteRepoURI repo
     return $ Left $ LocalRepo (remoteRepoName repo) (uriPath uri) (uriFragment uri == "#shared-cache")
   _ -> do
     when (remoteRepoKeyThreshold repo > length (remoteRepoRootKeys repo)) $
