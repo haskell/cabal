@@ -24,7 +24,7 @@ import Distribution.Client.Targets (readUserConstraint)
 import Distribution.Client.Types.AllowNewer (AllowNewer (..), AllowOlder (..), RelaxDepMod (..), RelaxDepScope (..), RelaxDepSubject (..), RelaxDeps (..), RelaxedDep (..))
 import Distribution.Client.Types.InstallMethod (InstallMethod (..))
 import Distribution.Client.Types.OverwritePolicy (OverwritePolicy (..))
-import Distribution.Client.Types.Repo (LocalRepo (..), RemoteRepo (..))
+import Distribution.Client.Types.Repo (LocalRepo (..), RemoteRepo (..), asPosixPath)
 import Distribution.Client.Types.RepoName (RepoName (..))
 import Distribution.Client.Types.SourceRepo
 import Distribution.Client.Types.WriteGhcEnvironmentFilesPolicy (WriteGhcEnvironmentFilesPolicy (..))
@@ -48,6 +48,7 @@ import Distribution.Solver.Types.Settings
   , ReorderGoals (..)
   , StrongFlags (..)
   )
+import Distribution.System (OS (..), buildOS)
 import Distribution.Types.CondTree (CondTree (..))
 import Distribution.Types.Flag (mkFlagAssignment)
 import Distribution.Types.PackageId (PackageIdentifier (..))
@@ -301,15 +302,18 @@ testLocalNoIndexRepos = do
     myRepository =
       LocalRepo
         { localRepoName = RepoName $ "my-repository"
-        , localRepoPath = "/absolute/path/to/directory"
+        , localRepoPath = normalisePath "/absolute/path/to/directory"
         , localRepoSharedCache = False
         }
     mySecureRepository =
       LocalRepo
         { localRepoName = RepoName $ "my-other-repository"
-        , localRepoPath = "/another/path/to/repository"
+        , localRepoPath = normalisePath "/another/path/to/repository"
         , localRepoSharedCache = False
         }
+    normalisePath path = case buildOS of
+      Windows -> asPosixPath path
+      _ -> path
 
 testProjectConfigProvenance :: Assertion
 testProjectConfigProvenance = do

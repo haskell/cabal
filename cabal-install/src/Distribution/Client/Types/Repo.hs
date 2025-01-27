@@ -21,6 +21,7 @@ module Distribution.Client.Types.Repo
   , maybeRepoRemote
 
     -- * Windows
+  , asPosixPath
   , normaliseFileNoIndexURI
   ) where
 
@@ -251,8 +252,10 @@ normaliseFileNoIndexURI os uri@(URI scheme _auth path query fragment)
   , Windows <- os =
       URI scheme Nothing (asPosixPath path) query fragment
   | otherwise = uri
-  where
-    asPosixPath p =
-      -- We don't use 'isPathSeparator' because @Windows.isPathSeparator
-      -- Posix.pathSeparator == True@.
-      [if x == Windows.pathSeparator then Posix.pathSeparator else x | x <- p]
+
+-- | Convert a path to POSIX-style.
+asPosixPath :: FilePath -> FilePath
+asPosixPath p =
+  -- We don't use 'isPathSeparator' because @Windows.isPathSeparator
+  -- Posix.pathSeparator == True@.
+  [if x == Windows.pathSeparator then Posix.pathSeparator else x | x <- p]
