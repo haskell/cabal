@@ -39,7 +39,7 @@ import Distribution.Parsec.Warning (PWarnType (..))
 import Distribution.Simple.Program.Db (ProgramDb, defaultProgramDb, knownPrograms, lookupKnownProgram)
 import Distribution.Simple.Program.Types (programName)
 import Distribution.Simple.Setup (Flag (..), splitArgs)
-import Distribution.Simple.Utils (debug, warn)
+import Distribution.Simple.Utils (debug, noticeDoc, warn)
 import Distribution.Solver.Types.ProjectConfigPath
 import Distribution.System (buildOS)
 import Distribution.Types.CondTree (CondBranch (..), CondTree (..))
@@ -59,6 +59,7 @@ import System.Directory (createDirectoryIfMissing, makeAbsolute)
 import System.FilePath (isAbsolute, isPathSeparator, makeValid, splitFileName, (</>))
 import qualified Text.Parsec
 import Text.PrettyPrint (render)
+import qualified Text.PrettyPrint as Disp
 
 singletonProjectConfigSkeleton :: ProjectConfig -> ProjectConfigSkeleton
 singletonProjectConfigSkeleton x = CondNode x mempty mempty
@@ -118,14 +119,16 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
               let importLocPath = importLoc `consProjectConfigPath` source
 
               -- Once we canonicalize the import path, we can check for cyclical imports
+              normSource <- canonicalizeConfigPath projectDir source
               normLocPath <- canonicalizeConfigPath projectDir importLocPath
-
               debug verbosity $ "\nimport path, normalized\n=======================\n" ++ render (docProjectConfigPath normLocPath)
 
               if isCyclicConfigPath normLocPath
                 then pure $ parseFatalFailure pos (render $ cyclicalImportMsg normLocPath)
                 else do
-                  normSource <- canonicalizeConfigPath projectDir source
+                  when
+                    (isUntrimmedUriConfigPath importLocPath)
+                    (noticeDoc verbosity $ untrimmedUriImportMsg (Disp.text "Warning:") importLocPath)
                   let fs = (\z -> CondNode z [normLocPath] mempty) <$> fieldsToConfig normSource (reverse acc)
 
                   importParseResult <- parseProjectSkeleton cacheDir httpTransport verbosity projectDir importLocPath . ProjectConfigToParse =<< fetchImportConfig normLocPath
