@@ -397,7 +397,17 @@ rebuildProjectConfig
                 (compiler, Platform arch os, _) <- configureCompiler verbosity distDirLayout (fst (PD.ignoreConditions projectConfigSkeleton) <> cliConfig)
                 pure (os, arch, compilerInfo compiler)
 
+<<<<<<< HEAD
           projectConfig <- instantiateProjectConfigSkeletonFetchingCompiler fetchCompiler mempty projectConfigSkeleton
+=======
+          let fetchCompiler = do
+                -- have to create the cache directory before configuring the compiler
+                liftIO $ createDirectoryIfMissingVerbose verbosity True distProjectCacheDirectory
+                (compiler, Platform arch os, _) <- configureCompiler verbosity distDirLayout (fst (PD.ignoreConditions projectConfigSkeleton) <> cliConfig)
+                pure (os, arch, compiler)
+
+          (projectConfig, compiler) <- instantiateProjectConfigSkeletonFetchingCompiler fetchCompiler mempty projectConfigSkeleton
+>>>>>>> b817cb7ac (project planning: fix #10686 regression)
           when (projectConfigDistDir (projectConfigShared $ projectConfig) /= NoFlag) $
             liftIO $
               warn verbosity "The builddir option is not supported in project and config files. It will be ignored."
@@ -433,7 +443,12 @@ rebuildProjectConfig
       -- NOTE: These are all packages mentioned in the project configuration.
       -- Whether or not they will be considered local to the project will be decided by `shouldBeLocal`.
       phaseReadLocalPackages
+<<<<<<< HEAD
         :: ProjectConfig
+=======
+        :: Maybe Compiler
+        -> ProjectConfig
+>>>>>>> b817cb7ac (project planning: fix #10686 regression)
         -> Rebuild [PackageSpecifier UnresolvedSourcePackage]
       phaseReadLocalPackages
         projectConfig@ProjectConfig

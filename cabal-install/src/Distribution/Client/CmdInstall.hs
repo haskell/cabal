@@ -467,6 +467,10 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
         fetchAndReadSourcePackages
           verbosity
           distDirLayout
+<<<<<<< HEAD
+=======
+          (Just compiler)
+>>>>>>> b817cb7ac (project planning: fix #10686 regression)
           (projectConfigShared config)
           (projectConfigBuildOnly config)
           [ProjectPackageRemoteTarball uri | uri <- uris]

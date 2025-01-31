@@ -379,7 +379,13 @@ rebuildTargets
         createDirectoryIfMissingVerbose verbosity True distTempDirectory
         traverse_ (createPackageDBIfMissing verbosity compiler progdb) packageDBsToUse
 
+<<<<<<< HEAD
         bracket (pure mkJobControl) cleanupJobControl $ \jobControl -> do
+=======
+        -- Concurrency control: create the job controller and concurrency limits
+        -- for downloading, building and installing.
+        withJobControl (newJobControlFromParStrat verbosity (Just compiler) buildSettingNumJobs Nothing) $ \jobControl -> do
+>>>>>>> b817cb7ac (project planning: fix #10686 regression)
           -- Before traversing the install plan, preemptively find all packages that
           -- will need to be downloaded and start downloading them.
           asyncDownloadPackages

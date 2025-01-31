@@ -82,9 +82,11 @@ import Distribution.PackageDescription
   )
 import Distribution.PackageDescription.Configuration (simplifyWithSysParams)
 import Distribution.Simple.Compiler
-  ( CompilerInfo (..)
+  ( Compiler (..)
+  , CompilerInfo (..)
   , DebugInfoLevel (..)
   , OptimisationLevel (..)
+  , compilerInfo
   , interpretPackageDB
   )
 import Distribution.Simple.InstallDirs (CopyDest (NoCopyDest))
@@ -206,12 +208,22 @@ type ProjectConfigSkeleton = CondTree ConfVar [ProjectConfigPath] ProjectConfig
 singletonProjectConfigSkeleton :: ProjectConfig -> ProjectConfigSkeleton
 singletonProjectConfigSkeleton x = CondNode x mempty mempty
 
+<<<<<<< HEAD
 instantiateProjectConfigSkeletonFetchingCompiler :: Monad m => m (OS, Arch, CompilerInfo) -> FlagAssignment -> ProjectConfigSkeleton -> m ProjectConfig
 instantiateProjectConfigSkeletonFetchingCompiler fetch flags skel
   | null (toListOf traverseCondTreeV skel) = pure $ fst (ignoreConditions skel)
   | otherwise = do
       (os, arch, impl) <- fetch
       pure $ instantiateProjectConfigSkeletonWithCompiler os arch impl flags skel
+=======
+instantiateProjectConfigSkeletonFetchingCompiler :: Monad m => m (OS, Arch, Compiler) -> FlagAssignment -> ProjectConfigSkeleton -> m (ProjectConfig, Maybe Compiler)
+instantiateProjectConfigSkeletonFetchingCompiler fetch flags skel
+  | null (toListOf traverseCondTreeV skel) = pure (fst (ignoreConditions skel), Nothing)
+  | otherwise = do
+      (os, arch, comp) <- fetch
+      let conf = instantiateProjectConfigSkeletonWithCompiler os arch (compilerInfo comp) flags skel
+      pure (conf, Just comp)
+>>>>>>> b817cb7ac (project planning: fix #10686 regression)
 
 instantiateProjectConfigSkeletonWithCompiler :: OS -> Arch -> CompilerInfo -> FlagAssignment -> ProjectConfigSkeleton -> ProjectConfig
 instantiateProjectConfigSkeletonWithCompiler os arch impl _flags skel = go $ mapTreeConds (fst . simplifyWithSysParams os arch impl) skel

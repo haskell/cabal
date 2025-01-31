@@ -117,7 +117,6 @@ import qualified Distribution.SPDX.License as SPDX
 import Distribution.Simple.Compiler
   ( Compiler (..)
   , OptimisationLevel (..)
-  , compilerInfo
   )
 import Distribution.Simple.Flag
   ( flagToMaybe
@@ -381,7 +380,11 @@ withContextAndSelectors noTargets kind flags@NixStyleFlags{..} targetStrings glo
           createDirectoryIfMissingVerbose verbosity True (distProjectCacheDirectory $ distDirLayout ctx)
           (compiler, platform@(Platform arch os), _) <- runRebuild projectRoot $ configureCompiler verbosity (distDirLayout ctx) (fst (ignoreConditions projectCfgSkeleton) <> projectConfig ctx)
 
+<<<<<<< HEAD
           projectCfg <- instantiateProjectConfigSkeletonFetchingCompiler (pure (os, arch, compilerInfo compiler)) mempty projectCfgSkeleton
+=======
+          (projectCfg, _) <- instantiateProjectConfigSkeletonFetchingCompiler (pure (os, arch, compiler)) mempty projectCfgSkeleton
+>>>>>>> b817cb7ac (project planning: fix #10686 regression)
 
           let ctx' = ctx & lProjectConfig %~ (<> projectCfg)
 

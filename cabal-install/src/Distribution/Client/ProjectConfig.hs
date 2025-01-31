@@ -1211,6 +1211,10 @@ mplusMaybeT ma mb = do
 fetchAndReadSourcePackages
   :: Verbosity
   -> DistDirLayout
+<<<<<<< HEAD
+=======
+  -> Maybe Compiler
+>>>>>>> b817cb7ac (project planning: fix #10686 regression)
   -> ProjectConfigShared
   -> ProjectConfigBuildOnly
   -> [ProjectPackageLocation]
@@ -1371,6 +1375,10 @@ fetchAndReadSourcePackageRemoteTarball
 syncAndReadSourcePackagesRemoteRepos
   :: Verbosity
   -> DistDirLayout
+<<<<<<< HEAD
+=======
+  -> Maybe Compiler
+>>>>>>> b817cb7ac (project planning: fix #10686 regression)
   -> ProjectConfigShared
   -> Bool
   -> [SourceRepoList]
