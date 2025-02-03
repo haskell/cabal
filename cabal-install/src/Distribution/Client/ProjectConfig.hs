@@ -1261,7 +1261,7 @@ mplusMaybeT ma mb = do
 fetchAndReadSourcePackages
   :: Verbosity
   -> DistDirLayout
-  -> Compiler
+  -> Maybe Compiler
   -> ProjectConfigShared
   -> ProjectConfigBuildOnly
   -> [ProjectPackageLocation]
@@ -1425,7 +1425,7 @@ fetchAndReadSourcePackageRemoteTarball
 syncAndReadSourcePackagesRemoteRepos
   :: Verbosity
   -> DistDirLayout
-  -> Compiler
+  -> Maybe Compiler
   -> ProjectConfigShared
   -> ProjectConfigBuildOnly
   -> Bool
