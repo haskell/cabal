@@ -2462,12 +2462,11 @@ Configuration Flags
     :default: ``False``
     :since: 1.6
 
-    Cabal normally tries to resolve dependencies using the flag's ``default`` 
-    value first. If that fails, it automatically retries with the negated 
-    default value. However, if the ``manual`` flag is set to ``True``, Cabal 
-    will not retry with the negated value, and dependency resolution will fail 
-    if the default value doesn't work. Note that the default value can still 
-    be overridden using command-line flags.
+    By default, Cabal tries to resolve dependencies using the flag's ``default`` value. 
+    If that fails, it retires with the negated default value. However, if the flag is 
+    marked as ``manual``, Cabal will only use the default value and will not retry 
+    with the negated default. Note that the default value can still be overridden 
+    using command-line flags.
 
 .. _conditional-blocks:
 
