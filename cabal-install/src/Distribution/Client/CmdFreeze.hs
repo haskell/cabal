@@ -5,6 +5,7 @@
 module Distribution.Client.CmdFreeze
   ( freezeCommand
   , freezeAction
+  , ClientFreezeFlags(..),
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -38,7 +39,7 @@ import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.PackageConstraint
   ( PackageProperty (..)
   )
-
+import Distribution.Solver.Types.Settings (OnlyConstrained(..))
 import Distribution.Client.Setup
   ( CommonSetupFlags (setupVerbosity)
   , ConfigFlags (..)
@@ -59,6 +60,7 @@ import Distribution.Simple.Utils
   , notice
   , wrapText
   )
+import Distribution.Simple.Setup (trueArg)
 import Distribution.Verbosity
   ( normal
   )
@@ -74,10 +76,16 @@ import qualified Data.Map as Map
 import Distribution.Client.Errors
 import Distribution.Simple.Command
   ( CommandUI (..)
+  , OptionField
+  , ShowOrParseArgs
+  , usageAlternatives
+  , option
   , usageAlternatives
   )
 
-freezeCommand :: CommandUI (NixStyleFlags ())
+newtype ClientFreezeFlags = ClientFreezeFlags {lockDependencies :: Flag Bool}
+
+freezeCommand :: CommandUI (NixStyleFlags ClientFreezeFlags)
 freezeCommand =
   CommandUI
     { commandName = "v2-freeze"
@@ -99,7 +107,10 @@ freezeCommand =
             ++ "one approach is to try variations using 'v2-build --dry-run' with "
             ++ "solver flags such as '--constraint=\"pkg < 1.2\"' and once you have "
             ++ "a satisfactory solution to freeze it using the 'v2-freeze' command "
-            ++ "with the same set of flags."
+            ++ "with the same set of flags.\n\n"
+            ++ "By default, a freeze file is a set of constaints; unconstrained packages "
+            ++ "can still be included in the build plan. If you wish to restrict dependencies "
+            ++ "to those included in the freeze file, use the '--lock' flag."
     , commandNotes = Just $ \pname ->
         "Examples:\n"
           ++ "  "
@@ -108,15 +119,30 @@ freezeCommand =
           ++ "    Freeze the configuration of the current project\n\n"
           ++ "  "
           ++ pname
+          ++ " v2-freeze --lock\n"
+          ++ "    Freeze the configuration of the current project and only allow frozen dependencies in future builds\n\n"
+          ++ "  "
+          ++ pname
           ++ " v2-build --dry-run --constraint=\"aeson < 1\"\n"
           ++ "    Check what a solution with the given constraints would look like\n"
           ++ "  "
           ++ pname
           ++ " v2-freeze --constraint=\"aeson < 1\"\n"
           ++ "    Freeze a solution using the given constraints\n"
-    , commandDefaultFlags = defaultNixStyleFlags ()
-    , commandOptions = nixStyleOptions (const [])
+    , commandDefaultFlags = defaultNixStyleFlags (ClientFreezeFlags (Flag False))
+    , commandOptions = nixStyleOptions freezeOptions
     }
+
+freezeOptions :: ShowOrParseArgs -> [OptionField ClientFreezeFlags]
+freezeOptions _ =
+  [ option
+      []
+      ["lock"]
+      "Promote the resulting freeze file to a lock file"
+      lockDependencies
+      (\v f -> f{lockDependencies = v})
+      trueArg
+  ]
 
 -- | To a first approximation, the @freeze@ command runs the first phase of
 -- the @build@ command where we bring the install plan up to date, and then
@@ -124,7 +150,7 @@ freezeCommand =
 --
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
-freezeAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
+freezeAction :: NixStyleFlags ClientFreezeFlags -> [String] -> GlobalFlags -> IO ()
 freezeAction flags@NixStyleFlags{..} extraArgs globalFlags = do
   unless (null extraArgs) $
     dieWithException verbosity $
@@ -148,7 +174,7 @@ freezeAction flags@NixStyleFlags{..} extraArgs globalFlags = do
       localPackages
       Nothing
 
-  let freezeConfig = projectFreezeConfig elaboratedPlan totalIndexState activeRepos
+  let freezeConfig = projectFreezeConfig extraFlags elaboratedPlan totalIndexState activeRepos
       dryRun =
         buildSettingDryRun buildSettings
           || buildSettingOnlyDownload buildSettings
@@ -170,11 +196,12 @@ freezeAction flags@NixStyleFlags{..} extraArgs globalFlags = do
 -- | Given the install plan, produce a config value with constraints that
 -- freezes the versions of packages used in the plan.
 projectFreezeConfig
-  :: ElaboratedInstallPlan
+  :: ClientFreezeFlags
+  -> ElaboratedInstallPlan
   -> TotalIndexState
   -> ActiveRepos
   -> ProjectConfig
-projectFreezeConfig elaboratedPlan totalIndexState activeRepos0 =
+projectFreezeConfig freezeFlags elaboratedPlan totalIndexState activeRepos0 =
   mempty
     { projectConfigShared =
         mempty
@@ -182,11 +209,16 @@ projectFreezeConfig elaboratedPlan totalIndexState activeRepos0 =
               concat (Map.elems (projectFreezeConstraints elaboratedPlan))
           , projectConfigIndexState = Flag totalIndexState
           , projectConfigActiveRepos = Flag activeRepos
+          , projectConfigOnlyConstrained = onlyConstrainedFlag freezeFlags
           }
     }
   where
     activeRepos :: ActiveRepos
     activeRepos = filterSkippedActiveRepos activeRepos0
+
+    onlyConstrainedFlag :: ClientFreezeFlags -> Flag OnlyConstrained
+    onlyConstrainedFlag ClientFreezeFlags{lockDependencies=Flag True} = Flag OnlyConstrainedAll 
+    onlyConstrainedFlag ClientFreezeFlags{lockDependencies=_} = NoFlag
 
 -- | Given the install plan, produce solver constraints that will ensure the
 -- solver picks the same solution again in future in different environments.
