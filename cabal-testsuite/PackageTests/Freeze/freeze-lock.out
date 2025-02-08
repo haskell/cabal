@@ -1,0 +1,5 @@
+# cabal v2-update
+Downloading the latest package list from test-local-repo
+# cabal v2-freeze
+Resolving dependencies...
+Wrote freeze file: <ROOT>/cabal.project.freeze
