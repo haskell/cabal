@@ -532,6 +532,13 @@ users see a consistent set of dependencies. For libraries, this is not
 recommended: users often need to build against different versions of
 libraries than what you developed against.
 
+A freeze file is really a set of constraint; by default, such files do not
+prevent new dependencies from being included in the build plan. In this sense,
+a freeze file is not, by default, a **lockfile**. To turn a freeze file into a lockfile,
+use the ``--lock`` flag when invocating ``cabal freeze``. This will prevent future
+builds from including new dependencies. This can be helpful in situations where
+every dependency must be explicitly audited and approved, for example.
+
 cabal gen-bounds
 ^^^^^^^^^^^^^^^^
 
