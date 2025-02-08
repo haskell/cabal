@@ -217,7 +217,7 @@ projectFreezeConfig freezeFlags elaboratedPlan totalIndexState activeRepos0 =
     activeRepos = filterSkippedActiveRepos activeRepos0
 
     onlyConstrainedFlag :: ClientFreezeFlags -> Flag OnlyConstrained
-    onlyConstrainedFlag ClientFreezeFlags{lockDependencies=Flag True} = Flag OnlyConstrainedAll 
+    onlyConstrainedFlag ClientFreezeFlags{lockDependencies=Flag True} = Flag OnlyConstrainedAll
     onlyConstrainedFlag ClientFreezeFlags{lockDependencies=_} = NoFlag
 
 -- | Given the install plan, produce solver constraints that will ensure the
