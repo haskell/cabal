@@ -5,7 +5,7 @@
 module Distribution.Client.CmdFreeze
   ( freezeCommand
   , freezeAction
-  , ClientFreezeFlags(..),
+  , ClientFreezeFlags (..)
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -28,22 +28,15 @@ import Distribution.Client.ProjectConfig
   )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning
-import Distribution.Client.Targets
-  ( UserConstraint (..)
-  , UserConstraintScope (..)
-  , UserQualifier (..)
-  )
-import Distribution.Solver.Types.ConstraintSource
-  ( ConstraintSource (..)
-  )
-import Distribution.Solver.Types.PackageConstraint
-  ( PackageProperty (..)
-  )
-import Distribution.Solver.Types.Settings (OnlyConstrained(..))
 import Distribution.Client.Setup
   ( CommonSetupFlags (setupVerbosity)
   , ConfigFlags (..)
   , GlobalFlags
+  )
+import Distribution.Client.Targets
+  ( UserConstraint (..)
+  , UserConstraintScope (..)
+  , UserQualifier (..)
   )
 import Distribution.Package
   ( PackageName
@@ -55,12 +48,19 @@ import Distribution.PackageDescription
   , nullFlagAssignment
   )
 import Distribution.Simple.Flag (Flag (..), fromFlagOrDefault)
+import Distribution.Simple.Setup (trueArg)
 import Distribution.Simple.Utils
   ( dieWithException
   , notice
   , wrapText
   )
-import Distribution.Simple.Setup (trueArg)
+import Distribution.Solver.Types.ConstraintSource
+  ( ConstraintSource (..)
+  )
+import Distribution.Solver.Types.PackageConstraint
+  ( PackageProperty (..)
+  )
+import Distribution.Solver.Types.Settings (OnlyConstrained (..))
 import Distribution.Verbosity
   ( normal
   )
@@ -78,7 +78,6 @@ import Distribution.Simple.Command
   ( CommandUI (..)
   , OptionField
   , ShowOrParseArgs
-  , usageAlternatives
   , option
   , usageAlternatives
   )
@@ -217,8 +216,8 @@ projectFreezeConfig freezeFlags elaboratedPlan totalIndexState activeRepos0 =
     activeRepos = filterSkippedActiveRepos activeRepos0
 
     onlyConstrainedFlag :: ClientFreezeFlags -> Flag OnlyConstrained
-    onlyConstrainedFlag ClientFreezeFlags{lockDependencies=Flag True} = Flag OnlyConstrainedAll
-    onlyConstrainedFlag ClientFreezeFlags{lockDependencies=_} = NoFlag
+    onlyConstrainedFlag ClientFreezeFlags{lockDependencies = Flag True} = Flag OnlyConstrainedAll
+    onlyConstrainedFlag ClientFreezeFlags{lockDependencies = _} = NoFlag
 
 -- | Given the install plan, produce solver constraints that will ensure the
 -- solver picks the same solution again in future in different environments.
