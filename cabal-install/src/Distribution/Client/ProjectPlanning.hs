@@ -2319,13 +2319,16 @@ elaborateInstallPlan
                 ]
                 <> perPkgOptionMapLast pkgid packageConfigProgramPaths
             elabProgramArgs =
-              Map.fromList
-                [ (programId prog, args)
-                | prog <- configuredPrograms compilerprogdb
-                , let args = programOverrideArgs $ addHaddockIfDocumentationEnabled prog
-                , not (null args)
-                ]
-                <> perPkgOptionMapMappend pkgid packageConfigProgramArgs
+              Map.unionWith
+                (++)
+                ( Map.fromList
+                    [ (programId prog, args)
+                    | prog <- configuredPrograms compilerprogdb
+                    , let args = programOverrideArgs $ addHaddockIfDocumentationEnabled prog
+                    , not (null args)
+                    ]
+                )
+                (perPkgOptionMapMappend pkgid packageConfigProgramArgs)
             elabProgramPathExtra = perPkgOptionNubList pkgid packageConfigProgramPathExtra
             elabConfigureScriptArgs = perPkgOptionList pkgid packageConfigConfigureArgs
             elabExtraLibDirs = perPkgOptionList pkgid packageConfigExtraLibDirs
