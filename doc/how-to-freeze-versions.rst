@@ -25,6 +25,9 @@ Frozen versions
     to preserve a set of versions found by the solver, a solver-curated set, if
     you will.
 
+Version exceptions
+    Allow newer or older dependencies.
+
 Version ranges
 --------------
 
@@ -50,10 +53,18 @@ package dependency version ranges up to date. Ways of overcoming this are:
 Version constraints
 -------------------
 
+Version constraints can be applied to the project or command line.
+
+.. Note::
+
+    While they do not directly restrain dependency versions, flag constraints
+    can alter the set of dependencies of a package.
+
 .. Warning::
 
-    Constraints are additive. If I add a constraint it doesn't remove or replace
-    prior constraints on versions. Constraints don't have override semantics.
+    Version constraints are additive. If I add a constraint it doesn't remove or
+    replace prior constraints on versions. Constraints don't have override
+    semantics.
 
 Curated version sets
 --------------------
