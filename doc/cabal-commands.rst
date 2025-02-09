@@ -538,6 +538,9 @@ a freeze file is not, by default, a **lockfile**. To turn a freeze file into a l
 use the ``--lock`` flag when invocating ``cabal freeze``. This will prevent future
 builds from including new dependencies. This can be helpful in situations where
 every dependency must be explicitly audited and approved, for example.
+Under the hood, the ``--lock`` flag reuses the mechanism behind
+``--reject-unconstrained-dependencies``, by writing the equivalent of
+``--reject-unconstrained-dependencies=all`` to the freeze file.
 
 cabal gen-bounds
 ^^^^^^^^^^^^^^^^
