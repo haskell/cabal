@@ -31,6 +31,11 @@ Version ranges
 Version constraints
 -------------------
 
+.. Warning::
+
+    Constraints are additive. If I add a constraint it doesn't remove or replace
+    prior constraints on versions. Constraints don't have override semantics.
+
 Curated version sets
 --------------------
 
