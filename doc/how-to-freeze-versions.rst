@@ -95,6 +95,52 @@ import, same as the ``.local`` file for projects.
     ``.local`` file is imported last, after the ``.freeze`` file, giving the
     user a final say in the setting of any fields that have override semantics.
 
+.. Warning::
+
+    A project or package that may build with a variety of compiler versions will
+    be locked to a particular compiler version by freezing.  For instance, if
+    ``cabal init`` is used to create an executable package,
+    ``unconstrained-base-exe.cabal``, after removing version constraints on base
+    it can be frozen with various compiler versions that will each bring in
+    their set of boot libraries as dependencies.
+
+    .. code-block:: cabal
+
+        executable unconstrained-base-exe
+        build-depends: base >0
+
+    .. code-block:: diff
+
+        $ cabal freeze --with-compiler=ghc-8.10.7
+        $ mv cabal.project.freeze ghc-8.10.7.freeze
+
+        $ cabal freeze --with-compiler=ghc-9.10.1
+        $ mv cabal.project.freeze ghc-9.10.1.freeze
+
+        $ cabal freeze --with-compiler=ghc-9.12.1
+        $ mv cabal.project.freeze ghc-9.12.1.freeze
+
+        $ diff ghc-8.10.7.freeze ghc-9.12.1.freeze --unified
+        -constraints: any.base ==4.14.3.0,
+        -             any.ghc-prim ==0.6.1,
+        -             any.integer-gmp ==1.0.3.0,
+        -             any.rts ==1.0.1
+        +constraints: any.base ==4.21.0.0,
+        +             any.ghc-bignum ==1.3,
+        +             any.ghc-internal ==9.1201.0,
+        +             any.ghc-prim ==0.13.0,
+        +             any.rts ==1.0.2
+
+        $ diff ghc-9.10.1.freeze ghc-9.12.1.freeze --unified
+        -constraints: any.base ==4.20.0.0,
+        +constraints: any.base ==4.21.0.0,
+                      any.ghc-bignum ==1.3,
+        -             any.ghc-internal ==9.1001.0,
+        -             any.ghc-prim ==0.11.0,
+        +             any.ghc-internal ==9.1201.0,
+        +             any.ghc-prim ==0.13.0,
+                      any.rts ==1.0.2
+
 Do you need to freeze?
 ^^^^^^^^^^^^^^^^^^^^^^
 
