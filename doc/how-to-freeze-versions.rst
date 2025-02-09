@@ -28,6 +28,23 @@ Frozen versions
 Version ranges
 --------------
 
+A dependency can have a version range specified in the package description.
+This is expected for published packages. The `cabal check` command will check
+that version ranges conform to a set of rules:
+
+- that lower bounds are inclusive
+- that upper bounds are exclusive
+- that upper bounds don't have trailing zeros
+- that upper bounds are not missing
+- that upper bounds are not missing for ``base``
+
+With large projects with many packages, it would be a lot of work to keep all
+package dependency version ranges up to date. Ways of overcoming this are:
+
+- use a package generator like ``hpack-dhall-cabal`` to import sets of dependencies with version ranges
+- use a ``cabal.project`` file to specify version constraints for all dependencies
+- use a curated set of packages and versions and import these into the project
+
 Version constraints
 -------------------
 
