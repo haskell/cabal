@@ -1,0 +1,11 @@
+synopsis: Prepend the global extra paths to the `ProgramDb` sooner
+packages: cabal-install
+prs: #10790
+issues: #9800
+significance: significant
+
+description: {
+
+- The initial configuration of programs was done without the `extra-prog-path` from the global cabal configuration. This meant that in some cases, some executables were not found. In particular this manifested as Windows users who didn't add the MSYS2 paths to the global PATH couldn't make use of `pkg-config`.
+
+}
