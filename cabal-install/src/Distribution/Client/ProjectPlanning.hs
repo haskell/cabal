@@ -476,6 +476,7 @@ configureCompiler
         { projectConfigHcFlavor
         , projectConfigHcPath
         , projectConfigHcPkg
+        , projectConfigProgPathExtra
         }
     , projectConfigLocalPackages =
       PackageConfig
@@ -500,24 +501,26 @@ configureCompiler
       $ do
         liftIO $ info verbosity "Compiler settings changed, reconfiguring..."
         let extraPath = fromNubList packageConfigProgramPathExtra
+        -- Add paths in the local config
         progdb <- liftIO $ prependProgramSearchPath verbosity extraPath [] defaultProgramDb
-        let progdb' = userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths)) progdb
-        result@(_, _, progdb'') <-
+        -- Add paths in the global config
+        progdb' <- liftIO $ prependProgramSearchPath verbosity (fromNubList projectConfigProgPathExtra) [] progdb
+        let progdb'' = userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths)) progdb'
+        result@(_, _, progdb''') <-
           liftIO $
             Cabal.configCompilerEx
               hcFlavor
               hcPath
               hcPkg
-              progdb'
+              progdb''
               verbosity
-
         -- Note that we added the user-supplied program locations and args
         -- for /all/ programs, not just those for the compiler prog and
         -- compiler-related utils. In principle we don't know which programs
         -- the compiler will configure (and it does vary between compilers).
         -- We do know however that the compiler will only configure the
         -- programs it cares about, and those are the ones we monitor here.
-        monitorFiles (programsMonitorFiles progdb'')
+        monitorFiles (programsMonitorFiles progdb''')
 
         -- Note: There is currently a bug here: we are dropping unconfigured
         -- programs from the 'ProgramDb' when we re-use the cache created by
