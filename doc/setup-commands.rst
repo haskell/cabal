@@ -211,18 +211,29 @@ files of a package:
     ``--alex-options="--template=mytemplatedir/"``. The *options* is
     split into program options based on spaces. Any options containing
     embedded spaced need to be quoted, for example
-    ``--foo-options='--bar="C:\Program File\Bar"'``. As an alternative
+    ``--foo-options='--bar="C:\Program Files\Bar"'``. As an alternative
     that takes only one option at a time but avoids the need to quote,
     use :option:`--PROG-option` instead.
 
+    Note: if *prog* is ``ghc``, then options that do not affect build
+    artifacts, such as warning flags, are dropped. This is because
+    ``--ghc-options`` applies to GHC for the entire build plan, not just the
+    current package, and recompiling the entire dependency tree is probably
+    unintended. If you want to apply some options to ``cabal repl`` only, pass
+    ``--repl-options`` to ``cabal repl``.
+
 .. option:: --PROG-option=OPT
 
-    Specify a single additional option to the program *prog*. For
+    Specify a single additional option to the program *prog*. The option is
+    passed to *prog* as a single argument, without any splitting. For
     passing an option that contains embedded spaces, such as a file name
     with embedded spaces, using this rather than :option:`--PROG-options`
     means you do not need an additional level of quoting. Of course if you
     are using a command shell you may still need to quote, for example
-    ``--foo-options="--bar=C:\Program File\Bar"``.
+    ``--foo-options="--bar=C:\Program Files\Bar"``.
+
+    The same note ragarding dropping flags as for :option:`--PROG-options`
+    applies to ``--PROG-option`` as well.
 
 All of the options passed with either :option:`--PROG-options`
 or :option:`--PROG-option` are passed in the order they were
@@ -1443,11 +1454,11 @@ Flags for repl:
 
 .. option:: --PROG-option=OPT
 
-    Give an extra option to PROG (no need to quote options containing spaces).
+    Give an extra option to PROG (passed directly to PROG as a single argument).
 
 .. option:: --PROG-options=OPTS
 
-    Give extra options to PROG.
+    Give extra options to PROG (split on spaces, "quotes" prevent splitting).
 
 .. option:: --repl-no-load
 

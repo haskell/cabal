@@ -245,7 +245,8 @@ testOptions' showOrParseArgs =
         []
         ["test-options"]
         ( "give extra options to test executables "
-            ++ "(name templates can use $pkgid, $compiler, "
+            ++ "(split on spaces, \"quotes\" prevent splitting; "
+            ++ "name templates can use $pkgid, $compiler, "
             ++ "$os, $arch, $test-suite)"
         )
         testOptions
@@ -259,7 +260,7 @@ testOptions' showOrParseArgs =
         []
         ["test-option"]
         ( "give extra option to test executables "
-            ++ "(no need to quote options containing spaces, "
+            ++ "(passed directly as a single argument; "
             ++ "name template can use $pkgid, $compiler, "
             ++ "$os, $arch, $test-suite)"
         )

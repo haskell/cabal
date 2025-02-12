@@ -1063,10 +1063,11 @@ configuration from the 'cabal.project', 'cabal.project.local' and other files.
 .. option:: --repl-options=FLAG
 
     To avoid ``ghci``-specific flags from triggering unneeded global rebuilds, these
-    flags are stripped from the internal configuration. As a result,
-    ``--ghc-options`` will no longer (reliably) work to pass flags to ``ghci`` (or
-    other REPLs). Instead, you should use the ``--repl-options`` flag to
-    specify these options to the invoked REPL.
+    flags are stripped from the internal configuration when using
+    ``--ghc-option`` or ``--ghc-options``. As a result, ``--ghc-options`` will
+    not (reliably) work to pass flags to ``ghci`` (or other REPLs).
+    ``--repl-options`` bypasses this and allows you to specify options to the
+    invoked REPL without influencing the build configuration for other packages.
 
 .. option:: --repl-no-load
 
