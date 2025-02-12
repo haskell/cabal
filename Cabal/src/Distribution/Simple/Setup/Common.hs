@@ -275,7 +275,9 @@ programDbOption progDb showOrParseArgs get set =
         [prog ++ "-option"]
         ( "give an extra option to "
             ++ prog
-            ++ " (passed directly to " ++ prog ++ " as a single argument)"
+            ++ " (passed directly to "
+            ++ prog
+            ++ " as a single argument)"
         )
         get
         set
@@ -314,7 +316,8 @@ programDbOptions progDb showOrParseArgs get set =
         [prog ++ "-options"]
         ( "give extra options to "
             ++ prog
-            ++ " (split on spaces, \"quotes\" prevent splitting)")
+            ++ " (split on spaces, \"quotes\" prevent splitting)"
+        )
         get
         set
         (reqArg' "OPTS" (\args -> [(prog, splitArgs args)]) (const []))
