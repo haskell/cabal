@@ -1069,6 +1069,9 @@ configuration from the 'cabal.project', 'cabal.project.local' and other files.
     ``--repl-options`` bypasses this and allows you to specify options to the
     invoked REPL without influencing the build configuration for other packages.
 
+    Note: ``--repl-options`` does not accept ``"quotes"`` to pass options
+    containing spaces to the REPL.
+
 .. option:: --repl-no-load
 
     Disables the loading of target modules at startup.

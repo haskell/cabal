@@ -210,10 +210,11 @@ files of a package:
     to Cabal can be used in place of *prog*. For example:
     ``--alex-options="--template=mytemplatedir/"``. The *options* is
     split into program options based on spaces. Any options containing
-    embedded spaced need to be quoted, for example
-    ``--foo-options='--bar="C:\Program Files\Bar"'``. As an alternative
-    that takes only one option at a time but avoids the need to quote,
-    use :option:`--PROG-option` instead.
+    embedded spaces need to be quoted with "double quotes", for example
+    ``--foo-options='--bar="C:\Program Files\Bar"'``. (The ``'single'`` quotes
+    are for your shell, the ``"double"`` quotes are passed to Cabal.) As an
+    alternative that takes only one option at a time but avoids the need to
+    quote, use :option:`--PROG-option` instead.
 
     Note: if *prog* is ``ghc``, then options that do not affect build
     artifacts, such as warning flags, are dropped. This is because
