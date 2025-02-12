@@ -1060,7 +1060,7 @@ Examples:
 Configuration flags can be specified on the command line and these extend the project
 configuration from the 'cabal.project', 'cabal.project.local' and other files.
 
-.. option:: --repl-options=FLAG
+.. option:: --repl-options=OPTS
 
     To avoid ``ghci``-specific flags from triggering unneeded global rebuilds, these
     flags are stripped from the internal configuration when using
