@@ -233,7 +233,7 @@ files of a package:
     are using a command shell you may still need to quote, for example
     ``--foo-options="--bar=C:\Program Files\Bar"``.
 
-    The same note ragarding dropping flags as for :option:`--PROG-options`
+    The same note regarding dropping flags as for :option:`--PROG-options`
     applies to ``--PROG-option`` as well.
 
 All of the options passed with either :option:`--PROG-options`
