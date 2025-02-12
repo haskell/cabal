@@ -266,7 +266,7 @@ arbitraryInstallPlan mkIPkg mkSrcPkg ipkgProportion graph = do
           ( map InstallPlan.PreExisting ipkgs
               ++ map InstallPlan.Configured srcpkgs
           )
-  return $ InstallPlan.new (IndependentGoals False) index
+  return $ InstallPlan.new (IndependentGoals False) [] index
 
 -- | Generate a random directed acyclic graph, based on the algorithm presented
 -- here <http://stackoverflow.com/questions/12790337/generating-a-random-dag>
