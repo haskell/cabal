@@ -7,19 +7,29 @@ concurrency:
 
 on:
   push:
-    paths-ignore:
-      - 'CONTRIBUTING.md'
-      - 'doc/**'
-      - 'release-notes/**'
-      - 'Cabal-tests/test/**'
-      - 'cabal-testsuite/PackageTests/**'
+    paths:
+      - 'Cabal-QuickCheck/**'
+      - 'Cabal-described/**'
+      - 'Cabal-syntax/**'
+      - 'Cabal-tests/**'
+      - 'Cabal-tree-diff/**'
+      - 'Cabal/**'
+      - 'cabal-install-solver/**'
+      - 'cabal-install/**'
+      - '!Cabal-tests/test/**'
+      - '!cabal-testsuite/PackageTests/**'
   pull_request:
-    paths-ignore:
-      - 'CONTRIBUTING.md'
-      - 'doc/**'
-      - 'release-notes/**'
-      - 'Cabal-tests/test/**'
-      - 'cabal-testsuite/PackageTests/**'
+    paths:
+      - 'Cabal-QuickCheck/**'
+      - 'Cabal-described/**'
+      - 'Cabal-syntax/**'
+      - 'Cabal-tests/**'
+      - 'Cabal-tree-diff/**'
+      - 'Cabal/**'
+      - 'cabal-install-solver/**'
+      - 'cabal-install/**'
+      - '!Cabal-tests/test/**'
+      - '!cabal-testsuite/PackageTests/**'
   release:
     types:
       - created
