@@ -75,9 +75,7 @@ import Distribution.Client.RebuildMonad
   ( runRebuild
   )
 import Distribution.Client.Setup
-  ( CommonSetupFlags (..)
-  , ConfigFlags (..)
-  , GlobalFlags (..)
+  ( GlobalFlags (..)
   )
 import Distribution.Client.TargetSelector
   ( TargetSelectorProblem (..)
@@ -175,9 +173,6 @@ import Distribution.Types.UnqualComponentName
   )
 import Distribution.Utils.NubList
   ( fromNubList
-  )
-import Distribution.Verbosity
-  ( normal
   )
 import Language.Haskell.Extension
   ( Language (..)
@@ -280,7 +275,8 @@ data TargetContext
 -- In the case that the context refers to a temporary directory,
 -- delete it after the action finishes.
 withContextAndSelectors
-  :: AcceptNoTargets
+  :: Verbosity
+  -> AcceptNoTargets
   -- ^ What your command should do when no targets are found.
   -> Maybe ComponentKind
   -- ^ A target filter
@@ -295,7 +291,7 @@ withContextAndSelectors
   -> (TargetContext -> ProjectBaseContext -> [TargetSelector] -> IO b)
   -- ^ The body of your command action.
   -> IO b
-withContextAndSelectors noTargets kind flags@NixStyleFlags{..} targetStrings globalFlags cmd act =
+withContextAndSelectors verbosity noTargets kind flags@NixStyleFlags{..} targetStrings globalFlags cmd act =
   withTemporaryTempDirectory $ \mkTmpDir -> do
     (tc, ctx) <-
       withProjectOrGlobalConfig
@@ -336,7 +332,6 @@ withContextAndSelectors noTargets kind flags@NixStyleFlags{..} targetStrings glo
 
     act tc' ctx' sels
   where
-    verbosity = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags)
     ignoreProject = flagIgnoreProject projectFlags
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
