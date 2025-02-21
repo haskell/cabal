@@ -6,11 +6,11 @@ Configuration
 Overview
 --------
 
-The global configuration file for ``cabal-install`` is by default
-``$XDG_CONFIG_HOME/cabal/config``. If you do not have this file, ``cabal`` will create
+The global configuration file for :term:`cabal-install:exe:cabal` is by default
+``$XDG_CONFIG_HOME/cabal/config``. If you do not have this file, :term:`cabal` will create
 it for you on the first call to ``cabal update``
 (details see `configuration file discovery`_).
-Alternatively, you can explicitly ask ``cabal`` to create it for you using
+Alternatively, you can explicitly ask :term:`cabal` to create it for you using
 
 .. code-block:: console
 
@@ -40,21 +40,21 @@ executables by default, you would change this line to
     executable-stripping: False
 
 You can also use ``cabal user-config update`` to migrate configuration
-files created by older versions of ``cabal``.
+files created by older versions of :term:`cabal`.
 
 Environment variables
 ---------------------
 
-Various environment variables affect ``cabal-install``.
+Various environment variables affect :term:`cabal-install:exe:cabal`.
 
 ``CABAL_CONFIG``
    The variable to find global configuration file.
 
 ``CABAL_DIR``
 
-   If set, *all* ``cabal-install`` content files will be stored as
+   If set, *all* :term:`cabal-install:exe:cabal` content files will be stored as
    subdirectories of this directory, including the configuration file
-   if ``CABAL_CONFIG`` is unset.  If ``CABAL_DIR`` is unset, Cabal
+   if ``CABAL_CONFIG`` is unset.  If ``CABAL_DIR`` is unset, :term:`cabal`
    will store data files according to the XDG Base Directory
    Specification (see `directories`_).
 
@@ -63,7 +63,7 @@ Various environment variables affect ``cabal-install``.
        For backwards compatibility, if the directory ``~/.cabal`` on
        Unix or ``%APPDATA%\cabal`` on Windows exists, and
        ``$XDG_CONFIG_HOME/cabal/config`` does not exist, and
-       ``CABAL_DIR`` is unset, ``cabal-install`` will behave as if
+       ``CABAL_DIR`` is unset, :term:`cabal-install:exe:cabal` will behave as if
        ``CABAL_DIR`` was set to point at this directory.
 
 ``CABAL_BUILDDIR``
@@ -87,7 +87,7 @@ The configuration file location is determined as follows:
 
 If the configuration file does not exist, and it was not given
 explicitly via ``--config-file`` or ``$CABAL_CONFIG``, then
-``cabal-install`` will generate the default one, with directories
+:term:`cabal-install:exe:cabal` will generate the default one, with directories
 based on ``$CABAL_DIR`` (if set) or according to the XDG Base
 Directory Specification, as listed below.
 
@@ -121,13 +121,13 @@ file:
 * ``~/.local/bin`` for executables installed with ``cabal install``.
 
 You can run ``cabal path`` to see a list of the directories that
-``cabal`` will use with the active configuration.
+:term:`cabal` will use with the active configuration.
 
 Repository specification
 ------------------------
 
 An important part of the configuration is the specification of the
-repository. When ``cabal`` creates a default config file, it configures
+repository. When :term:`cabal` creates a default config file, it configures
 the repository to be the central Hackage server:
 
 ::
@@ -140,7 +140,7 @@ anything; packages downloaded from this repository will be cached under
 ``$XDG_CACHE_HOME/cabal/packages/hackage.haskell.org`` (or whatever name you specify;
 you can change the prefix by changing the value of
 :cfg-field:`remote-repo-cache`). If you want, you can configure multiple
-repositories, and ``cabal`` will combine them and be able to download
+repositories, and :term:`cabal` will combine them and be able to download
 packages from any of them.
 
 Using secure repositories
@@ -166,21 +166,21 @@ The ``<root-key-IDs>`` and ``<key-threshold>`` values are used for
 bootstrapping. As part of the TUF infrastructure the repository will
 contain a file ``root.json`` (for instance,
 http://hackage.haskell.org/root.json) which the client needs to do
-verification. However, how can ``cabal`` verify the ``root.json`` file
+verification. However, how can :term:`cabal` verify the ``root.json`` file
 *itself*? This is known as bootstrapping: if you specify a list of root
-key IDs and a corresponding threshold, ``cabal`` will verify that the
+key IDs and a corresponding threshold, :term:`cabal` will verify that the
 downloaded ``root.json`` file has been signed with at least
 ``<key-threshold>`` keys from your set of ``<root-key-IDs>``.
 
 You can, but are not recommended to, omit these two fields. In that case
-``cabal`` will download the ``root.json`` field and use it without
+:term:`cabal` will download the ``root.json`` field and use it without
 verification. Although this bootstrapping step is then unsafe, all
 subsequent access is secure (provided that the downloaded ``root.json``
 was not tampered with). Of course, adding ``root-keys`` and
 ``key-threshold`` to your repository specification only shifts the
 problem, because now you somehow need to make sure that the key IDs you
 received were the right ones. How that is done is however outside the
-scope of ``cabal`` proper.
+scope of :term:`cabal` proper.
 
 More information about the security infrastructure can be found at
 https://github.com/haskell/hackage-security.
@@ -196,7 +196,7 @@ repository.
     repository my-local-repository
       url: file+noindex:///absolute/path/to/directory
 
-``cabal`` will construct the index automatically from the
+:term:`cabal` will construct the index automatically from the
 ``package-name-version.tar.gz`` files in the directory, and will use optional
 corresponding ``package-name-version.cabal`` files as new revisions.
 
@@ -212,7 +212,7 @@ For example, if ``/absolute/path/to/directory`` looks like
         bar-0.2.0.0.tar.gz
         bar-0.2.0.0.cabal
 
-then ``cabal`` will create an index with two packages:
+then :term:`cabal` will create an index with two packages:
 
 - ``foo-0.1.0.0`` using the source and ``.cabal`` file inside
   ``foo-0.1.0.0.tar.gz``
@@ -225,7 +225,7 @@ then the cache will be stored inside the :cfg-field:`remote-repo-cache` director
 The part of the path will be used to determine the cache key part.
 
 .. note::
-    ``cabal-install`` creates a ``.cache`` file, and will aggressively use
+    :term:`cabal-install:exe:cabal` creates a ``.cache`` file, and will aggressively use
     its contents if it exists. Therefore if you change the contents of
     the directory, remember to wipe the cache too.
 
@@ -260,13 +260,13 @@ thus, looks similar to a ``package-name.cabal``'s ``build-depends`` section.
     certain versions or marking a specific version as deprecated. To achieve this, add a
     local no-index repository to your :ref:`configuration file <config-file-discovery>`,
     where the directory contains your custom
-    ``preferred-versions``. After running ``cabal update``, all ``cabal`` operations will honour the
+    ``preferred-versions``. After running ``cabal update``, all :term:`cabal` operations will honour the
     configuration.
 
 Legacy repositories
 ^^^^^^^^^^^^^^^^^^^
 
-Currently ``cabal`` supports single kind of “legacy” repositories.
+Currently :term:`cabal` supports single kind of “legacy” repositories.
 It is specified using
 
 ::
@@ -307,8 +307,8 @@ can be used to create and manage such repositories.
 Program options
 ---------------
 
-Programs that ``cabal`` knows about can be provided with options that will be
-passed in whenever the program is invoked by ``cabal``. The configuration file
+Programs that :term:`cabal` knows about can be provided with options that will be
+passed in whenever the program is invoked by :term:`cabal`. The configuration file
 can contain a stanza of ``program-default-options`` with ``<prog>-options``
 fields to specify these.
 
@@ -383,11 +383,11 @@ The list of known programs is:
 
 .. warning::
 
-  These options will be used when ``cabal`` invokes the tool as part of the build process or as part of a
+  These options will be used when :term:`cabal` invokes the tool as part of the build process or as part of a
   :pkg-field:`build-tool-depends` declaration, not whenever the tool is invoked by
   third parties.
 
-  In particular this means that for example ``gcc-options`` will be used when ``cabal``
+  In particular this means that for example ``gcc-options`` will be used when :term:`cabal`
   invokes ``gcc``, which is **not** when C sources are compiled by GHC (even though GHC
   might invoke ``gcc`` internally). In order to provide options through GHC for those programs, one has to check the
   GHC User guide's `Section <https://downloads.haskell.org/ghc/latest/docs/users_guide/phases.html#forcing-options-to-a-particular-phase>`_.
