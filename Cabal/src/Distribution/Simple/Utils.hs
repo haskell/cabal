@@ -311,16 +311,18 @@ cabalVersion = mkVersion [3,0]  --used when bootstrapping
 
 -- |
 -- `Cabal` Git information. Only filled in if built in a Git tree in
--- developmnent mode and Template Haskell is available.
+-- development mode and Template Haskell is available.
 cabalGitInfo :: String
 #ifdef GIT_REV
-cabalGitInfo = concat [ "(commit "
-                      , giHash'
-                      , branchInfo
-                      , ", "
-                      , either (const "") giCommitDate gi'
-                      , ")"
-                      ]
+cabalGitInfo = if giHash' == ""
+                 then ""
+                 else concat [ "(commit "
+                             , giHash'
+                             , branchInfo
+                             , ", "
+                             , either (const "") giCommitDate gi'
+                             , ")"
+                             ]
   where
     gi' = $$tGitInfoCwdTry
     giHash' = take 7 . either (const "") giHash $ gi'
