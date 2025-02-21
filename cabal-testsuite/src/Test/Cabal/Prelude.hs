@@ -809,23 +809,21 @@ recordMode mode = withReaderT (\env -> env {
 
 -- See Note [Multiline Needles]
 assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputContains = assertOn
-    needleHaystack
-        {txHaystack = TxContains{txBwd = delimitLines, txFwd = encodeLf}}
+assertOutputContains = assertOn isInfixOf needleHaystack
+    {txHaystack = TxFwdBwd{txBwd = delimitLines, txFwd = encodeLf}}
 
 assertOutputDoesNotContain :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputDoesNotContain = assertOn
-    needleHaystack
-        { expectNeedleInHaystack = False
-        , txHaystack = TxContains{txBwd = delimitLines, txFwd = encodeLf}
-        }
+assertOutputDoesNotContain = assertOn isInfixOf needleHaystack
+    { expectNeedleInHaystack = False
+    , txHaystack = TxFwdBwd{txBwd = delimitLines, txFwd = encodeLf}
+    }
 
 -- See Note [Multiline Needles]
-assertOn :: MonadIO m => WithCallStack (NeedleHaystack -> String -> Result -> m ())
-assertOn NeedleHaystack{..} (txFwd txNeedle -> needle) (txFwd txHaystack. resultOutput -> output) =
+assertOn :: MonadIO m => WithCallStack (NeedleHaystackCompare -> NeedleHaystack -> String -> Result -> m ())
+assertOn isIn NeedleHaystack{..} (txFwd txNeedle -> needle) (txFwd txHaystack. resultOutput -> output) =
     withFrozenCallStack $
     if expectNeedleInHaystack
-        then unless (needle `isInfixOf` output)
+        then unless (needle `isIn` output)
             $ assertFailure $ "expected:\n" ++ (txBwd txNeedle needle) ++
             if displayHaystack
                 then "\nin output:\n" ++ (txBwd txHaystack output)
@@ -837,18 +835,17 @@ assertOn NeedleHaystack{..} (txFwd txNeedle -> needle) (txFwd txHaystack. result
                 else ""
 
 assertOutputMatches :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputMatches regex result =
-    withFrozenCallStack $
-    unless (encodeLf output =~ regex) $
-    assertFailure $ "expected regex match: " ++ regex
-  where output = resultOutput result
+assertOutputMatches = assertOn (flip (=~)) needleHaystack
+    { txNeedle = TxFwdBwd{txBwd = ("regex match with '" ++) . (++ "'"), txFwd = id}
+    , txHaystack = TxFwdBwd{txBwd = delimitLines, txFwd = encodeLf}
+    }
 
 assertOutputDoesNotMatch :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputDoesNotMatch regex result =
-    withFrozenCallStack $
-    when (encodeLf output =~ regex) $
-    assertFailure $ "unexpected regex match: " ++ regex
-  where output = resultOutput result
+assertOutputDoesNotMatch = assertOn (flip (=~)) needleHaystack
+    { expectNeedleInHaystack = False
+    , txNeedle = TxFwdBwd{txBwd = ("regex match with '" ++) . (++ "'"), txFwd = id}
+    , txHaystack = TxFwdBwd{txBwd = delimitLines, txFwd = encodeLf}
+    }
 
 assertFindInFile :: MonadIO m => WithCallStack (String -> FilePath -> m ())
 assertFindInFile needle path =
