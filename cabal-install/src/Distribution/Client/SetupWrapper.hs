@@ -1072,7 +1072,10 @@ getExternalSetupMethod verbosity options pkg bt = do
               (program, extraOpts) =
                 case compilerFlavor compiler of
                   GHCJS -> (ghcjsProgram, ["-build-runner"])
-                  _ -> (ghcProgram, ["-threaded"])
+                  _ -> (ghcProgram, [])
+                    -- FIXME: don't enable -threaded unconditionnally: we may
+                    -- only have vanilla libraries (but maybe we don't have them
+                    -- either?)
               cabalDep =
                 maybe
                   []
