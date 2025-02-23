@@ -121,6 +121,14 @@ linkOrLoadComponent
               PD.ldOptions bi
                 ++ [ "-static"
                    | withFullyStaticExe lbi
+                   -- MacOS can not link fully statically.
+                   -- Only kernels can be linked fully statically. Everything
+                   -- linking against libSystem must link dynamically. Thus even
+                   -- if we link all dependencies statically, we must not pass
+                   -- '-optl-static', as that will cause the linker to try and
+                   -- fail.
+                   , let Platform _hostArch hostOS = hostPlatform lbi
+                      in hostOS /= OSX
                    ]
                 -- Pass extra `ld-options` given
                 -- through to GHC's linker.
