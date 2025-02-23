@@ -115,11 +115,6 @@ normalizeOutput nenv =
         -- and replace it with:
         -- > "-package-id","<PACKAGEDEP>"
         --
-        -- Otherwise, output can not be properly normalized as on MacOs we remove
-        -- vowels from packages to make the names shorter.
-        -- E.g. "another-framework-0.8.1.1" -> "nthr-frmwrk-0.8.1.1"
-        --
-        -- This makes it impossible to have a stable package id, thus remove it completely.
         -- Check manually in your test-cases if the package-id needs to be verified.
       . resub ("\"-package-id\",\"([^\"]*)\"")
               "\"-package-id\",\"<PACKAGEDEP>\""

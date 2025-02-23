@@ -147,8 +147,7 @@ hashedInstalledPackageIdShort pkghashinputs@PackageHashInputs{pkgHashPkgId} =
 --  @store/<libraryname>/libHS<libraryname>.dylib@
 -- where libraryname contains the libraries name, version and abi hash, but in
 --  @store/lib/libHS<very short libraryname>.dylib@
--- where the very short library name drops all vowels from the package name,
--- and truncates the hash to 4 bytes.
+-- where the very short library name truncates the hash to 4 bytes.
 --
 -- We therefore we only need one \@rpath entry to @store/lib@ instead of one
 -- \@rpath entry for each library. And the reduced library name saves some
@@ -168,7 +167,7 @@ hashedInstalledPackageIdVeryShort pkghashinputs@PackageHashInputs{pkgHashPkgId} 
   mkComponentId $
     intercalate
       "-"
-      [ filter (not . flip elem "aeiou") (prettyShow name)
+      [ prettyShow name
       , prettyShow version
       , showHashValue (truncateHash 4 (hashPackageHashInputs pkghashinputs))
       ]
