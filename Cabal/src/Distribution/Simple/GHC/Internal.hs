@@ -489,6 +489,7 @@ componentJsGhcOptions verbosity lbi bi clbi odir filename =
     , ghcOptPackageDBs = withPackageDB lbi
     , ghcOptPackages = toNubListR $ mkGhcOptPackages (promisedPkgs lbi) clbi
     , ghcOptObjDir = toFlag odir
+    , ghcOptExtra = jsOptions bi
     }
 
 componentGhcOptions
