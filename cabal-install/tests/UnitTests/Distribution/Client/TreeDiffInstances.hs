@@ -13,6 +13,8 @@ import Distribution.Solver.Types.Settings
 import Distribution.Client.BuildReports.Types
 import Distribution.Client.CmdInstall.ClientInstallFlags
 import Distribution.Client.Dependency.Types
+import Distribution.Client.HashValue (HashValue)
+import Distribution.Client.HookAccept (HookAccept (..))
 import Distribution.Client.IndexUtils.ActiveRepos
 import Distribution.Client.IndexUtils.IndexState
 import Distribution.Client.IndexUtils.Timestamp
@@ -45,6 +47,8 @@ instance ToExpr ProjectConfigPath
 instance ToExpr ConstraintSource
 instance ToExpr CountConflicts
 instance ToExpr FineGrainedConflicts
+instance ToExpr HashValue
+instance ToExpr HookAccept
 instance ToExpr IndependentGoals
 instance ToExpr InstallMethod
 instance ToExpr InstallOutcome
