@@ -1563,7 +1563,7 @@ legacyPackageConfigFieldDescrs =
             parseTokenQ
             configConfigureArgs
             (\v conf -> conf{configConfigureArgs = v})
-        , simpleFieldParsec
+        , monoidFieldParsec
             "flags"
             dispFlagAssignment
             parsecFlagAssignment
