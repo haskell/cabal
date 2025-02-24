@@ -1,0 +1,7 @@
+packages: .
+
+package test
+  -- test for #10767
+  flags: -bar
+  flags: -baz
+  -- flags: -bar -baz -- this works

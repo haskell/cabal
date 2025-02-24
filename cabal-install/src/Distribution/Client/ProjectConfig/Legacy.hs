@@ -1568,7 +1568,7 @@ legacyPackageConfigFieldDescrs =
             dispFlagAssignment
             parsecFlagAssignment
             configConfigurationsFlags
-            (\v conf -> conf{configConfigurationsFlags = v})
+            (\v conf -> conf{configConfigurationsFlags = configConfigurationsFlags conf <> v})
         , overrideDumpBuildInfo
         ]
       . filterFields
