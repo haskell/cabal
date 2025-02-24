@@ -714,7 +714,7 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
       } = globalFlags
 
     projectConfigPackageDBs = (fmap . fmap) (interpretPackageDB Nothing) projectConfigPackageDBs_
-
+    projectConfigHookHashes = mempty -- :: Map FilePath HookAccept
     ConfigFlags
       { configCommonFlags = commonFlags
       , configHcFlavor = projectConfigHcFlavor
