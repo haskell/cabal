@@ -785,7 +785,7 @@ shouldDirectoryExist path =
 shouldDirectoryNotExist :: MonadIO m => WithCallStack (FilePath -> m ())
 shouldDirectoryNotExist path =
     withFrozenCallStack $
-    liftIO $ doesDirectoryExist path >>= assertBool (path ++ " should exist") . not
+    liftIO $ doesDirectoryExist path >>= assertBool (path ++ " should not exist") . not
 
 assertRegex :: MonadIO m => String -> String -> Result -> m ()
 assertRegex msg regex r =
