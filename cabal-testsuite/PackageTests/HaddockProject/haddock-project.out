@@ -2,6 +2,8 @@
 Downloading the latest package list from test-local-repo
 # cabal haddock-project
 Warning: haddock-project command is experimental, it might break in the future
+Configuration is affected by the following files:
+- cabal.project
 Resolving dependencies...
 Configuration is affected by the following files:
 - cabal.project
