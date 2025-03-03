@@ -160,6 +160,7 @@ targetAction flags@NixStyleFlags{..} ts globalFlags = do
   (_, elaboratedPlan, _, _, _) <-
     rebuildInstallPlan
       verbosity
+      mempty
       distDirLayout
       cabalDirLayout
       projectConfig

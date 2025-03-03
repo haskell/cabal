@@ -84,6 +84,7 @@ import Distribution.Client.Types
 import Distribution.Backpack
 import Distribution.Backpack.ModuleShape
 
+import Distribution.Client.HookAccept (HookAccept (..))
 import Distribution.Compat.Graph (IsNode (..))
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.ModuleName (ModuleName)
@@ -190,6 +191,7 @@ data ElaboratedSharedConfig = ElaboratedSharedConfig
   -- ghc & ghc-pkg). Once constructed, only the 'configuredPrograms' are
   -- used.
   , pkgConfigReplOptions :: ReplOptions
+  , pkgConfigHookHashes :: Map FilePath HookAccept
   }
   deriving (Show, Generic)
 

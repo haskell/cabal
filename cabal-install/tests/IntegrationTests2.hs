@@ -2193,6 +2193,7 @@ planProject testdir cliConfig = do
   (elaboratedPlan, _, elaboratedShared, _, _) <-
     rebuildInstallPlan
       verbosity
+      mempty
       distDirLayout
       cabalDirLayout
       projectConfig
