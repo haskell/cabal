@@ -1,0 +1,3 @@
+extra-packages:
+        a
+        , b     >= 0.7.3    && < 0.9,
