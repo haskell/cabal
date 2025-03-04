@@ -1,0 +1,31 @@
+# release CI for FreeBSD
+compute_engine_instance:
+  image_project: freebsd-org-cloud-dev
+  image: family/freebsd-13-2
+  platform: freebsd
+  disk: 100 # Gb
+
+build_task:
+  timeout_in: 120m
+  only_if: $CIRRUS_TAG != ''
+  env:
+    ADD_CABAL_ARGS: "--enable-split-sections"
+    ARCH: 64
+    ARTIFACT: "x86_64-portbld-freebsd"
+    CIRRUS_CLONE_SUBMODULES: true
+    DISTRO: na
+    GHC_VERSION: 9.2.4
+    GITHUB_WORKSPACE: ${CIRRUS_WORKING_DIR}
+    RUNNER_OS: FreeBSD
+    TARBALL_EXT: tar.xz
+    TZ: Asia/Singapore
+  install_script:
+    - sed -i.bak -e 's/quarterly/latest/' /etc/pkg/FreeBSD.conf
+    - pkg install -y ghc hs-cabal-install git bash misc/compat10x misc/compat11x misc/compat12x gmake llvm14 patchelf tree gmp libiconv
+  script:
+    - tzsetup Etc/GMT
+    - adjkerntz -a
+    - bash .github/scripts/build.sh
+  binaries_artifacts:
+    path: "out/*"
+
