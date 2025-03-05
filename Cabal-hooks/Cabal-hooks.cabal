@@ -30,7 +30,7 @@ library
     , Cabal-syntax    >= 3.15      && < 3.17
     , Cabal           >= 3.15      && < 3.17
     , base            >= 4.13      && < 5
-    , containers      >= 0.5.0.0   && < 0.8
+    , containers      >= 0.5.0.0   && < 0.9
     , transformers    >= 0.5.6.0   && < 0.7
 
   ghc-options: -Wall -fno-ignore-asserts -Wtabs -Wincomplete-uni-patterns -Wincomplete-record-updates
