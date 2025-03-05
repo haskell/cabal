@@ -704,6 +704,13 @@ convertLegacyAllPackageFlags
 convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags projectFlags projectConfigMultiRepl =
   ProjectConfigShared{..}
   where
+    projectConfigHostHcFlavor = NoFlag
+    projectConfigHostHcPath = NoFlag
+    projectConfigHostHcPkg = NoFlag
+    projectConfigPackageDBs = (fmap . fmap) (interpretPackageDB Nothing) projectConfigPackageDBs_
+    projectConfigHookHashes = mempty -- :: Map FilePath HookAccept
+    projectConfigDistDir = fmap getSymbolicPath projectConfigAbsoluteDistDir
+
     GlobalFlags
       { globalConfigFile = projectConfigConfigFile
       , globalRemoteRepos = projectConfigRemoteRepos
@@ -713,8 +720,6 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
       , globalStoreDir = projectConfigStoreDir
       } = globalFlags
 
-    projectConfigPackageDBs = (fmap . fmap) (interpretPackageDB Nothing) projectConfigPackageDBs_
-    projectConfigHookHashes = mempty -- :: Map FilePath HookAccept
     ConfigFlags
       { configCommonFlags = commonFlags
       , configHcFlavor = projectConfigHcFlavor
@@ -729,8 +734,6 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
     CommonSetupFlags
       { setupDistPref = projectConfigAbsoluteDistDir
       } = commonFlags
-
-    projectConfigDistDir = fmap getSymbolicPath projectConfigAbsoluteDistDir
 
     ConfigExFlags
       { configCabalVersion = projectConfigCabalVersion
@@ -1010,7 +1013,7 @@ convertToLegacySharedConfig
           }
 
       configExFlags =
-        ConfigExFlags
+        mempty
           { configCabalVersion = projectConfigCabalVersion
           , configAppend = mempty
           , configBackup = mempty

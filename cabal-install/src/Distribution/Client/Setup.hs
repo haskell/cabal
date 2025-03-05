@@ -162,7 +162,7 @@ import Distribution.ReadE
   )
 import Distribution.Simple.Command hiding (boolOpt, boolOpt')
 import qualified Distribution.Simple.Command as Command
-import Distribution.Simple.Compiler (Compiler, PackageDB, PackageDBStack)
+import Distribution.Simple.Compiler (Compiler, CompilerFlavor (..), PackageDB, PackageDBStack)
 import Distribution.Simple.Configure
   ( computeEffectiveProfiling
   , configCompilerAuxEx
@@ -920,6 +920,9 @@ data ConfigExFlags = ConfigExFlags
   , configAllowOlder :: Maybe AllowOlder
   , configWriteGhcEnvironmentFilesPolicy
       :: Flag WriteGhcEnvironmentFilesPolicy
+  , configHostHcFlavor :: Flag CompilerFlavor
+  , configHostHcPath :: Flag FilePath
+  , configHostHcPkg :: Flag FilePath
   }
   deriving (Eq, Show, Generic)
 
@@ -1047,6 +1050,31 @@ configureExOptions _showOrParseArgs src =
           writeGhcEnvironmentFilesPolicyParser
           writeGhcEnvironmentFilesPolicyPrinter
       )
+  , option
+      []
+      ["host-compiler"]
+      "host compiler"
+      configHostHcFlavor
+      (\v flags -> flags{configHostHcFlavor = v})
+      ( choiceOpt
+          [ (Flag GHC, ("g", ["ghc"]), "compile with GHC")
+          , (Flag GHCJS, ([], ["ghcjs"]), "compile with GHCJS")
+          ]
+      )
+  , option
+      "W"
+      ["with-host-compiler", "with-host-hc"]
+      "give the path to the compiler for the host toolchain"
+      configHostHcPath
+      (\v flags -> flags{configHostHcPath = v})
+      (reqArgFlag "PATH")
+  , option
+      ""
+      ["with-host-hc-pkg"]
+      "give the path to the package tool for the host toolchain"
+      configHostHcPkg
+      (\v flags -> flags{configHostHcPkg = v})
+      (reqArgFlag "PATH")
   ]
 
 writeGhcEnvironmentFilesPolicyParser :: ReadE (Flag WriteGhcEnvironmentFilesPolicy)
