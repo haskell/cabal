@@ -1893,10 +1893,46 @@ system-dependent values for these fields.
 
     Directories here will be passed as ``-I<dir>`` flags to GHC.
 
+.. _per-file-source-options:
+
+Each of the five source-file fields below — :pkg-field:`c-sources`,
+:pkg-field:`cxx-sources`, :pkg-field:`asm-sources`, :pkg-field:`cmm-sources`
+and :pkg-field:`js-sources` — accepts, since ``cabal-version: 3.20``, per-file
+options written in parentheses after a file name. The options apply only when
+compiling that one file, on top of whatever the corresponding whole-component
+field (:pkg-field:`cc-options` and friends) already supplies::
+
+    c-sources:
+      cbits/fast.c (-O3 -DFAST)
+      cbits/plain.c
+    cmm-sources: cbits/rts.cmm (-mavx2)
+
+Options are separated by whitespace and the list is terminated by the closing
+parenthesis, so an option that itself contains whitespace, a ``)`` or a ``"``
+has to be written as a Haskell string literal::
+
+    c-sources: cbits/greet.c ("-DGREETING=\"hi there\"")
+
+A space is required between the file name and the opening parenthesis;
+without one the parenthesis is taken to be part of the file name. Declaring an
+earlier ``cabal-version`` and using this syntax is an error, not a silent
+downgrade.
+
+For :pkg-field:`c-sources`, :pkg-field:`cxx-sources` and
+:pkg-field:`asm-sources` the options are passed to the compiler
+(``-optc``/``-optcxx``/``-opta``). GHC compiles C-- sources itself, so options
+on :pkg-field:`cmm-sources` are passed to GHC, next to the ones from the
+:pkg-field:`cmm-options` field; an option meant for the C-- preprocessor has to
+be written with its own prefix, as in ``rts.cmm (-optCmmP-DUSE_FOO)``.
+JavaScript sources are only preprocessed, so options on
+:pkg-field:`js-sources` are passed to the JavaScript preprocessor
+(``-optJSP``), which requires GHC 9.12 or later; with an older GHC they are
+ignored and Cabal warns.
+
 .. pkg-field:: c-sources: filename list
 
     A list of C source files to be compiled and linked with the Haskell
-    files.
+    files. Supports :ref:`per-file options <per-file-source-options>`.
 
 .. pkg-field:: cxx-sources: filename list
     :since: 2.2
@@ -1907,24 +1943,25 @@ system-dependent values for these fields.
     and the :pkg-field:`cxx-options` fields. The files listed in the
     :pkg-field:`cxx-sources` can reference files listed in the
     :pkg-field:`c-sources` field and vice-versa. The object files will be linked
-    appropriately.
+    appropriately. Supports :ref:`per-file options <per-file-source-options>`.
 
 .. pkg-field:: asm-sources: filename list
     :since: 3.0
 
     A list of assembly source files to be compiled and linked with the
-    Haskell files.
+    Haskell files. Supports :ref:`per-file options <per-file-source-options>`.
 
 .. pkg-field:: cmm-sources: filename list
     :since: 3.0
 
     A list of C-- source files to be compiled and linked with the Haskell
-    files.
+    files. Supports :ref:`per-file options <per-file-source-options>`.
 
 .. pkg-field:: js-sources: filename list
 
     A list of JavaScript source files to be linked with the Haskell
-    files (only for JavaScript targets).
+    files (only for JavaScript targets). Supports
+    :ref:`per-file options <per-file-source-options>`.
 
 .. pkg-field:: extra-libraries: token list
 

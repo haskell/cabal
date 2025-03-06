@@ -1,0 +1,5 @@
+VERSION: Just (mkVersion [3,4])
+extra-source-opts-old-spec.cabal:12:33: 
+unexpected Per-file options on extra source files used. To use this syntax the package needs to specify at least 'cabal-version: 3.20'.
+expecting white space
+

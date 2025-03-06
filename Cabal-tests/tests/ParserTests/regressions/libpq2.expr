@@ -162,8 +162,10 @@ GenericPackageDescription {
           asmSources = [],
           cmmSources = [],
           cSources = [
-            SymbolicPath
-              "cbits/noticehandlers.c"],
+            ExtraSource {
+              extraSourceFile = SymbolicPath
+                "cbits/noticehandlers.c",
+              extraSourceOpts = []}],
           cxxSources = [],
           jsSources = [],
           hsSourceDirs = [

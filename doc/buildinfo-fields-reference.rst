@@ -178,7 +178,7 @@ asm-sources
     * Documentation of :pkg-field:`library:asm-sources`
 
     .. math::
-        \mathrm{commalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
+        \mathrm{commalist}\left(\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}{\left(\bullet\mathop{\mathord{``}\mathtt{\text{(}}\mathord{"}}{\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{"}}\mathord{"}}\mathop{\mathord{``}\mathtt{\text{)}}\mathord{"}}]^c}}^+_{} \right\}}^\ast_{\bullet}\mathop{\mathord{``}\mathtt{\text{)}}\mathord{"}}\right)}^?\right)
 
 autogen-includes
     * Monoidal field
@@ -231,7 +231,7 @@ c-sources
     * Documentation of :pkg-field:`library:c-sources`
 
     .. math::
-        \mathrm{commalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
+        \mathrm{commalist}\left(\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}{\left(\bullet\mathop{\mathord{``}\mathtt{\text{(}}\mathord{"}}{\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{"}}\mathord{"}}\mathop{\mathord{``}\mathtt{\text{)}}\mathord{"}}]^c}}^+_{} \right\}}^\ast_{\bullet}\mathop{\mathord{``}\mathtt{\text{)}}\mathord{"}}\right)}^?\right)
 
 cc-options
     * Monoidal field
@@ -254,7 +254,7 @@ cmm-sources
     * Documentation of :pkg-field:`library:cmm-sources`
 
     .. math::
-        \mathrm{commalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
+        \mathrm{commalist}\left(\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}{\left(\bullet\mathop{\mathord{``}\mathtt{\text{(}}\mathord{"}}{\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{"}}\mathord{"}}\mathop{\mathord{``}\mathtt{\text{)}}\mathord{"}}]^c}}^+_{} \right\}}^\ast_{\bullet}\mathop{\mathord{``}\mathtt{\text{)}}\mathord{"}}\right)}^?\right)
 
 cpp-options
     * Monoidal field
@@ -277,7 +277,7 @@ cxx-sources
     * Documentation of :pkg-field:`library:cxx-sources`
 
     .. math::
-        \mathrm{commalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
+        \mathrm{commalist}\left(\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}{\left(\bullet\mathop{\mathord{``}\mathtt{\text{(}}\mathord{"}}{\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{"}}\mathord{"}}\mathop{\mathord{``}\mathtt{\text{)}}\mathord{"}}]^c}}^+_{} \right\}}^\ast_{\bullet}\mathop{\mathord{``}\mathtt{\text{)}}\mathord{"}}\right)}^?\right)
 
 default-extensions
     * Monoidal field
@@ -483,7 +483,7 @@ js-sources
     * Documentation of :pkg-field:`library:js-sources`
 
     .. math::
-        \mathrm{commalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
+        \mathrm{commalist}\left(\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}{\left(\bullet\mathop{\mathord{``}\mathtt{\text{(}}\mathord{"}}{\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{"}}\mathord{"}}\mathop{\mathord{``}\mathtt{\text{)}}\mathord{"}}]^c}}^+_{} \right\}}^\ast_{\bullet}\mathop{\mathord{``}\mathtt{\text{)}}\mathord{"}}\right)}^?\right)
 
 jspp-options
     * Monoidal field

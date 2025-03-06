@@ -172,6 +172,7 @@ libraryFieldGrammar
      , c (List CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
      , c (List CommaVCat (Identity Dependency) Dependency)
      , c (List CommaVCat (Identity Mixin) Mixin)
+     , c (List VCat (Identity ExtraSource) ExtraSource)
      , c (List CommaVCat (Identity ModuleReexport) ModuleReexport)
      , c (List FSep (MQuoted Extension) Extension)
      , c (List FSep (MQuoted Language) Language)
@@ -184,7 +185,6 @@ libraryFieldGrammar
      , c (List FSep (SymbolicPathNT Include File) (SymbolicPath Include File))
      , c (List FSep (RelativePathNT Framework File) (RelativePath Framework File))
      , c (List FSep (RelativePathNT Include File) (RelativePath Include File))
-     , c (List VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
      , c (List VCat Token String)
      , c (MQuoted Language)
      )
@@ -225,6 +225,7 @@ foreignLibFieldGrammar
      , c (List CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
      , c (List CommaVCat (Identity Dependency) Dependency)
      , c (List CommaVCat (Identity Mixin) Mixin)
+     , c (List VCat (Identity ExtraSource) ExtraSource)
      , c (List FSep (Identity ForeignLibOption) ForeignLibOption)
      , c (List FSep (MQuoted Extension) Extension)
      , c (List FSep (MQuoted Language) Language)
@@ -236,7 +237,6 @@ foreignLibFieldGrammar
      , c (List FSep (RelativePathNT Framework File) (RelativePath Framework File))
      , c (List FSep (RelativePathNT Include File) (RelativePath Include File))
      , c (List FSep (RelativePathNT Source File) (RelativePath Source File))
-     , c (List VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
      , c (List NoCommaFSep Token' String)
      , c (List VCat (MQuoted ModuleName) ModuleName)
      , c (List VCat Token String)
@@ -267,6 +267,7 @@ executableFieldGrammar
      , c (List CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
      , c (List CommaVCat (Identity Dependency) Dependency)
      , c (List CommaVCat (Identity Mixin) Mixin)
+     , c (List VCat (Identity ExtraSource) ExtraSource)
      , c (List FSep (MQuoted Extension) Extension)
      , c (List FSep (MQuoted Language) Language)
      , c (List FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
@@ -276,7 +277,6 @@ executableFieldGrammar
      , c (List FSep (SymbolicPathNT Include File) (SymbolicPath Include File))
      , c (List FSep (RelativePathNT Framework File) (RelativePath Framework File))
      , c (List FSep (RelativePathNT Include File) (RelativePath Include File))
-     , c (List VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
      , c (RelativePathNT Source File)
      , c (List NoCommaFSep Token' String)
      , c (List VCat (MQuoted ModuleName) ModuleName)
@@ -343,6 +343,7 @@ testSuiteFieldGrammar
      , c (List CommaFSep Token String)
      , c (List CommaVCat (Identity Dependency) Dependency)
      , c (List CommaVCat (Identity Mixin) Mixin)
+     , c (List VCat (Identity ExtraSource) ExtraSource)
      , c (List FSep (MQuoted Extension) Extension)
      , c (List FSep (MQuoted Language) Language)
      , c (List NoCommaFSep Token' String)
@@ -354,7 +355,6 @@ testSuiteFieldGrammar
      , c (List FSep (SymbolicPathNT Include File) (SymbolicPath Include File))
      , c (List FSep (RelativePathNT Framework File) (RelativePath Framework File))
      , c (List FSep (RelativePathNT Include File) (RelativePath Include File))
-     , c (List VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
      , c (RelativePathNT Source File)
      , c (List VCat Token String)
      , c (MQuoted Language)
@@ -490,6 +490,7 @@ benchmarkFieldGrammar
      , c (List CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
      , c (List CommaVCat (Identity Dependency) Dependency)
      , c (List CommaVCat (Identity Mixin) Mixin)
+     , c (List VCat (Identity ExtraSource) ExtraSource)
      , c (List FSep (MQuoted Extension) Extension)
      , c (List FSep (MQuoted Language) Language)
      , c (List NoCommaFSep Token' String)
@@ -501,7 +502,6 @@ benchmarkFieldGrammar
      , c (List FSep (SymbolicPathNT Include File) (SymbolicPath Include File))
      , c (List FSep (RelativePathNT Framework File) (RelativePath Framework File))
      , c (List FSep (RelativePathNT Include File) (RelativePath Include File))
-     , c (List VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
      , c (RelativePathNT Source File)
      , c (List VCat Token String)
      , c (MQuoted Language)
@@ -595,6 +595,7 @@ buildInfoFieldGrammar
      , c (List CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
      , c (List CommaVCat (Identity Dependency) Dependency)
      , c (List CommaVCat (Identity Mixin) Mixin)
+     , c (List VCat (Identity ExtraSource) ExtraSource)
      , c (List FSep (MQuoted Extension) Extension)
      , c (List FSep (MQuoted Language) Language)
      , c (List NoCommaFSep Token' String)
@@ -606,7 +607,6 @@ buildInfoFieldGrammar
      , c (List FSep (SymbolicPathNT Include File) (SymbolicPath Include File))
      , c (List FSep (RelativePathNT Framework File) (RelativePath Framework File))
      , c (List FSep (RelativePathNT Include File) (RelativePath Include File))
-     , c (List VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
      , c (List VCat Token String)
      , c (MQuoted Language)
      )
@@ -649,16 +649,16 @@ buildInfoFieldGrammar = do
   frameworks <- monoidalFieldAla "frameworks" (alaList' FSep RelativePathNT) L.frameworks
   extraFrameworkDirs <- monoidalFieldAla "extra-framework-dirs" (alaList' FSep SymbolicPathNT) L.extraFrameworkDirs
   asmSources <-
-    monoidalFieldAla "asm-sources" (alaList' VCat SymbolicPathNT) L.asmSources
+    monoidalFieldAla "asm-sources" formatExtraSources L.asmSources
       ^^^ availableSince CabalSpecV3_0 []
   cmmSources <-
-    monoidalFieldAla "cmm-sources" (alaList' VCat SymbolicPathNT) L.cmmSources
+    monoidalFieldAla "cmm-sources" formatExtraSources L.cmmSources
       ^^^ availableSince CabalSpecV3_0 []
-  cSources <- monoidalFieldAla "c-sources" (alaList' VCat SymbolicPathNT) L.cSources
+  cSources <- monoidalFieldAla "c-sources" formatExtraSources L.cSources
   cxxSources <-
-    monoidalFieldAla "cxx-sources" (alaList' VCat SymbolicPathNT) L.cxxSources
+    monoidalFieldAla "cxx-sources" formatExtraSources L.cxxSources
       ^^^ availableSince CabalSpecV2_2 []
-  jsSources <- monoidalFieldAla "js-sources" (alaList' VCat SymbolicPathNT) L.jsSources
+  jsSources <- monoidalFieldAla "js-sources" formatExtraSources L.jsSources
   hsSourceDirs <- hsSourceDirsGrammar
   otherModules <- monoidalFieldAla "other-modules" formatOtherModules L.otherModules
   virtualModules <-
@@ -871,6 +871,9 @@ formatOtherExtensions = alaList' FSep MQuoted
 
 formatOtherModules :: [ModuleName] -> List VCat (MQuoted ModuleName) ModuleName
 formatOtherModules = alaList' VCat MQuoted
+
+formatExtraSources :: [ExtraSource] -> List VCat (Identity ExtraSource) ExtraSource
+formatExtraSources = alaList' VCat Identity
 
 -------------------------------------------------------------------------------
 -- newtypes

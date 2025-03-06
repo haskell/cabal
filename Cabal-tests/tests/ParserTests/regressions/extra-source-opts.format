@@ -1,0 +1,16 @@
+cabal-version: 3.20
+name:          extra-source-opts
+version:       0
+
+library
+    asm-sources:      cbits/qux.s (-DASM)
+    cmm-sources:      cbits/rts.cmm (-DCMM)
+    c-sources:
+        cbits/foo.c (-DFOO -O2)
+        cbits/bar.c
+        cbits/quoted.c ("-DGREETING=\"hi there\"" "-DPAREN=)")
+
+    cxx-sources:      cbits/baz.cpp (-std=c++17)
+    js-sources:       jsbits/glue.js (-DJS)
+    default-language: Haskell2010
+    build-depends:    base

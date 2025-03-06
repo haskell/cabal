@@ -31,6 +31,8 @@ module Distribution.Simple.GHC.Internal
   , optimizationCFlags
   , splitCandCxxOptions
   , SplitSource (..)
+  , ExtraSourceKind (..)
+  , extraSourceGhcOptions
 
     -- * GHC platform and version strings
   , ghcArchString
@@ -72,6 +74,7 @@ import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Types.BuildInfo
 import Distribution.Types.ComponentLocalBuildInfo
+import Distribution.Types.ExtraSource (ExtraSource (..))
 import Distribution.Types.GivenComponent
 import qualified Distribution.Types.InstalledPackageInfo as IPI
 import Distribution.Types.Library
@@ -353,21 +356,21 @@ splitCandCxxOptions
   -> BuildInfo
   -> ComponentLocalBuildInfo
   -> SymbolicPath Pkg (Dir Artifacts)
-  -> SymbolicPath Pkg File
+  -> ExtraSource
   -> GhcOptions
-splitCandCxxOptions source verbosity lbi bi clbi odir filename = case source of
+splitCandCxxOptions source verbosity lbi bi clbi odir extraSource = case source of
   CxxProgram ->
     -- For C++ sources: reset ccOptions for GHC < 8.10, because on those
     -- old GHCs there's no -optcxx flag — all options go through -optc.
     -- Without this reset, C-specific flags (ccOptions) would leak into
     -- C++ compilation via -optc, which is wrong.
-    setGppProgram $ setCcOptions $ sourcesGhcOptions verbosity lbi bi clbi odir filename
+    setGppProgram $ setCcOptions $ sourcesGhcOptions CxxSourceKind verbosity lbi bi clbi odir extraSource
   CcProgram ->
     -- For C sources: reset cxxOptions for GHC < 8.10, because on those
     -- old GHCs there's no -optcxx flag — all options go through -optc.
     -- Without this reset, C++-specific flags (cxxOptions) would leak into
     -- C compilation via -optc, which is wrong.
-    setCcProgram $ setCxxOptions $ sourcesGhcOptions verbosity lbi bi clbi odir filename
+    setCcProgram $ setCxxOptions $ sourcesGhcOptions CSourceKind verbosity lbi bi clbi odir extraSource
   where
     setCcOptions xxx =
       xxx
@@ -434,25 +437,67 @@ splitCandCxxOptions source verbosity lbi bi clbi odir filename = case source of
               (maybeToFlag $ programPath <$> lookupProgram gppProgram (withPrograms lbi))
         }
 
+-- | The kind of an extra source, which decides where its per-file options go.
+data ExtraSourceKind
+  = CSourceKind
+  | CxxSourceKind
+  | AsmSourceKind
+  | CmmSourceKind
+  | JsSourceKind
+  deriving (Eq, Show)
+
 sourcesGhcOptions
-  :: VerbosityLevel
+  :: ExtraSourceKind
+  -> VerbosityLevel
   -> LocalBuildInfo
   -> BuildInfo
   -> ComponentLocalBuildInfo
   -> SymbolicPath Pkg (Dir Artifacts)
-  -> SymbolicPath Pkg File
+  -> ExtraSource
   -> GhcOptions
-sourcesGhcOptions verbosity lbi bi clbi odir filename =
-  (componentGhcOptions verbosity lbi bi clbi odir)
-    { ghcOptVerbosity = toFlag (min verbosity Normal)
-    , ghcOptMode = toFlag GhcModeCompile
-    , ghcOptInputFiles = toNubListR [filename]
-    , ghcOptObjDir = toFlag odir
-    , ghcOptPackages = toNubListR $ mkGhcOptPackages (promisedPkgs lbi) clbi
-    , -- cpp-options apply only to .hs files; GHC ignores -optP for non-Haskell
-      -- files (and since 9.10 this behavior is explicit/enforced)
-      ghcOptCppOptions = []
-    }
+sourcesGhcOptions kind verbosity lbi bi clbi odir extraSource =
+  addPerFileOpts
+    (componentGhcOptions verbosity lbi bi clbi odir)
+      { ghcOptVerbosity = toFlag (min verbosity Normal)
+      , ghcOptMode = toFlag GhcModeCompile
+      , ghcOptInputFiles = toNubListR [extraSourceFile extraSource]
+      , ghcOptObjDir = toFlag odir
+      , ghcOptPackages = toNubListR $ mkGhcOptPackages (promisedPkgs lbi) clbi
+      , -- cpp-options apply only to .hs files; GHC ignores -optP for non-Haskell
+        -- files (and since 9.10 this behavior is explicit/enforced)
+        ghcOptCppOptions = []
+      }
+  where
+    opts = extraSourceOpts extraSource
+    -- Append the per-file options to the one 'GhcOptions' field GHC consults
+    -- for this kind of source. GHC picks the flag family from the file
+    -- extension, so putting them anywhere else is at best ignored.
+    addPerFileOpts ghcOpts = case kind of
+      CSourceKind -> ghcOpts{ghcOptCcOptions = ghcOptCcOptions ghcOpts ++ opts}
+      CxxSourceKind -> ghcOpts{ghcOptCxxOptions = ghcOptCxxOptions ghcOpts ++ opts}
+      AsmSourceKind -> ghcOpts{ghcOptAsmOptions = ghcOptAsmOptions ghcOpts ++ opts}
+      -- GHC compiles C-- sources itself, so their options are plain GHC
+      -- options, next to the ones @cmm-options@ contributes.
+      CmmSourceKind -> ghcOpts{ghcOptExtra = ghcOptExtra ghcOpts ++ opts}
+      -- GHC only preprocesses JavaScript sources, so their options go to the
+      -- JavaScript preprocessor (@-optJSP@, GHC >= 9.12).
+      JsSourceKind -> ghcOpts{ghcOptJSppOptions = ghcOptJSppOptions ghcOpts ++ opts}
+
+-- | The 'GhcOptions' for compiling a single extra source of the given kind.
+extraSourceGhcOptions
+  :: ExtraSourceKind
+  -> VerbosityLevel
+  -> LocalBuildInfo
+  -> BuildInfo
+  -> ComponentLocalBuildInfo
+  -> SymbolicPath Pkg (Dir Artifacts)
+  -> ExtraSource
+  -> GhcOptions
+extraSourceGhcOptions CSourceKind = splitCandCxxOptions CcProgram
+extraSourceGhcOptions CxxSourceKind = splitCandCxxOptions CxxProgram
+extraSourceGhcOptions AsmSourceKind = sourcesGhcOptions AsmSourceKind
+extraSourceGhcOptions CmmSourceKind = sourcesGhcOptions CmmSourceKind
+extraSourceGhcOptions JsSourceKind = sourcesGhcOptions JsSourceKind
 
 optimizationCFlags :: LocalBuildInfo -> [String]
 optimizationCFlags lbi =
