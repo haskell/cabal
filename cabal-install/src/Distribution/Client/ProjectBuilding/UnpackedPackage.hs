@@ -178,8 +178,14 @@ buildAndRegisterUnpackedPackage
   registerLock
   cacheLock
   pkgshared@ElaboratedSharedConfig
-    { pkgConfigCompiler = compiler
-    , pkgConfigCompilerProgs = progdb
+    { pkgConfigToolchains =
+      Toolchains
+        { buildToolchain =
+          Toolchain
+            { toolchainCompiler = compiler
+            , toolchainProgramDb = progdb
+            }
+        }
     }
   plan
   rpkg@(ReadyPackage pkg)
@@ -451,7 +457,15 @@ buildInplaceUnpackedPackage
   buildSettings@BuildTimeSettings{buildSettingHaddockOpen}
   registerLock
   cacheLock
-  pkgshared@ElaboratedSharedConfig{pkgConfigPlatform = Platform _ os}
+  pkgshared@ElaboratedSharedConfig
+    { pkgConfigToolchains =
+      Toolchains
+        { buildToolchain =
+          Toolchain
+            { toolchainPlatform = Platform _ os
+            }
+        }
+    }
   plan
   rpkg@(ReadyPackage pkg)
   buildStatus
@@ -657,8 +671,14 @@ buildAndInstallUnpackedPackage
   registerLock
   cacheLock
   pkgshared@ElaboratedSharedConfig
-    { pkgConfigCompiler = compiler
-    , pkgConfigPlatform = platform
+    { pkgConfigToolchains =
+      Toolchains
+        { buildToolchain =
+          Toolchain
+            { toolchainCompiler = compiler
+            , toolchainPlatform = platform
+            }
+        }
     }
   plan
   rpkg@(ReadyPackage pkg)

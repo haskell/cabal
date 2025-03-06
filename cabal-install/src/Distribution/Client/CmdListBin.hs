@@ -205,7 +205,7 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
           _ -> []
 
         plat :: Platform
-        plat = pkgConfigPlatform elaboratedSharedConfig
+        plat = toolchainPlatform $ buildToolchain $ pkgConfigToolchains elaboratedSharedConfig
 
         -- here and in PlanOutput,
         -- use binDirectoryFor?

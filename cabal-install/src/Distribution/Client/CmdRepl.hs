@@ -55,7 +55,9 @@ import Distribution.Client.ProjectPlanning
   , ElaboratedSharedConfig (..)
   )
 import Distribution.Client.ProjectPlanning.Types
-  ( elabOrderExeDependencies
+  ( Toolchain (..)
+  , Toolchains (..)
+  , elabOrderExeDependencies
   , showElaboratedInstallPlan
   )
 import Distribution.Client.ScriptUtils
@@ -344,7 +346,7 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
         -- especially in the no-project case.
         withInstallPlan (lessVerbose verbosity) baseCtx' $ \elaboratedPlan sharedConfig -> do
           -- targets should be non-empty map, but there's no NonEmptyMap yet.
-          targets <- validatedTargets (projectConfigShared (projectConfig ctx)) (pkgConfigCompiler sharedConfig) elaboratedPlan targetSelectors
+          targets <- validatedTargets (projectConfigShared (projectConfig ctx)) (toolchainCompiler $ buildToolchain $ pkgConfigToolchains sharedConfig) elaboratedPlan targetSelectors
 
           let
             (unitId, _) = fromMaybe (error "panic: targets should be non-empty") $ safeHead $ Map.toList targets
@@ -368,7 +370,7 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
         let ProjectBaseContext{..} = baseCtx''
 
         -- Recalculate with updated project.
-        targets <- validatedTargets (projectConfigShared projectConfig) (pkgConfigCompiler elaboratedShared') elaboratedPlan targetSelectors
+        targets <- validatedTargets (projectConfigShared projectConfig) (toolchainCompiler $ buildToolchain $ pkgConfigToolchains elaboratedShared') elaboratedPlan targetSelectors
 
         let
           elaboratedPlan' =
@@ -400,7 +402,7 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
               , targetsMap = targets
               }
 
-          ElaboratedSharedConfig{pkgConfigCompiler = compiler} = elaboratedShared'
+          ElaboratedSharedConfig{pkgConfigToolchains = Toolchains{hostToolchain = Toolchain{toolchainCompiler = compiler}}} = elaboratedShared'
 
           repl_flags = case originalComponent of
             Just oci -> generateReplFlags includeTransitive elaboratedPlan' oci
@@ -441,7 +443,7 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
         -- HACK: Just combine together all env overrides, placing the most common things last
 
         -- ghc program with overridden PATH
-        (ghcProg, _) <- requireProgram verbosity ghcProgram (pkgConfigCompilerProgs (elaboratedShared buildCtx'))
+        (ghcProg, _) <- requireProgram verbosity ghcProgram (toolchainProgramDb $ buildToolchain $ pkgConfigToolchains (elaboratedShared buildCtx'))
         let ghcProg' = ghcProg{programOverrideEnv = [("PATH", Just sp)]}
 
         -- Find what the unit files are, and start a repl based on all the response

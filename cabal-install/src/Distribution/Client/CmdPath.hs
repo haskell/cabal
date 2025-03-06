@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 
 -- |
@@ -40,6 +41,7 @@ import Distribution.Client.ProjectConfig.Types
   )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning
+import Distribution.Client.ProjectPlanning.Types (Toolchain (..), Toolchains (..))
 import Distribution.Client.RebuildMonad (runRebuild)
 import Distribution.Client.ScriptUtils
 import Distribution.Client.Setup
@@ -242,10 +244,11 @@ pathAction flags@NixStyleFlags{extraFlags = pathFlags', ..} cliTargetStrings glo
     if not $ fromFlagOrDefault False (pathCompiler pathFlags)
       then pure Nothing
       else do
-        (compiler, _, progDb) <- runRebuild (distProjectRootDirectory . distDirLayout $ baseCtx) $ configureCompiler verbosity (distDirLayout baseCtx) (projectConfig baseCtx)
-        compilerProg <- requireCompilerProg verbosity compiler
-        (configuredCompilerProg, _) <- requireProgram verbosity compilerProg progDb
-        pure $ Just $ mkCompilerInfo configuredCompilerProg compiler
+        let projectRoot = distProjectRootDirectory (distDirLayout baseCtx)
+        Toolchains{buildToolchain} <- runRebuild projectRoot $ configureCompiler verbosity (distDirLayout baseCtx) (projectConfig baseCtx)
+        compilerProg <- requireCompilerProg verbosity (toolchainCompiler buildToolchain)
+        (configuredCompilerProg, _) <- requireProgram verbosity compilerProg (toolchainProgramDb buildToolchain)
+        pure $ Just $ mkCompilerInfo configuredCompilerProg (toolchainCompiler buildToolchain)
 
   paths <- for (fromFlagOrDefault [] $ pathDirectories pathFlags) $ \p -> do
     t <- getPathLocation baseCtx p

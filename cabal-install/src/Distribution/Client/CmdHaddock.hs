@@ -27,9 +27,6 @@ import Distribution.Client.ProjectConfig.Types
   , ProjectConfig (..)
   )
 import Distribution.Client.ProjectOrchestration
-import Distribution.Client.ProjectPlanning
-  ( ElaboratedSharedConfig (..)
-  )
 import Distribution.Client.Setup
   ( CommonSetupFlags (..)
   , ConfigFlags (..)
@@ -48,13 +45,6 @@ import Distribution.Simple.Command
   , usageAlternatives
   )
 import Distribution.Simple.Flag (Flag (..))
-import Distribution.Simple.Program.Builtin
-  ( haddockProgram
-  )
-import Distribution.Simple.Program.Db
-  ( addKnownProgram
-  , reconfigurePrograms
-  )
 import Distribution.Simple.Setup
   ( HaddockFlags (..)
   , fromFlagOrDefault
@@ -160,6 +150,7 @@ haddockAction relFlags targetStrings globalFlags = do
             projCtx{buildSettings = (buildSettings projCtx){buildSettingHaddockOpen = True}}
         | otherwise =
             projCtx
+
   absProjectConfig <- mkConfigAbsolute relProjectConfig
   let baseCtx = relBaseCtx{projectConfig = absProjectConfig}
 
@@ -188,28 +179,32 @@ haddockAction relFlags targetStrings globalFlags = do
               TargetActionHaddock
               targets
               elaboratedPlan
+
       return (elaboratedPlan', targets)
 
   printPlan verbosity baseCtx buildCtx
 
-  progs <-
-    reconfigurePrograms
-      verbosity
-      (haddockProgramPaths haddockFlags)
-      (haddockProgramArgs haddockFlags)
-      -- we need to insert 'haddockProgram' before we reconfigure it,
-      -- otherwise 'set
-      . addKnownProgram haddockProgram
-      . pkgConfigCompilerProgs
-      . elaboratedShared
-      $ buildCtx
+  -- TODO
+  -- progs <-
+  --   reconfigurePrograms
+  --     verbosity
+  --     (haddockProgramPaths haddockFlags)
+  --     (haddockProgramArgs haddockFlags)
+  --     -- we need to insert 'haddockProgram' before we reconfigure it,
+  --     -- otherwise 'set
+  --     . addKnownProgram haddockProgram
+  --     . pkgConfigCompilerProgs
+  --     . elaboratedShared
+  --     $ buildCtx
+
+  -- TODO
   let buildCtx' =
         buildCtx
-          { elaboratedShared =
-              (elaboratedShared buildCtx)
-                { pkgConfigCompilerProgs = progs
-                }
-          }
+  -- { elaboratedShared =
+  --     (elaboratedShared buildCtx)
+  --       { pkgConfigCompilerProgs = progs
+  --       }
+  -- }
 
   buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx'
   runProjectPostBuildPhase verbosity baseCtx buildCtx' buildOutcomes

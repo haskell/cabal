@@ -55,7 +55,9 @@ import Distribution.Client.ProjectPlanning
   )
 import qualified Distribution.Client.ProjectPlanning as Planning
 import Distribution.Client.ProjectPlanning.Types
-  ( dataDirsEnvironmentForPlan
+  ( Toolchain (..)
+  , Toolchains (..)
+  , dataDirsEnvironmentForPlan
   )
 import Distribution.Client.Setup
   ( ConfigFlags (configCommonFlags)
@@ -170,7 +172,7 @@ execAction flags@NixStyleFlags{..} extraArgs globalFlags = do
 
   -- Some dependencies may have executables. Let's put those on the PATH.
   let extraPaths = pathAdditions baseCtx buildCtx
-      pkgProgs = pkgConfigCompilerProgs (elaboratedShared buildCtx)
+      pkgProgs = toolchainProgramDb $ buildToolchain $ pkgConfigToolchains (elaboratedShared buildCtx)
       extraEnvVars =
         dataDirsEnvironmentForPlan
           (distDirLayout baseCtx)
@@ -185,7 +187,7 @@ execAction flags@NixStyleFlags{..} extraArgs globalFlags = do
   -- point at the file.
   -- In case ghc is too old to support environment files,
   -- we pass the same info as arguments
-  let compiler = pkgConfigCompiler $ elaboratedShared buildCtx
+  let compiler = toolchainCompiler $ buildToolchain $ pkgConfigToolchains $ elaboratedShared buildCtx
       envFilesSupported = supportsPkgEnvFiles (getImplInfo compiler)
   case extraArgs of
     [] -> dieWithException verbosity SpecifyAnExecutable
@@ -243,7 +245,7 @@ matchCompilerPath elaboratedShared program =
   programPath program
     `elem` (programPath <$> configuredCompilers)
   where
-    configuredCompilers = configuredPrograms $ pkgConfigCompilerProgs elaboratedShared
+    configuredCompilers = configuredPrograms $ toolchainProgramDb $ buildToolchain $ pkgConfigToolchains elaboratedShared
 
 -- | Execute an action with a temporary .ghc.environment file reflecting the
 -- current environment. The action takes an environment containing the env

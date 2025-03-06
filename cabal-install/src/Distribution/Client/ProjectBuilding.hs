@@ -343,8 +343,7 @@ rebuildTargets
   storeDirLayout
   installPlan
   sharedPackageConfig@ElaboratedSharedConfig
-    { pkgConfigCompiler = compiler
-    , pkgConfigCompilerProgs = progdb
+    { pkgConfigToolchains = Toolchains{hostToolchain = Toolchain{toolchainCompiler = compiler, toolchainProgramDb = progdb}}
     }
   pkgsBuildStatus
   buildSettings@BuildTimeSettings

@@ -525,7 +525,7 @@ runProjectPostBuildPhase
             AlwaysWriteGhcEnvironmentFiles -> True
             NeverWriteGhcEnvironmentFiles -> False
             WriteGhcEnvironmentFilesOnlyForGhc844AndNewer ->
-              let compiler = pkgConfigCompiler elaboratedShared
+              let compiler = toolchainCompiler $ buildToolchain $ pkgConfigToolchains elaboratedShared
                   ghcCompatVersion = compilerCompatVersion GHC compiler
                in maybe False (>= mkVersion [8, 4, 4]) ghcCompatVersion
 
@@ -1089,7 +1089,7 @@ printPlan
          in -- Not necessary to "escape" it, it's just for user output
             unwords . ("" :) $
               commandShowOptions
-                (Setup.configureCommand (pkgConfigCompilerProgs elaboratedShared))
+                (Setup.configureCommand (toolchainProgramDb $ buildToolchain $ pkgConfigToolchains elaboratedShared))
                 partialConfigureFlags
 
       showBuildStatus :: BuildStatus -> String
@@ -1121,7 +1121,7 @@ printPlan
       showBuildProfile =
         "Build profile: "
           ++ unwords
-            [ "-w " ++ (showCompilerId . pkgConfigCompiler) elaboratedShared
+            [ "-w " ++ (showCompilerId . toolchainCompiler . buildToolchain . pkgConfigToolchains) elaboratedShared
             , "-O"
                 ++ ( case globalOptimization <> localOptimization of -- if local is not set, read global
                       Setup.Flag NoOptimisation -> "0"
@@ -1134,8 +1134,8 @@ printPlan
 
 writeBuildReports :: BuildTimeSettings -> ProjectBuildContext -> ElaboratedInstallPlan -> BuildOutcomes -> IO ()
 writeBuildReports settings buildContext plan buildOutcomes = do
-  let plat@(Platform arch os) = pkgConfigPlatform . elaboratedShared $ buildContext
-      comp = pkgConfigCompiler . elaboratedShared $ buildContext
+  let plat@(Platform arch os) = toolchainPlatform . buildToolchain . pkgConfigToolchains . elaboratedShared $ buildContext
+      comp = toolchainCompiler . buildToolchain . pkgConfigToolchains . elaboratedShared $ buildContext
       getRepo (RepoTarballPackage r _ _) = Just r
       getRepo _ = Nothing
       fromPlanPackage (InstallPlan.Configured pkg) (Just result) =

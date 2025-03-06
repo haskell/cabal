@@ -46,9 +46,7 @@ import Distribution.Simple.BuildPaths
   )
 import Distribution.Simple.Compiler
 import Distribution.Simple.GHC
-  ( GhcEnvironmentFileEntry (..)
-  , GhcImplInfo (supportsPkgEnvFiles)
-  , getImplInfo
+  ( GhcEnvironmentFileEntry (GhcEnvFileComment)
   , simpleGhcEnvironmentFile
   , writeGhcEnvironmentFile
   )
@@ -57,9 +55,9 @@ import Distribution.System
 import Distribution.Types.Version
   ( mkVersion
   )
-import Distribution.Utils.Path hiding
-  ( (<.>)
-  , (</>)
+import Distribution.Utils.Path
+  ( getSymbolicPath
+  , makeSymbolicPath
   )
 import Distribution.Verbosity
 
@@ -107,7 +105,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
     [ "cabal-version" J..= jdisplay cabalInstallVersion
     , "cabal-lib-version" J..= jdisplay cabalVersion
     , "compiler-id"
-        J..= (J.String . showCompilerId . pkgConfigCompiler)
+        J..= (J.String . showCompilerId . toolchainCompiler . hostToolchain . pkgConfigToolchains)
           elaboratedSharedConfig
     , "os" J..= jdisplay os
     , "arch" J..= jdisplay arch
@@ -115,7 +113,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
     ]
   where
     plat :: Platform
-    plat@(Platform arch os) = pkgConfigPlatform elaboratedSharedConfig
+    plat@(Platform arch os) = toolchainPlatform . hostToolchain . pkgConfigToolchains $ elaboratedSharedConfig
 
     installPlanToJ :: ElaboratedInstallPlan -> [J.Value]
     installPlanToJ = map planPackageToJ . InstallPlan.toList
@@ -799,7 +797,7 @@ createPackageEnvironment
   elaboratedPlan
   elaboratedShared
   buildStatus
-    | compilerFlavor (pkgConfigCompiler elaboratedShared) == GHC =
+    | compilerFlavor (toolchainCompiler $ hostToolchain $ pkgConfigToolchains elaboratedShared) == GHC =
         do
           envFileM <-
             writePlanGhcEnvironment
@@ -829,29 +827,30 @@ writePlanGhcEnvironment
 writePlanGhcEnvironment
   path
   elaboratedInstallPlan
-  ElaboratedSharedConfig
-    { pkgConfigCompiler = compiler
-    , pkgConfigPlatform = platform
-    }
-  postBuildStatus
-    | compilerFlavor compiler == GHC
-    , supportsPkgEnvFiles (getImplInfo compiler) =
-        -- TODO: check ghcjs compat
-        fmap Just $
-          writeGhcEnvironmentFile
+  elaboratedSharedConfig
+  postBuildStatus =
+    -- \| compilerFlavor compiler == GHC
+    -- , supportsPkgEnvFiles (getImplInfo compiler) =
+
+    -- TODO: check ghcjs compat
+    fmap Just $
+      writeGhcEnvironmentFile
+        path
+        -- FIXME
+        (toolchainPlatform (hostToolchain (pkgConfigToolchains elaboratedSharedConfig)))
+        -- FIXME
+        (compilerVersion (toolchainCompiler (hostToolchain (pkgConfigToolchains elaboratedSharedConfig))))
+        ( renderGhcEnvironmentFile
             path
-            platform
-            (compilerVersion compiler)
-            ( renderGhcEnvironmentFile
-                path
-                elaboratedInstallPlan
-                postBuildStatus
-            )
+            elaboratedInstallPlan
+            postBuildStatus
+        )
+
 -- TODO: [required eventually] support for writing user-wide package
 -- environments, e.g. like a global project, but we would not put the
 -- env file in the home dir, rather it lives under ~/.ghc/
 
-writePlanGhcEnvironment _ _ _ _ = return Nothing
+-- writePlanGhcEnvironment _ _ _ _ = return Nothing
 
 renderGhcEnvironmentFile
   :: FilePath

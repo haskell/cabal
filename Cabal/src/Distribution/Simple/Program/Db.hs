@@ -67,6 +67,7 @@ module Distribution.Simple.Program.Db
   , ConfiguredProgs
   , updateUnconfiguredProgs
   , updateConfiguredProgs
+  , programDbSignature
   ) where
 
 import Distribution.Compat.Prelude
@@ -564,3 +565,17 @@ requireProgramVersion verbosity prog range programDb =
   join $
     either (dieWithException verbosity) return
       `fmap` lookupProgramVersion verbosity prog range programDb
+
+-- | Select the bits of a 'ProgramDb' to monitor for value changes.
+-- Use 'programsMonitorFiles' for the files to monitor.
+programDbSignature :: ProgramDb -> [ConfiguredProgram]
+programDbSignature progdb =
+  [ prog
+    { programMonitorFiles = []
+    , programOverrideEnv =
+        filter
+          ((/= "PATH") . fst)
+          (programOverrideEnv prog)
+    }
+  | prog <- configuredPrograms progdb
+  ]

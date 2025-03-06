@@ -613,6 +613,9 @@ instance Arbitrary ProjectConfigShared where
     projectConfigHcFlavor <- arbitrary
     projectConfigHcPath <- arbitraryFlag arbitraryShortToken
     projectConfigHcPkg <- arbitraryFlag arbitraryShortToken
+    projectConfigHostHcFlavor <- arbitrary
+    projectConfigHostHcPath <- arbitraryFlag arbitraryShortToken
+    projectConfigHostHcPkg <- arbitraryFlag arbitraryShortToken
     projectConfigHaddockIndex <- arbitrary
     projectConfigInstallDirs <- fixInstallDirs <$> arbitrary
     projectConfigPackageDBs <- shortListOf 2 arbitrary
@@ -660,6 +663,9 @@ instance Arbitrary ProjectConfigShared where
         <*> shrinker projectConfigHcFlavor
         <*> shrinkerAla (fmap NonEmpty) projectConfigHcPath
         <*> shrinkerAla (fmap NonEmpty) projectConfigHcPkg
+        <*> shrinker projectConfigHostHcFlavor
+        <*> shrinkerAla (fmap NonEmpty) projectConfigHostHcPath
+        <*> shrinkerAla (fmap NonEmpty) projectConfigHostHcPkg
         <*> shrinker projectConfigHaddockIndex
         <*> shrinker projectConfigInstallDirs
         <*> shrinker projectConfigPackageDBs

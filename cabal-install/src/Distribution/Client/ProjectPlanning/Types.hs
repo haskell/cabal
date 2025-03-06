@@ -58,6 +58,10 @@ module Distribution.Client.ProjectPlanning.Types
   , isBenchComponentTarget
   , componentOptionalStanza
 
+    -- * Toolchain
+  , Toolchain (..)
+  , Toolchains (..)
+
     -- * Setup script
   , SetupScriptStyle (..)
   ) where
@@ -100,6 +104,7 @@ import Distribution.Simple.LocalBuildInfo
   , LibraryName (..)
   )
 import Distribution.Simple.Program
+import Distribution.Simple.Program.Db (configuredPrograms)
 import Distribution.Simple.Setup
   ( DumpBuildInfo (..)
   , HaddockTarget
@@ -184,9 +189,7 @@ showElaboratedInstallPlan = InstallPlan.showInstallPlan_gen showNode
 --      even platform and compiler could be different if we're building things
 --      like a server + client with ghc + ghcjs
 data ElaboratedSharedConfig = ElaboratedSharedConfig
-  { pkgConfigPlatform :: Platform
-  , pkgConfigCompiler :: Compiler -- TODO: [code cleanup] replace with CompilerInfo
-  , pkgConfigCompilerProgs :: ProgramDb
+  { pkgConfigToolchains :: Toolchains
   -- ^ The programs that the compiler configured (e.g. for GHC, the progs
   -- ghc & ghc-pkg). Once constructed, only the 'configuredPrograms' are
   -- used.
@@ -344,10 +347,10 @@ normaliseConfiguredPackage
   :: ElaboratedSharedConfig
   -> ElaboratedConfiguredPackage
   -> ElaboratedConfiguredPackage
-normaliseConfiguredPackage ElaboratedSharedConfig{pkgConfigCompilerProgs} pkg =
+normaliseConfiguredPackage ElaboratedSharedConfig{pkgConfigToolchains = Toolchains{buildToolchain}} pkg =
   pkg{elabProgramArgs = Map.mapMaybeWithKey lookupFilter (elabProgramArgs pkg)}
   where
-    knownProgramDb = addKnownPrograms builtinPrograms pkgConfigCompilerProgs
+    knownProgramDb = addKnownPrograms builtinPrograms (toolchainProgramDb buildToolchain)
 
     pkgDesc :: PackageDescription
     pkgDesc = elabPkgDescription pkg
@@ -540,8 +543,8 @@ elabDistDirParams shared elab =
     , distParamComponentName = case elabPkgOrComp elab of
         ElabComponent comp -> compComponentName comp
         ElabPackage _ -> Nothing
-    , distParamCompilerId = compilerId (pkgConfigCompiler shared)
-    , distParamPlatform = pkgConfigPlatform shared
+    , distParamCompilerId = compilerId $ toolchainCompiler $ hostToolchain $ pkgConfigToolchains shared
+    , distParamPlatform = toolchainPlatform $ hostToolchain $ pkgConfigToolchains shared
     , distParamOptimization = LBC.withOptimization $ elabBuildOptions elab
     }
 
@@ -908,6 +911,36 @@ componentOptionalStanza :: CD.Component -> Maybe OptionalStanza
 componentOptionalStanza (CD.ComponentTest _) = Just TestStanzas
 componentOptionalStanza (CD.ComponentBench _) = Just BenchStanzas
 componentOptionalStanza _ = Nothing
+
+---------------------------
+-- Toolchain
+--
+
+data Toolchain = Toolchain
+  { toolchainPlatform :: Platform
+  , toolchainCompiler :: Compiler
+  , toolchainProgramDb :: ProgramDb
+  }
+  deriving (Show, Generic, Typeable)
+
+-- TODO: review this
+instance Eq Toolchain where
+  lhs == rhs =
+    (((==) `on` toolchainPlatform) lhs rhs)
+      && (((==) `on` toolchainCompiler) lhs rhs)
+      && ((((==)) `on` (configuredPrograms . toolchainProgramDb)) lhs rhs)
+
+instance Binary Toolchain
+instance Structured Toolchain
+
+data Toolchains = Toolchains
+  { buildToolchain :: Toolchain
+  , hostToolchain :: Toolchain
+  }
+  deriving (Eq, Show, Generic, Typeable)
+
+instance Binary Toolchains
+instance Structured Toolchains
 
 ---------------------------
 -- Setup.hs script policy

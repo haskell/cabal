@@ -37,7 +37,9 @@ import Distribution.Client.ProjectPlanning
   , TargetAction (..)
   )
 import Distribution.Client.ProjectPlanning.Types
-  ( elabDistDirParams
+  ( Toolchain (..)
+  , Toolchains (..)
+  , elabDistDirParams
   )
 import Distribution.Client.ScriptUtils
   ( AcceptNoTargets (..)
@@ -72,14 +74,6 @@ import Distribution.Simple.Haddock (createHaddockIndex)
 import Distribution.Simple.InstallDirs
   ( toPathTemplate
   )
-import Distribution.Simple.Program.Builtin
-  ( haddockProgram
-  )
-import Distribution.Simple.Program.Db
-  ( addKnownProgram
-  , reconfigurePrograms
-  , requireProgramVersion
-  )
 import Distribution.Simple.Setup
   ( HaddockFlags (..)
   , HaddockProjectFlags (..)
@@ -100,8 +94,6 @@ import Distribution.Types.PackageDescription (PackageDescription (benchmarks, su
 import Distribution.Types.PackageId (pkgName)
 import Distribution.Types.PackageName (unPackageName)
 import Distribution.Types.UnitId (unUnitId)
-import Distribution.Types.Version (mkVersion)
-import Distribution.Types.VersionRange (orLaterVersion)
 import Distribution.Verbosity as Verbosity
   ( normal
   )
@@ -166,24 +158,26 @@ haddockProjectAction flags _extraArgs globalFlags = do
           pkgs :: [Either InstalledPackageInfo ElaboratedConfiguredPackage]
           pkgs = matchingPackages elaboratedPlan
 
-      progs <-
-        reconfigurePrograms
-          verbosity
-          (haddockProjectProgramPaths flags)
-          (haddockProjectProgramArgs flags)
-          -- we need to insert 'haddockProgram' before we reconfigure it,
-          -- otherwise 'set
-          . addKnownProgram haddockProgram
-          . pkgConfigCompilerProgs
-          $ sharedConfig
-      let sharedConfig' = sharedConfig{pkgConfigCompilerProgs = progs}
+      -- TODO
+      -- progs <-
+      --   reconfigurePrograms
+      --     verbosity
+      --     (haddockProjectProgramPaths flags)
+      --     (haddockProjectProgramArgs flags)
+      --     -- we need to insert 'haddockProgram' before we reconfigure it,
+      --     -- otherwise 'set
+      --     . addKnownProgram haddockProgram
+      --     . pkgConfigCompilerProgs
+      --     $ sharedConfig
+      -- let sharedConfig' = sharedConfig{pkgConfigCompilerProgs = progs}
+      let sharedConfig' = sharedConfig
 
-      _ <-
-        requireProgramVersion
-          verbosity
-          haddockProgram
-          (orLaterVersion (mkVersion [2, 26, 1]))
-          progs
+      -- _ <-
+      --   requireProgramVersion
+      --     verbosity
+      --     haddockProgram
+      --     (orLaterVersion (mkVersion [2, 26, 1]))
+      --     progs
 
       --
       -- Build project; we need to build dependencies.
@@ -301,7 +295,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
                     packageDir =
                       storePackageDirectory
                         (cabalStoreDirLayout cabalLayout)
-                        (pkgConfigCompiler sharedConfig')
+                        (toolchainCompiler $ buildToolchain $ pkgConfigToolchains sharedConfig')
                         (elabUnitId package)
                     -- TODO: use `InstallDirTemplates`
                     docDir = packageDir </> "share" </> "doc" </> "html"
@@ -344,11 +338,12 @@ haddockProjectAction flags _extraArgs globalFlags = do
                     ]
               , haddockProjectUseUnicode = NoFlag
               }
+      -- NOTE: this lives in Cabal
       createHaddockIndex
         verbosity
-        (pkgConfigCompilerProgs sharedConfig')
-        (pkgConfigCompiler sharedConfig')
-        (pkgConfigPlatform sharedConfig')
+        (toolchainProgramDb $ buildToolchain $ pkgConfigToolchains sharedConfig')
+        (toolchainCompiler $ buildToolchain $ pkgConfigToolchains sharedConfig')
+        (toolchainPlatform $ buildToolchain $ pkgConfigToolchains sharedConfig')
         Nothing
         flags'
   where

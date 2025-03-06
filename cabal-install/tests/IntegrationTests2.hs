@@ -1891,10 +1891,10 @@ testSetupScriptStyles config reportSubCase = do
 
   let isOSX (Platform _ OSX) = True
       isOSX _ = False
-      compilerVer = compilerVersion (pkgConfigCompiler sharedConfig)
+      compilerVer = compilerVersion (toolchainCompiler $ buildToolchain $ pkgConfigToolchains sharedConfig)
   -- Skip the Custom tests when the shipped Cabal library is buggy
   unless
-    ( (isOSX (pkgConfigPlatform sharedConfig) && (compilerVer < mkVersion [7, 10]))
+    ( (isOSX (toolchainPlatform $ buildToolchain $ pkgConfigToolchains sharedConfig) && (compilerVer < mkVersion [7, 10]))
         -- 9.10 ships Cabal 3.12.0.0 affected by #9940
         || (mkVersion [9, 10] <= compilerVer && compilerVer < mkVersion [9, 11])
     )
@@ -1908,7 +1908,7 @@ testSetupScriptStyles config reportSubCase = do
       removeFile (basedir </> testdir1 </> "marker")
 
       -- implicit deps implies 'Cabal < 2' which conflicts w/ GHC 8.2 or later
-      when (compilerVersion (pkgConfigCompiler sharedConfig) < mkVersion [8, 2]) $ do
+      when (compilerVersion (toolchainCompiler $ buildToolchain $ pkgConfigToolchains sharedConfig) < mkVersion [8, 2]) $ do
         reportSubCase (show SetupCustomImplicitDeps)
         (plan2, res2) <- executePlan =<< planProject testdir2 config
         pkg2 <- expectPackageInstalled plan2 res2 pkgidA
@@ -2784,7 +2784,7 @@ testHaddockProjectDependencies config = do
   (_, _, sharedConfig) <- planProject testdir config
   -- `haddock-project` is only supported by `haddock-2.26.1` and above which is
   -- shipped with `ghc-9.4`
-  when (compilerVersion (pkgConfigCompiler sharedConfig) > mkVersion [9, 4]) $ do
+  when (compilerVersion (toolchainCompiler $ buildToolchain $ pkgConfigToolchains sharedConfig) > mkVersion [9, 4]) $ do
     let dir = basedir </> testdir
     cleanHaddockProject testdir
     withCurrentDirectory dir $ do
