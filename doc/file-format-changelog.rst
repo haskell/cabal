@@ -19,6 +19,15 @@ relative to the respective preceding *published* version.
     versions of the ``Cabal`` library denote unreleased development
     branches which have no stability guarantee.
 
+``cabal-version: 3.20``
+-----------------------
+
+* The extra-source fields :pkg-field:`c-sources`, :pkg-field:`cxx-sources`,
+  :pkg-field:`asm-sources`, :pkg-field:`cmm-sources` and :pkg-field:`js-sources`
+  accept :ref:`per-file options <per-file-source-options>`, given in
+  parentheses after each file, e.g. ``c-sources: foo.c (-DFOO) bar.c``. Options
+  are passed to the compiler only for that file.
+
 ``cabal-version: 3.18``
 -----------------------
 

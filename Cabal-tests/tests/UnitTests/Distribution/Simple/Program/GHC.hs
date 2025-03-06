@@ -10,7 +10,7 @@ import Distribution.Types.ParStrat
 import Distribution.Simple.Flag
 import Distribution.Simple.Compiler (Compiler(..), CompilerId(..), CompilerFlavor(..), AbiTag(NoAbiTag))
 import Distribution.PackageDescription (emptyPackageDescription)
-import Distribution.Simple.Program.GHC (GhcOptions, normaliseGhcArgs, renderGhcOptions, ghcOptNumJobs, ghcOptJSppOptions)
+import Distribution.Simple.Program.GHC (GhcOptions, normaliseGhcArgs, renderGhcOptions, ghcOptNumJobs, ghcOptExtra, ghcOptJSppOptions)
 import Distribution.Version            (mkVersion, Version)
 
 tests :: TestTree
@@ -67,6 +67,10 @@ tests = testGroup "Distribution.Simple.Program.GHC"
             let flags = renderWith (mkVersion [9,10,1])
                   (mempty { ghcOptJSppOptions = ["-DJS"] })
             assertBool ("unexpected -optJSP in " ++ show flags) ("-optJSP-DJS" `notElem` flags)
+        , testCase "C-- options are plain GHC options at any version" $ do
+            let flags = renderWith (mkVersion [9,10,1])
+                  (mempty { ghcOptExtra = ["-mavx2"] })
+            assertBool ("expected -mavx2 in " ++ show flags) ("-mavx2" `elem` flags)
         ]
     ]
 
