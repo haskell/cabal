@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DataKinds #-}
 module Distribution.Described (
     Described (..),
     describeDoc,
@@ -79,6 +80,7 @@ import Distribution.Types.Dependency               (Dependency)
 import Distribution.Types.ExecutableScope          (ExecutableScope)
 import Distribution.Types.ExeDependency            (ExeDependency)
 import Distribution.Types.ExposedModule            (ExposedModule)
+import Distribution.Types.ExtraSource              (ExtraSource)
 import Distribution.Types.Flag                     (FlagAssignment, FlagName)
 import Distribution.Types.ForeignLib               (LibVersionInfo)
 import Distribution.Types.ForeignLibOption         (ForeignLibOption)
@@ -98,7 +100,7 @@ import Distribution.Types.SourceRepo               (RepoType)
 import Distribution.Types.TestType                 (TestType)
 import Distribution.Types.UnitId                   (UnitId)
 import Distribution.Types.UnqualComponentName      (UnqualComponentName)
-import Distribution.Utils.Path                     (SymbolicPath, RelativePath)
+import Distribution.Utils.Path                     (SymbolicPath, RelativePath, FileOrDir(..), Pkg)
 import Distribution.Verbosity                      (Verbosity)
 import Distribution.Version                        (Version, VersionRange)
 import Language.Haskell.Extension                  (Extension, Language, knownLanguages)
@@ -404,6 +406,12 @@ instance Described ExposedModule where
 
 instance Described Extension where
     describe _ = RETodo
+
+instance Described ExtraSource where
+    describe _ = REAppend 
+        [ describe (Proxy :: Proxy (SymbolicPath Pkg File))
+        , REOpt (reChar '(' <> reSpacedList (describe (Proxy :: Proxy Token')) <> reChar ')')
+        ]
 
 instance Described FlagAssignment where
     describe _ = REMunch RESpaces1 $

@@ -1,0 +1,10 @@
+cabal-version: 3.4
+name: extra-sources
+version: 0
+build-type: Simple
+
+library
+  hs-source-dirs: src
+  build-depends: base
+  exposed-modules: MyLib
+  c-sources: cbits/test.c (-D DOIT=1)

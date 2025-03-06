@@ -28,6 +28,7 @@ import Distribution.Types.BuildInfo
 import Distribution.Types.Component
 import Distribution.Types.ComponentRequestedSpec (ComponentRequestedSpec)
 import Distribution.Types.Executable
+import Distribution.Types.ExtraSource
 import Distribution.Types.ForeignLib
 import Distribution.Types.Library
 import Distribution.Types.PackageDescription
@@ -176,11 +177,11 @@ needBuildInfo pkg_descr bi modules = do
         matchDirFileGlobWithDie normal (\_ _ -> return []) (specVersion pkg_descr) (Just $ makeSymbolicPath root) fpath
   traverse_ needIfExists $
     concat
-      [ map getSymbolicPath $ cSources bi
-      , map getSymbolicPath $ cxxSources bi
-      , map getSymbolicPath $ jsSources bi
-      , map getSymbolicPath $ cmmSources bi
-      , map getSymbolicPath $ asmSources bi
+      [ map (getSymbolicPath . extraSourceFile) $ cSources bi
+      , map (getSymbolicPath . extraSourceFile) $ cxxSources bi
+      , map (getSymbolicPath . extraSourceFile) $ jsSources bi
+      , map (getSymbolicPath . extraSourceFile) $ cmmSources bi
+      , map (getSymbolicPath . extraSourceFile) $ asmSources bi
       , map getSymbolicPath $ expandedExtraSrcFiles
       ]
   for_ (fmap getSymbolicPath $ installIncludes bi) $ \f ->

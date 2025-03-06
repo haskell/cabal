@@ -566,11 +566,11 @@ allSourcesBuildInfo verbosity rip mbWorkDir bi pps modules = do
   return $
     sources
       ++ catMaybes bootFiles
-      ++ cSources bi
-      ++ cxxSources bi
-      ++ cmmSources bi
-      ++ asmSources bi
-      ++ jsSources bi
+      ++ map extraSourceFile (cSources bi)
+      ++ map extraSourceFile (cxxSources bi)
+      ++ map extraSourceFile (cmmSources bi)
+      ++ map extraSourceFile (asmSources bi)
+      ++ map extraSourceFile (jsSources bi)
   where
     nonEmpty' :: b -> ([a] -> b) -> [a] -> b
     nonEmpty' x _ [] = x

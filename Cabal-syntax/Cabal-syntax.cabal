@@ -141,6 +141,7 @@ library
     Distribution.Types.Executable
     Distribution.Types.Executable.Lens
     Distribution.Types.ExecutableScope
+    Distribution.Types.ExtraSource
     Distribution.Types.ExposedModule
     Distribution.Types.Flag
     Distribution.Types.ForeignLib
