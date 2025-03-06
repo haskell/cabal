@@ -476,7 +476,7 @@ configureCompiler
         , projectConfigHcPkg
         }
     , projectConfigLocalPackages =
-      PackageConfig
+      projectConfigLocalPackages@PackageConfig
         { packageConfigProgramPaths
         , packageConfigProgramPathExtra
         }
@@ -497,16 +497,14 @@ configureCompiler
       )
       $ do
         liftIO $ info verbosity "Compiler settings changed, reconfiguring..."
-        let extraPath = fromNubList packageConfigProgramPathExtra
-        progdb <- liftIO $ prependProgramSearchPath verbosity extraPath [] defaultProgramDb
-        let progdb' = userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths)) progdb
+        progdb <- liftIO $ resolveProgramDb verbosity projectConfigLocalPackages
         result@(_, _, progdb'') <-
           liftIO $
             Cabal.configCompilerEx
               hcFlavor
               hcPath
               hcPkg
-              progdb'
+              progdb
               verbosity
 
         -- Note that we added the user-supplied program locations and args

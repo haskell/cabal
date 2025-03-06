@@ -57,6 +57,7 @@ module Distribution.Client.ProjectConfig
   , BuildTimeSettings (..)
   , resolveBuildTimeSettings
   , resolveNumJobsSetting
+  , resolveProgramDb
 
     -- * Checking configuration
   , checkBadPerPackageCompilerPaths
@@ -175,6 +176,9 @@ import Distribution.Simple.InstallDirs
   )
 import Distribution.Simple.Program
   ( ConfiguredProgram (..)
+  , ProgramDb
+  , defaultProgramDb
+  , userSpecifyPaths
   )
 import Distribution.Simple.Setup
   ( Flag (Flag)
@@ -245,6 +249,7 @@ import System.IO
   )
 
 import Distribution.Deprecated.ProjectParseUtils (ProjectParseError (..), ProjectParseWarning)
+import Distribution.Simple.Program.Db (prependProgramSearchPath)
 import Distribution.Solver.Types.ProjectConfigPath
 
 ----------------------------------------
@@ -553,6 +558,12 @@ resolveNumJobsSetting projectConfigUseSemaphore projectConfigNumJobs =
     else case (determineNumJobs projectConfigNumJobs) of
       1 -> Serial
       n -> NumJobs (Just n)
+
+resolveProgramDb :: Verbosity -> PackageConfig -> IO ProgramDb
+resolveProgramDb verbosity pkgconf = do
+  let extraPath = fromNubList (packageConfigProgramPathExtra pkgconf)
+  progdb <- prependProgramSearchPath verbosity extraPath [] defaultProgramDb
+  return $ userSpecifyPaths (Map.toList (getMapLast (packageConfigProgramPaths pkgconf))) progdb
 
 ---------------------------------------------
 -- Reading and writing project config files
