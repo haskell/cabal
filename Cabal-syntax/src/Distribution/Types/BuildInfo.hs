@@ -21,6 +21,7 @@ import Prelude ()
 
 import Distribution.Types.Dependency
 import Distribution.Types.ExeDependency
+import Distribution.Types.ExtraSource
 import Distribution.Types.LegacyExeDependency
 import Distribution.Types.Mixin
 import Distribution.Types.PkgconfigDependency
@@ -70,14 +71,17 @@ data BuildInfo = BuildInfo
   , frameworks :: [RelativePath Framework File]
   -- ^ support frameworks for Mac OS X
   , extraFrameworkDirs :: [SymbolicPath Pkg (Dir Framework)]
-  -- ^ extra locations to find frameworks.
-  , asmSources :: [SymbolicPath Pkg File]
-  -- ^ Assembly files.
-  , cmmSources :: [SymbolicPath Pkg File]
-  -- ^ C-- files.
-  , cSources :: [SymbolicPath Pkg File]
-  , cxxSources :: [SymbolicPath Pkg File]
-  , jsSources :: [SymbolicPath Pkg File]
+  -- ^ extra locations to find frameworks
+  , asmSources :: [ExtraSource]
+  -- ^ Assembly source files
+  , cmmSources :: [ExtraSource]
+  -- ^ C-- source files
+  , cSources :: [ExtraSource]
+  -- ^ C source files
+  , cxxSources :: [ExtraSource]
+  -- ^ C++ source files
+  , jsSources :: [ExtraSource]
+  -- ^ JavaScript source file
   , hsSourceDirs :: [SymbolicPath Pkg (Dir Source)]
   -- ^ where to look for the Haskell module hierarchy
   , -- NB: these are symbolic paths are not relative paths,

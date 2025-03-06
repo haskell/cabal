@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP                 #-}
+{-# LANGUAGE FlexibleInstances #-}
 #if !(__GLASGOW_HASKELL__ >= 806 && defined(MIN_VERSION_nothunks))
 module Main (main) where
 main :: IO ()
@@ -72,6 +73,7 @@ instance NoThunks ConfVar
 instance NoThunks Dependency
 instance NoThunks Executable
 instance NoThunks ExecutableScope
+instance NoThunks ExtraSource
 instance NoThunks FlagName
 instance NoThunks ForeignLib
 instance NoThunks ForeignLibOption

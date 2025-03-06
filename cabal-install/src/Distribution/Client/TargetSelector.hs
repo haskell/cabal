@@ -72,6 +72,7 @@ import Distribution.PackageDescription
   , BenchmarkInterface (..)
   , BuildInfo (..)
   , Executable (..)
+  , ExtraSource (..)
   , PackageDescription
   , TestSuite (..)
   , TestSuiteInterface (..)
@@ -1921,8 +1922,8 @@ collectKnownComponentInfo pkg =
     , cinfoSrcDirs = ordNub (map getSymbolicPath (hsSourceDirs bi))
     , cinfoModules = ordNub (componentModules c)
     , cinfoHsFiles = ordNub (componentHsFiles c)
-    , cinfoCFiles = ordNub (map getSymbolicPath $ cSources bi)
-    , cinfoJsFiles = ordNub (map getSymbolicPath $ jsSources bi)
+    , cinfoCFiles = ordNub (map (getSymbolicPath . extraSourceFile) $ cSources bi)
+    , cinfoJsFiles = ordNub (map (getSymbolicPath . extraSourceFile) $ jsSources bi)
     }
   | c <- pkgComponents pkg
   , let bi = componentBuildInfo c

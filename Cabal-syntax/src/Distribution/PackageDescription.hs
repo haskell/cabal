@@ -48,6 +48,9 @@ module Distribution.PackageDescription
   , module Distribution.Types.HookedBuildInfo
   , module Distribution.Types.SetupBuildInfo
 
+   -- * Extra sources
+  , module Distribution.Types.ExtraSource
+
     -- * Flags
   , module Distribution.Types.Flag
 
@@ -95,6 +98,7 @@ import Distribution.Types.ComponentName
 import Distribution.Types.CondTree
 import Distribution.Types.Condition
 import Distribution.Types.ConfVar
+import Distribution.Types.ExtraSource
 import Distribution.Types.Dependency
 import Distribution.Types.ExeDependency
 import Distribution.Types.Executable

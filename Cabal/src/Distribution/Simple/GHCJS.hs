@@ -60,6 +60,7 @@ import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
 import Distribution.Simple.Errors
 import Distribution.Simple.Flag
+import Distribution.Simple.GHC.Build.Utils (isCxx)
 import Distribution.Simple.GHC.EnvironmentParser
 import Distribution.Simple.GHC.ImplInfo
 import qualified Distribution.Simple.GHC.Internal as Internal
@@ -509,8 +510,6 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
 
       -- See Note [Symbolic paths] in Distribution.Utils.Path
       i = interpretSymbolicPathLBI lbi
-      u :: SymbolicPathX allowAbs Pkg to -> FilePath
-      u = getSymbolicPath
 
   (ghcjsProg, _) <- requireProgram verbosity ghcjsProgram (withPrograms lbi)
   let runGhcjsProg = runGHC verbosity ghcjsProg comp platform mbWorkDir
@@ -538,7 +537,7 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
   -- modules?
   let cLikeFiles = fromNubListR $ toNubListR (cSources libBi) <> toNubListR (cxxSources libBi)
       jsSrcs = jsSources libBi
-      cObjs = map ((`replaceExtensionSymbolicPath` objExtension)) cLikeFiles
+      cObjs = map ((`replaceExtensionSymbolicPath` objExtension) . extraSourceFile) cLikeFiles
       baseOpts = componentGhcOptions verbosity lbi libBi clbi libTargetDir
       linkJsLibOpts =
         mempty
@@ -546,9 +545,9 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
               [ "-link-js-lib"
               , getHSLibraryName uid
               , "-js-lib-outputdir"
-              , u libTargetDir
+              , getSymbolicPath libTargetDir
               ]
-                ++ map u jsSrcs
+                ++ foldMap (\(ExtraSource file opts) -> getSymbolicPath file : opts) jsSrcs
           }
       vanillaOptsNoJsLib =
         baseOpts
@@ -702,7 +701,7 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
     info verbosity "Linking..."
     let cSharedObjs =
           map
-            ((`replaceExtensionSymbolicPath` ("dyn_" ++ objExtension)))
+            ((`replaceExtensionSymbolicPath` ("dyn_" ++ objExtension)) . extraSourceFile)
             (cSources libBi ++ cxxSources libBi)
         compiler_id = compilerId (compiler lbi)
         sharedLibFilePath = libTargetDir </> makeRelativePathEx (mkSharedLibName (hostPlatform lbi) compiler_id uid)
@@ -1115,8 +1114,8 @@ decodeMainIsArg arg
 --
 -- Used to correctly build and link sources.
 data BuildSources = BuildSources
-  { cSourcesFiles :: [SymbolicPath Pkg File]
-  , cxxSourceFiles :: [SymbolicPath Pkg File]
+  { cSourcesFiles :: [ExtraSource]
+  , cxxSourceFiles :: [ExtraSource]
   , inputSourceFiles :: [SymbolicPath Pkg File]
   , inputSourceModules :: [ModuleName]
   }
@@ -1167,7 +1166,7 @@ gbuildSources verbosity mbWorkDir pkgId specVer tmpDir bm =
 
               return
                 BuildSources
-                  { cSourcesFiles = cSources bnfo
+                  { cSourcesFiles =  cSources bnfo
                   , cxxSourceFiles = cxxSources bnfo
                   , inputSourceFiles = [main]
                   , inputSourceModules = filter (/= mainModName) $ exeModules exe
@@ -1182,11 +1181,11 @@ gbuildSources verbosity mbWorkDir pkgId specVer tmpDir bm =
                   }
         else
           let (csf, cxxsf)
-                | isCxx (getSymbolicPath main) = (cSources bnfo, main : cxxSources bnfo)
+                | isCxx (getSymbolicPath main) = (cSources bnfo, extraSourceFromPath main : cxxSources bnfo)
                 -- if main is not a Haskell source
                 -- and main is not a C++ source
                 -- then we assume that it is a C source
-                | otherwise = (main : cSources bnfo, cxxSources bnfo)
+                | otherwise = (extraSourceFromPath main : cSources bnfo, cxxSources bnfo)
            in return
                 BuildSources
                   { cSourcesFiles = csf
@@ -1203,9 +1202,6 @@ gbuildSources verbosity mbWorkDir pkgId specVer tmpDir bm =
         , inputSourceFiles = []
         , inputSourceModules = foreignLibModules flib
         }
-
-    isCxx :: FilePath -> Bool
-    isCxx fp = elem (takeExtension fp) [".cpp", ".cxx", ".c++"]
 
 -- | FilePath has a Haskell extension: .hs or .lhs
 isHaskell :: FilePath -> Bool
@@ -1267,8 +1263,8 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
       inputModules = inputSourceModules buildSources
       isGhcDynamic = isDynamic comp
       dynamicTooSupported = supportsDynamicToo comp
-      cObjs = map ((`replaceExtensionSymbolicPath` objExtension)) cSrcs
-      cxxObjs = map ((`replaceExtensionSymbolicPath` objExtension)) cxxSrcs
+      cObjs = map ((`replaceExtensionSymbolicPath` objExtension) . extraSourceFile) cSrcs
+      cxxObjs = map ((`replaceExtensionSymbolicPath` objExtension) . extraSourceFile) cxxSrcs
       needDynamic = gbuildNeedDynamic lbi bm
       needProfiling = withProfExe lbi
 
@@ -1470,7 +1466,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
             --       add a warning if this occurs.
             odir = fromFlag (ghcOptObjDir opts)
         createDirectoryIfMissingVerbose verbosity True (i odir)
-        needsRecomp <- checkNeedsRecompilation mbWorkDir filename opts
+        needsRecomp <- checkNeedsRecompilation mbWorkDir (extraSourceFile filename) opts
         when needsRecomp $
           runGhcProg opts
       | filename <- cxxSrcs
@@ -1512,7 +1508,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
               | otherwise = vanillaCcOpts
             odir = fromFlag (ghcOptObjDir opts)
         createDirectoryIfMissingVerbose verbosity True (i odir)
-        needsRecomp <- checkNeedsRecompilation mbWorkDir filename opts
+        needsRecomp <- checkNeedsRecompilation mbWorkDir (extraSourceFile filename) opts
         when needsRecomp $
           runGhcProg opts
       | filename <- cSrcs

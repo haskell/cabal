@@ -445,11 +445,11 @@ checkBuildInfoPathsContent bi = do
 -- Paths well-formedness check for BuildInfo.
 checkBuildInfoPathsWellFormedness :: Monad m => BuildInfo -> CheckM m ()
 checkBuildInfoPathsWellFormedness bi = do
-  mapM_ (checkPath False "asm-sources" PathKindFile . getSymbolicPath) (asmSources bi)
-  mapM_ (checkPath False "cmm-sources" PathKindFile . getSymbolicPath) (cmmSources bi)
-  mapM_ (checkPath False "c-sources" PathKindFile . getSymbolicPath) (cSources bi)
-  mapM_ (checkPath False "cxx-sources" PathKindFile . getSymbolicPath) (cxxSources bi)
-  mapM_ (checkPath False "js-sources" PathKindFile . getSymbolicPath) (jsSources bi)
+  mapM_ (checkPath False "asm-sources" PathKindFile . getSymbolicPath . extraSourceFile) (asmSources bi)
+  mapM_ (checkPath False "cmm-sources" PathKindFile . getSymbolicPath . extraSourceFile) (cmmSources bi)
+  mapM_ (checkPath False "c-sources" PathKindFile . getSymbolicPath . extraSourceFile) (cSources bi)
+  mapM_ (checkPath False "cxx-sources" PathKindFile . getSymbolicPath . extraSourceFile) (cxxSources bi)
+  mapM_ (checkPath False "js-sources" PathKindFile . getSymbolicPath . extraSourceFile) (jsSources bi)
   mapM_
     (checkPath False "install-includes" PathKindFile . getSymbolicPath)
     (installIncludes bi)
@@ -515,8 +515,8 @@ checkBuildInfoFeatures bi sv = do
     (PackageBuildWarning CVExtensionsDeprecated)
 
   -- asm-sources, cmm-sources and friends only w/ spec ≥ 1.10
-  checkCVSources (map getSymbolicPath $ asmSources bi)
-  checkCVSources (map getSymbolicPath $ cmmSources bi)
+  checkCVSources (map (getSymbolicPath . extraSourceFile) $ asmSources bi)
+  checkCVSources (map (getSymbolicPath . extraSourceFile) $ cmmSources bi)
   checkCVSources (extraBundledLibs bi)
   checkCVSources (extraLibFlavours bi)
 
