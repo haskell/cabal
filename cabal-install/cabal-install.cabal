@@ -141,6 +141,7 @@ library
         Distribution.Client.GlobalFlags
         Distribution.Client.Haddock
         Distribution.Client.HashValue
+        Distribution.Client.HookAccept
         Distribution.Client.HttpUtils
         Distribution.Client.IndexUtils
         Distribution.Client.IndexUtils.ActiveRepos
