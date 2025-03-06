@@ -704,9 +704,6 @@ convertLegacyAllPackageFlags
 convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags projectFlags projectConfigMultiRepl =
   ProjectConfigShared{..}
   where
-    projectConfigHostHcFlavor = NoFlag
-    projectConfigHostHcPath = NoFlag
-    projectConfigHostHcPkg = NoFlag
     projectConfigPackageDBs = (fmap . fmap) (interpretPackageDB Nothing) projectConfigPackageDBs_
     projectConfigHookHashes = mempty -- :: Map FilePath HookAccept
     projectConfigDistDir = fmap getSymbolicPath projectConfigAbsoluteDistDir
@@ -744,6 +741,9 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
       , configAllowNewer = projectConfigAllowNewer
       , configWriteGhcEnvironmentFilesPolicy =
         projectConfigWriteGhcEnvironmentFilesPolicy
+      , configHostHcFlavor = projectConfigHostHcFlavor
+      , configHostHcPath = projectConfigHostHcPath
+      , configHostHcPkg = projectConfigHostHcPkg
       } = configExFlags
 
     InstallFlags

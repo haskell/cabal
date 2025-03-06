@@ -661,7 +661,7 @@ rebuildInstallPlan
                 toolchains <- phaseConfigureToolchain projectConfig
 
                 liftIO $ print ("build compiler", compilerId $ toolchainCompiler $ buildToolchain toolchains)
-                liftIO $ print ("host compiler", compilerId $ toolchainCompiler $ buildToolchain toolchains)
+                liftIO $ print ("host compiler", compilerId $ toolchainCompiler $ hostToolchain toolchains)
 
                 -- _ <- phaseConfigurePrograms projectConfig compilerEtc
                 (solverPlan, pkgConfigDB, totalIndexState, activeRepos) <-
@@ -3864,9 +3864,10 @@ setupHsScriptOptions
             --   - if we commit to a Cabal version, the logic in
               Nothing
             else Just elabSetupScriptCliVersion
-      , useCompiler = Just (toolchainCompiler $ buildToolchain $ pkgConfigToolchains)
-      , usePlatform = Just (toolchainPlatform $ buildToolchain $ pkgConfigToolchains)
-      , useProgramDb = toolchainProgramDb $ buildToolchain $ pkgConfigToolchains
+      , -- for Setup.hs, we _always_ want to use the HOST toolchain.
+        useCompiler = Just (toolchainCompiler $ hostToolchain $ pkgConfigToolchains)
+      , usePlatform = Just (toolchainPlatform $ hostToolchain $ pkgConfigToolchains)
+      , useProgramDb = toolchainProgramDb $ hostToolchain $ pkgConfigToolchains
       , usePackageDB = elabSetupPackageDBStack
       , usePackageIndex = Nothing
       , useDependencies =
