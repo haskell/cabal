@@ -10,6 +10,7 @@ import Distribution.Package ( Package(..) )
 import Distribution.PackageDescription ( FlagAssignment )
 import Distribution.Solver.Types.ComponentDeps ( ComponentDeps )
 import Distribution.Solver.Types.OptionalStanza
+import Distribution.Solver.Types.PackagePath (QPN)
 import Distribution.Solver.Types.SolverId
 import Distribution.Solver.Types.SourcePackage
 
@@ -21,6 +22,7 @@ import Distribution.Solver.Types.SourcePackage
 -- but for symmetry we have the parameter.  (Maybe it can be removed.)
 --
 data SolverPackage loc = SolverPackage {
+        solverPkgQPN     :: QPN,
         solverPkgSource  :: SourcePackage loc,
         solverPkgFlags   :: FlagAssignment,
         solverPkgStanzas :: OptionalStanzaSet,

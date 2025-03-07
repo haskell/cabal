@@ -1685,7 +1685,7 @@ elaborateInstallPlan
         :: (SolverId -> [ElaboratedPlanPackage])
         -> SolverPackage UnresolvedPkgLoc
         -> LogProgress [ElaboratedConfiguredPackage]
-      elaborateSolverToComponents mapDep spkg@(SolverPackage _ _ _ deps0 exe_deps0) =
+      elaborateSolverToComponents mapDep spkg@(SolverPackage qpn _ _ _ deps0 exe_deps0) =
         case mkComponentsGraph (elabEnabledSpec elab0) pd of
           Right g -> do
             let src_comps = componentsGraphToList g
@@ -2075,6 +2075,7 @@ elaborateInstallPlan
       elaborateSolverToPackage
         pkgWhyNotPerComponent
         pkg@( SolverPackage
+                qpn
                 (SourcePackage pkgid _gpd _srcloc _descOverride)
                 _flags
                 _stanzas
@@ -2178,6 +2179,7 @@ elaborateInstallPlan
         -> (ElaboratedConfiguredPackage, LogProgress ())
       elaborateSolverToCommon
         pkg@( SolverPackage
+                qpn
                 (SourcePackage pkgid gdesc srcloc descOverride)
                 flags
                 stanzas

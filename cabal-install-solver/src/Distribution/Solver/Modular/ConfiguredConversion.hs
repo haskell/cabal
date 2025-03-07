@@ -6,8 +6,6 @@ import Data.Maybe
 import Prelude hiding (pi)
 import Data.Either (partitionEithers)
 
-import Distribution.Package (UnitId, packageId)
-
 import qualified Distribution.Simple.PackageIndex as SI
 
 import Distribution.Solver.Modular.Configured
@@ -29,36 +27,38 @@ convCP :: SI.InstalledPackageIndex ->
           CI.PackageIndex (SourcePackage loc) ->
           CP QPN -> ResolverPackage loc
 convCP iidx sidx (CP qpi fa es ds) =
-  case convPI qpi of
-    Left  pi -> PreExisting $
+  case qpi of
+    -- Installed
+    (PI qpn (I _ (Inst pi)))  ->
+      PreExisting $
                   InstSolverPackage {
-                    instSolverPkgIPI = fromJust $ SI.lookupUnitId iidx pi,
+                    instSolverQPN = qpn,
+                    instSolverPkgIPI = fromMaybe (error "convCP: lookupUnitId failed") $ SI.lookupUnitId iidx pi,
                     instSolverPkgLibDeps = fmap fst ds',
                     instSolverPkgExeDeps = fmap snd ds'
                   }
-    Right pi -> Configured $
+    -- "In repo" i.e. a source package
+    (PI qpn@(Q _path pn) (I v InRepo)) ->
+      let pi = PackageIdentifier pn v in
+      Configured $
                   SolverPackage {
-                      solverPkgSource = srcpkg,
+                      solverPkgQPN = qpn,
+                      solverPkgSource = fromMaybe (error "convCP: lookupPackageId failed") $ CI.lookupPackageId sidx pi,
                       solverPkgFlags = fa,
                       solverPkgStanzas = es,
                       solverPkgLibDeps = fmap fst ds',
                       solverPkgExeDeps = fmap snd ds'
                     }
-      where
-        srcpkg = fromMaybe (error "convCP: lookupPackageId failed") $ CI.lookupPackageId sidx pi
   where
     ds' :: ComponentDeps ([SolverId] {- lib -}, [SolverId] {- exe -})
     ds' = fmap (partitionEithers . map convConfId) ds
 
-convPI :: PI QPN -> Either UnitId PackageId
-convPI (PI _ (I _ (Inst pi))) = Left pi
-convPI pi                     = Right (packageId (either id id (convConfId pi)))
-
 convConfId :: PI QPN -> Either SolverId {- is lib -} SolverId {- is exe -}
 convConfId (PI (Q (PackagePath _ q) pn) (I v loc)) =
     case loc of
-        Inst pi -> Left (PreExistingId sourceId pi)
-        _otherwise
+        Inst pi ->
+          Left (PreExistingId sourceId pi)
+        InRepo
           | QualExe _ pn' <- q
           -- NB: the dependencies of the executable are also
           -- qualified.  So the way to tell if this is an executable
@@ -67,6 +67,6 @@ convConfId (PI (Q (PackagePath _ q) pn) (I v loc)) =
           -- silly and didn't allow arbitrarily nested build-tools
           -- dependencies, so a shallow check works.
           , pn == pn' -> Right (PlannedId sourceId)
-          | otherwise    -> Left  (PlannedId sourceId)
+          | otherwise -> Left  (PlannedId sourceId)
   where
     sourceId    = PackageIdentifier pn v
