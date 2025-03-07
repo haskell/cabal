@@ -401,11 +401,11 @@ rebuildProjectConfig
                 (compiler, Platform arch os, _) <- configureCompiler verbosity distDirLayout (fst (PD.ignoreConditions projectConfigSkeleton) <> cliConfig)
                 pure (os, arch, compiler)
 
-          (projectConfig, compiler) <- instantiateProjectConfigSkeletonFetchingCompiler fetchCompiler mempty projectConfigSkeleton
+          (projectConfig, _compiler) <- instantiateProjectConfigSkeletonFetchingCompiler fetchCompiler mempty projectConfigSkeleton
           when (projectConfigDistDir (projectConfigShared $ projectConfig) /= NoFlag) $
             liftIO $
               warn verbosity "The builddir option is not supported in project and config files. It will be ignored."
-          localPackages <- phaseReadLocalPackages compiler (projectConfig <> cliConfig)
+          localPackages <- phaseReadLocalPackages (projectConfig <> cliConfig)
           return (projectConfig, localPackages)
 
     let configfiles =
@@ -437,11 +437,9 @@ rebuildProjectConfig
       -- NOTE: These are all packages mentioned in the project configuration.
       -- Whether or not they will be considered local to the project will be decided by `shouldBeLocal`.
       phaseReadLocalPackages
-        :: Maybe Compiler
-        -> ProjectConfig
+        :: ProjectConfig
         -> Rebuild [PackageSpecifier UnresolvedSourcePackage]
       phaseReadLocalPackages
-        compiler
         projectConfig@ProjectConfig
           { projectConfigShared
           , projectConfigBuildOnly
@@ -456,7 +454,6 @@ rebuildProjectConfig
           fetchAndReadSourcePackages
             verbosity
             distDirLayout
-            compiler
             projectConfigShared
             projectConfigBuildOnly
             pkgLocations

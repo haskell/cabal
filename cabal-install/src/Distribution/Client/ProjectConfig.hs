@@ -1261,7 +1261,6 @@ mplusMaybeT ma mb = do
 fetchAndReadSourcePackages
   :: Verbosity
   -> DistDirLayout
-  -> Maybe Compiler
   -> ProjectConfigShared
   -> ProjectConfigBuildOnly
   -> [ProjectPackageLocation]
@@ -1269,7 +1268,6 @@ fetchAndReadSourcePackages
 fetchAndReadSourcePackages
   verbosity
   distDirLayout
-  compiler
   projectConfigShared
   projectConfigBuildOnly
   pkgLocations = do
@@ -1306,9 +1304,7 @@ fetchAndReadSourcePackages
       syncAndReadSourcePackagesRemoteRepos
         verbosity
         distDirLayout
-        compiler
         projectConfigShared
-        projectConfigBuildOnly
         (fromFlag (projectConfigOfflineMode projectConfigBuildOnly))
         [repo | ProjectPackageRemoteRepo repo <- pkgLocations]
 
@@ -1425,22 +1421,15 @@ fetchAndReadSourcePackageRemoteTarball
 syncAndReadSourcePackagesRemoteRepos
   :: Verbosity
   -> DistDirLayout
-  -> Maybe Compiler
   -> ProjectConfigShared
-  -> ProjectConfigBuildOnly
   -> Bool
   -> [SourceRepoList]
   -> Rebuild [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
 syncAndReadSourcePackagesRemoteRepos
   verbosity
   DistDirLayout{distDownloadSrcDirectory}
-  compiler
   ProjectConfigShared
     { projectConfigProgPathExtra
-    }
-  ProjectConfigBuildOnly
-    { projectConfigUseSemaphore
-    , projectConfigNumJobs
     }
   offlineMode
   repos = do
@@ -1462,14 +1451,15 @@ syncAndReadSourcePackagesRemoteRepos
             ]
 
     let progPathExtra = fromNubList projectConfigProgPathExtra
+
     getConfiguredVCS <- delayInitSharedResources $ \repoType ->
       let vcs = Map.findWithDefault (error $ "Unknown VCS: " ++ prettyShow repoType) repoType knownVCSs
        in configureVCS verbosity progPathExtra vcs
 
-    concat
-      <$> rerunConcurrentlyIfChanged
+    x <-
+      rerunConcurrentlyIfChanged
         verbosity
-        (newJobControlFromParStrat verbosity compiler parStrat (Just maxNumFetchJobs))
+        (newParallelJobControl maxNumFetchJobs)
         [ ( monitor
           , repoGroup'
           , do
@@ -1487,8 +1477,9 @@ syncAndReadSourcePackagesRemoteRepos
                     [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
               monitor = newFileMonitor (pathStem <.> "cache")
         ]
+
+    return (concat x)
     where
-      parStrat = resolveNumJobsSetting projectConfigUseSemaphore projectConfigNumJobs
       syncRepoGroupAndReadSourcePackages
         :: VCS ConfiguredProgram
         -> FilePath
