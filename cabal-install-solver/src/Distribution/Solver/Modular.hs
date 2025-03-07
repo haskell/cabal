@@ -34,7 +34,7 @@ import Distribution.Solver.Modular.IndexConversion
 import Distribution.Solver.Modular.Log
          ( SolverFailure(..), displayLogMessages )
 import Distribution.Solver.Modular.Package
-         ( PN )
+         ( PN, showPI )
 import Distribution.Solver.Modular.RetryLog
 import Distribution.Solver.Modular.Solver
          ( SolverConfig(..), PruneAfterFirstSuccess(..), solve )
@@ -54,15 +54,37 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Utils
          ( ordNubBy )
 import Distribution.Verbosity
+import Distribution.Solver.Modular.Configured (CP (..))
+import qualified Distribution.Solver.Types.ComponentDeps as ComponentDeps
+import Distribution.Pretty (Pretty (..))
+import Text.PrettyPrint (text, vcat, Doc, nest, ($+$)) 
+import Distribution.Solver.Types.OptionalStanza (showStanzas, optStanzaSetNull)
+import Distribution.Types.Flag (nullFlagAssignment)
 
 
+showCP :: CP QPN -> Doc
+showCP (CP qpi fa es ds) =
+    text "package:" <+> text (showPI qpi) $+$ nest 2 (
+    vcat
+    [ if nullFlagAssignment fa then mempty else text "flags:" <+> pretty fa
+    , if optStanzaSetNull es then mempty else text "stanzas:" <+> text (showStanzas es)
+    , vcat
+        [ text "component" <+> pretty c $+$
+          nest 2 (text "dependencies" $+$
+          nest 2 (vcat [ text (showPI dep) | dep <- deps]))
+        | (c, deps) <- ComponentDeps.toList ds
+        ]
+    ])
+ 
 -- | Ties the two worlds together: classic cabal-install vs. the modular
 -- solver. Performs the necessary translations before and after.
 modularResolver :: SolverConfig -> DependencyResolver loc
-modularResolver sc (Platform arch os) cinfo iidx sidx pkgConfigDB pprefs pcs pns =
-  uncurry postprocess <$> -- convert install plan
-  solve' sc cinfo idx pkgConfigDB pprefs gcs pns
-    where
+modularResolver sc (Platform arch os) cinfo iidx sidx pkgConfigDB pprefs pcs pns = do
+    (assignment, revdepmap) <- solve' sc cinfo idx pkgConfigDB pprefs gcs pns
+    let cp = toCPs assignment revdepmap
+    Step (show (vcat (map showCP cp))) $
+        return $ postprocess assignment revdepmap
+  where
       -- Indices have to be converted into solver-specific uniform index.
       idx    = convPIs os arch cinfo gcs (shadowPkgs sc) (strongFlags sc) (solveExecutables sc) iidx sidx
       -- Constraints have to be converted into a finite map indexed by PN.
