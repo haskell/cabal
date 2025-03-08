@@ -22,11 +22,15 @@ relative to the respective preceding *published* version.
 ``cabal-version: 3.14``
 -----------------------
 
-* Added field ``extra-files`` for specifying extra files to be included in
-  ``sdist`` without adding any other semantics (cf. ``extra-source-files``
-  is tracked by ``cabal build``).
+* Added field :pkg-field:`extra-files` for specifying extra files to be included
+  in ``sdist`` without adding any other semantics (compare,
+  :pkg-field:`extra-source-files` is tracked by ``cabal build``).
+
 * License fields use identifiers from SPDX License List version
   ``3.25 2024-08-19``.
+
+* The :pkg-field:`build-type` field allows the new build type ``Hooks`` to be
+  specified.
 
 ``cabal-version: 3.12``
 -----------------------
