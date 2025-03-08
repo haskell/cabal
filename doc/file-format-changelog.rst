@@ -305,9 +305,42 @@ relative to the respective preceding *published* version.
 ``cabal-version: 1.12``
 -----------------------
 
-* Change syntax of :pkg-field:`cabal-version` to support the new recommended
+* Change the syntax of :pkg-field:`cabal-version` to support the new recommended
   ``cabal-version: x.y`` style
 
+``cabal-version: ==1.10``
+-------------------------
 
+* Change the syntax of :pkg-field:`cabal-version` to require a version range of
+  the form ``cabal-version: >= x.y``. (Consequently, ``cabal-version: ==1.10``
+  is, itself, not valid syntax.)
+
+* New :pkg-field:`default-language` (to specify a default language standard when
+  one is not explicitly specified) and :pkg-field:`other-languages`
+  (for language standards used by some modules) added.
+
+* New :pkg-field:`default-extensions` (for Haskell language extensions used by
+  every module) and :pkg-field:`other-extensions` (for extensions used by some
+  modules) added. :pkg-field:`extensions` deprecated.
+
+* New :pkg-section:`test-suite` stanza for describing a package test suite
+  added.
+
+* ``exitcode-stdio-1.0`` is a valid value of the `type` field in a
+  :pkg-section:`test-suite` stanza.
+
+``cabal-version: ==1.8``
+------------------------
+
+* Added support for the :pkg-field:`build-depends` of a
+  :pkg-section:`executable` stanza being able to specify the library in the same
+  package (if the package provides one) by the name of the package (without a
+  version constraint). Cabal then treats the executable as if it were in another
+  package that depended on the package providing the executable and the library.
+
+* The syntax for specifying package version ranges is expanded.
+
+* New :pkg-field:`license` types ``MIT`` and versioned ``GPL`` and ``LGPL``
+  added.
 
 .. include:: references.inc
