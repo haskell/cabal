@@ -1,0 +1,49 @@
+#!/bin/sh
+
+set -eu
+
+# ugly, but "good enough" for this test
+# This will need to be updated whenever cabal invokes pkg-config
+# in new ways
+case "$*" in
+  '--version')
+    echo 2.1.0  # whatever
+    ;;
+
+  '--variable pc_path pkg-config')
+    echo '.'
+    ;;
+
+  '--list-all')
+    printf 'zlib   zlib - zlib compression library\n'
+    # \256 = \xAE is the iso-8859-1 (latin-1) encoded version of U+00AE,
+    # i.e. the "registered sign": ®
+    # This resulted in problems, see #9608
+    printf 'vpl    Intel\256 Video Processing Library - Accelerated video decode, encode, and frame processing capabilities on Intel\256 GPUs\n'
+    # \360 = \xF0 is latin-1 for ð; this is orð, Icelandic for "word"/"words".
+    printf 'or\360   Icelandic characters\n'
+    ;;
+
+  '--modversion '*)
+    shift  # drop the --modversion
+    for arg; do
+      case "$arg" in
+        zlib) echo 1.3; ;;  # whatever
+        vpl) echo 2.10; ;;  # whatever
+        # No entry for orð here; let's not even try to match on that
+        *)
+          echo >&2 "Package $arg was not found in the pkg-config search path."
+          exit 1
+      esac
+    done
+    ;;
+
+  # Ignore some stuff we're not implementing
+  '--cflags '*) ;;
+  '--libs '*) ;;
+
+  *)
+    echo >&2 "pkg-config: unrecognised arguments $* (this is an incomplete shim)"
+    exit 1
+    ;;
+esac
