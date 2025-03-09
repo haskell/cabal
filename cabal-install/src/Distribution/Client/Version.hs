@@ -33,13 +33,15 @@ cabalInstallVersion = mkVersion' PackageInfo.version
 -- developmnent mode and Template Haskell is available.
 cabalInstallGitInfo :: String
 #ifdef GIT_REV
-cabalInstallGitInfo = concat [ "(commit "
-                             , giHash'
-                             , branchInfo
-                             , ", "
-                             , either (const "") giCommitDate gi'
-                             , ")"
-                             ]
+cabalInstallGitInfo = if giHash' == ""
+                        then ""
+                        else concat [ "(commit "
+                                    , giHash'
+                                    , branchInfo
+                                    , ", "
+                                    , either (const "") giCommitDate gi'
+                                    , ")"
+                                    ]
   where
     gi' = $$tGitInfoCwdTry
     giHash' = take 7 . either (const "") giHash $ gi'
