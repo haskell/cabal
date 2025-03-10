@@ -15,6 +15,7 @@ module Distribution.FieldGrammar
   , ParsecFieldGrammar
   , ParsecFieldGrammar'
   , parseFieldGrammar
+  , parseFieldGrammarCheckingStanzas
   , fieldGrammarKnownFieldList
   , PrettyFieldGrammar
   , PrettyFieldGrammar'

@@ -53,6 +53,7 @@ import Control.Monad.State.Strict (StateT, execStateT, lift)
 import qualified Data.ByteString as BS
 import Data.Coerce (coerce)
 import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
 import qualified Distribution.Compat.CharParsing as P
 import Network.URI (parseURI, uriFragment, uriPath, uriScheme)
 import System.Directory (createDirectoryIfMissing, makeAbsolute)
@@ -190,7 +191,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
     fieldsToConfig sourceConfigPath xs = do
       let (fs, sectionGroups) = partitionFields xs
           sections = concat sectionGroups
-      config <- parseFieldGrammar cabalSpec fs (projectConfigFieldGrammar sourceConfigPath (knownProgramNames programDb))
+      config <- parseFieldGrammarCheckingStanzas cabalSpec fs (projectConfigFieldGrammar sourceConfigPath (knownProgramNames programDb)) stanzas
       config' <- view stateConfig <$> execStateT (goSections programDb sections) (SectionS config)
       return config'
 
@@ -297,6 +298,9 @@ parseSection programDb (MkSection (Name pos name) args secFields)
       args' <- lift $ parseProgramArgs programDb fields
       paths <- lift $ parseProgramPaths programDb fields
       return packageCfg{packageConfigProgramPaths = paths, packageConfigProgramArgs = args'}
+
+stanzas :: Set BS.ByteString
+stanzas = Set.fromList ["source-repository-package", "program-options", "program-locations", "repository", "package"]
 
 -- | Currently a duplicate of 'Distribution.Client.Config.postProcessRepo' but migrated to Parsec ParseResult.
 postProcessRemoteRepo :: Position -> RemoteRepo -> ParseResult (Either LocalRepo RemoteRepo)
