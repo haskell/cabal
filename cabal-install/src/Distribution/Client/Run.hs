@@ -60,7 +60,6 @@ import Distribution.Types.UnqualComponentName
 import qualified Distribution.Simple.GHCJS as GHCJS
 
 import Distribution.Client.Errors
-import Distribution.Compat.Environment (getEnvironment)
 import Distribution.Utils.Path
 
 -- | Return the executable to run and any extra arguments that should be
@@ -181,13 +180,11 @@ run verbosity lbi exe exeArgs = do
             return (p, [])
 
   -- Compute the appropriate environment for running the executable
-  existingEnv <- getEnvironment
   let progDb = withPrograms lbiForExe
       pathVar = progSearchPath progDb
       envOverrides = progOverrideEnv progDb
   newPath <- programSearchPathAsPATHVar pathVar
-  overrideEnv <- fromMaybe [] <$> getEffectiveEnvironment ([("PATH", Just newPath)] ++ envOverrides)
-  let env = overrideEnv ++ existingEnv
+  env <- getFullEnvironment ([("PATH", Just newPath)] ++ envOverrides)
 
   -- Add (DY)LD_LIBRARY_PATH if needed
   env' <-
