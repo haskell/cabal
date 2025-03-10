@@ -17,7 +17,6 @@ import Distribution.Compat.Prelude
 import Distribution.Types.UnqualComponentName
 import Prelude ()
 
-import Distribution.Compat.Environment
 import Distribution.Compat.Internal.TempFile
 import Distribution.Compat.Process (proc)
 import Distribution.ModuleName
@@ -70,7 +69,6 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
       way = guessWay lbi
 
   let mbWorkDir = LBI.mbWorkDirLBI lbi
-  existingEnv <- getEnvironment
 
   let cmd =
         interpretSymbolicPath mbWorkDir (LBI.buildDir lbi)
@@ -100,15 +98,17 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
         pathVar = progSearchPath progDb
         envOverrides = progOverrideEnv progDb
     newPath <- programSearchPathAsPATHVar pathVar
-    overrideEnv <- fromMaybe [] <$> getEffectiveEnvironment ([("PATH", Just newPath)] ++ envOverrides)
 
     -- Run test executable
     let opts = map (testOption pkg_descr lbi suite) $ testOptions flags
         tixFile = i $ tixFilePath distPref way testName'
-        shellEnv =
-          [("HPCTIXFILE", tixFile) | isCoverageEnabled]
-            ++ overrideEnv
-            ++ existingEnv
+
+    shellEnv <-
+      getFullEnvironment
+        ( [("PATH", Just newPath)]
+            ++ [("HPCTIXFILE", Just tixFile) | isCoverageEnabled]
+            ++ envOverrides
+        )
     -- Add (DY)LD_LIBRARY_PATH if needed
     shellEnv' <-
       if LBI.withDynExe lbi
