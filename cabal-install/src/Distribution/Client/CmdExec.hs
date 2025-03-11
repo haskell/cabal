@@ -23,6 +23,7 @@ import Distribution.Client.InstallPlan
   )
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
+  , cfgVerbosity
   , defaultNixStyleFlags
   , nixStyleOptions
   )
@@ -58,14 +59,10 @@ import Distribution.Client.ProjectPlanning.Types
   ( dataDirsEnvironmentForPlan
   )
 import Distribution.Client.Setup
-  ( ConfigFlags (configCommonFlags)
-  , GlobalFlags
+  ( GlobalFlags
   )
 import Distribution.Simple.Command
   ( CommandUI (..)
-  )
-import Distribution.Simple.Flag
-  ( fromFlagOrDefault
   )
 import Distribution.Simple.GHC
   ( GhcImplInfo (supportsPkgEnvFiles)
@@ -87,7 +84,6 @@ import Distribution.Simple.Program.Run
   ( programInvocation
   , runProgramInvocation
   )
-import Distribution.Simple.Setup (CommonSetupFlags (..))
 import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose
   , dieWithException
@@ -144,7 +140,7 @@ execCommand =
     }
 
 execAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
-execAction flags@NixStyleFlags{..} extraArgs globalFlags = do
+execAction flags extraArgs globalFlags = do
   baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
 
   -- To set up the environment, we'd like to select the libraries in our
@@ -226,7 +222,7 @@ execAction flags@NixStyleFlags{..} extraArgs globalFlags = do
             then notice verbosity "Running of executable suppressed by flag(s)"
             else runProgramInvocation verbosity invocation
   where
-    verbosity = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags)
+    verbosity = cfgVerbosity normal flags
     cliConfig =
       commandLineFlagsToProjectConfig
         globalFlags
