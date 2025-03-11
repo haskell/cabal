@@ -28,14 +28,13 @@ import Distribution.Client.CmdErrorMessages
   )
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
+  , cfgVerbosity
   , defaultNixStyleFlags
   , nixStyleOptions
   )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.Setup
-  ( CommonSetupFlags (..)
-  , ConfigFlags (..)
-  , GlobalFlags (..)
+  ( GlobalFlags (..)
   )
 import Distribution.Client.TargetProblem
   ( TargetProblem (..)
@@ -52,7 +51,6 @@ import Distribution.Simple.Flag
   )
 import Distribution.Simple.Setup
   ( TestFlags (..)
-  , fromFlagOrDefault
   )
 import Distribution.Simple.Utils
   ( dieWithException
@@ -164,7 +162,7 @@ testAction flags@NixStyleFlags{..} targetStrings globalFlags = do
   runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
   where
     failWhenNoTestSuites = testFailWhenNoTestSuites testFlags
-    verbosity = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags)
+    verbosity = cfgVerbosity normal flags
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty -- ClientInstallFlags
 
 -- | This defines what a 'TargetSelector' means for the @test@ command.
