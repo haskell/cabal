@@ -104,32 +104,44 @@ ghcProgram :: Program
 ghcProgram =
   (simpleProgram "ghc")
     { programFindVersion = findProgramVersion "--numeric-version" id
-    , -- Workaround for https://gitlab.haskell.org/ghc/ghc/-/issues/8825
-      -- (spurious warning on non-english locales)
-      programPostConf = \_verbosity ghcProg ->
-        do
-          let ghcProg' =
-                ghcProg
-                  { programOverrideEnv =
-                      ("LANGUAGE", Just "en")
-                        : programOverrideEnv ghcProg
-                  }
-              -- Only the 7.8 branch seems to be affected. Fixed in 7.8.4.
-              affectedVersionRange =
-                intersectVersionRanges
-                  (laterVersion $ mkVersion [7, 8, 0])
-                  (earlierVersion $ mkVersion [7, 8, 4])
-          return $
-            maybe
-              ghcProg
-              ( \v ->
-                  if withinRange v affectedVersionRange
-                    then ghcProg'
-                    else ghcProg
-              )
-              (programVersion ghcProg)
+    , programPostConf = ghcPostConf
     , programNormaliseArgs = normaliseGhcArgs
     }
+  where
+    ghcPostConf _verbosity ghcProg = do
+      let setLanguageEnv prog =
+            prog
+              { programOverrideEnv =
+                  ("LANGUAGE", Just "en")
+                    : programOverrideEnv ghcProg
+              }
+
+          ignorePackageEnv prog = prog{programDefaultArgs = "-package-env=-" : programDefaultArgs prog}
+
+          -- Only the 7.8 branch seems to be affected. Fixed in 7.8.4.
+          affectedVersionRange =
+            intersectVersionRanges
+              (laterVersion $ mkVersion [7, 8, 0])
+              (earlierVersion $ mkVersion [7, 8, 4])
+
+          canIgnorePackageEnv = orLaterVersion $ mkVersion [8, 4, 4]
+
+          applyWhen cond f prog = if cond then f prog else prog
+
+      return $
+        maybe
+          ghcProg
+          ( \v ->
+              -- By default, ignore GHC_ENVIRONMENT variable of any package environmnet
+              -- files. See #10759
+              applyWhen (withinRange v canIgnorePackageEnv) ignorePackageEnv
+              -- Workaround for https://gitlab.haskell.org/ghc/ghc/-/issues/8825
+              -- (spurious warning on non-english locales)
+              $
+                applyWhen (withinRange v affectedVersionRange) setLanguageEnv $
+                  ghcProg
+          )
+          (programVersion ghcProg)
 
 runghcProgram :: Program
 runghcProgram =
