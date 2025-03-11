@@ -1,5 +1,6 @@
 import Test.Cabal.Prelude
 import Data.Function ((&))
+import Data.List (isInfixOf)
 
 -- This test is similar to the simplified example in issue #4288. The package's
 -- setup script only depends on base and setup-helper. setup-helper exposes a
@@ -14,4 +15,4 @@ main = cabalTest $ do
   "In order, the following will be built:\n\
   \ - setup-helper-1.0 (lib:setup-helper) (first run)\n\
   \ - T4288-1.0 (lib:T4288) (first run)"
-    & flip (assertOn multilineNeedleHaystack) r
+    & flip (assertOn isInfixOf multilineNeedleHaystack) r
