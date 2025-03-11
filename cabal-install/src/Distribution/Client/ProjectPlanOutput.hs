@@ -12,7 +12,7 @@ module Distribution.Client.ProjectPlanOutput
     -- | Several outputs rely on having a general overview of
   , PostBuildProjectStatus (..)
   , updatePostBuildProjectStatus
-  , createPackageEnvironment
+  , createPackageEnvironmentAndArgs
   , writePlanGhcEnvironment
   , argsEquivalentOfGhcEnvironmentFile
   ) where
@@ -777,7 +777,7 @@ writePackagesUpToDateCacheFile DistDirLayout{distProjectCacheFile} upToDate =
   writeFileAtomic (distProjectCacheFile "up-to-date") $
     Binary.encode upToDate
 
--- | Prepare a package environment that includes all the library dependencies
+-- | Prepare a package environment and args that includes all the library dependencies
 -- for a plan.
 --
 -- When running cabal new-exec, we want to set things up so that the compiler
@@ -786,14 +786,17 @@ writePackagesUpToDateCacheFile DistDirLayout{distProjectCacheFile} upToDate =
 -- temporarily, in case the compiler wants to learn this information via the
 -- filesystem, and returns any environment variable overrides the compiler
 -- needs.
-createPackageEnvironment
+--
+-- The function returns both the arguments you need to pass to the compiler and
+-- the environment variables you need to set.
+createPackageEnvironmentAndArgs
   :: Verbosity
   -> FilePath
   -> ElaboratedInstallPlan
   -> ElaboratedSharedConfig
   -> PostBuildProjectStatus
-  -> IO [(String, Maybe String)]
-createPackageEnvironment
+  -> IO ([String], [(String, Maybe String)])
+createPackageEnvironmentAndArgs
   verbosity
   path
   elaboratedPlan
@@ -808,14 +811,14 @@ createPackageEnvironment
               elaboratedShared
               buildStatus
           case envFileM of
-            Just envFile -> return [("GHC_ENVIRONMENT", Just envFile)]
+            Just envFile -> return (["-package-env=" ++ envFile], [("GHC_ENVIRONMENT", Just envFile)])
             Nothing -> do
               warn verbosity "the configured version of GHC does not support reading package lists from the environment; commands that need the current project's package database are likely to fail"
-              return []
+              return ([], [])
     | otherwise =
         do
           warn verbosity "package environment configuration is not supported for the currently configured compiler; commands that need the current project's package database are likely to fail"
-          return []
+          return ([], [])
 
 -- Writing .ghc.environment files
 --
