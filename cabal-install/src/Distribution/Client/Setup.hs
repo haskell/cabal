@@ -1,7 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -----------------------------------------------------------------------------
@@ -35,12 +34,15 @@ module Distribution.Client.Setup
   , defaultConfigExFlags
   , buildCommand
   , BuildFlags (..)
+  , filterBuildFlags
   , filterTestFlags
   , replCommand
+  , filterReplFlags
   , testCommand
   , benchmarkCommand
   , testOptions
   , benchmarkOptions
+  , filterBenchmarkFlags
   , configureExOptions
   , reconfigureCommand
   , installCommand
@@ -87,7 +89,9 @@ module Distribution.Client.Setup
   , haddockCommand
   , cleanCommand
   , copyCommand
+  , filterCopyFlags
   , registerCommand
+  , filterRegisterFlags
   , liftOptions
   , yesNoOpt
   ) where
@@ -183,7 +187,7 @@ import Distribution.Simple.InstallDirs
   )
 import Distribution.Simple.Program (ProgramDb, defaultProgramDb)
 import Distribution.Simple.Setup
-  ( BenchmarkFlags
+  ( BenchmarkFlags (benchmarkCommonFlags)
   , BooleanFlag (..)
   , BuildFlags (..)
   , CleanFlags (..)
@@ -192,7 +196,7 @@ import Distribution.Simple.Setup
   , CopyFlags (..)
   , HaddockFlags (..)
   , RegisterFlags (..)
-  , ReplFlags
+  , ReplFlags (..)
   , TestFlags
   , boolOpt
   , boolOpt'
@@ -278,6 +282,7 @@ globalCommand commands =
               , "unpack"
               , "init"
               , "configure"
+              , "target"
               , "build"
               , "clean"
               , "run"
@@ -298,6 +303,7 @@ globalCommand commands =
               , "path"
               , "new-build"
               , "new-configure"
+              , "new-target"
               , "new-repl"
               , "new-freeze"
               , "new-run"
@@ -330,7 +336,8 @@ globalCommand commands =
               , "v1-register"
               , "v1-reconfigure"
               , -- v2 commands, nix-style
-                "v2-build"
+                "v2-target"
+              , "v2-build"
               , "v2-configure"
               , "v2-repl"
               , "v2-freeze"
@@ -375,6 +382,7 @@ globalCommand commands =
                 , addCmd "gen-bounds"
                 , addCmd "outdated"
                 , addCmd "path"
+                , addCmd "target"
                 , par
                 , startGroup "project building and installing"
                 , addCmd "build"
@@ -402,6 +410,7 @@ globalCommand commands =
                 , addCmd "hscolour"
                 , par
                 , startGroup "new-style projects (forwards-compatible aliases)"
+                , addCmd "v2-target"
                 , addCmd "v2-build"
                 , addCmd "v2-configure"
                 , addCmd "v2-repl"
@@ -647,9 +656,11 @@ filterCommonFlags flags cabalLibVersion
     flags_latest = flags
     flags_3_13_0 =
       flags_latest
-        { setupWorkingDir = NoFlag
+        { -- Cabal < 3.13 does not support the --working-dir flag.
+          setupWorkingDir = NoFlag
+        , -- Or the --keep-temp-files flag.
+          setupKeepTempFiles = NoFlag
         }
-    -- Cabal < 3.13 does not support the --working-dir flag.
     flags_2_1_0 =
       flags_3_13_0
         { -- Cabal < 2.1 doesn't know about -v +timestamp modifier
@@ -1144,6 +1155,21 @@ buildCommand =
   where
     parent = Cabal.buildCommand defaultProgramDb
 
+-- | Given some 'BuildFlags' for the version of @Cabal@ that
+-- @cabal-install@ was built with, and a target older 'Version' of
+-- @Cabal@ that we want to pass these flags to, convert the
+-- flags into a form that will be accepted by the older
+-- @Setup@ script.  Generally speaking, this just means filtering
+-- out flags that the old @Cabal@ library doesn't understand, but
+-- in some cases it may also mean "emulating" a feature using
+-- some more legacy flags.
+filterBuildFlags :: BuildFlags -> Version -> BuildFlags
+filterBuildFlags flags cabalLibVersion =
+  flags
+    { buildCommonFlags =
+        filterCommonFlags (buildCommonFlags flags) cabalLibVersion
+    }
+
 -- ------------------------------------------------------------
 
 -- * Test flags
@@ -1235,6 +1261,24 @@ replCommand =
     }
   where
     parent = Cabal.replCommand defaultProgramDb
+
+-- | Given some 'ReplFlags' for the version of @Cabal@ that
+-- @cabal-install@ was built with, and a target older 'Version' of
+-- @Cabal@ that we want to pass these flags to, convert the
+-- flags into a form that will be accepted by the older
+-- @Setup@ script.  Generally speaking, this just means filtering
+-- out flags that the old @Cabal@ library doesn't understand, but
+-- in some cases it may also mean "emulating" a feature using
+-- some more legacy flags.
+filterReplFlags :: ReplFlags -> Version -> ReplFlags
+filterReplFlags flags cabalLibVersion =
+  flags
+    { replCommonFlags =
+        (filterCommonFlags (replCommonFlags flags) cabalLibVersion)
+          { -- `cabal repl` knew about `--keep-temp-files` before other commands did.
+            setupKeepTempFiles = setupKeepTempFiles (replCommonFlags flags)
+          }
+    }
 
 -- ------------------------------------------------------------
 
@@ -1330,6 +1374,21 @@ benchmarkCommand =
 
     parent = Cabal.benchmarkCommand
     progDb = defaultProgramDb
+
+-- | Given some 'BenchmarkFlags' for the version of @Cabal@ that
+-- @cabal-install@ was built with, and a target older 'Version' of
+-- @Cabal@ that we want to pass these flags to, convert the
+-- flags into a form that will be accepted by the older
+-- @Setup@ script.  Generally speaking, this just means filtering
+-- out flags that the old @Cabal@ library doesn't understand, but
+-- in some cases it may also mean "emulating" a feature using
+-- some more legacy flags.
+filterBenchmarkFlags :: BenchmarkFlags -> Version -> BenchmarkFlags
+filterBenchmarkFlags flags cabalLibVersion =
+  flags
+    { benchmarkCommonFlags =
+        filterCommonFlags (benchmarkCommonFlags flags) cabalLibVersion
+    }
 
 -- ------------------------------------------------------------
 
@@ -1621,7 +1680,7 @@ data CheckFlags = CheckFlags
   { checkVerbosity :: Flag Verbosity
   , checkIgnore :: [CheckExplanationIDString]
   }
-  deriving (Show, Typeable)
+  deriving (Show)
 
 defaultCheckFlags :: CheckFlags
 defaultCheckFlags =
@@ -2404,21 +2463,28 @@ filterHaddockArgs args cabalLibVersion
     -- Cabal < 2.3 doesn't know about per-component haddock
     args_2_3_0 = []
 
+-- | Given some 'HaddockFlags' for the version of @Cabal@ that
+-- @cabal-install@ was built with, and a target older 'Version' of
+-- @Cabal@ that we want to pass these flags to, convert the
+-- flags into a form that will be accepted by the older
+-- @Setup@ script.  Generally speaking, this just means filtering
+-- out flags that the old @Cabal@ library doesn't understand, but
+-- in some cases it may also mean "emulating" a feature using
+-- some more legacy flags.
 filterHaddockFlags :: HaddockFlags -> Version -> HaddockFlags
-filterHaddockFlags flags cabalLibVersion =
-  let flags' = filterHaddockFlags' flags cabalLibVersion
-   in flags'
-        { haddockCommonFlags =
-            filterCommonFlags (haddockCommonFlags flags') cabalLibVersion
-        }
-
-filterHaddockFlags' :: HaddockFlags -> Version -> HaddockFlags
-filterHaddockFlags' flags cabalLibVersion
+filterHaddockFlags flags cabalLibVersion
   | cabalLibVersion >= mkVersion [2, 3, 0] = flags_latest
   | cabalLibVersion < mkVersion [2, 3, 0] = flags_2_3_0
   | otherwise = flags_latest
   where
-    flags_latest = flags
+    flags_latest =
+      flags
+        { haddockCommonFlags =
+            (filterCommonFlags (haddockCommonFlags flags) cabalLibVersion)
+              { -- `cabal haddock` knew about `--keep-temp-files` before other commands did.
+                setupKeepTempFiles = setupKeepTempFiles (haddockCommonFlags flags)
+              }
+        }
 
     flags_2_3_0 =
       flags_latest
@@ -2490,6 +2556,9 @@ testOptions showOrParseArgs =
       | "test-" `isPrefixOf` name = name
       | otherwise = "test-" ++ name
 
+-- | Options for the @bench@ command.
+--
+-- Not to be confused with the @benchmarkOptions@ field of the `BenchmarkFlags` record!
 benchmarkOptions :: ShowOrParseArgs -> [OptionField BenchmarkFlags]
 benchmarkOptions showOrParseArgs =
   [ opt
@@ -3315,6 +3384,35 @@ registerCommand :: CommandUI RegisterFlags
 registerCommand =
   Cabal.registerCommand
     { commandUsage = \pname -> "Usage: " ++ pname ++ " v1-register [FLAGS]\n"
+    }
+
+-- | Given some 'RegisterFlags' for the version of @Cabal@ that
+-- @cabal-install@ was built with, and a target older 'Version' of
+-- @Cabal@ that we want to pass these flags to, convert the
+-- flags into a form that will be accepted by the older
+-- @Setup@ script.  Generally speaking, this just means filtering
+-- out flags that the old @Cabal@ library doesn't understand, but
+-- in some cases it may also mean "emulating" a feature using
+-- some more legacy flags.
+filterRegisterFlags :: RegisterFlags -> Version -> RegisterFlags
+filterRegisterFlags flags cabalLibVersion =
+  flags
+    { registerCommonFlags =
+        filterCommonFlags (registerCommonFlags flags) cabalLibVersion
+    }
+
+-- | Given some 'CopyFlags' for the version of @Cabal@ that
+-- @cabal-install@ was built with, and a target older 'Version' of
+-- @Cabal@ that we want to pass these flags to, convert the
+-- flags into a form that will be accepted by the older
+-- @Setup@ script.  Generally speaking, this just means filtering
+-- out flags that the old @Cabal@ library doesn't understand, but
+-- in some cases it may also mean "emulating" a feature using
+-- some more legacy flags.
+filterCopyFlags :: CopyFlags -> Version -> CopyFlags
+filterCopyFlags flags cabalLibVersion =
+  flags
+    { copyCommonFlags = filterCommonFlags (copyCommonFlags flags) cabalLibVersion
     }
 
 -- ------------------------------------------------------------

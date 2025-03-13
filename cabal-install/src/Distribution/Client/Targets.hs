@@ -1,13 +1,6 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveFoldable #-}
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Client.Targets
@@ -676,7 +669,7 @@ readUserConstraint str =
 
 instance Pretty UserConstraint where
   pretty (UserConstraint scope prop) =
-    dispPackageConstraint $ PackageConstraint (fromUserConstraintScope scope) prop
+    pretty $ PackageConstraint (fromUserConstraintScope scope) prop
 
 instance Parsec UserConstraint where
   parsec = do

@@ -1,6 +1,4 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
@@ -100,7 +98,18 @@ module Distribution.Client.ProjectPlanning
   ) where
 
 import Distribution.Client.Compat.Prelude
-import Text.PrettyPrint (render)
+import Text.PrettyPrint
+  ( colon
+  , comma
+  , fsep
+  , hang
+  , punctuate
+  , quotes
+  , render
+  , text
+  , vcat
+  , ($$)
+  )
 import Prelude ()
 
 import Distribution.Client.Config
@@ -176,6 +185,9 @@ import Distribution.System
 import Distribution.Types.AnnotatedId
 import Distribution.Types.ComponentInclude
 import Distribution.Types.ComponentName
+import Distribution.Types.DependencySatisfaction
+  ( DependencySatisfaction (..)
+  )
 import Distribution.Types.DumpBuildInfo
 import Distribution.Types.GivenComponent
 import Distribution.Types.LibraryName
@@ -192,6 +204,7 @@ import Distribution.Backpack.LinkedComponent
 import Distribution.Backpack.ModuleShape
 
 import Distribution.Simple.Utils
+import Distribution.Verbosity
 import Distribution.Version
 
 import qualified Distribution.InstalledPackageInfo as IPI
@@ -219,7 +232,6 @@ import qualified Data.Set as Set
 import Distribution.Client.Errors
 import Distribution.Solver.Types.ProjectConfigPath
 import System.FilePath
-import Text.PrettyPrint (colon, comma, fsep, hang, punctuate, quotes, text, vcat, ($$))
 import qualified Text.PrettyPrint as Disp
 
 -- | Check that an 'ElaboratedConfiguredPackage' actually makes
@@ -381,26 +393,27 @@ rebuildProjectConfig
         $ do
           liftIO $ info verbosity "Project settings changed, reconfiguring..."
           projectConfigSkeleton <- phaseReadProjectConfig
+
           let fetchCompiler = do
                 -- have to create the cache directory before configuring the compiler
                 liftIO $ createDirectoryIfMissingVerbose verbosity True distProjectCacheDirectory
                 (compiler, Platform arch os, _) <- configureCompiler verbosity distDirLayout (fst (PD.ignoreConditions projectConfigSkeleton) <> cliConfig)
-                pure (os, arch, compilerInfo compiler)
+                pure (os, arch, compiler)
 
-          projectConfig <- instantiateProjectConfigSkeletonFetchingCompiler fetchCompiler mempty projectConfigSkeleton
+          (projectConfig, compiler) <- instantiateProjectConfigSkeletonFetchingCompiler fetchCompiler mempty projectConfigSkeleton
           when (projectConfigDistDir (projectConfigShared $ projectConfig) /= NoFlag) $
             liftIO $
               warn verbosity "The builddir option is not supported in project and config files. It will be ignored."
-          localPackages <- phaseReadLocalPackages (projectConfig <> cliConfig)
+          localPackages <- phaseReadLocalPackages compiler (projectConfig <> cliConfig)
           return (projectConfig, localPackages)
 
-    sequence_
-      [ do
-        info verbosity . render . vcat $
-          text "this build was affected by the following (project) config files:"
-            : [text "-" <+> docProjectConfigPath path]
-      | Explicit path <- Set.toList $ projectConfigProvenance projectConfig
-      ]
+    let configfiles =
+          [ text "-" <+> docProjectConfigPath path
+          | Explicit path <- Set.toList . (if verbosity >= verbose then id else onlyTopLevelProvenance) $ projectConfigProvenance projectConfig
+          ]
+    unless (null configfiles) $
+      notice (verboseStderr verbosity) . render . vcat $
+        text "Configuration is affected by the following files:" : configfiles
 
     return (projectConfig <> cliConfig, localPackages)
     where
@@ -423,9 +436,11 @@ rebuildProjectConfig
       -- NOTE: These are all packages mentioned in the project configuration.
       -- Whether or not they will be considered local to the project will be decided by `shouldBeLocal`.
       phaseReadLocalPackages
-        :: ProjectConfig
+        :: Maybe Compiler
+        -> ProjectConfig
         -> Rebuild [PackageSpecifier UnresolvedSourcePackage]
       phaseReadLocalPackages
+        compiler
         projectConfig@ProjectConfig
           { projectConfigShared
           , projectConfigBuildOnly
@@ -440,6 +455,7 @@ rebuildProjectConfig
           fetchAndReadSourcePackages
             verbosity
             distDirLayout
+            compiler
             projectConfigShared
             projectConfigBuildOnly
             pkgLocations
@@ -470,6 +486,7 @@ configureCompiler
     let fileMonitorCompiler = newFileMonitor $ distProjectCacheFile "compiler"
 
     progsearchpath <- liftIO $ getSystemSearchPath
+
     rerunIfChanged
       verbosity
       fileMonitorCompiler
@@ -485,7 +502,7 @@ configureCompiler
         let extraPath = fromNubList packageConfigProgramPathExtra
         progdb <- liftIO $ prependProgramSearchPath verbosity extraPath [] defaultProgramDb
         let progdb' = userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths)) progdb
-        (comp, plat, progdb'') <-
+        result@(_, _, progdb'') <-
           liftIO $
             Cabal.configCompilerEx
               hcFlavor
@@ -502,16 +519,54 @@ configureCompiler
         -- programs it cares about, and those are the ones we monitor here.
         monitorFiles (programsMonitorFiles progdb'')
 
-        -- Configure the unconfigured programs in the program database,
-        -- as we can't serialise unconfigured programs.
-        -- See also #2241 and #9840.
-        finalProgDb <- liftIO $ configureAllKnownPrograms verbosity progdb''
+        -- Note: There is currently a bug here: we are dropping unconfigured
+        -- programs from the 'ProgramDb' when we re-use the cache created by
+        -- 'rerunIfChanged'.
+        --
+        -- See Note [Caching the result of configuring the compiler]
 
-        return (comp, plat, finalProgDb)
+        return result
     where
       hcFlavor = flagToMaybe projectConfigHcFlavor
       hcPath = flagToMaybe projectConfigHcPath
       hcPkg = flagToMaybe projectConfigHcPkg
+
+{- Note [Caching the result of configuring the compiler]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+We can't straightforwardly cache anything that contains a 'ProgramDb', because
+the 'Binary' instance for 'ProgramDb' discards all unconfigured programs.
+See that instance, as well as 'restoreProgramDb', for a few more details.
+
+This means that if we try to cache the result of configuring the compiler (which
+contains a 'ProgramDb'):
+
+ - On the first run, we will obtain a 'ProgramDb' which may contain several
+   unconfigured programs. In particular, configuring GHC will add tools such
+   as `ar` and `ld` as unconfigured programs to the 'ProgramDb', with custom
+   logic for finding their location based on the location of the GHC binary.
+ - On subsequent runs, if we use the cache created by 'rerunIfChanged', we will
+   deserialise the 'ProgramDb' from disk, which means it won't include any
+   unconfigured programs, which might mean we are unable to find 'ar' or 'ld'.
+
+This is not currently a huge problem because, in the Cabal library, we eagerly
+re-run the configureCompiler step (thus recovering any lost information), but
+this is wasted work that we should stop doing in Cabal, given that cabal-install
+has already figured out all the necessary information about the compiler.
+
+To fix this bug, we can't simply eagerly configure all unconfigured programs,
+as was originally attempted, for a couple of reasons:
+
+ - it does more work than necessary, by configuring programs that we may not
+   end up needing,
+ - it means that we prioritise system executables for built-in build tools
+   (such as `alex` and `happy`), instead of using the proper version for a
+   package or package component, as specified by a `build-tool-depends` stanza
+   or by package-level `extra-prog-path` arguments.
+   This lead to bug reports #10633 and #10692.
+
+See #9840 for more information about the problems surrounding the lossly
+Binary ProgramDb instance.
+-}
 
 ------------------------------------------------------------------------------
 
@@ -626,7 +681,7 @@ rebuildInstallPlan
 
       -- Configuring other programs.
       --
-      -- Having configred the compiler, now we configure all the remaining
+      -- Having configured the compiler, now we configure all the remaining
       -- programs. This is to check we can find them, and to monitor them for
       -- changes.
       --
@@ -896,7 +951,7 @@ reportPlanningFailure projectConfig comp platform pkgSpecifiers =
       buildReports
       platform
   where
-    -- TODO may want to handle the projectConfigLogFile paramenter here, or just remove it entirely?
+    -- TODO may want to handle the projectConfigLogFile parameter here, or just remove it entirely?
 
     reportFailure = Cabal.fromFlag . projectConfigReportPlanningFailure . projectConfigBuildOnly $ projectConfig
     pkgids = mapMaybe theSpecifiedPackage pkgSpecifiers
@@ -2130,7 +2185,7 @@ elaborateInstallPlan
             elabPkgDescription = case PD.finalizePD
               flags
               elabEnabledSpec
-              (const True)
+              (const Satisfied)
               platform
               (compilerInfo compiler)
               []
@@ -4090,14 +4145,16 @@ setupHsCommonFlags
   :: Verbosity
   -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> SymbolicPath Pkg (Dir Dist)
+  -> Bool
   -> Cabal.CommonSetupFlags
-setupHsCommonFlags verbosity mbWorkDir builddir =
+setupHsCommonFlags verbosity mbWorkDir builddir keepTempFiles =
   Cabal.CommonSetupFlags
     { setupDistPref = toFlag builddir
     , setupVerbosity = toFlag verbosity
     , setupCabalFilePath = mempty
     , setupWorkingDir = maybeToFlag mbWorkDir
     , setupTargets = []
+    , setupKeepTempFiles = toFlag keepTempFiles
     }
 
 setupHsBuildFlags
@@ -4226,7 +4283,7 @@ setupHsHaddockFlags
 setupHsHaddockFlags
   (ElaboratedConfiguredPackage{..})
   (ElaboratedSharedConfig{..})
-  (BuildTimeSettings{buildSettingKeepTempFiles = keepTmpFiles})
+  _buildTimeSettings
   common =
     Cabal.HaddockFlags
       { haddockCommonFlags = common
@@ -4254,7 +4311,6 @@ setupHsHaddockFlags
       , haddockQuickJump = toFlag elabHaddockQuickJump
       , haddockHscolourCss = maybe mempty toFlag elabHaddockHscolourCss
       , haddockContents = maybe mempty toFlag elabHaddockContents
-      , haddockKeepTempFiles = toFlag keepTmpFiles
       , haddockIndex = maybe mempty toFlag elabHaddockIndex
       , haddockBaseUrl = maybe mempty toFlag elabHaddockBaseUrl
       , haddockResourcesDir = maybe mempty toFlag elabHaddockResourcesDir

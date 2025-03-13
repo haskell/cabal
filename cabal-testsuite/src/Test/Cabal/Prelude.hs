@@ -1,14 +1,17 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE NondecreasingIndentation #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- | Generally useful definitions that we expect most test scripts
 -- to use.
 module Test.Cabal.Prelude (
     module Test.Cabal.Prelude,
     module Test.Cabal.Monad,
+    module Test.Cabal.NeedleHaystack,
     module Test.Cabal.Run,
     module System.FilePath,
     module Distribution.Utils.Path,
@@ -18,6 +21,7 @@ module Test.Cabal.Prelude (
     module Distribution.Simple.Program,
 ) where
 
+import Test.Cabal.NeedleHaystack
 import Test.Cabal.Script
 import Test.Cabal.Run
 import Test.Cabal.Monad
@@ -53,9 +57,9 @@ import Text.Regex.TDFA ((=~))
 import Control.Concurrent.Async (withAsync)
 import qualified Data.Aeson as JSON
 import qualified Data.ByteString.Lazy as BSL
-import Control.Monad (unless, when, void, forM_, liftM2, liftM4)
+import Control.Monad (unless, when, void, forM_, foldM, liftM2, liftM4)
 import Control.Monad.Catch ( bracket_ )
-import Control.Monad.Trans.Reader (withReaderT, runReaderT)
+import Control.Monad.Trans.Reader (asks, withReaderT, runReaderT)
 import Control.Monad.IO.Class (MonadIO (..))
 import qualified Crypto.Hash.SHA256 as SHA256
 import qualified Data.ByteString.Base16 as Base16
@@ -70,8 +74,11 @@ import System.Directory
 import Control.Retry (exponentialBackoff, limitRetriesByCumulativeDelay)
 import Network.Wait (waitTcpVerbose)
 import System.Environment
+import qualified System.FilePath.Glob as Glob (globDir1, compile)
 import System.Process
 import System.IO
+import qualified System.FilePath.Posix as Posix
+import qualified System.FilePath.Windows as Windows
 
 #ifndef mingw32_HOST_OS
 import System.Posix.Resource
@@ -563,11 +570,9 @@ src `archiveTo` dst = do
 
 infixr 4 `archiveTo`
 
--- | Given a directory (relative to the 'testCurrentDir') containing
--- a series of directories representing packages, generate an
--- external repository corresponding to all of these packages
-withRepo :: FilePath -> TestM a -> TestM a
-withRepo repo_dir m = do
+-- | Like 'withRepo', but doesn't run @cabal update@.
+withRepoNoUpdate :: FilePath -> TestM a -> TestM a
+withRepoNoUpdate repo_dir m = do
     env <- getTestEnv
 
     -- 1. Initialize repo directory
@@ -605,19 +610,27 @@ withRepo repo_dir m = do
     liftIO $ print $ testUserCabalConfigFile env
     liftIO $ print =<< readFile (testUserCabalConfigFile env)
 
-    -- 4. Update our local index
-    -- Note: this doesn't do anything for file+noindex repositories.
-    cabal "v2-update" ["-z"]
-
-    -- 5. Profit
+    -- 4. Profit
     withReaderT (\env' -> env' { testHaveRepo = True }) m
     -- TODO: Arguably should undo everything when we're done...
   where
-    repoUri env ="file+noindex://" ++ (if isWindows
-                                        then map (\x -> case x of
-                                            '\\' -> '/'
-                                            _ -> x)
-                                        else id) (testRepoDir env)
+    repoUri env ="file+noindex:" ++ (if isWindows
+                                        then map (\x -> if x == Windows.pathSeparator
+                                                        then Posix.pathSeparator
+                                                        else x
+                                                 )
+                                        else ("//" ++)) (testRepoDir env)
+
+-- | Given a directory (relative to the 'testCurrentDir') containing
+-- a series of directories representing packages, generate an
+-- external repository corresponding to all of these packages
+withRepo :: FilePath -> TestM a -> TestM a
+withRepo repo_dir m = do
+    withRepoNoUpdate repo_dir $ do
+        -- Update our local index
+        -- Note: this doesn't do anything for file+noindex repositories.
+        cabal "v2-update" ["-z"]
+        m
 
 -- | Given a directory (relative to the 'testCurrentDir') containing
 -- a series of directories representing packages, generate an
@@ -726,7 +739,7 @@ recordHeader args = do
 
 ------------------------------------------------------------------------
 -- * Subprocess run results
-assertFailure :: WithCallStack (String -> m ())
+assertFailure :: WithCallStack (String -> m a)
 assertFailure msg = withFrozenCallStack $ error msg
 
 assertExitCode :: MonadIO m => WithCallStack (ExitCode -> Result -> m ())
@@ -772,7 +785,7 @@ shouldDirectoryExist path =
 shouldDirectoryNotExist :: MonadIO m => WithCallStack (FilePath -> m ())
 shouldDirectoryNotExist path =
     withFrozenCallStack $
-    liftIO $ doesDirectoryExist path >>= assertBool (path ++ " should exist") . not
+    liftIO $ doesDirectoryExist path >>= assertBool (path ++ " should not exist") . not
 
 assertRegex :: MonadIO m => String -> String -> Result -> m ()
 assertRegex msg regex r =
@@ -794,18 +807,47 @@ recordMode mode = withReaderT (\env -> env {
     testRecordUserMode = Just mode
     })
 
+-- See Note [Multiline Needles]
 assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputContains needle result =
-    withFrozenCallStack $
-    unless (needle `isInfixOf` (concatOutput output)) $
-    assertFailure $ " expected: " ++ needle
-  where output = resultOutput result
+assertOutputContains = assertOn
+    needleHaystack
+        {txHaystack = TxContains{txBwd = delimitLines, txFwd = encodeLf}}
 
 assertOutputDoesNotContain :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputDoesNotContain needle result =
+assertOutputDoesNotContain = assertOn
+    needleHaystack
+        { expectNeedleInHaystack = False
+        , txHaystack = TxContains{txBwd = delimitLines, txFwd = encodeLf}
+        }
+
+-- See Note [Multiline Needles]
+assertOn :: MonadIO m => WithCallStack (NeedleHaystack -> String -> Result -> m ())
+assertOn NeedleHaystack{..} (txFwd txNeedle -> needle) (txFwd txHaystack. resultOutput -> output) =
     withFrozenCallStack $
-    when (needle `isInfixOf` (concatOutput output)) $
-    assertFailure $ "unexpected: " ++ needle
+    if expectNeedleInHaystack
+        then unless (needle `isInfixOf` output)
+            $ assertFailure $ "expected:\n" ++ (txBwd txNeedle needle) ++
+            if displayHaystack
+                then "\nin output:\n" ++ (txBwd txHaystack output)
+                else ""
+        else when (needle `isInfixOf` output)
+            $ assertFailure $ "unexpected:\n" ++ (txBwd txNeedle needle) ++
+            if displayHaystack
+                then "\nin output:\n" ++ (txBwd txHaystack output)
+                else ""
+
+assertOutputMatches :: MonadIO m => WithCallStack (String -> Result -> m ())
+assertOutputMatches regex result =
+    withFrozenCallStack $
+    unless (encodeLf output =~ regex) $
+    assertFailure $ "expected regex match: " ++ regex
+  where output = resultOutput result
+
+assertOutputDoesNotMatch :: MonadIO m => WithCallStack (String -> Result -> m ())
+assertOutputDoesNotMatch regex result =
+    withFrozenCallStack $
+    when (encodeLf output =~ regex) $
+    assertFailure $ "unexpected regex match: " ++ regex
   where output = resultOutput result
 
 assertFindInFile :: MonadIO m => WithCallStack (String -> FilePath -> m ())
@@ -835,9 +877,30 @@ assertFileDoesNotContain path needle =
                        (assertFailure ("expected: " ++ needle ++ "\n" ++
                                        " in file: " ++ path)))
 
--- | Replace line breaks with spaces, correctly handling "\r\n".
-concatOutput :: String -> String
-concatOutput = unwords . lines . filter ((/=) '\r')
+-- | Assert that at least one of the given paths contains the given search string.
+assertAnyFileContains :: MonadIO m => WithCallStack ([FilePath] -> String -> m ())
+assertAnyFileContains paths needle = do
+    let findOne found path =
+            if found
+               then pure found
+               else withFileContents path $ \contents ->
+                   pure $! needle `isInfixOf` contents
+    foundNeedle <- liftIO $ foldM findOne False paths
+    withFrozenCallStack $
+      unless foundNeedle $
+        assertFailure $
+          "expected: " <>
+          needle <>
+          "\nin one of:\n" <>
+          unlines (map ("* " <>) paths)
+
+-- | Assert that none of the given paths contains the given search string.
+assertNoFileContains :: MonadIO m => WithCallStack ([FilePath] -> String -> m ())
+assertNoFileContains paths needle =
+    liftIO $
+      forM_ paths $
+        \path ->
+          assertFileDoesNotContain path needle
 
 -- | The directory where script build artifacts are expected to be cached
 getScriptCacheDirectory :: FilePath -> TestM FilePath
@@ -846,6 +909,58 @@ getScriptCacheDirectory script = do
     hashinput <- liftIO $ canonicalizePath script
     let hash = C.unpack . Base16.encode . C.take 26 . SHA256.hash . C.pack $ hashinput
     return $ cabalDir </> "script-builds" </> hash
+
+------------------------------------------------------------------------
+-- * Globs
+
+-- | Match a glob from a root directory and return the results.
+matchGlob :: MonadIO m => FilePath -> String -> m [FilePath]
+matchGlob root glob = do
+  liftIO $ Glob.globDir1 (Glob.compile glob) root
+
+-- | Assert that a glob matches at least one path in the given root directory.
+--
+-- The matched paths are returned for further validation.
+assertGlobMatches :: MonadIO m => WithCallStack (FilePath -> String -> m [FilePath])
+assertGlobMatches root glob = do
+  results <- matchGlob root glob
+  withFrozenCallStack $
+    when (null results) $
+      assertFailure $
+        "Expected glob " <> show glob <> " to match in " <> show root
+  pure results
+
+-- | Assert that a glob matches no paths in the given root directory.
+assertGlobDoesNotMatch :: MonadIO m => WithCallStack (FilePath -> String -> m ())
+assertGlobDoesNotMatch root glob = do
+  results <- matchGlob root glob
+  withFrozenCallStack $
+    unless (null results) $
+      assertFailure $
+        "Expected glob "
+          <> show glob
+          <> " to not match any paths in "
+          <> show root
+          <> ", but the following matches were found:"
+          <> unlines (map ("* " <>) results)
+
+-- | Assert that a glob matches a path in the given root directory.
+--
+-- The root directory is determined from the `TestEnv` with a function like `testDistDir`.
+--
+-- The matched paths are returned for further validation.
+assertGlobMatchesTestDir :: WithCallStack ((TestEnv -> FilePath) -> String -> TestM [FilePath])
+assertGlobMatchesTestDir rootSelector glob = do
+  root <- asks rootSelector
+  assertGlobMatches root glob
+
+-- | Assert that a glob matches a path in the given root directory.
+--
+-- The root directory is determined from the `TestEnv` with a function like `testDistDir`.
+assertGlobDoesNotMatchTestDir :: WithCallStack ((TestEnv -> FilePath) -> String -> TestM ())
+assertGlobDoesNotMatchTestDir rootSelector glob = do
+  root <- asks rootSelector
+  assertGlobDoesNotMatch root glob
 
 ------------------------------------------------------------------------
 -- * Skipping tests
@@ -1015,6 +1130,9 @@ flakyIfCI ticket m = do
 flakyIfWindows :: IssueID -> TestM a -> TestM a
 flakyIfWindows ticket m = flakyIf isWindows ticket m
 
+normalizeWindowsOutput :: String -> String
+normalizeWindowsOutput = if isWindows then map (\x -> case x of '/' -> '\\'; _ -> x) else id
+
 getOpenFilesLimit :: TestM (Maybe Integer)
 #ifdef mingw32_HOST_OS
 -- No MS-specified limit, was determined experimentally on Windows 10 Pro x64,
@@ -1177,3 +1295,32 @@ findDependencyInStore pkgName = do
                       [] -> error $ "Could not find " <> pkgName' <> " when searching for " <> pkgName' <> " in\n" <> show packageDirs
                       (dir:_) -> dir
       pure (storeDir </> storeDirForGhcVersion </> libDir)
+
+-- | It can be easier to paste expected output verbatim into a text file,
+-- especially if it is a multiline string, rather than encoding it as a multiline
+-- string in Haskell source code.
+--
+-- With `-XMultilineStrings` triple quoted strings with line breaks will be
+-- easier to write in source code but then this will only work with ghc-9.12.1
+-- and later, in which case we'd have to use CPP with test scripts to support
+-- older GHC versions. CPP doesn't play nicely with multiline strings using
+-- string gaps. None of our test script import other modules. That might be a
+-- way to avoid CPP in a module that uses multiline strings.
+--
+-- In summary, it is easier to read multiline strings from a file. That is what
+-- this function facilitates.
+--
+-- The contents of the file are read strictly to avoid problems seen on Windows
+-- deleting the file:
+--
+-- > cabal.test.hs:
+-- > C:\Users\<username>\AppData\Local\Temp\cabal-testsuite-8376\errors.expect.txt:
+-- > removePathForcibly:DeleteFile
+-- > "\\\\?\\C:\\Users\\<username>\\AppData\\Local\\Temp\\cabal-testsuite-8376\\errors.expect.txt":
+-- > permission denied (The process cannot access the file because it is being
+-- > used by another process.)
+readFileVerbatim :: FilePath -> TestM String
+readFileVerbatim filename = do
+  testDir <- testCurrentDir <$> getTestEnv
+  s <- liftIO . readFile $ testDir </> filename
+  length s `seq` return s

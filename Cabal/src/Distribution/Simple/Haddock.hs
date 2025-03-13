@@ -5,7 +5,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 
 -----------------------------------------------------------------------------
 
@@ -67,12 +66,9 @@ import Distribution.Simple.Program.GHC
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import Distribution.Simple.Program.ResponseFile
 import Distribution.Simple.Register
-import Distribution.Simple.Setup.Common
-import Distribution.Simple.Setup.Haddock
-import Distribution.Simple.Setup.Hscolour
+import Distribution.Simple.Setup
 import Distribution.Simple.SetupHooks.Internal
   ( BuildHooks (..)
-  , BuildingWhat (..)
   , noBuildHooks
   )
 import qualified Distribution.Simple.SetupHooks.Internal as SetupHooks
@@ -265,6 +261,7 @@ haddock_setupHooks
         mbWorkDir = flagToMaybe $ haddockWorkingDir flags
         comp = compiler lbi
         platform = hostPlatform lbi
+        config = configFlags lbi
 
         quickJmpFlag = haddockQuickJump flags'
         flags = case haddockTarget of
@@ -282,9 +279,7 @@ haddock_setupHooks
         flag f = fromFlag $ f flags
 
         tmpFileOpts =
-          defaultTempFileOptions
-            { optKeepTempFiles = flag haddockKeepTempFiles
-            }
+          commonSetupTempFileOptions $ configCommonFlags config
         htmlTemplate =
           fmap toPathTemplate . flagToMaybe . haddockHtmlLocation $
             flags
@@ -553,9 +548,11 @@ createHaddockIndex
   -> IO ()
 createHaddockIndex verbosity programDb comp platform mbWorkDir flags = do
   let args = fromHaddockProjectFlags flags
+      tmpFileOpts =
+        commonSetupTempFileOptions $ haddockProjectCommonFlags $ flags
   (haddockProg, _version) <-
     getHaddockProg verbosity programDb comp args (Flag True)
-  runHaddock verbosity mbWorkDir defaultTempFileOptions comp platform haddockProg False args
+  runHaddock verbosity mbWorkDir tmpFileOpts comp platform haddockProg False args
 
 -- ------------------------------------------------------------------------------
 -- Contributions to HaddockArgs (see also Doctest.hs for very similar code).
@@ -620,6 +617,7 @@ fromHaddockProjectFlags flags =
     , argInterfaces = fromFlagOrDefault [] (haddockProjectInterfaces flags)
     , argLinkedSource = Flag True
     , argResourcesDir = haddockProjectResourcesDir flags
+    , argCssFile = haddockProjectCss flags
     }
 
 fromPackageDescription :: HaddockTarget -> PackageDescription -> HaddockArgs
@@ -1133,8 +1131,6 @@ renderArgs verbosity mbWorkDir tmpFileOpts version comp platform args k = do
                 withResponseFile
                   verbosity
                   tmpFileOpts
-                  mbWorkDir
-                  outputDir
                   "haddock-response.txt"
                   (if haddockSupportsUTF8 then Just utf8 else Nothing)
                   renderedArgs
@@ -1144,7 +1140,7 @@ renderArgs verbosity mbWorkDir tmpFileOpts version comp platform args k = do
     (Flag pfile, _) ->
       withPrologueArgs ["--prologue=" ++ pfile]
     (_, Flag prologueText) ->
-      withTempFileEx tmpFileOpts mbWorkDir outputDir "haddock-prologue.txt" $
+      withTempFileEx tmpFileOpts "haddock-prologue.txt" $
         \prologueFileName h -> do
           when haddockSupportsUTF8 (hSetEncoding h utf8)
           hPutStrLn h prologueText

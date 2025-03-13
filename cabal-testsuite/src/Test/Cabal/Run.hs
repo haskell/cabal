@@ -54,6 +54,29 @@ runAction _verbosity mb_cwd env_overrides path0 args input action = do
     mb_env <- getEffectiveEnvironment env_overrides
     putStrLn $ "+ " ++ showCommandForUser path args
     (readh, writeh) <- createPipe
+
+    -- `System.Process.createPipe` calls (through many intermediaries)
+    -- `GHC.IO.Handle.FD.fdToHandle`, whose documentation says:
+    --
+    -- > Makes a binary Handle. This is for historical reasons; it should
+    -- > probably be a text Handle with the default encoding and newline
+    -- > translation instead.
+    --
+    -- The documentation for `System.IO.hSetBinaryMode` says:
+    --
+    -- > This has the same effect as calling `hSetEncoding` with `char8`, together
+    -- > with `hSetNewlineMode` with `noNewlineTranslation`.
+    --
+    -- But this is a lie, and Unicode written to or read from binary handles is
+    -- always encoded or decoded as Latin-1, which is always the wrong choice.
+    --
+    -- Therefore, we explicitly set the output to UTF-8 to keep it consistent
+    -- between platforms and correct on all modern computers.
+    --
+    -- See: https://gitlab.haskell.org/ghc/ghc/-/issues/25307
+    hSetEncoding readh utf8
+    hSetEncoding writeh utf8
+
     hSetBuffering readh LineBuffering
     hSetBuffering writeh LineBuffering
     let drain = do

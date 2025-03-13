@@ -1,13 +1,9 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ViewPatterns #-}
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Simple.Setup.Hscolour
@@ -58,7 +54,7 @@ data HscolourFlags = HscolourFlags
   , hscolourBenchmarks :: Flag Bool
   , hscolourForeignLibs :: Flag Bool
   }
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic)
 
 pattern HscolourCommonFlags
   :: Flag Verbosity

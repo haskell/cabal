@@ -31,6 +31,11 @@ module Distribution.Client.JobControl
   , Lock
   , newLock
   , criticalSection
+
+    -- * Higher level utils
+  , newJobControlFromParStrat
+  , withJobControl
+  , mapConcurrentWithJobs
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -40,11 +45,14 @@ import Control.Concurrent (forkIO, forkIOWithUnmask, threadDelay)
 import Control.Concurrent.MVar
 import Control.Concurrent.STM (STM, TVar, atomically, modifyTVar', newTVarIO, readTVar)
 import Control.Concurrent.STM.TChan
-import Control.Exception (bracket_, mask_, try)
+import Control.Exception (bracket, bracket_, mask_, try)
 import Control.Monad (forever, replicateM_)
 import Distribution.Client.Compat.Semaphore
+import Distribution.Client.Utils (numberOfProcessors)
 import Distribution.Compat.Stack
+import Distribution.Simple.Compiler
 import Distribution.Simple.Utils
+import Distribution.Types.ParStrat
 import System.Semaphore
 
 -- | A simple concurrency abstraction. Jobs can be spawned and can complete
@@ -166,7 +174,7 @@ readAllTChan qvar = go []
         Nothing -> return (reverse xs)
         Just x -> go (x : xs)
 
--- | Make a 'JobControl' where the parallism is controlled by a semaphore.
+-- | Make a 'JobControl' where the parallelism is controlled by a semaphore.
 --
 -- This uses the GHC -jsem option to allow GHC to take additional semaphore slots
 -- if we are not using them all.
@@ -262,3 +270,46 @@ newLock = fmap Lock $ newMVar ()
 
 criticalSection :: Lock -> IO a -> IO a
 criticalSection (Lock lck) act = bracket_ (takeMVar lck) (putMVar lck ()) act
+
+--------------------------------------------------------------------------------
+-- More high level utils
+--------------------------------------------------------------------------------
+
+newJobControlFromParStrat
+  :: Verbosity
+  -> Maybe Compiler
+  -- ^ The compiler, used to determine whether Jsem is supported.
+  -- When Nothing, Jsem is assumed to be unsupported.
+  -> ParStratInstall
+  -- ^ The parallel strategy
+  -> Maybe Int
+  -- ^ A cap on the number of jobs (e.g. to force a maximum of 2 concurrent downloads despite a -j8 parallel strategy)
+  -> IO (JobControl IO a)
+newJobControlFromParStrat verbosity mcompiler parStrat numJobsCap = case parStrat of
+  Serial -> newSerialJobControl
+  NumJobs n -> newParallelJobControl (capJobs (fromMaybe numberOfProcessors n))
+  UseSem n ->
+    case mcompiler of
+      Just compiler
+        | jsemSupported compiler ->
+            newSemaphoreJobControl verbosity (capJobs n)
+        | otherwise ->
+            do
+              warn verbosity "-jsem is not supported by the selected compiler, falling back to normal parallelism control."
+              newParallelJobControl (capJobs n)
+      Nothing ->
+        -- Don't warn in the Nothing case, as there isn't really a "selected" compiler.
+        newParallelJobControl (capJobs n)
+  where
+    capJobs n = min (fromMaybe maxBound numJobsCap) n
+
+withJobControl :: IO (JobControl IO a) -> (JobControl IO a -> IO b) -> IO b
+withJobControl mkJC = bracket mkJC cleanupJobControl
+
+-- | Concurrently execute actions on a list using the given JobControl.
+-- The maximum number of concurrent jobs is tied to the JobControl instance.
+-- The resulting list does /not/ preserve the original order!
+mapConcurrentWithJobs :: JobControl IO b -> (a -> IO b) -> [a] -> IO [b]
+mapConcurrentWithJobs jobControl f xs = do
+  traverse_ (spawnJob jobControl . f) xs
+  traverse (const $ collectJob jobControl) xs

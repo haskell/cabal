@@ -32,7 +32,7 @@ import qualified Text.PrettyPrint as Disp
 -- | SPDX License Exceptions identifiers list v3.25
 data LicenseExceptionId
 {{ licenseIds }}
-  deriving (Eq, Ord, Enum, Bounded, Show, Read, Typeable, Data, Generic)
+  deriving (Eq, Ord, Enum, Bounded, Show, Read, Data, Generic)
 
 instance Binary LicenseExceptionId where
     put = Binary.putWord8 . fromIntegral . fromEnum

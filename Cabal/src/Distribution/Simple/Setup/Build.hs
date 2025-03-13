@@ -1,13 +1,9 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ViewPatterns #-}
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Simple.Setup.Build
@@ -62,7 +58,7 @@ data BuildFlags = BuildFlags
   , buildNumJobs :: Flag (Maybe Int)
   , buildUseSemaphore :: Flag String
   }
-  deriving (Read, Show, Generic, Typeable)
+  deriving (Read, Show, Generic)
 
 pattern BuildCommonFlags
   :: Flag Verbosity

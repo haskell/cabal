@@ -1,6 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
-{-# LANGUAGE LambdaCase         #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Solver.Types.PkgConfigDb
@@ -53,7 +51,7 @@ import Distribution.Verbosity                   (Verbosity)
 -- but we don't know the exact version (because parsing of the version number
 -- failed).
 newtype PkgConfigDb = PkgConfigDb (M.Map PkgconfigName (Maybe PkgconfigVersion))
-     deriving (Show, Generic, Typeable)
+     deriving (Show, Generic)
 
 instance Binary PkgConfigDb
 instance Structured PkgConfigDb

@@ -1,0 +1,11 @@
+---
+synopsis: Fix Haddock CSS handling in multi-package projects
+packages: [cabal-install, Cabal]
+prs: 10637
+issues: [10636]
+---
+
+When `--css=<css-file>` flag is provided to `cabal haddock-project`:
+
+- the Haddock index is now properly styled by the provided CSS file
+- each package in the project now has their docs properly styled by the provided CSS file

@@ -1,7 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE NondecreasingIndentation #-}
 -- | A GHC run-server, which supports running multiple GHC scripts
 -- without having to restart from scratch.
@@ -254,6 +253,7 @@ startServer chan senv = do
 
 -- | Unmasked initialization for the server
 initServer :: Server -> IO Server
+{- FOURMOLU_DISABLE -}
 initServer s0 = do
     -- NB: withProcessHandle reads an MVar and is interruptible
 
@@ -276,6 +276,7 @@ initServer s0 = do
     write s ":set prompt \"\""
     write s "System.IO.hSetBuffering System.IO.stdout System.IO.LineBuffering"
     return s
+{- FOURMOLU_ENABLE -}
 
 -- | Stop a GHCi session.
 stopServer :: Server -> IO ()

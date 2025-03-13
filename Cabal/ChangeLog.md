@@ -1,3 +1,6 @@
+# 3.14.1.0 [Hécate](mailto:hecate+github@glitchbra.in) November 2024
+* See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.14.1.0.md
+
 # 3.14.0.0 [Hécate](mailto:hecate+github@glitchbra.in) September 2024
 * See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.14.0.0.md
 
@@ -5,7 +8,6 @@
 * See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.12.1.0.md
 
 # 3.12.0.0 [Francesco Ariis](mailto:fa-ml@ariis.it) May 2024
-# 3.12.0.0 [Francesco Ariis](mailto:fa-ml@ariis.it) March 2024
 * See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.12.0.0.md
 
 # 3.10.3.0 [Hécate](mailto:hecate+github@glitchbra.in) January 2024
@@ -771,7 +773,7 @@
   * Many checks added for common mistakes
   * New `--package-db=` option for specific package databases
   * Many internal changes to support cabal-install
-  * Stricter parsing for version strings, eg dissalows "1.05"
+  * Stricter parsing for version strings, eg disallows "1.05"
   * Improved user guide introduction
   * Programatica support removed
   * New options `--program-prefix/suffix` allows eg versioned programs

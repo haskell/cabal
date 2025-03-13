@@ -3,7 +3,6 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 
 -----------------------------------------------------------------------------
 
@@ -61,6 +60,7 @@ data ProgramInvocation = ProgramInvocation
   , progInvokeInputEncoding :: IOEncoding
   -- ^ TODO: remove this, make user decide when constructing 'progInvokeInput'.
   , progInvokeOutputEncoding :: IOEncoding
+  , progInvokeWhen :: IO Bool
   }
 
 data IOEncoding
@@ -82,6 +82,7 @@ emptyProgramInvocation =
     , progInvokeInput = Nothing
     , progInvokeInputEncoding = IOEncodingText
     , progInvokeOutputEncoding = IOEncodingText
+    , progInvokeWhen = pure True
     }
 
 simpleProgramInvocation

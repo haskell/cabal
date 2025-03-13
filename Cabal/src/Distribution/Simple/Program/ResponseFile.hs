@@ -1,7 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TypeApplications #-}
 
 ----------------------------------------------------------------------------
 
@@ -27,10 +26,6 @@ import Distribution.Verbosity
 withResponseFile
   :: Verbosity
   -> TempFileOptions
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
-  -- ^ Working directory
-  -> SymbolicPath Pkg (Dir Response)
-  -- ^ Directory to create response file in.
   -> String
   -- ^ Template for response file name.
   -> Maybe TextEncoding
@@ -39,8 +34,8 @@ withResponseFile
   -- ^ Arguments to put into response file.
   -> (FilePath -> IO a)
   -> IO a
-withResponseFile verbosity tmpFileOpts mbWorkDir responseDir fileNameTemplate encoding arguments f =
-  withTempFileEx tmpFileOpts mbWorkDir responseDir fileNameTemplate $ \responsePath hf -> do
+withResponseFile verbosity tmpFileOpts fileNameTemplate encoding arguments f =
+  withTempFileEx tmpFileOpts fileNameTemplate $ \responsePath hf -> do
     let responseFileName = getSymbolicPath responsePath
     traverse_ (hSetEncoding hf) encoding
     let responseContents =

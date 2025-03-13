@@ -12,6 +12,8 @@ Installing executable mybuilder in <PATH>
 Warning: The directory <ROOT>/cabal.dist/home/.cabal/store/ghc-<GHCVER>/incoming/new-<RAND><ROOT>/cabal.dist/home/.cabal/store/ghc-<GHCVER>/<PACKAGE>-<HASH>/bin is not in the system search path.
 Symlinking 'mybuilder' to '<ROOT>/cabal.dist/install/mybuilder'
 # cabal v2-build
+Configuration is affected by the following files:
+- cabal.project
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:

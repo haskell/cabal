@@ -1,13 +1,9 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ViewPatterns #-}
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Simple.Benchmark
@@ -56,7 +52,7 @@ data BenchmarkFlags = BenchmarkFlags
   { benchmarkCommonFlags :: !CommonSetupFlags
   , benchmarkOptions :: [PathTemplate]
   }
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic)
 
 pattern BenchmarkCommonFlags
   :: Flag Verbosity

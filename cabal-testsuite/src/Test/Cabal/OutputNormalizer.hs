@@ -21,7 +21,7 @@ normalizeOutput :: NormalizerEnv -> String -> String
 normalizeOutput nenv =
     -- Normalize backslashes to forward slashes to normalize
     -- file paths
-    map (\c -> if c == '\\' then '/' else c)
+    backslashToSlash
     -- Install path frequently has architecture specific elements, so
     -- nub it out
   . resub "Installing (.+) in .+" "Installing \\1 in <PATH>"
@@ -46,7 +46,7 @@ normalizeOutput nenv =
   . resub (posixRegexEscape "tmp/src-" ++ "[0-9]+") "<TMPDIR>"
   . resub (posixRegexEscape (normalizerTmpDir nenv) ++ sameDir) "<ROOT>/"
   . resub (posixRegexEscape (normalizerCanonicalTmpDir nenv) ++ sameDir) "<ROOT>/"
-      -- Munge away C: prefix on filenames (Windows). We convert C:\\ to \\.
+    -- Munge away C:\ prefix on filenames (Windows). We convert C:\ to \.
   . (if buildOS == Windows then resub "([A-Z]):\\\\" "\\\\" else id)
   . appEndo (F.fold (map (Endo . packageIdRegex) (normalizerKnownPackages nenv)))
     -- Look for 0.1/installed-0d6uzW7Ubh1Fb4TB5oeQ3G
@@ -80,6 +80,7 @@ normalizeOutput nenv =
   . maybe id normalizePathCmdOutput (normalizerCabalInstallVersion nenv)
   -- hackage-security locks occur non-deterministically
   . resub "(Released|Acquired|Waiting) .*hackage-security-lock\n" ""
+  . resub "installed: [0-9]+(\\.[0-9]+)*" "installed: <VERSION>"
   where
     sameDir = "(\\.((\\\\)+|\\/))*"
     packageIdRegex pid =
@@ -152,6 +153,9 @@ posixSpecialChars = ".^$*+?()[{\\|"
 
 posixRegexEscape :: String -> String
 posixRegexEscape = concatMap (\c -> if c `elem` posixSpecialChars then ['\\', c] else [c])
+
+backslashToSlash :: String -> String
+backslashToSlash = map (\c -> if c == '\\' then '/' else c)
 
 -- From regex-compat-tdfa by Christopher Kuklewicz and shelarcy, BSD-3-Clause
 -------------------------

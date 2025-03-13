@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -106,12 +105,15 @@ import qualified Distribution.Simple.SetupHooks.Internal as SetupHooks
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Types.ComponentRequestedSpec
+import Distribution.Types.DependencySatisfaction (DependencySatisfaction (..))
 import Distribution.Types.GivenComponent
 import qualified Distribution.Types.LocalBuildConfig as LBC
 import Distribution.Types.LocalBuildInfo
+import Distribution.Types.MissingDependencyReason (MissingDependencyReason (..))
 import Distribution.Types.PackageVersionConstraint
 import Distribution.Utils.LogProgress
 import Distribution.Utils.NubList
+import Distribution.Utils.String (trim)
 import Distribution.Verbosity
 import Distribution.Version
 
@@ -154,7 +156,6 @@ import System.Directory
   ( canonicalizePath
   , createDirectoryIfMissing
   , doesFileExist
-  , getTemporaryDirectory
   , removeFile
   )
 import System.FilePath
@@ -202,7 +203,6 @@ data ConfigStateFileError
       PackageIdentifier
       PackageIdentifier
       (Either ConfigStateFileError LocalBuildInfo)
-  deriving (Typeable)
 
 -- | Format a 'ConfigStateFileError' as a user-facing error message.
 dispConfigStateFileError :: ConfigStateFileError -> Doc
@@ -1480,7 +1480,7 @@ dependencySatisfiable
   -> Map (PackageName, ComponentName) PromisedComponent
   -> Map (PackageName, ComponentName) InstalledPackageInfo
   -- ^ required dependencies
-  -> (Dependency -> Bool)
+  -> (Dependency -> DependencySatisfaction)
 dependencySatisfiable
   use_external_internal_deps
   exact_config
@@ -1506,16 +1506,14 @@ dependencySatisfiable
             internalDepSatisfiable
           else -- Backward compatibility for the old sublibrary syntax
 
-            ( sublibs == mainLibSet
-                && Map.member
-                  ( pn
-                  , CLibName $
-                      LSubLibName $
-                        packageNameToUnqualComponentName depName
-                  )
-                  requiredDepsMap
-            )
-              || all visible sublibs
+            let depComponentName =
+                  CLibName $ LSubLibName $ packageNameToUnqualComponentName depName
+                invisibleLibraries = NES.filter (not . visible) sublibs
+             in if sublibs == mainLibSet && Map.member (pn, depComponentName) requiredDepsMap
+                  then Satisfied
+                  else case nonEmpty $ Set.toList invisibleLibraries of
+                    Nothing -> Satisfied
+                    Just invisibleLibraries' -> Unsatisfied $ MissingLibrary invisibleLibraries'
     | isInternalDep =
         if use_external_internal_deps
           then -- When we are doing per-component configure, we now need to
@@ -1532,12 +1530,31 @@ dependencySatisfiable
       isInternalDep = pn == depName
 
       depSatisfiable =
-        not . null $ PackageIndex.lookupDependency installedPackageSet depName vr
+        let allVersions = PackageIndex.lookupPackageName installedPackageSet depName
+            eligibleVersions =
+              [ version
+              | (version, _infos) <- PackageIndex.eligibleDependencies allVersions
+              ]
+         in if null $ PackageIndex.matchingDependencies vr allVersions
+              then
+                if null eligibleVersions
+                  then Unsatisfied $ MissingPackage
+                  else Unsatisfied $ WrongVersion eligibleVersions
+              else Satisfied
 
       internalDepSatisfiable =
-        Set.isSubsetOf (NES.toSet sublibs) packageLibraries
+        let missingLibraries = (NES.toSet sublibs) `Set.difference` packageLibraries
+         in case nonEmpty $ Set.toList missingLibraries of
+              Nothing -> Satisfied
+              Just missingLibraries' -> Unsatisfied $ MissingLibrary missingLibraries'
+
       internalDepSatisfiableExternally =
-        all (\ln -> not $ null $ PackageIndex.lookupInternalDependency installedPackageSet pn vr ln) sublibs
+        -- TODO: Might need to propagate information on which versions _are_ available, if any...
+        let missingLibraries =
+              NES.filter (null . PackageIndex.lookupInternalDependency installedPackageSet pn vr) sublibs
+         in case nonEmpty $ Set.toList missingLibraries of
+              Nothing -> Satisfied
+              Just missingLibraries' -> Unsatisfied $ MissingLibrary missingLibraries'
 
       -- Check whether a library exists and is visible.
       -- We don't disambiguate between dependency on non-existent or private
@@ -1572,7 +1589,7 @@ configureFinalizedPackage
   -> ConfigFlags
   -> ComponentRequestedSpec
   -> [PackageVersionConstraint]
-  -> (Dependency -> Bool)
+  -> (Dependency -> DependencySatisfaction)
   -- ^ tests if a dependency is satisfiable.
   -- Might say it's satisfiable even when not.
   -> Compiler
@@ -2379,7 +2396,6 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
         pkgconfig ["--modversion", pkg]
           `catchIO` (\_ -> dieWithException verbosity $ PkgConfigNotFound pkg versionRequirement)
           `catchExit` (\_ -> dieWithException verbosity $ PkgConfigNotFound pkg versionRequirement)
-      let trim = dropWhile isSpace . dropWhileEnd isSpace
       let v = PkgconfigVersion (toUTF8BS $ trim version)
       if not (withinPkgconfigVersionRange v range)
         then dieWithException verbosity $ BadVersion pkg versionRequirement v
@@ -2674,10 +2690,9 @@ checkForeignDeps pkg lbi verbosity =
 
     builds :: String -> [ProgArg] -> IO Bool
     builds program args =
-      do
-        tempDir <- makeSymbolicPath <$> getTemporaryDirectory
-        withTempFileCwd mbWorkDir tempDir ".c" $ \cName cHnd ->
-          withTempFileCwd mbWorkDir tempDir "" $ \oNname oHnd -> do
+      withTempFileCwd ".c" $ \cName cHnd ->
+        withTempFileCwd "" $ \oNname oHnd ->
+          do
             hPutStrLn cHnd program
             hClose cHnd
             hClose oHnd
@@ -2689,8 +2704,8 @@ checkForeignDeps pkg lbi verbosity =
                 (withPrograms lbi)
                 (getSymbolicPath cName : "-o" : getSymbolicPath oNname : args)
             return True
-        `catchIO` (\_ -> return False)
-        `catchExit` (\_ -> return False)
+            `catchIO` (\_ -> return False)
+            `catchExit` (\_ -> return False)
 
     explainErrors Nothing [] = return () -- should be impossible!
     explainErrors _ _

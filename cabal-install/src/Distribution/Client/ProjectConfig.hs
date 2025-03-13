@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -37,6 +35,10 @@ module Distribution.Client.ProjectConfig
   , writeProjectLocalFreezeConfig
   , writeProjectConfigFile
   , commandLineFlagsToProjectConfig
+  , onlyTopLevelProvenance
+  , readSourcePackageCabalFile
+  , readSourcePackageCabalFile'
+  , CabalFileParseError (..)
 
     -- * Packages within projects
   , ProjectPackageLocation (..)
@@ -54,19 +56,34 @@ module Distribution.Client.ProjectConfig
   , resolveSolverSettings
   , BuildTimeSettings (..)
   , resolveBuildTimeSettings
+  , resolveNumJobsSetting
 
     -- * Checking configuration
   , checkBadPerPackageCompilerPaths
   , BadPerPackageCompilerPaths (..)
+
+    -- * Globals
+  , maxNumFetchJobs
   ) where
 
-import Distribution.Client.Compat.Prelude
-import Text.PrettyPrint (nest, render, text, vcat)
+import Distribution.Client.Compat.Prelude hiding (empty)
+import Distribution.Simple.Utils
+  ( createDirectoryIfMissingVerbose
+  , dieWithException
+  , maybeExit
+  , notice
+  , noticeDoc
+  , ordNub
+  , rawSystemIOWithEnv
+  , warn
+  )
+import Text.PrettyPrint (cat, colon, comma, empty, hsep, nest, quotes, render, text, vcat)
 import Prelude ()
 
 import Distribution.Client.Glob
   ( isTrivialRootedGlob
   )
+import Distribution.Client.JobControl
 import Distribution.Client.ProjectConfig.Legacy
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.RebuildMonad
@@ -96,6 +113,7 @@ import Distribution.Client.GlobalFlags
   ( RepoContext (..)
   , withRepoContext'
   )
+import Distribution.Client.HashValue
 import Distribution.Client.HttpUtils
   ( HttpTransport
   , configureTransport
@@ -128,9 +146,11 @@ import Distribution.Client.Utils
   ( determineNumJobs
   )
 import qualified Distribution.Deprecated.ParseUtils as OldParser
-  ( ParseResult (..)
-  , locatedErrorMsg
+  ( locatedErrorMsg
   , showPWarning
+  )
+import qualified Distribution.Deprecated.ProjectParseUtils as OldParser
+  ( ProjectParseResult (..)
   )
 import Distribution.Fields
   ( PError
@@ -164,15 +184,6 @@ import Distribution.Simple.Setup
   , fromFlagOrDefault
   , toFlag
   )
-import Distribution.Simple.Utils
-  ( createDirectoryIfMissingVerbose
-  , dieWithException
-  , info
-  , maybeExit
-  , notice
-  , rawSystemIOWithEnv
-  , warn
-  )
 import Distribution.System
   ( Platform
   )
@@ -184,6 +195,10 @@ import Distribution.Types.PackageVersionConstraint
   )
 import Distribution.Types.SourceRepo
   ( RepoType (..)
+  )
+import Distribution.Utils.Generic
+  ( toUTF8BS
+  , toUTF8LBS
   )
 import Distribution.Utils.NubList
   ( fromNubList
@@ -203,11 +218,9 @@ import Control.Exception (handle)
 import Control.Monad.Trans (liftIO)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
-import qualified Data.Hashable as Hashable
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Numeric (showHex)
 
 import Network.URI
   ( URI (..)
@@ -231,6 +244,7 @@ import System.IO
   , withBinaryFile
   )
 
+import Distribution.Deprecated.ProjectParseUtils (ProjectParseError (..), ProjectParseWarning)
 import Distribution.Solver.Types.ProjectConfigPath
 
 ----------------------------------------
@@ -430,12 +444,7 @@ resolveBuildTimeSettings
       -- buildSettingLogVerbosity  -- defined below, more complicated
       buildSettingBuildReports = fromFlag projectConfigBuildReports
       buildSettingSymlinkBinDir = flagToList projectConfigSymlinkBinDir
-      buildSettingNumJobs =
-        if fromFlag projectConfigUseSemaphore
-          then UseSem (determineNumJobs projectConfigNumJobs)
-          else case (determineNumJobs projectConfigNumJobs) of
-            1 -> Serial
-            n -> NumJobs (Just n)
+      buildSettingNumJobs = resolveNumJobsSetting projectConfigUseSemaphore projectConfigNumJobs
       buildSettingKeepGoing = fromFlag projectConfigKeepGoing
       buildSettingOfflineMode = fromFlag projectConfigOfflineMode
       buildSettingKeepTempFiles = fromFlag projectConfigKeepTempFiles
@@ -530,6 +539,20 @@ resolveBuildTimeSettings
         | isJust givenTemplate = True
         | isParallelBuild buildSettingNumJobs = False
         | otherwise = False
+
+-- | Determine the number of jobs (ParStrat) from the project config
+resolveNumJobsSetting
+  :: Flag Bool
+  -- ^ Whether to use a semaphore (-jsem)
+  -> Flag (Maybe Int)
+  -- ^ The number of jobs to run concurrently
+  -> ParStratX Int
+resolveNumJobsSetting projectConfigUseSemaphore projectConfigNumJobs =
+  if fromFlag projectConfigUseSemaphore
+    then UseSem (determineNumJobs projectConfigNumJobs)
+    else case (determineNumJobs projectConfigNumJobs) of
+      1 -> Serial
+      n -> NumJobs (Just n)
 
 ---------------------------------------------
 -- Reading and writing project config files
@@ -651,7 +674,7 @@ data BadProjectRoot
   | BadProjectRootAbsoluteFileNotFound FilePath
   | BadProjectRootDirFileNotFound FilePath FilePath
   | BadProjectRootFileBroken FilePath
-  deriving (Show, Typeable, Eq)
+  deriving (Show, Eq)
 
 instance Exception BadProjectRoot where
   displayException = renderBadProjectRoot
@@ -856,16 +879,45 @@ readGlobalConfig verbosity configFileFlag = do
   monitorFiles [monitorFileHashed configFile]
   return (convertLegacyGlobalConfig config)
 
-reportParseResult :: Verbosity -> String -> FilePath -> OldParser.ParseResult ProjectConfigSkeleton -> IO ProjectConfigSkeleton
-reportParseResult verbosity _filetype filename (OldParser.ParseOk warnings x) = do
+reportProjectParseWarnings :: Verbosity -> FilePath -> [ProjectParseWarning] -> IO ()
+reportProjectParseWarnings verbosity projectFile warnings =
   unless (null warnings) $
-    let msg = unlines (map (OldParser.showPWarning (intercalate ", " $ filename : (projectConfigPathRoot <$> projectSkeletonImports x))) warnings)
-     in warn verbosity msg
+    let msgs =
+          [ OldParser.showPWarning pFilename w
+          | (p, w) <- warnings
+          , let pFilename = fst $ unconsProjectConfigPath p
+          ]
+     in noticeDoc verbosity $
+          vcat
+            [ (text "Warnings found while parsing the project file" <> comma) <+> (text (takeFileName projectFile) <> colon)
+            , cat [nest 1 $ text "-" <+> text m | m <- ordNub msgs]
+            ]
+
+reportParseResult :: Verbosity -> String -> FilePath -> OldParser.ProjectParseResult ProjectConfigSkeleton -> IO ProjectConfigSkeleton
+reportParseResult verbosity _filetype projectFile (OldParser.ProjectParseOk warnings x) = do
+  reportProjectParseWarnings verbosity projectFile warnings
   return x
-reportParseResult verbosity filetype filename (OldParser.ParseFailed err) =
+reportParseResult verbosity filetype projectFile (OldParser.ProjectParseFailed (ProjectParseError snippet rootOrImportee err)) = do
   let (line, msg) = OldParser.locatedErrorMsg err
-      errLineNo = maybe "" (\n -> ':' : show n) line
-   in dieWithException verbosity $ ReportParseResult filetype filename errLineNo msg
+  let errLineNo = maybe "" (\n -> ':' : show n) line
+  let (sourceFile, provenance) =
+        maybe
+          (projectFile, empty)
+          ( \p ->
+              ( fst $ unconsProjectConfigPath p
+              , if isTopLevelConfigPath p then empty else docProjectConfigPath p
+              )
+          )
+          rootOrImportee
+  let doc = case snippet of
+        Nothing -> vcat (text <$> lines msg)
+        Just s ->
+          vcat
+            [ provenance
+            , text "Failed to parse" <+> quotes (text s) <+> (text "with error" <> colon)
+            , nest 2 $ hsep $ text <$> lines msg
+            ]
+  dieWithException verbosity $ ReportParseResult filetype sourceFile errLineNo doc
 
 ---------------------------------------------
 -- Finding packages in the project
@@ -886,7 +938,7 @@ data ProjectPackageLocation
 -- | Exception thrown by 'findProjectPackages'.
 data BadPackageLocations
   = BadPackageLocations (Set ProjectConfigProvenance) [BadPackageLocation]
-  deriving (Show, Typeable)
+  deriving (Show)
 
 instance Exception BadPackageLocations where
   displayException = renderBadPackageLocations
@@ -933,7 +985,7 @@ renderBadPackageLocations (BadPackageLocations provenance bpls)
 
     renderExplicit =
       "When using configuration from:\n"
-        ++ render (nest 2 . docProjectConfigPaths $ mapMaybe getExplicit (Set.toList provenance))
+        ++ render (nest 2 . docProjectConfigFiles $ mapMaybe getExplicit (Set.toList provenance))
         ++ "\nThe following errors occurred:\n"
         ++ render (nest 2 $ vcat ((text "-" <+>) . text <$> map renderBadPackageLocation bpls))
 
@@ -1209,6 +1261,7 @@ mplusMaybeT ma mb = do
 fetchAndReadSourcePackages
   :: Verbosity
   -> DistDirLayout
+  -> Maybe Compiler
   -> ProjectConfigShared
   -> ProjectConfigBuildOnly
   -> [ProjectPackageLocation]
@@ -1216,6 +1269,7 @@ fetchAndReadSourcePackages
 fetchAndReadSourcePackages
   verbosity
   distDirLayout
+  compiler
   projectConfigShared
   projectConfigBuildOnly
   pkgLocations = do
@@ -1252,7 +1306,9 @@ fetchAndReadSourcePackages
       syncAndReadSourcePackagesRemoteRepos
         verbosity
         distDirLayout
+        compiler
         projectConfigShared
+        projectConfigBuildOnly
         (fromFlag (projectConfigOfflineMode projectConfigBuildOnly))
         [repo | ProjectPackageRemoteRepo repo <- pkgLocations]
 
@@ -1369,15 +1425,22 @@ fetchAndReadSourcePackageRemoteTarball
 syncAndReadSourcePackagesRemoteRepos
   :: Verbosity
   -> DistDirLayout
+  -> Maybe Compiler
   -> ProjectConfigShared
+  -> ProjectConfigBuildOnly
   -> Bool
   -> [SourceRepoList]
   -> Rebuild [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
 syncAndReadSourcePackagesRemoteRepos
   verbosity
   DistDirLayout{distDownloadSrcDirectory}
+  compiler
   ProjectConfigShared
     { projectConfigProgPathExtra
+    }
+  ProjectConfigBuildOnly
+    { projectConfigUseSemaphore
+    , projectConfigNumJobs
     }
   offlineMode
   repos = do
@@ -1404,10 +1467,15 @@ syncAndReadSourcePackagesRemoteRepos
        in configureVCS verbosity progPathExtra vcs
 
     concat
-      <$> sequenceA
-        [ rerunIfChanged verbosity monitor repoGroup' $ do
-          vcs' <- getConfiguredVCS repoType
-          syncRepoGroupAndReadSourcePackages vcs' pathStem repoGroup'
+      <$> rerunConcurrentlyIfChanged
+        verbosity
+        (newJobControlFromParStrat verbosity compiler parStrat (Just maxNumFetchJobs))
+        [ ( monitor
+          , repoGroup'
+          , do
+              vcs' <- getConfiguredVCS repoType
+              syncRepoGroupAndReadSourcePackages vcs' pathStem repoGroup'
+          )
         | repoGroup@((primaryRepo, repoType) : _) <- Map.elems reposByLocation
         , let repoGroup' = map fst repoGroup
               pathStem =
@@ -1420,6 +1488,7 @@ syncAndReadSourcePackagesRemoteRepos
               monitor = newFileMonitor (pathStem <.> "cache")
         ]
     where
+      parStrat = resolveNumJobsSetting projectConfigUseSemaphore projectConfigNumJobs
       syncRepoGroupAndReadSourcePackages
         :: VCS ConfiguredProgram
         -> FilePath
@@ -1544,7 +1613,6 @@ data CabalFileParseError
       -- ^ We might discover the spec version the package needs
       [PWarning]
       -- ^ warnings
-  deriving (Typeable)
 
 -- | Manual instance which skips file contents
 instance Show CabalFileParseError where
@@ -1577,10 +1645,22 @@ readSourcePackageCabalFile
   -> BS.ByteString
   -> IO GenericPackageDescription
 readSourcePackageCabalFile verbosity pkgfilename content =
+  readSourcePackageCabalFile' (warn verbosity) pkgfilename content
+
+-- | Like `readSourcePackageCabalFile`, but the `warn` function is an argument.
+--
+-- This is used when reading @.cabal@ files in indexes, where warnings should
+-- generally be ignored.
+readSourcePackageCabalFile'
+  :: (String -> IO ())
+  -> FilePath
+  -> BS.ByteString
+  -> IO GenericPackageDescription
+readSourcePackageCabalFile' logWarnings pkgfilename content =
   case runParseResult (parseGenericPackageDescription content) of
     (warnings, Right pkg) -> do
       unless (null warnings) $
-        info verbosity (formatWarnings warnings)
+        logWarnings (formatWarnings warnings)
       return pkg
     (warnings, Left (mspecVersion, errors)) ->
       throwIO $ CabalFileParseError pkgfilename content errors mspecVersion warnings
@@ -1596,7 +1676,7 @@ readSourcePackageCabalFile verbosity pkgfilename content =
 data CabalFileSearchFailure
   = NoCabalFileFound FilePath
   | MultipleCabalFilesFound FilePath
-  deriving (Show, Typeable)
+  deriving (Show)
 
 instance Exception CabalFileSearchFailure
 
@@ -1655,7 +1735,7 @@ localFileNameForRemoteTarball :: URI -> FilePath
 localFileNameForRemoteTarball uri =
   mangleName uri
     ++ "-"
-    ++ showHex locationHash ""
+    ++ showHashValue locationHash
   where
     mangleName =
       truncateString 10
@@ -1665,15 +1745,15 @@ localFileNameForRemoteTarball uri =
         . dropTrailingPathSeparator
         . uriPath
 
-    locationHash :: Word
-    locationHash = fromIntegral (Hashable.hash (uriToString id uri ""))
+    locationHash :: HashValue
+    locationHash = hashValue (toUTF8LBS (uriToString id uri ""))
 
 -- | The name to use for a local file or dir for a remote 'SourceRepo'.
 -- This is deterministic based on the source repo identity details, and
 -- intended to produce non-clashing file names for different repos.
 localFileNameForRemoteRepo :: SourceRepoList -> FilePath
 localFileNameForRemoteRepo SourceRepositoryPackage{srpType, srpLocation} =
-  mangleName srpLocation ++ "-" ++ showHex locationHash ""
+  mangleName srpLocation ++ "-" ++ showHashValue locationHash
   where
     mangleName =
       truncateString 10
@@ -1682,9 +1762,10 @@ localFileNameForRemoteRepo SourceRepositoryPackage{srpType, srpLocation} =
         . dropTrailingPathSeparator
 
     -- just the parts that make up the "identity" of the repo
-    locationHash :: Word
+    locationHash :: HashValue
     locationHash =
-      fromIntegral (Hashable.hash (show srpType, srpLocation))
+      hashValue $
+        LBS.fromChunks [toUTF8BS srpLocation, toUTF8BS (show srpType)]
 
 -- | Truncate a string, with a visual indication that it is truncated.
 truncateString :: Int -> String -> String
@@ -1705,7 +1786,7 @@ truncateString n s
 
 data BadPerPackageCompilerPaths
   = BadPerPackageCompilerPaths [(PackageName, String)]
-  deriving (Show, Typeable)
+  deriving (Show)
 
 instance Exception BadPerPackageCompilerPaths where
   displayException = renderBadPerPackageCompilerPaths
@@ -1749,3 +1830,16 @@ checkBadPerPackageCompilerPaths compilerPrograms packagesConfig =
        ] of
     [] -> return ()
     ps -> throwIO (BadPerPackageCompilerPaths ps)
+
+-- | Filter out non-top-level project configs.
+onlyTopLevelProvenance :: Set ProjectConfigProvenance -> Set ProjectConfigProvenance
+onlyTopLevelProvenance = Set.filter $ \case
+  Implicit -> False
+  Explicit ps -> isTopLevelConfigPath ps
+
+-- | The maximum amount of fetch jobs that can run concurrently.
+-- For instance, this is used to limit the amount of concurrent downloads from
+-- hackage, or the amount of concurrent git clones for
+-- source-repository-package stanzas.
+maxNumFetchJobs :: Int
+maxNumFetchJobs = 2

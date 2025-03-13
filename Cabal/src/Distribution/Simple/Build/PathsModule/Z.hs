@@ -12,6 +12,7 @@ data Z
          zIsWindows :: Bool,
          zIsI386 :: Bool,
          zIsX8664 :: Bool,
+         zIsAarch64 :: Bool,
          zPrefix :: FilePath,
          zBindir :: FilePath,
          zLibdir :: FilePath,
@@ -50,7 +51,7 @@ render z_root = execWriter $ do
     return ()
   else do
     return ()
-  tell "{-# OPTIONS_GHC -fno-warn-missing-import-lists #-}\n"
+  tell "{-# OPTIONS_GHC -Wno-missing-import-lists #-}\n"
   tell "{-# OPTIONS_GHC -w #-}\n"
   tell "module Paths_"
   tell (zManglePkgName z_root (zPackageName z_root))
@@ -69,7 +70,6 @@ render z_root = execWriter $ do
     return ()
   tell "\n"
   tell "import qualified Control.Exception as Exception\n"
-  tell "import qualified Data.List as List\n"
   tell "import Data.Version (Version(..))\n"
   tell "import System.Environment (getEnv)\n"
   tell "import Prelude\n"
@@ -285,9 +285,16 @@ render z_root = execWriter $ do
             tell "  c_GetModuleFileName :: Ptr () -> CWString -> Int32 -> IO Int32\n"
             return ()
           else do
-            tell "-- win32 supported only with I386, X86_64\n"
-            tell "c_GetModuleFileName :: Ptr () -> CWString -> Int32 -> IO Int32\n"
-            tell "c_GetModuleFileName  = _\n"
+            if (zIsAarch64 z_root)
+            then do
+              tell "foreign import ccall unsafe \"windows.h GetModuleFileNameW\"\n"
+              tell "  c_GetModuleFileName :: Ptr () -> CWString -> Int32 -> IO Int32\n"
+              return ()
+            else do
+              tell "-- win32 supported only with I386, X86_64, Aarch64\n"
+              tell "c_GetModuleFileName :: Ptr () -> CWString -> Int32 -> IO Int32\n"
+              tell "c_GetModuleFileName  = _\n"
+              return ()
             return ()
           return ()
         tell "\n"
@@ -306,9 +313,14 @@ render z_root = execWriter $ do
   tell "joinFileName \"\"  fname = fname\n"
   tell "joinFileName \".\" fname = fname\n"
   tell "joinFileName dir \"\"    = dir\n"
-  tell "joinFileName dir fname\n"
-  tell "  | isPathSeparator (List.last dir) = dir ++ fname\n"
+  tell "joinFileName dir@(c:cs) fname\n"
+  tell "  | isPathSeparator (lastChar c cs) = dir ++ fname\n"
   tell "  | otherwise                       = dir ++ pathSeparator : fname\n"
+  tell " where\n"
+  tell "  -- We do not use Data.List.NonEmpty.last, as that would limit the module to\n"
+  tell "  -- base >= 4.9.0.0 (GHC >= 8.0.1).\n"
+  tell "  lastChar x [] = x\n"
+  tell "  lastChar _ (x:xs) = lastChar x xs\n"
   tell "\n"
   tell "pathSeparator :: Char\n"
   if (zIsWindows z_root)

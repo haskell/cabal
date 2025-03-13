@@ -1,5 +1,4 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 
 -- | This module implements a view of a 'VersionRange' as a finite
 -- list of separated version intervals.
@@ -65,7 +64,7 @@ import Distribution.Types.VersionRange.Internal
 -- predicates for translation into foreign packaging systems that do not
 -- support complex version range expressions.
 newtype VersionIntervals = VersionIntervals [VersionInterval]
-  deriving (Eq, Show, Typeable)
+  deriving (Eq, Show)
 
 -- | Inspect the list of version intervals.
 unVersionIntervals :: VersionIntervals -> [VersionInterval]
@@ -95,7 +94,7 @@ isVersion0 = (==) version0
 stage1 :: VersionRange -> [VersionInterval]
 stage1 = cataVersionRange alg
   where
-    -- version range leafs transform into singleton intervals
+    -- version range leaves transform into singleton intervals
     alg (ThisVersionF v) = [VersionInterval (LowerBound v InclusiveBound) (UpperBound v InclusiveBound)]
     alg (LaterVersionF v) = [VersionInterval (LowerBound v ExclusiveBound) NoUpperBound]
     alg (OrLaterVersionF v) = [VersionInterval (LowerBound v InclusiveBound) NoUpperBound]

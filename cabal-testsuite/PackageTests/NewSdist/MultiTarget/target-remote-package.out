@@ -1,3 +1,5 @@
 # cabal v2-sdist
+Configuration is affected by the following files:
+- cabal.project
 Error: [Cabal-7151]
 The package base cannot be packaged for distribution, because it is not local to this project.

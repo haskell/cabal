@@ -1,0 +1,12 @@
+---
+synopsis: "Quieter Git output"
+packages: [cabal-install]
+prs: 10587
+---
+
+When `cabal` clones a Git repo for a `source-repository-package` listed in a
+`cabal.project`, it will run various commands to check out the correct
+revision, initialize submodules if they're present, and so on.
+
+Now, `cabal` will pass `--quiet` to Git in more cases to help prevent
+cluttering command-line output.

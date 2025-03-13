@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -42,20 +41,21 @@ import System.Win32.Types ( BOOL, DWORD, LPCTSTR, LPVOID, withTString )
 
 #else
 
-import System.Posix.Files ( FileStatus, getFileStatus )
-
+import System.Posix.Files
+  ( FileStatus, getFileStatus
 #if MIN_VERSION_unix(2,6,0)
-import System.Posix.Files ( modificationTimeHiRes )
+  , modificationTimeHiRes
 #else
-import System.Posix.Files ( modificationTime )
+  , modificationTime
 #endif
+  )
 
 #endif
 
 -- | An opaque type representing a file's modification time, represented
 -- internally as a 64-bit unsigned integer in the Windows UTC format.
 newtype ModTime = ModTime Word64
-  deriving (Binary, Generic, Bounded, Eq, Ord, Typeable)
+  deriving (Binary, Generic, Bounded, Eq, Ord)
 
 instance Structured ModTime
 

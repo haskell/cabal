@@ -1,4 +1,5 @@
 import Test.Cabal.Prelude
+import Data.Function ((&))
 
 -- This test is similar to the simplified example in issue #4288. The package's
 -- setup script only depends on base and setup-helper. setup-helper exposes a
@@ -10,8 +11,7 @@ main = cabalTest $ do
   skipUnless "no v2-build compatible boot-Cabal" =<< hasNewBuildCompatBootCabal
   r <- recordMode DoNotRecord $ cabal' "v2-build" ["T4288"]
   assertOutputContains "This is setup-helper-1.0." r
-  assertOutputContains
-      ("In order, the following will be built: "
-       ++ " - setup-helper-1.0 (lib:setup-helper) (first run) "
-       ++ " - T4288-1.0 (lib:T4288) (first run)")
-      r
+  "In order, the following will be built:\n\
+  \ - setup-helper-1.0 (lib:setup-helper) (first run)\n\
+  \ - T4288-1.0 (lib:T4288) (first run)"
+    & flip (assertOn multilineNeedleHaystack) r

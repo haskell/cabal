@@ -1,12 +1,8 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Simple.Setup
@@ -41,6 +37,7 @@ module Distribution.Simple.Setup
   , globalCommand
   , CommonSetupFlags (..)
   , defaultCommonSetupFlags
+  , commonSetupTempFileOptions
   , ConfigFlags (..)
   , emptyConfigFlags
   , defaultConfigFlags

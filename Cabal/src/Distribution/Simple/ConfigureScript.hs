@@ -5,7 +5,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 -----------------------------------------------------------------------------
-{-# OPTIONS_GHC -fno-warn-deprecations #-}
+{-# OPTIONS_GHC -Wno-deprecations #-}
 
 -- |
 -- Module      :  Distribution.Simple.ConfigureScript

@@ -1,4 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE CPP #-}
 
 import Control.Exception

@@ -390,7 +390,7 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
   -- NOTE: CmdInstall and project local packages.
   --
   -- CmdInstall always installs packages from a source distribution that, in case of unpackage
-  -- pacakges, is created automatically. This is implemented in getSpecsAndTargetSelectors.
+  -- packages, is created automatically. This is implemented in getSpecsAndTargetSelectors.
   --
   -- This has the inconvenience that the planner will consider all packages as non-local
   -- (see `ProjectPlanning.shouldBeLocal`) and that any project or cli configuration will
@@ -467,6 +467,7 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
         fetchAndReadSourcePackages
           verbosity
           distDirLayout
+          (Just compiler)
           (projectConfigShared config)
           (projectConfigBuildOnly config)
           [ProjectPackageRemoteTarball uri | uri <- uris]
@@ -1030,7 +1031,7 @@ installLibraries
 
 -- See ticket #8894. This is safe to include any nonreinstallable boot pkg,
 -- but the particular package users will always expect to be in scope without specific installation
--- is base, so that they can access prelude, regardles of if they specifically asked for it.
+-- is base, so that they can access prelude, regardless of if they specifically asked for it.
 globalPackages :: [PackageName]
 globalPackages = mkPackageName <$> ["base"]
 
@@ -1126,8 +1127,8 @@ symlink
       overwritePolicy
       installDir
       (mkSourceBinDir unit)
-      (mkExeName exe)
       (mkFinalExeName exe)
+      (mkExeName exe)
 
 -- |
 -- -- * When 'InstallCheckOnly', warn if install would fail overwrite policy
@@ -1172,7 +1173,7 @@ installCheckUnitExes
       errorMessage installdir exe = case overwritePolicy of
         NeverOverwrite ->
           "Path '"
-            <> (installdir </> prettyShow exe)
+            <> (installdir </> mkFinalExeName exe)
             <> "' already exists. "
             <> "Use --overwrite-policy=always to overwrite."
         -- This shouldn't even be possible, but we keep it in case symlinking or

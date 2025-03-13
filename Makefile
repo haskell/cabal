@@ -12,34 +12,82 @@ DOCTEST := cabal doctest --allow-newer=False
 # default rules
 
 .PHONY: all
-all : exe lib
+all: help-banner exe lib ## Build the Cabal libraries and cabal-install executables.
 
 .PHONY: lib
-lib :
+lib: ## Builds the Cabal libraries.
 	$(CABALBUILD) Cabal:libs
 
 .PHONY: exe
-exe :
+exe: ## Builds the cabal-install executables.
 	$(CABALBUILD) cabal-install:exes
 
 .PHONY: init
-init: ## Set up git hooks and ignored revisions
+init: ## Set up git hooks and ignored revisions.
 	@git config core.hooksPath .githooks
 	## TODO
 
+# NOTE: Keep this in sync with `.github/workflows/format.yml`.
+FORMAT_DIRS := \
+	Cabal \
+	Cabal-syntax \
+	cabal-install \
+	cabal-validate
+
+FORMAT_DIRS_TODO := \
+	Cabal-QuickCheck \
+	Cabal-described \
+	Cabal-hooks \
+	Cabal-tests \
+	Cabal-tree-diff \
+	bootstrap \
+	buildinfo-reference-generator \
+	cabal-benchmarks \
+	cabal-dev-scripts \
+	cabal-install-solver \
+	cabal-testsuite/main \
+	cabal-testsuite/src \
+	cabal-testsuite/static \
+	solver-benchmarks
+
+.PHONY: style-todo
+style-todo: ## Configured for fourmolu, avoiding GHC parser failures
+	@fourmolu -q $(FORMAT_DIRS_TODO) > /dev/null
+
 .PHONY: style
-style: ## Run the code styler
-	@fourmolu -q -i Cabal Cabal-syntax cabal-install
+style: ## Run the code styler.
+	@fourmolu -q -i $(FORMAT_DIRS)
 
 .PHONY: style-modified
-style-modified: ## Run the code styler on modified files
-	@git ls-files --modified Cabal Cabal-syntax cabal-install \
+style-modified: ## Run the code styler on modified files.
+	@git ls-files --modified $(FORMAT_DIRS) \
 		| grep '.hs$$' | xargs -P $(PROCS) -I {} fourmolu -q -i {}
 
 .PHONY: style-commit
-style-commit: ## Run the code styler on the previous commit
-	@git diff --name-only HEAD $(COMMIT) Cabal Cabal-syntax cabal-install \
+style-commit: ## Run the code styler on the previous commit.
+	@git diff --name-only HEAD $(COMMIT) -- $(FORMAT_DIRS) \
 		| grep '.hs$$' | xargs -P $(PROCS) -I {} fourmolu -q -i {}
+
+.PHONY: whitespace
+whitespace: ## Run fix-whitespace in check mode.
+	fix-whitespace --check --verbose
+
+.PHONY: fix-whitespace
+fix-whitespace: ## Run fix-whitespace in fix mode.
+	fix-whitespace --verbose
+
+.PHONY: lint
+lint: ## Run HLint.
+	hlint -j .
+
+.PHONY: lint-json
+lint-json: ## Run HLint in JSON mode.
+	hlint -j --json -- .
+
+# local checks
+
+.PHONY: checks
+checks: whitespace users-guide-typos markdown-typos style lint-json  ## Run all local checks; whitespace, typos, style, and lint.
 
 # source generation: SPDX
 
@@ -95,15 +143,15 @@ analyse-imports :
 # ghcid
 
 .PHONY: ghcid-lib
-ghcid-lib :
+ghcid-lib: ## Run ghcid for the Cabal library.
 	ghcid -c 'cabal repl Cabal'
 
 .PHONY: ghcid-cli
-ghcid-cli :
+ghcid-cli: ## Run ghcid for the cabal-install executable.
 	ghcid -c 'cabal repl cabal-install'
 
 .PHONY: doctest
-doctest :
+doctest: ## Run doctests.
 	cd Cabal-syntax && $(DOCTEST)
 	cd Cabal-described && $(DOCTEST)
 	cd Cabal && $(DOCTEST)
@@ -116,7 +164,7 @@ doctest-cli :
 	doctest -D__DOCTEST__ --fast cabal-install/src cabal-install-solver/src cabal-install-solver/src-assertion
 
 .PHONY: doctest-install
-doctest-install:
+doctest-install: ## Install doctest tool needed for running doctests.
 	cabal install doctest --overwrite-policy=always --ignore-project --flag cabal-doctest
 
 # tests
@@ -213,7 +261,7 @@ validate-via-docker-old:
 
 # tags
 .PHONY : tags
-tags :
+tags: ## Generate editor tags, vim ctags and emacs etags.
 	hasktags -b Cabal-syntax/src Cabal/src Cabal-described/src cabal-install/src cabal-testsuite/src
 
 # bootstrapping
@@ -235,11 +283,11 @@ bootstrap-jsons: $(BOOTSTRAP_GHC_VERSIONS:%=bootstrap-json-%)
 ##############################################################################
 
 .PHONY: users-guide
-users-guide:
+users-guide: ## Build the users guide.
 	$(MAKE) -C doc users-guide
 
 .PHONY: users-guide-requirements
-users-guide-requirements:
+users-guide-requirements: ## Install the requirements for building the users guide.
 	$(MAKE) -C doc users-guide-requirements
 
 ifeq ($(shell uname), Darwin)
@@ -247,3 +295,38 @@ PROCS := $(shell sysctl -n hw.logicalcpu)
 else
 PROCS := $(shell nproc)
 endif
+
+PHONY: help
+help: ## Show the commented targets.
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+	sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+
+PHONY: help-banner
+help-banner: ## Show the help banner.
+	@echo "===================================================================="
+	@echo "§ all                  make with no arguments also shows this banner"
+	@echo "§ help                 make help will list targets with descriptions"
+	@echo "===================================================================="
+
+.PHONY: typos-install
+typos-install: ## Install typos-cli for typos target using cargo
+	cargo install typos-cli
+
+GREP_EXCLUDE := grep -v -E 'dist-|cabal-testsuite|python-'
+FIND_NAMED := find . -type f -name
+
+.PHONY: users-guide-typos
+users-guide-typos: ## Find typos in users guide
+	cd doc && $(FIND_NAMED) '*.rst' | xargs typos
+
+.PHONY: users-guide-fix-typos
+users-guide-fix-typos: ## Fix typos in users guide
+	cd doc && $(FIND_NAMED) '*.rst' | xargs typos --write-changes
+
+.PHONY: markdown-typos
+markdown-typos: ## Find typos in markdown files
+	$(FIND_NAMED) '*.md' | $(GREP_EXCLUDE) | xargs typos
+
+.PHONY: markdown-fix-typos
+markdown-fix-typos: ## Fix typos in markdown files
+	$(FIND_NAMED) '*.md' | $(GREP_EXCLUDE) | xargs typos --write-changes

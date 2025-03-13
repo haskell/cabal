@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -25,7 +24,7 @@ module Distribution.PackageDescription.Check.Warning
   , ppPackageCheck
   , ppCheckExplanationId
   , isHackageDistError
-  , extractCheckExplantion
+  , extractCheckExplanation
   , filterPackageChecksById
   , filterPackageChecksByIdString
   ) where
@@ -124,7 +123,7 @@ filterPackageChecksById cs is = filter ff cs
     ff c =
       flip notElem is
         . checkExplanationId
-        . extractCheckExplantion
+        . extractCheckExplanation
         $ c
 
 -- | Filter Package Check by Check explanation /string/.
@@ -256,6 +255,9 @@ data CheckExplanation
   | UnknownCompiler [String]
   | BaseNoUpperBounds
   | MissingUpperBounds CEType [String]
+  | LEUpperBounds CEType [String]
+  | TrailingZeroUpperBounds CEType [String]
+  | GTLowerBounds CEType [String]
   | SuspiciousFlagName [String]
   | DeclaredUsedFlags (Set.Set FlagName) (Set.Set FlagName)
   | NonASCIICustomField [String]
@@ -293,14 +295,14 @@ data CheckExplanation
 --      to be a ad hoc monoid.
 
 -- Convenience.
-extractCheckExplantion :: PackageCheck -> CheckExplanation
-extractCheckExplantion (PackageBuildImpossible e) = e
-extractCheckExplantion (PackageBuildWarning e) = e
-extractCheckExplantion (PackageDistSuspicious e) = e
-extractCheckExplantion (PackageDistSuspiciousWarn e) = e
-extractCheckExplantion (PackageDistInexcusable e) = e
+extractCheckExplanation :: PackageCheck -> CheckExplanation
+extractCheckExplanation (PackageBuildImpossible e) = e
+extractCheckExplanation (PackageBuildWarning e) = e
+extractCheckExplanation (PackageDistSuspicious e) = e
+extractCheckExplanation (PackageDistSuspiciousWarn e) = e
+extractCheckExplanation (PackageDistInexcusable e) = e
 
--- | Identifier for the speficic 'CheckExplanation'. This ensures `--ignore`
+-- | Identifier for the specific 'CheckExplanation'. This ensures `--ignore`
 -- can output a warning on unrecognised values.
 -- ☞ N.B.: should be kept in sync with 'CheckExplanation'.
 data CheckExplanationID
@@ -419,6 +421,9 @@ data CheckExplanationID
   | CIUnknownCompiler
   | CIBaseNoUpperBounds
   | CIMissingUpperBounds
+  | CILEUpperBounds
+  | CITrailingZeroUpperBounds
+  | CIGTLowerBounds
   | CISuspiciousFlagName
   | CIDeclaredUsedFlags
   | CINonASCIICustomField
@@ -561,6 +566,9 @@ checkExplanationId (UnknownArch{}) = CIUnknownArch
 checkExplanationId (UnknownCompiler{}) = CIUnknownCompiler
 checkExplanationId (BaseNoUpperBounds{}) = CIBaseNoUpperBounds
 checkExplanationId (MissingUpperBounds{}) = CIMissingUpperBounds
+checkExplanationId (LEUpperBounds{}) = CILEUpperBounds
+checkExplanationId (TrailingZeroUpperBounds{}) = CITrailingZeroUpperBounds
+checkExplanationId (GTLowerBounds{}) = CIGTLowerBounds
 checkExplanationId (SuspiciousFlagName{}) = CISuspiciousFlagName
 checkExplanationId (DeclaredUsedFlags{}) = CIDeclaredUsedFlags
 checkExplanationId (NonASCIICustomField{}) = CINonASCIICustomField
@@ -588,11 +596,13 @@ checkExplanationId (WrongFieldForExpectedDocFiles{}) = CIWrongFieldForExpectedDo
 
 type CheckExplanationIDString = String
 
--- A one-word identifier for each CheckExplanation
---
--- ☞ N.B: if you modify anything here, remeber to change the documentation
--- in @doc/cabal-commands.rst@!
+-- | A one-word identifier for each @CheckExplanation@.
 ppCheckExplanationId :: CheckExplanationID -> CheckExplanationIDString
+-- NOTE: If you modify anything here, remember to change the documentation
+-- in @doc/cabal-commands.rst@!
+-- NOTE: These strings will have to satisfy a test that these messages don't
+-- have too many dashes:
+--   $ cabal run Cabal-tests:unit-tests -- --pattern=Parsimonious
 ppCheckExplanationId CIParseWarning = "parser-warning"
 ppCheckExplanationId CINoNameField = "no-name-field"
 ppCheckExplanationId CINoVersionField = "no-version-field"
@@ -708,6 +718,9 @@ ppCheckExplanationId CIUnknownArch = "unknown-arch"
 ppCheckExplanationId CIUnknownCompiler = "unknown-compiler"
 ppCheckExplanationId CIBaseNoUpperBounds = "missing-bounds-important"
 ppCheckExplanationId CIMissingUpperBounds = "missing-upper-bounds"
+ppCheckExplanationId CILEUpperBounds = "le-upper-bounds"
+ppCheckExplanationId CITrailingZeroUpperBounds = "tz-upper-bounds"
+ppCheckExplanationId CIGTLowerBounds = "gt-lower-bounds"
 ppCheckExplanationId CISuspiciousFlagName = "suspicious-flag"
 ppCheckExplanationId CIDeclaredUsedFlags = "unused-flag"
 ppCheckExplanationId CINonASCIICustomField = "non-ascii"
@@ -1301,15 +1314,33 @@ ppExplanation BaseNoUpperBounds =
     ++ "version. For example if you have tested your package with 'base' "
     ++ "version 4.5 and 4.6 then use 'build-depends: base >= 4.5 && < 4.7'."
 ppExplanation (MissingUpperBounds ct names) =
-  let separator = "\n  - "
-   in "On "
-        ++ ppCET ct
-        ++ ", "
-        ++ "these packages miss upper bounds:"
-        ++ separator
-        ++ List.intercalate separator names
-        ++ "\n"
-        ++ "Please add them. There is more information at https://pvp.haskell.org/"
+  "On "
+    ++ ppCET ct
+    ++ ", "
+    ++ "these packages miss upper bounds:"
+    ++ listSep names
+    ++ "Please add them. There is more information at https://pvp.haskell.org/"
+ppExplanation (LEUpperBounds ct names) =
+  "On "
+    ++ ppCET ct
+    ++ ", "
+    ++ "these packages have less than or equals (<=) upper bounds:"
+    ++ listSep names
+    ++ "Please use less than (<) for upper bounds."
+ppExplanation (TrailingZeroUpperBounds ct names) =
+  "On "
+    ++ ppCET ct
+    ++ ", "
+    ++ "these packages have upper bounds with trailing zeros:"
+    ++ listSep names
+    ++ "Please avoid trailing zeros for upper bounds."
+ppExplanation (GTLowerBounds ct names) =
+  "On "
+    ++ ppCET ct
+    ++ ", "
+    ++ "these packages have greater than (>) lower bounds:"
+    ++ listSep names
+    ++ "Please use greater than or equals (>=) for lower bounds."
 ppExplanation (SuspiciousFlagName invalidFlagNames) =
   "Suspicious flag names: "
     ++ unwords invalidFlagNames
@@ -1470,6 +1501,11 @@ ppExplanation (WrongFieldForExpectedDocFiles extraDocFileSupport field paths) =
         else "extra-source-files"
 
 -- * Formatting utilities
+
+listSep :: [String] -> String
+listSep names =
+  let separator = "\n  - "
+   in separator ++ List.intercalate separator names ++ "\n"
 
 commaSep :: [String] -> String
 commaSep = List.intercalate ", "

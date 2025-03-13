@@ -8,7 +8,7 @@ write-ghc-environment-files: never
 program-options
   ghc-options: -Werror
 
--- This project file is used to distribute the cabal-head binary,
--- as such we cannot enable "-march=native".
-constraints:
-  hashable -arch-native
+-- if you are developing on a system without TH, use a `cabal.validate.project.local`
+-- to disable this
+package cabal-install
+  flags: +git-rev

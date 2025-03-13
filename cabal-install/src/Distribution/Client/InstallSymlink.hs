@@ -1,11 +1,5 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
-
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Client.InstallSymlink
@@ -73,6 +67,9 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Utils (info, withTempDirectory)
 import Distribution.System
   ( Platform
+  )
+import Distribution.Types.DependencySatisfaction
+  ( DependencySatisfaction (..)
   )
 import Distribution.Types.UnqualComponentName
 
@@ -205,7 +202,7 @@ symlinkBinaries
           case finalizePD
             flags
             (enableStanzas stanzas)
-            (const True)
+            (const Satisfied)
             platform
             cinfo
             []

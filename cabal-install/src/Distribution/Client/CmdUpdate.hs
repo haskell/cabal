@@ -1,10 +1,6 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
-{-# LANGUAGE ViewPatterns #-}
 
 -- | cabal-install CLI command: update
 module Distribution.Client.CmdUpdate

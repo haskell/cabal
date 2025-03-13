@@ -49,7 +49,10 @@ module Distribution.Client.Config
   ) where
 
 import Distribution.Client.Compat.Prelude
-import Distribution.Compat.Environment (lookupEnv)
+import Distribution.Compat.Environment
+  ( getEnvironment
+  , lookupEnv
+  )
 import Prelude ()
 
 import Language.Haskell.Extension (Language (Haskell2010))
@@ -126,9 +129,6 @@ import Distribution.Client.Version
   ( cabalInstallVersion
   )
 import qualified Distribution.Compat.CharParsing as P
-import Distribution.Compat.Environment
-  ( getEnvironment
-  )
 import Distribution.Compiler
   ( CompilerFlavor (..)
   , defaultCompilerFlavor
@@ -160,6 +160,7 @@ import qualified Distribution.Deprecated.ParseUtils as ParseUtils
 import Distribution.Parsec (ParsecParser, parsecFilePath, parsecOptCommaList, parsecToken)
 import Distribution.Simple.Command
   ( CommandUI (commandOptions)
+  , OptionField
   , ShowOrParseArgs (..)
   , commandDefaultFlags
   )
@@ -226,7 +227,8 @@ import System.Directory
   , renameFile
   )
 import System.FilePath
-  ( takeDirectory
+  ( normalise
+  , takeDirectory
   , (<.>)
   , (</>)
   )
@@ -469,6 +471,7 @@ instance Semigroup SavedConfig where
           , setupCabalFilePath = combine setupCabalFilePath
           , setupVerbosity = combine setupVerbosity
           , setupTargets = lastNonEmpty setupTargets
+          , setupKeepTempFiles = combine setupKeepTempFiles
           }
         where
           lastNonEmpty = lastNonEmpty' which
@@ -629,7 +632,6 @@ instance Semigroup SavedConfig where
           , haddockQuickJump = combine haddockQuickJump
           , haddockHscolourCss = combine haddockHscolourCss
           , haddockContents = combine haddockContents
-          , haddockKeepTempFiles = combine haddockKeepTempFiles
           , haddockIndex = combine haddockIndex
           , haddockBaseUrl = combine haddockBaseUrl
           , haddockResourcesDir = combine haddockResourcesDir
@@ -1314,6 +1316,19 @@ configFieldDescriptions src =
             ParseArgs
        ]
   where
+    toSavedConfig
+      :: (FieldDescr a -> FieldDescr SavedConfig)
+      -- Lifting function.
+      -> [OptionField a]
+      -- Option fields.
+      -> [String]
+      -- Fields to exclude, by name.
+      -> [FieldDescr a]
+      -- Field replacements.
+      --
+      -- If an option is found with the same name as one of these replacement
+      -- fields, the replacement field is used instead of the option.
+      -> [FieldDescr SavedConfig]
     toSavedConfig lift options exclusions replacements =
       [ lift (fromMaybe field replacement)
       | opt <- options
@@ -1679,7 +1694,12 @@ postProcessRepo lineno reponameStr repo0 = do
     -- Note: the trailing colon is important
     "file+noindex:" -> do
       let uri = remoteRepoURI repo0
-      return $ Left $ LocalRepo reponame (uriPath uri) (uriFragment uri == "#shared-cache")
+      return $
+        Left $
+          LocalRepo
+            reponame
+            (normalise (uriPath uri))
+            (uriFragment uri == "#shared-cache")
     _ -> do
       let repo = repo0{remoteRepoName = reponame}
 
@@ -1830,7 +1850,7 @@ haddockFlagsFields =
   , name `notElem` exclusions
   ]
   where
-    exclusions = ["verbose", "builddir", "for-hackage"]
+    exclusions = ["verbose", "builddir", "cabal-file", "for-hackage"]
 
 -- | Fields for the 'init' section.
 initFlagsFields :: [FieldDescr IT.InitFlags]

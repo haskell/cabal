@@ -2,7 +2,6 @@
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -277,7 +276,7 @@ structuredDecodeOrFailIO :: (Binary.Binary a, Structured a) => LBS.ByteString ->
 structuredDecodeOrFailIO bs =
   catch (evaluate (structuredDecode bs) >>= return . Right) handler
   where
-    handler (ErrorCallWithLocation str _) = return $ Left str
+    handler (ErrorCall str) = return $ Left str
 
 -- | Lazily reconstruct a value previously written to a file.
 structuredDecodeFileOrFail :: (Binary.Binary a, Structured a) => FilePath -> IO (Either String a)

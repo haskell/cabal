@@ -1,7 +1,3 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PatternSynonyms #-}
-
 module Distribution.Simple.Build.Inputs
   ( -- * Inputs of actions for building components
     PreBuildComponentInputs (..)

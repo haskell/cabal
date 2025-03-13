@@ -1,11 +1,5 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
-
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Client.CmdPath
@@ -95,7 +89,7 @@ pathCommand :: CommandUI (NixStyleFlags PathFlags)
 pathCommand =
   CommandUI
     { commandName = "path"
-    , commandSynopsis = "Query for simple project information"
+    , commandSynopsis = "Query for simple project information."
     , commandDescription = Just $ \_ ->
         wrapText $
           "Query for configuration and project information such as project GHC.\n"

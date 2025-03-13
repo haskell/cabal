@@ -1,6 +1,4 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveFoldable #-}
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
 
@@ -75,10 +73,12 @@ data CompilerFlavor
   | LHC
   | UHC
   | Eta
-  | MHS -- MicroHS, see https://github.com/augustss/MicroHs
+  | -- | @since 3.12.1.0
+    -- MicroHS, see https://github.com/augustss/MicroHs
+    MHS
   | HaskellSuite String -- string is the id of the actual compiler
   | OtherCompiler String
-  deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
+  deriving (Generic, Show, Read, Eq, Ord, Data)
 
 instance Binary CompilerFlavor
 instance Structured CompilerFlavor
@@ -143,7 +143,6 @@ data PerCompilerFlavor v = PerCompilerFlavor v v
     , Read
     , Eq
     , Ord
-    , Typeable
     , Data
     , Functor
     , Foldable
@@ -174,7 +173,7 @@ instance (Semigroup a, Monoid a) => Monoid (PerCompilerFlavor a) where
 -- ------------------------------------------------------------
 
 data CompilerId = CompilerId CompilerFlavor Version
-  deriving (Eq, Generic, Ord, Read, Show, Typeable)
+  deriving (Eq, Generic, Ord, Read, Show)
 
 instance Binary CompilerId
 instance Structured CompilerId
@@ -224,7 +223,7 @@ instance Binary CompilerInfo
 data AbiTag
   = NoAbiTag
   | AbiTag String
-  deriving (Eq, Generic, Show, Read, Typeable)
+  deriving (Eq, Generic, Show, Read)
 
 instance Binary AbiTag
 instance Structured AbiTag

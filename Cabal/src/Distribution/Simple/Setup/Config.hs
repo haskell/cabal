@@ -1,6 +1,5 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
@@ -235,7 +234,7 @@ data ConfigFlags = ConfigFlags
   -- `build-tool-depends` will be ignored. This allows a Cabal package with
   -- build-tool-dependencies to be built even if the tool is not found.
   }
-  deriving (Generic, Read, Show, Typeable)
+  deriving (Generic, Read, Show)
 
 pattern ConfigCommonFlags
   :: Flag Verbosity
@@ -1102,7 +1101,7 @@ configureArgs bcHack flags =
       (Flag hc, NoFlag) -> [hc_flag_name ++ prettyShow hc]
       (NoFlag, NoFlag) -> []
     hc_flag_name
-      -- TODO kill off thic bc hack when defaultUserHooks is removed.
+      -- TODO kill off this bc hack when defaultUserHooks is removed.
       | bcHack = "--with-hc="
       | otherwise = "--with-compiler="
     optFlag name config_field = case config_field flags of

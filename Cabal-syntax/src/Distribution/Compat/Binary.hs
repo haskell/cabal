@@ -1,6 +1,3 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE PatternSynonyms #-}
-
 module Distribution.Compat.Binary
   ( decodeOrFailIO
   , decodeFileOrFail'
@@ -20,4 +17,4 @@ decodeOrFailIO :: Binary a => ByteString -> IO (Either String a)
 decodeOrFailIO bs =
   catch (evaluate (decode bs) >>= return . Right) handler
   where
-    handler (ErrorCallWithLocation str _) = return $ Left str
+    handler (ErrorCall str) = return $ Left str

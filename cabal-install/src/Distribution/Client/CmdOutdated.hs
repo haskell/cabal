@@ -1,10 +1,5 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
-
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Client.CmdOutdated
@@ -128,6 +123,9 @@ import Distribution.Types.ComponentRequestedSpec
   )
 import Distribution.Types.Dependency
   ( Dependency (..)
+  )
+import Distribution.Types.DependencySatisfaction
+  ( DependencySatisfaction (..)
   )
 import Distribution.Types.PackageVersionConstraint
   ( PackageVersionConstraint (..)
@@ -443,7 +441,7 @@ depsFromPkgDesc verbosity comp platform = do
         finalizePD
           mempty
           (ComponentRequestedSpec True True)
-          (const True)
+          (const Satisfied)
           platform
           cinfo
           []

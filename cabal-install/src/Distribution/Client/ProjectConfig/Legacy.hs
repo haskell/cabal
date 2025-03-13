@@ -1,9 +1,11 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ViewPatterns #-}
 
 -- | Project configuration, implementation in terms of legacy types.
@@ -39,7 +41,7 @@ import Distribution.Types.Flag (FlagName, parsecFlagAssignment)
 
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Types.AllowNewer (AllowNewer (..), AllowOlder (..))
-import Distribution.Client.Types.Repo (LocalRepo (..), RemoteRepo (..), emptyRemoteRepo)
+import Distribution.Client.Types.Repo (LocalRepo (..), RemoteRepo (..), emptyRemoteRepo, normaliseFileNoIndexURI)
 import Distribution.Client.Types.RepoName (RepoName (..), unRepoName)
 import Distribution.Client.Types.SourceRepo (SourceRepoList, sourceRepositoryPackageGrammar)
 
@@ -82,9 +84,11 @@ import Distribution.PackageDescription
   )
 import Distribution.PackageDescription.Configuration (simplifyWithSysParams)
 import Distribution.Simple.Compiler
-  ( CompilerInfo (..)
+  ( Compiler (..)
+  , CompilerInfo (..)
   , DebugInfoLevel (..)
   , OptimisationLevel (..)
+  , compilerInfo
   , interpretPackageDB
   )
 import Distribution.Simple.InstallDirs (CopyDest (NoCopyDest))
@@ -126,6 +130,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Utils
   ( debug
   , lowercase
+  , noticeDoc
   )
 import Distribution.Types.CondTree
   ( CondBranch (..)
@@ -141,6 +146,7 @@ import Distribution.Utils.NubList
   , overNubList
   , toNubList
   )
+import Distribution.Utils.String (trim)
 
 import Distribution.Client.HttpUtils
 import Distribution.Client.ParseUtils
@@ -159,6 +165,11 @@ import Distribution.Deprecated.ParseUtils
   , syntaxError
   )
 import qualified Distribution.Deprecated.ParseUtils as ParseUtils
+import Distribution.Deprecated.ProjectParseUtils
+  ( ProjectParseResult (..)
+  , projectParse
+  , projectParseFail
+  )
 import Distribution.Deprecated.ReadP
   ( ReadP
   , (+++)
@@ -173,7 +184,7 @@ import Distribution.Simple.Command
   , option
   , reqArg'
   )
-import Distribution.System (Arch, OS)
+import Distribution.System (Arch, OS, buildOS)
 import Distribution.Types.PackageVersionConstraint
   ( PackageVersionConstraint
   )
@@ -183,9 +194,10 @@ import Distribution.Utils.Path hiding
   )
 
 import qualified Data.ByteString.Char8 as BS
+import Data.Functor ((<&>))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Network.URI (URI (..), parseURI)
+import Network.URI (URI (..), nullURIAuth, parseURI)
 import System.Directory (createDirectoryIfMissing, makeAbsolute)
 import System.FilePath (isAbsolute, isPathSeparator, makeValid, splitFileName, (</>))
 import Text.PrettyPrint
@@ -206,12 +218,13 @@ type ProjectConfigSkeleton = CondTree ConfVar [ProjectConfigPath] ProjectConfig
 singletonProjectConfigSkeleton :: ProjectConfig -> ProjectConfigSkeleton
 singletonProjectConfigSkeleton x = CondNode x mempty mempty
 
-instantiateProjectConfigSkeletonFetchingCompiler :: Monad m => m (OS, Arch, CompilerInfo) -> FlagAssignment -> ProjectConfigSkeleton -> m ProjectConfig
+instantiateProjectConfigSkeletonFetchingCompiler :: Monad m => m (OS, Arch, Compiler) -> FlagAssignment -> ProjectConfigSkeleton -> m (ProjectConfig, Maybe Compiler)
 instantiateProjectConfigSkeletonFetchingCompiler fetch flags skel
-  | null (toListOf traverseCondTreeV skel) = pure $ fst (ignoreConditions skel)
+  | null (toListOf traverseCondTreeV skel) = pure (fst (ignoreConditions skel), Nothing)
   | otherwise = do
-      (os, arch, impl) <- fetch
-      pure $ instantiateProjectConfigSkeletonWithCompiler os arch impl flags skel
+      (os, arch, comp) <- fetch
+      let conf = instantiateProjectConfigSkeletonWithCompiler os arch (compilerInfo comp) flags skel
+      pure (conf, Just comp)
 
 instantiateProjectConfigSkeletonWithCompiler :: OS -> Arch -> CompilerInfo -> FlagAssignment -> ProjectConfigSkeleton -> ProjectConfig
 instantiateProjectConfigSkeletonWithCompiler os arch impl _flags skel = go $ mapTreeConds (fst . simplifyWithSysParams os arch impl) skel
@@ -242,12 +255,15 @@ parseProject
   -> Verbosity
   -> ProjectConfigToParse
   -- ^ The contents of the file to parse
-  -> IO (ParseResult ProjectConfigSkeleton)
-parseProject rootPath cacheDir httpTransport verbosity configToParse = do
-  let (dir, projectFileName) = splitFileName rootPath
-  projectDir <- makeAbsolute dir
-  projectPath <- canonicalizeConfigPath projectDir (ProjectConfigPath $ projectFileName :| [])
-  parseProjectSkeleton cacheDir httpTransport verbosity projectDir projectPath configToParse
+  -> IO (ProjectParseResult ProjectConfigSkeleton)
+parseProject rootPath cacheDir httpTransport verbosity configToParse =
+  do
+    let (dir, projectFileName) = splitFileName rootPath
+    projectDir <- makeAbsolute dir
+    projectPath <- canonicalizeConfigPath projectDir (ProjectConfigPath $ projectFileName :| [])
+    parseProjectSkeleton cacheDir httpTransport verbosity projectDir projectPath configToParse
+    -- NOTE: Reverse the warnings so they are in line number order.
+    <&> \case ProjectParseOk ws x -> ProjectParseOk (reverse ws) x; x -> x
 
 parseProjectSkeleton
   :: FilePath
@@ -259,29 +275,32 @@ parseProjectSkeleton
   -- ^ The path of the file being parsed, either the root or an import
   -> ProjectConfigToParse
   -- ^ The contents of the file to parse
-  -> IO (ParseResult ProjectConfigSkeleton)
+  -> IO (ProjectParseResult ProjectConfigSkeleton)
 parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (ProjectConfigToParse bs) =
-  (sanityWalkPCS False =<<) <$> liftPR (go []) (ParseUtils.readFields bs)
+  (sanityWalkPCS False =<<) <$> liftPR source (go []) (ParseUtils.readFields bs)
   where
-    go :: [ParseUtils.Field] -> [ParseUtils.Field] -> IO (ParseResult ProjectConfigSkeleton)
+    go :: [ParseUtils.Field] -> [ParseUtils.Field] -> IO (ProjectParseResult ProjectConfigSkeleton)
     go acc (x : xs) = case x of
       (ParseUtils.F _ "import" importLoc) -> do
         let importLocPath = importLoc `consProjectConfigPath` source
 
         -- Once we canonicalize the import path, we can check for cyclical imports
+        normSource <- canonicalizeConfigPath projectDir source
         normLocPath <- canonicalizeConfigPath projectDir importLocPath
-
         debug verbosity $ "\nimport path, normalized\n=======================\n" ++ render (docProjectConfigPath normLocPath)
 
         if isCyclicConfigPath normLocPath
-          then pure . parseFail $ ParseUtils.FromString (render $ cyclicalImportMsg normLocPath) Nothing
+          then pure . projectParseFail Nothing (Just normSource) $ ParseUtils.FromString (render $ cyclicalImportMsg normLocPath) Nothing
           else do
-            normSource <- canonicalizeConfigPath projectDir source
+            when
+              (isUntrimmedUriConfigPath importLocPath)
+              (noticeDoc verbosity $ untrimmedUriImportMsg (Disp.text "Warning:") importLocPath)
             let fs = (\z -> CondNode z [normLocPath] mempty) <$> fieldsToConfig normSource (reverse acc)
             res <- parseProjectSkeleton cacheDir httpTransport verbosity projectDir importLocPath . ProjectConfigToParse =<< fetchImportConfig normLocPath
             rest <- go [] xs
-            pure . fmap mconcat . sequence $ [fs, res, rest]
+            pure . fmap mconcat . sequence $ [projectParse Nothing normSource fs, res, rest]
       (ParseUtils.Section l "if" p xs') -> do
+        normSource <- canonicalizeConfigPath projectDir source
         subpcs <- go [] xs'
         let fs = singletonProjectConfigSkeleton <$> fieldsToConfig source (reverse acc)
         (elseClauses, rest) <- parseElseClauses xs
@@ -289,27 +308,32 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
               (\c pcs e -> CondNode mempty mempty [CondBranch c pcs e])
                 <$>
                 -- we rewrap as as a section so the readFields lexer of the conditional parser doesn't get confused
-                adaptParseError l (parseConditionConfVarFromClause . BS.pack $ "if(" <> p <> ")")
+                ( let s = "if(" <> p <> ")"
+                   in projectParse (Just s) normSource (adaptParseError l (parseConditionConfVarFromClause $ BS.pack s))
+                )
                 <*> subpcs
                 <*> elseClauses
-        pure . fmap mconcat . sequence $ [fs, condNode, rest]
+        pure . fmap mconcat . sequence $ [projectParse Nothing normSource fs, condNode, rest]
       _ -> go (x : acc) xs
     go acc [] = do
       normSource <- canonicalizeConfigPath projectDir source
-      pure . fmap singletonProjectConfigSkeleton . fieldsToConfig normSource $ reverse acc
+      pure . fmap singletonProjectConfigSkeleton . projectParse Nothing normSource . fieldsToConfig normSource $ reverse acc
 
-    parseElseClauses :: [ParseUtils.Field] -> IO (ParseResult (Maybe ProjectConfigSkeleton), ParseResult ProjectConfigSkeleton)
+    parseElseClauses :: [ParseUtils.Field] -> IO (ProjectParseResult (Maybe ProjectConfigSkeleton), ProjectParseResult ProjectConfigSkeleton)
     parseElseClauses x = case x of
       (ParseUtils.Section _l "else" _p xs' : xs) -> do
         subpcs <- go [] xs'
         rest <- go [] xs
         pure (Just <$> subpcs, rest)
       (ParseUtils.Section l "elif" p xs' : xs) -> do
+        normSource <- canonicalizeConfigPath projectDir source
         subpcs <- go [] xs'
         (elseClauses, rest) <- parseElseClauses xs
         let condNode =
               (\c pcs e -> CondNode mempty mempty [CondBranch c pcs e])
-                <$> adaptParseError l (parseConditionConfVarFromClause . BS.pack $ "else(" <> p <> ")")
+                <$> ( let s = "elif(" <> p <> ")"
+                       in projectParse (Just s) normSource (adaptParseError l (parseConditionConfVarFromClause $ BS.pack s))
+                    )
                 <*> subpcs
                 <*> elseClauses
         pure (Just <$> condNode, rest)
@@ -328,15 +352,16 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
     addProvenance :: ProjectConfigPath -> ProjectConfig -> ProjectConfig
     addProvenance sourcePath x = x{projectConfigProvenance = Set.singleton $ Explicit sourcePath}
 
+    adaptParseError :: Show e => ParseUtils.LineNo -> Either e a -> ParseResult a
     adaptParseError _ (Right x) = pure x
     adaptParseError l (Left e) = parseFail $ ParseUtils.FromString (show e) (Just l)
 
-    liftPR :: (a -> IO (ParseResult b)) -> ParseResult a -> IO (ParseResult b)
-    liftPR f (ParseOk ws x) = addWarnings <$> f x
+    liftPR :: ProjectConfigPath -> (a -> IO (ProjectParseResult b)) -> ParseResult a -> IO (ProjectParseResult b)
+    liftPR p f (ParseOk ws x) = addWarnings <$> f x
       where
-        addWarnings (ParseOk ws' x') = ParseOk (ws' ++ ws) x'
+        addWarnings (ProjectParseOk ws' x') = ProjectParseOk (ws' ++ ((p,) <$> ws)) x'
         addWarnings x' = x'
-    liftPR _ (ParseFailed e) = pure $ ParseFailed e
+    liftPR p _ (ParseFailed e) = pure $ projectParseFail Nothing (Just p) e
 
     fetchImportConfig :: ProjectConfigPath -> IO BS.ByteString
     fetchImportConfig (ProjectConfigPath (pci :| _)) = do
@@ -344,7 +369,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
       fetch pci
 
     fetch :: FilePath -> IO BS.ByteString
-    fetch pci = case parseURI pci of
+    fetch pci = case parseURI $ trim pci of
       Just uri -> do
         let fp = cacheDir </> map (\x -> if isPathSeparator x then '_' else x) (makeValid $ show uri)
         createDirectoryIfMissing True cacheDir
@@ -359,12 +384,14 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
       where
         isSet f = f (projectConfigShared pc) /= NoFlag
 
-    sanityWalkPCS :: Bool -> ProjectConfigSkeleton -> ParseResult ProjectConfigSkeleton
-    sanityWalkPCS underConditional t@(CondNode d _c comps)
-      | underConditional && modifiesCompiler d = parseFail $ ParseUtils.FromString "Cannot set compiler in a conditional clause of a cabal project file" Nothing
-      | otherwise = mapM_ sanityWalkBranch comps >> pure t
+    sanityWalkPCS :: Bool -> ProjectConfigSkeleton -> ProjectParseResult ProjectConfigSkeleton
+    sanityWalkPCS underConditional t@(CondNode d (listToMaybe -> c) comps)
+      | underConditional && modifiesCompiler d =
+          projectParseFail Nothing c $ ParseUtils.FromString "Cannot set compiler in a conditional clause of a cabal project file" Nothing
+      | otherwise =
+          mapM_ sanityWalkBranch comps >> pure t
 
-    sanityWalkBranch :: CondBranch ConfVar [ProjectConfigPath] ProjectConfig -> ParseResult ()
+    sanityWalkBranch :: CondBranch ConfVar [ProjectConfigPath] ProjectConfig -> ProjectParseResult ()
     sanityWalkBranch (CondBranch _c t f) = traverse_ (sanityWalkPCS True) f >> sanityWalkPCS True t >> pure ()
 
 ------------------------------------------------------------------
@@ -861,9 +888,9 @@ convertLegacyBuildOnlyFlags
   configFlags
   installFlags
   clientInstallFlags
-  haddockFlags
-  _
-  _ =
+  _haddockFlags
+  _testFlags
+  _benchmarkFlags =
     ProjectConfigBuildOnly{..}
     where
       projectConfigClientInstallFlags = clientInstallFlags
@@ -880,6 +907,7 @@ convertLegacyBuildOnlyFlags
 
       CommonSetupFlags
         { setupVerbosity = projectConfigVerbosity
+        , setupKeepTempFiles = projectConfigKeepTempFiles
         } = commonFlags
 
       InstallFlags
@@ -898,10 +926,6 @@ convertLegacyBuildOnlyFlags
         , installKeepGoing = projectConfigKeepGoing
         , installOfflineMode = projectConfigOfflineMode
         } = installFlags
-
-      HaddockFlags
-        { haddockKeepTempFiles = projectConfigKeepTempFiles -- TODO: this ought to live elsewhere
-        } = haddockFlags
 
 convertToLegacyProjectConfig :: ProjectConfig -> LegacyProjectConfig
 convertToLegacyProjectConfig
@@ -975,6 +999,7 @@ convertToLegacySharedConfig
         mempty
           { setupVerbosity = projectConfigVerbosity
           , setupDistPref = fmap makeSymbolicPath $ projectConfigDistDir
+          , setupKeepTempFiles = projectConfigKeepTempFiles
           }
 
       configFlags =
@@ -1047,8 +1072,7 @@ convertToLegacySharedConfig
 convertToLegacyAllPackageConfig :: ProjectConfig -> LegacyPackageConfig
 convertToLegacyAllPackageConfig
   ProjectConfig
-    { projectConfigBuildOnly = ProjectConfigBuildOnly{..}
-    , projectConfigShared = ProjectConfigShared{..}
+    { projectConfigShared = ProjectConfigShared{..}
     } =
     LegacyPackageConfig
       { legacyConfigureFlags = configFlags
@@ -1124,8 +1148,6 @@ convertToLegacyAllPackageConfig
 
       haddockFlags =
         mempty
-          { haddockKeepTempFiles = projectConfigKeepTempFiles
-          }
 
 convertToLegacyPerPackageConfig :: PackageConfig -> LegacyPackageConfig
 convertToLegacyPerPackageConfig PackageConfig{..} =
@@ -1225,7 +1247,6 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
         , haddockQuickJump = packageConfigHaddockQuickJump
         , haddockHscolourCss = packageConfigHaddockHscolourCss
         , haddockContents = packageConfigHaddockContents
-        , haddockKeepTempFiles = mempty
         , haddockIndex = packageConfigHaddockIndex
         , haddockBaseUrl = packageConfigHaddockBaseUrl
         , haddockResourcesDir = packageConfigHaddockResourcesDir
@@ -1408,7 +1429,8 @@ legacySharedConfigFieldDescrs constraintSrc =
               configPackageDBs
               (\v conf -> conf{configPackageDBs = v})
           ]
-        . filterFields (["verbose", "builddir"] ++ map optionName installDirsOptions)
+        . aliasField "keep-temp-files" "haddock-keep-temp-files"
+        . filterFields (["verbose", "builddir", "keep-temp-files"] ++ map optionName installDirsOptions)
         . commandOptionsToFields
         $ configureOptions ParseArgs
     , liftFields
@@ -1541,7 +1563,7 @@ legacyPackageConfigFieldDescrs =
             parseTokenQ
             configConfigureArgs
             (\v conf -> conf{configConfigureArgs = v})
-        , simpleFieldParsec
+        , monoidFieldParsec
             "flags"
             dispFlagAssignment
             parsecFlagAssignment
@@ -1630,7 +1652,6 @@ legacyPackageConfigFieldDescrs =
             , "hscolour-css"
             , "contents-location"
             , "index-location"
-            , "keep-temp-files"
             , "base-url"
             , "resources-dir"
             , "output-dir"
@@ -2043,7 +2064,14 @@ remoteRepoSectionDescr =
     localToRemote :: LocalRepo -> RemoteRepo
     localToRemote (LocalRepo name path sharedCache) =
       (emptyRemoteRepo name)
-        { remoteRepoURI = URI "file+noindex:" Nothing path "" (if sharedCache then "#shared-cache" else "")
+        { remoteRepoURI =
+            normaliseFileNoIndexURI buildOS $
+              URI
+                "file+noindex:"
+                (Just nullURIAuth)
+                path
+                ""
+                (if sharedCache then "#shared-cache" else "")
         }
 
 -------------------------------
@@ -2073,9 +2101,3 @@ showTokenQ "" = Disp.empty
 showTokenQ x@('-' : '-' : _) = Disp.text (show x)
 showTokenQ x@('.' : []) = Disp.text (show x)
 showTokenQ x = showToken x
-
--- Handy util
-addFields
-  :: [FieldDescr a]
-  -> ([FieldDescr a] -> [FieldDescr a])
-addFields = (++)

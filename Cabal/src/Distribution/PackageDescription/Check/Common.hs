@@ -16,6 +16,7 @@ module Distribution.PackageDescription.Check.Common
   , partitionDeps
   , checkPVP
   , checkPVPs
+  , checkDependencyVersionRange
   ) where
 
 import Distribution.Compat.Prelude
@@ -79,7 +80,7 @@ partitionDeps ads ns ds = do
     -- shared targets that match
     fads = filter (flip elem dqs . fst) ads
     -- the names of such targets
-    inNam = nub $ map fst fads :: [UnqualComponentName]
+    inName = nub $ map fst fads :: [UnqualComponentName]
     -- the dependencies of such targets
     inDep = concatMap snd fads :: [Dependency]
 
@@ -96,7 +97,7 @@ partitionDeps ads ns ds = do
   --                     text,             ← no warning, inherited
   --                     monadacme         ← warning!
   let fFun d =
-        notElem (unqualName d) inNam
+        notElem (unqualName d) inName
           && notElem
             (unqualName d)
             (map unqualName inDep)
@@ -116,34 +117,32 @@ partitionDeps ads ns ds = do
 -- for important dependencies like base).
 checkPVP
   :: Monad m
-  => (String -> PackageCheck) -- Warn message dependend on name
+  => (Dependency -> Bool)
+  -> (String -> PackageCheck) -- Warn message depends on name
   -- (e.g. "base", "Cabal").
   -> [Dependency]
   -> CheckM m ()
-checkPVP ckf ds = do
-  let ods = checkPVPPrim ds
+checkPVP p ckf ds = do
+  let ods = filter p ds
   mapM_ (tellP . ckf . unPackageName . depPkgName) ods
 
 -- PVP dependency check for a list of dependencies. Some code duplication
 -- is sadly needed to provide more ergonimic error messages.
 checkPVPs
   :: Monad m
-  => ( [String]
+  => (Dependency -> Bool)
+  -> ( [String]
        -> PackageCheck -- Grouped error message, depends on a
        -- set of names.
      )
   -> [Dependency] -- Deps to analyse.
   -> CheckM m ()
-checkPVPs cf ds
+checkPVPs p cf ds
   | null ns = return ()
   | otherwise = tellP (cf ns)
   where
-    ods = checkPVPPrim ds
+    ods = filter p ds
     ns = map (unPackageName . depPkgName) ods
 
--- Returns dependencies without upper bounds.
-checkPVPPrim :: [Dependency] -> [Dependency]
-checkPVPPrim ds = filter withoutUpper ds
-  where
-    withoutUpper :: Dependency -> Bool
-    withoutUpper (Dependency _ ver _) = not . hasUpperBound $ ver
+checkDependencyVersionRange :: (VersionRange -> Bool) -> Dependency -> Bool
+checkDependencyVersionRange p (Dependency _ ver _) = p ver

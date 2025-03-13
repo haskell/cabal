@@ -1,7 +1,7 @@
 name: pkg
 version: 1.0
 build-type: Custom
-cabal-version: >= 1.20
+cabal-version: 1.20
 
 custom-setup
   setup-depends: base, Cabal, setup-dep == 2.*

@@ -1,4 +1,8 @@
 # cabal build
+Configuration is affected by the following files:
+- cabal.project
+- dep/cabal.project
+    imported by: cabal.project
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
@@ -15,6 +19,10 @@ Configuring library for main-0.1...
 Preprocessing library for main-0.1...
 Building library for main-0.1...
 # cabal build
+Configuration is affected by the following files:
+- cabal.project
+- dep/cabal.project
+    imported by: cabal.project
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:

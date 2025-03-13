@@ -1,11 +1,6 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Main
@@ -135,6 +130,7 @@ import qualified Distribution.Client.CmdPath as CmdPath
 import qualified Distribution.Client.CmdRepl as CmdRepl
 import qualified Distribution.Client.CmdRun as CmdRun
 import qualified Distribution.Client.CmdSdist as CmdSdist
+import qualified Distribution.Client.CmdTarget as CmdTarget
 import qualified Distribution.Client.CmdTest as CmdTest
 import qualified Distribution.Client.CmdUpdate as CmdUpdate
 
@@ -173,7 +169,8 @@ import Distribution.Client.Utils
   , relaxEncodingErrors
   )
 import Distribution.Client.Version
-  ( cabalInstallVersion
+  ( cabalInstallGitInfo
+  , cabalInstallVersion
   )
 
 import Distribution.Package (packageId)
@@ -227,7 +224,8 @@ import Distribution.Simple.Program
 import Distribution.Simple.Program.Db (reconfigurePrograms)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
-  ( cabalVersion
+  ( cabalGitInfo
+  , cabalVersion
   , createDirectoryIfMissingVerbose
   , dieNoVerbosity
   , dieWithException
@@ -236,6 +234,7 @@ import Distribution.Simple.Utils
   , notice
   , topHandler
   , tryFindPackageDesc
+  , warn
   )
 import Distribution.Text
   ( display
@@ -413,9 +412,16 @@ mainWorker args = do
       putStrLn $
         "cabal-install version "
           ++ display cabalInstallVersion
+          ++ " "
+          ++ cabalInstallGitInfo
           ++ "\ncompiled using version "
           ++ display cabalVersion
           ++ " of the Cabal library "
+          ++ cabalGitInfo'
+      where
+        cabalGitInfo'
+          | cabalGitInfo == cabalInstallGitInfo = "(in-tree)"
+          | otherwise = cabalGitInfo
 
     commands = map commandFromSpec commandSpecs
     commandSpecs =
@@ -455,6 +461,7 @@ mainWorker args = do
           , newCmd CmdExec.execCommand CmdExec.execAction
           , newCmd CmdClean.cleanCommand CmdClean.cleanAction
           , newCmd CmdSdist.sdistCommand CmdSdist.sdistAction
+          , newCmd CmdTarget.targetCommand CmdTarget.targetAction
           , legacyCmd configureExCommand configureAction
           , legacyCmd buildCommand buildAction
           , legacyCmd replCommand replAction
@@ -1343,6 +1350,7 @@ checkAction checkFlags extraArgs _globalFlags = do
 formatAction :: Flag Verbosity -> [String] -> Action
 formatAction verbosityFlag extraArgs _globalFlags = do
   let verbosity = fromFlag verbosityFlag
+  warn verbosity "This command is not a full formatter yet"
   path <- case extraArgs of
     [] -> relativeSymbolicPath <$> tryFindPackageDesc verbosity Nothing
     (p : _) -> return $ makeSymbolicPath p

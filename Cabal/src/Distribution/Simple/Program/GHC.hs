@@ -5,7 +5,6 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 
 module Distribution.Simple.Program.GHC
   ( GhcOptions (..)
@@ -16,6 +15,7 @@ module Distribution.Simple.Program.GHC
   , ghcInvocation
   , renderGhcOptions
   , runGHC
+  , runGHCWithResponseFile
   , packageDbArgsDb
   , normaliseGhcArgs
   ) where
@@ -32,8 +32,10 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Flag
 import Distribution.Simple.GHC.ImplInfo
 import Distribution.Simple.Program.Find (getExtraPathEnv)
+import Distribution.Simple.Program.ResponseFile
 import Distribution.Simple.Program.Run
 import Distribution.Simple.Program.Types
+import Distribution.Simple.Utils (TempFileOptions, infoNoWrap)
 import Distribution.System
 import Distribution.Types.ComponentId
 import Distribution.Types.ParStrat
@@ -42,17 +44,19 @@ import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version
 
+import GHC.IO.Encoding (TextEncoding)
 import Language.Haskell.Extension
 
 import Data.List (stripPrefix)
 import qualified Data.Map as Map
 import Data.Monoid (All (..), Any (..), Endo (..))
 import qualified Data.Set as Set
+import qualified System.Process as Process
 
 normaliseGhcArgs :: Maybe Version -> PackageDescription -> [String] -> [String]
 normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
   | ghcVersion `withinRange` supportedGHCVersions =
-      argumentFilters . filter simpleFilters . filterRtsOpts $ ghcArgs
+      argumentFilters . filter simpleFilters . filterRtsArgs $ ghcArgs
   where
     supportedGHCVersions :: VersionRange
     supportedGHCVersions = orLaterVersion (mkVersion [8, 0])
@@ -162,18 +166,9 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
       flagArgumentFilter
         ["-ghci-script", "-H", "-interactive-print"]
 
-    filterRtsOpts :: [String] -> [String]
-    filterRtsOpts = go False
-      where
-        go :: Bool -> [String] -> [String]
-        go _ [] = []
-        go _ ("+RTS" : opts) = go True opts
-        go _ ("-RTS" : opts) = go False opts
-        go isRTSopts (opt : opts) = addOpt $ go isRTSopts opts
-          where
-            addOpt
-              | isRTSopts = id
-              | otherwise = (opt :)
+    -- \| Remove RTS arguments from a list.
+    filterRtsArgs :: [String] -> [String]
+    filterRtsArgs = snd . splitRTSArgs
 
     simpleFilters :: String -> Bool
     simpleFilters =
@@ -329,6 +324,7 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
           ]
         , from [8, 2] ["-fmax-uncovered-patterns", "-fmax-errors"]
         , from [8, 4] $ to [8, 6] ["-fmax-valid-substitutions"]
+        , from [9, 12] ["-fmax-forced-spec-args", "-fwrite-if-compression"]
         ]
 
     dropIntFlag :: Bool -> String -> String -> Any
@@ -646,6 +642,81 @@ runGHC verbosity ghcProg comp platform mbWorkDir opts = do
   runProgramInvocation verbosity
     =<< ghcInvocation verbosity ghcProg comp platform mbWorkDir opts
 
+runGHCWithResponseFile
+  :: FilePath
+  -> Maybe TextEncoding
+  -> TempFileOptions
+  -> Verbosity
+  -> ConfiguredProgram
+  -> Compiler
+  -> Platform
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -> GhcOptions
+  -> IO ()
+runGHCWithResponseFile fileNameTemplate encoding tempFileOptions verbosity ghcProg comp platform maybeWorkDir opts = do
+  invocation <- ghcInvocation verbosity ghcProg comp platform maybeWorkDir opts
+
+  let compilerSupportsResponseFiles =
+        case compilerCompatVersion GHC comp of
+          -- GHC 9.4 is the first version which supports response files.
+          Just version -> version >= mkVersion [9, 4]
+          Nothing -> False
+
+      args = progInvokeArgs invocation
+
+      -- Don't use response files if the first argument is `--interactive`, for
+      -- two related reasons.
+      --
+      -- `hie-bios` relies on a hack to intercept the command-line that `Cabal`
+      -- supplies to `ghc`.  Specifically, `hie-bios` creates a script around
+      -- `ghc` that detects if the first option is `--interactive` and if so then
+      -- instead of running `ghc` it prints the command-line that `ghc` was given
+      -- instead of running the command:
+      --
+      -- https://github.com/haskell/hie-bios/blob/ce863dba7b57ded20160b4f11a487e4ff8372c08/wrappers/cabal#L7
+      --
+      -- … so we can't store that flag in the response file, otherwise that will
+      -- break.  However, even if we were to add a special-case to keep that flag
+      -- out of the response file things would still break because `hie-bios`
+      -- stores the arguments to `ghc` that the wrapper script outputs and reuses
+      -- them later.  That breaks if you use a response file because it will
+      -- store an argument like `@…/ghc36000-0.rsp` which is a temporary path
+      -- that no longer exists after the wrapper script completes.
+      --
+      -- The work-around here is that we don't use a response file at all if the
+      -- first argument (and only the first argument) to `ghc` is
+      -- `--interactive`.  This ensures that `hie-bios` and all downstream
+      -- utilities (e.g. `haskell-language-server`) continue working.
+      --
+      --
+      useResponseFile =
+        case args of
+          "--interactive" : _ -> False
+          _ -> compilerSupportsResponseFiles
+
+  if not useResponseFile
+    then runProgramInvocation verbosity invocation
+    else do
+      let (rtsArgs, otherArgs) = splitRTSArgs args
+
+      withResponseFile
+        verbosity
+        tempFileOptions
+        fileNameTemplate
+        encoding
+        otherArgs
+        $ \responseFile -> do
+          let newInvocation =
+                invocation{progInvokeArgs = ('@' : responseFile) : rtsArgs}
+
+          infoNoWrap verbosity $
+            "GHC response file arguments: "
+              <> case otherArgs of
+                [] -> ""
+                arg : args' -> Process.showCommandForUser arg args'
+
+          runProgramInvocation verbosity newInvocation
+
 ghcInvocation
   :: Verbosity
   -> ConfiguredProgram
@@ -958,6 +1029,26 @@ packageDbArgs :: GhcImplInfo -> PackageDBStackCWD -> [String]
 packageDbArgs implInfo
   | flagPackageConf implInfo = packageDbArgsConf
   | otherwise = packageDbArgsDb
+
+-- | Split a list of command-line arguments into RTS arguments and non-RTS
+-- arguments.
+splitRTSArgs :: [String] -> ([String], [String])
+splitRTSArgs args =
+  let addRTSArg arg ~(rtsArgs, nonRTSArgs) = (arg : rtsArgs, nonRTSArgs)
+      addNonRTSArg arg ~(rtsArgs, nonRTSArgs) = (rtsArgs, arg : nonRTSArgs)
+
+      go _ [] = ([], [])
+      go isRTSArg (arg : rest) =
+        case arg of
+          "+RTS" -> addRTSArg arg $ go True rest
+          "-RTS" -> addRTSArg arg $ go False rest
+          "--RTS" -> ([arg], rest)
+          "--" -> ([], arg : rest)
+          _ ->
+            if isRTSArg
+              then addRTSArg arg $ go isRTSArg rest
+              else addNonRTSArg arg $ go isRTSArg rest
+   in go False args
 
 -- -----------------------------------------------------------------------------
 -- Boilerplate Monoid instance for GhcOptions

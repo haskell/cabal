@@ -1,8 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE RankNTypes #-}
 
 -- | This module defines the core data types for Backpack.  For more
@@ -70,7 +68,7 @@ import qualified Data.Set as Set
 -- represent it as a 'DefiniteUnitId uid'.
 --
 -- For a source component using Backpack, however, there is more
--- structure as components may be parametrized over some signatures, and
+-- structure as components may be parameterized over some signatures, and
 -- these \"holes\" may be partially or wholly filled.
 --
 -- OpenUnitId plays an important role when we are mix-in linking,
@@ -91,7 +89,7 @@ data OpenUnitId
     -- MUST NOT be for an indefinite component; an 'OpenUnitId'
     -- is guaranteed not to have any holes.
     DefiniteUnitId DefUnitId
-  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
+  deriving (Generic, Read, Show, Eq, Ord, Data)
 
 -- TODO: cache holes?
 
@@ -165,7 +163,7 @@ mkDefUnitId cid insts =
 data OpenModule
   = OpenModule OpenUnitId ModuleName
   | OpenModuleVar ModuleName
-  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
+  deriving (Generic, Read, Show, Eq, Ord, Data)
 
 instance Binary OpenModule
 instance Structured OpenModule

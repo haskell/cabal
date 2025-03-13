@@ -96,6 +96,7 @@ import qualified Data.List as List
 import qualified Data.Map as Map
 import System.Directory
   ( doesDirectoryExist
+  , doesFileExist
   , removeDirectoryRecursive
   , removePathForcibly
   )
@@ -468,11 +469,18 @@ vcsGit =
       [programInvocation prog cloneArgs]
         -- And if there's a tag, we have to do that in a second step:
         ++ [git (resetArgs tag) | tag <- maybeToList (srpTag repo)]
-        ++ [ git (["submodule", "sync", "--recursive"] ++ verboseArg)
-           , git (["submodule", "update", "--init", "--force", "--recursive"] ++ verboseArg)
+        ++ [ whenGitModulesExists $ git $ ["submodule", "sync", "--recursive"] ++ verboseArg
+           , whenGitModulesExists $ git $ ["submodule", "update", "--init", "--force", "--recursive"] ++ verboseArg
            ]
       where
         git args = (programInvocation prog args){progInvokeCwd = Just destdir}
+
+        gitModulesPath = destdir </> ".gitmodules"
+        whenGitModulesExists invocation =
+          invocation
+            { progInvokeWhen = doesFileExist gitModulesPath
+            }
+
         cloneArgs =
           ["clone", srcuri, destdir]
             ++ branchArgs
@@ -482,6 +490,9 @@ vcsGit =
           Nothing -> []
         resetArgs tag = "reset" : verboseArg ++ ["--hard", tag, "--"]
         verboseArg = ["--quiet" | verbosity < Verbosity.normal]
+
+    -- Note: No --depth=1 for vcsCloneRepo since that is used for `cabal get -s`,
+    -- whereas `vcsSyncRepo` is used for source-repository-package where we do want shallow clones.
 
     vcsSyncRepos
       :: Verbosity
@@ -503,6 +514,8 @@ vcsGit =
           | dir <- (primaryLocalDir : map snd secondaryRepos)
           ]
 
+    -- NOTE: Repositories are cloned once, but can be synchronized multiple times.
+    -- Therefore, this code has to work with both `git clone` and `git fetch`.
     vcsSyncRepo verbosity gitProg SourceRepositoryPackage{..} localDir peer = do
       exists <- doesDirectoryExist localDir
       if exists
@@ -513,26 +526,79 @@ vcsGit =
       -- is needed because sometimes `git submodule sync` does not actually
       -- update the submodule source URL. Detailed description here:
       -- https://git.coop/-/snippets/85
-      git localDir ["submodule", "deinit", "--force", "--all"]
-      let gitModulesDir = localDir </> ".git" </> "modules"
-      gitModulesExists <- doesDirectoryExist gitModulesDir
-      when gitModulesExists $
+      let dotGitModulesPath = localDir </> ".git" </> "modules"
+          gitModulesPath = localDir </> ".gitmodules"
+
+      -- Remove any `.git/modules` if they exist.
+      dotGitModulesExists <- doesDirectoryExist dotGitModulesPath
+      when dotGitModulesExists $ do
+        git localDir $ ["submodule", "deinit", "--force", "--all"] ++ verboseArg
         if buildOS == Windows
           then do
             -- Windows can't delete some git files #10182
             void $
               Process.createProcess_ "attrib" $
                 Process.shell $
-                  "attrib -s -h -r " <> gitModulesDir <> "\\*.* /s /d"
+                  "attrib -s -h -r " <> dotGitModulesPath <> "\\*.* /s /d"
 
             catch
-              (removePathForcibly gitModulesDir)
-              (\e -> if isPermissionError e then removePathForcibly gitModulesDir else throw e)
-          else removeDirectoryRecursive gitModulesDir
-      git localDir resetArgs
-      git localDir $ ["submodule", "sync", "--recursive"] ++ verboseArg
-      git localDir $ ["submodule", "update", "--force", "--init", "--recursive"] ++ verboseArg
-      git localDir $ ["submodule", "foreach", "--recursive"] ++ verboseArg ++ ["git clean -ffxdq"]
+              (removePathForcibly dotGitModulesPath)
+              (\e -> if isPermissionError e then removePathForcibly dotGitModulesPath else throw e)
+          else removeDirectoryRecursive dotGitModulesPath
+
+      -- If we want a particular branch or tag, fetch it.
+      ref <- case srpBranch `mplus` srpTag of
+        Nothing -> pure "HEAD"
+        Just ref -> do
+          -- /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\
+          -- /!\            MULTIPLE HOURS HAVE BEEN LOST HERE!!             /!\
+          -- /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\ /!\
+          --
+          -- If you run `git fetch origin MY_TAG`, then the tag _will_ be
+          -- fetched, but no local ref (e.g. `refs/tags/MY_TAG`) will be
+          -- created.
+          --
+          -- This means that doing `git fetch origin MY_TAG && git reset --hard
+          -- MY_TAG` will fail with a message like `unknown revision MY_TAG`.
+          --
+          -- There are two ways around this:
+          --
+          -- 1. Provide a refmap explicitly:
+          --
+          --        git fetch --refmap="+refs/tags/*:refs/tags/*" origin MYTAG
+          --
+          --    This tells Git to create local tags matching remote tags. It's
+          --    not in the default refmap so you need to set it explicitly.
+          --    (You can also set it with `git config set --local
+          --    remote.origin.fetch ...`.)
+          --
+          -- 2. Use `FETCH_HEAD` directly: Git writes a `FETCH_HEAD` ref
+          --    containing the commit that was just fetched. This feels a bit
+          --    nasty but seems to work reliably, even if nothing was fetched.
+          --    (That is, deleting `FETCH_HEAD` and re-running a `git fetch`
+          --    command will succesfully recreate the `FETCH_HEAD` ref.)
+          --
+          -- Option 2 is what Cabal has done historically, and we're keeping it
+          -- for now. Option 1 is possible but seems to have little benefit.
+          git localDir ("fetch" : verboseArg ++ ["origin", ref])
+          pure "FETCH_HEAD"
+
+      -- Then, reset to the appropriate ref.
+      git localDir $
+        "reset"
+          : verboseArg
+          ++ [ "--hard"
+             , ref
+             , "--"
+             ]
+
+      -- We need to check if `.gitmodules` exists _after_ the `git reset` call.
+      gitModulesExists <- doesFileExist gitModulesPath
+      when gitModulesExists $ do
+        git localDir $ ["submodule", "sync", "--recursive"] ++ verboseArg
+        git localDir $ ["submodule", "update", "--force", "--init", "--recursive"] ++ verboseArg
+        git localDir $ ["submodule", "foreach", "--recursive"] ++ verboseArg ++ ["git clean -ffxdq"]
+
       git localDir $ ["clean", "-ffxdq"]
       where
         git :: FilePath -> [String] -> IO ()
@@ -543,15 +609,14 @@ vcsGit =
               }
 
         cloneArgs =
-          ["clone", "--no-checkout", loc, localDir]
+          ["clone", "--depth=1", "--no-checkout", loc, localDir]
             ++ case peer of
               Nothing -> []
               Just peerLocalDir -> ["--reference", peerLocalDir]
             ++ verboseArg
           where
             loc = srpLocation
-        resetArgs = "reset" : verboseArg ++ ["--hard", resetTarget, "--"]
-        resetTarget = fromMaybe "HEAD" (srpBranch `mplus` srpTag)
+
         verboseArg = ["--quiet" | verbosity < Verbosity.normal]
 
 gitProgram :: Program

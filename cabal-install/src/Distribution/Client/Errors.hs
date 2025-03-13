@@ -1,9 +1,7 @@
 {-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# OPTIONS_GHC -fno-warn-incomplete-uni-patterns #-}
+{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 
 -----------------------------------------------------------------------------
 
@@ -26,8 +24,8 @@ import qualified Data.ByteString.Base16 as Base16
 import qualified Data.ByteString.Char8 as BS8
 import Data.List (groupBy)
 import Distribution.Client.IndexUtils.Timestamp
-import Distribution.Client.Types.Repo
-import Distribution.Client.Types.RepoName (RepoName (..))
+import qualified Distribution.Client.Types.Repo as Repo
+import qualified Distribution.Client.Types.RepoName as RepoName
 import Distribution.Compat.Prelude
 import Distribution.Deprecated.ParseUtils (PWarning, showPWarning)
 import Distribution.Package
@@ -35,6 +33,8 @@ import Distribution.Pretty
 import Distribution.Simple (VersionRange)
 import Distribution.Simple.Utils
 import Network.URI
+import Text.PrettyPrint hiding (render, (<>))
+import qualified Text.PrettyPrint as PP
 import Text.Regex.Posix.ByteString (WrapError)
 
 data CabalInstallException
@@ -72,7 +72,7 @@ data CabalInstallException
   | ReportTargetProblems String
   | ListBinTargetException String
   | ResolveWithoutDependency String
-  | CannotReadCabalFile FilePath
+  | CannotReadCabalFile FilePath FilePath
   | ErrorUpdatingIndex FilePath IOException
   | InternalError FilePath
   | ReadIndexCache FilePath
@@ -114,7 +114,7 @@ data CabalInstallException
   | ParseExtraLinesFailedErr String String
   | ParseExtraLinesOkError [PWarning]
   | FetchPackageErr
-  | ReportParseResult String FilePath String String
+  | ReportParseResult String FilePath String Doc
   | ReportSourceRepoProblems String
   | BenchActionException
   | RenderBenchTargetProblem [String]
@@ -182,11 +182,11 @@ data CabalInstallException
   | FreezeException String
   | PkgSpecifierException [String]
   | CorruptedIndexCache String
-  | UnusableIndexState RemoteRepo Timestamp Timestamp
-  | MissingPackageList RemoteRepo
+  | UnusableIndexState Repo.RemoteRepo Timestamp Timestamp
+  | MissingPackageList Repo.RemoteRepo
   | CmdPathAcceptsNoTargets
   | CmdPathCommandDoesn'tSupportDryRun
-  deriving (Show, Typeable)
+  deriving (Show)
 
 exceptionCodeCabalInstall :: CabalInstallException -> Int
 exceptionCodeCabalInstall e = case e of
@@ -392,7 +392,11 @@ exceptionMessageCabalInstall e = case e of
   ReportTargetProblems problemsMsg -> problemsMsg
   ListBinTargetException errorStr -> errorStr
   ResolveWithoutDependency errorStr -> errorStr
-  CannotReadCabalFile file -> "Cannot read .cabal file inside " ++ file
+  CannotReadCabalFile expect file ->
+    "Failed to read "
+      ++ expect
+      ++ " from archive "
+      ++ file
   ErrorUpdatingIndex name ioe -> "Error while updating index for " ++ name ++ " repository " ++ show ioe
   InternalError msg ->
     "internal error when reading package index: "
@@ -493,13 +497,12 @@ exceptionMessageCabalInstall e = case e of
   ParseExtraLinesOkError ws -> unlines (map (showPWarning "Error parsing additional config lines") ws)
   FetchPackageErr -> "fetchPackage: source repos not supported"
   ReportParseResult filetype filename line msg ->
-    "Error parsing "
-      ++ filetype
-      ++ " "
-      ++ filename
-      ++ line
-      ++ ":\n"
-      ++ msg
+    PP.render $
+      vcat
+        -- NOTE: As given to us, the line number string is prefixed by a colon.
+        [ text "Error parsing" <+> text filetype <+> text filename PP.<> text line PP.<> colon
+        , nest 1 $ text "-" <+> msg
+        ]
   ReportSourceRepoProblems errorStr -> errorStr
   BenchActionException ->
     "The bench command does not support '--only-dependencies'. "
@@ -841,7 +844,7 @@ exceptionMessageCabalInstall e = case e of
   CorruptedIndexCache str -> str
   UnusableIndexState repoRemote maxFound requested ->
     "Latest known index-state for '"
-      ++ unRepoName (remoteRepoName repoRemote)
+      ++ RepoName.unRepoName (Repo.remoteRepoName repoRemote)
       ++ "' ("
       ++ prettyShow maxFound
       ++ ") is older than the requested index-state ("
@@ -851,7 +854,7 @@ exceptionMessageCabalInstall e = case e of
       ++ "."
   MissingPackageList repoRemote ->
     "The package list for '"
-      ++ unRepoName (remoteRepoName repoRemote)
+      ++ RepoName.unRepoName (Repo.remoteRepoName repoRemote)
       ++ "' does not exist. Run 'cabal update' to download it."
   CmdPathAcceptsNoTargets ->
     "The 'path' command accepts no target arguments."

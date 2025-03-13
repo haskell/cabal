@@ -168,7 +168,7 @@ organizeByRepos
   -> [a]
   -> Either String [(a, CombineStrategy)]
 organizeByRepos (ActiveRepos xs0) sel ys0 =
-  -- here we use lazyness to do only one traversal
+  -- here we use laziness to do only one traversal
   let (rest, result) = case go rest xs0 ys0 of
         Right (rest', result') -> (rest', Right result')
         Left err -> ([], Left err)

@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- | The test monad
@@ -35,6 +34,7 @@ module Test.Cabal.Monad (
     testPrefixDir,
     testLibInstallDir,
     testDistDir,
+    testSystemTmpDir,
     testPackageDbDir,
     testRepoDir,
     testKeysDir,
@@ -88,9 +88,6 @@ import Distribution.Verbosity
 import Distribution.Version
 
 import Control.Concurrent.Async
-#if !MIN_VERSION_base(4,11,0)
-import Data.Monoid ((<>))
-#endif
 import Data.Monoid (mempty)
 import qualified Control.Exception as E
 import Control.Monad
@@ -402,14 +399,18 @@ runTestM mode m =
                     testSkipSetupTests =  argSkipSetupTests (testCommonArgs args),
                     testHaveCabalShared = runnerWithSharedLib senv,
                     testEnvironment =
-                        -- Try to avoid Unicode output
-                        [ ("LC_ALL", Just "C")
+                        -- Use UTF-8 output on all platforms.
+                        [ ("LC_ALL", Just "en_US.UTF-8")
                         -- Hermetic builds (knot-tied)
                         , ("HOME", Just (testHomeDir env))
                         -- Set CABAL_DIR in addition to HOME, since HOME has no
                         -- effect on Windows.
                         , ("CABAL_DIR", Just (testCabalDir env))
                         , ("CABAL_CONFIG", Just (testUserCabalConfigFile env))
+                        -- Set `TMPDIR` so that temporary files aren't created in the global `TMPDIR`.
+                        , ("TMPDIR", Just (testSystemTmpDir env))
+                        -- Windows uses `TMP` for the `TMPDIR`.
+                        , ("TMP", Just (testSystemTmpDir env))
                         ],
                     testShouldFail = False,
                     testRelativeCurrentDir = ".",
@@ -475,8 +476,8 @@ runTestM mode m =
             b <- diff ["-uw"] expect_fp actual_fp
             unless b . void $ diff ["-u"] expect_fp actual_fp
             if accept
-                then do liftIO $ putStrLn "Accepting new output."
-                        liftIO $ writeFileNoCR (testExpectFile env) actual
+                then do liftIO $ putStrLn $ "Writing actual test output to " <> testExpectAcceptFile env
+                        liftIO $ writeFileNoCR (testExpectAcceptFile env) actual
                         pure (pure ())
                 else pure (E.throwIO TestCodeFail)
          -- normal test, output matches
@@ -548,6 +549,7 @@ initWorkDir :: TestM ()
 initWorkDir = do
     env <- getTestEnv
     liftIO $ createDirectoryIfMissing True (testWorkDir env)
+    liftIO $ createDirectoryIfMissing True (testSystemTmpDir env)
 
 
 
@@ -824,6 +826,11 @@ testName env = testSubName env <.> testMode env
 testWorkDir :: TestEnv -> FilePath
 testWorkDir env = testTmpDir env </> (testName env <.> "dist")
 
+-- The folder which TMPDIR is set to.
+-- This is different to testTmpDir, which is the folder which is the test is run from.
+testSystemTmpDir :: TestEnv -> FilePath
+testSystemTmpDir env = testWorkDir env </> "tmp"
+
 -- | The absolute prefix where installs go.
 testPrefixDir :: TestEnv -> FilePath
 testPrefixDir env = testWorkDir env </> "usr"
@@ -884,6 +891,13 @@ testUserCabalConfigFile env = testCabalDir env </> "config"
 -- needed, to adapt it to outcomes of previous steps in the test.
 testExpectFile :: TestEnv -> FilePath
 testExpectFile env = testTmpDir env </> testName env <.> "out"
+
+-- | The file where the expected output of the test is written in @--accept@ mode
+--
+-- Note: This needs to point to `testSourceDir` so the output is visible in the
+-- user's repository.
+testExpectAcceptFile :: TestEnv -> FilePath
+testExpectAcceptFile env = testSourceDir env </> testName env <.> "out"
 
 -- | Where we store the actual output
 testActualFile :: TestEnv -> FilePath

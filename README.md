@@ -12,6 +12,7 @@
 This repository contains the following packages:
 
  * [Cabal](Cabal/README.md): the Cabal library package ([license](Cabal/LICENSE))
+ * [Cabal-hooks](Cabal-hooks/README.md): the library providing an API for the Cabal `Hooks` build type ([license](Cabal-hooks/LICENSE))
  * [Cabal-syntax](Cabal-syntax/README.md): the `.cabal` file format library ([license](Cabal-syntax/LICENSE))
  * [cabal-install](cabal-install/README.md): the package containing the `cabal` tool ([license](cabal-install/LICENSE))
  * [cabal-install-solver](cabal-install-solver): the package containing the solver component of the `cabal` tool ([license](cabal-install-solver/LICENSE))
@@ -79,7 +80,7 @@ Currently, we only provide binaries for `x86_64` platforms.
 
 
 2. Even more cutting-edge binaries built from pull requests are always available
-   from the `Validate` worklow page on GitHub, at the very bottom of the page,
+   from the `Validate` workflow page on GitHub, at the very bottom of the page,
    or from the `build-alpine` workflow for statically linked Linux builds.
 
 ## Ways to build `cabal-install` for everyday use

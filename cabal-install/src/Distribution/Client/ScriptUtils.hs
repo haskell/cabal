@@ -117,7 +117,6 @@ import qualified Distribution.SPDX.License as SPDX
 import Distribution.Simple.Compiler
   ( Compiler (..)
   , OptimisationLevel (..)
-  , compilerInfo
   )
 import Distribution.Simple.Flag
   ( flagToMaybe
@@ -381,7 +380,7 @@ withContextAndSelectors noTargets kind flags@NixStyleFlags{..} targetStrings glo
           createDirectoryIfMissingVerbose verbosity True (distProjectCacheDirectory $ distDirLayout ctx)
           (compiler, platform@(Platform arch os), _) <- runRebuild projectRoot $ configureCompiler verbosity (distDirLayout ctx) (fst (ignoreConditions projectCfgSkeleton) <> projectConfig ctx)
 
-          projectCfg <- instantiateProjectConfigSkeletonFetchingCompiler (pure (os, arch, compilerInfo compiler)) mempty projectCfgSkeleton
+          (projectCfg, _) <- instantiateProjectConfigSkeletonFetchingCompiler (pure (os, arch, compiler)) mempty projectCfgSkeleton
 
           let ctx' = ctx & lProjectConfig %~ (<> projectCfg)
 
@@ -414,8 +413,8 @@ withTemporaryTempDirectory act = newEmptyMVar >>= \m -> bracket (getMkTmp m) (rm
       return tmpDir
     rmTmp m _ = tryTakeMVar m >>= maybe (return ()) (handleDoesNotExist () . removeDirectoryRecursive)
 
-scriptComponenetName :: IsString s => FilePath -> s
-scriptComponenetName scriptPath = fromString cname
+scriptComponentName :: IsString s => FilePath -> s
+scriptComponentName scriptPath = fromString cname
   where
     cname = "script-" ++ map censor (takeFileName scriptPath)
     censor c
@@ -437,7 +436,7 @@ scriptDistDirParams scriptPath ctx compiler platform =
     , distParamOptimization = fromFlagOrDefault NormalOptimisation optimization
     }
   where
-    cn = scriptComponenetName scriptPath
+    cn = scriptComponentName scriptPath
     cid = mkComponentId $ prettyShow fakePackageId <> "-inplace-" <> prettyShow cn
     optimization = (packageConfigOptimization . projectConfigLocalPackages . projectConfig) ctx
 
@@ -475,7 +474,7 @@ updateContextAndWriteProjectFile ctx scriptPath scriptExecutable = do
     sourcePackage =
       fakeProjectSourcePackage projectRoot
         & lSrcpkgDescription . L.condExecutables
-          .~ [(scriptComponenetName scriptPath, CondNode executable (targetBuildDepends $ buildInfo executable) [])]
+          .~ [(scriptComponentName scriptPath, CondNode executable (targetBuildDepends $ buildInfo executable) [])]
     executable =
       scriptExecutable
         & L.modulePath .~ absScript

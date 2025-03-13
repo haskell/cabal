@@ -1,10 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE MultiWayIf #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE ViewPatterns #-}
 
 module Distribution.Client.CmdSdist
   ( sdistCommand

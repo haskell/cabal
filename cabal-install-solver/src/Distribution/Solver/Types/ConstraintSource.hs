@@ -6,7 +6,8 @@ module Distribution.Solver.Types.ConstraintSource
 
 import Distribution.Solver.Compat.Prelude
 import Distribution.Solver.Types.ProjectConfigPath (ProjectConfigPath, docProjectConfigPath)
-import Text.PrettyPrint (render)
+import Distribution.Pretty (Pretty(pretty), prettyShow)
+import Text.PrettyPrint (text)
 
 -- | Source of a 'PackageConstraint'.
 data ConstraintSource =
@@ -55,31 +56,35 @@ data ConstraintSource =
   -- | An internal constraint due to compatibility issues with the Setup.hs
   -- command line interface requires a maximum upper bound on Cabal
   | ConstraintSetupCabalMaxVersion
-  deriving (Eq, Show, Generic)
+  deriving (Show, Eq, Generic)
 
 instance Binary ConstraintSource
 instance Structured ConstraintSource
 
 -- | Description of a 'ConstraintSource'.
 showConstraintSource :: ConstraintSource -> String
-showConstraintSource (ConstraintSourceMainConfig path) =
-    "main config " ++ path
-showConstraintSource (ConstraintSourceProjectConfig path) =
-    "project config " ++ render (docProjectConfigPath path)
-showConstraintSource (ConstraintSourceUserConfig path)= "user config " ++ path
-showConstraintSource ConstraintSourceCommandlineFlag = "command line flag"
-showConstraintSource ConstraintSourceUserTarget = "user target"
-showConstraintSource ConstraintSourceNonReinstallablePackage =
-    "non-reinstallable package"
-showConstraintSource ConstraintSourceFreeze = "cabal freeze"
-showConstraintSource ConstraintSourceConfigFlagOrTarget =
-    "config file, command line flag, or user target"
-showConstraintSource ConstraintSourceMultiRepl =
-    "--enable-multi-repl"
-showConstraintSource ConstraintSourceProfiledDynamic =
-    "--enable-profiling-shared"
-showConstraintSource ConstraintSourceUnknown = "unknown source"
-showConstraintSource ConstraintSetupCabalMinVersion =
-    "minimum version of Cabal used by Setup.hs"
-showConstraintSource ConstraintSetupCabalMaxVersion =
-    "maximum version of Cabal used by Setup.hs"
+showConstraintSource = prettyShow
+
+instance Pretty ConstraintSource where
+  pretty constraintSource = case constraintSource of
+    (ConstraintSourceMainConfig path) ->
+      text "main config" <+> text path
+    (ConstraintSourceProjectConfig path) ->
+      text "project config" <+> docProjectConfigPath path
+    (ConstraintSourceUserConfig path)-> text "user config " <+> text path
+    ConstraintSourceCommandlineFlag -> text "command line flag"
+    ConstraintSourceUserTarget -> text "user target"
+    ConstraintSourceNonReinstallablePackage ->
+      text "non-reinstallable package"
+    ConstraintSourceFreeze -> text "cabal freeze"
+    ConstraintSourceConfigFlagOrTarget ->
+      text "config file, command line flag, or user target"
+    ConstraintSourceMultiRepl ->
+      text "--enable-multi-repl"
+    ConstraintSourceProfiledDynamic ->
+      text "--enable-profiling-shared"
+    ConstraintSourceUnknown -> text "unknown source"
+    ConstraintSetupCabalMinVersion ->
+      text "minimum version of Cabal used by Setup.hs"
+    ConstraintSetupCabalMaxVersion ->
+      text "maximum version of Cabal used by Setup.hs"

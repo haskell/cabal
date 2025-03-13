@@ -1,0 +1,10 @@
+synopsis: `cabal init` generates explicit export lists for Main
+packages: cabal-install
+prs: #9890
+issues: #9889
+
+description: {
+
+- Lack of explicit export list can degrade performance. The `Main` module in particular should always have an explicit export list that contains just the main function. Then, the compiler can do more aggressive optimizations on all the other non-exported functions.
+
+}

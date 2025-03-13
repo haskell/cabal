@@ -1,6 +1,5 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 
@@ -370,7 +369,6 @@ runDirFileGlob verbosity mspec rawRoot pat = do
       "Null dir passed to runDirFileGlob; interpreting it "
         ++ "as '.'. This is probably an internal error."
   let root = if null rawRoot then "." else rawRoot
-  debug verbosity $ "Expanding glob '" ++ show (pretty pat) ++ "' in directory '" ++ root ++ "'."
   -- This function might be called from the project root with dir as
   -- ".". Walking the tree starting there involves going into .git/
   -- and dist-newstyle/, which is a lot of work for no reward, so
@@ -379,7 +377,7 @@ runDirFileGlob verbosity mspec rawRoot pat = do
   -- the whole directory if *, and just the specific file if it's a
   -- literal.
   let
-    (prefixSegments, variablePattern) = splitConstantPrefix pat
+    (prefixSegments, pathOrVariablePattern) = splitConstantPrefix pat
     joinedPrefix = joinPath prefixSegments
 
     -- The glob matching function depends on whether we care about the cabal version or not
@@ -431,17 +429,37 @@ runDirFileGlob verbosity mspec rawRoot pat = do
       concat <$> traverse (\subdir -> go globPath (dir </> subdir)) subdirs
     go GlobDirTrailing dir = return [GlobMatch dir]
 
-  directoryExists <- doesDirectoryExist (root </> joinedPrefix)
-  if directoryExists
-    then go variablePattern joinedPrefix
-    else return [GlobMissingDirectory joinedPrefix]
+  case pathOrVariablePattern of
+    Left filename -> do
+      let filepath = joinedPrefix </> filename
+      debug verbosity $ "Treating glob as filepath literal '" ++ filepath ++ "' in directory '" ++ root ++ "'."
+      directoryExists <- doesDirectoryExist (root </> filepath)
+      if directoryExists
+        then pure [GlobMatchesDirectory filepath]
+        else do
+          exist <- doesFileExist (root </> filepath)
+          pure $
+            if exist
+              then [GlobMatch filepath]
+              else []
+    Right variablePattern -> do
+      debug verbosity $ "Expanding glob '" ++ show (pretty pat) ++ "' in directory '" ++ root ++ "'."
+      directoryExists <- doesDirectoryExist (root </> joinedPrefix)
+      if directoryExists
+        then go variablePattern joinedPrefix
+        else return [GlobMissingDirectory joinedPrefix]
   where
     -- \| Extract the (possibly null) constant prefix from the pattern.
     -- This has the property that, if @(pref, final) = splitConstantPrefix pat@,
     -- then @pat === foldr GlobDir final pref@.
-    splitConstantPrefix :: Glob -> ([FilePath], Glob)
-    splitConstantPrefix = unfoldr' step
+    splitConstantPrefix :: Glob -> ([FilePath], Either FilePath Glob)
+    splitConstantPrefix = fmap literalize . unfoldr' step
       where
+        literalize (GlobFile [Literal filename]) =
+          Left filename
+        literalize glob =
+          Right glob
+
         step (GlobDir [Literal seg] pat') = Right (seg, pat')
         step pat' = Left pat'
 

@@ -497,9 +497,9 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     { IPI.sourcePackageId = packageId pkg
     , IPI.installedUnitId = componentUnitId clbi
     , IPI.installedComponentId_ = componentComponentId clbi
-    , IPI.instantiatedWith = componentInstantiatedWith clbi
+    , IPI.instantiatedWith = expectLibraryComponent (maybeComponentInstantiatedWith clbi)
     , IPI.sourceLibName = libName lib
-    , IPI.compatPackageKey = componentCompatPackageKey clbi
+    , IPI.compatPackageKey = expectLibraryComponent (maybeComponentCompatPackageKey clbi)
     , -- If GHC >= 8.4 we register with SDPX, otherwise with legacy license
       IPI.license =
         if ghc84
@@ -518,7 +518,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     , IPI.indefinite = componentIsIndefinite clbi
     , IPI.exposed = libExposed lib
     , IPI.exposedModules =
-        componentExposedModules clbi
+        expectLibraryComponent (maybeComponentExposedModules clbi)
           -- add virtual modules into the list of exposed modules for the
           -- package database as well.
           ++ map (\name -> IPI.ExposedModule name Nothing) (virtualModules bi)
@@ -549,8 +549,8 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     , IPI.ldOptions = ldOptions bi
     , IPI.frameworks = map getSymbolicPath $ frameworks bi
     , IPI.frameworkDirs = map getSymbolicPath $ extraFrameworkDirs bi
-    , IPI.haddockInterfaces = [haddockdir installDirs </> haddockLibraryPath pkg lib]
-    , IPI.haddockHTMLs = [htmldir installDirs]
+    , IPI.haddockInterfaces = [haddockdir installDirs </> haddockLibraryPath pkg lib | hasModules]
+    , IPI.haddockHTMLs = [htmldir installDirs | hasModules]
     , IPI.pkgRoot = Nothing
     , IPI.libVisibility = libVisibility lib
     }
@@ -601,6 +601,8 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
           )
       | otherwise =
           (libdir installDirs : dynlibdir installDirs : extraLibDirs', [])
+    expectLibraryComponent (Just attribute) = attribute
+    expectLibraryComponent Nothing = (error "generalInstalledPackageInfo: Expected a library component, got something else.")
 
 -- the compiler doesn't understand the dynamic-library-dirs field so we
 -- add the dyn directory to the "normal" list in the library-dirs field

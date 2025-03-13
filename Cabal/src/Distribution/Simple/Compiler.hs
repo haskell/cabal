@@ -1,7 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveFoldable #-}
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
 
@@ -125,7 +122,7 @@ data Compiler = Compiler
   , compilerProperties :: Map String String
   -- ^ A key-value map for properties not covered by the above fields.
   }
-  deriving (Eq, Generic, Typeable, Show, Read)
+  deriving (Eq, Generic, Show, Read)
 
 instance Binary Compiler
 instance Structured Compiler
@@ -200,7 +197,7 @@ data PackageDBX fp
   | UserPackageDB
   | -- | NB: the path might be relative or it might be absolute
     SpecificPackageDB fp
-  deriving (Eq, Generic, Ord, Show, Read, Typeable, Functor, Foldable, Traversable)
+  deriving (Eq, Generic, Ord, Show, Read, Functor, Foldable, Traversable)
 
 instance Binary fp => Binary (PackageDBX fp)
 instance Structured fp => Structured (PackageDBX fp)
@@ -291,7 +288,7 @@ data OptimisationLevel
   = NoOptimisation
   | NormalOptimisation
   | MaximumOptimisation
-  deriving (Bounded, Enum, Eq, Generic, Read, Show, Typeable)
+  deriving (Bounded, Enum, Eq, Generic, Read, Show)
 
 instance Binary OptimisationLevel
 instance Structured OptimisationLevel
@@ -324,7 +321,7 @@ data DebugInfoLevel
   | MinimalDebugInfo
   | NormalDebugInfo
   | MaximalDebugInfo
-  deriving (Bounded, Enum, Eq, Generic, Read, Show, Typeable)
+  deriving (Bounded, Enum, Eq, Generic, Read, Show)
 
 instance Binary DebugInfoLevel
 instance Structured DebugInfoLevel
@@ -482,7 +479,7 @@ waySupported :: String -> Compiler -> Maybe Bool
 waySupported way comp =
   case compilerFlavor comp of
     GHC ->
-      -- Infomation about compiler ways is only accurately reported after
+      -- Information about compiler ways is only accurately reported after
       -- 9.10.1. Which is useful as this is before profiling dynamic support
       -- was introduced. (See GHC #24881)
       if compilerVersion comp >= mkVersion [9, 10, 1]
@@ -561,7 +558,7 @@ data ProfDetailLevel
   | ProfDetailAllFunctions
   | ProfDetailTopLate
   | ProfDetailOther String
-  deriving (Eq, Generic, Read, Show, Typeable)
+  deriving (Eq, Generic, Read, Show)
 
 instance Binary ProfDetailLevel
 instance Structured ProfDetailLevel

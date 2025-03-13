@@ -1,7 +1,5 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
@@ -9,6 +7,9 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+#ifdef GIT_REV
+{-# LANGUAGE TemplateHaskell #-}
+#endif
 
 -----------------------------------------------------------------------------
 
@@ -28,6 +29,7 @@
 -- various directory and file functions that do extra logging.
 module Distribution.Simple.Utils
   ( cabalVersion
+  , cabalGitInfo
 
     -- * logging and errors
   , dieNoVerbosity
@@ -250,6 +252,7 @@ import System.Directory
   , getDirectoryContents
   , getModificationTime
   , getPermissions
+  , getTemporaryDirectory
   , removeDirectoryRecursive
   , removeFile
   )
@@ -286,6 +289,16 @@ import System.IO.Unsafe
 import qualified System.Process as Process
 import qualified Text.PrettyPrint as Disp
 
+#ifdef GIT_REV
+import Data.Either (isLeft)
+import GitHash
+  ( giHash
+  , giBranch
+  , giCommitDate
+  , tGitInfoCwdTry
+  )
+#endif
+
 -- We only get our own version number when we're building with ourselves
 cabalVersion :: Version
 #if defined(BOOTSTRAPPED_CABAL)
@@ -294,6 +307,30 @@ cabalVersion = mkVersion' Paths_Cabal.version
 cabalVersion = mkVersion [CABAL_VERSION]
 #else
 cabalVersion = mkVersion [3,0]  --used when bootstrapping
+#endif
+
+-- |
+-- `Cabal` Git information. Only filled in if built in a Git tree in
+-- development mode and Template Haskell is available.
+cabalGitInfo :: String
+#ifdef GIT_REV
+cabalGitInfo = if giHash' == ""
+                 then ""
+                 else concat [ "(commit "
+                             , giHash'
+                             , branchInfo
+                             , ", "
+                             , either (const "") giCommitDate gi'
+                             , ")"
+                             ]
+  where
+    gi' = $$tGitInfoCwdTry
+    giHash' = take 7 . either (const "") giHash $ gi'
+    branchInfo | isLeft gi' = ""
+               | either id giBranch gi' == "master" = ""
+               | otherwise = " on " <> either id giBranch gi'
+#else
+cabalGitInfo = ""
 #endif
 
 -- ----------------------------------------------------------------------------
@@ -387,9 +424,9 @@ die' verbosity msg = withFrozenCallStack $ do
     =<< pure . addErrorPrefix
     =<< prefixWithProgName msg
 
--- Type which will be a wrapper for cabal -expections and cabal-install exceptions
+-- Type which will be a wrapper for cabal -exceptions and cabal-install exceptions
 data VerboseException a = VerboseException CallStack POSIXTime Verbosity a
-  deriving (Show, Typeable)
+  deriving (Show)
 
 -- Function which will replace the existing die' call sites
 dieWithException :: (HasCallStack, Show a1, Typeable a1, Exception (VerboseException a1)) => Verbosity -> a1 -> IO a
@@ -533,7 +570,7 @@ verbosityHandle verbosity
 warn :: Verbosity -> String -> IO ()
 warn verbosity msg = warnMessage "Warning" verbosity msg
 
--- | Like 'warn', but prepend @Error: …@ instead of @Waring: …@ before the
+-- | Like 'warn', but prepend @Error: …@ instead of @Warning: …@ before the
 -- the message. Useful when you want to highlight the condition is an error
 -- but do not want to quit the program yet.
 warnError :: Verbosity -> String -> IO ()
@@ -1733,23 +1770,17 @@ defaultTempFileOptions = TempFileOptions{optKeepTempFiles = False}
 
 -- | Use a temporary filename that doesn't already exist
 withTempFile
-  :: FilePath
-  -- ^ Temp dir to create the file in
-  -> String
+  :: String
   -- ^ File name template. See 'openTempFile'.
   -> (FilePath -> Handle -> IO a)
   -> IO a
-withTempFile tmpDir template f = withFrozenCallStack $
-  withTempFileCwd Nothing (makeSymbolicPath tmpDir) template $
+withTempFile template f = withFrozenCallStack $
+  withTempFileCwd template $
     \fp h -> f (getSymbolicPath fp) h
 
 -- | Use a temporary filename that doesn't already exist.
 withTempFileCwd
-  :: Maybe (SymbolicPath CWD (Dir Pkg))
-  -- ^ Working directory
-  -> SymbolicPath Pkg (Dir tmpDir)
-  -- ^ Temp dir to create the file in
-  -> String
+  :: String
   -- ^ File name template. See 'openTempFile'.
   -> (SymbolicPath Pkg File -> Handle -> IO a)
   -> IO a
@@ -1758,20 +1789,17 @@ withTempFileCwd = withFrozenCallStack $ withTempFileEx defaultTempFileOptions
 -- | A version of 'withTempFile' that additionally takes a 'TempFileOptions'
 -- argument.
 withTempFileEx
-  :: forall a tmpDir
+  :: forall a
    . TempFileOptions
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
-  -- ^ Working directory
-  -> SymbolicPath Pkg (Dir tmpDir)
-  -- ^ Temp dir to create the file in
   -> String
   -- ^ File name template. See 'openTempFile'.
   -> (SymbolicPath Pkg File -> Handle -> IO a)
   -> IO a
-withTempFileEx opts mbWorkDir tmpDir template action =
+withTempFileEx opts template action = do
+  tmp <- getTemporaryDirectory
   withFrozenCallStack $
     Exception.bracket
-      (openTempFile (i tmpDir) template)
+      (openTempFile tmp template)
       ( \(name, handle) -> do
           hClose handle
           unless (optKeepTempFiles opts) $
@@ -1779,12 +1807,11 @@ withTempFileEx opts mbWorkDir tmpDir template action =
               removeFile $
                 name
       )
-      (withLexicalCallStack (\(fn, h) -> action (mkRelToPkg fn) h))
+      (withLexicalCallStack (\(fn, h) -> action (mkRelToPkg tmp fn) h))
   where
-    i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
-    mkRelToPkg :: FilePath -> SymbolicPath Pkg File
-    mkRelToPkg fp =
-      tmpDir </> makeRelativePathEx (takeFileName fp)
+    mkRelToPkg :: FilePath -> FilePath -> SymbolicPath Pkg File
+    mkRelToPkg tmp fp =
+      makeSymbolicPath tmp </> makeRelativePathEx (takeFileName fp)
 
 -- 'openTempFile' returns a path of the form @i tmpDir </> fn@, but we
 -- want 'withTempFileEx' to return @tmpDir </> fn@. So we split off

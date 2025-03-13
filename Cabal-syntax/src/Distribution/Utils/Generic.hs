@@ -1,11 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Utils.Generic
@@ -100,11 +96,13 @@ import qualified Data.Set as Set
 
 import qualified Control.Exception as Exception
 import System.Directory
-  ( removeFile
+  ( copyFile
+  , getTemporaryDirectory
+  , removeFile
   , renameFile
   )
 import System.FilePath
-  ( splitFileName
+  ( takeFileName
   , (<.>)
   )
 import System.IO
@@ -153,8 +151,8 @@ wrapLine width = wrap 0 []
 
 -- | Gets the contents of a file, but guarantee that it gets closed.
 --
--- The file is read lazily but if it is not fully consumed by the action then
--- the remaining input is truncated and the file is closed.
+-- The file is read lazily; if it is not fully consumed by the action then an
+-- exception is thrown.
 withFileContents :: FilePath -> (String -> IO a) -> IO a
 withFileContents name action =
   withFile
@@ -167,18 +165,38 @@ withFileContents name action =
 -- The file is either written successfully or an IO exception is raised and
 -- the original file is left unchanged.
 --
--- On windows it is not possible to delete a file that is open by a process.
--- This case will give an IO exception but the atomic property is not affected.
+-- On Unix:
+--
+-- - If the temp directory (@$TMPDIR@) is in a filesystem different than the
+--   destination path, the renaming will be emulated via 'copyFile' then
+--   'deleteFile'.
+--
+-- On Windows:
+--
+-- - This operation is not guaranteed to be atomic, see 'renameFile'.
+--
+-- - It is not possible to delete a file that is open by a process. This case
+--   will give an IO exception but the atomic property is not affected.
+--
+-- - If the temp directory (@TMP@/@TEMP@/..., see haddocks on
+--   'getTemporaryDirectory') is in a different drive than the destination path,
+--   the write will be emulated via 'copyFile', then 'deleteFile'.
 writeFileAtomic :: FilePath -> LBS.ByteString -> IO ()
 writeFileAtomic targetPath content = do
-  let (targetDir, targetFile) = splitFileName targetPath
+  let targetFile = takeFileName targetPath
+  tmpDir <- getTemporaryDirectory
   Exception.bracketOnError
-    (openBinaryTempFileWithDefaultPermissions targetDir $ targetFile <.> "tmp")
+    (openBinaryTempFileWithDefaultPermissions tmpDir $ targetFile <.> "tmp")
     (\(tmpPath, handle) -> hClose handle >> removeFile tmpPath)
     ( \(tmpPath, handle) -> do
         LBS.hPut handle content
         hClose handle
-        renameFile tmpPath targetPath
+        Exception.catch
+          (renameFile tmpPath targetPath)
+          ( \(_ :: Exception.SomeException) -> do
+              copyFile tmpPath targetPath
+              removeFile tmpPath
+          )
     )
 
 -- ------------------------------------------------------------

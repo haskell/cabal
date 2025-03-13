@@ -12,6 +12,7 @@ module Distribution.Compat.NonEmptySet
 
     -- * Deletion
   , delete
+  , filter
 
     -- * Conversions
   , toNonEmpty
@@ -32,7 +33,6 @@ import Control.DeepSeq (NFData (..))
 import Data.Data (Data)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Semigroup (Semigroup (..))
-import Data.Typeable (Typeable)
 
 import qualified Data.Foldable as F
 import qualified Data.Set as Set
@@ -48,7 +48,7 @@ import Control.Monad (fail)
 
 -- | @since 3.4.0.0
 newtype NonEmptySet a = NES (Set.Set a)
-  deriving (Eq, Ord, Typeable, Data, Read)
+  deriving (Eq, Ord, Data, Read)
 
 -------------------------------------------------------------------------------
 -- Instances
@@ -115,6 +115,9 @@ delete x (NES xs)
   | otherwise = Just (NES xs)
   where
     res = Set.delete x xs
+
+filter :: (a -> Bool) -> NonEmptySet a -> Set.Set a
+filter predicate (NES set) = Set.filter predicate set
 
 -------------------------------------------------------------------------------
 -- Conversions

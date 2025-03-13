@@ -1,8 +1,6 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TupleSections #-}
 
 module Distribution.Simple.GHCJS
   ( getGhcInfo

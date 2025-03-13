@@ -142,6 +142,7 @@ import Distribution.Solver.Types.PkgConfigDb
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SourcePackage as SourcePackage
 
+import Distribution.Client.ProjectConfig
 import Distribution.Client.Utils
   ( MergeResult (..)
   , ProgressPhase (..)
@@ -243,6 +244,9 @@ import Distribution.System
   , Platform
   , buildOS
   , buildPlatform
+  )
+import Distribution.Types.DependencySatisfaction
+  ( DependencySatisfaction (..)
   )
 import Distribution.Types.Flag
   ( FlagAssignment
@@ -1440,7 +1444,7 @@ performInstallations
       if parallelInstall
         then newParallelJobControl numJobs
         else newSerialJobControl
-    fetchLimit <- newJobLimit (min numJobs numFetchJobs)
+    fetchLimit <- newJobLimit (min numJobs maxNumFetchJobs)
     installLock <- newLock -- serialise installation
     cacheLock <- newLock -- serialise access to setup exe cache
     executeInstallPlan
@@ -1483,7 +1487,6 @@ performInstallations
       cinfo = compilerInfo comp
 
       numJobs = determineNumJobs (installNumJobs installFlags)
-      numFetchJobs = 2
       parallelInstall = numJobs >= 2
       keepGoing = fromFlag (installKeepGoing installFlags)
       distPref =
@@ -1676,7 +1679,7 @@ installReadyPackage
       pkg = case finalizePD
         flags
         (enableStanzas stanzas)
-        (const True)
+        (const Satisfied)
         platform
         cinfo
         []

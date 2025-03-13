@@ -13,7 +13,7 @@ import qualified Data.Map as Map
 import Distribution.Package
 import Distribution.PackageDescription
 
--- | Same as 'desugarBuildTool', but requires atomic informations (package
+-- | Same as 'desugarBuildTool', but requires atomic information (package
 -- name, executable names) instead of a whole 'PackageDescription'.
 desugarBuildToolSimple
   :: PackageName

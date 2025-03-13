@@ -1,0 +1,8 @@
+---
+synopsis: 'Add support for Windows Aarch64'
+packages: [Cabal, cabal-install]
+prs: 10705
+---
+
+Adds to preprocessor branches the option to support `aarch64_HOST_ARCH` platform on Windows Aarch64 target.
+`ccall` convention is used at Aarch64, same as for `x86_64_HOST_ARCH`. Introduce `zIsAarch64` to make paths generation support Windows Aarch64 target.

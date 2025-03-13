@@ -934,7 +934,6 @@ distinctTargetComponents targetsMap =
 
 ------------------------------------------------------------------------------
 -- Displaying what we plan to do
---
 
 -- | Print a user-oriented presentation of the install plan, indicating what
 -- will be built.
@@ -946,7 +945,7 @@ printPlan
 printPlan
   verbosity
   ProjectBaseContext
-    { buildSettings = BuildTimeSettings{buildSettingDryRun}
+    { buildSettings = BuildTimeSettings{buildSettingDryRun, buildSettingKeepTempFiles}
     , projectConfig =
       ProjectConfig
         { projectConfigAllPackages =
@@ -1048,6 +1047,7 @@ printPlan
                 verbosity
                 Nothing -- omit working directory
                 (makeSymbolicPath "$builddir")
+                buildSettingKeepTempFiles
             fullConfigureFlags =
               runIdentity $
                 ( setupHsConfigureFlags

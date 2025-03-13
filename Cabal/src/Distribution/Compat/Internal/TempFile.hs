@@ -15,17 +15,17 @@ import System.FilePath ((</>))
 import System.IO (Handle, openBinaryTempFile, openTempFile)
 #if defined(__IO_MANAGER_WINIO__)
 import System.IO              (openBinaryTempFileWithDefaultPermissions)
+import System.Posix.Internals (c_getpid)
 #else
 import Control.Exception      (onException)
 import Data.Bits              ((.|.))
 import Foreign.C              (CInt, eEXIST, getErrno, errnoToIOError)
 import GHC.IO.Handle.FD       (fdToHandle)
-import System.Posix.Internals (c_open, c_close, o_EXCL, o_BINARY, withFilePath,
+import System.Posix.Internals (c_getpid, c_open, c_close, o_EXCL, o_BINARY, withFilePath,
                                o_CREAT, o_RDWR, o_NONBLOCK, o_NOCTTY)
 #endif
 
 import System.IO.Error (isAlreadyExistsError)
-import System.Posix.Internals (c_getpid)
 
 #if defined(mingw32_HOST_OS) || defined(ghcjs_HOST_OS)
 import System.Directory       ( createDirectory )

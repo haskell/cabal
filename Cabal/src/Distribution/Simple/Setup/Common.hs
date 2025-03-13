@@ -1,12 +1,7 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Simple.Setup.Common
@@ -23,6 +18,7 @@ module Distribution.Simple.Setup.Common
   ( CommonSetupFlags (..)
   , defaultCommonSetupFlags
   , withCommonSetupOptions
+  , commonSetupTempFileOptions
   , CopyDest (..)
   , configureCCompiler
   , configureLinker
@@ -85,6 +81,13 @@ data CommonSetupFlags = CommonSetupFlags
   --
   -- TODO: this one should not be here, it's just that the silly
   -- UserHooks stop us from passing extra info in other ways
+  , setupKeepTempFiles :: Flag Bool
+  -- ^ When this flag is set, temporary files will be kept after building.
+  --
+  -- Note: Keeping temporary files is important functionality for HLS, which
+  -- runs @cabal repl@ with a fake GHC to get CLI arguments. It will need the
+  -- temporary files (including multi unit repl response files) to stay, even
+  -- after the @cabal repl@ command exits.
   }
   deriving (Eq, Show, Read, Generic)
 
@@ -106,6 +109,15 @@ defaultCommonSetupFlags =
     , setupDistPref = NoFlag
     , setupCabalFilePath = NoFlag
     , setupTargets = []
+    , setupKeepTempFiles = NoFlag
+    }
+
+-- | Get `TempFileOptions` that respect the `setupKeepTempFiles` flag.
+commonSetupTempFileOptions :: CommonSetupFlags -> TempFileOptions
+commonSetupTempFileOptions options =
+  TempFileOptions
+    { optKeepTempFiles =
+        fromFlagOrDefault False (setupKeepTempFiles options)
     }
 
 commonSetupOptions :: ShowOrParseArgs -> [OptionField CommonSetupFlags]
@@ -124,6 +136,14 @@ commonSetupOptions showOrParseArgs =
       setupCabalFilePath
       (\v flags -> flags{setupCabalFilePath = v})
       (reqSymbolicPathArgFlag "PATH")
+  , option
+      ""
+      ["keep-temp-files"]
+      ( "Keep temporary files."
+      )
+      setupKeepTempFiles
+      (\keepTempFiles flags -> flags{setupKeepTempFiles = keepTempFiles})
+      trueArg
       -- NB: no --working-dir flag, as that value is populated using the
       -- global flag (see Distribution.Simple.Setup.Global.globalCommand).
   ]

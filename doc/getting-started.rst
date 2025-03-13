@@ -58,9 +58,21 @@ The ``myapp.cabal`` file is a package description file, commonly referred to as 
         hs-source-dirs:   app
         default-language: Haskell2010
 
+.. warning::
+
+    The version bounds on base, a boot library distributed with GHC
+    [#boot-packages]_, are tied to the GHC version visible when ``cabal init``
+    is run. If run with a later version of GHC you might see a difference in the
+    version bounds.
+
+    .. code-block:: diff
+
+        - build-depends:    base ^>=4.19.0.0
+        + build-depends:    base ^>=4.20.0.0
+
 It contains metadata (package name and version, author name, license, etc.) and sections
 to define package components. Components can be used to split large codebases into smaller,
-more managable building blocks.
+more manageable building blocks.
 A component can be of one of several types (executable, library, etc.) and describes,
 among other things, the location of source files and its dependencies.
 The ``myapp.cabal`` file above defines a single component named ``myapp`` of the executable type.
@@ -189,7 +201,7 @@ the following file named ``myscript``:
     #!/usr/bin/env cabal
     {- cabal:
     build-depends:
-      base ^>=4.19.0.0,
+      base,
       haskell-say ^>=1.0.0.0
     -}
 
@@ -197,6 +209,21 @@ the following file named ``myscript``:
 
     main :: IO ()
     main = haskellSay "Hello, Haskell!"
+
+.. note::
+
+    Widening or dropping version bound constraints on *packages included with
+    the compiler* [#boot-packages]_, like ``base``, may allow single-file
+    scripts to run with a wider range of compiler versions.
+
+    .. code-block:: diff
+
+        build-depends:
+        -   base ^>=4.19.0.0,
+        +   base,
+
+The necessary sections of a ``.cabal`` file are placed
+directly into the script as a comment.
 
 The necessary sections of a package description that would otherwise be in a
 ``.cabal`` file are placed directly into the script as a comment.
@@ -237,3 +264,9 @@ some of the resources on the Haskell website's `documentation page
 Cabal on the :doc:`What Cabal does <cabal-context>` page.
 
 .. _Cabal-7070: https://errors.haskell.org/messages/Cabal-7070/
+
+.. [#boot-packages] Packages included with the compiler are also called boot
+   packages. Each GHC compiler version has accompanying `release notes`_ that
+   list these included packages.
+
+.. _release notes: https://downloads.haskell.org/ghc/latest/docs/users_guide/release-notes.html

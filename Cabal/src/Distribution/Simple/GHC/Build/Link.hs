@@ -1,7 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TypeApplications #-}
 
 module Distribution.Simple.GHC.Build.Link where
 
@@ -98,6 +97,7 @@ linkOrLoadComponent
       clbi = buildCLBI pbci
       isIndef = componentIsIndefinite clbi
       mbWorkDir = mbWorkDirLBI lbi
+      tempFileOptions = commonSetupTempFileOptions $ buildingWhatCommonFlags what
 
       -- See Note [Symbolic paths] in Distribution.Utils.Path
       i = interpretSymbolicPathLBI lbi
@@ -188,10 +188,25 @@ linkOrLoadComponent
         -- exports.
         when (case component of CLib lib -> null (allLibModules lib clbi); _ -> False) $
           warn verbosity "No exposed modules"
-        runReplOrWriteFlags ghcProg lbi replFlags replOpts_final (pkgName (PD.package pkg_descr)) target
+        runReplOrWriteFlags
+          ghcProg
+          lbi
+          replFlags
+          replOpts_final
+          (pkgName (PD.package pkg_descr))
+          target
       _otherwise ->
         let
-          runGhcProg = runGHC verbosity ghcProg comp platform mbWorkDir
+          runGhcProg =
+            runGHCWithResponseFile
+              "ghc.rsp"
+              Nothing
+              tempFileOptions
+              verbosity
+              ghcProg
+              comp
+              platform
+              mbWorkDir
           platform = hostPlatform lbi
           comp = compiler lbi
           get_rpaths ways =
@@ -730,12 +745,25 @@ runReplOrWriteFlags ghcProg lbi rflags ghcOpts pkg_name target =
       common = configCommonFlags $ configFlags lbi
       mbWorkDir = mbWorkDirLBI lbi
       verbosity = fromFlag $ setupVerbosity common
+      tempFileOptions = commonSetupTempFileOptions common
    in case replOptionsFlagOutput (replReplOptions rflags) of
-        NoFlag -> runGHC verbosity ghcProg comp platform mbWorkDir ghcOpts
+        NoFlag ->
+          runGHCWithResponseFile
+            "ghc.rsp"
+            Nothing
+            tempFileOptions
+            verbosity
+            ghcProg
+            comp
+            platform
+            mbWorkDir
+            ghcOpts
         Flag out_dir -> do
           let uid = componentUnitId clbi
               this_unit = prettyShow uid
-              reexported_modules = [mn | LibComponentLocalBuildInfo{} <- [clbi], IPI.ExposedModule mn (Just{}) <- componentExposedModules clbi]
+              reexported_modules =
+                [ mn | LibComponentLocalBuildInfo{componentExposedModules = exposed_mods} <- [clbi], IPI.ExposedModule mn (Just{}) <- exposed_mods
+                ]
               hidden_modules = otherModules bi
               extra_opts =
                 concat $

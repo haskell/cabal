@@ -136,7 +136,8 @@ mkFlagsAbsolute :: NixStyleFlags ClientHaddockFlags -> IO (NixStyleFlags ClientH
 mkFlagsAbsolute relFlags = do
   let relHaddockFlags = haddockFlags relFlags
   absHaddockOutputDir <- traverse makeAbsolute (haddockOutputDir relHaddockFlags)
-  return (relFlags{haddockFlags = relHaddockFlags{haddockOutputDir = absHaddockOutputDir}})
+  absHaddockCss <- traverse makeAbsolute (haddockCss relHaddockFlags)
+  return (relFlags{haddockFlags = relHaddockFlags{haddockOutputDir = absHaddockOutputDir, haddockCss = absHaddockCss}})
 
 -- | The @haddock@ command is TODO.
 --

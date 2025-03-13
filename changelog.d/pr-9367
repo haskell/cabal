@@ -1,0 +1,21 @@
+---
+synopsis: "Use response files when calling `ghc`"
+packages: [Cabal]
+prs: 9367
+---
+
+Cabal now passes GHC arguments through a response file. This prevents an error
+where very large packages would fail to build due to the module names exceeding
+the `ARG_MAX` command-line length limit:
+
+```
+ghc: createProcess: posix_spawnp: resource exhausted (Argument list too long)
+```
+
+Notes:
+- Response files will not be used if the first argument to `ghc` is
+  `--interactive`.
+- RTS options (like `+RTS -H32m -S -RTS`) will not be included in response
+  files.
+- For reproducing commands after Cabal exits, `--keep-temp-files` can be used
+  to prevent the response files from being deleted.

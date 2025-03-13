@@ -1,12 +1,9 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 -----------------------------------------------------------------------------
 {-
 Work around this warning:
@@ -15,7 +12,8 @@ libraries/Cabal/Distribution/Simple.hs:78:0:
              (imported from Distribution.Simple.UserHooks):
              Deprecated: "Please use the new testing interface instead!"
 -}
-{-# OPTIONS_GHC -fno-warn-deprecations #-}
+{-# OPTIONS_GHC -Wno-deprecations #-}
+{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 
 -- |
 -- Module      :  Distribution.Simple
@@ -1094,6 +1092,7 @@ defaultInstallHook_setupHooks inst_hooks pkg_descr localbuildinfo _ flags = do
         defaultRegisterFlags
           { regInPlace = installInPlace flags
           , regPackageDB = installPackageDB flags
+          , registerCommonFlags = installCommonFlags flags
           }
   when (hasLibs pkg_descr) $
     register pkg_descr localbuildinfo registerFlags

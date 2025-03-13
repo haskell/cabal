@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 module UnitTests.Distribution.Solver.Types.OptionalStanza
   ( tests
   ) where

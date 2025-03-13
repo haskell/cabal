@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE PatternGuards #-}
 
 -- This is a quick hack for uploading build reports to Hackage.
 
