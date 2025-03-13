@@ -23,42 +23,42 @@ source-repository head
   subdir:   solver-benchmarks
 
 library
-  ghc-options: -Wall -fwarn-tabs
+  ghc-options: -Wall -Wtabs
   exposed-modules:
     HackageBenchmark
   build-depends:
-    async >=2.2.2 && <2.3,
-    base,
-    bytestring,
-    containers,
-    Cabal-syntax ^>= 3.15,
-    directory,
-    filepath,
-    optparse-applicative,
-    process,
-    time,
-    statistics >= 0.14 && < 0.17,
-    vector
+    , async >=2.2.2 && <2.3
+    , base
+    , bytestring
+    , containers
+    , Cabal-syntax ^>= 3.15
+    , directory
+    , filepath
+    , optparse-applicative
+    , process
+    , time
+    , statistics >= 0.14 && < 0.17
+    , vector
   default-language: Haskell2010
 
 executable hackage-benchmark
   main-is: hackage-benchmark.hs
   hs-source-dirs: main
-  ghc-options: -threaded -Wall -fwarn-tabs
+  ghc-options: -threaded -Wall -Wtabs
   build-depends:
-    base,
-    solver-benchmarks
+    , base
+    , solver-benchmarks
   default-language: Haskell2010
 
 test-suite unit-tests
   type: exitcode-stdio-1.0
   main-is: HackageBenchmarkTest.hs
   hs-source-dirs: tests
-  ghc-options: -threaded -Wall -fwarn-tabs
+  ghc-options: -threaded -Wall -Wtabs
   build-depends:
-    base,
-    solver-benchmarks,
-    statistics >= 0.14 && < 0.17,
-    tasty,
-    tasty-hunit
+    , base
+    , solver-benchmarks
+    , statistics >= 0.14 && < 0.17
+    , tasty
+    , tasty-hunit
   default-language: Haskell2010

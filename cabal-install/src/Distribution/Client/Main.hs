@@ -1,11 +1,6 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Main
@@ -135,6 +130,7 @@ import qualified Distribution.Client.CmdPath as CmdPath
 import qualified Distribution.Client.CmdRepl as CmdRepl
 import qualified Distribution.Client.CmdRun as CmdRun
 import qualified Distribution.Client.CmdSdist as CmdSdist
+import qualified Distribution.Client.CmdTarget as CmdTarget
 import qualified Distribution.Client.CmdTest as CmdTest
 import qualified Distribution.Client.CmdUpdate as CmdUpdate
 
@@ -465,6 +461,7 @@ mainWorker args = do
           , newCmd CmdExec.execCommand CmdExec.execAction
           , newCmd CmdClean.cleanCommand CmdClean.cleanAction
           , newCmd CmdSdist.sdistCommand CmdSdist.sdistAction
+          , newCmd CmdTarget.targetCommand CmdTarget.targetAction
           , legacyCmd configureExCommand configureAction
           , legacyCmd buildCommand buildAction
           , legacyCmd replCommand replAction

@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -fno-warn-deprecations #-}
+{-# OPTIONS_GHC -Wno-deprecations #-}
 module UnitTests.Distribution.SPDX (spdxTests) where
 
 import Distribution.Compat.Prelude.Internal

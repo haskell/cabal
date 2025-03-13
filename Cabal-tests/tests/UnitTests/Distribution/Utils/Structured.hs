@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 module UnitTests.Distribution.Utils.Structured (tests) where
 
 import Data.Proxy                    (Proxy (..))

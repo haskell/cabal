@@ -1,0 +1,15 @@
+synopsis: Suppress ghc-pkg warnings emitted when an empty packages is being registered
+packages: Cabal
+prs: #9997
+
+description: {
+
+When a package contains a library that has no modules, `./Setup register`
+tries to register the library with fields `haddock-interfaces:` and
+`haddock-html:` pointing at non-existent files or directories, and `ghc-pkg
+register` warns about them.
+
+To suppress the warnings prevent these fields from being generated when
+there are no modules.
+
+}

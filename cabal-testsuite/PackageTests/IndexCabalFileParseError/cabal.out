@@ -1,0 +1,19 @@
+# cabal v2-update
+Downloading the latest package list from test-local-repo
+Warning: In <ROOT>/cabal.dist/repo/my-lib-1.0.tar.gz: Errors encountered when parsing cabal file my-lib-1.0/my-lib.cabal:
+
+my-lib-1.0/my-lib.cabal:4:22: error:
+unexpected Unknown SPDX license identifier: 'puppy' 
+
+    3 | version:        1.0
+    4 | license:        puppy license :)
+      |                      ^
+
+my-lib-1.0/my-lib.cabal:5:1: warning:
+Unknown field: "puppy"
+
+    4 | license:        puppy license :)
+    5 | puppy:          teehee!
+      | ^
+Error: [Cabal-7046]
+Failed to read my-lib-1.0/my-lib.cabal from archive <ROOT>/cabal.dist/repo/my-lib-1.0.tar.gz

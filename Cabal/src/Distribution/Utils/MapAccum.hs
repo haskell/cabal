@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 module Distribution.Utils.MapAccum (mapAccumM) where
 
 import Distribution.Compat.Prelude

@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 module Distribution.Compat.Exception
   ( catchIO
   , catchExit

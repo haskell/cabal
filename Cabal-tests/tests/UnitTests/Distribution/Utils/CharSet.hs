@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 module UnitTests.Distribution.Utils.CharSet where
 
 import Prelude hiding (Foldable(..))

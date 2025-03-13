@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 module UnitTests.Distribution.Client.UserConfig
   ( tests
   ) where

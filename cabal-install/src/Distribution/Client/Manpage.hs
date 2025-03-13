@@ -1,7 +1,3 @@
-{-# LANGUAGE CPP #-}
-
------------------------------------------------------------------------------
-
 -- |
 -- Module      :  Distribution.Client.Manpage
 -- Copyright   :  (c) Maciek Makowski 2015

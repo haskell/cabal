@@ -360,6 +360,23 @@ If your PR is trivial you can omit this process (but explain in the PR why you
 think it does not warrant an issue). Feel free to open a new issue (or new
 issues) when appropriate.
 
+### Pull request size
+
+Keep your pull requests small, write one pull request per feature, let
+the content of the pull request match the title of the pull request.
+
+To get merged, your pull request needs to be reviewed by two other
+contributors. Large pull requests are daunting to inspect, and the
+back-and-forth between the author and reviewer can get frustrating and
+difficult to follow.
+
+Split your pull requests in multiple ones if possible (e.g. a refactor
+and a feature implementation should go in two different pull requests).
+This is *especially* important when we decide to backport a pull request
+(be it fix or a feature).
+
+Thorough reviews mean less regressions, keeping your pull requests small
+will improve Cabal codebase quality.
 
 ## Changelog
 
@@ -395,9 +412,12 @@ description: {
 }
 ```
 
-Changelogs may also be written in "markdown-frontmatter" format. This is useful if your
-description contains braces, which must be escaped with backslashes in `.cabal` file
-format. The front matter is in YAML syntax, not `.cabal` file syntax, and the file
+Changelogs may also be written in "markdown-frontmatter" format. This is useful
+if your description contains braces, which must be escaped with backslashes in
+`.cabal` file format. Another benefit of using an `.md` extension with your
+changelog is that it will be checked for typos.
+
+The front matter is in YAML syntax, not `.cabal` file syntax, and the file
 _must_ begin with a line containing only hyphens.
 
 ```markdown

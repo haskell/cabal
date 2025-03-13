@@ -49,7 +49,10 @@ module Distribution.Client.Config
   ) where
 
 import Distribution.Client.Compat.Prelude
-import Distribution.Compat.Environment (lookupEnv)
+import Distribution.Compat.Environment
+  ( getEnvironment
+  , lookupEnv
+  )
 import Prelude ()
 
 import Language.Haskell.Extension (Language (Haskell2010))
@@ -126,9 +129,6 @@ import Distribution.Client.Version
   ( cabalInstallVersion
   )
 import qualified Distribution.Compat.CharParsing as P
-import Distribution.Compat.Environment
-  ( getEnvironment
-  )
 import Distribution.Compiler
   ( CompilerFlavor (..)
   , defaultCompilerFlavor
@@ -227,7 +227,8 @@ import System.Directory
   , renameFile
   )
 import System.FilePath
-  ( takeDirectory
+  ( normalise
+  , takeDirectory
   , (<.>)
   , (</>)
   )
@@ -1693,7 +1694,12 @@ postProcessRepo lineno reponameStr repo0 = do
     -- Note: the trailing colon is important
     "file+noindex:" -> do
       let uri = remoteRepoURI repo0
-      return $ Left $ LocalRepo reponame (uriPath uri) (uriFragment uri == "#shared-cache")
+      return $
+        Left $
+          LocalRepo
+            reponame
+            (normalise (uriPath uri))
+            (uriFragment uri == "#shared-cache")
     _ -> do
       let repo = repo0{remoteRepoName = reponame}
 

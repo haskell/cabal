@@ -1,10 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Utils.Generic

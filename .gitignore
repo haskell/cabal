@@ -15,6 +15,7 @@ register.sh
 ./cabal.config
 cabal-tests.log
 bootstrap/*.plan.json
+haddocks
 
 /Cabal/dist/
 /Cabal/tests/Setup

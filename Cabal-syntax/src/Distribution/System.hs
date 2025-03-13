@@ -1,9 +1,6 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.System

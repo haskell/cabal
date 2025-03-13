@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 module UnitTests.Distribution.Client.FileMonitor (tests) where
 
 import Distribution.Parsec (simpleParsec)

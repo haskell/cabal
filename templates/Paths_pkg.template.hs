@@ -12,7 +12,7 @@
 {-# OPTIONS_GHC -Wno-prepositive-qualified-module #-}
 #endif
 {% endif %}
-{-# OPTIONS_GHC -fno-warn-missing-import-lists #-}
+{-# OPTIONS_GHC -Wno-missing-import-lists #-}
 {-# OPTIONS_GHC -w #-}
 module Paths_{{ manglePkgName packageName }} (
     version,
@@ -154,8 +154,11 @@ foreign import stdcall unsafe "windows.h GetModuleFileNameW"
 {% elif isX8664 %}
 foreign import ccall unsafe "windows.h GetModuleFileNameW"
   c_GetModuleFileName :: Ptr () -> CWString -> Int32 -> IO Int32
+{% elif isAarch64 %}
+foreign import ccall unsafe "windows.h GetModuleFileNameW"
+  c_GetModuleFileName :: Ptr () -> CWString -> Int32 -> IO Int32
 {% else %}
--- win32 supported only with I386, X86_64
+-- win32 supported only with I386, X86_64, Aarch64
 c_GetModuleFileName :: Ptr () -> CWString -> Int32 -> IO Int32
 c_GetModuleFileName  = _
 {% endif %}

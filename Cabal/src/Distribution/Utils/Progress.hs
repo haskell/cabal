@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveFunctor #-}
 
 -- Note: This module was copied from cabal-install.

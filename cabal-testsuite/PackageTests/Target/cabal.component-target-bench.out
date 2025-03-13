@@ -1,0 +1,19 @@
+# cabal v2-target
+Configuration is affected by the following files:
+- cabal.project
+Resolving dependencies...
+Fully qualified target forms:
+ - a:bench:a-bench
+Found 1 target matching a:bench:a-bench.
+# cabal v2-target
+Configuration is affected by the following files:
+- cabal.project
+Fully qualified target forms:
+ - a:bench:a-bench
+Found 1 target matching bench:a-bench.
+# cabal v2-target
+Configuration is affected by the following files:
+- cabal.project
+Fully qualified target forms:
+ - a:bench:a-bench
+Found 1 target matching a:a-bench.

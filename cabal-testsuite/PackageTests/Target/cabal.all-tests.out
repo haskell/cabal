@@ -1,0 +1,8 @@
+# cabal v2-target
+Configuration is affected by the following files:
+- cabal.project
+Resolving dependencies...
+Fully qualified target forms:
+ - a:test:a-test
+ - b:test:b-test
+Found 2 targets matching all:tests.

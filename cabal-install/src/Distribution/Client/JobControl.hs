@@ -277,20 +277,28 @@ criticalSection (Lock lck) act = bracket_ (takeMVar lck) (putMVar lck ()) act
 
 newJobControlFromParStrat
   :: Verbosity
-  -> Compiler
+  -> Maybe Compiler
+  -- ^ The compiler, used to determine whether Jsem is supported.
+  -- When Nothing, Jsem is assumed to be unsupported.
   -> ParStratInstall
   -- ^ The parallel strategy
   -> Maybe Int
   -- ^ A cap on the number of jobs (e.g. to force a maximum of 2 concurrent downloads despite a -j8 parallel strategy)
   -> IO (JobControl IO a)
-newJobControlFromParStrat verbosity compiler parStrat numJobsCap = case parStrat of
+newJobControlFromParStrat verbosity mcompiler parStrat numJobsCap = case parStrat of
   Serial -> newSerialJobControl
   NumJobs n -> newParallelJobControl (capJobs (fromMaybe numberOfProcessors n))
   UseSem n ->
-    if jsemSupported compiler
-      then newSemaphoreJobControl verbosity (capJobs n)
-      else do
-        warn verbosity "-jsem is not supported by the selected compiler, falling back to normal parallelism control."
+    case mcompiler of
+      Just compiler
+        | jsemSupported compiler ->
+            newSemaphoreJobControl verbosity (capJobs n)
+        | otherwise ->
+            do
+              warn verbosity "-jsem is not supported by the selected compiler, falling back to normal parallelism control."
+              newParallelJobControl (capJobs n)
+      Nothing ->
+        -- Don't warn in the Nothing case, as there isn't really a "selected" compiler.
         newParallelJobControl (capJobs n)
   where
     capJobs n = min (fromMaybe maxBound numJobsCap) n

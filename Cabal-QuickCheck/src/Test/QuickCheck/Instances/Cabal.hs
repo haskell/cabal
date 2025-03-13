@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP           #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Test.QuickCheck.Instances.Cabal () where
 
 #if !MIN_VERSION_base(4,18,0)
