@@ -1,5 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DisambiguateRecordFields #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
@@ -52,6 +54,7 @@ buildAllExtraSources =
     , buildJsSources
     , buildAsmSources
     , buildCmmSources
+    , buildAutogenCmmSources
     ]
 
 type ExtraSourceBuilder =
@@ -79,7 +82,7 @@ buildCSources mbMainFile =
           CExe{}
             | Just main <- mbMainFile
             , isC $ getSymbolicPath main ->
-                cFiles ++ [ExtraSource main mempty]
+                cFiles ++ [ExtraSourcePkg main mempty]
           _otherwise -> cFiles
     )
 
@@ -94,7 +97,7 @@ buildCxxSources mbMainFile =
           CExe{}
             | Just main <- mbMainFile
             , isCxx $ getSymbolicPath main ->
-                cxxFiles ++ [ExtraSource main mempty]
+                cxxFiles ++ [ExtraSourcePkg main mempty]
           _otherwise -> cxxFiles
     )
 
@@ -132,25 +135,34 @@ buildCmmSources _mbMainFile =
     Internal.componentCmmGhcOptions
     (cmmSources . componentBuildInfo)
 
+buildAutogenCmmSources :: ExtraSourceBuilder
+buildAutogenCmmSources _mbMainFile =
+  buildExtraSources
+    "C-- Generated Sources"
+    Internal.componentCmmGhcOptions
+    (autogenCmmSources . componentBuildInfo)
+
 -- | Create 'PreBuildComponentRules' for a given type of extra build sources
 -- which are compiled via a GHC invocation with the given options. Used to
 -- define built-in extra sources, such as, C, Cxx, Js, Asm, and Cmm sources.
 buildExtraSources
-  :: String
+  :: forall from
+   . Internal.SourcePath (ExtraSource from)
+  => String
   -- ^ String describing the extra sources being built, for printing.
   -> ( Verbosity
        -> LocalBuildInfo
        -> BuildInfo
        -> ComponentLocalBuildInfo
        -> SymbolicPath Pkg (Dir Artifacts)
-       -> ExtraSource
+       -> ExtraSource from
        -> GhcOptions
      )
   -- ^ Function to determine the @'GhcOptions'@ for the
   -- invocation of GHC when compiling these extra sources (e.g.
   -- @'Internal.componentCxxGhcOptions'@,
   -- @'Internal.componentCmmGhcOptions'@)
-  -> (Component -> [ExtraSource])
+  -> (Component -> [ExtraSource from])
   -- ^ View the extra sources of a component, typically from
   -- the build info (e.g. @'asmSources'@, @'cSources'@).
   -- @'Executable'@ components might additionally add the
@@ -196,7 +208,6 @@ buildExtraSources
             platform
             mbWorkDir
 
-        buildAction :: ExtraSource -> IO ()
         buildAction extraSource = do
           let baseSrcOpts =
                 componentSourceGhcOptions
@@ -236,7 +247,7 @@ buildExtraSources
 
               compileIfNeeded :: GhcOptions -> IO ()
               compileIfNeeded opts' = do
-                needsRecomp <- checkNeedsRecompilation mbWorkDir (extraSourceFile extraSource) opts'
+                needsRecomp <- checkNeedsRecompilation mbWorkDir (Internal.sourcePath lbi extraSource) opts'
                 when needsRecomp $ runGhcProg opts'
 
           createDirectoryIfMissingVerbose verbosity True (i odir)
@@ -276,4 +287,4 @@ buildExtraSources
         else do
           info verbosity ("Building " ++ description ++ "...")
           traverse_ buildAction sources
-          return (toNubListR (map extraSourceFile sources))
+          return (toNubListR (map (Internal.sourcePath lbi) sources))

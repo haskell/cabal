@@ -460,7 +460,7 @@ data CWD
 -- | Abstract directory: package directory (e.g. a directory containing the @.cabal@ file).
 --
 -- See Note [Symbolic paths] in Distribution.Utils.Path.
-data Pkg
+data Pkg deriving (Data)
 
 -- | Abstract directory: dist directory (e.g. @dist-newstyle@).
 --
@@ -490,7 +490,7 @@ data Framework
 -- | Abstract directory: build directory.
 --
 -- See Note [Symbolic paths] in Distribution.Utils.Path.
-data Build
+data Build deriving (Data)
 
 -- | Abstract directory: directory for build artifacts, such as documentation or @.hie@ files.
 --

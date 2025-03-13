@@ -28,7 +28,7 @@ import Distribution.Types.DumpBuildInfo            (DumpBuildInfo)
 import Distribution.Types.PackageVersionConstraint
 import Distribution.Types.UnitId                   (DefUnitId, UnitId)
 import Distribution.Utils.NubList                  (NubList)
-import Distribution.Utils.Path                     (SymbolicPathX)
+import Distribution.Utils.Path                     (SymbolicPathX, Build, Pkg)
 import Distribution.Utils.ShortText                (ShortText, fromShortText)
 import Distribution.Verbosity
 import Distribution.Verbosity.Internal
@@ -76,7 +76,8 @@ instance ToExpr ExeDependency
 instance ToExpr Executable
 instance ToExpr ExecutableScope
 instance ToExpr ExposedModule
-instance ToExpr ExtraSource
+instance ToExpr (ExtraSource Build)
+instance ToExpr (ExtraSource Pkg)
 instance ToExpr FlagAssignment
 instance ToExpr FlagName
 instance ToExpr ForeignLib

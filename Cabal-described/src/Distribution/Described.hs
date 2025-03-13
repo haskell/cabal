@@ -100,7 +100,7 @@ import Distribution.Types.SourceRepo               (RepoType)
 import Distribution.Types.TestType                 (TestType)
 import Distribution.Types.UnitId                   (UnitId)
 import Distribution.Types.UnqualComponentName      (UnqualComponentName)
-import Distribution.Utils.Path                     (SymbolicPath, RelativePath, FileOrDir(..), Pkg)
+import Distribution.Utils.Path                     (SymbolicPath, RelativePath, FileOrDir(..), Pkg, Build)
 import Distribution.Verbosity                      (Verbosity)
 import Distribution.Version                        (Version, VersionRange)
 import Language.Haskell.Extension                  (Extension, Language, knownLanguages)
@@ -407,7 +407,13 @@ instance Described ExposedModule where
 instance Described Extension where
     describe _ = RETodo
 
-instance Described ExtraSource where
+instance Described (ExtraSource Build) where
+    describe _ = REAppend 
+        [ describe (Proxy :: Proxy (SymbolicPath Build File))
+        , REOpt (reChar '(' <> reSpacedList (describe (Proxy :: Proxy Token')) <> reChar ')')
+        ]
+
+instance Described (ExtraSource Pkg) where
     describe _ = REAppend 
         [ describe (Proxy :: Proxy (SymbolicPath Pkg File))
         , REOpt (reChar '(' <> reSpacedList (describe (Proxy :: Proxy Token')) <> reChar ')')

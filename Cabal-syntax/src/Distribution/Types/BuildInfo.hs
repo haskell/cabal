@@ -74,15 +74,17 @@ data BuildInfo = BuildInfo
   -- ^ support frameworks for Mac OS X
   , extraFrameworkDirs :: [SymbolicPath Pkg (Dir Framework)]
   -- ^ extra locations to find frameworks
-  , asmSources :: [ExtraSource]
+  , asmSources :: [ExtraSource Pkg]
   -- ^ Assembly source files
-  , cmmSources :: [ExtraSource]
+  , cmmSources :: [ExtraSource Pkg]
   -- ^ C-- source files
-  , cSources :: [ExtraSource]
+  , autogenCmmSources :: [ExtraSource Build]
+  -- ^ C-- generated source files
+  , cSources :: [ExtraSource Pkg]
   -- ^ C source files
-  , cxxSources :: [ExtraSource]
+  , cxxSources :: [ExtraSource Pkg]
   -- ^ C++ source files
-  , jsSources :: [ExtraSource]
+  , jsSources :: [ExtraSource Pkg]
   -- ^ JavaScript source file
   , hsSourceDirs :: [SymbolicPath Pkg (Dir Source)]
   -- ^ where to look for the Haskell module hierarchy
@@ -175,6 +177,7 @@ instance Monoid BuildInfo where
       , extraFrameworkDirs = []
       , asmSources = []
       , cmmSources = []
+      , autogenCmmSources = []
       , cSources = []
       , cxxSources = []
       , jsSources = []
@@ -229,6 +232,7 @@ instance Semigroup BuildInfo where
       , extraFrameworkDirs = combineNub extraFrameworkDirs
       , asmSources = combineNub asmSources
       , cmmSources = combineNub cmmSources
+      , autogenCmmSources = combineNub autogenCmmSources
       , cSources = combineNub cSources
       , cxxSources = combineNub cxxSources
       , jsSources = combineNub jsSources

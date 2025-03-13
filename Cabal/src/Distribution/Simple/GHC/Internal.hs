@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 
@@ -48,6 +49,9 @@ module Distribution.Simple.GHC.Internal
   , ghcEnvironmentFileName
   , renderGhcEnvironmentFile
   , renderGhcEnvironmentFileEntry
+
+    -- * Paths
+  , SourcePath (..)
   ) where
 
 import Distribution.Compat.Prelude
@@ -377,23 +381,23 @@ includePaths lbi bi clbi odir =
          | dir <- mapMaybe (symbolicPathRelative_maybe . unsafeCoerceSymbolicPath) $ includeDirs bi
          ]
 
-type ExtraSourceGhcOptions =
+type ExtraSourceGhcOptions pkg =
   Verbosity
   -> LocalBuildInfo
   -> BuildInfo
   -> ComponentLocalBuildInfo
   -> SymbolicPath Pkg (Dir Artifacts)
-  -> ExtraSource
+  -> ExtraSource pkg
   -> GhcOptions
 
-componentCcGhcOptions :: ExtraSourceGhcOptions
+componentCcGhcOptions :: SourcePath (ExtraSource pkg) => ExtraSourceGhcOptions pkg
 componentCcGhcOptions verbosity lbi bi clbi odir extraSource =
   mempty
     { -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
       ghcOptVerbosity = toFlag (min verbosity normal)
     , ghcOptMode = toFlag GhcModeCompile
-    , ghcOptInputFiles = toNubListR [extraSourceFile extraSource]
+    , ghcOptInputFiles = toNubListR [sourcePath lbi extraSource]
     , ghcOptCppIncludePath = includePaths lbi bi clbi odir
     , ghcOptHideAllPackages = toFlag True
     , ghcOptPackageDBs = withPackageDB lbi
@@ -419,14 +423,14 @@ componentCcGhcOptions verbosity lbi bi clbi odir extraSource =
     , ghcOptExtra = hcOptions GHC bi
     }
 
-componentCxxGhcOptions :: ExtraSourceGhcOptions
+componentCxxGhcOptions :: SourcePath (ExtraSource pkg) => ExtraSourceGhcOptions pkg
 componentCxxGhcOptions verbosity lbi bi clbi odir extraSource =
   mempty
     { -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
       ghcOptVerbosity = toFlag (min verbosity normal)
     , ghcOptMode = toFlag GhcModeCompile
-    , ghcOptInputFiles = toNubListR [extraSourceFile extraSource]
+    , ghcOptInputFiles = toNubListR [sourcePath lbi extraSource]
     , ghcOptCppIncludePath = includePaths lbi bi clbi odir
     , ghcOptHideAllPackages = toFlag True
     , ghcOptPackageDBs = withPackageDB lbi
@@ -452,14 +456,14 @@ componentCxxGhcOptions verbosity lbi bi clbi odir extraSource =
     , ghcOptExtra = hcOptions GHC bi
     }
 
-componentAsmGhcOptions :: ExtraSourceGhcOptions
+componentAsmGhcOptions :: SourcePath (ExtraSource pkg) => ExtraSourceGhcOptions pkg
 componentAsmGhcOptions verbosity lbi bi clbi odir extraSource =
   mempty
     { -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
       ghcOptVerbosity = toFlag (min verbosity normal)
     , ghcOptMode = toFlag GhcModeCompile
-    , ghcOptInputFiles = toNubListR [extraSourceFile extraSource]
+    , ghcOptInputFiles = toNubListR [sourcePath lbi extraSource]
     , ghcOptCppIncludePath = includePaths lbi bi clbi odir
     , ghcOptHideAllPackages = toFlag True
     , ghcOptPackageDBs = withPackageDB lbi
@@ -480,14 +484,14 @@ componentAsmGhcOptions verbosity lbi bi clbi odir extraSource =
     , ghcOptExtra = hcOptions GHC bi
     }
 
-componentJsGhcOptions :: ExtraSourceGhcOptions
+componentJsGhcOptions :: SourcePath (ExtraSource pkg) => ExtraSourceGhcOptions pkg
 componentJsGhcOptions verbosity lbi bi clbi odir extraSource =
   mempty
     { -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
       ghcOptVerbosity = toFlag (min verbosity normal)
     , ghcOptMode = toFlag GhcModeCompile
-    , ghcOptInputFiles = toNubListR [extraSourceFile extraSource]
+    , ghcOptInputFiles = toNubListR [sourcePath lbi extraSource]
     , ghcOptJSppOptions = jsppOptions bi
     , ghcOptCppIncludePath = includePaths lbi bi clbi odir
     , ghcOptHideAllPackages = toFlag True
@@ -584,14 +588,14 @@ toGhcOptimisation NoOptimisation = mempty -- TODO perhaps override?
 toGhcOptimisation NormalOptimisation = toFlag GhcNormalOptimisation
 toGhcOptimisation MaximumOptimisation = toFlag GhcMaximumOptimisation
 
-componentCmmGhcOptions :: ExtraSourceGhcOptions
+componentCmmGhcOptions :: SourcePath (ExtraSource pkg) => ExtraSourceGhcOptions pkg
 componentCmmGhcOptions verbosity lbi bi clbi odir extraSource =
   mempty
     { -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
       ghcOptVerbosity = toFlag (min verbosity normal)
     , ghcOptMode = toFlag GhcModeCompile
-    , ghcOptInputFiles = toNubListR [extraSourceFile extraSource]
+    , ghcOptInputFiles = toNubListR [sourcePath lbi extraSource]
     , ghcOptCppIncludePath = includePaths lbi bi clbi odir
     , ghcOptCppOptions = cppOptions bi
     , ghcOptCppIncludes =
@@ -838,3 +842,12 @@ renderGhcEnvironmentFileEntry entry = case entry of
       UserPackageDB -> "user-package-db"
       SpecificPackageDB dbfile -> "package-db " ++ dbfile
   GhcEnvFileClearPackageDbStack -> "clear-package-db"
+
+class ExtraSourceClass e => SourcePath e where
+  sourcePath :: LocalBuildInfo -> e -> SymbolicPath Pkg 'File
+
+instance SourcePath (ExtraSource Pkg) where
+  sourcePath _ (ExtraSourcePkg f _) = f
+
+instance SourcePath (ExtraSource Build) where
+  sourcePath lbi (ExtraSourceBuild f _) = buildDir lbi </> f
