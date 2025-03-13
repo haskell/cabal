@@ -20,9 +20,12 @@ The canonical upstream repository is located at https://github.com/haskell/cabal
 
 ## Support window for releases
 
-| Latest release | 3.14 |
-|---|---|
-| Long-Term Support release | 3.12 |
+<dl>
+    <dt>Latest release</dt>
+    <dd>3.14</dd>
+    <dt>Long-Term Support release</dt>
+    <dd>3.12</dd>
+</dl>
 
 ## Learn how to use `cabal` and get support
 
