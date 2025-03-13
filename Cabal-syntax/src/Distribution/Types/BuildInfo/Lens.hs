@@ -80,23 +80,27 @@ class HasBuildInfo a where
   extraFrameworkDirs = buildInfo . extraFrameworkDirs
   {-# INLINE extraFrameworkDirs #-}
 
-  asmSources :: Lens' a [ExtraSource]
+  asmSources :: Lens' a [ExtraSource Pkg]
   asmSources = buildInfo . asmSources
   {-# INLINE asmSources #-}
 
-  cmmSources :: Lens' a [ExtraSource]
+  autogenCmmSources :: Lens' a [ExtraSource Build]
+  autogenCmmSources = buildInfo . autogenCmmSources
+  {-# INLINE autogenCmmSources #-}
+
+  cmmSources :: Lens' a [ExtraSource Pkg]
   cmmSources = buildInfo . cmmSources
   {-# INLINE cmmSources #-}
 
-  cSources :: Lens' a [ExtraSource]
+  cSources :: Lens' a [ExtraSource Pkg]
   cSources = buildInfo . cSources
   {-# INLINE cSources #-}
 
-  cxxSources :: Lens' a [ExtraSource]
+  cxxSources :: Lens' a [ExtraSource Pkg]
   cxxSources = buildInfo . cxxSources
   {-# INLINE cxxSources #-}
 
-  jsSources :: Lens' a [ExtraSource]
+  jsSources :: Lens' a [ExtraSource Pkg]
   jsSources = buildInfo . jsSources
   {-# INLINE jsSources #-}
 

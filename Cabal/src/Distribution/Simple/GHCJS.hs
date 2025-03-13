@@ -547,7 +547,7 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
               , "-js-lib-outputdir"
               , getSymbolicPath libTargetDir
               ]
-                ++ foldMap (\(ExtraSource file opts) -> getSymbolicPath file : opts) jsSrcs
+                ++ foldMap (\e -> getSymbolicPath (extraSourceFile e) : extraSourceOpts e) jsSrcs
           }
       vanillaOptsNoJsLib =
         baseOpts
@@ -1114,8 +1114,8 @@ decodeMainIsArg arg
 --
 -- Used to correctly build and link sources.
 data BuildSources = BuildSources
-  { cSourcesFiles :: [ExtraSource]
-  , cxxSourceFiles :: [ExtraSource]
+  { cSourcesFiles :: [ExtraSource Pkg]
+  , cxxSourceFiles :: [ExtraSource Pkg]
   , inputSourceFiles :: [SymbolicPath Pkg File]
   , inputSourceModules :: [ModuleName]
   }
@@ -1161,8 +1161,8 @@ gbuildSources verbosity mbWorkDir pkgId specVer tmpDir bm =
               -- have no excuse anymore to keep doing it wrong... ;-)
               warn verbosity $
                 "Enabling workaround for Main module '"
-                  ++ prettyShow mainModName
-                  ++ "' listed in 'other-modules' illegally!"
+                ++ prettyShow mainModName
+                ++ "' listed in 'other-modules' illegally!"
 
               return
                 BuildSources
@@ -1181,11 +1181,11 @@ gbuildSources verbosity mbWorkDir pkgId specVer tmpDir bm =
                   }
         else
           let (csf, cxxsf)
-                | isCxx (getSymbolicPath main) = (cSources bnfo, extraSourceFromPath main : cxxSources bnfo)
+                | isCxx (getSymbolicPath main) = (cSources bnfo, ExtraSourcePkg main [] : cxxSources bnfo)
                 -- if main is not a Haskell source
                 -- and main is not a C++ source
                 -- then we assume that it is a C source
-                | otherwise = (extraSourceFromPath main : cSources bnfo, cxxSources bnfo)
+                | otherwise = (ExtraSourcePkg main [] : cSources bnfo, cxxSources bnfo)
            in return
                 BuildSources
                   { cSourcesFiles = csf

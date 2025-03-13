@@ -72,7 +72,7 @@ import Distribution.PackageDescription
   , BenchmarkInterface (..)
   , BuildInfo (..)
   , Executable (..)
-  , ExtraSource (..)
+  , ExtraSourceClass (..)
   , PackageDescription
   , TestSuite (..)
   , TestSuiteInterface (..)
