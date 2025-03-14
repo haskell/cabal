@@ -26,7 +26,7 @@ import Prelude ()
 import Distribution.Compat.Environment
 import qualified Distribution.PackageDescription as PD
 import Distribution.Pretty
-import Distribution.Simple.Build (addInternalBuildTools)
+import Distribution.Simple.Build (addInternalBuildToolsFixed)
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
 import Distribution.Simple.Errors
@@ -58,6 +58,7 @@ bench
   -- ^ flags sent to benchmark
   -> IO ()
 bench args pkg_descr lbi flags = do
+  curDir <- LBI.absoluteWorkingDirLBI lbi
   let verbosity = fromFlag $ benchmarkVerbosity flags
       benchmarkNames = args
       pkgBenchmarks = PD.benchmarks pkg_descr
@@ -72,7 +73,8 @@ bench args pkg_descr lbi flags = do
               lbi
                 { -- Include any build-tool-depends on build tools internal to the current package.
                   LBI.withPrograms =
-                    addInternalBuildTools
+                    addInternalBuildToolsFixed
+                      (Just curDir)
                       pkg_descr
                       lbi
                       (benchmarkBuildInfo bm)
