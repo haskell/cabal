@@ -29,6 +29,7 @@ module Distribution.Simple.Program.Run
   , getProgramInvocationOutputAndErrors
   , getProgramInvocationLBSAndErrors
   , getEffectiveEnvironment
+  , getFullEnvironment
   ) where
 
 import Distribution.Compat.Prelude
@@ -247,6 +248,17 @@ getEffectiveEnvironment overrides =
     apply os env = foldl' (flip update) env os
     update (var, Nothing) = Map.delete var
     update (var, Just val) = Map.insert var val
+
+-- | Like 'getEffectiveEnvironment', but when no overrides are specified,
+-- returns the full environment instead of 'Nothing'.
+getFullEnvironment
+  :: [(String, Maybe String)]
+  -> IO [(String, String)]
+getFullEnvironment overrides = do
+  menv <- getEffectiveEnvironment overrides
+  case menv of
+    Just env -> return env
+    Nothing -> getEnvironment
 
 -- | Like the unix xargs program. Useful for when we've got very long command
 -- lines that might overflow an OS limit on command line length and so you
