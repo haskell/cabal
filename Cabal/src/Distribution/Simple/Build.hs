@@ -187,13 +187,15 @@ build_setupHooks
     -- dumped.
     dumpBuildInfo verbosity distPref (configDumpBuildInfo (configFlags lbi)) pkg_descr lbi flags
 
+    curDir <- absoluteWorkingDirLBI lbi
+
     -- Now do the actual building
     (\f -> foldM_ f (installedPkgs lbi) componentsToBuild) $ \index target -> do
       let comp = targetComponent target
           clbi = targetCLBI target
           bi = componentBuildInfo comp
           -- Include any build-tool-depends on build tools internal to the current package.
-          progs' = addInternalBuildTools pkg_descr lbi bi (withPrograms lbi)
+          progs' = addInternalBuildTools curDir pkg_descr lbi bi (withPrograms lbi)
           lbi' =
             lbi
               { withPrograms = progs'
@@ -375,17 +377,20 @@ repl_setupHooks
 
     internalPackageDB <- createInternalPackageDB verbosity lbi distPref
 
-    let lbiForComponent comp lbi' =
-          lbi'
-            { withPackageDB = withPackageDB lbi ++ [internalPackageDB]
-            , withPrograms =
-                -- Include any build-tool-depends on build tools internal to the current package.
-                addInternalBuildTools
-                  pkg_descr
-                  lbi'
-                  (componentBuildInfo comp)
-                  (withPrograms lbi')
-            }
+    let lbiForComponent comp lbi' = do
+          curDir <- absoluteWorkingDirLBI lbi'
+          return $
+            lbi'
+              { withPackageDB = withPackageDB lbi' ++ [internalPackageDB]
+              , withPrograms =
+                  -- Include any build-tool-depends on build tools internal to the current package.
+                  addInternalBuildTools
+                    curDir
+                    pkg_descr
+                    lbi'
+                    (componentBuildInfo comp)
+                    (withPrograms lbi')
+              }
         runPreBuildHooks :: LocalBuildInfo -> TargetInfo -> IO ()
         runPreBuildHooks lbi2 tgt =
           let inputs =
@@ -403,7 +408,7 @@ repl_setupHooks
       [ do
         let clbi = targetCLBI subtarget
             comp = targetComponent subtarget
-            lbi' = lbiForComponent comp lbi
+        lbi' <- lbiForComponent comp lbi
         preBuildComponent runPreBuildHooks verbosity lbi' subtarget
         buildComponent
           (mempty{buildCommonFlags = mempty{setupVerbosity = toFlag verbosity}})
@@ -420,7 +425,7 @@ repl_setupHooks
     -- REPL for target components
     let clbi = targetCLBI target
         comp = targetComponent target
-        lbi' = lbiForComponent comp lbi
+    lbi' <- lbiForComponent comp lbi
     preBuildComponent runPreBuildHooks verbosity lbi' target
     replComponent flags verbosity pkg_descr lbi' suffixHandlers comp clbi distPref
 
@@ -925,12 +930,13 @@ createInternalPackageDB verbosity lbi distPref = do
 --    'progOverrideEnv', so that any programs configured from now on will be
 --    able to invoke these build tools.
 addInternalBuildTools
-  :: PackageDescription
+  :: AbsolutePath (Dir Pkg)
+  -> PackageDescription
   -> LocalBuildInfo
   -> BuildInfo
   -> ProgramDb
   -> ProgramDb
-addInternalBuildTools pkg lbi bi progs =
+addInternalBuildTools pwd pkg lbi bi progs =
   prependProgramSearchPathNoLogging
     internalToolPaths
     [pkgDataDirVar]
@@ -949,13 +955,11 @@ addInternalBuildTools pkg lbi bi progs =
                 buildDir lbi
                   </> makeRelativePathEx (toolName' </> toolName' <.> exeExtension (hostPlatform lbi))
       ]
-    mbWorkDir = mbWorkDirLBI lbi
-    rawDataDir = dataDir pkg
-    dataDirPath
-      | null $ getSymbolicPath rawDataDir =
-          interpretSymbolicPath mbWorkDir sameDirectory
-      | otherwise =
-          interpretSymbolicPath mbWorkDir rawDataDir
+
+    -- This is an absolute path, so if a process changes directory, it can still
+    -- find the datadir (#10717)
+    dataDirPath :: FilePath
+    dataDirPath = interpretSymbolicPathAbsolute pwd (dataDir pkg)
 
 -- TODO: build separate libs in separate dirs so that we can build
 -- multiple libs, e.g. for 'LibTest' library-style test suites
