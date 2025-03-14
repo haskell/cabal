@@ -112,7 +112,8 @@ import Distribution.Simple.Setup
   )
 import Distribution.Simple.Utils (ordNub)
 import Distribution.Solver.Types.ComponentDeps (ComponentDeps)
-import Distribution.Solver.Types.System
+import Distribution.Solver.Types.Stage
+import Distribution.Solver.Types.Toolchain
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Types.ComponentRequestedSpec
@@ -250,7 +251,9 @@ data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
   -- to disable. This tells us which ones we build by default, and
   -- helps with error messages when the user asks to build something
   -- they explicitly disabled.
-  --
+
+  , elabStage :: Stage
+  
   -- TODO: The 'Bool' here should be refined into an ADT with three
   -- cases: NotRequested, ExplicitlyRequested and
   -- ImplicitlyRequested.  A stanza is explicitly requested if
@@ -910,19 +913,6 @@ componentOptionalStanza :: CD.Component -> Maybe OptionalStanza
 componentOptionalStanza (CD.ComponentTest _) = Just TestStanzas
 componentOptionalStanza (CD.ComponentBench _) = Just BenchStanzas
 componentOptionalStanza _ = Nothing
-
----------------------------
--- Toolchain
---
-
-data Toolchains = Toolchains
-  { buildToolchain :: Toolchain
-  , hostToolchain :: Toolchain
-  }
-  deriving (Eq, Show, Generic, Typeable)
-
-instance Binary Toolchains
-instance Structured Toolchains
 
 ---------------------------
 -- Setup.hs script policy

@@ -221,6 +221,8 @@ import qualified Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.Simple.LocalBuildInfo as Cabal
 import qualified Distribution.Simple.Setup as Cabal
 import qualified Distribution.Solver.Types.ComponentDeps as CD
+import Distribution.Solver.Types.Stage
+import Distribution.Solver.Types.Toolchain
 
 import qualified Distribution.Compat.Graph as Graph
 
@@ -1611,18 +1613,7 @@ elaborateInstallPlan
 elaborateInstallPlan
   verbosity
   hookHashes
-  toolchains@Toolchains
-    { buildToolchain =
-      Toolchain
-        { toolchainCompiler = compiler
-        , toolchainProgramDb = compilerprogdb
-        }
-    , hostToolchain =
-      Toolchain
-        { toolchainCompiler = hostCompiler
-        , toolchainPlatform = hostPlatform
-        }
-    }
+  toolchains
   pkgConfigDB
   distDirLayout@DistDirLayout{..}
   storeDirLayout@StoreDirLayout{storePackageDBStack}
@@ -2201,12 +2192,19 @@ elaborateInstallPlan
 
             elabIsCanonical = True
             elabPkgSourceId = pkgid
+
+            -- TODO: temporarily set everything to build on build
+            elabStage = Build
+            elabCompiler = toolchainCompiler (toolchainFor elabStage toolchains)
+            elabPlatform = toolchainPlatform (toolchainFor elabStage toolchains)
+            elabProgramDb = toolchainProgramDb (toolchainFor elabStage toolchains)
+
             elabPkgDescription = case PD.finalizePD
               flags
               elabEnabledSpec
               (const Satisfied)
-              hostPlatform
-              (compilerInfo hostCompiler)
+              elabPlatform
+              (compilerInfo elabCompiler)
               []
               gdesc of
               Right (desc, _) -> desc
@@ -2281,6 +2279,10 @@ elaborateInstallPlan
                 deps0
             elabSetupPackageDBStack = buildAndRegisterDbs
 
+            inplacePackageDbs = corePackageDbs ++ [distPackageDB (compilerId elabCompiler)]
+
+            corePackageDbs = storePackageDBStack elabCompiler (projectConfigPackageDBs sharedPackageConfig)
+
             elabInplaceBuildPackageDBStack = inplacePackageDbs
             elabInplaceRegisterPackageDBStack = inplacePackageDbs
             elabInplaceSetupPackageDBStack = inplacePackageDbs
@@ -2291,17 +2293,21 @@ elaborateInstallPlan
 
             elabPkgDescriptionOverride = descOverride
 
+            pkgsUseSharedLibrary :: Set PackageId
+            pkgsUseSharedLibrary =
+              packagesWithLibDepsDownwardClosedProperty (needsSharedLib elabCompiler)
+
             elabBuildOptions =
               LBC.BuildOptions
                 { withVanillaLib = perPkgOptionFlag pkgid True packageConfigVanillaLib -- TODO: [required feature]: also needs to be handled recursively
-                , withSharedLib = canBuildSharedLibs && pkgid `Set.member` pkgsUseSharedLibrary
+                , withSharedLib = canBuildSharedLibs elabCompiler && pkgid `Set.member` pkgsUseSharedLibrary
                 , withStaticLib = perPkgOptionFlag pkgid False packageConfigStaticLib
                 , withDynExe = perPkgOptionFlag pkgid False packageConfigDynExe
                 , withFullyStaticExe = perPkgOptionFlag pkgid False packageConfigFullyStaticExe
                 , withGHCiLib = perPkgOptionFlag pkgid False packageConfigGHCiLib -- TODO: [required feature] needs to default to enabled on windows still
                 , withProfExe = perPkgOptionFlag pkgid False packageConfigProf
-                , withProfLib = canBuildProfilingLibs && pkgid `Set.member` pkgsUseProfilingLibrary
-                , withProfLibShared = canBuildProfilingSharedLibs && pkgid `Set.member` pkgsUseProfilingLibraryShared
+                , withProfLib = canBuildProfilingLibs elabCompiler && pkgid `Set.member` pkgsUseProfilingLibrary
+                , withProfLibShared = canBuildProfilingSharedLibs elabCompiler && pkgid `Set.member` pkgsUseProfilingLibraryShared
                 , exeCoverage = perPkgOptionFlag pkgid False packageConfigCoverage
                 , libCoverage = perPkgOptionFlag pkgid False packageConfigCoverage
                 , withOptimization = perPkgOptionFlag pkgid NormalOptimisation packageConfigOptimization
@@ -2334,13 +2340,13 @@ elaborateInstallPlan
             elabProgramPaths =
               Map.fromList
                 [ (programId prog, programPath prog)
-                | prog <- configuredPrograms compilerprogdb
+                | prog <- configuredPrograms elabProgramDb
                 ]
                 <> perPkgOptionMapLast pkgid packageConfigProgramPaths
             elabProgramArgs =
               Map.fromList
                 [ (programId prog, args)
-                | prog <- configuredPrograms compilerprogdb
+                | prog <- configuredPrograms elabProgramDb
                 , let args = programOverrideArgs $ addHaddockIfDocumentationEnabled prog
                 , not (null args)
                 ]
@@ -2422,12 +2428,6 @@ elaborateInstallPlan
                 mempty
           perpkg = maybe mempty f (Map.lookup (packageName pkg) perPackageConfig)
 
-      inplacePackageDbs =
-        corePackageDbs
-          ++ [distPackageDB (compilerId compiler)]
-
-      corePackageDbs = storePackageDBStack compiler (projectConfigPackageDBs sharedPackageConfig)
-
       -- For this local build policy, every package that lives in a local source
       -- dir (as opposed to a tarball), or depends on such a package, will be
       -- built inplace into a shared dist dir. Tarball packages that depend on
@@ -2458,13 +2458,13 @@ elaborateInstallPlan
       -- TODO: localPackages is a misnomer, it's all project packages
       -- here is where we decide which ones will be local!
 
-      pkgsUseSharedLibrary :: Set PackageId
-      pkgsUseSharedLibrary =
-        packagesWithLibDepsDownwardClosedProperty needsSharedLib
+      pkgsUseProfilingLibrary :: Set PackageId
+      pkgsUseProfilingLibrary =
+        packagesWithLibDepsDownwardClosedProperty needsProfilingLib
 
-      needsSharedLib pkgid =
+      needsSharedLib compiler pkgid =
         fromMaybe
-          compilerShouldUseSharedLibByDefault
+          (compilerShouldUseSharedLibByDefault compiler)
           -- Case 1: --enable-shared or --disable-shared is passed explicitly, honour that.
           ( case pkgSharedLib of
               Just v -> Just v
@@ -2475,7 +2475,7 @@ elaborateInstallPlan
                   -- Case 3: If --enable-profiling is passed, then we are going to
                   -- build profiled dynamic, so no need for shared libraries.
                   case pkgProf of
-                    Just True -> if canBuildProfilingSharedLibs then Nothing else Just True
+                    Just True -> if canBuildProfilingSharedLibs compiler then Nothing else Just True
                     _ -> Just True
                 -- But don't necessarily turn off shared library generation if
                 -- --disable-executable-dynamic is passed. The shared objects might
@@ -2487,52 +2487,7 @@ elaborateInstallPlan
           pkgDynExe = perPkgOptionMaybe pkgid packageConfigDynExe
           pkgProf = perPkgOptionMaybe pkgid packageConfigProf
 
-      -- TODO: [code cleanup] move this into the Cabal lib. It's currently open
-      -- coded in Distribution.Simple.Configure, but should be made a proper
-      -- function of the Compiler or CompilerInfo.
-      compilerShouldUseSharedLibByDefault =
-        case compilerFlavor compiler of
-          GHC -> GHC.compilerBuildWay compiler == DynWay && canBuildSharedLibs
-          GHCJS -> GHCJS.isDynamic compiler
-          _ -> False
-
-      compilerShouldUseProfilingLibByDefault =
-        case compilerFlavor compiler of
-          GHC -> GHC.compilerBuildWay compiler == ProfWay && canBuildProfilingLibs
-          _ -> False
-
-      compilerShouldUseProfilingSharedLibByDefault =
-        case compilerFlavor compiler of
-          GHC -> GHC.compilerBuildWay compiler == ProfDynWay && canBuildProfilingSharedLibs
-          _ -> False
-
-      -- Returns False if we definitely can't build shared libs
-      canBuildWayLibs predicate = case predicate compiler of
-        Just can_build -> can_build
-        -- If we don't know for certain, just assume we can
-        -- which matches behaviour in previous cabal releases
-        Nothing -> True
-
-      canBuildSharedLibs = canBuildWayLibs dynamicSupported
-      canBuildProfilingLibs = canBuildWayLibs profilingVanillaSupported
-      canBuildProfilingSharedLibs = canBuildWayLibs profilingDynamicSupported
-
-      wayWarnings pkg = do
-        when
-          (needsProfilingLib pkg && not canBuildProfilingLibs)
-          (warnProgress (text "Compiler does not support building p libraries, profiling is disabled"))
-        when
-          (needsSharedLib pkg && not canBuildSharedLibs)
-          (warnProgress (text "Compiler does not support building dyn libraries, dynamic libraries are disabled"))
-        when
-          (needsProfilingLibShared pkg && not canBuildProfilingSharedLibs)
-          (warnProgress (text "Compiler does not support building p_dyn libraries, profiling dynamic libraries are disabled."))
-
-      pkgsUseProfilingLibrary :: Set PackageId
-      pkgsUseProfilingLibrary =
-        packagesWithLibDepsDownwardClosedProperty needsProfilingLib
-
-      needsProfilingLib pkg =
+      needsProfilingLib compiler pkg =
         fromFlagOrDefault compilerShouldUseProfilingLibByDefault (profBothFlag <> profLibFlag)
         where
           pkgid = packageId pkg
@@ -2589,6 +2544,51 @@ elaborateInstallPlan
             -- depending on it that needs profiling. This really needs a separate
             -- package config validation/resolution pass.
             ]
+
+-- TODO: [code cleanup] move this into the Cabal lib. It's currently open
+-- coded in Distribution.Simple.Configure, but should be made a proper
+-- function of the Compiler or CompilerInfo.
+compilerShouldUseSharedLibByDefault :: Compiler -> Bool
+compilerShouldUseSharedLibByDefault compiler =
+  case compilerFlavor compiler of
+    GHC -> GHC.compilerBuildWay compiler == DynWay && canBuildSharedLibs compiler
+    GHCJS -> GHCJS.isDynamic compiler
+    _ -> False
+
+-- TODO: [code cleanup] move this into the Cabal lib.
+compilerShouldUseProfilingLibByDefault :: Compiler -> Bool
+compilerShouldUseProfilingLibByDefault compiler =
+  case compilerFlavor compiler of
+    GHC -> GHC.compilerBuildWay compiler == ProfWay && canBuildProfilingLibs compiler
+    _ -> False
+
+-- TODO: [code cleanup] move this into the Cabal lib.
+compilerShouldUseProfilingSharedLibByDefault :: Compiler -> Bool
+compilerShouldUseProfilingSharedLibByDefault compiler =
+  case compilerFlavor compiler of
+    GHC -> GHC.compilerBuildWay compiler == ProfDynWay && canBuildProfilingSharedLibs compiler
+    _ -> False
+
+-- Returns False if we definitely can't build shared libs
+-- TODO: [code cleanup] move this into the Cabal lib.
+canBuildWayLibs :: (t -> Maybe Bool) -> t -> Bool
+canBuildWayLibs predicate compiler = case predicate compiler of
+  Just can_build -> can_build
+  -- If we don't know for certain, just assume we can
+  -- which matches behaviour in previous cabal releases
+  Nothing -> True
+
+-- TODO: [code cleanup] move this into the Cabal lib.
+canBuildSharedLibs :: Compiler -> Bool
+canBuildSharedLibs = canBuildWayLibs dynamicSupported
+
+-- TODO: [code cleanup] move this into the Cabal lib.
+canBuildProfilingLibs :: Compiler -> Bool
+canBuildProfilingLibs = canBuildWayLibs profilingVanillaSupported
+
+-- TODO: [code cleanup] move this into the Cabal lib.
+canBuildProfilingSharedLibs :: Compiler -> Bool
+canBuildProfilingSharedLibs = canBuildWayLibs profilingDynamicSupported
 
 -- TODO: [nice to have] config consistency checking:
 -- + profiling libs & exes, exe needs lib, recursive
