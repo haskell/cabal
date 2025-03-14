@@ -57,6 +57,7 @@ bench
   -- ^ flags sent to benchmark
   -> IO ()
 bench args pkg_descr lbi flags = do
+  curDir <- LBI.absoluteWorkingDirLBI lbi
   let verbosity = fromFlag $ benchmarkVerbosity flags
       benchmarkNames = args
       pkgBenchmarks = PD.benchmarks pkg_descr
@@ -72,6 +73,7 @@ bench args pkg_descr lbi flags = do
                 { -- Include any build-tool-depends on build tools internal to the current package.
                   LBI.withPrograms =
                     addInternalBuildTools
+                      curDir
                       pkg_descr
                       lbi
                       (benchmarkBuildInfo bm)
