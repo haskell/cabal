@@ -270,7 +270,7 @@ exploreLog mbj enableBj fineGrainedConflicts (CountConflicts countConflicts) idx
     couldResolveConflicts :: QPN -> POption -> S.Set CS.Conflict -> Maybe ConflictSet
     couldResolveConflicts currentQPN@(Q _ pn) (POption i@(I v _) _) conflicts =
       let (PInfo deps _ _ _) = idx M.! pn M.! i
-          qdeps = qualifyDeps (defaultQualifyOptions idx) currentQPN deps
+          qdeps = qualifyDeps currentQPN deps
 
           couldBeResolved :: CS.Conflict -> Maybe ConflictSet
           couldBeResolved CS.OtherConflict = Nothing

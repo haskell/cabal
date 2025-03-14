@@ -108,9 +108,7 @@ data ValidateState = VS {
 
   -- Map from package name to the components that are required from that
   -- package.
-  requiredComponents  :: Map QPN ComponentDependencyReasons,
-
-  qualifyOptions      :: QualifyOptions
+  requiredComponents  :: Map QPN ComponentDependencyReasons
 }
 
 newtype Validate a = Validate (Reader ValidateState a)
@@ -200,11 +198,10 @@ validate = go
       svd            <- asks saved -- obtain saved dependencies
       aComps         <- asks availableComponents
       rComps         <- asks requiredComponents
-      qo             <- asks qualifyOptions
       -- obtain dependencies and index-dictated exclusions introduced by the choice
       let (PInfo deps comps _ mfr) = idx ! pn ! i
       -- qualify the deps in the current scope
-      let qdeps = qualifyDeps qo qpn deps
+      let qdeps = qualifyDeps qpn deps
       -- the new active constraints are given by the instance we have chosen,
       -- plus the dependency information we have for that instance
       let newactives = extractAllDeps pfa psa qdeps
@@ -577,5 +574,4 @@ validateTree cinfo idx pkgConfigDb t = runValidate (validate t) VS {
   , pa                  = PA M.empty M.empty M.empty
   , availableComponents = M.empty
   , requiredComponents  = M.empty
-  , qualifyOptions      = defaultQualifyOptions idx
   }
