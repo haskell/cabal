@@ -70,6 +70,7 @@ test
   -- ^ flags sent to test
   -> IO ()
 test args pkg_descr lbi0 flags = do
+  curDir <- LBI.absoluteWorkingDirLBI lbi0
   let common = testCommonFlags flags
       verbosity = fromFlag $ setupVerbosity common
       distPref = fromFlag $ setupDistPref common
@@ -96,6 +97,7 @@ test args pkg_descr lbi0 flags = do
                 { withPrograms =
                     -- Include any build-tool-depends on build tools internal to the current package.
                     addInternalBuildTools
+                      curDir
                       pkg_descr
                       lbi
                       (PD.testBuildInfo suite)
