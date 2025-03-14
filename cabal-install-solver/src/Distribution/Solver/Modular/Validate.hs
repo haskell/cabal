@@ -449,14 +449,14 @@ merge (MergedDepFixed comp1 vs1 i1) (PkgDep vs2 (PkgComponent p comp2) ci@(Fixed
            , ( ConflictingDep vs1 (PkgComponent p comp1) (Fixed i1)
              , ConflictingDep vs2 (PkgComponent p comp2) ci ) )
 
-merge (MergedDepFixed comp1 vs1 i@(I v _)) (PkgDep vs2 (PkgComponent p comp2) ci@(Constrained vr))
+merge (MergedDepFixed comp1 vs1 i@(I _stage v _)) (PkgDep vs2 (PkgComponent p comp2) ci@(Constrained vr))
   | checkVR vr v = Right $ MergedDepFixed comp1 vs1 i
   | otherwise    =
       Left ( createConflictSetForVersionConflict p v vs1 vr vs2
            , ( ConflictingDep vs1 (PkgComponent p comp1) (Fixed i)
              , ConflictingDep vs2 (PkgComponent p comp2) ci ) )
 
-merge (MergedDepConstrained vrOrigins) (PkgDep vs2 (PkgComponent p comp2) ci@(Fixed i@(I v _))) =
+merge (MergedDepConstrained vrOrigins) (PkgDep vs2 (PkgComponent p comp2) ci@(Fixed i@(I _stage v _))) =
     go vrOrigins -- I tried "reverse vrOrigins" here, but it seems to slow things down ...
   where
     go :: [VROrigin] -> Either (ConflictSet, (ConflictingDep, ConflictingDep)) MergedPkgDep

@@ -29,7 +29,7 @@ convCP :: SI.InstalledPackageIndex ->
 convCP iidx sidx (CP qpi fa es ds) =
   case qpi of
     -- Installed
-    (PI qpn (I _ (Inst pi)))  ->
+    (PI qpn (I {- FIXME -} Host _ (Inst pi)))  ->
       PreExisting $
                   InstSolverPackage {
                     instSolverQPN = qpn,
@@ -38,7 +38,7 @@ convCP iidx sidx (CP qpi fa es ds) =
                     instSolverPkgExeDeps = fmap snd ds'
                   }
     -- "In repo" i.e. a source package
-    (PI qpn@(Q _path pn) (I v InRepo)) ->
+    (PI qpn@(Q _path pn) (I {- FIXME -} Host v InRepo)) ->
       let pi = PackageIdentifier pn v in
       Configured $
                   SolverPackage {
@@ -54,7 +54,7 @@ convCP iidx sidx (CP qpi fa es ds) =
     ds' = fmap (partitionEithers . map convConfId) ds
 
 convConfId :: PI QPN -> Either SolverId {- is lib -} SolverId {- is exe -}
-convConfId (PI (Q (PackagePath _ q) pn) (I v loc)) =
+convConfId (PI (Q (PackagePath _ q) pn) (I _stage v loc)) =
     case loc of
         Inst pi ->
           Left (PreExistingId sourceId pi)

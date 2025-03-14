@@ -72,7 +72,7 @@ addWeight :: (PN -> [Ver] -> POption -> Weight) -> EndoTreeTrav d c
 addWeight f = addWeights [f]
 
 version :: POption -> Ver
-version (POption (I v _) _) = v
+version (POption (I _ v _) _) = v
 
 -- | Prefer to link packages whenever possible.
 preferLinked :: EndoTreeTrav d c
@@ -139,8 +139,8 @@ preferPackagePreferences pcs =
 
     -- Prefer installed packages over non-installed packages.
     installed :: POption -> Weight
-    installed (POption (I _ (Inst _)) _) = 0
-    installed _                          = 1
+    installed (POption (I _ _ (Inst _)) _) = 0
+    installed _                            = 1
 
 -- | Traversal that tries to establish package stanza enable\/disable
 -- preferences. Works by reordering the branches of stanza choices.
@@ -184,7 +184,7 @@ processPackageConstraintP qpn c i (LabeledPackageConstraint (PackageConstraint s
     else r
   where
     go :: I -> PackageProperty -> Tree d c
-    go (I v _) (PackagePropertyVersion vr)
+    go (I _stage v _) (PackagePropertyVersion vr)
         | checkVR vr v  = r
         | otherwise     = Fail c (GlobalConstraintVersion vr src)
     go _       PackagePropertyInstalled
@@ -338,10 +338,10 @@ avoidReinstalls p = go
       | otherwise = PChoiceF qpn rdm gr cs
       where
         disableReinstalls =
-          let installed = [ v | (_, POption (I v (Inst _)) _, _) <- W.toList cs ]
+          let installed = [ v | (_, POption (I _stage v (Inst _)) _, _) <- W.toList cs ]
           in  W.mapWithKey (notReinstall installed) cs
 
-        notReinstall vs (POption (I v InRepo) _) _ | v `elem` vs =
+        notReinstall vs (POption (I _stage v InRepo) _) _ | v `elem` vs =
           Fail (varToConflictSet (P qpn)) CannotReinstall
         notReinstall _ _ x =
           x

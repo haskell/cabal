@@ -81,7 +81,7 @@ convIPI' (ShadowPkgs sip) idx =
 
 -- | Extract/recover the package ID from an installed package info, and convert it to a solver's I.
 convId :: IPI.InstalledPackageInfo -> (PN, I)
-convId ipi = (pn, I ver $ Inst $ IPI.installedUnitId ipi)
+convId ipi = (pn, I {- FIXME -} Host ver $ Inst $ IPI.installedUnitId ipi)
   where MungedPackageId mpn ver = mungedId ipi
         -- HACK. See Note [Index conversion with internal libraries]
         pn = encodeCompatPackageName mpn
@@ -163,7 +163,7 @@ convSPI' os arch cinfo constraints strfl solveExes =
 convSP :: OS -> Arch -> CompilerInfo -> Map PN [LabeledPackageConstraint]
        -> StrongFlags -> SolveExecutables -> SourcePackage loc -> (PN, I, PInfo)
 convSP os arch cinfo constraints strfl solveExes (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
-  let i = I pv InRepo
+  let i = I {- FIXME -} Host pv InRepo
       pkgConstraints = fromMaybe [] $ M.lookup pn constraints
   in  (pn, i, convGPD os arch cinfo pkgConstraints strfl solveExes pn gpd)
 

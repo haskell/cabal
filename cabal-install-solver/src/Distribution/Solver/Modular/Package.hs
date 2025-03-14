@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 module Distribution.Solver.Modular.Package
   ( I(..)
+  , Stage(..)
   , Loc(..)
   , PackageId
   , PackageIdentifier(..)
@@ -49,14 +50,22 @@ type PId = UnitId
 data Loc = Inst PId | InRepo
   deriving (Eq, Ord, Show)
 
+-- | Stage. A stage in the build process.
+data Stage = Build | Host
+  deriving (Eq, Ord, Show)
+
+showStage :: Stage -> String
+showStage Build = "[build]"
+showStage Host  = "[host ]"
+
 -- | Instance. A version number and a location.
-data I = I Ver Loc
+data I = I Stage Ver Loc
   deriving (Eq, Ord, Show)
 
 -- | String representation of an instance.
 showI :: I -> String
-showI (I v InRepo)   = showVer v
-showI (I v (Inst uid)) = showVer v ++ "/installed" ++ extractPackageAbiHash uid
+showI (I s v InRepo)     = showStage s ++ showVer v
+showI (I s v (Inst uid)) = showStage s ++ showVer v ++ "/installed" ++ extractPackageAbiHash uid
   where
     extractPackageAbiHash xs =
       case first reverse $ break (=='-') $ reverse (prettyShow xs) of
@@ -72,8 +81,8 @@ showPI :: PI QPN -> String
 showPI (PI qpn i) = showQPN qpn ++ "-" ++ showI i
 
 instI :: I -> Bool
-instI (I _ (Inst _)) = True
-instI _              = False
+instI (I _ _ (Inst _)) = True
+instI _                = False
 
 -- | Qualify a target package with its own name so that its dependencies are not
 -- required to be consistent with other targets.

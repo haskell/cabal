@@ -56,3 +56,18 @@ mkIndex xs = M.map M.fromList (groupMap (L.map (\ (pn, i, pi) -> (pn, (i, pi))) 
 
 groupMap :: Ord a => [(a, b)] -> Map a [b]
 groupMap xs = M.fromListWith (flip (++)) (L.map (\ (x, y) -> (x, [y])) xs)
+
+defaultQualifyOptions :: Index -> QualifyOptions
+defaultQualifyOptions idx = QO {
+      qoBaseShim         = or [ dep == base
+                              | -- Find all versions of base ..
+                                Just is <- [M.lookup base idx]
+                                -- .. which are installed ..
+                              , (I _ver _stage (Inst _), PInfo deps _comps _flagNfo _fr) <- M.toList is
+                                -- .. and flatten all their dependencies ..
+                              , (LDep _ (Dep (PkgComponent dep _) _ci), _comp) <- flattenFlaggedDeps deps
+                              ]
+    , qoSetupIndependent = True
+    }
+  where
+    base = mkPackageName "base"
