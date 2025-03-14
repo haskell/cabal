@@ -104,7 +104,6 @@ import Distribution.Simple.LocalBuildInfo
   , LibraryName (..)
   )
 import Distribution.Simple.Program
-import Distribution.Simple.Program.Db (configuredPrograms)
 import Distribution.Simple.Setup
   ( DumpBuildInfo (..)
   , HaddockTarget
@@ -113,9 +112,9 @@ import Distribution.Simple.Setup
   )
 import Distribution.Simple.Utils (ordNub)
 import Distribution.Solver.Types.ComponentDeps (ComponentDeps)
+import Distribution.Solver.Types.System
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.OptionalStanza
-import Distribution.System
 import Distribution.Types.ComponentRequestedSpec
 import qualified Distribution.Types.LocalBuildConfig as LBC
 import Distribution.Types.PackageDescription (PackageDescription (..))
@@ -915,23 +914,6 @@ componentOptionalStanza _ = Nothing
 ---------------------------
 -- Toolchain
 --
-
-data Toolchain = Toolchain
-  { toolchainPlatform :: Platform
-  , toolchainCompiler :: Compiler
-  , toolchainProgramDb :: ProgramDb
-  }
-  deriving (Show, Generic, Typeable)
-
--- TODO: review this
-instance Eq Toolchain where
-  lhs == rhs =
-    (((==) `on` toolchainPlatform) lhs rhs)
-      && (((==) `on` toolchainCompiler) lhs rhs)
-      && ((((==)) `on` (configuredPrograms . toolchainProgramDb)) lhs rhs)
-
-instance Binary Toolchain
-instance Structured Toolchain
 
 data Toolchains = Toolchains
   { buildToolchain :: Toolchain
