@@ -553,6 +553,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     , IPI.haddockHTMLs = [htmldir installDirs | hasModules]
     , IPI.pkgRoot = Nothing
     , IPI.libVisibility = libVisibility lib
+    , IPI.pkgCompiler = Nothing
     }
   where
     ghc84 = case compilerId $ compiler lbi of

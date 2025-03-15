@@ -88,7 +88,7 @@ import Control.Monad (forM_)
 import Data.List (stripPrefix)
 import qualified Data.Map as Map
 import Distribution.CabalSpecVersion
-import Distribution.InstalledPackageInfo (InstalledPackageInfo)
+import Distribution.InstalledPackageInfo (InstalledPackageInfo(pkgCompiler))
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
 import Distribution.Package
 import Distribution.PackageDescription as PD
@@ -422,7 +422,10 @@ getInstalledPackages verbosity comp mbWorkDir packagedbs progdb = do
   checkPackageDbEnvVar verbosity
   checkPackageDbStack verbosity comp packagedbs
   pkgss <- getInstalledPackages' verbosity mbWorkDir packagedbs progdb
-  index <- toPackageIndex verbosity pkgss progdb
+  let pkgss' = [ (packagedb, (\pkg -> pkg{pkgCompiler = Just (compilerId comp)}) <$> pkgs)
+               | (packagedb, pkgs) <- pkgss
+               ]
+  index <- toPackageIndex verbosity pkgss' progdb
   return $! hackRtsPackage index
   where
     hackRtsPackage index =
