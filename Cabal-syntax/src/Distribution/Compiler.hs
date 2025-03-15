@@ -184,11 +184,17 @@ instance Pretty CompilerId where
     | v == nullVersion = pretty f
     | otherwise = pretty f <<>> Disp.char '-' <<>> pretty v
 
+instance Pretty (Maybe CompilerId) where
+  pretty = maybe Disp.empty pretty
+
 instance Parsec CompilerId where
   parsec = do
     flavour <- parsec
     version <- (P.char '-' >> parsec) <|> return nullVersion
     return (CompilerId flavour version)
+
+instance Parsec (Maybe CompilerId) where
+  parsec = Just <$> parsec <|> return Nothing
 
 lowercase :: String -> String
 lowercase = map toLower
@@ -216,9 +222,11 @@ data CompilerInfo = CompilerInfo
   , compilerInfoExtensions :: Maybe [Extension]
   -- ^ Supported extensions, if known.
   }
-  deriving (Generic, Show, Read)
+  deriving (Generic, Show, Read, Eq)
 
 instance Binary CompilerInfo
+instance Structured CompilerInfo
+instance NFData CompilerInfo where rnf = genericRnf
 
 data AbiTag
   = NoAbiTag
@@ -227,6 +235,7 @@ data AbiTag
 
 instance Binary AbiTag
 instance Structured AbiTag
+instance NFData AbiTag where rnf = genericRnf
 
 instance Pretty AbiTag where
   pretty NoAbiTag = Disp.empty

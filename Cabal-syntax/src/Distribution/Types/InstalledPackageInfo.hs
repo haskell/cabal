@@ -16,6 +16,7 @@ import Prelude ()
 
 import Distribution.Backpack
 import Distribution.Compat.Graph (IsNode (..))
+import Distribution.Compiler (CompilerId)
 import Distribution.License
 import Distribution.ModuleName
 import Distribution.Package hiding (installedUnitId)
@@ -93,6 +94,7 @@ data InstalledPackageInfo = InstalledPackageInfo
   , haddockInterfaces :: [FilePath]
   , haddockHTMLs :: [FilePath]
   , pkgRoot :: Maybe FilePath
+  , pkgCompiler :: Maybe CompilerId
   }
   deriving (Eq, Generic, Read, Show)
 

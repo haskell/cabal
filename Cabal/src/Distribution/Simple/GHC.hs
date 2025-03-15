@@ -418,6 +418,7 @@ getInstalledPackages
   -> ProgramDb
   -> IO InstalledPackageIndex
 getInstalledPackages verbosity comp mbWorkDir packagedbs progdb = do
+  print $ ("getInstalledPackages", (compilerId comp), packagedbs)
   checkPackageDbEnvVar verbosity
   checkPackageDbStack verbosity comp packagedbs
   pkgss <- getInstalledPackages' verbosity mbWorkDir packagedbs progdb

@@ -7,6 +7,7 @@ import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Distribution.Compiler (CompilerId)
 import Distribution.Backpack (OpenModule)
 import Distribution.License (License)
 import Distribution.ModuleName (ModuleName)
@@ -194,3 +195,7 @@ pkgRoot f s = fmap (\x -> s{T.pkgRoot = x}) (f (T.pkgRoot s))
 libVisibility :: Lens' InstalledPackageInfo LibraryVisibility
 libVisibility f s = fmap (\x -> s{T.libVisibility = x}) (f (T.libVisibility s))
 {-# INLINE libVisibility #-}
+
+pkgCompiler :: Lens' InstalledPackageInfo (Maybe CompilerId)
+pkgCompiler f s = fmap (\x -> s{T.pkgCompiler = x}) (f (T.pkgCompiler s))
+{-# INLINE pkgCompiler #-}

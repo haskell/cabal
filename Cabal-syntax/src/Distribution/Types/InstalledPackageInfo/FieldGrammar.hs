@@ -15,6 +15,7 @@ import Distribution.Backpack
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens (Lens', (&), (.~))
 import Distribution.Compat.Newtype
+import Distribution.Compiler (CompilerId(..))
 import Distribution.FieldGrammar
 import Distribution.FieldGrammar.FieldDescrs
 import Distribution.License
@@ -73,6 +74,7 @@ ipiFieldGrammar
      , c ExposedModules
      , c InstWith
      , c SpecLicenseLenient
+     , c (Identity (Maybe CompilerId))
      )
   => g InstalledPackageInfo InstalledPackageInfo
 ipiFieldGrammar =
@@ -125,6 +127,7 @@ ipiFieldGrammar =
     <@> monoidalFieldAla "haddock-interfaces" (alaList' FSep FilePathNT) L.haddockInterfaces
     <@> monoidalFieldAla "haddock-html" (alaList' FSep FilePathNT) L.haddockHTMLs
     <@> optionalFieldAla "pkgroot" FilePathNT L.pkgRoot
+    <@> optionalFieldDef "compiler" L.pkgCompiler Nothing
   where
     mkInstalledPackageInfo _ Basic{..} =
       InstalledPackageInfo
