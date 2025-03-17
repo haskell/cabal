@@ -770,7 +770,12 @@ rebuildInstallPlan
             , hookHashes
             )
             $ do
-              installedPkgIndex <-
+              hinstalledPkgIndex <-
+                getInstalledPackages
+                  verbosity
+                  (hostToolchain toolchains)
+                  corePackageDbs
+              binstalledPkgIndex <-
                 getInstalledPackages
                   verbosity
                   (buildToolchain toolchains)
@@ -796,9 +801,9 @@ rebuildInstallPlan
                   foldProgress logMsg (pure . Left) (pure . Right) $
                     planPackages
                       verbosity
-                      (hostToolchain toolchains)
+                      (hostToolchain toolchains) -- FIXME: this should be `toolchains`.
                       solverSettings
-                      (installedPackages <> installedPkgIndex)
+                      (installedPackages <> hinstalledPkgIndex <> binstalledPkgIndex)
                       sourcePkgDb
                       pkgConfigDB
                       localPackages
