@@ -2486,9 +2486,10 @@ elaborateInstallPlan
           pkgDynExe = perPkgOptionMaybe pkgid packageConfigDynExe
           pkgProf = perPkgOptionMaybe pkgid packageConfigProf
 
-      needsProfilingLib compiler pkg =
-        fromFlagOrDefault compilerShouldUseProfilingLibByDefault (profBothFlag <> profLibFlag)
+      needsProfilingLib pkg = fromFlagOrDefault False (profBothFlag <> profLibFlag)
         where
+          -- fromFlagOrDefault compilerShouldUseProfilingLibByDefault (profBothFlag <> profLibFlag)
+
           pkgid = packageId pkg
           profBothFlag = lookupPerPkgOption pkgid packageConfigProf
           profLibFlag = lookupPerPkgOption pkgid packageConfigProfLib
@@ -2497,24 +2498,26 @@ elaborateInstallPlan
       pkgsUseProfilingLibraryShared =
         packagesWithLibDepsDownwardClosedProperty needsProfilingLibShared
 
+      -- TODO: review this logic
       needsProfilingLibShared pkg =
-        fromMaybe
-          compilerShouldUseProfilingSharedLibByDefault
-          -- case 1: If --enable-profiling-shared is passed explicitly, honour that
-          ( case profLibSharedFlag of
-              Just v -> Just v
-              Nothing -> case pkgDynExe of
-                Just True ->
-                  case pkgProf of
-                    -- case 2: --enable-executable-dynamic + --enable-profiling
-                    -- turn on shared profiling libraries
-                    Just True -> if canBuildProfilingSharedLibs then Just True else Nothing
-                    _ -> Nothing
-                -- But don't necessarily turn off shared library generation is
-                -- --disable-executable-dynamic is passed. The shared objects might
-                -- be needed for something different.
-                _ -> Nothing
-          )
+        -- fromMaybe
+        --   compilerShouldUseProfilingSharedLibByDefault
+        --   -- case 1: If --enable-profiling-shared is passed explicitly, honour that
+        case profLibSharedFlag of
+          Just v -> v
+          Nothing -> case pkgDynExe of
+            Just True ->
+              case pkgProf of
+                -- case 2: --enable-executable-dynamic + --enable-profiling
+                -- turn on shared profiling libraries
+                -- Just True -> if canBuildProfilingSharedLibs then Just True else Nothing
+                Just True -> True
+                _ -> False
+            -- But don't necessarily turn off shared library generation is
+            -- --disable-executable-dynamic is passed. The shared objects might
+            -- be needed for something different.
+            -- _ -> Nothing
+            _ -> False
         where
           pkgid = packageId pkg
           profLibSharedFlag = perPkgOptionMaybe pkgid packageConfigProfShared
@@ -2554,19 +2557,19 @@ compilerShouldUseSharedLibByDefault compiler =
     GHCJS -> GHCJS.isDynamic compiler
     _ -> False
 
--- TODO: [code cleanup] move this into the Cabal lib.
-compilerShouldUseProfilingLibByDefault :: Compiler -> Bool
-compilerShouldUseProfilingLibByDefault compiler =
-  case compilerFlavor compiler of
-    GHC -> GHC.compilerBuildWay compiler == ProfWay && canBuildProfilingLibs compiler
-    _ -> False
+-- -- TODO: [code cleanup] move this into the Cabal lib.
+-- compilerShouldUseProfilingLibByDefault :: Compiler -> Bool
+-- compilerShouldUseProfilingLibByDefault compiler =
+--   case compilerFlavor compiler of
+--     GHC -> GHC.compilerBuildWay compiler == ProfWay && canBuildProfilingLibs compiler
+--     _ -> False
 
--- TODO: [code cleanup] move this into the Cabal lib.
-compilerShouldUseProfilingSharedLibByDefault :: Compiler -> Bool
-compilerShouldUseProfilingSharedLibByDefault compiler =
-  case compilerFlavor compiler of
-    GHC -> GHC.compilerBuildWay compiler == ProfDynWay && canBuildProfilingSharedLibs compiler
-    _ -> False
+-- -- TODO: [code cleanup] move this into the Cabal lib.
+-- compilerShouldUseProfilingSharedLibByDefault :: Bool
+-- compilerShouldUseProfilingSharedLibByDefault =
+--   case compilerFlavor compiler of
+--     GHC -> GHC.compilerBuildWay compiler == ProfDynWay && canBuildProfilingSharedLibs compiler
+--     _ -> False
 
 -- Returns False if we definitely can't build shared libs
 -- TODO: [code cleanup] move this into the Cabal lib.
