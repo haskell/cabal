@@ -9,7 +9,7 @@
 
 <img src="https://www.haskell.org/cabal/images/Cabal-light.png" align="right">
 
-This Cabal Git repository contains the following main packages:
+This repository contains the following packages:
 
  * [Cabal](Cabal/README.md): the Cabal library package ([license](Cabal/LICENSE))
  * [Cabal-hooks](Cabal-hooks/README.md): the library providing an API for the Cabal `Hooks` build type ([license](Cabal-hooks/LICENSE))
@@ -17,11 +17,27 @@ This Cabal Git repository contains the following main packages:
  * [cabal-install](cabal-install/README.md): the package containing the `cabal` tool ([license](cabal-install/LICENSE))
  * [cabal-install-solver](cabal-install-solver): the package containing the solver component of the `cabal` tool ([license](cabal-install-solver/LICENSE))
 
-The canonical upstream repository is located at
-https://github.com/haskell/cabal.
+The canonical upstream repository is located at https://github.com/haskell/cabal.
 
-Ways to get the `cabal-install` binary
---------------------------------
+## Support window for releases
+
+<dl>
+    <dt>Latest release</dt>
+    <dd>3.14</dd>
+    <dt>Long-Term Support release</dt>
+    <dd>3.12</dd>
+</dl>
+
+## Learn how to use `cabal` and get support
+
+`cabal` comes with a thorough [User Manual](https://cabal.readthedocs.io).
+If you are new to `cabal` and want to quickly learn the basics, check
+[Getting Started With Haskell and Cabal](https://cabal.readthedocs.io/en/latest/getting-started.html).
+
+Got questions? Ask in [Haskell Matrix](https://matrix.to/#/#haskell:matrix.org)
+(online chat) or [Haskell Discourse](https://discourse.haskell.org).
+
+## Ways to get the `cabal-install` binary
 
 1. _GHCup_ (**preferred**): get GHCup using [the directions on its website](https://www.haskell.org/ghcup/) and run:
 
@@ -32,9 +48,9 @@ Ways to get the `cabal-install` binary
 2. _[Download from official website](https://www.haskell.org/cabal/download.html)_:
     the `cabal-install` binary download for your platform should contain the `cabal` executable.
 
-#### Preview Releases
+### Preview Releases
 
-_Getting unreleased versions of `cabal-install`_: gives you a chance to try out yet-unreleased features.
+_Getting unreleased versions of `cabal-install`_ gives you a chance to try out yet-unreleased features.
 Currently, we only provide binaries for `x86_64` platforms.
 
 1. _GitHub preview release built from the tip of the `master` branch_: [download from GitHub](https://github.com/haskell/cabal/releases/tag/cabal-head) or use this GHCup command to install:
@@ -67,8 +83,7 @@ Currently, we only provide binaries for `x86_64` platforms.
    from the `Validate` workflow page on GitHub, at the very bottom of the page,
    or from the `build-alpine` workflow for statically linked Linux builds.
 
-Ways to build `cabal-install` for everyday use
---------------------------------------------
+## Ways to build `cabal-install` for everyday use
 
 1. _With cabal-install_:
     if you have a pre-existing version of `cabal-install`, run:
@@ -92,17 +107,6 @@ Ways to build `cabal-install` for everyday use
     if you don't have a pre-existing version of `cabal-install`,
     look into the [`bootstrap`](bootstrap) directory.
 
-Learn how to use `cabal` and get support
-----------------------------------------
-
-`cabal` comes with a thorough [User Manual](https://cabal.readthedocs.io).
-If you are new to `cabal` and want to quickly learn the basics, check
-[Getting Started With Haskell and Cabal](https://cabal.readthedocs.io/en/latest/getting-started.html).
-
-Got questions? Ask in [Haskell Matrix](https://matrix.to/#/#haskell:matrix.org)
-(online chat) or [Haskell Discourse](https://discourse.haskell.org).
-
-Build for hacking and contributing to cabal
--------------------------------------------
+## Contributing to `cabal`
 
 Refer to [CONTRIBUTING.md](CONTRIBUTING.md).
