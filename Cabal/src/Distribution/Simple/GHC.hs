@@ -88,7 +88,7 @@ import Control.Monad (forM_)
 import Data.List (stripPrefix)
 import qualified Data.Map as Map
 import Distribution.CabalSpecVersion
-import Distribution.InstalledPackageInfo (InstalledPackageInfo(pkgCompiler))
+import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
 import Distribution.Package
 import Distribution.PackageDescription as PD
@@ -422,7 +422,10 @@ getInstalledPackages verbosity comp mbWorkDir packagedbs progdb = do
   checkPackageDbEnvVar verbosity
   checkPackageDbStack verbosity comp packagedbs
   pkgss <- getInstalledPackages' verbosity mbWorkDir packagedbs progdb
-  let pkgss' = [ (packagedb, (\pkg -> pkg{pkgCompiler = Just (compilerId comp)}) <$> pkgs)
+  let pkgss' = [ (packagedb, (\pkg -> pkg{ InstalledPackageInfo.pkgCompiler = Just (compilerId comp)
+                                          ,InstalledPackageInfo.installedUnitId = ((\x -> mkUnitId $ prettyShow (compilerId comp) ++ ":" ++ (unUnitId x)) . InstalledPackageInfo.installedUnitId) pkg
+                                          ,InstalledPackageInfo.depends = (map (\x -> mkUnitId $ prettyShow (compilerId comp) ++ ":" ++ (unUnitId x)) . InstalledPackageInfo.depends) pkg })
+                              <$> pkgs)
                | (packagedb, pkgs) <- pkgss
                ]
   index <- toPackageIndex verbosity pkgss' progdb
