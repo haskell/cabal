@@ -1693,7 +1693,6 @@ elaborateInstallPlan
             let whyNotPerComp = why_not_per_component src_comps
             case NE.nonEmpty whyNotPerComp of
               Nothing -> do
-                elaborationWarnings
                 return comps
               Just notPerCompReasons -> do
                 checkPerPackageOk comps notPerCompReasons
@@ -1766,7 +1765,7 @@ elaborateInstallPlan
                   <+> fsep (punctuate comma $ map (text . whyNotPerComponent) $ toList reasons)
           -- TODO: Maybe exclude Backpack too
 
-          (elab0, elaborationWarnings) = elaborateSolverToCommon spkg
+          elab0 = elaborateSolverToCommon spkg
           pkgid = elabPkgSourceId elab0
           pd = elabPkgDescription elab0
 
@@ -2078,11 +2077,17 @@ elaborateInstallPlan
           -- Knot tying: the final elab includes the
           -- pkgInstalledId, which is calculated by hashing many
           -- of the other fields of the elaboratedPackage.
-          elaborationWarnings
           return elab
           where
-            (elab0@ElaboratedConfiguredPackage{..}, elaborationWarnings) =
-              elaborateSolverToCommon pkg
+            elab =
+              elab1
+                { elabInstallDirs =
+                    computeInstallDirs
+                      storeDirLayout
+                      defaultInstallDirs
+                      elaboratedSharedConfig
+                      elab1
+                }
 
             elab1 =
               elab0
@@ -2093,15 +2098,9 @@ elaborateInstallPlan
                 , elabModuleShape = modShape
                 }
 
-            elab =
-              elab1
-                { elabInstallDirs =
-                    computeInstallDirs
-                      storeDirLayout
-                      defaultInstallDirs
-                      elaboratedSharedConfig
-                      elab1
-                }
+            elab0@ElaboratedConfiguredPackage{..} =
+              elaborateSolverToCommon pkg
+
 
             modShape = case find (matchElabPkg (== (CLibName LMainLibName))) comps of
               Nothing -> emptyModuleShape
@@ -2167,7 +2166,7 @@ elaborateInstallPlan
 
       elaborateSolverToCommon
         :: SolverPackage UnresolvedPkgLoc
-        -> (ElaboratedConfiguredPackage, LogProgress ())
+        -> ElaboratedConfiguredPackage
       elaborateSolverToCommon
         pkg@( SolverPackage
                 qpn
@@ -2177,7 +2176,7 @@ elaborateInstallPlan
                 deps0
                 _exe_deps0
               ) =
-          (elaboratedPackage, wayWarnings pkgid)
+          elaboratedPackage
           where
             elaboratedPackage = ElaboratedConfiguredPackage{..}
 
