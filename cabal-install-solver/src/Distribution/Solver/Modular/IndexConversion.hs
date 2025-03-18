@@ -24,6 +24,7 @@ import Distribution.Types.MungedPackageName          -- from Cabal
 import Distribution.PackageDescription               -- from Cabal
 import Distribution.PackageDescription.Configuration
 import qualified Distribution.Simple.PackageIndex as SI
+import Distribution.Simple.Compiler (compilerId)
 import Distribution.System
 
 import           Distribution.Solver.Types.ComponentDeps
@@ -61,15 +62,15 @@ convPIs :: Toolchains -> Map PN [LabeledPackageConstraint]
         -> Index
 convPIs toolchains constraints sip strfl solveExes iidx sidx =
   mkIndex $
-  convIPI' sip iidx ++ convSPI' toolchains constraints strfl solveExes sidx
+  convIPI' toolchains sip iidx ++ convSPI' toolchains constraints strfl solveExes sidx
 
 -- | Convert a Cabal installed package index to the simpler,
 -- more uniform index format of the solver.
-convIPI' :: ShadowPkgs -> SI.InstalledPackageIndex -> [(PN, I, PInfo)]
-convIPI' (ShadowPkgs sip) idx =
+convIPI' :: Toolchains -> ShadowPkgs -> SI.InstalledPackageIndex -> [(PN, I, PInfo)]
+convIPI' toolchains (ShadowPkgs sip) idx =
     -- apply shadowing whenever there are multiple installed packages with
     -- the same version
-    [ maybeShadow (convIP idx pkg)
+    [ maybeShadow (convIP toolchains idx pkg)
     -- IMPORTANT to get internal libraries. See
     -- Note [Index conversion with internal libraries]
     | (_, pkgs) <- SI.allPackagesBySourcePackageIdAndLibName idx
@@ -82,16 +83,20 @@ convIPI' (ShadowPkgs sip) idx =
     shadow x                                     = x
 
 -- | Extract/recover the package ID from an installed package info, and convert it to a solver's I.
-convId :: IPI.InstalledPackageInfo -> (PN, I)
-convId ipi = (pn, I {- FIXME -} Host ver $ Inst $ IPI.installedUnitId ipi)
+convId :: Toolchains -> IPI.InstalledPackageInfo -> (PN, I)
+convId toolchains ipi = (pn, I stage ver $ Inst $ IPI.installedUnitId ipi)
   where MungedPackageId mpn ver = mungedId ipi
         -- HACK. See Note [Index conversion with internal libraries]
         pn = encodeCompatPackageName mpn
+        stage = case IPI.pkgCompiler ipi of
+          Just c | c == compilerId (toolchainCompiler (buildToolchain toolchains)) -> Build
+          Just c | c == compilerId (toolchainCompiler (hostToolchain toolchains)) -> Host
+          _ -> error "convId: unhandled compiler"
 
 -- | Convert a single installed package into the solver-specific format.
-convIP :: SI.InstalledPackageIndex -> IPI.InstalledPackageInfo -> (PN, I, PInfo)
-convIP idx ipi =
-  case traverse (convIPId (DependencyReason pn M.empty S.empty) comp idx) (IPI.depends ipi) of
+convIP :: Toolchains -> SI.InstalledPackageIndex -> IPI.InstalledPackageInfo -> (PN, I, PInfo)
+convIP toolchains idx ipi =
+  case traverse (convIPId toolchains (DependencyReason pn M.empty S.empty) comp idx) (IPI.depends ipi) of
         Left u    -> (pn, i, PInfo [] M.empty M.empty (Just (Broken u)))
         Right fds -> (pn, i, PInfo fds components M.empty Nothing)
  where
@@ -103,7 +108,7 @@ convIP idx ipi =
                     , compIsBuildable = IsBuildable True
                     }
 
-  (pn, i) = convId ipi
+  (pn, i) = convId toolchains ipi
 
   -- 'sourceLibName' is unreliable, but for now we only really use this for
   -- primary libs anyways
@@ -143,11 +148,11 @@ convIP idx ipi =
 -- May return Nothing if the package can't be found in the index. That
 -- indicates that the original package having this dependency is broken
 -- and should be ignored.
-convIPId :: DependencyReason PN -> Component -> SI.InstalledPackageIndex -> UnitId -> Either UnitId (FlaggedDep PN)
-convIPId dr comp idx ipid =
+convIPId :: Toolchains -> DependencyReason PN -> Component -> SI.InstalledPackageIndex -> UnitId -> Either UnitId (FlaggedDep PN)
+convIPId toolchains dr comp idx ipid =
   case SI.lookupUnitId idx ipid of
     Nothing  -> Left ipid
-    Just ipi -> let (pn, i) = convId ipi
+    Just ipi -> let (pn, i) = convId toolchains ipi
                     name = ExposedLib LMainLibName  -- TODO: Handle sub-libraries.
                 in  Right (D.Simple (LDep dr (Dep (PkgComponent pn name) (Fixed i))) comp)
                 -- NB: something we pick up from the

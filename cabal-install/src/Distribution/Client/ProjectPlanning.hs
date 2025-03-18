@@ -801,7 +801,7 @@ rebuildInstallPlan
                   foldProgress logMsg (pure . Left) (pure . Right) $
                     planPackages
                       verbosity
-                      (hostToolchain toolchains) -- FIXME: this should be `toolchains`.
+                      toolchains
                       solverSettings
                       (installedPackages <> hinstalledPkgIndex <> binstalledPkgIndex)
                       sourcePkgDb
