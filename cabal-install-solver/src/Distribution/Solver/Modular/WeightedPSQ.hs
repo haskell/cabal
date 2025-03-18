@@ -9,6 +9,7 @@ module Distribution.Solver.Modular.WeightedPSQ (
   , weights
   , isZeroOrOne
   , filter
+  , filterKey
   , lookup
   , mapWithKey
   , mapWeightsWithKey
@@ -33,6 +34,10 @@ newtype WeightedPSQ w k v = WeightedPSQ [(w, k, v)]
 -- | /O(N)/.
 filter :: (v -> Bool) -> WeightedPSQ k w v -> WeightedPSQ k w v
 filter p (WeightedPSQ xs) = WeightedPSQ (L.filter (p . triple_3) xs)
+
+-- | /O(N)/.
+filterKey :: (k -> Bool) -> WeightedPSQ w k v -> WeightedPSQ w k v
+filterKey p (WeightedPSQ xs) = WeightedPSQ (L.filter (p . triple_2) xs)
 
 -- | /O(1)/. Return @True@ if the @WeightedPSQ@ contains zero or one elements.
 isZeroOrOne :: WeightedPSQ w k v -> Bool
