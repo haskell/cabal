@@ -664,9 +664,6 @@ rebuildInstallPlan
               $ do
                 toolchains <- phaseConfigureToolchain projectConfig
 
-                liftIO $ print ("build compiler", compilerId $ toolchainCompiler $ buildToolchain toolchains)
-                liftIO $ print ("host compiler", compilerId $ toolchainCompiler $ hostToolchain toolchains)
-
                 -- _ <- phaseConfigurePrograms projectConfig compilerEtc
                 (solverPlan, pkgConfigDB, totalIndexState, activeRepos) <-
                   phaseRunSolver
