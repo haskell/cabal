@@ -741,9 +741,9 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
       , configAllowNewer = projectConfigAllowNewer
       , configWriteGhcEnvironmentFilesPolicy =
         projectConfigWriteGhcEnvironmentFilesPolicy
-      , configHostHcFlavor = projectConfigHostHcFlavor
-      , configHostHcPath = projectConfigHostHcPath
-      , configHostHcPkg = projectConfigHostHcPkg
+      , configBuildHcFlavor = projectConfigBuildHcFlavor
+      , configBuildHcPath = projectConfigBuildHcPath
+      , configBuildHcPkg = projectConfigBuildHcPkg
       } = configExFlags
 
     InstallFlags

@@ -479,9 +479,9 @@ configureCompiler
         { projectConfigHcFlavor
         , projectConfigHcPath
         , projectConfigHcPkg
-        , projectConfigHostHcFlavor
-        , projectConfigHostHcPath
-        , projectConfigHostHcPkg
+        , projectConfigBuildHcFlavor
+        , projectConfigBuildHcPath
+        , projectConfigBuildHcPkg
         }
     , projectConfigLocalPackages =
       projectConfigLocalPackages@PackageConfig
@@ -512,9 +512,9 @@ configureCompiler
           (compiler, platform, progdb) <-
             liftIO $
               Cabal.configCompilerEx
-                hcFlavor
-                hcPath
-                hcPkg
+                buildHcFlavor
+                buildHcPath
+                buildHcPkg
                 defdb
                 verbosity
 
@@ -531,9 +531,9 @@ configureCompiler
           (compiler, platform, progdb) <-
             liftIO $
               Cabal.configCompilerEx
-                hostHcFlavor
-                hostHcPath
-                hostHcPkg
+                hcFlavor
+                hcPath
+                hcPkg
                 defdb
                 verbosity
 
@@ -551,9 +551,9 @@ configureCompiler
       hcFlavor = flagToMaybe projectConfigHcFlavor
       hcPath = flagToMaybe projectConfigHcPath
       hcPkg = flagToMaybe projectConfigHcPkg
-      hostHcFlavor = flagToMaybe projectConfigHostHcFlavor <|> flagToMaybe projectConfigHcFlavor
-      hostHcPath = flagToMaybe projectConfigHostHcPath <|> flagToMaybe projectConfigHcPath
-      hostHcPkg = flagToMaybe projectConfigHostHcPkg <|> flagToMaybe projectConfigHcPkg
+      buildHcFlavor = flagToMaybe projectConfigBuildHcFlavor <|> flagToMaybe projectConfigHcFlavor
+      buildHcPath = flagToMaybe projectConfigBuildHcPath <|> flagToMaybe projectConfigHcPath
+      buildHcPkg = flagToMaybe projectConfigBuildHcPkg <|> flagToMaybe projectConfigHcPkg
 
 {- Note [Caching the result of configuring the compiler]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
