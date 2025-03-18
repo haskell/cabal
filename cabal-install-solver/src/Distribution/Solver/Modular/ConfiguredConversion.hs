@@ -29,7 +29,7 @@ convCP :: SI.InstalledPackageIndex ->
 convCP iidx sidx (CP qpi fa es ds) =
   case qpi of
     -- Installed
-    (PI qpn (I {- FIXME -} Host _ (Inst pi)))  ->
+    (PI qpn (I _stage _ (Inst pi)))  ->
       PreExisting $
                   InstSolverPackage {
                     instSolverQPN = qpn,
@@ -38,11 +38,12 @@ convCP iidx sidx (CP qpi fa es ds) =
                     instSolverPkgExeDeps = fmap snd ds'
                   }
     -- "In repo" i.e. a source package
-    (PI qpn@(Q _path pn) (I {- FIXME -} Host v InRepo)) ->
+    (PI qpn@(Q _path pn) (I stage v InRepo)) ->
       let pi = PackageIdentifier pn v in
       Configured $
                   SolverPackage {
                       solverPkgQPN = qpn,
+                      solverPkgStage = stage,
                       solverPkgSource = fromMaybe (error "convCP: lookupPackageId failed") $ CI.lookupPackageId sidx pi,
                       solverPkgFlags = fa,
                       solverPkgStanzas = es,

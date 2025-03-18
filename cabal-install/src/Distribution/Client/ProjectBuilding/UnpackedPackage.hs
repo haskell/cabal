@@ -80,7 +80,9 @@ import Distribution.Simple.Command (CommandUI)
 import Distribution.Simple.Compiler
   ( PackageDBStackCWD
   , coercePackageDBStack
+  , showCompilerId
   )
+import Distribution.Solver.Types.Stage
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.LocalBuildInfo
   ( ComponentName (..)
@@ -178,15 +180,7 @@ buildAndRegisterUnpackedPackage
   registerLock
   cacheLock
   pkgshared@ElaboratedSharedConfig
-    { pkgConfigToolchains =
-      Toolchains
-        { buildToolchain =
-          Toolchain
-            { toolchainCompiler = compiler
-            , toolchainProgramDb = progdb
-            }
-        }
-    }
+    { pkgConfigToolchains = toolchains }
   plan
   rpkg@(ReadyPackage pkg)
   srcdir
@@ -260,6 +254,10 @@ buildAndRegisterUnpackedPackage
 
     return ()
     where
+      (compiler, progdb) = case elabStage pkg of
+        Host -> (toolchainCompiler (hostToolchain toolchains), toolchainProgramDb (hostToolchain toolchains))
+        Build -> (toolchainCompiler (buildToolchain toolchains), toolchainProgramDb (buildToolchain toolchains))
+
       uid = installedUnitId rpkg
 
       comp_par_strat = case maybe_semaphore of
@@ -458,14 +456,7 @@ buildInplaceUnpackedPackage
   registerLock
   cacheLock
   pkgshared@ElaboratedSharedConfig
-    { pkgConfigToolchains =
-      Toolchains
-        { buildToolchain =
-          Toolchain
-            { toolchainPlatform = Platform _ os
-            }
-        }
-    }
+    { pkgConfigToolchains = toolchains }
   plan
   rpkg@(ReadyPackage pkg)
   buildStatus
@@ -610,6 +601,10 @@ buildInplaceUnpackedPackage
         , buildResultLogFile = Nothing
         }
     where
+      Platform _ os = case elabStage pkg of
+        Host -> toolchainPlatform (hostToolchain toolchains)
+        Build -> toolchainPlatform (buildToolchain toolchains)
+
       dparams = elabDistDirParams pkgshared pkg
 
       packageFileMonitor = newPackageFileMonitor pkgshared distDirLayout dparams
@@ -671,15 +666,7 @@ buildAndInstallUnpackedPackage
   registerLock
   cacheLock
   pkgshared@ElaboratedSharedConfig
-    { pkgConfigToolchains =
-      Toolchains
-        { buildToolchain =
-          Toolchain
-            { toolchainCompiler = compiler
-            , toolchainPlatform = platform
-            }
-        }
-    }
+    { pkgConfigToolchains = toolchains }
   plan
   rpkg@(ReadyPackage pkg)
   srcdir
@@ -826,6 +813,10 @@ buildAndInstallUnpackedPackage
         , buildResultLogFile = mlogFile
         }
     where
+      (compiler, platform) = case elabStage pkg of
+          Host -> (toolchainCompiler (hostToolchain toolchains), toolchainPlatform (hostToolchain toolchains))
+          Build -> (toolchainCompiler (buildToolchain toolchains), toolchainPlatform (buildToolchain toolchains))
+
       uid = installedUnitId rpkg
       pkgid = packageId rpkg
 
@@ -836,13 +827,20 @@ buildAndInstallUnpackedPackage
           prettyShow pkgid
             ++ " (all, legacy fallback: "
             ++ unwords (map whyNotPerComponent $ NE.toList pkgWhyNotPerComponent)
+            ++ ", "
+            ++ dispcompiler (elabStage pkg)
             ++ ")"
         -- Packages built per component
         ElabComponent comp ->
           prettyShow pkgid
             ++ " ("
             ++ maybe "custom" prettyShow (compComponentName comp)
+            ++ ", "
+            ++ dispcompiler (elabStage pkg)
             ++ ")"
+      dispcompiler :: Stage -> String
+      dispcompiler Host = showCompilerId (toolchainCompiler (hostToolchain toolchains))
+      dispcompiler Build = showCompilerId (toolchainCompiler (buildToolchain toolchains))
 
       noticeProgress :: ProgressPhase -> IO ()
       noticeProgress phase =

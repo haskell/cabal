@@ -13,6 +13,7 @@ import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackagePath (QPN)
 import Distribution.Solver.Types.SolverId
 import Distribution.Solver.Types.SourcePackage
+import Distribution.Solver.Types.Stage (Stage (..))
 
 -- | A 'SolverPackage' is a package specified by the dependency solver.
 -- It will get elaborated into a 'ConfiguredPackage' or even an
@@ -23,6 +24,7 @@ import Distribution.Solver.Types.SourcePackage
 --
 data SolverPackage loc = SolverPackage {
         solverPkgQPN     :: QPN,
+        solverPkgStage   :: Stage,
         solverPkgSource  :: SourcePackage loc,
         solverPkgFlags   :: FlagAssignment,
         solverPkgStanzas :: OptionalStanzaSet,

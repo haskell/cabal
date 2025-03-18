@@ -1683,7 +1683,7 @@ elaborateInstallPlan
         :: (SolverId -> [ElaboratedPlanPackage])
         -> SolverPackage UnresolvedPkgLoc
         -> LogProgress [ElaboratedConfiguredPackage]
-      elaborateSolverToComponents mapDep spkg@(SolverPackage qpn _ _ _ deps0 exe_deps0) =
+      elaborateSolverToComponents mapDep spkg@(SolverPackage _qpn _stage _ _ _ deps0 exe_deps0) =
         case mkComponentsGraph (elabEnabledSpec elab0) pd of
           Right g -> do
             let src_comps = componentsGraphToList g
@@ -2072,7 +2072,8 @@ elaborateInstallPlan
       elaborateSolverToPackage
         pkgWhyNotPerComponent
         pkg@( SolverPackage
-                qpn
+                _qpn
+                _stage
                 (SourcePackage pkgid _gpd _srcloc _descOverride)
                 _flags
                 _stanzas
@@ -2176,7 +2177,8 @@ elaborateInstallPlan
         -> ElaboratedConfiguredPackage
       elaborateSolverToCommon
         pkg@( SolverPackage
-                qpn
+                _qpn
+                stage
                 (SourcePackage pkgid gdesc srcloc descOverride)
                 flags
                 stanzas
@@ -2200,7 +2202,7 @@ elaborateInstallPlan
             elabPkgSourceId = pkgid
 
             -- TODO: temporarily set everything to build on build
-            elabStage = Build
+            elabStage = stage
             elabCompiler = toolchainCompiler (toolchainFor elabStage toolchains)
             elabPlatform = toolchainPlatform (toolchainFor elabStage toolchains)
             elabProgramDb = toolchainProgramDb (toolchainFor elabStage toolchains)

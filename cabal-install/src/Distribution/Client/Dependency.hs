@@ -1019,7 +1019,7 @@ configuredPackageProblems
   -> [PackageProblem]
 configuredPackageProblems
   toolchains
-  (SolverPackage _qpn pkg specifiedFlags stanzas specifiedDeps0 _specifiedExeDeps') =
+  (SolverPackage _qpn _stage pkg specifiedFlags stanzas specifiedDeps0 _specifiedExeDeps') =
     [ DuplicateFlag flag
     | flag <- PD.findDuplicateFlagAssignments specifiedFlags
     ]
