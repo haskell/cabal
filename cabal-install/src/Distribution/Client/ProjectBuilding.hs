@@ -214,7 +214,7 @@ rebuildTargetsDryRun distDirLayout@DistDirLayout{..} shared =
         BuildInplaceOnly{} -> do
           -- TODO: [nice to have] use a proper file monitor rather
           -- than this dir exists test
-          exists <- doesDirectoryExist srcdir
+          exists <- doesDirectoryExist (traceShowId srcdir)
           if exists
             then dryRunLocalPkg pkg depsBuildStatus srcdir
             else return (BuildStatusUnpack tarball)

@@ -1001,8 +1001,9 @@ printPlan
       showPkgAndReason (ReadyPackage elab) =
         unwords $
           filter (not . null) $
+            -- FIXME: ideally we'd like to display the compiler in there as well.
+            -- we do have access to elabStage, but the toolchain isn't around.
             [ " -"
-            , show (elabStage elab)
             , if verbosity >= deafening
                 then prettyShow (installedUnitId elab)
                 else prettyShow (packageId elab)
@@ -1122,7 +1123,9 @@ printPlan
       showBuildProfile =
         "Build profile: "
           ++ unwords
-            [ "-w " ++ (showCompilerId . toolchainCompiler . buildToolchain . pkgConfigToolchains) elaboratedShared
+            [ "-w " ++ (showCompilerId . toolchainCompiler . hostToolchain . pkgConfigToolchains) elaboratedShared
+            -- FIXME: this should only be shown if hostToolchain /= buildToolchain
+            , "-W " ++ (showCompilerId . toolchainCompiler . buildToolchain . pkgConfigToolchains) elaboratedShared
             , "-O"
                 ++ ( case globalOptimization <> localOptimization of -- if local is not set, read global
                       Setup.Flag NoOptimisation -> "0"

@@ -167,6 +167,7 @@ import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SolverId
 import Distribution.Solver.Types.SolverPackage
 import Distribution.Solver.Types.SourcePackage
+import Distribution.Solver.Types.Stage
 
 import Distribution.ModuleName
 import Distribution.Package
@@ -219,9 +220,10 @@ import qualified Distribution.Simple.GHC as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.Simple.LocalBuildInfo as Cabal
+import qualified Distribution.Simple.PackageIndex as PI
 import qualified Distribution.Simple.Setup as Cabal
 import qualified Distribution.Solver.Types.ComponentDeps as CD
-import Distribution.Solver.Types.Stage
+-- import Distribution.Solver.Types.Stage
 import Distribution.Solver.Types.Toolchain
 
 import qualified Distribution.Compat.Graph as Graph
@@ -770,11 +772,38 @@ rebuildInstallPlan
             , hookHashes
             )
             $ do
+              -- InstalledPackageIndex
+              -- type InstalledPackageIndex = PackageIndex IPI.InstalledPackageInfo
+              -- data PackageIndex a = PackageIndex
+              -- { -- The primary index. Each InstalledPackageInfo record is uniquely identified
+              --   -- by its UnitId.
+              --   --
+              --   unitIdIndex :: !(Map UnitId a)
+              -- , -- This auxiliary index maps package names (case-sensitively) to all the
+              --   -- versions and instances of that package. This allows us to find all
+              --   -- versions satisfying a dependency.
+              --   --
+              --   -- It is a three-level index. The first level is the package name,
+              --   -- the second is the package version and the final level is instances
+              --   -- of the same package version. These are unique by UnitId
+              --   -- and are kept in preference order.
+              --   --
+              --   -- FIXME: Clarify what "preference order" means. Check that this invariant is
+              --   -- preserved. See #1463 for discussion.
+              --   packageIdIndex :: !(Map (PackageName, LibraryName) (Map Version [a]))
+              -- }
+              -- deriving (Eq, Generic, Show, Read)
+              --
+              -- can probably use fromList $ Map.elems $ on it.
               hinstalledPkgIndex <-
                 getInstalledPackages
                   verbosity
                   (hostToolchain toolchains)
                   corePackageDbs
+              -- this is an aweful hack, however `getInstalledPackages` is
+              -- terribly invovled everywhere so we'll have to do with this
+              -- for now. FIXME!
+              -- let hinstalledPkgIndex' = PI.fromList $ PI.allPackages hinstalledPkgIndex
               binstalledPkgIndex <-
                 getInstalledPackages
                   verbosity
@@ -797,6 +826,8 @@ rebuildInstallPlan
 
               liftIO $ do
                 notice verbosity "Resolving dependencies..."
+                liftIO $ print ("build compiler", compilerId $ toolchainCompiler $ buildToolchain toolchains)
+                liftIO $ print ("host compiler", compilerId $ toolchainCompiler $ hostToolchain toolchains)
                 planOrError <-
                   foldProgress logMsg (pure . Left) (pure . Right) $
                     planPackages
@@ -2275,8 +2306,8 @@ elaborateInstallPlan
                 then BuildInplaceOnly OnDisk
                 else BuildAndInstall
             elabPackageDbs = projectConfigPackageDBs sharedPackageConfig
-            elabBuildPackageDBStack = buildAndRegisterDbs
-            elabRegisterPackageDBStack = buildAndRegisterDbs
+            elabBuildPackageDBStack = buildAndRegisterDbs stage
+            elabRegisterPackageDBStack = buildAndRegisterDbs stage
 
             elabSetupScriptStyle = packageSetupScriptStyle elabPkgDescription
             elabSetupScriptCliVersion =
@@ -2285,19 +2316,25 @@ elaborateInstallPlan
                 elabPkgDescription
                 libDepGraph
                 deps0
-            elabSetupPackageDBStack = buildAndRegisterDbs
 
-            inplacePackageDbs = corePackageDbs ++ [distPackageDB (compilerId elabCompiler)]
+            -- This code is ... a bit nuts. We need to parameterise the DB stack
+            -- over the stage. (which is also assigned to elabStage). And now
+            -- we have inplace, core, ... other DBStacks, for the Setup however,
+            -- we _must_ force it to use the Build stage stack. As that's where
+            -- the setup dependencies will be found.
+            elabSetupPackageDBStack = buildAndRegisterDbs Build
 
-            corePackageDbs = storePackageDBStack elabCompiler (projectConfigPackageDBs sharedPackageConfig)
+            inplacePackageDbs stage = corePackageDbs stage ++ [distPackageDB (compilerId (toolchainCompiler (toolchainFor stage toolchains)))]
 
-            elabInplaceBuildPackageDBStack = inplacePackageDbs
-            elabInplaceRegisterPackageDBStack = inplacePackageDbs
-            elabInplaceSetupPackageDBStack = inplacePackageDbs
+            corePackageDbs stage = storePackageDBStack (toolchainCompiler (toolchainFor stage toolchains)) (projectConfigPackageDBs sharedPackageConfig)
 
-            buildAndRegisterDbs
-              | shouldBuildInplaceOnly pkg = inplacePackageDbs
-              | otherwise = corePackageDbs
+            elabInplaceBuildPackageDBStack = inplacePackageDbs stage
+            elabInplaceRegisterPackageDBStack = inplacePackageDbs stage
+            elabInplaceSetupPackageDBStack = inplacePackageDbs stage
+
+            buildAndRegisterDbs stage
+              | shouldBuildInplaceOnly pkg = inplacePackageDbs stage
+              | otherwise = corePackageDbs stage
 
             elabPkgDescriptionOverride = descOverride
 
@@ -3877,10 +3914,10 @@ setupHsScriptOptions
             --   - if we commit to a Cabal version, the logic in
               Nothing
             else Just elabSetupScriptCliVersion
-      , -- for Setup.hs, we _always_ want to use the HOST toolchain.
-        useCompiler = Just (toolchainCompiler $ hostToolchain $ pkgConfigToolchains)
-      , usePlatform = Just (toolchainPlatform $ hostToolchain $ pkgConfigToolchains)
-      , useProgramDb = toolchainProgramDb $ hostToolchain $ pkgConfigToolchains
+      , -- for Setup.hs, we _always_ want to use the BUILD toolchain.
+        useCompiler = Just (toolchainCompiler $ buildToolchain $ pkgConfigToolchains)
+      , usePlatform = Just (toolchainPlatform $ buildToolchain $ pkgConfigToolchains)
+      , useProgramDb = toolchainProgramDb $ buildToolchain $ pkgConfigToolchains
       , usePackageDB = elabSetupPackageDBStack
       , usePackageIndex = Nothing
       , useDependencies =

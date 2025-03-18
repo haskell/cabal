@@ -15,6 +15,7 @@ module Distribution.Solver.Modular.Preference
     , onlyConstrained
     , sortGoals
     , pruneAfterFirstSuccess
+    , pruneHostFromSetup
     ) where
 
 import Prelude ()
@@ -346,6 +347,20 @@ avoidReinstalls p = go
         notReinstall _ _ x =
           x
     go x          = x
+
+-- | Ensure that Setup (Build time) dependencies only have Build dependencies
+-- available and that Host dependencies only have Host dependencies available.
+pruneHostFromSetup :: EndoTreeTrav d c
+pruneHostFromSetup = go
+  where
+    go (PChoiceF qpn rdm gr cs) | (Q (PackagePath _ (QualSetup _)) _) <- qpn =
+      PChoiceF qpn rdm gr (W.filterKey (not . isHost) cs)
+    go (PChoiceF qpn rdm gr cs) | (Q (PackagePath _ _) _) <- qpn =
+      PChoiceF qpn rdm gr (W.filterKey isHost cs)
+    go x = x
+
+    isHost :: POption -> Bool
+    isHost (POption (I s _ _) _) = s == Host
 
 -- | Require all packages to be mentioned in a constraint or as a goal.
 onlyConstrained :: (PN -> Bool) -> EndoTreeTrav d QGoalReason

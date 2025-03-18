@@ -418,13 +418,10 @@ getInstalledPackages
   -> ProgramDb
   -> IO InstalledPackageIndex
 getInstalledPackages verbosity comp mbWorkDir packagedbs progdb = do
-  print $ ("getInstalledPackages", (compilerId comp), packagedbs)
   checkPackageDbEnvVar verbosity
   checkPackageDbStack verbosity comp packagedbs
   pkgss <- getInstalledPackages' verbosity mbWorkDir packagedbs progdb
-  let pkgss' = [ (packagedb, (\pkg -> pkg{ InstalledPackageInfo.pkgCompiler = Just (compilerId comp)
-                                          ,InstalledPackageInfo.installedUnitId = ((\x -> mkUnitId $ prettyShow (compilerId comp) ++ ":" ++ (unUnitId x)) . InstalledPackageInfo.installedUnitId) pkg
-                                          ,InstalledPackageInfo.depends = (map (\x -> mkUnitId $ prettyShow (compilerId comp) ++ ":" ++ (unUnitId x)) . InstalledPackageInfo.depends) pkg })
+  let pkgss' = [ (packagedb, (\pkg -> pkg{ InstalledPackageInfo.pkgCompiler = Just (compilerId comp) })
                               <$> pkgs)
                | (packagedb, pkgs) <- pkgss
                ]
