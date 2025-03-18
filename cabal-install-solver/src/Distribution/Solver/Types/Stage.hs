@@ -12,7 +12,7 @@ data Stage
     Build
   | -- | -- The system where the built artifacts will run
     Host
-  deriving (Eq, Read, Show, Generic, Typeable)
+  deriving (Eq, Ord, Read, Show, Generic, Typeable)
 
 instance Binary Stage
 instance Structured Stage
