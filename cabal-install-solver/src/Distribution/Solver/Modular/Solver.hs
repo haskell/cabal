@@ -24,6 +24,7 @@ import Distribution.Solver.Types.PackagePreferences
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb)
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.Settings
+import Distribution.Solver.Types.Toolchain ( Toolchains(..), Toolchain(..) )
 import Distribution.Solver.Types.Variable
 
 import Distribution.Solver.Modular.Assignment
@@ -44,6 +45,7 @@ import Distribution.Solver.Modular.Tree
 import qualified Distribution.Solver.Modular.PSQ as PSQ
 
 import Distribution.Simple.Setup (BooleanFlag(..))
+import Distribution.Simple.Compiler (compilerInfo)
 
 #ifdef DEBUG_TRACETREE
 import qualified Distribution.Solver.Modular.ConflictSet as CS
@@ -89,14 +91,14 @@ newtype PruneAfterFirstSuccess = PruneAfterFirstSuccess Bool
 -- before exploration.
 --
 solve :: SolverConfig                         -- ^ solver parameters
-      -> CompilerInfo
+      -> Toolchains
       -> Index                                -- ^ all available packages as an index
       -> Maybe PkgConfigDb                    -- ^ available pkg-config pkgs
       -> (PN -> PackagePreferences)           -- ^ preferences
       -> M.Map PN [LabeledPackageConstraint]  -- ^ global constraints
       -> S.Set PN                             -- ^ global goals
       -> RetryLog Message SolverFailure (Assignment, RevDepMap)
-solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
+solve sc toolchains idx pkgConfigDB userPrefs userConstraints userGoals =
   explorePhase      .
   traceTree "cycles.json" id .
   detectCycles      .
@@ -137,7 +139,7 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
                        P.enforceManualFlags userConstraints
     validationCata   = P.enforceSingleInstanceRestriction .
                        validateLinking idx .
-                       validateTree cinfo idx pkgConfigDB
+                       validateTree (compilerInfo (toolchainCompiler (hostToolchain toolchains))) idx pkgConfigDB
     prunePhase       = (if asBool (avoidReinstalls sc) then P.avoidReinstalls (const True) else id) .
                        (case onlyConstrained sc of
                           OnlyConstrainedAll ->

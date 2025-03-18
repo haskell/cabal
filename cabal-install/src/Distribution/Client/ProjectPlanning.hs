@@ -1278,7 +1278,7 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
 
 planPackages
   :: Verbosity
-  -> Toolchain
+  -> Toolchains
   -> SolverSettings
   -> InstalledPackageIndex
   -> SourcePackageDb
@@ -1288,7 +1288,7 @@ planPackages
   -> Progress String String SolverInstallPlan
 planPackages
   verbosity
-  Toolchain{toolchainCompiler = compiler, toolchainPlatform = platform}
+  toolchains
   SolverSettings{..}
   installedPkgIndex
   sourcePkgDb
@@ -1296,8 +1296,7 @@ planPackages
   localPackages
   pkgStanzasEnable =
     resolveDependencies
-      platform
-      (compilerInfo compiler)
+      toolchains
       pkgConfigDB
       resolverParams
     where
@@ -1340,7 +1339,9 @@ planPackages
           . removeLowerBounds solverSettingAllowOlder
           . removeUpperBounds solverSettingAllowNewer
           . addDefaultSetupDependencies
-            ( mkDefaultSetupDeps compiler platform
+            ( mkDefaultSetupDeps
+                (toolchainCompiler (buildToolchain toolchains))
+                (toolchainPlatform (buildToolchain toolchains))
                 . PD.packageDescription
                 . srcpkgDescription
             )
@@ -1474,8 +1475,9 @@ planPackages
         | otherwise = mkVersion [1, 20]
         where
           isGHC = compFlav `elem` [GHC, GHCJS]
-          compFlav = compilerFlavor compiler
-          compVer = compilerVersion compiler
+          -- FIXME: We assume HOST here.
+          compFlav = compilerFlavor (toolchainCompiler (hostToolchain toolchains))
+          compVer = compilerVersion (toolchainCompiler (hostToolchain toolchains))
 
       -- As we can't predict the future, we also place a global upper
       -- bound on the lib:Cabal version we know how to interact with:

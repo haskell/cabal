@@ -16,6 +16,7 @@ import Distribution.Solver.Types.SourcePackage
 import Distribution.Simple.PackageIndex ( InstalledPackageIndex )
 import Distribution.Package ( PackageName )
 import Distribution.Compiler ( CompilerInfo )
+import Distribution.Solver.Types.Toolchain ( Toolchains )
 import Distribution.System ( Platform )
 
 -- | A dependency resolver is a function that works out an installation plan
@@ -26,8 +27,7 @@ import Distribution.System ( Platform )
 -- solving the package dependency problem and we want to make it easy to swap
 -- in alternatives.
 --
-type DependencyResolver loc = Platform
-                           -> CompilerInfo
+type DependencyResolver loc = Toolchains
                            -> InstalledPackageIndex
                            -> PackageIndex (SourcePackage loc)
                            -> Maybe PkgConfigDb

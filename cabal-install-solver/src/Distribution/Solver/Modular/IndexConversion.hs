@@ -14,6 +14,7 @@ import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Compiler
 import Distribution.Package                          -- from Cabal
 import Distribution.Simple.BuildToolDepends          -- from Cabal
+import Distribution.Simple.Compiler (compilerInfo)
 import Distribution.Types.ExeDependency              -- from Cabal
 import Distribution.Types.PkgconfigDependency        -- from Cabal
 import Distribution.Types.ComponentName              -- from Cabal
@@ -34,6 +35,7 @@ import           Distribution.Solver.Types.PackageConstraint
 import qualified Distribution.Solver.Types.PackageIndex as CI
 import           Distribution.Solver.Types.Settings
 import           Distribution.Solver.Types.SourcePackage
+import           Distribution.Solver.Types.Toolchain ( Toolchains(..), Toolchain(..) )
 
 import Distribution.Solver.Modular.Dependency as D
 import Distribution.Solver.Modular.Flag as F
@@ -53,13 +55,13 @@ import Distribution.Solver.Modular.Version
 -- resolving these situations. However, the right thing to do is to
 -- fix the problem there, so for now, shadowing is only activated if
 -- explicitly requested.
-convPIs :: OS -> Arch -> CompilerInfo -> Map PN [LabeledPackageConstraint]
+convPIs :: Toolchains -> Map PN [LabeledPackageConstraint]
         -> ShadowPkgs -> StrongFlags -> SolveExecutables
         -> SI.InstalledPackageIndex -> CI.PackageIndex (SourcePackage loc)
         -> Index
-convPIs os arch comp constraints sip strfl solveExes iidx sidx =
+convPIs toolchains constraints sip strfl solveExes iidx sidx =
   mkIndex $
-  convIPI' sip iidx ++ convSPI' os arch comp constraints strfl solveExes sidx
+  convIPI' sip iidx ++ convSPI' toolchains constraints strfl solveExes sidx
 
 -- | Convert a Cabal installed package index to the simpler,
 -- more uniform index format of the solver.
@@ -153,31 +155,33 @@ convIPId dr comp idx ipid =
 
 -- | Convert a cabal-install source package index to the simpler,
 -- more uniform index format of the solver.
-convSPI' :: OS -> Arch -> CompilerInfo -> Map PN [LabeledPackageConstraint]
+convSPI' :: Toolchains -> Map PN [LabeledPackageConstraint]
          -> StrongFlags -> SolveExecutables
          -> CI.PackageIndex (SourcePackage loc) -> [(PN, I, PInfo)]
-convSPI' os arch cinfo constraints strfl solveExes =
-    L.map (convSP os arch cinfo constraints strfl solveExes) . CI.allPackages
+convSPI' toolchains constraints strfl solveExes =
+    L.concatMap (convSP toolchains constraints strfl solveExes) . CI.allPackages
 
 -- | Convert a single source package into the solver-specific format.
-convSP :: OS -> Arch -> CompilerInfo -> Map PN [LabeledPackageConstraint]
-       -> StrongFlags -> SolveExecutables -> SourcePackage loc -> (PN, I, PInfo)
-convSP os arch cinfo constraints strfl solveExes (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
-  let i = I {- FIXME -} Host pv InRepo
-      pkgConstraints = fromMaybe [] $ M.lookup pn constraints
-  in  (pn, i, convGPD os arch cinfo pkgConstraints strfl solveExes pn gpd)
+convSP :: Toolchains -> Map PN [LabeledPackageConstraint]
+       -> StrongFlags -> SolveExecutables -> SourcePackage loc -> [(PN, I, PInfo)]
+convSP toolchains constraints strfl solveExes (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
+  let pkgConstraints = fromMaybe [] $ M.lookup pn constraints
+  in  [(pn, I Host  pv InRepo, convGPD (hostToolchain toolchains)  pkgConstraints strfl solveExes pn gpd)
+      ,(pn, I Build pv InRepo, convGPD (buildToolchain toolchains) pkgConstraints strfl solveExes pn gpd)]
 
 -- We do not use 'flattenPackageDescription' or 'finalizePD'
 -- from 'Distribution.PackageDescription.Configuration' here, because we
 -- want to keep the condition tree, but simplify much of the test.
 
 -- | Convert a generic package description to a solver-specific 'PInfo'.
-convGPD :: OS -> Arch -> CompilerInfo -> [LabeledPackageConstraint]
+convGPD :: Toolchain -> [LabeledPackageConstraint]
         -> StrongFlags -> SolveExecutables -> PN -> GenericPackageDescription
         -> PInfo
-convGPD os arch cinfo constraints strfl solveExes pn
+convGPD toolchain constraints strfl solveExes pn
         (GenericPackageDescription pkg scannedVersion flags mlib sub_libs flibs exes tests benchs) =
   let
+    cinfo = compilerInfo (toolchainCompiler toolchain)
+    (Platform arch os) = toolchainPlatform toolchain
     fds  = flagInfo strfl flags
 
 

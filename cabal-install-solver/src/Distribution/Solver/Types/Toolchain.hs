@@ -4,6 +4,7 @@ module Distribution.Solver.Types.Toolchain
   ( Toolchain (..)
   , Toolchains (..)
   , toolchainFor
+  , mkToolchainsWithHost
   ) where
 
 import Distribution.Compat.Prelude
@@ -47,3 +48,10 @@ toolchainFor Host = hostToolchain
 
 instance Binary Toolchains
 instance Structured Toolchains
+
+mkToolchainsWithHost :: Platform -> Compiler -> Toolchains
+mkToolchainsWithHost platform compiler =
+  Toolchains
+    { buildToolchain = Toolchain platform compiler (error "build program db missing")
+    , hostToolchain = Toolchain platform compiler (error "host program db missing")
+    }

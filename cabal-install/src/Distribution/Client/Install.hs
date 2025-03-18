@@ -141,6 +141,7 @@ import Distribution.Solver.Types.PkgConfigDb
   )
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SourcePackage as SourcePackage
+import Distribution.Solver.Types.Toolchain (mkToolchainsWithHost)
 
 import Distribution.Client.ProjectConfig
 import Distribution.Client.Utils
@@ -585,8 +586,7 @@ planPackages
   pkgConfigDb
   pkgSpecifiers =
     resolveDependencies
-      platform
-      (compilerInfo comp)
+      (mkToolchainsWithHost platform comp)
       pkgConfigDb
       resolverParams
       >>= if onlyDeps then pruneInstallPlan pkgSpecifiers else return

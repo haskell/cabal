@@ -115,6 +115,7 @@ import Distribution.PackageDescription.Configuration
 import qualified Distribution.PackageDescription.Configuration as PD
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
+import Distribution.Simple.Compiler (compilerInfo)
 import Distribution.Simple.Setup
   ( asBool
   )
@@ -153,6 +154,7 @@ import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SolverId
 import Distribution.Solver.Types.SolverPackage
 import Distribution.Solver.Types.SourcePackage
+import Distribution.Solver.Types.Toolchain
 import Distribution.Solver.Types.Variable
 
 import Control.Exception
@@ -782,14 +784,13 @@ runSolver = modularResolver
 -- a 'Progress' structure that can be unfolded to provide progress information,
 -- logging messages and the final result or an error.
 resolveDependencies
-  :: Platform
-  -> CompilerInfo
+  :: Toolchains
   -> Maybe PkgConfigDb
   -> DepResolverParams
   -> Progress String String SolverInstallPlan
-resolveDependencies platform comp pkgConfigDB params =
+resolveDependencies toolchains pkgConfigDB params =
   Step (showDepResolverParams finalparams) $
-    fmap (validateSolverResult platform comp indGoals) $
+    fmap (validateSolverResult toolchains indGoals) $
       runSolver
         ( SolverConfig
             reordGoals
@@ -808,8 +809,7 @@ resolveDependencies platform comp pkgConfigDB params =
             verbosity
             (PruneAfterFirstSuccess False)
         )
-        platform
-        comp
+        toolchains
         installedPkgIndex
         sourcePkgIndex
         pkgConfigDB
@@ -909,13 +909,12 @@ interpretPackagesPreference selected defaultPref prefs =
 -- | Make an install plan from the output of the dep resolver.
 -- It checks that the plan is valid, or it's an error in the dep resolver.
 validateSolverResult
-  :: Platform
-  -> CompilerInfo
+  :: Toolchains
   -> IndependentGoals
   -> [ResolverPackage UnresolvedPkgLoc]
   -> SolverInstallPlan
-validateSolverResult platform comp indepGoals pkgs =
-  case planPackagesProblems platform comp pkgs of
+validateSolverResult toolchains indepGoals pkgs =
+  case planPackagesProblems toolchains pkgs of
     [] -> case SolverInstallPlan.new indepGoals graph of
       Right plan -> plan
       Left problems -> error (formatPlanProblems problems)
@@ -960,14 +959,13 @@ showPlanPackageProblem (DuplicatePackageSolverId pid dups) =
     ++ " duplicate instances."
 
 planPackagesProblems
-  :: Platform
-  -> CompilerInfo
+  :: Toolchains
   -> [ResolverPackage UnresolvedPkgLoc]
   -> [PlanPackageProblem]
-planPackagesProblems platform cinfo pkgs =
+planPackagesProblems toolchains pkgs =
   [ InvalidConfiguredPackage pkg packageProblems
   | Configured pkg <- pkgs
-  , let packageProblems = configuredPackageProblems platform cinfo pkg
+  , let packageProblems = configuredPackageProblems toolchains pkg
   , not (null packageProblems)
   ]
     ++ [ DuplicatePackageSolverId (Graph.nodeKey aDup) dups
@@ -1016,13 +1014,11 @@ showPackageProblem (InvalidDep dep pkgid) =
 -- in the configuration given by the flag assignment, all the package
 -- dependencies are satisfied by the specified packages.
 configuredPackageProblems
-  :: Platform
-  -> CompilerInfo
+  :: Toolchains
   -> SolverPackage UnresolvedPkgLoc
   -> [PackageProblem]
 configuredPackageProblems
-  platform
-  cinfo
+  toolchains
   (SolverPackage _qpn pkg specifiedFlags stanzas specifiedDeps0 _specifiedExeDeps') =
     [ DuplicateFlag flag
     | flag <- PD.findDuplicateFlagAssignments specifiedFlags
@@ -1096,8 +1092,9 @@ configuredPackageProblems
           specifiedFlags
           compSpec
           (const Satisfied)
-          platform
-          cinfo
+          -- FIXME: HARDCODED HOST TOOLCHAIN here.
+          (toolchainPlatform (hostToolchain toolchains))
+          (compilerInfo (toolchainCompiler (hostToolchain toolchains)))
           []
           (srcpkgDescription pkg) of
           Right (resolvedPkg, _) ->

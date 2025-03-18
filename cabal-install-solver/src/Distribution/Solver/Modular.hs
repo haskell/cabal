@@ -57,8 +57,9 @@ import Distribution.Verbosity
 import Distribution.Solver.Modular.Configured (CP (..))
 import qualified Distribution.Solver.Types.ComponentDeps as ComponentDeps
 import Distribution.Pretty (Pretty (..))
-import Text.PrettyPrint (text, vcat, Doc, nest, ($+$)) 
+import Text.PrettyPrint (text, vcat, Doc, nest, ($+$))
 import Distribution.Solver.Types.OptionalStanza (showStanzas, optStanzaSetNull)
+import Distribution.Solver.Types.Toolchain ( Toolchains )
 import Distribution.Types.Flag (nullFlagAssignment)
 
 
@@ -75,18 +76,18 @@ showCP (CP qpi fa es ds) =
         | (c, deps) <- ComponentDeps.toList ds
         ]
     ])
- 
+
 -- | Ties the two worlds together: classic cabal-install vs. the modular
 -- solver. Performs the necessary translations before and after.
 modularResolver :: SolverConfig -> DependencyResolver loc
-modularResolver sc (Platform arch os) cinfo iidx sidx pkgConfigDB pprefs pcs pns = do
-    (assignment, revdepmap) <- solve' sc cinfo idx pkgConfigDB pprefs gcs pns
+modularResolver sc toolchains iidx sidx pkgConfigDB pprefs pcs pns = do
+    (assignment, revdepmap) <- solve' sc toolchains idx pkgConfigDB pprefs gcs pns
     let cp = toCPs assignment revdepmap
     Step (show (vcat (map showCP cp))) $
         return $ postprocess assignment revdepmap
   where
       -- Indices have to be converted into solver-specific uniform index.
-      idx    = convPIs os arch cinfo gcs (shadowPkgs sc) (strongFlags sc) (solveExecutables sc) iidx sidx
+      idx    = convPIs toolchains gcs (shadowPkgs sc) (strongFlags sc) (solveExecutables sc) iidx sidx
       -- Constraints have to be converted into a finite map indexed by PN.
       gcs    = M.fromListWith (++) (map pair pcs)
         where
@@ -136,21 +137,21 @@ modularResolver sc (Platform arch os) cinfo iidx sidx pkgConfigDB pprefs pcs pns
 -- complete, i.e., it shows the whole chain of dependencies from the user
 -- targets to the conflicting packages.
 solve' :: SolverConfig
-       -> CompilerInfo
+       -> Toolchains
        -> Index
        -> Maybe PkgConfigDb
        -> (PN -> PackagePreferences)
        -> Map PN [LabeledPackageConstraint]
        -> Set PN
        -> Progress String String (Assignment, RevDepMap)
-solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
+solve' sc toolchains idx pkgConfigDB pprefs gcs pns =
     toProgress $ retry (runSolver printFullLog sc) createErrorMsg
   where
     runSolver :: Bool -> SolverConfig
               -> RetryLog String SolverFailure (Assignment, RevDepMap)
     runSolver keepLog sc' =
         displayLogMessages keepLog $
-        solve sc' cinfo idx pkgConfigDB pprefs gcs pns
+        solve sc' toolchains idx pkgConfigDB pprefs gcs pns
 
     createErrorMsg :: SolverFailure
                    -> RetryLog String String (Assignment, RevDepMap)
