@@ -176,4 +176,5 @@ emptyInstalledPackageInfo =
     , haddockHTMLs = []
     , pkgRoot = Nothing
     , libVisibility = LibraryVisibilityPrivate
+    , pkgCompiler = Nothing
     }
