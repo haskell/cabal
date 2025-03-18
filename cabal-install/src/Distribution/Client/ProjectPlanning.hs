@@ -826,8 +826,6 @@ rebuildInstallPlan
 
               liftIO $ do
                 notice verbosity "Resolving dependencies..."
-                liftIO $ print ("build compiler", compilerId $ toolchainCompiler $ buildToolchain toolchains)
-                liftIO $ print ("host compiler", compilerId $ toolchainCompiler $ hostToolchain toolchains)
                 planOrError <-
                   foldProgress logMsg (pure . Left) (pure . Right) $
                     planPackages
@@ -991,10 +989,11 @@ rebuildInstallPlan
         -> Rebuild ElaboratedInstallPlan
       phaseImprovePlan elaboratedPlan elaboratedShared = do
         liftIO $ debug verbosity "Improving the install plan..."
-        storePkgIdSet <- getStoreEntries cabalStoreDirLayout compiler
+        hstorePkgIdSet <- getStoreEntries cabalStoreDirLayout hcompiler
+        bstorePkgIdSet <- getStoreEntries cabalStoreDirLayout bcompiler
         let improvedPlan =
               improveInstallPlanWithInstalledPackages
-                storePkgIdSet
+                (hstorePkgIdSet `Set.union` bstorePkgIdSet)
                 elaboratedPlan
         liftIO $ debugNoWrap verbosity (showElaboratedInstallPlan improvedPlan)
         -- TODO: [nice to have] having checked which packages from the store
@@ -1003,7 +1002,8 @@ rebuildInstallPlan
         -- matches up as expected, e.g. no dangling deps, files deleted.
         return improvedPlan
         where
-          compiler = toolchainCompiler (hostToolchain (pkgConfigToolchains elaboratedShared))
+          hcompiler = toolchainCompiler (hostToolchain (pkgConfigToolchains elaboratedShared))
+          bcompiler = toolchainCompiler (buildToolchain (pkgConfigToolchains elaboratedShared))
 
 -- | If a 'PackageSpecifier' refers to a single package, return Just that
 -- package.
