@@ -353,8 +353,13 @@ avoidReinstalls p = go
 pruneHostFromSetup :: EndoTreeTrav d c
 pruneHostFromSetup = go
   where
+    -- for Setup(.hs) and build-depends, we want to force Build packages.
     go (PChoiceF qpn rdm gr cs) | (Q (PackagePath _ (QualSetup _)) _) <- qpn =
       PChoiceF qpn rdm gr (W.filterKey (not . isHost) cs)
+    -- QualExe are build-depends. Structure is QualExe (comp) (build-depend).
+    go (PChoiceF qpn rdm gr cs) | (Q (PackagePath _ (QualExe _ _)) _) <- qpn =
+      PChoiceF qpn rdm gr (W.filterKey (not . isHost) cs)
+    -- everything else use Host packages.
     go (PChoiceF qpn rdm gr cs) | (Q (PackagePath _ _) _) <- qpn =
       PChoiceF qpn rdm gr (W.filterKey isHost cs)
     go x = x
