@@ -102,7 +102,6 @@ solve :: SolverConfig                         -- ^ solver parameters
       -> RetryLog Message SolverFailure (Assignment, RevDepMap)
 solve sc toolchains idx pkgConfigDB userPrefs userConstraints userGoals =
   explorePhase      .
-  stageBuildDeps "B" .
   traceTree "cycles.json" id .
   detectCycles      .
   traceTree "heuristics.json" id .
@@ -115,9 +114,7 @@ solve sc toolchains idx pkgConfigDB userPrefs userConstraints userGoals =
   validationCata    .
   traceTree "pruned.json" id .
   trav prunePhase   .
-  -- stageBuildDeps "A'" .
   trav P.pruneHostFromSetup .
-  stageBuildDeps "A" .
   traceTree "build.json" id $
   buildPhase
   where
