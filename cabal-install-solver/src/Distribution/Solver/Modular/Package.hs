@@ -25,6 +25,7 @@ import Distribution.Pretty (prettyShow)
 
 import Distribution.Solver.Modular.Version
 import Distribution.Solver.Types.PackagePath
+import Distribution.Solver.Types.Stage (Stage (..))
 
 -- | A package name.
 type PN = PackageName
@@ -48,10 +49,6 @@ type PId = UnitId
 --
 -- TODO: More information is needed about the repo.
 data Loc = Inst PId | InRepo
-  deriving (Eq, Ord, Show)
-
--- | Stage. A stage in the build process.
-data Stage = Build | Host
   deriving (Eq, Ord, Show)
 
 showStage :: Stage -> String
