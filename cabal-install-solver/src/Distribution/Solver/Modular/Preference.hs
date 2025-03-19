@@ -420,8 +420,8 @@ deferSetupExeChoices = go
     go x                    = x
 
     noSetupOrExe :: Goal QPN -> Bool
-    noSetupOrExe (Goal (P (Q (PackagePath _ns (QualSetup _)) _)) _) = False
-    noSetupOrExe (Goal (P (Q (PackagePath _ns (QualExe _ _)) _)) _) = False
+    noSetupOrExe (Goal (P (Q (PackagePath (QualSetup _)) _)) _) = False
+    noSetupOrExe (Goal (P (Q (PackagePath (QualExe _ _)) _)) _) = False
     noSetupOrExe _                                                  = True
 
 -- | Transformation that tries to avoid making weak flag choices early.

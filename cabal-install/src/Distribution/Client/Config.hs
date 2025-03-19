@@ -426,7 +426,6 @@ instance Semigroup SavedConfig where
           , installCountConflicts = combine installCountConflicts
           , installFineGrainedConflicts = combine installFineGrainedConflicts
           , installMinimizeConflictSet = combine installMinimizeConflictSet
-          , installIndependentGoals = combine installIndependentGoals
           , installPreferOldest = combine installPreferOldest
           , installShadowPkgs = combine installShadowPkgs
           , installStrongFlags = combine installStrongFlags

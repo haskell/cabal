@@ -34,7 +34,6 @@ module Distribution.Client.InstallPlan
   , toMap
   , keys
   , keysSet
-  , planIndepGoals
   , depends
   , fromSolverInstallPlan
   , fromSolverInstallPlanWithProgress
@@ -98,7 +97,6 @@ import Text.PrettyPrint
 
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.InstSolverPackage
-import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SolverId
 
 import Distribution.Utils.LogProgress
@@ -255,7 +253,6 @@ instance
 
 data GenericInstallPlan ipkg srcpkg = GenericInstallPlan
   { planGraph :: !(Graph (GenericPlanPackage ipkg srcpkg))
-  , planIndepGoals :: !IndependentGoals
   }
 
 -- | 'GenericInstallPlan' specialised to most commonly used types.
@@ -269,14 +266,12 @@ mkInstallPlan
   :: (IsUnit ipkg, IsUnit srcpkg)
   => String
   -> Graph (GenericPlanPackage ipkg srcpkg)
-  -> IndependentGoals
   -> GenericInstallPlan ipkg srcpkg
-mkInstallPlan loc graph indepGoals =
+mkInstallPlan loc graph =
   assert
     (valid loc graph)
     GenericInstallPlan
       { planGraph = graph
-      , planIndepGoals = indepGoals
       }
 
 internalError :: WithCallStack (String -> String -> a)
@@ -306,16 +301,11 @@ instance
   )
   => Binary (GenericInstallPlan ipkg srcpkg)
   where
-  put
-    GenericInstallPlan
-      { planGraph = graph
-      , planIndepGoals = indepGoals
-      } = put graph >> put indepGoals
+  put p = put (planGraph p)
 
   get = do
     graph <- get
-    indepGoals <- get
-    return $! mkInstallPlan "(instance Binary)" graph indepGoals
+    return $! mkInstallPlan "(instance Binary)" graph
 
 data ShowPlanNode = ShowPlanNode
   { showPlanHerald :: Doc
@@ -364,10 +354,9 @@ showPlanPackageTag (Installed _) = "Installed"
 -- | Build an installation plan from a valid set of resolved packages.
 new
   :: (IsUnit ipkg, IsUnit srcpkg)
-  => IndependentGoals
-  -> Graph (GenericPlanPackage ipkg srcpkg)
+  => Graph (GenericPlanPackage ipkg srcpkg)
   -> GenericInstallPlan ipkg srcpkg
-new indepGoals graph = mkInstallPlan "new" graph indepGoals
+new = mkInstallPlan "new"
 
 toGraph
   :: GenericInstallPlan ipkg srcpkg
@@ -401,7 +390,7 @@ remove
   -> GenericInstallPlan ipkg srcpkg
   -> GenericInstallPlan ipkg srcpkg
 remove shouldRemove plan =
-  mkInstallPlan "remove" newGraph (planIndepGoals plan)
+  mkInstallPlan "remove" newGraph
   where
     newGraph =
       Graph.fromDistinctList $
@@ -521,7 +510,6 @@ fromSolverInstallPlan f plan =
   mkInstallPlan
     "fromSolverInstallPlan"
     (Graph.fromDistinctList pkgs'')
-    (SolverInstallPlan.planIndepGoals plan)
   where
     (_, _, pkgs'') =
       foldl'
@@ -567,7 +555,6 @@ fromSolverInstallPlanWithProgress f plan = do
     mkInstallPlan
       "fromSolverInstallPlanWithProgress"
       (Graph.fromDistinctList pkgs'')
-      (SolverInstallPlan.planIndepGoals plan)
   where
     f' (pidMap, ipiMap, pkgs) pkg = do
       pkgs' <- f (mapDep pidMap ipiMap) pkg

@@ -73,7 +73,6 @@ import Distribution.Version
   )
 
 import Distribution.Solver.Types.ResolverPackage
-import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SolverId
 import Distribution.Solver.Types.SolverPackage
 
@@ -90,7 +89,6 @@ type SolverPlanIndex = Graph SolverPlanPackage
 
 data SolverInstallPlan = SolverInstallPlan
   { planIndex :: !SolverPlanIndex
-  , planIndepGoals :: !IndependentGoals
   }
   deriving (Generic)
 
@@ -142,12 +140,11 @@ showPlanPackage (Configured spkg) =
 
 -- | Build an installation plan from a valid set of resolved packages.
 new
-  :: IndependentGoals
-  -> SolverPlanIndex
+  :: SolverPlanIndex
   -> Either [SolverPlanProblem] SolverInstallPlan
-new indepGoals index =
-  case problems indepGoals index of
-    [] -> Right (SolverInstallPlan index indepGoals)
+new index =
+  case problems index of
+    [] -> Right (SolverInstallPlan index)
     probs -> Left probs
 
 toList :: SolverInstallPlan -> [SolverPlanPackage]
@@ -167,8 +164,7 @@ remove
   -> Either
       [SolverPlanProblem]
       (SolverInstallPlan)
-remove shouldRemove plan =
-  new (planIndepGoals plan) newIndex
+remove shouldRemove plan = new newIndex
   where
     newIndex =
       Graph.fromDistinctList $
@@ -185,12 +181,8 @@ remove shouldRemove plan =
 -- plan has to have a valid configuration (see 'configuredPackageValid').
 --
 -- * if the result is @False@ use 'problems' to get a detailed list.
-valid
-  :: IndependentGoals
-  -> SolverPlanIndex
-  -> Bool
-valid indepGoals index =
-  null $ problems indepGoals index
+valid :: SolverPlanIndex -> Bool
+valid = null . problems
 
 data SolverPlanProblem
   = PackageMissingDeps
@@ -239,10 +231,9 @@ showPlanProblem (PackageStateInvalid pkg pkg') =
 -- error messages. This is mainly intended for debugging purposes.
 -- Use 'showPlanProblem' for a human readable explanation.
 problems
-  :: IndependentGoals
-  -> SolverPlanIndex
+  :: SolverPlanIndex
   -> [SolverPlanProblem]
-problems indepGoals index =
+problems index =
   [ PackageMissingDeps
     pkg
     ( mapMaybe
@@ -256,7 +247,7 @@ problems indepGoals index =
        ]
     ++ [ PackageInconsistency name inconsistencies
        | (name, inconsistencies) <-
-          dependencyInconsistencies indepGoals index
+          dependencyInconsistencies index
        ]
     ++ [ PackageStateInvalid pkg pkg'
        | pkg <- Foldable.toList index
@@ -275,10 +266,9 @@ problems indepGoals index =
 -- cycle. Such cycles may or may not be an issue; either way, we don't check
 -- for them here.
 dependencyInconsistencies
-  :: IndependentGoals
-  -> SolverPlanIndex
+  :: SolverPlanIndex
   -> [(PackageName, [(PackageIdentifier, Version)])]
-dependencyInconsistencies indepGoals index =
+dependencyInconsistencies index =
   concatMap dependencyInconsistencies' subplans
   where
     subplans :: [SolverPlanIndex]
@@ -286,7 +276,7 @@ dependencyInconsistencies indepGoals index =
       -- Not Graph.closure!!
       map
         (nonSetupClosure index)
-        (rootSets indepGoals index)
+        (rootSets index)
 
 -- NB: When we check for inconsistencies, packages from the setup
 -- scripts don't count as part of the closure (this way, we
@@ -317,16 +307,9 @@ nonSetupClosure index pkgids0 = closure Graph.empty pkgids0
 -- | Compute the root sets of a plan
 --
 -- A root set is a set of packages whose dependency closure must be consistent.
--- This is the set of all top-level library roots (taken together normally, or
--- as singletons sets if we are considering them as independent goals), along
--- with all setup dependencies of all packages.
-rootSets :: IndependentGoals -> SolverPlanIndex -> [[SolverId]]
-rootSets (IndependentGoals indepGoals) index =
-  if indepGoals
-    then map (: []) libRoots
-    else
-      [libRoots]
-        ++ setupRoots index
+-- This is the set of all top-level library roots taken together.
+rootSets :: SolverPlanIndex -> [[SolverId]]
+rootSets index = [libRoots] ++ setupRoots index
   where
     libRoots :: [SolverId]
     libRoots = libraryRoots index
@@ -434,7 +417,7 @@ closed = null . Graph.broken
 -- * if the result is @False@ use 'PackageIndex.dependencyInconsistencies' to
 --   find out which packages are.
 consistent :: SolverPlanIndex -> Bool
-consistent = null . dependencyInconsistencies (IndependentGoals False)
+consistent = null . dependencyInconsistencies
 
 -- | The states of packages have that depend on each other must respect
 -- this relation. That is for very case where package @a@ depends on

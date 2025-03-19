@@ -1,6 +1,5 @@
 module Distribution.Solver.Types.PackagePath
     ( PackagePath(..)
-    , Namespace(..)
     , Qualifier(..)
     , dispQualifier
     , Qualified(..)
@@ -15,28 +14,8 @@ import Distribution.Package (PackageName)
 import Distribution.Pretty (pretty, flatStyle)
 import qualified Text.PrettyPrint as Disp
 
--- | A package path consists of a namespace and a package path inside that
--- namespace.
-data PackagePath = PackagePath Namespace Qualifier
+data PackagePath = PackagePath Qualifier
   deriving (Eq, Ord, Show)
-
--- | Top-level namespace
---
--- Package choices in different namespaces are considered completely independent
--- by the solver.
-data Namespace =
-    -- | The default namespace
-    DefaultNamespace
-
-    -- | A namespace for a specific build target
-  | Independent PackageName
-  deriving (Eq, Ord, Show)
-
--- | Pretty-prints a namespace. The result is either empty or
--- ends in a period, so it can be prepended onto a qualifier.
-dispNamespace :: Namespace -> Disp.Doc
-dispNamespace DefaultNamespace = Disp.empty
-dispNamespace (Independent i) = pretty i <<>> Disp.text "."
 
 -- | Qualifier of a package within a namespace (see 'PackagePath')
 data Qualifier =
@@ -82,8 +61,8 @@ type QPN = Qualified PackageName
 
 -- | Pretty-prints a qualified package name.
 dispQPN :: QPN -> Disp.Doc
-dispQPN (Q (PackagePath ns qual) pn) =
-  dispNamespace ns <<>> dispQualifier qual <<>> pretty pn
+dispQPN (Q (PackagePath qual) pn) =
+  dispQualifier qual <<>> pretty pn
 
 -- | String representation of a qualified package name.
 showQPN :: QPN -> String

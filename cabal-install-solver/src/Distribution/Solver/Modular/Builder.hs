@@ -35,7 +35,6 @@ import qualified Distribution.Solver.Modular.WeightedPSQ as W
 
 import Distribution.Solver.Types.ComponentDeps
 import Distribution.Solver.Types.PackagePath
-import Distribution.Solver.Types.Settings
 
 -- | All state needed to build and link the search tree. It has a type variable
 -- because the linking phase doesn't need to know about the state used to build
@@ -246,8 +245,8 @@ alreadyLinked = error "addLinking called on tree that already contains linked no
 
 -- | Interface to the tree builder. Just takes an index and a list of package names,
 -- and computes the initial state and then the tree from there.
-buildTree :: Index -> IndependentGoals -> [PN] -> Tree () QGoalReason
-buildTree idx (IndependentGoals ind) igs =
+buildTree :: Index -> [PN] -> Tree () QGoalReason
+buildTree idx igs =
     build Linker {
         buildState = BS {
             index = idx
@@ -260,8 +259,7 @@ buildTree idx (IndependentGoals ind) igs =
   where
     topLevelGoal qpn = PkgGoal qpn UserGoal
 
-    qpns | ind       = L.map makeIndependent igs
-         | otherwise = L.map (Q (PackagePath DefaultNamespace QualToplevel)) igs
+    qpns = L.map (Q (PackagePath QualToplevel)) igs
 
 {-------------------------------------------------------------------------------
   Goals

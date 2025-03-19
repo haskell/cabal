@@ -104,7 +104,6 @@ projectConfigSharedFieldGrammar source =
     <*> optionalFieldDef "allow-boot-library-installs" L.projectConfigAllowBootLibInstalls mempty
     <*> optionalFieldDef "reject-unconstrained-dependencies" L.projectConfigOnlyConstrained mempty
     <*> optionalFieldDef "per-component" L.projectConfigPerComponent mempty
-    <*> optionalFieldDef "independent-goals" L.projectConfigIndependentGoals mempty
     <*> optionalFieldDef "prefer-oldest" L.projectConfigPreferOldest mempty
     <*> monoidalFieldAla "extra-prog-path-shared-only" (alaNubList' FSep FilePathNT) L.projectConfigProgPathExtra
     <*> optionalFieldDef "multi-repl" L.projectConfigMultiRepl mempty

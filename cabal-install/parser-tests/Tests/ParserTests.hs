@@ -41,7 +41,6 @@ import Distribution.Solver.Types.Settings
   ( AllowBootLibInstalls (..)
   , CountConflicts (..)
   , FineGrainedConflicts (..)
-  , IndependentGoals (..)
   , MinimizeConflictSet (..)
   , OnlyConstrained (..)
   , PreferOldest (..)
@@ -226,7 +225,6 @@ testProjectConfigShared = do
     projectConfigAllowBootLibInstalls = Flag (AllowBootLibInstalls True)
     projectConfigOnlyConstrained = Flag OnlyConstrainedAll
     projectConfigPerComponent = Flag True
-    projectConfigIndependentGoals = Flag (IndependentGoals True)
     projectConfigPreferOldest = Flag (PreferOldest True)
     projectConfigProgPathExtra = toNubList ["/foo/bar", "/baz/quux"]
     projectConfigMultiRepl = toFlag True
