@@ -1052,8 +1052,8 @@ configureExOptions _showOrParseArgs src =
       )
   , option
       []
-      ["host-compiler"]
-      "host compiler"
+      ["build-compiler"]
+      "build compiler"
       configBuildHcFlavor
       (\v flags -> flags{configBuildHcFlavor = v})
       ( choiceOpt
@@ -1063,15 +1063,15 @@ configureExOptions _showOrParseArgs src =
       )
   , option
       "W"
-      ["with-host-compiler", "with-host-hc"]
-      "give the path to the compiler for the host toolchain"
+      ["with-build-compiler", "with-build-hc"]
+      "give the path to the compiler for the build toolchain"
       configBuildHcPath
       (\v flags -> flags{configBuildHcPath = v})
       (reqArgFlag "PATH")
   , option
       ""
-      ["with-host-hc-pkg"]
-      "give the path to the package tool for the host toolchain"
+      ["with-build-hc-pkg"]
+      "give the path to the package tool for the build toolchain"
       configBuildHcPkg
       (\v flags -> flags{configBuildHcPkg = v})
       (reqArgFlag "PATH")
