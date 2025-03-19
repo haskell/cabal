@@ -1,10 +1,12 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
 module Distribution.Solver.Types.Toolchain
   ( Toolchain (..)
   , Toolchains (..)
   , toolchainFor
   , mkToolchainsWithHost
+  , buildIsHost
   ) where
 
 import Distribution.Compat.Prelude
@@ -55,3 +57,7 @@ mkToolchainsWithHost platform compiler =
     { buildToolchain = Toolchain platform compiler (error "build program db missing")
     , hostToolchain = Toolchain platform compiler (error "host program db missing")
     }
+
+buildIsHost :: Toolchains -> Bool
+buildIsHost Toolchains {buildToolchain, hostToolchain} =
+  buildToolchain == hostToolchain

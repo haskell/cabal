@@ -24,7 +24,7 @@ import Distribution.Solver.Types.PackagePreferences
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb)
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.Settings
-import Distribution.Solver.Types.Toolchain ( Toolchains(..), Toolchain(..) )
+import Distribution.Solver.Types.Toolchain ( Toolchains(..), Toolchain(..), buildIsHost )
 import Distribution.Solver.Types.Variable
 
 import Distribution.Solver.Modular.Assignment
@@ -114,7 +114,7 @@ solve sc toolchains idx pkgConfigDB userPrefs userConstraints userGoals =
   validationCata    .
   traceTree "pruned.json" id .
   trav prunePhase   .
-  trav P.pruneHostFromSetup .
+  (if buildIsHost toolchains then id else trav P.pruneHostFromSetup) .
   -- stageBuildDeps "build: " .
   traceTree "build.json" id $
   buildPhase
