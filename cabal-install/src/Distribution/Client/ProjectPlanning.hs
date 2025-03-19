@@ -1036,20 +1036,6 @@ programsMonitorFiles progdb =
         (programPath prog)
   ]
 
--- | Select the bits of a 'ProgramDb' to monitor for value changes.
--- Use 'programsMonitorFiles' for the files to monitor.
-programDbSignature :: ProgramDb -> [ConfiguredProgram]
-programDbSignature progdb =
-  [ prog
-    { programMonitorFiles = []
-    , programOverrideEnv =
-        filter
-          ((/= "PATH") . fst)
-          (programOverrideEnv prog)
-    }
-  | prog <- configuredPrograms progdb
-  ]
-
 getInstalledPackages
   :: Verbosity
   -> Compiler
