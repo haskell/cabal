@@ -114,8 +114,8 @@ solve sc toolchains idx pkgConfigDB userPrefs userConstraints userGoals =
   validationCata    .
   traceTree "pruned.json" id .
   trav prunePhase   .
+  stageBuildDeps "build: " .
   (if buildIsHost toolchains then id else trav P.pruneHostFromSetup) .
-  -- stageBuildDeps "build: " .
   traceTree "build.json" id $
   buildPhase
   where
@@ -158,11 +158,15 @@ solve sc toolchains idx pkgConfigDB userPrefs userConstraints userGoals =
             -- may not be able to produce code that runs on the build machine.
             go (PChoice qpn rdm gr cs) | (Q (PackagePath _ (QualSetup _)) _) <- qpn =
               (PChoice qpn rdm gr (trace (prefix ++ show qpn ++ '\n':unlines (map (" - " ++) candidates)) (go <$> cs)))
-              where candidates = map show . filter (\(I _s _v l) -> l /= InRepo) . map (\(_w, (POption i _), _v) -> i) $ W.toList cs
+              where candidates = map show
+                              --  . filter (\(I _s _v l) -> l /= InRepo)
+                               . map (\(_w, (POption i _), _v) -> i) $ W.toList cs
             -- Same for build-depends. These show up as QualExe (component) (build-depends).
             go (PChoice qpn rdm gr cs) | (Q (PackagePath _ (QualExe _ _)) _) <- qpn =
               (PChoice qpn rdm gr (trace (prefix ++ show qpn ++ '\n':unlines (map (" - " ++) candidates)) (go <$> cs)))
-              where candidates = map show . filter (\(I _s _v l) -> l /= InRepo) . map (\(_w, (POption i _), _v) -> i) $ W.toList cs
+              where candidates = map show
+                              --  . filter (\(I _s _v l) -> l /= InRepo)
+                               . map (\(_w, (POption i _), _v) -> i) $ W.toList cs
             go (PChoice qpn rdm gr cs) =
               (PChoice qpn rdm gr (go <$> cs))
             go (FChoice qfn rdm gr t b d cs) =

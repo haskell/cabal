@@ -350,22 +350,28 @@ avoidReinstalls p = go
 
 -- | Ensure that Setup (Build time) dependencies only have Build dependencies
 -- available and that Host dependencies only have Host dependencies available.
+-- We also do not want to use InRepo dependencies for setup/build-depends. This
+-- easily leads to cycles.
 pruneHostFromSetup :: EndoTreeTrav d c
 pruneHostFromSetup = go
   where
     -- for Setup(.hs) and build-depends, we want to force Build packages.
     go (PChoiceF qpn rdm gr cs) | (Q (PackagePath _ (QualSetup _)) _) <- qpn =
-      PChoiceF qpn rdm gr (W.filterKey (not . isHost) cs)
+      PChoiceF qpn rdm gr (W.filterKey (not . isHostOrRepo) cs)
     -- QualExe are build-depends. Structure is QualExe (comp) (build-depend).
     go (PChoiceF qpn rdm gr cs) | (Q (PackagePath _ (QualExe _ _)) _) <- qpn =
-      PChoiceF qpn rdm gr (W.filterKey (not . isHost) cs)
+      PChoiceF qpn rdm gr (W.filterKey (not . isHostOrRepo) cs)
     -- everything else use Host packages.
     go (PChoiceF qpn rdm gr cs) | (Q (PackagePath _ _) _) <- qpn =
       PChoiceF qpn rdm gr (W.filterKey isHost cs)
     go x = x
 
     isHost :: POption -> Bool
-    isHost (POption (I s _ _) _) = s == Host
+    isHost (POption (I s _v _l) _) = s == Host
+    isInRepo :: POption -> Bool
+    isInRepo (POption (I _s _v l) _) = l == InRepo
+    isHostOrRepo :: POption -> Bool
+    isHostOrRepo (POption (I s _v l) _) = s == Host || l == InRepo
 
 -- | Require all packages to be mentioned in a constraint or as a goal.
 onlyConstrained :: (PN -> Bool) -> EndoTreeTrav d QGoalReason
