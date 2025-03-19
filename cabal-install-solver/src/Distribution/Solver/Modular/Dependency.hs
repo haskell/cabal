@@ -166,7 +166,7 @@ showDependencyReason (DependencyReason qpn flags stanzas) =
 -- NOTE: It's the _dependencies_ of a package that may or may not be independent
 -- from the package itself. Package flag choices must of course be consistent.
 qualifyDeps :: QPN -> FlaggedDeps PN -> FlaggedDeps QPN
-qualifyDeps (Q pp@(PackagePath ns q) pn) = go
+qualifyDeps (Q pp@(PackagePath q) pn) = go
   where
     go :: FlaggedDeps PN -> FlaggedDeps QPN
     go = map go1
@@ -192,10 +192,10 @@ qualifyDeps (Q pp@(PackagePath ns q) pn) = go
     goD (Lang lang) _ = Lang lang
     goD (Pkg pkn vr) _ = Pkg pkn vr
     goD (Dep dep@(PkgComponent qpn (ExposedExe _)) ci) _ =
-      Dep (Q (PackagePath ns (QualExe pn qpn)) <$> dep) ci
+      Dep (Q (PackagePath (QualExe pn qpn)) <$> dep) ci
     goD (Dep dep@(PkgComponent _qpn (ExposedLib _)) ci) comp
-      | comp == ComponentSetup = Dep (Q (PackagePath ns (QualSetup pn)) <$> dep) ci
-      | otherwise = Dep (Q (PackagePath ns inheritedQ) <$> dep) ci
+      | comp == ComponentSetup = Dep (Q (PackagePath (QualSetup pn)) <$> dep) ci
+      | otherwise = Dep (Q (PackagePath inheritedQ) <$> dep) ci
 
     -- If P has a setup dependency on Q, and Q has a regular dependency on R, then
     -- we say that the 'Setup' qualifier is inherited: P has an (indirect) setup

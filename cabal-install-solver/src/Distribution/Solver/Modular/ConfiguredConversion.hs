@@ -55,7 +55,7 @@ convPI (PI _ (I _ (Inst pi))) = Left pi
 convPI pi                     = Right (packageId (either id id (convConfId pi)))
 
 convConfId :: PI QPN -> Either SolverId {- is lib -} SolverId {- is exe -}
-convConfId (PI (Q (PackagePath _ q) pn) (I v loc)) =
+convConfId (PI (Q (PackagePath q) pn) (I v loc)) =
     case loc of
         Inst pi -> Left (PreExistingId sourceId pi)
         _otherwise

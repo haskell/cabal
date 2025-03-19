@@ -197,7 +197,6 @@ planPackages
               then Nothing
               else Just maxBackjumps
           )
-          . setIndependentGoals independentGoals
           . setReorderGoals reorderGoals
           . setCountConflicts countConflicts
           . setFineGrainedConflicts fineGrainedConflicts
@@ -235,7 +234,6 @@ planPackages
       countConflicts = fromFlag (fetchCountConflicts fetchFlags)
       fineGrainedConflicts = fromFlag (fetchFineGrainedConflicts fetchFlags)
       minimizeConflictSet = fromFlag (fetchMinimizeConflictSet fetchFlags)
-      independentGoals = fromFlag (fetchIndependentGoals fetchFlags)
       shadowPkgs = fromFlag (fetchShadowPkgs fetchFlags)
       strongFlags = fromFlag (fetchStrongFlags fetchFlags)
       maxBackjumps = fromFlag (fetchMaxBackjumps fetchFlags)

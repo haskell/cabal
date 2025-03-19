@@ -44,7 +44,6 @@ import Distribution.Solver.Types.Settings
   ( AllowBootLibInstalls (..)
   , CountConflicts (..)
   , FineGrainedConflicts (..)
-  , IndependentGoals (..)
   , MinimizeConflictSet (..)
   , OnlyConstrained (..)
   , PreferOldest (..)
@@ -179,10 +178,6 @@ projectConfigStoreDir f s = fmap (\x -> s{T.projectConfigStoreDir = x}) (f (T.pr
 projectConfigPerComponent :: Lens' ProjectConfigShared (Flag Bool)
 projectConfigPerComponent f s = fmap (\x -> s{T.projectConfigPerComponent = x}) (f (T.projectConfigPerComponent s))
 {-# INLINEABLE projectConfigPerComponent #-}
-
-projectConfigIndependentGoals :: Lens' ProjectConfigShared (Flag IndependentGoals)
-projectConfigIndependentGoals f s = fmap (\x -> s{T.projectConfigIndependentGoals = x}) (f (T.projectConfigIndependentGoals s))
-{-# INLINEABLE projectConfigIndependentGoals #-}
 
 projectConfigProjectFile :: Lens' ProjectConfigShared (Flag FilePath)
 projectConfigProjectFile f s = fmap (\x -> s{T.projectConfigProjectFile = x}) (f (T.projectConfigProjectFile s))

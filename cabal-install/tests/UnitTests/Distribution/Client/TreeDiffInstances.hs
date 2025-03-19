@@ -45,7 +45,6 @@ instance ToExpr ProjectConfigPath
 instance ToExpr ConstraintSource
 instance ToExpr CountConflicts
 instance ToExpr FineGrainedConflicts
-instance ToExpr IndependentGoals
 instance ToExpr InstallMethod
 instance ToExpr InstallOutcome
 instance ToExpr LocalRepo

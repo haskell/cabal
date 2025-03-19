@@ -62,7 +62,6 @@ data SolverConfig = SolverConfig {
   countConflicts         :: CountConflicts,
   fineGrainedConflicts   :: FineGrainedConflicts,
   minimizeConflictSet    :: MinimizeConflictSet,
-  independentGoals       :: IndependentGoals,
   avoidReinstalls        :: AvoidReinstalls,
   shadowPkgs             :: ShadowPkgs,
   strongFlags            :: StrongFlags,
@@ -144,7 +143,8 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
                             P.onlyConstrained pkgIsExplicit
                           OnlyConstrainedNone ->
                             id)
-    buildPhase       = buildTree idx (independentGoals sc) (S.toList userGoals)
+
+    buildPhase       = buildTree idx (S.toList userGoals)
 
     allExplicit = M.keysSet userConstraints `S.union` userGoals
 
@@ -250,5 +250,5 @@ _removeGR = trav go
    dummy =
        DependencyGoal $
        DependencyReason
-           (Q (PackagePath DefaultNamespace QualToplevel) (mkPackageName "$"))
+           (Q (PackagePath QualToplevel) (mkPackageName "$"))
            M.empty S.empty

@@ -10,7 +10,6 @@ module Distribution.Solver.Modular.Package
   , PN
   , QPV
   , instI
-  , makeIndependent
   , showI
   , showPI
   , unPN
@@ -74,8 +73,3 @@ showPI (PI qpn i) = showQPN qpn ++ "-" ++ showI i
 instI :: I -> Bool
 instI (I _ (Inst _)) = True
 instI _              = False
-
--- | Qualify a target package with its own name so that its dependencies are not
--- required to be consistent with other targets.
-makeIndependent :: PN -> QPN
-makeIndependent pn = Q (PackagePath (Independent pn) QualToplevel) pn

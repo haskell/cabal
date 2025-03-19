@@ -270,7 +270,6 @@ data ExampleVar
 
 data ExampleQualifier
   = QualNone
-  | QualIndep ExamplePkgName
   | QualSetup ExamplePkgName
   | -- The two package names are the build target and the package containing the
     -- setup script.
@@ -789,7 +788,6 @@ exResolve
   -> CountConflicts
   -> FineGrainedConflicts
   -> MinimizeConflictSet
-  -> IndependentGoals
   -> PreferOldest
   -> ReorderGoals
   -> AllowBootLibInstalls
@@ -812,7 +810,6 @@ exResolve
   countConflicts
   fineGrainedConflicts
   minimizeConflictSet
-  indepGoals
   prefOldest
   reorder
   allowBootLibInstalls
@@ -857,17 +854,16 @@ exResolve
               setCountConflicts countConflicts $
                 setFineGrainedConflicts fineGrainedConflicts $
                   setMinimizeConflictSet minimizeConflictSet $
-                    setIndependentGoals indepGoals $
-                      (if asBool prefOldest then setPreferenceDefault PreferAllOldest else id) $
-                        setReorderGoals reorder $
-                          setMaxBackjumps mbj $
-                            setAllowBootLibInstalls allowBootLibInstalls $
-                              setOnlyConstrained onlyConstrained $
-                                setEnableBackjumping enableBj $
-                                  setSolveExecutables solveExes $
-                                    setGoalOrder goalOrder $
-                                      setSolverVerbosity verbosity $
-                                        standardInstallPolicy instIdx avaiIdx targets'
+                    (if asBool prefOldest then setPreferenceDefault PreferAllOldest else id) $
+                      setReorderGoals reorder $
+                        setMaxBackjumps mbj $
+                          setAllowBootLibInstalls allowBootLibInstalls $
+                            setOnlyConstrained onlyConstrained $
+                              setEnableBackjumping enableBj $
+                                setSolveExecutables solveExes $
+                                  setGoalOrder goalOrder $
+                                    setSolverVerbosity verbosity $
+                                      standardInstallPolicy instIdx avaiIdx targets'
       toLpc pc = LabeledPackageConstraint pc ConstraintSourceUnknown
 
       toConstraint (ExVersionConstraint scope v) =

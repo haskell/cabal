@@ -7,7 +7,6 @@ module UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
   , maxBackjumps
   , disableFineGrainedConflicts
   , minimizeConflictSet
-  , independentGoals
   , preferOldest
   , allowBootLibInstalls
   , onlyConstrained
@@ -64,11 +63,6 @@ minimizeConflictSet :: SolverTest -> SolverTest
 minimizeConflictSet test =
   test{testMinimizeConflictSet = MinimizeConflictSet True}
 
--- | Combinator to turn on --independent-goals behavior, i.e. solve
--- for the goals as if we were solving for each goal independently.
-independentGoals :: SolverTest -> SolverTest
-independentGoals test = test{testIndepGoals = IndependentGoals True}
-
 -- | Combinator to turn on --prefer-oldest
 preferOldest :: SolverTest -> SolverTest
 preferOldest test = test{testPreferOldest = PreferOldest True}
@@ -117,7 +111,6 @@ data SolverTest = SolverTest
   , testMaxBackjumps :: Maybe Int
   , testFineGrainedConflicts :: FineGrainedConflicts
   , testMinimizeConflictSet :: MinimizeConflictSet
-  , testIndepGoals :: IndependentGoals
   , testPreferOldest :: PreferOldest
   , testAllowBootLibInstalls :: AllowBootLibInstalls
   , testOnlyConstrained :: OnlyConstrained
@@ -220,7 +213,6 @@ mkTestExtLangPC exts langs mPkgConfigDb db label targets result =
     , testMaxBackjumps = Nothing
     , testFineGrainedConflicts = FineGrainedConflicts True
     , testMinimizeConflictSet = MinimizeConflictSet False
-    , testIndepGoals = IndependentGoals False
     , testPreferOldest = PreferOldest False
     , testAllowBootLibInstalls = AllowBootLibInstalls False
     , testOnlyConstrained = OnlyConstrainedNone
@@ -251,7 +243,6 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
             (CountConflicts True)
             testFineGrainedConflicts
             testMinimizeConflictSet
-            testIndepGoals
             testPreferOldest
             (ReorderGoals False)
             testAllowBootLibInstalls
@@ -307,20 +298,10 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
     toQPN q pn = P.Q pp (C.mkPackageName pn)
       where
         pp = case q of
-          QualNone -> P.PackagePath P.DefaultNamespace P.QualToplevel
-          QualIndep p ->
-            P.PackagePath
-              (P.Independent $ C.mkPackageName p)
-              P.QualToplevel
+          QualNone -> P.PackagePath P.QualToplevel
           QualSetup s ->
-            P.PackagePath
-              P.DefaultNamespace
-              (P.QualSetup (C.mkPackageName s))
-          QualIndepSetup p s ->
-            P.PackagePath
-              (P.Independent $ C.mkPackageName p)
-              (P.QualSetup (C.mkPackageName s))
+            P.PackagePath (P.QualSetup (C.mkPackageName s))
+          QualIndepSetup _ s ->
+            P.PackagePath (P.QualSetup (C.mkPackageName s))
           QualExe p1 p2 ->
-            P.PackagePath
-              P.DefaultNamespace
-              (P.QualExe (C.mkPackageName p1) (C.mkPackageName p2))
+            P.PackagePath (P.QualExe (C.mkPackageName p1) (C.mkPackageName p2))
