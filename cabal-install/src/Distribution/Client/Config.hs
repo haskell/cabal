@@ -575,6 +575,10 @@ instance Semigroup SavedConfig where
               combineMonoid savedConfigureExFlags configAllowOlder
           , configWriteGhcEnvironmentFilesPolicy =
               combine configWriteGhcEnvironmentFilesPolicy
+          , configBuildHcFlavor = combine configBuildHcFlavor
+          , configBuildHcPath = combine configBuildHcPath
+          , configBuildHcPkg = combine configBuildHcPkg
+          , configBuildPackageDBs = lastNonEmpty configBuildPackageDBs
           }
         where
           combine = combine' savedConfigureExFlags

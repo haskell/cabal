@@ -244,6 +244,10 @@ data ProjectConfigToolchain = ProjectConfigToolchain
   , projectConfigHcPath :: Flag FilePath
   , projectConfigHcPkg :: Flag FilePath
   , projectConfigPackageDBs :: [Maybe PackageDBCWD]
+  , projectConfigBuildHcFlavor :: Flag CompilerFlavor
+  , projectConfigBuildHcPath :: Flag FilePath
+  , projectConfigBuildHcPkg :: Flag FilePath
+  , projectConfigBuildPackageDBs :: [Maybe PackageDBCWD]
   }
   deriving (Eq, Show, Generic)
 

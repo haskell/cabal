@@ -216,6 +216,22 @@ projectConfigPackageDBs :: Lens' ProjectConfigToolchain [Maybe PackageDBCWD]
 projectConfigPackageDBs f s = fmap (\x -> s{T.projectConfigPackageDBs = x}) (f (T.projectConfigPackageDBs s))
 {-# INLINEABLE projectConfigPackageDBs #-}
 
+projectConfigBuildHcFlavor :: Lens' ProjectConfigToolchain (Flag CompilerFlavor)
+projectConfigBuildHcFlavor f s = fmap (\x -> s{T.projectConfigBuildHcFlavor = x}) (f (T.projectConfigBuildHcFlavor s))
+{-# INLINEABLE projectConfigBuildHcFlavor #-}
+
+projectConfigBuildHcPath :: Lens' ProjectConfigToolchain (Flag FilePath)
+projectConfigBuildHcPath f s = fmap (\x -> s{T.projectConfigBuildHcPath = x}) (f (T.projectConfigBuildHcPath s))
+{-# INLINEABLE projectConfigBuildHcPath #-}
+
+projectConfigBuildHcPkg :: Lens' ProjectConfigToolchain (Flag FilePath)
+projectConfigBuildHcPkg f s = fmap (\x -> s{T.projectConfigBuildHcPkg = x}) (f (T.projectConfigBuildHcPkg s))
+{-# INLINEABLE projectConfigBuildHcPkg #-}
+
+projectConfigBuildPackageDBs :: Lens' ProjectConfigToolchain [Maybe PackageDBCWD]
+projectConfigBuildPackageDBs f s = fmap (\x -> s{T.projectConfigBuildPackageDBs = x}) (f (T.projectConfigBuildPackageDBs s))
+{-# INLINEABLE projectConfigBuildPackageDBs #-}
+
 projectConfigHaddockIndex :: Lens' ProjectConfigShared (Flag PathTemplate)
 projectConfigHaddockIndex f s = fmap (\x -> s{T.projectConfigHaddockIndex = x}) (f (T.projectConfigHaddockIndex s))
 {-# INLINEABLE projectConfigHaddockIndex #-}
