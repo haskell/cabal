@@ -1043,12 +1043,32 @@ build information fields (see the section on `build information`_).
 
 .. pkg-field:: main-is: filename (required)
 
-    The name of the ``.hs`` or ``.lhs`` file containing the ``Main``
-    module. Note that it is the ``.hs`` filename that must be listed,
-    even if that file is generated using a preprocessor. The source file
-    must be relative to one of the directories listed in
-    :pkg-field:`hs-source-dirs`. Further, while the name of the file may
-    vary, the module itself must be named ``Main``.
+    By convention, a Haskell program must have a module called ``Main`` which
+    exports an IO action named ``main``. When the program is executed, the
+    action is performed. This field specifies the name of the ``.hs`` or
+    ``.lhs`` source file containing that module. It is the ``.hs`` filename that
+    must be listed, even if that file is generated using a preprocessor. The
+    file must be relative to one of the directories listed in
+    :pkg-field:`hs-source-dirs`.
+
+    Further, while the name of the source file may vary, if the convention is
+    being followed, the module itself must be named ``Main`` and export
+    ``main``.
+
+    However, GHC's ``-main-is`` option can be used to change the name of the
+    relevant IO action. For example, if source file ``MyMainSourceFile.hs``
+    contains a module named ``MyMainModule`` exporting ``myMainFunc`` and that
+    is to be the relevant IO action, you can specify:
+
+    ::
+
+        executable my-app
+          main-is: MyMainSourceFile.hs
+          ghc-options: -main-is MyMainModule.myMainFunc
+          build-depends:
+              base
+          default-language: Haskell2010
+
 
     Starting with ``cabal-version: 1.18`` this field supports
     specifying a C, C++, or objC source file as the main entry point.
@@ -1105,7 +1125,7 @@ field.
     even if that file is generated using a preprocessor. The source file
     must be relative to one of the directories listed in
     :pkg-field:`hs-source-dirs`. This field is analogous to the ``main-is`` field
-    of an executable section.
+    of an executable section; see that documentation for further information.
 
 Test suites using the ``detailed-0.9`` interface are modules exporting
 the symbol ``tests :: IO [Test]``. The ``Test`` type is exported by the
@@ -1264,8 +1284,8 @@ standard output and error channels.
     even if that file is generated using a preprocessor. The source file
     must be relative to one of the directories listed in
     :pkg-field:`hs-source-dirs`. This field is analogous to the ``main-is``
-    field of an executable section. Further, while the name of the file may
-    vary, the module itself must be named ``Main``.
+    field of an executable section; see that documentation for further
+    information.
 
 Example:
 """""""""""""""""""""""""""""""""""""""""""""""""""""""
