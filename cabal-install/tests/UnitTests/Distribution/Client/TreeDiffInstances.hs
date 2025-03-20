@@ -9,6 +9,7 @@ import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.ProjectConfigPath
 import Distribution.Solver.Types.Settings
+import Distribution.Solver.Types.Stage
 
 import Distribution.Client.BuildReports.Types
 import Distribution.Client.CmdInstall.ClientInstallFlags
@@ -73,6 +74,7 @@ instance ToExpr ReorderGoals
 instance ToExpr RepoIndexState
 instance ToExpr RepoName
 instance ToExpr ReportLevel
+instance ToExpr Stage
 instance ToExpr StrongFlags
 instance ToExpr Timestamp
 instance ToExpr TotalIndexState

@@ -44,6 +44,7 @@ import Distribution.Solver.Types.OptionalStanza (OptionalStanza (..), OptionalSt
 import Distribution.Solver.Types.PackageConstraint (PackageProperty (..))
 
 import Data.Coerce (Coercible, coerce)
+import Distribution.Solver.Types.Stage (Stage)
 import Network.URI (URI (..), URIAuth (..), isUnreserved)
 import Test.QuickCheck
   ( Arbitrary (..)
@@ -323,6 +324,10 @@ instance Arbitrary a => Arbitrary (OptionalStanzaMap a) where
     return $ optStanzaTabulate $ \x -> case x of
       TestStanzas -> x1
       BenchStanzas -> x2
+
+instance Arbitrary Stage where
+  arbitrary = genericArbitrary
+  shrink = genericShrink
 
 -------------------------------------------------------------------------------
 -- BuildReport
