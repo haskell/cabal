@@ -718,6 +718,7 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
 
     projectConfigToolchain = ProjectConfigToolchain{..}
     projectConfigPackageDBs = (fmap . fmap) (interpretPackageDB Nothing) projectConfigPackageDBs_
+    projectConfigBuildPackageDBs = (fmap . fmap) (interpretPackageDB Nothing) projectConfigBuildPackageDBs_
 
     ConfigFlags
       { configCommonFlags = commonFlags
@@ -743,6 +744,10 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
       , configAllowNewer = projectConfigAllowNewer
       , configWriteGhcEnvironmentFilesPolicy =
         projectConfigWriteGhcEnvironmentFilesPolicy
+      , configBuildHcFlavor = projectConfigBuildHcFlavor
+      , configBuildHcPath = projectConfigBuildHcPath
+      , configBuildHcPkg = projectConfigBuildHcPkg
+      , configBuildPackageDBs = projectConfigBuildPackageDBs_
       } = configExFlags
 
     InstallFlags
@@ -1021,6 +1026,10 @@ convertToLegacySharedConfig
           , configAllowNewer = projectConfigAllowNewer
           , configWriteGhcEnvironmentFilesPolicy =
               projectConfigWriteGhcEnvironmentFilesPolicy
+          , configBuildHcFlavor = projectConfigBuildHcFlavor
+          , configBuildHcPath = projectConfigBuildHcPath
+          , configBuildHcPkg = projectConfigBuildHcPkg
+          , configBuildPackageDBs = fmap (fmap (fmap unsafeMakeSymbolicPath)) projectConfigBuildPackageDBs
           }
 
       installFlags =

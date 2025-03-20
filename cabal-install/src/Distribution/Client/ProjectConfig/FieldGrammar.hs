@@ -119,6 +119,10 @@ projectConfigToolchainFieldGrammar =
     <*> optionalFieldDefAla "with-compiler" (alaFlag FilePathNT) L.projectConfigHcPath mempty
     <*> optionalFieldDefAla "with-hc-pkg" (alaFlag FilePathNT) L.projectConfigHcPkg mempty
     <*> monoidalFieldAla "package-dbs" (alaList' CommaFSep PackageDBNT) L.projectConfigPackageDBs
+    <*> optionalFieldDef "build-compiler" L.projectConfigBuildHcFlavor mempty
+    <*> optionalFieldDefAla "with-build-compiler" (alaFlag FilePathNT) L.projectConfigBuildHcPath mempty
+    <*> optionalFieldDefAla "with-build-hc-pkg" (alaFlag FilePathNT) L.projectConfigBuildHcPkg mempty
+    <*> monoidalFieldAla "build-package-dbs" (alaList' CommaFSep PackageDBNT) L.projectConfigBuildPackageDBs
 
 packageConfigFieldGrammar :: [String] -> ParsecFieldGrammar' PackageConfig
 packageConfigFieldGrammar knownPrograms =

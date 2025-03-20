@@ -606,6 +606,10 @@ instance Arbitrary ProjectConfigToolchain where
     projectConfigHcPath <- arbitraryFlag arbitraryShortToken
     projectConfigHcPkg <- arbitraryFlag arbitraryShortToken
     projectConfigPackageDBs <- shortListOf 2 arbitrary
+    projectConfigBuildHcFlavor <- arbitrary
+    projectConfigBuildHcPath <- arbitraryFlag arbitraryShortToken
+    projectConfigBuildHcPkg <- arbitraryFlag arbitraryShortToken
+    projectConfigBuildPackageDBs <- shortListOf 2 arbitrary
     return ProjectConfigToolchain{..}
 
   shrink ProjectConfigToolchain{..} =
@@ -615,6 +619,10 @@ instance Arbitrary ProjectConfigToolchain where
         <*> shrinkerAla (fmap NonEmpty) projectConfigHcPath
         <*> shrinkerAla (fmap NonEmpty) projectConfigHcPkg
         <*> shrinker projectConfigPackageDBs
+        <*> shrinker projectConfigBuildHcFlavor
+        <*> shrinkerAla (fmap NonEmpty) projectConfigBuildHcPath
+        <*> shrinkerAla (fmap NonEmpty) projectConfigBuildHcPkg
+        <*> shrinker projectConfigBuildPackageDBs
 
 instance Arbitrary ProjectConfigShared where
   arbitrary = do
