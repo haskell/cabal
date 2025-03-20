@@ -118,6 +118,7 @@ library
         Distribution.Client.CmdTarget
         Distribution.Client.CmdTest
         Distribution.Client.CmdUpdate
+        Distribution.Client.CmdGenBounds
         Distribution.Client.Compat.Directory
         Distribution.Client.Compat.ExecutablePath
         Distribution.Client.Compat.Orphans
