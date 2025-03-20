@@ -202,6 +202,7 @@ data ProjectConfigShared = ProjectConfigShared
 
     projectConfigInstallDirs :: InstallDirs (Flag PathTemplate)
   , projectConfigPackageDBs :: [Maybe PackageDBCWD]
+  , projectConfigBuildPackageDBs :: [Maybe PackageDBCWD]
   , -- configuration used both by the solver and other phases
     projectConfigRemoteRepos :: NubList RemoteRepo
   -- ^ Available Hackage servers.

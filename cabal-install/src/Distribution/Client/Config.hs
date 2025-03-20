@@ -576,6 +576,7 @@ instance Semigroup SavedConfig where
           , configBuildHcFlavor = combine configBuildHcFlavor
           , configBuildHcPath = combine configBuildHcPath
           , configBuildHcPkg = combine configBuildHcPkg
+          , configBuildPackageDBs = lastNonEmpty configBuildPackageDBs
           }
         where
           combine = combine' savedConfigureExFlags

@@ -705,6 +705,7 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
   ProjectConfigShared{..}
   where
     projectConfigPackageDBs = (fmap . fmap) (interpretPackageDB Nothing) projectConfigPackageDBs_
+    projectConfigBuildPackageDBs = (fmap . fmap) (interpretPackageDB Nothing) projectConfigBuildPackageDBs_
     projectConfigHookHashes = mempty -- :: Map FilePath HookAccept
     projectConfigDistDir = fmap getSymbolicPath projectConfigAbsoluteDistDir
 
@@ -744,6 +745,7 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
       , configBuildHcFlavor = projectConfigBuildHcFlavor
       , configBuildHcPath = projectConfigBuildHcPath
       , configBuildHcPkg = projectConfigBuildHcPkg
+      , configBuildPackageDBs = projectConfigBuildPackageDBs_
       } = configExFlags
 
     InstallFlags

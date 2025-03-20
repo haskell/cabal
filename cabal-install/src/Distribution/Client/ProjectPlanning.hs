@@ -796,7 +796,7 @@ rebuildInstallPlan
                 getInstalledPackages
                   verbosity
                   (hostToolchain toolchains)
-                  corePackageDbs
+                  (corePackageDbs Host)
               -- this is an aweful hack, however `getInstalledPackages` is
               -- terribly invovled everywhere so we'll have to do with this
               -- for now. FIXME!
@@ -805,7 +805,7 @@ rebuildInstallPlan
                 getInstalledPackages
                   verbosity
                   (buildToolchain toolchains)
-                  corePackageDbs
+                  (corePackageDbs Build)
 
               (sourcePkgDb, tis, ar) <-
                 getSourcePackages
@@ -840,9 +840,13 @@ rebuildInstallPlan
                     dieWithException verbosity $ PhaseRunSolverErr msg
                   Right plan -> return (plan, pkgConfigDB, tis, ar)
           where
-            corePackageDbs :: PackageDBStackCWD
-            corePackageDbs =
-              Cabal.interpretPackageDbFlags False (projectConfigPackageDBs projectConfigShared)
+            corePackageDbs :: Stage -> PackageDBStackCWD
+            corePackageDbs stage =
+              Cabal.interpretPackageDbFlags False (packageDBs stage)
+
+            packageDBs Host = projectConfigPackageDBs projectConfigShared
+            packageDBs Build = projectConfigBuildPackageDBs projectConfigShared
+
 
             withRepoCtx :: (RepoContext -> IO a) -> IO a
             withRepoCtx =
@@ -2323,7 +2327,10 @@ elaborateInstallPlan
 
             inplacePackageDbs stage = corePackageDbs stage ++ [distPackageDB (compilerId (toolchainCompiler (toolchainFor stage toolchains)))]
 
-            corePackageDbs stage = storePackageDBStack (toolchainCompiler (toolchainFor stage toolchains)) (projectConfigPackageDBs sharedPackageConfig)
+            corePackageDbs stage = storePackageDBStack (toolchainCompiler (toolchainFor stage toolchains)) (packageDBs stage)
+
+            packageDBs Host = projectConfigPackageDBs sharedPackageConfig
+            packageDBs Build = projectConfigBuildPackageDBs sharedPackageConfig
 
             elabInplaceBuildPackageDBStack = inplacePackageDbs stage
             elabInplaceRegisterPackageDBStack = inplacePackageDbs stage

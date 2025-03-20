@@ -923,6 +923,7 @@ data ConfigExFlags = ConfigExFlags
   , configBuildHcFlavor :: Flag CompilerFlavor
   , configBuildHcPath :: Flag FilePath
   , configBuildHcPkg :: Flag FilePath
+  , configBuildPackageDBs :: [Maybe PackageDB]
   }
   deriving (Eq, Show, Generic)
 
@@ -1075,6 +1076,19 @@ configureExOptions _showOrParseArgs src =
       configBuildHcPkg
       (\v flags -> flags{configBuildHcPkg = v})
       (reqArgFlag "PATH")
+  , option
+      ""
+      ["build-package-db"]
+      ( "Append the given package database to the list of package"
+          ++ " databases used (to satisfy dependencies and register into)."
+          ++ " May be a specific file, 'global' or 'user'. The initial list"
+          ++ " is ['global'], ['global', 'user'], or ['global', $sandbox],"
+          ++ " depending on context. Use 'clear' to reset the list to empty."
+          ++ " See the user guide for details."
+      )
+      configBuildPackageDBs
+      (\v flags -> flags{configBuildPackageDBs = v})
+      (reqArg' "DB" readPackageDbList showPackageDbList)
   ]
 
 writeGhcEnvironmentFilesPolicyParser :: ReadE (Flag WriteGhcEnvironmentFilesPolicy)
