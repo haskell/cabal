@@ -845,7 +845,9 @@ rebuildInstallPlan
               Cabal.interpretPackageDbFlags False (packageDBs stage)
 
             packageDBs Host = projectConfigPackageDBs projectConfigShared
-            packageDBs Build = projectConfigBuildPackageDBs projectConfigShared
+            packageDBs Build
+              | buildIsHost toolchains, null (projectConfigBuildPackageDBs projectConfigShared) = projectConfigPackageDBs projectConfigShared
+              | otherwise = projectConfigBuildPackageDBs projectConfigShared
 
 
             withRepoCtx :: (RepoContext -> IO a) -> IO a
@@ -2330,7 +2332,9 @@ elaborateInstallPlan
             corePackageDbs stage = storePackageDBStack (toolchainCompiler (toolchainFor stage toolchains)) (packageDBs stage)
 
             packageDBs Host = projectConfigPackageDBs sharedPackageConfig
-            packageDBs Build = projectConfigBuildPackageDBs sharedPackageConfig
+            packageDBs Build
+              | buildIsHost toolchains, null (projectConfigBuildPackageDBs sharedPackageConfig) = projectConfigPackageDBs sharedPackageConfig
+              | otherwise = projectConfigBuildPackageDBs sharedPackageConfig
 
             elabInplaceBuildPackageDBStack = inplacePackageDbs stage
             elabInplaceRegisterPackageDBStack = inplacePackageDbs stage
@@ -4030,7 +4034,7 @@ computeInstallDirs storeDirLayout defaultInstallDirs elaboratedShared elab
       -- use special simplified install dirs
       storePackageInstallDirs'
         storeDirLayout
-        (toolchainCompiler $ buildToolchain $ pkgConfigToolchains elaboratedShared)
+        (toolchainCompiler $ hostToolchain $ pkgConfigToolchains elaboratedShared)
         (elabUnitId elab)
 
 -- TODO: [code cleanup] perhaps reorder this code
