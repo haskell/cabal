@@ -181,7 +181,7 @@ import Distribution.Simple.LocalBuildInfo
   )
 
 import Distribution.Simple.BuildWay
-import Distribution.Simple.PackageIndex (InstalledPackageIndex)
+import Distribution.Simple.PackageIndex (InstalledPackageIndex, allPackages)
 import Distribution.Simple.Program
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program.Find
@@ -805,7 +805,9 @@ rebuildInstallPlan
                 getInstalledPackages
                   verbosity
                   (buildToolchain toolchains)
-                  (corePackageDbs Build)
+                  -- FIXME: HACK
+                  -- if host and build compiler are the same, we want to get -package-db in here.
+                  (corePackageDbs $ if buildIsHost toolchains then Host else Build)
 
               (sourcePkgDb, tis, ar) <-
                 getSourcePackages
@@ -823,6 +825,12 @@ rebuildInstallPlan
 
               liftIO $ do
                 notice verbosity "Resolving dependencies..."
+                -- putStrLn "== installedPackages"
+                -- putStrLn $ unlines $ map (prettyShow . IPI.sourcePackageId) $ PI.allPackages installedPackages
+                -- putStrLn "== binstalledPackages"
+                -- putStrLn $ unlines $ map (prettyShow . IPI.sourcePackageId) $ PI.allPackages binstalledPkgIndex
+                -- putStrLn "== hinstalledPackages"
+                -- putStrLn $ unlines $ map (prettyShow . IPI.sourcePackageId) $ PI.allPackages hinstalledPkgIndex
                 planOrError <-
                   foldProgress logMsg (pure . Left) (pure . Right) $
                     planPackages

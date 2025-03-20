@@ -114,8 +114,9 @@ solve sc toolchains idx pkgConfigDB userPrefs userConstraints userGoals =
   validationCata    .
   traceTree "pruned.json" id .
   trav prunePhase   .
-  stageBuildDeps "build: " .
+  -- stageBuildDeps "post-prune: " .
   (if buildIsHost toolchains then id else trav P.pruneHostFromSetup) .
+  -- stageBuildDeps "build: " .
   traceTree "build.json" id $
   buildPhase
   where
