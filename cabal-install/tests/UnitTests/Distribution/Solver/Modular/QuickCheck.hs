@@ -43,6 +43,7 @@ import Distribution.Solver.Types.Variable
 import Distribution.Verbosity
 import Distribution.Version
 
+import Distribution.Solver.Types.Stage (Stage)
 import UnitTests.Distribution.Solver.Modular.DSL
 import UnitTests.Distribution.Solver.Modular.QuickCheck.Utils
   ( ArbitraryOrd (..)
@@ -586,6 +587,12 @@ instance Arbitrary OptionalStanza where
   shrink BenchStanzas = [TestStanzas]
   shrink TestStanzas = []
 
+instance Arbitrary Stage where
+  arbitrary = elements [minBound .. maxBound]
+
+  shrink stage =
+    [stage' | stage' <- [minBound .. maxBound], stage' /= stage]
+
 instance ArbitraryOrd pn => ArbitraryOrd (Variable pn)
 instance ArbitraryOrd a => ArbitraryOrd (P.Qualified a)
 instance ArbitraryOrd P.PackagePath
@@ -597,6 +604,7 @@ instance ArbitraryOrd ShortText where
   arbitraryCompare = do
     strc <- arbitraryCompare
     pure $ \l r -> strc (fromShortText l) (fromShortText r)
+instance ArbitraryOrd Stage
 
 deriving instance Generic (Variable pn)
 deriving instance Generic (P.Qualified a)
