@@ -357,10 +357,10 @@ pruneHostFromSetup = go
   where
     -- for Setup(.hs) and build-depends, we want to force Build packages.
     go (PChoiceF qpn rdm gr cs) | (Q (PackagePath _ (QualSetup _)) _) <- qpn =
-      PChoiceF qpn rdm gr (W.filterKey (not . isHostOrRepo) cs)
+      PChoiceF qpn rdm gr (W.filterKey (not . isHost) cs)
     -- QualExe are build-depends. Structure is QualExe (comp) (build-depend).
     go (PChoiceF qpn rdm gr cs) | (Q (PackagePath _ (QualExe _ _)) _) <- qpn =
-      PChoiceF qpn rdm gr (W.filterKey (not . isHostOrRepo) cs)
+      PChoiceF qpn rdm gr (W.filterKey (not . isHost) cs)
     -- everything else use Host packages.
     go (PChoiceF qpn rdm gr cs) | (Q (PackagePath _ _) _) <- qpn =
       PChoiceF qpn rdm gr (W.filterKey isHost cs)
@@ -368,10 +368,6 @@ pruneHostFromSetup = go
 
     isHost :: POption -> Bool
     isHost (POption (I s _v _l) _) = s == Host
-    isInRepo :: POption -> Bool
-    isInRepo (POption (I _s _v l) _) = l == InRepo
-    isHostOrRepo :: POption -> Bool
-    isHostOrRepo (POption (I s _v l) _) = s == Host || l == InRepo
 
 -- | Require all packages to be mentioned in a constraint or as a goal.
 onlyConstrained :: (PN -> Bool) -> EndoTreeTrav d QGoalReason
