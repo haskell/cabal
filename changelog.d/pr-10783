@@ -1,0 +1,11 @@
+synopsis: GHC arguments are no longer swallowed by enabling documentation
+packages: Cabal
+prs: #10783
+issues: #10782
+significance: significant
+
+description: {
+
+- Arguments to GHC are now properly concatenated with `-haddock` if documentation is enabled.
+
+}
