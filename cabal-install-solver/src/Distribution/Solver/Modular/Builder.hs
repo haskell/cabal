@@ -50,8 +50,7 @@ data BuildState = BS {
   index :: Index,                   -- ^ information about packages and their dependencies
   rdeps :: RevDepMap,               -- ^ set of all package goals, completed and open, with reverse dependencies
   open  :: [OpenGoal],              -- ^ set of still open goals (flag and package goals)
-  next  :: BuildType,               -- ^ kind of node to generate next
-  qualifyOptions :: QualifyOptions  -- ^ qualification options
+  next  :: BuildType                -- ^ kind of node to generate next
 }
 
 -- | Map of available linking targets.
@@ -105,7 +104,7 @@ scopedExtendOpen :: QPN -> FlaggedDeps PN -> FlagInfo ->
 scopedExtendOpen qpn fdeps fdefs s = extendOpen qpn gs s
   where
     -- Qualify all package names
-    qfdeps = qualifyDeps (qualifyOptions s) qpn fdeps
+    qfdeps = qualifyDeps qpn fdeps
     -- Introduce all package flags
     qfdefs = L.map (\ (fn, b) -> Flagged (FN qpn fn) b [] []) $ M.toList fdefs
     -- Combine new package and flag goals
@@ -255,7 +254,6 @@ buildTree idx (IndependentGoals ind) igs =
           , rdeps = M.fromList (L.map (\ qpn -> (qpn, []))              qpns)
           , open  = L.map topLevelGoal qpns
           , next  = Goals
-          , qualifyOptions = defaultQualifyOptions idx
           }
       , linkingState = M.empty
       }

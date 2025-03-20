@@ -61,8 +61,6 @@ data ValidateState = VS {
     , vsLinks    :: Map QPN LinkGroup
     , vsFlags    :: FAssignment
     , vsStanzas  :: SAssignment
-    , vsQualifyOptions :: QualifyOptions
-
     -- Saved qualified dependencies. Every time 'validateLinking' makes a
     -- package choice, it qualifies the package's dependencies and saves them in
     -- this map. Then the qualified dependencies are available for subsequent
@@ -101,7 +99,7 @@ validateLinking index = (`runReader` initVS) . go
     goP qpn@(Q _pp pn) opt@(POption i _) r = do
       vs <- ask
       let PInfo deps _ _ _ = vsIndex vs ! pn ! i
-          qdeps            = qualifyDeps (vsQualifyOptions vs) qpn deps
+          qdeps            = qualifyDeps qpn deps
           newSaved         = M.insert qpn qdeps (vsSaved vs)
       case execUpdateState (pickPOption qpn opt qdeps) vs of
         Left  (cs, err) -> return $ Fail cs (DependenciesNotLinked err)
@@ -129,7 +127,6 @@ validateLinking index = (`runReader` initVS) . go
       , vsLinks   = M.empty
       , vsFlags   = M.empty
       , vsStanzas = M.empty
-      , vsQualifyOptions = defaultQualifyOptions index
       , vsSaved   = M.empty
       }
 
@@ -275,8 +272,7 @@ linkDeps target = \deps -> do
 
     requalify :: FlaggedDeps QPN -> UpdateState (FlaggedDeps QPN)
     requalify deps = do
-      vs <- get
-      return $ qualifyDeps (vsQualifyOptions vs) target (unqualifyDeps deps)
+      return $ qualifyDeps target (unqualifyDeps deps)
 
 pickFlag :: QFN -> Bool -> UpdateState ()
 pickFlag qfn b = do

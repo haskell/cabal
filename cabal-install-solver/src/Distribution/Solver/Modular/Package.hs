@@ -88,7 +88,6 @@ primaryPP :: PackagePath -> Bool
 primaryPP (PackagePath _ns q) = go q
   where
     go QualToplevel    = True
-    go (QualBase  _)   = True
     go (QualSetup _)   = False
     go (QualExe _ _)   = False
 
