@@ -103,6 +103,8 @@ configureComponentLocalBuildInfos
     let conf_pkg_map =
           Map.fromListWith
             Map.union
+            $
+            -- Normal dependencies
             [ ( pc_pkgname pkg
               , Map.singleton
                   (pc_compname pkg)
@@ -115,8 +117,8 @@ configureComponentLocalBuildInfos
               )
             | pkg <- prePkgDeps
             ]
-            `Map.union` Map.fromListWith
-              Map.union
+              ++
+              -- Promised dependencies
               [ (pkg, Map.singleton (ann_cname aid) aid)
               | ConfiguredPromisedComponent pkg aid <- promisedPkgDeps
               ]
