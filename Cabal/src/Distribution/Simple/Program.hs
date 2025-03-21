@@ -115,6 +115,7 @@ module Distribution.Simple.Program
   , jhcProgram
   , uhcProgram
   , gccProgram
+  , gppProgram
   , arProgram
   , stripProgram
   , happyProgram
