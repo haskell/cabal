@@ -22,7 +22,6 @@ module Distribution.Simple.Bench
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Compat.Environment
 import qualified Distribution.PackageDescription as PD
 import Distribution.Pretty
 import Distribution.Simple.Build (addInternalBuildTools)
@@ -89,15 +88,12 @@ bench args pkg_descr lbi flags = do
               dieWithException verbosity $
                 NoBenchMarkProgram cmd
 
-            existingEnv <- getEnvironment
-
             -- Compute the appropriate environment for running the benchmark
             let progDb = LBI.withPrograms lbiForBench
                 pathVar = progSearchPath progDb
                 envOverrides = progOverrideEnv progDb
             newPath <- programSearchPathAsPATHVar pathVar
-            overrideEnv <- fromMaybe [] <$> getEffectiveEnvironment ([("PATH", Just newPath)] ++ envOverrides)
-            let shellEnv = overrideEnv ++ existingEnv
+            shellEnv <- getFullEnvironment ([("PATH", Just newPath)] ++ envOverrides)
 
             -- Add (DY)LD_LIBRARY_PATH if needed
             shellEnv' <-
