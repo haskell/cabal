@@ -59,6 +59,13 @@ module Distribution.Client.ProjectPlanning.Types
   , componentOptionalStanza
   , componentTargetName
 
+    -- * Toolchain
+  , Toolchain (..)
+  , Toolchains
+  , Stage (..)
+  , Staged (..)
+  , WithStage (..)
+
     -- * Setup script
   , SetupScriptStyle (..)
   ) where
@@ -77,9 +84,11 @@ import Distribution.Client.InstallPlan
   , GenericPlanPackage (..)
   )
 import qualified Distribution.Client.InstallPlan as InstallPlan
+import Distribution.Client.ProjectPlanning.Stage
 import Distribution.Client.SolverInstallPlan
   ( SolverInstallPlan
   )
+import Distribution.Client.Toolchain
 import Distribution.Client.Types
 
 import Distribution.Backpack
@@ -110,7 +119,6 @@ import Distribution.Simple.Utils (ordNub)
 import Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.OptionalStanza
-import Distribution.System
 import Distribution.Types.ComponentRequestedSpec
 import qualified Distribution.Types.LocalBuildConfig as LBC
 import Distribution.Types.PackageDescription (PackageDescription (..))
@@ -184,9 +192,7 @@ showElaboratedInstallPlan = InstallPlan.showInstallPlan_gen showNode
 --      even platform and compiler could be different if we're building things
 --      like a server + client with ghc + ghcjs
 data ElaboratedSharedConfig = ElaboratedSharedConfig
-  { pkgConfigPlatform :: Platform
-  , pkgConfigCompiler :: Compiler -- TODO: [code cleanup] replace with CompilerInfo
-  , pkgConfigCompilerProgs :: ProgramDb
+  { pkgConfigToolchains :: Toolchains
   -- ^ The programs that the compiler configured (e.g. for GHC, the progs
   -- ghc & ghc-pkg). Once constructed, only the 'configuredPrograms' are
   -- used.
@@ -245,6 +251,7 @@ data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
   -- to disable. This tells us which ones we build by default, and
   -- helps with error messages when the user asks to build something
   -- they explicitly disabled.
+  , elabStage :: Stage
   , -- TODO: The 'Bool' here should be refined into an ADT with three
     -- cases: NotRequested, ExplicitlyRequested and
     -- ImplicitlyRequested.  A stanza is explicitly requested if
@@ -341,10 +348,11 @@ normaliseConfiguredPackage
   :: ElaboratedSharedConfig
   -> ElaboratedConfiguredPackage
   -> ElaboratedConfiguredPackage
-normaliseConfiguredPackage ElaboratedSharedConfig{pkgConfigCompilerProgs} pkg =
+normaliseConfiguredPackage shared pkg =
   pkg{elabProgramArgs = Map.mapMaybeWithKey lookupFilter (elabProgramArgs pkg)}
   where
-    knownProgramDb = addKnownPrograms builtinPrograms pkgConfigCompilerProgs
+    Toolchain{toolchainProgramDb} = getStage (pkgConfigToolchains shared) (elabStage pkg)
+    knownProgramDb = addKnownPrograms builtinPrograms toolchainProgramDb
 
     pkgDesc :: PackageDescription
     pkgDesc = elabPkgDescription pkg
@@ -537,10 +545,12 @@ elabDistDirParams shared elab =
     , distParamComponentName = case elabPkgOrComp elab of
         ElabComponent comp -> compComponentName comp
         ElabPackage _ -> Nothing
-    , distParamCompilerId = compilerId (pkgConfigCompiler shared)
-    , distParamPlatform = pkgConfigPlatform shared
+    , distParamCompilerId = compilerId toolchainCompiler
+    , distParamPlatform = toolchainPlatform
     , distParamOptimization = LBC.withOptimization $ elabBuildOptions elab
     }
+  where
+    Toolchain{toolchainCompiler, toolchainPlatform} = getStage (pkgConfigToolchains shared) (elabStage elab)
 
 -- | The full set of dependencies which dictate what order we
 -- need to build things in the install plan: "order dependencies"

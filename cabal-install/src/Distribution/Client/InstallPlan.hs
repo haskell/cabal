@@ -40,6 +40,7 @@ module Distribution.Client.InstallPlan
   , configureInstallPlan
   , remove
   , installed
+  , installedM
   , lookup
   , directDeps
   , revDirectDeps
@@ -414,6 +415,26 @@ installed shouldBeInstalled installPlan =
     | Configured pkg <- reverseTopologicalOrder installPlan
     , shouldBeInstalled pkg
     ]
+  where
+    markInstalled plan pkg =
+      assert (all isInstalled (directDeps plan (nodeKey pkg))) $
+        plan
+          { planGraph = Graph.insert (Installed pkg) (planGraph plan)
+          }
+
+-- | Change a number of packages in the 'Configured' state to the 'Installed'
+-- state.
+--
+-- To preserve invariants, the package must have all of its dependencies
+-- already installed too (that is 'PreExisting' or 'Installed').
+installedM
+  :: (IsUnit ipkg, IsUnit srcpkg, Monad m)
+  => (srcpkg -> m Bool)
+  -> GenericInstallPlan ipkg srcpkg
+  -> m (GenericInstallPlan ipkg srcpkg)
+installedM shouldBeInstalled installPlan = do
+  s <- filterM shouldBeInstalled [pkg | Configured pkg <- reverseTopologicalOrder installPlan]
+  return $ foldl markInstalled installPlan s
   where
     markInstalled plan pkg =
       assert (all isInstalled (directDeps plan (nodeKey pkg))) $
