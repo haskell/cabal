@@ -100,6 +100,7 @@ import qualified Distribution.Solver.Types.PkgConfigDb as PC
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SolverPackage
 import Distribution.Solver.Types.SourcePackage
+import qualified Distribution.Solver.Types.Stage as Stage
 import Distribution.Solver.Types.Variable
 import Distribution.Types.UnitId (UnitId)
 
@@ -832,7 +833,11 @@ exResolve
   prefs
   verbosity
   enableAllTests =
-    resolveDependencies C.buildPlatform compiler pkgConfigDb params
+    resolveDependencies
+      (Stage.always (compiler, C.buildPlatform))
+      (Stage.always pkgConfigDb)
+      (Stage.always instIdx)
+      params
     where
       defaultCompiler = C.unknownCompilerInfo C.buildCompilerId C.NoAbiTag
       compiler =
@@ -866,17 +871,16 @@ exResolve
               setCountConflicts countConflicts $
                 setFineGrainedConflicts fineGrainedConflicts $
                   setMinimizeConflictSet minimizeConflictSet $
-                    setIndependentGoals indepGoals $
-                      (if asBool prefOldest then setPreferenceDefault PreferAllOldest else id) $
-                        setReorderGoals reorder $
-                          setMaxBackjumps mbj $
-                            setAllowBootLibInstalls allowBootLibInstalls $
-                              setOnlyConstrained onlyConstrained $
-                                setEnableBackjumping enableBj $
-                                  setSolveExecutables solveExes $
-                                    setGoalOrder goalOrder $
-                                      setSolverVerbosity (C.verbosityLevel verbosity) $
-                                        standardInstallPolicy instIdx avaiIdx targets'
+                    (if asBool prefOldest then setPreferenceDefault PreferAllOldest else id) $
+                      setReorderGoals reorder $
+                        setMaxBackjumps mbj $
+                          setAllowBootLibInstalls allowBootLibInstalls $
+                            setOnlyConstrained onlyConstrained $
+                              setEnableBackjumping enableBj $
+                                setSolveExecutables solveExes $
+                                  setGoalOrder goalOrder $
+                                    setSolverVerbosity verbosity $
+                                      standardInstallPolicy avaiIdx targets'
       toLpc pc = LabeledPackageConstraint pc ConstraintSourceUnknown
 
       toConstraint (ExVersionConstraint scope v) =

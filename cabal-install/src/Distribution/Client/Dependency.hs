@@ -160,6 +160,7 @@ import Distribution.Solver.Types.SolverPackage
   ( SolverPackage (SolverPackage)
   )
 import Distribution.Solver.Types.SourcePackage
+import Distribution.Solver.Types.Toolchain
 import Distribution.Solver.Types.Variable
 
 import Control.Exception
@@ -186,7 +187,7 @@ data DepResolverParams = DepResolverParams
   , depResolverConstraints :: [LabeledPackageConstraint]
   , depResolverPreferences :: [PackagePreference]
   , depResolverPreferenceDefault :: PackagesPreferenceDefault
-  , depResolverInstalledPkgIndex :: InstalledPackageIndex
+  , depResolverInstalledPkgIndex :: InstalledPackageIndex -> InstalledPackageIndex
   , depResolverSourcePkgIndex :: PackageIndex.PackageIndex UnresolvedSourcePackage
   , depResolverReorderGoals :: ReorderGoals
   , depResolverCountConflicts :: CountConflicts
@@ -282,16 +283,15 @@ showPackagePreference (PackageStanzasPreference pn st) =
   prettyShow pn ++ " " ++ show st
 
 basicDepResolverParams
-  :: InstalledPackageIndex
-  -> PackageIndex.PackageIndex UnresolvedSourcePackage
+  :: PackageIndex.PackageIndex UnresolvedSourcePackage
   -> DepResolverParams
-basicDepResolverParams installedPkgIndex sourcePkgIndex =
+basicDepResolverParams sourcePkgIndex =
   DepResolverParams
     { depResolverTargets = Set.empty
     , depResolverConstraints = []
     , depResolverPreferences = []
     , depResolverPreferenceDefault = PreferLatestForSelected
-    , depResolverInstalledPkgIndex = installedPkgIndex
+    , depResolverInstalledPkgIndex = id
     , depResolverSourcePkgIndex = sourcePkgIndex
     , depResolverReorderGoals = ReorderGoals False
     , depResolverCountConflicts = CountConflicts True
@@ -514,10 +514,8 @@ hideInstalledPackagesSpecificBySourcePackageId pkgids params =
   -- TODO: this should work using exclude constraints instead
   params
     { depResolverInstalledPkgIndex =
-        foldl'
-          (flip InstalledPackageIndex.deleteSourcePackageId)
-          (depResolverInstalledPkgIndex params)
-          pkgids
+        (\idx -> foldl' (flip InstalledPackageIndex.deleteSourcePackageId) idx pkgids)
+          . depResolverInstalledPkgIndex params
     }
 
 hideInstalledPackagesAllVersions
@@ -528,10 +526,8 @@ hideInstalledPackagesAllVersions pkgnames params =
   -- TODO: this should work using exclude constraints instead
   params
     { depResolverInstalledPkgIndex =
-        foldl'
-          (flip InstalledPackageIndex.deletePackageName)
-          (depResolverInstalledPkgIndex params)
-          pkgnames
+        (\idx -> foldl' (flip InstalledPackageIndex.deletePackageName) idx pkgnames)
+          . depResolverInstalledPkgIndex params
     }
 
 -- | Remove upper bounds in dependencies using the policy specified by the
@@ -765,12 +761,10 @@ reinstallTargets params =
 
 -- | A basic solver policy on which all others are built.
 basicInstallPolicy
-  :: InstalledPackageIndex
-  -> SourcePackageDb
+  :: SourcePackageDb
   -> [PackageSpecifier UnresolvedSourcePackage]
   -> DepResolverParams
 basicInstallPolicy
-  installedPkgIndex
   (SourcePackageDb sourcePkgIndex sourcePkgPrefs)
   pkgSpecifiers =
     addPreferences
@@ -786,7 +780,6 @@ basicInstallPolicy
       . addSourcePackages
         [pkg | SpecificSourcePackage pkg <- pkgSpecifiers]
       $ basicDepResolverParams
-        installedPkgIndex
         sourcePkgIndex
 
 -- | The policy used by all the standard commands, install, fetch, freeze etc
@@ -794,14 +787,12 @@ basicInstallPolicy
 --
 -- It extends the 'basicInstallPolicy' with a policy on setup deps.
 standardInstallPolicy
-  :: InstalledPackageIndex
-  -> SourcePackageDb
+  :: SourcePackageDb
   -> [PackageSpecifier UnresolvedSourcePackage]
   -> DepResolverParams
-standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers =
-  addDefaultSetupDependencies setImplicitSetupInfo mkDefaultSetupDeps $
+standardInstallPolicy sourcePkgDb pkgSpecifiers =
+  addDefaultSetupDependencies mkDefaultSetupDeps $
     basicInstallPolicy
-      installedPkgIndex
       sourcePkgDb
       pkgSpecifiers
   where
@@ -847,49 +838,46 @@ runSolver = modularResolver
 -- a 'Progress' structure that can be unfolded to provide progress information,
 -- logging messages and the final result or an error.
 resolveDependencies
-  :: Platform
-  -> CompilerInfo
-  -> Maybe PkgConfigDb
+  :: Staged (CompilerInfo, Platform)
+  -> Staged (Maybe PkgConfigDb)
+  -> Staged InstalledPackageIndex
   -> DepResolverParams
   -> Progress String String SolverInstallPlan
-resolveDependencies platform comp pkgConfigDB params = do
-  step (showDepResolverParams finalparams)
-  pkgs <-
-    formatProgress $
-      runSolver
-        ( SolverConfig
-            reordGoals
-            cntConflicts
-            fineGrained
-            minimize
-            indGoals
-            noReinstalls
-            shadowing
-            strFlags
-            onlyConstrained_
-            maxBkjumps
-            enableBj
-            solveExes
-            order
-            verbosity
-            (PruneAfterFirstSuccess False)
-        )
-        platform
-        comp
-        installedPkgIndex
-        sourcePkgIndex
-        pkgConfigDB
-        preferences
-        constraints
-        targets
-  validateSolverResult platform comp indGoals pkgs
+resolveDependencies toolchains pkgConfigDB installedPkgIndex params =
+  Step (showDepResolverParams finalparams) $
+    fmap (validateSolverResult toolchains) $
+      formatProgress $
+        runSolver
+          ( SolverConfig
+              reordGoals
+              cntConflicts
+              fineGrained
+              minimize
+              noReinstalls
+              shadowing
+              strFlags
+              onlyConstrained_
+              maxBkjumps
+              enableBj
+              solveExes
+              order
+              verbosity
+              (PruneAfterFirstSuccess False)
+          )
+          toolchains
+          pkgConfigDB
+          (fmap installedPkgIndexM installedPkgIndex)
+          sourcePkgIndex
+          preferences
+          constraints
+          targets
   where
     finalparams@( DepResolverParams
                     targets
                     constraints
                     prefs
                     defpref
-                    installedPkgIndex
+                    installedPkgIndexM
                     sourcePkgIndex
                     reordGoals
                     cntConflicts
@@ -979,17 +967,15 @@ interpretPackagesPreference selected defaultPref prefs =
 -- | Make an install plan from the output of the dep resolver.
 -- It checks that the plan is valid, or it's an error in the dep resolver.
 validateSolverResult
-  :: Platform
-  -> CompilerInfo
-  -> IndependentGoals
+  :: Staged (CompilerInfo, Platform)
   -> [ResolverPackage UnresolvedPkgLoc]
-  -> Progress String String SolverInstallPlan
-validateSolverResult platform comp indepGoals pkgs =
-  case planPackagesProblems platform comp pkgs of
-    [] -> case SolverInstallPlan.new indepGoals graph of
-      Right plan -> return plan
-      Left problems -> fail (formatPlanProblems problems)
-    problems -> fail (formatPkgProblems problems)
+  -> SolverInstallPlan
+validateSolverResult toolchains pkgs =
+  case planPackagesProblems toolchains pkgs of
+    [] -> case SolverInstallPlan.new graph of
+      Right plan -> plan
+      Left problems -> error (formatPlanProblems problems)
+    problems -> error (formatPkgProblems problems)
   where
     graph :: Graph.Graph (ResolverPackage UnresolvedPkgLoc)
     graph = Graph.fromDistinctList pkgs
@@ -1030,14 +1016,13 @@ showPlanPackageProblem (DuplicatePackageSolverId pid dups) =
     ++ " duplicate instances."
 
 planPackagesProblems
-  :: Platform
-  -> CompilerInfo
+  :: Staged (CompilerInfo, Platform)
   -> [ResolverPackage UnresolvedPkgLoc]
   -> [PlanPackageProblem]
-planPackagesProblems platform cinfo pkgs =
+planPackagesProblems toolchains pkgs =
   [ InvalidConfiguredPackage pkg packageProblems
   | Configured pkg <- pkgs
-  , let packageProblems = configuredPackageProblems platform cinfo pkg
+  , let packageProblems = configuredPackageProblems toolchains pkg
   , not (null packageProblems)
   ]
     ++ [ DuplicatePackageSolverId (Graph.nodeKey aDup) dups
@@ -1086,14 +1071,12 @@ showPackageProblem (InvalidDep dep pkgid) =
 -- in the configuration given by the flag assignment, all the package
 -- dependencies are satisfied by the specified packages.
 configuredPackageProblems
-  :: Platform
-  -> CompilerInfo
+  :: Staged (CompilerInfo, Platform)
   -> SolverPackage UnresolvedPkgLoc
   -> [PackageProblem]
 configuredPackageProblems
-  platform
-  cinfo
-  (SolverPackage pkg specifiedFlags stanzas specifiedDeps0 _specifiedExeDeps') =
+  toolchains
+  (SolverPackage stage _qpn pkg specifiedFlags stanzas specifiedDeps0 _specifiedExeDeps') =
     [ DuplicateFlag flag
     | flag <- PD.findDuplicateFlagAssignments specifiedFlags
     ]
@@ -1163,8 +1146,8 @@ configuredPackageProblems
           specifiedFlags
           compSpec
           (const Satisfied)
-          platform
-          cinfo
+          (snd (getStage toolchains stage))
+          (fst (getStage toolchains stage))
           []
           (srcpkgDescription pkg) of
           Right (resolvedPkg, _) ->
@@ -1203,6 +1186,7 @@ configuredPackageProblems
 -- It simply means preferences for installed packages will be ignored.
 resolveWithoutDependencies
   :: DepResolverParams
+  -> InstalledPackageIndex
   -> Either [ResolveNoDepsError] [UnresolvedSourcePackage]
 resolveWithoutDependencies
   ( DepResolverParams
@@ -1210,7 +1194,7 @@ resolveWithoutDependencies
       constraints
       prefs
       defpref
-      installedPkgIndex
+      installedPkgIndexM
       sourcePkgIndex
       _reorderGoals
       _countConflicts
@@ -1227,7 +1211,8 @@ resolveWithoutDependencies
       _onlyConstrained
       _order
       _verbosity
-    ) =
+    )
+  installedPkgIndex =
     collectEithers $ map selectPackage (Set.toList targets)
     where
       selectPackage :: PackageName -> Either ResolveNoDepsError UnresolvedSourcePackage
@@ -1252,6 +1237,7 @@ resolveWithoutDependencies
           bestByPrefs :: UnresolvedSourcePackage -> UnresolvedSourcePackage -> Ordering
           bestByPrefs = comparing $ \pkg ->
             (installPref pkg, versionPref pkg, packageVersion pkg)
+
           installPref :: UnresolvedSourcePackage -> Bool
           installPref = case preferInstalled of
             Preference.PreferLatest -> const False
@@ -1260,8 +1246,9 @@ resolveWithoutDependencies
               not
                 . null
                 . InstalledPackageIndex.lookupSourcePackageId
-                  installedPkgIndex
+                  (installedPkgIndexM installedPkgIndex)
                 . packageId
+
           versionPref :: Package a => a -> Int
           versionPref pkg =
             length . filter (packageVersion pkg `withinRange`) $

@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
 module Distribution.Solver.Types.PackagePath
     ( PackagePath(..)
     , Namespace(..)
@@ -12,31 +14,19 @@ module Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Compat.Prelude
 import Prelude ()
 import Distribution.Package (PackageName)
-import Distribution.Pretty (pretty, flatStyle)
+import Distribution.Pretty (pretty, flatStyle, Pretty)
 import qualified Text.PrettyPrint as Disp
+import Distribution.Solver.Types.Stage (Stage)
 
--- | A package path consists of a namespace and a package path inside that
--- namespace.
-data PackagePath = PackagePath Namespace Qualifier
-  deriving (Eq, Ord, Show)
+data PackagePath = PackagePath Stage Qualifier
+  deriving (Eq, Ord, Show, Generic)
 
--- | Top-level namespace
---
--- Package choices in different namespaces are considered completely independent
--- by the solver.
-data Namespace =
-    -- | The default namespace
-    DefaultNamespace
+instance Binary PackagePath
+instance Structured PackagePath
 
-    -- | A namespace for a specific build target
-  | Independent PackageName
-  deriving (Eq, Ord, Show)
-
--- | Pretty-prints a namespace. The result is either empty or
--- ends in a period, so it can be prepended onto a qualifier.
-dispNamespace :: Namespace -> Disp.Doc
-dispNamespace DefaultNamespace = Disp.empty
-dispNamespace (Independent i) = pretty i <<>> Disp.text "."
+instance Pretty PackagePath where
+  pretty (PackagePath stage qualifier) =
+    pretty stage <<>> Disp.text ":" <<>> pretty qualifier
 
 -- | Qualifier of a package within a namespace (see 'PackagePath')
 data Qualifier =
@@ -68,7 +58,16 @@ data Qualifier =
     -- tracked only @pn2@, that would require us to pick only one
     -- version of an executable over the entire install plan.)
   | QualExe PackageName PackageName
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance Binary Qualifier
+instance Structured Qualifier
+
+instance Pretty Qualifier where
+  pretty QualToplevel = Disp.text "toplevel"
+  pretty (QualSetup pn) = pretty pn <<>> Disp.text ":setup"
+  pretty (QualExe pn pn2) = pretty pn <<>> Disp.text ":" <<>>
+                            pretty pn2 <<>> Disp.text ":exe"
 
 -- | Pretty-prints a qualifier. The result is either empty or
 -- ends in a period, so it can be prepended onto a package name.
@@ -79,23 +78,31 @@ data Qualifier =
 -- is the qualifier and @"base"@ is the actual dependency (which, for the
 -- 'Base' qualifier, will always be @base@).
 dispQualifier :: Qualifier -> Disp.Doc
-dispQualifier QualToplevel = Disp.empty
-dispQualifier (QualSetup pn)  = pretty pn <<>> Disp.text ":setup."
-dispQualifier (QualExe pn pn2) = pretty pn <<>> Disp.text ":" <<>>
-                                 pretty pn2 <<>> Disp.text ":exe."
-dispQualifier (QualBase pn)  = pretty pn <<>> Disp.text "."
+dispQualifier QualToplevel = mempty
+dispQualifier (QualSetup pn) = pretty pn <> Disp.text ":setup."
+dispQualifier (QualExe pn pn2) =
+  pretty pn
+    <> Disp.text ":"
+    <> pretty pn2
+    <> Disp.text ":exe."
 
 -- | A qualified entity. Pairs a package path with the entity.
 data Qualified a = Q PackagePath a
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance (Binary a) => Binary (Qualified a)
+instance (Structured a) => Structured (Qualified a)
 
 -- | Qualified package name.
 type QPN = Qualified PackageName
 
+instance Pretty (Qualified PackageName) where
+  pretty (Q (PackagePath stage qual) pn) =
+    pretty stage <<>> Disp.colon <<>> dispQualifier qual <<>> pretty pn
+
 -- | Pretty-prints a qualified package name.
 dispQPN :: QPN -> Disp.Doc
-dispQPN (Q (PackagePath ns qual) pn) =
-  dispNamespace ns <<>> dispQualifier qual <<>> pretty pn
+dispQPN = pretty
 
 -- | String representation of a qualified package name.
 showQPN :: QPN -> String
