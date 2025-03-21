@@ -58,6 +58,7 @@ import Distribution.Solver.Types.PackagePath
 import Distribution.Types.LibraryName
 import Distribution.Types.PkgconfigVersionRange
 import Distribution.Types.UnqualComponentName
+import Distribution.Solver.Types.Stage
 
 {-------------------------------------------------------------------------------
   Constrained instances
@@ -90,9 +91,10 @@ data FlaggedDep qpn =
     Flagged (FN qpn) FInfo (TrueFlaggedDeps qpn) (FalseFlaggedDeps qpn)
     -- | Dependencies which are conditional on whether or not a stanza
     -- (e.g., a test suite or benchmark) is enabled.
-  | Stanza  (SN qpn)       (TrueFlaggedDeps qpn)
-    -- | Dependencies which are always enabled, for the component 'comp'.
-  | Simple (LDep qpn) Component
+    Stanza (SN qpn) (TrueFlaggedDeps qpn)
+  | -- | Dependencies which are always enabled, for the component 'comp'.
+    Simple (LDep qpn) Component
+  deriving Show
 
 -- | Conservatively flatten out flagged dependencies
 --
@@ -115,15 +117,21 @@ type FalseFlaggedDeps qpn = FlaggedDeps qpn
 -- depending; having a 'Functor' instance makes bugs where we don't distinguish
 -- these two far too likely. (By rights 'LDep' ought to have two type variables.)
 data LDep qpn = LDep (DependencyReason qpn) (Dep qpn)
+  deriving Show
 
 -- | A dependency (constraint) associates a package name with a constrained
 -- instance. It can also represent other types of dependencies, such as
 -- dependencies on language extensions.
-data Dep qpn = Dep (PkgComponent qpn) CI  -- ^ dependency on a package component
-             | Ext Extension              -- ^ dependency on a language extension
-             | Lang Language              -- ^ dependency on a language version
-             | Pkg PkgconfigName PkgconfigVersionRange  -- ^ dependency on a pkg-config package
-  deriving Functor
+data Dep qpn
+  = -- | dependency on a package component
+    Dep (PkgComponent qpn) CI
+  | -- | dependency on a language extension
+    Ext Extension
+  | -- | dependency on a language version
+    Lang Language
+  | -- | dependency on a pkg-config package
+    Pkg PkgconfigName PkgconfigVersionRange
+  deriving (Functor, Show)
 
 -- | An exposed component within a package. This type is used to represent
 -- build-depends and build-tool-depends dependencies.
@@ -174,8 +182,8 @@ data QualifyOptions = QO {
 --
 -- NOTE: It's the _dependencies_ of a package that may or may not be independent
 -- from the package itself. Package flag choices must of course be consistent.
-qualifyDeps :: QualifyOptions -> QPN -> FlaggedDeps PN -> FlaggedDeps QPN
-qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
+qualifyDeps :: QPN -> FlaggedDeps PN -> FlaggedDeps QPN
+qualifyDeps (Q pp@(PackagePath s q) pn) = go
   where
     go :: FlaggedDeps PN -> FlaggedDeps QPN
     go = map go1
@@ -197,37 +205,20 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
     goLDep (LDep dr dep) comp = LDep (fmap (Q pp) dr) (goD dep comp)
 
     goD :: Dep PN -> Component -> Dep QPN
-    goD (Ext  ext)    _    = Ext  ext
-    goD (Lang lang)   _    = Lang lang
-    goD (Pkg pkn vr)  _    = Pkg pkn vr
-    goD (Dep dep@(PkgComponent qpn (ExposedExe _)) ci) _ =
-        Dep (Q (PackagePath ns (QualExe pn qpn)) <$> dep) ci
-    goD (Dep dep@(PkgComponent qpn (ExposedLib _)) ci) comp
-      | qBase qpn   = Dep (Q (PackagePath ns (QualBase  pn)) <$> dep) ci
-      | qSetup comp = Dep (Q (PackagePath ns (QualSetup pn)) <$> dep) ci
-      | otherwise   = Dep (Q (PackagePath ns inheritedQ    ) <$> dep) ci
+    goD (Ext ext) _ = Ext ext
+    goD (Lang lang) _ = Lang lang
+    goD (Pkg pkn vr) _ = Pkg pkn vr
 
-    -- If P has a setup dependency on Q, and Q has a regular dependency on R, then
-    -- we say that the 'Setup' qualifier is inherited: P has an (indirect) setup
-    -- dependency on R. We do not do this for the base qualifier however.
-    --
-    -- The inherited qualifier is only used for regular dependencies; for setup
-    -- and base dependencies we override the existing qualifier. See #3160 for
-    -- a detailed discussion.
-    inheritedQ :: Qualifier
-    inheritedQ = case q of
-                   QualSetup _  -> q
-                   QualExe _ _  -> q
-                   QualToplevel -> q
-                   QualBase _   -> QualToplevel
+    -- In case of executable and setup dependencies, we need to qualify the dependency
+    -- with the previsous stage (e.g. Host -> Build).
+    goD (Dep dep@(PkgComponent qpn (ExposedExe _)) ci) _component =
+      Dep (Q (PackagePath (prevStage s) (QualExe pn qpn)) <$> dep) ci
 
-    -- Should we qualify this goal with the 'Base' package path?
-    qBase :: PN -> Bool
-    qBase dep = qoBaseShim && unPackageName dep == "base"
+    goD (Dep dep@(PkgComponent _qpn (ExposedLib _)) ci) ComponentSetup =
+      Dep (Q (PackagePath (prevStage s) (QualSetup pn)) <$> dep) ci
 
-    -- Should we qualify this goal with the 'Setup' package path?
-    qSetup :: Component -> Bool
-    qSetup comp = qoSetupIndependent && comp == ComponentSetup
+    goD (Dep dep@(PkgComponent _qpn _) ci) _component =
+      Dep (Q (PackagePath s q) <$> dep) ci
 
 -- | Remove qualifiers from set of dependencies
 --
