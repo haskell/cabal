@@ -1051,263 +1051,351 @@ cachedSetupDirAndProg platform bt options' cabalLibVersion = do
                   ++ "-"
                   ++ compilerVersionString
               )
-          <.> exeExtension buildPlatform
-  return (setupCacheDir, cachedSetupProgFile)
-  where
-    buildTypeString = show bt
-    cabalVersionString = "Cabal-" ++ prettyShow cabalLibVersion
-    compilerVersionString =
-      prettyShow $
-        maybe buildCompilerId compilerId $
-          useCompiler options'
-    platformString = prettyShow platform
+        installedVersion = do
+          (comp, progdb, options') <- configureToolchains options
+          (version, mipkgid, options'') <-
+            installedCabalVersion
+              options'
+              comp
+              progdb
+          updateSetupScript version bt
+          writeSetupVersionFile version
+          return (version, mipkgid, options'')
 
--- | Look up the executable in the cache; update the cache if the executable
--- is not found.
-getCachedSetupExecutable
-  :: Verbosity
-  -> Platform
-  -> PackageIdentifier
-  -> BuildType
-  -> SetupScriptOptions
-  -> Version
-  -> Maybe InstalledPackageId
-  -> IO FilePath
-getCachedSetupExecutable
-  verbosity
-  platform
-  pkgId
-  bt
-  options'
-  cabalLibVersion
-  maybeCabalLibInstalledPkgId = do
-    (setupCacheDir, cachedSetupProgFile) <-
-      cachedSetupDirAndProg platform bt options' cabalLibVersion
-    cachedSetupExists <- doesFileExist cachedSetupProgFile
-    if cachedSetupExists
-      then
-        debug verbosity $
-          "Found cached setup executable: " ++ cachedSetupProgFile
-      else criticalSection' $ do
-        -- The cache may have been populated while we were waiting.
-        cachedSetupExists' <- doesFileExist cachedSetupProgFile
-        if cachedSetupExists'
+        savedVersion :: IO (Maybe Version)
+        savedVersion = do
+          versionString <- readFile (i setupVersionFile) `catchIO` \_ -> return ""
+          case reads versionString of
+            [(version, s)] | all isSpace s -> return (Just version)
+            _ -> return Nothing
+
+    -- \| Update a Setup.hs script, creating it if necessary.
+    updateSetupScript :: Version -> BuildType -> IO ()
+    updateSetupScript _ Custom = do
+      useHs <- doesFileExist customSetupHs
+      useLhs <- doesFileExist customSetupLhs
+      unless (useHs || useLhs) $
+        dieWithException verbosity UpdateSetupScript
+      let src = (if useHs then customSetupHs else customSetupLhs)
+      srcNewer <- src `moreRecentFile` i setupHs
+      when srcNewer $
+        if useHs
+          then copyFileVerbose verbosity src (i setupHs)
+          else runSimplePreProcessor ppUnlit src (i setupHs) verbosity
+      where
+        customSetupHs = workingDir options </> "Setup.hs"
+        customSetupLhs = workingDir options </> "Setup.lhs"
+    updateSetupScript cabalLibVersion Hooks = do
+
+      let customSetupHooks = workingDir options </> "SetupHooks.hs"
+      useHs <- doesFileExist customSetupHooks
+      unless (useHs) $
+        die'
+          verbosity
+          "Using 'build-type: Hooks' but there is no SetupHooks.hs file."
+      copyFileVerbose verbosity customSetupHooks (i setupHooks)
+      rewriteFileLBS verbosity (i setupHs) (buildTypeScript cabalLibVersion)
+--      rewriteFileLBS verbosity hooksHs hooksScript
+    updateSetupScript cabalLibVersion _ =
+      rewriteFileLBS verbosity (i setupHs) (buildTypeScript cabalLibVersion)
+
+    buildTypeScript :: Version -> BS.ByteString
+    buildTypeScript cabalLibVersion = "{-# LANGUAGE NoImplicitPrelude #-}\n" <> case bt of
+      Simple -> "import Distribution.Simple; main = defaultMain\n"
+      Configure
+        | cabalLibVersion >= mkVersion [3, 13, 0]
+        -> "import Distribution.Simple; main = defaultMainWithSetupHooks autoconfSetupHooks\n"
+        | cabalLibVersion >= mkVersion [1, 3, 10]
+        -> "import Distribution.Simple; main = defaultMainWithHooks autoconfUserHooks\n"
+        | otherwise
+        -> "import Distribution.Simple; main = defaultMainWithHooks defaultUserHooks\n"
+      Make -> "import Distribution.Make; main = defaultMain\n"
+      Hooks
+        | cabalLibVersion >= mkVersion [3, 13, 0]
+        -> "import Distribution.Simple; import SetupHooks; main = defaultMainWithSetupHooks setupHooks\n"
+        | otherwise
+        -> error "buildTypeScript Hooks with Cabal < 3.13"
+      Custom -> error "buildTypeScript Custom"
+
+    installedCabalVersion
+      :: SetupScriptOptions
+      -> Compiler
+      -> ProgramDb
+      -> IO
+          ( Version
+          , Maybe InstalledPackageId
+          , SetupScriptOptions
+          )
+    installedCabalVersion options' _ _
+      | packageName pkg == mkPackageName "Cabal"
+          && bt == Custom =
+          return (packageVersion pkg, Nothing, options')
+    installedCabalVersion options' compiler progdb = do
+      index <- maybeGetInstalledPackages options' compiler progdb
+      let cabalDepName = mkPackageName "Cabal"
+          cabalDepVersion = useCabalVersion options'
+          options'' = options'{usePackageIndex = Just index}
+      case PackageIndex.lookupDependency index cabalDepName cabalDepVersion of
+        [] ->
+          dieWithException verbosity $ InstalledCabalVersion (packageName pkg) (useCabalVersion options)
+        pkgs ->
+          let ipkginfo = fromMaybe err $ safeHead . snd . bestVersion fst $ pkgs
+              err = error "Distribution.Client.installedCabalVersion: empty version list"
+           in return
+                ( packageVersion ipkginfo
+                , Just . IPI.installedComponentId $ ipkginfo
+                , options''
+                )
+
+    bestVersion :: (a -> Version) -> [a] -> a
+    bestVersion f = firstMaximumBy (comparing (preference . f))
+      where
+        -- Like maximumBy, but picks the first maximum element instead of the
+        -- last. In general, we expect the preferred version to go first in the
+        -- list. For the default case, this has the effect of choosing the version
+        -- installed in the user package DB instead of the global one. See #1463.
+        --
+        -- Note: firstMaximumBy could be written as just
+        -- `maximumBy cmp . reverse`, but the problem is that the behaviour of
+        -- maximumBy is not fully specified in the case when there is not a single
+        -- greatest element.
+        firstMaximumBy :: (a -> a -> Ordering) -> [a] -> a
+        firstMaximumBy _ [] =
+          error "Distribution.Client.firstMaximumBy: empty list"
+        firstMaximumBy cmp xs = foldl1' maxBy xs
+          where
+            maxBy x y = case cmp x y of GT -> x; EQ -> x; LT -> y
+
+        preference version =
+          ( sameVersion
+          , sameMajorVersion
+          , stableVersion
+          , latestVersion
+          )
+          where
+            sameVersion = version == cabalVersion
+            sameMajorVersion = majorVersion version == majorVersion cabalVersion
+            majorVersion = take 2 . versionNumbers
+            stableVersion = case versionNumbers version of
+              (_ : x : _) -> even x
+              _ -> False
+            latestVersion = version
+
+    configureToolchains
+      :: SetupScriptOptions
+      -> IO (Compiler, ProgramDb, SetupScriptOptions)
+    configureToolchains options' = do
+      (comp, progdb) <- case useCompiler options' of
+        Just comp -> return (comp, useProgramDb options')
+        Nothing -> do
+          (comp, _, progdb) <-
+            configCompilerEx
+              (Just GHC)
+              Nothing
+              Nothing
+              (useProgramDb options')
+              verbosity
+          return (comp, progdb)
+      -- Whenever we need to call configureCompiler, we also need to access the
+      -- package index, so let's cache it in SetupScriptOptions.
+      index <- maybeGetInstalledPackages options' comp progdb
+      return
+        ( comp
+        , progdb
+        , options'
+            { useCompiler = Just comp
+            , usePackageIndex = Just index
+            , useProgramDb = progdb
+            }
+        )
+
+    -- \| Path to the setup exe cache directory and path to the cached setup
+    -- executable.
+    cachedSetupDirAndProg
+      :: SetupScriptOptions
+      -> Version
+      -> IO (FilePath, FilePath)
+    cachedSetupDirAndProg options' cabalLibVersion = do
+      cacheDir <- defaultCacheDir
+      let setupCacheDir = cacheDir </> "setup-exe-cache"
+          cachedSetupProgFile =
+            setupCacheDir
+              </> ( "setup-"
+                      ++ buildTypeString
+                      ++ "-"
+                      ++ cabalVersionString
+                      ++ "-"
+                      ++ platformString
+                      ++ "-"
+                      ++ compilerVersionString
+                  )
+              <.> exeExtension buildPlatform
+      return (setupCacheDir, cachedSetupProgFile)
+      where
+        buildTypeString = show bt
+        cabalVersionString = "Cabal-" ++ prettyShow cabalLibVersion
+        compilerVersionString =
+          prettyShow $
+            maybe buildCompilerId compilerId $
+              useCompiler options'
+        platformString = prettyShow platform
+
+    -- \| Look up the setup executable in the cache; update the cache if the setup
+    -- executable is not found.
+    getCachedSetupExecutable
+      :: SetupScriptOptions
+      -> Version
+      -> Maybe InstalledPackageId
+      -> IO FilePath
+    getCachedSetupExecutable
+      options'
+      cabalLibVersion
+      maybeCabalLibInstalledPkgId = do
+        (setupCacheDir, cachedSetupProgFile) <-
+          cachedSetupDirAndProg options' cabalLibVersion
+        cachedSetupExists <- doesFileExist cachedSetupProgFile
+        if cachedSetupExists
           then
             debug verbosity $
               "Found cached setup executable: " ++ cachedSetupProgFile
-          else do
-            debug verbosity "Setup executable not found in the cache."
-            src <-
-              compileExe
-                verbosity
-                platform
-                pkgId
-                bt
-                WantSetup
-                options'
-                cabalLibVersion
-                maybeCabalLibInstalledPkgId
-                True
-            createDirectoryIfMissingVerbose verbosity True setupCacheDir
-            installExecutableFile verbosity src cachedSetupProgFile
-            -- Do not strip if we're using GHCJS, since the result may be a script
-            when (maybe True ((/= GHCJS) . compilerFlavor) $ useCompiler options') $ do
-              -- Add the relevant PATH overrides for the package to the
-              -- program database.
-              setupProgDb
-                <- prependProgramSearchPath verbosity
-                      (useExtraPathEnv options')
-                      (useExtraEnvOverrides options')
-                      (useProgramDb options')
-                     >>= configureAllKnownPrograms verbosity
-              Strip.stripExe
-                verbosity
-                platform
-                setupProgDb
-                cachedSetupProgFile
-    return cachedSetupProgFile
-    where
-      criticalSection' = maybe id criticalSection $ setupCacheLock options'
+          else criticalSection' $ do
+            -- The cache may have been populated while we were waiting.
+            cachedSetupExists' <- doesFileExist cachedSetupProgFile
+            if cachedSetupExists'
+              then
+                debug verbosity $
+                  "Found cached setup executable: " ++ cachedSetupProgFile
+              else do
+                debug verbosity $ "Setup executable not found in the cache."
+                src <-
+                  compileSetupExecutable
+                    options'
+                    cabalLibVersion
+                    maybeCabalLibInstalledPkgId
+                    True
+                createDirectoryIfMissingVerbose verbosity True setupCacheDir
+                installExecutableFile verbosity src cachedSetupProgFile
+                -- Do not strip if we're using GHCJS, since the result may be a script
+                when (maybe True ((/= GHCJS) . compilerFlavor) $ useCompiler options') $ do
+                  -- Add the relevant PATH overrides for the package to the
+                  -- program database.
+                  setupProgDb
+                    <- prependProgramSearchPath verbosity
+                          (useExtraPathEnv options)
+                          (useExtraEnvOverrides options)
+                          (useProgramDb options')
+                         >>= configureAllKnownPrograms verbosity
+                  Strip.stripExe
+                    verbosity
+                    platform
+                    setupProgDb
+                    cachedSetupProgFile
+        return cachedSetupProgFile
+        where
+          criticalSection' = maybe id criticalSection $ setupCacheLock options'
 
--- | If the Setup.hs is out of date wrt the executable then recompile it.
--- Currently this is GHC/GHCJS only. It should really be generalised.
-compileExe
-  :: Verbosity
-  -> Platform
-  -> PackageIdentifier
-  -> BuildType
-  -> WantedExternalExe exe
-  -> SetupScriptOptions
-  -> Version
-  -> Maybe ComponentId
-  -> Bool
-  -> IO FilePath
-compileExe verbosity platform pkgId bt wantedExe opts ver mbCompId forceCompile =
-  case wantedExe of
-    WantHooks ->
-      compileHooksScript verbosity platform pkgId opts ver mbCompId forceCompile
-    WantSetup ->
-      compileSetupScript verbosity platform pkgId bt opts ver mbCompId forceCompile
+    -- \| If the Setup.hs is out of date wrt the executable then recompile it.
+    -- Currently this is GHC/GHCJS only. It should really be generalised.
+    compileSetupExecutable
+      :: SetupScriptOptions
+      -> Version
+      -> Maybe ComponentId
+      -> Bool
+      -> IO FilePath
+    compileSetupExecutable
+      options'
+      cabalLibVersion
+      maybeCabalLibInstalledPkgId
+      forceCompile = do
+        setupHsNewer <- i setupHs `moreRecentFile` i setupProgFile
+        cabalVersionNewer <- i setupVersionFile `moreRecentFile` i setupProgFile
+        let outOfDate = setupHsNewer || cabalVersionNewer
+        when (outOfDate || forceCompile) $ do
+          debug verbosity "Setup executable needs to be updated, compiling..."
+          (compiler, progdb, options'') <- configureToolchains options'
+          pkgDbs <- traverse (traverse (makeRelativeToDirS mbWorkDir)) (coercePackageDBStack (usePackageDB options''))
+          let cabalPkgid = PackageIdentifier (mkPackageName "Cabal") cabalLibVersion
+              (program, extraOpts) =
+                case compilerFlavor compiler of
+                  GHCJS -> (ghcjsProgram, ["-build-runner"])
+                  _ -> (ghcProgram, ["-threaded"])
+              cabalDep =
+                maybe
+                  []
+                  (\ipkgid -> [(ipkgid, cabalPkgid)])
+                  maybeCabalLibInstalledPkgId
 
-compileSetupScript
-  :: Verbosity
-  -> Platform
-  -> PackageIdentifier
-  -> BuildType
-  -> SetupScriptOptions
-  -> Version
-  -> Maybe ComponentId
-  -> Bool
-  -> IO FilePath
-compileSetupScript verbosity platform pkgId bt opts ver mbCompId forceCompile =
-  compileSetupX "Setup"
-    [setupHs opts] (setupProgFile opts)
-    verbosity platform pkgId bt opts ver mbCompId forceCompile
-
-compileHooksScript
-  :: Verbosity
-  -> Platform
-  -> PackageIdentifier
-  -> SetupScriptOptions
-  -> Version
-  -> Maybe ComponentId
-  -> Bool
-  -> IO FilePath
-compileHooksScript verbosity platform pkgId opts ver mbCompId forceCompile =
-  compileSetupX "SetupHooks"
-    [setupHooks opts, hooksHs opts] (hooksProgFile opts)
-    verbosity platform pkgId Hooks opts ver mbCompId forceCompile
-
-setupDir :: SetupScriptOptions -> SymbolicPath Pkg (Dir setup)
-setupDir opts = useDistPref opts Cabal.Path.</> makeRelativePathEx "setup"
-setupVersionFile :: SetupScriptOptions -> SymbolicPath Pkg File
-setupVersionFile opts = setupDir opts Cabal.Path.</> makeRelativePathEx ( "setup" <.> "version" )
-setupHs, hooksHs, setupHooks, setupProgFile, hooksProgFile :: SetupScriptOptions -> SymbolicPath Pkg File
-setupHs opts = setupDir opts Cabal.Path.</> makeRelativePathEx ( "setup" <.> "hs" )
-hooksHs opts = setupDir opts Cabal.Path.</> makeRelativePathEx ( "hooks" <.> "hs" )
-setupHooks opts = setupDir opts Cabal.Path.</> makeRelativePathEx ( "SetupHooks" <.> "hs" )
-setupProgFile opts = setupDir opts Cabal.Path.</> makeRelativePathEx ( "setup" <.> exeExtension buildPlatform )
-hooksProgFile opts = setupDir opts Cabal.Path.</> makeRelativePathEx ( "hooks" <.> exeExtension buildPlatform )
-
-compileSetupX
-  :: String
-  -> [SymbolicPath Pkg File] -- input files
-  -> SymbolicPath Pkg File   -- output file
-  -> Verbosity
-  -> Platform
-  -> PackageIdentifier
-  -> BuildType
-  -> SetupScriptOptions
-  -> Version
-  -> Maybe ComponentId
-  -> Bool
-  -> IO FilePath
-compileSetupX
-  what
-  inPaths outPath
-  verbosity
-  platform
-  pkgId
-  bt
-  options'
-  cabalLibVersion
-  maybeCabalLibInstalledPkgId
-  forceCompile = do
-    setupXHsNewer <-
-      or <$> for inPaths (\ inPath -> i inPath `moreRecentFile` i outPath)
-    cabalVersionNewer <- i (setupVersionFile options') `moreRecentFile` i outPath
-    let outOfDate = setupXHsNewer || cabalVersionNewer
-    when (outOfDate || forceCompile) $ do
-      debug verbosity $ what ++ " executable needs to be updated, compiling..."
-      (compiler, progdb, options'') <- configureCompiler verbosity options'
-      pkgDbs <- traverse (traverse (makeRelativeToDirS mbWorkDir)) (coercePackageDBStack (usePackageDB options''))
-      let cabalPkgid = PackageIdentifier (mkPackageName "Cabal") cabalLibVersion
-          (program, extraOpts) =
-            case compilerFlavor compiler of
-              GHCJS -> (ghcjsProgram, ["-build-runner"])
-              _ -> (ghcProgram, ["-threaded"])
-          cabalDep =
-            maybe
-              []
-              (\ipkgid -> [(ipkgid, cabalPkgid)])
-              maybeCabalLibInstalledPkgId
-
-          -- With 'useDependenciesExclusive' and Custom build type,
-          -- we enforce the deps specified, so only the given ones can be used.
-          -- Otherwise we add on a dep on the Cabal library
-          -- (unless 'useDependencies' already contains one).
-          selectedDeps
-            |  (useDependenciesExclusive options' && (bt /= Hooks))
-            -- NB: to compile build-type: Hooks packages, we need Cabal
-            -- in order to compile @main = defaultMainWithSetupHooks setupHooks@.
-            || any (isCabalPkgId . snd) (useDependencies options')
-            = useDependencies options'
-            | otherwise =
-                useDependencies options' ++ cabalDep
-          addRenaming (ipid, _) =
-            -- Assert 'DefUnitId' invariant
-            ( Backpack.DefiniteUnitId (unsafeMkDefUnitId (newSimpleUnitId ipid))
-            , defaultRenaming
-            )
-          cppMacrosFile = setupDir options' Cabal.Path.</> makeRelativePathEx "setup_macros.h"
-          ghcOptions =
-            mempty
-              { -- Respect -v0, but don't crank up verbosity on GHC if
-                -- Cabal verbosity is requested. For that, use
-                -- --ghc-option=-v instead!
-                ghcOptVerbosity = Flag $ min (verbosityLevel verbosity) Normal
-              , ghcOptMode = Flag GhcModeMake
-              , ghcOptInputFiles = toNubListR inPaths
-              , ghcOptOutputFile = Flag outPath
-              , ghcOptObjDir = Flag (setupDir options')
-              , ghcOptHiDir = Flag (setupDir options')
-              , ghcOptSourcePathClear = Flag True
-              , ghcOptSourcePath = case bt of
-                  Custom -> toNubListR [sameDirectory]
-                  Hooks -> toNubListR [sameDirectory]
-                  _ -> mempty
-              , ghcOptPackageDBs = pkgDbs
-              , ghcOptHideAllPackages = Flag (useDependenciesExclusive options')
-              , ghcOptCabal = Flag (useDependenciesExclusive options')
-              , ghcOptPackages = toNubListR $ map addRenaming selectedDeps
-              -- With 'useVersionMacros', use a version CPP macros .h file.
-              , ghcOptCppIncludes =
-                  toNubListR
-                    [ cppMacrosFile
-                    | useVersionMacros options'
-                    ]
-              , ghcOptExtra = extraOpts
-              , ghcOptExtensions = toNubListR $
-                  [ Simple.DisableExtension Simple.ImplicitPrelude
-                  | not $ bt == Custom || any (isBasePkgId . snd) selectedDeps
-                  ]
-                  -- Pass -WNoImplicitPrelude to avoid depending on base
-                  -- when compiling a simple Setup.hs file.
-              , ghcOptExtensionMap = Map.fromList . Simple.compilerExtensions $ compiler
-              }
-      let ghcCmdLine = renderGhcOptions compiler platform ghcOptions
-      when (useVersionMacros options') $
-        rewriteFileEx verbosity (i cppMacrosFile) $
-          generatePackageVersionMacros (pkgVersion pkgId) (map snd selectedDeps)
-      case useLoggingHandle options' of
-        Nothing -> runDbProgramCwd verbosity mbWorkDir program progdb ghcCmdLine
-        -- If build logging is enabled, redirect compiler output to
-        -- the log file.
-        Just logHandle -> do
-          output <-
-            getDbProgramOutputCwd
-              verbosity
-              mbWorkDir
-              program
-              progdb
-              ghcCmdLine
-          hPutStr logHandle output
-    return $ i outPath
-  where
-    mbWorkDir = useWorkingDir options'
-    -- See Note [Symbolic paths] in Distribution.Utils.Path
-    i :: SymbolicPathX allowAbs Pkg to -> FilePath
-    i = interpretSymbolicPath mbWorkDir
+              -- With 'useDependenciesExclusive' and Custom build type,
+              -- we enforce the deps specified, so only the given ones can be used.
+              -- Otherwise we add on a dep on the Cabal library
+              -- (unless 'useDependencies' already contains one).
+              selectedDeps
+                |  (useDependenciesExclusive options' && (bt /= Hooks))
+                -- NB: to compile build-type: Hooks packages, we need Cabal
+                -- in order to compile @main = defaultMainWithSetupHooks setupHooks@.
+                || any (isCabalPkgId . snd) (useDependencies options')
+                = useDependencies options'
+                | otherwise =
+                    useDependencies options' ++ cabalDep
+              addRenaming (ipid, _) =
+                -- Assert 'DefUnitId' invariant
+                ( Backpack.DefiniteUnitId (unsafeMkDefUnitId (newSimpleUnitId ipid))
+                , defaultRenaming
+                )
+              cppMacrosFile = setupDir Cabal.Path.</> makeRelativePathEx "setup_macros.h"
+              ghcOptions =
+                mempty
+                  { -- Respect -v0, but don't crank up verbosity on GHC if
+                    -- Cabal verbosity is requested. For that, use
+                    -- --ghc-option=-v instead!
+                    ghcOptVerbosity = Flag (min verbosity normal)
+                  , ghcOptMode = Flag GhcModeMake
+                  , ghcOptInputFiles = toNubListR [setupHs]
+                  , ghcOptOutputFile = Flag $ setupProgFile
+                  , ghcOptObjDir = Flag $ setupDir
+                  , ghcOptHiDir = Flag $ setupDir
+                  , ghcOptSourcePathClear = Flag True
+                  , ghcOptSourcePath = case bt of
+                      Custom -> toNubListR [sameDirectory]
+                      Hooks -> toNubListR [sameDirectory]
+                      _ -> mempty
+                  , ghcOptPackageDBs = pkgDbs
+                  , ghcOptHideAllPackages = Flag (useDependenciesExclusive options')
+                  , ghcOptCabal = Flag (useDependenciesExclusive options')
+                  , ghcOptPackages = toNubListR $ map addRenaming selectedDeps
+                  -- With 'useVersionMacros', use a version CPP macros .h file.
+                  , ghcOptCppIncludes =
+                      toNubListR
+                        [ cppMacrosFile
+                        | useVersionMacros options'
+                        ]
+                  , ghcOptExtra = extraOpts
+                  , ghcOptExtensions = toNubListR $
+                      if bt == Custom || any (isBasePkgId . snd) selectedDeps
+                      then []
+                      else [ Simple.DisableExtension Simple.ImplicitPrelude ]
+                        -- Pass -WNoImplicitPrelude to avoid depending on base
+                        -- when compiling a Simple Setup.hs file.
+                  , ghcOptExtensionMap = Map.fromList . Simple.compilerExtensions $ compiler
+                  }
+          let ghcCmdLine = renderGhcOptions compiler platform ghcOptions
+          when (useVersionMacros options') $
+            rewriteFileEx verbosity (i cppMacrosFile) $
+              generatePackageVersionMacros (pkgVersion $ package pkg) (map snd selectedDeps)
+          case useLoggingHandle options of
+            Nothing -> runDbProgramCwd verbosity mbWorkDir program progdb ghcCmdLine
+            -- If build logging is enabled, redirect compiler output to
+            -- the log file.
+            Just logHandle -> do
+              output <-
+                getDbProgramOutputCwd
+                  verbosity
+                  mbWorkDir
+                  program
+                  progdb
+                  ghcCmdLine
+              hPutStr logHandle output
+        return $ i setupProgFile
 
 isCabalPkgId, isBasePkgId :: PackageIdentifier -> Bool
 isCabalPkgId (PackageIdentifier pname _) = pname == mkPackageName "Cabal"

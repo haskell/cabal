@@ -48,7 +48,6 @@ import Distribution.Client.TargetProblem (TargetProblem (..))
 import Distribution.Simple.BuildPaths (dllExtension, exeExtension)
 import Distribution.Simple.Command (CommandUI (..))
 import Distribution.Simple.Utils (dieWithException, withOutputMarker, wrapText)
-import Distribution.System (Platform)
 import Distribution.Types.ComponentName (showComponentName)
 import Distribution.Types.UnitId (UnitId)
 import Distribution.Types.UnqualComponentName (UnqualComponentName)
@@ -204,8 +203,8 @@ listbinAction flags args globalFlags = do
             | s == selectedComponent -> [flib_file' s]
           _ -> []
 
-        plat :: Platform
-        plat = pkgConfigPlatform elaboratedSharedConfig
+        Toolchain{toolchainPlatform = plat} =
+          getStage (pkgConfigToolchains elaboratedSharedConfig) (elabStage elab)
 
         -- here and in PlanOutput,
         -- use binDirectoryFor?
