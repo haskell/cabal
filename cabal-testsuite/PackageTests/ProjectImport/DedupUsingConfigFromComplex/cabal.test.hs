@@ -1,5 +1,6 @@
 import Test.Cabal.Prelude
 import Data.Function ((&))
+import Data.List (isInfixOf)
 
 main = cabalTest . recordMode RecordMarked $ do
   let log = recordHeader . pure
@@ -11,6 +12,6 @@ main = cabalTest . recordMode RecordMarked $ do
   log "check package directories and locations are reported in order"
 
   readFileVerbatim "errors.expect.txt"
-    >>= flip (assertOn multilineNeedleHaystack) out . normalizePathSeparators
+    >>= flip (assertOn isInfixOf multilineNeedleHaystack) out . normalizePathSeparators
 
   return ()
