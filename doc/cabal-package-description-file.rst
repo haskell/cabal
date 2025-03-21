@@ -1355,6 +1355,15 @@ system-dependent values for these fields.
 
     .. Note::
 
+       The :pkg-field:`build-depends` field of an executable section (from
+       version 1.8 of the Cabal specification), test suite section (from
+       version 1.10) or benchmark section (from version 1.14) can specify a
+       library in the same package by the name of the library (without a version
+       constraint). Cabal then treats the executable, test suite or benchmark as
+       if it were in another package that depended on the package.
+
+    .. Note::
+
        Before version 3.4 of the Cabal specification, from version 2.0, a
        private sublibrary (an internal library) was identified by only the name
        of the sublibrary. An internal library could shadow a dependency on the
@@ -2317,7 +2326,7 @@ Configurations
 
 Library and executable sections may include conditional blocks, which
 test for various system parameters and configuration flags. The flags
-mechanism is rather generic, but most of the time a flag represents
+mechanism is rather generic, but most of the time a flag represents a
 certain feature, that can be switched on or off by the package user.
 Here is an example package description file using configurations:
 
@@ -2378,8 +2387,9 @@ Example: A package containing a library and executable programs
 
     Executable test1
       Main-is:          T1.hs
-      Other-Modules:    Testing.Test1
-      Build-Depends:    base >= 4.2 && < 4.9
+      Build-Depends:
+        , base >= 4.2 && < 4.9
+        , Test1
       Default-Language: Haskell2010
 
       if flag(debug)
