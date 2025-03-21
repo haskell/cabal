@@ -10,6 +10,6 @@ license: GPL-3.0-or-later
 library
   exposed-modules: Foo
   default-language: Haskell2010
-  build-depends: base > 2,
-                 base <= 3.10
+  build-depends: base >= 2,
+                 base < 3.10
 
