@@ -4,7 +4,14 @@ set -Eeuo pipefail
 
 source "$CI_PROJECT_DIR/.gitlab/common.sh"
 
-if [[ "$(uname)" == "Linux" ]]; then
+## Figure out how to get the Haskell toolchain.
+
+# For backport, the centos image no longer has the right GHC version, so use
+# ghcup.
+if [[ -f /etc/os-release && "$(grep ^ID /etc/os-release)" =~ "centos" ]]; then
+    . "$CI_PROJECT_DIR/.gitlab/ghcup.sh"
+# All the other ones are fine.
+elif [[ "$(uname)" == "Linux" ]]; then
     export PATH="/opt/ghc/${GHC_VERSION}/bin:${PATH}"
 # Not all runners use ci-images, so ghcup is used.
 else
