@@ -85,22 +85,24 @@ import Distribution.Simple.Program.GHC (packageDbArgsDb)
 -- This is for the benefit of debugging and external tools like editors.
 writePlanExternalRepresentation
   :: DistDirLayout
+  -> StoreDirLayout
   -> ElaboratedInstallPlan
   -> ElaboratedSharedConfig
   -> IO ()
 writePlanExternalRepresentation
   distDirLayout
+  storeDirLayout
   elaboratedInstallPlan
   elaboratedSharedConfig =
     writeFileAtomic (distProjectCacheFile distDirLayout "plan.json")
       $ BB.toLazyByteString
         . J.encodeToBuilder
-      $ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig
+      $ encodePlanAsJson distDirLayout storeDirLayout elaboratedInstallPlan elaboratedSharedConfig
 
 -- | Renders a subset of the elaborated install plan in a semi-stable JSON
 -- format.
-encodePlanAsJson :: DistDirLayout -> ElaboratedInstallPlan -> ElaboratedSharedConfig -> J.Value
-encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
+encodePlanAsJson :: DistDirLayout -> StoreDirLayout -> ElaboratedInstallPlan -> ElaboratedSharedConfig -> J.Value
+encodePlanAsJson distDirLayout storeDirLayout elaboratedInstallPlan elaboratedSharedConfig =
   -- TODO: [nice to have] include all of the sharedPackageConfig and all of
   --      the parts of the elaboratedInstallPlan
   J.object
@@ -109,9 +111,11 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
     , "compiler-id"
         J..= (J.String . showCompilerId . pkgConfigCompiler)
           elaboratedSharedConfig
+    , "compiler-abi" J..= J.String (prettyShow (compilerAbiTag (pkgConfigCompiler elaboratedSharedConfig)))
     , "os" J..= jdisplay os
     , "arch" J..= jdisplay arch
     , "install-plan" J..= installPlanToJ elaboratedInstallPlan
+    , "store-dir" J..= storeDirToJ storeDirLayout
     ]
   where
     plat :: Platform
@@ -119,6 +123,14 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
 
     installPlanToJ :: ElaboratedInstallPlan -> [J.Value]
     installPlanToJ = map planPackageToJ . InstallPlan.toList
+
+    storeDirToJ :: StoreDirLayout -> J.Value
+    storeDirToJ storeLayout =
+      J.object
+        [ "store-dir" J..= J.String (storeDirectory storeLayout (pkgConfigCompiler elaboratedSharedConfig))
+        , "store-package-db" J..= J.String (storePackageDBPath storeLayout (pkgConfigCompiler elaboratedSharedConfig))
+        , "store-incoming-dir" J..= J.String (storeIncomingDirectory storeLayout (pkgConfigCompiler elaboratedSharedConfig))
+        ]
 
     planPackageToJ :: ElaboratedPlanPackage -> J.Value
     planPackageToJ pkg =
