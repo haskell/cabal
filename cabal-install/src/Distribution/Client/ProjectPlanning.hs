@@ -908,6 +908,7 @@ rebuildInstallPlan
         debug verbosity "Updating plan.json"
         writePlanExternalRepresentation
           distDirLayout
+          cabalStoreDirLayout
           elaboratedPlan
           elaboratedShared
 
