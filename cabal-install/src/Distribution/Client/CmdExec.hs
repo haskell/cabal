@@ -46,7 +46,7 @@ import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanOutput
   ( PostBuildProjectStatus
   , argsEquivalentOfGhcEnvironmentFile
-  , createPackageEnvironment
+  , createPackageEnvironmentAndArgs
   , updatePostBuildProjectStatus
   )
 import Distribution.Client.ProjectPlanning
@@ -191,7 +191,7 @@ execAction flags@NixStyleFlags{..} extraArgs globalFlags = do
     [] -> dieWithException verbosity SpecifyAnExecutable
     exe : args -> do
       (program, _) <- requireProgram verbosity (simpleProgram exe) programDb
-      let argOverrides =
+      let environmentPackageArgs =
             argsEquivalentOfGhcEnvironmentFile
               compiler
               (distDirLayout baseCtx)
@@ -201,21 +201,19 @@ execAction flags@NixStyleFlags{..} extraArgs globalFlags = do
             matchCompilerPath
               (elaboratedShared buildCtx)
               program
-          argOverrides' =
-            if envFilesSupported
-              || not programIsConfiguredCompiler
-              then []
-              else argOverrides
 
       ( if envFilesSupported
           then withTempEnvFile verbosity baseCtx buildCtx buildStatus
-          else \f -> f []
+          else \f ->
+            if programIsConfiguredCompiler
+              then f environmentPackageArgs []
+              else f [] []
         )
-        $ \envOverrides -> do
+        $ \argOverrides envOverrides -> do
           let program' =
                 withOverrides
                   envOverrides
-                  argOverrides'
+                  argOverrides
                   program
               invocation = programInvocation program' args
               dryRun =
@@ -253,7 +251,7 @@ withTempEnvFile
   -> ProjectBaseContext
   -> ProjectBuildContext
   -> PostBuildProjectStatus
-  -> ([(String, Maybe String)] -> IO a)
+  -> ([String] -> [(String, Maybe String)] -> IO a)
   -> IO a
 withTempEnvFile verbosity baseCtx buildCtx buildStatus action = do
   let tmpDirTemplate = distTempDirectory (distDirLayout baseCtx)
@@ -263,14 +261,14 @@ withTempEnvFile verbosity baseCtx buildCtx buildStatus action = do
     tmpDirTemplate
     "environment."
     ( \tmpDir -> do
-        envOverrides <-
-          createPackageEnvironment
+        (argOverrides, envOverrides) <-
+          createPackageEnvironmentAndArgs
             verbosity
             tmpDir
             (elaboratedPlanToExecute buildCtx)
             (elaboratedShared buildCtx)
             buildStatus
-        action envOverrides
+        action argOverrides envOverrides
     )
 
 -- | Get paths to all dependency executables to be included in PATH.
