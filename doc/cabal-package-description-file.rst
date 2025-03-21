@@ -3168,7 +3168,9 @@ platform when cross-compiling. Moreover, various bits of build configuration
 will be passed via environment variables:
 
  - ``CC`` will reflect the path to the C compiler
- - ``CFLAGS`` will reflect the path to the C compiler
+ - ``CXX`` will reflect the path to the C++ compiler (if available, it always will be if ghc >= 9.4)
+ - ``CFLAGS`` will reflect the flags to the C compiler
+ - ``CXXFLAGS`` will reflect the flags to the C++ compiler (if available)
  - ``CABAL_FLAGS`` will contain the Cabal flag assignment of the current
    package using traditional Cabal flag syntax (e.g. ``+flagA -flagB``)
  - ``CABAL_FLAG_<flag>`` will be set to either ``0`` or ``1`` depending upon
