@@ -89,8 +89,13 @@ import System.Process (callProcess)
 
 import Data.Tagged (Tagged (..))
 import Test.Tasty
-import Test.Tasty.HUnit
+import Test.Tasty.ExpectedFailure
+import Test.Tasty.HUnit hiding (testCase)
+import qualified Test.Tasty.HUnit as T (testCase)
 import Test.Tasty.Options
+import Test.Tasty.Runners
+
+import System.IO.Silently
 
 import qualified Data.ByteString as BS
 import Data.Maybe (fromJust)
@@ -113,22 +118,42 @@ main = do
   defaultMainWithIngredients
     (defaultIngredients ++ [includingOptions projectConfigOptionDescriptions])
     ( withProjectConfig $ \config ->
-        testGroup
+        sequentialTestGroup
           "Integration tests (internal)"
+          AllFinish
           (tests config)
     )
+
+-- Tests are run silently, unless they fail. Firstly because it is annoying to
+-- see lots of stderr from your unit tests. Secondly because this output
+-- leaks into the result of github actions (#8419)
+--
+-- Note that this capture is safe to use as the testsuite runs sequentially.
+silentTest :: TestTree -> TestTree
+silentTest = wrapTest silentHelper
+  where
+    silentHelper t = do
+      (out, res) <- hCapture [stderr] t
+
+      return $
+        if not (resultSuccessful res)
+          then res{resultDescription = resultDescription res <> "\nCaptured output:\n" <> out}
+          else res
+
+testCase :: String -> Assertion -> TestTree
+testCase desc action = (T.testCase desc action)
 
 tests :: ProjectConfig -> [TestTree]
 tests config =
   -- TODO: tests for:
   -- \* normal success
   -- \* dry-run tests with changes
-  [ testGroup "Discovery and planning" $
+  [ sequentialTestGroup "Discovery and planning" AllFinish $
       [ testCase "no package" (testExceptionInFindingPackage config)
       , testCase "no package2" (testExceptionInFindingPackage2 config)
       , testCase "proj conf1" (testExceptionInProjectConfig config)
       ]
-  , testGroup "Target selectors" $
+  , sequentialTestGroup "Target selectors" AllFinish $
       [ testCaseSteps "valid" testTargetSelectors
       , testCase "bad syntax" testTargetSelectorBadSyntax
       , testCaseSteps "ambiguous syntax" testTargetSelectorAmbiguous
@@ -145,7 +170,7 @@ tests config =
       , testCaseSteps "problems (bench)" (testTargetProblemsBench config)
       , testCaseSteps "problems (haddock)" (testTargetProblemsHaddock config)
       ]
-  , testGroup "Exceptions during building (local inplace)" $
+  , sequentialTestGroup "Exceptions during building (local inplace)" AllFinish $
       [ testCase "configure" (testExceptionInConfigureStep config)
       , testCase "build" (testExceptionInBuildStep config)
       --    , testCase "register"   testExceptionInRegisterStep
@@ -154,7 +179,7 @@ tests config =
     -- TODO: need to check we can build sub-libs, foreign libs and exes
     -- components for non-local packages / packages in the store.
 
-    testGroup "Successful builds" $
+    sequentialTestGroup "Successful builds" AllFinish $
       [ testCaseSteps "Setup script styles" (testSetupScriptStyles config)
       , testCase "keep-going" (testBuildKeepGoing config)
       ]
@@ -164,19 +189,20 @@ tests config =
           else
             [ testCase "local tarball" (testBuildLocalTarball config)
             ]
-  , testGroup "Regression tests" $
+  , sequentialTestGroup "Regression tests" AllFinish $
       [ testCase "issue #3324" (testRegressionIssue3324 config)
       , testCase "program options scope all" (testProgramOptionsAll config)
       , testCase "program options scope local" (testProgramOptionsLocal config)
       , testCase "program options scope specific" (testProgramOptionsSpecific config)
       ]
-  , testGroup "Flag tests" $
+  , sequentialTestGroup "Flag tests" AllFinish $
       [ testCase "Test Nix Flag" testNixFlags
       , testCase "Test Config options for commented options" testConfigOptionComments
       , testCase "Test Ignore Project Flag" testIgnoreProjectFlag
       ]
-  , testGroup
+  , sequentialTestGroup
       "haddock-project"
+      AllFinish
       [ testCase "dependencies" (testHaddockProjectDependencies config)
       ]
   ]
