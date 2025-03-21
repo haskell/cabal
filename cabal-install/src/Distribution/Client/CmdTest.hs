@@ -33,7 +33,8 @@ import Distribution.Client.NixStyleOptions
   )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.Setup
-  ( ConfigFlags (..)
+  ( CommonSetupFlags (..)
+  , ConfigFlags (..)
   , GlobalFlags (..)
   )
 import Distribution.Client.TargetProblem
@@ -66,7 +67,6 @@ import Distribution.Verbosity
 import qualified System.Exit (exitSuccess)
 
 import Distribution.Client.Errors
-import Distribution.Client.Setup (CommonSetupFlags (..))
 import GHC.Environment
   ( getFullArgs
   )

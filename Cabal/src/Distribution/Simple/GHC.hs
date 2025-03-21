@@ -125,6 +125,16 @@ import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version
 import Language.Haskell.Extension
+import System.FilePath
+  ( isRelative
+  , takeDirectory
+  )
+import qualified System.Info
+#ifndef mingw32_HOST_OS
+import System.Posix (createSymbolicLink)
+#endif /* mingw32_HOST_OS */
+
+{- FOURMOLU_DISABLE -}
 import System.Directory
   ( canonicalizePath
   , createDirectoryIfMissing
@@ -132,16 +142,11 @@ import System.Directory
   , doesFileExist
   , getAppUserDataDirectory
   , getDirectoryContents
-  )
-import System.FilePath
-  ( isRelative
-  , takeDirectory
-  )
-import qualified System.Info
 #ifndef mingw32_HOST_OS
-import System.Directory (renameFile)
-import System.Posix (createSymbolicLink)
-#endif /* mingw32_HOST_OS */
+  , renameFile
+#endif
+  )
+{- FOURMOLU_ENABLE -}
 
 import Distribution.Simple.Setup (BuildingWhat (..))
 import Distribution.Simple.Setup.Build
