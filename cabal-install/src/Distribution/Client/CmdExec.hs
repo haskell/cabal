@@ -1,6 +1,9 @@
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 {-# LANGUAGE RecordWildCards #-}
+{-# OPTIONS_GHC -Wno-unused-imports #-}
+{-# OPTIONS_GHC -Wno-unused-local-binds #-}
+{-# OPTIONS_GHC -Wno-unused-matches #-}
 
 -- |
 -- Module      :  Distribution.Client.Exec
@@ -56,7 +59,8 @@ import Distribution.Client.ProjectPlanning
   )
 import qualified Distribution.Client.ProjectPlanning as Planning
 import Distribution.Client.ProjectPlanning.Types
-  ( dataDirsEnvironmentForPlan
+  ( Toolchain (..)
+  , dataDirsEnvironmentForPlan
   )
 import Distribution.Client.Setup
   ( GlobalFlags
@@ -104,6 +108,7 @@ import Prelude ()
 import qualified Data.Map as M
 import qualified Data.Set as S
 import Distribution.Client.Errors
+import Distribution.Solver.Types.Stage
 
 execCommand :: CommandUI (NixStyleFlags ())
 execCommand =
@@ -152,6 +157,12 @@ execAction flags extraArgs globalFlags = do
       baseCtx
       (\plan -> return (plan, M.empty))
 
+  let toolchains = pkgConfigToolchains (elaboratedShared buildCtx)
+      -- We need the compiler and platform to set up the environment.
+      compilers = toolchainCompiler <$> toolchains
+      platforms = toolchainPlatform <$> toolchains
+      progdbs = toolchainProgramDb <$> toolchains
+
   -- We use the build status below to decide what libraries to include in the
   -- compiler environment, but we don't want to actually build anything. So we
   -- pass mempty to indicate that nothing happened and we just want the current
@@ -166,7 +177,9 @@ execAction flags extraArgs globalFlags = do
 
   -- Some dependencies may have executables. Let's put those on the PATH.
   let extraPaths = pathAdditions baseCtx buildCtx
-      pkgProgs = pkgConfigCompilerProgs (elaboratedShared buildCtx)
+      -- NOTE: only build-stage dependencies make sense here
+      pkgProgs = getStage progdbs Build
+      --
       extraEnvVars =
         dataDirsEnvironmentForPlan
           (distDirLayout baseCtx)
@@ -181,7 +194,8 @@ execAction flags extraArgs globalFlags = do
   -- point at the file.
   -- In case ghc is too old to support environment files,
   -- we pass the same info as arguments
-  let compiler = pkgConfigCompiler $ elaboratedShared buildCtx
+  -- FIXME
+  let compiler = getStage compilers Host
       envFilesSupported = supportsPkgEnvFiles (getImplInfo compiler)
   case extraArgs of
     [] -> dieWithException verbosity SpecifyAnExecutable
@@ -234,7 +248,9 @@ matchCompilerPath elaboratedShared program =
   programPath program
     `elem` (programPath <$> configuredCompilers)
   where
-    configuredCompilers = configuredPrograms $ pkgConfigCompilerProgs elaboratedShared
+    progdbs = toolchainProgramDb <$> pkgConfigToolchains elaboratedShared
+    -- FIXME
+    configuredCompilers = configuredPrograms (getStage progdbs Host)
 
 -- | Execute an action with a temporary .ghc.environment file reflecting the
 -- current environment. The action takes an environment containing the env

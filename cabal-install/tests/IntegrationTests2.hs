@@ -1914,11 +1914,16 @@ testSetupScriptStyles config reportSubCase = do
 
   plan0@(_, _, sharedConfig) <- planProject testdir1 config
 
-  let compilerVer = compilerVersion (pkgConfigCompiler sharedConfig)
+  let isOSX (Platform _ OSX) = True
+      isOSX _ = False
+      compilerVer = compilerVersion (toolchainCompiler $ getStage (pkgConfigToolchains sharedConfig) Build)
   -- Skip the Custom tests when the shipped Cabal library is buggy
-  -- 9.10 ships Cabal 3.12.0.0 affected by #9940
-  unless (mkVersion [9, 10] <= compilerVer && compilerVer < mkVersion [9, 11]) $
-    do
+  unless
+    ( (isOSX (toolchainPlatform $ getStage (pkgConfigToolchains sharedConfig) Build) && (compilerVer < mkVersion [7, 10]))
+        -- 9.10 ships Cabal 3.12.0.0 affected by #9940
+        || (mkVersion [9, 10] <= compilerVer && compilerVer < mkVersion [9, 11])
+    )
+    $ do
       (plan1, res1) <- executePlan plan0
       pkg1 <- expectPackageInstalled plan1 res1 pkgidA
       elabSetupScriptStyle pkg1 @?= SetupCustomExplicitDeps
@@ -1928,7 +1933,7 @@ testSetupScriptStyles config reportSubCase = do
       removeFileForcibly (basedir </> testdir1 </> "marker")
 
       -- implicit deps implies 'Cabal < 2' which conflicts w/ GHC 8.2 or later
-      when (compilerVersion (pkgConfigCompiler sharedConfig) < mkVersion [8, 2]) $ do
+      when (compilerVersion (toolchainCompiler $ getStage (pkgConfigToolchains sharedConfig) Build) < mkVersion [8, 2]) $ do
         reportSubCase (show SetupCustomImplicitDeps)
         (plan2, res2) <- executePlan =<< planProject testdir2 config
         pkg2 <- expectPackageInstalled plan2 res2 pkgidA
@@ -2774,10 +2779,7 @@ testHaddockProjectDependencies config = do
   (_, _, sharedConfig) <- planProject testdir config
   -- `haddock-project` is only supported by `haddock-2.26.1` and above which is
   -- shipped with `ghc-9.4`
-  -- And doesn't work with older ghc on Windows for some reason (file in the
-  -- wrong place, perhaps?).
-  let safeMinor = if buildOS == Windows then 10 else 4
-  when (compilerVersion (pkgConfigCompiler sharedConfig) > mkVersion [9, safeMinor]) $ do
+  when (compilerVersion (toolchainCompiler $ getStage (pkgConfigToolchains sharedConfig) Build) > mkVersion [9, 4]) $ do
     let dir = basedir </> testdir
     cleanHaddockProject testdir
     withCurrentDirectory dir $ do

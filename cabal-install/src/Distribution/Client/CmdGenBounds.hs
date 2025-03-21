@@ -18,7 +18,6 @@ import Control.Monad (mapM_)
 import Distribution.Client.Errors
 
 import Distribution.Client.ProjectPlanning hiding (pruneInstallPlanToTargets)
-import Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.Types.ConfiguredId (confInstId)
 import Distribution.Client.Utils hiding (pvpize)
 import Distribution.InstalledPackageInfo (InstalledPackageInfo, installedComponentId)
