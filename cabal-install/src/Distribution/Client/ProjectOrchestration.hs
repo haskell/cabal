@@ -135,12 +135,9 @@ import Distribution.Client.TargetSelector
   , reportTargetSelectorProblems
   )
 import Distribution.Client.Types
-  ( DocsResult (..)
-  , GenericReadyPackage (..)
-  , PackageLocation (..)
+  ( GenericReadyPackage (..)
   , PackageSpecifier (..)
   , SourcePackageDb (..)
-  , TestsResult (..)
   , UnresolvedSourcePackage
   , WriteGhcEnvironmentFilesPolicy (..)
   )
@@ -149,17 +146,8 @@ import Distribution.Solver.Types.PackageIndex
   )
 import Distribution.Solver.Types.SourcePackage (SourcePackage (..))
 
-import Distribution.Client.BuildReports.Anonymous (cabalInstallID)
-import qualified Distribution.Client.BuildReports.Anonymous as BuildReports
-import qualified Distribution.Client.BuildReports.Storage as BuildReports
-  ( storeLocal
-  )
-
 import Distribution.Client.HttpUtils
 import Distribution.Client.Setup hiding (packageName)
-import Distribution.Compiler
-  ( CompilerFlavor (GHC)
-  )
 import Distribution.Types.ComponentName
   ( componentNameString
   )
@@ -184,9 +172,6 @@ import Distribution.Package
 import Distribution.Simple.Command (commandShowOptions)
 import Distribution.Simple.Compiler
   ( OptimisationLevel (..)
-  , compilerCompatVersion
-  , compilerId
-  , compilerInfo
   , showCompilerId
   )
 import Distribution.Simple.Configure (computeEffectiveProfiling)
@@ -209,9 +194,6 @@ import Distribution.Simple.Utils
   , ordNub
   , warn
   )
-import Distribution.System
-  ( Platform (Platform)
-  )
 import Distribution.Types.Flag
   ( FlagAssignment
   , diffFlagAssignment
@@ -222,9 +204,6 @@ import Distribution.Utils.NubList
   )
 import Distribution.Utils.Path (makeSymbolicPath)
 import Distribution.Verbosity
-import Distribution.Version
-  ( mkVersion
-  )
 #ifdef MIN_VERSION_unix
 import           System.Posix.Signals (sigKILL, sigSEGV)
 
@@ -488,7 +467,7 @@ runProjectPostBuildPhase _ ProjectBaseContext{buildSettings} _ _
 runProjectPostBuildPhase
   verbosity
   ProjectBaseContext{..}
-  bc@ProjectBuildContext{..}
+  ProjectBuildContext{..}
   buildOutcomes = do
     -- Update other build artefacts
     -- TODO: currently none, but could include:
@@ -517,21 +496,19 @@ runProjectPostBuildPhase
             writeGhcEnvFilesPolicy of
             AlwaysWriteGhcEnvironmentFiles -> True
             NeverWriteGhcEnvironmentFiles -> False
-            WriteGhcEnvironmentFilesOnlyForGhc844AndNewer ->
-              let compiler = pkgConfigCompiler elaboratedShared
-                  ghcCompatVersion = compilerCompatVersion GHC compiler
-               in maybe False (>= mkVersion [8, 4, 4]) ghcCompatVersion
-
+            -- FIXME: whatever
+            WriteGhcEnvironmentFilesOnlyForGhc844AndNewer -> True
     when shouldWriteGhcEnvironment $
       void $
         writePlanGhcEnvironment
           (distProjectRootDirectory distDirLayout)
+          Host
           elaboratedPlanOriginal
           elaboratedShared
           postBuildStatus
 
     -- Write the build reports
-    writeBuildReports buildSettings bc elaboratedPlanToExecute buildOutcomes
+    -- writeBuildReports buildSettings bc elaboratedPlanToExecute buildOutcomes
 
     -- Finally if there were any build failures then report them and throw
     -- an exception to terminate the program
@@ -1181,7 +1158,8 @@ printPlan
 
       showConfigureFlags :: ElaboratedConfiguredPackage -> String
       showConfigureFlags elab =
-        let commonFlags =
+        let Toolchain{toolchainProgramDb} = getStage (pkgConfigToolchains elaboratedShared) (elabStage elab)
+            commonFlags =
               setupHsCommonFlags
                 verbosity
                 Nothing -- omit working directory
@@ -1220,7 +1198,7 @@ printPlan
          in -- Not necessary to "escape" it, it's just for user output
             unwords . ("" :) $
               commandShowOptions
-                (Setup.configureCommand (pkgConfigCompilerProgs elaboratedShared))
+                (Setup.configureCommand toolchainProgramDb)
                 partialConfigureFlags
 
       showBuildStatus :: BuildStatus -> String
@@ -1252,7 +1230,8 @@ printPlan
       showBuildProfile =
         "Build profile: "
           ++ unwords
-            [ "-w " ++ (showCompilerId . pkgConfigCompiler) elaboratedShared
+            [ "-w " ++ (showCompilerId . toolchainCompiler $ getStage (pkgConfigToolchains elaboratedShared) Host)
+            , "-W " ++ (showCompilerId . toolchainCompiler $ getStage (pkgConfigToolchains elaboratedShared) Build)
             , "-O"
                 ++ ( case globalOptimization <> localOptimization of -- if local is not set, read global
                       Setup.Flag NoOptimisation -> "0"
@@ -1263,53 +1242,53 @@ printPlan
             ]
           ++ "\n"
 
-writeBuildReports :: BuildTimeSettings -> ProjectBuildContext -> ElaboratedInstallPlan -> BuildOutcomes -> IO ()
-writeBuildReports settings buildContext plan buildOutcomes = do
-  let plat@(Platform arch os) = pkgConfigPlatform . elaboratedShared $ buildContext
-      comp = pkgConfigCompiler . elaboratedShared $ buildContext
-      getRepo (RepoTarballPackage r _ _) = Just r
-      getRepo _ = Nothing
-      fromPlanPackage (InstallPlan.Configured pkg) (Just result) =
-        let installOutcome = case result of
-              Left bf -> case buildFailureReason bf of
-                GracefulFailure _ -> BuildReports.PlanningFailed
-                DependentFailed p -> BuildReports.DependencyFailed p
-                DownloadFailed _ -> BuildReports.DownloadFailed
-                UnpackFailed _ -> BuildReports.UnpackFailed
-                ConfigureFailed _ -> BuildReports.ConfigureFailed
-                BuildFailed _ -> BuildReports.BuildFailed
-                TestsFailed _ -> BuildReports.TestsFailed
-                InstallFailed _ -> BuildReports.InstallFailed
-                ReplFailed _ -> BuildReports.InstallOk
-                HaddocksFailed _ -> BuildReports.InstallOk
-                BenchFailed _ -> BuildReports.InstallOk
-              Right _br -> BuildReports.InstallOk
+-- writeBuildReports :: BuildTimeSettings -> ProjectBuildContext -> ElaboratedInstallPlan -> BuildOutcomes -> IO ()
+-- writeBuildReports settings buildContext plan buildOutcomes = do
+--   let plat@(Platform arch os) = pkgConfigPlatform . elaboratedShared $ buildContext
+--       comp = pkgConfigCompiler . elaboratedShared $ buildContext
+--       getRepo (RepoTarballPackage r _ _) = Just r
+--       getRepo _ = Nothing
+--       fromPlanPackage (InstallPlan.Configured pkg) (Just result) =
+--         let installOutcome = case result of
+--               Left bf -> case buildFailureReason bf of
+--                 GracefulFailure _ -> BuildReports.PlanningFailed
+--                 DependentFailed p -> BuildReports.DependencyFailed p
+--                 DownloadFailed _ -> BuildReports.DownloadFailed
+--                 UnpackFailed _ -> BuildReports.UnpackFailed
+--                 ConfigureFailed _ -> BuildReports.ConfigureFailed
+--                 BuildFailed _ -> BuildReports.BuildFailed
+--                 TestsFailed _ -> BuildReports.TestsFailed
+--                 InstallFailed _ -> BuildReports.InstallFailed
+--                 ReplFailed _ -> BuildReports.InstallOk
+--                 HaddocksFailed _ -> BuildReports.InstallOk
+--                 BenchFailed _ -> BuildReports.InstallOk
+--               Right _br -> BuildReports.InstallOk
 
-            docsOutcome = case result of
-              Left bf -> case buildFailureReason bf of
-                HaddocksFailed _ -> BuildReports.Failed
-                _ -> BuildReports.NotTried
-              Right br -> case buildResultDocs br of
-                DocsNotTried -> BuildReports.NotTried
-                DocsFailed -> BuildReports.Failed
-                DocsOk -> BuildReports.Ok
+--             docsOutcome = case result of
+--               Left bf -> case buildFailureReason bf of
+--                 HaddocksFailed _ -> BuildReports.Failed
+--                 _ -> BuildReports.NotTried
+--               Right br -> case buildResultDocs br of
+--                 DocsNotTried -> BuildReports.NotTried
+--                 DocsFailed -> BuildReports.Failed
+--                 DocsOk -> BuildReports.Ok
 
-            testsOutcome = case result of
-              Left bf -> case buildFailureReason bf of
-                TestsFailed _ -> BuildReports.Failed
-                _ -> BuildReports.NotTried
-              Right br -> case buildResultTests br of
-                TestsNotTried -> BuildReports.NotTried
-                TestsOk -> BuildReports.Ok
-         in Just $ (BuildReports.BuildReport (packageId pkg) os arch (compilerId comp) cabalInstallID (elabFlagAssignment pkg) (map (packageId . fst) $ elabLibDependencies pkg) installOutcome docsOutcome testsOutcome, getRepo . elabPkgSourceLocation $ pkg) -- TODO handle failure log files?
-      fromPlanPackage _ _ = Nothing
-      buildReports = mapMaybe (\x -> fromPlanPackage x (InstallPlan.lookupBuildOutcome x buildOutcomes)) $ InstallPlan.toList plan
+--             testsOutcome = case result of
+--               Left bf -> case buildFailureReason bf of
+--                 TestsFailed _ -> BuildReports.Failed
+--                 _ -> BuildReports.NotTried
+--               Right br -> case buildResultTests br of
+--                 TestsNotTried -> BuildReports.NotTried
+--                 TestsOk -> BuildReports.Ok
+--          in Just $ (BuildReports.BuildReport (packageId pkg) os arch (compilerId comp) cabalInstallID (elabFlagAssignment pkg) (map (packageId . fst) $ elabLibDependencies pkg) installOutcome docsOutcome testsOutcome, getRepo . elabPkgSourceLocation $ pkg) -- TODO handle failure log files?
+--       fromPlanPackage _ _ = Nothing
+--       buildReports = mapMaybe (\x -> fromPlanPackage x (InstallPlan.lookupBuildOutcome x buildOutcomes)) $ InstallPlan.toList plan
 
-  BuildReports.storeLocal
-    (compilerInfo comp)
-    (buildSettingSummaryFile settings)
-    buildReports
-    plat
+--   BuildReports.storeLocal
+--     (compilerInfo comp)
+--     (buildSettingSummaryFile settings)
+--     buildReports
+--     plat
 
 -- Note this doesn't handle the anonymous build reports set by buildSettingBuildReports but those appear to not be used or missed from v1
 -- The usage pattern appears to be that rather than rely on flags to cabal to send build logs to the right place and package them with reports, etc, it is easier to simply capture its output to an appropriate handle.

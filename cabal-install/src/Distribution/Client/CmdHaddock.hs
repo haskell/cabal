@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -29,8 +30,12 @@ import Distribution.Client.ProjectConfig.Types
   , ProjectConfig (..)
   )
 import Distribution.Client.ProjectOrchestration
-import Distribution.Client.ProjectPlanning
+import Distribution.Client.ProjectPlanning.Types
   ( ElaboratedSharedConfig (..)
+  , Stage (..)
+  , Staged (..)
+  , Toolchain (..)
+  , getStage
   )
 import Distribution.Client.Setup
   ( GlobalFlags
@@ -160,6 +165,7 @@ haddockAction relFlags targetStrings globalFlags = do
             projCtx{buildSettings = (buildSettings projCtx){buildSettingHaddockOpen = True}}
         | otherwise =
             projCtx
+
   absProjectConfig <- mkConfigAbsolute relProjectConfig
   let baseCtx = relBaseCtx{projectConfig = absProjectConfig}
 
@@ -192,6 +198,9 @@ haddockAction relFlags targetStrings globalFlags = do
 
   printPlan verbosity baseCtx buildCtx
 
+  let toolchains = pkgConfigToolchains (elaboratedShared buildCtx)
+
+  -- TODO
   progs <-
     reconfigurePrograms
       verbosity
@@ -200,14 +209,19 @@ haddockAction relFlags targetStrings globalFlags = do
       -- we need to insert 'haddockProgram' before we reconfigure it,
       -- otherwise 'set
       . addKnownProgram haddockProgram
-      . pkgConfigCompilerProgs
-      . elaboratedShared
-      $ buildCtx
+      -- TODO
+      . toolchainProgramDb
+      $ getStage toolchains Host
+
+  let toolchains' = Staged $ \case
+        Host -> (getStage toolchains' Host){toolchainProgramDb = progs}
+        Build -> getStage toolchains' Build
+
   let buildCtx' =
         buildCtx
           { elaboratedShared =
               (elaboratedShared buildCtx)
-                { pkgConfigCompilerProgs = progs
+                { pkgConfigToolchains = toolchains'
                 }
           }
 

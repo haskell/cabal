@@ -57,7 +57,8 @@ import Distribution.Client.ProjectPlanning
   , ElaboratedSharedConfig (..)
   )
 import Distribution.Client.ProjectPlanning.Types
-  ( elabOrderExeDependencies
+  ( Toolchain (..)
+  , elabOrderExeDependencies
   , showElaboratedInstallPlan
   )
 import Distribution.Client.ScriptUtils
@@ -184,6 +185,7 @@ import Distribution.Simple.Flag (flagToMaybe, fromFlagOrDefault, pattern Flag)
 import Distribution.Simple.Program.Builtin (ghcProgram)
 import Distribution.Simple.Program.Db (requireProgram)
 import Distribution.Simple.Program.Types
+import Distribution.Solver.Types.Stage
 import System.Directory
   ( doesFileExist
   , getCurrentDirectory
@@ -361,7 +363,9 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
         -- especially in the no-project case.
         withInstallPlan (lessVerbose verbosity) baseCtx' $ \elaboratedPlan sharedConfig -> do
           -- targets should be non-empty map, but there's no NonEmptyMap yet.
-          targets <- validatedTargets (projectConfigShared (projectConfig ctx)) (pkgConfigCompiler sharedConfig) elaboratedPlan targetSelectors
+          -- TODO: This only makes sense for the build stage
+          let Toolchain{toolchainCompiler = compiler} = getStage (pkgConfigToolchains sharedConfig) Build
+          targets <- validatedTargets (projectConfigShared (projectConfig ctx)) compiler elaboratedPlan targetSelectors
 
           let
             (unitId, _) = fromMaybe (error "panic: targets should be non-empty") $ safeHead $ Map.toList targets
@@ -380,12 +384,14 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
     -- In addition, to avoid a *third* trip through the solver, we are
     -- replicating the second half of 'runProjectPreBuildPhase' by hand
     -- here.
-    (buildCtx, compiler, platform, replOpts', targets) <- withInstallPlan verbosity baseCtx'' $
+    (buildCtx, compiler, progdb, platform, replOpts', targets) <- withInstallPlan verbosity baseCtx'' $
       \elaboratedPlan elaboratedShared' -> do
         let ProjectBaseContext{..} = baseCtx''
+            -- TODO: This mightr not make sense
+            Toolchain{..} = getStage (pkgConfigToolchains elaboratedShared') Host
 
         -- Recalculate with updated project.
-        targets <- validatedTargets (projectConfigShared projectConfig) (pkgConfigCompiler elaboratedShared') elaboratedPlan targetSelectors
+        targets <- validatedTargets (projectConfigShared projectConfig) toolchainCompiler elaboratedPlan targetSelectors
 
         let
           elaboratedPlan' =
@@ -417,13 +423,11 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
               , targetsMap = targets
               }
 
-          ElaboratedSharedConfig{pkgConfigCompiler = compiler, pkgConfigPlatform = platform} = elaboratedShared'
-
           repl_flags = case originalComponent of
             Just oci -> generateReplFlags includeTransitive elaboratedPlan' oci
             Nothing -> []
 
-        return (buildCtx, compiler, platform, configureReplOptions & lReplOptionsFlags %~ (++ repl_flags), targets)
+        return (buildCtx, toolchainCompiler, toolchainProgramDb, toolchainPlatform, configureReplOptions & lReplOptionsFlags %~ (++ repl_flags), targets)
 
     -- Multi Repl implementation see: https://well-typed.com/blog/2023/03/cabal-multi-unit/ for
     -- a high-level overview about how everything fits together.
@@ -458,7 +462,7 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
         -- HACK: Just combine together all env overrides, placing the most common things last
 
         -- ghc program with overridden PATH
-        (ghcProg, _) <- requireProgram verbosity ghcProgram (pkgConfigCompilerProgs (elaboratedShared buildCtx'))
+        (ghcProg, _) <- requireProgram verbosity ghcProgram progdb
         let ghcProg' = ghcProg{programOverrideEnv = [("PATH", Just sp)]}
 
         -- Find what the unit files are, and start a repl based on all the response

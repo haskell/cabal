@@ -32,6 +32,7 @@ import qualified Distribution.Client.Utils.Json as J
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 
 import qualified Distribution.Solver.Types.ComponentDeps as ComponentDeps
+import qualified Distribution.Solver.Types.Stage as Stage
 
 import qualified Distribution.Compat.Binary as Binary
 import Distribution.Compat.Graph (Graph, Node)
@@ -104,20 +105,26 @@ encodePlanAsJson :: DistDirLayout -> ElaboratedInstallPlan -> ElaboratedSharedCo
 encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
   -- TODO: [nice to have] include all of the sharedPackageConfig and all of
   --      the parts of the elaboratedInstallPlan
-  J.object
+  J.object $
     [ "cabal-version" J..= jdisplay cabalInstallVersion
     , "cabal-lib-version" J..= jdisplay cabalVersion
-    , "compiler-id"
-        J..= (J.String . showCompilerId . pkgConfigCompiler)
-          elaboratedSharedConfig
-    , "compiler-abi" J..= jdisplay (compilerAbiTag (pkgConfigCompiler elaboratedSharedConfig))
-    , "os" J..= jdisplay os
-    , "arch" J..= jdisplay arch
-    , "install-plan" J..= installPlanToJ elaboratedInstallPlan
     ]
+      ++ toolchainJ Host
+      ++ toolchainJ Build
+      ++ ["install-plan" J..= installPlanToJ elaboratedInstallPlan]
   where
-    plat :: Platform
-    plat@(Platform arch os) = pkgConfigPlatform elaboratedSharedConfig
+    toolchains = pkgConfigToolchains elaboratedSharedConfig
+
+    toolchainJ stage =
+      [ prefixed "compiler-id" J..= J.String (showCompilerId toolchainCompiler)
+      , prefixed "arch" J..= (jdisplay arch)
+      , prefixed "os" J..= (jdisplay os)
+      ]
+      where
+        Toolchain{toolchainCompiler, toolchainPlatform = Platform arch os} = Stage.getStage toolchains stage
+        prefixed s = case stage of
+          Stage.Build -> "build-" ++ s
+          Stage.Host -> s
 
     installPlanToJ :: ElaboratedInstallPlan -> [J.Value]
     installPlanToJ = map planPackageToJ . InstallPlan.toList
@@ -158,6 +165,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
                   else "configured"
               )
         , "id" J..= (jdisplay . installedUnitId) elab
+        , "stage" J..= jdisplay (elabStage elab)
         , "pkg-name" J..= (jdisplay . pkgName . packageId) elab
         , "pkg-version" J..= (jdisplay . pkgVersion . packageId) elab
         , "flags"
@@ -206,6 +214,9 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
               ]
                 ++ bin_file (compSolverName comp)
       where
+        Toolchain{toolchainPlatform = plat} =
+          Stage.getStage toolchains (elabStage elab)
+
         -- \| Only add build-info file location if the Setup.hs CLI
         -- is recent enough to be able to generate build info files.
         -- Otherwise, write 'null'.
@@ -804,11 +815,16 @@ createPackageEnvironmentAndArgs
   elaboratedPlan
   elaboratedShared
   buildStatus
-    | compilerFlavor (pkgConfigCompiler elaboratedShared) == GHC =
+    | buildCompiler /= hostCompiler =
+        do
+          warn verbosity "package environment configuration is not supported for cross-compilation; commands that need the current project's package database are likely to fail"
+          return ([], [])
+    | compilerFlavor hostCompiler == GHC =
         do
           envFileM <-
             writePlanGhcEnvironment
               path
+              Host
               elaboratedPlan
               elaboratedShared
               buildStatus
@@ -821,42 +837,49 @@ createPackageEnvironmentAndArgs
         do
           warn verbosity "package environment configuration is not supported for the currently configured compiler; commands that need the current project's package database are likely to fail"
           return ([], [])
+    where
+      compilers = toolchainCompiler <$> pkgConfigToolchains elaboratedShared
+      buildCompiler = getStage compilers Build
+      hostCompiler = getStage compilers Host
 
 -- Writing .ghc.environment files
 --
 
 writePlanGhcEnvironment
   :: FilePath
+  -> Stage
   -> ElaboratedInstallPlan
   -> ElaboratedSharedConfig
   -> PostBuildProjectStatus
   -> IO (Maybe FilePath)
 writePlanGhcEnvironment
   path
+  stage
   elaboratedInstallPlan
-  ElaboratedSharedConfig
-    { pkgConfigCompiler = compiler
-    , pkgConfigPlatform = platform
-    }
-  postBuildStatus
-    | compilerFlavor compiler == GHC
-    , supportsPkgEnvFiles (getImplInfo compiler) =
-        -- TODO: check ghcjs compat
+  elaboratedSharedConfig
+  postBuildStatus =
+    if (compilerFlavor toolchainCompiler == GHC && supportsPkgEnvFiles (getImplInfo toolchainCompiler))
+      then -- TODO: check ghcjs compat
+
         fmap Just $
           writeGhcEnvironmentFile
             path
-            platform
-            (compilerVersion compiler)
+            toolchainPlatform
+            (compilerVersion toolchainCompiler)
             ( renderGhcEnvironmentFile
                 path
-                elaboratedInstallPlan
+                stagePlan
                 postBuildStatus
             )
+      else return Nothing
+    where
+      Toolchain{..} = getStage (pkgConfigToolchains elaboratedSharedConfig) stage
+      -- TODO
+      stagePlan = InstallPlan.remove {- (\pkg -> undefined pkg /= Host) -} (const False) elaboratedInstallPlan
+
 -- TODO: [required eventually] support for writing user-wide package
 -- environments, e.g. like a global project, but we would not put the
 -- env file in the home dir, rather it lives under ~/.ghc/
-
-writePlanGhcEnvironment _ _ _ _ = return Nothing
 
 renderGhcEnvironmentFile
   :: FilePath

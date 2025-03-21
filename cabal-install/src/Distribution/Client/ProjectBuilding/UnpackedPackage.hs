@@ -88,11 +88,11 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program
 import qualified Distribution.Simple.Register as Cabal
 import qualified Distribution.Simple.Setup as Cabal
+
 import Distribution.Types.BuildType
 import Distribution.Types.PackageDescription.Lens (componentModules)
 
 import Distribution.Simple.Utils
-import Distribution.System (Platform (..))
 import Distribution.Utils.Path hiding
   ( (<.>)
   , (</>)
@@ -116,6 +116,7 @@ import Distribution.Client.Errors
 import Distribution.Compat.Directory (listDirectory)
 
 import Distribution.Client.ProjectBuilding.PackageFileMonitor
+import Distribution.System (Platform (..))
 
 -- | Each unpacked package is processed in the following phases:
 --
@@ -176,10 +177,7 @@ buildAndRegisterUnpackedPackage
   buildTimeSettings@BuildTimeSettings{buildSettingNumJobs, buildSettingKeepTempFiles}
   registerLock
   cacheLock
-  pkgshared@ElaboratedSharedConfig
-    { pkgConfigCompiler = compiler
-    , pkgConfigCompilerProgs = progdb
-    }
+  pkgshared
   plan
   rpkg@(ReadyPackage pkg)
   srcdir
@@ -221,8 +219,8 @@ buildAndRegisterUnpackedPackage
               criticalSection registerLock $
                 Cabal.registerPackage
                   verbosity
-                  compiler
-                  progdb
+                  toolchainCompiler
+                  toolchainProgramDb
                   Nothing
                   (coercePackageDBStack pkgDBStack)
                   ipkg
@@ -254,6 +252,9 @@ buildAndRegisterUnpackedPackage
     return ()
     where
       uid = installedUnitId rpkg
+
+      Toolchain{toolchainCompiler, toolchainProgramDb} =
+        getStage (pkgConfigToolchains pkgshared) (elabStage pkg)
 
       comp_par_strat = case maybe_semaphore of
         Just sem_name -> Cabal.toFlag (getSemaphoreName sem_name)
@@ -450,7 +451,7 @@ buildInplaceUnpackedPackage
   buildSettings@BuildTimeSettings{buildSettingHaddockOpen}
   registerLock
   cacheLock
-  pkgshared@ElaboratedSharedConfig{pkgConfigPlatform = Platform _ os}
+  pkgshared
   plan
   rpkg@(ReadyPackage pkg)
   buildStatus
@@ -597,6 +598,9 @@ buildInplaceUnpackedPackage
     where
       dparams = elabDistDirParams pkgshared pkg
 
+      Toolchain{toolchainPlatform = Platform _ os} =
+        getStage (pkgConfigToolchains pkgshared) (elabStage pkg)
+
       packageFileMonitor = newPackageFileMonitor pkgshared distDirLayout dparams
 
       whenReConfigure action = case buildStatus of
@@ -653,10 +657,7 @@ buildAndInstallUnpackedPackage
   buildSettings@BuildTimeSettings{buildSettingNumJobs, buildSettingLogFile}
   registerLock
   cacheLock
-  pkgshared@ElaboratedSharedConfig
-    { pkgConfigCompiler = compiler
-    , pkgConfigPlatform = platform
-    }
+  pkgshared
   plan
   rpkg@(ReadyPackage pkg)
   srcdir
@@ -708,7 +709,7 @@ buildAndInstallUnpackedPackage
                       "registerPkg: elab does NOT require registration for "
                         ++ prettyShow uid
                 | otherwise = do
-                    let packageDbStack = elabPackageDbs pkg ++ [storePackageDB storeDirLayout compiler]
+                    let packageDbStack = elabPackageDbs pkg ++ [storePackageDB storeDirLayout toolchainCompiler]
                     assert (elabRegisterPackageDBStack pkg == packageDbStack) (return ())
                     _ <-
                       runRegister
@@ -724,7 +725,7 @@ buildAndInstallUnpackedPackage
             newStoreEntry
               verbosity
               storeDirLayout
-              compiler
+              toolchainCompiler
               uid
               (copyPkgFiles verbosity pkgshared pkg runCopy)
               registerPkg
@@ -762,6 +763,9 @@ buildAndInstallUnpackedPackage
       uid = installedUnitId rpkg
       pkgid = packageId rpkg
 
+      Toolchain{toolchainCompiler, toolchainPlatform} =
+        getStage (pkgConfigToolchains pkgshared) (elabStage pkg)
+
       dispname :: String
       dispname = case elabPkgOrComp pkg of
         -- Packages built altogether, instead of per component
@@ -786,7 +790,7 @@ buildAndInstallUnpackedPackage
       mlogFile =
         case buildSettingLogFile of
           Nothing -> Nothing
-          Just mkLogFile -> Just (mkLogFile compiler platform pkgid uid)
+          Just mkLogFile -> Just (mkLogFile toolchainCompiler toolchainPlatform pkgid uid)
 
       initLogFile :: IO ()
       initLogFile =
