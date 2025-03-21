@@ -34,6 +34,7 @@ import           Distribution.Solver.Types.PackageConstraint
 import qualified Distribution.Solver.Types.PackageIndex as CI
 import           Distribution.Solver.Types.Settings
 import           Distribution.Solver.Types.SourcePackage
+import           Distribution.Solver.Types.Stage (Stage(..), Staged(..), stages)
 
 import Distribution.Solver.Modular.Dependency as D
 import Distribution.Solver.Modular.Flag as F
@@ -53,24 +54,31 @@ import Distribution.Solver.Modular.Version
 -- resolving these situations. However, the right thing to do is to
 -- fix the problem there, so for now, shadowing is only activated if
 -- explicitly requested.
-convPIs :: OS -> Arch -> CompilerInfo -> Map PN [LabeledPackageConstraint]
-        -> ShadowPkgs -> StrongFlags -> SolveExecutables
-        -> SI.InstalledPackageIndex -> CI.PackageIndex (SourcePackage loc)
-        -> Index
-convPIs os arch comp constraints sip strfl solveExes iidx sidx =
+convPIs
+  :: Staged (CompilerInfo, Platform)
+  -> Map PN [LabeledPackageConstraint]
+  -> ShadowPkgs
+  -> StrongFlags
+  -> SolveExecutables
+  -> Staged SI.InstalledPackageIndex
+  -> CI.PackageIndex (SourcePackage loc)
+  -> Index
+convPIs toolchains' constraints sip strfl solveExes iidx sidx =
   mkIndex $
-  convIPI' sip iidx ++ convSPI' os arch comp constraints strfl solveExes sidx
+  convIPI' sip iidx ++ convSPI' toolchains' constraints strfl solveExes sidx
 
 -- | Convert a Cabal installed package index to the simpler,
 -- more uniform index format of the solver.
-convIPI' :: ShadowPkgs -> SI.InstalledPackageIndex -> [(PN, I, PInfo)]
-convIPI' (ShadowPkgs sip) idx =
+convIPI' :: ShadowPkgs -> Staged SI.InstalledPackageIndex -> [(PN, I, PInfo)]
+convIPI' (ShadowPkgs sip) sipi =
     -- apply shadowing whenever there are multiple installed packages with
     -- the same version
-    [ maybeShadow (convIP idx pkg)
+    [ maybeShadow (convIP stage idx pkg)
     -- IMPORTANT to get internal libraries. See
     -- Note [Index conversion with internal libraries]
-    | (_, pkgs) <- SI.allPackagesBySourcePackageIdAndLibName idx
+    | stage <- stages
+    , let idx = getStage sipi stage
+    , (_, pkgs) <- SI.allPackagesBySourcePackageIdAndLibName idx
     , (maybeShadow, pkg) <- zip (id : repeat shadow) pkgs ]
   where
 
@@ -80,16 +88,16 @@ convIPI' (ShadowPkgs sip) idx =
     shadow x                                     = x
 
 -- | Extract/recover the package ID from an installed package info, and convert it to a solver's I.
-convId :: IPI.InstalledPackageInfo -> (PN, I)
-convId ipi = (pn, I ver $ Inst $ IPI.installedUnitId ipi)
+convId :: Stage -> IPI.InstalledPackageInfo -> (PN, I)
+convId stage ipi = (pn, I stage ver $ Inst $ IPI.installedUnitId ipi)
   where MungedPackageId mpn ver = mungedId ipi
         -- HACK. See Note [Index conversion with internal libraries]
         pn = encodeCompatPackageName mpn
 
 -- | Convert a single installed package into the solver-specific format.
-convIP :: SI.InstalledPackageIndex -> IPI.InstalledPackageInfo -> (PN, I, PInfo)
-convIP idx ipi =
-  case traverse (convIPId (DependencyReason pn M.empty S.empty) comp idx) (IPI.depends ipi) of
+convIP :: Stage -> SI.InstalledPackageIndex -> IPI.InstalledPackageInfo -> (PN, I, PInfo)
+convIP stage idx ipi =
+  case traverse (convIPId stage (DependencyReason pn M.empty S.empty) comp idx) (IPI.depends ipi) of
         Left u    -> (pn, i, PInfo [] M.empty M.empty (Just (Broken u)))
         Right fds -> (pn, i, PInfo fds components M.empty Nothing)
  where
@@ -101,7 +109,7 @@ convIP idx ipi =
                     , compIsBuildable = IsBuildable True
                     }
 
-  (pn, i) = convId ipi
+  (pn, i) = convId stage ipi
 
   -- 'sourceLibName' is unreliable, but for now we only really use this for
   -- primary libs anyways
@@ -141,41 +149,54 @@ convIP idx ipi =
 -- May return Nothing if the package can't be found in the index. That
 -- indicates that the original package having this dependency is broken
 -- and should be ignored.
-convIPId :: DependencyReason PN -> Component -> SI.InstalledPackageIndex -> UnitId -> Either UnitId (FlaggedDep PN)
-convIPId dr comp idx ipid =
+convIPId :: Stage -> DependencyReason PN -> Component -> SI.InstalledPackageIndex -> UnitId -> Either UnitId (FlaggedDep PN)
+convIPId stage dr comp idx ipid =
   case SI.lookupUnitId idx ipid of
     Nothing  -> Left ipid
-    Just ipi -> let (pn, i) = convId ipi
-                    name = ExposedLib LMainLibName  -- TODO: Handle sub-libraries.
+    Just ipi -> let (pn, i) = convId stage ipi
+                    name = ExposedLib LMainLibName -- TODO: Handle sub-libraries.
                 in  Right (D.Simple (LDep dr (Dep (PkgComponent pn name) (Fixed i))) comp)
                 -- NB: something we pick up from the
                 -- InstalledPackageIndex is NEVER an executable
 
 -- | Convert a cabal-install source package index to the simpler,
 -- more uniform index format of the solver.
-convSPI' :: OS -> Arch -> CompilerInfo -> Map PN [LabeledPackageConstraint]
-         -> StrongFlags -> SolveExecutables
-         -> CI.PackageIndex (SourcePackage loc) -> [(PN, I, PInfo)]
-convSPI' os arch cinfo constraints strfl solveExes =
-    L.map (convSP os arch cinfo constraints strfl solveExes) . CI.allPackages
+-- NOTE: The package description of source package can depent on the platform
+-- and compiler version. Here we decide to convert a single source package
+-- into multiple index entries, one for each stage, where the conditionals are
+-- resolved. This choice might incour in high memory consumption and it might
+-- be worth looking for a different approach.
+convSPI'
+  :: Staged (CompilerInfo, Platform)
+  -> Map PN [LabeledPackageConstraint]
+  -> StrongFlags
+  -> SolveExecutables
+  -> CI.PackageIndex (SourcePackage loc)
+  -> [(PN, I, PInfo)]
+convSPI' toolchains constraints strfl solveExes sidx =
+  concat $
+  [ map (convSP stage os arch cinfo constraints strfl solveExes) (CI.allPackages sidx)
+  | stage <- stages
+  , let (cinfo, Platform arch os) = getStage toolchains stage
+  ]
 
 -- | Convert a single source package into the solver-specific format.
-convSP :: OS -> Arch -> CompilerInfo -> Map PN [LabeledPackageConstraint]
+convSP :: Stage -> OS -> Arch -> CompilerInfo -> Map PN [LabeledPackageConstraint]
        -> StrongFlags -> SolveExecutables -> SourcePackage loc -> (PN, I, PInfo)
-convSP os arch cinfo constraints strfl solveExes (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
-  let i = I pv InRepo
+convSP stage os arch cinfo constraints strfl solveExes (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
+  let i = I stage pv (InRepo pn)
       pkgConstraints = fromMaybe [] $ M.lookup pn constraints
-  in  (pn, i, convGPD os arch cinfo pkgConstraints strfl solveExes pn gpd)
+  in  (pn, i, convGPD stage os arch cinfo pkgConstraints strfl solveExes pn gpd)
 
 -- We do not use 'flattenPackageDescription' or 'finalizePD'
 -- from 'Distribution.PackageDescription.Configuration' here, because we
 -- want to keep the condition tree, but simplify much of the test.
 
 -- | Convert a generic package description to a solver-specific 'PInfo'.
-convGPD :: OS -> Arch -> CompilerInfo -> [LabeledPackageConstraint]
+convGPD :: Stage -> OS -> Arch -> CompilerInfo -> [LabeledPackageConstraint]
         -> StrongFlags -> SolveExecutables -> PN -> GenericPackageDescription
         -> PInfo
-convGPD os arch cinfo constraints strfl solveExes pn
+convGPD stage os arch cinfo constraints strfl solveExes pn
         (GenericPackageDescription pkg scannedVersion flags mlib sub_libs flibs exes tests benchs) =
   let
     fds  = flagInfo strfl flags
@@ -233,7 +254,7 @@ convGPD os arch cinfo constraints strfl solveExes pn
               , compIsBuildable = IsBuildable $ testCondition (buildable . libBuildInfo) lib /= Just False
               }
 
-        testCondition = testConditionForComponent os arch cinfo constraints
+        testCondition = testConditionForComponent stage os arch cinfo constraints
 
         isPrivate LibraryVisibilityPrivate = True
         isPrivate LibraryVisibilityPublic  = False
@@ -246,14 +267,15 @@ convGPD os arch cinfo constraints strfl solveExes pn
 -- before dependency solving. Additionally, this function only considers flags
 -- that are set by unqualified flag constraints, and it doesn't check the
 -- intra-package dependencies of a component.
-testConditionForComponent :: OS
+testConditionForComponent :: Stage 
+                          -> OS
                           -> Arch
                           -> CompilerInfo
                           -> [LabeledPackageConstraint]
                           -> (a -> Bool)
                           -> CondTree ConfVar [Dependency] a
                           -> Maybe Bool
-testConditionForComponent os arch cinfo constraints p tree =
+testConditionForComponent _stage os arch cinfo constraints p tree =
     case go $ extractCondition p tree of
       Lit True  -> Just True
       Lit False -> Just False

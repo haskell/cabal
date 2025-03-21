@@ -68,12 +68,12 @@ scopeToPackageName (ScopeAnySetupQualifier pn) = pn
 scopeToPackageName (ScopeAnyQualifier pn) = pn
 
 constraintScopeMatches :: ConstraintScope -> QPN -> Bool
-constraintScopeMatches (ScopeTarget pn) (Q (PackagePath q) pn') =
+constraintScopeMatches (ScopeTarget pn) (Q (PackagePath _ q) pn') =
     q == QualToplevel && pn == pn'
-constraintScopeMatches (ScopeQualified q pn) (Q (PackagePath q') pn') =
+constraintScopeMatches (ScopeQualified q pn) (Q (PackagePath _ q') pn') =
     q == q' && pn == pn'
 constraintScopeMatches (ScopeAnySetupQualifier pn) (Q pp pn') =
-  let setup (PackagePath (QualSetup _)) = True
+  let setup (PackagePath _ (QualSetup _)) = True
       setup _                           = False
   in setup pp && pn == pn'
 constraintScopeMatches (ScopeAnyQualifier pn) (Q _ pn') = pn == pn'

@@ -95,6 +95,7 @@ import qualified Distribution.Solver.Types.PkgConfigDb as PC
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SolverPackage
 import Distribution.Solver.Types.SourcePackage
+import qualified Distribution.Solver.Types.Stage as Stage
 import Distribution.Solver.Types.Variable
 
 {-------------------------------------------------------------------------------
@@ -821,7 +822,11 @@ exResolve
   prefs
   verbosity
   enableAllTests =
-    resolveDependencies C.buildPlatform compiler pkgConfigDb params
+    resolveDependencies
+      (Stage.always (compiler, C.buildPlatform))
+      (Stage.always pkgConfigDb)
+      (Stage.always instIdx)
+      params
     where
       defaultCompiler = C.unknownCompilerInfo C.buildCompilerId C.NoAbiTag
       compiler =
@@ -863,7 +868,7 @@ exResolve
                                 setSolveExecutables solveExes $
                                   setGoalOrder goalOrder $
                                     setSolverVerbosity verbosity $
-                                      standardInstallPolicy instIdx avaiIdx targets'
+                                      standardInstallPolicy avaiIdx targets'
       toLpc pc = LabeledPackageConstraint pc ConstraintSourceUnknown
 
       toConstraint (ExVersionConstraint scope v) =

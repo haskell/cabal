@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE NamedFieldPuns #-}
 module Distribution.Solver.Modular.Builder (
     buildTree
   , splits -- for testing
@@ -35,6 +36,7 @@ import qualified Distribution.Solver.Modular.WeightedPSQ as W
 
 import Distribution.Solver.Types.ComponentDeps
 import Distribution.Solver.Types.PackagePath
+import qualified Distribution.Solver.Types.Stage as Stage
 
 -- | All state needed to build and link the search tree. It has a type variable
 -- because the linking phase doesn't need to know about the state used to build
@@ -138,40 +140,42 @@ addChildren bs@(BS { rdeps = rdm, open = gs, next = Goals })
 
 -- If we have already picked a goal, then the choice depends on the kind
 -- of goal.
---
--- For a package, we look up the instances available in the global info,
--- and then handle each instance in turn.
-addChildren bs@(BS { rdeps = rdm, index = idx, next = OneGoal (PkgGoal qpn@(Q _ pn) gr) }) =
-  case M.lookup pn idx of
-    Nothing  -> FailF
-                (varToConflictSet (P qpn) `CS.union` goalReasonToConflictSetWithConflict qpn gr)
-                UnknownPackage
-    Just pis -> PChoiceF qpn rdm gr (W.fromList (L.map (\ (i, info) ->
-                                                       ([], POption i Nothing, bs { next = Instance qpn info }))
-                                                     (M.toList pis)))
-      -- TODO: data structure conversion is rather ugly here
-
--- For a flag, we create only two subtrees, and we create them in the order
--- that is indicated by the flag default.
-addChildren bs@(BS { rdeps = rdm, next = OneGoal (FlagGoal qfn@(FN qpn _) (FInfo b m w) t f gr) }) =
-  FChoiceF qfn rdm gr weak m b (W.fromList
-    [([if b then 0 else 1], True,  (extendOpen qpn t bs) { next = Goals }),
-     ([if b then 1 else 0], False, (extendOpen qpn f bs) { next = Goals })])
-  where
-    trivial = L.null t && L.null f
-    weak = WeakOrTrivial $ unWeakOrTrivial w || trivial
-
--- For a stanza, we also create only two subtrees. The order is initially
--- False, True. This can be changed later by constraints (force enabling
--- the stanza by replacing the False branch with failure) or preferences
--- (try enabling the stanza if possible by moving the True branch first).
-
-addChildren bs@(BS { rdeps = rdm, next = OneGoal (StanzaGoal qsn@(SN qpn _) t gr) }) =
-  SChoiceF qsn rdm gr trivial (W.fromList
-    [([0], False,                                                                  bs  { next = Goals }),
-     ([1], True,  (extendOpen qpn t bs) { next = Goals })])
-  where
-    trivial = WeakOrTrivial (L.null t)
+addChildren bs@(BS { rdeps, index, next = OneGoal goal }) = 
+  case goal of 
+    PkgGoal qpn@(Q (PackagePath s _) pn) gr ->
+      -- For a package goal, we look up the instances available in the global
+      -- info, and then handle each instance in turn.
+      case M.lookup pn index of
+        Nothing  -> FailF
+                    (varToConflictSet (P qpn) `CS.union` goalReasonToConflictSetWithConflict qpn gr)
+                    UnknownPackage
+        Just pis -> PChoiceF qpn rdeps gr $ W.fromList
+                      [ ([], POption i Nothing, bs { next = Instance qpn info })
+                      | (i@(I s' _ver _loc), info) <- M.toList pis
+                      -- Only instances belonging to the same stage are allowed.
+                      , s == s'
+                      ]
+    -- For a flag, we create only two subtrees, and we create them in the order
+    -- that is indicated by the flag default.
+    FlagGoal qfn@(FN qpn _) (FInfo b m w) t f gr ->
+        FChoiceF qfn rdeps gr weak m b $ W.fromList
+          [ ([if b then 0 else 1], True,  (extendOpen qpn t bs) { next = Goals })
+          , ([if b then 1 else 0], False, (extendOpen qpn f bs) { next = Goals })
+          ]
+        where
+          trivial = L.null t && L.null f
+          weak = WeakOrTrivial $ unWeakOrTrivial w || trivial
+    -- For a stanza, we also create only two subtrees. The order is initially
+    -- False, True. This can be changed later by constraints (force enabling
+    -- the stanza by replacing the False branch with failure) or preferences
+    -- (try enabling the stanza if possible by moving the True branch first).
+    StanzaGoal qsn@(SN qpn _) t gr ->
+      SChoiceF qsn rdeps gr trivial $ W.fromList
+        [ ([0], False, bs { next = Goals })
+        , ([1], True,  (extendOpen qpn t bs) { next = Goals })
+        ]
+      where
+        trivial = WeakOrTrivial (L.null t)
 
 -- For a particular instance, we change the state: we update the scope,
 -- and furthermore we update the set of goals.
@@ -259,7 +263,7 @@ buildTree idx igs =
   where
     topLevelGoal qpn = PkgGoal qpn UserGoal
 
-    qpns = L.map (Q (PackagePath QualToplevel)) igs
+    qpns = L.map (Q (PackagePath Stage.Host QualToplevel)) igs
 
 {-------------------------------------------------------------------------------
   Goals

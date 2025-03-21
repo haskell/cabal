@@ -44,11 +44,12 @@ import Distribution.Solver.Modular.Tree
 import qualified Distribution.Solver.Modular.PSQ as PSQ
 
 import Distribution.Simple.Setup (BooleanFlag(..))
+import Distribution.Solver.Types.Stage (Staged, Stage(..))
 
 #ifdef DEBUG_TRACETREE
 import qualified Distribution.Solver.Modular.ConflictSet as CS
 import qualified Distribution.Solver.Modular.WeightedPSQ as W
-import qualified Distribution.Deprecated.Text as T
+import           Distribution.Solver.Modular.Version (showVer)
 
 import Debug.Trace.Tree (gtraceJson)
 import Debug.Trace.Tree.Simple
@@ -88,14 +89,14 @@ newtype PruneAfterFirstSuccess = PruneAfterFirstSuccess Bool
 -- before exploration.
 --
 solve :: SolverConfig                         -- ^ solver parameters
-      -> CompilerInfo
+      -> Staged CompilerInfo
+      -> Staged (Maybe PkgConfigDb)
       -> Index                                -- ^ all available packages as an index
-      -> Maybe PkgConfigDb                    -- ^ available pkg-config pkgs
       -> (PN -> PackagePreferences)           -- ^ preferences
       -> M.Map PN [LabeledPackageConstraint]  -- ^ global constraints
       -> S.Set PN                             -- ^ global goals
       -> RetryLog Message SolverFailure (Assignment, RevDepMap)
-solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
+solve sc cinfo pkgConfigDB idx userPrefs userConstraints userGoals =
   explorePhase      .
   traceTree "cycles.json" id .
   detectCycles      .
@@ -136,7 +137,7 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
                        P.enforceManualFlags userConstraints
     validationCata   = P.enforceSingleInstanceRestriction .
                        validateLinking idx .
-                       validateTree cinfo idx pkgConfigDB
+                       validateTree cinfo pkgConfigDB idx
     prunePhase       = (if asBool (avoidReinstalls sc) then P.avoidReinstalls (const True) else id) .
                        (case onlyConstrained sc of
                           OnlyConstrainedAll ->
@@ -203,7 +204,7 @@ instance GSimpleTree (Tree d c) where
 
       -- Show package choice
       goP :: QPN -> POption -> Tree d c -> (String, SimpleTree)
-      goP _        (POption (I ver _loc) Nothing)  subtree = (T.display ver, go subtree)
+      goP _        (POption (I _stage ver _loc) Nothing)  subtree = (showVer ver, go subtree)
       goP (Q _ pn) (POption _           (Just pp)) subtree = (showQPN (Q pp pn), go subtree)
 
       -- Show flag or stanza choice
@@ -250,5 +251,5 @@ _removeGR = trav go
    dummy =
        DependencyGoal $
        DependencyReason
-           (Q (PackagePath QualToplevel) (mkPackageName "$"))
+           (Q (PackagePath Host QualToplevel) (mkPackageName "$"))
            M.empty S.empty

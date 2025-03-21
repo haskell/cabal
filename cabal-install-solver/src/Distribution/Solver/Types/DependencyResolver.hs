@@ -15,7 +15,10 @@ import Distribution.Solver.Types.Progress
     ( Progress )
 import Distribution.Solver.Types.ResolverPackage
     ( ResolverPackage )
-import Distribution.Solver.Types.SourcePackage ( SourcePackage )
+import Distribution.Solver.Types.SourcePackage
+    ( SourcePackage )
+import Distribution.Solver.Types.Stage
+    ( Staged )
 import Distribution.Solver.Types.SummarizedMessage
     ( SummarizedMessage(..) )
 import Distribution.Simple.PackageIndex ( InstalledPackageIndex )
@@ -31,11 +34,10 @@ import Distribution.System ( Platform )
 -- solving the package dependency problem and we want to make it easy to swap
 -- in alternatives.
 --
-type DependencyResolver loc = Platform
-                           -> CompilerInfo
-                           -> InstalledPackageIndex
+type DependencyResolver loc = Staged (CompilerInfo, Platform)
+                           -> Staged (Maybe PkgConfigDb)
+                           -> Staged InstalledPackageIndex
                            -> PackageIndex (SourcePackage loc)
-                           -> Maybe PkgConfigDb
                            -> (PackageName -> PackagePreferences)
                            -> [LabeledPackageConstraint]
                            -> Set PackageName

@@ -60,6 +60,9 @@ data ConstraintSource =
   -- | An internal constraint due to compatibility issues with the Setup.hs
   -- command line interface requires a maximum upper bound on Cabal
   | ConstraintSetupCabalMaxVersion
+
+  -- | TODO
+  | ConstraintHideInstalledPackagesSpecificBySourcePackageId 
   deriving (Show, Eq, Generic)
 
 instance Binary ConstraintSource
@@ -94,3 +97,5 @@ instance Pretty ConstraintSource where
       text "minimum version of Cabal used by Setup.hs"
     ConstraintSetupCabalMaxVersion ->
       text "maximum version of Cabal used by Setup.hs"
+    ConstraintHideInstalledPackagesSpecificBySourcePackageId ->
+      text "HideInstalledPackagesSpecificBySourcePackageId"

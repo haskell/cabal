@@ -164,6 +164,7 @@ import Distribution.Solver.Types.PkgConfigDb
 import Distribution.Solver.Types.SolverId
 import Distribution.Solver.Types.SolverPackage
 import Distribution.Solver.Types.SourcePackage
+import qualified Distribution.Solver.Types.Stage as Stage
 
 import Distribution.ModuleName
 import Distribution.Package
@@ -712,7 +713,7 @@ rebuildInstallPlan
       newFileMonitorInCacheDir = newFileMonitor . distProjectCacheFile
 
       -- Configure the compiler we're using.
-      --
+
       -- This is moderately expensive and doesn't change that often so we cache
       -- it independently.
       --
@@ -1313,9 +1314,9 @@ planPackages
   localPackages
   pkgStanzasEnable =
     resolveDependencies
-      platform
-      (compilerInfo comp)
-      pkgConfigDB
+      (Stage.always (compilerInfo comp, platform))
+      (Stage.always pkgConfigDB)
+      (Stage.always installedPkgIndex)
       resolverParams
     where
       -- TODO: [nice to have] disable multiple instances restriction in
@@ -1434,7 +1435,6 @@ planPackages
         -- Note: we don't use the standardInstallPolicy here, since that uses
         -- its own addDefaultSetupDependencies that is not appropriate for us.
         basicInstallPolicy
-          installedPkgIndex
           sourcePkgDb
           localPackages
 
@@ -1700,7 +1700,7 @@ elaborateInstallPlan
         :: (SolverId -> [ElaboratedPlanPackage])
         -> SolverPackage UnresolvedPkgLoc
         -> LogProgress [ElaboratedConfiguredPackage]
-      elaborateSolverToComponents mapDep spkg@(SolverPackage _ _ _ deps0 exe_deps0) =
+      elaborateSolverToComponents mapDep spkg@(SolverPackage _ _ _ _ _ deps0 exe_deps0) =
         case mkComponentsGraph (elabEnabledSpec elab0) pd of
           Right g -> do
             let src_comps = componentsGraphToList g
@@ -2080,6 +2080,8 @@ elaborateInstallPlan
       elaborateSolverToPackage
         pkgWhyNotPerComponent
         pkg@( SolverPackage
+                _stage
+                _qpn
                 (SourcePackage pkgid _gpd _srcloc _descOverride)
                 _flags
                 _stanzas
@@ -2181,6 +2183,8 @@ elaborateInstallPlan
         -> ElaboratedConfiguredPackage
       elaborateSolverToCommon
         pkg@( SolverPackage
+                _stage
+                _qpn
                 (SourcePackage pkgid gdesc srcloc descOverride)
                 flags
                 stanzas

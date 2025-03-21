@@ -35,6 +35,7 @@ import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb, pkgConfigPkgIsPresent)
 import Distribution.Types.LibraryName
 import Distribution.Types.PkgconfigVersionRange
+import Distribution.Solver.Types.Stage (Staged (..), Stage (..))
 
 -- In practice, most constraints are implication constraints (IF we have made
 -- a number of choices, THEN we also have to ensure that). We call constraints
@@ -88,9 +89,9 @@ import Distribution.Types.PkgconfigVersionRange
 
 -- | The state needed during validation.
 data ValidateState = VS {
-  supportedExt        :: Extension -> Bool,
-  supportedLang       :: Language  -> Bool,
-  presentPkgs         :: Maybe (PkgconfigName -> PkgconfigVersionRange  -> Bool),
+  supportedExt        :: Stage -> Extension -> Bool,
+  supportedLang       :: Stage -> Language  -> Bool,
+  presentPkgs         :: Stage -> Maybe (PkgconfigName -> PkgconfigVersionRange  -> Bool),
   index               :: Index,
 
   -- Saved, scoped, dependencies. Every time 'validate' makes a package choice,
@@ -189,7 +190,7 @@ validate = go
 
     -- What to do for package nodes ...
     goP :: QPN -> POption -> Validate (Tree d c) -> Validate (Tree d c)
-    goP qpn@(Q _pp pn) (POption i _) r = do
+    goP qpn@(Q (PackagePath _stage _) pn) (POption i _mpp) r = do
       PA ppa pfa psa <- asks pa    -- obtain current preassignment
       extSupported   <- asks supportedExt  -- obtain the supported extensions
       langSupported  <- asks supportedLang -- obtain the supported languages
@@ -199,6 +200,7 @@ validate = go
       aComps         <- asks availableComponents
       rComps         <- asks requiredComponents
       -- obtain dependencies and index-dictated exclusions introduced by the choice
+      let I stage _vr _loc = i
       let (PInfo deps comps _ mfr) = idx ! pn ! i
       -- qualify the deps in the current scope
       let qdeps = qualifyDeps qpn deps
@@ -206,8 +208,8 @@ validate = go
       -- plus the dependency information we have for that instance
       let newactives = extractAllDeps pfa psa qdeps
       -- We now try to extend the partial assignment with the new active constraints.
-      let mnppa = extend extSupported langSupported pkgPresent newactives
-                   =<< extendWithPackageChoice (PI qpn i) ppa
+      let mnppa = extend (extSupported stage) (langSupported stage) (pkgPresent stage) newactives
+                  =<< extendWithPackageChoice (PI qpn i) ppa
       -- In case we continue, we save the scoped dependencies
       let nsvd = M.insert qpn qdeps svd
       case mfr of
@@ -232,7 +234,7 @@ validate = go
 
     -- What to do for flag nodes ...
     goF :: QFN -> Bool -> Validate (Tree d c) -> Validate (Tree d c)
-    goF qfn@(FN qpn _f) b r = do
+    goF qfn@(FN qpn@(Q (PackagePath stage _) _) _f) b r = do
       PA ppa pfa psa <- asks pa -- obtain current preassignment
       extSupported   <- asks supportedExt  -- obtain the supported extensions
       langSupported  <- asks supportedLang -- obtain the supported languages
@@ -254,7 +256,7 @@ validate = go
       let newactives = extractNewDeps (F qfn) b npfa psa qdeps
           mNewRequiredComps = extendRequiredComponents qpn aComps rComps newactives
       -- As in the package case, we try to extend the partial assignment.
-      let mnppa = extend extSupported langSupported pkgPresent newactives ppa
+      let mnppa = extend (extSupported stage) (langSupported stage) (pkgPresent stage) newactives ppa
       case liftM2 (,) mnppa mNewRequiredComps of
         Left (c, fr)         -> return (Fail c fr) -- inconsistency found
         Right (nppa, rComps') ->
@@ -262,7 +264,7 @@ validate = go
 
     -- What to do for stanza nodes (similar to flag nodes) ...
     goS :: QSN -> Bool -> Validate (Tree d c) -> Validate (Tree d c)
-    goS qsn@(SN qpn _f) b r = do
+    goS qsn@(SN qpn@(Q (PackagePath stage _) _) _f) b r = do
       PA ppa pfa psa <- asks pa -- obtain current preassignment
       extSupported   <- asks supportedExt  -- obtain the supported extensions
       langSupported  <- asks supportedLang -- obtain the supported languages
@@ -284,7 +286,7 @@ validate = go
       let newactives = extractNewDeps (S qsn) b pfa npsa qdeps
           mNewRequiredComps = extendRequiredComponents qpn aComps rComps newactives
       -- As in the package case, we try to extend the partial assignment.
-      let mnppa = extend extSupported langSupported pkgPresent newactives ppa
+      let mnppa = extend (extSupported stage) (langSupported stage) (pkgPresent stage) newactives ppa
       case liftM2 (,) mnppa mNewRequiredComps of
         Left (c, fr)         -> return (Fail c fr) -- inconsistency found
         Right (nppa, rComps') ->
@@ -328,7 +330,14 @@ checkComponentsInNewPackage required qpn providedComps =
 -- | We try to extract as many concrete dependencies from the given flagged
 -- dependencies as possible. We make use of all the flag knowledge we have
 -- already acquired.
-extractAllDeps :: FAssignment -> SAssignment -> FlaggedDeps QPN -> [LDep QPN]
+extractAllDeps
+  :: FAssignment
+  -- ^ current flag assignments
+  -> SAssignment
+  -- ^ current stanza assignments
+  -> FlaggedDeps QPN
+  -- ^ conditional dependencies
+  -> [LDep QPN]
 extractAllDeps fa sa deps = do
   d <- deps
   case d of
@@ -345,7 +354,19 @@ extractAllDeps fa sa deps = do
 -- | We try to find new dependencies that become available due to the given
 -- flag or stanza choice. We therefore look for the choice in question, and then call
 -- 'extractAllDeps' for everything underneath.
-extractNewDeps :: Var QPN -> Bool -> FAssignment -> SAssignment -> FlaggedDeps QPN -> [LDep QPN]
+extractNewDeps
+  :: Var QPN
+  -- ^ the variable (package, flag or stanza)
+  -> Bool
+  -- ^ the variable value
+  -> FAssignment
+  -- ^ current flag assignments
+  -> SAssignment
+  -- ^ current stanza assignments
+  -> FlaggedDeps QPN
+  -- ^ conditional dependencies
+  -> [LDep QPN]
+  -- ^ dependencies with a reason
 extractNewDeps v b fa sa = go
   where
     go :: FlaggedDeps QPN -> [LDep QPN]
@@ -449,14 +470,14 @@ merge (MergedDepFixed comp1 vs1 i1) (PkgDep vs2 (PkgComponent p comp2) ci@(Fixed
            , ( ConflictingDep vs1 (PkgComponent p comp1) (Fixed i1)
              , ConflictingDep vs2 (PkgComponent p comp2) ci ) )
 
-merge (MergedDepFixed comp1 vs1 i@(I v _)) (PkgDep vs2 (PkgComponent p comp2) ci@(Constrained vr))
+merge (MergedDepFixed comp1 vs1 i@(I _ v _)) (PkgDep vs2 (PkgComponent p comp2) ci@(Constrained vr))
   | checkVR vr v = Right $ MergedDepFixed comp1 vs1 i
   | otherwise    =
       Left ( createConflictSetForVersionConflict p v vs1 vr vs2
            , ( ConflictingDep vs1 (PkgComponent p comp1) (Fixed i)
              , ConflictingDep vs2 (PkgComponent p comp2) ci ) )
 
-merge (MergedDepConstrained vrOrigins) (PkgDep vs2 (PkgComponent p comp2) ci@(Fixed i@(I v _))) =
+merge (MergedDepConstrained vrOrigins) (PkgDep vs2 (PkgComponent p comp2) ci@(Fixed i@(I _ v _))) =
     go vrOrigins -- I tried "reverse vrOrigins" here, but it seems to slow things down ...
   where
     go :: [VROrigin] -> Either (ConflictSet, (ConflictingDep, ConflictingDep)) MergedPkgDep
@@ -560,18 +581,22 @@ extendRequiredComponents eqpn available = foldM extendSingle
 
 
 -- | Interface.
-validateTree :: CompilerInfo -> Index -> Maybe PkgConfigDb -> Tree d c -> Tree d c
-validateTree cinfo idx pkgConfigDb t = runValidate (validate t) VS {
-    supportedExt        = maybe (const True) -- if compiler has no list of extensions, we assume everything is supported
-                                (\ es -> let s = S.fromList es in \ x -> S.member x s)
-                                (compilerInfoExtensions cinfo)
-  , supportedLang       = maybe (const True)
-                                (flip L.elem) -- use list lookup because language list is small and no Ord instance
-                                (compilerInfoLanguages  cinfo)
-  , presentPkgs         = pkgConfigPkgIsPresent <$> pkgConfigDb
+validateTree :: Staged CompilerInfo -> Staged (Maybe PkgConfigDb) -> Index -> Tree d c -> Tree d c
+validateTree cinfo pkgConfigDb idx t = runValidate (validate t) VS
+  { -- if compiler has no list of extensions, we assume everything is supported
+    supportedExt        =  maybe (const True) (flip S.member) . getStage extSet
+  , -- if compiler has no list of extensions, we assume everything is supported
+    supportedLang       = maybe (const True) (flip S.member) . getStage langSet
+  , presentPkgs         = fmap pkgConfigPkgIsPresent . getStage pkgConfigDb
   , index               = idx
   , saved               = M.empty
   , pa                  = PA M.empty M.empty M.empty
   , availableComponents = M.empty
   , requiredComponents  = M.empty
   }
+  where
+    extSet :: Staged (Maybe (S.Set Extension))
+    extSet = fmap (fmap S.fromList . compilerInfoExtensions) cinfo
+
+    langSet :: Staged (Maybe (S.Set Language))
+    langSet = fmap (fmap S.fromList . compilerInfoLanguages) cinfo

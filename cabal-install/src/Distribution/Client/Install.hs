@@ -142,6 +142,7 @@ import Distribution.Solver.Types.PkgConfigDb
   )
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SourcePackage as SourcePackage
+import qualified Distribution.Solver.Types.Stage as Stage
 
 import Distribution.Client.ProjectConfig
 import Distribution.Client.Utils
@@ -586,9 +587,9 @@ planPackages
   pkgConfigDb
   pkgSpecifiers =
     resolveDependencies
-      platform
-      (compilerInfo comp)
-      pkgConfigDb
+      (Stage.always (compilerInfo comp, platform))
+      (Stage.always pkgConfigDb)
+      (Stage.always installedPkgIndex)
       resolverParams
       >>= if onlyDeps then pruneInstallPlan pkgSpecifiers else return
     where
@@ -650,7 +651,6 @@ planPackages
           -- doesn't understand how to install them
           . setSolveExecutables (SolveExecutables False)
           $ standardInstallPolicy
-            installedPkgIndex
             sourcePkgDb
             pkgSpecifiers
 

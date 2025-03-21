@@ -67,6 +67,7 @@ import Distribution.Solver.Types.PkgConfigDb
   )
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SourcePackage
+import qualified Distribution.Solver.Types.Stage as Stage
 
 import Distribution.Client.SavedFlags (readCommandFlags, writeCommandFlags)
 import Distribution.Package
@@ -464,14 +465,18 @@ planLocalPackage
           . setSolveExecutables (SolveExecutables False)
           . setSolverVerbosity verbosity
           $ standardInstallPolicy
-            installedPkgIndex
             -- NB: We pass in an *empty* source package database,
             -- because cabal configure assumes that all dependencies
             -- have already been installed
             (SourcePackageDb mempty packagePrefs)
             [SpecificSourcePackage localPkg]
 
-    return (resolveDependencies platform (compilerInfo comp) pkgConfigDb resolverParams)
+    return $
+      resolveDependencies
+        (Stage.always (compilerInfo comp, platform))
+        (Stage.always pkgConfigDb)
+        (Stage.always installedPkgIndex)
+        resolverParams
 
 -- | Call an installer for an 'SourcePackage' but override the configure
 -- flags with the ones given by the 'ReadyPackage'. In particular the

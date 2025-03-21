@@ -48,6 +48,7 @@ import Distribution.Client.Dependency (foldProgress)
 import qualified Distribution.Solver.Types.PackagePath as P
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb (..), pkgConfigDbFromList)
 import Distribution.Solver.Types.Settings
+import Distribution.Solver.Types.Stage
 import Distribution.Solver.Types.Variable
 import UnitTests.Distribution.Solver.Modular.DSL
 import UnitTests.Options
@@ -298,10 +299,10 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
     toQPN q pn = P.Q pp (C.mkPackageName pn)
       where
         pp = case q of
-          QualNone -> P.PackagePath P.QualToplevel
+          QualNone -> P.PackagePath Host P.QualToplevel
           QualSetup s ->
-            P.PackagePath (P.QualSetup (C.mkPackageName s))
+            P.PackagePath Host (P.QualSetup (C.mkPackageName s))
           QualIndepSetup _ s ->
-            P.PackagePath (P.QualSetup (C.mkPackageName s))
+            P.PackagePath Host (P.QualSetup (C.mkPackageName s))
           QualExe p1 p2 ->
-            P.PackagePath (P.QualExe (C.mkPackageName p1) (C.mkPackageName p2))
+            P.PackagePath Host (P.QualExe (C.mkPackageName p1) (C.mkPackageName p2))
