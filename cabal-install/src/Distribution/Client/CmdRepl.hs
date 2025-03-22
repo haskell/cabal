@@ -42,6 +42,7 @@ import Distribution.Client.Errors
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
+  , cfgVerbosity
   , defaultNixStyleFlags
   , nixStyleOptions
   )
@@ -104,7 +105,6 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Setup
   ( ReplOptions (..)
   , commonSetupTempFileOptions
-  , setupVerbosity
   )
 import Distribution.Simple.Utils
   ( debugNoWrap
@@ -285,7 +285,7 @@ multiReplDecision ctx compiler flags =
 -- "Distribution.Client.ProjectOrchestration"
 replAction :: NixStyleFlags ReplFlags -> [String] -> GlobalFlags -> IO ()
 replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings globalFlags =
-  withContextAndSelectors AcceptNoTargets (Just LibKind) flags targetStrings globalFlags ReplCommand $ \targetCtx ctx targetSelectors -> do
+  withContextAndSelectors verbosity AcceptNoTargets (Just LibKind) flags targetStrings globalFlags ReplCommand $ \targetCtx ctx targetSelectors -> do
     when (buildSettingOnlyDeps (buildSettings ctx)) $
       dieWithException verbosity ReplCommandDoesn'tSupport
     let projectRoot = distProjectRootDirectory $ distDirLayout ctx
@@ -506,7 +506,7 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
         go m ("PATH", Just s) = foldl' (\m' f -> Map.insertWith (+) f 1 m') m (splitSearchPath s)
         go m _ = m
 
-    verbosity = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags)
+    verbosity = cfgVerbosity normal flags
     tempFileOptions = commonSetupTempFileOptions $ configCommonFlags configFlags
 
     validatedTargets ctx compiler elaboratedPlan targetSelectors = do
