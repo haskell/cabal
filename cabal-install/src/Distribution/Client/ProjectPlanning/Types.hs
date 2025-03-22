@@ -253,7 +253,7 @@ data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
   -- they explicitly disabled.
 
   , elabStage :: Stage
-  
+
   -- TODO: The 'Bool' here should be refined into an ADT with three
   -- cases: NotRequested, ExplicitlyRequested and
   -- ImplicitlyRequested.  A stanza is explicitly requested if
@@ -268,6 +268,7 @@ data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
   -- just happen not to have any tests.  (But perhaps we should
   -- warn if ALL local packages don't have any tests.)
   , elabPackageDbs :: [Maybe PackageDBCWD]
+  , elabBuildPackageDbs :: [Maybe PackageDBCWD]
   , elabSetupPackageDBStack :: PackageDBStackCWD
   , elabBuildPackageDBStack :: PackageDBStackCWD
   , elabRegisterPackageDBStack :: PackageDBStackCWD

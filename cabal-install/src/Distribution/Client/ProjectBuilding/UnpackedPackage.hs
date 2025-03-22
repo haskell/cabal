@@ -761,7 +761,10 @@ buildAndInstallUnpackedPackage
                 | otherwise = do
                     assert
                       ( elabRegisterPackageDBStack pkg
-                          == storePackageDBStack compiler (elabPackageDbs pkg)
+                          == storePackageDBStack compiler (case elabStage pkg of
+                            Host -> elabPackageDbs pkg
+                            Build -> elabBuildPackageDbs pkg
+                            )
                       )
                       (return ())
                     _ <-

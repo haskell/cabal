@@ -2317,6 +2317,7 @@ elaborateInstallPlan
                 then BuildInplaceOnly OnDisk
                 else BuildAndInstall
             elabPackageDbs = projectConfigPackageDBs sharedPackageConfig
+            elabBuildPackageDbs = projectConfigBuildPackageDBs sharedPackageConfig
             elabBuildPackageDBStack = buildAndRegisterDbs stage
             elabRegisterPackageDBStack = buildAndRegisterDbs stage
 
