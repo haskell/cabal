@@ -1,27 +1,73 @@
 # cabal build
 Configuration is affected by the following files:
 - cabal.project
-- dep/cabal.project
+- dep1/cabal.project
     imported by: cabal.project
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
- - dep-0.1 (lib) (first run)
+ - dep1-0.1 (lib) (first run)
  - dep2-0.1 (lib) (first run)
  - main-0.1 (lib) (first run)
-Configuring library for dep-0.1...
-Preprocessing library for dep-0.1...
-Building library for dep-0.1...
+Configuring library for dep1-0.1...
+Preprocessing library for dep1-0.1...
+Building library for dep1-0.1...
 Configuring library for dep2-0.1...
 Preprocessing library for dep2-0.1...
 Building library for dep2-0.1...
 Configuring library for main-0.1...
 Preprocessing library for main-0.1...
 Building library for main-0.1...
+# cabal clean
 # cabal build
 Configuration is affected by the following files:
 - cabal.project
-- dep/cabal.project
+- dep1/cabal.project
+    imported by: cabal.project
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - dep1-0.1 (lib) (first run)
+Configuring library for dep1-0.1...
+Preprocessing library for dep1-0.1...
+Building library for dep1-0.1...
+# cabal build
+Configuration is affected by the following files:
+- cabal.project
+- dep1/cabal.project
+    imported by: cabal.project
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - dep2-0.1 (lib) (first run)
+Configuring library for dep2-0.1...
+Preprocessing library for dep2-0.1...
+Building library for dep2-0.1...
+# cabal clean
+# cabal build
+Configuration is affected by the following files:
+- cabal.project
+- dep1/cabal.project
+    imported by: cabal.project
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - dep1-0.1 (lib) (first run)
+ - dep2-0.1 (lib) (first run)
+ - main-0.1 (lib) (first run)
+Configuring library for dep1-0.1...
+Preprocessing library for dep1-0.1...
+Building library for dep1-0.1...
+Configuring library for dep2-0.1...
+Preprocessing library for dep2-0.1...
+Building library for dep2-0.1...
+Configuring library for main-0.1...
+Preprocessing library for main-0.1...
+Building library for main-0.1...
+# cabal clean
+# cabal build
+Configuration is affected by the following files:
+- cabal.project
+- dep1/cabal.project
     imported by: cabal.project
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
@@ -30,40 +76,3 @@ In order, the following will be built:
 Configuring library for dep2-0.1...
 Preprocessing library for dep2-0.1...
 Building library for dep2-0.1...
- - dep1-0.1 (lib) (first run)
-Configuring library for dep1-0.1..
-Preprocessing library for dep1-0.1..
-Building library for dep1-0.1..
-# cabal build
-Build profile: -w ghc-<GHCVER> -O1
-In order, the following will be built:
- - dep2-0.1 (lib) (first run)
-Configuring library for dep2-0.1..
-Preprocessing library for dep2-0.1..
-Building library for dep2-0.1..
-# cabal clean
-# cabal build
-Resolving dependencies...
-Build profile: -w ghc-<GHCVER> -O1
-In order, the following will be built:
- - dep1-0.1 (lib) (first run)
- - dep2-0.1 (lib) (first run)
- - main-0.1 (lib) (first run)
-Configuring library for dep1-0.1..
-Preprocessing library for dep1-0.1..
-Building library for dep1-0.1..
-Configuring library for dep2-0.1..
-Preprocessing library for dep2-0.1..
-Building library for dep2-0.1..
-Configuring library for main-0.1..
-Preprocessing library for main-0.1..
-Building library for main-0.1..
-# cabal clean
-# cabal build
-Resolving dependencies...
-Build profile: -w ghc-<GHCVER> -O1
-In order, the following will be built:
- - dep2-0.1 (lib) (first run)
-Configuring library for dep2-0.1..
-Preprocessing library for dep2-0.1..
-Building library for dep2-0.1..
