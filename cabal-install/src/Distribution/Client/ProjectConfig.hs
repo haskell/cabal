@@ -798,6 +798,8 @@ defaultImplicitProjectConfig =
   mempty
     { -- We expect a package in the current directory.
       projectPackages = ["./*.cabal"]
+      -- By default we do not assume any special build packages.
+    , projectBuildPackages = []
     , projectConfigProvenance = Set.singleton Implicit
     }
 
@@ -1084,11 +1086,12 @@ findProjectPackages
   DistDirLayout{distProjectRootDirectory}
   ProjectConfig{..} = do
     requiredPkgs <- findPackageLocations True projectPackages
+    buildPkgs <- findPackageLocations True projectBuildPackages
     optionalPkgs <- findPackageLocations False projectPackagesOptional
     let repoPkgs = map ProjectPackageRemoteRepo projectPackagesRepo
         namedPkgs = map ProjectPackageNamed projectPackagesNamed
 
-    return (concat [requiredPkgs, optionalPkgs, repoPkgs, namedPkgs])
+    return (concat [requiredPkgs, buildPkgs, optionalPkgs, repoPkgs, namedPkgs])
     where
       findPackageLocations :: Bool -> [String] -> Rebuild [ProjectPackageLocation]
       findPackageLocations required pkglocstr = do

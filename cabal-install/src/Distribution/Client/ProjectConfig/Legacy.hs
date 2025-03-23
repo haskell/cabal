@@ -408,6 +408,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
 -- can redefine the parsers directly for the new types.
 data LegacyProjectConfig = LegacyProjectConfig
   { legacyPackages :: [String]
+  , legacyBuildPackages :: [String]
   , legacyPackagesOptional :: [String]
   , legacyPackagesRepo :: [SourceRepoList]
   , legacyPackagesNamed :: [PackageVersionConstraint]
@@ -613,6 +614,7 @@ convertLegacyProjectConfig :: LegacyProjectConfig -> ProjectConfig
 convertLegacyProjectConfig
   LegacyProjectConfig
     { legacyPackages
+    , legacyBuildPackages
     , legacyPackagesOptional
     , legacyPackagesRepo
     , legacyPackagesNamed
@@ -637,6 +639,7 @@ convertLegacyProjectConfig
     } =
     ProjectConfig
       { projectPackages = legacyPackages
+      , projectBuildPackages = legacyBuildPackages
       , projectPackagesOptional = legacyPackagesOptional
       , projectPackagesRepo = legacyPackagesRepo
       , projectPackagesNamed = legacyPackagesNamed
@@ -936,6 +939,7 @@ convertToLegacyProjectConfig :: ProjectConfig -> LegacyProjectConfig
 convertToLegacyProjectConfig
   projectConfig@ProjectConfig
     { projectPackages
+    , projectBuildPackages
     , projectPackagesOptional
     , projectPackagesRepo
     , projectPackagesNamed
@@ -945,6 +949,7 @@ convertToLegacyProjectConfig
     } =
     LegacyProjectConfig
       { legacyPackages = projectPackages
+      , legacyBuildPackages = projectBuildPackages
       , legacyPackagesOptional = projectPackagesOptional
       , legacyPackagesRepo = projectPackagesRepo
       , legacyPackagesNamed = projectPackagesNamed
@@ -1316,6 +1321,12 @@ legacyProjectConfigFieldDescrs constraintSrc =
       parsePackageLocationTokenQ
       legacyPackages
       (\v flags -> flags{legacyPackages = v})
+  , newLineListField
+      "build-packages"
+      (Disp.text . renderPackageLocationToken)
+      parsePackageLocationTokenQ
+      legacyBuildPackages
+      (\v flags -> flags{legacyBuildPackages = v})
   , newLineListField
       "optional-packages"
       (Disp.text . renderPackageLocationToken)

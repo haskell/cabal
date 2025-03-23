@@ -129,6 +129,11 @@ data ProjectConfig = ProjectConfig
   -- ^ Packages in this project, including local dirs, local .cabal files
   -- local and remote tarballs. When these are file globs, they must
   -- match at least one package.
+  , projectBuildPackages :: [String]
+  -- ^ Packages in this project, including local dirs, local .cabal files
+  -- local and remote tarballs considered only for build-time dependencies
+  -- (build-type: Custom orHooks; build-depends, ...). When these are file
+  -- globs, they must match at least one package.
   , projectPackagesOptional :: [String]
   -- ^ Like 'projectConfigPackageGlobs' but /optional/ in the sense that
   -- file globs are allowed to match nothing. The primary use case for
