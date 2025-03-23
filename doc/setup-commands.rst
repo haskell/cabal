@@ -1330,7 +1330,7 @@ the package.
 
     Default value is ``direct``: it leaves test output untouched and does not
     produce a log. This allows for colored output, which is popular with testing
-    frameworks. (On the other hand, ``streaming`` creates a log but looses
+    frameworks. (On the other hand, ``streaming`` creates a log but loses
     coloring.)
 
 .. option:: --test-options=TEMPLATES
