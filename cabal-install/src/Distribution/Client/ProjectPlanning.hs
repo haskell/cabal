@@ -4028,7 +4028,7 @@ computeInstallDirs storeDirLayout defaultInstallDirs elaboratedShared elab
       ( InstallDirs.absoluteInstallDirs
           (elabPkgSourceId elab)
           (elabUnitId elab)
-          (compilerInfo (toolchainCompiler $ buildToolchain $ pkgConfigToolchains elaboratedShared))
+          (compilerInfo (toolchainCompiler $ toolchainFor (elabStage elab) $ pkgConfigToolchains elaboratedShared))
           InstallDirs.NoCopyDest
           (toolchainPlatform $ buildToolchain $ pkgConfigToolchains elaboratedShared)
           defaultInstallDirs
@@ -4043,7 +4043,7 @@ computeInstallDirs storeDirLayout defaultInstallDirs elaboratedShared elab
       -- use special simplified install dirs
       storePackageInstallDirs'
         storeDirLayout
-        (toolchainCompiler $ hostToolchain $ pkgConfigToolchains elaboratedShared)
+        (toolchainCompiler $ toolchainFor (elabStage elab) $ pkgConfigToolchains elaboratedShared)
         (elabUnitId elab)
 
 -- TODO: [code cleanup] perhaps reorder this code
