@@ -133,7 +133,7 @@ hashedInstalledPackageIdShort pkghashinputs@PackageHashInputs{pkgHashPkgId} =
       , showHashValue (truncateHash 20 (hashPackageHashInputs pkghashinputs))
       ]
   where
-    PackageIdentifier name version = pkgHashPkgId
+    PackageIdentifier name version _compid = pkgHashPkgId
 
     -- Truncate a string, with a visual indication that it is truncated.
     truncateStr n s
@@ -172,7 +172,7 @@ hashedInstalledPackageIdVeryShort pkghashinputs@PackageHashInputs{pkgHashPkgId} 
       , showHashValue (truncateHash 4 (hashPackageHashInputs pkghashinputs))
       ]
   where
-    PackageIdentifier name version = pkgHashPkgId
+    PackageIdentifier name version _compid = pkgHashPkgId
 
 -- | All the information that contributes to a package's hash, and thus its
 -- 'InstalledPackageId'.

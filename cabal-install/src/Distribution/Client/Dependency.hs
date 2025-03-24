@@ -1076,7 +1076,7 @@ configuredPackageProblems
           (sort $ map fst (PD.unFlagAssignment specifiedFlags)) -- TODO
       packageSatisfiesDependency :: PackageIdentifier -> Dependency -> Bool
       packageSatisfiesDependency
-        (PackageIdentifier name version)
+        (PackageIdentifier name version _compid)
         (Dependency name' versionRange _) =
           assert (name == name') $
             version `withinRange` versionRange

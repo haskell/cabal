@@ -174,7 +174,7 @@ instance (Semigroup a, Monoid a) => Monoid (PerCompilerFlavor a) where
 -- ------------------------------------------------------------
 
 data CompilerId = CompilerId CompilerFlavor Version
-  deriving (Eq, Generic, Ord, Read, Show)
+  deriving (Eq, Generic, Ord, Read, Show, Data)
 
 instance Binary CompilerId
 instance Structured CompilerId

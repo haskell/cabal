@@ -31,8 +31,8 @@ instance Structured InstSolverPackage
 instance Package InstSolverPackage where
     packageId i =
         -- HACK! See Note [Index conversion with internal libraries]
-        let MungedPackageId mpn v = mungedId i
-        in PackageIdentifier (encodeCompatPackageName mpn) v
+        let MungedPackageId mpn v compid = mungedId i
+        in PackageIdentifier (encodeCompatPackageName mpn) v compid
 
 instance HasMungedPackageId InstSolverPackage where
     mungedId = mungedId . instSolverPkgIPI

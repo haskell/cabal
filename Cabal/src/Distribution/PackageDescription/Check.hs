@@ -582,7 +582,7 @@ checkSetupBuildInfo (Just (SetupBuildInfo ds _)) = do
   checkPVPs (checkDependencyVersionRange hasGTLowerBound) gtlck ds
 
 checkPackageId :: Monad m => PackageIdentifier -> CheckM m ()
-checkPackageId (PackageIdentifier pkgName_ _pkgVersion_) = do
+checkPackageId (PackageIdentifier pkgName_ _pkgVersion_ _compid) = do
   checkP
     (not . FilePath.Windows.isValid . prettyShow $ pkgName_)
     (PackageDistInexcusable $ InvalidNameWin pkgName_)

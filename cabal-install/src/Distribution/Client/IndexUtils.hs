@@ -617,7 +617,7 @@ extractPkg verbosity entry blockNo = case Tar.entryContent entry of
           [pkgname, vers, _] -> case simpleParsec vers of
             Just ver -> Just . return $ Just (NormalPackage pkgid descr content blockNo)
               where
-                pkgid = PackageIdentifier (mkPackageName pkgname) ver
+                pkgid = PackageIdentifier (mkPackageName pkgname) ver Nothing
                 parsed = parseGenericPackageDescriptionMaybe (BS.toStrict content)
                 descr = case parsed of
                   Just d -> d
@@ -1269,10 +1269,10 @@ hashConsCache cache0 =
     go !pns !pvs (CachePackageId pid bno ts : rest) =
       CachePackageId pid' bno ts : go pns' pvs' rest
       where
-        !pid' = PackageIdentifier pn' pv'
+        !pid' = PackageIdentifier pn' pv' compid
         (!pn', !pns') = mapIntern pn pns
         (!pv', !pvs') = mapIntern pv pvs
-        PackageIdentifier pn pv = pid
+        PackageIdentifier pn pv compid = pid
     go pns pvs (x : xs) = x : go pns pvs xs
 
     mapIntern :: Ord k => k -> Map.Map k k -> (k, Map.Map k k)
@@ -1395,7 +1395,7 @@ read00IndexCacheEntry = \line ->
             (Just pkgname, Just pkgver, Just blockno) ->
               Just
                 ( CachePackageId
-                    (PackageIdentifier pkgname pkgver)
+                    (PackageIdentifier pkgname pkgver Nothing)
                     blockno
                     NoTimestamp
                 )

@@ -1102,7 +1102,7 @@ theSpecifiedPackage :: Package pkg => PackageSpecifier pkg -> Maybe PackageId
 theSpecifiedPackage pkgSpec =
   case pkgSpec of
     NamedPackage name [PackagePropertyVersion version] ->
-      PackageIdentifier name <$> trivialRange version
+      PackageIdentifier name <$> trivialRange version <*> Nothing
     NamedPackage _ _ -> Nothing
     SpecificSourcePackage pkg -> Just $ packageId pkg
   where
