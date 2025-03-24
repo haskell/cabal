@@ -20,7 +20,8 @@
 module Distribution.Client.IndexUtils
   ( getIndexFileAge
   , getInstalledPackages
-  , indexBaseName
+  , indexFilePath
+  , IndexFileType (..)
   , Configure.getInstalledPackagesMonitorFiles
   , getSourcePackages
   , getSourcePackagesMonitorFiles
@@ -34,6 +35,7 @@ module Distribution.Client.IndexUtils
   , parsePackageIndex
   , updateRepoIndexCache
   , updatePackageIndexCacheFile
+  , clearPackageIndexCacheFiles
   , writeIndexTimestamp
   , currentIndexTimestamp
   , BuildTreeRefType (..)
@@ -60,6 +62,8 @@ import qualified Distribution.Client.Tar as Tar
 import Distribution.Client.Types
 import Distribution.Parsec (simpleParsecBS)
 import Distribution.Verbosity
+
+import Distribution.Client.Version
 
 import Distribution.Client.ProjectConfig
   ( CabalFileParseError
@@ -137,7 +141,7 @@ import Distribution.Compat.Directory (listDirectory)
 import Distribution.Compat.Time (getFileAge, getModTime)
 import Distribution.Utils.Generic (fstOf3)
 import Distribution.Utils.Structured (Structured (..), nominalStructure, structuredDecodeFileOrFail, structuredEncodeFile)
-import System.Directory (doesDirectoryExist, doesFileExist)
+import System.Directory (doesDirectoryExist, doesFileExist, removeFile)
 import System.FilePath
   ( normalise
   , splitDirectories
@@ -168,21 +172,38 @@ getInstalledPackages verbosity comp packageDbs progdb =
   where
     verbosity' = lessVerbose verbosity
 
--- | Get filename base (i.e. without file extension) for index-related files
+-- | Get filenames for index-related files
 --
 -- /Secure/ cabal repositories use a new extended & incremental
 -- @01-index.tar@. In order to avoid issues resulting from clobbering
 -- new/old-style index data, we save them locally to different names.
 --
--- Example: Use @indexBaseName repo <.> "tar.gz"@ to compute the 'FilePath' of the
+-- Example: Use @indexFilePath repo IndexTarGz@ to compute the 'FilePath' of the
 -- @00-index.tar.gz@/@01-index.tar.gz@ file.
-indexBaseName :: Repo -> FilePath
-indexBaseName repo = repoLocalDir repo </> fn
+indexFilePath :: Repo -> IndexFileType -> FilePath
+indexFilePath repo idx_file =
+  case idx_file of
+    IndexTarGz -> repoLocalDir repo </> fn <.> "tar.gz"
+    IndexTar -> repoLocalDir repo </> fn <.> "tar"
+    IndexCache -> repoLocalDir repo </> (fn <.> "cache-" <> prettyShow cabalInstallVersion)
+    IndexTimestamp -> repoLocalDir repo </> fn <.> "timestamp"
+    OldIndexCache -> repoLocalDir repo </> fn <.> "cache"
   where
     fn = case repo of
       RepoSecure{} -> "01-index"
       RepoRemote{} -> "00-index"
       RepoLocalNoIndex{} -> "noindex"
+
+-- | The types of the files which are associated with a particular index.
+data IndexFileType
+  = IndexTarGz
+  | IndexTar
+  | -- | The specific cache file, for this version of cabal-install
+    IndexCache
+  | -- | The timestamp file for the index
+    IndexTimestamp
+  | -- | The location that old versions (before 3.16) of cabal-install put the index cache
+    OldIndexCache
 
 ------------------------------------------------------------------------
 -- Reading the source package index
@@ -495,15 +516,15 @@ readRepoIndex verbosity repoCtxt repo idxState =
 
 -- | Return the age of the index file in days (as a Double).
 getIndexFileAge :: Repo -> IO Double
-getIndexFileAge repo = getFileAge $ indexBaseName repo <.> "tar"
+getIndexFileAge repo = getFileAge $ indexFilePath repo IndexTar
 
 -- | A set of files (or directories) that can be monitored to detect when
 -- there might have been a change in the source packages.
 getSourcePackagesMonitorFiles :: [Repo] -> [FilePath]
 getSourcePackagesMonitorFiles repos =
   concat
-    [ [ indexBaseName repo <.> "cache"
-      , indexBaseName repo <.> "timestamp"
+    [ [ indexFilePath repo IndexCache
+      , indexFilePath repo IndexTimestamp
       ]
     | repo <- repos
     ]
@@ -752,13 +773,13 @@ data Index
     RepoIndex RepoContext Repo
 
 indexFile :: Index -> FilePath
-indexFile (RepoIndex _ctxt repo) = indexBaseName repo <.> "tar"
+indexFile (RepoIndex _ctxt repo) = indexFilePath repo IndexTar
 
 cacheFile :: Index -> FilePath
-cacheFile (RepoIndex _ctxt repo) = indexBaseName repo <.> "cache"
+cacheFile (RepoIndex _ctxt repo) = indexFilePath repo IndexCache
 
 timestampFile :: Index -> FilePath
-timestampFile (RepoIndex _ctxt repo) = indexBaseName repo <.> "timestamp"
+timestampFile (RepoIndex _ctxt repo) = indexFilePath repo IndexTimestamp
 
 -- | Return 'True' if 'Index' uses 01-index format (aka secure repo)
 is01Index :: Index -> Bool
@@ -766,6 +787,32 @@ is01Index (RepoIndex _ repo) = case repo of
   RepoSecure{} -> True
   RepoRemote{} -> False
   RepoLocalNoIndex{} -> True
+
+-- | Clear the cache files for old cabal-install versions which have a cache
+-- for this index. The cache will be invalid now that we have downloaded a new
+-- .tar.gz for the index.
+--
+-- Note that this invalidation logic only invalidates the old-style caches for
+-- cabal-install < 3.16. For never versions, the check in `readIndexCache` that the
+-- cache is older than the indexFile is sufficient to update the caches when required.
+--
+-- If the old version of cabal-install is used again, then this file will be generated
+-- lazily.
+clearPackageIndexCacheFiles :: Verbosity -> Index -> IO ()
+clearPackageIndexCacheFiles verbosity (RepoIndex _ repo) = do
+  info verbosity ("Deleting caches if they exist for " ++ prettyShow (repoName repo))
+  let old_cache_path = indexFilePath repo OldIndexCache
+  -- Delete old-style non-versioned caches, if the file existed then replace
+  -- it with an empty file. Otherwise old versions of `cabal-install` will complain
+  -- about a missing package list.
+  ( removeFile old_cache_path
+      >> writeFile old_cache_path ""
+    )
+    `catch` handleExists
+  where
+    handleExists e
+      | isDoesNotExistError e = return ()
+      | otherwise = throwIO e
 
 updatePackageIndexCacheFile :: Verbosity -> Index -> IO ()
 updatePackageIndexCacheFile verbosity index = do
@@ -1139,12 +1186,24 @@ packageListFromCache verbosity mkPkg hnd Cache{..} = accum mempty [] mempty cach
 
 -- | Read a repository cache from the filesystem
 --
+-- If an out-dated cache is detected, the cache is older than the .tar file corresponding
+-- to the cache, the cache is updated.
+--
 -- If a corrupted index cache is detected this function regenerates
 -- the index cache and then reattempt to read the index once (and
 -- 'dieWithException's if it fails again).
 readIndexCache :: Verbosity -> Index -> IO Cache
 readIndexCache verbosity index = do
+  -- 1. Update the cache, if it's out of date.
+  -- This covers the case where
+  -- - The index .tar.gz is downloaded, but the cache is missing.
+  -- - The index .tar.gz is downloaded, but the cache is too old (ie updated by another cabal-install)
+
+  -- This also fails with a "does not exist" error is the .tar.gz is not downloaded. That's important for
+  -- the control flow of functions which call this.
+  updateRepoIndexCache verbosity index
   cacheOrFail <- readIndexCache' index
+  -- 2. Regenerate the cache if parsing failed.
   case cacheOrFail of
     Left msg -> do
       warn verbosity $

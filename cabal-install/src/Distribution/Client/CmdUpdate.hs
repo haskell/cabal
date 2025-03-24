@@ -23,8 +23,10 @@ import Distribution.Client.HttpUtils
   )
 import Distribution.Client.IndexUtils
   ( Index (..)
+  , IndexFileType (..)
+  , clearPackageIndexCacheFiles
   , currentIndexTimestamp
-  , indexBaseName
+  , indexFilePath
   , updatePackageIndexCacheFile
   , updateRepoIndexCache
   , writeIndexTimestamp
@@ -93,7 +95,7 @@ import Distribution.Simple.Command
   ( CommandUI (..)
   , usageAlternatives
   )
-import System.FilePath (dropExtension, (<.>))
+import System.FilePath (dropExtension)
 
 import Distribution.Client.Errors
 import Distribution.Client.IndexUtils.Timestamp (Timestamp (NoTimestamp))
@@ -244,12 +246,14 @@ updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
           repoRemote
           repoLocalDir
       case downloadResult of
-        FileAlreadyInCache ->
-          setModificationTime (indexBaseName repo <.> "tar")
-            =<< getCurrentTime
+        FileAlreadyInCache -> do
+          t <- getCurrentTime
+          setModificationTime (indexFilePath repo IndexTar) t
+          setModificationTime (indexFilePath repo IndexCache) t
         FileDownloaded indexPath -> do
           writeFileAtomic (dropExtension indexPath) . maybeDecompress
             =<< BS.readFile indexPath
+          clearPackageIndexCacheFiles verbosity (RepoIndex repoCtxt repo)
           updateRepoIndexCache verbosity (RepoIndex repoCtxt repo)
     RepoSecure{} -> repoContextWithSecureRepo repoCtxt repo $ \repoSecure -> do
       let index = RepoIndex repoCtxt repo
@@ -273,12 +277,16 @@ updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
       case updated of
         Sec.NoUpdates -> do
           now <- getCurrentTime
-          setModificationTime (indexBaseName repo <.> "tar") now
+          setModificationTime (indexFilePath repo IndexTar) now
             `catchIO` \e ->
               warn verbosity $ "Could not set modification time of index tarball -- " ++ displayException e
+          setModificationTime (indexFilePath repo IndexCache) now
+            `catchIO` \e ->
+              warn verbosity $ "Could not set modification time of cache -- " ++ displayException e
           noticeNoWrap verbosity $
             "Package list of " ++ prettyShow rname ++ " is up to date."
         Sec.HasUpdates -> do
+          clearPackageIndexCacheFiles verbosity index
           updateRepoIndexCache verbosity index
           noticeNoWrap verbosity $
             "Package list of " ++ prettyShow rname ++ " has been updated."
