@@ -1043,7 +1043,7 @@ reportPlanningFailure projectConfig Toolchain{toolchainCompiler = comp, toolchai
     theSpecifiedPackage pkgSpec =
       case pkgSpec of
         NamedPackage name [PackagePropertyVersion version] ->
-          PackageIdentifier name <$> trivialRange version <*> Nothing
+          PackageIdentifier name <$> trivialRange version
         NamedPackage _ _ -> Nothing
         SpecificSourcePackage pkg -> Just $ packageId pkg
     -- \| If a range includes only a single version, return Just that version.
