@@ -53,7 +53,7 @@ instance Pretty PackageVersionConstraint where
 -- Just (PackageVersionConstraint (PackageName "foo") (ThisVersion (mkVersion [2,0])))
 instance Parsec PackageVersionConstraint where
   parsec = do
-    PackageIdentifier name ver comp <- parsec
+    PackageIdentifier name ver <- parsec
     if ver == nullVersion
       then do
         P.spaces
@@ -64,7 +64,7 @@ instance Parsec PackageVersionConstraint where
 
 -- | @since 3.4.0.0
 thisPackageVersionConstraint :: PackageIdentifier -> PackageVersionConstraint
-thisPackageVersionConstraint (PackageIdentifier pn vr comp) =
+thisPackageVersionConstraint (PackageIdentifier pn vr) =
   PackageVersionConstraint pn (thisVersion vr)
 
 -- | @since 3.4.0.0

@@ -207,7 +207,6 @@ emptyPackageDescription =
         PackageIdentifier
           (mkPackageName "")
           nullVersion
-          Nothing
     , licenseRaw = Right UnspecifiedLicense -- TODO:
     , licenseFiles = []
     , specVersion = CabalSpecV1_0

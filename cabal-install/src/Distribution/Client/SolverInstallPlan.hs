@@ -218,7 +218,7 @@ showPlanProblem (PackageInconsistency name inconsistencies) =
       [ "  package "
         ++ prettyShow pkg
         ++ " requires "
-        ++ prettyShow (PackageIdentifier name ver Nothing)
+        ++ prettyShow (PackageIdentifier name ver)
       | (pkg, ver) <- inconsistencies
       ]
 showPlanProblem (PackageStateInvalid pkg pkg') =

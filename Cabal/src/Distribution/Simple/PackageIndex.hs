@@ -169,7 +169,7 @@ instance Semigroup (PackageIndex IPI.InstalledPackageInfo) where
 {-# NOINLINE invariant #-}
 invariant :: WithCallStack (InstalledPackageIndex -> Bool)
 invariant (PackageIndex pids pnames) =
-  trace (show pids' ++ "\n" ++ show pnames') $
+  -- trace (show pids' ++ "\n" ++ show pnames') $
   pids' == pnames'
   where
     pids' = map installedUnitId (Map.elems pids)
@@ -335,21 +335,16 @@ deleteSourcePackageId pkgid original@(PackageIndex pids pnames) =
     Just pvers -> case Map.lookup (packageVersion pkgid) pvers of
       Nothing -> original
       Just pkgs ->
-        traceShow (pkgid, pkgs) $ mkPackageIndex
-          (Map.update deletePkgInstance (installedUnitId pkgid) pids)
+        mkPackageIndex
+          (foldl' (flip (Map.delete . installedUnitId)) pids pkgs)
           (deletePkgName pnames)
   where
     deletePkgName =
       Map.update deletePkgVersion (packageName pkgid, LMainLibName)
 
-    deletePkgVersion :: Map Version [IPI.InstalledPackageInfo] -> Maybe (Map Version [IPI.InstalledPackageInfo])
     deletePkgVersion =
       (\m -> if Map.null m then Nothing else Just m)
-        . Map.update deletePkgInstance (packageVersion pkgid)
-
-    deletePkgInstance :: [IPI.InstalledPackageInfo] -> Maybe [IPI.InstalledPackageInfo]
-    deletePkgInstance xs = if null xs' then Nothing else Just xs'
-      where xs' = [x | x <- xs, pkgCompiler pkgid /= pkgCompiler (IPI.sourcePackageId x)]
+        . Map.delete (packageVersion pkgid)
 
 -- | Removes all packages with this (case-sensitive) name from the index.
 --

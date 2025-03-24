@@ -821,7 +821,7 @@ testSuiteLibV09AsLibAndExe
           }
       -- This is, like, the one place where we use a CTestName for a library.
       -- Should NOT use library name, since that could conflict!
-      PackageIdentifier pkg_name pkg_ver _pkg_compid = package pkg_descr
+      PackageIdentifier pkg_name pkg_ver = package pkg_descr
       -- Note: we do make internal library from the test!
       compat_name = MungedPackageName pkg_name (LSubLibName (testName test))
       compat_key = computeCompatPackageKey (compiler lbi) compat_name pkg_ver (componentUnitId clbi)

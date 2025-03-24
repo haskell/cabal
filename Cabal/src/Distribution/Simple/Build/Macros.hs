@@ -67,11 +67,11 @@ generateCabalMacrosHeader pkg_descr lbi clbi =
       , Z.zMangleStr = map fixchar
       }
   where
-    getPid (_, MungedPackageId (MungedPackageName pn _) v compid) =
+    getPid (_, MungedPackageId (MungedPackageName pn _) v) =
       -- NB: Drop the library name! We're just reporting package versions.
       -- This would have to be revisited if you are allowed to depend
       -- on different versions of the same package
-      PackageIdentifier pn v compid
+      PackageIdentifier pn v
 
 -- | Helper function that generates just the @VERSION_pkg@ and @MIN_VERSION_pkg@
 -- macros for a list of package ids (usually used with the specific deps of
@@ -91,7 +91,7 @@ generatePackageVersionMacros ver pkgids =
       }
 
 mkZPackage :: PackageId -> Z.ZPackage
-mkZPackage (PackageIdentifier name ver compid) =
+mkZPackage (PackageIdentifier name ver) =
   Z.ZPackage
     { Z.zpkgName = name
     , Z.zpkgVersion = ver

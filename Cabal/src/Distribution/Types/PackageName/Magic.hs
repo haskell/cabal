@@ -21,4 +21,4 @@ fakePackageCabalFileName = "fake-package.cabal"
 
 -- | 'fakePackageName' with 'version0'.
 fakePackageId :: PackageId
-fakePackageId = PackageIdentifier fakePackageName version0 Nothing
+fakePackageId = PackageIdentifier fakePackageName version0

@@ -109,7 +109,7 @@ relaxedDepStarP =
 
 -- continuation after package identifier
 relaxedDepPkgidP :: CabalParsing m => PackageIdentifier -> m RelaxedDep
-relaxedDepPkgidP pid@(PackageIdentifier pn v _compid)
+relaxedDepPkgidP pid@(PackageIdentifier pn v)
   | pn == mkPackageName "all"
   , v == nullVersion =
       RelaxedDep RelaxDepScopeAll <$ P.char ':' <*> modP <*> parsec

@@ -335,7 +335,7 @@ writePersistBuildConfig mbWorkDir distPref lbi = do
 
 -- | Identifier of the current Cabal package.
 currentCabalId :: PackageIdentifier
-currentCabalId = PackageIdentifier (mkPackageName "Cabal") cabalVersion Nothing
+currentCabalId = PackageIdentifier (mkPackageName "Cabal") cabalVersion
 
 -- | Identifier of the current compiler package.
 currentCompilerId :: PackageIdentifier
@@ -343,7 +343,6 @@ currentCompilerId =
   PackageIdentifier
     (mkPackageName System.Info.compilerName)
     (mkVersion' System.Info.compilerVersion)
-    Nothing
 
 -- | Parse the @setup-config@ file header, returning the package identifiers
 -- for Cabal and the compiler.
@@ -1988,7 +1987,7 @@ selectDependency
       -- It's an internal library, and we're not per-component build
       do_internal lib
         | Set.member lib internalIndex =
-            Right $ InternalDependency $ PackageIdentifier dep_pkgname (packageVersion pkgid) (pkgCompiler pkgid)
+            Right $ InternalDependency $ PackageIdentifier dep_pkgname $ packageVersion pkgid
         | otherwise =
             Left $ DependencyMissingInternal dep_pkgname lib
 

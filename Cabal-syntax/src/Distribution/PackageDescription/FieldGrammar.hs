@@ -74,7 +74,7 @@ import Prelude ()
 
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Newtype (Newtype, pack', unpack')
-import Distribution.Compiler (CompilerFlavor (..), PerCompilerFlavor (..), CompilerId)
+import Distribution.Compiler (CompilerFlavor (..), PerCompilerFlavor (..))
 import Distribution.FieldGrammar
 import Distribution.Fields
 import Distribution.ModuleName (ModuleName)
@@ -101,7 +101,6 @@ packageDescriptionFieldGrammar
      , c (Identity BuildType)
      , c (Identity PackageName)
      , c (Identity Version)
-     , c (Identity CompilerId)
      , forall from to. c (List FSep (RelativePathNT from to) (RelativePath from to))
      , forall from to. c (List VCat (RelativePathNT from to) (RelativePath from to))
      , c (List FSep TestedWith (CompilerFlavor, VersionRange))
@@ -151,7 +150,6 @@ packageDescriptionFieldGrammar =
       PackageIdentifier
         <$> uniqueField "name" L.pkgName
         <*> uniqueField "version" L.pkgVersion
-        <*> optionalField "compiler" L.pkgCompiler
 
     licenseFilesGrammar =
       (++)
