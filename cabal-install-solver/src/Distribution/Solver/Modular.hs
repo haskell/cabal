@@ -80,14 +80,14 @@ showCP (CP qpi fa es ds) =
 -- | Ties the two worlds together: classic cabal-install vs. the modular
 -- solver. Performs the necessary translations before and after.
 modularResolver :: SolverConfig -> DependencyResolver loc
-modularResolver sc toolchains iidx sidx pkgConfigDB pprefs pcs pns = do
-    (assignment, revdepmap) <- solve' sc toolchains idx pkgConfigDB pprefs gcs pns
+modularResolver sc toolchains biidx iidx sidx pkgConfigDB pprefs pcs pns = do
+    (assignment, revdepmap) <- solve' sc toolchains (trace (showIdx idx) idx) pkgConfigDB pprefs gcs pns
     let cp = toCPs assignment revdepmap
     Step (show (vcat (map showCP cp))) $
         return $ postprocess assignment revdepmap
   where
       -- Indices have to be converted into solver-specific uniform index.
-      idx    = convPIs toolchains gcs (shadowPkgs sc) (strongFlags sc) (solveExecutables sc) iidx sidx
+      idx    = convPIs toolchains gcs (shadowPkgs sc) (strongFlags sc) (solveExecutables sc) biidx iidx sidx
       -- Constraints have to be converted into a finite map indexed by PN.
       gcs    = M.fromListWith (++) (map pair pcs)
         where
@@ -97,7 +97,7 @@ modularResolver sc toolchains iidx sidx pkgConfigDB pprefs pcs pns = do
       -- package qualifiers, which means that linked packages become duplicates
       -- and can be removed.
       postprocess a rdm = ordNubBy nodeKey $
-                          map (convCP iidx sidx) (toCPs a rdm)
+                          map (convCP biidx iidx sidx) (toCPs a rdm)
 
       -- Helper function to extract the PN from a constraint.
       pcName :: PackageConstraint -> PN

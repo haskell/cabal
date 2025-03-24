@@ -220,7 +220,7 @@ planPackages
           -- already installed. Since we want to get the source packages of
           -- things we might have installed (but not have the sources for).
           . reinstallTargets
-          $ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers
+          $ standardInstallPolicy mempty {-build-} installedPkgIndex sourcePkgDb pkgSpecifiers
 
       includeDependencies = fromFlag (fetchDeps fetchFlags)
       logMsg message rest = debug verbosity message >> rest

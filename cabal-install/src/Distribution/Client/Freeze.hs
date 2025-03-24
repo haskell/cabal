@@ -245,7 +245,7 @@ planPackages
                in LabeledPackageConstraint pc ConstraintSourceFreeze
             | pkgSpecifier <- pkgSpecifiers
             ]
-          $ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers
+          $ standardInstallPolicy mempty {- build -} installedPkgIndex sourcePkgDb pkgSpecifiers
 
       logMsg message rest = debug verbosity message >> rest
 

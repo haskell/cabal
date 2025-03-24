@@ -58,11 +58,14 @@ import Distribution.Solver.Modular.Version
 -- explicitly requested.
 convPIs :: Toolchains -> Map PN [LabeledPackageConstraint]
         -> ShadowPkgs -> StrongFlags -> SolveExecutables
-        -> SI.InstalledPackageIndex -> CI.PackageIndex (SourcePackage loc)
+        -> SI.InstalledPackageIndex -- ^ build
+        -> SI.InstalledPackageIndex -- ^ host
+        -> CI.PackageIndex (SourcePackage loc)
         -> Index
-convPIs toolchains constraints sip strfl solveExes iidx sidx =
-  mkIndex $
-  convIPI' toolchains sip iidx ++ convSPI' toolchains constraints strfl solveExes sidx
+  where bipis = convIPI' toolchains sip biidx
+        hipis = convIPI' toolchains sip iidx
+        ipis = bipis ++ hipis
+        spis = convSPI' toolchains constraints strfl solveExes sidx
 
 -- | Convert a Cabal installed package index to the simpler,
 -- more uniform index format of the solver.

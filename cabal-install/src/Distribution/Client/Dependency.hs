@@ -181,6 +181,7 @@ data DepResolverParams = DepResolverParams
   , depResolverPreferences :: [PackagePreference]
   , depResolverPreferenceDefault :: PackagesPreferenceDefault
   , depResolverInstalledPkgIndex :: InstalledPackageIndex
+  , depResolverBuildInstalledPkgIndex :: InstalledPackageIndex
   , depResolverSourcePkgIndex :: PackageIndex.PackageIndex UnresolvedSourcePackage
   , depResolverReorderGoals :: ReorderGoals
   , depResolverCountConflicts :: CountConflicts
@@ -277,15 +278,17 @@ showPackagePreference (PackageStanzasPreference pn st) =
 
 basicDepResolverParams
   :: InstalledPackageIndex
+  -> InstalledPackageIndex
   -> PackageIndex.PackageIndex UnresolvedSourcePackage
   -> DepResolverParams
-basicDepResolverParams installedPkgIndex sourcePkgIndex =
+basicDepResolverParams buildInstalledPkgIndex installedPkgIndex sourcePkgIndex=
   DepResolverParams
     { depResolverTargets = Set.empty
     , depResolverConstraints = []
     , depResolverPreferences = []
     , depResolverPreferenceDefault = PreferLatestForSelected
     , depResolverInstalledPkgIndex = installedPkgIndex
+    , depResolverBuildInstalledPkgIndex = buildInstalledPkgIndex
     , depResolverSourcePkgIndex = sourcePkgIndex
     , depResolverReorderGoals = ReorderGoals False
     , depResolverCountConflicts = CountConflicts True
@@ -702,11 +705,13 @@ reinstallTargets params =
 
 -- | A basic solver policy on which all others are built.
 basicInstallPolicy
-  :: InstalledPackageIndex
+  :: InstalledPackageIndex -- ^ Build
+  -> InstalledPackageIndex -- ^ Host
   -> SourcePackageDb
   -> [PackageSpecifier UnresolvedSourcePackage]
   -> DepResolverParams
 basicInstallPolicy
+  binstalledPkgIndex
   installedPkgIndex
   (SourcePackageDb sourcePkgIndex sourcePkgPrefs)
   pkgSpecifiers =
@@ -723,6 +728,7 @@ basicInstallPolicy
       . addSourcePackages
         [pkg | SpecificSourcePackage pkg <- pkgSpecifiers]
       $ basicDepResolverParams
+        binstalledPkgIndex
         installedPkgIndex
         sourcePkgIndex
 
@@ -731,13 +737,15 @@ basicInstallPolicy
 --
 -- It extends the 'basicInstallPolicy' with a policy on setup deps.
 standardInstallPolicy
-  :: InstalledPackageIndex
+  :: InstalledPackageIndex -- ^ Build
+  -> InstalledPackageIndex -- ^ Host
   -> SourcePackageDb
   -> [PackageSpecifier UnresolvedSourcePackage]
   -> DepResolverParams
-standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers =
+standardInstallPolicy binstalledPkgIndex installedPkgIndex sourcePkgDb pkgSpecifiers =
   addDefaultSetupDependencies mkDefaultSetupDeps $
     basicInstallPolicy
+      binstalledPkgIndex
       installedPkgIndex
       sourcePkgDb
       pkgSpecifiers
@@ -810,6 +818,7 @@ resolveDependencies toolchains pkgConfigDB params =
             (PruneAfterFirstSuccess False)
         )
         toolchains
+        binstalledPkgIndex
         installedPkgIndex
         sourcePkgIndex
         pkgConfigDB
@@ -823,6 +832,7 @@ resolveDependencies toolchains pkgConfigDB params =
                     prefs
                     defpref
                     installedPkgIndex
+                    binstalledPkgIndex
                     sourcePkgIndex
                     reordGoals
                     cntConflicts
@@ -1141,6 +1151,7 @@ resolveWithoutDependencies
       prefs
       defpref
       installedPkgIndex
+      binstalledPkgIndex
       sourcePkgIndex
       _reorderGoals
       _countConflicts

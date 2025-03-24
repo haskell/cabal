@@ -464,6 +464,7 @@ planLocalPackage
           . setSolveExecutables (SolveExecutables False)
           . setSolverVerbosity verbosity
           $ standardInstallPolicy
+            mempty {- build pkgs -}
             installedPkgIndex
             -- NB: We pass in an *empty* source package database,
             -- because cabal configure assumes that all dependencies

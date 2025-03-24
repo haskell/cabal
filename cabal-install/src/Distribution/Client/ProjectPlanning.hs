@@ -837,7 +837,8 @@ rebuildInstallPlan
                       verbosity
                       toolchains
                       solverSettings
-                      (installedPackages <> hinstalledPkgIndex <> binstalledPkgIndex)
+                      binstalledPkgIndex
+                      (installedPackages <> hinstalledPkgIndex)
                       sourcePkgDb
                       pkgConfigDB
                       localPackages
@@ -1322,7 +1323,8 @@ planPackages
   :: Verbosity
   -> Toolchains
   -> SolverSettings
-  -> InstalledPackageIndex
+  -> InstalledPackageIndex -- ^ Build Installed Package Index
+  -> InstalledPackageIndex -- ^ Host Installed Package Index
   -> SourcePackageDb
   -> Maybe PkgConfigDb
   -> [PackageSpecifier UnresolvedSourcePackage]
@@ -1332,6 +1334,7 @@ planPackages
   verbosity
   toolchains
   SolverSettings{..}
+  binstalledPkgIndex
   installedPkgIndex
   sourcePkgDb
   pkgConfigDB
@@ -1461,6 +1464,7 @@ planPackages
         -- Note: we don't use the standardInstallPolicy here, since that uses
         -- its own addDefaultSetupDependencies that is not appropriate for us.
         basicInstallPolicy
+          binstalledPkgIndex
           installedPkgIndex
           sourcePkgDb
           localPackages

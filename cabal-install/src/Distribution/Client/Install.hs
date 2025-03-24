@@ -650,6 +650,7 @@ planPackages
           -- doesn't understand how to install them
           . setSolveExecutables (SolveExecutables False)
           $ standardInstallPolicy
+            mempty {- build pkgs -}
             installedPkgIndex
             sourcePkgDb
             pkgSpecifiers

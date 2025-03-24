@@ -28,7 +28,8 @@ import Distribution.System ( Platform )
 -- in alternatives.
 --
 type DependencyResolver loc = Toolchains
-                           -> InstalledPackageIndex
+                           -> InstalledPackageIndex -- ^ build
+                           -> InstalledPackageIndex -- ^ host
                            -> PackageIndex (SourcePackage loc)
                            -> Maybe PkgConfigDb
                            -> (PackageName -> PackagePreferences)

@@ -19,21 +19,23 @@ import           Distribution.Solver.Types.SolverId
 import           Distribution.Solver.Types.SolverPackage
 import           Distribution.Solver.Types.InstSolverPackage
 import           Distribution.Solver.Types.SourcePackage
+import Control.Applicative ((<|>))
 
 -- | Converts from the solver specific result @CP QPN@ into
 -- a 'ResolverPackage', which can then be converted into
 -- the install plan.
-convCP :: SI.InstalledPackageIndex ->
-          CI.PackageIndex (SourcePackage loc) ->
-          CP QPN -> ResolverPackage loc
-convCP iidx sidx (CP qpi fa es ds) =
+convCP :: SI.InstalledPackageIndex -- ^ build
+       -> SI.InstalledPackageIndex -- ^ host
+       -> CI.PackageIndex (SourcePackage loc)
+       -> CP QPN -> ResolverPackage loc
+convCP biidx iidx sidx (CP qpi fa es ds) =
   case qpi of
     -- Installed
     (PI qpn (I _stage _ (Inst pi)))  ->
       PreExisting $
                   InstSolverPackage {
                     instSolverQPN = qpn,
-                    instSolverPkgIPI = fromMaybe (error "convCP: lookupUnitId failed") $ SI.lookupUnitId iidx pi,
+                    instSolverPkgIPI = fromMaybe (error "convCP: lookupUnitId failed") $ (SI.lookupUnitId iidx pi) <|> (SI.lookupUnitId biidx pi),
                     instSolverPkgLibDeps = fmap fst ds',
                     instSolverPkgExeDeps = fmap snd ds'
                   }

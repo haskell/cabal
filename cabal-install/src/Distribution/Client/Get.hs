@@ -148,7 +148,7 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
     resolverParams :: SourcePackageDb -> [PackageSpecifier UnresolvedSourcePackage] -> DepResolverParams
     resolverParams sourcePkgDb pkgSpecifiers =
       -- TODO: add command-line constraint and preference args for unpack
-      standardInstallPolicy mempty sourcePkgDb pkgSpecifiers
+      standardInstallPolicy mempty mempty sourcePkgDb pkgSpecifiers
 
     onlyPkgDescr = fromFlagOrDefault False (getOnlyPkgDescr getFlags)
 
