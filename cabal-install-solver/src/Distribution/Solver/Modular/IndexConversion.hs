@@ -85,7 +85,7 @@ convIPI' toolchains (ShadowPkgs sip) idx =
 -- | Extract/recover the package ID from an installed package info, and convert it to a solver's I.
 convId :: Toolchains -> IPI.InstalledPackageInfo -> (PN, I)
 convId toolchains ipi = (pn, I stage ver $ Inst $ IPI.installedUnitId ipi)
-  where MungedPackageId mpn ver = mungedId ipi
+  where MungedPackageId mpn ver compid = mungedId ipi
         -- HACK. See Note [Index conversion with internal libraries]
         pn = encodeCompatPackageName mpn
         stage = case IPI.pkgCompiler ipi of
@@ -169,7 +169,7 @@ convSPI' toolchains constraints strfl solveExes =
 -- | Convert a single source package into the solver-specific format.
 convSP :: Toolchains -> Map PN [LabeledPackageConstraint]
        -> StrongFlags -> SolveExecutables -> SourcePackage loc -> [(PN, I, PInfo)]
-convSP toolchains constraints strfl solveExes (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
+convSP toolchains constraints strfl solveExes (SourcePackage (PackageIdentifier pn pv _compid) gpd _ _pl) =
   let pkgConstraints = fromMaybe [] $ M.lookup pn constraints
   in  [(pn, I Host  pv InRepo, convGPD (hostToolchain toolchains)  pkgConstraints strfl solveExes pn gpd)
       ,(pn, I Build pv InRepo, convGPD (buildToolchain toolchains) pkgConstraints strfl solveExes pn gpd)]

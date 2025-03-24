@@ -198,6 +198,7 @@ import Distribution.Types.GivenComponent
 import Distribution.Types.LibraryName
 import qualified Distribution.Types.LocalBuildConfig as LBC
 import Distribution.Types.PackageVersionConstraint
+import qualified Distribution.Types.PackageId as PI
 import Distribution.Types.PkgconfigDependency
 import Distribution.Types.UnqualComponentName
 
@@ -791,8 +792,21 @@ rebuildInstallPlan
               -- }
               -- deriving (Eq, Generic, Show, Read)
               --
-              -- can probably use fromList $ Map.elems $ on it.
+              -- let mapPkgIdx f = PI.fromList . map f . PI.allPackages
+              -- let updateIPI :: IPI.InstalledPackageInfo -> IPI.InstalledPackageInfo
+              --     updateIPI ipi = ipi {
+              --       IPI.sourcePackageId = (IPI.sourcePackageId ipi){ PI.pkgCompiler = IPI.pkgCompiler ipi }
+              --      }
+              -- let addCompilerToSourcePkg :: CompilerId -> [PackageSpecifier UnresolvedSourcePackage] -> [PackageSpecifier UnresolvedSourcePackage]
+              --     addCompilerToSourcePkg compilerId = map (addCompilerId compilerId)
+              --     addCompilerId :: CompilerId -> PackageSpecifier UnresolvedSourcePackage -> PackageSpecifier UnresolvedSourcePackage
+              --     addCompilerId compilerId (NamedPackage name props) = NamedPackage name props
+              --     addCompilerId compilerId (SpecificSourcePackage pkg) = SpecificSourcePackage (f pkg)
+              --       where f :: SourcePackage UnresolvedPkgLoc -> SourcePackage UnresolvedPkgLoc
+              --             f pkg = pkg{srcpkgPackageId = (srcpkgPackageId pkg){pkgCompiler = Just compilerId}}
+
               hinstalledPkgIndex <-
+                -- mapPkgIdx updateIPI <$>
                 getInstalledPackages
                   verbosity
                   (hostToolchain toolchains)
@@ -802,12 +816,15 @@ rebuildInstallPlan
               -- for now. FIXME!
               -- let hinstalledPkgIndex' = PI.fromList $ PI.allPackages hinstalledPkgIndex
               binstalledPkgIndex <-
+                -- mapPkgIdx updateIPI <$>
                 getInstalledPackages
                   verbosity
                   (buildToolchain toolchains)
                   -- FIXME: HACK
                   -- if host and build compiler are the same, we want to get -package-db in here.
                   (corePackageDbs $ if buildIsHost toolchains then Host else Build)
+
+              -- let localPackages' = addCompilerToSourcePkg (compilerId . toolchainCompiler . hostToolchain $ toolchains) localPackages
 
               (sourcePkgDb, tis, ar) <-
                 getSourcePackages
