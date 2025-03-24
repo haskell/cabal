@@ -71,9 +71,9 @@ instance HasMungedPackageId PreExistingComponent where
   mungedId = pc_munged_id
 
 instance Package PreExistingComponent where
-  packageId pec = PackageIdentifier (pc_pkgname pec) v
+  packageId pec = PackageIdentifier (pc_pkgname pec) v compid
     where
-      MungedPackageId _ v = pc_munged_id pec
+      MungedPackageId _ v compid = pc_munged_id pec
 
 instance HasUnitId PreExistingComponent where
   installedUnitId = pc_uid

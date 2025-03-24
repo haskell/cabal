@@ -20,7 +20,7 @@ import Distribution.FieldGrammar
 import Distribution.FieldGrammar.FieldDescrs
 import Distribution.License
 import Distribution.ModuleName
-import Distribution.Package
+import Distribution.Package hiding (pkgCompiler)
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.LibraryName
@@ -38,7 +38,7 @@ import qualified Text.PrettyPrint as Disp
 import Distribution.Types.InstalledPackageInfo
 
 import qualified Distribution.Types.InstalledPackageInfo.Lens as L
-import qualified Distribution.Types.PackageId.Lens as L
+import qualified Distribution.Types.PackageId.Lens as L hiding (pkgCompiler)
 
 -- Note: GHC goes nuts and inlines everything,
 -- One can see e.g. in -ddump-simpl-stats:
@@ -133,7 +133,7 @@ ipiFieldGrammar =
       InstalledPackageInfo
         -- _basicPkgName is not used
         -- setMaybePackageId says it can be no-op.
-        (PackageIdentifier pn _basicVersion)
+        (PackageIdentifier pn _basicVersion _basicCompilerId)
         (combineLibraryName ln _basicLibName)
         (mkComponentId "") -- installedComponentId_, not in use
         _basicLibVisibility
@@ -256,6 +256,7 @@ data Basic = Basic
   , _basicPkgName :: Maybe PackageName
   , _basicLibName :: LibraryName
   , _basicLibVisibility :: LibraryVisibility
+  , _basicCompilerId :: Maybe CompilerId
   }
 
 basic :: Lens' InstalledPackageInfo Basic
@@ -268,14 +269,16 @@ basic f ipi = g <$> f b
         (maybePackageName ipi)
         (sourceLibName ipi)
         (libVisibility ipi)
+        (pkgCompiler ipi)
 
-    g (Basic n v pn ln lv) =
+    g (Basic n v pn ln lv compid) =
       ipi
         & setMungedPackageName n
         & L.sourcePackageId . L.pkgVersion .~ v
         & setMaybePackageName pn
         & L.sourceLibName .~ ln
         & L.libVisibility .~ lv
+        & L.pkgCompiler .~ compid
 
 basicName :: Lens' Basic MungedPackageName
 basicName f b = (\x -> b{_basicName = x}) <$> f (_basicName b)
@@ -319,7 +322,7 @@ basicFieldGrammar =
     <*> optionalField "lib-name" basicLibName
     <*> optionalFieldDef "visibility" basicLibVisibility LibraryVisibilityPrivate
   where
-    mkBasic n v pn ln lv = Basic n v pn ln' lv'
+    mkBasic n v pn ln lv = Basic n v pn ln' lv' Nothing
       where
         ln' = maybe LMainLibName LSubLibName ln
         -- Older GHCs (<8.8) always report installed libraries as private

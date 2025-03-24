@@ -103,7 +103,7 @@ newBuildReport os' arch' comp pkgid flags deps result =
 
 cabalInstallID :: PackageIdentifier
 cabalInstallID =
-  PackageIdentifier (mkPackageName "cabal-install") cabalInstallVersion
+  PackageIdentifier (mkPackageName "cabal-install") cabalInstallVersion Nothing
 
 -------------------------------------------------------------------------------
 -- FieldGrammar

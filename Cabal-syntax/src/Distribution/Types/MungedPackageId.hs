@@ -15,6 +15,7 @@ import Distribution.Types.LibraryName
 import Distribution.Types.MungedPackageName
 import Distribution.Types.PackageId
 import Distribution.Version (Version, nullVersion)
+import Distribution.Compiler (CompilerId)
 
 import qualified Text.PrettyPrint as Disp
 
@@ -27,6 +28,7 @@ data MungedPackageId = MungedPackageId
   -- 'MungedPackageName'.
   , mungedVersion :: Version
   -- ^ The version of this package / component, eg 1.2
+  , mingledCompilerId :: Maybe CompilerId
   }
   deriving (Generic, Read, Show, Eq, Ord, Data)
 
@@ -41,8 +43,9 @@ instance Structured MungedPackageId
 -- >>> prettyShow $ MungedPackageId (MungedPackageName "servant" (LSubLibName "lackey")) (mkVersion [0,1,2])
 -- "z-servant-z-lackey-0.1.2"
 instance Pretty MungedPackageId where
-  pretty (MungedPackageId n v)
-    | v == nullVersion = pretty n -- if no version, don't show version.
+  pretty (MungedPackageId n v c)
+    | v == nullVersion = pretty c <<>> Disp.char '-' <<>> pretty n -- if no version, don't show version.
+    | Just c' <- c = pretty c' <<>> Disp.char '-' <<>> pretty n <<>> Disp.char '-' <<>> pretty v
     | otherwise = pretty n <<>> Disp.char '-' <<>> pretty v
 
 -- |
@@ -66,15 +69,15 @@ instance Pretty MungedPackageId where
 -- Nothing
 instance Parsec MungedPackageId where
   parsec = do
-    PackageIdentifier pn v <- parsec
-    return $ MungedPackageId (decodeCompatPackageName pn) v
+    PackageIdentifier pn v comp <- parsec
+    return $ MungedPackageId (decodeCompatPackageName pn) v comp
 
 instance NFData MungedPackageId where
-  rnf (MungedPackageId name version) = rnf name `seq` rnf version
+  rnf (MungedPackageId name version compiler) = rnf name `seq` rnf version `seq` rnf compiler
 
 computeCompatPackageId :: PackageId -> LibraryName -> MungedPackageId
-computeCompatPackageId (PackageIdentifier pn vr) ln =
-  MungedPackageId (MungedPackageName pn ln) vr
+computeCompatPackageId (PackageIdentifier pn vr comp) ln =
+  MungedPackageId (MungedPackageName pn ln) vr comp
 
 -- $setup
 -- >>> :seti -XOverloadedStrings

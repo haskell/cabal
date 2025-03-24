@@ -16,10 +16,10 @@ import Prelude ()
 
 import Distribution.Backpack
 import Distribution.Compat.Graph (IsNode (..))
-import Distribution.Compiler (CompilerId)
+import Distribution.Compiler (CompilerId, buildCompilerId)
 import Distribution.License
 import Distribution.ModuleName
-import Distribution.Package hiding (installedUnitId)
+import Distribution.Package hiding (installedUnitId, pkgCompiler)
 import Distribution.Types.AbiDependency
 import Distribution.Types.ExposedModule
 import Distribution.Types.LibraryName
@@ -121,8 +121,8 @@ instance IsNode InstalledPackageInfo where
   nodeNeighbors = depends
 
 mungedPackageId :: InstalledPackageInfo -> MungedPackageId
-mungedPackageId ipi =
-  MungedPackageId (mungedPackageName ipi) (packageVersion ipi)
+mungedPackageId ipi@InstalledPackageInfo{pkgCompiler = comp} =
+  MungedPackageId (mungedPackageName ipi) (packageVersion ipi) comp
 
 -- | Returns the munged package name, which we write into @name@ for
 -- compatibility with old versions of GHC.
@@ -132,7 +132,7 @@ mungedPackageName ipi = MungedPackageName (packageName ipi) (sourceLibName ipi)
 emptyInstalledPackageInfo :: InstalledPackageInfo
 emptyInstalledPackageInfo =
   InstalledPackageInfo
-    { sourcePackageId = PackageIdentifier (mkPackageName "") nullVersion
+    { sourcePackageId = PackageIdentifier (mkPackageName "") nullVersion Nothing
     , sourceLibName = LMainLibName
     , installedComponentId_ = mkComponentId ""
     , installedUnitId = mkUnitId ""

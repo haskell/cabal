@@ -39,7 +39,7 @@ convCP iidx sidx (CP qpi fa es ds) =
                   }
     -- "In repo" i.e. a source package
     (PI qpn@(Q _path pn) (I stage v InRepo)) ->
-      let pi = PackageIdentifier pn v in
+      let pi = PackageIdentifier pn v Nothing {-# FIXME: should be COMPILERID #-} in
       Configured $
                   SolverPackage {
                       solverPkgQPN = qpn,
@@ -70,4 +70,4 @@ convConfId (PI (Q (PackagePath _ q) pn) (I _stage v loc)) =
           , pn == pn' -> Right (PlannedId sourceId)
           | otherwise -> Left  (PlannedId sourceId)
   where
-    sourceId    = PackageIdentifier pn v
+    sourceId    = PackageIdentifier pn v Nothing -- FIXME: this should be the compiler id!

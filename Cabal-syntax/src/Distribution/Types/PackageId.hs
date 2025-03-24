@@ -13,6 +13,7 @@ import Distribution.Parsec (Parsec (..), simpleParsec)
 import Distribution.Pretty
 import Distribution.Types.PackageName
 import Distribution.Version (Version, nullVersion)
+import Distribution.Compiler (CompilerId)
 
 import qualified Data.List.NonEmpty as NE
 import qualified Distribution.Compat.CharParsing as P
@@ -27,6 +28,7 @@ data PackageIdentifier = PackageIdentifier
   -- ^ The name of this package, eg. foo
   , pkgVersion :: Version
   -- ^ the version of this package, eg 1.2
+  , pkgCompiler :: Maybe CompilerId
   }
   deriving (Generic, Read, Show, Eq, Ord, Data)
 
@@ -34,8 +36,9 @@ instance Binary PackageIdentifier
 instance Structured PackageIdentifier
 
 instance Pretty PackageIdentifier where
-  pretty (PackageIdentifier n v)
-    | v == nullVersion = pretty n -- if no version, don't show version.
+  pretty (PackageIdentifier n v c)
+    | v == nullVersion = pretty c <<>> Disp.char '-' <<>> pretty n -- if no version, don't show version.
+    | Just c' <- c = pretty c' <<>> Disp.char '-' <<>> pretty n <<>> Disp.char '-' <<>> pretty v
     | otherwise = pretty n <<>> Disp.char '-' <<>> pretty v
 
 -- |
@@ -61,15 +64,16 @@ instance Pretty PackageIdentifier where
 -- Nothing
 instance Parsec PackageIdentifier where
   parsec = do
+    comp <- parsec <* P.char '-'
     xs' <- P.sepByNonEmpty component (P.char '-')
     (v, xs) <- case simpleParsec (NE.last xs') of
       Nothing -> return (nullVersion, toList xs') -- all components are version
       Just v -> return (v, NE.init xs')
     if not (null xs) && all (\c -> all (/= '.') c && not (all isDigit c)) xs
-      then return $ PackageIdentifier (mkPackageName (intercalate "-" xs)) v
+      then return $ PackageIdentifier (mkPackageName (intercalate "-" xs)) v comp
       else fail "all digits or a dot in a portion of package name"
     where
       component = P.munch1 (\c -> isAlphaNum c || c == '.')
 
 instance NFData PackageIdentifier where
-  rnf (PackageIdentifier name version) = rnf name `seq` rnf version
+  rnf (PackageIdentifier name version compiler) = rnf name `seq` rnf version `seq` rnf compiler

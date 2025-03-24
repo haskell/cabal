@@ -300,6 +300,7 @@ toReadyComponents pid_map subst0 comps =
                     MungedPackageId
                       (MungedPackageName nonExistentPackageThisIsCabalBug LMainLibName)
                       (mkVersion [0])
+                      Nothing
               instc =
                 InstantiatedComponent
                   { instc_insts = Map.toList insts
