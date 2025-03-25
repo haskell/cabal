@@ -220,7 +220,7 @@ rebuildTargetsDryRun distDirLayout@DistDirLayout{..} shared =
             else return (BuildStatusUnpack tarball)
       where
         srcdir :: FilePath
-        srcdir = distUnpackedSrcDirectory (packageId pkg)
+        srcdir = distUnpackedSrcDirectory ((packageId pkg){pkgCompiler = Nothing})
 
     dryRunLocalPkg
       :: ElaboratedConfiguredPackage
@@ -713,7 +713,7 @@ withTarballLocalDirectory
         let tmpdir = distTempDirectory
             builddir = relativeSymbolicPath $ makeRelativePathEx "dist"
          in withTempDirectory verbosity tmpdir "src" $ \unpackdir -> do
-              let srcdir = makeSymbolicPath $ unpackdir </> prettyShow pkgid
+              let srcdir = makeSymbolicPath $ unpackdir </> prettyShow (pkgid{pkgCompiler = Nothing})
               unpackPackageTarball
                 verbosity
                 tarball
@@ -727,7 +727,7 @@ withTarballLocalDirectory
       -- inplace there
       BuildInplaceOnly{} -> do
         let srcrootdir = distUnpackedSrcRootDirectory
-            srcdir = distUnpackedSrcDirectory pkgid
+            srcdir = distUnpackedSrcDirectory (pkgid{pkgCompiler = Nothing})
             builddir =
               makeSymbolicPath $
                 makeRelative (normalise srcdir) $
@@ -791,7 +791,7 @@ unpackPackageTarball verbosity tarball parentdir pkgid pkgTextOverride =
         </> pkgsubdir
         </> prettyShow pkgname
         <.> "cabal"
-    pkgsubdir = prettyShow pkgid
+    pkgsubdir = prettyShow (pkgid{pkgCompiler = Nothing})
     pkgname = packageName pkgid
 
 -- | This is a bit of a hacky workaround. A number of packages ship
