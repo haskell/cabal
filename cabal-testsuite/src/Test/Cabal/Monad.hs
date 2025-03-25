@@ -34,6 +34,7 @@ module Test.Cabal.Monad (
     testPrefixDir,
     testLibInstallDir,
     testDistDir,
+    testSystemTmpDir,
     testPackageDbDir,
     testRepoDir,
     testKeysDir,
@@ -407,9 +408,9 @@ runTestM mode m =
                         , ("CABAL_DIR", Just (testCabalDir env))
                         , ("CABAL_CONFIG", Just (testUserCabalConfigFile env))
                         -- Set `TMPDIR` so that temporary files aren't created in the global `TMPDIR`.
-                        , ("TMPDIR", Just tmp_dir)
+                        , ("TMPDIR", Just (testSystemTmpDir env))
                         -- Windows uses `TMP` for the `TMPDIR`.
-                        , ("TMP", Just tmp_dir)
+                        , ("TMP", Just (testSystemTmpDir env))
                         ],
                     testShouldFail = False,
                     testRelativeCurrentDir = ".",
@@ -548,6 +549,7 @@ initWorkDir :: TestM ()
 initWorkDir = do
     env <- getTestEnv
     liftIO $ createDirectoryIfMissing True (testWorkDir env)
+    liftIO $ createDirectoryIfMissing True (testSystemTmpDir env)
 
 
 
@@ -823,6 +825,11 @@ testName env = testSubName env <.> testMode env
 -- subtests.)  To clean, you ONLY need to delete this directory.
 testWorkDir :: TestEnv -> FilePath
 testWorkDir env = testTmpDir env </> (testName env <.> "dist")
+
+-- The folder which TMPDIR is set to.
+-- This is different to testTmpDir, which is the folder which is the test is run from.
+testSystemTmpDir :: TestEnv -> FilePath
+testSystemTmpDir env = testWorkDir env </> "tmp"
 
 -- | The absolute prefix where installs go.
 testPrefixDir :: TestEnv -> FilePath

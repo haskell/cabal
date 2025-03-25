@@ -1043,12 +1043,32 @@ build information fields (see the section on `build information`_).
 
 .. pkg-field:: main-is: filename (required)
 
-    The name of the ``.hs`` or ``.lhs`` file containing the ``Main``
-    module. Note that it is the ``.hs`` filename that must be listed,
-    even if that file is generated using a preprocessor. The source file
-    must be relative to one of the directories listed in
-    :pkg-field:`hs-source-dirs`. Further, while the name of the file may
-    vary, the module itself must be named ``Main``.
+    By convention, a Haskell program must have a module called ``Main`` which
+    exports an IO action named ``main``. When the program is executed, the
+    action is performed. This field specifies the name of the ``.hs`` or
+    ``.lhs`` source file containing that module. It is the ``.hs`` filename that
+    must be listed, even if that file is generated using a preprocessor. The
+    file must be relative to one of the directories listed in
+    :pkg-field:`hs-source-dirs`.
+
+    Further, while the name of the source file may vary, if the convention is
+    being followed, the module itself must be named ``Main`` and export
+    ``main``.
+
+    However, GHC's ``-main-is`` option can be used to change the name of the
+    relevant IO action. For example, if source file ``MyMainSourceFile.hs``
+    contains a module named ``MyMainModule`` exporting ``myMainFunc`` and that
+    is to be the relevant IO action, you can specify:
+
+    ::
+
+        executable my-app
+          main-is: MyMainSourceFile.hs
+          ghc-options: -main-is MyMainModule.myMainFunc
+          build-depends:
+              base
+          default-language: Haskell2010
+
 
     Starting with ``cabal-version: 1.18`` this field supports
     specifying a C, C++, or objC source file as the main entry point.
@@ -1105,7 +1125,7 @@ field.
     even if that file is generated using a preprocessor. The source file
     must be relative to one of the directories listed in
     :pkg-field:`hs-source-dirs`. This field is analogous to the ``main-is`` field
-    of an executable section.
+    of an executable section; see that documentation for further information.
 
 Test suites using the ``detailed-0.9`` interface are modules exporting
 the symbol ``tests :: IO [Test]``. The ``Test`` type is exported by the
@@ -1264,8 +1284,8 @@ standard output and error channels.
     even if that file is generated using a preprocessor. The source file
     must be relative to one of the directories listed in
     :pkg-field:`hs-source-dirs`. This field is analogous to the ``main-is``
-    field of an executable section. Further, while the name of the file may
-    vary, the module itself must be named ``Main``.
+    field of an executable section; see that documentation for further
+    information.
 
 Example:
 """""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -1332,6 +1352,15 @@ system-dependent values for these fields.
     library name (for example, ``my-package:my-package``). More than one library
     from the same package can be specified with the shorthand syntax
     ``my-package:{my-library1,my-library2}``.
+
+    .. Note::
+
+       The :pkg-field:`build-depends` field of an executable section (from
+       version 1.8 of the Cabal specification), test suite section (from
+       version 1.10) or benchmark section (from version 1.14) can specify a
+       library in the same package by the name of the library (without a version
+       constraint). Cabal then treats the executable, test suite or benchmark as
+       if it were in another package that depended on the package.
 
     .. Note::
 
@@ -2297,7 +2326,7 @@ Configurations
 
 Library and executable sections may include conditional blocks, which
 test for various system parameters and configuration flags. The flags
-mechanism is rather generic, but most of the time a flag represents
+mechanism is rather generic, but most of the time a flag represents a
 certain feature, that can be switched on or off by the package user.
 Here is an example package description file using configurations:
 
@@ -2358,8 +2387,9 @@ Example: A package containing a library and executable programs
 
     Executable test1
       Main-is:          T1.hs
-      Other-Modules:    Testing.Test1
-      Build-Depends:    base >= 4.2 && < 4.9
+      Build-Depends:
+        , base >= 4.2 && < 4.9
+        , Test1
       Default-Language: Haskell2010
 
       if flag(debug)
@@ -2462,10 +2492,11 @@ Configuration Flags
     :default: ``False``
     :since: 1.6
 
-    By default, Cabal will first try to satisfy dependencies with the
-    default flag value and then, if that is not possible, with the
-    negated value. However, if the flag is manual, then the default
-    value (which can be overridden by commandline flags) will be used.
+      By default, Cabal tries to resolve dependencies using the flag's ``default`` value.
+      If that fails, it tries again with the negated default value. However, if the flag is
+      marked as ``manual``, Cabal will only use the default value and will not retry
+      with the negated default. Note that the default value can still be overridden
+      using command-line flags.
 
 .. _conditional-blocks:
 

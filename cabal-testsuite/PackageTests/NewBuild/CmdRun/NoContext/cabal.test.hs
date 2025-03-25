@@ -14,6 +14,4 @@ main = cabalTest $ do
     shouldExist $ cacheDir </> "fake-package.cabal"
     shouldExist $ cacheDir </> "scriptlocation"
     shouldDirectoryNotExist $ testTmpDir env </> "build"
-    -- "dist-newstyle" should exist, because the folder has a cabal.project in
-    -- so the v2-run command runs in that context.
-    shouldDirectoryExist $ testTmpDir env </> "dist-newstyle"
+    shouldDirectoryNotExist $ testTmpDir env </> "dist-newstyle"

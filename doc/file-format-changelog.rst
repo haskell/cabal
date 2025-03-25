@@ -22,11 +22,15 @@ relative to the respective preceding *published* version.
 ``cabal-version: 3.14``
 -----------------------
 
-* Added field ``extra-files`` for specifying extra files to be included in
-  ``sdist`` without adding any other semantics (cf. ``extra-source-files``
-  is tracked by ``cabal build``).
+* Added field :pkg-field:`extra-files` for specifying extra files to be included
+  in ``sdist`` without adding any other semantics (compare,
+  :pkg-field:`extra-source-files` is tracked by ``cabal build``).
+
 * License fields use identifiers from SPDX License List version
   ``3.25 2024-08-19``.
+
+* The :pkg-field:`build-type` field allows the new build type ``Hooks`` to be
+  specified.
 
 ``cabal-version: 3.12``
 -----------------------
@@ -287,13 +291,16 @@ relative to the respective preceding *published* version.
 
 * Add ``getSysconfDir`` operation to ``Paths_`` API.
 
-``cabal-version: 1.16``
+``cabal-version: 1.14``
 -----------------------
 
-.. todo::
+* New :pkg-section:`benchmark` stanza for describing a package benchmark added.
 
-   this needs to be researched; there were only few changes between
-   1.12 and 1.18;
+* ``exitcode-stdio-1.0`` is a valid value of the `type` field in a
+  :pkg-section:`benchmark` stanza.
+
+* ``detailed-0.9`` added as a valid value of the `type` field in a
+  :pkg-section:`test-suite` stanza.
 
 ``cabal-version: 1.12``
 -----------------------

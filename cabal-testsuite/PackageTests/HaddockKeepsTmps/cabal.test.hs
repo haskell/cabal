@@ -22,7 +22,7 @@ main =
             else "haddock-response*.txt"
 
     -- Check that there is a response file.
-    responseFiles <- assertGlobMatchesTestDir testTmpDir glob
+    responseFiles <- assertGlobMatchesTestDir testSystemTmpDir glob
 
     -- Check that the matched response file is not empty, and is indeed a Haddock
     -- response file.
