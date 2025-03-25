@@ -57,4 +57,4 @@ main = cabalTest $ do
 
     -- On correct behaviour, cabal should fail because it found our exit-code-1
     -- pkg-config through the global extra-prog-path.
-    fails $ wrap_test $ cabal "v2-build" ["client"]
+    fails $ wrap_test $ cabal "v2-build" []
