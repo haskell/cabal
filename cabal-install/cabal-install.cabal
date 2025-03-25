@@ -20,7 +20,7 @@ Extra-Source-Files:
   bash-completion/cabal
 extra-doc-files:
   README.md
-  changelog
+  changeLog.md
 
 source-repository head
   type:     git
