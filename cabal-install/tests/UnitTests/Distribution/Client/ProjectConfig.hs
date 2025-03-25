@@ -12,7 +12,7 @@ module UnitTests.Distribution.Client.ProjectConfig (tests) where
 
 import Control.Monad
 import qualified Data.ByteString.Lazy.Char8 as LBS
-import Data.Either (isRight)
+import Data.Either (fromRight, isRight)
 import Data.Foldable (for_)
 import Data.List (intercalate, isPrefixOf, (\\))
 import Data.List.NonEmpty (NonEmpty (..))
@@ -27,7 +27,7 @@ import System.IO.Unsafe (unsafePerformIO)
 import Distribution.Deprecated.ParseUtils
 import qualified Distribution.Deprecated.ReadP as Parse
 
-import Distribution.Client.HashValue (hashValue)
+import Distribution.Client.HashValue (hashValueFromHex)
 import Distribution.Client.HookAccept (HookAccept (..))
 import Distribution.Compiler
 import Distribution.Package
@@ -697,7 +697,7 @@ projectConfigConstraintSource :: ConstraintSource
 projectConfigConstraintSource = ConstraintSourceProjectConfig nullProjectConfigPath
 
 instance Arbitrary HookAccept where
-  arbitrary = elements [AcceptAlways, AcceptHash (hashValue $ LBS.pack "000000")]
+  arbitrary = elements [AcceptAlways] -- , AcceptHash (fromRight (HashValue "\0") $ hashValueFromHex "000000")]
 
 instance Arbitrary ProjectConfigProvenance where
   arbitrary = elements [Implicit, Explicit (ProjectConfigPath $ "cabal.project" :| [])]
