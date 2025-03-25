@@ -849,14 +849,14 @@ rebuildInstallPlan
 
               liftIO $ do
                 notice verbosity "Resolving dependencies..."
-                putStrLn "== installedPackages"
-                putStrLn $ unlines $ map (prettyShow . IPI.sourcePackageId) $ PI.allPackages installedPackages
-                putStrLn "== binstalledPackages"
-                putStrLn $ unlines $ map (prettyShow . IPI.sourcePackageId) $ PI.allPackages binstalledPkgIndex
-                putStrLn "== hinstalledPackages"
-                putStrLn $ unlines $ map (prettyShow . IPI.sourcePackageId) $ PI.allPackages hinstalledPkgIndex
-                putStrLn "== localPackages"
-                putStrLn $ unlines . map (prettyShow . srcpkgPackageId) $ [pkg | SpecificSourcePackage pkg <- localPackages]
+                -- putStrLn "== installedPackages"
+                -- putStrLn $ unlines $ map (prettyShow . IPI.sourcePackageId) $ PI.allPackages installedPackages
+                -- putStrLn "== binstalledPackages"
+                -- putStrLn $ unlines $ map (prettyShow . IPI.sourcePackageId) $ PI.allPackages binstalledPkgIndex
+                -- putStrLn "== hinstalledPackages"
+                -- putStrLn $ unlines $ map (prettyShow . IPI.sourcePackageId) $ PI.allPackages hinstalledPkgIndex
+                -- putStrLn "== localPackages"
+                -- putStrLn $ unlines . map (prettyShow . srcpkgPackageId) $ [pkg | SpecificSourcePackage pkg <- localPackages]
                 planOrError <-
                   foldProgress logMsg (pure . Left) (pure . Right) $
                     planPackages
@@ -1782,7 +1782,7 @@ elaborateInstallPlan
             let src_comps = componentsGraphToList g
             infoProgress $
               hang
-                (text "Component graph for" <+> pretty pkgid <+> text "at stage " <+> text (show $ elabStage elab0) <<>> colon)
+                (text "Component graph for" <+> pretty pkgid <<>> colon)
                 4
                 (dispComponentsWithDeps src_comps)
             (_, comps) <-
@@ -1973,7 +1973,7 @@ elaborateInstallPlan
                       elab0
                         { elabPkgOrComp = ElabComponent $ elab_comp
                         }
-                    cid = case traceShow (elabBuildStyle elab0) (elabBuildStyle elab0) of
+                    cid = case elabBuildStyle elab0 of
                       BuildInplaceOnly{} ->
                         mkComponentId $
                           prettyShow pkgid
@@ -2363,7 +2363,7 @@ elaborateInstallPlan
             elabPkgSourceLocation = srcloc
             elabPkgSourceHash = case Map.lookup pkgid sourcePackageHashes of
               Just h -> Just h
-              Nothing -> trace (unlines $ ("failed to find " ++ prettyShow pkgid ++ " in "):[ prettyShow k ++ " -> " ++ show v | (k, v) <- Map.toList sourcePackageHashes]) Nothing
+              Nothing -> Nothing
             elabLocalToProject = isLocalToProject pkg
             elabBuildStyle =
               if shouldBuildInplaceOnly pkg
@@ -2551,7 +2551,7 @@ elaborateInstallPlan
       shouldBuildInplaceOnly pkg =
         Set.member
           (packageId pkg)
-          (traceShowId pkgsToBuildInplaceOnly)
+          pkgsToBuildInplaceOnly
 
 
       -- FIXME: This change is stupid, however the previous assumption is

@@ -105,7 +105,7 @@ solve sc toolchains idx pkgConfigDB userPrefs userConstraints userGoals =
   traceTree "cycles.json" id .
   detectCycles      .
   traceTree "heuristics.json" id .
-  stageBuildDeps "post-pref: " .
+  -- stageBuildDeps "post-pref: " .
   trav (
    heuristicsPhase  .
    preferencesPhase .
@@ -115,9 +115,9 @@ solve sc toolchains idx pkgConfigDB userPrefs userConstraints userGoals =
   validationCata    .
   traceTree "pruned.json" id .
   trav prunePhase   .
-  stageBuildDeps "post-prune: " .
+  -- stageBuildDeps "post-prune: " .
   (if buildIsHost toolchains then id else trav P.pruneHostFromSetup) .
-  stageBuildDeps "build: " .
+  -- stageBuildDeps "build: " .
   traceTree "build.json" id $
   buildPhase
   where

@@ -81,7 +81,7 @@ showCP (CP qpi fa es ds) =
 -- solver. Performs the necessary translations before and after.
 modularResolver :: SolverConfig -> DependencyResolver loc
 modularResolver sc toolchains biidx iidx sidx pkgConfigDB pprefs pcs pns = do
-    (assignment, revdepmap) <- solve' sc toolchains (trace (showIdx idx) idx) pkgConfigDB pprefs gcs pns
+    (assignment, revdepmap) <- solve' sc toolchains idx pkgConfigDB pprefs gcs pns
     let cp = toCPs assignment revdepmap
     Step (show (vcat (map showCP cp))) $
         return $ postprocess assignment revdepmap

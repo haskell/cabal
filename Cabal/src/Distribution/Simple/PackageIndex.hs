@@ -169,7 +169,6 @@ instance Semigroup (PackageIndex IPI.InstalledPackageInfo) where
 {-# NOINLINE invariant #-}
 invariant :: WithCallStack (InstalledPackageIndex -> Bool)
 invariant (PackageIndex pids pnames) =
-  trace (show pids' ++ "\n" ++ show pnames') $
   pids' == pnames'
   where
     pids' = map installedUnitId (Map.elems pids)
@@ -335,7 +334,7 @@ deleteSourcePackageId pkgid original@(PackageIndex pids pnames) =
     Just pvers -> case Map.lookup (packageVersion pkgid) pvers of
       Nothing -> original
       Just pkgs ->
-        traceShow (pkgid, pkgs) $ mkPackageIndex
+        mkPackageIndex
           (foldl' (flip (Map.delete . installedUnitId)) pids pkgs)
 --          (Map.update deletePkgInstance (installedUnitId pkgid) pids)
           (deletePkgName pnames)

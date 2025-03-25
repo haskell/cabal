@@ -659,8 +659,7 @@ resolveTargets
       checkTarget bt@(TargetPackage _ (ordNub -> [pkgid]) mkfilter)
         | Just ats <-
             fmap (maybe id filterTargetsKind mkfilter) $
-              (trace (unlines $ ("Failed to find " ++ prettyShow pkgid ++ " in "):[prettyShow k {-# ++ " -> " ++ show v #-} | (k,v) <- Map.toList availableTargetsByPackageId])
-                (Map.lookup pkgid availableTargetsByPackageId)) =
+                (Map.lookup pkgid availableTargetsByPackageId) =
             fmap (componentTargets WholeComponent) $
               selectPackageTargets bt ats
         | otherwise =
@@ -689,11 +688,10 @@ resolveTargets
             -- FIXME: this is stupid. We do not know what the target selectors HOST compiler is...
             --        so we'll assume tere is only a _SINGLE_ match in the map if we ignore the pkgCompiler.
             -- This lookup is now O(n) instead of O(log n).
-            (trace (unlines $ ("Failed to find " ++ prettyShow pkgid ++ ":" ++ show cname ++ " in "):[prettyShow k ++ ":" ++ show k' {-# ++ " -> " ++ show v #-} | ((k,k'),v) <- Map.toList availableTargetsByPackageIdAndComponentName])
               (case [v | ((k,k'),v) <- Map.toList availableTargetsByPackageIdAndComponentName
                       , k{pkgCompiler = Nothing} == pkgid
                       , k' == cname] of
-                [match] -> Just match))
+                [match] -> Just match)
               -- (Map.lookup
               --   (pkgid, cname)
               --   availableTargetsByPackageIdAndComponentName))

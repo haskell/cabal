@@ -935,25 +935,12 @@ validateSolverResult
   -> [ResolverPackage UnresolvedPkgLoc]
   -> SolverInstallPlan
 validateSolverResult toolchains indepGoals pkgs =
-  case planPackagesProblems toolchains (trace (dump pkgs) pkgs) of
+  case planPackagesProblems toolchains pkgs of
     [] -> case SolverInstallPlan.new indepGoals graph of
       Right plan -> plan
       Left problems -> error (formatPlanProblems problems)
     problems -> error (formatPkgProblems problems)
   where
-    dump :: [ResolverPackage UnresolvedPkgLoc] -> String
-    dump xs = unlines $
-      "=== DUMP ===":[unlines $ (resolverPkgHead x ++ show (packageId x)):[ "- "++ solverIdHead y ++ show (solverSrcId y)
-                                                                        | y <- CD.flatDeps (resolverPackageLibDeps x)]
-                     | x <- xs ]
-      ++ ["=== /DUMP =="]
-
-    solverIdHead :: SolverId -> String
-    solverIdHead (PreExistingId{}) = "[PE]"
-    solverIdHead (PlannedId    {}) = "[PL]"
-
-    resolverPkgHead (PreExisting _) = "[PE]"
-    resolverPkgHead (Configured  _) = "[CF]"
 
     graph :: Graph.Graph (ResolverPackage UnresolvedPkgLoc)
     graph = Graph.fromDistinctList pkgs
