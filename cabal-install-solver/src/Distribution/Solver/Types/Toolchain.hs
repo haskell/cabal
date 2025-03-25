@@ -5,6 +5,7 @@ module Distribution.Solver.Types.Toolchain
   ( Toolchain (..)
   , Toolchains (..)
   , toolchainFor
+  , compilerIdFor
   , mkToolchainsWithHost
   , buildIsHost
   ) where
@@ -47,6 +48,9 @@ data Toolchains = Toolchains
 toolchainFor :: Stage -> Toolchains -> Toolchain
 toolchainFor Build = buildToolchain
 toolchainFor Host = hostToolchain
+
+compilerIdFor :: Stage -> Toolchains -> CompilerId
+compilerIdFor stage = compilerId . toolchainCompiler . toolchainFor stage
 
 instance Binary Toolchains
 instance Structured Toolchains

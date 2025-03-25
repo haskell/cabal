@@ -243,6 +243,8 @@ import Distribution.Solver.Types.ProjectConfigPath
 import System.FilePath
 import qualified Text.PrettyPrint as Disp
 
+import GHC.Stack (HasCallStack)
+
 -- | Check that an 'ElaboratedConfiguredPackage' actually makes
 -- sense under some 'ElaboratedSharedConfig'.
 sanityCheckElaboratedConfiguredPackage
@@ -758,13 +760,13 @@ rebuildInstallPlan
           , projectConfigBuildOnly
           }
         toolchains
-        localPackages
+        localPackages_
         installedPackages =
           rerunIfChanged
             verbosity
             fileMonitorSolverPlan
             ( solverSettings
-            , localPackages
+            , localPackages_
             , localPackagesEnabledStanzas
             , toolchains
             , hookHashes
@@ -797,13 +799,6 @@ rebuildInstallPlan
               --     updateIPI ipi = ipi {
               --       IPI.sourcePackageId = (IPI.sourcePackageId ipi){ PI.pkgCompiler = IPI.pkgCompiler ipi }
               --      }
-              -- let addCompilerToSourcePkg :: CompilerId -> [PackageSpecifier UnresolvedSourcePackage] -> [PackageSpecifier UnresolvedSourcePackage]
-              --     addCompilerToSourcePkg compilerId = map (addCompilerId compilerId)
-              --     addCompilerId :: CompilerId -> PackageSpecifier UnresolvedSourcePackage -> PackageSpecifier UnresolvedSourcePackage
-              --     addCompilerId compilerId (NamedPackage name props) = NamedPackage name props
-              --     addCompilerId compilerId (SpecificSourcePackage pkg) = SpecificSourcePackage (f pkg)
-              --       where f :: SourcePackage UnresolvedPkgLoc -> SourcePackage UnresolvedPkgLoc
-              --             f pkg = pkg{srcpkgPackageId = (srcpkgPackageId pkg){pkgCompiler = Just compilerId}}
 
               hinstalledPkgIndex <-
                 -- mapPkgIdx updateIPI <$>
@@ -824,8 +819,20 @@ rebuildInstallPlan
                   -- if host and build compiler are the same, we want to get -package-db in here.
                   (corePackageDbs $ if buildIsHost toolchains then Host else Build)
 
-              -- let localPackages' = addCompilerToSourcePkg (compilerId . toolchainCompiler . hostToolchain $ toolchains) localPackages
+              -- getSourcePackages
+              --   :: Verbosity
+              --   -> (forall a. (RepoContext -> IO a) -> IO a)
+              --   -> Maybe IndexUtils.TotalIndexState
+              --   -> Maybe IndexUtils.ActiveRepos
+              --   -> Rebuild (SourcePackageDb, IndexUtils.TotalIndexState, IndexUtils.ActiveRepos)
 
+              -- data SourcePackageDb = SourcePackageDb
+              --   { packageIndex :: PackageIndex UnresolvedSourcePackage
+              --   , packagePreferences :: Map PackageName VersionRange
+              --   }
+
+              -- NOTE: sourcePkgDbs is the stuff that we pull from Hackage
+              --       and similar Indices!
               (sourcePkgDb, tis, ar) <-
                 getSourcePackages
                   verbosity
@@ -842,12 +849,14 @@ rebuildInstallPlan
 
               liftIO $ do
                 notice verbosity "Resolving dependencies..."
-                -- putStrLn "== installedPackages"
-                -- putStrLn $ unlines $ map (prettyShow . IPI.sourcePackageId) $ PI.allPackages installedPackages
-                -- putStrLn "== binstalledPackages"
-                -- putStrLn $ unlines $ map (prettyShow . IPI.sourcePackageId) $ PI.allPackages binstalledPkgIndex
-                -- putStrLn "== hinstalledPackages"
-                -- putStrLn $ unlines $ map (prettyShow . IPI.sourcePackageId) $ PI.allPackages hinstalledPkgIndex
+                putStrLn "== installedPackages"
+                putStrLn $ unlines $ map (prettyShow . IPI.sourcePackageId) $ PI.allPackages installedPackages
+                putStrLn "== binstalledPackages"
+                putStrLn $ unlines $ map (prettyShow . IPI.sourcePackageId) $ PI.allPackages binstalledPkgIndex
+                putStrLn "== hinstalledPackages"
+                putStrLn $ unlines $ map (prettyShow . IPI.sourcePackageId) $ PI.allPackages hinstalledPkgIndex
+                putStrLn "== localPackages"
+                putStrLn $ unlines . map (prettyShow . srcpkgPackageId) $ [pkg | SpecificSourcePackage pkg <- localPackages]
                 planOrError <-
                   foldProgress logMsg (pure . Left) (pure . Right) $
                     planPackages
@@ -866,6 +875,16 @@ rebuildInstallPlan
                     dieWithException verbosity $ PhaseRunSolverErr msg
                   Right plan -> return (plan, pkgConfigDB, tis, ar)
           where
+            -- FIXME: See FIXME in Distribution.Client.ProjectConfig wrt to buildPackages.
+            addCompilerToSourcePkg :: CompilerId -> [PackageSpecifier UnresolvedSourcePackage] -> [PackageSpecifier UnresolvedSourcePackage]
+            addCompilerToSourcePkg compilerId = map (addCompilerId compilerId)
+            addCompilerId :: CompilerId -> PackageSpecifier UnresolvedSourcePackage -> PackageSpecifier UnresolvedSourcePackage
+            addCompilerId compilerId (NamedPackage name props) = NamedPackage name props
+            addCompilerId compilerId (SpecificSourcePackage pkg) = SpecificSourcePackage (f pkg)
+              where f :: SourcePackage UnresolvedPkgLoc -> SourcePackage UnresolvedPkgLoc
+                    f pkg = pkg{srcpkgPackageId = (srcpkgPackageId pkg){pkgCompiler = Just compilerId}}
+            localPackages = (addCompilerToSourcePkg (compilerIdFor Build toolchains) localPackages_)
+                         <> (addCompilerToSourcePkg (compilerIdFor Host  toolchains) localPackages_)
             corePackageDbs :: Stage -> PackageDBStackCWD
             corePackageDbs stage =
               Cabal.interpretPackageDbFlags False (packageDBs stage)
@@ -942,7 +961,7 @@ rebuildInstallPlan
         toolchains
         pkgConfigDB
         solverPlan
-        localPackages = do
+        localPackages_ = do
           liftIO $ debug verbosity "Elaborating the install plan..."
 
           sourcePackageHashes <-
@@ -980,6 +999,17 @@ rebuildInstallPlan
           liftIO $ debugNoWrap verbosity (showElaboratedInstallPlan instantiatedPlan)
           return (instantiatedPlan, elaboratedShared)
           where
+            -- FIXME: See FIXME in Distribution.Client.ProjectConfig wrt to buildPackages.
+            addCompilerToSourcePkg :: CompilerId -> [PackageSpecifier (SourcePackage (PackageLocation loc))] -> [PackageSpecifier (SourcePackage (PackageLocation loc))]
+            addCompilerToSourcePkg compilerId = map (addCompilerId compilerId)
+            addCompilerId :: CompilerId -> PackageSpecifier (SourcePackage (PackageLocation loc)) -> PackageSpecifier (SourcePackage (PackageLocation loc))
+            addCompilerId compilerId (NamedPackage name props) = NamedPackage name props
+            addCompilerId compilerId (SpecificSourcePackage pkg) = SpecificSourcePackage (f pkg)
+              where f :: SourcePackage (PackageLocation loc) -> SourcePackage (PackageLocation loc)
+                    f pkg = pkg{srcpkgPackageId = (srcpkgPackageId pkg){pkgCompiler = Just compilerId}}
+            localPackages = (addCompilerToSourcePkg (compilerIdFor Build toolchains) localPackages_)
+                         <> (addCompilerToSourcePkg (compilerIdFor Host  toolchains) localPackages_)
+
             withRepoCtx :: (RepoContext -> IO a) -> IO a
             withRepoCtx =
               projectConfigWithSolverRepoContext
@@ -1752,7 +1782,7 @@ elaborateInstallPlan
             let src_comps = componentsGraphToList g
             infoProgress $
               hang
-                (text "Component graph for" <+> pretty pkgid <<>> colon)
+                (text "Component graph for" <+> pretty pkgid <+> text "at stage " <+> text (show $ elabStage elab0) <<>> colon)
                 4
                 (dispComponentsWithDeps src_comps)
             (_, comps) <-
@@ -1943,7 +1973,7 @@ elaborateInstallPlan
                       elab0
                         { elabPkgOrComp = ElabComponent $ elab_comp
                         }
-                    cid = case elabBuildStyle elab0 of
+                    cid = case traceShow (elabBuildStyle elab0) (elabBuildStyle elab0) of
                       BuildInplaceOnly{} ->
                         mkComponentId $
                           prettyShow pkgid
@@ -2331,7 +2361,9 @@ elaborateInstallPlan
                 else cp
 
             elabPkgSourceLocation = srcloc
-            elabPkgSourceHash = Map.lookup pkgid sourcePackageHashes
+            elabPkgSourceHash = case Map.lookup pkgid sourcePackageHashes of
+              Just h -> Just h
+              Nothing -> trace (unlines $ ("failed to find " ++ prettyShow pkgid ++ " in "):[ prettyShow k ++ " -> " ++ show v | (k, v) <- Map.toList sourcePackageHashes]) Nothing
             elabLocalToProject = isLocalToProject pkg
             elabBuildStyle =
               if shouldBuildInplaceOnly pkg
@@ -2519,15 +2551,20 @@ elaborateInstallPlan
       shouldBuildInplaceOnly pkg =
         Set.member
           (packageId pkg)
-          pkgsToBuildInplaceOnly
+          (traceShowId pkgsToBuildInplaceOnly)
 
+
+      -- FIXME: This change is stupid, however the previous assumption is
+      -- that ALL pkgsLocalToProject somehow end up in the solverPlan. This
+      -- is not given, as we now have every local package listed twice. Once
+      -- for the Host, and once for the Build. Thus iterating over each individual
+      -- package _does_ work, but is rather idiotic.
       pkgsToBuildInplaceOnly :: Set PackageId
       pkgsToBuildInplaceOnly =
         Set.fromList $
           map packageId $
-            SolverInstallPlan.reverseDependencyClosure
-              solverPlan
-              (map PlannedId (Set.toList pkgsLocalToProject))
+            concat [SolverInstallPlan.reverseDependencyClosure solverPlan [PlannedId p]
+                   | p <- (Set.toList pkgsLocalToProject)]
 
       isLocalToProject :: Package pkg => pkg -> Bool
       isLocalToProject pkg =
@@ -4474,7 +4511,7 @@ setupHsHaddockArgs elab =
 -- not replace installed packages with ghc-pkg.
 
 packageHashInputs
-  :: ElaboratedSharedConfig
+  :: HasCallStack => ElaboratedSharedConfig
   -> ElaboratedConfiguredPackage
   -> PackageHashInputs
 packageHashInputs

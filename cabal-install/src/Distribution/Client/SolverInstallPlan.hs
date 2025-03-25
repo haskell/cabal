@@ -360,6 +360,43 @@ setupRoots =
 -- Each element in the result is a package name along with the packages that
 -- depend on it and the versions they require. These are guaranteed to be
 -- distinct.
+
+-- type SolverPlanIndex = Graph (ResolverPackage UnresolvedPkgLoc)
+-- data ResolverPackage loc = PreExisting InstSolverPackage
+--                          | Configured  (SolverPackage loc)
+-- data InstSolverPackage = InstSolverPackage {
+--       instSolverQPN :: QPN,
+--       instSolverPkgIPI :: InstalledPackageInfo,
+--       instSolverPkgLibDeps :: ComponentDeps [SolverId],
+--       instSolverPkgExeDeps :: ComponentDeps [SolverId]
+--     }
+-- data SolverPackage loc = SolverPackage {
+--         solverPkgQPN     :: QPN,
+--         solverPkgStage   :: Stage,
+--         solverPkgSource  :: SourcePackage loc,
+--         solverPkgFlags   :: FlagAssignment,
+--         solverPkgStanzas :: OptionalStanzaSet,
+--         solverPkgLibDeps :: ComponentDeps [SolverId],
+--         solverPkgExeDeps :: ComponentDeps [SolverId]
+--     }
+-- newtype ComponentDeps a = ComponentDeps { unComponentDeps :: Map Component a }
+-- data SolverId = PreExistingId { solverSrcId :: PackageId, solverInstId :: UnitId }
+--               | PlannedId     { solverSrcId :: PackageId }
+--
+-- flatDeps :: ComponentDeps a -> a
+
+-- instance Package (ResolverPackage loc) where
+--   packageId (PreExisting ipkg)     = packageId ipkg
+--   packageId (Configured  spkg)     = packageId spkg
+
+-- resolverPackageLibDeps :: ResolverPackage loc -> CD.ComponentDeps [SolverId]
+-- resolverPackageLibDeps (PreExisting ipkg) = instSolverPkgLibDeps ipkg
+-- resolverPackageLibDeps (Configured spkg) = solverPkgLibDeps spkg
+
+-- resolverPackageExeDeps :: ResolverPackage loc -> CD.ComponentDeps [SolverId]
+-- resolverPackageExeDeps (PreExisting ipkg) = instSolverPkgExeDeps ipkg
+-- resolverPackageExeDeps (Configured spkg) = solverPkgExeDeps spkg
+
 dependencyInconsistencies'
   :: SolverPlanIndex
   -> [(PackageName, [(PackageIdentifier, Version)])]

@@ -34,7 +34,7 @@ import Distribution.Solver.Modular.IndexConversion
 import Distribution.Solver.Modular.Log
          ( SolverFailure(..), displayLogMessages )
 import Distribution.Solver.Modular.Package
-         ( PN, showPI )
+         ( PN, showPI, I )
 import Distribution.Solver.Modular.RetryLog
 import Distribution.Solver.Modular.Solver
          ( SolverConfig(..), PruneAfterFirstSuccess(..), solve )
@@ -56,7 +56,7 @@ import Distribution.Simple.Utils
 import Distribution.Verbosity
 import Distribution.Solver.Modular.Configured (CP (..))
 import qualified Distribution.Solver.Types.ComponentDeps as ComponentDeps
-import Distribution.Pretty (Pretty (..))
+import Distribution.Pretty (Pretty (..), prettyShow)
 import Text.PrettyPrint (text, vcat, Doc, nest, ($+$))
 import Distribution.Solver.Types.OptionalStanza (showStanzas, optStanzaSetNull)
 import Distribution.Solver.Types.Toolchain ( Toolchains )
@@ -86,6 +86,10 @@ modularResolver sc toolchains biidx iidx sidx pkgConfigDB pprefs pcs pns = do
     Step (show (vcat (map showCP cp))) $
         return $ postprocess assignment revdepmap
   where
+      showIdx :: Index -> String
+      showIdx idx = unlines [prettyShow pn ++ ": " ++ show i
+                            | (pn, m) <- M.toList idx
+                            , (i, _info) <- M.toList (m :: Map I PInfo)]
       -- Indices have to be converted into solver-specific uniform index.
       idx    = convPIs toolchains gcs (shadowPkgs sc) (strongFlags sc) (solveExecutables sc) biidx iidx sidx
       -- Constraints have to be converted into a finite map indexed by PN.
@@ -97,7 +101,7 @@ modularResolver sc toolchains biidx iidx sidx pkgConfigDB pprefs pcs pns = do
       -- package qualifiers, which means that linked packages become duplicates
       -- and can be removed.
       postprocess a rdm = ordNubBy nodeKey $
-                          map (convCP biidx iidx sidx) (toCPs a rdm)
+                          map (convCP toolchains biidx iidx sidx) (toCPs a rdm)
 
       -- Helper function to extract the PN from a constraint.
       pcName :: PackageConstraint -> PN

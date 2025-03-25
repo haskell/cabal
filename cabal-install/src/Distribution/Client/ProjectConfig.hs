@@ -1091,6 +1091,14 @@ findProjectPackages
     let repoPkgs = map ProjectPackageRemoteRepo projectPackagesRepo
         namedPkgs = map ProjectPackageNamed projectPackagesNamed
 
+    -- FIXME: We should _REALLY_ Tag the packages here somehow.
+    --        Right now we just slam together requiredPkgs and buildPkgs, ...
+    --        Maybe we can carry the Build/Host distinction in the
+    --        ProjectPackageLocation. Because we later on really want to make
+    --        sure we consider only buildPkgs for building with the Build
+    --        compiler, and all others with the Host compiler. For now we just
+    --        Assume both for both compilers, but this is not god.
+    -- XXX: FIXME!
     return (concat [requiredPkgs, buildPkgs, optionalPkgs, repoPkgs, namedPkgs])
     where
       findPackageLocations :: Bool -> [String] -> Rebuild [ProjectPackageLocation]

@@ -19,16 +19,18 @@ import           Distribution.Solver.Types.SolverId
 import           Distribution.Solver.Types.SolverPackage
 import           Distribution.Solver.Types.InstSolverPackage
 import           Distribution.Solver.Types.SourcePackage
+import           Distribution.Solver.Types.Toolchain
 import Control.Applicative ((<|>))
 
 -- | Converts from the solver specific result @CP QPN@ into
 -- a 'ResolverPackage', which can then be converted into
 -- the install plan.
-convCP :: SI.InstalledPackageIndex -- ^ build
+convCP :: Toolchains
+       -> SI.InstalledPackageIndex -- ^ build
        -> SI.InstalledPackageIndex -- ^ host
        -> CI.PackageIndex (SourcePackage loc)
        -> CP QPN -> ResolverPackage loc
-convCP biidx iidx sidx (CP qpi fa es ds) =
+convCP toolchains biidx iidx sidx (CP qpi fa es ds) =
   case qpi of
     -- Installed
     (PI qpn (I _stage _ (Inst pi)))  ->
@@ -41,7 +43,7 @@ convCP biidx iidx sidx (CP qpi fa es ds) =
                   }
     -- "In repo" i.e. a source package
     (PI qpn@(Q _path pn) (I stage v InRepo)) ->
-      let pi = PackageIdentifier pn v Nothing {-# FIXME: should be COMPILERID #-} in
+      let pi = PackageIdentifier pn v (Just $ compilerIdFor stage toolchains) in
       Configured $
                   SolverPackage {
                       solverPkgQPN = qpn,
@@ -54,10 +56,10 @@ convCP biidx iidx sidx (CP qpi fa es ds) =
                     }
   where
     ds' :: ComponentDeps ([SolverId] {- lib -}, [SolverId] {- exe -})
-    ds' = fmap (partitionEithers . map convConfId) ds
+    ds' = fmap (partitionEithers . map (convConfId toolchains)) ds
 
-convConfId :: PI QPN -> Either SolverId {- is lib -} SolverId {- is exe -}
-convConfId (PI (Q (PackagePath _ q) pn) (I _stage v loc)) =
+convConfId :: Toolchains -> PI QPN -> Either SolverId {- is lib -} SolverId {- is exe -}
+convConfId toolchains (PI (Q (PackagePath _ q) pn) (I stage v loc)) =
     case loc of
         Inst pi ->
           Left (PreExistingId sourceId pi)
@@ -72,4 +74,4 @@ convConfId (PI (Q (PackagePath _ q) pn) (I _stage v loc)) =
           , pn == pn' -> Right (PlannedId sourceId)
           | otherwise -> Left  (PlannedId sourceId)
   where
-    sourceId    = PackageIdentifier pn v Nothing -- FIXME: this should be the compiler id!
+    sourceId    = PackageIdentifier pn v (Just $ compilerIdFor stage toolchains)

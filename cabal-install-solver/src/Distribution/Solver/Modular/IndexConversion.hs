@@ -62,10 +62,14 @@ convPIs :: Toolchains -> Map PN [LabeledPackageConstraint]
         -> SI.InstalledPackageIndex -- ^ host
         -> CI.PackageIndex (SourcePackage loc)
         -> Index
+convPIs toolchains constraints sip strfl solveExes biidx iidx sidx =
+  mkIndex $ (trace (pp "BIPIs" bipis) bipis) ++ (trace (pp "HIPIs" hipis) hipis) ++ (trace (pp "SPIs" spis) spis)
   where bipis = convIPI' toolchains sip biidx
         hipis = convIPI' toolchains sip iidx
         ipis = bipis ++ hipis
         spis = convSPI' toolchains constraints strfl solveExes sidx
+        pp :: String -> [(PN, I, PInfo)] -> String
+        pp label xs = unlines $ ("=== " ++ label ++ ":\n"):(map (\(pn, i, pi) -> show pn ++ " " ++ show i) xs)
 
 -- | Convert a Cabal installed package index to the simpler,
 -- more uniform index format of the solver.
@@ -154,7 +158,7 @@ convIP toolchains idx ipi =
 convIPId :: Toolchains -> DependencyReason PN -> Component -> SI.InstalledPackageIndex -> UnitId -> Either UnitId (FlaggedDep PN)
 convIPId toolchains dr comp idx ipid =
   case SI.lookupUnitId idx ipid of
-    Nothing  -> Left ipid
+    Nothing  -> traceShow (show comp ++ ": Failed to find: " ++ show ipid ++ " in index.") $ Left ipid
     Just ipi -> let (pn, i) = convId toolchains ipi
                     name = ExposedLib LMainLibName  -- TODO: Handle sub-libraries.
                 in  Right (D.Simple (LDep dr (Dep (PkgComponent pn name) (Fixed i))) comp)
@@ -175,7 +179,8 @@ convSP :: Toolchains -> Map PN [LabeledPackageConstraint]
 convSP toolchains constraints strfl solveExes (SourcePackage (PackageIdentifier pn pv _compid) gpd _ _pl) =
   let pkgConstraints = fromMaybe [] $ M.lookup pn constraints
   in  [(pn, I Host  pv InRepo, convGPD (hostToolchain toolchains)  pkgConstraints strfl solveExes pn gpd)
-      ,(pn, I Build pv InRepo, convGPD (buildToolchain toolchains) pkgConstraints strfl solveExes pn gpd)]
+      ,(pn, I Build pv InRepo, convGPD (buildToolchain toolchains) pkgConstraints strfl solveExes pn gpd)
+      ]
 
 -- We do not use 'flattenPackageDescription' or 'finalizePD'
 -- from 'Distribution.PackageDescription.Configuration' here, because we

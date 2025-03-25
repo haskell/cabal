@@ -166,6 +166,8 @@ import Data.List
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
+import GHC.Stack (HasCallStack)
+
 -- ------------------------------------------------------------
 
 -- * High level planner policy
@@ -836,13 +838,13 @@ resolveDependencies toolchains pkgConfigDB params =
         targets
   where
     finalparams@( DepResolverParams
-                    targets
+                    targets            -- depResolverTargets
                     constraints
                     prefs
                     defpref
                     installedPkgIndex
                     binstalledPkgIndex
-                    sourcePkgIndex
+                    sourcePkgIndex     -- depResolverSourcePkgIndex
                     reordGoals
                     cntConflicts
                     fineGrained
@@ -928,17 +930,31 @@ interpretPackagesPreference selected defaultPref prefs =
 -- | Make an install plan from the output of the dep resolver.
 -- It checks that the plan is valid, or it's an error in the dep resolver.
 validateSolverResult
-  :: Toolchains
+  :: HasCallStack => Toolchains
   -> IndependentGoals
   -> [ResolverPackage UnresolvedPkgLoc]
   -> SolverInstallPlan
 validateSolverResult toolchains indepGoals pkgs =
-  case planPackagesProblems toolchains pkgs of
+  case planPackagesProblems toolchains (trace (dump pkgs) pkgs) of
     [] -> case SolverInstallPlan.new indepGoals graph of
       Right plan -> plan
       Left problems -> error (formatPlanProblems problems)
     problems -> error (formatPkgProblems problems)
   where
+    dump :: [ResolverPackage UnresolvedPkgLoc] -> String
+    dump xs = unlines $
+      "=== DUMP ===":[unlines $ (resolverPkgHead x ++ show (packageId x)):[ "- "++ solverIdHead y ++ show (solverSrcId y)
+                                                                        | y <- CD.flatDeps (resolverPackageLibDeps x)]
+                     | x <- xs ]
+      ++ ["=== /DUMP =="]
+
+    solverIdHead :: SolverId -> String
+    solverIdHead (PreExistingId{}) = "[PE]"
+    solverIdHead (PlannedId    {}) = "[PL]"
+
+    resolverPkgHead (PreExisting _) = "[PE]"
+    resolverPkgHead (Configured  _) = "[CF]"
+
     graph :: Graph.Graph (ResolverPackage UnresolvedPkgLoc)
     graph = Graph.fromDistinctList pkgs
 

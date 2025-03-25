@@ -336,7 +336,8 @@ deleteSourcePackageId pkgid original@(PackageIndex pids pnames) =
       Nothing -> original
       Just pkgs ->
         traceShow (pkgid, pkgs) $ mkPackageIndex
-          (Map.update deletePkgInstance (installedUnitId pkgid) pids)
+          (foldl' (flip (Map.delete . installedUnitId)) pids pkgs)
+--          (Map.update deletePkgInstance (installedUnitId pkgid) pids)
           (deletePkgName pnames)
   where
     deletePkgName =
@@ -345,10 +346,15 @@ deleteSourcePackageId pkgid original@(PackageIndex pids pnames) =
     deletePkgVersion :: Map Version [IPI.InstalledPackageInfo] -> Maybe (Map Version [IPI.InstalledPackageInfo])
     deletePkgVersion =
       (\m -> if Map.null m then Nothing else Just m)
-        . Map.update deletePkgInstance (packageVersion pkgid)
+        . Map.update deletePkgInstances (packageVersion pkgid)
 
-    deletePkgInstance :: [IPI.InstalledPackageInfo] -> Maybe [IPI.InstalledPackageInfo]
-    deletePkgInstance xs = if null xs' then Nothing else Just xs'
+    deletePkgInstance :: IPI.InstalledPackageInfo -> Maybe IPI.InstalledPackageInfo
+    deletePkgInstance ipi
+      | pkgCompiler pkgid /= pkgCompiler (IPI.sourcePackageId ipi) = Just ipi
+      | otherwise = Nothing
+
+    deletePkgInstances :: [IPI.InstalledPackageInfo] -> Maybe [IPI.InstalledPackageInfo]
+    deletePkgInstances xs = if null xs' then Nothing else Just xs'
       where xs' = [x | x <- xs, pkgCompiler pkgid /= pkgCompiler (IPI.sourcePackageId x)]
 
 -- | Removes all packages with this (case-sensitive) name from the index.
