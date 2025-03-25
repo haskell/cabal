@@ -452,7 +452,16 @@ dontInstallNonReinstallablePackages params =
         ConstraintSourceNonReinstallablePackage
       | pkgname <- nonReinstallablePackages
       ]
-
+dontInstallNonReinstallablePackagesSetupOnly :: DepResolverParams -> DepResolverParams
+dontInstallNonReinstallablePackagesSetupOnly params =
+  addConstraints extraConstraints params
+  where
+    extraConstraints =
+      [ LabeledPackageConstraint
+        (PackageConstraint (ScopeAnySetupQualifier pkgname) PackagePropertyInstalled)
+        ConstraintSourceNonReinstallablePackage
+      | pkgname <- nonReinstallablePackages
+      ]
 -- | The set of non-reinstallable packages includes those which cannot be
 -- rebuilt using a GHC installation and Hackage-published source distribution.
 -- There are a few reasons why this might be true:
@@ -851,7 +860,7 @@ resolveDependencies toolchains pkgConfigDB params =
                     verbosity
                   ) =
         if asBool (depResolverAllowBootLibInstalls params)
-          then params
+          then dontInstallNonReinstallablePackagesSetupOnly params
           else dontInstallNonReinstallablePackages params
 
     preferences :: PackageName -> PackagePreferences
