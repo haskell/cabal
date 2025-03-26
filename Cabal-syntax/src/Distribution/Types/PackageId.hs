@@ -64,13 +64,13 @@ instance Pretty PackageIdentifier where
 -- Nothing
 instance Parsec PackageIdentifier where
   parsec = do
-    comp <- parsec <* P.char '-'
+    -- comp <- parsec <* P.char '-'
     xs' <- P.sepByNonEmpty component (P.char '-')
     (v, xs) <- case simpleParsec (NE.last xs') of
       Nothing -> return (nullVersion, toList xs') -- all components are version
       Just v -> return (v, NE.init xs')
     if not (null xs) && all (\c -> all (/= '.') c && not (all isDigit c)) xs
-      then return $ PackageIdentifier (mkPackageName (intercalate "-" xs)) v comp
+      then return $ PackageIdentifier (mkPackageName (intercalate "-" xs)) v Nothing
       else fail "all digits or a dot in a portion of package name"
     where
       component = P.munch1 (\c -> isAlphaNum c || c == '.')
