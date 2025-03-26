@@ -1578,7 +1578,7 @@ system-dependent values for these fields.
       compiled twice, once as part of the library and again for the executable.
 
 .. pkg-field:: default-extensions: identifier list
-   :since: 1.12
+   :since: 1.10
 
     A list of Haskell extensions used by every module. These determine
     corresponding compiler options enabled for all files. Extension
@@ -1588,7 +1588,7 @@ system-dependent values for these fields.
     to be preprocessed with a C preprocessor.
 
 .. pkg-field:: other-extensions: identifier list
-   :since: 1.12
+   :since: 1.10
 
     A list of Haskell extensions used by some (but not necessarily all)
     modules. From GHC version 6.6 onward, these may be specified by
@@ -1617,7 +1617,7 @@ system-dependent values for these fields.
     :pkg-field:`other-extensions` declarations.
 
 .. pkg-field:: default-language: identifier
-   :since: 1.12
+   :since: 1.10
 
     Specifies a language standard or a group of language extensions to be activated for the project. In the case of GHC, `see here for details <https://downloads.haskell.org/ghc/latest/docs/users_guide/exts/control.html#controlling-extensions>`__.
 
@@ -1629,9 +1629,9 @@ system-dependent values for these fields.
     -  ``Haskell98``
 
 .. pkg-field:: other-languages: identifier
-   :since: 1.12
+   :since: 1.10
 
-   TBW
+    Specifies a language standard used by some (but not necessarily all) modules.
 
 .. pkg-field:: extensions: identifier list
    :deprecated: 1.12
