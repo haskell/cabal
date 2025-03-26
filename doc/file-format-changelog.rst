@@ -194,6 +194,8 @@ relative to the respective preceding *published* version.
 * License fields use identifiers from SPDX License List version
   ``3.2 2018-07-10``
 
+* Deprecate ``jhc-options`` field.
+
 
 ``cabal-version: 2.2``
 ----------------------
@@ -266,6 +268,8 @@ relative to the respective preceding *published* version.
   :pkg-field:`build-depends`.
 
 * New :pkg-field:`license` type ``ISC`` added.
+
+* Deprecate ``hugs-options`` and ``nhc98-options`` fields.
 
 ``cabal-version: 1.20``
 -----------------------
