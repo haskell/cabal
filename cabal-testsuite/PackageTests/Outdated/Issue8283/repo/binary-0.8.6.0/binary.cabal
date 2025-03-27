@@ -1,0 +1,35 @@
+name:            binary
+version:         0.8.6.0
+license:         BSD3
+license-file:    LICENSE
+author:          Lennart Kolmodin <kolmodin@gmail.com>
+maintainer:      Lennart Kolmodin, Don Stewart <dons00@gmail.com>
+homepage:        https://github.com/kolmodin/binary
+description:     Efficient, pure binary serialisation using lazy ByteStrings.
+                 Haskell values may be encoded to and from binary formats,
+                 written to disk as binary, or sent over the network.
+                 The format used can be automatically generated, or
+                 you can choose to implement a custom format if needed.
+                 Serialisation speeds of over 1 G\/sec have been observed,
+                 so this library should be suitable for high performance
+                 scenarios.
+synopsis:        Binary serialisation for Haskell values using lazy ByteStrings
+category:        Data, Parsing
+stability:       provisional
+build-type:      Simple
+cabal-version:   >= 1.8
+
+library
+  build-depends:   base >= 3 && < 5, bytestring >= 0.8.4, containers, array
+  hs-source-dirs:  src
+  exposed-modules: Data.Binary,
+                   Data.Binary.Put,
+                   Data.Binary.Get,
+                   Data.Binary.Get.Internal,
+                   Data.Binary.Builder
+
+  other-modules:   Data.Binary.Class,
+                   Data.Binary.Internal,
+                   Data.Binary.Generic,
+                   Data.Binary.FloatCast
+  ghc-options:     -O2 -Wall -fliberate-case-threshold=1000

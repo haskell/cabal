@@ -56,6 +56,7 @@ module Distribution.Utils.Generic
   , listUnion
   , listUnionRight
   , ordNub
+  , sortNub
   , ordNubBy
   , ordNubRight
   , safeHead
@@ -384,6 +385,10 @@ ordNubRight = fst . foldr go ([], Set.empty)
       if x `Set.member` s
         then p
         else (x : l, Set.insert x s)
+
+-- | Sort and nub a list
+sortNub :: Ord a => [a] -> [a]
+sortNub = Set.toList . Set.fromList
 
 -- | A right-biased version of 'listUnion'.
 --
