@@ -106,7 +106,7 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
         -- (as opposed to say repl or haddock targets).
         targets <-
           either (reportTargetProblems verbosity) return $
-            resolveTargets
+            resolveTargetsFromSolver
               selectPackageTargets
               selectComponentTarget
               elaboratedPlan
