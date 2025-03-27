@@ -125,13 +125,17 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
         -- drain the output.
         evaluate (force logText)
 
+  let mbWorkDir =
+        interpretSymbolicPathCWD
+          <$> flagToMaybe (setupWorkingDir (testCommonFlags flags))
+
   (exit, logText) <- case testWrapper flags of
     Flag path ->
       rawSystemIOWithEnvAndAction
         verbosity
         path
         (cmd : opts)
-        Nothing
+        mbWorkDir
         (Just shellEnv')
         getLogText
         -- these handles are automatically closed
@@ -143,7 +147,7 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
         verbosity
         cmd
         opts
-        Nothing
+        mbWorkDir
         (Just shellEnv')
         getLogText
         -- these handles are automatically closed
