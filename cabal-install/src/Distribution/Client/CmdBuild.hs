@@ -157,7 +157,7 @@ buildAction flags@NixStyleFlags{extraFlags = buildFlags, ..} targetStrings globa
         -- (as opposed to say repl or haddock targets).
         targets <-
           either (reportBuildTargetProblems verbosity) return $
-            resolveTargets
+            resolveTargetsFromSolver
               selectPackageTargets
               selectComponentTarget
               elaboratedPlan

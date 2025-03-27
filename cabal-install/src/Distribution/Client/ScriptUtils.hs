@@ -317,13 +317,13 @@ withContextAndSelectors noTargets kind flags@NixStyleFlags{..} targetStrings glo
           Left (TargetSelectorNoTargetsInCwd{} : _)
             | [] <- targetStrings
             , AcceptNoTargets <- noTargets ->
-                return (tc, ctx, defaultTarget)
+                return (tc, ctx, [])
           Left err@(TargetSelectorNoTargetsInProject : _)
             -- If there are no target selectors and no targets are fine, return
             -- the context
             | [] <- targetStrings
             , AcceptNoTargets <- noTargets ->
-                return (tc, ctx, defaultTarget)
+                return (tc, ctx, [])
             | (script : _) <- targetStrings -> scriptOrError script err
           Left err@(TargetSelectorNoSuch t _ : _)
             | TargetString1 script <- t -> scriptOrError script err

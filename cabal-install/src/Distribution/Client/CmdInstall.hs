@@ -825,7 +825,7 @@ partitionToKnownTargetsAndHackagePackages
   -> IO (TargetsMap, [PackageName])
 partitionToKnownTargetsAndHackagePackages verbosity pkgDb elaboratedPlan targetSelectors = do
   let mTargets =
-        resolveTargets
+        resolveTargetsFromSolver
           selectPackageTargets
           selectComponentTarget
           elaboratedPlan
@@ -865,7 +865,7 @@ partitionToKnownTargetsAndHackagePackages verbosity pkgDb elaboratedPlan targetS
       -- removed (or we've given up).
       targets <-
         either (reportBuildTargetProblems verbosity) return $
-          resolveTargets
+          resolveTargetsFromSolver
             selectPackageTargets
             selectComponentTarget
             elaboratedPlan
@@ -885,7 +885,7 @@ constructProjectBuildContext verbosity baseCtx targetSelectors = do
     -- Interpret the targets on the command line as build targets
     targets <-
       either (reportBuildTargetProblems verbosity) return $
-        resolveTargets
+        resolveTargetsFromSolver
           selectPackageTargets
           selectComponentTarget
           elaboratedPlan

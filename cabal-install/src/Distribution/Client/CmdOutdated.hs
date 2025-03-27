@@ -1,5 +1,8 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TupleSections #-}
 
 -- |
 -- Module      :  Distribution.Client.CmdOutdated
@@ -13,44 +16,22 @@ module Distribution.Client.CmdOutdated
   , outdatedAction
   , ListOutdatedSettings (..)
   , listOutdated
+  , IgnoreMajorVersionBumps (..)
+  , showResult
   )
 where
 
 import Distribution.Client.Compat.Prelude
-import Distribution.Compat.Lens
-  ( _1
-  , _2
-  )
 import Prelude ()
 
+import qualified Data.Set as Set
 import Distribution.Client.Config
   ( SavedConfig
       ( savedConfigureExFlags
-      , savedConfigureFlags
-      , savedGlobalFlags
       )
   )
-import Distribution.Client.DistDirLayout
-  ( DistDirLayout (distProjectFile, distProjectRootDirectory)
-  , defaultDistDirLayout
-  )
-import Distribution.Client.IndexUtils as IndexUtils
+import qualified Distribution.Client.IndexUtils as IndexUtils
 import Distribution.Client.ProjectConfig
-import Distribution.Client.ProjectConfig.Legacy
-  ( instantiateProjectConfigSkeletonWithCompiler
-  )
-import Distribution.Client.ProjectFlags
-  ( ProjectFlags (..)
-  , defaultProjectFlags
-  , projectFlagsOptions
-  , removeIgnoreProjectOption
-  )
-import Distribution.Client.RebuildMonad
-  ( runRebuild
-  )
-import Distribution.Client.Sandbox
-  ( loadConfigOrSandboxConfig
-  )
 import Distribution.Client.Sandbox.PackageEnvironment
   ( loadUserConfig
   )
@@ -60,83 +41,11 @@ import Distribution.Client.Targets
   , userToPackageConstraint
   )
 import Distribution.Client.Types.SourcePackageDb as SourcePackageDb
+import qualified Distribution.Compat.CharParsing as P
+import Distribution.PackageDescription
+import Distribution.PackageDescription.Configuration
 import Distribution.Solver.Types.PackageConstraint
   ( packageConstraintToDependency
-  )
-import Distribution.Utils.Generic
-  ( safeLast
-  , wrapText
-  )
-
-import Distribution.Client.HttpUtils
-import qualified Distribution.Compat.CharParsing as P
-import Distribution.Package
-  ( PackageName
-  , packageVersion
-  )
-import Distribution.PackageDescription
-  ( allBuildDepends
-  )
-import Distribution.PackageDescription.Configuration
-  ( finalizePD
-  )
-import Distribution.ReadE
-  ( parsecToReadE
-  )
-import Distribution.Simple.Command
-  ( CommandUI (..)
-  , OptionField
-  , ShowOrParseArgs
-  , liftOptionL
-  , optArg
-  , option
-  , reqArg
-  )
-import Distribution.Simple.Compiler
-  ( Compiler
-  , compilerInfo
-  )
-import Distribution.Simple.Flag
-  ( Flag (..)
-  , flagToMaybe
-  , fromFlagOrDefault
-  , toFlag
-  )
-import Distribution.Simple.PackageDescription
-  ( readGenericPackageDescription
-  )
-import Distribution.Simple.Setup
-  ( optionVerbosity
-  , trueArg
-  )
-import Distribution.Simple.Utils
-  ( debug
-  , dieWithException
-  , notice
-  , tryFindPackageDesc
-  )
-import Distribution.System
-  ( Platform (..)
-  )
-import Distribution.Types.ComponentRequestedSpec
-  ( ComponentRequestedSpec (..)
-  )
-import Distribution.Types.Dependency
-  ( Dependency (..)
-  )
-import Distribution.Types.DependencySatisfaction
-  ( DependencySatisfaction (..)
-  )
-import Distribution.Types.PackageVersionConstraint
-  ( PackageVersionConstraint (..)
-  , simplifyPackageVersionConstraint
-  )
-import Distribution.Utils.NubList
-  ( fromNubList
-  )
-import Distribution.Verbosity
-  ( normal
-  , silent
   )
 import Distribution.Version
   ( LowerBound (..)
@@ -149,21 +58,47 @@ import Distribution.Version
   )
 
 import qualified Data.Set as S
-import Distribution.Client.Errors
-import Distribution.Utils.Path (relativeSymbolicPath)
+import Distribution.Client.NixStyleOptions
 import System.Directory
-  ( doesFileExist
-  , getCurrentDirectory
+  ( getCurrentDirectory
   )
+import Prelude ()
+
+import Distribution.Client.ProjectOrchestration
+
+-- import Distribution.Simple.Setup
+
+import Control.Monad
+import Distribution.Client.ScriptUtils
+import Distribution.Package
+import Distribution.ReadE
+import Distribution.Simple.Command
+import Distribution.Simple.Flag
+import Distribution.Simple.Setup hiding (GlobalFlags (..))
+import Distribution.Simple.Utils
+import Distribution.Types.PackageVersionConstraint
+import Distribution.Verbosity
+
+import qualified Data.Map.Strict as Map
+import Distribution.Client.CmdErrorMessages
+import Distribution.Client.ProjectPlanning.Types
+import Distribution.Client.TargetProblem
+import Distribution.Client.Types.PackageSpecifier
+import Distribution.Solver.Types.ConstraintSource
+import Distribution.Solver.Types.SourcePackage
+import Distribution.Types.Component
+import qualified Text.PrettyPrint as PP
+
+import Distribution.Client.Errors
 
 -------------------------------------------------------------------------------
 -- Command
 -------------------------------------------------------------------------------
 
-outdatedCommand :: CommandUI (ProjectFlags, OutdatedFlags)
+outdatedCommand :: CommandUI (NixStyleFlags OutdatedFlags)
 outdatedCommand =
   CommandUI
-    { commandName = "outdated"
+    { commandName = "v2-outdated"
     , commandSynopsis = "Check for outdated dependencies."
     , commandDescription = Just $ \_ ->
         wrapText $
@@ -172,12 +107,9 @@ outdatedCommand =
     , commandNotes = Nothing
     , commandUsage = \pname ->
         "Usage: " ++ pname ++ " outdated [FLAGS] [PACKAGES]\n"
-    , commandDefaultFlags = (defaultProjectFlags, defaultOutdatedFlags)
-    , commandOptions = \showOrParseArgs ->
-        map
-          (liftOptionL _1)
-          (removeIgnoreProjectOption (projectFlagsOptions showOrParseArgs))
-          ++ map (liftOptionL _2) (outdatedOptions showOrParseArgs)
+    , commandDefaultFlags = defaultNixStyleFlags defaultOutdatedFlags
+    , commandOptions = nixStyleOptions $ \showOrParseArgs ->
+        outdatedOptions showOrParseArgs
     }
 
 -------------------------------------------------------------------------------
@@ -202,8 +134,7 @@ instance Semigroup IgnoreMajorVersionBumps where
     IgnoreMajorVersionBumpsSome (a ++ b)
 
 data OutdatedFlags = OutdatedFlags
-  { outdatedVerbosity :: Flag Verbosity
-  , outdatedFreezeFile :: Flag Bool
+  { outdatedFreezeFile :: Flag Bool
   , outdatedNewFreezeFile :: Flag Bool
   , outdatedSimpleOutput :: Flag Bool
   , outdatedExitCode :: Flag Bool
@@ -215,8 +146,7 @@ data OutdatedFlags = OutdatedFlags
 defaultOutdatedFlags :: OutdatedFlags
 defaultOutdatedFlags =
   OutdatedFlags
-    { outdatedVerbosity = toFlag normal
-    , outdatedFreezeFile = mempty
+    { outdatedFreezeFile = mempty
     , outdatedNewFreezeFile = mempty
     , outdatedSimpleOutput = mempty
     , outdatedExitCode = mempty
@@ -227,10 +157,7 @@ defaultOutdatedFlags =
 
 outdatedOptions :: ShowOrParseArgs -> [OptionField OutdatedFlags]
 outdatedOptions _showOrParseArgs =
-  [ optionVerbosity
-      outdatedVerbosity
-      (\v flags -> flags{outdatedVerbosity = v})
-  , option
+  [ option
       []
       ["freeze-file", "v1-freeze-file"]
       "Act on the freeze file"
@@ -239,8 +166,8 @@ outdatedOptions _showOrParseArgs =
       trueArg
   , option
       []
-      ["v2-freeze-file", "new-freeze-file"]
-      "Act on the new-style freeze file (default: cabal.project.freeze)"
+      ["project-context", "v2-freeze-file", "new-freeze-file"]
+      "Check for outdated dependencies in the project context, for example, dependencies specified in cabal.project orcabal.project.freeze."
       outdatedNewFreezeFile
       (\v flags -> flags{outdatedNewFreezeFile = v})
       trueArg
@@ -307,54 +234,53 @@ outdatedOptions _showOrParseArgs =
 -- Action
 -------------------------------------------------------------------------------
 
--- | Entry point for the 'outdated' command.
-outdatedAction :: (ProjectFlags, OutdatedFlags) -> [String] -> GlobalFlags -> IO ()
-outdatedAction (ProjectFlags{flagProjectDir, flagProjectFile}, OutdatedFlags{..}) _targetStrings globalFlags = do
-  config <- loadConfigOrSandboxConfig verbosity globalFlags
-  let globalFlags' = savedGlobalFlags config `mappend` globalFlags
-      configFlags = savedConfigureFlags config
-  withRepoContext verbosity globalFlags' $ \repoContext -> do
-    when (not newFreezeFile && (isJust mprojectDir || isJust mprojectFile)) $
-      dieWithException verbosity OutdatedAction
+getSourcePackages :: Verbosity -> ProjectConfig -> IO SourcePackageDb
+getSourcePackages verbosity projectConfig =
+  projectConfigWithSolverRepoContext
+    verbosity
+    (projectConfigShared projectConfig)
+    (projectConfigBuildOnly projectConfig)
+    (\ctx -> IndexUtils.getSourcePackages verbosity ctx)
 
-    sourcePkgDb <- IndexUtils.getSourcePackages verbosity repoContext
-    (comp, platform, _progdb) <- configCompilerAux' configFlags
-    deps <-
-      if freezeFile
-        then depsFromFreezeFile verbosity
-        else
-          if newFreezeFile
-            then do
-              httpTransport <-
-                configureTransport
-                  verbosity
-                  (fromNubList . globalProgPathExtra $ globalFlags)
-                  (flagToMaybe . globalHttpTransport $ globalFlags)
-              depsFromNewFreezeFile verbosity httpTransport comp platform mprojectDir mprojectFile
-            else do
-              depsFromPkgDesc verbosity comp platform
-    debug verbosity $
-      "Dependencies loaded: "
-        ++ intercalate ", " (map prettyShow deps)
-    let outdatedDeps =
-          listOutdated
-            deps
-            sourcePkgDb
-            (ListOutdatedSettings ignorePred minorPred)
-    when (not quiet) $
-      showResult verbosity outdatedDeps simpleOutput
-    if exitCode && (not . null $ outdatedDeps)
-      then exitFailure
-      else return ()
+outdatedAction :: NixStyleFlags OutdatedFlags -> [String] -> GlobalFlags -> IO ()
+outdatedAction flags targetStrings globalFlags =
+  withContextAndSelectors
+    AcceptNoTargets
+    Nothing
+    flags
+    targetStrings
+    globalFlags
+    OtherCommand
+    $ \_targetCtx ctx targetSelectors -> do
+      deps <-
+        if
+            | freezeFile -> depsFromFreezeFile verbosity
+            | newFreezeFile -> depsFromProjectContext verbosity (projectConfig ctx)
+            | otherwise -> depsFromLocalPackages verbosity ctx targetSelectors
+
+      debug verbosity $
+        "Dependencies loaded: "
+          ++ intercalate ", " (map prettyShow deps)
+
+      sourcePkgDb <- getSourcePackages verbosity (projectConfig ctx)
+      let outdatedDeps =
+            listOutdated
+              deps
+              sourcePkgDb
+              (ListOutdatedSettings ignorePred minorPred)
+      when (not quiet) $
+        showResult verbosity outdatedDeps simpleOutput
+      if exitCode && (not . null $ outdatedDeps)
+        then exitFailure
+        else return ()
   where
+    OutdatedFlags{..} = extraFlags flags
     verbosity =
       if quiet
         then silent
-        else fromFlagOrDefault normal outdatedVerbosity
+        else fromFlagOrDefault normal (setupVerbosity (configCommonFlags (configFlags flags)))
     freezeFile = fromFlagOrDefault False outdatedFreezeFile
     newFreezeFile = fromFlagOrDefault False outdatedNewFreezeFile
-    mprojectDir = flagToMaybe flagProjectDir
-    mprojectFile = flagToMaybe flagProjectFile
     simpleOutput = fromFlagOrDefault False outdatedSimpleOutput
     quiet = fromFlagOrDefault False outdatedQuiet
     exitCode = fromFlagOrDefault quiet outdatedExitCode
@@ -369,93 +295,104 @@ outdatedAction (ProjectFlags{flagProjectDir, flagProjectFile}, OutdatedFlags{..}
         let minorSet = S.fromList pkgs
          in \pkgname -> pkgname `S.member` minorSet
 
+reportOutdatedTargetProblem :: Verbosity -> [TargetProblem'] -> IO a
+reportOutdatedTargetProblem verbosity problems =
+  reportTargetProblems verbosity "check outdated dependencies for" problems
+
 -- | Print either the list of all outdated dependencies, or a message
 -- that there are none.
-showResult :: Verbosity -> [(PackageVersionConstraint, Version)] -> Bool -> IO ()
+showResult :: Verbosity -> [OutdatedDependency] -> Bool -> IO ()
 showResult verbosity outdatedDeps simpleOutput =
   if not . null $ outdatedDeps
     then do
       when (not simpleOutput) $
         notice verbosity "Outdated dependencies:"
-      for_ outdatedDeps $ \(d@(PackageVersionConstraint pn _), v) ->
+      for_ outdatedDeps $ \(OutdatedDependency d@(PackageVersionConstraint pn _) v src) ->
         let outdatedDep =
               if simpleOutput
                 then prettyShow pn
-                else prettyShow d ++ " (latest: " ++ prettyShow v ++ ")"
+                else prettyShow d ++ " (latest: " ++ prettyShow v ++ ", " ++ prettyOutdatedDependencySource src ++ ")"
          in notice verbosity outdatedDep
     else notice verbosity "All dependencies are up to date."
 
+data OutdatedDependencyX v = OutdatedDependency
+  { _outdatedDependency :: PackageVersionConstraint
+  , _outdatedVersion :: v
+  , _outdatedSource :: OutdatedDependencySource
+  }
+
+instance Pretty (OutdatedDependencyX Version) where
+  pretty (OutdatedDependency dep ver src) =
+    pretty dep
+      <+> PP.text "(latest:"
+      <+> pretty ver
+      <+> PP.text ","
+      <+> PP.text "from:"
+      <+> PP.text (prettyOutdatedDependencySource src)
+      <+> PP.text ")"
+
+instance Pretty (OutdatedDependencyX ()) where
+  pretty (OutdatedDependency dep _ src) =
+    pretty dep <+> PP.text "(from:" <+> PP.text (prettyOutdatedDependencySource src) `mappend` PP.text ")"
+
+data OutdatedDependencySource = ConfigSource ConstraintSource | ComponentSource PackageId ComponentTarget
+
+-- | Pretty print an 'OutdatedDependencySource'.
+prettyOutdatedDependencySource :: OutdatedDependencySource -> String
+prettyOutdatedDependencySource (ConfigSource src) = showConstraintSource src
+prettyOutdatedDependencySource (ComponentSource pkgId ctarget) = prettyShow pkgId ++ ":" ++ showComponentTarget pkgId ctarget
+
+type CandidateOutdatedDependency = OutdatedDependencyX ()
+
+mkCandidateOutdatedDependency :: PackageVersionConstraint -> OutdatedDependencySource -> CandidateOutdatedDependency
+mkCandidateOutdatedDependency dep src = OutdatedDependency dep () src
+
+type OutdatedDependency = OutdatedDependencyX Version
+
 -- | Convert a list of 'UserConstraint's to a 'Dependency' list.
-userConstraintsToDependencies :: [UserConstraint] -> [PackageVersionConstraint]
+userConstraintsToDependencies :: [(UserConstraint, ConstraintSource)] -> [CandidateOutdatedDependency]
 userConstraintsToDependencies ucnstrs =
-  mapMaybe (packageConstraintToDependency . userToPackageConstraint) ucnstrs
+  mapMaybe (\(uc, src) -> fmap (flip mkCandidateOutdatedDependency (ConfigSource src)) (packageConstraintToDependency . userToPackageConstraint $ uc)) ucnstrs
 
 -- | Read the list of dependencies from the freeze file.
-depsFromFreezeFile :: Verbosity -> IO [PackageVersionConstraint]
+depsFromFreezeFile :: Verbosity -> IO [CandidateOutdatedDependency]
 depsFromFreezeFile verbosity = do
   cwd <- getCurrentDirectory
   userConfig <- loadUserConfig verbosity cwd Nothing
   let ucnstrs =
-        map fst . configExConstraints . savedConfigureExFlags $
+        configExConstraints . savedConfigureExFlags $
           userConfig
       deps = userConstraintsToDependencies ucnstrs
   debug verbosity "Reading the list of dependencies from the freeze file"
   return deps
 
--- | Read the list of dependencies from the new-style freeze file.
-depsFromNewFreezeFile :: Verbosity -> HttpTransport -> Compiler -> Platform -> Maybe FilePath -> Maybe FilePath -> IO [PackageVersionConstraint]
-depsFromNewFreezeFile verbosity httpTransport compiler (Platform arch os) mprojectDir mprojectFile = do
-  projectRoot <-
-    either throwIO return
-      =<< findProjectRoot verbosity mprojectDir mprojectFile
-  let distDirLayout =
-        defaultDistDirLayout
-          projectRoot
-          {- TODO: Support dist dir override -} Nothing
-          Nothing
-  projectConfig <- runRebuild (distProjectRootDirectory distDirLayout) $ do
-    pcs <- readProjectLocalFreezeConfig verbosity httpTransport distDirLayout
-    pure $ instantiateProjectConfigSkeletonWithCompiler os arch (compilerInfo compiler) mempty pcs
-  let ucnstrs =
-        map fst . projectConfigConstraints . projectConfigShared $
-          projectConfig
+-- | Read the list of dependencies from the cabal.project context.
+-- This will get dependencies from
+--  * cabal.project.freeze
+--  * cabal.project.local
+--  * cabal.project
+-- files
+depsFromProjectContext :: Verbosity -> ProjectConfig -> IO [CandidateOutdatedDependency]
+depsFromProjectContext verbosity projectConfig = do
+  let ucnstrs = projectConfigConstraints $ projectConfigShared projectConfig
       deps = userConstraintsToDependencies ucnstrs
-      freezeFile = distProjectFile distDirLayout "freeze"
-  freezeFileExists <- doesFileExist freezeFile
-
-  unless freezeFileExists $
-    dieWithException verbosity $
-      FreezeFileExistsErr freezeFile
-
+      provenance = projectConfigProvenance projectConfig
   debug verbosity $
-    "Reading the list of dependencies from the new-style freeze file " ++ freezeFile
+    "Reading the list of dependencies from the project files: "
+      ++ intercalate ", " [prettyShow p | Explicit p <- Set.toList provenance]
   return deps
 
 -- | Read the list of dependencies from the package description.
-depsFromPkgDesc :: Verbosity -> Compiler -> Platform -> IO [PackageVersionConstraint]
-depsFromPkgDesc verbosity comp platform = do
-  path <- tryFindPackageDesc verbosity Nothing
-  gpd <- readGenericPackageDescription verbosity Nothing (relativeSymbolicPath path)
-  let cinfo = compilerInfo comp
-      epd =
-        finalizePD
-          mempty
-          (ComponentRequestedSpec True True)
-          (const Satisfied)
-          platform
-          cinfo
-          []
-          gpd
-  case epd of
-    Left _ -> dieWithException verbosity FinalizePDFailed
-    Right (pd, _) -> do
-      let bd = allBuildDepends pd
-      debug
-        verbosity
-        "Reading the list of dependencies from the package description"
-      return $ map toPVC bd
+depsFromPkgDesc :: Verbosity -> PackageId -> GenericPackageDescription -> ComponentTarget -> IO [CandidateOutdatedDependency]
+depsFromPkgDesc verbosity pkgId gpd t@(ComponentTarget cname _subtarget) = do
+  let pd = flattenPackageDescription gpd
+      bd = targetBuildDepends (componentBuildInfo (getComponent pd cname))
+  debug
+    verbosity
+    "Reading the list of dependencies from the package description"
+  return $ map toPVC bd
   where
-    toPVC (Dependency pn vr _) = PackageVersionConstraint pn vr
+    toPVC (Dependency pn vr _) = mkCandidateOutdatedDependency (PackageVersionConstraint pn vr) (ComponentSource pkgId t)
 
 -- | Various knobs for customising the behaviour of 'listOutdated'.
 data ListOutdatedSettings = ListOutdatedSettings
@@ -467,20 +404,22 @@ data ListOutdatedSettings = ListOutdatedSettings
 
 -- | Find all outdated dependencies.
 listOutdated
-  :: [PackageVersionConstraint]
+  :: [CandidateOutdatedDependency]
   -> SourcePackageDb
   -> ListOutdatedSettings
-  -> [(PackageVersionConstraint, Version)]
+  -> [OutdatedDependency]
 listOutdated deps sourceDb (ListOutdatedSettings ignorePred minorPred) =
-  mapMaybe isOutdated $ map simplifyPackageVersionConstraint deps
+  mapMaybe isOutdated deps
   where
-    isOutdated :: PackageVersionConstraint -> Maybe (PackageVersionConstraint, Version)
-    isOutdated dep@(PackageVersionConstraint pname vr)
+    isOutdated :: CandidateOutdatedDependency -> Maybe OutdatedDependency
+    isOutdated (OutdatedDependency dep () src)
       | ignorePred pname = Nothing
       | otherwise =
           let this = map packageVersion $ SourcePackageDb.lookupDependency sourceDb pname vr
               latest = lookupLatest dep
-           in (\v -> (dep, v)) `fmap` isOutdated' this latest
+           in (\v -> OutdatedDependency dep v src) `fmap` isOutdated' this latest
+      where
+        PackageVersionConstraint pname vr = simplifyPackageVersionConstraint dep
 
     isOutdated' :: [Version] -> [Version] -> Maybe Version
     isOutdated' [] _ = Nothing
@@ -506,3 +445,50 @@ listOutdated deps sourceDb (ListOutdatedSettings ignorePred minorPred) =
           case upper of
             NoUpperBound -> vr
             UpperBound _v1 _ -> majorBoundVersion v0
+
+-- | For the outdated command, when a whole package is specified we want
+-- to select all buildable components.
+selectPackageTargetsForOutdated
+  :: TargetSelector
+  -> [AvailableTarget k]
+  -> Either (TargetProblem') [k]
+selectPackageTargetsForOutdated targetSelector targets
+  -- No targets available at all is an error
+  | null targets = Left (TargetProblemNoTargets targetSelector)
+  -- We select all buildable components for a package
+  | otherwise = Right $ selectBuildableTargets targets
+
+-- | For the outdated command, when a specific component is specified
+-- we simply select that component.
+selectComponentTargetForOutdated
+  :: SubComponentTarget
+  -> AvailableTarget k
+  -> Either (TargetProblem') k
+selectComponentTargetForOutdated subtarget target =
+  selectComponentTargetBasic subtarget target
+
+-- | Read the list of dependencies from local packages
+depsFromLocalPackages :: Verbosity -> ProjectBaseContext -> [TargetSelector] -> IO [CandidateOutdatedDependency]
+depsFromLocalPackages verbosity ctx targetSelectors = do
+  when (null targetSelectors) $
+    dieWithException verbosity TargetSelectorNoTargetsInCwdTrue
+  targets <-
+    either (reportOutdatedTargetProblem verbosity) return $
+      resolveTargetsFromLocalPackages
+        selectPackageTargetsForOutdated
+        selectComponentTargetForOutdated
+        (localPackages ctx)
+        targetSelectors
+  fmap concat <$> forM (localPackages ctx) $ \pkg -> case pkg of
+    SpecificSourcePackage pkg' -> do
+      -- Find the package in the resolved targets
+      let pkgId = packageId pkg'
+      let pkgTargets =
+            case Map.lookup pkgId targets of
+              Just componentTargets -> map fst componentTargets
+              Nothing -> []
+      -- If no specific components were targeted, use the whole package
+      -- Get dependencies for each targeted component
+      fmap concat <$> forM pkgTargets $ \target ->
+        depsFromPkgDesc verbosity pkgId (srcpkgDescription pkg') target
+    _ -> return []

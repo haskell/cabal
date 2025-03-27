@@ -57,6 +57,7 @@ module Distribution.Client.ProjectPlanning.Types
   , isTestComponentTarget
   , isBenchComponentTarget
   , componentOptionalStanza
+  , componentTargetName
 
     -- * Setup script
   , SetupScriptStyle (..)
@@ -860,6 +861,10 @@ data ComponentTarget = ComponentTarget ComponentName SubComponentTarget
 
 instance Binary ComponentTarget
 instance Structured ComponentTarget
+
+-- | Extract the component name from a 'ComponentTarget'.
+componentTargetName :: ComponentTarget -> ComponentName
+componentTargetName (ComponentTarget cname _) = cname
 
 -- | Unambiguously render a 'ComponentTarget', e.g., to pass
 -- to a Cabal Setup script.

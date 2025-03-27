@@ -176,7 +176,7 @@ haddockAction relFlags targetStrings globalFlags = do
       -- haddock targets
       targets <-
         either (reportBuildDocumentationTargetProblems verbosity) return $
-          resolveTargets
+          resolveTargetsFromSolver
             (selectPackageTargets haddockFlags)
             selectComponentTarget
             elaboratedPlan
