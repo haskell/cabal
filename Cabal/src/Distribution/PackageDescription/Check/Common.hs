@@ -117,12 +117,8 @@ partitionDeps ads ns ds = do
 -- for important dependencies like base).
 checkPVP
   :: Monad m
-<<<<<<< HEAD
-  => (String -> PackageCheck) -- Warn message dependend on name
-=======
   => (Dependency -> Bool)
   -> (String -> PackageCheck) -- Warn message depends on name
->>>>>>> d46f325c5 (Add version range constraint operator checks)
   -- (e.g. "base", "Cabal").
   -> [Dependency]
   -> CheckM m ()

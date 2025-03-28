@@ -597,14 +597,7 @@ checkExplanationId (WrongFieldForExpectedDocFiles{}) = CIWrongFieldForExpectedDo
 
 type CheckExplanationIDString = String
 
-<<<<<<< HEAD
--- A one-word identifier for each CheckExplanation
---
--- ☞ N.B: if you modify anything here, remeber to change the documentation
--- in @doc/cabal-commands.rst@!
-=======
 -- | A one-word identifier for each @CheckExplanation@.
->>>>>>> d46f325c5 (Add version range constraint operator checks)
 ppCheckExplanationId :: CheckExplanationID -> CheckExplanationIDString
 -- NOTE: If you modify anything here, remember to change the documentation
 -- in @doc/cabal-commands.rst@!
