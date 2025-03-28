@@ -17,6 +17,10 @@ priority_rules:
     # 'normal' is 2000, 'high' is 3000
     priority: 2500
 
+  - name: priority for queue `default`
+    conditions:
+      - queue-name=default
+    priority: 2250
 pull_request_rules:
 
   # implementing PR delay logic: apply a label after 2 days of inactivity
@@ -28,12 +32,12 @@ pull_request_rules:
     name: Wait for 2 days before validating merge
     conditions:
       - or:
-        - 'label=priority: high :fire:'
-        - updated-at<2 days ago
+          - 'label=priority: high :fire:'
+          - updated-at<2 days ago
       - or:
-        - label=merge me
-        - label=squash+merge me
-        - label=merge+no rebase
+          - label=merge me
+          - label=squash+merge me
+          - label=merge+no rebase
       - '#approved-reviews-by>=2'
 
   # label when Mergify is ready but waiting for the above
@@ -47,9 +51,9 @@ pull_request_rules:
       - -draft
       - -closed
       - or:
-        - label=merge me
-        - label=squash+merge me
-        - label=merge+no rebase
+          - label=merge me
+          - label=squash+merge me
+          - label=merge+no rebase
       - '#approved-reviews-by>=2'
       - '#changes-requested-reviews-by=0'
       # oy
