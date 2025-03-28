@@ -42,8 +42,9 @@ jobs:
 
       - uses: actions/checkout@v4
 
-      - name: Make sdist
-        run: cabal sdist cabal-install
+      - name: Make sdists
+        run: |
+          cabal sdist Cabal-syntax Cabal Cabal-hooks cabal-install-solver cabal-install
 
       - name: Install from sdist
         run: |
@@ -58,10 +59,26 @@ jobs:
           # dunno if this will ever be extended to freebsd, but grep -q is a gnu-ism
           if ghc-pkg --global --simple-output list Cabal | grep "^Cabal-$ver\\." >/dev/null; then
             # sigh, someone broke installing from tarballs
-            rm -rf cabal*.project Cabal Cabal-syntax cabal-install-solver cabal-install
+            rm -rf cabal*.project Cabal-syntax Cabal Cabal-hooks cabal-install-solver cabal-install
             tar xfz "$sdist"
-            cd "cabal-install-$cbl"*
-            cabal install
+            cd "cabal-install-"*
+            # note: we have all the sdists in a `package-env` because sometimes we need
+            # to allow newer versions of Cabal (for example, we're using something that
+            # was added to Cabal, which isn't a PVP violation as long as the old API is
+            # still there). This _shouldn't_ affect how the solver picks versions, so it
+            # should be safe.
+            here="$(pwd)"
+            for pkg in Cabal-syntax Cabal Cabal-hooks cabal-install-solver; do
+              # need ver suffix here so e.g. Cabal-* doesn't match Cabal-syntax-*
+              echo "Building $pkg-$ver"
+              tar xfz "$here/../dist-newstyle/sdist/$pkg-$ver"*".tar.gz"
+              (cd "$pkg-$ver"*; cabal install --lib --package-env="$here")
+            done
+            echo "Sanity check"
+            ls -l "$here/.ghc"*
+            cat "$here/.ghc"*
+            echo "Building cabal-install-$ver"
+            cabal install --package-env="$here"
           else
             echo No matching bootlib Cabal version to test against.
             exit 0
