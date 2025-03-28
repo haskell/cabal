@@ -6,7 +6,7 @@ priority_rules:
   - name: high priority
     conditions:
       - 'label=priority: high :fire:'
-    priority: high
+    priority: 3000
 
   # The idea is we slightly prioritize those PRs because we're in
   # a release cycle if a PR matches.
@@ -14,13 +14,18 @@ priority_rules:
     conditions:
       - 'base~=^3\.'
       - 'label!=backport'
-    # 'normal' is 2000, 'high' is 3000
     priority: 2500
 
   - name: priority for queue `default`
     conditions:
       - queue-name=default
     priority: 2250
+
+  - name: priority for queue `squash-merge`
+    conditions:
+      - queue-name=squash-merge
+    priority: 2250
+
 pull_request_rules:
 
   # implementing PR delay logic: apply a label after 2 days of inactivity
