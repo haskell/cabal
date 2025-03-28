@@ -1,5 +1,6 @@
 synopsis: Revert renaming from #10546
 packages: cabal-install-solver
+prs: #10546
 
 description: {
 
