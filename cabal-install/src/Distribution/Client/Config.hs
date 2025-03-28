@@ -226,7 +226,8 @@ import System.Directory
   , renameFile
   )
 import System.FilePath
-  ( takeDirectory
+  ( normalise
+  , takeDirectory
   , (<.>)
   , (</>)
   )
@@ -1679,7 +1680,14 @@ postProcessRepo lineno reponameStr repo0 = do
     -- Note: the trailing colon is important
     "file+noindex:" -> do
       let uri = remoteRepoURI repo0
-      return $ Left $ LocalRepo reponame (uriPath uri) (uriFragment uri == "#shared-cache")
+      return $
+        Left $
+          LocalRepo
+            reponame
+            -- Normalization of Windows paths that use @//./@ does not fully
+            -- normalize the path (see filepath#247), but it is still usable.
+            (normalise (uriPath uri))
+            (uriFragment uri == "#shared-cache")
     _ -> do
       let repo = repo0{remoteRepoName = reponame}
 
