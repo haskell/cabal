@@ -111,13 +111,8 @@ ghcid-cli :
 	ghcid -c 'cabal repl cabal-install'
 
 .PHONY: doctest
-<<<<<<< HEAD
-doctest:
-	cd Cabal-syntax && $(DOCTEST) --build-depends=network-uri
-=======
 doctest: ## Run doctests.
 	cd Cabal-syntax && $(DOCTEST)
->>>>>>> 9a0e8a46a (Fix local+noindex repos on Windows)
 	cd Cabal-described && $(DOCTEST)
 	cd Cabal && $(DOCTEST)
 	cd cabal-install-solver && $(DOCTEST)
