@@ -1,7 +1,7 @@
 synopsis: Prepend the global extra paths to the `ProgramDb` sooner
 packages: cabal-install
-prs: 10826
-issues: 9800
+prs: #10826
+issues: #9800
 significance: significant
 
 description: {
