@@ -45,24 +45,31 @@ import qualified Distribution.Client.CmdBench          as CmdBench
 import qualified Distribution.Client.CmdHaddock        as CmdHaddock
 import qualified Distribution.Client.CmdListBin        as CmdListBin
 
+import qualified Distribution.Client.CmdHaddockProject as CmdHaddockProject
+import Distribution.Client.Config (SavedConfig (savedGlobalFlags), createDefaultConfigFile, loadConfig)
+import Distribution.Client.GlobalFlags
+  ( GlobalFlags
+  , defaultGlobalFlags
+  , globalNix
+  )
+import Distribution.Client.Setup (globalCommand, globalStoreDir)
+import Distribution.ModuleName (ModuleName)
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
-import Distribution.Simple.Setup (toFlag, HaddockFlags(..), defaultHaddockFlags)
-import Distribution.Client.Setup (globalCommand)
-import Distribution.Client.Config (loadConfig, SavedConfig(savedGlobalFlags), createDefaultConfigFile)
+import Distribution.Simple.Setup
+ ( toFlag,
+ HaddockFlags(..),
+ defaultHaddockFlags,
+ HaddockProjectFlags(..),
+ defaultHaddockProjectFlags )
 import Distribution.Simple.Compiler
 import Distribution.Simple.Command
 import qualified Distribution.Simple.Flag as Flag
 import Distribution.System
 import Distribution.Version
-import Distribution.ModuleName (ModuleName)
 import Distribution.Text
 import Distribution.Utils.Path (unsafeMakeSymbolicPath)
-import qualified Distribution.Client.CmdHaddockProject as CmdHaddockProject
-import Distribution.Client.Setup (globalStoreDir)
-import Distribution.Client.GlobalFlags (defaultGlobalFlags)
-import Distribution.Simple.Setup (HaddockProjectFlags(..), defaultHaddockProjectFlags)
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -83,10 +90,9 @@ import Test.Tasty.Options
 import Data.Tagged (Tagged(..))
 
 import qualified Data.ByteString as BS
-import Distribution.Client.GlobalFlags (GlobalFlags, globalNix)
+import Data.Maybe (fromJust)
 import Distribution.Simple.Flag (Flag (Flag, NoFlag))
 import Distribution.Types.ParStrat
-import Data.Maybe (fromJust)
 
 #if !MIN_VERSION_directory(1,2,7)
 removePathForcibly :: FilePath -> IO ()
