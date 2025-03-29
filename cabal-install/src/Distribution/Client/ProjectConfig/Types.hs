@@ -33,6 +33,7 @@ import Distribution.Client.BuildReports.Types
 import Distribution.Client.Dependency.Types
   ( PreSolver
   )
+import Distribution.Client.HookAccept (HookAccept (..))
 import Distribution.Client.Targets
   ( UserConstraint
   )
@@ -227,6 +228,7 @@ data ProjectConfigShared = ProjectConfigShared
   , projectConfigPreferOldest :: Flag PreferOldest
   , projectConfigProgPathExtra :: NubList FilePath
   , projectConfigMultiRepl :: Flag Bool
+  , projectConfigHookHashes :: Map FilePath HookAccept
   -- More things that only make sense for manual mode, not --local mode
   -- too much control!
   -- projectConfigShadowPkgs        :: Flag Bool,
