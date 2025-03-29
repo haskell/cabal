@@ -2330,6 +2330,7 @@ elaborateInstallPlan
                 )
                 (perPkgOptionMapMappend pkgid packageConfigProgramArgs)
             elabProgramPathExtra = perPkgOptionNubList pkgid packageConfigProgramPathExtra
+            elabConfiguredPrograms = configuredPrograms compilerprogdb
             elabConfigureScriptArgs = perPkgOptionList pkgid packageConfigConfigureArgs
             elabExtraLibDirs = perPkgOptionList pkgid packageConfigExtraLibDirs
             elabExtraLibDirsStatic = perPkgOptionList pkgid packageConfigExtraLibDirsStatic
