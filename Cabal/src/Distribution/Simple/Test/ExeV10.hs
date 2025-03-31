@@ -8,7 +8,6 @@ module Distribution.Simple.Test.ExeV10
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Compat.Environment
 import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
@@ -64,8 +63,6 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
       way = guessWay lbi
       tixDir_ = i $ tixDir distPref way
 
-  existingEnv <- getEnvironment
-
   let cmd =
         i (LBI.buildDir lbi)
           </> testName'
@@ -92,13 +89,18 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
       pathVar = progSearchPath progDb
       envOverrides = progOverrideEnv progDb
   newPath <- programSearchPathAsPATHVar pathVar
-  overrideEnv <- fromMaybe [] <$> getEffectiveEnvironment ([("PATH", Just newPath)] ++ envOverrides)
   let opts =
         map
           (testOption pkg_descr lbi suite)
           (testOptions flags)
       tixFile = packageRoot (testCommonFlags flags) </> getSymbolicPath (tixFilePath distPref way (testName'))
-      shellEnv = [("HPCTIXFILE", tixFile) | isCoverageEnabled] ++ overrideEnv ++ existingEnv
+
+  shellEnv <-
+    getFullEnvironment
+      ( [("PATH", Just newPath)]
+          ++ [("HPCTIXFILE", Just tixFile) | isCoverageEnabled]
+          ++ envOverrides
+      )
 
   -- Add (DY)LD_LIBRARY_PATH if needed
   shellEnv' <-
