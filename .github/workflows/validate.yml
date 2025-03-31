@@ -5,31 +5,11 @@ concurrency:
   group: ${{ github.ref }}-${{ github.workflow }}
   cancel-in-progress: true
 
-# Note: This workflow file contains the required job "Validate post job". We are using path filtering
-# here to ignore PRs which only change documentation. This can cause a problem, see the workflow file
-# "validate.skip.yml" for a description of the problem and the solution provided in that file.
 on:
   push:
-    paths-ignore:
-      - "doc/**"
-      - "**/README.md"
-      - "CONTRIBUTING.md"
-      - "changelog.d/**"
-      # only top level for these, because various test packages have them too
-      - "*/ChangeLog.md"
-      - "*/changelog.md"
-      - "release-notes/**"
     branches:
       - master
   pull_request:
-    paths-ignore:
-      - "doc/**"
-      - "**/README.md"
-      - "CONTRIBUTING.md"
-      - "changelog.d/**"
-      - "*/ChangeLog.md"
-      - "*/changelog.md"
-      - "release-notes/**"
   release:
     types:
       - created
@@ -245,6 +225,12 @@ jobs:
             echo End "$test"
           done
           exit $rc
+      # The above ensures all the tests get run, for a single platform+ghc.
+      # Trying to ensure they run for *all* combinations but still fail
+      # at the end seems to be extremely difficult at best. It's doable,
+      # but it requires a continuously growing stack of conditions and
+      # one possibly nightmarish final conditional. 'fail-fast' gets us
+      # partway there, at least, but is still imperfect.
 
   validate-old-ghcs:
     name: Validate old ghcs ${{ matrix.extra-ghc }}
@@ -304,8 +290,9 @@ jobs:
       - name: "Validate lib-suite-extras --extra-hc ghc-${{ matrix.extra-ghc }}"
         env:
           EXTRA_GHC: ghc-${{ matrix.extra-ghc }}
-        continue-on-error: true
         run: sh validate.sh ${{ env.COMMON_FLAGS }} --lib-only -s lib-suite-extras --extra-hc "${{ env.EXTRA_GHC }}"
+      # See the comment above about running all tests but still failing if one
+      # of them does; it also applies here.
 
   build-alpine:
     name: Build statically linked using alpine

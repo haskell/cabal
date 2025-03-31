@@ -67,9 +67,9 @@ cyclical import of cyclical-2-out-out-self-b.config;
 # checking that cyclical check doesn't false-positive on same file names in different folders; hoping within a folder and then into a subfolder
 # cabal v2-build
 Configuration is affected by the following files:
+- noncyclical-same-filename-a.project
 - noncyclical-same-filename-a.config
     imported by: noncyclical-same-filename-a.project
-- noncyclical-same-filename-a.project
 - same-filename/noncyclical-same-filename-a.config
     imported by: noncyclical-same-filename-a.config
     imported by: noncyclical-same-filename-a.project
@@ -83,10 +83,10 @@ Building library for my-0.1...
 # checking that cyclical check doesn't false-positive on same file names in different folders; hoping into a subfolder and then back out again
 # cabal v2-build
 Configuration is affected by the following files:
+- noncyclical-same-filename-b.project
 - noncyclical-same-filename-b.config
     imported by: same-filename/noncyclical-same-filename-b.config
     imported by: noncyclical-same-filename-b.project
-- noncyclical-same-filename-b.project
 - same-filename/noncyclical-same-filename-b.config
     imported by: noncyclical-same-filename-b.project
 Up to date

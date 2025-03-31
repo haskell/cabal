@@ -46,7 +46,7 @@ normalizeOutput nenv =
   . resub (posixRegexEscape "tmp/src-" ++ "[0-9]+") "<TMPDIR>"
   . resub (posixRegexEscape (normalizerTmpDir nenv) ++ sameDir) "<ROOT>/"
   . resub (posixRegexEscape (normalizerCanonicalTmpDir nenv) ++ sameDir) "<ROOT>/"
-      -- Munge away C: prefix on filenames (Windows). We convert C:\\ to \\.
+    -- Munge away C:\ prefix on filenames (Windows). We convert C:\ to \.
   . (if buildOS == Windows then resub "([A-Z]):\\\\" "\\\\" else id)
   . appEndo (F.fold (map (Endo . packageIdRegex) (normalizerKnownPackages nenv)))
     -- Look for 0.1/installed-0d6uzW7Ubh1Fb4TB5oeQ3G

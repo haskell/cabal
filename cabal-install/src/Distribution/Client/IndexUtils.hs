@@ -1,5 +1,4 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GADTs #-}
@@ -7,10 +6,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Client.IndexUtils
@@ -461,7 +456,7 @@ readRepoIndex verbosity repoCtxt repo idxState =
             RepoSecure{..} -> warn verbosity $ exceptionMessageCabalInstall $ MissingPackageList repoRemote
             RepoLocalNoIndex local _ ->
               warn verbosity $
-                "Error during construction of local+noindex "
+                "Error during construction of file+noindex "
                   ++ unRepoName (localRepoName local)
                   ++ " repository index: "
                   ++ show e
@@ -521,7 +516,7 @@ whenCacheOutOfDate index action = do
     then action
     else
       if localNoIndex index
-        then return () -- TODO: don't update cache for local+noindex repositories
+        then return () -- TODO: don't update cache for file+noindex repositories
         else do
           indexTime <- getModTime $ indexFile index
           cacheTime <- getModTime $ cacheFile index
@@ -1120,12 +1115,14 @@ readIndexCache verbosity index = do
 -- 'dieWithException's if it fails again). Throws IOException if any arise.
 readNoIndexCache :: Verbosity -> Index -> IO NoIndexCache
 readNoIndexCache verbosity index = do
-  cacheOrFail <- readNoIndexCache' index
+  cacheOrFail <- readNoIndexCache' verbosity index
   case cacheOrFail of
     Left msg -> do
       warn verbosity $
         concat
-          [ "Parsing the index cache failed ("
+          [ "Parsing the index cache for repo \""
+          , unRepoName (repoName repo)
+          , "\" failed ("
           , msg
           , "). "
           , "Trying to regenerate the index cache..."
@@ -1133,10 +1130,12 @@ readNoIndexCache verbosity index = do
 
       updatePackageIndexCacheFile verbosity index
 
-      either (dieWithException verbosity . CorruptedIndexCache) return =<< readNoIndexCache' index
+      either (dieWithException verbosity . CorruptedIndexCache) return =<< readNoIndexCache' verbosity index
 
     -- we don't hash cons local repository cache, they are hopefully small
     Right res -> return res
+  where
+    RepoIndex _ctxt repo = index
 
 -- | Read the 'Index' cache from the filesystem. Throws IO exceptions
 -- if any arise and returns Left on invalid input.
@@ -1147,8 +1146,12 @@ readIndexCache' index
   | otherwise =
       Right . read00IndexCache <$> BSS.readFile (cacheFile index)
 
-readNoIndexCache' :: Index -> IO (Either String NoIndexCache)
-readNoIndexCache' index = structuredDecodeFileOrFail (cacheFile index)
+readNoIndexCache' :: Verbosity -> Index -> IO (Either String NoIndexCache)
+readNoIndexCache' verbosity index = do
+  exists <- doesFileExist (cacheFile index)
+  if exists
+    then structuredDecodeFileOrFail (cacheFile index)
+    else updatePackageIndexCacheFile verbosity index >> readNoIndexCache' verbosity index
 
 -- | Write the 'Index' cache to the filesystem
 writeIndexCache :: Index -> Cache -> IO ()

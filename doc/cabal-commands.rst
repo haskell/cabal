@@ -285,68 +285,6 @@ cabal preferences. It is very useful when you are e.g. first configuring
       Note how ``--augment`` syntax follows ``cabal user-config diff``
       output.
 
-cabal path
-^^^^^^^^^^
-
-``cabal path`` allows to query for paths used by ``cabal``.
-For example, it allows to query for the directories of the cache, store,
-installed binaries, and so on.
-
-::
-
-    $ whoami
-    alice
-
-    $ cabal path
-    compiler-flavour: ghc
-    compiler-id: ghc-9.8.2
-    compiler-path: /home/alice/.ghcup/bin/ghc
-    cache-home: /home/alice/.cabal
-    remote-repo-cache: /home/alice/.cabal/packages
-    logs-dir: /home/alice/.cabal/logs
-    store-dir: /home/alice/.cabal/store
-    config-file: /home/alice/.cabal/config
-    installdir: /home/alice/.cabal/bin
-
-Or using the json output:
-
-::
-
-    $ cabal path --output-format=json | jq
-
-.. code-block:: json
-
-    {
-      "cabal-version": "3.13.0.0",
-      "compiler": {
-        "flavour": "ghc",
-        "id": "ghc-9.8.2",
-        "path": "/home/alice/.ghcup/bin/ghc"
-      },
-      "cache-home": "/home/alice/.cabal",
-      "remote-repo-cache": "/home/alice/.cabal/packages",
-      "logs-dir": "/home/alice/.cabal/logs",
-      "store-dir": "/home/alice/.cabal/store",
-      "config-file": "/home/alice/.cabal/config",
-      "installdir": "/home/alice/.cabal/bin"
-    }
-
-If ``cabal path`` is passed a single option naming a path, then that
-path will be printed *without* any label:
-
-::
-
-   $ cabal path --installdir
-   /home/alice/.cabal/bin
-
-While this interface is intended to be used for scripting, it is an experimental command.
-Scripting example:
-
-::
-
-   $ ls $(cabal path --installdir)
-   ...
-
 .. _command-group-database:
 
 Package database commands
@@ -733,6 +671,68 @@ Examples:
     of ``pkg`` on Hackage satisfying ``pkg > 1.9 && < 2.0``. ``--minor`` can also
     be used without arguments, in that case major version bumps are ignored for
     all packages.
+
+cabal path
+^^^^^^^^^^
+
+``cabal path`` allows to query for paths used by ``cabal``.
+For example, it allows to query for the directories of the cache, store,
+installed binaries, and so on.
+
+::
+
+    $ whoami
+    alice
+
+    $ cabal path
+    compiler-flavour: ghc
+    compiler-id: ghc-9.8.2
+    compiler-path: /home/alice/.ghcup/bin/ghc
+    cache-home: /home/alice/.cabal
+    remote-repo-cache: /home/alice/.cabal/packages
+    logs-dir: /home/alice/.cabal/logs
+    store-dir: /home/alice/.cabal/store
+    config-file: /home/alice/.cabal/config
+    installdir: /home/alice/.cabal/bin
+
+Or using the json output:
+
+::
+
+    $ cabal path --output-format=json | jq
+
+.. code-block:: json
+
+    {
+      "cabal-version": "3.13.0.0",
+      "compiler": {
+        "flavour": "ghc",
+        "id": "ghc-9.8.2",
+        "path": "/home/alice/.ghcup/bin/ghc"
+      },
+      "cache-home": "/home/alice/.cabal",
+      "remote-repo-cache": "/home/alice/.cabal/packages",
+      "logs-dir": "/home/alice/.cabal/logs",
+      "store-dir": "/home/alice/.cabal/store",
+      "config-file": "/home/alice/.cabal/config",
+      "installdir": "/home/alice/.cabal/bin"
+    }
+
+If ``cabal path`` is passed a single option naming a path, then that
+path will be printed *without* any label:
+
+::
+
+   $ cabal path --installdir
+   /home/alice/.cabal/bin
+
+While this interface is intended to be used for scripting, it is an experimental command.
+Scripting example:
+
+::
+
+   $ ls $(cabal path --installdir)
+   ...
 
 .. _command-group-build:
 
@@ -1390,7 +1390,10 @@ A list of all warnings with their constructor:
 - ``unknown-arch``: unknown architecture in condition.
 - ``unknown-compiler``: unknown compiler in condition.
 - ``missing-bounds-important``: missing upper bounds for important dependencies (``base``, and for ``custom-setup`` ``Cabal`` too).
-- ``missing-upper-bounds``: missing upper bound in dependency (excluding test-suites and benchmarks).
+- ``missing-upper-bounds``: missing upper bound in dependency [#dep-excl]_.
+- ``le-upper-bounds``: less than or equals (<=) constraint on upper bound in dependency [#dep-excl]_.
+- ``tz-upper-bounds``: trailing zero (\*.0) upper bound in dependency [#dep-excl]_.
+- ``gt-lower-bounds``: greater than (>) constraint on lower bound in dependency [#dep-excl]_.
 - ``suspicious-flag``: troublesome flag name (e.g. starting with a dash).
 - ``unused-flag``: unused user flags.
 - ``non-ascii``: non-ASCII characters in custom field.
@@ -1415,6 +1418,36 @@ A list of all warnings with their constructor:
 - ``no-repository``: missing ``source-repository`` section.
 - ``no-docs``: missing expected documentation files (changelog).
 - ``doc-place``: documentation files listed in ``extra-source-files`` instead of ``extra-doc-files``.
+
+.. [#dep-excl] In dependencies excluding test-suites and benchmarks.
+
+.. note::
+
+    ``cabal check`` warns on subexpressions (individual version constraints) of
+    a version range that are of the form, ``> version``, ``<= version``, ``<=
+    version.0[...0]``. These are considered suspicious because they are likely
+    to be mistakes.  Guidelines for individual version constraints within
+    version ranges and examples of mistakes when not following these are:
+
+    "A lower bound should be inclusive."
+
+        Asking for ``base > 4.11`` when you actually want ``base >= 4.12`` is an
+        example of making this mistake.  Versions make a dense space, so there
+        are infinitely many versions that are ``> 4.11`` and ``< 4.12``.
+
+    "An upper bound should be exclusive."
+
+        Asking for ``base <= 4.19.1.0`` when the last published version is
+        ``base-4.19.1.0`` is an example of making this mistake.  This blocks
+        patch releases that should always be fine according to the PVP.  The
+        correct minor bound is ``base < 4.19.2``.
+
+    "An upper bound should not have trailing zeros."
+
+        Asking for ``base < 4.20.0.0`` when you meant allow any ``base-4.19.*``
+        version is an example of making this mistake. In fact, ``base-4.20`` and
+        ``base-4.20.0`` are not excluded by the bound.  The correct bound is ``<
+        4.20``.
 
 .. _cabal-sdist:
 

@@ -39,7 +39,7 @@ import Distribution.Types.Flag (FlagName, parsecFlagAssignment)
 
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Types.AllowNewer (AllowNewer (..), AllowOlder (..))
-import Distribution.Client.Types.Repo (LocalRepo (..), RemoteRepo (..), emptyRemoteRepo)
+import Distribution.Client.Types.Repo (LocalRepo (..), RemoteRepo (..), emptyRemoteRepo, normaliseFileNoIndexURI)
 import Distribution.Client.Types.RepoName (RepoName (..), unRepoName)
 import Distribution.Client.Types.SourceRepo (SourceRepoList, sourceRepositoryPackageGrammar)
 
@@ -173,7 +173,7 @@ import Distribution.Simple.Command
   , option
   , reqArg'
   )
-import Distribution.System (Arch, OS)
+import Distribution.System (Arch, OS, buildOS)
 import Distribution.Types.PackageVersionConstraint
   ( PackageVersionConstraint
   )
@@ -185,7 +185,7 @@ import Distribution.Utils.Path hiding
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Network.URI (URI (..), parseURI)
+import Network.URI (URI (..), nullURIAuth, parseURI)
 import System.Directory (createDirectoryIfMissing, makeAbsolute)
 import System.FilePath (isAbsolute, isPathSeparator, makeValid, splitFileName, (</>))
 import Text.PrettyPrint
@@ -2043,7 +2043,14 @@ remoteRepoSectionDescr =
     localToRemote :: LocalRepo -> RemoteRepo
     localToRemote (LocalRepo name path sharedCache) =
       (emptyRemoteRepo name)
-        { remoteRepoURI = URI "file+noindex:" Nothing path "" (if sharedCache then "#shared-cache" else "")
+        { remoteRepoURI =
+            normaliseFileNoIndexURI buildOS $
+              URI
+                "file+noindex:"
+                (Just nullURIAuth)
+                path
+                ""
+                (if sharedCache then "#shared-cache" else "")
         }
 
 -------------------------------

@@ -27,7 +27,7 @@ import Prelude ()
 
 import qualified Distribution.PackageDescription as PD
 import Distribution.Pretty
-import Distribution.Simple.Build (addInternalBuildTools)
+import Distribution.Simple.Build (addInternalBuildToolsFixed)
 import Distribution.Simple.Compiler
 import Distribution.Simple.Hpc
 import Distribution.Simple.InstallDirs
@@ -70,6 +70,7 @@ test
   -- ^ flags sent to test
   -> IO ()
 test args pkg_descr lbi0 flags = do
+  curDir <- LBI.absoluteWorkingDirLBI lbi0
   let common = testCommonFlags flags
       verbosity = fromFlag $ setupVerbosity common
       distPref = fromFlag $ setupDistPref common
@@ -95,7 +96,8 @@ test args pkg_descr lbi0 flags = do
               lbi
                 { withPrograms =
                     -- Include any build-tool-depends on build tools internal to the current package.
-                    addInternalBuildTools
+                    addInternalBuildToolsFixed
+                      (Just curDir)
                       pkg_descr
                       lbi
                       (PD.testBuildInfo suite)

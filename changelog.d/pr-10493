@@ -1,0 +1,11 @@
+synopsis: Remove descriptions for sandbox in replCommand
+packages: Cabal
+prs: #10493
+issues: #10482
+significance: significant
+
+description: {
+
+- Text provided by `Setup.hs repl --help` contained outdated information concerning sandbox, which have now been removed.
+
+}

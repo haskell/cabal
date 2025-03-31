@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Distribution.Solver.Types.ProjectConfigPath
     (
@@ -7,6 +8,7 @@ module Distribution.Solver.Types.ProjectConfigPath
     , projectConfigPathRoot
     , nullProjectConfigPath
     , consProjectConfigPath
+    , unconsProjectConfigPath
 
     -- * Messages
     , docProjectConfigPath
@@ -21,17 +23,19 @@ module Distribution.Solver.Types.ProjectConfigPath
     ) where
 
 import Distribution.Solver.Compat.Prelude hiding (toList, (<>))
+import qualified Distribution.Solver.Compat.Prelude as P ((<>))
 import Prelude (sequence)
 
 import Data.Coerce (coerce)
 import Data.List.NonEmpty ((<|))
-import Network.URI (parseURI)
+import Network.URI (parseURI, parseAbsoluteURI)
 import System.Directory
 import System.FilePath
 import qualified Data.List.NonEmpty as NE
 import Distribution.Solver.Modular.Version (VR)
 import Distribution.Pretty (prettyShow)
 import Text.PrettyPrint
+import Distribution.Simple.Utils (ordNub)
 
 -- | Path to a configuration file, either a singleton project root, or a longer
 -- list representing a path to an import.  The path is a non-empty list that we
@@ -45,7 +49,41 @@ import Text.PrettyPrint
 -- List elements are relative to each other but once canonicalized, elements are
 -- relative to the directory of the project root.
 newtype ProjectConfigPath = ProjectConfigPath (NonEmpty FilePath)
-    deriving (Eq, Ord, Show, Generic)
+    deriving (Eq, Show, Generic)
+
+-- | Sorts URIs after local file paths and longer file paths after shorter ones
+-- as measured by the number of path segments. If still equal, then sorting is
+-- lexical.
+--
+-- The project itself, a single element root path, compared to any of the
+-- configuration paths it imports, should always sort first. Comparing one
+-- project root path against another is done lexically.
+instance Ord ProjectConfigPath where
+    compare pa@(ProjectConfigPath (NE.toList -> as)) pb@(ProjectConfigPath (NE.toList -> bs)) =
+        case (as, bs) of
+            -- There should only ever be one root project path, only one path
+            -- with length 1. Comparing it to itself should be EQ. Don't assume
+            -- this though, do a comparison anyway when both sides have length
+            -- 1.  The root path, the project itself, should always be the first
+            -- path in a sorted listing.
+            ([a], [b]) -> compare a b
+            ([_], _) -> LT
+            (_, [_]) -> GT
+
+            (a:_, b:_) -> case (parseAbsoluteURI a, parseAbsoluteURI b) of
+                (Just ua, Just ub) -> compare ua ub P.<> compare aImporters bImporters
+                (Just _, Nothing) -> GT
+                (Nothing, Just _) -> LT
+                (Nothing, Nothing) -> compare (splitPath a) (splitPath b) P.<> compare aImporters bImporters
+            _ ->
+                compare (length as) (length bs)
+                P.<> compare (length aPaths) (length bPaths)
+                P.<> compare aPaths bPaths
+        where
+            aPaths = splitPath <$> as
+            bPaths = splitPath <$> bs
+            aImporters = snd $ unconsProjectConfigPath pa
+            bImporters = snd $ unconsProjectConfigPath pb
 
 instance Binary ProjectConfigPath
 instance Structured ProjectConfigPath
@@ -100,10 +138,11 @@ docProjectConfigPath (ProjectConfigPath (p :| ps)) = vcat $
 -- "- cabal.project\n- project-cabal/constraints.config\n- project-cabal/ghc-latest.config\n- project-cabal/ghc-options.config\n- project-cabal/pkgs.config\n- project-cabal/pkgs/benchmarks.config\n- project-cabal/pkgs/buildinfo.config\n- project-cabal/pkgs/cabal.config\n- project-cabal/pkgs/install.config\n- project-cabal/pkgs/integration-tests.config\n- project-cabal/pkgs/tests.config"
 docProjectConfigPaths :: [ProjectConfigPath] -> Doc
 docProjectConfigPaths ps = vcat
-    [ text "-" <+> text p | ProjectConfigPath (p :| _) <- ps ]
+    [ text "-" <+> text p
+    | p <- ordNub [ p | ProjectConfigPath (p :| _) <- ps ]
+    ]
 
--- | A message for a cyclical import, assuming the head of the path is the
--- duplicate.
+-- | A message for a cyclical import, a "cyclical import of".
 cyclicalImportMsg :: ProjectConfigPath -> Doc
 cyclicalImportMsg path@(ProjectConfigPath (duplicate :| _)) =
     vcat
@@ -147,6 +186,10 @@ isTopLevelConfigPath (ProjectConfigPath p) = NE.length p == 1
 -- | Prepends the path of the importee to the importer path.
 consProjectConfigPath :: FilePath -> ProjectConfigPath -> ProjectConfigPath
 consProjectConfigPath p ps = ProjectConfigPath (p <| coerce ps)
+
+-- | Split the path into the importee and the importer path.
+unconsProjectConfigPath :: ProjectConfigPath -> (FilePath, Maybe ProjectConfigPath)
+unconsProjectConfigPath ps = fmap ProjectConfigPath <$> NE.uncons (coerce ps)
 
 -- | Make paths relative to the directory of the root of the project, not
 -- relative to the file they were imported from.

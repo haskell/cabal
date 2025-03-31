@@ -72,6 +72,8 @@ import Network.Wait (waitTcpVerbose)
 import System.Environment
 import System.Process
 import System.IO
+import qualified System.FilePath.Posix as Posix
+import qualified System.FilePath.Windows as Windows
 
 #ifndef mingw32_HOST_OS
 import System.Posix.Resource
@@ -613,11 +615,12 @@ withRepo repo_dir m = do
     withReaderT (\env' -> env' { testHaveRepo = True }) m
     -- TODO: Arguably should undo everything when we're done...
   where
-    repoUri env ="file+noindex://" ++ (if isWindows
-                                        then map (\x -> case x of
-                                            '\\' -> '/'
-                                            _ -> x)
-                                        else id) (testRepoDir env)
+    repoUri env ="file+noindex:" ++ (if isWindows
+                                        then map (\x -> if x == Windows.pathSeparator
+                                                        then Posix.pathSeparator
+                                                        else x
+                                                 )
+                                        else ("//" ++)) (testRepoDir env)
 
 -- | Given a directory (relative to the 'testCurrentDir') containing
 -- a series of directories representing packages, generate an
