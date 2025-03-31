@@ -49,9 +49,8 @@
 - ignore: {name: "Use concatMap"} # 1 hint
 - ignore: {name: "Use const"} # 36 hints
 - ignore: {name: "Use elem"} # 2 hints
-- ignore: {name: "Use fewer imports"} # 19 hints
 - ignore: {name: "Use first"} # 4 hints
-- ignore: {name: "Use fmap"} # 24 hints
+- ignore: {name: "Use fmap"} # 25 hints
 - ignore: {name: "Use fold"} # 1 hint
 - ignore: {name: "Use for"} # 1 hint
 - ignore: {name: "Use forM_"} # 1 hint
@@ -67,7 +66,7 @@
 - ignore: {name: "Use isNothing"} # 1 hint
 - ignore: {name: "Use lambda-case"} # 47 hints
 - ignore: {name: "Use lefts"} # 1 hint
-- ignore: {name: "Use list comprehension"} # 16 hints
+- ignore: {name: "Use list comprehension"} # 19 hints
 - ignore: {name: "Use list literal"} # 3 hints
 - ignore: {name: "Use list literal pattern"} # 11 hints
 - ignore: {name: "Use map once"} # 7 hints
@@ -96,6 +95,9 @@
 
 - arguments:
     - --ignore-glob=Cabal-syntax/src/Distribution/Fields/Lexer.hs
+    - --ignore-glob=Cabal-tests/tests/custom-setup/CabalDoctestSetup.hs
+    - --ignore-glob=Cabal-tests/tests/custom-setup/IdrisSetup.hs
+    - --ignore-glob=cabal-testsuite/PackageTests/BuildWays/q/app/Main.hs
     - --ignore-glob=cabal-testsuite/PackageTests/CmmSources/src/Demo.hs
     - --ignore-glob=cabal-testsuite/PackageTests/CmmSourcesDyn/src/Demo.hs
     - --ignore-glob=cabal-testsuite/PackageTests/CmmSourcesExe/src/Demo.hs
