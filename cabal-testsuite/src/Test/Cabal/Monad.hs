@@ -407,13 +407,10 @@ runTestM mode m =
                         -- effect on Windows.
                         , ("CABAL_DIR", Just (testCabalDir env))
                         , ("CABAL_CONFIG", Just (testUserCabalConfigFile env))
-<<<<<<< HEAD
-=======
                         -- Set `TMPDIR` so that temporary files aren't created in the global `TMPDIR`.
                         , ("TMPDIR", Just (testSystemTmpDir env))
                         -- Windows uses `TMP` for the `TMPDIR`.
                         , ("TMP", Just (testSystemTmpDir env))
->>>>>>> c64a32d7c (testsuite: Set TMPDIR to a specific folder rather than the test root)
                         ],
                     testShouldFail = False,
                     testRelativeCurrentDir = ".",
