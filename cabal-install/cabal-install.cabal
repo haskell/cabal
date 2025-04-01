@@ -425,6 +425,8 @@ test-suite integration-tests2
     , process
     , tasty >= 1.2.3 && <1.6
     , tasty-hunit >= 0.10
+    , tasty-expected-failure
+    , silently
     , tagged
 
 test-suite long-tests
