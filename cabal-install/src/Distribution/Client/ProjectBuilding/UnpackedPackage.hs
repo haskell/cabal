@@ -447,7 +447,7 @@ buildInplaceUnpackedPackage
     -- TODO: [code cleanup] there is duplication between the
     --      distdirlayout and the builddir here builddir is not
     --      enough, we also need the per-package cachedir
-    createDirectoryIfMissingVerbose verbosity True $ getSymbolicPath builddir
+    createDirectoryIfMissingVerbose verbosity True $ interpretSymbolicPath (Just srcdir) builddir
     createDirectoryIfMissingVerbose
       verbosity
       True
