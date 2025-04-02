@@ -275,17 +275,19 @@ testConditionForComponent :: Stage
                           -> (a -> Bool)
                           -> CondTree ConfVar [Dependency] a
                           -> Maybe Bool
-testConditionForComponent _stage os arch cinfo constraints p tree =
+testConditionForComponent stage os arch cinfo constraints p tree =
     case go $ extractCondition p tree of
       Lit True  -> Just True
       Lit False -> Just False
       _         -> Nothing
   where
+    -- TODO: fix for stage
     flagAssignment :: [(FlagName, Bool)]
     flagAssignment =
         mconcat [ unFlagAssignment fa
-                | PackageConstraint (ScopeAnyQualifier _) (PackagePropertyFlags fa)
-                    <- L.map unlabelPackageConstraint constraints]
+                | PackageConstraint (ConstraintScope stage' (ScopeAnyQualifier _)) (PackagePropertyFlags fa)
+                    <- L.map unlabelPackageConstraint constraints
+                , maybe True (== stage) stage']
 
     -- Simplify the condition, using the current environment. Most of this
     -- function was copied from convBranch and

@@ -4,7 +4,7 @@ module UnitTests.Distribution.Client.Targets
 
 import Distribution.Client.Targets
   ( UserConstraint (..)
-  , UserConstraintScope (..)
+  , UserConstraintQualifier (..)
   , UserQualifier (..)
   , readUserConstraint
   )

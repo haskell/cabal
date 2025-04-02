@@ -80,7 +80,7 @@ import Distribution.Client.TargetProblem
   )
 import Distribution.Client.Targets
   ( UserConstraint (..)
-  , UserConstraintScope (..)
+  , UserConstraintQualifier (..)
   )
 import Distribution.Client.Types
   ( PackageSpecifier (..)
