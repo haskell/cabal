@@ -64,6 +64,7 @@ instance ToExpr ProjectConfig
 instance ToExpr ProjectConfigBuildOnly
 instance ToExpr ProjectConfigProvenance
 instance ToExpr ProjectConfigShared
+instance ToExpr ProjectConfigToolchain
 instance ToExpr ProjectFileParser
 instance ToExpr RelaxDepMod
 instance ToExpr RelaxDeps

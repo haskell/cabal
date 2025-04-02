@@ -380,7 +380,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
     modifiesCompiler :: ProjectConfig -> Bool
     modifiesCompiler pc = isSet projectConfigHcFlavor || isSet projectConfigHcPath || isSet projectConfigHcPkg
       where
-        isSet f = f (projectConfigShared pc) /= NoFlag
+        isSet f = f (projectConfigToolchain $ projectConfigShared pc) /= NoFlag
 
     sanityWalkPCS :: Bool -> ProjectConfigSkeleton -> ProjectParseResult ProjectConfigSkeleton
     sanityWalkPCS underConditional t@(CondNode (listToMaybe -> c, d) comps)
@@ -711,6 +711,7 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
       , globalStoreDir = projectConfigStoreDir
       } = globalFlags
 
+    projectConfigToolchain = ProjectConfigToolchain{..}
     projectConfigPackageDBs = (fmap . fmap) (interpretPackageDB Nothing) projectConfigPackageDBs_
 
     ConfigFlags
@@ -718,10 +719,8 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
       , configHcFlavor = projectConfigHcFlavor
       , configHcPath = projectConfigHcPath
       , configHcPkg = projectConfigHcPkg
-      , -- configProgramPathExtra    = projectConfigProgPathExtra DELETE ME
-      configInstallDirs = projectConfigInstallDirs
-      , -- configUserInstall         = projectConfigUserInstall,
-      configPackageDBs = projectConfigPackageDBs_
+      , configInstallDirs = projectConfigInstallDirs
+      , configPackageDBs = projectConfigPackageDBs_
       } = configFlags
 
     CommonSetupFlags
@@ -962,10 +961,7 @@ convertToLegacySharedConfig
   ProjectConfig
     { projectConfigBuildOnly = ProjectConfigBuildOnly{..}
     , projectConfigShared = ProjectConfigShared{..}
-    , projectConfigAllPackages =
-      PackageConfig
-        { packageConfigDocumentation
-        }
+    , projectConfigAllPackages = PackageConfig{..}
     } =
     LegacySharedConfig
       { legacyGlobalFlags = globalFlags
@@ -977,6 +973,7 @@ convertToLegacySharedConfig
       , legacyMultiRepl = projectConfigMultiRepl
       }
     where
+      ProjectConfigToolchain{..} = projectConfigToolchain
       globalFlags =
         GlobalFlags
           { globalVersion = mempty
@@ -1083,6 +1080,8 @@ convertToLegacyAllPackageConfig
       , legacyBenchmarkFlags = mempty
       }
     where
+      ProjectConfigToolchain{..} = projectConfigToolchain
+
       commonFlags =
         mempty
 

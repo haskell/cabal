@@ -210,7 +210,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
     modifiesCompiler :: ProjectConfig -> Bool
     modifiesCompiler pc = isSet projectConfigHcFlavor || isSet projectConfigHcPath || isSet projectConfigHcPkg
       where
-        isSet f = f (projectConfigShared pc) /= NoFlag
+        isSet f = f (projectConfigToolchain (projectConfigShared pc)) /= NoFlag
 
     sanityWalkPCS :: Bool -> ProjectConfigSkeleton -> ParseResult ProjectFileSource ProjectConfigSkeleton
     sanityWalkPCS underConditional t@(CondNode (_c, d) comps)
