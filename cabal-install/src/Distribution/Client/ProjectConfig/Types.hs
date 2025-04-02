@@ -9,6 +9,7 @@ module Distribution.Client.ProjectConfig.Types
   , ProjectConfigToParse (..)
   , ProjectConfigBuildOnly (..)
   , ProjectConfigShared (..)
+  , ProjectConfigToolchain (..)
   , ProjectConfigProvenance (..)
   , PackageConfig (..)
   , ProjectFileParser (..)
@@ -193,16 +194,13 @@ data ProjectConfigShared = ProjectConfigShared
   , projectConfigProjectFile :: Flag FilePath
   , projectConfigProjectFileParser :: Flag ProjectFileParser
   , projectConfigIgnoreProject :: Flag Bool
-  , projectConfigHcFlavor :: Flag CompilerFlavor
-  , projectConfigHcPath :: Flag FilePath
-  , projectConfigHcPkg :: Flag FilePath
+  , projectConfigToolchain :: ProjectConfigToolchain
   , projectConfigHaddockIndex :: Flag PathTemplate
   , -- Only makes sense for manual mode, not --local mode
     -- too much control!
     -- projectConfigUserInstall       :: Flag Bool,
 
     projectConfigInstallDirs :: InstallDirs (Flag PathTemplate)
-  , projectConfigPackageDBs :: [Maybe PackageDBCWD]
   , -- configuration used both by the solver and other phases
     projectConfigRemoteRepos :: NubList RemoteRepo
   -- ^ Available Hackage servers.
@@ -238,6 +236,14 @@ data ProjectConfigShared = ProjectConfigShared
   -- projectConfigAvoidReinstalls   :: Flag Bool,
   -- projectConfigOverrideReinstall :: Flag Bool,
   -- projectConfigUpgradeDeps       :: Flag Bool
+  }
+  deriving (Eq, Show, Generic)
+
+data ProjectConfigToolchain = ProjectConfigToolchain
+  { projectConfigHcFlavor :: Flag CompilerFlavor
+  , projectConfigHcPath :: Flag FilePath
+  , projectConfigHcPkg :: Flag FilePath
+  , projectConfigPackageDBs :: [Maybe PackageDBCWD]
   }
   deriving (Eq, Show, Generic)
 
@@ -342,6 +348,7 @@ data PackageConfig = PackageConfig
 
 instance Binary ProjectConfig
 instance Binary ProjectConfigBuildOnly
+instance Binary ProjectConfigToolchain
 instance Binary ProjectConfigShared
 instance Binary ProjectConfigProvenance
 instance Binary PackageConfig
@@ -349,6 +356,7 @@ instance Binary ProjectFileParser
 
 instance Structured ProjectConfig
 instance Structured ProjectConfigBuildOnly
+instance Structured ProjectConfigToolchain
 instance Structured ProjectConfigShared
 instance Structured ProjectConfigProvenance
 instance Structured PackageConfig
@@ -398,6 +406,13 @@ instance Monoid ProjectConfigBuildOnly where
   mappend = (<>)
 
 instance Semigroup ProjectConfigBuildOnly where
+  (<>) = gmappend
+
+instance Monoid ProjectConfigToolchain where
+  mempty = gmempty
+  mappend = (<>)
+
+instance Semigroup ProjectConfigToolchain where
   (<>) = gmappend
 
 instance Monoid ProjectConfigShared where

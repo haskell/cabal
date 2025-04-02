@@ -82,6 +82,9 @@ import Distribution.Client.TargetSelector
   ( TargetSelectorProblem (..)
   , TargetString (..)
   )
+import Distribution.Client.Toolchain
+  ( Toolchain (..)
+  )
 import Distribution.Client.Types
   ( PackageLocation (..)
   , PackageSpecifier (..)
@@ -374,13 +377,14 @@ withContextAndSelectors verbosity noTargets kind flags@NixStyleFlags{..} targetS
           projectCfgSkeleton <- readProjectBlockFromScript verbosity httpTransport (distDirLayout ctx) (takeFileName script) scriptContents
 
           createDirectoryIfMissingVerbose verbosity True (distProjectCacheDirectory $ distDirLayout ctx)
-          (compiler, platform@(Platform arch os), _) <- runRebuild projectRoot $ configureCompiler verbosity (distDirLayout ctx) (fst (ignoreConditions projectCfgSkeleton) <> projectConfig ctx)
+          Toolchain{toolchainCompiler, toolchainPlatform = toolchainPlatform@(Platform arch os)} <-
+            runRebuild projectRoot $ configureCompiler verbosity (distDirLayout ctx) (fst (ignoreConditions projectCfgSkeleton) <> projectConfig ctx)
 
-          (projectCfg, _) <- instantiateProjectConfigSkeletonFetchingCompiler (pure (os, arch, compiler)) mempty projectCfgSkeleton
+          (projectCfg, _) <- instantiateProjectConfigSkeletonFetchingCompiler (pure (os, arch, toolchainCompiler)) mempty projectCfgSkeleton
 
           let ctx' = ctx & lProjectConfig %~ (<> projectCfg)
 
-              build_dir = distBuildDirectory (distDirLayout ctx') $ (scriptDistDirParams script) ctx' compiler platform
+              build_dir = distBuildDirectory (distDirLayout ctx') $ (scriptDistDirParams script) ctx' toolchainCompiler toolchainPlatform
               exePath = build_dir </> "bin" </> scriptExeFileName script
               exePathRel = makeRelative (normalise projectRoot) exePath
 

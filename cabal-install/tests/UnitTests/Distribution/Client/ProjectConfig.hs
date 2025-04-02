@@ -600,6 +600,22 @@ instance Arbitrary ProjectConfigBuildOnly where
         preShrink_NumJobs = fmap (fmap Positive)
         postShrink_NumJobs = fmap (fmap getPositive)
 
+instance Arbitrary ProjectConfigToolchain where
+  arbitrary = do
+    projectConfigHcFlavor <- arbitrary
+    projectConfigHcPath <- arbitraryFlag arbitraryShortToken
+    projectConfigHcPkg <- arbitraryFlag arbitraryShortToken
+    projectConfigPackageDBs <- shortListOf 2 arbitrary
+    return ProjectConfigToolchain{..}
+
+  shrink ProjectConfigToolchain{..} =
+    runShrinker $
+      pure ProjectConfigToolchain
+        <*> shrinker projectConfigHcFlavor
+        <*> shrinkerAla (fmap NonEmpty) projectConfigHcPath
+        <*> shrinkerAla (fmap NonEmpty) projectConfigHcPkg
+        <*> shrinker projectConfigPackageDBs
+
 instance Arbitrary ProjectConfigShared where
   arbitrary = do
     projectConfigDistDir <- arbitraryFlag arbitraryShortToken
@@ -608,12 +624,9 @@ instance Arbitrary ProjectConfigShared where
     projectConfigProjectFile <- arbitraryFlag arbitraryShortToken
     projectConfigProjectFileParser <- arbitraryFlag arbitrary
     projectConfigIgnoreProject <- arbitrary
-    projectConfigHcFlavor <- arbitrary
-    projectConfigHcPath <- arbitraryFlag arbitraryShortToken
-    projectConfigHcPkg <- arbitraryFlag arbitraryShortToken
+    projectConfigToolchain <- arbitrary
     projectConfigHaddockIndex <- arbitrary
     projectConfigInstallDirs <- fixInstallDirs <$> arbitrary
-    projectConfigPackageDBs <- shortListOf 2 arbitrary
     projectConfigRemoteRepos <- arbitrary
     projectConfigLocalNoIndexRepos <- arbitrary
     projectConfigActiveRepos <- arbitrary
@@ -654,12 +667,9 @@ instance Arbitrary ProjectConfigShared where
         <*> shrinker projectConfigProjectFile
         <*> shrinker projectConfigProjectFileParser
         <*> shrinker projectConfigIgnoreProject
-        <*> shrinker projectConfigHcFlavor
-        <*> shrinkerAla (fmap NonEmpty) projectConfigHcPath
-        <*> shrinkerAla (fmap NonEmpty) projectConfigHcPkg
+        <*> shrinker projectConfigToolchain
         <*> shrinker projectConfigHaddockIndex
         <*> shrinker projectConfigInstallDirs
-        <*> shrinker projectConfigPackageDBs
         <*> shrinker projectConfigRemoteRepos
         <*> shrinker projectConfigLocalNoIndexRepos
         <*> shrinker projectConfigActiveRepos

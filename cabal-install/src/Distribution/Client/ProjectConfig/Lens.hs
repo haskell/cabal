@@ -7,7 +7,16 @@ import Distribution.Client.IndexUtils.ActiveRepos
   ( ActiveRepos
   )
 import Distribution.Client.IndexUtils.IndexState (TotalIndexState)
-import Distribution.Client.ProjectConfig.Types (MapLast, MapMappend, PackageConfig, ProjectConfig (..), ProjectConfigBuildOnly (..), ProjectConfigProvenance, ProjectConfigShared)
+import Distribution.Client.ProjectConfig.Types
+  ( MapLast
+  , MapMappend
+  , PackageConfig
+  , ProjectConfig (..)
+  , ProjectConfigBuildOnly (..)
+  , ProjectConfigProvenance
+  , ProjectConfigShared
+  , ProjectConfigToolchain (..)
+  )
 import qualified Distribution.Client.ProjectConfig.Types as T
 import Distribution.Client.Targets (UserConstraint)
 import Distribution.Client.Types.AllowNewer (AllowNewer, AllowOlder)
@@ -187,17 +196,25 @@ projectConfigIgnoreProject :: Lens' ProjectConfigShared (Flag Bool)
 projectConfigIgnoreProject f s = fmap (\x -> s{T.projectConfigIgnoreProject = x}) (f (T.projectConfigIgnoreProject s))
 {-# INLINEABLE projectConfigIgnoreProject #-}
 
-projectConfigHcFlavor :: Lens' ProjectConfigShared (Flag CompilerFlavor)
+projectConfigToolchain :: Lens' ProjectConfigShared ProjectConfigToolchain
+projectConfigToolchain f s = fmap (\x -> s{T.projectConfigToolchain = x}) (f (T.projectConfigToolchain s))
+{-# INLINEABLE projectConfigToolchain #-}
+
+projectConfigHcFlavor :: Lens' ProjectConfigToolchain (Flag CompilerFlavor)
 projectConfigHcFlavor f s = fmap (\x -> s{T.projectConfigHcFlavor = x}) (f (T.projectConfigHcFlavor s))
 {-# INLINEABLE projectConfigHcFlavor #-}
 
-projectConfigHcPath :: Lens' ProjectConfigShared (Flag FilePath)
+projectConfigHcPath :: Lens' ProjectConfigToolchain (Flag FilePath)
 projectConfigHcPath f s = fmap (\x -> s{T.projectConfigHcPath = x}) (f (T.projectConfigHcPath s))
 {-# INLINEABLE projectConfigHcPath #-}
 
-projectConfigHcPkg :: Lens' ProjectConfigShared (Flag FilePath)
+projectConfigHcPkg :: Lens' ProjectConfigToolchain (Flag FilePath)
 projectConfigHcPkg f s = fmap (\x -> s{T.projectConfigHcPkg = x}) (f (T.projectConfigHcPkg s))
 {-# INLINEABLE projectConfigHcPkg #-}
+
+projectConfigPackageDBs :: Lens' ProjectConfigToolchain [Maybe PackageDBCWD]
+projectConfigPackageDBs f s = fmap (\x -> s{T.projectConfigPackageDBs = x}) (f (T.projectConfigPackageDBs s))
+{-# INLINEABLE projectConfigPackageDBs #-}
 
 projectConfigHaddockIndex :: Lens' ProjectConfigShared (Flag PathTemplate)
 projectConfigHaddockIndex f s = fmap (\x -> s{T.projectConfigHaddockIndex = x}) (f (T.projectConfigHaddockIndex s))
@@ -206,10 +223,6 @@ projectConfigHaddockIndex f s = fmap (\x -> s{T.projectConfigHaddockIndex = x}) 
 projectConfigInstallDirs :: Lens' ProjectConfigShared (InstallDirs (Flag PathTemplate))
 projectConfigInstallDirs f s = fmap (\x -> s{T.projectConfigInstallDirs = x}) (f (T.projectConfigInstallDirs s))
 {-# INLINEABLE projectConfigInstallDirs #-}
-
-projectConfigPackageDBs :: Lens' ProjectConfigShared [Maybe PackageDBCWD]
-projectConfigPackageDBs f s = fmap (\x -> s{T.projectConfigPackageDBs = x}) (f (T.projectConfigPackageDBs s))
-{-# INLINEABLE projectConfigPackageDBs #-}
 
 projectConfigLocalNoIndexRepos :: Lens' ProjectConfigShared (NubList LocalRepo)
 projectConfigLocalNoIndexRepos f s = fmap (\x -> s{T.projectConfigLocalNoIndexRepos = x}) (f (T.projectConfigLocalNoIndexRepos s))

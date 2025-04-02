@@ -12,7 +12,14 @@ import qualified Data.Set as Set
 import Distribution.CabalSpecVersion (CabalSpecVersion (..))
 import Distribution.Client.CmdInstall.ClientInstallFlags (clientInstallFlagsGrammar)
 import qualified Distribution.Client.ProjectConfig.Lens as L
-import Distribution.Client.ProjectConfig.Types (PackageConfig (..), ProjectConfig (..), ProjectConfigBuildOnly (..), ProjectConfigProvenance (..), ProjectConfigShared (..))
+import Distribution.Client.ProjectConfig.Types
+  ( PackageConfig (..)
+  , ProjectConfig (..)
+  , ProjectConfigBuildOnly (..)
+  , ProjectConfigProvenance (..)
+  , ProjectConfigShared (..)
+  , ProjectConfigToolchain (..)
+  )
 import Distribution.Client.Utils.Parsec
 import Distribution.Compat.Prelude
 import Distribution.FieldGrammar
@@ -76,12 +83,9 @@ projectConfigSharedFieldGrammar source =
     <*> optionalFieldDefAla "project-file" (alaFlag FilePathNT) L.projectConfigProjectFile mempty
     <*> pure mempty -- You can't set the parser type in the project file.
     <*> optionalFieldDef "ignore-project" L.projectConfigIgnoreProject mempty
-    <*> optionalFieldDef "compiler" L.projectConfigHcFlavor mempty
-    <*> optionalFieldDefAla "with-compiler" (alaFlag FilePathNT) L.projectConfigHcPath mempty
-    <*> optionalFieldDefAla "with-hc-pkg" (alaFlag FilePathNT) L.projectConfigHcPkg mempty
+    <*> blurFieldGrammar L.projectConfigToolchain projectConfigToolchainFieldGrammar
     <*> optionalFieldDef "doc-index-file" L.projectConfigHaddockIndex mempty
     <*> blurFieldGrammar L.projectConfigInstallDirs installDirsGrammar
-    <*> monoidalFieldAla "package-dbs" (alaList' CommaFSep PackageDBNT) L.projectConfigPackageDBs
     <*> pure mempty -- repository stanza for projectConfigRemoteRepos
     <*> pure mempty -- repository stanza for projectConfigLocalNoIndexRepos
     <*> monoidalField "active-repositories" L.projectConfigActiveRepos
@@ -107,6 +111,14 @@ projectConfigSharedFieldGrammar source =
     <*> optionalFieldDef "prefer-oldest" L.projectConfigPreferOldest mempty
     <*> monoidalFieldAla "extra-prog-path-shared-only" (alaNubList' FSep FilePathNT) L.projectConfigProgPathExtra
     <*> optionalFieldDef "multi-repl" L.projectConfigMultiRepl mempty
+
+projectConfigToolchainFieldGrammar :: ParsecFieldGrammar' ProjectConfigToolchain
+projectConfigToolchainFieldGrammar =
+  ProjectConfigToolchain
+    <$> optionalFieldDef "compiler" L.projectConfigHcFlavor mempty
+    <*> optionalFieldDefAla "with-compiler" (alaFlag FilePathNT) L.projectConfigHcPath mempty
+    <*> optionalFieldDefAla "with-hc-pkg" (alaFlag FilePathNT) L.projectConfigHcPkg mempty
+    <*> monoidalFieldAla "package-dbs" (alaList' CommaFSep PackageDBNT) L.projectConfigPackageDBs
 
 packageConfigFieldGrammar :: [String] -> ParsecFieldGrammar' PackageConfig
 packageConfigFieldGrammar knownPrograms =

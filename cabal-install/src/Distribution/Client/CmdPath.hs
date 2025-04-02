@@ -46,6 +46,9 @@ import Distribution.Client.ScriptUtils
 import Distribution.Client.Setup
   ( yesNoOpt
   )
+import Distribution.Client.Toolchain
+  ( Toolchain (..)
+  )
 import Distribution.Client.Utils.Json
   ( (.=)
   )
@@ -244,10 +247,10 @@ pathAction flags@NixStyleFlags{extraFlags = pathFlags'} cliTargetStrings globalF
     if not $ fromFlagOrDefault False (pathCompiler pathFlags)
       then pure Nothing
       else do
-        (compiler, _, progDb) <- runRebuild (distProjectRootDirectory . distDirLayout $ baseCtx) $ configureCompiler verbosity (distDirLayout baseCtx) (projectConfig baseCtx)
-        compilerProg <- requireCompilerProg verbosity compiler
-        (configuredCompilerProg, _) <- requireProgram verbosity compilerProg progDb
-        pure $ Just $ mkCompilerInfo configuredCompilerProg compiler
+        toolchain <- runRebuild (distProjectRootDirectory . distDirLayout $ baseCtx) $ configureCompiler verbosity (distDirLayout baseCtx) (projectConfig baseCtx)
+        compilerProg <- requireCompilerProg verbosity (toolchainCompiler toolchain)
+        (configuredCompilerProg, _) <- requireProgram verbosity compilerProg (toolchainProgramDb toolchain)
+        pure $ Just $ mkCompilerInfo configuredCompilerProg (toolchainCompiler toolchain)
 
   paths <- for (fromFlagOrDefault [] $ pathDirectories pathFlags) $ \p -> do
     t <- getPathLocation baseCtx p

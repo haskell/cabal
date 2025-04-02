@@ -179,6 +179,7 @@ testProjectConfigShared = do
   assertConfigEquals expected config legacy (projectConfigShared . condTreeData)
   where
     expected = ProjectConfigShared{..}
+    projectConfigToolchain = ProjectConfigToolchain{..}
     projectConfigDistDir = toFlag "something"
     projectConfigConfigFile = mempty -- cli only
     projectConfigProjectFileParser = mempty -- cli only
@@ -188,9 +189,13 @@ testProjectConfigShared = do
     projectConfigHcFlavor = toFlag GHCJS
     projectConfigHcPath = toFlag "/some/path/to/compiler"
     projectConfigHcPkg = toFlag "/some/path/to/ghc-pkg"
+    projectConfigPackageDBs = [Nothing, Just (SpecificPackageDB "foo"), Nothing, Just (SpecificPackageDB "bar"), Just (SpecificPackageDB "baz")]
+    projectConfigBuildHcFlavor = toFlag GHCJS
+    projectConfigBuildHcPath = toFlag "/some/path/to/compiler"
+    projectConfigBuildHcPkg = toFlag "/some/path/to/ghc-pkg"
+    projectConfigBuildPackageDBs = [Nothing, Just (SpecificPackageDB "foo"), Nothing, Just (SpecificPackageDB "bar"), Just (SpecificPackageDB "baz")]
     projectConfigHaddockIndex = toFlag $ toPathTemplate "/path/to/haddock-index"
     projectConfigInstallDirs = mempty -- tested below in testInstallDirs
-    projectConfigPackageDBs = [Nothing, Just (SpecificPackageDB "foo"), Nothing, Just (SpecificPackageDB "bar"), Just (SpecificPackageDB "baz")]
     projectConfigRemoteRepos = mempty -- tested below in testRemoteRepos
     projectConfigLocalNoIndexRepos = mempty -- tested below in testLocalNoIndexRepos
     projectConfigActiveRepos = Flag (ActiveRepos [ActiveRepo (RepoName "hackage.haskell.org") CombineStrategyMerge, ActiveRepo (RepoName "my-repository") CombineStrategyOverride])
