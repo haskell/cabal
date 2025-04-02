@@ -27,7 +27,16 @@ import qualified UnitTests.Distribution.Solver.Types.OptionalStanza
 
 main :: IO ()
 main = do
-  initTests <- UnitTests.Distribution.Client.Init.tests
+ initTests <- UnitTests.Distribution.Client.Init.tests
+ if True then 
+  defaultMain $
+    testGroup
+      "Unit Tests"
+      [ testGroup
+          "UnitTests.Distribution.Client.ProjectConfig"
+          UnitTests.Distribution.Client.ProjectConfig.tests
+      ]
+ else do
   defaultMain $
     testGroup
       "Unit Tests"
