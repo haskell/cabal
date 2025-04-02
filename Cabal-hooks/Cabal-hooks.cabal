@@ -1,4 +1,4 @@
-cabal-version: 2.2
+cabal-version: 3.4
 name:          Cabal-hooks
 version:       3.16
 copyright:     2023, Cabal Development Team
