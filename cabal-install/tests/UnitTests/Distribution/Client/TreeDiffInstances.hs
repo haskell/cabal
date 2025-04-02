@@ -81,6 +81,7 @@ instance ToExpr Timestamp
 instance ToExpr TotalIndexState
 instance ToExpr UserConstraint
 instance ToExpr UserConstraintScope
+instance ToExpr UserConstraintQualifier
 instance ToExpr UserQualifier
 instance ToExpr WriteGhcEnvironmentFilesPolicy
 

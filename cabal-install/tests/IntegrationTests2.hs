@@ -31,7 +31,7 @@ import Distribution.Client.TargetSelector hiding (DirActions (..))
 import qualified Distribution.Client.TargetSelector as TS (DirActions (..))
 import Distribution.Client.Targets
   ( UserConstraint (..)
-  , UserConstraintScope (UserAnyQualifier)
+  , UserConstraintQualifier (UserAnyQualifier)
   )
 import Distribution.Client.Types
   ( PackageLocation (..)

@@ -470,8 +470,8 @@ arbitraryConstraint pkgs = do
   (PN pn, v) <- elements pkgs
   let anyQualifier = ScopeAnyQualifier (mkPackageName pn)
   oneof
-    [ ExVersionConstraint anyQualifier <$> arbitraryVersionRange v
-    , ExStanzaConstraint anyQualifier <$> sublistOf [TestStanzas, BenchStanzas]
+    [ ExVersionConstraint (ConstraintScope Nothing anyQualifier) <$> arbitraryVersionRange v
+    , ExStanzaConstraint (ConstraintScope Nothing anyQualifier) <$> sublistOf [TestStanzas, BenchStanzas]
     ]
 
 arbitraryPreference :: [(PN, PV)] -> Gen ExPreference

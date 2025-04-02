@@ -288,6 +288,10 @@ instance Arbitrary UserConstraintScope where
   arbitrary = genericArbitrary
   shrink = genericShrink
 
+instance Arbitrary UserConstraintQualifier where
+  arbitrary = genericArbitrary
+  shrink = genericShrink
+
 instance Arbitrary UserQualifier where
   arbitrary =
     oneof

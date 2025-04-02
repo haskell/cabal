@@ -52,7 +52,7 @@ pkgSpecifierConstraints (SpecificSourcePackage pkg) =
   where
     pc =
       PackageConstraint
-        (ScopeTarget $ packageName pkg)
+        (scopeToplevel (packageName pkg))
         (PackagePropertyVersion $ thisVersion (packageVersion pkg))
 
 mkNamedPackage :: PackageIdentifier -> PackageSpecifier pkg

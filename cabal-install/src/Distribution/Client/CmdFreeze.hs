@@ -30,7 +30,7 @@ import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning
 import Distribution.Client.Targets
   ( UserConstraint (..)
-  , UserConstraintScope (..)
+  , UserConstraintQualifier (..)
   , UserQualifier (..)
   )
 import Distribution.Solver.Types.ConstraintSource

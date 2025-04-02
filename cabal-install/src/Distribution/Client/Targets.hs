@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- |
@@ -34,7 +35,8 @@ module Distribution.Client.Targets
     -- * User constraints
   , UserQualifier (..)
   , UserConstraintScope (..)
-  , UserConstraint (..)
+  , UserConstraintQualifier (..)
+  , UserConstraint (UserConstraint, UserConstraintStaged)
   , userConstraintPackageName
   , readUserConstraint
   , userToPackageConstraint
@@ -99,6 +101,7 @@ import qualified Data.Map as Map
 import Distribution.Client.Errors
 import qualified Distribution.Client.GZipUtils as GZipUtils
 import qualified Distribution.Compat.CharParsing as P
+import Distribution.Solver.Types.Stage (Stage)
 import Distribution.Utils.Path (makeSymbolicPath)
 import Network.URI
   ( URI (..)
@@ -613,7 +616,13 @@ instance Structured UserQualifier
 
 -- | Version of 'ConstraintScope' that a user may specify on the
 -- command line.
-data UserConstraintScope
+data UserConstraintScope = UserConstraintScope (Maybe Stage) UserConstraintQualifier
+  deriving (Eq, Show, Generic)
+
+instance Binary UserConstraintScope
+instance Structured UserConstraintScope
+
+data UserConstraintQualifier
   = -- | Scope that applies to the package when it has the specified qualifier.
     UserQualified UserQualifier PackageName
   | -- | Scope that applies to the package when it has a setup qualifier.
@@ -622,8 +631,8 @@ data UserConstraintScope
     UserAnyQualifier PackageName
   deriving (Eq, Show, Generic)
 
-instance Binary UserConstraintScope
-instance Structured UserConstraintScope
+instance Binary UserConstraintQualifier
+instance Structured UserConstraintQualifier
 
 fromUserQualifier :: UserQualifier -> Qualifier
 fromUserQualifier UserQualToplevel = QualToplevel
@@ -631,29 +640,37 @@ fromUserQualifier (UserQualSetup name) = QualSetup name
 fromUserQualifier (UserQualExe name1 name2) = QualExe name1 name2
 
 fromUserConstraintScope :: UserConstraintScope -> ConstraintScope
-fromUserConstraintScope (UserQualified q pn) =
-  ScopeQualified (fromUserQualifier q) pn
-fromUserConstraintScope (UserAnySetupQualifier pn) = ScopeAnySetupQualifier pn
-fromUserConstraintScope (UserAnyQualifier pn) = ScopeAnyQualifier pn
+fromUserConstraintScope (UserConstraintScope mstage (UserQualified q pn)) =
+  ConstraintScope mstage (ScopeQualified (fromUserQualifier q) pn)
+fromUserConstraintScope (UserConstraintScope mstage (UserAnySetupQualifier pn)) =
+  ConstraintScope mstage (ScopeAnySetupQualifier pn)
+fromUserConstraintScope (UserConstraintScope mstage (UserAnyQualifier pn)) =
+  ConstraintScope mstage (ScopeAnyQualifier pn)
 
 -- | Version of 'PackageConstraint' that the user can specify on
 -- the command line.
 data UserConstraint
-  = UserConstraint UserConstraintScope PackageProperty
+  = UserConstraintX UserConstraintScope PackageProperty
   deriving (Eq, Show, Generic)
 
 instance Binary UserConstraint
 instance Structured UserConstraint
 
+pattern UserConstraint :: UserConstraintQualifier -> PackageProperty -> UserConstraint
+pattern UserConstraint qualifier prop = UserConstraintX (UserConstraintScope Nothing qualifier) prop
+
+pattern UserConstraintStaged :: Stage -> UserConstraintQualifier -> PackageProperty -> UserConstraint
+pattern UserConstraintStaged stage qualifier prop = UserConstraintX (UserConstraintScope (Just stage) qualifier) prop
+
 userConstraintPackageName :: UserConstraint -> PackageName
-userConstraintPackageName (UserConstraint scope _) = scopePN scope
+userConstraintPackageName (UserConstraintX (UserConstraintScope _stage qualifier) _) = scopePN qualifier
   where
     scopePN (UserQualified _ pn) = pn
     scopePN (UserAnyQualifier pn) = pn
     scopePN (UserAnySetupQualifier pn) = pn
 
 userToPackageConstraint :: UserConstraint -> PackageConstraint
-userToPackageConstraint (UserConstraint scope prop) =
+userToPackageConstraint (UserConstraintX scope prop) =
   PackageConstraint (fromUserConstraintScope scope) prop
 
 readUserConstraint :: String -> Either String UserConstraint
@@ -668,7 +685,7 @@ readUserConstraint str =
         ++ "'source', 'test', 'bench', or flags. "
 
 instance Pretty UserConstraint where
-  pretty (UserConstraint scope prop) =
+  pretty (UserConstraintX scope prop) =
     pretty $ PackageConstraint (fromUserConstraintScope scope) prop
 
 instance Parsec UserConstraint where
@@ -684,25 +701,49 @@ instance Parsec UserConstraint where
         , PackagePropertyStanzas [TestStanzas] <$ P.string "test"
         , PackagePropertyStanzas [BenchStanzas] <$ P.string "bench"
         ]
-    return (UserConstraint scope prop)
+    return (UserConstraintX scope prop)
     where
       parseConstraintScope :: forall m. CabalParsing m => m UserConstraintScope
       parseConstraintScope = do
+        mstage <- P.optional (P.try (parsec <* P.char ':'))
         pn <- parsec
-        P.choice
-          [ P.char '.' *> withDot pn
-          , P.char ':' *> withColon pn
-          , return (UserQualified UserQualToplevel pn)
-          ]
+        c <-
+          P.choice
+            [ P.char '.' *> withDot pn
+            , P.char ':' *> withColon pn
+            , return (UserQualified UserQualToplevel pn)
+            ]
+        return $ UserConstraintScope mstage c
         where
-          withDot :: PackageName -> m UserConstraintScope
+          withDot :: PackageName -> m UserConstraintQualifier
           withDot pn
             | pn == mkPackageName "any" = UserAnyQualifier <$> parsec
             | pn == mkPackageName "setup" = UserAnySetupQualifier <$> parsec
             | otherwise = P.unexpected $ "constraint scope: " ++ unPackageName pn
 
-          withColon :: PackageName -> m UserConstraintScope
+          withColon :: PackageName -> m UserConstraintQualifier
           withColon pn =
             UserQualified (UserQualSetup pn)
               <$ P.string "setup."
               <*> parsec
+
+-- >>> eitherParsec "foo > 1.2.3.4" :: Either String UserConstraint
+-- Right (UserConstraintX (UserConstraintScope Nothing (UserQualified UserQualToplevel (PackageName "foo"))) (PackagePropertyVersion (LaterVersion (mkVersion [1,2,3,4]))))
+--
+-- >>> eitherParsec "foo ^>= 1.2.3.4" :: Either String UserConstraint
+-- Right (UserConstraintX (UserConstraintScope Nothing (UserQualified UserQualToplevel (PackageName "foo"))) (PackagePropertyVersion (MajorBoundVersion (mkVersion [1,2,3,4]))))
+--
+-- >>> eitherParsec "foo:setup.bar > 1.2.3.4" :: Either String UserConstraint
+-- Right (UserConstraintX (UserConstraintScope Nothing (UserQualified (UserQualSetup (PackageName "foo")) (PackageName "bar"))) (PackagePropertyVersion (LaterVersion (mkVersion [1,2,3,4]))))
+--
+-- >>> eitherParsec "setup.any source" :: Either String UserConstraint
+-- Right (UserConstraintX (UserConstraintScope Nothing (UserAnySetupQualifier (PackageName "any"))) PackagePropertySource)
+--
+-- >>> eitherParsec "build:rts source" :: Either String UserConstraint
+-- Right (UserConstraintX (UserConstraintScope (Just Build) (UserQualified UserQualToplevel (PackageName "rts"))) PackagePropertySource)
+--
+-- >>> eitherParsec "setup.any installed" :: Either String UserConstraint
+-- Right (UserConstraintX (UserConstraintScope Nothing (UserAnySetupQualifier (PackageName "any"))) PackagePropertyInstalled)
+--
+-- >>> eitherParsec "build:ghc-internal installed" :: Either String UserConstraint
+-- Right (UserConstraintX (UserConstraintScope (Just Build) (UserQualified UserQualToplevel (PackageName "ghc-internal"))) PackagePropertyInstalled)

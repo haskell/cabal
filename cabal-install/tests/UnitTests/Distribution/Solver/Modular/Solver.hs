@@ -66,13 +66,13 @@ tests =
               any $ isInfixOf "rejecting: pkg:-flag (manual flag can only be changed explicitly)"
          in runTest $
               setVerbose $
-                constraints [ExVersionConstraint (ScopeAnyQualifier "true-dep") V.noVersion] $
+                constraints [ExVersionConstraint (ConstraintScope Nothing (ScopeAnyQualifier "true-dep")) V.noVersion] $
                   mkTest dbManualFlags "Don't toggle manual flag to avoid conflict" ["pkg"] $
                     -- TODO: We should check the summarized log instead of the full log
                     -- for the manual flags error message, but it currently only
                     -- appears in the full log.
                     SolverResult checkFullLog (Left $ const True)
-      , let cs = [ExFlagConstraint (ScopeAnyQualifier "pkg") "flag" False]
+      , let cs = [ExFlagConstraint (ConstraintScope Nothing (ScopeAnyQualifier "pkg")) "flag" False]
          in runTest $
               constraints cs $
                 mkTest dbManualFlags "Toggle manual flag with flag constraint" ["pkg"] $
@@ -81,7 +81,7 @@ tests =
   , testGroup
       "Qualified manual flag constraints"
       [ let name = "Top-level flag constraint does not constrain setup dep's flag"
-            cs = [ExFlagConstraint (ScopeQualified P.QualToplevel "B") "flag" False]
+            cs = [ExFlagConstraint (ConstraintScope Nothing (ScopeQualified P.QualToplevel "B")) "flag" False]
          in runTest $
               constraints cs $
                 mkTest dbSetupDepWithManualFlag name ["A"] $
@@ -94,8 +94,8 @@ tests =
                     ]
       , let name = "Solver can toggle setup dep's flag to match top-level constraint"
             cs =
-              [ ExFlagConstraint (ScopeQualified P.QualToplevel "B") "flag" False
-              , ExVersionConstraint (ScopeAnyQualifier "b-2-true-dep") V.noVersion
+              [ ExFlagConstraint (ConstraintScope Nothing (ScopeQualified P.QualToplevel "B")) "flag" False
+              , ExVersionConstraint (ConstraintScope Nothing (ScopeAnyQualifier "b-2-true-dep")) V.noVersion
               ]
          in runTest $
               constraints cs $
@@ -109,8 +109,8 @@ tests =
                     ]
       , let name = "User can constrain flags separately with qualified constraints"
             cs =
-              [ ExFlagConstraint (ScopeQualified P.QualToplevel "B") "flag" True
-              , ExFlagConstraint (ScopeQualified (P.QualSetup "A") "B") "flag" False
+              [ ExFlagConstraint (ConstraintScope Nothing (ScopeQualified P.QualToplevel "B")) "flag" True
+              , ExFlagConstraint (ConstraintScope Nothing (ScopeQualified (P.QualSetup "A") "B")) "flag" False
               ]
          in runTest $
               constraints cs $
@@ -124,15 +124,15 @@ tests =
                     ]
       , -- Regression test for #4299
         let name = "Solver can link deps when only one has constrained manual flag"
-            cs = [ExFlagConstraint (ScopeQualified P.QualToplevel "B") "flag" False]
+            cs = [ExFlagConstraint (ConstraintScope Nothing (ScopeQualified P.QualToplevel "B")) "flag" False]
          in runTest $
               constraints cs $
                 mkTest dbLinkedSetupDepWithManualFlag name ["A"] $
                   solverSuccess [("A", 1), ("B", 1), ("b-1-false-dep", 1)]
       , let name = "Solver cannot link deps that have conflicting manual flag constraints"
             cs =
-              [ ExFlagConstraint (ScopeQualified P.QualToplevel "B") "flag" True
-              , ExFlagConstraint (ScopeQualified (P.QualSetup "A") "B") "flag" False
+              [ ExFlagConstraint (ConstraintScope Nothing (ScopeQualified P.QualToplevel "B")) "flag" True
+              , ExFlagConstraint (ConstraintScope Nothing (ScopeQualified (P.QualSetup "A") "B")) "flag" False
               ]
             failureReason = "(constraint from unknown source requires opposite flag selection)"
             checkFullLog lns =
@@ -259,20 +259,20 @@ tests =
       [ runTest $
           mkTest dbConstraints "install latest versions without constraints" ["A", "B", "C"] $
             solverSuccess [("A", 7), ("B", 8), ("C", 9), ("D", 7), ("D", 8), ("D", 9)]
-      , let cs = [ExVersionConstraint (ScopeAnyQualifier "D") $ mkVersionRange 1 4]
+      , let cs = [ExVersionConstraint (ConstraintScope Nothing (ScopeAnyQualifier "D")) $ mkVersionRange 1 4]
          in runTest $
               constraints cs $
                 mkTest dbConstraints "force older versions with unqualified constraint" ["A", "B", "C"] $
                   solverSuccess [("A", 1), ("B", 2), ("C", 3), ("D", 1), ("D", 2), ("D", 3)]
       , let cs =
-              [ ExVersionConstraint (ScopeQualified P.QualToplevel "D") $ mkVersionRange 1 4
-              , ExVersionConstraint (ScopeQualified (P.QualSetup "B") "D") $ mkVersionRange 4 7
+              [ ExVersionConstraint (ConstraintScope Nothing (ScopeQualified P.QualToplevel "D")) $ mkVersionRange 1 4
+              , ExVersionConstraint (ConstraintScope Nothing (ScopeQualified (P.QualSetup "B") "D")) $ mkVersionRange 4 7
               ]
          in runTest $
               constraints cs $
                 mkTest dbConstraints "force multiple versions with qualified constraints" ["A", "B", "C"] $
                   solverSuccess [("A", 1), ("B", 5), ("C", 9), ("D", 1), ("D", 5), ("D", 9)]
-      , let cs = [ExVersionConstraint (ScopeAnySetupQualifier "D") $ mkVersionRange 1 4]
+      , let cs = [ExVersionConstraint (ConstraintScope Nothing (ScopeAnySetupQualifier "D")) $ mkVersionRange 1 4]
          in runTest $
               constraints cs $
                 mkTest dbConstraints "constrain package across setup scripts" ["A", "B", "C"] $
@@ -402,7 +402,7 @@ tests =
                     `withSubLibrary` exSubLib "sub-lib" [ExFlagged "make-lib-private" (dependencies []) publicDependencies]
               ]
          in runTest $
-              constraints [ExFlagConstraint (ScopeAnyQualifier "B") "make-lib-private" True] $
+              constraints [ExFlagConstraint (ConstraintScope Nothing (ScopeAnyQualifier "B")) "make-lib-private" True] $
                 mkTest db "reject package with sub-library made private by flag constraint" ["A"] $
                   solverFailure $
                     isInfixOf $
@@ -517,7 +517,7 @@ tests =
       ]
   , -- tests for partial fix for issue #5325
     testGroup "Components that are unbuildable in the current environment" $
-      let flagConstraint = ExFlagConstraint . ScopeAnyQualifier
+      let flagConstraint = ExFlagConstraint . ConstraintScope Nothing . ScopeAnyQualifier
        in [ let db = [Right $ exAv "A" 1 [ExFlagged "build-lib" (dependencies []) unbuildableDependencies]]
              in runTest $
                   constraints [flagConstraint "A" "build-lib" False] $
@@ -1994,7 +1994,7 @@ requireConsistentBuildToolVersions name =
 -- instead of missing.
 chooseUnbuildableExeAfterBuildToolsPackage :: String -> SolverTest
 chooseUnbuildableExeAfterBuildToolsPackage name =
-  constraints [ExFlagConstraint (ScopeAnyQualifier "B") "build-bt2" False] $
+  constraints [ExFlagConstraint (ConstraintScope Nothing (ScopeAnyQualifier "B")) "build-bt2" False] $
     goalOrder goals $
       mkTest db name ["A"] $
         solverFailure $
@@ -2110,7 +2110,7 @@ setupStanzaTest1 = constraints [ExStanzaConstraint (scopeToplevel "B") [TestStan
 -- With the "any" qualifier syntax
 setupStanzaTest2 :: SolverTest
 setupStanzaTest2 =
-  constraints [ExStanzaConstraint (ScopeAnyQualifier "B") [TestStanzas]] $
+  constraints [ExStanzaConstraint (ConstraintScope Nothing (ScopeAnyQualifier "B")) [TestStanzas]] $
     mkTest
       dbSetupStanza
       "setupStanzaTest2"
