@@ -461,7 +461,7 @@ dontInstallNonReinstallablePackages params =
   where
     extraConstraints =
       [ LabeledPackageConstraint
-        (PackageConstraint (ScopeAnyQualifier pkgname) PackagePropertyInstalled)
+        (PackageConstraint (ConstraintScope Nothing (ScopeAnyQualifier pkgname)) PackagePropertyInstalled)
         ConstraintSourceNonReinstallablePackage
       | pkgname <- nonReinstallablePackages
       ]
@@ -710,7 +710,7 @@ addSetupCabalMinVersionConstraint minVersion =
   addConstraints
     [ LabeledPackageConstraint
         ( PackageConstraint
-            (ScopeAnySetupQualifier cabalPkgname)
+            (ConstraintScope Nothing (ScopeAnySetupQualifier cabalPkgname))
             (PackagePropertyVersion $ orLaterVersion minVersion)
         )
         ConstraintSetupCabalMinVersion
@@ -728,7 +728,7 @@ addSetupCabalMaxVersionConstraint maxVersion =
   addConstraints
     [ LabeledPackageConstraint
         ( PackageConstraint
-            (ScopeAnySetupQualifier cabalPkgname)
+            (ConstraintScope Nothing (ScopeAnySetupQualifier cabalPkgname))
             (PackagePropertyVersion $ earlierVersion maxVersion)
         )
         ConstraintSetupCabalMaxVersion
@@ -744,7 +744,7 @@ addSetupCabalProfiledDynamic =
   addConstraints
     [ LabeledPackageConstraint
         ( PackageConstraint
-            (ScopeAnySetupQualifier cabalPkgname)
+            (ConstraintScope Nothing (ScopeAnySetupQualifier cabalPkgname))
             (PackagePropertyVersion $ orLaterVersion (mkVersion [3, 13, 0]))
         )
         ConstraintSourceProfiledDynamic
