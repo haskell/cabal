@@ -68,7 +68,8 @@ import Distribution.Client.NixStyleOptions
   , nixStyleOptions
   )
 import Distribution.Client.ProjectConfig
-  ( ProjectPackageLocation (..)
+  ( ProjectConfigToolchain (..)
+  , ProjectPackageLocation (..)
   , fetchAndReadSourcePackages
   , projectConfigWithBuilderRepoContext
   , resolveBuildTimeSettings
@@ -413,12 +414,15 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
           }
       , projectConfigShared =
         ProjectConfigShared
-          { projectConfigHcFlavor
-          , projectConfigHcPath
-          , projectConfigHcPkg
+          { projectConfigToolchain =
+            ProjectConfigToolchain
+              { projectConfigHcFlavor
+              , projectConfigHcPath
+              , projectConfigHcPkg
+              , projectConfigPackageDBs
+              }
           , projectConfigStoreDir
           , projectConfigProgPathExtra
-          , projectConfigPackageDBs
           }
       , projectConfigLocalPackages =
         PackageConfig

@@ -136,6 +136,7 @@ import Distribution.Client.Setup hiding (cabalVersion, packageName)
 import Distribution.Client.SetupWrapper
 import Distribution.Client.Store
 import Distribution.Client.Targets (userToPackageConstraint)
+import Distribution.Client.Toolchain
 import Distribution.Client.Types
 import Distribution.Client.Utils (concatMapM, incVersion)
 
@@ -376,8 +377,8 @@ rebuildProjectConfig
       return
         ( configPath
         , distProjectFile ""
-        , (projectConfigHcFlavor, projectConfigHcPath, projectConfigHcPkg)
         , projectConfigProjectFileParser
+        , projectConfigToolchain
         , progsearchpath
         , packageConfigProgramPaths
         , packageConfigProgramPathExtra
@@ -396,8 +397,9 @@ rebuildProjectConfig
           let fetchCompiler = do
                 -- have to create the cache directory before configuring the compiler
                 liftIO $ createDirectoryIfMissingVerbose verbosity True distProjectCacheDirectory
-                (compiler, Platform arch os, _) <- configureCompiler verbosity distDirLayout (fst (PD.ignoreConditions projectConfigSkeleton) <> cliConfig)
-                pure (os, arch, compiler)
+                Toolchain{toolchainCompiler, toolchainPlatform = Platform arch os} <-
+                  configureCompiler verbosity distDirLayout (fst (PD.ignoreConditions projectConfigSkeleton) <> cliConfig)
+                pure (os, arch, toolchainCompiler)
 
           (projectConfig, compiler) <- instantiateProjectConfigSkeletonFetchingCompiler fetchCompiler mempty projectConfigSkeleton
           when (projectConfigDistDir (projectConfigShared $ projectConfig) /= NoFlag) $
@@ -410,7 +412,7 @@ rebuildProjectConfig
 
     return (projectConfig <> cliConfig, localPackages)
     where
-      ProjectConfigShared{projectConfigHcFlavor, projectConfigHcPath, projectConfigHcPkg, projectConfigProjectFileParser, projectConfigIgnoreProject, projectConfigConfigFile} =
+      ProjectConfigShared{projectConfigProjectFileParser, projectConfigIgnoreProject, projectConfigConfigFile, projectConfigToolchain} =
         projectConfigShared cliConfig
 
       PackageConfig{packageConfigProgramPaths, packageConfigProgramPathExtra} =
@@ -500,7 +502,7 @@ configureCompiler
   :: Verbosity
   -> DistDirLayout
   -> ProjectConfig
-  -> Rebuild (Compiler, Platform, ProgramDb)
+  -> Rebuild Toolchain
 configureCompiler
   verbosity
   DistDirLayout
@@ -509,9 +511,7 @@ configureCompiler
   ProjectConfig
     { projectConfigShared =
       ProjectConfigShared
-        { projectConfigHcFlavor
-        , projectConfigHcPath
-        , projectConfigHcPkg
+        { projectConfigToolchain
         , projectConfigProgPathExtra
         }
     , projectConfigLocalPackages =
@@ -524,7 +524,7 @@ configureCompiler
 
     progsearchpath <- liftIO $ getSystemSearchPath
 
-    (hc, plat, hcProgDb) <-
+    (toolchainCompiler, toolchainPlatform, tempProgDb) <-
       rerunIfChanged
         verbosity
         fileMonitorCompiler
@@ -564,12 +564,13 @@ configureCompiler
     -- auxiliary unconfigured programs to the ProgramDb (e.g. hc-pkg, haddock, ar, ld...).
     --
     -- See Note [Caching the result of configuring the compiler]
-    finalProgDb <- liftIO $ Cabal.configCompilerProgDb verbosity hc hcProgDb hcPkg
-    return (hc, plat, finalProgDb)
+    toolchainProgramDb <- liftIO $ Cabal.configCompilerProgDb verbosity toolchainCompiler tempProgDb hcPkg
+    let toolchainPackageDBs = Cabal.interpretPackageDbFlags False (projectConfigPackageDBs projectConfigToolchain)
+    return Toolchain{..}
     where
-      hcFlavor = flagToMaybe projectConfigHcFlavor
-      hcPath = flagToMaybe projectConfigHcPath
-      hcPkg = flagToMaybe projectConfigHcPkg
+      hcFlavor = flagToMaybe (projectConfigHcFlavor projectConfigToolchain)
+      hcPath = flagToMaybe (projectConfigHcPath projectConfigToolchain)
+      hcPkg = flagToMaybe (projectConfigHcPkg projectConfigToolchain)
 
 {- Note [Caching the result of configuring the compiler]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -674,12 +675,12 @@ rebuildInstallPlan
               , progsearchpath
               )
               $ do
-                compilerEtc <- phaseConfigureCompiler projectConfig
-                _ <- phaseConfigurePrograms projectConfig compilerEtc
+                toolchain <- phaseConfigureCompiler projectConfig
+                _ <- phaseConfigurePrograms projectConfig toolchain
                 (solverPlan, pkgConfigDB, totalIndexState, activeRepos) <-
                   phaseRunSolver
                     projectConfig
-                    compilerEtc
+                    toolchain
                     localPackages
                     (fromMaybe mempty mbInstalledPackages)
                 ( elaboratedPlan
@@ -687,7 +688,7 @@ rebuildInstallPlan
                   ) <-
                   phaseElaboratePlan
                     projectConfig
-                    compilerEtc
+                    toolchain
                     pkgConfigDB
                     solverPlan
                     localPackages
@@ -717,7 +718,7 @@ rebuildInstallPlan
       --
       phaseConfigureCompiler
         :: ProjectConfig
-        -> Rebuild (Compiler, Platform, ProgramDb)
+        -> Rebuild Toolchain
       phaseConfigureCompiler = configureCompiler verbosity distDirLayout
 
       -- Configuring other programs.
@@ -734,16 +735,16 @@ rebuildInstallPlan
       --
       phaseConfigurePrograms
         :: ProjectConfig
-        -> (Compiler, Platform, ProgramDb)
+        -> Toolchain
         -> Rebuild ()
-      phaseConfigurePrograms projectConfig (_, _, compilerprogdb) = do
+      phaseConfigurePrograms projectConfig toolchain = do
         -- Users are allowed to specify program locations independently for
         -- each package (e.g. to use a particular version of a pre-processor
         -- for some packages). However they cannot do this for the compiler
         -- itself as that's just not going to work. So we check for this.
         liftIO $
           checkBadPerPackageCompilerPaths
-            (configuredPrograms compilerprogdb)
+            (configuredPrograms (toolchainProgramDb toolchain))
             (getMapMappend (projectConfigSpecificPackage projectConfig))
 
       -- TODO: [required eventually] find/configure other programs that the
@@ -757,7 +758,7 @@ rebuildInstallPlan
       --
       phaseRunSolver
         :: ProjectConfig
-        -> (Compiler, Platform, ProgramDb)
+        -> Toolchain
         -> [PackageSpecifier UnresolvedSourcePackage]
         -> InstalledPackageIndex
         -> Rebuild (SolverInstallPlan, Maybe PkgConfigDb, IndexUtils.TotalIndexState, IndexUtils.ActiveRepos)
@@ -766,7 +767,12 @@ rebuildInstallPlan
           { projectConfigShared
           , projectConfigBuildOnly
           }
-        (compiler, platform, progdb)
+        Toolchain
+          { toolchainCompiler = compiler
+          , toolchainPlatform = platform
+          , toolchainProgramDb = progdb
+          }
+        -- \^ The compiler and platform to use for the solver.
         localPackages
         installedPackages =
           rerunIfChanged
@@ -822,7 +828,7 @@ rebuildInstallPlan
           where
             corePackageDbs :: PackageDBStackCWD
             corePackageDbs =
-              Cabal.interpretPackageDbFlags False (projectConfigPackageDBs projectConfigShared)
+              Cabal.interpretPackageDbFlags False (projectConfigPackageDBs (projectConfigToolchain projectConfigShared))
 
             withRepoCtx :: (RepoContext -> IO a) -> IO a
             withRepoCtx =
@@ -871,7 +877,7 @@ rebuildInstallPlan
       --
       phaseElaboratePlan
         :: ProjectConfig
-        -> (Compiler, Platform, ProgramDb)
+        -> Toolchain
         -> Maybe PkgConfigDb
         -> SolverInstallPlan
         -> [PackageSpecifier (SourcePackage (PackageLocation loc))]
@@ -887,7 +893,7 @@ rebuildInstallPlan
           , projectConfigSpecificPackage
           , projectConfigBuildOnly
           }
-        (compiler, platform, progdb)
+        Toolchain{..}
         pkgConfigDB
         solverPlan
         localPackages = do
@@ -900,15 +906,15 @@ rebuildInstallPlan
               (packageLocationsSignature solverPlan)
               $ getPackageSourceHashes verbosity withRepoCtx solverPlan
 
-          defaultInstallDirs <- liftIO $ userInstallDirTemplates compiler
+          defaultInstallDirs <- liftIO $ userInstallDirTemplates toolchainCompiler
           let installDirs = fmap Cabal.fromFlag $ (fmap Flag defaultInstallDirs) <> (projectConfigInstallDirs projectConfigShared)
           (elaboratedPlan, elaboratedShared) <-
             liftIO . runLogProgress verbosity $
               elaborateInstallPlan
                 verbosity
-                platform
-                compiler
-                progdb
+                toolchainPlatform
+                toolchainCompiler
+                toolchainProgramDb
                 pkgConfigDB
                 distDirLayout
                 cabalStoreDirLayout
@@ -2261,7 +2267,7 @@ elaborateInstallPlan
               if shouldBuildInplaceOnly pkg
                 then BuildInplaceOnly OnDisk
                 else BuildAndInstall
-            elabPackageDbs = Cabal.interpretPackageDbFlags False (projectConfigPackageDBs sharedPackageConfig)
+            elabPackageDbs = Cabal.interpretPackageDbFlags False (projectConfigPackageDBs (projectConfigToolchain sharedPackageConfig))
             elabBuildPackageDBStack = buildAndRegisterDbs
             elabRegisterPackageDBStack = buildAndRegisterDbs
 
@@ -2430,7 +2436,7 @@ elaborateInstallPlan
         corePackageDbs
           ++ [distPackageDB (compilerId compiler)]
 
-      corePackageDbs = Cabal.interpretPackageDbFlags False (projectConfigPackageDBs sharedPackageConfig) ++ [storePackageDB storeDirLayout compiler]
+      corePackageDbs = Cabal.interpretPackageDbFlags False (projectConfigPackageDBs (projectConfigToolchain sharedPackageConfig)) ++ [storePackageDB storeDirLayout compiler]
 
       -- For this local build policy, every package that lives in a local source
       -- dir (as opposed to a tarball), or depends on such a package, will be

@@ -23,6 +23,9 @@ data Toolchain = Toolchain
   { toolchainPlatform :: Platform
   , toolchainCompiler :: Compiler
   , toolchainProgramDb :: ProgramDb
+  -- NOTE: actually the solver does not care about package dbs, perhaps it's better
+  -- to have a separate Toolchain type for project planning.
+  , toolchainPackageDBs :: PackageDBStackCWD
   }
   deriving (Show, Generic)
 
