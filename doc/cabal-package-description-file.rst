@@ -1634,7 +1634,7 @@ system-dependent values for these fields.
     Specifies a language standard used by some (but not necessarily all) modules.
 
 .. pkg-field:: extensions: identifier list
-   :deprecated: 1.12
+   :deprecated: 1.10
    :removed: 3.0
 
    Deprecated in favor of :pkg-field:`default-extensions`.
