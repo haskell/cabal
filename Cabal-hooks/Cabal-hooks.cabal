@@ -1,6 +1,6 @@
 cabal-version: 2.2
 name:          Cabal-hooks
-version:       3.14.2
+version:       3.14
 copyright:     2023, Cabal Development Team
 license:       BSD-3-Clause
 license-file:  LICENSE
