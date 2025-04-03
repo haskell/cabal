@@ -6,7 +6,7 @@
 
   The initial configuration of programs was done without the `extra-prog-path` from the global cabal configuration. This meant that in some cases, some executables were not found. In particular this manifested as Windows users who didn't add the MSYS2 paths to the global PATH couldn't make use of `pkg-config`.
 
-- Fix regression where build-tool-depends are not used [#10633](https://github.com/haskell/cabal/issues/10633) [#10692](https://github.com/haskell/cabal/issues/10692) [#10731](https://github.com/haskell/cabal/pull/10731)
+- Fix regression where `build-tool-depends` is not used [#10633](https://github.com/haskell/cabal/issues/10633) [#10692](https://github.com/haskell/cabal/issues/10692) [#10731](https://github.com/haskell/cabal/pull/10731)
 
   Fixes a regression from 3.14.1.0 where a globally found executable would be found
     rather than a dependency specified with `build-tool-depends`.
@@ -42,7 +42,7 @@
   environment for these processes, Cabal would append the overridden environment
   to the existing environment, creating duplicates of the same variable.
 
-- Deduplicate "using configuration from" message [#10546](https://github.com/haskell/cabal/pull/10546)
+- Deduplicate the "using configuration from" message [#10546](https://github.com/haskell/cabal/pull/10546)
 
   Deduplicates and sorts the list of configuration files and URIs printed with the
   "using configuration from" message. This message is shown when there's a build

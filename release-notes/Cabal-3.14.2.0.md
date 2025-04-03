@@ -19,7 +19,7 @@ Cabal and Cabal-syntax 3.14.2.0 changelog and release notes
   environment for these processes, Cabal would append the overridden environment
   to the existing environment, creating duplicates of the same variable.
 
-- Set <pkgname>_datadir to an absolute path when running tests [#10717](https://github.com/haskell/cabal/issues/10717) [#10828](https://github.com/haskell/cabal/pull/10828)
+- Set `<pkgname>_datadir` to an absolute path when running tests [#10717](https://github.com/haskell/cabal/issues/10717) [#10828](https://github.com/haskell/cabal/pull/10828)
 
   Fix a regression where `<pkgname>_datadir` was set to a relative path. This
   caused issues when running testsuites which changed the working directory and
