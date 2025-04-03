@@ -1,4 +1,0 @@
-synopsis: Fix regression where build-tool-depends are not used
-packages: cabal-install
-prs: #10731
-issues: #10633 #10692
