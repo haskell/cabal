@@ -1,6 +1,6 @@
 cabal-version: 2.2
 name:          Cabal-QuickCheck
-version:       3.14.0.0
+version:       3.14.2
 synopsis:      QuickCheck instances for types in Cabal
 category:      Testing
 build-type:    Simple
