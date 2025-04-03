@@ -1,6 +1,6 @@
 cabal-version: 2.2
 name:          cabal-install-solver
-version:       3.14.1.1
+version:       3.14.2.0
 synopsis:      The solver component of cabal-install
 description:
   The solver component used in the cabal-install command-line program.
