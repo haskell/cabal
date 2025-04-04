@@ -30,7 +30,7 @@
 
   Local+noindex repositories will have their `noindex.cache` file created the first time they are accessed.
 
-- Fix regression where 'build' folder was created in CWD when running a standlone script. [#10772](https://github.com/haskell/cabal/issues/10772) [#10800](https://github.com/haskell/cabal/pull/10800)
+- Fix regression where `build` folder was created in CWD when running a standalone script. [#10772](https://github.com/haskell/cabal/issues/10772) [#10800](https://github.com/haskell/cabal/pull/10800)
 
   Fix a regression where the `build` folder was created in the current directory
   when running a standalone script.
@@ -46,7 +46,7 @@
 
   Deduplicates and sorts the list of configuration files and URIs printed with the
   "using configuration from" message. This message is shown when there's a build
-  failure. We can trigger that message by using a non-existant package in the
+  failure. We can trigger that message by using a non-existent package in the
   project, "no-pkg-dir".
 
   If an import is repeated in a `.project` or `.config` file it only imported once
