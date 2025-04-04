@@ -35,6 +35,7 @@ import Distribution.Simple.Flag (fromFlag)
 import Distribution.Simple.LocalBuildInfo
   ( ComponentName (..)
   , LocalBuildInfo (..)
+  , absoluteWorkingDirLBI
   , buildDir
   , depLibraryPaths
   , interpretSymbolicPathLBI
@@ -142,6 +143,7 @@ splitRunArgs verbosity lbi args =
 -- | Run a given executable.
 run :: Verbosity -> LocalBuildInfo -> Executable -> [String] -> IO ()
 run verbosity lbi exe exeArgs = do
+  curDir <- absoluteWorkingDirLBI lbi
   let distPref = fromFlag $ configDistPref $ configFlags lbi
       buildPref = buildDir lbi
       pkg_descr = localPkgDescr lbi
@@ -154,6 +156,7 @@ run verbosity lbi exe exeArgs = do
           , -- Include any build-tool-depends on build tools internal to the current package.
             withPrograms =
               addInternalBuildTools
+                curDir
                 pkg_descr
                 lbi
                 (buildInfo exe)
