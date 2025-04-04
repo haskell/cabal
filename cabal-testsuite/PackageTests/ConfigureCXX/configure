@@ -1,0 +1,40 @@
+for argument; do #syntactic sugar for: for argument in "$@"; do
+    key=${argument%%=*}
+    value=${argument#*=}
+
+    case "$key" in
+
+            CC)    MCC=$value;;
+        CFLAGS)    MCFLAGS=$value;;
+            CXX)   MCXX=$value;;
+        CXXFLAGS)  MCXXFLAGS=$value;;
+    esac
+done
+
+echo $PWD
+ls $PWD
+
+cat > hello.c << EOF
+#include <stdio.h>
+int main() {
+   // printf() displays the string inside quotation
+   printf("Hello, World!");
+   return 0;
+}
+EOF
+
+cat > hello.cpp << EOF
+#include <iostream>
+
+int main() {
+  std::cout << "Hello, World!" << std::endl;
+  return 0;
+}
+EOF
+
+# Test the arguments works for C
+$MCC $MCFLAGS hello.c
+
+# Test the arguments work for CXX
+$MCXX $MCXXFLAGS hello.cpp
+
