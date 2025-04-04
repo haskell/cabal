@@ -109,6 +109,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
     , "compiler-id"
         J..= (J.String . showCompilerId . pkgConfigCompiler)
           elaboratedSharedConfig
+    , "compiler-abi" J..= jdisplay (compilerAbiTag (pkgConfigCompiler elaboratedSharedConfig))
     , "os" J..= jdisplay os
     , "arch" J..= jdisplay arch
     , "install-plan" J..= installPlanToJ elaboratedInstallPlan
