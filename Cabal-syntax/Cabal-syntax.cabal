@@ -1,4 +1,4 @@
-cabal-version: 2.2
+cabal-version: 3.4
 name:          Cabal-syntax
 version:       3.15.0.0
 copyright:     2003-2024, Cabal Development Team (see AUTHORS file)
