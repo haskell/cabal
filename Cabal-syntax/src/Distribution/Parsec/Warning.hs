@@ -61,6 +61,8 @@ data PWarnType
     PWTInconsistentIndentation
   | -- | Experimental feature
     PWTExperimental
+  | -- | A field was used where a stanza was expected
+    PWTFieldShouldBeStanza
   deriving (Eq, Ord, Show, Enum, Bounded, Generic)
 
 instance Binary PWarnType
