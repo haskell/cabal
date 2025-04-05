@@ -34,7 +34,6 @@ desugarBuildToolSimple pname exeNames (LegacyExeDependency name reqVer)
       , "hsc2hs"
       , "c2hs"
       , "cpphs"
-      , "greencard"
       , "hspec-discover"
       ]
     allowMap = Map.fromList $ flip map allowlist $ \n ->
