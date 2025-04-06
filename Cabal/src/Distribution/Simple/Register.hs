@@ -59,7 +59,6 @@ import Distribution.Simple.LocalBuildInfo
 
 import qualified Distribution.Simple.GHC as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
-import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 import qualified Distribution.Simple.PackageIndex as Index
 import qualified Distribution.Simple.UHC as UHC
 
@@ -371,7 +370,6 @@ createPackageDB verbosity comp progdb preferCompat dbPath =
     GHC -> HcPkg.init (GHC.hcPkgInfo progdb) verbosity preferCompat dbPath
     GHCJS -> HcPkg.init (GHCJS.hcPkgInfo progdb) verbosity False dbPath
     UHC -> return ()
-    HaskellSuite _ -> HaskellSuite.initPackageDB verbosity progdb dbPath
     _ -> dieWithException verbosity CreatePackageDB
 
 doesPackageDBExist :: FilePath -> IO Bool
@@ -436,8 +434,6 @@ registerPackage verbosity comp progdb mbWorkDir packageDbs installedPkgInfo regi
   case compilerFlavor comp of
     GHC -> GHC.registerPackage verbosity progdb mbWorkDir packageDbs installedPkgInfo registerOptions
     GHCJS -> GHCJS.registerPackage verbosity progdb mbWorkDir packageDbs installedPkgInfo registerOptions
-    HaskellSuite{} ->
-      HaskellSuite.registerPackage verbosity progdb packageDbs installedPkgInfo
     _
       | HcPkg.registerMultiInstance registerOptions ->
           dieWithException verbosity RegisMultiplePkgNotSupported

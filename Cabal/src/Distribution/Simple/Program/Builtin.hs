@@ -20,10 +20,7 @@ module Distribution.Simple.Program.Builtin
   , runghcProgram
   , ghcjsProgram
   , ghcjsPkgProgram
-  , hmakeProgram
   , jhcProgram
-  , haskellSuiteProgram
-  , haskellSuitePkgProgram
   , uhcProgram
   , gccProgram
   , arProgram
@@ -73,9 +70,6 @@ builtinPrograms =
   , ghcPkgProgram
   , ghcjsProgram
   , ghcjsPkgProgram
-  , haskellSuiteProgram
-  , haskellSuitePkgProgram
-  , hmakeProgram
   , jhcProgram
   , uhcProgram
   , hpcProgram
@@ -180,17 +174,6 @@ ghcjsPkgProgram =
           _ -> ""
     }
 
-hmakeProgram :: Program
-hmakeProgram =
-  (simpleProgram "hmake")
-    { programFindVersion = findProgramVersion "--version" $ \str ->
-        -- Invoking "hmake --version" gives a string line
-        -- "/usr/local/bin/hmake: 3.13 (2006-11-01)"
-        case words str of
-          (_ : ver : _) -> ver
-          _ -> ""
-    }
-
 jhcProgram :: Program
 jhcProgram =
   (simpleProgram "jhc")
@@ -217,32 +200,6 @@ hpcProgram =
           (_ : _ : _ : ver : _) -> ver
           _ -> ""
     }
-
--- This represents a haskell-suite compiler. Of course, the compiler
--- itself probably is not called "haskell-suite", so this is not a real
--- program. (But we don't know statically the name of the actual compiler,
--- so this is the best we can do.)
---
--- Having this Program value serves two purposes:
---
--- 1. We can accept options for the compiler in the form of
---
---   --haskell-suite-option(s)=...
---
--- 2. We can find a program later using this static id (with
--- requireProgram).
---
--- The path to the real compiler is found and recorded in the ProgramDb
--- during the configure phase.
-haskellSuiteProgram :: Program
-haskellSuiteProgram =
-  simpleProgram "haskell-suite"
-
--- This represent a haskell-suite package manager. See the comments for
--- haskellSuiteProgram.
-haskellSuitePkgProgram :: Program
-haskellSuitePkgProgram =
-  simpleProgram "haskell-suite-pkg"
 
 happyProgram :: Program
 happyProgram =

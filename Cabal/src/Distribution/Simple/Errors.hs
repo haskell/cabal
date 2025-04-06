@@ -78,8 +78,6 @@ data CabalException
   | NoSupportBuildingTestSuite TestType
   | NoSupportBuildingBenchMark BenchmarkType
   | BuildingNotSupportedWithCompiler
-  | ProvideHaskellSuiteTool String
-  | CannotDetermineCompilerVersion
   | PkgDumpFailed
   | FailedToParseOutput
   | CantFindSourceModule ModuleName
@@ -210,8 +208,6 @@ exceptionCode e = case e of
   NoSupportBuildingTestSuite{} -> 4106
   NoSupportBuildingBenchMark{} -> 5320
   BuildingNotSupportedWithCompiler{} -> 7077
-  ProvideHaskellSuiteTool{} -> 7509
-  CannotDetermineCompilerVersion{} -> 4519
   PkgDumpFailed{} -> 2291
   FailedToParseOutput{} -> 5500
   CantFindSourceModule{} -> 8870
@@ -364,8 +360,6 @@ exceptionMessage e = case e of
   NoSupportBuildingTestSuite test_type -> "No support for building test suite type " ++ show test_type
   NoSupportBuildingBenchMark benchMarkType -> "No support for building benchmark type " ++ show benchMarkType
   BuildingNotSupportedWithCompiler -> "Building is not supported with this compiler."
-  ProvideHaskellSuiteTool msg -> show msg
-  CannotDetermineCompilerVersion -> "haskell-suite: couldn't determine compiler version"
   PkgDumpFailed -> "pkg dump failed"
   FailedToParseOutput -> "failed to parse output of 'pkg dump'"
   CantFindSourceModule moduleName -> "can't find source for module " ++ prettyShow moduleName
