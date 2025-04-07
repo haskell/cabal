@@ -375,7 +375,7 @@ and a feature implementation should go in two different pull requests).
 This is *especially* important when we decide to backport a pull request
 (be it fix or a feature).
 
-Thorough reviews mean less regressions, keeping your pull requests small
+Thorough reviews mean fewer regressions, keeping your pull requests small
 will improve Cabal codebase quality.
 
 ### Pull requests for `gh` users
