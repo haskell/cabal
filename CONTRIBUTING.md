@@ -378,6 +378,19 @@ This is *especially* important when we decide to backport a pull request
 Thorough reviews mean less regressions, keeping your pull requests small
 will improve Cabal codebase quality.
 
+### Pull requests for `gh` users
+
+Are you a [`gh`](https://cli.github.com/) (GitHub’s official command line tool)
+user? Input this command to create a pull request:
+
+```
+gh pr create --template pull_request_template.md
+```
+
+This way you will not erase the
+[PR template](https://github.com/haskell/cabal/blob/master/.github/pull_request_template.md)
+all contributors use.
+
 ## Changelog
 
 Anything that changes `cabal-install:exe:cabal` or changes exports from library
