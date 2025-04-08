@@ -2,6 +2,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -98,6 +99,7 @@ import Text.PrettyPrint
 
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.InstSolverPackage
+import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SolverId
 
@@ -169,16 +171,22 @@ import qualified Distribution.Compat.Graph as Graph
 -- dependencies; if we give a 'PackageInstalled' instance it would be too easy
 -- to get this wrong (and, for instance, call graph traversal functions from
 -- Cabal rather than from cabal-install). Instead, see 'PackageInstalled'.
+--
+-- We additionally attach to the packages in the install plan the constraint
+-- scope in which they were chosen (because, in a context with qualified goals,
+-- there may be multiple versions of the same package in an install plan, and
+-- e.g. in `cabal freeze` we need to know in which scope was solved any given
+-- package)
 data GenericPlanPackage ipkg srcpkg
-  = PreExisting ipkg
-  | Configured srcpkg
-  | Installed srcpkg
+  = PreExisting ipkg ConstraintScope
+  | Configured srcpkg ConstraintScope
+  | Installed srcpkg ConstraintScope
   deriving (Eq, Show, Generic)
 
 displayGenericPlanPackage :: (IsUnit ipkg, IsUnit srcpkg) => GenericPlanPackage ipkg srcpkg -> String
-displayGenericPlanPackage (PreExisting pkg) = "PreExisting " ++ prettyShow (nodeKey pkg)
-displayGenericPlanPackage (Configured pkg) = "Configured " ++ prettyShow (nodeKey pkg)
-displayGenericPlanPackage (Installed pkg) = "Installed " ++ prettyShow (nodeKey pkg)
+displayGenericPlanPackage (PreExisting pkg _) = "PreExisting " ++ prettyShow (nodeKey pkg)
+displayGenericPlanPackage (Configured pkg _) = "Configured " ++ prettyShow (nodeKey pkg)
+displayGenericPlanPackage (Installed pkg _) = "Installed " ++ prettyShow (nodeKey pkg)
 
 -- | Convenience combinator for destructing 'GenericPlanPackage'.
 -- This is handy because if you case manually, you have to handle
@@ -189,9 +197,9 @@ foldPlanPackage
   -> (srcpkg -> a)
   -> GenericPlanPackage ipkg srcpkg
   -> a
-foldPlanPackage f _ (PreExisting ipkg) = f ipkg
-foldPlanPackage _ g (Configured srcpkg) = g srcpkg
-foldPlanPackage _ g (Installed srcpkg) = g srcpkg
+foldPlanPackage f _ (PreExisting ipkg _) = f ipkg
+foldPlanPackage _ g (Configured srcpkg _) = g srcpkg
+foldPlanPackage _ g (Installed srcpkg _) = g srcpkg
 
 type IsUnit a = (IsNode a, Key a ~ UnitId)
 
@@ -205,12 +213,12 @@ instance
   => IsNode (GenericPlanPackage ipkg srcpkg)
   where
   type Key (GenericPlanPackage ipkg srcpkg) = UnitId
-  nodeKey (PreExisting ipkg) = nodeKey ipkg
-  nodeKey (Configured spkg) = nodeKey spkg
-  nodeKey (Installed spkg) = nodeKey spkg
-  nodeNeighbors (PreExisting ipkg) = nodeNeighbors ipkg
-  nodeNeighbors (Configured spkg) = nodeNeighbors spkg
-  nodeNeighbors (Installed spkg) = nodeNeighbors spkg
+  nodeKey (PreExisting ipkg _) = nodeKey ipkg
+  nodeKey (Configured spkg _) = nodeKey spkg
+  nodeKey (Installed spkg _) = nodeKey spkg
+  nodeNeighbors (PreExisting ipkg _) = nodeNeighbors ipkg
+  nodeNeighbors (Configured spkg _) = nodeNeighbors spkg
+  nodeNeighbors (Installed spkg _) = nodeNeighbors spkg
 
 instance (Binary ipkg, Binary srcpkg) => Binary (GenericPlanPackage ipkg srcpkg)
 instance (Structured ipkg, Structured srcpkg) => Structured (GenericPlanPackage ipkg srcpkg)
@@ -224,34 +232,34 @@ instance
   (Package ipkg, Package srcpkg)
   => Package (GenericPlanPackage ipkg srcpkg)
   where
-  packageId (PreExisting ipkg) = packageId ipkg
-  packageId (Configured spkg) = packageId spkg
-  packageId (Installed spkg) = packageId spkg
+  packageId (PreExisting ipkg _) = packageId ipkg
+  packageId (Configured spkg _) = packageId spkg
+  packageId (Installed spkg _) = packageId spkg
 
 instance
   (HasMungedPackageId ipkg, HasMungedPackageId srcpkg)
   => HasMungedPackageId (GenericPlanPackage ipkg srcpkg)
   where
-  mungedId (PreExisting ipkg) = mungedId ipkg
-  mungedId (Configured spkg) = mungedId spkg
-  mungedId (Installed spkg) = mungedId spkg
+  mungedId (PreExisting ipkg _) = mungedId ipkg
+  mungedId (Configured spkg _) = mungedId spkg
+  mungedId (Installed spkg _) = mungedId spkg
 
 instance
   (HasUnitId ipkg, HasUnitId srcpkg)
   => HasUnitId
       (GenericPlanPackage ipkg srcpkg)
   where
-  installedUnitId (PreExisting ipkg) = installedUnitId ipkg
-  installedUnitId (Configured spkg) = installedUnitId spkg
-  installedUnitId (Installed spkg) = installedUnitId spkg
+  installedUnitId (PreExisting ipkg _) = installedUnitId ipkg
+  installedUnitId (Configured spkg _) = installedUnitId spkg
+  installedUnitId (Installed spkg _) = installedUnitId spkg
 
 instance
   (HasConfiguredId ipkg, HasConfiguredId srcpkg)
   => HasConfiguredId (GenericPlanPackage ipkg srcpkg)
   where
-  configuredId (PreExisting ipkg) = configuredId ipkg
-  configuredId (Configured spkg) = configuredId spkg
-  configuredId (Installed spkg) = configuredId spkg
+  configuredId (PreExisting ipkg _) = configuredId ipkg
+  configuredId (Configured spkg _) = configuredId spkg
+  configuredId (Installed spkg _) = configuredId spkg
 
 data GenericInstallPlan ipkg srcpkg = GenericInstallPlan
   { planGraph :: !(Graph (GenericPlanPackage ipkg srcpkg))
@@ -357,9 +365,9 @@ showInstallPlan = showInstallPlan_gen toShow
         (map pretty (nodeNeighbors p))
 
 showPlanPackageTag :: GenericPlanPackage ipkg srcpkg -> String
-showPlanPackageTag (PreExisting _) = "PreExisting"
-showPlanPackageTag (Configured _) = "Configured"
-showPlanPackageTag (Installed _) = "Installed"
+showPlanPackageTag (PreExisting _ _) = "PreExisting"
+showPlanPackageTag (Configured _ _) = "Configured"
+showPlanPackageTag (Installed _ _) = "Installed"
 
 -- | Build an installation plan from a valid set of resolved packages.
 new
@@ -396,7 +404,7 @@ keysSet = Graph.keysSet . planGraph
 -- the dependencies of a package or set of packages without actually
 -- installing the package itself, as when doing development.
 remove
-  :: (IsUnit ipkg, IsUnit srcpkg)
+  :: (IsUnit ipkg, IsUnit srcpkg, Package ipkg, Package srcpkg)
   => (GenericPlanPackage ipkg srcpkg -> Bool)
   -> GenericInstallPlan ipkg srcpkg
   -> GenericInstallPlan ipkg srcpkg
@@ -421,15 +429,15 @@ installed shouldBeInstalled installPlan =
   foldl'
     markInstalled
     installPlan
-    [ pkg
-    | Configured pkg <- reverseTopologicalOrder installPlan
+    [ (pkg, cs)
+    | Configured pkg cs <- reverseTopologicalOrder installPlan
     , shouldBeInstalled pkg
     ]
   where
-    markInstalled plan pkg =
+    markInstalled plan (pkg, cs) =
       assert (all isInstalled (directDeps plan (nodeKey pkg))) $
         plan
-          { planGraph = Graph.insert (Installed pkg) (planGraph plan)
+          { planGraph = Graph.insert (Installed pkg cs) (planGraph plan)
           }
 
 -- | Lookup a package in the plan.
@@ -594,10 +602,10 @@ configureInstallPlan :: Cabal.ConfigFlags -> SolverInstallPlan -> InstallPlan
 configureInstallPlan configFlags solverPlan =
   flip fromSolverInstallPlan solverPlan $ \mapDep planpkg ->
     [ case planpkg of
-        SolverInstallPlan.PreExisting pkg ->
-          PreExisting (instSolverPkgIPI pkg)
-        SolverInstallPlan.Configured pkg ->
-          Configured (configureSolverPackage mapDep pkg)
+        SolverInstallPlan.PreExisting pkg cs ->
+          PreExisting (instSolverPkgIPI pkg) cs
+        SolverInstallPlan.Configured pkg cs ->
+          Configured (configureSolverPackage mapDep pkg) cs
     ]
   where
     configureSolverPackage
@@ -699,7 +707,7 @@ ready plan =
         Set.empty
     readyPackages =
       [ ReadyPackage pkg
-      | Configured pkg <- toList plan
+      | Configured pkg _ <- toList plan
       , all isInstalled (directDeps plan (nodeKey pkg))
       ]
 
@@ -744,7 +752,7 @@ completed plan (Processing processingSet completedSet failedSet) pkgid =
     processing' = Processing processingSet' completedSet' failedSet
 
     asReadyPackage :: GenericPlanPackage ipkg srcpkg -> GenericReadyPackage srcpkg
-    asReadyPackage (Configured pkg) = ReadyPackage pkg
+    asReadyPackage (Configured pkg _) = ReadyPackage pkg
     asReadyPackage pkg = internalError "completed" $ "not in configured state: " ++ displayGenericPlanPackage pkg
 
 failed
@@ -773,7 +781,7 @@ failed plan (Processing processingSet completedSet failedSet) pkgid =
         Graph.revClosure (planGraph plan) [pkgid]
     processing' = Processing processingSet' completedSet failedSet'
 
-    asConfiguredPackage (Configured pkg) = pkg
+    asConfiguredPackage (Configured pkg _) = pkg
     asConfiguredPackage pkg = internalError "failed" $ "not in configured state: " ++ displayGenericPlanPackage pkg
 
 processingInvariant
@@ -824,9 +832,9 @@ processingInvariant plan (Processing processingSet completedSet failedSet) =
     assert
       ( and
           [ case Graph.lookup pkgid (planGraph plan) of
-            Just (Configured _) -> True
-            Just (PreExisting _) -> False
-            Just (Installed _) -> False
+            Just (Configured _ _) -> True
+            Just (PreExisting _ _) -> False
+            Just (Installed _ _) -> False
             Nothing -> False
           | pkgid <- Set.toList processingSet ++ Set.toList failedSet
           ]
