@@ -220,7 +220,7 @@ data PackageHashConfigInputs = PackageHashConfigInputs
   , pkgHashExtraIncludeDirs :: [FilePath]
   , pkgHashProgPrefix :: Maybe PathTemplate
   , pkgHashProgSuffix :: Maybe PathTemplate
-  , pkgHashPackageDbs :: [Maybe PackageDBCWD]
+  , pkgHashPackageDbs :: [PackageDBCWD]
   , -- Haddock options
     pkgHashDocumentation :: Bool
   , pkgHashHaddockHoogle :: Bool

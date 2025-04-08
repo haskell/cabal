@@ -766,11 +766,8 @@ buildAndInstallUnpackedPackage
                       "registerPkg: elab does NOT require registration for "
                         ++ prettyShow uid
                 | otherwise = do
-                    assert
-                      ( elabRegisterPackageDBStack pkg
-                          == storePackageDBStack compiler (elabPackageDbs pkg)
-                      )
-                      (return ())
+                    let packageDbStack = elabPackageDbs pkg ++ [storePackageDB storeDirLayout compiler]
+                    assert (elabRegisterPackageDBStack pkg == packageDbStack) (return ())
                     _ <-
                       runRegister
                         (elabRegisterPackageDBStack pkg)
