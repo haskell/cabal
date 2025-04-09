@@ -331,12 +331,13 @@ haddock_setupHooks
       createInternalPackageDB verbosity lbi (flag $ setupDistPref . haddockCommonFlags)
 
     (\f -> foldM_ f (installedPkgs lbi) targets') $ \index target -> do
+      curDir <- absoluteWorkingDirLBI lbi
       let
         component = targetComponent target
         clbi = targetCLBI target
         bi = componentBuildInfo component
         -- Include any build-tool-depends on build tools internal to the current package.
-        progs' = addInternalBuildTools pkg_descr lbi bi (withPrograms lbi)
+        progs' = addInternalBuildTools curDir pkg_descr lbi bi (withPrograms lbi)
         lbi' =
           lbi
             { withPrograms = progs'
