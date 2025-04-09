@@ -1633,7 +1633,7 @@ elaborateInstallPlan
   compilerprogdb
   pkgConfigDB
   distDirLayout@DistDirLayout{..}
-  storeDirLayout@StoreDirLayout{storePackageDBStack}
+  storeDirLayout
   solverPlan
   localPackages
   sourcePackageHashes
@@ -2440,7 +2440,7 @@ elaborateInstallPlan
         corePackageDbs
           ++ [distPackageDB (compilerId compiler)]
 
-      corePackageDbs = storePackageDBStack compiler (projectConfigPackageDBs sharedPackageConfig)
+      corePackageDbs = Cabal.interpretPackageDbFlags False (projectConfigPackageDBs sharedPackageConfig) ++ [storePackageDB storeDirLayout compiler]
 
       -- For this local build policy, every package that lives in a local source
       -- dir (as opposed to a tarball), or depends on such a package, will be
