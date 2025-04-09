@@ -44,10 +44,8 @@ import Distribution.Simple.Compiler
   ( Compiler (..)
   , OptimisationLevel (..)
   , PackageDBCWD
-  , PackageDBStackCWD
   , PackageDBX (..)
   )
-import Distribution.Simple.Configure (interpretPackageDbFlags)
 import Distribution.System
 import Distribution.Types.ComponentName
 import Distribution.Types.LibraryName
@@ -123,7 +121,6 @@ data StoreDirLayout = StoreDirLayout
   , storePackageDirectory :: Compiler -> UnitId -> FilePath
   , storePackageDBPath :: Compiler -> FilePath
   , storePackageDB :: Compiler -> PackageDBCWD
-  , storePackageDBStack :: Compiler -> [Maybe PackageDBCWD] -> PackageDBStackCWD
   , storeIncomingDirectory :: Compiler -> FilePath
   , storeIncomingLock :: Compiler -> UnitId -> FilePath
   }
@@ -190,7 +187,6 @@ defaultDistDirLayout projectRoot mdistDirectory haddockOutputDir =
     distDirectory =
       distProjectRootDirectory
         </> fromMaybe "dist-newstyle" mdistDirectory
-    -- TODO: switch to just dist at some point, or some other new name
 
     distBuildRootDirectory :: FilePath
     distBuildRootDirectory = distDirectory </> "build"
@@ -286,11 +282,6 @@ defaultStoreDirLayout storeRoot =
     storePackageDB :: Compiler -> PackageDBCWD
     storePackageDB compiler =
       SpecificPackageDB (storePackageDBPath compiler)
-
-    storePackageDBStack :: Compiler -> [Maybe PackageDBCWD] -> PackageDBStackCWD
-    storePackageDBStack compiler extraPackageDB =
-      (interpretPackageDbFlags False extraPackageDB)
-        ++ [storePackageDB compiler]
 
     storeIncomingDirectory :: Compiler -> FilePath
     storeIncomingDirectory compiler =

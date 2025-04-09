@@ -138,6 +138,7 @@ import Distribution.Simple.Compiler
   )
 import Distribution.Simple.Configure
   ( configCompilerEx
+  , interpretPackageDbFlags
   )
 import Distribution.Simple.Flag
   ( flagElim
@@ -1346,7 +1347,8 @@ getPackageDbStack compiler storeDirFlag logsDirFlag packageDbs = do
   let
     mlogsDir = flagToMaybe logsDirFlag
   cabalLayout <- mkCabalDirLayout mstoreDir mlogsDir
-  pure $ storePackageDBStack (cabalStoreDirLayout cabalLayout) compiler packageDbs
+  let storePackageDBStack = interpretPackageDbFlags False packageDbs ++ [storePackageDB (cabalStoreDirLayout cabalLayout) compiler]
+  pure storePackageDBStack
 
 -- | This defines what a 'TargetSelector' means for the @bench@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
