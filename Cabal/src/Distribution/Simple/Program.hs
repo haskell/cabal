@@ -125,7 +125,6 @@ module Distribution.Simple.Program
   , hscolourProgram
   , doctestProgram
   , haddockProgram
-  , greencardProgram
   , ldProgram
   , tarProgram
   , cppProgram

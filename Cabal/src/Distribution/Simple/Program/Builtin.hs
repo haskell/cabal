@@ -36,7 +36,6 @@ module Distribution.Simple.Program.Builtin
   , hscolourProgram
   , doctestProgram
   , haddockProgram
-  , greencardProgram
   , ldProgram
   , tarProgram
   , cppProgram
@@ -89,7 +88,6 @@ builtinPrograms =
   , hsc2hsProgram
   , c2hsProgram
   , cpphsProgram
-  , greencardProgram
   , -- platform toolchain
     gccProgram
   , arProgram
@@ -346,9 +344,6 @@ haddockProgram =
           _ -> ""
     , programNormaliseArgs = \_ _ args -> args
     }
-
-greencardProgram :: Program
-greencardProgram = simpleProgram "greencard"
 
 ldProgram :: Program
 ldProgram =

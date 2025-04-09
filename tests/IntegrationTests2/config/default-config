@@ -203,7 +203,6 @@ program-locations
   -- ghc-pkg-location:
   -- ghcjs-location:
   -- ghcjs-pkg-location:
-  -- greencard-location:
   -- haddock-location:
   -- happy-location:
   -- haskell-suite-location:
@@ -231,7 +230,6 @@ program-default-options
   -- ghc-pkg-options:
   -- ghcjs-options:
   -- ghcjs-pkg-options:
-  -- greencard-options:
   -- haddock-options:
   -- happy-options:
   -- haskell-suite-options:
