@@ -277,7 +277,6 @@ files, i.e. with names ending in "``.hs``" or "``.lhs``", or to inputs for
 various Haskell preprocessors. The simple build infrastructure understands the
 extensions:
 
--  ``.gc`` (:hackage-pkg:`greencard`)
 -  ``.chs`` (:hackage-pkg:`c2hs`)
 -  ``.hsc`` (:hackage-pkg:`hsc2hs`)
 -  ``.y`` and ``.ly`` (happy_)
@@ -1748,8 +1747,6 @@ system-dependent values for these fields.
     | ``c2hs``                 | ``c2hs:c2hs``                     |                 |
     +--------------------------+-----------------------------------+-----------------+
     | ``cpphs``                | ``cpphs:cpphs``                   |                 |
-    +--------------------------+-----------------------------------+-----------------+
-    | ``greencard``            | ``greencard:greencard``           |                 |
     +--------------------------+-----------------------------------+-----------------+
     | ``haddock``              | ``haddock:haddock``               |                 |
     +--------------------------+-----------------------------------+-----------------+

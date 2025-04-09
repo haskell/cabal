@@ -35,7 +35,6 @@ module Distribution.Simple.PreProcess
   , runSimplePreProcessor
   , ppCpp
   , ppCpp'
-  , ppGreenCard
   , ppC2hs
   , ppHsc2hs
   , ppHappy
@@ -382,20 +381,6 @@ preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinS
 -- * known preprocessors
 
 -- ------------------------------------------------------------
-
-ppGreenCard :: BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
-ppGreenCard _ lbi _ =
-  PreProcessor
-    { platformIndependent = False
-    , ppOrdering = unsorted
-    , runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
-        runDbProgramCwd
-          verbosity
-          (mbWorkDirLBI lbi)
-          greencardProgram
-          (withPrograms lbi)
-          (["-tffi", "-o" ++ outFile, inFile])
-    }
 
 -- This one is useful for preprocessors that can't handle literate source.
 -- We also need a way to chain preprocessors.
@@ -873,11 +858,10 @@ standardPP lbi prog args =
 ppSuffixes :: [PPSuffixHandler] -> [Suffix]
 ppSuffixes = map fst
 
--- | Standard preprocessors: GreenCard, c2hs, hsc2hs, happy, alex and cpphs.
+-- | Standard preprocessors: c2hs, hsc2hs, happy, alex and cpphs.
 knownSuffixHandlers :: [PPSuffixHandler]
 knownSuffixHandlers =
-  [ (Suffix "gc", ppGreenCard)
-  , (Suffix "chs", ppC2hs)
+  [ (Suffix "chs", ppC2hs)
   , (Suffix "hsc", ppHsc2hs)
   , (Suffix "x", ppAlex)
   , (Suffix "y", ppHappy)

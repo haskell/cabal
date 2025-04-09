@@ -64,7 +64,6 @@ data SourceFileEntry = SourceFileEntry
 knownSuffixHandlers :: CabalSpecVersion -> String -> String
 knownSuffixHandlers v s
   | v < CabalSpecV3_0 = case s of
-      ".gc" -> "greencard"
       ".chs" -> "chs"
       ".hsc" -> "hsc2hs"
       ".x" -> "alex"
@@ -73,7 +72,6 @@ knownSuffixHandlers v s
       ".cpphs" -> "cpp"
       _ -> ""
   | otherwise = case s of
-      ".gc" -> "greencard:greencard"
       ".chs" -> "chs:chs"
       ".hsc" -> "hsc2hs:hsc2hs"
       ".x" -> "alex:alex"
