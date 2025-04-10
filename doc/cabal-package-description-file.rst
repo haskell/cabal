@@ -367,7 +367,7 @@ describe the package as a whole:
     what syntax to expect and what each part means.
 
     The version number you specify will affect both compatibility and
-    behaviour. Most tools (including the Cabal library and the ``cabal``
+    behaviour. Most tools (including the Cabal library and the :term:`cabal`
     program) understand a range of versions of the Cabal specification.
     Older tools will of course only work with older versions of the
     Cabal specification that was known at the time. Most of the time,
@@ -443,7 +443,7 @@ describe the package as a whole:
 
     If the build type is anything other than ``Custom``, then the
     ``Setup.hs`` file *must* be exactly the standardized content
-    discussed below. This is because in these cases, ``cabal`` will
+    discussed below. This is because in these cases, :term:`cabal` will
     ignore the ``Setup.hs`` file completely, whereas other methods of
     package management, such as ``runhaskell Setup.hs [CMD]``, still
     rely on the ``Setup.hs`` file.
@@ -481,7 +481,7 @@ describe the package as a whole:
         main = defaultMain
 
     For build type ``Custom``, the file ``Setup.hs`` can be customized,
-    and will be used both by ``cabal`` and other tools.
+    and will be used both by :term:`cabal` and other tools.
 
     For most packages, the build type ``Simple`` is sufficient. For more exotic
     needs, the ``Hooks`` build type is recommended; see :ref:`setup-hooks`.
