@@ -98,6 +98,7 @@ import Distribution.Client.Utils
 import qualified Distribution.Compat.Graph as Graph
 import Distribution.Compiler
   ( CompilerInfo (..)
+  , AbiTag (..)
   )
 import Distribution.Package
   ( Package (..)
@@ -107,6 +108,8 @@ import Distribution.Package
   , mkPackageName
   , packageName
   , packageVersion
+  , UnitId
+  , mkUnitId
   )
 import qualified Distribution.PackageDescription as PD
 import Distribution.PackageDescription.Configuration
@@ -434,6 +437,19 @@ setSolverVerbosity verbosity params =
   params
     { depResolverVerbosity = verbosity
     }
+
+dependOnSpecificCompiler :: CompilerInfo -> DepResolverParams -> DepResolverParams
+dependOnSpecificCompiler compiler params = addConstraints extraConstraints params
+  where
+    extraConstraints =
+      [ LabeledPackageConstraint
+        (PackageConstraint (ScopeAnyQualifier (mkPackageName "ghc")) (PackagePropertyInstalledSpecificUnitId (compilerIdToUnitId ghc_lib_abi)))
+        ConstraintSourceNonReinstallablePackage
+      | AbiTag ghc_lib_abi <- [compilerInfoAbiTag compiler]
+      ]
+
+    compilerIdToUnitId :: String -> UnitId
+    compilerIdToUnitId uid = mkUnitId (prettyShow (compilerInfoId compiler) ++ "-" ++ uid)
 
 -- | Some packages are specific to a given compiler version and should never be
 -- reinstalled.
@@ -841,8 +857,8 @@ resolveDependencies platform comp pkgConfigDB params =
                     verbosity
                   ) =
         if asBool (depResolverAllowBootLibInstalls params)
-          then params
-          else dontInstallNonReinstallablePackages params
+          then dependOnSpecificCompiler comp params
+          else dontInstallNonReinstallablePackages (dependOnSpecificCompiler comp params)
 
     preferences :: PackageName -> PackagePreferences
     preferences = interpretPackagesPreference targets defpref prefs
