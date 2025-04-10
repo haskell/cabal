@@ -34,6 +34,7 @@ module Distribution.Simple.Flag
 
 import Distribution.Compat.Prelude hiding (get)
 import Distribution.Compat.Stack
+import Distribution.Parsec
 import Prelude ()
 
 -- ------------------------------------------------------------
@@ -98,6 +99,12 @@ instance Enum a => Enum (Flag a) where
   enumFromTo _ _ = []
   enumFromThenTo (Flag a) (Flag b) (Flag c) = toFlag `map` enumFromThenTo a b c
   enumFromThenTo _ _ _ = []
+
+instance Parsec a => Parsec (Flag a) where
+  parsec = parsecFlag
+
+parsecFlag :: (Parsec a, CabalParsing m) => m (Flag a)
+parsecFlag = (Flag <$> parsec) <|> pure mempty
 
 -- | Wraps a value in 'Flag'.
 toFlag :: a -> Flag a
