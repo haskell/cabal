@@ -515,7 +515,7 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
       -- (as opposed to say build or haddock targets).
       targets <-
         either (reportTargetProblems verbosity) return $
-          resolveTargets
+          resolveTargetsFromSolver
             (selectPackageTargets multi_repl_enabled)
             selectComponentTarget
             elaboratedPlan
