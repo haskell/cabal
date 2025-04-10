@@ -23,7 +23,7 @@ import System.Win32          (LPCTSTR, LPTSTR, DWORD)
 import Foreign.Marshal.Array (allocaArray)
 
 {- FOURMOLU_DISABLE -}
-#ifdef x86_64_HOST_ARCH
+#if defined(x86_64_HOST_ARCH) || defined(aarch64_HOST_ARCH)
 #define WINAPI ccall
 #else
 #define WINAPI stdcall
