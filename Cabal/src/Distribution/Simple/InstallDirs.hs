@@ -537,7 +537,7 @@ csidl_PROGRAM_FILES = 0x0026
 -- csidl_PROGRAM_FILES_COMMON = 0x002b
 
 {- FOURMOLU_DISABLE -}
-#ifdef x86_64_HOST_ARCH
+#if defined(x86_64_HOST_ARCH) || defined(aarch64_HOST_ARCH)
 #define CALLCONV ccall
 #else
 #define CALLCONV stdcall
