@@ -26,6 +26,7 @@ module Distribution.Simple.Program.Builtin
   , haskellSuitePkgProgram
   , uhcProgram
   , gccProgram
+  , gppProgram
   , arProgram
   , stripProgram
   , happyProgram
@@ -270,6 +271,13 @@ gccProgram :: Program
 gccProgram =
   (simpleProgram "gcc")
     { programFindVersion = findProgramVersion "-dumpversion" id
+    }
+
+gppProgram :: Program
+gppProgram =
+  (simpleProgram "gpp")
+    { programFindVersion = findProgramVersion "-dumpversion" id
+    , programFindLocation = \v p -> findProgramOnSearchPath v p "g++"
     }
 
 arProgram :: Program
