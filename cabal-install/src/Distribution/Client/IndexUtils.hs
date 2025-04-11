@@ -378,7 +378,21 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState mb_activeRepos = do
         -> PackageIndex UnresolvedSourcePackage
       addIndex acc (RepoData _ _ _ _, CombineStrategySkip) = acc
       addIndex acc (RepoData _ _ idx _, CombineStrategyMerge) = PackageIndex.merge acc idx
-      addIndex acc (RepoData _ _ idx _, CombineStrategyOverride) = PackageIndex.override acc idx
+      addIndex acc (RepoData _ _ idx prefs, CombineStrategyOverride) =
+        PackageIndex.overrideOrMerge strategy acc idx
+        where
+          strategy pkgname
+            -- We only want to merge a package when no version in idx is marked
+            -- as preferred/when all versions are deprecated.
+            | Just pkgPrefs <- Map.lookup pkgname prefsByPkg
+            , null $ PackageIndex.lookupDependency idx pkgname pkgPrefs =
+                PackageIndex.Merge
+            | otherwise = PackageIndex.Override
+
+          prefsByPkg =
+            Map.fromListWith
+              intersectVersionRanges
+              [(name, range) | Dependency name range _ <- prefs]
 
   let pkgs :: PackageIndex UnresolvedSourcePackage
       pkgs = foldl' addIndex mempty pkgss'
