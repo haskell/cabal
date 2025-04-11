@@ -438,13 +438,6 @@ configureOptions showOrParseArgs =
             [ (Flag GHC, ("g", ["ghc"]), "compile with GHC")
             , (Flag GHCJS, ([], ["ghcjs"]), "compile with GHCJS")
             , (Flag UHC, ([], ["uhc"]), "compile with UHC")
-            , -- "haskell-suite" compiler id string will be replaced
-              -- by a more specific one during the configure stage
-
-              ( Flag (HaskellSuite "haskell-suite")
-              , ([], ["haskell-suite"])
-              , "compile with a haskell-suite compiler"
-              )
             ]
         )
     , option

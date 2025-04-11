@@ -119,7 +119,6 @@ import Distribution.Version
 
 import qualified Distribution.Simple.GHC as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
-import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 import qualified Distribution.Simple.UHC as UHC
 
 import Control.Exception
@@ -2069,8 +2068,6 @@ getInstalledPackages verbosity comp mbWorkDir packageDBs progdb = do
     GHC -> GHC.getInstalledPackages verbosity comp mbWorkDir packageDBs' progdb
     GHCJS -> GHCJS.getInstalledPackages verbosity mbWorkDir packageDBs' progdb
     UHC -> UHC.getInstalledPackages verbosity comp mbWorkDir packageDBs' progdb
-    HaskellSuite{} ->
-      HaskellSuite.getInstalledPackages verbosity packageDBs' progdb
     flv ->
       dieWithException verbosity $ HowToFindInstalledPackages flv
   where
@@ -2500,7 +2497,6 @@ configCompilerEx (Just hcFlavor) hcPath hcPkg progdb verbosity = do
     GHC -> GHC.configure verbosity hcPath hcPkg progdb
     GHCJS -> GHCJS.configure verbosity hcPath hcPkg progdb
     UHC -> UHC.configure verbosity hcPath hcPkg progdb
-    HaskellSuite{} -> HaskellSuite.configure verbosity hcPath hcPkg progdb
     _ -> dieWithException verbosity UnknownCompilerException
   return (comp, fromMaybe buildPlatform maybePlatform, programDb)
 

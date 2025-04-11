@@ -76,7 +76,6 @@ data CompilerFlavor
   | -- | @since 3.12.1.0
     -- MicroHS, see https://github.com/augustss/MicroHs
     MHS
-  | HaskellSuite String -- string is the id of the actual compiler
   | OtherCompiler String
   deriving (Generic, Show, Read, Eq, Ord, Data)
 
@@ -90,7 +89,6 @@ knownCompilerFlavors =
 
 instance Pretty CompilerFlavor where
   pretty (OtherCompiler name) = Disp.text name
-  pretty (HaskellSuite name) = Disp.text name
   pretty NHC = Disp.text "nhc98"
   pretty other = Disp.text (lowercase (show other))
 

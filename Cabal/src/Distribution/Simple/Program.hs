@@ -111,7 +111,6 @@ module Distribution.Simple.Program
   , ghcPkgProgram
   , ghcjsProgram
   , ghcjsPkgProgram
-  , hmakeProgram
   , jhcProgram
   , uhcProgram
   , gccProgram

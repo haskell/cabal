@@ -187,9 +187,6 @@ program-locations
   -- greencard-location:
   -- haddock-location:
   -- happy-location:
-  -- haskell-suite-location:
-  -- haskell-suite-pkg-location:
-  -- hmake-location:
   -- hpc-location:
   -- hsc2hs-location:
   -- hscolour-location:
@@ -215,9 +212,6 @@ program-default-options
   -- greencard-options:
   -- haddock-options:
   -- happy-options:
-  -- haskell-suite-options:
-  -- haskell-suite-pkg-options:
-  -- hmake-options:
   -- hpc-options:
   -- hsc2hs-options:
   -- hscolour-options:

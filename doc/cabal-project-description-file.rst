@@ -957,7 +957,7 @@ feature was added.
     The command line variant of this flag is ``--configure-option=arg``,
     which can be specified multiple times to pass multiple options.
 
-.. cfg-field:: compiler: ghc, ghcjs, jhc, lhc, uhc or haskell-suite
+.. cfg-field:: compiler: ghc, ghcjs, jhc, lhc, or uhc
                --compiler=compiler
     :synopsis: Compiler to build with.
 
