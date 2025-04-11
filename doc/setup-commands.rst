@@ -213,7 +213,7 @@ files of a package:
     embedded spaces need to be quoted with double quotes (``""``), for example
     ``--foo-options='--bar="C:\Program Files\Bar"'``. (The single quotes
     (``''``) are for your shell, the ``"double"`` quotes are passed to Cabal.)
-    As an alternative that takes only one option at a time but avoids the need
+    For an alternative that takes only one option at a time but avoids the need
     to quote, use :option:`--PROG-option` instead.
 
     Note: if *prog* is ``ghc``, then options that do not affect build
