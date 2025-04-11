@@ -208,6 +208,8 @@ exceptionCode e = case e of
   NoSupportBuildingTestSuite{} -> 4106
   NoSupportBuildingBenchMark{} -> 5320
   BuildingNotSupportedWithCompiler{} -> 7077
+  -- Retired: ProvideHaskellSuiteTool{} -> 7509
+  -- Retired: CannotDetermineCompilerVersion{} -> 4519
   PkgDumpFailed{} -> 2291
   FailedToParseOutput{} -> 5500
   CantFindSourceModule{} -> 8870
