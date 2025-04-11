@@ -118,7 +118,7 @@ benchmarkOptions' showOrParseArgs =
         []
         ["benchmark-options"]
         ( "give extra options to benchmark executables "
-            ++ "(split on spaces, \"quotes\" prevent splitting; "
+            ++ "(split on spaces, use \"\" to prevent splitting; "
             ++ "name templates can use $pkgid, $compiler, "
             ++ "$os, $arch, $benchmark)"
         )

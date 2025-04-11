@@ -316,7 +316,7 @@ programDbOptions progDb showOrParseArgs get set =
         [prog ++ "-options"]
         ( "give extra options to "
             ++ prog
-            ++ " (split on spaces, \"quotes\" prevent splitting)"
+            ++ " (split on spaces, use \"\" to prevent splitting)"
         )
         get
         set
