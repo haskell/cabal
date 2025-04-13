@@ -166,7 +166,7 @@ deleteOldExeFile verbosity oldPID tmpPath = do
 -- A bunch of functions sadly not provided by the Win32 package.
 
 {- FOURMOLU_DISABLE -}
-#ifdef x86_64_HOST_ARCH
+#if defined(x86_64_HOST_ARCH) || defined(aarch64_HOST_ARCH)
 #define CALLCONV ccall
 #else
 #define CALLCONV stdcall
