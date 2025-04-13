@@ -78,6 +78,18 @@ runConfigureScript cfg flags programDb hp = do
   -- We don't try and tell configure which ld to use, as we don't have
   -- a way to pass its flags too
 
+  -- Do not presume the CXX compiler is available, but it always will be after 9.4.
+  (mcxxProgShort, mcxxFlags) <- do
+    mprog <- needProgram verbosity gppProgram programDb
+    case mprog of
+      Just (p, _) -> do
+        let pInv = programInvocation p []
+        let cxxProg = progInvokePath pInv
+        let cxxFlags = progInvokeArgs pInv
+        cxxProgShort <- getShortPathName cxxProg
+        return (Just cxxProgShort, Just cxxFlags)
+      Nothing -> return (Nothing, Nothing)
+
   let configureFile' = toUnix configureFile
   -- autoconf is fussy about filenames, and has a set of forbidden
   -- characters that can't appear in the build directory, etc:
@@ -159,9 +171,7 @@ runConfigureScript cfg flags programDb hp = do
                )
              ]
   let extraPath = fromNubList $ configProgramPathExtra cfg
-  let cflagsEnv =
-        maybe (unwords ccFlags) (++ (" " ++ unwords ccFlags)) $
-          lookup "CFLAGS" env
+  let mkFlagsEnv fs var = maybe (unwords fs) (++ (" " ++ unwords fs)) (lookup var env)
       spSep = [FilePath.searchPathSeparator]
       pathEnv =
         maybe
@@ -169,11 +179,17 @@ runConfigureScript cfg flags programDb hp = do
           ((intercalate spSep extraPath ++ spSep) ++)
           $ lookup "PATH" env
       overEnv =
-        ("CFLAGS", Just cflagsEnv)
-          : [("PATH", Just pathEnv) | not (null extraPath)]
+        ("CFLAGS", Just (mkFlagsEnv ccFlags "CFLAGS"))
+          : [("CXXFLAGS", Just (mkFlagsEnv cxxFlags "CXXFLAGS")) | Just cxxFlags <- [mcxxFlags]]
+          ++ [("PATH", Just pathEnv) | not (null extraPath)]
           ++ cabalFlagEnv
       maybeHostFlag = if hp == buildPlatform then [] else ["--host=" ++ show (pretty hp)]
-      args' = configureFile' : args ++ ["CC=" ++ ccProgShort] ++ maybeHostFlag
+      args' =
+        configureFile'
+          : args
+          ++ ["CC=" ++ ccProgShort]
+          ++ ["CXX=" ++ cxxProgShort | Just cxxProgShort <- [mcxxProgShort]]
+          ++ maybeHostFlag
       shProg = simpleProgram "sh"
   progDb <- prependProgramSearchPath verbosity extraPath [] emptyProgramDb
   shConfiguredProg <-
