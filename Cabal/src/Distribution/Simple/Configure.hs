@@ -2867,6 +2867,7 @@ checkForeignLibSupported comp platform flib = go (compilerFlavor comp)
     goGhcPlatform :: Platform -> Maybe String
     goGhcPlatform (Platform _ OSX) = goGhcOsx (foreignLibType flib)
     goGhcPlatform (Platform _ Linux) = goGhcLinux (foreignLibType flib)
+    goGhcPlatform (Platform _ FreeBSD) = goGhcLinux (foreignLibType flib)
     goGhcPlatform (Platform I386 Windows) = goGhcWindows (foreignLibType flib)
     goGhcPlatform (Platform X86_64 Windows) = goGhcWindows (foreignLibType flib)
     goGhcPlatform _ =

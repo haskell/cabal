@@ -10,6 +10,7 @@
 module Distribution.PackageDescription.Check.Paths
   ( checkGlob
   , checkPath
+  , checkPackageFileNamesWithGlob
   , fileExtensionSupportedLanguage
   , isGoodRelativeDirectoryPath
   , isGoodRelativeFilePath

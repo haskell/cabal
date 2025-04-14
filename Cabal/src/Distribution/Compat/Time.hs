@@ -94,7 +94,7 @@ getModTime path = allocaBytes size_WIN32_FILE_ATTRIBUTE_DATA $ \info -> do
       return $! ModTime (qwTime :: Word64)
 
 {- FOURMOLU_DISABLE -}
-#ifdef x86_64_HOST_ARCH
+#if defined(x86_64_HOST_ARCH) || defined(aarch64_HOST_ARCH)
 #define CALLCONV ccall
 #else
 #define CALLCONV stdcall

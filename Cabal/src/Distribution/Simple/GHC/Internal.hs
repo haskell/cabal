@@ -111,6 +111,11 @@ configureToolchain _implInfo ghcProg ghcInfo =
       , programPostConf = configureGcc
       }
     . addKnownProgram
+      gppProgram
+        { programFindLocation = findProg gppProgramName extraGppPath
+        , programPostConf = configureGpp
+        }
+    . addKnownProgram
       ldProgram
         { programFindLocation = findProg ldProgramName extraLdPath
         , programPostConf = \v cp ->
@@ -137,6 +142,7 @@ configureToolchain _implInfo ghcProg ghcInfo =
     maybeName prog = maybe (programName prog) (dropExeExtension . takeFileName)
 
     gccProgramName = maybeName gccProgram mbGccLocation
+    gppProgramName = maybeName gppProgram mbGppLocation
     ldProgramName = maybeName ldProgram mbLdLocation
     arProgramName = maybeName arProgram mbArLocation
     stripProgramName = maybeName stripProgram mbStripLocation
@@ -149,18 +155,20 @@ configureToolchain _implInfo ghcProg ghcInfo =
         mbDir = maybeToList . fmap takeDirectory $ mbPath
 
     extraGccPath = mkExtraPath mbGccLocation windowsExtraGccDir
+    extraGppPath = mkExtraPath mbGppLocation windowsExtraGppDir
     extraLdPath = mkExtraPath mbLdLocation windowsExtraLdDir
     extraArPath = mkExtraPath mbArLocation windowsExtraArDir
     extraStripPath = mkExtraPath mbStripLocation windowsExtraStripDir
 
     -- on Windows finding and configuring ghc's gcc & binutils is a bit special
     ( windowsExtraGccDir
+      , windowsExtraGppDir
       , windowsExtraLdDir
       , windowsExtraArDir
       , windowsExtraStripDir
       ) =
         let b = mingwBinDir </> binPrefix
-         in (b, b, b, b)
+         in (b, b, b, b, b)
 
     findProg
       :: String
@@ -176,11 +184,13 @@ configureToolchain _implInfo ghcProg ghcInfo =
     -- Read tool locations from the 'ghc --info' output. Useful when
     -- cross-compiling.
     mbGccLocation = Map.lookup "C compiler command" ghcInfo
+    mbGppLocation = Map.lookup "C++ compiler command" ghcInfo
     mbLdLocation = Map.lookup "ld command" ghcInfo
     mbArLocation = Map.lookup "ar command" ghcInfo
     mbStripLocation = Map.lookup "strip command" ghcInfo
 
     ccFlags = getFlags "C compiler flags"
+    cxxFlags = getFlags "C++ compiler flags"
     -- GHC 7.8 renamed "Gcc Linker flags" to "C compiler link flags"
     -- and "Ld Linker flags" to "ld flags" (GHC #4862).
     gccLinkerFlags = getFlags "Gcc Linker flags" ++ getFlags "C compiler link flags"
@@ -208,6 +218,15 @@ configureToolchain _implInfo ghcProg ghcInfo =
               programDefaultArgs gccProg
                 ++ ccFlags
                 ++ gccLinkerFlags
+          }
+
+    configureGpp :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
+    configureGpp _v gppProg = do
+      return
+        gppProg
+          { programDefaultArgs =
+              programDefaultArgs gppProg
+                ++ cxxFlags
           }
 
     configureLd :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
