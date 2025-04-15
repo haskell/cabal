@@ -72,7 +72,6 @@ import Distribution.Backpack.DescribeUnitId
 import Distribution.Package
 import qualified Distribution.Simple.GHC as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
-import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 import qualified Distribution.Simple.PackageIndex as Index
 import qualified Distribution.Simple.UHC as UHC
 
@@ -96,7 +95,6 @@ import Distribution.Simple.Flag
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.PreProcess
 import Distribution.Simple.Program
-import Distribution.Simple.Program.Builtin (haskellSuiteProgram)
 import Distribution.Simple.Program.Db
 import qualified Distribution.Simple.Program.GHC as GHC
 import Distribution.Simple.Program.Types
@@ -318,7 +316,6 @@ dumpBuildInfo verbosity distPref dumpBuildInfoFlag pkg_descr lbi flags = do
     flavorToProgram GHCJS = Just ghcjsProgram
     flavorToProgram UHC = Just uhcProgram
     flavorToProgram JHC = Just jhcProgram
-    flavorToProgram HaskellSuite{} = Just haskellSuiteProgram
     flavorToProgram _ = Nothing
 
 repl
@@ -977,7 +974,6 @@ buildLib flags numJobs pkg_descr lbi lib clbi =
         GHC -> GHC.buildLib flags numJobs pkg_descr lbi lib clbi
         GHCJS -> GHCJS.buildLib verbosity numJobs pkg_descr lbi lib clbi
         UHC -> UHC.buildLib verbosity pkg_descr lbi lib clbi
-        HaskellSuite{} -> HaskellSuite.buildLib verbosity pkg_descr lbi lib clbi
         _ -> dieWithException verbosity BuildingNotSupportedWithCompiler
 
 -- | Build a foreign library
