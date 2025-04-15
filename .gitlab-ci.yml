@@ -3,7 +3,7 @@ stages:
 
 variables:
   # Commit of ghc/ci-images repository from which to pull Docker images
-  DOCKER_REV: "a9297a370025101b479cfd4977f8f910814e03ab"
+  DOCKER_REV: "e973f7fa82a181afcb90e3fcf071e1bc1a8b41da"
 
   GHC_VERSION: 9.6.4
   CABAL_INSTALL_VERSION: 3.10.2.0
