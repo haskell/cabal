@@ -38,7 +38,6 @@ linux:
       - ARCH: x86_64
         TAG: x86_64-linux
         OS:
-          - deb9
           - deb10
           - deb11
           - deb12
@@ -49,13 +48,6 @@ linux:
           - ubuntu18_04
           - ubuntu20_04
           - ubuntu22_04
-      # Pull this one from the future, since it's missing.
-      # We can't move the entire file to this DOCKER_REV, because
-      # i386-linux-deb9 is missing from it.
-      - ARCH: x86_64
-        TAG: x86_64-linux
-        OS: centos7
-        DOCKER_REV: f2d12519f45a13a61fcca03a949f927ceead6492
 
       - ARCH: aarch64
         TAG: aarch64-linux
