@@ -172,7 +172,7 @@ targetAction flags@NixStyleFlags{..} ts globalFlags = do
 
   targets :: TargetsMap <-
     either (reportBuildTargetProblems verbosity) return $
-      resolveTargets
+      resolveTargetsFromSolver
         selectPackageTargets
         selectComponentTarget
         elaboratedPlan

@@ -17,7 +17,7 @@ import Distribution.Client.ProjectBuilding
 import Distribution.Client.ProjectConfig
 import Distribution.Client.ProjectOrchestration
   ( distinctTargetComponents
-  , resolveTargets
+  , resolveTargetsFromSolver
   )
 import Distribution.Client.ProjectPlanning
 import Distribution.Client.ProjectPlanning.Types
@@ -1777,7 +1777,7 @@ assertProjectDistinctTargets
             ++ show results
     where
       results =
-        resolveTargets
+        resolveTargetsFromSolver
           selectPackageTargets
           selectComponentTarget
           elaboratedPlan
@@ -1827,7 +1827,7 @@ assertTargetProblems elaboratedPlan selectPackageTargets selectComponentTarget =
   where
     assertTargetProblem expected targetSelector =
       let res =
-            resolveTargets
+            resolveTargetsFromSolver
               selectPackageTargets
               selectComponentTarget
               elaboratedPlan
@@ -1838,7 +1838,7 @@ assertTargetProblems elaboratedPlan selectPackageTargets selectComponentTarget =
               problem @?= expected targetSelector
             unexpected ->
               assertFailure $
-                "expected resolveTargets result: (Left [problem]) "
+                "expected resolveTargetsFromSolver result: (Left [problem]) "
                   ++ "but got: "
                   ++ show unexpected
 
