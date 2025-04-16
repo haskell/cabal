@@ -17,12 +17,9 @@ module Distribution.Utils.CharSet (
     difference,
     -- * Query
     size,
-    null,
-    member,
     -- * Conversions
     fromList,
     toList,
-    fromIntervalList,
     toIntervalList,
     -- * Special lists
     alpha,
@@ -32,12 +29,12 @@ module Distribution.Utils.CharSet (
     ) where
 
 import Data.Char                     (chr, isAlpha, isAlphaNum, isDigit, isUpper, ord)
-import Data.List                     (foldl', sortBy)
+import Data.List                     (foldl')
 import Data.Monoid                   (Monoid (..))
 import Data.String                   (IsString (..))
 import Distribution.Compat.Semigroup (Semigroup (..))
 import Prelude
-       (Bool (..), Bounded (..), Char, Enum (..), Eq (..), Int, Maybe (..), Num (..), Ord (..), Show (..), String, (&&), concatMap, flip, fst, not, otherwise, showParen,
+       (Bounded (..), Char, Enum (..), Eq (..), Int, Num (..), Ord (..), Show (..), String, (&&), concatMap, flip, not, otherwise, showParen,
        showString, uncurry, ($), (.))
 
 #if MIN_VERSION_containers(0,5,0)
@@ -79,17 +76,7 @@ empty = CS IM.empty
 universe :: CharSet
 universe = CS $ IM.singleton 0 0x10ffff
 
--- | Check whether 'CharSet' is 'empty'.
-null :: CharSet -> Bool
-null (CS cs) = IM.null cs
-
 -- | Size of 'CharSet'
---
--- >>> size $ fromIntervalList [('a','f'), ('0','9')]
--- 16
---
--- >>> length $ toList $ fromIntervalList [('a','f'), ('0','9')]
--- 16
 --
 size :: CharSet -> Int
 size (CS m) = foldl' (\ !acc (lo, hi) -> acc + (hi - lo) + 1) 0 (IM.toList m)
@@ -97,21 +84,6 @@ size (CS m) = foldl' (\ !acc (lo, hi) -> acc + (hi - lo) + 1) 0 (IM.toList m)
 -- | Singleton character set.
 singleton :: Char -> CharSet
 singleton c = CS (IM.singleton (ord c) (ord c))
-
--- | Test whether character is in the set.
-member :: Char -> CharSet -> Bool
-#if MIN_VERSION_containers(0,5,0)
-member c (CS m) = case IM.lookupLE i m of
-    Nothing      -> False
-    Just (_, hi) -> i <= hi
-  where
-#else
-member c (CS m) = go (IM.toList m)
-  where
-    go [] = False
-    go ((x,y):zs) = (x <= i && i <= y) || go zs
-#endif
-    i = ord c
 
 -- | Insert 'Char' into 'CharSet'.
 {- FOURMOLU_DISABLE -}
@@ -181,24 +153,6 @@ toList = concatMap (uncurry enumFromTo) . toIntervalList
 --
 toIntervalList :: CharSet -> [(Char, Char)]
 toIntervalList (CS m) = [ (chr lo, chr hi) | (lo, hi) <- IM.toList m ]
-
--- | Convert from interval pairs.
---
--- >>> fromIntervalList []
--- ""
---
--- >>> fromIntervalList [('a','f'), ('0','9')]
--- "0123456789abcdef"
---
--- >>> fromIntervalList [('Z','A')]
--- ""
---
-fromIntervalList :: [(Char,Char)] -> CharSet
-fromIntervalList xs = normalise' $ sortBy (\a b -> compare (fst a) (fst b))
-    [ (ord lo, ord hi)
-    | (lo, hi) <- xs
-    , lo <= hi
-    ]
 
 -------------------------------------------------------------------------------
 -- Normalisation
