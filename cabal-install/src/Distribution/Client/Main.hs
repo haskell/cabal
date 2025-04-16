@@ -120,6 +120,7 @@ import qualified Distribution.Client.CmdClean as CmdClean
 import qualified Distribution.Client.CmdConfigure as CmdConfigure
 import qualified Distribution.Client.CmdExec as CmdExec
 import qualified Distribution.Client.CmdFreeze as CmdFreeze
+import qualified Distribution.Client.CmdGenBounds as CmdGenBounds
 import qualified Distribution.Client.CmdHaddock as CmdHaddock
 import qualified Distribution.Client.CmdHaddockProject as CmdHaddockProject
 import qualified Distribution.Client.CmdInstall as CmdInstall
@@ -436,7 +437,6 @@ mainWorker args = do
       , regularCmd initCommand initAction
       , regularCmd userConfigCommand userConfigAction
       , regularCmd CmdPath.pathCommand CmdPath.pathAction
-      , regularCmd genBoundsCommand genBoundsAction
       , regularCmd CmdOutdated.outdatedCommand CmdOutdated.outdatedAction
       , wrapperCmd hscolourCommand hscolourCommonFlags
       , hiddenCmd formatCommand formatAction
@@ -462,7 +462,9 @@ mainWorker args = do
           , newCmd CmdClean.cleanCommand CmdClean.cleanAction
           , newCmd CmdSdist.sdistCommand CmdSdist.sdistAction
           , newCmd CmdTarget.targetCommand CmdTarget.targetAction
+          , newCmd CmdGenBounds.genBoundsCommand CmdGenBounds.genBoundsAction
           , legacyCmd configureExCommand configureAction
+          , legacyCmd genBoundsCommand genBoundsAction
           , legacyCmd buildCommand buildAction
           , legacyCmd replCommand replAction
           , legacyCmd freezeCommand freezeAction
