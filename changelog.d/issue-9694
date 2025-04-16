@@ -1,0 +1,4 @@
+synopsis: Don't imply that Haddock docs exist, when warning not installed
+packages: Cabal
+issues: #9694
+prs: #9695
