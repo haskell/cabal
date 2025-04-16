@@ -1,0 +1,15 @@
+synopsis: Fix PATH changes not triggering REPL reconfiguration
+packages: cabal-install
+prs: #10817
+issues: #2015
+
+When modifying your PATH environment variable between Cabal commands, REPL
+sessions will now correctly use the updated environment. Previously, if you
+changed your PATH after initial configuration, Cabal would continue using the
+old PATH settings in REPL sessions without warning.
+
+With this fix, Cabal properly detects PATH changes and reconfigures the REPL
+accordingly, ensuring tools and libraries in your current PATH are available.
+While this may cause additional rebuilds when PATH changes, it prevents the
+confusing errors that could occur when your REPL environment didn't match your
+system configuration.
