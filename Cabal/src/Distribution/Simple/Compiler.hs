@@ -84,6 +84,7 @@ module Distribution.Simple.Compiler
   , libraryDynDirSupported
   , libraryVisibilitySupported
   , jsemSupported
+  , reexportedAsSupported
 
     -- * Support for profiling detail levels
   , ProfDetailLevel (..)
@@ -428,6 +429,14 @@ backpackSupported = ghcSupported "Support Backpack"
 jsemSupported :: Compiler -> Bool
 jsemSupported comp = case compilerFlavor comp of
   GHC -> v >= mkVersion [9, 7]
+  _ -> False
+  where
+    v = compilerVersion comp
+
+-- | Does the compiler support the -reexported-modules "A as B" syntax
+reexportedAsSupported :: Compiler -> Bool
+reexportedAsSupported comp = case compilerFlavor comp of
+  GHC -> v >= mkVersion [9, 12]
   _ -> False
   where
     v = compilerVersion comp
