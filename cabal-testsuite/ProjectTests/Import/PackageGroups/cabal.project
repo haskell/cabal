@@ -1,0 +1,4 @@
+import: cabal-configs/pkgs.config
+
+packages:
+    ./
