@@ -67,6 +67,7 @@ syn keyword cabalFieldName contained
   \ copyright
   \ cpp-options
   \ cxx-options
+  \ js-options
   \ cxx-sources
   \ data-dir
   \ data-files

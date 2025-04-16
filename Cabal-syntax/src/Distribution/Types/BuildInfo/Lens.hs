@@ -59,6 +59,10 @@ class HasBuildInfo a where
   cxxOptions = buildInfo . cxxOptions
   {-# INLINE cxxOptions #-}
 
+  jsOptions :: Lens' a [String]
+  jsOptions = buildInfo . jsOptions
+  {-# INLINE jsOptions #-}
+
   ldOptions :: Lens' a [String]
   ldOptions = buildInfo . ldOptions
   {-# INLINE ldOptions #-}
