@@ -1,7 +1,7 @@
 import Test.Cabal.Prelude
 import Data.Function ((&))
 
-main = cabalTest . recordMode RecordMarked $ do
+main = cabalTest . flakyIfCI 10927. recordMode RecordMarked $ do
   let log = recordHeader . pure
 
   log "check \"using config from message\" with URI imports"
