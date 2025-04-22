@@ -4,13 +4,7 @@ on:
   push:
     branches:
     - master
-    paths:
-    - 'changelog.d/*'
-    - '.github/workflows/changelogs.yml'
   pull_request:
-    paths:
-    - 'changelog.d/*'
-    - '.github/workflows/changelogs.yml'
   release:
     types:
       - created
