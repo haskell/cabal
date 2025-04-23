@@ -263,7 +263,7 @@ showOption :: QPN -> POption -> String
 showOption qpn@(Q _pp pn) (POption i linkedTo) =
   case linkedTo of
     Nothing  -> showQPN qpn ++ " == " ++ showI i
-    Just pp' -> showQPN qpn ++ " ~> " ++ showQPN (Q pp' pn)
+    Just pp' -> "to reuse " ++ showQPN (Q pp' pn) ++ " for " ++ showQPN qpn
 
 -- | Shows a mixed list of instances and versions in a human-friendly way,
 -- abbreviated.
