@@ -115,7 +115,8 @@ import qualified Distribution.PackageDescription.Configuration as PD
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import Distribution.Simple.Setup
-  ( asBool
+  ( BooleanFlag
+  , asBool
   )
 import Distribution.Solver.Modular
   ( PruneAfterFirstSuccess (..)
@@ -136,7 +137,8 @@ import Distribution.Types.DependencySatisfaction
   ( DependencySatisfaction (..)
   )
 import Distribution.Verbosity
-  ( normal
+  ( deafening
+  , normal
   )
 import Distribution.Version
 
@@ -171,6 +173,7 @@ import Data.List
   )
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import Text.PrettyPrint
 
 -- ------------------------------------------------------------
 
@@ -214,45 +217,48 @@ data DepResolverParams = DepResolverParams
 
 showDepResolverParams :: DepResolverParams -> String
 showDepResolverParams p =
-  "targets: "
-    ++ intercalate ", " (map prettyShow $ Set.toList (depResolverTargets p))
-    ++ "\nconstraints: "
-    ++ concatMap
-      (("\n  " ++) . showLabeledConstraint)
-      (depResolverConstraints p)
-    ++ "\npreferences: "
-    ++ concatMap
-      (("\n  " ++) . showPackagePreference)
-      (depResolverPreferences p)
-    ++ "\nstrategy: "
-    ++ show (depResolverPreferenceDefault p)
-    ++ "\nreorder goals: "
-    ++ show (asBool (depResolverReorderGoals p))
-    ++ "\ncount conflicts: "
-    ++ show (asBool (depResolverCountConflicts p))
-    ++ "\nfine grained conflicts: "
-    ++ show (asBool (depResolverFineGrainedConflicts p))
-    ++ "\nminimize conflict set: "
-    ++ show (asBool (depResolverMinimizeConflictSet p))
-    ++ "\navoid reinstalls: "
-    ++ show (asBool (depResolverAvoidReinstalls p))
-    ++ "\nshadow packages: "
-    ++ show (asBool (depResolverShadowPkgs p))
-    ++ "\nstrong flags: "
-    ++ show (asBool (depResolverStrongFlags p))
-    ++ "\nallow boot library installs: "
-    ++ show (asBool (depResolverAllowBootLibInstalls p))
-    ++ "\nonly constrained packages: "
-    ++ show (depResolverOnlyConstrained p)
-    ++ "\nmax backjumps: "
-    ++ maybe
-      "infinite"
-      show
-      (depResolverMaxBackjumps p)
+  render $
+    vcat
+      [ hang (text "targets:") 2 $
+          vcat [text (prettyShow pkgname) | pkgname <- Set.toList (depResolverTargets p)]
+      , hang (text "constraints:") 2 $
+          vcat [prettyLabeledConstraint lc | lc <- depResolverConstraints p]
+      , hang (text "constraints:") 2 $
+          vcat [prettyLabeledConstraint lc | lc <- depResolverConstraints p]
+      , hang (text "preferences:") 2 $
+          if depResolverVerbosity p >= deafening
+            then vcat [text (showPackagePreference pref) | pref <- depResolverPreferences p]
+            else text "... increase verbosity to see"
+      , hang (text "strategy:") 2 $
+          text (show (depResolverPreferenceDefault p))
+      , hang (text "reorder goals:") 2 $
+          prettyBool (depResolverReorderGoals p)
+      , hang (text "count conflicts:") 2 $
+          prettyBool (depResolverCountConflicts p)
+      , hang (text "fine grained conflicts:") 2 $
+          prettyBool (depResolverFineGrainedConflicts p)
+      , hang (text "minimize conflict set:") 2 $
+          prettyBool (depResolverMinimizeConflictSet p)
+      , hang (text "avoid reinstalls:") 2 $
+          prettyBool (depResolverAvoidReinstalls p)
+      , hang (text "shadow packages:") 2 $
+          prettyBool (depResolverShadowPkgs p)
+      , hang (text "strong flags:") 2 $
+          prettyBool (depResolverStrongFlags p)
+      , hang (text "allow boot library installs:") 2 $
+          prettyBool (depResolverAllowBootLibInstalls p)
+      , hang (text "only constrained packages:") 2 $
+          text (show (depResolverOnlyConstrained p))
+      , hang (text "max backjumps:") 2 $
+          text (maybe "infinite" show (depResolverMaxBackjumps p))
+      ]
   where
-    showLabeledConstraint :: LabeledPackageConstraint -> String
-    showLabeledConstraint (LabeledPackageConstraint pc src) =
-      showPackageConstraint pc ++ " (" ++ showConstraintSource src ++ ")"
+    prettyBool :: BooleanFlag a => a -> Doc
+    prettyBool = pretty . asBool
+
+    prettyLabeledConstraint :: LabeledPackageConstraint -> Doc
+    prettyLabeledConstraint (LabeledPackageConstraint pc src) =
+      pretty pc <+> parens (pretty src)
 
 -- | A package selection preference for a particular package.
 --
