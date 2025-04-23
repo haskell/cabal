@@ -350,7 +350,7 @@ dependencyInconsistencies' index =
   [ (name, [(pid, packageVersion dep) | (dep, pids) <- uses, pid <- pids])
   | (name, ipid_map) <- Map.toList inverseIndex
   , let uses = Map.elems ipid_map
-  , reallyIsInconsistent (map fst uses)
+  , length uses > 1
   ]
   where
     -- For each package name (of a dependency, somewhere)
@@ -369,21 +369,6 @@ dependencyInconsistencies' index =
         , -- And look up those @sid@ (i.e., @sid@ is the ID of @dep@)
         Just dep <- [Graph.lookup sid index]
         ]
-
-    -- If, in a single install plan, we depend on more than one version of a
-    -- package, then this is ONLY okay in the (rather special) case that we
-    -- depend on precisely two versions of that package, and one of them
-    -- depends on the other. This is necessary for example for the base where
-    -- we have base-3 depending on base-4.
-    reallyIsInconsistent :: [SolverPlanPackage] -> Bool
-    reallyIsInconsistent [] = False
-    reallyIsInconsistent [_p] = False
-    reallyIsInconsistent [p1, p2] =
-      let pid1 = nodeKey p1
-          pid2 = nodeKey p2
-       in pid1 `notElem` CD.nonSetupDeps (resolverPackageLibDeps p2)
-            && pid2 `notElem` CD.nonSetupDeps (resolverPackageLibDeps p1)
-    reallyIsInconsistent _ = True
 
 -- | The graph of packages (nodes) and dependencies (edges) must be acyclic.
 --
