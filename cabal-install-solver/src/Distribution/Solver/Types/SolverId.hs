@@ -9,6 +9,8 @@ import Distribution.Solver.Compat.Prelude
 import Prelude ()
 
 import Distribution.Package (PackageId, Package(..), UnitId)
+import Distribution.Pretty (Pretty (..))
+import Text.PrettyPrint (parens)
 
 -- | The solver can produce references to existing packages or
 -- packages we plan to install.  Unlike 'ConfiguredId' we don't
@@ -27,3 +29,7 @@ instance Show SolverId where
 
 instance Package SolverId where
   packageId = solverSrcId
+  
+instance Pretty SolverId where
+    pretty (PreExistingId pkg unitId) = pretty pkg <+> parens (pretty unitId)
+    pretty (PlannedId pkg)            = pretty pkg
