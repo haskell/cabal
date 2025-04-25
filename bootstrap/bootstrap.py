@@ -89,6 +89,11 @@ local_packages: List[PackageName] = [ "Cabal-syntax"
                                     , "cabal-install-solver"
                                     , "cabal-install" ]
 
+# Value passed to setup build -j {jobs_amount}
+# 1 is not set by default.
+# For the default look up the parser.set_default in main() function
+jobs_amount = 1
+
 class Compiler:
     def __init__(self, ghc_path: Path):
         if not ghc_path.is_file():
@@ -206,11 +211,15 @@ def install_sdist(dist_dir: Path, sdist_dir: Path, ghc: Compiler, flags: List[st
     setup_dist_dir = dist_dir / 'setup'
     setup = setup_dist_dir / 'Setup'
 
-    build_args = [
-        f'--builddir={dist_dir}',
+    build_dir = [
+        f'--builddir={dist_dir}'
     ]
 
-    configure_args = build_args + [
+    build_args = build_dir + [
+        f'-j{jobs_amount}'
+    ]
+
+    configure_args = build_dir + [
         f'--package-db={PKG_DB.resolve()}',
         f'--prefix={prefix}',
         f'--bindir={BINDIR.resolve()}',
@@ -232,7 +241,7 @@ def install_sdist(dist_dir: Path, sdist_dir: Path, ghc: Compiler, flags: List[st
     check_call([str(ghc.ghc_path), '--make', '-package-env=-', '-i', f'-odir={setup_dist_dir}', f'-hidir={setup_dist_dir}', '-o', setup, 'Setup'])
     check_call([setup, 'configure'] + configure_args)
     check_call([setup, 'build'] + build_args)
-    check_call([setup, 'install'] + build_args)
+    check_call([setup, 'install'] + build_dir)
 
 def hash_file(h, f: BinaryIO) -> SHA256Hash:
     while True:
@@ -376,9 +385,14 @@ def main() -> None:
                         help='path to GHC')
     parser.add_argument('-s', '--bootstrap-sources', type=Path,
                         help='path to prefetched bootstrap sources archive')
+
     parser.add_argument('--archive', dest='want_archive', action='store_true')
     parser.add_argument('--no-archive', dest='want_archive', action='store_false')
     parser.set_defaults(want_archive=True)
+
+    parser.add_argument('-j', type=int, metavar="NUM",
+                        help='specify the number of jobs (commands) to run simultaneously')
+    parser.set_defaults(j=1)
 
     subparsers = parser.add_subparsers(dest="command")
 
@@ -388,6 +402,9 @@ def main() -> None:
     parser_fetch.add_argument('-o','--output', type=Path, default='bootstrap-sources')
 
     args = parser.parse_args()
+
+    global jobs_amount
+    jobs_amount = args.j
 
     print(dedent("""
         DO NOT use this script if you have another recent cabal-install available.
