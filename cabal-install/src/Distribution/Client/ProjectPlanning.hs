@@ -226,6 +226,7 @@ import Control.Monad.IO.Class (liftIO)
 import Control.Monad.State as State (State, execState, runState, state)
 import Data.Foldable (fold)
 import Data.List (deleteBy, groupBy)
+import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -407,13 +408,7 @@ rebuildProjectConfig
           localPackages <- phaseReadLocalPackages compiler (projectConfig <> cliConfig)
           return (projectConfig, localPackages)
 
-    let configfiles =
-          [ text "-" <+> docProjectConfigPath path
-          | Explicit path <- Set.toList . (if verbosity >= verbose then id else onlyTopLevelProvenance) $ projectConfigProvenance projectConfig
-          ]
-    unless (null configfiles) $
-      notice (verboseStderr verbosity) . render . vcat $
-        text "Configuration is affected by the following files:" : configfiles
+    informAboutConfigFiles projectConfig
 
     return (projectConfig <> cliConfig, localPackages)
     where
@@ -459,6 +454,48 @@ rebuildProjectConfig
             projectConfigShared
             projectConfigBuildOnly
             pkgLocations
+
+      informAboutConfigFiles projectConfig =
+        unless (null configFiles)
+          . out (verboseStderr verbosity)
+          . render
+          $ message
+        where
+          -- output mode is either 'notice' or 'info' depending on how trivial the information
+          out
+            | allProjectFilesInCWD = info
+            | otherwise = notice
+            where
+              allProjectFilesInCWD =
+                map projectConfigPathRoot configFiles
+                  L.\\ ["cabal.project", "cabal.project.local", "cabal.freeze"]
+                  == []
+
+          -- formatting depends on |config files| (the number of config files)
+          message = case configFilesDoc of
+            (_ : _ : _ : _) ->
+              -- \|config files| > 2 => vertical list
+              vcat
+                [ text "Configuration is affected by the following files:"
+                , configFilesVertList
+                ]
+            [path1, path2] ->
+              text "Configuration is affected by '" <+> path1 <+> text "' and '" <+> path2 <+> text "'"
+            [path] ->
+              text "Configuration is affected by '" <+> path <+> text "'"
+            [] ->
+              error "impossible" -- see `unless (null configFiles)` above
+            where
+              configFilesDoc = map docProjectConfigPath configFiles
+              configFilesVertList = docProjectConfigFiles configFiles
+
+          configFiles =
+            [ path
+            | Explicit path <-
+                Set.toList
+                  . (if verbosity >= verbose then id else onlyTopLevelProvenance)
+                  $ projectConfigProvenance projectConfig
+            ]
 
 configureCompiler
   :: Verbosity
