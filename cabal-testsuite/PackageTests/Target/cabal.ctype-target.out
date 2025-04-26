@@ -1,26 +1,18 @@
 # cabal v2-target
-Configuration is affected by the following files:
-- cabal.project
 Resolving dependencies...
 Fully qualified target forms:
  - a:lib:a
  - a:lib:a-sublib
 Found 2 targets matching a:libs.
 # cabal v2-target
-Configuration is affected by the following files:
-- cabal.project
 Fully qualified target forms:
  - a:exe:a-exe
 Found 1 target matching a:exes.
 # cabal v2-target
-Configuration is affected by the following files:
-- cabal.project
 Fully qualified target forms:
  - a:test:a-test
 Found 1 target matching a:tests.
 # cabal v2-target
-Configuration is affected by the following files:
-- cabal.project
 Fully qualified target forms:
  - a:bench:a-bench
 Found 1 target matching a:benches.

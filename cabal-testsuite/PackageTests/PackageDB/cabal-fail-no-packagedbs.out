@@ -1,5 +1,3 @@
 # cabal v2-build
-Configuration is affected by the following files:
-- cabal.project
 Error: [Cabal-2300]
 No package databases have been specified. If you use --package-db=clear, you must follow it with --package-db= with 'global', 'user' or a specific file.
