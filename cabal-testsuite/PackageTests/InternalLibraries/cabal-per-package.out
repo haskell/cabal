@@ -1,6 +1,4 @@
 # cabal v2-build
-Configuration is affected by the following files:
-- cabal.project
 Resolving dependencies...
 Error:
     Internal libraries only supported with per-component builds.

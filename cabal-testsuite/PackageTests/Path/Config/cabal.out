@@ -53,16 +53,10 @@ test-dir
 # cabal path
 <ROOT>/cabal.dist/home/.cabal
 # cabal path
-Configuration is affected by the following files:
-- fake.cabal.project
 <ROOT>/cabal.dist/home/.cabal
 # cabal path
-Configuration is affected by the following files:
-- fake.cabal.project
 {"cabal-version":"<CABAL_INSTALL_VER>","cache-home":"<ROOT>/cabal.dist/home/.cabal"}
 # cabal path
-Configuration is affected by the following files:
-- fake.cabal.project
 <ROOT>/cabal.dist/home/.cabal
 # cabal path
 my-cache-dir
@@ -77,16 +71,10 @@ my-cache-dir
 # cabal path
 <ROOT>/cabal.dist/home/.cabal/packages
 # cabal path
-Configuration is affected by the following files:
-- fake.cabal.project
 my-cache-dir
 # cabal path
-Configuration is affected by the following files:
-- fake.cabal.project
 {"cabal-version":"<CABAL_INSTALL_VER>","remote-repo-cache":"my-cache-dir"}
 # cabal path
-Configuration is affected by the following files:
-- fake.cabal.project
 my-cache-dir
 # cabal path
 my-logs-dir
@@ -101,16 +89,10 @@ my-logs-dir
 # cabal path
 <ROOT>/cabal.dist/home/.cabal/logs
 # cabal path
-Configuration is affected by the following files:
-- fake.cabal.project
 my-logs-dir
 # cabal path
-Configuration is affected by the following files:
-- fake.cabal.project
 {"cabal-version":"<CABAL_INSTALL_VER>","logs-dir":"my-logs-dir"}
 # cabal path
-Configuration is affected by the following files:
-- fake.cabal.project
 my-logs-dir
 # cabal path
 my-store-dir
@@ -125,16 +107,10 @@ my-store-dir
 # cabal path
 <ROOT>/cabal.dist/home/.cabal/store
 # cabal path
-Configuration is affected by the following files:
-- fake.cabal.project
 my-store-dir
 # cabal path
-Configuration is affected by the following files:
-- fake.cabal.project
 {"cabal-version":"<CABAL_INSTALL_VER>","store-dir":"my-store-dir"}
 # cabal path
-Configuration is affected by the following files:
-- fake.cabal.project
 my-store-dir
 # cabal path
 fake-cabal.config
@@ -149,16 +125,10 @@ fake-cabal.config
 # cabal path
 <ROOT>/cabal.dist/home/.cabal/config
 # cabal path
-Configuration is affected by the following files:
-- fake.cabal.project
 fake-cabal.config
 # cabal path
-Configuration is affected by the following files:
-- fake.cabal.project
 {"cabal-version":"<CABAL_INSTALL_VER>","config-file":"fake-cabal.config"}
 # cabal path
-Configuration is affected by the following files:
-- fake.cabal.project
 fake-cabal.config
 # cabal path
 my-installdir
@@ -173,14 +143,8 @@ my-installdir
 # cabal path
 <ROOT>/cabal.dist/home/.cabal/bin
 # cabal path
-Configuration is affected by the following files:
-- fake.cabal.project
 my-installdir
 # cabal path
-Configuration is affected by the following files:
-- fake.cabal.project
 {"cabal-version":"<CABAL_INSTALL_VER>","installdir":"my-installdir"}
 # cabal path
-Configuration is affected by the following files:
-- fake.cabal.project
 my-installdir
