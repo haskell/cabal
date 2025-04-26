@@ -184,7 +184,7 @@ newSemaphoreJobControl _ n
       error $ "newParallelJobControl: not a sensible number of jobs: " ++ show n
 newSemaphoreJobControl verbosity maxJobLimit = do
   sem <- freshSemaphore "cabal_semaphore" maxJobLimit
-  notice verbosity $
+  info verbosity $
     "Created semaphore called "
       ++ getSemaphoreName (semaphoreName sem)
       ++ " with "
