@@ -269,12 +269,12 @@ parseProject rootPath cacheDir httpTransport verbosity configToParse = do
 
 data Dupes = Dupes
   { dupesImport :: ProjectImport
-  , dupesSeenImportsBy :: [ProjectImport]
+  , dupesImports :: [ProjectImport]
   }
   deriving (Eq)
 
 instance Ord Dupes where
-  compare = compare `on` length . dupesSeenImportsBy
+  compare = compare `on` length . dupesImports
 
 type DupesMap = Map FilePath [Dupes]
 
@@ -282,7 +282,7 @@ dupesMsg :: (FilePath, [Dupes]) -> Doc
 dupesMsg (duplicate, ds@(take 1 . sortOn (importBy . dupesImport) -> dupes)) =
   vcat $
     ((text "Warning:" <+> int (length ds) <+> text "imports of" <+> text duplicate) <> semi)
-      : ((\Dupes{..} -> duplicateImportMsg Disp.empty dupesImport dupesSeenImportsBy) <$> dupes)
+      : ((\Dupes{..} -> duplicateImportMsg Disp.empty dupesImport dupesImports) <$> dupes)
 
 parseProjectSkeleton
   :: FilePath
