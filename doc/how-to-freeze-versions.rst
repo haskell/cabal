@@ -186,33 +186,42 @@ Freezing workflows
     with. Alternatively, you can run ``cabal update
     --ignore-project``.
 
-Freeze
-    If the ``cabal.project.freeze`` file doesn't exist, generating one is a
-    great way to see what versions of dependencies are currently being used even
-    if you choose to discard the ``.freeze`` file after inspecting it.
+For the versions of all dependencies at once:
 
-Thaw, Freeze
+- To check solver-chosen versions - cold snap
+
+    With this workflow we freeze, inspect then discard ``cabal.project.freeze``,
+    always leaving the solver free to choose other versions.  This is great way
+    to see what versions of dependencies are currently being used.
+
+- To update versions of all dependencies - thaw and freeze
+
     If you changed the version ranges of any of the dependencies in any of your
     project's package descriptions, in any ``.cabal`` file, then delete the
     ``cabal.project.freeze`` file if it already exists and run ``cabal freeze``
-    to generate fresh version of ``cabal.project.freeze``.
+    to generate fresh version of ``cabal.project.freeze``.  The steps of this
+    workflow are delete and freeze. The solver is let free to choose versions of
+    all dependencies but once it has decided, those versions are immediately
+    pinned.
 
-Freeze, Freeze (Freezing Harder)
-    You might in some cases want to skip deletion of ``cabal.project.freeze``,
-    but keep in mind that in that case ``cabal freeze`` will use existing
-    ``cabal.project.freeze`` when resolving dependencies, therefore not updating
-    any existing dependencies, only adding new ones.
+    This is "thaw and freeze" workflow is the simplest way to work with a
+    ``cabal.project.freeze`` file committed to source control.
 
-Partial Thaw, Freeze
+For the version of a single dependency:
+    
+- To pin the version of a new dependency
+
+    The steps of this workflow are add the new dependency and freeze. The solver
+    is free to chose its version for the new dependency while retaining the
+    already pinned versions for the rest of the dependencies.
+
+- To update the version of one dependency 
+
     If you want to a pick up a different version of a single dependency, you can
     delete its constraint from ``cabal.project.freeze`` and then run ``cabal
-    freeze`` again.
-
-.. Note::
-
-    If not sure, pick the "thaw, freeze" workflow, as it is the safest, the
-    simplest and the most common. Finally, you will always want to commit the
-    changed ``cabal.project.freeze`` to version control.
+    freeze`` again.  The steps of this workflow are delete one line and freeze.
+    It gives the solver the chance to choose another version for the unpinned
+    dependency.
 
 Ensuring everything is frozen
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
