@@ -269,7 +269,9 @@ parseProject rootPath cacheDir httpTransport verbosity configToParse = do
 
 data Dupes = Dupes
   { dupesImport :: ProjectImport
+  -- ^ The import that we're checking for duplicates.
   , dupesImports :: [ProjectImport]
+  -- ^ All the imports of this file.
   }
   deriving (Eq)
 
