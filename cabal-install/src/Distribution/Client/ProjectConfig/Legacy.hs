@@ -260,7 +260,7 @@ parseProject rootPath cacheDir httpTransport verbosity configToParse = do
   let (dir, projectFileName) = splitFileName rootPath
   projectDir <- makeAbsolute dir
   projectPath@(ProjectConfigPath (canonicalRoot :| _)) <- canonicalizeConfigPath projectDir (ProjectConfigPath $ projectFileName :| [])
-  importsBy <- newIORef $ toNubList [(canonicalRoot, projectPath)]
+  importsBy <- newIORef $ toNubList [ProjectImport canonicalRoot projectPath]
   dupesMap <- newIORef mempty
   result <- parseProjectSkeleton cacheDir httpTransport verbosity importsBy dupesMap projectDir projectPath configToParse
   dupes <- Map.filter ((> 1) . length) <$> readIORef dupesMap
@@ -270,7 +270,7 @@ parseProject rootPath cacheDir httpTransport verbosity configToParse = do
 data Dupes = Dupes
   { dupesUniqueImport :: FilePath
   , dupesNormLocPath :: ProjectConfigPath
-  , dupesSeenImportsBy :: [(FilePath, ProjectConfigPath)]
+  , dupesSeenImportsBy :: [ProjectImport]
   }
   deriving (Eq)
 
@@ -289,7 +289,7 @@ parseProjectSkeleton
   :: FilePath
   -> HttpTransport
   -> Verbosity
-  -> IORef (NubList (FilePath, ProjectConfigPath))
+  -> IORef (NubList ProjectImport)
   -- ^ The imports seen so far, used to report on cycles and duplicates and to detect duplicates that are not cycles
   -> IORef DupesMap
   -- ^ The duplicates seen so far, used to defer reporting on duplicates
@@ -311,7 +311,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity importsBy dupesMap project
         -- Once we canonicalize the import path, we can check for cyclical and duplicate imports
         normSource <- canonicalizeConfigPath projectDir source
         normLocPath@(ProjectConfigPath (uniqueImport :| _)) <- canonicalizeConfigPath projectDir importLocPath
-        seenImportsBy@(fmap fst -> seenImports) <- fromNubList <$> atomicModifyIORef' importsBy (\ibs -> (toNubList [(uniqueImport, normLocPath)] <> ibs, ibs))
+        seenImportsBy@(fmap importOf -> seenImports) <- fromNubList <$> atomicModifyIORef' importsBy (\ibs -> (toNubList [ProjectImport uniqueImport normLocPath] <> ibs, ibs))
         debug verbosity $ "\nimport path, normalized\n=======================\n" ++ render (docProjectConfigPath normLocPath)
         debug verbosity "\nseen unique paths\n================="
         mapM_ (debug verbosity) seenImports

@@ -1,10 +1,12 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ViewPatterns #-}
 
 module Distribution.Solver.Types.ProjectConfigPath
     (
     -- * Project Config Path Manipulation
-      ProjectConfigPath(..)
+      ProjectImport(..)
+    , ProjectConfigPath(..)
     , projectConfigPathRoot
     , nullProjectConfigPath
     , consProjectConfigPath
@@ -47,6 +49,13 @@ import Distribution.Utils.String (trim)
 import Text.PrettyPrint
 import Distribution.Simple.Utils (ordNub)
 import Distribution.System (OS(Windows), buildOS)
+
+data ProjectImport =
+    ProjectImport
+        { importOf :: FilePath
+        , importBy :: ProjectConfigPath
+        }
+    deriving (Eq, Ord)
 
 -- | Path to a configuration file, either a singleton project root, or a longer
 -- list representing a path to an import.  The path is a non-empty list that we
@@ -193,18 +202,18 @@ cyclicalImportMsg path@(ProjectConfigPath (duplicate :| _)) =
 -- | A message for a duplicate import, a "duplicate import of". If a check for
 -- cyclical imports has already been made then this would report a duplicate
 -- import by two different paths.
-duplicateImportMsg :: Doc -> FilePath -> ProjectConfigPath -> [(FilePath, ProjectConfigPath)] -> Doc
+duplicateImportMsg :: Doc -> FilePath -> ProjectConfigPath -> [ProjectImport] -> Doc
 duplicateImportMsg intro = seenImportMsg intro
 
-seenImportMsg :: Doc -> FilePath -> ProjectConfigPath -> [(FilePath, ProjectConfigPath)] -> Doc
-seenImportMsg intro duplicate path seenImportsBy =
+seenImportMsg :: Doc -> FilePath -> ProjectConfigPath -> [ProjectImport] -> Doc
+seenImportMsg intro duplicate path seenImports =
     vcat
     [ intro
     , nest 2 (docProjectConfigPath path)
     , nest 2 $
         vcat
-        [ docProjectConfigPath dib
-        | (_, dib) <- filter ((duplicate ==) . fst) seenImportsBy
+        [ docProjectConfigPath importBy
+        | ProjectImport{importBy} <- filter ((duplicate ==) . importOf) seenImports
         ]
     ]
 
