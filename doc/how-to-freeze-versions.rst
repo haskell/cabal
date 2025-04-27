@@ -168,7 +168,7 @@ different architecture or a different compiler version and boot libraries.
 
 .. Warning::
 
-    If publishing a package to Hackage, not matter what kind of component it
+    If publishing a package to Hackage, no matter what kind of component it
     contains, don't include a ``.freeze`` file, don't add it to any field of the
     package description that would have ``cabal sdist`` include it in the
     ``.tar.gz``. In general, don't include anything in the package description
