@@ -268,8 +268,7 @@ parseProject rootPath cacheDir httpTransport verbosity configToParse = do
   return result
 
 data Dupes = Dupes
-  { dupesUniqueImport :: FilePath
-  , dupesNormLocPath :: ProjectConfigPath
+  { dupesImport :: ProjectImport
   , dupesSeenImportsBy :: [ProjectImport]
   }
   deriving (Eq)
@@ -280,10 +279,10 @@ instance Ord Dupes where
 type DupesMap = Map FilePath [Dupes]
 
 dupesMsg :: (FilePath, [Dupes]) -> Doc
-dupesMsg (duplicate, ds@(take 1 . sortOn dupesNormLocPath -> dupes)) =
+dupesMsg (duplicate, ds@(take 1 . sortOn (importBy . dupesImport) -> dupes)) =
   vcat $
     ((text "Warning:" <+> int (length ds) <+> text "imports of" <+> text duplicate) <> semi)
-      : ((\Dupes{..} -> duplicateImportMsg Disp.empty dupesUniqueImport dupesNormLocPath dupesSeenImportsBy) <$> dupes)
+      : ((\Dupes{..} -> duplicateImportMsg Disp.empty dupesImport dupesSeenImportsBy) <$> dupes)
 
 parseProjectSkeleton
   :: FilePath
@@ -325,7 +324,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity importsBy dupesMap project
               (noticeDoc verbosity $ untrimmedUriImportMsg (text "Warning:") importLocPath)
             let fs = (\z -> CondNode z [normLocPath] mempty) <$> fieldsToConfig normSource (reverse acc)
             let uniqueFields = if uniqueImport `elem` seenImports then [] else xs
-            atomicModifyIORef' dupesMap $ \dm -> (Map.insertWith (++) uniqueImport [Dupes uniqueImport normLocPath seenImportsBy] dm, ())
+            atomicModifyIORef' dupesMap $ \dm -> (Map.insertWith (++) uniqueImport [Dupes (ProjectImport uniqueImport normLocPath) seenImportsBy] dm, ())
             res <- parseProjectSkeleton cacheDir httpTransport verbosity importsBy dupesMap projectDir importLocPath . ProjectConfigToParse =<< fetchImportConfig normLocPath
             rest <- go [] uniqueFields
             pure . fmap mconcat . sequence $ [projectParse Nothing normSource fs, res, rest]
