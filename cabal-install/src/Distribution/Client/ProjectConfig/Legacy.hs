@@ -204,15 +204,8 @@ import qualified Data.Set as Set
 import Network.URI (URI (..), nullURIAuth, parseURI)
 import System.Directory (createDirectoryIfMissing, makeAbsolute)
 import System.FilePath (isAbsolute, isPathSeparator, makeValid, splitFileName, (</>))
-import Text.PrettyPrint
-  ( Doc
-  , render
-  , semi
-  , text
-  , vcat
-  , ($+$)
-  )
-import qualified Text.PrettyPrint as Disp (empty, int, render, text)
+import Text.PrettyPrint (Doc, int, render, semi, text, vcat, ($+$))
+import qualified Text.PrettyPrint as Disp (empty)
 
 ------------------------------------------------------------------
 -- Handle extended project config files with conditionals and imports.
@@ -289,7 +282,7 @@ type DupesMap = Map FilePath [Dupes]
 dupesMsg :: (FilePath, [Dupes]) -> Doc
 dupesMsg (duplicate, ds@(take 1 . sortOn dupesNormLocPath -> dupes)) =
   vcat $
-    ((text "Warning:" <+> Disp.int (length ds) <+> text "imports of" <+> text duplicate) <> semi)
+    ((text "Warning:" <+> int (length ds) <+> text "imports of" <+> text duplicate) <> semi)
       : ((\Dupes{..} -> duplicateImportMsg Disp.empty dupesUniqueImport dupesNormLocPath dupesSeenImportsBy) <$> dupes)
 
 parseProjectSkeleton
@@ -329,7 +322,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity importsBy dupesMap project
           else do
             when
               (isUntrimmedUriConfigPath importLocPath)
-              (noticeDoc verbosity $ untrimmedUriImportMsg (Disp.text "Warning:") importLocPath)
+              (noticeDoc verbosity $ untrimmedUriImportMsg (text "Warning:") importLocPath)
             let fs = (\z -> CondNode z [normLocPath] mempty) <$> fieldsToConfig normSource (reverse acc)
             let uniqueFields = if uniqueImport `elem` seenImports then [] else xs
             atomicModifyIORef' dupesMap $ \dm -> (Map.insertWith (++) uniqueImport [Dupes uniqueImport normLocPath seenImportsBy] dm, ())
@@ -1329,13 +1322,13 @@ parseLegacyProjectConfig rootConfig bs =
 
 showLegacyProjectConfig :: LegacyProjectConfig -> String
 showLegacyProjectConfig config =
-  Disp.render $
+  render $
     showConfig
       (legacyProjectConfigFieldDescrs constraintSrc)
       legacyPackageConfigSectionDescrs
       legacyPackageConfigFGSectionDescrs
       config
-      $+$ Disp.text ""
+      $+$ text ""
   where
     -- Note: ConstraintSource is unused when pretty-printing. We fake
     -- it here to avoid having to pass it on call-sites. It's not great
@@ -1346,13 +1339,13 @@ legacyProjectConfigFieldDescrs :: ConstraintSource -> [FieldDescr LegacyProjectC
 legacyProjectConfigFieldDescrs constraintSrc =
   [ newLineListField
       "packages"
-      (Disp.text . renderPackageLocationToken)
+      (text . renderPackageLocationToken)
       parsePackageLocationTokenQ
       legacyPackages
       (\v flags -> flags{legacyPackages = v})
   , newLineListField
       "optional-packages"
-      (Disp.text . renderPackageLocationToken)
+      (text . renderPackageLocationToken)
       parsePackageLocationTokenQ
       legacyPackagesOptional
       (\v flags -> flags{legacyPackagesOptional = v})
@@ -1463,7 +1456,7 @@ legacySharedConfigFieldDescrs constraintSrc =
         . addFields
           [ commaNewLineListFieldParsec
               "package-dbs"
-              (Disp.text . showPackageDb)
+              (text . showPackageDb)
               (fmap readPackageDb parsecToken)
               configPackageDBs
               (\v conf -> conf{configPackageDBs = v})
@@ -1756,8 +1749,8 @@ legacyPackageConfigFieldDescrs =
            in FieldDescr
                 name
                 ( \f -> case f of
-                    Flag NoDumpBuildInfo -> Disp.text "False"
-                    Flag DumpBuildInfo -> Disp.text "True"
+                    Flag NoDumpBuildInfo -> text "False"
+                    Flag DumpBuildInfo -> text "True"
                     _ -> Disp.empty
                 )
                 ( \line str _ -> case () of
@@ -1784,9 +1777,9 @@ legacyPackageConfigFieldDescrs =
            in FieldDescr
                 name
                 ( \f -> case f of
-                    Flag NoOptimisation -> Disp.text "False"
-                    Flag NormalOptimisation -> Disp.text "True"
-                    Flag MaximumOptimisation -> Disp.text "2"
+                    Flag NoOptimisation -> text "False"
+                    Flag NormalOptimisation -> text "True"
+                    Flag MaximumOptimisation -> text "2"
                     _ -> Disp.empty
                 )
                 ( \line str _ -> case () of
@@ -1809,10 +1802,10 @@ legacyPackageConfigFieldDescrs =
          in FieldDescr
               name
               ( \f -> case f of
-                  Flag NoDebugInfo -> Disp.text "False"
-                  Flag MinimalDebugInfo -> Disp.text "1"
-                  Flag NormalDebugInfo -> Disp.text "True"
-                  Flag MaximalDebugInfo -> Disp.text "3"
+                  Flag NoDebugInfo -> text "False"
+                  Flag MinimalDebugInfo -> text "1"
+                  Flag NormalDebugInfo -> text "True"
+                  Flag MaximalDebugInfo -> text "3"
                   _ -> Disp.empty
               )
               ( \line str _ -> case () of
@@ -2137,6 +2130,6 @@ monoidFieldParsec name showF readF get' set =
 -- otherwise are special syntax.
 showTokenQ :: String -> Doc
 showTokenQ "" = Disp.empty
-showTokenQ x@('-' : '-' : _) = Disp.text (show x)
-showTokenQ x@('.' : []) = Disp.text (show x)
+showTokenQ x@('-' : '-' : _) = text (show x)
+showTokenQ x@('.' : []) = text (show x)
 showTokenQ x = showToken x
