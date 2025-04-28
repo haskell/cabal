@@ -528,35 +528,11 @@ fromSolverInstallPlan
   -> SolverInstallPlan
   -> GenericInstallPlan ipkg srcpkg
 fromSolverInstallPlan f plan =
-  mkInstallPlan
-    "fromSolverInstallPlan"
-    (Graph.fromDistinctList pkgs'')
-  where
-    (_, _, pkgs'') =
-      foldl'
-        f'
-        (Map.empty, Map.empty, [])
-        (SolverInstallPlan.reverseTopologicalOrder plan)
-
-    f' (pidMap, ipiMap, pkgs) pkg = (pidMap', ipiMap', pkgs' ++ pkgs)
-      where
-        pkgs' = f (mapDep pidMap ipiMap) pkg
-
-        (pidMap', ipiMap') =
-          case nodeKey pkg of
-            PreExistingId _ uid -> (pidMap, Map.insert uid pkgs' ipiMap)
-            PlannedId pid -> (Map.insert pid pkgs' pidMap, ipiMap)
-
-    mapDep _ ipiMap (PreExistingId _pid uid)
-      | Just pkgs <- Map.lookup uid ipiMap = pkgs
-      | otherwise = error ("fromSolverInstallPlan: PreExistingId " ++ prettyShow uid)
-    mapDep pidMap _ (PlannedId pid)
-      | Just pkgs <- Map.lookup pid pidMap = pkgs
-      | otherwise = error ("fromSolverInstallPlan: PlannedId " ++ prettyShow pid)
-
--- This shouldn't happen, since mapDep should only be called
--- on neighbor SolverId, which must have all been done already
--- by the reverse top-sort (we assume the graph is not broken).
+  either (error . show) id $
+    runLogProgress' $
+      fromSolverInstallPlanWithProgress
+        (\mapDep planpkg -> return $ f mapDep planpkg)
+        plan
 
 fromSolverInstallPlanWithProgress
   :: (IsUnit ipkg, IsUnit srcpkg)
@@ -585,16 +561,17 @@ fromSolverInstallPlanWithProgress f plan = do
               PlannedId pid -> (Map.insert pid pkgs' pidMap, ipiMap)
       return (pidMap', ipiMap', pkgs' ++ pkgs)
 
+    -- The error below shouldn't happen, since mapDep should only
+    -- be called on neighbor SolverId, which must have all been done
+    -- already by the reverse top-sort (we assume the graph is not broken).
+    --
+    -- FIXME: stage is ignored
     mapDep _ ipiMap (PreExistingId _pid uid)
       | Just pkgs <- Map.lookup uid ipiMap = pkgs
       | otherwise = error ("fromSolverInstallPlan: PreExistingId " ++ prettyShow uid)
     mapDep pidMap _ (PlannedId pid)
       | Just pkgs <- Map.lookup pid pidMap = pkgs
       | otherwise = error ("fromSolverInstallPlan: PlannedId " ++ prettyShow pid)
-
--- This shouldn't happen, since mapDep should only be called
--- on neighbor SolverId, which must have all been done already
--- by the reverse top-sort (we assume the graph is not broken).
 
 -- | Conversion of 'SolverInstallPlan' to 'InstallPlan'.
 -- Similar to 'elaboratedInstallPlan'
