@@ -4,6 +4,7 @@
 module Distribution.Utils.LogProgress
   ( LogProgress
   , runLogProgress
+  , runLogProgress'
   , warnProgress
   , infoProgress
   , dieProgress
@@ -70,6 +71,16 @@ runLogProgress verbosity (LogProgress m) =
     fail_fn :: ErrMsg -> IO a
     fail_fn doc = do
       dieNoWrap verbosity (render doc)
+
+-- | Run 'LogProgress' ignoring all traces.
+runLogProgress' :: LogProgress a -> Either ErrMsg a
+runLogProgress' (LogProgress m) = foldProgress (\_ x -> x) Left Right (m env)
+  where
+    env =
+      LogEnv
+        { le_verbosity = silent
+        , le_context = []
+        }
 
 -- | Output a warning trace message in 'LogProgress'.
 warnProgress :: Doc -> LogProgress ()
