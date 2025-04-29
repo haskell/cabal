@@ -3083,9 +3083,10 @@ modules of the package. This module defines a function
 
     getDataFileName :: FilePath -> IO FilePath
 
-If the argument is a filename listed in the :pkg-field:`data-files` field, the
-result is the name of the corresponding file on the system on which the
-program is running.
+If the argument is a filename, the result is the name of a corresponding file on
+the system on which the program is running, if the filename were listed in the
+:pkg-field:`data-files` field. No check is performed that the given filename is
+listed in that field.
 
 .. Note::
 
