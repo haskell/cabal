@@ -31,10 +31,15 @@ type Index = Map PN (Map I PInfo)
 -- globally, for reasons external to the solver. We currently use this
 -- for shadowing which essentially is a GHC limitation, and for
 -- installed packages that are broken.
-data PInfo = PInfo (FlaggedDeps PN)
-                   (Map ExposedComponent ComponentInfo)
-                   FlagInfo
-                   (Maybe FailReason)
+data PInfo = PInfo
+  (FlaggedDeps PN)
+  -- ^ The package dependencies, whether they are conditional on a flag, a
+  -- stanza or always active.
+  (Map ExposedComponent ComponentInfo)
+  -- ^ Info associated with each library and executable component.
+  FlagInfo
+  --
+  (Maybe FailReason)
 
 -- | Info associated with each library and executable in a package instance.
 data ComponentInfo = ComponentInfo {
