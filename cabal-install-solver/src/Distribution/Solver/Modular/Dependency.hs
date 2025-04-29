@@ -90,14 +90,36 @@ type FlaggedDeps qpn = [FlaggedDep qpn]
 
 -- | Flagged dependencies can either be plain dependency constraints,
 -- or flag-dependent dependency trees.
+--
+-- Note: this is a recursive data structure representing a tree of dependencies.
+--
+-- Note 2: why LDep contains its own DependencyReason? I am thinking it should
+-- be external to this type. Basically you traverse the tree and the flag and
+-- stanza choices are the DepedencyReason?
 data FlaggedDep qpn
   = -- | Dependencies which are conditional on a flag choice.
-    Flagged (FN qpn) FInfo (TrueFlaggedDeps qpn) (FalseFlaggedDeps qpn)
-  | -- | Dependencies which are conditional on whether or not a stanza
+    Flagged
+      (FN qpn)
+      -- ^ The qualified flag name.
+      FInfo
+      -- ^ The flag information.
+      (FlaggedDeps qpn)
+      -- ^ Extra dependencies when the flag is true.
+      (FlaggedDeps qpn)
+      -- ^ Extra dependencies when the flag is false.
+  | -- | Dependencies which are conditional on whether or not a stanza.
     -- (e.g., a test suite or benchmark) is enabled.
-    Stanza (SN qpn) (TrueFlaggedDeps qpn)
-  | -- | Dependencies which are always enabled, for the component 'comp'.
-    Simple (LDep qpn) Component
+    Stanza
+      (SN qpn)
+      -- ^ The qualified stanza name.
+      (FlaggedDeps qpn)
+      -- ^ Extra dependencies when stanza is enabled.
+  | -- | Dependencies which are always enabled.
+    Simple
+      (LDep qpn)
+      -- ^ The dependency.
+      Component
+      -- ^ The component of `qpn` introducing the dependency.
   deriving Show
 
 -- | Conservatively flatten out flagged dependencies
@@ -111,16 +133,18 @@ flattenFlaggedDeps = concatMap aux
     aux (Stanza _ t) = flattenFlaggedDeps t
     aux (Simple d c) = [(d, c)]
 
-type TrueFlaggedDeps qpn = FlaggedDeps qpn
-type FalseFlaggedDeps qpn = FlaggedDeps qpn
-
 -- | A 'Dep' labeled with the reason it was introduced.
 --
 -- 'LDep' intentionally has no 'Functor' instance because the type variable
 -- is used both to record the dependencies as well as who's doing the
 -- depending; having a 'Functor' instance makes bugs where we don't distinguish
 -- these two far too likely. (By rights 'LDep' ought to have two type variables.)
-data LDep qpn = LDep (DependencyReason qpn) (Dep qpn)
+data LDep qpn
+  = LDep
+    (DependencyReason qpn)
+    -- ^ The reason the dependency was introduced.
+    (Dep qpn)
+    -- ^ The dependency itself.
   deriving Show
 
 -- | A dependency (constraint) associates a package name with a constrained
@@ -139,21 +163,35 @@ data Dep qpn
 
 -- | An exposed component within a package. This type is used to represent
 -- build-depends and build-tool-depends dependencies.
-data PkgComponent qpn = PkgComponent qpn ExposedComponent
+data PkgComponent qpn
+  = PkgComponent
+      qpn
+      -- ^ The qualified name of the package.
+      ExposedComponent
+      -- ^ The component exposed by the package.
   deriving (Eq, Ord, Functor, Show)
 
 -- | A component that can be depended upon by another package, i.e., a library
 -- or an executable.
 data ExposedComponent
-  = ExposedLib LibraryName
-  | ExposedExe UnqualComponentName
+  = -- | A library component
+    ExposedLib LibraryName
+  | -- | An executable component
+    ExposedExe UnqualComponentName
   deriving (Eq, Ord, Show)
 
 -- | The reason that a dependency is active. It identifies the package and any
 -- flag and stanza choices that introduced the dependency. It contains
 -- everything needed for creating ConflictSets or describing conflicts in solver
 -- log messages.
-data DependencyReason qpn = DependencyReason qpn (Map Flag FlagValue) (S.Set Stanza)
+data DependencyReason qpn
+  = DependencyReason
+      qpn
+      -- ^ The qualified name of the dependent package.
+      (Map Flag FlagValue)
+      -- ^ The flag choices that introduced the dependency.
+      (S.Set Stanza)
+      -- ^ The stanza choices that introduced the dependency.
   deriving (Functor, Eq, Show)
 
 -- | Print the reason that a dependency was introduced.

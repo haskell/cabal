@@ -49,19 +49,52 @@ type Weight = Double
 --
 -- TODO: The weight type should be changed from [Double] to Double to avoid
 -- giving too much weight to preferences that are applied later.
-data Tree d c =
-    -- | Choose a version for a package (or choose to link)
-    PChoice QPN RevDepMap c (WeightedPSQ [Weight] POption (Tree d c))
+--
+-- Note: this the tree *of possible choices*, which is used to explore all
+-- possible solutions to a given problem. It does not describe a single solution.
+data Tree d c
+  = -- | Choose a version for a package (or choose to link)
+    PChoice
+      QPN
+      -- ^ The package to choose an instance for
+      RevDepMap
+      -- ^ The reverse dependency map (FIXME ?)
+      c
+      -- ^ Additional data for the choice node
+      (WeightedPSQ [Weight] POption (Tree d c))
+      -- ^ Weighted list of possible options (`POption`) paired with the subsequent search tree.
 
-    -- | Choose a value for a flag
-    --
-    -- The Bool is the default value.
-  | FChoice QFN RevDepMap c WeakOrTrivial FlagType Bool (WeightedPSQ [Weight] Bool (Tree d c))
+  | -- | Choose a value for a flag.
+    FChoice
+      QFN
+      -- ^ The flag to choose a value for.
+      RevDepMap
+      -- ^ The reverse dependency map (FIXME ?).
+      c
+      -- ^ Additional data for the choice node.
+      WeakOrTrivial
+      -- ^ Whether the choice should be deferred.
+      FlagType
+      -- ^ Whether the flag is manual or automatic.
+      Bool
+      -- ^ The flag default value
+      (WeightedPSQ [Weight] Bool (Tree d c))
+      -- ^ Weighted list of possible options paired with the subsequent search tree.
 
-    -- | Choose whether or not to enable a stanza
-  | SChoice QSN RevDepMap c WeakOrTrivial (WeightedPSQ [Weight] Bool (Tree d c))
+  | -- | Choose whether or not to enable a stanza.
+    SChoice
+      QSN
+      -- ^ The stanza to choose to enable or disable.
+      RevDepMap
+      -- ^ The reverse dependency map (FIXME ?).
+      c
+      -- ^ Additional data for the choice node.
+      WeakOrTrivial
+      -- ^ Whether the choice should be deferred.
+      (WeightedPSQ [Weight] Bool (Tree d c))
+      -- ^ Weighted list of possible options paired with the subsequent search tree.
 
-    -- | Choose which choice to make next
+  | -- | Choose which choice to make next
     --
     -- Invariants:
     --
@@ -72,13 +105,25 @@ data Tree d c =
     --   invariant that the 'QGoalReason' cached in the 'PChoice', 'FChoice'
     --   or 'SChoice' directly below a 'GoalChoice' node must equal the reason
     --   recorded on that 'GoalChoice' node.
-  | GoalChoice RevDepMap (PSQ (Goal QPN) (Tree d c))
+    GoalChoice
+      RevDepMap
+      -- ^ The reverse dependency map (FIXME ?).
+      (PSQ (Goal QPN) (Tree d c))
+      -- ^ Priority search queue associating a goal with the search tree.
 
-    -- | We're done -- we found a solution!
-  | Done RevDepMap d
+  | -- | We're done -- we found a solution!
+    Done
+      RevDepMap
+      -- ^ The reverse dependency map (FIXME ?).
+      d
+      -- ^ The solution.
 
-    -- | We failed to find a solution in this path through the tree
-  | Fail ConflictSet FailReason
+  | -- | We failed to find a solution in this path through the tree
+    Fail
+      ConflictSet
+      -- ^ The conflict set.
+      FailReason
+      -- ^ The reason for failure.
 
 -- | A package option is a package instance with an optional linking annotation
 --
@@ -96,7 +141,12 @@ data Tree d c =
 -- dependencies must also be the exact same).
 --
 -- See <http://www.well-typed.com/blog/2015/03/qualified-goals/> for details.
-data POption = POption I (Maybe PackagePath)
+data POption
+  = POption
+      I
+      -- ^ The choosen package instance.
+      (Maybe PackagePath)
+      -- ^ The package this choice is linked to (if any).
   deriving (Eq, Show)
 
 data FailReason = UnsupportedExtension Extension
@@ -132,7 +182,14 @@ data FailReason = UnsupportedExtension Extension
   deriving (Eq, Show)
 
 -- | Information about a dependency involved in a conflict, for error messages.
-data ConflictingDep = ConflictingDep (DependencyReason QPN) (PkgComponent QPN) CI
+data ConflictingDep
+  = ConflictingDep
+      (DependencyReason QPN)
+      -- ^ The reason for the dependency.
+      (PkgComponent QPN)
+      -- ^ The component of the package that caused the conflict.
+      CI
+      -- ^ The constrained instance.
   deriving (Eq, Show)
 
 -- | Functor for the tree type. 'a' is the type of nodes' children. 'd' and 'c'
