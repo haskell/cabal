@@ -19,7 +19,7 @@ priority_rules:
   - name: priority for queue `default`
     conditions:
       - queue-name=default
-    priority: 2250
+    priority: 2500
 
   - name: priority for queue `squash-merge`
     conditions:
