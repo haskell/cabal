@@ -14,7 +14,7 @@ priority_rules:
     conditions:
       - 'base~=^3\.'
       - 'label!=backport'
-    priority: 2500
+    priority: 2700
 
   - name: priority for queue `default`
     conditions:
@@ -24,7 +24,7 @@ priority_rules:
   - name: priority for queue `squash-merge`
     conditions:
       - queue-name=squash-merge
-    priority: 2250
+    priority: 2500
 
 pull_request_rules:
 
