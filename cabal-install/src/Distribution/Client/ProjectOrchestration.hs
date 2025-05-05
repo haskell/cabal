@@ -1142,17 +1142,17 @@ printPlan
             , case elabPkgOrComp elab of
                 ElabPackage pkg -> showTargets elab ++ ifVerbose (showStanzas (pkgStanzasEnabled pkg))
                 ElabComponent comp ->
-                  "(" ++ showComp elab comp ++ ")"
+                  "(" ++ showComp comp ++ ")"
             , showFlagAssignment (nonDefaultFlags elab)
             , showConfigureFlags elab
             , let buildStatus = pkgsBuildStatus Map.! installedUnitId elab
                in "(" ++ showBuildStatus buildStatus ++ ")"
             ]
 
-      showComp :: ElaboratedConfiguredPackage -> ElaboratedComponent -> String
-      showComp elab comp =
+      showComp :: ElaboratedComponent -> String
+      showComp comp =
         maybe "custom" prettyShow (compComponentName comp)
-          ++ if Map.null (elabInstantiatedWith elab)
+          ++ if Map.null (compInstantiatedWith comp)
             then ""
             else
               " with "
@@ -1160,7 +1160,7 @@ printPlan
                   ", "
                   -- TODO: Abbreviate the UnitIds
                   [ prettyShow k ++ "=" ++ prettyShow v
-                  | (k, v) <- Map.toList (elabInstantiatedWith elab)
+                  | (k, v) <- Map.toList (compInstantiatedWith comp)
                   ]
 
       nonDefaultFlags :: ElaboratedConfiguredPackage -> FlagAssignment
