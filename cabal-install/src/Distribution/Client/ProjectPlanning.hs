@@ -1797,7 +1797,6 @@ elaborateInstallPlan
                     { elabModuleShape = emptyModuleShape
                     , elabUnitId = notImpl "elabUnitId"
                     , elabComponentId = notImpl "elabComponentId"
-                    , elabLinkedInstantiatedWith = Map.empty
                     , elabInstallDirs = notImpl "elabInstallDirs"
                     , elabPkgOrComp = ElabComponent (ElaboratedComponent{..})
                     }
@@ -1816,14 +1815,11 @@ elaborateInstallPlan
               compOrderLibDependencies = notImpl "compOrderLibDependencies"
 
               -- Not supported:
-              compExeDependencies :: [a]
               compExeDependencies = []
-
-              compExeDependencyPaths :: [a]
               compExeDependencyPaths = []
-
-              compPkgConfigDependencies :: [a]
               compPkgConfigDependencies = []
+              compInstantiatedWith = mempty
+              compLinkedInstantiatedWith = Map.empty
 
               notImpl f =
                 error $
@@ -1880,6 +1876,8 @@ elaborateInstallPlan
                       , Just paths <- [Map.lookup (ann_id aid') exe_map1]
                       , path <- paths
                       ]
+                    compInstantiatedWith = Map.empty
+                    compLinkedInstantiatedWith = Map.empty
                     elab_comp = ElaboratedComponent{..}
 
                 -- 3. Construct a preliminary ElaboratedConfiguredPackage,
@@ -1933,7 +1931,6 @@ elaborateInstallPlan
                       { elabModuleShape = lc_shape lc
                       , elabUnitId = abstractUnitId (lc_uid lc)
                       , elabComponentId = lc_cid lc
-                      , elabLinkedInstantiatedWith = Map.fromList (lc_insts lc)
                       , elabPkgOrComp =
                           ElabComponent $
                             elab_comp
@@ -1944,6 +1941,7 @@ elaborateInstallPlan
                                         (abstractUnitId . ci_id)
                                         (lc_includes lc ++ lc_sig_includes lc)
                                     )
+                              , compLinkedInstantiatedWith = Map.fromList (lc_insts lc)
                               }
                       }
                   elab =
@@ -2096,7 +2094,6 @@ elaborateInstallPlan
               elab0
                 { elabUnitId = newSimpleUnitId pkgInstalledId
                 , elabComponentId = pkgInstalledId
-                , elabLinkedInstantiatedWith = Map.empty
                 , elabPkgOrComp = ElabPackage $ ElaboratedPackage{..}
                 , elabModuleShape = modShape
                 }
@@ -2191,8 +2188,6 @@ elaborateInstallPlan
             -- These get filled in later
             elabUnitId = error "elaborateSolverToCommon: elabUnitId"
             elabComponentId = error "elaborateSolverToCommon: elabComponentId"
-            elabInstantiatedWith = Map.empty
-            elabLinkedInstantiatedWith = error "elaborateSolverToCommon: elabLinkedInstantiatedWith"
             elabPkgOrComp = error "elaborateSolverToCommon: elabPkgOrComp"
             elabInstallDirs = error "elaborateSolverToCommon: elabInstallDirs"
             elabModuleShape = error "elaborateSolverToCommon: elabModuleShape"
@@ -2812,7 +2807,6 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
                         elab0
                           { elabUnitId = uid
                           , elabComponentId = cid
-                          , elabInstantiatedWith = fmap fst insts
                           , elabIsCanonical = Map.null (fmap fst insts)
                           , elabPkgOrComp =
                               ElabComponent
@@ -2824,6 +2818,7 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
                                               unDefUnitId
                                               (deps ++ concatMap (getDep . fst) (Map.elems insts))
                                           )
+                                  , compInstantiatedWith = fmap fst insts
                                   }
                           }
                     elab =
@@ -2934,8 +2929,8 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
 
     work = for_ pkgs $ \pkg ->
       case pkg of
-        InstallPlan.Configured elab
-          | not (Map.null (elabLinkedInstantiatedWith elab)) ->
+        InstallPlan.Configured (elab@ElaboratedConfiguredPackage{elabPkgOrComp = ElabComponent comp})
+          | not (Map.null (compLinkedInstantiatedWith comp)) ->
               indefiniteUnitId (elabComponentId elab)
                 >> return ()
         _ ->
@@ -4016,7 +4011,9 @@ setupHsConfigureFlags
       configProfExe = mempty
       configProf = toFlag $ LBC.withProfExe elabBuildOptions
 
-      configInstantiateWith = Map.toList elabInstantiatedWith
+      configInstantiateWith = case elabPkgOrComp of
+        ElabPackage _ -> mempty
+        ElabComponent comp -> Map.toList (compInstantiatedWith comp)
 
       configDeterministic = mempty -- doesn't matter, configIPID/configCID overridese
       configIPID = case elabPkgOrComp of

@@ -203,8 +203,6 @@ data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
   { elabUnitId :: UnitId
   -- ^ The 'UnitId' which uniquely identifies this item in a build plan
   , elabComponentId :: ComponentId
-  , elabInstantiatedWith :: Map ModuleName Module
-  , elabLinkedInstantiatedWith :: Map ModuleName OpenModule
   , elabIsCanonical :: Bool
   -- ^ This is true if this is an indefinite package, or this is a
   -- package with no signatures.  (Notably, it's not true for instantiated
@@ -683,6 +681,8 @@ data ElaboratedComponent = ElaboratedComponent
   -- instantiation phase. It's more precise than
   -- 'compLibDependencies', and also stores information about internal
   -- dependencies.
+  , compInstantiatedWith :: Map ModuleName Module
+  , compLinkedInstantiatedWith :: Map ModuleName OpenModule
   , compExeDependencies :: [ConfiguredId]
   -- ^ The executable dependencies of this component (including
   -- internal executables).
