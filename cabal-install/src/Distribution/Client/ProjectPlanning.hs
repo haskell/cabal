@@ -1977,15 +1977,10 @@ elaborateInstallPlan
               external_exe_dep_sids = CD.select (== compSolverName) exe_deps0
 
               external_lib_dep_pkgs = concatMap mapDep external_lib_dep_sids
-
-              -- Combine library and build-tool dependencies, for backwards
-              -- compatibility (See issue #5412 and the documentation for
-              -- InstallPlan.fromSolverInstallPlan), but prefer the versions
-              -- specified as build-tools.
               external_exe_dep_pkgs =
                 concatMap mapDep $
                   ordNubBy (pkgName . packageId) $
-                    external_exe_dep_sids ++ external_lib_dep_sids
+                    external_exe_dep_sids
 
               external_exe_map =
                 Map.fromList $
