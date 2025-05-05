@@ -141,7 +141,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
     -- that case, but the code supports it in case we want to use this
     -- later in some use case where we want the status of the build.
 
-    installedPackageInfoToJ :: InstalledPackageInfo -> J.Value
+    installedPackageInfoToJ :: WithStage InstalledPackageInfo -> J.Value
     installedPackageInfoToJ ipi =
       -- Pre-existing packages lack configuration information such as their flag
       -- settings or non-lib components. We only get pre-existing packages for
@@ -150,10 +150,11 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
       --
       J.object
         [ "type" J..= J.String "pre-existing"
-        , "id" J..= (jdisplay . installedUnitId) ipi
+        , "stage" J..= jdisplay (stageOf ipi)
+        , "id" J..= (jdisplay . Graph.nodeKey) ipi
         , "pkg-name" J..= (jdisplay . pkgName . packageId) ipi
         , "pkg-version" J..= (jdisplay . pkgVersion . packageId) ipi
-        , "depends" J..= map jdisplay (installedDepends ipi)
+        , "depends" J..= map jdisplay (traverse installedDepends ipi)
         ]
 
     elaboratedPackageToJ :: Bool -> ElaboratedConfiguredPackage -> J.Value
@@ -165,7 +166,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
                   then "installed"
                   else "configured"
               )
-        , "id" J..= (jdisplay . installedUnitId) elab
+        , "id" J..= (jdisplay . Graph.nodeKey) elab
         , "stage" J..= jdisplay (elabStage elab)
         , "pkg-name" J..= (jdisplay . pkgName . packageId) elab
         , "pkg-version" J..= (jdisplay . pkgVersion . packageId) elab
@@ -197,7 +198,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
                       [ comp2str c
                         J..= J.object
                           ( [ "depends" J..= map (jdisplay . confInstId) (map fst ldeps)
-                            , "exe-depends" J..= map (jdisplay . confInstId) edeps
+                            , "exe-depends" J..= map (jdisplay . fmap confInstId) edeps
                             ]
                               ++ bin_file c
                           )
@@ -209,7 +210,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
                       ]
                in ["components" J..= components]
             ElabComponent comp ->
-              [ "depends" J..= map (jdisplay . confInstId) (map fst $ elabLibDependencies elab)
+              [ "depends" J..= map (jdisplay . fmap confInstId . fst) (elabLibDependencies elab)
               , "exe-depends" J..= map jdisplay (elabExeDependencies elab)
               , "component-name" J..= J.String (comp2str (compSolverName comp))
               ]
@@ -454,7 +455,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
 -- successfully then they're still out of date -- meeting our definition of
 -- invalid.
 
-type PackageIdSet = Set UnitId
+type PackageIdSet = Set (Graph.Key ElaboratedPlanPackage)
 type PackagesUpToDate = PackageIdSet
 
 data PostBuildProjectStatus = PostBuildProjectStatus
@@ -507,7 +508,7 @@ data PostBuildProjectStatus = PostBuildProjectStatus
   -- or data file generation failing.
   --
   -- This is a subset of 'packagesInvalidByChangedLibDeps'.
-  , packagesLibDepGraph :: Graph (Node UnitId ElaboratedPlanPackage)
+  , packagesLibDepGraph :: Graph (Node (Graph.Key ElaboratedPlanPackage) ElaboratedPlanPackage)
   -- ^ A subset of the plan graph, including only dependency-on-library
   -- edges. That is, dependencies /on/ libraries, not dependencies /of/
   -- libraries. This tells us all the libraries that packages link to.
@@ -577,11 +578,13 @@ postBuildProjectStatus
       -- The previous set of up-to-date packages will contain bogus package ids
       -- when the solver plan or config contributing to the hash changes.
       -- So keep only the ones where the package id (i.e. hash) is the same.
+      previousPackagesUpToDate' :: Set (WithStage UnitId)
       previousPackagesUpToDate' =
         Set.intersection
           previousPackagesUpToDate
           (InstallPlan.keysSet plan)
 
+      packagesUpToDatePreBuild :: Set (WithStage UnitId)
       packagesUpToDatePreBuild =
         Set.filter
           (\ipkgid -> not (lookupBuildStatusRequiresBuild True ipkgid))
@@ -589,23 +592,26 @@ postBuildProjectStatus
           -- know anything about their status, so not known to be /up to date/.
           (InstallPlan.keysSet plan)
 
+      packagesOutOfDatePreBuild :: Set (WithStage UnitId)
       packagesOutOfDatePreBuild =
-        Set.fromList . map installedUnitId $
+        Set.fromList . map Graph.nodeKey $
           InstallPlan.reverseDependencyClosure
             plan
             [ ipkgid
             | pkg <- InstallPlan.toList plan
-            , let ipkgid = installedUnitId pkg
+            , let ipkgid = Graph.nodeKey pkg
             , lookupBuildStatusRequiresBuild False ipkgid
             -- For packages not in the plan subset we did the dry-run on we don't
             -- know anything about their status, so not known to be /out of date/.
             ]
 
+      packagesSuccessfulPostBuild :: Set (WithStage UnitId)
       packagesSuccessfulPostBuild =
         Set.fromList
           [ikgid | (ikgid, Right _) <- Map.toList buildOutcomes]
 
       -- direct failures, not failures due to deps
+      packagesFailurePostBuild :: Set (WithStage UnitId)
       packagesFailurePostBuild =
         Set.fromList
           [ ikgid
@@ -617,6 +623,7 @@ postBuildProjectStatus
 
       -- Packages that have a library dependency on a package for which a build
       -- was attempted
+      packagesDepOnChangedLib :: Set (WithStage UnitId)
       packagesDepOnChangedLib =
         Set.fromList . map Graph.nodeKey $
           fromMaybe (error "packagesBuildStatusAfterBuild: broken dep closure") $
@@ -628,19 +635,25 @@ postBuildProjectStatus
               )
 
       -- The plan graph but only counting dependency-on-library edges
-      packagesLibDepGraph :: HasCallStack => Graph (Node UnitId ElaboratedPlanPackage)
+      packagesLibDepGraph :: HasCallStack => Graph (Node (Graph.Key ElaboratedPlanPackage) ElaboratedPlanPackage)
       packagesLibDepGraph =
         Graph.fromDistinctList
-          [ Graph.N pkg (installedUnitId pkg) libdeps
+          [ Graph.N pkg (Graph.nodeKey pkg) libdeps
           | pkg <- InstallPlan.toList plan
           , let libdeps = case pkg of
-                  InstallPlan.PreExisting ipkg -> installedDepends ipkg
-                  InstallPlan.Configured srcpkg -> elabLibDeps srcpkg
-                  InstallPlan.Installed srcpkg -> elabLibDeps srcpkg
+                  InstallPlan.PreExisting (WithStage s ipkg) -> map (WithStage s) (installedDepends ipkg)
+                  InstallPlan.Configured srcpkg -> map (WithStage (elabStage srcpkg)) (elabLibDeps srcpkg)
+                  InstallPlan.Installed srcpkg -> map (WithStage (elabStage srcpkg)) (elabLibDeps srcpkg)
           ]
 
       elabLibDeps :: ElaboratedConfiguredPackage -> [UnitId]
-      elabLibDeps = map (newSimpleUnitId . confInstId) . map fst . elabLibDependencies
+      elabLibDeps =
+        map (newSimpleUnitId . confInstId)
+          -- Note, we remove the stage here. In the end we only care about the hash which already incorporates the stage.
+          -- Moreover, library dependencies are always in the same stage as the package itself.
+          . map (\(WithStage _ d) -> d)
+          . map fst
+          . elabLibDependencies
 
       -- Was a build was attempted for this package?
       -- If it doesn't have both a build status and outcome then the answer is no.
@@ -657,13 +670,13 @@ postBuildProjectStatus
       buildAttempted _ (Left BuildFailure{}) = True
       buildAttempted _ (Right _) = True
 
-      lookupBuildStatusRequiresBuild :: Bool -> UnitId -> Bool
-      lookupBuildStatusRequiresBuild def ipkgid =
-        case Map.lookup ipkgid pkgBuildStatus of
+      lookupBuildStatusRequiresBuild :: Bool -> Graph.Key ElaboratedPlanPackage -> Bool
+      lookupBuildStatusRequiresBuild def key =
+        case Map.lookup key pkgBuildStatus of
           Nothing -> def -- Not in the plan subset we did the dry-run on
           Just buildStatus -> buildStatusRequiresBuild buildStatus
 
-      packagesBuildLocal :: Set UnitId
+      packagesBuildLocal :: Set (WithStage UnitId)
       packagesBuildLocal =
         selectPlanPackageIdSet $ \pkg ->
           case pkg of
@@ -671,7 +684,7 @@ postBuildProjectStatus
             InstallPlan.Installed _ -> False
             InstallPlan.Configured srcpkg -> elabLocalToProject srcpkg
 
-      packagesBuildInplace :: Set UnitId
+      packagesBuildInplace :: Set (WithStage UnitId)
       packagesBuildInplace =
         selectPlanPackageIdSet $ \pkg ->
           case pkg of
@@ -679,7 +692,7 @@ postBuildProjectStatus
             InstallPlan.Installed _ -> False
             InstallPlan.Configured srcpkg -> isInplaceBuildStyle (elabBuildStyle srcpkg)
 
-      packagesAlreadyInStore :: Set UnitId
+      packagesAlreadyInStore :: Set (WithStage UnitId)
       packagesAlreadyInStore =
         selectPlanPackageIdSet $ \pkg ->
           case pkg of
@@ -688,10 +701,8 @@ postBuildProjectStatus
             InstallPlan.Configured _ -> False
 
       selectPlanPackageIdSet
-        :: ( InstallPlan.GenericPlanPackage InstalledPackageInfo ElaboratedConfiguredPackage
-             -> Bool
-           )
-        -> Set UnitId
+        :: (ElaboratedPlanPackage -> Bool)
+        -> Set (Graph.Key ElaboratedPlanPackage)
       selectPlanPackageIdSet p =
         Map.keysSet
           . Map.filter p
@@ -868,33 +879,13 @@ writePlanGhcEnvironment
             path
             toolchainPlatform
             (compilerVersion toolchainCompiler)
-            ( renderGhcEnvironmentFile
-                path
-                stagePlan
-                postBuildStatus
-            )
+            env
       else return Nothing
     where
-      Toolchain{..} = getStage (pkgConfigToolchains elaboratedSharedConfig) stage
-      -- TODO
-      stagePlan = InstallPlan.remove {- (\pkg -> undefined pkg /= Host) -} (const False) elaboratedInstallPlan
+      Toolchain{toolchainPlatform, toolchainCompiler} = getStage (pkgConfigToolchains elaboratedSharedConfig) stage
 
--- TODO: [required eventually] support for writing user-wide package
--- environments, e.g. like a global project, but we would not put the
--- env file in the home dir, rather it lives under ~/.ghc/
+      env = headerComment : simpleGhcEnvironmentFile packageDBs unitIds
 
-renderGhcEnvironmentFile
-  :: FilePath
-  -> ElaboratedInstallPlan
-  -> PostBuildProjectStatus
-  -> [GhcEnvironmentFileEntry FilePath]
-renderGhcEnvironmentFile
-  projectRootDir
-  elaboratedInstallPlan
-  postBuildStatus =
-    headerComment
-      : simpleGhcEnvironmentFile packageDBs unitIds
-    where
       headerComment =
         GhcEnvFileComment $
           "This is a GHC environment file written by cabal. This means you can\n"
@@ -902,10 +893,16 @@ renderGhcEnvironmentFile
             ++ "But you still need to use cabal repl $target to get the environment\n"
             ++ "of specific components (libs, exes, tests etc) because each one can\n"
             ++ "have its own source dirs, cpp flags etc.\n\n"
-      unitIds = selectGhcEnvironmentFileLibraries postBuildStatus
+
+      unitIds = [unitId | WithStage Host unitId <- selectGhcEnvironmentFileLibraries postBuildStatus]
+
       packageDBs =
-        relativePackageDBPaths projectRootDir $
+        relativePackageDBPaths path $
           selectGhcEnvironmentFilePackageDbs elaboratedInstallPlan
+
+-- TODO: [required eventually] support for writing user-wide package
+-- environments, e.g. like a global project, but we would not put the
+-- env file in the home dir, rather it lives under ~/.ghc/
 
 argsEquivalentOfGhcEnvironmentFile
   :: Compiler
@@ -974,7 +971,7 @@ argsEquivalentOfGhcEnvironmentFileGhc
 -- to find the libs) then those exes still end up in our list so we have
 -- to filter them out at the end.
 --
-selectGhcEnvironmentFileLibraries :: PostBuildProjectStatus -> [UnitId]
+selectGhcEnvironmentFileLibraries :: PostBuildProjectStatus -> [WithStage UnitId]
 selectGhcEnvironmentFileLibraries PostBuildProjectStatus{..} =
   case Graph.closure packagesLibDepGraph (Set.toList packagesBuildLocal) of
     Nothing -> error "renderGhcEnvironmentFile: broken dep closure"
@@ -991,7 +988,7 @@ selectGhcEnvironmentFileLibraries PostBuildProjectStatus{..} =
       -- or just locally. Check it's a lib and that it is probably up to date.
       InstallPlan.Configured pkg ->
         elabRequiresRegistration pkg
-          && installedUnitId pkg `Set.member` packagesProbablyUpToDate
+          && Graph.nodeKey pkg `Set.member` packagesProbablyUpToDate
 
 selectGhcEnvironmentFilePackageDbs :: ElaboratedInstallPlan -> PackageDBStackCWD
 selectGhcEnvironmentFilePackageDbs elaboratedInstallPlan =

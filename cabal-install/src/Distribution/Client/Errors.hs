@@ -24,6 +24,7 @@ import qualified Data.ByteString.Base16 as Base16
 import qualified Data.ByteString.Char8 as BS8
 import Data.List (groupBy)
 import Distribution.Client.IndexUtils.Timestamp
+import Distribution.Client.ProjectPlanning.Stage (WithStage)
 import qualified Distribution.Client.Types.Repo as Repo
 import qualified Distribution.Client.Types.RepoName as RepoName
 import Distribution.Compat.Prelude
@@ -96,7 +97,7 @@ data CabalInstallException
   | PlanPackages String
   | NoSupportForRunCommand
   | RunPhaseReached
-  | UnknownExecutable String UnitId
+  | UnknownExecutable String (WithStage UnitId)
   | MultipleMatchingExecutables String [String]
   | CmdRunReportTargetProblems String
   | CleanAction [String]

@@ -170,7 +170,7 @@ targetAction flags@NixStyleFlags{..} ts globalFlags = do
     either (reportTargetSelectorProblems verbosity) return
       =<< readTargetSelectors localPackages Nothing targetStrings
 
-  targets :: TargetsMap <-
+  targets <-
     either (reportBuildTargetProblems verbosity) return $
       resolveTargetsFromSolver
         selectPackageTargets
@@ -192,7 +192,7 @@ targetAction flags@NixStyleFlags{..} ts globalFlags = do
 reportBuildTargetProblems :: Verbosity -> [TargetProblem'] -> IO a
 reportBuildTargetProblems verbosity = reportTargetProblems verbosity "target"
 
-printTargetForms :: Verbosity -> [String] -> TargetsMap -> ElaboratedInstallPlan -> IO ()
+printTargetForms :: Verbosity -> [String] -> TargetsMapS -> ElaboratedInstallPlan -> IO ()
 printTargetForms verbosity targetStrings targets elaboratedPlan =
   noticeDoc verbosity $
     vcat
@@ -218,7 +218,7 @@ printTargetForms verbosity targetStrings targets elaboratedPlan =
       sort $
         catMaybes
           [ targetForm ct <$> pkg
-          | (u :: UnitId, xs) <- Map.toAscList targets
+          | (WithStage _ u, xs) <- Map.toAscList targets
           , let pkg = safeHead $ filter ((== u) . elabUnitId) localPkgs
           , (ct :: ComponentTarget, _) <- xs
           ]

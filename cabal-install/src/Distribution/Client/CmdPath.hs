@@ -42,7 +42,6 @@ import Distribution.Client.ProjectConfig.Types
   )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning
-import Distribution.Client.ProjectPlanning.Types (Toolchain (..))
 import Distribution.Client.RebuildMonad (runRebuild)
 import Distribution.Client.ScriptUtils
 import Distribution.Client.Setup
@@ -82,7 +81,6 @@ import Distribution.Simple.Utils
   , withOutputMarker
   , wrapText
   )
-import Distribution.Solver.Types.Stage
 import Distribution.Verbosity
   ( normal
   )

@@ -959,11 +959,11 @@ testTargetProblemsBuild config reportSubCase = do
       CmdBuild.selectPackageTargets
       CmdBuild.selectComponentTarget
       [mkTargetPackage "p-0.1"]
-      [ ("p-0.1-inplace", (CLibName LMainLibName))
-      , ("p-0.1-inplace-a-benchmark", CBenchName "a-benchmark")
-      , ("p-0.1-inplace-a-testsuite", CTestName "a-testsuite")
-      , ("p-0.1-inplace-an-exe", CExeName "an-exe")
-      , ("p-0.1-inplace-libp", CFLibName "libp")
+      [ (WithStage Host "p-0.1-inplace", (CLibName LMainLibName))
+      , (WithStage Host "p-0.1-inplace-a-benchmark", CBenchName "a-benchmark")
+      , (WithStage Host "p-0.1-inplace-a-testsuite", CTestName "a-testsuite")
+      , (WithStage Host "p-0.1-inplace-an-exe", CExeName "an-exe")
+      , (WithStage Host "p-0.1-inplace-libp", CFLibName "libp")
       ]
 
   reportSubCase "disabled component kinds"
@@ -985,9 +985,9 @@ testTargetProblemsBuild config reportSubCase = do
       CmdBuild.selectPackageTargets
       CmdBuild.selectComponentTarget
       [mkTargetPackage "p-0.1"]
-      [ ("p-0.1-inplace", (CLibName LMainLibName))
-      , ("p-0.1-inplace-an-exe", CExeName "an-exe")
-      , ("p-0.1-inplace-libp", CFLibName "libp")
+      [ (WithStage Host "p-0.1-inplace", (CLibName LMainLibName))
+      , (WithStage Host "p-0.1-inplace-an-exe", CExeName "an-exe")
+      , (WithStage Host "p-0.1-inplace-libp", CFLibName "libp")
       ]
 
   reportSubCase "requested component kinds"
@@ -1002,8 +1002,8 @@ testTargetProblemsBuild config reportSubCase = do
       [ TargetPackage TargetExplicitNamed ["p-0.1"] (Just TestKind)
       , TargetPackage TargetExplicitNamed ["p-0.1"] (Just BenchKind)
       ]
-      [ ("p-0.1-inplace-a-benchmark", CBenchName "a-benchmark")
-      , ("p-0.1-inplace-a-testsuite", CTestName "a-testsuite")
+      [ (WithStage Host "p-0.1-inplace-a-benchmark", CBenchName "a-benchmark")
+      , (WithStage Host "p-0.1-inplace-a-testsuite", CTestName "a-testsuite")
       ]
 
 testTargetProblemsRepl :: ProjectConfig -> (String -> IO ()) -> Assertion
@@ -1090,8 +1090,8 @@ testTargetProblemsRepl config reportSubCase = do
       [ mkTargetComponent "p-0.1" (CExeName "p1")
       , mkTargetComponent "p-0.1" (CExeName "p2")
       ]
-      [ ("p-0.1-inplace-p1", CExeName "p1")
-      , ("p-0.1-inplace-p2", CExeName "p2")
+      [ (WithStage Host "p-0.1-inplace-p1", CExeName "p1")
+      , (WithStage Host "p-0.1-inplace-p2", CExeName "p2")
       ]
 
   reportSubCase "libs-disabled"
@@ -1160,7 +1160,7 @@ testTargetProblemsRepl config reportSubCase = do
       (CmdRepl.selectPackageTargets (CmdRepl.MultiReplDecision Nothing False))
       CmdRepl.selectComponentTarget
       [TargetPackage TargetExplicitNamed ["p-0.1"] Nothing]
-      [("p-0.1-inplace", (CLibName LMainLibName))]
+      [(WithStage Host "p-0.1-inplace", (CLibName LMainLibName))]
     -- When we select the package with an explicit filter then we get those
     -- components even though we did not explicitly enable tests/benchmarks
     assertProjectDistinctTargets
@@ -1168,13 +1168,13 @@ testTargetProblemsRepl config reportSubCase = do
       (CmdRepl.selectPackageTargets (CmdRepl.MultiReplDecision Nothing False))
       CmdRepl.selectComponentTarget
       [TargetPackage TargetExplicitNamed ["p-0.1"] (Just TestKind)]
-      [("p-0.1-inplace-a-testsuite", CTestName "a-testsuite")]
+      [(WithStage Host "p-0.1-inplace-a-testsuite", CTestName "a-testsuite")]
     assertProjectDistinctTargets
       elaboratedPlan
       (CmdRepl.selectPackageTargets (CmdRepl.MultiReplDecision Nothing False))
       CmdRepl.selectComponentTarget
       [TargetPackage TargetExplicitNamed ["p-0.1"] (Just BenchKind)]
-      [("p-0.1-inplace-a-benchmark", CBenchName "a-benchmark")]
+      [(WithStage Host "p-0.1-inplace-a-benchmark", CBenchName "a-benchmark")]
 
 testTargetProblemsListBin :: ProjectConfig -> (String -> IO ()) -> Assertion
 testTargetProblemsListBin config reportSubCase = do
@@ -1187,7 +1187,7 @@ testTargetProblemsListBin config reportSubCase = do
       CmdListBin.selectComponentTarget
       [ TargetPackage TargetExplicitNamed ["p-0.1"] Nothing
       ]
-      [ ("p-0.1-inplace-p1", CExeName "p1")
+      [ (WithStage Host "p-0.1-inplace-p1", CExeName "p1")
       ]
 
   reportSubCase "multiple-exes"
@@ -1224,8 +1224,8 @@ testTargetProblemsListBin config reportSubCase = do
       [ mkTargetComponent "p-0.1" (CExeName "p1")
       , mkTargetComponent "p-0.1" (CExeName "p2")
       ]
-      [ ("p-0.1-inplace-p1", CExeName "p1")
-      , ("p-0.1-inplace-p2", CExeName "p2")
+      [ (WithStage Host "p-0.1-inplace-p1", CExeName "p1")
+      , (WithStage Host "p-0.1-inplace-p2", CExeName "p2")
       ]
 
   reportSubCase "exes-disabled"
@@ -1272,7 +1272,7 @@ testTargetProblemsRun config reportSubCase = do
       CmdRun.selectComponentTarget
       [ TargetPackage TargetExplicitNamed ["p-0.1"] Nothing
       ]
-      [ ("p-0.1-inplace-p1", CExeName "p1")
+      [ (WithStage Host "p-0.1-inplace-p1", CExeName "p1")
       ]
 
   reportSubCase "multiple-exes"
@@ -1309,8 +1309,8 @@ testTargetProblemsRun config reportSubCase = do
       [ mkTargetComponent "p-0.1" (CExeName "p1")
       , mkTargetComponent "p-0.1" (CExeName "p2")
       ]
-      [ ("p-0.1-inplace-p1", CExeName "p1")
-      , ("p-0.1-inplace-p2", CExeName "p2")
+      [ (WithStage Host "p-0.1-inplace-p1", CExeName "p1")
+      , (WithStage Host "p-0.1-inplace-p2", CExeName "p2")
       ]
 
   reportSubCase "exes-disabled"
@@ -1713,11 +1713,11 @@ testTargetProblemsHaddock config reportSubCase = do
         (CmdHaddock.selectPackageTargets haddockFlags)
         CmdHaddock.selectComponentTarget
         [mkTargetPackage "p-0.1"]
-        [ ("p-0.1-inplace", (CLibName LMainLibName))
-        , ("p-0.1-inplace-a-benchmark", CBenchName "a-benchmark")
-        , ("p-0.1-inplace-a-testsuite", CTestName "a-testsuite")
-        , ("p-0.1-inplace-an-exe", CExeName "an-exe")
-        , ("p-0.1-inplace-libp", CFLibName "libp")
+        [ (WithStage Host "p-0.1-inplace", (CLibName LMainLibName))
+        , (WithStage Host "p-0.1-inplace-a-benchmark", CBenchName "a-benchmark")
+        , (WithStage Host "p-0.1-inplace-a-testsuite", CTestName "a-testsuite")
+        , (WithStage Host "p-0.1-inplace-an-exe", CExeName "an-exe")
+        , (WithStage Host "p-0.1-inplace-libp", CFLibName "libp")
         ]
 
   reportSubCase "disabled component kinds"
@@ -1729,7 +1729,7 @@ testTargetProblemsHaddock config reportSubCase = do
         (CmdHaddock.selectPackageTargets haddockFlags)
         CmdHaddock.selectComponentTarget
         [mkTargetPackage "p-0.1"]
-        [("p-0.1-inplace", (CLibName LMainLibName))]
+        [(WithStage Host "p-0.1-inplace", (CLibName LMainLibName))]
 
   reportSubCase "requested component kinds"
   -- When we selecting the package with an explicit filter then it does not
@@ -1744,10 +1744,10 @@ testTargetProblemsHaddock config reportSubCase = do
         , TargetPackage TargetExplicitNamed ["p-0.1"] (Just TestKind)
         , TargetPackage TargetExplicitNamed ["p-0.1"] (Just BenchKind)
         ]
-        [ ("p-0.1-inplace-a-benchmark", CBenchName "a-benchmark")
-        , ("p-0.1-inplace-a-testsuite", CTestName "a-testsuite")
-        , ("p-0.1-inplace-an-exe", CExeName "an-exe")
-        , ("p-0.1-inplace-libp", CFLibName "libp")
+        [ (WithStage Host "p-0.1-inplace-a-benchmark", CBenchName "a-benchmark")
+        , (WithStage Host "p-0.1-inplace-a-testsuite", CTestName "a-testsuite")
+        , (WithStage Host "p-0.1-inplace-an-exe", CExeName "an-exe")
+        , (WithStage Host "p-0.1-inplace-libp", CFLibName "libp")
         ]
   where
     mkHaddockFlags flib exe test bench =
@@ -1765,7 +1765,7 @@ assertProjectDistinctTargets
   -> (forall k. TargetSelector -> [AvailableTarget k] -> Either (TargetProblem err) [k])
   -> (forall k. SubComponentTarget -> AvailableTarget k -> Either (TargetProblem err) k)
   -> [TargetSelector]
-  -> [(UnitId, ComponentName)]
+  -> [(WithStage UnitId, ComponentName)]
   -> Assertion
 assertProjectDistinctTargets
   elaboratedPlan
@@ -2242,7 +2242,7 @@ executePlan
     , elaboratedPlan
     , elaboratedShared
     ) = do
-    let targets :: Map.Map UnitId [ComponentTarget]
+    let targets :: Map.Map (WithStage UnitId) [ComponentTarget]
         targets =
           Map.fromList
             [ (unitid, [ComponentTarget cname WholeComponent])
@@ -2346,7 +2346,7 @@ expectPackagePreExisting
   :: ElaboratedInstallPlan
   -> BuildOutcomes
   -> PackageId
-  -> IO InstalledPackageInfo
+  -> IO (WithStage InstalledPackageInfo)
 expectPackagePreExisting plan buildOutcomes pkgid = do
   planpkg <- expectPlanPackage plan pkgid
   case (planpkg, InstallPlan.lookupBuildOutcome planpkg buildOutcomes) of

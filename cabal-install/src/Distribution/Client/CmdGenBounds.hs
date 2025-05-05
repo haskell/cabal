@@ -38,6 +38,7 @@ import Distribution.Client.ProjectFlags
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ScriptUtils
 import Distribution.Client.TargetProblem
+import qualified Distribution.Compat.Graph as Graph
 import Distribution.Simple.Command
 import Distribution.Types.Component
 import Distribution.Verbosity
@@ -129,8 +130,8 @@ genBoundsAction flags targetStrings globalFlags =
       pkgVersionMap :: Map.Map ComponentId PackageIdentifier
       pkgVersionMap = Map.fromList (map (InstallPlan.foldPlanPackage externalVersion localVersion) (InstallPlan.toList elaboratedPlan'))
 
-      externalVersion :: InstalledPackageInfo -> (ComponentId, PackageIdentifier)
-      externalVersion pkg = (installedComponentId pkg, packageId pkg)
+      externalVersion :: WithStage InstalledPackageInfo -> (ComponentId, PackageIdentifier)
+      externalVersion (WithStage _stage pkg) = (installedComponentId pkg, packageId pkg)
 
       localVersion :: ElaboratedConfiguredPackage -> (ComponentId, PackageIdentifier)
       localVersion pkg = (elabComponentId pkg, packageId pkg)
@@ -138,7 +139,7 @@ genBoundsAction flags targetStrings globalFlags =
     let genBoundsActionForPkg :: ElaboratedConfiguredPackage -> [GenBoundsResult]
         genBoundsActionForPkg pkg =
           -- Step 5: Match up the user specified targets with the local packages.
-          case Map.lookup (installedUnitId pkg) targets of
+          case Map.lookup (Graph.nodeKey pkg) targets of
             Nothing -> []
             Just tgts ->
               map (\(tgt, _) -> getBoundsForComponent tgt pkg pkgVersionMap) tgts
@@ -187,7 +188,8 @@ getBoundsForComponent tgt pkg pkgVersionMap =
       let componentDeps = elabLibDependencies pkg
           -- Match these up to package names, this is a list of Package name to versions.
           -- Now just match that up with what the user wrote in the build-depends section.
-          depsWithVersions = mapMaybe (\cid -> Map.lookup (confInstId $ fst cid) pkgVersionMap) componentDeps
+          -- FIXME: I am not quite sure how this is supposed to work
+          depsWithVersions = mapMaybe (\(WithStage _stage cid, _) -> Map.lookup (confInstId cid) pkgVersionMap) componentDeps
           isNeeded = hasElem needBounds . packageName
        in boundsResult (Just (filter isNeeded depsWithVersions))
   where
