@@ -224,7 +224,7 @@ listbinAction flags args globalFlags = do
 -- Target Problem: the very similar to CmdRun
 -------------------------------------------------------------------------------
 
-singleComponentOrElse :: IO (UnitId, UnqualComponentName) -> TargetsMap -> IO (UnitId, UnqualComponentName)
+singleComponentOrElse :: IO (WithStage UnitId, UnqualComponentName) -> TargetsMapS -> IO (WithStage UnitId, UnqualComponentName)
 singleComponentOrElse action targetsMap =
   case Set.toList . distinctTargetComponents $ targetsMap of
     [(unitId, CExeName component)] -> return (unitId, component)
@@ -316,7 +316,7 @@ data ListBinProblem
   | -- | A single 'TargetSelector' matches multiple targets
     TargetProblemMatchesMultiple TargetSelector [AvailableTarget ()]
   | -- | Multiple 'TargetSelector's match multiple targets
-    TargetProblemMultipleTargets TargetsMap
+    TargetProblemMultipleTargets TargetsMapS
   | -- | The 'TargetSelector' refers to a component that is not an executable
     TargetProblemComponentNotRightKind PackageId ComponentName
   | -- | Asking to run an individual file or module is not supported
@@ -333,7 +333,7 @@ matchesMultipleProblem selector targets =
   CustomTargetProblem $
     TargetProblemMatchesMultiple selector targets
 
-multipleTargetsProblem :: TargetsMap -> TargetProblem ListBinProblem
+multipleTargetsProblem :: TargetsMapS -> TargetProblem ListBinProblem
 multipleTargetsProblem = CustomTargetProblem . TargetProblemMultipleTargets
 
 componentNotRightKindProblem :: PackageId -> ComponentName -> TargetProblem ListBinProblem
