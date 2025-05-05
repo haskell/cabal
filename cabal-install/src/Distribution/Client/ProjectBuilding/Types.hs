@@ -25,8 +25,10 @@ import Prelude ()
 import Distribution.Client.FileMonitor (MonitorChangedReason (..))
 import Distribution.Client.Types (DocsResult, TestsResult)
 
+import Distribution.Client.ProjectPlanning.Types (ElaboratedPlanPackage)
+import qualified Distribution.Compat.Graph as Graph
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
-import Distribution.Package (PackageId, UnitId)
+import Distribution.Package (PackageId)
 import Distribution.Simple.LocalBuildInfo (ComponentName)
 
 ------------------------------------------------------------------------------
@@ -36,7 +38,7 @@ import Distribution.Simple.LocalBuildInfo (ComponentName)
 -- | The 'BuildStatus' of every package in the 'ElaboratedInstallPlan'.
 --
 -- This is used as the result of the dry-run of building an install plan.
-type BuildStatusMap = Map UnitId BuildStatus
+type BuildStatusMap = Map (Graph.Key ElaboratedPlanPackage) BuildStatus
 
 -- | The build status for an individual package is the state that the
 -- package is in /prior/ to initiating a (re)build.
@@ -135,7 +137,7 @@ data BuildReason
 --
 
 -- | A summary of the outcome for building a whole set of packages.
-type BuildOutcomes = Map UnitId BuildOutcome
+type BuildOutcomes = Map (Graph.Key ElaboratedPlanPackage) BuildOutcome
 
 -- | A summary of the outcome for building a single package: either success
 -- or failure.

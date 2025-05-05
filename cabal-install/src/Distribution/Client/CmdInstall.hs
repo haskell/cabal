@@ -91,10 +91,10 @@ import Distribution.Client.ProjectConfig.Types
   )
 import Distribution.Client.ProjectFlags (ProjectFlags (..))
 import Distribution.Client.ProjectPlanning
-  ( storePackageInstallDirs'
-  )
-import Distribution.Client.ProjectPlanning.Types
   ( ElaboratedInstallPlan
+  , ElaboratedPlanPackage
+  , Stage (..)
+  , storePackageInstallDirs'
   )
 import Distribution.Client.RebuildMonad
   ( runRebuild
@@ -115,6 +115,7 @@ import Distribution.Client.Types
 import Distribution.Client.Types.OverwritePolicy
   ( OverwritePolicy (..)
   )
+import qualified Distribution.Compat.Graph as Graph
 import Distribution.Package
   ( Package (..)
   , PackageName
@@ -565,7 +566,7 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
     traverseInstall action cfg@InstallCfg{verbosity = v, buildCtx, installClientFlags} = do
       let overwritePolicy = fromFlagOrDefault NeverOverwrite $ cinstOverwritePolicy installClientFlags
       actionOnExe <- action v overwritePolicy <$> prepareExeInstall cfg
-      traverse_ actionOnExe . Map.toList $ targetsMap buildCtx
+      traverse_ actionOnExe . Map.toList $ filterTargetsWithStage Host $ targetsMap buildCtx
 
 withProject
   :: Verbosity
@@ -784,7 +785,7 @@ getSpecsAndTargetSelectors verbosity reducedVerbosity sourcePkgDb targetSelector
 
       localPkgs = sdistize <$> localPackages baseCtx
 
-      gatherTargets :: UnitId -> TargetSelector
+      gatherTargets :: Graph.Key ElaboratedPlanPackage -> TargetSelector
       gatherTargets targetId = TargetPackageNamed pkgName targetFilter
         where
           targetUnit = Map.findWithDefault (error "cannot find target unit") targetId planMap
@@ -829,7 +830,7 @@ partitionToKnownTargetsAndHackagePackages
   -> SourcePackageDb
   -> ElaboratedInstallPlan
   -> [TargetSelector]
-  -> IO (TargetsMap, [PackageName])
+  -> IO (TargetsMapS, [PackageName])
 partitionToKnownTargetsAndHackagePackages verbosity pkgDb elaboratedPlan targetSelectors = do
   let mTargets =
         resolveTargetsFromSolver
@@ -1005,7 +1006,7 @@ installLibraries
             ordNub $
               globalEntries
                 ++ envEntries
-                ++ entriesForLibraryComponents (targetsMap buildCtx)
+                ++ entriesForLibraryComponents (filterTargetsWithStage Host $ targetsMap buildCtx)
           contents' = renderGhcEnvironmentFile (baseEntries ++ pkgEntries)
         createDirectoryIfMissing True (takeDirectory envFile)
         writeFileAtomic envFile (BS.pack contents')

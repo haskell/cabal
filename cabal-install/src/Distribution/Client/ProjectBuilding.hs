@@ -96,6 +96,7 @@ import Distribution.Simple.Flag (fromFlagOrDefault)
 
 import Distribution.Client.ProjectBuilding.PackageFileMonitor
 import Distribution.Client.ProjectBuilding.UnpackedPackage (annotateFailureNoLog, buildAndInstallUnpackedPackage, buildInplaceUnpackedPackage)
+import qualified Distribution.Compat.Graph as Graph
 
 ------------------------------------------------------------------------------
 
@@ -458,13 +459,14 @@ rebuildTargets
       offlineError :: BuildOutcomes
       offlineError = Map.fromList . map makeBuildOutcome $ packagesToDownload
         where
-          makeBuildOutcome :: ElaboratedConfiguredPackage -> (UnitId, BuildOutcome)
+          makeBuildOutcome :: ElaboratedConfiguredPackage -> (Graph.Key ElaboratedPlanPackage, BuildOutcome)
           makeBuildOutcome
             ElaboratedConfiguredPackage
               { elabUnitId
+              , elabStage
               , elabPkgSourceId = PackageIdentifier{pkgName, pkgVersion}
               } =
-              ( elabUnitId
+              ( WithStage elabStage elabUnitId
               , Left
                   ( BuildFailure
                       { buildFailureLogFile = Nothing
@@ -656,8 +658,7 @@ asyncDownloadPackages verbosity withRepoCtx installPlan pkgsBuildStatus body
         [ elabPkgSourceLocation elab
         | InstallPlan.Configured elab <-
             InstallPlan.reverseTopologicalOrder installPlan
-        , let uid = installedUnitId elab
-              pkgBuildStatus = Map.findWithDefault (error "asyncDownloadPackages") uid pkgsBuildStatus
+        , let pkgBuildStatus = Map.findWithDefault (error "asyncDownloadPackages") (Graph.nodeKey elab) pkgsBuildStatus
         , BuildStatusDownload <- [pkgBuildStatus]
         ]
 
