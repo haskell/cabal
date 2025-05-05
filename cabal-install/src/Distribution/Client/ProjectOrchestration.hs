@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -61,6 +62,7 @@ module Distribution.Client.ProjectOrchestration
   , resolveTargetsFromSolver
   , resolveTargetsFromLocalPackages
   , TargetsMap
+  , TargetsMapS
   , allTargetSelectors
   , uniqueTargetSelectors
   , TargetSelector (..)
@@ -102,6 +104,7 @@ module Distribution.Client.ProjectOrchestration
     -- * Dummy projects
   , establishDummyProjectBaseContext
   , establishDummyDistDirLayout
+  , filterTargetsWithStage
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -151,9 +154,6 @@ import Distribution.Client.HttpUtils
 import Distribution.Client.Setup hiding (packageName)
 import Distribution.Types.ComponentName
   ( componentNameString
-  )
-import Distribution.Types.InstalledPackageInfo
-  ( InstalledPackageInfo
   )
 import Distribution.Types.UnqualComponentName
   ( UnqualComponentName
@@ -325,7 +325,7 @@ data ProjectBuildContext = ProjectBuildContext
   , pkgsBuildStatus :: BuildStatusMap
   -- ^ The result of the dry-run phase. This tells us about each member of
   -- the 'elaboratedPlanToExecute'.
-  , targetsMap :: TargetsMap
+  , targetsMap :: TargetsMapS
   -- ^ The targets selected by @selectPlanSubset@. This is useful eg. in
   -- CmdRun, where we need a valid target to execute.
   }
@@ -363,7 +363,7 @@ withInstallPlan
 runProjectPreBuildPhase
   :: Verbosity
   -> ProjectBaseContext
-  -> (ElaboratedInstallPlan -> IO (ElaboratedInstallPlan, TargetsMap))
+  -> (ElaboratedInstallPlan -> IO (ElaboratedInstallPlan, TargetsMapS))
   -> IO ProjectBuildContext
 runProjectPreBuildPhase
   verbosity
@@ -549,12 +549,22 @@ type TargetsMap = TargetsMapX UnitId
 
 type TargetsMapX u = Map u [(ComponentTarget, NonEmpty TargetSelector)]
 
+type TargetsMapS = TargetsMapX (WithStage UnitId)
+
+filterTargetsWithStage :: Stage -> TargetsMapS -> TargetsMap
+filterTargetsWithStage stage =
+  Map.fromList
+    . mapMaybe (\(WithStage s uid, v) -> if s == stage then Just (uid, v) else Nothing)
+    . Map.toList
+
+-- Map.mapMaybeWithKey (\(WithStage s uid) v  -> if s == stage then Just v else Nothing)
+
 -- | Get all target selectors.
-allTargetSelectors :: TargetsMap -> [TargetSelector]
+allTargetSelectors :: TargetsMapS -> [TargetSelector]
 allTargetSelectors = concatMap (NE.toList . snd) . concat . Map.elems
 
 -- | Get all unique target selectors.
-uniqueTargetSelectors :: TargetsMap -> [TargetSelector]
+uniqueTargetSelectors :: TargetsMapS -> [TargetSelector]
 uniqueTargetSelectors = ordNub . allTargetSelectors
 
 -- | Resolve targets from a solver result.
@@ -577,7 +587,7 @@ resolveTargetsFromSolver
   -> ElaboratedInstallPlan
   -> Maybe (SourcePackageDb)
   -> [TargetSelector]
-  -> Either [TargetProblem err] TargetsMap
+  -> Either [TargetProblem err] TargetsMapS
 resolveTargetsFromSolver selectPackageTargets selectComponentTarget installPlan sourceDb targetSelectors =
   resolveTargets
     selectPackageTargets
@@ -799,18 +809,18 @@ type AvailableTargetsMap k u = Map k [AvailableTarget (u, ComponentName)]
 --
 -- They are all constructed lazily because they are not necessarily all used.
 --
-availableTargetIndexes :: ElaboratedInstallPlan -> AvailableTargetIndexes UnitId
+availableTargetIndexes :: ElaboratedInstallPlan -> AvailableTargetIndexes (WithStage UnitId)
 availableTargetIndexes installPlan = AvailableTargetIndexes{..}
   where
     availableTargetsByPackageIdAndComponentName
       :: Map
           (PackageId, ComponentName)
-          [AvailableTarget (UnitId, ComponentName)]
+          [AvailableTarget (WithStage UnitId, ComponentName)]
     availableTargetsByPackageIdAndComponentName =
       availableTargets installPlan
 
     availableTargetsByPackageId
-      :: Map PackageId [AvailableTarget (UnitId, ComponentName)]
+      :: Map PackageId [AvailableTarget (WithStage UnitId, ComponentName)]
     availableTargetsByPackageId =
       Map.mapKeysWith
         (++)
@@ -819,7 +829,7 @@ availableTargetIndexes installPlan = AvailableTargetIndexes{..}
         `Map.union` availableTargetsEmptyPackages
 
     availableTargetsByPackageName
-      :: Map PackageName [AvailableTarget (UnitId, ComponentName)]
+      :: Map PackageName [AvailableTarget (WithStage UnitId, ComponentName)]
     availableTargetsByPackageName =
       Map.mapKeysWith
         (++)
@@ -829,7 +839,7 @@ availableTargetIndexes installPlan = AvailableTargetIndexes{..}
     availableTargetsByPackageNameAndComponentName
       :: Map
           (PackageName, ComponentName)
-          [AvailableTarget (UnitId, ComponentName)]
+          [AvailableTarget (WithStage UnitId, ComponentName)]
     availableTargetsByPackageNameAndComponentName =
       Map.mapKeysWith
         (++)
@@ -839,7 +849,7 @@ availableTargetIndexes installPlan = AvailableTargetIndexes{..}
     availableTargetsByPackageNameAndUnqualComponentName
       :: Map
           (PackageName, UnqualComponentName)
-          [AvailableTarget (UnitId, ComponentName)]
+          [AvailableTarget (WithStage UnitId, ComponentName)]
     availableTargetsByPackageNameAndUnqualComponentName =
       Map.mapKeysWith
         (++)
@@ -1031,7 +1041,7 @@ selectComponentTargetBasic
 -- for the extra unneeded info in the 'TargetsMap'.
 pruneInstallPlanToTargets
   :: TargetAction
-  -> TargetsMap
+  -> TargetsMapS
   -> ElaboratedInstallPlan
   -> ElaboratedInstallPlan
 pruneInstallPlanToTargets targetActionType targetsMap elaboratedPlan =
@@ -1043,7 +1053,7 @@ pruneInstallPlanToTargets targetActionType targetsMap elaboratedPlan =
 
 -- | Utility used by repl and run to check if the targets spans multiple
 -- components, since those commands do not support multiple components.
-distinctTargetComponents :: TargetsMap -> Set.Set (UnitId, ComponentName)
+distinctTargetComponents :: TargetsMapS -> Set.Set (WithStage UnitId, ComponentName)
 distinctTargetComponents targetsMap =
   Set.fromList
     [ (uid, cname)
@@ -1114,7 +1124,8 @@ printPlan
           filter
             (not . null)
             [ " -"
-            , if verbosityLevel verbosity >= Deafening
+            , prettyShow (elabStage elab)
+            , if verbosity >= deafening
                 then prettyShow (installedUnitId elab)
                 else prettyShow (packageId elab)
             , case elabBuildStyle elab of
@@ -1126,7 +1137,7 @@ printPlan
                   "(" ++ showComp comp ++ ")"
             , showFlagAssignment (nonDefaultFlags elab)
             , showConfigureFlags elab
-            , let buildStatus = pkgsBuildStatus Map.! installedUnitId elab
+            , let buildStatus = pkgsBuildStatus Map.! Graph.nodeKey elab
                in "(" ++ showBuildStatus buildStatus ++ ")"
             ]
 
@@ -1340,7 +1351,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
           , (pkg, failureClassification) <- failuresClassification
           ]
   where
-    failures :: [(UnitId, BuildFailure)]
+    failures :: [(Graph.Key ElaboratedPlanPackage, BuildFailure)]
     failures =
       [ (pkgid, failure)
       | (pkgid, Left failure) <- Map.toList buildOutcomes
@@ -1398,9 +1409,10 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
     --
     isSimpleCase :: Bool
     isSimpleCase
-      | [(pkgid, failure)] <- failures
+      | [(WithStage s pkgid, failure)] <- failures
       , [pkg] <- rootpkgs
       , installedUnitId pkg == pkgid
+      , stageOf pkg == s
       , isFailureSelfExplanatory (buildFailureReason failure)
       , currentCommand `notElem` [InstallCommand, BuildCommand, ReplCommand] =
           True
@@ -1424,16 +1436,15 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
       , hasNoDependents pkg
       ]
 
-    ultimateDeps
-      :: UnitId
-      -> [InstallPlan.GenericPlanPackage InstalledPackageInfo ElaboratedConfiguredPackage]
-    ultimateDeps pkgid =
+    ultimateDeps :: (WithStage UnitId) -> [ElaboratedPlanPackage]
+    ultimateDeps pkgid@(WithStage s uid) =
       filter
-        (\pkg -> hasNoDependents pkg && installedUnitId pkg /= pkgid)
+        (\pkg -> hasNoDependents pkg && installedUnitId pkg /= uid && stageOf pkg == s)
         (InstallPlan.reverseDependencyClosure plan [pkgid])
 
-    hasNoDependents :: HasUnitId pkg => pkg -> Bool
-    hasNoDependents = null . InstallPlan.revDirectDeps plan . installedUnitId
+    -- TODO: ugly
+    hasNoDependents :: (Graph.IsNode pkg, Graph.Key pkg ~ WithStage UnitId) => pkg -> Bool
+    hasNoDependents = null . InstallPlan.revDirectDeps plan . Graph.nodeKey
 
     renderFailureDetail :: Bool -> ElaboratedConfiguredPackage -> BuildFailureReason -> String
     renderFailureDetail mentionDepOf pkg reason =
@@ -1465,7 +1476,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
         pkgstr =
           elabConfiguredName verbosity pkg
             ++ if mentionDepOf
-              then renderDependencyOf (installedUnitId pkg)
+              then renderDependencyOf (Graph.nodeKey pkg)
               else ""
 
     renderFailureExtraDetail :: BuildFailureReason -> String
@@ -1476,7 +1487,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
     renderFailureExtraDetail _ =
       ""
 
-    renderDependencyOf :: UnitId -> String
+    renderDependencyOf :: Graph.Key ElaboratedConfiguredPackage -> String
     renderDependencyOf pkgid =
       case ultimateDeps pkgid of
         [] -> ""
