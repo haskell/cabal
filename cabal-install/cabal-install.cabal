@@ -230,7 +230,7 @@ library
         edit-distance >= 0.2.2 && < 0.3,
         exceptions >= 0.10.4   && < 0.11,
         filepath   >= 1.4.0.0  && < 1.6,
-        hashable   >= 1.0      && < 1.5,
+        hashable   >= 1.0      && < 1.6,
         HTTP       >= 4000.1.5 && < 4000.5,
         mtl        >= 2.0      && < 2.4,
         network-uri >= 2.6.0.2 && < 2.7,
