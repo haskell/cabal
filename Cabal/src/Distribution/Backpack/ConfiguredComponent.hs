@@ -94,7 +94,7 @@ dispConfiguredComponent cc =
 
 -- | Construct a 'ConfiguredComponent', given that the 'ComponentId'
 -- and library/executable dependencies are known.  The primary
--- work this does is handling implicit @backpack-include@ fields.
+-- work this does is handling implicit @mixin@ fields.
 mkConfiguredComponent
   :: PackageDescription
   -> ComponentId
@@ -121,7 +121,7 @@ mkConfiguredComponent pkg_descr this_cid lib_deps exe_deps component = do
         }
 
   -- Any @build-depends@ which is not explicitly mentioned in
-  -- @backpack-include@ is converted into an "implicit" include.
+  -- @mixin@ is converted into an "implicit" include.
   let used_explicitly = Set.fromList (map ci_id explicit_includes)
       implicit_includes =
         map
