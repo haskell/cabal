@@ -2,6 +2,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 {- FOURMOLU_DISABLE -}
 
 -----------------------------------------------------------------------------
@@ -144,7 +145,7 @@ import Distribution.Simple.Program.GHC
   )
 import Distribution.Simple.Setup
   ( CommonSetupFlags (..)
-  , Flag (..)
+  , pattern Flag
   , GlobalFlags (..)
   , globalCommand
   )

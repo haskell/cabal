@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -28,9 +29,10 @@ import Distribution.Client.Types
   , unRepoName
   )
 import Distribution.Simple.Setup
-  ( Flag (..)
+  ( Flag
   , flagToMaybe
   , fromFlag
+  , pattern Flag
   )
 import Distribution.Simple.Utils
   ( info

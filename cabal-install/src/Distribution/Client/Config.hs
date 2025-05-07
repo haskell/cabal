@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 -----------------------------------------------------------------------------
 
@@ -181,7 +182,7 @@ import Distribution.Simple.Setup
   ( BenchmarkFlags (..)
   , CommonSetupFlags (..)
   , ConfigFlags (..)
-  , Flag (..)
+  , Flag
   , HaddockFlags (..)
   , TestFlags (..)
   , configureOptions
@@ -197,6 +198,8 @@ import Distribution.Simple.Setup
   , programDbOptions
   , programDbPaths'
   , toFlag
+  , pattern Flag
+  , pattern NoFlag
   )
 import Distribution.Simple.Utils
   ( cabalVersion

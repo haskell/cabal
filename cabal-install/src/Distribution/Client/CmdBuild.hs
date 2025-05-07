@@ -50,7 +50,7 @@ import Distribution.Simple.Command
   , option
   , usageAlternatives
   )
-import Distribution.Simple.Flag (Flag (..), fromFlag, fromFlagOrDefault, toFlag)
+import Distribution.Simple.Flag (Flag, fromFlag, fromFlagOrDefault, toFlag)
 import Distribution.Simple.Utils
   ( dieWithException
   , wrapText

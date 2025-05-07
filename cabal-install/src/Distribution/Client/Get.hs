@@ -1,6 +1,4 @@
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
+{-# LANGUAGE PatternSynonyms #-}
 
 -- |
 -- Module      :  Distribution.Client.Get
@@ -39,10 +37,10 @@ import Distribution.Simple.Program
   ( programName
   )
 import Distribution.Simple.Setup
-  ( Flag (..)
-  , flagToMaybe
+  ( flagToMaybe
   , fromFlag
   , fromFlagOrDefault
+  , pattern NoFlag
   )
 import Distribution.Simple.Utils
   ( dieWithException

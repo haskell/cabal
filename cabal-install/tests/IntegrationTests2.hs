@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 -- For the handy instance IsString PackageIdentifier
@@ -99,7 +100,7 @@ import System.IO.Silently
 
 import qualified Data.ByteString as BS
 import Data.Maybe (fromJust)
-import Distribution.Simple.Flag (Flag (Flag, NoFlag))
+import Distribution.Simple.Flag (Flag, pattern Flag, pattern NoFlag)
 import Distribution.Types.ParStrat
 
 main :: IO ()

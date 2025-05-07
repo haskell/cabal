@@ -1,3 +1,5 @@
+{-# LANGUAGE PatternSynonyms #-}
+
 module UnitTests.Distribution.Client.UserConfig
   ( tests
   ) where
@@ -18,7 +20,7 @@ import Test.Tasty.HUnit
 import Distribution.Client.Config
 import Distribution.Client.Setup (GlobalFlags (..), InstallFlags (..))
 import Distribution.Client.Utils (removeExistingFile)
-import Distribution.Simple.Setup (ConfigFlags (..), Flag (..), fromFlag)
+import Distribution.Simple.Setup (ConfigFlags (..), fromFlag, pattern Flag)
 import Distribution.Simple.Utils (withTempDirectory)
 import Distribution.Utils.NubList (fromNubList)
 import Distribution.Verbosity (silent)

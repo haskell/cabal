@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Distribution.Client.CmdClean (cleanCommand, cleanAction) where
@@ -38,13 +39,14 @@ import Distribution.Simple.Command
   , option
   )
 import Distribution.Simple.Setup
-  ( Flag (..)
+  ( Flag
   , falseArg
   , flagToMaybe
   , fromFlagOrDefault
   , optionDistPref
   , optionVerbosity
   , toFlag
+  , pattern NoFlag
   )
 import Distribution.Simple.Utils
   ( dieWithException

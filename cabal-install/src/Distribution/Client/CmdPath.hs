@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 
 -- |
@@ -66,9 +67,11 @@ import Distribution.Simple.Command
   )
 import Distribution.Simple.Compiler
 import Distribution.Simple.Flag
-  ( Flag (..)
+  ( Flag
   , flagToList
   , fromFlagOrDefault
+  , pattern Flag
+  , pattern NoFlag
   )
 import Distribution.Simple.Program
 import Distribution.Simple.Utils

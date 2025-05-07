@@ -1,3 +1,5 @@
+{-# LANGUAGE PatternSynonyms #-}
+
 module Distribution.Client.Init.NonInteractive.Command
   ( genPkgDescription
   , genLibTarget
@@ -49,7 +51,7 @@ import Distribution.Client.Init.Utils
 import Distribution.Client.Types (SourcePackageDb (..))
 import Distribution.ModuleName (ModuleName, components)
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
-import Distribution.Simple.Setup (Flag (..), fromFlagOrDefault)
+import Distribution.Simple.Setup (fromFlagOrDefault, pattern Flag, pattern NoFlag)
 import Distribution.Solver.Types.PackageIndex (elemByPackageName)
 import Distribution.Types.Dependency (Dependency (..))
 import Distribution.Types.PackageName (PackageName, unPackageName)

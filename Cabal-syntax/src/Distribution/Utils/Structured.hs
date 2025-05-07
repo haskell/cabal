@@ -110,7 +110,7 @@ import Data.Typeable (TypeRep, Typeable, typeRep)
 
 import Distribution.Utils.MD5
 
-import Data.Monoid (mconcat)
+import Data.Monoid (Last, mconcat)
 
 import qualified Data.Foldable
 import qualified Data.Semigroup
@@ -413,6 +413,7 @@ instance Structured Float where structure = nominalStructure
 instance Structured Double where structure = nominalStructure
 
 instance Structured a => Structured (Maybe a)
+instance Structured a => Structured (Last a)
 instance (Structured a, Structured b) => Structured (Either a b)
 instance Structured a => Structured (Ratio a) where structure = containerStructure
 instance Structured a => Structured [a] where structure = containerStructure

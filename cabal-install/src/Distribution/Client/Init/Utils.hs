@@ -1,3 +1,4 @@
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Distribution.Client.Init.Utils
@@ -42,7 +43,7 @@ import Distribution.InstalledPackageInfo (InstalledPackageInfo, exposed)
 import Distribution.ModuleName (ModuleName)
 import qualified Distribution.Package as P
 import Distribution.Simple.PackageIndex (InstalledPackageIndex, moduleNameIndex)
-import Distribution.Simple.Setup (Flag (..))
+import Distribution.Simple.Setup (pattern Flag, pattern NoFlag)
 import Distribution.Types.Dependency (Dependency, mkDependency)
 import Distribution.Types.LibraryName
 import Distribution.Types.PackageName

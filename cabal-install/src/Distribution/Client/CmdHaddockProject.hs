@@ -1,3 +1,5 @@
+{-# LANGUAGE PatternSynonyms #-}
+
 module Distribution.Client.CmdHaddockProject
   ( haddockProjectCommand
   , haddockProjectAction
@@ -64,9 +66,10 @@ import Distribution.Simple.Command
   ( CommandUI (..)
   )
 import Distribution.Simple.Flag
-  ( Flag (..)
-  , fromFlag
+  ( fromFlag
   , fromFlagOrDefault
+  , pattern Flag
+  , pattern NoFlag
   )
 import Distribution.Simple.Haddock (createHaddockIndex)
 import Distribution.Simple.InstallDirs

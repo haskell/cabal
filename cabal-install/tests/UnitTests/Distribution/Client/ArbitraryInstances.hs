@@ -25,6 +25,7 @@ import Prelude ()
 
 import Data.Char (isLetter)
 import Data.List ((\\))
+import Data.Monoid (Last (..))
 
 import Distribution.Simple.Setup
 import Distribution.Types.Flag (mkFlagAssignment)
@@ -199,7 +200,7 @@ instance Arbitrary WriteGhcEnvironmentFilesPolicy where
   arbitrary = arbitraryBoundedEnum
 
 arbitraryFlag :: Gen a -> Gen (Flag a)
-arbitraryFlag = liftArbitrary
+arbitraryFlag = fmap (fmap Last) liftArbitrary
 
 instance Arbitrary RepoName where
   -- TODO: rename refinement?

@@ -1,5 +1,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -177,7 +178,7 @@ import Distribution.Client.ReplFlags
   , topReplOptions
   )
 import Distribution.Compat.Binary (decode)
-import Distribution.Simple.Flag (Flag (Flag), fromFlagOrDefault)
+import Distribution.Simple.Flag (fromFlagOrDefault, pattern Flag)
 import Distribution.Simple.Program.Builtin (ghcProgram)
 import Distribution.Simple.Program.Db (requireProgram)
 import Distribution.Simple.Program.Run

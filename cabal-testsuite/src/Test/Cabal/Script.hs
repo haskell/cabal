@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 
 -- | Functionality for invoking Haskell scripts with the correct
@@ -25,7 +26,7 @@ import Distribution.Simple.Program
 import Distribution.Simple.Compiler
 import Distribution.Verbosity
 import Distribution.System
-import Distribution.Simple.Setup (Flag(..))
+import Distribution.Simple.Setup (pattern Flag)
 
 import qualified Data.Monoid as M
 

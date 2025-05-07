@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 
 -- |
@@ -118,7 +119,9 @@ module Distribution.Simple.Setup
   , splitArgs
   , defaultDistPref
   , optionDistPref
-  , Flag (..)
+  , Flag
+  , pattern Flag
+  , pattern NoFlag
   , toFlag
   , fromFlag
   , fromFlagOrDefault
