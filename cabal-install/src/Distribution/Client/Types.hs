@@ -22,7 +22,7 @@ module Distribution.Client.Types
   , module Distribution.Client.Types.BuildResults
   , module Distribution.Client.Types.PackageLocation
   , module Distribution.Client.Types.PackageSpecifier
-  , module Distribution.Client.Types.ReadyPackage
+  , module Distribution.Client.Types.GenericReadyPackage
   , module Distribution.Client.Types.Repo
   , module Distribution.Client.Types.RepoName
   , module Distribution.Client.Types.SourcePackageDb
@@ -33,9 +33,9 @@ import Distribution.Client.Types.AllowNewer
 import Distribution.Client.Types.BuildResults
 import Distribution.Client.Types.ConfiguredId
 import Distribution.Client.Types.ConfiguredPackage
+import Distribution.Client.Types.GenericReadyPackage
 import Distribution.Client.Types.PackageLocation
 import Distribution.Client.Types.PackageSpecifier
-import Distribution.Client.Types.ReadyPackage
 import Distribution.Client.Types.Repo
 import Distribution.Client.Types.RepoName
 import Distribution.Client.Types.SourcePackageDb

@@ -126,6 +126,7 @@ import Distribution.Client.Tar (extractTarGzFile)
 import Distribution.Client.Targets
 import Distribution.Client.Types as Source
 import Distribution.Client.Types.OverwritePolicy (OverwritePolicy (..))
+import Distribution.Client.Types.ReadyPackage (ReadyPackage)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Solver.Types.PackageFixedDeps

@@ -221,6 +221,7 @@ library
         Distribution.Client.Types.ConfiguredId
         Distribution.Client.Types.ConfiguredPackage
         Distribution.Client.Types.Credentials
+        Distribution.Client.Types.GenericReadyPackage
         Distribution.Client.Types.InstallMethod
         Distribution.Client.Types.OverwritePolicy
         Distribution.Client.Types.PackageLocation
