@@ -52,7 +52,7 @@ import Distribution.Client.Targets
   , userToPackageConstraint
   )
 import Distribution.Client.Types as Source
-
+import Distribution.Client.Types.ReadyPackage (ReadyPackage)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.LabeledPackageConstraint
