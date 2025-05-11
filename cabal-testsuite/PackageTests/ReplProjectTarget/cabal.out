@@ -1,0 +1,33 @@
+# checking repl command with a project using an implicit default 'cabal.project'
+# cabal repl
+Configuration is affected by the following files:
+- cabal.project
+Error: [Cabal-7076]
+With a project, the REPL command requires a single target. The packages in this project are:
+ - pkg-one
+ - pkg-two
+# checking repl command with a project using an explicit 'cabal.project'
+# cabal repl
+Configuration is affected by the following files:
+- some.project
+Error: [Cabal-7076]
+With a project, the REPL command requires a single target. The packages in this project, 'some.project', are:
+ - pkg-one
+ - pkg-two
+# checking repl command with a project listing packages in reverse order
+# cabal repl
+Configuration is affected by the following files:
+- reverse.project
+Error: [Cabal-7076]
+With a project, the REPL command requires a single target. The packages in this project, 'reverse.project', are:
+ - pkg-one
+ - pkg-two
+# checking repl command with a project with no packages
+# cabal repl
+Configuration is affected by the following files:
+- empty.project
+Warning: There are no packages or optional-packages in the project
+Error: [Cabal-7076]
+With a project, the REPL command requires a single target but there are no packages in this project, 'empty.project', to choose a package (library) or other component from as the target for this command.
+# checking repl command with a missing project
+# cabal repl

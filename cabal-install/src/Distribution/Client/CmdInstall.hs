@@ -62,6 +62,7 @@ import Distribution.Client.InstallSymlink
   )
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
+  , cfgVerbosity
   , defaultNixStyleFlags
   , nixStyleOptions
   )
@@ -97,8 +98,7 @@ import Distribution.Client.RebuildMonad
   ( runRebuild
   )
 import Distribution.Client.Setup
-  ( CommonSetupFlags (..)
-  , ConfigFlags (..)
+  ( ConfigFlags (..)
   , GlobalFlags (..)
   , InstallFlags (..)
   )
@@ -543,7 +543,7 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
           traverseInstall (installCheckUnitExes InstallCheckInstall) installCfg
   where
     configFlags' = disableTestsBenchsByDefault . ignoreProgramAffixes $ configFlags
-    verbosity = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags')
+    verbosity = cfgVerbosity normal flags
     ignoreProject = flagIgnoreProject projectFlags
     cliConfig =
       commandLineFlagsToProjectConfig
