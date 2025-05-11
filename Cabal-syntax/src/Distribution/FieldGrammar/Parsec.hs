@@ -54,6 +54,7 @@
 module Distribution.FieldGrammar.Parsec
   ( ParsecFieldGrammar
   , parseFieldGrammar
+  , parseFieldGrammarCheckingStanzas
   , fieldGrammarKnownFieldList
 
     -- * Auxiliary
@@ -118,18 +119,29 @@ data ParsecFieldGrammar s a = ParsecFG
 
 parseFieldGrammar :: CabalSpecVersion -> Fields Position -> ParsecFieldGrammar s a -> ParseResult a
 parseFieldGrammar v fields grammar = do
-  for_ (Map.toList (Map.filterWithKey isUnknownField fields)) $ \(name, nfields) ->
+  for_ (Map.toList (Map.filterWithKey (isUnknownField grammar) fields)) $ \(name, nfields) ->
     for_ nfields $ \(MkNamelessField pos _) ->
       parseWarning pos PWTUnknownField $ "Unknown field: " ++ show name
   -- TODO: fields allowed in this section
 
   -- parse
   fieldGrammarParser grammar v fields
-  where
-    isUnknownField k _ =
-      not $
-        k `Set.member` fieldGrammarKnownFields grammar
-          || any (`BS.isPrefixOf` k) (fieldGrammarKnownPrefixes grammar)
+
+isUnknownField :: ParsecFieldGrammar s a -> FieldName -> [NamelessField Position] -> Bool
+isUnknownField grammar k _ =
+  not $
+    k `Set.member` fieldGrammarKnownFields grammar
+      || any (`BS.isPrefixOf` k) (fieldGrammarKnownPrefixes grammar)
+
+-- | Parse a ParsecFieldGrammar and check for fields that should be stanzas.
+parseFieldGrammarCheckingStanzas :: CabalSpecVersion -> Fields Position -> ParsecFieldGrammar s a -> Set BS.ByteString -> ParseResult a
+parseFieldGrammarCheckingStanzas v fields grammar sections = do
+  for_ (Map.toList (Map.filterWithKey (isUnknownField grammar) fields)) $ \(name, nfields) ->
+    for_ nfields $ \(MkNamelessField pos _) ->
+      if name `Set.member` sections
+        then parseWarning pos PWTFieldShouldBeStanza $ "'" ++ show name ++ "' is a stanza, not a field. Remove the trailing ':' to parse a stanza."
+        else parseWarning pos PWTUnknownField $ "Unknown field: " ++ show name
+  fieldGrammarParser grammar v fields
 
 fieldGrammarKnownFieldList :: ParsecFieldGrammar s a -> [FieldName]
 fieldGrammarKnownFieldList = Set.toList . fieldGrammarKnownFields
