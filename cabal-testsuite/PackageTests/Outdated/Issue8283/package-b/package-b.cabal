@@ -1,0 +1,17 @@
+cabal-version:      2.4
+name:               package-b
+version:            0.1.0.0
+synopsis:           Package B for outdated command testing
+license:            BSD-3-Clause
+license-file:       LICENSE
+author:             Cabal Test Suite
+maintainer:         cabal-dev@haskell.org
+build-type:         Simple
+
+library
+  exposed-modules:    ModuleB
+  build-depends:      base >=3.0 && < 3.5,
+                      package-a,
+                      binary >=0.8 && <0.8.7
+  hs-source-dirs:     src
+  default-language:   Haskell2010

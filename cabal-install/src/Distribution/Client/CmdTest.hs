@@ -144,7 +144,7 @@ testAction flags@NixStyleFlags{..} targetStrings globalFlags = do
       -- (as opposed to say build or haddock targets).
       targets <-
         either (reportTargetProblems verbosity failWhenNoTestSuites) return $
-          resolveTargets
+          resolveTargetsFromSolver
             selectPackageTargets
             selectComponentTarget
             elaboratedPlan
