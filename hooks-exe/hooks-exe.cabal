@@ -47,7 +47,7 @@ library
 
   build-depends:
     base
-      >= 4.10     && < 4.20,
+      >= 4.10     && < 4.22,
     bytestring
       >= 0.10.6.0 && < 0.13,
     containers

@@ -32,6 +32,8 @@
 module Distribution.Simple.Configure
   ( configure
   , configure_setupHooks
+  , computePackageInfo
+  , configureFinal
   , runPreConfPackageHook
   , runPostConfPackageHook
   , runPreConfComponentHook
@@ -40,7 +42,6 @@ module Distribution.Simple.Configure
   , mkProgramDb
   , finalCheckPackage
   , configureComponents
-  , configureDependencies
   , mkPromisedDepsSet
   , combinedConstraints
   , writePersistBuildConfig
@@ -467,13 +468,10 @@ configure_setupHooks
   -> ConfigFlags
   -> IO LocalBuildInfo
 configure_setupHooks
-  (ConfigureHooks{preConfPackageHook, postConfPackageHook, preConfComponentHook})
+  confHooks@(ConfigureHooks{preConfPackageHook})
   (g_pkg_descr, hookedBuildInfo)
   cfg = do
     -- Cabal pre-configure
-    let verbosity = fromFlag (configVerbosity cfg)
-        distPref = fromFlag $ configDistPref cfg
-        mbWorkDir = flagToMaybe $ configWorkingDir cfg
     (lbc0, comp, platform, enabledComps) <- preConfigurePackage cfg g_pkg_descr
 
     -- Package-wide pre-configure hook
@@ -484,30 +482,61 @@ configure_setupHooks
         preConfPackageHook
 
     -- Cabal package-wide configure
-    ( lbc2
-      , pbd2
-      , pkg_info@( PackageInfo
-                    { installedPackageSet = installedPkgSet
-                    , promisedDepsSet = promisedDeps
-                    }
-                  )
-      ) <-
-      finalizeAndConfigurePackage cfg lbc1 g_pkg_descr comp platform enabledComps
+    (allConstraints, pkgInfo) <-
+      computePackageInfo cfg lbc1 g_pkg_descr comp
+    (packageDbs, pkg_descr0, flags) <-
+      finalizePackageDescription cfg g_pkg_descr comp platform enabledComps
+        allConstraints pkgInfo
+
+    configureFinal
+      confHooks hookedBuildInfo
+      cfg lbc1 (g_pkg_descr, pkg_descr0) flags enabledComps comp platform packageDbs
+      pkgInfo
+
+
+configureFinal
+  :: ConfigureHooks
+  -> HookedBuildInfo
+  -> ConfigFlags
+  -> LBC.LocalBuildConfig
+  -> (GenericPackageDescription, PackageDescription)
+  -> FlagAssignment
+  -> ComponentRequestedSpec
+  -> Compiler
+  -> Platform
+  -> PackageDBStack
+  -> PackageInfo
+  -> IO LocalBuildInfo
+configureFinal
+  (ConfigureHooks{postConfPackageHook, preConfComponentHook})
+  hookedBuildInfo
+  cfg lbc1 (gpkgDescr, pkgDescr0) flags enabledComps comp platform packageDbs
+  pkgInfo@PackageInfo { installedPackageSet = installedPkgSet
+                      , promisedDepsSet = promisedDeps
+                      }
+  = do
+
+    let verbosity = fromFlag (configVerbosity cfg)
+        distPref = fromFlag $ configDistPref cfg
+        mbWorkDir = flagToMaybe $ configWorkingDir cfg
+
+    (lbc2, pbd2) <-
+      configurePackage cfg lbc1 pkgDescr0 flags enabledComps comp platform packageDbs
 
     -- Package-wide post-configure hook
     for_ postConfPackageHook $ runPostConfPackageHook lbc2 pbd2
 
     -- Per-component pre-configure hook
-    pkg_descr <- do
-      let pkg_descr2 = LBC.localPkgDescr pbd2
+    pkgDescr <- do
+      let pkgDescr2 = LBC.localPkgDescr pbd2
       applyComponentDiffs
         verbosity
         (for preConfComponentHook . runPreConfComponentHook lbc2 pbd2)
-        pkg_descr2
-    let pbd3 = pbd2{LBC.localPkgDescr = pkg_descr}
+        pkgDescr2
+    let pbd3 = pbd2{LBC.localPkgDescr = pkgDescr}
 
     -- Cabal per-component configure
-    finalCheckPackage g_pkg_descr pbd3 hookedBuildInfo
+    finalCheckPackage gpkgDescr pbd3 hookedBuildInfo
 
     let
       use_external_internal_deps =
@@ -536,11 +565,11 @@ configure_setupHooks
     -- them with renamings which would require a far more complicated
     -- input scheme than what we have today.)
     externalPkgDeps <-
-      configureDependencies
+      selectDependencies
         verbosity
         use_external_internal_deps
-        pkg_info
-        pkg_descr
+        pkgInfo
+        pkgDescr
         enabledComps
     lbi <- configureComponents lbc2 pbd3 installedPkgSet promisedDeps externalPkgDeps
     writePersistBuildConfig mbWorkDir distPref lbi
@@ -1015,15 +1044,13 @@ configurePackage cfg lbc0 pkg_descr00 flags enabled comp platform packageDbs = d
 
   return (lbc, pbd)
 
-finalizeAndConfigurePackage
+computePackageInfo
   :: ConfigFlags
   -> LBC.LocalBuildConfig
   -> GenericPackageDescription
   -> Compiler
-  -> Platform
-  -> ComponentRequestedSpec
-  -> IO (LBC.LocalBuildConfig, LBC.PackageBuildDescr, PackageInfo)
-finalizeAndConfigurePackage cfg lbc0 g_pkg_descr comp platform enabled = do
+  -> IO ([PackageVersionConstraint], PackageInfo)
+computePackageInfo cfg lbc0 g_pkg_descr comp = do
   let common = configCommonFlags cfg
       verbosity = fromFlag $ setupVerbosity common
       mbWorkDir = flagToMaybe $ setupWorkingDir common
@@ -1078,13 +1105,35 @@ finalizeAndConfigurePackage cfg lbc0 g_pkg_descr comp platform enabled = do
 
   let
     promisedDepsSet = mkPromisedDepsSet (configPromisedDependencies cfg)
-    pkg_info =
-      PackageInfo
+  return $
+    ( allConstraints
+    , PackageInfo
         { internalPackageSet
         , promisedDepsSet
         , installedPackageSet
         , requiredDepsMap
         }
+    )
+
+finalizePackageDescription
+  :: ConfigFlags
+  -> GenericPackageDescription
+  -> Compiler
+  -> Platform
+  -> ComponentRequestedSpec
+  -> [PackageVersionConstraint]
+  -> PackageInfo
+  -> IO (PackageDBStack, PackageDescription, FlagAssignment)
+finalizePackageDescription cfg g_pkg_descr comp platform enabled allConstraints pkgInfo = do
+  let common = configCommonFlags cfg
+      verbosity = fromFlag $ setupVerbosity common
+
+      -- What package database(s) to use
+  let packageDbs :: PackageDBStack
+      packageDbs =
+        interpretPackageDbFlags
+          (fromFlagOrDefault True (configUserInstall cfg))
+          (configPackageDBs cfg)
 
   -- pkg_descr:   The resolved package description, that does not contain any
   --              conditionals, because we have an assignment for
@@ -1107,7 +1156,7 @@ finalizeAndConfigurePackage cfg lbc0 g_pkg_descr comp platform enabled = do
   ( pkg_descr0 :: PackageDescription
     , flags :: FlagAssignment
     ) <-
-    configureFinalizedPackage
+    finalizePackageDescription2
       verbosity
       cfg
       enabled
@@ -1117,26 +1166,28 @@ finalizeAndConfigurePackage cfg lbc0 g_pkg_descr comp platform enabled = do
           (fromFlagOrDefault False (configExactConfiguration cfg))
           (fromFlagOrDefault False (configAllowDependingOnPrivateLibs cfg))
           (packageName g_pkg_descr)
-          installedPackageSet
-          internalPackageSet
-          promisedDepsSet
-          requiredDepsMap
+          pkgInfo
       )
       comp
       platform
       g_pkg_descr
 
-  (lbc, pbd) <-
-    configurePackage
-      cfg
-      lbc0
-      pkg_descr0
-      flags
-      enabled
-      comp
-      platform
-      packageDbs
-  return (lbc, pbd, pkg_info)
+{-
+
+  { internalPackageSet :: Set LibraryName
+  -- ^ Libraries internal to the package
+  , promisedDepsSet :: Map (PackageName, ComponentName) PromisedComponent
+  -- ^ Collection of components that are promised, i.e. are not installed already.
+  --
+  -- See 'PromisedDependency' for more details.
+  , installedPackageSet :: InstalledPackageIndex
+  -- ^ Installed packages
+  , requiredDepsMap :: Map (PackageName, ComponentName) InstalledPackageInfo
+  -- ^ Packages for which we have been given specific deps to use
+  }
+-}
+
+  return (packageDbs, pkg_descr0, flags)
 
 addExtraIncludeLibDirsFromConfigFlags
   :: PackageDescription -> ConfigFlags -> PackageDescription
@@ -1230,7 +1281,7 @@ finalCheckPackage
       let langs = unsupportedLanguages comp langlist
       when (not (null langs)) $
         dieWithException verbosity $
-          UnsupportedLanguages (packageId g_pkg_descr) (compilerId comp) (map prettyShow langs)
+          UnsupportedLanguages (packageId pkg_descr) (compilerId comp) (map prettyShow langs)
       let extlist =
             nub $
               concatMap
@@ -1239,7 +1290,7 @@ finalCheckPackage
       let exts = unsupportedExtensions comp extlist
       when (not (null exts)) $
         dieWithException verbosity $
-          UnsupportedLanguageExtension (packageId g_pkg_descr) (compilerId comp) (map prettyShow exts)
+          UnsupportedLanguageExtension (packageId pkg_descr) (compilerId comp) (map prettyShow exts)
 
       -- Check foreign library build requirements
       let flibs = [flib | CFLib flib <- enabledComponents pkg_descr enabled]
@@ -1517,23 +1568,19 @@ dependencySatisfiable
   -> Bool
   -- ^ allow depending on private libs?
   -> PackageName
-  -> InstalledPackageIndex
-  -- ^ installed set
-  -> Set LibraryName
-  -- ^ library components
-  -> Map (PackageName, ComponentName) PromisedComponent
-  -> Map (PackageName, ComponentName) InstalledPackageInfo
-  -- ^ required dependencies
+  -> PackageInfo
   -> (Dependency -> DependencySatisfaction)
 dependencySatisfiable
   use_external_internal_deps
   exact_config
   allow_private_deps
   pn
-  installedPackageSet
-  packageLibraries
-  promisedDeps
-  requiredDepsMap
+  PackageInfo
+        { internalPackageSet = packageLibraries
+        , promisedDepsSet    = promisedDeps
+        , installedPackageSet
+        , requiredDepsMap
+        }
   (Dependency depName vr sublibs)
     | exact_config =
         -- When we're given '--exact-configuration', we assume that all
@@ -1628,7 +1675,7 @@ dependencySatisfiable
 -- | Finalize a generic package description.
 --
 -- The workhorse is 'finalizePD'.
-configureFinalizedPackage
+finalizePackageDescription2
   :: Verbosity
   -> ConfigFlags
   -> ComponentRequestedSpec
@@ -1640,7 +1687,7 @@ configureFinalizedPackage
   -> Platform
   -> GenericPackageDescription
   -> IO (PackageDescription, FlagAssignment)
-configureFinalizedPackage
+finalizePackageDescription2
   verbosity
   cfg
   enabled
@@ -1696,17 +1743,17 @@ checkCompilerProblems verbosity comp pkg_descr enabled = do
     $ dieWithException verbosity CompilerDoesn'tSupportBackpack
 
 -- | Select dependencies for the package.
-configureDependencies
+selectDependencies
   :: Verbosity
   -> UseExternalInternalDeps
   -> PackageInfo
   -> PackageDescription
   -> ComponentRequestedSpec
   -> IO ([PreExistingComponent], [ConfiguredPromisedComponent])
-configureDependencies
+selectDependencies
   verbosity
   use_external_internal_deps
-  pkg_info
+  pkgInfo
   pkg_descr
   enableSpec = do
     let failedDeps :: [FailedDependency]
@@ -1719,7 +1766,7 @@ configureDependencies
               , let status =
                       selectDependency
                         (package pkg_descr)
-                        pkg_info
+                        pkgInfo
                         use_external_internal_deps
                         dep
               ]

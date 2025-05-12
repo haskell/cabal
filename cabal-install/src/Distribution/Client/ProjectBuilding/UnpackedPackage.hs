@@ -180,7 +180,7 @@ buildAndRegisterUnpackedPackage
   verbosity
   distDirLayout@DistDirLayout{distTempDirectory}
   maybe_semaphore
-  buildTimeSettings@BuildTimeSettings{buildSettingNumJobs, buildSettingKeepTempFiles}
+  buildTimeSettings@BuildTimeSettings{buildSettingKeepTempFiles}
   registerLock
   cacheLock
   pkgshared@ElaboratedSharedConfig
@@ -267,7 +267,7 @@ buildAndRegisterUnpackedPackage
       delegate $
         PBReplPhase $
           annotateFailure mlogFile ReplFailed $
-            setupInteractive replCommand Cabal.replCommonFlags replFlags replArgs
+            setupInteractive replCommand Cabal.replCommonFlags (return . replFlags) replArgs
               (InLibraryArgs $ InLibraryPostConfigureArgs SReplPhase mbLBI)
 
     return ()
@@ -407,7 +407,7 @@ buildAndRegisterUnpackedPackage
         :: RightFlagsForPhase flags setupSpec
         => CommandUI flags
         -> (flags -> CommonSetupFlags)
-        -> (Version -> flags)
+        -> (Version -> IO flags)
         -> (Version -> [String])
         -> SetupRunnerArgs setupSpec
         -> IO (SetupRunnerRes setupSpec)
@@ -424,15 +424,16 @@ buildAndRegisterUnpackedPackage
           distTempDirectory
           $ \pkgConfDest -> do
             let registerFlags v =
+                  flip filterRegisterFlags v $
                   setupHsRegisterFlags
                     pkg
                     pkgshared
-                    (commonFlags v)
+                    commonFlags
                     pkgConfDest
             setup
               (Cabal.registerCommand)
               Cabal.registerCommonFlags
-              registerFlags
+              (return . registerFlags)
               (const [])
               (InLibraryArgs $ InLibraryPostConfigureArgs SRegisterPhase mbLBI)
 

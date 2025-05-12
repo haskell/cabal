@@ -30,17 +30,13 @@ import qualified Distribution.Client.SetupHooks.CallHooksExe as ExternalHooksExe
 import Distribution.Client.Types
 
 import qualified Distribution.PackageDescription as PD
-import Distribution.Simple (Compiler, PackageDBStack)
+import Distribution.Simple (Compiler, PackageDBStackCWD)
 import qualified Distribution.Simple.Bench as Cabal
 import Distribution.Simple.Build (build_setupHooks, repl_setupHooks)
 import qualified Distribution.Simple.Configure as Cabal
 import Distribution.Simple.Haddock (haddock_setupHooks)
 import Distribution.Simple.Install (install_setupHooks)
-import Distribution.Simple.LocalBuildInfo
-  ( Component
-  , componentName
-  , mbWorkDirLBI
-  )
+import Distribution.Simple.LocalBuildInfo (mbWorkDirLBI)
 import qualified Distribution.Simple.PreProcess as Cabal
 import Distribution.Simple.Program.Db
 import qualified Distribution.Simple.Register as Cabal
@@ -54,10 +50,10 @@ import Distribution.Types.ComponentRequestedSpec
 import qualified Distribution.Types.LocalBuildConfig as LBC
 import Distribution.Types.LocalBuildInfo
 import Distribution.Utils.Path
-  ( relativeSymbolicPath
-  )
+  ( makeSymbolicPath )
 
-import qualified Data.Set as Set
+import System.Directory (canonicalizePath)
+import Distribution.Types.HookedBuildInfo (emptyHookedBuildInfo)
 
 --------------------------------------------------------------------------------
 -- Configure
@@ -68,7 +64,7 @@ data LibraryConfigureInputs = LibraryConfigureInputs
   , buildType :: BuildType
   , compRequested :: Maybe PD.ComponentName
   , localBuildConfig :: LBC.LocalBuildConfig
-  , packageDBStack :: PackageDBStack
+  , packageDBStack :: PackageDBStackCWD
   , packageDescription :: PD.PackageDescription
   , gPackageDescription :: PD.GenericPackageDescription
   , flagAssignment :: PD.FlagAssignment
@@ -128,120 +124,129 @@ configure
     , compRequested = mbComp
     , localBuildConfig = lbc0
     , packageDBStack = packageDBs
-    , packageDescription = pkgDesc
+    , packageDescription = pkgDescr
     , gPackageDescription = gpkgDescr
     , flagAssignment = flagAssgn
     }
-  cfg =
-    -- TODO: the following code should not live in cabal-install.
-    -- We should be able to directly call into the library,
-    -- similar to what we do for other phases (see e.g. inLibraryBuild).
-    --
-    -- The difficulty is that we start off at a rather different place, having
-    -- already some configuration information in hand (we have a compiler and
-    -- a PackageDescription with resolved conditionals, for instance).
-    --
-    -- It would be worthwhile to refactor the Cabal library 'configure'
-    -- functions so that as little logic exists in cabal-install as possible.
-    do
-      let verbosity = Cabal.fromFlag $ Cabal.configVerbosity cfg
-          mbWorkDir = Cabal.flagToMaybe $ Cabal.configWorkingDir cfg
-          distPref = Cabal.fromFlag $ Cabal.configDistPref cfg
-          confHooks = configureHooks $ ExternalHooksExe.buildTypeSetupHooks mbWorkDir distPref bt
+  cfg = do
+  -- Here, we essentially want to call the Cabal library 'configure' function,
+  -- but skipping over all the steps we don't need such as rediscovering the
+  -- compiler or re-resolving the conditionals in the package, as we have done
+  -- all of that already.
+  --
+  -- To achieve this, we call the Cabal 'configureFinal' function which skips
+  -- these preparatory steps.
+  -- This code can still be improved, as it seems like 'configureFinal' still
+  -- does a fair bit of redundant work. In the end, it would be ideal if the
+  -- entirerty of this function body was a single call to a function in the
+  -- Cabal library that gets called within the Cabal configure function.
+  let verbosity = Cabal.fromFlag $ Cabal.configVerbosity cfg
+      mbWorkDir = Cabal.flagToMaybe $ Cabal.configWorkingDir cfg
+      distPref = Cabal.fromFlag $ Cabal.configDistPref cfg
+      confHooks = configureHooks $ ExternalHooksExe.buildTypeSetupHooks mbWorkDir distPref bt
 
-      -- Configure package
-      let pkgId :: PD.PackageIdentifier
-          pkgId = PD.package pkgDesc
-      case mbComp of
-        Nothing -> setupMessage verbosity "Configuring" pkgId
-        Just cname ->
-          setupMessage'
-            verbosity
-            "Configuring"
-            pkgId
-            cname
-            (Just (Cabal.configInstantiateWith cfg))
+  -- SLD TODO: unsavoury
+  packageDBs' <- traverse (traverse $ fmap makeSymbolicPath . canonicalizePath) $ packageDBs
 
-      -- TODO: we should avoid re-doing package-wide things over and over
-      -- in the per-component world, e.g.
-      --   > cabal build comp1 && cabal build comp2
-      -- should only run the per-package configuration (including hooks) a single time.
-      --
-      -- This seemingly requires a rethinking of
-      -- Distribution.Client.ProjectBuilding.UnpackedPackage.buildAndRegisterUnpackedPackage
-      -- to allow more granular recompilation checking, at the level of components.
-      lbc1 <- case preConfPackageHook confHooks of
-        Nothing -> return lbc0
-        Just hk -> Cabal.runPreConfPackageHook cfg compil plat lbc0 hk
-      let compRequested = case mbComp of
-            Just compName -> OneComponentRequestedSpec compName
-            Nothing ->
-              ComponentRequestedSpec
-                { testsRequested = Cabal.fromFlag (Cabal.configTests cfg)
-                , benchmarksRequested = Cabal.fromFlag (Cabal.configBenchmarks cfg)
-                }
-      (lbc2, pbd2) <-
-        Cabal.configurePackage
-          cfg
-          lbc1
-          pkgDesc
-          flagAssgn
-          compRequested
-          compil
-          plat
-          packageDBs
-      for_ (postConfPackageHook confHooks) $ Cabal.runPostConfPackageHook lbc2 pbd2
-      let pkg_descr2 = LBC.localPkgDescr pbd2
+  -- Configure package
+  let pkgId :: PD.PackageIdentifier
+      pkgId = PD.package pkgDescr
+  case mbComp of
+    Nothing -> setupMessage verbosity "Configuring" pkgId
+    Just cname ->
+      setupMessage'
+        verbosity
+        "Configuring"
+        pkgId
+        cname
+        (Just (Cabal.configInstantiateWith cfg))
 
-      -- Configure component(s)
-      pkg_descr <-
-        applyComponentDiffs
-          verbosity
-          ( \comp ->
-              if wantComponent compRequested comp
-                then traverse (Cabal.runPreConfComponentHook lbc2 pbd2 comp) $ preConfComponentHook confHooks
-                else return Nothing
-          )
-          pkg_descr2
-      let pbd3 = pbd2{LBC.localPkgDescr = pkg_descr}
+  -- TODO: we should avoid re-doing package-wide things over and over
+  -- in the per-component world, e.g.
+  --   > cabal build comp1 && cabal build comp2
+  -- should only run the per-package configuration (including hooks) a single time.
+  --
+  -- This seemingly requires a rethinking of
+  -- Distribution.Client.ProjectBuilding.UnpackedPackage.buildAndRegisterUnpackedPackage
+  -- to allow more granular recompilation checking, at the level of components.
+  lbc1 <- case preConfPackageHook confHooks of
+    Nothing -> return lbc0
+    Just hk -> Cabal.runPreConfPackageHook cfg compil plat lbc0 hk
+  let compRequested = case mbComp of
+        Just compName -> OneComponentRequestedSpec compName
+        Nothing ->
+          ComponentRequestedSpec
+            { testsRequested = Cabal.fromFlag (Cabal.configTests cfg)
+            , benchmarksRequested = Cabal.fromFlag (Cabal.configBenchmarks cfg)
+            }
+  (_allConstraints, pkgInfo) <-
+    Cabal.computePackageInfo cfg lbc1 gpkgDescr compil
 
-      -- Emit any errors/warnings on problems in the .cabal file.
-      --
-      -- TODO: it might make sense to move this check earlier, perhaps somewhere
-      -- in Distribution.Client.ProjectPlanning.elaborateInstallPlan.
-      -- See ticket #9995 for more information.
-      Cabal.finalCheckPackage gpkgDescr pbd3 PD.emptyHookedBuildInfo
+  -- Post-configure hooks & per-component configure
+  Cabal.configureFinal
+    confHooks emptyHookedBuildInfo
+    cfg lbc1 (gpkgDescr, pkgDescr) flagAssgn compRequested compil plat packageDBs'
+    pkgInfo
 
-      -- This is more logic that we would like to have in cabal-install
-      -- (see the TODO at the top of this function for more comments).
-      let progdb = LBC.withPrograms lbc2
-          promisedDeps = Cabal.mkPromisedDepsSet (Cabal.configPromisedDependencies cfg)
-      installedPkgSet <- Cabal.getInstalledPackages verbosity compil mbWorkDir packageDBs progdb
-      (_, depsMap) <-
-        either (dieWithException verbosity) return $
-          Cabal.combinedConstraints
-            (Cabal.configConstraints cfg)
-            (Cabal.configDependencies cfg)
-            installedPkgSet
-      let pkg_info =
-            Cabal.PackageInfo
-              { internalPackageSet = Set.fromList (map PD.libName (PD.allLibraries pkg_descr))
-              , promisedDepsSet = promisedDeps
-              , installedPackageSet = installedPkgSet
-              , requiredDepsMap = depsMap
-              }
-          useExternalInternalDeps = case compRequested of
-            OneComponentRequestedSpec{} -> True
-            ComponentRequestedSpec{} -> False
-      externalPkgDeps <- Cabal.configureDependencies verbosity useExternalInternalDeps pkg_info pkg_descr compRequested
-      lbi1 <- Cabal.configureComponents lbc2 pbd3 installedPkgSet promisedDeps externalPkgDeps
+{- SLD TODO: keeping this around for reference for now. Will delete before merging.
 
-      pkgDescrFilePath <-
-        case Cabal.flagToMaybe $ Cabal.configCabalFilePath cfg of
-          Just pkgFile -> return pkgFile
-          Nothing -> relativeSymbolicPath <$> tryFindPackageDesc verbosity mbWorkDir
-      let lbi2 = lbi1{pkgDescrFile = Just pkgDescrFilePath}
-      return lbi2
+
+  (lbc2, pbd2) <-
+    Cabal.configurePackage cfg lbc1 pkgDescr flagAssgn compRequested compil plat packageDBs'
+  for_ (postConfPackageHook confHooks) $ Cabal.runPostConfPackageHook lbc2 pbd2
+  let pkg_descr2 = LBC.localPkgDescr pbd2
+
+  -- Configure component(s)
+  pkg_descr <-
+    applyComponentDiffs
+      verbosity
+      ( \comp ->
+          if wantComponent compRequested comp
+            then traverse (Cabal.runPreConfComponentHook lbc2 pbd2 comp) $ preConfComponentHook confHooks
+            else return Nothing
+      )
+      pkg_descr2
+  let pbd3 = pbd2{LBC.localPkgDescr = pkg_descr}
+
+  -- Emit any errors/warnings on problems in the .cabal file.
+  --
+  -- TODO: it might make sense to move this check earlier, perhaps somewhere
+  -- in Distribution.Client.ProjectPlanning.elaborateInstallPlan.
+  -- See ticket #9995 for more information.
+  Cabal.finalCheckPackage gpkgDescr pbd3 PD.emptyHookedBuildInfo
+
+{-
+  let progdb = LBC.withPrograms lbc1
+      promisedDeps = Cabal.mkPromisedDepsSet (Cabal.configPromisedDependencies cfg)
+
+  (_, depsMap) <-
+    either (dieWithException verbosity) return $
+      Cabal.combinedConstraints
+        (Cabal.configConstraints cfg)
+        (Cabal.configDependencies cfg)
+        installedPkgSet
+  let pkg_info =
+        Cabal.PackageInfo
+          { internalPackageSet = Set.fromList (map PD.libName (PD.allLibraries pkgDescr))
+          , promisedDepsSet = promisedDeps
+          , installedPackageSet = installedPkgSet
+          , requiredDepsMap = depsMap
+          }
+      useExternalInternalDeps = case compRequested of
+        OneComponentRequestedSpec{} -> True
+        ComponentRequestedSpec{} -> False
+  externalPkgDeps <- Cabal.selectDependencies verbosity useExternalInternalDeps pkg_info pkgDescr compRequested
+-}
+  let progdb = LBC.withPrograms lbc2
+  installedPkgSet <- Cabal.getInstalledPackages verbosity compil mbWorkDir packageDBs' progdb
+  lbi1 <- Cabal.configureComponents lbc2 pbd3 installedPkgSet promisedDeps externalPkgDeps
+
+  pkgDescrFilePath <-
+    case Cabal.flagToMaybe $ Cabal.configCabalFilePath cfg of
+      Just pkgFile -> return pkgFile
+      Nothing -> relativeSymbolicPath <$> tryFindPackageDesc verbosity mbWorkDir
+  let lbi2 = lbi1{pkgDescrFile = Just pkgDescrFilePath}
+  return lbi2
 
 -- NB: this function might match multiple components,
 -- due to Backpack instantiations.
@@ -250,6 +255,7 @@ wantComponent compReq comp = case compReq of
   ComponentRequestedSpec{} -> True
   OneComponentRequestedSpec reqComp ->
     componentName comp == reqComp
+-}
 
 --------------------------------------------------------------------------------
 -- Build
