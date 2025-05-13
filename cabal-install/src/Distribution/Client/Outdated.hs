@@ -8,7 +8,7 @@
 --
 -- Implementation of the 'outdated' command. Checks for outdated
 -- dependencies in the package description file or freeze file.
-module Distribution.Client.CmdOutdated
+module Distribution.Client.Outdated
   ( outdatedCommand
   , outdatedAction
   , ListOutdatedSettings (..)
