@@ -80,7 +80,7 @@ import Distribution.Client.Utils as P
 import Distribution.Fields.Pretty
 import Distribution.ModuleName
 import qualified Distribution.Package as P
-import Distribution.Simple.Setup (Flag (..))
+import Distribution.Simple.Setup (Flag)
 import Distribution.Verbosity (silent)
 import Distribution.Version
 import Language.Haskell.Extension (Extension, Language (..))

@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Distribution.Client.Utils
@@ -69,7 +70,7 @@ import Data.List
 import Distribution.Client.Errors
 import Distribution.Compat.Environment
 import Distribution.Compat.Time (getModTime)
-import Distribution.Simple.Setup (Flag (..))
+import Distribution.Simple.Setup (Flag, pattern Flag, pattern NoFlag)
 import Distribution.Simple.Utils (dieWithException, findPackageDesc, noticeNoWrap)
 import Distribution.Utils.Path
   ( CWD

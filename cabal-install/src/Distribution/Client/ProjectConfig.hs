@@ -1,5 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -177,12 +178,13 @@ import Distribution.Simple.Program
   ( ConfiguredProgram (..)
   )
 import Distribution.Simple.Setup
-  ( Flag (Flag)
+  ( Flag
   , flagToList
   , flagToMaybe
   , fromFlag
   , fromFlagOrDefault
   , toFlag
+  , pattern Flag
   )
 import Distribution.System
   ( Platform

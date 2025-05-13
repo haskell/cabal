@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 
 -- |
@@ -32,7 +33,9 @@ module Distribution.Simple.Setup.Common
   , defaultDistPref
   , extraCompilationArtifacts
   , optionDistPref
-  , Flag (..)
+  , Flag
+  , pattern Flag
+  , pattern NoFlag
   , toFlag
   , fromFlag
   , fromFlagOrDefault

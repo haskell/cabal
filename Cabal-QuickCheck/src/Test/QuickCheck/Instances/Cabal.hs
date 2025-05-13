@@ -19,7 +19,6 @@ import Distribution.Compiler
 import Distribution.FieldGrammar.Newtypes
 import Distribution.ModuleName
 import Distribution.Simple.Compiler
-import Distribution.Simple.Flag                    (Flag (..))
 import Distribution.Simple.InstallDirs
 import Distribution.Simple.Setup                   (HaddockTarget (..), TestShowDetails (..), DumpBuildInfo)
 import Distribution.SPDX
@@ -241,23 +240,6 @@ instance Arbitrary LibraryName where
 
     shrink (LSubLibName _) = [LMainLibName]
     shrink _               = []
-
--------------------------------------------------------------------------------
--- option flags
--------------------------------------------------------------------------------
-
-instance Arbitrary a => Arbitrary (Flag a) where
-    arbitrary = arbitrary1
-
-    shrink NoFlag   = []
-    shrink (Flag x) = NoFlag : [ Flag x' | x' <- shrink x ]
-
-instance Arbitrary1 Flag where
-    liftArbitrary genA = sized $ \sz ->
-        if sz <= 0
-        then pure NoFlag
-        else frequency [ (1, pure NoFlag)
-                       , (3, Flag <$> genA) ]
 
 -------------------------------------------------------------------------------
 -- GPD flags

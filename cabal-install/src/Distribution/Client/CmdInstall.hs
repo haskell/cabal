@@ -1,5 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
@@ -162,8 +163,10 @@ import Distribution.Simple.Program.Db
   , userSpecifyPaths
   )
 import Distribution.Simple.Setup
-  ( Flag (..)
+  ( Flag
   , installDirsOptions
+  , pattern Flag
+  , pattern NoFlag
   )
 import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose

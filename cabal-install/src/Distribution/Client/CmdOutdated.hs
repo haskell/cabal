@@ -97,7 +97,7 @@ import Distribution.Simple.Compiler
   , compilerInfo
   )
 import Distribution.Simple.Flag
-  ( Flag (..)
+  ( Flag
   , flagToMaybe
   , fromFlagOrDefault
   , toFlag

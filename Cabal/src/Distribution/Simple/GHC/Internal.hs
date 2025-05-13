@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 
 -----------------------------------------------------------------------------
@@ -67,7 +68,7 @@ import Distribution.Pretty (prettyShow)
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
 import Distribution.Simple.Errors
-import Distribution.Simple.Flag (Flag (NoFlag), maybeToFlag, toFlag)
+import Distribution.Simple.Flag (Flag, maybeToFlag, toFlag, pattern NoFlag)
 import Distribution.Simple.GHC.ImplInfo
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program

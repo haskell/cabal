@@ -1,4 +1,5 @@
 {-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 -----------------------------------------------------------------------------
 
@@ -58,7 +59,7 @@ import Distribution.Client.Types (SourcePackageDb (..))
 import Distribution.FieldGrammar.Newtypes (SpecLicense (..))
 import qualified Distribution.SPDX as SPDX
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
-import Distribution.Simple.Setup (Flag (..), fromFlagOrDefault)
+import Distribution.Simple.Setup (fromFlagOrDefault, pattern Flag, pattern NoFlag)
 import Distribution.Solver.Types.PackageIndex (elemByPackageName)
 import Distribution.Types.PackageName (PackageName, unPackageName)
 import Distribution.Version (Version)

@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 
 -- | Utilities to help commands with scripts
@@ -126,7 +127,7 @@ import Distribution.Simple.PackageDescription
   ( parseString
   )
 import Distribution.Simple.Setup
-  ( Flag (..)
+  ( pattern Flag
   )
 import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose

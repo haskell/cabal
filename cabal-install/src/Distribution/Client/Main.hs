@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- |
@@ -74,7 +75,7 @@ import Distribution.Simple.Setup
   ( BenchmarkFlags (..)
   , CleanFlags (..)
   , CopyFlags (..)
-  , Flag (..)
+  , Flag
   , HaddockFlags (..)
   , HaddockTarget (..)
   , HscolourFlags (..)
@@ -87,6 +88,8 @@ import Distribution.Simple.Setup
   , fromFlagOrDefault
   , hscolourCommand
   , toFlag
+  , pattern Flag
+  , pattern NoFlag
   )
 
 import Distribution.Client.Compat.Prelude hiding (get)

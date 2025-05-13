@@ -1,3 +1,4 @@
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 
 -- | cabal-install CLI command: test
@@ -48,7 +49,8 @@ import Distribution.Simple.Command
   , usageAlternatives
   )
 import Distribution.Simple.Flag
-  ( Flag (..)
+  ( Flag
+  , pattern Flag
   )
 import Distribution.Simple.Setup
   ( TestFlags (..)

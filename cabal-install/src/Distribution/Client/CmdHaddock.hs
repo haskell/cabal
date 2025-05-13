@@ -1,3 +1,4 @@
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 
 -- | cabal-install CLI command: haddock
@@ -47,7 +48,7 @@ import Distribution.Simple.Command
   , option
   , usageAlternatives
   )
-import Distribution.Simple.Flag (Flag (..))
+import Distribution.Simple.Flag (Flag, pattern Flag)
 import Distribution.Simple.Program.Builtin
   ( haddockProgram
   )

@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -169,7 +170,7 @@ import Distribution.Simple.Configure
   , interpretPackageDbFlags
   )
 import Distribution.Simple.Flag
-  ( Flag (..)
+  ( Flag
   , flagElim
   , flagToList
   , flagToMaybe
@@ -177,6 +178,8 @@ import Distribution.Simple.Flag
   , maybeToFlag
   , mergeListFlag
   , toFlag
+  , pattern Flag
+  , pattern NoFlag
   )
 import Distribution.Simple.InstallDirs
   ( InstallDirs (..)

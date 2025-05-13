@@ -3,6 +3,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
@@ -109,7 +110,7 @@ import Distribution.Simple.Setup
   , CommonSetupFlags (..)
   , ConfigFlags (..)
   , DumpBuildInfo (DumpBuildInfo, NoDumpBuildInfo)
-  , Flag (..)
+  , Flag
   , HaddockFlags (..)
   , TestFlags (..)
   , benchmarkOptions'
@@ -126,6 +127,8 @@ import Distribution.Simple.Setup
   , splitArgs
   , testOptions'
   , toFlag
+  , pattern Flag
+  , pattern NoFlag
   )
 import Distribution.Simple.Utils
   ( debug

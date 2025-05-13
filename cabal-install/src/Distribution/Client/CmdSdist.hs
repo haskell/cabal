@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Distribution.Client.CmdSdist
@@ -97,7 +98,7 @@ import Distribution.Simple.PreProcess
   ( knownSuffixHandlers
   )
 import Distribution.Simple.Setup
-  ( Flag (..)
+  ( Flag
   , flagToList
   , flagToMaybe
   , fromFlagOrDefault
@@ -105,6 +106,7 @@ import Distribution.Simple.Setup
   , optionVerbosity
   , toFlag
   , trueArg
+  , pattern Flag
   )
 import Distribution.Simple.SrcDist
   ( listPackageSourcesWithDie
