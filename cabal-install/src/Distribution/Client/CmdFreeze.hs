@@ -143,6 +143,7 @@ freezeAction flags@NixStyleFlags{..} extraArgs globalFlags = do
   (_, elaboratedPlan, _, totalIndexState, activeRepos) <-
     rebuildInstallPlan
       verbosity
+      mempty
       distDirLayout
       cabalDirLayout
       projectConfig
