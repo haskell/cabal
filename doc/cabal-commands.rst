@@ -261,7 +261,7 @@ cabal user-config
 
 ``cabal user-config [init|diff|update]`` prints and updates user's global
 cabal preferences. It is very useful when you are e.g. first configuring
-``cabal`` on a new machine.
+:term:`cabal` on a new machine.
 
 - ``cabal user-config init`` creates a new configuration file.
 
@@ -636,7 +636,7 @@ Examples:
     Read dependency version bounds from the v2-style freeze file
     (by default, ``cabal.project.freeze``) instead of the package
     description file. ``--new-freeze-file`` is an alias for this flag
-    that can be used with pre-2.4 ``cabal``.
+    that can be used with pre-2.4 :term:`cabal`.
 
 .. option:: --project-file=FILE
 
@@ -678,7 +678,7 @@ Examples:
 cabal path
 ^^^^^^^^^^
 
-``cabal path`` allows to query for paths used by ``cabal``.
+``cabal path`` allows to query for paths used by :term:`cabal`.
 For example, it allows to query for the directories of the cache, store,
 installed binaries, and so on.
 
@@ -846,8 +846,8 @@ symlinks/copies their executables in ``installdir`` (usually ``~/.local/bin``).
   than ``all`` as the target. To overwrite an installation, use
   ``--overwrite-policy=always`` as the default policy is ``never``.
 
-For example this command will build the latest ``cabal-install`` and symlink
-its ``cabal`` executable:
+For example this command will build the latest :term:`cabal-install:exe:cabal` and symlink
+its :term:`cabal` executable:
 
 ::
 
@@ -856,7 +856,7 @@ its ``cabal`` executable:
 In addition, it's possible to use ``cabal install`` to install components
 of a local project. For example, with an up-to-date Git clone of the Cabal
 repository, this command will build cabal-install HEAD and symlink the
-``cabal`` executable:
+:term:`cabal` executable:
 
 ::
 
