@@ -61,6 +61,8 @@ data BuildInfo = BuildInfo
   -- ^ options for C compiler
   , cxxOptions :: [String]
   -- ^ options for C++ compiler
+  , jsOptions :: [String]
+  -- ^ options for pre-processing JavaScript code
   , ldOptions :: [String]
   -- ^ options for linker
   , hsc2hsOptions :: [String]
@@ -161,6 +163,7 @@ instance Monoid BuildInfo where
       , cmmOptions = []
       , ccOptions = []
       , cxxOptions = []
+      , jsOptions = []
       , ldOptions = []
       , hsc2hsOptions = []
       , pkgconfigDepends = []
@@ -214,6 +217,7 @@ instance Semigroup BuildInfo where
       , cmmOptions = combine cmmOptions
       , ccOptions = combine ccOptions
       , cxxOptions = combine cxxOptions
+      , jsOptions = combine jsOptions
       , ldOptions = combine ldOptions
       , hsc2hsOptions = combine hsc2hsOptions
       , pkgconfigDepends = combine pkgconfigDepends
