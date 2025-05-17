@@ -1,0 +1,2 @@
+packages: package-a package-b
+multi-repl: true
