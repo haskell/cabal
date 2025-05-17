@@ -1,4 +1,2 @@
 # cabal v2-sdist
-Configuration is affected by the following files:
-- cabal.project
 Wrote tarball sdist to <ROOT>/dist-newstyle/sdist/many-data-files-0.tar.gz
