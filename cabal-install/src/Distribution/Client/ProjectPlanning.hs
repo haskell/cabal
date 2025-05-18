@@ -1712,19 +1712,17 @@ elaborateInstallPlan
           why_not_per_component g =
             cuz_buildtype ++ cuz_spec ++ cuz_length ++ cuz_flag
             where
-              -- We have to disable per-component for now with
-              -- Configure-type scripts in order to prevent parallel
-              -- invocation of the same `./configure` script.
-              -- See https://github.com/haskell/cabal/issues/4548
-              --
-              -- Moreover, at this point in time, only non-Custom setup scripts
-              -- are supported.  Implementing per-component builds with
-              -- Custom would require us to create a new 'ElabSetup'
-              -- type, and teach all of the code paths how to handle it.
+              -- Custom and Hooks are not implemented. Implementing
+              -- per-component builds with Custom would require us to create a
+              -- new 'ElabSetup' type, and teach all of the code paths how to
+              -- handle it.
               -- Once you've implemented this, swap it for the code below.
               cuz_buildtype =
                 case bt of
-                  PD.Configure -> [CuzBuildType CuzConfigureBuildType]
+                  PD.Configure -> []
+                  -- Configure is supported, but we only support configuring the
+                  -- main library in cabal. Other components will need to depend
+                  -- on the main library for configured data.
                   PD.Custom -> [CuzBuildType CuzCustomBuildType]
                   PD.Hooks -> [CuzBuildType CuzHooksBuildType]
                   PD.Make -> [CuzBuildType CuzMakeBuildType]
@@ -3879,6 +3877,16 @@ setupHsScriptOptions
       , forceExternalSetupMethod = isParallelBuild
       , setupCacheLock = Just cacheLock
       , isInteractive = False
+      , isMainLibOrExeComponent = case elabPkgOrComp of
+          -- if it's a package, it's all together, so we have to assume it's
+          -- at least a library or executable.
+          ElabPackage _ -> True
+          -- if it's a component, we have to check if it's a Main Library or Executable
+          -- as opposed to SubLib, FLib, Test, Bench, or Setup component.
+          ElabComponent (ElaboratedComponent{compSolverName = CD.ComponentLib}) -> True
+          ElabComponent (ElaboratedComponent{compSolverName = CD.ComponentExe _}) -> True
+          -- everything else is not a main lib or exe component
+          ElabComponent _ -> False
       }
 
 -- | To be used for the input for elaborateInstallPlan.
