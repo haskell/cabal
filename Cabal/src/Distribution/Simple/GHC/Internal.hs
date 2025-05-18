@@ -487,6 +487,7 @@ componentAsmGhcOptions verbosity lbi bi clbi odir filename =
              )
           ++ asmOptions bi
     , ghcOptObjDir = toFlag odir
+    , ghcOptExtra = hcOptions GHC bi
     }
 
 componentJsGhcOptions
@@ -509,6 +510,7 @@ componentJsGhcOptions verbosity lbi bi clbi odir filename =
     , ghcOptPackageDBs = withPackageDB lbi
     , ghcOptPackages = toNubListR $ mkGhcOptPackages (promisedPkgs lbi) clbi
     , ghcOptObjDir = toFlag odir
+    , ghcOptExtra = hcOptions GHC bi
     }
 
 componentGhcOptions
@@ -622,7 +624,7 @@ componentCmmGhcOptions verbosity lbi bi clbi odir filename =
     , ghcOptPackages = toNubListR $ mkGhcOptPackages (promisedPkgs lbi) clbi
     , ghcOptOptimisation = toGhcOptimisation (withOptimization lbi)
     , ghcOptDebugInfo = toFlag (withDebugInfo lbi)
-    , ghcOptExtra = cmmOptions bi
+    , ghcOptExtra = hcOptions GHC bi <> cmmOptions bi
     , ghcOptObjDir = toFlag odir
     }
 
