@@ -588,36 +588,25 @@ fromSolverInstallPlanWithProgress
   -> SolverInstallPlan
   -> LogProgress (GenericInstallPlan ipkg srcpkg)
 fromSolverInstallPlanWithProgress f plan = do
-  (_, _, pkgs'') <-
+  (_, pkgs'') <-
     foldM
       f'
-      (Map.empty, Map.empty, [])
+      (Map.empty, [])
       (SolverInstallPlan.reverseTopologicalOrder plan)
   return $
     mkInstallPlan
       "fromSolverInstallPlanWithProgress"
       (Graph.fromDistinctList pkgs'')
   where
-    f' (pidMap, ipiMap, pkgs) pkg = do
-      pkgs' <- f (mapDep pidMap ipiMap) pkg
-      let (pidMap', ipiMap') =
-            case nodeKey pkg of
-              -- FIXME: stage is ignored
-              PreExistingId _stage _ uid -> (pidMap, Map.insert uid pkgs' ipiMap)
-              PlannedId _stage pid -> (Map.insert pid pkgs' pidMap, ipiMap)
-      return (pidMap', ipiMap', pkgs' ++ pkgs)
+    f' (pMap, pkgs) pkg = do
+      pkgs' <- f (mapDep pMap) pkg
+      let pMap' = Map.insert (nodeKey pkg) pkgs' pMap
+      return (pMap', pkgs' ++ pkgs)
 
     -- The error below shouldn't happen, since mapDep should only
     -- be called on neighbor SolverId, which must have all been done
     -- already by the reverse top-sort (we assume the graph is not broken).
-    --
-    -- FIXME: stage is ignored
-    mapDep _ ipiMap (PreExistingId _stage _pid uid)
-      | Just pkgs <- Map.lookup uid ipiMap = pkgs
-      | otherwise = error ("fromSolverInstallPlan: PreExistingId " ++ prettyShow uid)
-    mapDep pidMap _ (PlannedId _stage pid)
-      | Just pkgs <- Map.lookup pid pidMap = pkgs
-      | otherwise = error ("fromSolverInstallPlan: PlannedId " ++ prettyShow pid)
+    mapDep pMap key = fromMaybe (error ("fromSolverInstallPlanWithProgress: " ++ prettyShow key)) (Map.lookup key pMap)
 
 -- | Conversion of 'SolverInstallPlan' to 'InstallPlan'.
 -- Similar to 'elaboratedInstallPlan'
