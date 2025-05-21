@@ -93,6 +93,7 @@ GenericPackageDescription {
           buildTools = [],
           buildToolDepends = [],
           cppOptions = [],
+          jsppOptions = [],
           asmOptions = [],
           cmmOptions = [],
           ccOptions = [],
@@ -193,6 +194,7 @@ GenericPackageDescription {
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
+            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
@@ -359,6 +361,7 @@ GenericPackageDescription {
                 (MajorBoundVersion
                   (mkVersion [4, 2, 1]))],
             cppOptions = [],
+            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
