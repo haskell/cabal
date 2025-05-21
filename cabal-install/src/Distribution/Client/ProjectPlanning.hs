@@ -2295,9 +2295,13 @@ elaborateInstallPlan
                 , withSharedLib = canBuildSharedLibs && pkgid `Set.member` pkgsUseSharedLibrary
                 , withStaticLib = perPkgOptionFlag pkgid False packageConfigStaticLib
                 , withDynExe = perPkgOptionFlag pkgid False packageConfigDynExe
+                                 && (okProfDyn || not profExe)
+                                   -- We can't produce a dynamic executable if the user
+                                   -- wants to enable executable profiling but the
+                                   -- compiler doesn't support prof+dyn.
                 , withFullyStaticExe = perPkgOptionFlag pkgid False packageConfigFullyStaticExe
                 , withGHCiLib = perPkgOptionFlag pkgid False packageConfigGHCiLib -- TODO: [required feature] needs to default to enabled on windows still
-                , withProfExe = perPkgOptionFlag pkgid False packageConfigProf
+                , withProfExe = profExe
                 , withProfLib = canBuildProfilingLibs && pkgid `Set.member` pkgsUseProfilingLibrary
                 , withProfLibShared = canBuildProfilingSharedLibs && pkgid `Set.member` pkgsUseProfilingLibraryShared
                 , exeCoverage = perPkgOptionFlag pkgid False packageConfigCoverage
@@ -2312,6 +2316,8 @@ elaborateInstallPlan
                 , withProfLibDetail = elabProfExeDetail
                 , withProfExeDetail = elabProfLibDetail
                 }
+            okProfDyn = profilingDynamicSupportedOrUnknown compiler
+            profExe = perPkgOptionFlag pkgid False packageConfigProf
 
             ( elabProfExeDetail
               , elabProfLibDetail
