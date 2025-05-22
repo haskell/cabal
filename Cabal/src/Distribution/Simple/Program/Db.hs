@@ -514,7 +514,14 @@ updatePathProg :: Verbosity -> ConfiguredProgram -> ProgramDb -> IO ProgramDb
 updatePathProg _verbosity prog progdb = do
   newPath <- programSearchPathAsPATHVar (progSearchPath progdb)
   let envOverrides = progOverrideEnv progdb
-      prog' = prog{programOverrideEnv = [("PATH", Just newPath)] ++ envOverrides}
+      progOverrides = programOverrideEnv prog
+      prog' =
+        prog{
+          programOverrideEnv =
+            [("PATH", Just newPath)]
+              ++
+            filter ((/="PATH").fst) (envOverrides ++ progOverrides)
+          }
   return $ updateProgram prog' progdb
 
 -- | Check that a program is configured and available to be run.

@@ -295,7 +295,8 @@ buildAndRegisterUnpackedPackage
         | otherwise = return ()
 
       mbWorkDir = useWorkingDir scriptOptions
-      commonFlags = setupHsCommonFlags verbosity mbWorkDir builddir buildSettingKeepTempFiles
+      commonFlags =
+        setupHsCommonFlags verbosity mbWorkDir builddir buildSettingKeepTempFiles pkg
 
       configureCommand = Cabal.configureCommand defaultProgramDb
       configureFlags v =

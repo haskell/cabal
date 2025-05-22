@@ -133,7 +133,6 @@ import Distribution.Simple.Command
   ( CommandUI (..)
   , commandShowOptions
   )
-import qualified Distribution.Simple.Configure as Cabal
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.Program.GHC
@@ -639,30 +638,26 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
         InLibraryArgs libArgs ->
           case libArgs of
             InLibraryConfigureArgs elabSharedConfig elabReadyPkg -> do
-
-              -- Construct the appropriate program database for the package.
-              --
-              -- This is quite tricky, as we need to account for:
-              --
-              --  - user-specified PATH and environment variable overrides,
-              --  - paths and environment variables for any build-tool-depends
-              --    of the package (both internal to the package and external),
-              --  - the fact that the program database might have been obtained
-              --    by deserialising (due to caching), in which case we might
-              --    be missing unconfigured built-in programs.
-              setupProgDb <- prependProgramSearchPath verbosity
-                               (useExtraPathEnv options)
-                               (useExtraEnvOverrides options) =<<
-                             Cabal.mkProgramDb flags
-                             (restoreProgramDb builtinPrograms $
-                             useProgramDb options)
-
+              -- See (1) in Note [Constructing the ProgramDb]
+              setupProgDb <-
+                configCompilerProgDb
+                  verbosity
+                  (pkgConfigCompiler elabSharedConfig)
+                  (useProgramDb options) -- Recall that 'useProgramDb' is set to 'pkgConfigCompilerProgs'
+                  Nothing -- we use configProgramPaths instead
               lbi0 <-
                 InLibrary.configure
                   (InLibrary.libraryConfigureInputsFromElabPackage setupProgDb elabSharedConfig elabReadyPkg extraArgs)
                   flags
               let progs0 = LBI.withPrograms lbi0
-              progs1 <- updatePathProgDb verbosity progs0
+              -- See (2) in Note [Constructing the ProgramDb]
+              progs1 <-
+                updatePathProgDb verbosity
+                  =<<
+                prependProgramSearchPath verbosity
+                  (useExtraPathEnv options)
+                  (useExtraEnvOverrides options)
+                  (restoreProgramDb builtinPrograms progs0)
               let
                   lbi =
                     lbi0
@@ -696,6 +691,32 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
           error "internal error: NotInLibrary argument but getSetup chose InLibrary"
     ExternalMethod {} -> notInLibraryMethod
     SelfExecMethod -> notInLibraryMethod
+
+{- Note [Constructing the ProgramDb]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+When using the in-library method for configuring a package, we want to start off
+with the information cabal-install already has in hand, such as the compiler.
+Specifically, we skip 'Cabal.Distribution.Simple.preConfigurePackage', which
+includes the call to 'configCompilerEx'.
+
+To obtain a program database with all the required information, we do a few
+things:
+
+  (1) Given the compiler, we must compute the ProgramDb of programs that are
+      specified alongside the compiler, such as ghc-pkg, haddock, and toolchain
+      programs such as ar, ld.
+
+      We do this using the function 'configCompilerProgDb'.
+
+  (2) When building a package with internal build tools, we must ensure that
+      these build tools are available in PATH, with appropriate environment
+      variable overrides for their data directory. To do this, we call
+      'prependProgramSearchPath'.
+
+      Moreover, these programs must be available in the search paths for the
+      compiler itself, in case they are run at compile-time (e.g. with a Template
+      Haskell splice). We achieve this using 'updatePathProgDb'.
+-}
 
 -- ------------------------------------------------------------
 

@@ -50,7 +50,7 @@ import Distribution.Types.ComponentRequestedSpec
 import qualified Distribution.Types.LocalBuildConfig as LBC
 import Distribution.Types.LocalBuildInfo
 import Distribution.Utils.Path
-  ( makeSymbolicPath )
+  ( makeSymbolicPath, relativeSymbolicPath )
 
 import System.Directory (canonicalizePath)
 import Distribution.Types.HookedBuildInfo (emptyHookedBuildInfo)
@@ -138,7 +138,7 @@ configure
   -- these preparatory steps.
   -- This code can still be improved, as it seems like 'configureFinal' still
   -- does a fair bit of redundant work. In the end, it would be ideal if the
-  -- entirerty of this function body was a single call to a function in the
+  -- entirety of this function body was a single call to a function in the
   -- Cabal library that gets called within the Cabal configure function.
   let verbosity = Cabal.fromFlag $ Cabal.configVerbosity cfg
       mbWorkDir = Cabal.flagToMaybe $ Cabal.configWorkingDir cfg
@@ -185,79 +185,17 @@ configure
     Cabal.computePackageInfo cfg lbc1 gpkgDescr compil
 
   -- Post-configure hooks & per-component configure
-  Cabal.configureFinal
+  lbi1 <- Cabal.configureFinal
     confHooks emptyHookedBuildInfo
     cfg lbc1 (gpkgDescr, pkgDescr) flagAssgn compRequested compil plat packageDBs'
     pkgInfo
 
-{- SLD TODO: keeping this around for reference for now. Will delete before merging.
-
-
-  (lbc2, pbd2) <-
-    Cabal.configurePackage cfg lbc1 pkgDescr flagAssgn compRequested compil plat packageDBs'
-  for_ (postConfPackageHook confHooks) $ Cabal.runPostConfPackageHook lbc2 pbd2
-  let pkg_descr2 = LBC.localPkgDescr pbd2
-
-  -- Configure component(s)
-  pkg_descr <-
-    applyComponentDiffs
-      verbosity
-      ( \comp ->
-          if wantComponent compRequested comp
-            then traverse (Cabal.runPreConfComponentHook lbc2 pbd2 comp) $ preConfComponentHook confHooks
-            else return Nothing
-      )
-      pkg_descr2
-  let pbd3 = pbd2{LBC.localPkgDescr = pkg_descr}
-
-  -- Emit any errors/warnings on problems in the .cabal file.
-  --
-  -- TODO: it might make sense to move this check earlier, perhaps somewhere
-  -- in Distribution.Client.ProjectPlanning.elaborateInstallPlan.
-  -- See ticket #9995 for more information.
-  Cabal.finalCheckPackage gpkgDescr pbd3 PD.emptyHookedBuildInfo
-
-{-
-  let progdb = LBC.withPrograms lbc1
-      promisedDeps = Cabal.mkPromisedDepsSet (Cabal.configPromisedDependencies cfg)
-
-  (_, depsMap) <-
-    either (dieWithException verbosity) return $
-      Cabal.combinedConstraints
-        (Cabal.configConstraints cfg)
-        (Cabal.configDependencies cfg)
-        installedPkgSet
-  let pkg_info =
-        Cabal.PackageInfo
-          { internalPackageSet = Set.fromList (map PD.libName (PD.allLibraries pkgDescr))
-          , promisedDepsSet = promisedDeps
-          , installedPackageSet = installedPkgSet
-          , requiredDepsMap = depsMap
-          }
-      useExternalInternalDeps = case compRequested of
-        OneComponentRequestedSpec{} -> True
-        ComponentRequestedSpec{} -> False
-  externalPkgDeps <- Cabal.selectDependencies verbosity useExternalInternalDeps pkg_info pkgDescr compRequested
--}
-  let progdb = LBC.withPrograms lbc2
-  installedPkgSet <- Cabal.getInstalledPackages verbosity compil mbWorkDir packageDBs' progdb
-  lbi1 <- Cabal.configureComponents lbc2 pbd3 installedPkgSet promisedDeps externalPkgDeps
-
+  -- Remember the .cabal filename if we know it.
   pkgDescrFilePath <-
     case Cabal.flagToMaybe $ Cabal.configCabalFilePath cfg of
       Just pkgFile -> return pkgFile
       Nothing -> relativeSymbolicPath <$> tryFindPackageDesc verbosity mbWorkDir
-  let lbi2 = lbi1{pkgDescrFile = Just pkgDescrFilePath}
-  return lbi2
-
--- NB: this function might match multiple components,
--- due to Backpack instantiations.
-wantComponent :: ComponentRequestedSpec -> Component -> Bool
-wantComponent compReq comp = case compReq of
-  ComponentRequestedSpec{} -> True
-  OneComponentRequestedSpec reqComp ->
-    componentName comp == reqComp
--}
+  return $ lbi1 { pkgDescrFile = Just pkgDescrFilePath }
 
 --------------------------------------------------------------------------------
 -- Build
