@@ -41,6 +41,8 @@
 module Distribution.Simple.GHC
   ( getGhcInfo
   , configure
+  , configureCompiler
+  , compilerProgramDb
   , getInstalledPackages
   , getInstalledPackagesMonitorFiles
   , getPackageDBContents
@@ -124,6 +126,7 @@ import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version
 import Language.Haskell.Extension
+import Data.Maybe (fromJust)
 import System.FilePath
   ( isRelative
   , takeDirectory
@@ -153,20 +156,33 @@ import Distribution.Simple.Setup.Build
 -- -----------------------------------------------------------------------------
 -- Configuring
 
+-- | Configure GHC, and then auxiliary programs such as @ghc-pkg@, @haddock@
+-- as well as toolchain programs such as @ar@, @ld.
 configure
   :: Verbosity
-  -> Maybe FilePath
-  -> Maybe FilePath
+  -> Maybe FilePath -- ^ user-specified @ghc@ path (optional)
+  -> Maybe FilePath -- ^ user-specified @ghc-pkg@ path (optional)
   -> ProgramDb
   -> IO (Compiler, Maybe Platform, ProgramDb)
 configure verbosity hcPath hcPkgPath conf0 = do
+  (comp, compPlatform, progdb1) <- configureCompiler verbosity hcPath conf0
+  compProgDb <- compilerProgramDb verbosity comp progdb1 hcPkgPath
+  return (comp, compPlatform, compProgDb)
+
+-- | Configure GHC.
+configureCompiler
+  :: Verbosity
+  -> Maybe FilePath -- ^ user-specified @ghc@ path (optional)
+  -> ProgramDb
+  -> IO (Compiler, Maybe Platform, ProgramDb)
+configureCompiler verbosity hcPath conf0 = do
+
   (ghcProg, ghcVersion, progdb1) <-
     requireProgramVersion
       verbosity
       ghcProgram
       (orLaterVersion (mkVersion [7, 0, 1]))
       (userMaybeSpecifyPath "ghc" hcPath conf0)
-  let implInfo = ghcVersionImplInfo ghcVersion
 
   -- Cabal currently supports GHC less than `maxGhcVersion`
   let maxGhcVersion = mkVersion [9, 14]
@@ -181,6 +197,72 @@ configure verbosity hcPath hcPkgPath conf0 = do
         ++ programPath ghcProg
         ++ " is version "
         ++ prettyShow ghcVersion
+
+  let implInfo = ghcVersionImplInfo ghcVersion
+  languages <- Internal.getLanguages verbosity implInfo ghcProg
+  extensions0 <- Internal.getExtensions verbosity implInfo ghcProg
+
+  ghcInfo <- Internal.getGhcInfo verbosity implInfo ghcProg
+
+  let ghcInfoMap = Map.fromList ghcInfo
+      filterJS = if ghcVersion < mkVersion [9, 8] then filterExt JavaScriptFFI else id
+      extensions =
+        -- workaround https://gitlab.haskell.org/ghc/ghc/-/issues/11214
+        filterJS $
+          -- see 'filterExtTH' comment below
+          filterExtTH $
+            extensions0
+
+      -- starting with GHC 8.0, `TemplateHaskell` will be omitted from
+      -- `--supported-extensions` when it's not available.
+      -- for older GHCs we can use the "Have interpreter" property to
+      -- filter out `TemplateHaskell`
+      filterExtTH
+        | ghcVersion < mkVersion [8]
+        , Just "NO" <- Map.lookup "Have interpreter" ghcInfoMap =
+            filterExt TemplateHaskell
+        | otherwise = id
+
+      filterExt ext = filter ((/= EnableExtension ext) . fst)
+
+      compilerId :: CompilerId
+      compilerId = CompilerId GHC ghcVersion
+
+      compilerAbiTag :: AbiTag
+      compilerAbiTag =
+        maybe NoAbiTag AbiTag
+          (Map.lookup "Project Unit Id" ghcInfoMap
+            >>= stripPrefix (prettyShow compilerId <> "-"))
+
+  let comp =
+        Compiler
+          { compilerId
+          , compilerAbiTag
+          , compilerCompat = []
+          , compilerLanguages = languages
+          , compilerExtensions = extensions
+          , compilerProperties = ghcInfoMap
+          }
+      compPlatform = Internal.targetPlatform ghcInfo
+  return (comp, compPlatform, progdb1)
+
+-- | Given a configured @ghc@ program, configure auxiliary programs such
+-- as @ghc-pkg@ or @haddock@, as well as toolchain programs such as @ar@, @ld@,
+-- based on:
+--
+--  - the location of the @ghc@ executable,
+--  - toolchain information in the GHC settings file.
+compilerProgramDb
+  :: Verbosity
+  -> Compiler
+  -> ProgramDb
+  -> Maybe FilePath -- ^ user-specified @ghc-pkg@ path (optional)
+  -> IO ProgramDb
+compilerProgramDb verbosity comp progdb1 hcPkgPath = do
+
+  let
+    ghcProg = fromJust $ lookupProgram ghcProgram progdb1
+    ghcVersion = compilerVersion comp
 
   -- This is slightly tricky, we have to configure ghc first, then we use the
   -- location of ghc to help find ghc-pkg in the case that the user did not
@@ -220,50 +302,15 @@ configure verbosity hcPath hcPkgPath conf0 = do
             addKnownProgram hpcProgram' $
               addKnownProgram runghcProgram' progdb2
 
-  languages <- Internal.getLanguages verbosity implInfo ghcProg
-  extensions0 <- Internal.getExtensions verbosity implInfo ghcProg
-
-  ghcInfo <- Internal.getGhcInfo verbosity implInfo ghcProg
-  let ghcInfoMap = Map.fromList ghcInfo
-      filterJS = if ghcVersion < mkVersion [9, 8] then filterExt JavaScriptFFI else id
-      extensions =
-        -- workaround https://gitlab.haskell.org/ghc/ghc/-/issues/11214
-        filterJS $
-          -- see 'filterExtTH' comment below
-          filterExtTH $
-            extensions0
-
-      -- starting with GHC 8.0, `TemplateHaskell` will be omitted from
-      -- `--supported-extensions` when it's not available.
-      -- for older GHCs we can use the "Have interpreter" property to
-      -- filter out `TemplateHaskell`
-      filterExtTH
-        | ghcVersion < mkVersion [8]
-        , Just "NO" <- Map.lookup "Have interpreter" ghcInfoMap =
-            filterExt TemplateHaskell
-        | otherwise = id
-
-      filterExt ext = filter ((/= EnableExtension ext) . fst)
-
-      compilerId :: CompilerId
-      compilerId = CompilerId GHC ghcVersion
-
-      compilerAbiTag :: AbiTag
-      compilerAbiTag = maybe NoAbiTag AbiTag (Map.lookup "Project Unit Id" ghcInfoMap >>= stripPrefix (prettyShow compilerId <> "-"))
-
-  let comp =
-        Compiler
-          { compilerId
-          , compilerAbiTag
-          , compilerCompat = []
-          , compilerLanguages = languages
-          , compilerExtensions = extensions
-          , compilerProperties = ghcInfoMap
-          }
-      compPlatform = Internal.targetPlatform ghcInfo
-      -- configure gcc and ld
-      progdb4 = Internal.configureToolchain implInfo ghcProg ghcInfoMap progdb3
-  return (comp, compPlatform, progdb4)
+      -- configure gcc, ld, ar etc... based on the paths stored
+      -- in the GHC settings file
+      progdb4 =
+        Internal.configureToolchain
+          (ghcVersionImplInfo ghcVersion)
+          ghcProg
+          (compilerProperties comp)
+          progdb3
+  return progdb4
 
 -- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find
 -- the corresponding tool; e.g. if the tool is ghc-pkg, we try looking
