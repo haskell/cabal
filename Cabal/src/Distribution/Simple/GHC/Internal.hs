@@ -104,37 +104,48 @@ targetPlatform ghcInfo = platformFromTriple =<< lookup "Target platform" ghcInfo
 
 -- | Adjust the way we find and configure gcc and ld
 configureToolchain
-  :: GhcImplInfo
+  :: Verbosity
+  -> GhcImplInfo
   -> ConfiguredProgram
   -> Map String String
   -> ProgramDb
-  -> ProgramDb
-configureToolchain _implInfo ghcProg ghcInfo =
-  addKnownProgram
-    gccProgram
-      { programFindLocation = findProg gccProgramName extraGccPath
-      , programPostConf = configureGcc
-      }
-    . addKnownProgram
-      gppProgram
-        { programFindLocation = findProg gppProgramName extraGppPath
-        , programPostConf = configureGpp
-        }
-    . addKnownProgram
-      ldProgram
-        { programFindLocation = findProg ldProgramName extraLdPath
-        , programPostConf = \v cp ->
-            -- Call any existing configuration first and then add any new configuration
-            configureLd v =<< programPostConf ldProgram v cp
-        }
-    . addKnownProgram
-      arProgram
-        { programFindLocation = findProg arProgramName extraArPath
-        }
-    . addKnownProgram
-      stripProgram
-        { programFindLocation = findProg stripProgramName extraStripPath
-        }
+  -> IO ProgramDb
+configureToolchain verbosity _implInfo ghcProg ghcInfo db = do
+  -- this is a bit of a hack. We have a dependency of ld on gcc.
+  -- ld needs to compiler a c program, to check an ld feature.
+  -- we _could_ use ghc as a c frontend, but we do not pass all
+  -- db stack appropriately, and thus we can run into situations
+  -- where GHC will fail if it's stricter in it's wired-in-unit
+  -- selction and has the wrong db stack. However we don't need
+  -- ghc to compile a _test_ c program. So we configure `gcc`
+  -- first and then use `gcc` (the generic c compiler in cabal
+  -- terminology) to compile the test program.
+  let db' =
+        flip addKnownProgram db $
+          gccProgram
+            { programFindLocation = findProg gccProgramName extraGccPath
+            , programPostConf = configureGcc
+            }
+  (gccProg, db'') <- requireProgram verbosity gccProgram db'
+  return $
+    flip addKnownPrograms db'' $
+      [ gppProgram
+          { programFindLocation = findProg gppProgramName extraGppPath
+          , programPostConf = configureGpp
+          }
+      , ldProgram
+          { programFindLocation = findProg ldProgramName extraLdPath
+          , programPostConf = \v cp ->
+              -- Call any existing configuration first and then add any new configuration
+              configureLd gccProg v =<< programPostConf ldProgram v cp
+          }
+      , arProgram
+          { programFindLocation = findProg arProgramName extraArPath
+          }
+      , stripProgram
+          { programFindLocation = findProg stripProgramName extraStripPath
+          }
+      ]
   where
     compilerDir, base_dir, mingwBinDir :: FilePath
     compilerDir = takeDirectory (programPath ghcProg)
@@ -234,27 +245,26 @@ configureToolchain _implInfo ghcProg ghcInfo =
                 ++ cxxFlags
           }
 
-    configureLd :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
-    configureLd v ldProg = do
-      ldProg' <- configureLd' v ldProg
+    configureLd :: ConfiguredProgram -> Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
+    configureLd gccProg v ldProg = do
+      ldProg' <- configureLd' gccProg v ldProg
       return
         ldProg'
           { programDefaultArgs = programDefaultArgs ldProg' ++ ldLinkerFlags
           }
 
     -- we need to find out if ld supports the -x flag
-    configureLd' :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
-    configureLd' verbosity ldProg = do
+    configureLd' :: ConfiguredProgram -> Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
+    configureLd' gccProg v ldProg = do
       ldx <- withTempFile ".c" $ \testcfile testchnd ->
         withTempFile ".o" $ \testofile testohnd -> do
           hPutStrLn testchnd "int foo() { return 0; }"
           hClose testchnd
           hClose testohnd
           runProgram
-            verbosity
-            ghcProg
-            [ "-hide-all-packages"
-            , "-c"
+            v
+            gccProg
+            [ "-c"
             , testcfile
             , "-o"
             , testofile

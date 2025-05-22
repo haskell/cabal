@@ -312,15 +312,8 @@ compilerProgramDb verbosity comp progdb1 hcPkgPath = do
             addKnownProgram hpcProgram' $
               addKnownProgram runghcProgram' progdb2
 
-      -- configure gcc, ld, ar etc... based on the paths stored
-      -- in the GHC settings file
-      progdb4 =
-        Internal.configureToolchain
-          (ghcVersionImplInfo ghcVersion)
-          ghcProg
-          (compilerProperties comp)
-          progdb3
-  return progdb4
+  -- configure gcc, ld, ar etc... based on the paths stored in the GHC settings file
+  Internal.configureToolchain verbosity (ghcVersionImplInfo ghcVersion) ghcProg (compilerProperties comp) progdb3
 
 -- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find
 -- the corresponding tool; e.g. if the tool is ghc-pkg, we try looking
