@@ -312,30 +312,8 @@ compilerProgramDb verbosity comp progdb1 hcPkgPath = do
       ghcProg = fromJust $ lookupProgram ghcProgram progdb1
       ghcVersion = compilerVersion comp
 
-      -- configure gcc, ld, ar etc... based on the paths stored
-      -- in the GHC settings file
-      progdb3 =
-        Internal.configureToolchain
-          (ghcVersionImplInfo ghcVersion)
-          ghcProg
-          (compilerProperties comp)
-          progdb2
-
-  -- This is slightly tricky, we have to configure ghc first, then we use the
-  -- location of ghc to help find ghc-pkg in the case that the user did not
-  -- specify the location of ghc-pkg directly:
-  (ghcPkgProg, ghcPkgVersion, progdb4) <-
-    requireProgramVersion
-      verbosity
-      ghcPkgProgram'
-      anyVersion
-      progdb3
-
-  when (ghcVersion /= ghcPkgVersion) $
-    dieWithException verbosity $
-      VersionMismatchGHC (programPath ghcProg) ghcVersion (programPath ghcPkgProg) ghcPkgVersion
-
-  return progdb4
+  -- configure gcc, ld, ar etc... based on the paths stored in the GHC settings file
+  Internal.configureToolchain verbosity (ghcVersionImplInfo ghcVersion) ghcProg (compilerProperties comp) progdb3
 
 -- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find
 -- the corresponding tool; e.g. if the tool is ghc-pkg, we try looking
