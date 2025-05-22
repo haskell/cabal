@@ -59,10 +59,9 @@ import System.FilePath (pathSeparator)
 configure
   :: Verbosity
   -> Maybe FilePath
-  -> Maybe FilePath
   -> ProgramDb
   -> IO (Compiler, Maybe Platform, ProgramDb)
-configure verbosity hcPath _hcPkgPath progdb = do
+configure verbosity hcPath progdb = do
   (_uhcProg, uhcVersion, progdb') <-
     requireProgramVersion
       verbosity

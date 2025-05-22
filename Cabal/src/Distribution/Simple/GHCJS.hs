@@ -5,6 +5,8 @@
 module Distribution.Simple.GHCJS
   ( getGhcInfo
   , configure
+  , configureCompiler
+  , compilerProgramDb
   , getInstalledPackages
   , getInstalledPackagesMonitorFiles
   , getPackageDBContents
@@ -87,6 +89,7 @@ import Control.Arrow ((***))
 import Control.Monad (msum)
 import Data.Char (isLower)
 import qualified Data.Map as Map
+import Data.Maybe (fromJust)
 import System.Directory
   ( canonicalizePath
   , createDirectoryIfMissing
@@ -106,13 +109,29 @@ import qualified System.Info
 -- -----------------------------------------------------------------------------
 -- Configuring
 
+-- | Configure GHCJS, and then auxiliary programs such as @ghc-pkg@, @haddock@
+-- as well as toolchain programs such as @ar@, @ld.
 configure
   :: Verbosity
   -> Maybe FilePath
+  -- ^ user-specified @ghcjs@ path (optional)
   -> Maybe FilePath
+  -- ^ user-specified @ghcjs-pkg@ path (optional)
   -> ProgramDb
   -> IO (Compiler, Maybe Platform, ProgramDb)
 configure verbosity hcPath hcPkgPath conf0 = do
+  (comp, compPlatform, progdb1) <- configureCompiler verbosity hcPath conf0
+  compProgDb <- compilerProgramDb verbosity comp progdb1 hcPkgPath
+  return (comp, compPlatform, compProgDb)
+
+-- | Configure GHCJS.
+configureCompiler
+  :: Verbosity
+  -> Maybe FilePath
+  -- ^ user-specified @ghc@ path (optional)
+  -> ProgramDb
+  -> IO (Compiler, Maybe Platform, ProgramDb)
+configureCompiler verbosity hcPath conf0 = do
   (ghcjsProg, ghcjsVersion, progdb1) <-
     requireProgramVersion
       verbosity
@@ -132,6 +151,43 @@ configure verbosity hcPath hcPkgPath conf0 = do
         ++ prettyShow ghcjsGhcVersion
 
   let implInfo = ghcjsVersionImplInfo ghcjsVersion ghcjsGhcVersion
+
+  languages <- Internal.getLanguages verbosity implInfo ghcjsProg
+  extensions <- Internal.getExtensions verbosity implInfo ghcjsProg
+
+  ghcjsInfo <- Internal.getGhcInfo verbosity implInfo ghcjsProg
+  let ghcInfoMap = Map.fromList ghcjsInfo
+
+  let comp =
+        Compiler
+          { compilerId = CompilerId GHCJS ghcjsVersion
+          , compilerAbiTag =
+              AbiTag $
+                "ghc" ++ intercalate "_" (map show . versionNumbers $ ghcjsGhcVersion)
+          , compilerCompat = [CompilerId GHC ghcjsGhcVersion]
+          , compilerLanguages = languages
+          , compilerExtensions = extensions
+          , compilerProperties = ghcInfoMap
+          }
+      compPlatform = Internal.targetPlatform ghcjsInfo
+  return (comp, compPlatform, progdb1)
+
+-- | Given a configured @ghcjs@ program, configure auxiliary programs such
+-- as @ghcjs-pkg@ or @haddock@, based on the location of the @ghcjs@ executable.
+compilerProgramDb
+  :: Verbosity
+  -> Compiler
+  -> ProgramDb
+  -> Maybe FilePath
+  -- ^ user-specified @ghc-pkg@ path (optional)
+  -> IO ProgramDb
+compilerProgramDb verbosity comp progdb1 hcPkgPath = do
+  let
+    ghcjsProg = fromJust $ lookupProgram ghcjsProgram progdb1
+    ghcjsVersion = compilerVersion comp
+    ghcjsGhcVersion = case compilerCompat comp of
+      [CompilerId GHC ghcjsGhcVer] -> ghcjsGhcVer
+      compat -> error $ "could not parse ghcjsGhcVersion:" ++ show compat
 
   -- This is slightly tricky, we have to configure ghc first, then we use the
   -- location of ghc to help find ghc-pkg in the case that the user did not
@@ -187,25 +243,7 @@ configure verbosity hcPath hcPkgPath conf0 = do
             addKnownProgram hpcProgram' $
               {- addKnownProgram runghcProgram' -} progdb2
 
-  languages <- Internal.getLanguages verbosity implInfo ghcjsProg
-  extensions <- Internal.getExtensions verbosity implInfo ghcjsProg
-
-  ghcjsInfo <- Internal.getGhcInfo verbosity implInfo ghcjsProg
-  let ghcInfoMap = Map.fromList ghcjsInfo
-
-  let comp =
-        Compiler
-          { compilerId = CompilerId GHCJS ghcjsVersion
-          , compilerAbiTag =
-              AbiTag $
-                "ghc" ++ intercalate "_" (map show . versionNumbers $ ghcjsGhcVersion)
-          , compilerCompat = [CompilerId GHC ghcjsGhcVersion]
-          , compilerLanguages = languages
-          , compilerExtensions = extensions
-          , compilerProperties = ghcInfoMap
-          }
-      compPlatform = Internal.targetPlatform ghcjsInfo
-  return (comp, compPlatform, progdb3)
+  return progdb3
 
 guessGhcjsPkgFromGhcjsPath
   :: ConfiguredProgram
