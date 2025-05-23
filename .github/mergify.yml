@@ -10,16 +10,16 @@ priority_rules:
 
   # The idea is we slightly prioritize those PRs because we're in
   # a release cycle if a PR matches.
+  - name: priority for queue `default`
+    conditions:
+      - queue-name=default
+    priority: 2750
+
   - name: release branch
     conditions:
       - 'base~=^3\.'
       - 'label!=backport'
     priority: 2700
-
-  - name: priority for queue `default`
-    conditions:
-      - queue-name=default
-    priority: 2500
 
   - name: priority for queue `squash-merge`
     conditions:
