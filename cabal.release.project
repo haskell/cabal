@@ -2,7 +2,6 @@ import: project-cabal/pkgs/cabal.config
 import: project-cabal/pkgs/install.config
 import: project-cabal/pkgs/tests.config
 
-<<<<<<< HEAD
 index-state: hackage.haskell.org 2024-11-20T00:00:00Z
 
 -- never include this or its TH dependency in a release!
@@ -11,6 +10,3 @@ package cabal-install
 
 package Cabal
   flags: -git-rev
-=======
-index-state: hackage.haskell.org 2024-04-29T14:30:15Z
->>>>>>> b0aee57d7 (cabal-install: call Cabal in-library)

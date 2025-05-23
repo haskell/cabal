@@ -638,26 +638,29 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
         InLibraryArgs libArgs ->
           case libArgs of
             InLibraryConfigureArgs elabSharedConfig elabReadyPkg -> do
-              -- See (1) in Note [Constructing the ProgramDb]
+              -- See (1)(a) in Note [Constructing the ProgramDb]
+              baseProgDb <-
+                prependProgramSearchPath verbosity
+                  (useExtraPathEnv options)
+                  (useExtraEnvOverrides options) =<<
+                  mkProgramDb flags -- Passes user-supplied arguments to e.g. GHC
+                    (useProgramDb options) -- Recall that 'useProgramDb' is set to 'pkgConfigCompilerProgs'*
+              -- See (2) in Note [Constructing the ProgramDb]
               setupProgDb <-
                 configCompilerProgDb
                   verbosity
                   (pkgConfigCompiler elabSharedConfig)
-                  (useProgramDb options) -- Recall that 'useProgramDb' is set to 'pkgConfigCompilerProgs'
+                  baseProgDb
                   Nothing -- we use configProgramPaths instead
               lbi0 <-
                 InLibrary.configure
                   (InLibrary.libraryConfigureInputsFromElabPackage setupProgDb elabSharedConfig elabReadyPkg extraArgs)
                   flags
               let progs0 = LBI.withPrograms lbi0
-              -- See (2) in Note [Constructing the ProgramDb]
+              -- See (1)(b) in Note [Constructing the ProgramDb]
               progs1 <-
-                updatePathProgDb verbosity
-                  =<<
-                prependProgramSearchPath verbosity
-                  (useExtraPathEnv options)
-                  (useExtraEnvOverrides options)
-                  (restoreProgramDb builtinPrograms progs0)
+                updatePathProgDb verbosity $
+                  restoreProgramDb builtinPrograms progs0
               let
                   lbi =
                     lbi0
@@ -702,20 +705,21 @@ includes the call to 'configCompilerEx'.
 To obtain a program database with all the required information, we do a few
 things:
 
-  (1) Given the compiler, we must compute the ProgramDb of programs that are
+  (1)
+    (a) When building a package with internal build tools, we must ensure that
+        these build tools are available in PATH, with appropriate environment
+        variable overrides for their data directory. To do this, we call
+        'prependProgramSearchPath'.
+
+    (b) Moreover, these programs must be available in the search paths for the
+        compiler itself, in case they are run at compile-time (e.g. with a Template
+        Haskell splice). We achieve this using 'updatePathProgDb'.
+
+  (2) Given the compiler, we must compute the ProgramDb of programs that are
       specified alongside the compiler, such as ghc-pkg, haddock, and toolchain
       programs such as ar, ld.
 
       We do this using the function 'configCompilerProgDb'.
-
-  (2) When building a package with internal build tools, we must ensure that
-      these build tools are available in PATH, with appropriate environment
-      variable overrides for their data directory. To do this, we call
-      'prependProgramSearchPath'.
-
-      Moreover, these programs must be available in the search paths for the
-      compiler itself, in case they are run at compile-time (e.g. with a Template
-      Haskell splice). We achieve this using 'updatePathProgDb'.
 -}
 
 -- ------------------------------------------------------------

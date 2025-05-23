@@ -4163,20 +4163,16 @@ setupHsCommonFlags
   :: Verbosity
   -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> SymbolicPath Pkg (Dir Dist)
+  -> [String]
   -> Bool
-  -> ElaboratedConfiguredPackage
   -> Cabal.CommonSetupFlags
-setupHsCommonFlags verbosity mbWorkDir builddir keepTempFiles elab =
+setupHsCommonFlags verbosity mbWorkDir builddir targets keepTempFiles =
   Cabal.CommonSetupFlags
     { setupDistPref = toFlag builddir
     , setupVerbosity = toFlag verbosity
     , setupCabalFilePath = mempty
     , setupWorkingDir = maybeToFlag mbWorkDir
-    , setupTargets =
-        -- Fix for #3335: don't pass component info if not supported
-        if elabSetupScriptCliVersion elab >= mkVersion [1, 17]
-        then map (showComponentTarget (packageId elab)) (elabBuildTargets elab)
-        else []
+    , setupTargets = targets
     , setupKeepTempFiles = toFlag keepTempFiles
     }
 

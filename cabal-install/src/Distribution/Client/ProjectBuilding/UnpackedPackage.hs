@@ -295,8 +295,8 @@ buildAndRegisterUnpackedPackage
         | otherwise = return ()
 
       mbWorkDir = useWorkingDir scriptOptions
-      commonFlags =
-        setupHsCommonFlags verbosity mbWorkDir builddir buildSettingKeepTempFiles pkg
+      commonFlags targets =
+        setupHsCommonFlags verbosity mbWorkDir builddir targets buildSettingKeepTempFiles
 
       configureCommand = Cabal.configureCommand defaultProgramDb
       configureFlags v =
@@ -306,7 +306,7 @@ buildAndRegisterUnpackedPackage
             plan
             rpkg
             pkgshared
-            commonFlags
+            (commonFlags $ configureArgs v)
       configureArgs _ = setupHsConfigureArgs pkg
 
       buildCommand = Cabal.buildCommand defaultProgramDb
@@ -316,7 +316,7 @@ buildAndRegisterUnpackedPackage
             comp_par_strat
             pkg
             pkgshared
-            commonFlags
+            (commonFlags $ buildArgs v)
       buildArgs _ = setupHsBuildArgs pkg
 
       copyFlags destdir v =
@@ -324,7 +324,7 @@ buildAndRegisterUnpackedPackage
           setupHsCopyFlags
             pkg
             pkgshared
-            commonFlags
+            (commonFlags $ buildArgs v)
             destdir
       -- In theory, we could want to copy less things than those that were
       -- built, but instead, we simply copy the targets that were built.
@@ -335,7 +335,7 @@ buildAndRegisterUnpackedPackage
         flip filterTestFlags v $
           setupHsTestFlags
             pkg
-            commonFlags
+            (commonFlags $ testArgs v)
       testArgs _ = setupHsTestArgs pkg
 
       benchCommand = Cabal.benchmarkCommand
@@ -344,7 +344,7 @@ buildAndRegisterUnpackedPackage
           setupHsBenchFlags
             pkg
             pkgshared
-            commonFlags
+            (commonFlags $ benchArgs v)
       benchArgs _ = setupHsBenchArgs pkg
 
       replCommand = Cabal.replCommand defaultProgramDb
@@ -353,7 +353,7 @@ buildAndRegisterUnpackedPackage
           setupHsReplFlags
             pkg
             pkgshared
-            commonFlags
+            (commonFlags $ replArgs v)
       replArgs _ = setupHsReplArgs pkg
 
       haddockCommand = Cabal.haddockCommand
@@ -363,7 +363,7 @@ buildAndRegisterUnpackedPackage
             pkg
             pkgshared
             buildTimeSettings
-            commonFlags
+            (commonFlags $ haddockArgs v)
       haddockArgs v =
         flip filterHaddockArgs v $
           setupHsHaddockArgs pkg
@@ -429,7 +429,7 @@ buildAndRegisterUnpackedPackage
                   setupHsRegisterFlags
                     pkg
                     pkgshared
-                    commonFlags
+                    (commonFlags [])
                     pkgConfDest
             setup
               (Cabal.registerCommand)

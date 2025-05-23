@@ -1173,22 +1173,6 @@ finalizePackageDescription cfg g_pkg_descr comp platform enabled allConstraints 
       comp
       platform
       g_pkg_descr
-
-{-
-
-  { internalPackageSet :: Set LibraryName
-  -- ^ Libraries internal to the package
-  , promisedDepsSet :: Map (PackageName, ComponentName) PromisedComponent
-  -- ^ Collection of components that are promised, i.e. are not installed already.
-  --
-  -- See 'PromisedDependency' for more details.
-  , installedPackageSet :: InstalledPackageIndex
-  -- ^ Installed packages
-  , requiredDepsMap :: Map (PackageName, ComponentName) InstalledPackageInfo
-  -- ^ Packages for which we have been given specific deps to use
-  }
--}
-
   return (packageDbs, pkg_descr0, flags)
 
 addExtraIncludeLibDirsFromConfigFlags
