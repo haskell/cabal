@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
@@ -182,6 +183,8 @@ import Distribution.Client.SetupHooks.CallHooksExe
 import Data.List (foldl1')
 import Data.Kind (Type, Constraint)
 import qualified Data.Map.Lazy as Map
+import Data.Type.Equality  ( type (==) )
+import Data.Type.Bool      ( If )
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
 import System.IO (Handle, hPutStr)
@@ -487,8 +490,8 @@ withSetupMethod verbosity options pkg buildType' allowInLibrary with
     abiOK <-
       if buildType' == Hooks
       then do
-        -- NB: compileExternalSetupMethod compiles the hooks executable.
-        _ <- compileExternalSetupMethod verbosity options pkg Hooks
+        -- Compile the hooks executable
+        compileExternalExe verbosity options pkg buildType' WantHooks
         externalHooksABI <- externalSetupHooksABI $ hooksProgFilePath (useWorkingDir options) (useDistPref options)
         let internalHooksABI = hooksVersion
         return $ externalHooksABI == internalHooksABI
@@ -506,7 +509,7 @@ withSetupMethod verbosity options pkg buildType' allowInLibrary with
       debug verbosity $
         "Using explicit dependencies: "
           ++ show (useDependenciesExclusive options)
-      with <$> compileExternalSetupMethod verbosity options pkg buildType'
+      with <$> compileExternalExe verbosity options pkg buildType' WantSetup
 
 runSetupMethod :: WithCallStack (SetupMethod GeneralSetup -> SetupRunner UseGeneralSetup)
 runSetupMethod (ExternalMethod path) = externalSetupMethod path
@@ -827,17 +830,23 @@ externalSetupMethod path verbosity options _ args NotInLibrary =
 
 #endif
 
-compileExternalSetupMethod
+data ExternalExe = HooksExe | SetupExe
+data WantedExternalExe (meth :: ExternalExe) where
+  WantHooks :: WantedExternalExe HooksExe
+  WantSetup :: WantedExternalExe SetupExe
+
+compileExternalExe
   :: Verbosity
   -> SetupScriptOptions
   -> PackageDescription
   -> BuildType
-  -> IO (Version, SetupMethod GeneralSetup, SetupScriptOptions)
-compileExternalSetupMethod verbosity options pkg bt = do
+  -> WantedExternalExe exe
+  -> IO (If (exe == HooksExe) () (Version, SetupMethod GeneralSetup, SetupScriptOptions))
+compileExternalExe verbosity options pkg bt wantedMeth = do
   createDirectoryIfMissingVerbose verbosity True $ i (setupDir options)
   (cabalLibVersion, mCabalLibInstalledPkgId, options') <- cabalLibVersionToUse
   debug verbosity $ "Using Cabal library version " ++ prettyShow cabalLibVersion
-  path <-
+  exePath <-
     if useCachedSetupExecutable
       then
         getCachedSetupExecutable
@@ -849,11 +858,12 @@ compileExternalSetupMethod verbosity options pkg bt = do
           cabalLibVersion
           mCabalLibInstalledPkgId
       else
-        compileSetup
+        compileExe
           verbosity
           platform
           (package pkg)
           bt
+          wantedMeth
           options'
           cabalLibVersion
           mCabalLibInstalledPkgId
@@ -863,7 +873,7 @@ compileExternalSetupMethod verbosity options pkg bt = do
   -- be turned into an absolute path. On some systems, runProcess' will take
   -- path as relative to the new working directory instead of the current
   -- working directory.
-  path' <- tryCanonicalizePath path
+  exePath' <- tryCanonicalizePath exePath
 
   -- See 'Note: win32 clean hack' above.
 #ifdef mingw32_HOST_OS
@@ -872,13 +882,15 @@ compileExternalSetupMethod verbosity options pkg bt = do
   let win32CleanHackNeeded =
         (useWin32CleanHack options)
           -- Skip when a cached setup script is used.
-          && setupProgFile' `equalFilePath` path'
+          && setupProgFile' `equalFilePath` exePath'
 #else
   let win32CleanHackNeeded = False
 #endif
   let options'' = options'{useWin32CleanHack = win32CleanHackNeeded}
 
-  return (cabalLibVersion, ExternalMethod path', options'')
+  case wantedMeth of
+    WantHooks -> return ()
+    WantSetup -> return (cabalLibVersion, ExternalMethod exePath', options'')
   where
     mbWorkDir = useWorkingDir options
     -- See Note [Symbolic paths] in Distribution.Utils.Path
@@ -899,7 +911,7 @@ compileExternalSetupMethod verbosity options pkg bt = do
     -- checking 'useCabalSpecVersion', then the saved version, and finally the
     -- versions available in the index.
     --
-    -- The version chosen here must match the one used in 'compileSetup'
+    -- The version chosen here must match the one used in 'compileExe'
     -- (See issue #3433).
     cabalLibVersionToUse
       :: IO
@@ -935,7 +947,7 @@ compileExternalSetupMethod verbosity options pkg bt = do
                 _ -> installedVersion
       where
         -- This check duplicates the checks in 'getCachedSetupExecutable' /
-        -- 'compileSetup'. Unfortunately, we have to perform it twice
+        -- 'compileExe'. Unfortunately, we have to perform it twice
         -- because the selected Cabal version may change as a result of this
         -- check.
         canUseExistingSetup :: Version -> IO Bool
@@ -997,10 +1009,9 @@ compileExternalSetupMethod verbosity options pkg bt = do
         customSetupHs = workingDir options </> "Setup.hs"
         customSetupLhs = workingDir options </> "Setup.lhs"
     updateSetupScript cabalLibVersion Hooks = do
-
       let customSetupHooks = workingDir options </> "SetupHooks.hs"
       useHs <- doesFileExist customSetupHooks
-      unless (useHs) $
+      unless useHs $
         die'
           verbosity
           "Using 'build-type: Hooks' but there is no SetupHooks.hs file."
@@ -1031,7 +1042,10 @@ buildTypeScript bt cabalLibVersion = "{-# LANGUAGE NoImplicitPrelude #-}\n" <> c
 
 -- | The source code for an external hooks executable, using the 'hooks-exe' library.
 hooksExeScript :: BS.ByteString
-hooksExeScript = "{-# LANGUAGE NoImplicitPrelude #-}\nimport Distribution.Client.SetupHooks.HooksExe (hooksMain); import SetupHooks; main = hooksMain setupHooks\n"
+hooksExeScript =
+  "{-# LANGUAGE NoImplicitPrelude #-}\n\\
+  \import Distribution.Client.SetupHooks.HooksExe (hooksMain); \\
+  \import SetupHooks; main = hooksMain setupHooks\n"
 
 installedCabalVersion
   :: Verbosity
@@ -1178,8 +1192,8 @@ cachedSetupDirAndProg platform bt options' cabalLibVersion = do
           useCompiler options'
     platformString = prettyShow platform
 
--- | Look up the setup executable in the cache; update the cache if the setup
--- executable is not found.
+-- | Look up the executable in the cache; update the cache if the executable
+-- is not found.
 getCachedSetupExecutable
   :: Verbosity
   -> Platform
@@ -1214,11 +1228,12 @@ getCachedSetupExecutable
           else do
             debug verbosity $ "Setup executable not found in the cache."
             src <-
-              compileSetup
+              compileExe
                 verbosity
                 platform
                 pkgId
                 bt
+                WantSetup
                 options'
                 cabalLibVersion
                 maybeCabalLibInstalledPkgId
@@ -1246,20 +1261,23 @@ getCachedSetupExecutable
 
 -- | If the Setup.hs is out of date wrt the executable then recompile it.
 -- Currently this is GHC/GHCJS only. It should really be generalised.
-compileSetup
+compileExe
   :: Verbosity
   -> Platform
   -> PackageIdentifier
   -> BuildType
+  -> WantedExternalExe exe
   -> SetupScriptOptions
   -> Version
   -> Maybe ComponentId
   -> Bool
   -> IO FilePath
-compileSetup verbosity platform pkgId bt opts ver mbCompId forceCompile = do
-  when (bt == Hooks) $
-    void $ compileHooksScript verbosity platform pkgId opts ver mbCompId forceCompile
-  compileSetupScript verbosity platform pkgId bt opts ver mbCompId forceCompile
+compileExe verbosity platform pkgId bt wantedMeth opts ver mbCompId forceCompile =
+  case wantedMeth of
+    WantHooks ->
+      compileHooksScript verbosity platform pkgId opts ver mbCompId forceCompile
+    WantSetup ->
+      compileSetupScript verbosity platform pkgId bt opts ver mbCompId forceCompile
 
 compileSetupScript
   :: Verbosity
