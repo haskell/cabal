@@ -183,6 +183,8 @@ configure
             }
   (_allConstraints, pkgInfo) <-
     Cabal.computePackageInfo cfg lbc1 gpkgDescr compil
+  -- NB: no need to re-apply "allConstraints", as we already have a
+  -- finalized package description in hand.
 
   -- Post-configure hooks & per-component configure
   lbi1 <- Cabal.configureFinal
