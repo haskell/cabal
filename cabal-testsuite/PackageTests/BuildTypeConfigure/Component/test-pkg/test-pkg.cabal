@@ -1,0 +1,38 @@
+cabal-version:   3.14
+name:            test-pkg
+version:         0.1.0.0
+license:         BSD-3-Clause
+license-file:    LICENSE
+author:          Moritz Angermann
+maintainer:      moritz.angermann@gmail.com
+build-type:      Configure
+extra-doc-files: CHANGELOG.md
+
+executable exe
+    main-is:         Main.hs
+    build-depends:   base
+    hs-source-dirs:  exe
+    default-language: Haskell2010
+
+executable exe-dep
+    main-is:         Main-Lib.hs
+    build-depends:   base, test-pkg
+    hs-source-dirs:  exe
+    default-language: Haskell2010
+
+library
+    exposed-modules:  MyLib
+    build-depends:    base
+    hs-source-dirs:   src
+    default-language: Haskell2010
+
+library bar
+    build-depends:    base
+    hs-source-dirs:   src
+    default-language: Haskell2010
+
+library foo
+    exposed-modules:  Foo
+    build-depends:    base
+    hs-source-dirs:   src
+    default-language: Haskell2010
