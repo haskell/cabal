@@ -274,6 +274,7 @@ data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
   , elabProgramPaths :: Map String FilePath
   , elabProgramArgs :: Map String [String]
   , elabProgramPathExtra :: [FilePath]
+  , elabConfiguredPrograms :: [ConfiguredProgram]
   , elabConfigureScriptArgs :: [String]
   , elabExtraLibDirs :: [FilePath]
   , elabExtraLibDirsStatic :: [FilePath]
