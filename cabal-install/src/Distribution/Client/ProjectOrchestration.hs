@@ -58,7 +58,8 @@ module Distribution.Client.ProjectOrchestration
     -- ** Selecting what targets we mean
   , readTargetSelectors
   , reportTargetSelectorProblems
-  , resolveTargets
+  , resolveTargetsFromSolver
+  , resolveTargetsFromLocalPackages
   , TargetsMap
   , allTargetSelectors
   , uniqueTargetSelectors
@@ -146,6 +147,7 @@ import Distribution.Client.Types
 import Distribution.Solver.Types.PackageIndex
   ( lookupPackageName
   )
+import Distribution.Solver.Types.SourcePackage (SourcePackage (..))
 
 import Distribution.Client.BuildReports.Anonymous (cabalInstallID)
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReports
@@ -169,7 +171,9 @@ import Distribution.Types.UnqualComponentName
   , packageNameToUnqualComponentName
   )
 
+import Distribution.PackageDescription.Configuration
 import Distribution.Solver.Types.OptionalStanza
+import Distribution.Types.Component
 
 import Control.Exception (assert)
 import qualified Data.List.NonEmpty as NE
@@ -564,7 +568,9 @@ runProjectPostBuildPhase
 -- matched this target. Typically this is exactly one, but in general it is
 -- possible to for different selectors to match the same target. This extra
 -- information is primarily to help make helpful error messages.
-type TargetsMap = Map UnitId [(ComponentTarget, NonEmpty TargetSelector)]
+type TargetsMap = TargetsMapX UnitId
+
+type TargetsMapX u = Map u [(ComponentTarget, NonEmpty TargetSelector)]
 
 -- | Get all target selectors.
 allTargetSelectors :: TargetsMap -> [TargetSelector]
@@ -573,6 +579,63 @@ allTargetSelectors = concatMap (NE.toList . snd) . concat . Map.elems
 -- | Get all unique target selectors.
 uniqueTargetSelectors :: TargetsMap -> [TargetSelector]
 uniqueTargetSelectors = ordNub . allTargetSelectors
+
+-- | Resolve targets from a solver result.
+--
+-- This is a convenience wrapper around 'resolveTargetsFromSolver' that takes an
+-- 'ElaboratedInstallPlan' directly, rather than requiring the caller to
+-- construct the 'AvailableTargetIndexes' first.
+resolveTargetsFromSolver
+  :: forall err
+   . ( forall k
+        . TargetSelector
+       -> [AvailableTarget k]
+       -> Either (TargetProblem err) [k]
+     )
+  -> ( forall k
+        . SubComponentTarget
+       -> AvailableTarget k
+       -> Either (TargetProblem err) k
+     )
+  -> ElaboratedInstallPlan
+  -> Maybe (SourcePackageDb)
+  -> [TargetSelector]
+  -> Either [TargetProblem err] TargetsMap
+resolveTargetsFromSolver selectPackageTargets selectComponentTarget installPlan sourceDb targetSelectors =
+  resolveTargets
+    selectPackageTargets
+    selectComponentTarget
+    (availableTargetIndexes installPlan)
+    sourceDb
+    targetSelectors
+
+-- | Resolve targets from local packages.
+--
+-- This is a convenience wrapper around 'resolveTargets' that takes a list of
+-- 'PackageSpecifier's directly, rather than requiring the caller to
+-- construct the 'AvailableTargetIndexes' first.
+resolveTargetsFromLocalPackages
+  :: forall err
+   . ( forall k
+        . TargetSelector
+       -> [AvailableTarget k]
+       -> Either (TargetProblem err) [k]
+     )
+  -> ( forall k
+        . SubComponentTarget
+       -> AvailableTarget k
+       -> Either (TargetProblem err) k
+     )
+  -> [PackageSpecifier UnresolvedSourcePackage]
+  -> [TargetSelector]
+  -> Either [TargetProblem err] (TargetsMapX PackageId)
+resolveTargetsFromLocalPackages selectPackageTargets selectComponentTarget pkgSpecifiers targetSelectors =
+  resolveTargets
+    selectPackageTargets
+    selectComponentTarget
+    (availableTargetIndexesFromSourcePackages pkgSpecifiers)
+    Nothing
+    targetSelectors
 
 -- | Given a set of 'TargetSelector's, resolve which 'UnitId's and
 -- 'ComponentTarget's they ought to refer to.
@@ -606,8 +669,9 @@ uniqueTargetSelectors = ordNub . allTargetSelectors
 -- this commands can use 'selectComponentTargetBasic', either directly or as
 -- a basis for their own @selectComponentTarget@ implementation.
 resolveTargets
-  :: forall err
-   . ( forall k
+  :: forall u err
+   . Ord u
+  => ( forall k
         . TargetSelector
        -> [AvailableTarget k]
        -> Either (TargetProblem err) [k]
@@ -617,14 +681,14 @@ resolveTargets
        -> AvailableTarget k
        -> Either (TargetProblem err) k
      )
-  -> ElaboratedInstallPlan
+  -> AvailableTargetIndexes u
   -> Maybe (SourcePackageDb)
   -> [TargetSelector]
-  -> Either [TargetProblem err] TargetsMap
+  -> Either [TargetProblem err] (TargetsMapX u)
 resolveTargets
   selectPackageTargets
   selectComponentTarget
-  installPlan
+  AvailableTargetIndexes{..}
   mPkgDb =
     fmap mkTargetsMap
       . either (Left . toList) Right
@@ -632,8 +696,8 @@ resolveTargets
       . map (\ts -> (,) ts <$> checkTarget ts)
     where
       mkTargetsMap
-        :: [(TargetSelector, [(UnitId, ComponentTarget)])]
-        -> TargetsMap
+        :: [(TargetSelector, [(u, ComponentTarget)])]
+        -> TargetsMapX u
       mkTargetsMap targets =
         Map.map nubComponentTargets $
           Map.fromListWith
@@ -643,9 +707,7 @@ resolveTargets
             , (uid, ct) <- cts
             ]
 
-      AvailableTargetIndexes{..} = availableTargetIndexes installPlan
-
-      checkTarget :: TargetSelector -> Either (TargetProblem err) [(UnitId, ComponentTarget)]
+      checkTarget :: TargetSelector -> Either (TargetProblem err) [(u, ComponentTarget)]
 
       -- We can ask to build any whole package, project-local or a dependency
       checkTarget bt@(TargetPackage _ (ordNub -> [pkgid]) mkfilter)
@@ -737,19 +799,19 @@ resolveTargets
         (\(es, xs) -> case es of [] -> Right xs; (e : es') -> Left (e :| es'))
           . partitionEithers
 
-data AvailableTargetIndexes = AvailableTargetIndexes
+data AvailableTargetIndexes u = AvailableTargetIndexes
   { availableTargetsByPackageIdAndComponentName
-      :: AvailableTargetsMap (PackageId, ComponentName)
+      :: AvailableTargetsMap (PackageId, ComponentName) u
   , availableTargetsByPackageId
-      :: AvailableTargetsMap PackageId
+      :: AvailableTargetsMap PackageId u
   , availableTargetsByPackageName
-      :: AvailableTargetsMap PackageName
+      :: AvailableTargetsMap PackageName u
   , availableTargetsByPackageNameAndComponentName
-      :: AvailableTargetsMap (PackageName, ComponentName)
+      :: AvailableTargetsMap (PackageName, ComponentName) u
   , availableTargetsByPackageNameAndUnqualComponentName
-      :: AvailableTargetsMap (PackageName, UnqualComponentName)
+      :: AvailableTargetsMap (PackageName, UnqualComponentName) u
   }
-type AvailableTargetsMap k = Map k [AvailableTarget (UnitId, ComponentName)]
+type AvailableTargetsMap k u = Map k [AvailableTarget (u, ComponentName)]
 
 -- We define a bunch of indexes to help 'resolveTargets' with resolving
 -- 'TargetSelector's to specific 'UnitId's.
@@ -760,7 +822,7 @@ type AvailableTargetsMap k = Map k [AvailableTarget (UnitId, ComponentName)]
 --
 -- They are all constructed lazily because they are not necessarily all used.
 --
-availableTargetIndexes :: ElaboratedInstallPlan -> AvailableTargetIndexes
+availableTargetIndexes :: ElaboratedInstallPlan -> AvailableTargetIndexes UnitId
 availableTargetIndexes installPlan = AvailableTargetIndexes{..}
   where
     availableTargetsByPackageIdAndComponentName
@@ -832,6 +894,86 @@ availableTargetIndexes installPlan = AvailableTargetIndexes{..}
             ElabComponent _ -> False
             ElabPackage _ -> null (pkgComponents (elabPkgDescription pkg))
         ]
+
+-- | Create available target indexes from source packages.
+--
+-- This is useful when we need to resolve targets before solver resolution.
+availableTargetIndexesFromSourcePackages
+  :: [PackageSpecifier UnresolvedSourcePackage] -> AvailableTargetIndexes PackageId
+availableTargetIndexesFromSourcePackages pkgSpecifiers = AvailableTargetIndexes{..}
+  where
+    -- Create a map of available targets from source packages
+    availableTargetsByPackageIdAndComponentName
+      :: Map (PackageId, ComponentName) [AvailableTarget (PackageId, ComponentName)]
+    availableTargetsByPackageIdAndComponentName =
+      Map.fromListWith (++) $
+        concat
+          [ [ ((pkgId, cname), [makeAvailableTarget pkgId cname])
+            | let pkgId = packageId pkg
+            , cname <- map componentName (pkgComponents $ flattenPackageDescription (srcpkgDescription pkg))
+            ]
+          | SpecificSourcePackage pkg <- pkgSpecifiers
+          ]
+
+    -- Helper to create an available target
+    makeAvailableTarget pkgId cname =
+      AvailableTarget
+        { availableTargetPackageId = pkgId
+        , availableTargetComponentName = cname
+        , availableTargetStatus = TargetBuildable (pkgId, cname) TargetRequestedByDefault
+        , availableTargetLocalToProject = True
+        }
+
+    -- Derive other indexes from the main one, just like in availableTargetIndexes
+    availableTargetsByPackageId
+      :: Map PackageId [AvailableTarget (PackageId, ComponentName)]
+    availableTargetsByPackageId =
+      Map.mapKeysWith
+        (++)
+        (\(pkgid, _cname) -> pkgid)
+        availableTargetsByPackageIdAndComponentName
+        `Map.union` availableTargetsEmptyPackages
+
+    -- Handle empty packages
+    availableTargetsEmptyPackages =
+      Map.fromList
+        [ (packageId pkg, [])
+        | SpecificSourcePackage pkg <- pkgSpecifiers
+        , null (pkgComponents (flattenPackageDescription (srcpkgDescription pkg)))
+        ]
+
+    availableTargetsByPackageName
+      :: Map PackageName [AvailableTarget (PackageId, ComponentName)]
+    availableTargetsByPackageName =
+      Map.mapKeysWith
+        (++)
+        packageName
+        availableTargetsByPackageId
+
+    availableTargetsByPackageNameAndComponentName
+      :: Map (PackageName, ComponentName) [AvailableTarget (PackageId, ComponentName)]
+    availableTargetsByPackageNameAndComponentName =
+      Map.mapKeysWith
+        (++)
+        (\(pkgid, cname) -> (packageName pkgid, cname))
+        availableTargetsByPackageIdAndComponentName
+
+    availableTargetsByPackageNameAndUnqualComponentName
+      :: Map (PackageName, UnqualComponentName) [AvailableTarget (PackageId, ComponentName)]
+    availableTargetsByPackageNameAndUnqualComponentName =
+      Map.mapKeysWith
+        (++)
+        ( \(pkgid, cname) ->
+            let pname = packageName pkgid
+                cname' = unqualComponentName pname cname
+             in (pname, cname')
+        )
+        availableTargetsByPackageIdAndComponentName
+      where
+        unqualComponentName :: PackageName -> ComponentName -> UnqualComponentName
+        unqualComponentName pkgname =
+          fromMaybe (packageNameToUnqualComponentName pkgname)
+            . componentNameString
 
 -- TODO: [research required] what if the solution has multiple
 --      versions of this package?

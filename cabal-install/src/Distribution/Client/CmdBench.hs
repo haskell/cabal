@@ -132,7 +132,7 @@ benchAction flags@NixStyleFlags{..} targetStrings globalFlags = do
       -- (as opposed to say build or haddock targets).
       targets <-
         either (reportTargetProblems verbosity) return $
-          resolveTargets
+          resolveTargetsFromSolver
             selectPackageTargets
             selectComponentTarget
             elaboratedPlan

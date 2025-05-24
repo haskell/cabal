@@ -3,7 +3,9 @@ import: project-cabal/ghc-latest.config
 import: project-cabal/pkgs.config
 import: project-cabal/constraints.config
 
-tests: True
+tests: False
+
+multi-repl: True
 
 -- if you are developing on a system without TH, use a `cabal.project.local`
 -- to disable this
