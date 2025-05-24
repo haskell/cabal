@@ -171,7 +171,7 @@ runConfigureScript cfg flags programDb hp = do
                )
              ]
   let extraPath = fromNubList $ configProgramPathExtra cfg
-  let mkFlagsEnv fs var = maybe (unwords fs) (++ (" " ++ unwords fs)) (lookup var env)
+      mkFlagsEnv fs var = maybe (unwords fs) (++ (" " ++ unwords fs)) (lookup var env)
       spSep = [FilePath.searchPathSeparator]
       pathEnv =
         maybe

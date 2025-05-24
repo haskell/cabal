@@ -138,7 +138,8 @@ configureTests =
         assertEqual
           "local"
           (Just ghcFlags)
-          (Map.lookup "ghc" (getMapMappend (packageConfigProgramArgs projectConfigLocalPackages)))
+          (filter (/= "-hide-all-packages") <$> --hide-all-packages gets added by default; ignore it for this test
+            Map.lookup "ghc" (getMapMappend (packageConfigProgramArgs projectConfigLocalPackages)))
     ]
 
 projectDir :: FilePath
