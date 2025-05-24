@@ -12,3 +12,13 @@ package cabal-install
 
 package Cabal
   flags: +git-rev
+
+source-repository-package
+  type: git
+  location: https://github.com/zlonast/win32.git
+  tag: 1805af5af1db5131b23b14edf0e2ba8c16e6710f
+
+source-repository-package
+  type: git
+  location: https://github.com/zlonast/directory.git
+  tag: e67c28da0f06d82d1f19dfcc2e0fb51e45a8399b
