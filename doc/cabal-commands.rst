@@ -472,7 +472,7 @@ builds with ``cabal build`` are performed with the compiler
 
 -  Any flag accepted by ``cabal configure`` beyond
    ``./Setup configure``, namely ``--cabal-lib-version``,
-   ``--constraint``, ``--preference`` and ``--solver.``
+   ``--constraint`` and ``--preference``.
 
 -  Any flag accepted by ``cabal install`` beyond ``./Setup configure``.
 
