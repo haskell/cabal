@@ -169,6 +169,7 @@ data CabalException
   | UnknownVersionDb String VersionRange FilePath
   | MissingCoveredInstalledLibrary UnitId
   | SetupHooksException SetupHooksException
+  | MultiReplDoesNotSupportComplexReexportedModules PackageName ComponentName
   deriving (Show)
 
 exceptionCode :: CabalException -> Int
@@ -302,6 +303,7 @@ exceptionCode e = case e of
   MissingCoveredInstalledLibrary{} -> 9341
   SetupHooksException err ->
     setupHooksExceptionCode err
+  MultiReplDoesNotSupportComplexReexportedModules{} -> 9355
 
 versionRequirement :: VersionRange -> String
 versionRequirement range
@@ -795,3 +797,10 @@ exceptionMessage e = case e of
       ++ "' in package database stack."
   SetupHooksException err ->
     setupHooksExceptionMessage err
+  MultiReplDoesNotSupportComplexReexportedModules pname cname ->
+    "When attempting start the repl for "
+      ++ showComponentName cname
+      ++ " from package "
+      ++ prettyShow pname
+      ++ " a module renaming was found.\n"
+      ++ "Multi-repl does not work with complicated reexported-modules until GHC-9.12."
