@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
@@ -377,6 +378,18 @@ includePaths lbi bi clbi odir =
          | dir <- mapMaybe (symbolicPathRelative_maybe . unsafeCoerceSymbolicPath) $ includeDirs bi
          ]
 
+allGhcOptExtra :: BuildInfo -> [String]
+allGhcOptExtra bi =
+  ["-optP" ++ opt | opt <- cppOptions bi]
+    ++ ["-opta" ++ opt | opt <- asmOptions bi]
+    ++ ["-optJSP" ++ opt | opt <- jsppOptions bi]
+    ++ ["-optl" ++ opt | opt <- ldOptions bi]
+    ++ ["-optc" ++ opt | opt <- ccOptions bi]
+#if __GLASGOW_HASKELL__ >= 810
+    -- Pass -optcxx for GHC >= 8.10 https://github.com/haskell/cabal/pull/7072
+    ++ ["-optcxx" ++ opt | opt <- cxxOptions bi]
+#endif
+
 componentCcGhcOptions
   :: Verbosity
   -> LocalBuildInfo
@@ -581,7 +594,7 @@ componentGhcOptions verbosity lbi bi clbi odir =
         , ghcOptOutputDir = toFlag $ coerceSymbolicPath odir
         , ghcOptOptimisation = toGhcOptimisation (withOptimization lbi)
         , ghcOptDebugInfo = toFlag (withDebugInfo lbi)
-        , ghcOptExtra = hcOptions GHC bi
+        , ghcOptExtra = allGhcOptExtra bi <> hcOptions GHC bi
         , ghcOptExtraPath = toNubListR exe_paths
         , ghcOptLanguage = toFlag (fromMaybe Haskell98 (defaultLanguage bi))
         , -- Unsupported extensions have already been checked by configure
