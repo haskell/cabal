@@ -214,6 +214,7 @@ data CheckExplanation
   | OptWithRts String
   | COptONumber String WarnLang
   | COptCPP String
+  | OptJSPP String
   | OptAlternatives String String [(String, String)]
   | RelativeOutside String FilePath
   | AbsolutePath String FilePath
@@ -380,6 +381,7 @@ data CheckExplanationID
   | CIOptWithRts
   | CICOptONumber
   | CICOptCPP
+  | CIOptJSPP
   | CIOptAlternatives
   | CIRelativeOutside
   | CIAbsolutePath
@@ -525,6 +527,7 @@ checkExplanationId (OptRts{}) = CIOptRts
 checkExplanationId (OptWithRts{}) = CIOptWithRts
 checkExplanationId (COptONumber{}) = CICOptONumber
 checkExplanationId (COptCPP{}) = CICOptCPP
+checkExplanationId (OptJSPP{}) = CIOptJSPP
 checkExplanationId (OptAlternatives{}) = CIOptAlternatives
 checkExplanationId (RelativeOutside{}) = CIRelativeOutside
 checkExplanationId (AbsolutePath{}) = CIAbsolutePath
@@ -677,6 +680,7 @@ ppCheckExplanationId CIOptRts = "option-rtsopts"
 ppCheckExplanationId CIOptWithRts = "option-with-rtsopts"
 ppCheckExplanationId CICOptONumber = "option-opt-c"
 ppCheckExplanationId CICOptCPP = "cpp-options"
+ppCheckExplanationId CIOptJSPP = "jspp-options"
 ppCheckExplanationId CIOptAlternatives = "misplaced-c-opt"
 ppCheckExplanationId CIRelativeOutside = "relative-path-outside"
 ppCheckExplanationId CIAbsolutePath = "absolute-path"
@@ -1086,6 +1090,8 @@ ppExplanation (COptONumber prefix label) =
     ++ " --disable-optimization flag."
 ppExplanation (COptCPP opt) =
   "'cpp-options: " ++ opt ++ "' is not a portable C-preprocessor flag."
+ppExplanation (OptJSPP opt) =
+  "'jspp-options: " ++ opt ++ "' is not a portable JavaScript-preprocessor flag."
 ppExplanation (OptAlternatives badField goodField flags) =
   "Instead of "
     ++ quote (badField ++ ": " ++ unwords badFlags)

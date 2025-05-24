@@ -1992,6 +1992,11 @@ system-dependent values for these fields.
     arguments are compiler-dependent, this field is more useful with the
     setup described in the section on `system-dependent parameters`_.
 
+.. pkg-field:: jspp-options: token list
+
+    Command-line arguments for pre-processing JS code. Applies to pre-processed
+    Haskell source like .js. Flags here will be passed as ``-optJSP`` flags to GHC.
+
 .. pkg-field:: cpp-options: token list
 
     Command-line arguments for pre-processing Haskell code. Applies to

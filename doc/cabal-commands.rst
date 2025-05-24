@@ -1405,6 +1405,7 @@ A list of all warnings with their constructor:
 - ``option-with-rtsopts``: unnecessary ``-with-rtsopts``.
 - ``option-opt-c``: unnecessary ``-O[n]`` in C code.
 - ``cpp-options``: unportable ``-cpp-options`` flag.
+- ``jspp-options``: unportable ``-jspp-options`` flag.
 - ``misplaced-c-opt``: C-like options in wrong cabal field.
 - ``relative-path-outside``: relative path outside of source tree.
 - ``absolute-path``: absolute path where not allowed.

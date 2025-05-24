@@ -814,6 +814,7 @@ checkBuildInfoOptions t bi = do
   checkCLikeOptions LangC "cc-options" (ccOptions bi) ldOpts
   checkCLikeOptions LangCPlusPlus "cxx-options" (cxxOptions bi) ldOpts
   checkCPPOptions (cppOptions bi)
+  checkJSPOptions (jsppOptions bi)
 
 -- | Checks GHC options for commonly misused or non-portable flags.
 checkGHCOptions
@@ -901,6 +902,12 @@ checkGHCOptions title t opts = do
       checkAlternatives
         title
         "cpp-options"
+        ( [(flag, flag) | flag@('-' : 'D' : _) <- ghcNoRts]
+            ++ [(flag, flag) | flag@('-' : 'U' : _) <- ghcNoRts]
+        )
+      checkAlternatives
+        title
+        "jspp-options"
         ( [(flag, flag) | flag@('-' : 'D' : _) <- ghcNoRts]
             ++ [(flag, flag) | flag@('-' : 'U' : _) <- ghcNoRts]
         )
@@ -1091,5 +1098,22 @@ checkCPPOptions opts = do
         checkP
           (not $ any (`isPrefixOf` opt) ["-D", "-U", "-I"])
           (PackageBuildWarning (COptCPP opt))
+    )
+    opts
+
+checkJSPOptions
+  :: Monad m
+  => [String] -- Options in String form.
+  -> CheckM m ()
+checkJSPOptions opts = do
+  checkAlternatives
+    "jspp-options"
+    "include-dirs"
+    [(flag, dir) | flag@('-' : 'I' : dir) <- opts]
+  mapM_
+    ( \opt ->
+        checkP
+          (not $ any (`isPrefixOf` opt) ["-D", "-U", "-I"])
+          (PackageBuildWarning (OptJSPP opt))
     )
     opts
