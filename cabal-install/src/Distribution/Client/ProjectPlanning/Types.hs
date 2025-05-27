@@ -24,7 +24,8 @@ module Distribution.Client.ProjectPlanning.Types
   , elabOrderLibDependencies
   , elabExeDependencies
   , elabOrderExeDependencies
-  , elabSetupDependencies
+  , elabSetupLibDependencies
+  , elabSetupExeDependencies
   , elabPkgConfigDependencies
   , elabInplaceDependencyBuildCacheFiles
   , elabRequiresRegistration
@@ -585,25 +586,28 @@ elabDistDirParams shared elab =
 -- use 'elabLibDependencies'.  This method is the same as
 -- 'nodeNeighbors'.
 --
--- NB: this method DOES include setup deps.
+-- Note: this method DOES include setup deps.
 elabOrderDependencies :: ElaboratedConfiguredPackage -> [WithStage UnitId]
 elabOrderDependencies elab =
   elabOrderLibDependencies elab ++ elabOrderExeDependencies elab
 
--- | Like 'elabOrderDependencies', but only returns dependencies on
--- libraries.
+-- | The result includes setup dependencies
 elabOrderLibDependencies :: ElaboratedConfiguredPackage -> [WithStage UnitId]
 elabOrderLibDependencies elab =
-  case elabPkgOrComp elab of
-    ElabPackage pkg ->
-      ordNub
-        [ WithStage (pkgStage pkg) (newSimpleUnitId (confInstId cid))
-        | cid <- CD.flatDeps (map fst <$> pkgLibDependencies pkg)
-        ]
-    ElabComponent comp ->
-      [ WithStage (elabStage elab) c
-      | c <- compOrderLibDependencies comp
-      ]
+  ordNub $
+    [ fmap (newSimpleUnitId . confInstId) dep
+    | (dep, _promised) <- elabLibDependencies elab ++ elabSetupLibDependencies elab
+    ]
+
+-- | The result includes setup dependencies
+elabOrderExeDependencies :: ElaboratedConfiguredPackage -> [WithStage UnitId]
+elabOrderExeDependencies elab =
+  -- Compare with elabOrderLibDependencies. The setup dependencies here do not need
+  -- any special attention because the stage is already included in pkgExeDependencies.
+  map (fmap (newSimpleUnitId . confInstId)) $
+    case elabPkgOrComp elab of
+      ElabPackage pkg -> CD.flatDeps (pkgExeDependencies pkg)
+      ElabComponent comp -> compExeDependencies comp
 
 -- | The library dependencies (i.e., the libraries we depend on, NOT
 -- the dependencies of the library), NOT including setup dependencies.
@@ -621,20 +625,40 @@ elabLibDependencies elab =
       | (c, promised) <- compLibDependencies comp
       ]
 
--- | Like 'elabOrderDependencies', but only returns dependencies on
--- executables.  (This coincides with 'elabExeDependencies'.)
-elabOrderExeDependencies :: ElaboratedConfiguredPackage -> [WithStage UnitId]
-elabOrderExeDependencies =
-  fmap (fmap newSimpleUnitId) . elabExeDependencies
+-- | The setup dependencies (the library dependencies of the setup executable;
+-- note that it is not legal for setup scripts to have executable
+-- dependencies at the moment.)
+elabSetupLibDependencies :: ElaboratedConfiguredPackage -> [(WithStage ConfiguredId, Bool)]
+elabSetupLibDependencies elab =
+  case elabPkgOrComp elab of
+    ElabPackage pkg ->
+      ordNub
+        [ (WithStage (prevStage (pkgStage pkg)) cid, promised)
+        | (cid, promised) <- CD.setupDeps (pkgLibDependencies pkg)
+        ]
+    -- TODO: Custom setups not supported for components yet.  When
+    -- they are, need to do this differently
+    ElabComponent _ -> []
+
+-- | This would not be allowed actually. See comment on elabSetupLibDependencies.
+elabSetupExeDependencies :: ElaboratedConfiguredPackage -> [WithStage ComponentId]
+elabSetupExeDependencies elab =
+  map (fmap confInstId) $
+    case elabPkgOrComp elab of
+      ElabPackage pkg -> CD.setupDeps (pkgExeDependencies pkg)
+      -- TODO: Custom setups not supported for components yet.  When
+      -- they are, need to do this differently
+      ElabComponent _ -> []
 
 -- | The executable dependencies (i.e., the executables we depend on);
 -- these are the executables we must add to the PATH before we invoke
 -- the setup script.
 elabExeDependencies :: ElaboratedConfiguredPackage -> [WithStage ComponentId]
-elabExeDependencies elab = fmap (fmap confInstId) $
-  case elabPkgOrComp elab of
-    ElabPackage pkg -> CD.nonSetupDeps (pkgExeDependencies pkg)
-    ElabComponent comp -> compExeDependencies comp
+elabExeDependencies elab =
+  map (fmap confInstId) $
+    case elabPkgOrComp elab of
+      ElabPackage pkg -> CD.nonSetupDeps (pkgExeDependencies pkg)
+      ElabComponent comp -> compExeDependencies comp
 
 -- | This returns the paths of all the executables we depend on; we
 -- must add these paths to PATH before invoking the setup script.
@@ -645,22 +669,6 @@ elabExeDependencyPaths elab =
   case elabPkgOrComp elab of
     ElabPackage pkg -> map snd $ CD.nonSetupDeps (pkgExeDependencyPaths pkg)
     ElabComponent comp -> map snd (compExeDependencyPaths comp)
-
--- | The setup dependencies (the library dependencies of the setup executable;
--- note that it is not legal for setup scripts to have executable
--- dependencies at the moment.)
-elabSetupDependencies :: ElaboratedConfiguredPackage -> [(WithStage ConfiguredId, Bool)]
-elabSetupDependencies elab =
-  case elabPkgOrComp elab of
-    -- FIXME: this should be wrong. Setup and its dependencies can be on a different stage. Where did that information go?
-    ElabPackage pkg ->
-      ordNub
-        [ (WithStage (pkgStage pkg) cid, promised)
-        | (cid, promised) <- CD.setupDeps (pkgLibDependencies pkg)
-        ]
-    -- TODO: Custom setups not supported for components yet.  When
-    -- they are, need to do this differently
-    ElabComponent _ -> []
 
 elabPkgConfigDependencies :: ElaboratedConfiguredPackage -> [(PkgconfigName, Maybe PkgconfigVersion)]
 elabPkgConfigDependencies ElaboratedConfiguredPackage{elabPkgOrComp = ElabPackage pkg} =

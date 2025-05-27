@@ -3962,9 +3962,9 @@ setupHsScriptOptions
       , usePackageDB = elabSetupPackageDBStack
       , usePackageIndex = Nothing
       , useDependencies =
-          [ (uid, srcid)
-          | (WithStage _ (ConfiguredId srcid (Just (CLibName LMainLibName)) uid), _) <-
-              elabSetupDependencies elab
+          [ (confInstId cid, confSrcId cid)
+          | -- TODO: we should filter for dependencies on libraries but that should be implicit in elabSetupLibDependencies
+          (WithStage _ cid, _promised) <- elabSetupLibDependencies elab
           ]
       , useDependenciesExclusive = True
       , useVersionMacros = elabSetupScriptStyle == SetupCustomExplicitDeps
