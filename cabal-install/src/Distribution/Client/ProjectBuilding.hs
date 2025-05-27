@@ -341,11 +341,56 @@ rebuildTargets
   -> IO BuildOutcomes
 rebuildTargets
   verbosity
+  projectConfig
+  distDirLayout
+  storeDirLayout
+  installPlan
+  sharedPackageConfig
+  pkgsBuildStatus
+  buildSettings
+    | buildSettingOnlyDownload buildSettings = do
+        rebuildTargets' verbosity projectConfig distDirLayout installPlan sharedPackageConfig pkgsBuildStatus buildSettings $
+          \downloadMap _jobControl pkg pkgBuildStatus ->
+            rebuildTargetOnlyDownload
+              verbosity
+              downloadMap
+              pkg
+              pkgBuildStatus
+    | otherwise = do
+        registerLock <- newLock -- serialise registration
+        cacheLock <- newLock -- serialise access to setup exe cache
+        rebuildTargets' verbosity projectConfig distDirLayout installPlan sharedPackageConfig pkgsBuildStatus buildSettings $
+          \downloadMap jobControl pkg pkgBuildStatus ->
+            rebuildTarget
+              verbosity
+              distDirLayout
+              storeDirLayout
+              (jobControlSemaphore jobControl)
+              buildSettings
+              downloadMap
+              registerLock
+              cacheLock
+              sharedPackageConfig
+              installPlan
+              pkg
+              pkgBuildStatus
+
+rebuildTargets'
+  :: Verbosity
+  -> ProjectConfig
+  -> DistDirLayout
+  -> ElaboratedInstallPlan
+  -> ElaboratedSharedConfig
+  -> BuildStatusMap
+  -> BuildTimeSettings
+  -> (AsyncFetchMap -> JobControl IO (Graph.Key (GenericReadyPackage ElaboratedConfiguredPackage), Either BuildFailure BuildResult) -> GenericReadyPackage ElaboratedConfiguredPackage -> BuildStatus -> IO BuildResult)
+  -> IO BuildOutcomes
+rebuildTargets'
+  verbosity
   ProjectConfig
     { projectConfigBuildOnly = config
     }
-  distDirLayout@DistDirLayout{..}
-  storeDirLayout
+  DistDirLayout{..}
   installPlan
   sharedPackageConfig
   pkgsBuildStatus
@@ -353,10 +398,9 @@ rebuildTargets
     { buildSettingNumJobs
     , buildSettingKeepGoing
     }
+  act
     | fromFlagOrDefault False (projectConfigOfflineMode config) && not (null packagesToDownload) = return offlineError
     | otherwise = do
-        registerLock <- newLock -- serialise registration
-        cacheLock <- newLock -- serialise access to setup exe cache
         -- TODO: [code cleanup] eliminate setup exe cache
         info verbosity $
           "Executing install plan "
@@ -384,26 +428,13 @@ rebuildTargets
               InstallPlan.execute
                 jobControl
                 keepGoing
-                (BuildFailure Nothing . DependentFailed . packageId)
+                (BuildFailure Nothing . DependentFailed . Graph.nodeKey)
                 installPlan
                 $ \pkg ->
                   -- TODO: review exception handling
                   handle (\(e :: BuildFailure) -> return (Left e)) $ fmap Right $ do
                     let pkgBuildStatus = Map.findWithDefault (error "rebuildTargets") (nodeKey pkg) pkgsBuildStatus
-
-                    rebuildTarget
-                      verbosity
-                      distDirLayout
-                      storeDirLayout
-                      (jobControlSemaphore jobControl)
-                      buildSettings
-                      downloadMap
-                      registerLock
-                      cacheLock
-                      sharedPackageConfig
-                      installPlan
-                      pkg
-                      pkgBuildStatus
+                    act downloadMap jobControl pkg pkgBuildStatus
     where
       keepGoing = buildSettingKeepGoing
       withRepoCtx =
@@ -433,29 +464,6 @@ rebuildTargets
               _ -> pure ()
           _ -> pure ()
 
-      -- createPackageDBIfMissing _ _ _ _ = return ()
-
-      -- -- all the package dbs we may need to create
-      -- (Set.toList . Set.fromList)
-      --   [ pkgdb
-      --   | InstallPlan.Configured elab <- InstallPlan.toList installPlan
-      --   , pkgdb <-
-      --       concat
-      --         [ elabBuildPackageDBStack elab
-      --         , elabRegisterPackageDBStack elab
-      --         , elabSetupPackageDBStack elab
-      --         ]
-      --   ]
-      -- createPackageDBIfMissing
-      --   verbosity
-      --   compiler
-      --   progdb
-      --   (SpecificPackageDB dbPath) = do
-      --     exists <- Cabal.doesPackageDBExist dbPath
-      --     unless exists $ do
-      --       createDirectoryIfMissingVerbose verbosity True (takeDirectory dbPath)
-      --       Cabal.createPackageDB verbosity compiler progdb False dbPath
-      -- createPackageDBIfMissing _ _ _ _ = return ()
       offlineError :: BuildOutcomes
       offlineError = Map.fromList . map makeBuildOutcome $ packagesToDownload
         where
@@ -623,6 +631,23 @@ rebuildTarget
           buildStatus
           srcdir
           builddir
+
+rebuildTargetOnlyDownload
+  :: Verbosity
+  -> AsyncFetchMap
+  -> GenericReadyPackage ElaboratedConfiguredPackage
+  -> BuildStatus
+  -> IO BuildResult
+rebuildTargetOnlyDownload
+  verbosity
+  downloadMap
+  (ReadyPackage pkg)
+  pkgBuildStatus = do
+    case pkgBuildStatus of
+      BuildStatusDownload ->
+        void $ waitAsyncPackageDownload verbosity downloadMap pkg
+      _ -> return ()
+    return $ BuildResult DocsNotTried TestsNotTried Nothing
 
 -- TODO: [nice to have] do we need to use a with-style for the temp
 -- files for downloading http packages, or are we going to cache them
