@@ -542,7 +542,8 @@ rebuildTarget
             void $ waitAsyncPackageDownload verbosity downloadMap pkg
           _ -> return ()
         return $ BuildResult DocsNotTried TestsNotTried Nothing
-    | otherwise =
+    | otherwise = do
+        info verbosity $ "[rebuildTarget] Rebuilding " ++ prettyShow (nodeKey pkg) ++ " with current status " ++ buildStatusToString pkgBuildStatus
         -- We rely on the 'BuildStatus' to decide which phase to start from:
         case pkgBuildStatus of
           BuildStatusDownload -> downloadPhase
@@ -585,7 +586,8 @@ rebuildTarget
       -- would only start from download or unpack phases.
       --
       rebuildPhase :: BuildStatusRebuild -> SymbolicPath CWD (Dir Pkg) -> IO BuildResult
-      rebuildPhase buildStatus srcdir =
+      rebuildPhase buildStatus srcdir = do
+        info verbosity $ "[rebuildPhase] Rebuilding " ++ prettyShow (nodeKey pkg) ++ " in " ++ prettyShow srcdir
         assert
           (isInplaceBuildStyle $ elabBuildStyle pkg)
           buildInplace
@@ -600,7 +602,8 @@ rebuildTarget
       -- TODO: [nice to have] ^^ do this relative stuff better
 
       buildAndInstall :: SymbolicPath CWD (Dir Pkg) -> SymbolicPath Pkg (Dir Dist) -> IO BuildResult
-      buildAndInstall srcdir builddir =
+      buildAndInstall srcdir builddir = do
+        info verbosity $ "[buildAndInstall] Building and installing " ++ prettyShow (nodeKey pkg) ++ " in " ++ prettyShow srcdir
         buildAndInstallUnpackedPackage
           verbosity
           distDirLayout
@@ -616,8 +619,9 @@ rebuildTarget
           builddir
 
       buildInplace :: BuildStatusRebuild -> SymbolicPath CWD (Dir Pkg) -> SymbolicPath Pkg (Dir Dist) -> IO BuildResult
-      buildInplace buildStatus srcdir builddir =
+      buildInplace buildStatus srcdir builddir = do
         -- TODO: [nice to have] use a relative build dir rather than absolute
+        info verbosity $ "[buildInplace] Building inplace " ++ prettyShow (nodeKey pkg) ++ " in " ++ prettyShow srcdir
         buildInplaceUnpackedPackage
           verbosity
           distDirLayout
