@@ -2523,16 +2523,17 @@ elaborateInstallPlan
       shouldBuildInplaceOnly :: SolverPackage loc -> Bool
       shouldBuildInplaceOnly pkg =
         Set.member
-          (packageId pkg)
+          (solverId (ResolverPackage.Configured pkg))
           pkgsToBuildInplaceOnly
 
-      pkgsToBuildInplaceOnly :: Set PackageId
+      -- The reverse dependencies of solver packages which match a package id in pkgLocalToProject.
+      pkgsToBuildInplaceOnly :: Set SolverId
       pkgsToBuildInplaceOnly =
         Set.fromList
-          [ packageId pkg
-          | stage <- stages
-          , let solverIds = [PlannedId stage pkgId | pkgId <- Set.toList pkgsLocalToProject]
-          , pkg <- SolverInstallPlan.reverseDependencyClosure solverPlan solverIds
+          [ solverId pkg
+          | spkg <- SolverInstallPlan.toList solverPlan
+          , packageId spkg `elem` pkgsLocalToProject
+          , pkg <- SolverInstallPlan.reverseDependencyClosure solverPlan [solverId spkg]
           ]
 
       isLocalToProject :: Package pkg => pkg -> Bool
