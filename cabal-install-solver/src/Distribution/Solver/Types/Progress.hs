@@ -1,7 +1,7 @@
 module Distribution.Solver.Types.Progress
     ( Progress(..)
     , foldProgress
-    , Message(..)
+    , SolverState(..)
     , Entry(..)
     , EntryAtLevel(..)
     , SummarizedMessage(..)
@@ -13,9 +13,10 @@ import Distribution.Solver.Compat.Prelude hiding (fail)
 import Distribution.Solver.Modular.Tree
     ( FailReason(..), POption(..) )
 import Distribution.Solver.Types.PackagePath ( QPN )
+import Distribution.Solver.Types.SummarizedMessage
 import Distribution.Solver.Modular.Flag ( QSN, QFN )
 import Distribution.Solver.Modular.Dependency
-    ( ConflictSet, QGoalReason, GoalReason, Goal )
+    ( ConflictSet, Goal )
 import qualified Distribution.Solver.Modular.ConflictSet as CS
 
 -- | A type to represent the unfolding of an expensive long running
@@ -72,20 +73,3 @@ data Message =
   | Success
   | Failure ConflictSet FailReason
 
-data Entry
-  = EntryPackageGoal QPN QGoalReason
-  | EntryRejectF QFN Bool ConflictSet FailReason
-  | EntryRejectS QSN Bool ConflictSet FailReason
-  | EntrySkipping (Set CS.Conflict)
-  | EntryTryingF QFN Bool
-  | EntryTryingP QPN POption (Maybe (GoalReason QPN))
-  | EntryTryingS QSN Bool
-  | EntryRejectMany QPN [POption] ConflictSet FailReason
-  | EntrySkipMany QPN [POption] (Set CS.Conflict)
-  | EntryUnknownPackage QPN (GoalReason QPN)
-  | EntrySuccess
-  | EntryFailure ConflictSet FailReason
-
-data EntryAtLevel = AtLevel Int Entry
-
-data SummarizedMessage = SummarizedMsg EntryAtLevel | ErrorMsg String

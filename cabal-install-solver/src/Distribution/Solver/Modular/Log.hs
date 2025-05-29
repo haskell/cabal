@@ -7,7 +7,7 @@ import Prelude ()
 import Distribution.Solver.Compat.Prelude
 
 import Distribution.Solver.Types.Progress
-    ( Progress(Done, Fail), foldProgress, SummarizedMessage, Message )
+    ( Progress(Done, Fail), foldProgress, SummarizedMessage, SolverState )
 import Distribution.Solver.Modular.ConflictSet
     ( ConflictMap, ConflictSet )
 import Distribution.Solver.Modular.RetryLog

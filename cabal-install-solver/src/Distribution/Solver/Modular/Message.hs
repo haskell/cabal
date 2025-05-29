@@ -4,10 +4,6 @@ module Distribution.Solver.Modular.Message (
     Message(..),
     summarizeMessages,
     renderSummarizedMessage,
-
-    -- Required by the doctests, but not used elsewhere so export this
-    -- to avoid compiler warnings.
-    showOptions,
   ) where
 
 import qualified Data.List as L
@@ -53,7 +49,7 @@ import Distribution.Solver.Types.Progress
       SummarizedMessage(..),
       EntryAtLevel(..),
       Entry(..),
-      Message(..) )
+      SolverState(..) )
 import Distribution.Solver.Types.ProjectConfigPath
     ( docProjectConfigPathFailReason)
 import Distribution.Types.LibraryName
@@ -78,7 +74,8 @@ displayMessage (EntryRejectF qfn b c fr) = "rejecting: " ++ showQFNBool qfn b ++
 displayMessage (EntryRejectS qsn b c fr) = "rejecting: " ++ showQSNBool qsn b ++ showFR c fr
 displayMessage (EntrySkipping cs) = "skipping: " ++ showConflicts cs
 displayMessage (EntryTryingF qfn b) = "trying: " ++ showQFNBool qfn b
-displayMessage (EntryTryingP qpn i mgr) = "trying: " ++ showQPNPOpt qpn i ++ maybe "" showGR mgr
+displayMessage (EntryTryingP qpn i) = "trying: " ++ showOptions qpn [i]
+displayMessage (EntryTryingNewP qpn i gr) = "trying: " ++ showOptions qpn [i] ++ showGR gr
 displayMessage (EntryTryingS qsn b) = "trying: " ++ showQSNBool qsn b
 displayMessage (EntryUnknownPackage qpn gr) = "unknown package: " ++ showQPN qpn ++ showGR gr
 displayMessage EntrySuccess = "done"
@@ -93,10 +90,9 @@ showQPNConflictSet :: QPN -> [POption] -> String
 showQPNConflictSet qpn popts =
   case popts of
     [] -> ""
-    [x] -> showQPNPOpt qpn x
-    x:xs -> L.intercalate ", " (showQPNPOpt qpn x : map (\(POption i _) -> showI i) xs)
+    x:xs -> L.intercalate ", " (showOptions qpn [x] : map (\(POption i _) -> showI i) xs)
 
--- | Transforms the structured message type to actual messages (SummarizedMsg s).
+-- | Transforms the structured message type to actual messages (SummarizedMessage s).
 --
 -- The log contains level numbers, which are useful for any trace that involves
 -- backtracking, because only the level numbers will allow to keep track of
@@ -125,7 +121,7 @@ summarizeMessages = go 0
 
     -- "Trying ..." message when a new goal is started
     go !l (Step (Next (Goal (P _  ) gr)) (Step (TryP qpn' i) ms@(Step Enter (Step (Next _) _)))) =
-        Step (SummarizedMsg $ AtLevel l $ (EntryTryingP qpn' i (Just gr))) (go l ms)
+        Step (SummarizedMsg $ AtLevel l $ (EntryTryingNewP qpn' i gr)) (go l ms)
 
     go !l (Step (Next (Goal (P qpn) gr)) (Step (Failure _c UnknownPackage) ms)) =
         Step (SummarizedMsg $ AtLevel l $ (EntryUnknownPackage qpn gr)) (go l ms)
@@ -134,7 +130,7 @@ summarizeMessages = go 0
     go !l (Step Enter                    ms) = go (l+1) ms
     go !l (Step Leave                    ms) = go (l-1) ms
 
-    go !l (Step (TryP qpn i)             ms) = Step (SummarizedMsg $ AtLevel l $ (EntryTryingP qpn i Nothing)) (go l ms)
+    go !l (Step (TryP qpn i)             ms) = Step (SummarizedMsg $ AtLevel l $ (EntryTryingP qpn i)) (go l ms)
     go !l (Step (TryF qfn b)             ms) = Step (SummarizedMsg $ AtLevel l $ (EntryTryingF qfn b)) (go l ms)
     go !l (Step (TryS qsn b)             ms) = Step (SummarizedMsg $ AtLevel l $ (EntryTryingS qsn b)) (go l ms)
     go !l (Step (Next (Goal (P qpn) gr)) ms) = Step (SummarizedMsg $ AtLevel l $ (EntryPackageGoal qpn gr)) (go l ms)
@@ -155,6 +151,7 @@ summarizeMessages = go 0
               -> Progress SummarizedMessage a b
     goPReject l qpn is c fr (Step (TryP qpn' i) (Step Enter (Step (Failure _ fr') (Step Leave ms))))
       | qpn == qpn' && fr == fr' =
+        -- By prepending (i : is) we reverse the order of the instances.
         goPReject l qpn (i : is) c fr ms
     goPReject l qpn is c fr ms =
         Step (SummarizedMsg $ AtLevel l $ (EntryRejectMany qpn is c fr)) (go l ms)
@@ -291,12 +288,6 @@ showOptions q xs = showQPN q ++ "; " ++ (L.intercalate ", "
     else showI i -- Don't show the package, just the version
   | x@(POption i linkedTo) <- xs
   ])
-
-showQPNPOpt :: QPN -> POption -> String
-showQPNPOpt qpn@(Q _pp pn) (POption i linkedTo) =
-  case linkedTo of
-    Nothing  -> showPI (PI qpn i) -- Consistent with prior to POption
-    Just pp' -> showQPN qpn ++ "~>" ++ showPI (PI (Q pp' pn) i)
 
 showGR :: QGoalReason -> String
 showGR UserGoal            = " (user goal)"

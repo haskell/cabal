@@ -149,13 +149,13 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
 
     createErrorMsg :: SolverFailure
                    -> RetryLog SummarizedMessage String (Assignment, RevDepMap)
-    createErrorMsg failure@(ExhaustiveSearch cs _cm) =
+    createErrorMsg failure@(ExhaustiveSearch cs cm) =
       if asBool $ minimizeConflictSet sc
       then continueWith (mkErrorMsg ("Found no solution after exhaustively searching the "
                           ++ "dependency tree. Rerunning the dependency solver "
                           ++ "to minimize the conflict set ({"
                           ++ showConflictSet cs ++ "}).")) $
-           retry (tryToMinimizeConflictSet (runSolver printFullLog) sc cs _cm) $
+           retry (tryToMinimizeConflictSet (runSolver printFullLog) sc cs cm) $
                \case
                   ExhaustiveSearch cs' cm' ->
                       fromProgress $ Fail $

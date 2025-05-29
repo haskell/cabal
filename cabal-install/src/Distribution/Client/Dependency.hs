@@ -69,40 +69,26 @@ module Distribution.Client.Dependency
 
 import Distribution.Client.Compat.Prelude
 
-import Control.Exception
-  ( assert
-  )
-import Data.List
-  ( maximumBy
-  )
-import qualified Data.Map as Map
-import qualified Data.Set as Set
 import Distribution.Client.Dependency.Types
   ( PackagesPreferenceDefault (..)
   )
 import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
 import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
-import Distribution.Client.Types.AllowNewer
+import Distribution.Client.Types
   ( AllowNewer (..)
   , AllowOlder (..)
+  , PackageSpecifier (..)
   , RelaxDepMod (..)
   , RelaxDepScope (..)
   , RelaxDepSubject (..)
   , RelaxDeps (..)
   , RelaxedDep (..)
-  , isRelaxDeps
-  )
-import Distribution.Client.Types.PackageLocation
-  ( UnresolvedPkgLoc
+  , SourcePackageDb (SourcePackageDb)
+  , UnresolvedPkgLoc
   , UnresolvedSourcePackage
-  )
-import Distribution.Client.Types.PackageSpecifier
-  ( PackageSpecifier (..)
+  , isRelaxDeps
   , pkgSpecifierConstraints
   , pkgSpecifierTarget
-  )
-import Distribution.Client.Types.SourcePackageDb
-  ( SourcePackageDb (SourcePackageDb)
   )
 import Distribution.Client.Utils
   ( MergeResult (..)
@@ -137,80 +123,13 @@ import Distribution.Solver.Modular
   , SolverConfig (..)
   , modularResolver
   )
-import Distribution.Solver.Modular.Message (renderSummarizedMessage)
-import Distribution.Solver.Types.ComponentDeps (ComponentDeps)
-import qualified Distribution.Solver.Types.ComponentDeps as CD
-import Distribution.Solver.Types.ConstraintSource
-  ( ConstraintSource
-      ( ConstraintSetupCabalMaxVersion
-      , ConstraintSetupCabalMinVersion
-      , ConstraintSourceNonReinstallablePackage
-      , ConstraintSourceProfiledDynamic
-      )
-  , showConstraintSource
+import Distribution.Solver.Modular.Message
+  ( renderSummarizedMessage
   )
-import Distribution.Solver.Types.DependencyResolver
-  ( DependencyResolver
-  )
-import Distribution.Solver.Types.InstalledPreference as Preference
-  ( InstalledPreference (..)
-  )
-import Distribution.Solver.Types.LabeledPackageConstraint
-  ( LabeledPackageConstraint (..)
-  , unlabelPackageConstraint
-  )
-import Distribution.Solver.Types.OptionalStanza
-  ( OptionalStanza
-  , enableStanzas
-  )
-import Distribution.Solver.Types.PackageConstraint
-  ( ConstraintScope (ScopeAnyQualifier, ScopeAnySetupQualifier)
-  , PackageConstraint (..)
-  , PackageProperty (..)
-  , scopeToPackageName
-  , scopeToplevel
-  , showPackageConstraint
-  )
-import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
-import Distribution.Solver.Types.PackagePath (QPN)
-import Distribution.Solver.Types.PackagePreferences
-  ( PackagePreferences (..)
-  )
-import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb)
-import Distribution.Solver.Types.Progress
-  ( Progress (..)
-  , SummarizedMessage
-  , foldProgress
-  )
-import Distribution.Solver.Types.ResolverPackage
-  ( ResolverPackage (Configured)
-  )
-import Distribution.Solver.Types.Settings
-  ( AllowBootLibInstalls (..)
-  , AvoidReinstalls (..)
-  , CountConflicts (..)
-  , EnableBackjumping (..)
-  , FineGrainedConflicts (..)
-  , IndependentGoals (..)
-  , MinimizeConflictSet (..)
-  , OnlyConstrained (OnlyConstrainedNone)
-  , ReorderGoals (..)
-  , ShadowPkgs (..)
-  , SolveExecutables (..)
-  , StrongFlags (..)
-  )
-import Distribution.Solver.Types.SolverId (SolverId (solverSrcId))
-import Distribution.Solver.Types.SolverPackage
-  ( SolverPackage (SolverPackage)
-  )
-import Distribution.Solver.Types.SourcePackage
-  ( SourcePackage (srcpkgDescription)
-  )
-import Distribution.Solver.Types.Variable (Variable)
 import Distribution.System
   ( Platform
   )
-import Distribution.Types.Dependency (Dependency (..), mainLibSet)
+import Distribution.Types.Dependency
 import Distribution.Types.DependencySatisfaction
   ( DependencySatisfaction (..)
   )
@@ -218,19 +137,37 @@ import Distribution.Verbosity
   ( normal
   )
 import Distribution.Version
-  ( Version
-  , VersionRange
-  , anyVersion
-  , earlierVersion
-  , mkVersion
-  , orLaterVersion
-  , removeLowerBound
-  , removeUpperBound
-  , simplifyVersionRange
-  , transformCaretLower
-  , transformCaretUpper
-  , withinRange
+
+import Distribution.Solver.Types.ComponentDeps (ComponentDeps)
+import qualified Distribution.Solver.Types.ComponentDeps as CD
+import Distribution.Solver.Types.ConstraintSource
+import Distribution.Solver.Types.DependencyResolver
+import Distribution.Solver.Types.InstalledPreference as Preference
+import Distribution.Solver.Types.LabeledPackageConstraint
+import Distribution.Solver.Types.OptionalStanza
+import Distribution.Solver.Types.PackageConstraint
+import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
+import Distribution.Solver.Types.PackagePath
+import Distribution.Solver.Types.PackagePreferences
+import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb)
+import Distribution.Solver.Types.Progress
+import Distribution.Solver.Types.ResolverPackage
+import Distribution.Solver.Types.Settings
+import Distribution.Solver.Types.SolverId
+import Distribution.Solver.Types.SolverPackage
+  ( SolverPackage (SolverPackage)
   )
+import Distribution.Solver.Types.SourcePackage
+import Distribution.Solver.Types.Variable
+
+import Control.Exception
+  ( assert
+  )
+import Data.List
+  ( maximumBy
+  )
+import qualified Data.Map as Map
+import qualified Data.Set as Set
 
 -- ------------------------------------------------------------
 
