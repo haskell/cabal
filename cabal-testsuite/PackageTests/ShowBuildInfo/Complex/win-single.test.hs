@@ -3,7 +3,7 @@ import           Test.Cabal.Prelude
 import           Test.Cabal.DecodeShowBuildInfo
 
 main = do
-  skipIfWindows "-pgmc introduces output differences between gcc and mingw"
+  skipUnlessWindows
   cabalTest $ do
     -- the With GHC-9.2+ output contains -this-unit-id
     skipUnlessGhcVersion ">= 9.2"
