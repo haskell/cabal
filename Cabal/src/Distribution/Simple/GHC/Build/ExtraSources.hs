@@ -22,7 +22,7 @@ import Distribution.Simple.Build.Inputs
 import Distribution.Simple.GHC.Build.Modules
 import Distribution.Simple.GHC.Build.Utils
 import Distribution.Simple.LocalBuildInfo
-import Distribution.Simple.Program.Types
+import Distribution.Simple.Program
 import Distribution.Simple.Setup.Common (commonSetupTempFileOptions)
 import Distribution.System (Arch (JavaScript), Platform (..))
 import Distribution.Types.ComponentLocalBuildInfo
@@ -73,7 +73,11 @@ buildCSources
 buildCSources mbMainFile =
   buildExtraSources
     "C Sources"
-    Internal.componentCcGhcOptions
+    ( \verbosity lbi bi clbi odir filename ->
+        (Internal.sourcesGhcOptions verbosity lbi bi clbi odir filename)
+          { ghcOptCxxOptions = Internal.separateGhcOptions (compiler lbi) (Internal.defaultGhcOptCxxOptions lbi bi)
+          }
+    )
     ( \c -> do
         let cFiles = cSources (componentBuildInfo c)
         case c of
@@ -86,7 +90,11 @@ buildCSources mbMainFile =
 buildCxxSources mbMainFile =
   buildExtraSources
     "C++ Sources"
-    Internal.componentCxxGhcOptions
+    ( \verbosity lbi bi clbi odir filename ->
+        (Internal.sourcesGhcOptions verbosity lbi bi clbi odir filename)
+          { ghcOptCcOptions = Internal.separateGhcOptions (compiler lbi) (Internal.defaultGhcOptCcOptions lbi bi)
+          }
+    )
     ( \c -> do
         let cxxFiles = cxxSources (componentBuildInfo c)
         case c of
@@ -101,7 +109,7 @@ buildJsSources _mbMainFile ghcProg buildTargetDir neededWays = do
   let hasJsSupport = hostArch == JavaScript
   buildExtraSources
     "JS Sources"
-    Internal.componentJsGhcOptions
+    Internal.sourcesGhcOptions
     ( \c ->
         if hasJsSupport
           then -- JS files are C-like with GHC's JS backend: they are
@@ -117,12 +125,12 @@ buildJsSources _mbMainFile ghcProg buildTargetDir neededWays = do
 buildAsmSources _mbMainFile =
   buildExtraSources
     "Assembler Sources"
-    Internal.componentAsmGhcOptions
+    Internal.sourcesGhcOptions
     (asmSources . componentBuildInfo)
 buildCmmSources _mbMainFile =
   buildExtraSources
     "C-- Sources"
-    Internal.componentCmmGhcOptions
+    Internal.sourcesGhcOptions
     (cmmSources . componentBuildInfo)
 
 -- | Create 'PreBuildComponentRules' for a given type of extra build sources
@@ -140,9 +148,7 @@ buildExtraSources
        -> GhcOptions
      )
   -- ^ Function to determine the @'GhcOptions'@ for the
-  -- invocation of GHC when compiling these extra sources (e.g.
-  -- @'Internal.componentCxxGhcOptions'@,
-  -- @'Internal.componentCmmGhcOptions'@)
+  -- invocation of GHC when compiling these extra sources
   -> (Component -> [SymbolicPath Pkg File])
   -- ^ View the extra sources of a component, typically from
   -- the build info (e.g. @'asmSources'@, @'cSources'@).
@@ -202,7 +208,7 @@ buildExtraSources
               vanillaSrcOpts =
                 -- -fPIC is used in case you are using the repl
                 -- of a dynamically linked GHC
-                baseSrcOpts{ghcOptFPic = toFlag True}
+                baseSrcOpts -- {ghcOptFPic = toFlag True, ghcOptCcProgram = maybeToFlag Nothing}
               profSrcOpts =
                 vanillaSrcOpts
                   `mappend` mempty
@@ -217,8 +223,8 @@ buildExtraSources
               profSharedSrcOpts =
                 vanillaSrcOpts
                   `mappend` mempty
-                    { ghcOptProfilingMode = toFlag True
-                    , ghcOptFPic = toFlag True
+                    { ghcOptFPic = toFlag True
+                    , ghcOptProfilingMode = toFlag True
                     , ghcOptDynLinkMode = toFlag GhcDynamicOnly
                     }
               -- TODO: Placing all Haskell, C, & C++ objects in a single directory
