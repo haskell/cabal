@@ -30,7 +30,7 @@ import Distribution.Solver.Modular.Dependency
       CI(Constrained, Fixed),
       showDependencyReason )
 import Distribution.Solver.Modular.Flag
-    ( showQFNBool, showQSNBool, showQFN, showQSN )
+    ( QSN, QFN, showQFNBool, showQSNBool, showQFN, showQSN )
 import Distribution.Solver.Modular.MessageUtils
     ( showUnsupportedExtension, showUnsupportedLanguage )
 import Distribution.Solver.Modular.Package
@@ -48,8 +48,7 @@ import Distribution.Solver.Types.Progress
     ( Progress(..),
       SummarizedMessage(..),
       EntryAtLevel(..),
-      Entry(..),
-      SolverState(..) )
+      Entry(..) )
 import Distribution.Solver.Types.ProjectConfigPath
     ( docProjectConfigPathFailReason)
 import Distribution.Types.LibraryName
@@ -58,6 +57,18 @@ import Distribution.Types.UnqualComponentName
     ( unUnqualComponentName )
 
 import Text.PrettyPrint ( nest, render )
+
+-- A data type to hold state information for the modular solver.
+data Message =
+    Enter           -- ^ increase indentation level
+  | Leave           -- ^ decrease indentation level
+  | TryP QPN POption
+  | TryF QFN Bool
+  | TryS QSN Bool
+  | Next (Goal QPN)
+  | Skip (Set CS.Conflict)
+  | Success
+  | Failure ConflictSet FailReason
 
 renderSummarizedMessage :: SummarizedMessage -> String
 renderSummarizedMessage (SummarizedMsg i) = displayMessageAtLevel i

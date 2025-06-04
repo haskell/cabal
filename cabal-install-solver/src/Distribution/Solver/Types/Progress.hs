@@ -1,7 +1,6 @@
 module Distribution.Solver.Types.Progress
     ( Progress(..)
     , foldProgress
-    , SolverState(..)
     , Entry(..)
     , EntryAtLevel(..)
     , SummarizedMessage(..)
@@ -10,14 +9,7 @@ module Distribution.Solver.Types.Progress
 import Prelude ()
 import Distribution.Solver.Compat.Prelude hiding (fail)
 
-import Distribution.Solver.Modular.Tree
-    ( FailReason(..), POption(..) )
-import Distribution.Solver.Types.PackagePath ( QPN )
 import Distribution.Solver.Types.SummarizedMessage
-import Distribution.Solver.Modular.Flag ( QSN, QFN )
-import Distribution.Solver.Modular.Dependency
-    ( ConflictSet, Goal )
-import qualified Distribution.Solver.Modular.ConflictSet as CS
 
 -- | A type to represent the unfolding of an expensive long running
 -- calculation that may fail. We may get intermediate steps before the final
@@ -60,16 +52,3 @@ instance Applicative (Progress step fail) where
 instance Monoid fail => Alternative (Progress step fail) where
   empty   = Fail mempty
   p <|> q = foldProgress Step (const q) Done p
-
--- A data type to hold state information for the modular solver.
-data Message =
-    Enter           -- ^ increase indentation level
-  | Leave           -- ^ decrease indentation level
-  | TryP QPN POption
-  | TryF QFN Bool
-  | TryS QSN Bool
-  | Next (Goal QPN)
-  | Skip (Set CS.Conflict)
-  | Success
-  | Failure ConflictSet FailReason
-

@@ -7,12 +7,12 @@ import Prelude ()
 import Distribution.Solver.Compat.Prelude
 
 import Distribution.Solver.Types.Progress
-    ( Progress(Done, Fail), foldProgress, SummarizedMessage, SolverState )
+    ( Progress(Done, Fail), foldProgress, SummarizedMessage )
 import Distribution.Solver.Modular.ConflictSet
     ( ConflictMap, ConflictSet )
 import Distribution.Solver.Modular.RetryLog
     ( RetryLog, toProgress, fromProgress )
-import Distribution.Solver.Modular.Message (summarizeMessages)
+import Distribution.Solver.Modular.Message (Message, summarizeMessages)
 
 -- | Information about a dependency solver failure.
 data SolverFailure =
