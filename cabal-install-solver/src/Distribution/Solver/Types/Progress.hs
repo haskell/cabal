@@ -60,6 +60,7 @@ instance Monoid fail => Alternative (Progress step fail) where
   empty   = Fail mempty
   p <|> q = foldProgress Step (const q) Done p
 
+-- A data type to hold state information for the modular solver.
 data Message =
     Enter           -- ^ increase indentation level
   | Leave           -- ^ decrease indentation level

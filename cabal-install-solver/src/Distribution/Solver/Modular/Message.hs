@@ -2,7 +2,6 @@
 
 module Distribution.Solver.Modular.Message (
     Message(..),
-    SummarizedMessage(..),
     summarizeMessages,
     renderSummarizedMessage,
 
