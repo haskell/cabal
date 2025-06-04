@@ -74,8 +74,8 @@ displayMessage (EntryRejectF qfn b c fr) = "rejecting: " ++ showQFNBool qfn b ++
 displayMessage (EntryRejectS qsn b c fr) = "rejecting: " ++ showQSNBool qsn b ++ showFR c fr
 displayMessage (EntrySkipping cs) = "skipping: " ++ showConflicts cs
 displayMessage (EntryTryingF qfn b) = "trying: " ++ showQFNBool qfn b
-displayMessage (EntryTryingP qpn i) = "trying: " ++ showOptions qpn [i]
-displayMessage (EntryTryingNewP qpn i gr) = "trying: " ++ showOptions qpn [i] ++ showGR gr
+displayMessage (EntryTryingP qpn i) = "trying: " ++ showOption qpn i
+displayMessage (EntryTryingNewP qpn i gr) = "trying: " ++ showOption qpn i ++ showGR gr
 displayMessage (EntryTryingS qsn b) = "trying: " ++ showQSNBool qsn b
 displayMessage (EntryUnknownPackage qpn gr) = "unknown package: " ++ showQPN qpn ++ showGR gr
 displayMessage EntrySuccess = "done"
@@ -90,7 +90,7 @@ showQPNConflictSet :: QPN -> [POption] -> String
 showQPNConflictSet qpn popts =
   case popts of
     [] -> ""
-    x:xs -> L.intercalate ", " (showOptions qpn [x] : map (\(POption i _) -> showI i) xs)
+    x:xs -> L.intercalate ", " (showOption qpn x : map (\(POption i _) -> showI i) xs)
 
 -- | Transforms the structured message type to actual messages (SummarizedMessage s).
 --
