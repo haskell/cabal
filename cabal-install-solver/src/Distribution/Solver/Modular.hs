@@ -245,7 +245,7 @@ tryToMinimizeConflictSet :: forall a . (SolverConfig -> RetryLog SummarizedMessa
                          -> ConflictMap
                          -> RetryLog SummarizedMessage SolverFailure a
 tryToMinimizeConflictSet runSolver sc cs cm =
-    foldl (\r v -> retryMap mkErrorMsg $ retryNoSolution (retryMap renderSummarizedMessage r) $ tryToRemoveOneVar v)
+    foldl (\r v -> retryNoSolution r $ tryToRemoveOneVar v)
           (fromProgress $ Fail $ ExhaustiveSearch cs cm)
           (CS.toList cs)
   where
@@ -269,14 +269,14 @@ tryToMinimizeConflictSet runSolver sc cs cm =
     tryToRemoveOneVar :: Var QPN
                       -> ConflictSet
                       -> ConflictMap
-                      -> RetryLog String SolverFailure a
+                      -> RetryLog SummarizedMessage SolverFailure a
     tryToRemoveOneVar v smallestKnownCS smallestKnownCM
         -- Check whether v is still present, because it may have already been
         -- removed in a previous solver rerun.
       | not (v `CS.member` smallestKnownCS) =
           fromProgress $ Fail $ ExhaustiveSearch smallestKnownCS smallestKnownCM
       | otherwise =
-        continueWith ("Trying to remove variable " ++ varStr ++ " from the "
+        retryMap mkErrorMsg $ continueWith ("Trying to remove variable " ++ varStr ++ " from the "
                       ++ "conflict set.") $
         retry (retryMap renderSummarizedMessage $ runSolver sc') $ \case
             err@(ExhaustiveSearch cs' _)
@@ -310,9 +310,9 @@ tryToMinimizeConflictSet runSolver sc cs cm =
 
     -- Like 'retry', except that it only applies the input function when the
     -- backjump limit has not been reached.
-    retryNoSolution :: RetryLog step SolverFailure done
-                    -> (ConflictSet -> ConflictMap -> RetryLog step SolverFailure done)
-                    -> RetryLog step SolverFailure done
+    retryNoSolution :: RetryLog SummarizedMessage SolverFailure done
+                    -> (ConflictSet -> ConflictMap -> RetryLog SummarizedMessage SolverFailure done)
+                    -> RetryLog SummarizedMessage SolverFailure done
     retryNoSolution lg f = retry lg $ \case
         ExhaustiveSearch cs' cm' -> f cs' cm'
         BackjumpLimitReached     -> fromProgress (Fail BackjumpLimitReached)
