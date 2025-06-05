@@ -94,7 +94,7 @@ data Verbosity = Verbosity
   deriving (Generic, Show, Read)
 
 mkVerbosity :: VerbosityLevel -> Verbosity
-mkVerbosity l = Verbosity{vLevel = l, vFlags = Set.empty, vQuiet = False}
+mkVerbosity l = Verbosity{vLevel = l, vFlags = Set.fromList [VNoWrap], vQuiet = False}
 
 instance Eq Verbosity where
   x == y = vLevel x == vLevel y
