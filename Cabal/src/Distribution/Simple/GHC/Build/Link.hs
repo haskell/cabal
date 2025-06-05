@@ -7,9 +7,11 @@ module Distribution.Simple.GHC.Build.Link where
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Control.Monad
 import Control.Monad.IO.Class
 import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.Set as Set
+import Distribution.Backpack
 import Distribution.Compat.Binary (encode)
 import Distribution.Compat.ResponseFile
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
@@ -23,6 +25,7 @@ import Distribution.Pretty
 import Distribution.Simple.Build.Inputs
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
+import Distribution.Simple.Errors
 import Distribution.Simple.GHC.Build.Modules
 import Distribution.Simple.GHC.Build.Utils (exeTargetName, flibBuildName, flibTargetName, withDynFLib)
 import Distribution.Simple.GHC.ImplInfo
@@ -740,6 +743,7 @@ runReplOrWriteFlags
 runReplOrWriteFlags ghcProg lbi rflags ghcOpts pkg_name target =
   let bi = componentBuildInfo $ targetComponent target
       clbi = targetCLBI target
+      cname = componentName (targetComponent target)
       comp = compiler lbi
       platform = hostPlatform lbi
       common = configCommonFlags $ configFlags lbi
@@ -761,21 +765,32 @@ runReplOrWriteFlags ghcProg lbi rflags ghcOpts pkg_name target =
         Flag out_dir -> do
           let uid = componentUnitId clbi
               this_unit = prettyShow uid
+              getOpenModName (OpenModule _ mn) = Just mn
+              getOpenModName (OpenModuleVar{}) = Nothing
               reexported_modules =
-                [ mn | LibComponentLocalBuildInfo{componentExposedModules = exposed_mods} <- [clbi], IPI.ExposedModule mn (Just{}) <- exposed_mods
+                [ (from_mn, to_mn) | LibComponentLocalBuildInfo{componentExposedModules = exposed_mods} <- [clbi], IPI.ExposedModule to_mn (Just m) <- exposed_mods, Just from_mn <- [getOpenModName m]
                 ]
+              renderReexportedModule (from_mn, to_mn)
+                | reexportedAsSupported comp =
+                    pure $ prettyShow from_mn ++ " as " ++ prettyShow to_mn
+                | otherwise =
+                    if from_mn == to_mn
+                      then pure $ prettyShow to_mn
+                      else dieWithException verbosity (MultiReplDoesNotSupportComplexReexportedModules pkg_name cname)
               hidden_modules = otherModules bi
-              extra_opts =
-                concat $
-                  [ ["-this-package-name", prettyShow pkg_name]
-                  , case mbWorkDir of
-                      Nothing -> []
-                      Just wd -> ["-working-dir", getSymbolicPath wd]
-                  ]
-                    ++ [ ["-reexported-module", prettyShow m] | m <- reexported_modules
-                       ]
-                    ++ [ ["-hidden-module", prettyShow m] | m <- hidden_modules
-                       ]
+              render_extra_opts = do
+                rexp_mods <- mapM renderReexportedModule reexported_modules
+                pure $
+                  concat $
+                    [ ["-this-package-name", prettyShow pkg_name]
+                    , case mbWorkDir of
+                        Nothing -> []
+                        Just wd -> ["-working-dir", getSymbolicPath wd]
+                    ]
+                      ++ [ ["-reexported-module", m] | m <- rexp_mods
+                         ]
+                      ++ [ ["-hidden-module", prettyShow m] | m <- hidden_modules
+                         ]
           -- Create "paths" subdirectory if it doesn't exist. This is where we write
           -- information about how the PATH was augmented.
           createDirectoryIfMissing False (out_dir </> "paths")
@@ -783,6 +798,7 @@ runReplOrWriteFlags ghcProg lbi rflags ghcOpts pkg_name target =
           writeFileAtomic (out_dir </> "paths" </> this_unit) (encode ghcProg)
           -- Write out options for this component into a file ready for loading into
           -- the multi-repl
+          extra_opts <- render_extra_opts
           writeFileAtomic (out_dir </> this_unit) $
             BS.pack $
               escapeArgs $
