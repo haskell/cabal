@@ -276,9 +276,9 @@ tryToMinimizeConflictSet runSolver sc cs cm =
       | not (v `CS.member` smallestKnownCS) =
           fromProgress $ Fail $ ExhaustiveSearch smallestKnownCS smallestKnownCM
       | otherwise =
-        retryMap mkErrorMsg $ continueWith ("Trying to remove variable " ++ varStr ++ " from the "
+        continueWith (mkErrorMsg $ "Trying to remove variable " ++ varStr ++ " from the "
                       ++ "conflict set.") $
-        retry (retryMap renderSummarizedMessage $ runSolver sc') $ \case
+        retry (runSolver sc') $ \case
             err@(ExhaustiveSearch cs' _)
               | CS.toSet cs' `isSubsetOf` CS.toSet smallestKnownCS ->
                   let msg = if not $ CS.member v cs'
@@ -288,14 +288,14 @@ tryToMinimizeConflictSet runSolver sc cs cm =
                                   ++ "conflict set."
                   in -- Use the new conflict set, even if v wasn't removed,
                      -- because other variables may have been removed.
-                     failWith (msg ++ " Continuing with " ++ showCS cs' ++ ".") err
+                     failWith (mkErrorMsg $ msg ++ " Continuing with " ++ showCS cs' ++ ".") err
               | otherwise ->
-                  failWith ("Failed to find a smaller conflict set. The new "
+                  failWith (mkErrorMsg $ "Failed to find a smaller conflict set. The new "
                              ++ "conflict set is not a subset of the previous "
                              ++ "conflict set: " ++ showCS cs') $
                   ExhaustiveSearch smallestKnownCS smallestKnownCM
             BackjumpLimitReached ->
-                failWith "Reached backjump limit while minimizing conflict set."
+                failWith (mkErrorMsg "Reached backjump limit while minimizing conflict set.")
                          BackjumpLimitReached
       where
         varStr = "\"" ++ showVar v ++ "\""
@@ -316,9 +316,6 @@ tryToMinimizeConflictSet runSolver sc cs cm =
     retryNoSolution lg f = retry lg $ \case
         ExhaustiveSearch cs' cm' -> f cs' cm'
         BackjumpLimitReached     -> fromProgress (Fail BackjumpLimitReached)
-
-    retryMap :: (t -> step) -> RetryLog t fail done -> RetryLog step fail done
-    retryMap f l = fromProgress $ (\p -> foldProgress (\x xs -> Step (f x) xs) Fail Done p) $ toProgress l
 
 -- | Goal ordering that chooses goals contained in the conflict set before
 -- other goals.
