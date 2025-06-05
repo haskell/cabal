@@ -38,7 +38,7 @@ import qualified System.FilePath.Posix as Posix
 import qualified System.FilePath.Windows as Windows
 import qualified Data.List.NonEmpty as NE
 import Distribution.Solver.Modular.Version (VR)
-import Distribution.Pretty (prettyShow)
+import Distribution.Pretty (prettyShow, Pretty(..))
 import Distribution.Utils.String (trim)
 import Text.PrettyPrint
 import Distribution.Simple.Utils (ordNub)
@@ -57,6 +57,9 @@ import Distribution.System (OS(Windows), buildOS)
 -- relative to the directory of the project root.
 newtype ProjectConfigPath = ProjectConfigPath (NonEmpty FilePath)
     deriving (Eq, Show, Generic)
+
+instance Pretty ProjectConfigPath where
+  pretty = docProjectConfigPath
 
 -- | Sorts URIs after local file paths and longer file paths after shorter ones
 -- as measured by the number of path segments. If still equal, then sorting is
