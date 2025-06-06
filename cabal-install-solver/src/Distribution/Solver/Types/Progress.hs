@@ -1,10 +1,15 @@
 module Distribution.Solver.Types.Progress
     ( Progress(..)
     , foldProgress
+    , Entry(..)
+    , EntryAtLevel(..)
+    , SummarizedMessage(..)
     ) where
 
 import Prelude ()
 import Distribution.Solver.Compat.Prelude hiding (fail)
+
+import Distribution.Solver.Types.SummarizedMessage
 
 -- | A type to represent the unfolding of an expensive long running
 -- calculation that may fail. We may get intermediate steps before the final
