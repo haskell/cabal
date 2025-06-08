@@ -512,7 +512,7 @@ ppHsc2hs bi lbi clbi =
     -- Returns a list of command line arguments that can either be passed
     -- directly, or via a response file.
     genPureArgs :: Version -> ConfiguredProgram -> String -> String -> [String]
-    genPureArgs hsc2hsVersion gccProg inFile outFile =
+    genPureArgs hsc2hsVersion gccProg inFile outFile = ordNub $
       -- Additional gcc options
       [ "--cflag=" ++ opt
       | opt <-
