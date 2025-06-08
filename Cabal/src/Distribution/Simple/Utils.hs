@@ -194,6 +194,7 @@ module Distribution.Simple.Utils
   , unintersperse
   , wrapText
   , wrapLine
+  , stripCommonPrefix
 
     -- * FilePath stuff
   , isAbsoluteOnAnyPlatform
@@ -2061,3 +2062,10 @@ findHookedPackageDesc verbosity mbWorkDir dir = do
 
 buildInfoExt :: String
 buildInfoExt = ".buildinfo"
+
+-- | @stripCommonPrefix xs ys@ gives you @ys@ without the common prefix with @xs@.
+stripCommonPrefix :: String -> String -> String
+stripCommonPrefix (x : xs) (y : ys)
+  | x == y = stripCommonPrefix xs ys
+  | otherwise = y : ys
+stripCommonPrefix _ ys = ys
