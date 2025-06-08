@@ -100,6 +100,8 @@ import Distribution.Compiler
 import Distribution.Simple.Utils
 import Distribution.Utils.Path
 import Distribution.Version
+import Distribution.Types.UnitId (UnitId)
+import Distribution.Package (PackageName)
 
 import Language.Haskell.Extension
 
@@ -119,6 +121,11 @@ data Compiler = Compiler
   -- ^ Supported language standards.
   , compilerExtensions :: [(Extension, Maybe CompilerFlag)]
   -- ^ Supported extensions.
+  , compilerWiredInUnitIds :: Maybe [(PackageName, UnitId)]
+  -- ^ 'UnitId's that the compiler doesn't support reinstalling.
+  -- For instance, when using GHC plugins, one wants to use the
+  -- exact same version of the `ghc` package as the one the
+  -- compiler was linked against.
   , compilerProperties :: Map String String
   -- ^ A key-value map for properties not covered by the above fields.
   }
@@ -177,6 +184,7 @@ compilerInfo c =
     (Just . compilerCompat $ c)
     (Just . map fst . compilerLanguages $ c)
     (Just . map fst . compilerExtensions $ c)
+    (compilerWiredInUnitIds c)
 
 -- ------------------------------------------------------------
 

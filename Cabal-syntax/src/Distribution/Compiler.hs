@@ -60,6 +60,8 @@ import Distribution.Parsec (Parsec (..))
 import Distribution.Pretty (Pretty (..), prettyShow)
 import qualified System.Info (compilerName, compilerVersion)
 import qualified Text.PrettyPrint as Disp
+import Distribution.Types.UnitId (UnitId)
+import Distribution.Package (PackageName)
 
 data CompilerFlavor
   = GHC
@@ -215,6 +217,11 @@ data CompilerInfo = CompilerInfo
   -- ^ Supported language standards, if known.
   , compilerInfoExtensions :: Maybe [Extension]
   -- ^ Supported extensions, if known.
+  , compilerInfoWiredInUnitIds :: Maybe [(PackageName, UnitId)]
+  -- ^ 'UnitId's that the compiler doesn't support reinstalling.
+  -- For instance, when using GHC plugins, one wants to use the
+  -- exact same version of the `ghc` package as the one the
+  -- compiler was linked against.
   }
   deriving (Generic, Show, Read)
 
@@ -246,4 +253,4 @@ abiTagString (AbiTag tag) = tag
 --   compiler id's.
 unknownCompilerInfo :: CompilerId -> AbiTag -> CompilerInfo
 unknownCompilerInfo compilerId abiTag =
-  CompilerInfo compilerId abiTag (Just []) Nothing Nothing
+  CompilerInfo compilerId abiTag (Just []) Nothing Nothing Nothing
