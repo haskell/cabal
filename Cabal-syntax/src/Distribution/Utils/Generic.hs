@@ -192,7 +192,7 @@ writeFileAtomic targetPath content = do
         LBS.hPut handle content
         hClose handle
         Exception.catch
-          (renameFile tmpPath targetPath)
+          (replaceFile tmpPath targetPath)
           ( \(_ :: Exception.SomeException) -> do
               copyFile tmpPath targetPath
               removeFile tmpPath
