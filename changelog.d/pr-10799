@@ -1,0 +1,15 @@
+synopsis: Add pre and post build hooks
+packages: cabal-install
+prs: #10799
+issues: #9892
+significance: significant
+
+description: {
+
+- Run a program (named "preBuildHook") before doing a package build and another program
+  (named "postBuildHook") after the package is built.
+- These programs are project local and need to be in the `cabalHooks` directory which is
+  in the same directory as the `cabal.project` file.
+- The absence of these programs will be ignored.
+- How to check and run these hooks securely is specified in the documentation.
+}
