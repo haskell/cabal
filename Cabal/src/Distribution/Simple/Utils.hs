@@ -185,6 +185,7 @@ module Distribution.Simple.Utils
   , listUnion
   , listUnionRight
   , ordNub
+  , sortNub
   , ordNubBy
   , ordNubRight
   , safeHead
