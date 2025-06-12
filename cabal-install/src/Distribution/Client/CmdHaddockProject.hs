@@ -28,7 +28,7 @@ import Distribution.Client.ProjectOrchestration
   , ProjectBuildContext (..)
   , TargetSelector (..)
   , pruneInstallPlanToTargets
-  , resolveTargets
+  , resolveTargetsFromSolver
   , runProjectPreBuildPhase
   , selectComponentTargetBasic
   )
@@ -146,7 +146,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
           -- (as opposed to say repl or haddock targets).
           targets <-
             either reportTargetProblems return $
-              resolveTargets
+              resolveTargetsFromSolver
                 selectPackageTargets
                 selectComponentTargetBasic
                 elaboratedPlan
