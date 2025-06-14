@@ -66,6 +66,8 @@ import Distribution.Verbosity
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+import Control.Monad ((<=<))
+
 import qualified Data.ByteString.Builder as BB
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Map as Map
@@ -259,12 +261,23 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
               J.object
                 [ "type" J..= J.String "remote-repo"
                 , "uri" J..= J.String (show (remoteRepoURI repoRemote))
+                , -- The x-revision field is a feature of remote repos,
+                  -- so we only output it for remote/secure repos, in the "repo" object.
+                  "pkg-revision" J..= J.Number (elaboratedPackageToRevision elab)
                 ]
             RepoSecure{..} ->
               J.object
                 [ "type" J..= J.String "secure-repo"
                 , "uri" J..= J.String (show (remoteRepoURI repoRemote))
+                , "pkg-revision" J..= J.Number (elaboratedPackageToRevision elab)
                 ]
+
+        elaboratedPackageToRevision :: ElaboratedConfiguredPackage -> Double
+        elaboratedPackageToRevision =
+          fromMaybe 0
+            . (readMaybe <=< lookup "x-revision")
+            . PD.customFieldsPD
+            . elabPkgDescription
 
         sourceRepoToJ :: SourceRepoMaybe -> J.Value
         sourceRepoToJ SourceRepositoryPackage{..} =
