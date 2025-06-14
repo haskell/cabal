@@ -1215,7 +1215,10 @@ be provided by the library that provides the testing facility.
     Test-Suite test-bar
         type:             detailed-0.9
         test-module:      Bar
-        build-depends:    base >= 4 && < 5, Cabal >= 1.9.2 && < 2
+        -- To keep this (untested) example working, we rely on the test type
+        -- version rather than an upper bound on Cabal. In real code, PVP
+        -- compliance may require including the upper bound.
+        build-depends:    base >= 4 && < 5, Cabal >= 1.9.2
         default-language: Haskell2010
 
 
