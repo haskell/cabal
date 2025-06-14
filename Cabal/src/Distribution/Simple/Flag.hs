@@ -36,6 +36,7 @@ module Distribution.Simple.Flag
 import Data.Monoid (Last (..))
 import Distribution.Compat.Prelude hiding (get)
 import Distribution.Compat.Stack
+import Distribution.Parsec
 import Prelude ()
 
 -- ------------------------------------------------------------
@@ -72,6 +73,12 @@ pattern NoFlag :: Last a
 pattern NoFlag = Last Nothing
 
 {-# COMPLETE Flag, NoFlag #-}
+
+instance Parsec a => Parsec (Flag a) where
+  parsec = parsecFlag
+
+parsecFlag :: (Parsec a, CabalParsing m) => m (Flag a)
+parsecFlag = (Flag <$> parsec) <|> pure mempty
 
 -- | Wraps a value in 'Flag'.
 toFlag :: a -> Flag a
