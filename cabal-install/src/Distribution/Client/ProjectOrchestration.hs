@@ -1047,6 +1047,7 @@ printPlan
                 verbosity
                 Nothing -- omit working directory
                 (makeSymbolicPath "$builddir")
+                (setupHsConfigureArgs elab)
                 buildSettingKeepTempFiles
             fullConfigureFlags =
               runIdentity $

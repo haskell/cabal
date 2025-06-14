@@ -4,6 +4,7 @@ packages:
   , Cabal-hooks
   , cabal-install
   , cabal-install-solver
+  , hooks-exe
 
 -- Don't include tests or benchmarks for bootstrapping
 tests: False
