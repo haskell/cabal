@@ -1,0 +1,11 @@
+cabal-version:       3.0
+name:                foreign-opts-capi
+version:             0.1
+build-type:          Simple
+
+executable foreign-opts-capi-exe
+  main-is:             Main.hs
+  build-depends:       base
+  default-language:    Haskell2010
+  include-dirs:        cbits
+  cc-options:          -DMYDEF=1
