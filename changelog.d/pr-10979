@@ -1,0 +1,8 @@
+synopsis: Fix parsing the AbiTag with development versions of GHC
+packages: Cabal
+prs: #10979
+issues: #10170
+
+description: {
+- Allow parsing the AbiTag for developmement versions of GHC.
+}
