@@ -315,6 +315,12 @@ data SetupScriptOptions = SetupScriptOptions
   -- ^ Is the task we are going to run an interactive foreground task,
   -- or an non-interactive background task? Based on this flag we
   -- decide whether or not to delegate ctrl+c to the spawned task
+  , isMainLibOrExeComponent :: Bool
+  -- ^ Let the setup script logic know if it is being run to build a main
+  -- library or executable component.  This is used to determine if we should
+  -- use the configure command, if the build-type is 'Configure'.  For
+  -- configure, only the main library and execomponents have 'configure'
+  -- support, and thus we can skip running configure for other components.
   }
 
 defaultSetupScriptOptions :: SetupScriptOptions
@@ -339,6 +345,7 @@ defaultSetupScriptOptions =
     , forceExternalSetupMethod = False
     , setupCacheLock = Nothing
     , isInteractive = False
+    , isMainLibOrExeComponent = True
     }
 
 workingDir :: SetupScriptOptions -> FilePath
@@ -375,7 +382,14 @@ getSetup verbosity options mpkg = do
                 (useCabalVersion options)
                 (orLaterVersion (mkVersion (cabalSpecMinimumLibraryVersion (specVersion pkg))))
           }
-      buildType' = buildType pkg
+      -- We retain Configure only for the main library and executable components.
+      -- For other components, we rewrite the buildType to Simple to skip the
+      -- configure step.  This is because the configure step is not supported for
+      -- other components.  Configure can only impact MainLib and Exe through
+      -- .buildinfo files.
+      buildType' = case (buildType pkg, isMainLibOrExeComponent options) of
+        (Configure, False) -> Simple
+        (bt, _) -> bt
   (version, method, options'') <-
     getSetupMethod verbosity options' pkg buildType'
   return
