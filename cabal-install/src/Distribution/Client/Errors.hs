@@ -186,6 +186,7 @@ data CabalInstallException
   | MissingPackageList Repo.RemoteRepo
   | CmdPathAcceptsNoTargets
   | CmdPathCommandDoesn'tSupportDryRun
+  | GenBoundsDoesNotSupportScript FilePath
   deriving (Show)
 
 exceptionCodeCabalInstall :: CabalInstallException -> Int
@@ -338,6 +339,7 @@ exceptionCodeCabalInstall e = case e of
   MissingPackageList{} -> 7160
   CmdPathAcceptsNoTargets{} -> 7161
   CmdPathCommandDoesn'tSupportDryRun -> 7163
+  GenBoundsDoesNotSupportScript{} -> 7164
 
 exceptionMessageCabalInstall :: CabalInstallException -> String
 exceptionMessageCabalInstall e = case e of
@@ -860,6 +862,8 @@ exceptionMessageCabalInstall e = case e of
     "The 'path' command accepts no target arguments."
   CmdPathCommandDoesn'tSupportDryRun ->
     "The 'path' command doesn't support the flag '--dry-run'."
+  GenBoundsDoesNotSupportScript{} ->
+    "The 'gen-bounds' command does not support script targets."
 
 instance Exception (VerboseException CabalInstallException) where
   displayException :: VerboseException CabalInstallException -> [Char]

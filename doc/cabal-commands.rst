@@ -532,38 +532,74 @@ users see a consistent set of dependencies. For libraries, this is not
 recommended: users often need to build against different versions of
 libraries than what you developed against.
 
+.. _cabal-gen-bounds:
+
 cabal gen-bounds
-^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^
 
-``cabal gen-bounds [FLAGS]`` generates bounds for all dependencies that do not
-currently have them.  Generated bounds are printed to stdout. You can then
-paste them into your .cabal file.
-The generated bounds conform to the `Package Versioning Policy`_, which is
-a recommended versioning system for publicly released Cabal packages.
+::
 
-.. code-block:: console
+    cabal gen-bounds [TARGETS] [FLAGS]
+
+Generate PVP-compliant dependency bounds for packages in the project based
+on currently installed versions. This is helpful when creating or updating
+package dependencies to ensure compatibility with specific version ranges.
+
+To use it, run `cabal gen-bounds` in a directory containing a cabal.project file or
+within a subdirectory of a multi-package project. The command will analyze
+the project structure and suggest appropriate version bounds for dependencies based
+on the currently installed versions of those packages.
+
+The suggested bounds follow the Package Versioning Policy (PVP) convention,
+allowing changes in the last segment of the version number. These suggestions
+are formatted as Cabal constraint expressions that can be directly copied
+into your .cabal file in the appropriate `build-depends` section.
+
+You can also specify particular packages to analyze with `cabal gen-bounds package-name`.
+The command supports the same targets as `cabal build`.
+
+Examples:
+
+Basic usage:
+
+::
 
     $ cabal gen-bounds
 
-For example, given the following dependencies without bounds specified in
-:pkg-field:`build-depends`:
+In a multi-package project:
 
 ::
 
-    build-depends:
-      base,
-      mtl,
-      transformers,
+    $ cat cabal.project
+    packages: package-a/
+              package-b/
 
-``gen-bounds`` might suggest changing them to the following:
+    $ cabal gen-bounds all
+    Configuration is affected by the following files:
+    - cabal.project
+    Resolving dependencies...
+
+    Congratulations, all dependencies for package-a:lib:package-a are up-to-date.
+
+    The following packages need bounds and here is a suggested starting point...
+    For component package-b:lib:package-b:
+    package-a >= 0.1.0 && < 0.2,
+
+You can also specify particular target to analyze:
 
 ::
 
-    build-depends:
-      base          >= 4.15.0 && < 4.16,
-      mtl           >= 2.2.2 && < 2.3,
-      transformers  >= 0.5.6 && < 0.6,
+    $ cabal gen-bounds package-a
 
+The command output provides suggested version bounds for each component's
+dependencies that lack proper bounds. For each component, dependencies that
+need bounds are listed along with the suggested bounds, like:
+
+::
+
+    For component my-package:lib:my-package:
+    some-dependency >= 1.2.3 && < 1.3,
+    another-dependency >= 2.0.0 && < 2.1,
 
 cabal outdated
 ^^^^^^^^^^^^^^
