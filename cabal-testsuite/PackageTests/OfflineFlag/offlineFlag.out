@@ -1,10 +1,6 @@
 # cabal v2-update
-Configuration is affected by the following files:
-- cabal.repo.project
 Downloading the latest package list from test-local-repo
 # cabal v2-build
-Configuration is affected by the following files:
-- cabal.repo.project
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
@@ -13,8 +9,6 @@ In order, the following will be built:
 Error: [Cabal-7125]
 --offline was specified, hence refusing to download the package: remote version 0.1.0.0.
 # cabal v2-build
-Configuration is affected by the following files:
-- cabal.repo.project
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - remote-0.1.0.0 (lib) (requires build)
@@ -27,6 +21,4 @@ Configuring executable 'current' for current-0.1.0.0...
 Preprocessing executable 'current' for current-0.1.0.0...
 Building executable 'current' for current-0.1.0.0...
 # cabal v2-build
-Configuration is affected by the following files:
-- cabal.repo.project
 Up to date

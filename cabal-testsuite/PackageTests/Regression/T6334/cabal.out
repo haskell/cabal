@@ -1,6 +1,4 @@
 # cabal v2-build
-Configuration is affected by the following files:
-- cabal.project
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:

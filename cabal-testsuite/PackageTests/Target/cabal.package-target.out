@@ -1,6 +1,4 @@
 # cabal v2-target
-Configuration is affected by the following files:
-- cabal.project
 Resolving dependencies...
 Fully qualified target forms:
  - a:exe:a-exe
@@ -8,8 +6,6 @@ Fully qualified target forms:
  - a:lib:a-sublib
 Found 3 targets matching a.
 # cabal v2-target
-Configuration is affected by the following files:
-- cabal.project
 Resolving dependencies...
 Fully qualified target forms:
  - a:bench:a-bench
