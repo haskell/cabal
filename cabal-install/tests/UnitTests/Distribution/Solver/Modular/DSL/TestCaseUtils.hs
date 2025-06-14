@@ -265,7 +265,7 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
             testEnableAllTests
         printMsg msg = when showSolverLog $ putStrLn msg
         msgs = foldProgress (:) (const []) (const []) progress
-    assertBool ("Unexpected solver log:\n" ++ unlines msgs) $
+    assertBool ("Unexpected error:\n" ++ unlines msgs) $
       resultLogPredicate testResult $
         concatMap lines msgs
     result <- foldProgress ((>>) . printMsg) (return . Left) (return . Right) progress

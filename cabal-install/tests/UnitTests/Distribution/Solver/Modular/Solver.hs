@@ -208,7 +208,7 @@ tests =
               solverSuccess [("base", 1), ("ghc-prim", 1), ("integer-gmp", 1), ("integer-simple", 1)]
       , runTest $
           mkTest dbNonupgrade "Refuse to install newer ghc requested by another library" ["A"] $
-            solverFailure (isInfixOf "rejecting: ghc-2.0.0 (constraint from non-reinstallable package requires installed instance)")
+            solverFailure (isInfixOf "rejecting: ghc-1.0.0/installed-1 (conflict: A => ghc==2.0.0)")
       ]
   , testGroup
       "reject-unconstrained"
