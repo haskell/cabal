@@ -33,7 +33,7 @@ together. To build multiple Cabal packages, you need to first create a
 ``cabal.project`` file which declares where all the local package
 directories live. For example, in the Cabal repository, there is a root
 directory with a folder per package, e.g., the folders ``Cabal`` and
-``cabal-install``. The ``cabal.project`` file specifies each folder as
+:term:`cabal-install:exe:cabal`. The ``cabal.project`` file specifies each folder as
 part of the project:
 
 .. code-block:: cabal
@@ -243,7 +243,7 @@ Caching
 
 Nix-style local builds support a robust caching system which helps to reduce
 the time it takes to execute a rebuild cycle. While the details of how
-``cabal-install`` does caching are an implementation detail and may
+:term:`cabal-install:exe:cabal` does caching are an implementation detail and may
 change in the future, knowing what gets cached is helpful for
 understanding the performance characteristics of invocations to
 ``build``. The cached intermediate results are stored in
@@ -255,7 +255,7 @@ this folder (the most important two are first):
 
 ``solver-plan`` (binary)
     The result of calling the dependency solver, assuming that the
-    Hackage index, local ``cabal.project`` file, and local ``cabal``
+    Hackage index, local ``cabal.project`` file, and local :term:`cabal`
     files are unmodified. (Notably, we do NOT have to dependency solve
     again if new build products are stored in the global store; the
     invocation of the dependency solver is independent of what is
@@ -279,7 +279,7 @@ this folder (the most important two are first):
     into pre-existing copies from the store.
 ``plan.json`` (JSON)
     A JSON serialization of the computed install plan intended
-    for integrating ``cabal`` with external tooling.
+    for integrating :term:`cabal` with external tooling.
     The `cabal-plan <http://hackage.haskell.org/package/cabal-plan>`__
     package provides a library for parsing ``plan.json`` files into a
     Haskell data structure as well as an example tool showing possible
