@@ -52,7 +52,7 @@ import Distribution.PackageDescription
   ( FlagAssignment
   , nullFlagAssignment
   )
-import Distribution.Simple.Flag (fromFlagOrDefault, pattern Flag)
+import Distribution.Simple.Flag (pattern Flag)
 import Distribution.Simple.Utils
   ( dieWithException
   , notice

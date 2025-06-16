@@ -240,6 +240,7 @@ getSourcePackages verbosity projectConfig =
 outdatedAction :: NixStyleFlags OutdatedFlags -> [String] -> GlobalFlags -> IO ()
 outdatedAction flags targetStrings globalFlags =
   withContextAndSelectors
+    verbosity
     AcceptNoTargets
     Nothing
     flags
