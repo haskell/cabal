@@ -200,16 +200,13 @@ execAction flags extraArgs globalFlags = do
 
       ( if envFilesSupported
           then withTempEnvFile verbosity baseCtx buildCtx buildStatus
-          else \f ->
-            if programIsConfiguredCompiler
-              then f environmentPackageArgs []
-              else f [] []
+          else \f -> f environmentPackageArgs []
         )
         $ \argOverrides envOverrides -> do
           let program' =
                 withOverrides
                   envOverrides
-                  argOverrides
+                  (if programIsConfiguredCompiler then argOverrides else [])
                   program
               invocation = programInvocation program' args
               dryRun =
