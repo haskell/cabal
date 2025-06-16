@@ -1,16 +1,38 @@
 # cabal v2-update
 Downloading the latest package list from test-local-repo
 # cabal outdated
+Configuration is affected by the following files:
+- cabal.project
+- cabal.project.freeze
 Outdated dependencies:
-base >=3 && <4 (latest: 4.0.0.0)
-template-haskell >=2.3.0.0 && <2.4 (latest: 2.4.0.0)
+* my
+  - lib:my
+    * base >=3 && <4 (latest: 4.0.0.0)
+  - test:tests-Foo
+    * template-haskell >=2.3.0.0 && <2.4 (latest: 2.4.0.0)
 # cabal outdated
+Configuration is affected by the following files:
+- cabal.project
+- cabal.project.freeze
 Outdated dependencies:
-template-haskell >=2.3.0.0 && <2.4 (latest: 2.4.0.0)
+* my
+  - test:tests-Foo
+    * template-haskell >=2.3.0.0 && <2.4 (latest: 2.4.0.0)
 # cabal outdated
+Configuration is affected by the following files:
+- cabal.project
+- cabal.project.freeze
 All dependencies are up to date.
 # cabal outdated
+Configuration is affected by the following files:
+- cabal.project
+- cabal.project.freeze
 Outdated dependencies:
-template-haskell >=2.3.0.0 && <2.4 (latest: 2.4.0.0)
+* my
+  - test:tests-Foo
+    * template-haskell >=2.3.0.0 && <2.4 (latest: 2.4.0.0)
 # cabal outdated
+Configuration is affected by the following files:
+- cabal.project
+- cabal.project.freeze
 All dependencies are up to date.

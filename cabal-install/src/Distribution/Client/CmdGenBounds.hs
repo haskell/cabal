@@ -109,7 +109,7 @@ genBoundsAction flags targetStrings globalFlags =
     -- Step 2: Resolve the targets for the gen-bounds command.
     targets <-
       either (reportGenBoundsTargetProblems verbosity) return $
-        resolveTargets
+        resolveTargetsFromSolver
           selectPackageTargets
           selectComponentTarget
           elaboratedPlan

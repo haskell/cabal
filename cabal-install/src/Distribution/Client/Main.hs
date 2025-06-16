@@ -440,7 +440,6 @@ mainWorker args = do
       , regularCmd initCommand initAction
       , regularCmd userConfigCommand userConfigAction
       , regularCmd CmdPath.pathCommand CmdPath.pathAction
-      , regularCmd CmdOutdated.outdatedCommand CmdOutdated.outdatedAction
       , wrapperCmd hscolourCommand hscolourCommonFlags
       , hiddenCmd formatCommand formatAction
       , hiddenCmd actAsSetupCommand actAsSetupAction
@@ -466,6 +465,7 @@ mainWorker args = do
           , newCmd CmdSdist.sdistCommand CmdSdist.sdistAction
           , newCmd CmdTarget.targetCommand CmdTarget.targetAction
           , newCmd CmdGenBounds.genBoundsCommand CmdGenBounds.genBoundsAction
+          , newCmd CmdOutdated.outdatedCommand CmdOutdated.outdatedAction
           , legacyCmd configureExCommand configureAction
           , legacyCmd genBoundsCommand genBoundsAction
           , legacyCmd buildCommand buildAction
