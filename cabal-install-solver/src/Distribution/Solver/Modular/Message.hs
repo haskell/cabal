@@ -294,11 +294,10 @@ showOptions :: QPN -> [POption] -> String
 showOptions _ [] = "unexpected empty list of versions"
 showOptions q [x] = showOption q x
 showOptions q xs = showQPN q ++ "; " ++ (L.intercalate ", "
-  [if isJust linkedTo
-    then showOption q x
-    else showI i -- Don't show the package, just the version
-  | x@(POption i linkedTo) <- reverse xs
-  ])
+  (L.sort
+    -- Don't show the package, just the version
+    [if isJust linkedTo then showOption q x else showI i |
+       x@(POption i linkedTo) <- xs]))
 
 showGR :: QGoalReason -> String
 showGR UserGoal            = " (user goal)"
