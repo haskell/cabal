@@ -84,7 +84,6 @@ genBoundsCommand =
 genBoundsAction :: NixStyleFlags GenBoundsFlags -> [String] -> GlobalFlags -> IO ()
 genBoundsAction flags targetStrings globalFlags =
   withContextAndSelectors verbosity RejectNoTargets Nothing flags targetStrings globalFlags OtherCommand $ \targetCtx ctx targetSelectors -> do
-
     baseCtx <- case targetCtx of
       ProjectContext -> return ctx
       GlobalContext -> return ctx
@@ -153,8 +152,8 @@ genBoundsAction flags targetStrings globalFlags =
         notice verbosity boundsNeededMsg
         mapM_ (renderBoundsResult verbosity) boundsActions
       else notice verbosity "All bounds up-to-date"
- where
-  verbosity = cfgVerbosity normal flags
+  where
+    verbosity = cfgVerbosity normal flags
 
 data GenBoundsResult = GenBoundsResult PackageIdentifier ComponentTarget (Maybe [PackageIdentifier])
 
