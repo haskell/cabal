@@ -365,7 +365,7 @@ def fetch_from_plan(plan : FetchPlan, output_dir : Path):
     sha = plan[path].sha256
     if not output_path.exists():
       print(f'Fetching {url}...')
-      download_with_requests(url, output_path)
+      download_with_retry(url, output_path)
     verify_sha256(sha, output_path)
 
 def gen_fetch_plan(info : BootstrapInfo) -> FetchPlan :
