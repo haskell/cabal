@@ -24,6 +24,8 @@ import subprocess
 import sys
 import tempfile
 import urllib.request
+import http.client
+import time
 from textwrap import dedent
 from typing import Optional, Dict, List, Tuple, \
                    NewType, BinaryIO, NamedTuple
@@ -135,6 +137,20 @@ class BadTarball(Exception):
             f'  expected: {self.expected_sha256}',
             f'  found:    {self.found_sha256}',
         ])
+
+def download_with_retry(url, output_path, retries=3, delay=2):
+    for attempt in range(retries):
+        try:
+            with urllib.request.urlopen(url, timeout=10) as resp:
+                with output_path.open('wb') as out_file:
+                    shutil.copyfileobj(resp, out_file)
+            return  # success
+        except http.client.IncompleteRead as e:
+            print(f"IncompleteRead error (attempt {attempt + 1}): {e}")
+        except Exception as e:
+            print(f"Other error (attempt {attempt + 1}): {e}")
+        time.sleep(delay)
+    raise Exception(f"Failed to download after {retries} attempts.")
 
 def package_url(package: PackageName, version: Version) -> str:
     return f'http://hackage.haskell.org/package/{package}-{version}/{package}-{version}.tar.gz'
@@ -351,8 +367,7 @@ def fetch_from_plan(plan : FetchPlan, output_dir : Path):
     sha = plan[path].sha256
     if not output_path.exists():
       print(f'Fetching {url}...')
-      with urllib.request.urlopen(url, timeout = 10) as resp:
-        shutil.copyfileobj(resp, output_path.open('wb'))
+      download_with_retry(url, output_path)
     verify_sha256(sha, output_path)
 
 def gen_fetch_plan(info : BootstrapInfo) -> FetchPlan :
