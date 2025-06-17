@@ -1,22 +1,44 @@
 import Test.Cabal.Prelude
+import Data.List (isInfixOf)
 
 main = cabalTest . recordMode RecordMarked $ do
   let log = recordHeader . pure
 
-  log "checking repl command with a project using an implicit default 'cabal.project'"
-  _ <- fails $ cabal' "repl" []
+  -- This triggers "Assertion failed" with backtrace to TemTestDir.hs:37:3
+  -- log "checking repl command with a 'cabal.project' and --ignore-project"
+  -- ignored <- cabal' "repl" ["--ignore-project"]
 
-  log "checking repl command with a project using an explicit 'cabal.project'"
-  _ <- fails $ cabal' "repl" [ "--project-file=some.project" ]
+  log "checking repl command with a 'cabal.project' and no project options"
+  defaultProject <- fails $ cabal' "repl" []
 
-  log "checking repl command with a project listing packages in reverse order"
-  _ <- fails $ cabal' "repl" [ "--project-file=reverse.project" ]
+  readFileVerbatim "default-repl.txt"
+    >>= flip (assertOn isInfixOf multilineNeedleHaystack) defaultProject . normalizePathSeparators
 
-  log "checking repl command with a project with no packages"
-  _ <- fails $ cabal' "repl" [ "--project-file=empty.project" ]
+  log "checking repl command using an explicit 'some.project'"
+  someProject <- fails $ cabal' "repl" [ "--project-file=some.project" ]
 
-  log "checking repl command with a missing project"
+  readFileVerbatim "some-repl.txt"
+    >>= flip (assertOn isInfixOf multilineNeedleHaystack) someProject . normalizePathSeparators
+
+  log "checking repl command using an explicit 'reverse.project', listing packages in reverse order"
+  reverseProject <- fails $ cabal' "repl" [ "--project-file=reverse.project" ]
+
+  readFileVerbatim "reverse-repl.txt"
+    >>= flip (assertOn isInfixOf multilineNeedleHaystack) reverseProject . normalizePathSeparators
+
+  log "checking repl command with an 'empty.project' with no packages"
+  emptyProject <- fails $ cabal' "repl" [ "--project-file=empty.project" ]
+
+  log "checking repl command with a missing 'missing.project'"
   missing <- fails $ cabal' "repl" [ "--project-file=missing.project" ]
   assertOutputContains "The given project file 'missing.project' does not exist." missing
+
+  log "checking repl command with a missing 'missing.project'"
+  dotMissing <- fails $ cabal' "repl" [ "--project-dir=.", "--project-file=missing.project" ]
+  assertOutputContains "The given project directory/file combination './missing.project' does not exist." dotMissing
+
+  -- This triggers "Assertion failed" with backtrace to TemTestDir.hs:37:3
+  -- log "checking repl command with a single package in 'one.project'"
+  -- oneProject <- cabal' "repl" [ "--project-file=one.project" ]
 
   return ()

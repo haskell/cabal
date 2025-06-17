@@ -1,33 +1,27 @@
-# checking repl command with a project using an implicit default 'cabal.project'
+# checking repl command with a 'cabal.project' and no project options
 # cabal repl
-Configuration is affected by the following files:
-- cabal.project
 Error: [Cabal-7076]
-With a project, the REPL command requires a single target. The packages in this project are:
+Please pick a single [package:][ctype:]component as target for the REPL command. The packages from which to select a component in 'cabal.project', the implicit default as if `--project-file=cabal.project` was added as a command option, are:
  - pkg-one
  - pkg-two
-# checking repl command with a project using an explicit 'cabal.project'
+# checking repl command using an explicit 'some.project'
 # cabal repl
-Configuration is affected by the following files:
-- some.project
 Error: [Cabal-7076]
-With a project, the REPL command requires a single target. The packages in this project, 'some.project', are:
+Please pick a single [package:][ctype:]component as target for the REPL command. The packages in 'some.project' from which to select a component target are:
  - pkg-one
  - pkg-two
-# checking repl command with a project listing packages in reverse order
+# checking repl command using an explicit 'reverse.project', listing packages in reverse order
 # cabal repl
-Configuration is affected by the following files:
-- reverse.project
 Error: [Cabal-7076]
-With a project, the REPL command requires a single target. The packages in this project, 'reverse.project', are:
+Please pick a single [package:][ctype:]component as target for the REPL command. The packages in 'reverse.project' from which to select a component target are:
  - pkg-one
  - pkg-two
-# checking repl command with a project with no packages
+# checking repl command with an 'empty.project' with no packages
 # cabal repl
-Configuration is affected by the following files:
-- empty.project
 Warning: There are no packages or optional-packages in the project
 Error: [Cabal-7076]
-With a project, the REPL command requires a single target but there are no packages in this project, 'empty.project', to choose a package (library) or other component from as the target for this command.
-# checking repl command with a missing project
+There are no packages in 'empty.project'. Please add a package to the project and pick a single [package:][ctype:]component as target for the REPL command.
+# checking repl command with a missing 'missing.project'
+# cabal repl
+# checking repl command with a missing 'missing.project'
 # cabal repl

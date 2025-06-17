@@ -1,10 +1,5 @@
 # cabal clean
 # cabal v2-repl
-Configuration is affected by the following files:
-- alt.project
-Resolving dependencies...
-Build profile: -w ghc-<GHCVER> -O1
-In order, the following will be built:
- - alt-0.1 (interactive) (lib) (first run)
-Configuring library for alt-0.1...
-Preprocessing library for alt-0.1...
+Error: [Cabal-7076]
+Please pick a single [package:][ctype:]component as target for the REPL command. The packages in 'alt.project' from which to select a component target are:
+ - alt

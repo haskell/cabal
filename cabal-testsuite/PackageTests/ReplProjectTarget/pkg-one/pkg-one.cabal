@@ -1,9 +1,10 @@
-name:           pkg-one
-version:        0.1
-license:        BSD3
-cabal-version:  >= 1.2
-build-type:     Simple
+name:          pkg-one
+version:       0.1
+license:       BSD3
+cabal-version: >=1.2
+build-type:    Simple
 
 library
-    exposed-modules:    Foo
-    build-depends:      base
+  exposed-modules: Foo
+  build-depends:   base
+  hs-source-dirs:  .
