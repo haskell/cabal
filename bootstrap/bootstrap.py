@@ -248,13 +248,6 @@ def install_sdist(dist_dir: Path, sdist_dir: Path, ghc: Compiler, flags: List[st
     # This should be fine for cabal-install dependencies.
     check_call([str(ghc.ghc_path), '--make', '-package-env=-', '-i', f'-odir={setup_dist_dir}', f'-hidir={setup_dist_dir}', '-o', setup, 'Setup'])
     check_call([setup, 'configure'] + configure_args)
-def download_with_requests(url, output_path):
-    with requests.get(url, stream=True, timeout=10) as r:
-        r.raise_for_status()
-        with output_path.open('wb') as f:
-            for chunk in r.iter_content(chunk_size=8192):
-                if chunk:
-                    f.write(chunk)
     check_call([setup, 'build'] + build_args)
     check_call([setup, 'install'] + build_dir)
 
