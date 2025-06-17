@@ -23,10 +23,10 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import urllib.request
 from textwrap import dedent
 from typing import Optional, Dict, List, Tuple, \
                    NewType, BinaryIO, NamedTuple
+import requests
 
 #logging.basicConfig(level=logging.INFO)
 
@@ -136,6 +136,14 @@ class BadTarball(Exception):
             f'  found:    {self.found_sha256}',
         ])
 
+def download_with_requests(url, output_path):
+    with requests.get(url, stream=True, timeout=10) as r:
+        r.raise_for_status()
+        with output_path.open('wb') as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+
 def package_url(package: PackageName, version: Version) -> str:
     return f'http://hackage.haskell.org/package/{package}-{version}/{package}-{version}.tar.gz'
 
@@ -240,6 +248,13 @@ def install_sdist(dist_dir: Path, sdist_dir: Path, ghc: Compiler, flags: List[st
     # This should be fine for cabal-install dependencies.
     check_call([str(ghc.ghc_path), '--make', '-package-env=-', '-i', f'-odir={setup_dist_dir}', f'-hidir={setup_dist_dir}', '-o', setup, 'Setup'])
     check_call([setup, 'configure'] + configure_args)
+def download_with_requests(url, output_path):
+    with requests.get(url, stream=True, timeout=10) as r:
+        r.raise_for_status()
+        with output_path.open('wb') as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
     check_call([setup, 'build'] + build_args)
     check_call([setup, 'install'] + build_dir)
 
@@ -351,8 +366,7 @@ def fetch_from_plan(plan : FetchPlan, output_dir : Path):
     sha = plan[path].sha256
     if not output_path.exists():
       print(f'Fetching {url}...')
-      with urllib.request.urlopen(url, timeout = 10) as resp:
-        shutil.copyfileobj(resp, output_path.open('wb'))
+      download_with_requests(url, output_path)
     verify_sha256(sha, output_path)
 
 def gen_fetch_plan(info : BootstrapInfo) -> FetchPlan :
