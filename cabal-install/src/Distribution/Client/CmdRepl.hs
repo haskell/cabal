@@ -116,7 +116,7 @@ import Distribution.Simple.Utils
   , wrapText
   )
 import Distribution.Solver.Types.ConstraintSource
-  ( ConstraintSource (ConstraintSourceMultiRepl)
+  ( ConstraintSource (ConstraintSourceMultiRepl, ConstraintSourceWithRepl)
   )
 import Distribution.Solver.Types.PackageConstraint
   ( PackageProperty (PackagePropertyVersion)
@@ -180,12 +180,10 @@ import Distribution.Client.ReplFlags
   , topReplOptions
   )
 import Distribution.Compat.Binary (decode)
-import Distribution.Simple.Flag (fromFlagOrDefault, pattern Flag)
+import Distribution.Simple.Flag (flagToMaybe, fromFlagOrDefault, pattern Flag)
 import Distribution.Simple.Program.Builtin (ghcProgram)
 import Distribution.Simple.Program.Db (requireProgram)
 import Distribution.Simple.Program.Types
-  ( ConfiguredProgram (programOverrideEnv)
-  )
 import System.Directory
   ( doesFileExist
   , getCurrentDirectory
@@ -325,15 +323,27 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
     -- We need to do this before solving, but the compiler version is only known
     -- after solving (phaseConfigureCompiler), so instead of using
     -- multiReplDecision we just check the flag.
-    let baseCtx' =
-          if fromFlagOrDefault False $
+    let multiReplEnabled =
+          fromFlagOrDefault False $
             projectConfigMultiRepl (projectConfigShared $ projectConfig baseCtx)
               <> replUseMulti
+
+        withReplEnabled =
+          isJust $ flagToMaybe $ replWithRepl configureReplOptions
+
+        addConstraintWhen cond constraint base_ctx =
+          if cond
             then
-              baseCtx
+              base_ctx
                 & lProjectConfig . lProjectConfigShared . lProjectConfigConstraints
-                  %~ (multiReplCabalConstraint :)
-            else baseCtx
+                  %~ (constraint :)
+            else base_ctx
+
+        addMultiReplConstraint = addConstraintWhen multiReplEnabled multiReplCabalConstraint
+
+        addWithReplConstraint = addConstraintWhen withReplEnabled withReplCabalConstraint
+
+        baseCtx' = addMultiReplConstraint $ addWithReplConstraint baseCtx
 
     (originalComponent, baseCtx'') <-
       if null (envPackages replEnvFlags)
@@ -481,7 +491,7 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
                 }
 
         -- run ghc --interactive with
-        runGHCWithResponseFile "ghci_multi.rsp" Nothing tempFileOptions verbosity ghcProg' compiler platform Nothing ghc_opts
+        runReplProgram (flagToMaybe $ replWithRepl replOpts') tempFileOptions verbosity ghcProg' compiler platform Nothing ghc_opts
       else do
         -- single target repl
         replOpts'' <- case targetCtx of
@@ -536,6 +546,13 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
           (UserAnySetupQualifier (mkPackageName "Cabal"))
           (PackagePropertyVersion $ orLaterVersion $ mkVersion [3, 11])
       , ConstraintSourceMultiRepl
+      )
+
+    withReplCabalConstraint =
+      ( UserConstraint
+          (UserAnySetupQualifier (mkPackageName "Cabal"))
+          (PackagePropertyVersion $ orLaterVersion $ mkVersion [3, 15])
+      , ConstraintSourceWithRepl
       )
 
 -- | First version of GHC which supports multiple home packages
