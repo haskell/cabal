@@ -286,8 +286,8 @@ multiReplDecision ctx compiler flags =
 replAction :: NixStyleFlags ReplFlags -> [String] -> GlobalFlags -> IO ()
 replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings' globalFlags = do
   -- NOTE: The REPL will work with no targets in the context of a project if a
-  -- sole package is in the same directory as the project file. To have the same
-  -- behaviour when the package is somewhere else we adjust the targets.
+  -- single package is in the same directory as the project file. To have the
+  -- same behaviour when the package is somewhere else we adjust the targets.
   targetStrings <-
     if null targetStrings'
       then withCtx silent targetStrings' $ \targetCtx ctx _ ->
