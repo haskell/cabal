@@ -23,10 +23,10 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import urllib.request
 from textwrap import dedent
 from typing import Optional, Dict, List, Tuple, \
                    NewType, BinaryIO, NamedTuple
-import requests
 
 #logging.basicConfig(level=logging.INFO)
 
@@ -136,13 +136,19 @@ class BadTarball(Exception):
             f'  found:    {self.found_sha256}',
         ])
 
-def download_with_requests(url, output_path):
-    with requests.get(url, stream=True, timeout=10) as r:
-        r.raise_for_status()
-        with output_path.open('wb') as f:
-            for chunk in r.iter_content(chunk_size=8192):
-                if chunk:
-                    f.write(chunk)
+def download_with_retry(url, output_path, retries=3, delay=2):
+    for attempt in range(retries):
+        try:
+            with urllib.request.urlopen(url, timeout=10) as resp:
+                with output_path.open('wb') as out_file:
+                    shutil.copyfileobj(resp, out_file)
+            return  # success
+        except http.client.IncompleteRead as e:
+            print(f"IncompleteRead error (attempt {attempt + 1}): {e}")
+        except Exception as e:
+            print(f"Other error (attempt {attempt + 1}): {e}")
+        time.sleep(delay)
+    raise Exception(f"Failed to download after {retries} attempts.")
 
 def package_url(package: PackageName, version: Version) -> str:
     return f'http://hackage.haskell.org/package/{package}-{version}/{package}-{version}.tar.gz'
