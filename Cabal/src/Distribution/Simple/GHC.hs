@@ -85,7 +85,6 @@ import Prelude ()
 
 import Control.Arrow ((***))
 import Control.Monad (forM_)
-import Data.List (stripPrefix)
 import qualified Data.Map as Map
 import Distribution.CabalSpecVersion
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
@@ -248,8 +247,14 @@ configure verbosity hcPath hcPkgPath conf0 = do
       compilerId :: CompilerId
       compilerId = CompilerId GHC ghcVersion
 
+      -- The @AbiTag@ is the @Project Unit Id@ but with redundant information from the compiler version removed.
+      -- For development versions of the compiler these look like:
+      -- @Project Unit Id@: "ghc-9.13-inplace"
+      -- @compilerId@: "ghc-9.13.20250413"
+      -- So, we need to be careful to only strip the /common/ prefix.
+      -- In this example, @AbiTag@ is "inplace".
       compilerAbiTag :: AbiTag
-      compilerAbiTag = maybe NoAbiTag AbiTag (Map.lookup "Project Unit Id" ghcInfoMap >>= stripPrefix (prettyShow compilerId <> "-"))
+      compilerAbiTag = maybe NoAbiTag AbiTag (dropWhile (== '-') . stripCommonPrefix (prettyShow compilerId) <$> Map.lookup "Project Unit Id" ghcInfoMap)
 
   let comp =
         Compiler
