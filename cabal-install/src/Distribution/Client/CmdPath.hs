@@ -1,6 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE RecordWildCards #-}
 
 -- |
 -- Module      :  Distribution.Client.CmdPath
@@ -31,6 +30,7 @@ import Distribution.Client.Errors
 import Distribution.Client.GlobalFlags
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
+  , cfgVerbosity
   , defaultNixStyleFlags
   , nixStyleOptions
   )
@@ -44,8 +44,7 @@ import Distribution.Client.ProjectPlanning
 import Distribution.Client.RebuildMonad (runRebuild)
 import Distribution.Client.ScriptUtils
 import Distribution.Client.Setup
-  ( ConfigFlags (..)
-  , yesNoOpt
+  ( yesNoOpt
   )
 import Distribution.Client.Utils.Json
   ( (.=)
@@ -226,7 +225,7 @@ pathName ConfigPathInstallDir = "installdir"
 
 -- | Entry point for the 'path' command.
 pathAction :: NixStyleFlags PathFlags -> [String] -> GlobalFlags -> IO ()
-pathAction flags@NixStyleFlags{extraFlags = pathFlags', ..} cliTargetStrings globalFlags = withContextAndSelectors AcceptNoTargets Nothing flags [] globalFlags OtherCommand $ \_ baseCtx _ -> do
+pathAction flags@NixStyleFlags{extraFlags = pathFlags'} cliTargetStrings globalFlags = withContextAndSelectors verbosity AcceptNoTargets Nothing flags [] globalFlags OtherCommand $ \_ baseCtx _ -> do
   let pathFlags =
         if pathCompiler pathFlags' == NoFlag && pathDirectories pathFlags' == NoFlag
           then -- if not a single key to query is given, query everything!
@@ -268,7 +267,7 @@ pathAction flags@NixStyleFlags{extraFlags = pathFlags', ..} cliTargetStrings glo
 
   putStr $ withOutputMarker verbosity output
   where
-    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    verbosity = cfgVerbosity normal flags
 
 -- | Find the FilePath location for common configuration paths.
 --

@@ -37,6 +37,7 @@ import Distribution.Client.JobControl
   )
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
+  , cfgVerbosity
   , defaultNixStyleFlags
   , nixStyleOptions
   )
@@ -52,9 +53,7 @@ import Distribution.Client.ProjectFlags
   )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.Setup
-  ( CommonSetupFlags (..)
-  , ConfigFlags (..)
-  , GlobalFlags
+  ( GlobalFlags
   , RepoContext (..)
   , UpdateFlags
   , defaultUpdateFlags
@@ -65,9 +64,6 @@ import Distribution.Client.Types
   , RepoName (..)
   , repoName
   , unRepoName
-  )
-import Distribution.Simple.Flag
-  ( fromFlagOrDefault
   )
 import Distribution.Simple.Utils
   ( dieWithException
@@ -220,7 +216,7 @@ updateAction flags@NixStyleFlags{..} extraArgs globalFlags = do
           reposToUpdate
         traverse_ (\_ -> collectJob jobCtrl) reposToUpdate
   where
-    verbosity = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags)
+    verbosity = cfgVerbosity normal flags
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty -- ClientInstallFlags, not needed here
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 

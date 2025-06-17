@@ -22,16 +22,15 @@ import Distribution.Client.ProjectFlags
   )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Simple.Flag
-import Distribution.Simple.Setup (CommonSetupFlags (..))
 
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
+  , cfgVerbosity
   , defaultNixStyleFlags
   , nixStyleOptions
   )
 import Distribution.Client.Setup
   ( ConfigExFlags (..)
-  , ConfigFlags (..)
   , GlobalFlags
   )
 import Distribution.Verbosity
@@ -117,14 +116,14 @@ configureCommand =
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 configureAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
-configureAction flags@NixStyleFlags{..} extraArgs globalFlags = do
+configureAction flags extraArgs globalFlags = do
   (baseCtx, projConfig) <- configureAction' flags extraArgs globalFlags
 
   if shouldNotWriteFile baseCtx
     then notice v "Config file not written due to flag(s)."
     else writeProjectLocalExtraConfig (distDirLayout baseCtx) projConfig
   where
-    v = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags)
+    v = cfgVerbosity normal flags
 
 configureAction' :: NixStyleFlags () -> [String] -> GlobalFlags -> IO (ProjectBaseContext, ProjectConfig)
 configureAction' flags@NixStyleFlags{..} _extraArgs globalFlags = do
@@ -165,7 +164,7 @@ configureAction' flags@NixStyleFlags{..} _extraArgs globalFlags = do
           return (baseCtx, conf <> cliConfig)
         else return (baseCtx, cliConfig)
   where
-    v = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags)
+    v = cfgVerbosity normal flags
     cliConfig =
       commandLineFlagsToProjectConfig
         globalFlags

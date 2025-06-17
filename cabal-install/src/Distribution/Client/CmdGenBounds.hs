@@ -27,7 +27,7 @@ import Distribution.PackageDescription
 import Distribution.Simple.Utils
 import Distribution.Version
 
-import Distribution.Client.Setup (CommonSetupFlags (..), ConfigFlags (..), GlobalFlags (..))
+import Distribution.Client.Setup (GlobalFlags (..))
 
 -- Project orchestration imports
 
@@ -40,7 +40,6 @@ import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ScriptUtils
 import Distribution.Client.TargetProblem
 import Distribution.Simple.Command
-import Distribution.Simple.Flag
 import Distribution.Types.Component
 import Distribution.Verbosity
 
@@ -84,9 +83,7 @@ genBoundsCommand =
 -- | The action for the @gen-bounds@ command when used in a project context.
 genBoundsAction :: NixStyleFlags GenBoundsFlags -> [String] -> GlobalFlags -> IO ()
 genBoundsAction flags targetStrings globalFlags =
-  withContextAndSelectors RejectNoTargets Nothing flags targetStrings globalFlags OtherCommand $ \targetCtx ctx targetSelectors -> do
-    let verbosity = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags $ configFlags flags)
-
+  withContextAndSelectors verbosity RejectNoTargets Nothing flags targetStrings globalFlags OtherCommand $ \targetCtx ctx targetSelectors -> do
     baseCtx <- case targetCtx of
       ProjectContext -> return ctx
       GlobalContext -> return ctx
@@ -155,6 +152,8 @@ genBoundsAction flags targetStrings globalFlags =
         notice verbosity boundsNeededMsg
         mapM_ (renderBoundsResult verbosity) boundsActions
       else notice verbosity "All bounds up-to-date"
+  where
+    verbosity = cfgVerbosity normal flags
 
 data GenBoundsResult = GenBoundsResult PackageIdentifier ComponentTarget (Maybe [PackageIdentifier])
 
