@@ -24,6 +24,8 @@ import subprocess
 import sys
 import tempfile
 import urllib.request
+import http.client
+import time
 from textwrap import dedent
 from typing import Optional, Dict, List, Tuple, \
                    NewType, BinaryIO, NamedTuple
