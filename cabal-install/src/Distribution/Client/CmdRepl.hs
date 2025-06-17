@@ -101,8 +101,10 @@ import Distribution.Simple.Command
   )
 import Distribution.Simple.Compiler
   ( Compiler
+  , PackageDBX (..)
   , compilerCompatVersion
   )
+import Distribution.Simple.Program.GHC
 import Distribution.Simple.Setup
   ( ReplOptions (..)
   , commonSetupTempFileOptions
@@ -181,10 +183,6 @@ import Distribution.Compat.Binary (decode)
 import Distribution.Simple.Flag (fromFlagOrDefault, pattern Flag)
 import Distribution.Simple.Program.Builtin (ghcProgram)
 import Distribution.Simple.Program.Db (requireProgram)
-import Distribution.Simple.Program.Run
-  ( programInvocation
-  , runProgramInvocation
-  )
 import Distribution.Simple.Program.Types
   ( ConfiguredProgram (programOverrideEnv)
   )
@@ -364,7 +362,7 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
     -- In addition, to avoid a *third* trip through the solver, we are
     -- replicating the second half of 'runProjectPreBuildPhase' by hand
     -- here.
-    (buildCtx, compiler, replOpts', targets) <- withInstallPlan verbosity baseCtx'' $
+    (buildCtx, compiler, platform, replOpts', targets) <- withInstallPlan verbosity baseCtx'' $
       \elaboratedPlan elaboratedShared' -> do
         let ProjectBaseContext{..} = baseCtx''
 
@@ -401,13 +399,13 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
               , targetsMap = targets
               }
 
-          ElaboratedSharedConfig{pkgConfigCompiler = compiler} = elaboratedShared'
+          ElaboratedSharedConfig{pkgConfigCompiler = compiler, pkgConfigPlatform = platform} = elaboratedShared'
 
           repl_flags = case originalComponent of
             Just oci -> generateReplFlags includeTransitive elaboratedPlan' oci
             Nothing -> []
 
-        return (buildCtx, compiler, configureReplOptions & lReplOptionsFlags %~ (++ repl_flags), targets)
+        return (buildCtx, compiler, platform, configureReplOptions & lReplOptionsFlags %~ (++ repl_flags), targets)
 
     -- Multi Repl implementation see: https://well-typed.com/blog/2023/03/cabal-multi-unit/ for
     -- a high-level overview about how everything fits together.
@@ -448,7 +446,7 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
         -- Find what the unit files are, and start a repl based on all the response
         -- files which have been created in the directory.
         -- unit files for components
-        unit_files <- listDirectory dir
+        unit_files <- (filter (/= "paths")) <$> listDirectory dir
 
         -- Order the unit files so that the find target becomes the active unit
         let active_unit_fp :: Maybe FilePath
@@ -469,26 +467,21 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
                in -- GHC considers the last unit passed to be the active one
                   other_units ++ active_unit_files
 
-            render_j Serial = "1"
-            render_j (UseSem n) = show @Int n
-            render_j (NumJobs mn) = maybe "" (show @Int) mn
+            convertParStrat :: ParStratX Int -> ParStratX String
+            convertParStrat Serial = Serial
+            convertParStrat (UseSem n) = NumJobs (Just n)
+            convertParStrat (NumJobs mn) = NumJobs mn
+
+        let ghc_opts =
+              mempty
+                { ghcOptMode = Flag GhcModeInteractive
+                , ghcOptUnitFiles = map (dir </>) unit_files_ordered
+                , ghcOptNumJobs = Flag (convertParStrat (buildSettingNumJobs (buildSettings ctx)))
+                , ghcOptPackageDBs = [GlobalPackageDB]
+                }
 
         -- run ghc --interactive with
-        runProgramInvocation verbosity $
-          programInvocation ghcProg' $
-            concat $
-              [ "--interactive"
-              , "-package-env"
-              , "-" -- to ignore ghc.environment.* files
-              , "-j"
-              , render_j (buildSettingNumJobs (buildSettings ctx))
-              ]
-                : [ ["-unit", "@" ++ dir </> unit]
-                  | unit <- unit_files_ordered
-                  , unit /= "paths"
-                  ]
-
-        pure ()
+        runGHCWithResponseFile "ghci_multi.rsp" Nothing tempFileOptions verbosity ghcProg' compiler platform Nothing ghc_opts
       else do
         -- single target repl
         replOpts'' <- case targetCtx of
