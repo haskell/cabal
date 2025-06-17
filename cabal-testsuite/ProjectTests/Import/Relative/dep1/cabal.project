@@ -1,2 +1,2 @@
-package dep
+package dep1
   ghc-options: -O2
