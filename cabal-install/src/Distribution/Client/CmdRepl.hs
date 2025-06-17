@@ -180,12 +180,10 @@ import Distribution.Client.ReplFlags
   , topReplOptions
   )
 import Distribution.Compat.Binary (decode)
-import Distribution.Simple.Flag (fromFlagOrDefault, pattern Flag)
+import Distribution.Simple.Flag (flagToMaybe, fromFlagOrDefault, pattern Flag)
 import Distribution.Simple.Program.Builtin (ghcProgram)
 import Distribution.Simple.Program.Db (requireProgram)
 import Distribution.Simple.Program.Types
-  ( ConfiguredProgram (programOverrideEnv)
-  )
 import System.Directory
   ( doesFileExist
   , getCurrentDirectory
@@ -481,7 +479,7 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
                 }
 
         -- run ghc --interactive with
-        runGHCWithResponseFile "ghci_multi.rsp" Nothing tempFileOptions verbosity ghcProg' compiler platform Nothing ghc_opts
+        runReplProgram (flagToMaybe $ replWithRepl replOpts') tempFileOptions verbosity ghcProg' compiler platform Nothing ghc_opts
       else do
         -- single target repl
         replOpts'' <- case targetCtx of
