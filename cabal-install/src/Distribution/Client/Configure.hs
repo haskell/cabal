@@ -299,6 +299,7 @@ configureSetupScript
       , useDependenciesExclusive = not defaultSetupDeps && isJust explicitSetupDeps
       , useVersionMacros = not defaultSetupDeps && isJust explicitSetupDeps
       , isInteractive = False
+      , isMainLibOrExeComponent = True
       }
     where
       -- When we are compiling a legacy setup script without an explicit
