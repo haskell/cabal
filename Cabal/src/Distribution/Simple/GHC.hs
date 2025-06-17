@@ -266,8 +266,10 @@ configure verbosity hcPath hcPkgPath conf0 = do
           , compilerProperties = ghcInfoMap
           }
       compPlatform = Internal.targetPlatform ghcInfo
-      -- configure gcc and ld
-      progdb4 = Internal.configureToolchain implInfo ghcProg ghcInfoMap progdb3
+  -- configure gcc and ld
+  -- similarly to how we need ghc above, we need to know the c compiler
+  -- generally named `gcc` in cabal, to configure other programs, e.g. ld.
+  progdb4 <- Internal.configureToolchain verbosity implInfo ghcProg ghcInfoMap progdb3
   return (comp, compPlatform, progdb4)
 
 -- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find
