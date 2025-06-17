@@ -54,6 +54,7 @@ data ReplOptions = ReplOptions
   { replOptionsFlags :: [String]
   , replOptionsNoLoad :: Flag Bool
   , replOptionsFlagOutput :: Flag FilePath
+  , replWithRepl :: Flag FilePath
   }
   deriving (Show, Generic)
 
@@ -85,7 +86,7 @@ instance Binary ReplOptions
 instance Structured ReplOptions
 
 instance Monoid ReplOptions where
-  mempty = ReplOptions mempty (Flag False) NoFlag
+  mempty = ReplOptions mempty (Flag False) NoFlag NoFlag
   mappend = (<>)
 
 instance Semigroup ReplOptions where
@@ -229,4 +230,11 @@ replOptions _ =
       replOptionsFlagOutput
       (\p flags -> flags{replOptionsFlagOutput = p})
       (reqArg "DIR" (succeedReadE Flag) flagToList)
+  , option
+      []
+      ["with-repl"]
+      "Give the path to a program to use for REPL"
+      replWithRepl
+      (\v flags -> flags{replWithRepl = v})
+      (reqArgFlag "PATH")
   ]

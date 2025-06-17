@@ -42,6 +42,10 @@ data ConstraintSource =
   -- from Cabal >= 3.11
   | ConstraintSourceMultiRepl
 
+  -- | Constraint introduced by --with-repl, which requires features
+  -- from Cabal >= 3.15
+  | ConstraintSourceWithRepl
+
   -- | Constraint introduced by --enable-profiling-shared, which requires features
   -- from Cabal >= 3.13
   | ConstraintSourceProfiledDynamic
@@ -81,6 +85,8 @@ instance Pretty ConstraintSource where
       text "config file, command line flag, or user target"
     ConstraintSourceMultiRepl ->
       text "--enable-multi-repl"
+    ConstraintSourceWithRepl ->
+      text "--with-repl"
     ConstraintSourceProfiledDynamic ->
       text "--enable-profiling-shared"
     ConstraintSourceUnknown -> text "unknown source"
