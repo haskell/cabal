@@ -135,7 +135,8 @@ import Distribution.Client.TargetSelector
   , reportTargetSelectorProblems
   )
 import Distribution.Client.Types
-  ( DocsResult (..)
+  ( CurrentCommand (..)
+  , DocsResult (..)
   , GenericReadyPackage (..)
   , PackageLocation (..)
   , PackageSpecifier (..)
@@ -230,11 +231,6 @@ import           System.Posix.Signals (sigKILL, sigSEGV)
 
 #endif
 
--- | Tracks what command is being executed, because we need to hide this somewhere
--- for cases that need special handling (usually for error reporting).
-data CurrentCommand = InstallCommand | HaddockCommand | BuildCommand | ReplCommand | OtherCommand
-  deriving (Show, Eq)
-
 -- | This holds the context of a project prior to solving: the content of the
 -- @cabal.project@, @cabal/config@ and all the local package @.cabal@ files.
 data ProjectBaseContext = ProjectBaseContext
@@ -286,6 +282,7 @@ establishProjectBaseContextWithRoot verbosity cliConfig projectRoot currentComma
       httpTransport
       distDirLayout
       cliConfig
+      currentCommand
 
   let ProjectConfigBuildOnly
         { projectConfigLogsDir
