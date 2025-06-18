@@ -345,8 +345,8 @@ preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinS
           createDirectoryIfMissingVerbose verbosity True destDir
           runPreProcessorWithHsBootHack
             pp
-            (getSymbolicPath $ psrcLoc, getSymbolicPath $ psrcRelFile)
-            (getSymbolicPath $ buildLoc, srcStem <.> "hs")
+            (psrcLoc, getSymbolicPath $ psrcRelFile)
+            (buildLoc, srcStem <.> "hs")
   where
     i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
     buildAsSrcLoc :: SymbolicPath Pkg (Dir Source)
@@ -361,20 +361,25 @@ preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinS
       pp
       (inBaseDir, inRelativeFile)
       (outBaseDir, outRelativeFile) = do
+        -- Preprocessors are expected to take into account the working
+        -- directory, e.g. using runProgramCwd with a working directory
+        -- computed with mbWorkDirLBI.
+        -- Hence the use of 'getSymbolicPath' here.
         runPreProcessor
           pp
-          (inBaseDir, inRelativeFile)
-          (outBaseDir, outRelativeFile)
+          (getSymbolicPath $ inBaseDir, inRelativeFile)
+          (getSymbolicPath $ outBaseDir, outRelativeFile)
           verbosity
 
-        exists <- doesFileExist inBoot
-        when exists $ copyFileVerbose verbosity inBoot outBoot
-        where
+        -- Here we interact directly with the file system, so we must
+        -- interpret symbolic paths with respect to the working directory.
+        let
+          inFile = normalise (i inBaseDir </> inRelativeFile)
+          outFile = normalise (i outBaseDir </> outRelativeFile)
           inBoot = replaceExtension inFile "hs-boot"
           outBoot = replaceExtension outFile "hs-boot"
-
-          inFile = normalise (inBaseDir </> inRelativeFile)
-          outFile = normalise (outBaseDir </> outRelativeFile)
+        exists <- doesFileExist inBoot
+        when exists $ copyFileVerbose verbosity inBoot outBoot
 
 -- ------------------------------------------------------------
 
