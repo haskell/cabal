@@ -87,9 +87,20 @@ main = cabalTest $ do
       libFlags =
         concatMap (\x -> ["--extra-lib-dirs", cwd </> x]) libDirs
 
+  let customCC = cwd </> "custom-cc"
+
   -- Parallel flag means output of this test is nondeterministic
   _<- recordMode DoNotRecord $
-    cabal "v2-build" $ ["-j", "my-toplevel:exe:my-executable"] ++ includeFlags ++ libFlags
+    cabal "v2-build" $
+      ["-j", "my-toplevel:exe:my-executable"]
+        -- Don’t validate absence of duplicates on Windows because
+        -- it’s too inconvenient to do in bat files. Let’s just
+        -- assume that deduplication will happen on Windows but
+        -- still try to run the test to see whether command-line
+        -- argument length limit is not hit.
+        ++ ["--with-gcc=" ++ customCC | not isWindows]
+        ++ includeFlags
+        ++ libFlags
   r <- withPlan $ runPlanExe' "my-toplevel" "my-executable" []
   assertOutputContains
     ("Result = " ++ show (42 + 55 + 10 * (55 + 10 * 55) + 3 * 55))
