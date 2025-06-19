@@ -247,6 +247,9 @@ configure verbosity hcPath hcPkgPath conf0 = do
       compilerId :: CompilerId
       compilerId = CompilerId GHC ghcVersion
 
+      projectUnitId :: Maybe String
+      projectUnitId = Map.lookup "Project Unit Id" ghcInfoMap
+
       -- The @AbiTag@ is the @Project Unit Id@ but with redundant information from the compiler version removed.
       -- For development versions of the compiler these look like:
       -- @Project Unit Id@: "ghc-9.13-inplace"
@@ -254,7 +257,15 @@ configure verbosity hcPath hcPkgPath conf0 = do
       -- So, we need to be careful to only strip the /common/ prefix.
       -- In this example, @AbiTag@ is "inplace".
       compilerAbiTag :: AbiTag
-      compilerAbiTag = maybe NoAbiTag AbiTag (dropWhile (== '-') . stripCommonPrefix (prettyShow compilerId) <$> Map.lookup "Project Unit Id" ghcInfoMap)
+      compilerAbiTag = maybe NoAbiTag AbiTag (dropWhile (== '-') . stripCommonPrefix (prettyShow compilerId) <$> projectUnitId)
+
+      wiredInUnitIds = do
+        ghcInternalUnitId <- Map.lookup "ghc-internal Unit Id" ghcInfoMap
+        ghcUnitId <- projectUnitId
+        pure
+          [ (mkPackageName "ghc", mkUnitId ghcUnitId)
+          , (mkPackageName "ghc-internal", mkUnitId ghcInternalUnitId)
+          ]
 
   let comp =
         Compiler
@@ -264,6 +275,7 @@ configure verbosity hcPath hcPkgPath conf0 = do
           , compilerLanguages = languages
           , compilerExtensions = extensions
           , compilerProperties = ghcInfoMap
+          , compilerWiredInUnitIds = wiredInUnitIds
           }
       compPlatform = Internal.targetPlatform ghcInfo
       -- configure gcc and ld
