@@ -1,0 +1,14 @@
+synopsis: Allow reinstalling packages like base and template-haskell for GHC>=9.14
+packages: cabal-install cabal-install-solver
+prs: #10982
+issues: #10087
+significance: significant
+
+description: {
+
+Historically cabal-install disallowed reinstalling packages like `base` and `template-haskell`.
+As of GHC-9.12, the reasons for this have been lifted.
+We update cabal-install to become aware of this and allow reinstalling more packages.
+Certain packages like `ghc` and `ghc-internal` still cannot be reinstalled.
+
+}

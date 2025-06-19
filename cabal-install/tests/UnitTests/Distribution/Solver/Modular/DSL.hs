@@ -96,6 +96,7 @@ import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SolverPackage
 import Distribution.Solver.Types.SourcePackage
 import Distribution.Solver.Types.Variable
+import Distribution.Types.UnitId (UnitId)
 
 {-------------------------------------------------------------------------------
   Example package database DSL
@@ -783,6 +784,8 @@ exResolve
   -> Maybe [Extension]
   -- List of languages supported by the compiler, or Nothing if unknown.
   -> Maybe [Language]
+  -> Maybe [(C.PackageName, UnitId)]
+  -- ^ List of units that are wired in to the compiler
   -> Maybe PC.PkgConfigDb
   -> [ExamplePkgName]
   -> Maybe Int
@@ -806,6 +809,7 @@ exResolve
   db
   exts
   langs
+  wiredInUnitIds
   pkgConfigDb
   targets
   mbj
@@ -831,6 +835,7 @@ exResolve
         defaultCompiler
           { C.compilerInfoExtensions = exts
           , C.compilerInfoLanguages = langs
+          , C.compilerInfoWiredInUnitIds = wiredInUnitIds
           }
       (inst, avai) = partitionEithers db
       instIdx = exInstIdx inst
