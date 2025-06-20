@@ -231,6 +231,7 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Distribution.Client.Errors
 import Distribution.Solver.Types.ProjectConfigPath
+import System.Directory (getCurrentDirectory)
 import System.FilePath
 import qualified Text.PrettyPrint as Disp
 
@@ -407,13 +408,7 @@ rebuildProjectConfig
           localPackages <- phaseReadLocalPackages compiler (projectConfig <> cliConfig)
           return (projectConfig, localPackages)
 
-    let configfiles =
-          [ text "-" <+> docProjectConfigPath path
-          | Explicit path <- Set.toList . (if verbosity >= verbose then id else onlyTopLevelProvenance) $ projectConfigProvenance projectConfig
-          ]
-    unless (null configfiles) $
-      notice (verboseStderr verbosity) . render . vcat $
-        text "Configuration is affected by the following files:" : configfiles
+    informAboutConfigFiles projectConfig
 
     return (projectConfig <> cliConfig, localPackages)
     where
@@ -459,6 +454,47 @@ rebuildProjectConfig
             projectConfigShared
             projectConfigBuildOnly
             pkgLocations
+
+      informAboutConfigFiles projectConfig = do
+        cwd <- getCurrentDirectory
+        let out -- output mode is verbose ('notice') if we build outside the project root
+              | cwd == distProjectRootDirectory = info
+              | otherwise = notice
+        unless (null configFiles)
+          . out (verboseStderr verbosity)
+          . render
+          $ message
+        where
+          -- message formatting depends on |config files| (the number of config files)
+          message = case configFilesDoc of
+            (_ : _ : _ : _) ->
+              -- if |config files| > 2 then use vertical list
+              vcat
+                [ affectedByMsg <> text "the following files:"
+                , configFilesVertList
+                , atProjectRootMsg
+                ]
+            [path1, path2] ->
+              affectedByMsg <> path1 <> text " and " <> (path2 <+> atProjectRootMsg)
+            [path] ->
+              affectedByMsg <> (path <+> atProjectRootMsg)
+            [] ->
+              error "impossible" -- see `unless (null configFiles)` above
+            where
+              configFilesDoc = map (quoteUntrimmed . projectConfigPathRoot) configFiles
+              configFilesVertList -- if verbose, include provenance ("imported by" stuff)
+                | verbosity < verbose = docProjectConfigFiles configFiles
+                | otherwise = vcat $ map (\p -> text "- " <> docProjectConfigPath p) configFiles
+              affectedByMsg = text "Configuration is affected by "
+              atProjectRootMsg = text "at '" <> text distProjectRootDirectory <> text "'."
+
+          configFiles =
+            [ path
+            | Explicit path <-
+                Set.toList
+                  . (if verbosity >= verbose then id else onlyTopLevelProvenance)
+                  $ projectConfigProvenance projectConfig
+            ]
 
 configureCompiler
   :: Verbosity

@@ -1,25 +1,16 @@
 # cabal v2-update
 Downloading the latest package list from test-local-repo
 # cabal outdated
-Configuration is affected by the following files:
-- variant.project
-- variant.project.freeze
 Outdated dependencies:
 * project-config
   - project config variant.project.freeze
     * base ==3.0.3.2 (latest: 4.0.0.0)
 # cabal outdated
-Configuration is affected by the following files:
-- variant.project
-- variant.project.freeze
 Outdated dependencies:
 * project-config
   - project config variant.project.freeze
     * base ==3.0.3.2 (latest: 4.0.0.0)
 # cabal outdated
-Configuration is affected by the following files:
-- variant.project
-- variant.project.freeze
 Outdated dependencies:
 * my
   - lib:my

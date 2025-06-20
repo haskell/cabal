@@ -16,6 +16,7 @@ module Distribution.Solver.Types.ProjectConfigPath
     , cyclicalImportMsg
     , untrimmedUriImportMsg
     , docProjectConfigPathFailReason
+    , quoteUntrimmed
 
     -- * Checks and Normalization
     , isCyclicConfigPath

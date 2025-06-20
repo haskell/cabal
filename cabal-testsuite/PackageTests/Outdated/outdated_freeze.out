@@ -1,9 +1,6 @@
 # cabal v2-update
 Downloading the latest package list from test-local-repo
 # cabal outdated
-Configuration is affected by the following files:
-- cabal.project
-- cabal.project.freeze
 Outdated dependencies:
 * project-config
   - project config cabal.project.freeze
@@ -11,23 +8,14 @@ Outdated dependencies:
     * binary ==0.8.5.0 (latest: 0.8.6.0)
     * template-haskell ==2.3.0.0 (latest: 2.4.0.0)
 # cabal outdated
-Configuration is affected by the following files:
-- cabal.project
-- cabal.project.freeze
 All dependencies are up to date.
 # cabal outdated
-Configuration is affected by the following files:
-- cabal.project
-- cabal.project.freeze
 Outdated dependencies:
 * project-config
   - project config cabal.project.freeze
     * binary ==0.8.5.0 (latest: 0.8.6.0)
     * template-haskell ==2.3.0.0 (latest: 2.3.0.1)
 # cabal outdated
-Configuration is affected by the following files:
-- cabal.project
-- cabal.project.freeze
 Outdated dependencies:
 * project-config
   - user config  <ROOT>/cabal.config
@@ -35,20 +23,12 @@ Outdated dependencies:
     * binary ==0.8.5.0 (latest: 0.8.6.0)
     * template-haskell ==2.3.0.0 (latest: 2.4.0.0)
 # cabal outdated
-Configuration is affected by the following files:
-- cabal.project
-- cabal.project.freeze
 All dependencies are up to date.
 # cabal outdated
-Configuration is affected by the following files:
-- cabal.project
-- cabal.project.freeze
 Outdated dependencies:
 * project-config
   - user config  <ROOT>/cabal.config
     * binary ==0.8.5.0 (latest: 0.8.6.0)
     * template-haskell ==2.3.0.0 (latest: 2.3.0.1)
 # cabal outdated
-Configuration is affected by the following files:
-- cabal.project.missing.freeze
 All dependencies are up to date.

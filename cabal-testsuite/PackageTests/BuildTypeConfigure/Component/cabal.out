@@ -1,6 +1,4 @@
 # cabal build
-Configuration is affected by the following files:
-- cabal.project
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
@@ -9,8 +7,6 @@ Configuring library for test-pkg-0.1.0.0...
 Preprocessing library for test-pkg-0.1.0.0...
 Building library for test-pkg-0.1.0.0...
 # cabal v2-build
-Configuration is affected by the following files:
-- cabal.project
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - test-pkg-0.1.0.0 (exe:exe) (first run)
@@ -18,11 +14,7 @@ Configuring executable 'exe' for test-pkg-0.1.0.0...
 Preprocessing executable 'exe' for test-pkg-0.1.0.0...
 Building executable 'exe' for test-pkg-0.1.0.0...
 # cabal v2-run
-Configuration is affected by the following files:
-- cabal.project
 # cabal v2-run
-Configuration is affected by the following files:
-- cabal.project
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - test-pkg-0.1.0.0 (exe:exe-dep) (first run)
@@ -30,8 +22,6 @@ Configuring executable 'exe-dep' for test-pkg-0.1.0.0...
 Preprocessing executable 'exe-dep' for test-pkg-0.1.0.0...
 Building executable 'exe-dep' for test-pkg-0.1.0.0...
 # cabal v2-build
-Configuration is affected by the following files:
-- cabal.project
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - test-pkg-0.1.0.0 (lib:foo) (first run)
@@ -39,8 +29,6 @@ Configuring library 'foo' for test-pkg-0.1.0.0...
 Preprocessing library 'foo' for test-pkg-0.1.0.0...
 Building library 'foo' for test-pkg-0.1.0.0...
 # cabal v2-build
-Configuration is affected by the following files:
-- cabal.project
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - test-pkg-0.1.0.0 (lib:bar) (first run)

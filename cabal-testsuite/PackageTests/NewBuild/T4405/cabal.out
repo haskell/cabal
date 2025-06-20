@@ -1,6 +1,4 @@
 # cabal v2-build
-Configuration is affected by the following files:
-- cabal.project
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
@@ -13,6 +11,4 @@ Configuring library for q-1.0...
 Preprocessing library for q-1.0...
 Building library for q-1.0...
 # cabal v2-build
-Configuration is affected by the following files:
-- cabal.project
 Up to date

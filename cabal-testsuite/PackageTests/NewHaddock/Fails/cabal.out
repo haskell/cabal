@@ -1,6 +1,4 @@
 # cabal v2-build
-Configuration is affected by the following files:
-- cabal.project
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
@@ -11,8 +9,6 @@ Building library for example-1.0...
 Error: [Cabal-7125]
 Failed to build example-1.0-inplace.
 # cabal v2-haddock
-Configuration is affected by the following files:
-- cabal.project
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - example-1.0 (lib) (configuration changed)

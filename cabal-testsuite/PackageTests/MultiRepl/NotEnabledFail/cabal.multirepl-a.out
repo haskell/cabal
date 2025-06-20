@@ -1,6 +1,4 @@
 # cabal v2-repl
-Configuration is affected by the following files:
-- cabal.project
 Resolving dependencies...
 Error: [Cabal-7076]
 Cannot open a repl for multiple components at once. The targets 'pkg-a' and 'pkg-b' refer to different components..

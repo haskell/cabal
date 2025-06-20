@@ -1,8 +1,6 @@
 # cabal v2-update
 Downloading the latest package list from test-local-repo
 # cabal v2-build
-Configuration is affected by the following files:
-- 0-local.project
 Resolving dependencies...
 Error: [Cabal-7107]
 Could not resolve dependencies:
