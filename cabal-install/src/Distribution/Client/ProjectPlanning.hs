@@ -524,48 +524,48 @@ configureCompiler
 
     progsearchpath <- liftIO $ getSystemSearchPath
 
-    rerunIfChanged
-      verbosity
-      fileMonitorCompiler
-      ( hcFlavor
-      , hcPath
-      , hcPkg
-      , progsearchpath
-      , packageConfigProgramPaths
-      , packageConfigProgramPathExtra
-      )
-      $ do
-        liftIO $ info verbosity "Compiler settings changed, reconfiguring..."
-        progdb <-
-          liftIO $
-            -- Add paths in the global config
-            prependProgramSearchPath verbosity (fromNubList projectConfigProgPathExtra) [] defaultProgramDb
-              -- Add paths in the local config
-              >>= prependProgramSearchPath verbosity (fromNubList packageConfigProgramPathExtra) []
-              >>= pure . userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths))
-        result@(_, _, progdb') <-
-          liftIO $
-            Cabal.configCompilerEx
-              hcFlavor
-              hcPath
-              hcPkg
-              progdb
-              verbosity
-        -- Note that we added the user-supplied program locations and args
-        -- for /all/ programs, not just those for the compiler prog and
-        -- compiler-related utils. In principle we don't know which programs
-        -- the compiler will configure (and it does vary between compilers).
-        -- We do know however that the compiler will only configure the
-        -- programs it cares about, and those are the ones we monitor here.
-        monitorFiles (programsMonitorFiles progdb')
+    (hc, plat, hcProgDb) <-
+      rerunIfChanged
+        verbosity
+        fileMonitorCompiler
+        ( hcFlavor
+        , hcPath
+        , hcPkg
+        , progsearchpath
+        , packageConfigProgramPaths
+        , packageConfigProgramPathExtra
+        )
+        $ do
+          liftIO $ info verbosity "Compiler settings changed, reconfiguring..."
+          progdb <-
+            liftIO $
+              -- Add paths in the global config
+              prependProgramSearchPath verbosity (fromNubList projectConfigProgPathExtra) [] defaultProgramDb
+                -- Add paths in the local config
+                >>= prependProgramSearchPath verbosity (fromNubList packageConfigProgramPathExtra) []
+                >>= pure . userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths))
+          result@(_, _, progdb') <-
+            liftIO $
+              Cabal.configCompiler
+                hcFlavor
+                hcPath
+                progdb
+                verbosity
+          -- Note that we added the user-supplied program locations and args
+          -- for /all/ programs, not just those for the compiler prog and
+          -- compiler-related utils. In principle we don't know which programs
+          -- the compiler will configure (and it does vary between compilers).
+          -- We do know however that the compiler will only configure the
+          -- programs it cares about, and those are the ones we monitor here.
+          monitorFiles (programsMonitorFiles progdb')
+          return result
 
-        -- Note: There is currently a bug here: we are dropping unconfigured
-        -- programs from the 'ProgramDb' when we re-use the cache created by
-        -- 'rerunIfChanged'.
-        --
-        -- See Note [Caching the result of configuring the compiler]
-
-        return result
+    -- Now, **outside** of the caching logic of 'rerunIfChanged', add on
+    -- auxiliary unconfigured programs to the ProgramDb (e.g. hc-pkg, haddock, ar, ld...).
+    --
+    -- See Note [Caching the result of configuring the compiler]
+    finalProgDb <- liftIO $ Cabal.configCompilerProgDb verbosity hc hcProgDb hcPkg
+    return (hc, plat, finalProgDb)
     where
       hcFlavor = flagToMaybe projectConfigHcFlavor
       hcPath = flagToMaybe projectConfigHcPath
@@ -583,18 +583,19 @@ contains a 'ProgramDb'):
  - On the first run, we will obtain a 'ProgramDb' which may contain several
    unconfigured programs. In particular, configuring GHC will add tools such
    as `ar` and `ld` as unconfigured programs to the 'ProgramDb', with custom
-   logic for finding their location based on the location of the GHC binary.
+   logic for finding their location based on the location of the GHC binary
+   and its associated settings file.
  - On subsequent runs, if we use the cache created by 'rerunIfChanged', we will
    deserialise the 'ProgramDb' from disk, which means it won't include any
    unconfigured programs, which might mean we are unable to find 'ar' or 'ld'.
 
-This is not currently a huge problem because, in the Cabal library, we eagerly
-re-run the configureCompiler step (thus recovering any lost information), but
-this is wasted work that we should stop doing in Cabal, given that cabal-install
-has already figured out all the necessary information about the compiler.
+To solve this, we cache the ProgramDb containing the compiler (which will be
+a configured program, hence properly serialised/deserialised), and then
+re-compute any attendant unconfigured programs (such as hc-pkg, haddock or build
+tools such as ar, ld) using 'configCompilerProgDb'.
 
-To fix this bug, we can't simply eagerly configure all unconfigured programs,
-as was originally attempted, for a couple of reasons:
+Another idea would be to simply eagerly configure all unconfigured programs,
+as was originally attempted. But this doesn't work, for a couple of reasons:
 
  - it does more work than necessary, by configuring programs that we may not
    end up needing,
@@ -604,8 +605,8 @@ as was originally attempted, for a couple of reasons:
    or by package-level `extra-prog-path` arguments.
    This lead to bug reports #10633 and #10692.
 
-See #9840 for more information about the problems surrounding the lossly
-Binary ProgramDb instance.
+See #9840 for more information about the problems surrounding the lossy
+'Binary ProgramDb' instance.
 -}
 
 ------------------------------------------------------------------------------
