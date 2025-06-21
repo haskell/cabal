@@ -1,0 +1,8 @@
+# checking repl command with no project and --ignore-project
+# cabal repl
+Resolving dependencies...
+# checking repl command with no project and no project options
+# cabal repl
+Resolving dependencies...
+# checking repl command with a missing project
+# cabal repl
