@@ -208,7 +208,7 @@ tests =
               solverSuccess [("base", 1), ("ghc-prim", 1), ("integer-gmp", 1), ("integer-simple", 1)]
       , runTest $
           mkTest dbNonupgrade "Refuse to install newer ghc requested by another library" ["A"] $
-            solverFailure (isInfixOf "rejecting: ghc-2.0.0 (constraint from non-reinstallable package requires installed instance)")
+            solverFailure (isInfixOf "rejecting: ghc-1.0.0/installed-1 (conflict: A => ghc==2.0.0)")
       ]
   , testGroup
       "reject-unconstrained"
@@ -623,7 +623,7 @@ tests =
                 , "[__2] unknown package: unknown2 (dependency of B)"
                 , "[__2] fail (backjumping, conflict set: B, unknown2)"
                 , "[__1] fail (backjumping, conflict set: A, B, unknown1, unknown2)"
-                , "[__0] skipping: A; 3.0.0, 2.0.0 (has the same characteristics that "
+                , "[__0] skipping: A; 2.0.0, 3.0.0 (has the same characteristics that "
                     ++ "caused the previous version to fail: depends on 'B')"
                 , "[__0] trying: A-1.0.0"
                 , "[__1] done"
@@ -652,7 +652,7 @@ tests =
                 , "[__1] next goal: B (dependency of A)"
                 , "[__1] rejecting: B-11.0.0 (conflict: A => B==14.0.0)"
                 , "[__1] fail (backjumping, conflict set: A, B)"
-                , "[__0] skipping: A; 3.0.0, 2.0.0 (has the same characteristics that "
+                , "[__0] skipping: A; 2.0.0, 3.0.0 (has the same characteristics that "
                     ++ "caused the previous version to fail: depends on 'B' but excludes "
                     ++ "version 11.0.0)"
                 , "[__0] trying: A-1.0.0"
@@ -777,7 +777,7 @@ tests =
                 , "[__2] next goal: C (dependency of A)"
                 , "[__2] rejecting: C-2.0.0 (conflict: A => C==1.0.0)"
                 , "[__2] fail (backjumping, conflict set: A, C)"
-                , "[__0] skipping: A; 3.0.0, 2.0.0 (has the same characteristics that caused the "
+                , "[__0] skipping: A; 2.0.0, 3.0.0 (has the same characteristics that caused the "
                     ++ "previous version to fail: depends on 'C' but excludes version 2.0.0)"
                 , "[__0] trying: A-1.0.0"
                 , "[__1] next goal: C (dependency of A)"
@@ -950,7 +950,7 @@ tests =
                     , Right $ exAv "B" 1 [ExFix "A" 4]
                     ]
                   rejecting = "rejecting: A-3.0.0"
-                  skipping = "skipping: A; 2.0.0, 1.0.0"
+                  skipping = "skipping: A; 1.0.0, 2.0.0"
                in mkTest db "show skipping versions list" ["B"] $
                     solverFailure (\msg -> rejecting `isInfixOf` msg && skipping `isInfixOf` msg)
           , runTest $
@@ -961,7 +961,7 @@ tests =
                     , Right $ exAv "B" 1 [ExFix "A" 4]
                     ]
                   rejecting = "rejecting: A-3.0.0/installed-3.0.0"
-                  skipping = "skipping: A; 2.0.0/installed-2.0.0, 1.0.0/installed-1.0.0"
+                  skipping = "skipping: A; 1.0.0/installed-1.0.0, 2.0.0/installed-2.0.0"
                in mkTest db "show skipping versions list, installed" ["B"] $
                     solverFailure (\msg -> rejecting `isInfixOf` msg && skipping `isInfixOf` msg)
           ]
