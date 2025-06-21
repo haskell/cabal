@@ -118,6 +118,7 @@ data FailReason = UnsupportedExtension Extension
                 | UnknownPackage
                 | GlobalConstraintVersion VR ConstraintSource
                 | GlobalConstraintInstalled ConstraintSource
+                | GlobalConstraintInstalledSpecificUnitId UnitId ConstraintSource
                 | GlobalConstraintSource ConstraintSource
                 | GlobalConstraintFlag ConstraintSource
                 | ManualFlag

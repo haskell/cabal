@@ -10,6 +10,7 @@ module Distribution.Solver.Modular.Package
   , PN
   , QPV
   , instI
+  , instUid
   , makeIndependent
   , primaryPP
   , setupPP
@@ -76,6 +77,10 @@ showPI (PI qpn i) = showQPN qpn ++ "-" ++ showI i
 instI :: I -> Bool
 instI (I _ (Inst _)) = True
 instI _              = False
+
+instUid :: UnitId -> I -> Bool
+instUid uid (I _ (Inst uid')) = uid == uid'
+instUid _ _ = False
 
 -- | Is the package in the primary group of packages.  This is used to
 -- determine (1) if we should try to establish stanza preferences

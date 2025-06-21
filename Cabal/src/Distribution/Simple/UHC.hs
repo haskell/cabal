@@ -78,6 +78,7 @@ configure verbosity hcPath _hcPkgPath progdb = do
           , compilerLanguages = uhcLanguages
           , compilerExtensions = uhcLanguageExtensions
           , compilerProperties = Map.empty
+          , compilerWiredInUnitIds = Nothing
           }
       compPlatform = Nothing
   return (comp, compPlatform, progdb')
