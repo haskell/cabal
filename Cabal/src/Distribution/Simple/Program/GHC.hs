@@ -16,6 +16,7 @@ module Distribution.Simple.Program.GHC
   , renderGhcOptions
   , runGHC
   , runGHCWithResponseFile
+  , runReplProgram
   , packageDbArgsDb
   , normaliseGhcArgs
   ) where
@@ -437,6 +438,8 @@ data GhcOptions = GhcOptions
   -- the @ghc -i@ flag (@-i@ on its own with no path argument).
   , ghcOptSourcePath :: NubListR (SymbolicPath Pkg (Dir Source))
   -- ^ Search path for Haskell source files; the @ghc -i@ flag.
+  , ghcOptUnitFiles :: [FilePath]
+  -- ^ Unit files to load; the @ghc -unit@ flag.
   , -------------
     -- Packages
 
@@ -666,37 +669,7 @@ runGHCWithResponseFile fileNameTemplate encoding tempFileOptions verbosity ghcPr
 
       args = progInvokeArgs invocation
 
-      -- Don't use response files if the first argument is `--interactive`, for
-      -- two related reasons.
-      --
-      -- `hie-bios` relies on a hack to intercept the command-line that `Cabal`
-      -- supplies to `ghc`.  Specifically, `hie-bios` creates a script around
-      -- `ghc` that detects if the first option is `--interactive` and if so then
-      -- instead of running `ghc` it prints the command-line that `ghc` was given
-      -- instead of running the command:
-      --
-      -- https://github.com/haskell/hie-bios/blob/ce863dba7b57ded20160b4f11a487e4ff8372c08/wrappers/cabal#L7
-      --
-      -- … so we can't store that flag in the response file, otherwise that will
-      -- break.  However, even if we were to add a special-case to keep that flag
-      -- out of the response file things would still break because `hie-bios`
-      -- stores the arguments to `ghc` that the wrapper script outputs and reuses
-      -- them later.  That breaks if you use a response file because it will
-      -- store an argument like `@…/ghc36000-0.rsp` which is a temporary path
-      -- that no longer exists after the wrapper script completes.
-      --
-      -- The work-around here is that we don't use a response file at all if the
-      -- first argument (and only the first argument) to `ghc` is
-      -- `--interactive`.  This ensures that `hie-bios` and all downstream
-      -- utilities (e.g. `haskell-language-server`) continue working.
-      --
-      --
-      useResponseFile =
-        case args of
-          "--interactive" : _ -> False
-          _ -> compilerSupportsResponseFiles
-
-  if not useResponseFile
+  if not compilerSupportsResponseFiles
     then runProgramInvocation verbosity invocation
     else do
       let (rtsArgs, otherArgs) = splitRTSArgs args
@@ -718,6 +691,24 @@ runGHCWithResponseFile fileNameTemplate encoding tempFileOptions verbosity ghcPr
                 arg : args' -> Process.showCommandForUser arg args'
 
           runProgramInvocation verbosity newInvocation
+
+-- Either run GHC to start the repl or the argument to --with-repl flag.
+runReplProgram
+  :: Maybe FilePath
+  -- ^ --with-repl argument
+  -> TempFileOptions
+  -> Verbosity
+  -> ConfiguredProgram
+  -> Compiler
+  -> Platform
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -> GhcOptions
+  -> IO ()
+runReplProgram withReplProg tempFileOptions verbosity ghcProg comp platform mbWorkDir ghcOpts =
+  let replProg = case withReplProg of
+        Just path -> ghcProg{programLocation = FoundOnSystem path}
+        Nothing -> ghcProg
+   in runGHCWithResponseFile "ghci.rsp" Nothing tempFileOptions verbosity replProg comp platform mbWorkDir ghcOpts
 
 ghcInvocation
   :: Verbosity
@@ -970,6 +961,8 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         , [prettyShow modu | modu <- flags ghcOptInputModules]
         , concat [["-o", u out] | out <- flag ghcOptOutputFile]
         , concat [["-dyno", out] | out <- flag ghcOptOutputDynFile]
+        , -- unit files
+          concat [["-unit", "@" ++ unit] | unit <- ghcOptUnitFiles opts]
         , ---------------
           -- Extra
 
