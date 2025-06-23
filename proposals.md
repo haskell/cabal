@@ -31,7 +31,7 @@ This process is an experiment. We will review it over time to ensure that it con
 - The decision-making power remains with those who contribute code and maintain the project.
 - The process is deliberately kept lightweight to avoid burdening contributors.
   If contributors do not want to use the process then it should be modified.
-- The developers meeting is the primary forum for making final decisions.
+- The developers meeting will assess consensus to make a final decisions.
 - Transparency and documentation make it easier for all contributors to follow significant decisions.
 
 
@@ -80,7 +80,7 @@ In general, most changes do not require proposals, developers are trusted to use
 ### 3. Decision Meeting
 
 - The Cabal developers meeting is the forum for making decisions on proposals.
-- The developers present at the meeting should reflect on the comments on a proposal and determine the overall consensus of the community.
+- The developers present at the meeting should reflect on the comments on a proposal and determine the overall consensus of the community. The opinion of knowledgeable contributors regarding a particular subsystem is especially important for the meeting to reach a decision. 
 - It is not necessarily expected that the participants of the meeting will offer a technical opinion. The discussion on the issue should provide enough context for a decision to be made.
 - Those responsible for the proposal are encouraged to attend the developers meeting.
 - There is a quorum of three developers at the meeting.
@@ -145,7 +145,7 @@ Does this change affect backwards compatibility? What migration path is needed?
 
 ## Implementation Notes
 
-Who will implement this? What is the expected timeline?
+Are you willing to implement this yourself? What is the expected timeline?
 
 ## Open Questions
 
