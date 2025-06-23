@@ -1,8 +1,3 @@
-{-# LANGUAGE CPP #-}
-#ifdef DEBUG_TRACETREE
-{-# LANGUAGE FlexibleInstances #-}
-{-# OPTIONS_GHC -Wno-orphans #-}
-#endif
 module Distribution.Solver.Modular.Solver
     ( SolverConfig(..)
     , solve
@@ -46,16 +41,6 @@ import qualified Distribution.Solver.Modular.PSQ as PSQ
 import Distribution.Simple.Setup (BooleanFlag(..))
 import Distribution.Solver.Types.Stage (Staged, Stage(..))
 
-#ifdef DEBUG_TRACETREE
-import qualified Distribution.Solver.Modular.ConflictSet as CS
-import qualified Distribution.Solver.Modular.WeightedPSQ as W
-import           Distribution.Solver.Modular.Version (showVer)
-
-import Debug.Trace.Tree (gtraceJson)
-import Debug.Trace.Tree.Simple
-import Debug.Trace.Tree.Generic
-import Debug.Trace.Tree.Assoc (Assoc(..))
-#endif
 
 -- | Various options for the modular solver.
 data SolverConfig = SolverConfig {
@@ -98,19 +83,14 @@ solve :: SolverConfig                         -- ^ solver parameters
       -> RetryLog Message SolverFailure (Assignment, RevDepMap)
 solve sc cinfo pkgConfigDB idx userPrefs userConstraints userGoals =
   explorePhase      .
-  traceTree "cycles.json" id .
   detectCycles      .
-  traceTree "heuristics.json" id .
   trav (
-   heuristicsPhase  .
-   preferencesPhase .
-   validationPhase
-  ) .
-  traceTree "semivalidated.json" id .
+    heuristicsPhase  .
+    preferencesPhase .
+    validationPhase
+  ) $
   validationCata    .
-  traceTree "pruned.json" id .
-  trav prunePhase   .
-  traceTree "build.json" id $
+  trav prunePhase   $
   buildPhase
   where
     explorePhase     = backjumpAndExplore (maxBackjumps sc)
@@ -168,65 +148,6 @@ solve sc cinfo pkgConfigDB idx userPrefs userConstraints userGoals =
       | asBool (reorderGoals sc) = P.preferReallyEasyGoalChoices
       | otherwise                = id {- P.firstGoal -}
 
--- | Dump solver tree to a file (in debugging mode)
---
--- This only does something if the @debug-tracetree@ configure argument was
--- given; otherwise this is just the identity function.
-{- FOURMOLU_DISABLE -}
-traceTree ::
-#ifdef DEBUG_TRACETREE
-  GSimpleTree a =>
-#endif
-     FilePath  -- ^ Output file
-  -> (a -> a)  -- ^ Function to summarize the tree before dumping
-  -> a -> a
-#ifdef DEBUG_TRACETREE
-traceTree = gtraceJson
-#else
-traceTree _ _ = id
-#endif
-{- FOURMOLU_ENABLE -}
-
-#ifdef DEBUG_TRACETREE
-instance GSimpleTree (Tree d c) where
-  fromGeneric = go
-    where
-      go :: Tree d c -> SimpleTree
-      go (PChoice qpn _ _       psq) = Node "P" $ Assoc $ L.map (uncurry (goP qpn)) $ psqToList  psq
-      go (FChoice _   _ _ _ _ _ psq) = Node "F" $ Assoc $ L.map (uncurry goFS)      $ psqToList  psq
-      go (SChoice _   _ _ _     psq) = Node "S" $ Assoc $ L.map (uncurry goFS)      $ psqToList  psq
-      go (GoalChoice  _         psq) = Node "G" $ Assoc $ L.map (uncurry goG)       $ PSQ.toList psq
-      go (Done _rdm _s)              = Node "D" $ Assoc []
-      go (Fail cs _reason)           = Node "X" $ Assoc [("CS", Leaf $ goCS cs)]
-
-      psqToList :: W.WeightedPSQ w k v -> [(k, v)]
-      psqToList = L.map (\(_, k, v) -> (k, v)) . W.toList
-
-      -- Show package choice
-      goP :: QPN -> POption -> Tree d c -> (String, SimpleTree)
-      goP _        (POption (I _stage ver _loc) Nothing)  subtree = (showVer ver, go subtree)
-      goP (Q _ pn) (POption _           (Just pp)) subtree = (showQPN (Q pp pn), go subtree)
-
-      -- Show flag or stanza choice
-      goFS :: Bool -> Tree d c -> (String, SimpleTree)
-      goFS val subtree = (show val, go subtree)
-
-      -- Show goal choice
-      goG :: Goal QPN -> Tree d c -> (String, SimpleTree)
-      goG (Goal var gr) subtree = (showVar var ++ " (" ++ shortGR gr ++ ")", go subtree)
-
-      -- Variation on 'showGR' that produces shorter strings
-      -- (Actually, QGoalReason records more info than necessary: we only need
-      -- to know the variable that introduced the goal, not the value assigned
-      -- to that variable)
-      shortGR :: QGoalReason -> String
-      shortGR UserGoal            = "user"
-      shortGR (DependencyGoal dr) = showDependencyReason dr
-
-      -- Show conflict set
-      goCS :: ConflictSet -> String
-      goCS cs = "{" ++ (intercalate "," . L.map showVar . CS.toList $ cs) ++ "}"
-#endif
 
 -- | Replace all goal reasons with a dummy goal reason in the tree
 --
