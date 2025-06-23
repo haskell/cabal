@@ -19,7 +19,7 @@ The process is designed to make developers feel empowered to make decisions.
 
 * It is light-weight, a PR is opened and discussed on a repo with a fixed discussion period.
 * It is developer-led, final decisions are made by developers at the Cabal developers meeting.
-* It is flexible, there is no formal voting procedure, decisions are made by rough consensus.
+* It is flexible, there is no formal voting procedure, decisions are made by [rough consensus](https://datatracker.ietf.org/doc/html/rfc7282).
 
 Overall, we hope that this will allow developers to move the cabal project forward.
 
@@ -80,7 +80,10 @@ In general, most changes do not require proposals, developers are trusted to use
 ### 3. Decision Meeting
 
 - The Cabal developers meeting is the forum for making decisions on proposals.
-- The developers present at the meeting should reflect on the comments on a proposal and determine the overall consensus of the community. The opinion of knowledgeable contributors regarding a particular subsystem is especially important for the meeting to reach a decision. 
+- The developers present at the meeting should reflect on the comments on a proposal and determine the [rough consensus](https://datatracker.ietf.org/doc/html/rfc7282) of the community.
+  The opinion of
+  knowledgeable contributors regarding a particular subsystem is especially
+  important for the meeting to reach a decision. =======
 - It is not necessarily expected that the participants of the meeting will offer a technical opinion. The discussion on the issue should provide enough context for a decision to be made.
 - Those responsible for the proposal are encouraged to attend the developers meeting.
 - There is a quorum of three developers at the meeting.
@@ -113,7 +116,9 @@ Acceptance of a proposal does not automatically result in implementation. The pr
 * The cabal developers may decide about the proposal at the next developers' meeting or a cabal developer may ask for a longer discussion period
 * The proposal is accepted: the proposal author implements the feature
 * The proposal is rejected: the PR is closed.
-* The proposal is deferred: the decision period is extended by an additional two weeks and a concrete reason for deferral is named. Once the concern has been addressed then the proposal is reviewed again at the meeting.
+* The proposal is deferred: the decision period is extended and a concrete
+  reason for deferral is named. Once the concern has been addressed then the
+  proposal is reviewed again at the meeting.
 
 
 ## Proposal Template
@@ -155,6 +160,3 @@ Are there any unresolved questions or areas needing further input?
 
 Links to related issues, discussions, or previous work.
 ```
-
-
-
