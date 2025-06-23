@@ -22,7 +22,7 @@ import Distribution.Compat.Graph
 import Distribution.Compiler
          ( CompilerInfo )
 import Distribution.Solver.Modular.Assignment
-         ( Assignment, toCPs )
+         ( Assignment(..), toCPs )
 import Distribution.Solver.Modular.ConfiguredConversion
          ( convCP )
 import qualified Distribution.Solver.Modular.ConflictSet as CS
@@ -81,7 +81,12 @@ import Distribution.Verbosity ( normal, verbose )
 -- solver. Performs the necessary translations before and after.
 modularResolver :: SolverConfig -> DependencyResolver loc
 modularResolver sc toolchains pkgConfigDbs iidx sidx pprefs pcs pns = do
-    uncurry postprocess <$> solve' sc cinfo pkgConfigDbs idx pprefs gcs pns
+    (assignment, revdepmap) <- solve' sc cinfo pkgConfigDbs idx pprefs gcs pns
+
+    -- Results have to be converted into an install plan. 'convCP' removes
+    -- package qualifiers, which means that linked packages become duplicates
+    -- and can be removed.
+    return $ ordNubBy nodeKey $ map (convCP iidx sidx) (toCPs assignment revdepmap)
   where
       cinfo = fst <$> toolchains
 
@@ -91,12 +96,6 @@ modularResolver sc toolchains pkgConfigDbs iidx sidx pprefs pcs pns = do
       gcs    = M.fromListWith (++) (map pair pcs)
         where
           pair lpc = (pcName $ unlabelPackageConstraint lpc, [lpc])
-
-      -- Results have to be converted into an install plan. 'convCP' removes
-      -- package qualifiers, which means that linked packages become duplicates
-      -- and can be removed.
-      postprocess a rdm = ordNubBy nodeKey $
-                          map (convCP iidx sidx) (toCPs a rdm)
 
       -- Helper function to extract the PN from a constraint.
       pcName :: PackageConstraint -> PN
