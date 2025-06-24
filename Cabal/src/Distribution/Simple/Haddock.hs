@@ -1071,7 +1071,13 @@ reusingGHCCompilationArtifacts verbosity tmpFileOpts mbWorkDir lbi bi clbi versi
           let
             vanillaOpts = componentGhcOptions normal lbi bi clbi (buildDir lbi)
             i = interpretSymbolicPath mbWorkDir
-            copyDir ghcDir tmpDir = copyDirectoryRecursive verbosity (i $ fromFlag $ ghcDir vanillaOpts) (i tmpDir)
+            copyDir getGhcDir tmpDir = do
+              let ghcDir = i $ fromFlag $ getGhcDir vanillaOpts
+              ghcDirExists <- doesDirectoryExist ghcDir
+              -- Don't try to copy artifacts if they don't exist, e.g. if
+              -- we have not yet run the 'build' command.
+              when ghcDirExists $
+                copyDirectoryRecursive verbosity ghcDir (i tmpDir)
           copyDir ghcOptObjDir tmpObjDir
           copyDir ghcOptHiDir tmpHiDir
           -- copyDir ghcOptStubDir tmpStubDir -- (see W.1 in Note [Hi Haddock Recompilation Avoidance])
