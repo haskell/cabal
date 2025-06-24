@@ -186,7 +186,7 @@ configureCompiler verbosity hcPath conf0 = do
       (userMaybeSpecifyPath "ghc" hcPath conf0)
 
   -- Cabal currently supports GHC less than `maxGhcVersion`
-  let maxGhcVersion = mkVersion [9, 14]
+  let maxGhcVersion = mkVersion [9, 16]
   unless (ghcVersion < maxGhcVersion) $
     warn verbosity $
       "Unknown/unsupported 'ghc' version detected "
