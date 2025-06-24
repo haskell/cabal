@@ -48,8 +48,10 @@ module Distribution.Simple.Configure
   , getInstalledPackagesMonitorFiles
   , getInstalledPackagesById
   , getPackageDBContents
+  , configCompiler
   , configCompilerEx
   , configCompilerAuxEx
+  , configCompilerProgDb
   , computeEffectiveProfiling
   , ccLdOptionsBuildInfo
   , checkForeignDeps
@@ -2484,10 +2486,14 @@ configCompilerAuxEx cfg = do
     programDb
     verbosity
 
+-- | Configure the compiler and associated programs such as @hc-pkg@, @haddock@
+-- and toolchain program such as @ar@, @ld@.
 configCompilerEx
   :: Maybe CompilerFlavor
   -> Maybe FilePath
+  -- ^ user-specified @hc@ path (optional)
   -> Maybe FilePath
+  -- ^ user-specified @hc-pkg@ path (optional)
   -> ProgramDb
   -> Verbosity
   -> IO (Compiler, Platform, ProgramDb)
@@ -2496,9 +2502,45 @@ configCompilerEx (Just hcFlavor) hcPath hcPkg progdb verbosity = do
   (comp, maybePlatform, programDb) <- case hcFlavor of
     GHC -> GHC.configure verbosity hcPath hcPkg progdb
     GHCJS -> GHCJS.configure verbosity hcPath hcPkg progdb
-    UHC -> UHC.configure verbosity hcPath hcPkg progdb
+    UHC -> UHC.configure verbosity hcPath progdb
     _ -> dieWithException verbosity UnknownCompilerException
   return (comp, fromMaybe buildPlatform maybePlatform, programDb)
+
+-- | Configure the compiler ONLY.
+configCompiler
+  :: Maybe CompilerFlavor
+  -> Maybe FilePath
+  -- ^ user-specified @hc@ path (optional)
+  -> ProgramDb
+  -> Verbosity
+  -> IO (Compiler, Platform, ProgramDb)
+configCompiler mbFlavor hcPath progdb verbosity = do
+  (comp, maybePlatform, programDb) <-
+    case mbFlavor of
+      Nothing -> dieWithException verbosity UnknownCompilerException
+      Just hcFlavor ->
+        case hcFlavor of
+          GHC -> GHC.configureCompiler verbosity hcPath progdb
+          GHCJS -> GHCJS.configureCompiler verbosity hcPath progdb
+          UHC -> UHC.configure verbosity hcPath progdb
+          _ -> dieWithException verbosity UnknownCompilerException
+  return (comp, fromMaybe buildPlatform maybePlatform, programDb)
+
+-- | Configure programs associated to the compiler, such as @hc-pkg@, @haddock@
+-- and toolchain program such as @ar@, @ld@.
+configCompilerProgDb
+  :: Verbosity
+  -> Compiler
+  -> ProgramDb
+  -- ^ program database containing the compiler
+  -> Maybe FilePath
+  -- ^ user-specified @hc-pkg@ path (optional)
+  -> IO ProgramDb
+configCompilerProgDb verbosity comp hcProgDb hcPkgPath = do
+  case compilerFlavor comp of
+    GHC -> GHC.compilerProgramDb verbosity comp hcProgDb hcPkgPath
+    GHCJS -> GHCJS.compilerProgramDb verbosity comp hcProgDb hcPkgPath
+    _ -> return hcProgDb
 
 -- -----------------------------------------------------------------------------
 -- Testing C lib and header dependencies
