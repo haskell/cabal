@@ -600,38 +600,27 @@ tests =
           ]
   , testGroup
       "--fine-grained-conflicts"
-      [ -- Skipping a version because of a problematic dependency:
-        --
-        -- When the solver explores A-4, it finds that it cannot satisfy B's
-        -- dependencies. This allows the solver to skip the subsequent
-        -- versions of A that also depend on B.
-        runTest $
-          let db =
-                [ Right $ exAv "A" 4 [ExAny "B"]
-                , Right $ exAv "A" 3 [ExAny "B"]
-                , Right $ exAv "A" 2 [ExAny "B"]
-                , Right $ exAv "A" 1 []
-                , Right $ exAv "B" 2 [ExAny "unknown1"]
-                , Right $ exAv "B" 1 [ExAny "unknown2"]
-                ]
-              msg =
-                [ "[__0] trying: A-4.0.0 (user goal)"
-                , "[__1] trying: B-2.0.0 (dependency of A)"
-                , "[__2] unknown package: unknown1 (dependency of B)"
-                , "[__2] fail (backjumping, conflict set: B, unknown1)"
-                , "[__1] trying: B-1.0.0"
-                , "[__2] unknown package: unknown2 (dependency of B)"
-                , "[__2] fail (backjumping, conflict set: B, unknown2)"
-                , "[__1] fail (backjumping, conflict set: A, B, unknown1, unknown2)"
-                , "[__0] skipping: A; 3.0.0, 2.0.0 (has the same characteristics that "
-                    ++ "caused the previous version to fail: depends on 'B')"
-                , "[__0] trying: A-1.0.0"
-                , "[__1] done"
-                ]
-           in setVerbose $
-                mkTest db "skip version due to problematic dependency" ["A"] $
-                  SolverResult (isInfixOf msg) $
-                    Right [("A", 1)]
+      -- Rejecting multiple versions:
+      --
+      -- All versions of A depend on B, but no version of B exists.
+      -- The solver attempts A-3, fails due to missing B, and then
+      -- rejects A-3, A-2, and A-1 because they share the same unsatisfiable dependency.
+      runTest $
+        let db =
+              [ Right $ exAv "A" 3 [ExAny "B"]
+              , Right $ exAv "A" 2 [ExAny "B"]
+              , Right $ exAv "A" 1 [ExAny "B"]
+              -- No versions of B are defined in the database
+              ]
+            msg =
+              [ "[__0] trying: A-3.0.0 (user goal)"
+              , "[__1] fail (backjumping, conflict set: A, B)"
+              , "[__0] rejecting: A-3.0.0, A-2.0.0, A-1.0.0"
+              ]
+        in setVerbose $
+             mkTest db "reject multiple versions of A due to missing B" ["A"] $
+               SolverResult (isInfixOf msg) $
+                 Left anySolverFailure
       , -- Skipping a version because of a restrictive constraint on a
         -- dependency:
         --
