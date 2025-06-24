@@ -8,7 +8,7 @@ where
 
 -- base
 import Data.List (isInfixOf)
-
+import UnitTests.Distribution.Solver.Modular.Utils
 import qualified Distribution.Version as V
 
 -- test-framework
@@ -600,27 +600,27 @@ tests =
           ]
   , testGroup
       "--fine-grained-conflicts"
-      -- Rejecting multiple versions:
-      --
-      -- All versions of A depend on B, but no version of B exists.
-      -- The solver attempts A-3, fails due to missing B, and then
-      -- rejects A-3, A-2, and A-1 because they share the same unsatisfiable dependency.
-      runTest $
-        let db =
-              [ Right $ exAv "A" 3 [ExAny "B"]
-              , Right $ exAv "A" 2 [ExAny "B"]
-              , Right $ exAv "A" 1 [ExAny "B"]
-              -- No versions of B are defined in the database
-              ]
-            msg =
-              [ "[__0] trying: A-3.0.0 (user goal)"
-              , "[__1] fail (backjumping, conflict set: A, B)"
-              , "[__0] rejecting: A-3.0.0, A-2.0.0, A-1.0.0"
-              ]
-        in setVerbose $
-             mkTest db "reject multiple versions of A due to missing B" ["A"] $
-               SolverResult (isInfixOf msg) $
-                 Left anySolverFailure
+        -- Rejecting multiple versions:
+        --
+        -- All versions of A depend on B, but B doesn't exist. The solver will
+        -- try A-3, fail due to missing B, and then reject A-3, A-2, A-1.
+        runTest $
+          let db =
+                [ Right $ exAv "A" 3 [ExAny "B"]
+                , Right $ exAv "A" 2 [ExAny "B"]
+                , Right $ exAv "A" 1 [ExAny "B"]
+                  -- No versions of B are defined in the database.
+                ]
+              msg =
+                [ "[__0] trying: A-3.0.0 (user goal)"
+                , "[__1] next goal: B (dependency of A)"
+                , "[__1] fail (backjumping, conflict set: A, B)"
+                , "[__0] rejecting: A-3.0.0, A-2.0.0, A-1.0.0"
+                ]
+           in setVerbose $
+                mkTest db "reject multiple versions of A due to missing B" ["A"] $
+                  SolverResult (isInfixOf msg) $
+                    Left anySolverFailure
       , -- Skipping a version because of a restrictive constraint on a
         -- dependency:
         --
