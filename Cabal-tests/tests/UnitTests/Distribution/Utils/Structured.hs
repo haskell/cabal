@@ -18,7 +18,7 @@ tests = testGroup "Distribution.Utils.Structured"
     [ testCase "VersionRange" $
       md5Check (Proxy :: Proxy VersionRange) 0x39396fc4f2d751aaa1f94e6d843f03bd
     , testCase "SPDX.License" $
-      md5Check (Proxy :: Proxy License) 0xd3d4a09f517f9f75bc3d16370d5a853a
+      md5Check (Proxy :: Proxy License) 0xf90ab6c2e4ffbc71b2e8c12531e50356
     -- The difference is in encoding of newtypes
     , testCase "GenericPackageDescription" $ md5CheckGenericPackageDescription (Proxy :: Proxy GenericPackageDescription)
     , testCase "LocalBuildInfo" $ md5CheckLocalBuildInfo (Proxy :: Proxy LocalBuildInfo)
@@ -29,8 +29,8 @@ md5Check proxy md5Int = structureHash proxy @?= md5FromInteger md5Int
 
 md5CheckGenericPackageDescription :: Proxy GenericPackageDescription -> Assertion
 md5CheckGenericPackageDescription proxy = md5Check proxy
-    0x42685b0be2909b20bfcd2f32c503ec7b
+    0xc039c6741dead5203ad2b33bd3bf4dc8
 
 md5CheckLocalBuildInfo :: Proxy LocalBuildInfo -> Assertion
 md5CheckLocalBuildInfo proxy = md5Check proxy
-    0x3d5f7afb3f2f9d8a8ea0e9487a74a006
+    0xea86b170fa32ac289cbd1fb6174b5cbf
