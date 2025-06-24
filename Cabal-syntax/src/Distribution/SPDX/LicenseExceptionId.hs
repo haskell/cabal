@@ -30,7 +30,7 @@ import qualified Text.PrettyPrint as Disp
 -- LicenseExceptionId
 -------------------------------------------------------------------------------
 
--- | SPDX License Exceptions identifiers list v3.25
+-- | SPDX License Exceptions identifiers list v3.26
 data LicenseExceptionId
     = N_389_exception -- ^ @389-exception@, 389 Directory Server Exception
     | Asterisk_exception -- ^ @Asterisk-exception@, Asterisk exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
@@ -123,7 +123,7 @@ instance Binary LicenseExceptionId where
 
 -- note: remember to bump version each time the definition changes
 instance Structured LicenseExceptionId where
-    structure p = set typeVersion 306 $ nominalStructure p
+    structure p = set typeVersion 307 $ nominalStructure p
 
 instance Pretty LicenseExceptionId where
     pretty = Disp.text . licenseExceptionId
@@ -478,6 +478,61 @@ licenseExceptionIdList LicenseListVersion_3_25 =
     , X11vnc_openssl_exception
     ]
     ++ bulkOfLicenses
+licenseExceptionIdList LicenseListVersion_3_26 =
+    [ Asterisk_exception
+    , Asterisk_linking_protocols_exception
+    , Autoconf_exception_generic_3_0
+    , Autoconf_exception_generic
+    , Autoconf_exception_macro
+    , Bison_exception_1_24
+    , CGAL_linking_exception
+    , Cryptsetup_OpenSSL_exception
+    , Digia_Qt_LGPL_exception_1_1
+    , Erlang_otp_linking_exception
+    , Fmt_exception
+    , GCC_exception_2_0_note
+    , Gmsh_exception
+    , GNAT_exception
+    , GNOME_examples_exception
+    , GNU_compiler_exception
+    , GPL_3_0_389_ds_base_exception
+    , GPL_3_0_interface_exception
+    , GPL_3_0_linking_exception
+    , GPL_3_0_linking_source_exception
+    , GPL_CC_1_0
+    , GStreamer_exception_2005
+    , GStreamer_exception_2008
+    , Harbour_exception
+    , Independent_modules_exception
+    , KiCad_libraries_exception
+    , LGPL_3_0_linking_exception
+    , Libpri_OpenH323_exception
+    , LLGPL
+    , LLVM_exception
+    , Mxml_exception
+    , OCaml_LGPL_linking_exception
+    , OpenJDK_assembly_exception_1_0
+    , PCRE2_exception
+    , Polyparse_exception
+    , PS_or_PDF_font_exception_20170817
+    , QPL_1_0_INRIA_2004_exception
+    , Qt_GPL_exception_1_0
+    , Qt_LGPL_exception_1_1
+    , Romic_exception
+    , RRDtool_FLOSS_exception_2_0
+    , SANE_exception
+    , SHL_2_0
+    , SHL_2_1
+    , Stunnel_exception
+    , SWI_exception
+    , Swift_exception
+    , Texinfo_exception
+    , UBDL_exception
+    , Universal_FOSS_exception_1_0
+    , Vsftpd_openssl_exception
+    , X11vnc_openssl_exception
+    ]
+    ++ bulkOfLicenses
 
 -- | Create a 'LicenseExceptionId' from a 'String'.
 mkLicenseExceptionId :: LicenseListVersion -> String -> Maybe LicenseExceptionId
@@ -489,6 +544,7 @@ mkLicenseExceptionId LicenseListVersion_3_10 s = Map.lookup s stringLookup_3_10
 mkLicenseExceptionId LicenseListVersion_3_16 s = Map.lookup s stringLookup_3_16
 mkLicenseExceptionId LicenseListVersion_3_23 s = Map.lookup s stringLookup_3_23
 mkLicenseExceptionId LicenseListVersion_3_25 s = Map.lookup s stringLookup_3_25
+mkLicenseExceptionId LicenseListVersion_3_26 s = Map.lookup s stringLookup_3_26
 
 stringLookup_3_0 :: Map String LicenseExceptionId
 stringLookup_3_0 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
@@ -521,6 +577,10 @@ stringLookup_3_23 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
 stringLookup_3_25 :: Map String LicenseExceptionId
 stringLookup_3_25 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
     licenseExceptionIdList LicenseListVersion_3_25
+
+stringLookup_3_26 :: Map String LicenseExceptionId
+stringLookup_3_26 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
+    licenseExceptionIdList LicenseListVersion_3_26
 
 --  | License exceptions in all SPDX License lists
 bulkOfLicenses :: [LicenseExceptionId]

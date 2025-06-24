@@ -33,7 +33,7 @@ import qualified Text.PrettyPrint as Disp
 -- LicenseId
 -------------------------------------------------------------------------------
 
--- | SPDX License identifiers list v3.25
+-- | SPDX License identifiers list v3.26
 data LicenseId
     = N_0BSD -- ^ @0BSD@, BSD Zero Clause License
     | N_3D_Slicer_1_0 -- ^ @3D-Slicer-1.0@, 3D Slicer License v1.0, SPDX License List 3.25, SPDX License List 3.26
@@ -720,7 +720,7 @@ instance Binary LicenseId where
 
 -- note: remember to bump version each time the definition changes
 instance Structured LicenseId where
-    structure p = set typeVersion 306 $ nominalStructure p
+    structure p = set typeVersion 307 $ nominalStructure p
 
 instance Pretty LicenseId where
     pretty = Disp.text . licenseId
@@ -3281,6 +3281,338 @@ licenseIdList LicenseListVersion_3_25 =
     , Zeeff
     ]
     ++ bulkOfLicenses
+licenseIdList LicenseListVersion_3_26 =
+    [ N_3D_Slicer_1_0
+    , AdaCore_doc
+    , Adobe_Display_PostScript
+    , Adobe_Utopia
+    , AGPL_1_0_only
+    , AGPL_1_0_or_later
+    , AMD_newlib
+    , AML_glslang
+    , ANTLR_PD_fallback
+    , Any_OSI_perl_modules
+    , Any_OSI
+    , App_s2p
+    , Arphic_1999
+    , Artistic_dist
+    , Aspell_RU
+    , ASWF_Digital_Assets_1_0
+    , ASWF_Digital_Assets_1_1
+    , Baekmuk
+    , Bcrypt_Solar_Designer
+    , Bitstream_Charter
+    , Bitstream_Vera
+    , Blessing
+    , BlueOak_1_0_0
+    , Boehm_GC_without_fee
+    , Boehm_GC
+    , Brian_Gladman_2_Clause
+    , Brian_Gladman_3_Clause
+    , BSD_2_Clause_Darwin
+    , BSD_2_Clause_first_lines
+    , BSD_2_Clause_pkgconf_disclaimer
+    , BSD_2_Clause_Views
+    , BSD_3_Clause_acpica
+    , BSD_3_Clause_flex
+    , BSD_3_Clause_HP
+    , BSD_3_Clause_Modification
+    , BSD_3_Clause_No_Military_License
+    , BSD_3_Clause_Open_MPI
+    , BSD_3_Clause_Sun
+    , BSD_4_Clause_Shortened
+    , BSD_4_3RENO
+    , BSD_4_3TAHOE
+    , BSD_Advertising_Acknowledgement
+    , BSD_Attribution_HPND_disclaimer
+    , BSD_Inferno_Nettverk
+    , BSD_Source_beginning_file
+    , BSD_Systemics_W3Works
+    , BSD_Systemics
+    , BUSL_1_1
+    , C_UDA_1_0
+    , CAL_1_0_Combined_Work_Exception
+    , CAL_1_0
+    , Caldera_no_preamble
+    , Catharon
+    , CC_BY_2_5_AU
+    , CC_BY_3_0_AT
+    , CC_BY_3_0_AU
+    , CC_BY_3_0_DE
+    , CC_BY_3_0_IGO
+    , CC_BY_3_0_NL
+    , CC_BY_3_0_US
+    , CC_BY_NC_3_0_DE
+    , CC_BY_NC_ND_3_0_DE
+    , CC_BY_NC_ND_3_0_IGO
+    , CC_BY_NC_SA_2_0_DE
+    , CC_BY_NC_SA_2_0_FR
+    , CC_BY_NC_SA_2_0_UK
+    , CC_BY_NC_SA_3_0_DE
+    , CC_BY_NC_SA_3_0_IGO
+    , CC_BY_ND_3_0_DE
+    , CC_BY_SA_2_0_UK
+    , CC_BY_SA_2_1_JP
+    , CC_BY_SA_3_0_AT
+    , CC_BY_SA_3_0_DE
+    , CC_BY_SA_3_0_IGO
+    , CC_PDDC
+    , CC_PDM_1_0
+    , CC_SA_1_0
+    , CDL_1_0
+    , CDLA_Permissive_2_0
+    , CERN_OHL_1_1
+    , CERN_OHL_1_2
+    , CERN_OHL_P_2_0
+    , CERN_OHL_S_2_0
+    , CERN_OHL_W_2_0
+    , CFITSIO
+    , Check_cvs
+    , Checkmk
+    , Clips
+    , CMU_Mach_nodoc
+    , CMU_Mach
+    , COIL_1_0
+    , Community_Spec_1_0
+    , Copyleft_next_0_3_0
+    , Copyleft_next_0_3_1
+    , Cornell_Lossless_JPEG
+    , Cronyx
+    , CryptoSwift
+    , Cve_tou
+    , DEC_3_Clause
+    , DL_DE_BY_2_0
+    , DL_DE_ZERO_2_0
+    , DocBook_DTD
+    , DocBook_Schema
+    , DocBook_Stylesheet
+    , DocBook_XML
+    , DRL_1_0
+    , DRL_1_1
+    , Dtoa
+    , Elastic_2_0
+    , EPICS
+    , Etalab_2_0
+    , FBM
+    , FDK_AAC
+    , Ferguson_Twofish
+    , FreeBSD_DOC
+    , FSFAP_no_warranty_disclaimer
+    , FSFULLRSD
+    , FSFULLRWD
+    , FSL_1_1_ALv2
+    , FSL_1_1_MIT
+    , Furuseth
+    , Fwlw
+    , Game_Programming_Gems
+    , GCR_docs
+    , GD
+    , Generic_xts
+    , GFDL_1_1_invariants_only
+    , GFDL_1_1_invariants_or_later
+    , GFDL_1_1_no_invariants_only
+    , GFDL_1_1_no_invariants_or_later
+    , GFDL_1_2_invariants_only
+    , GFDL_1_2_invariants_or_later
+    , GFDL_1_2_no_invariants_only
+    , GFDL_1_2_no_invariants_or_later
+    , GFDL_1_3_invariants_only
+    , GFDL_1_3_invariants_or_later
+    , GFDL_1_3_no_invariants_only
+    , GFDL_1_3_no_invariants_or_later
+    , GLWTPL
+    , Graphics_Gems
+    , Gtkbook
+    , Gutmann
+    , HDF5
+    , Hdparm
+    , HIDAPI
+    , Hippocratic_2_1
+    , HP_1986
+    , HP_1989
+    , HPND_DEC
+    , HPND_doc_sell
+    , HPND_doc
+    , HPND_export_US_acknowledgement
+    , HPND_export_US_modify
+    , HPND_export_US
+    , HPND_export2_US
+    , HPND_Fenneberg_Livingston
+    , HPND_INRIA_IMAG
+    , HPND_Intel
+    , HPND_Kevlin_Henney
+    , HPND_Markus_Kuhn
+    , HPND_merchantability_variant
+    , HPND_MIT_disclaimer
+    , HPND_Netrek
+    , HPND_Pbmplus
+    , HPND_sell_MIT_disclaimer_xserver
+    , HPND_sell_regexpr
+    , HPND_sell_variant_MIT_disclaimer_rev
+    , HPND_sell_variant_MIT_disclaimer
+    , HPND_sell_variant
+    , HPND_UC_export_US
+    , HPND_UC
+    , HTMLTIDY
+    , IEC_Code_Components_EULA
+    , IJG_short
+    , Inner_Net_2_0
+    , InnoSetup
+    , ISC_Veillard
+    , Jam
+    , Jove
+    , JPL_image
+    , JPNIC
+    , Kastrup
+    , Kazlib
+    , Knuth_CTAN
+    , Latex2e_translated_notice
+    , Libpng_1_6_35
+    , Libpng_2_0
+    , Libselinux_1_0
+    , Libutil_David_Nugent
+    , Linux_man_pages_1_para
+    , Linux_man_pages_copyleft_2_para
+    , Linux_man_pages_copyleft_var
+    , Linux_man_pages_copyleft
+    , Linux_OpenIB
+    , LOOP
+    , LPD_document
+    , Lsof
+    , Lucida_Bitmap_Fonts
+    , LZMA_SDK_9_11_to_9_20
+    , LZMA_SDK_9_22
+    , Mackerras_3_Clause_acknowledgment
+    , Mackerras_3_Clause
+    , Magaz
+    , Mailprio
+    , Man2html
+    , Martin_Birgmeier
+    , McPhee_slideshow
+    , Metamail
+    , Minpack
+    , MIPS
+    , MIT_0
+    , MIT_Click
+    , MIT_Festival
+    , MIT_Khronos_old
+    , MIT_Modern_Variant
+    , MIT_open_group
+    , MIT_testregex
+    , MIT_Wu
+    , MMIXware
+    , MPEG_SSG
+    , Mpi_permissive
+    , Mplus
+    , MS_LPL
+    , MulanPSL_1_0
+    , MulanPSL_2_0
+    , NAIST_2003
+    , NCBI_PD
+    , NCGL_UK_2_0
+    , NCL
+    , Ngrep
+    , NICTA_1_0
+    , NIST_PD_fallback
+    , NIST_PD
+    , NIST_Software
+    , NLOD_2_0
+    , NTIA_PD
+    , NTP_0
+    , O_UDA_1_0
+    , OAR
+    , ODC_By_1_0
+    , OFFIS
+    , OFL_1_0_no_RFN
+    , OFL_1_0_RFN
+    , OFL_1_1_no_RFN
+    , OFL_1_1_RFN
+    , OGC_1_0
+    , OGDL_Taiwan_1_0
+    , OGL_Canada_2_0
+    , OGL_UK_1_0
+    , OGL_UK_2_0
+    , OGL_UK_3_0
+    , OLFL_1_3
+    , OpenPBS_2_3
+    , OpenSSL_standalone
+    , OpenVision
+    , OPL_UK_3_0
+    , OPUBL_1_0
+    , PADL
+    , Parity_6_0_0
+    , Parity_7_0_0
+    , Pixar
+    , Pkgconf
+    , Pnmstitch
+    , PolyForm_Noncommercial_1_0_0
+    , PolyForm_Small_Business_1_0_0
+    , PPL
+    , PSF_2_0
+    , Python_2_0_1
+    , Python_ldap
+    , QPL_1_0_INRIA_2004
+    , Radvd
+    , Ruby_pty
+    , SAX_PD_2_0
+    , SchemeReport
+    , Sendmail_8_23
+    , Sendmail_Open_Source_1_1
+    , SGI_OpenGL
+    , SGP4
+    , SHL_0_51
+    , SHL_0_5
+    , SL
+    , SMAIL_GPL
+    , Snprintf
+    , SOFA
+    , SoftSurfer
+    , Soundex
+    , Ssh_keyscan
+    , SSH_OpenSSH
+    , SSH_short
+    , SSLeay_standalone
+    , SSPL_1_0
+    , Sun_PPP_2000
+    , Sun_PPP
+    , SunPro
+    , Swrule
+    , Symlinks
+    , TAPR_OHL_1_0
+    , TermReadKey
+    , TGPPL_1_0
+    , ThirdEye
+    , Threeparttable
+    , TPDL
+    , TPL_1_0
+    , TrustedQSL
+    , TTWL
+    , TTYP0
+    , TU_Berlin_1_0
+    , TU_Berlin_2_0
+    , Ubuntu_font_1_0
+    , UCAR
+    , UCL_1_0
+    , Ulem
+    , UMich_Merit
+    , Unicode_3_0
+    , UnixCrypt
+    , Unlicense_libtelnet
+    , Unlicense_libwhirlpool
+    , URT_RLE
+    , W3m
+    , Widget_Workshop
+    , Wwl
+    , X11_distribute_modifications_variant
+    , X11_swapped
+    , Xdebug_1_03
+    , Xfig
+    , Xkeyboard_config_Zinoviev
+    , Xlock
+    , Xzoom
+    , Zeeff
+    ]
+    ++ bulkOfLicenses
 
 -- | Create a 'LicenseId' from a 'String'.
 mkLicenseId :: LicenseListVersion -> String -> Maybe LicenseId
@@ -3292,6 +3624,7 @@ mkLicenseId LicenseListVersion_3_10 s = Map.lookup s stringLookup_3_10
 mkLicenseId LicenseListVersion_3_16 s = Map.lookup s stringLookup_3_16
 mkLicenseId LicenseListVersion_3_23 s = Map.lookup s stringLookup_3_23
 mkLicenseId LicenseListVersion_3_25 s = Map.lookup s stringLookup_3_25
+mkLicenseId LicenseListVersion_3_26 s = Map.lookup s stringLookup_3_26
 
 stringLookup_3_0 :: Map String LicenseId
 stringLookup_3_0 = Map.fromList $ map (\i -> (licenseId i, i)) $
@@ -3324,6 +3657,10 @@ stringLookup_3_23 = Map.fromList $ map (\i -> (licenseId i, i)) $
 stringLookup_3_25 :: Map String LicenseId
 stringLookup_3_25 = Map.fromList $ map (\i -> (licenseId i, i)) $
     licenseIdList LicenseListVersion_3_25
+
+stringLookup_3_26 :: Map String LicenseId
+stringLookup_3_26 = Map.fromList $ map (\i -> (licenseId i, i)) $
+    licenseIdList LicenseListVersion_3_26
 
 --  | Licenses in all SPDX License lists
 bulkOfLicenses :: [LicenseId]
