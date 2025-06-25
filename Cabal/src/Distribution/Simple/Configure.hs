@@ -183,6 +183,7 @@ import Text.PrettyPrint
 import qualified Data.Maybe as M
 import qualified Data.Set as Set
 import qualified Distribution.Compat.NonEmptySet as NES
+import GHC.Stack (HasCallStack)
 
 type UseExternalInternalDeps = Bool
 
@@ -1208,7 +1209,8 @@ finalCheckPackage
         enabled
 
 configureComponents
-  :: LBC.LocalBuildConfig
+  :: HasCallStack
+  => LBC.LocalBuildConfig
   -> LBC.PackageBuildDescr
   -> PackageInfo
   -> ([PreExistingComponent], [ConfiguredPromisedComponent])

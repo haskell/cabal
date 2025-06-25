@@ -174,6 +174,7 @@ import Data.List
   )
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import GHC.Stack (HasCallStack)
 import Text.PrettyPrint
 
 -- ------------------------------------------------------------
@@ -912,7 +913,8 @@ interpretPackagesPreference selected defaultPref prefs =
 -- | Make an install plan from the output of the dep resolver.
 -- It checks that the plan is valid, or it's an error in the dep resolver.
 validateSolverResult
-  :: Staged (CompilerInfo, Platform)
+  :: HasCallStack
+  => Staged (CompilerInfo, Platform)
   -> [ResolverPackage UnresolvedPkgLoc]
   -> Progress String String SolverInstallPlan
 validateSolverResult toolchains pkgs =

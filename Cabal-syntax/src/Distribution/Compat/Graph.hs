@@ -104,6 +104,7 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import qualified Data.Tree as Tree
 import qualified Distribution.Compat.Prelude as Prelude
+import GHC.Stack (HasCallStack)
 
 -- | A graph of nodes @a@.  The nodes are expected to have instance
 -- of class 'IsNode'.
@@ -377,7 +378,7 @@ fromMap m =
     bounds = (0, Map.size m - 1)
 
 -- | /O(V log V)/. Convert a list of nodes (with distinct keys) into a graph.
-fromDistinctList :: (IsNode a, Show (Key a)) => [a] -> Graph a
+fromDistinctList :: HasCallStack => (IsNode a, Show (Key a)) => [a] -> Graph a
 fromDistinctList =
   fromMap
     . Map.fromListWith (\_ -> duplicateError)
