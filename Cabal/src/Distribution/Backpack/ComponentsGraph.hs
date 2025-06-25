@@ -22,6 +22,7 @@ import Distribution.Types.ComponentRequestedSpec
 import Distribution.Utils.Generic
 
 import Distribution.Pretty (pretty)
+import GHC.Stack (HasCallStack)
 import Text.PrettyPrint
 
 ------------------------------------------------------------------------------
@@ -50,7 +51,8 @@ dispComponentsWithDeps graph =
 -- | Create a 'Graph' of 'Component', or report a cycle if there is a
 -- problem.
 mkComponentsGraph
-  :: ComponentRequestedSpec
+  :: HasCallStack
+  => ComponentRequestedSpec
   -> PackageDescription
   -> Either [ComponentName] ComponentsGraph
 mkComponentsGraph enabled pkg_descr =

@@ -54,6 +54,7 @@ import Data.Either
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Distribution.Pretty
+import GHC.Stack (HasCallStack)
 import Text.PrettyPrint
 
 ------------------------------------------------------------------------------
@@ -61,7 +62,8 @@ import Text.PrettyPrint
 ------------------------------------------------------------------------------
 
 configureComponentLocalBuildInfos
-  :: Verbosity
+  :: HasCallStack
+  => Verbosity
   -> Bool -- use_external_internal_deps
   -> ComponentRequestedSpec
   -> Bool -- deterministic
@@ -206,7 +208,8 @@ configureComponentLocalBuildInfos
 ------------------------------------------------------------------------------
 
 toComponentLocalBuildInfos
-  :: Compiler
+  :: HasCallStack
+  => Compiler
   -> InstalledPackageIndex -- FULL set
   -> [ConfiguredPromisedComponent]
   -> PackageDescription
@@ -232,12 +235,12 @@ toComponentLocalBuildInfos
       -- since we will pay for the ALL installed packages even if
       -- they are not related to what we are building.  This was true
       -- in the old configure code.
-      external_graph :: Graph (Either InstalledPackageInfo ReadyComponent)
+      external_graph :: HasCallStack => Graph (Either InstalledPackageInfo ReadyComponent)
       external_graph =
         Graph.fromDistinctList
           . map Left
           $ PackageIndex.allPackages installedPackageSet
-      internal_graph :: Graph (Either InstalledPackageInfo ReadyComponent)
+      internal_graph :: HasCallStack => Graph (Either InstalledPackageInfo ReadyComponent)
       internal_graph =
         Graph.fromDistinctList
           . map Right

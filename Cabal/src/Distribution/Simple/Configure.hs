@@ -196,6 +196,7 @@ import Text.PrettyPrint
 import qualified Data.Maybe as M
 import qualified Data.Set as Set
 import qualified Distribution.Compat.NonEmptySet as NES
+import GHC.Stack (HasCallStack)
 
 type UseExternalInternalDeps = Bool
 
@@ -1393,7 +1394,8 @@ finalCheckPackage
           CantFindForeignLibraries unsupportedFLibs
 
 configureComponents
-  :: VerbosityHandles
+  :: HasCallStack
+  => VerbosityHandles
   -> LBC.LocalBuildConfig
   -> LBC.PackageBuildDescr
   -> InstalledPackageIndex
