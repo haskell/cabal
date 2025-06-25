@@ -1,6 +1,6 @@
 cabal-version: 3.6
 name:          Cabal-hooks
-version:       3.16
+version:       3.17
 copyright:     2023, Cabal Development Team
 license:       BSD-3-Clause
 license-file:  LICENSE
@@ -27,8 +27,8 @@ library
   hs-source-dirs: src
 
   build-depends:
-    , Cabal-syntax    >= 3.15      && < 3.17
-    , Cabal           >= 3.15      && < 3.17
+    , Cabal-syntax    >= 3.17      && < 3.18
+    , Cabal           >= 3.17      && < 3.18
     , base            >= 4.13      && < 5
     , containers      >= 0.5.0.0   && < 0.9
     , transformers    >= 0.5.6.0   && < 0.7
