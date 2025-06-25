@@ -131,6 +131,7 @@ import qualified Data.Map as Map
 import Distribution.Compat.Graph (Graph)
 import qualified Distribution.Compat.Graph as Graph
 
+import GHC.Stack (HasCallStack)
 import qualified System.FilePath as FilePath (takeDirectory)
 
 -- | Data cached after configuration step.  See also
@@ -415,7 +416,7 @@ withAllTargetsInBuildOrder' pkg_descr lbi f =
 -- the order they need to be built.
 -- Has a prime because it takes a 'PackageDescription' argument
 -- which may disagree with 'localPkgDescr' in 'LocalBuildInfo'.
-neededTargetsInBuildOrder' :: PackageDescription -> LocalBuildInfo -> [UnitId] -> [TargetInfo]
+neededTargetsInBuildOrder' :: HasCallStack => PackageDescription -> LocalBuildInfo -> [UnitId] -> [TargetInfo]
 neededTargetsInBuildOrder' pkg_descr lbi@(LocalBuildInfo{componentGraph = compsGraph}) uids =
   case Graph.closure compsGraph uids of
     Nothing -> error $ "localBuildPlan: missing uids " ++ intercalate ", " (map prettyShow uids)
