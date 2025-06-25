@@ -104,6 +104,8 @@ for each package using :cfg-field:`profiling-detail`::
 Alternately, you can call ``cabal build --enable-profiling`` to
 temporarily build with profiling.
 
+.. _how reproducible:
+
 How can I have a reproducible set of versions for my dependencies?
 ------------------------------------------------------------------
 
@@ -133,6 +135,17 @@ development environments.
 
 .. _Stackage: https://stackage.org/
 .. _versions of packages in lts-19.2: https://www.stackage.org/lts-19.2
+
+Limitations
+^^^^^^^^^^^
+
+Stackage does not guarantee that the config files will work with revisions, and
+it's not currently possible to `override used versions of packages <https://github.com/haskell/cabal/issues/9511>`
+or to `specify revisions <https://github.com/haskell/cabal/issues/7833>` using
+cabal.
+
+To mitigate these shortcomings, you can download the config file that is linked
+to and remove the troublesome constraints.
 
 How it works
 ============
