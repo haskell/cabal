@@ -12,3 +12,7 @@ program-options
 -- to disable this
 package cabal-install
   flags: +git-rev
+
+-- splitmix-0.1.3 is demanding a symbol GitHub's Mac runners don't admit to having
+constraints:
+  splitmix < 0.1.3
