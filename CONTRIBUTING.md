@@ -317,9 +317,9 @@ When does a change require a proposal?
 
 * Bug fixes or small improvements do not require proposals.
 * Improving features which already see wide agreement does not require
-  proposals (for example, migrating existing commands from v1- to v2-)
+  proposals (for example, migrating existing commands from v1- to v2-).
 * Larger features should be first discussed on a proposal (for example, a new
-  command, Hooks, private dependencies)
+  command, Hooks, private dependencies).
 * Significant changes to existing behaviour should be discussed on proposals.
 
 In general, most changes do not require proposals, developers are trusted to

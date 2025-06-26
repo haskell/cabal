@@ -54,8 +54,8 @@ Routine or small changes do not require a formal proposal; they can continue to 
 ### Examples
 
 * Bug fixes or small improvements do not require proposals.
-* Improving features which already see wide agreement does not require proposals (for example, migrating existing commands from v1- to v2-)
-* Larger features should be first discussed on a proposal (for example, a new command, Hooks, private dependencies)
+* Improving features which already see wide agreement does not require proposals (for example, migrating existing commands from v1- to v2-).
+* Larger features should be first discussed on a proposal (for example, a new command, Hooks, private dependencies).
 * Significant changes to existing behaviour should be discussed on proposals.
 
 In general, most changes do not require proposals, developers are trusted to use their judgement about when seeking a broader consensus is necessary.
@@ -81,9 +81,8 @@ In general, most changes do not require proposals, developers are trusted to use
 
 - The Cabal developers meeting is the forum for making decisions on proposals.
 - The developers present at the meeting should reflect on the comments on a proposal and determine the [rough consensus](https://datatracker.ietf.org/doc/html/rfc7282) of the community.
-  The opinion of
-  knowledgeable contributors regarding a particular subsystem is especially
-  important for the meeting to reach a decision. =======
+  The opinion of knowledgeable contributors regarding a particular subsystem is especially
+  important for the meeting to reach a decision.
 - It is not necessarily expected that the participants of the meeting will offer a technical opinion. The discussion on the issue should provide enough context for a decision to be made.
 - Those responsible for the proposal are encouraged to attend the developers meeting.
 - There is a quorum of three developers at the meeting.
@@ -110,11 +109,11 @@ Acceptance of a proposal does not automatically result in implementation. The pr
 
 ### Example Timeline
 
-* A proposal is opened
-* A two weeks discussion period follows
-* After at least two weeks, the author may ask cabal developers to consider their proposal
-* The cabal developers may decide about the proposal at the next developers' meeting or a cabal developer may ask for a longer discussion period
-* The proposal is accepted: the proposal author implements the feature
+* A proposal is opened.
+* A two weeks discussion period follows.
+* After at least two weeks, the author may ask cabal developers to consider their proposal.
+* The cabal developers may decide about the proposal at the next developers' meeting or a cabal developer may ask for a longer discussion period.
+* The proposal is accepted: the proposal author implements the feature.
 * The proposal is rejected: the PR is closed.
 * The proposal is deferred: the decision period is extended and a concrete
   reason for deferral is named. Once the concern has been addressed then the
