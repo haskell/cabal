@@ -437,6 +437,8 @@ data GhcOptions = GhcOptions
   -- the @ghc -i@ flag (@-i@ on its own with no path argument).
   , ghcOptSourcePath :: NubListR (SymbolicPath Pkg (Dir Source))
   -- ^ Search path for Haskell source files; the @ghc -i@ flag.
+  , ghcOptUnitFiles :: [FilePath]
+  -- ^ Unit files to load; the @ghc -unit@ flag.
   , -------------
     -- Packages
 
@@ -970,6 +972,8 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         , [prettyShow modu | modu <- flags ghcOptInputModules]
         , concat [["-o", u out] | out <- flag ghcOptOutputFile]
         , concat [["-dyno", out] | out <- flag ghcOptOutputDynFile]
+        , -- unit files
+          concat [["-unit", "@" ++ unit] | unit <- ghcOptUnitFiles opts]
         , ---------------
           -- Extra
 
