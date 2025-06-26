@@ -2275,7 +2275,7 @@ instance Binary InstallFlags
 defaultInstallFlags :: InstallFlags
 defaultInstallFlags =
   InstallFlags
-    { installDocumentation = Flag False
+    { installDocumentation = mempty
     , installHaddockIndex = Flag docIndexFile
     , installDest = Flag Cabal.NoCopyDest
     , installDryRun = Flag False
