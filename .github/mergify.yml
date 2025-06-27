@@ -55,6 +55,8 @@ pull_request_rules:
       - base=master
       - -draft
       - -closed
+      - '-label=merge delay passed'
+      - '-label=priority: high :fire:'
       - or:
           - label=merge me
           - label=squash+merge me
@@ -189,14 +191,21 @@ pull_request_rules:
     conditions:
       - body~=automatic backport
 
+merge_queue:
+  max_parallel_checks: 2
+
 queue_rules:
   # Mergify now requires different queues for different strategies
   - name: default
+    batch_size: 3
+    batch_max_wait_time: 10 min
     update_bot_account: Mikolaj
     merge_method: merge
     update_method: rebase
 
   - name: squash-merge
+    batch_size: 3
+    batch_max_wait_time: 10 min
     update_bot_account: Mikolaj
     merge_method: squash
     update_method: merge
