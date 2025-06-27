@@ -27,8 +27,14 @@ import Distribution.Solver.Modular.ConfiguredConversion
          ( convCP )
 import qualified Distribution.Solver.Modular.ConflictSet as CS
 import Distribution.Solver.Modular.Dependency
-import Distribution.Solver.Modular.Flag
-import Distribution.Solver.Modular.Index
+    ( Var(..),
+      showVar,
+      ConflictMap,
+      ConflictSet,
+      showConflictSet,
+      RevDepMap )
+import Distribution.Solver.Modular.Flag ( SN(SN), FN(FN) )
+import Distribution.Solver.Modular.Index ( Index )
 import Distribution.Solver.Modular.IndexConversion
          ( convPIs )
 import Distribution.Solver.Modular.Log
@@ -36,25 +42,38 @@ import Distribution.Solver.Modular.Log
 import Distribution.Solver.Modular.Package
          ( PN )
 import Distribution.Solver.Modular.RetryLog
+    ( RetryLog,
+      toProgress,
+      fromProgress,
+      retry,
+      failWith,
+      continueWith )
 import Distribution.Solver.Modular.Solver
          ( SolverConfig(..), PruneAfterFirstSuccess(..), solve )
 import Distribution.Solver.Types.DependencyResolver
+    ( DependencyResolver )
 import Distribution.Solver.Types.LabeledPackageConstraint
+    ( LabeledPackageConstraint, unlabelPackageConstraint )
 import Distribution.Solver.Types.PackageConstraint
-import Distribution.Solver.Types.PackagePath
+    ( PackageConstraint(..), scopeToPackageName )
+import Distribution.Solver.Types.PackagePath ( QPN )
 import Distribution.Solver.Types.PackagePreferences
+    ( PackagePreferences )
 import Distribution.Solver.Types.PkgConfigDb
          ( PkgConfigDb )
 import Distribution.Solver.Types.Progress
-import Distribution.Solver.Types.Variable
+    ( Progress(..), foldProgress )
+import Distribution.Solver.Types.SummarizedMessage
+    ( SummarizedMessage(StringMsg) )
+import Distribution.Solver.Types.Variable ( Variable(..) )
 import Distribution.System
          ( Platform(..) )
 import Distribution.Simple.Setup
          ( BooleanFlag(..) )
 import Distribution.Simple.Utils
-         ( ordNubBy )
-import Distribution.Verbosity
-
+    ( ordNubBy )
+import Distribution.Verbosity ( normal, verbose )
+import Distribution.Solver.Modular.Message ( renderSummarizedMessage )
 
 -- | Ties the two worlds together: classic cabal-install vs. the modular
 -- solver. Performs the necessary translations before and after.
@@ -120,21 +139,21 @@ solve' :: SolverConfig
        -> (PN -> PackagePreferences)
        -> Map PN [LabeledPackageConstraint]
        -> Set PN
-       -> Progress String String (Assignment, RevDepMap)
+       -> Progress SummarizedMessage String (Assignment, RevDepMap)
 solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
     toProgress $ retry (runSolver printFullLog sc) createErrorMsg
   where
     runSolver :: Bool -> SolverConfig
-              -> RetryLog String SolverFailure (Assignment, RevDepMap)
+              -> RetryLog SummarizedMessage SolverFailure (Assignment, RevDepMap)
     runSolver keepLog sc' =
         displayLogMessages keepLog $
         solve sc' cinfo idx pkgConfigDB pprefs gcs pns
 
     createErrorMsg :: SolverFailure
-                   -> RetryLog String String (Assignment, RevDepMap)
+                   -> RetryLog SummarizedMessage String (Assignment, RevDepMap)
     createErrorMsg failure@(ExhaustiveSearch cs cm) =
       if asBool $ minimizeConflictSet sc
-      then continueWith ("Found no solution after exhaustively searching the "
+      then continueWith (mkStringMsg $ "Found no solution after exhaustively searching the "
                           ++ "dependency tree. Rerunning the dependency solver "
                           ++ "to minimize the conflict set ({"
                           ++ showConflictSet cs ++ "}).") $
@@ -155,7 +174,7 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
            rerunSolverForErrorMsg cs ++ finalErrorMsg sc failure
     createErrorMsg failure@BackjumpLimitReached     =
         continueWith
-             ("Backjump limit reached. Rerunning dependency solver to generate "
+             (mkStringMsg $ "Backjump limit reached. Rerunning dependency solver to generate "
               ++ "a final conflict set for the search tree containing the "
               ++ "first backjump.") $
         retry (runSolver printFullLog sc { pruneAfterFirstSuccess = PruneAfterFirstSuccess True }) $
@@ -181,12 +200,15 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
           -- original goal order.
           goalOrder' = preferGoalsFromConflictSet cs <> fromMaybe mempty (goalOrder sc)
 
-      in unlines ("Could not resolve dependencies:" : messages (toProgress (runSolver True sc')))
+      in unlines ("Could not resolve dependencies:" : map renderSummarizedMessage (messages (toProgress (runSolver True sc'))))
 
     printFullLog = solverVerbosity sc >= verbose
 
     messages :: Progress step fail done -> [step]
     messages = foldProgress (:) (const []) (const [])
+
+mkStringMsg :: String -> SummarizedMessage
+mkStringMsg msg = StringMsg msg
 
 -- | Try to remove variables from the given conflict set to create a minimal
 -- conflict set.
@@ -219,11 +241,11 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
 --    solver to add new unnecessary variables to the conflict set. This function
 --    discards the result from any run that adds new variables to the conflict
 --    set, but the end result may not be completely minimized.
-tryToMinimizeConflictSet :: forall a . (SolverConfig -> RetryLog String SolverFailure a)
+tryToMinimizeConflictSet :: forall a . (SolverConfig -> RetryLog SummarizedMessage SolverFailure a)
                          -> SolverConfig
                          -> ConflictSet
                          -> ConflictMap
-                         -> RetryLog String SolverFailure a
+                         -> RetryLog SummarizedMessage SolverFailure a
 tryToMinimizeConflictSet runSolver sc cs cm =
     foldl (\r v -> retryNoSolution r $ tryToRemoveOneVar v)
           (fromProgress $ Fail $ ExhaustiveSearch cs cm)
@@ -249,14 +271,14 @@ tryToMinimizeConflictSet runSolver sc cs cm =
     tryToRemoveOneVar :: Var QPN
                       -> ConflictSet
                       -> ConflictMap
-                      -> RetryLog String SolverFailure a
+                      -> RetryLog SummarizedMessage SolverFailure a
     tryToRemoveOneVar v smallestKnownCS smallestKnownCM
         -- Check whether v is still present, because it may have already been
         -- removed in a previous solver rerun.
       | not (v `CS.member` smallestKnownCS) =
           fromProgress $ Fail $ ExhaustiveSearch smallestKnownCS smallestKnownCM
       | otherwise =
-        continueWith ("Trying to remove variable " ++ varStr ++ " from the "
+        continueWith (mkStringMsg $ "Trying to remove variable " ++ varStr ++ " from the "
                       ++ "conflict set.") $
         retry (runSolver sc') $ \case
             err@(ExhaustiveSearch cs' _)
@@ -268,14 +290,14 @@ tryToMinimizeConflictSet runSolver sc cs cm =
                                   ++ "conflict set."
                   in -- Use the new conflict set, even if v wasn't removed,
                      -- because other variables may have been removed.
-                     failWith (msg ++ " Continuing with " ++ showCS cs' ++ ".") err
+                     failWith (mkStringMsg $ msg ++ " Continuing with " ++ showCS cs' ++ ".") err
               | otherwise ->
-                  failWith ("Failed to find a smaller conflict set. The new "
+                  failWith (mkStringMsg $ "Failed to find a smaller conflict set. The new "
                              ++ "conflict set is not a subset of the previous "
                              ++ "conflict set: " ++ showCS cs') $
                   ExhaustiveSearch smallestKnownCS smallestKnownCM
             BackjumpLimitReached ->
-                failWith "Reached backjump limit while minimizing conflict set."
+                failWith (mkStringMsg "Reached backjump limit while minimizing conflict set.")
                          BackjumpLimitReached
       where
         varStr = "\"" ++ showVar v ++ "\""
