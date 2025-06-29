@@ -867,6 +867,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
             ]
         , ["-optc" ++ opt | opt <- ghcOptCcOptions opts]
         , -- C++ compiler options: GHC >= 8.10 requires -optcxx, older requires -optc
+          -- https://gitlab.haskell.org/ghc/ghc/-/issues/16477
           let cxxflag = case compilerCompatVersion GHC comp of
                 Just v | v >= mkVersion [8, 10] -> "-optcxx"
                 _ -> "-optc"
