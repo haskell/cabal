@@ -85,6 +85,16 @@ architecture and version information from, which will force some
 commands (update, sdist) to require ghc present where otherwise it
 would not be necessitated.
 
+One use case for imports is to specify a `Stackage <https://www.stackage.org/>`
+snapshot, so that your cabal project can use the same set of packages as
+that snapshot. To use the ``lts-21.25`` resolver, you can write
+``import: https://www.stackage.org/lts-21.25/cabal.config`` in your
+``cabal.project``.
+
+There are a number of limitations that come with this approach however; please
+see :ref:`How can I have a reproducible set of versions for my dependencies?<how reproducible>` for
+more information.
+
 Specifying the local packages
 -----------------------------
 
