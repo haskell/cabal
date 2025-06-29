@@ -20,6 +20,16 @@ This Cabal Git repository contains the following main packages:
 The canonical upstream repository is located at
 https://github.com/haskell/cabal.
 
+Proposals for the Cabal project
+-------------------------------
+
+The [proposals process](proposals.md) is the mechanism which developers can gain
+the necessary consensus to make larger changes to the Cabal ecosystem.
+
+* It is light-weight, a PR is opened and discussed on [cabal-proposals](https://github.com/haskell/cabal-proposals/) repo with a fixed discussion period.
+* It is developer-led, final decisions are made by developers at the Cabal developers meeting.
+* It is flexible, there is no formal voting procedure, decisions are made by [rough consensus](https://datatracker.ietf.org/doc/html/rfc7282).
+
 Ways to get the `cabal-install` binary
 --------------------------------
 
