@@ -7,11 +7,14 @@ import Prelude ()
 import Distribution.Solver.Compat.Prelude
 
 import Distribution.Solver.Types.Progress
-
-import Distribution.Solver.Modular.Dependency
-import Distribution.Solver.Modular.Message
+    ( Progress(Done, Fail), foldProgress )
+import Distribution.Solver.Modular.ConflictSet
+    ( ConflictMap, ConflictSet )
 import Distribution.Solver.Modular.RetryLog
-
+    ( RetryLog, toProgress, fromProgress )
+import Distribution.Solver.Modular.Message (Message, summarizeMessages)
+import Distribution.Solver.Types.SummarizedMessage
+    ( SummarizedMessage(..) )
 -- | Information about a dependency solver failure.
 data SolverFailure =
     ExhaustiveSearch ConflictSet ConflictMap
@@ -22,10 +25,10 @@ data SolverFailure =
 -- 'keepLog'), for efficiency.
 displayLogMessages :: Bool
                    -> RetryLog Message SolverFailure a
-                   -> RetryLog String SolverFailure a
+                   -> RetryLog SummarizedMessage SolverFailure a
 displayLogMessages keepLog lg = fromProgress $
     if keepLog
-    then showMessages progress
+    then summarizeMessages progress
     else foldProgress (const id) Fail Done progress
   where
     progress = toProgress lg
