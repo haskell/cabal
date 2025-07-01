@@ -1,5 +1,5 @@
 ---
-synopsis: Fix 
+synopsis: Fix mistake in BuildInfo/Lens.hs mixing up `c-sources` and `cxx-sources`
 packages: [Cabal-syntax]
 prs: 10609
 ---
