@@ -1,9 +1,16 @@
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 -- | Utilities for understanding @plan.json@.
 module Test.Cabal.Plan (
-    Plan,
+    Plan(..),
     DistDirOrBinFile(..),
+    InstallItem(..),
+    ConfiguredGlobal(..),
+    Revision(..),
+    PkgSrc(..),
+    Repo(..),
     planDistDir,
     buildInfoFile,
 ) where
@@ -16,6 +23,7 @@ import qualified Data.Text as Text
 import Data.Aeson
 import Data.Aeson.Types
 import Control.Monad
+import GHC.Generics (Generic)
 
 -- TODO: index this
 data Plan = Plan { planInstallPlan :: [InstallItem] }
@@ -32,14 +40,32 @@ data ConfiguredInplace = ConfiguredInplace
     { configuredInplaceDistDir       :: FilePath
     , configuredInplaceBuildInfo     :: Maybe FilePath
     , configuredInplacePackageName   :: PackageName
-    , configuredInplaceComponentName :: Maybe ComponentName }
+    , configuredInplaceComponentName :: Maybe ComponentName
+    , configuredInplacePkgSrc        :: PkgSrc }
   deriving Show
 
 data ConfiguredGlobal = ConfiguredGlobal
     { configuredGlobalBinFile       :: Maybe FilePath
     , configuredGlobalPackageName   :: PackageName
-    , configuredGlobalComponentName :: Maybe ComponentName }
+    , configuredGlobalComponentName :: Maybe ComponentName
+    , configuredGlobalPkgSrc        :: PkgSrc }
   deriving Show
+
+newtype Revision = Revision Int
+  deriving (Show, Eq, FromJSON)
+
+-- | A stripped-down 'Distribution.Client.Types.PackageLocation.PackageLocation'
+data PkgSrc
+    = RepoTar { repo :: Repo }
+    | PkgSrcOther
+  deriving (Show, Generic)
+
+-- | A stripped-down 'Distribution.Client.Types.Repo.Repo', plus revision information
+data Repo
+    = LocalRepoNoIndex
+    | RemoteRepo { pkgRevision :: Revision }
+    | SecureRepo { pkgRevision :: Revision }
+  deriving (Show, Generic)
 
 instance FromJSON Plan where
     parseJSON (Object v) = fmap Plan (v .: "install-plan")
@@ -66,7 +92,8 @@ instance FromJSON ConfiguredInplace where
         build_info <- v .:? "build-info"
         pkg_name <- v .: "pkg-name"
         component_name <- v .:? "component-name"
-        return (ConfiguredInplace dist_dir build_info pkg_name component_name)
+        pkg_src <- v .: "pkg-src"
+        return (ConfiguredInplace dist_dir build_info pkg_name component_name pkg_src)
     parseJSON invalid = typeMismatch "ConfiguredInplace" invalid
 
 instance FromJSON ConfiguredGlobal where
@@ -74,7 +101,8 @@ instance FromJSON ConfiguredGlobal where
         bin_file <- v .:? "bin-file"
         pkg_name <- v .: "pkg-name"
         component_name <- v .:? "component-name"
-        return (ConfiguredGlobal bin_file pkg_name component_name)
+        pkg_src <- v .: "pkg-src"
+        return (ConfiguredGlobal bin_file pkg_name component_name pkg_src)
     parseJSON invalid = typeMismatch "ConfiguredGlobal" invalid
 
 instance FromJSON PackageName where
@@ -88,6 +116,21 @@ instance FromJSON ComponentName where
             Just r  -> return r
       where s = Text.unpack t
     parseJSON invalid = typeMismatch "ComponentName" invalid
+
+instance FromJSON PkgSrc where
+    parseJSON (Object v) = do
+        t <- v .: "type"
+        case t :: String of
+            "repo-tar" -> RepoTar <$> v .: "repo"
+            _ -> return PkgSrcOther
+    parseJSON invalid = typeMismatch "PkgSrc" invalid
+
+instance FromJSON Repo where
+  parseJSON = genericParseJSON defaultOptions
+    { constructorTagModifier = camelTo2 '-'
+    , fieldLabelModifier = camelTo2 '-'
+    , sumEncoding = TaggedObject "type" ""
+    }
 
 data DistDirOrBinFile = DistDir FilePath | BinFile FilePath
 
