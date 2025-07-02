@@ -5,8 +5,8 @@ variables:
   # Commit of ghc/ci-images repository from which to pull Docker images
   DOCKER_REV: "a9297a370025101b479cfd4977f8f910814e03ab"
 
-  GHC_VERSION: 9.6.4
-  CABAL_INSTALL_VERSION: 3.10.2.0
+  GHC_VERSION: 9.10.2
+  CABAL_INSTALL_VERSION: 3.14.2.0
 
 workflow:
   rules:
@@ -110,9 +110,6 @@ darwin:
   tags:
     - ${ARCH}-darwin-m1
   variables:
-    # Using 9.8.2 to work around
-    # https://gitlab.haskell.org/ghc/ghc/-/issues/24050
-    GHC_VERSION: 9.8.2
     TARBALL_ARCHIVE_SUFFIX: ${ARCH}-darwin
     TARBALL_EXT: tar.xz
     ADD_CABAL_ARGS: ""
