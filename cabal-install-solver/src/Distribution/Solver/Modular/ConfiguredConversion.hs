@@ -57,9 +57,9 @@ convCP iidx sidx (CP qpi fa es ds) =
     ds' = fmap (partitionEithers . map convConfId) ds
 
 convConfId :: PI QPN -> Either SolverId {- is lib -} SolverId {- is exe -}
-convConfId (PI (Q (PackagePath _stage q) pn) (I _stage' v loc)) =
+convConfId (PI (Q (PackagePath _stage q) pn) (I stage v loc)) =
     case loc of
-        Inst pi -> Left (PreExistingId sourceId pi)
+        Inst pi -> Left (PreExistingId stage sourceId pi)
         _otherwise
           | QualExe _ pn' <- q
           -- NB: the dependencies of the executable are also
@@ -68,7 +68,7 @@ convConfId (PI (Q (PackagePath _stage q) pn) (I _stage' v loc)) =
           -- at the actual thing.  Fortunately for us, I was
           -- silly and didn't allow arbitrarily nested build-tools
           -- dependencies, so a shallow check works.
-          , pn == pn' -> Right (PlannedId sourceId)
-          | otherwise    -> Left  (PlannedId sourceId)
+          , pn == pn' -> Right (PlannedId stage sourceId)
+          | otherwise    -> Left  (PlannedId stage sourceId)
   where
     sourceId    = PackageIdentifier pn v

@@ -51,7 +51,9 @@ import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PkgConfigDb
+import Distribution.Solver.Types.ResolverPackage (solverId)
 import Distribution.Solver.Types.SolverId
+import Distribution.Solver.Types.SolverPackage (SolverPackage (..))
 import qualified Distribution.Solver.Types.Stage as Stage
 
 import Distribution.Client.Errors
@@ -285,9 +287,15 @@ pruneInstallPlan installPlan pkgSpecifiers =
   removeSelf pkgIds $
     SolverInstallPlan.dependencyClosure installPlan pkgIds
   where
+    -- Get the source packages from the (specific) package specifiers.
+    srcpkgs :: [UnresolvedSourcePackage]
+    srcpkgs = [pkg | SpecificSourcePackage pkg <- pkgSpecifiers]
+    -- Get the 'SolverId's of the packages we are freezing.
+    pkgIds :: [SolverId]
     pkgIds =
-      [ PlannedId (packageId pkg)
-      | SpecificSourcePackage pkg <- pkgSpecifiers
+      [ solverId (SolverInstallPlan.Configured pkg)
+      | SolverInstallPlan.Configured pkg <- SolverInstallPlan.toList installPlan
+      , solverPkgSource pkg `elem` srcpkgs
       ]
     removeSelf [thisPkg] = filter (\pp -> packageId pp /= packageId thisPkg)
     removeSelf _ =

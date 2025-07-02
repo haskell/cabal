@@ -557,8 +557,9 @@ fromSolverInstallPlanWithProgress f plan = do
       pkgs' <- f (mapDep pidMap ipiMap) pkg
       let (pidMap', ipiMap') =
             case nodeKey pkg of
-              PreExistingId _ uid -> (pidMap, Map.insert uid pkgs' ipiMap)
-              PlannedId pid -> (Map.insert pid pkgs' pidMap, ipiMap)
+              -- FIXME: stage is ignored
+              PreExistingId _stage _ uid -> (pidMap, Map.insert uid pkgs' ipiMap)
+              PlannedId _stage pid -> (Map.insert pid pkgs' pidMap, ipiMap)
       return (pidMap', ipiMap', pkgs' ++ pkgs)
 
     -- The error below shouldn't happen, since mapDep should only
@@ -566,10 +567,10 @@ fromSolverInstallPlanWithProgress f plan = do
     -- already by the reverse top-sort (we assume the graph is not broken).
     --
     -- FIXME: stage is ignored
-    mapDep _ ipiMap (PreExistingId _pid uid)
+    mapDep _ ipiMap (PreExistingId _stage _pid uid)
       | Just pkgs <- Map.lookup uid ipiMap = pkgs
       | otherwise = error ("fromSolverInstallPlan: PreExistingId " ++ prettyShow uid)
-    mapDep pidMap _ (PlannedId pid)
+    mapDep pidMap _ (PlannedId _stage pid)
       | Just pkgs <- Map.lookup pid pidMap = pkgs
       | otherwise = error ("fromSolverInstallPlan: PlannedId " ++ prettyShow pid)
 
