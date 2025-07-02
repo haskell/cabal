@@ -1,0 +1,9 @@
+cabal-version:      2.4
+name:               cabal-with-repl
+version:            0.1.0.0
+build-type:         Simple
+
+library
+  exposed-modules:  ModuleA
+  build-depends:    base
+  default-language: Haskell2010

@@ -1055,6 +1055,10 @@ skipUnlessJavaScript = skipUnlessIO "needs the JavaScript backend" isJavaScript
 skipIfJavaScript :: IO ()
 skipIfJavaScript = skipIfIO "incompatible with the JavaScript backend" isJavaScript
 
+requireGhcSupportsMultiRepl :: TestM ()
+requireGhcSupportsMultiRepl =
+  skipUnlessGhcVersion ">= 9.4"
+
 isWindows :: Bool
 isWindows = buildOS == Windows
 

@@ -751,10 +751,10 @@ runReplOrWriteFlags ghcProg lbi rflags ghcOpts pkg_name target =
       verbosity = fromFlag $ setupVerbosity common
       tempFileOptions = commonSetupTempFileOptions common
    in case replOptionsFlagOutput (replReplOptions rflags) of
-        NoFlag ->
-          runGHCWithResponseFile
-            "ghc.rsp"
-            Nothing
+        NoFlag -> do
+          -- If a specific GHC implementation is specified, use it
+          runReplProgram
+            (flagToMaybe $ replWithRepl (replReplOptions rflags))
             tempFileOptions
             verbosity
             ghcProg
