@@ -1120,7 +1120,7 @@ packageLocationsSignature
   -> [(PackageId, PackageLocation (Maybe FilePath))]
 packageLocationsSignature solverPlan =
   [ (packageId pkg, srcpkgSource pkg)
-  | SolverInstallPlan.Configured (SolverPackage{solverPkgSource = pkg}) <-
+  | SolverInstallPlan.Configured (SolverPackage{solverPkgSource = pkg}) _ <-
       SolverInstallPlan.toList solverPlan
   ]
 
@@ -1139,7 +1139,7 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
   let allPkgLocations :: [(PackageId, PackageLocation (Maybe FilePath))]
       allPkgLocations =
         [ (packageId pkg, srcpkgSource pkg)
-        | SolverInstallPlan.Configured (SolverPackage{solverPkgSource = pkg}) <-
+        | SolverInstallPlan.Configured (SolverPackage{solverPkgSource = pkg}) _ <-
             SolverInstallPlan.toList solverPlan
         ]
 
@@ -1672,7 +1672,7 @@ elaborateInstallPlan
       preexistingInstantiatedPkgs =
         Map.fromList (mapMaybe f (SolverInstallPlan.toList solverPlan))
         where
-          f (SolverInstallPlan.PreExisting inst)
+          f (SolverInstallPlan.PreExisting inst _)
             | let ipkg = instSolverPkgIPI inst
             , not (IPI.indefinite ipkg) =
                 Just
@@ -1689,9 +1689,9 @@ elaborateInstallPlan
       elaboratedInstallPlan =
         flip InstallPlan.fromSolverInstallPlanWithProgress solverPlan $ \mapDep planpkg ->
           case planpkg of
-            SolverInstallPlan.PreExisting pkg ->
-              return [InstallPlan.PreExisting (instSolverPkgIPI pkg)]
-            SolverInstallPlan.Configured pkg ->
+            SolverInstallPlan.PreExisting pkg cs ->
+              return [InstallPlan.PreExisting (instSolverPkgIPI pkg) cs]
+            SolverInstallPlan.Configured pkg cs ->
               let inplace_doc
                     | shouldBuildInplaceOnly pkg = text "inplace"
                     | otherwise = Disp.empty
@@ -1701,7 +1701,7 @@ elaborateInstallPlan
                         <+> text "package"
                         <+> quotes (pretty (packageId pkg))
                     )
-                    $ map InstallPlan.Configured <$> elaborateSolverToComponents mapDep pkg
+                    $ map (`InstallPlan.Configured` cs) <$> elaborateSolverToComponents mapDep pkg
 
       -- NB: We don't INSTANTIATE packages at this point.  That's
       -- a post-pass.  This makes it simpler to compute dependencies.
@@ -2764,14 +2764,14 @@ type InstM a = State InstS a
 getComponentId
   :: ElaboratedPlanPackage
   -> ComponentId
-getComponentId (InstallPlan.PreExisting dipkg) = IPI.installedComponentId dipkg
-getComponentId (InstallPlan.Configured elab) = elabComponentId elab
-getComponentId (InstallPlan.Installed elab) = elabComponentId elab
+getComponentId (InstallPlan.PreExisting dipkg _) = IPI.installedComponentId dipkg
+getComponentId (InstallPlan.Configured elab _) = elabComponentId elab
+getComponentId (InstallPlan.Installed elab _) = elabComponentId elab
 
 extractElabBuildStyle
   :: InstallPlan.GenericPlanPackage ipkg ElaboratedConfiguredPackage
   -> BuildStyle
-extractElabBuildStyle (InstallPlan.Configured elab) = elabBuildStyle elab
+extractElabBuildStyle (InstallPlan.Configured elab _) = elabBuildStyle elab
 extractElabBuildStyle _ = BuildAndInstall
 
 -- instantiateInstallPlan is responsible for filling out an InstallPlan
@@ -2862,7 +2862,7 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
               ( elab0@ElaboratedConfiguredPackage
                   { elabPkgOrComp = ElabComponent comp
                   }
-                ) -> do
+                ) cs -> do
                 deps <-
                   traverse (fmap fst . substUnitId insts) (compLinkedLibDependencies comp)
                 let build_style = fold (fmap snd insts)
@@ -2895,7 +2895,7 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
                               elaboratedShared
                               elab1
                         }
-                return $ InstallPlan.Configured elab
+                return $ InstallPlan.Configured elab cs
             _ -> return planpkg
       | otherwise = error ("instantiateComponent: " ++ prettyShow cid)
 
@@ -2934,7 +2934,7 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
     indefiniteComponent _uid cid
       -- Only need Configured; this phase happens before improvement, so
       -- there shouldn't be any Installed packages here.
-      | Just (InstallPlan.Configured epkg) <- Map.lookup cid cmap
+      | Just (InstallPlan.Configured epkg cs) <- Map.lookup cid cmap
       , ElabComponent elab_comp <- elabPkgOrComp epkg =
           do
             -- We need to do a little more processing of the includes: some
@@ -2960,7 +2960,7 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
             -- component depends on any inplace packages, it itself must
             -- be indefinite!  There is no substitution here, we can't
             -- post facto add inplace deps
-            return . InstallPlan.Configured $
+            return $ InstallPlan.Configured
               epkg
                 { elabPkgOrComp =
                     ElabComponent
@@ -2976,6 +2976,7 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
                                 ++ [unDefUnitId d | DefiniteUnitId d <- new_deps]
                         }
                 }
+              cs
       | Just planpkg <- Map.lookup cid cmap =
           return planpkg
       | otherwise = error ("indefiniteComponent: " ++ prettyShow cid)
@@ -2994,7 +2995,7 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
 
     work = for_ pkgs $ \pkg ->
       case pkg of
-        InstallPlan.Configured elab
+        InstallPlan.Configured elab _
           | not (Map.null (elabLinkedInstantiatedWith elab)) ->
               indefiniteUnitId (elabComponentId elab)
                 >> return ()
@@ -3098,9 +3099,9 @@ availableTargets installPlan =
         [ (pkgid, cname, fake, target)
         | pkg <- InstallPlan.toList installPlan
         , (pkgid, cname, fake, target) <- case pkg of
-            InstallPlan.PreExisting ipkg -> availableInstalledTargets ipkg
-            InstallPlan.Installed elab -> availableSourceTargets elab
-            InstallPlan.Configured elab -> availableSourceTargets elab
+            InstallPlan.PreExisting ipkg _ -> availableInstalledTargets ipkg
+            InstallPlan.Installed elab _ -> availableSourceTargets elab
+            InstallPlan.Configured elab _ -> availableSourceTargets elab
         ]
    in Map.union
         ( Map.fromListWith
@@ -3476,7 +3477,7 @@ pruneInstallPlanPass1 pkgs
     anyMultiReplTarget = length repls > 1
       where
         repls = filter is_repl_gpp pkgs'
-        is_repl_gpp (InstallPlan.Configured pkg) = is_repl_pp pkg
+        is_repl_gpp (InstallPlan.Configured pkg _) = is_repl_pp pkg
         is_repl_gpp _ = False
 
         is_repl_pp (PrunedPackage elab _) = not (null (elabReplTarget elab))
@@ -3485,7 +3486,7 @@ pruneInstallPlanPass1 pkgs
     -- reverse closure after calculating roots to capture dependencies which are on the path between roots.
     -- In order to start a multi-repl session with all the desired targets we need to load all these components into
     -- the repl at once to satisfy the closure property.
-    all_desired_repl_targets = Set.fromList [elabUnitId cp | InstallPlan.Configured cp <- fromMaybe [] $ Graph.revClosure closed_graph roots]
+    all_desired_repl_targets = Set.fromList [elabUnitId cp | InstallPlan.Configured cp _ <- fromMaybe [] $ Graph.revClosure closed_graph roots]
 
     add_repl_target :: ElaboratedConfiguredPackage -> ElaboratedConfiguredPackage
     add_repl_target ecp
@@ -3515,10 +3516,10 @@ pruneInstallPlanPass1 pkgs
         then Just (installedUnitId elab)
         else Nothing
 
-    find_root (InstallPlan.Configured pkg) = is_root pkg
+    find_root (InstallPlan.Configured pkg _) = is_root pkg
     -- When using the extra-packages stanza we need to
     -- look at installed packages as well.
-    find_root (InstallPlan.Installed pkg) = is_root pkg
+    find_root (InstallPlan.Installed pkg _) = is_root pkg
     find_root _ = Nothing
 
     -- Note [Sticky enabled testsuites]
@@ -3601,7 +3602,7 @@ pruneInstallPlanPass1 pkgs
     availablePkgs =
       Set.fromList
         [ installedUnitId pkg
-        | InstallPlan.PreExisting pkg <- pkgs
+        | InstallPlan.PreExisting pkg _ <- pkgs
         ]
 
 {-
@@ -3763,7 +3764,7 @@ pruneInstallPlanPass2 pkgs =
     inMemoryTargets = do
       Set.fromList
         [ configuredId pkg
-        | InstallPlan.Configured pkg <- pkgs
+        | InstallPlan.Configured pkg _ <- pkgs
         , BuildInplaceOnly InMemory <- [elabBuildStyle pkg]
         ]
 
@@ -3771,7 +3772,7 @@ pruneInstallPlanPass2 pkgs =
     hasReverseLibDeps =
       Set.fromList
         [ depid
-        | InstallPlan.Configured pkg <- pkgs
+        | InstallPlan.Configured pkg _ <- pkgs
         , depid <- elabOrderLibDependencies pkg
         ]
 
@@ -3779,7 +3780,7 @@ pruneInstallPlanPass2 pkgs =
     hasReverseExeDeps =
       Set.fromList
         [ depid
-        | InstallPlan.Configured pkg <- pkgs
+        | InstallPlan.Configured pkg _ <- pkgs
         , depid <- elabOrderExeDependencies pkg
         ]
 
@@ -3787,12 +3788,12 @@ mapConfiguredPackage
   :: (srcpkg -> srcpkg')
   -> InstallPlan.GenericPlanPackage ipkg srcpkg
   -> InstallPlan.GenericPlanPackage ipkg srcpkg'
-mapConfiguredPackage f (InstallPlan.Configured pkg) =
-  InstallPlan.Configured (f pkg)
-mapConfiguredPackage f (InstallPlan.Installed pkg) =
-  InstallPlan.Installed (f pkg)
-mapConfiguredPackage _ (InstallPlan.PreExisting pkg) =
-  InstallPlan.PreExisting pkg
+mapConfiguredPackage f (InstallPlan.Configured pkg cs) =
+  InstallPlan.Configured (f pkg) cs
+mapConfiguredPackage f (InstallPlan.Installed pkg cs) =
+  InstallPlan.Installed (f pkg) cs
+mapConfiguredPackage _ (InstallPlan.PreExisting pkg cs) =
+  InstallPlan.PreExisting pkg cs
 
 ------------------------------------
 -- Support for --only-dependencies
@@ -4610,9 +4611,9 @@ determineCoverageFor configuredPkg plan =
   Flag
     $ mapMaybe
       ( \case
-          InstallPlan.Installed elab
+          InstallPlan.Installed elab _
             | shouldCoverPkg elab -> Just $ elabUnitId elab
-          InstallPlan.Configured elab
+          InstallPlan.Configured elab _
             | shouldCoverPkg elab -> Just $ elabUnitId elab
           _ -> Nothing
       )

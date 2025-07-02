@@ -183,7 +183,7 @@ planPackages
         -- that are in the 'InstallPlan.Configured' state.
         return
           [ solverPkgSource cpkg
-          | (SolverInstallPlan.Configured cpkg) <-
+          | (SolverInstallPlan.Configured cpkg _) <-
               SolverInstallPlan.toList installPlan
           ]
     | otherwise =

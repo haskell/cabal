@@ -52,7 +52,10 @@ data ConstraintScope
      -- | The package with the specified name regardless of
      -- qualifier.
    | ScopeAnyQualifier PackageName
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance Binary ConstraintScope
+instance Structured ConstraintScope
 
 -- | Constructor for a common use case: the constraint applies to
 -- the package with the specified name when that package is a
@@ -109,7 +112,10 @@ instance Pretty PackageProperty where
 -- | A package constraint consists of a scope plus a property
 -- that must hold for all packages within that scope.
 data PackageConstraint = PackageConstraint ConstraintScope PackageProperty
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+
+instance Binary PackageConstraint
+instance Structured PackageConstraint
 
 instance Pretty PackageConstraint where
   pretty (PackageConstraint scope prop) =

@@ -116,13 +116,13 @@ showInstallPlan :: SolverInstallPlan -> String
 showInstallPlan = showPlanIndex . toList
 
 showPlanPackage :: SolverPlanPackage -> String
-showPlanPackage (PreExisting ipkg) =
+showPlanPackage (PreExisting ipkg _) =
   "PreExisting "
     ++ prettyShow (packageId ipkg)
     ++ " ("
     ++ prettyShow (installedUnitId ipkg)
     ++ ")"
-showPlanPackage (Configured spkg) =
+showPlanPackage (Configured spkg _) =
   "Configured " ++ prettyShow (packageId spkg) ++ flags ++ comps
   where
     flags
@@ -232,8 +232,8 @@ showPlanProblem (PackageStateInvalid pkg pkg') =
     ++ showPlanState pkg'
     ++ " state"
   where
-    showPlanState (PreExisting _) = "pre-existing"
-    showPlanState (Configured _) = "configured"
+    showPlanState (PreExisting{}) = "pre-existing"
+    showPlanState (Configured{}) = "configured"
 
 -- | For an invalid plan, produce a detailed list of problems as human readable
 -- error messages. This is mainly intended for debugging purposes.
@@ -444,8 +444,8 @@ stateDependencyRelation
   -> SolverPlanPackage
   -> Bool
 stateDependencyRelation PreExisting{} PreExisting{} = True
-stateDependencyRelation (Configured _) PreExisting{} = True
-stateDependencyRelation (Configured _) (Configured _) = True
+stateDependencyRelation Configured{} PreExisting{} = True
+stateDependencyRelation Configured{} Configured{} = True
 stateDependencyRelation _ _ = False
 
 -- | Compute the dependency closure of a package in a install plan

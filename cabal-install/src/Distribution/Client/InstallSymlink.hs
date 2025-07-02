@@ -181,7 +181,7 @@ symlinkBinaries
     where
       exes =
         [ (cpkg, pkg, exe)
-        | InstallPlan.Configured cpkg <- InstallPlan.toList plan
+        | InstallPlan.Configured cpkg _ <- InstallPlan.toList plan
         , case InstallPlan.lookupBuildOutcome cpkg buildOutcomes of
             Just (Right _success) -> True
             _ -> False

@@ -747,7 +747,7 @@ checkPrintPlan
   pkgSpecifiers = do
     -- User targets that are already installed.
     let preExistingTargets =
-          [ p | let tgts = map pkgSpecifierTarget pkgSpecifiers, InstallPlan.PreExisting p <- InstallPlan.toList installPlan, packageName p `elem` tgts
+          [ p | let tgts = map pkgSpecifierTarget pkgSpecifiers, InstallPlan.PreExisting p _ <- InstallPlan.toList installPlan, packageName p `elem` tgts
           ]
 
     -- If there's nothing to install, we print the already existing
@@ -837,7 +837,7 @@ checkPrintPlan
     when offline $ do
       let pkgs =
             [ confPkgSource cpkg
-            | InstallPlan.Configured cpkg <- InstallPlan.toList installPlan
+            | InstallPlan.Configured cpkg _ <- InstallPlan.toList installPlan
             ]
       notFetched <-
         fmap (map packageId)

@@ -889,7 +889,7 @@ availableTargetIndexes installPlan = AvailableTargetIndexes{..}
     availableTargetsEmptyPackages =
       Map.fromList
         [ (packageId pkg, [])
-        | InstallPlan.Configured pkg <- InstallPlan.toList installPlan
+        | InstallPlan.Configured pkg _ <- InstallPlan.toList installPlan
         , case elabPkgOrComp pkg of
             ElabComponent _ -> False
             ElabPackage _ -> null (pkgComponents (elabPkgDescription pkg))
@@ -1272,7 +1272,7 @@ writeBuildReports settings buildContext plan buildOutcomes = do
       comp = pkgConfigCompiler . elaboratedShared $ buildContext
       getRepo (RepoTarballPackage r _ _) = Just r
       getRepo _ = Nothing
-      fromPlanPackage (InstallPlan.Configured pkg) (Just result) =
+      fromPlanPackage (InstallPlan.Configured pkg _) (Just result) =
         let installOutcome = case result of
               Left bf -> case buildFailureReason bf of
                 GracefulFailure _ -> BuildReports.PlanningFailed
@@ -1372,7 +1372,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
       , case buildFailureReason failure of
           DependentFailed{} -> verbosity > normal
           _ -> True
-      , InstallPlan.Configured pkg <-
+      , InstallPlan.Configured pkg _ <-
           maybeToList (InstallPlan.lookup plan pkgid)
       ]
 
@@ -1439,7 +1439,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
     rootpkgs :: [ElaboratedConfiguredPackage]
     rootpkgs =
       [ pkg
-      | InstallPlan.Configured pkg <- InstallPlan.toList plan
+      | InstallPlan.Configured pkg _ <- InstallPlan.toList plan
       , hasNoDependents pkg
       ]
 

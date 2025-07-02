@@ -290,6 +290,6 @@ binDirectories layout config = fromElaboratedInstallPlan
     fromGraph = foldMap fromPlan
     fromSrcPkg = S.fromList . Planning.binDirectories layout config
 
-    fromPlan (PreExisting _) = mempty
-    fromPlan (Configured pkg) = fromSrcPkg pkg
-    fromPlan (Installed pkg) = fromSrcPkg pkg
+    fromPlan (PreExisting _ _) = mempty
+    fromPlan (Configured pkg _) = fromSrcPkg pkg
+    fromPlan (Installed pkg _) = fromSrcPkg pkg

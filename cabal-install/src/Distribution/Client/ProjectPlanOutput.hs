@@ -124,9 +124,9 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
     planPackageToJ :: ElaboratedPlanPackage -> J.Value
     planPackageToJ pkg =
       case pkg of
-        InstallPlan.PreExisting ipi -> installedPackageInfoToJ ipi
-        InstallPlan.Configured elab -> elaboratedPackageToJ False elab
-        InstallPlan.Installed elab -> elaboratedPackageToJ True elab
+        InstallPlan.PreExisting ipi _ -> installedPackageInfoToJ ipi
+        InstallPlan.Configured elab _ -> elaboratedPackageToJ False elab
+        InstallPlan.Installed elab _ -> elaboratedPackageToJ True elab
     -- Note that the plan.json currently only uses the elaborated plan,
     -- not the improved plan. So we will not get the Installed state for
     -- that case, but the code supports it in case we want to use this
@@ -620,9 +620,9 @@ postBuildProjectStatus
           [ Graph.N pkg (installedUnitId pkg) libdeps
           | pkg <- InstallPlan.toList plan
           , let libdeps = case pkg of
-                  InstallPlan.PreExisting ipkg -> installedDepends ipkg
-                  InstallPlan.Configured srcpkg -> elabLibDeps srcpkg
-                  InstallPlan.Installed srcpkg -> elabLibDeps srcpkg
+                  InstallPlan.PreExisting ipkg _ -> installedDepends ipkg
+                  InstallPlan.Configured srcpkg _ -> elabLibDeps srcpkg
+                  InstallPlan.Installed srcpkg _ -> elabLibDeps srcpkg
           ]
 
       elabLibDeps :: ElaboratedConfiguredPackage -> [UnitId]
@@ -653,25 +653,25 @@ postBuildProjectStatus
       packagesBuildLocal =
         selectPlanPackageIdSet $ \pkg ->
           case pkg of
-            InstallPlan.PreExisting _ -> False
-            InstallPlan.Installed _ -> False
-            InstallPlan.Configured srcpkg -> elabLocalToProject srcpkg
+            InstallPlan.PreExisting _ _ -> False
+            InstallPlan.Installed _ _ -> False
+            InstallPlan.Configured srcpkg _ -> elabLocalToProject srcpkg
 
       packagesBuildInplace :: Set UnitId
       packagesBuildInplace =
         selectPlanPackageIdSet $ \pkg ->
           case pkg of
-            InstallPlan.PreExisting _ -> False
-            InstallPlan.Installed _ -> False
-            InstallPlan.Configured srcpkg -> isInplaceBuildStyle (elabBuildStyle srcpkg)
+            InstallPlan.PreExisting _ _ -> False
+            InstallPlan.Installed _ _ -> False
+            InstallPlan.Configured srcpkg _ -> isInplaceBuildStyle (elabBuildStyle srcpkg)
 
       packagesAlreadyInStore :: Set UnitId
       packagesAlreadyInStore =
         selectPlanPackageIdSet $ \pkg ->
           case pkg of
-            InstallPlan.PreExisting _ -> True
-            InstallPlan.Installed _ -> True
-            InstallPlan.Configured _ -> False
+            InstallPlan.PreExisting{} -> True
+            InstallPlan.Installed{} -> True
+            InstallPlan.Configured{} -> False
 
       selectPlanPackageIdSet
         :: ( InstallPlan.GenericPlanPackage InstalledPackageInfo ElaboratedConfiguredPackage
@@ -958,12 +958,12 @@ selectGhcEnvironmentFileLibraries PostBuildProjectStatus{..} =
   where
     hasUpToDateLib planpkg = case planpkg of
       -- A pre-existing global lib
-      InstallPlan.PreExisting _ -> True
+      InstallPlan.PreExisting _ _ -> True
       -- A package in the store. Check it's a lib.
-      InstallPlan.Installed pkg -> elabRequiresRegistration pkg
+      InstallPlan.Installed pkg _ -> elabRequiresRegistration pkg
       -- A package we were installing this time, either destined for the store
       -- or just locally. Check it's a lib and that it is probably up to date.
-      InstallPlan.Configured pkg ->
+      InstallPlan.Configured pkg _ ->
         elabRequiresRegistration pkg
           && installedUnitId pkg `Set.member` packagesProbablyUpToDate
 
@@ -1004,9 +1004,9 @@ selectGhcEnvironmentFilePackageDbs elaboratedInstallPlan =
       [ srcpkg
       | pkg <- InstallPlan.toList elaboratedInstallPlan
       , srcpkg <- maybeToList $ case pkg of
-          InstallPlan.Configured srcpkg -> Just srcpkg
-          InstallPlan.Installed srcpkg -> Just srcpkg
-          InstallPlan.PreExisting _ -> Nothing
+          InstallPlan.Configured srcpkg _ -> Just srcpkg
+          InstallPlan.Installed srcpkg _ -> Just srcpkg
+          InstallPlan.PreExisting _ _ -> Nothing
       ]
 
 relativePackageDBPaths :: FilePath -> PackageDBStackCWD -> PackageDBStackCWD

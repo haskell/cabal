@@ -32,12 +32,15 @@ import Distribution.Client.Targets
   ( UserConstraint (..)
   , UserConstraintScope (..)
   , UserQualifier (..)
+  , toUserConstraintScope
   )
 import Distribution.Solver.Types.ConstraintSource
   ( ConstraintSource (..)
   )
 import Distribution.Solver.Types.PackageConstraint
-  ( PackageProperty (..)
+  ( ConstraintScope (..)
+  , PackageProperty (..)
+  , scopeToPackageName
   )
 
 import Distribution.Client.Setup
@@ -212,25 +215,31 @@ projectFreezeConstraints plan =
   where
     versionConstraints :: Map PackageName [(UserConstraint, ConstraintSource)]
     versionConstraints =
-      Map.mapWithKey
-        ( \p v ->
-            [
-              ( UserConstraint (UserAnyQualifier p) (PackagePropertyVersion v)
-              , ConstraintSourceFreeze
-              )
-            ]
-        )
-        versionRanges
+      Map.mapKeys fst $
+        Map.mapWithKey
+          ( \(_, cs) v ->
+              case toUserConstraintScope cs of
+                Just ucs ->
+                  [
+                    ( UserConstraint ucs (PackagePropertyVersion v)
+                    , ConstraintSourceFreeze
+                    )
+                  ]
+                Nothing ->
+                  -- This constraint scope is not a valid user constraint, so we omit it.
+                  []
+          )
+          versionRanges
 
-    versionRanges :: Map PackageName VersionRange
+    versionRanges :: Map (PackageName, ConstraintScope) VersionRange
     versionRanges =
       Map.map simplifyVersionRange $
         Map.fromListWith unionVersionRanges $
-          [ (packageName pkg, thisVersion (packageVersion pkg))
-          | InstallPlan.PreExisting pkg <- InstallPlan.toList plan
+          [ ((packageName pkg, cscope), thisVersion (packageVersion pkg))
+          | InstallPlan.PreExisting pkg cscope <- InstallPlan.toList plan
           ]
-            ++ [ (packageName pkg, thisVersion (packageVersion pkg))
-               | InstallPlan.Configured pkg <- InstallPlan.toList plan
+            ++ [ ((packageName pkg, cscope), thisVersion (packageVersion pkg))
+               | InstallPlan.Configured pkg cscope <- InstallPlan.toList plan
                ]
 
     flagConstraints :: Map PackageName [(UserConstraint, ConstraintSource)]
@@ -249,7 +258,7 @@ projectFreezeConstraints plan =
     flagAssignments =
       Map.fromList
         [ (pkgname, flags)
-        | InstallPlan.Configured elab <- InstallPlan.toList plan
+        | InstallPlan.Configured elab _ <- InstallPlan.toList plan
         , let flags = elabFlagAssignment elab
               pkgname = packageName elab
         , not (nullFlagAssignment flags)
@@ -278,6 +287,6 @@ projectFreezeConstraints plan =
     localPackages =
       Map.fromList
         [ (packageName elab, ())
-        | InstallPlan.Configured elab <- InstallPlan.toList plan
+        | InstallPlan.Configured elab _ <- InstallPlan.toList plan
         , elabLocalToProject elab
         ]

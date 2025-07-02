@@ -1,0 +1,10 @@
+synopsis: Qualify packages in freeze file correctly
+packages: cabal-install, cabal-install-solver
+prs: #9811
+issues: #9799
+
+description: {
+
+- Fixes the qualifiers in the freeze file from always using "any" to now using the proper qualifiers for each package that is included in each scope.
+
+}
