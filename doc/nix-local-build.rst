@@ -144,8 +144,7 @@ it's not currently possible to `override used versions of packages <https://gith
 or to `specify revisions <https://github.com/haskell/cabal/issues/7833>` using
 cabal.
 
-To mitigate these shortcomings, you can download the config file that is linked
-to and remove the troublesome constraints.
+To mitigate these shortcomings, download the linked ``cabal.config`` file, import this locally with a relative path and repeatedly ``cabal build all --dry-run`` to identify and then comment out version constraint conflicts until the cabal solver is happy.
 
 How it works
 ============
