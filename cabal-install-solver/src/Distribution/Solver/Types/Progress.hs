@@ -19,6 +19,12 @@ data Progress step fail done = Step step (Progress step fail done)
                              | Done done
   deriving (Functor)
 
+instance (Show step, Show fail, Show done) => Show (Progress step fail done) where
+  showsPrec _ = foldProgress
+    (\s p -> showString "Step: " . shows s . showChar '\n' . p)
+    (\f -> showString "Fail: " . shows f)
+    (\r -> showString "Done: " . shows r)
+
 step :: step -> Progress step fail ()
 step s = Step s (Done ())
 

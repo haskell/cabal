@@ -67,9 +67,5 @@ instance
 
 deriving instance (Eq step, Eq fail, Eq done) => Eq (Progress step fail done)
 
-deriving instance
-  (Show step, Show fail, Show done)
-  => Show (Progress step fail done)
-
 deriving instance Eq Message
 deriving instance Show Message
