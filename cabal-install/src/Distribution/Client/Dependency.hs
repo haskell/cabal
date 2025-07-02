@@ -1,6 +1,7 @@
+{-# LANGUAGE FlexibleContexts #-}
 -----------------------------------------------------------------------------
-
 -----------------------------------------------------------------------------
+{-# LANGUAGE LambdaCase #-}
 
 -- |
 -- Module      :  Distribution.Client.Dependency
@@ -781,35 +782,42 @@ resolveDependencies
   -> Staged InstalledPackageIndex
   -> DepResolverParams
   -> Progress String String SolverInstallPlan
-resolveDependencies toolchains pkgConfigDB installedPkgIndex params =
-  Step (showDepResolverParams finalparams) $
-    fmap (validateSolverResult toolchains) $
-      formatProgress $
-        runSolver
-          ( SolverConfig
-              reordGoals
-              cntConflicts
-              fineGrained
-              minimize
-              noReinstalls
-              shadowing
-              strFlags
-              onlyConstrained_
-              maxBkjumps
-              enableBj
-              solveExes
-              order
-              verbosity
-              (PruneAfterFirstSuccess False)
-          )
-          toolchains
-          pkgConfigDB
-          (fmap installedPkgIndexM installedPkgIndex)
-          sourcePkgIndex
-          preferences
-          constraints
-          targets
+resolveDependencies toolchains pkgConfigDB installedPkgIndex params = do
+  step (showDepResolverParams finalparams)
+  pkgs <-
+    formatProgress $
+      runSolver
+        config
+        toolchains
+        pkgConfigDB
+        installedPkgIndex'
+        sourcePkgIndex
+        preferences
+        constraints
+        targets
+  validateSolverResult toolchains pkgs
   where
+    installedPkgIndex' = Staged $ \case
+      Build -> getStage installedPkgIndex Build
+      Host -> installedPkgIndexM (getStage installedPkgIndex Host)
+
+    config =
+      SolverConfig
+        reordGoals
+        cntConflicts
+        fineGrained
+        minimize
+        noReinstalls
+        shadowing
+        strFlags
+        onlyConstrained_
+        maxBkjumps
+        enableBj
+        solveExes
+        order
+        verbosity
+        (PruneAfterFirstSuccess False)
+
     finalparams@( DepResolverParams
                     targets
                     constraints
@@ -906,13 +914,14 @@ interpretPackagesPreference selected defaultPref prefs =
 validateSolverResult
   :: Staged (CompilerInfo, Platform)
   -> [ResolverPackage UnresolvedPkgLoc]
-  -> SolverInstallPlan
+  -> Progress String String SolverInstallPlan
 validateSolverResult toolchains pkgs =
   case planPackagesProblems toolchains pkgs of
     [] -> case SolverInstallPlan.new graph of
-      Right plan -> plan
-      Left problems -> error (formatPlanProblems problems)
-    problems -> error (formatPkgProblems problems)
+      Right plan -> return plan
+      Left problems ->
+        fail (formatPlanProblems problems)
+    problems -> fail (formatPkgProblems problems)
   where
     graph :: Graph.Graph (ResolverPackage UnresolvedPkgLoc)
     graph = Graph.fromDistinctList pkgs
