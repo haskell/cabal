@@ -3,7 +3,7 @@ stages:
 
 variables:
   # Commit of ghc/ci-images repository from which to pull Docker images
-  DOCKER_REV: "a9297a370025101b479cfd4977f8f910814e03ab"
+  DOCKER_REV: "df20b2eb2fcc1c93aed5ad047c65752fbd4c38d4"
 
   GHC_VERSION: 9.10.2
   CABAL_INSTALL_VERSION: 3.14.2.0
@@ -33,12 +33,10 @@ linux:
       - ARCH: i386
         TAG: x86_64-linux
         OS:
-          - deb9
           - deb10
       - ARCH: x86_64
         TAG: x86_64-linux
         OS:
-          - deb9
           - deb10
           - deb11
           - deb12
@@ -46,17 +44,9 @@ linux:
           - fedora36
           - fedora38
           - rocky8
-          - ubuntu18_04
           - ubuntu20_04
           - ubuntu22_04
-      # Pull this one from the future, since it's missing.
-      # We can't move the entire file to this DOCKER_REV, because
-      # i386-linux-deb9 is missing from it.
-      - ARCH: x86_64
-        TAG: x86_64-linux
-        OS: centos7
-        DOCKER_REV: f2d12519f45a13a61fcca03a949f927ceead6492
-
+          - ubuntu24_04
       - ARCH: aarch64
         TAG: aarch64-linux
         OS:
@@ -76,12 +66,11 @@ alpine-linux:
   extends: .build
   parallel:
     matrix:
-      - ARCH: [i386, x86_64]
-        OS: [alpine3_12, alpine3_15, alpine3_17]
+      - ARCH: [x86_64]
+        OS: [alpine3_12, alpine3_20]
         TAG: x86_64-linux
-      # Was 3_18 for i386 intentionally left off?
-      - ARCH: x86_64
-        OS: alpine3_18
+      - ARCH: [i386]
+        OS: alpine3_20
         TAG: x86_64-linux
       - ARCH: [aarch64]
         OS: [alpine3_18]
