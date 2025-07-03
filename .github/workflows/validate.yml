@@ -32,10 +32,10 @@ on:
 env:
   # We choose a stable ghc version across all os's
   # which will be used to do the next release
-  GHC_FOR_RELEASE: "9.4.8"
+  GHC_FOR_RELEASE: "9.10.2"
   # Ideally we should use the version about to be released for hackage tests and benchmarks
-  GHC_FOR_SOLVER_BENCHMARKS: "9.4.8"
-  GHC_FOR_COMPLETE_HACKAGE_TESTS: "9.4.8"
+  GHC_FOR_SOLVER_BENCHMARKS: "9.10.2"
+  GHC_FOR_COMPLETE_HACKAGE_TESTS: "9.10.2"
   COMMON_FLAGS: "-j 2 -v"
 
   # See https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#hackage-revisions
@@ -61,7 +61,7 @@ jobs:
         ghc:
           [
             "9.12.2",
-            "9.10.1",
+            "9.10.2",
             "9.8.4",
             "9.6.7",
             "9.4.8",
