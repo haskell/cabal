@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 
@@ -16,14 +17,17 @@ import Control.Monad.Writer.Lazy (WriterT, execWriterT, tell)
 
 import Distribution.Client.Errors
 import Distribution.Client.Utils (tryReadAddSourcePackageDesc)
-import Distribution.Package (Package (packageId))
+import Distribution.Package (Package (packageId), packageName, unPackageName)
 import Distribution.PackageDescription.Configuration (flattenPackageDescription)
 import Distribution.Simple.PreProcess (knownSuffixHandlers)
-import Distribution.Simple.SrcDist (listPackageSourcesWithDie)
-import Distribution.Simple.Utils (dieWithException)
+import Distribution.Simple.SrcDist (listPackageSources, listPackageSourcesWithDie)
+import Distribution.Simple.Utils (dieWithException, tryFindPackageDesc)
 import Distribution.Types.GenericPackageDescription (GenericPackageDescription)
 import Distribution.Utils.Path
-  ( getSymbolicPath
+  ( FileOrDir (File)
+  , Pkg
+  , SymbolicPath
+  , getSymbolicPath
   , makeSymbolicPath
   )
 
@@ -32,6 +36,7 @@ import qualified Codec.Archive.Tar.Entry as Tar
 import qualified Codec.Compression.GZip as GZip
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
+import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import System.Directory (canonicalizePath)
 import System.FilePath
@@ -65,23 +70,45 @@ packageDirToSdist
   -> IO BSL.ByteString
   -- ^ resulting sdist tarball
 packageDirToSdist verbosity gpd dir = do
-  -- let thisDie :: Verbosity -> String -> IO a
-  --    thisDie v s = die' v $ "sdist of " <> prettyShow (packageId gpd) ++ ": " ++ s
-  absDir <- canonicalizePath dir
-  files' <- listPackageSourcesWithDie verbosity dieWithException (Just $ makeSymbolicPath absDir) (flattenPackageDescription gpd) knownSuffixHandlers
-  let files :: [FilePath]
-      files = nub $ sort $ map (normalise . getSymbolicPath) files'
+  let prefix = prettyShow (packageId gpd)
+
+  mbWorkDir <- Just . makeSymbolicPath <$> canonicalizePath dir
+  cabalFilePath <-
+    getSymbolicPath
+      <$> tryFindPackageDesc verbosity mbWorkDir
+  files' <- listPackageSources verbosity mbWorkDir (flattenPackageDescription gpd) knownSuffixHandlers
+
+  let insertMapping
+        :: SymbolicPath Pkg File
+        -> Map FilePath FilePath
+        -> Map FilePath FilePath
+      insertMapping file =
+        let
+          value = normalise (getSymbolicPath file)
+
+          -- Replace the file name of the package description with one that
+          -- matches the actual package name.
+          -- See related issue #6299.
+          key =
+            prefix
+              </> if value == cabalFilePath
+                then unPackageName (packageName gpd) <.> "cabal"
+                else value
+         in
+          Map.insert key value
+
+  let files :: Map FilePath FilePath
+      files = foldr insertMapping Map.empty files'
 
   let entriesM :: StateT (Set.Set FilePath) (WriterT [Tar.Entry] IO) ()
       entriesM = do
-        let prefix = prettyShow (packageId gpd)
         modify (Set.insert prefix)
         case Tar.toTarPath True prefix of
           Left err -> liftIO $ dieWithException verbosity $ ErrorPackingSdist err
           Right path -> tell [Tar.directoryEntry path]
 
-        for_ files $ \file -> do
-          let fileDir = takeDirectory (prefix </> file)
+        for_ (Map.toAscList files) $ \(tarFile, srcFile) -> do
+          let fileDir = takeDirectory tarFile
           needsEntry <- gets (Set.notMember fileDir)
 
           when needsEntry $ do
@@ -90,8 +117,8 @@ packageDirToSdist verbosity gpd dir = do
               Left err -> liftIO $ dieWithException verbosity $ ErrorPackingSdist err
               Right path -> tell [Tar.directoryEntry path]
 
-          contents <- liftIO . fmap BSL.fromStrict . BS.readFile $ dir </> file
-          case Tar.toTarPath False (prefix </> file) of
+          contents <- liftIO . fmap BSL.fromStrict . BS.readFile $ dir </> srcFile
+          case Tar.toTarPath False tarFile of
             Left err -> liftIO $ dieWithException verbosity $ ErrorPackingSdist err
             Right path -> tell [(Tar.fileEntry path contents){Tar.entryPermissions = Tar.ordinaryFilePermissions}]
 
