@@ -84,7 +84,6 @@ In general, most changes do not require proposals, developers are trusted to use
   The opinion of knowledgeable contributors regarding a particular subsystem is especially
   important for the meeting to reach a decision.
 - It is not necessarily expected that the participants of the meeting will offer a technical opinion. The discussion on the issue should provide enough context for a decision to be made.
-- Those responsible for the proposal are encouraged to attend the developers meeting.
 - There is a quorum of three developers at the meeting.
 - If quorum is not reached for 4 consecutive meetings (8 weeks) whilst a proposal is due to be discussed, the proposal process is suspended and reviewed.
 
