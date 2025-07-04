@@ -1,0 +1,139 @@
+name: Prerelease LTS
+
+# See: https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#concurrency.
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+on:
+  schedule:
+    - cron: "49 4 * * *"
+
+jobs:
+
+  config:
+    runs-on: ubuntu-latest
+    # `matrix` can't access `env`, but it can access `outputs` from `needs` jobs.
+    # So we have to "export" some things here as job outputs.
+    #
+    # And GitHub documents that $GITHUB_ENV doesn't persist between jobs, only between
+    # steps. But somehow the `validate` job was getting it anyway, while `build-alpine`
+    # wasn't.
+    #
+    # I give up. Everything is now explicitly (GitHub hasn't invented iteration yet) listed
+    # as an output and (again explicitly) loaded into the environment in the first step of
+    # each job. Thanks, GitHub. (Some parts of it are not obviously used, because you need
+    # to dig around the local actions to see where other parts are used. $COMMON_FLAGS is
+    # one notable example.)
+    #
+    # Oh, and anchors aren't supported either, so yes, it has to be copy-pasted. Thanks again.
+    # (Actually, somehow GitHub missed making ${{ }} expansions illegal in `run`.)
+    outputs:
+      # expose the configuration variables for use by jobs
+      GHC_FOR_RELEASE: ${{ steps.conf.outputs['GHC_FOR_RELEASE'] }}
+      GHC_FOR_SOLVER_BENCHMARKS: ${{ steps.conf.outputs['GHC_FOR_SOLVER_BENCHMARKS'] }}
+      GHC_FOR_COMPLETE_HACKAGE_TESTS: ${{ steps.conf.outputs['GHC_FOR_COMPLETE_HACKAGE_TESTS'] }}
+      GHC_FOR_VALIDATE: ${{ steps.conf.outputs['GHC_FOR_VALIDATE'] }}
+      GHC_FOR_VALIDATE_OLD: ${{ steps.conf.outputs['GHC_FOR_VALIDATE_OLD'] }}
+      COMMON_FLAGS: ${{ steps.conf.outputs['COMMON_FLAGS'] }}
+      LTS_RELEASE: ${{ steps.conf.outputs['LTS_RELEASE'] }}
+      # convenience for loading these into the environment
+      env: |
+        echo "GHC_FOR_RELEASE=${{ steps.conf.outputs['GHC_FOR_RELEASE'] }}" >> "$GITHUB_ENV"
+        echo "GHC_FOR_SOLVER_BENCHMARKS=${{ steps.conf.outputs['GHC_FOR_SOLVER_BENCHMARKS'] }}" >> "$GITHUB_ENV"
+        echo "GHC_FOR_COMPLETE_HACKAGE_TESTS=${{ steps.conf.outputs['GHC_FOR_COMPLETE_HACKAGE_TESTS'] }}" >> "$GITHUB_ENV"
+        echo "GHC_FOR_VALIDATE=${{ steps.conf.outputs['GHC_FOR_VALIDATE'] }}" >> "$GITHUB_ENV"
+        echo "GHC_FOR_VALIDATE_OLD=${{ steps.conf.outputs['GHC_FOR_VALIDATE_OLD'] }}" >> "$GITHUB_ENV"
+        echo "COMMON_FLAGS=${{ steps.conf.outputs['COMMON_FLAGS'] }}" >> "$GITHUB_ENV"
+        echo "LTS_RELEASE=${{ steps.conf.outputs['LTS_RELEASE'] }}" >> "$GITHUB_ENV"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pietrobolcato/action-read-yaml@1.1.0
+        id: conf
+        with:
+          config: ${{ github.workspace }}/.github/config.yml
+
+  prerelease-build-most:
+    name: Prerelease build ${{ matrix.sys.os }} ghc-${{ needs.config.outputs.GHC_FOR_RELEASE }}
+    runs-on: ${{ matrix.sys.os }}
+    needs: config
+    strategy:
+      fail-fast: false
+      matrix:
+        sys:
+          # 'bash' on Windows apparently gets you the one from Git for Windows,
+          # whereas this needs the one from msys
+          - { os: windows-latest, shell: "C:/msys64/usr/bin/bash.exe -e {0}" }
+          - { os: ubuntu-22.04, shell: bash }
+          - { os: macos-latest, shell: bash }
+          - { os: macos-13, shell: bash }
+    defaults:
+      run:
+        shell: ${{ matrix.sys.shell }}
+
+    steps:
+      - run: ${{ needs.config.outputs.env }}
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.config.outputs.LTS_BRANCH }}
+
+      # We were making prereleases with validate builds, so I will continue to do so
+      - uses: ./.github/actions/validate-build
+        with:
+          shell: ${{ matrix.sys.shell }}
+          ghc: ${{ needs.config.outputs.GHC_FOR_RELEASE }}
+
+  prerelease-build-alpine:
+    name: Prerelease build statically linked using alpine
+    runs-on: ubuntu-latest
+    container: "alpine:3.19"
+    needs: config
+    steps:
+      - run: ${{ needs.config.outputs.env }}
+        shell: sh
+
+      - name: Install extra dependencies
+        shell: sh
+        run: |
+          apk add bash curl sudo jq pkgconfig \
+          zlib-dev zlib-static binutils-gold curl \
+          gcc g++ gmp-dev libc-dev libffi-dev make \
+          musl-dev ncurses-dev perl tar xz
+
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/validate-build
+        with:
+          shell: 'bash'
+          ghc: ${{ needs.config.outputs.GHC_FOR_RELEASE }}
+          static: 'true'
+
+  prerelease-head:
+    name: Create a GitHub prerelease with the binary artifacts
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    needs: [prerelease-build-most, prerelease-build-alpine]
+
+    steps:
+      - uses: liudonghua123/delete-release-action@v1
+        with:
+          release_name: 'cabal-head'
+
+      # for now this is hardcoded. is there a better way?
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cabal-*
+          path: binaries
+          merge-multiple: true
+
+      - name: Create GitHub prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: cabal-lts-head
+          target_committish: ${{ needs.config.outputs.LTS_BRANCH }}
+          prerelease: true
+          files: binaries/cabal-*
