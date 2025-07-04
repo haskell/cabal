@@ -3,6 +3,7 @@ import Test.Cabal.Prelude
 
 main = do
   skipIfWindows "no relocatable builds"
+  skipIfFreeBSD "no relocatable builds"
   setupAndCabalTest $ do
     skipUnlessGhcVersion ">= 8.0"
     withPackageDb $ setup_build ["--enable-relocatable"]

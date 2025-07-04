@@ -34,7 +34,7 @@ import Distribution.Simple.PackageDescription (readGenericPackageDescription)
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program
-import Distribution.System (OS(Windows,Linux,OSX), Arch(JavaScript), buildOS, buildArch)
+import Distribution.System (OS(Windows,Linux,OSX,FreeBSD), Arch(JavaScript), buildOS, buildArch)
 import Distribution.Simple.Configure
     ( getPersistBuildConfig )
 import Distribution.Simple.Utils
@@ -1062,6 +1062,9 @@ requireGhcSupportsMultiRepl =
 isWindows :: Bool
 isWindows = buildOS == Windows
 
+isFreeBSD :: Bool
+isFreeBSD = buildOS == FreeBSD
+
 isCI :: IO Bool
 isCI = isJust <$> lookupEnv "CI"
 
@@ -1078,6 +1081,9 @@ isJavaScript = buildArch == JavaScript
 
 skipIfWindows :: String -> IO ()
 skipIfWindows why = skipIfIO ("Windows " <> why) isWindows
+
+skipIfFreeBSD :: String -> IO ()
+skipIfFreeBSD why = skipIfIO ("FreeBSD " <> why) isFreeBSD
 
 skipUnlessWindows :: IO ()
 skipUnlessWindows = skipIfIO "Only interesting in Windows" (not isWindows)
