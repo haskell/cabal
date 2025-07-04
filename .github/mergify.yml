@@ -38,7 +38,7 @@ pull_request_rules:
     conditions:
       - or:
           - 'label=priority: high :fire:'
-          - updated-at<2 days ago
+          - updated-at>=2 days ago
       - or:
           - label=merge me
           - label=squash+merge me
@@ -86,7 +86,7 @@ pull_request_rules:
       - -merged
       - '#approved-reviews-by>=2'
       - '#changes-requested-reviews-by=0'
-      - updated-at<4 days ago
+      - updated-at>=4 days ago
       - label=merge delay passed
       # oy
       # lifted these from branch protection imports
