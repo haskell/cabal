@@ -5,6 +5,7 @@ import Test.Cabal.Prelude
 -- contains '..'
 main = do
   skipIfWindows "no relocatable builds"
+  skipIfFreeBSD "no relocatable builds"
   setupAndCabalTest $ withPackageDb $ do
     skipUnlessGhcVersion ">= 7.6"
     env <- getTestEnv
