@@ -1,8 +1,0 @@
----
-synopsis: "Haddock documentation added to Paths_pkgname and PackageInfo_pkgname modules"
-packages: [Cabal]
-prs: 10941
----
-
-The automatically-generated modules `Paths_pkgname` and `PackageInfo_pkgname`
-now include Haddock documentation.
