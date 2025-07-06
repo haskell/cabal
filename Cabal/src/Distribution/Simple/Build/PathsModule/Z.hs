@@ -12,7 +12,7 @@ data Z
          zIsWindows :: Bool,
          zIsI386 :: Bool,
          zIsX8664 :: Bool,
-         zIsAarch64 :: Bool,
+         zIsAArch64 :: Bool,
          zPrefix :: FilePath,
          zBindir :: FilePath,
          zLibdir :: FilePath,
@@ -350,13 +350,13 @@ render z_root = execWriter $ do
             tell "  c_GetModuleFileName :: Ptr () -> CWString -> Int32 -> IO Int32\n"
             return ()
           else do
-            if (zIsAarch64 z_root)
+            if (zIsAArch64 z_root)
             then do
               tell "foreign import ccall unsafe \"windows.h GetModuleFileNameW\"\n"
               tell "  c_GetModuleFileName :: Ptr () -> CWString -> Int32 -> IO Int32\n"
               return ()
             else do
-              tell "-- win32 supported only with I386, X86_64, Aarch64\n"
+              tell "-- win32 supported only with I386, X86_64, AArch64\n"
               tell "c_GetModuleFileName :: Ptr () -> CWString -> Int32 -> IO Int32\n"
               tell "c_GetModuleFileName  = _\n"
               return ()
