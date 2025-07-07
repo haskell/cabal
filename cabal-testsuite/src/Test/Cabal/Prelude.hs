@@ -75,6 +75,7 @@ import Control.Retry (exponentialBackoff, limitRetriesByCumulativeDelay)
 import Network.Wait (waitTcpVerbose)
 import System.Environment
 import qualified System.FilePath.Glob as Glob (globDir1, compile)
+import qualified System.OsRelease as OSR
 import System.Process
 import System.IO
 import qualified System.FilePath.Posix as Posix
@@ -1078,6 +1079,15 @@ isJavaScript = buildArch == JavaScript
 
 skipIfWindows :: String -> IO ()
 skipIfWindows why = skipIfIO ("Windows " <> why) isWindows
+
+skipIfAlpine :: String -> IO ()
+skipIfAlpine why = do
+  mres <- OSR.parseOsRelease
+  let b = case mres of
+            Just (OSR.OsReleaseResult { OSR.osRelease = OSR.OsRelease { OSR.id = osId } })
+              | isLinux -> osId == "alpine"
+            _ -> False
+  skipIfIO ("Alpine " <> why) b
 
 skipUnlessWindows :: IO ()
 skipUnlessWindows = skipIfIO "Only interesting in Windows" (not isWindows)
