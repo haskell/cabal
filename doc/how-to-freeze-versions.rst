@@ -208,14 +208,14 @@ For the versions of all dependencies at once:
     ``cabal.project.freeze`` file committed to source control.
 
 For the version of a single dependency:
-    
+
 - To pin the version of a new dependency
 
     The steps of this workflow are add the new dependency and freeze. The solver
     is free to chose its version for the new dependency while retaining the
     already pinned versions for the rest of the dependencies.
 
-- To update the version of one dependency 
+- To update the version of one dependency
 
     If you want to a pick up a different version of a single dependency, you can
     delete its constraint from ``cabal.project.freeze`` and then run ``cabal
