@@ -73,7 +73,6 @@ pattern NoFlag = Last Nothing
 
 {-# COMPLETE Flag, NoFlag #-}
 
-
 -- | Wraps a value in 'Flag'.
 toFlag :: a -> Flag a
 toFlag = Flag
