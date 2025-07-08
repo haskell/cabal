@@ -10,6 +10,8 @@ module Distribution.Client.ProjectConfig.Types
   , ProjectConfigShared (..)
   , ProjectConfigProvenance (..)
   , PackageConfig (..)
+  , ProjectFileParser(..)
+  , defaultProjectFileParser
 
     -- * Resolving configuration
   , SolverSettings (..)
@@ -188,6 +190,7 @@ data ProjectConfigShared = ProjectConfigShared
   , projectConfigConfigFile :: Flag FilePath
   , projectConfigProjectDir :: Flag FilePath
   , projectConfigProjectFile :: Flag FilePath
+  , projectConfigProjectFileParser :: Flag ProjectFileParser
   , projectConfigIgnoreProject :: Flag Bool
   , projectConfigHcFlavor :: Flag CompilerFlavor
   , projectConfigHcPath :: Flag FilePath
@@ -237,6 +240,16 @@ data ProjectConfigShared = ProjectConfigShared
   -- projectConfigUpgradeDeps       :: Flag Bool
   }
   deriving (Eq, Show, Generic)
+
+data ProjectFileParser
+  = LegacyParser
+  | ParsecParser
+  | FallbackParser
+  | CompareParser
+  deriving (Eq, Show, Generic)
+
+defaultProjectFileParser :: ProjectFileParser
+defaultProjectFileParser = FallbackParser
 
 -- | Specifies the provenance of project configuration, whether defaults were
 -- used or if the configuration was read from an explicit file path.
@@ -328,12 +341,14 @@ instance Binary ProjectConfigBuildOnly
 instance Binary ProjectConfigShared
 instance Binary ProjectConfigProvenance
 instance Binary PackageConfig
+instance Binary ProjectFileParser
 
 instance Structured ProjectConfig
 instance Structured ProjectConfigBuildOnly
 instance Structured ProjectConfigShared
 instance Structured ProjectConfigProvenance
 instance Structured PackageConfig
+instance Structured ProjectFileParser
 
 -- | Newtype wrapper for 'Map' that provides a 'Monoid' instance that takes
 -- the last value rather than the first value for overlapping keys.

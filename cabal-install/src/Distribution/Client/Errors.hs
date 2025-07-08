@@ -187,6 +187,7 @@ data CabalInstallException
   | CmdPathAcceptsNoTargets
   | CmdPathCommandDoesn'tSupportDryRun
   | GenBoundsDoesNotSupportScript FilePath
+  | LegacyAndParsecParseResultsDiffer FilePath String String
   deriving (Show)
 
 exceptionCodeCabalInstall :: CabalInstallException -> Int
@@ -340,6 +341,7 @@ exceptionCodeCabalInstall e = case e of
   CmdPathAcceptsNoTargets{} -> 7161
   CmdPathCommandDoesn'tSupportDryRun -> 7163
   GenBoundsDoesNotSupportScript{} -> 7164
+  LegacyAndParsecParseResultsDiffer{} -> 7165
 
 exceptionMessageCabalInstall :: CabalInstallException -> String
 exceptionMessageCabalInstall e = case e of
@@ -864,6 +866,15 @@ exceptionMessageCabalInstall e = case e of
     "The 'path' command doesn't support the flag '--dry-run'."
   GenBoundsDoesNotSupportScript{} ->
     "The 'gen-bounds' command does not support script targets."
+  LegacyAndParsecParseResultsDiffer _fp legacyParsec parsec ->
+    unlines
+      [ "The legacy and parsec parsers produced different results for the project file. This is unexpected, please report this as a bug."
+      , "The legacy parser will be removed in the next major version."
+      , "Legacy parse result:"
+      , legacyParsec
+      , "Parsec parse result:"
+      , parsec
+      ]
 
 instance Exception (VerboseException CabalInstallException) where
   displayException :: VerboseException CabalInstallException -> [Char]

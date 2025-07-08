@@ -48,6 +48,7 @@ import Distribution.Types.PackageName (PackageName)
 import Distribution.Utils.Generic (fromUTF8BS, toUTF8BS, validateUTF8)
 import Distribution.Utils.NubList (toNubList)
 import Distribution.Verbosity
+import Distribution.Utils.String (trim)
 
 import Control.Monad.State.Strict (StateT, execStateT, lift)
 import qualified Data.ByteString as BS
@@ -164,11 +165,11 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
 
     parseElseClauses :: [Field Position] -> IO (ParseResult (Maybe ProjectConfigSkeleton), ParseResult ProjectConfigSkeleton)
     parseElseClauses x = case x of
-      (Section (Name _pos name) _args xs' : xs) | name == "else" -> do
+      (Section (Name _pos "else") _args xs' : xs) -> do
         subpcs <- go [] xs'
         rest <- go [] xs
         pure (Just <$> subpcs, rest)
-      (Section (Name _pos name) args xs' : xs) | name == "elif" -> do
+      (Section (Name _pos "elif") args xs' : xs) -> do
         subpcs <- go [] xs'
         (elseClauses, rest) <- parseElseClauses xs
         let condNode =
@@ -201,7 +202,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
       fetch pci
 
     fetch :: FilePath -> IO BS.ByteString
-    fetch pci = case parseURI pci of
+    fetch pci = case parseURI (trim pci) of
       Just uri -> do
         let fp = cacheDir </> map (\x -> if isPathSeparator x then '_' else x) (makeValid $ show uri)
         createDirectoryIfMissing True cacheDir

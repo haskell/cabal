@@ -74,6 +74,7 @@ projectConfigSharedFieldGrammar source =
     <*> pure mempty -- cli flag: projectConfigConfigFile
     <*> optionalFieldDefAla "project-dir" (alaFlag FilePathNT) L.projectConfigProjectDir mempty
     <*> optionalFieldDefAla "project-file" (alaFlag FilePathNT) L.projectConfigProjectFile mempty
+    <*> pure mempty -- You can't set the parser type in the project file.
     <*> optionalFieldDef "ignore-project" L.projectConfigIgnoreProject mempty
     <*> optionalFieldDef "compiler" L.projectConfigHcFlavor mempty
     <*> optionalFieldDefAla "with-compiler" (alaFlag FilePathNT) L.projectConfigHcPath mempty
