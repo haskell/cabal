@@ -63,6 +63,7 @@ import Distribution.Parsec.FieldLineStream (FieldLineStream, fieldLineStreamFrom
 import Distribution.Parsec.Position (Position (..), incPos, retPos, showPos, zeroPos)
 import Distribution.Parsec.Warning (PWarnType (..), PWarning (..), showPWarning)
 import Numeric (showIntAtBase)
+import Data.Monoid (Last (..))
 import Prelude ()
 
 import qualified Distribution.Compat.CharParsing as P
@@ -254,6 +255,12 @@ instance Parsec Bool where
           lstr = map toLower str
           caseWarning =
             "Boolean values are case sensitive, use 'True' or 'False'."
+
+instance Parsec a => Parsec (Last a) where
+  parsec = parsecLast
+
+parsecLast :: (Parsec a, CabalParsing m) => m (Last a)
+parsecLast = (Last . Just <$> parsec) <|> pure mempty
 
 -- | @[^ ,]@
 parsecToken :: CabalParsing m => m String
