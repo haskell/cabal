@@ -2,17 +2,22 @@ module Distribution.Solver.Types.DependencyResolver
     ( DependencyResolver
     ) where
 
-import Distribution.Solver.Compat.Prelude
+import Distribution.Solver.Compat.Prelude ( Maybe, String, Set )
 import Prelude ()
 
 import Distribution.Solver.Types.LabeledPackageConstraint
+    ( LabeledPackageConstraint )
 import Distribution.Solver.Types.PkgConfigDb ( PkgConfigDb )
 import Distribution.Solver.Types.PackagePreferences
+    ( PackagePreferences )
 import Distribution.Solver.Types.PackageIndex ( PackageIndex )
 import Distribution.Solver.Types.Progress
+    ( Progress )
 import Distribution.Solver.Types.ResolverPackage
-import Distribution.Solver.Types.SourcePackage
-
+    ( ResolverPackage )
+import Distribution.Solver.Types.SourcePackage ( SourcePackage )
+import Distribution.Solver.Types.SummarizedMessage
+    ( SummarizedMessage(..) )
 import Distribution.Simple.PackageIndex ( InstalledPackageIndex )
 import Distribution.Package ( PackageName )
 import Distribution.Compiler ( CompilerInfo )
@@ -34,4 +39,4 @@ type DependencyResolver loc = Platform
                            -> (PackageName -> PackagePreferences)
                            -> [LabeledPackageConstraint]
                            -> Set PackageName
-                           -> Progress String String [ResolverPackage loc]
+                           -> Progress SummarizedMessage String [ResolverPackage loc]
