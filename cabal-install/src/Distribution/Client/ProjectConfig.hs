@@ -46,6 +46,9 @@ module Distribution.Client.ProjectConfig
   , readProjectFileSkeleton
   , ProjectFileParser(..)
   , readProjectFileSkeletonLegacy
+  , readProjectFileSkeletonParsec
+  , readProjectFileSkeletonFallback
+  , readProjectFileSkeletonCompare
 
     -- * Packages within projects
   , ProjectPackageLocation (..)

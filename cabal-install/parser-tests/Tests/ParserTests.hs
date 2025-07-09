@@ -182,6 +182,7 @@ testProjectConfigShared = do
     expected = ProjectConfigShared{..}
     projectConfigDistDir = toFlag "something"
     projectConfigConfigFile = mempty -- cli only
+    projectConfigProjectFileParser = mempty -- cli only
     projectConfigProjectDir = toFlag "my-project-dir"
     projectConfigProjectFile = toFlag "my-project"
     projectConfigIgnoreProject = toFlag False
@@ -569,7 +570,7 @@ readConfig testSubDir projectFileName = do
   parsec <-
     liftIO $
       runRebuild testRootFp $
-        readProjectFileSkeleton verbosity httpTransport distDirLayout extensionName extensionDescription
+        readProjectFileSkeletonParsec verbosity httpTransport distDirLayout extensionName extensionDescription
   legacy <-
     liftIO $
       runRebuild testRootFp $
