@@ -1,13 +1,19 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveFunctor #-}
 
 module Distribution.Parsec.Warning
   ( PWarning (..)
+  , PWarningWithSource (..)
+  , PSource (..)
+  , showPSourceAsFilePath
   , PWarnType (..)
   , showPWarning
+  , showPWarningWithSource
   ) where
 
 import Distribution.Compat.Prelude
 import Distribution.Parsec.Position
+import Distribution.Parsec.Source
 import System.FilePath (normalise)
 import Prelude ()
 
@@ -70,9 +76,23 @@ instance NFData PWarnType where rnf = genericRnf
 data PWarning = PWarning !PWarnType !Position String
   deriving (Eq, Ord, Show, Generic)
 
+data PWarningWithSource src = PWarningWithSource { pwarningSource :: !(PSource src), pwarning :: !PWarning }
+  deriving (Eq, Ord, Show, Generic, Functor)
+
+
 instance Binary PWarning
 instance NFData PWarning where rnf = genericRnf
 
 showPWarning :: FilePath -> PWarning -> String
 showPWarning fpath (PWarning _ pos msg) =
   normalise fpath ++ ":" ++ showPos pos ++ ": " ++ msg
+
+showPWarningWithSource :: PWarningWithSource String -> String
+showPWarningWithSource (PWarningWithSource source pwarn) =
+  showPWarning (showPSourceAsFilePath source) pwarn
+
+showPSourceAsFilePath :: PSource String -> String
+showPSourceAsFilePath source =
+  case source of
+    PKnownSource src -> src
+    PUnknownSource -> "???"

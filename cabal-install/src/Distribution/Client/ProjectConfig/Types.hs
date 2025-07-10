@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE CPP #-}
 
 -- | Handling project configuration, types.
 module Distribution.Client.ProjectConfig.Types
@@ -9,7 +10,11 @@ module Distribution.Client.ProjectConfig.Types
   , ProjectConfigBuildOnly (..)
   , ProjectConfigShared (..)
   , ProjectConfigProvenance (..)
+  , ProjectFileSource (..)
+  , renderProjectFileSource
   , PackageConfig (..)
+  , ProjectFileParser(..)
+  , defaultProjectFileParser
 
     -- * Resolving configuration
   , SolverSettings (..)
@@ -95,7 +100,7 @@ import Distribution.Version
   )
 
 import qualified Data.Map as Map
-import Distribution.Solver.Types.ProjectConfigPath (ProjectConfigPath)
+import Distribution.Solver.Types.ProjectConfigPath (ProjectConfigPath, currentProjectConfigPath)
 import Distribution.Types.ParStrat
 
 -------------------------------
@@ -168,6 +173,7 @@ data ProjectConfigBuildOnly = ProjectConfigBuildOnly
   , projectConfigReportPlanningFailure :: Flag Bool
   , projectConfigSymlinkBinDir :: Flag FilePath
   , projectConfigNumJobs :: Flag (Maybe Int)
+  -- ^ Use 'Just n' for number of jobs, 'Nothing' for number of jobs equal to the number of CPUs and 'NoFlag' if flag is not given.
   , projectConfigUseSemaphore :: Flag Bool
   , projectConfigKeepGoing :: Flag Bool
   , projectConfigOfflineMode :: Flag Bool
@@ -187,6 +193,7 @@ data ProjectConfigShared = ProjectConfigShared
   , projectConfigConfigFile :: Flag FilePath
   , projectConfigProjectDir :: Flag FilePath
   , projectConfigProjectFile :: Flag FilePath
+  , projectConfigProjectFileParser :: Flag ProjectFileParser
   , projectConfigIgnoreProject :: Flag Bool
   , projectConfigHcFlavor :: Flag CompilerFlavor
   , projectConfigHcPath :: Flag FilePath
@@ -237,6 +244,20 @@ data ProjectConfigShared = ProjectConfigShared
   }
   deriving (Eq, Show, Generic)
 
+data ProjectFileParser
+  = LegacyParser
+  | ParsecParser
+  | FallbackParser
+  | CompareParser
+  deriving (Eq, Show, Generic)
+
+defaultProjectFileParser :: ProjectFileParser
+#ifdef LEGACY_COMPARISON
+defaultProjectFileParser = CompareParser
+#else
+defaultProjectFileParser = FallbackParser
+#endif
+
 -- | Specifies the provenance of project configuration, whether defaults were
 -- used or if the configuration was read from an explicit file path.
 data ProjectConfigProvenance
@@ -248,6 +269,20 @@ data ProjectConfigProvenance
     -- | The configuration was explicitly read from the specified 'ProjectConfigPath'.
     Explicit ProjectConfigPath
   deriving (Eq, Ord, Show, Generic)
+
+data ProjectFileSource = ProjectFileSource (ProjectConfigPath, BS.ByteString) deriving (Show, Generic)
+
+instance Eq ProjectFileSource where
+  (ProjectFileSource (path1, _)) == (ProjectFileSource (path2, _)) = path1 == path2
+
+instance Ord ProjectFileSource where
+  (ProjectFileSource (path1, _)) `compare` (ProjectFileSource (path2, _)) = path1 `compare` path2
+
+
+
+renderProjectFileSource :: ProjectFileSource -> String
+renderProjectFileSource (ProjectFileSource (path, _contents)) =
+  currentProjectConfigPath path
 
 -- | Project configuration that is specific to each package, that is where we
 -- can in principle have different values for different packages in the same
@@ -327,12 +362,14 @@ instance Binary ProjectConfigBuildOnly
 instance Binary ProjectConfigShared
 instance Binary ProjectConfigProvenance
 instance Binary PackageConfig
+instance Binary ProjectFileParser
 
 instance Structured ProjectConfig
 instance Structured ProjectConfigBuildOnly
 instance Structured ProjectConfigShared
 instance Structured ProjectConfigProvenance
 instance Structured PackageConfig
+instance Structured ProjectFileParser
 
 -- | Newtype wrapper for 'Map' that provides a 'Monoid' instance that takes
 -- the last value rather than the first value for overlapping keys.

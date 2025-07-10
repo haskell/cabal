@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP                 #-}
+{-# LANGUAGE TypeApplications    #-}
 #if !(__GLASGOW_HASKELL__ >= 806 && defined(MIN_VERSION_nothunks))
 module Main (main) where
 main :: IO ()
@@ -45,7 +46,7 @@ main = defaultMain $ testGroup "nothunks"
 noThunksParse :: IO ()
 noThunksParse = do
     bs <- BS.readFile "Cabal/Cabal.cabal" <|> BS.readFile "../Cabal/Cabal.cabal"
-    let res = parseGenericPackageDescription bs
+    let res = parseGenericPackageDescription @() bs
     gpd <- either (assertFailure . show) return $ snd $
         runParseResult res
 

@@ -116,5 +116,5 @@ sourceRepositoryPackageGrammar =
     <*> fmap (maybe [] toList) pcc
   where
     pcc = optionalFieldAla "post-checkout-command" (alaNonEmpty' NoCommaFSep Token) srpCommandLensNE
-{-# SPECIALIZE sourceRepositoryPackageGrammar :: ParsecFieldGrammar' SourceRepoList #-}
+{-# SPECIALIZE sourceRepositoryPackageGrammar :: ParsecFieldGrammar' src SourceRepoList #-}
 {-# SPECIALIZE sourceRepositoryPackageGrammar :: PrettyFieldGrammar' SourceRepoList #-}

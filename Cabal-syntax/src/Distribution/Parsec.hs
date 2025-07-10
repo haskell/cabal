@@ -24,11 +24,16 @@ module Distribution.Parsec
     -- ** Warnings
   , PWarnType (..)
   , PWarning (..)
+  , PWarningWithSource(..)
+  , PSource(..)
   , showPWarning
+  , showPWarningWithSource
 
     -- ** Errors
   , PError (..)
+  , PErrorWithSource(..)
   , showPError
+  , showPErrorWithSource
 
     -- * Position
   , Position (..)
@@ -58,11 +63,13 @@ import Data.Char (digitToInt, intToDigit)
 import Data.List (transpose)
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Prelude
-import Distribution.Parsec.Error (PError (..), showPError)
+import Distribution.Parsec.Error (PError (..), PErrorWithSource(..), showPError, showPErrorWithSource)
+
 import Distribution.Parsec.FieldLineStream (FieldLineStream, fieldLineStreamFromBS, fieldLineStreamFromString)
 import Distribution.Parsec.Position (Position (..), incPos, retPos, showPos, zeroPos)
-import Distribution.Parsec.Warning (PWarnType (..), PWarning (..), showPWarning)
+import Distribution.Parsec.Warning
 import Numeric (showIntAtBase)
+import Data.Monoid (Last (..))
 import Prelude ()
 
 import qualified Distribution.Compat.CharParsing as P
@@ -254,6 +261,12 @@ instance Parsec Bool where
           lstr = map toLower str
           caseWarning =
             "Boolean values are case sensitive, use 'True' or 'False'."
+
+instance Parsec a => Parsec (Last a) where
+  parsec = parsecLast
+
+parsecLast :: (Parsec a, CabalParsing m) => m (Last a)
+parsecLast = (Last . Just <$> parsec) <|> pure mempty
 
 -- | @[^ ,]@
 parsecToken :: CabalParsing m => m String

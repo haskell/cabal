@@ -205,7 +205,7 @@ libraryFieldGrammar n =
       LSubLibName _ ->
         optionalFieldDef "visibility" L.libVisibility LibraryVisibilityPrivate
           ^^^ availableSince CabalSpecV3_0 LibraryVisibilityPrivate
-{-# SPECIALIZE libraryFieldGrammar :: LibraryName -> ParsecFieldGrammar' Library #-}
+{-# SPECIALIZE libraryFieldGrammar :: LibraryName -> ParsecFieldGrammar' src Library #-}
 {-# SPECIALIZE libraryFieldGrammar :: LibraryName -> PrettyFieldGrammar' Library #-}
 
 -------------------------------------------------------------------------------
@@ -246,7 +246,7 @@ foreignLibFieldGrammar n =
     <*> optionalField "lib-version-info" L.foreignLibVersionInfo
     <*> optionalField "lib-version-linux" L.foreignLibVersionLinux
     <*> monoidalFieldAla "mod-def-file" (alaList' FSep RelativePathNT) L.foreignLibModDefFile
-{-# SPECIALIZE foreignLibFieldGrammar :: UnqualComponentName -> ParsecFieldGrammar' ForeignLib #-}
+{-# SPECIALIZE foreignLibFieldGrammar :: UnqualComponentName -> ParsecFieldGrammar' src ForeignLib #-}
 {-# SPECIALIZE foreignLibFieldGrammar :: UnqualComponentName -> PrettyFieldGrammar' ForeignLib #-}
 
 -------------------------------------------------------------------------------
@@ -287,7 +287,7 @@ executableFieldGrammar n =
     <*> optionalFieldDef "scope" L.exeScope ExecutablePublic
       ^^^ availableSince CabalSpecV2_0 ExecutablePublic
     <*> blurFieldGrammar L.buildInfo buildInfoFieldGrammar
-{-# SPECIALIZE executableFieldGrammar :: UnqualComponentName -> ParsecFieldGrammar' Executable #-}
+{-# SPECIALIZE executableFieldGrammar :: UnqualComponentName -> ParsecFieldGrammar' src Executable #-}
 {-# SPECIALIZE executableFieldGrammar :: UnqualComponentName -> PrettyFieldGrammar' Executable #-}
 
 -------------------------------------------------------------------------------
@@ -361,7 +361,7 @@ testSuiteFieldGrammar =
     <*> monoidalFieldAla "code-generators" (alaList' CommaFSep Token) testStanzaCodeGenerators
       ^^^ availableSince CabalSpecV3_8 []
 
-validateTestSuite :: CabalSpecVersion -> Position -> TestSuiteStanza -> ParseResult TestSuite
+validateTestSuite :: CabalSpecVersion -> Position -> TestSuiteStanza -> ParseResult src TestSuite
 validateTestSuite cabalSpecVersion pos stanza = case testSuiteType of
   Nothing -> pure basicTestSuite
   Just tt@(TestTypeUnknown _ _) ->
@@ -503,7 +503,7 @@ benchmarkFieldGrammar =
     <*> optionalField "benchmark-module" benchmarkStanzaBenchmarkModule
     <*> blurFieldGrammar benchmarkStanzaBuildInfo buildInfoFieldGrammar
 
-validateBenchmark :: CabalSpecVersion -> Position -> BenchmarkStanza -> ParseResult Benchmark
+validateBenchmark :: CabalSpecVersion -> Position -> BenchmarkStanza -> ParseResult src Benchmark
 validateBenchmark cabalSpecVersion pos stanza = case benchmarkStanzaType of
   Nothing ->
     pure
@@ -683,7 +683,7 @@ buildInfoFieldGrammar =
     <*> monoidalFieldAla "build-depends" formatDependencyList L.targetBuildDepends
     <*> monoidalFieldAla "mixins" formatMixinList L.mixins
       ^^^ availableSince CabalSpecV2_0 []
-{-# SPECIALIZE buildInfoFieldGrammar :: ParsecFieldGrammar' BuildInfo #-}
+{-# SPECIALIZE buildInfoFieldGrammar :: ParsecFieldGrammar' src BuildInfo #-}
 {-# SPECIALIZE buildInfoFieldGrammar :: PrettyFieldGrammar' BuildInfo #-}
 
 hsSourceDirsGrammar
@@ -775,7 +775,7 @@ flagFieldGrammar name =
     <$> freeTextFieldDef "description" L.flagDescription
     <*> booleanFieldDef "default" L.flagDefault True
     <*> booleanFieldDef "manual" L.flagManual False
-{-# SPECIALIZE flagFieldGrammar :: FlagName -> ParsecFieldGrammar' PackageFlag #-}
+{-# SPECIALIZE flagFieldGrammar :: FlagName -> ParsecFieldGrammar' src PackageFlag #-}
 {-# SPECIALIZE flagFieldGrammar :: FlagName -> PrettyFieldGrammar' PackageFlag #-}
 
 -------------------------------------------------------------------------------
@@ -794,7 +794,7 @@ sourceRepoFieldGrammar kind =
     <*> optionalFieldAla "branch" Token L.repoBranch
     <*> optionalFieldAla "tag" Token L.repoTag
     <*> optionalFieldAla "subdir" FilePathNT L.repoSubdir
-{-# SPECIALIZE sourceRepoFieldGrammar :: RepoKind -> ParsecFieldGrammar' SourceRepo #-}
+{-# SPECIALIZE sourceRepoFieldGrammar :: RepoKind -> ParsecFieldGrammar' src SourceRepo #-}
 {-# SPECIALIZE sourceRepoFieldGrammar :: RepoKind -> PrettyFieldGrammar' SourceRepo #-}
 
 -------------------------------------------------------------------------------
@@ -808,7 +808,7 @@ setupBInfoFieldGrammar
 setupBInfoFieldGrammar def =
   flip SetupBuildInfo def
     <$> monoidalFieldAla "setup-depends" (alaList CommaVCat) L.setupDepends
-{-# SPECIALIZE setupBInfoFieldGrammar :: Bool -> ParsecFieldGrammar' SetupBuildInfo #-}
+{-# SPECIALIZE setupBInfoFieldGrammar :: Bool -> ParsecFieldGrammar' src SetupBuildInfo #-}
 {-# SPECIALIZE setupBInfoFieldGrammar :: Bool -> PrettyFieldGrammar' SetupBuildInfo #-}
 
 -------------------------------------------------------------------------------
