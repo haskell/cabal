@@ -627,6 +627,8 @@ data UserConstraintQualifier
     UserQualified UserQualifier PackageName
   | -- | Scope that applies to the package when it has a setup qualifier.
     UserAnySetupQualifier PackageName
+  | -- | Scope that applies to the package when it has a setup qualifier.
+    UserAnyExeQualifier PackageName
   | -- | Scope that applies to the package when it has any qualifier.
     UserAnyQualifier PackageName
   deriving (Eq, Show, Generic)
@@ -644,6 +646,8 @@ fromUserConstraintScope (UserConstraintScope mstage (UserQualified q pn)) =
   ConstraintScope mstage (ScopeQualified (fromUserQualifier q) pn)
 fromUserConstraintScope (UserConstraintScope mstage (UserAnySetupQualifier pn)) =
   ConstraintScope mstage (ScopeAnySetupQualifier pn)
+fromUserConstraintScope (UserConstraintScope mstage (UserAnyExeQualifier pn)) =
+  ConstraintScope mstage (ScopeAnyExeQualifier pn)
 fromUserConstraintScope (UserConstraintScope mstage (UserAnyQualifier pn)) =
   ConstraintScope mstage (ScopeAnyQualifier pn)
 
@@ -668,6 +672,7 @@ userConstraintPackageName (UserConstraintX (UserConstraintScope _stage qualifier
     scopePN (UserQualified _ pn) = pn
     scopePN (UserAnyQualifier pn) = pn
     scopePN (UserAnySetupQualifier pn) = pn
+    scopePN (UserAnyExeQualifier pn) = pn
 
 userToPackageConstraint :: UserConstraint -> PackageConstraint
 userToPackageConstraint (UserConstraintX scope prop) =
@@ -719,6 +724,7 @@ instance Parsec UserConstraint where
           withDot pn
             | pn == mkPackageName "any" = UserAnyQualifier <$> parsec
             | pn == mkPackageName "setup" = UserAnySetupQualifier <$> parsec
+            | pn == mkPackageName "exe" = UserAnyExeQualifier <$> parsec
             | otherwise = P.unexpected $ "constraint scope: " ++ unPackageName pn
 
           withColon :: PackageName -> m UserConstraintQualifier
@@ -734,20 +740,26 @@ instance Parsec UserConstraint where
 -- >>> eitherParsec "foo ^>= 1.2.3.4" :: Either String UserConstraint
 -- Right (UserConstraintX (UserConstraintScope Nothing (UserQualified UserQualToplevel (PackageName "foo"))) (PackagePropertyVersion (MajorBoundVersion (mkVersion [1,2,3,4]))))
 --
+-- >>> eitherParsec "any.bar > 1.2.3.4" :: Either String UserConstraint
+-- Right (UserConstraintX (UserConstraintScope Nothing (UserAnyQualifier (PackageName "bar"))) (PackagePropertyVersion (LaterVersion (mkVersion [1,2,3,4]))))
+--
+-- >>> eitherParsec "setup.bar > 1.2.3.4" :: Either String UserConstraint
+-- Right (UserConstraintX (UserConstraintScope Nothing (UserAnySetupQualifier (PackageName "bar"))) (PackagePropertyVersion (LaterVersion (mkVersion [1,2,3,4]))))
+--
+-- >>> eitherParsec "exe.bar > 1.2.3.4" :: Either String UserConstraint
+-- Right (UserConstraintX (UserConstraintScope Nothing (UserAnyExeQualifier (PackageName "bar"))) (PackagePropertyVersion (LaterVersion (mkVersion [1,2,3,4]))))
+--
 -- >>> eitherParsec "foo:setup.bar > 1.2.3.4" :: Either String UserConstraint
 -- Right (UserConstraintX (UserConstraintScope Nothing (UserQualified (UserQualSetup (PackageName "foo")) (PackageName "bar"))) (PackagePropertyVersion (LaterVersion (mkVersion [1,2,3,4]))))
---
--- >>> eitherParsec "setup.any source" :: Either String UserConstraint
--- Right (UserConstraintX (UserConstraintScope Nothing (UserAnySetupQualifier (PackageName "any"))) PackagePropertySource)
 --
 -- >>> eitherParsec "build:rts source" :: Either String UserConstraint
 -- Right (UserConstraintX (UserConstraintScope (Just Build) (UserQualified UserQualToplevel (PackageName "rts"))) PackagePropertySource)
 --
--- >>> eitherParsec "setup.any installed" :: Either String UserConstraint
--- Right (UserConstraintX (UserConstraintScope Nothing (UserAnySetupQualifier (PackageName "any"))) PackagePropertyInstalled)
+-- >>> eitherParsec "build:any.rts source" :: Either String UserConstraint
+-- Right (UserConstraintX (UserConstraintScope (Just Build) (UserAnyQualifier (PackageName "rts"))) PackagePropertySource)
 --
--- >>> eitherParsec "build:ghc-internal installed" :: Either String UserConstraint
--- Right (UserConstraintX (UserConstraintScope (Just Build) (UserQualified UserQualToplevel (PackageName "ghc-internal"))) PackagePropertyInstalled)
+-- >>> eitherParsec "setup.ghc-internal installed" :: Either String UserConstraint
+-- Right (UserConstraintX (UserConstraintScope Nothing (UserAnySetupQualifier (PackageName "ghc-internal"))) PackagePropertyInstalled)
 --
 -- >>> eitherParsec "foo:exe:bar.baz > 1.2.3.4" :: Either String UserConstraint
 -- Right (UserConstraintX (UserConstraintScope Nothing (UserQualified (UserQualExe (PackageName "foo") (PackageName "bar")) (PackageName "baz"))) (PackagePropertyVersion (LaterVersion (mkVersion [1,2,3,4]))))
