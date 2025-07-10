@@ -723,9 +723,10 @@ instance Parsec UserConstraint where
 
           withColon :: PackageName -> m UserConstraintQualifier
           withColon pn =
-            UserQualified (UserQualSetup pn)
-              <$ P.string "setup."
-              <*> parsec
+            P.choice
+              [ UserQualified (UserQualSetup pn) <$> (P.string "setup." *> parsec)
+              , UserQualified . UserQualExe pn <$> (P.string "exe:" *> parsec) <*> (P.char '.' *> parsec)
+              ]
 
 -- >>> eitherParsec "foo > 1.2.3.4" :: Either String UserConstraint
 -- Right (UserConstraintX (UserConstraintScope Nothing (UserQualified UserQualToplevel (PackageName "foo"))) (PackagePropertyVersion (LaterVersion (mkVersion [1,2,3,4]))))
@@ -747,3 +748,6 @@ instance Parsec UserConstraint where
 --
 -- >>> eitherParsec "build:ghc-internal installed" :: Either String UserConstraint
 -- Right (UserConstraintX (UserConstraintScope (Just Build) (UserQualified UserQualToplevel (PackageName "ghc-internal"))) PackagePropertyInstalled)
+--
+-- >>> eitherParsec "foo:exe:bar.baz > 1.2.3.4" :: Either String UserConstraint
+-- Right (UserConstraintX (UserConstraintScope Nothing (UserQualified (UserQualExe (PackageName "foo") (PackageName "bar")) (PackageName "baz"))) (PackagePropertyVersion (LaterVersion (mkVersion [1,2,3,4]))))
