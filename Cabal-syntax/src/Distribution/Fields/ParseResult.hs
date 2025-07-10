@@ -7,6 +7,7 @@ module Distribution.Fields.ParseResult
   ( ParseResult
   , runParseResult
   , PSource (..)
+  , CabalParserSource(..)
   , recoverWith
   , parseWarning
   , parseWarnings
@@ -24,6 +25,7 @@ import Distribution.Compat.Prelude
 import Distribution.Parsec.Error (PErrorWithSource (..), PError (..))
 import Distribution.Parsec.Position (Position (..), zeroPos)
 import Distribution.Parsec.Warning
+import Distribution.Parsec.Source
 import Distribution.Version (Version)
 
 -- | A monad with failure and accumulating errors and warnings.

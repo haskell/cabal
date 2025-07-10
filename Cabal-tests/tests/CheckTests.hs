@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeApplications #-}
 module Main
     ( main
     ) where
@@ -63,15 +64,15 @@ checkTest :: FilePath -> TestTree
 checkTest fp = cabalGoldenTest fp correct $ do
     contents <- BS.readFile input
     let res =  parseGenericPackageDescription contents
-    let (ws, x) = runParseResult res
+    let (ws, x) = runParseResult @String res
 
     return $ toUTF8BS $ case x of
         Right gpd      ->
             -- Note: parser warnings are reported by `cabal check`, but not by
             -- D.PD.Check functionality.
-            unlines (map (showPWarning fp) ws) ++
+            unlines (map showPWarningWithSource ws) ++
             unlines (map show (checkPackage gpd))
-        Left (_, errs) -> unlines $ map (("ERROR: " ++) . showPError fp) $ NE.toList errs
+        Left (_, errs) -> unlines $ map (("ERROR: " ++) . showPErrorWithSource) $ NE.toList errs
   where
     input = "tests" </> "ParserTests" </> "regressions" </> fp
     correct = replaceExtension input "check"
