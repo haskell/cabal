@@ -1,5 +1,9 @@
 # Change-log
 
+## 3.16.0.0 [Artem Pelenitsyn](mailto:a@pelenitsyn.top) July 2025
+
+* See https://github.com/haskell/cabal/blob/master/release-notes/cabal-install-3.16.0.0.md
+
 ## 3.14.2.0 [Mikolaj Konarski](mailto:mikolaj@well-typed.com) April 2025
 
 * See https://github.com/haskell/cabal/blob/master/release-notes/cabal-install-3.14.2.0.md
