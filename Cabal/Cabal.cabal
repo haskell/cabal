@@ -1,7 +1,7 @@
 cabal-version: 3.6
 name:          Cabal
 version:       3.16.0.0
-copyright:     2003-2024, Cabal Development Team (see AUTHORS file)
+copyright:     2003-2025, Cabal Development Team (see AUTHORS file)
 license:       BSD-3-Clause
 license-file:  LICENSE
 author:        Cabal Development Team <cabal-devel@haskell.org>

@@ -1,7 +1,7 @@
 cabal-version: 3.0
 name:          cabal-validate
 version:       1.0.0
-copyright:     2024-2024, Cabal Development Team (see AUTHORS file)
+copyright:     2024-2025, Cabal Development Team (see AUTHORS file)
 license:       BSD-3-Clause
 author:        Cabal Development Team <cabal-devel@haskell.org>
 synopsis:      An internal tool for building and testing the Cabal package manager
