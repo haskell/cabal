@@ -50,7 +50,6 @@ where
 import Distribution.Client.Compat.Prelude hiding (empty, get)
 import Prelude ()
 
-import Distribution.Parsec.Source
 
 import Distribution.Deprecated.ParseUtils
   ( Field (..)

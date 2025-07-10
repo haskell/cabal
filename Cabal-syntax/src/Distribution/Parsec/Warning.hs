@@ -15,7 +15,6 @@ import Distribution.Compat.Prelude
 import Distribution.Parsec.Position
 import Distribution.Parsec.Source
 import System.FilePath (normalise)
-import qualified Data.ByteString as BS
 import Prelude ()
 
 -- | Type of parser warning. We do classify warnings.

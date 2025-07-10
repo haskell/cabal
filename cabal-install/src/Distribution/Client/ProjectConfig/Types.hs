@@ -30,7 +30,6 @@ module Distribution.Client.ProjectConfig.Types
 
 import Distribution.Client.Compat.Prelude
 import Prelude ()
-import Text.PrettyPrint (render)
 
 import qualified Data.ByteString.Char8 as BS
 import Distribution.Client.BuildReports.Types
@@ -101,7 +100,7 @@ import Distribution.Version
   )
 
 import qualified Data.Map as Map
-import Distribution.Solver.Types.ProjectConfigPath (ProjectConfigPath, currentProjectConfigPath, docProjectConfigPath, isTopLevelConfigPath)
+import Distribution.Solver.Types.ProjectConfigPath (ProjectConfigPath, currentProjectConfigPath)
 import Distribution.Types.ParStrat
 
 -------------------------------
