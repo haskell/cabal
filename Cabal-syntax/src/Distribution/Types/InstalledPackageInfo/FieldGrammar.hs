@@ -137,7 +137,7 @@ ipiFieldGrammar =
       where
         MungedPackageName pn ln = _basicName
 {-# SPECIALIZE ipiFieldGrammar :: FieldDescrs InstalledPackageInfo InstalledPackageInfo #-}
-{-# SPECIALIZE ipiFieldGrammar :: ParsecFieldGrammar InstalledPackageInfo InstalledPackageInfo #-}
+{-# SPECIALIZE ipiFieldGrammar :: ParsecFieldGrammar src InstalledPackageInfo InstalledPackageInfo #-}
 {-# SPECIALIZE ipiFieldGrammar :: PrettyFieldGrammar InstalledPackageInfo InstalledPackageInfo #-}
 
 -- (forall b. [b]) ~ ()

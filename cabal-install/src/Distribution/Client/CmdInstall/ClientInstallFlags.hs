@@ -138,7 +138,7 @@ clientInstallFlagsGrammar =
     <*> optionalFieldDef "overwrite-policy" cinstOverwritePolicyLens mempty
     <*> optionalFieldDef "install-method" cinstInstallMethodLens mempty
     <*> optionalFieldDefAla "installdir" (alaFlag FilePathNT) cinstInstalldirLens mempty
-{-# SPECIALIZE clientInstallFlagsGrammar :: ParsecFieldGrammar' ClientInstallFlags #-}
+{-# SPECIALIZE clientInstallFlagsGrammar :: ParsecFieldGrammar' src ClientInstallFlags #-}
 
 parsecInstallMethod :: CabalParsing m => m InstallMethod
 parsecInstallMethod = do

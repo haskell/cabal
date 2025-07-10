@@ -18,7 +18,7 @@ import Distribution.Client.HttpUtils
 import Distribution.Client.ProjectConfig.FieldGrammar (packageConfigFieldGrammar, projectConfigFieldGrammar)
 import Distribution.Client.ProjectConfig.Legacy (ProjectConfigSkeleton)
 import qualified Distribution.Client.ProjectConfig.Lens as L
-import Distribution.Client.ProjectConfig.Types (MapLast (..), MapMappend (..), PackageConfig (..), ProjectConfig (..), ProjectConfigShared (..), ProjectConfigToParse (..))
+import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Types.Repo hiding (repoName)
 import Distribution.Client.Types.RepoName (RepoName (..))
 import Distribution.Client.Types.SourceRepo (sourceRepositoryPackageGrammar)
@@ -27,19 +27,19 @@ import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Distribution.FieldGrammar
 import Distribution.FieldGrammar.Parsec (NamelessField (..), namelessFieldAnn)
-import Distribution.Fields (Field (..), FieldLine (..), FieldName, Name (..), SectionArg (..), readFields', showPWarning)
+import Distribution.Fields (Field (..), FieldLine (..), FieldName, Name (..), SectionArg (..), readFields')
 import Distribution.Fields.ConfVar (parseConditionConfVar)
-import Distribution.Fields.Field (fieldLinesToString)
+import Distribution.Fields.Field (fieldLinesToString, sectionArgAnn)
 import Distribution.Fields.LexerMonad (toPWarnings)
 import Distribution.Fields.ParseResult
-import Distribution.Parsec (PError (..), ParsecParser, eitherParsec, parsec, parsecFilePath, runParsecParser)
+import Distribution.Parsec (ParsecParser, eitherParsec, parsec, parsecFilePath, runParsecParser)
 import Distribution.Parsec.FieldLineStream (fieldLineStreamFromBS)
-import Distribution.Parsec.Position (Position (..), zeroPos)
+import Distribution.Parsec.Position (Position (..), zeroPos, incPos)
 import Distribution.Parsec.Warning (PWarnType (..))
 import Distribution.Simple.Program.Db (ProgramDb, defaultProgramDb, knownPrograms, lookupKnownProgram)
 import Distribution.Simple.Program.Types (programName)
 import Distribution.Simple.Setup
-import Distribution.Simple.Utils (debug, noticeDoc, warn)
+import Distribution.Simple.Utils (debug, noticeDoc)
 import Distribution.Solver.Types.ProjectConfigPath
 import Distribution.System (buildOS)
 import Distribution.Types.CondTree (CondBranch (..), CondTree (..))
@@ -66,7 +66,7 @@ import qualified Text.PrettyPrint as Disp
 singletonProjectConfigSkeleton :: ProjectConfig -> ProjectConfigSkeleton
 singletonProjectConfigSkeleton x = CondNode x mempty mempty
 
-readPreprocessFields :: BS.ByteString -> ParseResult [Field Position]
+readPreprocessFields :: BS.ByteString -> ParseResult src [Field Position]
 readPreprocessFields bs = do
   case readFields' bs' of
     Right (fs, lexWarnings) -> do
@@ -84,6 +84,7 @@ readPreprocessFields bs = do
       Nothing -> bs
       Just _ -> toUTF8BS (fromUTF8BS bs)
 
+
 -- | Parses a project from its root config file, typically cabal.project.
 parseProject
   :: FilePath
@@ -93,7 +94,7 @@ parseProject
   -> Verbosity
   -> ProjectConfigToParse
   -- ^ The contents of the file to parse
-  -> IO (ParseResult ProjectConfigSkeleton)
+  -> IO (ParseResult ProjectFileSource ProjectConfigSkeleton)
 parseProject rootPath cacheDir httpTransport verbosity configToParse = do
   let (dir, projectFileName) = splitFileName rootPath
   projectDir <- makeAbsolute dir
@@ -110,10 +111,13 @@ parseProjectSkeleton
   -- ^ The path of the file being parsed, either the root or an import
   -> ProjectConfigToParse
   -- ^ The contents of the file to parse
-  -> IO (ParseResult ProjectConfigSkeleton)
-parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (ProjectConfigToParse bs) = (sanityWalkPCS False =<<) <$> liftParseResult (go []) (readPreprocessFields bs)
+  -> IO (ParseResult ProjectFileSource ProjectConfigSkeleton)
+parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (ProjectConfigToParse bs) = do
+  normSource <- canonicalizeConfigPath projectDir source
+  res <- (sanityWalkPCS False =<<) <$> liftParseResult (go []) (readPreprocessFields bs)
+  pure $ withSource (ProjectFileSource (normSource, bs)) res
   where
-    go :: [Field Position] -> [Field Position] -> IO (ParseResult ProjectConfigSkeleton)
+    go :: [Field Position] -> [Field Position] -> IO (ParseResult ProjectFileSource ProjectConfigSkeleton)
     go acc (x : xs) = case x of
       (Field (Name pos name) importLines) | name == "import" -> do
         liftParseResult
@@ -132,29 +136,19 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
                     (isUntrimmedUriConfigPath importLocPath)
                     (noticeDoc verbosity $ untrimmedUriImportMsg (Disp.text "Warning:") importLocPath)
                   let fs = (\z -> CondNode z [normLocPath] mempty) <$> fieldsToConfig normSource (reverse acc)
-
                   importParseResult <- parseProjectSkeleton cacheDir httpTransport verbosity projectDir importLocPath . ProjectConfigToParse =<< fetchImportConfig normLocPath
 
-                  -- As PError and PWarning do not store the filepath where they occurred, we need to print them here where we still have this information
-                  let (warnings, result) = runParseResult importParseResult
-                  traverse_ (warn verbosity . showPWarning importLoc) warnings
-                  let res' = case result of
-                        Right cfg -> pure cfg
-                        Left (_, errors) -> do
-                          traverse_ (\(PError errPos str) -> parseFailure errPos str) errors
-                          parseFatalFailure pos $ "Failed to parse import " ++ importLoc
-
                   rest <- go [] xs
-                  pure . fmap mconcat . sequence $ [fs, res', rest]
+                  pure . fmap mconcat . sequence $ [fs, importParseResult, rest]
           )
           (parseImport pos importLines)
-      (Section (Name _pos name) args xs') | name == "if" -> do
+      (Section (Name pos "if") args xs') -> do
         subpcs <- go [] xs'
         let fs = fmap singletonProjectConfigSkeleton $ fieldsToConfig source (reverse acc)
         (elseClauses, rest) <- parseElseClauses xs
         let condNode =
               (\c pcs e -> CondNode mempty mempty [CondBranch c pcs e])
-                <$> parseConditionConfVar args
+                <$> parseConditionConfVar (startOfSection (incPos 2 pos) args) args
                 <*> subpcs
                 <*> elseClauses
         pure . fmap mconcat . sequence $ [fs, condNode, rest]
@@ -163,24 +157,24 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
       normSource <- canonicalizeConfigPath projectDir source
       pure . fmap singletonProjectConfigSkeleton . fieldsToConfig normSource $ reverse acc
 
-    parseElseClauses :: [Field Position] -> IO (ParseResult (Maybe ProjectConfigSkeleton), ParseResult ProjectConfigSkeleton)
+    parseElseClauses :: [Field Position] -> IO (ParseResult ProjectFileSource (Maybe ProjectConfigSkeleton), ParseResult ProjectFileSource ProjectConfigSkeleton)
     parseElseClauses x = case x of
       (Section (Name _pos "else") _args xs' : xs) -> do
         subpcs <- go [] xs'
         rest <- go [] xs
         pure (Just <$> subpcs, rest)
-      (Section (Name _pos "elif") args xs' : xs) -> do
+      (Section (Name pos "elif") args xs' : xs) -> do
         subpcs <- go [] xs'
         (elseClauses, rest) <- parseElseClauses xs
         let condNode =
               (\c pcs e -> CondNode mempty mempty [CondBranch c pcs e])
-                <$> parseConditionConfVar args
+                <$> parseConditionConfVar (startOfSection (incPos 4 pos) args) args
                 <*> subpcs
                 <*> elseClauses
         pure (Just <$> condNode, rest)
       _ -> (\r -> (pure Nothing, r)) <$> go [] x
 
-    parseImport :: Position -> [FieldLine Position] -> ParseResult FilePath
+    parseImport :: Position -> [FieldLine Position] -> ParseResult ProjectFileSource FilePath
     parseImport pos lines' = runFieldParser pos (P.many P.anyChar) cabalSpec lines'
 
     -- We want a normalized path for @fieldsToConfig@. This eventually surfaces
@@ -188,7 +182,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
     -- by the following (project) config files" so we want all paths shown there
     -- to be relative to the directory of the project, not relative to the file
     -- they were imported from.
-    fieldsToConfig :: ProjectConfigPath -> [Field Position] -> ParseResult ProjectConfig
+    fieldsToConfig :: ProjectConfigPath -> [Field Position] -> ParseResult ProjectFileSource ProjectConfig
     fieldsToConfig sourceConfigPath xs = do
       let (fs, sectionGroups) = partitionFields xs
           sections = concat sectionGroups
@@ -217,21 +211,30 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
       where
         isSet f = f (projectConfigShared pc) /= NoFlag
 
-    sanityWalkPCS :: Bool -> ProjectConfigSkeleton -> ParseResult ProjectConfigSkeleton
+    sanityWalkPCS :: Bool -> ProjectConfigSkeleton -> ParseResult ProjectFileSource ProjectConfigSkeleton
     sanityWalkPCS underConditional t@(CondNode d _c comps)
       | underConditional && modifiesCompiler d = parseFatalFailure zeroPos "Cannot set compiler in a conditional clause of a cabal project file"
       | otherwise = mapM_ sanityWalkBranch comps >> pure t
 
-    sanityWalkBranch :: CondBranch ConfVar [ProjectConfigPath] ProjectConfig -> ParseResult ()
+    sanityWalkBranch :: CondBranch ConfVar [ProjectConfigPath] ProjectConfig -> ParseResult ProjectFileSource ()
     sanityWalkBranch (CondBranch _c t f) = traverse_ (sanityWalkPCS True) f >> sanityWalkPCS True t >> pure ()
 
     programDb = defaultProgramDb
+
+
+startOfSection :: Position -> [SectionArg Position] -> Position
+-- The case where we have no args is the start of the section
+startOfSection defaultPos [] = defaultPos
+-- Otherwise the start of the section is the position of the first argument.
+startOfSection _ (cond : _) = sectionArgAnn cond
+
+
 
 knownProgramNames :: ProgramDb -> [String]
 knownProgramNames programDb = (programName . fst) <$> knownPrograms programDb
 
 -- | Monad in which sections are parsed
-type SectionParser = StateT SectionS ParseResult
+type SectionParser src = StateT SectionS (ParseResult src)
 
 -- | State of 'SectionParser'
 newtype SectionS = SectionS
@@ -242,10 +245,10 @@ stateConfig :: Lens' SectionS ProjectConfig
 stateConfig f (SectionS cfg) = SectionS <$> f cfg
 {-# INLINEABLE stateConfig #-}
 
-goSections :: ProgramDb -> [Section Position] -> SectionParser ()
+goSections :: ProgramDb -> [Section Position] -> SectionParser src ()
 goSections programDb = traverse_ (parseSection programDb)
 
-parseSection :: ProgramDb -> Section Position -> SectionParser ()
+parseSection :: ProgramDb -> Section Position -> SectionParser src ()
 parseSection programDb (MkSection (Name pos name) args secFields)
   | name == "source-repository-package" = do
       verifyNullSubsections
@@ -304,7 +307,7 @@ stanzas :: Set BS.ByteString
 stanzas = Set.fromList ["source-repository-package", "program-options", "program-locations", "repository", "package"]
 
 -- | Currently a duplicate of 'Distribution.Client.Config.postProcessRepo' but migrated to Parsec ParseResult.
-postProcessRemoteRepo :: Position -> RemoteRepo -> ParseResult (Either LocalRepo RemoteRepo)
+postProcessRemoteRepo :: Position -> RemoteRepo -> ParseResult src (Either LocalRepo RemoteRepo)
 postProcessRemoteRepo pos repo = case uriScheme (remoteRepoURI repo) of
   -- TODO: check that there are no authority, query or fragment
   -- Note: the trailing colon is important
@@ -328,14 +331,14 @@ postProcessRemoteRepo pos repo = case uriScheme (remoteRepoURI repo) of
     where
       warning msg = parseWarning pos PWTOther msg
 
-parseRepoName :: Position -> [SectionArg Position] -> ParseResult (Maybe RepoName)
+parseRepoName :: Position -> [SectionArg Position] -> ParseResult src (Maybe RepoName)
 parseRepoName pos args = case args of
   [SecArgName _ secName] -> parseName secName
   [SecArgStr _ secName] -> parseName secName
   [SecArgOther _ secName] -> parseName secName
   _ -> return Nothing
   where
-    parseName :: BS.ByteString -> ParseResult (Maybe RepoName)
+    parseName :: BS.ByteString -> ParseResult src (Maybe RepoName)
     parseName str =
       let repoNameStr = fromUTF8BS str
        in case eitherParsec repoNameStr of
@@ -346,7 +349,7 @@ parseRepoName pos args = case args of
 
 data PackageConfigTarget = AllPackages | SpecificPackage !PackageName
 
-parsePackageName :: Position -> [SectionArg Position] -> ParseResult (Maybe PackageConfigTarget)
+parsePackageName :: Position -> [SectionArg Position] -> ParseResult src (Maybe PackageConfigTarget)
 parsePackageName pos args = case args of
   [SecArgName _ secName] -> parseName secName
   [SecArgStr _ secName] -> parseName secName
@@ -363,7 +366,7 @@ parsePackageName pos args = case args of
       P.choice [P.try (P.char '*' >> return AllPackages), SpecificPackage <$> parsec]
 
 -- | Parse fields of a program-options stanza.
-parseProgramArgs :: ProgramDb -> Fields Position -> ParseResult (MapMappend String [String])
+parseProgramArgs :: ProgramDb -> Fields Position -> ParseResult src (MapMappend String [String])
 parseProgramArgs programDb fields = foldM parseField mempty (filter hasOptionsSuffix $ Map.toList fields)
   where
     parseField programArgs (fieldName, fieldLines) = do
@@ -375,7 +378,7 @@ parseProgramArgs programDb fields = foldM parseField mempty (filter hasOptionsSu
     hasOptionsSuffix (fieldName, _) = BS.isSuffixOf "-options" fieldName
 
 -- | Parse fields of a program-locations stanza.
-parseProgramPaths :: ProgramDb -> Fields Position -> ParseResult (MapLast String FilePath)
+parseProgramPaths :: ProgramDb -> Fields Position -> ParseResult src (MapLast String FilePath)
 parseProgramPaths programDb fields = foldM parseField mempty (filter hasLocationSuffix $ Map.toList fields)
   where
     parseField paths (fieldName, fieldLines) = do
@@ -391,12 +394,12 @@ parseProgramPaths programDb fields = foldM parseField mempty (filter hasLocation
 
 -- | Parse all arguments to a single program in program-options stanza.
 -- By processing '[NamelessField Position]', we support multiple occurrences of the field, concatenating the arguments.
-parseProgramArgsField :: [NamelessField Position] -> ParseResult ([String])
+parseProgramArgsField :: [NamelessField Position] -> ParseResult src ([String])
 parseProgramArgsField fieldLines =
   concat <$> mapM (\(MkNamelessField _ lines') -> parseProgramArgsFieldLines lines') fieldLines
 
 -- | Parse all fieldLines of a single field occurrence in a program-options stanza.
-parseProgramArgsFieldLines :: [FieldLine Position] -> ParseResult [String]
+parseProgramArgsFieldLines :: [FieldLine Position] -> ParseResult src [String]
 parseProgramArgsFieldLines lines' = return $ splitArgs strLines
   where
     strLines = fieldLinesToString lines'
@@ -417,7 +420,7 @@ parseProgramName suffix fieldName = case runParsecParser parser "<parseProgramNa
     fieldNameStream = fieldLineStreamFromBS fieldName
 
 -- | Issue a 'PWTUnknownField' warning at all occurrences of a field.
-warnUnknownFields :: FieldName -> [NamelessField Position] -> ParseResult ()
+warnUnknownFields :: FieldName -> [NamelessField Position] -> ParseResult src ()
 warnUnknownFields fieldName fieldLines = for_ fieldLines (\field -> parseWarning (pos field) PWTUnknownField message)
   where
     message = "Unknown field: " ++ show fieldName

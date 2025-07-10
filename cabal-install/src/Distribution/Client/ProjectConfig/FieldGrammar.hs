@@ -22,7 +22,7 @@ import Distribution.Solver.Types.ConstraintSource (ConstraintSource (..))
 import Distribution.Solver.Types.ProjectConfigPath
 import Distribution.Types.PackageVersionConstraint (PackageVersionConstraint (..))
 
-projectConfigFieldGrammar :: ProjectConfigPath -> [String] -> ParsecFieldGrammar' ProjectConfig
+projectConfigFieldGrammar :: ProjectConfigPath -> [String] -> ParsecFieldGrammar' src ProjectConfig
 projectConfigFieldGrammar source knownPrograms =
   ProjectConfig
     <$> monoidalFieldAla "packages" (alaList' FSep Token) L.projectPackages
@@ -44,7 +44,7 @@ projectConfigFieldGrammar source knownPrograms =
 formatPackageVersionConstraints :: [PackageVersionConstraint] -> List CommaVCat (Identity PackageVersionConstraint) PackageVersionConstraint
 formatPackageVersionConstraints = alaList CommaVCat
 
-projectConfigBuildOnlyFieldGrammar :: ParsecFieldGrammar' ProjectConfigBuildOnly
+projectConfigBuildOnlyFieldGrammar :: ParsecFieldGrammar' src ProjectConfigBuildOnly
 projectConfigBuildOnlyFieldGrammar =
   ProjectConfigBuildOnly
     <$> optionalFieldDef "verbose" L.projectConfigVerbosity mempty
@@ -67,7 +67,7 @@ projectConfigBuildOnlyFieldGrammar =
     <*> optionalFieldDefAla "logs-dir" (alaFlag FilePathNT) L.projectConfigLogsDir mempty
     <*> blurFieldGrammar L.projectConfigClientInstallFlags clientInstallFlagsGrammar
 
-projectConfigSharedFieldGrammar :: ProjectConfigPath -> ParsecFieldGrammar' ProjectConfigShared
+projectConfigSharedFieldGrammar :: ProjectConfigPath -> ParsecFieldGrammar' src ProjectConfigShared
 projectConfigSharedFieldGrammar source =
   ProjectConfigShared
     <$> optionalFieldDefAla "builddir" (alaFlag FilePathNT) L.projectConfigDistDir mempty
@@ -109,7 +109,7 @@ projectConfigSharedFieldGrammar source =
     <*> monoidalFieldAla "extra-prog-path-shared-only" (alaNubList' FSep FilePathNT) L.projectConfigProgPathExtra
     <*> optionalFieldDef "multi-repl" L.projectConfigMultiRepl mempty
 
-packageConfigFieldGrammar :: [String] -> ParsecFieldGrammar' PackageConfig
+packageConfigFieldGrammar :: [String] -> ParsecFieldGrammar' src PackageConfig
 packageConfigFieldGrammar knownPrograms =
   mkPackageConfig
     <$> optionalFieldDef "haddock-all" noopLens mempty
@@ -257,7 +257,7 @@ packageConfigFieldGrammar knownPrograms =
           , ..
           }
 
-packageConfigCoverageGrammar :: ParsecFieldGrammar PackageConfig (Distribution.Simple.Flag.Flag Bool)
+packageConfigCoverageGrammar :: ParsecFieldGrammar src PackageConfig (Distribution.Simple.Flag.Flag Bool)
 packageConfigCoverageGrammar =
   (<>)
     <$> optionalFieldDef "coverage" L.packageConfigCoverage mempty

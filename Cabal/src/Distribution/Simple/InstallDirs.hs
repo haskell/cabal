@@ -568,7 +568,7 @@ foreign import CALLCONV unsafe "shlobj.h SHGetFolderPathW"
 -- ---------------------------------------------------------------------------
 -- FieldGrammar
 
-installDirsGrammar :: ParsecFieldGrammar' (InstallDirs (Flag PathTemplate))
+installDirsGrammar :: ParsecFieldGrammar' src (InstallDirs (Flag PathTemplate))
 installDirsGrammar =
   InstallDirs
     <$> optionalFieldDef "prefix" installDirsPrefixLens mempty

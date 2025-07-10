@@ -47,7 +47,7 @@ import Distribution.FieldGrammar.Pretty
 import Distribution.Fields.Field
 import Distribution.Utils.Generic (spanMaybe)
 
-type ParsecFieldGrammar' a = ParsecFieldGrammar a a
+type ParsecFieldGrammar' src a = ParsecFieldGrammar src a a
 type PrettyFieldGrammar' a = PrettyFieldGrammar a a
 
 infixl 5 ^^^

@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE CPP #-}
 
 -- | Handling project configuration, types.
 module Distribution.Client.ProjectConfig.Types
@@ -9,6 +10,8 @@ module Distribution.Client.ProjectConfig.Types
   , ProjectConfigBuildOnly (..)
   , ProjectConfigShared (..)
   , ProjectConfigProvenance (..)
+  , ProjectFileSource (..)
+  , renderProjectFileSource
   , PackageConfig (..)
   , ProjectFileParser(..)
   , defaultProjectFileParser
@@ -27,6 +30,7 @@ module Distribution.Client.ProjectConfig.Types
 
 import Distribution.Client.Compat.Prelude
 import Prelude ()
+import Text.PrettyPrint (render)
 
 import qualified Data.ByteString.Char8 as BS
 import Distribution.Client.BuildReports.Types
@@ -97,7 +101,7 @@ import Distribution.Version
   )
 
 import qualified Data.Map as Map
-import Distribution.Solver.Types.ProjectConfigPath (ProjectConfigPath)
+import Distribution.Solver.Types.ProjectConfigPath (ProjectConfigPath, currentProjectConfigPath, docProjectConfigPath, isTopLevelConfigPath)
 import Distribution.Types.ParStrat
 
 -------------------------------
@@ -249,7 +253,11 @@ data ProjectFileParser
   deriving (Eq, Show, Generic)
 
 defaultProjectFileParser :: ProjectFileParser
+#ifdef LEGACY_COMPARISON
+defaultProjectFileParser = CompareParser
+#else
 defaultProjectFileParser = FallbackParser
+#endif
 
 -- | Specifies the provenance of project configuration, whether defaults were
 -- used or if the configuration was read from an explicit file path.
@@ -262,6 +270,20 @@ data ProjectConfigProvenance
     -- | The configuration was explicitly read from the specified 'ProjectConfigPath'.
     Explicit ProjectConfigPath
   deriving (Eq, Ord, Show, Generic)
+
+data ProjectFileSource = ProjectFileSource (ProjectConfigPath, BS.ByteString) deriving (Show, Generic)
+
+instance Eq ProjectFileSource where
+  (ProjectFileSource (path1, _)) == (ProjectFileSource (path2, _)) = path1 == path2
+
+instance Ord ProjectFileSource where
+  (ProjectFileSource (path1, _)) `compare` (ProjectFileSource (path2, _)) = path1 `compare` path2
+
+
+
+renderProjectFileSource :: ProjectFileSource -> String
+renderProjectFileSource (ProjectFileSource (path, _contents)) =
+  currentProjectConfigPath path
 
 -- | Project configuration that is specific to each package, that is where we
 -- can in principle have different values for different packages in the same
