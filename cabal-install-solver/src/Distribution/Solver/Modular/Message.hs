@@ -282,7 +282,7 @@ showOption qpn@(Q _pp pn) (POption i linkedTo) =
 -- >>> showOptions foobarQPN [k1, k2]
 -- "foo-bar; foo-bar~>bazqux.foo-bar-1, foo-bar~>bazqux.foo-bar-2"
 -- >>> showOptions foobarQPN [v0, i1, k2]
--- "foo-bar; 0, 1/installed-inplace, foo-bar~>bazqux.foo-bar-2"
+-- "foo-bar; 0, 1/installed-inplace, foo-bar~>bazqux.foo-bar-2 and earlier versions"
 showOptions :: QPN -> [POption] -> String
 showOptions _ [] = "unexpected empty list of versions"
 showOptions q [x] = showOption q x
@@ -290,8 +290,8 @@ showOptions q xs = showQPN q ++ "; " ++ (L.intercalate ", "
   [if isJust linkedTo
     then showOption q x
     else showI i -- Don't show the package, just the version
-  | x@(POption i linkedTo) <- xs
-  ])
+  | x@(POption i linkedTo) <- take 3 xs
+  ] ++ if length xs >= 3 then " and earlier versions" else "")
 
 showGR :: QGoalReason -> String
 showGR UserGoal            = " (user goal)"
