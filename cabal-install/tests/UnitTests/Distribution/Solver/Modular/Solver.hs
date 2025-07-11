@@ -986,6 +986,19 @@ tests =
                   skipping = "skipping: A; 2.0.0/installed-2.0.0, 1.0.0/installed-1.0.0"
                in mkTest db "show skipping versions list, installed" ["B"] $
                     solverFailure (\msg -> rejecting `isInfixOf` msg && skipping `isInfixOf` msg)
+          , runTest $
+              let db =
+                    [ Right $ exAv "A" 1 []
+                    , Right $ exAv "A" 2 []
+                    , Right $ exAv "A" 3 []
+                    , Right $ exAv "A" 4 []
+                    , Right $ exAv "A" 5 []
+                    , Right $ exAv "B" 1 [ExFix "A" 6]
+                    ]
+                  rejecting = "rejecting: A-5.0.0 (conflict: B => A==6.0.0)"
+                  skipping = "skipping: A; 4.0.0, 3.0.0, 2.0.0 and earlier versions (has"
+               in mkTest db "show summarized skipping versions list" ["B"] $
+                    solverFailure (\msg -> rejecting `isInfixOf` msg && skipping `isInfixOf` msg)
           ]
       ]
   ]
