@@ -1,0 +1,12 @@
+synopsis: `cabal update`: create default config without comment about `builddir`
+packages: cabal-install
+prs: #11067
+issues: #11050
+description: {
+When calling `cabal update` with an empty state (empty `CABAL_DIR` or new
+machine), cabal writes out a default config file with many fields
+commented out to show their defaults. This suggests that the user can
+uncomment the field and override the default. This is wrong for fields
+that aren't allowed in the config file like `builddir`. This patch
+avoids generating a comment with `builddir` in the default config.
+}

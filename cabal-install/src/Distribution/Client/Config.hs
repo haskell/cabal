@@ -1782,9 +1782,16 @@ showConfigWithComments comment vals =
         (fmap (field . savedConfigureFlags) mcomment)
         ((field . savedConfigureFlags) vals)
 
-    -- skip fields based on field name.  currently only skips "remote-repo",
-    -- because that is rendered as a section.  (see 'ppRemoteRepoSection'.)
-    skipSomeFields = filter ((/= "remote-repo") . fieldName)
+    -- Skip fields based on field name.
+    skipSomeFields =
+      filter
+        ( ( `notElem`
+              [ "remote-repo" -- rendered as a section (see 'ppRemoteRepoSection')
+              , "builddir" -- no effect in config file (see Note [reading project configuration])
+              ]
+          )
+            . fieldName
+        )
 
 -- | Fields for the 'install-dirs' sections.
 installDirsFields :: [FieldDescr (InstallDirs (Flag PathTemplate))]
