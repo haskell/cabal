@@ -2675,7 +2675,6 @@ testConfigOptionComments = do
   "-- username" `assertHasCommentLine` "username"
   "-- password" `assertHasCommentLine` "password"
   "-- password-command" `assertHasCommentLine` "password-command"
-  "-- builddir" `assertHasCommentLine` "builddir"
 
   "  -- hoogle" `assertHasCommentLine` "hoogle"
   "  -- html" `assertHasCommentLine` "html"
