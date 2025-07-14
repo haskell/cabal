@@ -291,7 +291,7 @@ showOptions q xs = showQPN q ++ "; " ++ (L.intercalate ", "
     then showOption q x
     else showI i -- Don't show the package, just the version
   | x@(POption i linkedTo) <- take 3 xs
-  ] ++ if length xs >= 3 then " and earlier versions" else "")
+  ] ++ if length xs >= 3 then " and other versions" else "")
 
 showGR :: QGoalReason -> String
 showGR UserGoal            = " (user goal)"
