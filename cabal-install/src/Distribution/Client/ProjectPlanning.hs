@@ -1818,40 +1818,26 @@ elaborateInstallPlan
                     , elabPkgOrComp =
                         ElabComponent
                           ( ElaboratedComponent
-                              { compSolverName
-                              , compComponentName
-                              , compLibDependencies
-                              , compLinkedLibDependencies
-                              , compExeDependencies
-                              , compPkgConfigDependencies
-                              , compExeDependencyPaths
-                              , compOrderLibDependencies
-                              , compInstantiatedWith
-                              , compLinkedInstantiatedWith
+                              { compSolverName = CD.ComponentSetup
+                              , compComponentName = Nothing
+                              , compLibDependencies =
+                                  [ (configuredId cid, False)
+                                  | cid <- CD.setupDeps solverPkgLibDeps >>= elaborateLibSolverId mapDep
+                                  ]
+                              , compLinkedLibDependencies = notImpl "compLinkedLibDependencies"
+                              , compOrderLibDependencies = notImpl "compOrderLibDependencies"
+                              , -- Not supported:
+                                compExeDependencies = mempty
+                              , compExeDependencyPaths = mempty
+                              , compPkgConfigDependencies = mempty
+                              , compInstantiatedWith = mempty
+                              , compLinkedInstantiatedWith = Map.empty
                               }
                           )
                     }
             | otherwise =
                 Nothing
             where
-              compSolverName = CD.ComponentSetup
-              compComponentName = Nothing
-
-              dep_pkgs = elaborateLibSolverId mapDep =<< CD.setupDeps solverPkgLibDeps
-
-              compLibDependencies =
-                -- MP: No idea what this function does
-                map (\cid -> (configuredId cid, False)) dep_pkgs
-              compLinkedLibDependencies = notImpl "compLinkedLibDependencies"
-              compOrderLibDependencies = notImpl "compOrderLibDependencies"
-
-              -- Not supported:
-              compExeDependencies = []
-              compExeDependencyPaths = []
-              compPkgConfigDependencies = []
-              compInstantiatedWith = mempty
-              compLinkedInstantiatedWith = Map.empty
-
               notImpl f =
                 error $
                   "Distribution.Client.ProjectPlanning.setupComponent: "
@@ -1955,13 +1941,14 @@ elaborateInstallPlan
                         { compSolverName
                         , compComponentName
                         , compLibDependencies
-                        , compLinkedLibDependencies
                         , compExeDependencies
                         , compPkgConfigDependencies
                         , compExeDependencyPaths
-                        , compOrderLibDependencies
                         , compInstantiatedWith = Map.empty
                         , compLinkedInstantiatedWith = Map.empty
+                        , -- filled later (in step 5)
+                          compLinkedLibDependencies = error "buildComponent: compLinkedLibDependencies"
+                        , compOrderLibDependencies = error "buildComponent: compOrderLibDependencies"
                         }
 
                 -- 3. Construct a preliminary ElaboratedConfiguredPackage,
@@ -2053,9 +2040,6 @@ elaborateInstallPlan
 
                 return ((cc_map', lc_map', exe_map'), elab)
             where
-              compLinkedLibDependencies = error "buildComponent: compLinkedLibDependencies"
-              compOrderLibDependencies = error "buildComponent: compOrderLibDependencies"
-
               cname = Cabal.componentName comp
               compComponentName = Just cname
               compSolverName = CD.componentNameToComponent cname
