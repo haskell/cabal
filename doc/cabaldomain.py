@@ -384,7 +384,7 @@ class CabalObject(ObjectDescription):
             else:
                 return result
 
-            # find exsting field list and add to it
+            # find existing field list and add to it
             # or create new one
             for item in contents:
                 if isinstance(item, nodes.field_list):
