@@ -1,0 +1,34 @@
+packages:
+  my-toplevel.cabal
+  deps/my01/my01.cabal
+  deps/my02/my02.cabal
+  deps/my03/my03.cabal
+  deps/my04/my04.cabal
+  deps/my05/my05.cabal
+  deps/my06/my06.cabal
+  deps/my07/my07.cabal
+  deps/my08/my08.cabal
+  deps/my09/my09.cabal
+  deps/my10/my10.cabal
+
+  deps/my-dep01/my-dep01.cabal
+  deps/my-dep02/my-dep02.cabal
+  deps/my-dep03/my-dep03.cabal
+  deps/my-dep04/my-dep04.cabal
+  deps/my-dep05/my-dep05.cabal
+  deps/my-dep06/my-dep06.cabal
+  deps/my-dep07/my-dep07.cabal
+  deps/my-dep08/my-dep08.cabal
+  deps/my-dep09/my-dep09.cabal
+  deps/my-dep10/my-dep10.cabal
+
+  deps/my-dep-dep01/my-dep-dep01.cabal
+  deps/my-dep-dep02/my-dep-dep02.cabal
+  deps/my-dep-dep03/my-dep-dep03.cabal
+  deps/my-dep-dep04/my-dep-dep04.cabal
+  deps/my-dep-dep05/my-dep-dep05.cabal
+  deps/my-dep-dep06/my-dep-dep06.cabal
+  deps/my-dep-dep07/my-dep-dep07.cabal
+  deps/my-dep-dep08/my-dep-dep08.cabal
+  deps/my-dep-dep09/my-dep-dep09.cabal
+  deps/my-dep-dep10/my-dep-dep10.cabal
