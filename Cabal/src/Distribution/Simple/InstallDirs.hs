@@ -576,14 +576,14 @@ installDirsGrammar =
     <*> optionalFieldDef "libdir" installDirsLibdirLens mempty
     <*> optionalFieldDef "libsubdir" installDirsLibsubdirLens mempty
     <*> optionalFieldDef "dynlibdir" installDirsDynlibdirLens mempty
-    <*> (pure NoFlag) -- flibdir
+    <*> pure NoFlag -- flibdir
     <*> optionalFieldDef "libexecdir" installDirsLibexecdirLens mempty
     <*> optionalFieldDef "libexecsubdir" installDirsLibexecsubdirLens mempty
-    <*> (pure NoFlag) -- includedir
+    <*> pure NoFlag -- includedir
     <*> optionalFieldDef "datadir" installDirsDatadirLens mempty
     <*> optionalFieldDef "datasubdir" installDirsDatasubdirLens mempty
     <*> optionalFieldDef "docdir" installDirsDocdirLens mempty
-    <*> (pure NoFlag) -- mandir
+    <*> pure NoFlag -- mandir
     <*> optionalFieldDef "htmldir" installDirsHtmldirLens mempty
     <*> optionalFieldDef "haddockdir" installDirsHaddockdirLens mempty
     <*> optionalFieldDef "sysconfdir" installDirsSysconfdirLens mempty

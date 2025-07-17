@@ -153,7 +153,7 @@ testProjectConfigBuildOnly = do
     projectConfigOnlyDownload = mempty -- cli only
     projectConfigSummaryFile = toNubList [toPathTemplate "summaryFile", toPathTemplate "summaryFile2"]
     projectConfigLogFile = toFlag $ toPathTemplate "myLog.log"
-    projectConfigBuildReports = toFlag $ DetailedReports
+    projectConfigBuildReports = toFlag DetailedReports
     projectConfigReportPlanningFailure = toFlag True
     projectConfigSymlinkBinDir = toFlag "some-bindir"
     projectConfigNumJobs = toFlag $ Just 4
@@ -266,7 +266,7 @@ testRemoteRepos = do
     expected = [packagesRepository, morePackagesRepository, secureLocalRepository]
     packagesRepository =
       RemoteRepo
-        { remoteRepoName = RepoName $ "packages.example.org"
+        { remoteRepoName = RepoName "packages.example.org"
         , remoteRepoURI = fromJust $ parseURI "http://packages.example.org/"
         , remoteRepoSecure = pure True
         , remoteRepoRootKeys = ["21", "42"]
@@ -275,7 +275,7 @@ testRemoteRepos = do
         }
     morePackagesRepository =
       RemoteRepo
-        { remoteRepoName = RepoName $ "more-packages.example.org"
+        { remoteRepoName = RepoName "more-packages.example.org"
         , remoteRepoURI = fromJust $ parseURI "https://more-packages.example.org/"
         , remoteRepoSecure = pure True
         , remoteRepoRootKeys = ["foo", "bar"]
@@ -284,7 +284,7 @@ testRemoteRepos = do
         }
     secureLocalRepository =
       RemoteRepo
-        { remoteRepoName = RepoName $ "my-secure-local-repository"
+        { remoteRepoName = RepoName "my-secure-local-repository"
         , remoteRepoURI = fromJust $ parseURI "file:/path/to/secure/repo"
         , remoteRepoSecure = pure True
         , remoteRepoRootKeys = ["123"]
@@ -302,13 +302,13 @@ testLocalNoIndexRepos = do
     expected = [myRepository, mySecureRepository]
     myRepository =
       LocalRepo
-        { localRepoName = RepoName $ "my-repository"
+        { localRepoName = RepoName "my-repository"
         , localRepoPath = normalisePath "/absolute/path/to/directory"
         , localRepoSharedCache = False
         }
     mySecureRepository =
       LocalRepo
-        { localRepoName = RepoName $ "my-other-repository"
+        { localRepoName = RepoName "my-other-repository"
         , localRepoPath = normalisePath "/another/path/to/repository"
         , localRepoSharedCache = False
         }

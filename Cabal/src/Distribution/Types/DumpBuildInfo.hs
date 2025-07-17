@@ -22,6 +22,4 @@ parsecDumpBuildInfo :: CabalParsing m => m DumpBuildInfo
 parsecDumpBuildInfo = boolToDumpBuildInfo <$> parsec
 
 boolToDumpBuildInfo :: Bool -> DumpBuildInfo
-boolToDumpBuildInfo bool = case bool of
-  True -> DumpBuildInfo
-  _ -> NoDumpBuildInfo
+boolToDumpBuildInfo bool = if bool then DumpBuildInfo else NoDumpBuildInfo

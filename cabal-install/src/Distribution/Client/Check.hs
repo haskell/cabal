@@ -40,7 +40,7 @@ readGenericPackageDescriptionCheck verbosity fpath = do
     dieWithException verbosity $
       FileDoesntExist fpath
   bs <- BS.readFile fpath
-  let (warnings, result) = runParseResult $ withSource (PCabalFile (fpath, bs)) $ (parseGenericPackageDescription bs)
+  let (warnings, result) = runParseResult $ withSource (PCabalFile (fpath, bs)) (parseGenericPackageDescription bs)
   case result of
     Left (mspecVersion, errors) -> do
       dieWithException verbosity (CabalCheckParseError (CabalFileParseError fpath bs errors mspecVersion warnings))

@@ -103,7 +103,7 @@ parseString
   -> BS.ByteString
   -> IO a
 parseString parser verbosity name bs = do
-  let (warnings, result) = runParseResult $ withSource (PCabalFile (name, bs)) $ (parser bs)
+  let (warnings, result) = runParseResult $ withSource (PCabalFile (name, bs)) (parser bs)
   traverse_ (warn verbosity . showPWarningWithSource . fmap renderCabalFileSource) (flattenDups verbosity warnings)
   case result of
     Right x -> return x
