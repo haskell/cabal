@@ -412,6 +412,50 @@ jobs:
           path: |
             ./out/*
 
+  build-freebsd-x86_64:
+    name: Build FreeBSD x86_64
+    runs-on: [self-hosted, FreeBSD, X64]
+    env:
+      ADD_CABAL_ARGS: ""
+      ARTIFACT: "x86_64-portbld-freebsd"
+      ARCH: 64
+      TARBALL_EXT: tar.xz
+      DISTRO: na
+      RUNNER_OS: FreeBSD
+      CABAL_DIR: ${{ github.workspace }}/.cabal
+      GHCUP_INSTALL_BASE_PREFIX: ${{ github.workspace }}
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: ${{ fromJSON(inputs.branches) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.branch }}
+
+      - name: Install GHCup
+        uses: haskell/ghcup-setup@v1
+        with:
+          cabal: ${{ env.CABAL_VERSION }}
+
+      - name: Run build
+        run: |
+          sudo sed -i.bak -e 's/quarterly/latest/' /etc/pkg/FreeBSD.conf
+          sudo pkg install -y curl gcc gmp gmake ncurses perl5 pkgconf libffi libiconv git bash misc/compat10x misc/compat11x misc/compat12x
+          sudo tzsetup Etc/GMT
+          sudo adjkerntz -a
+          bash .github/scripts/build.bash
+
+      - if: always()
+        name: Upload artifact
+        uses: ./.github/actions/upload
+        with:
+          if-no-files-found: error
+          retention-days: 2
+          name: artifacts-${{ env.ARTIFACT }}-${{ matrix.branch }}
+          path: |
+            ./out/*
+
   test-linux:
     name: Test linux binaries
     runs-on: ubuntu-latest
@@ -738,4 +782,45 @@ jobs:
           $ErrorActionPreference = "Stop"
           C:\msys64\usr\bin\bash -lc "bash .github/scripts/test.bash"
         shell: pwsh
+
+  test-freebsd-x86_64:
+    name: Test FreeBSD x86_64
+    runs-on: [self-hosted, FreeBSD, X64]
+    needs: ["build-freebsd-x86_64"]
+    if: ${{ inputs.test }}
+    env:
+      ADD_CABAL_ARGS: ""
+      ARTIFACT: "x86_64-portbld-freebsd"
+      ARCH: 64
+      TARBALL_EXT: tar.xz
+      DISTRO: na
+      RUNNER_OS: FreeBSD
+      CABAL_DIR: ${{ github.workspace }}/.cabal
+      GHCUP_INSTALL_BASE_PREFIX: ${{ github.workspace }}
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: ${{ fromJSON(inputs.branches) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.branch }}
+
+      - uses: ./.github/actions/download
+        with:
+          name: artifacts-${{ env.ARTIFACT }}-${{ matrix.branch }}
+          path: ./out
+
+      - name: Install GHCup
+        uses: haskell/ghcup-setup@v1
+        with:
+          cabal: ${{ env.CABAL_VERSION }}
+
+      - name: Run test
+        run: |
+          sudo sed -i.bak -e 's/quarterly/latest/' /etc/pkg/FreeBSD.conf
+          sudo pkg install -y curl gcc gmp gmake ncurses perl5 pkgconf libffi libiconv git bash misc/compat10x misc/compat11x misc/compat12x groff autoconf automake
+          sudo tzsetup Etc/GMT
+          sudo adjkerntz -a
+          bash .github/scripts/test.bash
 
