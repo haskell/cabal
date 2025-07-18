@@ -16,7 +16,6 @@ fi
 
 ghcup --no-verbose install ghc --set --install-targets "${GHC_TARGETS}" "${GHC_VERSION}"
 
-sed -i.bak -e '/DELETE MARKER FOR CI/,/END DELETE/d' cabal.project # see comment in cabal.project
 cabal update
 cabal user-config diff
 cabal user-config init -f
