@@ -2,6 +2,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 -- |
 -- Module      :  Main
@@ -228,13 +229,15 @@ import Distribution.Simple.Program
 import Distribution.Simple.Program.Db (reconfigurePrograms)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
-  ( cabalGitInfo
+  ( VerboseException
+  , cabalGitInfo
   , cabalVersion
   , createDirectoryIfMissingVerbose
   , dieNoVerbosity
   , dieWithException
   , findPackageDesc
   , info
+  , isUserException
   , notice
   , topHandler
   , tryFindPackageDesc
@@ -336,7 +339,7 @@ warnIfAssertionsAreEnabled =
 -- into IO actions for execution.
 mainWorker :: [String] -> IO ()
 mainWorker args = do
-  topHandler $ do
+  topHandler (isUserException (Proxy @(VerboseException CabalInstallException))) $ do
     command <- commandsRunWithFallback (globalCommand commands) commands delegateToExternal args
     case command of
       CommandHelp help -> printGlobalHelp help

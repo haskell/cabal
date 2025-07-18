@@ -4,6 +4,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 -----------------------------------------------------------------------------
 {-
 Work around this warning:
@@ -281,7 +282,7 @@ defaultMainWithHooksNoReadArgs hooks pkg_descr =
 -- getting 'CommandParse' data back, which is then pattern-matched into
 -- IO actions for execution, with arguments applied by the parser.
 defaultMainHelper :: UserHooks -> Args -> IO ()
-defaultMainHelper hooks args = topHandler $ do
+defaultMainHelper hooks args = topHandler (isUserException (Proxy @(VerboseException CabalException))) $ do
   args' <- expandResponse args
   command <- commandsRun (globalCommand commands) commands args'
   case command of
