@@ -40,7 +40,7 @@ import Distribution.Parsec.Warning
 import Distribution.Simple.Errors
 import Distribution.Simple.Utils (dieWithException, equating, warn)
 import Distribution.Utils.Path
-import Distribution.Verbosity (Verbosity, normal)
+import Distribution.Verbosity (Verbosity, VerbosityLevel (..), verbosityLevel)
 import GHC.Stack
 import System.Directory (doesFileExist)
 import Text.Printf (printf)
@@ -111,7 +111,7 @@ parseString parser verbosity name bs = do
 -- a count of further sites
 flattenDups :: Verbosity -> [PWarning] -> [PWarning]
 flattenDups verbosity ws
-  | verbosity <= normal = rest ++ experimentals
+  | verbosityLevel verbosity <= Normal = rest ++ experimentals
   | otherwise = ws -- show all instances
   where
     (exps, rest) = partition (\(PWarning w _ _) -> w == PWTExperimental) ws

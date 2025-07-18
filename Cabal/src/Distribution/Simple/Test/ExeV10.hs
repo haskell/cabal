@@ -51,14 +51,15 @@ import System.IO (stderr, stdout)
 import System.Process (createPipe)
 
 runTest
-  :: PD.PackageDescription
+  :: VerbosityHandles
+  -> PD.PackageDescription
   -> LBI.LocalBuildInfo
   -> LBI.ComponentLocalBuildInfo
   -> HPCMarkupInfo
   -> TestFlags
   -> PD.TestSuite
   -> IO TestSuiteLog
-runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
+runTest verbHandles pkg_descr lbi clbi hpcMarkupInfo flags suite = do
   let isCoverageEnabled = LBI.testCoverage lbi
       way = guessWay lbi
       tixDir_ = i $ tixDir distPref way
@@ -122,7 +123,7 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
         logText <- LBS.hGetContents rOut
 
         -- '--show-details=streaming': print the log output in another thread
-        when (details == Streaming) $ LBS.putStr logText
+        when (details == Streaming) $ LBS.hPutStr (verbosityStdoutHandle verbosity) logText
 
         -- drain the output.
         evaluate (force logText)
@@ -179,9 +180,9 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
               || details == Failures && not (suitePassed $ testLogs suiteLog)
           )
             -- verbosity overrides show-details
-            && verbosity >= normal
+            && verbosityLevel verbosity >= Normal
   whenPrinting $ do
-    LBS.putStr logText
+    LBS.hPutStr (verbosityStdoutHandle verbosity) logText
     putChar '\n'
 
   -- Write summary notice to terminal indicating end of test suite
@@ -206,7 +207,7 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
     testName' = unUnqualComponentName $ PD.testName suite
 
     distPref = fromFlag $ setupDistPref commonFlags
-    verbosity = fromFlag $ setupVerbosity commonFlags
+    verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity commonFlags)
     details = fromFlag $ testShowDetails flags
     testLogDir = distPref </> makeRelativePathEx "test"
 

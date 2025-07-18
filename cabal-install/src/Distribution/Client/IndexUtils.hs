@@ -166,7 +166,7 @@ getInstalledPackages
 getInstalledPackages verbosity comp packageDbs progdb =
   Configure.getInstalledPackages verbosity' comp Nothing (coercePackageDBStack packageDbs) progdb
   where
-    verbosity' = lessVerbose verbosity
+    verbosity' = modifyVerbosityFlags lessVerbose verbosity
 
 -- | Get filename base (i.e. without file extension) for index-related files
 --
@@ -257,7 +257,7 @@ getSourcePackagesAtIndexState verbosity repoCtxt _ _
   | null (repoContextRepos repoCtxt) = do
       -- In the test suite, we routinely don't have any remote package
       -- servers, so don't bleat about it
-      warn (verboseUnmarkOutput verbosity) $
+      warn (modifyVerbosityFlags verboseUnmarkOutput verbosity) $
         "No remote package servers have been specified. Usually "
           ++ "you would have one specified in the config file."
       return

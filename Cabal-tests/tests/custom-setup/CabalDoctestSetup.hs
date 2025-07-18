@@ -335,7 +335,7 @@ generateBuildModule
     -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO ()
 {- FOURMOLU_DISABLE -}
 generateBuildModule testSuiteName flags pkg lbi = do
-  let verbosity = fromFlag (buildVerbosity flags)
+  let verbosity = mkVerbosity defaultVerbosityHandles $ fromFlag (buildVerbosity flags)
   let distPref = fromFlag (buildDistPref flags)
 
   -- Package DBs & environments

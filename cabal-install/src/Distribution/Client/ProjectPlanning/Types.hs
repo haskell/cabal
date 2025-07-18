@@ -116,13 +116,13 @@ import qualified Distribution.Types.LocalBuildConfig as LBC
 import Distribution.Types.PackageDescription (PackageDescription (..))
 import Distribution.Types.PkgconfigVersion
 import Distribution.Utils.Path (getSymbolicPath)
-import Distribution.Verbosity (normal)
 import Distribution.Version
 
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Monoid as Mon
+import Distribution.Verbosity
 import System.FilePath ((</>))
 import Text.PrettyPrint (hsep, parens, text)
 
@@ -145,7 +145,7 @@ type ElaboratedPlanPackage =
 -- | User-friendly display string for an 'ElaboratedPlanPackage'.
 elabPlanPackageName :: Verbosity -> ElaboratedPlanPackage -> String
 elabPlanPackageName verbosity (PreExisting ipkg)
-  | verbosity <= normal = prettyShow (packageName ipkg)
+  | verbosityLevel verbosity <= Normal = prettyShow (packageName ipkg)
   | otherwise = prettyShow (installedUnitId ipkg)
 elabPlanPackageName verbosity (Configured elab) =
   elabConfiguredName verbosity elab
@@ -518,7 +518,7 @@ elabComponentName elab =
 -- | A user-friendly descriptor for an 'ElaboratedConfiguredPackage'.
 elabConfiguredName :: Verbosity -> ElaboratedConfiguredPackage -> String
 elabConfiguredName verbosity elab
-  | verbosity <= normal =
+  | verbosityLevel verbosity <= Normal =
       ( case elabPkgOrComp elab of
           ElabPackage _ -> ""
           ElabComponent comp ->
