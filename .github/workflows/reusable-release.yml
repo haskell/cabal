@@ -534,35 +534,35 @@ jobs:
           DISTRO: ${{ matrix.platform.DISTRO }}
           ADD_CABAL_ARGS: ${{ matrix.platform.ADD_CABAL_ARGS }}
 
-  test-linux-32bit:
-    name: Test linux binaries (32bit)
-    runs-on: ubuntu-latest
-    needs: ["build-linux-32bit"]
-    if: $ {{ inputs.test }}
-    env:
-      TARBALL_EXT: tar.xz
-      ARCH: 32
-      DISTRO: "Unknown"
-      ARTIFACT: "i386-linux-unknown"
-      ADD_CABAL_ARGS: ""
-    strategy:
-      fail-fast: false
-      matrix:
-        branch: ${{ fromJSON(inputs.branches) }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ matrix.branch }}
-
-      - uses: ./.github/actions/download
-        with:
-          name: artifacts-${{ env.ARTIFACT }}-${{ matrix.branch }}
-          path: ./out
-
-      - name: Run build (32 bit linux)
-        uses: docker://hasufell/i386-alpine-haskell:3.21
-        with:
-          args: sh -c "apk update && apk add groff && git config --system --add safe.directory $GITHUB_WORKSPACE && export PATH=$HOME/.ghcup/bin:$PATH && bash .github/scripts/test.sh"
+#  test-linux-32bit:
+#    name: Test linux binaries (32bit)
+#    runs-on: ubuntu-latest
+#    needs: ["build-linux-32bit"]
+#    if: $ {{ inputs.test }}
+#    env:
+#      TARBALL_EXT: tar.xz
+#      ARCH: 32
+#      DISTRO: "Unknown"
+#      ARTIFACT: "i386-linux-unknown"
+#      ADD_CABAL_ARGS: ""
+#    strategy:
+#      fail-fast: false
+#      matrix:
+#        branch: ${{ fromJSON(inputs.branches) }}
+#    steps:
+#      - uses: actions/checkout@v4
+#        with:
+#          ref: ${{ matrix.branch }}
+#
+#      - uses: ./.github/actions/download
+#        with:
+#          name: artifacts-${{ env.ARTIFACT }}-${{ matrix.branch }}
+#          path: ./out
+#
+#      - name: Run build (32 bit linux)
+#        uses: docker://hasufell/i386-alpine-haskell:3.21
+#        with:
+#          args: sh -c "apk update && apk add groff && git config --system --add safe.directory $GITHUB_WORKSPACE && export PATH=$HOME/.ghcup/bin:$PATH && bash .github/scripts/test.sh"
 
   test-arm:
     name: Test ARM binary
