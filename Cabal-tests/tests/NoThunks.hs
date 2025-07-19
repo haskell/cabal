@@ -21,7 +21,8 @@ import Distribution.Compat.NonEmptySet        (NonEmptySet)
 import Distribution.Compiler                  (CompilerFlavor, PerCompilerFlavor)
 import Distribution.Fields                    (runParseResult)
 import Distribution.ModuleName                (ModuleName)
-import Distribution.PackageDescription.Parsec (parseGenericPackageDescription)
+import Distribution.PackageDescription.Parsec (parseGenericPackageDescription, withSource)
+import Distribution.Parsec.Source
 import Distribution.SPDX                      (License, LicenseExceptionId, LicenseExpression, LicenseId, LicenseRef, SimpleLicenseExpression)
 import Distribution.System                    (Arch, OS)
 import Distribution.Utils.Path                (SymbolicPathX)
@@ -45,7 +46,7 @@ main = defaultMain $ testGroup "nothunks"
 noThunksParse :: IO ()
 noThunksParse = do
     bs <- BS.readFile "Cabal/Cabal.cabal" <|> BS.readFile "../Cabal/Cabal.cabal"
-    let res = parseGenericPackageDescription bs
+    let res = withSource (PCabalFile ("Cabal.cabal", bs)) $ parseGenericPackageDescription bs
     gpd <- either (assertFailure . show) return $ snd $
         runParseResult res
 

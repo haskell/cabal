@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- | This module provides a 'FieldGrammarParser', one way to parse
@@ -54,6 +55,7 @@
 module Distribution.FieldGrammar.Parsec
   ( ParsecFieldGrammar
   , parseFieldGrammar
+  , parseFieldGrammarCheckingStanzas
   , fieldGrammarKnownFieldList
 
     -- * Auxiliary
@@ -112,24 +114,35 @@ data Section ann = MkSection !(Name ann) [SectionArg ann] [Field ann]
 data ParsecFieldGrammar s a = ParsecFG
   { fieldGrammarKnownFields :: !(Set FieldName)
   , fieldGrammarKnownPrefixes :: !(Set FieldName)
-  , fieldGrammarParser :: !(CabalSpecVersion -> Fields Position -> ParseResult a)
+  , fieldGrammarParser :: forall src. (CabalSpecVersion -> Fields Position -> ParseResult src a)
   }
   deriving (Functor)
 
-parseFieldGrammar :: CabalSpecVersion -> Fields Position -> ParsecFieldGrammar s a -> ParseResult a
+parseFieldGrammar :: CabalSpecVersion -> Fields Position -> ParsecFieldGrammar s a -> ParseResult src a
 parseFieldGrammar v fields grammar = do
-  for_ (Map.toList (Map.filterWithKey isUnknownField fields)) $ \(name, nfields) ->
+  for_ (Map.toList (Map.filterWithKey (isUnknownField grammar) fields)) $ \(name, nfields) ->
     for_ nfields $ \(MkNamelessField pos _) ->
       parseWarning pos PWTUnknownField $ "Unknown field: " ++ show name
   -- TODO: fields allowed in this section
 
   -- parse
   fieldGrammarParser grammar v fields
-  where
-    isUnknownField k _ =
-      not $
-        k `Set.member` fieldGrammarKnownFields grammar
-          || any (`BS.isPrefixOf` k) (fieldGrammarKnownPrefixes grammar)
+
+isUnknownField :: ParsecFieldGrammar s a -> FieldName -> [NamelessField Position] -> Bool
+isUnknownField grammar k _ =
+  not $
+    k `Set.member` fieldGrammarKnownFields grammar
+      || any (`BS.isPrefixOf` k) (fieldGrammarKnownPrefixes grammar)
+
+-- | Parse a ParsecFieldGrammar and check for fields that should be stanzas.
+parseFieldGrammarCheckingStanzas :: CabalSpecVersion -> Fields Position -> ParsecFieldGrammar s a -> Set BS.ByteString -> ParseResult src a
+parseFieldGrammarCheckingStanzas v fields grammar sections = do
+  for_ (Map.toList (Map.filterWithKey (isUnknownField grammar) fields)) $ \(name, nfields) ->
+    for_ nfields $ \(MkNamelessField pos _) ->
+      if name `Set.member` sections
+        then parseFailure pos $ "'" ++ fromUTF8BS name ++ "' is a stanza, not a field. Remove the trailing ':' to parse a stanza."
+        else parseWarning pos PWTUnknownField $ "Unknown field: " ++ show name
+  fieldGrammarParser grammar v fields
 
 fieldGrammarKnownFieldList :: ParsecFieldGrammar s a -> [FieldName]
 fieldGrammarKnownFieldList = Set.toList . fieldGrammarKnownFields
@@ -145,7 +158,7 @@ instance Applicative (ParsecFieldGrammar s) where
       (\v fields -> f'' v fields <*> x'' v fields)
   {-# INLINE (<*>) #-}
 
-warnMultipleSingularFields :: FieldName -> [NamelessField Position] -> ParseResult ()
+warnMultipleSingularFields :: FieldName -> [NamelessField Position] -> ParseResult src ()
 warnMultipleSingularFields _ [] = pure ()
 warnMultipleSingularFields fn (x : xs) = do
   let pos = namelessFieldAnn x
@@ -349,7 +362,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
 -- Parsec
 -------------------------------------------------------------------------------
 
-runFieldParser' :: [Position] -> ParsecParser a -> CabalSpecVersion -> FieldLineStream -> ParseResult a
+runFieldParser' :: [Position] -> ParsecParser a -> CabalSpecVersion -> FieldLineStream -> ParseResult src a
 runFieldParser' inputPoss p v str = case P.runParser p' [] "<field>" str of
   Right (pok, ws) -> do
     traverse_ (\(PWarning t pos w) -> parseWarning (mapPosition pos) t w) ws
@@ -378,7 +391,7 @@ runFieldParser' inputPoss p v str = case P.runParser p' [] "<field>" str of
         go n (Position row col : _) | n <= 0 = Position row (col + pcol - 1)
         go n (_ : ps) = go (n - 1) ps
 
-runFieldParser :: Position -> ParsecParser a -> CabalSpecVersion -> [FieldLine Position] -> ParseResult a
+runFieldParser :: Position -> ParsecParser a -> CabalSpecVersion -> [FieldLine Position] -> ParseResult src a
 runFieldParser pp p v ls = runFieldParser' poss p v (fieldLinesToStream ls)
   where
     poss = map (\(FieldLine pos _) -> pos) ls ++ [pp] -- add "default" position
