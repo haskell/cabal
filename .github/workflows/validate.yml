@@ -55,11 +55,11 @@ jobs:
           - { os: windows-latest, shell: "C:/msys64/usr/bin/bash.exe -e {0}" }
           - { os: ubuntu-22.04, shell: bash }
           - { os: macos-latest, shell: bash }
-        # If you remove something from here, then add it to the old-ghcs job.
-        # Also a removed GHC from here means that we are actually dropping
-        # support, so the PR *must* have a changelog entry.
         ghc:
           [
+            # IMPORTANT: If you remove a version from this list, then add it to the old-ghcs job below.
+            # Also a removed GHC from here means that we are actually dropping
+            # support, so the PR *must* have a changelog entry.
             "9.12.2",
             "9.10.2",
             "9.8.4",
@@ -251,7 +251,7 @@ jobs:
     strategy:
       matrix:
         extra-ghc:
-          ["8.4.4", "8.2.2", "8.0.2"]
+          ["8.6.5", "8.4.4", "8.2.2", "8.0.2"]
           ## GHC 7.10.3 does not install on ubuntu-22.04 with ghcup.
           ## Older GHCs are not supported by ghcup in the first place.
       fail-fast: false
