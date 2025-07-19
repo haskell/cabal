@@ -422,19 +422,19 @@ die' :: Verbosity -> String -> IO a
 die' verbosity msg = withFrozenCallStack $ do
   ioError . verbatimUserError
     =<< annotateErrorString verbosity
-    =<< pure . wrapTextVerbosity verbosity
+    =<< pure . wrapTextVerbosity (verbosityFlags verbosity)
     =<< pure . addErrorPrefix
     =<< prefixWithProgName msg
 
 -- Type which will be a wrapper for cabal -exceptions and cabal-install exceptions
-data VerboseException a = VerboseException CallStack POSIXTime Verbosity a
+data VerboseException a = VerboseException CallStack POSIXTime VerbosityFlags a
   deriving (Show)
 
 -- Function which will replace the existing die' call sites
 dieWithException :: (HasCallStack, Show a1, Typeable a1, Exception (VerboseException a1)) => Verbosity -> a1 -> IO a
 dieWithException verbosity exception = do
   ts <- getPOSIXTime
-  throwIO $ VerboseException callStack ts verbosity exception
+  throwIO $ VerboseException callStack ts (verbosityFlags verbosity) exception
 
 -- Instance for Cabal Exception which will display error code and error message with callStack info
 instance Exception (VerboseException CabalException) where
@@ -483,7 +483,7 @@ prefixWithProgName msg = do
 annotateErrorString :: Verbosity -> String -> IO String
 annotateErrorString verbosity msg = do
   ts <- getPOSIXTime
-  return $ withMetadata ts AlwaysMark VerboseTrace verbosity msg
+  return $ withMetadata ts AlwaysMark VerboseTrace (verbosityFlags verbosity) msg
 
 -- | Given a block of IO code that may raise an exception, annotate
 -- it with the metadata from the current scope.  Use this as close
@@ -495,7 +495,7 @@ annotateIO verbosity act = do
   ts <- getPOSIXTime
   flip modifyIOError act $
     ioeModifyErrorString $
-      withMetadata ts NeverMark VerboseTrace verbosity
+      withMetadata ts NeverMark VerboseTrace (verbosityFlags verbosity)
 
 -- | A semantic editor for the error message inside an 'IOError'.
 ioeModifyErrorString :: (String -> String) -> IOError -> IOError
@@ -560,12 +560,6 @@ displaySomeException se = Exception.displayException se
 topHandler :: IO a -> IO a
 topHandler prog = topHandlerWith (const $ exitWith (ExitFailure 1)) prog
 
--- | Depending on 'isVerboseStderr', set the output handle to 'stderr' or 'stdout'.
-verbosityHandle :: Verbosity -> Handle
-verbosityHandle verbosity
-  | isVerboseStderr verbosity = stderr
-  | otherwise = stdout
-
 -- | Non fatal conditions that may be indicative of an error or problem.
 --
 -- We display these at the 'normal' verbosity level.
@@ -581,13 +575,17 @@ warnError verbosity message = warnMessage "Error" verbosity message
 -- | Warning message, with a custom label.
 warnMessage :: String -> Verbosity -> String -> IO ()
 warnMessage l verbosity msg = withFrozenCallStack $ do
-  when ((verbosity >= normal) && not (isVerboseNoWarn verbosity)) $ do
+  when (verbosityLevel verbosity >= Normal && not (isVerboseNoWarn flags)) $ do
     ts <- getPOSIXTime
-    hFlush stdout
-    hPutStr stderr
-      . withMetadata ts NormalMark FlagTrace verbosity
-      . wrapTextVerbosity verbosity
+    let outHandle = verbosityStdoutHandle verbosity
+        errHandle = verbosityStderrHandle verbosity
+    hFlush outHandle
+    hPutStr errHandle
+      . withMetadata ts NormalMark FlagTrace flags
+      . wrapTextVerbosity flags
       $ l ++ ": " ++ msg
+  where
+    flags = verbosityFlags verbosity
 
 -- | Useful status messages.
 --
@@ -597,32 +595,35 @@ warnMessage l verbosity msg = withFrozenCallStack $ do
 -- enough information to know that things are working but not floods of detail.
 notice :: Verbosity -> String -> IO ()
 notice verbosity msg = withFrozenCallStack $ do
-  when (verbosity >= normal) $ do
-    let h = verbosityHandle verbosity
+  when (verbosityLevel verbosity >= Normal) $ do
+    let h = verbosityStdoutHandle verbosity
+        flags = verbosityFlags verbosity
     ts <- getPOSIXTime
     hPutStr h $
-      withMetadata ts NormalMark FlagTrace verbosity $
-        wrapTextVerbosity verbosity $
+      withMetadata ts NormalMark FlagTrace flags $
+        wrapTextVerbosity flags $
           msg
 
 -- | Display a message at 'normal' verbosity level, but without
 -- wrapping.
 noticeNoWrap :: Verbosity -> String -> IO ()
 noticeNoWrap verbosity msg = withFrozenCallStack $ do
-  when (verbosity >= normal) $ do
-    let h = verbosityHandle verbosity
+  when (verbosityLevel verbosity >= Normal) $ do
+    let h = verbosityStdoutHandle verbosity
+        flags = verbosityFlags verbosity
     ts <- getPOSIXTime
-    hPutStr h . withMetadata ts NormalMark FlagTrace verbosity $ msg
+    hPutStr h . withMetadata ts NormalMark FlagTrace flags $ msg
 
 -- | Pretty-print a 'Disp.Doc' status message at 'normal' verbosity
 -- level.  Use this if you need fancy formatting.
 noticeDoc :: Verbosity -> Disp.Doc -> IO ()
 noticeDoc verbosity msg = withFrozenCallStack $ do
-  when (verbosity >= normal) $ do
-    let h = verbosityHandle verbosity
+  when (verbosityLevel verbosity >= Normal) $ do
+    let h = verbosityStdoutHandle verbosity
+        flags = verbosityFlags verbosity
     ts <- getPOSIXTime
     hPutStr h $
-      withMetadata ts NormalMark FlagTrace verbosity $
+      withMetadata ts NormalMark FlagTrace flags $
         Disp.renderStyle defaultStyle $
           msg
 
@@ -637,21 +638,23 @@ setupMessage verbosity msg pkgid = withFrozenCallStack $ do
 -- We display these messages when the verbosity level is 'verbose'
 info :: Verbosity -> String -> IO ()
 info verbosity msg = withFrozenCallStack $
-  when (verbosity >= verbose) $ do
-    let h = verbosityHandle verbosity
+  when (verbosityLevel verbosity >= Verbose) $ do
+    let h = verbosityStdoutHandle verbosity
+        flags = verbosityFlags verbosity
     ts <- getPOSIXTime
     hPutStr h $
-      withMetadata ts NeverMark FlagTrace verbosity $
-        wrapTextVerbosity verbosity $
+      withMetadata ts NeverMark FlagTrace flags $
+        wrapTextVerbosity flags $
           msg
 
 infoNoWrap :: Verbosity -> String -> IO ()
 infoNoWrap verbosity msg = withFrozenCallStack $
-  when (verbosity >= verbose) $ do
-    let h = verbosityHandle verbosity
+  when (verbosityLevel verbosity >= Verbose) $ do
+    let h = verbosityStdoutHandle verbosity
+        flags = verbosityFlags verbosity
     ts <- getPOSIXTime
     hPutStr h $
-      withMetadata ts NeverMark FlagTrace verbosity $
+      withMetadata ts NeverMark FlagTrace flags $
         msg
 
 -- | Detailed internal debugging information
@@ -659,12 +662,13 @@ infoNoWrap verbosity msg = withFrozenCallStack $
 -- We display these messages when the verbosity level is 'deafening'
 debug :: Verbosity -> String -> IO ()
 debug verbosity msg = withFrozenCallStack $
-  when (verbosity >= deafening) $ do
-    let h = verbosityHandle verbosity
+  when (verbosityLevel verbosity >= Verbose) $ do
+    let h = verbosityStdoutHandle verbosity
+        flags = verbosityFlags verbosity
     ts <- getPOSIXTime
     hPutStr h $
-      withMetadata ts NeverMark FlagTrace verbosity $
-        wrapTextVerbosity verbosity $
+      withMetadata ts NeverMark FlagTrace flags $
+        wrapTextVerbosity flags $
           msg
     -- ensure that we don't lose output if we segfault/infinite loop
     hFlush stdout
@@ -673,11 +677,11 @@ debug verbosity msg = withFrozenCallStack $
 -- wrapping. Produces better output in some cases.
 debugNoWrap :: Verbosity -> String -> IO ()
 debugNoWrap verbosity msg = withFrozenCallStack $
-  when (verbosity >= deafening) $ do
-    let h = verbosityHandle verbosity
+  when (verbosityLevel verbosity >= Deafening) $ do
+    let h = verbosityStdoutHandle verbosity
     ts <- getPOSIXTime
     hPutStr h $
-      withMetadata ts NeverMark FlagTrace verbosity $
+      withMetadata ts NeverMark FlagTrace (verbosityFlags verbosity) $
         msg
     -- ensure that we don't lose output if we segfault/infinite loop
     hFlush stdout
@@ -706,7 +710,7 @@ handleDoesNotExist e =
 -- Helper functions
 
 -- | Wraps text unless the @+nowrap@ verbosity flag is active
-wrapTextVerbosity :: Verbosity -> String -> String
+wrapTextVerbosity :: VerbosityFlags -> String -> String
 wrapTextVerbosity verb
   | isVerboseNoWrap verb = withTrailingNewline
   | otherwise = withTrailingNewline . wrapText
@@ -714,7 +718,7 @@ wrapTextVerbosity verb
 -- | Prepends a timestamp if @+timestamp@ verbosity flag is set
 --
 -- This is used by 'withMetadata'
-withTimestamp :: Verbosity -> POSIXTime -> String -> String
+withTimestamp :: VerbosityFlags -> POSIXTime -> String -> String
 withTimestamp v ts msg
   | isVerboseTimestamp v = msg'
   | otherwise = msg -- no-op
@@ -740,7 +744,7 @@ withTimestamp v ts msg
 -- we don't have the ability to interpose on the output.
 --
 -- This is used by 'withMetadata'
-withOutputMarker :: Verbosity -> String -> String
+withOutputMarker :: VerbosityFlags -> String -> String
 withOutputMarker v xs | not (isVerboseMarkOutput v) = xs
 withOutputMarker _ "" = "" -- Minor optimization, don't mark uselessly
 withOutputMarker _ xs =
@@ -759,7 +763,7 @@ withTrailingNewline (x : xs) = x : go x xs
     go _ "" = "\n"
 
 -- | Prepend a call-site and/or call-stack based on Verbosity
-withCallStackPrefix :: WithCallStack (TraceWhen -> Verbosity -> String -> String)
+withCallStackPrefix :: WithCallStack (TraceWhen -> VerbosityFlags -> String -> String)
 withCallStackPrefix tracer verbosity s =
   withFrozenCallStack $
     ( if isVerboseCallSite verbosity
@@ -791,9 +795,9 @@ data TraceWhen
 
 -- | Determine if we should emit a call stack.
 -- If we trace, it also emits any prefix we should append.
-traceWhen :: Verbosity -> TraceWhen -> Maybe String
+traceWhen :: VerbosityFlags -> TraceWhen -> Maybe String
 traceWhen _ AlwaysTrace = Just ""
-traceWhen v VerboseTrace | v >= verbose = Just ""
+traceWhen v VerboseTrace | vLevel v >= Verbose = Just ""
 traceWhen v FlagTrace | isVerboseCallStack v = Just "----\n"
 traceWhen _ _ = Nothing
 
@@ -803,7 +807,7 @@ traceWhen _ _ = Nothing
 data MarkWhen = AlwaysMark | NormalMark | NeverMark
 
 -- | Add all necessary metadata to a logging message
-withMetadata :: WithCallStack (POSIXTime -> MarkWhen -> TraceWhen -> Verbosity -> String -> String)
+withMetadata :: WithCallStack (POSIXTime -> MarkWhen -> TraceWhen -> VerbosityFlags -> String -> String)
 withMetadata ts marker tracer verbosity x =
   withFrozenCallStack
     $
@@ -826,7 +830,7 @@ withMetadata ts marker tracer verbosity x =
     $ x
 
 -- | Add all necessary metadata to a logging message
-exceptionWithMetadata :: CallStack -> POSIXTime -> Verbosity -> String -> String
+exceptionWithMetadata :: CallStack -> POSIXTime -> VerbosityFlags -> String -> String
 exceptionWithMetadata stack ts verbosity x =
   withTrailingNewline
     . exceptionWithCallStackPrefix stack verbosity
@@ -843,7 +847,7 @@ clearMarkers s = unlines . filter isMarker $ lines s
     isMarker _ = True
 
 -- | Append a call-site and/or call-stack based on Verbosity
-exceptionWithCallStackPrefix :: CallStack -> Verbosity -> String -> String
+exceptionWithCallStackPrefix :: CallStack -> VerbosityFlags -> String -> String
 exceptionWithCallStackPrefix stack verbosity s =
   s
     ++ withFrozenCallStack
@@ -857,7 +861,7 @@ exceptionWithCallStackPrefix stack verbosity s =
                   else ""
             else ""
         )
-          ++ ( if verbosity >= verbose
+          ++ ( if vLevel verbosity >= Verbose
                 then prettyCallStack stack ++ "\n"
                 else ""
              )
@@ -920,6 +924,8 @@ rawSystemExitCode verbosity mbWorkDir path args menv =
       (proc path args)
         { Process.cwd = fmap getSymbolicPath mbWorkDir
         , Process.env = menv
+        , Process.std_out = Process.UseHandle $ verbosityStdoutHandle verbosity
+        , Process.std_err = Process.UseHandle $ verbosityStderrHandle verbosity
         }
 
 -- | Execute the given command with the given arguments, returning
@@ -991,6 +997,8 @@ rawSystemExitWithEnvCwd verbosity mbWorkDir path args env =
         (proc path args)
           { Process.env = Just env
           , Process.cwd = getSymbolicPath <$> mbWorkDir
+          , Process.std_out = Process.UseHandle $ verbosityStdoutHandle verbosity
+          , Process.std_err = Process.UseHandle $ verbosityStderrHandle verbosity
           }
 
 -- | Execute the given command with the given arguments, returning
@@ -1058,14 +1066,11 @@ rawSystemIOWithEnvAndAction verbosity path args mcwd menv action inp out err = w
         (proc path args)
           { Process.cwd = mcwd
           , Process.env = menv
-          , Process.std_in = mbToStd inp
-          , Process.std_out = mbToStd out
-          , Process.std_err = mbToStd err
+          , Process.std_in = maybe Process.Inherit Process.UseHandle inp
+          , Process.std_out = maybe (Process.UseHandle (verbosityStdoutHandle verbosity)) Process.UseHandle out
+          , Process.std_err = maybe (Process.UseHandle (verbosityStderrHandle verbosity)) Process.UseHandle err
           }
   rawSystemProcAction verbosity cp (\_ _ _ -> action)
-  where
-    mbToStd :: Maybe Handle -> Process.StdStream
-    mbToStd = maybe Process.Inherit Process.UseHandle
 
 -- | Execute the given command with the given arguments, returning
 -- the command's output. Exits if the command exits with error.
@@ -1826,20 +1831,18 @@ withTempFileEx opts template action = do
 -- Creates a new temporary directory inside the given directory, making use
 -- of the template. The temp directory is deleted after use. For example:
 --
--- > withTempDirectory verbosity "src" "sdist." $ \tmpDir -> do ...
+-- > withTempDirectory "src" "sdist." $ \tmpDir -> do ...
 --
 -- The @tmpDir@ will be a new subdirectory of the given directory, e.g.
 -- @src/sdist.342@.
 withTempDirectory
-  :: Verbosity
-  -> FilePath
+  :: FilePath
   -> String
   -> (FilePath -> IO a)
   -> IO a
-withTempDirectory verb targetDir template f =
+withTempDirectory targetDir template f =
   withFrozenCallStack $
     withTempDirectoryCwd
-      verb
       Nothing
       (makeSymbolicPath targetDir)
       template
@@ -1850,22 +1853,20 @@ withTempDirectory verb targetDir template f =
 -- Creates a new temporary directory inside the given directory, making use
 -- of the template. The temp directory is deleted after use. For example:
 --
--- > withTempDirectory verbosity "src" "sdist." $ \tmpDir -> do ...
+-- > withTempDirectory "src" "sdist." $ \tmpDir -> do ...
 --
 -- The @tmpDir@ will be a new subdirectory of the given directory, e.g.
 -- @src/sdist.342@.
 withTempDirectoryCwd
-  :: Verbosity
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ Working directory
   -> SymbolicPath Pkg (Dir tmpDir1)
   -> String
   -> (SymbolicPath Pkg (Dir tmpDir2) -> IO a)
   -> IO a
-withTempDirectoryCwd verbosity mbWorkDir targetDir template f =
+withTempDirectoryCwd mbWorkDir targetDir template f =
   withFrozenCallStack $
     withTempDirectoryCwdEx
-      verbosity
       defaultTempFileOptions
       mbWorkDir
       targetDir
@@ -1875,30 +1876,28 @@ withTempDirectoryCwd verbosity mbWorkDir targetDir template f =
 -- | A version of 'withTempDirectory' that additionally takes a
 -- 'TempFileOptions' argument.
 withTempDirectoryEx
-  :: Verbosity
-  -> TempFileOptions
+  :: TempFileOptions
   -> FilePath
   -> String
   -> (FilePath -> IO a)
   -> IO a
-withTempDirectoryEx verbosity opts targetDir template f =
+withTempDirectoryEx opts targetDir template f =
   withFrozenCallStack $
-    withTempDirectoryCwdEx verbosity opts Nothing (makeSymbolicPath targetDir) template $
+    withTempDirectoryCwdEx opts Nothing (makeSymbolicPath targetDir) template $
       \fp -> f (getSymbolicPath fp)
 
 -- | A version of 'withTempDirectoryCwd' that additionally takes a
 -- 'TempFileOptions' argument.
 withTempDirectoryCwdEx
   :: forall a tmpDir1 tmpDir2
-   . Verbosity
-  -> TempFileOptions
+   . TempFileOptions
   -> Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ Working directory
   -> SymbolicPath Pkg (Dir tmpDir1)
   -> String
   -> (SymbolicPath Pkg (Dir tmpDir2) -> IO a)
   -> IO a
-withTempDirectoryCwdEx _verbosity opts mbWorkDir targetDir template f =
+withTempDirectoryCwdEx opts mbWorkDir targetDir template f =
   withFrozenCallStack $
     Exception.bracket
       (createTempDirectory (i targetDir) template)

@@ -8,7 +8,7 @@ import Distribution.Verbosity
 main = do
   skipIfWindows "Might fail on windows."
   tmp <- getTemporaryDirectory
-  withTempDirectory normal tmp "bin" $
+  withTempDirectory tmp "bin" $
     \bin -> cabalTest $
       do
         ghc_path <- programPathM ghcProgram

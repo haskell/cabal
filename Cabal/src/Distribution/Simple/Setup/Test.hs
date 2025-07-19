@@ -101,7 +101,7 @@ data TestFlags = TestFlags
   deriving (Show, Generic)
 
 pattern TestCommonFlags
-  :: Flag Verbosity
+  :: Flag VerbosityFlags
   -> Flag (SymbolicPath Pkg (Dir Dist))
   -> Flag (SymbolicPath CWD (Dir Pkg))
   -> Flag (SymbolicPath Pkg File)

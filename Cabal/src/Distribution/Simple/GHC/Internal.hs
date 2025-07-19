@@ -378,7 +378,7 @@ includePaths lbi bi clbi odir =
          ]
 
 componentCcGhcOptions
-  :: Verbosity
+  :: VerbosityLevel
   -> LocalBuildInfo
   -> BuildInfo
   -> ComponentLocalBuildInfo
@@ -389,7 +389,7 @@ componentCcGhcOptions verbosity lbi bi clbi odir filename =
   mempty
     { -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
-      ghcOptVerbosity = toFlag (min verbosity normal)
+      ghcOptVerbosity = toFlag (min verbosity Normal)
     , ghcOptMode = toFlag GhcModeCompile
     , ghcOptInputFiles = toNubListR [filename]
     , ghcOptCppIncludePath = includePaths lbi bi clbi odir
@@ -417,7 +417,7 @@ componentCcGhcOptions verbosity lbi bi clbi odir filename =
     }
 
 componentCxxGhcOptions
-  :: Verbosity
+  :: VerbosityLevel
   -> LocalBuildInfo
   -> BuildInfo
   -> ComponentLocalBuildInfo
@@ -428,7 +428,7 @@ componentCxxGhcOptions verbosity lbi bi clbi odir filename =
   mempty
     { -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
-      ghcOptVerbosity = toFlag (min verbosity normal)
+      ghcOptVerbosity = toFlag (min verbosity Normal)
     , ghcOptMode = toFlag GhcModeCompile
     , ghcOptInputFiles = toNubListR [filename]
     , ghcOptCppIncludePath = includePaths lbi bi clbi odir
@@ -456,7 +456,7 @@ componentCxxGhcOptions verbosity lbi bi clbi odir filename =
     }
 
 componentAsmGhcOptions
-  :: Verbosity
+  :: VerbosityLevel
   -> LocalBuildInfo
   -> BuildInfo
   -> ComponentLocalBuildInfo
@@ -467,7 +467,7 @@ componentAsmGhcOptions verbosity lbi bi clbi odir filename =
   mempty
     { -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
-      ghcOptVerbosity = toFlag (min verbosity normal)
+      ghcOptVerbosity = toFlag (min verbosity Normal)
     , ghcOptMode = toFlag GhcModeCompile
     , ghcOptInputFiles = toNubListR [filename]
     , ghcOptCppIncludePath = includePaths lbi bi clbi odir
@@ -491,7 +491,7 @@ componentAsmGhcOptions verbosity lbi bi clbi odir filename =
     }
 
 componentJsGhcOptions
-  :: Verbosity
+  :: VerbosityLevel
   -> LocalBuildInfo
   -> BuildInfo
   -> ComponentLocalBuildInfo
@@ -502,7 +502,7 @@ componentJsGhcOptions verbosity lbi bi clbi odir filename =
   mempty
     { -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
-      ghcOptVerbosity = toFlag (min verbosity normal)
+      ghcOptVerbosity = toFlag (min verbosity Normal)
     , ghcOptMode = toFlag GhcModeCompile
     , ghcOptInputFiles = toNubListR [filename]
     , ghcOptJSppOptions = jsppOptions bi
@@ -515,7 +515,7 @@ componentJsGhcOptions verbosity lbi bi clbi odir filename =
     }
 
 componentGhcOptions
-  :: Verbosity
+  :: VerbosityLevel
   -> LocalBuildInfo
   -> BuildInfo
   -> ComponentLocalBuildInfo
@@ -526,7 +526,7 @@ componentGhcOptions verbosity lbi bi clbi odir =
    in mempty
         { -- Respect -v0, but don't crank up verbosity on GHC if
           -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
-          ghcOptVerbosity = toFlag (min verbosity normal)
+          ghcOptVerbosity = toFlag (min verbosity Normal)
         , ghcOptCabal = toFlag True
         , ghcOptThisUnitId = case clbi of
             LibComponentLocalBuildInfo{componentCompatPackageKey = pk} ->
@@ -602,7 +602,7 @@ toGhcOptimisation NormalOptimisation = toFlag GhcNormalOptimisation
 toGhcOptimisation MaximumOptimisation = toFlag GhcMaximumOptimisation
 
 componentCmmGhcOptions
-  :: Verbosity
+  :: VerbosityLevel
   -> LocalBuildInfo
   -> BuildInfo
   -> ComponentLocalBuildInfo
@@ -613,7 +613,7 @@ componentCmmGhcOptions verbosity lbi bi clbi odir filename =
   mempty
     { -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
-      ghcOptVerbosity = toFlag (min verbosity normal)
+      ghcOptVerbosity = toFlag (min verbosity Normal)
     , ghcOptMode = toFlag GhcModeCompile
     , ghcOptInputFiles = toNubListR [filename]
     , ghcOptCppIncludePath = includePaths lbi bi clbi odir

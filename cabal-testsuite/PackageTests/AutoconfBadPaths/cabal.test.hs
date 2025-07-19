@@ -1,6 +1,7 @@
 import Test.Cabal.Prelude
 import Data.Foldable (traverse_)
 import Distribution.Simple.Utils
+import Distribution.Verbosity
 import System.Directory
 main = do
   -- Most of these are magic on Windows, so don't bother testing there.
@@ -59,7 +60,7 @@ main = do
               , testDistDir env
               ]
         configured_prog <- requireProgramM cabalProgram
-        r <- liftIO $ run (testVerbosity env)
+        r <- liftIO $ run (mkVerbosity defaultVerbosityHandles $ testVerbosity env)
                       (Just $ testCurrentDir env </> dir)
                       (testEnvironment env)
                       (programPath configured_prog)

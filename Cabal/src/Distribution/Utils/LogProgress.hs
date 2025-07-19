@@ -64,14 +64,14 @@ runLogProgress verbosity (LogProgress m) =
 -- | Output a warning trace message in 'LogProgress'.
 warnProgress :: Doc -> LogProgress ()
 warnProgress s = LogProgress $ \env ->
-  when (le_verbosity env >= normal) $
+  when (verbosityLevel (le_verbosity env) >= Normal) $
     stepProgress $
       hang (text "Warning:") 4 (formatMsg (le_context env) s)
 
 -- | Output an informational trace message in 'LogProgress'.
 infoProgress :: Doc -> LogProgress ()
 infoProgress s = LogProgress $ \env ->
-  when (le_verbosity env >= verbose) $
+  when (verbosityLevel (le_verbosity env) >= Verbose) $
     stepProgress s
 
 -- | Fail the computation with an error message.

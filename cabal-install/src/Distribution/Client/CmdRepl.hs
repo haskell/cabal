@@ -156,6 +156,7 @@ import Distribution.Utils.Generic
   )
 import Distribution.Verbosity
   ( lessVerbose
+  , modifyVerbosityFlags
   , normal
   )
 import Language.Haskell.Extension
@@ -358,7 +359,7 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
         else -- Unfortunately, the best way to do this is to let the normal solver
         -- help us resolve the targets, but that isn't ideal for performance,
         -- especially in the no-project case.
-        withInstallPlan (lessVerbose verbosity) baseCtx' $ \elaboratedPlan sharedConfig -> do
+        withInstallPlan (modifyVerbosityFlags lessVerbose verbosity) baseCtx' $ \elaboratedPlan sharedConfig -> do
           -- targets should be non-empty map, but there's no NonEmptyMap yet.
           targets <- validatedTargets (projectConfigShared (projectConfig ctx)) (pkgConfigCompiler sharedConfig) elaboratedPlan targetSelectors
 
@@ -427,7 +428,7 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
     -- Multi Repl implementation see: https://well-typed.com/blog/2023/03/cabal-multi-unit/ for
     -- a high-level overview about how everything fits together.
     if Set.size (distinctTargetComponents targets) > 1
-      then withTempDirectoryEx verbosity tempFileOptions distDir "multi-out" $ \dir' -> do
+      then withTempDirectoryEx tempFileOptions distDir "multi-out" $ \dir' -> do
         -- multi target repl
         dir <- makeAbsolute dir'
         -- Modify the replOptions so that the ./Setup repl command will write options

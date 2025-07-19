@@ -93,7 +93,7 @@ driverFunctionTest pkgIx srcDb comp =
                     , "[\"quxTest/Main.hs\"]"
                     ]
 
-            case (runPrompt $ createProject comp silent pkgIx srcDb dummyFlags') inputs of
+            case (runPrompt $ createProject comp (mkVerbosity defaultVerbosityHandles silent) pkgIx srcDb dummyFlags') inputs of
               Right (ProjectSettings opts desc (Just lib) (Just exe) (Just test), _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False
@@ -180,7 +180,7 @@ driverFunctionTest pkgIx srcDb comp =
                       "False"
                     ]
 
-            case (runPrompt $ createProject comp silent pkgIx srcDb dummyFlags') inputs of
+            case (runPrompt $ createProject comp (mkVerbosity defaultVerbosityHandles silent) pkgIx srcDb dummyFlags') inputs of
               Right (ProjectSettings opts desc (Just lib) (Just exe) (Just test), _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False
@@ -359,7 +359,7 @@ driverFunctionTest pkgIx srcDb comp =
             case ( runPrompt $
                     createProject
                       comp
-                      silent
+                      (mkVerbosity defaultVerbosityHandles silent)
                       pkgIx
                       srcDb
                       ( emptyFlags
@@ -511,7 +511,7 @@ driverFunctionTest pkgIx srcDb comp =
             case ( runPrompt $
                     createProject
                       comp
-                      silent
+                      (mkVerbosity defaultVerbosityHandles silent)
                       pkgIx
                       srcDb
                       ( emptyFlags
@@ -664,7 +664,7 @@ driverFunctionTest pkgIx srcDb comp =
                     , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
                     ]
 
-            case (runPrompt $ createProject comp silent pkgIx srcDb emptyFlags) inputs of
+            case (runPrompt $ createProject comp (mkVerbosity defaultVerbosityHandles silent) pkgIx srcDb emptyFlags) inputs of
               Right (ProjectSettings opts desc (Just lib) (Just exe) Nothing, _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False
@@ -774,7 +774,7 @@ driverFunctionTest pkgIx srcDb comp =
                     , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
                     ]
 
-            case (runPrompt $ createProject comp silent pkgIx srcDb emptyFlags) inputs of
+            case (runPrompt $ createProject comp (mkVerbosity defaultVerbosityHandles silent) pkgIx srcDb emptyFlags) inputs of
               Right (ProjectSettings opts desc (Just lib) Nothing Nothing, _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False
@@ -865,7 +865,7 @@ driverFunctionTest pkgIx srcDb comp =
                     , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
                     ]
 
-            case (runPrompt $ createProject comp silent pkgIx srcDb emptyFlags) inputs of
+            case (runPrompt $ createProject comp (mkVerbosity defaultVerbosityHandles silent) pkgIx srcDb emptyFlags) inputs of
               Right (ProjectSettings opts desc Nothing (Just exe) Nothing, _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False

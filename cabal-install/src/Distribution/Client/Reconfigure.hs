@@ -15,6 +15,7 @@ import Distribution.Simple.Utils
   , info
   )
 import Distribution.Utils.Path
+import Distribution.Verbosity
 
 import Distribution.Client.Config (SavedConfig (..))
 import Distribution.Client.Configure (readConfigFlags)
@@ -152,7 +153,7 @@ reconfigure
             configFlags' =
               configFlags
                 { configCommonFlags =
-                    common{setupVerbosity = toFlag verbosity}
+                    common{setupVerbosity = toFlag $ verbosityFlags verbosity}
                 }
         return (mempty, (configFlags', configExFlags))
 
