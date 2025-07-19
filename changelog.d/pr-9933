@@ -1,0 +1,23 @@
+synopsis: Detect non-cyclical duplicate project imports
+description:
+  Detect and report on duplicate imports that are non-cyclical. Give more detail
+  when reporting cyclical imports. Be more explicit and consistent with
+  non-cyclical duplicate reporting.
+
+  ```
+  $ cabal build --project-file=cabal.project
+  ...
+  Error: [Cabal-7090]
+  Error parsing project file cabal.project:
+  duplicate import of config/config-3.config;
+    config/config-3.config
+      imported by: cabal.project
+    config/config-3.config
+      imported by: config-2.config
+      imported by: config/config-1.config
+      imported by: cabal.project
+  ```
+
+packages: cabal-install-solver cabal-install
+prs: #9578 #9933
+issues: #9562
