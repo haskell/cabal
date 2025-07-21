@@ -102,6 +102,7 @@ import qualified Data.ByteString as BS
 import Data.Maybe (fromJust)
 import Distribution.Simple.Flag (Flag, pattern Flag, pattern NoFlag)
 import Distribution.Types.ParStrat
+import Distribution.Verbosity
 
 main :: IO ()
 main = do
@@ -2178,18 +2179,18 @@ configureProject testdir cliConfig = do
   -- ended in an exception (as we leave the files to help with debugging).
   cleanProject testdir
 
-  httpTransport <- configureTransport verbosity [] Nothing
+  httpTransport <- configureTransport testVerbosity [] Nothing
 
   (projectConfig, localPackages) <-
     rebuildProjectConfig
-      verbosity
+      testVerbosity
       httpTransport
       distDirLayout
       cliConfig
 
   let buildSettings =
         resolveBuildTimeSettings
-          verbosity
+          testVerbosity
           cabalDirLayout
           projectConfig
 
@@ -2219,7 +2220,7 @@ planProject testdir cliConfig = do
 
   (elaboratedPlan, _, elaboratedShared, _, _) <-
     rebuildInstallPlan
-      verbosity
+      testVerbosity
       distDirLayout
       cabalDirLayout
       projectConfig
@@ -2267,7 +2268,7 @@ executePlan
 
     buildOutcomes <-
       rebuildTargets
-        verbosity
+        testVerbosity
         config
         distDirLayout
         (cabalStoreDirLayout cabalDirLayout)
@@ -2288,8 +2289,8 @@ cleanProject testdir = do
     distDirLayout = defaultDistDirLayout projectRoot Nothing Nothing
     distDir = distDirectory distDirLayout
 
-verbosity :: Verbosity
-verbosity = minBound -- normal --verbose --maxBound --minBound
+testVerbosity :: Verbosity
+testVerbosity = mkVerbosity defaultVerbosityHandles silent
 
 -------------------------------------------
 -- Tasty integration to adjust the config
@@ -2493,8 +2494,8 @@ testNixFlags = do
   Nothing @=? (fromFlag . globalNix . fromJust $ nixDefaultFlags)
 
   -- Config file options
-  trueConfig <- loadConfig verbosity (Flag (basedir </> "nix-config/nix-true"))
-  falseConfig <- loadConfig verbosity (Flag (basedir </> "nix-config/nix-false"))
+  trueConfig <- loadConfig testVerbosity (Flag (basedir </> "nix-config/nix-true"))
+  falseConfig <- loadConfig testVerbosity (Flag (basedir </> "nix-config/nix-false"))
 
   Just True @=? (fromFlag . globalNix . savedGlobalFlags $ trueConfig)
   Just False @=? (fromFlag . globalNix . savedGlobalFlags $ falseConfig)
@@ -2531,7 +2532,7 @@ testConfigOptionComments = do
 
   cwd <- getCurrentDirectory
   let configFile = cwd </> basedir </> "config" </> "default-config"
-  _ <- createDefaultConfigFile verbosity [] configFile
+  _ <- createDefaultConfigFile testVerbosity [] configFile
   defaultConfigFile <- readFile configFile
 
   let
@@ -2805,7 +2806,7 @@ testHaddockProjectDependencies config = do
         defaultHaddockProjectFlags
           { haddockProjectCommonFlags =
               defaultCommonSetupFlags
-                { setupVerbosity = Flag verbosity
+                { setupVerbosity = Flag $ verbosityFlags testVerbosity
                 }
           }
         ["all"]

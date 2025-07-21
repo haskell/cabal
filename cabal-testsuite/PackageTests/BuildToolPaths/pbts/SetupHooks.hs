@@ -40,6 +40,7 @@ import Distribution.Types.LocalBuildInfo
 import Distribution.Utils.Path
 import Distribution.Utils.ShortText
   ( toShortText )
+import Distribution.Verbosity
 
 -- filepath
 import System.FilePath
@@ -66,7 +67,7 @@ preBuildRules
     , targetInfo     = tgt
     }
   = do
-      let verbosity = buildingWhatVerbosity what
+      let verbosityFlags = buildingWhatVerbosity what
           comp = targetComponent tgt
           compNm = componentName comp
           clbi = targetCLBI tgt
@@ -97,10 +98,10 @@ preBuildRules
     -- 2. Create a command to run a preprocessor, passing input and output file locations.
       let
         ppCmd :: ConfiguredProgram -> Location -> Location
-              -> Command ( Verbosity, Maybe (SymbolicPath CWD (Dir Pkg)), ConfiguredProgram, Location, Location ) ( IO () )
+              -> Command ( VerbosityFlags, Maybe (SymbolicPath CWD (Dir Pkg)), ConfiguredProgram, Location, Location ) ( IO () )
         ppCmd pp i o =
           mkCommand ( static Dict ) ( static ppModule )
-            ( verbosity, mbWorkDir, pp, i, o )
+            ( verbosityFlags, mbWorkDir, pp, i, o )
 
     -- 3. Get all modules listed in the package description for this component.
       let mods = componentModules comp
@@ -142,10 +143,11 @@ preBuildRules
         registerRule_ ( toShortText $ show md ) $
           staticRule ( ppCmd customPp inputLoc outputLoc ) [] ( outputLoc NE.:| [] )
 
-ppModule :: ( Verbosity, Maybe (SymbolicPath CWD (Dir Pkg)), ConfiguredProgram, Location, Location ) -> IO ()
-ppModule ( verbosity, mbWorkDir, customPp, inputLoc, outputLoc ) = do
+ppModule :: ( VerbosityFlags, Maybe (SymbolicPath CWD (Dir Pkg)), ConfiguredProgram, Location, Location ) -> IO ()
+ppModule ( verbosityFlags, mbWorkDir, customPp, inputLoc, outputLoc ) = do
   let inputPath  = location inputLoc
       outputPath = location outputLoc
+      verbosity  = mkVerbosity defaultVerbosityHandles verbosityFlags
   createDirectoryIfMissingVerbose verbosity True $
     interpretSymbolicPath mbWorkDir (takeDirectorySymbolicPath outputPath)
   runProgramCwd verbosity mbWorkDir customPp [ getSymbolicPath inputPath, getSymbolicPath outputPath ]

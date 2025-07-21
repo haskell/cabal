@@ -137,7 +137,7 @@ import Distribution.Types.DependencySatisfaction
   ( DependencySatisfaction (..)
   )
 import Distribution.Verbosity
-  ( normal
+  ( VerbosityLevel (..)
   )
 import Distribution.Version
 
@@ -210,7 +210,7 @@ data DepResolverParams = DepResolverParams
   -- so we shouldn't solve for them.  See #3875.
   , depResolverGoalOrder :: Maybe (Variable QPN -> Variable QPN -> Ordering)
   -- ^ Function to override the solver's goal-ordering heuristics.
-  , depResolverVerbosity :: Verbosity
+  , depResolverVerbosity :: VerbosityLevel
   }
 
 showDepResolverParams :: DepResolverParams -> String
@@ -307,7 +307,7 @@ basicDepResolverParams installedPkgIndex sourcePkgIndex =
     , depResolverEnableBackjumping = EnableBackjumping True
     , depResolverSolveExecutables = SolveExecutables True
     , depResolverGoalOrder = Nothing
-    , depResolverVerbosity = normal
+    , depResolverVerbosity = Normal
     }
 
 addTargets
@@ -437,7 +437,7 @@ setGoalOrder order params =
     { depResolverGoalOrder = order
     }
 
-setSolverVerbosity :: Verbosity -> DepResolverParams -> DepResolverParams
+setSolverVerbosity :: VerbosityLevel -> DepResolverParams -> DepResolverParams
 setSolverVerbosity verbosity params =
   params
     { depResolverVerbosity = verbosity

@@ -40,6 +40,7 @@ import Distribution.Client.Setup
   , liftOptions
   , testOptions
   )
+import Distribution.Verbosity (VerbosityFlags, defaultVerbosityHandles, mkVerbosity)
 
 data NixStyleFlags a = NixStyleFlags
   { configFlags :: ConfigFlags
@@ -157,5 +158,7 @@ updNixStyleCommonSetupFlags setFlag nixFlags =
          in flags{benchmarkCommonFlags = setFlag common}
     }
 
-cfgVerbosity :: Verbosity -> NixStyleFlags a -> Verbosity
-cfgVerbosity v flags = fromFlagOrDefault v (setupVerbosity . configCommonFlags $ configFlags flags)
+cfgVerbosity :: VerbosityFlags -> NixStyleFlags a -> Verbosity
+cfgVerbosity v flags =
+  mkVerbosity defaultVerbosityHandles $
+    fromFlagOrDefault v (setupVerbosity . configCommonFlags $ configFlags flags)

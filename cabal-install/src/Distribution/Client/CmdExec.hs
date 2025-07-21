@@ -250,7 +250,6 @@ withTempEnvFile verbosity baseCtx buildCtx buildStatus action = do
   let tmpDirTemplate = distTempDirectory (distDirLayout baseCtx)
   createDirectoryIfMissingVerbose verbosity True tmpDirTemplate
   withTempDirectory
-    verbosity
     tmpDirTemplate
     "environment."
     ( \tmpDir -> do

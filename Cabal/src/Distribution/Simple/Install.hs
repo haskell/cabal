@@ -104,10 +104,11 @@ install
   -> CopyFlags
   -- ^ flags sent to copy or install
   -> IO ()
-install = install_setupHooks SetupHooks.noInstallHooks
+install = install_setupHooks SetupHooks.noInstallHooks defaultVerbosityHandles
 
 install_setupHooks
   :: InstallHooks
+  -> VerbosityHandles
   -> PackageDescription
   -- ^ information from the .cabal file
   -> LocalBuildInfo
@@ -117,6 +118,7 @@ install_setupHooks
   -> IO ()
 install_setupHooks
   (InstallHooks{installComponentHook})
+  verbHandles
   pkg_descr
   lbi
   flags = do
@@ -141,7 +143,7 @@ install_setupHooks
     where
       common = copyCommonFlags flags
       distPref = fromFlag $ setupDistPref common
-      verbosity = fromFlag $ setupVerbosity common
+      verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
       copydest = fromFlag (copyDest flags)
 
       checkHasLibsOrExes =
