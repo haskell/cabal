@@ -123,6 +123,12 @@ import Distribution.Solver.Modular
   , SolverConfig (..)
   , modularResolver
   )
+import Distribution.Solver.Modular.Message
+  ( renderSummarizedMessage
+  )
+import Distribution.Solver.Types.SummarizedMessage
+  ( SummarizedMessage (..)
+  )
 import Distribution.System
   ( Platform
   )
@@ -152,6 +158,8 @@ import Distribution.Solver.Types.ResolverPackage
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SolverId
 import Distribution.Solver.Types.SolverPackage
+  ( SolverPackage (SolverPackage)
+  )
 import Distribution.Solver.Types.SourcePackage
 import Distribution.Solver.Types.Variable
 
@@ -790,32 +798,33 @@ resolveDependencies
 resolveDependencies platform comp pkgConfigDB params =
   Step (showDepResolverParams finalparams) $
     fmap (validateSolverResult platform comp indGoals) $
-      runSolver
-        ( SolverConfig
-            reordGoals
-            cntConflicts
-            fineGrained
-            minimize
-            indGoals
-            noReinstalls
-            shadowing
-            strFlags
-            onlyConstrained_
-            maxBkjumps
-            enableBj
-            solveExes
-            order
-            verbosity
-            (PruneAfterFirstSuccess False)
-        )
-        platform
-        comp
-        installedPkgIndex
-        sourcePkgIndex
-        pkgConfigDB
-        preferences
-        constraints
-        targets
+      formatProgress $
+        runSolver
+          ( SolverConfig
+              reordGoals
+              cntConflicts
+              fineGrained
+              minimize
+              indGoals
+              noReinstalls
+              shadowing
+              strFlags
+              onlyConstrained_
+              maxBkjumps
+              enableBj
+              solveExes
+              order
+              verbosity
+              (PruneAfterFirstSuccess False)
+          )
+          platform
+          comp
+          installedPkgIndex
+          sourcePkgIndex
+          pkgConfigDB
+          preferences
+          constraints
+          targets
   where
     finalparams@( DepResolverParams
                     targets
@@ -843,6 +852,9 @@ resolveDependencies platform comp pkgConfigDB params =
         if asBool (depResolverAllowBootLibInstalls params)
           then params
           else dontInstallNonReinstallablePackages params
+
+    formatProgress :: Progress SummarizedMessage String a -> Progress String String a
+    formatProgress p = foldProgress (\x xs -> Step (renderSummarizedMessage x) xs) Fail Done p
 
     preferences :: PackageName -> PackagePreferences
     preferences = interpretPackagesPreference targets defpref prefs

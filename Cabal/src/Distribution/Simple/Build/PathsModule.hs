@@ -51,7 +51,7 @@ generatePathsModule pkg_descr lbi clbi =
       , Z.zIsWindows = isWindows
       , Z.zIsI386 = buildArch == I386
       , Z.zIsX8664 = buildArch == X86_64
-      , Z.zIsAarch64 = buildArch == AArch64
+      , Z.zIsAArch64 = buildArch == AArch64
       , Z.zNot = not
       , Z.zManglePkgName = showPkgName
       , Z.zPrefix = show flat_prefix

@@ -1,7 +1,7 @@
 cabal-version: 3.6
 name:          Cabal-hooks
 version:       3.17
-copyright:     2023, Cabal Development Team
+copyright:     2025, Cabal Development Team
 license:       BSD-3-Clause
 license-file:  LICENSE
 author:        Cabal Development Team <cabal-devel@haskell.org>

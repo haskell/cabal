@@ -122,9 +122,6 @@ For reasons of discoverability, the changelog of Cabal & Cabal-syntax 3.14.0.0 i
 
 - Add `OrPatterns` extension (GHC proposal #958) [#10339](https://github.com/haskell/cabal/pull/10339)
 
-
-### Other changes
-
 - Add flag `--ignore-build-tools` [#10128](https://github.com/haskell/cabal/pull/10128)
 
   - Adds flag `--ignore-build-tools` which allows a user to ignore the tool

@@ -1112,6 +1112,24 @@ configuration from the 'cabal.project', 'cabal.project.local' and other files.
 
     Disables the loading of target modules at startup.
 
+.. option:: --with-repl=PATH
+
+    Specifies an alternative program to use when starting the REPL session,
+    instead of the default GHC. This is particularly useful for tools like
+    ``doctest`` and ``hie-bios`` that need to intercept the REPL session to
+    perform their own operations.
+
+    Unlike ``--with-ghc`` which affects all GHC invocations (including dependency
+    compilation), ``--with-repl`` only affects the final REPL invocation, making
+    it much simpler for wrapper tools to implement.
+
+    Examples:
+
+    ::
+
+        $ cabal repl --with-repl=doctest
+        $ cabal repl --with-repl=/path/to/custom/ghc
+
 .. option:: -b DEPENDENCIES or -bDEPENDENCIES, --build-depends=DEPENDENCIES
 
     A way to experiment with libraries without needing to download

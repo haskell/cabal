@@ -1,0 +1,33 @@
+cabal-version:  3.6
+name:           my-toplevel
+description:    Test that extra-include-dirs and extra-lib-dirs are not duplicated unnecessarily when e.g. gcc gets ultimately invoked
+version:        0.1
+license:        BSD-3-Clause
+build-type:     Simple
+
+library
+  default-language:
+    Haskell2010
+  exposed-modules:
+    Foo
+  -- build-tool-depends:
+  --   , hsc2hs:hsc2hs
+  hsc2hs-options:
+    -DTEST_OPTION=42
+  build-depends:
+    , base
+    , my01
+    , my02
+    , my03
+    , my04
+    , my05
+    , my06
+    , my07
+    , my08
+    , my09
+    , my10
+
+executable my-executable
+  main-is:            Main.hs
+  build-depends:      base, my-toplevel
+  default-language:   Haskell2010

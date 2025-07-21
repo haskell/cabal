@@ -4,19 +4,69 @@ set -Eeuo pipefail
 
 source "$CI_PROJECT_DIR/.gitlab/common.sh"
 
-## Figure out how to get the Haskell toolchain.
+# Required arguments to the script
+: "${GHC_VERSION:?Need to set GHC_VERSION}"
+: "${CABAL_INSTALL_VERSION:?Need to set CABAL_INSTALL_VERSION}"
 
-# For backport, the centos image no longer has the right GHC version, so use
-# ghcup.
-if [[ -f /etc/os-release && "$(grep ^ID /etc/os-release)" =~ "centos" ]]; then
-    . "$CI_PROJECT_DIR/.gitlab/ghcup.sh"
-# All the other ones are fine.
-elif [[ "$(uname)" == "Linux" ]]; then
-    export PATH="/opt/ghc/${GHC_VERSION}/bin:${PATH}"
-# Not all runners use ci-images, so ghcup is used.
+# If GHC is set, extract its directory and add it to PATH
+# The linux images set the GHC variable to specify the location of the GHC installation.
+if [[ -n "${GHC:-}" ]]; then
+  echo "GHC variable is set to: $GHC"
+  export PATH="$(dirname "$GHC"):$PATH"
 else
-    . "$CI_PROJECT_DIR/.gitlab/ghcup.sh"
+  GHC="ghc"
 fi
+
+echo "Checking toolchain versions..."
+
+# GHC check
+ghc_version_ok=false
+if command -v ghc  &>/dev/null; then
+  current_ghc_version=$(ghc --numeric-version)
+  if [[ "$current_ghc_version" == "$GHC_VERSION" ]]; then
+    ghc_version_ok=true
+  else
+    echo "Wrong GHC version: found $current_ghc_version, expected $GHC_VERSION"
+  fi
+else
+  echo "GHC executable '$GHC' not found on PATH"
+fi
+
+# cabal check
+cabal_version_ok=false
+if command -v cabal &>/dev/null; then
+  current_cabal_version=$(cabal --numeric-version)
+  if [[ "$current_cabal_version" == "$CABAL_INSTALL_VERSION" ]]; then
+    cabal_version_ok=true
+  else
+    echo "Wrong cabal version: found $current_cabal_version, expected $CABAL_INSTALL_VERSION"
+  fi
+else
+  echo "cabal not found on PATH"
+fi
+
+# If either is wrong, install via ghcup
+if ! $ghc_version_ok || ! $cabal_version_ok; then
+  echo "Installing correct GHC and/or cabal via ghcup..."
+  . "$CI_PROJECT_DIR/.gitlab/ghcup.sh"
+fi
+
+# Final verification (ghc and cabal must now be on PATH)
+echo "Verifying installed versions..."
+
+actual_ghc_version=$(ghc --numeric-version)
+actual_cabal_version=$(cabal --numeric-version)
+
+if [[ "$actual_ghc_version" != "$GHC_VERSION" ]]; then
+  fail "Incorrect GHC version (actual: $actual_ghc_version, expected: $GHC_VERSION)"
+fi
+
+if [[ "$actual_cabal_version" != "$CABAL_INSTALL_VERSION" ]]; then
+  fail "Incorrect cabal version (actual: $actual_cabal_version, expected: $CABAL_INSTALL_VERSION)"
+fi
+
+echo "Using GHC version: $actual_ghc_version"
+echo "Using cabal-install version: $actual_cabal_version"
 
 export CABAL_DIR="$CI_PROJECT_DIR/cabal"
 
