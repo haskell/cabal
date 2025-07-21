@@ -14,6 +14,9 @@ on:
       ghc_targets:
         type: string
         default: "install_bin install_lib update_package_db install_extra"
+      gmp:
+        type: string
+        default: 6.3.0
       cabal:
         type: string
         default: 3.14.2.0
@@ -30,6 +33,7 @@ env:
   GHC_TEST_VERSION: 9.6.7
   GHC_TEST_TARGETS: "install_bin install_lib update_package_db"
   CABAL_VERSION: ${{ inputs.cabal }}
+  GMP_VERSION: ${{ inputs.gmp }}
   BOOTSTRAP_HASKELL_NONINTERACTIVE: 1
   BOOTSTRAP_HASKELL_MINIMAL: 1
   DEBIAN_FRONTEND: noninteractive
@@ -70,89 +74,19 @@ jobs:
       fail-fast: false
       matrix:
         branch: ${{ fromJSON(inputs.branches) }}
-        platform: [ { image: "debian:11"
-                    , installCmd: "apt-get update && apt-get install -y"
-                    , toolRequirements: "${{ needs.tool-output.outputs.apt_tools }}"
-                    , DISTRO: "Debian"
-                    , ARTIFACT: "x86_64-linux-deb11"
-                    , ADD_CABAL_ARGS: "--enable-split-sections"
-                    },
-                    { image: "debian:12"
-                    , installCmd: "apt-get update && apt-get install -y"
-                    , toolRequirements: "${{ needs.tool-output.outputs.apt_tools }}"
-                    , DISTRO: "Debian"
-                    , ARTIFACT: "x86_64-linux-deb12"
-                    , ADD_CABAL_ARGS: "--enable-split-sections"
-                    },
-                    { image: "ubuntu:20.04"
-                    , installCmd: "apt-get update && apt-get install -y"
-                    , toolRequirements: "${{ needs.tool-output.outputs.apt_tools }}"
-                    , DISTRO: "Ubuntu"
-                    , ARTIFACT: "x86_64-linux-ubuntu20.04"
-                    , ADD_CABAL_ARGS: "--enable-split-sections"
-                    },
-                    { image: "ubuntu:22.04"
-                    , installCmd: "apt-get update && apt-get install -y"
-                    , toolRequirements: "${{ needs.tool-output.outputs.apt_tools }}"
-                    , DISTRO: "Ubuntu"
-                    , ARTIFACT: "x86_64-linux-ubuntu22.04"
-                    , ADD_CABAL_ARGS: "--enable-split-sections"
-                    },
-                    { image: "ubuntu:24.04"
-                    , installCmd: "apt-get update && apt-get install -y"
-                    , toolRequirements: "${{ needs.tool-output.outputs.apt_tools_ncurses6 }}"
-                    , DISTRO: "Ubuntu"
-                    , ARTIFACT: "x86_64-linux-ubuntu24.04"
-                    , ADD_CABAL_ARGS: "--enable-split-sections"
-                    },
-                    { image: "fedora:33"
-                    , installCmd: "dnf install -y"
-                    , toolRequirements: "${{ needs.tool-output.outputs.rpm_tools }}"
-                    , DISTRO: "Fedora"
-                    , ARTIFACT: "x86_64-linux-fedora33"
-                    , ADD_CABAL_ARGS: "--enable-split-sections"
-                    },
-                    { image: "fedora:36"
-                    , installCmd: "dnf install -y"
-                    , toolRequirements: "${{ needs.tool-output.outputs.rpm_tools }}"
-                    , DISTRO: "Fedora"
-                    , ARTIFACT: "x86_64-linux-fedora36"
-                    , ADD_CABAL_ARGS: "--enable-split-sections"
-                    },
-                    { image: "fedora:38"
-                    , installCmd: "dnf install -y"
-                    , toolRequirements: "${{ needs.tool-output.outputs.rpm_tools }}"
-                    , DISTRO: "Fedora"
-                    , ARTIFACT: "x86_64-linux-fedora38"
-                    , ADD_CABAL_ARGS: "--enable-split-sections"
-                    },
-                    { image: "rockylinux:8"
+        platform: [ { image: "rockylinux:8"
                     , installCmd: "yum -y install epel-release && yum install -y --allowerasing"
                     , toolRequirements: "${{ needs.tool-output.outputs.rpm_tools }}"
-                    , DISTRO: "Unknown"
-                    , ARTIFACT: "x86_64-linux-rocky8"
+                    , DISTRO: "Rockylinux"
+                    , ARTIFACT: "x86_64-linux-glibc"
                     , ADD_CABAL_ARGS: "--enable-split-sections"
                     },
                     { image: "alpine:3.20"
                     , installCmd: "apk update && apk add"
                     , toolRequirements: "${{ needs.tool-output.outputs.apk_tools }}"
-                    , DISTRO: "Unknown"
-                    , ARTIFACT: "x86_64-linux-unknown"
+                    , DISTRO: "Alpine"
+                    , ARTIFACT: "x86_64-linux-musl-static"
                     , ADD_CABAL_ARGS: "--enable-split-sections --enable-executable-static"
-                    },
-                    { image: "alpine:3.12"
-                    , installCmd: "apk update && apk add"
-                    , toolRequirements: "${{ needs.tool-output.outputs.apk_tools }}"
-                    , DISTRO: "Unknown"
-                    , ARTIFACT: "x86_64-linux-alpine312"
-                    , ADD_CABAL_ARGS: "--enable-split-sections"
-                    },
-                    { image: "alpine:3.20"
-                    , installCmd: "apk update && apk add"
-                    , toolRequirements: "${{ needs.tool-output.outputs.apk_tools }}"
-                    , DISTRO: "Unknown"
-                    , ARTIFACT: "x86_64-linux-alpine320"
-                    , ADD_CABAL_ARGS: "--enable-split-sections"
                     }
                   ]
     container:
@@ -172,6 +106,19 @@ jobs:
         with:
           ref: ${{ matrix.branch }}
 
+      - name: install GMP
+        if: matrix.platform.DISTRO == 'Rockylinux'
+        run: |
+          set -eux
+
+          curl -O -L https://gmplib.org/download/gmp/gmp-${{ env.GMP_VERSION }}.tar.xz
+          tar xf gmp-${{ env.GMP_VERSION }}.tar.xz
+          cd gmp-${{ env.GMP_VERSION }}
+          CFLAGS=-fPIC ./configure --prefix=$HOME/.local/ --disable-shared
+          make install
+          cd ..
+          echo "extra-lib-dirs: $HOME/.local/lib/" >> cabal.release.project.local
+
       - name: Run build
         run: |
           bash .github/scripts/build.bash
@@ -180,6 +127,14 @@ jobs:
           ARTIFACT: ${{ matrix.platform.ARTIFACT }}
           DISTRO: ${{ matrix.platform.DISTRO }}
           ADD_CABAL_ARGS: ${{ matrix.platform.ADD_CABAL_ARGS }}
+
+      - name: check linking
+        if: matrix.platform.DISTRO == 'Rockylinux'
+        run: |
+          cd out
+          tar xf *.${TARBALL_EXT}
+          ldd cabal | grep --quiet gmp && exit 1
+          rm cabal plan.json
 
       - if: always()
         name: Upload artifact
@@ -473,73 +428,91 @@ jobs:
                     , installCmd: "apt-get update && apt-get install -y"
                     , toolRequirements: "${{ needs.tool-output.outputs.apt_tools }}"
                     , DISTRO: "Debian"
-                    , ARTIFACT: "x86_64-linux-deb11"
+                    , ARTIFACT: "x86_64-linux-glibc"
                     },
                     { image: "debian:12"
                     , installCmd: "apt-get update && apt-get install -y"
                     , toolRequirements: "${{ needs.tool-output.outputs.apt_tools }}"
                     , DISTRO: "Debian"
-                    , ARTIFACT: "x86_64-linux-deb12"
+                    , ARTIFACT: "x86_64-linux-glibc"
                     },
                     { image: "ubuntu:20.04"
                     , installCmd: "apt-get update && apt-get install -y"
                     , toolRequirements: "${{ needs.tool-output.outputs.apt_tools }}"
                     , DISTRO: "Ubuntu"
-                    , ARTIFACT: "x86_64-linux-ubuntu20.04"
+                    , ARTIFACT: "x86_64-linux-glibc"
                     },
                     { image: "ubuntu:22.04"
                     , installCmd: "apt-get update && apt-get install -y"
                     , toolRequirements: "${{ needs.tool-output.outputs.apt_tools }}"
                     , DISTRO: "Ubuntu"
-                    , ARTIFACT: "x86_64-linux-ubuntu22.04"
+                    , ARTIFACT: "x86_64-linux-glibc"
                     },
                     { image: "ubuntu:24.04"
                     , installCmd: "apt-get update && apt-get install -y"
                     , toolRequirements: "${{ needs.tool-output.outputs.apt_tools_ncurses6 }}"
                     , DISTRO: "Ubuntu"
-                    , ARTIFACT: "x86_64-linux-ubuntu24.04"
+                    , ARTIFACT: "x86_64-linux-glibc"
+                    },
+                    { image: "linuxmintd/mint20.3-amd64"
+                    , installCmd: "apt-get update && apt-get install -y"
+                    , toolRequirements: "${{ needs.tool-output.outputs.apt_tools }}"
+                    , DISTRO: "Mint"
+                    , ARTIFACT: "x86_64-linux-glibc"
+                    },
+                    { image: "linuxmintd/mint21.3-amd64"
+                    , installCmd: "apt-get update && apt-get install -y"
+                    , toolRequirements: "${{ needs.tool-output.outputs.apt_tools }}"
+                    , DISTRO: "Mint"
+                    , ARTIFACT: "x86_64-linux-glibc"
                     },
                     { image: "fedora:33"
                     , installCmd: "dnf install -y"
                     , toolRequirements: "${{ needs.tool-output.outputs.rpm_tools }}"
                     , DISTRO: "Fedora"
-                    , ARTIFACT: "x86_64-linux-fedora33"
+                    , ARTIFACT: "x86_64-linux-glibc"
                     },
-                    { image: "fedora:36"
+                    { image: "fedora:37"
                     , installCmd: "dnf install -y"
                     , toolRequirements: "${{ needs.tool-output.outputs.rpm_tools }}"
                     , DISTRO: "Fedora"
-                    , ARTIFACT: "x86_64-linux-fedora36"
+                    , ARTIFACT: "x86_64-linux-glibc"
                     },
-                    { image: "fedora:38"
+                    { image: "fedora:42"
                     , installCmd: "dnf install -y"
                     , toolRequirements: "${{ needs.tool-output.outputs.rpm_tools }}"
                     , DISTRO: "Fedora"
-                    , ARTIFACT: "x86_64-linux-fedora38"
+                    , ARTIFACT: "x86_64-linux-glibc"
                     },
                     { image: "rockylinux:8"
                     , installCmd: "yum -y install epel-release && yum install -y --allowerasing"
                     , toolRequirements: "${{ needs.tool-output.outputs.rpm_tools }}"
-                    , DISTRO: "Unknown"
-                    , ARTIFACT: "x86_64-linux-rocky8"
+                    , DISTRO: "Rockylinux"
+                    , ARTIFACT: "x86_64-linux-glibc"
+                    },
+                    { image: "rockylinux:9"
+                    , installCmd: "yum -y install epel-release && yum install -y --allowerasing"
+                    , toolRequirements: "${{ needs.tool-output.outputs.rpm_tools }}"
+                    , DISTRO: "Rockylinux"
+                    , ARTIFACT: "x86_64-linux-glibc"
                     },
                     { image: "alpine:3.20"
                     , installCmd: "apk update && apk add"
                     , toolRequirements: "${{ needs.tool-output.outputs.apk_tools }}"
-                    , DISTRO: "Unknown"
-                    , ARTIFACT: "x86_64-linux-unknown"
+                    , DISTRO: "Alpine"
+                    , ARTIFACT: "x86_64-linux-musl-static"
                     },
                     { image: "alpine:3.12"
                     , installCmd: "apk update && apk add"
                     , toolRequirements: "${{ needs.tool-output.outputs.apk_tools }}"
-                    , DISTRO: "Unknown"
-                    , ARTIFACT: "x86_64-linux-alpine312"
+                    , DISTRO: "Alpine"
+                    , ARTIFACT: "x86_64-linux-musl-static"
                     },
-                    { image: "alpine:3.20"
-                    , installCmd: "apk update && apk add"
-                    , toolRequirements: "${{ needs.tool-output.outputs.apk_tools }}"
+                    { image: "ghcr.io/void-linux/void-glibc:latest"
+                    , installCmd: "xbps-install -Suy xbps && xbps-install -Sy"
+                    , toolRequirements: "${{ needs.tool-output.outputs.xbps_tools }}"
                     , DISTRO: "Unknown"
-                    , ARTIFACT: "x86_64-linux-alpine320"
+                    , ARTIFACT: "x86_64-linux-musl-static"
                     }
                   ]
     container:
