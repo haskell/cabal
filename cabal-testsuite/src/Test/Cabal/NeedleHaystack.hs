@@ -145,7 +145,7 @@ data TxFwdBwd =
 txFwdBwdId :: TxFwdBwd
 txFwdBwdId = TxFwdBwd id id
 
--- | Conversions of the needle and haystack strings, the seach string and the
+-- | Conversions of the needle and haystack strings, the search string and the
 -- text to search in.
 data NeedleHaystack =
     NeedleHaystack
