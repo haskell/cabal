@@ -460,6 +460,8 @@ jobs:
     env:
       TARBALL_EXT: tar.xz
       ARCH: 64
+      GHC_VERSION: 9.6.7
+      GHC_TARGETS: "install_bin install_lib update_package_db"
     strategy:
       fail-fast: false
       matrix:
@@ -621,6 +623,8 @@ jobs:
       ADD_CABAL_ARGS: ""
       TARBALL_EXT: tar.xz
       ARCH: ARM64
+      GHC_VERSION: 9.6.7
+      GHC_TARGETS: "install_bin install_lib update_package_db"
     strategy:
       fail-fast: false
       matrix:
@@ -674,6 +678,8 @@ jobs:
       ARCH: 64
       TARBALL_EXT: tar.xz
       DISTRO: na
+      GHC_VERSION: 9.6.7
+      GHC_TARGETS: "install_bin install_lib update_package_db"
     strategy:
       fail-fast: false
       matrix:
@@ -712,6 +718,8 @@ jobs:
       DISTRO: na
       HOMEBREW_CHANGE_ARCH_TO_ARM: 1
       GHCUP_INSTALL_BASE_PREFIX: ${{ github.workspace }}
+      GHC_VERSION: 9.6.7
+      GHC_TARGETS: "install_bin install_lib update_package_db"
     strategy:
       fail-fast: false
       matrix:
@@ -749,6 +757,8 @@ jobs:
       DISTRO: na
       CABAL_DIR: "C:\\Users\\runneradmin\\AppData\\Roaming\\cabal"
       GHCUP_INSTALL_BASE_PREFIX: "/c"
+      GHC_VERSION: 9.6.7
+      GHC_TARGETS: "install_bin install_lib update_package_db"
     strategy:
       fail-fast: false
       matrix:
@@ -798,6 +808,8 @@ jobs:
       RUNNER_OS: FreeBSD
       CABAL_DIR: ${{ github.workspace }}/.cabal
       GHCUP_INSTALL_BASE_PREFIX: ${{ github.workspace }}
+      GHC_VERSION: 9.6.7
+      GHC_TARGETS: "install_bin install_lib update_package_db"
     strategy:
       fail-fast: false
       matrix:
