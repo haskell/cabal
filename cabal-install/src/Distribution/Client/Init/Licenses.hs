@@ -30,7 +30,6 @@ bsd2 :: String -> String -> License
 bsd2 authors year =
   unlines
     [ "Copyright (c) " ++ year ++ ", " ++ authors
-    , "All rights reserved."
     , ""
     , "Redistribution and use in source and binary forms, with or without"
     , "modification, are permitted provided that the following conditions are"
@@ -48,7 +47,7 @@ bsd2 authors year =
     , "\"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT"
     , "LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR"
     , "A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT"
-    , "OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,"
+    , "HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,"
     , "SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT"
     , "LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,"
     , "DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY"
@@ -62,7 +61,6 @@ bsd3 authors year =
   unlines
     [ "Copyright (c) " ++ year ++ ", " ++ authors
     , ""
-    , "All rights reserved."
     , ""
     , "Redistribution and use in source and binary forms, with or without"
     , "modification, are permitted provided that the following conditions are met:"
@@ -75,7 +73,7 @@ bsd3 authors year =
     , "      disclaimer in the documentation and/or other materials provided"
     , "      with the distribution."
     , ""
-    , "    * Neither the name of " ++ authors ++ " nor the names of other"
+    , "    * Neither the name of the copyright holder nor the names of its"
     , "      contributors may be used to endorse or promote products derived"
     , "      from this software without specific prior written permission."
     , ""
@@ -83,7 +81,7 @@ bsd3 authors year =
     , "\"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT"
     , "LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR"
     , "A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT"
-    , "OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,"
+    , "HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,"
     , "SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT"
     , "LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,"
     , "DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY"

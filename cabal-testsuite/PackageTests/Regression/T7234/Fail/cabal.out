@@ -1,6 +1,8 @@
 # cabal v2-build
+Warning: The package description file ./issue7234.cabal has warnings: issue7234.cabal:13:3: The field "other-extensions" is available only since the Cabal specification version 1.10.
 Resolving dependencies...
-Error: cabal: Could not resolve dependencies:
+Error: [Cabal-7107]
+Could not resolve dependencies:
 [__0] next goal: issue7234 (user goal)
 [__0] rejecting: issue7234-0 (conflict: requires unknown extension HopefullyThisExtensionWontOccur)
 [__0] fail (backjumping, conflict set: issue7234)

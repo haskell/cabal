@@ -1,3 +1,7 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE RankNTypes #-}
+
 -- | Functionality for invoking Haskell scripts with the correct
 -- package database setup.
 module Test.Cabal.Script (
@@ -14,6 +18,7 @@ import Test.Cabal.ScriptEnv0
 import Distribution.Backpack
 import Distribution.Types.ModuleRenaming
 import Distribution.Utils.NubList
+import Distribution.Utils.Path
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program.Builtin
 import Distribution.Simple.Program.GHC
@@ -21,7 +26,7 @@ import Distribution.Simple.Program
 import Distribution.Simple.Compiler
 import Distribution.Verbosity
 import Distribution.System
-import Distribution.Simple.Setup (Flag(..))
+import Distribution.Simple.Setup (pattern Flag)
 
 import qualified Data.Monoid as M
 
@@ -30,7 +35,7 @@ import qualified Data.Monoid as M
 -- parameters for invoking GHC.  Mostly subset of 'LocalBuildInfo'.
 data ScriptEnv = ScriptEnv
         { runnerProgramDb       :: ProgramDb
-        , runnerPackageDbStack  :: PackageDBStack
+        , runnerPackageDbStack  :: PackageDBStackCWD
         , runnerVerbosity       :: Verbosity
         , runnerPlatform        :: Platform
         , runnerCompiler        :: Compiler
@@ -77,22 +82,33 @@ runghc senv mb_cwd env_overrides script_path args = do
 -- script with 'runghc'.
 runnerCommand :: ScriptEnv -> Maybe FilePath -> [(String, Maybe String)]
               -> FilePath -> [String] -> IO (FilePath, [String])
-runnerCommand senv _mb_cwd _env_overrides script_path args = do
+runnerCommand senv mb_cwd _env_overrides script_path args = do
     (prog, _) <- requireProgram verbosity runghcProgram (runnerProgramDb senv)
-    return (programPath prog,
-            runghc_args ++ ["--"] ++ map ("--ghc-arg="++) ghc_args ++ [script_path] ++ args)
+    return $
+      (programPath prog,
+        runghc_args ++ ["--"] ++ map ("--ghc-arg="++) ghc_args ++ [script_path] ++ args)
   where
     verbosity = runnerVerbosity senv
     runghc_args = []
-    ghc_args = runnerGhcArgs senv
+    ghc_args = runnerGhcArgs senv mb_cwd
 
 -- | Compute the GHC flags to invoke 'runghc' with under a 'ScriptEnv'.
-runnerGhcArgs :: ScriptEnv -> [String]
-runnerGhcArgs senv =
-    renderGhcOptions (runnerCompiler senv) (runnerPlatform senv) ghc_options
+runnerGhcArgs :: ScriptEnv -> Maybe FilePath -> [String]
+runnerGhcArgs senv mb_cwd =
+  renderGhcOptions (runnerCompiler senv) (runnerPlatform senv) ghc_options
   where
-    ghc_options = M.mempty { ghcOptPackageDBs = runnerPackageDbStack senv
+    ghc_options = M.mempty { ghcOptPackageDBs = fmap (fmap makeSymbolicPath) (runnerPackageDbStack senv)
                            , ghcOptPackages   = toNubListR (runnerPackages senv)
+                           , ghcOptHideAllPackages = Flag True
                            -- Avoid picking stray module files that look
-                           -- like our imports
-                           , ghcOptSourcePathClear = Flag True }
+                           -- like our imports...
+                           , ghcOptSourcePathClear = Flag True
+                           -- ... yet retain the current directory as an included
+                           -- directory, e.g. so that we can compile a Setup.hs
+                           -- script which imports a locally defined module.
+                           -- See the PackageTests/SetupDep test.
+                           , ghcOptSourcePath = toNubListR $
+                              case mb_cwd of
+                                Nothing -> []
+                                Just {} -> [sameDirectory]
+                            }

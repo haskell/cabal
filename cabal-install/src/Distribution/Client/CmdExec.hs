@@ -23,8 +23,13 @@ import Distribution.Client.InstallPlan
   )
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
+  , cfgVerbosity
   , defaultNixStyleFlags
   , nixStyleOptions
+  )
+import Distribution.Client.ProjectConfig.Types
+  ( ProjectConfig (projectConfigShared)
+  , ProjectConfigShared (projectConfigProgPathExtra)
   )
 import Distribution.Client.ProjectFlags
   ( removeIgnoreProjectOption
@@ -42,7 +47,7 @@ import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanOutput
   ( PostBuildProjectStatus
   , argsEquivalentOfGhcEnvironmentFile
-  , createPackageEnvironment
+  , createPackageEnvironmentAndArgs
   , updatePostBuildProjectStatus
   )
 import Distribution.Client.ProjectPlanning
@@ -50,46 +55,44 @@ import Distribution.Client.ProjectPlanning
   , ElaboratedSharedConfig (..)
   )
 import qualified Distribution.Client.ProjectPlanning as Planning
+import Distribution.Client.ProjectPlanning.Types
+  ( dataDirsEnvironmentForPlan
+  )
 import Distribution.Client.Setup
-  ( ConfigFlags (configVerbosity)
-  , GlobalFlags
+  ( GlobalFlags
   )
 import Distribution.Simple.Command
   ( CommandUI (..)
-  )
-import Distribution.Simple.Flag
-  ( fromFlagOrDefault
   )
 import Distribution.Simple.GHC
   ( GhcImplInfo (supportsPkgEnvFiles)
   , getImplInfo
   )
-import Distribution.Simple.Program.Db
-  ( configuredPrograms
-  , modifyProgramSearchPath
-  , requireProgram
-  )
-import Distribution.Simple.Program.Find
-  ( ProgramSearchPathEntry (..)
-  )
-import Distribution.Simple.Program.Run
-  ( programInvocation
-  , runProgramInvocation
-  )
-import Distribution.Simple.Program.Types
+import Distribution.Simple.Program
   ( ConfiguredProgram
   , programDefaultArgs
   , programOverrideEnv
   , programPath
   , simpleProgram
   )
+import Distribution.Simple.Program.Db
+  ( configuredPrograms
+  , prependProgramSearchPath
+  , requireProgram
+  )
+import Distribution.Simple.Program.Run
+  ( programInvocation
+  , runProgramInvocation
+  )
 import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose
-  , die'
-  , info
+  , dieWithException
   , notice
   , withTempDirectory
   , wrapText
+  )
+import Distribution.Utils.NubList
+  ( fromNubList
   )
 import Distribution.Verbosity
   ( normal
@@ -100,6 +103,7 @@ import Prelude ()
 
 import qualified Data.Map as M
 import qualified Data.Set as S
+import Distribution.Client.Errors
 
 execCommand :: CommandUI (NixStyleFlags ())
 execCommand =
@@ -136,7 +140,7 @@ execCommand =
     }
 
 execAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
-execAction flags@NixStyleFlags{..} extraArgs globalFlags = do
+execAction flags extraArgs globalFlags = do
   baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
 
   -- To set up the environment, we'd like to select the libraries in our
@@ -161,13 +165,15 @@ execAction flags@NixStyleFlags{..} extraArgs globalFlags = do
       mempty
 
   -- Some dependencies may have executables. Let's put those on the PATH.
-  extraPaths <- pathAdditions verbosity baseCtx buildCtx
-  let programDb =
-        modifyProgramSearchPath
-          (map ProgramSearchPathDir extraPaths ++)
-          . pkgConfigCompilerProgs
-          . elaboratedShared
-          $ buildCtx
+  let extraPaths = pathAdditions baseCtx buildCtx
+      pkgProgs = pkgConfigCompilerProgs (elaboratedShared buildCtx)
+      extraEnvVars =
+        dataDirsEnvironmentForPlan
+          (distDirLayout baseCtx)
+          (elaboratedPlanToExecute buildCtx)
+
+  programDb <-
+    prependProgramSearchPath verbosity extraPaths extraEnvVars pkgProgs
 
   -- Now that we have the packages, set up the environment. We accomplish this
   -- by creating an environment file that selects the databases and packages we
@@ -178,10 +184,10 @@ execAction flags@NixStyleFlags{..} extraArgs globalFlags = do
   let compiler = pkgConfigCompiler $ elaboratedShared buildCtx
       envFilesSupported = supportsPkgEnvFiles (getImplInfo compiler)
   case extraArgs of
-    [] -> die' verbosity "Please specify an executable to run"
+    [] -> dieWithException verbosity SpecifyAnExecutable
     exe : args -> do
       (program, _) <- requireProgram verbosity (simpleProgram exe) programDb
-      let argOverrides =
+      let environmentPackageArgs =
             argsEquivalentOfGhcEnvironmentFile
               compiler
               (distDirLayout baseCtx)
@@ -191,21 +197,16 @@ execAction flags@NixStyleFlags{..} extraArgs globalFlags = do
             matchCompilerPath
               (elaboratedShared buildCtx)
               program
-          argOverrides' =
-            if envFilesSupported
-              || not programIsConfiguredCompiler
-              then []
-              else argOverrides
 
       ( if envFilesSupported
           then withTempEnvFile verbosity baseCtx buildCtx buildStatus
-          else \f -> f []
+          else \f -> f environmentPackageArgs []
         )
-        $ \envOverrides -> do
+        $ \argOverrides envOverrides -> do
           let program' =
                 withOverrides
                   envOverrides
-                  argOverrides'
+                  (if programIsConfiguredCompiler then argOverrides else [])
                   program
               invocation = programInvocation program' args
               dryRun =
@@ -216,7 +217,7 @@ execAction flags@NixStyleFlags{..} extraArgs globalFlags = do
             then notice verbosity "Running of executable suppressed by flag(s)"
             else runProgramInvocation verbosity invocation
   where
-    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    verbosity = cfgVerbosity normal flags
     cliConfig =
       commandLineFlagsToProjectConfig
         globalFlags
@@ -243,36 +244,41 @@ withTempEnvFile
   -> ProjectBaseContext
   -> ProjectBuildContext
   -> PostBuildProjectStatus
-  -> ([(String, Maybe String)] -> IO a)
+  -> ([String] -> [(String, Maybe String)] -> IO a)
   -> IO a
 withTempEnvFile verbosity baseCtx buildCtx buildStatus action = do
-  createDirectoryIfMissingVerbose verbosity True (distTempDirectory (distDirLayout baseCtx))
+  let tmpDirTemplate = distTempDirectory (distDirLayout baseCtx)
+  createDirectoryIfMissingVerbose verbosity True tmpDirTemplate
   withTempDirectory
     verbosity
-    (distTempDirectory (distDirLayout baseCtx))
+    tmpDirTemplate
     "environment."
     ( \tmpDir -> do
-        envOverrides <-
-          createPackageEnvironment
+        (argOverrides, envOverrides) <-
+          createPackageEnvironmentAndArgs
             verbosity
             tmpDir
             (elaboratedPlanToExecute buildCtx)
             (elaboratedShared buildCtx)
             buildStatus
-        action envOverrides
+        action argOverrides envOverrides
     )
 
-pathAdditions :: Verbosity -> ProjectBaseContext -> ProjectBuildContext -> IO [FilePath]
-pathAdditions verbosity ProjectBaseContext{..} ProjectBuildContext{..} = do
-  info verbosity . unlines $
-    "Including the following directories in PATH:"
-      : paths
-  return paths
+-- | Get paths to all dependency executables to be included in PATH.
+pathAdditions :: ProjectBaseContext -> ProjectBuildContext -> [FilePath]
+pathAdditions ProjectBaseContext{..} ProjectBuildContext{..} =
+  paths ++ cabalConfigPaths
   where
+    cabalConfigPaths =
+      fromNubList
+        . projectConfigProgPathExtra
+        . projectConfigShared
+        $ projectConfig
     paths =
       S.toList $
         binDirectories distDirLayout elaboratedShared elaboratedPlanToExecute
 
+-- | Get paths to all dependency executables to be included in PATH.
 binDirectories
   :: DistDirLayout
   -> ElaboratedSharedConfig

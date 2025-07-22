@@ -23,16 +23,14 @@ import Test.Tasty.HUnit
 withTempFileTest :: Assertion
 withTempFileTest = do
   fileName <- newIORef ""
-  tempDir  <- getTemporaryDirectory
-  withTempFile tempDir ".foo" $ \fileName' _handle -> do
+  withTempFile ".foo" $ \fileName' _handle -> do
     writeIORef fileName fileName'
   fileExists <- readIORef fileName >>= doesFileExist
   assertBool "Temporary file not deleted by 'withTempFile'!" (not fileExists)
 
 withTempFileRemovedTest :: Assertion
 withTempFileRemovedTest = do
-  tempDir <- getTemporaryDirectory
-  withTempFile tempDir ".foo" $ \fileName handle -> do
+  withTempFile ".foo" $ \fileName handle -> do
     hClose handle
     removeFile fileName
 
@@ -58,9 +56,8 @@ rawSystemStdInOutTextDecodingTest ghcPath
     -- so skip the test if it's not.
     | show localeEncoding /= "UTF-8" = return ()
     | otherwise = do
-  tempDir  <- getTemporaryDirectory
-  res <- withTempFile tempDir ".hs" $ \filenameHs handleHs -> do
-    withTempFile tempDir ".exe" $ \filenameExe handleExe -> do
+  res <- withTempFile ".hs" $ \filenameHs handleHs -> do
+    withTempFile ".exe" $ \filenameExe handleExe -> do
       -- Small program printing not utf8
       hPutStrLn handleHs "import Data.ByteString"
       hPutStrLn handleHs "main = Data.ByteString.putStr (Data.ByteString.pack [32, 32, 255])"

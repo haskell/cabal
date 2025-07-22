@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 module Distribution.Client.ProjectFlags
   ( ProjectFlags (..)
@@ -20,7 +21,15 @@ import Distribution.Simple.Command
   , option
   , reqArg
   )
-import Distribution.Simple.Setup (Flag (..), flagToList, flagToMaybe, toFlag, trueArg)
+import Distribution.Simple.Setup
+  ( Flag
+  , flagToList
+  , flagToMaybe
+  , toFlag
+  , trueArg
+  , pattern Flag
+  , pattern NoFlag
+  )
 
 data ProjectFlags = ProjectFlags
   { flagProjectDir :: Flag FilePath

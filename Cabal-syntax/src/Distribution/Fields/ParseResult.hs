@@ -1,5 +1,4 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 
@@ -18,22 +17,11 @@ module Distribution.Fields.ParseResult
   , withoutWarnings
   ) where
 
+import Distribution.Compat.Prelude
 import Distribution.Parsec.Error (PError (..))
 import Distribution.Parsec.Position (Position (..), zeroPos)
 import Distribution.Parsec.Warning (PWarnType (..), PWarning (..))
 import Distribution.Version (Version)
-import Prelude ()
-
--- liftA2 is not in base <4.10, hence we need to only import it explicitly when we're on >=4.10
---
--- Additionally, since liftA2 will be exported from Prelude starting with ~4.18, we should hide
--- it from Prelude and get it from Control.Applicative to be backwards compatible and avoid warnings
-#if MIN_VERSION_base(4,10,0)
-import           Distribution.Compat.Prelude hiding (Applicative(..))
-import           Control.Applicative (Applicative (..))
-#else
-import           Distribution.Compat.Prelude
-#endif
 
 -- | A monad with failure and accumulating errors and warnings.
 newtype ParseResult a = PR
@@ -99,14 +87,6 @@ instance Applicative ParseResult where
       unPR y s1 failure $ \ !s2 _ ->
         success s2 x'
   {-# INLINE (<*) #-}
-
-#if MIN_VERSION_base(4,10,0)
-  liftA2 f x y = PR $ \ !s0 failure success ->
-      unPR x s0 failure $ \ !s1 x' ->
-      unPR y s1 failure $ \ !s2 y' ->
-      success s2 (f x' y')
-  {-# INLINE liftA2 #-}
-#endif
 
 instance Monad ParseResult where
   return = pure

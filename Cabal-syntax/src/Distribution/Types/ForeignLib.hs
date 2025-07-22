@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 
@@ -26,8 +27,10 @@ import Distribution.Types.BuildInfo
 import Distribution.Types.ForeignLibOption
 import Distribution.Types.ForeignLibType
 import Distribution.Types.UnqualComponentName
+import Distribution.Utils.Path
 import Distribution.Version
 
+import Data.Monoid
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 import qualified Text.Read as Read
@@ -52,15 +55,15 @@ data ForeignLib = ForeignLib
   -- current:revision:age versioning scheme.
   , foreignLibVersionLinux :: Maybe Version
   -- ^ Linux library version
-  , foreignLibModDefFile :: [FilePath]
+  , foreignLibModDefFile :: [RelativePath Source File]
   -- ^ (Windows-specific) module definition files
   --
   -- This is a list rather than a maybe field so that we can flatten
   -- the condition trees (for instance, when creating an sdist)
   }
-  deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
+  deriving (Generic, Show, Read, Eq, Ord, Data)
 
-data LibVersionInfo = LibVersionInfo Int Int Int deriving (Data, Eq, Generic, Typeable)
+data LibVersionInfo = LibVersionInfo Int Int Int deriving (Data, Eq, Generic)
 
 instance Ord LibVersionInfo where
   LibVersionInfo c r _ `compare` LibVersionInfo c' r' _ =
@@ -140,29 +143,18 @@ instance NFData ForeignLib where rnf = genericRnf
 instance Semigroup ForeignLib where
   a <> b =
     ForeignLib
-      { foreignLibName = combine' foreignLibName
+      { foreignLibName = combineNames a b foreignLibName "foreign library"
       , foreignLibType = combine foreignLibType
       , foreignLibOptions = combine foreignLibOptions
       , foreignLibBuildInfo = combine foreignLibBuildInfo
-      , foreignLibVersionInfo = combine'' foreignLibVersionInfo
-      , foreignLibVersionLinux = combine'' foreignLibVersionLinux
+      , foreignLibVersionInfo = chooseLast foreignLibVersionInfo
+      , foreignLibVersionLinux = chooseLast foreignLibVersionLinux
       , foreignLibModDefFile = combine foreignLibModDefFile
       }
     where
       combine field = field a `mappend` field b
-      combine' field = case ( unUnqualComponentName $ field a
-                            , unUnqualComponentName $ field b
-                            ) of
-        ("", _) -> field b
-        (_, "") -> field a
-        (x, y) ->
-          error $
-            "Ambiguous values for executable field: '"
-              ++ x
-              ++ "' and '"
-              ++ y
-              ++ "'"
-      combine'' field = field b
+      -- chooseLast: the second field overrides the first, unless it is Nothing
+      chooseLast field = getLast (Last (field a) <> Last (field b))
 
 instance Monoid ForeignLib where
   mempty =

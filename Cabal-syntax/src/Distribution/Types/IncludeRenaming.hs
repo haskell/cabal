@@ -26,7 +26,7 @@ data IncludeRenaming = IncludeRenaming
   { includeProvidesRn :: ModuleRenaming
   , includeRequiresRn :: ModuleRenaming
   }
-  deriving (Show, Read, Eq, Ord, Typeable, Data, Generic)
+  deriving (Show, Read, Eq, Ord, Data, Generic)
 
 instance Binary IncludeRenaming
 instance Structured IncludeRenaming

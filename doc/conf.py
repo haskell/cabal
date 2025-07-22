@@ -13,7 +13,7 @@ import sphinx_rtd_theme
 sys.path.insert(0, os.path.abspath('.'))
 import cabaldomain
 
-version = "3.11.0.0"
+version = "3.17.0.0"
 
 extensions = [
     'sphinx.ext.extlinks',
@@ -25,7 +25,7 @@ extensions = [
 templates_path = ['_templates']
 source_suffix = '.rst'
 source_encoding = 'utf-8-sig'
-master_doc = 'index'
+root_doc = 'index'
 
 # extlinks -- see http://www.sphinx-doc.org/en/stable/ext/extlinks.html
 extlinks = {
@@ -39,7 +39,7 @@ extlinks = {
 
 # General information about the project.
 project = u'Cabal'
-copyright = u'2003-2023, Cabal Team'
+copyright = u'2003-2024, Cabal Team'
 # N.B. version comes from ghc_config
 release = version  # The full version, including alpha/beta/rc tags.
 
@@ -102,8 +102,8 @@ html_use_opensearch = 'https://cabal.readthedocs.io/en/stable'
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'CabalUsersGuide'
 
-# MathJax to use SVG rendering by default
-mathjax_path = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_SVG'
+# MathJax to use HTML rendering by default (makes the text selectable, see #8453)
+mathjax_path = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS_CHTML'
 
 
 # -- Options for LaTeX output ---------------------------------------------

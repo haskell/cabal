@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 
@@ -15,16 +16,17 @@ import Distribution.ModuleName
 import Distribution.Types.BuildInfo
 import Distribution.Types.ExecutableScope
 import Distribution.Types.UnqualComponentName
+import Distribution.Utils.Path
 
 import qualified Distribution.Types.BuildInfo.Lens as L
 
 data Executable = Executable
   { exeName :: UnqualComponentName
-  , modulePath :: FilePath
+  , modulePath :: RelativePath Source File
   , exeScope :: ExecutableScope
   , buildInfo :: BuildInfo
   }
-  deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
+  deriving (Generic, Show, Read, Eq, Ord, Data)
 
 instance L.HasBuildInfo Executable where
   buildInfo f l = (\x -> l{buildInfo = x}) <$> f (buildInfo l)
@@ -34,31 +36,25 @@ instance Structured Executable
 instance NFData Executable where rnf = genericRnf
 
 instance Monoid Executable where
-  mempty = gmempty
+  mempty =
+    Executable
+      { exeName = mempty
+      , modulePath = unsafeMakeSymbolicPath ""
+      , exeScope = mempty
+      , buildInfo = mempty
+      }
   mappend = (<>)
 
 instance Semigroup Executable where
   a <> b =
     Executable
-      { exeName = combine' exeName
-      , modulePath = combine modulePath
+      { exeName = combineNames a b exeName "executable"
+      , modulePath = unsafeMakeSymbolicPath $ combineNames a b (getSymbolicPath . modulePath) "modulePath"
       , exeScope = combine exeScope
       , buildInfo = combine buildInfo
       }
     where
       combine field = field a `mappend` field b
-      combine' field = case ( unUnqualComponentName $ field a
-                            , unUnqualComponentName $ field b
-                            ) of
-        ("", _) -> field b
-        (_, "") -> field a
-        (x, y) ->
-          error $
-            "Ambiguous values for executable field: '"
-              ++ x
-              ++ "' and '"
-              ++ y
-              ++ "'"
 
 emptyExecutable :: Executable
 emptyExecutable = mempty

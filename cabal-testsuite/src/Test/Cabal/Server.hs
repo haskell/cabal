@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE NondecreasingIndentation #-}
 -- | A GHC run-server, which supports running multiple GHC scripts
@@ -40,6 +41,9 @@ import qualified GHC.IO.Exception as GHC
 import Distribution.Verbosity
 
 import System.Process.Internals
+  ( ProcessHandle__( OpenHandle )
+  , withProcessHandle
+  )
 #if mingw32_HOST_OS
 import qualified System.Win32.Process as Win32
 #endif
@@ -136,7 +140,7 @@ runOnServer :: Server -> Maybe FilePath -> [(String, Maybe String)]
             -> FilePath -> [String] -> IO ServerResult
 runOnServer s mb_cwd env_overrides script_path args = do
     -- TODO: cwd not implemented
-    when (isJust mb_cwd)            $ error "runOnServer change directory not implemented"
+    when (isJust mb_cwd)        $ error "runOnServer change directory not implemented"
     -- TODO: env_overrides not implemented
     unless (null env_overrides) $ error "runOnServer set environment not implemented"
 
@@ -181,12 +185,13 @@ runOnServer s mb_cwd env_overrides script_path args = do
     -- Give the user some indication about how they could run the
     -- command by hand.
     (real_path, real_args) <- runnerCommand (serverScriptEnv s) mb_cwd env_overrides script_path args
-    return ServerResult {
-            serverResultTestCode = code,
-            serverResultCommand = showCommandForUser real_path real_args,
-            serverResultStdout = out,
-            serverResultStderr = err
-        }
+    return $
+      ServerResult {
+              serverResultTestCode = code,
+              serverResultCommand = showCommandForUser real_path real_args,
+              serverResultStdout = out,
+              serverResultStderr = err
+          }
 
 -- | Helper function which we use in the GHCi session to communicate
 -- the exit code of the process.
@@ -215,7 +220,7 @@ runMain ref m = do
 startServer :: Chan ServerLogMsg -> ScriptEnv -> IO Server
 startServer chan senv = do
     (prog, _) <- requireProgram verbosity ghcProgram (runnerProgramDb senv)
-    let ghc_args = runnerGhcArgs senv ++ ["--interactive", "-v0", "-ignore-dot-ghci"]
+    let ghc_args = runnerGhcArgs senv Nothing ++ ["--interactive", "-v0", "-ignore-dot-ghci"]
         proc_spec = (proc (programPath prog) ghc_args) {
                         create_group = True,
                         -- Closing fds is VERY important to avoid
@@ -248,6 +253,7 @@ startServer chan senv = do
 
 -- | Unmasked initialization for the server
 initServer :: Server -> IO Server
+{- FOURMOLU_DISABLE -}
 initServer s0 = do
     -- NB: withProcessHandle reads an MVar and is interruptible
 
@@ -270,6 +276,7 @@ initServer s0 = do
     write s ":set prompt \"\""
     write s "System.IO.hSetBuffering System.IO.stdout System.IO.LineBuffering"
     return s
+{- FOURMOLU_ENABLE -}
 
 -- | Stop a GHCi session.
 stopServer :: Server -> IO ()

@@ -1,15 +1,11 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Client.IndexUtils
@@ -65,6 +61,10 @@ import Distribution.Client.Types
 import Distribution.Parsec (simpleParsecBS)
 import Distribution.Verbosity
 
+import Distribution.Client.ProjectConfig
+  ( CabalFileParseError
+  , readSourcePackageCabalFile'
+  )
 import Distribution.Client.Setup
   ( RepoContext (..)
   )
@@ -82,9 +82,6 @@ import Distribution.PackageDescription
   , emptyPackageDescription
   )
 import Distribution.Simple.Compiler
-  ( Compiler
-  , PackageDBStack
-  )
 import qualified Distribution.Simple.Configure as Configure
   ( getInstalledPackages
   , getInstalledPackagesMonitorFiles
@@ -95,10 +92,11 @@ import Distribution.Simple.Program
   )
 import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose
-  , die'
+  , dieWithException
   , fromUTF8LBS
   , info
   , warn
+  , warnError
   )
 import Distribution.Types.Dependency
 import Distribution.Types.PackageName (PackageName)
@@ -114,12 +112,12 @@ import Distribution.PackageDescription.Parsec
   , parseGenericPackageDescriptionMaybe
   )
 import qualified Distribution.PackageDescription.Parsec as PackageDesc.Parse
-import qualified Distribution.Simple.PackageDescription as PackageDesc.Parse
 
 import Distribution.Solver.Types.PackageIndex (PackageIndex)
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
 import Distribution.Solver.Types.SourcePackage
 
+import qualified Codec.Compression.GZip as GZip
 import Control.Exception
 import qualified Data.ByteString.Char8 as BSS
 import Data.ByteString.Lazy (ByteString)
@@ -133,7 +131,7 @@ import qualified Data.Set as Set
 import Distribution.Client.GZipUtils (maybeDecompress)
 import Distribution.Client.Utils
   ( byteStringToFilePath
-  , tryFindAddSourcePackageDesc
+  , tryReadAddSourcePackageDesc
   )
 import Distribution.Compat.Directory (listDirectory)
 import Distribution.Compat.Time (getFileAge, getModTime)
@@ -149,13 +147,12 @@ import System.FilePath
   , (<.>)
   , (</>)
   )
-import qualified System.FilePath.Posix as FilePath.Posix
+import qualified System.FilePath as FilePath
 import System.IO
 import System.IO.Error (isDoesNotExistError)
 import System.IO.Unsafe (unsafeInterleaveIO)
 
-import qualified Codec.Compression.GZip as GZip
-
+import Distribution.Client.Errors
 import qualified Hackage.Security.Client as Sec
 import qualified Hackage.Security.Util.Some as Sec
 
@@ -163,11 +160,11 @@ import qualified Hackage.Security.Util.Some as Sec
 getInstalledPackages
   :: Verbosity
   -> Compiler
-  -> PackageDBStack
+  -> PackageDBStackCWD
   -> ProgramDb
   -> IO InstalledPackageIndex
 getInstalledPackages verbosity comp packageDbs progdb =
-  Configure.getInstalledPackages verbosity' comp packageDbs progdb
+  Configure.getInstalledPackages verbosity' comp Nothing (coercePackageDBStack packageDbs) progdb
   where
     verbosity' = lessVerbose verbosity
 
@@ -212,7 +209,7 @@ data IndexStateInfo = IndexStateInfo
   }
 
 emptyStateInfo :: IndexStateInfo
-emptyStateInfo = IndexStateInfo nullTimestamp nullTimestamp
+emptyStateInfo = IndexStateInfo NoTimestamp NoTimestamp
 
 -- | Filters a 'Cache' according to an 'IndexState'
 -- specification. Also returns 'IndexStateInfo' describing the
@@ -318,40 +315,31 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState mb_activeRepos = do
       IndexStateHead -> do
         info verbosity ("index-state(" ++ unRepoName rname ++ ") = " ++ prettyShow (isiHeadTime isi))
         return ()
-      IndexStateTime ts0 -> do
+      IndexStateTime ts0 ->
+        -- isiMaxTime is the latest timestamp in the filtered view returned by
+        -- `readRepoIndex` above. It is always true that isiMaxTime is less or
+        -- equal to a requested IndexStateTime. When `isiMaxTime isi /= ts0` (or
+        -- equivalently `isiMaxTime isi < ts0`) it means that ts0 falls between
+        -- two timestamps in the index.
         when (isiMaxTime isi /= ts0) $
-          if ts0 > isiMaxTime isi
-            then
-              warn verbosity $
-                "Requested index-state "
-                  ++ prettyShow ts0
-                  ++ " is newer than '"
+          let commonMsg =
+                "There is no index-state for '"
                   ++ unRepoName rname
-                  ++ "'!"
-                  ++ " Falling back to older state ("
-                  ++ prettyShow (isiMaxTime isi)
-                  ++ ")."
-            else
-              info verbosity $
-                "Requested index-state "
+                  ++ "' exactly at the requested timestamp ("
                   ++ prettyShow ts0
-                  ++ " does not exist in '"
-                  ++ unRepoName rname
-                  ++ "'!"
-                  ++ " Falling back to older state ("
-                  ++ prettyShow (isiMaxTime isi)
-                  ++ ")."
-        info
-          verbosity
-          ( "index-state("
-              ++ unRepoName rname
-              ++ ") = "
-              ++ prettyShow (isiMaxTime isi)
-              ++ " (HEAD = "
-              ++ prettyShow (isiHeadTime isi)
-              ++ ")"
-          )
-
+                  ++ "). "
+           in if isNothing $ timestampToUTCTime (isiMaxTime isi)
+                then
+                  warn verbosity $
+                    commonMsg
+                      ++ "Also, there are no index-states before the one requested, so the repository '"
+                      ++ unRepoName rname
+                      ++ "' will be empty."
+                else
+                  info verbosity $
+                    commonMsg
+                      ++ "Falling back to the previous index-state that exists: "
+                      ++ prettyShow (isiMaxTime isi)
     pure
       RepoData
         { rdRepoName = rname
@@ -381,7 +369,7 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState mb_activeRepos = do
             [ (n, IndexStateTime ts)
             | (RepoData n ts _idx _prefs, _strategy) <- pkgss'
             , -- e.g. file+noindex have nullTimestamp as their timestamp
-            ts /= nullTimestamp
+            ts /= NoTimestamp
             ]
 
   let addIndex
@@ -439,15 +427,16 @@ readRepoIndex
   -> IO (PackageIndex UnresolvedSourcePackage, [Dependency], IndexStateInfo)
 readRepoIndex verbosity repoCtxt repo idxState =
   handleNotFound $ do
-    when (isRepoRemote repo) $ warnIfIndexIsOld =<< getIndexFileAge repo
-    -- note that if this step fails due to a bad repo cache, the the procedure can still succeed by reading from the existing cache, which is updated regardless.
-    updateRepoIndexCache verbosity (RepoIndex repoCtxt repo)
-      `catchIO` (\e -> warn verbosity $ "unable to update the repo index cache -- " ++ displayException e)
-    readPackageIndexCacheFile
-      verbosity
-      mkAvailablePackage
-      (RepoIndex repoCtxt repo)
-      idxState
+    ret@(_, _, isi) <-
+      readPackageIndexCacheFile
+        verbosity
+        mkAvailablePackage
+        (RepoIndex repoCtxt repo)
+        idxState
+    when (isRepoRemote repo) $ do
+      warnIfIndexIsOld =<< getIndexFileAge repo
+      dieIfRequestedIdxIsNewer isi
+    pure ret
   where
     mkAvailablePackage pkgEntry =
       SourcePackage
@@ -468,29 +457,36 @@ readRepoIndex verbosity repoCtxt repo idxState =
       if isDoesNotExistError e
         then do
           case repo of
-            RepoRemote{..} -> warn verbosity $ errMissingPackageList repoRemote
-            RepoSecure{..} -> warn verbosity $ errMissingPackageList repoRemote
+            RepoRemote{..} -> warn verbosity $ exceptionMessageCabalInstall $ MissingPackageList repoRemote
+            RepoSecure{..} -> warn verbosity $ exceptionMessageCabalInstall $ MissingPackageList repoRemote
             RepoLocalNoIndex local _ ->
               warn verbosity $
-                "Error during construction of local+noindex "
+                "Error during construction of file+noindex "
                   ++ unRepoName (localRepoName local)
                   ++ " repository index: "
                   ++ show e
           return (mempty, mempty, emptyStateInfo)
         else ioError e
 
+    isOldThreshold :: Double
     isOldThreshold = 15 -- days
     warnIfIndexIsOld dt = do
       when (dt >= isOldThreshold) $ case repo of
-        RepoRemote{..} -> warn verbosity $ errOutdatedPackageList repoRemote dt
-        RepoSecure{..} -> warn verbosity $ errOutdatedPackageList repoRemote dt
+        RepoRemote{..} -> warn verbosity $ warnOutdatedPackageList repoRemote dt
+        RepoSecure{..} -> warn verbosity $ warnOutdatedPackageList repoRemote dt
         RepoLocalNoIndex{} -> return ()
 
-    errMissingPackageList repoRemote =
-      "The package list for '"
-        ++ unRepoName (remoteRepoName repoRemote)
-        ++ "' does not exist. Run 'cabal update' to download it."
-    errOutdatedPackageList repoRemote dt =
+    dieIfRequestedIdxIsNewer isi =
+      let latestTime = isiHeadTime isi
+       in case idxState of
+            IndexStateTime t -> when (t > latestTime) $ case repo of
+              RepoSecure{..} ->
+                dieWithException verbosity $ UnusableIndexState repoRemote latestTime t
+              RepoRemote{} -> pure ()
+              RepoLocalNoIndex{} -> return ()
+            IndexStateHead -> pure ()
+
+    warnOutdatedPackageList repoRemote dt =
       "The package list for '"
         ++ unRepoName (remoteRepoName repoRemote)
         ++ "' is "
@@ -525,7 +521,7 @@ whenCacheOutOfDate index action = do
     then action
     else
       if localNoIndex index
-        then return () -- TODO: don't update cache for local+noindex repositories
+        then return () -- TODO: don't update cache for file+noindex repositories
         else do
           indexTime <- getModTime $ indexFile index
           cacheTime <- getModTime $ cacheFile index
@@ -639,8 +635,7 @@ extractPkg verbosity entry blockNo = case Tar.entryContent entry of
           if not dirExists
             then return Nothing
             else do
-              cabalFile <- tryFindAddSourcePackageDesc verbosity path "Error reading package index."
-              descr <- PackageDesc.Parse.readGenericPackageDescription normal cabalFile
+              descr <- tryReadAddSourcePackageDesc verbosity path "Error reading package index."
               return . Just $
                 BuildTreeRef
                   (refTypeFromTypeCode typeCode)
@@ -697,7 +692,7 @@ data PreferredVersionsParseError = PreferredVersionsParseError
   , preferredVersionsOriginalDependency :: String
   -- ^ Original input that produced the parser error.
   }
-  deriving (Generic, Read, Show, Eq, Ord, Typeable)
+  deriving (Generic, Read, Show, Eq, Ord)
 
 -- | Parse `preferred-versions` file, collecting parse errors that can be shown
 -- in error messages.
@@ -852,9 +847,8 @@ withIndexEntries _ (RepoIndex repoCtxt repo@RepoSecure{}) callback _ =
       where
         blockNo = Sec.directoryEntryBlockNo dirEntry
         timestamp =
-          fromMaybe (error "withIndexEntries: invalid timestamp") $
-            epochTimeToTimestamp $
-              Sec.indexEntryTime sie
+          epochTimeToTimestamp $
+            Sec.indexEntryTime sie
 withIndexEntries verbosity (RepoIndex _repoCtxt (RepoLocalNoIndex (LocalRepo name localDir _) _cacheDir)) _ callback = do
   dirContents <- listDirectory localDir
   let contentSet = Set.fromList dirContents
@@ -886,14 +880,22 @@ withIndexEntries verbosity (RepoIndex _repoCtxt (RepoLocalNoIndex (LocalRepo nam
         where
           cabalPath = prettyShow pkgid ++ ".cabal"
       Just pkgId -> do
+        let tarFile = localDir </> file
         -- check for the right named .cabal file in the compressed tarball
-        tarGz <- BS.readFile (localDir </> file)
+        tarGz <- BS.readFile tarFile
         let tar = GZip.decompress tarGz
             entries = Tar.read tar
+            expectFilename = prettyShow pkgId FilePath.</> prettyShow (packageName pkgId) ++ ".cabal"
 
-        case Tar.foldEntries (readCabalEntry pkgId) Nothing (const Nothing) entries of
+        tarballPackageDescription <-
+          Tar.foldEntries
+            (readCabalEntry tarFile expectFilename)
+            (pure Nothing)
+            (handleTarFormatError tarFile)
+            entries
+        case tarballPackageDescription of
           Just ce -> return (Just ce)
-          Nothing -> die' verbosity $ "Cannot read .cabal file inside " ++ file
+          Nothing -> dieWithException verbosity $ CannotReadCabalFile expectFilename tarFile
 
   let (prefs, gpds) =
         partitionEithers $
@@ -915,7 +917,7 @@ withIndexEntries verbosity (RepoIndex _repoCtxt (RepoLocalNoIndex (LocalRepo nam
   callback entries
   where
     handler :: IOException -> IO a
-    handler e = die' verbosity $ "Error while updating index for " ++ unRepoName name ++ " repository " ++ show e
+    handler e = dieWithException verbosity $ ErrorUpdatingIndex (unRepoName name) e
 
     isTarGz :: FilePath -> Maybe PackageIdentifier
     isTarGz fp = do
@@ -924,16 +926,55 @@ withIndexEntries verbosity (RepoIndex _repoCtxt (RepoLocalNoIndex (LocalRepo nam
 
     stripSuffix sfx str = fmap reverse (stripPrefix (reverse sfx) (reverse str))
 
-    -- look for <pkgid>/<pkgname>.cabal inside the tarball
-    readCabalEntry :: PackageIdentifier -> Tar.Entry -> Maybe NoIndexCacheEntry -> Maybe NoIndexCacheEntry
-    readCabalEntry pkgId entry Nothing
-      | filename == Tar.entryPath entry
-      , Tar.NormalFile contents _ <- Tar.entryContent entry =
-          let bs = BS.toStrict contents
-           in ((`CacheGPD` bs) <$> parseGenericPackageDescriptionMaybe bs)
-      where
-        filename = prettyShow pkgId FilePath.Posix.</> prettyShow (packageName pkgId) ++ ".cabal"
-    readCabalEntry _ _ x = x
+    handleTarFormatError :: FilePath -> Tar.FormatError -> IO (Maybe NoIndexCacheEntry)
+    handleTarFormatError tarFile formatError = do
+      -- This is printed at warning-level because malformed `.tar.gz`s in
+      -- indexes are unexpected and we want users to tell us about them.
+      warnError verbosity $
+        "Failed to parse "
+          <> tarFile
+          <> ": "
+          <> displayException formatError
+      pure Nothing
+
+    -- look for `expectFilename` inside the tarball
+    readCabalEntry
+      :: FilePath
+      -> FilePath
+      -> Tar.Entry
+      -> IO (Maybe NoIndexCacheEntry)
+      -> IO (Maybe NoIndexCacheEntry)
+    readCabalEntry tarFile expectFilename entry previous' = do
+      previous <- previous'
+      case previous of
+        Just _entry -> pure previous
+        Nothing -> do
+          if expectFilename /= Tar.entryPath entry
+            then pure Nothing
+            else case Tar.entryContent entry of
+              Tar.NormalFile contents _fileSize -> do
+                let bytes = BS.toStrict contents
+                maybePackageDescription
+                  :: Either CabalFileParseError GenericPackageDescription <-
+                  -- Warnings while parsing `.cabal` files are only shown in
+                  -- verbose mode because people are allowed to upload packages
+                  -- with warnings to Hackage (and we may _add_ warnings by
+                  -- shipping new versions of Cabal). You probably don't care
+                  -- if there's a warning in some random package in your
+                  -- transitive dependency tree, as long as it's not causing
+                  -- issues. If it is causing issues, you can add `-v` to see
+                  -- the warnings!
+                  try $ readSourcePackageCabalFile' (info verbosity) expectFilename bytes
+                case maybePackageDescription of
+                  Left exception -> do
+                    -- Here we show the _failure_ to parse the `.cabal` file as
+                    -- a warning. This will impact which versions/packages are
+                    -- available in your index, so users should know!
+                    warn verbosity $ "In " <> tarFile <> ": " <> displayException exception
+                    pure Nothing
+                  Right genericPackageDescription ->
+                    pure $ Just $ CacheGPD genericPackageDescription bytes
+              _ -> pure Nothing
 withIndexEntries verbosity index callback _ = do
   -- non-secure repositories
   withFile (indexFile index) ReadMode $ \h -> do
@@ -942,10 +983,14 @@ withIndexEntries verbosity index callback _ = do
     callback $ map toCache (catMaybes pkgsOrPrefs)
   where
     toCache :: PackageOrDep -> IndexCacheEntry
-    toCache (Pkg (NormalPackage pkgid _ _ blockNo)) = CachePackageId pkgid blockNo nullTimestamp
+    toCache (Pkg (NormalPackage pkgid _ _ blockNo)) = CachePackageId pkgid blockNo NoTimestamp
     toCache (Pkg (BuildTreeRef refType _ _ _ blockNo)) = CacheBuildTreeRef refType blockNo
-    toCache (Dep d) = CachePreference d 0 nullTimestamp
+    toCache (Dep d) = CachePreference d 0 NoTimestamp
 
+-- | Read package data from a repository.
+-- Throws IOException if any arise while accessing the index
+-- (unless the repo is local+no-index) and dies if the cache
+-- is corrupted and cannot be regenerated correctly.
 readPackageIndexCacheFile
   :: Package pkg
   => Verbosity
@@ -959,11 +1004,17 @@ readPackageIndexCacheFile verbosity mkPkg index idxState
       (pkgs, prefs) <- packageNoIndexFromCache verbosity mkPkg cache0
       pure (pkgs, prefs, emptyStateInfo)
   | otherwise = do
-      cache0 <- readIndexCache verbosity index
+      (cache, isi) <- getIndexCache verbosity index idxState
       indexHnd <- openFile (indexFile index) ReadMode
-      let (cache, isi) = filterCache idxState cache0
       (pkgs, deps) <- packageIndexFromCache verbosity mkPkg indexHnd cache
       pure (pkgs, deps, isi)
+
+-- | Read 'Cache' and 'IndexStateInfo' from the repository index file.
+-- Throws IOException if any arise (e.g. the index or its cache are missing).
+-- Dies if the index cache is corrupted and cannot be regenerated correctly.
+getIndexCache :: Verbosity -> Index -> RepoIndexState -> IO (Cache, IndexStateInfo)
+getIndexCache verbosity index idxState =
+  filterCache idxState <$> readIndexCache verbosity index
 
 packageIndexFromCache
   :: Package pkg
@@ -1036,8 +1087,7 @@ packageListFromCache verbosity mkPkg hnd Cache{..} = accum mempty [] mempty cach
       path <- fmap byteStringToFilePath . getEntryContent $ blockno
       pkg <- do
         let err = "Error reading package index from cache."
-        file <- tryFindAddSourcePackageDesc verbosity path err
-        PackageDesc.Parse.readGenericPackageDescription normal file
+        tryReadAddSourcePackageDesc verbosity path err
       let srcpkg = mkPkg (BuildTreeRef refType (packageId pkg) pkg path blockno)
       accum srcpkgs (srcpkg : btrs) prefs entries
     accum srcpkgs btrs prefs (CachePreference pref@(Dependency pn _ _) _ _ : entries) =
@@ -1082,20 +1132,16 @@ packageListFromCache verbosity mkPkg hnd Cache{..} = accum mempty [] mempty cach
 
     interror :: String -> IO a
     interror msg =
-      die' verbosity $
-        "internal error when reading package index: "
-          ++ msg
-          ++ "The package index or index cache is probably "
-          ++ "corrupt. Running cabal update might fix it."
+      dieWithException verbosity $ InternalError msg
 
 ------------------------------------------------------------------------
 -- Index cache data structure --
 
--- | Read the 'Index' cache from the filesystem
+-- | Read a repository cache from the filesystem
 --
 -- If a corrupted index cache is detected this function regenerates
 -- the index cache and then reattempt to read the index once (and
--- 'die's if it fails again).
+-- 'dieWithException's if it fails again).
 readIndexCache :: Verbosity -> Index -> IO Cache
 readIndexCache verbosity index = do
   cacheOrFail <- readIndexCache' index
@@ -1111,17 +1157,24 @@ readIndexCache verbosity index = do
 
       updatePackageIndexCacheFile verbosity index
 
-      either (die' verbosity) (return . hashConsCache) =<< readIndexCache' index
+      either (dieWithException verbosity . CorruptedIndexCache) (return . hashConsCache) =<< readIndexCache' index
     Right res -> return (hashConsCache res)
 
+-- | Read a no-index repository cache from the filesystem
+--
+-- If a corrupted index cache is detected this function regenerates
+-- the index cache and then reattempts to read the index once (and
+-- 'dieWithException's if it fails again). Throws IOException if any arise.
 readNoIndexCache :: Verbosity -> Index -> IO NoIndexCache
 readNoIndexCache verbosity index = do
-  cacheOrFail <- readNoIndexCache' index
+  cacheOrFail <- readNoIndexCache' verbosity index
   case cacheOrFail of
     Left msg -> do
       warn verbosity $
         concat
-          [ "Parsing the index cache failed ("
+          [ "Parsing the index cache for repo \""
+          , unRepoName (repoName repo)
+          , "\" failed ("
           , msg
           , "). "
           , "Trying to regenerate the index cache..."
@@ -1129,21 +1182,28 @@ readNoIndexCache verbosity index = do
 
       updatePackageIndexCacheFile verbosity index
 
-      either (die' verbosity) return =<< readNoIndexCache' index
+      either (dieWithException verbosity . CorruptedIndexCache) return =<< readNoIndexCache' verbosity index
 
     -- we don't hash cons local repository cache, they are hopefully small
     Right res -> return res
+  where
+    RepoIndex _ctxt repo = index
 
--- | Read the 'Index' cache from the filesystem without attempting to
--- regenerate on parsing failures.
+-- | Read the 'Index' cache from the filesystem. Throws IO exceptions
+-- if any arise and returns Left on invalid input.
 readIndexCache' :: Index -> IO (Either String Cache)
 readIndexCache' index
-  | is01Index index = structuredDecodeFileOrFail (cacheFile index)
+  | is01Index index =
+      structuredDecodeFileOrFail (cacheFile index)
   | otherwise =
       Right . read00IndexCache <$> BSS.readFile (cacheFile index)
 
-readNoIndexCache' :: Index -> IO (Either String NoIndexCache)
-readNoIndexCache' index = structuredDecodeFileOrFail (cacheFile index)
+readNoIndexCache' :: Verbosity -> Index -> IO (Either String NoIndexCache)
+readNoIndexCache' verbosity index = do
+  exists <- doesFileExist (cacheFile index)
+  if exists
+    then structuredDecodeFileOrFail (cacheFile index)
+    else updatePackageIndexCacheFile verbosity index >> readNoIndexCache' verbosity index
 
 -- | Write the 'Index' cache to the filesystem
 writeIndexCache :: Index -> Cache -> IO ()
@@ -1163,15 +1223,27 @@ writeIndexTimestamp index st =
   writeFile (timestampFile index) (prettyShow st)
 
 -- | Read out the "current" index timestamp, i.e., what
--- timestamp you would use to revert to this version
-currentIndexTimestamp :: Verbosity -> RepoContext -> Repo -> IO Timestamp
-currentIndexTimestamp verbosity repoCtxt r = do
-  mb_is <- readIndexTimestamp verbosity (RepoIndex repoCtxt r)
+-- timestamp you would use to revert to this version.
+--
+-- Note: this is not the same as 'readIndexTimestamp'!
+-- This resolves HEAD to the index's 'isiHeadTime', i.e.
+-- the index latest known timestamp.
+--
+-- Return NoTimestamp if the index has never been updated.
+currentIndexTimestamp :: Verbosity -> Index -> IO Timestamp
+currentIndexTimestamp verbosity index = do
+  mb_is <- readIndexTimestamp verbosity index
   case mb_is of
-    Just (IndexStateTime ts) -> return ts
-    _ -> do
-      (_, _, isi) <- readRepoIndex verbosity repoCtxt r IndexStateHead
-      return (isiHeadTime isi)
+    -- If the index timestamp file specifies an index state time, use that
+    Just (IndexStateTime ts) ->
+      return ts
+    -- Otherwise used the head time as stored in the index cache
+    _otherwise ->
+      fmap (isiHeadTime . snd) (getIndexCache verbosity index IndexStateHead)
+        `catchIO` \e ->
+          if isDoesNotExistError e
+            then return NoTimestamp
+            else ioError e
 
 -- | Read the 'IndexState' from the filesystem
 readIndexTimestamp :: Verbosity -> Index -> IO (Maybe RepoIndexState)
@@ -1263,7 +1335,7 @@ instance NFData NoIndexCacheEntry where
   rnf (NoIndexCachePreference dep) = rnf dep
 
 cacheEntryTimestamp :: IndexCacheEntry -> Timestamp
-cacheEntryTimestamp (CacheBuildTreeRef _ _) = nullTimestamp
+cacheEntryTimestamp (CacheBuildTreeRef _ _) = NoTimestamp
 cacheEntryTimestamp (CachePreference _ _ ts) = ts
 cacheEntryTimestamp (CachePackageId _ _ ts) = ts
 
@@ -1315,7 +1387,7 @@ preferredVersionKey = "pref-ver:"
 read00IndexCache :: BSS.ByteString -> Cache
 read00IndexCache bs =
   Cache
-    { cacheHeadTs = nullTimestamp
+    { cacheHeadTs = NoTimestamp
     , cacheEntries = mapMaybe read00IndexCacheEntry $ BSS.lines bs
     }
 
@@ -1333,7 +1405,7 @@ read00IndexCacheEntry = \line ->
                 ( CachePackageId
                     (PackageIdentifier pkgname pkgver)
                     blockno
-                    nullTimestamp
+                    NoTimestamp
                 )
             _ -> Nothing
     [key, typecodestr, blocknostr] | key == BSS.pack buildTreeRefKey ->
@@ -1343,7 +1415,7 @@ read00IndexCacheEntry = \line ->
         _ -> Nothing
     (key : remainder) | key == BSS.pack preferredVersionKey -> do
       pref <- simpleParsecBS (BSS.unwords remainder)
-      return $ CachePreference pref 0 nullTimestamp
+      return $ CachePreference pref 0 NoTimestamp
     _ -> Nothing
   where
     parseName str

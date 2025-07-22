@@ -1,6 +1,5 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE LambdaCase #-}
 {-# OPTIONS_GHC -Wno-deferred-out-of-scope-variables #-}
 
 module Main (main) where
@@ -113,7 +112,7 @@ main2 meta plan = do
                 case P.uPkgSrc unit of
                       Just (P.RepoTarballPackage (P.RepoSecure _uri)) ->
                         return Hackage
-                      Just (P.LocalUnpackedPackage _path) -> 
+                      Just (P.LocalUnpackedPackage _path) ->
                         return Local
                       pkgsrc ->
                         die $ "package source not supported: " ++ show pkgsrc

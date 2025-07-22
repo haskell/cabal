@@ -1,3 +1,4 @@
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 
 -- | cabal-install CLI command: test
@@ -28,13 +29,13 @@ import Distribution.Client.CmdErrorMessages
   )
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
+  , cfgVerbosity
   , defaultNixStyleFlags
   , nixStyleOptions
   )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.Setup
-  ( ConfigFlags (..)
-  , GlobalFlags (..)
+  ( GlobalFlags (..)
   )
 import Distribution.Client.TargetProblem
   ( TargetProblem (..)
@@ -47,14 +48,14 @@ import Distribution.Simple.Command
   , usageAlternatives
   )
 import Distribution.Simple.Flag
-  ( Flag (..)
+  ( Flag
+  , pattern Flag
   )
 import Distribution.Simple.Setup
   ( TestFlags (..)
-  , fromFlagOrDefault
   )
 import Distribution.Simple.Utils
-  ( die'
+  ( dieWithException
   , notice
   , warn
   , wrapText
@@ -65,6 +66,7 @@ import Distribution.Verbosity
 
 import qualified System.Exit (exitSuccess)
 
+import Distribution.Client.Errors
 import GHC.Environment
   ( getFullArgs
   )
@@ -131,10 +133,7 @@ testAction flags@NixStyleFlags{..} targetStrings globalFlags = do
   buildCtx <-
     runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
       when (buildSettingOnlyDeps (buildSettings baseCtx)) $
-        die' verbosity $
-          "The test command does not support '--only-dependencies'. "
-            ++ "You may wish to use 'build --only-dependencies' and then "
-            ++ "use 'test'."
+        dieWithException verbosity TestCommandDoesn'tSupport
 
       fullArgs <- getFullArgs
       when ("+RTS" `elem` fullArgs) $
@@ -145,7 +144,7 @@ testAction flags@NixStyleFlags{..} targetStrings globalFlags = do
       -- (as opposed to say build or haddock targets).
       targets <-
         either (reportTargetProblems verbosity failWhenNoTestSuites) return $
-          resolveTargets
+          resolveTargetsFromSolver
             selectPackageTargets
             selectComponentTarget
             elaboratedPlan
@@ -165,7 +164,7 @@ testAction flags@NixStyleFlags{..} targetStrings globalFlags = do
   runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
   where
     failWhenNoTestSuites = testFailWhenNoTestSuites testFlags
-    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    verbosity = cfgVerbosity normal flags
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty -- ClientInstallFlags
 
 -- | This defines what a 'TargetSelector' means for the @test@ command.
@@ -261,11 +260,11 @@ reportTargetProblems :: Verbosity -> Flag Bool -> [TestTargetProblem] -> IO a
 reportTargetProblems verbosity failWhenNoTestSuites problems =
   case (failWhenNoTestSuites, problems) of
     (Flag True, [CustomTargetProblem (TargetProblemNoTests _)]) ->
-      die' verbosity problemsMessage
+      dieWithException verbosity $ ReportTargetProblems problemsMessage
     (_, [CustomTargetProblem (TargetProblemNoTests selector)]) -> do
       notice verbosity (renderAllowedNoTestsProblem selector)
       System.Exit.exitSuccess
-    (_, _) -> die' verbosity problemsMessage
+    (_, _) -> dieWithException verbosity $ ReportTargetProblems problemsMessage
   where
     problemsMessage = unlines . map renderTestTargetProblem $ problems
 

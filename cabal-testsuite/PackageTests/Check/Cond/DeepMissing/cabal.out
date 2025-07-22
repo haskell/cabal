@@ -1,0 +1,5 @@
+# cabal check
+The package will not build sanely due to these errors:
+Error: [no-main-is] No 'main-is' field found for executable exe
+Error: Hackage would reject this package.
+

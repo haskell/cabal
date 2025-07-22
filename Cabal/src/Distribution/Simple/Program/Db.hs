@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 
@@ -26,7 +25,7 @@
 -- don't have to write all the PATH logic inside Setup.lhs.
 module Distribution.Simple.Program.Db
   ( -- * The collection of configured programs we can run
-    ProgramDb
+    ProgramDb (..)
   , emptyProgramDb
   , defaultProgramDb
   , restoreProgramDb
@@ -34,6 +33,8 @@ module Distribution.Simple.Program.Db
     -- ** Query and manipulate the program db
   , addKnownProgram
   , addKnownPrograms
+  , prependProgramSearchPath
+  , prependProgramSearchPathNoLogging
   , lookupKnownProgram
   , knownPrograms
   , getProgramSearchPath
@@ -46,11 +47,13 @@ module Distribution.Simple.Program.Db
   , userSpecifyArgss
   , userSpecifiedArgs
   , lookupProgram
+  , lookupProgramByName
   , updateProgram
   , configuredPrograms
 
     -- ** Query and manipulate the program db
   , configureProgram
+  , configureUnconfiguredProgram
   , configureAllKnownPrograms
   , unconfigureProgram
   , lookupProgramVersion
@@ -58,6 +61,12 @@ module Distribution.Simple.Program.Db
   , requireProgram
   , requireProgramVersion
   , needProgram
+
+    -- * Internal functions
+  , UnconfiguredProgs
+  , ConfiguredProgs
+  , updateUnconfiguredProgs
+  , updateConfiguredProgs
   ) where
 
 import Distribution.Compat.Prelude
@@ -93,16 +102,16 @@ import Distribution.Simple.Errors
 data ProgramDb = ProgramDb
   { unconfiguredProgs :: UnconfiguredProgs
   , progSearchPath :: ProgramSearchPath
+  , progOverrideEnv :: [(String, Maybe String)]
   , configuredProgs :: ConfiguredProgs
   }
-  deriving (Typeable)
 
 type UnconfiguredProgram = (Program, Maybe FilePath, [ProgArg])
 type UnconfiguredProgs = Map.Map String UnconfiguredProgram
 type ConfiguredProgs = Map.Map String ConfiguredProgram
 
 emptyProgramDb :: ProgramDb
-emptyProgramDb = ProgramDb Map.empty defaultProgramSearchPath Map.empty
+emptyProgramDb = ProgramDb Map.empty defaultProgramSearchPath [] Map.empty
 
 defaultProgramDb :: ProgramDb
 defaultProgramDb = restoreProgramDb builtinPrograms emptyProgramDb
@@ -142,14 +151,17 @@ instance Read ProgramDb where
 instance Binary ProgramDb where
   put db = do
     put (progSearchPath db)
+    put (progOverrideEnv db)
     put (configuredProgs db)
 
   get = do
     searchpath <- get
+    overrides <- get
     progs <- get
     return $!
       emptyProgramDb
         { progSearchPath = searchpath
+        , progOverrideEnv = overrides
         , configuredProgs = progs
         }
 
@@ -160,6 +172,7 @@ instance Structured ProgramDb where
       0
       "ProgramDb"
       [ structure (Proxy :: Proxy ProgramSearchPath)
+      , structure (Proxy :: Proxy [(String, Maybe String)])
       , structure (Proxy :: Proxy ConfiguredProgs)
       ]
 
@@ -219,6 +232,34 @@ modifyProgramSearchPath
   -> ProgramDb
 modifyProgramSearchPath f db =
   setProgramSearchPath (f $ getProgramSearchPath db) db
+
+-- | Modify the current 'ProgramSearchPath' used by the 'ProgramDb'
+-- by prepending the provided extra paths.
+--
+--  - Logs the added paths in info verbosity.
+--  - Prepends environment variable overrides.
+prependProgramSearchPath
+  :: Verbosity
+  -> [FilePath]
+  -> [(String, Maybe FilePath)]
+  -> ProgramDb
+  -> IO ProgramDb
+prependProgramSearchPath verbosity extraPaths extraEnv db = do
+  unless (null extraPaths) $
+    logExtraProgramSearchPath verbosity extraPaths
+  unless (null extraEnv) $
+    logExtraProgramOverrideEnv verbosity extraEnv
+  return $ prependProgramSearchPathNoLogging extraPaths extraEnv db
+
+prependProgramSearchPathNoLogging
+  :: [FilePath]
+  -> [(String, Maybe String)]
+  -> ProgramDb
+  -> ProgramDb
+prependProgramSearchPathNoLogging extraPaths extraEnv db =
+  let db' = modifyProgramSearchPath (nub . (map ProgramSearchPathDir extraPaths ++)) db
+      db'' = db'{progOverrideEnv = extraEnv ++ progOverrideEnv db'}
+   in db''
 
 -- | User-specify this path.  Basically override any path information
 --  for this program in the configuration. If it's not a known
@@ -299,7 +340,11 @@ userSpecifiedArgs prog =
 
 -- | Try to find a configured program
 lookupProgram :: Program -> ProgramDb -> Maybe ConfiguredProgram
-lookupProgram prog = Map.lookup (programName prog) . configuredProgs
+lookupProgram = lookupProgramByName . programName
+
+-- | Try to find a configured program
+lookupProgramByName :: String -> ProgramDb -> Maybe ConfiguredProgram
+lookupProgramByName name = Map.lookup name . configuredProgs
 
 -- | Update a configured program in the database.
 updateProgram
@@ -317,10 +362,12 @@ configuredPrograms = Map.elems . configuredProgs
 -- ---------------------------
 -- Configuring known programs
 
--- | Try to configure a specific program. If the program is already included in
--- the collection of unconfigured programs then we use any user-supplied
--- location and arguments. If the program gets configured successfully it gets
--- added to the configured collection.
+-- | Try to configure a specific program and add it to the program database.
+--
+-- If the program is already included in the collection of unconfigured programs,
+-- then we use any user-supplied location and arguments.
+-- If the program gets configured successfully, it gets added to the configured
+-- collection.
 --
 -- Note that it is not a failure if the program cannot be configured. It's only
 -- a failure if the user supplied a location and the program could not be found
@@ -336,6 +383,25 @@ configureProgram
   -> ProgramDb
   -> IO ProgramDb
 configureProgram verbosity prog progdb = do
+  mbConfiguredProg <- configureUnconfiguredProgram verbosity prog progdb
+  case mbConfiguredProg of
+    Nothing -> return progdb
+    Just configuredProg -> do
+      let progdb' =
+            updateConfiguredProgs
+              (Map.insert (programName prog) configuredProg)
+              progdb
+      return progdb'
+
+-- | Try to configure a specific program. If the program is already included in
+-- the collection of unconfigured programs then we use any user-supplied
+-- location and arguments.
+configureUnconfiguredProgram
+  :: Verbosity
+  -> Program
+  -> ProgramDb
+  -> IO (Maybe ConfiguredProgram)
+configureUnconfiguredProgram verbosity prog progdb = do
   let name = programName prog
   maybeLocation <- case userSpecifiedPath prog progdb of
     Nothing ->
@@ -351,7 +417,7 @@ configureProgram verbosity prog progdb = do
               (dieWithException verbosity $ ConfigureProgram name path)
               (return . Just . swap . fmap UserSpecified . swap)
   case maybeLocation of
-    Nothing -> return progdb
+    Nothing -> return Nothing
     Just (location, triedLocations) -> do
       version <- programFindVersion prog verbosity (locationPath location)
       newPath <- programSearchPathAsPATHVar (progSearchPath progdb)
@@ -361,13 +427,13 @@ configureProgram verbosity prog progdb = do
               , programVersion = version
               , programDefaultArgs = []
               , programOverrideArgs = userSpecifiedArgs prog progdb
-              , programOverrideEnv = [("PATH", Just newPath)]
+              , programOverrideEnv = [("PATH", Just newPath)] ++ progOverrideEnv progdb
               , programProperties = Map.empty
               , programLocation = location
               , programMonitorFiles = triedLocations
               }
       configuredProg' <- programPostConf prog verbosity configuredProg
-      return (updateConfiguredProgs (Map.insert name configuredProg') progdb)
+      return $ Just configuredProg'
 
 -- | Configure a bunch of programs using 'configureProgram'. Just a 'foldM'.
 configurePrograms

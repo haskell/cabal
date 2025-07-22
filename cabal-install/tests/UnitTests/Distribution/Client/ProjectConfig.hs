@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 -- simplifier goes nuts otherwise
 #if __GLASGOW_HASKELL__ < 806
@@ -10,14 +10,11 @@
 
 module UnitTests.Distribution.Client.ProjectConfig (tests) where
 
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid
-import Control.Applicative
-#endif
 import Control.Monad
 import Data.Either (isRight)
 import Data.Foldable (for_)
 import Data.List (intercalate, isPrefixOf, (\\))
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
@@ -36,6 +33,7 @@ import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Utils (toUTF8BS)
+import Distribution.System (OS (Windows), buildOS)
 import Distribution.Types.PackageVersionConstraint
 import Distribution.Version
 
@@ -53,6 +51,7 @@ import Distribution.Verbosity (silent)
 
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.PackageConstraint
+import Distribution.Solver.Types.ProjectConfigPath
 import Distribution.Solver.Types.Settings
 
 import Distribution.Client.ProjectConfig
@@ -100,6 +99,7 @@ tests =
       , testProperty "specific" prop_roundtrip_printparse_specific
       , testProperty "all" prop_roundtrip_printparse_all
       ]
+  , testGetProjectRootUsability
   , testFindProjectRoot
   ]
   where
@@ -107,6 +107,31 @@ tests =
       case buildCompilerId of
         CompilerId GHC v -> v < mkVersion [7, 7]
         _ -> False
+
+testGetProjectRootUsability :: TestTree
+testGetProjectRootUsability =
+  testGroup
+    "getProjectRootUsability"
+    [ test "relative path" file ProjectRootUsabilityPresentAndUsable
+    , test "absolute path" absFile ProjectRootUsabilityPresentAndUsable
+    , test "symbolic link" fileSymlink ProjectRootUsabilityPresentAndUsable
+    , test "file not present" fileNotPresent ProjectRootUsabilityNotPresent
+    , test "directory" brokenDirCabalProject ProjectRootUsabilityPresentAndUnusable
+    , test "broken symbolic link" fileSymlinkBroken ProjectRootUsabilityPresentAndUnusable
+    ]
+  where
+    dir = fixturesDir </> "project-root"
+    file = defaultProjectFile
+    absFile = dir </> file
+    fileNotPresent = file <.> "not-present"
+    fileSymlink = file <.> "symlink"
+    fileSymlinkBroken = fileSymlink <.> "broken"
+    brokenDirCabalProject = "cabal" <.> "project" <.> "dir" <.> "broken"
+    test name fileName expectedState =
+      testCase name $
+        withCurrentDirectory dir $
+          getProjectRootUsability fileName
+            >>= (@?= expectedState)
 
 testFindProjectRoot :: TestTree
 testFindProjectRoot =
@@ -118,6 +143,10 @@ testFindProjectRoot =
     , test "explicit file in lib" (cd libDir) Nothing (Just file) (succeeds dir file)
     , test "other file" (cd dir) Nothing (Just fileOther) (succeeds dir fileOther)
     , test "other file in lib" (cd libDir) Nothing (Just fileOther) (succeeds dir fileOther)
+    , test "symbolic link" (cd dir) Nothing (Just fileSymlink) (succeeds dir fileSymlink)
+    , test "symbolic link in lib" (cd libDir) Nothing (Just fileSymlink) (succeeds dir fileSymlink)
+    , test "broken symbolic link" (cd dir) Nothing (Just fileSymlinkBroken) (failsWith $ BadProjectRootFileBroken fileSymlinkBroken)
+    , test "broken symbolic link in lib" (cd libDir) Nothing (Just fileSymlinkBroken) (failsWith $ BadProjectRootFileBroken fileSymlinkBroken)
     , -- Deprecated use-case
       test "absolute file" Nothing Nothing (Just absFile) (succeeds dir file)
     , test "nested file" (cd dir) Nothing (Just nixFile) (succeeds dir nixFile)
@@ -138,6 +167,9 @@ testFindProjectRoot =
 
     nixFile = "nix" </> file
     nixOther = nixFile <.> "other"
+
+    fileSymlink = file <.> "symlink"
+    fileSymlinkBroken = fileSymlink <.> "broken"
 
     missing path = Just (path <.> "does_not_exist")
 
@@ -165,6 +197,18 @@ testFindProjectRoot =
 
     fails result = case result of
       Left _ -> pure ()
+      Right x -> assertFailure $ "Expected an error, but found " <> show x
+
+    failsWith expectedError result = case result of
+      Left actualError ->
+        if actualError == expectedError
+          then pure ()
+          else
+            assertFailure $
+              "Expected an error "
+                <> show expectedError
+                <> ", but found "
+                <> show actualError
       Right x -> assertFailure $ "Expected an error, but found " <> show x
 
 fixturesDir :: FilePath
@@ -645,11 +689,10 @@ instance Arbitrary ProjectConfigShared where
       postShrink_Constraints = map (\uc -> (uc, projectConfigConstraintSource))
 
 projectConfigConstraintSource :: ConstraintSource
-projectConfigConstraintSource =
-  ConstraintSourceProjectConfig "unused"
+projectConfigConstraintSource = ConstraintSourceProjectConfig nullProjectConfigPath
 
 instance Arbitrary ProjectConfigProvenance where
-  arbitrary = elements [Implicit, Explicit "cabal.project"]
+  arbitrary = elements [Implicit, Explicit (ProjectConfigPath $ "cabal.project" :| [])]
 
 instance Arbitrary PackageConfig where
   arbitrary =
@@ -682,17 +725,18 @@ instance Arbitrary PackageConfig where
       <*> arbitrary
       <*> arbitrary
       <*> arbitrary
+      <*> arbitrary
+      <*> shortListOf 5 arbitraryShortToken
+      <*> arbitrary
+      <*> arbitrary
+      <*> arbitrary
+      <*> shortListOf 5 arbitraryShortToken
+      <*> shortListOf 5 arbitraryShortToken
+      <*> shortListOf 5 arbitraryShortToken
       <*> shortListOf 5 arbitraryShortToken
       <*> arbitrary
       <*> arbitrary
       <*> arbitrary
-      <*> shortListOf 5 arbitraryShortToken
-      <*> shortListOf 5 arbitraryShortToken
-      <*> shortListOf 5 arbitraryShortToken
-      <*> shortListOf 5 arbitraryShortToken
-      <*> arbitrary
-      <*> arbitrary
-      <*> arbitrary
       <*> arbitrary
       <*> arbitrary
       <*> arbitrary
@@ -720,6 +764,7 @@ instance Arbitrary PackageConfig where
       <*> arbitraryFlag arbitraryShortToken
       <*> arbitraryFlag arbitraryShortToken
       <*> arbitraryFlag arbitraryShortToken
+      <*> arbitrary
       <*> arbitrary
       <*> arbitrary
       <*> arbitrary
@@ -750,6 +795,7 @@ instance Arbitrary PackageConfig where
       , packageConfigFullyStaticExe = x50
       , packageConfigProf = x07
       , packageConfigProfLib = x08
+      , packageConfigProfShared = x08_1
       , packageConfigProfExe = x09
       , packageConfigProfDetail = x10
       , packageConfigProfLibDetail = x11
@@ -790,8 +836,9 @@ instance Arbitrary PackageConfig where
       , packageConfigHaddockForHackage = x41
       , packageConfigHaddockIndex = x54
       , packageConfigHaddockBaseUrl = x55
-      , packageConfigHaddockLib = x56
+      , packageConfigHaddockResourcesDir = x56
       , packageConfigHaddockOutputDir = x57
+      , packageConfigHaddockUseUnicode = x58
       , packageConfigTestHumanLog = x44
       , packageConfigTestMachineLog = x45
       , packageConfigTestShowDetails = x46
@@ -813,6 +860,7 @@ instance Arbitrary PackageConfig where
         , packageConfigFullyStaticExe = x50'
         , packageConfigProf = x07'
         , packageConfigProfLib = x08'
+        , packageConfigProfShared = x08_1'
         , packageConfigProfExe = x09'
         , packageConfigProfDetail = x10'
         , packageConfigProfLibDetail = x11'
@@ -853,8 +901,9 @@ instance Arbitrary PackageConfig where
         , packageConfigHaddockForHackage = x41'
         , packageConfigHaddockIndex = x54'
         , packageConfigHaddockBaseUrl = x55'
-        , packageConfigHaddockLib = x56'
+        , packageConfigHaddockResourcesDir = x56'
         , packageConfigHaddockOutputDir = x57'
+        , packageConfigHaddockUseUnicode = x58'
         , packageConfigTestHumanLog = x44'
         , packageConfigTestMachineLog = x45'
         , packageConfigTestShowDetails = x46'
@@ -865,7 +914,7 @@ instance Arbitrary PackageConfig where
         , packageConfigBenchmarkOptions = x52'
         }
       | ( ( (x00', x01', x02', x03', x04')
-            , (x05', x42', x06', x50', x07', x08', x09')
+            , (x05', x42', x06', x50', x07', x08', x08_1', x09')
             , (x10', x11', x12', x13', x14')
             , (x15', x16', x53', x17', x18', x19')
             )
@@ -877,12 +926,13 @@ instance Arbitrary PackageConfig where
               , (x44', x45', x46', x47', x48', x49', x51', x52', x54', x55')
               , x56'
               , x57'
+              , x58'
               )
           ) <-
           shrink
             (
               ( (preShrink_Paths x00, preShrink_Args x01, x02, x03, x04)
-              , (x05, x42, x06, x50, x07, x08, x09)
+              , (x05, x42, x06, x50, x07, x08, x08_1, x09)
               , (x10, x11, map NonEmpty x12, x13, x14)
               ,
                 ( x15
@@ -902,6 +952,7 @@ instance Arbitrary PackageConfig where
               , (x44, x45, x46, x47, x48, x49, x51, x52, x54, x55)
               , x56
               , x57
+              , x58
               )
             )
       ]
@@ -966,7 +1017,10 @@ instance Arbitrary LocalRepo where
   arbitrary =
     LocalRepo
       <$> arbitrary
-      <*> elements ["/tmp/foo", "/tmp/bar"] -- TODO: generate valid absolute paths
+      <*> elements
+        ( (if buildOS == Windows then map (normalise . ("C:" ++)) else id)
+            ["/tmp/foo", "/tmp/bar"]
+        ) -- TODO: generate valid absolute paths
       <*> arbitrary
 
 instance Arbitrary PreSolver where

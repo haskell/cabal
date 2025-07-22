@@ -135,6 +135,7 @@ defaultCabalVersions =
   , CabalSpecV2_4
   , CabalSpecV3_0
   , CabalSpecV3_4
+  , CabalSpecV3_14
   ]
 
 defaultInitFlags :: InitFlags
@@ -164,7 +165,7 @@ myLibHs =
 
 myExeHs :: [String]
 myExeHs =
-  [ "module Main where"
+  [ "module Main (main) where"
   , ""
   , "main :: IO ()"
   , "main = putStrLn \"Hello, Haskell!\""
@@ -172,7 +173,7 @@ myExeHs =
 
 myLibExeHs :: [String]
 myLibExeHs =
-  [ "module Main where"
+  [ "module Main (main) where"
   , ""
   , "import qualified MyLib (someFunc)"
   , ""

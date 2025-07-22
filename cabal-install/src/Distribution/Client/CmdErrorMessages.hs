@@ -1,6 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE RecordWildCards #-}
 
 -- | Utilities to help format error messages for the various CLI commands.
 module Distribution.Client.CmdErrorMessages
@@ -37,7 +35,7 @@ import Distribution.Package
   , packageName
   )
 import Distribution.Simple.Utils
-  ( die'
+  ( dieWithException
   )
 import Distribution.Solver.Types.OptionalStanza
   ( OptionalStanza (..)
@@ -51,6 +49,7 @@ import Distribution.Types.LibraryName
   )
 
 import qualified Data.List.NonEmpty as NE
+import Distribution.Client.Errors
 
 -----------------------
 -- Singular or plural
@@ -227,7 +226,7 @@ renderComponentKind Plural ckind = case ckind of
 -- | Default implementation of 'reportTargetProblems' simply renders one problem per line.
 reportTargetProblems :: Verbosity -> String -> [TargetProblem'] -> IO a
 reportTargetProblems verbosity verb =
-  die' verbosity . unlines . map (renderTargetProblem verb absurd)
+  dieWithException verbosity . CmdErrorMessages . map (renderTargetProblem verb absurd)
 
 -- | Default implementation of 'renderTargetProblem'.
 renderTargetProblem

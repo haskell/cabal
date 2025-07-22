@@ -1,5 +1,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -38,9 +39,11 @@ import Distribution.Client.CmdErrorMessages
 import Distribution.Client.DistDirLayout
   ( DistDirLayout (..)
   )
+import Distribution.Client.Errors
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
+  , cfgVerbosity
   , defaultNixStyleFlags
   , nixStyleOptions
   )
@@ -98,20 +101,22 @@ import Distribution.Simple.Command
   )
 import Distribution.Simple.Compiler
   ( Compiler
+  , PackageDBX (..)
   , compilerCompatVersion
   )
+import Distribution.Simple.Program.GHC
 import Distribution.Simple.Setup
   ( ReplOptions (..)
+  , commonSetupTempFileOptions
   )
 import Distribution.Simple.Utils
-  ( TempFileOptions (..)
-  , debugNoWrap
-  , die'
+  ( debugNoWrap
+  , dieWithException
   , withTempDirectoryEx
   , wrapText
   )
 import Distribution.Solver.Types.ConstraintSource
-  ( ConstraintSource (ConstraintSourceMultiRepl)
+  ( ConstraintSource (ConstraintSourceMultiRepl, ConstraintSourceWithRepl)
   )
 import Distribution.Solver.Types.PackageConstraint
   ( PackageProperty (PackagePropertyVersion)
@@ -137,6 +142,7 @@ import Distribution.Types.Library
   ( Library (..)
   , emptyLibrary
   )
+import Distribution.Types.ParStrat
 import Distribution.Types.Version
   ( Version
   , mkVersion
@@ -174,16 +180,10 @@ import Distribution.Client.ReplFlags
   , topReplOptions
   )
 import Distribution.Compat.Binary (decode)
-import Distribution.Simple.Flag (Flag (Flag), fromFlagOrDefault)
+import Distribution.Simple.Flag (flagToMaybe, fromFlagOrDefault, pattern Flag)
 import Distribution.Simple.Program.Builtin (ghcProgram)
 import Distribution.Simple.Program.Db (requireProgram)
-import Distribution.Simple.Program.Run
-  ( programInvocation
-  , runProgramInvocation
-  )
 import Distribution.Simple.Program.Types
-  ( ConfiguredProgram (programOverrideEnv)
-  )
 import System.Directory
   ( doesFileExist
   , getCurrentDirectory
@@ -282,13 +282,9 @@ multiReplDecision ctx compiler flags =
 -- "Distribution.Client.ProjectOrchestration"
 replAction :: NixStyleFlags ReplFlags -> [String] -> GlobalFlags -> IO ()
 replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings globalFlags =
-  withContextAndSelectors AcceptNoTargets (Just LibKind) flags targetStrings globalFlags ReplCommand $ \targetCtx ctx targetSelectors -> do
+  withContextAndSelectors verbosity AcceptNoTargets (Just LibKind) flags targetStrings globalFlags ReplCommand $ \targetCtx ctx targetSelectors -> do
     when (buildSettingOnlyDeps (buildSettings ctx)) $
-      die' verbosity $
-        "The repl command does not support '--only-dependencies'. "
-          ++ "You may wish to use 'build --only-dependencies' and then "
-          ++ "use 'repl'."
-
+      dieWithException verbosity ReplCommandDoesn'tSupport
     let projectRoot = distProjectRootDirectory $ distDirLayout ctx
         distDir = distDirectory $ distDirLayout ctx
 
@@ -296,9 +292,8 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
       ProjectContext -> return ctx
       GlobalContext -> do
         unless (null targetStrings) $
-          die' verbosity $
-            "'repl' takes no arguments or a script argument outside a project: " ++ unwords targetStrings
-
+          dieWithException verbosity $
+            ReplTakesNoArguments targetStrings
         let
           sourcePackage =
             fakeProjectSourcePackage projectRoot
@@ -315,12 +310,12 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
         updateContextAndWriteProjectFile' ctx sourcePackage
       ScriptContext scriptPath scriptExecutable -> do
         unless (length targetStrings == 1) $
-          die' verbosity $
-            "'repl' takes a single argument which should be a script: " ++ unwords targetStrings
+          dieWithException verbosity $
+            ReplTakesSingleArgument targetStrings
         existsScriptPath <- doesFileExist scriptPath
         unless existsScriptPath $
-          die' verbosity $
-            "'repl' takes a single argument which should be a script: " ++ unwords targetStrings
+          dieWithException verbosity $
+            ReplTakesSingleArgument targetStrings
 
         updateContextAndWriteProjectFile ctx scriptPath scriptExecutable
 
@@ -328,15 +323,34 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
     -- We need to do this before solving, but the compiler version is only known
     -- after solving (phaseConfigureCompiler), so instead of using
     -- multiReplDecision we just check the flag.
-    let baseCtx' =
-          if fromFlagOrDefault False $
+    let multiReplEnabled =
+          fromFlagOrDefault False $
             projectConfigMultiRepl (projectConfigShared $ projectConfig baseCtx)
               <> replUseMulti
+
+        withReplEnabled =
+          isJust $ flagToMaybe $ replWithRepl configureReplOptions
+
+        addConstraintWhen cond constraint base_ctx =
+          if cond
             then
-              baseCtx
+              base_ctx
                 & lProjectConfig . lProjectConfigShared . lProjectConfigConstraints
-                  %~ (multiReplCabalConstraint :)
-            else baseCtx
+                  %~ (constraint :)
+            else base_ctx
+
+        -- This is the constraint setup.Cabal>=3.11. 3.11 is when Cabal options
+        -- used for multi-repl were introduced.
+        -- Idelly we'd apply this constraint only on the closure of repl targets,
+        -- but that would require another solver run for marginal advantages that
+        -- will further shrink as 3.11 is adopted.
+        addMultiReplConstraint = addConstraintWhen multiReplEnabled $ requireCabal [3, 11] ConstraintSourceMultiRepl
+
+        -- Similarly, if you use `--with-repl` then your version of `Cabal` needs to
+        -- support the `--with-repl` flag.
+        addWithReplConstraint = addConstraintWhen withReplEnabled $ requireCabal [3, 15] ConstraintSourceWithRepl
+
+        baseCtx' = addMultiReplConstraint $ addWithReplConstraint baseCtx
 
     (originalComponent, baseCtx'') <-
       if null (envPackages replEnvFlags)
@@ -365,7 +379,7 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
     -- In addition, to avoid a *third* trip through the solver, we are
     -- replicating the second half of 'runProjectPreBuildPhase' by hand
     -- here.
-    (buildCtx, compiler, replOpts', targets) <- withInstallPlan verbosity baseCtx'' $
+    (buildCtx, compiler, platform, replOpts', targets) <- withInstallPlan verbosity baseCtx'' $
       \elaboratedPlan elaboratedShared' -> do
         let ProjectBaseContext{..} = baseCtx''
 
@@ -402,18 +416,18 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
               , targetsMap = targets
               }
 
-          ElaboratedSharedConfig{pkgConfigCompiler = compiler} = elaboratedShared'
+          ElaboratedSharedConfig{pkgConfigCompiler = compiler, pkgConfigPlatform = platform} = elaboratedShared'
 
           repl_flags = case originalComponent of
             Just oci -> generateReplFlags includeTransitive elaboratedPlan' oci
             Nothing -> []
 
-        return (buildCtx, compiler, configureReplOptions & lReplOptionsFlags %~ (++ repl_flags), targets)
+        return (buildCtx, compiler, platform, configureReplOptions & lReplOptionsFlags %~ (++ repl_flags), targets)
 
-    -- Multi Repl implemention see: https://well-typed.com/blog/2023/03/cabal-multi-unit/ for
+    -- Multi Repl implementation see: https://well-typed.com/blog/2023/03/cabal-multi-unit/ for
     -- a high-level overview about how everything fits together.
     if Set.size (distinctTargetComponents targets) > 1
-      then withTempDirectoryEx verbosity (TempFileOptions keepTempFiles) distDir "multi-out" $ \dir' -> do
+      then withTempDirectoryEx verbosity tempFileOptions distDir "multi-out" $ \dir' -> do
         -- multi target repl
         dir <- makeAbsolute dir'
         -- Modify the replOptions so that the ./Setup repl command will write options
@@ -442,31 +456,49 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
         let sp = intercalate [searchPathSeparator] (map fst (sortBy (comparing @Int snd) $ Map.toList (combine_search_paths all_paths)))
         -- HACK: Just combine together all env overrides, placing the most common things last
 
-        -- ghc program with overriden PATH
+        -- ghc program with overridden PATH
         (ghcProg, _) <- requireProgram verbosity ghcProgram (pkgConfigCompilerProgs (elaboratedShared buildCtx'))
         let ghcProg' = ghcProg{programOverrideEnv = [("PATH", Just sp)]}
 
         -- Find what the unit files are, and start a repl based on all the response
         -- files which have been created in the directory.
         -- unit files for components
-        unit_files <- listDirectory dir
+        unit_files <- (filter (/= "paths")) <$> listDirectory dir
+
+        -- Order the unit files so that the find target becomes the active unit
+        let active_unit_fp :: Maybe FilePath
+            active_unit_fp = do
+              -- Get the first target selectors from the cli
+              activeTarget <- safeHead targetSelectors
+              -- Lookup the targets :: Map UnitId [(ComponentTarget, NonEmpty TargetSelector)]
+              unitId <-
+                Map.toList targets
+                  -- Keep the UnitId matching the desired target selector
+                  & find (\(_, xs) -> any (\(_, selectors) -> activeTarget `elem` selectors) xs)
+                  & fmap fst
+              -- Convert to filename (adapted from 'storePackageDirectory')
+              pure (prettyShow unitId)
+            unit_files_ordered :: [FilePath]
+            unit_files_ordered =
+              let (active_unit_files, other_units) = partition (\fp -> Just fp == active_unit_fp) unit_files
+               in -- GHC considers the last unit passed to be the active one
+                  other_units ++ active_unit_files
+
+            convertParStrat :: ParStratX Int -> ParStratX String
+            convertParStrat Serial = Serial
+            convertParStrat (UseSem n) = NumJobs (Just n)
+            convertParStrat (NumJobs mn) = NumJobs mn
+
+        let ghc_opts =
+              mempty
+                { ghcOptMode = Flag GhcModeInteractive
+                , ghcOptUnitFiles = map (dir </>) unit_files_ordered
+                , ghcOptNumJobs = Flag (convertParStrat (buildSettingNumJobs (buildSettings ctx)))
+                , ghcOptPackageDBs = [GlobalPackageDB]
+                }
 
         -- run ghc --interactive with
-        runProgramInvocation verbosity $
-          programInvocation ghcProg' $
-            concat $
-              [ "--interactive"
-              , "-package-env"
-              , "-" -- to ignore ghc.environment.* files
-              , "-j"
-              , show (buildSettingNumJobs (buildSettings ctx))
-              ]
-                : [ ["-unit", "@" ++ dir </> unit]
-                  | unit <- unit_files
-                  , unit /= "paths"
-                  ]
-
-        pure ()
+        runReplProgram (flagToMaybe $ replWithRepl replOpts') tempFileOptions verbosity ghcProg' compiler platform Nothing ghc_opts
       else do
         -- single target repl
         replOpts'' <- case targetCtx of
@@ -485,8 +517,8 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
         go m ("PATH", Just s) = foldl' (\m' f -> Map.insertWith (+) f 1 m') m (splitSearchPath s)
         go m _ = m
 
-    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-    keepTempFiles = fromFlagOrDefault False replKeepTempFiles
+    verbosity = cfgVerbosity normal flags
+    tempFileOptions = commonSetupTempFileOptions $ configCommonFlags configFlags
 
     validatedTargets ctx compiler elaboratedPlan targetSelectors = do
       let multi_repl_enabled = multiReplDecision ctx compiler r
@@ -494,7 +526,7 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
       -- (as opposed to say build or haddock targets).
       targets <-
         either (reportTargetProblems verbosity) return $
-          resolveTargets
+          resolveTargetsFromSolver
             (selectPackageTargets multi_repl_enabled)
             selectComponentTarget
             elaboratedPlan
@@ -511,17 +543,16 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
 
       return targets
 
-    -- This is the constraint setup.Cabal>=3.11. 3.11 is when Cabal options
-    -- used for multi-repl were introduced.
-    -- Idelly we'd apply this constraint only on the closure of repl targets,
-    -- but that would require another solver run for marginal advantages that
-    -- will further shrink as 3.11 is adopted.
-    multiReplCabalConstraint =
-      ( UserConstraint
-          (UserAnySetupQualifier (mkPackageName "Cabal"))
-          (PackagePropertyVersion $ orLaterVersion $ mkVersion [3, 11])
-      , ConstraintSourceMultiRepl
-      )
+-- | Create a constraint which requires a later version of Cabal.
+-- This is used for commands which require a specific feature from the Cabal library
+-- such as multi-repl or the --with-repl flag.
+requireCabal :: [Int] -> ConstraintSource -> (UserConstraint, ConstraintSource)
+requireCabal version source =
+  ( UserConstraint
+      (UserAnySetupQualifier (mkPackageName "Cabal"))
+      (PackagePropertyVersion $ orLaterVersion $ mkVersion version)
+  , source
+  )
 
 -- | First version of GHC which supports multiple home packages
 minMultipleHomeUnitsVersion :: Version
@@ -750,7 +781,7 @@ multipleTargetsProblem decision = CustomTargetProblem . TargetProblemMultipleTar
 
 reportTargetProblems :: Verbosity -> [TargetProblem ReplProblem] -> IO a
 reportTargetProblems verbosity =
-  die' verbosity . unlines . map renderReplTargetProblem
+  dieWithException verbosity . RenderReplTargetProblem . map renderReplTargetProblem
 
 renderReplTargetProblem :: TargetProblem ReplProblem -> String
 renderReplTargetProblem = renderTargetProblem "open a repl for" renderReplProblem

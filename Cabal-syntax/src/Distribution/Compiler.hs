@@ -1,6 +1,4 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveFoldable #-}
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
 
@@ -75,9 +73,11 @@ data CompilerFlavor
   | LHC
   | UHC
   | Eta
-  | HaskellSuite String -- string is the id of the actual compiler
+  | -- | @since 3.12.1.0
+    -- MicroHS, see https://github.com/augustss/MicroHs
+    MHS
   | OtherCompiler String
-  deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
+  deriving (Generic, Show, Read, Eq, Ord, Data)
 
 instance Binary CompilerFlavor
 instance Structured CompilerFlavor
@@ -85,11 +85,10 @@ instance NFData CompilerFlavor where rnf = genericRnf
 
 knownCompilerFlavors :: [CompilerFlavor]
 knownCompilerFlavors =
-  [GHC, GHCJS, NHC, YHC, Hugs, HBC, Helium, JHC, LHC, UHC, Eta]
+  [GHC, GHCJS, NHC, YHC, Hugs, HBC, Helium, JHC, LHC, UHC, Eta, MHS]
 
 instance Pretty CompilerFlavor where
   pretty (OtherCompiler name) = Disp.text name
-  pretty (HaskellSuite name) = Disp.text name
   pretty NHC = Disp.text "nhc98"
   pretty other = Disp.text (lowercase (show other))
 
@@ -142,7 +141,6 @@ data PerCompilerFlavor v = PerCompilerFlavor v v
     , Read
     , Eq
     , Ord
-    , Typeable
     , Data
     , Functor
     , Foldable
@@ -173,7 +171,7 @@ instance (Semigroup a, Monoid a) => Monoid (PerCompilerFlavor a) where
 -- ------------------------------------------------------------
 
 data CompilerId = CompilerId CompilerFlavor Version
-  deriving (Eq, Generic, Ord, Read, Show, Typeable)
+  deriving (Eq, Generic, Ord, Read, Show)
 
 instance Binary CompilerId
 instance Structured CompilerId
@@ -223,7 +221,7 @@ instance Binary CompilerInfo
 data AbiTag
   = NoAbiTag
   | AbiTag String
-  deriving (Eq, Generic, Show, Read, Typeable)
+  deriving (Eq, Generic, Show, Read)
 
 instance Binary AbiTag
 instance Structured AbiTag

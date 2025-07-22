@@ -19,11 +19,31 @@ relative to the respective preceding *published* version.
     versions of the ``Cabal`` library denote unreleased development
     branches which have no stability guarantee.
 
+``cabal-version: 3.14``
+-----------------------
+
+* Added field :pkg-field:`extra-files` for specifying extra files to be included
+  in ``sdist`` without adding any other semantics (compare,
+  :pkg-field:`extra-source-files` is tracked by ``cabal build``).
+
+* License fields use identifiers from SPDX License List version
+  ``3.25 2024-08-19``.
+
+* The :pkg-field:`build-type` field allows the new build type ``Hooks`` to be
+  specified.
+
+``cabal-version: 3.12``
+-----------------------
+
+* License fields use identifiers from SPDX License List version
+  ``3.23 2024-02-08``.
+
+
 ``cabal-version: 3.8``
 ----------------------
 
 * Added field ``code-generators`` to :pkg-section:`test-suite` stanzas. This
-  enumerates executabes (possibly brought into scope by  :pkg-field:`build-tool-depends`) that are run after all other
+  enumerates executables (possibly brought into scope by  :pkg-field:`build-tool-depends`) that are run after all other
   preprocessors. These executables are invoked with a target dir for
   output, a sequence of all source directories with source files of
   local lib components that the given test stanza depends on, and
@@ -72,8 +92,8 @@ relative to the respective preceding *published* version.
 
 * Dependencies to sublibraries must be specified explicitly,
   even for current package.
-  For example: ``build-depends: mypackage:internal-lib``
-  This way you can have an internal library with the same
+  For example: ``build-depends: mypackage:my-sublib``
+  This way you can have a sublibrary with the same
   name as some external dependency.
 
 * Remove ``-any`` and ``-none`` syntax for version ranges
@@ -174,6 +194,8 @@ relative to the respective preceding *published* version.
 * License fields use identifiers from SPDX License List version
   ``3.2 2018-07-10``
 
+* Deprecate ``jhc-options`` field.
+
 
 ``cabal-version: 2.2``
 ----------------------
@@ -218,7 +240,7 @@ relative to the respective preceding *published* version.
 
 * Add support for new :pkg-section:`foreign-library` stanza.
 
-* Add support for :ref:`internal library stanzas <sublibs>`.
+* Add support for :ref:`sublibrary stanzas <sublibs>`.
 
 * New CPP Macro ``CURRENT_PACKAGE_VERSION``.
 
@@ -247,6 +269,8 @@ relative to the respective preceding *published* version.
 
 * New :pkg-field:`license` type ``ISC`` added.
 
+* Deprecate ``hugs-options`` and ``nhc98-options`` fields.
+
 ``cabal-version: 1.20``
 -----------------------
 
@@ -271,20 +295,160 @@ relative to the respective preceding *published* version.
 
 * Add ``getSysconfDir`` operation to ``Paths_`` API.
 
-``cabal-version: 1.16``
+``cabal-version: 1.14``
 -----------------------
 
-.. todo::
+* New :pkg-section:`benchmark` stanza for describing a package benchmark added.
 
-   this needs to be researched; there were only few changes between
-   1.12 and 1.18;
+* ``exitcode-stdio-1.0`` is a valid value of the `type` field in a
+  :pkg-section:`benchmark` stanza.
+
+* ``detailed-0.9`` added as a valid value of the `type` field in a
+  :pkg-section:`test-suite` stanza.
 
 ``cabal-version: 1.12``
 -----------------------
 
-* Change syntax of :pkg-field:`cabal-version` to support the new recommended
+* Change the syntax of :pkg-field:`cabal-version` to support the new recommended
   ``cabal-version: x.y`` style
 
+``cabal-version: ==1.10``
+-------------------------
 
+* Change the syntax of :pkg-field:`cabal-version` to require a version range of
+  the form ``cabal-version: >= x.y``. (Consequently, ``cabal-version: ==1.10``
+  is, itself, not valid syntax.)
+
+* New :pkg-field:`default-language` (to specify a default language standard when
+  one is not explicitly specified) and :pkg-field:`other-languages`
+  (for language standards used by some modules) added.
+
+* New :pkg-field:`default-extensions` (for Haskell language extensions used by
+  every module) and :pkg-field:`other-extensions` (for extensions used by some
+  modules) added. :pkg-field:`extensions` deprecated.
+
+* New :pkg-section:`test-suite` stanza for describing a package test suite
+  added.
+
+* ``exitcode-stdio-1.0`` is a valid value of the `type` field in a
+  :pkg-section:`test-suite` stanza.
+
+``cabal-version: ==1.8``
+------------------------
+
+* Added support for the :pkg-field:`build-depends` of a
+  :pkg-section:`executable` stanza being able to specify the library in the same
+  package (if the package provides one) by the name of the package (without a
+  version constraint). Cabal then treats the executable as if it were in another
+  package that depended on the package providing the executable and the library.
+
+* The syntax for specifying package version ranges is expanded.
+
+* New :pkg-field:`license` types ``MIT`` and versioned ``GPL`` and ``LGPL``
+  added.
+
+``cabal-version: ==1.6``
+------------------------
+
+* New :pkg-section:`source-repository` stanza for information about the
+  location of the package's source code within a source code repository.
+
+* Add support for new :pkg-field:`bug-reports` field, to specify the URL where
+  users should direct bug reports.
+
+* Add support for wildcards in :pkg-field:`data-files` and
+  :pkg-field:`extra-source-files` fields.
+
+* Add support for ``foo ==1.2.*`` syntax to :pkg-field:`build-depends` field.
+
+* Add support for new :pkg-field:`library:exposed` field (default: ``True``), to
+  be able to specify that the package should not be exposed.
+
+* :pkg-field:`cpp-options`, :pkg-field:`cc-options` and :pkg-field:`ld-options`
+  fields no longer use ``,`` as a separator.
+
+``cabal-version: ==1.2.1``
+--------------------------
+
+* New format for the :pkg-section:`flag`, :pkg-section:`library` and
+  :pkg-section:`executable` stanzas.
+
+* Add support for new :pkg-field:`cpp-options` field, to specify options used
+  when pre-processing Haskell modules.
+
+* Replace ``nhc-options`` field with ``nhc98-options`` field.
+
+``cabal-version: ==1.2.0``
+--------------------------
+
+* The :pkg-field:`cabal-version` field is now required.
+
+* New :pkg-section:`flag` stanza for specifying configuration flags and add
+  support for conditional blocks in :pkg-section:`library` and
+  :pkg-section:`executable` stanzas.
+
+* Add distinct :pkg-section:`library` stanza.
+
+* New format for :pkg-section:`executable` stanzas.
+
+* Add support for new :pkg-field:`build-type` field (default: ``Custom``), to
+  specify the type of build used by this package.
+
+* Add support for new :pkg-field:`build-tools` field, to specify tools needed to
+  build the package.
+
+* Add support for new :pkg-field:`pkgconfig-depends` field, to specify
+  ``pkg-config`` packages needed to build the package.
+
+* Add support for new :pkg-field:`ghc-shared-options` field, to specify
+  additional options for GHC when the package is built as a shared library.
+
+``cabal-version: ==1.1.6``
+--------------------------
+
+* Add support for new :pkg-field:`install-includes` field, distinct from the
+  :pkg-field:`includes` field, to specify header files from the package.
+
+* Add support for new ``jhc-options`` field, to specify additional options for
+  John Meacham's Haskell compiler (JHC).
+
+``cabal-version: ==1.1.4``
+--------------------------
+
+* Add support for new optional :pkg-field:`cabal-version` field, to specify the
+  version of ``Cabal`` required for the package.
+
+* Add support for new :pkg-field:`author`, :pkg-field:`homepage`,
+  :pkg-field:`package-url`, :pkg-field:`synopsis`, :pkg-field:`description` and
+  :pkg-field:`category` fields.
+
+* Add support for new :pkg-field:`tested-with` field to specify compilers and
+  versions against which the package has been tested.
+
+* Add support for new :pkg-field:`data-files` field to specify files for use by
+  the package at run-time.
+
+* Add support for new :pkg-field:`extra-source-files` field to specify files to
+  be included in source distributions.
+
+* Add support for new :pkg-field:`extra-tmp-files` field to specify files to
+  be removed when cleaning up.
+
+* Replace :pkg-field:`hs-source-dir` field with :pkg-field:`hs-source-dirs`
+  field.
+
+* Add support for new :pkg-field:`ghc-prof-options` field, to specify
+  additional options for GHC when the package is built with profiling.
+
+* Add support for extension fields beginning with ``x-``.
+
+``Cabal-1.0``
+-------------
+
+``Cabal-1.0``, released March 2005, came with a
+`specification <https://downloads.haskell.org/~cabal/Cabal-1.0/doc/pkg-spec-html/>`__
+for 'The Haskell Cabal: A Common Architecture for Building Applications and
+Tools', including `Section 5.2 <https://downloads.haskell.org/~cabal/Cabal-1.0/doc/pkg-spec-html/x611.html#SBI-PKG-DESC>`__
+'Package description in the simple build infrastructure'.
 
 .. include:: references.inc

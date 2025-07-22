@@ -1,9 +1,3 @@
-{-# LANGUAGE CPP #-}
-
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
-
 -- |
 -- Module      :  Distribution.Client.GenBounds
 -- Copyright   :  (c) Doug Beardsley 2015
@@ -16,6 +10,8 @@
 -- The cabal gen-bounds command for generating PVP-compliant version bounds.
 module Distribution.Client.GenBounds
   ( genBounds
+  , boundsNeededMsg
+  , showBounds
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -46,10 +42,6 @@ import Distribution.PackageDescription.Configuration
   ( finalizePD
   )
 import Distribution.Simple.Compiler
-  ( Compiler
-  , PackageDBStack
-  , compilerInfo
-  )
 import Distribution.Simple.PackageDescription
   ( readGenericPackageDescription
   )
@@ -67,6 +59,10 @@ import Distribution.Types.ComponentRequestedSpec
   ( defaultComponentRequestedSpec
   )
 import Distribution.Types.Dependency
+import Distribution.Types.DependencySatisfaction
+  ( DependencySatisfaction (..)
+  )
+import Distribution.Utils.Path (relativeSymbolicPath)
 import Distribution.Version
   ( LowerBound (..)
   , UpperBound (..)
@@ -79,9 +75,6 @@ import Distribution.Version
   , hasUpperBound
   , intersectVersionRanges
   , orLaterVersion
-  )
-import System.Directory
-  ( getCurrentDirectory
   )
 
 -- | Given a version, return an API-compatible (according to PVP) version range.
@@ -121,7 +114,7 @@ showBounds padTo p =
 -- | Entry point for the @gen-bounds@ command.
 genBounds
   :: Verbosity
-  -> PackageDBStack
+  -> PackageDBStackCWD
   -> RepoContext
   -> Compiler
   -> Platform
@@ -132,16 +125,15 @@ genBounds
 genBounds verbosity packageDBs repoCtxt comp platform progdb globalFlags freezeFlags = do
   let cinfo = compilerInfo comp
 
-  cwd <- getCurrentDirectory
-  path <- tryFindPackageDesc verbosity cwd
-  gpd <- readGenericPackageDescription verbosity path
+  path <- relativeSymbolicPath <$> tryFindPackageDesc verbosity Nothing
+  gpd <- readGenericPackageDescription verbosity Nothing path
   -- NB: We don't enable tests or benchmarks, since often they
   -- don't really have useful bounds.
   let epd =
         finalizePD
           mempty
           defaultComponentRequestedSpec
-          (const True)
+          (const Satisfied)
           platform
           cinfo
           []

@@ -1,7 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE TypeOperators #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module UnitTests.Distribution.Client.ArbitraryInstances
   ( adjustSize
@@ -26,13 +25,14 @@ import Prelude ()
 
 import Data.Char (isLetter)
 import Data.List ((\\))
+import Data.Monoid (Last (..))
 
 import Distribution.Simple.Setup
 import Distribution.Types.Flag (mkFlagAssignment)
 
 import Distribution.Client.BuildReports.Types (BuildReport, InstallOutcome, Outcome, ReportLevel (..))
 import Distribution.Client.CmdInstall.ClientInstallFlags (InstallMethod)
-import Distribution.Client.Glob (FilePathGlob (..), FilePathGlobRel (..), FilePathRoot (..), GlobPiece (..))
+import Distribution.Client.Glob (FilePathRoot (..), Glob (..), GlobPiece (..), RootedGlob (..))
 import Distribution.Client.IndexUtils.ActiveRepos (ActiveRepoEntry (..), ActiveRepos (..), CombineStrategy (..))
 import Distribution.Client.IndexUtils.IndexState (RepoIndexState (..), TotalIndexState, makeTotalIndexState)
 import Distribution.Client.IndexUtils.Timestamp (Timestamp, epochTimeToTimestamp)
@@ -184,7 +184,7 @@ instance Arbitrary Timestamp where
   -- >>> utcTimeToPOSIXSeconds $ UTCTime (fromGregorian 100000 01 01) 0
   -- >>> 3093527980800s
   --
-  arbitrary = maybe (toEnum 0) id . epochTimeToTimestamp . (`mod` 3093527980800) . abs <$> arbitrary
+  arbitrary = epochTimeToTimestamp . (`mod` 3093527980800) . abs <$> arbitrary
 
 instance Arbitrary RepoIndexState where
   arbitrary =
@@ -200,7 +200,7 @@ instance Arbitrary WriteGhcEnvironmentFilesPolicy where
   arbitrary = arbitraryBoundedEnum
 
 arbitraryFlag :: Gen a -> Gen (Flag a)
-arbitraryFlag = liftArbitrary
+arbitraryFlag = fmap (fmap Last) liftArbitrary
 
 instance Arbitrary RepoName where
   -- TODO: rename refinement?
@@ -344,19 +344,19 @@ instance Arbitrary Outcome where
 -- Glob
 -------------------------------------------------------------------------------
 
-instance Arbitrary FilePathGlob where
+instance Arbitrary RootedGlob where
   arbitrary =
-    (FilePathGlob <$> arbitrary <*> arbitrary)
+    (RootedGlob <$> arbitrary <*> arbitrary)
       `suchThat` validFilePathGlob
 
-  shrink (FilePathGlob root pathglob) =
-    [ FilePathGlob root' pathglob'
+  shrink (RootedGlob root pathglob) =
+    [ RootedGlob root' pathglob'
     | (root', pathglob') <- shrink (root, pathglob)
-    , validFilePathGlob (FilePathGlob root' pathglob')
+    , validFilePathGlob (RootedGlob root' pathglob')
     ]
 
-validFilePathGlob :: FilePathGlob -> Bool
-validFilePathGlob (FilePathGlob FilePathRelative pathglob) =
+validFilePathGlob :: RootedGlob -> Bool
+validFilePathGlob (RootedGlob FilePathRelative pathglob) =
   case pathglob of
     GlobDirTrailing -> False
     GlobDir [Literal "~"] _ -> False
@@ -381,7 +381,7 @@ instance Arbitrary FilePathRoot where
   shrink (FilePathRoot _) = [FilePathRelative]
   shrink FilePathHomeDir = [FilePathRelative]
 
-instance Arbitrary FilePathGlobRel where
+instance Arbitrary Glob where
   arbitrary = sized $ \sz ->
     oneof $
       take
@@ -403,6 +403,9 @@ instance Arbitrary FilePathGlobRel where
       : [ GlobDir (getGlobPieces glob') pathglob'
         | (glob', pathglob') <- shrink (GlobPieces glob, pathglob)
         ]
+  shrink (GlobDirRecursive glob) =
+    GlobDirTrailing
+      : [GlobFile (getGlobPieces glob') | glob' <- shrink (GlobPieces glob)]
 
 newtype GlobPieces = GlobPieces {getGlobPieces :: [GlobPiece]}
   deriving (Eq)

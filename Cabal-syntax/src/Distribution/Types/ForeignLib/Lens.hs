@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+
 module Distribution.Types.ForeignLib.Lens
   ( ForeignLib
   , module Distribution.Types.ForeignLib.Lens
@@ -12,6 +14,7 @@ import Distribution.Types.ForeignLib (ForeignLib, LibVersionInfo)
 import Distribution.Types.ForeignLibOption (ForeignLibOption)
 import Distribution.Types.ForeignLibType (ForeignLibType)
 import Distribution.Types.UnqualComponentName (UnqualComponentName)
+import Distribution.Utils.Path
 import Distribution.Version (Version)
 
 import qualified Distribution.Types.ForeignLib as T
@@ -40,6 +43,6 @@ foreignLibVersionLinux :: Lens' ForeignLib (Maybe Version)
 foreignLibVersionLinux f s = fmap (\x -> s{T.foreignLibVersionLinux = x}) (f (T.foreignLibVersionLinux s))
 {-# INLINE foreignLibVersionLinux #-}
 
-foreignLibModDefFile :: Lens' ForeignLib [FilePath]
+foreignLibModDefFile :: Lens' ForeignLib [RelativePath Source File]
 foreignLibModDefFile f s = fmap (\x -> s{T.foreignLibModDefFile = x}) (f (T.foreignLibModDefFile s))
 {-# INLINE foreignLibModDefFile #-}

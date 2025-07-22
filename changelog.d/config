@@ -1,2 +1,9 @@
 organization: haskell
 repository:   cabal
+required-fields: packages prs
+packages:
+  Cabal
+  Cabal-hooks
+  Cabal-syntax
+  cabal-install
+  cabal-install-solver

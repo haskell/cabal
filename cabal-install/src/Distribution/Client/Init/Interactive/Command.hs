@@ -1,5 +1,5 @@
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 -----------------------------------------------------------------------------
 
@@ -59,7 +59,7 @@ import Distribution.Client.Types (SourcePackageDb (..))
 import Distribution.FieldGrammar.Newtypes (SpecLicense (..))
 import qualified Distribution.SPDX as SPDX
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
-import Distribution.Simple.Setup (Flag (..), fromFlagOrDefault)
+import Distribution.Simple.Setup (fromFlagOrDefault, pattern Flag, pattern NoFlag)
 import Distribution.Solver.Types.PackageIndex (elemByPackageName)
 import Distribution.Types.PackageName (PackageName, unPackageName)
 import Distribution.Version (Version)
@@ -312,6 +312,8 @@ cabalVersionPrompt flags = getCabalVersion flags $ do
     parseCabalVersion "2.4" = CabalSpecV2_4
     parseCabalVersion "3.0" = CabalSpecV3_0
     parseCabalVersion "3.4" = CabalSpecV3_4
+    parseCabalVersion "3.12" = CabalSpecV3_12
+    parseCabalVersion "3.14" = CabalSpecV3_14
     parseCabalVersion _ = defaultCabalVersion -- 2.4
     displayCabalVersion :: CabalSpecVersion -> String
     displayCabalVersion v = case v of
@@ -320,6 +322,7 @@ cabalVersionPrompt flags = getCabalVersion flags $ do
       CabalSpecV2_4 -> "2.4   (+ support for '**' globbing)"
       CabalSpecV3_0 -> "3.0   (+ set notation for ==, common stanzas in ifs, more redundant commas, better pkgconfig-depends)"
       CabalSpecV3_4 -> "3.4   (+ sublibraries in 'mixins', optional 'default-language')"
+      CabalSpecV3_14 -> "3.14  (+ build-type: Hooks)"
       _ -> showCabalSpecVersion v
 
 packageNamePrompt :: Interactive m => SourcePackageDb -> InitFlags -> m PackageName
@@ -455,19 +458,25 @@ languagePrompt flags pkgType = getLanguage flags $ do
   let h2010 = "Haskell2010"
       h98 = "Haskell98"
       ghc2021 = "GHC2021 (requires at least GHC 9.2)"
+      ghc2024 = "GHC2024 (requires at least GHC 9.10)"
+
+  lastChosenLanguage <- getLastChosenLanguage
 
   l <-
     promptList
       ("Choose a language for your " ++ pkgType)
-      [h2010, h98, ghc2021]
-      (DefaultPrompt h2010)
+      [h2010, h98, ghc2021, ghc2024]
+      (DefaultPrompt (maybe h2010 id lastChosenLanguage))
       Nothing
       True
+
+  setLastChosenLanguage (Just l)
 
   if
       | l == h2010 -> return Haskell2010
       | l == h98 -> return Haskell98
       | l == ghc2021 -> return GHC2021
+      | l == ghc2024 -> return GHC2024
       | otherwise -> return $ UnknownLanguage l
 
 noCommentsPrompt :: Interactive m => InitFlags -> m Bool

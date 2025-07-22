@@ -140,7 +140,7 @@ errorTest fp = cabalGoldenTest fp correct $ do
 
     return $ toUTF8BS $ case x of
         Right gpd ->
-            "UNXPECTED SUCCESS\n" ++
+            "UNEXPECTED SUCCESS\n" ++
             showGenericPackageDescription gpd
         Left (v, errs) ->
             unlines $ ("VERSION: " ++ show v) : map (showPError fp) (NE.toList errs)
@@ -200,12 +200,14 @@ regressionTests = testGroup "regressions"
 
 regressionTest :: FilePath -> TestTree
 regressionTest fp = testGroup fp
+{- FOURMOLU_DISABLE -}
     [ formatGoldenTest fp
     , formatRoundTripTest fp
 #ifdef MIN_VERSION_tree_diff
     , treeDiffGoldenTest fp
 #endif
     ]
+{- FOURMOLU_ENABLE -}
 
 formatGoldenTest :: FilePath -> TestTree
 formatGoldenTest fp = cabalGoldenTest "format" correct $ do
@@ -248,6 +250,7 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
     y <- parse (toUTF8BS contents')
     -- previously we mangled licenses a bit
     let y' = y
+{- FOURMOLU_DISABLE -}
     unless (x == y') $
 #ifdef MIN_VERSION_tree_diff
         assertFailure $ unlines
@@ -273,6 +276,7 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
                 void $ assertFailure $ unlines (map (showPError fp) $ NE.toList errs)
                 fail "failure"
     input = "tests" </> "ParserTests" </> "regressions" </> fp
+{- FOURMOLU_ENABLE -}
 
 -------------------------------------------------------------------------------
 -- InstalledPackageInfo regressions
@@ -287,6 +291,7 @@ ipiTests = testGroup "ipis"
     ]
 
 ipiTest :: FilePath -> TestTree
+{- FOURMOLU_DISABLE -}
 ipiTest fp = testGroup fp $
 #ifdef MIN_VERSION_tree_diff
     [ ipiTreeDiffGoldenTest fp ] ++
@@ -294,6 +299,7 @@ ipiTest fp = testGroup fp $
     [ ipiFormatGoldenTest fp
     , ipiFormatRoundTripTest fp
     ]
+{- FOURMOLU_ENABLE -}
 
 ipiFormatGoldenTest :: FilePath -> TestTree
 ipiFormatGoldenTest fp = cabalGoldenTest "format" correct $ do

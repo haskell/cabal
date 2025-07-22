@@ -1,2 +1,2 @@
-In the 'extra-source-files' field: invalid file glob 'foo/blah-*.hs'. Wildcards '*' may only totally replace the file's base name, not only parts of it.
-In the 'extra-source-files' field: invalid file glob 'foo/*/bar'. A wildcard '**' is only allowed as the final parent directory. Stars must not otherwise appear in the parent directories.
+[glob-syntax-error] In the 'extra-source-files' field: invalid file glob 'foo/*/bar'. A wildcard '**' is only allowed as the final parent directory. Stars must not otherwise appear in the parent directories.
+[glob-syntax-error] In the 'extra-source-files' field: invalid file glob 'foo/blah-*.hs'. Wildcards '*' may only totally replace the file's base name, not only parts of it.

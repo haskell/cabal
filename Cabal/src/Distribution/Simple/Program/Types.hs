@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
@@ -24,7 +23,6 @@ module Distribution.Simple.Program.Types
     Program (..)
   , ProgramSearchPath
   , ProgramSearchPathEntry (..)
-  , simpleProgram
 
     -- * Configured program and related functions
   , ConfiguredProgram (..)
@@ -39,7 +37,6 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.PackageDescription
-import Distribution.Simple.Program.Find
 import Distribution.Verbosity
 import Distribution.Version
 
@@ -84,6 +81,36 @@ instance Show Program where
 
 type ProgArg = String
 
+-- | A search path to use when locating executables. This is analogous
+-- to the unix @$PATH@ or win32 @%PATH%@ but with the ability to use
+-- the system default method for finding executables ('findExecutable' which
+-- on unix is simply looking on the @$PATH@ but on win32 is a bit more
+-- complicated).
+--
+-- The default to use is @[ProgSearchPathDefault]@ but you can add extra dirs
+-- either before, after or instead of the default, e.g. here we add an extra
+-- dir to search after the usual ones.
+--
+-- > ['ProgramSearchPathDefault', 'ProgramSearchPathDir' dir]
+--
+-- We also use this path to set the environment when running child processes.
+--
+-- The @ProgramDb@ is created with a @ProgramSearchPath@ to which we
+-- @prependProgramSearchPath@ to add the ones that come from cli flags and from
+-- configurations. Then each of the programs that are configured in the db
+-- inherits the same path as part of @configureProgram@.
+type ProgramSearchPath = [ProgramSearchPathEntry]
+
+data ProgramSearchPathEntry
+  = -- | A specific dir
+    ProgramSearchPathDir FilePath
+  | -- | The system default
+    ProgramSearchPathDefault
+  deriving (Show, Eq, Generic)
+
+instance Binary ProgramSearchPathEntry
+instance Structured ProgramSearchPathEntry
+
 -- | Represents a program which has been configured and is thus ready to be run.
 --
 -- These are usually made by configuring a 'Program', but if you have to
@@ -115,11 +142,11 @@ data ConfiguredProgram = ConfiguredProgram
   , programMonitorFiles :: [FilePath]
   -- ^ In addition to the 'programLocation' where the program was found,
   -- these are additional locations that were looked at. The combination
-  -- of ths found location and these not-found locations can be used to
+  -- of this found location and these not-found locations can be used to
   -- monitor to detect when the re-configuring the program might give a
   -- different result (e.g. found in a different location).
   }
-  deriving (Eq, Generic, Read, Show, Typeable)
+  deriving (Eq, Generic, Read, Show)
 
 instance Binary ConfiguredProgram
 instance Structured ConfiguredProgram
@@ -132,7 +159,7 @@ data ProgramLocation
     UserSpecified {locationPath :: FilePath}
   | -- | The program was found automatically.
     FoundOnSystem {locationPath :: FilePath}
-  deriving (Eq, Generic, Read, Show, Typeable)
+  deriving (Eq, Generic, Read, Show)
 
 instance Binary ProgramLocation
 instance Structured ProgramLocation
@@ -144,22 +171,6 @@ programPath = locationPath . programLocation
 -- | Suppress any extra arguments added by the user.
 suppressOverrideArgs :: ConfiguredProgram -> ConfiguredProgram
 suppressOverrideArgs prog = prog{programOverrideArgs = []}
-
--- | Make a simple named program.
---
--- By default we'll just search for it in the path and not try to find the
--- version name. You can override these behaviours if necessary, eg:
---
--- > (simpleProgram "foo") { programFindLocation = ... , programFindVersion ... }
-simpleProgram :: String -> Program
-simpleProgram name =
-  Program
-    { programName = name
-    , programFindLocation = \v p -> findProgramOnSearchPath v p name
-    , programFindVersion = \_ _ -> return Nothing
-    , programPostConf = \_ p -> return p
-    , programNormaliseArgs = \_ _ -> id
-    }
 
 -- | Make a simple 'ConfiguredProgram'.
 --

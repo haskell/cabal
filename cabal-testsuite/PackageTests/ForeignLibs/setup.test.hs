@@ -1,4 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE CPP #-}
 
 import Control.Exception
@@ -17,6 +16,7 @@ import Distribution.Simple.Program.Types
 import Distribution.System
 import Distribution.Verbosity
 import Distribution.Version
+import System.Directory
 
 import Test.Cabal.Prelude
 
@@ -26,10 +26,8 @@ import Test.Cabal.Prelude
 main = setupAndCabalTest . recordMode DoNotRecord $ do
   -- Foreign libraries don't work with GHC 7.6 and earlier
   skipUnlessGhcVersion ">= 7.8"
-  win <- isWindows
-  ghc94 <- isGhcVersion "== 9.4.*"
-  expectBrokenIf (win && ghc94) 8451 $
-    withPackageDb $ do
+  ghc94 <- isGhcVersion ">= 9.4.1"
+  withPackageDb $ do
         setup_install []
         setup "copy" [] -- regression test #4156
         dist_dir <- fmap testDistDir getTestEnv

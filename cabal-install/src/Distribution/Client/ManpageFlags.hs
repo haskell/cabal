@@ -1,5 +1,4 @@
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE LambdaCase #-}
 
 module Distribution.Client.ManpageFlags
   ( ManpageFlags (..)
@@ -10,7 +9,7 @@ module Distribution.Client.ManpageFlags
 import Distribution.Client.Compat.Prelude
 
 import Distribution.Simple.Command (OptionField (..), ShowOrParseArgs (..), option)
-import Distribution.Simple.Setup (Flag (..), optionVerbosity, toFlag, trueArg)
+import Distribution.Simple.Setup (Flag, optionVerbosity, toFlag, trueArg)
 import Distribution.Verbosity (normal)
 
 data ManpageFlags = ManpageFlags

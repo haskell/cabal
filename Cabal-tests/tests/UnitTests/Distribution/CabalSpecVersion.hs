@@ -1,5 +1,4 @@
-{-# LANGUAGE CPP #-}
-{-# OPTIONS_GHC -fno-warn-deprecations #-}
+{-# OPTIONS_GHC -Wno-deprecations #-}
 module UnitTests.Distribution.CabalSpecVersion (tests) where
 
 import Distribution.Compat.Prelude.Internal

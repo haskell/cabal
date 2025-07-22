@@ -1,5 +1,6 @@
+# install options: --disable-deterministic --lib --package-env=<ROOT>/cabal.dist/basic0.env basic
 # cabal v2-install
-Wrote tarball sdist to <ROOT>/cabal.dist/work/./basic/../dist/sdist/basic-0.1.tar.gz
+Wrote tarball sdist to <ROOT>/cabal.dist/work/./basic0/dist/sdist/basic-0.1.tar.gz
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
@@ -8,8 +9,18 @@ Configuring library for basic-0.1...
 Preprocessing library for basic-0.1...
 Building library for basic-0.1...
 Installing library in <PATH>
+# install options: --disable-deterministic --lib --package-env=<ROOT>/cabal.dist/basic0.env basic
 # cabal v2-install
-Wrote tarball sdist to <ROOT>/cabal.dist/work/./basic/../dist/sdist/basic-0.1.tar.gz
+Wrote tarball sdist to <ROOT>/cabal.dist/work/./basic0/dist/sdist/basic-0.1.tar.gz
+Error: [Cabal-7145]
+Packages requested to install already exist in environment file at <ROOT>/cabal.dist/basic0.env. Overwriting them may break other packages. Use --force-reinstalls to proceed anyway. Packages: basic
+# install options: --force-reinstalls --disable-deterministic --lib --package-env=<ROOT>/cabal.dist/basic0.env basic
+# cabal v2-install
+Wrote tarball sdist to <ROOT>/cabal.dist/work/./basic0/dist/sdist/basic-0.1.tar.gz
+Resolving dependencies...
+# install options: --disable-deterministic --lib --package-env=<ROOT>/cabal.dist/basic1.env --enable-shared --enable-executable-dynamic --disable-library-vanilla basic
+# cabal v2-install
+Wrote tarball sdist to <ROOT>/cabal.dist/work/./basic1/dist/sdist/basic-0.1.tar.gz
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
@@ -18,9 +29,38 @@ Configuring library for basic-0.1...
 Preprocessing library for basic-0.1...
 Building library for basic-0.1...
 Installing library in <PATH>
+# install options: --disable-deterministic --lib --package-env=<ROOT>/cabal.dist/basic1.env --enable-shared --enable-executable-dynamic --disable-library-vanilla basic
 # cabal v2-install
-Wrote tarball sdist to <ROOT>/cabal.dist/work/./basic/../dist/sdist/basic-0.1.tar.gz
+Wrote tarball sdist to <ROOT>/cabal.dist/work/./basic1/dist/sdist/basic-0.1.tar.gz
+Error: [Cabal-7145]
+Packages requested to install already exist in environment file at <ROOT>/cabal.dist/basic1.env. Overwriting them may break other packages. Use --force-reinstalls to proceed anyway. Packages: basic
+# install options: --force-reinstalls --disable-deterministic --lib --package-env=<ROOT>/cabal.dist/basic1.env --enable-shared --enable-executable-dynamic --disable-library-vanilla basic
+# cabal v2-install
+Wrote tarball sdist to <ROOT>/cabal.dist/work/./basic1/dist/sdist/basic-0.1.tar.gz
 Resolving dependencies...
+# install options: --disable-deterministic --lib --package-env=<ROOT>/cabal.dist/basic2.env basic
 # cabal v2-install
-Wrote tarball sdist to <ROOT>/cabal.dist/work/./basic/../dist/sdist/basic-0.1.tar.gz
+Wrote tarball sdist to <ROOT>/cabal.dist/work/./basic2/dist/sdist/basic-0.1.tar.gz
+Resolving dependencies...
+# install options: --disable-deterministic --lib --package-env=<ROOT>/cabal.dist/basic2.env basic
+# cabal v2-install
+Wrote tarball sdist to <ROOT>/cabal.dist/work/./basic2/dist/sdist/basic-0.1.tar.gz
+Error: [Cabal-7145]
+Packages requested to install already exist in environment file at <ROOT>/cabal.dist/basic2.env. Overwriting them may break other packages. Use --force-reinstalls to proceed anyway. Packages: basic
+# install options: --force-reinstalls --disable-deterministic --lib --package-env=<ROOT>/cabal.dist/basic2.env basic
+# cabal v2-install
+Wrote tarball sdist to <ROOT>/cabal.dist/work/./basic2/dist/sdist/basic-0.1.tar.gz
+Resolving dependencies...
+# install options: --disable-deterministic --lib --package-env=<ROOT>/cabal.dist/basic3.env --enable-shared --enable-executable-dynamic --disable-library-vanilla basic
+# cabal v2-install
+Wrote tarball sdist to <ROOT>/cabal.dist/work/./basic3/dist/sdist/basic-0.1.tar.gz
+Resolving dependencies...
+# install options: --disable-deterministic --lib --package-env=<ROOT>/cabal.dist/basic3.env --enable-shared --enable-executable-dynamic --disable-library-vanilla basic
+# cabal v2-install
+Wrote tarball sdist to <ROOT>/cabal.dist/work/./basic3/dist/sdist/basic-0.1.tar.gz
+Error: [Cabal-7145]
+Packages requested to install already exist in environment file at <ROOT>/cabal.dist/basic3.env. Overwriting them may break other packages. Use --force-reinstalls to proceed anyway. Packages: basic
+# install options: --force-reinstalls --disable-deterministic --lib --package-env=<ROOT>/cabal.dist/basic3.env --enable-shared --enable-executable-dynamic --disable-library-vanilla basic
+# cabal v2-install
+Wrote tarball sdist to <ROOT>/cabal.dist/work/./basic3/dist/sdist/basic-0.1.tar.gz
 Resolving dependencies...

@@ -32,6 +32,7 @@ $(capture "decls" [d|
         , zIsWindows                  :: Bool
         , zIsI386                     :: Bool
         , zIsX8664                    :: Bool
+        , zIsAArch64                  :: Bool
 
         , zPrefix     :: FilePath
         , zBindir     :: FilePath

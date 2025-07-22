@@ -1,0 +1,18 @@
+cabal-version:       3.14
+name:                setup-hooks-rule-ordering-test
+version:             0.1.0.0
+synopsis:            Test that we execute pre-build rules in the correct order
+license:             BSD-3-Clause
+author:              NA
+maintainer:          NA
+category:            Testing
+build-type:          Hooks
+
+custom-setup
+  setup-depends: Cabal, Cabal-hooks, base, filepath
+
+library
+  exposed-modules: A, B, C, D
+  autogen-modules: B, C, D
+  build-depends:       base
+  default-language:    Haskell2010

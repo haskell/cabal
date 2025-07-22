@@ -1,4 +1,4 @@
 # cabal check
 The package will not build sanely due to these errors:
-Error: Illegal internal library name pkg. Internal libraries cannot have the same name as the package. Maybe you wanted a non-internal library? If so, rewrite the section stanza from 'library: 'pkg' to 'library'.
+Error: [illegal-library-name] Illegal internal library name pkg. Internal libraries cannot have the same name as the package. Maybe you wanted a non-internal library? If so, rewrite the section stanza from 'library: 'pkg' to 'library'.
 Error: Hackage would reject this package.

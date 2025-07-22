@@ -1,4 +1,4 @@
 # cabal check
 The following errors are likely to affect your build negatively:
-Error: The 'license-file' field refers to the file 'LICENSE' which does not exist.
+Error: [unknown-file] The 'license-file' field refers to the file 'LICENSE' which does not exist.
 Error: Hackage would reject this package.

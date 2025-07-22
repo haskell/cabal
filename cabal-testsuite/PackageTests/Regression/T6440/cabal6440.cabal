@@ -1,0 +1,23 @@
+cabal-version:       3.0
+name:                cabal6440
+version:             0.1
+
+library
+  exposed-modules:     Top
+  -- other-extensions:
+  build-depends:       base, cabal6440:intern6440
+  hs-source-dirs:      src
+  default-language:    Haskell2010
+
+library intern6440
+  exposed-modules: Inn
+  build-depends: base
+  hs-source-dirs: srcint
+
+
+test-suite tests
+  main-is:             Main.hs
+  type:                exitcode-stdio-1.0
+  build-depends:       base, cabal6440
+  hs-source-dirs:      tests
+  default-language:    Haskell2010

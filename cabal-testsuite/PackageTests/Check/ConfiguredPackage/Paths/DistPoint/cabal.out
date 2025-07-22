@@ -1,4 +1,4 @@
 # cabal check
 The following errors will cause portability problems on other environments:
-Error: 'ghc-options' path 'dist/file' points inside the 'dist' directory. This is not reliable because the location of this directory is configurable by the user (or package manager). In addition the layout of the 'dist' directory is subject to change in future versions of Cabal.
+Error: [unreliable-dist-path] 'ghc-options' path 'dist/file' points inside the 'dist' directory. This is not reliable because the location of this directory is configurable by the user (or package manager). In addition, the layout of the 'dist' directory is subject to change in future versions of Cabal.
 Error: Hackage would reject this package.

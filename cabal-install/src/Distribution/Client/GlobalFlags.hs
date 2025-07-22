@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -28,9 +29,10 @@ import Distribution.Client.Types
   , unRepoName
   )
 import Distribution.Simple.Setup
-  ( Flag (..)
+  ( Flag
   , flagToMaybe
   , fromFlag
+  , pattern Flag
   )
 import Distribution.Simple.Utils
   ( info
@@ -57,7 +59,8 @@ import Network.URI
   , uriScheme
   )
 import System.FilePath
-  ( (</>)
+  ( isAbsolute
+  , (</>)
   )
 
 import qualified Distribution.Client.Security.DNS as Sec.DNS
@@ -68,8 +71,6 @@ import qualified Hackage.Security.Client.Repository.Local as Sec.Local
 import qualified Hackage.Security.Client.Repository.Remote as Sec.Remote
 import qualified Hackage.Security.Util.Path as Sec
 import qualified Hackage.Security.Util.Pretty as Sec
-
-import qualified System.FilePath.Posix as FilePath.Posix
 
 -- ------------------------------------------------------------
 
@@ -192,7 +193,7 @@ withRepoContext'
   ignoreExpiry
   extraPaths = \callback -> do
     for_ localNoIndexRepos $ \local ->
-      unless (FilePath.Posix.isAbsolute (localRepoPath local)) $
+      unless (isAbsolute (localRepoPath local)) $
         warn verbosity $
           "file+noindex " ++ unRepoName (localRepoName local) ++ " repository path is not absolute; this is fragile, and not recommended"
 

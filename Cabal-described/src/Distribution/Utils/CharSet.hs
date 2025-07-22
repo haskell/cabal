@@ -17,26 +17,24 @@ module Distribution.Utils.CharSet (
     difference,
     -- * Query
     size,
-    null,
-    member,
     -- * Conversions
     fromList,
     toList,
-    fromIntervalList,
     toIntervalList,
     -- * Special lists
     alpha,
     alphanum,
+    alphanumNotDigit,
     upper,
     ) where
 
-import Data.Char                     (chr, isAlpha, isAlphaNum, isUpper, ord)
-import Data.List                     (foldl', sortBy)
+import Data.Char                     (chr, isAlpha, isAlphaNum, isDigit, isUpper, ord)
+import Data.List                     (foldl')
 import Data.Monoid                   (Monoid (..))
 import Data.String                   (IsString (..))
 import Distribution.Compat.Semigroup (Semigroup (..))
 import Prelude
-       (Bool (..), Bounded (..), Char, Enum (..), Eq (..), Int, Maybe (..), Num (..), Ord (..), Show (..), String, concatMap, flip, fst, otherwise, showParen,
+       (Bounded (..), Char, Enum (..), Eq (..), Int, Num (..), Ord (..), Show (..), String, (&&), concatMap, flip, not, otherwise, showParen,
        showString, uncurry, ($), (.))
 
 #if MIN_VERSION_containers(0,5,0)
@@ -78,17 +76,7 @@ empty = CS IM.empty
 universe :: CharSet
 universe = CS $ IM.singleton 0 0x10ffff
 
--- | Check whether 'CharSet' is 'empty'.
-null :: CharSet -> Bool
-null (CS cs) = IM.null cs
-
 -- | Size of 'CharSet'
---
--- >>> size $ fromIntervalList [('a','f'), ('0','9')]
--- 16
---
--- >>> length $ toList $ fromIntervalList [('a','f'), ('0','9')]
--- 16
 --
 size :: CharSet -> Int
 size (CS m) = foldl' (\ !acc (lo, hi) -> acc + (hi - lo) + 1) 0 (IM.toList m)
@@ -97,23 +85,10 @@ size (CS m) = foldl' (\ !acc (lo, hi) -> acc + (hi - lo) + 1) 0 (IM.toList m)
 singleton :: Char -> CharSet
 singleton c = CS (IM.singleton (ord c) (ord c))
 
--- | Test whether character is in the set.
-member :: Char -> CharSet -> Bool
-#if MIN_VERSION_containers(0,5,0)
-member c (CS m) = case IM.lookupLE i m of
-    Nothing      -> False
-    Just (_, hi) -> i <= hi
-  where
-#else
-member c (CS m) = go (IM.toList m)
-  where
-    go [] = False
-    go ((x,y):zs) = (x <= i && i <= y) || go zs
-#endif
-    i = ord c
-
 -- | Insert 'Char' into 'CharSet'.
+{- FOURMOLU_DISABLE -}
 insert :: Char -> CharSet -> CharSet
+{- FOURMOLU_ENABLE -}
 insert c (CS m) = normalise (IM.insert (ord c) (ord c) m)
 
 -- | Union of two 'CharSet's.
@@ -179,24 +154,6 @@ toList = concatMap (uncurry enumFromTo) . toIntervalList
 toIntervalList :: CharSet -> [(Char, Char)]
 toIntervalList (CS m) = [ (chr lo, chr hi) | (lo, hi) <- IM.toList m ]
 
--- | Convert from interval pairs.
---
--- >>> fromIntervalList []
--- ""
---
--- >>> fromIntervalList [('a','f'), ('0','9')]
--- "0123456789abcdef"
---
--- >>> fromIntervalList [('Z','A')]
--- ""
---
-fromIntervalList :: [(Char,Char)] -> CharSet
-fromIntervalList xs = normalise' $ sortBy (\a b -> compare (fst a) (fst b))
-    [ (ord lo, ord hi)
-    | (lo, hi) <- xs
-    , lo <= hi
-    ]
-
 -------------------------------------------------------------------------------
 -- Normalisation
 -------------------------------------------------------------------------------
@@ -231,8 +188,14 @@ alpha = foldl' (flip insert) empty [ c | c <- [ minBound .. maxBound ], isAlpha 
 
 -- | Note: this set varies depending on @base@ version.
 --
+alphanumNotDigit :: CharSet
+alphanumNotDigit = foldl' (flip insert) empty [ c | c <- [ minBound .. maxBound ], isAlphaNum c && not (isDigit c) ]
+{-# NOINLINE alphanumNotDigit #-}
+
+-- | Note: this set varies depending on @base@ version.
+--
 alphanum :: CharSet
-alphanum = foldl' (flip insert) empty [ c | c <- [ minBound .. maxBound ], isAlphaNum c ]
+alphanum = foldl' (flip insert) alphanumNotDigit ['0' .. '9' ]
 {-# NOINLINE alphanum #-}
 
 -- | Note: this set varies depending on @base@ version.
@@ -240,3 +203,8 @@ alphanum = foldl' (flip insert) empty [ c | c <- [ minBound .. maxBound ], isAlp
 upper :: CharSet
 upper = foldl' (flip insert) empty [ c | c <- [ minBound .. maxBound ], isUpper c ]
 {-# NOINLINE upper #-}
+
+-- $setup
+-- Use -XOverloadedStrings to avoid the error: Couldn't match type ‘[Char]’ with ‘CharSet’
+-- >>> :set -XOverloadedStrings
+-- >>> import Prelude (length)

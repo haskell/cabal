@@ -1,8 +1,6 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE NondecreasingIndentation #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE NoMonoLocalBinds #-}
@@ -37,7 +35,7 @@ import Distribution.InstalledPackageInfo
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.ModuleName
 import Distribution.Package
-import Distribution.PackageDescription
+import Distribution.PackageDescription (FlagAssignment, PackageDescription (..), libName)
 import Distribution.Simple.Compiler
 import Distribution.Simple.Flag
 import Distribution.Simple.LocalBuildInfo
@@ -70,7 +68,7 @@ configureComponentLocalBuildInfos
   -> Flag String -- configIPID
   -> Flag ComponentId -- configCID
   -> PackageDescription
-  -> ([PreExistingComponent], [PromisedComponent])
+  -> ([PreExistingComponent], [ConfiguredPromisedComponent])
   -> FlagAssignment -- configConfigurationsFlags
   -> [(ModuleName, Module)] -- configInstantiateWith
   -> InstalledPackageIndex
@@ -85,7 +83,7 @@ configureComponentLocalBuildInfos
   cid_flag
   pkg_descr
   (prePkgDeps, promisedPkgDeps)
-  flagAssignment
+  flags
   instantiate_with
   installedPackageSet
   comp = do
@@ -103,6 +101,8 @@ configureComponentLocalBuildInfos
     let conf_pkg_map =
           Map.fromListWith
             Map.union
+            $
+            -- Normal dependencies
             [ ( pc_pkgname pkg
               , Map.singleton
                   (pc_compname pkg)
@@ -115,15 +115,15 @@ configureComponentLocalBuildInfos
               )
             | pkg <- prePkgDeps
             ]
-            `Map.union` Map.fromListWith
-              Map.union
+              ++
+              -- Promised dependencies
               [ (pkg, Map.singleton (ann_cname aid) aid)
-              | PromisedComponent pkg aid <- promisedPkgDeps
+              | ConfiguredPromisedComponent pkg aid <- promisedPkgDeps
               ]
     graph1 <-
       toConfiguredComponents
         use_external_internal_deps
-        flagAssignment
+        flags
         deterministic
         ipid_flag
         cid_flag
@@ -151,7 +151,7 @@ configureComponentLocalBuildInfos
                   , emptyModuleShape
                   )
                 )
-              | PromisedComponent _ aid <- promisedPkgDeps
+              | ConfiguredPromisedComponent _ aid <- promisedPkgDeps
               ]
         uid_lookup def_uid
           | Just pkg <- PackageIndex.lookupUnitId installedPackageSet uid =
@@ -208,7 +208,7 @@ configureComponentLocalBuildInfos
 toComponentLocalBuildInfos
   :: Compiler
   -> InstalledPackageIndex -- FULL set
-  -> [PromisedComponent]
+  -> [ConfiguredPromisedComponent]
   -> PackageDescription
   -> [PreExistingComponent] -- external package deps
   -> [ReadyComponent]

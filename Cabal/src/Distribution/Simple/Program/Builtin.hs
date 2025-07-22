@@ -20,12 +20,10 @@ module Distribution.Simple.Program.Builtin
   , runghcProgram
   , ghcjsProgram
   , ghcjsPkgProgram
-  , hmakeProgram
   , jhcProgram
-  , haskellSuiteProgram
-  , haskellSuitePkgProgram
   , uhcProgram
   , gccProgram
+  , gppProgram
   , arProgram
   , stripProgram
   , happyProgram
@@ -36,7 +34,6 @@ module Distribution.Simple.Program.Builtin
   , hscolourProgram
   , doctestProgram
   , haddockProgram
-  , greencardProgram
   , ldProgram
   , tarProgram
   , cppProgram
@@ -74,9 +71,6 @@ builtinPrograms =
   , ghcPkgProgram
   , ghcjsProgram
   , ghcjsPkgProgram
-  , haskellSuiteProgram
-  , haskellSuitePkgProgram
-  , hmakeProgram
   , jhcProgram
   , uhcProgram
   , hpcProgram
@@ -89,7 +83,6 @@ builtinPrograms =
   , hsc2hsProgram
   , c2hsProgram
   , cpphsProgram
-  , greencardProgram
   , -- platform toolchain
     gccProgram
   , arProgram
@@ -104,32 +97,44 @@ ghcProgram :: Program
 ghcProgram =
   (simpleProgram "ghc")
     { programFindVersion = findProgramVersion "--numeric-version" id
-    , -- Workaround for https://gitlab.haskell.org/ghc/ghc/-/issues/8825
-      -- (spurious warning on non-english locales)
-      programPostConf = \_verbosity ghcProg ->
-        do
-          let ghcProg' =
-                ghcProg
-                  { programOverrideEnv =
-                      ("LANGUAGE", Just "en")
-                        : programOverrideEnv ghcProg
-                  }
-              -- Only the 7.8 branch seems to be affected. Fixed in 7.8.4.
-              affectedVersionRange =
-                intersectVersionRanges
-                  (laterVersion $ mkVersion [7, 8, 0])
-                  (earlierVersion $ mkVersion [7, 8, 4])
-          return $
-            maybe
-              ghcProg
-              ( \v ->
-                  if withinRange v affectedVersionRange
-                    then ghcProg'
-                    else ghcProg
-              )
-              (programVersion ghcProg)
+    , programPostConf = ghcPostConf
     , programNormaliseArgs = normaliseGhcArgs
     }
+  where
+    ghcPostConf _verbosity ghcProg = do
+      let setLanguageEnv prog =
+            prog
+              { programOverrideEnv =
+                  ("LANGUAGE", Just "en")
+                    : programOverrideEnv ghcProg
+              }
+
+          ignorePackageEnv prog = prog{programDefaultArgs = "-package-env=-" : programDefaultArgs prog}
+
+          -- Only the 7.8 branch seems to be affected. Fixed in 7.8.4.
+          affectedVersionRange =
+            intersectVersionRanges
+              (laterVersion $ mkVersion [7, 8, 0])
+              (earlierVersion $ mkVersion [7, 8, 4])
+
+          canIgnorePackageEnv = orLaterVersion $ mkVersion [8, 4, 4]
+
+          applyWhen cond f prog = if cond then f prog else prog
+
+      return $
+        maybe
+          ghcProg
+          ( \v ->
+              -- By default, ignore GHC_ENVIRONMENT variable of any package environmnet
+              -- files. See #10759
+              applyWhen (withinRange v canIgnorePackageEnv) ignorePackageEnv
+              -- Workaround for https://gitlab.haskell.org/ghc/ghc/-/issues/8825
+              -- (spurious warning on non-english locales)
+              $
+                applyWhen (withinRange v affectedVersionRange) setLanguageEnv $
+                  ghcProg
+          )
+          (programVersion ghcProg)
 
 runghcProgram :: Program
 runghcProgram =
@@ -170,17 +175,6 @@ ghcjsPkgProgram =
           _ -> ""
     }
 
-hmakeProgram :: Program
-hmakeProgram =
-  (simpleProgram "hmake")
-    { programFindVersion = findProgramVersion "--version" $ \str ->
-        -- Invoking "hmake --version" gives a string line
-        -- "/usr/local/bin/hmake: 3.13 (2006-11-01)"
-        case words str of
-          (_ : ver : _) -> ver
-          _ -> ""
-    }
-
 jhcProgram :: Program
 jhcProgram =
   (simpleProgram "jhc")
@@ -206,40 +200,6 @@ hpcProgram =
         case words str of
           (_ : _ : _ : ver : _) -> ver
           _ -> ""
-    }
-
--- This represents a haskell-suite compiler. Of course, the compiler
--- itself probably is not called "haskell-suite", so this is not a real
--- program. (But we don't know statically the name of the actual compiler,
--- so this is the best we can do.)
---
--- Having this Program value serves two purposes:
---
--- 1. We can accept options for the compiler in the form of
---
---   --haskell-suite-option(s)=...
---
--- 2. We can find a program later using this static id (with
--- requireProgram).
---
--- The path to the real compiler is found and recorded in the ProgramDb
--- during the configure phase.
-haskellSuiteProgram :: Program
-haskellSuiteProgram =
-  (simpleProgram "haskell-suite")
-    { -- pretend that the program exists, otherwise it won't be in the
-      -- "configured" state
-      programFindLocation = \_verbosity _searchPath ->
-        return $ Just ("haskell-suite-dummy-location", [])
-    }
-
--- This represent a haskell-suite package manager. See the comments for
--- haskellSuiteProgram.
-haskellSuitePkgProgram :: Program
-haskellSuitePkgProgram =
-  (simpleProgram "haskell-suite-pkg")
-    { programFindLocation = \_verbosity _searchPath ->
-        return $ Just ("haskell-suite-pkg-dummy-location", [])
     }
 
 happyProgram :: Program
@@ -268,6 +228,13 @@ gccProgram :: Program
 gccProgram =
   (simpleProgram "gcc")
     { programFindVersion = findProgramVersion "-dumpversion" id
+    }
+
+gppProgram :: Program
+gppProgram =
+  (simpleProgram "gpp")
+    { programFindVersion = findProgramVersion "-dumpversion" id
+    , programFindLocation = \v p -> findProgramOnSearchPath v p "g++"
     }
 
 arProgram :: Program
@@ -343,11 +310,46 @@ haddockProgram =
     , programNormaliseArgs = \_ _ args -> args
     }
 
-greencardProgram :: Program
-greencardProgram = simpleProgram "greencard"
-
 ldProgram :: Program
-ldProgram = simpleProgram "ld"
+ldProgram =
+  (simpleProgram "ld")
+    { programPostConf = \verbosity ldProg -> do
+        -- The `lld` linker cannot create merge (relocatable) objects so we
+        -- want to detect this.
+        -- If the linker does support relocatable objects, we want to use that
+        -- to create partially pre-linked objects for GHCi, so we get much
+        -- faster loading as we do not have to do the separate loading and
+        -- in-memory linking the static linker in GHC does, but can offload
+        -- parts of this process to a pre-linking step.
+        -- However this requires the linker to support this features. Not all
+        -- linkers do, and notably as of this writing `lld` which is a popular
+        -- choice for windows linking does not support this feature. However
+        -- if using binutils ld or another linker that supports --relocatable,
+        -- we should still be good to generate pre-linked objects.
+        ldHelpOutput <-
+          getProgramInvocationOutput
+            verbosity
+            (programInvocation ldProg ["--help"])
+            -- In case the linker does not support '--help'. Eg the LLVM linker,
+            -- `lld` only accepts `-help`.
+            `catchIO` (\_ -> return "")
+        let k = "Supports relocatable output"
+            -- Standard GNU `ld` uses `--relocatable` while `ld.gold` uses
+            -- `-relocatable` (single `-`).
+            v
+              | "-relocatable" `isInfixOf` ldHelpOutput = "YES"
+              -- ld64 on macOS has this lovely response for "--help"
+              --
+              --   ld64: For information on command line options please use 'man ld'.
+              --
+              -- it does however support -r, if you read the manpage
+              -- (e.g. https://www.manpagez.com/man/1/ld64/)
+              | "ld64:" `isPrefixOf` ldHelpOutput = "YES"
+              | otherwise = "NO"
+
+            m = Map.insert k v (programProperties ldProg)
+        return $ ldProg{programProperties = m}
+    }
 
 tarProgram :: Program
 tarProgram =
@@ -374,4 +376,11 @@ pkgConfigProgram :: Program
 pkgConfigProgram =
   (simpleProgram "pkg-config")
     { programFindVersion = findProgramVersion "--version" id
+    , programPostConf = \_ pkgConfProg ->
+        let programOverrideEnv' =
+              programOverrideEnv pkgConfProg
+                ++ [ ("PKG_CONFIG_ALLOW_SYSTEM_CFLAGS", Just "1")
+                   , ("PKG_CONFIG_ALLOW_SYSTEM_LIBS", Just "1")
+                   ]
+         in pure $ pkgConfProg{programOverrideEnv = programOverrideEnv'}
     }

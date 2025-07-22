@@ -30,9 +30,9 @@ tests :: Int -> [TestTree]
 tests mtimeChange =
   [ testGroup
       "Structured hashes"
-      [ testCase "MonitorStateFile" $ structureHash (Proxy :: Proxy MonitorStateFile) @?= Fingerprint 0xe4108804c34962f6 0x06e94f8fc9e48e13
-      , testCase "MonitorStateGlob" $ structureHash (Proxy :: Proxy MonitorStateGlob) @?= Fingerprint 0xfd8f6be0e8258fe7 0xdb5fac737139bca6
-      , testCase "MonitorStateFileSet" $ structureHash (Proxy :: Proxy MonitorStateFileSet) @?= Fingerprint 0xb745f4ea498389a5 0x70db6adb5078aa27
+      [ testCase "MonitorStateFile" $ structureHash (Proxy :: Proxy MonitorStateFile) @?= Fingerprint 0xe1339b9dcfdfe19d 0x9135a5f30da7ca82
+      , testCase "MonitorStateGlob" $ structureHash (Proxy :: Proxy MonitorStateGlob) @?= Fingerprint fingerprintStateGlob1 fingerprintStateGlob2
+      , testCase "MonitorStateFileSet" $ structureHash (Proxy :: Proxy MonitorStateFileSet) @?= Fingerprint fingerprintStateFileSet1 fingerprintStateFileSet2
       ]
   , testCase "sanity check mtimes" $ testFileMTimeSanity mtimeChange
   , testCase "sanity check dirs" $ testDirChangeSanity mtimeChange
@@ -85,6 +85,11 @@ tests mtimeChange =
     knownBrokenInWindows msg = case buildOS of
       Windows -> expectFailBecause msg
       _ -> id
+    fingerprintStateGlob1, fingerprintStateGlob2, fingerprintStateFileSet1, fingerprintStateFileSet2 :: Word64
+    fingerprintStateGlob1 = 0x1f9edda22b7e8de6
+    fingerprintStateGlob2 = 0xda1d085c9fc6f5db
+    fingerprintStateFileSet1 = 0x00ac4a0df546905d
+    fingerprintStateFileSet2 = 0x5b2b2df018b1fa83
 
 -- Check the file system behaves the way we expect it to
 

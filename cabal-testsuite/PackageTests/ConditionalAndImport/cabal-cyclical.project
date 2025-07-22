@@ -1,3 +1,0 @@
-packages: .
-
-import: cabal-cyclical.project

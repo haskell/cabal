@@ -1,10 +1,10 @@
+Cabal-version: 3.12
 name: PathsModule
 version: 0.1
-license: BSD3
+license: BSD-3-Clause
 author: Martijn Bastiaan
 category: PackageTests
 build-type: Simple
-Cabal-version: >= 1.2
 
 description:
     Check that the generated paths module compiles.

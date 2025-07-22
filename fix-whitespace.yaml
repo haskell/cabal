@@ -40,6 +40,7 @@ included-files:
   - .gitattributes
   - AUTHORS
   - LICENSE
+  - "*.project"
   - "cabal.project.*"
   - "*.ac"
   - "*.bat"
@@ -86,6 +87,7 @@ included-files:
   - "*.yaml"
   - "*.yml"
   - "*.zinza"
+  - "changelog.d/*"
 
 excluded-files:
 # Exceptions
@@ -93,6 +95,8 @@ excluded-files:
   - Cabal-tests/tests/ParserTests/warnings/tab.cabal
   - Cabal-tests/tests/ParserTests/warnings/utf8.cabal
   - cabal-testsuite/PackageTests/Regression/T8507/pkg.cabal
+  - cabal-testsuite/PackageTests/ProjectImport/UntrimmedImport/trailing-space.project
+  - cabal-testsuite/PackageTests/ProjectImport/UntrimmedImport/tabs-and-spaces.project
 
   # These also contain tabs that affect the golden value:
   # Could be removed from exceptions, but then the tab warning
@@ -117,6 +121,7 @@ excluded-files:
   - "*.golden"
   - "*.log"
   - "*.out"
+  - doc/buildinfo-fields-reference.rst
 
 # Binary files
   - "*.a"

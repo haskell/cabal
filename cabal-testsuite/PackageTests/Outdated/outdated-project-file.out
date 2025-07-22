@@ -2,9 +2,18 @@
 Downloading the latest package list from test-local-repo
 # cabal outdated
 Outdated dependencies:
-base ==3.0.3.2 (latest: 4.0.0.0)
+* project-config
+  - project config variant.project.freeze
+    * base ==3.0.3.2 (latest: 4.0.0.0)
 # cabal outdated
 Outdated dependencies:
-base ==3.0.3.2 (latest: 4.0.0.0)
+* project-config
+  - project config variant.project.freeze
+    * base ==3.0.3.2 (latest: 4.0.0.0)
 # cabal outdated
-Error: cabal: --project-dir and --project-file must only be used with --v2-freeze-file.
+Outdated dependencies:
+* my
+  - lib:my
+    * base >=3 && <4 (latest: 4.0.0.0)
+  - test:tests-Foo
+    * template-haskell >=2.3.0.0 && <2.4 (latest: 2.4.0.0)

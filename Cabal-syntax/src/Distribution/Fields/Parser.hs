@@ -1,7 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PatternGuards #-}
 
 -----------------------------------------------------------------------------
 
@@ -59,7 +58,6 @@ import qualified Data.Text.Encoding.Error as T
 #endif
 
 -- $setup
--- >>> :set -XOverloadedStrings
 -- >>> import Data.Either (isLeft)
 
 -- | The 'LexState'' (with a prime) is an instance of parsec's 'Stream'
@@ -85,6 +83,11 @@ getLexerWarnings :: Parser [LexWarning]
 getLexerWarnings = do
   LexState' (LexState{warnings = ws}) _ <- getInput
   return ws
+
+addLexerWarning :: LexWarning -> Parser ()
+addLexerWarning w = do
+  LexState' ls@LexState{warnings = ws} _ <- getInput
+  setInput $! mkLexState' ls{warnings = w : ws}
 
 -- | Set Alex code i.e. the mode "state" lexer is in.
 setLexerMode :: Int -> Parser ()
@@ -118,7 +121,8 @@ describeToken t = case t of
 tokSym :: Parser (Name Position)
 tokSym', tokStr, tokOther :: Parser (SectionArg Position)
 tokIndent :: Parser Int
-tokColon, tokOpenBrace, tokCloseBrace :: Parser ()
+tokColon, tokCloseBrace :: Parser ()
+tokOpenBrace :: Parser Position
 tokFieldLine :: Parser (FieldLine Position)
 tokSym = getTokenWithPos $ \t -> case t of L pos (TokSym x) -> Just (mkName pos x); _ -> Nothing
 tokSym' = getTokenWithPos $ \t -> case t of L pos (TokSym x) -> Just (SecArgName pos x); _ -> Nothing
@@ -126,7 +130,7 @@ tokStr = getTokenWithPos $ \t -> case t of L pos (TokStr x) -> Just (SecArgStr p
 tokOther = getTokenWithPos $ \t -> case t of L pos (TokOther x) -> Just (SecArgOther pos x); _ -> Nothing
 tokIndent = getToken $ \t -> case t of Indent x -> Just x; _ -> Nothing
 tokColon = getToken $ \t -> case t of Colon -> Just (); _ -> Nothing
-tokOpenBrace = getToken $ \t -> case t of OpenBrace -> Just (); _ -> Nothing
+tokOpenBrace = getTokenWithPos $ \t -> case t of L pos OpenBrace -> Just pos; _ -> Nothing
 tokCloseBrace = getToken $ \t -> case t of CloseBrace -> Just (); _ -> Nothing
 tokFieldLine = getTokenWithPos $ \t -> case t of L pos (TokFieldLine s) -> Just (FieldLine pos s); _ -> Nothing
 
@@ -138,7 +142,9 @@ fieldSecName :: Parser (Name Position)
 fieldSecName = tokSym <?> "field or section name"
 
 colon = tokColon <?> "\":\""
-openBrace = tokOpenBrace <?> "\"{\""
+openBrace = do
+  pos <- tokOpenBrace <?> "\"{\""
+  addLexerWarning (LexWarning LexBraces pos)
 closeBrace = tokCloseBrace <?> "\"}\""
 
 fieldContent :: Parser (FieldLine Position)

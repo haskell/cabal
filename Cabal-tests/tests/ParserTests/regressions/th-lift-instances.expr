@@ -53,15 +53,16 @@ GenericPackageDescription {
     testSuites = [],
     benchmarks = [],
     dataFiles = [],
-    dataDir = ".",
+    dataDir = SymbolicPath ".",
     extraSrcFiles = [
-      ".ghci",
-      ".gitignore",
-      ".travis.yml",
-      ".vim.custom",
-      "README.md"],
+      SymbolicPath ".ghci",
+      SymbolicPath ".gitignore",
+      SymbolicPath ".travis.yml",
+      SymbolicPath ".vim.custom",
+      SymbolicPath "README.md"],
     extraTmpFiles = [],
-    extraDocFiles = []},
+    extraDocFiles = [],
+    extraFiles = []},
   gpdScannedVersion = Nothing,
   genPackageFlags = [],
   condLibrary = Just
@@ -80,6 +81,7 @@ GenericPackageDescription {
           buildTools = [],
           buildToolDepends = [],
           cppOptions = [],
+          jsppOptions = [],
           asmOptions = [],
           cmmOptions = [],
           ccOptions = [],
@@ -126,6 +128,8 @@ GenericPackageDescription {
             []
             [],
           sharedOptions =
+          PerCompilerFlavor [] [],
+          profSharedOptions =
           PerCompilerFlavor [] [],
           staticOptions =
           PerCompilerFlavor [] [],
@@ -244,12 +248,13 @@ GenericPackageDescription {
             "",
           testInterface = TestSuiteExeV10
             (mkVersion [1, 0])
-            "Main.hs",
+            (SymbolicPath "Main.hs"),
           testBuildInfo = BuildInfo {
             buildable = True,
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
+            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
@@ -297,6 +302,8 @@ GenericPackageDescription {
               []
               [],
             sharedOptions =
+            PerCompilerFlavor [] [],
+            profSharedOptions =
             PerCompilerFlavor [] [],
             staticOptions =
             PerCompilerFlavor [] [],
@@ -422,12 +429,13 @@ GenericPackageDescription {
             "",
           testInterface = TestSuiteExeV10
             (mkVersion [1, 0])
-            "doctests.hs",
+            (SymbolicPath "doctests.hs"),
           testBuildInfo = BuildInfo {
             buildable = True,
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
+            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
@@ -472,6 +480,8 @@ GenericPackageDescription {
               []
               [],
             sharedOptions =
+            PerCompilerFlavor [] [],
+            profSharedOptions =
             PerCompilerFlavor [] [],
             staticOptions =
             PerCompilerFlavor [] [],
@@ -534,6 +544,7 @@ GenericPackageDescription {
                   buildTools = [],
                   buildToolDepends = [],
                   cppOptions = [],
+                  jsppOptions = [],
                   asmOptions = [],
                   cmmOptions = [],
                   ccOptions = [],
@@ -576,6 +587,8 @@ GenericPackageDescription {
                     []
                     [],
                   sharedOptions =
+                  PerCompilerFlavor [] [],
+                  profSharedOptions =
                   PerCompilerFlavor [] [],
                   staticOptions =
                   PerCompilerFlavor [] [],

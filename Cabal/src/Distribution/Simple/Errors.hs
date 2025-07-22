@@ -1,11 +1,10 @@
 -----------------------------------------------------------------------------
 
 -- Module      :  Distribution.Simple.Errors
--- Copyright   :
--- License     :
---
--- Maintainer  :
--- Portability :
+-- Copyright   :  Suganya Arun
+-- License     :  BSD3
+-- Maintainer  :  cabal-devel@haskell.org
+-- Portability :  portable
 --
 -- A collection of Exception Types in the Cabal library package
 
@@ -21,17 +20,16 @@ import Distribution.Compiler
 import Distribution.InstalledPackageInfo
 import Distribution.ModuleName
 import Distribution.Package
-import Distribution.PackageDescription (FlagName, UnqualComponentName)
+import Distribution.PackageDescription
 import Distribution.Pretty
   ( Pretty (pretty)
   , prettyShow
   )
 import Distribution.Simple.InstallDirs
+import Distribution.Simple.PreProcess.Types (Suffix)
+import Distribution.Simple.SetupHooks.Errors
 import Distribution.System (OS)
-import Distribution.Types.BenchmarkType
-import Distribution.Types.LibraryName
-import Distribution.Types.PkgconfigVersion
-import Distribution.Types.TestType
+import Distribution.Types.MissingDependency (MissingDependency)
 import Distribution.Types.VersionRange.Internal ()
 import Distribution.Version
 import Text.PrettyPrint
@@ -48,13 +46,14 @@ data CabalException
   | EnableBenchMark
   | BenchMarkNameDisabled String
   | NoBenchMark String
-  | NoLibraryFound
+  | -- | @NoLibraryFound@ has been downgraded to a warning, and is therefore no longer emitted.
+    NoLibraryFound
   | CompilerNotInstalled CompilerFlavor
   | CantFindIncludeFile String
   | UnsupportedTestSuite String
   | UnsupportedBenchMark String
   | NoIncludeFileFound String
-  | NoModuleFound ModuleName [String]
+  | NoModuleFound ModuleName [Suffix]
   | RegMultipleInstancePkg
   | SuppressingChecksOnFile
   | NoSupportDirStylePackageDb
@@ -79,8 +78,6 @@ data CabalException
   | NoSupportBuildingTestSuite TestType
   | NoSupportBuildingBenchMark BenchmarkType
   | BuildingNotSupportedWithCompiler
-  | ProvideHaskellSuiteTool String
-  | CannotDetermineCompilerVersion
   | PkgDumpFailed
   | FailedToParseOutput
   | CantFindSourceModule ModuleName
@@ -115,7 +112,7 @@ data CabalException
   | CheckSemaphoreSupport
   | NoLibraryForPackage
   | SanityCheckHookedBuildInfo UnqualComponentName
-  | ConfigureScriptNotFound
+  | ConfigureScriptNotFound FilePath
   | NoValidComponent
   | ConfigureEitherSingleOrAll
   | ConfigCIDValidForPreComponent
@@ -126,7 +123,7 @@ data CabalException
   | CantFindForeignLibraries [String]
   | ExpectedAbsoluteDirectory FilePath
   | FlagsNotSpecified [FlagName]
-  | EncounteredMissingDependency [Dependency]
+  | EncounteredMissingDependency [MissingDependency]
   | CompilerDoesn'tSupportThinning
   | CompilerDoesn'tSupportReexports
   | CompilerDoesn'tSupportBackpack
@@ -138,7 +135,7 @@ data CabalException
   | BadVersion String String PkgconfigVersion
   | UnknownCompilerException
   | NoWorkingGcc
-  | NoOSSupport OS
+  | NoOSSupport OS String
   | NoCompilerSupport String
   | InstallDirsNotPrefixRelative (InstallDirs FilePath)
   | ExplainErrors (Maybe (Either [Char] [Char])) [String]
@@ -152,9 +149,8 @@ data CabalException
   | Couldn'tFindTestProgLibV09 FilePath
   | TestCoverageSupportLibV09
   | RawSystemStdout String
-  | FindFileCwd FilePath
-  | FindFileEx FilePath
-  | FindModuleFileEx ModuleName [String] [FilePath]
+  | FindFile FilePath
+  | FindModuleFileEx ModuleName [Suffix] [FilePath]
   | MultipleFilesWithExtension String
   | NoDesc
   | MultiDesc [String]
@@ -171,7 +167,10 @@ data CabalException
   | NoProgramFound String VersionRange
   | BadVersionDb String Version VersionRange FilePath
   | UnknownVersionDb String VersionRange FilePath
-  deriving (Show, Typeable)
+  | MissingCoveredInstalledLibrary UnitId
+  | SetupHooksException SetupHooksException
+  | MultiReplDoesNotSupportComplexReexportedModules PackageName ComponentName
+  deriving (Show)
 
 exceptionCode :: CabalException -> Int
 exceptionCode e = case e of
@@ -210,8 +209,8 @@ exceptionCode e = case e of
   NoSupportBuildingTestSuite{} -> 4106
   NoSupportBuildingBenchMark{} -> 5320
   BuildingNotSupportedWithCompiler{} -> 7077
-  ProvideHaskellSuiteTool{} -> 7509
-  CannotDetermineCompilerVersion{} -> 4519
+  -- Retired: ProvideHaskellSuiteTool{} -> 7509
+  -- Retired: CannotDetermineCompilerVersion{} -> 4519
   PkgDumpFailed{} -> 2291
   FailedToParseOutput{} -> 5500
   CantFindSourceModule{} -> 8870
@@ -283,8 +282,7 @@ exceptionCode e = case e of
   Couldn'tFindTestProgLibV09{} -> 9012
   TestCoverageSupportLibV09{} -> 1076
   RawSystemStdout{} -> 3098
-  FindFileCwd{} -> 4765
-  FindFileEx{} -> 2115
+  FindFile{} -> 2115
   FindModuleFileEx{} -> 6663
   MultipleFilesWithExtension{} -> 3333
   NoDesc{} -> 7654
@@ -302,6 +300,10 @@ exceptionCode e = case e of
   NoProgramFound{} -> 7620
   BadVersionDb{} -> 8038
   UnknownVersionDb{} -> 1008
+  MissingCoveredInstalledLibrary{} -> 9341
+  SetupHooksException err ->
+    setupHooksExceptionCode err
+  MultiReplDoesNotSupportComplexReexportedModules{} -> 9355
 
 versionRequirement :: VersionRange -> String
 versionRequirement range
@@ -311,25 +313,25 @@ versionRequirement range
 exceptionMessage :: CabalException -> String
 exceptionMessage e = case e of
   NoBenchMarkProgram cmd -> "Could not find benchmark program \"" ++ cmd ++ "\". Did you build the package first?"
-  EnableBenchMark -> "No benchmarks enabled. Did you remember to configure with " ++ "\'--enable-benchmarks\'?"
+  EnableBenchMark -> "No benchmarks enabled. Did you remember to \'Setup configure\' with " ++ "\'--enable-benchmarks\'?"
   BenchMarkNameDisabled bmName -> "Package configured with benchmark " ++ bmName ++ " disabled."
   NoBenchMark bmName -> "no such benchmark: " ++ bmName
   NoLibraryFound -> "No executables and no library found. Nothing to do."
   CompilerNotInstalled compilerFlavor -> "installing with " ++ prettyShow compilerFlavor ++ "is not implemented"
   CantFindIncludeFile file -> "can't find include file " ++ file
-  UnsupportedTestSuite testType -> "Unsupported test suite type: " ++ testType
+  UnsupportedTestSuite test_type -> "Unsupported test suite type: " ++ test_type
   UnsupportedBenchMark benchMarkType -> "Unsupported benchmark type: " ++ benchMarkType
   NoIncludeFileFound f -> "can't find include file " ++ f
   NoModuleFound m suffixes ->
     "Could not find module: "
       ++ prettyShow m
       ++ " with any suffix: "
-      ++ show suffixes
+      ++ show (map prettyShow suffixes)
       ++ ".\n"
       ++ "If the module "
       ++ "is autogenerated it should be added to 'autogen-modules'."
-  RegMultipleInstancePkg -> "HcPkg.register: the compiler does not support,registering multiple instances of packages."
-  SuppressingChecksOnFile -> "HcPkg.register: the compiler does not support ,suppressing checks on files."
+  RegMultipleInstancePkg -> "HcPkg.register: the compiler does not support registering multiple instances of packages."
+  SuppressingChecksOnFile -> "HcPkg.register: the compiler does not support suppressing checks on files."
   NoSupportDirStylePackageDb -> "HcPkg.writeRegistrationFileDirectly: compiler does not support dir style package dbs"
   OnlySupportSpecificPackageDb -> "HcPkg.writeRegistrationFileDirectly: only supports SpecificPackageDB for now"
   FailedToParseOutputDescribe programId pkgId -> "failed to parse output of '" ++ programId ++ " describe " ++ prettyShow pkgId ++ "'"
@@ -350,7 +352,7 @@ exceptionMessage e = case e of
       ++ " but "
       ++ "haddock is using GHC version "
       ++ prettyShow haddockGhcVersion
-  MustHaveSharedLibraries -> "Must have vanilla or shared libraries " ++ "enabled in order to run haddock"
+  MustHaveSharedLibraries -> "Must have vanilla or shared libraries enabled in order to run haddock"
   HaddockPackageFlags inf ->
     "internal error when calculating transitive "
       ++ "package dependencies.\nDebug info: "
@@ -359,11 +361,9 @@ exceptionMessage e = case e of
   FailedToDetermineTarget -> "Failed to determine target."
   NoMultipleTargets -> "The 'repl' command does not support multiple targets at once."
   REPLNotSupported -> "A REPL is not supported with this compiler."
-  NoSupportBuildingTestSuite testType -> "No support for building test suite type " ++ show testType
+  NoSupportBuildingTestSuite test_type -> "No support for building test suite type " ++ show test_type
   NoSupportBuildingBenchMark benchMarkType -> "No support for building benchmark type " ++ show benchMarkType
   BuildingNotSupportedWithCompiler -> "Building is not supported with this compiler."
-  ProvideHaskellSuiteTool msg -> show msg
-  CannotDetermineCompilerVersion -> "haskell-suite: couldn't determine compiler version"
   PkgDumpFailed -> "pkg dump failed"
   FailedToParseOutput -> "failed to parse output of 'pkg dump'"
   CantFindSourceModule moduleName -> "can't find source for module " ++ prettyShow moduleName
@@ -388,7 +388,7 @@ exceptionMessage e = case e of
   GlobalPackageDBLimitation ->
     "With current ghc versions the global package db is always used "
       ++ "and must be listed first. This ghc limitation may be lifted in "
-      ++ "future, see https://gitlab.haskell.org/ghc/ghc/-/issues/5977"
+      ++ "the future, see https://gitlab.haskell.org/ghc/ghc/-/issues/5977"
   GlobalPackageDBSpecifiedFirst ->
     "If the global package db is specified, it must be "
       ++ "specified first and cannot be specified multiple times"
@@ -484,8 +484,7 @@ exceptionMessage e = case e of
       ++ "suite type "
       ++ prettyShow tt
   NoSupportForPreProcessingBenchmark tt ->
-    "No support for preprocessing benchmark "
-      ++ "type "
+    "No support for preprocessing benchmark type "
       ++ prettyShow tt
   CantFindSourceForPreProcessFile errorStr -> errorStr
   NoSupportPreProcessingTestExtras tt ->
@@ -508,11 +507,11 @@ exceptionMessage e = case e of
   SanityCheckHookedBuildInfo exe1 ->
     "The buildinfo contains info for an executable called '"
       ++ prettyShow exe1
-      ++ "' but the package does not have a "
+      ++ "' but the package does not have an "
       ++ "executable with that name."
-  ConfigureScriptNotFound -> "configure script not found."
+  ConfigureScriptNotFound fp -> "configure script not found at " ++ fp ++ "."
   NoValidComponent -> "No valid component targets found"
-  ConfigureEitherSingleOrAll -> "Can only configure either single component or all of them"
+  ConfigureEitherSingleOrAll -> "Can only configure either a single component or all of them"
   ConfigCIDValidForPreComponent -> "--cid is only supported for per-component configure"
   SanityCheckForEnableComponents ->
     "--enable-tests/--enable-benchmarks are incompatible with"
@@ -522,23 +521,23 @@ exceptionMessage e = case e of
       ++ " are incompatible with each other."
   UnsupportedLanguages pkgId compilerId langs ->
     "The package "
-      ++ prettyShow (pkgId)
+      ++ prettyShow pkgId
       ++ " requires the following languages which are not "
       ++ "supported by "
-      ++ prettyShow (compilerId)
+      ++ prettyShow compilerId
       ++ ": "
       ++ intercalate ", " langs
   UnsupportedLanguageExtension pkgId compilerId exts ->
     "The package "
-      ++ prettyShow (pkgId)
+      ++ prettyShow pkgId
       ++ " requires the following language extensions which are not "
       ++ "supported by "
-      ++ prettyShow (compilerId)
+      ++ prettyShow compilerId
       ++ ": "
       ++ intercalate ", " exts
   CantFindForeignLibraries unsupportedFLibs ->
     "Cannot build some foreign libraries: "
-      ++ intercalate "," unsupportedFLibs
+      ++ intercalate ", " unsupportedFLibs
   ExpectedAbsoluteDirectory fPath -> "expected an absolute directory name for --prefix: " ++ fPath
   FlagsNotSpecified diffFlags ->
     "'--exact-configuration' was given, "
@@ -550,7 +549,7 @@ exceptionMessage e = case e of
             . nest 4
             . sep
             . punctuate comma
-            . map (pretty . simplifyDependency)
+            . map pretty
             $ missing
          )
   CompilerDoesn'tSupportThinning ->
@@ -569,7 +568,7 @@ exceptionMessage e = case e of
       ++ "' refers to a library which is defined within the same "
       ++ "package. To use this feature the package must specify at "
       ++ "least 'cabal-version: >= 1.8'."
-  ReportFailedDependencies failed hackageUrl -> (intercalate "\n\n" (map reportFailedDependency failed))
+  ReportFailedDependencies failed hackageUrl -> intercalate "\n\n" (map reportFailedDependency failed)
     where
       reportFailedDependency (DependencyNotExists pkgname) =
         "there is no version of "
@@ -614,15 +613,16 @@ exceptionMessage e = case e of
   NoWorkingGcc ->
     unlines
       [ "No working gcc"
-      , "This package depends on foreign library but we cannot "
+      , "This package depends on a foreign library but we cannot "
           ++ "find a working C compiler. If you have it in a "
           ++ "non-standard location you can use the --with-gcc "
           ++ "flag to specify it."
       ]
-  NoOSSupport os ->
+  NoOSSupport os what ->
     "Operating system: "
       ++ prettyShow os
-      ++ ", does not support relocatable builds"
+      ++ ", does not support "
+      ++ what
   NoCompilerSupport comp ->
     "Compiler: "
       ++ comp
@@ -670,8 +670,8 @@ exceptionMessage e = case e of
           ++ "where it is."
           ++ "If the library file does exist, it may contain errors that "
           ++ "are caught by the C compiler at the preprocessing stage. "
-          ++ "In this case you can re-run configure with the verbosity "
-          ++ "flag -v3 to see the error messages."
+          ++ "In this case you can re-run 'Setup configure' with the "
+          ++ "verbosity flag -v3 to see the error messages."
       messagePlural =
         "This problem can usually be solved by installing the system "
           ++ "packages that provide these libraries (you may need the "
@@ -681,18 +681,18 @@ exceptionMessage e = case e of
           ++ "where they are."
           ++ "If the library files do exist, it may contain errors that "
           ++ "are caught by the C compiler at the preprocessing stage. "
-          ++ "In this case you can re-run configure with the verbosity "
-          ++ "flag -v3 to see the error messages."
+          ++ "In this case you can re-run 'Setup configure' with the "
+          ++ "verbosity flag -v3 to see the error messages."
       headerCppMessage =
         "If the header file does exist, it may contain errors that "
           ++ "are caught by the C compiler at the preprocessing stage. "
-          ++ "In this case you can re-run configure with the verbosity "
-          ++ "flag -v3 to see the error messages."
+          ++ "In this case you can re-run 'Setup configure' with the "
+          ++ "verbosity flag -v3 to see the error messages."
       headerCcMessage =
         "The header file contains a compile error. "
-          ++ "You can re-run configure with the verbosity flag "
+          ++ "You can re-run 'Setup configure' with the verbosity flag "
           ++ "-v3 to see the error messages from the C compiler."
-  CheckPackageProblems errors -> (intercalate "\n\n" $ errors)
+  CheckPackageProblems errors -> intercalate "\n\n" errors
   LibDirDepsPrefixNotRelative l p ->
     "Library directory of a dependency: "
       ++ show l
@@ -723,13 +723,12 @@ exceptionMessage e = case e of
       ++ "\". Did you build the package first?"
   TestCoverageSupportLibV09 -> "Test coverage is only supported for packages with a library component."
   RawSystemStdout errors -> errors
-  FindFileCwd fileName -> fileName ++ " doesn't exist"
-  FindFileEx fileName -> fileName ++ " doesn't exist"
+  FindFile fileName -> fileName ++ " doesn't exist"
   FindModuleFileEx mod_name extensions searchPath ->
     "Could not find module: "
       ++ prettyShow mod_name
       ++ " with any suffix: "
-      ++ show extensions
+      ++ show (map prettyShow extensions)
       ++ " in the search path: "
       ++ show searchPath
   MultipleFilesWithExtension buildInfoExt -> "Multiple files with extension " ++ buildInfoExt
@@ -754,7 +753,7 @@ exceptionMessage e = case e of
   RegisMultiplePkgNotSupported -> "Registering multiple package instances is not yet supported for this compiler"
   RegisteringNotImplemented -> "Registering is not implemented for this compiler"
   NoTestSuitesEnabled ->
-    "No test suites enabled. Did you remember to configure with "
+    "No test suites enabled. Did you remember to 'Setup configure' with "
       ++ "\'--enable-tests\'?"
   TestNameDisabled tName ->
     "Package configured with test suite "
@@ -792,3 +791,16 @@ exceptionMessage e = case e of
       ++ " is required but the version of "
       ++ locationPath
       ++ " could not be determined."
+  MissingCoveredInstalledLibrary unitId ->
+    "Failed to find the installed unit '"
+      ++ prettyShow unitId
+      ++ "' in package database stack."
+  SetupHooksException err ->
+    setupHooksExceptionMessage err
+  MultiReplDoesNotSupportComplexReexportedModules pname cname ->
+    "When attempting start the repl for "
+      ++ showComponentName cname
+      ++ " from package "
+      ++ prettyShow pname
+      ++ " a module renaming was found.\n"
+      ++ "Multi-repl does not work with complicated reexported-modules until GHC-9.12."

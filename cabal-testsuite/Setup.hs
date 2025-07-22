@@ -10,6 +10,7 @@ import Distribution.Simple.Utils
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.ModuleRenaming
 import Distribution.Types.UnqualComponentName
+import Distribution.Utils.Path (getSymbolicPath)
 import Distribution.Verbosity
 
 import System.Directory
@@ -29,7 +30,10 @@ generateScriptEnvModule lbi verbosity = do
 
     createDirectoryIfMissing True moduledir
     rewriteFileEx verbosity (moduledir </> "ScriptEnv0.hs") $ unlines
-      [ "module Test.Cabal.ScriptEnv0 where"
+      [ "{-# LANGUAGE OverloadedStrings #-}"
+      , "{-# LANGUAGE FlexibleInstances #-}"
+      , "{-# OPTIONS_GHC -Wno-orphans   #-}"
+      , "module Test.Cabal.ScriptEnv0 where"
       , ""
       , "import Distribution.Simple"
       , "import Distribution.System (Platform(..), Arch(..), OS(..))"
@@ -37,8 +41,10 @@ generateScriptEnvModule lbi verbosity = do
       , "import Distribution.Simple.Program.Db"
       , "import Distribution.Backpack (OpenUnitId)"
       , "import Data.Map (fromList)"
+      , "import Data.String (IsString(..))"
+      , "import Distribution.Utils.Path"
       , ""
-      , "lbiPackageDbStack :: PackageDBStack"
+      , "lbiPackageDbStack :: PackageDBStackCWD"
       , "lbiPackageDbStack = " ++ show lbiPackageDbStack
       , ""
       , "lbiPlatform :: Platform"
@@ -55,6 +61,9 @@ generateScriptEnvModule lbi verbosity = do
       , ""
       , "lbiWithSharedLib :: Bool"
       , "lbiWithSharedLib = " ++ show (withSharedLib lbi)
+      , ""
+      , "instance IsString (SymbolicPath from to) where"
+      , "  fromString = makeSymbolicPath"
       ]
   where
     moduledir = libAutogenDir </> "Test" </> "Cabal"
@@ -73,7 +82,7 @@ canonicalizePackageDB x = return x
 -- non-Backpack.
 cabalTestsPackages :: LocalBuildInfo -> [(OpenUnitId, ModuleRenaming)]
 cabalTestsPackages lbi =
-    case componentNameCLBIs lbi (CExeName (mkUnqualComponentName "cabal-tests")) of
+    case componentNameCLBIs lbi (CExeName (mkUnqualComponentName "test-runtime-deps")) of
         [clbi] -> -- [ (unUnitId $ unDefUnitId duid,rn) | (DefiniteUnitId duid, rn) <- componentIncludes clbi ]
                   componentIncludes clbi
         _ -> error "cabalTestsPackages"

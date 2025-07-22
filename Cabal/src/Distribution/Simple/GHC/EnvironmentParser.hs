@@ -1,9 +1,5 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module Distribution.Simple.GHC.EnvironmentParser (parseGhcEnvironmentFile, readGhcEnvironmentFile, ParseErrorExc (..)) where
 
@@ -11,8 +7,6 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Simple.Compiler
-  ( PackageDB (..)
-  )
 import Distribution.Simple.GHC.Internal
   ( GhcEnvironmentFileEntry (..)
   )
@@ -26,7 +20,7 @@ import Text.Parsec.String
   , parseFromFile
   )
 
-parseEnvironmentFileLine :: Parser GhcEnvironmentFileEntry
+parseEnvironmentFileLine :: Parser (GhcEnvironmentFileEntry FilePath)
 parseEnvironmentFileLine =
   GhcEnvFileComment <$> comment
     <|> GhcEnvFilePackageId <$> unitId
@@ -46,14 +40,14 @@ parseEnvironmentFileLine =
     clearDb = P.string "clear-package-db"
 
 newtype ParseErrorExc = ParseErrorExc P.ParseError
-  deriving (Show, Typeable)
+  deriving (Show)
 
 instance Exception ParseErrorExc
 
-parseGhcEnvironmentFile :: Parser [GhcEnvironmentFileEntry]
+parseGhcEnvironmentFile :: Parser [GhcEnvironmentFileEntry FilePath]
 parseGhcEnvironmentFile = parseEnvironmentFileLine `P.sepEndBy` P.endOfLine <* P.eof
 
-readGhcEnvironmentFile :: FilePath -> IO [GhcEnvironmentFileEntry]
+readGhcEnvironmentFile :: FilePath -> IO [GhcEnvironmentFileEntry FilePath]
 readGhcEnvironmentFile path =
   either (throwIO . ParseErrorExc) return
     =<< parseFromFile parseGhcEnvironmentFile path

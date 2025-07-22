@@ -1,10 +1,9 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Simple.Setup
@@ -37,12 +36,14 @@ module Distribution.Simple.Setup
   , emptyGlobalFlags
   , defaultGlobalFlags
   , globalCommand
+  , CommonSetupFlags (..)
+  , defaultCommonSetupFlags
+  , commonSetupTempFileOptions
   , ConfigFlags (..)
   , emptyConfigFlags
   , defaultConfigFlags
   , configureCommand
   , configPrograms
-  , configAbsolutePaths
   , readPackageDb
   , readPackageDbList
   , showPackageDb
@@ -118,7 +119,9 @@ module Distribution.Simple.Setup
   , splitArgs
   , defaultDistPref
   , optionDistPref
-  , Flag (..)
+  , Flag
+  , pattern Flag
+  , pattern NoFlag
   , toFlag
   , fromFlag
   , fromFlagOrDefault
@@ -131,8 +134,14 @@ module Distribution.Simple.Setup
   , trueArg
   , falseArg
   , optionVerbosity
+  , BuildingWhat (..)
+  , buildingWhatCommonFlags
+  , buildingWhatVerbosity
+  , buildingWhatWorkingDir
+  , buildingWhatDistPref
   ) where
 
+import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Simple.Flag
@@ -150,9 +159,49 @@ import Distribution.Simple.Setup.Haddock
 import Distribution.Simple.Setup.Hscolour
 import Distribution.Simple.Setup.Install
 import Distribution.Simple.Setup.Register
+  ( RegisterFlags (..)
+  , defaultRegisterFlags
+  , emptyRegisterFlags
+  , registerCommand
+  , unregisterCommand
+  )
 import Distribution.Simple.Setup.Repl
 import Distribution.Simple.Setup.SDist
 import Distribution.Simple.Setup.Test
+import Distribution.Utils.Path
+
+import Distribution.Verbosity (Verbosity)
+
+-- | What kind of build phase are we doing/hooking into?
+--
+-- Is this a normal build, or is it perhaps for running an interactive
+-- session or Haddock?
+data BuildingWhat
+  = -- | A normal build.
+    BuildNormal BuildFlags
+  | -- | Build steps for an interactive session.
+    BuildRepl ReplFlags
+  | -- | Build steps for generating documentation.
+    BuildHaddock HaddockFlags
+  | -- | Build steps for Hscolour.
+    BuildHscolour HscolourFlags
+  deriving (Generic, Show)
+
+buildingWhatCommonFlags :: BuildingWhat -> CommonSetupFlags
+buildingWhatCommonFlags = \case
+  BuildNormal flags -> buildCommonFlags flags
+  BuildRepl flags -> replCommonFlags flags
+  BuildHaddock flags -> haddockCommonFlags flags
+  BuildHscolour flags -> hscolourCommonFlags flags
+
+buildingWhatVerbosity :: BuildingWhat -> Verbosity
+buildingWhatVerbosity = fromFlag . setupVerbosity . buildingWhatCommonFlags
+
+buildingWhatWorkingDir :: BuildingWhat -> Maybe (SymbolicPath CWD (Dir Pkg))
+buildingWhatWorkingDir = flagToMaybe . setupWorkingDir . buildingWhatCommonFlags
+
+buildingWhatDistPref :: BuildingWhat -> SymbolicPath Pkg (Dir Dist)
+buildingWhatDistPref = fromFlag . setupDistPref . buildingWhatCommonFlags
 
 -- The test cases kinda have to be rewritten from the ground up... :/
 -- hunitTests :: [Test]
@@ -197,3 +246,6 @@ import Distribution.Simple.Setup.Test
    * quickCheck to test permutations of arguments
    * what other options can we over-ride with a command-line flag?
 -}
+
+instance Binary BuildingWhat
+instance Structured BuildingWhat

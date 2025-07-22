@@ -1,16 +1,20 @@
-{-# LANGUAGE CPP                #-}
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 -- | Exception type like 'ExitCode' but with more information
 -- than just integer.
 module Test.Cabal.TestCode (
     -- * TestCode
     TestCode (..),
+    FlakyStatus (..),
+    IssueID (..),
     displayTestCode,
     isTestCodeSkip,
+    isTestCodeFlaky,
+    isTestCodeUnexpectedSuccess,
 ) where
 
 import Control.Exception (Exception (..))
-import Data.Typeable     (Typeable)
 
 -------------------------------------------------------------------------------
 -- TestCode
@@ -19,24 +23,44 @@ import Data.Typeable     (Typeable)
 data TestCode
     = TestCodeOk
     | TestCodeSkip String
-    | TestCodeKnownFail
-    | TestCodeUnexpectedOk
+    | TestCodeKnownFail IssueID
+    | TestCodeUnexpectedOk IssueID
     | TestCodeFail
-  deriving (Eq, Show, Read, Typeable)
+    | TestCodeFlakyFailed IssueID
+    | TestCodeFlakyPassed IssueID
+  deriving (Eq, Show, Read)
 
 instance Exception TestCode
-#if MIN_VERSION_base(4,8,0)
   where
     displayException = displayTestCode
-#endif
 
 displayTestCode :: TestCode -> String
-displayTestCode TestCodeOk           = "OK"
-displayTestCode (TestCodeSkip msg)   = "SKIP " ++ msg
-displayTestCode TestCodeKnownFail    = "OK (known failure)"
-displayTestCode TestCodeUnexpectedOk = "FAIL (unexpected success)"
-displayTestCode TestCodeFail         = "FAIL"
+displayTestCode TestCodeOk               = "OK"
+displayTestCode (TestCodeSkip msg)       = "SKIP " ++ msg
+displayTestCode (TestCodeKnownFail t)    = "OK (known failure, see #" <> show t <> ")"
+displayTestCode (TestCodeUnexpectedOk t) = "FAIL (unexpected success, see #" <> show t <> ")"
+displayTestCode TestCodeFail             = "FAIL"
+displayTestCode (TestCodeFlakyFailed t)  = "FLAKY (FAIL, see #" <> show t <> ")"
+displayTestCode (TestCodeFlakyPassed t)  = "FLAKY (OK, see #" <> show t <> ")"
 
 isTestCodeSkip :: TestCode -> Bool
 isTestCodeSkip (TestCodeSkip _) = True
 isTestCodeSkip _                = False
+
+type TestPassed = Bool
+
+newtype IssueID = IssueID Int
+  deriving newtype (Eq, Num, Show, Read)
+
+data FlakyStatus
+  = NotFlaky
+  | Flaky TestPassed IssueID
+
+isTestCodeFlaky :: TestCode -> FlakyStatus
+isTestCodeFlaky (TestCodeFlakyPassed t) = Flaky True t
+isTestCodeFlaky (TestCodeFlakyFailed t) = Flaky False t
+isTestCodeFlaky _                       = NotFlaky
+
+isTestCodeUnexpectedSuccess :: TestCode -> Maybe IssueID
+isTestCodeUnexpectedSuccess (TestCodeUnexpectedOk t) = Just t
+isTestCodeUnexpectedSuccess _                        = Nothing

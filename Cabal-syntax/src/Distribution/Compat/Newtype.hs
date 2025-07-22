@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
@@ -14,14 +13,9 @@ module Distribution.Compat.Newtype
   , unpack'
   ) where
 
+import Data.Coerce (Coercible, coerce)
 import Data.Functor.Identity (Identity (..))
 import Data.Monoid (Endo (..), Product (..), Sum (..))
-
-#if MIN_VERSION_base(4,7,0)
-import Data.Coerce (coerce, Coercible)
-#else
-import Unsafe.Coerce (unsafeCoerce)
-#endif
 
 -- | The @FunctionalDependencies@ version of 'Newtype' type-class.
 --
@@ -40,22 +34,12 @@ import Unsafe.Coerce (unsafeCoerce)
 {- FOURMOLU_DISABLE -}
 class Newtype o n | n -> o where
   pack :: o -> n
-#if MIN_VERSION_base(4,7,0)
   default pack :: Coercible o n => o -> n
   pack = coerce
-#else
-  default pack :: o -> n
-  pack = unsafeCoerce
-#endif
 
   unpack :: n -> o
-#if MIN_VERSION_base(4,7,0)
   default unpack :: Coercible n o => n -> o
   unpack = coerce
-#else
-  default unpack :: n -> o
-  unpack = unsafeCoerce
-#endif
 {- FOURMOLU_ENABLE -}
 
 instance Newtype a (Identity a)

@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Distribution.Client.CmdClean (cleanCommand, cleanAction) where
@@ -12,38 +14,61 @@ import Distribution.Client.DistDirLayout
   ( DistDirLayout (..)
   , defaultDistDirLayout
   )
+import Distribution.Client.Errors
 import Distribution.Client.ProjectConfig
   ( findProjectRoot
+  )
+import Distribution.Client.ProjectFlags
+  ( ProjectFlags (..)
+  , defaultProjectFlags
+  , projectFlagsOptions
+  , removeIgnoreProjectOption
   )
 import Distribution.Client.Setup
   ( GlobalFlags
   )
-import Distribution.ReadE (succeedReadE)
+import Distribution.Compat.Lens
+  ( _1
+  , _2
+  )
 import Distribution.Simple.Command
   ( CommandUI (..)
+  , OptionField
+  , ShowOrParseArgs
+  , liftOptionL
   , option
-  , reqArg
   )
 import Distribution.Simple.Setup
-  ( Flag (..)
+  ( Flag
   , falseArg
-  , flagToList
   , flagToMaybe
   , fromFlagOrDefault
   , optionDistPref
   , optionVerbosity
   , toFlag
+  , pattern NoFlag
   )
 import Distribution.Simple.Utils
-  ( die'
+  ( dieWithException
   , handleDoesNotExist
   , info
   , wrapText
+  )
+import Distribution.System
+  ( OS (Windows)
+  , buildOS
+  )
+import Distribution.Utils.Path hiding
+  ( (<.>)
+  , (</>)
   )
 import Distribution.Verbosity
   ( normal
   )
 
+import Control.Exception
+  ( throw
+  )
 import Control.Monad
   ( forM
   , forM_
@@ -58,17 +83,20 @@ import System.Directory
   , listDirectory
   , removeDirectoryRecursive
   , removeFile
+  , removePathForcibly
   )
 import System.FilePath
   ( (</>)
   )
+import System.IO.Error
+  ( isPermissionError
+  )
+import qualified System.Process as Process
 
 data CleanFlags = CleanFlags
   { cleanSaveConfig :: Flag Bool
   , cleanVerbosity :: Flag Verbosity
-  , cleanDistDir :: Flag FilePath
-  , cleanProjectDir :: Flag FilePath
-  , cleanProjectFile :: Flag FilePath
+  , cleanDistDir :: Flag (SymbolicPath Pkg (Dir Dist))
   }
   deriving (Eq)
 
@@ -78,11 +106,9 @@ defaultCleanFlags =
     { cleanSaveConfig = toFlag False
     , cleanVerbosity = toFlag normal
     , cleanDistDir = NoFlag
-    , cleanProjectDir = mempty
-    , cleanProjectFile = mempty
     }
 
-cleanCommand :: CommandUI CleanFlags
+cleanCommand :: CommandUI (ProjectFlags, CleanFlags)
 cleanCommand =
   CommandUI
     { commandName = "v2-clean"
@@ -95,55 +121,47 @@ cleanCommand =
             ++ "(.hi, .o, preprocessed sources, etc.) and also empties out the "
             ++ "local caches (by default).\n\n"
     , commandNotes = Nothing
-    , commandDefaultFlags = defaultCleanFlags
+    , commandDefaultFlags = (defaultProjectFlags, defaultCleanFlags)
     , commandOptions = \showOrParseArgs ->
-        [ optionVerbosity
-            cleanVerbosity
-            (\v flags -> flags{cleanVerbosity = v})
-        , optionDistPref
-            cleanDistDir
-            (\dd flags -> flags{cleanDistDir = dd})
-            showOrParseArgs
-        , option
-            []
-            ["project-dir"]
-            "Set the path of the project directory"
-            cleanProjectDir
-            (\path flags -> flags{cleanProjectDir = path})
-            (reqArg "DIR" (succeedReadE Flag) flagToList)
-        , option
-            []
-            ["project-file"]
-            "Set the path of the cabal.project file (relative to the project directory when relative)"
-            cleanProjectFile
-            (\pf flags -> flags{cleanProjectFile = pf})
-            (reqArg "FILE" (succeedReadE Flag) flagToList)
-        , option
-            ['s']
-            ["save-config"]
-            "Save configuration, only remove build artifacts"
-            cleanSaveConfig
-            (\sc flags -> flags{cleanSaveConfig = sc})
-            falseArg
-        ]
+        map
+          (liftOptionL _1)
+          (removeIgnoreProjectOption (projectFlagsOptions showOrParseArgs))
+          ++ map (liftOptionL _2) (cleanOptions showOrParseArgs)
     }
 
-cleanAction :: CleanFlags -> [String] -> GlobalFlags -> IO ()
-cleanAction CleanFlags{..} extraArgs _ = do
+cleanOptions :: ShowOrParseArgs -> [OptionField CleanFlags]
+cleanOptions showOrParseArgs =
+  [ optionVerbosity
+      cleanVerbosity
+      (\v flags -> flags{cleanVerbosity = v})
+  , optionDistPref
+      cleanDistDir
+      (\dd flags -> flags{cleanDistDir = dd})
+      showOrParseArgs
+  , option
+      ['s']
+      ["save-config"]
+      "Save configuration, only remove build artifacts"
+      cleanSaveConfig
+      (\sc flags -> flags{cleanSaveConfig = sc})
+      falseArg
+  ]
+
+cleanAction :: (ProjectFlags, CleanFlags) -> [String] -> GlobalFlags -> IO ()
+cleanAction (ProjectFlags{..}, CleanFlags{..}) extraArgs _ = do
   let verbosity = fromFlagOrDefault normal cleanVerbosity
       saveConfig = fromFlagOrDefault False cleanSaveConfig
-      mdistDirectory = flagToMaybe cleanDistDir
-      mprojectDir = flagToMaybe cleanProjectDir
-      mprojectFile = flagToMaybe cleanProjectFile
+      mdistDirectory = fmap getSymbolicPath $ flagToMaybe cleanDistDir
+      mprojectDir = flagToMaybe flagProjectDir
+      mprojectFile = flagToMaybe flagProjectFile
 
   -- TODO interpret extraArgs as targets and clean those targets only (issue #7506)
   --
   -- For now assume all files passed are the names of scripts
   notScripts <- filterM (fmap not . doesFileExist) extraArgs
   unless (null notScripts) $
-    die' verbosity $
-      "'clean' extra arguments should be script files: "
-        ++ unwords notScripts
+    dieWithException verbosity $
+      CleanAction notScripts
 
   projectRoot <- either throwIO return =<< findProjectRoot verbosity mprojectDir mprojectFile
 
@@ -164,9 +182,20 @@ cleanAction CleanFlags{..} extraArgs _ = do
         let distRoot = distDirectory distLayout
 
         info verbosity ("Deleting dist-newstyle (" ++ distRoot ++ ")")
-        handleDoesNotExist () $ removeDirectoryRecursive distRoot
+        handleDoesNotExist () $ do
+          if buildOS == Windows
+            then do
+              -- Windows can't delete some git files #10182
+              void $
+                Process.createProcess_ "attrib" $
+                  Process.shell $
+                    "attrib -s -h -r " <> distRoot <> "\\*.* /s /d"
+              catch
+                (removePathForcibly distRoot)
+                (\e -> if isPermissionError e then removePathForcibly distRoot else throw e)
+            else removeDirectoryRecursive distRoot
 
-    removeEnvFiles (distProjectRootDirectory distLayout)
+    removeEnvFiles $ distProjectRootDirectory distLayout
 
   -- Clean specified script build caches and orphaned caches.
   -- There is currently no good way to specify to only clean orphaned caches.

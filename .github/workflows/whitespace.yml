@@ -1,0 +1,27 @@
+name: Whitespace
+
+on:
+  pull_request:
+  push:
+    branches: ["master"]
+
+jobs:
+  whitespace:
+    defaults:
+      run:
+        shell: bash
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - uses: actions/checkout@v4
+
+    - run: |
+        # no longer using the action because apparently we're supposed to use the Makefile here
+        wget -q https://github.com/agda/fix-whitespace/releases/download/v0.1/fix-whitespace-0.1-linux.binary
+        mkdir -p "$HOME/.local/bin"
+        mv fix-whitespace-0.1-linux.binary "$HOME/.local/bin/fix-whitespace"
+        chmod +x "$HOME/.local/bin/fix-whitespace"
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+    - run: make whitespace

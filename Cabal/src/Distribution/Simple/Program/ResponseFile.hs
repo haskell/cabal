@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 
@@ -19,14 +20,13 @@ import Prelude ()
 
 import Distribution.Compat.Prelude
 import Distribution.Simple.Utils (TempFileOptions, debug, withTempFileEx)
+import Distribution.Utils.Path
 import Distribution.Verbosity
 
 withResponseFile
   :: Verbosity
   -> TempFileOptions
-  -> FilePath
-  -- ^ Working directory to create response file in.
-  -> FilePath
+  -> String
   -- ^ Template for response file name.
   -> Maybe TextEncoding
   -- ^ Encoding to use for response file contents.
@@ -34,10 +34,14 @@ withResponseFile
   -- ^ Arguments to put into response file.
   -> (FilePath -> IO a)
   -> IO a
-withResponseFile verbosity tmpFileOpts workDir fileNameTemplate encoding arguments f =
-  withTempFileEx tmpFileOpts workDir fileNameTemplate $ \responseFileName hf -> do
+withResponseFile verbosity tmpFileOpts fileNameTemplate encoding arguments f =
+  withTempFileEx tmpFileOpts fileNameTemplate $ \responsePath hf -> do
+    let responseFileName = getSymbolicPath responsePath
     traverse_ (hSetEncoding hf) encoding
-    let responseContents = unlines $ map escapeResponseFileArg arguments
+    let responseContents =
+          unlines $
+            map escapeResponseFileArg $
+              arguments
     hPutStr hf responseContents
     hClose hf
     debug verbosity $ responseFileName ++ " contents: <<<"

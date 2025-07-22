@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -----------------------------------------------------------------------------
@@ -23,8 +23,10 @@ module Distribution.Client.Setup
   , RepoContext (..)
   , withRepoContext
   , configureCommand
+  , CommonSetupFlags (..)
   , ConfigFlags (..)
   , configureOptions
+  , filterCommonFlags
   , filterConfigureFlags
   , configPackageDB'
   , configCompilerAux'
@@ -33,12 +35,15 @@ module Distribution.Client.Setup
   , defaultConfigExFlags
   , buildCommand
   , BuildFlags (..)
+  , filterBuildFlags
   , filterTestFlags
   , replCommand
+  , filterReplFlags
   , testCommand
   , benchmarkCommand
   , testOptions
   , benchmarkOptions
+  , filterBenchmarkFlags
   , configureExOptions
   , reconfigureCommand
   , installCommand
@@ -65,6 +70,7 @@ module Distribution.Client.Setup
   , unpackCommand
   , GetFlags (..)
   , checkCommand
+  , CheckFlags (..)
   , formatCommand
   , uploadCommand
   , UploadFlags (..)
@@ -83,7 +89,9 @@ module Distribution.Client.Setup
   , haddockCommand
   , cleanCommand
   , copyCommand
+  , filterCopyFlags
   , registerCommand
+  , filterRegisterFlags
   , liftOptions
   , yesNoOpt
   ) where
@@ -92,7 +100,7 @@ import Distribution.Client.Compat.Prelude hiding (get)
 import Prelude ()
 
 import Distribution.Client.Types.AllowNewer (AllowNewer (..), AllowOlder (..), RelaxDeps (..))
-import Distribution.Client.Types.Credentials (Password (..), Username (..))
+import Distribution.Client.Types.Credentials (Password (..), Token (..), Username (..))
 import Distribution.Client.Types.Repo (LocalRepo (..), RemoteRepo (..))
 import Distribution.Client.Types.WriteGhcEnvironmentFilesPolicy
 
@@ -141,6 +149,7 @@ import Distribution.PackageDescription
   , LibraryName (..)
   , RepoKind (..)
   )
+import Distribution.PackageDescription.Check (CheckExplanationIDString)
 import Distribution.Parsec
   ( parsecCommaList
   )
@@ -160,13 +169,16 @@ import Distribution.Simple.Configure
   , interpretPackageDbFlags
   )
 import Distribution.Simple.Flag
-  ( Flag (..)
+  ( Flag
   , flagElim
   , flagToList
   , flagToMaybe
   , fromFlagOrDefault
   , maybeToFlag
+  , mergeListFlag
   , toFlag
+  , pattern Flag
+  , pattern NoFlag
   )
 import Distribution.Simple.InstallDirs
   ( InstallDirs (..)
@@ -177,15 +189,16 @@ import Distribution.Simple.InstallDirs
   )
 import Distribution.Simple.Program (ProgramDb, defaultProgramDb)
 import Distribution.Simple.Setup
-  ( BenchmarkFlags
+  ( BenchmarkFlags (benchmarkCommonFlags)
   , BooleanFlag (..)
   , BuildFlags (..)
   , CleanFlags (..)
+  , CommonSetupFlags (..)
   , ConfigFlags (..)
   , CopyFlags (..)
   , HaddockFlags (..)
   , RegisterFlags (..)
-  , ReplFlags
+  , ReplFlags (..)
   , TestFlags
   , boolOpt
   , boolOpt'
@@ -193,6 +206,7 @@ import Distribution.Simple.Setup
   , optionVerbosity
   , readPackageDbList
   , showPackageDbList
+  , testCommonFlags
   , trueArg
   )
 import qualified Distribution.Simple.Setup as Cabal
@@ -202,7 +216,9 @@ import Distribution.Simple.Utils
 import Distribution.System (Platform)
 import Distribution.Types.GivenComponent
   ( GivenComponent (..)
+  , PromisedComponent (..)
   )
+import Distribution.Types.PackageId
 import Distribution.Types.PackageVersionConstraint
   ( PackageVersionConstraint (..)
   )
@@ -218,6 +234,7 @@ import Distribution.Verbosity
 import Distribution.Version
   ( Version
   , mkVersion
+  , nullVersion
   )
 
 import Control.Exception
@@ -267,6 +284,7 @@ globalCommand commands =
               , "unpack"
               , "init"
               , "configure"
+              , "target"
               , "build"
               , "clean"
               , "run"
@@ -281,10 +299,13 @@ globalCommand commands =
               , "gen-bounds"
               , "outdated"
               , "haddock"
+              , "haddock-project"
               , "hscolour"
               , "exec"
+              , "path"
               , "new-build"
               , "new-configure"
+              , "new-target"
               , "new-repl"
               , "new-freeze"
               , "new-run"
@@ -296,6 +317,7 @@ globalCommand commands =
               , "new-install"
               , "new-clean"
               , "new-sdist"
+              , "new-haddock-project"
               , "list-bin"
               , -- v1 commands, stateful style
                 "v1-build"
@@ -316,7 +338,8 @@ globalCommand commands =
               , "v1-register"
               , "v1-reconfigure"
               , -- v2 commands, nix-style
-                "v2-build"
+                "v2-target"
+              , "v2-build"
               , "v2-configure"
               , "v2-repl"
               , "v2-freeze"
@@ -324,6 +347,7 @@ globalCommand commands =
               , "v2-test"
               , "v2-bench"
               , "v2-haddock"
+              , "v2-haddock-project"
               , "v2-exec"
               , "v2-update"
               , "v2-install"
@@ -359,6 +383,8 @@ globalCommand commands =
                 , addCmd "freeze"
                 , addCmd "gen-bounds"
                 , addCmd "outdated"
+                , addCmd "path"
+                , addCmd "target"
                 , par
                 , startGroup "project building and installing"
                 , addCmd "build"
@@ -386,6 +412,7 @@ globalCommand commands =
                 , addCmd "hscolour"
                 , par
                 , startGroup "new-style projects (forwards-compatible aliases)"
+                , addCmd "v2-target"
                 , addCmd "v2-build"
                 , addCmd "v2-configure"
                 , addCmd "v2-repl"
@@ -500,17 +527,17 @@ globalCommand commands =
               )
               ""
               ["nix"] -- Must be empty because we need to return PP.empty from viewAsFieldDescr
-              "Nix integration: run commands through nix-shell if a 'shell.nix' file exists (default is False)"
+              "[DEPRECATED] Nix integration: run commands through nix-shell if a 'shell.nix' file exists (default is False)"
           , noArg
               (Flag True)
               []
               ["enable-nix"]
-              "Enable Nix integration: run commands through nix-shell if a 'shell.nix' file exists"
+              "[DEPRECATED] Enable Nix integration: run commands through nix-shell if a 'shell.nix' file exists"
           , noArg
               (Flag False)
               []
               ["disable-nix"]
-              "Disable Nix integration"
+              "[DEPRECATED] Disable Nix integration"
           ]
       , option
           []
@@ -617,6 +644,36 @@ configureCommand =
 configureOptions :: ShowOrParseArgs -> [OptionField ConfigFlags]
 configureOptions = commandOptions configureCommand
 
+filterCommonFlags :: CommonSetupFlags -> Version -> CommonSetupFlags
+filterCommonFlags flags cabalLibVersion
+  -- NB: we expect the latest version to be the most common case,
+  -- so test it first.
+  | cabalLibVersion >= mkVersion [3, 13, 0] = flags_latest
+  | cabalLibVersion < mkVersion [1, 2, 5] = flags_1_2_5
+  | cabalLibVersion < mkVersion [2, 1, 0] = flags_2_1_0
+  | cabalLibVersion < mkVersion [3, 13, 0] = flags_3_13_0
+  | otherwise = error "the impossible just happened" -- see first guard
+  where
+    flags_latest = flags
+    flags_3_13_0 =
+      flags_latest
+        { -- Cabal < 3.13 does not support the --working-dir flag.
+          setupWorkingDir = NoFlag
+        , -- Or the --keep-temp-files flag.
+          setupKeepTempFiles = NoFlag
+        }
+    flags_2_1_0 =
+      flags_3_13_0
+        { -- Cabal < 2.1 doesn't know about -v +timestamp modifier
+          setupVerbosity = fmap verboseNoTimestamp (setupVerbosity flags_3_13_0)
+        }
+    flags_1_2_5 =
+      flags_2_1_0
+        { -- Cabal < 1.25 doesn't have extended verbosity syntax
+          setupVerbosity =
+            fmap verboseNoFlags (setupVerbosity flags_2_1_0)
+        }
+
 -- | Given some 'ConfigFlags' for the version of Cabal that
 -- cabal-install was built with, and a target older 'Version' of
 -- Cabal that we want to pass these flags to, convert the
@@ -626,10 +683,18 @@ configureOptions = commandOptions configureCommand
 -- in some cases it may also mean "emulating" a feature using
 -- some more legacy flags.
 filterConfigureFlags :: ConfigFlags -> Version -> ConfigFlags
-filterConfigureFlags flags cabalLibVersion
+filterConfigureFlags flags cabalLibVersion =
+  let flags' = filterConfigureFlags' flags cabalLibVersion
+   in flags'
+        { configCommonFlags =
+            filterCommonFlags (configCommonFlags flags') cabalLibVersion
+        }
+
+filterConfigureFlags' :: ConfigFlags -> Version -> ConfigFlags
+filterConfigureFlags' flags cabalLibVersion
   -- NB: we expect the latest version to be the most common case,
   -- so test it first.
-  | cabalLibVersion >= mkVersion [3, 11, 0] = flags_latest
+  | cabalLibVersion >= mkVersion [3, 13, 0] = flags_latest
   -- The naming convention is that flags_version gives flags with
   -- all flags *introduced* in version eliminated.
   -- It is NOT the latest version of Cabal library that
@@ -651,6 +716,7 @@ filterConfigureFlags flags cabalLibVersion
   | cabalLibVersion < mkVersion [2, 5, 0] = flags_2_5_0
   | cabalLibVersion < mkVersion [3, 7, 0] = flags_3_7_0
   | cabalLibVersion < mkVersion [3, 11, 0] = flags_3_11_0
+  | cabalLibVersion < mkVersion [3, 13, 0] = flags_3_13_0
   | otherwise = error "the impossible just happened" -- see first guard
   where
     flags_latest =
@@ -662,13 +728,36 @@ filterConfigureFlags flags cabalLibVersion
           configConstraints = []
         }
 
+    flags_3_13_0 =
+      let scrubVersion pc =
+            pc
+              { promisedComponentPackage =
+                  (promisedComponentPackage pc){pkgVersion = nullVersion}
+              }
+       in -- Earlier Cabal versions don't understand about ..
+          flags_latest
+            { -- Building profiled shared libraries
+              configProfShared = NoFlag
+            , configIgnoreBuildTools = NoFlag
+            , -- Older versions of Cabal don't include the package version in the
+              -- --promised-dependency flag, by setting the version to nullVersion,
+              -- it won't be printed.
+              configPromisedDependencies =
+                map scrubVersion (configPromisedDependencies flags)
+            }
+
     flags_3_11_0 =
-      flags_latest
+      flags_3_13_0
         { -- It's too late to convert configPromisedDependencies to anything
           -- meaningful, so we just assert that it's empty.
           -- We add a Cabal>=3.11 constraint before solving when multi-repl is
           -- enabled, so this should never trigger.
           configPromisedDependencies = assert (null $ configPromisedDependencies flags) []
+        , -- Cabal < 3.11 does not understand '--coverage-for', which is OK
+          -- because previous versions of Cabal using coverage implied
+          -- whole-package builds (cuz_coverage), and determine the path to
+          -- libraries mix dirs from the testsuite root with a small hack.
+          configCoverageFor = NoFlag
         }
 
     flags_3_7_0 =
@@ -702,9 +791,7 @@ filterConfigureFlags flags cabalLibVersion
 
     flags_2_1_0 =
       flags_2_5_0
-        { -- Cabal < 2.1 doesn't know about -v +timestamp modifier
-          configVerbosity = fmap verboseNoTimestamp (configVerbosity flags_latest)
-        , -- Cabal < 2.1 doesn't know about --<enable|disable>-static
+        { -- Cabal < 2.1 doesn't know about --<enable|disable>-static
           configStaticLib = NoFlag
         , configSplitSections = NoFlag
         }
@@ -713,8 +800,6 @@ filterConfigureFlags flags cabalLibVersion
       flags_2_1_0
         { -- Cabal < 1.25.0 doesn't know about --dynlibdir.
           configInstallDirs = configInstallDirs_1_25_0
-        , -- Cabal < 1.25 doesn't have extended verbosity syntax
-          configVerbosity = fmap verboseNoFlags (configVerbosity flags_2_1_0)
         , -- Cabal < 1.25 doesn't support --deterministic
           configDeterministic = mempty
         }
@@ -732,7 +817,7 @@ filterConfigureFlags flags cabalLibVersion
     -- Cabal < 1.23 doesn't know about '--profiling-detail'.
     -- Cabal < 1.23 has a hacked up version of 'enable-profiling'
     -- which we shouldn't use.
-    (tryLibProfiling, tryExeProfiling) = computeEffectiveProfiling flags
+    (tryLibProfiling, _tryLibProfilingShared, tryExeProfiling) = computeEffectiveProfiling flags
     flags_1_23_0 =
       flags_1_25_0
         { configProfDetail = NoFlag
@@ -807,11 +892,15 @@ configPackageDB' cfg =
 
 -- | Configure the compiler, but reduce verbosity during this step.
 configCompilerAux' :: ConfigFlags -> IO (Compiler, Platform, ProgramDb)
-configCompilerAux' configFlags =
+configCompilerAux' configFlags = do
+  let commonFlags = configCommonFlags configFlags
   configCompilerAuxEx
     configFlags
       { -- FIXME: make configCompilerAux use a sensible verbosity
-        configVerbosity = fmap lessVerbose (configVerbosity configFlags)
+        configCommonFlags =
+          commonFlags
+            { setupVerbosity = fmap lessVerbose (setupVerbosity commonFlags)
+            }
       }
 
 -- ------------------------------------------------------------
@@ -1067,6 +1156,21 @@ buildCommand =
   where
     parent = Cabal.buildCommand defaultProgramDb
 
+-- | Given some 'BuildFlags' for the version of @Cabal@ that
+-- @cabal-install@ was built with, and a target older 'Version' of
+-- @Cabal@ that we want to pass these flags to, convert the
+-- flags into a form that will be accepted by the older
+-- @Setup@ script.  Generally speaking, this just means filtering
+-- out flags that the old @Cabal@ library doesn't understand, but
+-- in some cases it may also mean "emulating" a feature using
+-- some more legacy flags.
+filterBuildFlags :: BuildFlags -> Version -> BuildFlags
+filterBuildFlags flags cabalLibVersion =
+  flags
+    { buildCommonFlags =
+        filterCommonFlags (buildCommonFlags flags) cabalLibVersion
+    }
+
 -- ------------------------------------------------------------
 
 -- * Test flags
@@ -1082,7 +1186,15 @@ buildCommand =
 -- in some cases it may also mean "emulating" a feature using
 -- some more legacy flags.
 filterTestFlags :: TestFlags -> Version -> TestFlags
-filterTestFlags flags cabalLibVersion
+filterTestFlags flags cabalLibVersion =
+  let flags' = filterTestFlags' flags cabalLibVersion
+   in flags'
+        { testCommonFlags =
+            filterCommonFlags (testCommonFlags flags') cabalLibVersion
+        }
+
+filterTestFlags' :: TestFlags -> Version -> TestFlags
+filterTestFlags' flags cabalLibVersion
   -- NB: we expect the latest version to be the most common case,
   -- so test it first.
   | cabalLibVersion >= mkVersion [3, 0, 0] = flags_latest
@@ -1150,6 +1262,24 @@ replCommand =
     }
   where
     parent = Cabal.replCommand defaultProgramDb
+
+-- | Given some 'ReplFlags' for the version of @Cabal@ that
+-- @cabal-install@ was built with, and a target older 'Version' of
+-- @Cabal@ that we want to pass these flags to, convert the
+-- flags into a form that will be accepted by the older
+-- @Setup@ script.  Generally speaking, this just means filtering
+-- out flags that the old @Cabal@ library doesn't understand, but
+-- in some cases it may also mean "emulating" a feature using
+-- some more legacy flags.
+filterReplFlags :: ReplFlags -> Version -> ReplFlags
+filterReplFlags flags cabalLibVersion =
+  flags
+    { replCommonFlags =
+        (filterCommonFlags (replCommonFlags flags) cabalLibVersion)
+          { -- `cabal repl` knew about `--keep-temp-files` before other commands did.
+            setupKeepTempFiles = setupKeepTempFiles (replCommonFlags flags)
+          }
+    }
 
 -- ------------------------------------------------------------
 
@@ -1245,6 +1375,21 @@ benchmarkCommand =
 
     parent = Cabal.benchmarkCommand
     progDb = defaultProgramDb
+
+-- | Given some 'BenchmarkFlags' for the version of @Cabal@ that
+-- @cabal-install@ was built with, and a target older 'Version' of
+-- @Cabal@ that we want to pass these flags to, convert the
+-- flags into a form that will be accepted by the older
+-- @Setup@ script.  Generally speaking, this just means filtering
+-- out flags that the old @Cabal@ library doesn't understand, but
+-- in some cases it may also mean "emulating" a feature using
+-- some more legacy flags.
+filterBenchmarkFlags :: BenchmarkFlags -> Version -> BenchmarkFlags
+filterBenchmarkFlags flags cabalLibVersion =
+  flags
+    { benchmarkCommonFlags =
+        filterCommonFlags (benchmarkCommonFlags flags) cabalLibVersion
+    }
 
 -- ------------------------------------------------------------
 
@@ -1453,6 +1598,56 @@ genBoundsCommand =
     }
 
 -- ------------------------------------------------------------
+-- Check command
+-- ------------------------------------------------------------
+
+data CheckFlags = CheckFlags
+  { checkVerbosity :: Flag Verbosity
+  , checkIgnore :: [CheckExplanationIDString]
+  }
+  deriving (Show)
+
+defaultCheckFlags :: CheckFlags
+defaultCheckFlags =
+  CheckFlags
+    { checkVerbosity = Flag normal
+    , checkIgnore = []
+    }
+
+checkCommand :: CommandUI CheckFlags
+checkCommand =
+  CommandUI
+    { commandName = "check"
+    , commandSynopsis = "Check the package for common mistakes."
+    , commandDescription = Just $ \_ ->
+        wrapText $
+          "Expects a .cabal package file in the current directory.\n"
+            ++ "\n"
+            ++ "Some checks correspond to the requirements to packages on Hackage. "
+            ++ "If no `Error` is reported, Hackage should accept the "
+            ++ "package. If errors are present, `check` exits with 1 and Hackage "
+            ++ "will refuse the package.\n"
+    , commandNotes = Nothing
+    , commandUsage = usageFlags "check"
+    , commandDefaultFlags = defaultCheckFlags
+    , commandOptions = checkOptions'
+    }
+
+checkOptions' :: ShowOrParseArgs -> [OptionField CheckFlags]
+checkOptions' _showOrParseArgs =
+  [ optionVerbosity
+      checkVerbosity
+      (\v flags -> flags{checkVerbosity = v})
+  , option
+      ['i']
+      ["ignore"]
+      "ignore a specific warning (e.g. --ignore=missing-upper-bounds)"
+      checkIgnore
+      (\v c -> c{checkIgnore = v ++ checkIgnore c})
+      (reqArg' "WARNING" (: []) (const []))
+  ]
+
+-- ------------------------------------------------------------
 
 -- * Update command
 
@@ -1482,25 +1677,6 @@ cleanCommand =
   Cabal.cleanCommand
     { commandUsage = \pname ->
         "Usage: " ++ pname ++ " v1-clean [FLAGS]\n"
-    }
-
-checkCommand :: CommandUI (Flag Verbosity)
-checkCommand =
-  CommandUI
-    { commandName = "check"
-    , commandSynopsis = "Check the package for common mistakes."
-    , commandDescription = Just $ \_ ->
-        wrapText $
-          "Expects a .cabal package file in the current directory.\n"
-            ++ "\n"
-            ++ "Some checks correspond to the requirements to packages on Hackage. "
-            ++ "If no `Error` is reported, Hackage should accept the "
-            ++ "package. If errors are present, `check` exits with 1 and Hackage "
-            ++ "will refuse the package.\n"
-    , commandNotes = Nothing
-    , commandUsage = usageFlags "check"
-    , commandDefaultFlags = toFlag normal
-    , commandOptions = \_ -> [optionVerbosity id const]
     }
 
 formatCommand :: CommandUI (Flag Verbosity)
@@ -1570,7 +1746,8 @@ runCommand =
 -- ------------------------------------------------------------
 
 data ReportFlags = ReportFlags
-  { reportUsername :: Flag Username
+  { reportToken :: Flag Token
+  , reportUsername :: Flag Username
   , reportPassword :: Flag Password
   , reportVerbosity :: Flag Verbosity
   }
@@ -1579,7 +1756,8 @@ data ReportFlags = ReportFlags
 defaultReportFlags :: ReportFlags
 defaultReportFlags =
   ReportFlags
-    { reportUsername = mempty
+    { reportToken = mempty
+    , reportUsername = mempty
     , reportPassword = mempty
     , reportVerbosity = toFlag normal
     }
@@ -1597,6 +1775,17 @@ reportCommand =
     , commandDefaultFlags = defaultReportFlags
     , commandOptions = \_ ->
         [ optionVerbosity reportVerbosity (\v flags -> flags{reportVerbosity = v})
+        , option
+            ['t']
+            ["token"]
+            "Hackage authentication Token."
+            reportToken
+            (\v flags -> flags{reportToken = v})
+            ( reqArg'
+                "TOKEN"
+                (toFlag . Token)
+                (flagToList . fmap unToken)
+            )
         , option
             ['u']
             ["username"]
@@ -2199,18 +2388,36 @@ filterHaddockArgs args cabalLibVersion
     -- Cabal < 2.3 doesn't know about per-component haddock
     args_2_3_0 = []
 
+-- | Given some 'HaddockFlags' for the version of @Cabal@ that
+-- @cabal-install@ was built with, and a target older 'Version' of
+-- @Cabal@ that we want to pass these flags to, convert the
+-- flags into a form that will be accepted by the older
+-- @Setup@ script.  Generally speaking, this just means filtering
+-- out flags that the old @Cabal@ library doesn't understand, but
+-- in some cases it may also mean "emulating" a feature using
+-- some more legacy flags.
 filterHaddockFlags :: HaddockFlags -> Version -> HaddockFlags
 filterHaddockFlags flags cabalLibVersion
   | cabalLibVersion >= mkVersion [2, 3, 0] = flags_latest
   | cabalLibVersion < mkVersion [2, 3, 0] = flags_2_3_0
   | otherwise = flags_latest
   where
-    flags_latest = flags
+    flags_latest =
+      flags
+        { haddockCommonFlags =
+            (filterCommonFlags (haddockCommonFlags flags) cabalLibVersion)
+              { -- `cabal haddock` knew about `--keep-temp-files` before other commands did.
+                setupKeepTempFiles = setupKeepTempFiles (haddockCommonFlags flags)
+              }
+        }
 
     flags_2_3_0 =
       flags_latest
         { -- Cabal < 2.3 doesn't know about per-component haddock
-          haddockArgs = []
+          haddockCommonFlags =
+            (haddockCommonFlags flags_latest)
+              { setupTargets = []
+              }
         }
 
 haddockOptions :: ShowOrParseArgs -> [OptionField HaddockFlags]
@@ -2241,8 +2448,9 @@ haddockOptions showOrParseArgs =
              , "use-index"
              , "for-hackage"
              , "base-url"
-             , "lib"
+             , "resources-dir"
              , "output-dir"
+             , "use-unicode"
              ]
   ]
 
@@ -2273,6 +2481,9 @@ testOptions showOrParseArgs =
       | "test-" `isPrefixOf` name = name
       | otherwise = "test-" ++ name
 
+-- | Options for the @bench@ command.
+--
+-- Not to be confused with the @benchmarkOptions@ field of the `BenchmarkFlags` record!
 benchmarkOptions :: ShowOrParseArgs -> [OptionField BenchmarkFlags]
 benchmarkOptions showOrParseArgs =
   [ opt
@@ -2587,6 +2798,7 @@ data IsCandidate = IsCandidate | IsPublished
 data UploadFlags = UploadFlags
   { uploadCandidate :: Flag IsCandidate
   , uploadDoc :: Flag Bool
+  , uploadToken :: Flag Token
   , uploadUsername :: Flag Username
   , uploadPassword :: Flag Password
   , uploadPasswordCmd :: Flag [String]
@@ -2599,6 +2811,7 @@ defaultUploadFlags =
   UploadFlags
     { uploadCandidate = toFlag IsCandidate
     , uploadDoc = toFlag False
+    , uploadToken = mempty
     , uploadUsername = mempty
     , uploadPassword = mempty
     , uploadPasswordCmd = mempty
@@ -2614,7 +2827,7 @@ uploadCommand =
     , commandNotes = Just $ \_ ->
         "You can store your Hackage login in the ~/.config/cabal/config file\n"
           ++ "(the %APPDATA%\\cabal\\config file on Windows)\n"
-          ++ relevantConfigValuesText ["username", "password", "password-command"]
+          ++ relevantConfigValuesText ["token", "username", "password", "password-command"]
     , commandUsage = \pname ->
         "Usage: " ++ pname ++ " upload [FLAGS] TARFILES\n"
     , commandDefaultFlags = defaultUploadFlags
@@ -2640,6 +2853,17 @@ uploadCommand =
             uploadDoc
             (\v flags -> flags{uploadDoc = v})
             trueArg
+        , option
+            ['t']
+            ["token"]
+            "Hackage authentication token."
+            uploadToken
+            (\v flags -> flags{uploadToken = v})
+            ( reqArg'
+                "TOKEN"
+                (toFlag . Token)
+                (flagToList . fmap unToken)
+            )
         , option
             ['u']
             ["username"]
@@ -3055,10 +3279,6 @@ initOptions _ =
         ("Cannot parse dependencies: " ++)
         (parsecCommaList parsec)
 
-    mergeListFlag :: Flag [a] -> Flag [a] -> Flag [a]
-    mergeListFlag currentFlags v =
-      Flag $ concat (flagToList currentFlags ++ flagToList v)
-
 -- ------------------------------------------------------------
 
 -- * Copy and Register
@@ -3089,6 +3309,35 @@ registerCommand :: CommandUI RegisterFlags
 registerCommand =
   Cabal.registerCommand
     { commandUsage = \pname -> "Usage: " ++ pname ++ " v1-register [FLAGS]\n"
+    }
+
+-- | Given some 'RegisterFlags' for the version of @Cabal@ that
+-- @cabal-install@ was built with, and a target older 'Version' of
+-- @Cabal@ that we want to pass these flags to, convert the
+-- flags into a form that will be accepted by the older
+-- @Setup@ script.  Generally speaking, this just means filtering
+-- out flags that the old @Cabal@ library doesn't understand, but
+-- in some cases it may also mean "emulating" a feature using
+-- some more legacy flags.
+filterRegisterFlags :: RegisterFlags -> Version -> RegisterFlags
+filterRegisterFlags flags cabalLibVersion =
+  flags
+    { registerCommonFlags =
+        filterCommonFlags (registerCommonFlags flags) cabalLibVersion
+    }
+
+-- | Given some 'CopyFlags' for the version of @Cabal@ that
+-- @cabal-install@ was built with, and a target older 'Version' of
+-- @Cabal@ that we want to pass these flags to, convert the
+-- flags into a form that will be accepted by the older
+-- @Setup@ script.  Generally speaking, this just means filtering
+-- out flags that the old @Cabal@ library doesn't understand, but
+-- in some cases it may also mean "emulating" a feature using
+-- some more legacy flags.
+filterCopyFlags :: CopyFlags -> Version -> CopyFlags
+filterCopyFlags flags cabalLibVersion =
+  flags
+    { copyCommonFlags = filterCommonFlags (copyCommonFlags flags) cabalLibVersion
     }
 
 -- ------------------------------------------------------------

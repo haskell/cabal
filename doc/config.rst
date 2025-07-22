@@ -82,7 +82,9 @@ The configuration file location is determined as follows:
 1. If option ``--config-file`` is given, use it;
 2. otherwise, if ``$CABAL_CONFIG`` is set use it;
 3. otherwise, if ``$CABAL_DIR`` is set use ``$CABAL_DIR/config``;
-4. otherwise use ``config`` in ``$XDG_CONFIG_HOME/cabal``, which
+4. otherwise, if ``~/.cabal`` exists, and is a directory, use
+   ``~/.cabal/config``;
+5. otherwise use ``config`` in ``$XDG_CONFIG_HOME/cabal``, which
    defaults to ``~/.config/cabal`` on Unix.
 
 If the configuration file does not exist, and it was not given
@@ -119,6 +121,9 @@ file:
   stop working.
 
 * ``~/.local/bin`` for executables installed with ``cabal install``.
+
+You can run ``cabal path`` to see a list of the directories that
+``cabal`` will use with the active configuration.
 
 Repository specification
 ------------------------
@@ -196,6 +201,10 @@ repository.
 ``cabal`` will construct the index automatically from the
 ``package-name-version.tar.gz`` files in the directory, and will use optional
 corresponding ``package-name-version.cabal`` files as new revisions.
+
+.. note::
+   On Windows systems, the URL must start directly with the absolute path as in
+   ``url: file+noindex:C:/absolute/path/to/directory``.
 
 For example, if ``/absolute/path/to/directory`` looks like
 ::
@@ -294,3 +303,94 @@ recommended instead to use a *secure* local repository:
 The layout of these secure local repos matches the layout of remote
 repositories exactly; the :hackage-pkg:`hackage-repo-tool`
 can be used to create and manage such repositories.
+
+.. _program_options:
+
+Program options
+---------------
+
+Programs that ``cabal`` knows about can be provided with options that will be
+passed in whenever the program is invoked by ``cabal``. The configuration file
+can contain a stanza of ``program-default-options`` with ``<prog>-options``
+fields to specify these.
+
+::
+
+  program-default-options
+    ghc-options: ...
+    happy-options: ...
+
+The list of known programs is:
+
++-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
+| Program               | Notes                                                                                                                              |
++=======================+====================================================================================================================================+
+| ``alex``              | `<https://haskell-alex.readthedocs.io/en/latest/>`_                                                                                |
++-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
+| ``ar``                | Usually provided by GHC's ``"ar command"`` entry in ``ghc --info``. Note this might refer to ``llvm-ar`` instead of GNU's ``ar``.  |
++-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
+| ``c2hs``              | `<https://hackage.haskell.org/package/c2hs>`_                                                                                      |
++-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
+| ``doctest``           | `<https://hackage.haskell.org/package/doctest>`_                                                                                   |
++-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
+| ``gcc``               | Usually provided by GHC's ``"C compiler command"`` entry in ``ghc --info``. Note this might refer to ``clang`` instead of ``gcc``. |
++-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
+| ``ghc``               |                                                                                                                                    |
++-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
+| ``ghc-pkg``           |                                                                                                                                    |
++-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
+| ``ghcjs``             |                                                                                                                                    |
++-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
+| ``ghcjs-pkg``         |                                                                                                                                    |
++-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
+| ``haddock``           | `<https://haskell-haddock.readthedocs.io/latest/>`_                                                                                |
++-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
+| ``happy``             | `<https://haskell-happy.readthedocs.io/en/latest/>`_                                                                               |
++-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
+| ``hpc``               | `<https://hackage.haskell.org/package/hpc>`_                                                                                       |
++-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
+| ``hsc2hs``            | `<https://hackage.haskell.org/package/hsc2hs>`_                                                                                    |
++-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
+| ``hscolour``          | `<https://hackage.haskell.org/package/hscolour>`_                                                                                  |
++-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
+| ``jhc``               | `<http://repetae.net/computer/jhc/>`_                                                                                              |
++-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
+| ``ld``                | Usually provided by GHC's ``"ld command"`` entry in ``ghc --info``.                                                                |
++-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
+| ``pkg-config``        |                                                                                                                                    |
++-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
+| ``runghc``            |                                                                                                                                    |
++-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
+| ``strip``             |                                                                                                                                    |
++-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
+| ``tar``               |                                                                                                                                    |
++-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
+| ``uhc``               | `<https://github.com/UU-ComputerScience/uhc>`_                                                                                     |
++-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
+
+.. warning::
+
+  It is important to not confuse these options with the ones listed in the
+  :ref:`build info<build-info>` section. The ``*-options`` fields mentioned are in
+  fact syntactic sugar for specific ``ghc-options`` that will be passed only on
+  certain phases.
+
+.. warning::
+
+  These options will be used when ``cabal`` invokes the tool as part of the build process or as part of a
+  :pkg-field:`build-tool-depends` declaration, not whenever the tool is invoked by
+  third parties.
+
+  In particular this means that for example ``gcc-options`` will be used when ``cabal``
+  invokes ``gcc``, which is **not** when C sources are compiled by GHC (even though GHC
+  might invoke ``gcc`` internally). In order to provide options through GHC for those programs, one has to check the
+  GHC User guide's `Section <https://downloads.haskell.org/ghc/latest/docs/users_guide/phases.html#forcing-options-to-a-particular-phase>`_.
+  In short, those options have to be given as ``-opt<phase>`` flags to GHC.
+
+.. note::
+
+  The only case that violates the rule specified in this last warning above is
+  ``ld-options``, which get passed as ``-optl`` options when GHC is invoked for
+  linking, as with the :pkg-field:`ld-options` field in package descriptions.
+  Notably, although ``gcc-options`` could be passed as :pkg-field:`cc-options`
+  in the appropriate phases, they are actually **not** passed.

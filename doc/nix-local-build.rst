@@ -5,7 +5,7 @@ Quickstart
 
 Suppose that you are in a directory containing a single Cabal package
 which you wish to build (if you haven't set up a package yet check
-out :doc:`developing packages <developing-packages>` for
+out :doc:`How to package Haskell code <how-to-package-haskell-code>` for
 instructions). You can configure and build it using Nix-style
 local builds with this command (configuring is not necessary):
 
@@ -104,6 +104,8 @@ for each package using :cfg-field:`profiling-detail`::
 Alternately, you can call ``cabal build --enable-profiling`` to
 temporarily build with profiling.
 
+.. _how reproducible:
+
 How can I have a reproducible set of versions for my dependencies?
 ------------------------------------------------------------------
 
@@ -133,6 +135,16 @@ development environments.
 
 .. _Stackage: https://stackage.org/
 .. _versions of packages in lts-19.2: https://www.stackage.org/lts-19.2
+
+Limitations
+^^^^^^^^^^^
+
+Stackage does not guarantee that the config files will work with revisions, and
+it's not currently possible to `override used versions of packages <https://github.com/haskell/cabal/issues/9511>`
+or to `specify revisions <https://github.com/haskell/cabal/issues/7833>` using
+cabal.
+
+To mitigate these shortcomings, download the linked ``cabal.config`` file, import this locally with a relative path and repeatedly ``cabal build all --dry-run`` to identify and then comment out version constraint conflicts until the cabal solver is happy.
 
 How it works
 ============
@@ -170,8 +182,9 @@ identify the result of a build; if we compute this identifier and we
 find that we already have this ID built, we can just use the already
 built version.
 
-The global package store is ``~/.cabal/store`` (configurable via
-global `store-dir` option); if you need to clear your store for
+Use ``cabal path --store-dir`` to show where your global package store is located.
+This is configurable via the global ``store-dir`` option.
+If you need to clear your store for
 whatever reason (e.g., to reclaim disk space or because the global
 store is corrupted), deleting this directory is safe (``build``
 will just rebuild everything it needs on its next invocation).

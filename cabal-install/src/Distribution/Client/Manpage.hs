@@ -1,7 +1,3 @@
-{-# LANGUAGE CPP #-}
-
------------------------------------------------------------------------------
-
 -- |
 -- Module      :  Distribution.Client.Manpage
 -- Copyright   :  (c) Maciek Makowski 2015
@@ -25,6 +21,7 @@ import qualified Data.List.NonEmpty as List1
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+import Distribution.Client.Errors
 import Distribution.Client.Init.Utils (trim)
 import Distribution.Client.ManpageFlags
 import Distribution.Client.Setup (globalCommand)
@@ -34,7 +31,7 @@ import Distribution.Simple.Flag (fromFlag, fromFlagOrDefault)
 import Distribution.Simple.Utils
   ( IOData (..)
   , IODataMode (..)
-  , die'
+  , dieWithException
   , fromCreatePipe
   , ignoreSigPipe
   , rawSystemProcAction
@@ -91,7 +88,7 @@ manpageCmd pname commands flags
         pagerAndArgs <- fromMaybe "less -R" <$> lookupEnv "PAGER"
         -- 'less' is borked with color sequences otherwise, hence -R
         (pager, pagerArgs) <- case words pagerAndArgs of
-          [] -> die' verbosity "man: empty value of the PAGER environment variable"
+          [] -> dieWithException verbosity EmptyValuePagerEnvVariable
           (p : pa) -> pure (p, pa)
         -- Pipe output of @nroff@ into @less@
         (ec2, _) <- rawSystemProcAction

@@ -14,7 +14,7 @@ let-style: auto
 
 fixities:
   # Distribution.Compat.Parsing
-  - infixr 0 <?> 
+  - infixr 0 <?>
   # Distribution.FieldGrammar
   - infixl 5 ^^^
   # Distribution.Types.InstalledPackageInfo.FieldGrammar

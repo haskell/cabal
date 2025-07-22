@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-
 -- | cabal-install CLI command: bench
 module Distribution.Client.CmdBench
   ( -- * The @bench@ CLI and action
@@ -26,15 +24,16 @@ import Distribution.Client.CmdErrorMessages
   , targetSelectorFilter
   , targetSelectorPluralPkgs
   )
+import Distribution.Client.Errors
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
+  , cfgVerbosity
   , defaultNixStyleFlags
   , nixStyleOptions
   )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.Setup
-  ( ConfigFlags (..)
-  , GlobalFlags
+  ( GlobalFlags
   )
 import Distribution.Client.TargetProblem
   ( TargetProblem (..)
@@ -46,11 +45,8 @@ import Distribution.Simple.Command
   ( CommandUI (..)
   , usageAlternatives
   )
-import Distribution.Simple.Flag
-  ( fromFlagOrDefault
-  )
 import Distribution.Simple.Utils
-  ( die'
+  ( dieWithException
   , warn
   , wrapText
   )
@@ -109,7 +105,7 @@ benchCommand =
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 benchAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
-benchAction flags@NixStyleFlags{..} targetStrings globalFlags = do
+benchAction flags targetStrings globalFlags = do
   baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
 
   targetSelectors <-
@@ -119,10 +115,7 @@ benchAction flags@NixStyleFlags{..} targetStrings globalFlags = do
   buildCtx <-
     runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
       when (buildSettingOnlyDeps (buildSettings baseCtx)) $
-        die' verbosity $
-          "The bench command does not support '--only-dependencies'. "
-            ++ "You may wish to use 'build --only-dependencies' and then "
-            ++ "use 'bench'."
+        dieWithException verbosity BenchActionException
 
       fullArgs <- getFullArgs
       when ("+RTS" `elem` fullArgs) $
@@ -133,7 +126,7 @@ benchAction flags@NixStyleFlags{..} targetStrings globalFlags = do
       -- (as opposed to say build or haddock targets).
       targets <-
         either (reportTargetProblems verbosity) return $
-          resolveTargets
+          resolveTargetsFromSolver
             selectPackageTargets
             selectComponentTarget
             elaboratedPlan
@@ -152,7 +145,7 @@ benchAction flags@NixStyleFlags{..} targetStrings globalFlags = do
   buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
   runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
   where
-    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    verbosity = cfgVerbosity normal flags
     cliConfig =
       commandLineFlagsToProjectConfig
         globalFlags
@@ -251,7 +244,7 @@ isSubComponentProblem pkgid name subcomponent =
 
 reportTargetProblems :: Verbosity -> [BenchTargetProblem] -> IO a
 reportTargetProblems verbosity =
-  die' verbosity . unlines . map renderBenchTargetProblem
+  dieWithException verbosity . RenderBenchTargetProblem . map renderBenchTargetProblem
 
 renderBenchTargetProblem :: BenchTargetProblem -> String
 renderBenchTargetProblem (TargetProblemNoTargets targetSelector) =

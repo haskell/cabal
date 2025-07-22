@@ -1,0 +1,13 @@
+import: project-cabal/constraints.config
+import: project-cabal/pkgs/cabal.config
+import: project-cabal/pkgs/install.config
+import: project-cabal/pkgs/tests.config
+
+index-state: hackage.haskell.org 2025-06-27T20:43:14Z
+
+-- never include this or its TH dependency in a release!
+package cabal-install
+  flags: -git-rev
+
+package Cabal
+  flags: -git-rev

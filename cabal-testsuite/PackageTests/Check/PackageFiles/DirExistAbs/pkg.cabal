@@ -1,0 +1,17 @@
+Name:                pkg
+Version:             0.1.0.0
+Synopsis:            Low
+description:         lallalala
+License:             LGPL-3
+License-File:        LICENSE
+Maintainer:          Maksymilian.Owsianny+AwesomiumRaw@gmail.com
+Bug-Reports:         https://github.com/MaxOw/awesomium-raw/issues
+Category:            Graphics, Web
+Build-Type:          Simple
+Cabal-Version:       >=1.8
+
+Library
+  Exposed-Modules:  Graphics.UI.Awesomium.Raw
+  Build-Depends:    base >= 3 && < 5
+  Extra-Lib-Dirs:   /usr/lib/awesomium-1.6.5
+

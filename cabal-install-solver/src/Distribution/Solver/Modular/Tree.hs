@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
+{-# LANGUAGE DeriveTraversable #-}
 module Distribution.Solver.Modular.Tree
     ( POption(..)
     , Tree(..)
@@ -102,6 +102,7 @@ data POption = POption I (Maybe PackagePath)
 data FailReason = UnsupportedExtension Extension
                 | UnsupportedLanguage Language
                 | MissingPkgconfigPackage PkgconfigName PkgconfigVersionRange
+                | MissingPkgconfigProgram PkgconfigName PkgconfigVersionRange
                 | NewPackageDoesNotMatchExistingConstraint ConflictingDep
                 | ConflictingConstraints ConflictingDep ConflictingDep
                 | NewPackageIsMissingRequiredComponent ExposedComponent (DependencyReason QPN)

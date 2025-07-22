@@ -1,0 +1,13 @@
+name:                lib
+version:             1
+license:             BSD3
+author:              Edward Z. Yang
+maintainer:          ezyang@cs.stanford.edu
+build-type:          Simple
+cabal-version:       2.0
+
+library
+  build-depends:       base
+  build-tool-depends:  exe:exe
+  exposed-modules:     Lib
+  default-language:    Haskell2010

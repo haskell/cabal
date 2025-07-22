@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
 #ifdef DEBUG_TRACETREE
 {-# LANGUAGE FlexibleInstances #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 #endif
 module Distribution.Solver.Modular.Solver
     ( SolverConfig(..)
@@ -91,7 +91,7 @@ newtype PruneAfterFirstSuccess = PruneAfterFirstSuccess Bool
 solve :: SolverConfig                         -- ^ solver parameters
       -> CompilerInfo
       -> Index                                -- ^ all available packages as an index
-      -> PkgConfigDb                          -- ^ available pkg-config pkgs
+      -> Maybe PkgConfigDb                    -- ^ available pkg-config pkgs
       -> (PN -> PackagePreferences)           -- ^ preferences
       -> M.Map PN [LabeledPackageConstraint]  -- ^ global constraints
       -> S.Set PN                             -- ^ global goals
@@ -171,6 +171,7 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
 --
 -- This only does something if the @debug-tracetree@ configure argument was
 -- given; otherwise this is just the identity function.
+{- FOURMOLU_DISABLE -}
 traceTree ::
 #ifdef DEBUG_TRACETREE
   GSimpleTree a =>
@@ -183,6 +184,7 @@ traceTree = gtraceJson
 #else
 traceTree _ _ = id
 #endif
+{- FOURMOLU_ENABLE -}
 
 #ifdef DEBUG_TRACETREE
 instance GSimpleTree (Tree d c) where

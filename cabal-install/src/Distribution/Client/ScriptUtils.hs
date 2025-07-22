@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 
 -- | Utilities to help commands with scripts
@@ -37,7 +38,8 @@ import Distribution.Client.DistDirLayout
   )
 import Distribution.Client.HashValue
   ( hashValue
-  , showHashValueBase64
+  , showHashValue
+  , truncateHash
   )
 import Distribution.Client.HttpUtils
   ( HttpTransport
@@ -58,8 +60,9 @@ import Distribution.Client.ProjectConfig
 import Distribution.Client.ProjectConfig.Legacy
   ( ProjectConfigSkeleton
   , instantiateProjectConfigSkeletonFetchingCompiler
-  , parseProjectSkeleton
+  , parseProject
   )
+import Distribution.Client.ProjectConfig.Types (ProjectConfigToParse (..))
 import Distribution.Client.ProjectFlags
   ( flagIgnoreProject
   )
@@ -73,8 +76,7 @@ import Distribution.Client.RebuildMonad
   ( runRebuild
   )
 import Distribution.Client.Setup
-  ( ConfigFlags (..)
-  , GlobalFlags (..)
+  ( GlobalFlags (..)
   )
 import Distribution.Client.TargetSelector
   ( TargetSelectorProblem (..)
@@ -114,7 +116,6 @@ import qualified Distribution.SPDX.License as SPDX
 import Distribution.Simple.Compiler
   ( Compiler (..)
   , OptimisationLevel (..)
-  , compilerInfo
   )
 import Distribution.Simple.Flag
   ( flagToMaybe
@@ -124,12 +125,12 @@ import Distribution.Simple.PackageDescription
   ( parseString
   )
 import Distribution.Simple.Setup
-  ( Flag (..)
+  ( pattern Flag
   )
 import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose
   , createTempDirectory
-  , die'
+  , dieWithException
   , handleDoesNotExist
   , readUTF8File
   , warn
@@ -174,9 +175,6 @@ import Distribution.Types.UnqualComponentName
 import Distribution.Utils.NubList
   ( fromNubList
   )
-import Distribution.Verbosity
-  ( normal
-  )
 import Language.Haskell.Extension
   ( Language (..)
   )
@@ -192,6 +190,10 @@ import Control.Exception
 import qualified Data.ByteString.Char8 as BS
 import Data.ByteString.Lazy ()
 import qualified Data.Set as S
+import Distribution.Client.Errors
+import Distribution.Utils.Path
+  ( unsafeMakeSymbolicPath
+  )
 import System.Directory
   ( canonicalizePath
   , doesFileExist
@@ -200,6 +202,7 @@ import System.Directory
   )
 import System.FilePath
   ( makeRelative
+  , normalise
   , takeDirectory
   , takeFileName
   , (</>)
@@ -217,18 +220,15 @@ import qualified Text.Parsec as P
 --    repl to deal with the fact that the repl is relative to the working directory and not
 --    the project root.
 
--- | Get the hash of a script's absolute path)
+-- | Get the hash of a script's absolute path.
 --
 -- Two hashes will be the same as long as the absolute paths
 -- are the same.
 getScriptHash :: FilePath -> IO String
 getScriptHash script =
-  -- Base64 is shorter than Base16, which helps avoid long path issues on windows
-  -- but it can contain /'s which aren't valid in file paths so replace them with
-  -- %'s. 26 chars / 130 bits is enough to practically avoid collisions.
-  map (\c -> if c == '/' then '%' else c)
-    . take 26
-    . showHashValueBase64
+  -- Truncation here tries to help with long path issues on Windows.
+  showHashValue
+    . truncateHash 26
     . hashValue
     . fromString
     <$> canonicalizePath script
@@ -276,7 +276,8 @@ data TargetContext
 -- In the case that the context refers to a temporary directory,
 -- delete it after the action finishes.
 withContextAndSelectors
-  :: AcceptNoTargets
+  :: Verbosity
+  -> AcceptNoTargets
   -- ^ What your command should do when no targets are found.
   -> Maybe ComponentKind
   -- ^ A target filter
@@ -291,23 +292,35 @@ withContextAndSelectors
   -> (TargetContext -> ProjectBaseContext -> [TargetSelector] -> IO b)
   -- ^ The body of your command action.
   -> IO b
-withContextAndSelectors noTargets kind flags@NixStyleFlags{..} targetStrings globalFlags cmd act =
+withContextAndSelectors verbosity noTargets kind flags@NixStyleFlags{..} targetStrings globalFlags cmd act =
   withTemporaryTempDirectory $ \mkTmpDir -> do
-    (tc, ctx) <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag withProject (withoutProject mkTmpDir)
+    (tc, ctx) <-
+      withProjectOrGlobalConfig
+        ignoreProject
+        withProject
+        (withGlobalConfig verbosity globalConfigFlag $ withoutProject mkTmpDir)
 
     (tc', ctx', sels) <- case targetStrings of
-      -- Only script targets may contain spaces and or end with ':'.
+      -- Only script targets may end with ':'.
       -- Trying to readTargetSelectors such a target leads to a parse error.
-      [target] | any (\c -> isSpace c) target || ":" `isSuffixOf` target -> do
+      [target] | ":" `isSuffixOf` target -> do
         scriptOrError target [TargetSelectorNoScript $ TargetString1 target]
       _ -> do
         -- In the case where a selector is both a valid target and script, assume it is a target,
         -- because you can disambiguate the script with "./script"
         readTargetSelectors (localPackages ctx) kind targetStrings >>= \case
-          Left err@(TargetSelectorNoTargetsInProject : _)
+          -- If there are no target selectors and no targets are fine, return
+          -- the context
+          Left (TargetSelectorNoTargetsInCwd{} : _)
             | [] <- targetStrings
             , AcceptNoTargets <- noTargets ->
-                return (tc, ctx, defaultTarget)
+                return (tc, ctx, [])
+          Left err@(TargetSelectorNoTargetsInProject : _)
+            -- If there are no target selectors and no targets are fine, return
+            -- the context
+            | [] <- targetStrings
+            , AcceptNoTargets <- noTargets ->
+                return (tc, ctx, [])
             | (script : _) <- targetStrings -> scriptOrError script err
           Left err@(TargetSelectorNoSuch t _ : _)
             | TargetString1 script <- t -> scriptOrError script err
@@ -320,7 +333,6 @@ withContextAndSelectors noTargets kind flags@NixStyleFlags{..} targetStrings glo
 
     act tc' ctx' sels
   where
-    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     ignoreProject = flagIgnoreProject projectFlags
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
@@ -364,13 +376,13 @@ withContextAndSelectors noTargets kind flags@NixStyleFlags{..} targetStrings glo
           createDirectoryIfMissingVerbose verbosity True (distProjectCacheDirectory $ distDirLayout ctx)
           (compiler, platform@(Platform arch os), _) <- runRebuild projectRoot $ configureCompiler verbosity (distDirLayout ctx) (fst (ignoreConditions projectCfgSkeleton) <> projectConfig ctx)
 
-          projectCfg <- instantiateProjectConfigSkeletonFetchingCompiler (pure (os, arch, compilerInfo compiler)) mempty projectCfgSkeleton
+          (projectCfg, _) <- instantiateProjectConfigSkeletonFetchingCompiler (pure (os, arch, compiler)) mempty projectCfgSkeleton
 
           let ctx' = ctx & lProjectConfig %~ (<> projectCfg)
 
               build_dir = distBuildDirectory (distDirLayout ctx') $ (scriptDistDirParams script) ctx' compiler platform
               exePath = build_dir </> "bin" </> scriptExeFileName script
-              exePathRel = makeRelative projectRoot exePath
+              exePathRel = makeRelative (normalise projectRoot) exePath
 
               executable' =
                 executable
@@ -390,13 +402,15 @@ withTemporaryTempDirectory act = newEmptyMVar >>= \m -> bracket (getMkTmp m) (rm
     --    but still grantee that it's deleted if they do create it
     -- 2) Because the path returned by createTempDirectory is not predicable
     getMkTmp m = return $ do
-      tmpDir <- getTemporaryDirectory >>= flip createTempDirectory "cabal-repl."
+      tmpBaseDir <- getTemporaryDirectory
+      tmpRelDir <- createTempDirectory tmpBaseDir "cabal-repl."
+      let tmpDir = tmpBaseDir </> tmpRelDir
       putMVar m tmpDir
       return tmpDir
     rmTmp m _ = tryTakeMVar m >>= maybe (return ()) (handleDoesNotExist () . removeDirectoryRecursive)
 
-scriptComponenetName :: IsString s => FilePath -> s
-scriptComponenetName scriptPath = fromString cname
+scriptComponentName :: IsString s => FilePath -> s
+scriptComponentName scriptPath = fromString cname
   where
     cname = "script-" ++ map censor (takeFileName scriptPath)
     censor c
@@ -418,7 +432,7 @@ scriptDistDirParams scriptPath ctx compiler platform =
     , distParamOptimization = fromFlagOrDefault NormalOptimisation optimization
     }
   where
-    cn = scriptComponenetName scriptPath
+    cn = scriptComponentName scriptPath
     cid = mkComponentId $ prettyShow fakePackageId <> "-inplace-" <> prettyShow cn
     optimization = (packageConfigOptimization . projectConfigLocalPackages . projectConfig) ctx
 
@@ -446,17 +460,17 @@ updateContextAndWriteProjectFile' ctx srcPkg = do
     else writePackageFile
   return (ctx & lLocalPackages %~ (++ [SpecificSourcePackage srcPkg]))
 
--- | Add add the executable metadata to the context and write a .cabal file.
+-- | Add the executable metadata to the context and write a .cabal file.
 updateContextAndWriteProjectFile :: ProjectBaseContext -> FilePath -> Executable -> IO ProjectBaseContext
 updateContextAndWriteProjectFile ctx scriptPath scriptExecutable = do
   let projectRoot = distProjectRootDirectory $ distDirLayout ctx
 
-  absScript <- canonicalizePath scriptPath
+  absScript <- unsafeMakeSymbolicPath . makeRelative (normalise projectRoot) <$> canonicalizePath scriptPath
   let
     sourcePackage =
       fakeProjectSourcePackage projectRoot
         & lSrcpkgDescription . L.condExecutables
-          .~ [(scriptComponenetName scriptPath, CondNode executable (targetBuildDepends $ buildInfo executable) [])]
+          .~ [(scriptComponentName scriptPath, CondNode executable (targetBuildDepends $ buildInfo executable) [])]
     executable =
       scriptExecutable
         & L.modulePath .~ absScript
@@ -488,7 +502,7 @@ readScriptBlock verbosity = parseString parseScriptBlock verbosity "script block
 readExecutableBlockFromScript :: Verbosity -> BS.ByteString -> IO Executable
 readExecutableBlockFromScript verbosity str = do
   str' <- case extractScriptBlock "cabal" str of
-    Left e -> die' verbosity $ "Failed extracting script block: " ++ e
+    Left e -> dieWithException verbosity $ FailedExtractingScriptBlock e
     Right x -> return x
   when (BS.all isSpace str') $ warn verbosity "Empty script block"
   readScriptBlock verbosity str'
@@ -507,7 +521,7 @@ readProjectBlockFromScript verbosity httpTransport DistDirLayout{distDownloadSrc
     Left _ -> return mempty
     Right x ->
       reportParseResult verbosity "script" scriptName
-        =<< parseProjectSkeleton distDownloadSrcDirectory httpTransport verbosity [] scriptName x
+        =<< parseProject scriptName distDownloadSrcDirectory httpTransport verbosity (ProjectConfigToParse x)
 
 -- | Extract the first encountered script metadata block started end
 -- terminated by the tokens

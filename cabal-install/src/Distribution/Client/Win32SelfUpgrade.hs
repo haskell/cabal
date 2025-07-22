@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE ForeignFunctionInterface #-}
 
 -----------------------------------------------------------------------------
 
@@ -167,7 +166,7 @@ deleteOldExeFile verbosity oldPID tmpPath = do
 -- A bunch of functions sadly not provided by the Win32 package.
 
 {- FOURMOLU_DISABLE -}
-#ifdef x86_64_HOST_ARCH
+#if defined(x86_64_HOST_ARCH) || defined(aarch64_HOST_ARCH)
 #define CALLCONV ccall
 #else
 #define CALLCONV stdcall
@@ -218,7 +217,8 @@ setEvent handle =
 
 #else
 
-import Distribution.Simple.Utils (die')
+import Distribution.Simple.Utils (dieWithException)
+import Distribution.Client.Errors
 
 possibleSelfUpgrade :: Verbosity
                     -> [FilePath]
@@ -226,7 +226,7 @@ possibleSelfUpgrade :: Verbosity
 possibleSelfUpgrade _ _ action = action
 
 deleteOldExeFile :: Verbosity -> Int -> FilePath -> IO ()
-deleteOldExeFile verbosity _ _ = die' verbosity "win32selfupgrade not needed except on win32"
+deleteOldExeFile verbosity _ _ = dieWithException verbosity Win32SelfUpgradeNotNeeded
 
 #endif
 {- FOURMOLU_ENABLE -}

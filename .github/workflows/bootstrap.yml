@@ -19,14 +19,20 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        ghc: ["8.10.7", "9.0.2", "9.2.7", "9.4.4"]
+        ghc: ["9.2.8", "9.4.8", "9.6.7", "9.8.4", "9.10.2", "9.12.2"]
         include:
           - os: macos-latest
-            ghc: "9.2.7"
+            ghc: "9.2.8"
     name: Bootstrap ${{ matrix.os }} ghc-${{ matrix.ghc }}
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/cache@v3
+      - name: Work around XDG directories existence (haskell-actions/setup#62)
+        if: ${{ runner.os == 'macOS' }}
+        run: |
+          rm -rf ~/.config/cabal
+          rm -rf ~/.cache/cabal
+
+      - uses: actions/cache@v4
         name: Cache the downloads
         id: bootstrap-cache
         with:
@@ -34,35 +40,42 @@ jobs:
           key: bootstrap-${{ runner.os }}-${{ matrix.ghc }}-20221115-${{ github.sha }}
           restore-keys: bootstrap-${{ runner.os }}-${{ matrix.ghc }}-20221115-
 
-      - uses: actions/checkout@v3
-      # See https://github.com/haskell/cabal/pull/8739
-      - name: Sudo chmod to permit ghcup to update its cache
-        run: |
-          if [[ "${{ runner.os }}" == "Linux" ]]; then
-            sudo ls -lah /usr/local/.ghcup/cache
-            sudo mkdir -p /usr/local/.ghcup/cache
-            sudo ls -lah /usr/local/.ghcup/cache
-            sudo chown -R $USER /usr/local/.ghcup
-            sudo chmod -R 777 /usr/local/.ghcup
-          fi
+      - uses: actions/checkout@v4
+      - uses: haskell-actions/setup@v2
+        with:
+          ghc-version: ${{ matrix.ghc }}
+
       - name: bootstrap.py
         run: |
           GHC_VERSION=${{ matrix.ghc }}
-          ghcup --version
-          ghcup config set cache true
-          ghcup install ghc $GHC_VERSION
-
           # Fetch the bootstrap sources (we use linux dependencies also on macos)
-          python3 bootstrap/bootstrap.py -w $(ghcup whereis ghc $GHC_VERSION) -d bootstrap/linux-$GHC_VERSION.json fetch
+          python3 bootstrap/bootstrap.py -d bootstrap/linux-$GHC_VERSION.json fetch
 
           # Bootstrap using the bootstrap sources
-          python3 bootstrap/bootstrap.py -w $(ghcup whereis ghc $GHC_VERSION) --bootstrap-sources bootstrap-sources.tar.gz
+          python3 bootstrap/bootstrap.py --bootstrap-sources bootstrap-sources.tar.gz
 
       - name: Smoke test
         run: |
           _build/bin/cabal --version
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: cabal-${{ matrix.os }}-${{ matrix.ghc }}-bootstrapped
           path: _build/artifacts/*
+
+  # We use this job as a summary of the workflow
+  # It will fail if any of the previous jobs does it
+  # This way we can use it exclusively in branch protection rules
+  # and abstract away the concrete jobs of the workflow, including their names
+  bootstrap-post-job:
+    if: always()
+    name: Bootstrap post job
+    runs-on: ubuntu-latest
+    # IMPORTANT! Any job added to the workflow should be added here too
+    needs: [bootstrap]
+
+    steps:
+      - run: |
+          echo "jobs info: ${{ toJSON(needs) }}"
+      - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1

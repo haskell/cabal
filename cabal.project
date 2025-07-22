@@ -1,31 +1,14 @@
-packages: Cabal/
-packages: cabal-testsuite/
-packages: Cabal-syntax/
-packages: cabal-install/
-packages: cabal-install-solver/
-packages: solver-benchmarks/
+import: project-cabal/ghc-options.config
+import: project-cabal/ghc-latest.config
+import: project-cabal/pkgs.config
+import: project-cabal/constraints.config
 
 tests: True
 
-packages: Cabal-QuickCheck/
-packages: Cabal-tree-diff/
-packages: Cabal-described
-packages: Cabal-tests/
-packages: cabal-benchmarks/
+-- if you are developing on a system without TH, use a `cabal.project.local`
+-- to disable this
+package cabal-install
+  flags: +git-rev
 
-optional-packages: ./vendored/*/*.cabal
-
-allow-newer:
-  hackage-security:Cabal
-
--- avoiding extra dependencies
-constraints: rere -rere-cfg
-constraints: these -assoc
-
--- Andreas, 2022-08-19, https://github.com/haskell/cabal/issues/8377
--- Force latest dependencies in the development version:
-constraints: text >= 2.0
-constraints: time >= 1.12
-
-program-options
-  ghc-options: -fno-ignore-asserts
+package Cabal
+  flags: +git-rev

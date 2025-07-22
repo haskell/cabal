@@ -1,7 +1,7 @@
 import Test.Cabal.Prelude
 
-main = cabalTest . recordMode DoNotRecord $ do
-    skipIfWindows -- disabled because (I presume) Windows doesn't have BASH
+main = do
+  cabalTest . recordMode DoNotRecord $ do
     cwd <- fmap testCurrentDir getTestEnv
     testInvokedWithBuildRunner cwd "test" []
     testInvokedWithBuildRunner cwd "run" ["ghcjs-exe"]
@@ -14,6 +14,8 @@ testInvokedWithBuildRunner cwd cabalCmd extraArgs = do
         [ "--ghcjs"
         , "--with-compiler", cwd </> fakeGhcjsPath
         ]
+        -- On windows point cabal to the right cc
+        ++ if isWindows then ["--with-gcc", "scripts/cc.bat"] else []
     assertOutputContains magicString output
   where
-    fakeGhcjsPath = "scripts/fake-ghcjs.sh"
+    fakeGhcjsPath = if isWindows then "scripts/fake-ghcjs.exe" else "scripts/fake-ghcjs.sh"

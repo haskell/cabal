@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 -----------------------------------------------------------------------------
@@ -54,7 +55,7 @@ import Distribution.Deprecated.ParseUtils
 import Distribution.Simple.InstallDirs (InstallDirs (..), PathTemplate)
 import Distribution.Simple.Setup
   ( ConfigFlags (..)
-  , Flag (..)
+  , Flag
   , HaddockFlags (..)
   )
 import Distribution.Simple.Utils (debug, warn)

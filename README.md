@@ -5,12 +5,14 @@
 [![Documentation Status](http://readthedocs.org/projects/cabal/badge/?version=latest)](http://cabal.readthedocs.io/en/latest/?badge=latest)
 [![IRC chat](https://img.shields.io/badge/chat-via%20libera-brightgreen.svg)](https://web.libera.chat/#hackage)
 [![Matrix chat](https://img.shields.io/badge/chat-via%20matrix-brightgreen.svg)](https://matrix.to/#/#hackage:matrix.org)
+[![GitLab pipeline status](https://gitlab.haskell.org/haskell/cabal/badges/cabal-head/pipeline.svg?key_text=Release%20CI%20Early%20Warning&key_width=150)](https://gitlab.haskell.org/haskell/cabal/-/commits/cabal-head)
 
 <img src="https://www.haskell.org/cabal/images/Cabal-light.png" align="right">
 
 This Cabal Git repository contains the following main packages:
 
  * [Cabal](Cabal/README.md): the Cabal library package ([license](Cabal/LICENSE))
+ * [Cabal-hooks](Cabal-hooks/README.md): the library providing an API for the Cabal `Hooks` build type ([license](Cabal-hooks/LICENSE))
  * [Cabal-syntax](Cabal-syntax/README.md): the `.cabal` file format library ([license](Cabal-syntax/LICENSE))
  * [cabal-install](cabal-install/README.md): the package containing the `cabal` tool ([license](cabal-install/LICENSE))
  * [cabal-install-solver](cabal-install-solver): the package containing the solver component of the `cabal` tool ([license](cabal-install-solver/LICENSE))
@@ -18,10 +20,20 @@ This Cabal Git repository contains the following main packages:
 The canonical upstream repository is located at
 https://github.com/haskell/cabal.
 
+Proposals for the Cabal project
+-------------------------------
+
+The [proposals process](proposals.md) is the mechanism which developers can gain
+the necessary consensus to make larger changes to the Cabal ecosystem.
+
+* It is light-weight, a PR is opened and discussed on [cabal-proposals](https://github.com/haskell/cabal-proposals/) repo with a fixed discussion period.
+* It is developer-led, final decisions are made by developers at the Cabal developers meeting.
+* It is flexible, there is no formal voting procedure, decisions are made by [rough consensus](https://datatracker.ietf.org/doc/html/rfc7282).
+
 Ways to get the `cabal-install` binary
 --------------------------------
 
-1. _GHCup (**preferred**)_: get GHCup using [the directions on its website](https://www.haskell.org/ghcup/) and run:
+1. _GHCup_ (**preferred**): get GHCup using [the directions on its website](https://www.haskell.org/ghcup/) and run:
 
     ```
     ghcup install --set cabal latest
@@ -29,6 +41,8 @@ Ways to get the `cabal-install` binary
 
 2. _[Download from official website](https://www.haskell.org/cabal/download.html)_:
     the `cabal-install` binary download for your platform should contain the `cabal` executable.
+
+#### Preview Releases
 
 _Getting unreleased versions of `cabal-install`_: gives you a chance to try out yet-unreleased features.
 Currently, we only provide binaries for `x86_64` platforms.
@@ -41,9 +55,27 @@ Currently, we only provide binaries for `x86_64` platforms.
 
     Replace "Linux" with "Windows" or "macOS" as appropriate.
 
+    The default Linux build is dynamically linked against `zlib`, `gmp` and `glibc`.
+    You will need to have appropriate versions of these libraries installed to use it.
+    Alternatively a statically linked "Linux-static" binary is also provided.
+
+    You might need to add the following to your `cabal.project` file
+    if your build fails because of an out-of-date `Cabal` library:
+    ```
+    allow-newer:
+      *:Cabal,
+      *:Cabal-syntax
+
+    source-repository-package
+        type: git
+        location: https://github.com/haskell/cabal.git
+        subdir: Cabal Cabal-syntax
+    ```
+
 
 2. Even more cutting-edge binaries built from pull requests are always available
-   from the `Validate` worklow page on GitHub, at the very bottom of the page.
+   from the `Validate` workflow page on GitHub, at the very bottom of the page,
+   or from the `build-alpine` workflow for statically linked Linux builds.
 
 Ways to build `cabal-install` for everyday use
 --------------------------------------------
@@ -63,7 +95,7 @@ Ways to build `cabal-install` for everyday use
     Git repository, move to its root, and run:
 
     ```
-    cabal install --project-file=cabal.project.release cabal-install
+    cabal install --project-file=cabal.release.project cabal-install
     ```
 
 3. _Bootstrapping_:

@@ -53,6 +53,7 @@ import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PkgConfigDb
 import Distribution.Solver.Types.SolverId
 
+import Distribution.Client.Errors
 import Distribution.Package
   ( Package
   , packageId
@@ -60,10 +61,6 @@ import Distribution.Package
   , packageVersion
   )
 import Distribution.Simple.Compiler
-  ( Compiler
-  , PackageDBStack
-  , compilerInfo
-  )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Program
   ( ProgramDb
@@ -75,7 +72,7 @@ import Distribution.Simple.Setup
   )
 import Distribution.Simple.Utils
   ( debug
-  , die'
+  , dieWithException
   , notice
   , toUTF8LBS
   , writeFileAtomic
@@ -83,7 +80,6 @@ import Distribution.Simple.Utils
 import Distribution.System
   ( Platform
   )
-
 import Distribution.Version
   ( thisVersion
   )
@@ -98,7 +94,7 @@ import Distribution.Version
 -- constraining each dependency to an exact version.
 freeze
   :: Verbosity
-  -> PackageDBStack
+  -> PackageDBStackCWD
   -> RepoContext
   -> Compiler
   -> Platform
@@ -146,7 +142,7 @@ freeze
 -- command.
 getFreezePkgs
   :: Verbosity
-  -> PackageDBStack
+  -> PackageDBStackCWD
   -> RepoContext
   -> Compiler
   -> Platform
@@ -188,13 +184,9 @@ getFreezePkgs
       sanityCheck :: [PackageSpecifier UnresolvedSourcePackage] -> IO ()
       sanityCheck pkgSpecifiers = do
         when (not . null $ [n | n@(NamedPackage _ _) <- pkgSpecifiers]) $
-          die' verbosity $
-            "internal error: 'resolveUserTargets' returned "
-              ++ "unexpected named package specifiers!"
+          dieWithException verbosity UnexpectedNamedPkgSpecifiers
         when (length pkgSpecifiers /= 1) $
-          die' verbosity $
-            "internal error: 'resolveUserTargets' returned "
-              ++ "unexpected source package specifiers!"
+          dieWithException verbosity UnexpectedSourcePkgSpecifiers
 
 planPackages
   :: Verbosity
@@ -203,7 +195,7 @@ planPackages
   -> FreezeFlags
   -> InstalledPackageIndex
   -> SourcePackageDb
-  -> PkgConfigDb
+  -> Maybe PkgConfigDb
   -> [PackageSpecifier UnresolvedSourcePackage]
   -> IO [SolverPlanPackage]
 planPackages
@@ -215,20 +207,14 @@ planPackages
   sourcePkgDb
   pkgConfigDb
   pkgSpecifiers = do
-    solver <-
-      chooseSolver
-        verbosity
-        (fromFlag (freezeSolver freezeFlags))
-        (compilerInfo comp)
     notice verbosity "Resolving dependencies..."
 
     installPlan <-
-      foldProgress logMsg (die' verbosity) return $
+      foldProgress logMsg (dieWithException verbosity . FreezeException) return $
         resolveDependencies
           platform
           (compilerInfo comp)
           pkgConfigDb
-          solver
           resolverParams
 
     return $ pruneInstallPlan installPlan pkgSpecifiers

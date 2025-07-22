@@ -1,7 +1,7 @@
-cabal-version: 2.2
+cabal-version: 3.6
 name:          Cabal
-version:       3.11.0.0
-copyright:     2003-2023, Cabal Development Team (see AUTHORS file)
+version:       3.17.0.0
+copyright:     2003-2025, Cabal Development Team (see AUTHORS file)
 license:       BSD-3-Clause
 license-file:  LICENSE
 author:        Cabal Development Team <cabal-devel@haskell.org>
@@ -21,7 +21,7 @@ build-type:     Simple
 -- If we use a new Cabal feature, this needs to be changed to Custom so
 -- we can bootstrap.
 
-extra-source-files:
+extra-doc-files:
   README.md ChangeLog.md
 
 source-repository head
@@ -29,29 +29,47 @@ source-repository head
   location: https://github.com/haskell/cabal/
   subdir:   Cabal
 
+flag git-rev
+  description: include Git revision hash in version
+  default: False
+  manual: True
+
 library
   default-language: Haskell2010
   hs-source-dirs: src
 
   build-depends:
-    Cabal-syntax ^>= 3.11,
-    array      >= 0.4.0.1  && < 0.6,
-    base       >= 4.9      && < 5,
-    bytestring >= 0.10.0.0 && < 0.12,
-    containers >= 0.5.0.0  && < 0.7,
-    deepseq    >= 1.3.0.1  && < 1.6,
-    directory  >= 1.2      && < 1.4,
-    filepath   >= 1.3.0.1  && < 1.5,
-    pretty     >= 1.1.1    && < 1.2,
-    process    >= 1.2.1.0  && < 1.7,
-    time       >= 1.4.0.1  && < 1.13
+    , Cabal-syntax ^>= 3.17
+    , array      >= 0.4.0.1  && < 0.6
+    , base       >= 4.13     && < 5
+    , bytestring >= 0.10.0.0 && < 0.13
+    , containers >= 0.5.0.0  && < 0.9
+    , deepseq    >= 1.3.0.1  && < 1.7
+    , directory  >= 1.2      && < 1.4
+    , filepath   >= 1.3.0.1  && < 1.6
+    , pretty     >= 1.1.1    && < 1.2
+    , process    >= 1.2.1.0  && < 1.7
+    , time       >= 1.4.0.1  && < 1.15
 
   if os(windows)
-    build-depends: Win32 >= 2.3.0.0 && < 2.14
+    build-depends:
+      , Win32 >= 2.3.0.0 && < 2.15
   else
-    build-depends: unix  >= 2.6.0.0 && < 2.9
+    build-depends:
+      , unix  >= 2.8.6.0 && < 2.9
 
-  ghc-options: -Wall -fno-ignore-asserts -fwarn-tabs -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
+  if flag(git-rev)
+    build-depends:
+      , githash ^>= 0.1.7.0
+    cpp-options: -DGIT_REV
+
+  ghc-options:
+    -Wall
+    -fno-ignore-asserts
+    -Wtabs
+    -Wincomplete-uni-patterns
+    -Wincomplete-record-updates
+    -Wno-unticked-promoted-constructors
 
   if impl(ghc >= 8.0)
     ghc-options: -Wcompat -Wnoncanonical-monad-instances
@@ -88,23 +106,26 @@ library
     Distribution.Simple
     Distribution.Simple.Bench
     Distribution.Simple.Build
+    Distribution.Simple.Build.Inputs
     Distribution.Simple.Build.Macros
     Distribution.Simple.Build.PackageInfoModule
     Distribution.Simple.Build.PathsModule
     Distribution.Simple.BuildPaths
     Distribution.Simple.BuildTarget
     Distribution.Simple.BuildToolDepends
+    Distribution.Simple.BuildWay
     Distribution.Simple.CCompiler
     Distribution.Simple.Command
     Distribution.Simple.Compiler
     Distribution.Simple.Configure
     Distribution.Simple.Errors
+    Distribution.Simple.FileMonitor.Types
     Distribution.Simple.Flag
     Distribution.Simple.GHC
     Distribution.Simple.GHCJS
     Distribution.Simple.Haddock
     Distribution.Simple.Glob
-    Distribution.Simple.HaskellSuite
+    Distribution.Simple.Glob.Internal
     Distribution.Simple.Hpc
     Distribution.Simple.Install
     Distribution.Simple.InstallDirs
@@ -113,6 +134,7 @@ library
     Distribution.Simple.PackageDescription
     Distribution.Simple.PackageIndex
     Distribution.Simple.PreProcess
+    Distribution.Simple.PreProcess.Types
     Distribution.Simple.PreProcess.Unlit
     Distribution.Simple.Program
     Distribution.Simple.Program.Ar
@@ -139,6 +161,9 @@ library
     Distribution.Simple.Test.Log
     Distribution.Simple.UHC
     Distribution.Simple.UserHooks
+    Distribution.Simple.SetupHooks.Errors
+    Distribution.Simple.SetupHooks.Internal
+    Distribution.Simple.SetupHooks.Rule
     Distribution.Simple.Utils
     Distribution.TestSuite
     Distribution.Types.AnnotatedId
@@ -146,6 +171,7 @@ library
     Distribution.Types.DumpBuildInfo
     Distribution.Types.PackageName.Magic
     Distribution.Types.ComponentLocalBuildInfo
+    Distribution.Types.LocalBuildConfig
     Distribution.Types.LocalBuildInfo
     Distribution.Types.TargetInfo
     Distribution.Types.GivenComponent
@@ -153,7 +179,6 @@ library
     Distribution.Utils.Json
     Distribution.Utils.NubList
     Distribution.Utils.Progress
-    Distribution.Utils.TempTestDir
     Distribution.Verbosity
     Distribution.Verbosity.Internal
 
@@ -175,7 +200,6 @@ library
     Distribution.Compat.Parsing,
     Distribution.Compat.Prelude,
     Distribution.Compat.Semigroup,
-    Distribution.Compat.Typeable,
     Distribution.Compiler,
     Distribution.FieldGrammar,
     Distribution.FieldGrammar.Class,
@@ -235,6 +259,7 @@ library
     Distribution.Types.ConfVar,
     Distribution.Types.Dependency,
     Distribution.Types.DependencyMap,
+    Distribution.Types.DependencySatisfaction,
     Distribution.Types.ExeDependency,
     Distribution.Types.Executable,
     Distribution.Types.Executable.Lens,
@@ -258,6 +283,8 @@ library
     Distribution.Types.Library.Lens,
     Distribution.Types.LibraryName,
     Distribution.Types.LibraryVisibility,
+    Distribution.Types.MissingDependency,
+    Distribution.Types.MissingDependencyReason,
     Distribution.Types.Mixin,
     Distribution.Types.Module,
     Distribution.Types.ModuleReexport,
@@ -303,10 +330,9 @@ library
   build-depends:
     -- transformers-0.4.0.0 doesn't have record syntax e.g. for Identity
     -- See also https://github.com/ekmett/transformers-compat/issues/35
-    transformers (>= 0.3      && < 0.4) || (>=0.4.1.0 && <0.7),
-    mtl           >= 2.1      && < 2.4,
-    text         (>= 1.2.3.0  && < 1.3) || (>= 2.0 && < 2.1),
-    parsec        >= 3.1.13.0 && < 3.2
+    , transformers (>= 0.3      && < 0.4) || (>=0.4.1.0 && <0.7)
+    , mtl           >= 2.1      && < 2.4
+    , parsec        >= 3.1.13.0 && < 3.2
 
   other-modules:
     Distribution.Backpack.PreExistingComponent
@@ -322,9 +348,20 @@ library
     Distribution.Compat.SnocList
     Distribution.GetOpt
     Distribution.Lex
+    Distribution.PackageDescription.Check.Common
+    Distribution.PackageDescription.Check.Conditional
+    Distribution.PackageDescription.Check.Monad
+    Distribution.PackageDescription.Check.Paths
+    Distribution.PackageDescription.Check.Target
+    Distribution.PackageDescription.Check.Warning
     Distribution.Simple.Build.Macros.Z
     Distribution.Simple.Build.PackageInfoModule.Z
     Distribution.Simple.Build.PathsModule.Z
+    Distribution.Simple.GHC.Build
+    Distribution.Simple.GHC.Build.ExtraSources
+    Distribution.Simple.GHC.Build.Link
+    Distribution.Simple.GHC.Build.Modules
+    Distribution.Simple.GHC.Build.Utils
     Distribution.Simple.GHC.EnvironmentParser
     Distribution.Simple.GHC.Internal
     Distribution.Simple.GHC.ImplInfo

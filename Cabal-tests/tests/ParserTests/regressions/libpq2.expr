@@ -109,12 +109,14 @@ GenericPackageDescription {
     testSuites = [],
     benchmarks = [],
     dataFiles = [],
-    dataDir = ".",
+    dataDir = SymbolicPath ".",
     extraSrcFiles = [
-      "cbits/noticehandlers.h",
-      "CHANGELOG.md"],
+      SymbolicPath
+        "cbits/noticehandlers.h",
+      SymbolicPath "CHANGELOG.md"],
     extraTmpFiles = [],
-    extraDocFiles = []},
+    extraDocFiles = [],
+    extraFiles = []},
   gpdScannedVersion = Nothing,
   genPackageFlags = [
     MkPackageFlag {
@@ -147,6 +149,7 @@ GenericPackageDescription {
               (OrLaterVersion
                 (mkVersion [0]))],
           cppOptions = [],
+          jsppOptions = [],
           asmOptions = [],
           cmmOptions = [],
           ccOptions = [],
@@ -159,7 +162,8 @@ GenericPackageDescription {
           asmSources = [],
           cmmSources = [],
           cSources = [
-            "cbits/noticehandlers.c"],
+            SymbolicPath
+              "cbits/noticehandlers.c"],
           cxxSources = [],
           jsSources = [],
           hsSourceDirs = [
@@ -180,7 +184,8 @@ GenericPackageDescription {
           extraDynLibFlavours = [],
           extraLibDirs = [],
           extraLibDirsStatic = [],
-          includeDirs = ["cbits"],
+          includeDirs = [
+            SymbolicPath "cbits"],
           includes = [],
           autogenIncludes = [],
           installIncludes = [],
@@ -191,6 +196,8 @@ GenericPackageDescription {
             []
             [],
           sharedOptions =
+          PerCompilerFlavor [] [],
+          profSharedOptions =
           PerCompilerFlavor [] [],
           staticOptions =
           PerCompilerFlavor [] [],
@@ -248,6 +255,7 @@ GenericPackageDescription {
                 buildTools = [],
                 buildToolDepends = [],
                 cppOptions = [],
+                jsppOptions = [],
                 asmOptions = [],
                 cmmOptions = [],
                 ccOptions = [],
@@ -290,6 +298,8 @@ GenericPackageDescription {
                   []
                   [],
                 sharedOptions =
+                PerCompilerFlavor [] [],
+                profSharedOptions =
                 PerCompilerFlavor [] [],
                 staticOptions =
                 PerCompilerFlavor [] [],
@@ -332,6 +342,7 @@ GenericPackageDescription {
                 buildTools = [],
                 buildToolDepends = [],
                 cppOptions = [],
+                jsppOptions = [],
                 asmOptions = [],
                 cmmOptions = [],
                 ccOptions = [],
@@ -375,6 +386,8 @@ GenericPackageDescription {
                   [],
                 sharedOptions =
                 PerCompilerFlavor [] [],
+                profSharedOptions =
+                PerCompilerFlavor [] [],
                 staticOptions =
                 PerCompilerFlavor [] [],
                 customFieldsBI = [],
@@ -416,6 +429,7 @@ GenericPackageDescription {
                 buildTools = [],
                 buildToolDepends = [],
                 cppOptions = [],
+                jsppOptions = [],
                 asmOptions = [],
                 cmmOptions = [],
                 ccOptions = [],
@@ -463,6 +477,8 @@ GenericPackageDescription {
                   [],
                 sharedOptions =
                 PerCompilerFlavor [] [],
+                profSharedOptions =
+                PerCompilerFlavor [] [],
                 staticOptions =
                 PerCompilerFlavor [] [],
                 customFieldsBI = [],
@@ -485,6 +501,7 @@ GenericPackageDescription {
                   buildTools = [],
                   buildToolDepends = [],
                   cppOptions = [],
+                  jsppOptions = [],
                   asmOptions = [],
                   cmmOptions = [],
                   ccOptions = [],
@@ -528,6 +545,8 @@ GenericPackageDescription {
                     [],
                   sharedOptions =
                   PerCompilerFlavor [] [],
+                  profSharedOptions =
+                  PerCompilerFlavor [] [],
                   staticOptions =
                   PerCompilerFlavor [] [],
                   customFieldsBI = [],
@@ -552,6 +571,7 @@ GenericPackageDescription {
                         buildTools = [],
                         buildToolDepends = [],
                         cppOptions = [],
+                        jsppOptions = [],
                         asmOptions = [],
                         cmmOptions = [],
                         ccOptions = [],
@@ -595,6 +615,8 @@ GenericPackageDescription {
                           [],
                         sharedOptions =
                         PerCompilerFlavor [] [],
+                        profSharedOptions =
+                        PerCompilerFlavor [] [],
                         staticOptions =
                         PerCompilerFlavor [] [],
                         customFieldsBI = [],
@@ -617,6 +639,7 @@ GenericPackageDescription {
                           buildTools = [],
                           buildToolDepends = [],
                           cppOptions = [],
+                          jsppOptions = [],
                           asmOptions = [],
                           cmmOptions = [],
                           ccOptions = [],
@@ -660,6 +683,8 @@ GenericPackageDescription {
                             [],
                           sharedOptions =
                           PerCompilerFlavor [] [],
+                          profSharedOptions =
+                          PerCompilerFlavor [] [],
                           staticOptions =
                           PerCompilerFlavor [] [],
                           customFieldsBI = [],
@@ -684,6 +709,7 @@ GenericPackageDescription {
                                 buildTools = [],
                                 buildToolDepends = [],
                                 cppOptions = [],
+                                jsppOptions = [],
                                 asmOptions = [],
                                 cmmOptions = [],
                                 ccOptions = [],
@@ -726,6 +752,8 @@ GenericPackageDescription {
                                   []
                                   [],
                                 sharedOptions =
+                                PerCompilerFlavor [] [],
+                                profSharedOptions =
                                 PerCompilerFlavor [] [],
                                 staticOptions =
                                 PerCompilerFlavor [] [],

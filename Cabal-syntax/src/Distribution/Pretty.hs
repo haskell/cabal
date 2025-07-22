@@ -10,6 +10,8 @@ module Distribution.Pretty
   , showTokenStr
   , showFreeText
   , showFreeTextV3
+  , commaSpaceSep
+  , commaSep
 
     -- * Deprecated
   , Separator
@@ -118,3 +120,11 @@ lines_ s =
    in l : case s' of
         [] -> []
         (_ : s'') -> lines_ s''
+
+-- | Separate a list of documents by commas and spaces.
+commaSpaceSep :: Pretty a => [a] -> PP.Doc
+commaSpaceSep = PP.hsep . PP.punctuate PP.comma . map pretty
+
+-- | Separate a list of documents by commas.
+commaSep :: Pretty a => [a] -> PP.Doc
+commaSep = PP.hcat . PP.punctuate PP.comma . map pretty

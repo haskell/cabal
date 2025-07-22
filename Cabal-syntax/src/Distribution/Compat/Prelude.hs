@@ -1,16 +1,7 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE TypeOperators #-}
-
-{- FOURMOLU_DISABLE -}
-#ifdef MIN_VERSION_base
-#define MINVER_base_411 MIN_VERSION_base(4,11,0)
-#else
-#define MINVER_base_411 (__GLASGOW_HASKELL__ >= 804)
-#endif
-{- FOURMOLU_ENABLE -}
 
 -- | This module does two things:
 --
@@ -194,11 +185,10 @@ import Prelude                       as BasePrelude hiding
     ( mapM, mapM_, sequence, any, all, head, tail, last, init
     -- partial functions
     , read
-#if MINVER_base_411
+    , foldr1, foldl1
     -- As of base 4.11.0.0 Prelude exports part of Semigroup(..).
     -- Hide this so we instead rely on Distribution.Compat.Semigroup.
     , Semigroup(..)
-#endif
     , Word
     -- We hide them, as we import only some members
     , Traversable, traverse, sequenceA
@@ -243,11 +233,11 @@ import Data.Ord (comparing)
 import Data.Proxy (Proxy (..))
 import Data.Set (Set)
 import Data.String (IsString (..))
+import Data.Typeable (TypeRep, Typeable, typeRep)
 import Data.Void (Void, absurd, vacuous)
 import Data.Word (Word, Word16, Word32, Word64, Word8)
 import Distribution.Compat.Binary (Binary (..))
 import Distribution.Compat.Semigroup (Semigroup (..), gmappend, gmempty)
-import Distribution.Compat.Typeable (TypeRep, Typeable, typeRep)
 import GHC.Generics (Generic (..), K1 (unK1), M1 (unM1), U1 (U1), V1, (:*:) ((:*:)), (:+:) (L1, R1))
 import System.Exit (ExitCode (..), exitFailure, exitSuccess, exitWith)
 import Text.Read (readMaybe)

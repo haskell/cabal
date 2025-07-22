@@ -25,12 +25,12 @@ import Distribution.Simple.Flag
 
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
+  , cfgVerbosity
   , defaultNixStyleFlags
   , nixStyleOptions
   )
 import Distribution.Client.Setup
   ( ConfigExFlags (..)
-  , ConfigFlags (..)
   , GlobalFlags
   )
 import Distribution.Verbosity
@@ -42,7 +42,7 @@ import Distribution.Simple.Command
   , usageAlternatives
   )
 import Distribution.Simple.Utils
-  ( die'
+  ( dieWithException
   , notice
   , wrapText
   )
@@ -50,6 +50,7 @@ import Distribution.Simple.Utils
 import Distribution.Client.DistDirLayout
   ( DistDirLayout (..)
   )
+import Distribution.Client.Errors
 import Distribution.Client.HttpUtils
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.RebuildMonad (runRebuild)
@@ -115,14 +116,14 @@ configureCommand =
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 configureAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
-configureAction flags@NixStyleFlags{..} extraArgs globalFlags = do
+configureAction flags extraArgs globalFlags = do
   (baseCtx, projConfig) <- configureAction' flags extraArgs globalFlags
 
   if shouldNotWriteFile baseCtx
     then notice v "Config file not written due to flag(s)."
     else writeProjectLocalExtraConfig (distDirLayout baseCtx) projConfig
   where
-    v = fromFlagOrDefault normal (configVerbosity configFlags)
+    v = cfgVerbosity normal flags
 
 configureAction' :: NixStyleFlags () -> [String] -> GlobalFlags -> IO (ProjectBaseContext, ProjectConfig)
 configureAction' flags@NixStyleFlags{..} _extraArgs globalFlags = do
@@ -159,11 +160,11 @@ configureAction' flags@NixStyleFlags{..} _extraArgs globalFlags = do
           (CondNode conf imps bs) <-
             runRebuild (distProjectRootDirectory . distDirLayout $ baseCtx) $
               readProjectLocalExtraConfig v httpTransport (distDirLayout baseCtx)
-          when (not (null imps && null bs)) $ die' v "local project file has conditional and/or import logic, unable to perform and automatic in-place update"
+          when (not (null imps && null bs)) $ dieWithException v UnableToPerformInplaceUpdate
           return (baseCtx, conf <> cliConfig)
         else return (baseCtx, cliConfig)
   where
-    v = fromFlagOrDefault normal (configVerbosity configFlags)
+    v = cfgVerbosity normal flags
     cliConfig =
       commandLineFlagsToProjectConfig
         globalFlags

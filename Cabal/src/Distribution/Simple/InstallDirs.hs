@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -101,7 +100,7 @@ data InstallDirs dir = InstallDirs
   , haddockdir :: dir
   , sysconfdir :: dir
   }
-  deriving (Eq, Read, Show, Functor, Generic, Typeable)
+  deriving (Eq, Read, Show, Functor, Generic)
 
 instance Binary dir => Binary (InstallDirs dir)
 instance Structured dir => Structured (InstallDirs dir)
@@ -344,7 +343,10 @@ data CopyDest
     CopyToDb FilePath
   deriving (Eq, Show, Generic)
 
+-- TODO: are these paths absolute or relative? Relative to what?
+
 instance Binary CopyDest
+instance Structured CopyDest
 
 -- | Check which of the paths are relative to the installation $prefix.
 --
@@ -386,7 +388,7 @@ prefixRelativeInstallDirs pkgId libname compilerId platform dirs =
 -- | An abstract path, possibly containing variables that need to be
 -- substituted for to get a real 'FilePath'.
 newtype PathTemplate = PathTemplate [PathComponent]
-  deriving (Eq, Ord, Generic, Typeable)
+  deriving (Eq, Ord, Generic)
 
 instance Binary PathTemplate
 instance Structured PathTemplate
@@ -535,7 +537,7 @@ csidl_PROGRAM_FILES = 0x0026
 -- csidl_PROGRAM_FILES_COMMON = 0x002b
 
 {- FOURMOLU_DISABLE -}
-#ifdef x86_64_HOST_ARCH
+#if defined(x86_64_HOST_ARCH) || defined(aarch64_HOST_ARCH)
 #define CALLCONV ccall
 #else
 #define CALLCONV stdcall

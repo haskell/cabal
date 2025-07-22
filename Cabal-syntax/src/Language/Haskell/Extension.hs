@@ -54,18 +54,21 @@ data Language
   | -- | The GHC2021 collection of language extensions.
     -- <https://github.com/ghc-proposals/ghc-proposals/blob/master/proposals/0380-ghc2021.rst>
     GHC2021
+  | -- | The GHC2024 collection of language extensions.
+    -- <https://github.com/ghc-proposals/ghc-proposals/blob/master/proposals/0613-ghc2024.rst>
+    GHC2024
   | -- | An unknown language, identified by its name.
     UnknownLanguage String
-  deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
+  deriving (Generic, Show, Read, Eq, Ord, Data)
 
 instance Binary Language
 instance Structured Language
 
 instance NFData Language where rnf = genericRnf
 
--- | List of known (supported) languages for GHC
+-- | List of known (supported) languages for GHC, oldest first.
 knownLanguages :: [Language]
-knownLanguages = [Haskell98, Haskell2010, GHC2021]
+knownLanguages = [Haskell98, Haskell2010, GHC2021, GHC2024]
 
 instance Pretty Language where
   pretty (UnknownLanguage other) = Disp.text other
@@ -95,7 +98,7 @@ classifyLanguage = \str -> case lookup str langTable of
 
 -- * also add it to the Distribution.Simple.X.compilerExtensions lists
 
---   (where X is each compiler: GHC, UHC, HaskellSuite)
+--   (where X is each compiler: GHC, UHC)
 --
 
 -- | This represents language extensions beyond a base 'Language' definition
@@ -112,7 +115,7 @@ data Extension
   | -- | An unknown extension, identified by the name of its @LANGUAGE@
     -- pragma.
     UnknownExtension String
-  deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
+  deriving (Generic, Show, Read, Eq, Ord, Data)
 
 instance Binary Extension
 instance Structured Extension
@@ -300,6 +303,9 @@ data KnownExtension
   | -- | Allow default instantiation of polymorphic types in more
     -- situations.
     ExtendedDefaultRules
+  | -- | Allow @default@ declarations to explicitly name the class and
+    -- be exported.
+    NamedDefaults
   | -- | Enable unboxed tuples.
     UnboxedTuples
   | -- | Enable @deriving@ for classes 'Data.Typeable.Typeable' and
@@ -540,7 +546,17 @@ data KnownExtension
     AlternativeLayoutRuleTransitional
   | -- | Undocumented parsing-related extensions introduced in GHC 7.2.
     RelaxedLayout
-  deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
+  | -- | Allow the use of type abstraction syntax.
+    TypeAbstractions
+  | -- | Allow the use of built-in syntax for list, tuple and sum type constructors
+    -- rather than being exclusive to data constructors.
+    ListTuplePuns
+  | -- | Support multiline strings.
+    MultilineStrings
+  | -- | Allow use of or-pattern syntax, condensing multiple patterns
+    -- into a single one.
+    OrPatterns
+  deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Data)
 
 instance Binary KnownExtension
 instance Structured KnownExtension

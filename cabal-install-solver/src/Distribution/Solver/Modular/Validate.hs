@@ -1,9 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE CPP #-}
-#ifdef DEBUG_CONFLICT_SETS
-{-# LANGUAGE ImplicitParams #-}
-#endif
 module Distribution.Solver.Modular.Validate (validateTree) where
 
 -- Validation of the tree.
@@ -39,10 +35,6 @@ import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb, pkgConfigPkgIsPresent)
 import Distribution.Types.LibraryName
 import Distribution.Types.PkgconfigVersionRange
-
-#ifdef DEBUG_CONFLICT_SETS
-import GHC.Stack (CallStack)
-#endif
 
 -- In practice, most constraints are implication constraints (IF we have made
 -- a number of choices, THEN we also have to ensure that). We call constraints
@@ -98,7 +90,7 @@ import GHC.Stack (CallStack)
 data ValidateState = VS {
   supportedExt        :: Extension -> Bool,
   supportedLang       :: Language  -> Bool,
-  presentPkgs         :: PkgconfigName -> PkgconfigVersionRange  -> Bool,
+  presentPkgs         :: Maybe (PkgconfigName -> PkgconfigVersionRange  -> Bool),
   index               :: Index,
 
   -- Saved, scoped, dependencies. Every time 'validate' makes a package choice,
@@ -391,7 +383,7 @@ extractNewDeps v b fa sa = go
 -- or the successfully extended assignment.
 extend :: (Extension -> Bool)            -- ^ is a given extension supported
        -> (Language  -> Bool)            -- ^ is a given language supported
-       -> (PkgconfigName -> PkgconfigVersionRange -> Bool) -- ^ is a given pkg-config requirement satisfiable
+       -> Maybe (PkgconfigName -> PkgconfigVersionRange -> Bool) -- ^ is a given pkg-config requirement satisfiable
        -> [LDep QPN]
        -> PPreAssignment
        -> Either Conflict PPreAssignment
@@ -406,8 +398,10 @@ extend extSupported langSupported pkgPresent newactives ppa = foldM extendSingle
       if langSupported lang then Right a
                             else Left (dependencyReasonToConflictSet dr, UnsupportedLanguage lang)
     extendSingle a (LDep dr (Pkg pn vr))  =
-      if pkgPresent pn vr then Right a
-                          else Left (dependencyReasonToConflictSet dr, MissingPkgconfigPackage pn vr)
+      case (\f -> f pn vr) <$> pkgPresent of
+        Just True -> Right a
+        Just False -> Left (dependencyReasonToConflictSet dr, MissingPkgconfigPackage pn vr)
+        Nothing -> Left (dependencyReasonToConflictSet dr, MissingPkgconfigProgram pn vr)
     extendSingle a (LDep dr (Dep dep@(PkgComponent qpn _) ci)) =
       let mergedDep = M.findWithDefault (MergedDepConstrained []) qpn a
       in  case (\ x -> M.insert qpn x a) <$> merge mergedDep (PkgDep dr dep ci) of
@@ -450,11 +444,7 @@ extendWithPackageChoice (PI qpn i) ppa =
 -- set in the sense the it contains variables that allow us to backjump
 -- further. We might apply some heuristics here, such as to change the
 -- order in which we check the constraints.
-merge ::
-#ifdef DEBUG_CONFLICT_SETS
-  (?loc :: CallStack) =>
-#endif
-  MergedPkgDep -> PkgDep -> Either (ConflictSet, (ConflictingDep, ConflictingDep)) MergedPkgDep
+merge :: MergedPkgDep -> PkgDep -> Either (ConflictSet, (ConflictingDep, ConflictingDep)) MergedPkgDep
 merge (MergedDepFixed comp1 vs1 i1) (PkgDep vs2 (PkgComponent p comp2) ci@(Fixed i2))
   | i1 == i2  = Right $ MergedDepFixed comp1 vs1 i1
   | otherwise =
@@ -573,7 +563,7 @@ extendRequiredComponents eqpn available = foldM extendSingle
 
 
 -- | Interface.
-validateTree :: CompilerInfo -> Index -> PkgConfigDb -> Tree d c -> Tree d c
+validateTree :: CompilerInfo -> Index -> Maybe PkgConfigDb -> Tree d c -> Tree d c
 validateTree cinfo idx pkgConfigDb t = runValidate (validate t) VS {
     supportedExt        = maybe (const True) -- if compiler has no list of extensions, we assume everything is supported
                                 (\ es -> let s = S.fromList es in \ x -> S.member x s)
@@ -581,7 +571,7 @@ validateTree cinfo idx pkgConfigDb t = runValidate (validate t) VS {
   , supportedLang       = maybe (const True)
                                 (flip L.elem) -- use list lookup because language list is small and no Ord instance
                                 (compilerInfoLanguages  cinfo)
-  , presentPkgs         = pkgConfigPkgIsPresent pkgConfigDb
+  , presentPkgs         = pkgConfigPkgIsPresent <$> pkgConfigDb
   , index               = idx
   , saved               = M.empty
   , pa                  = PA M.empty M.empty M.empty

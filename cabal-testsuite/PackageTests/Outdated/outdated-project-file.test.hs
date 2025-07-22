@@ -11,5 +11,4 @@ main = cabalTest $ withRepo "repo" $ do
   assertOutputDoesNotContain "template-haskell" res
   assertOutputDoesNotContain "binary" res
 
-  -- Test for erroring on --project-file without --v2-freeze-file
-  fails $ cabal "outdated" ["--project-file", "variant.project"]
+  cabal "outdated" ["--project-file", "variant.project"]

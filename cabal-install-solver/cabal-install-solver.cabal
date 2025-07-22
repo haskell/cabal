@@ -1,9 +1,9 @@
-cabal-version: 2.2
+cabal-version: 3.6
 name:          cabal-install-solver
-version:       3.11.0.0
-synopsis:      The command-line interface for Cabal and Hackage.
+version:       3.17.0.0
+synopsis:      The solver component of cabal-install
 description:
-  The solver component used in cabal-install command-line program
+  The solver component used in the cabal-install command-line program.
 
 homepage:      http://www.haskell.org/cabal/
 bug-reports:   https://github.com/haskell/cabal/issues
@@ -11,10 +11,10 @@ license:       BSD-3-Clause
 license-file:  LICENSE
 author:        Cabal Development Team (see AUTHORS file)
 maintainer:    Cabal Development Team <cabal-devel@haskell.org>
-copyright:     2003-2023, Cabal Development Team
+copyright:     2003-2025, Cabal Development Team
 category:      Distribution
 build-type:    Simple
-Extra-Source-Files:
+extra-doc-files:
   ChangeLog.md
 
 source-repository head
@@ -24,11 +24,6 @@ source-repository head
 
 flag debug-expensive-assertions
   description: Enable expensive assertions for testing or debugging
-  default:     False
-  manual:      True
-
-flag debug-conflict-sets
-  description: Add additional information to ConflictSets
   default:     False
   manual:      True
 
@@ -43,12 +38,10 @@ library
   hs-source-dirs:   src-assertion
   ghc-options:
     -Wall -Wcompat -Wnoncanonical-monad-instances
-    -fwarn-tabs -fwarn-incomplete-uni-patterns
+    -Wtabs -Wincomplete-uni-patterns
 
-  if impl(ghc <8.8)
+  if impl(ghc < 8.8)
     ghc-options: -Wnoncanonical-monadfail-instances
-  if impl(ghc >=8.10)
-    ghc-options: -Wunused-packages
 
   exposed-modules:
     Distribution.Client.Utils.Assertion
@@ -96,36 +89,38 @@ library
     Distribution.Solver.Types.PackagePreferences
     Distribution.Solver.Types.PkgConfigDb
     Distribution.Solver.Types.Progress
+    Distribution.Solver.Types.ProjectConfigPath
     Distribution.Solver.Types.ResolverPackage
     Distribution.Solver.Types.Settings
     Distribution.Solver.Types.SolverId
     Distribution.Solver.Types.SolverPackage
     Distribution.Solver.Types.SourcePackage
+    Distribution.Solver.Types.SummarizedMessage
     Distribution.Solver.Types.Variable
 
   build-depends:
     , array         >=0.4      && <0.6
-    , base          >=4.10     && <4.19
-    , bytestring    >=0.10.6.0 && <0.12
-    , Cabal         ^>=3.11
-    , Cabal-syntax  ^>=3.11
-    , containers    >=0.5.6.2  && <0.7
+    , base          >=4.13     && <4.22
+    , bytestring    >=0.10.6.0 && <0.13
+    , Cabal         ^>=3.17
+    , Cabal-syntax  ^>=3.17
+    , containers    >=0.5.6.2  && <0.9
     , edit-distance ^>= 0.2.2
-    , filepath      ^>=1.4.0.0
+    , directory     >= 1.3.7.0  && < 1.4
+    , filepath      ^>=1.4.0.0 || ^>=1.5.0.0
     , mtl           >=2.0      && <2.4
+    , network-uri   >= 2.6.0.2 && < 2.7
     , pretty        ^>=1.1
     , transformers  >=0.4.2.0  && <0.7
+    , text          (>= 1.2.3.0  && < 1.3) || (>= 2.0 && < 2.2)
 
   if flag(debug-expensive-assertions)
     cpp-options: -DDEBUG_EXPENSIVE_ASSERTIONS
 
-  if flag(debug-conflict-sets)
-    cpp-options:   -DDEBUG_CONFLICT_SETS
-    build-depends: base >=4.9
-
   if flag(debug-tracetree)
     cpp-options:   -DDEBUG_TRACETREE
-    build-depends: tracetree ^>=0.1
+    build-depends:
+      , tracetree ^>=0.1
 
 Test-Suite unit-tests
    default-language: Haskell2010
@@ -138,10 +133,9 @@ Test-Suite unit-tests
      UnitTests.Distribution.Solver.Modular.MessageUtils
 
    build-depends:
-     , base        >= 4.10  && <4.19
-     , Cabal
+     , base        >= 4.13  && <4.22
      , Cabal-syntax
      , cabal-install-solver
-     , tasty       >= 1.2.3 && <1.5
-     , tasty-quickcheck
+     , tasty       >= 1.2.3 && <1.6
+     , tasty-quickcheck <0.12
      , tasty-hunit >= 0.10

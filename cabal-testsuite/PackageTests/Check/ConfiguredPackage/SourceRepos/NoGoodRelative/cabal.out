@@ -1,4 +1,4 @@
 # cabal check
 The following errors will cause portability problems on other environments:
-Error: The 'subdir' field of a source-repository is not a good relative path: "empty path segment"
+Error: [repo-malformed-subdir] The 'subdir' field of a source-repository is not a good relative path: "empty path segment"
 Error: Hackage would reject this package.

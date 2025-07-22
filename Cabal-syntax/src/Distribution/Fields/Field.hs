@@ -1,10 +1,10 @@
-{-# LANGUAGE DeriveFoldable #-}
-{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 -- | Cabal-like file AST types: 'Field', 'Section' etc
 --
--- These types are parametrized by an annotation.
+-- These types are parameterized by an annotation.
 module Distribution.Fields.Field
   ( -- * Cabal file
     Field (..)
@@ -36,6 +36,9 @@ import Distribution.Compat.Prelude
 import Distribution.Pretty (showTokenStr)
 import Distribution.Utils.Generic (fromUTF8BS)
 import Prelude ()
+#if MIN_VERSION_base(4,18,0)
+import qualified Data.Foldable1 as F1
+#endif
 
 -------------------------------------------------------------------------------
 -- Cabal file
@@ -46,6 +49,9 @@ data Field ann
   = Field !(Name ann) [FieldLine ann]
   | Section !(Name ann) [SectionArg ann] [Field ann]
   deriving (Eq, Show, Functor, Foldable, Traversable)
+
+-- | @since 3.12.0.0
+deriving instance Ord ann => Ord (Field ann)
 
 -- | Section of field name
 fieldName :: Field ann -> Name ann
@@ -69,6 +75,9 @@ fieldUniverse f@(Field _ _) = [f]
 data FieldLine ann = FieldLine !ann !ByteString
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
+-- | @since 3.12.0.0
+deriving instance Ord ann => Ord (FieldLine ann)
+
 -- | @since 3.0.0.0
 fieldLineAnn :: FieldLine ann -> ann
 fieldLineAnn (FieldLine ann _) = ann
@@ -87,6 +96,9 @@ data SectionArg ann
     SecArgOther !ann !ByteString
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
+-- | @since 3.12.0.0
+deriving instance Ord ann => Ord (SectionArg ann)
+
 -- | Extract annotation from 'SectionArg'.
 sectionArgAnn :: SectionArg ann -> ann
 sectionArgAnn (SecArgName ann _) = ann
@@ -104,6 +116,9 @@ type FieldName = ByteString
 -- /Invariant/: 'ByteString' is lower-case ASCII.
 data Name ann = Name !ann !FieldName
   deriving (Eq, Show, Functor, Foldable, Traversable)
+
+-- | @since 3.12.0.0
+deriving instance Ord ann => Ord (Name ann)
 
 mkName :: ann -> FieldName -> Name ann
 mkName ann bs = Name ann (B.map Char.toLower bs)
@@ -141,3 +156,30 @@ fieldLinesToString =
   intercalate "\n" . map toStr
   where
     toStr (FieldLine _ bs) = fromUTF8BS bs
+
+-------------------------------------------------------------------------------
+-- Foldable1
+-------------------------------------------------------------------------------
+
+#if MIN_VERSION_base(4,18,0)
+
+-- | @since 3.12.0.0
+instance F1.Foldable1 Field where
+  foldMap1 f (Field x ys) =
+    F1.fold1 (F1.foldMap1 f x :| map (F1.foldMap1 f) ys)
+  foldMap1 f (Section x ys zs) =
+    F1.fold1 (F1.foldMap1 f x :| map (F1.foldMap1 f) ys ++ map (F1.foldMap1 f) zs)
+
+-- | @since 3.12.0.0
+instance F1.Foldable1 FieldLine where
+  foldMap1 = (. fieldLineAnn)
+
+-- | @since 3.12.0.0
+instance F1.Foldable1 SectionArg where
+  foldMap1 = (. sectionArgAnn)
+
+-- | @since 3.12.0.0
+instance F1.Foldable1 Name where
+  foldMap1 = (. nameAnn)
+
+#endif

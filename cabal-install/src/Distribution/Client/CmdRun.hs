@@ -1,7 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TupleSections #-}
 
 -- | cabal-install CLI command: run
@@ -22,6 +19,8 @@ module Distribution.Client.CmdRun
 import Distribution.Client.Compat.Prelude hiding (toList)
 import Prelude ()
 
+import Data.List (group)
+import qualified Data.Set as Set
 import Distribution.Client.CmdErrorMessages
   ( plural
   , renderListCommaAnd
@@ -33,6 +32,7 @@ import Distribution.Client.CmdErrorMessages
   , targetSelectorFilter
   , targetSelectorPluralPkgs
   )
+import Distribution.Client.Errors
 import Distribution.Client.GlobalFlags
   ( defaultGlobalFlags
   )
@@ -42,18 +42,27 @@ import Distribution.Client.InstallPlan
   )
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
+  , cfgVerbosity
   , defaultNixStyleFlags
   , nixStyleOptions
   )
-import Distribution.Client.ProjectOrchestration
+import Distribution.Client.ProjectConfig.Types
+  ( ProjectConfig (projectConfigShared)
+  , ProjectConfigShared (projectConfigProgPathExtra)
+  )
+import Distribution.Client.ProjectOrchestration hiding (targetsMap)
+import qualified Distribution.Client.ProjectOrchestration as Orchestration (targetsMap)
 import Distribution.Client.ProjectPlanning
   ( ElaboratedConfiguredPackage (..)
   , ElaboratedInstallPlan
   , binDirectoryFor
   )
 import Distribution.Client.ProjectPlanning.Types
-  ( dataDirsEnvironmentForPlan
+  ( ElaboratedPackageOrComponent (..)
+  , dataDirsEnvironmentForPlan
+  , elabExeDependencyPaths
   )
+
 import Distribution.Client.ScriptUtils
   ( AcceptNoTargets (..)
   , TargetContext (..)
@@ -62,8 +71,7 @@ import Distribution.Client.ScriptUtils
   , withContextAndSelectors
   )
 import Distribution.Client.Setup
-  ( ConfigFlags (..)
-  , GlobalFlags (..)
+  ( GlobalFlags (..)
   )
 import Distribution.Client.TargetProblem
   ( TargetProblem (..)
@@ -72,12 +80,19 @@ import Distribution.Client.Utils
   ( giveRTSWarning
   , occursOnlyOrBefore
   )
+
+import Distribution.Simple.BuildToolDepends
+  ( getAllInternalToolDependencies
+  )
 import Distribution.Simple.Command
   ( CommandUI (..)
   , usageAlternatives
   )
-import Distribution.Simple.Flag
-  ( fromFlagOrDefault
+import Distribution.Simple.Program.Find
+  ( ProgramSearchPathEntry (ProgramSearchPathDir)
+  , defaultProgramSearchPath
+  , logExtraProgramSearchPath
+  , programSearchPathAsPATHVar
   )
 import Distribution.Simple.Program.Run
   ( ProgramInvocation (..)
@@ -85,15 +100,23 @@ import Distribution.Simple.Program.Run
   , runProgramInvocation
   )
 import Distribution.Simple.Utils
-  ( die'
+  ( dieWithException
   , info
   , notice
   , safeHead
   , warn
   , wrapText
   )
+
 import Distribution.Types.ComponentName
   ( componentNameRaw
+  )
+import qualified Distribution.Types.Executable as PD
+  ( buildInfo
+  , exeName
+  )
+import qualified Distribution.Types.PackageDescription as PD
+  ( executables
   )
 import Distribution.Types.UnitId
   ( UnitId
@@ -102,13 +125,13 @@ import Distribution.Types.UnqualComponentName
   ( UnqualComponentName
   , unUnqualComponentName
   )
+import Distribution.Utils.NubList
+  ( fromNubList
+  )
 import Distribution.Verbosity
   ( normal
   , silent
   )
-
-import Data.List (group)
-import qualified Data.Set as Set
 import GHC.Environment
   ( getFullArgs
   )
@@ -178,22 +201,19 @@ runCommand =
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 runAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
-runAction flags@NixStyleFlags{..} targetAndArgs globalFlags =
-  withContextAndSelectors RejectNoTargets (Just ExeKind) flags targetStr globalFlags OtherCommand $ \targetCtx ctx targetSelectors -> do
+runAction flags targetAndArgs globalFlags =
+  withContextAndSelectors (cfgVerbosity normal flags) RejectNoTargets (Just ExeKind) flags targetStr globalFlags OtherCommand $ \targetCtx ctx targetSelectors -> do
     (baseCtx, defaultVerbosity) <- case targetCtx of
       ProjectContext -> return (ctx, normal)
       GlobalContext -> return (ctx, normal)
       ScriptContext path exemeta -> (,silent) <$> updateContextAndWriteProjectFile ctx path exemeta
 
-    let verbosity = fromFlagOrDefault defaultVerbosity (configVerbosity configFlags)
+    let verbosity = cfgVerbosity defaultVerbosity flags
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
         when (buildSettingOnlyDeps (buildSettings baseCtx)) $
-          die' verbosity $
-            "The run command does not support '--only-dependencies'. "
-              ++ "You may wish to use 'build --only-dependencies' and then "
-              ++ "use 'run'."
+          dieWithException verbosity NoSupportForRunCommand
 
         fullArgs <- getFullArgs
         when (occursOnlyOrBefore fullArgs "+RTS" "--") $
@@ -204,7 +224,7 @@ runAction flags@NixStyleFlags{..} targetAndArgs globalFlags =
         -- (as opposed to say repl or haddock targets).
         targets <-
           either (reportTargetProblems verbosity) return $
-            resolveTargets
+            resolveTargetsFromSolver
               selectPackageTargets
               selectComponentTarget
               elaboratedPlan
@@ -236,11 +256,9 @@ runAction flags@NixStyleFlags{..} targetAndArgs globalFlags =
     (selectedUnitId, selectedComponent) <-
       -- Slight duplication with 'runProjectPreBuildPhase'.
       singleExeOrElse
-        ( die' verbosity $
-            "No or multiple targets given, but the run "
-              ++ "phase has been reached. This is a bug."
+        ( dieWithException verbosity RunPhaseReached
         )
-        $ targetsMap buildCtx
+        $ Orchestration.targetsMap buildCtx
 
     printPlan verbosity baseCtx buildCtx
 
@@ -268,12 +286,7 @@ runAction flags@NixStyleFlags{..} targetAndArgs globalFlags =
     -- an error in all of these cases, even if some seem like they
     -- shouldn't happen.
     pkg <- case matchingElaboratedConfiguredPackages of
-      [] ->
-        die' verbosity $
-          "Unknown executable "
-            ++ exeName
-            ++ " in package "
-            ++ prettyShow selectedUnitId
+      [] -> dieWithException verbosity $ UnknownExecutable exeName selectedUnitId
       [elabPkg] -> do
         info verbosity $
           "Selecting "
@@ -282,11 +295,8 @@ runAction flags@NixStyleFlags{..} targetAndArgs globalFlags =
             ++ exeName
         return elabPkg
       elabPkgs ->
-        die' verbosity $
-          "Multiple matching executables found matching "
-            ++ exeName
-            ++ ":\n"
-            ++ unlines (fmap (\p -> " - in package " ++ prettyShow (elabUnitId p)) elabPkgs)
+        dieWithException verbosity $
+          MultipleMatchingExecutables exeName (fmap (\p -> " - in package " ++ prettyShow (elabUnitId p)) elabPkgs)
 
     let defaultExePath =
           binDirectoryFor
@@ -301,6 +311,36 @@ runAction flags@NixStyleFlags{..} targetAndArgs globalFlags =
           buildSettingDryRun (buildSettings baseCtx)
             || buildSettingOnlyDownload (buildSettings baseCtx)
 
+    let
+      -- HACK alert: when doing a per-package build (e.g. with a Custom setup),
+      -- 'elabExeDependencyPaths' will not contain any internal executables
+      -- (they are deliberately filtered out; and even if they weren't, they have the wrong paths).
+      -- We add them back in here to ensure that any "build-tool-depends" of
+      -- the current executable is available in PATH at runtime.
+      internalToolDepsOfThisExe
+        | ElabPackage{} <- elabPkgOrComp pkg
+        , let pkg_descr = elabPkgDescription pkg
+        , thisExe : _ <- filter ((== exeName) . unUnqualComponentName . PD.exeName) $ PD.executables pkg_descr
+        , let thisExeBI = PD.buildInfo thisExe =
+            [ binDirectoryFor (distDirLayout baseCtx) (elaboratedShared buildCtx) pkg depExeNm
+            | depExe <- getAllInternalToolDependencies pkg_descr thisExeBI
+            , let depExeNm = unUnqualComponentName depExe
+            ]
+        | otherwise =
+            []
+      extraPath =
+        elabExeDependencyPaths pkg
+          ++ ( fromNubList
+                . projectConfigProgPathExtra
+                . projectConfigShared
+                . projectConfig
+                $ baseCtx
+             )
+          ++ internalToolDepsOfThisExe
+
+    logExtraProgramSearchPath verbosity extraPath
+    progPath <- programSearchPathAsPATHVar (map ProgramSearchPathDir extraPath ++ defaultProgramSearchPath)
+
     if dryRun
       then notice verbosity "Running of executable suppressed by flag(s)"
       else
@@ -310,9 +350,10 @@ runAction flags@NixStyleFlags{..} targetAndArgs globalFlags =
             { progInvokePath = exePath
             , progInvokeArgs = args
             , progInvokeEnv =
-                dataDirsEnvironmentForPlan
-                  (distDirLayout baseCtx)
-                  elaboratedPlan
+                ("PATH", Just $ progPath)
+                  : dataDirsEnvironmentForPlan
+                    (distDirLayout baseCtx)
+                    elaboratedPlan
             }
   where
     (targetStr, args) = splitAt 1 targetAndArgs
@@ -489,7 +530,7 @@ isSubComponentProblem pkgid name subcomponent =
 
 reportTargetProblems :: Verbosity -> [RunTargetProblem] -> IO a
 reportTargetProblems verbosity =
-  die' verbosity . unlines . map renderRunTargetProblem
+  dieWithException verbosity . CmdRunReportTargetProblems . unlines . map renderRunTargetProblem
 
 renderRunTargetProblem :: RunTargetProblem -> String
 renderRunTargetProblem (TargetProblemNoTargets targetSelector) =

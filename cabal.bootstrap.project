@@ -1,0 +1,14 @@
+import: project-cabal/constraints.config
+
+packages:
+    Cabal
+  , Cabal-syntax
+  , Cabal-hooks
+  , cabal-install
+  , cabal-install-solver
+
+-- Don't include tests or benchmarks for bootstrapping
+tests: False
+benchmarks: False
+
+index-state: hackage.haskell.org 2025-06-27T20:43:14Z

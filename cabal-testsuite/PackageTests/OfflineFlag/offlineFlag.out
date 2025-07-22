@@ -6,7 +6,8 @@ Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - remote-0.1.0.0 (lib) (requires build)
  - current-0.1.0.0 (exe:current) (first run)
-Error: cabal: --offline was specified, hence refusing to download the package: remote version 0.1.0.0.
+Error: [Cabal-7125]
+--offline was specified, hence refusing to download the package: remote version 0.1.0.0.
 # cabal v2-build
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:

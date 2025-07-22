@@ -1,3 +1,4 @@
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Distribution.Client.Init.Utils
@@ -42,7 +43,7 @@ import Distribution.InstalledPackageInfo (InstalledPackageInfo, exposed)
 import Distribution.ModuleName (ModuleName)
 import qualified Distribution.Package as P
 import Distribution.Simple.PackageIndex (InstalledPackageIndex, moduleNameIndex)
-import Distribution.Simple.Setup (Flag (..))
+import Distribution.Simple.Setup (pattern Flag, pattern NoFlag)
 import Distribution.Types.Dependency (Dependency, mkDependency)
 import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
@@ -64,7 +65,6 @@ data SourceFileEntry = SourceFileEntry
 knownSuffixHandlers :: CabalSpecVersion -> String -> String
 knownSuffixHandlers v s
   | v < CabalSpecV3_0 = case s of
-      ".gc" -> "greencard"
       ".chs" -> "chs"
       ".hsc" -> "hsc2hs"
       ".x" -> "alex"
@@ -73,7 +73,6 @@ knownSuffixHandlers v s
       ".cpphs" -> "cpp"
       _ -> ""
   | otherwise = case s of
-      ".gc" -> "greencard:greencard"
       ".chs" -> "chs:chs"
       ".hsc" -> "hsc2hs:hsc2hs"
       ".x" -> "alex:alex"
@@ -128,7 +127,7 @@ retrieveSourceFiles fp = do
               Nothing -> return Nothing
               Just moduleName -> do
                 let fileExtension = takeExtension f
-                relativeSourcePath <- makeRelative f <$> getCurrentDirectory
+                relativeSourcePath <- makeRelative (normalise f) <$> getCurrentDirectory
                 imports <- retrieveModuleImports f
                 extensions <- retrieveModuleExtensions f
 
@@ -214,7 +213,7 @@ retrieveDependencies v flags mods' pkgIx = do
       modDeps = map (\(mn, ds) -> (mn, ds, M.lookup ds modMap)) mods
   -- modDeps = map (id &&& flip M.lookup modMap) mods
 
-  message v Log "Guessing dependencies..."
+  message v Info "Guessing dependencies..."
   nub . catMaybes <$> traverse (chooseDep v flags) modDeps
 
 -- Given a module and a list of installed packages providing it,

@@ -1,6 +1,6 @@
+{-# LANGUAGE DisambiguateRecordFields #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- | DSL for testing the modular solver
@@ -79,7 +79,6 @@ import Language.Haskell.Extension (Extension (..), Language (..))
 
 -- cabal-install
 import Distribution.Client.Dependency
-import Distribution.Client.Dependency.Types
 import qualified Distribution.Client.SolverInstallPlan as CI.SolverInstallPlan
 import Distribution.Client.Types
 
@@ -450,7 +449,7 @@ exAvSrcPkg ex =
                       , C.maintainer = "maintainer"
                       , C.description = "description"
                       , C.synopsis = "synopsis"
-                      , C.licenseFiles = [C.unsafeMakeSymbolicPath "LICENSE"]
+                      , C.licenseFiles = [C.makeRelativePathEx "LICENSE"]
                       , -- Version 2.0 is required for internal libraries.
                         C.specVersion = C.CabalSpecV2_0
                       }
@@ -492,7 +491,7 @@ exAvSrcPkg ex =
         -- Furthermore we ignore missing upper bound warnings because
         -- they are not related to this test suite, and are tested
         -- with golden tests.
-        let checks = C.checkPackage (srcpkgDescription package) Nothing
+        let checks = C.checkPackage (srcpkgDescription package)
          in filter (\x -> not (isMissingUpperBound x) && not (isUnknownLangExt x)) checks
    in if null pkgCheckErrors
         then package
@@ -525,21 +524,25 @@ exAvSrcPkg ex =
     defaultExe =
       mempty
         { C.buildInfo = defaultTopLevelBuildInfo
-        , C.modulePath = "Main.hs"
+        , C.modulePath = C.makeRelativePathEx "Main.hs"
         }
 
     defaultTest :: C.TestSuite
     defaultTest =
       mempty
         { C.testBuildInfo = defaultTopLevelBuildInfo
-        , C.testInterface = C.TestSuiteExeV10 (C.mkVersion [1, 0]) "Test.hs"
+        , C.testInterface =
+            C.TestSuiteExeV10 (C.mkVersion [1, 0]) $
+              C.makeRelativePathEx "Test.hs"
         }
 
     defaultBenchmark :: C.Benchmark
     defaultBenchmark =
       mempty
         { C.benchmarkBuildInfo = defaultTopLevelBuildInfo
-        , C.benchmarkInterface = C.BenchmarkExeV10 (C.mkVersion [1, 0]) "Benchmark.hs"
+        , C.benchmarkInterface =
+            C.BenchmarkExeV10 (C.mkVersion [1, 0]) $
+              C.makeRelativePathEx "Benchmark.hs"
         }
 
     -- Split the set of dependencies into the set of dependencies of the library,
@@ -780,7 +783,7 @@ exResolve
   -> Maybe [Extension]
   -- List of languages supported by the compiler, or Nothing if unknown.
   -> Maybe [Language]
-  -> PC.PkgConfigDb
+  -> Maybe PC.PkgConfigDb
   -> [ExamplePkgName]
   -> Maybe Int
   -> CountConflicts
@@ -821,7 +824,7 @@ exResolve
   prefs
   verbosity
   enableAllTests =
-    resolveDependencies C.buildPlatform compiler pkgConfigDb Modular params
+    resolveDependencies C.buildPlatform compiler pkgConfigDb params
     where
       defaultCompiler = C.unknownCompilerInfo C.buildCompilerId C.NoAbiTag
       compiler =

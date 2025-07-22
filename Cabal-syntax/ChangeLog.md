@@ -1,1 +1,1 @@
-Please see See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.10.2.0.md
+Please see https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.16.0.0.md

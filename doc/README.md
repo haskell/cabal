@@ -11,48 +11,57 @@ http://cabal.readthedocs.io/
 
 ### How to build it
 
-Building the documentation requires Python 3 and PIP. Run the following command either from the root of the cabal repository or from the `docs/` subdirectory:
+Building the documentation requires Python 3, PIP, and `pip-tools` (see the second note below for how to install it). Run the following command either from the root of the cabal repository or from the `docs/` subdirectory:
 
 ``` console
-make users-guide
+> make users-guide
 ```
 
 Note: Python on Mac OS X dislikes `LC_CTYPE=UTF-8`, so unset the variable
 and instead set `LC_ALL=en_US.UTF-8`.
 
+Note: You can use a vendor package for `pip-tools`, or run
+
+``` console
+> pip install pip-tools
+```
+
+Make sure the installation directory (often `$HOME/.local/bin`) is on your `$PATH`.
+
 ### How to update dependencies
 
-Once in a while you need to update Python dependencies (for instance,
-when Dependabot alerts about possible security flaw). The list of
-transitive dependencies (`requirements.txt`) is generated from the
-list of direct dependencies in `requirements.in`. To perform the
-generation step run
+The list of transitive dependencies (`requirements.txt`) is generated from the list of direct dependencies in `requirements.in`. To perform the generation step, run
 
 ```console
 > make users-guide-requirements
 ```
 
-either from the root of the cabal repository or from the `docs/` subdirectory.
+either from the root of the cabal repository or from the `docs/` subdirectory. You will need to do this before building documentation the first time, but should only need to repeat it after a `git clean` or if the dependencies in `requirements.in` change.
 
-Note that generating `requirements.txt` is sensitive to the Python version.
-The version currently used is stamped at the top of `requirements.txt`.
-Normally, we would expect the same version of Python to be used for
-regeneration. An easy way to enforce a particular version is to perform
-regeneration in a Docker container, e.g. (from the root of repository):
+In some cases, you may have to add a bound manually to `requirements.in`, e.g. `requests >= 2.31.0`.
 
-```console
-> docker run -itv $PWD:/cabal python:3.10-alpine sh
-...
-# apk add make
-...
-# cd cabal
-# make users-guide-requirements
+### How to check spelling
+
+To check for typos, run `make typos` and to fix them, run `make fix-typos`. Fixing might fail.
+
+> If there is any ambiguity (multiple possible corrections),
+> `typos` will just report it to the user and move on.
+>
+> SOURCE: [typos/Getting Started](https://github.com/crate-ci/typos#getting-started)
+
 ```
-
-One way to make sure the dependencies are reasonably up to date
-is to remove `requirements.txt` and regenerate it as described
-above. But in some cases you may have to add a bound manually
-to `requirements.in`, e.g. `requests >= 2.31.0`.
+# spellchecker:off
+$ make users-guide-typos
+cd doc && find . -type f -name '*.rst' | xargs typos
+error: `managable` should be `manageable`, `manageably`
+  --> doc/getting-started.rst:75:6
+   |
+75 | more managable building blocks.
+   |      ^^^^^^^^^
+   |
+make: *** [Makefile: users-guide-typos] Error 2
+# spellchecker:on
+```
 
 ### Gitpod workflow
 
@@ -70,6 +79,7 @@ Make your edits, rebuild the guide and refresh the browser to preview the
 changes. When happy, commit your changes with git in the included terminal.
 
 ### Caveats, for newcomers to RST from MD
+
 RST does not allow you to skip section levels when nesting, like MD
 does.
 So, you cannot have

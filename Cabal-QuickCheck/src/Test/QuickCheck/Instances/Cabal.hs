@@ -1,29 +1,24 @@
 {-# LANGUAGE CPP           #-}
-{-# LANGUAGE TypeOperators #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Test.QuickCheck.Instances.Cabal () where
 
+#if !MIN_VERSION_base(4,18,0)
 import Control.Applicative        (liftA2)
-import Data.Bits                  (shiftR)
-import Data.Char                  (isAlphaNum, isDigit)
-import Data.List                  (intercalate)
+#endif
+import Data.Bits                  (countLeadingZeros, finiteBitSize, shiftL, shiftR)
+import Data.Char                  (isAlphaNum, isDigit, toLower)
+import Data.List                  (intercalate, (\\))
 import Data.List.NonEmpty         (NonEmpty (..))
 import Distribution.Utils.Generic (lowercase)
 import Test.QuickCheck
-
-#if MIN_VERSION_base(4,8,0)
-import Data.Bits (countLeadingZeros, finiteBitSize, shiftL)
-#else
-import Data.Bits (popCount)
-#endif
 
 import Distribution.CabalSpecVersion
 import Distribution.Compat.NonEmptySet             (NonEmptySet)
 import Distribution.Compiler
 import Distribution.FieldGrammar.Newtypes
 import Distribution.ModuleName
-import Distribution.Simple.Compiler                (DebugInfoLevel (..), OptimisationLevel (..), PackageDB (..), ProfDetailLevel (..), knownProfDetailLevels)
-import Distribution.Simple.Flag                    (Flag (..))
+import Distribution.Simple.Compiler
 import Distribution.Simple.InstallDirs
 import Distribution.Simple.Setup                   (HaddockTarget (..), TestShowDetails (..), DumpBuildInfo)
 import Distribution.SPDX
@@ -51,10 +46,6 @@ import Test.QuickCheck.GenericArbitrary
 
 import qualified Data.ByteString.Char8           as BS8
 import qualified Distribution.Compat.NonEmptySet as NES
-
-#if !MIN_VERSION_base(4,8,0)
-import Control.Applicative (pure, (<$>), (<*>))
-#endif
 
 -------------------------------------------------------------------------------
 -- CabalSpecVersion
@@ -251,23 +242,6 @@ instance Arbitrary LibraryName where
     shrink _               = []
 
 -------------------------------------------------------------------------------
--- option flags
--------------------------------------------------------------------------------
-
-instance Arbitrary a => Arbitrary (Flag a) where
-    arbitrary = arbitrary1
-
-    shrink NoFlag   = []
-    shrink (Flag x) = NoFlag : [ Flag x' | x' <- shrink x ]
-
-instance Arbitrary1 Flag where
-    liftArbitrary genA = sized $ \sz ->
-        if sz <= 0
-        then pure NoFlag
-        else frequency [ (1, pure NoFlag)
-                       , (3, Flag <$> genA) ]
-
--------------------------------------------------------------------------------
 -- GPD flags
 -------------------------------------------------------------------------------
 
@@ -405,6 +379,10 @@ instance (Arbitrary a, Ord a) => Arbitrary (NubList a) where
 -- InstallDirs
 -------------------------------------------------------------------------------
 
+-- these are wrong because they bottom out in String. We should really use
+-- the modern FilePath at some point, so we get QC instances that don't include
+-- invalid characters or path components
+
 instance Arbitrary a => Arbitrary (InstallDirs a) where
     arbitrary = InstallDirs
         <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary --  4
@@ -480,7 +458,7 @@ instance Arbitrary TestShowDetails where
 -- PackageDB
 -------------------------------------------------------------------------------
 
-instance Arbitrary PackageDB where
+instance Arbitrary (PackageDBX FilePath) where
     arbitrary = oneof [ pure GlobalPackageDB
                       , pure UserPackageDB
                       , SpecificPackageDB <$> arbitraryShortPath
@@ -506,11 +484,20 @@ arbitraryShortToken :: Gen String
 arbitraryShortToken = arbitraryShortStringWithout "{}[]"
 
 arbitraryShortPath :: Gen String
-arbitraryShortPath = arbitraryShortStringWithout "{}[],"
+arbitraryShortPath = arbitraryShortStringWithout "{}[],<>:|*?" `suchThat` (not . winDevice)
+    where
+        -- split path components on dots
+        -- no component can be empty or a device name
+        -- this blocks a little too much (both "foo..bar" and "foo.con" are legal)
+        -- but for QC being a little conservative isn't harmful
+        winDevice = any (any (`elem` ["","con", "aux", "prn", "com", "lpt", "nul"]) . splitBy ".") . splitBy "\\/" . map toLower
+        splitBy _ "" = []
+        splitBy seps str = let (part,rest) = break (`elem` seps) str
+                            in part : if length rest == 1 then [""] else splitBy seps (drop 1 rest)
 
 arbitraryShortStringWithout :: String -> Gen String
 arbitraryShortStringWithout excludeChars =
-    shortListOf1 5 $ elements [c | c <- ['#' ..  '~' ], c `notElem` excludeChars ]
+    shortListOf1 5 $ elements $ ['#' .. '~'] \\ excludeChars
 
 -- |
 intSqrt :: Int -> Int
@@ -526,8 +513,4 @@ intSqrt n = case compare n 0 of
     iter x = shiftR (x + n `div` x) 1
 
     guess :: Int
-#if MIN_VERSION_base(4,8,0)
     guess = shiftR n (shiftL (finiteBitSize n - countLeadingZeros n) 1)
-#else
-    guess = shiftR n (shiftR (popCount n) 1)
-#endif

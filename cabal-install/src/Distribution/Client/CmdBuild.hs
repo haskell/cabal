@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-
 -- | cabal-install CLI command: build
 module Distribution.Client.CmdBuild
   ( -- * The @build@ CLI and action
@@ -26,8 +24,11 @@ import Distribution.Client.TargetProblem
   , TargetProblem'
   )
 
+import qualified Data.Map as Map
+import Distribution.Client.Errors
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
+  , cfgVerbosity
   , defaultNixStyleFlags
   , nixStyleOptions
   )
@@ -38,8 +39,7 @@ import Distribution.Client.ScriptUtils
   , withContextAndSelectors
   )
 import Distribution.Client.Setup
-  ( ConfigFlags (..)
-  , GlobalFlags
+  ( GlobalFlags
   , yesNoOpt
   )
 import Distribution.Simple.Command
@@ -47,16 +47,14 @@ import Distribution.Simple.Command
   , option
   , usageAlternatives
   )
-import Distribution.Simple.Flag (Flag (..), fromFlag, fromFlagOrDefault, toFlag)
+import Distribution.Simple.Flag (Flag, fromFlag, toFlag)
 import Distribution.Simple.Utils
-  ( die'
+  ( dieWithException
   , wrapText
   )
 import Distribution.Verbosity
   ( normal
   )
-
-import qualified Data.Map as Map
 
 buildCommand :: CommandUI (NixStyleFlags BuildFlags)
 buildCommand =
@@ -133,8 +131,8 @@ defaultBuildFlags =
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 buildAction :: NixStyleFlags BuildFlags -> [String] -> GlobalFlags -> IO ()
-buildAction flags@NixStyleFlags{extraFlags = buildFlags, ..} targetStrings globalFlags =
-  withContextAndSelectors RejectNoTargets Nothing flags targetStrings globalFlags BuildCommand $ \targetCtx ctx targetSelectors -> do
+buildAction flags@NixStyleFlags{extraFlags = buildFlags} targetStrings globalFlags =
+  withContextAndSelectors verbosity RejectNoTargets Nothing flags targetStrings globalFlags BuildCommand $ \targetCtx ctx targetSelectors -> do
     -- TODO: This flags defaults business is ugly
     let onlyConfigure =
           fromFlag
@@ -156,7 +154,7 @@ buildAction flags@NixStyleFlags{extraFlags = buildFlags, ..} targetStrings globa
         -- (as opposed to say repl or haddock targets).
         targets <-
           either (reportBuildTargetProblems verbosity) return $
-            resolveTargets
+            resolveTargetsFromSolver
               selectPackageTargets
               selectComponentTarget
               elaboratedPlan
@@ -184,7 +182,7 @@ buildAction flags@NixStyleFlags{extraFlags = buildFlags, ..} targetStrings globa
     buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
     runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
   where
-    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    verbosity = cfgVerbosity normal flags
 
 -- | This defines what a 'TargetSelector' means for the @bench@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
@@ -237,4 +235,4 @@ reportBuildTargetProblems verbosity problems =
 
 reportCannotPruneDependencies :: Verbosity -> CannotPruneDependencies -> IO a
 reportCannotPruneDependencies verbosity =
-  die' verbosity . renderCannotPruneDependencies
+  dieWithException verbosity . ReportCannotPruneDependencies . renderCannotPruneDependencies

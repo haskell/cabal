@@ -9,11 +9,11 @@ module Distribution.Types.UnqualComponentName
   , mkUnqualComponentName
   , packageNameToUnqualComponentName
   , unqualComponentNameToPackageName
+  , combineNames
   ) where
 
 import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
-import Prelude ()
 
 import Distribution.Parsec
 import Distribution.Pretty
@@ -33,7 +33,6 @@ newtype UnqualComponentName = UnqualComponentName ShortText
     , Show
     , Eq
     , Ord
-    , Typeable
     , Data
     , Semigroup
     , Monoid -- TODO: bad enabler of bad monoids
@@ -105,3 +104,34 @@ packageNameToUnqualComponentName = UnqualComponentName . unPackageNameST
 -- @since 2.0.0.2
 unqualComponentNameToPackageName :: UnqualComponentName -> PackageName
 unqualComponentNameToPackageName = mkPackageNameST . unUnqualComponentNameST
+
+-- | Combine names in targets if one name is empty or both names are equal
+-- (partial function).
+-- Useful in 'Semigroup' and similar instances.
+combineNames
+  :: (Monoid b, Eq b, Show b)
+  => a
+  -> a
+  -> (a -> b)
+  -> String
+  -> b
+combineNames a b tacc tt
+  -- One empty or the same.
+  | nb == mempty
+      || na == nb =
+      na
+  | na == mempty =
+      nb
+  -- Both non-empty, different.
+  | otherwise =
+      error $
+        "Ambiguous values for "
+          ++ tt
+          ++ " field: '"
+          ++ show na
+          ++ "' and '"
+          ++ show nb
+          ++ "'"
+  where
+    (na, nb) = (tacc a, tacc b)
+{-# INLINEABLE combineNames #-}

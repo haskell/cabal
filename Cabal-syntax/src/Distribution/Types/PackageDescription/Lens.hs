@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE RankNTypes #-}
 
 module Distribution.Types.PackageDescription.Lens
@@ -31,7 +31,7 @@ import Distribution.Types.SetupBuildInfo (SetupBuildInfo)
 import Distribution.Types.SourceRepo (SourceRepo)
 import Distribution.Types.TestSuite (TestSuite, testModules)
 import Distribution.Types.TestSuite.Lens (testBuildInfo, testName)
-import Distribution.Utils.Path (LicenseFile, PackageDir, SymbolicPath)
+import Distribution.Utils.Path
 import Distribution.Utils.ShortText (ShortText)
 import Distribution.Version (VersionRange)
 
@@ -46,7 +46,7 @@ licenseRaw :: Lens' PackageDescription (Either SPDX.License License)
 licenseRaw f s = fmap (\x -> s{T.licenseRaw = x}) (f (T.licenseRaw s))
 {-# INLINE licenseRaw #-}
 
-licenseFiles :: Lens' PackageDescription [SymbolicPath PackageDir LicenseFile]
+licenseFiles :: Lens' PackageDescription [RelativePath Pkg File]
 licenseFiles f s = fmap (\x -> s{T.licenseFiles = x}) (f (T.licenseFiles s))
 {-# INLINE licenseFiles #-}
 
@@ -138,25 +138,29 @@ benchmarks :: Lens' PackageDescription [Benchmark]
 benchmarks f s = fmap (\x -> s{T.benchmarks = x}) (f (T.benchmarks s))
 {-# INLINE benchmarks #-}
 
-dataFiles :: Lens' PackageDescription [FilePath]
+dataFiles :: Lens' PackageDescription [RelativePath DataDir File]
 dataFiles f s = fmap (\x -> s{T.dataFiles = x}) (f (T.dataFiles s))
 {-# INLINE dataFiles #-}
 
-dataDir :: Lens' PackageDescription FilePath
+dataDir :: Lens' PackageDescription (SymbolicPath Pkg (Dir DataDir))
 dataDir f s = fmap (\x -> s{T.dataDir = x}) (f (T.dataDir s))
 {-# INLINE dataDir #-}
 
-extraSrcFiles :: Lens' PackageDescription [String]
+extraSrcFiles :: Lens' PackageDescription [RelativePath Pkg File]
 extraSrcFiles f s = fmap (\x -> s{T.extraSrcFiles = x}) (f (T.extraSrcFiles s))
 {-# INLINE extraSrcFiles #-}
 
-extraTmpFiles :: Lens' PackageDescription [String]
+extraTmpFiles :: Lens' PackageDescription [RelativePath Pkg File]
 extraTmpFiles f s = fmap (\x -> s{T.extraTmpFiles = x}) (f (T.extraTmpFiles s))
 {-# INLINE extraTmpFiles #-}
 
-extraDocFiles :: Lens' PackageDescription [String]
+extraDocFiles :: Lens' PackageDescription [RelativePath Pkg File]
 extraDocFiles f s = fmap (\x -> s{T.extraDocFiles = x}) (f (T.extraDocFiles s))
 {-# INLINE extraDocFiles #-}
+
+extraFiles :: Lens' PackageDescription [RelativePath Pkg File]
+extraFiles f s = fmap (\x -> s{T.extraFiles = x}) (f (T.extraFiles s))
+{-# INLINE extraFiles #-}
 
 -- | @since 3.0.0.0
 allLibraries :: Traversal' PackageDescription Library

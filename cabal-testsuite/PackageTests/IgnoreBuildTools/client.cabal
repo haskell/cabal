@@ -1,0 +1,13 @@
+cabal-version:       3.0
+name:                client
+version:             0.1.0.0
+license:             MIT
+category:            Testing
+build-type:          Simple
+
+executable             hello-world
+  main-is:             Hello.hs
+  build-depends:       base
+  build-tool-depends:  pre-proc:zero-to-one, another:non-existent
+  -- build-tools:          somethingnonexists
+  default-language:    Haskell2010

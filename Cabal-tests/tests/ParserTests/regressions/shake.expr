@@ -88,42 +88,69 @@ GenericPackageDescription {
     testSuites = [],
     benchmarks = [],
     dataFiles = [
-      "html/viz.js",
-      "html/profile.html",
-      "html/progress.html",
-      "html/shake.js",
-      "docs/manual/build.bat",
-      "docs/manual/Build.hs",
-      "docs/manual/build.sh",
-      "docs/manual/constants.c",
-      "docs/manual/constants.h",
-      "docs/manual/main.c"],
-    dataDir = ".",
+      SymbolicPath "html/viz.js",
+      SymbolicPath
+        "html/profile.html",
+      SymbolicPath
+        "html/progress.html",
+      SymbolicPath "html/shake.js",
+      SymbolicPath
+        "docs/manual/build.bat",
+      SymbolicPath
+        "docs/manual/Build.hs",
+      SymbolicPath
+        "docs/manual/build.sh",
+      SymbolicPath
+        "docs/manual/constants.c",
+      SymbolicPath
+        "docs/manual/constants.h",
+      SymbolicPath
+        "docs/manual/main.c"],
+    dataDir = SymbolicPath ".",
     extraSrcFiles = [
-      "src/Test/C/constants.c",
-      "src/Test/C/constants.h",
-      "src/Test/C/main.c",
-      "src/Test/MakeTutor/Makefile",
-      "src/Test/MakeTutor/hellofunc.c",
-      "src/Test/MakeTutor/hellomake.c",
-      "src/Test/MakeTutor/hellomake.h",
-      "src/Test/Tar/list.txt",
-      "src/Test/Ninja/*.ninja",
-      "src/Test/Ninja/subdir/*.ninja",
-      "src/Test/Ninja/*.output",
-      "src/Test/Progress/*.prog",
-      "src/Test/Tup/hello.c",
-      "src/Test/Tup/root.cfg",
-      "src/Test/Tup/newmath/root.cfg",
-      "src/Test/Tup/newmath/square.c",
-      "src/Test/Tup/newmath/square.h",
-      "src/Paths.hs",
-      "docs/Manual.md",
-      "docs/shake-progress.png"],
+      SymbolicPath
+        "src/Test/C/constants.c",
+      SymbolicPath
+        "src/Test/C/constants.h",
+      SymbolicPath
+        "src/Test/C/main.c",
+      SymbolicPath
+        "src/Test/MakeTutor/Makefile",
+      SymbolicPath
+        "src/Test/MakeTutor/hellofunc.c",
+      SymbolicPath
+        "src/Test/MakeTutor/hellomake.c",
+      SymbolicPath
+        "src/Test/MakeTutor/hellomake.h",
+      SymbolicPath
+        "src/Test/Tar/list.txt",
+      SymbolicPath
+        "src/Test/Ninja/*.ninja",
+      SymbolicPath
+        "src/Test/Ninja/subdir/*.ninja",
+      SymbolicPath
+        "src/Test/Ninja/*.output",
+      SymbolicPath
+        "src/Test/Progress/*.prog",
+      SymbolicPath
+        "src/Test/Tup/hello.c",
+      SymbolicPath
+        "src/Test/Tup/root.cfg",
+      SymbolicPath
+        "src/Test/Tup/newmath/root.cfg",
+      SymbolicPath
+        "src/Test/Tup/newmath/square.c",
+      SymbolicPath
+        "src/Test/Tup/newmath/square.h",
+      SymbolicPath "src/Paths.hs",
+      SymbolicPath "docs/Manual.md",
+      SymbolicPath
+        "docs/shake-progress.png"],
     extraTmpFiles = [],
     extraDocFiles = [
-      "CHANGES.txt",
-      "README.md"]},
+      SymbolicPath "CHANGES.txt",
+      SymbolicPath "README.md"],
+    extraFiles = []},
   gpdScannedVersion = Nothing,
   genPackageFlags = [
     MkPackageFlag {
@@ -162,6 +189,7 @@ GenericPackageDescription {
           buildTools = [],
           buildToolDepends = [],
           cppOptions = [],
+          jsppOptions = [],
           asmOptions = [],
           cmmOptions = [],
           ccOptions = [],
@@ -279,6 +307,8 @@ GenericPackageDescription {
             []
             [],
           sharedOptions =
+          PerCompilerFlavor [] [],
+          profSharedOptions =
           PerCompilerFlavor [] [],
           staticOptions =
           PerCompilerFlavor [] [],
@@ -450,6 +480,7 @@ GenericPackageDescription {
                 buildTools = [],
                 buildToolDepends = [],
                 cppOptions = ["-DPORTABLE"],
+                jsppOptions = [],
                 asmOptions = [],
                 cmmOptions = [],
                 ccOptions = [],
@@ -493,6 +524,8 @@ GenericPackageDescription {
                   [],
                 sharedOptions =
                 PerCompilerFlavor [] [],
+                profSharedOptions =
+                PerCompilerFlavor [] [],
                 staticOptions =
                 PerCompilerFlavor [] [],
                 customFieldsBI = [],
@@ -517,6 +550,7 @@ GenericPackageDescription {
                       buildTools = [],
                       buildToolDepends = [],
                       cppOptions = [],
+                      jsppOptions = [],
                       asmOptions = [],
                       cmmOptions = [],
                       ccOptions = [],
@@ -560,6 +594,8 @@ GenericPackageDescription {
                         [],
                       sharedOptions =
                       PerCompilerFlavor [] [],
+                      profSharedOptions =
+                      PerCompilerFlavor [] [],
                       staticOptions =
                       PerCompilerFlavor [] [],
                       customFieldsBI = [],
@@ -591,6 +627,7 @@ GenericPackageDescription {
                   buildTools = [],
                   buildToolDepends = [],
                   cppOptions = [],
+                  jsppOptions = [],
                   asmOptions = [],
                   cmmOptions = [],
                   ccOptions = [],
@@ -634,6 +671,8 @@ GenericPackageDescription {
                     [],
                   sharedOptions =
                   PerCompilerFlavor [] [],
+                  profSharedOptions =
+                  PerCompilerFlavor [] [],
                   staticOptions =
                   PerCompilerFlavor [] [],
                   customFieldsBI = [],
@@ -658,6 +697,7 @@ GenericPackageDescription {
                         buildTools = [],
                         buildToolDepends = [],
                         cppOptions = [],
+                        jsppOptions = [],
                         asmOptions = [],
                         cmmOptions = [],
                         ccOptions = [],
@@ -701,6 +741,8 @@ GenericPackageDescription {
                           [],
                         sharedOptions =
                         PerCompilerFlavor [] [],
+                        profSharedOptions =
+                        PerCompilerFlavor [] [],
                         staticOptions =
                         PerCompilerFlavor [] [],
                         customFieldsBI = [],
@@ -736,6 +778,7 @@ GenericPackageDescription {
                 buildTools = [],
                 buildToolDepends = [],
                 cppOptions = [],
+                jsppOptions = [],
                 asmOptions = [],
                 cmmOptions = [],
                 ccOptions = [],
@@ -779,6 +822,8 @@ GenericPackageDescription {
                   [],
                 sharedOptions =
                 PerCompilerFlavor [] [],
+                profSharedOptions =
+                PerCompilerFlavor [] [],
                 staticOptions =
                 PerCompilerFlavor [] [],
                 customFieldsBI = [],
@@ -804,13 +849,15 @@ GenericPackageDescription {
         condTreeData = Executable {
           exeName = UnqualComponentName
             "shake",
-          modulePath = "Run.hs",
+          modulePath = SymbolicPath
+            "Run.hs",
           exeScope = ExecutablePublic,
           buildInfo = BuildInfo {
             buildable = True,
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
+            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
@@ -954,6 +1001,8 @@ GenericPackageDescription {
               []
               [],
             sharedOptions =
+            PerCompilerFlavor [] [],
+            profSharedOptions =
             PerCompilerFlavor [] [],
             staticOptions =
             PerCompilerFlavor [] [],
@@ -1127,13 +1176,14 @@ GenericPackageDescription {
               condTreeData = Executable {
                 exeName = UnqualComponentName
                   "shake",
-                modulePath = "",
+                modulePath = SymbolicPath "",
                 exeScope = ExecutablePublic,
                 buildInfo = BuildInfo {
                   buildable = True,
                   buildTools = [],
                   buildToolDepends = [],
                   cppOptions = [],
+                  jsppOptions = [],
                   asmOptions = [],
                   cmmOptions = [],
                   ccOptions = [],
@@ -1179,6 +1229,8 @@ GenericPackageDescription {
                     [],
                   sharedOptions =
                   PerCompilerFlavor [] [],
+                  profSharedOptions =
+                  PerCompilerFlavor [] [],
                   staticOptions =
                   PerCompilerFlavor [] [],
                   customFieldsBI = [],
@@ -1194,13 +1246,14 @@ GenericPackageDescription {
               condTreeData = Executable {
                 exeName = UnqualComponentName
                   "shake",
-                modulePath = "",
+                modulePath = SymbolicPath "",
                 exeScope = ExecutablePublic,
                 buildInfo = BuildInfo {
                   buildable = True,
                   buildTools = [],
                   buildToolDepends = [],
                   cppOptions = ["-DPORTABLE"],
+                  jsppOptions = [],
                   asmOptions = [],
                   cmmOptions = [],
                   ccOptions = [],
@@ -1244,6 +1297,8 @@ GenericPackageDescription {
                     [],
                   sharedOptions =
                   PerCompilerFlavor [] [],
+                  profSharedOptions =
+                  PerCompilerFlavor [] [],
                   staticOptions =
                   PerCompilerFlavor [] [],
                   customFieldsBI = [],
@@ -1258,13 +1313,14 @@ GenericPackageDescription {
                     condTreeData = Executable {
                       exeName = UnqualComponentName
                         "shake",
-                      modulePath = "",
+                      modulePath = SymbolicPath "",
                       exeScope = ExecutablePublic,
                       buildInfo = BuildInfo {
                         buildable = True,
                         buildTools = [],
                         buildToolDepends = [],
                         cppOptions = [],
+                        jsppOptions = [],
                         asmOptions = [],
                         cmmOptions = [],
                         ccOptions = [],
@@ -1308,6 +1364,8 @@ GenericPackageDescription {
                           [],
                         sharedOptions =
                         PerCompilerFlavor [] [],
+                        profSharedOptions =
+                        PerCompilerFlavor [] [],
                         staticOptions =
                         PerCompilerFlavor [] [],
                         customFieldsBI = [],
@@ -1329,13 +1387,14 @@ GenericPackageDescription {
                 condTreeData = Executable {
                   exeName = UnqualComponentName
                     "shake",
-                  modulePath = "",
+                  modulePath = SymbolicPath "",
                   exeScope = ExecutablePublic,
                   buildInfo = BuildInfo {
                     buildable = True,
                     buildTools = [],
                     buildToolDepends = [],
                     cppOptions = [],
+                    jsppOptions = [],
                     asmOptions = [],
                     cmmOptions = [],
                     ccOptions = [],
@@ -1379,6 +1438,8 @@ GenericPackageDescription {
                       [],
                     sharedOptions =
                     PerCompilerFlavor [] [],
+                    profSharedOptions =
+                    PerCompilerFlavor [] [],
                     staticOptions =
                     PerCompilerFlavor [] [],
                     customFieldsBI = [],
@@ -1393,13 +1454,14 @@ GenericPackageDescription {
                       condTreeData = Executable {
                         exeName = UnqualComponentName
                           "shake",
-                        modulePath = "",
+                        modulePath = SymbolicPath "",
                         exeScope = ExecutablePublic,
                         buildInfo = BuildInfo {
                           buildable = True,
                           buildTools = [],
                           buildToolDepends = [],
                           cppOptions = [],
+                          jsppOptions = [],
                           asmOptions = [],
                           cmmOptions = [],
                           ccOptions = [],
@@ -1443,6 +1505,8 @@ GenericPackageDescription {
                             [],
                           sharedOptions =
                           PerCompilerFlavor [] [],
+                          profSharedOptions =
+                          PerCompilerFlavor [] [],
                           staticOptions =
                           PerCompilerFlavor [] [],
                           customFieldsBI = [],
@@ -1468,13 +1532,14 @@ GenericPackageDescription {
               condTreeData = Executable {
                 exeName = UnqualComponentName
                   "shake",
-                modulePath = "",
+                modulePath = SymbolicPath "",
                 exeScope = ExecutablePublic,
                 buildInfo = BuildInfo {
                   buildable = True,
                   buildTools = [],
                   buildToolDepends = [],
                   cppOptions = [],
+                  jsppOptions = [],
                   asmOptions = [],
                   cmmOptions = [],
                   ccOptions = [],
@@ -1518,6 +1583,8 @@ GenericPackageDescription {
                     [],
                   sharedOptions =
                   PerCompilerFlavor [] [],
+                  profSharedOptions =
+                  PerCompilerFlavor [] [],
                   staticOptions =
                   PerCompilerFlavor [] [],
                   customFieldsBI = [],
@@ -1544,12 +1611,13 @@ GenericPackageDescription {
             "",
           testInterface = TestSuiteExeV10
             (mkVersion [1, 0])
-            "Test.hs",
+            (SymbolicPath "Test.hs"),
           testBuildInfo = BuildInfo {
             buildable = True,
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
+            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
@@ -1737,6 +1805,8 @@ GenericPackageDescription {
               [],
             sharedOptions =
             PerCompilerFlavor [] [],
+            profSharedOptions =
+            PerCompilerFlavor [] [],
             staticOptions =
             PerCompilerFlavor [] [],
             customFieldsBI = [],
@@ -1922,6 +1992,7 @@ GenericPackageDescription {
                   buildTools = [],
                   buildToolDepends = [],
                   cppOptions = [],
+                  jsppOptions = [],
                   asmOptions = [],
                   cmmOptions = [],
                   ccOptions = [],
@@ -1965,6 +2036,8 @@ GenericPackageDescription {
                     [],
                   sharedOptions =
                   PerCompilerFlavor [] [],
+                  profSharedOptions =
+                  PerCompilerFlavor [] [],
                   staticOptions =
                   PerCompilerFlavor [] [],
                   customFieldsBI = [],
@@ -1991,6 +2064,7 @@ GenericPackageDescription {
                   buildTools = [],
                   buildToolDepends = [],
                   cppOptions = [],
+                  jsppOptions = [],
                   asmOptions = [],
                   cmmOptions = [],
                   ccOptions = [],
@@ -2034,6 +2108,8 @@ GenericPackageDescription {
                     [],
                   sharedOptions =
                   PerCompilerFlavor [] [],
+                  profSharedOptions =
+                  PerCompilerFlavor [] [],
                   staticOptions =
                   PerCompilerFlavor [] [],
                   customFieldsBI = [],
@@ -2060,6 +2136,7 @@ GenericPackageDescription {
                   buildTools = [],
                   buildToolDepends = [],
                   cppOptions = ["-DPORTABLE"],
+                  jsppOptions = [],
                   asmOptions = [],
                   cmmOptions = [],
                   ccOptions = [],
@@ -2103,6 +2180,8 @@ GenericPackageDescription {
                     [],
                   sharedOptions =
                   PerCompilerFlavor [] [],
+                  profSharedOptions =
+                  PerCompilerFlavor [] [],
                   staticOptions =
                   PerCompilerFlavor [] [],
                   customFieldsBI = [],
@@ -2128,6 +2207,7 @@ GenericPackageDescription {
                         buildTools = [],
                         buildToolDepends = [],
                         cppOptions = [],
+                        jsppOptions = [],
                         asmOptions = [],
                         cmmOptions = [],
                         ccOptions = [],
@@ -2171,6 +2251,8 @@ GenericPackageDescription {
                           [],
                         sharedOptions =
                         PerCompilerFlavor [] [],
+                        profSharedOptions =
+                        PerCompilerFlavor [] [],
                         staticOptions =
                         PerCompilerFlavor [] [],
                         customFieldsBI = [],
@@ -2203,6 +2285,7 @@ GenericPackageDescription {
                     buildTools = [],
                     buildToolDepends = [],
                     cppOptions = [],
+                    jsppOptions = [],
                     asmOptions = [],
                     cmmOptions = [],
                     ccOptions = [],
@@ -2246,6 +2329,8 @@ GenericPackageDescription {
                       [],
                     sharedOptions =
                     PerCompilerFlavor [] [],
+                    profSharedOptions =
+                    PerCompilerFlavor [] [],
                     staticOptions =
                     PerCompilerFlavor [] [],
                     customFieldsBI = [],
@@ -2271,6 +2356,7 @@ GenericPackageDescription {
                           buildTools = [],
                           buildToolDepends = [],
                           cppOptions = [],
+                          jsppOptions = [],
                           asmOptions = [],
                           cmmOptions = [],
                           ccOptions = [],
@@ -2314,6 +2400,8 @@ GenericPackageDescription {
                             [],
                           sharedOptions =
                           PerCompilerFlavor [] [],
+                          profSharedOptions =
+                          PerCompilerFlavor [] [],
                           staticOptions =
                           PerCompilerFlavor [] [],
                           customFieldsBI = [],
@@ -2350,6 +2438,7 @@ GenericPackageDescription {
                   buildTools = [],
                   buildToolDepends = [],
                   cppOptions = [],
+                  jsppOptions = [],
                   asmOptions = [],
                   cmmOptions = [],
                   ccOptions = [],
@@ -2392,6 +2481,8 @@ GenericPackageDescription {
                     []
                     [],
                   sharedOptions =
+                  PerCompilerFlavor [] [],
+                  profSharedOptions =
                   PerCompilerFlavor [] [],
                   staticOptions =
                   PerCompilerFlavor [] [],

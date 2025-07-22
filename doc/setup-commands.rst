@@ -144,9 +144,9 @@ This has the following effects:
    the set of databases via :option:`--package-db` (and related flags): these
    dependencies are assumed to be up-to-date. A dependency can be
    explicitly specified using :option:`--dependency` simply by giving the name
-   of the internal library; e.g., the dependency for an internal library
+   of the sublibrary; e.g., the dependency for a sublibrary
    named ``foo`` is given as
-   ``--dependency=pkg-internal=pkg-1.0-internal-abcd``.
+   ``--dependency=Lib:foo=foo-0.1-abc``.
 
 -  Only the dependencies needed for the requested component are
    required. Similarly, when :option:`--exact-configuration` is specified,
@@ -210,19 +210,31 @@ files of a package:
     to Cabal can be used in place of *prog*. For example:
     ``--alex-options="--template=mytemplatedir/"``. The *options* is
     split into program options based on spaces. Any options containing
-    embedded spaced need to be quoted, for example
-    ``--foo-options='--bar="C:\Program File\Bar"'``. As an alternative
-    that takes only one option at a time but avoids the need to quote,
-    use :option:`--PROG-option` instead.
+    embedded spaces need to be quoted with double quotes (``""``), for example
+    ``--foo-options='--bar="C:\Program Files\Bar"'``. (The single quotes
+    (``''``) are for your shell, the ``"double"`` quotes are passed to Cabal.)
+    For an alternative that takes only one option at a time but avoids the need
+    to quote, use :option:`--PROG-option` instead.
+
+    Note: if *prog* is ``ghc``, then options that do not affect build
+    artifacts, such as warning flags, are dropped. This is because
+    ``--ghc-options`` applies to GHC for the entire build plan, not just the
+    current package, and recompiling the entire dependency tree is probably
+    unintended. If you want to apply some options to ``cabal repl`` only, pass
+    ``--repl-options`` to ``cabal repl``.
 
 .. option:: --PROG-option=OPT
 
-    Specify a single additional option to the program *prog*. For
+    Specify a single additional option to the program *prog*. The option is
+    passed to *prog* as a single argument, without any splitting. For
     passing an option that contains embedded spaces, such as a file name
     with embedded spaces, using this rather than :option:`--PROG-options`
     means you do not need an additional level of quoting. Of course if you
     are using a command shell you may still need to quote, for example
-    ``--foo-options="--bar=C:\Program File\Bar"``.
+    ``--foo-options="--bar=C:\Program Files\Bar"``.
+
+    The same note regarding dropping flags as for :option:`--PROG-options`
+    applies to ``--PROG-option`` as well.
 
 All of the options passed with either :option:`--PROG-options`
 or :option:`--PROG-option` are passed in the order they were
@@ -612,8 +624,8 @@ Miscellaneous options
     built; this identifier is passed on to GHC and serves as the basis
     for linker symbols and the ``id`` field in a ``ghc-pkg``
     registration. When a package has multiple components, the actual
-    component identifiers are derived off of this identifier. E.g., an
-    internal library ``foo`` from package ``p-0.1-abcd`` will get the
+    component identifiers are derived off of this identifier. E.g., a
+    sublibrary ``foo`` from package ``p-0.1-abcd`` will get the
     identifier ``p-0.1-abcd-foo``.
 
 .. option:: --cid=CID
@@ -710,6 +722,14 @@ Miscellaneous options
         each module, whether top level or local. In GHC specifically,
         this is for non-inline toplevel or where-bound functions or
         values.
+    late-toplevel
+        Like top-level but costs will be assigned to top level definitions after
+        optimization. This lowers profiling overhead massively while giving similar
+        levels of detail as toplevel-functions. However it means functions introduced
+        by GHC during optimization will show up in profiles as well.
+        Corresponds to ``-fprof-late`` if supported and ``-fprof-auto-top`` otherwise.
+    late
+        Currently an alias for late-toplevel
 
     This flag is new in Cabal-1.24. Prior versions used the equivalent
     of ``none`` above.
@@ -787,9 +807,20 @@ Miscellaneous options
     Build shared library. This implies a separate compiler run to
     generate position independent code as required on most platforms.
 
+    ``--enable-shared`` is enabled automatically if GHC is dynamically linked or
+    you request to build dynamic executables.
+
 .. option:: --disable-shared
 
     (default) Do not build shared library.
+
+.. option:: --enable-profiling-shared
+
+   Build a profiling shared library.
+
+.. option:: --disable-profiling-shared
+
+   (default) Do not built a profiling shared library.
 
 .. option:: --enable-static
 
@@ -1311,7 +1342,7 @@ the package.
 
     Default value is ``direct``: it leaves test output untouched and does not
     produce a log. This allows for colored output, which is popular with testing
-    frameworks. (On the other hand, ``streaming`` creates a log but looses
+    frameworks. (On the other hand, ``streaming`` creates a log but loses
     coloring.)
 
 .. option:: --test-options=TEMPLATES
@@ -1366,7 +1397,8 @@ The files placed in this distribution are the package description file,
 the setup script, the sources of the modules named in the package
 description file, and files named in the ``license-file``, ``main-is``,
 ``c-sources``, ``asm-sources``, ``cmm-sources``, ``js-sources``,
-``data-files``, ``extra-source-files`` and ``extra-doc-files`` fields.
+``data-files``, ``extra-source-files``, ``extra-doc-files``, and
+``extra-files`` fields.
 
 This command takes the following option:
 
@@ -1379,3 +1411,60 @@ This command takes the following option:
 
 
 .. include:: references.inc
+
+.. _setup-repl:
+
+runhaskell Setup.hs repl
+------------------------
+
+Open an interpreter session for the given component.
+
+Usage:
+
+.. program:: runhaskell Setup.hs repl [COMPONENT] [FLAGS]
+
+If the current directory contains no package, ignores COMPONENT parameters and
+opens an interactive interpreter session.
+
+Otherwise, (re)configures with the given or default flags, and loads the
+interpreter with the relevant modules. For executables, tests and benchmarks,
+loads the main module (and its dependencies); for libraries all exposed/other
+modules.
+
+The default component is the library itself, or the executable if that is the
+only component.
+
+Support for loading specific modules is planned but not implemented yet. For
+certain scenarios, ``Setup.hs exec -- ghci :l Foo`` may be used instead. Note
+that ``exec`` will not (re)configure and you will have to specify the location
+of other modules, if required.
+
+Flags for repl:
+
+.. option:: -v, --verbose[=n]
+
+    Control verbosity (n is 0--3, default verbosity level is 1).
+
+.. option:: --builddir=DIR
+
+    The directory where Cabal puts generated build files (default dist).
+
+.. option:: --with-PROG=PATH
+
+    Give the path to PROG.
+
+.. option:: --PROG-option=OPT
+
+    Give an extra option to PROG (passed directly to PROG as a single argument).
+
+.. option:: --PROG-options=OPTS
+
+    Give extra options to PROG (split on spaces, use "" to prevent splitting).
+
+.. option:: --repl-no-load
+
+    Disable loading of project modules at REPL startup.
+
+.. option:: --repl-options=FLAG
+
+    Use the option(s) for the repl.

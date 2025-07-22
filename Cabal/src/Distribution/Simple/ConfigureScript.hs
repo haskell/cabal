@@ -1,10 +1,11 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 -----------------------------------------------------------------------------
-{-# OPTIONS_GHC -fno-warn-deprecations #-}
+{-# OPTIONS_GHC -Wno-deprecations #-}
 
 -- |
 -- Module      :  Distribution.Simple.ConfigureScript
@@ -23,6 +24,7 @@ import Prelude ()
 -- local
 import Distribution.PackageDescription
 import Distribution.Pretty
+import Distribution.Simple.Configure (findDistPrefOrDefault)
 import Distribution.Simple.Errors
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program
@@ -30,18 +32,13 @@ import Distribution.Simple.Program.Db
 import Distribution.Simple.Setup.Common
 import Distribution.Simple.Setup.Config
 import Distribution.Simple.Utils
-import Distribution.System (buildPlatform)
+import Distribution.System (Platform, buildPlatform)
 import Distribution.Utils.NubList
-import Distribution.Verbosity
+import Distribution.Utils.Path
 
 -- Base
-import System.FilePath
-  ( dropDrive
-  , searchPathSeparator
-  , splitDirectories
-  , takeDirectory
-  , (</>)
-  )
+import System.Directory (createDirectoryIfMissing, doesFileExist)
+import qualified System.FilePath as FilePath
 #ifdef mingw32_HOST_OS
 import System.FilePath    (normalise, splitDrive)
 #endif
@@ -53,13 +50,25 @@ import qualified Data.List.NonEmpty as NonEmpty
 import qualified Data.Map as Map
 
 runConfigureScript
-  :: Verbosity
-  -> ConfigFlags
-  -> LocalBuildInfo
+  :: ConfigFlags
+  -> FlagAssignment
+  -> ProgramDb
+  -> Platform
+  -- ^ host platform
   -> IO ()
-runConfigureScript verbosity flags lbi = do
+runConfigureScript cfg flags programDb hp = do
+  let commonCfg = configCommonFlags cfg
+      verbosity = fromFlag $ setupVerbosity commonCfg
+  dist_dir <- findDistPrefOrDefault $ setupDistPref commonCfg
+  let build_dir = dist_dir </> makeRelativePathEx "build"
+      mbWorkDir = flagToMaybe $ setupWorkingDir commonCfg
+      configureScriptPath = packageRoot commonCfg </> "configure"
+  confExists <- doesFileExist configureScriptPath
+  unless confExists $
+    dieWithException verbosity (ConfigureScriptNotFound configureScriptPath)
+  configureFile <-
+    makeAbsolute $ configureScriptPath
   env <- getEnvironment
-  let programDb = withPrograms lbi
   (ccProg, ccFlags) <- configureCCompiler verbosity programDb
   ccProgShort <- getShortPathName ccProg
   -- The C compiler's compilation and linker flags (e.g.
@@ -68,9 +77,20 @@ runConfigureScript verbosity flags lbi = do
   -- to ccFlags
   -- We don't try and tell configure which ld to use, as we don't have
   -- a way to pass its flags too
-  configureFile <-
-    makeAbsolute $
-      fromMaybe "." (takeDirectory <$> cabalFilePath lbi) </> "configure"
+
+  -- Do not presume the CXX compiler is available, but it always will be after 9.4.
+  (mcxxProgShort, mcxxFlags) <- do
+    mprog <- needProgram verbosity gppProgram programDb
+    case mprog of
+      Just (p, _) -> do
+        let pInv = programInvocation p []
+        let cxxProg = progInvokePath pInv
+        let cxxFlags = progInvokeArgs pInv
+        cxxProgShort <- getShortPathName cxxProg
+        return (Just cxxProgShort, Just cxxFlags)
+      Nothing -> return (Nothing, Nothing)
+
+  let configureFile' = toUnix configureFile
   -- autoconf is fussy about filenames, and has a set of forbidden
   -- characters that can't appear in the build directory, etc:
   -- https://www.gnu.org/software/autoconf/manual/autoconf.html#File-System-Conventions
@@ -84,9 +104,8 @@ runConfigureScript verbosity flags lbi = do
   -- TODO: We don't check for colons, tildes or leading dashes. We
   -- also should check the builddir's path, destdir, and all other
   -- paths as well.
-  let configureFile' = toUnix configureFile
   for_ badAutoconfCharacters $ \(c, cname) ->
-    when (c `elem` dropDrive configureFile') $
+    when (c `elem` FilePath.dropDrive configureFile') $
       warn verbosity $
         concat
           [ "The path to the './configure' script, '"
@@ -116,7 +135,7 @@ runConfigureScript verbosity flags lbi = do
       Map.fromListWith
         (<>)
         [ (flagEnvVar flag, (flag, bool) :| [])
-        | (flag, bool) <- unFlagAssignment $ flagAssignment lbi
+        | (flag, bool) <- unFlagAssignment flags
         ]
   -- A map from env vars to flag names to the single flag we will go with
   cabalFlagMapDeconflicted :: Map String (FlagName, Bool) <-
@@ -148,43 +167,45 @@ runConfigureScript verbosity flags lbi = do
         ]
           ++ [
                ( "CABAL_FLAGS"
-               , Just $ unwords [showFlagValue fv | fv <- unFlagAssignment $ flagAssignment lbi]
+               , Just $ unwords [showFlagValue fv | fv <- unFlagAssignment flags]
                )
              ]
-  let extraPath = fromNubList $ configProgramPathExtra flags
-  let cflagsEnv =
-        maybe (unwords ccFlags) (++ (" " ++ unwords ccFlags)) $
-          lookup "CFLAGS" env
-      spSep = [searchPathSeparator]
+  let extraPath = fromNubList $ configProgramPathExtra cfg
+  let mkFlagsEnv fs var = maybe (unwords fs) (++ (" " ++ unwords fs)) (lookup var env)
+      spSep = [FilePath.searchPathSeparator]
       pathEnv =
         maybe
           (intercalate spSep extraPath)
           ((intercalate spSep extraPath ++ spSep) ++)
           $ lookup "PATH" env
       overEnv =
-        ("CFLAGS", Just cflagsEnv)
-          : [("PATH", Just pathEnv) | not (null extraPath)]
+        ("CFLAGS", Just (mkFlagsEnv ccFlags "CFLAGS"))
+          : [("CXXFLAGS", Just (mkFlagsEnv cxxFlags "CXXFLAGS")) | Just cxxFlags <- [mcxxFlags]]
+          ++ [("PATH", Just pathEnv) | not (null extraPath)]
           ++ cabalFlagEnv
-      hp = hostPlatform lbi
       maybeHostFlag = if hp == buildPlatform then [] else ["--host=" ++ show (pretty hp)]
-      args' = configureFile' : args ++ ["CC=" ++ ccProgShort] ++ maybeHostFlag
+      args' =
+        configureFile'
+          : args
+          ++ ["CC=" ++ ccProgShort]
+          ++ ["CXX=" ++ cxxProgShort | Just cxxProgShort <- [mcxxProgShort]]
+          ++ maybeHostFlag
       shProg = simpleProgram "sh"
-      progDb =
-        modifyProgramSearchPath
-          (\p -> map ProgramSearchPathDir extraPath ++ p)
-          emptyProgramDb
+  progDb <- prependProgramSearchPath verbosity extraPath [] emptyProgramDb
   shConfiguredProg <-
     lookupProgram shProg
       `fmap` configureProgram verbosity shProg progDb
   case shConfiguredProg of
-    Just sh ->
+    Just sh -> do
+      let build_in = interpretSymbolicPath mbWorkDir build_dir
+      createDirectoryIfMissing True build_in
       runProgramInvocation verbosity $
         (programInvocation (sh{programOverrideEnv = overEnv}) args')
-          { progInvokeCwd = Just (buildDir lbi)
+          { progInvokeCwd = Just build_in
           }
     Nothing -> dieWithException verbosity NotFoundMsg
   where
-    args = configureArgs backwardsCompatHack flags
+    args = configureArgs backwardsCompatHack cfg
     backwardsCompatHack = False
 
 -- | Convert Windows path to Unix ones
@@ -194,10 +215,10 @@ toUnix s = let tmp = normalise s
                (l, rest) = case splitDrive tmp of
                              ([],  x) -> ("/"      , x)
                              (h:_, x) -> ('/':h:"/", x)
-               parts = splitDirectories rest
+               parts = FilePath.splitDirectories rest
            in  l ++ intercalate "/" parts
 #else
-toUnix s = intercalate "/" $ splitDirectories s
+toUnix s = intercalate "/" $ FilePath.splitDirectories s
 #endif
 
 badAutoconfCharacters :: [(Char, String)]

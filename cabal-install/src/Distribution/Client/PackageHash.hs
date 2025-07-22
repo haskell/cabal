@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -10,6 +8,8 @@
 --   * the package tarball
 --   * the ids of all the direct dependencies
 --   * other local configuration (flags, profiling, etc)
+--
+-- See 'PackageHashInputs' for a detailed list of what determines the hash.
 module Distribution.Client.PackageHash
   ( -- * Calculating package hashes
     PackageHashInputs (..)
@@ -38,10 +38,11 @@ import Distribution.Package
   , mkComponentId
   )
 import Distribution.Simple.Compiler
-  ( CompilerId
+  ( AbiTag (..)
+  , CompilerId
   , DebugInfoLevel (..)
   , OptimisationLevel (..)
-  , PackageDB
+  , PackageDBCWD
   , ProfDetailLevel (..)
   , showProfDetailLevel
   )
@@ -191,6 +192,7 @@ type PackageSourceHash = HashValue
 -- package hash.
 data PackageHashConfigInputs = PackageHashConfigInputs
   { pkgHashCompilerId :: CompilerId
+  , pkgHashCompilerABI :: AbiTag
   , pkgHashPlatform :: Platform
   , pkgHashFlagAssignment :: FlagAssignment -- complete not partial
   , pkgHashConfigureScriptArgs :: [String] -- just ./configure for build-type Configure
@@ -217,7 +219,7 @@ data PackageHashConfigInputs = PackageHashConfigInputs
   , pkgHashExtraIncludeDirs :: [FilePath]
   , pkgHashProgPrefix :: Maybe PathTemplate
   , pkgHashProgSuffix :: Maybe PathTemplate
-  , pkgHashPackageDbs :: [Maybe PackageDB]
+  , pkgHashPackageDbs :: [Maybe PackageDBCWD]
   , -- Haddock options
     pkgHashDocumentation :: Bool
   , pkgHashHaddockHoogle :: Bool
@@ -234,8 +236,9 @@ data PackageHashConfigInputs = PackageHashConfigInputs
   , pkgHashHaddockContents :: Maybe PathTemplate
   , pkgHashHaddockIndex :: Maybe PathTemplate
   , pkgHashHaddockBaseUrl :: Maybe String
-  , pkgHashHaddockLib :: Maybe String
+  , pkgHashHaddockResourcesDir :: Maybe String
   , pkgHashHaddockOutputDir :: Maybe FilePath
+  , pkgHashHaddockUseUnicode :: Bool
   --     TODO: [required eventually] pkgHashToolsVersions     ?
   --     TODO: [required eventually] pkgHashToolsExtraOptions ?
   }
@@ -301,6 +304,7 @@ renderPackageHashInputs
               pkgHashDirectDeps
           , -- and then all the config
             entry "compilerid" prettyShow pkgHashCompilerId
+          , entry "compilerabi" prettyShow pkgHashCompilerABI
           , entry "platform" prettyShow pkgHashPlatform
           , opt "flags" mempty showFlagAssignment pkgHashFlagAssignment
           , opt "configure-script" [] unwords pkgHashConfigureScriptArgs
@@ -342,8 +346,9 @@ renderPackageHashInputs
           , opt "haddock-contents-location" Nothing (maybe "" fromPathTemplate) pkgHashHaddockContents
           , opt "haddock-index-location" Nothing (maybe "" fromPathTemplate) pkgHashHaddockIndex
           , opt "haddock-base-url" Nothing (fromMaybe "") pkgHashHaddockBaseUrl
-          , opt "haddock-lib" Nothing (fromMaybe "") pkgHashHaddockLib
+          , opt "haddock-resources-dir" Nothing (fromMaybe "") pkgHashHaddockResourcesDir
           , opt "haddock-output-dir" Nothing (fromMaybe "") pkgHashHaddockOutputDir
+          , opt "haddock-use-unicode" False prettyShow pkgHashHaddockUseUnicode
           ]
             ++ Map.foldrWithKey (\prog args acc -> opt (prog ++ "-options") [] unwords args : acc) [] pkgHashProgramArgs
     where

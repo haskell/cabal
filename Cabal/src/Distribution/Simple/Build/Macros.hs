@@ -58,7 +58,7 @@ generateCabalMacrosHeader pkg_descr lbi clbi =
           , let (major1, major2, minor) = majorMinor ver
           ]
       , Z.zPackageKey = case clbi of
-          LibComponentLocalBuildInfo{} -> componentCompatPackageKey clbi
+          LibComponentLocalBuildInfo{componentCompatPackageKey = compatPackageKey} -> compatPackageKey
           _ -> ""
       , Z.zComponentId = prettyShow (componentComponentId clbi)
       , Z.zPackageVersion = pkgVersion (package pkg_descr)

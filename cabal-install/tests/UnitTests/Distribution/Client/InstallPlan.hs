@@ -5,7 +5,6 @@
 module UnitTests.Distribution.Client.InstallPlan (tests) where
 
 import Distribution.Client.Compat.Prelude
-import qualified Prelude as Unsafe (tail)
 
 import Distribution.Client.InstallPlan (GenericInstallPlan, IsUnit)
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -285,7 +284,7 @@ arbitraryAcyclicGraph genNRanks genNPerRank edgeChance = do
   nranks <- genNRanks
   rankSizes <- replicateM nranks genNPerRank
   let rankStarts = scanl (+) 0 rankSizes
-      rankRanges = drop 1 (zip rankStarts (Unsafe.tail rankStarts))
+      rankRanges = drop 1 (zip rankStarts (drop 1 rankStarts))
       totalRange = sum rankSizes
   rankEdges <- traverse (uncurry genRank) rankRanges
   return $ buildG (0, totalRange - 1) (concat rankEdges)
@@ -317,9 +316,9 @@ renderDotGraph :: Graph -> String
 renderDotGraph graph =
   unlines (
       [header
-      ,graphDefaultAtribs
-      ,nodeDefaultAtribs
-      ,edgeDefaultAtribs]
+      ,graphDefaultAttribs
+      ,nodeDefaultAttribs
+      ,edgeDefaultAttribs]
     ++ map renderNode (vertices graph)
     ++ map renderEdge (edges graph)
     ++ [footer]
@@ -329,12 +328,12 @@ renderDotGraph graph =
 
     renderEdge (n, n') = "\t" ++ show n ++ " -> " ++ show n' ++ "[];"
 
-header, footer, graphDefaultAtribs, nodeDefaultAtribs, edgeDefaultAtribs :: String
+header, footer, graphDefaultAttribs, nodeDefaultAttribs, edgeDefaultAttribs :: String
 
 header = "digraph packages {"
 footer = "}"
 
-graphDefaultAtribs = "\tgraph [fontsize=14, fontcolor=black, color=black];"
-nodeDefaultAtribs  = "\tnode [label=\"\\N\", width=\"0.75\", shape=ellipse];"
-edgeDefaultAtribs  = "\tedge [fontsize=10];"
+graphDefaultAttribs = "\tgraph [fontsize=14, fontcolor=black, color=black];"
+nodeDefaultAttribs  = "\tnode [label=\"\\N\", width=\"0.75\", shape=ellipse];"
+edgeDefaultAttribs  = "\tedge [fontsize=10];"
 -}

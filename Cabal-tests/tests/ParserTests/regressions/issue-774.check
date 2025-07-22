@@ -1,6 +1,6 @@
 issue-774.cabal:13:22: Packages with 'cabal-version: 1.12' or later should specify a specific version of the Cabal spec of the form 'cabal-version: x.y'. Use 'cabal-version: 1.12'.
-No 'category' field.
-No 'maintainer' field.
-The 'license' field is missing or is NONE.
-'ghc-options: -rtsopts' has no effect for libraries. It should only be used for executables.
-'ghc-options: -with-rtsopts' has no effect for libraries. It should only be used for executables.
+[option-rtsopts] 'ghc-options: -rtsopts' has no effect for libraries. It should only be used for executables.
+[option-with-rtsopts] 'ghc-options: -with-rtsopts' has no effect for libraries. It should only be used for executables.
+[no-category] No 'category' field.
+[no-maintainer] No 'maintainer' field.
+[license-none] The 'license' field is missing or is NONE.

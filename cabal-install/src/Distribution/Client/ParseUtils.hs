@@ -1,6 +1,7 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -----------------------------------------------------------------------------
 
@@ -17,6 +18,8 @@ module Distribution.Client.ParseUtils
     FieldDescr (..)
   , liftField
   , liftFields
+  , addFields
+  , aliasField
   , filterFields
   , mapFieldNames
   , commandOptionToField
@@ -51,6 +54,7 @@ import Distribution.Deprecated.ParseUtils
   ( Field (..)
   , FieldDescr (..)
   , LineNo
+  , PError (..)
   , ParseResult (..)
   , liftField
   , lineNo
@@ -103,8 +107,14 @@ liftFields get set = map (liftField get set)
 
 -- | Given a collection of field descriptions, keep only a given list of them,
 -- identified by name.
+--
+-- TODO: This makes it easy to footgun by providing a non-existent field name.
 filterFields :: [String] -> [FieldDescr a] -> [FieldDescr a]
 filterFields includeFields = filter ((`elem` includeFields) . fieldName)
+
+-- | Given a collection of field descriptions, get a field with a given name.
+getField :: String -> [FieldDescr a] -> Maybe (FieldDescr a)
+getField name = find ((== name) . fieldName)
 
 -- | Apply a name mangling function to the field names of all the field
 -- descriptions. The typical use case is to apply some prefix.
@@ -119,6 +129,30 @@ commandOptionToField = viewAsFieldDescr
 -- | Reuse a bunch of command line 'OptionField's as config file 'FieldDescr's.
 commandOptionsToFields :: [OptionField a] -> [FieldDescr a]
 commandOptionsToFields = map viewAsFieldDescr
+
+-- | Add fields to a field list.
+addFields
+  :: [FieldDescr a]
+  -> ([FieldDescr a] -> [FieldDescr a])
+addFields = (++)
+
+-- | Add a new field which is identical to an existing field but with a
+-- different name.
+aliasField
+  :: String
+  -- ^ The existing field name.
+  -> String
+  -- ^ The new field name.
+  -> [FieldDescr a]
+  -> [FieldDescr a]
+aliasField oldName newName fields =
+  let fieldToRename = getField oldName fields
+   in case fieldToRename of
+        -- TODO: Should this throw?
+        Nothing -> fields
+        Just fieldToRename' ->
+          let newField = fieldToRename'{fieldName = newName}
+           in newField : fields
 
 ------------------------------------------
 -- SectionDescr definition and utilities
@@ -260,13 +294,16 @@ parseFieldsAndSections fieldDescrs sectionDescrs fgSectionDescrs =
     setField a (F line name value) =
       case Map.lookup name fieldMap of
         Just (FieldDescr _ _ set) -> set line value a
-        Nothing -> do
-          warning $
-            "Unrecognized field '"
-              ++ name
-              ++ "' on line "
-              ++ show line
-          return a
+        Nothing ->
+          case Left <$> Map.lookup name sectionMap <|> Right <$> Map.lookup name fgSectionMap of
+            Just _ -> ParseFailed $ FieldShouldBeStanza name line
+            Nothing -> do
+              warning $
+                "Unrecognized field '"
+                  ++ name
+                  ++ "' on line "
+                  ++ show line
+              return a
     setField a (Section line name param fields) =
       case Left <$> Map.lookup name sectionMap <|> Right <$> Map.lookup name fgSectionMap of
         Just (Left (SectionDescr _ fieldDescrs' sectionDescrs' _ set sectionEmpty)) -> do

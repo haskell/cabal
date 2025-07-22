@@ -1,10 +1,9 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
-
------------------------------------------------------------------------------
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- Module      :  Distribution.Simple.Setup.Clean
@@ -18,7 +17,15 @@
 -- Definition of the clean command-line options.
 -- See: @Distribution.Simple.Setup@
 module Distribution.Simple.Setup.Clean
-  ( CleanFlags (..)
+  ( CleanFlags
+      ( CleanCommonFlags
+      , cleanVerbosity
+      , cleanDistPref
+      , cleanCabalFilePath
+      , cleanWorkingDir
+      , cleanTargets
+      , ..
+      )
   , emptyCleanFlags
   , defaultCleanFlags
   , cleanCommand
@@ -29,9 +36,9 @@ import Prelude ()
 
 import Distribution.Simple.Command hiding (boolOpt, boolOpt')
 import Distribution.Simple.Flag
-import Distribution.Verbosity
-
 import Distribution.Simple.Setup.Common
+import Distribution.Utils.Path
+import Distribution.Verbosity
 
 -- ------------------------------------------------------------
 
@@ -40,20 +47,43 @@ import Distribution.Simple.Setup.Common
 -- ------------------------------------------------------------
 
 data CleanFlags = CleanFlags
-  { cleanSaveConf :: Flag Bool
-  , cleanDistPref :: Flag FilePath
-  , cleanVerbosity :: Flag Verbosity
-  , cleanCabalFilePath :: Flag FilePath
+  { cleanCommonFlags :: !CommonSetupFlags
+  , cleanSaveConf :: Flag Bool
   }
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic)
+
+pattern CleanCommonFlags
+  :: Flag Verbosity
+  -> Flag (SymbolicPath Pkg (Dir Dist))
+  -> Flag (SymbolicPath CWD (Dir Pkg))
+  -> Flag (SymbolicPath Pkg File)
+  -> [String]
+  -> CleanFlags
+pattern CleanCommonFlags
+  { cleanVerbosity
+  , cleanDistPref
+  , cleanWorkingDir
+  , cleanCabalFilePath
+  , cleanTargets
+  } <-
+  ( cleanCommonFlags ->
+      CommonSetupFlags
+        { setupVerbosity = cleanVerbosity
+        , setupDistPref = cleanDistPref
+        , setupWorkingDir = cleanWorkingDir
+        , setupCabalFilePath = cleanCabalFilePath
+        , setupTargets = cleanTargets
+        }
+    )
+
+instance Binary CleanFlags
+instance Structured CleanFlags
 
 defaultCleanFlags :: CleanFlags
 defaultCleanFlags =
   CleanFlags
-    { cleanSaveConf = Flag False
-    , cleanDistPref = NoFlag
-    , cleanVerbosity = Flag normal
-    , cleanCabalFilePath = mempty
+    { cleanCommonFlags = defaultCommonSetupFlags
+    , cleanSaveConf = Flag False
     }
 
 cleanCommand :: CommandUI CleanFlags
@@ -68,19 +98,18 @@ cleanCommand =
         "Usage: " ++ pname ++ " clean [FLAGS]\n"
     , commandDefaultFlags = defaultCleanFlags
     , commandOptions = \showOrParseArgs ->
-        [ optionVerbosity cleanVerbosity (\v flags -> flags{cleanVerbosity = v})
-        , optionDistPref
-            cleanDistPref
-            (\d flags -> flags{cleanDistPref = d})
-            showOrParseArgs
-        , option
-            "s"
-            ["save-configure"]
-            "Do not remove the configuration file (dist/setup-config) during cleaning.  Saves need to reconfigure."
-            cleanSaveConf
-            (\v flags -> flags{cleanSaveConf = v})
-            trueArg
-        ]
+        withCommonSetupOptions
+          cleanCommonFlags
+          (\c f -> f{cleanCommonFlags = c})
+          showOrParseArgs
+          [ option
+              "s"
+              ["save-configure"]
+              "Do not remove the configuration file (dist/setup-config) during cleaning.  Saves need to reconfigure."
+              cleanSaveConf
+              (\v flags -> flags{cleanSaveConf = v})
+              trueArg
+          ]
     }
 
 emptyCleanFlags :: CleanFlags

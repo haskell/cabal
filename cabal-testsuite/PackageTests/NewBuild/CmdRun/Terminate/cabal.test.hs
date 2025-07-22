@@ -17,36 +17,36 @@ without forking in the future.)
 -}
 
 main :: IO ()
-main = cabalTest $ do
-  skipIfWindows -- test project relies on Posix
+main = do
+  skipIfWindows "depends on `unix`"
+  cabalTest $ do
+    -- timestamped logging to aid with #8416
+    let logIO msg = do
+          ts <- Time.getCurrentTime
+          let tsfmt = Time.formatTime Time.defaultTimeLocale "%H:%M:%S.%q" ts
+          putStrLn $ tsfmt <> " [cabal.test] " <> msg
+        log = liftIO . logIO
 
-  -- timestamped logging to aid with #8416
-  let logIO msg = do
-        ts <- Time.getCurrentTime
-        let tsfmt = Time.formatTime Time.defaultTimeLocale "%H:%M:%S.%q" ts
-        putStrLn $ tsfmt <> " [cabal.test] " <> msg
-      log = liftIO . logIO
+    dir <- fmap testCurrentDir getTestEnv
+    let runFile = dir </> "exe.run"
+    liftIO $ removeFile runFile `catchNoExist` return ()
 
-  dir <- fmap testCurrentDir getTestEnv
-  let runFile = dir </> "exe.run"
-  liftIO $ removeFile runFile `catchNoExist` return ()
+    log "about to v2-build"
+    cabal_raw_action ["v2-build", "exe"] (\_ -> return ())
+    log "about to v2-run"
+    r <- fails $ cabal_raw_action ["v2-run", "exe"] $ \cabalHandle -> do
+      -- wait for "cabal run" to have started "exe"
+      logIO "about to wait for file"
+      waitFile total runFile
+      -- then kill "cabal run"
+      logIO "about to terminate cabal"
+      Process.terminateProcess cabalHandle
+    log "v2-run done"
 
-  log "about to v2-build"
-  cabal_raw_action ["v2-build", "exe"] (\_ -> return ())
-  log "about to v2-run"
-  r <- fails $ cabal_raw_action ["v2-run", "exe"] $ \cabalHandle -> do
-    -- wait for "cabal run" to have started "exe"
-    logIO "about to wait for file"
-    waitFile total runFile
-    -- then kill "cabal run"
-    logIO "about to terminate cabal"
-    Process.terminateProcess cabalHandle
-  log "v2-run done"
-
-  -- "exe" should exit, and should have been interrupted before
-  -- finishing its sleep
-  assertOutputContains "exiting" r
-  assertOutputDoesNotContain "done sleeping" r
+    -- "exe" should exit, and should have been interrupted before
+    -- finishing its sleep
+    assertOutputContains "exiting" r
+    assertOutputDoesNotContain "done sleeping" r
 
   where
     catchNoExist action handle =
@@ -65,7 +65,7 @@ cabal_raw_action args action = do
     configured_prog <- requireProgramM cabalProgram
     env <- getTestEnv
     r <- liftIO $ runAction (testVerbosity env)
-                 (Just (testCurrentDir env))
+                 (Just $ testCurrentDir env)
                  (testEnvironment env)
                  (programPath configured_prog)
                  args

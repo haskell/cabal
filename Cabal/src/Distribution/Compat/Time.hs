@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -21,7 +20,8 @@ import Prelude ()
 
 import System.Directory (getModificationTime)
 
-import Distribution.Simple.Utils (withTempDirectory)
+import Distribution.Simple.Utils (withTempDirectoryCwd)
+import Distribution.Utils.Path (getSymbolicPath, sameDirectory)
 import Distribution.Verbosity (silent)
 
 import System.FilePath
@@ -33,11 +33,7 @@ import Data.Time.Clock.POSIX (POSIXTime, getPOSIXTime, posixDayLength)
 
 import qualified Prelude
 import Data.Bits          ((.|.), unsafeShiftL)
-#if MIN_VERSION_base(4,7,0)
 import Data.Bits          (finiteBitSize)
-#else
-import Data.Bits          (bitSize)
-#endif
 
 import Foreign            ( allocaBytes, peekByteOff )
 import System.IO.Error    ( mkIOError, doesNotExistErrorType )
@@ -45,20 +41,21 @@ import System.Win32.Types ( BOOL, DWORD, LPCTSTR, LPVOID, withTString )
 
 #else
 
-import System.Posix.Files ( FileStatus, getFileStatus )
-
+import System.Posix.Files
+  ( FileStatus, getFileStatus
 #if MIN_VERSION_unix(2,6,0)
-import System.Posix.Files ( modificationTimeHiRes )
+  , modificationTimeHiRes
 #else
-import System.Posix.Files ( modificationTime )
+  , modificationTime
 #endif
+  )
 
 #endif
 
 -- | An opaque type representing a file's modification time, represented
 -- internally as a 64-bit unsigned integer in the Windows UTC format.
 newtype ModTime = ModTime Word64
-  deriving (Binary, Generic, Bounded, Eq, Ord, Typeable)
+  deriving (Binary, Generic, Bounded, Eq, Ord)
 
 instance Structured ModTime
 
@@ -91,19 +88,13 @@ getModTime path = allocaBytes size_WIN32_FILE_ATTRIBUTE_DATA $ \info -> do
                 index_WIN32_FILE_ATTRIBUTE_DATA_ftLastWriteTime_dwLowDateTime
       dwHigh <- peekByteOff info
                 index_WIN32_FILE_ATTRIBUTE_DATA_ftLastWriteTime_dwHighDateTime
-#if MIN_VERSION_base(4,7,0)
       let qwTime =
             (fromIntegral (dwHigh :: DWORD) `unsafeShiftL` finiteBitSize dwHigh)
             .|. (fromIntegral (dwLow :: DWORD))
-#else
-      let qwTime =
-            (fromIntegral (dwHigh :: DWORD) `unsafeShiftL` bitSize dwHigh)
-            .|. (fromIntegral (dwLow :: DWORD))
-#endif
       return $! ModTime (qwTime :: Word64)
 
 {- FOURMOLU_DISABLE -}
-#ifdef x86_64_HOST_ARCH
+#if defined(x86_64_HOST_ARCH) || defined(aarch64_HOST_ARCH)
 #define CALLCONV ccall
 #else
 #define CALLCONV stdcall
@@ -177,8 +168,8 @@ getCurTime = posixTimeToModTime `fmap` getPOSIXTime -- Uses 'gettimeofday'.
 -- than 10 ms, but never larger than 1 second.
 calibrateMtimeChangeDelay :: IO (Int, Int)
 calibrateMtimeChangeDelay =
-  withTempDirectory silent "." "calibration-" $ \dir -> do
-    let fileName = dir </> "probe"
+  withTempDirectoryCwd silent Nothing sameDirectory "calibration-" $ \dir -> do
+    let fileName = getSymbolicPath dir </> "probe"
     mtimes <- for [1 .. 25] $ \(i :: Int) -> time $ do
       writeFile fileName $ show i
       t0 <- getModTime fileName

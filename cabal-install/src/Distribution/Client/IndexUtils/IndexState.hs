@@ -68,10 +68,10 @@ instance Pretty TotalIndexState where
 -- Just (TIS IndexStateHead (fromList []))
 --
 -- >>> simpleParsec "2020-02-04T12:34:56Z, hackage.haskell.org HEAD" :: Maybe TotalIndexState
--- Just (TIS (IndexStateTime (TS 1580819696)) (fromList [(RepoName "hackage.haskell.org",IndexStateHead)]))
+-- Just (TIS (IndexStateTime (TS 1580819696)) (fromList [(RepoName {unRepoName = "hackage.haskell.org"},IndexStateHead)]))
 --
 -- >>> simpleParsec "hackage.haskell.org 2020-02-04T12:34:56Z" :: Maybe TotalIndexState
--- Just (TIS IndexStateHead (fromList [(RepoName "hackage.haskell.org",IndexStateTime (TS 1580819696))]))
+-- Just (TIS IndexStateHead (fromList [(RepoName {unRepoName = "hackage.haskell.org"},IndexStateTime (TS 1580819696))]))
 instance Parsec TotalIndexState where
   parsec = normalise . foldl' add headTotalIndexState <$> parsecLeadingCommaNonEmpty single0
     where

@@ -27,7 +27,7 @@ data ForeignLibType
     ForeignLibNativeStatic
   | -- TODO: Maybe this should record a string?
     ForeignLibTypeUnknown
-  deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
+  deriving (Generic, Show, Read, Eq, Ord, Data)
 
 instance Pretty ForeignLibType where
   pretty ForeignLibNativeShared = Disp.text "native-shared"

@@ -28,6 +28,7 @@ data IOData
   | -- | Raw binary which gets read/written in binary mode.
     IODataBinary LBS.ByteString
 
+-- | Applies a function polymorphic over 'IODataMode' to an 'IOData' value.
 withIOData :: IOData -> (forall mode. IODataMode mode -> mode -> r) -> r
 withIOData (IODataText str) k = k IODataModeText str
 withIOData (IODataBinary lbs) k = k IODataModeBinary lbs
@@ -53,7 +54,10 @@ class NFData mode => KnownIODataMode mode where
   toIOData :: mode -> IOData
   iodataMode :: IODataMode mode
 
--- | @since 3.2
+-- | Phantom-typed GADT representation of the mode of 'IOData', containing no
+-- other data.
+--
+-- @since 3.2
 data IODataMode mode where
   IODataModeText :: IODataMode String
   IODataModeBinary :: IODataMode LBS.ByteString
@@ -76,7 +80,7 @@ instance KnownIODataMode LBS.ByteString where
 
 -- | 'IOData' Wrapper for 'System.IO.hPutStr' and 'System.IO.hClose'
 --
--- This is the dual operation ot 'hGetIODataContents',
+-- This is the dual operation to 'hGetIODataContents',
 -- and consequently the handle is closed with `hClose`.
 --
 -- /Note:/ this performs lazy-IO.

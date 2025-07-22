@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE StandaloneDeriving #-}
 module UnitTests.Distribution.PkgconfigVersion (pkgconfigVersionTests) where
 
 import Test.Tasty

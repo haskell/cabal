@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 module Distribution.Client.CmdInstall.ClientInstallFlags
   ( InstallMethod (..)
@@ -22,10 +22,11 @@ import Distribution.Simple.Command
   , reqArg
   )
 import Distribution.Simple.Setup
-  ( Flag (..)
+  ( Flag
   , flagToList
   , toFlag
   , trueArg
+  , pattern Flag
   )
 
 import Distribution.Client.Types.InstallMethod

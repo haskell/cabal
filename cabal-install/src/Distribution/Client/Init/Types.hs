@@ -1,7 +1,9 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TypeApplications #-}
 
 -- |
 -- Module      :  Distribution.Client.Init.Types
@@ -39,7 +41,11 @@ module Distribution.Client.Init.Types
     -- * Typeclasses
   , Interactive (..)
   , BreakException (..)
-  , PurePrompt (..)
+  , PromptIO
+  , runPromptIO
+  , Inputs
+  , PurePrompt
+  , runPrompt
   , evalPrompt
   , Severity (..)
 
@@ -63,15 +69,18 @@ import qualified Distribution.Client.Compat.Prelude as P
 import Prelude (read)
 
 import Control.Monad.Catch
+import Control.Monad.IO.Class
+import Control.Monad.Reader
 
 import Data.List.NonEmpty (fromList)
 
+import qualified Data.IORef
 import Distribution.CabalSpecVersion
 import Distribution.Client.Utils as P
 import Distribution.Fields.Pretty
 import Distribution.ModuleName
 import qualified Distribution.Package as P
-import Distribution.Simple.Setup (Flag (..))
+import Distribution.Simple.Setup (Flag)
 import Distribution.Verbosity (silent)
 import Distribution.Version
 import Language.Haskell.Extension (Extension, Language (..))
@@ -282,15 +291,33 @@ mkLiterate _ hs = hs
 -- -------------------------------------------------------------------- --
 -- Interactive prompt monad
 
+newtype PromptIO a = PromptIO (ReaderT (Data.IORef.IORef SessionState) IO a)
+  deriving (Functor, Applicative, Monad, MonadIO)
+
+sessionState :: PromptIO (Data.IORef.IORef SessionState)
+sessionState = PromptIO ask
+
+runPromptIO :: PromptIO a -> IO a
+runPromptIO (PromptIO pio) =
+  (Data.IORef.newIORef newSessionState) >>= (runReaderT pio)
+
+type Inputs = NonEmpty String
+
 newtype PurePrompt a = PurePrompt
-  { _runPrompt
-      :: NonEmpty String
-      -> Either BreakException (a, NonEmpty String)
+  { runPromptState
+      :: (Inputs, SessionState)
+      -> Either BreakException (a, (Inputs, SessionState))
   }
   deriving (Functor)
 
-evalPrompt :: PurePrompt a -> NonEmpty String -> a
-evalPrompt act s = case _runPrompt act s of
+runPrompt :: PurePrompt a -> Inputs -> Either BreakException (a, Inputs)
+runPrompt act args =
+  fmap
+    (\(a, (s, _)) -> (a, s))
+    (runPromptState act (args, newSessionState))
+
+evalPrompt :: PurePrompt a -> Inputs -> a
+evalPrompt act s = case runPrompt act s of
   Left e -> error $ show e
   Right (a, _) -> a
 
@@ -306,7 +333,7 @@ instance Monad PurePrompt where
   return = pure
   PurePrompt a >>= k = PurePrompt $ \s -> case a s of
     Left e -> Left e
-    Right (a', s') -> _runPrompt (k a') s'
+    Right (a', s') -> runPromptState (k a') s'
 
 class Monad m => Interactive m where
   -- input functions
@@ -320,6 +347,7 @@ class Monad m => Interactive m where
   doesFileExist :: FilePath -> m Bool
   canonicalizePathNoThrow :: FilePath -> m FilePath
   readProcessWithExitCode :: FilePath -> [String] -> String -> m (ExitCode, String, String)
+  maybeReadProcessWithExitCode :: FilePath -> [String] -> String -> m (Maybe (ExitCode, String, String))
   getEnvironment :: m [(String, String)]
   getCurrentYear :: m Integer
   listFilesInside :: (FilePath -> m Bool) -> FilePath -> m [FilePath]
@@ -341,36 +369,62 @@ class Monad m => Interactive m where
   break :: m Bool
   throwPrompt :: BreakException -> m a
 
-instance Interactive IO where
-  getLine = P.getLine
-  readFile = P.readFile
-  getCurrentDirectory = P.getCurrentDirectory
-  getHomeDirectory = P.getHomeDirectory
-  getDirectoryContents = P.getDirectoryContents
-  listDirectory = P.listDirectory
-  doesDirectoryExist = P.doesDirectoryExist
-  doesFileExist = P.doesFileExist
-  canonicalizePathNoThrow = P.canonicalizePathNoThrow
-  readProcessWithExitCode = Process.readProcessWithExitCode
-  getEnvironment = P.getEnvironment
-  getCurrentYear = P.getCurrentYear
-  listFilesInside = P.listFilesInside
-  listFilesRecursive = P.listFilesRecursive
+  -- session state functions
+  getLastChosenLanguage :: m (Maybe String)
+  setLastChosenLanguage :: (Maybe String) -> m ()
 
-  putStr = P.putStr
-  putStrLn = P.putStrLn
-  createDirectory = P.createDirectory
-  removeDirectory = P.removeDirectoryRecursive
-  writeFile = P.writeFile
-  removeExistingFile = P.removeExistingFile
-  copyFile = P.copyFile
-  renameDirectory = P.renameDirectory
-  hFlush = System.IO.hFlush
+newtype SessionState = SessionState
+  { lastChosenLanguage :: (Maybe String)
+  }
+
+newSessionState :: SessionState
+newSessionState = SessionState{lastChosenLanguage = Nothing}
+
+instance Interactive PromptIO where
+  getLine = liftIO P.getLine
+  readFile = liftIO <$> P.readFile
+  getCurrentDirectory = liftIO P.getCurrentDirectory
+  getHomeDirectory = liftIO P.getHomeDirectory
+  getDirectoryContents = liftIO <$> P.getDirectoryContents
+  listDirectory = liftIO <$> P.listDirectory
+  doesDirectoryExist = liftIO <$> P.doesDirectoryExist
+  doesFileExist = liftIO <$> P.doesFileExist
+  canonicalizePathNoThrow = liftIO <$> P.canonicalizePathNoThrow
+  readProcessWithExitCode a b c = liftIO $ Process.readProcessWithExitCode a b c
+  maybeReadProcessWithExitCode a b c = liftIO $ (Just <$> Process.readProcessWithExitCode a b c) `P.catch` const @_ @IOError (pure Nothing)
+  getEnvironment = liftIO P.getEnvironment
+  getCurrentYear = liftIO P.getCurrentYear
+  listFilesInside test dir = do
+    -- test is run within a new env and not the current env
+    -- all usages of listFilesInside are pure functions actually
+    liftIO $ P.listFilesInside (\f -> liftIO $ runPromptIO (test f)) dir
+  listFilesRecursive = liftIO <$> P.listFilesRecursive
+
+  putStr = liftIO <$> P.putStr
+  putStrLn = liftIO <$> P.putStrLn
+  createDirectory = liftIO <$> P.createDirectory
+  removeDirectory = liftIO <$> P.removeDirectoryRecursive
+  writeFile a b = liftIO $ P.writeFile a b
+  removeExistingFile = liftIO <$> P.removeExistingFile
+  copyFile a b = liftIO $ P.copyFile a b
+  renameDirectory a b = liftIO $ P.renameDirectory a b
+  hFlush = liftIO <$> System.IO.hFlush
   message q severity msg
     | q == silent = pure ()
-    | otherwise = putStrLn $ "[" ++ show severity ++ "] " ++ msg
+    | otherwise = putStrLn $ "[" ++ displaySeverity severity ++ "] " ++ msg
   break = return False
-  throwPrompt = throwM
+  throwPrompt = liftIO <$> throwM
+
+  getLastChosenLanguage = do
+    stateRef <- sessionState
+    liftIO $ lastChosenLanguage <$> Data.IORef.readIORef stateRef
+
+  setLastChosenLanguage value = do
+    stateRef <- sessionState
+    liftIO $
+      Data.IORef.modifyIORef
+        stateRef
+        (\state -> state{lastChosenLanguage = value})
 
 instance Interactive PurePrompt where
   getLine = pop
@@ -387,6 +441,7 @@ instance Interactive PurePrompt where
   readProcessWithExitCode !_ !_ !_ = do
     input <- pop
     return (ExitSuccess, input, "")
+  maybeReadProcessWithExitCode a b c = Just <$> readProcessWithExitCode a b c
   getEnvironment = fmap (map read) popList
   getCurrentYear = fmap read pop
   listFilesInside pred' !_ = do
@@ -407,17 +462,22 @@ instance Interactive PurePrompt where
     Error -> PurePrompt $ \_ ->
       Left $
         BreakException
-          (show severity ++ ": " ++ msg)
+          (displaySeverity severity ++ ": " ++ msg)
     _ -> return ()
 
   break = return True
-  throwPrompt (BreakException e) = PurePrompt $ \s ->
+  throwPrompt (BreakException e) = PurePrompt $ \(i, _) ->
     Left $
       BreakException
-        ("Error: " ++ e ++ "\nStacktrace: " ++ show s)
+        ("Error: " ++ e ++ "\nStacktrace: " ++ show i)
+
+  getLastChosenLanguage = PurePrompt $ \(i, s) ->
+    Right (lastChosenLanguage s, (i, s))
+  setLastChosenLanguage l = PurePrompt $ \(i, s) ->
+    Right ((), (i, s{lastChosenLanguage = l}))
 
 pop :: PurePrompt String
-pop = PurePrompt $ \(p :| ps) -> Right (p, fromList ps)
+pop = PurePrompt $ \(i :| is, s) -> Right (i, (fromList is, s))
 
 popAbsolute :: PurePrompt String
 popAbsolute = do
@@ -429,7 +489,7 @@ popBool =
   pop >>= \case
     "True" -> pure True
     "False" -> pure False
-    s -> throwPrompt $ BreakException $ "popBool: " ++ s
+    i -> throwPrompt $ BreakException $ "popBool: " ++ i
 
 popList :: PurePrompt [String]
 popList =
@@ -455,7 +515,13 @@ newtype BreakException = BreakException String deriving (Eq, Show)
 instance Exception BreakException
 
 -- | Used to inform the intent of prompted messages.
-data Severity = Log | Info | Warning | Error deriving (Eq, Show)
+data Severity = Info | Warning | Error deriving (Eq)
+
+displaySeverity :: Severity -> String
+displaySeverity severity = case severity of
+  Info -> "Info"
+  Warning -> "Warn"
+  Error -> "Err"
 
 -- | Convenience alias for the literate haskell flag
 type IsLiterate = Bool

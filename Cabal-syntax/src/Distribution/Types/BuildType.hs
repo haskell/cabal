@@ -29,14 +29,15 @@ data BuildType
     Make
   | -- | uses user-supplied @Setup.hs@ or @Setup.lhs@ (default)
     Custom
-  deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
+  | Hooks
+  deriving (Generic, Show, Read, Eq, Ord, Data)
 
 instance Binary BuildType
 instance Structured BuildType
 instance NFData BuildType where rnf = genericRnf
 
 knownBuildTypes :: [BuildType]
-knownBuildTypes = [Simple, Configure, Make, Custom]
+knownBuildTypes = [Simple, Configure, Make, Custom, Hooks]
 
 instance Pretty BuildType where
   pretty = Disp.text . show
@@ -49,6 +50,11 @@ instance Parsec BuildType where
       "Configure" -> return Configure
       "Custom" -> return Custom
       "Make" -> return Make
+      "Hooks" -> do
+        v <- askCabalSpecVersion
+        if v >= CabalSpecV3_14
+          then return Hooks
+          else fail "build-type: 'Hooks'. This feature requires cabal-version >= 3.14."
       "Default" -> do
         v <- askCabalSpecVersion
         if v <= CabalSpecV1_18 -- oldest version needing this, based on hackage-tests

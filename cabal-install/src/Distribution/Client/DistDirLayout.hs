@@ -41,10 +41,13 @@ import Distribution.Package
   , UnitId
   )
 import Distribution.Simple.Compiler
-  ( OptimisationLevel (..)
-  , PackageDB (..)
-  , PackageDBStack
+  ( Compiler (..)
+  , OptimisationLevel (..)
+  , PackageDBCWD
+  , PackageDBStackCWD
+  , PackageDBX (..)
   )
+import Distribution.Simple.Configure (interpretPackageDbFlags)
 import Distribution.System
 import Distribution.Types.ComponentName
 import Distribution.Types.LibraryName
@@ -109,20 +112,20 @@ data DistDirLayout = DistDirLayout
   , distSdistDirectory :: FilePath
   , distTempDirectory :: FilePath
   , distBinDirectory :: FilePath
-  , distPackageDB :: CompilerId -> PackageDB
+  , distPackageDB :: CompilerId -> PackageDBCWD
   , distHaddockOutputDir :: Maybe FilePath
   -- ^ Is needed when `--haddock-output-dir` flag is used.
   }
 
 -- | The layout of a cabal nix-style store.
 data StoreDirLayout = StoreDirLayout
-  { storeDirectory :: CompilerId -> FilePath
-  , storePackageDirectory :: CompilerId -> UnitId -> FilePath
-  , storePackageDBPath :: CompilerId -> FilePath
-  , storePackageDB :: CompilerId -> PackageDB
-  , storePackageDBStack :: CompilerId -> PackageDBStack
-  , storeIncomingDirectory :: CompilerId -> FilePath
-  , storeIncomingLock :: CompilerId -> UnitId -> FilePath
+  { storeDirectory :: Compiler -> FilePath
+  , storePackageDirectory :: Compiler -> UnitId -> FilePath
+  , storePackageDBPath :: Compiler -> FilePath
+  , storePackageDB :: Compiler -> PackageDBCWD
+  , storePackageDBStack :: Compiler -> [Maybe PackageDBCWD] -> PackageDBStackCWD
+  , storeIncomingDirectory :: Compiler -> FilePath
+  , storeIncomingLock :: Compiler -> UnitId -> FilePath
   }
 
 -- TODO: move to another module, e.g. CabalDirLayout?
@@ -142,7 +145,7 @@ data CabalDirLayout = CabalDirLayout
 --
 -- It can either be an implicit project root in the current dir if no
 -- @cabal.project@ file is found, or an explicit root if either
--- the file is found or the project root directory was specicied.
+-- the file is found or the project root directory was specified.
 data ProjectRoot
   = -- | An implicit project root. It contains the absolute project
     -- root dir.
@@ -165,8 +168,7 @@ defaultDistDirLayout
   :: ProjectRoot
   -- ^ the project root
   -> Maybe FilePath
-  -- ^ the @dist@ directory or default
-  -- (absolute or relative to the root)
+  -- ^ the @dist@ directory (relative to package root)
   -> Maybe FilePath
   -- ^ the documentation directory
   -> DistDirLayout
@@ -257,7 +259,7 @@ defaultDistDirLayout projectRoot mdistDirectory haddockOutputDir =
     distPackageDBPath :: CompilerId -> FilePath
     distPackageDBPath compid = distDirectory </> "packagedb" </> prettyShow compid
 
-    distPackageDB :: CompilerId -> PackageDB
+    distPackageDB :: CompilerId -> PackageDBCWD
     distPackageDB = SpecificPackageDB . distPackageDBPath
 
     distHaddockOutputDir :: Maybe FilePath
@@ -267,33 +269,36 @@ defaultStoreDirLayout :: FilePath -> StoreDirLayout
 defaultStoreDirLayout storeRoot =
   StoreDirLayout{..}
   where
-    storeDirectory :: CompilerId -> FilePath
-    storeDirectory compid =
-      storeRoot </> prettyShow compid
+    storeDirectory :: Compiler -> FilePath
+    storeDirectory compiler =
+      storeRoot </> case compilerAbiTag compiler of
+        NoAbiTag -> prettyShow (compilerId compiler)
+        AbiTag tag -> prettyShow (compilerId compiler) <> "-" <> tag
 
-    storePackageDirectory :: CompilerId -> UnitId -> FilePath
-    storePackageDirectory compid ipkgid =
-      storeDirectory compid </> prettyShow ipkgid
+    storePackageDirectory :: Compiler -> UnitId -> FilePath
+    storePackageDirectory compiler ipkgid =
+      storeDirectory compiler </> prettyShow ipkgid
 
-    storePackageDBPath :: CompilerId -> FilePath
-    storePackageDBPath compid =
-      storeDirectory compid </> "package.db"
+    storePackageDBPath :: Compiler -> FilePath
+    storePackageDBPath compiler =
+      storeDirectory compiler </> "package.db"
 
-    storePackageDB :: CompilerId -> PackageDB
-    storePackageDB compid =
-      SpecificPackageDB (storePackageDBPath compid)
+    storePackageDB :: Compiler -> PackageDBCWD
+    storePackageDB compiler =
+      SpecificPackageDB (storePackageDBPath compiler)
 
-    storePackageDBStack :: CompilerId -> PackageDBStack
-    storePackageDBStack compid =
-      [GlobalPackageDB, storePackageDB compid]
+    storePackageDBStack :: Compiler -> [Maybe PackageDBCWD] -> PackageDBStackCWD
+    storePackageDBStack compiler extraPackageDB =
+      (interpretPackageDbFlags False extraPackageDB)
+        ++ [storePackageDB compiler]
 
-    storeIncomingDirectory :: CompilerId -> FilePath
-    storeIncomingDirectory compid =
-      storeDirectory compid </> "incoming"
+    storeIncomingDirectory :: Compiler -> FilePath
+    storeIncomingDirectory compiler =
+      storeDirectory compiler </> "incoming"
 
-    storeIncomingLock :: CompilerId -> UnitId -> FilePath
-    storeIncomingLock compid unitid =
-      storeIncomingDirectory compid </> prettyShow unitid <.> "lock"
+    storeIncomingLock :: Compiler -> UnitId -> FilePath
+    storeIncomingLock compiler unitid =
+      storeIncomingDirectory compiler </> prettyShow unitid <.> "lock"
 
 defaultCabalDirLayout :: IO CabalDirLayout
 defaultCabalDirLayout =

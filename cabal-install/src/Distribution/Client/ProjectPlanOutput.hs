@@ -1,7 +1,4 @@
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -15,7 +12,7 @@ module Distribution.Client.ProjectPlanOutput
     -- | Several outputs rely on having a general overview of
   , PostBuildProjectStatus (..)
   , updatePostBuildProjectStatus
-  , createPackageEnvironment
+  , createPackageEnvironmentAndArgs
   , writePlanGhcEnvironment
   , argsEquivalentOfGhcEnvironmentFile
   ) where
@@ -39,7 +36,6 @@ import qualified Distribution.Solver.Types.ComponentDeps as ComponentDeps
 import qualified Distribution.Compat.Binary as Binary
 import Distribution.Compat.Graph (Graph, Node)
 import qualified Distribution.Compat.Graph as Graph
-import Distribution.Compiler (CompilerFlavor (GHC, GHCJS))
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Package
 import qualified Distribution.PackageDescription as PD
@@ -49,15 +45,6 @@ import Distribution.Simple.BuildPaths
   , exeExtension
   )
 import Distribution.Simple.Compiler
-  ( Compiler
-  , CompilerId (..)
-  , PackageDB (..)
-  , PackageDBStack
-  , compilerFlavor
-  , compilerId
-  , compilerVersion
-  , showCompilerId
-  )
 import Distribution.Simple.GHC
   ( GhcEnvironmentFileEntry (..)
   , GhcImplInfo (supportsPkgEnvFiles)
@@ -69,6 +56,10 @@ import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Types.Version
   ( mkVersion
+  )
+import Distribution.Utils.Path hiding
+  ( (<.>)
+  , (</>)
   )
 import Distribution.Verbosity
 
@@ -118,6 +109,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
     , "compiler-id"
         J..= (J.String . showCompilerId . pkgConfigCompiler)
           elaboratedSharedConfig
+    , "compiler-abi" J..= jdisplay (compilerAbiTag (pkgConfigCompiler elaboratedSharedConfig))
     , "os" J..= jdisplay os
     , "arch" J..= jdisplay arch
     , "install-plan" J..= installPlanToJ elaboratedInstallPlan
@@ -225,7 +217,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
           | elabSetupScriptCliVersion elab < mkVersion [3, 7, 0, 0] =
               "build-info" J..= J.Null
           | otherwise =
-              "build-info" J..= J.String (buildInfoPref dist_dir)
+              "build-info" J..= J.String (getSymbolicPath $ buildInfoPref $ makeSymbolicPath dist_dir)
 
         packageLocationToJ :: PackageLocation (Maybe FilePath) -> J.Value
         packageLocationToJ pkgloc =
@@ -786,7 +778,7 @@ writePackagesUpToDateCacheFile DistDirLayout{distProjectCacheFile} upToDate =
   writeFileAtomic (distProjectCacheFile "up-to-date") $
     Binary.encode upToDate
 
--- | Prepare a package environment that includes all the library dependencies
+-- | Prepare a package environment and args that includes all the library dependencies
 -- for a plan.
 --
 -- When running cabal new-exec, we want to set things up so that the compiler
@@ -795,14 +787,17 @@ writePackagesUpToDateCacheFile DistDirLayout{distProjectCacheFile} upToDate =
 -- temporarily, in case the compiler wants to learn this information via the
 -- filesystem, and returns any environment variable overrides the compiler
 -- needs.
-createPackageEnvironment
+--
+-- The function returns both the arguments you need to pass to the compiler and
+-- the environment variables you need to set.
+createPackageEnvironmentAndArgs
   :: Verbosity
   -> FilePath
   -> ElaboratedInstallPlan
   -> ElaboratedSharedConfig
   -> PostBuildProjectStatus
-  -> IO [(String, Maybe String)]
-createPackageEnvironment
+  -> IO ([String], [(String, Maybe String)])
+createPackageEnvironmentAndArgs
   verbosity
   path
   elaboratedPlan
@@ -817,14 +812,14 @@ createPackageEnvironment
               elaboratedShared
               buildStatus
           case envFileM of
-            Just envFile -> return [("GHC_ENVIRONMENT", Just envFile)]
+            Just envFile -> return (["-package-env=" ++ envFile], [("GHC_ENVIRONMENT", Just envFile)])
             Nothing -> do
               warn verbosity "the configured version of GHC does not support reading package lists from the environment; commands that need the current project's package database are likely to fail"
-              return []
+              return ([], [])
     | otherwise =
         do
           warn verbosity "package environment configuration is not supported for the currently configured compiler; commands that need the current project's package database are likely to fail"
-          return []
+          return ([], [])
 
 -- Writing .ghc.environment files
 --
@@ -866,7 +861,7 @@ renderGhcEnvironmentFile
   :: FilePath
   -> ElaboratedInstallPlan
   -> PostBuildProjectStatus
-  -> [GhcEnvironmentFileEntry]
+  -> [GhcEnvironmentFileEntry FilePath]
 renderGhcEnvironmentFile
   projectRootDir
   elaboratedInstallPlan
@@ -972,7 +967,7 @@ selectGhcEnvironmentFileLibraries PostBuildProjectStatus{..} =
         elabRequiresRegistration pkg
           && installedUnitId pkg `Set.member` packagesProbablyUpToDate
 
-selectGhcEnvironmentFilePackageDbs :: ElaboratedInstallPlan -> PackageDBStack
+selectGhcEnvironmentFilePackageDbs :: ElaboratedInstallPlan -> PackageDBStackCWD
 selectGhcEnvironmentFilePackageDbs elaboratedInstallPlan =
   -- If we have any inplace packages then their package db stack is the
   -- one we should use since it'll include the store + the local db but
@@ -982,7 +977,7 @@ selectGhcEnvironmentFilePackageDbs elaboratedInstallPlan =
     ([], pkgs) -> checkSamePackageDBs pkgs
     (pkgs, _) -> checkSamePackageDBs pkgs
   where
-    checkSamePackageDBs :: [ElaboratedConfiguredPackage] -> PackageDBStack
+    checkSamePackageDBs :: [ElaboratedConfiguredPackage] -> PackageDBStackCWD
     checkSamePackageDBs pkgs =
       case ordNub (map elabBuildPackageDBStack pkgs) of
         [packageDbs] -> packageDbs
@@ -1014,14 +1009,14 @@ selectGhcEnvironmentFilePackageDbs elaboratedInstallPlan =
           InstallPlan.PreExisting _ -> Nothing
       ]
 
-relativePackageDBPaths :: FilePath -> PackageDBStack -> PackageDBStack
+relativePackageDBPaths :: FilePath -> PackageDBStackCWD -> PackageDBStackCWD
 relativePackageDBPaths relroot = map (relativePackageDBPath relroot)
 
-relativePackageDBPath :: FilePath -> PackageDB -> PackageDB
+relativePackageDBPath :: FilePath -> PackageDBCWD -> PackageDBCWD
 relativePackageDBPath relroot pkgdb =
   case pkgdb of
     GlobalPackageDB -> GlobalPackageDB
     UserPackageDB -> UserPackageDB
     SpecificPackageDB path -> SpecificPackageDB relpath
       where
-        relpath = makeRelative relroot path
+        relpath = makeRelative (normalise relroot) path

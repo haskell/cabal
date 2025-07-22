@@ -1,0 +1,18 @@
+# checking project import with trailing space
+# cabal v2-build
+Warning: import has leading or trailing whitespace;
+  'https://www.stackage.org/nightly-2024-12-05/cabal.config '
+    imported by: trailing-space.project
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - my-0.1 (lib:my) (first run)
+# checking project import with tabs and spaces
+# cabal v2-build
+Warning: import has leading or trailing whitespace;
+  'https://www.stackage.org/nightly-2024-12-05/cabal.config		   '
+    imported by: tabs-and-spaces.project
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - my-0.1 (lib:my) (first run)

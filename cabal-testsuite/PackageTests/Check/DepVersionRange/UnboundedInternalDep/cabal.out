@@ -1,0 +1,5 @@
+# cabal check
+These warnings may cause trouble when distributing the package:
+Warning: [missing-upper-bounds] On executable 'prova', these packages miss upper bounds:
+  - acme-box
+Please add them. There is more information at https://pvp.haskell.org/

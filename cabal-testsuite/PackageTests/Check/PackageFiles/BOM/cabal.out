@@ -1,6 +1,6 @@
 # cabal check
 These warnings will likely cause trouble when distributing the package:
-Warning: pkg.cabal:1:1: Byte-order mark found at the beginning of the file
+Warning: [parser-warning] pkg.cabal:1:1: Byte-order mark found at the beginning of the file
 The following errors will cause portability problems on other environments:
-Error: ./pkg.cabal starts with an Unicode byte order mark (BOM). This may cause problems with older cabal versions.
+Error: [bom] ./pkg.cabal starts with an Unicode byte order mark (BOM). This may cause problems with older cabal versions.
 Error: Hackage would reject this package.

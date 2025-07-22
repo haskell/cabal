@@ -1,7 +1,7 @@
-Cabal-Version:      2.2
+Cabal-Version:      3.6
 
 Name:               cabal-install
-Version:            3.11.0.0
+Version:            3.17.0.0
 Synopsis:           The command-line interface for Cabal and Hackage.
 Description:
     The \'cabal\' command-line program simplifies the process of managing
@@ -13,13 +13,14 @@ License:            BSD-3-Clause
 License-File:       LICENSE
 Author:             Cabal Development Team (see AUTHORS file)
 Maintainer:         Cabal Development Team <cabal-devel@haskell.org>
-Copyright:          2003-2023, Cabal Development Team
+Copyright:          2003-2025, Cabal Development Team
 Category:           Distribution
 Build-type:         Simple
 Extra-Source-Files:
-  README.md
   bash-completion/cabal
-  changelog
+extra-doc-files:
+  README.md
+  ChangeLog.md
 
 source-repository head
   type:     git
@@ -35,27 +36,41 @@ Flag native-dns
 
 Flag lukko
   description:  Use @lukko@ for file-locking
-  default:      True
-  manual:       True
+  default:      False
+  manual:       False
+
+flag git-rev
+  description: include Git revision hash in version
+  default: False
+  manual: True
 
 common warnings
-    ghc-options: -Wall -Wcompat -Wnoncanonical-monad-instances -Wincomplete-uni-patterns -Wincomplete-record-updates
+    ghc-options:
+      -Wall
+      -Wcompat
+      -Wnoncanonical-monad-instances
+      -Wincomplete-uni-patterns
+      -Wincomplete-record-updates
+      -Wno-unticked-promoted-constructors
+
     if impl(ghc < 8.8)
       ghc-options: -Wnoncanonical-monadfail-instances
-    if impl(ghc >=8.10)
-      ghc-options: -Wunused-packages
 
 common base-dep
-    build-depends: base >=4.10 && <4.19
+    build-depends:
+      , base >=4.13 && <4.22
 
 common cabal-dep
-    build-depends: Cabal ^>=3.11
+    build-depends:
+      , Cabal ^>=3.17
 
 common cabal-syntax-dep
-    build-depends: Cabal-syntax ^>=3.11
+    build-depends:
+      , Cabal-syntax ^>=3.17
 
 common cabal-install-solver-dep
-    build-depends: cabal-install-solver ^>=3.11
+    build-depends:
+      , cabal-install-solver ^>=3.17
 
 library
     import: warnings, base-dep, cabal-dep, cabal-syntax-dep, cabal-install-solver-dep
@@ -63,10 +78,15 @@ library
     default-extensions: TypeOperators
 
     hs-source-dirs:   src
+    autogen-modules:
+        Paths_cabal_install
+    other-modules:
+        Paths_cabal_install
     exposed-modules:
         -- this modules are moved from Cabal
         -- they are needed for as long until cabal-install moves to parsec parser
         Distribution.Deprecated.ParseUtils
+        Distribution.Deprecated.ProjectParseUtils
         Distribution.Deprecated.ReadP
         Distribution.Deprecated.ViewAsFieldDescr
 
@@ -90,22 +110,27 @@ library
         Distribution.Client.CmdInstall.ClientInstallTargetSelector
         Distribution.Client.CmdLegacy
         Distribution.Client.CmdListBin
+        Distribution.Client.CmdPath
         Distribution.Client.CmdOutdated
         Distribution.Client.CmdRepl
         Distribution.Client.CmdRun
         Distribution.Client.CmdSdist
+        Distribution.Client.CmdTarget
         Distribution.Client.CmdTest
         Distribution.Client.CmdUpdate
+        Distribution.Client.CmdGenBounds
         Distribution.Client.Compat.Directory
         Distribution.Client.Compat.ExecutablePath
         Distribution.Client.Compat.Orphans
         Distribution.Client.Compat.Prelude
         Distribution.Client.Compat.Semaphore
+        Distribution.Client.Compat.Tar
         Distribution.Client.Config
         Distribution.Client.Configure
         Distribution.Client.Dependency
         Distribution.Client.Dependency.Types
         Distribution.Client.DistDirLayout
+        Distribution.Client.Errors
         Distribution.Client.Fetch
         Distribution.Client.FetchUtils
         Distribution.Client.FileMonitor
@@ -148,6 +173,8 @@ library
         Distribution.Client.PackageHash
         Distribution.Client.ParseUtils
         Distribution.Client.ProjectBuilding
+        Distribution.Client.ProjectBuilding.UnpackedPackage
+        Distribution.Client.ProjectBuilding.PackageFileMonitor
         Distribution.Client.ProjectBuilding.Types
         Distribution.Client.ProjectConfig
         Distribution.Client.ProjectConfig.Legacy
@@ -156,6 +183,7 @@ library
         Distribution.Client.ProjectOrchestration
         Distribution.Client.ProjectPlanOutput
         Distribution.Client.ProjectPlanning
+        Distribution.Client.ProjectPlanning.SetupPolicy
         Distribution.Client.ProjectPlanning.Types
         Distribution.Client.RebuildMonad
         Distribution.Client.Reconfigure
@@ -203,37 +231,36 @@ library
         Distribution.Client.Win32SelfUpgrade
 
     build-depends:
-        async      >= 2.0      && < 2.3,
-        array      >= 0.4      && < 0.6,
-        base16-bytestring >= 0.1.1 && < 1.1.0.0,
-        base64-bytestring >= 1.0 && < 1.3,
-        binary     >= 0.7.3    && < 0.9,
-        bytestring >= 0.10.6.0 && < 0.12,
-        containers >= 0.5.6.2  && < 0.7,
-        cryptohash-sha256 >= 0.11 && < 0.12,
-        directory  >= 1.3.7.0  && < 1.4,
-        echo       >= 0.1.3    && < 0.2,
-        edit-distance >= 0.2.2 && < 0.3,
-        exceptions >= 0.10.4   && < 0.11,
-        filepath   >= 1.4.0.0  && < 1.5,
-        hashable   >= 1.0      && < 1.5,
-        HTTP       >= 4000.1.5 && < 4000.5,
-        mtl        >= 2.0      && < 2.4,
-        network-uri >= 2.6.0.2 && < 2.7,
-        pretty     >= 1.1      && < 1.2,
-        process    >= 1.2.3.0  && < 1.7,
-        random     >= 1.2      && < 1.3,
-        stm        >= 2.0      && < 2.6,
-        tar        >= 0.5.0.3  && < 0.6,
-        time       >= 1.5.0.1  && < 1.13,
-        zlib       >= 0.5.3    && < 0.7,
-        hackage-security >= 0.6.2.0 && < 0.7,
-        text       >= 1.2.3    && < 1.3 || >= 2.0 && < 2.1,
-        parsec     >= 3.1.13.0 && < 3.2,
-        regex-base  >= 0.94.0.0 && <0.95,
-        regex-posix >= 0.96.0.0 && <0.97,
-        safe-exceptions >= 0.1.7.0 && < 0.2,
-        semaphore-compat >= 1.0.0 && < 1.1
+      , async      >= 2.0      && < 2.3
+      , array      >= 0.4      && < 0.6
+      , base16-bytestring >= 0.1.1 && < 1.1
+      , binary     >= 0.7.3    && < 0.9
+      , bytestring >= 0.10.6.0 && < 0.13
+      , containers >= 0.5.6.2  && < 0.9
+      , cryptohash-sha256 >= 0.11 && < 0.12
+      , directory  >= 1.3.7.0  && < 1.4
+      , echo       >= 0.1.3    && < 0.2
+      , edit-distance >= 0.2.2 && < 0.3
+      , exceptions >= 0.10.4   && < 0.11
+      , filepath   >= 1.4.0.0  && < 1.6
+      , HTTP       >= 4000.1.5 && < 4000.5
+      , mtl        >= 2.0      && < 2.4
+      , network-uri >= 2.6.0.2 && < 2.7
+      , pretty     >= 1.1      && < 1.2
+      , process    >= 1.2.3.0  && < 1.7
+      , random     >= 1.2      && < 1.4
+      , stm        >= 2.0      && < 2.6
+      , tar        >= 0.5.0.3  && < 0.7
+      , time       >= 1.5.0.1  && < 1.15
+      , zlib       >= 0.5.3    && < 0.8
+      , hackage-security >= 0.6.2.0 && < 0.7
+      , text       >= 1.2.3    && < 1.3 || >= 2.0 && < 2.2
+      , parsec     >= 3.1.13.0 && < 3.2
+      , open-browser >= 0.2.1.0 && < 0.5
+      , regex-base  >= 0.94.0.0 && <0.95
+      , regex-posix >= 0.96.0.0 && <0.97
+      , safe-exceptions >= 0.1.7.0 && < 0.2
+      , semaphore-compat >= 1.0.0 && < 1.1
 
     if flag(native-dns)
       if os(windows)
@@ -243,17 +270,25 @@ library
 
     if os(windows)
       -- newer directory for symlinks
-      build-depends: Win32 >= 2.8 && < 3, directory >=1.3.1.0
+      build-depends:
+        , Win32 >= 2.8 && < 3
+        , directory >=1.3.1.0
     else
-      build-depends: unix >= 2.5 && < 2.9
+      build-depends:
+        , unix >= 2.5 && < 2.8 || >= 2.8.6.0 && < 2.9
 
     if flag(lukko)
-      build-depends: lukko >= 0.1 && <0.2
+      build-depends:
+        , lukko >= 0.1 && <0.2
 
     -- pull in process version with fixed waitForProcess error
     if impl(ghc >=8.2)
-      build-depends: process >= 1.6.15.0
+      build-depends:
+        , process >= 1.6.15.0
 
+    if flag(git-rev)
+      build-depends: githash ^>= 0.1.7.0
+      cpp-options: -DGIT_REV
 
 executable cabal
     import: warnings, base-dep
@@ -266,6 +301,9 @@ executable cabal
     -- On AIX, some legacy BSD operations such as flock(2) are provided by libbsd.a
     if os(aix)
         extra-libraries: bsd
+
+    if flag(git-rev)
+      cpp-options: -DGIT_REV
 
     build-depends:
         cabal-install
@@ -317,27 +355,28 @@ test-suite unit-tests
       UnitTests.Options
 
     build-depends:
-          array,
-          bytestring,
-          cabal-install,
-          Cabal-tree-diff,
-          Cabal-QuickCheck,
-          containers,
-          directory,
-          filepath,
-          mtl,
-          network-uri >= 2.6.2.0 && <2.7,
-          random,
-          tar,
-          time,
-          zlib,
-          tasty >= 1.2.3 && <1.5,
-          tasty-golden >=2.3.1.1 && <2.4,
-          tasty-quickcheck,
-          tasty-hunit >= 0.10,
-          tree-diff,
-          QuickCheck >= 2.14.3 && <2.15
-
+      , array
+      , bytestring
+      , cabal-install
+      , Cabal-tree-diff
+      , Cabal-QuickCheck
+      , Cabal-tests
+      , containers
+      , directory
+      , filepath
+      , mtl
+      , network-uri >= 2.6.2.0 && <2.7
+      , random
+      , tar
+      , time
+      , zlib
+      , tasty >= 1.2.3 && <1.6
+      , tasty-golden >=2.3.1.1 && <2.4
+      , tasty-quickcheck ^>=0.11
+      , tasty-expected-failure
+      , tasty-hunit >= 0.10
+      , tree-diff
+      , QuickCheck >= 2.14.3 && <2.17
 
 -- Tests to run with a limited stack and heap size
 -- The test suite name must be keep short cause a longer one
@@ -359,10 +398,10 @@ test-suite mem-use-tests
     UnitTests.Options
 
   build-depends:
-        cabal-install,
-        containers,
-        tasty >= 1.2.3 && <1.5,
-        tasty-hunit >= 0.10
+    , cabal-install
+    , containers
+    , tasty >= 1.2.3 && <1.6
+    , tasty-hunit >= 0.10
 
 
 -- Integration tests that use the cabal-install code directly
@@ -375,15 +414,21 @@ test-suite integration-tests2
   hs-source-dirs: tests
   default-language: Haskell2010
 
+  other-modules:
+    IntegrationTests2.CPP
+
   build-depends:
-        bytestring,
-        cabal-install,
-        containers,
-        directory,
-        filepath,
-        tasty >= 1.2.3 && <1.5,
-        tasty-hunit >= 0.10,
-        tagged
+    , bytestring
+    , cabal-install
+    , containers
+    , directory
+    , filepath
+    , process
+    , tasty >= 1.5 && <1.6
+    , tasty-hunit >= 0.10
+    , tasty-expected-failure
+    , silently
+    , tagged
 
 test-suite long-tests
   import: warnings, base-dep, cabal-dep, cabal-syntax-dep, cabal-install-solver-dep
@@ -405,20 +450,20 @@ test-suite long-tests
     UnitTests.Options
 
   build-depends:
-        Cabal-QuickCheck,
-        Cabal-described,
-        cabal-install,
-        containers,
-        directory,
-        filepath,
-        hashable,
-        mtl,
-        network-uri >= 2.6.2.0 && <2.7,
-        random,
-        tagged,
-        tasty >= 1.2.3 && <1.5,
-        tasty-expected-failure,
-        tasty-hunit >= 0.10,
-        tasty-quickcheck,
-        QuickCheck >= 2.14 && <2.15,
-        pretty-show >= 1.6.15
+    , Cabal-QuickCheck
+    , Cabal-described
+    , Cabal-tests
+    , cabal-install
+    , containers
+    , directory
+    , filepath
+    , mtl
+    , network-uri >= 2.6.2.0 && <2.7
+    , random
+    , tagged
+    , tasty >= 1.2.3 && <1.6
+    , tasty-expected-failure
+    , tasty-hunit >= 0.10
+    , tasty-quickcheck <0.12
+    , QuickCheck >= 2.14 && <2.17
+    , pretty-show >= 1.6.15

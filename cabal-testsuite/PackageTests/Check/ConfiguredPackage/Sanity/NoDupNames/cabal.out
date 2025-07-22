@@ -1,1 +1,4 @@
 # cabal check
+The package will not build sanely due to these errors:
+Error: [duplicate-sections] Duplicate sections: dup. The name of every library, executable, test suite, and benchmark section in the package must be unique.
+Error: Hackage would reject this package.

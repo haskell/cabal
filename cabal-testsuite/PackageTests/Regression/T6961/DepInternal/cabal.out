@@ -1,6 +1,7 @@
 # cabal v2-build
 Resolving dependencies...
-Error: cabal: Could not resolve dependencies:
+Error: [Cabal-7107]
+Could not resolve dependencies:
 [__0] trying: pkg-bar-0 (user goal)
 [__1] next goal: pkg-foo (user goal)
 [__1] rejecting: pkg-foo-0 (library 'internal-lib' is private, but it is required by pkg-bar)

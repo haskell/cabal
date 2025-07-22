@@ -1,0 +1,4 @@
+# cabal check
+The following errors are likely to affect your build negatively:
+Error: [jspp-options] 'jspp-options: -Q' is not a portable JavaScript-preprocessor flag.
+Error: Hackage would reject this package.

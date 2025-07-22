@@ -6,4 +6,4 @@ main = setupAndCabalTest . withPackageDb $ do
     assertEqual
         ("executable should have linked with the internal library")
         ("foo foo myLibFunc internal")
-        (concatOutput (resultOutput r))
+        (lineBreaksToSpaces $ resultOutput r)

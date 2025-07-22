@@ -51,10 +51,11 @@ GenericPackageDescription {
     testSuites = [],
     benchmarks = [],
     dataFiles = [],
-    dataDir = ".",
+    dataDir = SymbolicPath ".",
     extraSrcFiles = [],
     extraTmpFiles = [],
-    extraDocFiles = []},
+    extraDocFiles = [],
+    extraFiles = []},
   gpdScannedVersion = Nothing,
   genPackageFlags = [
     MkPackageFlag {
@@ -267,6 +268,7 @@ GenericPackageDescription {
           buildTools = [],
           buildToolDepends = [],
           cppOptions = [],
+          jsppOptions = [],
           asmOptions = [],
           cmmOptions = [],
           ccOptions = [],
@@ -321,6 +323,8 @@ GenericPackageDescription {
             []
             [],
           sharedOptions =
+          PerCompilerFlavor [] [],
+          profSharedOptions =
           PerCompilerFlavor [] [],
           staticOptions =
           PerCompilerFlavor [] [],
@@ -599,6 +603,7 @@ GenericPackageDescription {
                 buildTools = [],
                 buildToolDepends = [],
                 cppOptions = [],
+                jsppOptions = [],
                 asmOptions = [],
                 cmmOptions = [],
                 ccOptions = [],
@@ -641,6 +646,8 @@ GenericPackageDescription {
                   []
                   [],
                 sharedOptions =
+                PerCompilerFlavor [] [],
+                profSharedOptions =
                 PerCompilerFlavor [] [],
                 staticOptions =
                 PerCompilerFlavor [] [],
@@ -841,6 +848,7 @@ GenericPackageDescription {
                 buildTools = [],
                 buildToolDepends = [],
                 cppOptions = [],
+                jsppOptions = [],
                 asmOptions = [],
                 cmmOptions = [],
                 ccOptions = [],
@@ -883,6 +891,8 @@ GenericPackageDescription {
                   []
                   [],
                 sharedOptions =
+                PerCompilerFlavor [] [],
+                profSharedOptions =
                 PerCompilerFlavor [] [],
                 staticOptions =
                 PerCompilerFlavor [] [],
@@ -1041,6 +1051,7 @@ GenericPackageDescription {
                       buildTools = [],
                       buildToolDepends = [],
                       cppOptions = [],
+                      jsppOptions = [],
                       asmOptions = [],
                       cmmOptions = [],
                       ccOptions = [],
@@ -1083,6 +1094,8 @@ GenericPackageDescription {
                         []
                         [],
                       sharedOptions =
+                      PerCompilerFlavor [] [],
+                      profSharedOptions =
                       PerCompilerFlavor [] [],
                       staticOptions =
                       PerCompilerFlavor [] [],
@@ -1378,6 +1391,7 @@ GenericPackageDescription {
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
+            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
@@ -1437,6 +1451,8 @@ GenericPackageDescription {
               []
               [],
             sharedOptions =
+            PerCompilerFlavor [] [],
+            profSharedOptions =
             PerCompilerFlavor [] [],
             staticOptions =
             PerCompilerFlavor [] [],
@@ -2697,6 +2713,7 @@ GenericPackageDescription {
                   buildTools = [],
                   buildToolDepends = [],
                   cppOptions = [],
+                  jsppOptions = [],
                   asmOptions = [],
                   cmmOptions = [],
                   ccOptions = [],
@@ -2739,6 +2756,8 @@ GenericPackageDescription {
                     []
                     [],
                   sharedOptions =
+                  PerCompilerFlavor [] [],
+                  profSharedOptions =
                   PerCompilerFlavor [] [],
                   staticOptions =
                   PerCompilerFlavor [] [],
@@ -2786,6 +2805,7 @@ GenericPackageDescription {
                     buildTools = [],
                     buildToolDepends = [],
                     cppOptions = [],
+                    jsppOptions = [],
                     asmOptions = [],
                     cmmOptions = [],
                     ccOptions = [],
@@ -2828,6 +2848,8 @@ GenericPackageDescription {
                       []
                       [],
                     sharedOptions =
+                    PerCompilerFlavor [] [],
+                    profSharedOptions =
                     PerCompilerFlavor [] [],
                     staticOptions =
                     PerCompilerFlavor [] [],
@@ -5012,6 +5034,7 @@ GenericPackageDescription {
             cppOptions = [
               "-DCUDA",
               "-DHASKTORCH_INTERNAL_CUDA"],
+            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
@@ -5071,6 +5094,8 @@ GenericPackageDescription {
               []
               [],
             sharedOptions =
+            PerCompilerFlavor [] [],
+            profSharedOptions =
             PerCompilerFlavor [] [],
             staticOptions =
             PerCompilerFlavor [] [],
@@ -6381,6 +6406,7 @@ GenericPackageDescription {
                   buildTools = [],
                   buildToolDepends = [],
                   cppOptions = [],
+                  jsppOptions = [],
                   asmOptions = [],
                   cmmOptions = [],
                   ccOptions = [],
@@ -6423,6 +6449,8 @@ GenericPackageDescription {
                     []
                     [],
                   sharedOptions =
+                  PerCompilerFlavor [] [],
+                  profSharedOptions =
                   PerCompilerFlavor [] [],
                   staticOptions =
                   PerCompilerFlavor [] [],
@@ -6471,6 +6499,7 @@ GenericPackageDescription {
                     buildTools = [],
                     buildToolDepends = [],
                     cppOptions = [],
+                    jsppOptions = [],
                     asmOptions = [],
                     cmmOptions = [],
                     ccOptions = [],
@@ -6513,6 +6542,8 @@ GenericPackageDescription {
                       []
                       [],
                     sharedOptions =
+                    PerCompilerFlavor [] [],
+                    profSharedOptions =
                     PerCompilerFlavor [] [],
                     staticOptions =
                     PerCompilerFlavor [] [],
@@ -8138,6 +8169,7 @@ GenericPackageDescription {
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
+            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
@@ -8181,6 +8213,8 @@ GenericPackageDescription {
               []
               [],
             sharedOptions =
+            PerCompilerFlavor [] [],
+            profSharedOptions =
             PerCompilerFlavor [] [],
             staticOptions =
             PerCompilerFlavor [] [],
@@ -8626,6 +8660,7 @@ GenericPackageDescription {
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
+            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
@@ -8669,6 +8704,8 @@ GenericPackageDescription {
               []
               [],
             sharedOptions =
+            PerCompilerFlavor [] [],
+            profSharedOptions =
             PerCompilerFlavor [] [],
             staticOptions =
             PerCompilerFlavor [] [],
@@ -9389,6 +9426,7 @@ GenericPackageDescription {
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
+            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
@@ -9432,6 +9470,8 @@ GenericPackageDescription {
               []
               [],
             sharedOptions =
+            PerCompilerFlavor [] [],
+            profSharedOptions =
             PerCompilerFlavor [] [],
             staticOptions =
             PerCompilerFlavor [] [],
@@ -9501,13 +9541,15 @@ GenericPackageDescription {
         condTreeData = Executable {
           exeName = UnqualComponentName
             "isdefinite-cpu",
-          modulePath = "Noop.hs",
+          modulePath = SymbolicPath
+            "Noop.hs",
           exeScope = ExecutablePublic,
           buildInfo = BuildInfo {
             buildable = True,
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
+            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
@@ -9552,6 +9594,8 @@ GenericPackageDescription {
               []
               [],
             sharedOptions =
+            PerCompilerFlavor [] [],
+            profSharedOptions =
             PerCompilerFlavor [] [],
             staticOptions =
             PerCompilerFlavor [] [],
@@ -9605,13 +9649,15 @@ GenericPackageDescription {
         condTreeData = Executable {
           exeName = UnqualComponentName
             "isdefinite-gpu",
-          modulePath = "Noop.hs",
+          modulePath = SymbolicPath
+            "Noop.hs",
           exeScope = ExecutablePublic,
           buildInfo = BuildInfo {
             buildable = True,
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
+            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
@@ -9656,6 +9702,8 @@ GenericPackageDescription {
               []
               [],
             sharedOptions =
+            PerCompilerFlavor [] [],
+            profSharedOptions =
             PerCompilerFlavor [] [],
             staticOptions =
             PerCompilerFlavor [] [],
@@ -9709,13 +9757,15 @@ GenericPackageDescription {
         condTreeData = Executable {
           exeName = UnqualComponentName
             "isdefinite",
-          modulePath = "Noop.hs",
+          modulePath = SymbolicPath
+            "Noop.hs",
           exeScope = ExecutablePublic,
           buildInfo = BuildInfo {
             buildable = True,
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
+            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
@@ -9760,6 +9810,8 @@ GenericPackageDescription {
               []
               [],
             sharedOptions =
+            PerCompilerFlavor [] [],
+            profSharedOptions =
             PerCompilerFlavor [] [],
             staticOptions =
             PerCompilerFlavor [] [],
@@ -9802,13 +9854,15 @@ GenericPackageDescription {
         condTreeData = Executable {
           exeName = UnqualComponentName
             "memcheck",
-          modulePath = "Memcheck.hs",
+          modulePath = SymbolicPath
+            "Memcheck.hs",
           exeScope = ExecutablePublic,
           buildInfo = BuildInfo {
             buildable = True,
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
+            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
@@ -9853,6 +9907,8 @@ GenericPackageDescription {
               []
               [],
             sharedOptions =
+            PerCompilerFlavor [] [],
+            profSharedOptions =
             PerCompilerFlavor [] [],
             staticOptions =
             PerCompilerFlavor [] [],
@@ -9898,12 +9954,13 @@ GenericPackageDescription {
             "",
           testInterface = TestSuiteExeV10
             (mkVersion [1, 0])
-            "Spec.hs",
+            (SymbolicPath "Spec.hs"),
           testBuildInfo = BuildInfo {
             buildable = True,
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
+            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
@@ -9973,6 +10030,8 @@ GenericPackageDescription {
               []
               [],
             sharedOptions =
+            PerCompilerFlavor [] [],
+            profSharedOptions =
             PerCompilerFlavor [] [],
             staticOptions =
             PerCompilerFlavor [] [],

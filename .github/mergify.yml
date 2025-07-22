@@ -1,3 +1,31 @@
+# Note: We do not use the rebase strategy to merge PRs, because that
+# loses information needed by changelog-d to associate commits with PRs.
+
+priority_rules:
+
+  - name: high priority
+    conditions:
+      - 'label=priority: high :fire:'
+    priority: 3000
+
+  - name: priority for queue `default`
+    conditions:
+      - queue-name=default
+    priority: 2500
+
+  - name: priority for queue `squash-merge`
+    conditions:
+      - queue-name=squash-merge
+    priority: 2500
+
+  # The idea is we slightly prioritize those PRs because we're in
+  # a release cycle if a PR matches.
+  - name: release branch
+    conditions:
+      - 'base~=^3\.'
+      - 'label!=backport'
+    priority: 2750
+
 pull_request_rules:
 
   # implementing PR delay logic: apply a label after 2 days of inactivity
@@ -8,42 +36,91 @@ pull_request_rules:
           - merge delay passed
     name: Wait for 2 days before validating merge
     conditions:
-      - updated-at<2 days ago
       - or:
-        - label=merge me
-        - label=squash+merge me
-        - label=merge+no rebase
+          - 'label=priority: high :fire:'
+          - updated-at<2 days ago
+      - or:
+          - label=merge me
+          - label=squash+merge me
+          - label=merge+no rebase
       - '#approved-reviews-by>=2'
+
+  # label when Mergify is ready but waiting for the above
+  - actions:
+      label:
+        add:
+          - ready and waiting
+    name: Waiting out merge delay (used by bot)
+    conditions:
+      - base=master
+      - -draft
+      - -closed
+      - '-label=merge delay passed'
+      - '-label=priority: high :fire:'
+      - or:
+          - label=merge me
+          - label=squash+merge me
+          - label=merge+no rebase
+      - '#approved-reviews-by>=2'
+      - '#changes-requested-reviews-by=0'
+      # oy
+      # lifted these from branch protection imports
+      - check-success=fourmolu
+      - check-success=hlint
+      - check-success=Meta checks
+      - check-success=Doctest Cabal
+      - check-success=Validate post job
+      - check-success=Bootstrap post job
+      - 'check-success=docs/readthedocs.org:cabal'
+
+  # label when Mergify didn't trigger a merge automatically
+  - actions:
+      label:
+        add:
+          - waiting too long
+    name: Mergify hasn't merged a PR yet
+    conditions:
+      - base=master
+      - -draft
+      - -closed
+      - -merged
+      - '#approved-reviews-by>=2'
+      - '#changes-requested-reviews-by=0'
+      - updated-at<4 days ago
+      - label=merge delay passed
+      # oy
+      # lifted these from branch protection imports
+      - check-success=fourmolu
+      - check-success=hlint
+      - check-success=Meta checks
+      - check-success=Doctest Cabal
+      - check-success=Validate post job
+      - check-success=Bootstrap post job
+      - 'check-success=docs/readthedocs.org:cabal'
 
   # rebase+merge strategy
   - actions:
       queue:
         name: default
-        # Merge into master with a merge commit
-        method: merge
-        # Update the pr branch with rebase, so the history is clean
-        update_method: rebase
     name: Put pull requests in the rebase+merge queue
     conditions:
       - base=master
       - label=merge me
       - label=merge delay passed
       - '#approved-reviews-by>=2'
+      - '-label~=^blocked:'
 
   # merge+squash strategy
   - actions:
       queue:
-        name: default
-        method: squash
-        # both update methods get absorbed by the squash, so we use the most
-        # reliable
-        update_method: merge
+        name: squash-merge
     name: Put pull requests in the squash+merge queue
     conditions:
       - base=master
       - label=squash+merge me
       - label=merge delay passed
       - '#approved-reviews-by>=2'
+      - '-label~=^blocked:'
 
   # merge+no rebase strategy
   - actions:
@@ -55,21 +132,55 @@ pull_request_rules:
       - label=merge+no rebase
       - label=merge delay passed
       - '#approved-reviews-by>=2'
+      - '-label~=^blocked:'
 
-  # rebase+merge strategy for backports: require 1 approver instead of 2
+  # merge strategy for release branches
   - actions:
       queue:
         name: default
-        # Merge with a merge commit
-        method: merge
-        # Update the pr branch with rebase, so the history is clean
-        update_method: rebase
+    name: Put release branch pull requests in the rebase+merge queue
+    conditions:
+      - label=merge me
+      - base!=master
+      - -label=backport
+      - '#approved-reviews-by>=2'
+      - '-label~=^blocked:'
+
+  # merge+squash strategy for release branches
+  - actions:
+      queue:
+        name: squash-merge
+    name: Put release branch pull requests in the squash+merge queue
+    conditions:
+      - base!=master
+      - label=squash+merge me
+      - -label=backport
+      - '#approved-reviews-by>=2'
+      - '-label~=^blocked:'
+
+  # merge strategy for backports: require 1 approver instead of 2
+  - actions:
+      queue:
+        name: default
     name: Put backports in the rebase+merge queue
     conditions:
       - label=merge me
       - base!=master
-      - body~=backport
+      - label=backport
       - '#approved-reviews-by>=1'
+      - '-label~=^blocked:'
+
+  # merge+squash strategy for backports: require 1 approver instead of 2
+  - actions:
+      queue:
+        name: squash-merge
+    name: Put backports in the squash+merge queue
+    conditions:
+      - label=squash+merge me
+      - base!=master
+      - label=backport
+      - '#approved-reviews-by>=1'
+      - '-label~=^blocked:'
 
   # backports should be labeled as such
   - actions:
@@ -80,6 +191,26 @@ pull_request_rules:
     conditions:
       - body~=automatic backport
 
+merge_queue:
+  max_parallel_checks: 2
+
 queue_rules:
+  # Mergify now requires different queues for different strategies
   - name: default
+    batch_size: 3
+    batch_max_wait_time: 10 min
     update_bot_account: Mikolaj
+    merge_method: merge
+    update_method: rebase
+
+  - name: squash-merge
+    batch_size: 3
+    batch_max_wait_time: 10 min
+    update_bot_account: Mikolaj
+    merge_method: squash
+    update_method: merge
+
+defaults:
+  actions:
+    backport:
+      title: "Backport #{{ number }}: {{ title }}"

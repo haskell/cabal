@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
@@ -6,6 +5,7 @@
 module Distribution.Client.ProjectConfig.Types
   ( -- * Types for project config
     ProjectConfig (..)
+  , ProjectConfigToParse (..)
   , ProjectConfigBuildOnly (..)
   , ProjectConfigShared (..)
   , ProjectConfigProvenance (..)
@@ -26,6 +26,7 @@ module Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+import qualified Data.ByteString.Char8 as BS
 import Distribution.Client.BuildReports.Types
   ( ReportLevel (..)
   )
@@ -67,7 +68,7 @@ import Distribution.Simple.Compiler
   , CompilerFlavor
   , DebugInfoLevel (..)
   , OptimisationLevel (..)
-  , PackageDB
+  , PackageDBCWD
   , ProfDetailLevel
   )
 import Distribution.Simple.InstallDirs
@@ -94,11 +95,17 @@ import Distribution.Version
   )
 
 import qualified Data.Map as Map
+import Distribution.Solver.Types.ProjectConfigPath (ProjectConfigPath)
 import Distribution.Types.ParStrat
 
 -------------------------------
 -- Project config types
 --
+
+-- | The project configuration is configuration that is parsed but parse
+-- configuration may import more configuration. Holds the unparsed contents of
+-- an imported file contributing to the project config.
+newtype ProjectConfigToParse = ProjectConfigToParse BS.ByteString
 
 -- | This type corresponds directly to what can be written in the
 -- @cabal.project@ file. Other sources of configuration can also be injected
@@ -144,7 +151,7 @@ data ProjectConfig = ProjectConfig
   -- any packages which are explicitly named in `cabal.project`.
   , projectConfigSpecificPackage :: MapMappend PackageName PackageConfig
   }
-  deriving (Eq, Show, Generic, Typeable)
+  deriving (Eq, Show, Generic)
 
 -- | That part of the project configuration that only affects /how/ we build
 -- and not the /value/ of the things we build. This means this information
@@ -190,7 +197,7 @@ data ProjectConfigShared = ProjectConfigShared
     -- projectConfigUserInstall       :: Flag Bool,
 
     projectConfigInstallDirs :: InstallDirs (Flag PathTemplate)
-  , projectConfigPackageDBs :: [Maybe PackageDB]
+  , projectConfigPackageDBs :: [Maybe PackageDBCWD]
   , -- configuration used both by the solver and other phases
     projectConfigRemoteRepos :: NubList RemoteRepo
   -- ^ Available Hackage servers.
@@ -238,8 +245,8 @@ data ProjectConfigProvenance
     -- for how implicit configuration is determined.
     Implicit
   | -- | The path the project configuration was explicitly read from.
-    -- | The configuration was explicitly read from the specified 'FilePath'.
-    Explicit FilePath
+    -- | The configuration was explicitly read from the specified 'ProjectConfigPath'.
+    Explicit ProjectConfigPath
   deriving (Eq, Ord, Show, Generic)
 
 -- | Project configuration that is specific to each package, that is where we
@@ -257,6 +264,7 @@ data PackageConfig = PackageConfig
   , packageConfigFullyStaticExe :: Flag Bool
   , packageConfigProf :: Flag Bool -- TODO: [code cleanup] sort out
   , packageConfigProfLib :: Flag Bool --      this duplication
+  , packageConfigProfShared :: Flag Bool
   , packageConfigProfExe :: Flag Bool --      and consistency
   , packageConfigProfDetail :: Flag ProfDetailLevel
   , packageConfigProfLibDetail :: Flag ProfDetailLevel
@@ -297,8 +305,9 @@ data PackageConfig = PackageConfig
   , packageConfigHaddockContents :: Flag PathTemplate -- TODO: [required eventually] use this
   , packageConfigHaddockIndex :: Flag PathTemplate -- TODO: [required eventually] use this
   , packageConfigHaddockBaseUrl :: Flag String -- TODO: [required eventually] use this
-  , packageConfigHaddockLib :: Flag String -- TODO: [required eventually] use this
+  , packageConfigHaddockResourcesDir :: Flag String -- TODO: [required eventually] use this
   , packageConfigHaddockOutputDir :: Flag FilePath -- TODO: [required eventually] use this
+  , packageConfigHaddockUseUnicode :: Flag Bool -- TODO: [required eventually] use this
   , packageConfigHaddockForHackage :: Flag HaddockTarget
   , -- Test options
     packageConfigTestHumanLog :: Flag PathTemplate
@@ -328,7 +337,7 @@ instance Structured PackageConfig
 -- | Newtype wrapper for 'Map' that provides a 'Monoid' instance that takes
 -- the last value rather than the first value for overlapping keys.
 newtype MapLast k v = MapLast {getMapLast :: Map k v}
-  deriving (Eq, Show, Functor, Generic, Binary, Typeable)
+  deriving (Eq, Show, Functor, Generic, Binary)
 
 instance (Structured k, Structured v) => Structured (MapLast k v)
 
@@ -344,7 +353,7 @@ instance Ord k => Semigroup (MapLast k v) where
 -- | Newtype wrapper for 'Map' that provides a 'Monoid' instance that
 -- 'mappend's values of overlapping keys rather than taking the first.
 newtype MapMappend k v = MapMappend {getMapMappend :: Map k v}
-  deriving (Eq, Show, Functor, Generic, Binary, Typeable)
+  deriving (Eq, Show, Functor, Generic, Binary)
 
 instance (Structured k, Structured v) => Structured (MapMappend k v)
 
@@ -429,7 +438,7 @@ data SolverSettings = SolverSettings
   -- solverSettingOverrideReinstall :: Bool,
   -- solverSettingUpgradeDeps       :: Bool
   }
-  deriving (Eq, Show, Generic, Typeable)
+  deriving (Eq, Show, Generic)
 
 instance Binary SolverSettings
 instance Structured SolverSettings

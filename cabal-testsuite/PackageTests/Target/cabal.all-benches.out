@@ -1,0 +1,6 @@
+# cabal v2-target
+Resolving dependencies...
+Fully qualified target forms:
+ - a:bench:a-bench
+ - b:bench:b-bench
+Found 2 targets matching all:benches.

@@ -1,0 +1,3 @@
+# cabal check
+These warnings may cause trouble when distributing the package:
+Warning: [option-o2] 'ghc-options: -O2' is rarely needed. Check that it is giving a real benefit and not just imposing longer compile times on your users.

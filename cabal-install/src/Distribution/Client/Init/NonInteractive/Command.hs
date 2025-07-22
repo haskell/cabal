@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 module Distribution.Client.Init.NonInteractive.Command
   ( genPkgDescription
@@ -40,7 +40,7 @@ import Distribution.Client.Init.Types
 import Distribution.Client.Compat.Prelude hiding (getLine, head, last, putStr, putStrLn)
 import Prelude ()
 
-import Data.List (head, last)
+import Data.List (last)
 import qualified Data.List.NonEmpty as NEL
 
 import Distribution.CabalSpecVersion (CabalSpecVersion (..))
@@ -51,7 +51,7 @@ import Distribution.Client.Init.Utils
 import Distribution.Client.Types (SourcePackageDb (..))
 import Distribution.ModuleName (ModuleName, components)
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
-import Distribution.Simple.Setup (Flag (..), fromFlagOrDefault)
+import Distribution.Simple.Setup (fromFlagOrDefault, pattern Flag, pattern NoFlag)
 import Distribution.Solver.Types.PackageIndex (elemByPackageName)
 import Distribution.Types.Dependency (Dependency (..))
 import Distribution.Types.PackageName (PackageName, unPackageName)
@@ -340,12 +340,18 @@ packageTypeHeuristics flags = getPackageType flags $ guessPackageType flags
 --   to a default value.
 mainFileHeuristics :: Interactive m => InitFlags -> m HsFilePath
 mainFileHeuristics flags = do
-  appDir <- head <$> appDirsHeuristics flags
+  appDirs <- appDirsHeuristics flags
+  let appDir = case appDirs of
+        [] -> error "impossible: appDirsHeuristics returned empty list of dirs"
+        (appDir' : _) -> appDir'
   getMainFile flags . guessMainFile $ appDir
 
 testMainHeuristics :: Interactive m => InitFlags -> m HsFilePath
 testMainHeuristics flags = do
-  testDir <- head <$> testDirsHeuristics flags
+  testDirs' <- testDirsHeuristics flags
+  let testDir = case testDirs' of
+        [] -> error "impossible: testDirsHeuristics returned empty list of dirs"
+        (testDir' : _) -> testDir'
   guessMainFile testDir
 
 initializeTestSuiteHeuristics :: Interactive m => InitFlags -> m Bool

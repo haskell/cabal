@@ -1,0 +1,21 @@
+cabal-version:  3.0
+name:           my02
+version:        0.1
+license:        BSD-3-Clause
+build-type:     Simple
+
+library
+  exposed-modules:    Foo02
+  default-language:   Haskell2010
+  build-depends:
+    , base
+    , my-dep01
+    , my-dep02
+    , my-dep03
+    , my-dep04
+    , my-dep05
+    , my-dep06
+    , my-dep07
+    , my-dep08
+    , my-dep09
+    , my-dep10

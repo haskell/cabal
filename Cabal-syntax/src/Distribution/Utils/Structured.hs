@@ -2,9 +2,9 @@
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
@@ -106,11 +106,11 @@ import qualified Data.Aeson as Aeson
 #endif
 
 import Data.Kind (Type)
+import Data.Typeable (TypeRep, Typeable, typeRep)
 
-import Distribution.Compat.Typeable (TypeRep, Typeable, typeRep)
 import Distribution.Utils.MD5
 
-import Data.Monoid (mconcat)
+import Data.Monoid (Last, mconcat)
 
 import qualified Data.Foldable
 import qualified Data.Semigroup
@@ -276,7 +276,7 @@ structuredDecodeOrFailIO :: (Binary.Binary a, Structured a) => LBS.ByteString ->
 structuredDecodeOrFailIO bs =
   catch (evaluate (structuredDecode bs) >>= return . Right) handler
   where
-    handler (ErrorCallWithLocation str _) = return $ Left str
+    handler (ErrorCall str) = return $ Left str
 
 -- | Lazily reconstruct a value previously written to a file.
 structuredDecodeFileOrFail :: (Binary.Binary a, Structured a) => FilePath -> IO (Either String a)
@@ -413,17 +413,48 @@ instance Structured Float where structure = nominalStructure
 instance Structured Double where structure = nominalStructure
 
 instance Structured a => Structured (Maybe a)
+instance Structured a => Structured (Last a)
 instance (Structured a, Structured b) => Structured (Either a b)
 instance Structured a => Structured (Ratio a) where structure = containerStructure
 instance Structured a => Structured [a] where structure = containerStructure
 instance Structured a => Structured (NonEmpty a) where structure = containerStructure
 
-instance (Structured a1, Structured a2) => Structured (a1, a2)
-instance (Structured a1, Structured a2, Structured a3) => Structured (a1, a2, a3)
-instance (Structured a1, Structured a2, Structured a3, Structured a4) => Structured (a1, a2, a3, a4)
-instance (Structured a1, Structured a2, Structured a3, Structured a4, Structured a5) => Structured (a1, a2, a3, a4, a5)
-instance (Structured a1, Structured a2, Structured a3, Structured a4, Structured a5, Structured a6) => Structured (a1, a2, a3, a4, a5, a6)
-instance (Structured a1, Structured a2, Structured a3, Structured a4, Structured a5, Structured a6, Structured a7) => Structured (a1, a2, a3, a4, a5, a6, a7)
+-- These instances are defined directly because the generic names for tuples changed
+-- in 9.6 (https://gitlab.haskell.org/ghc/ghc/-/issues/24291).
+--
+-- By defining our own instances the STuple2 identifier will be used in the hash and
+-- hence the same on all GHC versions.
+
+data STuple2 a b = STuple2 a b deriving (Generic)
+data STuple3 a b c = STuple3 a b c deriving (Generic)
+data STuple4 a b c d = STuple4 a b c d deriving (Generic)
+data STuple5 a b c d e = STuple5 a b c d e deriving (Generic)
+data STuple6 a b c d e f = STuple6 a b c d e f deriving (Generic)
+data STuple7 a b c d e f g = STuple7 a b c d e f g deriving (Generic)
+
+instance (Structured a1, Structured a2) => Structured (STuple2 a1 a2)
+instance (Structured a1, Structured a2) => Structured (a1, a2) where
+  structure Proxy = structure @(STuple2 a1 a2) Proxy
+
+instance (Structured a1, Structured a2, Structured a3) => Structured (STuple3 a1 a2 a3)
+instance (Structured a1, Structured a2, Structured a3) => Structured (a1, a2, a3) where
+  structure Proxy = structure @(STuple3 a1 a2 a3) Proxy
+
+instance (Structured a1, Structured a2, Structured a3, Structured a4) => Structured (STuple4 a1 a2 a3 a4)
+instance (Structured a1, Structured a2, Structured a3, Structured a4) => Structured (a1, a2, a3, a4) where
+  structure Proxy = structure @(STuple4 a1 a2 a3 a4) Proxy
+
+instance (Structured a1, Structured a2, Structured a3, Structured a4, Structured a5) => Structured (STuple5 a1 a2 a3 a4 a5)
+instance (Structured a1, Structured a2, Structured a3, Structured a4, Structured a5) => Structured (a1, a2, a3, a4, a5) where
+  structure Proxy = structure @(STuple5 a1 a2 a3 a4 a5) Proxy
+
+instance (Structured a1, Structured a2, Structured a3, Structured a4, Structured a5, Structured a6) => Structured (STuple6 a1 a2 a3 a4 a5 a6)
+instance (Structured a1, Structured a2, Structured a3, Structured a4, Structured a5, Structured a6) => Structured (a1, a2, a3, a4, a5, a6) where
+  structure Proxy = structure @(STuple6 a1 a2 a3 a4 a5 a6) Proxy
+
+instance (Structured a1, Structured a2, Structured a3, Structured a4, Structured a5, Structured a6, Structured a7) => Structured (STuple7 a1 a2 a3 a4 a5 a6 a7)
+instance (Structured a1, Structured a2, Structured a3, Structured a4, Structured a5, Structured a6, Structured a7) => Structured (a1, a2, a3, a4, a5, a6, a7) where
+  structure Proxy = structure @(STuple7 a1 a2 a3 a4 a5 a6 a7) Proxy
 
 instance Structured BS.ByteString where structure = nominalStructure
 instance Structured LBS.ByteString where structure = nominalStructure

@@ -1,10 +1,6 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
-{-# LANGUAGE ViewPatterns #-}
 
 -- | cabal-install CLI command: update
 module Distribution.Client.CmdUpdate
@@ -41,6 +37,7 @@ import Distribution.Client.JobControl
   )
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
+  , cfgVerbosity
   , defaultNixStyleFlags
   , nixStyleOptions
   )
@@ -48,6 +45,7 @@ import Distribution.Client.ProjectConfig
   ( ProjectConfig (..)
   , ProjectConfigShared (projectConfigConfigFile)
   , projectConfigWithSolverRepoContext
+  , withGlobalConfig
   , withProjectOrGlobalConfig
   )
 import Distribution.Client.ProjectFlags
@@ -55,8 +53,7 @@ import Distribution.Client.ProjectFlags
   )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.Setup
-  ( ConfigFlags (..)
-  , GlobalFlags
+  ( GlobalFlags
   , RepoContext (..)
   , UpdateFlags
   , defaultUpdateFlags
@@ -68,11 +65,8 @@ import Distribution.Client.Types
   , repoName
   , unRepoName
   )
-import Distribution.Simple.Flag
-  ( fromFlagOrDefault
-  )
 import Distribution.Simple.Utils
-  ( die'
+  ( dieWithException
   , notice
   , noticeNoWrap
   , warn
@@ -97,7 +91,8 @@ import Distribution.Simple.Command
   )
 import System.FilePath (dropExtension, (<.>))
 
-import Distribution.Client.IndexUtils.Timestamp (nullTimestamp)
+import Distribution.Client.Errors
+import Distribution.Client.IndexUtils.Timestamp (Timestamp (NoTimestamp))
 import qualified Hackage.Security.Client as Sec
 
 updateCommand :: CommandUI (NixStyleFlags ())
@@ -161,11 +156,9 @@ updateAction flags@NixStyleFlags{..} extraArgs globalFlags = do
 
   projectConfig <-
     withProjectOrGlobalConfig
-      verbosity
       ignoreProject
-      globalConfigFlag
       (projectConfig <$> establishProjectBaseContext verbosity cliConfig OtherCommand)
-      (\globalConfig -> return $ globalConfig <> cliConfig)
+      (withGlobalConfig verbosity globalConfigFlag $ \globalConfig -> return $ globalConfig <> cliConfig)
 
   projectConfigWithSolverRepoContext
     verbosity
@@ -179,8 +172,7 @@ updateAction flags@NixStyleFlags{..} extraArgs globalFlags = do
           parseArg s = case simpleParsec s of
             Just r -> return r
             Nothing ->
-              die' verbosity $
-                "'v2-update' unable to parse repo: \"" ++ s ++ "\""
+              dieWithException verbosity $ UnableToParseRepo s
 
       updateRepoRequests <- traverse parseArg extraArgs
 
@@ -190,11 +182,8 @@ updateAction flags@NixStyleFlags{..} extraArgs globalFlags = do
               [ r | (UpdateRequest r _) <- updateRepoRequests, not (r `elem` remoteRepoNames)
               ]
         unless (null unknownRepos) $
-          die' verbosity $
-            "'v2-update' repo(s): \""
-              ++ intercalate "\", \"" (map unRepoName unknownRepos)
-              ++ "\" can not be found in known remote repo(s): "
-              ++ intercalate ", " (map unRepoName remoteRepoNames)
+          dieWithException verbosity $
+            NullUnknownrepos (map unRepoName unknownRepos) (map unRepoName remoteRepoNames)
 
       let reposToUpdate :: [(Repo, RepoIndexState)]
           reposToUpdate = case updateRepoRequests of
@@ -227,7 +216,7 @@ updateAction flags@NixStyleFlags{..} extraArgs globalFlags = do
           reposToUpdate
         traverse_ (\_ -> collectJob jobCtrl) reposToUpdate
   where
-    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    verbosity = cfgVerbosity normal flags
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty -- ClientInstallFlags, not needed here
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 
@@ -260,18 +249,19 @@ updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
           updateRepoIndexCache verbosity (RepoIndex repoCtxt repo)
     RepoSecure{} -> repoContextWithSecureRepo repoCtxt repo $ \repoSecure -> do
       let index = RepoIndex repoCtxt repo
-      -- NB: This may be a nullTimestamp if we've never updated before
-      current_ts <- currentIndexTimestamp (lessVerbose verbosity) repoCtxt repo
+      -- NB: This may be a NoTimestamp if we've never updated before
+      current_ts <- currentIndexTimestamp (lessVerbose verbosity) index
       -- NB: always update the timestamp, even if we didn't actually
       -- download anything
       writeIndexTimestamp index indexState
-      ce <-
-        if repoContextIgnoreExpiry repoCtxt
-          then Just `fmap` getCurrentTime
-          else return Nothing
-      updated <- Sec.uncheckClientErrors $ Sec.checkForUpdates repoSecure ce
-      -- this resolves indexState (which could be HEAD) into a timestamp
-      new_ts <- currentIndexTimestamp (lessVerbose verbosity) repoCtxt repo
+
+      updated <- do
+        ce <-
+          if repoContextIgnoreExpiry repoCtxt
+            then Just <$> getCurrentTime
+            else return Nothing
+        Sec.uncheckClientErrors $ Sec.checkForUpdates repoSecure ce
+
       let rname = remoteRepoName (repoRemote repo)
 
       -- Update cabal's internal index as well so that it's not out of sync
@@ -280,13 +270,19 @@ updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
         Sec.NoUpdates -> do
           now <- getCurrentTime
           setModificationTime (indexBaseName repo <.> "tar") now
-            `catchIO` (\e -> warn verbosity $ "Could not set modification time of index tarball -- " ++ displayException e)
+            `catchIO` \e ->
+              warn verbosity $ "Could not set modification time of index tarball -- " ++ displayException e
           noticeNoWrap verbosity $
             "Package list of " ++ prettyShow rname ++ " is up to date."
         Sec.HasUpdates -> do
           updateRepoIndexCache verbosity index
           noticeNoWrap verbosity $
             "Package list of " ++ prettyShow rname ++ " has been updated."
+
+      -- This resolves indexState (which could be HEAD) into a timestamp
+      -- This could be null but should not be, since the above guarantees
+      -- we have an updated index.
+      new_ts <- currentIndexTimestamp (lessVerbose verbosity) index
 
       noticeNoWrap verbosity $
         "The index-state is set to " ++ prettyShow (IndexStateTime new_ts) ++ "."
@@ -297,7 +293,7 @@ updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
 
       -- In case current_ts is a valid timestamp different from new_ts, let
       -- the user know how to go back to current_ts
-      when (current_ts /= nullTimestamp && new_ts /= current_ts) $
+      when (current_ts /= NoTimestamp && new_ts /= current_ts) $
         noticeNoWrap verbosity $
           "To revert to previous state run:\n"
             ++ "    cabal v2-update '"

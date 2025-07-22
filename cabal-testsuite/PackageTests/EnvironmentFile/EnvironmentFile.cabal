@@ -1,0 +1,18 @@
+cabal-version:   3.14
+name:            EnvironmentFile
+version:         0.1.0.0
+license:         NONE
+author:          Matthew Pickering
+maintainer:      matthewtpickering@gmail.com
+build-type:      Simple
+extra-doc-files: CHANGELOG.md
+
+common warnings
+    ghc-options: -Wall
+
+executable EnvironmentFile
+    import:           warnings
+    main-is:          Main.hs
+    build-depends:    base < 5,
+    hs-source-dirs:   app
+    default-language: Haskell2010

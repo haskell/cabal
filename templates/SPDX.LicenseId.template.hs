@@ -32,13 +32,13 @@ import qualified Text.PrettyPrint as Disp
 -- LicenseId
 -------------------------------------------------------------------------------
 
--- | SPDX License identifiers list v3.16
+-- | SPDX License identifiers list v3.26
 data LicenseId
 {{ licenseIds }}
-  deriving (Eq, Ord, Enum, Bounded, Show, Read, Typeable, Data)
+  deriving (Eq, Ord, Enum, Bounded, Show, Read, Data)
 
 instance Binary LicenseId where
-    -- Word16 is encoded in big endianess
+    -- Word16 is encoded in big endianness
     -- https://github.com/kolmodin/binary/blob/master/src/Data/Binary/Class.hs#L220-LL227
     put = Binary.putWord16be . fromIntegral . fromEnum
     get = do
@@ -49,7 +49,7 @@ instance Binary LicenseId where
 
 -- note: remember to bump version each time the definition changes
 instance Structured LicenseId where
-    structure p = set typeVersion 306 $ nominalStructure p
+    structure p = set typeVersion 307 $ nominalStructure p
 
 instance Pretty LicenseId where
     pretty = Disp.text . licenseId
@@ -175,6 +175,15 @@ licenseIdList LicenseListVersion_3_10 =
 licenseIdList LicenseListVersion_3_16 =
 {{licenseList_perv.v_3_16}}
     ++ bulkOfLicenses
+licenseIdList LicenseListVersion_3_23 =
+{{licenseList_perv.v_3_23}}
+    ++ bulkOfLicenses
+licenseIdList LicenseListVersion_3_25 =
+{{licenseList_perv.v_3_25}}
+    ++ bulkOfLicenses
+licenseIdList LicenseListVersion_3_26 =
+{{licenseList_perv.v_3_26}}
+    ++ bulkOfLicenses
 
 -- | Create a 'LicenseId' from a 'String'.
 mkLicenseId :: LicenseListVersion -> String -> Maybe LicenseId
@@ -184,6 +193,9 @@ mkLicenseId LicenseListVersion_3_6  s = Map.lookup s stringLookup_3_6
 mkLicenseId LicenseListVersion_3_9  s = Map.lookup s stringLookup_3_9
 mkLicenseId LicenseListVersion_3_10 s = Map.lookup s stringLookup_3_10
 mkLicenseId LicenseListVersion_3_16 s = Map.lookup s stringLookup_3_16
+mkLicenseId LicenseListVersion_3_23 s = Map.lookup s stringLookup_3_23
+mkLicenseId LicenseListVersion_3_25 s = Map.lookup s stringLookup_3_25
+mkLicenseId LicenseListVersion_3_26 s = Map.lookup s stringLookup_3_26
 
 stringLookup_3_0 :: Map String LicenseId
 stringLookup_3_0 = Map.fromList $ map (\i -> (licenseId i, i)) $
@@ -208,6 +220,18 @@ stringLookup_3_10 = Map.fromList $ map (\i -> (licenseId i, i)) $
 stringLookup_3_16 :: Map String LicenseId
 stringLookup_3_16 = Map.fromList $ map (\i -> (licenseId i, i)) $
     licenseIdList LicenseListVersion_3_16
+
+stringLookup_3_23 :: Map String LicenseId
+stringLookup_3_23 = Map.fromList $ map (\i -> (licenseId i, i)) $
+    licenseIdList LicenseListVersion_3_23
+
+stringLookup_3_25 :: Map String LicenseId
+stringLookup_3_25 = Map.fromList $ map (\i -> (licenseId i, i)) $
+    licenseIdList LicenseListVersion_3_25
+
+stringLookup_3_26 :: Map String LicenseId
+stringLookup_3_26 = Map.fromList $ map (\i -> (licenseId i, i)) $
+    licenseIdList LicenseListVersion_3_26
 
 --  | Licenses in all SPDX License lists
 bulkOfLicenses :: [LicenseId]

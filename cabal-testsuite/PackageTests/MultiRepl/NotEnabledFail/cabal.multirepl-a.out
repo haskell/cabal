@@ -1,6 +1,7 @@
 # cabal v2-repl
 Resolving dependencies...
-Error: cabal: Cannot open a repl for multiple components at once. The targets 'pkg-a' and 'pkg-b' refer to different components..
+Error: [Cabal-7076]
+Cannot open a repl for multiple components at once. The targets 'pkg-a' and 'pkg-b' refer to different components..
 
 Your compiler supports a multiple component repl but support is not enabled.
 The experimental multi repl can be enabled by

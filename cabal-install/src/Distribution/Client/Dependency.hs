@@ -17,7 +17,6 @@
 module Distribution.Client.Dependency
   ( -- * The main package dependency resolver
     DepResolverParams
-  , chooseSolver
   , resolveDependencies
   , Progress (..)
   , foldProgress
@@ -65,15 +64,13 @@ module Distribution.Client.Dependency
   , addDefaultSetupDependencies
   , addSetupCabalMinVersionConstraint
   , addSetupCabalMaxVersionConstraint
+  , addSetupCabalProfiledDynamic
   ) where
 
 import Distribution.Client.Compat.Prelude
-import qualified Prelude as Unsafe (head)
 
 import Distribution.Client.Dependency.Types
   ( PackagesPreferenceDefault (..)
-  , PreSolver (..)
-  , Solver (..)
   )
 import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
 import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
@@ -126,10 +123,19 @@ import Distribution.Solver.Modular
   , SolverConfig (..)
   , modularResolver
   )
+import Distribution.Solver.Modular.Message
+  ( renderSummarizedMessage
+  )
+import Distribution.Solver.Types.SummarizedMessage
+  ( SummarizedMessage (..)
+  )
 import Distribution.System
   ( Platform
   )
 import Distribution.Types.Dependency
+import Distribution.Types.DependencySatisfaction
+  ( DependencySatisfaction (..)
+  )
 import Distribution.Verbosity
   ( normal
   )
@@ -152,6 +158,8 @@ import Distribution.Solver.Types.ResolverPackage
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SolverId
 import Distribution.Solver.Types.SolverPackage
+  ( SolverPackage (SolverPackage)
+  )
 import Distribution.Solver.Types.SourcePackage
 import Distribution.Solver.Types.Variable
 
@@ -467,6 +475,7 @@ nonReinstallablePackages :: [PackageName]
 nonReinstallablePackages =
   [ mkPackageName "base"
   , mkPackageName "ghc-bignum"
+  , mkPackageName "ghc-internal"
   , mkPackageName "ghc-prim"
   , mkPackageName "ghc"
   , mkPackageName "integer-gmp"
@@ -634,7 +643,7 @@ addDefaultSetupDependencies defaultSetupDeps params =
               }
         }
       where
-        isCustom = PD.buildType pkgdesc == PD.Custom
+        isCustom = PD.buildType pkgdesc == PD.Custom || PD.buildType pkgdesc == PD.Hooks
         gpkgdesc = srcpkgDescription srcpkg
         pkgdesc = PD.packageDescription gpkgdesc
 
@@ -670,6 +679,22 @@ addSetupCabalMaxVersionConstraint maxVersion =
             (PackagePropertyVersion $ earlierVersion maxVersion)
         )
         ConstraintSetupCabalMaxVersion
+    ]
+  where
+    cabalPkgname = mkPackageName "Cabal"
+
+-- | Add an a lower bound @setup.Cabal >= 3.13@ labeled with 'ConstraintSourceProfiledDynamic'
+addSetupCabalProfiledDynamic
+  :: DepResolverParams
+  -> DepResolverParams
+addSetupCabalProfiledDynamic =
+  addConstraints
+    [ LabeledPackageConstraint
+        ( PackageConstraint
+            (ScopeAnySetupQualifier cabalPkgname)
+            (PackagePropertyVersion $ orLaterVersion (mkVersion [3, 13, 0]))
+        )
+        ConstraintSourceProfiledDynamic
     ]
   where
     cabalPkgname = mkPackageName "Cabal"
@@ -733,7 +758,7 @@ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers =
         gpkgdesc = srcpkgDescription srcpkg
         pkgdesc = PD.packageDescription gpkgdesc
         bt = PD.buildType pkgdesc
-        affected = bt == PD.Custom && hasBuildableFalse gpkgdesc
+        affected = (bt == PD.Custom || bt == PD.Hooks) && hasBuildableFalse gpkgdesc
 
     -- Does this package contain any components with non-empty 'build-depends'
     -- and a 'buildable' field that could potentially be set to 'False'? False
@@ -756,14 +781,8 @@ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers =
 
 -- ------------------------------------------------------------
 
-chooseSolver :: Verbosity -> PreSolver -> CompilerInfo -> IO Solver
-chooseSolver _verbosity preSolver _cinfo =
-  case preSolver of
-    AlwaysModular -> do
-      return Modular
-
-runSolver :: Solver -> SolverConfig -> DependencyResolver UnresolvedPkgLoc
-runSolver Modular = modularResolver
+runSolver :: SolverConfig -> DependencyResolver UnresolvedPkgLoc
+runSolver = modularResolver
 
 -- | Run the dependency solver.
 --
@@ -773,40 +792,39 @@ runSolver Modular = modularResolver
 resolveDependencies
   :: Platform
   -> CompilerInfo
-  -> PkgConfigDb
-  -> Solver
+  -> Maybe PkgConfigDb
   -> DepResolverParams
   -> Progress String String SolverInstallPlan
-resolveDependencies platform comp pkgConfigDB solver params =
+resolveDependencies platform comp pkgConfigDB params =
   Step (showDepResolverParams finalparams) $
     fmap (validateSolverResult platform comp indGoals) $
-      runSolver
-        solver
-        ( SolverConfig
-            reordGoals
-            cntConflicts
-            fineGrained
-            minimize
-            indGoals
-            noReinstalls
-            shadowing
-            strFlags
-            onlyConstrained_
-            maxBkjumps
-            enableBj
-            solveExes
-            order
-            verbosity
-            (PruneAfterFirstSuccess False)
-        )
-        platform
-        comp
-        installedPkgIndex
-        sourcePkgIndex
-        pkgConfigDB
-        preferences
-        constraints
-        targets
+      formatProgress $
+        runSolver
+          ( SolverConfig
+              reordGoals
+              cntConflicts
+              fineGrained
+              minimize
+              indGoals
+              noReinstalls
+              shadowing
+              strFlags
+              onlyConstrained_
+              maxBkjumps
+              enableBj
+              solveExes
+              order
+              verbosity
+              (PruneAfterFirstSuccess False)
+          )
+          platform
+          comp
+          installedPkgIndex
+          sourcePkgIndex
+          pkgConfigDB
+          preferences
+          constraints
+          targets
   where
     finalparams@( DepResolverParams
                     targets
@@ -834,6 +852,9 @@ resolveDependencies platform comp pkgConfigDB solver params =
         if asBool (depResolverAllowBootLibInstalls params)
           then params
           else dontInstallNonReinstallablePackages params
+
+    formatProgress :: Progress SummarizedMessage String a -> Progress String String a
+    formatProgress p = foldProgress (\x xs -> Step (renderSummarizedMessage x) xs) Fail Done p
 
     preferences :: PackageName -> PackagePreferences
     preferences = interpretPackagesPreference targets defpref prefs
@@ -961,8 +982,11 @@ planPackagesProblems platform cinfo pkgs =
   , let packageProblems = configuredPackageProblems platform cinfo pkg
   , not (null packageProblems)
   ]
-    ++ [ DuplicatePackageSolverId (Graph.nodeKey (Unsafe.head dups)) dups
+    ++ [ DuplicatePackageSolverId (Graph.nodeKey aDup) dups
        | dups <- duplicatesBy (comparing Graph.nodeKey) pkgs
+       , aDup <- case dups of
+          [] -> []
+          (ad : _) -> [ad]
        ]
 
 data PackageProblem
@@ -1083,7 +1107,7 @@ configuredPackageProblems
         case finalizePD
           specifiedFlags
           compSpec
-          (const True)
+          (const Satisfied)
           platform
           cinfo
           []

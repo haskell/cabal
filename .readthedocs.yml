@@ -3,7 +3,15 @@ version: 2
 sphinx:
   configuration: doc/conf.py
 
+build:
+  os: "ubuntu-22.04"
+  tools:
+    python: "3.8"
+  jobs:
+    post_create_environment:
+      - pip install pip-tools
+      - make users-guide-requirements
+
 python:
-  version: 3.8
   install:
     - requirements: doc/requirements.txt

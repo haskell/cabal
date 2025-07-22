@@ -39,6 +39,7 @@ syn keyword cabalLanguage contained
   \ Haskell98
   \ Haskell2010
   \ GHC2021
+  \ GHC2024
 
 " To update this in Cabal, `cabal repl Cabal` and:
 " >>> :m *Distribution.PackageDescription.FieldGrammar
@@ -64,6 +65,7 @@ syn keyword cabalFieldName contained
   \ cmm-options
   \ cmm-sources
   \ copyright
+  \ jspp-options
   \ cpp-options
   \ cxx-options
   \ cxx-sources
@@ -79,6 +81,7 @@ syn keyword cabalFieldName contained
   \ extra-bundled-libraries
   \ extra-doc-files
   \ extra-dynamic-library-flavours
+  \ extra-files
   \ extra-framework-dirs
   \ extra-ghci-libraries
   \ extra-lib-dirs
@@ -209,6 +212,7 @@ syn keyword cabalExtension contained
   \ LexicalNegation
   \ LiberalTypeSynonyms
   \ LinearTypes
+  \ ListTuplePuns
   \ RequiredTypeArguments
   \ MagicHash
   \ MonadComprehensions
@@ -216,9 +220,11 @@ syn keyword cabalExtension contained
   \ MonoLocalBinds
   \ MonoPatBinds
   \ MonomorphismRestriction
+  \ MultilineStrings
   \ MultiParamTypeClasses
   \ MultiWayIf
   \ NPlusKPatterns
+  \ NamedDefaults
   \ NamedFieldPuns
   \ NamedWildCards
   \ NegativeLiterals
@@ -227,6 +233,7 @@ syn keyword cabalExtension contained
   \ NullaryTypeClasses
   \ NumDecimals
   \ NumericUnderscores
+  \ OrPatterns
   \ OverlappingInstances
   \ OverloadedLabels
   \ OverloadedLists
@@ -268,6 +275,7 @@ syn keyword cabalExtension contained
   \ TraditionalRecordSyntax
   \ TransformListComp
   \ TupleSections
+  \ TypeAbstractions
   \ TypeApplications
   \ TypeData
   \ TypeFamilies
@@ -356,9 +364,11 @@ syn keyword cabalExtension contained
   \ NoMonoLocalBinds
   \ NoMonoPatBinds
   \ NoMonomorphismRestriction
+  \ NoMultilineStrings
   \ NoMultiParamTypeClasses
   \ NoMultiWayIf
   \ NoNPlusKPatterns
+  \ NoNamedDefaults
   \ NoNamedFieldPuns
   \ NoNamedWildCards
   \ NoNegativeLiterals
@@ -372,6 +382,7 @@ syn keyword cabalExtension contained
   \ NoOverloadedLists
   \ NoOverloadedRecordDot
   \ NoOverloadedStrings
+  \ NoOrPatterns
   \ NoPackageImports
   \ NoParallelArrays
   \ NoParallelListComp
@@ -408,6 +419,7 @@ syn keyword cabalExtension contained
   \ NoTraditionalRecordSyntax
   \ NoTransformListComp
   \ NoTupleSections
+  \ NoTypeAbstractions
   \ NoTypeApplications
   \ NoTypeData
   \ NoTypeFamilies

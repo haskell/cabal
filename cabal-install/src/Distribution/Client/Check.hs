@@ -1,9 +1,3 @@
-{-# LANGUAGE CPP #-}
-
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
-
 -- |
 -- Module      :  Distribution.Client.Check
 -- Copyright   :  (c) Lennart Kolmodin 2008
@@ -21,16 +15,18 @@ module Distribution.Client.Check
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+import Distribution.Client.Errors
 import Distribution.Client.Utils.Parsec (renderParseError)
 import Distribution.PackageDescription (GenericPackageDescription)
 import Distribution.PackageDescription.Check
-import Distribution.PackageDescription.Configuration (flattenPackageDescription)
 import Distribution.PackageDescription.Parsec
   ( parseGenericPackageDescription
   , runParseResult
   )
 import Distribution.Parsec (PWarning (..), showPError)
-import Distribution.Simple.Utils (defaultPackageDesc, die', notice, warn, warnError)
+import Distribution.Simple.Utils (defaultPackageDescCwd, dieWithException, notice, warn, warnError)
+import Distribution.Utils.Path (getSymbolicPath)
+
 import System.IO (hPutStr, stderr)
 
 import qualified Control.Monad as CM
@@ -44,43 +40,37 @@ readGenericPackageDescriptionCheck :: Verbosity -> FilePath -> IO ([PWarning], G
 readGenericPackageDescriptionCheck verbosity fpath = do
   exists <- Dir.doesFileExist fpath
   unless exists $
-    die' verbosity $
-      "Error Parsing: file \"" ++ fpath ++ "\" doesn't exist. Cannot continue."
+    dieWithException verbosity $
+      FileDoesntExist fpath
   bs <- BS.readFile fpath
   let (warnings, result) = runParseResult (parseGenericPackageDescription bs)
   case result of
     Left (_, errors) -> do
       traverse_ (warn verbosity . showPError fpath) errors
       hPutStr stderr $ renderParseError fpath bs errors warnings
-      die' verbosity "parse error"
+      dieWithException verbosity ParseError
     Right x -> return (warnings, x)
 
--- | Checks a packge for common errors. Returns @True@ if the package
+-- | Checks a package for common errors. Returns @True@ if the package
 -- is fit to upload to Hackage, @False@ otherwise.
 -- Note: must be called with the CWD set to the directory containing
 -- the '.cabal' file.
-check :: Verbosity -> IO Bool
-check verbosity = do
-  pdfile <- defaultPackageDesc verbosity
+check
+  :: Verbosity
+  -> [CheckExplanationIDString]
+  -- ^ List of check-ids in String form
+  -- (e.g. @invalid-path-win@) to ignore.
+  -> IO Bool
+check verbosity ignores = do
+  pdfile <- getSymbolicPath <$> defaultPackageDescCwd verbosity
   (ws, ppd) <- readGenericPackageDescriptionCheck verbosity pdfile
   -- convert parse warnings into PackageChecks
   let ws' = map (wrapParseWarning pdfile) ws
-  -- flatten the generic package description into a regular package
-  -- description
-  -- TODO: this may give more warnings than it should give;
-  --       consider two branches of a condition, one saying
-  --          ghc-options: -Wall
-  --       and the other
-  --          ghc-options: -Werror
-  --      joined into
-  --          ghc-options: -Wall -Werror
-  --      checkPackages will yield a warning on the last line, but it
-  --      would not on each individual branch.
-  --      However, this is the same way hackage does it, so we will yield
-  --      the exact same errors as it will.
-  let pkg_desc = flattenPackageDescription ppd
-  ioChecks <- checkPackageFiles verbosity pkg_desc "."
-  let packageChecks = ioChecks ++ checkPackage ppd (Just pkg_desc) ++ ws'
+  ioChecks <- checkPackageFilesGPD verbosity ppd "."
+  let packageChecksPrim = ioChecks ++ checkPackage ppd ++ ws'
+      (packageChecks, unrecs) = filterPackageChecksByIdString packageChecksPrim ignores
+
+  CM.mapM_ (\s -> warn verbosity ("Unrecognised ignore \"" ++ s ++ "\"")) unrecs
 
   CM.mapM_ (outputGroupCheck verbosity) (groupChecks packageChecks)
 

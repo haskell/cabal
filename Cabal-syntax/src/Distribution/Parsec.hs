@@ -1,5 +1,4 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RankNTypes #-}
@@ -144,10 +143,6 @@ instance Monad ParsecParser where
   {-# INLINE (>>=) #-}
   (>>) = (*>)
   {-# INLINE (>>) #-}
-
-#if !(MIN_VERSION_base(4,13,0))
-  fail = Fail.fail
-#endif
 
 instance MonadPlus ParsecParser where
   mzero = empty

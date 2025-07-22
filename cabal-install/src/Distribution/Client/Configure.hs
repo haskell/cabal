@@ -1,8 +1,4 @@
-{-# LANGUAGE CPP #-}
-
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
+{-# LANGUAGE DataKinds #-}
 
 -- |
 -- Module      :  Distribution.Client.Configure
@@ -23,7 +19,6 @@ module Distribution.Client.Configure
     -- * Saved configure flags
   , readConfigFlagsFrom
   , readConfigFlags
-  , cabalConfigFlagsFile
   , writeConfigFlagsTo
   , writeConfigFlags
   ) where
@@ -86,8 +81,8 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Simple.Compiler
   ( Compiler
   , CompilerInfo
-  , PackageDB (..)
-  , PackageDBStack
+  , PackageDBStackCWD
+  , PackageDBX (..)
   , compilerInfo
   )
 import Distribution.Simple.PackageDescription
@@ -99,21 +94,25 @@ import Distribution.Simple.PackageIndex as PackageIndex
   )
 import Distribution.Simple.Program (ProgramDb)
 import Distribution.Simple.Setup
-  ( ConfigFlags (..)
+  ( CommonSetupFlags (..)
+  , ConfigFlags (..)
   , flagToMaybe
-  , fromFlag
   , fromFlagOrDefault
+  , maybeToFlag
   , toFlag
   )
 import Distribution.Simple.Utils as Utils
   ( debug
-  , defaultPackageDesc
-  , die'
+  , defaultPackageDescCwd
+  , dieWithException
   , notice
   , warn
   )
 import Distribution.System
   ( Platform
+  )
+import Distribution.Types.DependencySatisfaction
+  ( DependencySatisfaction (..)
   )
 import Distribution.Types.GivenComponent
   ( GivenComponent (..)
@@ -122,6 +121,7 @@ import Distribution.Types.PackageVersionConstraint
   ( PackageVersionConstraint (..)
   , thisPackageVersionConstraint
   )
+import Distribution.Utils.Path
 import Distribution.Version
   ( Version
   , VersionRange
@@ -129,7 +129,7 @@ import Distribution.Version
   , thisVersion
   )
 
-import System.FilePath ((</>))
+import Distribution.Client.Errors
 
 -- | Choose the Cabal version such that the setup scripts compiled against this
 -- version will support the given command-line flags. Currently, it implements no
@@ -142,7 +142,7 @@ chooseCabalVersion _configExFlags maybeVersion =
 -- | Configure the package found in the local directory
 configure
   :: Verbosity
-  -> PackageDBStack
+  -> PackageDBStackCWD
   -> RepoContext
   -> Compiler
   -> Platform
@@ -200,7 +200,8 @@ configure
           (setupScriptOptions installedPkgIndex Nothing)
           Nothing
           configureCommand
-          (const configFlags)
+          configCommonFlags
+          (const (return configFlags))
           (const extraArgs)
       Right installPlan0 ->
         let installPlan = InstallPlan.configureInstallPlan configFlags installPlan0
@@ -224,9 +225,7 @@ configure
                     pkg
                     extraArgs
               _ ->
-                die' verbosity $
-                  "internal error: configure install plan should have exactly "
-                    ++ "one local ready package."
+                dieWithException verbosity ConfigureInstallInternalError
     where
       setupScriptOptions
         :: InstalledPackageIndex
@@ -240,7 +239,7 @@ configure
           progdb
           ( fromFlagOrDefault
               (useDistPref defaultSetupScriptOptions)
-              (configDistPref configFlags)
+              (setupDistPref $ configCommonFlags configFlags)
           )
           ( chooseCabalVersion
               configExFlags
@@ -252,11 +251,11 @@ configure
       logMsg message rest = debug verbosity message >> rest
 
 configureSetupScript
-  :: PackageDBStack
+  :: PackageDBStackCWD
   -> Compiler
   -> Platform
   -> ProgramDb
-  -> FilePath
+  -> SymbolicPath Pkg (Dir Dist)
   -> VersionRange
   -> Maybe Lock
   -> Bool
@@ -300,6 +299,7 @@ configureSetupScript
       , useDependenciesExclusive = not defaultSetupDeps && isJust explicitSetupDeps
       , useVersionMacros = not defaultSetupDeps && isJust explicitSetupDeps
       , isInteractive = False
+      , isMainLibOrExeComponent = True
       }
     where
       -- When we are compiling a legacy setup script without an explicit
@@ -307,7 +307,7 @@ configureSetupScript
       -- finding the Cabal lib when compiling any Setup.hs even if we're doing
       -- a global install. However we also allow looking in a specific package
       -- db.
-      packageDBs' :: PackageDBStack
+      packageDBs' :: PackageDBStackCWD
       index' :: Maybe InstalledPackageIndex
       (packageDBs', index') =
         case packageDBs of
@@ -389,7 +389,7 @@ planLocalPackage
   -> ConfigExFlags
   -> InstalledPackageIndex
   -> SourcePackageDb
-  -> PkgConfigDb
+  -> Maybe PkgConfigDb
   -> IO (Progress String String SolverInstallPlan)
 planLocalPackage
   verbosity
@@ -401,15 +401,10 @@ planLocalPackage
   (SourcePackageDb _ packagePrefs)
   pkgConfigDb = do
     pkg <-
-      readGenericPackageDescription verbosity
-        =<< case flagToMaybe (configCabalFilePath configFlags) of
-          Nothing -> defaultPackageDesc verbosity
+      readGenericPackageDescription verbosity Nothing
+        =<< case flagToMaybe (setupCabalFilePath $ configCommonFlags configFlags) of
+          Nothing -> relativeSymbolicPath <$> defaultPackageDescCwd verbosity
           Just fp -> return fp
-    solver <-
-      chooseSolver
-        verbosity
-        (fromFlag $ configSolver configExFlags)
-        (compilerInfo comp)
 
     let
       -- We create a local package and ask to resolve a dependency on it
@@ -476,7 +471,7 @@ planLocalPackage
             (SourcePackageDb mempty packagePrefs)
             [SpecificSourcePackage localPkg]
 
-    return (resolveDependencies platform (compilerInfo comp) pkgConfigDb solver resolverParams)
+    return (resolveDependencies platform (compilerInfo comp) pkgConfigDb resolverParams)
 
 -- | Call an installer for an 'SourcePackage' but override the configure
 -- flags with the ones given by the 'ReadyPackage'. In particular the
@@ -508,7 +503,8 @@ configurePackage
       scriptOptions
       (Just pkg)
       configureCommand
-      configureFlags
+      configCommonFlags
+      (return . configureFlags)
       (const extraArgs)
     where
       gpkg :: PkgDesc.GenericPackageDescription
@@ -517,7 +513,12 @@ configurePackage
       configureFlags =
         filterConfigureFlags
           configFlags
-            { configIPID =
+            { configCommonFlags =
+                (configCommonFlags configFlags)
+                  { setupVerbosity = toFlag verbosity
+                  , setupWorkingDir = maybeToFlag $ useWorkingDir scriptOptions
+                  }
+            , configIPID =
                 if isJust (flagToMaybe (configIPID configFlags))
                   then -- Make sure cabal configure --ipid works.
                     configIPID configFlags
@@ -538,7 +539,6 @@ configurePackage
                 ]
             , -- Use '--exact-configuration' if supported.
               configExactConfiguration = toFlag True
-            , configVerbosity = toFlag verbosity
             , -- NB: if the user explicitly specified
               -- --enable-tests/--enable-benchmarks, always respect it.
               -- (But if they didn't, let solver decide.)
@@ -554,7 +554,7 @@ configurePackage
       pkg = case finalizePD
         flags
         (enableStanzas stanzas)
-        (const True)
+        (const Satisfied)
         platform
         comp
         []
@@ -577,7 +577,7 @@ readConfigFlagsFrom
 readConfigFlagsFrom flags = do
   readCommandFlags flags configureExCommand
 
--- | The path (relative to @--build-dir@) where the arguments to @configure@
+-- | The path (relative to the package root) where the arguments to @configure@
 -- should be saved.
 cabalConfigFlagsFile :: FilePath -> FilePath
 cabalConfigFlagsFile dist = dist </> "cabal-config-flags"
@@ -593,12 +593,12 @@ readConfigFlags dist =
 
 -- | Save the configure flags and environment to the specified files.
 writeConfigFlagsTo
-  :: FilePath
+  :: Verbosity
+  -> FilePath
   -- ^ path to saved flags file
-  -> Verbosity
   -> (ConfigFlags, ConfigExFlags)
   -> IO ()
-writeConfigFlagsTo file verb flags = do
+writeConfigFlagsTo verb file flags = do
   writeCommandFlags verb file configureExCommand flags
 
 -- | Save the build flags to the usual location.
@@ -609,4 +609,4 @@ writeConfigFlags
   -> (ConfigFlags, ConfigExFlags)
   -> IO ()
 writeConfigFlags verb dist =
-  writeConfigFlagsTo (cabalConfigFlagsFile dist) verb
+  writeConfigFlagsTo verb (cabalConfigFlagsFile dist)

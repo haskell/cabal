@@ -1,4 +1,4 @@
 # cabal check
 The following errors are likely to affect your build negatively:
-Error: 'ghc-prof-options: -o' is not needed. The output files are named automatically.
+Error: [option-o] 'ghc-prof-options: -o' is not needed. The output files are named automatically.
 Error: Hackage would reject this package.

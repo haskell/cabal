@@ -1,5 +1,5 @@
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 -- | cabal-install CLI command: freeze
 module Distribution.Client.CmdFreeze
@@ -17,6 +17,7 @@ import Distribution.Client.IndexUtils (ActiveRepos, TotalIndexState, filterSkipp
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
+  , cfgVerbosity
   , defaultNixStyleFlags
   , nixStyleOptions
   )
@@ -40,8 +41,7 @@ import Distribution.Solver.Types.PackageConstraint
   )
 
 import Distribution.Client.Setup
-  ( ConfigFlags (..)
-  , GlobalFlags
+  ( GlobalFlags
   )
 import Distribution.Package
   ( PackageName
@@ -52,9 +52,9 @@ import Distribution.PackageDescription
   ( FlagAssignment
   , nullFlagAssignment
   )
-import Distribution.Simple.Flag (Flag (..), fromFlagOrDefault)
+import Distribution.Simple.Flag (pattern Flag)
 import Distribution.Simple.Utils
-  ( die'
+  ( dieWithException
   , notice
   , wrapText
   )
@@ -70,6 +70,7 @@ import Distribution.Version
 
 import qualified Data.Map as Map
 
+import Distribution.Client.Errors
 import Distribution.Simple.Command
   ( CommandUI (..)
   , usageAlternatives
@@ -123,11 +124,10 @@ freezeCommand =
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 freezeAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
-freezeAction flags@NixStyleFlags{..} extraArgs globalFlags = do
+freezeAction flags extraArgs globalFlags = do
   unless (null extraArgs) $
-    die' verbosity $
-      "'freeze' doesn't take any extra arguments: "
-        ++ unwords extraArgs
+    dieWithException verbosity $
+      FreezeAction extraArgs
 
   ProjectBaseContext
     { distDirLayout
@@ -157,9 +157,9 @@ freezeAction flags@NixStyleFlags{..} extraArgs globalFlags = do
     else do
       writeProjectLocalFreezeConfig distDirLayout freezeConfig
       notice verbosity $
-        "Wrote freeze file: " ++ distProjectFile distDirLayout "freeze"
+        "Wrote freeze file: " ++ (distProjectFile distDirLayout "freeze")
   where
-    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    verbosity = cfgVerbosity normal flags
     cliConfig =
       commandLineFlagsToProjectConfig
         globalFlags

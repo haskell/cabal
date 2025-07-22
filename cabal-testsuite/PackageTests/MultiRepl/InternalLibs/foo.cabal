@@ -1,0 +1,33 @@
+cabal-version: 3.14
+
+name:           foo
+version:        0.1.0.0
+build-type:     Simple
+
+library x
+  exposed-modules:
+      X
+  hs-source-dirs:
+      components/x
+  build-depends:
+      base
+
+library y
+  exposed-modules:
+      Y
+  hs-source-dirs:
+      components/y
+  build-depends:
+      base
+    -- uncommenting this causes 'make show' to pass
+    -- , foo:x
+
+library z
+  exposed-modules:
+      Z
+  hs-source-dirs:
+      components/z
+  build-depends:
+      base
+    , foo:x
+    , foo:y
