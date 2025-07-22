@@ -25,6 +25,8 @@ env:
   GHC_VERSION: ${{ inputs.ghc }}
   GHC_TARGETS: ${{ inputs.ghc_targets }}
   CABAL_VERSION: ${{ inputs.cabal }}
+  BOOTSTRAP_HASKELL_NONINTERACTIVE: 1
+  BOOTSTRAP_HASKELL_MINIMAL: 1
   DEBIAN_FRONTEND: noninteractive
   TZ: Asia/Singapore
 
@@ -186,6 +188,7 @@ jobs:
 
   build-linux-32bit:
     name: Build linux binaries (32bit)
+    needs: ["tool-output"]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -204,9 +207,9 @@ jobs:
           ref: ${{ matrix.branch }}
 
       - name: Run build (32 bit linux)
-        uses: docker://hasufell/i386-alpine-haskell:3.21
+        uses: docker://i386/alpine:3.20
         with:
-          args: sh -c "export PATH=$HOME/.ghcup/bin:$PATH && bash .github/scripts/build.sh"
+          args: sh -c "apk update && apk add curl bash git ${{ needs.tool-output.outputs.apk_tools }} && export PATH=$HOME/.ghcup/bin:$PATH && curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh && ghcup install cabal ${{ env.CABAL_VERSION }} && bash .github/scripts/build.sh"
 
       - if: always()
         name: Upload artifact
@@ -220,6 +223,7 @@ jobs:
 
   build-arm:
     name: Build ARM binary
+    needs: ["tool-output"]
     runs-on: ubuntu-22.04-arm
     env:
       TARBALL_EXT: tar.xz
@@ -244,20 +248,20 @@ jobs:
           ref: ${{ matrix.branch }}
 
       - if: matrix.platform.DISTRO == 'Debian'
-        uses: docker://hasufell/arm64v8-debian-haskell:11
+        uses: docker://arm64v8/debian:11
         name: Run build (aarch64 linux)
         with:
-          args: sh -c "export PATH=$HOME/.ghcup/bin:$PATH && bash .github/scripts/build.sh"
+          args: sh -c "apt-get update && apt-get install -y curl bash git ${{ needs.tool-output.outputs.apt_tools }} && export PATH=$HOME/.ghcup/bin:$PATH && curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh && ghcup install cabal ${{ env.CABAL_VERSION }} && bash .github/scripts/build.sh"
         env:
           ARTIFACT: ${{ matrix.platform.ARTIFACT }}
           DISTRO: ${{ matrix.platform.DISTRO }}
           ADD_CABAL_ARGS: ""
 
       - if: matrix.platform.DISTRO == 'Alpine'
-        uses: docker://hasufell/arm64v8-alpine-haskell:3.21
+        uses: docker://arm64v8/alpine:3.20
         name: Run build (aarch64 linux alpine)
         with:
-          args: sh -c "export PATH=$HOME/.ghcup/bin:$PATH && bash .github/scripts/build.sh"
+          args: sh -c "apk update && apk add curl bash git ${{ needs.tool-output.outputs.apk_tools }} && export PATH=$HOME/.ghcup/bin:$PATH && curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh && ghcup install cabal ${{ env.CABAL_VERSION }} && bash .github/scripts/build.sh"
         env:
           ARTIFACT: ${{ matrix.platform.ARTIFACT }}
           DISTRO: ${{ matrix.platform.DISTRO }}
@@ -604,14 +608,14 @@ jobs:
 #          path: ./out
 #
 #      - name: Run build (32 bit linux)
-#        uses: docker://hasufell/i386-alpine-haskell:3.21
+#        uses: docker://i386/alpine:3.20
 #        with:
-#          args: sh -c "apk update && apk add groff && git config --system --add safe.directory $GITHUB_WORKSPACE && export PATH=$HOME/.ghcup/bin:$PATH && bash .github/scripts/test.sh"
+#          args: sh -c "apk update && apk add curl bash git ${{ needs.tool-output.outputs.apk_tools }} groff && git config --system --add safe.directory $GITHUB_WORKSPACE && export PATH=$HOME/.ghcup/bin:$PATH && curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh && ghcup install cabal ${{ env.CABAL_VERSION }} && bash .github/scripts/build.sh"
 
   test-arm:
     name: Test ARM binary
     runs-on: ubuntu-22.04-arm
-    needs: ["build-arm"]
+    needs: ["tool-output", "build-arm"]
     if: ${{ inputs.test }}
     env:
       ADD_CABAL_ARGS: ""
@@ -641,19 +645,19 @@ jobs:
           path: ./out
 
       - if: matrix.platform.DISTRO == 'Debian'
-        uses: docker://hasufell/arm64v8-debian-haskell:11
+        uses: docker://arm64v8/debian:11
         name: Run build (aarch64 linux)
         with:
-          args: sh -c "git config --system --add safe.directory $GITHUB_WORKSPACE && apt-get update && apt-get install -y groff-base && export PATH=$HOME/.ghcup/bin:$PATH && bash .github/scripts/test.sh"
+          args: sh -c "apt-get update && apt-get install -y curl bash git groff-base ${{ needs.tool-output.outputs.apt_tools }} && git config --system --add safe.directory $GITHUB_WORKSPACE && export PATH=$HOME/.ghcup/bin:$PATH && curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh && ghcup install cabal ${{ env.CABAL_VERSION }} && bash .github/scripts/test.sh"
         env:
           ARTIFACT: ${{ matrix.platform.ARTIFACT }}
           DISTRO: ${{ matrix.platform.DISTRO }}
 
       - if: matrix.platform.DISTRO == 'Alpine'
-        uses: docker://hasufell/arm64v8-alpine-haskell:3.21
+        uses: docker://arm64v8/alpine:3.20
         name: Run build (aarch64 linux alpine)
         with:
-          args: sh -c "git config --system --add safe.directory $GITHUB_WORKSPACE && apk update && apk add groff && export PATH=$HOME/.ghcup/bin:$PATH && bash .github/scripts/test.sh"
+          args: sh -c "apk update && apk add curl bash git groff ${{ needs.tool-output.outputs.apk_tools }} && git config --system --add safe.directory $GITHUB_WORKSPACE && export PATH=$HOME/.ghcup/bin:$PATH && curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh && ghcup install cabal ${{ env.CABAL_VERSION }} && bash .github/scripts/test.sh"
         env:
           ARTIFACT: ${{ matrix.platform.ARTIFACT }}
           DISTRO: ${{ matrix.platform.DISTRO }}
