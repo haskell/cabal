@@ -154,7 +154,7 @@ renderInstalledPackageInfoSourceMsgs PInstalledPackageInfo (errors, warnings) =
 
 renderParseErrorNoFile :: String -> [PError] -> [PWarning] -> String
 renderParseErrorNoFile herald errors warnings =
-  renderParseErrorGeneral herald "" Nothing (const []) errors warnings
+  renderParseErrorGeneral herald Nothing Nothing (const []) errors warnings
 
 -- | Render a parse error which resulted from a file on disk
 renderParseErrorFile
@@ -169,7 +169,7 @@ renderParseErrorFile
   -> ([PError], [PWarning])
   -> String
 renderParseErrorFile herald filepath provenance contents (errors, warnings) =
-  renderParseErrorGeneral (herald <> " file " <> filepath) (filepath' <> ":") provenance formatInput errors warnings
+  renderParseErrorGeneral (herald <> " file " <> filepath) (Just (filepath' <> ":")) provenance formatInput errors warnings
   where
     filepath' = normalise filepath
 
@@ -217,8 +217,12 @@ renderParseErrorFile herald filepath provenance contents (errors, warnings) =
 -- | A generic rendering function which can render from many sources.
 renderParseErrorGeneral
   :: String
-  -> String
+  -- ^ What we were parsing when the error occurred.
   -> Maybe String
+  -- ^ A simpler/shorter header to display when displaying each error (normally a filepath)
+  -> Maybe String
+  -- ^ Provenance, used to print additional context about what file failed (used to print the import path of a project
+  -- file which failed to parse)
   -> (Position -> [String])
   -- ^ Extra information to render based on the position
   -> [PError]
@@ -226,11 +230,12 @@ renderParseErrorGeneral
   -> String
 renderParseErrorGeneral header err_header provenance extra_info errors warnings =
   unlines $
-    [ warningsOrErrors <> " encountered when parsing" <> header' <> ":"
+    [ warningsOrErrors <> " parsing" <> header' <> ":"
     ]
       ++ [p | Just p <- [provenance]]
-      ++ renderedErrors
-      ++ renderedWarnings
+      ++ [""] -- Place a newline between the header and the errors/warnings
+      -- Place a newline between each error and warning
+      ++ intersperse "" (renderedWarnings ++ renderedErrors)
   where
     warningsOrErrors = case errors of
       [] -> case warnings of
@@ -241,24 +246,36 @@ renderParseErrorGeneral header err_header provenance extra_info errors warnings 
 
     header' = if null header then "" else (" " <> header)
 
-    renderedErrors = concatMap renderError (sortBy (comparing perrorPosition) errors)
-    renderedWarnings = concatMap renderWarning (sortBy (comparing pwarningPosition) warnings)
+    renderedErrors = map renderError (sortBy (comparing perrorPosition) errors)
+    renderedWarnings = map renderWarning (sortBy (comparing pwarningPosition) warnings)
 
-    renderError :: PError -> [String]
-    renderError (PError pos msg)
+    renderErrorOrWarning :: String -> Position -> String -> String
+    renderErrorOrWarning err_type pos msg
       -- if position is 0:0, then it doesn't make sense to show input
       -- looks like, Parsec errors have line-feed in them
-      | pos == zeroPos = msgs
-      | otherwise = msgs ++ extra_info pos
+      | pos == zeroPos = unlines (herald : map indent user_msg)
+      | otherwise = unlines (herald : map indent (user_msg ++ extra_info pos))
       where
-        msgs = ["", err_header ++ showPos pos ++ ": error:", trimLF msg, ""]
+        herald = renderErrorHerald pos ++ err_type ++ ":"
+        user_msg = lines (trimLF msg)
 
-    renderWarning :: PWarning -> [String]
-    renderWarning (PWarning _ pos msg)
-      | pos == zeroPos = msgs
-      | otherwise = msgs ++ extra_info pos
-      where
-        msgs = ["", err_header ++ showPos pos ++ ": warning:", trimLF msg, ""]
+    indent :: String -> String
+    indent s = replicate 2 ' ' ++ s
+
+    -- Don't render the 0:0 position
+    renderErrorHerald :: Position -> String
+    renderErrorHerald pos =
+      case (err_header, pos == zeroPos) of
+        (Nothing, True) -> ""
+        (Nothing, False) -> showPos pos ++ ": "
+        (Just herald, True) -> herald ++ " "
+        (Just herald, False) -> herald ++ showPos pos ++ ": "
+
+    renderError :: PError -> String
+    renderError (PError pos msg) = renderErrorOrWarning "error" pos msg
+
+    renderWarning :: PWarning -> String
+    renderWarning (PWarning _ pos msg) = renderErrorOrWarning "warning" pos msg
 
     -- sometimes there are (especially trailing) newlines.
     trimLF :: String -> String

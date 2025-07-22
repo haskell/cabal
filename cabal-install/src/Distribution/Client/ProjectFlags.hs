@@ -59,8 +59,7 @@ defaultProjectFlags =
     { flagProjectDir = mempty
     , flagProjectFile = mempty
     , flagIgnoreProject = toFlag False
-    , -- Should we use 'Last' here?
-      flagProjectFileParser = mempty
+    , flagProjectFileParser = mempty
     }
 
 projectFlagsOptions :: ShowOrParseArgs -> [OptionField ProjectFlags]

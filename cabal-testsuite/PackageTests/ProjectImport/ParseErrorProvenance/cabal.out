@@ -3,36 +3,36 @@ Warnings found while parsing the project file, else.project:
  - dir-else/else.config:3:5: Invalid subsection "_"
 # cabal v2-build
 Error: [Cabal-7167]
-Error encountered when parsing project file cabal.project:
+Error parsing project file cabal.project:
 
 cabal.project:3:4: error:
-unexpected SecArgName (Position 3 4) "_"
+  unexpected SecArgName (Position 3 4) "_"
+      3 | if _
+        |    ^
 
-    3 | if _
-      |    ^
 
 # cabal v2-build
 Error: [Cabal-7167]
-Error encountered when parsing project file dir-if/if.config:
+Error parsing project file dir-if/if.config:
   imported by: if.project
 
 dir-if/if.config:3:4: error:
-unexpected SecArgName (Position 3 4) "_"
+  unexpected SecArgName (Position 3 4) "_"
+      3 | if _
+        |    ^
 
-    3 | if _
-      |    ^
 
 # cabal v2-build
 Error: [Cabal-7167]
-Error encountered when parsing project file dir-elif/elif.config:
+Error parsing project file dir-elif/elif.config:
   imported by: elif.project
 
 dir-elif/elif.config:4:6: error:
-unexpected SecArgName (Position 4 6) "_"
+  unexpected SecArgName (Position 4 6) "_"
+      3 | if false
+      4 | elif _
+        |      ^
 
-    3 | if false
-    4 | elif _
-      |      ^
 
 # cabal v2-build
 Warnings found while parsing the project file, else.project:
