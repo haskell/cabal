@@ -266,9 +266,7 @@ outdatedAction flags targetStrings globalFlags =
               (ListOutdatedSettings ignorePred minorPred)
       when (not quiet) $
         showResult verbosity outdatedDeps simpleOutput
-      if exitCode && (not . null $ outdatedDeps)
-        then exitFailure
-        else return ()
+      when (exitCode && (not . null $ outdatedDeps)) exitFailure
   where
     OutdatedFlags{..} = extraFlags flags
     verbosity =

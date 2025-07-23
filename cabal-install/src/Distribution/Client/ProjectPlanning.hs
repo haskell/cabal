@@ -1191,9 +1191,9 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
 
   (repoTarballPkgsWithMetadata, repoTarballPkgsToDownloadWithMeta) <- fmap partitionEithers $
     liftIO $
-      withRepoCtx $ \repoctx -> flip concatMapM (Map.toList repoTarballPkgsWithMetadataUnvalidatedMap) $
-        \(repo, pkgids) ->
-          verifyFetchedTarballs verbosity repoctx repo pkgids
+      withRepoCtx $ \repoctx ->
+        flip concatMapM (Map.toList repoTarballPkgsWithMetadataUnvalidatedMap) $
+          uncurry (verifyFetchedTarballs verbosity repoctx)
 
   -- For tarballs from repos that do not have hashes available we now have
   -- to check if the packages were downloaded already.
