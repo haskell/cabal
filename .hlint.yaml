@@ -72,7 +72,6 @@
 - ignore: {name: "Use rights"} # 2 hints
 - ignore: {name: "Use second"} # 7 hints
 - ignore: {name: "Use section"} # 18 hints
-- ignore: {name: "Use traverse"} # 1 hint
 - ignore: {name: "Use tuple-section"} # 27 hints
 - ignore: {name: "Use typeRep"} # 2 hints
 - ignore: {name: "Use unless"} # 23 hints
