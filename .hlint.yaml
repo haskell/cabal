@@ -18,7 +18,6 @@
 - ignore: {name: "Redundant $"} # 192 hints
 - ignore: {name: "Redundant $!"} # 1 hint
 - ignore: {name: "Redundant <$>"} # 17 hints
-- ignore: {name: "Redundant =="} # 1 hint
 - ignore: {name: "Redundant bracket"} # 260 hints
 - ignore: {name: "Redundant fmap"} # 1 hint
 - ignore: {name: "Redundant guard"} # 2 hints
