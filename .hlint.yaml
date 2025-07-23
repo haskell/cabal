@@ -37,7 +37,6 @@
 - ignore: {name: "Use =<<"} # 7 hints
 - ignore: {name: "Use =="} # 3 hints
 - ignore: {name: "Use >=>"} # 3 hints
-- ignore: {name: "Use ?~"} # 1 hint
 - ignore: {name: "Use Down"} # 3 hints
 - ignore: {name: "Use bimap"} # 7 hints
 - ignore: {name: "Use camelCase"} # 94 hints
