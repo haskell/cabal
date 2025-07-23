@@ -15,7 +15,7 @@
 - ignore: {name: "Redundant $"} # 192 hints
 - ignore: {name: "Redundant $!"} # 1 hint
 - ignore: {name: "Redundant <$>"} # 17 hints
-- ignore: {name: "Redundant bracket"} # 260 hints
+- ignore: {name: "Redundant bracket"} # 261 hints
 - ignore: {name: "Redundant guard"} # 2 hints
 - ignore: {name: "Redundant if"} # 6 hints
 - ignore: {name: "Redundant lambda"} # 19 hints
