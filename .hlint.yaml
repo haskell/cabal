@@ -8,7 +8,6 @@
 - ignore: {name: "Fuse concatMap/map"} # 3 hints
 - ignore: {name: "Fuse foldr/map"} # 3 hints
 - ignore: {name: "Hoist not"} # 16 hints
-- ignore: {name: "Missing NOINLINE pragma"} # 1 hint
 - ignore: {name: "Monoid law, left identity"} # 3 hints
 - ignore: {name: "Monoid law, right identity"} # 3 hints
 - ignore: {name: "Move filter"} # 4 hints
