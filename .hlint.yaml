@@ -59,7 +59,6 @@
 - ignore: {name: "Use isAsciiLower"} # 2 hints
 - ignore: {name: "Use isAsciiUpper"} # 2 hints
 - ignore: {name: "Use isDigit"} # 2 hints
-- ignore: {name: "Use isJust"} # 1 hint
 - ignore: {name: "Use isNothing"} # 1 hint
 - ignore: {name: "Use lambda-case"} # 58 hints
 - ignore: {name: "Use lefts"} # 1 hint
