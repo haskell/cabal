@@ -75,7 +75,6 @@
 - ignore: {name: "Use traverse"} # 1 hint
 - ignore: {name: "Use tuple-section"} # 27 hints
 - ignore: {name: "Use typeRep"} # 2 hints
-- ignore: {name: "Use uncurry"} # 1 hint
 - ignore: {name: "Use unless"} # 23 hints
 - ignore: {name: "Use unwords"} # 8 hints
 - ignore: {name: "Use void"} # 23 hints
