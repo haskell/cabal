@@ -303,7 +303,6 @@ jobs:
 
       - name: Run build
         run: |
-          brew install coreutils tree
           bash .github/scripts/build.sh
 
       - if: always()
@@ -344,7 +343,6 @@ jobs:
 
       - name: Run build
         run: |
-          brew install git coreutils autoconf automake tree
           bash .github/scripts/build.sh
 
       - if: always()
@@ -701,7 +699,6 @@ jobs:
 
       - name: Run test
         run: |
-          brew install git coreutils autoconf automake tree
           bash .github/scripts/test.sh
 
   test-mac-aarch64:
@@ -741,7 +738,6 @@ jobs:
 
       - name: Run test
         run: |
-          brew install git coreutils autoconf automake tree
           bash .github/scripts/test.sh
 
   test-win:
