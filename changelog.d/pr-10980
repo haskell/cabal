@@ -1,0 +1,9 @@
+synopsis: Added revision information to `plan.json`
+packages: cabal-install
+prs: #10980
+issues: #6186
+
+description: {
+  The contents of `x-revision` `.cabal` fields are now available in `plan.json`.
+  They are located under `pkg-src.repo.pkg-revision`, have type `Number`, and are only available for `repo-tar` repositories of type `remote-repo` or `secure-repo`.
+}
