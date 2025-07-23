@@ -460,6 +460,7 @@ jobs:
       ARCH: 64
       GHC_VERSION: 9.6.7
       GHC_TARGETS: "install_bin install_lib update_package_db"
+      ADD_CABAL_ARGS: ""
     strategy:
       fail-fast: false
       matrix:
@@ -469,84 +470,72 @@ jobs:
                     , toolRequirements: "${{ needs.tool-output.outputs.apt_tools }}"
                     , DISTRO: "Debian"
                     , ARTIFACT: "x86_64-linux-deb11"
-                    , ADD_CABAL_ARGS: "--enable-split-sections"
                     },
                     { image: "debian:12"
                     , installCmd: "apt-get update && apt-get install -y"
                     , toolRequirements: "${{ needs.tool-output.outputs.apt_tools }}"
                     , DISTRO: "Debian"
                     , ARTIFACT: "x86_64-linux-deb12"
-                    , ADD_CABAL_ARGS: "--enable-split-sections"
                     },
                     { image: "ubuntu:20.04"
                     , installCmd: "apt-get update && apt-get install -y"
                     , toolRequirements: "${{ needs.tool-output.outputs.apt_tools }}"
                     , DISTRO: "Ubuntu"
                     , ARTIFACT: "x86_64-linux-ubuntu20.04"
-                    , ADD_CABAL_ARGS: "--enable-split-sections"
                     },
                     { image: "ubuntu:22.04"
                     , installCmd: "apt-get update && apt-get install -y"
                     , toolRequirements: "${{ needs.tool-output.outputs.apt_tools }}"
                     , DISTRO: "Ubuntu"
                     , ARTIFACT: "x86_64-linux-ubuntu22.04"
-                    , ADD_CABAL_ARGS: "--enable-split-sections"
                     },
                     { image: "ubuntu:24.04"
                     , installCmd: "apt-get update && apt-get install -y"
                     , toolRequirements: "${{ needs.tool-output.outputs.apt_tools_ncurses6 }}"
                     , DISTRO: "Ubuntu"
                     , ARTIFACT: "x86_64-linux-ubuntu24.04"
-                    , ADD_CABAL_ARGS: "--enable-split-sections"
                     },
                     { image: "fedora:33"
                     , installCmd: "dnf install -y"
                     , toolRequirements: "${{ needs.tool-output.outputs.rpm_tools }}"
                     , DISTRO: "Fedora"
                     , ARTIFACT: "x86_64-linux-fedora33"
-                    , ADD_CABAL_ARGS: "--enable-split-sections"
                     },
                     { image: "fedora:36"
                     , installCmd: "dnf install -y"
                     , toolRequirements: "${{ needs.tool-output.outputs.rpm_tools }}"
                     , DISTRO: "Fedora"
                     , ARTIFACT: "x86_64-linux-fedora36"
-                    , ADD_CABAL_ARGS: "--enable-split-sections"
                     },
                     { image: "fedora:38"
                     , installCmd: "dnf install -y"
                     , toolRequirements: "${{ needs.tool-output.outputs.rpm_tools }}"
                     , DISTRO: "Fedora"
                     , ARTIFACT: "x86_64-linux-fedora38"
-                    , ADD_CABAL_ARGS: "--enable-split-sections"
                     },
                     { image: "rockylinux:8"
                     , installCmd: "yum -y install epel-release && yum install -y --allowerasing"
                     , toolRequirements: "${{ needs.tool-output.outputs.rpm_tools }}"
                     , DISTRO: "Unknown"
                     , ARTIFACT: "x86_64-linux-rocky8"
-                    , ADD_CABAL_ARGS: "--enable-split-sections"
                     },
                     { image: "alpine:3.20"
                     , installCmd: "apk update && apk add"
                     , toolRequirements: "${{ needs.tool-output.outputs.apk_tools }}"
                     , DISTRO: "Unknown"
                     , ARTIFACT: "x86_64-linux-unknown"
-                    , ADD_CABAL_ARGS: "--enable-split-sections --enable-executable-static"
                     },
                     { image: "alpine:3.12"
                     , installCmd: "apk update && apk add"
                     , toolRequirements: "${{ needs.tool-output.outputs.apk_tools }}"
                     , DISTRO: "Unknown"
                     , ARTIFACT: "x86_64-linux-alpine312"
-                    , ADD_CABAL_ARGS: "--enable-split-sections"
                     },
                     { image: "alpine:3.20"
                     , installCmd: "apk update && apk add"
                     , toolRequirements: "${{ needs.tool-output.outputs.apk_tools }}"
                     , DISTRO: "Unknown"
                     , ARTIFACT: "x86_64-linux-alpine320"
-                    , ADD_CABAL_ARGS: "--enable-split-sections"
                     }
                   ]
     container:
