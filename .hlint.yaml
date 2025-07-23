@@ -79,7 +79,6 @@
 - ignore: {name: "Use unless"} # 23 hints
 - ignore: {name: "Use unwords"} # 8 hints
 - ignore: {name: "Use void"} # 23 hints
-- ignore: {name: "Use when"} # 1 hint
 
 - arguments:
     - --ignore-glob=Cabal-syntax/src/Distribution/Fields/Lexer.hs
