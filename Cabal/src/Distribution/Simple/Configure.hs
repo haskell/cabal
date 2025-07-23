@@ -883,7 +883,7 @@ configurePackage cfg lbc0 pkg_descr00 flags enabled comp platform programDb0 pac
             let unknownBuildTools =
                   [ buildTool
                   | buildTool <- buildTools bi
-                  , Nothing == desugarBuildTool pkg_descr0 buildTool
+                  , isNothing (desugarBuildTool pkg_descr0 buildTool)
                   ]
             externBuildToolDeps ++ unknownBuildTools
 
