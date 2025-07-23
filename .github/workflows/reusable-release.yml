@@ -29,6 +29,7 @@ env:
   GHC_TARGETS: ${{ inputs.ghc_targets }}
   CABAL_VERSION: ${{ inputs.cabal }}
   GMP_VERSION: ${{ inputs.gmp }}
+  GMP_URL: "https://ftp.gnu.org/gnu/gmp/"
   BOOTSTRAP_HASKELL_NONINTERACTIVE: 1
   BOOTSTRAP_HASKELL_MINIMAL: 1
   DEBIAN_FRONTEND: noninteractive
@@ -106,7 +107,7 @@ jobs:
         run: |
           set -eux
 
-          curl -O -L https://gmplib.org/download/gmp/gmp-${{ env.GMP_VERSION }}.tar.xz
+          curl -O -L ${{ env.GMP_URL }}/gmp-${{ env.GMP_VERSION }}.tar.xz
           tar xf gmp-${{ env.GMP_VERSION }}.tar.xz
           cd gmp-${{ env.GMP_VERSION }}
           CFLAGS=-fPIC ./configure --prefix=$HOME/.local/ --disable-shared
