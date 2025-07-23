@@ -24,6 +24,12 @@ on:
 env:
   GHC_VERSION: ${{ inputs.ghc }}
   GHC_TARGETS: ${{ inputs.ghc_targets }}
+  # This shouldn't be necessary, but cabal developers
+  # whant to build with 9.10.2, which causes test failures
+  # when used as runtime GHC version as well. So we need a different
+  # runtime GHC version than the build GHC.
+  GHC_TEST_VERSION: 9.6.7
+  GHC_TEST_TARGETS: "install_bin install_lib update_package_db"
   CABAL_VERSION: ${{ inputs.cabal }}
   BOOTSTRAP_HASKELL_NONINTERACTIVE: 1
   BOOTSTRAP_HASKELL_MINIMAL: 1
@@ -458,8 +464,6 @@ jobs:
     env:
       TARBALL_EXT: tar.xz
       ARCH: 64
-      GHC_VERSION: 9.6.7
-      GHC_TARGETS: "install_bin install_lib update_package_db"
       ADD_CABAL_ARGS: ""
     strategy:
       fail-fast: false
@@ -610,8 +614,6 @@ jobs:
       ADD_CABAL_ARGS: ""
       TARBALL_EXT: tar.xz
       ARCH: ARM64
-      GHC_VERSION: 9.6.7
-      GHC_TARGETS: "install_bin install_lib update_package_db"
     strategy:
       fail-fast: false
       matrix:
@@ -665,8 +667,6 @@ jobs:
       ARCH: 64
       TARBALL_EXT: tar.xz
       DISTRO: na
-      GHC_VERSION: 9.6.7
-      GHC_TARGETS: "install_bin install_lib update_package_db"
     strategy:
       fail-fast: false
       matrix:
@@ -704,8 +704,6 @@ jobs:
       DISTRO: na
       HOMEBREW_CHANGE_ARCH_TO_ARM: 1
       GHCUP_INSTALL_BASE_PREFIX: ${{ github.workspace }}
-      GHC_VERSION: 9.6.7
-      GHC_TARGETS: "install_bin install_lib update_package_db"
     strategy:
       fail-fast: false
       matrix:
@@ -742,8 +740,6 @@ jobs:
       DISTRO: na
       CABAL_DIR: "C:\\Users\\runneradmin\\AppData\\Roaming\\cabal"
       GHCUP_INSTALL_BASE_PREFIX: "/c"
-      GHC_VERSION: 9.6.7
-      GHC_TARGETS: "install_bin install_lib update_package_db"
     strategy:
       fail-fast: false
       matrix:
@@ -793,8 +789,6 @@ jobs:
       RUNNER_OS: FreeBSD
       CABAL_DIR: ${{ github.workspace }}/.cabal
       GHCUP_INSTALL_BASE_PREFIX: ${{ github.workspace }}
-      GHC_VERSION: 9.6.7
-      GHC_TARGETS: "install_bin install_lib update_package_db"
     strategy:
       fail-fast: false
       matrix:

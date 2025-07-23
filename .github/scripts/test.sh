@@ -21,13 +21,15 @@ esac
 cd ..
 
 ghcup --no-verbose install ghc --set --install-targets "${GHC_TARGETS}" "${GHC_VERSION}"
+ghcup --no-verbose install ghc --install-targets "${GHC_TEST_TARGETS}" "${GHC_TEST_VERSION}"
 
 cabal update
 
 # TODO: we want to avoid building here... we should just
 # be using the previously built 'cabal-tests' binary
-cabal run ${ADD_CABAL_ARGS} cabal-testsuite:cabal-tests -- \
+cabal run -w "ghc-${GHC_VERSION}" ${ADD_CABAL_ARGS} cabal-testsuite:cabal-tests -- \
   --with-cabal "$(pwd)/out/cabal" \
+  --with-ghc "ghc-${GHC_TEST_VERSION}" \
   --intree-cabal-lib "$(pwd)" \
   --test-tmp "$(pwd)/testdb" \
   --skip-setup-tests \
