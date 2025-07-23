@@ -2836,22 +2836,19 @@ checkRelocatable verbosity pkg lbi =
         p = prefix installDirs
         relativeInstallDirs (InstallDirs{..}) =
           all
-            isJust
-            ( fmap
-                (stripPrefix p)
-                [ bindir
-                , libdir
-                , dynlibdir
-                , libexecdir
-                , includedir
-                , datadir
-                , docdir
-                , mandir
-                , htmldir
-                , haddockdir
-                , sysconfdir
-                ]
-            )
+            (isJust . stripPrefix p)
+            [ bindir
+            , libdir
+            , dynlibdir
+            , libexecdir
+            , includedir
+            , datadir
+            , docdir
+            , mandir
+            , htmldir
+            , haddockdir
+            , sysconfdir
+            ]
 
     -- Check if the library dirs of the dependencies that are in the package
     -- database to which the package is installed are relative to the
