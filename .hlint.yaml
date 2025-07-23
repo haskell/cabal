@@ -64,7 +64,6 @@
 - ignore: {name: "Use notElem"} # 9 hints
 - ignore: {name: "Use null"} # 2 hints
 - ignore: {name: "Use record patterns"} # 16 hints
-- ignore: {name: "Use replicateM"} # 1 hint
 - ignore: {name: "Use replicateM_"} # 2 hints
 - ignore: {name: "Use rights"} # 2 hints
 - ignore: {name: "Use second"} # 7 hints
