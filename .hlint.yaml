@@ -58,7 +58,6 @@
 - ignore: {name: "Use isAsciiUpper"} # 2 hints
 - ignore: {name: "Use isDigit"} # 2 hints
 - ignore: {name: "Use lambda-case"} # 58 hints
-- ignore: {name: "Use lefts"} # 1 hint
 - ignore: {name: "Use list comprehension"} # 19 hints
 - ignore: {name: "Use list literal"} # 3 hints
 - ignore: {name: "Use list literal pattern"} # 11 hints

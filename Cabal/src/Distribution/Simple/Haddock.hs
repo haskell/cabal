@@ -89,7 +89,7 @@ import Distribution.Version
 
 import Control.Monad
 import Data.Bool (bool)
-import Data.Either (rights)
+import Data.Either (lefts, rights)
 import System.Directory (doesDirectoryExist, doesFileExist)
 import System.FilePath (isAbsolute, normalise)
 import System.IO (hClose, hPutStrLn, hSetEncoding, utf8)
@@ -1386,7 +1386,7 @@ haddockPackagePaths ipkgs mkHtmlPath = do
       , pkgName pkgid `notElem` noHaddockWhitelist
       ]
 
-  let missing = [pkgid | Left pkgid <- interfaces]
+  let missing = lefts interfaces
       warning =
         "The following packages have no Haddock documentation "
           ++ "installed. No links will be generated to these packages: "
