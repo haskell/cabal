@@ -231,7 +231,7 @@ jobs:
         branch: ${{ fromJSON(inputs.branches) }}
         platform: [ { ARCH: "ARM64"
                     , DISTRO: "Debian"
-                    , ARTIFACT: "aarch64-linux-deb10"
+                    , ARTIFACT: "aarch64-linux-deb11"
                     },
                     { ARCH: "ARM64"
                     , DISTRO: "Alpine"
@@ -579,7 +579,7 @@ jobs:
         branch: ${{ fromJSON(inputs.branches) }}
         platform: [ { ARCH: "ARM64"
                     , DISTRO: "Debian"
-                    , ARTIFACT: "aarch64-linux-deb10"
+                    , ARTIFACT: "aarch64-linux-deb11"
                     },
                     { ARCH: "ARM64"
                     , DISTRO: "Alpine"
