@@ -2766,7 +2766,7 @@ checkPackageProblems verbosity dir gpkg pkg = do
       (errors, warnings) =
         partitionEithers (M.mapMaybe classEW $ pureChecks ++ ioChecks)
   if null errors
-    then traverse_ (warn verbosity) (map ppPackageCheck warnings)
+    then traverse_ (warn verbosity . ppPackageCheck) warnings
     else dieWithException verbosity $ CheckPackageProblems (map ppPackageCheck errors)
   where
     -- Classify error/warnings. Left: error, Right: warning.
