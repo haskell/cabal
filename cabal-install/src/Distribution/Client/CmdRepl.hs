@@ -481,7 +481,8 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
             unit_files_ordered :: [FilePath]
             unit_files_ordered =
               let (active_unit_files, other_units) = partition (\fp -> Just fp == active_unit_fp) unit_files
-               in -- GHC considers the last unit passed to be the active one
+               in -- older GHC versions consider the last unit passed to be the active one.
+                  -- GHC 9.14 no longer has the notion of "active" units.
                   other_units ++ active_unit_files
 
             convertParStrat :: ParStratX Int -> ParStratX String
