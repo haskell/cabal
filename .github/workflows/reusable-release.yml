@@ -442,7 +442,7 @@ jobs:
       - name: Run build
         run: |
           sudo sed -i.bak -e 's/quarterly/latest/' /etc/pkg/FreeBSD.conf
-          sudo pkg install -y ghc hs-cabal-install git bash misc/compat10x misc/compat11x misc/compat12x gmake llvm14 libiconv
+          sudo pkg install -y curl gcc gmp gmake ncurses perl5 pkgconf libffi libiconv git bash misc/compat10x misc/compat11x misc/compat12x
           sudo tzsetup Etc/GMT
           sudo adjkerntz -a
           bash .github/scripts/build.sh
@@ -816,7 +816,7 @@ jobs:
       - name: Run test
         run: |
           sudo sed -i.bak -e 's/quarterly/latest/' /etc/pkg/FreeBSD.conf
-          sudo pkg install -y ghc hs-cabal-install git bash misc/compat10x misc/compat11x misc/compat12x gmake llvm14 libiconv groff autoconf automake
+          sudo pkg install -y curl gcc gmp gmake ncurses perl5 pkgconf libffi libiconv git bash misc/compat10x misc/compat11x misc/compat12x groff autoconf automake
           sudo tzsetup Etc/GMT
           sudo adjkerntz -a
           bash .github/scripts/test.sh
