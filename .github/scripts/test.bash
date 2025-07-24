@@ -18,7 +18,7 @@ case "${TARBALL_EXT}" in
 esac
 cd ..
 
-ghcup --no-verbose install ghc --install-targets "${GHC_TEST_TARGETS}" "${GHC_TEST_VERSION}"
+ghcup --no-verbose install ghc --set --install-targets "${GHC_TEST_TARGETS}" "${GHC_TEST_VERSION}"
 
 cabal update
 
