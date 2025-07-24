@@ -334,12 +334,34 @@ instance Structured ProjectConfigShared
 instance Structured ProjectConfigProvenance
 instance Structured PackageConfig
 
+instance NFData ProjectConfigToParse where
+  rnf (ProjectConfigToParse bs) = rnf bs
+
+instance NFData ProjectConfig where 
+  rnf = genericRnf
+
+instance NFData ProjectConfigBuildOnly where 
+  rnf = genericRnf
+
+instance NFData ProjectConfigShared where 
+  rnf = genericRnf
+
+instance NFData ProjectConfigProvenance where
+  rnf Implicit = ()
+  rnf (Explicit path) = rnf path
+
+instance NFData PackageConfig where
+  rnf = genericRnf
+
 -- | Newtype wrapper for 'Map' that provides a 'Monoid' instance that takes
 -- the last value rather than the first value for overlapping keys.
 newtype MapLast k v = MapLast {getMapLast :: Map k v}
   deriving (Eq, Show, Functor, Generic, Binary)
 
 instance (Structured k, Structured v) => Structured (MapLast k v)
+
+instance (NFData k, NFData v) => NFData (MapLast k v) where
+  rnf = genericRnf
 
 instance Ord k => Monoid (MapLast k v) where
   mempty = MapLast Map.empty
@@ -356,6 +378,9 @@ newtype MapMappend k v = MapMappend {getMapMappend :: Map k v}
   deriving (Eq, Show, Functor, Generic, Binary)
 
 instance (Structured k, Structured v) => Structured (MapMappend k v)
+
+instance (NFData k, NFData v) => NFData (MapMappend k v) where
+  rnf = genericRnf
 
 instance (Semigroup v, Ord k) => Monoid (MapMappend k v) where
   mempty = MapMappend Map.empty
@@ -443,6 +468,9 @@ data SolverSettings = SolverSettings
 instance Binary SolverSettings
 instance Structured SolverSettings
 
+instance NFData SolverSettings where
+  rnf = genericRnf
+
 -- | Resolved configuration for things that affect how we build and not the
 -- value of the things we build. The idea is that this is easier to use than
 -- the raw configuration because in the raw configuration everything is
@@ -480,3 +508,27 @@ data BuildTimeSettings = BuildTimeSettings
   , buildSettingProgPathExtra :: [FilePath]
   , buildSettingHaddockOpen :: Bool
   }
+
+instance NFData BuildTimeSettings where
+  rnf bts =
+      rnf (buildSettingDryRun                   bts)
+    `seq` rnf (buildSettingOnlyDeps               bts)
+    `seq` rnf (buildSettingOnlyDownload           bts)
+    `seq` rnf (buildSettingSummaryFile            bts)
+    `seq` rnf (buildSettingLogFile                 bts)
+    `seq` rnf (buildSettingLogVerbosity           bts)
+    `seq` rnf (buildSettingBuildReports           bts)
+    `seq` rnf (buildSettingReportPlanningFailure  bts)
+    `seq` rnf (buildSettingSymlinkBinDir          bts)
+    `seq` rnf (buildSettingNumJobs                bts)
+    `seq` rnf (buildSettingKeepGoing              bts)
+    `seq` rnf (buildSettingOfflineMode            bts)
+    `seq` rnf (buildSettingKeepTempFiles          bts)
+    `seq` rnf (buildSettingRemoteRepos            bts)
+    `seq` rnf (buildSettingLocalNoIndexRepos      bts)
+    `seq` rnf (buildSettingCacheDir               bts)
+    `seq` rnf (buildSettingHttpTransport          bts)
+    `seq` rnf (buildSettingIgnoreExpiry           bts)
+    `seq` rnf (buildSettingProgPathExtra          bts)
+    `seq` rnf (buildSettingHaddockOpen            bts)
+

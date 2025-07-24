@@ -128,6 +128,9 @@ data Compiler = Compiler
 instance Binary Compiler
 instance Structured Compiler
 
+instance NFData Compiler where 
+  rnf = genericRnf
+
 showCompilerId :: Compiler -> String
 showCompilerId = prettyShow . compilerId
 
@@ -202,6 +205,9 @@ data PackageDBX fp
 
 instance Binary fp => Binary (PackageDBX fp)
 instance Structured fp => Structured (PackageDBX fp)
+
+instance NFData fp => NFData (PackageDBX fp) where
+  rnf = genericRnf
 
 -- | We typically get packages from several databases, and stack them
 -- together. This type lets us be explicit about that stacking. For example
@@ -294,6 +300,9 @@ data OptimisationLevel
 instance Binary OptimisationLevel
 instance Structured OptimisationLevel
 
+instance NFData OptimisationLevel where
+  rnf = genericRnf
+
 flagToOptimisationLevel :: Maybe String -> OptimisationLevel
 flagToOptimisationLevel Nothing = NormalOptimisation
 flagToOptimisationLevel (Just s) = case reads s of
@@ -326,6 +335,9 @@ data DebugInfoLevel
 
 instance Binary DebugInfoLevel
 instance Structured DebugInfoLevel
+
+instance NFData DebugInfoLevel where
+  rnf = genericRnf
 
 flagToDebugInfoLevel :: Maybe String -> DebugInfoLevel
 flagToDebugInfoLevel Nothing = NormalDebugInfo
@@ -573,6 +585,9 @@ data ProfDetailLevel
 
 instance Binary ProfDetailLevel
 instance Structured ProfDetailLevel
+
+instance NFData ProfDetailLevel where
+  rnf = genericRnf
 
 flagToProfDetailLevel :: String -> ProfDetailLevel
 flagToProfDetailLevel "" = ProfDetailDefault

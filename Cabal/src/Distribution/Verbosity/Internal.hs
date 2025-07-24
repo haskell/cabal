@@ -14,6 +14,9 @@ data VerbosityLevel = Silent | Normal | Verbose | Deafening
 instance Binary VerbosityLevel
 instance Structured VerbosityLevel
 
+instance NFData VerbosityLevel where 
+  rnf = genericRnf
+
 data VerbosityFlag
   = VCallStack
   | VCallSite
@@ -27,3 +30,6 @@ data VerbosityFlag
 
 instance Binary VerbosityFlag
 instance Structured VerbosityFlag
+
+instance NFData VerbosityFlag where 
+  rnf = genericRnf

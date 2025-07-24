@@ -65,6 +65,9 @@ data ConstraintSource =
 instance Binary ConstraintSource
 instance Structured ConstraintSource
 
+instance NFData ConstraintSource where
+  rnf = genericRnf
+
 -- | Description of a 'ConstraintSource'.
 showConstraintSource :: ConstraintSource -> String
 showConstraintSource = prettyShow

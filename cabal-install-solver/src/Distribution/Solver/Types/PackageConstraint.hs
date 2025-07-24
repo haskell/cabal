@@ -98,6 +98,9 @@ data PackageProperty
 instance Binary PackageProperty
 instance Structured PackageProperty
 
+instance NFData PackageProperty where 
+  rnf = genericRnf
+
 instance Pretty PackageProperty where
   pretty (PackagePropertyVersion verrange) = pretty verrange
   pretty PackagePropertyInstalled          = Disp.text "installed"

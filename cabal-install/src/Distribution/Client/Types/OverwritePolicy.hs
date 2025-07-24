@@ -17,6 +17,9 @@ data OverwritePolicy
 instance Binary OverwritePolicy
 instance Structured OverwritePolicy
 
+instance NFData OverwritePolicy where 
+  rnf = genericRnf
+
 instance Parsec OverwritePolicy where
   parsec = do
     name <- P.munch1 isAlpha
