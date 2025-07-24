@@ -692,6 +692,23 @@ runGHCWithResponseFile fileNameTemplate encoding tempFileOptions verbosity ghcPr
 
           runProgramInvocation verbosity newInvocation
 
+
+-- Note [Make --interactive the first argument to GHC]
+-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-- The ghc argument @--interactive@ needs to be the first argument to the
+-- ghc invocation, because Haskell Language Server used to rely on this.
+-- This was initially changed for Cabal 3.16, but it broke all existing Haskell
+-- Language Server prebuilt binaries.
+-- To avoid this, we uphold this assumption in Haskell Language Server until the next
+-- Cabal release (3.18).
+--
+-- The solution is to make sure that @--interactive@ is not passed as an argument in
+-- the response file that is usually passed to ghc.
+-- Instead, we filter out @--interactive@ and always pass it as the first argument,
+-- if it exists.
+--
+-- We plan to remove this Hack in Cabal 3.18.
+
 -- Start the repl.  Either use `ghc`, or the program specified by the --with-repl flag.
 runReplProgram
   :: Maybe FilePath
@@ -704,11 +721,23 @@ runReplProgram
   -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> GhcOptions
   -> IO ()
-runReplProgram withReplProg tempFileOptions verbosity ghcProg comp platform mbWorkDir ghcOpts =
+runReplProgram withReplProg _tempFileOptions verbosity ghcProg comp platform mbWorkDir ghcOpts =
   let replProg = case withReplProg of
         Just path -> ghcProg{programLocation = FoundOnSystem path}
         Nothing -> ghcProg
-   in runGHCWithResponseFile "ghci.rsp" Nothing tempFileOptions verbosity replProg comp platform mbWorkDir ghcOpts
+   in do
+    -- in runGHCWithResponseFile "ghci.rsp" Nothing tempFileOptions verbosity replProg comp platform mbWorkDir ghcOpts
+    -- See Note [Make --interactive the first argument to GHC]
+    -- In Cabal 3.18, restore the line above.
+    invocation <- ghcInvocation verbosity replProg comp platform mbWorkDir ghcOpts
+    let invocation' =
+          let
+            argsWithoutInteractive = filter (/= "--interactive") (progInvokeArgs invocation)
+          in
+            invocation
+              { progInvokeArgs = ["--interactive"] <> argsWithoutInteractive
+              }
+    runProgramInvocation verbosity invocation'
 
 ghcInvocation
   :: Verbosity
