@@ -384,6 +384,7 @@ jobs:
       - name: install windows deps
         shell: pwsh
         run: |
+          # https://www.msys2.org/docs/updating/
           C:\msys64\usr\bin\bash -lc "pacman --disable-download-timeout --noconfirm -Syuu"
           C:\msys64\usr\bin\bash -lc "pacman --disable-download-timeout --noconfirm -Syuu"
           C:\msys64\usr\bin\bash -lc "pacman --disable-download-timeout --noconfirm -S make mingw-w64-x86_64-clang curl autoconf mingw-w64-x86_64-pkgconf ca-certificates base-devel gettext autoconf make libtool automake python p7zip patch unzip zip git"
@@ -554,6 +555,9 @@ jobs:
         with:
           ref: ${{ matrix.branch }}
 
+      # Test suite uses 'git' to find the test files. That appears
+      # to cause problems in CI. A similar hack is employed in the validate
+      # pipeline.
       - name: git clone fix
         run: git config --system --add safe.directory $GITHUB_WORKSPACE
 
@@ -575,6 +579,7 @@ jobs:
           DISTRO: ${{ matrix.platform.DISTRO }}
           ADD_CABAL_ARGS: ${{ matrix.platform.ADD_CABAL_ARGS }}
 
+# TODO: https://github.com/haskell/cabal/issues/11049
 #  test-linux-32bit:
 #    name: Test linux binaries (32bit)
 #    runs-on: ubuntu-latest

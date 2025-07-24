@@ -27,6 +27,7 @@ cabal update
 
 # TODO: we want to avoid building here... we should just
 # be using the previously built 'cabal-tests' binary
+# Also see https://github.com/haskell/cabal/issues/11048
 cabal run -w "ghc-${GHC_VERSION}" ${ADD_CABAL_ARGS} cabal-testsuite:cabal-tests -- \
   --with-cabal "$(pwd)/out/cabal" \
   --with-ghc "ghc-${GHC_TEST_VERSION}" \
