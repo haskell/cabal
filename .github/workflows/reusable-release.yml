@@ -694,7 +694,7 @@ jobs:
         run: |
           # cabal-testsuite/PackageTests/Configure/cabal.test.hs needs it
           # and it doesn't appear pre-installed here
-          brew install autoconf
+          brew install autoconf automake
 
           bash .github/scripts/test.bash
 
