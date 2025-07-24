@@ -77,6 +77,9 @@ data HaddockTarget = ForHackage | ForDevelopment deriving (Eq, Show, Generic)
 instance Binary HaddockTarget
 instance Structured HaddockTarget
 
+instance NFData HaddockTarget where 
+  rnf = genericRnf
+
 instance Pretty HaddockTarget where
   pretty ForHackage = Disp.text "for-hackage"
   pretty ForDevelopment = Disp.text "for-development"

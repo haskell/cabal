@@ -197,6 +197,27 @@ instance Structured RelaxedDep
 instance Structured AllowNewer
 instance Structured AllowOlder
 
+instance NFData RelaxDeps where
+  rnf = genericRnf
+
+instance NFData RelaxDepMod where
+  rnf = genericRnf
+
+instance NFData RelaxDepScope where 
+  rnf = genericRnf
+
+instance NFData RelaxDepSubject where 
+  rnf = genericRnf
+
+instance NFData RelaxedDep where
+  rnf = genericRnf
+
+instance NFData AllowNewer where
+  rnf = genericRnf
+
+instance NFData AllowOlder where
+  rnf = genericRnf
+
 -- | Return 'True' if 'RelaxDeps' specifies a non-empty set of relaxations
 --
 -- Equivalent to @isRelaxDeps = (/= 'mempty')@

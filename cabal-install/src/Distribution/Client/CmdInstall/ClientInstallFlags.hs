@@ -57,6 +57,9 @@ instance Semigroup ClientInstallFlags where
 instance Binary ClientInstallFlags
 instance Structured ClientInstallFlags
 
+instance NFData ClientInstallFlags where
+  rnf = genericRnf
+
 defaultClientInstallFlags :: ClientInstallFlags
 defaultClientInstallFlags =
   ClientInstallFlags

@@ -226,6 +226,8 @@ data AbiTag
 instance Binary AbiTag
 instance Structured AbiTag
 
+instance NFData CompilerId where rnf = genericRnf
+
 instance Pretty AbiTag where
   pretty NoAbiTag = Disp.empty
   pretty (AbiTag tag) = Disp.text tag

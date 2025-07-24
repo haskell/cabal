@@ -75,6 +75,9 @@ instance (Ord a, Binary a) => Binary (NubList a) where
 
 instance Structured a => Structured (NubList a)
 
+instance (Ord a, NFData a) => NFData (NubList a) where
+  rnf (NubList xs) = rnf xs
+
 -- | NubListR : A right-biased version of 'NubList'. That is @toNubListR
 -- ["-XNoFoo", "-XFoo", "-XNoFoo"]@ will result in @["-XFoo", "-XNoFoo"]@,
 -- unlike the normal 'NubList', which is left-biased. Built on top of
