@@ -25,9 +25,8 @@ env:
   GHC_VERSION: ${{ inputs.ghc }}
   GHC_TARGETS: ${{ inputs.ghc_targets }}
   # This shouldn't be necessary, but cabal developers
-  # whant to build with 9.10.2, which causes test failures
-  # when used as runtime GHC version as well. So we need a different
-  # runtime GHC version than the build GHC.
+  # want to build with 9.10.2, which causes test failures
+  # when used as runtime GHC version as well.
   GHC_TEST_VERSION: 9.6.7
   GHC_TEST_TARGETS: "install_bin install_lib update_package_db"
   CABAL_VERSION: ${{ inputs.cabal }}
