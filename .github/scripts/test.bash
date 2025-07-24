@@ -30,5 +30,5 @@ cabal run -w "ghc-${GHC_TEST_VERSION}" ${ADD_CABAL_ARGS} cabal-testsuite:cabal-t
   --intree-cabal-lib "$(pwd)" \
   --test-tmp "$(pwd)/testdb" \
   --skip-setup-tests \
-  -j "$(nproc)"
+  -j "$(nproc || sysctl -n hw.ncpu || getconf _NPROCESSORS_ONLN || echo 1)"
 
