@@ -1401,7 +1401,6 @@ mplusMaybeT ma mb = do
 fetchAndReadSourcePackages
   :: Verbosity
   -> DistDirLayout
-  -> Maybe Compiler
   -> ProjectConfigShared
   -> ProjectConfigBuildOnly
   -> [ProjectPackageLocation]
@@ -1409,7 +1408,6 @@ fetchAndReadSourcePackages
 fetchAndReadSourcePackages
   verbosity
   distDirLayout
-  compiler
   projectConfigShared
   projectConfigBuildOnly
   pkgLocations = do
@@ -1446,7 +1444,6 @@ fetchAndReadSourcePackages
       syncAndReadSourcePackagesRemoteRepos
         verbosity
         distDirLayout
-        compiler
         projectConfigShared
         projectConfigBuildOnly
         (fromFlag (projectConfigOfflineMode projectConfigBuildOnly))
@@ -1566,7 +1563,6 @@ fetchAndReadSourcePackageRemoteTarball
 syncAndReadSourcePackagesRemoteRepos
   :: Verbosity
   -> DistDirLayout
-  -> Maybe Compiler
   -> ProjectConfigShared
   -> ProjectConfigBuildOnly
   -> Bool
@@ -1575,7 +1571,6 @@ syncAndReadSourcePackagesRemoteRepos
 syncAndReadSourcePackagesRemoteRepos
   verbosity
   DistDirLayout{distDownloadSrcDirectory}
-  compiler
   ProjectConfigShared
     { projectConfigProgPathExtra
     }
@@ -1610,7 +1605,7 @@ syncAndReadSourcePackagesRemoteRepos
     concat
       <$> rerunConcurrentlyIfChanged
         verbosity
-        (newJobControlFromParStrat verbosity compiler parStrat (Just maxNumFetchJobs))
+        (newJobControlFromParStrat verbosity parStrat (Just maxNumFetchJobs))
         [ ( monitor
           , repoGroup'
           , do
