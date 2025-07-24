@@ -2,12 +2,11 @@ name: Build and release
 
 on:
   push:
-    branches:
-      - master
     tags:
       - 'v*'
       - 'cabal-install-*'
   pull_request:
+    types: [ labeled ]
     branches:
       - master
   schedule:
@@ -16,6 +15,7 @@ on:
 
 jobs:
   release-workflow:
+    if: ${{ github.event.label.name == 'run release build' }}
     uses: ./.github/workflows/reusable-release.yml
     with:
       branches: '["${{ github.ref }}"]'
