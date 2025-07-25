@@ -675,6 +675,7 @@ instance Semigroup SavedConfig where
           { flagProjectDir = combine flagProjectDir
           , flagProjectFile = combine flagProjectFile
           , flagIgnoreProject = combine flagIgnoreProject
+          , flagProjectFileParser = combine flagProjectFileParser
           }
         where
           combine = combine' savedProjectFlags

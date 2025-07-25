@@ -101,6 +101,12 @@ instance Pretty RelaxedDep where
 instance Parsec RelaxedDep where
   parsec = P.char '*' *> relaxedDepStarP <|> (parsec >>= relaxedDepPkgidP)
 
+instance Parsec AllowOlder where
+  parsec = AllowOlder <$> parsec
+
+instance Parsec AllowNewer where
+  parsec = AllowNewer <$> parsec
+
 -- continuation after *
 relaxedDepStarP :: CabalParsing m => m RelaxedDep
 relaxedDepStarP =

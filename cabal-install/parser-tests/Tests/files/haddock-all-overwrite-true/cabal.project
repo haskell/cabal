@@ -1,0 +1,2 @@
+haddock-all: True
+haddock-foreign-libraries: False

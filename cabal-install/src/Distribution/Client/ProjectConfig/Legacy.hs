@@ -771,6 +771,7 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
       { flagProjectDir = projectConfigProjectDir
       , flagProjectFile = projectConfigProjectFile
       , flagIgnoreProject = projectConfigIgnoreProject
+      , flagProjectFileParser = projectConfigProjectFileParser
       } = projectFlags
 
 -- | Helper used by other conversion functions that returns the
@@ -1070,6 +1071,7 @@ convertToLegacySharedConfig
           { flagProjectDir = projectConfigProjectDir
           , flagProjectFile = projectConfigProjectFile
           , flagIgnoreProject = projectConfigIgnoreProject
+          , flagProjectFileParser = projectConfigProjectFileParser
           }
 
 convertToLegacyAllPackageConfig :: ProjectConfig -> LegacyPackageConfig
