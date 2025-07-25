@@ -1,0 +1,21 @@
+cabal-version:      2.4
+name:               cabal-with-repl-exe
+version:            0.1.0.0
+build-type:         Simple
+
+executable test-exe
+  main-is:          Main.hs
+  build-depends:    base
+  default-language: Haskell2010
+
+library internal1
+  hs-source-dirs:   source1
+  build-depends:    base
+  exposed-modules:  Lib1
+  default-language: Haskell2010
+
+library internal2
+  hs-source-dirs:   source2
+  build-depends:    base
+  exposed-modules:  Lib2
+  default-language: Haskell2010
