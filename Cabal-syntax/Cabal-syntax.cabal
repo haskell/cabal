@@ -107,6 +107,7 @@ library
     Distribution.Parsec.FieldLineStream
     Distribution.Parsec.Position
     Distribution.Parsec.Warning
+    Distribution.Parsec.Source
     Distribution.Pretty
     Distribution.SPDX
     Distribution.SPDX.License

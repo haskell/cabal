@@ -44,6 +44,11 @@ flag git-rev
   default: False
   manual: True
 
+flag legacy-comparison
+  description: Enable comparison between the new and legacy cabal.project parser
+  default: False
+  manual: True
+
 common warnings
     ghc-options:
       -Wall
@@ -131,6 +136,7 @@ library
         Distribution.Client.Dependency.Types
         Distribution.Client.DistDirLayout
         Distribution.Client.Errors
+        Distribution.Client.Errors.Parser
         Distribution.Client.Fetch
         Distribution.Client.FetchUtils
         Distribution.Client.FileMonitor
@@ -177,7 +183,10 @@ library
         Distribution.Client.ProjectBuilding.PackageFileMonitor
         Distribution.Client.ProjectBuilding.Types
         Distribution.Client.ProjectConfig
+        Distribution.Client.ProjectConfig.FieldGrammar
         Distribution.Client.ProjectConfig.Legacy
+        Distribution.Client.ProjectConfig.Lens
+        Distribution.Client.ProjectConfig.Parsec
         Distribution.Client.ProjectConfig.Types
         Distribution.Client.ProjectFlags
         Distribution.Client.ProjectOrchestration
@@ -225,6 +234,7 @@ library
         Distribution.Client.Upload
         Distribution.Client.Utils
         Distribution.Client.Utils.Json
+        Distribution.Client.Utils.Newtypes
         Distribution.Client.Utils.Parsec
         Distribution.Client.VCS
         Distribution.Client.Version
@@ -289,6 +299,9 @@ library
     if flag(git-rev)
       build-depends: githash ^>= 0.1.7.0
       cpp-options: -DGIT_REV
+
+    if flag(legacy-comparison)
+      cpp-options: -DLEGACY_COMPARISON
 
 executable cabal
     import: warnings, base-dep
@@ -377,6 +390,26 @@ test-suite unit-tests
       , tasty-hunit >= 0.10
       , tree-diff
       , QuickCheck >= 2.14.3 && <2.17
+
+-- Tests for the project file parser
+test-suite parser-tests
+    import: warnings, base-dep, cabal-dep, cabal-syntax-dep, cabal-install-solver-dep
+    default-language: Haskell2010
+    ghc-options: -rtsopts -threaded
+
+    type: exitcode-stdio-1.0
+    main-is: Tests.hs
+    hs-source-dirs: parser-tests
+    build-depends:
+      , cabal-install
+      , containers
+      , directory
+      , filepath
+      , network-uri >= 2.6.2.0 && <2.7
+      , tasty >= 1.2.3 && <1.6
+      , tasty-hunit >= 0.10
+    other-modules:
+      Tests.ParserTests
 
 -- Tests to run with a limited stack and heap size
 -- The test suite name must be keep short cause a longer one

@@ -477,7 +477,7 @@ updateContextAndWriteProjectFile ctx scriptPath scriptExecutable = do
 
   updateContextAndWriteProjectFile' ctx sourcePackage
 
-parseScriptBlock :: BS.ByteString -> ParseResult Executable
+parseScriptBlock :: BS.ByteString -> ParseResult src Executable
 parseScriptBlock str =
   case readFields str of
     Right fs -> do

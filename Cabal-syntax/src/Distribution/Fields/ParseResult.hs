@@ -6,6 +6,8 @@
 module Distribution.Fields.ParseResult
   ( ParseResult
   , runParseResult
+  , PSource (..)
+  , CabalFileSource (..)
   , recoverWith
   , parseWarning
   , parseWarnings
@@ -15,131 +17,160 @@ module Distribution.Fields.ParseResult
   , getCabalSpecVersion
   , setCabalSpecVersion
   , withoutWarnings
+  , liftParseResult
+  , withSource
   ) where
 
 import Distribution.Compat.Prelude
-import Distribution.Parsec.Error (PError (..))
+import Distribution.Parsec.Error (PError (..), PErrorWithSource (..))
 import Distribution.Parsec.Position (Position (..), zeroPos)
-import Distribution.Parsec.Warning (PWarnType (..), PWarning (..))
+import Distribution.Parsec.Source
+import Distribution.Parsec.Warning
 import Distribution.Version (Version)
 
 -- | A monad with failure and accumulating errors and warnings.
-newtype ParseResult a = PR
+newtype ParseResult src a = PR
   { unPR
       :: forall r
-       . PRState
-      -> (PRState -> r) -- failure, but we were able to recover a new-style spec-version declaration
-      -> (PRState -> a -> r) -- success
+       . PRState src
+      -> PRContext src
+      -> (PRState src -> r) -- failure, but we were able to recover a new-style spec-version declaration
+      -> (PRState src -> a -> r) -- success
       -> r
   }
 
--- Note: we have version here, as we could get any version.
-data PRState = PRState ![PWarning] ![PError] !(Maybe Version)
+data PRContext src = PRContext
+  { prContextSource :: PSource src
+  -- ^ The file we are parsing, if known. This field is parametric because we
+  -- use the same parser for cabal files and project files.
+  }
 
-emptyPRState :: PRState
+-- Note: we have version here, as we could get any version.
+data PRState src = PRState ![PWarningWithSource src] ![PErrorWithSource src] !(Maybe Version)
+
+emptyPRState :: PRState src
 emptyPRState = PRState [] [] Nothing
 
 -- | Forget 'ParseResult's warnings.
 --
 -- @since 3.4.0.0
-withoutWarnings :: ParseResult a -> ParseResult a
-withoutWarnings m = PR $ \s failure success ->
-  unPR m s failure $ \ !s1 -> success (s1 `withWarningsOf` s)
+withoutWarnings :: ParseResult src a -> ParseResult src a
+withoutWarnings m = PR $ \s ctx failure success ->
+  unPR m s ctx failure $ \ !s1 -> success (s1 `withWarningsOf` s)
   where
     withWarningsOf (PRState _ e v) (PRState w _ _) = PRState w e v
 
 -- | Destruct a 'ParseResult' into the emitted warnings and either
 -- a successful value or
 -- list of errors and possibly recovered a spec-version declaration.
-runParseResult :: ParseResult a -> ([PWarning], Either (Maybe Version, NonEmpty PError) a)
-runParseResult pr = unPR pr emptyPRState failure success
+runParseResult :: ParseResult src a -> ([PWarningWithSource src], Either (Maybe Version, NonEmpty (PErrorWithSource src)) a)
+runParseResult pr = unPR pr emptyPRState initialCtx failure success
   where
-    failure (PRState warns [] v) = (warns, Left (v, PError zeroPos "panic" :| []))
+    initialCtx = PRContext PUnknownSource
+
+    failure (PRState warns [] v) = (warns, Left (v, PErrorWithSource PUnknownSource (PError zeroPos "panic") :| []))
     failure (PRState warns (err : errs) v) = (warns, Left (v, err :| errs))
 
     success (PRState warns [] _) x = (warns, Right x)
     -- If there are any errors, don't return the result
     success (PRState warns (err : errs) v) _ = (warns, Left (v, err :| errs))
 
-instance Functor ParseResult where
-  fmap f (PR pr) = PR $ \ !s failure success ->
-    pr s failure $ \ !s' a ->
+-- | Chain parsing operations that involve 'IO' actions.
+liftParseResult :: (a -> IO (ParseResult src b)) -> ParseResult src a -> IO (ParseResult src b)
+liftParseResult f pr = unPR pr emptyPRState initialCtx failure success
+  where
+    initialCtx = PRContext PUnknownSource
+
+    failure s = return $ PR $ \s' _ctx failure' _ -> failure' (concatPRState s s')
+    success s a = do
+      pr' <- f a
+      return $ PR $ \s' ctx failure' success' -> unPR pr' (concatPRState s s') ctx failure' success'
+    concatPRState (PRState warnings errors version) (PRState warnings' errors' version') =
+      (PRState (warnings ++ warnings') (toList errors ++ errors') (version <|> version'))
+
+withSource :: src -> ParseResult src a -> ParseResult src a
+withSource source (PR pr) = PR $ \s ctx failure success ->
+  pr s (ctx{prContextSource = PKnownSource source}) failure success
+
+instance Functor (ParseResult src) where
+  fmap f (PR pr) = PR $ \ !s fp failure success ->
+    pr s fp failure $ \ !s' a ->
       success s' (f a)
   {-# INLINE fmap #-}
 
-instance Applicative ParseResult where
-  pure x = PR $ \ !s _ success -> success s x
+instance Applicative (ParseResult src) where
+  pure x = PR $ \ !s _ _ success -> success s x
   {-# INLINE pure #-}
 
-  f <*> x = PR $ \ !s0 failure success ->
-    unPR f s0 failure $ \ !s1 f' ->
-      unPR x s1 failure $ \ !s2 x' ->
+  f <*> x = PR $ \ !s0 fp failure success ->
+    unPR f s0 fp failure $ \ !s1 f' ->
+      unPR x s1 fp failure $ \ !s2 x' ->
         success s2 (f' x')
   {-# INLINE (<*>) #-}
 
-  x *> y = PR $ \ !s0 failure success ->
-    unPR x s0 failure $ \ !s1 _ ->
-      unPR y s1 failure success
+  x *> y = PR $ \ !s0 fp failure success ->
+    unPR x s0 fp failure $ \ !s1 _ ->
+      unPR y s1 fp failure success
   {-# INLINE (*>) #-}
 
-  x <* y = PR $ \ !s0 failure success ->
-    unPR x s0 failure $ \ !s1 x' ->
-      unPR y s1 failure $ \ !s2 _ ->
+  x <* y = PR $ \ !s0 fp failure success ->
+    unPR x s0 fp failure $ \ !s1 x' ->
+      unPR y s1 fp failure $ \ !s2 _ ->
         success s2 x'
   {-# INLINE (<*) #-}
 
-instance Monad ParseResult where
+instance Monad (ParseResult src) where
   return = pure
   (>>) = (*>)
 
-  m >>= k = PR $ \ !s failure success ->
-    unPR m s failure $ \ !s' a ->
-      unPR (k a) s' failure success
+  m >>= k = PR $ \ !s fp failure success ->
+    unPR m s fp failure $ \ !s' a ->
+      unPR (k a) s' fp failure success
   {-# INLINE (>>=) #-}
 
 -- | "Recover" the parse result, so we can proceed parsing.
 -- 'runParseResult' will still result in 'Nothing', if there are recorded errors.
-recoverWith :: ParseResult a -> a -> ParseResult a
-recoverWith (PR pr) x = PR $ \ !s _failure success ->
-  pr s (\ !s' -> success s' x) success
+recoverWith :: ParseResult src a -> a -> ParseResult src a
+recoverWith (PR pr) x = PR $ \ !s fp _failure success ->
+  pr s fp (\ !s' -> success s' x) success
 
 -- | Set cabal spec version.
-setCabalSpecVersion :: Maybe Version -> ParseResult ()
-setCabalSpecVersion v = PR $ \(PRState warns errs _) _failure success ->
+setCabalSpecVersion :: Maybe Version -> ParseResult src ()
+setCabalSpecVersion v = PR $ \(PRState warns errs _) _fp _failure success ->
   success (PRState warns errs v) ()
 
 -- | Get cabal spec version.
-getCabalSpecVersion :: ParseResult (Maybe Version)
-getCabalSpecVersion = PR $ \s@(PRState _ _ v) _failure success ->
+getCabalSpecVersion :: ParseResult src (Maybe Version)
+getCabalSpecVersion = PR $ \s@(PRState _ _ v) _fp _failure success ->
   success s v
 
 -- | Add a warning. This doesn't fail the parsing process.
-parseWarning :: Position -> PWarnType -> String -> ParseResult ()
-parseWarning pos t msg = PR $ \(PRState warns errs v) _failure success ->
-  success (PRState (PWarning t pos msg : warns) errs v) ()
+parseWarning :: Position -> PWarnType -> String -> ParseResult src ()
+parseWarning pos t msg = PR $ \(PRState warns errs v) ctx _failure success ->
+  success (PRState (PWarningWithSource (prContextSource ctx) (PWarning t pos msg) : warns) errs v) ()
 
 -- | Add multiple warnings at once.
-parseWarnings :: [PWarning] -> ParseResult ()
-parseWarnings newWarns = PR $ \(PRState warns errs v) _failure success ->
-  success (PRState (newWarns ++ warns) errs v) ()
+parseWarnings :: [PWarning] -> ParseResult src ()
+parseWarnings newWarns = PR $ \(PRState warns errs v) ctx _failure success ->
+  success (PRState (map (PWarningWithSource (prContextSource ctx)) newWarns ++ warns) errs v) ()
 
 -- | Add an error, but not fail the parser yet.
 --
 -- For fatal failure use 'parseFatalFailure'
-parseFailure :: Position -> String -> ParseResult ()
-parseFailure pos msg = PR $ \(PRState warns errs v) _failure success ->
-  success (PRState warns (PError pos msg : errs) v) ()
+parseFailure :: Position -> String -> ParseResult src ()
+parseFailure pos msg = PR $ \(PRState warns errs v) ctx _failure success ->
+  success (PRState warns (PErrorWithSource (prContextSource ctx) (PError pos msg) : errs) v) ()
 
 -- | Add an fatal error.
-parseFatalFailure :: Position -> String -> ParseResult a
-parseFatalFailure pos msg = PR $ \(PRState warns errs v) failure _success ->
-  failure (PRState warns (PError pos msg : errs) v)
+parseFatalFailure :: Position -> String -> ParseResult src a
+parseFatalFailure pos msg = PR $ \(PRState warns errs v) ctx failure _success ->
+  failure (PRState warns (PErrorWithSource (prContextSource ctx) (PError pos msg) : errs) v)
 
 -- | A 'mzero'.
-parseFatalFailure' :: ParseResult a
+parseFatalFailure' :: ParseResult src a
 parseFatalFailure' = PR pr
   where
-    pr (PRState warns [] v) failure _success = failure (PRState warns [err] v)
-    pr s failure _success = failure s
+    pr (PRState warns [] v) _ctx failure _success = failure (PRState warns [err] v)
+    pr s _ctx failure _success = failure s
 
-    err = PError zeroPos "Unknown fatal error"
+    err = PErrorWithSource PUnknownSource (PError zeroPos "Unknown fatal error")

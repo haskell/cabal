@@ -24,6 +24,8 @@ import Distribution.PackageDescription.Check       (PackageCheck (..), checkPack
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.PackageDescription.Quirks      (patchQuirks)
 import Distribution.Simple.Utils                   (fromUTF8BS, toUTF8BS)
+import Distribution.Fields.ParseResult
+import Distribution.Parsec.Source
 import Numeric                                     (showFFloat)
 import System.Directory                            (getXdgDirectory, XdgDirectory(XdgCache, XdgConfig), getAppUserDataDirectory, doesDirectoryExist)
 import System.Environment                          (lookupEnv)
@@ -152,7 +154,7 @@ readFieldTest fpath bs = case Parsec.readFields bs' of
 parseParsecTest :: Bool -> FilePath -> B.ByteString -> IO ParsecResult
 parseParsecTest keepGoing fpath bs = do
     let (warnings, result) = Parsec.runParseResult $
-                             Parsec.parseGenericPackageDescription bs
+                             withSource (PCabalFile (fpath, bs)) $ Parsec.parseGenericPackageDescription bs
 
     let w | null warnings = 0
           | otherwise     = 1
@@ -163,10 +165,10 @@ parseParsecTest keepGoing fpath bs = do
             return (ParsecResult 1 w 0)
 
         Left (_, errors) | keepGoing -> do
-            traverse_ (putStrLn . Parsec.showPError fpath) errors
+            traverse_ (putStrLn . Parsec.showPErrorWithSource . fmap renderCabalFileSource) errors
             return (ParsecResult 1 w 1)
                          | otherwise -> do
-            traverse_ (putStrLn . Parsec.showPError fpath) errors
+            traverse_ (putStrLn . Parsec.showPErrorWithSource . fmap renderCabalFileSource) errors
             exitFailure
 
 -- | A hook to make queries on Hackage
@@ -197,7 +199,7 @@ instance NFData ParsecResult where
 parseCheckTest :: FilePath -> B.ByteString -> IO CheckResult
 parseCheckTest fpath bs = do
     let (warnings, parsec) = Parsec.runParseResult $
-                             Parsec.parseGenericPackageDescription bs
+                             withSource (PCabalFile (fpath, bs)) $ Parsec.parseGenericPackageDescription bs
     case parsec of
         Right gpd -> do
             let checks = checkPackage gpd
@@ -210,7 +212,7 @@ parseCheckTest fpath bs = do
             -- one for file, many checks
             return (CheckResult 1 (w warnings) 0 0 0 0 0 0 <> foldMap toCheckResult checks)
         Left (_, errors) -> do
-            traverse_ (putStrLn . Parsec.showPError fpath) errors
+            traverse_ (putStrLn . Parsec.showPErrorWithSource . fmap renderCabalFileSource) errors
             exitFailure
 
 -- checkCppFlags :: BuildInfo -> IO BuildInfo
@@ -304,7 +306,7 @@ roundtripTest testFieldsTransform fpath bs = do
 {- FOURMOLU_DISABLE -}
     parse phase c = do
         let (_, x') = Parsec.runParseResult $
-                      Parsec.parseGenericPackageDescription c
+                      withSource (PCabalFile (fpath, c)) $ Parsec.parseGenericPackageDescription c
         case x' of
             Right gpd -> pure gpd
             Left (_, errs) -> do

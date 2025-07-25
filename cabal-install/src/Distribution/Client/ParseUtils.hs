@@ -89,9 +89,9 @@ import Distribution.FieldGrammar (parseFieldGrammar, partitionFields)
 import qualified Distribution.FieldGrammar as FG
 import qualified Distribution.Fields as F
 import Distribution.Fields.ParseResult (runParseResult)
-import Distribution.Parsec.Error (showPError)
+import Distribution.Parsec.Error (showPErrorWithSource)
 import Distribution.Parsec.Position (Position (..))
-import Distribution.Parsec.Warning (showPWarning)
+import Distribution.Parsec.Warning (showPWarningWithSource)
 import Distribution.Simple.Utils (fromUTF8BS, toUTF8BS)
 
 -------------------------
@@ -321,12 +321,12 @@ parseFieldsAndSections fieldDescrs sectionDescrs fgSectionDescrs =
                 ++ show line'
           case runParseResult $ parseFieldGrammar cabalSpecLatest fields2 grammar of
             (warnings, Right b) -> do
-              for_ warnings $ \w -> warning $ showPWarning "???" w
+              for_ warnings $ \w -> warning $ showPWarningWithSource $ w
               setter line param b a
             (warnings, Left (_, errs)) -> do
-              for_ warnings $ \w -> warning $ showPWarning "???" w
+              for_ warnings $ \w -> warning $ showPWarningWithSource $ w
               case errs of
-                err :| _errs -> fail $ showPError "???" err
+                err :| _errs -> fail $ showPErrorWithSource $ err
         Nothing -> do
           warning $
             "Unrecognized section '"

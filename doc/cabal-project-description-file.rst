@@ -413,6 +413,22 @@ package, and thus apply globally:
 
     This option can only be specified from the command line.
 
+.. _cmdoption-project-file-parser:
+.. option:: --project-file-parser=PARSER
+
+    :since: 3.18
+
+    Specifies the parser to use for reading the project file. The available
+    parsers are:
+
+    * ``legacy`` - the old parser (will be removed in a future release)
+    * ``default`` - the default parser (uses ``fallback`` unless compiled with ``-f+legacy-comparison``)
+    * ``parsec`` - the new parser using Parsec
+    * ``fallback`` - the new parser using Parsec, but falling back to the old parser if it fails
+    * ``compare`` - the new parser using Parsec, but comparing the results with the old parser
+
+    This option can only be specified from the command line.
+
 .. option:: -z, --ignore-project
 
     Ignores the local ``cabal.project`` file and uses the default
@@ -1824,7 +1840,7 @@ Advanced global configuration options
     ``--build-summary=TEMPLATE``.
 
 Undocumented fields: ``root-cmd``, ``symlink-bindir``, ``build-log``,
-``remote-build-reporting``, ``report-planned-failure``, ``offline``.
+``remote-build-reporting``, ``report-planning-failure``, ``offline``.
 
 Advanced solver options
 ^^^^^^^^^^^^^^^^^^^^^^^

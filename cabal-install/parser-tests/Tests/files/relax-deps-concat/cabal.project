@@ -1,0 +1,7 @@
+-- allow-newer: parallel-3.2.2.0:base
+allow-newer: cassava-0.5.2.0:base
+allow-newer: vector-th-unbox-0.2.1.7:base
+allow-newer: vector-th-unbox-0.2.1.7:template-haskell
+
+allow-older: mtl-2.3.1:base, aeson-2.2.3.0:bytestring
+allow-older: containers-0.7:array
