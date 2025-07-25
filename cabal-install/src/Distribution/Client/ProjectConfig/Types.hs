@@ -508,27 +508,7 @@ data BuildTimeSettings = BuildTimeSettings
   , buildSettingProgPathExtra :: [FilePath]
   , buildSettingHaddockOpen :: Bool
   }
+  deriving (Generic)
 
 instance NFData BuildTimeSettings where
-  rnf bts =
-      rnf (buildSettingDryRun                   bts)
-    `seq` rnf (buildSettingOnlyDeps               bts)
-    `seq` rnf (buildSettingOnlyDownload           bts)
-    `seq` rnf (buildSettingSummaryFile            bts)
-    `seq` rnf (buildSettingLogFile                 bts)
-    `seq` rnf (buildSettingLogVerbosity           bts)
-    `seq` rnf (buildSettingBuildReports           bts)
-    `seq` rnf (buildSettingReportPlanningFailure  bts)
-    `seq` rnf (buildSettingSymlinkBinDir          bts)
-    `seq` rnf (buildSettingNumJobs                bts)
-    `seq` rnf (buildSettingKeepGoing              bts)
-    `seq` rnf (buildSettingOfflineMode            bts)
-    `seq` rnf (buildSettingKeepTempFiles          bts)
-    `seq` rnf (buildSettingRemoteRepos            bts)
-    `seq` rnf (buildSettingLocalNoIndexRepos      bts)
-    `seq` rnf (buildSettingCacheDir               bts)
-    `seq` rnf (buildSettingHttpTransport          bts)
-    `seq` rnf (buildSettingIgnoreExpiry           bts)
-    `seq` rnf (buildSettingProgPathExtra          bts)
-    `seq` rnf (buildSettingHaddockOpen            bts)
-
+  rnf = genericRnf
