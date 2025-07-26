@@ -431,7 +431,8 @@ scriptExeFileName scriptPath = "cabal-script-" ++ takeFileName scriptPath
 scriptDistDirParams :: FilePath -> ProjectBaseContext -> Compiler -> Platform -> DistDirParams
 scriptDistDirParams scriptPath ctx compiler platform =
   DistDirParams
-    { distParamUnitId = newSimpleUnitId cid
+    { distParamStage = Host
+    , distParamUnitId = newSimpleUnitId cid
     , distParamPackageId = fakePackageId
     , distParamComponentId = cid
     , distParamComponentName = Just $ CExeName cn

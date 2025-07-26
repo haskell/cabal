@@ -33,6 +33,7 @@ import Distribution.Client.Config
   ( defaultLogsDir
   , defaultStoreDir
   )
+import Distribution.Client.Toolchain (Stage)
 import Distribution.Compiler
 import Distribution.Package
   ( ComponentId
@@ -48,7 +49,6 @@ import Distribution.Simple.Compiler
   )
 import Distribution.System
 import Distribution.Types.ComponentName
-import Distribution.Types.LibraryName
 
 -- | Information which can be used to construct the path to
 -- the build directory of a build.  This is LESS fine-grained
@@ -56,7 +56,8 @@ import Distribution.Types.LibraryName
 -- and for good reason: we don't want this path to change if
 -- the user, say, adds a dependency to their project.
 data DistDirParams = DistDirParams
-  { distParamUnitId :: UnitId
+  { distParamStage :: Stage
+  , distParamUnitId :: UnitId
   , distParamPackageId :: PackageId
   , distParamComponentId :: ComponentId
   , distParamComponentName :: Maybe ComponentName
@@ -194,28 +195,10 @@ defaultDistDirLayout projectRoot mdistDirectory haddockOutputDir =
     distBuildDirectory :: DistDirParams -> FilePath
     distBuildDirectory params =
       distBuildRootDirectory
+        </> prettyShow (distParamStage params)
         </> prettyShow (distParamPlatform params)
         </> prettyShow (distParamCompilerId params)
-        </> prettyShow (distParamPackageId params)
-        </> ( case distParamComponentName params of
-                Nothing -> ""
-                Just (CLibName LMainLibName) -> ""
-                Just (CLibName (LSubLibName name)) -> "l" </> prettyShow name
-                Just (CFLibName name) -> "f" </> prettyShow name
-                Just (CExeName name) -> "x" </> prettyShow name
-                Just (CTestName name) -> "t" </> prettyShow name
-                Just (CBenchName name) -> "b" </> prettyShow name
-            )
-        </> ( case distParamOptimization params of
-                NoOptimisation -> "noopt"
-                NormalOptimisation -> ""
-                MaximumOptimisation -> "opt"
-            )
-        </> ( let uid_str = prettyShow (distParamUnitId params)
-               in if uid_str == prettyShow (distParamComponentId params)
-                    then ""
-                    else uid_str
-            )
+        </> prettyShow (distParamUnitId params)
 
     distUnpackedSrcRootDirectory :: FilePath
     distUnpackedSrcRootDirectory = distDirectory </> "src"
