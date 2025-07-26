@@ -1,0 +1,164 @@
+#
+# Set up a workflow for building Cabal
+#
+# The only required input is the ghc version to build with (`ghc`). The other inputs are
+# generally for special purposes:
+#
+# - an additional ghc version for testing, used by the old-versions tests (`extra-ghc`)
+# - the `cabal.project` variant to use (`validate`)
+# - `allow-newer` and `constraints` lines, for manual jobs
+# - whether to build a static executable (for Alpine) (`static`)
+# - shell (override on Windows because the default is the wrong version) (`shell`)
+# - whether to use the cache (`with_cache`)
+#
+# There is only one output: the path to the installed (main) ghc.
+#
+# This is automatically done by the `validate-build` action, which takes the same
+# parameters. It should be done directly for jobs that test the built `cabal`.
+#
+
+name: Cabal setup
+description: Set up a workflow for Cabal
+
+inputs:
+  ghc:
+    description: ghc version to use
+    required: true
+  extra-ghc:
+    description: additional ghc for tests
+    required: false
+    default: ''
+  project:
+    description: which cabal.project to use
+    required: false
+    default: 'validate'
+  allow-newer:
+    description: allow-newer line
+    required: false
+    default: ''
+  constraints:
+    description: constraints line
+    required: false
+    default: ''
+  static:
+    description: whether to build statically
+    required: false
+    default: 'false'
+  shell:
+    description: shell to use
+    required: false
+    default: 'bash'
+  with_cache:
+    description: whether to instantiate cache
+    required: false
+    default: 'true'
+
+outputs:
+  ghc-exe:
+    description: Path to ghc installed by setup-haskell
+    value: ${{ steps.setup-haskell.outputs.ghc-exe }}
+
+runs:
+  using: composite
+  steps:
+    - name: Make sure ghc is specified
+      if: inputs.ghc == ''
+      shell: ${{ inputs.shell }}
+      run: exit 1
+
+    - name: Work around existence of XDG directories (haskell-actions/setup#62)
+      if: runner.os == 'macOS'
+      shell: ${{ inputs.shell }}
+      run: |
+        rm -rf ~/.config/cabal
+        rm -rf ~/.cache/cabal
+
+    - name: "WIN: Setup TMP environment variable"
+      if: runner.os == 'Windows'
+      shell: ${{ inputs.shell }}
+      run: |
+        echo "TMP=${{ runner.temp }}" >> "$GITHUB_ENV"
+
+    # See https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#hackage-revisions
+    - name: Add manually supplied allow-newer
+      if: inputs.allow-newer != ''
+      shell: ${{ inputs.shell }}
+      run: |
+        echo "allow-newer: ${{ inputs.allow-newer }}" >> cabal.${{ inputs.project }}.project
+
+    - name: Add manually supplied constraints
+      if: inputs.constraints != ''
+      shell: ${{ inputs.shell }}
+      run: |
+        echo "constraints: ${{ inputs.constraints }}" >> cabal.${{ inputs.project }}.project
+
+    - name: Enable statically linked executables
+      if: inputs.static == 'true'
+      shell: ${{ inputs.shell }}
+      run: |
+        echo 'executable-static: true' >> cabal.${{ inputs.project }}.project
+
+    # must happen before the main setup so the correct ghc is default
+    - name: Install extra ghc for tests
+      if: inputs.extra-ghc != ''
+      uses: haskell-actions/setup@v2
+      with:
+        ghc-version: ${{ inputs.extra-ghc }}
+        cabal-version: '3.12.1.0' # see https://github.com/haskell/cabal/pull/10251
+
+    - uses: haskell-actions/setup@v2
+      id: setup-haskell
+      with:
+        ghc-version: ${{ inputs.ghc }}
+        cabal-version: '3.12.1.0'
+        # do we use this?
+        ghcup-release-channel: https://raw.githubusercontent.com/haskell/ghcup-metadata/master/ghcup-prereleases-0.0.9.yaml
+
+    # See the following link for a breakdown of the following step
+    # https://github.com/haskell/actions/issues/7#issuecomment-745697160
+    - uses: actions/cache@v4
+      if: inputs.with_cache != 'false'
+      with:
+        # cabal-validate uses a special build dir
+        path: |
+          ${{ steps.setup-haskell.outputs.cabal-store }}
+          dist-*
+        key: ${{ runner.os }}-${{ inputs.ghc }}-${{ github.sha }}
+        restore-keys: ${{ runner.os }}-${{ inputs.ghc }}-
+
+    # Needed by cabal-testsuite/PackageTests/Configure/setup.test.hs
+    - name: "MAC: Install Autotools"
+      if: runner.os == 'macOS'
+      shell: ${{ inputs.shell }}
+      run: |
+        brew install automake
+
+    # Needed by cabal-testsuite/PackageTests/Configure/setup.test.hs
+    - name: "WIN: Install Autotools"
+      if: runner.os == 'Windows'
+      shell: ${{ inputs.shell }}
+      run: |
+        /usr/bin/pacman --noconfirm -S autotools
+
+    - name: Set validate inputs
+      shell: ${{ inputs.shell }}
+      run: |
+        FLAGS="$COMMON_FLAGS"
+        if [[ "${{ inputs.ghc }}" == "$GHC_FOR_SOLVER_BENCHMARKS" ]]; then
+          FLAGS="$FLAGS --solver-benchmarks"
+        fi
+        if [[ "${{ inputs.ghc }}" == "$GHC_FOR_COMPLETE_HACKAGE_TESTS" ]]; then
+          FLAGS="$FLAGS --complete-hackage-tests"
+        fi
+        echo "FLAGS=$FLAGS" >> "$GITHUB_ENV"
+
+    - name: Canonicalize architecture
+      shell: ${{ inputs.shell }}
+      run: |
+        case ${{ runner.arch }} in
+          X86) arch=i386 ;;
+          X64) arch=x86_64 ;;
+          ARM64) arch=aarch64 ;;
+          *) echo "Unsupported architecture, please fix cabal-setup/action.yml" 2>/dev/null; exit 1 ;;
+        esac
+        echo "CABAL_ARCH=$arch" >> "$GITHUB_ENV"
