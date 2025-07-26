@@ -87,18 +87,6 @@ data SolverInstallPlan = SolverInstallPlan
   }
   deriving (Generic)
 
-{-
--- | Much like 'planPkgIdOf', but mapping back to full packages.
-planPkgOf :: SolverInstallPlan
-          -> Graph.Vertex
-          -> SolverPlanPackage
-planPkgOf plan v =
-    case Graph.lookupKey (planIndex plan)
-                         (planPkgIdOf plan v) of
-      Just pkg -> pkg
-      Nothing  -> error "InstallPlan: internal error: planPkgOf lookup failed"
--}
-
 instance Binary SolverInstallPlan
 instance Structured SolverInstallPlan
 
