@@ -239,6 +239,7 @@ logDirChange l (Just d) m = do
 -- program, so unsafePerformIO is safe here.
 numberOfProcessors :: Int
 numberOfProcessors = unsafePerformIO getNumProcessors
+{-# NOINLINE numberOfProcessors #-}
 
 -- | Determine the number of jobs to use given the value of the '-j' flag.
 determineNumJobs :: Flag (Maybe Int) -> Int

@@ -537,7 +537,7 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
       whenStaticLib forceStatic =
         when (forceStatic || withStaticLib lbi)
       -- whenGHCiLib = when (withGHCiLib lbi)
-      forRepl = maybe False (const True) mReplFlags
+      forRepl = isJust mReplFlags
       -- ifReplLib = when forRepl
       comp = compiler lbi
       implInfo = getImplInfo comp

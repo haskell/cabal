@@ -297,8 +297,9 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
         let
           sourcePackage =
             fakeProjectSourcePackage projectRoot
-              & lSrcpkgDescription . L.condLibrary
-                .~ Just (CondNode library [baseDep] [])
+              & ( (lSrcpkgDescription . L.condLibrary)
+                    ?~ (CondNode library [baseDep] [])
+                )
           library = emptyLibrary{libBuildInfo = lBuildInfo}
           lBuildInfo =
             emptyBuildInfo
