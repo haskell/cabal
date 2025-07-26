@@ -66,7 +66,7 @@ regenerateHaddockIndex verbosity pkgs progdb index = do
 
   createDirectoryIfMissing True destDir
 
-  withTempDirectory verbosity destDir "tmphaddock" $ \tempDir -> do
+  withTempDirectory destDir "tmphaddock" $ \tempDir -> do
     let flags =
           [ "--gen-contents"
           , "--gen-index"

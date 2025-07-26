@@ -57,8 +57,8 @@ import Distribution.System
 import Distribution.Utils.Path
 import Distribution.Verbosity
   ( Verbosity
-  , deafening
-  , verbose
+  , VerbosityLevel (..)
+  , verbosityLevel
   )
 
 import System.Directory (doesFileExist, renameFile)
@@ -90,7 +90,7 @@ createArLibArchive verbosity lbi targetPath files = do
       i = interpretSymbolicPath mbWorkDir
       u :: SymbolicPath Pkg to -> FilePath
       u = interpretSymbolicPathCWD
-  withTempDirectoryCwd verbosity mbWorkDir targetDir "objs" $ \tmpDir -> do
+  withTempDirectoryCwd mbWorkDir targetDir "objs" $ \tmpDir -> do
     let tmpPath = tmpDir </> targetName
 
     -- The args to use with "ar" are actually rather subtle and system-dependent.
@@ -168,8 +168,8 @@ createArLibArchive verbosity lbi targetPath files = do
     progDb = withPrograms lbi
     Platform hostArch hostOS = hostPlatform lbi
     verbosityOpts v
-      | v >= deafening = ["-v"]
-      | v >= verbose = []
+      | verbosityLevel v >= Deafening = ["-v"]
+      | verbosityLevel v >= Verbose = []
       | otherwise = ["-c"] -- Do not warn if library had to be created.
 
 -- | @ar@ by default includes various metadata for each object file in their

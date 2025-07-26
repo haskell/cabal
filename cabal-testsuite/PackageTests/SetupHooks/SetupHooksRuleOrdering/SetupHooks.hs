@@ -10,6 +10,7 @@ import Distribution.Simple.LocalBuildInfo (interpretSymbolicPathLBI)
 import Distribution.Simple.SetupHooks
 import Distribution.Simple.Utils ( rewriteFileEx, warn )
 import Distribution.Utils.Path
+import Distribution.Verbosity
 
 import Data.Foldable ( for_ )
 import qualified Data.List.NonEmpty as NE ( NonEmpty(..) )
@@ -33,20 +34,21 @@ setupHooks =
 -- and check that we run them in dependency order, i.e. r2, r1, r3.
 preBuildRules :: PreBuildComponentInputs -> RulesM ()
 preBuildRules (PreBuildComponentInputs { buildingWhat = what, localBuildInfo = lbi, targetInfo = tgt }) = mdo
-  let verbosity = buildingWhatVerbosity what
+  let verbosityFlags = buildingWhatVerbosity what
       clbi = targetCLBI tgt
       autogenDir = autogenComponentModulesDir lbi clbi
 
       mkAction =
-        mkCommand (static Dict) $ static (\ (dir, verb, (inMod, outMod)) -> do
-          warn verb $ "Running rule: " ++ inMod ++ " --> " ++ outMod
+        mkCommand (static Dict) $ static (\ (dir, verbFlags, (inMod, outMod)) -> do
+          let verbosity = mkVerbosity defaultVerbosityHandles verbFlags
+          warn verbosity $ "Running rule: " ++ inMod ++ " --> " ++ outMod
           let loc = getSymbolicPath dir </> outMod <.> "hs"
-          rewriteFileEx verb loc $
+          rewriteFileEx verbosity loc $
             "module " ++ outMod ++ " where { import " ++ inMod ++ " }"
         )
 
       actionArg inMod outMod =
-        (autogenDir, verbosity, (inMod, outMod))
+        (autogenDir, verbosityFlags, (inMod, outMod))
 
       mkRule action input outMod =
         staticRule action

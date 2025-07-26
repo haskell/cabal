@@ -43,7 +43,7 @@ main = do
 -- | Checks for a suitable HPC version for testing.
 correctHpcVersion :: TestM Bool
 correctHpcVersion = do
-    let verbosity = Verbosity.normal
+    let verbosity = Verbosity.mkVerbosity Verbosity.defaultVerbosityHandles Verbosity.normal
         verRange  = orLaterVersion (mkVersion [0,7])
     progDB <- testProgramDb `fmap` ask
     liftIO $ (requireProgramVersion verbosity hpcProgram verRange progDB
