@@ -153,6 +153,15 @@ defaultMainWithSetupHooksArgs setupHooks =
       , hscolourHook = setup_hscolourHook
       }
   where
+    preBuildHook =
+      case SetupHooks.preBuildComponentRules (SetupHooks.buildHooks setupHooks) of
+        Nothing -> const $ return []
+        Just pbcRules -> \pbci -> runPreBuildHooks pbci pbcRules
+    postBuildHook =
+      case SetupHooks.postBuildComponentHook (SetupHooks.buildHooks setupHooks) of
+        Nothing -> const $ return ()
+        Just hk -> hk
+
     setup_confHook
       :: (GenericPackageDescription, HookedBuildInfo)
       -> ConfigFlags
@@ -168,12 +177,13 @@ defaultMainWithSetupHooksArgs setupHooks =
       -> BuildFlags
       -> IO ()
     setup_buildHook pkg_descr lbi hooks flags =
-      build_setupHooks
-        (SetupHooks.buildHooks setupHooks)
-        pkg_descr
-        lbi
-        flags
-        (allSuffixHandlers hooks)
+      void $
+        build_setupHooks
+          (preBuildHook, postBuildHook)
+          pkg_descr
+          lbi
+          flags
+          (allSuffixHandlers hooks)
 
     setup_copyHook
       :: PackageDescription
@@ -207,7 +217,7 @@ defaultMainWithSetupHooksArgs setupHooks =
       -> IO ()
     setup_replHook pkg_descr lbi hooks flags args =
       repl_setupHooks
-        (SetupHooks.buildHooks setupHooks)
+        preBuildHook
         pkg_descr
         lbi
         flags
@@ -221,12 +231,13 @@ defaultMainWithSetupHooksArgs setupHooks =
       -> HaddockFlags
       -> IO ()
     setup_haddockHook pkg_descr lbi hooks flags =
-      haddock_setupHooks
-        (SetupHooks.buildHooks setupHooks)
-        pkg_descr
-        lbi
-        (allSuffixHandlers hooks)
-        flags
+      void $
+        haddock_setupHooks
+          preBuildHook
+          pkg_descr
+          lbi
+          (allSuffixHandlers hooks)
+          flags
 
     setup_hscolourHook
       :: PackageDescription
@@ -236,7 +247,7 @@ defaultMainWithSetupHooksArgs setupHooks =
       -> IO ()
     setup_hscolourHook pkg_descr lbi hooks flags =
       hscolour_setupHooks
-        (SetupHooks.buildHooks setupHooks)
+        preBuildHook
         pkg_descr
         lbi
         (allSuffixHandlers hooks)
