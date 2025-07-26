@@ -1948,21 +1948,21 @@ elaborateInstallPlan
                       elab0
                         { elabPkgOrComp = ElabComponent elab_comp
                         }
+
+                    -- This is where the component id is computed.
                     cid = case elabBuildStyle elab0 of
                       BuildInplaceOnly{} ->
                         mkComponentId $
-                          prettyShow pkgid
-                            ++ "-inplace"
-                            ++ ( case Cabal.componentNameString cname of
-                                  Nothing -> ""
-                                  Just s -> "-" ++ prettyShow s
-                               )
+                          case Cabal.componentNameString cname of
+                            Nothing -> prettyShow pkgid
+                            Just n -> prettyShow pkgid ++ "-" ++ prettyShow n
                       BuildAndInstall ->
                         hashedInstalledPackageId
                           ( packageHashInputs
                               elaboratedSharedConfig
                               elab1 -- knot tied
                           )
+
                     cc = cc0{cc_ann_id = fmap (const cid) (cc_ann_id cc0)}
 
                 infoProgress $ hang (text "configured component:") 4 (dispConfiguredComponent cc)
@@ -2181,7 +2181,7 @@ elaborateInstallPlan
 
             pkgInstalledId
               | shouldBuildInplaceOnly pkg =
-                  mkComponentId (prettyShow srcpkgPackageId ++ "-inplace")
+                  mkComponentId (prettyShow srcpkgPackageId)
               | otherwise =
                   assert (isJust elabPkgSourceHash) $
                     hashedInstalledPackageId

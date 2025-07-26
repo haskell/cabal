@@ -565,7 +565,8 @@ elabConfiguredName verbosity elab
 elabDistDirParams :: ElaboratedSharedConfig -> ElaboratedConfiguredPackage -> DistDirParams
 elabDistDirParams shared elab =
   DistDirParams
-    { distParamUnitId = installedUnitId elab
+    { distParamStage = elabStage elab
+    , distParamUnitId = installedUnitId elab
     , distParamComponentId = elabComponentId elab
     , distParamPackageId = elabPkgSourceId elab
     , distParamComponentName = case elabPkgOrComp elab of
