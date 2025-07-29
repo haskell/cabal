@@ -1,0 +1,7 @@
+packages: .
+
+import: woops/woops-1.config
+import: woops/woops-3.config
+import: woops/woops-5.config
+import: woops/woops-7.config
+import: woops/woops-9.config
