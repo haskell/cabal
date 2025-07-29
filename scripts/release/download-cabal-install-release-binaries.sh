@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
 # A script to download the release binary files for a given cabal release
-# from upstream "downlods.haskell.org".
+# from upstream "downloads.haskell.org".
 # It accepts the first and only argument as the release number.
 #
-# useage:-
+# usage:-
 #   $ download-cabal-install-release-binaries.sh "3.10.1.0"
 #
-# This was initally made to be used with ./create-release-metadata-for-ghcup.sh
+# This was initially made to be used with ./create-release-metadata-for-ghcup.sh
 
 set -eu
 set -o pipefail
