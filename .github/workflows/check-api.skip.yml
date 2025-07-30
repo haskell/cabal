@@ -1,0 +1,49 @@
+
+name: Check API Skip
+
+# This Workflow is special and contains a workaround for a known limitation of GitHub CI.
+#
+# The problem: We don't want to run the "check-api" jobs on PRs which contain only changes
+# to the docs, since these jobs take a long time to complete without providing any benefit.
+# We therefore use path-filtering in the workflow triggers for the bootstrap jobs, namely
+# "paths-ignore: doc/**". But the "Check API post job" is a required job, therefore a PR cannot
+# be merged unless the "Check API post job" completes succesfully, which it doesn't do if we
+# filter it out.
+#
+# The solution: We use a second job with the same name which always returns the exit code 0.
+# The logic implemented for "required" workflows accepts if 1) at least one job with that name
+# runs through, AND 2) If multiple jobs of that name exist, then all jobs of that name have to
+# finish successfully.
+on:
+  push:
+    paths:
+      - 'doc/**'
+      - '**/README.md'
+      - 'CONTRIBUTING.md'
+      - "changelog.d/**"
+      # only top level for these, because various test packages have them too
+      - "*/ChangeLog.md"
+      - "*/changelog.md"
+      - "release-notes/**"
+    branches:
+      - master
+  pull_request:
+    paths:
+      - 'doc/**'
+      - '**/README.md'
+      - 'CONTRIBUTING.md'
+      - "changelog.d/**"
+      - "*/ChangeLog.md"
+      - "*/changelog.md"
+      - "release-notes/**"
+  release:
+    types:
+      - created
+
+jobs:
+  check-api-post-job:
+    if: always()
+    name: Check API post job
+    runs-on: ubuntu-latest
+    steps:
+      - run: exit 0
