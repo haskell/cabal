@@ -19,7 +19,7 @@ import System.IO (TextEncoding, hClose, hPutStr, hSetEncoding)
 import Prelude ()
 
 import Distribution.Compat.Prelude
-import Distribution.Simple.Utils (TempFileOptions, debug, withTempFileEx)
+import Distribution.Simple.Utils (TempFileOptions, withTempFileEx)
 import Distribution.Utils.Path
 import Distribution.Verbosity
 
@@ -34,7 +34,7 @@ withResponseFile
   -- ^ Arguments to put into response file.
   -> (FilePath -> IO a)
   -> IO a
-withResponseFile verbosity tmpFileOpts fileNameTemplate encoding arguments f =
+withResponseFile _verbosity tmpFileOpts fileNameTemplate encoding arguments f =
   withTempFileEx tmpFileOpts fileNameTemplate $ \responsePath hf -> do
     let responseFileName = getSymbolicPath responsePath
     traverse_ (hSetEncoding hf) encoding
@@ -44,9 +44,6 @@ withResponseFile verbosity tmpFileOpts fileNameTemplate encoding arguments f =
               arguments
     hPutStr hf responseContents
     hClose hf
-    debug verbosity $ responseFileName ++ " contents: <<<"
-    debug verbosity responseContents
-    debug verbosity $ ">>> " ++ responseFileName
     f responseFileName
 
 -- Support a gcc-like response file syntax.  Each separate
