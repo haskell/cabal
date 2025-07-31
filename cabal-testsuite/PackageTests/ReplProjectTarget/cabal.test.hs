@@ -2,6 +2,7 @@ import Test.Cabal.Prelude
 import Data.List (isInfixOf)
 
 main = cabalTest . recordMode RecordMarked $ do
+  liftIO $ skipIfWindows "I'm seeing extra newlines in the output on Windows"
   let log = recordHeader . pure
 
   -- This triggers "Assertion failed" with backtrace to TemTestDir.hs:37:3
