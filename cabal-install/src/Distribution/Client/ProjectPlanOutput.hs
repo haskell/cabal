@@ -68,6 +68,7 @@ import Prelude ()
 
 import qualified Data.ByteString.Builder as BB
 import qualified Data.ByteString.Lazy as BS
+import Data.Either (fromRight)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
@@ -768,7 +769,7 @@ readPackagesUpToDateCacheFile DistDirLayout{distProjectCacheFile} =
       withBinaryFile (distProjectCacheFile "up-to-date") ReadMode $ \hnd ->
         Binary.decodeOrFailIO =<< BS.hGetContents hnd
   where
-    handleDecodeFailure = fmap (either (const Set.empty) id)
+    handleDecodeFailure = fmap (fromRight Set.empty)
 
 -- | Helper for writing the package up-to-date cache file.
 --

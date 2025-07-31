@@ -320,7 +320,7 @@ getSourceFiles
   -> [SymbolicPathX allowAbsolute Pkg (Dir Source)]
   -> [ModuleName.ModuleName]
   -> IO [(ModuleName.ModuleName, SymbolicPathX allowAbsolute Pkg File)]
-getSourceFiles verbosity mbWorkDir dirs modules = flip traverse modules $ \m ->
+getSourceFiles verbosity mbWorkDir dirs modules = for modules $ \m ->
   fmap ((,) m) $
     findFileCwdWithExtension
       mbWorkDir
