@@ -1,5 +1,6 @@
 import Test.Cabal.Prelude
 import Distribution.Simple.Utils
+import Distribution.Verbosity
 
 -- This test ensures the following fix holds:
 -- > Fix project-local build flags being ignored.
@@ -57,7 +58,11 @@ main = cabalTest $ do
     withPackageDb $ do
         -- Phase 1: get 4 hashes according to config flags.
         results <- forM (zip [0..] lrun) $ \(idx, linking) -> do
-            liftIO $ copyDirectoryRecursive minBound (testCurrentDir env </> "basic") (testCurrentDir env </> "basic" ++ show idx)
+            liftIO $
+              copyDirectoryRecursive
+                (mkVerbosity defaultVerbosityHandles silent)
+                (testCurrentDir env </> "basic")
+                (testCurrentDir env </> "basic" ++ show idx)
             withDirectory ("basic" ++ show idx) $ do
                         packageEnv <- (</> ("basic" ++ show idx ++ ".env")) . testWorkDir <$> getTestEnv
                         let installOptions = ["--disable-deterministic", "--lib", "--package-env=" ++ packageEnv] ++ linkConfigFlags linking ++ ["basic"]

@@ -24,6 +24,7 @@ import Distribution.Types.ParStrat
 import Distribution.Utils.NubList (fromNubListR)
 import Distribution.Utils.Path
 
+import Distribution.Verbosity (VerbosityHandles, mkVerbosity, verbosityHandles)
 import System.FilePath (splitDirectories)
 
 {- Note [Build Target Dir vs Target Dir]
@@ -64,13 +65,14 @@ for linking libraries too (2024-01) (TODO)
 -- Includes building Haskell modules, extra build sources, and linking.
 build
   :: Flag ParStrat
+  -> VerbosityHandles
   -> PackageDescription
   -> PreBuildComponentInputs
   -- ^ The context and component being built in it.
   -> IO ()
-build numJobs pkg_descr pbci = do
+build numJobs verbHandles pkg_descr pbci = do
   let
-    verbosity = buildVerbosity pbci
+    verbosity = mkVerbosity verbHandles $ buildVerbosity pbci
     isLib = buildIsLib pbci
     lbi = localBuildInfo pbci
     bi = buildBI pbci
@@ -134,7 +136,7 @@ build numJobs pkg_descr pbci = do
   -- We need a separate build and link phase, and C sources must be compiled
   -- after Haskell modules, because C sources may depend on stub headers
   -- generated from compiling Haskell modules (#842, #3294).
-  (mbMainFile, inputModules) <- componentInputs buildTargetDir pkg_descr pbci
+  (mbMainFile, inputModules) <- componentInputs buildTargetDir verbHandles pkg_descr pbci
   let (hsMainFile, nonHsMainFile) =
         case mbMainFile of
           Just mainFile
@@ -144,10 +146,11 @@ build numJobs pkg_descr pbci = do
             | otherwise ->
                 (Nothing, Just mainFile)
           Nothing -> (Nothing, Nothing)
-  buildOpts <- buildHaskellModules numJobs ghcProg hsMainFile inputModules buildTargetDir finalModBuildWays pbci
-  extraSources <- buildAllExtraSources nonHsMainFile ghcProg buildTargetDir wantedWays pbci
+  buildOpts <- buildHaskellModules numJobs ghcProg hsMainFile inputModules buildTargetDir finalModBuildWays verbHandles pbci
+  extraSources <- buildAllExtraSources nonHsMainFile ghcProg buildTargetDir wantedWays verbHandles pbci
   linkOrLoadComponent
     ghcProg
+    (verbosityHandles verbosity)
     pkg_descr
     (fromNubListR extraSources)
     (buildTargetDir, targetDir)

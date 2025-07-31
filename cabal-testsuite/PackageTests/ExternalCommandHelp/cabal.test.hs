@@ -22,7 +22,7 @@ cabal_raw_action :: [String] -> (Process.ProcessHandle -> IO ()) -> TestM Result
 cabal_raw_action args action = do
     configured_prog <- requireProgramM cabalProgram
     env <- getTestEnv
-    r <- liftIO $ runAction (testVerbosity env)
+    r <- liftIO $ runAction
                  (Just $ testCurrentDir env)
                  (testEnvironment env)
                  (programPath configured_prog)

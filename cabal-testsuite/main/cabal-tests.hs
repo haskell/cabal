@@ -8,7 +8,7 @@ import Test.Cabal.Server
 import Test.Cabal.Monad
 import Test.Cabal.TestCode
 
-import Distribution.Verbosity        (normal, verbose, Verbosity)
+import Distribution.Verbosity
 import Distribution.Simple.Utils     (getDirectoryContentsRecursive)
 import Distribution.Simple.Program
 import Distribution.Utils.Path       (getSymbolicPath)
@@ -203,7 +203,9 @@ main = do
 
     -- Parse arguments.  N.B. 'helper' adds the option `--help`.
     args <- execParser $ info (mainArgParser <**> helper) mempty
-    let verbosity = if mainArgVerbose args then verbose else normal
+    let verbosity =
+          mkVerbosity defaultVerbosityHandles $
+            if mainArgVerbose args then verbose else normal
         testPattern = Tasty.lookupOption @Tasty.TestPattern (mainTastyArgs args)
 
     pkg_dbs <-
@@ -242,7 +244,7 @@ main = do
     dist_dir <- case mainArgDistDir args of
                   Just dist_dir -> return dist_dir
                   Nothing -> getSymbolicPath <$> guessDistDir
-    when (verbosity >= verbose) $
+    when (verbosityLevel verbosity >= Verbose) $
         hPutStrLn stderr $ "Using dist dir: " ++ dist_dir
     -- Get ready to go!
     senv <- mkScriptEnv verbosity
@@ -324,7 +326,7 @@ main = do
                     case mb_work of
                         Nothing -> return ()
                         Just path -> do
-                            when (verbosity >= verbose) $
+                            when (verbosityLevel verbosity >= Verbose) $
                                 logMeta $ "Running " ++ path
                             start <- getTime
                             r <- runTest (runOnServer server) path
@@ -432,7 +434,7 @@ outputThread verbosity chan log_handle = go ""
             ServerLogMsg t msg -> do
                 let ls = lines msg
                     pre s c
-                        | verbosity >= verbose
+                        | verbosityLevel verbosity >= Verbose
                         -- Didn't use printf as GHC 7.4
                         -- doesn't understand % 7s.
                         = replicate (7 - length s) ' ' ++ s ++ " " ++ c : " "

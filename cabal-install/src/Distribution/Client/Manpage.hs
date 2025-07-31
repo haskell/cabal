@@ -37,6 +37,7 @@ import Distribution.Simple.Utils
   , rawSystemProcAction
   , rawSystemStdInOut
   )
+import Distribution.Verbosity
 import System.Environment (lookupEnv)
 import System.IO (hClose, hPutStr)
 import qualified System.Process as Process
@@ -102,7 +103,10 @@ manpageCmd pname commands flags
   where
     contents :: String
     contents = manpage pname commands
-    verbosity = fromFlag $ manpageVerbosity flags
+    verbosity =
+      mkVerbosity defaultVerbosityHandles $
+        fromFlag $
+          manpageVerbosity flags
 
 -- | Produces a manual page with @troff@ markup.
 manpage :: String -> [CommandSpec a] -> String

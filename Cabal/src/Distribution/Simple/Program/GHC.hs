@@ -578,7 +578,7 @@ data GhcOptions = GhcOptions
   , ---------------
     -- Misc flags
 
-    ghcOptVerbosity :: Flag Verbosity
+    ghcOptVerbosity :: Flag VerbosityLevel
   -- ^ Get GHC to be quiet or verbose with what it's doing; the @ghc -v@ flag.
   , ghcOptExtraPath :: NubListR (SymbolicPath Pkg (Dir Build))
   -- ^ Put the extra folders in the PATH environment variable we invoke
@@ -978,10 +978,10 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
     flags flg = fromNubListR . flg $ opts
     flagBool flg = fromFlagOrDefault False (flg opts)
 
-verbosityOpts :: Verbosity -> [String]
+verbosityOpts :: VerbosityLevel -> [String]
 verbosityOpts verbosity
-  | verbosity >= deafening = ["-v"]
-  | verbosity >= normal = []
+  | verbosity >= Deafening = ["-v"]
+  | verbosity >= Normal = []
   | otherwise = ["-w", "-v0"]
 
 -- | GHC <7.6 uses '-package-conf' instead of '-package-db'.

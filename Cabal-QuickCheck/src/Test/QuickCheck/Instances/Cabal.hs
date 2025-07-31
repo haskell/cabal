@@ -265,9 +265,9 @@ instance Arbitrary FlagAssignment where
 -- Verbosity
 -------------------------------------------------------------------------------
 
-instance Arbitrary Verbosity where
+instance Arbitrary VerbosityFlags where
     arbitrary = do
-        v <- elements [minBound..maxBound]
+        v <- mkVerbosityFlags <$> elements [minBound..maxBound]
         -- verbose markoutput is left out on purpose
         flags <- listOf $ elements
             [ verboseCallSite

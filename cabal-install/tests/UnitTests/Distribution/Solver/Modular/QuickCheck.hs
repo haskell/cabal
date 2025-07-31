@@ -260,7 +260,7 @@ solve enableBj fineGrainedConflicts reorder countConflicts indep prefOldest goal
             (unVarOrdering <$> goalOrder)
             (testConstraints test)
             (testPreferences test)
-            normal
+            (mkVerbosity defaultVerbosityHandles normal)
             (EnableAllTests False)
 
       failure :: String -> Failure
