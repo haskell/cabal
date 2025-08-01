@@ -76,6 +76,7 @@ import Control.Monad
 import Control.Monad.Reader as Reader
 import Control.Monad.State as State
 import qualified Data.Map.Strict as Map
+import Distribution.Client.Compat.ExecutablePath (getExecutablePath)
 import System.Directory
 import System.FilePath
 
@@ -134,6 +135,13 @@ rerunIfChanged verbosity monitor key action = do
     [x] -> return x
     _ -> error "rerunIfChanged: impossible!"
 
+-- | Monitor our current executable file for changes. This is useful to prevent
+-- stale cache when upgrading the cabal executable itself or while developing.
+monitorOurselves :: Rebuild ()
+monitorOurselves = do
+  self <- liftIO getExecutablePath
+  monitorFiles [monitorFile self]
+
 -- | Like 'rerunIfChanged' meets 'mapConcurrently': For when we want multiple actions
 -- that need to do be re-run-if-changed asynchronously. The function returns
 -- when all values have finished computing.
@@ -144,6 +152,8 @@ rerunConcurrentlyIfChanged
   -> [(FileMonitor a b, a, Rebuild b)]
   -> Rebuild [b]
 rerunConcurrentlyIfChanged verbosity mkJobControl triples = do
+  -- Implicitly add a monitor on our own executable file
+  monitorOurselves
   rootDir <- askRoot
   dacts <- forM triples $ \(monitor, key, action) -> do
     let monitorName = takeFileName (fileMonitorCacheFile monitor)
