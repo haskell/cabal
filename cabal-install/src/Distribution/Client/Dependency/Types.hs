@@ -27,6 +27,9 @@ instance Binary Solver
 instance Structured PreSolver
 instance Structured Solver
 
+instance NFData PreSolver where
+  rnf = genericRnf
+
 instance Pretty PreSolver where
   pretty AlwaysModular = text "modular"
 

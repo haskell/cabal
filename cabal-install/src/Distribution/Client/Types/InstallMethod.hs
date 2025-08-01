@@ -16,6 +16,9 @@ data InstallMethod
 instance Binary InstallMethod
 instance Structured InstallMethod
 
+instance NFData InstallMethod where
+  rnf = genericRnf
+
 -- | Last
 instance Semigroup InstallMethod where
   _ <> x = x

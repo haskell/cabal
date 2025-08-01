@@ -76,6 +76,9 @@ data RemoteRepo = RemoteRepo
 instance Binary RemoteRepo
 instance Structured RemoteRepo
 
+instance NFData RemoteRepo where
+  rnf = genericRnf
+
 instance Pretty RemoteRepo where
   pretty r =
     pretty (remoteRepoName r)
@@ -135,6 +138,9 @@ data LocalRepo = LocalRepo
 
 instance Binary LocalRepo
 instance Structured LocalRepo
+
+instance NFData LocalRepo where
+  rnf = genericRnf
 
 -- | Note: doesn't parse 'localRepoSharedCache' field.
 instance Parsec LocalRepo where
@@ -203,6 +209,9 @@ data Repo
 
 instance Binary Repo
 instance Structured Repo
+
+instance NFData Repo where
+  rnf = genericRnf
 
 -- | Check if this is a remote repo
 isRepoRemote :: Repo -> Bool

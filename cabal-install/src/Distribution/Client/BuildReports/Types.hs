@@ -41,6 +41,9 @@ data ReportLevel = NoReports | AnonymousReports | DetailedReports
 instance Binary ReportLevel
 instance Structured ReportLevel
 
+instance NFData ReportLevel where
+  rnf = genericRnf
+
 instance Pretty ReportLevel where
   pretty NoReports = Disp.text "none"
   pretty AnonymousReports = Disp.text "anonymous"

@@ -113,6 +113,9 @@ instance Bounded Verbosity where
 instance Binary Verbosity
 instance Structured Verbosity
 
+instance NFData Verbosity where 
+  rnf = genericRnf
+
 -- | In 'silent' mode, we should not print /anything/ unless an error occurs.
 silent :: Verbosity
 silent = mkVerbosity Silent

@@ -132,6 +132,9 @@ data Compiler = Compiler
 instance Binary Compiler
 instance Structured Compiler
 
+instance NFData Compiler where 
+  rnf = genericRnf
+
 showCompilerId :: Compiler -> String
 showCompilerId = prettyShow . compilerId
 
@@ -206,6 +209,9 @@ data PackageDBX fp
 
 instance Binary fp => Binary (PackageDBX fp)
 instance Structured fp => Structured (PackageDBX fp)
+
+instance NFData fp => NFData (PackageDBX fp) where
+  rnf = genericRnf
 
 -- | Parse a PackageDB stack entry
 --
@@ -307,6 +313,8 @@ data OptimisationLevel
 instance Binary OptimisationLevel
 instance Structured OptimisationLevel
 
+instance NFData OptimisationLevel where
+  rnf = genericRnf
 instance Parsec OptimisationLevel where
   parsec = parsecOptimisationLevel
 
@@ -355,6 +363,9 @@ data DebugInfoLevel
 
 instance Binary DebugInfoLevel
 instance Structured DebugInfoLevel
+
+instance NFData DebugInfoLevel where
+  rnf = genericRnf
 
 instance Parsec DebugInfoLevel where
   parsec = parsecDebugInfoLevel
@@ -608,6 +619,9 @@ data ProfDetailLevel
 
 instance Binary ProfDetailLevel
 instance Structured ProfDetailLevel
+
+instance NFData ProfDetailLevel where
+  rnf = genericRnf
 
 instance Parsec ProfDetailLevel where
   parsec = parsecProfDetailLevel
