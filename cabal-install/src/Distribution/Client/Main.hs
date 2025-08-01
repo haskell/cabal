@@ -49,7 +49,6 @@ import Distribution.Client.Setup
   , fetchCommand
   , filterCommonFlags
   , formatCommand
-  , freezeCommand
   , genBoundsCommand
   , getCommand
   , globalCommand
@@ -141,7 +140,6 @@ import qualified Distribution.Client.CmdUpdate as CmdUpdate
 import Distribution.Client.Check as Check (check)
 import Distribution.Client.Configure (configure, writeConfigFlags)
 import Distribution.Client.Fetch (fetch)
-import Distribution.Client.Freeze (freeze)
 import Distribution.Client.GenBounds (genBounds)
 import Distribution.Client.Install (install)
 
@@ -470,7 +468,6 @@ mainWorker args = do
           , legacyCmd genBoundsCommand genBoundsAction
           , legacyCmd buildCommand buildAction
           , legacyCmd replCommand replAction
-          , legacyCmd freezeCommand freezeAction
           , legacyCmd haddockCommand haddockAction
           , legacyCmd installCommand installAction
           , legacyCmd runCommand runAction
@@ -1226,27 +1223,6 @@ fetchAction fetchFlags extraArgs globalFlags = do
       globalFlags'
       fetchFlags
       targets
-
-freezeAction :: FreezeFlags -> [String] -> Action
-freezeAction freezeFlags _extraArgs globalFlags = do
-  let verbosity = fromFlag (freezeVerbosity freezeFlags)
-  config <- loadConfigOrSandboxConfig verbosity globalFlags
-  distPref <- findSavedDistPref config NoFlag
-  nixShell verbosity (getSymbolicPath distPref) globalFlags config $ do
-    let configFlags = savedConfigureFlags config
-        globalFlags' = savedGlobalFlags config `mappend` globalFlags
-    (comp, platform, progdb) <- configCompilerAux' configFlags
-
-    withRepoContext verbosity globalFlags' $ \repoContext ->
-      freeze
-        verbosity
-        (interpretPackageDBStack Nothing (configPackageDB' configFlags))
-        repoContext
-        comp
-        platform
-        progdb
-        globalFlags'
-        freezeFlags
 
 genBoundsAction :: FreezeFlags -> [String] -> GlobalFlags -> IO ()
 genBoundsAction freezeFlags _extraArgs globalFlags = do
