@@ -956,6 +956,9 @@ rebuildInstallPlan
           elaboratedPlan
           elaboratedShared
 
+        debug verbosity "Creating store garbage-collection root"
+        writeGcRoot verbosity cabalStoreDirLayout distDirLayout elaboratedShared elaboratedPlan
+
       -- Improve the elaborated install plan. The elaborated plan consists
       -- mostly of source packages (with full nix-style hashed ids). Where
       -- corresponding installed packages already exist in the store, replace
