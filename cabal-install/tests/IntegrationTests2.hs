@@ -66,7 +66,8 @@ import qualified Distribution.Simple.Flag as Flag
 import Distribution.Simple.Setup (CommonSetupFlags (..), HaddockFlags (..), HaddockProjectFlags (..), defaultCommonSetupFlags, defaultHaddockFlags, defaultHaddockProjectFlags, toFlag)
 import Distribution.System
 import Distribution.Text
-import Distribution.Utils.Path (unsafeMakeSymbolicPath)
+import Distribution.Utils.LogProgress
+import Distribution.Utils.Path (FileOrDir (File), Pkg, SymbolicPath, unsafeMakeSymbolicPath)
 import Distribution.Version
 
 import Data.List (isInfixOf)
@@ -2263,10 +2264,12 @@ executePlan
                 ts
             ]
         elaboratedPlan' =
-          pruneInstallPlanToTargets
-            TargetActionBuild
-            targets
-            elaboratedPlan
+          either (error . show) id $
+            runLogProgress' $
+              pruneInstallPlanToTargets
+                TargetActionBuild
+                targets
+                elaboratedPlan
 
     pkgsBuildStatus <-
       rebuildTargetsDryRun

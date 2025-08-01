@@ -124,6 +124,7 @@ import Distribution.Types.UnqualComponentName
   ( UnqualComponentName
   , unUnqualComponentName
   )
+import Distribution.Utils.LogProgress (runLogProgress)
 import Distribution.Utils.NubList
   ( fromNubList
   )
@@ -246,11 +247,13 @@ runAction flags targetAndArgs globalFlags = do
             )
             targets
 
-        let elaboratedPlan' =
-              pruneInstallPlanToTargets
-                TargetActionBuild
-                targets
-                elaboratedPlan
+        elaboratedPlan' <-
+          runLogProgress verbosity $
+            pruneInstallPlanToTargets
+              TargetActionBuild
+              targets
+              elaboratedPlan
+
         return (elaboratedPlan', targets)
 
     (selectedUnitId, selectedComponent) <-
