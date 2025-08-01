@@ -28,9 +28,11 @@ module Distribution.Client.InstallPlan
   , PlanPackage
   , GenericPlanPackage (..)
   , foldPlanPackage
+  , renderPlanPackageTag
 
     -- * Operations on 'InstallPlan's
   , new
+  , new'
   , toGraph
   , toList
   , toMap
@@ -61,11 +63,13 @@ module Distribution.Client.InstallPlan
   , failed
 
     -- * Display
-  , showPlanGraph
+  , renderPlanGraph
   , ShowPlanNode (..)
   , showInstallPlan
   , showInstallPlan_gen
-  , showPlanPackageTag
+  , PlanProblem
+  , renderPlanProblem
+  , renderPlanProblems
 
     -- * Graph-like operations
   , dependencyClosure
@@ -94,7 +98,6 @@ import Distribution.Package
   , HasUnitId (..)
   , Package (..)
   )
-import Distribution.Pretty (defaultStyle)
 import Distribution.Solver.Types.SolverPackage
 import Text.PrettyPrint
 
@@ -115,6 +118,7 @@ import Data.Bifoldable
 import Data.Bifunctor
 import Data.Bitraversable
 import qualified Data.Foldable as Foldable (all, toList)
+import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Distribution.Compat.Graph (Graph, IsNode (..))
@@ -286,21 +290,6 @@ type InstallPlan =
     InstalledPackageInfo
     (ConfiguredPackage UnresolvedPkgLoc)
 
--- | Smart constructor that deals with caching the 'Graph' representation.
-mkInstallPlan
-  :: ( IsGraph ipkg srcpkg
-     , Pretty (GraphKey ipkg srcpkg)
-     )
-  => String
-  -> Graph (GenericPlanPackage ipkg srcpkg)
-  -> GenericInstallPlan ipkg srcpkg
-mkInstallPlan loc graph =
-  assert
-    (valid loc graph)
-    GenericInstallPlan
-      { planGraph = graph
-      }
-
 internalError :: WithCallStack (String -> String -> a)
 internalError loc msg =
   error $
@@ -334,21 +323,23 @@ instance
   put p = put (planGraph p)
 
   get = do
-    graph <- get
-    return $! mkInstallPlan "(instance Binary)" graph
+    graph <- mkInstallPlan <$> get
+    return $! either (const (error "Deserialised invalid GenericInstallPlan")) id graph
 
 data ShowPlanNode = ShowPlanNode
   { showPlanHerald :: Doc
   , showPlanNeighbours :: [Doc]
   }
 
-showPlanGraph :: [ShowPlanNode] -> String
-showPlanGraph graph =
-  renderStyle defaultStyle $
-    vcat (map dispPlanPackage graph)
+renderPlanGraph :: [ShowPlanNode] -> Doc
+renderPlanGraph graph =
+  vcat (map dispPlanPackage graph)
   where
     dispPlanPackage (ShowPlanNode herald neighbours) =
       hang herald 2 (vcat neighbours)
+
+showPlanGraph :: [ShowPlanNode] -> String
+showPlanGraph = render . renderPlanGraph
 
 -- | Generic way to show a 'GenericInstallPlan' which elicits quite a lot of information
 showInstallPlan_gen
@@ -373,26 +364,59 @@ showInstallPlan = showInstallPlan_gen toShow
     toShow p =
       ShowPlanNode
         ( hsep
-            [ text (showPlanPackageTag p)
+            [ renderPlanPackageTag p
             , pretty (packageId p)
             , parens (pretty (nodeKey p))
             ]
         )
         (map pretty (nodeNeighbors p))
 
-showPlanPackageTag :: GenericPlanPackage ipkg srcpkg -> String
-showPlanPackageTag (PreExisting _) = "PreExisting"
-showPlanPackageTag (Configured _) = "Configured"
-showPlanPackageTag (Installed _) = "Installed"
+renderPlanPackageTag :: GenericPlanPackage ipkg srcpkg -> Doc
+renderPlanPackageTag (PreExisting _) = text "pre-existing"
+renderPlanPackageTag (Configured _) = text "configured"
+renderPlanPackageTag (Installed _) = text "installed"
 
--- | Build an installation plan from a valid set of resolved packages.
-new
+-- | Smart constructor that deals with caching the 'Graph' representation.
+mkInstallPlan
   :: ( IsGraph ipkg srcpkg
      , Pretty (GraphKey ipkg srcpkg)
      )
   => Graph (GenericPlanPackage ipkg srcpkg)
-  -> GenericInstallPlan ipkg srcpkg
-new = mkInstallPlan "new"
+  -> Either Doc (GenericInstallPlan ipkg srcpkg)
+mkInstallPlan graph =
+  case NE.nonEmpty (problems graph) of
+    Just problems' -> Left $ renderPlanProblems (NE.toList problems')
+    Nothing -> Right $ GenericInstallPlan{planGraph = graph}
+
+mkInstallPlan'
+  :: ( IsGraph ipkg srcpkg
+     , Pretty (GraphKey ipkg srcpkg)
+     )
+  => Graph (GenericPlanPackage ipkg srcpkg)
+  -> Either (NonEmpty (PlanProblem ipkg srcpkg)) (GenericInstallPlan ipkg srcpkg)
+mkInstallPlan' graph =
+  case NE.nonEmpty (problems graph) of
+    Just problems' -> Left problems'
+    Nothing -> Right $ GenericInstallPlan{planGraph = graph}
+
+-- | Build an installation plan from a set of packages.
+new
+  :: ( IsGraph ipkg srcpkg
+     , Show (GraphKey ipkg srcpkg)
+     , Pretty (GraphKey ipkg srcpkg)
+     )
+  => [GenericPlanPackage ipkg srcpkg]
+  -> LogProgress (GenericInstallPlan ipkg srcpkg)
+new = eitherToLogProgress . mkInstallPlan . Graph.fromDistinctList
+
+-- | Build an installation plan from a graph of packages.
+new'
+  :: ( IsGraph ipkg srcpkg
+     , Pretty (GraphKey ipkg srcpkg)
+     )
+  => Graph (GenericPlanPackage ipkg srcpkg)
+  -> LogProgress (GenericInstallPlan ipkg srcpkg)
+new' = eitherToLogProgress . mkInstallPlan
 
 toGraph
   :: GenericInstallPlan ipkg srcpkg
@@ -427,13 +451,9 @@ remove
      )
   => (GenericPlanPackage ipkg srcpkg -> Bool)
   -> GenericInstallPlan ipkg srcpkg
-  -> GenericInstallPlan ipkg srcpkg
+  -> Either (NonEmpty (PlanProblem ipkg srcpkg)) (GenericInstallPlan' (Key srcpkg) ipkg srcpkg)
 remove shouldRemove plan =
-  mkInstallPlan "remove" newGraph
-  where
-    newGraph =
-      Graph.fromDistinctList $
-        filter (not . shouldRemove) (toList plan)
+  mkInstallPlan' $ Graph.fromDistinctList $ filter (not . shouldRemove) (toList plan)
 
 -- | Change a number of packages in the 'Configured' state to the 'Installed'
 -- state.
@@ -593,10 +613,7 @@ fromSolverInstallPlanWithProgress f plan = do
       f'
       (Map.empty, [])
       (SolverInstallPlan.reverseTopologicalOrder plan)
-  return $
-    mkInstallPlan
-      "fromSolverInstallPlanWithProgress"
-      (Graph.fromDistinctList pkgs'')
+  new' (Graph.fromDistinctList pkgs'')
   where
     f' (pMap, pkgs) pkg = do
       pkgs' <- f (mapDep pMap) pkg
@@ -1027,22 +1044,6 @@ execute jobCtl keepGoing depFailure plan installPkg =
 
 -- ------------------------------------------------------------
 
--- | A valid installation plan is a set of packages that is closed, acyclic
--- and respects the package state relation.
---
--- * if the result is @False@ use 'problems' to get a detailed list.
-valid
-  :: ( IsGraph ipkg srcpkg
-     , Pretty (GraphKey ipkg srcpkg)
-     )
-  => String
-  -> Graph (GenericPlanPackage ipkg srcpkg)
-  -> Bool
-valid loc graph =
-  case problems graph of
-    [] -> True
-    ps -> internalError loc ('\n' : unlines (map showPlanProblem ps))
-
 data PlanProblem ipkg srcpkg
   = PackageMissingDeps
       (GenericPlanPackage ipkg srcpkg)
@@ -1058,30 +1059,45 @@ data PlanProblem ipkg srcpkg
       (GenericPlanPackage ipkg srcpkg)
       -- ^ The package that it depends on which is in an invalid state
 
-showPlanProblem
+renderPlanProblems
+  :: ( IsGraph ipkg srcpkg
+     , Pretty (GraphKey ipkg srcpkg)
+     )
+  => [PlanProblem ipkg srcpkg]
+  -> Doc
+renderPlanProblems =
+  vcat . map renderPlanProblem
+
+renderPlanProblem
   :: ( IsGraph ipkg srcpkg
      , Pretty (GraphKey ipkg srcpkg)
      )
   => PlanProblem ipkg srcpkg
-  -> String
-showPlanProblem (PackageMissingDeps pkg missingDeps) =
-  "Package "
-    ++ prettyShow (nodeKey pkg)
-    ++ " depends on the following packages which are missing from the plan: "
-    ++ intercalate ", " (map prettyShow missingDeps)
-showPlanProblem (PackageCycle cycleGroup) =
-  "The following packages are involved in a dependency cycle "
-    ++ intercalate ", " (map (prettyShow . nodeKey) cycleGroup)
-showPlanProblem (PackageStateInvalid pkg pkg') =
-  "Package "
-    ++ prettyShow (nodeKey pkg)
-    ++ " is in the "
-    ++ showPlanPackageTag pkg
-    ++ " state but it depends on package "
-    ++ prettyShow (nodeKey pkg')
-    ++ " which is in the "
-    ++ showPlanPackageTag pkg'
-    ++ " state"
+  -> Doc
+renderPlanProblem (PackageMissingDeps pkg missingDeps) =
+  fsep
+    [ text "Package"
+    , pretty (nodeKey pkg)
+    , text "depends on the following packages which are missing from the plan:"
+    , fsep (punctuate comma (map pretty missingDeps))
+    ]
+renderPlanProblem (PackageCycle cycleGroup) =
+  fsep
+    [ text "The following packages are involved in a dependency cycle:"
+    , fsep (punctuate comma (map (pretty . nodeKey) cycleGroup))
+    ]
+renderPlanProblem (PackageStateInvalid pkg pkg') =
+  fsep
+    [ text "Package"
+    , pretty (nodeKey pkg)
+    , text "is in the"
+    , renderPlanPackageTag pkg
+    , text "state but it depends on package"
+    , pretty (nodeKey pkg')
+    , text "which is in the"
+    , renderPlanPackageTag pkg'
+    , text "state"
+    ]
 
 -- | For an invalid plan, produce a detailed list of problems as human readable
 -- error messages. This is mainly intended for debugging purposes.

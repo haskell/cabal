@@ -27,6 +27,7 @@ import Distribution.Simple.Utils
 import Distribution.Version
 
 import Distribution.Client.Setup (GlobalFlags (..))
+import Distribution.Utils.LogProgress (runLogProgress)
 
 -- Project orchestration imports
 
@@ -114,11 +115,12 @@ genBoundsAction flags targetStrings globalFlags =
           targetSelectors
 
     -- Step 3: Prune the install plan to the targets.
-    let elaboratedPlan' =
-          pruneInstallPlanToTargets
-            TargetActionBuild
-            targets
-            elaboratedPlan
+    elaboratedPlan' <-
+      runLogProgress verbosity $
+        pruneInstallPlanToTargets
+          TargetActionBuild
+          targets
+          elaboratedPlan
 
     let
       -- Step 4a: Find the local packages from the install plan. These are the

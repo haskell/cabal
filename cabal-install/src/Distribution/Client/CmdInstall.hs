@@ -219,6 +219,9 @@ import Distribution.Types.VersionRange
 import Distribution.Utils.Generic
   ( writeFileAtomic
   )
+import Distribution.Utils.LogProgress
+  ( runLogProgress
+  )
 import Distribution.Verbosity
   ( lessVerbose
   , normal
@@ -900,15 +903,18 @@ constructProjectBuildContext verbosity baseCtx targetSelectors = do
           Nothing
           targetSelectors
 
-    let prunedToTargetsElaboratedPlan =
-          pruneInstallPlanToTargets TargetActionBuild targets elaboratedPlan
+    prunedToTargetsElaboratedPlan <-
+      runLogProgress verbosity $
+        pruneInstallPlanToTargets TargetActionBuild targets elaboratedPlan
+
     prunedElaboratedPlan <-
       if buildSettingOnlyDeps (buildSettings baseCtx)
-        then
-          either (reportCannotPruneDependencies verbosity) return $
-            pruneInstallPlanToDependencies
-              (Map.keysSet targets)
-              prunedToTargetsElaboratedPlan
+        then do
+          case pruneInstallPlanToDependencies (Map.keysSet targets) prunedToTargetsElaboratedPlan of
+            Left err ->
+              reportCannotPruneDependencies verbosity err
+            Right elaboratedPlan'' ->
+              runLogProgress verbosity $ InstallPlan.new' elaboratedPlan''
         else return prunedToTargetsElaboratedPlan
 
     return (prunedElaboratedPlan, targets)

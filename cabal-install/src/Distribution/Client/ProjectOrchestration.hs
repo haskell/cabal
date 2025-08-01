@@ -203,6 +203,9 @@ import Distribution.Types.Flag
   , diffFlagAssignment
   , showFlagAssignment
   )
+import Distribution.Utils.LogProgress
+  ( LogProgress
+  )
 import Distribution.Utils.NubList
   ( fromNubList
   )
@@ -1072,7 +1075,7 @@ pruneInstallPlanToTargets
   :: TargetAction
   -> TargetsMapS
   -> ElaboratedInstallPlan
-  -> ElaboratedInstallPlan
+  -> LogProgress ElaboratedInstallPlan
 pruneInstallPlanToTargets targetActionType targetsMap elaboratedPlan =
   assert (Map.size targetsMap > 0) $
     ProjectPlanning.pruneInstallPlanToTargets

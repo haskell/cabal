@@ -157,6 +157,9 @@ import Distribution.Types.VersionRange
 import Distribution.Utils.Generic
   ( safeHead
   )
+import Distribution.Utils.LogProgress
+  ( runLogProgress
+  )
 import Distribution.Verbosity
   ( lessVerbose
   , normal
@@ -394,13 +397,14 @@ replAction flags@NixStyleFlags{extraFlags = r@ReplFlags{..}, ..} targetStrings g
         -- Recalculate with updated project.
         targets <- validatedTargets (projectConfigShared projectConfig) toolchainCompiler elaboratedPlan targetSelectors
 
-        let
-          elaboratedPlan' =
+        elaboratedPlan' <-
+          runLogProgress verbosity $
             pruneInstallPlanToTargets
               TargetActionRepl
               targets
               elaboratedPlan
-          includeTransitive = fromFlagOrDefault True (envIncludeTransitive replEnvFlags)
+
+        let includeTransitive = fromFlagOrDefault True (envIncludeTransitive replEnvFlags)
 
         pkgsBuildStatus <-
           rebuildTargetsDryRun

@@ -9,6 +9,7 @@ module Distribution.Utils.LogProgress
   , infoProgress
   , dieProgress
   , addProgressCtx
+  , eitherToLogProgress
   , ErrMsg
   ) where
 
@@ -100,3 +101,7 @@ formatMsg ctx doc = doc $$ vcat ctx
 addProgressCtx :: CtxMsg -> LogProgress a -> LogProgress a
 addProgressCtx s (LogProgress m) = LogProgress $ \env ->
   m env{le_context = s : le_context env}
+
+eitherToLogProgress :: Either Doc a -> LogProgress a
+eitherToLogProgress (Left err) = dieProgress err
+eitherToLogProgress (Right a) = return a

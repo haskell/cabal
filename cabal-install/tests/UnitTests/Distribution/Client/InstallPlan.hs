@@ -30,6 +30,7 @@ import qualified Data.Set as Set
 import System.Random
 import Test.QuickCheck
 
+import Distribution.Utils.LogProgress
 import Test.Tasty
 import Test.Tasty.QuickCheck
 
@@ -255,24 +256,28 @@ arbitraryInstallPlan mkIPkg mkSrcPkg ipkgProportion graph = do
         , let isRoot = n == 0
         ]
 
-  ipkgs <-
-    sequenceA
-      [ mkIPkg pkgv depvs
-      | pkgv <- ipkgvs
-      , let depvs = graph ! pkgv
-      ]
-  srcpkgs <-
-    sequenceA
-      [ mkSrcPkg pkgv depvs
-      | pkgv <- srcpkgvs
-      , let depvs = graph ! pkgv
-      ]
-  let index =
-        Graph.fromDistinctList
-          ( map InstallPlan.PreExisting ipkgs
-              ++ map InstallPlan.Configured srcpkgs
-          )
-  return $ InstallPlan.new index
+  let gen_plan :: Gen (Either ErrMsg (InstallPlan.GenericInstallPlan ipkg srcpkg))
+      gen_plan = do
+        ipkgs <-
+          sequenceA
+            [ mkIPkg pkgv depvs
+            | pkgv <- ipkgvs
+            , let depvs = graph ! pkgv
+            ]
+        srcpkgs <-
+          sequenceA
+            [ mkSrcPkg pkgv depvs
+            | pkgv <- srcpkgvs
+            , let depvs = graph ! pkgv
+            ]
+        let index =
+              Graph.fromDistinctList
+                ( map InstallPlan.PreExisting ipkgs
+                    ++ map InstallPlan.Configured srcpkgs
+                )
+        return $ runLogProgress' $ InstallPlan.new' index
+
+  gen_plan `suchThatMap` either (const Nothing) Just
 
 -- | Generate a random directed acyclic graph, based on the algorithm presented
 -- here <http://stackoverflow.com/questions/12790337/generating-a-random-dag>
