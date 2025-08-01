@@ -98,6 +98,7 @@ import Distribution.Types.PackageDescription (PackageDescription (benchmarks, su
 import Distribution.Types.PackageId (pkgName)
 import Distribution.Types.PackageName (unPackageName)
 import Distribution.Types.UnitId (unUnitId)
+import Distribution.Utils.LogProgress (runLogProgress)
 import Distribution.Verbosity as Verbosity
   ( normal
   )
@@ -147,11 +148,12 @@ haddockProjectAction flags _extraArgs globalFlags = do
                 Nothing
                 targetSelectors
 
-          let elaboratedPlan' =
-                pruneInstallPlanToTargets
-                  TargetActionBuild
-                  targets
-                  elaboratedPlan
+          elaboratedPlan' <-
+            runLogProgress verbosity $
+              pruneInstallPlanToTargets
+                TargetActionBuild
+                targets
+                elaboratedPlan
           return (elaboratedPlan', targets)
 
       let elaboratedPlan :: ElaboratedInstallPlan

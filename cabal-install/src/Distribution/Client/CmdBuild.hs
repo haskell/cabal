@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 -- | cabal-install CLI command: build
 module Distribution.Client.CmdBuild
   ( -- * The @build@ CLI and action
@@ -26,6 +28,7 @@ import Distribution.Client.TargetProblem
 
 import qualified Data.Map as Map
 import Distribution.Client.Errors
+import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
   , cfgVerbosity
@@ -52,6 +55,7 @@ import Distribution.Simple.Utils
   ( dieWithException
   , wrapText
   )
+import Distribution.Utils.LogProgress (runLogProgress)
 import Distribution.Verbosity
   ( normal
   )
@@ -161,18 +165,20 @@ buildAction flags@NixStyleFlags{extraFlags = buildFlags} targetStrings globalFla
               Nothing
               targetSelectors
 
-        let elaboratedPlan' =
-              pruneInstallPlanToTargets
-                targetAction
-                targets
-                elaboratedPlan
+        elaboratedPlan' <-
+          runLogProgress verbosity $
+            pruneInstallPlanToTargets
+              targetAction
+              targets
+              elaboratedPlan
+
         elaboratedPlan'' <-
           if buildSettingOnlyDeps (buildSettings baseCtx)
-            then
-              either (reportCannotPruneDependencies verbosity) return $
-                pruneInstallPlanToDependencies
-                  (Map.keysSet targets)
-                  elaboratedPlan'
+            then case pruneInstallPlanToDependencies (Map.keysSet targets) elaboratedPlan' of
+              Left err ->
+                reportCannotPruneDependencies verbosity err
+              Right elaboratedPlan'' ->
+                runLogProgress verbosity $ InstallPlan.new' elaboratedPlan''
             else return elaboratedPlan'
 
         return (elaboratedPlan'', targets)

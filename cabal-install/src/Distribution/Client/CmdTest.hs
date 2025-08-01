@@ -67,6 +67,7 @@ import Distribution.Verbosity
 import qualified System.Exit (exitSuccess)
 
 import Distribution.Client.Errors
+import Distribution.Utils.LogProgress (runLogProgress)
 import GHC.Environment
   ( getFullArgs
   )
@@ -151,11 +152,13 @@ testAction flags@NixStyleFlags{..} targetStrings globalFlags = do
             Nothing
             targetSelectors
 
-      let elaboratedPlan' =
-            pruneInstallPlanToTargets
-              TargetActionTest
-              targets
-              elaboratedPlan
+      elaboratedPlan' <-
+        runLogProgress verbosity $
+          pruneInstallPlanToTargets
+            TargetActionTest
+            targets
+            elaboratedPlan
+
       return (elaboratedPlan', targets)
 
   printPlan verbosity baseCtx buildCtx
