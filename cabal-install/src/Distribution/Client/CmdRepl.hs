@@ -161,6 +161,9 @@ import Distribution.Types.VersionRange
 import Distribution.Utils.Generic
   ( safeHead
   )
+import Distribution.Utils.LogProgress
+  ( runLogProgress
+  )
 import Distribution.Verbosity
   ( lessVerbose
   , modifyVerbosityFlags
@@ -475,18 +478,14 @@ targetedRepl
         -- Recalculate with updated project.
         targets <- validatedTargets (projectConfigShared projectConfig) toolchainCompiler elaboratedPlan targetSelectors
 
-        let
-          elaboratedPlan' =
-            -- Guard against pruning with empty targets and failing an assertion
-            -- within pruneInstallPlanToTargets.
-            if null targets
-              then elaboratedPlan
-              else
-                pruneInstallPlanToTargets
-                  TargetActionRepl
-                  targets
-                  elaboratedPlan
-          includeTransitive = fromFlagOrDefault True (envIncludeTransitive replEnvFlags)
+        elaboratedPlan' <-
+          runLogProgress verbosity $
+            pruneInstallPlanToTargets
+              TargetActionRepl
+              targets
+              elaboratedPlan
+
+        let includeTransitive = fromFlagOrDefault True (envIncludeTransitive replEnvFlags)
 
         pkgsBuildStatus <-
           rebuildTargetsDryRun

@@ -60,6 +60,7 @@ import Distribution.Client.Errors
 import qualified Distribution.Client.InstallPlan as IP
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.Solver.Types.ComponentDeps as CD
+import Distribution.Utils.LogProgress (runLogProgress)
 
 -------------------------------------------------------------------------------
 -- Command
@@ -127,11 +128,13 @@ listbinAction flags args globalFlags = do
             )
             targets
 
-        let elaboratedPlan' =
-              pruneInstallPlanToTargets
-                TargetActionBuild
-                targets
-                elaboratedPlan
+        elaboratedPlan' <-
+          runLogProgress verbosity $
+            pruneInstallPlanToTargets
+              TargetActionBuild
+              targets
+              elaboratedPlan
+
         return (elaboratedPlan', targets)
 
     (selectedUnitId, selectedComponent) <-
