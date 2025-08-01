@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # This script, when passed the cabal release number as the first and only argument
-# generates the metadata in the correct format to be useable as is by GHCup
+# generates the metadata in the correct format to be usable as is by GHCup
 # for eg:-
 # $ create-release-metadata-for-ghcup.sh 3.10.2.0 or "3.10.2.0"
 

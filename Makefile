@@ -189,7 +189,7 @@ custom-setup-tests :
 hackage-parsec-tests :
 	$(CABALRUN) hackage-tests -- parsec +RTS -s -qg -I0 -A64M -N${THREADS} -RTS ${TEST}
 
-.PHONY: hackage-rountrip-tests
+.PHONY: hackage-roundtrip-tests
 hackage-roundtrip-tests :
 	$(CABALRUN) hackage-tests -- roundtrip +RTS -s -qg -I0 -A64M -N${THREADS} -RTS ${TEST}
 

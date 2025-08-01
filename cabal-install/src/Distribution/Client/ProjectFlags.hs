@@ -10,9 +10,10 @@ module Distribution.Client.ProjectFlags
   ) where
 
 import Distribution.Client.Compat.Prelude
+import Distribution.Client.ProjectConfig.Types (ProjectFileParser (..), defaultProjectFileParser)
 import Prelude ()
 
-import Distribution.ReadE (succeedReadE)
+import Distribution.ReadE (ReadE (..), succeedReadE)
 import Distribution.Simple.Command
   ( MkOptDescr
   , OptionField (optionName)
@@ -47,6 +48,8 @@ data ProjectFlags = ProjectFlags
   , flagIgnoreProject :: Flag Bool
   -- ^ Whether to ignore the local project (i.e. don't search for cabal.project)
   -- The exact interpretation might be slightly different per command.
+  , flagProjectFileParser :: Flag ProjectFileParser
+  -- ^ The parser to use for the project file.
   }
   deriving (Show, Generic)
 
@@ -56,7 +59,7 @@ defaultProjectFlags =
     { flagProjectDir = mempty
     , flagProjectFile = mempty
     , flagIgnoreProject = toFlag False
-    -- Should we use 'Last' here?
+    , flagProjectFileParser = mempty
     }
 
 projectFlagsOptions :: ShowOrParseArgs -> [OptionField ProjectFlags]
@@ -88,7 +91,31 @@ projectFlagsOptions showOrParseArgs =
             }
       )
       (yesNoOpt showOrParseArgs)
+  , option
+      []
+      ["project-file-parser"]
+      "Set the parser to use for the project file"
+      flagProjectFileParser
+      (\pf flags -> flags{flagProjectFileParser = pf})
+      (reqArg "PARSER" (fmap Flag $ ReadE parseProjectFileParser) projectFileParserPrinter)
   ]
+
+parseProjectFileParser :: String -> Either String ProjectFileParser
+parseProjectFileParser "legacy" = pure LegacyParser
+parseProjectFileParser "fallback" = pure FallbackParser
+parseProjectFileParser "default" = pure defaultProjectFileParser
+parseProjectFileParser "parsec" = pure ParsecParser
+parseProjectFileParser "compare" = pure CompareParser
+parseProjectFileParser _ = Left "Invalid project file parser"
+
+projectFileParserPrinter :: Flag ProjectFileParser -> [String]
+projectFileParserPrinter (Flag parser) =
+  case parser of
+    LegacyParser -> ["legacy"]
+    FallbackParser -> ["fallback"]
+    ParsecParser -> ["parsec"]
+    CompareParser -> ["compare"]
+projectFileParserPrinter NoFlag = []
 
 -- | As almost all commands use 'ProjectFlags' but not all can honour
 -- "ignore-project" flag, provide this utility to remove the flag

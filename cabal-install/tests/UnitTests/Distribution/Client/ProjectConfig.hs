@@ -606,6 +606,7 @@ instance Arbitrary ProjectConfigShared where
     projectConfigConfigFile <- arbitraryFlag arbitraryShortToken
     projectConfigProjectDir <- arbitraryFlag arbitraryShortToken
     projectConfigProjectFile <- arbitraryFlag arbitraryShortToken
+    projectConfigProjectFileParser <- arbitraryFlag arbitrary
     projectConfigIgnoreProject <- arbitrary
     projectConfigHcFlavor <- arbitrary
     projectConfigHcPath <- arbitraryFlag arbitraryShortToken
@@ -652,6 +653,7 @@ instance Arbitrary ProjectConfigShared where
         <*> shrinker projectConfigConfigFile
         <*> shrinker projectConfigProjectDir
         <*> shrinker projectConfigProjectFile
+        <*> shrinker projectConfigProjectFileParser
         <*> shrinker projectConfigIgnoreProject
         <*> shrinker projectConfigHcFlavor
         <*> shrinkerAla (fmap NonEmpty) projectConfigHcPath
@@ -690,6 +692,9 @@ instance Arbitrary ProjectConfigShared where
 
 projectConfigConstraintSource :: ConstraintSource
 projectConfigConstraintSource = ConstraintSourceProjectConfig nullProjectConfigPath
+
+instance Arbitrary ProjectFileParser where
+  arbitrary = elements [ParsecParser, LegacyParser, FallbackParser, CompareParser]
 
 instance Arbitrary ProjectConfigProvenance where
   arbitrary = elements [Implicit, Explicit (ProjectConfigPath $ "cabal.project" :| [])]

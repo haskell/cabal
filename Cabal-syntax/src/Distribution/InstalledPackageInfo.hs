@@ -47,9 +47,11 @@ import Distribution.Backpack
 import Distribution.CabalSpecVersion (cabalSpecLatest)
 import Distribution.FieldGrammar
 import Distribution.FieldGrammar.FieldDescrs
+import Distribution.Fields.ParseResult
 import Distribution.Fields.Pretty
 import Distribution.ModuleName
 import Distribution.Package hiding (installedUnitId)
+import Distribution.Parsec.Source
 import Distribution.Types.ComponentName
 import Distribution.Utils.Generic (toUTF8BS)
 
@@ -98,18 +100,18 @@ parseInstalledPackageInfo
 parseInstalledPackageInfo s = case P.readFields s of
   Left err -> Left (show err :| [])
   Right fs -> case partitionFields fs of
-    (fs', _) -> case P.runParseResult $ parseFieldGrammar cabalSpecLatest fs' ipiFieldGrammar of
+    (fs', _) -> case P.runParseResult $ withSource PInstalledPackageInfo $ parseFieldGrammar cabalSpecLatest fs' ipiFieldGrammar of
       (ws, Right x) -> x `deepseq` Right (ws', x)
         where
           ws' =
-            [ P.showPWarning "" w
-            | w@(P.PWarning wt _ _) <- ws
+            [ P.showPWarningWithSource (fmap renderInstalledPackageInfoSource w)
+            | w@(P.PWarningWithSource _ (P.PWarning wt _ _)) <- ws
             , -- filter out warnings about experimental features
             wt /= P.PWTExperimental
             ]
       (_, Left (_, errs)) -> Left errs'
         where
-          errs' = fmap (P.showPError "") errs
+          errs' = fmap (P.showPErrorWithSource . fmap renderInstalledPackageInfoSource) errs
 
 -- -----------------------------------------------------------------------------
 -- Pretty-printing

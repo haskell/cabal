@@ -1,0 +1,27 @@
+synopsis: Replace cabal project parsing with parsec parser
+packages: cabal-install Cabal Cabal-syntax
+prs: #8889
+issues: #6101 #7748
+significance: significant
+
+description: {
+
+Replaced the legacy cabal.project parser with a new implementation based on the same
+parsing infrastructure as cabal files.
+
+The new parser replicates the grammar of the legacy parser, ensuring that it generates identical `ProjectConfig` values.
+The implementation leverages existing Parsec infrastructure, including FieldGrammar and other utilities from the .cabal file parser.
+The error messages are now more accurate and include the line and column of the error.
+
+There is a new flag `--project-file-parser=<legacy|default|parsec|fallback|compare>` which can be used to select the parser to use.
+
+* `legacy` - the old parser
+* `default` - the default, by default the `fallback` strategy is used unless you have compiled `cabal-install` with `-f+legacy-comparison`.
+* `parsec` - the new parser using parsec
+* `fallback` - the new parser using parsec, but falling back to the old parser if it fails
+* `compare` - the new parser using parsec, but comparing the results with the old parser
+
+In the next release we plan to remove the legacy parser.
+
+
+}
