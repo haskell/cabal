@@ -883,7 +883,7 @@ configurePackage cfg lbc0 pkg_descr00 flags enabled comp platform programDb0 pac
             let unknownBuildTools =
                   [ buildTool
                   | buildTool <- buildTools bi
-                  , Nothing == desugarBuildTool pkg_descr0 buildTool
+                  , isNothing (desugarBuildTool pkg_descr0 buildTool)
                   ]
             externBuildToolDeps ++ unknownBuildTools
 
@@ -2766,7 +2766,7 @@ checkPackageProblems verbosity dir gpkg pkg = do
       (errors, warnings) =
         partitionEithers (M.mapMaybe classEW $ pureChecks ++ ioChecks)
   if null errors
-    then traverse_ (warn verbosity) (map ppPackageCheck warnings)
+    then traverse_ (warn verbosity . ppPackageCheck) warnings
     else dieWithException verbosity $ CheckPackageProblems (map ppPackageCheck errors)
   where
     -- Classify error/warnings. Left: error, Right: warning.
@@ -2836,22 +2836,19 @@ checkRelocatable verbosity pkg lbi =
         p = prefix installDirs
         relativeInstallDirs (InstallDirs{..}) =
           all
-            isJust
-            ( fmap
-                (stripPrefix p)
-                [ bindir
-                , libdir
-                , dynlibdir
-                , libexecdir
-                , includedir
-                , datadir
-                , docdir
-                , mandir
-                , htmldir
-                , haddockdir
-                , sysconfdir
-                ]
-            )
+            (isJust . stripPrefix p)
+            [ bindir
+            , libdir
+            , dynlibdir
+            , libexecdir
+            , includedir
+            , datadir
+            , docdir
+            , mandir
+            , htmldir
+            , haddockdir
+            , sysconfdir
+            ]
 
     -- Check if the library dirs of the dependencies that are in the package
     -- database to which the package is installed are relative to the

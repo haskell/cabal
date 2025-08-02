@@ -296,10 +296,7 @@ establishProjectBaseContextWithRoot verbosity cliConfig projectRoot currentComma
         } = projectConfigShared projectConfig
 
       mlogsDir = Setup.flagToMaybe projectConfigLogsDir
-  mstoreDir <-
-    sequenceA $
-      makeAbsolute
-        <$> Setup.flagToMaybe projectConfigStoreDir
+  mstoreDir <- traverse makeAbsolute (Setup.flagToMaybe projectConfigStoreDir)
 
   cabalDirLayout <- mkCabalDirLayout mstoreDir mlogsDir
 
