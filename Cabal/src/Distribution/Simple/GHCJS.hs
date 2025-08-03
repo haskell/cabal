@@ -24,7 +24,6 @@ module Distribution.Simple.GHCJS
   , hcPkgInfo
   , registerPackage
   , componentGhcOptions
-  , Internal.componentCcGhcOptions
   , getLibDir
   , isDynamic
   , getGlobalPackageDB
@@ -1474,13 +1473,21 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
     sequence_
       [ do
         let baseCxxOpts =
-              Internal.componentCxxGhcOptions
-                verbosity
-                lbi
-                bnfo
-                clbi
-                tmpDir
-                filename
+              (Internal.sourcesGhcOptions verbosity lbi bnfo clbi odir filename)
+                { -- C++ compiler options: GHC >= 8.10 requires -optcxx, older requires -optc
+                  -- we want to be able to support cxx-options and cc-options separately
+                  -- https://gitlab.haskell.org/ghc/ghc/-/issues/16477
+                  -- see example in cabal-testsuite/PackageTests/FFI/ForeignOptsCxx
+                  ghcOptCcOptions =
+                    Internal.separateGhcOptions
+                      (mkVersion [8, 10])
+                      (compiler lbi)
+                      (Internal.defaultGhcOptCcOptions lbi bnfo)
+                , -- there are problems with linking with versions below 9.4,
+                  -- that's why we need this replacement for linkGhcOptions
+                  -- see example in cabal-testsuite/PackageTests/ShowBuildInfo/Complex
+                  ghcOptCcProgram = Internal.defaultGhcOptCcProgram lbi
+                }
             vanillaCxxOpts =
               if isGhcDynamic
                 then -- Dynamic GHC requires C++ sources to be built
@@ -1520,13 +1527,21 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
     sequence_
       [ do
         let baseCcOpts =
-              Internal.componentCcGhcOptions
-                verbosity
-                lbi
-                bnfo
-                clbi
-                tmpDir
-                filename
+              (Internal.sourcesGhcOptions verbosity lbi bnfo clbi tmpDir filename)
+                { -- C++ compiler options: GHC >= 8.10 requires -optcxx, older requires -optc
+                  -- we want to be able to support cxx-options and cc-options separately
+                  -- https://gitlab.haskell.org/ghc/ghc/-/issues/16477
+                  -- see example in cabal-testsuite/PackageTests/FFI/ForeignOptsC
+                  ghcOptCxxOptions =
+                    Internal.separateGhcOptions
+                      (mkVersion [8, 10])
+                      (compiler lbi)
+                      (Internal.defaultGhcOptCxxOptions lbi bnfo)
+                , -- there are problems with linking with versions below 9.4,
+                  -- that's why we need this replacement for linkGhcOptions
+                  -- see example in cabal-testsuite/PackageTests/ShowBuildInfo/Complex
+                  ghcOptCcProgram = Internal.defaultGhcOptCcProgram lbi
+                }
             vanillaCcOpts =
               if isGhcDynamic
                 then -- Dynamic GHC requires C sources to be built
