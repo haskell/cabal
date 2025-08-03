@@ -629,14 +629,13 @@ gitProgram =
           -- or annoyingly "git version 2.17.1.windows.2" yes, really
           (_ : _ : ver : _) ->
             intercalate "."
-              . takeWhile (all isNum)
+              . takeWhile (all isDigit)
               . split
               $ ver
           _ -> ""
     }
   where
-    isNum c = c >= '0' && c <= '9'
-    isTypical c = isNum c || c == '.'
+    isTypical c = isDigit c || c == '.'
     split cs = case break (== '.') cs of
       (chunk, []) -> chunk : []
       (chunk, _ : rest) -> chunk : split rest
@@ -924,5 +923,4 @@ pijulProgram =
           _ -> ""
     }
   where
-    isNum c = c >= '0' && c <= '9'
-    isTypical c = isNum c || c == '.'
+    isTypical c = isDigit c || c == '.'
