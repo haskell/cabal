@@ -283,14 +283,14 @@ toComponentLocalBuildInfos
                   [ "installed package "
                     ++ prettyShow (packageId pkg)
                     ++ " is broken due to missing package "
-                    ++ intercalate ", " (map prettyShow deps)
+                    ++ intercalate ", " (map prettyShow $ toList deps)
                   | (Left pkg, deps) <- broken
                   ]
                 ++ unlines
                   [ "planned package "
                     ++ prettyShow (packageId pkg)
                     ++ " is broken due to missing package "
-                    ++ intercalate ", " (map prettyShow deps)
+                    ++ intercalate ", " (map prettyShow $ toList deps)
                   | (Right pkg, deps) <- broken
                   ]
 
