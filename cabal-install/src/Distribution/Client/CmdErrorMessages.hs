@@ -501,7 +501,7 @@ renderCannotPruneDependencies (CannotPruneDependencies brokenPackages) =
   where
     -- throw away the details and just list the deps that are needed
     pkgids :: [PackageId]
-    pkgids = nub . map packageId . concatMap snd $ brokenPackages
+    pkgids = nub . map packageId . concatMap (NE.toList . snd) $ brokenPackages
 
 {-
            ++ "Syntax:\n"

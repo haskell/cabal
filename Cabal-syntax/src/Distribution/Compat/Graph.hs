@@ -100,10 +100,10 @@ import Distribution.Utils.Structured (Structure (..), Structured (..))
 import qualified Data.Array as Array
 import qualified Data.Foldable as Foldable
 import qualified Data.Graph as G
+import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import qualified Data.Tree as Tree
-import qualified Distribution.Compat.Prelude as Prelude
 import GHC.Stack (HasCallStack)
 
 -- | A graph of nodes @a@.  The nodes are expected to have instance
@@ -115,7 +115,7 @@ data Graph a = Graph
   , graphAdjoint :: G.Graph
   , graphVertexToNode :: G.Vertex -> a
   , graphKeyToVertex :: Key a -> Maybe G.Vertex
-  , graphBroken :: [(a, [Key a])]
+  , graphBroken :: [(a, NonEmpty (Key a))]
   }
 
 -- NB: Not a Functor! (or Traversable), because you need
@@ -285,7 +285,7 @@ cycles g = [vs | CyclicSCC vs <- stronglyConnComp g]
 -- | /O(1)/.  Return a list of nodes paired with their broken
 -- neighbors (i.e., neighbor keys which are not in the graph).
 -- Requires amortized construction of graph.
-broken :: Graph a -> [(a, [Key a])]
+broken :: Graph a -> [(a, NonEmpty (Key a))]
 broken g = graphBroken g
 
 -- | Lookup the immediate neighbors from a key in the graph.
@@ -344,7 +344,7 @@ revTopSort g = map (graphVertexToNode g) $ G.topSort (graphAdjoint g)
 -- if you can't fulfill this invariant use @'fromList' ('Data.Map.elems' m)@
 -- instead.  The values of the map are assumed to already
 -- be in WHNF.
-fromMap :: IsNode a => Map (Key a) a -> Graph a
+fromMap :: forall a. (IsNode a, Eq (Key a)) => Map (Key a) a -> Graph a
 fromMap m =
   Graph
     { graphMap = m
@@ -353,17 +353,26 @@ fromMap m =
     , graphAdjoint = G.transposeG g
     , graphVertexToNode = vertex_to_node
     , graphKeyToVertex = key_to_vertex
-    , graphBroken = broke
+    , graphBroken =
+        map (\ns'' -> (fst (NE.head ns''), NE.map snd ns'')) $
+          NE.groupWith (nodeKey . fst) $
+            brokenEdges'
     }
   where
-    try_key_to_vertex k = maybe (Left k) Right (key_to_vertex k)
+    brokenEdges' :: [(a, Key a)]
+    brokenEdges' = concat brokenEdges
 
+    brokenEdges :: [[(a, Key a)]]
     (brokenEdges, edges) =
-      unzip $
-        [ partitionEithers (map try_key_to_vertex (nodeNeighbors n))
+      unzip
+        [ partitionEithers
+          [ case key_to_vertex n' of
+            Just v -> Right v
+            Nothing -> Left (n, n')
+          | n' <- nodeNeighbors n
+          ]
         | n <- ns
         ]
-    broke = filter (not . Prelude.null . snd) (zip ns brokenEdges)
 
     g = Array.listArray bounds edges
 
