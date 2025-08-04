@@ -887,7 +887,7 @@ exceptionMessageCabalInstall e = case e of
     renderCabalFileParseError cbfError
   ProjectConfigParseFailure pcfError ->
     renderProjectConfigParseError pcfError
-  CleanActionNotPackage -> 
+  CleanActionNotPackage ->
     "Not a cabal project or package directory; skipping project cleanup."
 
 instance Exception (VerboseException CabalInstallException) where

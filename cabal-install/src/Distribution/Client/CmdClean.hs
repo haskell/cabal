@@ -1,7 +1,7 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE LambdaCase #-}
 
 module Distribution.Client.CmdClean (cleanCommand, cleanAction) where
 
@@ -13,8 +13,8 @@ import Distribution.Client.Config
   )
 import Distribution.Client.DistDirLayout
   ( DistDirLayout (..)
-  , defaultDistDirLayout
   , ProjectRoot (ProjectRootImplicit)
+  , defaultDistDirLayout
   , defaultProjectFile
   )
 import Distribution.Client.Errors
@@ -221,7 +221,7 @@ cleanAction (ProjectFlags{..}, CleanFlags{..}) extraArgs _ = do
       removeDirectoryRecursive cache
 
 isValidProjectRoot :: ProjectRoot -> IO Bool
-isValidProjectRoot = \case 
+isValidProjectRoot = \case
   (ProjectRootImplicit dir) -> do
     let projectFile = dir </> defaultProjectFile
     projectExists <- doesFileExist projectFile
