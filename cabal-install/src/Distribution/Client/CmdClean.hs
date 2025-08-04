@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Distribution.Client.CmdClean (cleanCommand, cleanAction) where
 
@@ -13,6 +14,8 @@ import Distribution.Client.Config
 import Distribution.Client.DistDirLayout
   ( DistDirLayout (..)
   , defaultDistDirLayout
+  , ProjectRoot (ProjectRootImplicit)
+  , defaultProjectFile
   )
 import Distribution.Client.Errors
 import Distribution.Client.ProjectConfig
@@ -161,7 +164,7 @@ cleanAction (ProjectFlags{..}, CleanFlags{..}) extraArgs _ = do
   notScripts <- filterM (fmap not . doesFileExist) extraArgs
   unless (null notScripts) $
     dieWithException verbosity $
-      CleanAction notScripts
+      CleanActionNotScript notScripts
 
   projectRoot <- either throwIO return =<< findProjectRoot verbosity mprojectDir mprojectFile
 
@@ -169,6 +172,9 @@ cleanAction (ProjectFlags{..}, CleanFlags{..}) extraArgs _ = do
 
   -- Do not clean a project if just running a script in it's directory
   when (null extraArgs || isJust mdistDirectory) $ do
+    isValid <- isValidProjectRoot projectRoot
+    unless isValid $ dieWithException verbosity CleanActionNotPackage
+
     if saveConfig
       then do
         let buildRoot = distBuildRootDirectory distLayout
@@ -213,6 +219,16 @@ cleanAction (ProjectFlags{..}, CleanFlags{..}) extraArgs _ = do
     when (not exists || script `Set.member` toClean) $ do
       info verbosity ("Deleting cache (" ++ cache ++ ") for script (" ++ script ++ ")")
       removeDirectoryRecursive cache
+
+isValidProjectRoot :: ProjectRoot -> IO Bool
+isValidProjectRoot = \case 
+  (ProjectRootImplicit dir) -> do
+    let projectFile = dir </> defaultProjectFile
+    projectExists <- doesFileExist projectFile
+    contents <- listDirectory dir
+    let cabalFiles = filter (".cabal" `isSuffixOf`) contents
+    pure (projectExists || not (null cabalFiles))
+  _ -> pure True
 
 removeEnvFiles :: FilePath -> IO ()
 removeEnvFiles dir =
