@@ -2228,14 +2228,12 @@ elaborateInstallPlan
             pkgDependsOnSelfLib =
               CD.fromList
                 [ (CD.componentNameToComponent cn, [()])
-                | Graph.N _ cn _ <- fromMaybe [] mb_closure
+                | Graph.N _ cn _ <- closure
                 ]
               where
-                mb_closure = Graph.revClosure compGraph [k | k <- Graph.keys compGraph, is_lib k]
-                -- NB: the sublib case should not occur, because sub-libraries
-                -- are not supported without per-component builds
-                is_lib (CLibName _) = True
-                is_lib _ = False
+                closure =
+                  fromMaybe (error "elaborateSolverToPackage: internal error, no closure for main lib") $
+                    Graph.revClosure compGraph [k | k@(CLibName LMainLibName) <- Graph.keys compGraph]
 
             buildComponentDeps :: Monoid a => (ElaboratedComponent -> a) -> CD.ComponentDeps a
             buildComponentDeps f =
