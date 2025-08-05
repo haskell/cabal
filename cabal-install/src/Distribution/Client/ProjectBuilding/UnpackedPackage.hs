@@ -631,9 +631,11 @@ buildInplaceUnpackedPackage
           BuildStatusBuild (Just _) _ ->
             info verbosity "whenReRegister: previously registered"
           -- There is nothing to register
-          _
+          BuildStatusBuild Nothing _ ->
+            info verbosity "whenReRegister: nothing to register, we know it!"
+          BuildStatusConfigure _reason
             | null (elabBuildTargets pkg) ->
-                info verbosity "whenReRegister: nothing to register"
+                info verbosity "whenReRegister: nothing to register, it seems ..."
             | otherwise -> action
 
 --------------------------------------------------------------------------------
