@@ -39,6 +39,7 @@ import Distribution.Simple.Glob.Internal
 import qualified Distribution.Compat.CharParsing as P
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.Utils.Generic (isAsciiAlpha)
 import qualified Text.PrettyPrint as Disp
 
 --------------------------------------------------------------------------------
@@ -211,7 +212,7 @@ instance Parsec FilePathRoot where
       root = FilePathRoot "/" <$ P.char '/'
       home = FilePathHomeDir <$ P.string "~/"
       drive = do
-        dr <- P.satisfy $ \c -> (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+        dr <- P.satisfy isAsciiAlpha
         _ <- P.char ':'
         _ <- P.char '/' <|> P.char '\\'
         return (FilePathRoot (toUpper dr : ":\\"))

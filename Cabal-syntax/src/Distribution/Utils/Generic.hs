@@ -85,6 +85,7 @@ module Distribution.Utils.Generic
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Data.Char (isAsciiLower, isAsciiUpper)
 import Distribution.Utils.String
 
 import Data.Bits (shiftL, (.&.), (.|.))
@@ -449,9 +450,7 @@ isAscii c = fromEnum c < 0x80
 
 -- | Ascii letters.
 isAsciiAlpha :: Char -> Bool
-isAsciiAlpha c =
-  ('a' <= c && c <= 'z')
-    || ('A' <= c && c <= 'Z')
+isAsciiAlpha c = (isAsciiLower c) || (isAsciiUpper c)
 
 -- | Ascii letters and digits.
 --
