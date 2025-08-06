@@ -95,7 +95,6 @@ import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Check hiding (doesFileExist, listDirectory)
 import Distribution.PackageDescription.Configuration
-import Distribution.PackageDescription.PrettyPrint
 import Distribution.Simple.BuildTarget
 import Distribution.Simple.BuildToolDepends
 import Distribution.Simple.BuildWay
@@ -1147,9 +1146,10 @@ configurePackage verbHandles cfg lbc0 pkg_descr00 flags enabled comp platform pa
         , extraCoverageFor = []
         }
 
-  debug verbosity $
-    "Finalized package description:\n"
-      ++ showPackageDescription pkg_descr2
+  -- FIXME: Printing the package description loops indefinitely.
+  -- debug verbosity $
+  --   "Finalized package description:\n"
+  --     ++ showPackageDescription pkg_descr2
 
   return (lbc, pbd)
 
