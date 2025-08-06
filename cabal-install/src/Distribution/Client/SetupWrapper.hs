@@ -550,7 +550,7 @@ internalSetupMethod verbosity options bt args = do
     "Using internal setup method with build-type "
       ++ show bt
       ++ " and args:\n  "
-      ++ show args
+      ++ unwords args
   -- NB: we do not set the working directory of the process here, because
   -- we will instead pass the -working-dir flag when invoking the Setup script.
   -- Note that the Setup script is guaranteed to support this flag, because
@@ -623,7 +623,7 @@ selfExecSetupMethod verbosity options bt args0 = do
     "Using self-exec internal setup method with build-type "
       ++ show bt
       ++ " and args:\n  "
-      ++ show args
+      ++ unwords args
   path <- getExecutablePath
   invoke verbosity path args options
 
