@@ -238,15 +238,13 @@ configureCompiler verbosity hcPath conf0 = do
       -- In this example, @AbiTag@ is "inplace".
       compilerAbiTag :: AbiTag
       compilerAbiTag =
-        maybe NoAbiTag (AbiTag . dropWhile (== '-') . stripCommonPrefix (prettyShow compilerId)) projectUnitId
-
-      wiredInUnitIds = do
-        ghcInternalUnitId <- Map.lookup "ghc-internal Unit Id" ghcInfoMap
-        ghcUnitId <- projectUnitId
-        pure
-          [ (mkPackageName "ghc", mkUnitId ghcUnitId)
-          , (mkPackageName "ghc-internal", mkUnitId ghcInternalUnitId)
-          ]
+        case projectUnitId of
+          Nothing -> NoAbiTag
+          Just "" -> NoAbiTag
+          Just unitId ->
+            case dropWhile (== '-') $ stripCommonPrefix (prettyShow compilerId) unitId of
+              "" -> NoAbiTag
+              tag -> AbiTag tag
 
   let comp =
         Compiler
