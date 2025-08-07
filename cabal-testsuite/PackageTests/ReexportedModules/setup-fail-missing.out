@@ -7,3 +7,5 @@ Error:
         It occurs in neither the 'exposed-modules' of this package,
         nor any of its 'build-depends' dependencies.
     In the stanza library
+    CallStack (from HasCallStack):
+  dieProgress, called at src/Distribution/Backpack/LinkedComponent.hs:_:_ in Cabal-3.17.0.0-inplace:Distribution.Backpack.LinkedComponent
