@@ -361,7 +361,8 @@ sanityCheckElaboratedPackage
 -- | Return the up-to-date project config and information about the local
 -- packages within the project.
 rebuildProjectConfig
-  :: Verbosity
+  :: HasCallStack
+  => Verbosity
   -> HttpTransport
   -> DistDirLayout
   -> ProjectConfig
@@ -706,7 +707,8 @@ See #9840 for more information about the problems surrounding the lossy
 -- dependencies of executables and setup scripts.
 --
 rebuildInstallPlan
-  :: Verbosity
+  :: HasCallStack
+  => Verbosity
   -> DistDirLayout
   -> CabalDirLayout
   -> ProjectConfig
@@ -958,7 +960,8 @@ rebuildInstallPlan
       -- version of the plan has the final nix-style hashed ids.
       --
       phaseElaboratePlan
-        :: ProjectConfig
+        :: HasCallStack
+        => ProjectConfig
         -> Staged Toolchain
         -> Staged (Maybe PkgConfigDb)
         -> SolverInstallPlan
@@ -1625,7 +1628,8 @@ planPackages
 -- In theory should be able to make an elaborated install plan with a policy
 -- matching that of the classic @cabal install --user@ or @--global@
 elaborateInstallPlan
-  :: Verbosity
+  :: HasCallStack
+  => Verbosity
   -> Staged Toolchain
   -> Staged (Maybe PkgConfigDb)
   -> DistDirLayout
@@ -1678,7 +1682,7 @@ elaborateInstallPlan
                   )
           f _ = Nothing
 
-      elaboratedInstallPlan :: LogProgress ElaboratedInstallPlan
+      elaboratedInstallPlan :: HasCallStack => LogProgress ElaboratedInstallPlan
       elaboratedInstallPlan =
         flip InstallPlan.fromSolverInstallPlanWithProgress solverPlan $ \mapDep planpkg ->
           case planpkg of
