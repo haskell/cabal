@@ -204,7 +204,7 @@ import Distribution.Types.PackageVersionConstraint
 import Distribution.Types.PkgconfigDependency
 import Distribution.Types.UnqualComponentName
 
-import Distribution.Backpack
+import Distribution.Backpack hiding (mkDefUnitId)
 import Distribution.Backpack.ComponentsGraph
 import Distribution.Backpack.ConfiguredComponent
 import Distribution.Backpack.FullUnitId
@@ -229,7 +229,7 @@ import qualified Distribution.Compat.Graph as Graph
 import Control.Exception (assert)
 import Control.Monad (sequence)
 import Control.Monad.IO.Class (liftIO)
-import Control.Monad.State as State (State, execState, runState, state)
+import Control.Monad.State (State, execState, gets, modify)
 import Data.Foldable (fold)
 import Data.List (deleteBy, groupBy)
 import qualified Data.List.NonEmpty as NE
@@ -2791,7 +2791,7 @@ binDirectories layout config package = case elabBuildStyle package of
       distBuildDirectory layout (elabDistDirParams config package)
         </> "build"
 
-type InstS = Map UnitId ElaboratedPlanPackage
+type InstS = Map (WithStage UnitId) ElaboratedPlanPackage
 type InstM a = State InstS a
 
 getComponentId
@@ -2875,67 +2875,75 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
   where
     pkgs = InstallPlan.toList plan
 
-    cmap = Map.fromList [(getComponentId pkg, pkg) | pkg <- pkgs]
+    cmap = Map.fromList [(WithStage (stageOf pkg) (getComponentId pkg), pkg) | pkg <- pkgs]
 
     instantiateUnitId
-      :: ComponentId
+      :: Stage
+      -> ComponentId
+      -- \^ The id of the component being instantiated
       -> Map ModuleName (Module, BuildStyle)
+      -- \^ A mapping from module names (the "holes" or signatures in Backpack)
+      -- to the concrete modules (and their build styles) that should fill those
+      -- holes.
       -> InstM (DefUnitId, BuildStyle)
-    instantiateUnitId cid insts = state $ \s ->
-      case Map.lookup uid s of
-        Nothing ->
-          -- Knot tied
-          -- TODO: I don't think the knot tying actually does
-          -- anything useful
-          let (r, s') =
-                runState
-                  (instantiateComponent uid cid insts)
-                  (Map.insert uid r s)
-           in ((def_uid, extractElabBuildStyle r), Map.insert uid r s')
-        Just r -> ((def_uid, extractElabBuildStyle r), s)
+    instantiateUnitId stage cid insts =
+      gets (Map.lookup (WithStage stage uid)) >>= \case
+        Nothing -> do
+          r <- instantiateComponent uid (WithStage stage cid) insts
+          modify (Map.insert (WithStage stage uid) r)
+          return (unsafeMkDefUnitId uid, extractElabBuildStyle r)
+        Just r ->
+          return (unsafeMkDefUnitId uid, extractElabBuildStyle r)
       where
-        def_uid = mkDefUnitId cid (fmap fst insts)
-        uid = unDefUnitId def_uid
+        uid = mkDefUnitId cid (fmap fst insts)
 
     -- No need to InplaceT; the inplace-ness is properly computed for
     -- the ElaboratedPlanPackage, so that will implicitly pass it on
     instantiateComponent
       :: UnitId
-      -> ComponentId
+      -- \^ The unit id to assign to the instantiated component
+      -> WithStage ComponentId
+      -- \^ The id of the component being instantiated
       -> Map ModuleName (Module, BuildStyle)
+      -- \^ A mapping from module names (the "holes" or signatures in Backpack)
+      -- to the concrete modules (and their build styles) that should fill those
+      -- holes.
       -> InstM ElaboratedPlanPackage
-    instantiateComponent uid cid insts
-      | Just planpkg <- Map.lookup cid cmap =
+    instantiateComponent uid cidws@(WithStage stage cid) insts =
+      case Map.lookup cidws cmap of
+        Nothing -> error ("instantiateComponent: " ++ prettyShow cid)
+        Just planpkg ->
           case planpkg of
-            InstallPlan.Configured
-              ( elab0@ElaboratedConfiguredPackage
-                  { elabPkgOrComp = ElabComponent comp
-                  }
-                ) -> do
-                deps <-
-                  traverse (fmap fst . substUnitId insts) (compLinkedLibDependencies comp)
-                let build_style = fold (fmap snd insts)
-                let getDep (Module dep_uid _) = [dep_uid]
-                    elab1 =
-                      fixupBuildStyle build_style $
-                        elab0
-                          { elabUnitId = uid
-                          , elabComponentId = cid
-                          , elabIsCanonical = Map.null (fmap fst insts)
-                          , elabPkgOrComp =
-                              ElabComponent
-                                comp
-                                  { compOrderLibDependencies =
-                                      (if Map.null insts then [] else [newSimpleUnitId cid])
-                                        ++ ordNub
-                                          ( map
-                                              unDefUnitId
-                                              (deps ++ concatMap (getDep . fst) (Map.elems insts))
-                                          )
-                                  , compInstantiatedWith = fmap fst insts
-                                  }
-                          }
-                    elab =
+            InstallPlan.Installed{} -> return planpkg
+            InstallPlan.PreExisting{} -> return planpkg
+            InstallPlan.Configured elab0 ->
+              case elabPkgOrComp elab0 of
+                ElabPackage{} -> return planpkg
+                ElabComponent comp -> do
+                  deps <- traverse (fmap fst . instantiateUnit stage insts) (compLinkedLibDependencies comp)
+                  let build_style = fold (fmap snd insts)
+                  let getDep (Module dep_uid _) = [dep_uid]
+                      elab1 =
+                        fixupBuildStyle build_style $
+                          elab0
+                            { elabUnitId = uid
+                            , elabComponentId = cid
+                            , elabIsCanonical = Map.null (fmap fst insts)
+                            , elabPkgOrComp =
+                                ElabComponent
+                                  comp
+                                    { compOrderLibDependencies =
+                                        (if Map.null insts then [] else [newSimpleUnitId cid])
+                                          ++ ordNub
+                                            ( map
+                                                unDefUnitId
+                                                (deps ++ concatMap (getDep . fst) (Map.elems insts))
+                                            )
+                                    , compInstantiatedWith = fmap fst insts
+                                    }
+                            }
+                  return $
+                    InstallPlan.Configured
                       elab1
                         { elabInstallDirs =
                             computeInstallDirs
@@ -2944,112 +2952,135 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
                               elaboratedShared
                               elab1
                         }
-                return $ InstallPlan.Configured elab
-            _ -> return planpkg
-      | otherwise = error ("instantiateComponent: " ++ prettyShow cid)
 
-    substUnitId :: Map ModuleName (Module, BuildStyle) -> OpenUnitId -> InstM (DefUnitId, BuildStyle)
-    substUnitId _ (DefiniteUnitId uid) =
+    -- \| Instantiates an OpenUnitId into a concrete UnitId, producing a concrete UnitId and its associated BuildStyle.
+    --
+    -- This function recursively applies a module substitution to an OpenUnitId, producing a fully instantiated
+    -- (definite) unit and its build style. This is a key step in Backpack-style instantiation, where "holes" in
+    -- a package are filled with concrete modules.
+    --
+    -- Behavior
+    --
+    -- If given a DefiniteUnitId, it returns the id and a default build style (BuildAndInstall).
+    --
+    -- If given an IndefFullUnitId, it:
+    --    Recursively applies the substitution to each module in the instantiation map using substSubst.
+    --    Calls instantiateUnitId to create or retrieve the fully instantiated unit id and build style for this instantiation.
+    --
+    instantiateUnit
+      :: Stage
+      -> Map ModuleName (Module, BuildStyle)
+      -- \^ A mapping from module names to their corresponding modules and build styles.
+      -> OpenUnitId
+      -- \^ The unit to instantiate. This can be:
+      --   DefiniteUnitId uid: already fully instantiated (no holes).
+      --   IndefFullUnitId cid insts: an indefinite unit (with holes), described by a component id and a mapping of holes to modules.
+      -> InstM (DefUnitId, BuildStyle)
+    instantiateUnit _stage _subst (DefiniteUnitId def_uid) =
       -- This COULD actually, secretly, be an inplace package, but in
       -- that case it doesn't matter as it's already been recorded
       -- in the package that depends on this
-      return (uid, BuildAndInstall)
-    substUnitId subst (IndefFullUnitId cid insts) = do
-      insts' <- substSubst subst insts
-      instantiateUnitId cid insts'
+      return (def_uid, BuildAndInstall)
+    instantiateUnit stage subst (IndefFullUnitId cid insts) = do
+      insts' <- traverse (instantiateModule stage subst) insts
+      instantiateUnitId stage cid insts'
 
-    -- NB: NOT composition
-    substSubst
-      :: Map ModuleName (Module, BuildStyle)
-      -> Map ModuleName OpenModule
-      -> InstM (Map ModuleName (Module, BuildStyle))
-    substSubst subst insts = traverse (substModule subst) insts
-
-    substModule :: Map ModuleName (Module, BuildStyle) -> OpenModule -> InstM (Module, BuildStyle)
-    substModule subst (OpenModuleVar mod_name)
+    -- \| Instantiates an OpenModule into a concrete Module producing a concrete Module
+    -- and its associated BuildStyle.
+    instantiateModule
+      :: Stage
+      -> Map ModuleName (Module, BuildStyle)
+      -- \^ A mapping from module names to their corresponding modules and build styles.
+      -> OpenModule
+      -- \^ The module to substitute, which can be:
+      --     OpenModuleVar mod_name: a hole (variable) named mod_name
+      --     OpenModule uid mod_name: a module from a specific unit (uid).
+      -> InstM (Module, BuildStyle)
+    instantiateModule _stage subst (OpenModuleVar mod_name)
       | Just m <- Map.lookup mod_name subst = return m
       | otherwise = error "substModule: non-closing substitution"
-    substModule subst (OpenModule uid mod_name) = do
-      (uid', build_style) <- substUnitId subst uid
+    instantiateModule stage subst (OpenModule uid mod_name) = do
+      (uid', build_style) <- instantiateUnit stage subst uid
       return (Module uid' mod_name, build_style)
 
-    indefiniteUnitId :: ComponentId -> InstM UnitId
-    indefiniteUnitId cid = do
-      let uid = newSimpleUnitId cid
-      r <- indefiniteComponent uid cid
-      state $ \s -> (uid, Map.insert uid r s)
-
-    indefiniteComponent :: UnitId -> ComponentId -> InstM ElaboratedPlanPackage
-    indefiniteComponent _uid cid
-      -- Only need Configured; this phase happens before improvement, so
-      -- there shouldn't be any Installed packages here.
-      | Just (InstallPlan.Configured epkg) <- Map.lookup cid cmap
-      , ElabComponent elab_comp <- elabPkgOrComp epkg =
-          do
-            -- We need to do a little more processing of the includes: some
-            -- of them are fully definite even without substitution.  We
-            -- want to build those too; see #5634.
-            --
-            -- This code mimics similar code in Distribution.Backpack.ReadyComponent;
-            -- however, unlike the conversion from LinkedComponent to
-            -- ReadyComponent, this transformation is done *without*
-            -- changing the type in question; and what we are simply
-            -- doing is enforcing tighter invariants on the data
-            -- structure in question.  The new invariant is that there
-            -- is no IndefFullUnitId in compLinkedLibDependencies that actually
-            -- has no holes.  We couldn't specify this invariant when
-            -- we initially created the ElaboratedPlanPackage because
-            -- we have no way of actually reifying the UnitId into a
-            -- DefiniteUnitId (that's what substUnitId does!)
-            new_deps <- for (compLinkedLibDependencies elab_comp) $ \uid ->
-              if Set.null (openUnitIdFreeHoles uid)
-                then fmap (DefiniteUnitId . fst) (substUnitId Map.empty uid)
-                else return uid
-            -- NB: no fixupBuildStyle needed here, as if the indefinite
-            -- component depends on any inplace packages, it itself must
-            -- be indefinite!  There is no substitution here, we can't
-            -- post facto add inplace deps
-            return . InstallPlan.Configured $
-              epkg
-                { elabPkgOrComp =
-                    ElabComponent
-                      elab_comp
-                        { compLinkedLibDependencies = new_deps
-                        , -- I think this is right: any new definite unit ids we
-                          -- minted in the phase above need to be built before us.
-                          -- Add 'em in.  This doesn't remove any old dependencies
-                          -- on the indefinite package; they're harmless.
-                          compOrderLibDependencies =
-                            ordNub $
-                              compOrderLibDependencies elab_comp
-                                ++ [unDefUnitId d | DefiniteUnitId d <- new_deps]
-                        }
-                }
-      | Just planpkg <- Map.lookup cid cmap =
-          return planpkg
-      | otherwise = error ("indefiniteComponent: " ++ prettyShow cid)
+    indefiniteComponent
+      :: ElaboratedConfiguredPackage
+      -> InstM ElaboratedConfiguredPackage
+    indefiniteComponent epkg =
+      case elabPkgOrComp epkg of
+        ElabPackage{} -> return epkg
+        ElabComponent elab_comp -> do
+          -- We need to do a little more processing of the includes: some
+          -- of them are fully definite even without substitution.  We
+          -- want to build those too; see #5634.
+          --
+          -- This code mimics similar code in Distribution.Backpack.ReadyComponent;
+          -- however, unlike the conversion from LinkedComponent to
+          -- ReadyComponent, this transformation is done *without*
+          -- changing the type in question; and what we are simply
+          -- doing is enforcing tighter invariants on the data
+          -- structure in question.  The new invariant is that there
+          -- is no IndefFullUnitId in compLinkedLibDependencies that actually
+          -- has no holes.  We couldn't specify this invariant when
+          -- we initially created the ElaboratedPlanPackage because
+          -- we have no way of actually reifying the UnitId into a
+          -- DefiniteUnitId (that's what substUnitId does!)
+          new_deps <- for (compLinkedLibDependencies elab_comp) $ \uid ->
+            if Set.null (openUnitIdFreeHoles uid)
+              then fmap (DefiniteUnitId . fst) (instantiateUnit (elabStage epkg) Map.empty uid)
+              else return uid
+          -- NB: no fixupBuildStyle needed here, as if the indefinite
+          -- component depends on any inplace packages, it itself must
+          -- be indefinite!  There is no substitution here, we can't
+          -- post facto add inplace deps
+          return
+            epkg
+              { elabPkgOrComp =
+                  ElabComponent
+                    elab_comp
+                      { compLinkedLibDependencies = new_deps
+                      , -- I think this is right: any new definite unit ids we
+                        -- minted in the phase above need to be built before us.
+                        -- Add 'em in.  This doesn't remove any old dependencies
+                        -- on the indefinite package; they're harmless.
+                        compOrderLibDependencies =
+                          ordNub $
+                            compOrderLibDependencies elab_comp
+                              ++ [unDefUnitId d | DefiniteUnitId d <- new_deps]
+                      }
+              }
 
     fixupBuildStyle BuildAndInstall elab = elab
-    fixupBuildStyle _ (elab@ElaboratedConfiguredPackage{elabBuildStyle = BuildInplaceOnly{}}) = elab
-    fixupBuildStyle t@(BuildInplaceOnly{}) elab =
+    fixupBuildStyle _buildStyle (elab@ElaboratedConfiguredPackage{elabBuildStyle = BuildInplaceOnly{}}) = elab
+    fixupBuildStyle buildStyle@(BuildInplaceOnly{}) elab =
       elab
-        { elabBuildStyle = t
+        { elabBuildStyle = buildStyle
         , elabBuildPackageDBStack = elabInplaceBuildPackageDBStack elab
         , elabRegisterPackageDBStack = elabInplaceRegisterPackageDBStack elab
         , elabSetupPackageDBStack = elabInplaceSetupPackageDBStack elab
         }
 
     ready_map = execState work Map.empty
-
     work = for_ pkgs $ \pkg ->
       case pkg of
         InstallPlan.Configured (elab@ElaboratedConfiguredPackage{elabPkgOrComp = ElabComponent comp})
-          | not (Map.null (compLinkedInstantiatedWith comp)) ->
-              indefiniteUnitId (elabComponentId elab)
-                >> return ()
+          | not (Map.null (compLinkedInstantiatedWith comp)) -> do
+              r <- indefiniteComponent elab
+              modify (Map.insert (WithStage (elabStage elab) (elabUnitId elab)) (InstallPlan.Configured r))
         _ ->
-          instantiateUnitId (getComponentId pkg) Map.empty
-            >> return ()
+          void $ instantiateUnitId (stageOf pkg) (getComponentId pkg) Map.empty
+
+-- | Create a 'DefUnitId' from a 'ComponentId' and an instantiation
+-- with no holes.
+--
+-- This function is defined in Cabal-syntax but only cabal-install
+-- cares about it so I am putting it here.
+--
+-- I am also not using the DefUnitId newtype since I believe it
+-- provides little value in the code above.
+mkDefUnitId :: ComponentId -> Map ModuleName Module -> UnitId
+mkDefUnitId cid insts =
+  mkUnitId (unComponentId cid ++ maybe "" ("+" ++) (hashModuleSubst insts))
 
 ---------------------------
 -- Build targets
