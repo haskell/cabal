@@ -291,8 +291,8 @@ showOptions verb q xs = showQPN q ++ "; " ++ (L.intercalate ", "
   [if isJust linkedTo
     then showOption q x
     else showI i -- Don't show the package, just the version
-  | x@(POption i linkedTo) <- if verb >= verbose then xs else take 3 xs
-  ] ++ if verb < verbose && length xs >= 3 then " and other versions" else "")
+  | x@(POption i linkedTo) <- if verb >= verbose then xs else take 1 xs
+  ] ++ if verb < verbose && length xs >= 1 then " and other versions" else "")
 
 showGR :: QGoalReason -> String
 showGR UserGoal            = " (user goal)"
