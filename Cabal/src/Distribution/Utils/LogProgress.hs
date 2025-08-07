@@ -19,6 +19,7 @@ import Prelude ()
 import Distribution.Simple.Utils
 import Distribution.Utils.Progress
 import Distribution.Verbosity
+import GHC.Stack (HasCallStack, callStack, prettyCallStack)
 import Text.PrettyPrint
 
 type CtxMsg = Doc
@@ -88,10 +89,14 @@ infoProgress s = LogProgress $ \env ->
     stepProgress s
 
 -- | Fail the computation with an error message.
-dieProgress :: Doc -> LogProgress a
+dieProgress :: HasCallStack => Doc -> LogProgress a
 dieProgress s = LogProgress $ \env ->
   failProgress $
-    hang (text "Error:") 4 (formatMsg (le_context env) s)
+    hang (text "Error:") 4 $
+      vcat
+        [ formatMsg (le_context env) s
+        , text (prettyCallStack callStack)
+        ]
 
 -- | Format a message with context. (Something simple for now.)
 formatMsg :: [CtxMsg] -> Doc -> Doc
