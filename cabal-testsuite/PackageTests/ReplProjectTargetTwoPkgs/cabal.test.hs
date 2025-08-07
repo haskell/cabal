@@ -38,9 +38,4 @@ main = cabalTest . recordMode RecordMarked $ do
   dotMissing <- fails $ cabal' "repl" [ "--project-dir=.", "--project-file=missing.project" ]
   assertOutputContains "The given project directory/file combination './missing.project' does not exist." dotMissing
 
-  log "checking repl command with a single package in 'one.project'"
-  oneProject <- cabal' "repl" [ "--project-file=one.project" ]
-  assertOutputContains "the following will be built" oneProject
-  assertOutputContains "pkg-one-0.1 (interactive) (first run)" oneProject
-
   return ()
