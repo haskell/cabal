@@ -131,7 +131,7 @@ import Data.Foldable (fold)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Monoid as Mon
-import Distribution.Verbosity
+import qualified Distribution.Compat.Graph as Graph
 import System.FilePath ((</>))
 import Text.PrettyPrint (hsep, parens, text)
 
@@ -534,7 +534,7 @@ elabConfiguredName verbosity elab
               Just (CLibName LMainLibName) -> ""
               Just cname -> prettyShow cname ++ " from "
       )
-        ++ prettyShow (packageId elab)
+        ++ prettyShow (Graph.nodeKey elab)
   | otherwise =
       prettyShow (elabUnitId elab)
 

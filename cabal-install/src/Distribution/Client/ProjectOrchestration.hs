@@ -108,6 +108,7 @@ import Distribution.Client.Compat.Prelude
 import System.Directory
   ( makeAbsolute
   )
+import qualified Distribution.Compat.Graph as Graph
 import Prelude ()
 
 import Distribution.Client.ProjectBuilding
@@ -1446,7 +1447,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
       case reason of
         DownloadFailed _ -> "Failed to download " ++ pkgstr
         UnpackFailed _ -> "Failed to unpack " ++ pkgstr
-        ConfigureFailed _ -> "Failed to build " ++ pkgstr
+        ConfigureFailed _ -> "Failed to configure " ++ pkgstr
         BuildFailed _ -> "Failed to build " ++ pkgstr
         ReplFailed _ -> "repl failed for " ++ pkgstr
         HaddocksFailed _ -> "Failed to build documentation for " ++ pkgstr
@@ -1456,7 +1457,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
         GracefulFailure msg -> msg
         DependentFailed depid ->
           "Failed to build "
-            ++ prettyShow (packageId pkg)
+            ++ prettyShow (Graph.nodeKey pkg)
             ++ " because it depends on "
             ++ prettyShow depid
             ++ " which itself failed to build"
