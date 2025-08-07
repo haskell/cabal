@@ -95,6 +95,7 @@ normalizeOutput nenv =
     -- hackage-security locks occur non-deterministically
     . resub "(Released|Acquired|Waiting) .*hackage-security-lock\n" ""
     . resub "installed: [0-9]+(\\.[0-9]+)*" "installed: <VERSION>"
+    . resub "\\.hs:[0-9]+:[0-9]+" ".hs:_:_"
   where
     sameDir = "(\\.((\\\\)+|\\/))*"
     packageIdRegex pid =
