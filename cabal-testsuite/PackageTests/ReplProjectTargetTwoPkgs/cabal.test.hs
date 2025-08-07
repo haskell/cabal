@@ -38,4 +38,10 @@ main = cabalTest . recordMode RecordMarked $ do
   dotMissing <- fails $ cabal' "repl" [ "--project-dir=.", "--project-file=missing.project" ]
   assertOutputContains "The given project directory/file combination './missing.project' does not exist." dotMissing
 
+  log "checking repl command with the 'all' target"
+  allTarget <- cabal' "repl" ["all", "--enable-multi-repl"]
+
+  readFileVerbatim "all-repl.txt"
+    >>= flip (assertOn isInfixOf multilineNeedleHaystack) allTarget . normalizePathSeparators
+
   return ()

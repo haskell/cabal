@@ -1,9 +1,9 @@
-name:           pkg-one
+name:           pkg-two
 version:        0.1
 license:        BSD3
 cabal-version:  >= 1.2
 build-type:     Simple
 
 library
-    exposed-modules:    Foo
+    exposed-modules:    Bar
     build-depends:      base

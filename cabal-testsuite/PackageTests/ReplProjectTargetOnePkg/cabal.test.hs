@@ -19,4 +19,9 @@ main = cabalTest . recordMode RecordMarked $ do
   assertOutputContains "the following will be built" defaultProject
   assertOutputContains "pkg-one-0.1" defaultProject
 
+  log "checking repl command with the 'all' target"
+  allTarget <- cabal' "repl" ["all"]
+  assertOutputContains "the following will be built" allTarget
+  assertOutputContains "pkg-one-0.1" allTarget
+
   return ()

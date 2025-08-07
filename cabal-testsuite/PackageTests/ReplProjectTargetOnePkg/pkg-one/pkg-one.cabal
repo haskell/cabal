@@ -7,4 +7,3 @@ build-type:    Simple
 library
   exposed-modules: Foo
   build-depends:   base
-  hs-source-dirs:  .

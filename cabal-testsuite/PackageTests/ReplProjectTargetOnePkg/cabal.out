@@ -28,3 +28,10 @@ Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - pkg-one-0.1 (configuration changed)
 Configuring pkg-one-0.1...
+# checking repl command with the 'all' target
+# cabal repl
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - pkg-one-0.1 (interactive) (configuration changed)
+Configuring pkg-one-0.1...
+Preprocessing library for pkg-one-0.1...
