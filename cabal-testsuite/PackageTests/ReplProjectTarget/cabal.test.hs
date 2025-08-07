@@ -5,9 +5,9 @@ main = cabalTest . recordMode RecordMarked $ do
   liftIO $ skipIfWindows "I'm seeing extra newlines in the output on Windows"
   let log = recordHeader . pure
 
-  -- This triggers "Assertion failed" with backtrace to TemTestDir.hs:37:3
-  -- log "checking repl command with a 'cabal.project' and --ignore-project"
-  -- ignored <- cabal' "repl" ["--ignore-project"]
+  log "checking repl command with a 'cabal.project' and --ignore-project"
+  ignored <- cabal' "repl" ["--ignore-project"]
+  assertOutputContains "fake-package-0 (lib) (first run)" ignored
 
   log "checking repl command with a 'cabal.project' and no project options"
   defaultProject <- fails $ cabal' "repl" []
@@ -38,8 +38,10 @@ main = cabalTest . recordMode RecordMarked $ do
   dotMissing <- fails $ cabal' "repl" [ "--project-dir=.", "--project-file=missing.project" ]
   assertOutputContains "The given project directory/file combination './missing.project' does not exist." dotMissing
 
-  -- This triggers "Assertion failed" with backtrace to TemTestDir.hs:37:3
-  -- log "checking repl command with a single package in 'one.project'"
-  -- oneProject <- cabal' "repl" [ "--project-file=one.project" ]
+  log "checking repl command with a single package in 'one.project'"
+  oneProject <- fails $ cabal' "repl" [ "--project-file=one.project" ]
+
+  readFileVerbatim "one-repl.txt"
+    >>= flip (assertOn isInfixOf multilineNeedleHaystack) oneProject . normalizePathSeparators
 
   return ()
