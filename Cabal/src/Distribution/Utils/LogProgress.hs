@@ -9,6 +9,7 @@ module Distribution.Utils.LogProgress
   , infoProgress
   , dieProgress
   , addProgressCtx
+  , ErrMsg
   ) where
 
 import Distribution.Compat.Prelude
