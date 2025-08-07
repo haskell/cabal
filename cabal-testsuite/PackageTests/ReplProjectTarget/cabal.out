@@ -34,6 +34,13 @@ There are no packages in 'empty.project'. Please add a package to the project an
 # cabal repl
 # checking repl command with a single package in 'one.project'
 # cabal repl
-Error: [Cabal-7076]
-Please pick a single [package:][ctype:]component as target for the REPL command. The packages in 'one.project' from which to select a component target are:
- - pkg-one
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - pkg-one-0.1 (interactive) (first run)
+Configuring pkg-one-0.1...
+Preprocessing library for pkg-one-0.1...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - pkg-one-0.1 (configuration changed)
+Configuring pkg-one-0.1...

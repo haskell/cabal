@@ -295,8 +295,12 @@ replAction flags@NixStyleFlags{extraFlags = replFlags@ReplFlags{..}, configFlags
         when (null targetSelectors) $ do
           let projectFile = projectConfigProjectFile . projectConfigShared $ projectConfig ctx
           let pkgs = projectPackages $ projectConfig ctx
-          dieWithException verbosity $
-            RenderReplTargetProblem [render (reportProjectNoTarget projectFile pkgs)]
+          case pkgs of
+            [pkg] ->
+              replAction flags [pkg] globalFlags
+            _ ->
+              dieWithException verbosity $
+                RenderReplTargetProblem [render (reportProjectNoTarget projectFile pkgs)]
         return ctx
       GlobalContext -> do
         unless (null targetStrings) $
