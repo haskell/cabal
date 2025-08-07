@@ -3,3 +3,5 @@ Configuring Fail1-0.1.0.0...
 Error:
     Non-library component has unfilled requirements: UnfilledSig
     In the stanza executable foo
+    CallStack (from HasCallStack):
+  dieProgress, called at src/Distribution/Backpack/LinkedComponent.hs:257:7 in Cabal-3.17.0.0-inplace:Distribution.Backpack.LinkedComponent
