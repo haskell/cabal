@@ -309,7 +309,7 @@ unionVersionIntervals
   -> VersionIntervals
   -> VersionIntervals
 unionVersionIntervals (VersionIntervals is0) (VersionIntervals is'0) =
-  checkInvariant (VersionIntervals (union is0 is'0))
+  checkInvariant (VersionIntervals (is0 `union` is'0))
   where
     union is [] = is
     union [] is' = is'
@@ -317,11 +317,11 @@ unionVersionIntervals (VersionIntervals is0) (VersionIntervals is'0) =
       -- @i < i'@ and separated: keep @i@.
       Left Nothing -> i : union is (i' : is')
       -- @i'' = i ∪ i'@ and @i@ ends first: drop @i@, replace @i'@ by @i''@.
-      Left (Just i'') -> union is (i'' : is')
+      Left (Just i'') -> is `union` (i'' : is')
       -- @i' < i@ and separated: keep @i'@.
       Right Nothing -> i' : union (i : is) is'
       -- @i'' = i ∪ i'@ and @i'@ ends first: drop @i'@, replace @i@ by @i''@.
-      Right (Just i'') -> union (i'' : is) is'
+      Right (Just i'') -> (i'' : is) `union` is'
 
 -- | Given two version intervals @i1@ and @i2@, return one of the following:
 --
@@ -364,17 +364,17 @@ intersectVersionIntervals
   -> VersionIntervals
   -> VersionIntervals
 intersectVersionIntervals (VersionIntervals is0) (VersionIntervals is'0) =
-  checkInvariant (VersionIntervals (intersect is0 is'0))
+  checkInvariant (VersionIntervals (is0 `intersect` is'0))
   where
     intersect _ [] = []
     intersect [] _ = []
     intersect (i : is) (i' : is') = case intersectInterval i i' of
       -- @i < i'@: throw out @i@
-      Left Nothing -> intersect is (i' : is')
+      Left Nothing -> is `intersect` (i' : is')
       -- @i'' = i /\ i'@ and @i@ ends first: replace @i@ by @i''@.
       Left (Just i'') -> i'' : intersect is (i' : is')
       -- @i' < i@: throw out @i'@
-      Right Nothing -> intersect (i : is) is'
+      Right Nothing -> (i : is) `intersect` is'
       -- @i'' = i /\ i'@ and @i'@ ends first: replace @i'@ by @i''@.
       Right (Just i'') -> i'' : intersect (i : is) is'
 

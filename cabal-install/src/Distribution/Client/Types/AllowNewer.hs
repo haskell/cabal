@@ -214,7 +214,7 @@ isRelaxDeps RelaxDepsAll = True
 -- | A smarter 'RelaxedDepsSome', @*:*@ is the same as @all@.
 mkRelaxDepSome :: [RelaxedDep] -> RelaxDeps
 mkRelaxDepSome xs
-  | elem (RelaxedDep RelaxDepScopeAll RelaxDepModNone RelaxDepSubjectAll) xs =
+  | RelaxedDep RelaxDepScopeAll RelaxDepModNone RelaxDepSubjectAll `elem` xs =
       RelaxDepsAll
   | otherwise =
       RelaxDepsSome xs

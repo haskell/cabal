@@ -331,7 +331,7 @@ installCommand =
     }
   where
     -- install doesn't take installDirs flags, since it always installs into the store in a fixed way.
-    notInstallDirOpt x = notElem (optionName x) installDirOptNames
+    notInstallDirOpt x = optionName x `notElem` installDirOptNames
     installDirOptNames = map optionName installDirsOptions
 
 -- | The @install@ command actually serves four different needs. It installs:
