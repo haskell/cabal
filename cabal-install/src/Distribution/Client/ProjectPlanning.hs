@@ -3997,7 +3997,7 @@ setupHsConfigureFlags
   -> m Cabal.ConfigFlags
 setupHsConfigureFlags
   mkSymbolicPath
-  _plan
+  plan
   (ReadyPackage elab@ElaboratedConfiguredPackage{..})
   sharedConfig
   configCommonFlags = do
