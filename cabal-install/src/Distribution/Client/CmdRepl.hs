@@ -583,7 +583,7 @@ reportProjectNoTarget projectFile pkgs =
       Flag "" -> Nothing
       Flag n -> Just $ quotes (text n)
       _ -> Nothing
-    pickComponent = text "pick a single [package:][ctype:]component as target for the REPL command."
+    pickComponent = text "pick a single [package:][ctype:]component (or all) as target for the REPL command."
 
 validatedTargets
   :: Verbosity
