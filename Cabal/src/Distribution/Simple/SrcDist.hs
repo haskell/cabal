@@ -428,7 +428,7 @@ filterAutogenModules pkg_descr0 =
     filterFunction bi = \mn ->
       mn /= pathsModule
         && mn /= packageInfoModule
-        && not (mn `elem` autogenModules bi)
+        && notElem mn (autogenModules bi)
 
 -- | Prepare a directory tree of source files for a snapshot version.
 -- It is expected that the appropriate snapshot version has already been set
