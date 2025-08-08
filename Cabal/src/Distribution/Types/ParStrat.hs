@@ -10,6 +10,11 @@ data ParStratX sem
     Serial
   deriving (Show)
 
+instance NFData sem => NFData (ParStratX sem) where
+  rnf (NumJobs m) = rnf m
+  rnf (UseSem s) = rnf s
+  rnf Serial = ()
+
 -- | Used by Cabal to indicate that we want to use this specific semaphore (created by cabal-install)
 type ParStrat = ParStratX String
 

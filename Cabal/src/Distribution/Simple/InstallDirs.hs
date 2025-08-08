@@ -111,6 +111,9 @@ data InstallDirs dir = InstallDirs
 instance Binary dir => Binary (InstallDirs dir)
 instance Structured dir => Structured (InstallDirs dir)
 
+instance NFData dir => NFData (InstallDirs dir) where 
+  rnf = genericRnf
+
 instance (Semigroup dir, Monoid dir) => Monoid (InstallDirs dir) where
   mempty = gmempty
   mappend = (<>)
@@ -398,6 +401,9 @@ newtype PathTemplate = PathTemplate [PathComponent]
 
 instance Binary PathTemplate
 instance Structured PathTemplate
+
+instance NFData PathTemplate where
+  rnf = genericRnf
 
 type PathTemplateEnv = [(PathTemplateVariable, PathTemplate)]
 

@@ -22,6 +22,9 @@ data WriteGhcEnvironmentFilesPolicy
 instance Binary WriteGhcEnvironmentFilesPolicy
 instance Structured WriteGhcEnvironmentFilesPolicy
 
+instance NFData WriteGhcEnvironmentFilesPolicy where
+  rnf = genericRnf
+
 instance Parsec WriteGhcEnvironmentFilesPolicy where
   parsec = do
     token <- parsecToken
