@@ -3,6 +3,9 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
+#if MIN_VERSION_base(4,21,0)
+{-# LANGUAGE ImplicitParams #-}
+#endif
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
@@ -39,6 +42,7 @@ module Distribution.Simple.Utils
   , dieNoWrap
   , topHandler
   , topHandlerWith
+  , isUserException
   , warn
   , warnError
   , notice
@@ -301,6 +305,10 @@ import GitHash
   )
 #endif
 
+#if MIN_VERSION_base(4,21,0)
+import Control.Exception.Context
+#endif
+
 -- We only get our own version number when we're building with ourselves
 cabalVersion :: Version
 #if defined(BOOTSTRAPPED_CABAL)
@@ -505,9 +513,22 @@ ioeModifyErrorString = over ioeErrorString
 ioeErrorString :: Lens' IOError String
 ioeErrorString f ioe = ioeSetErrorString ioe <$> f (ioeGetErrorString ioe)
 
+-- | Check that the type of the exception matches the given user error type.
+isUserException :: forall user_err. Typeable user_err => Proxy user_err -> Exception.SomeException -> Bool
+isUserException Proxy (SomeException se) =
+  case cast se :: Maybe user_err of
+    Just{} -> True
+    Nothing -> False
+
 {-# NOINLINE topHandlerWith #-}
-topHandlerWith :: forall a. (Exception.SomeException -> IO a) -> IO a -> IO a
-topHandlerWith cont prog = do
+topHandlerWith
+  :: forall a
+   . (Exception.SomeException -> Bool)
+  -- ^ Identify when the error is an exception to display to users.
+  -> (Exception.SomeException -> IO a)
+  -> IO a
+  -> IO a
+topHandlerWith is_user_exception cont prog = do
   -- By default, stderr to a terminal device is NoBuffering. But this
   -- is *really slow*
   hSetBuffering stderr LineBuffering
@@ -535,7 +556,7 @@ topHandlerWith cont prog = do
       cont se
 
     message :: String -> Exception.SomeException -> String
-    message pname (Exception.SomeException se) =
+    message pname e@(Exception.SomeException se) =
       case cast se :: Maybe Exception.IOException of
         Just ioe
           | ioeGetVerbatim ioe ->
@@ -550,15 +571,27 @@ topHandlerWith cont prog = do
                     _ -> ""
                   detail = ioeGetErrorString ioe
                in wrapText $ addErrorPrefix $ pname ++ ": " ++ file ++ detail
-        _ ->
-          displaySomeException se ++ "\n"
+        -- Don't print a call stack for a "user exception"
+        _
+          | is_user_exception e -> displayException e
+          -- Other errors which have are not intended for user display, print with a callstack.
+          | otherwise -> displaySomeExceptionWithContext e ++ "\n"
 
 -- | BC wrapper around 'Exception.displayException'.
-displaySomeException :: Exception.Exception e => e -> String
-displaySomeException se = Exception.displayException se
+displaySomeExceptionWithContext :: SomeException -> String
+#if MIN_VERSION_base(4,21,0)
+displaySomeExceptionWithContext (SomeException e) =
+  case displayExceptionContext ?exceptionContext of
+    "" -> msg
+    dc -> msg ++ "\n\n" ++ dc
+  where
+    msg = displayException e
+#else
+displaySomeExceptionWithContext e = displayException e
+#endif
 
-topHandler :: IO a -> IO a
-topHandler prog = topHandlerWith (const $ exitWith (ExitFailure 1)) prog
+topHandler :: (Exception.SomeException -> Bool) -> IO a -> IO a
+topHandler is_user_exception prog = topHandlerWith is_user_exception (const $ exitWith (ExitFailure 1)) prog
 
 -- | Depending on 'isVerboseStderr', set the output handle to 'stderr' or 'stdout'.
 verbosityHandle :: Verbosity -> Handle
