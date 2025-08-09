@@ -320,7 +320,7 @@ depLibraryPaths
     -- because you never have any internal libraries in this case;
     -- they're all external.
     let external_ipkgs = filter is_external (allPackages installed)
-        is_external ipkg = not (installedUnitId ipkg `elem` internalDeps)
+        is_external ipkg = notElem (installedUnitId ipkg) internalDeps
         -- First look for dynamic libraries in `dynamic-library-dirs`, and use
         -- `library-dirs` as a fall back.
         getDynDir pkg = case Installed.libraryDynDirs pkg of
