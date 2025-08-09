@@ -14,8 +14,8 @@
 - ignore: {name: "Move guards forward"} # 4 hints
 - ignore: {name: "Redundant $"} # 202 hints
 - ignore: {name: "Redundant $!"} # 1 hint
-- ignore: {name: "Redundant <$>"} # 18 hints
-- ignore: {name: "Redundant bracket"} # 274 hints
+- ignore: {name: "Redundant <$>"} # 17 hints
+- ignore: {name: "Redundant bracket"} # 276 hints
 - ignore: {name: "Redundant guard"} # 2 hints
 - ignore: {name: "Redundant if"} # 6 hints
 - ignore: {name: "Redundant lambda"} # 19 hints
@@ -40,13 +40,12 @@
 - ignore: {name: "Use catMaybes"} # 4 hints
 - ignore: {name: "Use concatMap"} # 2 hints
 - ignore: {name: "Use const"} # 37 hints
-- ignore: {name: "Use elem"} # 2 hints
 - ignore: {name: "Use first"} # 5 hints
 - ignore: {name: "Use fmap"} # 24 hints
 - ignore: {name: "Use fold"} # 1 hint
 - ignore: {name: "Use fromMaybe"} # 5 hints
 - ignore: {name: "Use fst"} # 2 hints
-- ignore: {name: "Use infix"} # 20 hints
+- ignore: {name: "Use infix"} # 27 hints
 - ignore: {name: "Use lambda-case"} # 58 hints
 - ignore: {name: "Use list comprehension"} # 19 hints
 - ignore: {name: "Use list literal"} # 3 hints
@@ -57,7 +56,6 @@
 - ignore: {name: "Use max"} # 2 hints
 - ignore: {name: "Use maybe"} # 8 hints
 - ignore: {name: "Use newtype instead of data"} # 31 hints
-- ignore: {name: "Use notElem"} # 9 hints
 - ignore: {name: "Use null"} # 2 hints
 - ignore: {name: "Use record patterns"} # 16 hints
 - ignore: {name: "Use replicateM_"} # 2 hints
