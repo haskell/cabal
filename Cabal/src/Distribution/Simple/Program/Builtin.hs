@@ -61,6 +61,9 @@ import qualified Data.Map as Map
 
 -- ------------------------------------------------------------
 
+-- NOTE: if you modify the list of builtin programs below, also update documentation in
+-- the Cabal manual: option `--with-PROG` described in doc/setup-commands.rst
+
 -- | The default list of programs.
 -- These programs are typically used internally to Cabal.
 builtinPrograms :: [Program]
