@@ -787,7 +787,7 @@ jobs:
     name: Test FreeBSD x86_64
     runs-on: [self-hosted, FreeBSD, X64]
     needs: ["build-freebsd-x86_64"]
-    if: ${{ inputs.test }}
+    if: ${{ inputs.test }} && contains(github.repository, 'haskell/')
     env:
       ADD_CABAL_ARGS: ""
       ARTIFACT: "x86_64-portbld-freebsd"
