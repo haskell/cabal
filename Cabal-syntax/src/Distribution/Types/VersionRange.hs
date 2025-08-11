@@ -183,7 +183,7 @@ isAnyVersionLight _vr = False
 isWildcardRange :: Version -> Version -> Bool
 isWildcardRange ver1 ver2 = check (versionNumbers ver1) (versionNumbers ver2)
   where
-    check (n : []) (m : []) | n + 1 == m = True
+    check [n] [m] | n + 1 == m = True
     check (n : ns) (m : ms) | n == m = check ns ms
     check _ _ = False
 

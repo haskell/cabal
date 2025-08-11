@@ -637,7 +637,7 @@ gitProgram =
   where
     isTypical c = isDigit c || c == '.'
     split cs = case break (== '.') cs of
-      (chunk, []) -> chunk : []
+      (chunk, []) -> [chunk]
       (chunk, _ : rest) -> chunk : split rest
 
 -- | VCS driver for Mercurial.

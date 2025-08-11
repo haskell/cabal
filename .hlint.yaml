@@ -48,8 +48,6 @@
 - ignore: {name: "Use infix"} # 27 hints
 - ignore: {name: "Use lambda-case"} # 58 hints
 - ignore: {name: "Use list comprehension"} # 19 hints
-- ignore: {name: "Use list literal"} # 3 hints
-- ignore: {name: "Use list literal pattern"} # 11 hints
 - ignore: {name: "Use map once"} # 7 hints
 - ignore: {name: "Use map with tuple-section"} # 3 hints
 - ignore: {name: "Use mapMaybe"} # 13 hints

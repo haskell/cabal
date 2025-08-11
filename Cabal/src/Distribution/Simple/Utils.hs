@@ -1594,7 +1594,7 @@ createDirectoryIfMissingVerbose verbosity create_parents path0
     parents = reverse . scanl1 (</>) . splitDirectories . normalise
 
     createDirs [] = return ()
-    createDirs (dir : []) = createDir dir throwIO
+    createDirs [dir] = createDir dir throwIO
     createDirs (dir : dirs) =
       createDir dir $ \_ -> do
         createDirs dirs
