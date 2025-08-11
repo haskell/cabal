@@ -201,8 +201,11 @@ files of a package:
     name of a program that can be found on the program search path. For
     example: ``--with-ghc=ghc-6.6.1`` or
     ``--with-cpphs=/usr/local/bin/cpphs``. The full list of accepted
-    programs is not enumerated in this user guide. Rather, run
-    ``cabal install --help`` to view the list.
+    programs is as follows:
+    ``alex``, ``ar``, ``c2hs``, ``cpphs``, ``doctest``, ``gcc``, ``ghc``,
+    ``ghc-pkg``, ``ghcjs``, ``ghcjs-pkg``, ``haddock``, ``happy``,
+    ``hpc``, ``hsc2hs``, ``hscolour``, ``jhc``, ``ld``, ``pkg-config``,
+    ``runghc``, ``strip``, ``tar``, ``uhc``.
 
 .. option:: --PROG-options=OPTS
 
