@@ -128,7 +128,7 @@ instance Show a => Show (Graph a) where
   show = show . toList
 
 instance (IsNode a, Read a, Show (Key a)) => Read (Graph a) where
-  readsPrec d s = map (\(a, r) -> (fromDistinctList a, r)) (readsPrec d s)
+  readsPrec d s = map (first fromDistinctList) (readsPrec d s)
 
 instance (IsNode a, Binary a, Show (Key a)) => Binary (Graph a) where
   put x = put (toList x)
