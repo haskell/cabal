@@ -996,7 +996,7 @@ tests =
                     , Right $ exAv "B" 1 [ExFix "A" 4]
                     ]
                   rejecting = "rejecting: A-3.0.0 (conflict: B => A==4.0.0)"
-                  skipping = "skipping: A; 2.0.0 and other versions (has"
+                  skipping = "skipping: A; 2.0.0 and 1 other versions (has"
                in mkTest db "show summarized skipping versions list" ["B"] $
                     solverFailure (\msg -> rejecting `isInfixOf` msg && skipping `isInfixOf` msg)
           ]
