@@ -84,22 +84,22 @@ goldenPkgDescTests v srcDb pkgDir pkgName =
     [ goldenVsString
         "Empty flags, non-simple, no comments"
         (goldenPkgDesc "pkg.golden")
-        $ let opts = WriteOpts False False False v pkgDir Library pkgName defaultCabalVersion
+        $ let opts = WriteOpts False False False (verbosityFlags v) pkgDir Library pkgName defaultCabalVersion
            in runPkgDesc opts emptyFlags pkgArgs
     , goldenVsString
         "Empty flags, non-simple, with comments"
         (goldenPkgDesc "pkg-with-comments.golden")
-        $ let opts = WriteOpts False False False v pkgDir Library pkgName defaultCabalVersion
+        $ let opts = WriteOpts False False False (verbosityFlags v) pkgDir Library pkgName defaultCabalVersion
            in runPkgDesc opts emptyFlags pkgArgs
     , goldenVsString
         "Dummy flags, >= cabal version syntax, with comments"
         (goldenPkgDesc "pkg-with-flags.golden")
-        $ let opts = WriteOpts False False False v pkgDir Library pkgName defaultCabalVersion
+        $ let opts = WriteOpts False False False (verbosityFlags v) pkgDir Library pkgName defaultCabalVersion
            in runPkgDesc opts (dummyFlags{cabalVersion = Flag CabalSpecV1_0}) pkgArgs
     , goldenVsString
         "Dummy flags, old cabal version, with comments"
         (goldenPkgDesc "pkg-old-cabal-with-flags.golden")
-        $ let opts = WriteOpts False False False v pkgDir Library pkgName defaultCabalVersion
+        $ let opts = WriteOpts False False False (verbosityFlags v) pkgDir Library pkgName defaultCabalVersion
            in runPkgDesc opts (dummyFlags{cabalVersion = Flag CabalSpecV2_0}) pkgArgs
     ]
   where
@@ -120,27 +120,27 @@ goldenExeTests v pkgIx pkgDir pkgName =
     [ goldenVsString
         "Empty flags, not simple, no options, no comments"
         (goldenExe "exe-no-comments.golden")
-        $ let opts = WriteOpts False False True v pkgDir Executable pkgName defaultCabalVersion
+        $ let opts = WriteOpts False False True (verbosityFlags v) pkgDir Executable pkgName defaultCabalVersion
            in runGoldenExe opts exeArgs emptyFlags
     , goldenVsString
         "Empty flags, not simple, with comments + no minimal"
         (goldenExe "exe-with-comments.golden")
-        $ let opts = WriteOpts False False False v pkgDir Executable pkgName defaultCabalVersion
+        $ let opts = WriteOpts False False False (verbosityFlags v) pkgDir Executable pkgName defaultCabalVersion
            in runGoldenExe opts exeArgs emptyFlags
     , goldenVsString
         "Empty flags, not simple, with minimal + no comments"
         (goldenExe "exe-minimal-no-comments.golden")
-        $ let opts = WriteOpts False True True v pkgDir Executable pkgName defaultCabalVersion
+        $ let opts = WriteOpts False True True (verbosityFlags v) pkgDir Executable pkgName defaultCabalVersion
            in runGoldenExe opts exeArgs emptyFlags
     , goldenVsString
         "Empty flags, not simple, with minimal + comments"
         (goldenExe "exe-simple-minimal-with-comments.golden")
-        $ let opts = WriteOpts False True False v pkgDir Executable pkgName defaultCabalVersion
+        $ let opts = WriteOpts False True False (verbosityFlags v) pkgDir Executable pkgName defaultCabalVersion
            in runGoldenExe opts exeArgs emptyFlags
     , goldenVsString
         "Build tools flag, not simple, with comments + no minimal"
         (goldenExe "exe-build-tools-with-comments.golden")
-        $ let opts = WriteOpts False False False v pkgDir Executable pkgName defaultCabalVersion
+        $ let opts = WriteOpts False False False (verbosityFlags v) pkgDir Executable pkgName defaultCabalVersion
            in runGoldenExe opts exeArgs (emptyFlags{buildTools = Flag ["happy"]})
     ]
   where
@@ -161,32 +161,32 @@ goldenLibTests v pkgIx pkgDir pkgName =
     [ goldenVsString
         "Empty flags, not simple, no options, no comments"
         (goldenLib "lib-no-comments.golden")
-        $ let opts = WriteOpts False False True v pkgDir Library pkgName defaultCabalVersion
+        $ let opts = WriteOpts False False True (verbosityFlags v) pkgDir Library pkgName defaultCabalVersion
            in runGoldenLib opts libArgs emptyFlags
     , goldenVsString
         "Empty flags, simple, no options, no comments"
         (goldenLib "lib-simple-no-comments.golden")
-        $ let opts = WriteOpts False False True v pkgDir Library pkgName defaultCabalVersion
+        $ let opts = WriteOpts False False True (verbosityFlags v) pkgDir Library pkgName defaultCabalVersion
            in runGoldenLib opts libArgs emptyFlags
     , goldenVsString
         "Empty flags, not simple, with comments + no minimal"
         (goldenLib "lib-with-comments.golden")
-        $ let opts = WriteOpts False False False v pkgDir Library pkgName defaultCabalVersion
+        $ let opts = WriteOpts False False False (verbosityFlags v) pkgDir Library pkgName defaultCabalVersion
            in runGoldenLib opts libArgs emptyFlags
     , goldenVsString
         "Empty flags, not simple, with minimal + no comments"
         (goldenLib "lib-minimal-no-comments.golden")
-        $ let opts = WriteOpts False True True v pkgDir Library pkgName defaultCabalVersion
+        $ let opts = WriteOpts False True True (verbosityFlags v) pkgDir Library pkgName defaultCabalVersion
            in runGoldenLib opts libArgs emptyFlags
     , goldenVsString
         "Empty flags, not simple, with minimal + comments"
         (goldenLib "lib-simple-minimal-with-comments.golden")
-        $ let opts = WriteOpts False True False v pkgDir Library pkgName defaultCabalVersion
+        $ let opts = WriteOpts False True False (verbosityFlags v) pkgDir Library pkgName defaultCabalVersion
            in runGoldenLib opts libArgs emptyFlags
     , goldenVsString
         "Build tools flag, not simple, with comments + no minimal"
         (goldenLib "lib-build-tools-with-comments.golden")
-        $ let opts = WriteOpts False False False v pkgDir Library pkgName defaultCabalVersion
+        $ let opts = WriteOpts False False False (verbosityFlags v) pkgDir Library pkgName defaultCabalVersion
            in runGoldenLib opts libArgs (emptyFlags{buildTools = Flag ["happy"]})
     ]
   where
@@ -207,37 +207,37 @@ goldenTestTests v pkgIx pkgDir pkgName =
     [ goldenVsString
         "Empty flags, not simple, no options, no comments"
         (goldenTest "test-no-comments.golden")
-        $ let opts = WriteOpts False False True v pkgDir Library pkgName defaultCabalVersion
+        $ let opts = WriteOpts False False True (verbosityFlags v) pkgDir Library pkgName defaultCabalVersion
            in runGoldenTest opts testArgs emptyFlags
     , goldenVsString
         "Empty flags, not simple, with comments + no minimal"
         (goldenTest "test-with-comments.golden")
-        $ let opts = WriteOpts False False False v pkgDir Library pkgName defaultCabalVersion
+        $ let opts = WriteOpts False False False (verbosityFlags v) pkgDir Library pkgName defaultCabalVersion
            in runGoldenTest opts testArgs emptyFlags
     , goldenVsString
         "Empty flags, not simple, with minimal + no comments"
         (goldenTest "test-minimal-no-comments.golden")
-        $ let opts = WriteOpts False True True v pkgDir Library pkgName defaultCabalVersion
+        $ let opts = WriteOpts False True True (verbosityFlags v) pkgDir Library pkgName defaultCabalVersion
            in runGoldenTest opts testArgs emptyFlags
     , goldenVsString
         "Empty flags, not simple, with minimal + comments"
         (goldenTest "test-simple-minimal-with-comments.golden")
-        $ let opts = WriteOpts False True False v pkgDir Library pkgName defaultCabalVersion
+        $ let opts = WriteOpts False True False (verbosityFlags v) pkgDir Library pkgName defaultCabalVersion
            in runGoldenTest opts testArgs emptyFlags
     , goldenVsString
         "Build tools flag, not simple, with comments + no minimal"
         (goldenTest "test-build-tools-with-comments.golden")
-        $ let opts = WriteOpts False False False v pkgDir Library pkgName defaultCabalVersion
+        $ let opts = WriteOpts False False False (verbosityFlags v) pkgDir Library pkgName defaultCabalVersion
            in runGoldenTest opts testArgs (emptyFlags{buildTools = Flag ["happy"]})
     , goldenVsString
         "Standalone tests, empty flags, not simple, no options, no comments"
         (goldenTest "standalone-test-no-comments.golden")
-        $ let opts = WriteOpts False False True v pkgDir TestSuite pkgName defaultCabalVersion
+        $ let opts = WriteOpts False False True (verbosityFlags v) pkgDir TestSuite pkgName defaultCabalVersion
            in runGoldenTest opts testArgs emptyFlags
     , goldenVsString
         "Standalone tests, empty flags, not simple, with comments + no minimal"
         (goldenTest "standalone-test-with-comments.golden")
-        $ let opts = WriteOpts False False False v pkgDir TestSuite pkgName defaultCabalVersion
+        $ let opts = WriteOpts False False False (verbosityFlags v) pkgDir TestSuite pkgName defaultCabalVersion
            in runGoldenTest opts testArgs emptyFlags
     ]
   where

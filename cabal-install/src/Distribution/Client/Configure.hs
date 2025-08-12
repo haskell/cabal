@@ -130,6 +130,7 @@ import Distribution.Version
   )
 
 import Distribution.Client.Errors
+import Distribution.Verbosity (verbosityFlags, verbosityLevel)
 
 -- | Choose the Cabal version such that the setup scripts compiled against this
 -- version will support the given command-line flags. Currently, it implements no
@@ -462,7 +463,7 @@ planLocalPackage
           -- package database and executables never show up in the
           -- installed package index
           . setSolveExecutables (SolveExecutables False)
-          . setSolverVerbosity verbosity
+          . setSolverVerbosity (verbosityLevel verbosity)
           $ standardInstallPolicy
             installedPkgIndex
             -- NB: We pass in an *empty* source package database,
@@ -515,7 +516,7 @@ configurePackage
           configFlags
             { configCommonFlags =
                 (configCommonFlags configFlags)
-                  { setupVerbosity = toFlag verbosity
+                  { setupVerbosity = toFlag $ verbosityFlags verbosity
                   , setupWorkingDir = maybeToFlag $ useWorkingDir scriptOptions
                   }
             , configIPID =

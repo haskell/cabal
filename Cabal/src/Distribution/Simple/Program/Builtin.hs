@@ -247,7 +247,10 @@ stripProgram :: Program
 stripProgram =
   (simpleProgram "strip")
     { programFindVersion = \verbosity ->
-        findProgramVersion "--version" stripExtractVersion (lessVerbose verbosity)
+        findProgramVersion
+          "--version"
+          stripExtractVersion
+          (modifyVerbosityFlags lessVerbose verbosity)
     }
 
 hsc2hsProgram :: Program

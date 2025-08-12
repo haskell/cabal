@@ -17,6 +17,7 @@ import Distribution.Simple.LocalBuildInfo (interpretSymbolicPathLBI)
 import Distribution.Simple.SetupHooks
 import Distribution.Simple.Utils
 import Distribution.Utils.Path
+import Distribution.Verbosity
 
 import Data.Foldable ( for_ )
 import Data.List ( isPrefixOf )
@@ -38,19 +39,21 @@ setupHooks =
 
 preBuildRules :: PreBuildComponentInputs -> RulesM ()
 preBuildRules (PreBuildComponentInputs { buildingWhat = what, localBuildInfo = lbi, targetInfo = tgt }) = mdo
-  let verbosity = buildingWhatVerbosity what
+  let verbosityFlags = buildingWhatVerbosity what
       clbi = targetCLBI tgt
       autogenDir = autogenComponentModulesDir lbi clbi
       buildDir = componentBuildDir lbi clbi
 
       computeC2HsDepsAction (C2HsDepsInput {..}) = do
         importLine : _srcLines <- lines <$> readFile (getSymbolicPath $ inDir </> moduleNameSymbolicPath modNm <.> "myChs")
-        let imports :: [ModuleName]
-            imports
-              | "imports:" `isPrefixOf` importLine
-              = map fromString $ words $ drop 8 importLine
-              | otherwise
-              = error "Malformed MyChs file: first line should start with 'imports:'"
+        let
+          verbosity = mkVerbosity defaultVerbosityHandles verbosityFlags
+          imports :: [ModuleName]
+          imports
+            | "imports:" `isPrefixOf` importLine
+            = map fromString $ words $ drop 8 importLine
+            | otherwise
+            = error "Malformed MyChs file: first line should start with 'imports:'"
         warn verbosity $ "Computed C2Hs dependencies of " ++ modName modNm ++ ".myChs: "
                       ++ modNames imports
         return $
@@ -61,6 +64,7 @@ preBuildRules (PreBuildComponentInputs { buildingWhat = what, localBuildInfo = l
 
       runC2HsAction (C2HsInput {..}) importModNms = do
         let modPath = moduleNameSymbolicPath modNm
+            verbosity = mkVerbosity defaultVerbosityHandles verbosityFlags
         warn verbosity $ "Running C2Hs on " ++ modName modNm ++ ".myChs.\n C2Hs dependencies: " ++ modNames importModNms
         _importLine : srcLines <- lines <$> readFile (getSymbolicPath $ inDir </> modPath <.> "myChs")
 
@@ -93,7 +97,7 @@ preBuildRules (PreBuildComponentInputs { buildingWhat = what, localBuildInfo = l
 -- | Input to C2Hs dependency computation
 data C2HsDepsInput
   = C2HsDepsInput
-  { verbosity :: Verbosity
+  { verbosityFlags :: VerbosityFlags
   , inDir :: SymbolicPath Pkg (Dir Source)
   , modNm :: ModuleName
   , ruleIds :: Map.Map ModuleName RuleId
@@ -104,7 +108,7 @@ data C2HsDepsInput
 -- | Input to C2Hs command
 data C2HsInput
   = C2HsInput
-  { verbosity :: Verbosity
+  { verbosityFlags :: VerbosityFlags
   , modNm :: ModuleName
   , inDir :: SymbolicPath Pkg (Dir Source)
   , hsDir :: SymbolicPath Pkg (Dir Source)

@@ -75,6 +75,7 @@ import Distribution.Simple.Command
 import Distribution.Simple.Program
 import Distribution.Simple.Setup
 import Distribution.Simple.Utils
+import Distribution.Verbosity
 import Distribution.Version
 
 import System.Environment (getArgs, getProgName)
@@ -128,7 +129,7 @@ defaultMainHelper args = do
 configureAction :: ConfigFlags -> [String] -> IO ()
 configureAction flags args = do
   noExtraFlags args
-  let verbosity = fromFlag $ configVerbosity flags
+  let verbosity = mkVerbosity defaultVerbosityHandles $ fromFlag $ configVerbosity flags
       mbWorkDir = flagToMaybe $ configWorkingDir flags
   rawSystemExit verbosity mbWorkDir "sh" $
     "configure"
@@ -139,7 +140,7 @@ configureAction flags args = do
 copyAction :: CopyFlags -> [String] -> IO ()
 copyAction flags args = do
   noExtraFlags args
-  let verbosity = fromFlag $ copyVerbosity flags
+  let verbosity = mkVerbosity defaultVerbosityHandles $ fromFlag $ copyVerbosity flags
       mbWorkDir = flagToMaybe $ copyWorkingDir flags
       destArgs = case fromFlag $ copyDest flags of
         NoCopyDest -> ["install"]
@@ -151,7 +152,7 @@ copyAction flags args = do
 installAction :: InstallFlags -> [String] -> IO ()
 installAction flags args = do
   noExtraFlags args
-  let verbosity = fromFlag $ installVerbosity flags
+  let verbosity = mkVerbosity defaultVerbosityHandles $ fromFlag $ installVerbosity flags
       mbWorkDir = flagToMaybe $ installWorkingDir flags
   rawSystemExit verbosity mbWorkDir "make" ["install"]
   rawSystemExit verbosity mbWorkDir "make" ["register"]
@@ -159,7 +160,7 @@ installAction flags args = do
 haddockAction :: HaddockFlags -> [String] -> IO ()
 haddockAction flags args = do
   noExtraFlags args
-  let verbosity = fromFlag $ haddockVerbosity flags
+  let verbosity = mkVerbosity defaultVerbosityHandles $ fromFlag $ haddockVerbosity flags
       mbWorkDir = flagToMaybe $ haddockWorkingDir flags
   rawSystemExit verbosity mbWorkDir "make" ["docs"]
     `catchIO` \_ ->
@@ -168,34 +169,34 @@ haddockAction flags args = do
 buildAction :: BuildFlags -> [String] -> IO ()
 buildAction flags args = do
   noExtraFlags args
-  let verbosity = fromFlag $ buildVerbosity flags
+  let verbosity = mkVerbosity defaultVerbosityHandles $ fromFlag $ buildVerbosity flags
       mbWorkDir = flagToMaybe $ buildWorkingDir flags
   rawSystemExit verbosity mbWorkDir "make" []
 
 cleanAction :: CleanFlags -> [String] -> IO ()
 cleanAction flags args = do
   noExtraFlags args
-  let verbosity = fromFlag $ cleanVerbosity flags
+  let verbosity = mkVerbosity defaultVerbosityHandles $ fromFlag $ cleanVerbosity flags
       mbWorkDir = flagToMaybe $ cleanWorkingDir flags
   rawSystemExit verbosity mbWorkDir "make" ["clean"]
 
 sdistAction :: SDistFlags -> [String] -> IO ()
 sdistAction flags args = do
   noExtraFlags args
-  let verbosity = fromFlag $ sDistVerbosity flags
+  let verbosity = mkVerbosity defaultVerbosityHandles $ fromFlag $ sDistVerbosity flags
       mbWorkDir = flagToMaybe $ sDistWorkingDir flags
   rawSystemExit verbosity mbWorkDir "make" ["dist"]
 
 registerAction :: RegisterFlags -> [String] -> IO ()
 registerAction flags args = do
   noExtraFlags args
-  let verbosity = fromFlag $ registerVerbosity flags
+  let verbosity = mkVerbosity defaultVerbosityHandles $ fromFlag $ registerVerbosity flags
       mbWorkDir = flagToMaybe $ registerWorkingDir flags
   rawSystemExit verbosity mbWorkDir "make" ["register"]
 
 unregisterAction :: RegisterFlags -> [String] -> IO ()
 unregisterAction flags args = do
   noExtraFlags args
-  let verbosity = fromFlag $ registerVerbosity flags
+  let verbosity = mkVerbosity defaultVerbosityHandles $ fromFlag $ registerVerbosity flags
       mbWorkDir = flagToMaybe $ registerWorkingDir flags
   rawSystemExit verbosity mbWorkDir "make" ["unregister"]
