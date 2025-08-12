@@ -92,7 +92,7 @@ annotateCondTree fs ta (CondNode a c bs) =
     -- \*off* by default.
     isPkgFlagCond :: Condition ConfVar -> Bool
     isPkgFlagCond (Lit _) = False
-    isPkgFlagCond (Var (PackageFlag f)) = elem f defOffFlags
+    isPkgFlagCond (Var (PackageFlag f)) = f `elem` defOffFlags
     isPkgFlagCond (Var _) = False
     isPkgFlagCond (CNot cn) = not (isPkgFlagCond cn)
     isPkgFlagCond (CAnd ca cb) = isPkgFlagCond ca || isPkgFlagCond cb

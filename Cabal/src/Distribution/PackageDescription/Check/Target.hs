@@ -692,7 +692,7 @@ checkAutogenModules ams bi = do
   -- PackageBuildImpossible and not merely PackageDistInexcusable.
   checkSpecVer
     CabalSpecV3_12
-    (elem autoInfoModuleName allModsForAuto)
+    (autoInfoModuleName `elem` allModsForAuto)
     (PackageBuildImpossible CVAutogenPackageInfoGuard)
   where
     allModsForAuto :: [ModuleName]

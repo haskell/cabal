@@ -62,6 +62,8 @@ import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
 import Distribution.Simple.Errors
 import Distribution.Simple.Flag
+import Distribution.Simple.GHC.Build.Link (hasThreaded)
+import Distribution.Simple.GHC.Build.Utils (isCxx, isHaskell)
 import Distribution.Simple.GHC.EnvironmentParser
 import Distribution.Simple.GHC.ImplInfo
 import qualified Distribution.Simple.GHC.Internal as Internal
@@ -1242,13 +1244,6 @@ gbuildSources verbosity mbWorkDir pkgId specVer tmpDir bm =
         , inputSourceModules = foreignLibModules flib
         }
 
-    isCxx :: FilePath -> Bool
-    isCxx fp = elem (takeExtension fp) [".cpp", ".cxx", ".c++"]
-
--- | FilePath has a Haskell extension: .hs or .lhs
-isHaskell :: FilePath -> Bool
-isHaskell fp = elem (takeExtension fp) [".hs", ".lhs"]
-
 -- | Generic build function. See comment for 'GBuildMode'.
 gbuild
   :: Verbosity
@@ -1776,7 +1771,7 @@ getRPaths _ _ = return mempty
 popThreadedFlag :: BuildInfo -> (BuildInfo, Bool)
 popThreadedFlag bi =
   ( bi{options = filterHcOptions (/= "-threaded") (options bi)}
-  , hasThreaded (options bi)
+  , hasThreaded bi
   )
   where
     filterHcOptions
@@ -1785,9 +1780,6 @@ popThreadedFlag bi =
       -> PerCompilerFlavor [String]
     filterHcOptions p (PerCompilerFlavor ghc ghcjs) =
       PerCompilerFlavor (filter p ghc) ghcjs
-
-    hasThreaded :: PerCompilerFlavor [String] -> Bool
-    hasThreaded (PerCompilerFlavor ghc _) = elem "-threaded" ghc
 
 -- | Extracts a String representing a hash of the ABI of a built
 -- library.  It can fail if the library has not yet been built.

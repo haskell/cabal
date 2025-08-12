@@ -782,7 +782,7 @@ checkPrintPlan
     -- likely to be broken. We exclude packages that are already broken.
     let newBrokenPkgs =
           filter
-            (\p -> notElem (Installed.installedUnitId p) excluded)
+            (\p -> Installed.installedUnitId p `notElem` excluded)
             (PackageIndex.reverseDependencyClosure installed reinstalledPkgs)
     let containsReinstalls = not (null reinstalledPkgs)
     let breaksPkgs = not (null newBrokenPkgs)

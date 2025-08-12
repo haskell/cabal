@@ -45,7 +45,6 @@
 - ignore: {name: "Use fold"} # 1 hint
 - ignore: {name: "Use fromMaybe"} # 5 hints
 - ignore: {name: "Use fst"} # 2 hints
-- ignore: {name: "Use infix"} # 27 hints
 - ignore: {name: "Use lambda-case"} # 58 hints
 - ignore: {name: "Use list comprehension"} # 19 hints
 - ignore: {name: "Use list literal"} # 3 hints

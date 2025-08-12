@@ -711,7 +711,7 @@ computeLocalBuildConfig cfg comp programDb = do
             -- rely on them. By the time that bug was fixed, ghci had
             -- been changed to read shared libraries instead of archive
             -- files (see next code block).
-            notElem (GHC.compilerBuildWay comp) [DynWay, ProfDynWay]
+            GHC.compilerBuildWay comp `notElem` [DynWay, ProfDynWay]
           CompilerId GHCJS _ ->
             not (GHCJS.isDynamic comp)
           _ -> False
