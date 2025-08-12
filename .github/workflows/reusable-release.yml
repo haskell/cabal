@@ -140,13 +140,6 @@ jobs:
                     , ARTIFACT: "x86_64-linux-unknown"
                     , ADD_CABAL_ARGS: "--enable-split-sections --enable-executable-static"
                     },
-                    { image: "alpine:3.12"
-                    , installCmd: "apk update && apk add"
-                    , toolRequirements: "${{ needs.tool-output.outputs.apk_tools }}"
-                    , DISTRO: "Unknown"
-                    , ARTIFACT: "x86_64-linux-alpine312"
-                    , ADD_CABAL_ARGS: "--enable-split-sections"
-                    },
                     { image: "alpine:3.20"
                     , installCmd: "apk update && apk add"
                     , toolRequirements: "${{ needs.tool-output.outputs.apk_tools }}"
@@ -529,12 +522,6 @@ jobs:
                     , toolRequirements: "${{ needs.tool-output.outputs.apk_tools }}"
                     , DISTRO: "Unknown"
                     , ARTIFACT: "x86_64-linux-unknown"
-                    },
-                    { image: "alpine:3.12"
-                    , installCmd: "apk update && apk add"
-                    , toolRequirements: "${{ needs.tool-output.outputs.apk_tools }}"
-                    , DISTRO: "Unknown"
-                    , ARTIFACT: "x86_64-linux-alpine312"
                     },
                     { image: "alpine:3.20"
                     , installCmd: "apk update && apk add"
