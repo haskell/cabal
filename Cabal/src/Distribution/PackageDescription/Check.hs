@@ -423,7 +423,7 @@ checkPackageDescription
     -- But it is OK for executables to have the same name.
     nsubs <- asksCM (pnSubLibs . ccNames)
     checkP
-      (elem (prettyShow pn) (prettyShow <$> nsubs))
+      (prettyShow pn `elem` (prettyShow <$> nsubs))
       (PackageBuildImpossible $ IllegalLibraryName pn)
 
     -- § Fields check.

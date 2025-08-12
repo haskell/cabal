@@ -96,12 +96,12 @@ foldVersionRange _any this later earlier union intersect = fold
 
     alg (ThisVersionF v) = this v
     alg (LaterVersionF v) = later v
-    alg (OrLaterVersionF v) = union (this v) (later v)
+    alg (OrLaterVersionF v) = this v `union` later v
     alg (EarlierVersionF v) = earlier v
-    alg (OrEarlierVersionF v) = union (this v) (earlier v)
+    alg (OrEarlierVersionF v) = this v `union` earlier v
     alg (MajorBoundVersionF v) = fold (majorBound v)
-    alg (UnionVersionRangesF v1 v2) = union v1 v2
-    alg (IntersectVersionRangesF v1 v2) = intersect v1 v2
+    alg (UnionVersionRangesF v1 v2) = v1 `union` v2
+    alg (IntersectVersionRangesF v1 v2) = v1 `intersect` v2
 
     majorBound v =
       intersectVersionRanges

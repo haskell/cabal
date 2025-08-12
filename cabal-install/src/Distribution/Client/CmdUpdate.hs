@@ -179,7 +179,7 @@ updateAction flags@NixStyleFlags{..} extraArgs globalFlags = do
       unless (null updateRepoRequests) $ do
         let remoteRepoNames = map repoName repos
             unknownRepos =
-              [ r | (UpdateRequest r _) <- updateRepoRequests, notElem r remoteRepoNames
+              [ r | (UpdateRequest r _) <- updateRepoRequests, r `notElem` remoteRepoNames
               ]
         unless (null unknownRepos) $
           dieWithException verbosity $

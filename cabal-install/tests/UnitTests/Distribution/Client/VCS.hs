@@ -745,7 +745,7 @@ getDirectoryContentsRecursive ignore dir0 dir = do
         isdir <- doesDirectoryExist (dir0 </> dir </> entry)
         return (dir </> entry, isdir)
       | entry <- entries
-      , not (isPrefixOf "." entry)
+      , not ("." `isPrefixOf` entry)
       , (dir </> entry) `Set.notMember` ignore
       ]
   let subdirs = [d | (d, True) <- entries']
