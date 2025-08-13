@@ -503,12 +503,6 @@ jobs:
                     , DISTRO: "Alpine"
                     , ARTIFACT: "x86_64-linux-musl-static"
                     },
-                    { image: "alpine:3.12"
-                    , installCmd: "apk update && apk add"
-                    , toolRequirements: "${{ needs.tool-output.outputs.apk_tools }}"
-                    , DISTRO: "Alpine"
-                    , ARTIFACT: "x86_64-linux-musl-static"
-                    },
                     { image: "ghcr.io/void-linux/void-glibc:latest"
                     , installCmd: "xbps-install -Suy xbps && xbps-install -Sy"
                     , toolRequirements: "${{ needs.tool-output.outputs.xbps_tools }}"
