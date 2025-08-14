@@ -170,6 +170,7 @@ configureCompiler verbosity hcPath conf0 = do
           , compilerLanguages = languages
           , compilerExtensions = extensions
           , compilerProperties = ghcInfoMap
+          , compilerWiredInUnitIds = Nothing
           }
       compPlatform = Internal.targetPlatform ghcjsInfo
   return (comp, compPlatform, progdb1)

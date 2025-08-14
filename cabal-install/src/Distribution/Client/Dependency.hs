@@ -443,6 +443,16 @@ setSolverVerbosity verbosity params =
     { depResolverVerbosity = verbosity
     }
 
+dependOnWiredIns :: CompilerInfo -> DepResolverParams -> DepResolverParams
+dependOnWiredIns compiler params = addConstraints extraConstraints params
+  where
+    extraConstraints =
+      [ LabeledPackageConstraint
+        (PackageConstraint (ScopeAnyQualifier pkgName) (PackagePropertyInstalledSpecificUnitId unitId))
+        ConstraintSourceNonReinstallablePackage
+      | (pkgName, unitId) <- fromMaybe [] $ compilerInfoWiredInUnitIds compiler
+      ]
+
 -- | Some packages are specific to a given compiler version and should never be
 -- reinstalled.
 dontInstallNonReinstallablePackages :: DepResolverParams -> DepResolverParams
@@ -849,8 +859,8 @@ resolveDependencies platform comp pkgConfigDB params =
                     order
                     verbosity
                   ) =
-        if asBool (depResolverAllowBootLibInstalls params)
-          then params
+        if isJust (compilerInfoWiredInUnitIds comp) || asBool (depResolverAllowBootLibInstalls params)
+          then dependOnWiredIns comp params
           else dontInstallNonReinstallablePackages params
 
     formatProgress :: Progress SummarizedMessage String a -> Progress String String a
