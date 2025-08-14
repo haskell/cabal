@@ -1496,9 +1496,9 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
     renderDependencyOf pkgid =
       case ultimateDeps pkgid of
         [] -> ""
-        (p1 : []) ->
+        [p1] ->
           " (which is required by " ++ elabPlanPackageName verbosity p1 ++ ")"
-        (p1 : p2 : []) ->
+        [p1, p2] ->
           " (which is required by "
             ++ elabPlanPackageName verbosity p1
             ++ " and "

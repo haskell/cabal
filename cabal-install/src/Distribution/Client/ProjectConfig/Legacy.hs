@@ -2104,5 +2104,5 @@ monoidFieldParsec name showF readF get' set =
 showTokenQ :: String -> Doc
 showTokenQ "" = Disp.empty
 showTokenQ x@('-' : '-' : _) = Disp.text (show x)
-showTokenQ x@('.' : []) = Disp.text (show x)
+showTokenQ x@['.'] = Disp.text (show x)
 showTokenQ x = showToken x

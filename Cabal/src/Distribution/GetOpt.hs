@@ -230,7 +230,7 @@ getOpt' ordering optDescr (arg : args) = procNextOpt opt ordering
 
 -- take a look at the next cmd line arg and decide what to do with it
 getNext :: String -> [String] -> [OptDescr a] -> (OptKind a, [String])
-getNext ('-' : '-' : []) rest _ = (EndOfOpts, rest)
+getNext ['-', '-'] rest _ = (EndOfOpts, rest)
 getNext ('-' : '-' : xs) rest optDescr = longOpt xs rest optDescr
 getNext ('-' : x : xs) rest optDescr = shortOpt x xs rest optDescr
 getNext a rest _ = (NonOpt a, rest)
