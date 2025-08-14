@@ -116,7 +116,7 @@ components :: ModuleName -> [String]
 components mn = split (unModuleName mn)
   where
     split cs = case break (== '.') cs of
-      (chunk, []) -> chunk : []
+      (chunk, []) -> [chunk]
       (chunk, _ : rest) -> chunk : split rest
 
 -- | Convert a module name to a file path, but without any file extension.

@@ -905,8 +905,8 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         , if null (ghcOptInstantiatedWith opts)
             then []
             else
-              "-instantiated-with"
-                : intercalate
+              [ "-instantiated-with"
+              , intercalate
                   ","
                   ( map
                       ( \(n, m) ->
@@ -916,7 +916,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
                       )
                       (ghcOptInstantiatedWith opts)
                   )
-                : []
+              ]
         , concat [["-fno-code", "-fwrite-interface"] | flagBool ghcOptNoCode]
         , ["-hide-all-packages" | flagBool ghcOptHideAllPackages]
         , ["-Wmissing-home-modules" | flagBool ghcOptWarnMissingHomeModules]
