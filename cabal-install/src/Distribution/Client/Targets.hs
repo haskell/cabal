@@ -609,10 +609,8 @@ data UserQualifier
   deriving (Eq, Show, Generic)
 
 instance Binary UserQualifier
+instance NFData UserQualifier
 instance Structured UserQualifier
-
-instance NFData UserQualifier where
-  rnf = genericRnf
 
 -- | Version of 'ConstraintScope' that a user may specify on the
 -- command line.
@@ -626,10 +624,8 @@ data UserConstraintScope
   deriving (Eq, Show, Generic)
 
 instance Binary UserConstraintScope
+instance NFData UserConstraintScope
 instance Structured UserConstraintScope
-
-instance NFData UserConstraintScope where
-  rnf = genericRnf
 
 fromUserQualifier :: UserQualifier -> Qualifier
 fromUserQualifier UserQualToplevel = QualToplevel
@@ -649,10 +645,8 @@ data UserConstraint
   deriving (Eq, Show, Generic)
 
 instance Binary UserConstraint
+instance NFData UserConstraint
 instance Structured UserConstraint
-
-instance NFData UserConstraint where
-  rnf = genericRnf
 
 userConstraintPackageName :: UserConstraint -> PackageName
 userConstraintPackageName (UserConstraint scope _) = scopePN scope

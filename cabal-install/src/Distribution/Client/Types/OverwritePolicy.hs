@@ -15,10 +15,8 @@ data OverwritePolicy
   deriving (Show, Eq, Generic, Bounded, Enum)
 
 instance Binary OverwritePolicy
+instance NFData OverwritePolicy 
 instance Structured OverwritePolicy
-
-instance NFData OverwritePolicy where 
-  rnf = genericRnf
 
 instance Parsec OverwritePolicy where
   parsec = do

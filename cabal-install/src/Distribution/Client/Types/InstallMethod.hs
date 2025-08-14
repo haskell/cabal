@@ -14,10 +14,8 @@ data InstallMethod
   deriving (Eq, Show, Generic, Bounded, Enum)
 
 instance Binary InstallMethod
+instance NFData InstallMethod 
 instance Structured InstallMethod
-
-instance NFData InstallMethod where
-  rnf = genericRnf
 
 -- | Last
 instance Semigroup InstallMethod where

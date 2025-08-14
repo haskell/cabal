@@ -96,10 +96,8 @@ data PackageProperty
   deriving (Eq, Show, Generic)
 
 instance Binary PackageProperty
+instance NFData PackageProperty 
 instance Structured PackageProperty
-
-instance NFData PackageProperty where 
-  rnf = genericRnf
 
 instance Pretty PackageProperty where
   pretty (PackagePropertyVersion verrange) = pretty verrange

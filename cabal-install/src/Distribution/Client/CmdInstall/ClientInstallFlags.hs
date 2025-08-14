@@ -61,10 +61,8 @@ instance Semigroup ClientInstallFlags where
   (<>) = gmappend
 
 instance Binary ClientInstallFlags
+instance NFData ClientInstallFlags
 instance Structured ClientInstallFlags
-
-instance NFData ClientInstallFlags where
-  rnf = genericRnf
 
 defaultClientInstallFlags :: ClientInstallFlags
 defaultClientInstallFlags =

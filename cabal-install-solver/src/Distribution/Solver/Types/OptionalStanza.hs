@@ -57,10 +57,8 @@ enableStanzas optionalStanzas = ComponentRequestedSpec
     }
 
 instance Binary OptionalStanza
+instance NFData OptionalStanza 
 instance Structured OptionalStanza
-
-instance NFData OptionalStanza where 
-  rnf = genericRnf
 
 -------------------------------------------------------------------------------
 -- OptionalStanzaSet

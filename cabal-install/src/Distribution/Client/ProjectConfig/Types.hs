@@ -358,21 +358,15 @@ instance Structured ProjectFileParser
 instance NFData ProjectConfigToParse where
   rnf (ProjectConfigToParse bs) = rnf bs
 
-instance NFData ProjectConfig where 
-  rnf = genericRnf
-
-instance NFData ProjectConfigBuildOnly where 
-  rnf = genericRnf
-
-instance NFData ProjectConfigShared where 
-  rnf = genericRnf
+instance NFData ProjectConfig
+instance NFData ProjectConfigBuildOnly
+instance NFData ProjectConfigShared
 
 instance NFData ProjectConfigProvenance where
   rnf Implicit = ()
   rnf (Explicit path) = rnf path
 
-instance NFData PackageConfig where
-  rnf = genericRnf
+instance NFData PackageConfig
 
 -- | Newtype wrapper for 'Map' that provides a 'Monoid' instance that takes
 -- the last value rather than the first value for overlapping keys.
@@ -381,8 +375,7 @@ newtype MapLast k v = MapLast {getMapLast :: Map k v}
 
 instance (Structured k, Structured v) => Structured (MapLast k v)
 
-instance (NFData k, NFData v) => NFData (MapLast k v) where
-  rnf = genericRnf
+instance (NFData k, NFData v) => NFData (MapLast k v)
 
 instance Ord k => Monoid (MapLast k v) where
   mempty = MapLast Map.empty
@@ -400,8 +393,7 @@ newtype MapMappend k v = MapMappend {getMapMappend :: Map k v}
 
 instance (Structured k, Structured v) => Structured (MapMappend k v)
 
-instance (NFData k, NFData v) => NFData (MapMappend k v) where
-  rnf = genericRnf
+instance (NFData k, NFData v) => NFData (MapMappend k v)
 
 instance (Semigroup v, Ord k) => Monoid (MapMappend k v) where
   mempty = MapMappend Map.empty
@@ -487,10 +479,8 @@ data SolverSettings = SolverSettings
   deriving (Eq, Show, Generic)
 
 instance Binary SolverSettings
+instance NFData SolverSettings
 instance Structured SolverSettings
-
-instance NFData SolverSettings where
-  rnf = genericRnf
 
 -- | Resolved configuration for things that affect how we build and not the
 -- value of the things we build. The idea is that this is easier to use than
@@ -531,5 +521,4 @@ data BuildTimeSettings = BuildTimeSettings
   }
   deriving (Generic)
 
-instance NFData BuildTimeSettings where
-  rnf = genericRnf
+instance NFData BuildTimeSettings

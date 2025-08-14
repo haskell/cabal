@@ -224,10 +224,8 @@ data AbiTag
   deriving (Eq, Generic, Show, Read)
 
 instance Binary AbiTag
+instance NFData AbiTag 
 instance Structured AbiTag
-
-instance NFData AbiTag where 
-  rnf = genericRnf
   
 instance Pretty AbiTag where
   pretty NoAbiTag = Disp.empty

@@ -95,38 +95,17 @@ instance Structured AllowBootLibInstalls
 instance Structured OnlyConstrained
 instance Structured SolveExecutables
 
-instance NFData ReorderGoals where
-  rnf = genericRnf
-
-instance NFData CountConflicts where
-  rnf = genericRnf
-
-instance NFData FineGrainedConflicts where
-  rnf = genericRnf
-
-instance NFData IndependentGoals where
-  rnf = genericRnf
-
-instance NFData PreferOldest where
-  rnf = genericRnf
-
-instance NFData MinimizeConflictSet where
-  rnf = genericRnf
-
-instance NFData AvoidReinstalls where
-  rnf = genericRnf
-
-instance NFData ShadowPkgs where
-  rnf = genericRnf
-
-instance NFData StrongFlags where
-  rnf = genericRnf
-
-instance NFData AllowBootLibInstalls where
-  rnf = genericRnf
-
-instance NFData OnlyConstrained where
-  rnf = genericRnf
+instance NFData ReorderGoals
+instance NFData CountConflicts
+instance NFData FineGrainedConflicts
+instance NFData IndependentGoals 
+instance NFData PreferOldest
+instance NFData MinimizeConflictSet 
+instance NFData AvoidReinstalls
+instance NFData ShadowPkgs
+instance NFData StrongFlags
+instance NFData AllowBootLibInstalls
+instance NFData OnlyConstrained
 
 instance Pretty OnlyConstrained where
   pretty OnlyConstrainedAll  = PP.text "all"

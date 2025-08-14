@@ -14,10 +14,8 @@ data PathComponent
   deriving (Eq, Ord, Generic)
 
 instance Binary PathComponent
+instance NFData PathComponent 
 instance Structured PathComponent
-
-instance NFData PathComponent where 
-  rnf = genericRnf
 
 data PathTemplateVariable
   = -- | The @$prefix@ path variable
@@ -70,10 +68,8 @@ data PathTemplateVariable
   deriving (Eq, Ord, Generic)
 
 instance Binary PathTemplateVariable
+instance NFData PathTemplateVariable
 instance Structured PathTemplateVariable
-
-instance NFData PathTemplateVariable where
-  rnf = genericRnf
 
 instance Show PathTemplateVariable where
   show PrefixVar = "prefix"

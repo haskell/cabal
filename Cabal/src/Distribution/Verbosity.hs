@@ -111,10 +111,8 @@ instance Bounded Verbosity where
   maxBound = mkVerbosity maxBound
 
 instance Binary Verbosity
-instance Structured Verbosity
-
-instance NFData Verbosity where 
-  rnf = genericRnf
+instance NFData Verbosity
+instance Structured Verbosity 
 
 -- | In 'silent' mode, we should not print /anything/ unless an error occurs.
 silent :: Verbosity

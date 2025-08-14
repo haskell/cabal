@@ -130,10 +130,8 @@ data Compiler = Compiler
   deriving (Eq, Generic, Show, Read)
 
 instance Binary Compiler
+instance NFData Compiler 
 instance Structured Compiler
-
-instance NFData Compiler where 
-  rnf = genericRnf
 
 showCompilerId :: Compiler -> String
 showCompilerId = prettyShow . compilerId
@@ -208,10 +206,8 @@ data PackageDBX fp
   deriving (Eq, Generic, Ord, Show, Read, Functor, Foldable, Traversable)
 
 instance Binary fp => Binary (PackageDBX fp)
+instance NFData fp => NFData (PackageDBX fp)
 instance Structured fp => Structured (PackageDBX fp)
-
-instance NFData fp => NFData (PackageDBX fp) where
-  rnf = genericRnf
 
 -- | Parse a PackageDB stack entry
 --
@@ -311,10 +307,9 @@ data OptimisationLevel
   deriving (Bounded, Enum, Eq, Generic, Read, Show)
 
 instance Binary OptimisationLevel
+instance NFData OptimisationLevel
 instance Structured OptimisationLevel
 
-instance NFData OptimisationLevel where
-  rnf = genericRnf
 instance Parsec OptimisationLevel where
   parsec = parsecOptimisationLevel
 
@@ -362,10 +357,8 @@ data DebugInfoLevel
   deriving (Bounded, Enum, Eq, Generic, Read, Show)
 
 instance Binary DebugInfoLevel
+instance NFData DebugInfoLevel
 instance Structured DebugInfoLevel
-
-instance NFData DebugInfoLevel where
-  rnf = genericRnf
 
 instance Parsec DebugInfoLevel where
   parsec = parsecDebugInfoLevel
@@ -618,10 +611,8 @@ data ProfDetailLevel
   deriving (Eq, Generic, Read, Show)
 
 instance Binary ProfDetailLevel
+instance NFData ProfDetailLevel
 instance Structured ProfDetailLevel
-
-instance NFData ProfDetailLevel where
-  rnf = genericRnf
 
 instance Parsec ProfDetailLevel where
   parsec = parsecProfDetailLevel
