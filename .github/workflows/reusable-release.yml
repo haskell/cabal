@@ -140,13 +140,6 @@ jobs:
                     , ARTIFACT: "x86_64-linux-unknown"
                     , ADD_CABAL_ARGS: "--enable-split-sections --enable-executable-static"
                     },
-                    { image: "alpine:3.12"
-                    , installCmd: "apk update && apk add"
-                    , toolRequirements: "${{ needs.tool-output.outputs.apk_tools }}"
-                    , DISTRO: "Unknown"
-                    , ARTIFACT: "x86_64-linux-alpine312"
-                    , ADD_CABAL_ARGS: "--enable-split-sections"
-                    },
                     { image: "alpine:3.20"
                     , installCmd: "apk update && apk add"
                     , toolRequirements: "${{ needs.tool-output.outputs.apk_tools }}"
@@ -168,7 +161,7 @@ jobs:
         with:
           cabal: ${{ env.CABAL_VERSION }}
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ matrix.branch }}
 
@@ -207,7 +200,7 @@ jobs:
       ADD_CABAL_ARGS: "--enable-split-sections --enable-executable-static"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ matrix.branch }}
 
@@ -248,7 +241,7 @@ jobs:
                     }
                   ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ matrix.branch }}
 
@@ -297,7 +290,7 @@ jobs:
       matrix:
         branch: ${{ fromJSON(inputs.branches) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ matrix.branch }}
 
@@ -337,7 +330,7 @@ jobs:
       matrix:
         branch: ${{ fromJSON(inputs.branches) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ matrix.branch }}
 
@@ -376,7 +369,7 @@ jobs:
       matrix:
         branch: ${{ fromJSON(inputs.branches) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ matrix.branch }}
 
@@ -430,7 +423,7 @@ jobs:
       matrix:
         branch: ${{ fromJSON(inputs.branches) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ matrix.branch }}
 
@@ -530,12 +523,6 @@ jobs:
                     , DISTRO: "Unknown"
                     , ARTIFACT: "x86_64-linux-unknown"
                     },
-                    { image: "alpine:3.12"
-                    , installCmd: "apk update && apk add"
-                    , toolRequirements: "${{ needs.tool-output.outputs.apk_tools }}"
-                    , DISTRO: "Unknown"
-                    , ARTIFACT: "x86_64-linux-alpine312"
-                    },
                     { image: "alpine:3.20"
                     , installCmd: "apk update && apk add"
                     , toolRequirements: "${{ needs.tool-output.outputs.apk_tools }}"
@@ -551,7 +538,7 @@ jobs:
         run: |
           ${{ matrix.platform.installCmd }} curl bash git ${{ matrix.platform.toolRequirements }}
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ matrix.branch }}
 
@@ -596,7 +583,7 @@ jobs:
 #      matrix:
 #        branch: ${{ fromJSON(inputs.branches) }}
 #    steps:
-#      - uses: actions/checkout@v4
+#      - uses: actions/checkout@v5
 #        with:
 #          ref: ${{ matrix.branch }}
 #
@@ -633,7 +620,7 @@ jobs:
                     }
                   ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ matrix.branch }}
 
@@ -677,7 +664,7 @@ jobs:
       matrix:
         branch: ${{ fromJSON(inputs.branches) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ matrix.branch }}
 
@@ -718,7 +705,7 @@ jobs:
       matrix:
         branch: ${{ fromJSON(inputs.branches) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ matrix.branch }}
 
@@ -754,7 +741,7 @@ jobs:
       matrix:
         branch: ${{ fromJSON(inputs.branches) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ matrix.branch }}
 
@@ -803,7 +790,7 @@ jobs:
       matrix:
         branch: ${{ fromJSON(inputs.branches) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ matrix.branch }}
 
