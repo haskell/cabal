@@ -39,6 +39,7 @@ data ReportLevel = NoReports | AnonymousReports | DetailedReports
   deriving (Eq, Ord, Enum, Bounded, Show, Generic)
 
 instance Binary ReportLevel
+instance NFData ReportLevel
 instance Structured ReportLevel
 
 instance Pretty ReportLevel where

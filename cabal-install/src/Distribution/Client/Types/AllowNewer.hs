@@ -203,6 +203,14 @@ instance Structured RelaxedDep
 instance Structured AllowNewer
 instance Structured AllowOlder
 
+instance NFData RelaxDeps
+instance NFData RelaxDepMod
+instance NFData RelaxDepScope
+instance NFData RelaxDepSubject
+instance NFData RelaxedDep
+instance NFData AllowNewer
+instance NFData AllowOlder
+
 -- | Return 'True' if 'RelaxDeps' specifies a non-empty set of relaxations
 --
 -- Equivalent to @isRelaxDeps = (/= 'mempty')@
