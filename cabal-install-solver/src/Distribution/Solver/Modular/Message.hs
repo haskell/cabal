@@ -268,22 +268,22 @@ showOption qpn@(Q _pp pn) (POption i linkedTo) =
 
 -- | Shows a mixed list of instances and versions in a human-friendly way,
 -- abbreviated.
--- >>> showOptions foobarQPN [v0, v1]
+-- >>> showOptions verbose foobarQPN [v0, v1]
 -- "foo-bar; 0, 1"
--- >>> showOptions foobarQPN [v0]
+-- >>> showOptions verbose foobarQPN [v0]
 -- "foo-bar-0"
--- >>> showOptions foobarQPN [i0, i1]
+-- >>> showOptions verbose foobarQPN [i0, i1]
 -- "foo-bar; 0/installed-inplace, 1/installed-inplace"
--- >>> showOptions foobarQPN [i0, v1]
+-- >>> showOptions verbose foobarQPN [i0, v1]
 -- "foo-bar; 0/installed-inplace, 1"
--- >>> showOptions foobarQPN [v0, i1]
+-- >>> showOptions verbose foobarQPN [v0, i1]
 -- "foo-bar; 0, 1/installed-inplace"
--- >>> showOptions foobarQPN []
+-- >>> showOptions verbose foobarQPN []
 -- "unexpected empty list of versions"
--- >>> showOptions foobarQPN [k1, k2]
+-- >>> showOptions verbose foobarQPN [k1, k2]
 -- "foo-bar; foo-bar~>bazqux.foo-bar-1, foo-bar~>bazqux.foo-bar-2"
--- >>> showOptions foobarQPN [v0, i1, k2]
--- "foo-bar; 0, 1/installed-inplace, foo-bar~>bazqux.foo-bar-2 and earlier versions"
+-- >>> showOptions verbose foobarQPN [v0, i1, k2]
+-- "foo-bar; 0, 1/installed-inplace, foo-bar~>bazqux.foo-bar-2"
 showOptions :: Verbosity -> QPN -> [POption] -> String
 showOptions _ _ [] = "unexpected empty list of versions"
 showOptions _ q [x] = showOption q x
