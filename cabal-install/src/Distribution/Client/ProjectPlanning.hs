@@ -1034,6 +1034,9 @@ programsMonitorFiles progdb =
       monitorFileSearchPath
         (programMonitorFiles prog)
         (programPath prog)
+        ++ if programId prog == "ghc" && buildOS == Windows
+          then [monitorFile $ programPath prog -<.> "shim"]
+          else []
   ]
 
 -- | Select the bits of a 'ProgramDb' to monitor for value changes.
