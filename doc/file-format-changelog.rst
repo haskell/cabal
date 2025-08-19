@@ -38,6 +38,14 @@ relative to the respective preceding *published* version.
 * License fields use identifiers from SPDX License List version
   ``3.23 2024-02-08``.
 
+* The :pkg-field:`autogen-modules` field allows ``PackageInfo_*`` modules to be
+  specified.
+
+  .. Note::
+
+     Before ``Cabal-3.12.0.0``, from ``Cabal-3.10.1.0``, ``PackageInfo_*``
+     modules were supported irrespective of the :pkg-field:`cabal-version`. From
+     ``Cabal-3.12.0.0``, such modules require ``cabal-version: 3.12`` or later.
 
 ``cabal-version: 3.8``
 ----------------------
