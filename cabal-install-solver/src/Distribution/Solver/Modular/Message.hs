@@ -283,7 +283,7 @@ showOption qpn@(Q _pp pn) (POption i linkedTo) =
 -- >>> showOptions verbose foobarQPN [k1, k2]
 -- "foo-bar; foo-bar~>bazqux.foo-bar-1, foo-bar~>bazqux.foo-bar-2"
 -- >>> showOptions verbose foobarQPN [v0, i1, k2]
--- "foo-bar; 0, 1/installed-inplace, foo-bar~>bazqux.foo-bar-2 and earlier versions"
+-- "foo-bar; 0, 1/installed-inplace, foo-bar~>bazqux.foo-bar-2"
 showOptions :: Verbosity -> QPN -> [POption] -> String
 showOptions _ _ [] = "unexpected empty list of versions"
 showOptions _ q [x] = showOption q x
