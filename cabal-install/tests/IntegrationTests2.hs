@@ -2811,7 +2811,7 @@ testHaddockProjectDependencies config = do
         ["all"]
         defaultGlobalFlags{globalStoreDir = Flag "store"}
 
-      let haddock = "haddocks" </> "async" </> "async.haddock"
+      let haddock = "haddocks" </> "text" </> "text.haddock"
       hasHaddock <- doesFileExist haddock
       unless hasHaddock $ assertFailure ("File `" ++ haddock ++ "` does not exist.")
     cleanHaddockProject testdir
