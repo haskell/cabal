@@ -60,6 +60,7 @@ data TestShowDetails = Never | Failures | Always | Streaming | Direct
   deriving (Eq, Ord, Enum, Bounded, Generic, Show)
 
 instance Binary TestShowDetails
+instance NFData TestShowDetails
 instance Structured TestShowDetails
 
 knownTestShowDetails :: [TestShowDetails]

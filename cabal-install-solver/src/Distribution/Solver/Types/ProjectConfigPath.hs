@@ -117,6 +117,7 @@ instance Ord ProjectConfigPath where
             bImporters = snd $ unconsProjectConfigPath pb
 
 instance Binary ProjectConfigPath
+instance NFData ProjectConfigPath
 instance Structured ProjectConfigPath
 
 -- | Renders the path like this;

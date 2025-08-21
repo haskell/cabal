@@ -63,6 +63,7 @@ data ConstraintSource =
   deriving (Show, Eq, Generic)
 
 instance Binary ConstraintSource
+instance NFData ConstraintSource
 instance Structured ConstraintSource
 
 -- | Description of a 'ConstraintSource'.

@@ -75,6 +75,7 @@ import qualified Text.PrettyPrint as Disp
 data HaddockTarget = ForHackage | ForDevelopment deriving (Eq, Show, Generic)
 
 instance Binary HaddockTarget
+instance NFData HaddockTarget
 instance Structured HaddockTarget
 
 instance Pretty HaddockTarget where
