@@ -1,16 +1,21 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 -- | Utilities for understanding @plan.json@.
 module Test.Cabal.Plan (
-    Plan,
+    Plan(..),
     DistDirOrBinFile(..),
+    InstallItem(..),
+    ConfiguredGlobal(..),
+    Revision(..),
     planDistDir,
     buildInfoFile,
 ) where
 
-import Distribution.Parsec (simpleParsec)
+import Distribution.Parsec (simpleParsec, eitherParsec)
 import Distribution.Pretty (prettyShow)
 import Distribution.Types.ComponentName
+import Distribution.Types.Version
 import Distribution.Package
 import qualified Data.Text as Text
 import Data.Aeson
@@ -32,14 +37,21 @@ data ConfiguredInplace = ConfiguredInplace
     { configuredInplaceDistDir       :: FilePath
     , configuredInplaceBuildInfo     :: Maybe FilePath
     , configuredInplacePackageName   :: PackageName
+    , configuredInplaceVersion       :: Version
+    , configuredInplaceRevision      :: Revision
     , configuredInplaceComponentName :: Maybe ComponentName }
   deriving Show
 
 data ConfiguredGlobal = ConfiguredGlobal
     { configuredGlobalBinFile       :: Maybe FilePath
     , configuredGlobalPackageName   :: PackageName
+    , configuredGlobalVersion       :: Version
+    , configuredGlobalRevision      :: Revision
     , configuredGlobalComponentName :: Maybe ComponentName }
   deriving Show
+
+newtype Revision = Revision Int
+  deriving (Show, Eq, FromJSON)
 
 instance FromJSON Plan where
     parseJSON (Object v) = fmap Plan (v .: "install-plan")
@@ -65,21 +77,28 @@ instance FromJSON ConfiguredInplace where
         dist_dir <- v .: "dist-dir"
         build_info <- v .:? "build-info"
         pkg_name <- v .: "pkg-name"
+        pkg_version <- v .: "pkg-version"
+        pkg_revision <- v .: "pkg-revision"
         component_name <- v .:? "component-name"
-        return (ConfiguredInplace dist_dir build_info pkg_name component_name)
+        return (ConfiguredInplace dist_dir build_info pkg_name pkg_version pkg_revision component_name)
     parseJSON invalid = typeMismatch "ConfiguredInplace" invalid
 
 instance FromJSON ConfiguredGlobal where
     parseJSON (Object v) = do
         bin_file <- v .:? "bin-file"
         pkg_name <- v .: "pkg-name"
+        pkg_version <- v .: "pkg-version"
+        pkg_revision <- v .: "pkg-revision"
         component_name <- v .:? "component-name"
-        return (ConfiguredGlobal bin_file pkg_name component_name)
+        return (ConfiguredGlobal bin_file pkg_name pkg_version pkg_revision component_name)
     parseJSON invalid = typeMismatch "ConfiguredGlobal" invalid
 
 instance FromJSON PackageName where
     parseJSON (String t) = return (mkPackageName (Text.unpack t))
     parseJSON invalid = typeMismatch "PackageName" invalid
+
+instance FromJSON Version where
+    parseJSON = withText "Version" $ either fail pure . eitherParsec . Text.unpack
 
 instance FromJSON ComponentName where
     parseJSON (String t) =
