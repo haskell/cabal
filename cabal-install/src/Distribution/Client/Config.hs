@@ -1036,8 +1036,8 @@ getConfigFilePathAndSource verbosity configFileFlag =
       -- option).
       dir <- lookupEnv "CABAL_DIR"
       case dir of
-        Nothing -> return ()
-        Just _ -> warnOnTwoConfigs verbosity
+        Nothing -> warnOnTwoConfigs verbosity
+        Just _ -> return ()
       return $ Just cfg
 
     sources =
