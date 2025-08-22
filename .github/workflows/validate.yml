@@ -236,9 +236,10 @@ jobs:
             tests="$tests solver-benchmarks-tests solver-benchmarks-run"
           fi
           for test in $tests; do
-            echo Validate "$test"
+            echo ::group::Validate "$test"
             sh validate.sh $FLAGS -s "$test" || rc=1
             echo End "$test"
+            echo ::endgroup::
           done
           exit $rc
       # The above ensures all the tests get run, for a single platform+ghc.
