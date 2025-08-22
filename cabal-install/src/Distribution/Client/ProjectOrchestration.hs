@@ -1117,11 +1117,11 @@ printPlan
       pkgs = InstallPlan.executionOrder elaboratedPlan
 
       ifVerbose s
-        | verbosity >= verbose = s
+        | verbosityLevel verbosity >= Verbose = s
         | otherwise = ""
 
       ifNormal s
-        | verbosity >= verbose = ""
+        | verbosityLevel verbosity >= Verbose = ""
         | otherwise = s
 
       wouldWill
@@ -1133,7 +1133,7 @@ printPlan
         unwords $
           filter (not . null) $
             [ " -"
-            , if verbosity >= deafening
+            , if verbosityLevel verbosity >= Deafening
                 then prettyShow (installedUnitId elab)
                 else prettyShow (packageId elab)
             , case elabBuildStyle elab of
@@ -1345,14 +1345,14 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
         unlines
           [ case failureClassification of
             ShowBuildSummaryAndLog reason _
-              | verbosity > normal ->
+              | verbosityLevel verbosity > Normal ->
                   renderFailureDetail mentionDepOf pkg reason
               | otherwise ->
                   renderFailureSummary mentionDepOf pkg reason
                     ++ ". See the build log above for details."
             ShowBuildSummaryOnly reason ->
               renderFailureDetail mentionDepOf pkg reason
-          | let mentionDepOf = verbosity <= normal
+          | let mentionDepOf = verbosityLevel verbosity <= Normal
           , (pkg, failureClassification) <- failuresClassification
           ]
   where
@@ -1367,7 +1367,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
       [ (pkg, classifyBuildFailure failure)
       | (pkgid, failure) <- failures
       , case buildFailureReason failure of
-          DependentFailed{} -> verbosity > normal
+          DependentFailed{} -> verbosityLevel verbosity > Normal
           _ -> True
       , InstallPlan.Configured pkg <-
           maybeToList (InstallPlan.lookup plan pkgid)

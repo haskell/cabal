@@ -106,7 +106,9 @@ import Distribution.Types.UnitId (unUnitId)
 import Distribution.Types.Version (mkVersion)
 import Distribution.Types.VersionRange (orLaterVersion)
 import Distribution.Verbosity as Verbosity
-  ( normal
+  ( defaultVerbosityHandles
+  , mkVerbosity
+  , normal
   )
 
 import Distribution.Client.Errors
@@ -359,7 +361,9 @@ haddockProjectAction flags _extraArgs globalFlags = do
     -- build all packages with appropriate haddock flags
     commonFlags = haddockProjectCommonFlags flags
 
-    verbosity = fromFlagOrDefault normal (setupVerbosity commonFlags)
+    verbosity =
+      mkVerbosity defaultVerbosityHandles $
+        fromFlagOrDefault normal (setupVerbosity commonFlags)
 
     haddockFlags =
       defaultHaddockFlags

@@ -465,7 +465,7 @@ rebuildProjectConfig
               | cwd == distProjectRootDirectory = info
               | otherwise = notice
         unless (null configFiles)
-          . out (verboseStderr verbosity)
+          . out (modifyVerbosityFlags verboseStderr verbosity)
           . render
           $ message
         where
@@ -487,7 +487,7 @@ rebuildProjectConfig
             where
               configFilesDoc = map (quoteUntrimmed . projectConfigPathRoot) configFiles
               configFilesVertList -- if verbose, include provenance ("imported by" stuff)
-                | verbosity < verbose = docProjectConfigFiles configFiles
+                | verbosityLevel verbosity < Verbose = docProjectConfigFiles configFiles
                 | otherwise = vcat $ map (\p -> text "- " <> docProjectConfigPath p) configFiles
               affectedByMsg = text "Configuration is affected by "
               atProjectRootMsg = text "at '" <> text distProjectRootDirectory <> text "'."
@@ -496,7 +496,7 @@ rebuildProjectConfig
             [ path
             | Explicit path <-
                 Set.toList
-                  . (if verbosity >= verbose then id else onlyTopLevelProvenance)
+                  . (if verbosityLevel verbosity >= Verbose then id else onlyTopLevelProvenance)
                   $ projectConfigProvenance projectConfig
             ]
 
@@ -1352,7 +1352,7 @@ planPackages
           . setStrongFlags solverSettingStrongFlags
           . setAllowBootLibInstalls solverSettingAllowBootLibInstalls
           . setOnlyConstrained solverSettingOnlyConstrained
-          . setSolverVerbosity verbosity
+          . setSolverVerbosity (verbosityLevel verbosity)
           -- TODO: [required eventually] decide if we need to prefer
           -- installed for global packages, or prefer latest even for
           -- global packages. Perhaps should be configurable but with a
@@ -4214,7 +4214,7 @@ setupHsCommonFlags
 setupHsCommonFlags verbosity mbWorkDir builddir keepTempFiles =
   Cabal.CommonSetupFlags
     { setupDistPref = toFlag builddir
-    , setupVerbosity = toFlag verbosity
+    , setupVerbosity = toFlag $ verbosityFlags verbosity
     , setupCabalFilePath = mempty
     , setupWorkingDir = maybeToFlag mbWorkDir
     , setupTargets = []
