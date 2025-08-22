@@ -1465,7 +1465,7 @@ userConfigAction ucflags extraArgs globalFlags = do
       extraLines = fromFlag (userConfigAppendLines ucflags)
   case extraArgs of
     ("init" : _) -> do
-      path <- configFile
+      path <- getConfigFilePath verbosity (globalConfigFile globalFlags)
       fileExists <- doesFileExist path
       if (not fileExists || (fileExists && frc))
         then void $ createDefaultConfigFile verbosity extraLines path
@@ -1475,8 +1475,6 @@ userConfigAction ucflags extraArgs globalFlags = do
     -- Error handling.
     [] -> dieWithException verbosity SpecifySubcommand
     _ -> dieWithException verbosity $ UnknownUserConfigSubcommand extraArgs
-  where
-    configFile = getConfigFilePath (globalConfigFile globalFlags)
 
 -- | Used as an entry point when cabal-install needs to invoke itself
 -- as a setup script. This can happen e.g. when doing parallel builds.

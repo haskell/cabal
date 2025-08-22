@@ -284,7 +284,7 @@ getPathLocation baseCtx ConfigPathStoreDir =
     defaultStoreDir
     (pure <$> projectConfigStoreDir (projectConfigShared (projectConfig baseCtx)))
 getPathLocation baseCtx ConfigPathConfigFile =
-  getConfigFilePath (projectConfigConfigFile (projectConfigShared (projectConfig baseCtx)))
+  getConfigFilePath normal (projectConfigConfigFile (projectConfigShared (projectConfig baseCtx)))
 getPathLocation baseCtx ConfigPathInstallDir =
   fromFlagOrDefault
     defaultInstallPath
