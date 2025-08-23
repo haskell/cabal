@@ -81,7 +81,9 @@ needComponent pkg_descr comp =
     CBench bench -> needBenchmark pkg_descr bench
 
 needSetup :: Rebuild ()
-needSetup = findFirstFileMonitored id ["Setup.hs", "Setup.lhs"] >> return ()
+needSetup = do
+  void $ findFirstFileMonitored id ["Setup.hs", "Setup.lhs"]
+  void $ findFirstFileMonitored id ["SetupHooks.hs", "SetupHooks.lhs"]
 
 needLibrary :: PackageDescription -> Library -> Rebuild ()
 needLibrary

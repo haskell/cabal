@@ -4,7 +4,7 @@ import System.FilePath ((</>))
 
 main = do
   -- Test that --with-repl works with a valid GHC path
-  cabalTest' "with-repl-valid-path" $ do
+  cabalTest' "with-repl-valid-path" $ recordMode DoNotRecord $ do
     cabal' "clean" []
     -- Get the path to the system GHC
     ghc_prog <- requireProgramM ghcProgram
@@ -13,7 +13,7 @@ main = do
     assertOutputContains "GHCi, version" res
 
   -- Test that --with-repl fails with an invalid path
-  cabalTest' "with-repl-invalid-path" $ do
+  cabalTest' "with-repl-invalid-path" $ recordMode DoNotRecord $ do
     cabal' "clean" []
     res <- fails $ cabalWithStdin "v2-repl" ["--with-repl=/nonexistent/path/to/ghc"] ""
     assertOutputContains "does not exist" res
