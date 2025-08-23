@@ -14,6 +14,7 @@ data PathComponent
   deriving (Eq, Ord, Generic)
 
 instance Binary PathComponent
+instance NFData PathComponent
 instance Structured PathComponent
 
 data PathTemplateVariable
@@ -67,6 +68,7 @@ data PathTemplateVariable
   deriving (Eq, Ord, Generic)
 
 instance Binary PathTemplateVariable
+instance NFData PathTemplateVariable
 instance Structured PathTemplateVariable
 
 instance Show PathTemplateVariable where

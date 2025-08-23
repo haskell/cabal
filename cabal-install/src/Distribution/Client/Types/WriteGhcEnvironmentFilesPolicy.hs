@@ -20,6 +20,7 @@ data WriteGhcEnvironmentFilesPolicy
   deriving (Eq, Enum, Bounded, Generic, Show)
 
 instance Binary WriteGhcEnvironmentFilesPolicy
+instance NFData WriteGhcEnvironmentFilesPolicy
 instance Structured WriteGhcEnvironmentFilesPolicy
 
 instance Parsec WriteGhcEnvironmentFilesPolicy where

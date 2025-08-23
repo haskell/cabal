@@ -1,5 +1,7 @@
 module Distribution.Types.ParStrat where
 
+import Distribution.Compat.Prelude
+
 -- | How to control parallelism, e.g. a fixed number of jobs or by using a system semaphore.
 data ParStratX sem
   = -- | Compile in parallel with the given number of jobs (`-jN` or `-j`).
@@ -9,6 +11,11 @@ data ParStratX sem
   | -- | No parallelism (neither `-jN` nor `--semaphore`, but could be `-j1`).
     Serial
   deriving (Show)
+
+instance NFData sem => NFData (ParStratX sem) where
+  rnf (NumJobs m) = rnf m
+  rnf (UseSem s) = rnf s
+  rnf Serial = ()
 
 -- | Used by Cabal to indicate that we want to use this specific semaphore (created by cabal-install)
 type ParStrat = ParStratX String

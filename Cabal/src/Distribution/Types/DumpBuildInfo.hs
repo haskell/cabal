@@ -13,6 +13,7 @@ data DumpBuildInfo
   deriving (Read, Show, Eq, Ord, Enum, Bounded, Generic)
 
 instance Binary DumpBuildInfo
+instance NFData DumpBuildInfo
 instance Structured DumpBuildInfo
 
 instance Parsec DumpBuildInfo where
