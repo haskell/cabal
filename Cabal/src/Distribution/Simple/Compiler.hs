@@ -130,6 +130,7 @@ data Compiler = Compiler
   deriving (Eq, Generic, Show, Read)
 
 instance Binary Compiler
+instance NFData Compiler
 instance Structured Compiler
 
 showCompilerId :: Compiler -> String
@@ -205,6 +206,7 @@ data PackageDBX fp
   deriving (Eq, Generic, Ord, Show, Read, Functor, Foldable, Traversable)
 
 instance Binary fp => Binary (PackageDBX fp)
+instance NFData fp => NFData (PackageDBX fp)
 instance Structured fp => Structured (PackageDBX fp)
 
 -- | Parse a PackageDB stack entry
@@ -305,6 +307,7 @@ data OptimisationLevel
   deriving (Bounded, Enum, Eq, Generic, Read, Show)
 
 instance Binary OptimisationLevel
+instance NFData OptimisationLevel
 instance Structured OptimisationLevel
 
 instance Parsec OptimisationLevel where
@@ -354,6 +357,7 @@ data DebugInfoLevel
   deriving (Bounded, Enum, Eq, Generic, Read, Show)
 
 instance Binary DebugInfoLevel
+instance NFData DebugInfoLevel
 instance Structured DebugInfoLevel
 
 instance Parsec DebugInfoLevel where
@@ -607,6 +611,7 @@ data ProfDetailLevel
   deriving (Eq, Generic, Read, Show)
 
 instance Binary ProfDetailLevel
+instance NFData ProfDetailLevel
 instance Structured ProfDetailLevel
 
 instance Parsec ProfDetailLevel where

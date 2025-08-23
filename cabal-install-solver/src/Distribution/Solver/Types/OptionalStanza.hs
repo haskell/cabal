@@ -57,6 +57,7 @@ enableStanzas optionalStanzas = ComponentRequestedSpec
     }
 
 instance Binary OptionalStanza
+instance NFData OptionalStanza
 instance Structured OptionalStanza
 
 -------------------------------------------------------------------------------

@@ -95,6 +95,18 @@ instance Structured AllowBootLibInstalls
 instance Structured OnlyConstrained
 instance Structured SolveExecutables
 
+instance NFData ReorderGoals
+instance NFData CountConflicts
+instance NFData FineGrainedConflicts
+instance NFData IndependentGoals
+instance NFData PreferOldest
+instance NFData MinimizeConflictSet
+instance NFData AvoidReinstalls
+instance NFData ShadowPkgs
+instance NFData StrongFlags
+instance NFData AllowBootLibInstalls
+instance NFData OnlyConstrained
+
 instance Pretty OnlyConstrained where
   pretty OnlyConstrainedAll  = PP.text "all"
   pretty OnlyConstrainedNone = PP.text "none"

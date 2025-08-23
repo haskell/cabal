@@ -74,6 +74,7 @@ data RemoteRepo = RemoteRepo
   deriving (Show, Eq, Ord, Generic)
 
 instance Binary RemoteRepo
+instance NFData RemoteRepo
 instance Structured RemoteRepo
 
 instance Pretty RemoteRepo where
@@ -134,6 +135,7 @@ data LocalRepo = LocalRepo
   deriving (Show, Eq, Ord, Generic)
 
 instance Binary LocalRepo
+instance NFData LocalRepo
 instance Structured LocalRepo
 
 -- | Note: doesn't parse 'localRepoSharedCache' field.
@@ -202,6 +204,7 @@ data Repo
   deriving (Show, Eq, Ord, Generic)
 
 instance Binary Repo
+instance NFData Repo
 instance Structured Repo
 
 -- | Check if this is a remote repo

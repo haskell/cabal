@@ -224,6 +224,7 @@ data AbiTag
   deriving (Eq, Generic, Show, Read)
 
 instance Binary AbiTag
+instance NFData AbiTag
 instance Structured AbiTag
 
 instance Pretty AbiTag where

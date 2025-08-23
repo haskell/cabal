@@ -1,0 +1,7 @@
+---
+synopsis: Add NFData instances
+packages: [Cabal, cabal-install, cabal-install-solver, Cabal-syntax]
+prs: 11097
+---
+
+Add NFData instances necessary for HLS plugins to function.

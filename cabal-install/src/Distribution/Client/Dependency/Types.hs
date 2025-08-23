@@ -24,6 +24,8 @@ data Solver = Modular
 instance Binary PreSolver
 instance Binary Solver
 
+instance NFData PreSolver
+
 instance Structured PreSolver
 instance Structured Solver
 
