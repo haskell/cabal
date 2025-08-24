@@ -18,6 +18,7 @@ module UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
   , preferences
   , setVerbose
   , enableAllTests
+  , wiredInUnitIds
   , solverSuccess
   , solverFailure
   , anySolverFailure
@@ -50,6 +51,7 @@ import qualified Distribution.Solver.Types.PackagePath as P
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb (..), pkgConfigDbFromList)
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.Variable
+import Distribution.Types.UnitId (UnitId, mkUnitId)
 import UnitTests.Distribution.Solver.Modular.DSL
 import UnitTests.Options
 
@@ -106,6 +108,16 @@ setVerbose test = test{testVerbosity = verbose}
 enableAllTests :: SolverTest -> SolverTest
 enableAllTests test = test{testEnableAllTests = EnableAllTests True}
 
+wiredInUnitIds :: SolverTest -> SolverTest
+wiredInUnitIds test =
+  test
+    { testWiredInUnitIds =
+        Just
+          [ (C.mkPackageName "ghc-internal", mkUnitId "ghc-internal-1")
+          , (C.mkPackageName "ghc", mkUnitId "ghc-1")
+          ]
+    }
+
 {-------------------------------------------------------------------------------
   Solver tests
 -------------------------------------------------------------------------------}
@@ -130,6 +142,7 @@ data SolverTest = SolverTest
   , testDb :: ExampleDb
   , testSupportedExts :: Maybe [Extension]
   , testSupportedLangs :: Maybe [Language]
+  , testWiredInUnitIds :: Maybe [(C.PackageName, UnitId)]
   , testPkgConfigDb :: Maybe PkgConfigDb
   , testEnableAllTests :: EnableAllTests
   }
@@ -233,6 +246,7 @@ mkTestExtLangPC exts langs mPkgConfigDb db label targets result =
     , testDb = db
     , testSupportedExts = exts
     , testSupportedLangs = langs
+    , testWiredInUnitIds = Nothing
     , testPkgConfigDb = pkgConfigDbFromList <$> mPkgConfigDb
     , testEnableAllTests = EnableAllTests False
     }
@@ -245,6 +259,7 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
             testDb
             testSupportedExts
             testSupportedLangs
+            testWiredInUnitIds
             testPkgConfigDb
             testTargets
             testMaxBackjumps

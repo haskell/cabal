@@ -190,6 +190,9 @@ processPackageConstraintP qpn c i (LabeledPackageConstraint (PackageConstraint s
     go _       PackagePropertyInstalled
         | instI i       = r
         | otherwise     = Fail c (GlobalConstraintInstalled src)
+    go _       (PackagePropertyInstalledSpecificUnitId unitId)
+        | instUid unitId i       = r
+        | otherwise     = Fail c (GlobalConstraintInstalledSpecificUnitId unitId src)
     go _       PackagePropertySource
         | not (instI i) = r
         | otherwise     = Fail c (GlobalConstraintSource src)

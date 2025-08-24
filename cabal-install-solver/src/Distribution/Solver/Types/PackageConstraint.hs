@@ -19,7 +19,7 @@ module Distribution.Solver.Types.PackageConstraint (
 import Distribution.Solver.Compat.Prelude
 import Prelude ()
 
-import Distribution.Package                        (PackageName)
+import Distribution.Package                        (PackageName, UnitId)
 import Distribution.PackageDescription             (FlagAssignment, dispFlagAssignment)
 import Distribution.Pretty                         (flatStyle, Pretty(pretty))
 import Distribution.Types.PackageVersionConstraint (PackageVersionConstraint (..))
@@ -90,6 +90,7 @@ instance Pretty ConstraintScope where
 data PackageProperty
    = PackagePropertyVersion   VersionRange
    | PackagePropertyInstalled
+   | PackagePropertyInstalledSpecificUnitId UnitId
    | PackagePropertySource
    | PackagePropertyFlags     FlagAssignment
    | PackagePropertyStanzas   [OptionalStanza]
@@ -102,6 +103,7 @@ instance Structured PackageProperty
 instance Pretty PackageProperty where
   pretty (PackagePropertyVersion verrange) = pretty verrange
   pretty PackagePropertyInstalled          = Disp.text "installed"
+  pretty (PackagePropertyInstalledSpecificUnitId unitId) = Disp.text "installed(" <> pretty unitId <> Disp.text ")"
   pretty PackagePropertySource             = Disp.text "source"
   pretty (PackagePropertyFlags flags)      = dispFlagAssignment flags
   pretty (PackagePropertyStanzas stanzas)  =
@@ -139,6 +141,7 @@ packageConstraintToDependency (PackageConstraint scope prop) = toDep prop
   where
     toDep (PackagePropertyVersion vr) = Just $ PackageVersionConstraint (scopeToPackageName scope) vr
     toDep (PackagePropertyInstalled)  = Nothing
+    toDep (PackagePropertyInstalledSpecificUnitId {}) = Nothing
     toDep (PackagePropertySource)     = Nothing
     toDep (PackagePropertyFlags _)    = Nothing
     toDep (PackagePropertyStanzas _)  = Nothing
