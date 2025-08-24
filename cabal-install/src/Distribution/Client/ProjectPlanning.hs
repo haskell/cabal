@@ -376,7 +376,7 @@ rebuildProjectConfig
     let fileMonitorProjectConfig = newFileMonitor (distProjectCacheFile "config")
 
     fileMonitorProjectConfigKey <- do
-      configPath <- getConfigFilePath projectConfigConfigFile
+      configPath <- getConfigFilePath verbosity projectConfigConfigFile
       return
         ( configPath
         , distProjectFile ""
