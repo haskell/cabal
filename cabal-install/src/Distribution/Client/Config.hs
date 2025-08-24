@@ -953,7 +953,6 @@ defaultHackageRemoteRepoKeyThreshold = 3
 -- use 'loadRawConfig'.
 loadConfig :: Verbosity -> Flag FilePath -> IO SavedConfig
 loadConfig verbosity configFileFlag = do
-  warnOnTwoConfigs verbosity
   config <- loadRawConfig verbosity configFileFlag
   extendToEffectiveConfig config
 
@@ -980,7 +979,7 @@ extendToEffectiveConfig config = do
 -- effective configuration.
 loadRawConfig :: Verbosity -> Flag FilePath -> IO SavedConfig
 loadRawConfig verbosity configFileFlag = do
-  (source, configFile) <- getConfigFilePathAndSource configFileFlag
+  (source, configFile) <- getConfigFilePathAndSource verbosity configFileFlag
   minp <- readConfigFile mempty configFile
   case minp of
     Nothing -> do
@@ -1023,17 +1022,28 @@ data ConfigFileSource
 
 -- | Returns the config file path, without checking that the file exists.
 -- The order of precedence is: input flag, CABAL_CONFIG, default location.
-getConfigFilePath :: Flag FilePath -> IO FilePath
-getConfigFilePath = fmap snd . getConfigFilePathAndSource
+getConfigFilePath :: Verbosity -> Flag FilePath -> IO FilePath
+getConfigFilePath verbosity configFilePath = fmap snd $ getConfigFilePathAndSource verbosity configFilePath
 
-getConfigFilePathAndSource :: Flag FilePath -> IO (ConfigFileSource, FilePath)
-getConfigFilePathAndSource configFileFlag =
+getConfigFilePathAndSource :: Verbosity -> Flag FilePath -> IO (ConfigFileSource, FilePath)
+getConfigFilePathAndSource verbosity configFileFlag =
   getSource sources
   where
+    defaultSource = do
+      cfg <- defaultConfigFile
+      -- We only warn on two configs when the user has not explicitly indicated
+      -- a preference (using any of CABAL_CONFIG, CABAL_DIR, or the --config
+      -- option).
+      dir <- lookupEnv "CABAL_DIR"
+      case dir of
+        Nothing -> warnOnTwoConfigs verbosity
+        Just _ -> return ()
+      return $ Just cfg
+
     sources =
       [ (CommandlineOption, return . flagToMaybe $ configFileFlag)
       , (EnvironmentVariable, lookup "CABAL_CONFIG" `liftM` getEnvironment)
-      , (Default, Just `liftM` defaultConfigFile)
+      , (Default, defaultSource)
       ]
 
     getSource [] = error "no config file path candidate found."
@@ -1991,7 +2001,7 @@ userConfigUpdate verbosity globalFlags extraLines = do
   extraConfig <- parseExtraLines verbosity extraLines
   newConfig <- initialSavedConfig
   commentConf <- commentSavedConfig
-  cabalFile <- getConfigFilePath $ globalConfigFile globalFlags
+  cabalFile <- getConfigFilePath verbosity $ globalConfigFile globalFlags
   let backup = cabalFile ++ ".backup"
   notice verbosity $ "Renaming " ++ cabalFile ++ " to " ++ backup ++ "."
   renameFile cabalFile backup

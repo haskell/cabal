@@ -250,7 +250,7 @@ pathAction flags@NixStyleFlags{extraFlags = pathFlags'} cliTargetStrings globalF
         pure $ Just $ mkCompilerInfo configuredCompilerProg compiler
 
   paths <- for (fromFlagOrDefault [] $ pathDirectories pathFlags) $ \p -> do
-    t <- getPathLocation baseCtx p
+    t <- getPathLocation verbosity baseCtx p
     pure (pathName p, t)
 
   let pathOutputs =
@@ -272,20 +272,20 @@ pathAction flags@NixStyleFlags{extraFlags = pathFlags'} cliTargetStrings globalF
 -- | Find the FilePath location for common configuration paths.
 --
 -- TODO: this should come from a common source of truth to avoid code path divergence
-getPathLocation :: ProjectBaseContext -> ConfigPath -> IO FilePath
-getPathLocation _ ConfigPathCacheHome =
+getPathLocation :: Verbosity -> ProjectBaseContext -> ConfigPath -> IO FilePath
+getPathLocation _ _ ConfigPathCacheHome =
   defaultCacheHome
-getPathLocation baseCtx ConfigPathRemoteRepoCache =
+getPathLocation _ baseCtx ConfigPathRemoteRepoCache =
   pure $ buildSettingCacheDir (buildSettings baseCtx)
-getPathLocation baseCtx ConfigPathLogsDir =
+getPathLocation _ baseCtx ConfigPathLogsDir =
   pure $ cabalLogsDirectory (cabalDirLayout baseCtx)
-getPathLocation baseCtx ConfigPathStoreDir =
+getPathLocation _ baseCtx ConfigPathStoreDir =
   fromFlagOrDefault
     defaultStoreDir
     (pure <$> projectConfigStoreDir (projectConfigShared (projectConfig baseCtx)))
-getPathLocation baseCtx ConfigPathConfigFile =
-  getConfigFilePath (projectConfigConfigFile (projectConfigShared (projectConfig baseCtx)))
-getPathLocation baseCtx ConfigPathInstallDir =
+getPathLocation verbosity baseCtx ConfigPathConfigFile =
+  getConfigFilePath verbosity (projectConfigConfigFile (projectConfigShared (projectConfig baseCtx)))
+getPathLocation _ baseCtx ConfigPathInstallDir =
   fromFlagOrDefault
     defaultInstallPath
     (pure <$> cinstInstalldir (projectConfigClientInstallFlags $ projectConfigBuildOnly (projectConfig baseCtx)))

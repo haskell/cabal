@@ -1009,7 +1009,7 @@ writeProjectConfigFile file =
 readGlobalConfig :: Verbosity -> Flag FilePath -> Rebuild ProjectConfig
 readGlobalConfig verbosity configFileFlag = do
   config <- liftIO (loadConfig verbosity configFileFlag)
-  configFile <- liftIO (getConfigFilePath configFileFlag)
+  configFile <- liftIO (getConfigFilePath verbosity configFileFlag)
   monitorFiles [monitorFileHashed configFile]
   return (convertLegacyGlobalConfig config)
 
