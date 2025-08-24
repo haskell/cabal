@@ -17,6 +17,7 @@
 -- Various common data types for the entire cabal-install system
 module Distribution.Client.Types
   ( module Distribution.Client.Types.AllowNewer
+  , module Distribution.Client.Types.CurrentCommand
   , module Distribution.Client.Types.ConfiguredId
   , module Distribution.Client.Types.ConfiguredPackage
   , module Distribution.Client.Types.BuildResults
@@ -33,6 +34,7 @@ import Distribution.Client.Types.AllowNewer
 import Distribution.Client.Types.BuildResults
 import Distribution.Client.Types.ConfiguredId
 import Distribution.Client.Types.ConfiguredPackage
+import Distribution.Client.Types.CurrentCommand
 import Distribution.Client.Types.PackageLocation
 import Distribution.Client.Types.PackageSpecifier
 import Distribution.Client.Types.ReadyPackage

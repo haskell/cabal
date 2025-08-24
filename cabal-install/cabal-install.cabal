@@ -218,6 +218,7 @@ library
         Distribution.Client.Types
         Distribution.Client.Types.AllowNewer
         Distribution.Client.Types.BuildResults
+        Distribution.Client.Types.CurrentCommand
         Distribution.Client.Types.ConfiguredId
         Distribution.Client.Types.ConfiguredPackage
         Distribution.Client.Types.Credentials

@@ -356,6 +356,7 @@ rebuildProjectConfig
   -> HttpTransport
   -> DistDirLayout
   -> ProjectConfig
+  -> CurrentCommand
   -> IO
       ( ProjectConfig
       , [PackageSpecifier UnresolvedSourcePackage]
@@ -370,7 +371,8 @@ rebuildProjectConfig
     , distProjectCacheDirectory
     , distProjectFile
     }
-  cliConfig = do
+  cliConfig
+  currentCommand = do
     progsearchpath <- liftIO $ getSystemSearchPath
 
     let fileMonitorProjectConfig = newFileMonitor (distProjectCacheFile "config")
@@ -412,13 +414,22 @@ rebuildProjectConfig
 
     informAboutConfigFiles projectConfig
 
-    return (projectConfig <> cliConfig, localPackages)
+    return (commandDefaults currentCommand <> projectConfig <> cliConfig, localPackages)
     where
       ProjectConfigShared{projectConfigHcFlavor, projectConfigHcPath, projectConfigHcPkg, projectConfigProjectFileParser, projectConfigIgnoreProject, projectConfigConfigFile} =
         projectConfigShared cliConfig
 
       PackageConfig{packageConfigProgramPaths, packageConfigProgramPathExtra} =
         projectConfigLocalPackages cliConfig
+
+      -- Some commands may require special defaults
+      commandDefaults HaddockCommand =
+        -- `cabal haddock` emplies --enable-documentation, #7462
+        mempty
+          { projectConfigAllPackages = mempty{packageConfigDocumentation = pure True}
+          , projectConfigLocalPackages = mempty{packageConfigDocumentation = pure True}
+          }
+      commandDefaults _ = mempty
 
       -- Read the cabal.project (or implicit config) and combine it with
       -- arguments from the command line
