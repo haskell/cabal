@@ -1,6 +1,6 @@
 module MyLib (someFunc) where
 
-import Control.Concurrent.Async
+import qualified Data.Text as T
 
-someFunc :: IO (Async ())
-someFunc = async (return ())
+someFunc :: IO ()
+someFunc = print . T.unpack . T.pack $ "Hello, World!"
