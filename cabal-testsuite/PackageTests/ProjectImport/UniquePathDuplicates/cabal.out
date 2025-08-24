@@ -1,0 +1,255 @@
+# checking that we detect when the same config is imported via many different paths
+# cabal v2-build
+Warning: 2 imports of yops-4.config;
+  yops-4.config
+    imported by: yops/yops-3.config
+    imported by: yops-0.project
+  yops-4.config
+    imported by: yops/yops-3.config
+    imported by: yops-2.config
+    imported by: yops/yops-1.config
+    imported by: yops-0.project
+Warning: 2 imports of yops-6.config;
+  yops-6.config
+    imported by: yops/yops-5.config
+    imported by: yops-4.config
+    imported by: yops/yops-3.config
+    imported by: yops-0.project
+  yops-6.config
+    imported by: yops/yops-5.config
+    imported by: yops-4.config
+    imported by: yops/yops-3.config
+    imported by: yops-2.config
+    imported by: yops/yops-1.config
+    imported by: yops-0.project
+Warning: 2 imports of yops-8.config;
+  yops-8.config
+    imported by: yops/yops-7.config
+    imported by: yops-6.config
+    imported by: yops/yops-5.config
+    imported by: yops-4.config
+    imported by: yops/yops-3.config
+    imported by: yops-0.project
+  yops-8.config
+    imported by: yops/yops-7.config
+    imported by: yops-6.config
+    imported by: yops/yops-5.config
+    imported by: yops-4.config
+    imported by: yops/yops-3.config
+    imported by: yops-2.config
+    imported by: yops/yops-1.config
+    imported by: yops-0.project
+Warning: 2 imports of yops/yops-3.config;
+  yops/yops-3.config
+    imported by: yops-0.project
+  yops/yops-3.config
+    imported by: yops-2.config
+    imported by: yops/yops-1.config
+    imported by: yops-0.project
+Warning: 2 imports of yops/yops-5.config;
+  yops/yops-5.config
+    imported by: yops-4.config
+    imported by: yops/yops-3.config
+    imported by: yops-0.project
+  yops/yops-5.config
+    imported by: yops-4.config
+    imported by: yops/yops-3.config
+    imported by: yops-2.config
+    imported by: yops/yops-1.config
+    imported by: yops-0.project
+Warning: 2 imports of yops/yops-7.config;
+  yops/yops-7.config
+    imported by: yops-6.config
+    imported by: yops/yops-5.config
+    imported by: yops-4.config
+    imported by: yops/yops-3.config
+    imported by: yops-0.project
+  yops/yops-7.config
+    imported by: yops-6.config
+    imported by: yops/yops-5.config
+    imported by: yops-4.config
+    imported by: yops/yops-3.config
+    imported by: yops-2.config
+    imported by: yops/yops-1.config
+    imported by: yops-0.project
+Warning: 2 imports of yops/yops-9.config;
+  yops/yops-9.config
+    imported by: yops-8.config
+    imported by: yops/yops-7.config
+    imported by: yops-6.config
+    imported by: yops/yops-5.config
+    imported by: yops-4.config
+    imported by: yops/yops-3.config
+    imported by: yops-0.project
+  yops/yops-9.config
+    imported by: yops-8.config
+    imported by: yops/yops-7.config
+    imported by: yops-6.config
+    imported by: yops/yops-5.config
+    imported by: yops-4.config
+    imported by: yops/yops-3.config
+    imported by: yops-2.config
+    imported by: yops/yops-1.config
+    imported by: yops-0.project
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - foo-0.1 (lib:foo) (first run)
+# checking that we detect when the same config is imported via many different paths
+# cabal v2-build
+Warning: 2 imports of woops-4.config;
+  woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-0.project
+  woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+Warning: 2 imports of woops-6.config;
+  woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-0.project
+  woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+Warning: 2 imports of woops-8.config;
+  woops-8.config
+    imported by: woops/woops-7.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-0.project
+  woops-8.config
+    imported by: woops/woops-7.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+Warning: 2 imports of woops/woops-3.config;
+  woops/woops-3.config
+    imported by: woops-0.project
+  woops/woops-3.config
+    imported by: woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+Warning: 2 imports of woops/woops-5.config;
+  woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-0.project
+  woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+Warning: 2 imports of woops/woops-7.config;
+  woops/woops-7.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-0.project
+  woops/woops-7.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+Warning: 2 imports of woops/woops-9.config;
+  woops/woops-9.config
+    imported by: woops-8.config
+    imported by: woops/woops-7.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-0.project
+  woops/woops-9.config
+    imported by: woops-8.config
+    imported by: woops/woops-7.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+Warning: 10 imports of www-stackage-org/lts-21.25.config;
+  www-stackage-org/lts-21.25.config
+    imported by: woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+  www-stackage-org/lts-21.25.config
+    imported by: woops/woops-3.config
+    imported by: woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+  www-stackage-org/lts-21.25.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+  www-stackage-org/lts-21.25.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+  www-stackage-org/lts-21.25.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+  www-stackage-org/lts-21.25.config
+    imported by: woops/woops-7.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+  www-stackage-org/lts-21.25.config
+    imported by: woops-8.config
+    imported by: woops/woops-7.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+  www-stackage-org/lts-21.25.config
+    imported by: woops/woops-9.config
+    imported by: woops-8.config
+    imported by: woops/woops-7.config
+    imported by: woops-6.config
+    imported by: woops/woops-5.config
+    imported by: woops-4.config
+    imported by: woops/woops-3.config
+    imported by: woops-2.config
+    imported by: woops/woops-1.config
+    imported by: woops-0.project
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - foo-0.1 (lib:foo) (first run)
