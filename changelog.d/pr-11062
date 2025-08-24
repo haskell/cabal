@@ -1,0 +1,8 @@
+synopsis: Solver: shorten the skipping message if needed
+packages: cabal-install-solver
+prs: #11062
+
+When the solver fails to find a solution, it can print out a long list
+of package versions which failed to meet the requirements. This PR
+shortens the message price the one version that failed and the number
+of other versions which failed to meet the requriements.
