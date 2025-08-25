@@ -1,6 +1,6 @@
 module MyLib (someFunc) where
 
-import qualified Data.Text as T
+import Data.Time.Clock
 
 someFunc :: IO ()
-someFunc = print . T.unpack . T.pack $ "Hello, World!"
+someFunc = print =<< getCurrentTime
