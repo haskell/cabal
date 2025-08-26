@@ -28,7 +28,7 @@
 - ignore: {name: "Use ++"} # 4 hints
 - ignore: {name: "Use :"} # 28 hints
 - ignore: {name: "Use <$"} # 2 hints
-- ignore: {name: "Use <$>"} # 89 hints
+- ignore: {name: "Use <$>"} # 87 hints
 - ignore: {name: "Use <&>"} # 16 hints
 - ignore: {name: "Use <=<"} # 4 hints
 - ignore: {name: "Use =<<"} # 7 hints
