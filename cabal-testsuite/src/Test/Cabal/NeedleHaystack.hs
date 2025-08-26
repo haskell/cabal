@@ -183,7 +183,7 @@ needleHaystack = NeedleHaystack True False txFwdBwdId txFwdBwdId
 -- >>> lineBreaksToSpaces "\nfoo\nbar\r\nbaz\n"
 -- " foo bar baz"
 lineBreaksToSpaces :: String -> String
-lineBreaksToSpaces = unwords . lines . filter ((/=) '\r')
+lineBreaksToSpaces = unwords . lines . filter ('\r' /=)
 
 -- | Replaces path separators found with those of the current OS, URL-like paths
 -- excluded.

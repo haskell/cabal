@@ -240,7 +240,7 @@ build_setupHooks
               , SetupHooks.targetInfo = target
               }
       for_ mbPostBuild ($ postBuildInputs)
-      return (maybe index (Index.insert `flip` index) mb_ipi)
+      return (maybe index (`Index.insert` index) mb_ipi)
 
     return ()
     where
