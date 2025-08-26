@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TupleSections #-}
 
 -----------------------------------------------------------------------------
 
@@ -321,7 +322,7 @@ getSourceFiles
   -> [ModuleName.ModuleName]
   -> IO [(ModuleName.ModuleName, SymbolicPathX allowAbsolute Pkg File)]
 getSourceFiles verbosity mbWorkDir dirs modules = for modules $ \m ->
-  fmap ((,) m) $
+  fmap (m,) $
     findFileCwdWithExtension
       mbWorkDir
       builtinHaskellSuffixes

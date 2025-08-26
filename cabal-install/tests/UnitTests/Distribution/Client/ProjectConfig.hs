@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 -- simplifier goes nuts otherwise
@@ -643,7 +644,7 @@ instance Arbitrary ProjectConfigShared where
     where
       arbitraryConstraints :: Gen [(UserConstraint, ConstraintSource)]
       arbitraryConstraints =
-        fmap (\uc -> (uc, projectConfigConstraintSource)) <$> arbitrary
+        fmap (,projectConfigConstraintSource) <$> arbitrary
       fixInstallDirs x = x{InstallDirs.includedir = mempty, InstallDirs.mandir = mempty, InstallDirs.flibdir = mempty}
 
   shrink ProjectConfigShared{..} =
@@ -688,7 +689,7 @@ instance Arbitrary ProjectConfigShared where
         <*> shrinker projectConfigMultiRepl
     where
       preShrink_Constraints = map fst
-      postShrink_Constraints = map (\uc -> (uc, projectConfigConstraintSource))
+      postShrink_Constraints = map (,projectConfigConstraintSource)
 
 projectConfigConstraintSource :: ConstraintSource
 projectConfigConstraintSource = ConstraintSourceProjectConfig nullProjectConfigPath

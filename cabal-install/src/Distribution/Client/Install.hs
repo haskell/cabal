@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TupleSections #-}
 
 -----------------------------------------------------------------------------
 
@@ -1514,7 +1515,7 @@ performInstallations
       useLogFile :: UseLogFile
       useLogFile =
         fmap
-          ((\f -> (f, loggingVerbosity)) . substLogFileName)
+          ((,loggingVerbosity) . substLogFileName)
           logFileTemplate
         where
           installLogFile' = flagToMaybe $ installLogFile installFlags
