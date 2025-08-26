@@ -157,7 +157,7 @@ data NeedleHaystack =
         }
 
 -- | Symmetric needle and haystack functions, the same conversion for each going
--- forward and the same coversion for each going backward.
+-- forward and the same conversion for each going backward.
 symNeedleHaystack :: (String -> String) -> (String -> String) -> NeedleHaystack
 symNeedleHaystack bwd fwd = let tx = TxFwdBwd bwd fwd in NeedleHaystack True False tx tx
 
