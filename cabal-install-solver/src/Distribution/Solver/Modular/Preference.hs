@@ -135,7 +135,7 @@ preferPackagePreferences pcs =
     preferred pn opt =
       let PackagePreferences vrs _ _ = pcs pn
       in fromIntegral . negate . L.length $
-         L.filter (`checkVR` (version opt)) vrs
+         L.filter (`checkVR` version opt) vrs
 
     -- Prefer installed packages over non-installed packages.
     installed :: POption -> Weight

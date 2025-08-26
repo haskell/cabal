@@ -783,9 +783,9 @@ processingInvariant
   -> Bool
 processingInvariant plan (Processing processingSet completedSet failedSet) =
   -- All the packages in the three sets are actually in the graph
-  assert (Foldable.all (`Graph.member` (planGraph plan)) processingSet)
-    $ assert (Foldable.all (`Graph.member` (planGraph plan)) completedSet)
-    $ assert (Foldable.all (`Graph.member` (planGraph plan)) failedSet)
+  assert (Foldable.all (`Graph.member` planGraph plan) processingSet)
+    $ assert (Foldable.all (`Graph.member` planGraph plan) completedSet)
+    $ assert (Foldable.all (`Graph.member` planGraph plan) failedSet)
     $
     -- The processing, completed and failed sets are disjoint from each other
     assert (noIntersection processingSet completedSet)
