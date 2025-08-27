@@ -21,7 +21,6 @@ repository hackage.haskell.org
 
 -- ignore-expiry: False
 -- http-transport:
--- nix:
 -- store-dir:
 -- active-repositories:
 -- local-no-index-repo:

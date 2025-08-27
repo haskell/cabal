@@ -515,32 +515,6 @@ globalCommand commands =
           globalHttpTransport
           (\v flags -> flags{globalHttpTransport = v})
           (reqArgFlag "HttpTransport")
-      , multiOption
-          "nix"
-          globalNix
-          (\v flags -> flags{globalNix = v})
-          [ optArg'
-              "(True or False)"
-              (maybeToFlag . (readMaybe =<<))
-              ( \case
-                  Flag True -> [Just "enable"]
-                  Flag False -> [Just "disable"]
-                  NoFlag -> []
-              )
-              ""
-              ["nix"] -- Must be empty because we need to return PP.empty from viewAsFieldDescr
-              "[DEPRECATED] Nix integration: run commands through nix-shell if a 'shell.nix' file exists (default is False)"
-          , noArg
-              (Flag True)
-              []
-              ["enable-nix"]
-              "[DEPRECATED] Enable Nix integration: run commands through nix-shell if a 'shell.nix' file exists"
-          , noArg
-              (Flag False)
-              []
-              ["disable-nix"]
-              "[DEPRECATED] Disable Nix integration"
-          ]
       , option
           []
           ["store-dir", "storedir"]

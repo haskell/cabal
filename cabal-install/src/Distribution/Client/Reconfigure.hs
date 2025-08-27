@@ -18,7 +18,6 @@ import Distribution.Utils.Path
 
 import Distribution.Client.Config (SavedConfig (..))
 import Distribution.Client.Configure (readConfigFlags)
-import Distribution.Client.Nix (findNixExpr, inNixShell, nixInstantiate)
 import Distribution.Client.Sandbox (findSavedDistPref, updateInstallDirs)
 import Distribution.Client.Sandbox.PackageEnvironment
   ( userPackageEnvironmentFile
@@ -110,37 +109,19 @@ reconfigure
     do
       savedFlags@(_, _) <- readConfigFlags $ getSymbolicPath dist
 
-      useNix <- fmap isJust (findNixExpr globalFlags config)
-      alreadyInNixShell <- inNixShell
+      let checks :: Check (ConfigFlags, ConfigExFlags)
+          checks =
+            checkVerb
+              <> checkDist
+              <> checkOutdated
+              <> check
+      (Any frc, flags@(configFlags, _)) <- runCheck checks mempty savedFlags
 
-      if useNix && not alreadyInNixShell
-        then do
-          -- If we are using Nix, we must reinstantiate the derivation outside
-          -- the shell. Eventually, the caller will invoke 'nixShell' which will
-          -- rerun cabal inside the shell. That will bring us back to 'reconfigure',
-          -- but inside the shell we'll take the second branch, below.
+      let config' :: SavedConfig
+          config' = updateInstallDirs (configUserInstall configFlags) config
 
-          -- This seems to have a problem: won't 'configureAction' call 'nixShell'
-          -- yet again, spawning an infinite tree of subprocesses?
-          -- No, because 'nixShell' doesn't spawn a new process if it is already
-          -- running in a Nix shell.
-
-          nixInstantiate verbosity (getSymbolicPath dist) False globalFlags config
-          return config
-        else do
-          let checks :: Check (ConfigFlags, ConfigExFlags)
-              checks =
-                checkVerb
-                  <> checkDist
-                  <> checkOutdated
-                  <> check
-          (Any frc, flags@(configFlags, _)) <- runCheck checks mempty savedFlags
-
-          let config' :: SavedConfig
-              config' = updateInstallDirs (configUserInstall configFlags) config
-
-          when frc $ configureAction flags extraArgs globalFlags
-          return config'
+      when frc $ configureAction flags extraArgs globalFlags
+      return config'
     where
       mbWorkDir = flagToMaybe $ configWorkingDir $ savedConfigureFlags config
       -- Changing the verbosity does not require reconfiguration, but the new
