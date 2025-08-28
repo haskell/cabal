@@ -770,6 +770,20 @@ Miscellaneous options
     to build GHCi libs fails. In such cases this flag can be used as a
     workaround.
 
+.. option:: --enable-library-bytecode
+
+    Build bytecode libraries (``.bytecodelib`` files) in addition to the
+    usual object and shared libraries. This can be useful when combined with `-fprefer-byte-code`
+    in order to also use bytecode for library dependencies.
+
+    Bytecode libraries currently require GHC 9.15 or later. When used
+    with older compilers the flag is ignored and a warning is emitted.
+
+.. option:: --disable-library-bytecode
+
+   Do not build bytcode libraries.
+
+
 .. option:: --enable-split-objs
 
     Use the GHC ``-split-objs`` feature when building the library. This

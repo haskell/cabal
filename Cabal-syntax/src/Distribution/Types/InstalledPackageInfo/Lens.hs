@@ -123,6 +123,10 @@ libraryDynDirs :: Lens' InstalledPackageInfo [FilePath]
 libraryDynDirs f s = fmap (\x -> s{T.libraryDynDirs = x}) (f (T.libraryDynDirs s))
 {-# INLINE libraryDynDirs #-}
 
+libraryBytecodeDirs :: Lens' InstalledPackageInfo [FilePath]
+libraryBytecodeDirs f s = fmap (\x -> s{T.libraryBytecodeDirs = x}) (f (T.libraryBytecodeDirs s))
+{-# INLINE libraryBytecodeDirs #-}
+
 dataDir :: Lens' InstalledPackageInfo FilePath
 dataDir f s = fmap (\x -> s{T.dataDir = x}) (f (T.dataDir s))
 {-# INLINE dataDir #-}
