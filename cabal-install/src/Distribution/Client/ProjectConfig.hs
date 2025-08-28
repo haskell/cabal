@@ -76,6 +76,7 @@ module Distribution.Client.ProjectConfig
   , maxNumFetchJobs
   ) where
 
+import Data.Bifunctor (second)
 import Distribution.Client.Compat.Prelude hiding (empty)
 import Distribution.Parsec.Source
 import Distribution.Simple.Utils
@@ -1681,7 +1682,7 @@ syncAndReadSourcePackagesRemoteRepos
               repoPaths
 
           mapGroup :: Ord k => [(k, v)] -> [(k, NonEmpty v)]
-          mapGroup = Map.toList . Map.fromListWith (<>) . map (\(k, v) -> (k, pure v))
+          mapGroup = Map.toList . Map.fromListWith (<>) . map (second pure)
 
           -- The repos in a group are given distinct names by simple enumeration
           -- foo, foo-2, foo-3 etc

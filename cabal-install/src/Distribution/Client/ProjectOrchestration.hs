@@ -853,7 +853,7 @@ availableTargetIndexes installPlan = AvailableTargetIndexes{..}
     availableTargetsByPackageNameAndComponentName =
       Map.mapKeysWith
         (++)
-        (\(pkgid, cname) -> (packageName pkgid, cname))
+        (first packageName)
         availableTargetsByPackageIdAndComponentName
 
     availableTargetsByPackageNameAndUnqualComponentName
@@ -952,7 +952,7 @@ availableTargetIndexesFromSourcePackages pkgSpecifiers = AvailableTargetIndexes{
     availableTargetsByPackageNameAndComponentName =
       Map.mapKeysWith
         (++)
-        (\(pkgid, cname) -> (packageName pkgid, cname))
+        (first packageName)
         availableTargetsByPackageIdAndComponentName
 
     availableTargetsByPackageNameAndUnqualComponentName
