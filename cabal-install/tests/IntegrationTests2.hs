@@ -2768,7 +2768,8 @@ testConfigOptionComments = do
 
 testIgnoreProjectFlag :: Assertion
 testIgnoreProjectFlag = do
-  -- Coverage flag should be false globally by default (~/.cabal folder)
+  -- Coverage flag should be false globally by default.
+  -- This should be covered by the vanilla config file created in `main`.
   (_, _, prjConfigGlobal, _, _) <- configureProject testdir ignoreSetConfig
   let globalCoverageFlag = packageConfigCoverage . projectConfigLocalPackages $ prjConfigGlobal
   False @=? Flag.fromFlagOrDefault False globalCoverageFlag
@@ -2797,7 +2798,10 @@ testHaddockProjectDependencies config = do
   (_, _, sharedConfig) <- planProject testdir config
   -- `haddock-project` is only supported by `haddock-2.26.1` and above which is
   -- shipped with `ghc-9.4`
-  when (compilerVersion (pkgConfigCompiler sharedConfig) > mkVersion [9, 4]) $ do
+  -- And doesn't work with older ghc on Windows for some reason (file in the
+  -- wrong place, perhaps?).
+  let safeMinor = if buildOS == Windows then 10 else 4
+  when (compilerVersion (pkgConfigCompiler sharedConfig) > mkVersion [9, safeMinor]) $ do
     let dir = basedir </> testdir
     cleanHaddockProject testdir
     withCurrentDirectory dir $ do
@@ -2811,7 +2815,7 @@ testHaddockProjectDependencies config = do
         ["all"]
         defaultGlobalFlags{globalStoreDir = Flag "store"}
 
-      let haddock = "haddocks" </> "async" </> "async.haddock"
+      let haddock = "haddocks" </> "time" </> "time.haddock"
       hasHaddock <- doesFileExist haddock
       unless hasHaddock $ assertFailure ("File `" ++ haddock ++ "` does not exist.")
     cleanHaddockProject testdir

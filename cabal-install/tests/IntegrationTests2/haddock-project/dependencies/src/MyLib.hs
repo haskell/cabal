@@ -1,6 +1,6 @@
 module MyLib (someFunc) where
 
-import Control.Concurrent.Async
+import Data.Time.Clock
 
-someFunc :: IO (Async ())
-someFunc = async (return ())
+someFunc :: IO ()
+someFunc = print =<< getCurrentTime
