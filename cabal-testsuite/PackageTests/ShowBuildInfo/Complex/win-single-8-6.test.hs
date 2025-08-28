@@ -4,11 +4,11 @@ import Test.Cabal.DecodeShowBuildInfo
 import Test.Cabal.Prelude
 
 main = do
-  skipIfWindows "-pgmc introduces output differences between gcc and mingw"
+  skipUnlessWindows
   cabalTest $ do
     -- the With GHC-9.2+ output contains -this-unit-id
     -- the With GHC-9.4+ output contains -pgmc by default
-    skipUnlessGhcVersion ">= 9.4"
+    skipUnlessGhcVersion ">= 9.6 && <= 9.10"
     withRepo "repo" $ do
       runShowBuildInfo ["exe:Complex"]
         >> withPlan
