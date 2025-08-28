@@ -670,7 +670,7 @@ filterConfigureFlags' :: ConfigFlags -> Version -> ConfigFlags
 filterConfigureFlags' flags cabalLibVersion
   -- NB: we expect the latest version to be the most common case,
   -- so test it first.
-  | cabalLibVersion >= mkVersion [3, 13, 0] = flags_latest
+  | cabalLibVersion >= mkVersion [3, 17, 0] = flags_latest
   -- The naming convention is that flags_version gives flags with
   -- all flags *introduced* in version eliminated.
   -- It is NOT the latest version of Cabal library that
@@ -693,6 +693,7 @@ filterConfigureFlags' flags cabalLibVersion
   | cabalLibVersion < mkVersion [3, 7, 0] = flags_3_7_0
   | cabalLibVersion < mkVersion [3, 11, 0] = flags_3_11_0
   | cabalLibVersion < mkVersion [3, 13, 0] = flags_3_13_0
+  | cabalLibVersion < mkVersion [3, 17, 0] = flags_3_17_0
   | otherwise = error "the impossible just happened" -- see first guard
   where
     flags_latest =
@@ -703,6 +704,9 @@ filterConfigureFlags' flags cabalLibVersion
           -- newer versions first.
           configConstraints = []
         }
+
+    flags_3_17_0 =
+      flags_3_13_0{configBytecodeLib = NoFlag}
 
     flags_3_13_0 =
       let scrubVersion pc =
