@@ -11,6 +11,7 @@ module Distribution.Simple.Program.GHC
   , GhcMode (..)
   , GhcOptimisation (..)
   , GhcDynLinkMode (..)
+  , GhcObjectMode (..)
   , GhcProfAuto (..)
   , ghcInvocation
   , renderGhcOptions
@@ -566,12 +567,15 @@ data GhcOptions = GhcOptions
   , ghcOptObjDir :: Flag (SymbolicPath Pkg (Dir Artifacts))
   , ghcOptOutputDir :: Flag (SymbolicPath Pkg (Dir Artifacts))
   , ghcOptStubDir :: Flag (SymbolicPath Pkg (Dir Artifacts))
+  , ghcOptBytecodeDir :: Flag (SymbolicPath Pkg (Dir Artifacts))
   , --------------------
     -- Creating libraries
 
     ghcOptDynLinkMode :: Flag GhcDynLinkMode
+  , ghcOptObjectMode :: Flag GhcObjectMode
   , ghcOptStaticLib :: Flag Bool
   , ghcOptShared :: Flag Bool
+  , ghcOptBytecodeLib :: Flag Bool
   , ghcOptFPic :: Flag Bool
   , ghcOptDylibName :: Flag String
   , ghcOptRPaths :: NubListR FilePath
@@ -622,6 +626,15 @@ data GhcDynLinkMode
     GhcDynamicOnly
   | -- | @-static -dynamic-too@
     GhcStaticAndDynamic
+  deriving (Show, Eq)
+
+data GhcObjectMode
+  = -- | -fobject-code
+    GhcObjectCode
+  | -- | -fbyte-code
+    GhcByteCode
+  | -- | -fbyte-code-and-object-code
+    GhcByteCodeAndObjectCode
   deriving (Show, Eq)
 
 data GhcProfAuto
@@ -818,11 +831,17 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
 
           ["-staticlib" | flagBool ghcOptStaticLib]
         , ["-shared" | flagBool ghcOptShared]
+        , ["-bytecodelib" | flagBool ghcOptBytecodeLib]
         , case flagToMaybe (ghcOptDynLinkMode opts) of
             Nothing -> []
             Just GhcStaticOnly -> ["-static"]
             Just GhcDynamicOnly -> ["-dynamic"]
             Just GhcStaticAndDynamic -> ["-static", "-dynamic-too"]
+        , case flagToMaybe (ghcOptObjectMode opts) of
+            Nothing -> []
+            Just GhcObjectCode -> ["-fobject-code"]
+            Just GhcByteCode -> ["-fbyte-code", "-fwrite-interface", "-fwrite-byte-code"]
+            Just GhcByteCodeAndObjectCode -> ["-fbyte-code-and-object-code"]
         , ["-fPIC" | flagBool ghcOptFPic]
         , concat [["-dylib-install-name", libname] | libname <- flag ghcOptDylibName]
         , ------------------------
@@ -836,6 +855,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         , concat [["-odir", u dir] | dir <- flag ghcOptObjDir]
         , concat [["-hidir", u dir] | dir <- flag ghcOptHiDir]
         , concat [["-hiedir", u dir] | dir <- flag ghcOptHieDir]
+        , concat [["-gbcdir", u dir] | dir <- flag ghcOptBytecodeDir, bytecodeArtifactsSupported comp]
         , concat [["-stubdir", u dir] | dir <- flag ghcOptStubDir]
         , -----------------------
           -- Source search path

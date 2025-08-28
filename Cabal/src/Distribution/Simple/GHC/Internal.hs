@@ -577,6 +577,7 @@ componentGhcOptions verbosity lbi bi clbi odir =
         , ghcOptObjDir = toFlag $ coerceSymbolicPath odir
         , ghcOptHiDir = toFlag $ coerceSymbolicPath odir
         , ghcOptHieDir = bool NoFlag (toFlag $ coerceSymbolicPath odir </> (extraCompilationArtifacts </> makeRelativePathEx "hie")) $ flagHie implInfo
+        , ghcOptBytecodeDir = toFlag $ coerceSymbolicPath odir
         , ghcOptStubDir = toFlag $ coerceSymbolicPath odir
         , ghcOptOutputDir = toFlag $ coerceSymbolicPath odir
         , ghcOptOptimisation = toGhcOptimisation (withOptimization lbi)

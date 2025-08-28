@@ -552,6 +552,7 @@ instance Semigroup SavedConfig where
               combine configAllowDependingOnPrivateLibs
           , configCoverageFor = combine configCoverageFor
           , configIgnoreBuildTools = combine configIgnoreBuildTools
+          , configBytecodeLib = combine configBytecodeLib
           }
         where
           combine = combine' savedConfigureFlags

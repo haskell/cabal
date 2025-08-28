@@ -33,4 +33,4 @@ md5CheckGenericPackageDescription proxy = md5Check proxy
 
 md5CheckLocalBuildInfo :: Proxy LocalBuildInfo -> Assertion
 md5CheckLocalBuildInfo proxy = md5Check proxy
-    0xc35a236a684a15b35690edb21c305eba
+    0xf46cd0819435850a64242cab0fc7aa4b

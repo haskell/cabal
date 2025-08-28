@@ -6,7 +6,7 @@
 module Distribution.Simple.GHC.Build.Modules
   ( buildHaskellModules
   , BuildWay (..)
-  , buildWayPrefix
+  , buildWayObjectExtension
   , componentInputs
   ) where
 
@@ -22,6 +22,7 @@ import Distribution.Pretty
 import Distribution.Simple.Build.Inputs
 import Distribution.Simple.BuildWay
 import Distribution.Simple.Compiler
+import Distribution.Simple.Errors (CabalException (StandaloneBytecodeNotSupportedYet))
 import Distribution.Simple.GHC.Build.Utils
 import qualified Distribution.Simple.GHC.Internal as Internal
 import qualified Distribution.Simple.Hpc as Hpc
@@ -52,7 +53,7 @@ There are multiple ways in which we may want to build our Haskell modules:
   * The dynamic/shared way (-dynamic)
   * The profiled way (-prof)
 
-For libraries, we may /want/ to build modules in all three ways, or in any combination, depending on user options.
+For libraries, we may /want/ to build modules in all ways, or in any combination, depending on user options.
 For executables, we just /want/ to build the executable in the requested way.
 
 In practice, however, we may /need/ to build modules in additional ways beyonds the ones that were requested.
@@ -129,6 +130,9 @@ buildHaskellModules numJobs ghcProg mbMainFile inputModules buildTargetDir neede
     what = buildingWhat pbci
     comp = buildCompiler pbci
     i = interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path
+    neededLibWaysSet = Set.fromList neededLibWays
+
+    withBytecode = withBytecodeLib lbi
 
     -- If this component will be loaded into a repl, we don't compile the modules at all.
     forRepl
@@ -179,23 +183,32 @@ buildHaskellModules numJobs ghcProg mbMainFile inputModules buildTargetDir neede
           , ghcOptInputFiles = toNubListR hsMains
           , ghcOptInputScripts = toNubListR scriptMains
           , ghcOptExtra = buildWayExtraHcOptions way GHC bi
-          , ghcOptHiSuffix = optSuffixFlag (buildWayPrefix way) "hi"
-          , ghcOptObjSuffix = optSuffixFlag (buildWayPrefix way) "o"
+          , ghcOptHiSuffix = optSuffixFlag (buildWayInterfaceExtension way) "hi"
+          , ghcOptObjSuffix = optSuffixFlag (buildWayObjectExtension "o" way) "o"
           , ghcOptHPCDir = hpcdir (buildWayHpcWay way) -- maybe this should not be passed for vanilla?
           }
       where
-        optSuffixFlag "" _ = NoFlag
-        optSuffixFlag pre x = toFlag (pre ++ x)
+        optSuffixFlag x y = if x == y then NoFlag else toFlag x
+
+    -- Enable building bytecode obj
+    bytecodeToo p = if p then toFlag GhcByteCodeAndObjectCode else NoFlag
+
+    hasWay way = way `Set.member` neededLibWaysSet
 
     -- For libs we don't pass -static when building static, leaving it
     -- implicit. We should just always pass -static, but we don't want to
     -- change behaviour when doing the refactor.
-    staticOpts = (baseOpts StaticWay){ghcOptDynLinkMode = if isLib then NoFlag else toFlag GhcStaticOnly}
+    staticOpts =
+      (baseOpts StaticWay)
+        { ghcOptDynLinkMode = if isLib then NoFlag else toFlag GhcStaticOnly
+        , ghcOptObjectMode = bytecodeToo (withBytecode && not (hasWay DynWay))
+        }
     dynOpts =
       (baseOpts DynWay)
         { ghcOptDynLinkMode = toFlag GhcDynamicOnly -- use -dynamic
         , -- TODO: Does it hurt to set -fPIC for executables?
           ghcOptFPic = toFlag True -- use -fPIC
+        , ghcOptObjectMode = bytecodeToo withBytecode
         }
     profOpts =
       (baseOpts ProfWay)
@@ -222,11 +235,12 @@ buildHaskellModules numJobs ghcProg mbMainFile inputModules buildTargetDir neede
     dynTooOpts =
       (baseOpts StaticWay)
         { ghcOptDynLinkMode = toFlag GhcStaticAndDynamic -- use -dynamic-too
-        , ghcOptDynHiSuffix = toFlag (buildWayPrefix DynWay ++ "hi")
-        , ghcOptDynObjSuffix = toFlag (buildWayPrefix DynWay ++ "o")
+        , ghcOptDynHiSuffix = toFlag (buildWayInterfaceExtension DynWay)
+        , ghcOptDynObjSuffix = toFlag (buildWayObjectExtension "o" DynWay)
         , ghcOptHPCDir = hpcdir Hpc.Dyn
-        -- Should we pass hcSharedOpts in the -dynamic-too ghc invocation?
-        -- (Note that `baseOtps StaticWay = hcStaticOptions`, not hcSharedOpts)
+        , -- Should we pass hcSharedOpts in the -dynamic-too ghc invocation?
+          -- (Note that `baseOtps StaticWay = hcStaticOptions`, not hcSharedOpts)
+          ghcOptObjectMode = bytecodeToo withBytecode
         }
 
     profDynTooOpts =
@@ -239,8 +253,8 @@ buildHaskellModules numJobs ghcProg mbMainFile inputModules buildTargetDir neede
             Internal.profDetailLevelFlag
               (if isLib then True else False)
               ((if isLib then withProfLibDetail else withProfExeDetail) lbi)
-        , ghcOptDynHiSuffix = toFlag (buildWayPrefix ProfDynWay ++ "hi")
-        , ghcOptDynObjSuffix = toFlag (buildWayPrefix ProfDynWay ++ "o")
+        , ghcOptDynHiSuffix = toFlag (buildWayInterfaceExtension ProfDynWay)
+        , ghcOptDynObjSuffix = toFlag (buildWayObjectExtension "o" ProfDynWay)
         , ghcOptHPCDir = hpcdir Hpc.ProfDyn
         -- Should we pass hcSharedOpts in the -dynamic-too ghc invocation?
         -- (Note that `baseOtps StaticWay = hcStaticOptions`, not hcSharedOpts)
@@ -254,12 +268,16 @@ buildHaskellModules numJobs ghcProg mbMainFile inputModules buildTargetDir neede
       ProfWay -> profOpts
       ProfDynWay -> profDynOpts
 
+  when
+    ( withBytecode
+        && not (hasWay StaticWay || hasWay DynWay)
+    )
+    $ dieWithException verbosity StandaloneBytecodeNotSupportedYet
+
   -- If there aren't modules, or if we're loading the modules in repl, don't build.
   unless (forRepl || (isNothing mbMainFile && null inputModules)) $ liftIO $ do
     -- See Note [Building Haskell Modules accounting for TH]
     let
-      neededLibWaysSet = Set.fromList neededLibWays
-
       -- If we need both static and dynamic, use dynamic-too instead of
       -- compiling twice (if we support it)
       useDynamicToo =

@@ -33,6 +33,7 @@ module Distribution.Types.LocalBuildInfo
       , withProfExe
       , withSharedLib
       , withStaticLib
+      , withBytecodeLib
       , withProfLibDetail
       , withProfExeDetail
       , withOptimization
@@ -173,6 +174,7 @@ pattern LocalBuildInfo
   -> Bool
   -> Bool
   -> Bool
+  -> Bool
   -> ProfDetailLevel
   -> ProfDetailLevel
   -> OptimisationLevel
@@ -208,6 +210,7 @@ pattern LocalBuildInfo
   , withProfLibShared
   , withSharedLib
   , withStaticLib
+  , withBytecodeLib
   , withDynExe
   , withFullyStaticExe
   , withProfExe
@@ -260,6 +263,7 @@ pattern LocalBuildInfo
             , withProfLibShared
             , withSharedLib
             , withStaticLib
+            , withBytecodeLib
             , withDynExe
             , withFullyStaticExe
             , withProfExe

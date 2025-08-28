@@ -108,6 +108,7 @@ ipiFieldGrammar =
     <@> monoidalFieldAla "library-dirs" (alaList' FSep FilePathNT) L.libraryDirs
     <@> monoidalFieldAla "library-dirs-static" (alaList' FSep FilePathNT) L.libraryDirsStatic
     <@> monoidalFieldAla "dynamic-library-dirs" (alaList' FSep FilePathNT) L.libraryDynDirs
+    <@> monoidalFieldAla "bytecode-library-dirs" (alaList' FSep FilePathNT) L.libraryBytecodeDirs
     <@> optionalFieldDefAla "data-dir" FilePathNT L.dataDir ""
     <@> monoidalFieldAla "hs-libraries" (alaList' FSep Token) L.hsLibraries
     <@> monoidalFieldAla "extra-libraries" (alaList' FSep Token) L.extraLibraries
