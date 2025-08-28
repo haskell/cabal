@@ -40,6 +40,7 @@ module Distribution.Simple.BuildTarget
   , reportBuildTargetProblems
   ) where
 
+import Data.Bifunctor (second)
 import Distribution.Compat.Prelude
 import Prelude ()
 
@@ -407,7 +408,7 @@ reportBuildTargetProblems verbosity problems = do
     targets ->
       dieWithException verbosity $
         UnknownBuildTarget $
-          map (\(target, nosuch) -> (showUserBuildTarget target, nosuch)) targets
+          map (first showUserBuildTarget) targets
 
   case [(t, ts) | BuildTargetAmbiguous t ts <- problems] of
     [] -> return ()
@@ -652,7 +653,7 @@ matchComponentKindAndName cs ckind str =
   orNoSuchThing (showComponentKind ckind ++ " component") str $
     increaseConfidenceFor $
       matchInexactly
-        (\(ck, cn) -> (ck, caseFold cn))
+        (second caseFold)
         [((cinfoKind c, cinfoStrName c), c) | c <- cs]
         (ckind, str)
 
