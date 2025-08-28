@@ -1,0 +1,4 @@
+packages: .
+
+package library-bytecode-project
+  library-bytecode: True

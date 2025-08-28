@@ -1,0 +1,11 @@
+Cabal-Version: 3.8
+Name: pkg-a
+Version: 0.1
+Build-Type: Simple
+
+library
+    exposed-modules: LibA
+    Build-Depends: base
+    C-sources: cbits/helper.c
+    default-language: Haskell2010
+

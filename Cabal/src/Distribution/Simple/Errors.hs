@@ -170,6 +170,7 @@ data CabalException
   | MissingCoveredInstalledLibrary UnitId
   | SetupHooksException SetupHooksException
   | MultiReplDoesNotSupportComplexReexportedModules PackageName ComponentName
+  | StandaloneBytecodeNotSupportedYet
   deriving (Show)
 
 exceptionCode :: CabalException -> Int
@@ -304,6 +305,7 @@ exceptionCode e = case e of
   SetupHooksException err ->
     setupHooksExceptionCode err
   MultiReplDoesNotSupportComplexReexportedModules{} -> 9355
+  StandaloneBytecodeNotSupportedYet -> 9356
 
 versionRequirement :: VersionRange -> String
 versionRequirement range
@@ -804,3 +806,8 @@ exceptionMessage e = case e of
       ++ prettyShow pname
       ++ " a module renaming was found.\n"
       ++ "Multi-repl does not work with complicated reexported-modules until GHC-9.12."
+  StandaloneBytecodeNotSupportedYet ->
+    unlines $
+      [ "The ecosystem doesn't support building packages with just bytecode libraries yet."
+      , "If you have run into this error, please comment on issue #11471"
+      ]

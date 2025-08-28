@@ -732,6 +732,7 @@ instance Arbitrary PackageConfig where
       <*> arbitrary
       <*> arbitrary
       <*> arbitrary
+      <*> arbitrary
       <*> shortListOf 5 arbitraryShortToken
       <*> arbitrary
       <*> arbitrary
@@ -797,6 +798,7 @@ instance Arbitrary PackageConfig where
       , packageConfigVanillaLib = x04
       , packageConfigSharedLib = x05
       , packageConfigStaticLib = x42
+      , packageConfigBytecodeLib = x43
       , packageConfigDynExe = x06
       , packageConfigFullyStaticExe = x50
       , packageConfigProf = x07
@@ -836,7 +838,7 @@ instance Arbitrary PackageConfig where
       , packageConfigHaddockInternal = x36
       , packageConfigHaddockCss = x37
       , packageConfigHaddockLinkedSource = x38
-      , packageConfigHaddockQuickJump = x43
+      , packageConfigHaddockQuickJump = x59
       , packageConfigHaddockHscolourCss = x39
       , packageConfigHaddockContents = x40
       , packageConfigHaddockForHackage = x41
@@ -862,6 +864,7 @@ instance Arbitrary PackageConfig where
         , packageConfigVanillaLib = x04'
         , packageConfigSharedLib = x05'
         , packageConfigStaticLib = x42'
+        , packageConfigBytecodeLib = x43'
         , packageConfigDynExe = x06'
         , packageConfigFullyStaticExe = x50'
         , packageConfigProf = x07'
@@ -901,7 +904,7 @@ instance Arbitrary PackageConfig where
         , packageConfigHaddockInternal = x36'
         , packageConfigHaddockCss = fmap getNonEmpty x37'
         , packageConfigHaddockLinkedSource = x38'
-        , packageConfigHaddockQuickJump = x43'
+        , packageConfigHaddockQuickJump = x59'
         , packageConfigHaddockHscolourCss = fmap getNonEmpty x39'
         , packageConfigHaddockContents = x40'
         , packageConfigHaddockForHackage = x41'
@@ -920,14 +923,14 @@ instance Arbitrary PackageConfig where
         , packageConfigBenchmarkOptions = x52'
         }
       | ( ( (x00', x01', x02', x03', x04')
-            , (x05', x42', x06', x50', x07', x08', x08_1', x09')
+            , (x05', x42', x43', x06', x50', x07', x08', x08_1', x09')
             , (x10', x11', x12', x13', x14')
             , (x15', x16', x53', x17', x18', x19')
             )
           , ( (x20', x20_1', x21', x22', x23', x24')
               , (x25', x26', x27', x27_1', x28', x29')
               , (x30', x31', x32', (x33', x33_1'), x34')
-              , (x35', x36', x37', x38', x43', x39')
+              , (x35', x36', x37', x38', x59', x39')
               , (x40', x41')
               , (x44', x45', x46', x47', x48', x49', x51', x52', x54', x55')
               , x56'
@@ -938,7 +941,7 @@ instance Arbitrary PackageConfig where
           shrink
             (
               ( (preShrink_Paths x00, preShrink_Args x01, x02, x03, x04)
-              , (x05, x42, x06, x50, x07, x08, x08_1, x09)
+              , (x05, x42, x43, x06, x50, x07, x08, x08_1, x09)
               , (x10, x11, map NonEmpty x12, x13, x14)
               ,
                 ( x15
@@ -953,7 +956,7 @@ instance Arbitrary PackageConfig where
               ( (x20, x20_1, x21, x22, x23, x24)
               , (x25, x26, x27, x27_1, x28, x29)
               , (x30, x31, x32, (x33, x33_1), x34)
-              , (x35, x36, fmap NonEmpty x37, x38, x43, fmap NonEmpty x39)
+              , (x35, x36, fmap NonEmpty x37, x38, x59, fmap NonEmpty x39)
               , (x40, x41)
               , (x44, x45, x46, x47, x48, x49, x51, x52, x54, x55)
               , x56
