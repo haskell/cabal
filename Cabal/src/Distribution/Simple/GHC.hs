@@ -952,7 +952,7 @@ installFLib verbosity lbi targetDir builtDir _pkg flib =
         nm = unUnqualComponentName $ foreignLibName flib
 #endif /* mingw32_HOST_OS */
 
--- | Install for ghc, .hi, .a and, if --with-ghci given, .o
+-- | Install for ghc, .hi, .a, .so, .bytecodelib and, if --with-ghci given, .o
 installLib
   :: Verbosity
   -> LocalBuildInfo
@@ -961,12 +961,14 @@ installLib
   -> FilePath
   -- ^ install location for dynamic libraries
   -> FilePath
+  -- ^ install location for bytecode libraries
+  -> FilePath
   -- ^ Build location
   -> PackageDescription
   -> Library
   -> ComponentLocalBuildInfo
   -> IO ()
-installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
+installLib verbosity lbi targetDir dynlibTargetDir bytecodeTargetDir _builtDir pkg lib clbi = do
   let
     (wantedLibWays, _, _) = buildWays lbi
     isIndef = componentIsIndefinite clbi
@@ -986,6 +988,10 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
 
   -- copy the built library files over:
   when (has_code && hasLib) $ do
+    -- Bytecode libraries are installed in bytecodelibdir and are copied
+    -- without stripping; see doc/internal/bytecode-libraries.md.
+    whenBytecodeLib $ installOrdinaryNoStrip builtDir bytecodeTargetDir bytecodeLibName
+
     forM_ libWays $ \w -> case w of
       StaticWay -> do
         sequence_
@@ -1059,7 +1065,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
     builtDir = componentBuildDir lbi clbi
     mbWorkDir = mbWorkDirLBI lbi
 
-    install isShared srcDir dstDir name = do
+    install isShared shouldStrip srcDir dstDir name = do
       let src = i $ srcDir </> makeRelativePathEx name
           dst = dstDir </> name
 
@@ -1069,15 +1075,16 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
         then installExecutableFile verbosity src dst
         else installOrdinaryFile verbosity src dst
 
-      when (stripLibs lbi) $
+      when (shouldStrip && stripLibs lbi) $
         Strip.stripLib
           verbosity
           platform
           (withPrograms lbi)
           dst
 
-    installOrdinary = install False
-    installShared = install True
+    installOrdinary = install False True
+    installOrdinaryNoStrip = install False False
+    installShared = install True True
 
     copyModuleFiles ext = do
       files <- findModuleFilesCwd verbosity mbWorkDir [builtDir] [ext] (allLibModules lib clbi)
@@ -1095,6 +1102,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
     platform = hostPlatform lbi
     uid = componentUnitId clbi
     profileLibName = mkProfLibName uid
+    bytecodeLibName = mkBytecodeLibName compiler_id uid
     ghciLibName = Internal.mkGHCiLibName uid
     ghciProfLibName = Internal.mkGHCiProfLibName uid
 
@@ -1111,6 +1119,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
       _ -> False
     has_code = not (componentIsIndefinite clbi)
     whenGHCi = when (hasLib && withGHCiLib lbi && has_code)
+    whenBytecodeLib = when (hasLib && withBytecodeLib lbi && has_code)
 
 -- -----------------------------------------------------------------------------
 -- Registering

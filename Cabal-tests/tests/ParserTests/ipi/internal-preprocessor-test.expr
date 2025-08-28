@@ -47,6 +47,7 @@ InstalledPackageInfo {
     "/home/ogre/Documents/other-haskell/cabal/cabal-testsuite/PackageTests/CustomPreProcess/setup.dist/work/dist/build"],
   libraryDirsStatic = [],
   libraryDynDirs = [],
+  libraryBytecodeDirs = [],
   dataDir =
   "/home/ogre/Documents/other-haskell/cabal/cabal-testsuite/PackageTests/CustomPreProcess",
   hsLibraries = [

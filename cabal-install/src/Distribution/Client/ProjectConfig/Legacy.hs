@@ -799,6 +799,7 @@ convertLegacyPerPackageFlags
         , configProfLib = packageConfigProfLib
         , configSharedLib = packageConfigSharedLib
         , configStaticLib = packageConfigStaticLib
+        , configBytecodeLib = packageConfigBytecodeLib
         , configDynExe = packageConfigDynExe
         , configFullyStaticExe = packageConfigFullyStaticExe
         , configProfExe = packageConfigProfExe
@@ -1149,6 +1150,7 @@ convertToLegacyAllPackageConfig
           , configAllowDependingOnPrivateLibs = mempty
           , configCoverageFor = mempty
           , configIgnoreBuildTools = mempty
+          , configBytecodeLib = mempty
           }
 
       haddockFlags =
@@ -1181,6 +1183,7 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
         , configProfLib = packageConfigProfLib
         , configSharedLib = packageConfigSharedLib
         , configStaticLib = packageConfigStaticLib
+        , configBytecodeLib = packageConfigBytecodeLib
         , configDynExe = packageConfigDynExe
         , configFullyStaticExe = packageConfigFullyStaticExe
         , configProfExe = packageConfigProfExe
@@ -1584,6 +1587,7 @@ legacyPackageConfigFieldDescrs =
         , "library-vanilla"
         , "library-profiling"
         , "library-vanilla"
+        , "library-bytecode"
         , "shared"
         , "static"
         , "executable-dynamic"

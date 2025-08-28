@@ -389,6 +389,7 @@ instance Arbitrary a => Arbitrary (InstallDirs a) where
         <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary --  8
         <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary -- 12
         <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary -- 16
+        <*> arbitrary                                        -- 17
 
 instance Arbitrary PathTemplate where
     arbitrary = toPathTemplate <$> arbitraryShortToken

@@ -3,6 +3,7 @@ bindir: bin/dir/
 libdir: lib/dir/path
 libsubdir: /lib/sub/dir
 dynlibdir: dyn/lib/dir/path
+bytecodelibdir: bytecode/lib/dir/path
 libexecdir: lib/exec/dir/
 libexecsubdir: libexec/subdir
 datadir: path/to/datadir/

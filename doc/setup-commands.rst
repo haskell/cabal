@@ -289,6 +289,17 @@ package:
     ``$version``, ``$compiler``, ``$os``, ``$arch``, ``$abi``,
     ``$abitag``
 
+.. option:: --bytecodelibdir=DIR
+
+    Bytecode libraries are installed here.
+
+    By default, this is set to ``$libdir/$libsubdir``.
+
+    In the simple build system, *dir* may contain the following path
+    variables: ``$prefix``, ``$bindir``, ``$libdir``, ``$libsubdir``,
+    ``$pkgid``, ``$pkg``, ``$version``, ``$compiler``, ``$os``,
+    ``$arch``, ``$abi``, ``$abitag``
+
 .. option:: --libexecdir=DIR
 
     Executables that are not expected to be invoked directly by the user
@@ -415,6 +426,8 @@ $libsubdir
     As above but for :option:`--libsubdir`
 $dynlibdir
     As above but for :option:`--dynlibdir`
+$bytecodelibdir
+    As above but for :option:`--bytecodelibdir`
 $datadir
     As above but for :option:`--datadir`
 $datasubdir
@@ -474,6 +487,9 @@ For the simple build system, the following defaults apply:
     * - :option:`--dynlibdir`
       - ``$libdir/$abi``
       - ``$libdir\$abi``
+    * - :option:`--bytecodelibdir`
+      - ``$libdir/$libsubdir``
+      - ``$libdir\$libsubdir``
     * - :option:`--libexecdir`
       - ``$prefix/libexec``
       - ``$prefix\$pkgid``
@@ -517,7 +533,8 @@ particularly useful: it means the user can choose the install location
 bake the path into the binary when it is built.
 
 In order to achieve this, we require that for an executable on Windows,
-all of ``$bindir``, ``$libdir``, ``$dynlibdir``, ``$datadir`` and ``$libexecdir`` begin
+all of ``$bindir``, ``$libdir``, ``$dynlibdir``, ``$bytecodelibdir``,
+``$datadir`` and ``$libexecdir`` begin
 with ``$prefix``. If this is not the case then the compiled executable
 will have baked-in all absolute paths.
 
@@ -769,6 +786,21 @@ Miscellaneous options
     Not all platforms support GHCi and indeed on some platforms, trying
     to build GHCi libs fails. In such cases this flag can be used as a
     workaround.
+
+.. option:: --enable-library-bytecode
+
+    Build bytecode libraries (``.bytecodelib`` files) in addition to the
+    usual object and shared libraries. This can be useful when combined with `-fprefer-byte-code`
+    in order to also use bytecode for library dependencies. Installed
+    bytecode libraries are placed in :option:`--bytecodelibdir`.
+
+    Bytecode libraries currently require GHC 9.15 or later. When used
+    with older compilers the flag is ignored and a warning is emitted.
+
+.. option:: --disable-library-bytecode
+
+   Do not build bytcode libraries.
+
 
 .. option:: --enable-split-objs
 

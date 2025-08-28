@@ -332,6 +332,10 @@ packageConfigStaticLib :: Lens' PackageConfig (Flag Bool)
 packageConfigStaticLib f s = fmap (\x -> s{T.packageConfigStaticLib = x}) (f (T.packageConfigStaticLib s))
 {-# INLINEABLE packageConfigStaticLib #-}
 
+packageConfigBytecodeLib :: Lens' PackageConfig (Flag Bool)
+packageConfigBytecodeLib f s = fmap (\x -> s{T.packageConfigBytecodeLib = x}) (f (T.packageConfigBytecodeLib s))
+{-# INLINEABLE packageConfigBytecodeLib #-}
+
 packageConfigDynExe :: Lens' PackageConfig (Flag Bool)
 packageConfigDynExe f s = fmap (\x -> s{T.packageConfigDynExe = x}) (f (T.packageConfigDynExe s))
 {-# INLINEABLE packageConfigDynExe #-}

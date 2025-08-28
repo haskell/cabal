@@ -1922,12 +1922,14 @@ installLib
   -> FilePath
   -- ^ install location for dynamic libraries
   -> FilePath
+  -- ^ install location for bytecode libraries
+  -> FilePath
   -- ^ Build location
   -> PackageDescription
   -> Library
   -> ComponentLocalBuildInfo
   -> IO ()
-installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
+installLib verbosity lbi targetDir dynlibTargetDir _bytecodeTargetDir _builtDir _pkg lib clbi = do
   whenVanilla $ copyModuleFiles $ Suffix "js_hi"
   whenProf $ copyModuleFiles $ Suffix "js_p_hi"
   whenShared $ copyModuleFiles $ Suffix "js_dyn_hi"

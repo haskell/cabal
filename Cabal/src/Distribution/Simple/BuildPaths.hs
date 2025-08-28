@@ -42,6 +42,7 @@ module Distribution.Simple.BuildPaths
   , mkSharedLibName
   , mkProfSharedLibName
   , mkStaticLibName
+  , mkBytecodeLibName
   , mkGenericSharedBundledLibName
   , exeExtension
   , objExtension
@@ -408,6 +409,9 @@ mkStaticLibName platform (CompilerId compilerFlavor compilerVersion) lib =
   "lib" ++ getHSLibraryName lib ++ "-" ++ comp <.> staticLibExtension platform
   where
     comp = prettyShow compilerFlavor ++ prettyShow compilerVersion
+
+mkBytecodeLibName :: CompilerId -> UnitId -> String
+mkBytecodeLibName _comp lib = getHSLibraryName lib <.> ".bytecodelib"
 
 -- | Create a library name for a bundled shared library from a given name.
 -- This matches the naming convention for shared libraries as implemented in

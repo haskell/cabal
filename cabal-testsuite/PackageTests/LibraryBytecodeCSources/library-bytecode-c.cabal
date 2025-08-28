@@ -1,0 +1,11 @@
+Cabal-Version: 3.8
+Name: library-bytecode-c
+Version: 0.1
+Build-Type: Simple
+
+library
+    exposed-modules: Lib
+    Build-Depends: base
+    C-sources: cbits/helper.c
+    default-language: Haskell2010
+
