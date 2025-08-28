@@ -986,6 +986,8 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
 
   -- copy the built library files over:
   when (has_code && hasLib) $ do
+    whenBytecodeLib $ installOrdinary builtDir targetDir bytecodeLibName
+
     forM_ libWays $ \w -> case w of
       StaticWay -> do
         sequence_
@@ -1095,6 +1097,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
     platform = hostPlatform lbi
     uid = componentUnitId clbi
     profileLibName = mkProfLibName uid
+    bytecodeLibName = mkBytecodeLibName compiler_id uid
     ghciLibName = Internal.mkGHCiLibName uid
     ghciProfLibName = Internal.mkGHCiProfLibName uid
 
@@ -1111,6 +1114,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
       _ -> False
     has_code = not (componentIsIndefinite clbi)
     whenGHCi = when (hasLib && withGHCiLib lbi && has_code)
+    whenBytecodeLib = when (hasLib && withBytecodeLib lbi && has_code)
 
 -- -----------------------------------------------------------------------------
 -- Registering

@@ -156,6 +156,8 @@ data BuildOptions = BuildOptions
   -- ^ Whether to build shared versions of libs.
   , withStaticLib :: Bool
   -- ^ Whether to build static versions of libs (with all other libs rolled in)
+  , withBytecodeLib :: Bool
+  -- ^ Whether to build bytecode versions of libs
   , withDynExe :: Bool
   -- ^ Whether to link executables dynamically
   , withFullyStaticExe :: Bool
@@ -206,6 +208,7 @@ buildOptionsConfigFlags (BuildOptions{..}) =
     { configVanillaLib = toFlag $ withVanillaLib
     , configSharedLib = toFlag $ withSharedLib
     , configStaticLib = toFlag $ withStaticLib
+    , configBytecodeLib = toFlag $ withBytecodeLib
     , configDynExe = toFlag $ withDynExe
     , configFullyStaticExe = toFlag $ withFullyStaticExe
     , configGHCiLib = toFlag $ withGHCiLib
