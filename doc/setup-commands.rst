@@ -810,8 +810,12 @@ Miscellaneous options
     Build shared library. This implies a separate compiler run to
     generate position independent code as required on most platforms.
 
-    ``--enable-shared`` is enabled automatically if GHC is dynamically linked or
-    you request to build dynamic executables.
+    ``--enable-shared`` is enabled automatically if GHC is dynamically linked
+    (see ``ghc --info``'s ``GHC Dynamic`` field)
+    or you request to build dynamic executables.
+
+    If you want to build *only* dynamic object files,
+    you also have to pass ``--disable-library-vanilla``.
 
 .. option:: --disable-shared
 
