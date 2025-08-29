@@ -116,3 +116,8 @@ Build for hacking and contributing to cabal
 -------------------------------------------
 
 Refer to [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Maintainers
+-------------------------------------------
+
+Refer to [MAINTAINERS.md](MAINTAINERS.md).
