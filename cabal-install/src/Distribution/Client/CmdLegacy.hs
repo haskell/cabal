@@ -163,7 +163,7 @@ legacyWrapperCmd ui commonFlags = toLegacyCmd (wrapperCmd ui commonFlags)
 newCmd :: CommandUI flags -> (flags -> [String] -> globals -> IO action) -> [CommandSpec (globals -> IO action)]
 newCmd origUi@CommandUI{..} action = [cmd defaultUi, cmd newUi, cmd origUi]
   where
-    cmd ui = CommandSpec ui (flip commandAddAction action) NormalCommand
+    cmd ui = CommandSpec ui (`commandAddAction` action) NormalCommand
 
     newMsg = T.unpack . T.replace "v2-" "new-" . T.pack
     newUi =

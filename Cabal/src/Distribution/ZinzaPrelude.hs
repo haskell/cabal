@@ -1,3 +1,5 @@
+{-# LANGUAGE TupleSections #-}
+
 -- | A small prelude used in @zinza@ generated
 -- template modules.
 module Distribution.ZinzaPrelude
@@ -27,7 +29,7 @@ instance Functor Writer where
   fmap = liftM
 
 instance Applicative Writer where
-  pure x = W $ \ss -> (ss, x)
+  pure x = W (,x)
   (<*>) = ap
 
 instance Monad Writer where

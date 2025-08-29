@@ -240,7 +240,7 @@ build_setupHooks
               , SetupHooks.targetInfo = target
               }
       for_ mbPostBuild ($ postBuildInputs)
-      return (maybe index (Index.insert `flip` index) mb_ipi)
+      return (maybe index (`Index.insert` index) mb_ipi)
 
     return ()
     where
@@ -616,7 +616,7 @@ generateCode
   -> IO (SymbolicPath Pkg (Dir Source), [ModuleName.ModuleName])
 generateCode codeGens nm pdesc bi lbi clbi verbosity = do
   when (not . null $ codeGens) $ createDirectoryIfMissingVerbose verbosity True $ i tgtDir
-  (\x -> (tgtDir, x)) . concat <$> mapM go codeGens
+  (tgtDir,) . concat <$> mapM go codeGens
   where
     allLibs = (maybe id (:) $ library pdesc) (subLibraries pdesc)
     dependencyLibs = filter (const True) allLibs -- intersect with componentPackageDeps of clbi

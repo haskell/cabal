@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections #-}
 
 -- | Parsing project configuration.
 module Distribution.Client.ProjectConfig.Parsec
@@ -172,7 +173,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
                 <*> subpcs
                 <*> elseClauses
         pure (Just <$> condNode, rest)
-      _ -> (\r -> (pure Nothing, r)) <$> go [] x
+      _ -> (pure Nothing,) <$> go [] x
 
     parseImport :: Position -> [FieldLine Position] -> ParseResult ProjectFileSource FilePath
     parseImport pos lines' = runFieldParser pos (P.many P.anyChar) cabalSpec lines'

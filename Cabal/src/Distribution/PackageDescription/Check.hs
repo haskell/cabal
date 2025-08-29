@@ -1060,7 +1060,7 @@ checkMissingDocs dgs esgs edgs efgs = do
       -> [FilePath] -- Actuals.
       -> [PackageCheck]
     checkDoc b ds as =
-      let fds = map ("." </>) $ filter (flip notElem as) ds
+      let fds = map ("." </>) $ filter (`notElem` as) ds
        in if null fds
             then []
             else
@@ -1075,7 +1075,7 @@ checkMissingDocs dgs esgs edgs efgs = do
       -> [FilePath] -- Actuals.
       -> [PackageCheck]
     checkDocMove b field ds as =
-      let fds = filter (flip elem as) ds
+      let fds = filter (`elem` as) ds
        in if null fds
             then []
             else

@@ -62,7 +62,7 @@ instance Monad (Progress step fail) where
 
 instance Applicative (Progress step fail) where
   pure a = Done a
-  p <*> x = foldProgress Step Fail (flip fmap x) p
+  p <*> x = foldProgress Step Fail (`fmap` x) p
 
 instance Monoid fail => Alternative (Progress step fail) where
   empty = Fail Mon.mempty

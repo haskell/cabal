@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE TupleSections #-}
 
 -----------------------------------------------------------------------------
 
@@ -809,8 +810,8 @@ powershellTransport prog =
         parseResponse :: String -> IO (HttpCode, Maybe ETag)
         parseResponse x =
           case lines $ trim x of
-            (code : etagv : _) -> fmap (\c -> (c, Just etagv)) $ parseCode code x
-            (code : _) -> fmap (\c -> (c, Nothing)) $ parseCode code x
+            (code : etagv : _) -> (,Just etagv) <$> parseCode code x
+            (code : _) -> (,Nothing) <$> parseCode code x
             _ -> statusParseFail verbosity uri x
         parseCode :: String -> String -> IO HttpCode
         parseCode code x = case readMaybe code of

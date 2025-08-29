@@ -79,7 +79,7 @@ checkLibrary
     checkP
       ( not $
           all
-            (flip elem (explicitLibModules lib))
+            (`elem` explicitLibModules lib)
             (libModulesAutogen lib)
       )
       (PackageBuildImpossible AutogenNotExposed)
@@ -172,7 +172,7 @@ checkExecutable
     -- Alas exeModules ad exeModulesAutogen (exported from
     -- Distribution.Types.Executable) take `Executable` as a parameter.
     checkP
-      (not $ all (flip elem (exeModules exe)) (exeModulesAutogen exe))
+      (not $ all (`elem` exeModules exe) (exeModulesAutogen exe))
       (PackageBuildImpossible $ AutogenNoOther cet)
     checkP
       ( not $
@@ -218,7 +218,7 @@ checkTestSuite
     checkP
       ( not $
           all
-            (flip elem (testModules ts))
+            (`elem` testModules ts)
             (testModulesAutogen ts)
       )
       (PackageBuildImpossible $ AutogenNoOther cet)
@@ -280,7 +280,7 @@ checkBenchmark
     checkP
       ( not $
           all
-            (flip elem (benchmarkModules bm))
+            (`elem` benchmarkModules bm)
             (benchmarkModulesAutogen bm)
       )
       (PackageBuildImpossible $ AutogenNoOther cet)

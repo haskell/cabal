@@ -395,7 +395,7 @@ type OutdatedDependency = OutdatedDependencyX Version
 -- | Convert a list of 'UserConstraint's to a 'Dependency' list.
 userConstraintsToDependencies :: [(UserConstraint, ConstraintSource)] -> [CandidateOutdatedDependency]
 userConstraintsToDependencies ucnstrs =
-  mapMaybe (\(uc, src) -> fmap (flip mkCandidateOutdatedDependency (ConfigSource src)) (packageConstraintToDependency . userToPackageConstraint $ uc)) ucnstrs
+  mapMaybe (\(uc, src) -> fmap (`mkCandidateOutdatedDependency` ConfigSource src) (packageConstraintToDependency . userToPackageConstraint $ uc)) ucnstrs
 
 -- | Read the list of dependencies from the freeze file.
 depsFromFreezeFile :: Verbosity -> IO [CandidateOutdatedDependency]

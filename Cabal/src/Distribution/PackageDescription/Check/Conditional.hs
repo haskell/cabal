@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 
 -- |
 -- Module      :  Distribution.PackageDescription.Check.Conditional
@@ -245,7 +246,7 @@ checkDuplicateModules pkg =
           libMap =
             foldCondTree
               Map.empty
-              (\(_, v) -> Map.fromListWith sumPair . map (\x -> (x, (1, 1))) $ getModules v)
+              (\(_, v) -> Map.fromListWith sumPair . map (,(1, 1)) $ getModules v)
               (Map.unionWith mergePair) -- if a module may occur in nonexclusive branches count it twice strictly and once loosely.
               (Map.unionWith maxPair) -- a module occurs the max of times it might appear in exclusive branches
               t

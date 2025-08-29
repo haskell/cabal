@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 
 module Distribution.Client.IndexUtils.ActiveRepos
   ( ActiveRepos (..)
@@ -178,7 +179,7 @@ organizeByRepos (ActiveRepos xs0) sel ys0 =
     go :: [a] -> [ActiveRepoEntry] -> [a] -> Either String ([a], [(a, CombineStrategy)])
     go _rest [] ys = Right (ys, [])
     go rest (ActiveRepoRest s : xs) ys =
-      go rest xs ys <&> second (map (\x -> (x, s)) rest ++)
+      go rest xs ys <&> second (map (,s) rest ++)
     go rest (ActiveRepo r s : xs) ys = do
       (z, zs) <- extract r ys
       go rest xs zs <&> second ((z, s) :)

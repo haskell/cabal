@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TupleSections #-}
 
 -----------------------------------------------------------------------------
 
@@ -172,7 +173,7 @@ pkgEnvFieldDescrs src =
   [ commaNewLineListFieldParsec
       "constraints"
       (pretty . fst)
-      ((\pc -> (pc, src)) `fmap` parsec)
+      ((,src) `fmap` parsec)
       ( sortConstraints
           . configExConstraints
           . savedConfigureExFlags
