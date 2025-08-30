@@ -994,7 +994,6 @@ convertToLegacySharedConfig
           , globalLogsDir = projectConfigLogsDir
           , globalIgnoreExpiry = projectConfigIgnoreExpiry
           , globalHttpTransport = projectConfigHttpTransport
-          , globalNix = mempty
           , globalStoreDir = projectConfigStoreDir
           , globalProgPathExtra = projectConfigProgPathExtra
           }

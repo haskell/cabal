@@ -174,7 +174,6 @@ library
         Distribution.Client.Main
         Distribution.Client.Manpage
         Distribution.Client.ManpageFlags
-        Distribution.Client.Nix
         Distribution.Client.NixStyleOptions
         Distribution.Client.PackageHash
         Distribution.Client.ParseUtils
