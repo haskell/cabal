@@ -318,6 +318,7 @@ showFR _ UnknownPackage                   = " (unknown package)"
 showFR _ (GlobalConstraintVersion vr (ConstraintSourceProjectConfig pc)) = '\n' : (render . nest 6 $ docProjectConfigPathFailReason vr pc)
 showFR _ (GlobalConstraintVersion vr src) = " (" ++ constraintSource src ++ " requires " ++ prettyShow vr ++ ")"
 showFR _ (GlobalConstraintInstalled src)  = " (" ++ constraintSource src ++ " requires installed instance)"
+showFR _ (GlobalConstraintInstalledSpecificUnitId unitId src)  = " (" ++ constraintSource src ++ " requires installed instance with unit id " ++ prettyShow unitId ++ ")"
 showFR _ (GlobalConstraintSource src)     = " (" ++ constraintSource src ++ " requires source instance)"
 showFR _ (GlobalConstraintFlag src)       = " (" ++ constraintSource src ++ " requires opposite flag selection)"
 showFR _ ManualFlag                       = " (manual flag can only be changed explicitly)"
