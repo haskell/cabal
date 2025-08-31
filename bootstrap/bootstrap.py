@@ -84,12 +84,10 @@ FetchPlan = Dict[Path, FetchInfo]
 local_packages: List[PackageName] = [ "Cabal-syntax"
                                     , "Cabal"
                                     , "Cabal-hooks"
-                                    , "Cabal-QuickCheck"
-                                    , "Cabal-described"
-                                    , "Cabal-tests"
-                                    , "Cabal-tree-diff"
                                     , "cabal-install-solver"
-                                    , "cabal-install" ]
+                                    , "cabal-install"
+                                    , "hooks-exe"
+                                    ]
 
 # Value passed to setup build -j {jobs_amount}
 # 1 is not set by default.

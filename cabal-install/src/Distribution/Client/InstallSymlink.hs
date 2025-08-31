@@ -61,7 +61,6 @@ import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.Setup
   ( ConfigFlags (..)
   , flagToMaybe
-  , fromFlag
   , fromFlagOrDefault
   )
 import Distribution.Simple.Utils (info, withTempDirectory)
@@ -95,6 +94,7 @@ import System.IO.Error
   )
 
 import Distribution.Client.Compat.Directory (createFileLink, getSymbolicLinkTarget, pathIsSymbolicLink)
+import Distribution.Client.Config (defaultUserInstall)
 import Distribution.Client.Init.Prompt (promptYesNo)
 import Distribution.Client.Init.Types (DefaultPrompt (MandatoryPrompt), runPromptIO)
 import Distribution.Client.Types.OverwritePolicy
@@ -217,7 +217,7 @@ symlinkBinaries
         defaultDirs <-
           InstallDirs.defaultInstallDirs
             compilerFlavor
-            (fromFlag (configUserInstall configFlags))
+            (fromFlagOrDefault defaultUserInstall (configUserInstall configFlags))
             (PackageDescription.hasLibs pkg)
         let templateDirs =
               InstallDirs.combineInstallDirs
