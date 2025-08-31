@@ -194,9 +194,6 @@ Could not resolve dependencies:
       (constraint from oops-0.project requires ==1.4.3.0)
 [__1] fail (backjumping, conflict set: hashable, oops)
 After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: hashable (3), oops (2)
-# checking if we detect when the same config is imported via many different paths (we don't)
-# cabal v2-build
-Up to date
 # checking bad conditional
 # cabal v2-build
 Error: [Cabal-7167]
