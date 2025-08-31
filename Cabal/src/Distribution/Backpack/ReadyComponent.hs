@@ -1,4 +1,5 @@
 {-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- | See <https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst>
@@ -210,7 +211,7 @@ instance Functor InstM where
      in (f x, s')
 
 instance Applicative InstM where
-  pure a = InstM $ \s -> (a, s)
+  pure a = InstM (a,)
   InstM f <*> InstM x = InstM $ \s ->
     let (f', s') = f s
         (x', s'') = x s'

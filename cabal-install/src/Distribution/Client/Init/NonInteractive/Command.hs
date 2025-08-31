@@ -1,4 +1,5 @@
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE TupleSections #-}
 
 module Distribution.Client.Init.NonInteractive.Command
   ( genPkgDescription
@@ -493,7 +494,7 @@ dependenciesHeuristics flags fp pkgIx = getDependencies flags $ do
         Flag x -> x
         NoFlag -> map moduleName sources
 
-      groupedDeps = concatMap (\s -> map (\i -> (moduleName s, i)) (imports s)) sources
+      groupedDeps = concatMap (\s -> map (moduleName s,) (imports s)) sources
       filteredDeps = filter ((`notElem` mods) . snd) groupedDeps
       preludeNub = nubBy (\a b -> snd a == snd b) $ (fromString "Prelude", fromString "Prelude") : filteredDeps
 

@@ -3,6 +3,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TupleSections #-}
 
 -----------------------------------------------------------------------------
 
@@ -229,12 +230,12 @@ readUserBuildTarget targetstr =
 
     tokens :: CabalParsing m => m (String, Maybe (String, Maybe String))
     tokens =
-      (\s -> (s, Nothing)) <$> parsecHaskellString
+      (,Nothing) <$> parsecHaskellString
         <|> (,) <$> token <*> P.optional (P.char ':' *> tokens2)
 
     tokens2 :: CabalParsing m => m (String, Maybe String)
     tokens2 =
-      (\s -> (s, Nothing)) <$> parsecHaskellString
+      (,Nothing) <$> parsecHaskellString
         <|> (,) <$> token <*> P.optional (P.char ':' *> (parsecHaskellString <|> token))
 
     token :: CabalParsing m => m String

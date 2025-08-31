@@ -6,6 +6,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 
 -- |
 -- Module      :  Distribution.Client.IndexUtils
@@ -353,7 +354,7 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState mb_activeRepos = do
 
   pkgss' <- case organizeByRepos activeRepos rdRepoName pkgss of
     Right x -> return x
-    Left err -> warn verbosity err >> return (map (\x -> (x, CombineStrategyMerge)) pkgss)
+    Left err -> warn verbosity err >> return (map (,CombineStrategyMerge) pkgss)
 
   let activeRepos' :: ActiveRepos
       activeRepos' =
@@ -1284,7 +1285,7 @@ hashConsCache cache0 =
     go pns pvs (x : xs) = x : go pns pvs xs
 
     mapIntern :: Ord k => k -> Map.Map k k -> (k, Map.Map k k)
-    mapIntern k m = maybe (k, Map.insert k k m) (\k' -> (k', m)) (Map.lookup k m)
+    mapIntern k m = maybe (k, Map.insert k k m) (,m) (Map.lookup k m)
 
 -- | Cabal caches various information about the Hackage index
 data Cache = Cache
