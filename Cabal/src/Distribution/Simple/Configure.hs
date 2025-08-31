@@ -5,6 +5,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 
 -----------------------------------------------------------------------------
 
@@ -1679,7 +1680,7 @@ configureDependencies
         (failedDeps, allPkgDeps) =
           partitionEithers $
             concat
-              [ fmap (\s -> (dep, s)) <$> status
+              [ fmap (dep,) <$> status
               | dep <- enabledBuildDepends pkg_descr enableSpec
               , let status =
                       selectDependency

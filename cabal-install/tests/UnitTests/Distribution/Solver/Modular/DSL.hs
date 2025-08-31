@@ -2,6 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 
 -- | DSL for testing the modular solver
 module UnitTests.Distribution.Solver.Modular.DSL
@@ -897,7 +898,7 @@ extractInstallPlan = catMaybes . map confPkg . CI.SolverInstallPlan.toList
     srcPkg :: SolverPackage UnresolvedPkgLoc -> Maybe (String, Int)
     srcPkg cpkg =
       let C.PackageIdentifier pn ver = C.packageId (solverPkgSource cpkg)
-       in (\vn -> (C.unPackageName pn, vn)) <$> safeHead (C.versionNumbers ver)
+       in (C.unPackageName pn,) <$> safeHead (C.versionNumbers ver)
 
 {-------------------------------------------------------------------------------
   Auxiliary

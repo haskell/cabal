@@ -1,4 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
+
 module Distribution.Solver.Modular.Builder (
     buildTree
   , splits -- for testing
@@ -252,7 +254,7 @@ buildTree idx (IndependentGoals ind) igs =
     build Linker {
         buildState = BS {
             index = idx
-          , rdeps = M.fromList (L.map (\ qpn -> (qpn, []))              qpns)
+          , rdeps = M.fromList (L.map (, []) qpns)
           , open  = L.map topLevelGoal qpns
           , next  = Goals
           , qualifyOptions = defaultQualifyOptions idx
