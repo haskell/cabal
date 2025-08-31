@@ -46,6 +46,7 @@ testListEmpty =
         , compilerLanguages = []
         , compilerExtensions = []
         , compilerProperties = mempty
+        , compilerWiredInUnitIds = Nothing
         }
 
     unitid = mkUnitId "foo-1.0-xyz"
@@ -102,6 +103,7 @@ testInstallSerial =
         , compilerLanguages = []
         , compilerExtensions = []
         , compilerProperties = mempty
+        , compilerWiredInUnitIds = Nothing
         }
 
     unitid1 = mkUnitId "foo-1.0-xyz"
