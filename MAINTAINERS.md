@@ -12,11 +12,19 @@ a.k.a. The Cabal Maintainers Team:
 
 ### How we compose this list
 
-The main goal of the team is to make sure Cabal is keeping up with the ever-evolving Haskell ecosystem.
-In practical terms this means producing releases of the packages in this repository on a regular basis (we release at least as often as does GHC).
+The main goal of the team is to ensure that Cabal is keeping up with the ever-evolving Haskell ecosystem.
+In practical terms this means producing releases of the packages in this repository on a regular basis: we usually have to release at least as often as does GHC due to an intimate connection between the compiler and the build system.
+Hence, the people listed above (in chronological order by when they joined the team) are those who are currently available for carrying out the release procedures.
 
-The people on this list (in chronological order by when they joined the team) are currently carrying out the release procedures.
-Of course, releases don't happen in a vacuum, and successful development of Cabal requires coordination.
-For this reason, the team holds regular (biweekly) video calls with agenda prepared asynchronously in a Markdown document, which also holds the meeting notes. For the record, the meetings are open to everyone interested in Cabal, especially aspiring and returning Cabal contributors.
+Successful maintenance requires coordination, and the team engages in three main ways:
 
-If you want to become a Cabal maintainer as described above, i.e. contribute to the biweekly meetings (synchronously or asynchronously through the meeting document or the Matrix chat) and perform some of the release tasks, get in touch: open a GitHub discussion or send a message in our Matrix chat referenced in the README.
+- attending to issues and PRs on GitHub;
+
+- discussing Cabal on the [Matrix channel](https://matrix.to/#/#hackage:matrix.org);
+
+- meeting biweekly in video calls with agenda prepared asynchronously in a Markdown document, which also holds the meeting notes.
+
+Worth noting that the meetings are open to everyone interested in Cabal, especially aspiring and returning Cabal contributors. Ask on Matrix how to join.
+
+Most of the current team is volunteers, and we are happy to receive any help.
+If you want to participate in Cabal maintenance as defined above (e.g. take on some release tasks), get in touch: open a GitHub discussion or send a message on Matrix.
