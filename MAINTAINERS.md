@@ -26,5 +26,5 @@ Successful maintenance requires coordination, and the team engages in three main
 
 Worth noting that the meetings are open to everyone interested in Cabal, especially aspiring and returning Cabal contributors. Ask on Matrix how to join.
 
-Most of the current team is volunteers, and we are happy to receive any help.
+Most of the current team are volunteers, and we are happy to receive any help.
 If you want to participate in Cabal maintenance as defined above (e.g. take on some release tasks), get in touch: open a GitHub discussion or send a message on Matrix.
