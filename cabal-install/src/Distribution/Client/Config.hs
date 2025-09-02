@@ -368,7 +368,6 @@ instance Semigroup SavedConfig where
           , globalLogsDir = combine globalLogsDir
           , globalIgnoreExpiry = combine globalIgnoreExpiry
           , globalHttpTransport = combine globalHttpTransport
-          , globalNix = combine globalNix
           , globalStoreDir = combine globalStoreDir
           , globalProgPathExtra = lastNonEmptyNL globalProgPathExtra
           }
@@ -1112,7 +1111,6 @@ commentSavedConfig = do
           { savedGlobalFlags =
               defaultGlobalFlags
                 { globalRemoteRepos = toNubList [defaultRemoteRepo]
-                , globalNix = mempty
                 }
           , savedInitFlags =
               mempty
