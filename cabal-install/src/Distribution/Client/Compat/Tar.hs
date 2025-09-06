@@ -4,6 +4,7 @@
 {- FOURMOLU_DISABLE -}
 module Distribution.Client.Compat.Tar
   ( extractTarGzFile
+  , createTarGzFile
 #if MIN_VERSION_tar(0,6,0)
   , Tar.Entry
   , Tar.Entries
@@ -27,6 +28,7 @@ import qualified Codec.Archive.Tar.Check as Tar
 #else
 import qualified Codec.Archive.Tar.Entry as Tar
 #endif
+import qualified Codec.Compression.GZip as GZip
 import qualified Data.ByteString.Lazy as BS
 import qualified Distribution.Client.GZipUtils as GZipUtils
 
@@ -65,4 +67,20 @@ extractTarGzFile dir expected tar =
   . Tar.read
   . GZipUtils.maybeDecompress
   =<< BS.readFile tar
+
+createTarGzFile
+  :: FilePath
+  -- ^ Full Tarball path
+  -> FilePath
+  -- ^ Base directory
+  -> FilePath
+  -- ^ Directory to archive, relative to base dir
+  -> IO ()
+createTarGzFile tar base dir =
+#if MIN_VERSION_tar(0,7,0)
+  BS.writeFile tar . GZip.compress =<< Tar.write' =<< Tar.pack' base [dir]
+#else
+  BS.writeFile tar . GZip.compress . Tar.write =<< Tar.pack base [dir]
+#endif
+
 {- FOURMOLU_ENABLE -}
