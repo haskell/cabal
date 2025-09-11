@@ -1,0 +1,7 @@
+name: bar
+version: 1.0
+build-type: Simple
+cabal-version: >= 1.2
+x-revision: 1337
+
+library
