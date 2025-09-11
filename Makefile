@@ -274,7 +274,8 @@ bootstrap-json-%: phony
 	cd bootstrap && cabal run -v0 cabal-bootstrap-gen -- linux-$*.plan.json \
 		| python3 -m json.tool > linux-$*.json
 
-BOOTSTRAP_GHC_VERSIONS := 9.2.8 9.4.8 9.6.7 9.8.4 9.10.2 9.12.2
+# extract bootstrap ghc versions from .github/config.yml
+BOOTSTRAP_GHC_VERSIONS != sed -e '/^GHC_FOR_VALIDATE: /!d' -e 's/^.*: .\["\(.*\)"\].$$/\1/' -e 's/", "/ /g' <.github/config.yml
 
 .PHONY: bootstrap-jsons
 bootstrap-jsons: $(BOOTSTRAP_GHC_VERSIONS:%=bootstrap-json-%)
