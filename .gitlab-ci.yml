@@ -3,7 +3,7 @@ stages:
 
 variables:
   # Commit of ghc/ci-images repository from which to pull Docker images
-  DOCKER_REV: "df20b2eb2fcc1c93aed5ad047c65752fbd4c38d4"
+  DOCKER_REV: "be4ac2cd18f38e63b263e2a27c76a7c279385796"
 
   GHC_VERSION: 9.10.2
   CABAL_INSTALL_VERSION: 3.14.2.0
@@ -67,13 +67,13 @@ alpine-linux:
   parallel:
     matrix:
       - ARCH: [x86_64]
-        OS: [alpine3_12, alpine3_20]
+        OS: [alpine3_12, alpine3_22]
         TAG: x86_64-linux
       - ARCH: [i386]
-        OS: alpine3_20
+        OS: alpine3_22
         TAG: x86_64-linux
       - ARCH: [aarch64]
-        OS: [alpine3_18]
+        OS: [alpine3_22]
         TAG: aarch64-linux
   tags:
     - $TAG
