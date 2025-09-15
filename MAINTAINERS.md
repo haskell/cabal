@@ -10,6 +10,8 @@ a.k.a. The Cabal Maintainers Team:
 
 * Brandon Allbery ([`@geekosaur`](https://github.com/geekosaur))
 
+*  Matthew Pickering ([`@mpickering`](https://github.com/mpickering))
+
 ### How we compose this list
 
 The main goal of the team is to ensure that Cabal is keeping up with the ever-evolving Haskell ecosystem.
