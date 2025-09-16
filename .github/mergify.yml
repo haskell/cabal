@@ -86,7 +86,7 @@ pull_request_rules:
       - -merged
       - '#approved-reviews-by>=2'
       - '#changes-requested-reviews-by=0'
-      - updated-at<4 days ago
+      - updated-at<3 days ago
       - label=merge delay passed
       # oy
       # lifted these from branch protection imports
