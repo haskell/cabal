@@ -1245,6 +1245,8 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
                       | pkgid <- pkgids
                       ]
                 | (repo, pkgids) <-
+                    -- All Repos here are SecureRepos (and will have a name), so we're
+                    -- sorting Justs
                     map (\grp@((repo, _) :| _) -> (repo, map snd (NE.toList grp)))
                       . NE.groupBy ((==) `on` (fmap remoteRepoName . maybeRepoRemote . fst))
                       . sortBy (compare `on` (fmap remoteRepoName . maybeRepoRemote . fst))
