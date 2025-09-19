@@ -61,6 +61,9 @@ common warnings
     if impl(ghc < 8.8)
       ghc-options: -Wnoncanonical-monadfail-instances
 
+    if impl(ghc >= 9.14)
+      ghc-options: -Wno-pattern-namespace-specifier -Wno-incomplete-record-selectors
+
 common base-dep
     build-depends:
       , base >=4.13 && <4.22
