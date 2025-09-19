@@ -60,6 +60,7 @@ jobs:
             # IMPORTANT: If you remove a version from this list, then add it to the old-ghcs job below.
             # Also a removed GHC from here means that we are actually dropping
             # support, so the PR *must* have a changelog entry.
+            "9.14.0.20250908",
             "9.12.2",
             "9.10.2",
             "9.8.4",
@@ -130,7 +131,7 @@ jobs:
         with:
           ghc-version: ${{ matrix.ghc }}
           cabal-version: 3.12.1.0 # see https://github.com/haskell/cabal/pull/10251
-          ghcup-release-channel: https://raw.githubusercontent.com/haskell/ghcup-metadata/master/ghcup-prereleases-0.0.8.yaml
+          ghcup-release-channel: https://raw.githubusercontent.com/haskell/ghcup-metadata/master/ghcup-prereleases-0.0.9.yaml
 
       #  See the following link for a breakdown of the following step
       #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
