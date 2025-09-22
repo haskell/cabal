@@ -156,29 +156,32 @@ checkRepoTarballFetched repo pkgid = do
 verifyFetchedTarballs
   :: Verbosity
   -> RepoContext
-  -> Repo
+  -> SecureRepo
   -> [PackageId]
   -> IO
       ( [ Either
-            (Repo, PackageId) -- Verified
+            (SecureRepo, PackageId) -- Verified SecureRepo
             (Repo, PackageId) -- unverified)
         ]
       )
-verifyFetchedTarballs verbosity repoCtxt repo pkgids =
+verifyFetchedTarballs verbosity repoCtxt secureRepo pkgids =
   -- Establish the context once per repo (see #10110), this codepath is important
   -- to be fast as it can happen when no other building happens.
   let establishContext k =
-        case repo of
-          RepoSecure{} ->
-            repoContextWithSecureRepo repoCtxt repo $ \repoSecure ->
-              Sec.withIndex repoSecure $ \callbacks -> k (Just callbacks)
-          _ -> k Nothing
+        repoContextWithSecureRepo repoCtxt repo $ \repoSecure ->
+          Sec.withIndex repoSecure $ \callbacks ->
+            k (Just callbacks)
+
+      repo = secureRepoToRepo secureRepo
    in do
         establishContext $ \mCallbacks ->
           forM pkgids $ \pkgid -> do
             let file = packageFile repo pkgid
             res <- verifyFetchedTarball verbosity file mCallbacks pkgid
-            return $ if res then Left (repo, pkgid) else Right (repo, pkgid)
+            return $
+              if res
+                then Left (secureRepo, pkgid)
+                else Right (repo, pkgid)
 
 verifyFetchedTarball :: Verbosity -> FilePath -> Maybe Sec.IndexCallbacks -> PackageId -> IO Bool
 verifyFetchedTarball verbosity file mCallbacks pkgid =

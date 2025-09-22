@@ -19,6 +19,9 @@ module Distribution.Client.Types.Repo
   , repoName
   , isRepoRemote
   , maybeRepoRemote
+  , SecureRepo (..)
+  , mkSecureRepo
+  , secureRepoToRepo
 
     -- * Windows
   , asPosixPath
@@ -222,6 +225,23 @@ repoName :: Repo -> RepoName
 repoName (RepoLocalNoIndex r _) = localRepoName r
 repoName (RepoRemote r _) = remoteRepoName r
 repoName (RepoSecure r _) = remoteRepoName r
+
+-- | Secure repositories
+--
+-- This contains the same fields as `Repo`'s constructor `RepoSecure`, but is kept
+-- separate to keep API breakages low
+data SecureRepo = SecureRepo
+  { secureRemote :: RemoteRepo
+  , secureLocalDir :: FilePath
+  }
+  deriving (Show, Eq, Ord, Generic)
+
+mkSecureRepo :: Repo -> Maybe SecureRepo
+mkSecureRepo (RepoSecure r dir) = Just (SecureRepo r dir)
+mkSecureRepo _ = Nothing
+
+secureRepoToRepo :: SecureRepo -> Repo
+secureRepoToRepo (SecureRepo r dir) = RepoSecure r dir
 
 -------------------------------------------------------------------------------
 
