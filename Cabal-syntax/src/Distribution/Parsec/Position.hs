@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 module Distribution.Parsec.Position
@@ -18,10 +19,11 @@ data Position
   = Position
       {-# UNPACK #-} !Int -- row
       {-# UNPACK #-} !Int -- column
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show, Generic, Data)
 
 instance Binary Position
 instance NFData Position
+instance Structured Position
 
 -- | Shift position by n columns to the right.
 incPos :: Int -> Position -> Position
