@@ -1,0 +1,97 @@
+[
+  Comment
+    "-- ================================================================ --"
+    (Position 2 1),
+  Comment
+    "-- ======== This cabal file has been modified from dhall ========== --"
+    (Position 3 1),
+  Comment
+    "-- ======== This constitutes the 0.0.1.0 release.        ========== --"
+    (Position 4 1),
+  Comment
+    "-- ======== Dhall can generate this file, but will never ========== --"
+    (Position 5 1),
+  Comment
+    "-- ======== be able to upload to hackage. For more, see: ========== --"
+    (Position 6 1),
+  Comment
+    "-- ==== https://github.com/haskell/hackage-server/issues/795 ====== --"
+    (Position 7 1),
+  Comment
+    "-- ================================================================ --"
+    (Position 8 1),
+  Comment
+    "        -- containers ==0.5.10 || >0.5.10,"
+    (Position 70 1),
+  Comment
+    "        -- deepseq ==1.3.0 || >1.3.0,"
+    (Position 71 1),
+  Comment
+    "        -- managed (==1.0.0 || >1.0.0) && <1.1,"
+    (Position 73 1),
+  Comment
+    "        -- microlens ==0.4.8 || >0.4.8,"
+    (Position 74 1),
+  Comment
+    "        -- numeric-limits ==0.1.0 || >0.1.0,"
+    (Position 75 1),
+  Comment
+    "        -- typelits-witnesses ==0.2.3 || >0.2.3,"
+    (Position 79 1),
+  Comment
+    "    -- <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> --"
+    (Position 84 1),
+  Comment
+    "    -- BEGIN EDITS"
+    (Position 85 1),
+  Comment
+    "    -- <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> --"
+    (Position 86 1),
+  Comment
+    "    -- <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> --"
+    (Position 148 1),
+  Comment
+    "    -- END EDITS"
+    (Position 149 1),
+  Comment
+    "    -- <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><> --"
+    (Position 150 1),
+  Comment
+    "        -- containers ==0.5.10 || >0.5.10,"
+    (Position 203 1),
+  Comment
+    "        -- deepseq ==1.3.0 || >1.3.0,"
+    (Position 204 1),
+  Comment
+    "        -- managed (==1.0.0 || >1.0.0) && <1.1,"
+    (Position 208 1),
+  Comment
+    "        -- microlens ==0.4.8 || >0.4.8,"
+    (Position 209 1),
+  Comment
+    "        -- numeric-limits ==0.1.0 || >0.1.0,"
+    (Position 210 1),
+  Comment
+    "        -- typelits-witnesses ==0.2.3 || >0.2.3,"
+    (Position 214 1),
+  Comment
+    "        -- containers ==0.5.10 || >0.5.10,"
+    (Position 282 1),
+  Comment
+    "        -- deepseq ==1.3.0 || >1.3.0,"
+    (Position 283 1),
+  Comment
+    "        -- managed (==1.0.0 || >1.0.0) && <1.1,"
+    (Position 287 1),
+  Comment
+    "        -- microlens ==0.4.8 || >0.4.8,"
+    (Position 288 1),
+  Comment
+    "        -- numeric-limits ==0.1.0 || >0.1.0,"
+    (Position 289 1),
+  Comment
+    "        -- typelits-witnesses ==0.2.3 || >0.2.3,"
+    (Position 293 1),
+  Comment
+    "        -- text ==1.2.2 || >1.2.2,"
+    (Position 551 1)]

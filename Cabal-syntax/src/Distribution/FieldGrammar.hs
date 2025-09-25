@@ -22,6 +22,7 @@ module Distribution.FieldGrammar
   , Section (..)
   , Fields
   , partitionFields
+  , extractComments
   , takeFields
   , runFieldParser
   , runFieldParser'
@@ -34,6 +35,7 @@ module Distribution.FieldGrammar
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import qualified Data.Bifunctor as Bi
 import qualified Data.Map.Strict as Map
 
 import Distribution.FieldGrammar.Class
@@ -95,6 +97,7 @@ partitionFields = finalize . foldl' f (PS mempty mempty mempty)
       PS fs (MkSection name sargs sfields : s) ss
 
 -- | Take all fields from the front.
+-- Returns a tuple containing the comments, nameless fields, and sections
 takeFields :: [Field ann] -> (Fields ann, [Field ann])
 takeFields = finalize . spanMaybe match
   where
@@ -102,3 +105,9 @@ takeFields = finalize . spanMaybe match
 
     match (Field (Name ann name) fs) = Just (name, [MkNamelessField ann fs])
     match _ = Nothing
+
+extractComments :: (Foldable f, Functor f) => [f (WithComments ann)] -> ([Comment ann], [f ann])
+extractComments = Bi.first mconcat . unzip . map extractCommentsStep
+
+extractCommentsStep :: (Foldable f, Functor f) => f (WithComments ann) -> ([Comment ann], f ann)
+extractCommentsStep f = (foldMap justComments f, fmap unComments f)
