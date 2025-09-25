@@ -73,10 +73,11 @@ mkLexState' st =
 type Parser a = ParsecT LexState' () Identity a
 
 instance Stream LexState' Identity LToken where
+  -- DEBUG: remove tracing
   uncons (LexState' _ (tok, st')) =
     case tok of
-      L _ EOF -> return Nothing
-      _ -> return (Just (tok, st'))
+      L _ EOF -> return $ trace "[i] Got token EOF" Nothing
+      _ -> return (trace ("[i] Got token tok " ++ show tok) $ Just (tok, st'))
 
 -- | Get lexer warnings accumulated so far
 getLexerWarnings :: Parser [LexWarning]
@@ -114,6 +115,8 @@ describeToken t = case t of
   Colon -> "\":\""
   OpenBrace -> "\"{\""
   CloseBrace -> "\"}\""
+  Whitespace sp -> B8.unpack sp
+  Comment c -> B8.unpack c
   --  SemiColon       -> "\";\""
   EOF -> "end of file"
   LexicalError is -> "character in input " ++ show (B8.head is)
@@ -133,6 +136,11 @@ tokColon = getToken $ \t -> case t of Colon -> Just (); _ -> Nothing
 tokOpenBrace = getTokenWithPos $ \t -> case t of L pos OpenBrace -> Just pos; _ -> Nothing
 tokCloseBrace = getToken $ \t -> case t of CloseBrace -> Just (); _ -> Nothing
 tokFieldLine = getTokenWithPos $ \t -> case t of L pos (TokFieldLine s) -> Just (FieldLine pos s); _ -> Nothing
+
+tokMeta, tokComment, tokWhitespace :: Parser (Field Position)
+tokMeta = tokComment <|> tokWhitespace
+tokComment = getTokenWithPos $ \t -> case t of L pos (Comment c) -> Just (Meta $ MetaComment c pos); _ -> Nothing
+tokWhitespace = getTokenWithPos $ \t -> case t of L pos (Whitespace c) -> Just (Meta $ MetaWhitespace c pos); _ -> Nothing
 
 colon, openBrace, closeBrace :: Parser ()
 sectionArg :: Parser (SectionArg Position)
@@ -227,9 +235,10 @@ inLexerMode (LexerMode mode) p =
 --
 cabalStyleFile :: Parser [Field Position]
 cabalStyleFile = do
+  meta <- many tokMeta
   es <- elements zeroIndentLevel
   eof
-  return es
+  return $ meta <> es
 
 -- Elements that live at the top level or inside a section, i.e. fields
 -- and sections content
@@ -339,6 +348,7 @@ fieldInlineOrBraces name =
             ls <- inLexerMode (LexerMode in_field_braces) (option [] (fmap (\l -> [l]) fieldContent))
             return (Field name ls)
         )
+  
 
 -- | Parse cabal style 'B8.ByteString' into list of 'Field's, i.e. the cabal AST.
 --

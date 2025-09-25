@@ -8,6 +8,7 @@
 module Distribution.Fields.Field
   ( -- * Cabal file
     Field (..)
+  , MetaField(..)
   , fieldName
   , fieldAnn
   , fieldUniverse
@@ -48,7 +49,13 @@ import qualified Data.Foldable1 as F1
 data Field ann
   = Field !(Name ann) [FieldLine ann]
   | Section !(Name ann) [SectionArg ann] [Field ann]
+  | Meta !(MetaField ann)
   deriving (Eq, Show, Functor, Foldable, Traversable)
+
+data MetaField ann
+  = MetaWhitespace ByteString ann
+  | MetaComment ByteString ann
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 -- | @since 3.12.0.0
 deriving instance Ord ann => Ord (Field ann)
