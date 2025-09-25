@@ -1,0 +1,38 @@
+-- This is the configuration file for the 'cabal' command line tool.
+--
+-- The available configuration options are listed below.
+
+
+repository hackage.haskell.org
+  url: http://hackage.haskell.org/
+  -- secure: True
+  -- root-keys:
+
+-- ignore-expiry: False
+-- http-transport:
+remote-repo-cache: /home/foo/.cache/cabal/packages
+-- logs-dir: /home/foo/.cache/cabal/logs
+-- default-user-config:
+build-summary: /home/foo/.cache/cabal/logs/build.log
+-- build-log:
+remote-build-reporting: none
+-- report-planning-failure: False
+-- per-component: True
+jobs: $ncpus
+-- keep-going: False
+-- offline: False
+installdir: /home/foo/.local/bin
+-- token:
+-- username:
+
+haddock
+  -- keep-temp-files: False
+  -- hoogle: False
+
+init
+  -- interactive: False
+  -- quiet: False
+
+program-locations
+  -- alex-location:
+  -- ar-location:

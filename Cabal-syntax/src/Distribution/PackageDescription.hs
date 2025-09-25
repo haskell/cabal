@@ -13,6 +13,7 @@
 module Distribution.PackageDescription
   ( -- * PD and GPD
       module Distribution.Types.PackageDescription
+  , module Distribution.Types.AnnotatedGenericPackageDescription
   , module Distribution.Types.GenericPackageDescription
 
     -- * Components
@@ -86,6 +87,7 @@ import Prelude ()
 
 -- import Distribution.Compat.Prelude
 
+import Distribution.Types.AnnotatedGenericPackageDescription
 import Distribution.Types.Benchmark
 import Distribution.Types.BenchmarkInterface
 import Distribution.Types.BenchmarkType

@@ -1,0 +1,5 @@
+Map.fromList
+  [
+    _×_
+      (Position 4 1)
+      "-- comment after"]

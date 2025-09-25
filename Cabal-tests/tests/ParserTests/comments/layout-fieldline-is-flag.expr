@@ -1,0 +1,8 @@
+Map.fromList
+  [
+    _×_
+      (Position 11 1)
+      "    -- The previous thing shouldn't be parsed as a comment because it's a flag",
+    _×_
+      (Position 12 1)
+      "    -- This however, is a comment"]

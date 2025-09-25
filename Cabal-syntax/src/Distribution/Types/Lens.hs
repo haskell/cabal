@@ -3,6 +3,7 @@ module Distribution.Types.Lens
   , module Distribution.Types.BuildInfo.Lens
   , module Distribution.Types.Executable.Lens
   , module Distribution.Types.ForeignLib.Lens
+  , module Distribution.Types.AnnotatedGenericPackageDescription.Lens
   , module Distribution.Types.GenericPackageDescription.Lens
   , module Distribution.Types.Library.Lens
   , module Distribution.Types.PackageDescription.Lens
@@ -12,6 +13,7 @@ module Distribution.Types.Lens
   , module Distribution.Types.TestSuite.Lens
   ) where
 
+import Distribution.Types.AnnotatedGenericPackageDescription.Lens
 import Distribution.Types.Benchmark.Lens
 import Distribution.Types.BuildInfo.Lens
 import Distribution.Types.Executable.Lens

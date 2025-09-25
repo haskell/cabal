@@ -287,6 +287,7 @@ roundtripTest testFieldsTransform fpath bs = do
         print err
         exitFailure
 
+    -- we disable comparison on exactComments for now because we can't print it yet
     assertEqual' bs' x y = unless (x == y || fpath == "ixset/1.0.4/ixset.cabal") $ do
         putStrLn fpath
 #ifdef MIN_VERSION_tree_diff
