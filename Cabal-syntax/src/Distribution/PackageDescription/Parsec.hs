@@ -249,6 +249,7 @@ goSections specVer = traverse_ process
           "Ignoring trailing fields after sections: " ++ show name
     process (Section name args secFields) =
       parseSection name args secFields
+    process (Meta _) = pure ()
 
     snoc x xs = xs ++ [x]
 

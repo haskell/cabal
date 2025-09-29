@@ -97,6 +97,7 @@ partitionFields = finalize . foldl' f (PS mempty mempty mempty)
           | otherwise = reverse s : ss
     f (PS fs s ss) (Section name sargs sfields) =
       PS fs (MkSection name sargs sfields : s) ss
+    f ps (Meta _) = ps
 
 -- | Take all fields from the front.
 takeFields :: [Field ann] -> (Fields ann, [Field ann])

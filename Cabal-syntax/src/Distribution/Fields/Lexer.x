@@ -84,17 +84,9 @@ tokens :-
 <bol_section, bol_field_layout, bol_field_braces> {
   @nbspspacetab* @nl         { \pos len inp -> checkWhitespace pos len inp >> adjustPos retPos >> lexToken }
   -- no @nl here to allow for comments on last line of the file with no trailing \n
-  $spacetab* "--" $comment*  ;  -- TODO: check the lack of @nl works here
-                                -- including counting line numbers
-
-  -- -- Exact print
-  -- @nbspspacetab* @nl         { \pos len inp -> do
-  --                                _ <- checkWhitespace pos len inp
-  --                                adjustPos retPos
-  --                                toki Whitespace pos len inp }
-  -- -- no @nl here to allow for comments on last line of the file with no trailing \n
-  -- $spacetab* "--" $comment*  { toki Comment }  -- TODO: check the lack of @nl works here
-  --                                              -- including counting line numbers
+  $spacetab* "--" $comment*  { toki Comment }
+  -- TODO: check the lack of @nl works here
+  -- including counting line numbers
 }
 
 <bol_section> {

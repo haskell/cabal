@@ -8,7 +8,6 @@
 module Distribution.Fields.Field
   ( -- * Cabal file
     Field (..)
-  , MetaField(..)
   , fieldName
   , fieldAnn
   , fieldUniverse
@@ -17,6 +16,10 @@ module Distribution.Fields.Field
   , fieldLineBS
   , SectionArg (..)
   , sectionArgAnn
+
+    -- * Meta annotations
+  , MetaField(..)
+  , metaFieldAnn
 
     -- * Name
   , FieldName
@@ -52,10 +55,11 @@ data Field ann
   | Meta !(MetaField ann)
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
-data MetaField ann
-  = MetaWhitespace ByteString ann
-  | MetaComment ByteString ann
+data MetaField ann = MetaComment ByteString ann
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
+
+metaFieldAnn :: MetaField ann -> ann
+metaFieldAnn (MetaComment _ ann) = ann
 
 -- | @since 3.12.0.0
 deriving instance Ord ann => Ord (Field ann)

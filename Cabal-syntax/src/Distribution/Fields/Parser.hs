@@ -136,8 +136,8 @@ tokOpenBrace = getTokenWithPos $ \t -> case t of L pos OpenBrace -> Just pos; _ 
 tokCloseBrace = getToken $ \t -> case t of CloseBrace -> Just (); _ -> Nothing
 tokFieldLine = getTokenWithPos $ \t -> case t of L pos (TokFieldLine s) -> Just (FieldLine pos s); _ -> Nothing
 
-tokComment :: Parser (Field Position)
-tokComment = getTokenWithPos $ \t -> case t of L pos (Comment c) -> Just (Meta $ MetaComment c pos); _ -> Nothing
+tokComment :: Parser (MetaField Position)
+tokComment = getTokenWithPos $ \t -> case t of L pos (Comment c) -> Just (MetaComment c pos); _ -> Nothing
 
 colon, openBrace, closeBrace :: Parser ()
 sectionArg :: Parser (SectionArg Position)
@@ -232,17 +232,26 @@ inLexerMode (LexerMode mode) p =
 --
 cabalStyleFile :: Parser [Field Position]
 cabalStyleFile = do
-  meta <- many tokComment
   es <- elements zeroIndentLevel
   eof
-  return $ meta <> es
+  return es
+
+commentsAround :: (a -> [Field Position]) -> Parser a -> Parser [Field Position]
+commentsAround f p = do
+  pre <- many tokComment
+  res <- p
+  post <- many tokComment
+  pure $ map Meta pre <> f res <> map Meta post
 
 -- Elements that live at the top level or inside a section, i.e. fields
 -- and sections content
 --
 -- elements ::= element*
 elements :: IndentLevel -> Parser [Field Position]
-elements ilevel = many (element ilevel)
+elements ilevel = do
+  -- TODO: check if syntaxically any element can be surrounded by cabal
+  groups <- many (commentsAround (\f -> [f]) $ element ilevel)
+  pure $ mconcat groups
 
 -- An individual element, ie a field or a section. These can either use
 -- layout style or braces style. For layout style then it must start on
@@ -400,12 +409,14 @@ checkIndentation :: [Field Position] -> [LexWarning] -> [LexWarning]
 checkIndentation [] = id
 checkIndentation (Field name _ : fs') = checkIndentation' (nameAnn name) fs'
 checkIndentation (Section name _ fs : fs') = checkIndentation fs . checkIndentation' (nameAnn name) fs'
+checkIndentation (Meta meta : fs') = checkIndentation' (metaFieldAnn meta) fs'
 
 -- | We compare adjacent fields to reduce the amount of reported indentation warnings.
 checkIndentation' :: Position -> [Field Position] -> [LexWarning] -> [LexWarning]
 checkIndentation' _ [] = id
 checkIndentation' pos (Field name _ : fs') = checkIndentation'' pos (nameAnn name) . checkIndentation' (nameAnn name) fs'
 checkIndentation' pos (Section name _ fs : fs') = checkIndentation'' pos (nameAnn name) . checkIndentation fs . checkIndentation' (nameAnn name) fs'
+checkIndentation' pos (Meta meta : fs') = checkIndentation'' pos (metaFieldAnn meta) . checkIndentation' (metaFieldAnn meta) fs'
 
 -- | Check that positions' columns are the same.
 checkIndentation'' :: Position -> Position -> [LexWarning] -> [LexWarning]
