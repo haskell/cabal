@@ -101,9 +101,13 @@ partitionFields = finalize . foldl' f (PS mempty mempty mempty)
 
 -- | Take all fields from the front.
 takeFields :: [Field ann] -> (Fields ann, [Field ann])
-takeFields = finalize . spanMaybe match
+-- TODO(leana8959): find a way to inject comment into the output
+-- parseGenericPackageDescription uses this
+takeFields = finalize . spanMaybe match . dropMeta
   where
     finalize (fs, rest) = (Map.fromListWith (flip (++)) fs, rest)
 
     match (Field (Name ann name) fs) = Just (name, [MkNamelessField ann fs])
     match _ = Nothing
+
+    dropMeta = filter (\x -> case x of { Meta _ -> False; _ -> True })
