@@ -115,7 +115,6 @@ describeToken t = case t of
   Colon -> "\":\""
   OpenBrace -> "\"{\""
   CloseBrace -> "\"}\""
-  Whitespace sp -> B8.unpack sp
   Comment c -> B8.unpack c
   --  SemiColon       -> "\";\""
   EOF -> "end of file"
@@ -137,10 +136,8 @@ tokOpenBrace = getTokenWithPos $ \t -> case t of L pos OpenBrace -> Just pos; _ 
 tokCloseBrace = getToken $ \t -> case t of CloseBrace -> Just (); _ -> Nothing
 tokFieldLine = getTokenWithPos $ \t -> case t of L pos (TokFieldLine s) -> Just (FieldLine pos s); _ -> Nothing
 
-tokMeta, tokComment, tokWhitespace :: Parser (Field Position)
-tokMeta = tokComment <|> tokWhitespace
+tokComment :: Parser (Field Position)
 tokComment = getTokenWithPos $ \t -> case t of L pos (Comment c) -> Just (Meta $ MetaComment c pos); _ -> Nothing
-tokWhitespace = getTokenWithPos $ \t -> case t of L pos (Whitespace c) -> Just (Meta $ MetaWhitespace c pos); _ -> Nothing
 
 colon, openBrace, closeBrace :: Parser ()
 sectionArg :: Parser (SectionArg Position)
@@ -235,7 +232,7 @@ inLexerMode (LexerMode mode) p =
 --
 cabalStyleFile :: Parser [Field Position]
 cabalStyleFile = do
-  meta <- many tokMeta
+  meta <- many tokComment
   es <- elements zeroIndentLevel
   eof
   return $ meta <> es

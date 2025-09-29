@@ -181,7 +181,6 @@ data Token = TokSym   !ByteString       -- ^ Haskell-like identifier, number or 
            | Colon
            | OpenBrace
            | CloseBrace
-           | Whitespace !ByteString
            | Comment    !ByteString
            | EOF
            | LexicalError InputStream --TODO: add separate string lexical error
