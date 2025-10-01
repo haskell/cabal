@@ -108,12 +108,8 @@ tokens :-
 }
 
 <in_section> {
-  $spacetab+   ; --TODO: don't allow tab as leading space
-  "--" $comment* ;
-
-  -- -- Exact print
-  -- $spacetab+     { toki Whitespace } -- TODO: don't allow tab as leading space
-  -- "--" $comment* { toki Comment }
+  $spacetab+     ; --TODO: don't allow tab as leading space
+  "--" $comment* { toki TokComment }
 
   @name        { toki TokSym }
   @string      { \pos len inp -> return $! L pos (TokStr (B.take (len - 2) (B.tail inp))) }
@@ -140,8 +136,6 @@ tokens :-
 
 <in_field_layout> {
   $spacetab+;
-  -- -- Exact print
-  -- $spacetab+      { toki Whitespace }
 
   $field_layout' $field_layout*  { toki TokFieldLine }
   @nl             { \_ _ _ -> adjustPos retPos >> setStartCode bol_field_layout >> lexToken }
@@ -153,8 +147,6 @@ tokens :-
 
 <in_field_braces> {
   $spacetab+;
-  -- Exact print
-  -- $spacetab+        { toki Whitespace }
 
   $field_braces' $field_braces*    { toki TokFieldLine }
   \{                { tok  OpenBrace  }
