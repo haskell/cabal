@@ -38,6 +38,7 @@ module Distribution.FieldGrammar
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import qualified Data.Bifunctor as Bi
 import qualified Data.Map.Strict as Map
 
 import Distribution.FieldGrammar.Class
@@ -100,14 +101,19 @@ partitionFields = finalize . foldl' f (PS mempty mempty mempty)
     f ps (Meta _) = ps
 
 -- | Take all fields from the front.
-takeFields :: [Field ann] -> (Fields ann, [Field ann])
--- TODO(leana8959): find a way to inject comment into the output
--- parseGenericPackageDescription uses this
-takeFields = finalize . spanMaybe match . dropMeta
+takeFields :: Ord ann => [Field ann] -> (MetaFields ann, (Fields ann, [Field ann]))
+takeFields =
+  Bi.bimap metaFieldToMap (finalize . spanMaybe match)
+    . splitMeta
   where
     finalize (fs, rest) = (Map.fromListWith (flip (++)) fs, rest)
 
     match (Field (Name ann name) fs) = Just (name, [MkNamelessField ann fs])
     match _ = Nothing
 
-    dropMeta = filter (\x -> case x of { Meta _ -> False; _ -> True })
+    metaFieldToMap = Map.fromList . map (\mField -> (metaFieldAnn mField, mField))
+
+    splitMeta = partitionEithers . map f
+      where
+        f (Meta mField) = Left mField
+        f field = Right field

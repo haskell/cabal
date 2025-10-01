@@ -60,6 +60,7 @@ module Distribution.FieldGrammar.Parsec
 
     -- * Auxiliary
   , Fields
+  , MetaFields
   , NamelessField (..)
   , namelessFieldAnn
   , Section (..)
@@ -95,6 +96,7 @@ import Distribution.Parsec.Position (positionCol, positionRow)
 -------------------------------------------------------------------------------
 
 type Fields ann = Map FieldName [NamelessField ann]
+type MetaFields ann = Map ann (MetaField ann)
 
 -- | Single field, without name, but with its annotation.
 data NamelessField ann = MkNamelessField !ann [FieldLine ann]

@@ -18,7 +18,7 @@ module Distribution.Fields.Field
   , sectionArgAnn
 
     -- * Meta annotations
-  , MetaField(..)
+  , MetaField (..)
   , metaFieldAnn
 
     -- * Name
