@@ -17,10 +17,6 @@ module Distribution.Fields.Field
   , SectionArg (..)
   , sectionArgAnn
 
-    -- * Meta annotations
-  , MetaField (..)
-  , metaFieldAnn
-
     -- * Name
   , FieldName
   , Name (..)
@@ -52,14 +48,8 @@ import qualified Data.Foldable1 as F1
 data Field ann
   = Field !(Name ann) [FieldLine ann]
   | Section !(Name ann) [SectionArg ann] [Field ann]
-  | Meta !(MetaField ann)
+  | Comment !ByteString ann
   deriving (Eq, Show, Functor, Foldable, Traversable)
-
-data MetaField ann = MetaComment ByteString ann
-  deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
-
-metaFieldAnn :: MetaField ann -> ann
-metaFieldAnn (MetaComment _ ann) = ann
 
 -- | @since 3.12.0.0
 deriving instance Ord ann => Ord (Field ann)

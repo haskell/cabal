@@ -38,6 +38,7 @@ module Distribution.FieldGrammar
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Data.ByteString (ByteString)
 import qualified Data.Bifunctor as Bi
 import qualified Data.Map.Strict as Map
 
@@ -98,22 +99,21 @@ partitionFields = finalize . foldl' f (PS mempty mempty mempty)
           | otherwise = reverse s : ss
     f (PS fs s ss) (Section name sargs sfields) =
       PS fs (MkSection name sargs sfields : s) ss
-    f ps (Meta _) = ps
+    f ps (Comment {}) = ps
 
 -- | Take all fields from the front.
-takeFields :: Ord ann => [Field ann] -> (MetaFields ann, (Fields ann, [Field ann]))
+-- Returns a tuple containing the comments, nameless fields, and sections
+takeFields :: Ord ann => [Field ann] -> (Map ann ByteString, (Fields ann, [Field ann]))
 takeFields =
-  Bi.bimap metaFieldToMap (finalize . spanMaybe match)
-    . splitMeta
+  Bi.bimap Map.fromList (finalize . spanMaybe match)
+    . splitComments
   where
     finalize (fs, rest) = (Map.fromListWith (flip (++)) fs, rest)
 
     match (Field (Name ann name) fs) = Just (name, [MkNamelessField ann fs])
     match _ = Nothing
 
-    metaFieldToMap = Map.fromList . map (\mField -> (metaFieldAnn mField, mField))
-
-    splitMeta = partitionEithers . map f
+    splitComments = partitionEithers . map f
       where
-        f (Meta mField) = Left mField
+        f (Comment cmt ann) = Left (ann, cmt)
         f field = Right field

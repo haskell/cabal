@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 module Distribution.Types.GenericPackageDescription
   ( GenericPackageDescription (..)
@@ -10,6 +11,9 @@ module Distribution.Types.GenericPackageDescription
 
 import Distribution.Compat.Prelude
 import Prelude ()
+
+import Distribution.Parsec.Position (Position)
+import Data.ByteString
 
 -- lens
 import Distribution.Compat.Lens as L
@@ -70,8 +74,11 @@ data GenericPackageDescription = GenericPackageDescription
            , CondTree ConfVar [Dependency] Benchmark
            )
          ]
+  , exactComments :: ExactComments Position
   }
   deriving (Show, Eq, Data, Generic)
+
+type ExactComments ann = Map ann ByteString
 
 instance Package GenericPackageDescription where
   packageId = packageId . packageDescription
@@ -81,13 +88,13 @@ instance Structured GenericPackageDescription
 instance NFData GenericPackageDescription where rnf = genericRnf
 
 emptyGenericPackageDescription :: GenericPackageDescription
-emptyGenericPackageDescription = GenericPackageDescription emptyPackageDescription Nothing [] Nothing [] [] [] [] []
+emptyGenericPackageDescription = GenericPackageDescription emptyPackageDescription Nothing [] Nothing [] [] [] [] [] mempty
 
 -- -----------------------------------------------------------------------------
 -- Traversal Instances
 
 instance L.HasBuildInfos GenericPackageDescription where
-  traverseBuildInfos f (GenericPackageDescription p v a1 x1 x2 x3 x4 x5 x6) =
+  traverseBuildInfos f (GenericPackageDescription p v a1 x1 x2 x3 x4 x5 x6 mFields) =
     GenericPackageDescription
       <$> L.traverseBuildInfos f p
       <*> pure v
@@ -98,6 +105,7 @@ instance L.HasBuildInfos GenericPackageDescription where
       <*> (traverse . L._2 . traverseCondTreeBuildInfo) f x4
       <*> (traverse . L._2 . traverseCondTreeBuildInfo) f x5
       <*> (traverse . L._2 . traverseCondTreeBuildInfo) f x6
+      <*> pure mFields
 
 -- We use this traversal to keep [Dependency] field in CondTree up to date.
 traverseCondTreeBuildInfo

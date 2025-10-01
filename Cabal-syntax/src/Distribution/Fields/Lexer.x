@@ -84,7 +84,7 @@ tokens :-
 <bol_section, bol_field_layout, bol_field_braces> {
   @nbspspacetab* @nl         { \pos len inp -> checkWhitespace pos len inp >> adjustPos retPos >> lexToken }
   -- no @nl here to allow for comments on last line of the file with no trailing \n
-  $spacetab* "--" $comment*  { toki Comment }
+  $spacetab* "--" $comment*  { toki TokComment }
   -- TODO: check the lack of @nl works here
   -- including counting line numbers
 }
@@ -173,7 +173,7 @@ data Token = TokSym   !ByteString       -- ^ Haskell-like identifier, number or 
            | Colon
            | OpenBrace
            | CloseBrace
-           | Comment    !ByteString
+           | TokComment !ByteString
            | EOF
            | LexicalError InputStream --TODO: add separate string lexical error
   deriving Show

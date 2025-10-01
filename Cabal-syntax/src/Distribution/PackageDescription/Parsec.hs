@@ -158,7 +158,7 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
   for_ utf8WarnPos $ \pos ->
     parseWarning zeroPos PWTUTF $ "UTF8 encoding problem at byte offset " ++ show pos
   let (syntax, fs') = sectionizeFields fs
-  let (metaFields, (fields, sectionFields)) = takeFields fs'
+  let (comments, (fields, sectionFields)) = takeFields fs'
 
   -- cabal-version
   specVer <- case scannedVer of
@@ -202,6 +202,7 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
   -- Sections
   let gpd =
         emptyGenericPackageDescription
+          { exactComments = comments }
           & L.packageDescription .~ pd
   gpd1 <- view stateGpd <$> execStateT (goSections specVer sectionFields) (SectionS gpd Map.empty)
 
@@ -249,7 +250,7 @@ goSections specVer = traverse_ process
           "Ignoring trailing fields after sections: " ++ show name
     process (Section name args secFields) =
       parseSection name args secFields
-    process (Meta _) = pure ()
+    process (Comment _ _) = pure ()
 
     snoc x xs = xs ++ [x]
 

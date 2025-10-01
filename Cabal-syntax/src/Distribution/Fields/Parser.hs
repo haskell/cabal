@@ -115,7 +115,7 @@ describeToken t = case t of
   Colon -> "\":\""
   OpenBrace -> "\"{\""
   CloseBrace -> "\"}\""
-  Comment c -> B8.unpack c
+  TokComment c -> B8.unpack c
   --  SemiColon       -> "\";\""
   EOF -> "end of file"
   LexicalError is -> "character in input " ++ show (B8.head is)
@@ -136,8 +136,8 @@ tokOpenBrace = getTokenWithPos $ \t -> case t of L pos OpenBrace -> Just pos; _ 
 tokCloseBrace = getToken $ \t -> case t of CloseBrace -> Just (); _ -> Nothing
 tokFieldLine = getTokenWithPos $ \t -> case t of L pos (TokFieldLine s) -> Just (FieldLine pos s); _ -> Nothing
 
-tokComment :: Parser (MetaField Position)
-tokComment = getTokenWithPos $ \t -> case t of L pos (Comment c) -> Just (MetaComment c pos); _ -> Nothing
+tokComment :: Parser (Field Position)
+tokComment = getTokenWithPos $ \t -> case t of L pos (TokComment c) -> Just (Comment c pos); _ -> Nothing
 
 colon, openBrace, closeBrace :: Parser ()
 sectionArg :: Parser (SectionArg Position)
@@ -241,7 +241,7 @@ commentsAround f p = do
   pre <- many tokComment
   res <- p
   post <- many tokComment
-  pure $ map Meta pre <> f res <> map Meta post
+  pure $ pre <> f res <> post
 
 -- Elements that live at the top level or inside a section, i.e. fields
 -- and sections content
@@ -409,14 +409,14 @@ checkIndentation :: [Field Position] -> [LexWarning] -> [LexWarning]
 checkIndentation [] = id
 checkIndentation (Field name _ : fs') = checkIndentation' (nameAnn name) fs'
 checkIndentation (Section name _ fs : fs') = checkIndentation fs . checkIndentation' (nameAnn name) fs'
-checkIndentation (Meta meta : fs') = checkIndentation' (metaFieldAnn meta) fs'
+checkIndentation (Comment _ ann : fs') = checkIndentation' ann fs'
 
 -- | We compare adjacent fields to reduce the amount of reported indentation warnings.
 checkIndentation' :: Position -> [Field Position] -> [LexWarning] -> [LexWarning]
 checkIndentation' _ [] = id
 checkIndentation' pos (Field name _ : fs') = checkIndentation'' pos (nameAnn name) . checkIndentation' (nameAnn name) fs'
 checkIndentation' pos (Section name _ fs : fs') = checkIndentation'' pos (nameAnn name) . checkIndentation fs . checkIndentation' (nameAnn name) fs'
-checkIndentation' pos (Meta meta : fs') = checkIndentation'' pos (metaFieldAnn meta) . checkIndentation' (metaFieldAnn meta) fs'
+checkIndentation' pos (Comment _ ann : fs') = checkIndentation'' pos ann . checkIndentation' ann fs'
 
 -- | Check that positions' columns are the same.
 checkIndentation'' :: Position -> Position -> [LexWarning] -> [LexWarning]
