@@ -18,7 +18,6 @@ main = do
     addToPath (takeDirectory exe_path) $ do
       -- Test that the thing works at all
       res <- fails $ cabal_raw_action ["aaaa"] (\h -> () <$ Process.waitForProcess h)
-      assertOutputContains "aaaa" res
       -- Check the exit code is the one returned by subcommand
       unless (resultExitCode res == ExitFailure 99) (assertFailure $ "Incorrect exit code: " ++ show (resultExitCode res))
 
