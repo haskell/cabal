@@ -407,16 +407,16 @@ readFields' s = do
 -- and then parse the following ones (softly) requiring the exactly the same indentation.
 checkIndentation :: [Field Position] -> [LexWarning] -> [LexWarning]
 checkIndentation [] = id
-checkIndentation (Field name _ : fs') = checkIndentation' (nameAnn name) fs'
+checkIndentation (Field name _ : fs') = checkIndentation fs'
 checkIndentation (Section name _ fs : fs') = checkIndentation fs . checkIndentation' (nameAnn name) fs'
-checkIndentation (Comment _ ann : fs') = checkIndentation' ann fs'
+checkIndentation (Comment {} : fs') = checkIndentation fs'
 
 -- | We compare adjacent fields to reduce the amount of reported indentation warnings.
 checkIndentation' :: Position -> [Field Position] -> [LexWarning] -> [LexWarning]
 checkIndentation' _ [] = id
 checkIndentation' pos (Field name _ : fs') = checkIndentation'' pos (nameAnn name) . checkIndentation' (nameAnn name) fs'
 checkIndentation' pos (Section name _ fs : fs') = checkIndentation'' pos (nameAnn name) . checkIndentation fs . checkIndentation' (nameAnn name) fs'
-checkIndentation' pos (Comment _ ann : fs') = checkIndentation'' pos ann . checkIndentation' ann fs'
+checkIndentation' _ (Comment {} : fs') = id
 
 -- | Check that positions' columns are the same.
 checkIndentation'' :: Position -> Position -> [LexWarning] -> [LexWarning]
