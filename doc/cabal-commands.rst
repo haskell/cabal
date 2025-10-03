@@ -499,38 +499,23 @@ flag.
 cabal freeze
 ^^^^^^^^^^^^
 
-If a package is built in several different environments, such as a
-development environment, a staging environment and a production
-environment, it may be necessary or desirable to ensure that the same
-dependency versions are selected in each environment. This can be done
-with the ``freeze`` command:
+.. code-block:: console
 
-``cabal freeze`` writes out a **freeze file** which records all of
-the versions and flags that are picked by the solver under the
-current index and flags.  Default name of this file is
-``cabal.project.freeze`` but in combination with a
-``--project-file=my.project`` flag (see :ref:`project-file
-<cmdoption-project-file>`)
-the name will be ``my.project.freeze``.
-A freeze file has the same syntax as ``cabal.project`` and looks
-something like this:
+    $ cabal freeze
 
-.. highlight:: cabal
+generates ``cabal.project.freeze`` file, which describes the exact dependency
+tree as it was resolved at that moment by Cabal.  This means it captures an
+exact version of every dependency, including dependencies of dependencies,
+recursively all the way.
 
-::
+Since ``cabal`` reads ``cabal.project.freeze`` when present, and takes into
+consideration the version constraints in it, this means that by producing
+``cabal.project.freeze`` you are guaranteed that every future ``cabal`` call
+will use the exact same set of dependencies, regardless of any updates (even
+patches) that might get published for these dependencies in the meantime.
+Therefore, we have effectively "frozen" the dependencies in place.
 
-    constraints: HTTP ==4000.3.3,
-                 HTTP +warp-tests -warn-as-error -network23 +network-uri -mtl1 -conduit10,
-                 QuickCheck ==2.9.1,
-                 QuickCheck +templatehaskell,
-                 -- etc...
-
-
-For end-user executables, it is recommended that you distribute the
-``cabal.project.freeze`` file in your source repository so that all
-users see a consistent set of dependencies. For libraries, this is not
-recommended: users often need to build against different versions of
-libraries than what you developed against.
+``cabal.project.freeze`` is intended to be committed to the version control.
 
 .. _cabal-gen-bounds:
 
