@@ -67,11 +67,11 @@ GenericPackageDescription {
           buildTools = [],
           buildToolDepends = [],
           cppOptions = [],
-          jsppOptions = [],
           asmOptions = [],
           cmmOptions = [],
           ccOptions = [],
           cxxOptions = [],
+          jsppOptions = [],
           ldOptions = [],
           hsc2hsOptions = [],
           pkgconfigDepends = [],
@@ -147,11 +147,11 @@ GenericPackageDescription {
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
-            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
             cxxOptions = [],
+            jsppOptions = [],
             ldOptions = [],
             hsc2hsOptions = [],
             pkgconfigDepends = [],
@@ -233,4 +233,9 @@ GenericPackageDescription {
             (OrLaterVersion (mkVersion [0]))
             mainLibSet],
         condTreeComponents = []}],
-  condBenchmarks = []}
+  condBenchmarks = [],
+  exactComments = Map.fromList
+    [
+      _×_
+        (Position 7 1)
+        "-- note: empty field"]}
