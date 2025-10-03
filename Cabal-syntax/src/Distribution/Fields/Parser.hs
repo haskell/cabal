@@ -407,7 +407,7 @@ readFields' s = do
 -- and then parse the following ones (softly) requiring the exactly the same indentation.
 checkIndentation :: [Field Position] -> [LexWarning] -> [LexWarning]
 checkIndentation [] = id
-checkIndentation (Field name _ : fs') = checkIndentation fs'
+checkIndentation (Field name _ : fs') = checkIndentation' (nameAnn name) fs'
 checkIndentation (Section name _ fs : fs') = checkIndentation fs . checkIndentation' (nameAnn name) fs'
 checkIndentation (Comment {} : fs') = checkIndentation fs'
 
