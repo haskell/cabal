@@ -61,11 +61,11 @@ GenericPackageDescription {
           buildTools = [],
           buildToolDepends = [],
           cppOptions = [],
-          jsppOptions = [],
           asmOptions = [],
           cmmOptions = [],
           ccOptions = [],
           cxxOptions = [],
+          jsppOptions = [],
           ldOptions = [],
           hsc2hsOptions = [],
           pkgconfigDepends = [],
@@ -167,4 +167,5 @@ GenericPackageDescription {
   condForeignLibs = [],
   condExecutables = [],
   condTestSuites = [],
-  condBenchmarks = []}
+  condBenchmarks = [],
+  exactComments = Map.fromList []}
