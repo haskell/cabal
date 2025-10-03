@@ -1171,14 +1171,14 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
       -- Tarballs from repositories, either where the repository provides
       -- hashes as part of the repo metadata, or where we will have to
       -- download and hash the tarball.
-      repoTarballPkgsWithMetadataUnvalidated :: [(Repo, [PackageId])]
+      repoTarballPkgsWithMetadataUnvalidated :: [(SecureRepo, [PackageId])]
       repoTarballPkgsWithoutMetadata :: [(Repo, PackageId)]
       ( repoTarballPkgsWithMetadataUnvalidated
         , repoTarballPkgsWithoutMetadata
         ) =
           partitionEithers
             [ case repo of
-              RepoSecure{} -> Left (repo, [pkgid])
+              RepoSecure r dir -> Left (SecureRepo r dir, [pkgid])
               _ -> Right (repo, pkgid)
             | (pkgid, RepoTarballPackage repo _ _) <- allPkgLocations
             ]
@@ -1230,8 +1230,8 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
             fmap (Map.fromList . concat) $
               sequence
                 -- Reading the repo index is expensive so we group the packages by repo
-                [ repoContextWithSecureRepo repoctx repo $ \secureRepo ->
-                  Sec.withIndex secureRepo $ \repoIndex ->
+                [ repoContextWithSecureRepo repoctx (secureRepoToRepo secureRepo) $ \repo ->
+                  Sec.withIndex repo $ \repoIndex ->
                     sequence
                       [ do
                         hash <-
@@ -1244,10 +1244,12 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
                         return (pkgid, hashFromTUF hash)
                       | pkgid <- pkgids
                       ]
-                | (repo, pkgids) <-
+                | (secureRepo, pkgids) <-
+                    -- All Repos here are SecureRepos (and will have a name), so we're
+                    -- sorting Justs
                     map (\grp@((repo, _) :| _) -> (repo, map snd (NE.toList grp)))
-                      . NE.groupBy ((==) `on` (remoteRepoName . repoRemote . fst))
-                      . sortBy (compare `on` (remoteRepoName . repoRemote . fst))
+                      . NE.groupBy ((==) `on` (remoteRepoName . secureRemote . fst))
+                      . sortBy (compare `on` (remoteRepoName . secureRemote . fst))
                       $ repoTarballPkgsWithMetadata
                 ]
 
