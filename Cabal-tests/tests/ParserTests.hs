@@ -10,11 +10,13 @@ import Test.Tasty
 import Test.Tasty.Golden.Advanced (goldenTest)
 import Test.Tasty.HUnit
 
-import Control.Monad                               (unless, void)
+import Control.Monad                               (unless, void, when)
 import Data.Algorithm.Diff                         (PolyDiff (..), getGroupedDiff)
 import Data.Maybe                                  (isNothing)
 import Distribution.Fields                         (pwarning)
-import Distribution.PackageDescription             (GenericPackageDescription)
+import Distribution.PackageDescription             (GenericPackageDescription(exactComments))
+import Distribution.Types.GenericPackageDescription(ExactComments)
+import Distribution.Parsec.Position                (Position)
 import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.Parsec                         (PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
@@ -42,6 +44,7 @@ tests :: TestTree
 tests = testGroup "parsec tests"
     [ regressionTests
     , warningTests
+    , commentTests
     , errorTests
     , ipiTests
     ]
@@ -93,6 +96,31 @@ warningTest wt fp = testCase (show wt) $ do
   where
     isRight (Right _) = True
     isRight _         = False
+
+
+-------------------------------------------------------------------------------
+-- comment
+-------------------------------------------------------------------------------
+
+-- Verify that comments are parsed correctly
+commentTests :: TestTree
+commentTests = testGroup "warnings triggered"
+    [ commentTest "nosections-before" mempty
+    , commentTest "nosections-after"  mempty
+    , commentTest "nosections-mixed"  mempty
+    ]
+
+commentTest :: FilePath -> ExactComments Position -> TestTree
+commentTest fp expected = testCase fp $ do
+    contents <- BS.readFile $ "tests" </> "ParserTests" </> "comments" </> fp
+
+    let res = withSource (PCabalFile (fp, contents)) $ parseGenericPackageDescription contents
+    let (warns, x) = runParseResult res
+
+    when (not $ null warns) (assertFailure $ "got warning: " ++ show warns)
+    case x of
+      Right output -> assertEqual "exact comments" (exactComments output) expected
+      Left _ -> assertFailure "parser failed."
 
 -------------------------------------------------------------------------------
 -- Errors

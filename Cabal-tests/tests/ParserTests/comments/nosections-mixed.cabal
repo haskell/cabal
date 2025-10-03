@@ -1,0 +1,11 @@
+
+-- comment before
+name: bom
+
+-- comment within surrounded by blanks
+
+version: 1
+    -- comment within
+cabal-version: >= 1.8
+
+-- comment after

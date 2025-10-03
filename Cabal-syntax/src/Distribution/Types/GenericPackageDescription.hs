@@ -6,6 +6,7 @@
 
 module Distribution.Types.GenericPackageDescription
   ( GenericPackageDescription (..)
+  , ExactComments
   , emptyGenericPackageDescription
   ) where
 

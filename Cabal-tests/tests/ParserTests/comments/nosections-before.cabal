@@ -1,0 +1,4 @@
+-- comment before
+name: bom
+version: 1
+cabal-version: >= 1.8
