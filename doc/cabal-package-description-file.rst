@@ -3454,9 +3454,7 @@ a few options:
 
 .. rubric:: Footnotes
 
-.. [#old-style-build-tool-depends]
-
-   Some packages (ab)use :pkg-field:`build-depends` on old-style builds, but this has a few major drawbacks:
+.. [#old-style-build-tool-depends] Some packages (ab)use :pkg-field:`build-depends` on old-style builds, but this has a few major drawbacks:
 
    - using Nix-style builds it's considered an error if you depend on a exe-only package via build-depends: the solver will refuse it.
    - it may or may not place the executable on ``PATH``.
