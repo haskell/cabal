@@ -104,10 +104,10 @@ warningTest wt fp = testCase (show wt) $ do
 
 -- Verify that comments are parsed correctly
 commentTests :: TestTree
-commentTests = testGroup "warnings triggered"
-    [ commentTest "nosections-before" mempty
-    , commentTest "nosections-after"  mempty
-    , commentTest "nosections-mixed"  mempty
+commentTests = testGroup "comments"
+    [ commentTest "nosections-before.cabal" mempty
+    , commentTest "nosections-after.cabal"  mempty
+    , commentTest "nosections-mixed.cabal"  mempty
     ]
 
 commentTest :: FilePath -> ExactComments Position -> TestTree
