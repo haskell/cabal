@@ -26,6 +26,7 @@ module Distribution.FieldGrammar
   , Section (..)
   , Fields
   , partitionFields
+  , splitComments
   , takeFields
   , runFieldParser
   , runFieldParser'
@@ -103,17 +104,21 @@ partitionFields = finalize . foldl' f (PS mempty mempty mempty)
 
 -- | Take all fields from the front.
 -- Returns a tuple containing the comments, nameless fields, and sections
-takeFields :: Ord ann => [Field ann] -> (Map ann ByteString, (Fields ann, [Field ann]))
-takeFields =
-  Bi.bimap Map.fromList (finalize . spanMaybe match)
-    . splitComments
+takeFields :: Ord ann => [Field ann] -> (Fields ann, [Field ann])
+takeFields = finalize . spanMaybe match
   where
     finalize (fs, rest) = (Map.fromListWith (flip (++)) fs, rest)
 
     match (Field (Name ann name) fs) = Just (name, [MkNamelessField ann fs])
     match _ = Nothing
 
-    splitComments = partitionEithers . map f
-      where
-        f (Comment cmt ann) = Left (ann, cmt)
-        f field = Right field
+splitComments :: Ord ann => [Field ann] -> (Map.Map ann ByteString, [Field ann])
+splitComments = finalize . foldl' (flip go) (mempty, [])
+  where
+    finalize = Bi.second reverse
+
+    go (Comment cmt ann) = Bi.first $ Map.insert ann cmt
+    go (Section name args fs) =
+      let (cs', fs') = splitComments fs
+       in Bi.bimap ( cs' <> ) ( Section name args fs' : )
+    go field = Bi.second (field :)
