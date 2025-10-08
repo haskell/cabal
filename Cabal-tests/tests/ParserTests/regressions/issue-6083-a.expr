@@ -383,4 +383,8 @@ GenericPackageDescription {
         condTreeComponents = []}],
   condTestSuites = [],
   condBenchmarks = [],
-  exactComments = Map.fromList []}
+  exactComments = Map.fromList
+    [
+      _×_
+        (Position 7 1)
+        "  -- This should be parsed as the main lib"]}

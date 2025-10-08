@@ -238,4 +238,7 @@ GenericPackageDescription {
     [
       _×_
         (Position 7 1)
-        "-- note: empty field"]}
+        "-- note: empty field",
+      _×_
+        (Position 23 1)
+        "  -- not first: will be omitted and generate warning"]}

@@ -168,4 +168,8 @@ GenericPackageDescription {
   condExecutables = [],
   condTestSuites = [],
   condBenchmarks = [],
-  exactComments = Map.fromList []}
+  exactComments = Map.fromList
+    [
+      _×_
+        (Position 10 1)
+        "  -- empty field on purpose"]}

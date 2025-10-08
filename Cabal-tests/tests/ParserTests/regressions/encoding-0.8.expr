@@ -67,11 +67,11 @@ GenericPackageDescription {
           buildTools = [],
           buildToolDepends = [],
           cppOptions = [],
-          jsppOptions = [],
           asmOptions = [],
           cmmOptions = [],
           ccOptions = [],
           cxxOptions = [],
+          jsppOptions = [],
           ldOptions = [],
           hsc2hsOptions = [],
           pkgconfigDepends = [],
@@ -145,4 +145,18 @@ GenericPackageDescription {
   condForeignLibs = [],
   condExecutables = [],
   condTestSuites = [],
-  condBenchmarks = []}
+  condBenchmarks = [],
+  exactComments = Map.fromList
+    [
+      _×_
+        (Position 5 1)
+        "-- double-dash files",
+      _×_
+        (Position 7 1)
+        "  -- this is comment",
+      _×_
+        (Position 17 1)
+        "  -- version range round trip is better",
+      _×_
+        (Position 23 1)
+        "  -- options with spaces"]}
