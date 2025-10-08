@@ -73,10 +73,11 @@ mkLexState' st =
 type Parser a = ParsecT LexState' () Identity a
 
 instance Stream LexState' Identity LToken where
+  -- DEBUG(leana8959): remove tracing
   uncons (LexState' _ (tok, st')) =
     case tok of
-      L _ EOF -> return Nothing
-      _ -> return $ Just (tok, st')
+      L _ EOF -> return $ trace "[x] Got token EOF" Nothing
+      _ -> return (trace ("[x] Got token tok " ++ show tok) $ Just (tok, st'))
 
 -- | Get lexer warnings accumulated so far
 getLexerWarnings :: Parser [LexWarning]
@@ -236,11 +237,13 @@ cabalStyleFile = do
   return es
 
 commentsAround :: (a -> [Field Position]) -> Parser a -> Parser [Field Position]
-commentsAround f p = do
-  pre <- many tokComment
-  res <- p
-  post <- many tokComment
-  pure $ pre <> f res <> post
+commentsAround f p =
+  -- DEBUG(leana8959):
+  fmap (\x -> trace ("[y]" <> show x) x) $
+  mconcat
+    [ try (many tokComment <> fmap f p)
+    , many tokComment
+    ]
 
 -- Elements that live at the top level or inside a section, i.e. fields
 -- and sections content
@@ -390,7 +393,9 @@ readFields' s = do
   parse parser "the input" lexSt
   where
     parser = do
-      fields <- cabalStyleFile
+      fields <-
+        fmap (\x -> trace ("[readFields']" <> show x) x)
+        cabalStyleFile
       ws <- getLexerWarnings -- lexer accumulates warnings in reverse (consing them to the list)
       pure (fields, reverse ws ++ checkIndentation fields [])
 
