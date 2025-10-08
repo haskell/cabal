@@ -73,11 +73,10 @@ mkLexState' st =
 type Parser a = ParsecT LexState' () Identity a
 
 instance Stream LexState' Identity LToken where
-  -- DEBUG(leana8959): remove tracing
   uncons (LexState' _ (tok, st')) =
     case tok of
-      L _ EOF -> return $ trace "[x] Got token EOF" Nothing
-      _ -> return (trace ("[x] Got token tok " ++ show tok) $ Just (tok, st'))
+      L _ EOF -> return Nothing
+      _ -> return $ Just (tok, st')
 
 -- | Get lexer warnings accumulated so far
 getLexerWarnings :: Parser [LexWarning]

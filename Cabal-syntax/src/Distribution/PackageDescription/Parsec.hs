@@ -159,19 +159,9 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
   for_ utf8WarnPos $ \pos ->
     parseWarning zeroPos PWTUTF $ "UTF8 encoding problem at byte offset " ++ show pos
 
-  -- DEBUG(leana8959):
-
-  let (comments, fs') =
-        (\(u, v) -> trace (
-        "[pGPD'/fs]" <> show fs <> "\n"
-        <> "[pGPD'/comments]" <> show u <> "\n" <> "[pGPD'/fs'']" <> show v
-        ) (u, v))
-        $ splitComments fs
-
+  let (comments, fs') = splitComments fs
   let (syntax, fs'') = sectionizeFields fs'
-  let (fields, sectionFields) =
-        (\(u, v) -> trace ("[pGPD'/fields]" <> show u <> "\n" <> "[pGPD'/sectionFields]" <> show v) (u, v))
-        $ takeFields fs''
+  let (fields, sectionFields) = takeFields fs''
 
   -- cabal-version
   specVer <- case scannedVer of
