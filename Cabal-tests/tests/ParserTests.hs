@@ -10,13 +10,11 @@ import Test.Tasty
 import Test.Tasty.Golden.Advanced (goldenTest)
 import Test.Tasty.HUnit
 
-import Control.Monad                               (unless, void, when)
+import Control.Monad                               (unless, void)
 import Data.Algorithm.Diff                         (PolyDiff (..), getGroupedDiff)
 import Data.Maybe                                  (isNothing)
 import Distribution.Fields                         (pwarning)
 import Distribution.PackageDescription             (GenericPackageDescription(exactComments))
-import Distribution.Types.GenericPackageDescription(ExactComments)
-import Distribution.Parsec.Position                (Position)
 import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.Parsec                         (PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
@@ -102,25 +100,34 @@ warningTest wt fp = testCase (show wt) $ do
 -- comment
 -------------------------------------------------------------------------------
 
+
+#ifdef MIN_VERSION_tree_diff
 -- Verify that comments are parsed correctly
 commentTests :: TestTree
 commentTests = testGroup "comments"
-    [ commentTest "nosections-before.cabal" mempty
-    , commentTest "nosections-after.cabal"  mempty
-    , commentTest "nosections-mixed.cabal"  mempty
+    [ commentTest "layout-nosections-before.cabal"
+    , commentTest "layout-nosections-after.cabal"
+    , commentTest "layout-nosections-mixed.cabal"
+    , commentTest "layout-many-sections.cabal"
     ]
 
-commentTest :: FilePath -> ExactComments Position -> TestTree
-commentTest fp expected = testCase fp $ do
-    contents <- BS.readFile $ "tests" </> "ParserTests" </> "comments" </> fp
+commentTest :: FilePath -> TestTree
+commentTest fp = ediffGolden goldenTest "comment expr" exprFile $ do
+  contents <- BS.readFile input
+  let res = withSource (PCabalFile (fp, contents)) $ parseGenericPackageDescription contents
+  let (warns, x) = runParseResult res
 
-    let res = withSource (PCabalFile (fp, contents)) $ parseGenericPackageDescription contents
-    let (warns, x) = runParseResult res
+  unless (null warns) (fail $ show warns)
 
-    when (not $ null warns) (assertFailure $ "got warning: " ++ show warns)
-    case x of
-      Right output -> assertEqual "exact comments" (exactComments output) expected
-      Left _ -> assertFailure "parser failed."
+  case x of
+    Right output -> pure $ toExpr (exactComments output)
+    Left (v, errs) ->
+      fail $
+        unlines $ ("VERSION: " ++ show v) : map (showPErrorWithSource . fmap renderCabalFileSource) (NE.toList errs)
+  where
+    input = "tests" </> "ParserTests" </> "comments" </> fp
+    exprFile = replaceExtension input "expr"
+#endif
 
 -------------------------------------------------------------------------------
 -- Errors
