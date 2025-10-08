@@ -252,7 +252,7 @@ commentsAround f p =
 elements :: IndentLevel -> Parser [Field Position]
 elements ilevel = do
   -- TODO: check if syntaxically any element can be surrounded by cabal
-  groups <- many (commentsAround (\f -> [f]) $ element ilevel)
+  groups <- many (commentsAround id $ element ilevel)
   pure $ mconcat groups
 
 -- An individual element, ie a field or a section. These can either use
@@ -261,7 +261,7 @@ elements ilevel = do
 --
 -- element ::= '\\n' name elementInLayoutContext
 --           |      name elementInNonLayoutContext
-element :: IndentLevel -> Parser (Field Position)
+element :: IndentLevel -> Parser [Field Position]
 element ilevel =
   ( do
       ilevel' <- indentOfAtLeast ilevel
@@ -270,7 +270,7 @@ element ilevel =
   )
     <|> ( do
             name <- fieldSecName
-            elementInNonLayoutContext name
+            (\f -> [f]) <$> elementInNonLayoutContext name
         )
 
 -- An element (field or section) that is valid in a layout context.
@@ -279,13 +279,13 @@ element ilevel =
 --
 -- elementInLayoutContext ::= ':'  fieldLayoutOrBraces
 --                          | arg* sectionLayoutOrBraces
-elementInLayoutContext :: IndentLevel -> Name Position -> Parser (Field Position)
+elementInLayoutContext :: IndentLevel -> Name Position -> Parser [Field Position]
 elementInLayoutContext ilevel name =
-  (do colon; fieldLayoutOrBraces ilevel name)
+  (do colon; commentsAround (\f -> [f]) (fieldLayoutOrBraces ilevel name))
     <|> ( do
             args <- many sectionArg
             elems <- sectionLayoutOrBraces ilevel
-            return (Section name args elems)
+            return [Section name args elems]
         )
 
 -- An element (field or section) that is valid in a non-layout context.
