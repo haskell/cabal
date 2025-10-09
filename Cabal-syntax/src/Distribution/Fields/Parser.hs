@@ -238,14 +238,10 @@ cabalStyleFile = do
 
 commentsAfter :: Show a => Parser a -> Parser (a, [Field Position])
 commentsAfter p =
-  -- DEBUG(leana8959):
-  fmap (\x -> trace ("[y]" <> show x) x) $
     liftA2 (,) p (many tokComment)
 
 commentsAround :: (a -> [Field Position]) -> Parser a -> Parser [Field Position]
 commentsAround f p =
-  -- DEBUG(leana8959):
-  fmap (\x -> trace ("[y]" <> show x) x) $
     mconcat
       [ many tokComment
       , fmap f p
@@ -407,9 +403,7 @@ readFields' s = do
   parse parser "the input" lexSt
   where
     parser = do
-      fields <-
-        fmap (\x -> trace ("[readFields']" <> show x) x)
-        cabalStyleFile
+      fields <- cabalStyleFile
       ws <- getLexerWarnings -- lexer accumulates warnings in reverse (consing them to the list)
       pure (fields, reverse ws ++ checkIndentation fields [])
 
