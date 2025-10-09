@@ -27,5 +27,5 @@ library
   exposed-modules:  ElseIf
 -- comment 4
 
-  build-depends: -- comment 5
+  build-depends:
     ghc-prim

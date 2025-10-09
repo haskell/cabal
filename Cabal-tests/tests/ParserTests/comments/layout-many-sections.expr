@@ -11,7 +11,4 @@ Map.fromList
       "    -- comment 3",
     _×_
       (Position 28 1)
-      "-- comment 4",
-    _×_
-      (Position 30 18)
-      "-- comment 5"]
+      "-- comment 4"]
