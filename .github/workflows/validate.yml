@@ -234,6 +234,10 @@ jobs:
             echo Validate "$test"
             sh validate.sh $FLAGS -s "$test" || rc=1
             echo End "$test"
+            echo ::endgroup::
+            if [ $rc -eq 1 ]; then
+              echo Some tests failed
+            fi
           done
           exit $rc
       # The above ensures all the tests get run, for a single platform+ghc.
