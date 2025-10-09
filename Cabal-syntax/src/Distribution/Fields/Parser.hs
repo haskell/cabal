@@ -284,7 +284,7 @@ element ilevel =
 --                          | arg* sectionLayoutOrBraces
 elementInLayoutContext :: IndentLevel -> Name Position -> Parser [Field Position]
 elementInLayoutContext ilevel name =
-  (do colon; commentsAround id (fieldLayoutOrBraces ilevel name))
+  (do colon; fieldLayoutOrBraces ilevel name)
     <|> ( do
             args <- many sectionArg
             elems <- sectionLayoutOrBraces ilevel
