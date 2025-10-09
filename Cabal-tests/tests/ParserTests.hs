@@ -110,6 +110,7 @@ commentTests = testGroup "comments"
     , commentTest "layout-nosections-mixed.cabal"
     , commentTest "layout-many-sections.cabal"
     , commentTest "layout-interleaved-in-section.cabal"
+    , commentTest "layout-fieldline-is-flag.cabal"
     ]
 
 commentTest :: FilePath -> TestTree
