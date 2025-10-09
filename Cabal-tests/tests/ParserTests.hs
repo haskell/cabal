@@ -112,9 +112,9 @@ commentTests = testGroup "comments"
     ]
 
 commentTest :: FilePath -> TestTree
-commentTest fp = ediffGolden goldenTest "comment expr" exprFile $ do
+commentTest fname = ediffGolden goldenTest fname exprFile $ do
   contents <- BS.readFile input
-  let res = withSource (PCabalFile (fp, contents)) $ parseGenericPackageDescription contents
+  let res = withSource (PCabalFile (input, contents)) $ parseGenericPackageDescription contents
   let (warns, x) = runParseResult res
 
   unless (null warns) (fail $ show warns)
@@ -125,7 +125,7 @@ commentTest fp = ediffGolden goldenTest "comment expr" exprFile $ do
       fail $
         unlines $ ("VERSION: " ++ show v) : map (showPErrorWithSource . fmap renderCabalFileSource) (NE.toList errs)
   where
-    input = "tests" </> "ParserTests" </> "comments" </> fp
+    input = "tests" </> "ParserTests" </> "comments" </> fname
     exprFile = replaceExtension input "expr"
 #endif
 
