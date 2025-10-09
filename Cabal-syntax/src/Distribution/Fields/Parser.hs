@@ -428,7 +428,7 @@ checkIndentation' :: Position -> [Field Position] -> [LexWarning] -> [LexWarning
 checkIndentation' _ [] = id
 checkIndentation' pos (Field name _ : fs') = checkIndentation'' pos (nameAnn name) . checkIndentation' (nameAnn name) fs'
 checkIndentation' pos (Section name _ fs : fs') = checkIndentation'' pos (nameAnn name) . checkIndentation fs . checkIndentation' (nameAnn name) fs'
-checkIndentation' _ (Comment {} : fs') = id
+checkIndentation' _ (Comment {} : _fs') = id
 
 -- | Check that positions' columns are the same.
 checkIndentation'' :: Position -> Position -> [LexWarning] -> [LexWarning]
