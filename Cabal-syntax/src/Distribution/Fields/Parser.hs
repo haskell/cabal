@@ -76,6 +76,7 @@ instance Stream LexState' Identity LToken where
   uncons (LexState' _ (tok, st')) =
     case tok of
       L _ EOF -> return Nothing
+      -- L _ (TokComment {}) -> return Nothing
       _ -> return $ Just (tok, st')
 
 -- | Get lexer warnings accumulated so far
@@ -235,14 +236,21 @@ cabalStyleFile = do
   eof
   return es
 
+commentsAfter :: Show a => Parser a -> Parser (a, [Field Position])
+commentsAfter p =
+  -- DEBUG(leana8959):
+  fmap (\x -> trace ("[y]" <> show x) x) $
+    liftA2 (,) p (many tokComment)
+
 commentsAround :: (a -> [Field Position]) -> Parser a -> Parser [Field Position]
 commentsAround f p =
   -- DEBUG(leana8959):
   fmap (\x -> trace ("[y]" <> show x) x) $
-  mconcat
-    [ try (many tokComment <> fmap f p)
-    , many tokComment
-    ]
+    mconcat
+      [ many tokComment
+      , fmap f p
+      , many tokComment
+      ]
 
 -- Elements that live at the top level or inside a section, i.e. fields
 -- and sections content
@@ -280,7 +288,7 @@ element ilevel =
 --                          | arg* sectionLayoutOrBraces
 elementInLayoutContext :: IndentLevel -> Name Position -> Parser [Field Position]
 elementInLayoutContext ilevel name =
-  (do colon; commentsAround (\f -> [f]) (fieldLayoutOrBraces ilevel name))
+  (do colon; commentsAround id (fieldLayoutOrBraces ilevel name))
     <|> ( do
             args <- many sectionArg
             elems <- sectionLayoutOrBraces ilevel
@@ -309,20 +317,27 @@ elementInNonLayoutContext name =
 --
 -- fieldLayoutOrBraces   ::= '\\n'? '{' content '}'
 --                         | line? ('\\n' line)*
-fieldLayoutOrBraces :: IndentLevel -> Name Position -> Parser (Field Position)
+fieldLayoutOrBraces :: IndentLevel -> Name Position -> Parser [Field Position]
 fieldLayoutOrBraces ilevel name = braces <|> fieldLayout
   where
     braces = do
       openBrace
-      ls <- inLexerMode (LexerMode in_field_braces) (many fieldContent)
+      preCmts <- many tokComment
+      (ls, postCmtsGroups) <- unzip <$> inLexerMode (LexerMode in_field_braces) (many $ commentsAfter fieldContent)
       closeBrace
-      return (Field name ls)
+      return $ preCmts <> [Field name ls] <> mconcat postCmtsGroups
     fieldLayout = inLexerMode (LexerMode in_field_layout) $ do
+      preCmts <- many tokComment
       l <- optionMaybe fieldContent
-      ls <- many (do _ <- indentOfAtLeast ilevel; fieldContent)
-      return $ case l of
-        Nothing -> Field name ls
-        Just l' -> Field name (l' : ls)
+      (ls, postCmtsGroups) <- unzip <$> many (do _ <- indentOfAtLeast ilevel; commentsAfter fieldContent)
+      return $
+        mconcat
+          [ preCmts
+          , case l of
+              Nothing -> [Field name ls]
+              Just l' -> [Field name (l' : ls)]
+          , mconcat postCmtsGroups
+          ]
 
 -- The body of a section, using either layout style or braces style.
 --
