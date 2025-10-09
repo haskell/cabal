@@ -1,0 +1,18 @@
+# checking repl command with no project and --ignore-project
+# cabal repl
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - fake-package-0 (interactive) (lib) (first run)
+Configuring library for fake-package-0...
+Warning: No exposed modules
+# checking repl command with no project and no project options
+# cabal repl
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - fake-package-0 (interactive) (lib) (configuration changed)
+Configuring library for fake-package-0...
+Warning: No exposed modules
+# checking repl command with a missing project
+# cabal repl
