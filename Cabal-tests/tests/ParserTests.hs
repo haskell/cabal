@@ -109,6 +109,7 @@ commentTests = testGroup "comments"
     , commentTest "layout-nosections-after.cabal"
     , commentTest "layout-nosections-mixed.cabal"
     , commentTest "layout-many-sections.cabal"
+    , commentTest "layout-interleaved-in-section.cabal"
     ]
 
 commentTest :: FilePath -> TestTree
@@ -117,7 +118,9 @@ commentTest fname = ediffGolden goldenTest fname exprFile $ do
   let res = withSource (PCabalFile (input, contents)) $ parseGenericPackageDescription contents
   let (warns, x) = runParseResult res
 
-  unless (null warns) (fail $ show warns)
+  unless (null warns) (fail $
+      unlines (map (showPWarningWithSource . fmap renderCabalFileSource) warns)
+    )
 
   case x of
     Right output -> pure $ toExpr (exactComments output)
