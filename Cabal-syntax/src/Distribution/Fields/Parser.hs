@@ -115,7 +115,7 @@ describeToken t = case t of
   Colon -> "\":\""
   OpenBrace -> "\"{\""
   CloseBrace -> "\"}\""
-  TokComment c -> B8.unpack c
+  TokComment c -> "comment \"" ++ B8.unpack c ++ "\""
   --  SemiColon       -> "\";\""
   EOF -> "end of file"
   LexicalError is -> "character in input " ++ show (B8.head is)
