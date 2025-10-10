@@ -244,15 +244,15 @@ cabalStyleFile = do
 
 commentsAfter :: Show a => Parser a -> Parser (a, [Field Position])
 commentsAfter p =
-    liftA2 (,) p (many tokComment)
+  liftA2 (,) p (many tokComment)
 
 commentsAround :: (a -> [Field Position]) -> Parser a -> Parser [Field Position]
 commentsAround f p =
-    mconcat
-      [ many tokComment
-      , fmap f p
-      , many tokComment
-      ]
+  mconcat
+    [ many tokComment
+    , fmap f p
+    , many tokComment
+    ]
 
 -- Elements that live at the top level or inside a section, i.e. fields
 -- and sections content
@@ -373,7 +373,6 @@ fieldInlineOrBraces name =
             return (Field name ls)
         )
 
-
 -- | Parse cabal style 'B8.ByteString' into list of 'Field's, i.e. the cabal AST.
 --
 -- 'readFields' assumes that input 'B8.ByteString' is valid UTF8, specifically it doesn't validate that file is valid UTF8.
@@ -427,14 +426,14 @@ checkIndentation :: [Field Position] -> [LexWarning] -> [LexWarning]
 checkIndentation [] = id
 checkIndentation (Field name _ : fs') = checkIndentation' (nameAnn name) fs'
 checkIndentation (Section name _ fs : fs') = checkIndentation fs . checkIndentation' (nameAnn name) fs'
-checkIndentation (Comment {} : fs') = checkIndentation fs'
+checkIndentation (Comment{} : fs') = checkIndentation fs'
 
 -- | We compare adjacent fields to reduce the amount of reported indentation warnings.
 checkIndentation' :: Position -> [Field Position] -> [LexWarning] -> [LexWarning]
 checkIndentation' _ [] = id
 checkIndentation' pos (Field name _ : fs') = checkIndentation'' pos (nameAnn name) . checkIndentation' (nameAnn name) fs'
 checkIndentation' pos (Section name _ fs : fs') = checkIndentation'' pos (nameAnn name) . checkIndentation fs . checkIndentation' (nameAnn name) fs'
-checkIndentation' _ (Comment {} : _fs') = id
+checkIndentation' _ (Comment{} : _fs') = id
 
 -- | Check that positions' columns are the same.
 checkIndentation'' :: Position -> Position -> [LexWarning] -> [LexWarning]

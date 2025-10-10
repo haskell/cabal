@@ -39,8 +39,8 @@ module Distribution.FieldGrammar
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Data.ByteString (ByteString)
 import qualified Data.Bifunctor as Bi
+import Data.ByteString (ByteString)
 import qualified Data.Map.Strict as Map
 
 import Distribution.FieldGrammar.Class
@@ -100,7 +100,7 @@ partitionFields = finalize . foldl' f (PS mempty mempty mempty)
           | otherwise = reverse s : ss
     f (PS fs s ss) (Section name sargs sfields) =
       PS fs (MkSection name sargs sfields : s) ss
-    f ps (Comment {}) = ps
+    f ps (Comment{}) = ps
 
 -- | Take all fields from the front.
 -- Returns a tuple containing the comments, nameless fields, and sections
@@ -120,5 +120,5 @@ splitComments = finalize . foldl' (flip go) (mempty, [])
     go (Comment cmt ann) = Bi.first $ Map.insert ann cmt
     go (Section name args fs) =
       let (cs', fs') = splitComments fs
-       in Bi.bimap ( cs' <> ) ( Section name args fs' : )
+       in Bi.bimap (cs' <>) (Section name args fs' :)
     go field = Bi.second (field :)

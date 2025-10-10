@@ -13,8 +13,8 @@ module Distribution.Types.GenericPackageDescription
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Parsec.Position (Position)
 import Data.ByteString
+import Distribution.Parsec.Position (Position)
 
 -- lens
 import Distribution.Compat.Lens as L

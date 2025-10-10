@@ -1,8 +1,8 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE BangPatterns #-}
 
 -- |
 -- Module      :  Distribution.PackageDescription.Parsec
@@ -205,7 +205,8 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
   -- Sections
   let gpd =
         emptyGenericPackageDescription
-          { exactComments = comments }
+          { exactComments = comments
+          }
           & L.packageDescription .~ pd
   gpd1 <- view stateGpd <$> execStateT (goSections specVer sectionFields) (SectionS gpd Map.empty)
 
