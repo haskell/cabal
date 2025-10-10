@@ -104,7 +104,7 @@ partitionFields = finalize . foldl' f (PS mempty mempty mempty)
 
 -- | Take all fields from the front.
 -- Returns a tuple containing the comments, nameless fields, and sections
-takeFields :: Ord ann => [Field ann] -> (Fields ann, [Field ann])
+takeFields :: [Field ann] -> (Fields ann, [Field ann])
 takeFields = finalize . spanMaybe match
   where
     finalize (fs, rest) = (Map.fromListWith (flip (++)) fs, rest)
