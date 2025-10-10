@@ -242,15 +242,14 @@ cabalStyleFile = do
   eof
   return es
 
-commentsAfter :: Show a => Parser a -> Parser (a, [Field Position])
-commentsAfter p =
-  liftA2 (,) p (many tokComment)
+commentsAfter :: Parser a -> Parser (a, [Field Position])
+commentsAfter p = liftA2 (,) p (many tokComment)
 
-commentsAround :: (a -> [Field Position]) -> Parser a -> Parser [Field Position]
-commentsAround f p =
+commentsAround :: Parser [Field Position] -> Parser [Field Position]
+commentsAround p =
   mconcat
     [ many tokComment
-    , fmap f p
+    , p
     , many tokComment
     ]
 
@@ -261,7 +260,7 @@ commentsAround f p =
 elements :: IndentLevel -> Parser [Field Position]
 elements ilevel = do
   -- TODO: check if syntaxically any element can be surrounded by cabal
-  groups <- many (commentsAround id $ element ilevel)
+  groups <- many (commentsAround $ element ilevel)
   pure $ mconcat groups
 
 -- An individual element, ie a field or a section. These can either use
@@ -433,7 +432,7 @@ checkIndentation' :: Position -> [Field Position] -> [LexWarning] -> [LexWarning
 checkIndentation' _ [] = id
 checkIndentation' pos (Field name _ : fs') = checkIndentation'' pos (nameAnn name) . checkIndentation' (nameAnn name) fs'
 checkIndentation' pos (Section name _ fs : fs') = checkIndentation'' pos (nameAnn name) . checkIndentation fs . checkIndentation' (nameAnn name) fs'
-checkIndentation' _ (Comment{} : _fs') = id
+checkIndentation' _ (Comment{} : _) = id
 
 -- | Check that positions' columns are the same.
 checkIndentation'' :: Position -> Position -> [LexWarning] -> [LexWarning]
