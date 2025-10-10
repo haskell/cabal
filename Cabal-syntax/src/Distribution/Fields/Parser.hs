@@ -76,8 +76,7 @@ instance Stream LexState' Identity LToken where
   uncons (LexState' _ (tok, st')) =
     case tok of
       L _ EOF -> return Nothing
-      -- L _ (TokComment {}) -> return Nothing
-      _ -> return $ Just (tok, st')
+      _ -> return (Just (tok, st'))
 
 -- | Get lexer warnings accumulated so far
 getLexerWarnings :: Parser [LexWarning]

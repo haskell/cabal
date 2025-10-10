@@ -26,7 +26,7 @@ module Distribution.FieldGrammar
   , Section (..)
   , Fields
   , partitionFields
-  , splitComments
+  , extractComments
   , takeFields
   , runFieldParser
   , runFieldParser'
@@ -112,13 +112,14 @@ takeFields = finalize . spanMaybe match
     match (Field (Name ann name) fs) = Just (name, [MkNamelessField ann fs])
     match _ = Nothing
 
-splitComments :: Ord ann => [Field ann] -> (Map.Map ann ByteString, [Field ann])
-splitComments = finalize . foldl' (flip go) (mempty, [])
+-- | Collect comments into a map. The second field of the output will have no comment
+extractComments :: Ord ann => [Field ann] -> (Map.Map ann ByteString, [Field ann])
+extractComments = finalize . foldl' (flip go) (mempty, [])
   where
     finalize = Bi.second reverse
 
     go (Comment cmt ann) = Bi.first $ Map.insert ann cmt
     go (Section name args fs) =
-      let (cs', fs') = splitComments fs
+      let (cs', fs') = extractComments fs
        in Bi.bimap (cs' <>) (Section name args fs' :)
     go field = Bi.second (field :)

@@ -101,8 +101,6 @@ tokens :-
                                         when (len' /= len) $ adjustPos (incPos (len' - len))
                                         setStartCode in_section
                                         return (L pos (Indent len')) }
-
-  -- TODO: maybe preserve the space here?
   $spacetab* \{    { tok  OpenBrace }
   $spacetab* \}    { tok  CloseBrace }
 }
@@ -136,7 +134,6 @@ tokens :-
 
 <in_field_layout> {
   $spacetab+;
-
   $field_layout' $field_layout*  { toki TokFieldLine }
   @nl             { \_ _ _ -> adjustPos retPos >> setStartCode bol_field_layout >> lexToken }
 }
@@ -147,7 +144,6 @@ tokens :-
 
 <in_field_braces> {
   $spacetab+;
-
   $field_braces' $field_braces*    { toki TokFieldLine }
   \{                { tok  OpenBrace  }
   \}                { tok  CloseBrace }

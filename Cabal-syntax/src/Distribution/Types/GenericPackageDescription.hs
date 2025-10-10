@@ -94,7 +94,7 @@ emptyGenericPackageDescription = GenericPackageDescription emptyPackageDescripti
 -- Traversal Instances
 
 instance L.HasBuildInfos GenericPackageDescription where
-  traverseBuildInfos f (GenericPackageDescription p v a1 x1 x2 x3 x4 x5 x6 mFields) =
+  traverseBuildInfos f (GenericPackageDescription p v a1 x1 x2 x3 x4 x5 x6 comments) =
     GenericPackageDescription
       <$> L.traverseBuildInfos f p
       <*> pure v
@@ -105,7 +105,7 @@ instance L.HasBuildInfos GenericPackageDescription where
       <*> (traverse . L._2 . traverseCondTreeBuildInfo) f x4
       <*> (traverse . L._2 . traverseCondTreeBuildInfo) f x5
       <*> (traverse . L._2 . traverseCondTreeBuildInfo) f x6
-      <*> pure mFields
+      <*> pure comments
 
 -- We use this traversal to keep [Dependency] field in CondTree up to date.
 traverseCondTreeBuildInfo
