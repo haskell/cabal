@@ -58,6 +58,7 @@ deriving instance Ord ann => Ord (Field ann)
 fieldName :: Field ann -> Name ann
 fieldName (Field n _) = n
 fieldName (Section n _ _) = n
+fieldName (Comment{}) = error "comment doesn't have a name"
 
 fieldAnn :: Field ann -> ann
 fieldAnn = nameAnn . fieldName
@@ -68,6 +69,7 @@ fieldAnn = nameAnn . fieldName
 fieldUniverse :: Field ann -> [Field ann]
 fieldUniverse f@(Section _ _ fs) = f : concatMap fieldUniverse fs
 fieldUniverse f@(Field _ _) = [f]
+fieldUniverse f@(Comment{}) = [f]
 
 -- | A line of text representing the value of a field from a Cabal file.
 -- A field may contain multiple lines.
@@ -170,6 +172,7 @@ instance F1.Foldable1 Field where
     F1.fold1 (F1.foldMap1 f x :| map (F1.foldMap1 f) ys)
   foldMap1 f (Section x ys zs) =
     F1.fold1 (F1.foldMap1 f x :| map (F1.foldMap1 f) ys ++ map (F1.foldMap1 f) zs)
+  foldMap1 f (Comment _ ann) = f ann
 
 -- | @since 3.12.0.0
 instance F1.Foldable1 FieldLine where

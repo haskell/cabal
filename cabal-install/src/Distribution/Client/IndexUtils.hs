@@ -80,6 +80,7 @@ import Distribution.Package
 import Distribution.PackageDescription
   ( GenericPackageDescription (..)
   , PackageDescription (..)
+  , emptyGenericPackageDescription
   , emptyPackageDescription
   )
 import Distribution.Simple.Compiler
@@ -1113,7 +1114,7 @@ packageListFromCache verbosity mkPkg hnd Cache{..} = accum mempty [] mempty cach
       where
         dummyPackageDescription :: Version -> GenericPackageDescription
         dummyPackageDescription specVer =
-          GenericPackageDescription
+          emptyGenericPackageDescription
             { packageDescription =
                 emptyPackageDescription
                   { package = pkgid
