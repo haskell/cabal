@@ -171,6 +171,8 @@ indentOfAtLeast (IndentLevel i) = try $ do
 
 newtype LexerMode = LexerMode Int
 
+-- | This would change the state of the lexer and make interpretations of tokens different!
+-- Certain lexer states are unreachable without it.
 inLexerMode :: LexerMode -> Parser p -> Parser p
 inLexerMode (LexerMode mode) p =
   do setLexerMode mode; x <- p; setLexerMode in_section; return x
@@ -178,39 +180,43 @@ inLexerMode (LexerMode mode) p =
 -----------------------
 -- Cabal file grammar
 --
+-- The non-terminals of the following grammar (symbols starting in uppercase)
+-- have their corresponding parser of the same name, starting with lowercase
+-- letter.
 
 -- $grammar
 --
 -- @
--- CabalStyleFile ::= SecElems
+-- CabalStyleFile             ::= Elements
 --
--- SecElems       ::= SecElem* '\\n'?
--- SecElem        ::= '\\n' SecElemLayout | SecElemBraces
--- SecElemLayout  ::= FieldLayout | FieldBraces | SectionLayout | SectionBraces
--- SecElemBraces  ::= FieldInline | FieldBraces |                 SectionBraces
--- FieldLayout    ::= name ':' line? ('\\n' line)*
--- FieldBraces    ::= name ':' '\\n'? '{' content '}'
--- FieldInline    ::= name ':' content
--- SectionLayout  ::= name arg* SecElems
--- SectionBraces  ::= name arg* '\\n'? '{' SecElems '}'
+-- Elements                   ::= Elements* '\\n'?
+-- Element                    ::= '\\n' ElementInLayoutContext
+--                              | ElementInNonLayoutContext
+-- ElementInLayoutContext     ::= FieldLayout | FieldBraces | SectionLayout | SectionBraces
+-- ElementInNonLayoutContext  ::= FieldInline | FieldBraces |                 SectionBraces
+-- FieldLayout                ::= name ':' line? ('\\n' line)*
+-- FieldBraces                ::= name ':' '\\n'? '{' content '}'
+-- FieldInline                ::= name ':' content
+-- SectionLayout              ::= name arg* Elements
+-- SectionBraces              ::= name arg* '\\n'? '{' Elements '}'
 -- @
 --
 -- and the same thing but left factored...
 --
 -- @
--- SecElems              ::= SecElem*
--- SecElem               ::= '\\n' name SecElemLayout
---                         |      name SecElemBraces
--- SecElemLayout         ::= ':'   FieldLayoutOrBraces
---                         | arg*  SectionLayoutOrBraces
--- FieldLayoutOrBraces   ::= '\\n'? '{' content '}'
---                         | line? ('\\n' line)*
--- SectionLayoutOrBraces ::= '\\n'? '{' SecElems '\\n'? '}'
---                         | SecElems
--- SecElemBraces         ::= ':' FieldInlineOrBraces
---                         | arg* '\\n'? '{' SecElems '\\n'? '}'
--- FieldInlineOrBraces   ::= '\\n'? '{' content '}'
---                         | content
+-- Elements                   ::= Element*
+-- Element                    ::= '\\n' name ElementInLayoutContext
+--                              |      name ElementInNonLayoutContext
+-- ElementInLayoutContext     ::= ':'   FieldLayoutOrBraces
+--                              | arg*  SectionLayoutOrBraces
+-- FieldLayoutOrBraces        ::= '\\n'? '{' content '}'
+--                              | line? ('\\n' line)*
+-- SectionLayoutOrBraces      ::= '\\n'? '{' Elements '\\n'? '}'
+--                              | Elements
+-- ElementInNonLayoutContext  ::= ':' FieldInlineOrBraces
+--                              | arg* '\\n'? '{' Elements '\\n'? '}'
+-- FieldInlineOrBraces        ::= '\\n'? '{' content '}'
+--                              | content
 -- @
 --
 -- Note how we have several productions with the sequence:
