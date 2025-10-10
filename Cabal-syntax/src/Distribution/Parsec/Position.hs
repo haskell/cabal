@@ -11,7 +11,9 @@ module Distribution.Parsec.Position
   , positionRow
   ) where
 
-import Data.TreeDiff.Class
+import Data.TreeDiff.Class (ToExpr)
+import NoThunks.Class (NoThunks)
+
 import Distribution.Compat.Prelude
 import Prelude ()
 
@@ -25,6 +27,7 @@ data Position
 instance Binary Position
 instance Structured Position
 instance ToExpr Position
+instance NoThunks Position
 instance NFData Position where rnf = genericRnf
 
 -- | Shift position by n columns to the right.

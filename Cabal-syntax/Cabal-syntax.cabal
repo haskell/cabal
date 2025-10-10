@@ -44,7 +44,9 @@ library
     -- transformers-0.4.0.0 doesn't have record syntax e.g. for Identity
     -- See also https://github.com/ekmett/transformers-compat/issues/35
     , transformers (>= 0.3      && < 0.4) || (>=0.4.1.0 && <0.7)
-    , tree-diff
+    -- for tests
+    , tree-diff  >=0.1     && <0.4
+    , nothunks   >=0.1.1.0 && <0.3
 
   ghc-options:
     -Wall

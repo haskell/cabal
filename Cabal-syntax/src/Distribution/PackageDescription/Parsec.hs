@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE Rank2Types #-}
@@ -158,7 +159,7 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
   for_ utf8WarnPos $ \pos ->
     parseWarning zeroPos PWTUTF $ "UTF8 encoding problem at byte offset " ++ show pos
 
-  let (comments, fs') = extractComments fs
+  let (!comments, fs') = extractComments fs
   let (syntax, fs'') = sectionizeFields fs'
   let (fields, sectionFields) = takeFields fs''
 
