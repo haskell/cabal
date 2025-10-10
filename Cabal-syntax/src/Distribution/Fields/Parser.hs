@@ -195,7 +195,7 @@ inLexerMode (LexerMode mode) p =
 -- ElementInLayoutContext     ::= FieldLayout | FieldBraces | SectionLayout | SectionBraces
 -- ElementInNonLayoutContext  ::= FieldInline | FieldBraces |                 SectionBraces
 -- FieldLayout                ::= name ':' line? ('\\n' line)*
--- FieldBraces                ::= name ':' '\\n'? '{' content '}'
+-- FieldBraces                ::= name ':' '\\n'? '{' content* '}'
 -- FieldInline                ::= name ':' content
 -- SectionLayout              ::= name arg* Elements
 -- SectionBraces              ::= name arg* '\\n'? '{' Elements '}'
@@ -204,13 +204,13 @@ inLexerMode (LexerMode mode) p =
 -- and the same thing but left factored...
 --
 -- @
--- Elements                   ::= Element*
+-- Elements                   ::= (Comments* Element Comment*)*
 -- Element                    ::= '\\n' name ElementInLayoutContext
 --                              |      name ElementInNonLayoutContext
 -- ElementInLayoutContext     ::= ':'   FieldLayoutOrBraces
 --                              | arg*  SectionLayoutOrBraces
--- FieldLayoutOrBraces        ::= '\\n'? '{' content '}'
---                              | line? ('\\n' line)*
+-- FieldLayoutOrBraces        ::= '\\n'? '{' comment* (content comment*)* '}'
+--                              | comment* line? ('\\n' line comment*)*
 -- SectionLayoutOrBraces      ::= '\\n'? '{' Elements '\\n'? '}'
 --                              | Elements
 -- ElementInNonLayoutContext  ::= ':' FieldInlineOrBraces
@@ -242,24 +242,20 @@ cabalStyleFile = do
   eof
   return es
 
+-- | Collect the comments after a parser succeeds
 commentsAfter :: Parser a -> Parser (a, [Field Position])
 commentsAfter p = liftA2 (,) p (many tokComment)
 
+-- | Collect the comments before and after a parser
 commentsAround :: Parser [Field Position] -> Parser [Field Position]
-commentsAround p =
-  mconcat
-    [ many tokComment
-    , p
-    , many tokComment
-    ]
+commentsAround p = mconcat [many tokComment, p, many tokComment]
 
 -- Elements that live at the top level or inside a section, i.e. fields
 -- and sections content
 --
--- elements ::= element*
+-- elements ::= (comment* element comment*)*
 elements :: IndentLevel -> Parser [Field Position]
 elements ilevel = do
-  -- TODO: check if syntaxically any element can be surrounded by cabal
   groups <- many (commentsAround $ element ilevel)
   pure $ mconcat groups
 
@@ -316,8 +312,8 @@ elementInNonLayoutContext name =
 
 -- The body of a field, using either layout style or braces style.
 --
--- fieldLayoutOrBraces   ::= '\\n'? '{' content '}'
---                         | line? ('\\n' line)*
+-- fieldLayoutOrBraces   ::= '\\n'? '{' comment* (content comment*)* '}'
+--                         | comment* line? ('\\n' line comment*)*
 fieldLayoutOrBraces :: IndentLevel -> Name Position -> Parser [Field Position]
 fieldLayoutOrBraces ilevel name = braces <|> fieldLayout
   where
