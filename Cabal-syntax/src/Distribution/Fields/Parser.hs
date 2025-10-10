@@ -372,7 +372,7 @@ fieldInlineOrBraces name =
             ls <- inLexerMode (LexerMode in_field_braces) (option [] (fmap (\l -> [l]) fieldContent))
             return (Field name ls)
         )
-  
+
 
 -- | Parse cabal style 'B8.ByteString' into list of 'Field's, i.e. the cabal AST.
 --
