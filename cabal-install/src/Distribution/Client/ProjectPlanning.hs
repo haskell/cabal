@@ -1246,8 +1246,8 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
                       ]
                 | (repo, pkgids) <-
                     map (\grp@((repo, _) :| _) -> (repo, map snd (NE.toList grp)))
-                      . NE.groupBy ((==) `on` (remoteRepoName . repoRemote . fst))
-                      . sortBy (compare `on` (remoteRepoName . repoRemote . fst))
+                      . NE.groupBy ((==) `on` (repoName . fst))
+                      . sortBy (compare `on` (repoName . fst))
                       $ repoTarballPkgsWithMetadata
                 ]
 
