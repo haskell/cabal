@@ -1,4 +1,40 @@
 [
+  Comment
+    "-- Taken from integration test, \"readField\""
+    (Position 1 1),
+  Comment
+    "-- This is the configuration file for the 'cabal' command line tool."
+    (Position 3 1),
+  Comment "--" (Position 4 1),
+  Comment
+    "-- The available configuration options are listed below."
+    (Position 5 1),
+  Comment
+    "-- Some of them have default values listed."
+    (Position 6 1),
+  Comment "--" (Position 7 1),
+  Comment
+    "-- Lines (like this one) beginning with '--' are comments."
+    (Position 8 1),
+  Comment
+    "-- Be careful with spaces and indentation because they are"
+    (Position 9 1),
+  Comment
+    "-- used to indicate layout for nested sections."
+    (Position 10 1),
+  Comment "--" (Position 11 1),
+  Comment
+    "-- This config file was generated using the following versions"
+    (Position 12 1),
+  Comment
+    "-- of Cabal and cabal-install:"
+    (Position 13 1),
+  Comment
+    "-- Cabal library version: 3.12.1.0"
+    (Position 14 1),
+  Comment
+    "-- cabal-install version: 3.12.1.0"
+    (Position 15 1),
   Section
     (Name
       (Position 18 1)
@@ -13,7 +49,34 @@
         [
           FieldLine
             (Position 19 8)
-            "http://hackage.haskell.org/"]],
+            "http://hackage.haskell.org/"],
+      Comment
+        "  -- secure: True"
+        (Position 20 1),
+      Comment
+        "  -- root-keys:"
+        (Position 21 1),
+      Comment
+        "  -- key-threshold: 3"
+        (Position 22 1),
+      Comment
+        "-- ignore-expiry: False"
+        (Position 24 1),
+      Comment
+        "-- http-transport:"
+        (Position 25 1),
+      Comment
+        "-- nix:"
+        (Position 26 1),
+      Comment
+        "-- store-dir:"
+        (Position 27 1),
+      Comment
+        "-- active-repositories:"
+        (Position 28 1),
+      Comment
+        "-- local-no-index-repo:"
+        (Position 29 1)],
   Field
     (Name
       (Position 30 1)
@@ -21,7 +84,244 @@
     [
       FieldLine
         (Position 30 20)
-        "/home/leana/.cache/cabal/packages"],
+        "/home/foo/.cache/cabal/packages"],
+  Comment
+    "-- logs-dir: /home/foo/.cache/cabal/logs"
+    (Position 31 1),
+  Comment
+    "-- default-user-config:"
+    (Position 32 1),
+  Comment
+    "-- verbose: 1"
+    (Position 33 1),
+  Comment
+    "-- compiler: ghc"
+    (Position 34 1),
+  Comment
+    "-- cabal-file:"
+    (Position 35 1),
+  Comment
+    "-- with-compiler:"
+    (Position 36 1),
+  Comment
+    "-- with-hc-pkg:"
+    (Position 37 1),
+  Comment
+    "-- program-prefix:"
+    (Position 38 1),
+  Comment
+    "-- program-suffix:"
+    (Position 39 1),
+  Comment
+    "-- library-vanilla: True"
+    (Position 40 1),
+  Comment
+    "-- library-profiling:"
+    (Position 41 1),
+  Comment
+    "-- shared:"
+    (Position 42 1),
+  Comment
+    "-- static:"
+    (Position 43 1),
+  Comment
+    "-- executable-dynamic: False"
+    (Position 44 1),
+  Comment
+    "-- executable-static: False"
+    (Position 45 1),
+  Comment
+    "-- profiling:"
+    (Position 46 1),
+  Comment
+    "-- executable-profiling:"
+    (Position 47 1),
+  Comment
+    "-- profiling-detail:"
+    (Position 48 1),
+  Comment
+    "-- library-profiling-detail:"
+    (Position 49 1),
+  Comment
+    "-- optimization: True"
+    (Position 50 1),
+  Comment
+    "-- debug-info: False"
+    (Position 51 1),
+  Comment
+    "-- build-info:"
+    (Position 52 1),
+  Comment
+    "-- library-for-ghci:"
+    (Position 53 1),
+  Comment
+    "-- split-sections: False"
+    (Position 54 1),
+  Comment
+    "-- split-objs: False"
+    (Position 55 1),
+  Comment
+    "-- executable-stripping:"
+    (Position 56 1),
+  Comment
+    "-- library-stripping:"
+    (Position 57 1),
+  Comment
+    "-- configure-option:"
+    (Position 58 1),
+  Comment
+    "-- user-install: True"
+    (Position 59 1),
+  Comment
+    "-- package-db:"
+    (Position 60 1),
+  Comment
+    "-- flags:"
+    (Position 61 1),
+  Comment
+    "-- extra-include-dirs:"
+    (Position 62 1),
+  Comment
+    "-- deterministic:"
+    (Position 63 1),
+  Comment
+    "-- cid:"
+    (Position 64 1),
+  Comment
+    "-- extra-lib-dirs:"
+    (Position 65 1),
+  Comment
+    "-- extra-lib-dirs-static:"
+    (Position 66 1),
+  Comment
+    "-- extra-framework-dirs:"
+    (Position 67 1),
+  Comment
+    "-- extra-prog-path:"
+    (Position 68 1),
+  Comment
+    "-- instantiate-with:"
+    (Position 69 1),
+  Comment
+    "-- tests: False"
+    (Position 70 1),
+  Comment
+    "-- coverage: False"
+    (Position 71 1),
+  Comment
+    "-- library-coverage:"
+    (Position 72 1),
+  Comment
+    "-- exact-configuration: False"
+    (Position 73 1),
+  Comment
+    "-- benchmarks: False"
+    (Position 74 1),
+  Comment
+    "-- relocatable: False"
+    (Position 75 1),
+  Comment
+    "-- response-files:"
+    (Position 76 1),
+  Comment
+    "-- allow-depending-on-private-libs:"
+    (Position 77 1),
+  Comment
+    "-- coverage-for:"
+    (Position 78 1),
+  Comment
+    "-- cabal-lib-version:"
+    (Position 79 1),
+  Comment
+    "-- append:"
+    (Position 80 1),
+  Comment
+    "-- backup:"
+    (Position 81 1),
+  Comment
+    "-- constraint:"
+    (Position 82 1),
+  Comment
+    "-- preference:"
+    (Position 83 1),
+  Comment
+    "-- solver: modular"
+    (Position 84 1),
+  Comment
+    "-- allow-older: False"
+    (Position 85 1),
+  Comment
+    "-- allow-newer: False"
+    (Position 86 1),
+  Comment
+    "-- write-ghc-environment-files:"
+    (Position 87 1),
+  Comment
+    "-- documentation: False"
+    (Position 88 1),
+  Comment
+    "-- doc-index-file: $datadir/doc/$arch-$os-$compiler/index.html"
+    (Position 89 1),
+  Comment
+    "-- only-download: False"
+    (Position 90 1),
+  Comment
+    "-- target-package-db:"
+    (Position 91 1),
+  Comment
+    "-- max-backjumps: 4000"
+    (Position 92 1),
+  Comment
+    "-- reorder-goals: False"
+    (Position 93 1),
+  Comment
+    "-- count-conflicts: True"
+    (Position 94 1),
+  Comment
+    "-- fine-grained-conflicts: True"
+    (Position 95 1),
+  Comment
+    "-- minimize-conflict-set: False"
+    (Position 96 1),
+  Comment
+    "-- independent-goals: False"
+    (Position 97 1),
+  Comment
+    "-- prefer-oldest: False"
+    (Position 98 1),
+  Comment
+    "-- shadow-installed-packages: False"
+    (Position 99 1),
+  Comment
+    "-- strong-flags: False"
+    (Position 100 1),
+  Comment
+    "-- allow-boot-library-installs: False"
+    (Position 101 1),
+  Comment
+    "-- reject-unconstrained-dependencies: none"
+    (Position 102 1),
+  Comment
+    "-- reinstall: False"
+    (Position 103 1),
+  Comment
+    "-- avoid-reinstalls: False"
+    (Position 104 1),
+  Comment
+    "-- force-reinstalls: False"
+    (Position 105 1),
+  Comment
+    "-- upgrade-dependencies: False"
+    (Position 106 1),
+  Comment
+    "-- index-state:"
+    (Position 107 1),
+  Comment
+    "-- root-cmd:"
+    (Position 108 1),
+  Comment
+    "-- symlink-bindir:"
+    (Position 109 1),
   Field
     (Name
       (Position 110 1)
@@ -29,7 +329,10 @@
     [
       FieldLine
         (Position 110 16)
-        "/home/leana/.cache/cabal/logs/build.log"],
+        "/home/foo/.cache/cabal/logs/build.log"],
+  Comment
+    "-- build-log:"
+    (Position 111 1),
   Field
     (Name
       (Position 112 1)
@@ -51,17 +354,131 @@
     [
       FieldLine
         (Position 124 13)
-        "/home/leana/.local/bin"],
+        "/home/foo/.local/bin"],
+  Comment
+    "-- token:"
+    (Position 125 1),
+  Comment
+    "-- username:"
+    (Position 126 1),
+  Comment
+    "-- password:"
+    (Position 127 1),
+  Comment
+    "-- password-command:"
+    (Position 128 1),
+  Comment
+    "-- multi-repl:"
+    (Position 129 1),
+  Comment
+    "-- builddir:"
+    (Position 130 1),
   Section
     (Name
       (Position 132 1)
       "haddock")
     []
-    [],
+    [
+      Comment
+        "  -- keep-temp-files: False"
+        (Position 133 1),
+      Comment
+        "  -- hoogle: False"
+        (Position 134 1),
+      Comment
+        "  -- html: False"
+        (Position 135 1),
+      Comment
+        "  -- html-location:"
+        (Position 136 1),
+      Comment
+        "  -- executables: False"
+        (Position 137 1),
+      Comment
+        "  -- tests: False"
+        (Position 138 1),
+      Comment
+        "  -- benchmarks: False"
+        (Position 139 1),
+      Comment
+        "  -- foreign-libraries: False"
+        (Position 140 1),
+      Comment
+        "  -- all:"
+        (Position 141 1),
+      Comment
+        "  -- internal: False"
+        (Position 142 1),
+      Comment
+        "  -- css:"
+        (Position 143 1),
+      Comment
+        "  -- hyperlink-source: False"
+        (Position 144 1),
+      Comment
+        "  -- quickjump: False"
+        (Position 145 1),
+      Comment
+        "  -- hscolour-css:"
+        (Position 146 1),
+      Comment
+        "  -- contents-location:"
+        (Position 147 1),
+      Comment
+        "  -- index-location:"
+        (Position 148 1),
+      Comment
+        "  -- base-url:"
+        (Position 149 1),
+      Comment
+        "  -- lib:"
+        (Position 150 1),
+      Comment
+        "  -- output-dir:"
+        (Position 151 1)],
   Section
     (Name (Position 153 1) "init")
     []
-    [],
+    [
+      Comment
+        "  -- interactive: False"
+        (Position 154 1),
+      Comment
+        "  -- quiet: False"
+        (Position 155 1),
+      Comment
+        "  -- no-comments: False"
+        (Position 156 1),
+      Comment
+        "  -- minimal: False"
+        (Position 157 1),
+      Comment
+        "  -- cabal-version: 3.0"
+        (Position 158 1),
+      Comment
+        "  -- license:"
+        (Position 159 1),
+      Comment
+        "  -- extra-doc-file:"
+        (Position 160 1),
+      Comment
+        "  -- tests:"
+        (Position 161 1),
+      Comment
+        "  -- test-dir:"
+        (Position 162 1),
+      Comment
+        "  -- simple: False"
+        (Position 163 1),
+      Comment
+        "  -- language: Haskell2010"
+        (Position 164 1),
+      Comment
+        "  -- application-dir: app"
+        (Position 165 1),
+      Comment
+        "  -- source-dir: src"
+        (Position 166 1)],
   Section
     (Name
       (Position 168 1)
@@ -70,7 +487,46 @@
       SecArgName
         (Position 168 14)
         "user"]
-    [],
+    [
+      Comment
+        "  -- prefix: /home/foo/.cabal"
+        (Position 169 1),
+      Comment
+        "  -- bindir: $prefix/bin"
+        (Position 170 1),
+      Comment
+        "  -- libdir: $prefix/lib"
+        (Position 171 1),
+      Comment
+        "  -- libsubdir: $abi/$libname"
+        (Position 172 1),
+      Comment
+        "  -- dynlibdir: $libdir/$abi"
+        (Position 173 1),
+      Comment
+        "  -- libexecdir: $prefix/libexec"
+        (Position 174 1),
+      Comment
+        "  -- libexecsubdir: $abi/$pkgid"
+        (Position 175 1),
+      Comment
+        "  -- datadir: $prefix/share"
+        (Position 176 1),
+      Comment
+        "  -- datasubdir: $abi/$pkgid"
+        (Position 177 1),
+      Comment
+        "  -- docdir: $datadir/doc/$abi/$pkgid"
+        (Position 178 1),
+      Comment
+        "  -- htmldir: $docdir/html"
+        (Position 179 1),
+      Comment
+        "  -- haddockdir: $htmldir"
+        (Position 180 1),
+      Comment
+        "  -- sysconfdir: $prefix/etc"
+        (Position 181 1)],
   Section
     (Name
       (Position 183 1)
@@ -79,16 +535,499 @@
       SecArgName
         (Position 183 14)
         "global"]
-    [],
+    [
+      Comment
+        "  -- prefix: /usr/local"
+        (Position 184 1),
+      Comment
+        "  -- bindir: $prefix/bin"
+        (Position 185 1),
+      Comment
+        "  -- libdir: $prefix/lib"
+        (Position 186 1),
+      Comment
+        "  -- libsubdir: $abi/$libname"
+        (Position 187 1),
+      Comment
+        "  -- dynlibdir: $libdir/$abi"
+        (Position 188 1),
+      Comment
+        "  -- libexecdir: $prefix/libexec"
+        (Position 189 1),
+      Comment
+        "  -- libexecsubdir: $abi/$pkgid"
+        (Position 190 1),
+      Comment
+        "  -- datadir: $prefix/share"
+        (Position 191 1),
+      Comment
+        "  -- datasubdir: $abi/$pkgid"
+        (Position 192 1),
+      Comment
+        "  -- docdir: $datadir/doc/$abi/$pkgid"
+        (Position 193 1),
+      Comment
+        "  -- htmldir: $docdir/html"
+        (Position 194 1),
+      Comment
+        "  -- haddockdir: $htmldir"
+        (Position 195 1),
+      Comment
+        "  -- sysconfdir: $prefix/etc"
+        (Position 196 1)],
   Section
     (Name
       (Position 198 1)
       "program-locations")
     []
-    [],
+    [
+      Comment
+        "  -- alex-location:"
+        (Position 199 1),
+      Comment
+        "  -- ar-location:"
+        (Position 200 1),
+      Comment
+        "  -- c2hs-location:"
+        (Position 201 1),
+      Comment
+        "  -- cpphs-location:"
+        (Position 202 1),
+      Comment
+        "  -- doctest-location:"
+        (Position 203 1),
+      Comment
+        "  -- gcc-location:"
+        (Position 204 1),
+      Comment
+        "  -- ghc-location:"
+        (Position 205 1),
+      Comment
+        "  -- ghc-pkg-location:"
+        (Position 206 1),
+      Comment
+        "  -- ghcjs-location:"
+        (Position 207 1),
+      Comment
+        "  -- ghcjs-pkg-location:"
+        (Position 208 1),
+      Comment
+        "  -- greencard-location:"
+        (Position 209 1),
+      Comment
+        "  -- haddock-location:"
+        (Position 210 1),
+      Comment
+        "  -- happy-location:"
+        (Position 211 1),
+      Comment
+        "  -- haskell-suite-location:"
+        (Position 212 1),
+      Comment
+        "  -- haskell-suite-pkg-location:"
+        (Position 213 1),
+      Comment
+        "  -- hmake-location:"
+        (Position 214 1),
+      Comment
+        "  -- hpc-location:"
+        (Position 215 1),
+      Comment
+        "  -- hsc2hs-location:"
+        (Position 216 1),
+      Comment
+        "  -- hscolour-location:"
+        (Position 217 1),
+      Comment
+        "  -- jhc-location:"
+        (Position 218 1),
+      Comment
+        "  -- ld-location:"
+        (Position 219 1),
+      Comment
+        "  -- pkg-config-location:"
+        (Position 220 1),
+      Comment
+        "  -- runghc-location:"
+        (Position 221 1),
+      Comment
+        "  -- strip-location:"
+        (Position 222 1),
+      Comment
+        "  -- tar-location:"
+        (Position 223 1),
+      Comment
+        "  -- uhc-location:"
+        (Position 224 1)],
   Section
     (Name
       (Position 226 1)
       "program-default-options")
     []
-    []]
+    [
+      Comment
+        "  -- alex-options:"
+        (Position 227 1),
+      Comment
+        "  -- ar-options:"
+        (Position 228 1),
+      Comment
+        "  -- c2hs-options:"
+        (Position 229 1),
+      Comment
+        "  -- cpphs-options:"
+        (Position 230 1),
+      Comment
+        "  -- doctest-options:"
+        (Position 231 1),
+      Comment
+        "  -- gcc-options:"
+        (Position 232 1),
+      Comment
+        "  -- ghc-options:"
+        (Position 233 1),
+      Comment
+        "  -- ghc-pkg-options:"
+        (Position 234 1),
+      Comment
+        "  -- ghcjs-options:"
+        (Position 235 1),
+      Comment
+        "  -- ghcjs-pkg-options:"
+        (Position 236 1),
+      Comment
+        "  -- greencard-options:"
+        (Position 237 1),
+      Comment
+        "  -- haddock-options:"
+        (Position 238 1),
+      Comment
+        "  -- happy-options:"
+        (Position 239 1),
+      Comment
+        "  -- haskell-suite-options:"
+        (Position 240 1),
+      Comment
+        "  -- haskell-suite-pkg-options:"
+        (Position 241 1),
+      Comment
+        "  -- hmake-options:"
+        (Position 242 1),
+      Comment
+        "  -- hpc-options:"
+        (Position 243 1),
+      Comment
+        "  -- hsc2hs-options:"
+        (Position 244 1),
+      Comment
+        "  -- hscolour-options:"
+        (Position 245 1),
+      Comment
+        "  -- jhc-options:"
+        (Position 246 1),
+      Comment
+        "  -- ld-options:"
+        (Position 247 1),
+      Comment
+        "  -- pkg-config-options:"
+        (Position 248 1),
+      Comment
+        "  -- runghc-options:"
+        (Position 249 1),
+      Comment
+        "  -- strip-options:"
+        (Position 250 1),
+      Comment
+        "  -- tar-options:"
+        (Position 251 1),
+      Comment
+        "  -- uhc-options:"
+        (Position 252 1)],
+  Comment
+    "-- logs-dir: /home/leana/.cache/cabal/logs"
+    (Position 31 1),
+  Comment
+    "-- default-user-config:"
+    (Position 32 1),
+  Comment
+    "-- verbose: 1"
+    (Position 33 1),
+  Comment
+    "-- compiler: ghc"
+    (Position 34 1),
+  Comment
+    "-- cabal-file:"
+    (Position 35 1),
+  Comment
+    "-- with-compiler:"
+    (Position 36 1),
+  Comment
+    "-- with-hc-pkg:"
+    (Position 37 1),
+  Comment
+    "-- program-prefix:"
+    (Position 38 1),
+  Comment
+    "-- program-suffix:"
+    (Position 39 1),
+  Comment
+    "-- library-vanilla: True"
+    (Position 40 1),
+  Comment
+    "-- library-profiling:"
+    (Position 41 1),
+  Comment
+    "-- shared:"
+    (Position 42 1),
+  Comment
+    "-- static:"
+    (Position 43 1),
+  Comment
+    "-- executable-dynamic: False"
+    (Position 44 1),
+  Comment
+    "-- executable-static: False"
+    (Position 45 1),
+  Comment
+    "-- profiling:"
+    (Position 46 1),
+  Comment
+    "-- executable-profiling:"
+    (Position 47 1),
+  Comment
+    "-- profiling-detail:"
+    (Position 48 1),
+  Comment
+    "-- library-profiling-detail:"
+    (Position 49 1),
+  Comment
+    "-- optimization: True"
+    (Position 50 1),
+  Comment
+    "-- debug-info: False"
+    (Position 51 1),
+  Comment
+    "-- build-info:"
+    (Position 52 1),
+  Comment
+    "-- library-for-ghci:"
+    (Position 53 1),
+  Comment
+    "-- split-sections: False"
+    (Position 54 1),
+  Comment
+    "-- split-objs: False"
+    (Position 55 1),
+  Comment
+    "-- executable-stripping:"
+    (Position 56 1),
+  Comment
+    "-- library-stripping:"
+    (Position 57 1),
+  Comment
+    "-- configure-option:"
+    (Position 58 1),
+  Comment
+    "-- user-install: True"
+    (Position 59 1),
+  Comment
+    "-- package-db:"
+    (Position 60 1),
+  Comment
+    "-- flags:"
+    (Position 61 1),
+  Comment
+    "-- extra-include-dirs:"
+    (Position 62 1),
+  Comment
+    "-- deterministic:"
+    (Position 63 1),
+  Comment
+    "-- cid:"
+    (Position 64 1),
+  Comment
+    "-- extra-lib-dirs:"
+    (Position 65 1),
+  Comment
+    "-- extra-lib-dirs-static:"
+    (Position 66 1),
+  Comment
+    "-- extra-framework-dirs:"
+    (Position 67 1),
+  Comment
+    "-- extra-prog-path:"
+    (Position 68 1),
+  Comment
+    "-- instantiate-with:"
+    (Position 69 1),
+  Comment
+    "-- tests: False"
+    (Position 70 1),
+  Comment
+    "-- coverage: False"
+    (Position 71 1),
+  Comment
+    "-- library-coverage:"
+    (Position 72 1),
+  Comment
+    "-- exact-configuration: False"
+    (Position 73 1),
+  Comment
+    "-- benchmarks: False"
+    (Position 74 1),
+  Comment
+    "-- relocatable: False"
+    (Position 75 1),
+  Comment
+    "-- response-files:"
+    (Position 76 1),
+  Comment
+    "-- allow-depending-on-private-libs:"
+    (Position 77 1),
+  Comment
+    "-- coverage-for:"
+    (Position 78 1),
+  Comment
+    "-- cabal-lib-version:"
+    (Position 79 1),
+  Comment
+    "-- append:"
+    (Position 80 1),
+  Comment
+    "-- backup:"
+    (Position 81 1),
+  Comment
+    "-- constraint:"
+    (Position 82 1),
+  Comment
+    "-- preference:"
+    (Position 83 1),
+  Comment
+    "-- solver: modular"
+    (Position 84 1),
+  Comment
+    "-- allow-older: False"
+    (Position 85 1),
+  Comment
+    "-- allow-newer: False"
+    (Position 86 1),
+  Comment
+    "-- write-ghc-environment-files:"
+    (Position 87 1),
+  Comment
+    "-- documentation: False"
+    (Position 88 1),
+  Comment
+    "-- doc-index-file: $datadir/doc/$arch-$os-$compiler/index.html"
+    (Position 89 1),
+  Comment
+    "-- only-download: False"
+    (Position 90 1),
+  Comment
+    "-- target-package-db:"
+    (Position 91 1),
+  Comment
+    "-- max-backjumps: 4000"
+    (Position 92 1),
+  Comment
+    "-- reorder-goals: False"
+    (Position 93 1),
+  Comment
+    "-- count-conflicts: True"
+    (Position 94 1),
+  Comment
+    "-- fine-grained-conflicts: True"
+    (Position 95 1),
+  Comment
+    "-- minimize-conflict-set: False"
+    (Position 96 1),
+  Comment
+    "-- independent-goals: False"
+    (Position 97 1),
+  Comment
+    "-- prefer-oldest: False"
+    (Position 98 1),
+  Comment
+    "-- shadow-installed-packages: False"
+    (Position 99 1),
+  Comment
+    "-- strong-flags: False"
+    (Position 100 1),
+  Comment
+    "-- allow-boot-library-installs: False"
+    (Position 101 1),
+  Comment
+    "-- reject-unconstrained-dependencies: none"
+    (Position 102 1),
+  Comment
+    "-- reinstall: False"
+    (Position 103 1),
+  Comment
+    "-- avoid-reinstalls: False"
+    (Position 104 1),
+  Comment
+    "-- force-reinstalls: False"
+    (Position 105 1),
+  Comment
+    "-- upgrade-dependencies: False"
+    (Position 106 1),
+  Comment
+    "-- index-state:"
+    (Position 107 1),
+  Comment
+    "-- root-cmd:"
+    (Position 108 1),
+  Comment
+    "-- symlink-bindir:"
+    (Position 109 1),
+  Comment
+    "-- build-log:"
+    (Position 111 1),
+  Comment
+    "-- report-planning-failure: False"
+    (Position 113 1),
+  Comment
+    "-- per-component: True"
+    (Position 114 1),
+  Comment
+    "-- run-tests:"
+    (Position 115 1),
+  Comment
+    "-- semaphore: False"
+    (Position 116 1),
+  Comment
+    "-- keep-going: False"
+    (Position 118 1),
+  Comment
+    "-- offline: False"
+    (Position 119 1),
+  Comment
+    "-- lib: False"
+    (Position 120 1),
+  Comment
+    "-- package-env:"
+    (Position 121 1),
+  Comment
+    "-- overwrite-policy:"
+    (Position 122 1),
+  Comment
+    "-- install-method:"
+    (Position 123 1),
+  Comment
+    "-- token:"
+    (Position 125 1),
+  Comment
+    "-- username:"
+    (Position 126 1),
+  Comment
+    "-- password:"
+    (Position 127 1),
+  Comment
+    "-- password-command:"
+    (Position 128 1),
+  Comment
+    "-- multi-repl:"
+    (Position 129 1),
+  Comment
+    "-- builddir:"
+    (Position 130 1)]

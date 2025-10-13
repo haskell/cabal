@@ -244,18 +244,20 @@ cabalStyleFile = do
 commentsAfter :: Parser a -> Parser (a, [Field Position])
 commentsAfter p = liftA2 (,) p (many tokComment)
 
--- | Collect the comments before and after a parser
-commentsAround :: Parser [Field Position] -> Parser [Field Position]
-commentsAround p = mconcat [many tokComment, p, many tokComment]
-
 -- Elements that live at the top level or inside a section, i.e. fields
 -- and sections content
 --
--- elements ::= (comment* element comment*)*
+-- elements ::= comment* (element comment)*
+-- TODO(leana8959): the order is messed up, is it worth it to make it normal
 elements :: IndentLevel -> Parser [Field Position]
 elements ilevel = do
-  groups <- many (commentsAround $ element ilevel)
-  pure $ mconcat groups
+  preCmts <- many tokComment
+  (fs, postCmtsGroups) <- unzip <$> many (commentsAfter $ element ilevel)
+  pure $ mconcat
+    [ preCmts
+    , mconcat fs
+    , mconcat postCmtsGroups
+    ]
 
 -- An individual element, ie a field or a section. These can either use
 -- layout style or braces style. For layout style then it must start on
