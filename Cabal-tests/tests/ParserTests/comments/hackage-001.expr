@@ -1,0 +1,94 @@
+[
+  Section
+    (Name
+      (Position 18 1)
+      "repository")
+    [
+      SecArgName
+        (Position 18 12)
+        "hackage.haskell.org"]
+    [
+      Field
+        (Name (Position 19 3) "url")
+        [
+          FieldLine
+            (Position 19 8)
+            "http://hackage.haskell.org/"]],
+  Field
+    (Name
+      (Position 30 1)
+      "remote-repo-cache")
+    [
+      FieldLine
+        (Position 30 20)
+        "/home/leana/.cache/cabal/packages"],
+  Field
+    (Name
+      (Position 110 1)
+      "build-summary")
+    [
+      FieldLine
+        (Position 110 16)
+        "/home/leana/.cache/cabal/logs/build.log"],
+  Field
+    (Name
+      (Position 112 1)
+      "remote-build-reporting")
+    [
+      FieldLine
+        (Position 112 25)
+        "none"],
+  Field
+    (Name (Position 117 1) "jobs")
+    [
+      FieldLine
+        (Position 117 7)
+        "$ncpus"],
+  Field
+    (Name
+      (Position 124 1)
+      "installdir")
+    [
+      FieldLine
+        (Position 124 13)
+        "/home/leana/.local/bin"],
+  Section
+    (Name
+      (Position 132 1)
+      "haddock")
+    []
+    [],
+  Section
+    (Name (Position 153 1) "init")
+    []
+    [],
+  Section
+    (Name
+      (Position 168 1)
+      "install-dirs")
+    [
+      SecArgName
+        (Position 168 14)
+        "user"]
+    [],
+  Section
+    (Name
+      (Position 183 1)
+      "install-dirs")
+    [
+      SecArgName
+        (Position 183 14)
+        "global"]
+    [],
+  Section
+    (Name
+      (Position 198 1)
+      "program-locations")
+    []
+    [],
+  Section
+    (Name
+      (Position 226 1)
+      "program-default-options")
+    []
+    []]

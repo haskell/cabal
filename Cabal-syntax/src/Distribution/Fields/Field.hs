@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 -- | Cabal-like file AST types: 'Field', 'Section' etc
 --
@@ -32,6 +33,7 @@ module Distribution.Fields.Field
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as B
 import qualified Data.Char as Char
+import Data.TreeDiff.Class (ToExpr)
 import Distribution.Compat.Prelude
 import Distribution.Pretty (showTokenStr)
 import Distribution.Utils.Generic (fromUTF8BS)
@@ -49,7 +51,9 @@ data Field ann
   = Field !(Name ann) [FieldLine ann]
   | Section !(Name ann) [SectionArg ann] [Field ann]
   | Comment !ByteString ann
-  deriving (Eq, Show, Functor, Foldable, Traversable)
+  deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
+
+instance ToExpr ann => ToExpr (Field ann)
 
 -- | @since 3.12.0.0
 deriving instance Ord ann => Ord (Field ann)
@@ -76,7 +80,9 @@ fieldUniverse f@(Comment{}) = [f]
 --
 -- /Invariant:/ 'ByteString' has no newlines.
 data FieldLine ann = FieldLine !ann !ByteString
-  deriving (Eq, Show, Functor, Foldable, Traversable)
+  deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
+
+instance (ToExpr ann) => ToExpr (FieldLine ann)
 
 -- | @since 3.12.0.0
 deriving instance Ord ann => Ord (FieldLine ann)
@@ -97,7 +103,9 @@ data SectionArg ann
     SecArgStr !ann !ByteString
   | -- | everything else, mm. operators (e.g. in if-section conditionals)
     SecArgOther !ann !ByteString
-  deriving (Eq, Show, Functor, Foldable, Traversable)
+  deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
+
+instance ToExpr ann => ToExpr (SectionArg ann)
 
 -- | @since 3.12.0.0
 deriving instance Ord ann => Ord (SectionArg ann)
@@ -118,7 +126,9 @@ type FieldName = ByteString
 --
 -- /Invariant/: 'ByteString' is lower-case ASCII.
 data Name ann = Name !ann !FieldName
-  deriving (Eq, Show, Functor, Foldable, Traversable)
+  deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
+
+instance ToExpr ann => ToExpr (Name ann)
 
 -- | @since 3.12.0.0
 deriving instance Ord ann => Ord (Name ann)

@@ -29,6 +29,7 @@ module Distribution.Fields.Parser
   , parseStr
   , parseBS
 #endif
+  , formatError
   ) where
 {- FOURMOLU_ENABLE -}
 
@@ -51,11 +52,9 @@ import Text.Parsec.Pos
 import Text.Parsec.Prim hiding (many, (<|>))
 import Prelude ()
 
-#ifdef CABAL_PARSEC_DEBUG
 import qualified Data.Text                as T
 import qualified Data.Text.Encoding       as T
 import qualified Data.Text.Encoding.Error as T
-#endif
 
 -- $setup
 -- >>> import Data.Either (isLeft)
@@ -453,7 +452,9 @@ parseStr p = parseBS p . B8.pack
 
 parseBS  :: Show a => Parser a -> B8.ByteString -> IO ()
 parseBS p = parseTest' p "<input string>"
+#endif
 
+-- TODO(leana8959): moved out of feature flag for hackagetests
 formatError :: B8.ByteString -> ParseError -> String
 formatError input perr =
     unlines
@@ -479,7 +480,6 @@ lines' s1
                               Just ('\n', s4) | c == '\r' -> l : lines' s4
                               _               -> l : lines' s3
                           | otherwise -> [l]
-#endif
 
 eof :: Parser ()
 eof = notFollowedBy anyToken <?> "end of file"

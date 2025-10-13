@@ -31,7 +31,6 @@ import qualified Data.ByteString.Char8 as B.Char8
 import qualified Data.Word as Word
 
 #ifdef CABAL_PARSEC_DEBUG
-import Debug.Trace
 import qualified Data.Vector as V
 import qualified Data.Text   as T
 import qualified Data.Text.Encoding as T
@@ -231,7 +230,9 @@ lexToken = do
         setInput inp'
         let !len_bytes = B.length inp - B.length inp'
         t <- action pos len_bytes inp
-        --traceShow t $ return tok
+#ifdef CABAL_PARSEC_DEBUG
+        traceM (show t)
+#endif
         return t
 
 
@@ -242,10 +243,12 @@ checkPosition pos@(Position lineno colno) inp inp' len_chars = do
     let len_bytes = B.length inp - B.length inp'
         pos_txt   | lineno-1 < V.length text_lines = T.take len_chars (T.drop (colno-1) (text_lines V.! (lineno-1)))
                   | otherwise = T.empty
-        real_txt  = B.take len_bytes inp
-    when (pos_txt /= T.decodeUtf8 real_txt) $
-      traceShow (pos, pos_txt, T.decodeUtf8 real_txt) $
-      traceShow (take 3 (V.toList text_lines)) $ return ()
+        real_txt :: B.ByteString
+        real_txt = B.take len_bytes inp
+    when (pos_txt /= T.decodeUtf8 real_txt) $ do
+      traceM $ show (pos, pos_txt, T.decodeUtf8 real_txt)
+      traceM $ show (take 3 (V.toList text_lines))
+      return ()
   where
     getDbgText = Lex $ \s@LexState{ dbgText = txt } -> LexResult s txt
 #else

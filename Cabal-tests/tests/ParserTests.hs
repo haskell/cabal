@@ -14,6 +14,7 @@ import Control.Monad                               (unless, void)
 import Data.Algorithm.Diff                         (PolyDiff (..), getGroupedDiff)
 import Data.Maybe                                  (isNothing)
 import Distribution.Fields                         (pwarning)
+import Distribution.Fields.Parser                  (readFields', formatError)
 import Distribution.PackageDescription             (GenericPackageDescription(exactComments))
 import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
@@ -111,7 +112,23 @@ commentTests = testGroup "comments"
     , commentTest "layout-many-sections.cabal"
     , commentTest "layout-interleaved-in-section.cabal"
     , commentTest "layout-fieldline-is-flag.cabal"
+    , readFieldTest "hackage-001.cabal"
     ]
+
+readFieldTest :: FilePath -> TestTree
+readFieldTest fname = ediffGolden goldenTest fname exprFile $ do
+  contents <- BS.readFile input
+  let res = readFields' contents
+
+  case res of
+    Left perr -> fail $ formatError contents perr
+    Right (fs, warns) -> do
+      unless (null warns) (fail $ unlines (map show warns))
+      pure fs
+
+  where
+    input = "tests" </> "ParserTests" </> "comments" </> fname
+    exprFile = replaceExtension input "expr"
 
 commentTest :: FilePath -> TestTree
 commentTest fname = ediffGolden goldenTest fname exprFile $ do
