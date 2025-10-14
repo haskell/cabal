@@ -106,17 +106,20 @@ warningTest wt fp = testCase (show wt) $ do
 -- Verify that comments are parsed correctly
 commentTests :: TestTree
 commentTests = testGroup "comments"
-    [ commentTest "layout-nosections-before.cabal"
+    [
+    -- Imported from hackage integration test
+      readFieldTest "hackage-001.cabal"
+    , readFieldTest "happs.094.cabal" -- aligned leading comma after comment
+
+    , commentTest "layout-nosections-before.cabal"
     , commentTest "layout-nosections-after.cabal"
     , commentTest "layout-nosections-mixed.cabal"
     , commentTest "layout-many-sections.cabal"
     , commentTest "layout-interleaved-in-section.cabal"
     , commentTest "layout-fieldline-is-flag.cabal"
-
-    , readFieldTest "hackage-001.cabal"
-    , commentTest "happs.094.cabal" -- aligned leading comma after comment
     ]
 
+-- Use this test to bypass the more sophisticated checks of whether a cabal file is valid
 readFieldTest :: FilePath -> TestTree
 readFieldTest fname = ediffGolden goldenTest fname exprFile $ do
   contents <- BS.readFile input

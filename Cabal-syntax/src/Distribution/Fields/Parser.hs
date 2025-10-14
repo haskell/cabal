@@ -457,7 +457,6 @@ parseBS  :: Show a => Parser a -> B8.ByteString -> IO ()
 parseBS p = parseTest' p "<input string>"
 #endif
 
--- TODO(leana8959): moved out of feature flag for hackagetests
 formatError :: B8.ByteString -> ParseError -> String
 formatError input perr =
     unlines
