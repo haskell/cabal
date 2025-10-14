@@ -33,6 +33,7 @@ module Distribution.Fields.Parser
   ) where
 {- FOURMOLU_ENABLE -}
 
+import Control.Applicative (liftA3)
 import qualified Data.ByteString.Char8 as B8
 import Data.Functor.Identity
 import Distribution.Compat.Prelude
@@ -202,13 +203,13 @@ inLexerMode (LexerMode mode) p =
 -- and the same thing but left factored...
 --
 -- @
--- Elements                   ::= (Comments* Element Comment*)*
+-- Elements                   ::= Comments* (Element Comment*)*
 -- Element                    ::= '\\n' name ElementInLayoutContext
 --                              |      name ElementInNonLayoutContext
 -- ElementInLayoutContext     ::= ':'   FieldLayoutOrBraces
 --                              | arg*  SectionLayoutOrBraces
 -- FieldLayoutOrBraces        ::= '\\n'? '{' comment* (content comment*)* '}'
---                              | comment* line? ('\\n' line comment*)*
+--                              | comment* line? comment* ('\\n' line comment*)*
 -- SectionLayoutOrBraces      ::= '\\n'? '{' Elements '\\n'? '}'
 --                              | Elements
 -- ElementInNonLayoutContext  ::= ':' FieldInlineOrBraces
@@ -240,15 +241,14 @@ cabalStyleFile = do
   eof
   return es
 
--- | Collect the comments after a parser succeeds
+-- | Collect one or more comments after a parser succeeds
 commentsAfter :: Parser a -> Parser (a, [Field Position])
 commentsAfter p = liftA2 (,) p (many tokComment)
 
 -- Elements that live at the top level or inside a section, i.e. fields
 -- and sections content
 --
--- elements ::= comment* (element comment)*
--- TODO(leana8959): the order is messed up, is it worth it to make it normal
+-- elements ::= comment* (element comment*)*
 elements :: IndentLevel -> Parser [Field Position]
 elements ilevel = do
   preCmts <- many tokComment
@@ -313,7 +313,7 @@ elementInNonLayoutContext name =
 -- The body of a field, using either layout style or braces style.
 --
 -- fieldLayoutOrBraces   ::= '\\n'? '{' comment* (content comment*)* '}'
---                         | comment* line? ('\\n' line comment*)*
+--                         | comment* line? comment* ('\\n' line comment*)*
 fieldLayoutOrBraces :: IndentLevel -> Name Position -> Parser [Field Position]
 fieldLayoutOrBraces ilevel name = braces <|> fieldLayout
   where
@@ -324,9 +324,8 @@ fieldLayoutOrBraces ilevel name = braces <|> fieldLayout
       closeBrace
       return $ preCmts <> [Field name ls] <> mconcat postCmtsGroups
     fieldLayout = inLexerMode (LexerMode in_field_layout) $ do
-      firstPreCmts <- many tokComment
-      l <- optionMaybe fieldContent
-      firstPostCmts <- many tokComment
+      (firstPreCmts, l, firstPostCmts) <-
+        liftA3 (,,) (many tokComment) (optionMaybe fieldContent) (many tokComment)
       (ls, postCmtsGroups) <- unzip <$> many (do _ <- indentOfAtLeast ilevel; commentsAfter fieldContent)
       return $
         mconcat
