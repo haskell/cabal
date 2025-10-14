@@ -53,8 +53,8 @@ import Text.Parsec.Pos
 import Text.Parsec.Prim hiding (many, (<|>))
 import Prelude ()
 
-import qualified Data.Text                as T
-import qualified Data.Text.Encoding       as T
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
 import qualified Data.Text.Encoding.Error as T
 
 -- $setup
@@ -253,11 +253,12 @@ elements :: IndentLevel -> Parser [Field Position]
 elements ilevel = do
   preCmts <- many tokComment
   (fs, postCmtsGroups) <- unzip <$> many (commentsAfter $ element ilevel)
-  pure $ mconcat
-    [ preCmts
-    , mconcat fs
-    , mconcat postCmtsGroups
-    ]
+  pure $
+    mconcat
+      [ preCmts
+      , mconcat fs
+      , mconcat postCmtsGroups
+      ]
 
 -- An individual element, ie a field or a section. These can either use
 -- layout style or braces style. For layout style then it must start on
@@ -459,29 +460,36 @@ parseBS p = parseTest' p "<input string>"
 
 formatError :: B8.ByteString -> ParseError -> String
 formatError input perr =
-    unlines
-      [ "Parse error "++ show (errorPos perr) ++ ":"
-      , errLine
-      , indicator ++ errmsg ]
+  unlines
+    [ "Parse error " ++ show (errorPos perr) ++ ":"
+    , errLine
+    , indicator ++ errmsg
+    ]
   where
-    pos       = errorPos perr
-    ls        = lines' (T.decodeUtf8With T.lenientDecode input)
-    errLine   = T.unpack (ls !! (sourceLine pos - 1))
+    pos = errorPos perr
+    ls = lines' (T.decodeUtf8With T.lenientDecode input)
+    errLine = T.unpack (ls !! (sourceLine pos - 1))
     indicator = replicate (sourceColumn pos) ' ' ++ "^"
-    errmsg    = showErrorMessages "or" "unknown parse error"
-                                  "expecting" "unexpected" "end of file"
-                                  (errorMessages perr)
+    errmsg =
+      showErrorMessages
+        "or"
+        "unknown parse error"
+        "expecting"
+        "unexpected"
+        "end of file"
+        (errorMessages perr)
 
 -- | Handles windows/osx/unix line breaks uniformly
 lines' :: T.Text -> [T.Text]
 lines' s1
   | T.null s1 = []
   | otherwise = case T.break (\c -> c == '\r' || c == '\n') s1 of
-                  (l, s2) | Just (c,s3) <- T.uncons s2
-                         -> case T.uncons s3 of
-                              Just ('\n', s4) | c == '\r' -> l : lines' s4
-                              _               -> l : lines' s3
-                          | otherwise -> [l]
+      (l, s2)
+        | Just (c, s3) <- T.uncons s2 ->
+            case T.uncons s3 of
+              Just ('\n', s4) | c == '\r' -> l : lines' s4
+              _ -> l : lines' s3
+        | otherwise -> [l]
 
 eof :: Parser ()
 eof = notFollowedBy anyToken <?> "end of file"

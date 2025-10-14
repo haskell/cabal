@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE DeriveGeneric #-}
 
 -- | Cabal-like file AST types: 'Field', 'Section' etc
 --
@@ -82,7 +82,7 @@ fieldUniverse f@(Comment{}) = [f]
 data FieldLine ann = FieldLine !ann !ByteString
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
-instance (ToExpr ann) => ToExpr (FieldLine ann)
+instance ToExpr ann => ToExpr (FieldLine ann)
 
 -- | @since 3.12.0.0
 deriving instance Ord ann => Ord (FieldLine ann)
