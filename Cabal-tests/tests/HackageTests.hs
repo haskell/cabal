@@ -20,6 +20,7 @@ import Data.Foldable                               (traverse_)
 import Data.List                                   (isPrefixOf, isSuffixOf)
 import Data.Maybe                                  (mapMaybe)
 import Data.Monoid                                 (Sum (..))
+import Distribution.PackageDescription             (GenericPackageDescription(exactComments))
 import Distribution.PackageDescription.Check       (PackageCheck (..), checkPackage)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.PackageDescription.Quirks      (patchQuirks)
@@ -287,7 +288,8 @@ roundtripTest testFieldsTransform fpath bs = do
         print err
         exitFailure
 
-    assertEqual' bs' x y = unless (x == y || fpath == "ixset/1.0.4/ixset.cabal") $ do
+    -- we disable comparison on exactComments for now because we can't print it yet
+    assertEqual' bs' x y = unless (x { exactComments = mempty } == y || fpath == "ixset/1.0.4/ixset.cabal") $ do
         putStrLn fpath
 #ifdef MIN_VERSION_tree_diff
         putStrLn "====== tree-diff:"
