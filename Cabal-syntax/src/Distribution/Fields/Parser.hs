@@ -324,15 +324,17 @@ fieldLayoutOrBraces ilevel name = braces <|> fieldLayout
       closeBrace
       return $ preCmts <> [Field name ls] <> mconcat postCmtsGroups
     fieldLayout = inLexerMode (LexerMode in_field_layout) $ do
-      preCmts <- many tokComment
+      firstPreCmts <- many tokComment
       l <- optionMaybe fieldContent
+      firstPostCmts <- many tokComment
       (ls, postCmtsGroups) <- unzip <$> many (do _ <- indentOfAtLeast ilevel; commentsAfter fieldContent)
       return $
         mconcat
-          [ preCmts
+          [ firstPreCmts
           , case l of
               Nothing -> [Field name ls]
               Just l' -> [Field name (l' : ls)]
+          , firstPostCmts
           , mconcat postCmtsGroups
           ]
 

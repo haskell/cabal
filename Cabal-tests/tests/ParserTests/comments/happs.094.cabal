@@ -1,0 +1,75 @@
+Name:                happs-tutorial
+Version:             0.9.4
+Synopsis:            A Happstack Tutorial that is its own web 2.0-type demo. 
+Description:         A nice way to learn how to build web sites with Happstack
+
+License:             BSD3
+License-file:        LICENSE
+Author:              Thomas Hartman, Eelco Lempsink, Creighton Hogg
+
+Maintainer:          Thomas Hartman <thomashartman1@gmail.com>
+Copyright:           2008 Thomas Hartman, 2009 Thomas Hartman & Creighton Hogg
+
+Stability:           Experimental
+Category:            Web
+Build-type:          Simple
+
+Extra-Source-Files:
+    recompile-and-kill-head.sh
+    hackInGhci.sh
+    static/*.png
+    static/*.css
+    templates/*.st
+    src/*.hs
+    src/migrationexample/*.hs
+    src/migrationexample/*.lhs
+    src/migrationexample/StateVersions/*.hs
+
+Cabal-Version:       >= 1.8
+
+Flag base4
+    Description: Choose the even newer, even smaller, split-up base package.
+
+Executable happs-tutorial
+    Main-is:             Main.hs
+    hs-source-dirs:
+        src
+    Other-Modules:
+        StateVersions.AppState1
+        ControllerBasic
+        ControllerGetActions
+        Controller
+        ControllerMisc
+        ControllerPostActions
+        FromDataInstances
+        Misc
+        MiscMap
+        ControllerStressTests
+        View
+    ghc-options: -Wall
+    Build-Depends:   base
+                     -- , HStringTemplate  >= 0.4.0 && < 0.5.0  
+                     -- This should be consumed by post fieldContent
+                     , HStringTemplate >= 0.6
+                     , HStringTemplateHelpers >= 0.0.14 && < 1.0.0
+                     , mtl >= 1.1.0.0 && < 2.0.0.0 
+                     , bytestring 
+                     , happstack >= 0.5
+                     , containers >= 0.2.0.0 && < 0.3.0.0
+                     , pretty >= 1.0.1.0 && < 2 
+                     , pureMD5 >= 1.0.0.0 && < 1.1.0.0
+                     , directory >= 1.0.0.0 && < 1.1.0.0
+                     , filepath >= 1.1.0.0 && < 1.2.0.0
+                     , hscolour == 1.13
+                     , HTTP >= 4000
+                     , safe >= 0.2 && < 0.3
+                     , old-time >= 1.0.0.0 && < 1.1.0.0
+                     , parsec >= 2.1.0.0 && < 2.2.0.0
+                     , happstack-helpers >= 0.50
+                     , DebugTraceHelpers >= 0.12 && < 0.20
+                     , happstack-server >= 0.5
+                     , happstack-data >= 0.5
+                     , happstack-ixset >= 0.5
+                     , happstack-state >= 0.5
+    if flag(base4)
+      Build-Depends: base >=4 && <5, syb

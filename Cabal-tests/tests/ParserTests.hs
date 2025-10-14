@@ -112,7 +112,9 @@ commentTests = testGroup "comments"
     , commentTest "layout-many-sections.cabal"
     , commentTest "layout-interleaved-in-section.cabal"
     , commentTest "layout-fieldline-is-flag.cabal"
+
     , readFieldTest "hackage-001.cabal"
+    , commentTest "happs.094.cabal" -- aligned leading comma after comment
     ]
 
 readFieldTest :: FilePath -> TestTree

@@ -341,12 +341,42 @@
       FieldLine
         (Position 112 25)
         "none"],
+  Comment
+    "-- report-planning-failure: False"
+    (Position 113 1),
+  Comment
+    "-- per-component: True"
+    (Position 114 1),
+  Comment
+    "-- run-tests:"
+    (Position 115 1),
+  Comment
+    "-- semaphore: False"
+    (Position 116 1),
   Field
     (Name (Position 117 1) "jobs")
     [
       FieldLine
         (Position 117 7)
         "$ncpus"],
+  Comment
+    "-- keep-going: False"
+    (Position 118 1),
+  Comment
+    "-- offline: False"
+    (Position 119 1),
+  Comment
+    "-- lib: False"
+    (Position 120 1),
+  Comment
+    "-- package-env:"
+    (Position 121 1),
+  Comment
+    "-- overwrite-policy:"
+    (Position 122 1),
+  Comment
+    "-- install-method:"
+    (Position 123 1),
   Field
     (Name
       (Position 124 1)
@@ -742,292 +772,4 @@
         (Position 251 1),
       Comment
         "  -- uhc-options:"
-        (Position 252 1)],
-  Comment
-    "-- logs-dir: /home/leana/.cache/cabal/logs"
-    (Position 31 1),
-  Comment
-    "-- default-user-config:"
-    (Position 32 1),
-  Comment
-    "-- verbose: 1"
-    (Position 33 1),
-  Comment
-    "-- compiler: ghc"
-    (Position 34 1),
-  Comment
-    "-- cabal-file:"
-    (Position 35 1),
-  Comment
-    "-- with-compiler:"
-    (Position 36 1),
-  Comment
-    "-- with-hc-pkg:"
-    (Position 37 1),
-  Comment
-    "-- program-prefix:"
-    (Position 38 1),
-  Comment
-    "-- program-suffix:"
-    (Position 39 1),
-  Comment
-    "-- library-vanilla: True"
-    (Position 40 1),
-  Comment
-    "-- library-profiling:"
-    (Position 41 1),
-  Comment
-    "-- shared:"
-    (Position 42 1),
-  Comment
-    "-- static:"
-    (Position 43 1),
-  Comment
-    "-- executable-dynamic: False"
-    (Position 44 1),
-  Comment
-    "-- executable-static: False"
-    (Position 45 1),
-  Comment
-    "-- profiling:"
-    (Position 46 1),
-  Comment
-    "-- executable-profiling:"
-    (Position 47 1),
-  Comment
-    "-- profiling-detail:"
-    (Position 48 1),
-  Comment
-    "-- library-profiling-detail:"
-    (Position 49 1),
-  Comment
-    "-- optimization: True"
-    (Position 50 1),
-  Comment
-    "-- debug-info: False"
-    (Position 51 1),
-  Comment
-    "-- build-info:"
-    (Position 52 1),
-  Comment
-    "-- library-for-ghci:"
-    (Position 53 1),
-  Comment
-    "-- split-sections: False"
-    (Position 54 1),
-  Comment
-    "-- split-objs: False"
-    (Position 55 1),
-  Comment
-    "-- executable-stripping:"
-    (Position 56 1),
-  Comment
-    "-- library-stripping:"
-    (Position 57 1),
-  Comment
-    "-- configure-option:"
-    (Position 58 1),
-  Comment
-    "-- user-install: True"
-    (Position 59 1),
-  Comment
-    "-- package-db:"
-    (Position 60 1),
-  Comment
-    "-- flags:"
-    (Position 61 1),
-  Comment
-    "-- extra-include-dirs:"
-    (Position 62 1),
-  Comment
-    "-- deterministic:"
-    (Position 63 1),
-  Comment
-    "-- cid:"
-    (Position 64 1),
-  Comment
-    "-- extra-lib-dirs:"
-    (Position 65 1),
-  Comment
-    "-- extra-lib-dirs-static:"
-    (Position 66 1),
-  Comment
-    "-- extra-framework-dirs:"
-    (Position 67 1),
-  Comment
-    "-- extra-prog-path:"
-    (Position 68 1),
-  Comment
-    "-- instantiate-with:"
-    (Position 69 1),
-  Comment
-    "-- tests: False"
-    (Position 70 1),
-  Comment
-    "-- coverage: False"
-    (Position 71 1),
-  Comment
-    "-- library-coverage:"
-    (Position 72 1),
-  Comment
-    "-- exact-configuration: False"
-    (Position 73 1),
-  Comment
-    "-- benchmarks: False"
-    (Position 74 1),
-  Comment
-    "-- relocatable: False"
-    (Position 75 1),
-  Comment
-    "-- response-files:"
-    (Position 76 1),
-  Comment
-    "-- allow-depending-on-private-libs:"
-    (Position 77 1),
-  Comment
-    "-- coverage-for:"
-    (Position 78 1),
-  Comment
-    "-- cabal-lib-version:"
-    (Position 79 1),
-  Comment
-    "-- append:"
-    (Position 80 1),
-  Comment
-    "-- backup:"
-    (Position 81 1),
-  Comment
-    "-- constraint:"
-    (Position 82 1),
-  Comment
-    "-- preference:"
-    (Position 83 1),
-  Comment
-    "-- solver: modular"
-    (Position 84 1),
-  Comment
-    "-- allow-older: False"
-    (Position 85 1),
-  Comment
-    "-- allow-newer: False"
-    (Position 86 1),
-  Comment
-    "-- write-ghc-environment-files:"
-    (Position 87 1),
-  Comment
-    "-- documentation: False"
-    (Position 88 1),
-  Comment
-    "-- doc-index-file: $datadir/doc/$arch-$os-$compiler/index.html"
-    (Position 89 1),
-  Comment
-    "-- only-download: False"
-    (Position 90 1),
-  Comment
-    "-- target-package-db:"
-    (Position 91 1),
-  Comment
-    "-- max-backjumps: 4000"
-    (Position 92 1),
-  Comment
-    "-- reorder-goals: False"
-    (Position 93 1),
-  Comment
-    "-- count-conflicts: True"
-    (Position 94 1),
-  Comment
-    "-- fine-grained-conflicts: True"
-    (Position 95 1),
-  Comment
-    "-- minimize-conflict-set: False"
-    (Position 96 1),
-  Comment
-    "-- independent-goals: False"
-    (Position 97 1),
-  Comment
-    "-- prefer-oldest: False"
-    (Position 98 1),
-  Comment
-    "-- shadow-installed-packages: False"
-    (Position 99 1),
-  Comment
-    "-- strong-flags: False"
-    (Position 100 1),
-  Comment
-    "-- allow-boot-library-installs: False"
-    (Position 101 1),
-  Comment
-    "-- reject-unconstrained-dependencies: none"
-    (Position 102 1),
-  Comment
-    "-- reinstall: False"
-    (Position 103 1),
-  Comment
-    "-- avoid-reinstalls: False"
-    (Position 104 1),
-  Comment
-    "-- force-reinstalls: False"
-    (Position 105 1),
-  Comment
-    "-- upgrade-dependencies: False"
-    (Position 106 1),
-  Comment
-    "-- index-state:"
-    (Position 107 1),
-  Comment
-    "-- root-cmd:"
-    (Position 108 1),
-  Comment
-    "-- symlink-bindir:"
-    (Position 109 1),
-  Comment
-    "-- build-log:"
-    (Position 111 1),
-  Comment
-    "-- report-planning-failure: False"
-    (Position 113 1),
-  Comment
-    "-- per-component: True"
-    (Position 114 1),
-  Comment
-    "-- run-tests:"
-    (Position 115 1),
-  Comment
-    "-- semaphore: False"
-    (Position 116 1),
-  Comment
-    "-- keep-going: False"
-    (Position 118 1),
-  Comment
-    "-- offline: False"
-    (Position 119 1),
-  Comment
-    "-- lib: False"
-    (Position 120 1),
-  Comment
-    "-- package-env:"
-    (Position 121 1),
-  Comment
-    "-- overwrite-policy:"
-    (Position 122 1),
-  Comment
-    "-- install-method:"
-    (Position 123 1),
-  Comment
-    "-- token:"
-    (Position 125 1),
-  Comment
-    "-- username:"
-    (Position 126 1),
-  Comment
-    "-- password:"
-    (Position 127 1),
-  Comment
-    "-- password-command:"
-    (Position 128 1),
-  Comment
-    "-- multi-repl:"
-    (Position 129 1),
-  Comment
-    "-- builddir:"
-    (Position 130 1)]
+        (Position 252 1)]]
