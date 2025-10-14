@@ -187,7 +187,6 @@ genericFromParsecFields f g = goMany
     go (P.Section (P.Name ann name) secargs fs) = PrettySection ann name <$> g name secargs <*> goMany fs
     go (P.Comment{}) = error "comment is filtered out"
 
-    -- TODO(leana8959): outside of the scope of the comment parsing PR
     notComment (P.Comment{}) = False
     notComment _ = True
 

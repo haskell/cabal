@@ -443,7 +443,6 @@ readFields input = case Fields.readFields' input of
 legacyFields :: [Fields.Field Parsec.Position] -> [Field]
 legacyFields = map legacyField . filter notComment
   where
-    -- TODO(leana8959): outside of the scope of the comment parsing PR
     notComment (Fields.Comment{}) = False
     notComment _ = True
 

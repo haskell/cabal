@@ -70,7 +70,6 @@ library
   if flag(CABAL_PARSEC_DEBUG)
     CPP-Options: -DCABAL_PARSEC_DEBUG
     build-depends:
-      -- TODO(leana8959): set bounds
       vector
 
   build-tool-depends: alex:alex
