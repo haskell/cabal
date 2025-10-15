@@ -108,8 +108,8 @@ commentTests :: TestTree
 commentTests = testGroup "comments"
     [
     -- Imported from hackage integration test
-      readFieldTest "hackage-001.cabal"
-    , readFieldTest "happs.094.cabal" -- aligned leading comma after comment
+      readFieldTest "layout-complex-indented-comments.cabal"
+    , readFieldTest "layout-comment-in-fieldline.cabal" -- aligned leading comma after comment
 
     , commentTest "layout-nosections-before.cabal"
     , commentTest "layout-nosections-after.cabal"

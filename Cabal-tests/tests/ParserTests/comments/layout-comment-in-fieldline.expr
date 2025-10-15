@@ -1,0 +1,50 @@
+[
+  Section
+    (Name
+      (Position 1 1)
+      "executable")
+    []
+    [
+      Field
+        (Name (Position 2 5) "main-is")
+        [
+          FieldLine
+            (Position 2 26)
+            "Main.hs"],
+      Field
+        (Name
+          (Position 3 5)
+          "hs-source-dirs")
+        [
+          FieldLine (Position 4 9) "src"],
+      Field
+        (Name
+          (Position 5 5)
+          "ghc-options")
+        [
+          FieldLine
+            (Position 5 18)
+            "-Wall"],
+      Field
+        (Name
+          (Position 6 5)
+          "build-depends")
+        [
+          FieldLine
+            (Position 6 22)
+            "base",
+          FieldLine
+            (Position 9 22)
+            ", bar",
+          FieldLine
+            (Position 11 22)
+            ", baz"],
+      Comment
+        "                     -- , foo"
+        (Position 7 1),
+      Comment
+        "                     -- ^ This should be consumed after fieldContent"
+        (Position 8 1),
+      Comment
+        "                     -- , comemnt"
+        (Position 10 1)]]

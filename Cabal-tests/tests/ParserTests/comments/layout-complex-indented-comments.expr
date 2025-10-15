@@ -1,0 +1,132 @@
+[
+  Comment
+    "-- This is the configuration file for the 'cabal' command line tool."
+    (Position 1 1),
+  Comment "--" (Position 2 1),
+  Comment
+    "-- The available configuration options are listed below."
+    (Position 3 1),
+  Section
+    (Name
+      (Position 6 1)
+      "repository")
+    [
+      SecArgName
+        (Position 6 12)
+        "hackage.haskell.org"]
+    [
+      Field
+        (Name (Position 7 3) "url")
+        [
+          FieldLine
+            (Position 7 8)
+            "http://hackage.haskell.org/"],
+      Comment
+        "  -- secure: True"
+        (Position 8 1),
+      Comment
+        "  -- root-keys:"
+        (Position 9 1),
+      Comment
+        "-- ignore-expiry: False"
+        (Position 11 1),
+      Comment
+        "-- http-transport:"
+        (Position 12 1)],
+  Field
+    (Name
+      (Position 13 1)
+      "remote-repo-cache")
+    [
+      FieldLine
+        (Position 13 20)
+        "/home/foo/.cache/cabal/packages"],
+  Comment
+    "-- logs-dir: /home/foo/.cache/cabal/logs"
+    (Position 14 1),
+  Comment
+    "-- default-user-config:"
+    (Position 15 1),
+  Field
+    (Name
+      (Position 16 1)
+      "build-summary")
+    [
+      FieldLine
+        (Position 16 16)
+        "/home/foo/.cache/cabal/logs/build.log"],
+  Comment
+    "-- build-log:"
+    (Position 17 1),
+  Field
+    (Name
+      (Position 18 1)
+      "remote-build-reporting")
+    [
+      FieldLine
+        (Position 18 25)
+        "none"],
+  Comment
+    "-- report-planning-failure: False"
+    (Position 19 1),
+  Comment
+    "-- per-component: True"
+    (Position 20 1),
+  Field
+    (Name (Position 21 1) "jobs")
+    [
+      FieldLine
+        (Position 21 7)
+        "$ncpus"],
+  Comment
+    "-- keep-going: False"
+    (Position 22 1),
+  Comment
+    "-- offline: False"
+    (Position 23 1),
+  Field
+    (Name
+      (Position 24 1)
+      "installdir")
+    [
+      FieldLine
+        (Position 24 13)
+        "/home/foo/.local/bin"],
+  Comment
+    "-- token:"
+    (Position 25 1),
+  Comment
+    "-- username:"
+    (Position 26 1),
+  Section
+    (Name (Position 28 1) "haddock")
+    []
+    [
+      Comment
+        "  -- keep-temp-files: False"
+        (Position 29 1),
+      Comment
+        "  -- hoogle: False"
+        (Position 30 1)],
+  Section
+    (Name (Position 32 1) "init")
+    []
+    [
+      Comment
+        "  -- interactive: False"
+        (Position 33 1),
+      Comment
+        "  -- quiet: False"
+        (Position 34 1)],
+  Section
+    (Name
+      (Position 36 1)
+      "program-locations")
+    []
+    [
+      Comment
+        "  -- alex-location:"
+        (Position 37 1),
+      Comment
+        "  -- ar-location:"
+        (Position 38 1)]]
