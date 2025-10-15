@@ -33,7 +33,6 @@ module Distribution.Fields.Parser
   ) where
 {- FOURMOLU_ENABLE -}
 
-import Control.Applicative (liftA3)
 import qualified Data.ByteString.Char8 as B8
 import Data.Functor.Identity
 import Distribution.Compat.Prelude
@@ -243,7 +242,7 @@ cabalStyleFile = do
 
 -- | Collect one or more comments after a parser succeeds
 commentsAfter :: Parser a -> Parser (a, [Field Position])
-commentsAfter p = liftA2 (,) p (many tokComment)
+commentsAfter p = (,) <$> p <*> (many tokComment)
 
 -- Elements that live at the top level or inside a section, i.e. fields
 -- and sections content
@@ -325,8 +324,9 @@ fieldLayoutOrBraces ilevel name = braces <|> fieldLayout
       closeBrace
       return $ preCmts <> [Field name ls] <> mconcat postCmtsGroups
     fieldLayout = inLexerMode (LexerMode in_field_layout) $ do
-      (firstPreCmts, l, firstPostCmts) <-
-        liftA3 (,,) (many tokComment) (optionMaybe fieldContent) (many tokComment)
+      firstPreCmts <- many tokComment
+      l <- optionMaybe fieldContent
+      firstPostCmts <- many tokComment
       (ls, postCmtsGroups) <- unzip <$> many (do _ <- indentOfAtLeast ilevel; commentsAfter fieldContent)
       return $
         mconcat
