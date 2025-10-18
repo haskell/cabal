@@ -26,6 +26,9 @@ module Distribution.Client.Init.Format
   , mkExeStanza
   , mkTestStanza
   , mkPkgDescription
+  , mkExtensionsStanza
+  , mkGhcOptionsStanza
+  , mkRtsOptionsStanza
   ) where
 
 import Distribution.CabalSpecVersion
@@ -133,72 +136,125 @@ mkCommonStanza opts = case specHasCommonStanzas $ _optCabalSpec opts of
       [text "warnings"]
       [field "ghc-options" text "-Wall" [] False opts]
 
+mkGhcOptionsStanza :: WriteOpts -> PrettyField FieldAnnotation
+mkGhcOptionsStanza opts = case specHasCommonStanzas $ _optCabalSpec opts of
+  NoCommonStanzas -> PrettyEmpty
+  _ ->
+    PrettySection
+      annNoComments
+      "common"
+      [text "ghc-options"]
+      [ field "ghc-options" text "-Wall -Widentities -Wcompat" [] False opts
+      ]
+
+mkRtsOptionsStanza :: WriteOpts -> PrettyField FieldAnnotation
+mkRtsOptionsStanza opts = case specHasCommonStanzas $ _optCabalSpec opts of
+  NoCommonStanzas -> PrettyEmpty
+  _ ->
+    PrettySection
+      annNoComments
+      "common"
+      [text "rts-options"]
+      [ field "ghc-options" text "-rtsopts -threaded \"-with-rtsopts=-N -T\"" [] False opts
+      ]
+
+mkExtensionsStanza :: WriteOpts -> PrettyField FieldAnnotation
+mkExtensionsStanza opts = case specHasCommonStanzas $ _optCabalSpec opts of
+  NoCommonStanzas -> PrettyEmpty
+  _ ->
+    PrettySection
+      annNoComments
+      "common"
+      [text "extensions"]
+      [ field "default-extensions" text "" [] False opts
+      , field "default-language" text "GHC2021" [] False opts
+      ]
+
+insertCommonStanzas :: WriteOpts -> [PrettyField FieldAnnotation]
+insertCommonStanzas opts =
+  case specHasCommonStanzas $ _optCabalSpec opts of
+    NoCommonStanzas -> [PrettyEmpty]
+    _ -> 
+      [ field
+          "import"
+          (hsep . map text)
+          ["extensions"]
+          ["Common language extensions"]
+          False
+          opts  
+      , field
+          "import"
+          (hsep . map text)
+          ["ghc-options"]
+          ["Common compiler warnings and optimisations"]
+          False
+          opts
+      , field
+          "import"
+          (hsep . map text)
+          ["rts-options"]
+          ["Common RTS options"]
+          False
+          opts
+      ]
+
 mkLibStanza :: WriteOpts -> LibTarget -> PrettyField FieldAnnotation
 mkLibStanza opts (LibTarget srcDirs lang expMods otherMods exts deps tools) =
   PrettySection
     annNoComments
     (toUTF8BS "library")
     []
-    [ case specHasCommonStanzas $ _optCabalSpec opts of
-        NoCommonStanzas -> PrettyEmpty
-        _ ->
-          field
-            "import"
-            (hsep . map text)
-            ["warnings"]
-            ["Import common warning flags."]
-            False
-            opts
-    , field
-        "exposed-modules"
-        formatExposedModules
-        (toList expMods)
-        ["Modules exported by the library."]
-        True
-        opts
-    , field
-        "other-modules"
-        formatOtherModules
-        otherMods
-        ["Modules included in this library but not exported."]
-        True
-        opts
-    , field
-        "other-extensions"
-        formatOtherExtensions
-        exts
-        ["LANGUAGE extensions used by modules in this package."]
-        True
-        opts
-    , field
-        "build-depends"
-        formatDependencyList
-        deps
-        ["Other library packages from which modules are imported."]
-        True
-        opts
-    , field
-        "hs-source-dirs"
-        formatHsSourceDirs
-        (makeSymbolicPath <$> srcDirs)
-        ["Directories containing source files."]
-        True
-        opts
-    , field
-        (buildToolTag opts)
-        formatDependencyList
-        tools
-        ["Extra tools (e.g. alex, hsc2hs, ...) needed to build the source."]
-        False
-        opts
-    , field
-        "default-language"
-        id
-        lang
-        ["Base language which the package is written in."]
-        True
-        opts
-    ]
+    (insertCommonStanzas opts ++ [
+       field
+          "exposed-modules"
+          formatExposedModules
+          (toList expMods)
+          ["Modules exported by the library."]
+          True
+          opts
+      , field
+          "other-modules"
+          formatOtherModules
+          otherMods
+          ["Modules included in this library but not exported."]
+          True
+          opts
+      , field
+          "other-extensions"
+          formatOtherExtensions
+          exts
+          ["LANGUAGE extensions used by modules in this package."]
+          True
+          opts
+      , field
+          "build-depends"
+          formatDependencyList
+          deps
+          ["Other library packages from which modules are imported."]
+          True
+          opts
+      , field
+          "hs-source-dirs"
+          formatHsSourceDirs
+          (makeSymbolicPath <$> srcDirs)
+          ["Directories containing source files."]
+          True
+          opts
+      , field
+          (buildToolTag opts)
+          formatDependencyList
+          tools
+          ["Extra tools (e.g. alex, hsc2hs, ...) needed to build the source."]
+          False
+          opts
+      , field
+          "default-language"
+          id
+          lang
+          ["Base language which the package is written in."]
+          True
+          opts
+      ])
 
 mkExeStanza :: WriteOpts -> ExeTarget -> PrettyField FieldAnnotation
 mkExeStanza opts (ExeTarget exeMain appDirs lang otherMods exts deps tools) =
@@ -206,17 +262,8 @@ mkExeStanza opts (ExeTarget exeMain appDirs lang otherMods exts deps tools) =
     annNoComments
     (toUTF8BS "executable")
     [exeName]
-    [ case specHasCommonStanzas $ _optCabalSpec opts of
-        NoCommonStanzas -> PrettyEmpty
-        _ ->
-          field
-            "import"
-            (hsep . map text)
-            ["warnings"]
-            ["Import common warning flags."]
-            False
-            opts
-    , field
+    (insertCommonStanzas opts ++ [
+     field
         "main-is"
         unsafeFromHs
         exeMain
@@ -265,7 +312,7 @@ mkExeStanza opts (ExeTarget exeMain appDirs lang otherMods exts deps tools) =
         ["Base language which the package is written in."]
         True
         opts
-    ]
+    ])
   where
     exeName = pretty $ _optPkgName opts
 
@@ -275,7 +322,7 @@ mkTestStanza opts (TestTarget testMain dirs lang otherMods exts deps tools) =
     annNoComments
     (toUTF8BS "test-suite")
     [suiteName]
-    [ case specHasCommonStanzas $ _optCabalSpec opts of
+    (insertCommonStanzas ++ [ case specHasCommonStanzas $ _optCabalSpec opts of
         NoCommonStanzas -> PrettyEmpty
         _ ->
           field
