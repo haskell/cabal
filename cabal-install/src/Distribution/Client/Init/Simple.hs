@@ -112,7 +112,7 @@ createProject v pkgIx _srcDb initFlags = do
 genSimplePkgDesc :: Interactive m => InitFlags -> m PkgDescription
 genSimplePkgDesc flags = mkPkgDesc <$> currentDirPkgName
   where
-    defaultExtraDoc = Just $ Set.singleton defaultChangelog
+    defaultExtraDoc = Just $ Set.fromList [defaultChangelog, defaultReadme]
 
     extractExtraDoc [] = defaultExtraDoc
     extractExtraDoc fs = Just $ Set.fromList fs

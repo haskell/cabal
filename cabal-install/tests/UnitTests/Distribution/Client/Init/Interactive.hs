@@ -627,7 +627,7 @@ createProjectTest pkgIx srcDb =
                 flags =
                   emptyFlags
                     { cabalVersion = Flag CabalSpecV1_10
-                    , extraDoc = Flag [defaultChangelog]
+                    , extraDoc = Flag [defaultChangelog, defaultReadme]
                     , extraSrc = Flag ["README.md"]
                     }
 
@@ -650,7 +650,7 @@ createProjectTest pkgIx srcDb =
                 _pkgHomePage desc @?= "qux.com"
                 _pkgSynopsis desc @?= "Qux's package"
                 _pkgCategory desc @?= "Control"
-                _pkgExtraSrcFiles desc @?= Set.fromList [defaultChangelog, "README.md"]
+                _pkgExtraSrcFiles desc @?= Set.fromList [defaultChangelog, defaultReadme]
                 _pkgExtraDocFiles desc @?= Nothing
 
                 _libSourceDirs lib @?= ["src"]
