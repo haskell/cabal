@@ -43,3 +43,4 @@ Welcome to the Cabal User Guide
    cabal-context
    package-concepts
    cabal-interface-stability
+   glossary
