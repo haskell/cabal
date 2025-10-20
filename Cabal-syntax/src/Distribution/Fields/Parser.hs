@@ -243,6 +243,8 @@ cabalStyleFile = do
   return es
 
 -- | Collect in annotation one or more comments after a parser succeeds
+-- Careful with the 'Functor' instance!
+-- If you use this with Field you might attach the same comments everywhere
 commentsAfter :: Functor f => Parser (f Position) -> Parser (f (WithComments Position))
 commentsAfter p = do
   x <- p
@@ -252,16 +254,47 @@ commentsAfter p = do
 noComments :: Functor f => f ann -> f (WithComments ann)
 noComments = fmap ([],)
 
+prependCommentsFields :: [Comment ann] -> [Field (WithComments ann)] -> [Field (WithComments ann)]
+prependCommentsFields cs fs = case fs of
+  [] -> [] -- drop
+  (f : fs') -> prependCommentsField cs f : fs'
+
+prependCommentsField :: [Comment ann] -> Field (WithComments ann) -> Field (WithComments ann)
+prependCommentsField cs f = case f of
+  (Field name fls) -> Field (Bi.first (cs ++) <$> name) fls
+  (Section name args fs) -> Section (Bi.first (cs ++) <$> name) args fs
+
+appendCommentsFields :: [Comment ann] -> [Field (WithComments ann)] -> [Field (WithComments ann)]
+appendCommentsFields cs fs = case fs of
+  [] -> [] -- drop
+  [f] -> [appendCommentsField cs f]
+  (f : fs') -> f : appendCommentsFields cs fs'
+
+appendCommentsField :: [Comment ann] -> Field (WithComments ann) -> Field (WithComments ann)
+appendCommentsField cs f = case f of
+  (Field name []) -> Field (Bi.first (++ cs) <$> name) []
+  (Field name fls) -> Field name (appendCommentsFieldLines cs fls)
+  (Section name args []) -> Section (Bi.first (++ cs) <$> name) args []
+  (Section name args fs) -> Section name args (appendCommentsFields cs fs)
+
+appendCommentsFieldLines :: [Comment ann] -> [FieldLine (WithComments ann)] -> [FieldLine (WithComments ann)]
+appendCommentsFieldLines cs fls = case fls of
+  [] -> []
+  [fl] -> [Bi.first (++ cs) <$> fl]
+  (f : fls') -> f : appendCommentsFieldLines cs fls'
+
 -- Elements that live at the top level or inside a section, i.e. fields
 -- and sections content
 --
 -- elements ::= comment* (element comment*)*
 elements :: IndentLevel -> Parser [Field (WithComments Position)]
 elements ilevel = do
-  -- FIXME(leana8959): somehow tag the first field with this comment
   preCmts <- many tokComment
-  es <- many (element ilevel <* many tokComment)
-  pure $ es
+  es <- many $ do
+    e <- element ilevel
+    postCmts <- many tokComment
+    pure $ appendCommentsField postCmts e
+  pure $ prependCommentsFields preCmts es
 
 -- An individual element, ie a field or a section. These can either use
 -- layout style or braces style. For layout style then it must start on
