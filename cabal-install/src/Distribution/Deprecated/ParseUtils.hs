@@ -422,9 +422,10 @@ lineNo (Section n _ _ _) = n
 readFields :: BS.ByteString -> ParseResult [Field]
 readFields input = case Fields.readFields' input of
   Right (fs, ws) ->
-    ParseOk
-      [PWarning msg | Fields.PWarning _ _ msg <- Fields.toPWarnings ws]
-      (legacyFields fs)
+    let fs' =  map (fmap Fields.unComments) fs
+    in  ParseOk
+          [PWarning msg | Fields.PWarning _ _ msg <- Fields.toPWarnings ws]
+          (legacyFields fs')
   Left perr ->
     ParseFailed $
       NoParse
@@ -441,17 +442,13 @@ readFields input = case Fields.readFields' input of
       pos = PE.errorPos perr
 
 legacyFields :: [Fields.Field Parsec.Position] -> [Field]
-legacyFields = map legacyField . filter notComment
-  where
-    notComment (Fields.Comment{}) = False
-    notComment _ = True
+legacyFields = map legacyField
 
 legacyField :: Fields.Field Parsec.Position -> Field
 legacyField (Fields.Field (Fields.Name pos name) fls) =
   F (posToLineNo pos) (fromUTF8BS name) (Fields.fieldLinesToString fls)
 legacyField (Fields.Section (Fields.Name pos name) args fs) =
   Section (posToLineNo pos) (fromUTF8BS name) (Fields.sectionArgsToString args) (legacyFields fs)
-legacyField (Fields.Comment{}) = error "there's no legacy comment field"
 
 posToLineNo :: Parsec.Position -> LineNo
 posToLineNo (Parsec.Position row _) = row
