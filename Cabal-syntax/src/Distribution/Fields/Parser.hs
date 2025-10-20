@@ -261,7 +261,9 @@ elements ilevel = do
   -- We bundle the comments with the first element
   preCmts <- many tokComment
   f <- optionMaybe (element preCmts ilevel)
-  fs <- many (element [] ilevel)
+  -- FIXME(leana8959): the trailing comment here needs to be consumed
+  _ <- many tokComment
+  fs <- many (element [] ilevel <* many tokComment)
   pure $ maybe fs (:fs) f
 
 -- An individual element, ie a field or a section. These can either use
