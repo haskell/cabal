@@ -252,26 +252,17 @@ commentsAfter p = do
 noComments :: Functor f => f ann -> f (WithComments ann)
 noComments = fmap ([],)
 
-mapCommentsOfHead
-  :: Functor f
-  => ([Comment ann] -> [Comment ann])
-  -> [f (WithComments ann)]
-  -> [f (WithComments ann)]
-mapCommentsOfHead f xs = case xs of
--- FIXME(leana8959): this would map this everywhere, bad!
-  [] -> []
-  (x : xs') -> fmap (Bi.first f) x : xs'
-
 -- Elements that live at the top level or inside a section, i.e. fields
 -- and sections content
 --
 -- elements ::= comment* (element comment*)*
 elements :: IndentLevel -> Parser [Field (WithComments Position)]
 elements ilevel = do
+  -- We bundle the comments with the first element
   preCmts <- many tokComment
-  fs <- many (element ilevel)
-  -- If there's no field, we drop the comments
-  pure $ mapCommentsOfHead (preCmts ++) fs
+  f <- optionMaybe (element preCmts ilevel)
+  fs <- many (element [] ilevel)
+  pure $ maybe fs (:fs) f
 
 -- An individual element, ie a field or a section. These can either use
 -- layout style or braces style. For layout style then it must start on
@@ -279,16 +270,16 @@ elements ilevel = do
 --
 -- element ::= '\\n' name elementInLayoutContext
 --           |      name elementInNonLayoutContext
-element :: IndentLevel -> Parser (Field (WithComments Position))
-element ilevel =
+element :: [Comment Position] -> IndentLevel -> Parser (Field (WithComments Position))
+element cmts ilevel =
   ( do
       ilevel' <- indentOfAtLeast ilevel
       name <- fieldSecName
-      elementInLayoutContext (incIndentLevel ilevel') name
+      elementInLayoutContext (incIndentLevel ilevel') (fmap (cmts,) name)
   )
     <|> ( do
             name <- fieldSecName
-            elementInNonLayoutContext name
+            elementInNonLayoutContext (fmap (cmts,) name)
         )
 
 -- An element (field or section) that is valid in a layout context.
@@ -297,13 +288,13 @@ element ilevel =
 --
 -- elementInLayoutContext ::= ':'  fieldLayoutOrBraces
 --                          | arg* sectionLayoutOrBraces
-elementInLayoutContext :: IndentLevel -> Name Position -> Parser (Field (WithComments Position))
+elementInLayoutContext :: IndentLevel -> Name (WithComments Position) -> Parser (Field (WithComments Position))
 elementInLayoutContext ilevel name =
   (do colon; fieldLayoutOrBraces ilevel name)
     <|> ( do
             args <- many sectionArg
             elems <- sectionLayoutOrBraces ilevel
-            return (Section (noComments name) (fmap noComments args) elems)
+            return (Section name (fmap noComments args) elems)
         )
 
 -- An element (field or section) that is valid in a non-layout context.
@@ -312,7 +303,7 @@ elementInLayoutContext ilevel name =
 --
 -- elementInNonLayoutContext ::= ':' FieldInlineOrBraces
 --                             | arg* '\\n'? '{' elements '\\n'? '}'
-elementInNonLayoutContext :: Name Position -> Parser (Field (WithComments Position))
+elementInNonLayoutContext :: Name (WithComments Position) -> Parser (Field (WithComments Position))
 elementInNonLayoutContext name =
   (do colon; fieldInlineOrBraces name)
     <|> ( do
@@ -321,14 +312,14 @@ elementInNonLayoutContext name =
             elems <- elements zeroIndentLevel
             optional tokIndent
             closeBrace
-            return (Section (noComments name) (fmap noComments args) elems)
+            return (Section name (fmap noComments args) elems)
         )
 
 -- The body of a field, using either layout style or braces style.
 --
 -- fieldLayoutOrBraces   ::= '\\n'? '{' comment* (content comment*)* '}'
 --                         | comment* line? comment* ('\\n' line comment*)*
-fieldLayoutOrBraces :: IndentLevel -> Name Position -> Parser (Field (WithComments Position))
+fieldLayoutOrBraces :: IndentLevel -> Name (WithComments Position) -> Parser (Field (WithComments Position))
 fieldLayoutOrBraces ilevel name = braces <|> fieldLayout
   where
     braces :: Parser (Field (WithComments Position))
@@ -338,8 +329,8 @@ fieldLayoutOrBraces ilevel name = braces <|> fieldLayout
       ls <- inLexerMode (LexerMode in_field_braces) (many $ commentsAfter fieldContent)
       closeBrace
       return $ case ls of
-        [] -> Field (noComments name) []
-        (l : ls') -> Field (noComments name) (mapCommentsOfHead (preCmts ++) $ l : ls')
+        [] -> Field (fmap (Bi.first (++preCmts)) name) []
+        (l : ls') -> Field (fmap (Bi.first (++preCmts)) name) (l : ls')
 
     fieldLayout :: Parser (Field (WithComments Position))
     fieldLayout = inLexerMode (LexerMode in_field_layout) $ do
@@ -348,8 +339,8 @@ fieldLayoutOrBraces ilevel name = braces <|> fieldLayout
       ls <- many (do _ <- indentOfAtLeast ilevel; commentsAfter fieldContent)
       return
         ( case l of
-            Nothing -> (Field (noComments name) (mapCommentsOfHead (preCmts ++) ls))
-            Just l' -> (Field (noComments name) (mapCommentsOfHead (preCmts ++) $ l' : ls))
+            Nothing -> (Field (fmap (Bi.first (++preCmts)) name) ls)
+            Just l' -> (Field (fmap (Bi.first (++preCmts)) name) (l' : ls))
         )
 
 -- The body of a section, using either layout style or braces style.
@@ -371,17 +362,17 @@ sectionLayoutOrBraces ilevel =
 --
 -- fieldInlineOrBraces   ::= '\\n'? '{' content '}'
 --                         | content
-fieldInlineOrBraces :: Name Position -> Parser (Field (WithComments Position))
+fieldInlineOrBraces :: Name (WithComments Position) -> Parser (Field (WithComments Position))
 fieldInlineOrBraces name =
   ( do
       openBrace
       ls <- inLexerMode (LexerMode in_field_braces) (many fieldContent)
       closeBrace
-      return (Field (noComments name) (fmap noComments ls))
+      return (Field name (fmap noComments ls))
   )
     <|> ( do
             ls <- inLexerMode (LexerMode in_field_braces) (option [] (fmap (\l -> [l]) fieldContent))
-            return (Field (noComments name) (fmap noComments ls))
+            return (Field name (fmap noComments ls))
         )
 
 -- | Parse cabal style 'B8.ByteString' into list of 'Field's, i.e. the cabal AST.
