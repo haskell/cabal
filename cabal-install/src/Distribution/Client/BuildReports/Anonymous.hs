@@ -40,6 +40,7 @@ import Distribution.Client.Version (cabalInstallVersion)
 import Distribution.Compiler (CompilerId (..))
 import Distribution.FieldGrammar
 import Distribution.Fields
+import Distribution.Fields.Field
 import Distribution.Package (PackageIdentifier (..), mkPackageName)
 import Distribution.PackageDescription (FlagAssignment)
 import Distribution.Parsec
@@ -146,8 +147,9 @@ parseBuildReport s = case snd $ runParseResult $ parseFields s of
 parseFields :: BS.ByteString -> ParseResult src BuildReport
 parseFields input = do
   fields <- either (parseFatalFailure zeroPos . show) pure $ readFields input
-  case partitionFields fields of
-    (fields', []) -> parseFieldGrammar CabalSpecV2_4 fields' fieldDescrs
+  let fields' = map (fmap unComments) fields
+  case partitionFields fields' of
+    (fields'', []) -> parseFieldGrammar CabalSpecV2_4 fields'' fieldDescrs
     _otherwise -> parseFatalFailure zeroPos "found sections in BuildReport"
 
 parseBuildReportList :: BS.ByteString -> [BuildReport]
