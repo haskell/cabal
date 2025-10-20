@@ -422,8 +422,8 @@ lineNo (Section n _ _ _) = n
 readFields :: BS.ByteString -> ParseResult [Field]
 readFields input = case Fields.readFields' input of
   Right (fs, ws) ->
-    let fs' =  map (fmap Fields.unComments) fs
-    in  ParseOk
+    let fs' = map (fmap Fields.unComments) fs
+     in ParseOk
           [PWarning msg | Fields.PWarning _ _ msg <- Fields.toPWarnings ws]
           (legacyFields fs')
   Left perr ->
