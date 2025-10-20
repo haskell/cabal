@@ -18,6 +18,12 @@ module Distribution.Fields.Field
   , SectionArg (..)
   , sectionArgAnn
 
+    -- * Comment
+  , Comment (..)
+  , WithComments
+  , justComments
+  , unComments
+
     -- * Name
   , FieldName
   , Name (..)
@@ -45,11 +51,21 @@ import qualified Data.Foldable1 as F1
 -- Cabal file
 -------------------------------------------------------------------------------
 
+data Comment ann = Comment !ByteString !ann
+  deriving (Show, Generic)
+
+type WithComments ann = ([Comment ann], ann)
+
+unComments :: WithComments ann -> ann
+unComments = snd
+
+justComments :: WithComments ann -> [Comment ann]
+justComments = fst
+
 -- | A Cabal-like file consists of a series of fields (@foo: bar@) and sections (@library ...@).
 data Field ann
   = Field !(Name ann) [FieldLine ann]
   | Section !(Name ann) [SectionArg ann] [Field ann]
-  | Comment !ByteString ann
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
 -- | @since 3.12.0.0
@@ -59,7 +75,6 @@ deriving instance Ord ann => Ord (Field ann)
 fieldName :: Field ann -> Name ann
 fieldName (Field n _) = n
 fieldName (Section n _ _) = n
-fieldName (Comment{}) = error "comment doesn't have a name"
 
 fieldAnn :: Field ann -> ann
 fieldAnn = nameAnn . fieldName
@@ -70,7 +85,6 @@ fieldAnn = nameAnn . fieldName
 fieldUniverse :: Field ann -> [Field ann]
 fieldUniverse f@(Section _ _ fs) = f : concatMap fieldUniverse fs
 fieldUniverse f@(Field _ _) = [f]
-fieldUniverse f@(Comment{}) = [f]
 
 -- | A line of text representing the value of a field from a Cabal file.
 -- A field may contain multiple lines.
@@ -173,7 +187,6 @@ instance F1.Foldable1 Field where
     F1.fold1 (F1.foldMap1 f x :| map (F1.foldMap1 f) ys)
   foldMap1 f (Section x ys zs) =
     F1.fold1 (F1.foldMap1 f x :| map (F1.foldMap1 f) ys ++ map (F1.foldMap1 f) zs)
-  foldMap1 f (Comment _ ann) = f ann
 
 -- | @since 3.12.0.0
 instance F1.Foldable1 FieldLine where

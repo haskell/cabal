@@ -4,7 +4,7 @@ module Distribution.Fields.ConfVar (parseConditionConfVar, parseConditionConfVar
 
 import Distribution.Compat.CharParsing (char, integral)
 import Distribution.Compat.Prelude
-import Distribution.Fields.Field (Field (..), SectionArg (..), sectionArgAnn)
+import Distribution.Fields.Field (Field (..), SectionArg (..), sectionArgAnn, unComments)
 import Distribution.Fields.ParseResult
 import Distribution.Fields.Parser (readFields)
 import Distribution.Parsec (Parsec (..), runParsecParser)
@@ -34,8 +34,11 @@ import qualified Text.Parsec.Error as P
 import qualified Text.Parsec.Pos as P
 
 parseConditionConfVarFromClause :: B8.ByteString -> Either P.ParseError (Condition ConfVar)
-parseConditionConfVarFromClause x =
-  readFields x >>= \r -> case r of
+parseConditionConfVarFromClause x = do
+  r <- readFields x
+  let r' :: [Field Position]
+      r' = map (fmap unComments) r
+  case r' of
     (Section _ xs _ : _) -> P.runParser (parser <* P.eof) () "<condition>" xs
     _ -> Left $ P.newErrorMessage (P.Message "No fields in clause") (P.initialPos "<condition>")
 

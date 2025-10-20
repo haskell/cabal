@@ -181,14 +181,10 @@ genericFromParsecFields
   -> f [PrettyField ann]
 genericFromParsecFields f g = goMany
   where
-    goMany = traverse go . filter notComment
+    goMany = traverse go
 
     go (P.Field (P.Name ann name) fls) = PrettyField ann name <$> f name fls
     go (P.Section (P.Name ann name) secargs fs) = PrettySection ann name <$> g name secargs <*> goMany fs
-    go (P.Comment{}) = error "comment is filtered out"
-
-    notComment (P.Comment{}) = False
-    notComment _ = True
 
 -- | Used in 'fromParsecFields'.
 prettyFieldLines :: FieldName -> [P.FieldLine ann] -> PP.Doc

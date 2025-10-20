@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections #-}
 
 -----------------------------------------------------------------------------
 
@@ -33,6 +34,7 @@ module Distribution.Fields.Parser
   ) where
 {- FOURMOLU_ENABLE -}
 
+import qualified Data.Bifunctor as Bi
 import qualified Data.ByteString.Char8 as B8
 import Data.Functor.Identity
 import Distribution.Compat.Prelude
@@ -134,7 +136,7 @@ tokOpenBrace = getTokenWithPos $ \t -> case t of L pos OpenBrace -> Just pos; _ 
 tokCloseBrace = getToken $ \t -> case t of CloseBrace -> Just (); _ -> Nothing
 tokFieldLine = getTokenWithPos $ \t -> case t of L pos (TokFieldLine s) -> Just (FieldLine pos s); _ -> Nothing
 
-tokComment :: Parser (Field Position)
+tokComment :: Parser (Comment Position)
 tokComment = getTokenWithPos $ \t -> case t of L pos (TokComment c) -> Just (Comment c pos); _ -> Nothing
 
 colon, openBrace, closeBrace :: Parser ()
@@ -234,30 +236,42 @@ inLexerMode (LexerMode mode) p =
 
 -- Top level of a file using cabal syntax
 --
-cabalStyleFile :: Parser [Field Position]
+cabalStyleFile :: Parser [Field (WithComments Position)]
 cabalStyleFile = do
   es <- elements zeroIndentLevel
   eof
   return es
 
--- | Collect one or more comments after a parser succeeds
-commentsAfter :: Parser a -> Parser (a, [Field Position])
-commentsAfter p = (,) <$> p <*> (many tokComment)
+-- | Collect in annotation one or more comments after a parser succeeds
+commentsAfter :: Functor f => Parser (f Position) -> Parser (f (WithComments Position))
+commentsAfter p = do
+  x <- p
+  postCmts <- many tokComment
+  pure $ fmap (postCmts,) x
+
+noComments :: Functor f => f ann -> f (WithComments ann)
+noComments = fmap ([],)
+
+mapCommentsOfHead
+  :: Functor f
+  => ([Comment ann] -> [Comment ann])
+  -> [f (WithComments ann)]
+  -> [f (WithComments ann)]
+mapCommentsOfHead f xs = case xs of
+-- FIXME(leana8959): this would map this everywhere, bad!
+  [] -> []
+  (x : xs') -> fmap (Bi.first f) x : xs'
 
 -- Elements that live at the top level or inside a section, i.e. fields
 -- and sections content
 --
 -- elements ::= comment* (element comment*)*
-elements :: IndentLevel -> Parser [Field Position]
+elements :: IndentLevel -> Parser [Field (WithComments Position)]
 elements ilevel = do
   preCmts <- many tokComment
-  (fs, postCmtsGroups) <- unzip <$> many (commentsAfter $ element ilevel)
-  pure $
-    mconcat
-      [ preCmts
-      , mconcat fs
-      , mconcat postCmtsGroups
-      ]
+  fs <- many (element ilevel)
+  -- If there's no field, we drop the comments
+  pure $ mapCommentsOfHead (preCmts ++) fs
 
 -- An individual element, ie a field or a section. These can either use
 -- layout style or braces style. For layout style then it must start on
@@ -265,7 +279,7 @@ elements ilevel = do
 --
 -- element ::= '\\n' name elementInLayoutContext
 --           |      name elementInNonLayoutContext
-element :: IndentLevel -> Parser [Field Position]
+element :: IndentLevel -> Parser (Field (WithComments Position))
 element ilevel =
   ( do
       ilevel' <- indentOfAtLeast ilevel
@@ -274,7 +288,7 @@ element ilevel =
   )
     <|> ( do
             name <- fieldSecName
-            (\f -> [f]) <$> elementInNonLayoutContext name
+            elementInNonLayoutContext name
         )
 
 -- An element (field or section) that is valid in a layout context.
@@ -283,13 +297,13 @@ element ilevel =
 --
 -- elementInLayoutContext ::= ':'  fieldLayoutOrBraces
 --                          | arg* sectionLayoutOrBraces
-elementInLayoutContext :: IndentLevel -> Name Position -> Parser [Field Position]
+elementInLayoutContext :: IndentLevel -> Name Position -> Parser (Field (WithComments Position))
 elementInLayoutContext ilevel name =
   (do colon; fieldLayoutOrBraces ilevel name)
     <|> ( do
             args <- many sectionArg
             elems <- sectionLayoutOrBraces ilevel
-            return [Section name args elems]
+            return (Section (noComments name) (fmap noComments args) elems)
         )
 
 -- An element (field or section) that is valid in a non-layout context.
@@ -298,7 +312,7 @@ elementInLayoutContext ilevel name =
 --
 -- elementInNonLayoutContext ::= ':' FieldInlineOrBraces
 --                             | arg* '\\n'? '{' elements '\\n'? '}'
-elementInNonLayoutContext :: Name Position -> Parser (Field Position)
+elementInNonLayoutContext :: Name Position -> Parser (Field (WithComments Position))
 elementInNonLayoutContext name =
   (do colon; fieldInlineOrBraces name)
     <|> ( do
@@ -307,42 +321,42 @@ elementInNonLayoutContext name =
             elems <- elements zeroIndentLevel
             optional tokIndent
             closeBrace
-            return (Section name args elems)
+            return (Section (noComments name) (fmap noComments args) elems)
         )
 
 -- The body of a field, using either layout style or braces style.
 --
 -- fieldLayoutOrBraces   ::= '\\n'? '{' comment* (content comment*)* '}'
 --                         | comment* line? comment* ('\\n' line comment*)*
-fieldLayoutOrBraces :: IndentLevel -> Name Position -> Parser [Field Position]
+fieldLayoutOrBraces :: IndentLevel -> Name Position -> Parser (Field (WithComments Position))
 fieldLayoutOrBraces ilevel name = braces <|> fieldLayout
   where
+    braces :: Parser (Field (WithComments Position))
     braces = do
       openBrace
       preCmts <- many tokComment
-      (ls, postCmtsGroups) <- unzip <$> inLexerMode (LexerMode in_field_braces) (many $ commentsAfter fieldContent)
+      ls <- inLexerMode (LexerMode in_field_braces) (many $ commentsAfter fieldContent)
       closeBrace
-      return $ preCmts <> [Field name ls] <> mconcat postCmtsGroups
+      return $ case ls of
+        [] -> Field (noComments name) []
+        (l : ls') -> Field (noComments name) (mapCommentsOfHead (preCmts ++) $ l : ls')
+
+    fieldLayout :: Parser (Field (WithComments Position))
     fieldLayout = inLexerMode (LexerMode in_field_layout) $ do
-      firstPreCmts <- many tokComment
-      l <- optionMaybe fieldContent
-      firstPostCmts <- many tokComment
-      (ls, postCmtsGroups) <- unzip <$> many (do _ <- indentOfAtLeast ilevel; commentsAfter fieldContent)
-      return $
-        mconcat
-          [ firstPreCmts
-          , case l of
-              Nothing -> [Field name ls]
-              Just l' -> [Field name (l' : ls)]
-          , firstPostCmts
-          , mconcat postCmtsGroups
-          ]
+      preCmts <- many tokComment
+      l <- optionMaybe (commentsAfter fieldContent)
+      ls <- many (do _ <- indentOfAtLeast ilevel; commentsAfter fieldContent)
+      return
+        ( case l of
+            Nothing -> (Field (noComments name) (mapCommentsOfHead (preCmts ++) ls))
+            Just l' -> (Field (noComments name) (mapCommentsOfHead (preCmts ++) $ l' : ls))
+        )
 
 -- The body of a section, using either layout style or braces style.
 --
 -- sectionLayoutOrBraces ::= '\\n'? '{' elements \\n? '}'
 --                         | elements
-sectionLayoutOrBraces :: IndentLevel -> Parser [Field Position]
+sectionLayoutOrBraces :: IndentLevel -> Parser [Field (WithComments Position)]
 sectionLayoutOrBraces ilevel =
   ( do
       openBrace
@@ -357,17 +371,17 @@ sectionLayoutOrBraces ilevel =
 --
 -- fieldInlineOrBraces   ::= '\\n'? '{' content '}'
 --                         | content
-fieldInlineOrBraces :: Name Position -> Parser (Field Position)
+fieldInlineOrBraces :: Name Position -> Parser (Field (WithComments Position))
 fieldInlineOrBraces name =
   ( do
       openBrace
       ls <- inLexerMode (LexerMode in_field_braces) (many fieldContent)
       closeBrace
-      return (Field name ls)
+      return (Field (noComments name) (fmap noComments ls))
   )
     <|> ( do
             ls <- inLexerMode (LexerMode in_field_braces) (option [] (fmap (\l -> [l]) fieldContent))
-            return (Field name ls)
+            return (Field (noComments name) (fmap noComments ls))
         )
 
 -- | Parse cabal style 'B8.ByteString' into list of 'Field's, i.e. the cabal AST.
@@ -396,11 +410,11 @@ fieldInlineOrBraces name =
 --
 -- >>> readFields' "\xc2\xa0 foo: bar"
 -- Right ([Field (Name (Position 1 3) "foo") [FieldLine (Position 1 8) "bar"]],[LexWarning LexWarningNBSP (Position 1 1)])
-readFields :: B8.ByteString -> Either ParseError [Field Position]
+readFields :: B8.ByteString -> Either ParseError [Field (WithComments Position)]
 readFields s = fmap fst (readFields' s)
 
 -- | Like 'readFields' but also return lexer warnings.
-readFields' :: B8.ByteString -> Either ParseError ([Field Position], [LexWarning])
+readFields' :: B8.ByteString -> Either ParseError ([Field (WithComments Position)], [LexWarning])
 readFields' s = do
   parse parser "the input" lexSt
   where
@@ -419,18 +433,16 @@ readFields' s = do
 --
 -- To catch during parsing we would need to parse first field/section of a section
 -- and then parse the following ones (softly) requiring the exactly the same indentation.
-checkIndentation :: [Field Position] -> [LexWarning] -> [LexWarning]
+checkIndentation :: [Field (WithComments Position)] -> [LexWarning] -> [LexWarning]
 checkIndentation [] = id
-checkIndentation (Field name _ : fs') = checkIndentation' (nameAnn name) fs'
-checkIndentation (Section name _ fs : fs') = checkIndentation fs . checkIndentation' (nameAnn name) fs'
-checkIndentation (Comment{} : fs') = checkIndentation fs'
+checkIndentation (Field name _ : fs') = checkIndentation' (unComments $ nameAnn name) fs'
+checkIndentation (Section name _ fs : fs') = checkIndentation fs . checkIndentation' (unComments $ nameAnn name) fs'
 
 -- | We compare adjacent fields to reduce the amount of reported indentation warnings.
-checkIndentation' :: Position -> [Field Position] -> [LexWarning] -> [LexWarning]
+checkIndentation' :: Position -> [Field (WithComments Position)] -> [LexWarning] -> [LexWarning]
 checkIndentation' _ [] = id
-checkIndentation' pos (Field name _ : fs') = checkIndentation'' pos (nameAnn name) . checkIndentation' (nameAnn name) fs'
-checkIndentation' pos (Section name _ fs : fs') = checkIndentation'' pos (nameAnn name) . checkIndentation fs . checkIndentation' (nameAnn name) fs'
-checkIndentation' _ (Comment{} : _) = id
+checkIndentation' pos (Field name _ : fs') = checkIndentation'' pos (unComments $ nameAnn name) . checkIndentation' (unComments $ nameAnn name) fs'
+checkIndentation' pos (Section name _ fs : fs') = checkIndentation'' pos (unComments $ nameAnn name) . checkIndentation fs . checkIndentation' (unComments $ nameAnn name) fs'
 
 -- | Check that positions' columns are the same.
 checkIndentation'' :: Position -> Position -> [LexWarning] -> [LexWarning]

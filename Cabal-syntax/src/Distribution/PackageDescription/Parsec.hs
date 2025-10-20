@@ -41,7 +41,7 @@ import Distribution.Compat.Lens
 import Distribution.FieldGrammar
 import Distribution.FieldGrammar.Parsec (NamelessField (..))
 import Distribution.Fields.ConfVar (parseConditionConfVar)
-import Distribution.Fields.Field (FieldName, getName, sectionArgAnn)
+import Distribution.Fields.Field (Comment (..), FieldName, WithComments, getName, sectionArgAnn, unComments)
 import Distribution.Fields.LexerMonad (LexWarning, toPWarnings)
 import Distribution.Fields.ParseResult
 import Distribution.Fields.Parser
@@ -152,14 +152,16 @@ parseGenericPackageDescription'
   :: Maybe CabalSpecVersion
   -> [LexWarning]
   -> Maybe Int
-  -> [Field Position]
+  -> [Field (WithComments Position)]
   -> ParseResult src GenericPackageDescription
 parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
   parseWarnings (toPWarnings lexWarnings)
   for_ utf8WarnPos $ \pos ->
     parseWarning zeroPos PWTUTF $ "UTF8 encoding problem at byte offset " ++ show pos
 
-  let (!comments, fs') = extractComments fs
+  let (comments, fs') = extractComments fs
+      !comments' = Map.fromList . map (\(Comment cmt pos) -> (pos, cmt)) $ comments
+
   let (syntax, fs'') = sectionizeFields fs'
   let (fields, sectionFields) = takeFields fs''
 
@@ -205,7 +207,7 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
   -- Sections
   let gpd =
         emptyGenericPackageDescription
-          { exactComments = comments
+          { exactComments = comments'
           }
           & L.packageDescription .~ pd
   gpd1 <- view stateGpd <$> execStateT (goSections specVer sectionFields) (SectionS gpd Map.empty)
@@ -254,7 +256,6 @@ goSections specVer = traverse_ process
           "Ignoring trailing fields after sections: " ++ show name
     process (Section name args secFields) =
       parseSection name args secFields
-    process (Comment _ _) = pure ()
 
     snoc x xs = xs ++ [x]
 
@@ -940,7 +941,8 @@ libFieldNames = fieldGrammarKnownFieldList (libraryFieldGrammar LMainLibName)
 parseHookedBuildInfo :: BS.ByteString -> ParseResult src HookedBuildInfo
 parseHookedBuildInfo bs = case readFields' bs of
   Right (fs, lexWarnings) -> do
-    parseHookedBuildInfo' lexWarnings fs
+    let fs' = map (fmap unComments) fs
+    parseHookedBuildInfo' lexWarnings fs'
   -- TODO: better marshalling of errors
   Left perr -> parseFatalFailure zeroPos (show perr)
 

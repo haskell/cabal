@@ -40,7 +40,6 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import qualified Data.Bifunctor as Bi
-import Data.ByteString (ByteString)
 import qualified Data.Map.Strict as Map
 
 import Distribution.FieldGrammar.Class
@@ -100,7 +99,6 @@ partitionFields = finalize . foldl' f (PS mempty mempty mempty)
           | otherwise = reverse s : ss
     f (PS fs s ss) (Section name sargs sfields) =
       PS fs (MkSection name sargs sfields : s) ss
-    f ps (Comment{}) = ps
 
 -- | Take all fields from the front.
 -- Returns a tuple containing the comments, nameless fields, and sections
@@ -112,14 +110,8 @@ takeFields = finalize . spanMaybe match
     match (Field (Name ann name) fs) = Just (name, [MkNamelessField ann fs])
     match _ = Nothing
 
--- | Collect comments into a map. The second field of the output will have no comment
-extractComments :: Ord ann => [Field ann] -> (Map.Map ann ByteString, [Field ann])
-extractComments = finalize . foldl' (flip go) (mempty, [])
-  where
-    finalize = Bi.second reverse
+extractComments :: (Foldable f, Functor f) => [f (WithComments ann)] -> ([Comment ann], [f ann])
+extractComments = Bi.first mconcat . unzip . map extractCommentsStep
 
-    go (Comment cmt ann) = Bi.first $ Map.insert ann cmt
-    go (Section name args fs) =
-      let (cs', fs') = extractComments fs
-       in Bi.bimap (cs' <>) (Section name args fs' :)
-    go field = Bi.second (field :)
+extractCommentsStep :: (Foldable f, Functor f) => f (WithComments ann) -> ([Comment ann], f ann)
+extractCommentsStep f = (foldMap justComments f, fmap unComments f)
