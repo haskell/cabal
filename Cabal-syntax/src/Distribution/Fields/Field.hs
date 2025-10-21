@@ -52,7 +52,7 @@ import qualified Data.Foldable1 as F1
 -------------------------------------------------------------------------------
 
 data Comment ann = Comment !ByteString !ann
-  deriving (Show, Generic)
+  deriving (Show, Eq, Generic)
 
 type WithComments ann = ([Comment ann], ann)
 
