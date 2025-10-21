@@ -118,19 +118,43 @@
         "/home/foo/.local/bin"],
   Section
     (Name
-      (_×_ [] (Position 28 1))
+      (_×_
+        [
+          Comment
+            "  -- keep-temp-files: False"
+            (Position 29 1),
+          Comment
+            "  -- hoogle: False"
+            (Position 30 1)]
+        (Position 28 1))
       "haddock")
     []
     [],
   Section
     (Name
-      (_×_ [] (Position 32 1))
+      (_×_
+        [
+          Comment
+            "  -- interactive: False"
+            (Position 33 1),
+          Comment
+            "  -- quiet: False"
+            (Position 34 1)]
+        (Position 32 1))
       "init")
     []
     [],
   Section
     (Name
-      (_×_ [] (Position 36 1))
+      (_×_
+        [
+          Comment
+            "  -- alex-location:"
+            (Position 37 1),
+          Comment
+            "  -- ar-location:"
+            (Position 38 1)]
+        (Position 36 1))
       "program-locations")
     []
     []]
