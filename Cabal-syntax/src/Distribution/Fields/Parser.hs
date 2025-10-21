@@ -240,7 +240,9 @@ cabalStyleFile :: Parser [Field (WithComments Position)]
 cabalStyleFile = do
   es <- elements zeroIndentLevel
   eof
-  return es
+  case es of
+    Left _ -> pure [] -- We discard the comments here, because it is not a valid cabal file
+    Right es' -> pure es'
 
 -- | Collect in annotation one or more comments after a parser succeeds
 -- Careful with the 'Functor' instance!
@@ -254,47 +256,61 @@ commentsAfter p = do
 noComments :: Functor f => f ann -> f (WithComments ann)
 noComments = fmap ([],)
 
-prependCommentsFields :: [Comment ann] -> [Field (WithComments ann)] -> [Field (WithComments ann)]
+-- | Returns 'Nothing' when there is no field to attach the comments to.
+prependCommentsFields :: [Comment ann] -> [Field (WithComments ann)] -> Maybe [Field (WithComments ann)]
 prependCommentsFields cs fs = case fs of
-  [] -> [] -- drop
-  (f : fs') -> prependCommentsField cs f : fs'
+  [] -> Nothing
+  (f : fs') -> Just $ prependCommentsField cs f : fs'
 
+-- | We attach the comments to the name (foremost child) of 'Field', this hence cannot fail.
 prependCommentsField :: [Comment ann] -> Field (WithComments ann) -> Field (WithComments ann)
 prependCommentsField cs f = case f of
   (Field name fls) -> Field (Bi.first (cs ++) <$> name) fls
   (Section name args fs) -> Section (Bi.first (cs ++) <$> name) args fs
 
-appendCommentsFields :: [Comment ann] -> [Field (WithComments ann)] -> [Field (WithComments ann)]
+-- | Returns 'Nothing' when there is no field to attach the comments to.
+appendCommentsFields :: [Comment ann] -> [Field (WithComments ann)] -> Maybe [Field (WithComments ann)]
 appendCommentsFields cs fs = case fs of
-  [] -> [] -- drop
-  [f] -> [appendCommentsField cs f]
-  (f : fs') -> f : appendCommentsFields cs fs'
+  [] -> Nothing
+  [f] -> Just [appendCommentsField cs f]
+  (f : fs') -> (f :) <$> appendCommentsFields cs fs'
 
 appendCommentsField :: [Comment ann] -> Field (WithComments ann) -> Field (WithComments ann)
 appendCommentsField cs f = case f of
-  (Field name []) -> Field (Bi.first (++ cs) <$> name) []
-  (Field name fls) -> Field name (appendCommentsFieldLines cs fls)
-  (Section name args []) -> Section (Bi.first (++ cs) <$> name) args []
-  (Section name args fs) -> Section name args (appendCommentsFields cs fs)
+  (Field name fls) -> case appendCommentsFieldLines cs fls of
+    Nothing -> Field (Bi.first (++ cs) <$> name) []
+    Just fls' -> Field name fls'
+  (Section name args fs) -> case appendCommentsFields cs fs of
+    Nothing -> Section (Bi.first (++ cs) <$> name) args []
+    Just fs' -> Section name args fs'
 
-appendCommentsFieldLines :: [Comment ann] -> [FieldLine (WithComments ann)] -> [FieldLine (WithComments ann)]
+-- | Returns 'Nothing' when there is no field to attach the comments to.
+appendCommentsFieldLines :: [Comment ann] -> [FieldLine (WithComments ann)] -> Maybe [FieldLine (WithComments ann)]
 appendCommentsFieldLines cs fls = case fls of
-  [] -> []
-  [fl] -> [Bi.first (++ cs) <$> fl]
-  (f : fls') -> f : appendCommentsFieldLines cs fls'
+  [] -> Nothing
+  [fl] -> Just [Bi.first (++ cs) <$> fl]
+  (f : fls') -> (f :) <$> appendCommentsFieldLines cs fls'
 
 -- Elements that live at the top level or inside a section, i.e. fields
--- and sections content
+-- and sections content.
+--
+-- This returns either many fields with their comments attached, or just the
+-- comments if there are no fields to attach them to. Only at the top level it
+-- is deemed correct to discard these comments, because in that case having no
+-- elements isn't a valid cabal file.
 --
 -- elements ::= comment* (element comment*)*
-elements :: IndentLevel -> Parser [Field (WithComments Position)]
+elements :: IndentLevel -> Parser (Either [Comment Position] [Field (WithComments Position)])
 elements ilevel = do
   preCmts <- many tokComment
   es <- many $ do
     e <- element ilevel
     postCmts <- many tokComment
     pure $ appendCommentsField postCmts e
-  pure $ prependCommentsFields preCmts es
+
+  case prependCommentsFields preCmts es of
+    Nothing -> pure $ Left preCmts
+    Just es' -> pure $ Right es'
 
 -- An individual element, ie a field or a section. These can either use
 -- layout style or braces style. For layout style then it must start on
@@ -326,7 +342,9 @@ elementInLayoutContext ilevel name =
     <|> ( do
             args <- many sectionArg
             elems <- sectionLayoutOrBraces ilevel
-            return (Section (noComments name) (fmap noComments args) elems)
+            case elems of
+              Left elementCmts -> return (Section (fmap (elementCmts,) name) (fmap noComments args) [])
+              Right elems' -> return (Section (noComments name) (fmap noComments args) elems')
         )
 
 -- An element (field or section) that is valid in a non-layout context.
@@ -344,7 +362,10 @@ elementInNonLayoutContext name =
             elems <- elements zeroIndentLevel
             optional tokIndent
             closeBrace
-            return (Section (noComments name) (fmap noComments args) elems)
+
+            case elems of
+              Left elementCmts -> return (Section (fmap (elementCmts,) name) (fmap noComments args) [])
+              Right elems' -> return (Section (noComments name) (fmap noComments args) elems')
         )
 
 -- The body of a field, using either layout style or braces style.
@@ -377,7 +398,7 @@ fieldLayoutOrBraces ilevel name = braces <|> fieldLayout
 --
 -- sectionLayoutOrBraces ::= '\\n'? '{' elements \\n? '}'
 --                         | elements
-sectionLayoutOrBraces :: IndentLevel -> Parser [Field (WithComments Position)]
+sectionLayoutOrBraces :: IndentLevel -> Parser (Either [Comment Position] [Field (WithComments Position)])
 sectionLayoutOrBraces ilevel =
   ( do
       openBrace
