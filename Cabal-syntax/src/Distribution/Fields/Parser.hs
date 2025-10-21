@@ -360,9 +360,7 @@ fieldLayoutOrBraces ilevel name = braces <|> fieldLayout
       preCmts <- many tokComment
       ls <- inLexerMode (LexerMode in_field_braces) (many $ commentsAfter fieldContent)
       closeBrace
-      return $ case ls of
-        [] -> Field (fmap (preCmts,) name) []
-        (l : ls') -> Field (fmap (preCmts,) name) (l : ls')
+      return $ Field (fmap (preCmts,) name) ls
 
     fieldLayout :: Parser (Field (WithComments Position))
     fieldLayout = inLexerMode (LexerMode in_field_layout) $ do

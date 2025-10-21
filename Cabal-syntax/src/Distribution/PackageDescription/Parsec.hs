@@ -160,7 +160,7 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
     parseWarning zeroPos PWTUTF $ "UTF8 encoding problem at byte offset " ++ show pos
 
   let (comments, fs') = extractComments fs
-      !comments' = Map.fromList . map (\(Comment cmt pos) -> (pos, cmt)) $ comments
+      !commentsMap = Map.fromList . map (\(Comment cmt pos) -> (pos, cmt)) $ comments
 
   let (syntax, fs'') = sectionizeFields fs'
   let (fields, sectionFields) = takeFields fs''
@@ -207,7 +207,7 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
   -- Sections
   let gpd =
         emptyGenericPackageDescription
-          { exactComments = comments'
+          { exactComments = commentsMap
           }
           & L.packageDescription .~ pd
   gpd1 <- view stateGpd <$> execStateT (goSections specVer sectionFields) (SectionS gpd Map.empty)
