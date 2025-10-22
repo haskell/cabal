@@ -79,6 +79,11 @@ instance Stream LexState' Identity LToken where
       L _ EOF -> return Nothing
       _ -> return (Just (tok, st'))
 
+-- | A strict either for parser performance
+data Either' a b
+  = Left' !a
+  | Right' !b
+
 -- | Get lexer warnings accumulated so far
 getLexerWarnings :: Parser [LexWarning]
 getLexerWarnings = do
@@ -241,8 +246,8 @@ cabalStyleFile = do
   es <- elements zeroIndentLevel
   eof
   case es of
-    Left _ -> pure [] -- We discard the comments here, because it is not a valid cabal file
-    Right es' -> pure es'
+    Left' _ -> pure [] -- We discard the comments here, because it is not a valid cabal file
+    Right' es' -> pure es'
 
 -- | Collect in annotation one or more comments after a parser succeeds
 -- Careful with the 'Functor' instance!
@@ -300,7 +305,7 @@ appendCommentsFieldLines cs fls = case fls of
 -- elements isn't a valid cabal file.
 --
 -- elements ::= comment* (element comment*)*
-elements :: IndentLevel -> Parser (Either [Comment Position] [Field (WithComments Position)])
+elements :: IndentLevel -> Parser (Either' [Comment Position] [Field (WithComments Position)])
 elements ilevel = do
   preCmts <- many tokComment
   es <- many $ do
@@ -309,8 +314,8 @@ elements ilevel = do
     pure $ appendCommentsField postCmts e
 
   case prependCommentsFields preCmts es of
-    Nothing -> pure $ Left preCmts
-    Just es' -> pure $ Right es'
+    Nothing -> pure $ Left' preCmts
+    Just es' -> pure $ Right' es'
 
 -- An individual element, ie a field or a section. These can either use
 -- layout style or braces style. For layout style then it must start on
@@ -343,8 +348,8 @@ elementInLayoutContext ilevel name =
             args <- many sectionArg
             elems <- sectionLayoutOrBraces ilevel
             case elems of
-              Left elementCmts -> return (Section (fmap (elementCmts,) name) (fmap noComments args) [])
-              Right elems' -> return (Section (noComments name) (fmap noComments args) elems')
+              Left' elementCmts -> return (Section (fmap (elementCmts,) name) (fmap noComments args) [])
+              Right' elems' -> return (Section (noComments name) (fmap noComments args) elems')
         )
 
 -- An element (field or section) that is valid in a non-layout context.
@@ -364,8 +369,8 @@ elementInNonLayoutContext name =
             closeBrace
 
             case elems of
-              Left elementCmts -> return (Section (fmap (elementCmts,) name) (fmap noComments args) [])
-              Right elems' -> return (Section (noComments name) (fmap noComments args) elems')
+              Left' elementCmts -> return (Section (fmap (elementCmts,) name) (fmap noComments args) [])
+              Right' elems' -> return (Section (noComments name) (fmap noComments args) elems')
         )
 
 -- The body of a field, using either layout style or braces style.
@@ -398,7 +403,7 @@ fieldLayoutOrBraces ilevel name = braces <|> fieldLayout
 --
 -- sectionLayoutOrBraces ::= '\\n'? '{' elements \\n? '}'
 --                         | elements
-sectionLayoutOrBraces :: IndentLevel -> Parser (Either [Comment Position] [Field (WithComments Position)])
+sectionLayoutOrBraces :: IndentLevel -> Parser (Either' [Comment Position] [Field (WithComments Position)])
 sectionLayoutOrBraces ilevel =
   ( do
       openBrace
