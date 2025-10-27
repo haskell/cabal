@@ -25,7 +25,7 @@ import Distribution.Client.Config
   , defaultStoreDir
   , getConfigFilePath
   )
-import Distribution.Client.DistDirLayout (CabalDirLayout (..), distProjectRootDirectory)
+import Distribution.Client.DistDirLayout (CabalDirLayout (..), StoreDirLayout (..), distProjectRootDirectory)
 import Distribution.Client.Errors
 import Distribution.Client.GlobalFlags
 import Distribution.Client.NixStyleOptions
@@ -244,10 +244,17 @@ pathAction flags@NixStyleFlags{extraFlags = pathFlags'} cliTargetStrings globalF
     if not $ fromFlagOrDefault False (pathCompiler pathFlags)
       then pure Nothing
       else do
-        (compiler, _, progDb) <- runRebuild (distProjectRootDirectory . distDirLayout $ baseCtx) $ configureCompiler verbosity (distDirLayout baseCtx) (projectConfig baseCtx)
+        (compiler, _, progDb) <-
+          runRebuild (distProjectRootDirectory . distDirLayout $ baseCtx) $
+            configureCompiler verbosity (distDirLayout baseCtx) (projectConfig baseCtx)
         compilerProg <- requireCompilerProg verbosity compiler
         (configuredCompilerProg, _) <- requireProgram verbosity compilerProg progDb
-        pure $ Just $ mkCompilerInfo configuredCompilerProg compiler
+
+        let compilerInfo' =
+              mkCompilerInfo configuredCompilerProg compiler $
+                cabalStoreDirLayout (cabalDirLayout baseCtx)
+
+        pure $ Just compilerInfo'
 
   paths <- for (fromFlagOrDefault [] $ pathDirectories pathFlags) $ \p -> do
     t <- getPathLocation verbosity baseCtx p
@@ -318,15 +325,17 @@ data PathCompilerInfo = PathCompilerInfo
   { pathCompilerInfoFlavour :: CompilerFlavor
   , pathCompilerInfoId :: CompilerId
   , pathCompilerInfoPath :: FilePath
+  , pathCompilerInfoProjectUnitId :: FilePath
   }
   deriving (Show, Eq, Ord)
 
-mkCompilerInfo :: ConfiguredProgram -> Compiler -> PathCompilerInfo
-mkCompilerInfo compilerProgram compiler =
+mkCompilerInfo :: ConfiguredProgram -> Compiler -> StoreDirLayout -> PathCompilerInfo
+mkCompilerInfo compilerProgram compiler storeLayout =
   PathCompilerInfo
     { pathCompilerInfoFlavour = compilerFlavor compiler
     , pathCompilerInfoId = compilerId compiler
     , pathCompilerInfoPath = programPath compilerProgram
+    , pathCompilerInfoProjectUnitId = storeDirectory storeLayout compiler
     }
 
 -- ----------------------------------------------------------------------------
@@ -372,6 +381,7 @@ compilerInfoToJson pci =
           [ "flavour" .= jdisplay (pathCompilerInfoFlavour pci)
           , "id" .= jdisplay (pathCompilerInfoId pci)
           , "path" .= Json.String (pathCompilerInfoPath pci)
+          , "project-unit-id" .= Json.String (pathCompilerInfoProjectUnitId pci)
           ]
     ]
 
@@ -401,4 +411,5 @@ compilerInfoToKeyValue pci =
   [ ("compiler-flavour", prettyShow $ pathCompilerInfoFlavour pci)
   , ("compiler-id", prettyShow $ pathCompilerInfoId pci)
   , ("compiler-path", pathCompilerInfoPath pci)
+  , ("compiler-project-unit-id", pathCompilerInfoProjectUnitId pci)
   ]
