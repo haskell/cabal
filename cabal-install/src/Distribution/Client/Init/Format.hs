@@ -189,7 +189,14 @@ insertCommonStanzas opts =
           ["Common compiler warnings and optimisations"]
           False
           opts
-      , field
+      ]
+
+insertRtsOptionsStanza :: WriteOpts -> [PrettyField FieldAnnotation]
+insertRtsOptionsStanza opts =
+  case specHasCommonStanzas $ _optCabalSpec opts of
+    NoCommonStanzas -> [PrettyEmpty]
+    _ ->
+      [ field
           "import"
           (hsep . map text)
           ["rts-options"]
@@ -197,7 +204,6 @@ insertCommonStanzas opts =
           False
           opts
       ]
-
 mkLibStanza :: WriteOpts -> LibTarget -> PrettyField FieldAnnotation
 mkLibStanza opts (LibTarget srcDirs lang expMods otherMods exts deps tools) =
   PrettySection
@@ -264,6 +270,7 @@ mkExeStanza opts (ExeTarget exeMain appDirs lang otherMods exts deps tools) =
     (toUTF8BS "executable")
     [exeName]
     ( insertCommonStanzas opts
+        ++ insertRtsOptionsStanza opts
         ++ [ field
               "main-is"
               unsafeFromHs
@@ -325,6 +332,7 @@ mkTestStanza opts (TestTarget testMain dirs lang otherMods exts deps tools) =
     (toUTF8BS "test-suite")
     [suiteName]
     ( insertCommonStanzas opts
+        ++ insertRtsOptionsStanza opts
         ++ [ case specHasCommonStanzas $ _optCabalSpec opts of
               NoCommonStanzas -> PrettyEmpty
               _ ->
