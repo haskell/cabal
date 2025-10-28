@@ -21,6 +21,7 @@ import qualified Distribution.Types.BuildInfo.Lens as L
 
 data Library = Library
   { libName :: LibraryName
+  , libImports :: [String]
   , exposedModules :: [ModuleName]
   , reexportedModules :: [ModuleReexport]
   , signatures :: [ModuleName]
@@ -44,6 +45,7 @@ emptyLibrary :: Library
 emptyLibrary =
   Library
     { libName = LMainLibName
+    , libImports = mempty
     , exposedModules = mempty
     , reexportedModules = mempty
     , signatures = mempty
@@ -67,6 +69,7 @@ instance Semigroup Library where
   a <> b =
     Library
       { libName = combineLibraryName (libName a) (libName b)
+      , libImports = combine libImports
       , exposedModules = combine exposedModules
       , reexportedModules = combine reexportedModules
       , signatures = combine signatures

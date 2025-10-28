@@ -145,12 +145,13 @@ ppCondLibrary _ Nothing = mempty
 ppCondLibrary v (Just condTree) =
   pure $
     PrettySection () "library" [] $
-      ppCondTree2 v (libraryFieldGrammar LMainLibName) condTree
+      -- TODO(leana8959): change the grammar
+      ppCondTree2 v (libraryFieldGrammar LMainLibName []) condTree
 
 ppCondSubLibraries :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar [Dependency] Library)] -> [PrettyField ()]
 ppCondSubLibraries v libs =
   [ PrettySection () "library" [pretty n] $
-    ppCondTree2 v (libraryFieldGrammar $ LSubLibName n) condTree
+    ppCondTree2 v (libraryFieldGrammar (LSubLibName n) []) condTree
   | (n, condTree) <- libs
   ]
 

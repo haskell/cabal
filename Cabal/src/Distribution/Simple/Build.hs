@@ -814,6 +814,7 @@ testSuiteLibV09AsLibAndExe
       lib =
         Library
           { libName = LMainLibName
+          , libImports = []
           , exposedModules = [m]
           , reexportedModules = []
           , signatures = []

@@ -187,10 +187,13 @@ libraryFieldGrammar
      , c (MQuoted Language)
      )
   => LibraryName
+  -> [String]
+      -- ^ names of common stanza imports
   -> g Library Library
-libraryFieldGrammar n =
+libraryFieldGrammar n imports =
   Library n
-    <$> monoidalFieldAla "exposed-modules" formatExposedModules L.exposedModules
+    <$> pure imports
+    <*> monoidalFieldAla "exposed-modules" formatExposedModules L.exposedModules
     <*> monoidalFieldAla "reexported-modules" (alaList CommaVCat) L.reexportedModules
     <*> monoidalFieldAla "signatures" (alaList' VCat MQuoted) L.signatures
       ^^^ availableSince CabalSpecV2_0 []
@@ -205,8 +208,8 @@ libraryFieldGrammar n =
       LSubLibName _ ->
         optionalFieldDef "visibility" L.libVisibility LibraryVisibilityPrivate
           ^^^ availableSince CabalSpecV3_0 LibraryVisibilityPrivate
-{-# SPECIALIZE libraryFieldGrammar :: LibraryName -> ParsecFieldGrammar' Library #-}
-{-# SPECIALIZE libraryFieldGrammar :: LibraryName -> PrettyFieldGrammar' Library #-}
+{-# SPECIALIZE libraryFieldGrammar :: LibraryName -> [String] -> ParsecFieldGrammar' Library #-}
+{-# SPECIALIZE libraryFieldGrammar :: LibraryName -> [String] -> PrettyFieldGrammar' Library #-}
 
 -------------------------------------------------------------------------------
 -- Foreign library
@@ -897,7 +900,7 @@ _syntaxFieldNames =
           sort $
             mconcat
               [ fieldGrammarKnownFieldList packageDescriptionFieldGrammar
-              , fieldGrammarKnownFieldList $ libraryFieldGrammar LMainLibName
+              , fieldGrammarKnownFieldList $ libraryFieldGrammar LMainLibName []
               , fieldGrammarKnownFieldList $ executableFieldGrammar "exe"
               , fieldGrammarKnownFieldList $ foreignLibFieldGrammar "flib"
               , fieldGrammarKnownFieldList testSuiteFieldGrammar
