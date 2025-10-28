@@ -174,14 +174,14 @@ insertCommonStanzas :: WriteOpts -> [PrettyField FieldAnnotation]
 insertCommonStanzas opts =
   case specHasCommonStanzas $ _optCabalSpec opts of
     NoCommonStanzas -> [PrettyEmpty]
-    _ -> 
+    _ ->
       [ field
           "import"
           (hsep . map text)
           ["extensions"]
           ["Common language extensions"]
           False
-          opts  
+          opts
       , field
           "import"
           (hsep . map text)
@@ -204,57 +204,58 @@ mkLibStanza opts (LibTarget srcDirs lang expMods otherMods exts deps tools) =
     annNoComments
     (toUTF8BS "library")
     []
-    (insertCommonStanzas opts ++ [
-       field
-          "exposed-modules"
-          formatExposedModules
-          (toList expMods)
-          ["Modules exported by the library."]
-          True
-          opts
-      , field
-          "other-modules"
-          formatOtherModules
-          otherMods
-          ["Modules included in this library but not exported."]
-          True
-          opts
-      , field
-          "other-extensions"
-          formatOtherExtensions
-          exts
-          ["LANGUAGE extensions used by modules in this package."]
-          True
-          opts
-      , field
-          "build-depends"
-          formatDependencyList
-          deps
-          ["Other library packages from which modules are imported."]
-          True
-          opts
-      , field
-          "hs-source-dirs"
-          formatHsSourceDirs
-          (makeSymbolicPath <$> srcDirs)
-          ["Directories containing source files."]
-          True
-          opts
-      , field
-          (buildToolTag opts)
-          formatDependencyList
-          tools
-          ["Extra tools (e.g. alex, hsc2hs, ...) needed to build the source."]
-          False
-          opts
-      , field
-          "default-language"
-          id
-          lang
-          ["Base language which the package is written in."]
-          True
-          opts
-      ])
+    ( insertCommonStanzas opts
+        ++ [ field
+              "exposed-modules"
+              formatExposedModules
+              (toList expMods)
+              ["Modules exported by the library."]
+              True
+              opts
+           , field
+              "other-modules"
+              formatOtherModules
+              otherMods
+              ["Modules included in this library but not exported."]
+              True
+              opts
+           , field
+              "other-extensions"
+              formatOtherExtensions
+              exts
+              ["LANGUAGE extensions used by modules in this package."]
+              True
+              opts
+           , field
+              "build-depends"
+              formatDependencyList
+              deps
+              ["Other library packages from which modules are imported."]
+              True
+              opts
+           , field
+              "hs-source-dirs"
+              formatHsSourceDirs
+              (makeSymbolicPath <$> srcDirs)
+              ["Directories containing source files."]
+              True
+              opts
+           , field
+              (buildToolTag opts)
+              formatDependencyList
+              tools
+              ["Extra tools (e.g. alex, hsc2hs, ...) needed to build the source."]
+              False
+              opts
+           , field
+              "default-language"
+              id
+              lang
+              ["Base language which the package is written in."]
+              True
+              opts
+           ]
+    )
 
 mkExeStanza :: WriteOpts -> ExeTarget -> PrettyField FieldAnnotation
 mkExeStanza opts (ExeTarget exeMain appDirs lang otherMods exts deps tools) =
@@ -262,57 +263,58 @@ mkExeStanza opts (ExeTarget exeMain appDirs lang otherMods exts deps tools) =
     annNoComments
     (toUTF8BS "executable")
     [exeName]
-    (insertCommonStanzas opts ++ [
-     field
-        "main-is"
-        unsafeFromHs
-        exeMain
-        [".hs or .lhs file containing the Main module."]
-        True
-        opts
-    , field
-        "other-modules"
-        formatOtherModules
-        otherMods
-        ["Modules included in this executable, other than Main."]
-        True
-        opts
-    , field
-        "other-extensions"
-        formatOtherExtensions
-        exts
-        ["LANGUAGE extensions used by modules in this package."]
-        True
-        opts
-    , field
-        "build-depends"
-        formatDependencyList
-        deps
-        ["Other library packages from which modules are imported."]
-        True
-        opts
-    , field
-        "hs-source-dirs"
-        formatHsSourceDirs
-        (makeSymbolicPath <$> appDirs)
-        ["Directories containing source files."]
-        True
-        opts
-    , field
-        (buildToolTag opts)
-        formatDependencyList
-        tools
-        ["Extra tools (e.g. alex, hsc2hs, ...) needed to build the source."]
-        False
-        opts
-    , field
-        "default-language"
-        id
-        lang
-        ["Base language which the package is written in."]
-        True
-        opts
-    ])
+    ( insertCommonStanzas opts
+        ++ [ field
+              "main-is"
+              unsafeFromHs
+              exeMain
+              [".hs or .lhs file containing the Main module."]
+              True
+              opts
+           , field
+              "other-modules"
+              formatOtherModules
+              otherMods
+              ["Modules included in this executable, other than Main."]
+              True
+              opts
+           , field
+              "other-extensions"
+              formatOtherExtensions
+              exts
+              ["LANGUAGE extensions used by modules in this package."]
+              True
+              opts
+           , field
+              "build-depends"
+              formatDependencyList
+              deps
+              ["Other library packages from which modules are imported."]
+              True
+              opts
+           , field
+              "hs-source-dirs"
+              formatHsSourceDirs
+              (makeSymbolicPath <$> appDirs)
+              ["Directories containing source files."]
+              True
+              opts
+           , field
+              (buildToolTag opts)
+              formatDependencyList
+              tools
+              ["Extra tools (e.g. alex, hsc2hs, ...) needed to build the source."]
+              False
+              opts
+           , field
+              "default-language"
+              id
+              lang
+              ["Base language which the package is written in."]
+              True
+              opts
+           ]
+    )
   where
     exeName = pretty $ _optPkgName opts
 
@@ -322,73 +324,75 @@ mkTestStanza opts (TestTarget testMain dirs lang otherMods exts deps tools) =
     annNoComments
     (toUTF8BS "test-suite")
     [suiteName]
-    (insertCommonStanzas ++ [ case specHasCommonStanzas $ _optCabalSpec opts of
-        NoCommonStanzas -> PrettyEmpty
-        _ ->
-          field
-            "import"
-            (hsep . map text)
-            ["warnings"]
-            ["Import common warning flags."]
-            False
-            opts
-    , field
-        "default-language"
-        id
-        lang
-        ["Base language which the package is written in."]
-        True
-        opts
-    , field
-        "other-modules"
-        formatOtherModules
-        otherMods
-        ["Modules included in this executable, other than Main."]
-        True
-        opts
-    , field
-        "other-extensions"
-        formatOtherExtensions
-        exts
-        ["LANGUAGE extensions used by modules in this package."]
-        True
-        opts
-    , field
-        "type"
-        text
-        "exitcode-stdio-1.0"
-        ["The interface type and version of the test suite."]
-        True
-        opts
-    , field
-        "hs-source-dirs"
-        formatHsSourceDirs
-        (makeSymbolicPath <$> dirs)
-        ["Directories containing source files."]
-        True
-        opts
-    , field
-        "main-is"
-        unsafeFromHs
-        testMain
-        ["The entrypoint to the test suite."]
-        True
-        opts
-    , field
-        "build-depends"
-        formatDependencyList
-        deps
-        ["Test dependencies."]
-        True
-        opts
-    , field
-        (buildToolTag opts)
-        formatDependencyList
-        tools
-        ["Extra tools (e.g. alex, hsc2hs, ...) needed to build the source."]
-        False
-        opts
-    ]
+    ( insertCommonStanzas opts
+        ++ [ case specHasCommonStanzas $ _optCabalSpec opts of
+              NoCommonStanzas -> PrettyEmpty
+              _ ->
+                field
+                  "import"
+                  (hsep . map text)
+                  ["warnings"]
+                  ["Import common warning flags."]
+                  False
+                  opts
+           , field
+              "default-language"
+              id
+              lang
+              ["Base language which the package is written in."]
+              True
+              opts
+           , field
+              "other-modules"
+              formatOtherModules
+              otherMods
+              ["Modules included in this executable, other than Main."]
+              True
+              opts
+           , field
+              "other-extensions"
+              formatOtherExtensions
+              exts
+              ["LANGUAGE extensions used by modules in this package."]
+              True
+              opts
+           , field
+              "type"
+              text
+              "exitcode-stdio-1.0"
+              ["The interface type and version of the test suite."]
+              True
+              opts
+           , field
+              "hs-source-dirs"
+              formatHsSourceDirs
+              (makeSymbolicPath <$> dirs)
+              ["Directories containing source files."]
+              True
+              opts
+           , field
+              "main-is"
+              unsafeFromHs
+              testMain
+              ["The entrypoint to the test suite."]
+              True
+              opts
+           , field
+              "build-depends"
+              formatDependencyList
+              deps
+              ["Test dependencies."]
+              True
+              opts
+           , field
+              (buildToolTag opts)
+              formatDependencyList
+              tools
+              ["Extra tools (e.g. alex, hsc2hs, ...) needed to build the source."]
+              False
+              opts
+           ]
+    )
   where
     suiteName = text $ unPackageName (_optPkgName opts) ++ "-test"
 
