@@ -15,6 +15,9 @@ module Distribution.PackageDescription
       module Distribution.Types.PackageDescription
   , module Distribution.Types.GenericPackageDescription
 
+    -- * Working with Imports
+  , module Distribution.Types.Imports
+
     -- * Components
   , module Distribution.Types.ComponentName
 
@@ -29,11 +32,13 @@ module Distribution.PackageDescription
 
     -- ** TestSuite
   , module Distribution.Types.TestSuite
+  , module Distribution.Types.TestSuiteStanza
   , module Distribution.Types.TestType
   , module Distribution.Types.TestSuiteInterface
 
     -- ** Benchmark
   , module Distribution.Types.Benchmark
+  , module Distribution.Types.BenchmarkStanza
   , module Distribution.Types.BenchmarkType
   , module Distribution.Types.BenchmarkInterface
 
@@ -88,6 +93,7 @@ import Prelude ()
 
 import Distribution.Types.Benchmark
 import Distribution.Types.BenchmarkInterface
+import Distribution.Types.BenchmarkStanza
 import Distribution.Types.BenchmarkType
 import Distribution.Types.BuildInfo
 import Distribution.Types.BuildType
@@ -105,6 +111,7 @@ import Distribution.Types.ForeignLibOption
 import Distribution.Types.ForeignLibType
 import Distribution.Types.GenericPackageDescription
 import Distribution.Types.HookedBuildInfo
+import Distribution.Types.Imports
 import Distribution.Types.IncludeRenaming
 import Distribution.Types.LegacyExeDependency
 import Distribution.Types.Library
@@ -124,5 +131,6 @@ import Distribution.Types.SetupBuildInfo
 import Distribution.Types.SourceRepo
 import Distribution.Types.TestSuite
 import Distribution.Types.TestSuiteInterface
+import Distribution.Types.TestSuiteStanza
 import Distribution.Types.TestType
 import Distribution.Types.UnqualComponentName

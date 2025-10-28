@@ -1,8 +1,15 @@
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -freduction-depth=0 #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
-module Data.TreeDiff.Instances.Cabal () where
+module Data.TreeDiff.Instances.Cabal
+  ( UnmergedGPD(..)
+  , MergedGPD(..)
+  )
+  where
 
 import Data.TreeDiff
+import qualified Data.TreeDiff.OMap as OMap
 
 import Data.TreeDiff.Instances.CabalLanguage ()
 import Data.TreeDiff.Instances.CabalSPDX ()
@@ -56,10 +63,76 @@ instance ToExpr (SymbolicPathX allowAbs from to)
 
 instance ToExpr a => ToExpr (InstallDirs a)
 
+instance ToExpr a => ToExpr (WithImports a)
+
+newtype MergedGPD = MergedGPD { getMergedGPD :: GenericPackageDescription }
+newtype UnmergedGPD = UnmergedGPD { getUnmergedGPD :: GenericPackageDescription }
+
+-- Note: The pattern matching is to ensure this doesn't go unnoticed when new fields are added.
+instance ToExpr UnmergedGPD where
+  toExpr
+      ( getUnmergedGPD -> GenericPackageDescription'
+        { packageDescriptionInternal
+        , gpdScannedVersionInternal
+        , genPackageFlagsInternal
+        , gpdCommonStanzas
+        , condLibraryUnmerged
+        , condSubLibrariesUnmerged
+        , condForeignLibsUnmerged
+        , condExecutablesUnmerged
+        , condTestSuitesUnmerged
+        , condBenchmarksUnmerged
+        }
+      ) = Rec
+            "GenericPackageDescription (internal, unmerged)"
+            ( OMap.fromList
+                [ ("packageDescriptionInternal", toExpr packageDescriptionInternal)
+                , ("gpdScannedVersionInternal", toExpr gpdScannedVersionInternal)
+                , ("genPackageFlagsInternal", toExpr genPackageFlagsInternal)
+                , ("gpdCommonStanzas", toExpr gpdCommonStanzas)
+                , ("condLibraryUnmerged", toExpr condLibraryUnmerged)
+                , ("condSubLibrariesUnmerged", toExpr condSubLibrariesUnmerged)
+                , ("condForeignLibsUnmerged", toExpr condForeignLibsUnmerged)
+                , ("condExecutablesUnmerged", toExpr condExecutablesUnmerged)
+                , ("condTestSuitesUnmerged", toExpr condTestSuitesUnmerged)
+                , ("condBenchmarksUnmerged", toExpr condBenchmarksUnmerged)
+                ]
+            )
+
+
+instance ToExpr MergedGPD where
+  toExpr
+      ( getMergedGPD -> GenericPackageDescription
+        { packageDescription
+        , gpdScannedVersion
+        , genPackageFlags
+        , condLibrary
+        , condSubLibraries
+        , condForeignLibs
+        , condExecutables
+        , condTestSuites
+        , condBenchmarks
+        }
+      ) = Rec
+            "GenericPackageDescription (merged)"
+            ( OMap.fromList
+                [ ("packageDescription", toExpr packageDescription)
+                , ("gpdScannedVersion", toExpr gpdScannedVersion)
+                , ("genPackageFlags", toExpr genPackageFlags)
+                , ("condLibrary", toExpr condLibrary)
+                , ("condSubLibraries", toExpr condSubLibraries)
+                , ("condForeignLibs", toExpr condForeignLibs)
+                , ("condExecutables", toExpr condExecutables)
+                , ("condTestSuites", toExpr condTestSuites)
+                , ("condBenchmarks", toExpr condBenchmarks)
+                ]
+            )
+
 instance ToExpr AbiDependency
 instance ToExpr AbiHash
 instance ToExpr Arch
 instance ToExpr Benchmark
+instance ToExpr BenchmarkStanza
 instance ToExpr BenchmarkInterface
 instance ToExpr BenchmarkType
 instance ToExpr BuildInfo
@@ -80,7 +153,6 @@ instance ToExpr FlagName
 instance ToExpr ForeignLib
 instance ToExpr ForeignLibOption
 instance ToExpr ForeignLibType
-instance ToExpr GenericPackageDescription
 instance ToExpr HaddockTarget
 instance ToExpr IncludeRenaming
 instance ToExpr InstalledPackageInfo
@@ -117,6 +189,7 @@ instance ToExpr SetupBuildInfo
 instance ToExpr SourceRepo
 instance ToExpr TestShowDetails
 instance ToExpr TestSuite
+instance ToExpr TestSuiteStanza
 instance ToExpr TestSuiteInterface
 instance ToExpr TestType
 instance ToExpr UnitId

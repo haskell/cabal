@@ -1,0 +1,68 @@
+cabal-version:       2.2
+name:                supervisors
+version:             0.2.1.0
+stability:           Experimental
+synopsis:            Monitor groups of threads with non-hierarchical lifetimes.
+description:
+  The @supervisors@ package provides a useful abstraction for managing the
+  groups of Haskell threads, which may not have a strictly hierarchical
+  structure to their lifetimes.
+  .
+  Concretely, the library provides a `Supervisor` construct, which can be
+  used to safely spawn threads while guaranteeing that:
+  .
+  * When the supervisor is killed, all of the threads it supervises will be
+    killed.
+  * Child threads can terminate in any order, and memory usage will always
+    be proportional to the number of *live* supervised threads.
+  .
+  One way to think of it is that @supervisors@ is to @async@ as
+  @resourcet@ is to @bracket@.
+  .
+  Note that this package is EXPERIMENTAL; it needs more careful testing before
+  I can earnestly recommend relying on it.
+  .
+  See the README and module documentation for more information.
+homepage:            https://github.com/zenhack/haskell-supervisors
+bug-reports:         https://github.com/zenhack/haskell-supervisors/issues
+license:             MIT
+license-file:        LICENSE
+author:              Ian Denhardt
+maintainer:          ian@zenhack.net
+copyright:           2018 Ian Denhardt
+category:            Concurrency
+build-type:          Simple
+extra-source-files:
+    CHANGELOG.md
+  , README.md
+  , .gitignore
+
+common shared-opts
+  build-depends:
+      base >=4.11 && <5
+
+library
+  import: shared-opts
+  exposed-modules:     Supervisors
+  hs-source-dirs: src/
+  build-depends:
+      stm ^>=2.5
+    , containers >=0.5.9 && <0.7
+    , safe-exceptions ^>= 0.1.7
+    , async ^>=2.2.1
+  default-language:    Haskell2010
+
+test-suite tests
+  import: shared-opts
+  type: exitcode-stdio-1.0
+  main-is: Main.hs
+  hs-source-dirs: tests/
+  build-depends:
+      supervisors
+    , hspec >=2.6.0 && <2.8
+  default-language:    Haskell2010
+
+source-repository head
+  type:     git
+  branch:   master
+  location: https://github.com/zenhack/haskell-supervisors.git

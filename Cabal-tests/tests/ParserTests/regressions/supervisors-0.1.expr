@@ -1,43 +1,65 @@
 `GenericPackageDescription (merged)` {
   packageDescription =
   PackageDescription {
-    specVersion = CabalSpecV1_6,
+    specVersion = CabalSpecV2_2,
     package = PackageIdentifier {
       pkgName = PackageName
-        "wl-pprint-indef",
-      pkgVersion = mkVersion [1, 2]},
-    licenseRaw = Right BSD3,
+        "supervisors",
+      pkgVersion = mkVersion
+        [0, 2, 1, 0]},
+    licenseRaw = Left
+      (License
+        (ELicense
+          (ELicenseId MIT)
+          Nothing)),
     licenseFiles = [
       SymbolicPath "LICENSE"],
-    copyright = "",
-    maintainer =
-    "Noam Lewis <jones.noamle@gmail.com>",
-    author = "Daan Leijen",
-    stability = "",
+    copyright = "2018 Ian Denhardt",
+    maintainer = "ian@zenhack.net",
+    author = "Ian Denhardt",
+    stability = "Experimental",
     testedWith = [],
-    homepage = "",
+    homepage =
+    "https://github.com/zenhack/haskell-supervisors",
     pkgUrl = "",
-    bugReports = "",
+    bugReports =
+    "https://github.com/zenhack/haskell-supervisors/issues",
     sourceRepos = [
       SourceRepo {
         repoKind = RepoHead,
         repoType = Just
           (KnownRepoType Git),
         repoLocation = Just
-          "git@github.com:danidiaz/wl-pprint-indef.git",
+          "https://github.com/zenhack/haskell-supervisors.git",
         repoModule = Nothing,
-        repoBranch = Nothing,
+        repoBranch = Just "master",
         repoTag = Nothing,
         repoSubdir = Nothing}],
     synopsis =
-    "The Wadler/Leijen Pretty Printer",
+    "Monitor groups of threads with non-hierarchical lifetimes.",
     description =
     concat
       [
-        "This is a pretty printing library based on Wadler's paper \"A Prettier\n",
-        "Printer\".  See the haddocks for full info.  This version allows the\n",
-        "library user to declare overlapping instances of the 'Pretty' class."],
-    category = "Text",
+        "The @supervisors@ package provides a useful abstraction for managing the\n",
+        "groups of Haskell threads, which may not have a strictly hierarchical\n",
+        "structure to their lifetimes.\n",
+        "\n",
+        "Concretely, the library provides a `Supervisor` construct, which can be\n",
+        "used to safely spawn threads while guaranteeing that:\n",
+        "\n",
+        "* When the supervisor is killed, all of the threads it supervises will be\n",
+        "killed.\n",
+        "* Child threads can terminate in any order, and memory usage will always\n",
+        "be proportional to the number of *live* supervised threads.\n",
+        "\n",
+        "One way to think of it is that @supervisors@ is to @async@ as\n",
+        "@resourcet@ is to @bracket@.\n",
+        "\n",
+        "Note that this package is EXPERIMENTAL; it needs more careful testing before\n",
+        "I can earnestly recommend relying on it.\n",
+        "\n",
+        "See the README and module documentation for more information."],
+    category = "Concurrency",
     customFieldsPD = [],
     buildTypeRaw = Just Simple,
     setupBuildInfo = Nothing,
@@ -49,7 +71,10 @@
     benchmarks = [],
     dataFiles = [],
     dataDir = SymbolicPath ".",
-    extraSrcFiles = [],
+    extraSrcFiles = [
+      SymbolicPath "CHANGELOG.md",
+      SymbolicPath "README.md",
+      SymbolicPath ".gitignore"],
     extraTmpFiles = [],
     extraDocFiles = [],
     extraFiles = []},
@@ -60,8 +85,7 @@
       condTreeData = Library {
         libName = LMainLibName,
         exposedModules = [
-          ModuleName
-            "Text.PrettyPrint.Leijen"],
+          ModuleName "Supervisors"],
         reexportedModules = [],
         signatures = [],
         libExposed = True,
@@ -87,11 +111,13 @@
           cSources = [],
           cxxSources = [],
           jsSources = [],
-          hsSourceDirs = [],
+          hsSourceDirs = [
+            SymbolicPath "src/"],
           otherModules = [],
           virtualModules = [],
           autogenModules = [],
-          defaultLanguage = Nothing,
+          defaultLanguage = Just
+            Haskell2010,
           otherLanguages = [],
           defaultExtensions = [],
           otherExtensions = [],
@@ -124,39 +150,83 @@
           targetBuildDepends = [
             Dependency
               (PackageName "base")
-              (EarlierVersion (mkVersion [5]))
+              (IntersectVersionRanges
+                (OrLaterVersion
+                  (mkVersion [4, 11]))
+                (EarlierVersion
+                  (mkVersion [5])))
               mainLibSet,
             Dependency
-              (PackageName "str-sig")
-              (OrLaterVersion
-                (mkVersion [0, 1, 0, 0]))
+              (PackageName "stm")
+              (MajorBoundVersion
+                (mkVersion [2, 5]))
+              mainLibSet,
+            Dependency
+              (PackageName "containers")
+              (IntersectVersionRanges
+                (OrLaterVersion
+                  (mkVersion [0, 5, 9]))
+                (EarlierVersion
+                  (mkVersion [0, 7])))
+              mainLibSet,
+            Dependency
+              (PackageName "safe-exceptions")
+              (MajorBoundVersion
+                (mkVersion [0, 1, 7]))
+              mainLibSet,
+            Dependency
+              (PackageName "async")
+              (MajorBoundVersion
+                (mkVersion [2, 2, 1]))
               mainLibSet],
           mixins = []}},
       condTreeConstraints = [
         Dependency
           (PackageName "base")
-          (EarlierVersion (mkVersion [5]))
+          (IntersectVersionRanges
+            (OrLaterVersion
+              (mkVersion [4, 11]))
+            (EarlierVersion
+              (mkVersion [5])))
           mainLibSet,
         Dependency
-          (PackageName "str-sig")
-          (OrLaterVersion
-            (mkVersion [0, 1, 0, 0]))
+          (PackageName "stm")
+          (MajorBoundVersion
+            (mkVersion [2, 5]))
+          mainLibSet,
+        Dependency
+          (PackageName "containers")
+          (IntersectVersionRanges
+            (OrLaterVersion
+              (mkVersion [0, 5, 9]))
+            (EarlierVersion
+              (mkVersion [0, 7])))
+          mainLibSet,
+        Dependency
+          (PackageName "safe-exceptions")
+          (MajorBoundVersion
+            (mkVersion [0, 1, 7]))
+          mainLibSet,
+        Dependency
+          (PackageName "async")
+          (MajorBoundVersion
+            (mkVersion [2, 2, 1]))
           mainLibSet],
       condTreeComponents = []},
   condSubLibraries = [],
   condForeignLibs = [],
-  condExecutables = [
+  condExecutables = [],
+  condTestSuites = [
     _×_
-      (UnqualComponentName
-        "wl-pprint-string-example")
+      (UnqualComponentName "tests")
       CondNode {
-        condTreeData = Executable {
-          exeName = UnqualComponentName
-            "wl-pprint-string-example",
-          modulePath = SymbolicPath
-            "Main.hs",
-          exeScope = ExecutablePublic,
-          buildInfo = BuildInfo {
+        condTreeData = TestSuite {
+          testName = UnqualComponentName
+            "",
+          testInterface = TestSuiteExeV10
+            (mkVersion [1, 0])
+            (SymbolicPath "Main.hs"),
+          testBuildInfo = BuildInfo {
             buildable = True,
             buildTools = [],
             buildToolDepends = [],
@@ -177,12 +247,12 @@
             cxxSources = [],
             jsSources = [],
             hsSourceDirs = [
-              SymbolicPath "example-string"],
-            otherModules = [
-              ModuleName "StringImpl"],
+              SymbolicPath "tests/"],
+            otherModules = [],
             virtualModules = [],
             autogenModules = [],
-            defaultLanguage = Nothing,
+            defaultLanguage = Just
+              Haskell2010,
             otherLanguages = [],
             defaultExtensions = [],
             otherExtensions = [],
@@ -215,32 +285,46 @@
             targetBuildDepends = [
               Dependency
                 (PackageName "base")
-                (EarlierVersion (mkVersion [5]))
+                (IntersectVersionRanges
+                  (OrLaterVersion
+                    (mkVersion [4, 11]))
+                  (EarlierVersion
+                    (mkVersion [5])))
                 mainLibSet,
               Dependency
-                (PackageName "str-string")
-                (OrLaterVersion
-                  (mkVersion [0, 1, 0, 0]))
-                mainLibSet,
-              Dependency
-                (PackageName "wl-pprint-indef")
+                (PackageName "supervisors")
                 (OrLaterVersion (mkVersion [0]))
+                mainLibSet,
+              Dependency
+                (PackageName "hspec")
+                (IntersectVersionRanges
+                  (OrLaterVersion
+                    (mkVersion [2, 6, 0]))
+                  (EarlierVersion
+                    (mkVersion [2, 8])))
                 mainLibSet],
-            mixins = []}},
+            mixins = []},
+          testCodeGenerators = []},
         condTreeConstraints = [
           Dependency
             (PackageName "base")
-            (EarlierVersion (mkVersion [5]))
+            (IntersectVersionRanges
+              (OrLaterVersion
+                (mkVersion [4, 11]))
+              (EarlierVersion
+                (mkVersion [5])))
             mainLibSet,
           Dependency
-            (PackageName "str-string")
-            (OrLaterVersion
-              (mkVersion [0, 1, 0, 0]))
-            mainLibSet,
-          Dependency
-            (PackageName "wl-pprint-indef")
+            (PackageName "supervisors")
             (OrLaterVersion (mkVersion [0]))
+            mainLibSet,
+          Dependency
+            (PackageName "hspec")
+            (IntersectVersionRanges
+              (OrLaterVersion
+                (mkVersion [2, 6, 0]))
+              (EarlierVersion
+                (mkVersion [2, 8])))
             mainLibSet],
         condTreeComponents = []}],
-  condTestSuites = [],
   condBenchmarks = []}

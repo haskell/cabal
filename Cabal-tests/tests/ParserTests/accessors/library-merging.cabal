@@ -1,0 +1,30 @@
+cabal-version:       3.0
+name:                Library-merging
+version:             0
+synopsis:            Tests the correctness of deferred merging in imports
+build-type:          Simple
+
+flag foo
+  manual: True
+  default: True
+
+common windows
+  if os(windows)
+    build-depends: Win32
+
+common deps
+  import: windows
+  buildable: True
+  build-depends:
+    base >=4.10 && <4.11,
+    containers
+
+library
+  if flag(foo)
+    import: deps
+
+  default-language: Haskell2010
+  exposed-modules:  ElseIf
+
+  build-depends:
+    ghc-prim
