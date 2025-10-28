@@ -109,3 +109,5 @@ bench.html
 
 # ignore the downloaded binary files
 scripts/release/binary-downloads/
+
+tests/fixtures

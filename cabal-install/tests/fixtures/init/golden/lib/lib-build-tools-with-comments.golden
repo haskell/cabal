@@ -1,6 +1,12 @@
 library
-    -- Import common warning flags.
-    import:             warnings
+    -- Common language extensions
+    import:             extensions
+
+    -- Common compiler warnings and optimisations
+    import:             ghc-options
+
+    -- Common RTS options
+    import:             rts-options
 
     -- Modules exported by the library.
     exposed-modules:    MyLib

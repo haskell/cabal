@@ -1,5 +1,7 @@
 executable y
-    import:           warnings
+    import:           extensions
+    import:           ghc-options
+    import:           rts-options
     main-is:          Main.hs
     -- other-modules:
     -- other-extensions:
