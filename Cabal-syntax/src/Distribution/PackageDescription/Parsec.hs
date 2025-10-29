@@ -368,7 +368,8 @@ goSections specVer = traverse_ process
       | name == "benchmark" = do
           commonStanzas <- use stateCommonStanzas
           name' <- parseUnqualComponentName pos args
-          benchStanza <- lift $ parseCondTree' benchmarkFieldGrammar (fromBuildInfo' name') commonStanzas fields
+          let importNames = Map.keys commonStanzas
+          benchStanza <- lift $ parseCondTree' (benchmarkFieldGrammar importNames) (fromBuildInfo' name') commonStanzas fields
           bench <- lift $ traverse (validateBenchmark specVer pos) benchStanza
 
           let hasType ts = benchmarkInterface ts /= benchmarkInterface mempty
@@ -628,7 +629,7 @@ instance FromBuildInfo TestSuiteStanza where
   fromBuildInfo' _ bi = TestSuiteStanza [] Nothing Nothing Nothing bi []
 
 instance FromBuildInfo BenchmarkStanza where
-  fromBuildInfo' _ bi = BenchmarkStanza Nothing Nothing Nothing bi
+  fromBuildInfo' _ bi = BenchmarkStanza [] Nothing Nothing Nothing bi
 
 parseCondTreeWithCommonStanzas
   :: forall src a

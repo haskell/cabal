@@ -458,7 +458,9 @@ unvalidateTestSuite t =
 -- | An intermediate type just used for parsing the benchmark stanza.
 -- After validation it is converted into the proper 'Benchmark' type.
 data BenchmarkStanza = BenchmarkStanza
-  { _benchmarkStanzaBenchmarkType :: Maybe BenchmarkType
+  { _benchmarkStanzaImports :: [String]
+    -- ^ retained imports
+  , _benchmarkStanzaBenchmarkType :: Maybe BenchmarkType
   , _benchmarkStanzaMainIs :: Maybe (RelativePath Source File)
   , _benchmarkStanzaBenchmarkModule :: Maybe ModuleName
   , _benchmarkStanzaBuildInfo :: BuildInfo
@@ -506,9 +508,11 @@ benchmarkFieldGrammar
      , c (List VCat Token String)
      , c (MQuoted Language)
      )
-  => g BenchmarkStanza BenchmarkStanza
-benchmarkFieldGrammar =
-  BenchmarkStanza
+  => [String]
+    -- ^ retained imports
+  -> g BenchmarkStanza BenchmarkStanza
+benchmarkFieldGrammar imports =
+  BenchmarkStanza imports
     <$> optionalField "type" benchmarkStanzaBenchmarkType
     <*> optionalFieldAla "main-is" RelativePathNT benchmarkStanzaMainIs
     <*> optionalField "benchmark-module" benchmarkStanzaBenchmarkModule
@@ -570,7 +574,8 @@ validateBenchmark cabalSpecVersion pos stanza = case benchmarkStanzaType of
 unvalidateBenchmark :: Benchmark -> BenchmarkStanza
 unvalidateBenchmark b =
   BenchmarkStanza
-    { _benchmarkStanzaBenchmarkType = ty
+    { _benchmarkStanzaImports = mempty
+    , _benchmarkStanzaBenchmarkType = ty
     , _benchmarkStanzaMainIs = ma
     , _benchmarkStanzaBenchmarkModule = mo
     , _benchmarkStanzaBuildInfo = benchmarkBuildInfo b
@@ -912,7 +917,7 @@ _syntaxFieldNames =
               , fieldGrammarKnownFieldList $ executableFieldGrammar "exe" []
               , fieldGrammarKnownFieldList $ foreignLibFieldGrammar "flib" []
               , fieldGrammarKnownFieldList $ testSuiteFieldGrammar []
-              , fieldGrammarKnownFieldList benchmarkFieldGrammar
+              , fieldGrammarKnownFieldList $ benchmarkFieldGrammar []
               , fieldGrammarKnownFieldList $ flagFieldGrammar (error "flagname")
               , fieldGrammarKnownFieldList $ sourceRepoFieldGrammar (error "repokind")
               , fieldGrammarKnownFieldList $ setupBInfoFieldGrammar True

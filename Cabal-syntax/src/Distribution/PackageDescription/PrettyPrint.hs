@@ -179,7 +179,7 @@ ppCondTestSuites v suites =
 ppCondBenchmarks :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar [Dependency] Benchmark)] -> [PrettyField ()]
 ppCondBenchmarks v suites =
   [ PrettySection () "benchmark" [pretty n] $
-    ppCondTree2 v benchmarkFieldGrammar (fmap FG.unvalidateBenchmark condTree)
+    ppCondTree2 v (benchmarkFieldGrammar []) (fmap FG.unvalidateBenchmark condTree)
   | (n, condTree) <- suites
   ]
 
