@@ -140,6 +140,7 @@ checkExecutable
   ads
   exe@( Executable
           exeName_
+          _exeImports_
           symbolicModulePath_
           _exeScope_
           buildInfo_

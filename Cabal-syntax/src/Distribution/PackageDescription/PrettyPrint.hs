@@ -165,7 +165,7 @@ ppCondForeignLibs v flibs =
 ppCondExecutables :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar [Dependency] Executable)] -> [PrettyField ()]
 ppCondExecutables v exes =
   [ PrettySection () "executable" [pretty n] $
-    ppCondTree2 v (executableFieldGrammar n) condTree
+    ppCondTree2 v (executableFieldGrammar n []) condTree
   | (n, condTree) <- exes
   ]
 

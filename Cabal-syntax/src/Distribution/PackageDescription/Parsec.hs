@@ -332,7 +332,8 @@ goSections specVer = traverse_ process
       | name == "executable" = do
           commonStanzas <- use stateCommonStanzas
           name' <- parseUnqualComponentName pos args
-          exe <- lift $ parseCondTree' (executableFieldGrammar name') (fromBuildInfo' name') commonStanzas fields
+          let importNames = Map.keys commonStanzas
+          exe <- lift $ parseCondTree' (executableFieldGrammar name' importNames) (fromBuildInfo' name') commonStanzas fields
           -- TODO check duplicate name here?
           stateGpd . L.condExecutables %= snoc (name', exe)
       | name == "test-suite" = do

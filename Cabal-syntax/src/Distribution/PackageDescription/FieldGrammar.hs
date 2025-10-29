@@ -283,16 +283,18 @@ executableFieldGrammar
      , c (MQuoted Language)
      )
   => UnqualComponentName
+  -> [String]
+    -- ^ retained imports
   -> g Executable Executable
-executableFieldGrammar n =
-  Executable n
+executableFieldGrammar n imports =
+  Executable n imports
     -- main-is is optional as conditional blocks don't have it
     <$> optionalFieldDefAla "main-is" RelativePathNT L.modulePath (modulePath mempty)
     <*> optionalFieldDef "scope" L.exeScope ExecutablePublic
       ^^^ availableSince CabalSpecV2_0 ExecutablePublic
     <*> blurFieldGrammar L.buildInfo buildInfoFieldGrammar
-{-# SPECIALIZE executableFieldGrammar :: UnqualComponentName -> ParsecFieldGrammar' Executable #-}
-{-# SPECIALIZE executableFieldGrammar :: UnqualComponentName -> PrettyFieldGrammar' Executable #-}
+{-# SPECIALIZE executableFieldGrammar :: UnqualComponentName -> [String] -> ParsecFieldGrammar' Executable #-}
+{-# SPECIALIZE executableFieldGrammar :: UnqualComponentName -> [String] -> PrettyFieldGrammar' Executable #-}
 
 -------------------------------------------------------------------------------
 -- TestSuite
@@ -902,7 +904,7 @@ _syntaxFieldNames =
             mconcat
               [ fieldGrammarKnownFieldList packageDescriptionFieldGrammar
               , fieldGrammarKnownFieldList $ libraryFieldGrammar LMainLibName []
-              , fieldGrammarKnownFieldList $ executableFieldGrammar "exe"
+              , fieldGrammarKnownFieldList $ executableFieldGrammar "exe" []
               , fieldGrammarKnownFieldList $ foreignLibFieldGrammar "flib" []
               , fieldGrammarKnownFieldList testSuiteFieldGrammar
               , fieldGrammarKnownFieldList benchmarkFieldGrammar

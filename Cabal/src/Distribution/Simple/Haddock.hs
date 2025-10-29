@@ -994,6 +994,7 @@ compToExe comp =
       Just
         Executable
           { exeName = testName test
+          , exeImports = mempty
           , modulePath = f
           , exeScope = ExecutablePublic
           , buildInfo = testBuildInfo test
@@ -1002,6 +1003,7 @@ compToExe comp =
       Just
         Executable
           { exeName = benchmarkName bench
+          , exeImports = mempty
           , modulePath = f
           , exeScope = ExecutablePublic
           , buildInfo = benchmarkBuildInfo bench
