@@ -339,7 +339,8 @@ goSections specVer = traverse_ process
       | name == "test-suite" = do
           commonStanzas <- use stateCommonStanzas
           name' <- parseUnqualComponentName pos args
-          testStanza <- lift $ parseCondTree' testSuiteFieldGrammar (fromBuildInfo' name') commonStanzas fields
+          let importNames = Map.keys commonStanzas
+          testStanza <- lift $ parseCondTree' (testSuiteFieldGrammar importNames) (fromBuildInfo' name') commonStanzas fields
           testSuite <- lift $ traverse (validateTestSuite specVer pos) testStanza
 
           let hasType ts = testInterface ts /= testInterface mempty
@@ -624,7 +625,7 @@ instance FromBuildInfo ForeignLib where fromBuildInfo' n bi = set L.foreignLibNa
 instance FromBuildInfo Executable where fromBuildInfo' n bi = set L.exeName n $ set L.buildInfo bi emptyExecutable
 
 instance FromBuildInfo TestSuiteStanza where
-  fromBuildInfo' _ bi = TestSuiteStanza Nothing Nothing Nothing bi []
+  fromBuildInfo' _ bi = TestSuiteStanza [] Nothing Nothing Nothing bi []
 
 instance FromBuildInfo BenchmarkStanza where
   fromBuildInfo' _ bi = BenchmarkStanza Nothing Nothing Nothing bi

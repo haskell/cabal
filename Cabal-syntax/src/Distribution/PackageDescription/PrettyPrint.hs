@@ -172,7 +172,7 @@ ppCondExecutables v exes =
 ppCondTestSuites :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar [Dependency] TestSuite)] -> [PrettyField ()]
 ppCondTestSuites v suites =
   [ PrettySection () "test-suite" [pretty n] $
-    ppCondTree2 v testSuiteFieldGrammar (fmap FG.unvalidateTestSuite condTree)
+    ppCondTree2 v (testSuiteFieldGrammar []) (fmap FG.unvalidateTestSuite condTree)
   | (n, condTree) <- suites
   ]
 

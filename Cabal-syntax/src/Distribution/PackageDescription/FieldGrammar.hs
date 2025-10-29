@@ -303,7 +303,9 @@ executableFieldGrammar n imports =
 -- | An intermediate type just used for parsing the test-suite stanza.
 -- After validation it is converted into the proper 'TestSuite' type.
 data TestSuiteStanza = TestSuiteStanza
-  { _testStanzaTestType :: Maybe TestType
+  { _testStanzaImports :: [String]
+  , _testStanzaTestType :: Maybe TestType
+  -- ^ Retained imports for exact printing
   , _testStanzaMainIs :: Maybe (RelativePath Source File)
   , _testStanzaTestModule :: Maybe ModuleName
   , _testStanzaBuildInfo :: BuildInfo
@@ -357,9 +359,11 @@ testSuiteFieldGrammar
      , c (List VCat Token String)
      , c (MQuoted Language)
      )
-  => g TestSuiteStanza TestSuiteStanza
-testSuiteFieldGrammar =
-  TestSuiteStanza
+  => [String]
+    -- ^ retained imports
+  -> g TestSuiteStanza TestSuiteStanza
+testSuiteFieldGrammar imports =
+  TestSuiteStanza imports
     <$> optionalField "type" testStanzaTestType
     <*> optionalFieldAla "main-is" RelativePathNT testStanzaMainIs
     <*> optionalField "test-module" testStanzaTestModule
@@ -434,7 +438,8 @@ validateTestSuite cabalSpecVersion pos stanza = case testSuiteType of
 unvalidateTestSuite :: TestSuite -> TestSuiteStanza
 unvalidateTestSuite t =
   TestSuiteStanza
-    { _testStanzaTestType = ty
+    { _testStanzaImports = mempty
+    , _testStanzaTestType = ty
     , _testStanzaMainIs = ma
     , _testStanzaTestModule = mo
     , _testStanzaBuildInfo = testBuildInfo t
@@ -906,7 +911,7 @@ _syntaxFieldNames =
               , fieldGrammarKnownFieldList $ libraryFieldGrammar LMainLibName []
               , fieldGrammarKnownFieldList $ executableFieldGrammar "exe" []
               , fieldGrammarKnownFieldList $ foreignLibFieldGrammar "flib" []
-              , fieldGrammarKnownFieldList testSuiteFieldGrammar
+              , fieldGrammarKnownFieldList $ testSuiteFieldGrammar []
               , fieldGrammarKnownFieldList benchmarkFieldGrammar
               , fieldGrammarKnownFieldList $ flagFieldGrammar (error "flagname")
               , fieldGrammarKnownFieldList $ sourceRepoFieldGrammar (error "repokind")
