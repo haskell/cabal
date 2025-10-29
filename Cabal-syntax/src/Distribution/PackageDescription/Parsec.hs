@@ -312,7 +312,8 @@ goSections specVer = traverse_ process
       | name == "foreign-library" = do
           commonStanzas <- use stateCommonStanzas
           name' <- parseUnqualComponentName pos args
-          flib <- lift $ parseCondTree' (foreignLibFieldGrammar name') (fromBuildInfo' name') commonStanzas fields
+          let importNames = Map.keys commonStanzas
+          flib <- lift $ parseCondTree' (foreignLibFieldGrammar name' importNames) (fromBuildInfo' name') commonStanzas fields
 
           let hasType ts = foreignLibType ts /= foreignLibType mempty
           unless (onAllBranches hasType flib) $

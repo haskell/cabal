@@ -191,9 +191,8 @@ libraryFieldGrammar
       -- ^ names of common stanza imports
   -> g Library Library
 libraryFieldGrammar n imports =
-  Library n
-    <$> pure imports
-    <*> monoidalFieldAla "exposed-modules" formatExposedModules L.exposedModules
+  Library n imports
+    <$> monoidalFieldAla "exposed-modules" formatExposedModules L.exposedModules
     <*> monoidalFieldAla "reexported-modules" (alaList CommaVCat) L.reexportedModules
     <*> monoidalFieldAla "signatures" (alaList' VCat MQuoted) L.signatures
       ^^^ availableSince CabalSpecV2_0 []
@@ -240,17 +239,19 @@ foreignLibFieldGrammar
      , c (MQuoted Language)
      )
   => UnqualComponentName
+  -> [String]
+    -- ^ retained common stanzas
   -> g ForeignLib ForeignLib
-foreignLibFieldGrammar n =
-  ForeignLib n
+foreignLibFieldGrammar n imports =
+  ForeignLib n imports
     <$> optionalFieldDef "type" L.foreignLibType ForeignLibTypeUnknown
     <*> monoidalFieldAla "options" (alaList FSep) L.foreignLibOptions
     <*> blurFieldGrammar L.foreignLibBuildInfo buildInfoFieldGrammar
     <*> optionalField "lib-version-info" L.foreignLibVersionInfo
     <*> optionalField "lib-version-linux" L.foreignLibVersionLinux
     <*> monoidalFieldAla "mod-def-file" (alaList' FSep RelativePathNT) L.foreignLibModDefFile
-{-# SPECIALIZE foreignLibFieldGrammar :: UnqualComponentName -> ParsecFieldGrammar' ForeignLib #-}
-{-# SPECIALIZE foreignLibFieldGrammar :: UnqualComponentName -> PrettyFieldGrammar' ForeignLib #-}
+{-# SPECIALIZE foreignLibFieldGrammar :: UnqualComponentName -> [String] -> ParsecFieldGrammar' ForeignLib #-}
+{-# SPECIALIZE foreignLibFieldGrammar :: UnqualComponentName -> [String] -> PrettyFieldGrammar' ForeignLib #-}
 
 -------------------------------------------------------------------------------
 -- Executable
@@ -902,7 +903,7 @@ _syntaxFieldNames =
               [ fieldGrammarKnownFieldList packageDescriptionFieldGrammar
               , fieldGrammarKnownFieldList $ libraryFieldGrammar LMainLibName []
               , fieldGrammarKnownFieldList $ executableFieldGrammar "exe"
-              , fieldGrammarKnownFieldList $ foreignLibFieldGrammar "flib"
+              , fieldGrammarKnownFieldList $ foreignLibFieldGrammar "flib" []
               , fieldGrammarKnownFieldList testSuiteFieldGrammar
               , fieldGrammarKnownFieldList benchmarkFieldGrammar
               , fieldGrammarKnownFieldList $ flagFieldGrammar (error "flagname")

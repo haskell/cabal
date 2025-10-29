@@ -42,6 +42,8 @@ import qualified Distribution.Types.BuildInfo.Lens as L
 data ForeignLib = ForeignLib
   { foreignLibName :: UnqualComponentName
   -- ^ Name of the foreign library
+  , foreignLibImports :: [String]
+  -- ^ Retained imports for exact printing
   , foreignLibType :: ForeignLibType
   -- ^ What kind of foreign library is this (static or dynamic).
   , foreignLibOptions :: [ForeignLibOption]
@@ -144,6 +146,7 @@ instance Semigroup ForeignLib where
   a <> b =
     ForeignLib
       { foreignLibName = combineNames a b foreignLibName "foreign library"
+      , foreignLibImports = combine foreignLibImports
       , foreignLibType = combine foreignLibType
       , foreignLibOptions = combine foreignLibOptions
       , foreignLibBuildInfo = combine foreignLibBuildInfo
@@ -160,6 +163,7 @@ instance Monoid ForeignLib where
   mempty =
     ForeignLib
       { foreignLibName = mempty
+      , foreignLibImports = mempty
       , foreignLibType = ForeignLibTypeUnknown
       , foreignLibOptions = []
       , foreignLibBuildInfo = mempty

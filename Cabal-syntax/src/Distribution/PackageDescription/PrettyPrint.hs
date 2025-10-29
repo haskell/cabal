@@ -158,7 +158,7 @@ ppCondSubLibraries v libs =
 ppCondForeignLibs :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar [Dependency] ForeignLib)] -> [PrettyField ()]
 ppCondForeignLibs v flibs =
   [ PrettySection () "foreign-library" [pretty n] $
-    ppCondTree2 v (foreignLibFieldGrammar n) condTree
+    ppCondTree2 v (foreignLibFieldGrammar n []) condTree
   | (n, condTree) <- flibs
   ]
 
