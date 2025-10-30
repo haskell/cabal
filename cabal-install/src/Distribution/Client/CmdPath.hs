@@ -325,7 +325,7 @@ data PathCompilerInfo = PathCompilerInfo
   { pathCompilerInfoFlavour :: CompilerFlavor
   , pathCompilerInfoId :: CompilerId
   , pathCompilerInfoPath :: FilePath
-  , pathCompilerInfoProjectUnitId :: FilePath
+  , pathCompilerInfoStorePath :: FilePath
   }
   deriving (Show, Eq, Ord)
 
@@ -335,7 +335,7 @@ mkCompilerInfo compilerProgram compiler storeLayout =
     { pathCompilerInfoFlavour = compilerFlavor compiler
     , pathCompilerInfoId = compilerId compiler
     , pathCompilerInfoPath = programPath compilerProgram
-    , pathCompilerInfoProjectUnitId = storeDirectory storeLayout compiler
+    , pathCompilerInfoStorePath = storeDirectory storeLayout compiler
     }
 
 -- ----------------------------------------------------------------------------
@@ -381,7 +381,7 @@ compilerInfoToJson pci =
           [ "flavour" .= jdisplay (pathCompilerInfoFlavour pci)
           , "id" .= jdisplay (pathCompilerInfoId pci)
           , "path" .= Json.String (pathCompilerInfoPath pci)
-          , "project-unit-id" .= Json.String (pathCompilerInfoProjectUnitId pci)
+          , "store-path" .= Json.String (pathCompilerInfoStorePath pci)
           ]
     ]
 
@@ -411,5 +411,5 @@ compilerInfoToKeyValue pci =
   [ ("compiler-flavour", prettyShow $ pathCompilerInfoFlavour pci)
   , ("compiler-id", prettyShow $ pathCompilerInfoId pci)
   , ("compiler-path", pathCompilerInfoPath pci)
-  , ("compiler-project-unit-id", pathCompilerInfoProjectUnitId pci)
+  , ("compiler-store-path", pathCompilerInfoStorePath pci)
   ]
