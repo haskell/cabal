@@ -6,6 +6,7 @@ module Distribution.Types.Library
   , emptyLibrary
   , explicitLibModules
   , libModulesAutogen
+  , insertLibImports
   ) where
 
 import Distribution.Compat.Prelude
@@ -16,6 +17,10 @@ import Distribution.Types.BuildInfo
 import Distribution.Types.LibraryName
 import Distribution.Types.LibraryVisibility
 import Distribution.Types.ModuleReexport
+import Distribution.Types.Imports
+import Distribution.Types.CondTree
+import Distribution.Types.ConfVar
+import Distribution.Types.Dependency
 
 import qualified Distribution.Types.BuildInfo.Lens as L
 
@@ -33,6 +38,17 @@ data Library = Library
   , libBuildInfo :: BuildInfo
   }
   deriving (Generic, Show, Eq, Ord, Read, Data)
+
+insertLibImports
+  :: CondTree ConfVar [Dependency] (WithImportNames Library)
+  -> CondTree ConfVar [Dependency] Library
+insertLibImports = mapCondTree f id id
+  where
+    f :: WithImportNames Library -> Library
+    f a =
+      let imports = importNames a
+          lib = unImportNames a
+      in  lib{libImports=imports}
 
 instance L.HasBuildInfo Library where
   buildInfo f l = (\x -> l{libBuildInfo = x}) <$> f (libBuildInfo l)

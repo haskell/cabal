@@ -26,6 +26,7 @@ module Distribution.PackageDescription.FieldGrammar
   , testSuiteFieldGrammar
   , validateTestSuite
   , unvalidateTestSuite
+  , insertTestSuiteStanzaImports
 
     -- ** Lenses
   , testStanzaTestType
@@ -38,6 +39,7 @@ module Distribution.PackageDescription.FieldGrammar
   , benchmarkFieldGrammar
   , validateBenchmark
   , unvalidateBenchmark
+  , insertBenchmarkStanzaImports
 
     -- * Field grammars
   , formatDependencyList
@@ -187,11 +189,9 @@ libraryFieldGrammar
      , c (MQuoted Language)
      )
   => LibraryName
-  -> [String]
-      -- ^ names of common stanza imports
   -> g Library Library
-libraryFieldGrammar n imports =
-  Library n imports
+libraryFieldGrammar n =
+  Library n [] {- imports are later filled in -}
     <$> monoidalFieldAla "exposed-modules" formatExposedModules L.exposedModules
     <*> monoidalFieldAla "reexported-modules" (alaList CommaVCat) L.reexportedModules
     <*> monoidalFieldAla "signatures" (alaList' VCat MQuoted) L.signatures
@@ -207,8 +207,8 @@ libraryFieldGrammar n imports =
       LSubLibName _ ->
         optionalFieldDef "visibility" L.libVisibility LibraryVisibilityPrivate
           ^^^ availableSince CabalSpecV3_0 LibraryVisibilityPrivate
-{-# SPECIALIZE libraryFieldGrammar :: LibraryName -> [String] -> ParsecFieldGrammar' Library #-}
-{-# SPECIALIZE libraryFieldGrammar :: LibraryName -> [String] -> PrettyFieldGrammar' Library #-}
+{-# SPECIALIZE libraryFieldGrammar :: LibraryName -> ParsecFieldGrammar' Library #-}
+{-# SPECIALIZE libraryFieldGrammar :: LibraryName -> PrettyFieldGrammar' Library #-}
 
 -------------------------------------------------------------------------------
 -- Foreign library
@@ -239,19 +239,17 @@ foreignLibFieldGrammar
      , c (MQuoted Language)
      )
   => UnqualComponentName
-  -> [String]
-    -- ^ retained common stanzas
   -> g ForeignLib ForeignLib
-foreignLibFieldGrammar n imports =
-  ForeignLib n imports
+foreignLibFieldGrammar n =
+  ForeignLib n []
     <$> optionalFieldDef "type" L.foreignLibType ForeignLibTypeUnknown
     <*> monoidalFieldAla "options" (alaList FSep) L.foreignLibOptions
     <*> blurFieldGrammar L.foreignLibBuildInfo buildInfoFieldGrammar
     <*> optionalField "lib-version-info" L.foreignLibVersionInfo
     <*> optionalField "lib-version-linux" L.foreignLibVersionLinux
     <*> monoidalFieldAla "mod-def-file" (alaList' FSep RelativePathNT) L.foreignLibModDefFile
-{-# SPECIALIZE foreignLibFieldGrammar :: UnqualComponentName -> [String] -> ParsecFieldGrammar' ForeignLib #-}
-{-# SPECIALIZE foreignLibFieldGrammar :: UnqualComponentName -> [String] -> PrettyFieldGrammar' ForeignLib #-}
+{-# SPECIALIZE foreignLibFieldGrammar :: UnqualComponentName -> ParsecFieldGrammar' ForeignLib #-}
+{-# SPECIALIZE foreignLibFieldGrammar :: UnqualComponentName -> PrettyFieldGrammar' ForeignLib #-}
 
 -------------------------------------------------------------------------------
 -- Executable
@@ -283,18 +281,16 @@ executableFieldGrammar
      , c (MQuoted Language)
      )
   => UnqualComponentName
-  -> [String]
-    -- ^ retained imports
   -> g Executable Executable
-executableFieldGrammar n imports =
-  Executable n imports
+executableFieldGrammar n =
+  Executable n []
     -- main-is is optional as conditional blocks don't have it
     <$> optionalFieldDefAla "main-is" RelativePathNT L.modulePath (modulePath mempty)
     <*> optionalFieldDef "scope" L.exeScope ExecutablePublic
       ^^^ availableSince CabalSpecV2_0 ExecutablePublic
     <*> blurFieldGrammar L.buildInfo buildInfoFieldGrammar
-{-# SPECIALIZE executableFieldGrammar :: UnqualComponentName -> [String] -> ParsecFieldGrammar' Executable #-}
-{-# SPECIALIZE executableFieldGrammar :: UnqualComponentName -> [String] -> PrettyFieldGrammar' Executable #-}
+{-# SPECIALIZE executableFieldGrammar :: UnqualComponentName -> ParsecFieldGrammar' Executable #-}
+{-# SPECIALIZE executableFieldGrammar :: UnqualComponentName -> PrettyFieldGrammar' Executable #-}
 
 -------------------------------------------------------------------------------
 -- TestSuite
@@ -311,6 +307,17 @@ data TestSuiteStanza = TestSuiteStanza
   , _testStanzaBuildInfo :: BuildInfo
   , _testStanzaCodeGenerators :: [String]
   }
+
+insertTestSuiteStanzaImports
+  :: CondTree ConfVar [Dependency] (WithImportNames TestSuiteStanza)
+  -> CondTree ConfVar [Dependency] TestSuiteStanza
+insertTestSuiteStanzaImports = mapCondTree f id id
+  where
+    f :: WithImportNames TestSuiteStanza -> TestSuiteStanza
+    f a =
+      let imports = importNames a
+          ts = unImportNames a
+      in  ts{_testStanzaImports=imports}
 
 instance L.HasBuildInfo TestSuiteStanza where
   buildInfo = testStanzaBuildInfo
@@ -359,11 +366,9 @@ testSuiteFieldGrammar
      , c (List VCat Token String)
      , c (MQuoted Language)
      )
-  => [String]
-    -- ^ retained imports
-  -> g TestSuiteStanza TestSuiteStanza
-testSuiteFieldGrammar imports =
-  TestSuiteStanza imports
+  => g TestSuiteStanza TestSuiteStanza
+testSuiteFieldGrammar =
+  TestSuiteStanza []
     <$> optionalField "type" testStanzaTestType
     <*> optionalFieldAla "main-is" RelativePathNT testStanzaMainIs
     <*> optionalField "test-module" testStanzaTestModule
@@ -466,6 +471,17 @@ data BenchmarkStanza = BenchmarkStanza
   , _benchmarkStanzaBuildInfo :: BuildInfo
   }
 
+insertBenchmarkStanzaImports
+  :: CondTree ConfVar [Dependency] (WithImportNames BenchmarkStanza)
+  -> CondTree ConfVar [Dependency] BenchmarkStanza
+insertBenchmarkStanzaImports = mapCondTree f id id
+  where
+    f :: WithImportNames BenchmarkStanza -> BenchmarkStanza
+    f a =
+      let imports = importNames a
+          bs = unImportNames a
+      in  bs{_benchmarkStanzaImports=imports}
+
 instance L.HasBuildInfo BenchmarkStanza where
   buildInfo = benchmarkStanzaBuildInfo
 
@@ -508,11 +524,9 @@ benchmarkFieldGrammar
      , c (List VCat Token String)
      , c (MQuoted Language)
      )
-  => [String]
-    -- ^ retained imports
-  -> g BenchmarkStanza BenchmarkStanza
-benchmarkFieldGrammar imports =
-  BenchmarkStanza imports
+  => g BenchmarkStanza BenchmarkStanza
+benchmarkFieldGrammar =
+  BenchmarkStanza []
     <$> optionalField "type" benchmarkStanzaBenchmarkType
     <*> optionalFieldAla "main-is" RelativePathNT benchmarkStanzaMainIs
     <*> optionalField "benchmark-module" benchmarkStanzaBenchmarkModule
@@ -614,7 +628,7 @@ buildInfoFieldGrammar
      )
   => g BuildInfo BuildInfo
 buildInfoFieldGrammar =
-  BuildInfo
+  BuildInfo []
     <$> booleanFieldDef "buildable" L.buildable True
     <*> monoidalFieldAla "build-tools" (alaList CommaFSep) L.buildTools
       ^^^ deprecatedSince
@@ -913,11 +927,11 @@ _syntaxFieldNames =
           sort $
             mconcat
               [ fieldGrammarKnownFieldList packageDescriptionFieldGrammar
-              , fieldGrammarKnownFieldList $ libraryFieldGrammar LMainLibName []
-              , fieldGrammarKnownFieldList $ executableFieldGrammar "exe" []
-              , fieldGrammarKnownFieldList $ foreignLibFieldGrammar "flib" []
-              , fieldGrammarKnownFieldList $ testSuiteFieldGrammar []
-              , fieldGrammarKnownFieldList $ benchmarkFieldGrammar []
+              , fieldGrammarKnownFieldList $ libraryFieldGrammar LMainLibName
+              , fieldGrammarKnownFieldList $ executableFieldGrammar "exe"
+              , fieldGrammarKnownFieldList $ foreignLibFieldGrammar "flib"
+              , fieldGrammarKnownFieldList $ testSuiteFieldGrammar
+              , fieldGrammarKnownFieldList $ benchmarkFieldGrammar
               , fieldGrammarKnownFieldList $ flagFieldGrammar (error "flagname")
               , fieldGrammarKnownFieldList $ sourceRepoFieldGrammar (error "repokind")
               , fieldGrammarKnownFieldList $ setupBInfoFieldGrammar True

@@ -14,6 +14,7 @@ module Distribution.Types.ForeignLib
   , libVersionNumber
   , libVersionNumberShow
   , libVersionMajor
+  , insertForeignLibImports
   ) where
 
 import Distribution.Compat.Prelude
@@ -25,6 +26,10 @@ import Distribution.Pretty
 import Distribution.System
 import Distribution.Types.BuildInfo
 import Distribution.Types.ForeignLibOption
+import Distribution.Types.Imports
+import Distribution.Types.Dependency
+import Distribution.Types.CondTree
+import Distribution.Types.ConfVar
 import Distribution.Types.ForeignLibType
 import Distribution.Types.UnqualComponentName
 import Distribution.Utils.Path
@@ -66,6 +71,17 @@ data ForeignLib = ForeignLib
   deriving (Generic, Show, Read, Eq, Ord, Data)
 
 data LibVersionInfo = LibVersionInfo Int Int Int deriving (Data, Eq, Generic)
+
+insertForeignLibImports
+  :: CondTree ConfVar [Dependency] (WithImportNames ForeignLib)
+  -> CondTree ConfVar [Dependency] ForeignLib
+insertForeignLibImports = mapCondTree f id id
+  where
+    f :: WithImportNames ForeignLib -> ForeignLib
+    f a =
+      let imports = importNames a
+          flib = unImportNames a
+      in  flib{foreignLibImports=imports}
 
 instance Ord LibVersionInfo where
   LibVersionInfo c r _ `compare` LibVersionInfo c' r' _ =

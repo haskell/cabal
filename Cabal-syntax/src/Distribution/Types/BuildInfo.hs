@@ -14,6 +14,7 @@ module Distribution.Types.BuildInfo
   , hcSharedOptions
   , hcProfSharedOptions
   , hcStaticOptions
+  , insertBuildInfoImports
   ) where
 
 import Distribution.Compat.Prelude
@@ -23,6 +24,9 @@ import Distribution.Types.Dependency
 import Distribution.Types.ExeDependency
 import Distribution.Types.LegacyExeDependency
 import Distribution.Types.Mixin
+import Distribution.Types.Imports
+import Distribution.Types.CondTree
+import Distribution.Types.ConfVar
 import Distribution.Types.PkgconfigDependency
 import Distribution.Utils.Path
 
@@ -32,7 +36,8 @@ import Language.Haskell.Extension
 
 -- Consider refactoring into executable and library versions.
 data BuildInfo = BuildInfo
-  { buildable :: Bool
+  { buildInfoImports :: [String]
+  , buildable :: Bool
   -- ^ component is buildable here
   , buildTools :: [LegacyExeDependency]
   -- ^ Tools needed to build this bit.
@@ -152,10 +157,22 @@ instance Binary BuildInfo
 instance Structured BuildInfo
 instance NFData BuildInfo where rnf = genericRnf
 
+insertBuildInfoImports
+  :: CondTree ConfVar [Dependency] (WithImportNames BuildInfo)
+  -> CondTree ConfVar [Dependency] BuildInfo
+insertBuildInfoImports = mapCondTree f id id
+  where
+    f :: WithImportNames BuildInfo -> BuildInfo
+    f a =
+      let imports = importNames a
+          bi = unImportNames a
+      in  bi{buildInfoImports=imports}
+
 instance Monoid BuildInfo where
   mempty =
     BuildInfo
-      { buildable = True
+      { buildInfoImports = []
+      , buildable = True
       , buildTools = []
       , buildToolDepends = []
       , cppOptions = []
@@ -209,7 +226,8 @@ instance Monoid BuildInfo where
 instance Semigroup BuildInfo where
   a <> b =
     BuildInfo
-      { buildable = buildable a && buildable b
+      { buildInfoImports = combine buildInfoImports
+      , buildable = buildable a && buildable b
       , buildTools = combine buildTools
       , buildToolDepends = combine buildToolDepends
       , cppOptions = combine cppOptions

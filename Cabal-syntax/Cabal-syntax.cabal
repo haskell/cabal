@@ -160,6 +160,7 @@ library
     Distribution.Types.Library.Lens
     Distribution.Types.LibraryName
     Distribution.Types.LibraryVisibility
+    Distribution.Types.Imports
     Distribution.Types.MissingDependency
     Distribution.Types.MissingDependencyReason
     Distribution.Types.Mixin

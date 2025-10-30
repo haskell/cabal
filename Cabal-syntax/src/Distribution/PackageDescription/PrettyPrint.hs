@@ -145,41 +145,40 @@ ppCondLibrary _ Nothing = mempty
 ppCondLibrary v (Just condTree) =
   pure $
     PrettySection () "library" [] $
-      -- TODO(leana8959): change the grammar
-      ppCondTree2 v (libraryFieldGrammar LMainLibName []) condTree
+      ppCondTree2 v (libraryFieldGrammar LMainLibName) condTree
 
 ppCondSubLibraries :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar [Dependency] Library)] -> [PrettyField ()]
 ppCondSubLibraries v libs =
   [ PrettySection () "library" [pretty n] $
-    ppCondTree2 v (libraryFieldGrammar (LSubLibName n) []) condTree
+    ppCondTree2 v (libraryFieldGrammar (LSubLibName n)) condTree
   | (n, condTree) <- libs
   ]
 
 ppCondForeignLibs :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar [Dependency] ForeignLib)] -> [PrettyField ()]
 ppCondForeignLibs v flibs =
   [ PrettySection () "foreign-library" [pretty n] $
-    ppCondTree2 v (foreignLibFieldGrammar n []) condTree
+    ppCondTree2 v (foreignLibFieldGrammar n) condTree
   | (n, condTree) <- flibs
   ]
 
 ppCondExecutables :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar [Dependency] Executable)] -> [PrettyField ()]
 ppCondExecutables v exes =
   [ PrettySection () "executable" [pretty n] $
-    ppCondTree2 v (executableFieldGrammar n []) condTree
+    ppCondTree2 v (executableFieldGrammar n) condTree
   | (n, condTree) <- exes
   ]
 
 ppCondTestSuites :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar [Dependency] TestSuite)] -> [PrettyField ()]
 ppCondTestSuites v suites =
   [ PrettySection () "test-suite" [pretty n] $
-    ppCondTree2 v (testSuiteFieldGrammar []) (fmap FG.unvalidateTestSuite condTree)
+    ppCondTree2 v testSuiteFieldGrammar (fmap FG.unvalidateTestSuite condTree)
   | (n, condTree) <- suites
   ]
 
 ppCondBenchmarks :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar [Dependency] Benchmark)] -> [PrettyField ()]
 ppCondBenchmarks v suites =
   [ PrettySection () "benchmark" [pretty n] $
-    ppCondTree2 v (benchmarkFieldGrammar []) (fmap FG.unvalidateBenchmark condTree)
+    ppCondTree2 v benchmarkFieldGrammar (fmap FG.unvalidateBenchmark condTree)
   | (n, condTree) <- suites
   ]
 
