@@ -57,7 +57,7 @@ build-and-check-requirements: requirements.txt check-requirements
 # See https://modelpredict.com/wht-requirements-txt-is-not-enough
 requirements.txt: requirements.in $(PYTHON_VIRTUALENV_ACTIVATE)
 	. $(PYTHON_VIRTUALENV_ACTIVATE) \
-	  && pip install --upgrade pip \
+	  && pip install --upgrade 'pip!=25.3' \
 	  && pip install pip-tools \
 	  && pip-compile requirements.in
 
