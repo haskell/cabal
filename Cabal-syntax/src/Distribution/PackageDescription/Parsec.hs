@@ -496,15 +496,15 @@ parseCondTree v hasElif grammar commonStanzas fromBuildInfo cond = go
   where
     go :: [Field Position] -> ParseResult src (CondTree ConfVar [Dependency] (WithImports a))
     go fields0 = do
-      (fields, endo) <-
+      (fields, imports, endo) <-
         if v >= CabalSpecV3_0
           then processImports v fromBuildInfo commonStanzas fields0
-          else traverse (warnImport v) fields0 >>= \fields1 -> return (catMaybes fields1, id)
+          else traverse (warnImport v) fields0 >>= \fields1 -> return (catMaybes fields1, mempty, id)
 
       let (fs, ss) = partitionFields fields
       x <- parseFieldGrammar v fs grammar
       branches <- concat <$> traverse parseIfs ss
-      return $ endo $ CondNode (noImports x) (cond x) branches
+      return $ endo $ CondNode (WithImports imports x) (cond x) branches
 
     parseIfs :: [Section Position] -> ParseResult src [CondBranch ConfVar [Dependency] (WithImports a)]
     parseIfs [] = return []
@@ -536,7 +536,6 @@ parseCondTree v hasElif grammar commonStanzas fromBuildInfo cond = go
           (elseFields, sections') <- parseElseIfs sections
           -- we parse an empty 'Fields', to get empty value for a node
           a <- parseFieldGrammar v mempty grammar
-          -- TODO(leana8959): investigate this
           return (Just $ CondNode (noImports a) (cond a) [CondBranch test' fields' elseFields], sections')
     parseElseIfs (MkSection (Name pos name) _ _ : sections) | name == "elif" = do
       parseWarning pos PWTInvalidSubsection $ "invalid subsection \"elif\". You should set cabal-version: 2.2 or larger to use elif-conditionals."
@@ -649,11 +648,28 @@ parseCondTreeWithCommonStanzas
   -> [Field Position]
   -> ParseResult src (CondTree ConfVar [Dependency] (WithImports a))
 parseCondTreeWithCommonStanzas v grammar fromBuildInfo commonStanzas fields = do
-  (fields', endo) <- processImports v fromBuildInfo commonStanzas fields
+  (fields', imports, endo) <- processImports v fromBuildInfo commonStanzas fields
   x <- parseCondTree v hasElif grammar commonStanzas fromBuildInfo (view L.targetBuildDepends) fields'
-  return (endo x)
+  -- TODO(leana8959): we replace this with the one from parseCondTree, because
+  -- it is duplicated (if such imports should exist, that is >= cabal 3.0)
+  -- However I'm so very unsure so let's do a concat and see what happens
+  return (prependImportsOnRoot imports $ endo x)
   where
     hasElif = specHasElif v
+
+-- | only attach import annotation on root
+attachImportsOnRoot
+  :: [ImportName]
+  -> CondTree v c a
+  -> CondTree v c (WithImports a)
+attachImportsOnRoot imports = mapTreeData' (WithImports imports) noImports
+
+-- | only prepend import annotation on root
+prependImportsOnRoot
+  :: [ImportName]
+  -> CondTree v c (WithImports a)
+  -> CondTree v c (WithImports a)
+prependImportsOnRoot imports = mapTreeData' (mapImports (imports <>)) id
 
 processImports
   :: forall src a
@@ -666,6 +682,7 @@ processImports
   -> [Field Position]
   -> ParseResult src
       ( [Field Position]
+      , [ImportName]
       , CondTree ConfVar [Dependency] (WithImports a) -> CondTree ConfVar [Dependency] (WithImports a)
       )
 processImports v fromBuildInfo commonStanzas = go []
@@ -675,19 +692,12 @@ processImports v fromBuildInfo commonStanzas = go []
     getList' :: List CommaFSep Token String -> [String]
     getList' = Newtype.unpack
 
-    -- | only attach import annotation on root
-    attachImportsOnRoot
-      :: forall v c a'
-       . [String]
-      -> CondTree v c a'
-      -> CondTree v c (WithImports a')
-    attachImportsOnRoot imports = mapTreeData' (WithImports imports) noImports
-
     go
-      :: [CondTree ConfVar [Dependency] (WithImports BuildInfo)]
+      :: [(ImportName, CondTree ConfVar [Dependency] (WithImports BuildInfo))]
       -> [Field Position]
       -> ParseResult src
           ( [Field Position]
+          , [ImportName]
           , CondTree ConfVar [Dependency] (WithImports a) -> CondTree ConfVar [Dependency] (WithImports a)
           )
     go acc (Field (Name pos name) _ : fields)
@@ -698,20 +708,30 @@ processImports v fromBuildInfo commonStanzas = go []
     -- supported:
     go acc (Field (Name pos name) fls : fields) | name == "import" = do
       names <- getList' <$> runFieldParser pos parsec v fls
-      trees <- for names $ \commonName ->
+      namedTrees <- for names $ \commonName ->
+        -- TODO(leana8959): commonStanzas map has no imports, they are already fused.
+        -- change this map everywhere
         case Map.lookup commonName commonStanzas of
           Nothing -> do
             parseFailure pos $ "Undefined common stanza imported: " ++ commonName
             pure Nothing
           Just commonTree ->
-            pure (Just (attachImportsOnRoot [commonName] commonTree))
+            pure (Just (commonName, mapTreeData noImports commonTree))
 
-      go (acc ++ catMaybes trees) fields
+      go (acc ++ catMaybes namedTrees) fields
 
     -- parse actual CondTree
     go acc fields = do
       fields' <- catMaybes <$> traverse (warnImport v) fields
-      pure $ (fields', \x -> foldr (mergeCommonStanza fromBuildInfo) x acc)
+      let
+        importNames :: [ImportName]
+        importTrees :: [CondTree ConfVar [Dependency] (WithImports BuildInfo)]
+        (importNames, importTrees) = unzip acc
+      pure
+        ( fields'
+        , importNames
+        , \x -> foldr (mergeCommonStanza fromBuildInfo) x importTrees
+        )
 
 -- | Warn on "import" fields, also map to Maybe, so erroneous fields can be filtered
 warnImport :: CabalSpecVersion -> Field Position -> ParseResult src (Maybe (Field Position))
@@ -736,7 +756,8 @@ mergeCommonStanza fromBuildInfo (CondNode bi _ bis) (CondNode x _ cs) =
     x' :: WithImports a
     x' =
       WithImports
-        (getImportNames bi <> getImportNames x)
+        -- TODO(leana8959): investigate why some imports are being dropped
+        (let is = getImportNames bi <> getImportNames x in trace ("Got imported names " <> show is) is  )
         (unImportNames x & L.buildInfo %~ (unImportNames bi <>))
 
     -- tree components are appended together.
