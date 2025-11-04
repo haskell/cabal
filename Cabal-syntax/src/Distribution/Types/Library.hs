@@ -40,15 +40,12 @@ data Library = Library
   deriving (Generic, Show, Eq, Ord, Read, Data)
 
 insertLibImports
-  :: CondTree ConfVar [Dependency] (WithImportNames Library)
+  :: CondTree ConfVar [Dependency] (WithImports Library)
   -> CondTree ConfVar [Dependency] Library
 insertLibImports = mapCondTree f id id
   where
-    f :: WithImportNames Library -> Library
-    f a =
-      let imports = importNames a
-          lib = unImportNames a
-      in  lib{libImports=imports}
+    f :: WithImports Library -> Library
+    f (WithImports importNames lib) = lib{libImports=importNames}
 
 instance L.HasBuildInfo Library where
   buildInfo f l = (\x -> l{libBuildInfo = x}) <$> f (libBuildInfo l)

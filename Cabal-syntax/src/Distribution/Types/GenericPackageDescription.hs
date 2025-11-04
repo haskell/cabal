@@ -7,9 +7,6 @@
 module Distribution.Types.GenericPackageDescription
   ( GenericPackageDescription (..)
   , emptyGenericPackageDescription
-  , WithImportNames
-  , importNames
-  , unImportNames
   ) where
 
 import Distribution.Compat.Prelude
@@ -26,7 +23,6 @@ import Distribution.Types.Benchmark
 import Distribution.Types.CondTree
 import Distribution.Types.ConfVar
 import Distribution.Types.Executable
-import Distribution.Types.Imports
 import Distribution.Types.Flag
 import Distribution.Types.ForeignLib
 import Distribution.Types.Library

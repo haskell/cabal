@@ -36,15 +36,12 @@ data Executable = Executable
   deriving (Generic, Show, Read, Eq, Ord, Data)
 
 insertExeImports
-  :: CondTree ConfVar [Dependency] (WithImportNames Executable)
+  :: CondTree ConfVar [Dependency] (WithImports Executable)
   -> CondTree ConfVar [Dependency] Executable
 insertExeImports = mapCondTree f id id
   where
-    f :: WithImportNames Executable -> Executable
-    f a =
-      let imports = importNames a
-          exe = unImportNames a
-      in  exe{exeImports=imports}
+    f :: WithImports Executable -> Executable
+    f (WithImports importNames exe) = exe{exeImports=importNames}
 
 instance L.HasBuildInfo Executable where
   buildInfo f l = (\x -> l{buildInfo = x}) <$> f (buildInfo l)

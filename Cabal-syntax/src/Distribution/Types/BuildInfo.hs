@@ -158,15 +158,12 @@ instance Structured BuildInfo
 instance NFData BuildInfo where rnf = genericRnf
 
 insertBuildInfoImports
-  :: CondTree ConfVar [Dependency] (WithImportNames BuildInfo)
+  :: CondTree ConfVar [Dependency] (WithImports BuildInfo)
   -> CondTree ConfVar [Dependency] BuildInfo
 insertBuildInfoImports = mapCondTree f id id
   where
-    f :: WithImportNames BuildInfo -> BuildInfo
-    f a =
-      let imports = importNames a
-          bi = unImportNames a
-      in  bi{buildInfoImports=imports}
+    f :: WithImports BuildInfo -> BuildInfo
+    f (WithImports importNames bi) = bi{buildInfoImports=importNames}
 
 instance Monoid BuildInfo where
   mempty =

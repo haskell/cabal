@@ -73,15 +73,12 @@ data ForeignLib = ForeignLib
 data LibVersionInfo = LibVersionInfo Int Int Int deriving (Data, Eq, Generic)
 
 insertForeignLibImports
-  :: CondTree ConfVar [Dependency] (WithImportNames ForeignLib)
+  :: CondTree ConfVar [Dependency] (WithImports ForeignLib)
   -> CondTree ConfVar [Dependency] ForeignLib
 insertForeignLibImports = mapCondTree f id id
   where
-    f :: WithImportNames ForeignLib -> ForeignLib
-    f a =
-      let imports = importNames a
-          flib = unImportNames a
-      in  flib{foreignLibImports=imports}
+    f :: WithImports ForeignLib -> ForeignLib
+    f (WithImports importNames flib) = flib{foreignLibImports=importNames}
 
 instance Ord LibVersionInfo where
   LibVersionInfo c r _ `compare` LibVersionInfo c' r' _ =

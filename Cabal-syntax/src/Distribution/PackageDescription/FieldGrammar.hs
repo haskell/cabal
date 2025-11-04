@@ -86,6 +86,7 @@ import Distribution.Parsec
 import Distribution.Pretty (Pretty (..), prettyShow, showToken)
 import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
+import Distribution.Types.Imports
 
 import qualified Data.ByteString.Char8 as BS8
 import qualified Distribution.Compat.CharParsing as P
@@ -309,15 +310,12 @@ data TestSuiteStanza = TestSuiteStanza
   }
 
 insertTestSuiteStanzaImports
-  :: CondTree ConfVar [Dependency] (WithImportNames TestSuiteStanza)
+  :: CondTree ConfVar [Dependency] (WithImports TestSuiteStanza)
   -> CondTree ConfVar [Dependency] TestSuiteStanza
 insertTestSuiteStanzaImports = mapCondTree f id id
   where
-    f :: WithImportNames TestSuiteStanza -> TestSuiteStanza
-    f a =
-      let imports = importNames a
-          ts = unImportNames a
-      in  ts{_testStanzaImports=imports}
+    f :: WithImports TestSuiteStanza -> TestSuiteStanza
+    f (WithImports importNames ts) = ts{_testStanzaImports=importNames}
 
 instance L.HasBuildInfo TestSuiteStanza where
   buildInfo = testStanzaBuildInfo
@@ -472,15 +470,12 @@ data BenchmarkStanza = BenchmarkStanza
   }
 
 insertBenchmarkStanzaImports
-  :: CondTree ConfVar [Dependency] (WithImportNames BenchmarkStanza)
+  :: CondTree ConfVar [Dependency] (WithImports BenchmarkStanza)
   -> CondTree ConfVar [Dependency] BenchmarkStanza
 insertBenchmarkStanzaImports = mapCondTree f id id
   where
-    f :: WithImportNames BenchmarkStanza -> BenchmarkStanza
-    f a =
-      let imports = importNames a
-          bs = unImportNames a
-      in  bs{_benchmarkStanzaImports=imports}
+    f :: WithImports BenchmarkStanza -> BenchmarkStanza
+    f (WithImports importNames bs) = bs{_benchmarkStanzaImports=importNames}
 
 instance L.HasBuildInfo BenchmarkStanza where
   buildInfo = benchmarkStanzaBuildInfo

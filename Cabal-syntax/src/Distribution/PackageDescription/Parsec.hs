@@ -265,7 +265,7 @@ goSections specVer = traverse_ process
       -> Map String CondTreeBuildInfo
       -- \^ common stanzas
       -> [Field Position]
-      -> ParseResult src (CondTree ConfVar [Dependency] (WithImportNames a))
+      -> ParseResult src (CondTree ConfVar [Dependency] (WithImports a))
     parseCondTree' = parseCondTreeWithCommonStanzas specVer
 
     parseSection :: Name Position -> [SectionArg Position] -> [Field Position] -> SectionParser src ()
@@ -491,10 +491,10 @@ parseCondTree
   -> (a -> [Dependency])
   -- ^ condition extractor
   -> [Field Position]
-  -> ParseResult src (CondTree ConfVar [Dependency] (WithImportNames a))
+  -> ParseResult src (CondTree ConfVar [Dependency] (WithImports a))
 parseCondTree v hasElif grammar commonStanzas fromBuildInfo cond = go
   where
-    go :: [Field Position] -> ParseResult src (CondTree ConfVar [Dependency] (WithImportNames a))
+    go :: [Field Position] -> ParseResult src (CondTree ConfVar [Dependency] (WithImports a))
     go fields0 = do
       (fields, endo) <-
         if v >= CabalSpecV3_0
@@ -504,9 +504,9 @@ parseCondTree v hasElif grammar commonStanzas fromBuildInfo cond = go
       let (fs, ss) = partitionFields fields
       x <- parseFieldGrammar v fs grammar
       branches <- concat <$> traverse parseIfs ss
-      return $ endo $ CondNode ([], x) (cond x) branches
+      return $ endo $ CondNode (noImports x) (cond x) branches
 
-    parseIfs :: [Section Position] -> ParseResult src [CondBranch ConfVar [Dependency] (WithImportNames a)]
+    parseIfs :: [Section Position] -> ParseResult src [CondBranch ConfVar [Dependency] (WithImports a)]
     parseIfs [] = return []
     parseIfs (MkSection (Name pos name) test fields : sections) | name == "if" = do
       test' <- parseConditionConfVar (startOfSection (incPos 2 pos) test) test
@@ -519,7 +519,7 @@ parseCondTree v hasElif grammar commonStanzas fromBuildInfo cond = go
 
     parseElseIfs
       :: [Section Position]
-      -> ParseResult src (Maybe (CondTree ConfVar [Dependency] (WithImportNames a)), [CondBranch ConfVar [Dependency] (WithImportNames a)])
+      -> ParseResult src (Maybe (CondTree ConfVar [Dependency] (WithImports a)), [CondBranch ConfVar [Dependency] (WithImports a)])
     parseElseIfs [] = return (Nothing, [])
     parseElseIfs (MkSection (Name pos name) args fields : sections) | name == "else" = do
       unless (null args) $
@@ -536,7 +536,8 @@ parseCondTree v hasElif grammar commonStanzas fromBuildInfo cond = go
           (elseFields, sections') <- parseElseIfs sections
           -- we parse an empty 'Fields', to get empty value for a node
           a <- parseFieldGrammar v mempty grammar
-          return (Just $ CondNode ([], a) (cond a) [CondBranch test' fields' elseFields], sections')
+          -- TODO(leana8959): investigate this
+          return (Just $ CondNode (noImports a) (cond a) [CondBranch test' fields' elseFields], sections')
     parseElseIfs (MkSection (Name pos name) _ _ : sections) | name == "elif" = do
       parseWarning pos PWTInvalidSubsection $ "invalid subsection \"elif\". You should set cabal-version: 2.2 or larger to use elif-conditionals."
       (,) Nothing <$> parseIfs sections
@@ -646,7 +647,7 @@ parseCondTreeWithCommonStanzas
   -> Map String CondTreeBuildInfo
   -- ^ common stanzas
   -> [Field Position]
-  -> ParseResult src (CondTree ConfVar [Dependency] ([String], a))
+  -> ParseResult src (CondTree ConfVar [Dependency] (WithImports a))
 parseCondTreeWithCommonStanzas v grammar fromBuildInfo commonStanzas fields = do
   (fields', endo) <- processImports v fromBuildInfo commonStanzas fields
   x <- parseCondTree v hasElif grammar commonStanzas fromBuildInfo (view L.targetBuildDepends) fields'
@@ -665,7 +666,7 @@ processImports
   -> [Field Position]
   -> ParseResult src
       ( [Field Position]
-      , CondTree ConfVar [Dependency] (WithImportNames a) -> CondTree ConfVar [Dependency] (WithImportNames a)
+      , CondTree ConfVar [Dependency] (WithImports a) -> CondTree ConfVar [Dependency] (WithImports a)
       )
 processImports v fromBuildInfo commonStanzas = go []
   where
@@ -679,15 +680,15 @@ processImports v fromBuildInfo commonStanzas = go []
       :: forall v c a'
        . [String]
       -> CondTree v c a'
-      -> CondTree v c (WithImportNames a')
-    attachImportsOnRoot imports = mapTreeData' (withImportNames imports) withNoImports
+      -> CondTree v c (WithImports a')
+    attachImportsOnRoot imports = mapTreeData' (WithImports imports) noImports
 
     go
-      :: [CondTree ConfVar [Dependency] (WithImportNames BuildInfo)]
+      :: [CondTree ConfVar [Dependency] (WithImports BuildInfo)]
       -> [Field Position]
       -> ParseResult src
           ( [Field Position]
-          , CondTree ConfVar [Dependency] (WithImportNames a) -> CondTree ConfVar [Dependency] (WithImportNames a)
+          , CondTree ConfVar [Dependency] (WithImports a) -> CondTree ConfVar [Dependency] (WithImports a)
           )
     go acc (Field (Name pos name) _ : fields)
       | name == "import"
@@ -725,26 +726,22 @@ mergeCommonStanza
   :: forall a
    . L.HasBuildInfo a
   => (BuildInfo -> a)
-  -> CondTree ConfVar [Dependency] (WithImportNames BuildInfo)
-  -> CondTree ConfVar [Dependency] (WithImportNames a)
-  -> CondTree ConfVar [Dependency] (WithImportNames a)
+  -> CondTree ConfVar [Dependency] (WithImports BuildInfo)
+  -> CondTree ConfVar [Dependency] (WithImports a)
+  -> CondTree ConfVar [Dependency] (WithImports a)
 mergeCommonStanza fromBuildInfo (CondNode bi _ bis) (CondNode x _ cs) =
   CondNode x' (unImportNames x' ^. L.targetBuildDepends) cs'
   where
     -- new value is old value with buildInfo field _prepended_.
-    x' :: WithImportNames a
+    x' :: WithImports a
     x' =
-      let
-        xImports = importNames x
-        biImports = importNames bi
-      in
-        ( biImports <> xImports
-        , unImportNames x & L.buildInfo %~ (unImportNames bi <>)
-        )
+      WithImports
+        (getImportNames bi <> getImportNames x)
+        (unImportNames x & L.buildInfo %~ (unImportNames bi <>))
 
     -- tree components are appended together.
-    cs' :: [CondBranch ConfVar [Dependency] (WithImportNames a)]
-    cs' = map (mapData fromBuildInfo <$>) bis ++ cs
+    cs' :: [CondBranch ConfVar [Dependency] (WithImports a)]
+    cs' = map (fmap fromBuildInfo <$>) bis ++ cs
 
 -------------------------------------------------------------------------------
 -- Branches
