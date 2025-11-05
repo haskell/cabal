@@ -1,5 +1,4 @@
 {-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE TupleSections #-}
 
 module Distribution.Types.Imports where
 
