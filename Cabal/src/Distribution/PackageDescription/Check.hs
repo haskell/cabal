@@ -226,6 +226,7 @@ checkGenericPackageDescription
           packageDescription_
           _gpdScannedVersion_
           genPackageFlags_
+          _gpdCommonStanzas
           condLibrary_
           condSubLibraries_
           condForeignLibs_
@@ -958,7 +959,8 @@ pd2gpd pd = gpd
     gpd =
       emptyGenericPackageDescription
         { packageDescription = pd
-        , condLibrary = fmap t2c (library pd)
+        -- TODO(leana8959): think about reverse conversion
+        , _condLibrary = fmap t2c (library pd)
         , condSubLibraries = map (t2cName ln id) (subLibraries pd)
         , condForeignLibs =
             map

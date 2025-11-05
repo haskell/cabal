@@ -19,7 +19,9 @@ import qualified Distribution.Types.GenericPackageDescription as T
 
 import Distribution.Compiler (CompilerFlavor)
 import Distribution.System (Arch, OS)
+import Distribution.Types.Imports (ImportName)
 import Distribution.Types.Benchmark (Benchmark)
+import Distribution.Types.BuildInfo (BuildInfo)
 import Distribution.Types.CondTree (CondTree)
 import Distribution.Types.ConfVar (ConfVar (..))
 import Distribution.Types.Dependency (Dependency)
@@ -49,8 +51,13 @@ genPackageFlags :: Lens' GenericPackageDescription [PackageFlag]
 genPackageFlags f s = fmap (\x -> s{T.genPackageFlags = x}) (f (T.genPackageFlags s))
 {-# INLINE genPackageFlags #-}
 
+gpdCommonStanzas :: Lens' GenericPackageDescription (Map ImportName (CondTree ConfVar [Dependency] BuildInfo))
+gpdCommonStanzas f s = fmap (\x -> s{T.gpdCommonStanzas = x}) (f (T.gpdCommonStanzas s))
+{-# INLINE gpdCommonStanzas #-}
+
+-- TODO(leana8959): how to deal with this
 condLibrary :: Lens' GenericPackageDescription (Maybe (CondTree ConfVar [Dependency] Library))
-condLibrary f s = fmap (\x -> s{T.condLibrary = x}) (f (T.condLibrary s))
+condLibrary f s = fmap (\x -> s{T._condLibrary = x}) (f (T._condLibrary s))
 {-# INLINE condLibrary #-}
 
 condSubLibraries :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTree ConfVar [Dependency] Library))]
@@ -81,11 +88,12 @@ allCondTrees
      )
   -> GenericPackageDescription
   -> f GenericPackageDescription
-allCondTrees f (GenericPackageDescription p v a1 x1 x2 x3 x4 x5 x6) =
+allCondTrees f (GenericPackageDescription p v a1 commonStanzas x1 x2 x3 x4 x5 x6) =
   GenericPackageDescription
     <$> pure p
     <*> pure v
     <*> pure a1
+    <*> traverse f commonStanzas
     <*> traverse f x1
     <*> (traverse . _2) f x2
     <*> (traverse . _2) f x3

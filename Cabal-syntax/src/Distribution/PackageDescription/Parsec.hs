@@ -33,7 +33,7 @@ module Distribution.PackageDescription.Parsec
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Control.Monad.State.Strict (StateT, execStateT)
+import Control.Monad.State.Strict (StateT, execStateT, modify)
 import Control.Monad.Trans.Class (lift)
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
@@ -241,9 +241,15 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
 cabalFormatVersionsDesc :: String
 cabalFormatVersionsDesc = "Current cabal-version values are listed at https://cabal.readthedocs.io/en/stable/file-format-changelog.html."
 
-goSections :: CabalSpecVersion -> [Field Position] -> SectionParser src ()
-goSections specVer = traverse_ process
+goSections :: forall src. CabalSpecVersion -> [Field Position] -> SectionParser src ()
+goSections specVer fields = do
+  traverse_ process fields
+
+  -- Retain commen stanzas after parsing sections
+  commonStanzas <- use stateCommonStanzas
+  (stateGpd . L.gpdCommonStanzas) .= commonStanzas
   where
+    process :: Field Position -> SectionParser src ()
     process (Field (Name pos name) _) =
       lift $
         parseWarning pos PWTTrailingFields $
@@ -722,27 +728,6 @@ warnImport v (Field (Name pos name) _) | name == "import" = do
     else parseWarning pos PWTUnknownField "Unknown field: import. Common stanza imports should be at the top of the enclosing section"
   return Nothing
 warnImport _ f = pure (Just f)
-
-mergeCommonStanza
-  :: forall a
-   . L.HasBuildInfo a
-  => (BuildInfo -> a)
-  -> CondTree ConfVar [Dependency] (WithImports BuildInfo)
-  -> CondTree ConfVar [Dependency] (WithImports a)
-  -> CondTree ConfVar [Dependency] (WithImports a)
-mergeCommonStanza fromBuildInfo (CondNode bi _ bis) (CondNode x _ cs) =
-  CondNode x' (unImportNames x' ^. L.targetBuildDepends) cs'
-  where
-    -- new value is old value with buildInfo field _prepended_.
-    x' :: WithImports a
-    x' =
-      WithImports
-        (getImportNames bi <> getImportNames x)
-        (unImportNames x & L.buildInfo %~ (unImportNames bi <>))
-
-    -- tree components are appended together.
-    cs' :: [CondBranch ConfVar [Dependency] (WithImports a)]
-    cs' = map (fmap fromBuildInfo <$>) bis ++ cs
 
 -------------------------------------------------------------------------------
 -- Branches

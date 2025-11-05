@@ -6,6 +6,8 @@
 module Distribution.Types.GenericPackageDescription
   ( GenericPackageDescription (..)
   , emptyGenericPackageDescription
+
+  , condLibrary
   ) where
 
 import Distribution.Compat.Prelude
@@ -18,6 +20,11 @@ import qualified Distribution.Types.BuildInfo.Lens as L
 import Distribution.Types.PackageDescription
 
 import Distribution.Package
+import Distribution.Types.Imports
+import Distribution.Types.Library
+import Distribution.Types.LibraryName
+import Distribution.Types.LibraryVisibility
+import Distribution.Types.BuildInfo
 import Distribution.Types.Benchmark
 import Distribution.Types.CondTree
 import Distribution.Types.ConfVar
@@ -28,6 +35,8 @@ import Distribution.Types.Library
 import Distribution.Types.TestSuite
 import Distribution.Types.UnqualComponentName
 import Distribution.Version
+
+import qualified Data.Map as Map
 
 -- ---------------------------------------------------------------------------
 -- The 'GenericPackageDescription' type
@@ -44,7 +53,9 @@ data GenericPackageDescription = GenericPackageDescription
   --   Perfectly, PackageIndex should have sum type, so we don't need to
   --   have dummy GPDs.
   , genPackageFlags :: [PackageFlag]
-  , condLibrary :: Maybe (CondTree ConfVar [Dependency] Library)
+  , gpdCommonStanzas :: Map ImportName (CondTree ConfVar [Dependency] BuildInfo)
+  , -- The following fields only contains defined in place configuration, the imports merging is deferred
+    _condLibrary :: Maybe (CondTree ConfVar [Dependency] Library)
   , condSubLibraries
       :: [ ( UnqualComponentName
            , CondTree ConfVar [Dependency] Library
@@ -73,6 +84,66 @@ data GenericPackageDescription = GenericPackageDescription
   }
   deriving (Show, Eq, Data, Generic)
 
+mergeCommonStanza
+  :: forall a
+   . L.HasBuildInfo a
+  => (BuildInfo -> a)
+  -> CondTree ConfVar [Dependency] BuildInfo
+  -> CondTree ConfVar [Dependency] a
+  -> CondTree ConfVar [Dependency] a
+mergeCommonStanza fromBuildInfo (CondNode bi _ bis) (CondNode x _ cs) =
+  CondNode x' (x' ^. L.targetBuildDepends) cs'
+  where
+    -- new value is old value with buildInfo field _prepended_.
+    x' :: a
+    x' = x & L.buildInfo %~ (bi <>)
+
+    -- tree components are appended together.
+    cs' :: [CondBranch ConfVar [Dependency] a]
+    cs' = map (fromBuildInfo <$>) bis ++ cs
+
+libraryFromBuildInfo :: LibraryName -> BuildInfo -> Library
+libraryFromBuildInfo n bi =
+  emptyLibrary
+    { libName = n
+    , libVisibility = case n of
+        LMainLibName -> LibraryVisibilityPublic
+        LSubLibName _ -> LibraryVisibilityPrivate
+    , libBuildInfo = bi
+    }
+
+condLibrary :: GenericPackageDescription -> Maybe (CondTree ConfVar [Dependency] Library)
+condLibrary gpd = fmap go $ _condLibrary gpd
+  where
+    go :: CondTree ConfVar [Dependency] Library -> CondTree ConfVar [Dependency] Library
+    go libTree =
+      let rootLib :: Library
+          rootLib = condTreeData libTree
+
+          commonTrees :: [CondTree ConfVar [Dependency] BuildInfo]
+          commonTrees =
+            map
+              (fromMaybe (error "failed to merge imports, did you mess with GenericPackageDescription?")
+                . flip Map.lookup (gpdCommonStanzas gpd))
+              (libImports rootLib)
+
+          fromBuildInfo :: BuildInfo -> Library
+          fromBuildInfo = libraryFromBuildInfo (libName rootLib)
+
+      -- TODO(leana8959): figure out merge direction
+      in  foldr (mergeCommonStanza fromBuildInfo) libTree commonTrees
+
+-- condSubLibraries :: GenericPackageDescription -> [(UnqualComponentName, CondTree ConfVar [Dependency] Library)]
+-- condSubLibraries = ()
+-- condForeignLibs :: GenericPackageDescription -> [(UnqualComponentName, CondTree ConfVar [Dependency] ForeignLib)]
+-- condForeignLibs = ()
+-- condExecutables :: GenericPackageDescription -> [(UnqualComponentName, CondTree ConfVar [Dependency] Executable)]
+-- condExecutables = ()
+-- condTestSuites :: GenericPackageDescription -> [(UnqualComponentName, CondTree ConfVar [Dependency] TestSuite)]
+-- condTestSuites = ()
+-- condBenchmarks :: GenericPackageDescription -> [(UnqualComponentName, CondTree ConfVar [Dependency] Benchmark)]
+-- condBenchmarks = ()
+
 instance Package GenericPackageDescription where
   packageId = packageId . packageDescription
 
@@ -81,17 +152,30 @@ instance Structured GenericPackageDescription
 instance NFData GenericPackageDescription where rnf = genericRnf
 
 emptyGenericPackageDescription :: GenericPackageDescription
-emptyGenericPackageDescription = GenericPackageDescription emptyPackageDescription Nothing [] Nothing [] [] [] [] []
+emptyGenericPackageDescription =
+  GenericPackageDescription
+    { packageDescription = emptyPackageDescription 
+    , gpdScannedVersion = Nothing
+    , genPackageFlags = []
+    , gpdCommonStanzas = mempty
+    , _condLibrary = Nothing
+    , condSubLibraries = []
+    , condForeignLibs = []
+    , condExecutables = []
+    , condTestSuites = []
+    , condBenchmarks = []
+    }
 
 -- -----------------------------------------------------------------------------
 -- Traversal Instances
 
 instance L.HasBuildInfos GenericPackageDescription where
-  traverseBuildInfos f (GenericPackageDescription p v a1 x1 x2 x3 x4 x5 x6) =
+  traverseBuildInfos f (GenericPackageDescription p v a1 commonStanzas x1 x2 x3 x4 x5 x6) =
     GenericPackageDescription
       <$> L.traverseBuildInfos f p
       <*> pure v
       <*> pure a1
+      <*> (traverse . traverseCondTreeBuildInfo) f commonStanzas
       <*> (traverse . traverseCondTreeBuildInfo) f x1
       <*> (traverse . L._2 . traverseCondTreeBuildInfo) f x2
       <*> (traverse . L._2 . traverseCondTreeBuildInfo) f x3

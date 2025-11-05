@@ -227,11 +227,12 @@ showPackageDescription = showGenericPackageDescription . pdToGpd
 
 pdToGpd :: PackageDescription -> GenericPackageDescription
 pdToGpd pd =
-  GenericPackageDescription
+  emptyGenericPackageDescription
     { packageDescription = pd
     , gpdScannedVersion = Nothing
     , genPackageFlags = []
-    , condLibrary = mkCondTree <$> library pd
+    -- TODO(leana8959): what to do here
+    , _condLibrary = mkCondTree <$> library pd
     , condSubLibraries = mkCondTreeL <$> subLibraries pd
     , condForeignLibs = mkCondTree' foreignLibName <$> foreignLibs pd
     , condExecutables = mkCondTree' exeName <$> executables pd
