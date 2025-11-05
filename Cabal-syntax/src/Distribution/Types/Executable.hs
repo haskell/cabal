@@ -19,6 +19,7 @@ import Distribution.Types.CondTree
 import Distribution.Types.ConfVar
 import Distribution.Types.Dependency
 import Distribution.Types.ExecutableScope
+import Distribution.Types.Imports
 import Distribution.Types.UnqualComponentName
 import Distribution.Utils.Path
 
@@ -26,15 +27,13 @@ import qualified Distribution.Types.BuildInfo.Lens as L
 
 data Executable = Executable
   { exeName :: UnqualComponentName
-  , exeImports :: [(ImportName, CondTree ConfVar [Dependency] BuildInfo)]
-  -- ^ Retained condTree imports, not merged
+  , exeImports :: [ImportName]
+  -- ^ Retained for exact print
   , modulePath :: RelativePath Source File
   , exeScope :: ExecutableScope
   , buildInfo :: BuildInfo
-  -- ^ the BuildInfo defined locally, unmerged with imports
   }
-  -- TODO(leana8959): instances
-  deriving (Generic, Show {- Read, -}, Eq {- Ord, -}, Data)
+  deriving (Generic, Show, Read, Eq, Ord, Data)
 
 insertExeImports
   :: CondTree ConfVar [Dependency] (WithImports Executable)

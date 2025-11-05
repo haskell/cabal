@@ -2,7 +2,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- Module      :  Distribution.PackageDescription.Parsec
@@ -67,6 +66,7 @@ import qualified Distribution.Types.BuildInfo.Lens as L
 import qualified Distribution.Types.Executable.Lens as L
 import qualified Distribution.Types.ForeignLib.Lens as L
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
+import Distribution.Types.Imports
 import qualified Distribution.Types.PackageDescription.Lens as L
 import qualified Distribution.Types.SetupBuildInfo.Lens as L
 import qualified Text.Parsec as P
@@ -656,16 +656,16 @@ parseCondTreeWithCommonStanzas v grammar fromBuildInfo commonStanzas fields = do
   where
     hasElif = specHasElif v
 
--- -- | only attach import annotation on root
--- attachImportsOnRoot
---   :: [ImportName]
---   -> CondTree v c a
---   -> CondTree v c (WithImports a)
--- attachImportsOnRoot imports = mapTreeData' (WithImports imports) noImports
+-- | only attach import annotation on root
+attachImportsOnRoot
+  :: [ImportName]
+  -> CondTree v c a
+  -> CondTree v c (WithImports a)
+attachImportsOnRoot imports = mapTreeData' (WithImports imports) noImports
 
 -- | only prepend import annotation on root
 prependImportsOnRoot
-  :: [(ImportName, CondTreeBuildInfo)]
+  :: [ImportName]
   -> CondTree v c (WithImports a)
   -> CondTree v c (WithImports a)
 prependImportsOnRoot imports = mapTreeData' (mapImports (imports <>)) id
@@ -682,9 +682,8 @@ processImports
   -> ParseResult
       src
       ( [Field Position]
-      , [(ImportName, CondTree ConfVar [Dependency] BuildInfo)]
-      , -- NOTE(leana8959): as we know it's a build info we can insert in this function!
-        CondTree ConfVar [Dependency] (WithImports a) -> CondTree ConfVar [Dependency] (WithImports a)
+      , [ImportName]
+      , CondTree ConfVar [Dependency] (WithImports a) -> CondTree ConfVar [Dependency] (WithImports a)
       )
 processImports v fromBuildInfo commonStanzas = go []
   where
@@ -694,12 +693,12 @@ processImports v fromBuildInfo commonStanzas = go []
     getList' = Newtype.unpack
 
     go
-      :: [(ImportName, CondTree ConfVar [Dependency] BuildInfo)]
+      :: [(ImportName, CondTree ConfVar [Dependency] (WithImports BuildInfo))]
       -> [Field Position]
       -> ParseResult
           src
           ( [Field Position]
-          , [(ImportName, CondTree ConfVar [Dependency] BuildInfo)]
+          , [ImportName]
           , CondTree ConfVar [Dependency] (WithImports a) -> CondTree ConfVar [Dependency] (WithImports a)
           )
     go acc (Field (Name pos name) _ : fields)
@@ -718,7 +717,7 @@ processImports v fromBuildInfo commonStanzas = go []
             parseFailure pos $ "Undefined common stanza imported: " ++ commonName
             pure Nothing
           Just commonTree ->
-            pure (Just (commonName, commonTree))
+            pure (Just (commonName, mapTreeData noImports commonTree))
 
       go (acc ++ catMaybes namedTrees) fields
 
@@ -727,12 +726,12 @@ processImports v fromBuildInfo commonStanzas = go []
       fields' <- catMaybes <$> traverse (warnImport v) fields
       let
         importNames :: [ImportName]
-        importTrees :: [CondTree ConfVar [Dependency] BuildInfo]
+        importTrees :: [CondTree ConfVar [Dependency] (WithImports BuildInfo)]
         (importNames, importTrees) = unzip acc
       pure
         ( fields'
-        , acc
-        , id -- TODO(leana8959): defer merging
+        , importNames
+        , \x -> foldr (mergeCommonStanza fromBuildInfo) x importTrees
         )
 
 -- | Warn on "import" fields, also map to Maybe, so erroneous fields can be filtered
@@ -744,27 +743,26 @@ warnImport v (Field (Name pos name) _) | name == "import" = do
   return Nothing
 warnImport _ f = pure (Just f)
 
--- -- TODO(leana8959): we defer merging
--- mergeCommonStanza
---   :: forall a
---    . L.HasBuildInfo a
---   => (BuildInfo -> a)
---   -> CondTree ConfVar [Dependency] (WithImports BuildInfo)
---   -> CondTree ConfVar [Dependency] (WithImports a)
---   -> CondTree ConfVar [Dependency] (WithImports a)
--- mergeCommonStanza fromBuildInfo (CondNode bi _ bis) (CondNode x _ cs) =
---   CondNode x' (unImportNames x' ^. L.targetBuildDepends) cs'
---   where
---     -- new value is old value with buildInfo field _prepended_.
---     x' :: WithImports a
---     x' =
---       WithImports
---         (getImportNames bi <> getImportNames x)
---         (unImportNames x & L.buildInfo %~ (unImportNames bi <>))
---
---     -- tree components are appended together.
---     cs' :: [CondBranch ConfVar [Dependency] (WithImports a)]
---     cs' = map (fmap fromBuildInfo <$>) bis ++ cs
+mergeCommonStanza
+  :: forall a
+   . L.HasBuildInfo a
+  => (BuildInfo -> a)
+  -> CondTree ConfVar [Dependency] (WithImports BuildInfo)
+  -> CondTree ConfVar [Dependency] (WithImports a)
+  -> CondTree ConfVar [Dependency] (WithImports a)
+mergeCommonStanza fromBuildInfo (CondNode bi _ bis) (CondNode x _ cs) =
+  CondNode x' (unImportNames x' ^. L.targetBuildDepends) cs'
+  where
+    -- new value is old value with buildInfo field _prepended_.
+    x' :: WithImports a
+    x' =
+      WithImports
+        (getImportNames bi <> getImportNames x)
+        (unImportNames x & L.buildInfo %~ (unImportNames bi <>))
+
+    -- tree components are appended together.
+    cs' :: [CondBranch ConfVar [Dependency] (WithImports a)]
+    cs' = map (fmap fromBuildInfo <$>) bis ++ cs
 
 -------------------------------------------------------------------------------
 -- Branches

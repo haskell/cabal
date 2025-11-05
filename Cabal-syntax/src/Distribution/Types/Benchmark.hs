@@ -15,9 +15,7 @@ import Prelude ()
 import Distribution.Types.BenchmarkInterface
 import Distribution.Types.BenchmarkType
 import Distribution.Types.BuildInfo
-import Distribution.Types.CondTree
-import Distribution.Types.ConfVar
-import Distribution.Types.Dependency
+import Distribution.Types.Imports
 import Distribution.Types.UnqualComponentName
 
 import Distribution.ModuleName
@@ -27,13 +25,11 @@ import qualified Distribution.Types.BuildInfo.Lens as L
 -- | A \"benchmark\" stanza in a cabal file.
 data Benchmark = Benchmark
   { benchmarkName :: UnqualComponentName
-  , benchmarkImports :: [(ImportName, CondTree ConfVar [Dependency] BuildInfo)]
-  -- ^ Retained condTree imports, not merged
+  , benchmarkImports :: [ImportName]
   , benchmarkInterface :: BenchmarkInterface
   , benchmarkBuildInfo :: BuildInfo
-  -- ^ the BuildInfo defined locally, unmerged with imports
   }
-  deriving (Generic, Show {- Read, -}, Eq {- Ord, -}, Data)
+  deriving (Generic, Show, Read, Eq, Ord, Data)
 
 instance Binary Benchmark
 instance Structured Benchmark

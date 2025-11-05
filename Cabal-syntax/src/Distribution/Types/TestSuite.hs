@@ -13,9 +13,7 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Types.BuildInfo
-import Distribution.Types.CondTree
-import Distribution.Types.ConfVar
-import Distribution.Types.Dependency
+import Distribution.Types.Imports
 import Distribution.Types.TestSuiteInterface
 import Distribution.Types.TestType
 import Distribution.Types.UnqualComponentName
@@ -27,13 +25,12 @@ import qualified Distribution.Types.BuildInfo.Lens as L
 -- | A \"test-suite\" stanza in a cabal file.
 data TestSuite = TestSuite
   { testName :: UnqualComponentName
-  , testSuiteImports :: [(ImportName, CondTree ConfVar [Dependency] BuildInfo)]
+  , testSuiteImports :: [ImportName]
   , testInterface :: TestSuiteInterface
   , testBuildInfo :: BuildInfo
   , testCodeGenerators :: [String]
   }
-  -- TODO(leana8959): instances
-  deriving (Generic, Show {- Read, -}, Eq {- Ord, -}, Data)
+  deriving (Generic, Show, Read, Eq, Ord, Data)
 
 instance L.HasBuildInfo TestSuite where
   buildInfo f l = (\x -> l{testBuildInfo = x}) <$> f (testBuildInfo l)

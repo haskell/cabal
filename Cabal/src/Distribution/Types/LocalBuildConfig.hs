@@ -84,7 +84,7 @@ data PackageBuildDescr = PackageBuildDescr
   -- Notably, this list must exclude indefinite libraries and instantiations
   -- because HPC does not support backpack (Nov. 2023).
   }
-  deriving (Generic {- Read, -}, Show)
+  deriving (Generic, Read, Show)
 
 -- | Information about individual components in a package,
 -- determined after the configure step.
@@ -127,7 +127,7 @@ data LocalBuildDescr = LocalBuildDescr
   -- ^ Information about individual components in the package
   -- determined after the configure step.
   }
-  deriving (Generic {- Read, -}, Show)
+  deriving (Generic, Read, Show)
 
 -- | 'LocalBuildConfig' contains options that can be controlled
 -- by the user and serve as inputs to the configuration of a package.
@@ -141,7 +141,7 @@ data LocalBuildConfig = LocalBuildConfig
   -- ^ Options to control the build, e.g. whether to
   -- enable profiling or to enable program coverage.
   }
-  deriving (Generic {- Read, -}, Show)
+  deriving (Generic, Read, Show)
 
 -- | 'BuildOptions' contains configuration options that can be controlled
 -- by the user.

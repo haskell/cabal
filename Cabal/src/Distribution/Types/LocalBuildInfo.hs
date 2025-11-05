@@ -143,7 +143,7 @@ data LocalBuildInfo = NewLocalBuildInfo
   -- ^ Information about a package configuration
   -- that can be modified by the user at configuration time.
   }
-  deriving (Generic {- Read, -}, Show)
+  deriving (Generic, Read, Show)
 
 {-# COMPLETE LocalBuildInfo #-}
 

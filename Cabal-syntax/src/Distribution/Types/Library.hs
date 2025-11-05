@@ -17,6 +17,7 @@ import Distribution.Types.BuildInfo
 import Distribution.Types.CondTree
 import Distribution.Types.ConfVar
 import Distribution.Types.Dependency
+import Distribution.Types.Imports
 import Distribution.Types.LibraryName
 import Distribution.Types.LibraryVisibility
 import Distribution.Types.ModuleReexport
@@ -25,8 +26,7 @@ import qualified Distribution.Types.BuildInfo.Lens as L
 
 data Library = Library
   { libName :: LibraryName
-  , libImports :: [(ImportName, CondTree ConfVar [Dependency] BuildInfo)]
-  -- ^ Retained condTree imports, not merged
+  , libImports :: [ImportName]
   , exposedModules :: [ModuleName]
   , reexportedModules :: [ModuleReexport]
   , signatures :: [ModuleName]
@@ -36,11 +36,8 @@ data Library = Library
   , libVisibility :: LibraryVisibility
   -- ^ Whether this multilib can be used as a dependency for other packages.
   , libBuildInfo :: BuildInfo
-  -- ^ the BuildInfo defined locally, unmerged with imports
   }
-  -- TODO(leana8959): fix these instances, condtree doesn't support them
-  -- best case we just ignore that field
-  deriving (Generic, Show, Eq {- Ord, Read, -}, Data)
+  deriving (Generic, Show, Eq, Ord, Read, Data)
 
 insertLibImports
   :: CondTree ConfVar [Dependency] (WithImports Library)

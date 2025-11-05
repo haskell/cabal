@@ -1,6 +1,5 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 module Distribution.Types.BuildInfo
@@ -16,12 +15,6 @@ module Distribution.Types.BuildInfo
   , hcProfSharedOptions
   , hcStaticOptions
   , insertBuildInfoImports
-
-    -- * Imports
-  , WithImports (..)
-  , ImportName
-  , noImports
-  , mapImports
   ) where
 
 import Distribution.Compat.Prelude
@@ -31,8 +24,7 @@ import Distribution.Types.CondTree
 import Distribution.Types.ConfVar
 import Distribution.Types.Dependency
 import Distribution.Types.ExeDependency
-
--- import Distribution.Types.Imports
+import Distribution.Types.Imports
 import Distribution.Types.LegacyExeDependency
 import Distribution.Types.Mixin
 import Distribution.Types.PkgconfigDependency
@@ -44,7 +36,7 @@ import Language.Haskell.Extension
 
 -- Consider refactoring into executable and library versions.
 data BuildInfo = BuildInfo
-  { buildInfoImports :: ![(ImportName, CondTreeBuildInfo)]
+  { buildInfoImports :: [String]
   , buildable :: Bool
   -- ^ component is buildable here
   , buildTools :: [LegacyExeDependency]
@@ -159,8 +151,7 @@ data BuildInfo = BuildInfo
   -- ^ Dependencies specific to a library or executable target
   , mixins :: [Mixin]
   }
-  -- TODO(leana8959): instances
-  deriving (Generic, Show {- Read, -}, Eq {- Ord, -}, Data)
+  deriving (Generic, Show, Read, Eq, Ord, Data)
 
 instance Binary BuildInfo
 instance Structured BuildInfo
@@ -343,19 +334,3 @@ lookupHcOptions f hc bi = case f bi of
     | hc == GHC -> ghc
     | hc == GHCJS -> ghcjs
     | otherwise -> mempty
-
--- TODO(leana8959): where do we put this to avoid cyclical import
-type ImportName = String
-type CondTreeBuildInfo = CondTree ConfVar [Dependency] BuildInfo
-
-data WithImports a = WithImports
-  { getImportNames :: ![(ImportName, CondTreeBuildInfo)]
-  , unImportNames :: !a
-  }
-  deriving (Show, Functor)
-
-mapImports :: ([(ImportName, CondTreeBuildInfo)] -> [(ImportName, CondTreeBuildInfo)]) -> WithImports a -> WithImports a
-mapImports f (WithImports imports x) = WithImports (f imports) x
-
-noImports :: a -> WithImports a
-noImports = WithImports mempty

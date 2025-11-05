@@ -30,6 +30,7 @@ import Distribution.Types.ConfVar
 import Distribution.Types.Dependency
 import Distribution.Types.ForeignLibOption
 import Distribution.Types.ForeignLibType
+import Distribution.Types.Imports
 import Distribution.Types.UnqualComponentName
 import Distribution.Utils.Path
 import Distribution.Version
@@ -46,15 +47,15 @@ import qualified Distribution.Types.BuildInfo.Lens as L
 data ForeignLib = ForeignLib
   { foreignLibName :: UnqualComponentName
   -- ^ Name of the foreign library
-  , foreignLibImports :: [(ImportName, CondTree ConfVar [Dependency] BuildInfo)]
-  -- ^ Retained condTree imports, not merged
+  , foreignLibImports :: [ImportName]
+  -- ^ Retained imports for exact printing
   , foreignLibType :: ForeignLibType
   -- ^ What kind of foreign library is this (static or dynamic).
   , foreignLibOptions :: [ForeignLibOption]
   -- ^ What options apply to this foreign library (e.g., are we
   -- merging in all foreign dependencies.)
   , foreignLibBuildInfo :: BuildInfo
-  -- ^ the BuildInfo for this foreign library. Defined locally, unmerged with imports
+  -- ^ Build information for this foreign library.
   , foreignLibVersionInfo :: Maybe LibVersionInfo
   -- ^ Libtool-style version-info data to compute library version.
   -- Refer to the libtool documentation on the
@@ -67,7 +68,7 @@ data ForeignLib = ForeignLib
   -- This is a list rather than a maybe field so that we can flatten
   -- the condition trees (for instance, when creating an sdist)
   }
-  deriving (Generic, Show {- Read, -}, Eq {- Ord, -}, Data)
+  deriving (Generic, Show, Read, Eq, Ord, Data)
 
 data LibVersionInfo = LibVersionInfo Int Int Int deriving (Data, Eq, Generic)
 
