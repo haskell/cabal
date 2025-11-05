@@ -26,7 +26,7 @@ import qualified Distribution.Types.BuildInfo.Lens as L
 
 data Library = Library
   { libName :: LibraryName
-  , libImports :: [String]
+  , libImports :: [ImportName]
   , exposedModules :: [ModuleName]
   , reexportedModules :: [ModuleReexport]
   , signatures :: [ModuleName]

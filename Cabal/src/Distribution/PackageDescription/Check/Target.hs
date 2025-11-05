@@ -197,6 +197,7 @@ checkTestSuite
   ads
   ts@( TestSuite
         testName_
+        _testImports_
         testInterface_
         testBuildInfo_
         _testCodeGenerators_

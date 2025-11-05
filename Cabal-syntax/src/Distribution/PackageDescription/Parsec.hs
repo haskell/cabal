@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE Rank2Types #-}
@@ -344,7 +345,10 @@ goSections specVer = traverse_ process
           name' <- parseUnqualComponentName pos args
           testStanza <- lift $ parseCondTree' testSuiteFieldGrammar (fromBuildInfo' name') commonStanzas fields
           let testStanza' = insertTestSuiteStanzaImports testStanza
+          let !_ = trace ("TestStanza " <> show testStanza <> "\n\n\n") ()
+          let !_ = trace ("TestStanza' " <> show testStanza' <> "\n\n\n") ()
           testSuite <- lift $ traverse (validateTestSuite specVer pos) testStanza'
+          let !_ = trace ("TestStanza' " <> show testSuite <> "\n\n\n") ()
 
           let hasType ts = testInterface ts /= testInterface mempty
           unless (onAllBranches hasType testSuite) $
@@ -709,7 +713,7 @@ processImports v fromBuildInfo commonStanzas = go []
     go acc (Field (Name pos name) fls : fields) | name == "import" = do
       names <- getList' <$> runFieldParser pos parsec v fls
       namedTrees <- for names $ \commonName ->
-        -- TODO(leana8959): commonStanzas map has no imports, they are already fused.
+        -- TODO(leana8959): commonStanzas map has no imports names, they are already fused.
         -- change this map everywhere
         case Map.lookup commonName commonStanzas of
           Nothing -> do
@@ -756,8 +760,7 @@ mergeCommonStanza fromBuildInfo (CondNode bi _ bis) (CondNode x _ cs) =
     x' :: WithImports a
     x' =
       WithImports
-        -- TODO(leana8959): investigate why some imports are being dropped
-        (let is = getImportNames bi <> getImportNames x in trace ("Got imported names " <> show is) is  )
+        (getImportNames bi <> getImportNames x)
         (unImportNames x & L.buildInfo %~ (unImportNames bi <>))
 
     -- tree components are appended together.

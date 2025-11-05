@@ -27,7 +27,7 @@ import qualified Distribution.Types.BuildInfo.Lens as L
 
 data Executable = Executable
   { exeName :: UnqualComponentName
-  , exeImports :: [String]
+  , exeImports :: [ImportName]
     -- ^ Retained for exact print
   , modulePath :: RelativePath Source File
   , exeScope :: ExecutableScope

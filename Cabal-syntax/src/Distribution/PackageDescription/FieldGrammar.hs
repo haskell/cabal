@@ -300,7 +300,7 @@ executableFieldGrammar n =
 -- | An intermediate type just used for parsing the test-suite stanza.
 -- After validation it is converted into the proper 'TestSuite' type.
 data TestSuiteStanza = TestSuiteStanza
-  { _testStanzaImports :: [String]
+  { _testStanzaImports :: [ImportName]
   , _testStanzaTestType :: Maybe TestType
   -- ^ Retained imports for exact printing
   , _testStanzaMainIs :: Maybe (RelativePath Source File)
@@ -308,6 +308,7 @@ data TestSuiteStanza = TestSuiteStanza
   , _testStanzaBuildInfo :: BuildInfo
   , _testStanzaCodeGenerators :: [String]
   }
+  deriving (Show)
 
 insertTestSuiteStanzaImports
   :: CondTree ConfVar [Dependency] (WithImports TestSuiteStanza)
@@ -375,7 +376,7 @@ testSuiteFieldGrammar =
       ^^^ availableSince CabalSpecV3_8 []
 
 validateTestSuite :: CabalSpecVersion -> Position -> TestSuiteStanza -> ParseResult src TestSuite
-validateTestSuite cabalSpecVersion pos stanza = case testSuiteType of
+validateTestSuite cabalSpecVersion pos stanza = fmap (L.testSuiteImports .~ (_testStanzaImports stanza)) $ case testSuiteType of
   Nothing -> pure basicTestSuite
   Just tt@(TestTypeUnknown _ _) ->
     pure
@@ -461,7 +462,7 @@ unvalidateTestSuite t =
 -- | An intermediate type just used for parsing the benchmark stanza.
 -- After validation it is converted into the proper 'Benchmark' type.
 data BenchmarkStanza = BenchmarkStanza
-  { _benchmarkStanzaImports :: [String]
+  { _benchmarkStanzaImports :: [ImportName]
     -- ^ retained imports
   , _benchmarkStanzaBenchmarkType :: Maybe BenchmarkType
   , _benchmarkStanzaMainIs :: Maybe (RelativePath Source File)

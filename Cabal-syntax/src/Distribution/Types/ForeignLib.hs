@@ -47,7 +47,7 @@ import qualified Distribution.Types.BuildInfo.Lens as L
 data ForeignLib = ForeignLib
   { foreignLibName :: UnqualComponentName
   -- ^ Name of the foreign library
-  , foreignLibImports :: [String]
+  , foreignLibImports :: [ImportName]
   -- ^ Retained imports for exact printing
   , foreignLibType :: ForeignLibType
   -- ^ What kind of foreign library is this (static or dynamic).

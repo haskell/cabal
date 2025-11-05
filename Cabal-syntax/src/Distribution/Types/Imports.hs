@@ -7,7 +7,7 @@ data WithImports a = WithImports
   { getImportNames :: ![ImportName]
   , unImportNames :: !a
   }
-  deriving (Functor)
+  deriving (Show, Functor)
 
 type ImportName = String
 
