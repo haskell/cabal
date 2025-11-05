@@ -20,13 +20,13 @@ module Distribution.Types.BuildInfo
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Types.Dependency
-import Distribution.Types.ExeDependency
-import Distribution.Types.LegacyExeDependency
-import Distribution.Types.Mixin
-import Distribution.Types.Imports
 import Distribution.Types.CondTree
 import Distribution.Types.ConfVar
+import Distribution.Types.Dependency
+import Distribution.Types.ExeDependency
+import Distribution.Types.Imports
+import Distribution.Types.LegacyExeDependency
+import Distribution.Types.Mixin
 import Distribution.Types.PkgconfigDependency
 import Distribution.Utils.Path
 
@@ -163,7 +163,7 @@ insertBuildInfoImports
 insertBuildInfoImports = mapCondTree f id id
   where
     f :: WithImports BuildInfo -> BuildInfo
-    f (WithImports importNames bi) = bi{buildInfoImports=importNames}
+    f (WithImports importNames bi) = bi{buildInfoImports = importNames}
 
 instance Monoid BuildInfo where
   mempty =

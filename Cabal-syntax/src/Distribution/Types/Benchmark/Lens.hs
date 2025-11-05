@@ -7,10 +7,10 @@ import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Types.Imports (ImportName)
 import Distribution.Types.Benchmark (Benchmark)
 import Distribution.Types.BenchmarkInterface (BenchmarkInterface)
 import Distribution.Types.BuildInfo (BuildInfo)
+import Distribution.Types.Imports (ImportName)
 import Distribution.Types.UnqualComponentName (UnqualComponentName)
 
 import qualified Distribution.Types.Benchmark as T

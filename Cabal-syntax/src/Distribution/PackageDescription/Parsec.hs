@@ -1,9 +1,9 @@
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 
 -- |
 -- Module      :  Distribution.PackageDescription.Parsec
@@ -62,13 +62,13 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
-import Distribution.Types.Imports
 import qualified Distribution.Compat.Newtype as Newtype
 import qualified Distribution.Compat.NonEmptySet as NES
 import qualified Distribution.Types.BuildInfo.Lens as L
 import qualified Distribution.Types.Executable.Lens as L
 import qualified Distribution.Types.ForeignLib.Lens as L
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
+import Distribution.Types.Imports
 import qualified Distribution.Types.PackageDescription.Lens as L
 import qualified Distribution.Types.SetupBuildInfo.Lens as L
 import qualified Text.Parsec as P
@@ -681,7 +681,8 @@ processImports
   -> Map String CondTreeBuildInfo
   -- ^ common stanzas
   -> [Field Position]
-  -> ParseResult src
+  -> ParseResult
+      src
       ( [Field Position]
       , [ImportName]
       , CondTree ConfVar [Dependency] (WithImports a) -> CondTree ConfVar [Dependency] (WithImports a)
@@ -696,7 +697,8 @@ processImports v fromBuildInfo commonStanzas = go []
     go
       :: [(ImportName, CondTree ConfVar [Dependency] (WithImports BuildInfo))]
       -> [Field Position]
-      -> ParseResult src
+      -> ParseResult
+          src
           ( [Field Position]
           , [ImportName]
           , CondTree ConfVar [Dependency] (WithImports a) -> CondTree ConfVar [Dependency] (WithImports a)

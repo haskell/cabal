@@ -84,9 +84,9 @@ import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Parsec
 import Distribution.Pretty (Pretty (..), prettyShow, showToken)
+import Distribution.Types.Imports
 import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
-import Distribution.Types.Imports
 
 import qualified Data.ByteString.Char8 as BS8
 import qualified Distribution.Compat.CharParsing as P
@@ -316,7 +316,7 @@ insertTestSuiteStanzaImports
 insertTestSuiteStanzaImports = mapCondTree f id id
   where
     f :: WithImports TestSuiteStanza -> TestSuiteStanza
-    f (WithImports importNames ts) = ts{_testStanzaImports=importNames}
+    f (WithImports importNames ts) = ts{_testStanzaImports = importNames}
 
 instance L.HasBuildInfo TestSuiteStanza where
   buildInfo = testStanzaBuildInfo
@@ -463,7 +463,7 @@ unvalidateTestSuite t =
 -- After validation it is converted into the proper 'Benchmark' type.
 data BenchmarkStanza = BenchmarkStanza
   { _benchmarkStanzaImports :: [ImportName]
-    -- ^ retained imports
+  -- ^ retained imports
   , _benchmarkStanzaBenchmarkType :: Maybe BenchmarkType
   , _benchmarkStanzaMainIs :: Maybe (RelativePath Source File)
   , _benchmarkStanzaBenchmarkModule :: Maybe ModuleName
@@ -476,7 +476,7 @@ insertBenchmarkStanzaImports
 insertBenchmarkStanzaImports = mapCondTree f id id
   where
     f :: WithImports BenchmarkStanza -> BenchmarkStanza
-    f (WithImports importNames bs) = bs{_benchmarkStanzaImports=importNames}
+    f (WithImports importNames bs) = bs{_benchmarkStanzaImports = importNames}
 
 instance L.HasBuildInfo BenchmarkStanza where
   buildInfo = benchmarkStanzaBuildInfo

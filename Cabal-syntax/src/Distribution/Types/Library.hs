@@ -14,13 +14,13 @@ import Prelude ()
 
 import Distribution.ModuleName
 import Distribution.Types.BuildInfo
-import Distribution.Types.LibraryName
-import Distribution.Types.LibraryVisibility
-import Distribution.Types.ModuleReexport
-import Distribution.Types.Imports
 import Distribution.Types.CondTree
 import Distribution.Types.ConfVar
 import Distribution.Types.Dependency
+import Distribution.Types.Imports
+import Distribution.Types.LibraryName
+import Distribution.Types.LibraryVisibility
+import Distribution.Types.ModuleReexport
 
 import qualified Distribution.Types.BuildInfo.Lens as L
 
@@ -45,7 +45,7 @@ insertLibImports
 insertLibImports = mapCondTree f id id
   where
     f :: WithImports Library -> Library
-    f (WithImports importNames lib) = lib{libImports=importNames}
+    f (WithImports importNames lib) = lib{libImports = importNames}
 
 instance L.HasBuildInfo Library where
   buildInfo f l = (\x -> l{libBuildInfo = x}) <$> f (libBuildInfo l)

@@ -13,10 +13,10 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Types.BuildInfo
+import Distribution.Types.Imports
 import Distribution.Types.TestSuiteInterface
 import Distribution.Types.TestType
 import Distribution.Types.UnqualComponentName
-import Distribution.Types.Imports
 
 import Distribution.ModuleName
 

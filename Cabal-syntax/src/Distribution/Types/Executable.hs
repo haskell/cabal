@@ -15,11 +15,11 @@ import Prelude ()
 
 import Distribution.ModuleName
 import Distribution.Types.BuildInfo
-import Distribution.Types.Imports
 import Distribution.Types.CondTree
 import Distribution.Types.ConfVar
 import Distribution.Types.Dependency
 import Distribution.Types.ExecutableScope
+import Distribution.Types.Imports
 import Distribution.Types.UnqualComponentName
 import Distribution.Utils.Path
 
@@ -28,7 +28,7 @@ import qualified Distribution.Types.BuildInfo.Lens as L
 data Executable = Executable
   { exeName :: UnqualComponentName
   , exeImports :: [ImportName]
-    -- ^ Retained for exact print
+  -- ^ Retained for exact print
   , modulePath :: RelativePath Source File
   , exeScope :: ExecutableScope
   , buildInfo :: BuildInfo
@@ -41,7 +41,7 @@ insertExeImports
 insertExeImports = mapCondTree f id id
   where
     f :: WithImports Executable -> Executable
-    f (WithImports importNames exe) = exe{exeImports=importNames}
+    f (WithImports importNames exe) = exe{exeImports = importNames}
 
 instance L.HasBuildInfo Executable where
   buildInfo f l = (\x -> l{buildInfo = x}) <$> f (buildInfo l)

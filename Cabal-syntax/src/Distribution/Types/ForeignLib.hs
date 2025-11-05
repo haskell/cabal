@@ -25,12 +25,12 @@ import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.System
 import Distribution.Types.BuildInfo
-import Distribution.Types.ForeignLibOption
-import Distribution.Types.Imports
-import Distribution.Types.Dependency
 import Distribution.Types.CondTree
 import Distribution.Types.ConfVar
+import Distribution.Types.Dependency
+import Distribution.Types.ForeignLibOption
 import Distribution.Types.ForeignLibType
+import Distribution.Types.Imports
 import Distribution.Types.UnqualComponentName
 import Distribution.Utils.Path
 import Distribution.Version
@@ -78,7 +78,7 @@ insertForeignLibImports
 insertForeignLibImports = mapCondTree f id id
   where
     f :: WithImports ForeignLib -> ForeignLib
-    f (WithImports importNames flib) = flib{foreignLibImports=importNames}
+    f (WithImports importNames flib) = flib{foreignLibImports = importNames}
 
 instance Ord LibVersionInfo where
   LibVersionInfo c r _ `compare` LibVersionInfo c' r' _ =

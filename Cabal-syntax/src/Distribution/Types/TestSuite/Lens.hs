@@ -7,8 +7,8 @@ import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Types.Imports (ImportName)
 import Distribution.Types.BuildInfo (BuildInfo)
+import Distribution.Types.Imports (ImportName)
 import Distribution.Types.TestSuite (TestSuite)
 import Distribution.Types.TestSuiteInterface (TestSuiteInterface)
 import Distribution.Types.UnqualComponentName (UnqualComponentName)

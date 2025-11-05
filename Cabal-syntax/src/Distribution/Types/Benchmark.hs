@@ -12,10 +12,10 @@ module Distribution.Types.Benchmark
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Types.Imports
 import Distribution.Types.BenchmarkInterface
 import Distribution.Types.BenchmarkType
 import Distribution.Types.BuildInfo
+import Distribution.Types.Imports
 import Distribution.Types.UnqualComponentName
 
 import Distribution.ModuleName
@@ -25,7 +25,7 @@ import qualified Distribution.Types.BuildInfo.Lens as L
 -- | A \"benchmark\" stanza in a cabal file.
 data Benchmark = Benchmark
   { benchmarkName :: UnqualComponentName
-  , benchmarkImports  :: [ImportName]
+  , benchmarkImports :: [ImportName]
   , benchmarkInterface :: BenchmarkInterface
   , benchmarkBuildInfo :: BuildInfo
   }
