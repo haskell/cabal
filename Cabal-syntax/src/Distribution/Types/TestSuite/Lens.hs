@@ -17,6 +17,7 @@ import qualified Distribution.Types.TestSuite as T
 
 testSuiteImports :: Lens' TestSuite [ImportName]
 testSuiteImports f s = fmap (\x -> s{T.testSuiteImports = x}) (f (T.testSuiteImports s))
+{-# INLINE testSuiteImports #-}
 
 testName :: Lens' TestSuite UnqualComponentName
 testName f s = fmap (\x -> s{T.testName = x}) (f (T.testName s))

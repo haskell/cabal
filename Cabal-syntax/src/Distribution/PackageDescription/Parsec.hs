@@ -345,10 +345,7 @@ goSections specVer = traverse_ process
           name' <- parseUnqualComponentName pos args
           testStanza <- lift $ parseCondTree' testSuiteFieldGrammar (fromBuildInfo' name') commonStanzas fields
           let testStanza' = insertTestSuiteStanzaImports testStanza
-          let !_ = trace ("TestStanza " <> show testStanza <> "\n\n\n") ()
-          let !_ = trace ("TestStanza' " <> show testStanza' <> "\n\n\n") ()
           testSuite <- lift $ traverse (validateTestSuite specVer pos) testStanza'
-          let !_ = trace ("TestStanza' " <> show testSuite <> "\n\n\n") ()
 
           let hasType ts = testInterface ts /= testInterface mempty
           unless (onAllBranches hasType testSuite) $

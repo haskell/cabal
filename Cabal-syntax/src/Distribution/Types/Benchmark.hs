@@ -12,6 +12,7 @@ module Distribution.Types.Benchmark
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Distribution.Types.Imports
 import Distribution.Types.BenchmarkInterface
 import Distribution.Types.BenchmarkType
 import Distribution.Types.BuildInfo
@@ -24,6 +25,7 @@ import qualified Distribution.Types.BuildInfo.Lens as L
 -- | A \"benchmark\" stanza in a cabal file.
 data Benchmark = Benchmark
   { benchmarkName :: UnqualComponentName
+  , benchmarkImports  :: [ImportName]
   , benchmarkInterface :: BenchmarkInterface
   , benchmarkBuildInfo :: BuildInfo
   }
@@ -34,12 +36,13 @@ instance Structured Benchmark
 instance NFData Benchmark where rnf = genericRnf
 
 instance L.HasBuildInfo Benchmark where
-  buildInfo f (Benchmark x1 x2 x3) = fmap (\y1 -> Benchmark x1 x2 y1) (f x3)
+  buildInfo f (Benchmark x1 x2 x3 x4) = fmap (\y1 -> Benchmark x1 x2 x3 y1) (f x4)
 
 instance Monoid Benchmark where
   mempty =
     Benchmark
       { benchmarkName = mempty
+      , benchmarkImports = mempty
       , benchmarkInterface = mempty
       , benchmarkBuildInfo = mempty
       }
@@ -49,6 +52,7 @@ instance Semigroup Benchmark where
   a <> b =
     Benchmark
       { benchmarkName = combineNames a b benchmarkName "benchmark"
+      , benchmarkImports = combine benchmarkImports
       , benchmarkInterface = combine benchmarkInterface
       , benchmarkBuildInfo = combine benchmarkBuildInfo
       }

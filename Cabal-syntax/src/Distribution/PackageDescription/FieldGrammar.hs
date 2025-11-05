@@ -442,7 +442,7 @@ validateTestSuite cabalSpecVersion pos stanza = fmap (L.testSuiteImports .~ (_te
 unvalidateTestSuite :: TestSuite -> TestSuiteStanza
 unvalidateTestSuite t =
   TestSuiteStanza
-    { _testStanzaImports = mempty
+    { _testStanzaImports = testSuiteImports t
     , _testStanzaTestType = ty
     , _testStanzaMainIs = ma
     , _testStanzaTestModule = mo
@@ -529,7 +529,7 @@ benchmarkFieldGrammar =
     <*> blurFieldGrammar benchmarkStanzaBuildInfo buildInfoFieldGrammar
 
 validateBenchmark :: CabalSpecVersion -> Position -> BenchmarkStanza -> ParseResult src Benchmark
-validateBenchmark cabalSpecVersion pos stanza = case benchmarkStanzaType of
+validateBenchmark cabalSpecVersion pos stanza = fmap (L.benchmarkImports .~ (_benchmarkStanzaImports stanza)) $ case benchmarkStanzaType of
   Nothing ->
     pure
       emptyBenchmark
@@ -584,7 +584,7 @@ validateBenchmark cabalSpecVersion pos stanza = case benchmarkStanzaType of
 unvalidateBenchmark :: Benchmark -> BenchmarkStanza
 unvalidateBenchmark b =
   BenchmarkStanza
-    { _benchmarkStanzaImports = mempty
+    { _benchmarkStanzaImports = benchmarkImports b
     , _benchmarkStanzaBenchmarkType = ty
     , _benchmarkStanzaMainIs = ma
     , _benchmarkStanzaBenchmarkModule = mo

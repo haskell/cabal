@@ -262,6 +262,7 @@ checkBenchmark
   ads
   bm@( Benchmark
         benchmarkName_
+        _benchmarkImports_
         benchmarkInterface_
         benchmarkBuildInfo_
       ) = do
