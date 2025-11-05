@@ -29,7 +29,7 @@ data Component
   | CExe Executable
   | CTest TestSuite
   | CBench Benchmark
-  deriving (Generic, Show, Eq, Read)
+  deriving (Generic, Show, Eq {- , Read -})
 
 instance Binary Component
 instance Structured Component

@@ -7,15 +7,17 @@ import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Types.BuildInfo (BuildInfo)
-import Distribution.Types.Imports (ImportName)
+import Distribution.Types.BuildInfo (BuildInfo, ImportName)
+import Distribution.Types.CondTree
+import Distribution.Types.ConfVar
+import Distribution.Types.Dependency
 import Distribution.Types.TestSuite (TestSuite)
 import Distribution.Types.TestSuiteInterface (TestSuiteInterface)
 import Distribution.Types.UnqualComponentName (UnqualComponentName)
 
 import qualified Distribution.Types.TestSuite as T
 
-testSuiteImports :: Lens' TestSuite [ImportName]
+testSuiteImports :: Lens' TestSuite [(ImportName, CondTree ConfVar [Dependency] BuildInfo)]
 testSuiteImports f s = fmap (\x -> s{T.testSuiteImports = x}) (f (T.testSuiteImports s))
 {-# INLINE testSuiteImports #-}
 

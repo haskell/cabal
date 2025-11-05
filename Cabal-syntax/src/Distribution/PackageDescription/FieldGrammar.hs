@@ -84,7 +84,6 @@ import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Parsec
 import Distribution.Pretty (Pretty (..), prettyShow, showToken)
-import Distribution.Types.Imports
 import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
 
@@ -300,7 +299,7 @@ executableFieldGrammar n =
 -- | An intermediate type just used for parsing the test-suite stanza.
 -- After validation it is converted into the proper 'TestSuite' type.
 data TestSuiteStanza = TestSuiteStanza
-  { _testStanzaImports :: [ImportName]
+  { _testStanzaImports :: [(ImportName, CondTree ConfVar [Dependency] BuildInfo)]
   , _testStanzaTestType :: Maybe TestType
   -- ^ Retained imports for exact printing
   , _testStanzaMainIs :: Maybe (RelativePath Source File)
@@ -462,7 +461,7 @@ unvalidateTestSuite t =
 -- | An intermediate type just used for parsing the benchmark stanza.
 -- After validation it is converted into the proper 'Benchmark' type.
 data BenchmarkStanza = BenchmarkStanza
-  { _benchmarkStanzaImports :: [ImportName]
+  { _benchmarkStanzaImports :: [(ImportName, CondTree ConfVar [Dependency] BuildInfo)]
   -- ^ retained imports
   , _benchmarkStanzaBenchmarkType :: Maybe BenchmarkType
   , _benchmarkStanzaMainIs :: Maybe (RelativePath Source File)
