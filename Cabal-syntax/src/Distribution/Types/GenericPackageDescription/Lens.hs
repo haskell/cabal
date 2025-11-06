@@ -52,7 +52,7 @@ genPackageFlags :: Lens' GenericPackageDescription [PackageFlag]
 genPackageFlags f s = fmap (\x -> s{T.genPackageFlags = x}) (f (T.genPackageFlags s))
 {-# INLINE genPackageFlags #-}
 
-gpdCommonStanzas :: Lens' GenericPackageDescription (Map ImportName (CondTree ConfVar [Dependency] BuildInfo))
+gpdCommonStanzas :: Lens' GenericPackageDescription (Map ImportName (CondTree ConfVar [Dependency] (T.WithImports BuildInfo)))
 gpdCommonStanzas f s = fmap (\x -> s{T.gpdCommonStanzas = x}) (f (T.gpdCommonStanzas s))
 {-# INLINE gpdCommonStanzas #-}
 

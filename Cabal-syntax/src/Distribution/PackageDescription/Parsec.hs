@@ -33,7 +33,7 @@ module Distribution.PackageDescription.Parsec
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Control.Monad.State.Strict (StateT, execStateT, modify)
+import Control.Monad.State.Strict (StateT, execStateT)
 import Control.Monad.Trans.Class (lift)
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
@@ -130,14 +130,14 @@ type SectionParser src = StateT SectionS (ParseResult src)
 -- | State of section parser
 data SectionS = SectionS
   { _stateGpd :: !GenericPackageDescription
-  , _stateCommonStanzas :: !(Map String CondTreeBuildInfo)
+  , _stateCommonStanzas :: !(Map String CondTreeBuildInfoWithImports)
   }
 
 stateGpd :: Lens' SectionS GenericPackageDescription
 stateGpd f (SectionS gpd cs) = (\x -> SectionS x cs) <$> f gpd
 {-# INLINE stateGpd #-}
 
-stateCommonStanzas :: Lens' SectionS (Map String CondTreeBuildInfo)
+stateCommonStanzas :: Lens' SectionS (Map String CondTreeBuildInfoWithImports)
 stateCommonStanzas f (SectionS gpd cs) = SectionS gpd <$> f cs
 {-# INLINE stateCommonStanzas #-}
 
@@ -267,7 +267,7 @@ goSections specVer fields = do
       => ParsecFieldGrammar' a
       -- \^ grammar
       -> (BuildInfo -> a)
-      -> Map String CondTreeBuildInfo
+      -> Map String CondTreeBuildInfoWithImports
       -- \^ common stanzas
       -> [Field Position]
       -> ParseResult src (CondTree ConfVar [Dependency] (WithImports a))
@@ -282,10 +282,8 @@ goSections specVer fields = do
           commonStanzas <- use stateCommonStanzas
           name' <- lift $ parseCommonName pos args
           biTree <- lift $ parseCondTree' buildInfoFieldGrammar id commonStanzas fields
-          let biTree' = insertBuildInfoImports biTree
-
           case Map.lookup name' commonStanzas of
-            Nothing -> stateCommonStanzas .= Map.insert name' biTree' commonStanzas
+            Nothing -> stateCommonStanzas .= Map.insert name' biTree commonStanzas
             Just _ ->
               lift $
                 parseFailure pos $
@@ -488,7 +486,7 @@ parseCondTree
   -- ^ accept @elif@
   -> ParsecFieldGrammar' a
   -- ^ grammar
-  -> Map String CondTreeBuildInfo
+  -> Map String CondTreeBuildInfoWithImports
   -- ^ common stanzas
   -> (BuildInfo -> a)
   -- ^ constructor from buildInfo
@@ -609,6 +607,7 @@ with new AST, this all need to be rewritten.
 --
 -- * Common stanzas are parsed exactly once, even if not-used. Thus we report errors in them.
 type CondTreeBuildInfo = CondTree ConfVar [Dependency] BuildInfo
+type CondTreeBuildInfoWithImports = CondTree ConfVar [Dependency] (WithImports BuildInfo)
 
 -- | Create @a@ from 'BuildInfo'.
 -- This class is used to implement common stanza parsing.
@@ -647,7 +646,7 @@ parseCondTreeWithCommonStanzas
   -- ^ grammar
   -> (BuildInfo -> a)
   -- ^ construct fromBuildInfo
-  -> Map String CondTreeBuildInfo
+  -> Map String CondTreeBuildInfoWithImports
   -- ^ common stanzas
   -> [Field Position]
   -> ParseResult src (CondTree ConfVar [Dependency] (WithImports a))
@@ -681,7 +680,7 @@ processImports
   => CabalSpecVersion
   -> (BuildInfo -> a)
   -- ^ construct fromBuildInfo
-  -> Map String CondTreeBuildInfo
+  -> Map String CondTreeBuildInfoWithImports
   -- ^ common stanzas
   -> [Field Position]
   -> ParseResult src ([Field Position], [ImportName])

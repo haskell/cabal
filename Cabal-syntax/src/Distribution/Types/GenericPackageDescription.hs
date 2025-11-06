@@ -16,7 +16,8 @@ import Prelude ()
 -- lens
 import Distribution.Compat.Lens as L
 import qualified Distribution.Types.BuildInfo.Lens as L
-import qualified Distribution.Types.Imports.Lens as L
+-- TODO(leana8959): fix it this orphan
+import qualified Distribution.Types.Imports.Lens as L ()
 
 import Distribution.Types.PackageDescription
 
@@ -32,7 +33,6 @@ import Distribution.Types.ConfVar
 import Distribution.Types.Executable
 import Distribution.Types.Flag
 import Distribution.Types.ForeignLib
-import Distribution.Types.Library
 import Distribution.Types.TestSuite
 import Distribution.Types.UnqualComponentName
 import Distribution.Version
@@ -54,7 +54,7 @@ data GenericPackageDescription = GenericPackageDescription
   --   Perfectly, PackageIndex should have sum type, so we don't need to
   --   have dummy GPDs.
   , genPackageFlags :: [PackageFlag]
-  , gpdCommonStanzas :: Map ImportName (CondTree ConfVar [Dependency] BuildInfo)
+  , gpdCommonStanzas :: Map ImportName (CondTree ConfVar [Dependency] (WithImports BuildInfo))
   , condLibrary :: Maybe (CondTree ConfVar [Dependency] (WithImports Library))
   , condSubLibraries
       :: [ ( UnqualComponentName
@@ -106,7 +106,7 @@ _condLibrary gpd =
 mergeImports
   :: forall a
    . L.HasBuildInfo a
-  => Map ImportName (CondTree ConfVar [Dependency] BuildInfo)
+  => Map ImportName (CondTree ConfVar [Dependency] (WithImports BuildInfo))
   -> (a -> (BuildInfo -> a))
   -- ^ We need the information regarding the root node to be able to build such a constructor function
   -> CondTree ConfVar [Dependency] (WithImports a)
@@ -121,13 +121,13 @@ mergeImports commonStanzas fromBuildInfo (CondNode root c zs) =
   in  endo tree
 
     where
-      goNode = mergeImports commonStanzas fromBuildInfo
-
       goBranch
         :: L.HasBuildInfo a
         => CondBranch ConfVar [Dependency] (WithImports a)
         -> CondBranch ConfVar [Dependency] a
       goBranch (CondBranch cond ifTrue ifFalse) = CondBranch cond (goNode ifTrue) (goNode <$> ifFalse)
+        where
+          goNode = mergeImports commonStanzas fromBuildInfo
 
       -- TODO(leana8959): (at some point it'll become (WithImports BuildInfo) and it'll force us to handle its imports too)
       resolveImports
@@ -135,14 +135,19 @@ mergeImports commonStanzas fromBuildInfo (CondNode root c zs) =
         => [ImportName]
         -> (CondTree ConfVar [Dependency] a -> CondTree ConfVar [Dependency] a)
       resolveImports importNames =
-        let commonTrees :: [CondTree ConfVar [Dependency] BuildInfo]
+        let commonTrees :: [CondTree ConfVar [Dependency] (WithImports BuildInfo)]
             commonTrees =
               map
                 ( fromMaybe (error "failed to merge imports, did you mess with GenericPackageDescription?")
                   . flip Map.lookup commonStanzas
                 )
                 importNames
-        in \x -> foldr mergeCondTree x commonTrees
+
+            commonTrees' :: [CondTree ConfVar [Dependency] BuildInfo]
+            commonTrees' = map goNode commonTrees
+        in \x -> foldr mergeCondTree x commonTrees'
+        where
+          goNode = mergeImports commonStanzas (const id)
 
       mergeCondTree
         :: L.HasBuildInfo a

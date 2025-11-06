@@ -624,7 +624,7 @@ buildInfoFieldGrammar
      )
   => g BuildInfo BuildInfo
 buildInfoFieldGrammar =
-  BuildInfo []
+  BuildInfo
     <$> booleanFieldDef "buildable" L.buildable True
     <*> monoidalFieldAla "build-tools" (alaList CommaFSep) L.buildTools
       ^^^ deprecatedSince

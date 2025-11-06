@@ -5,11 +5,8 @@
 module Distribution.Types.Imports.Lens where
 
 import Distribution.Compat.Lens
-import Distribution.Compat.Prelude
 
 import qualified Distribution.Types.Imports as T
-import qualified Distribution.Types.BuildInfo as T
-
 import qualified Distribution.Types.BuildInfo.Lens as L
 
 getImportNames :: Lens (T.WithImports a) (T.WithImports b) a b

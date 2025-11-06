@@ -10,7 +10,6 @@ Just
       libVisibility =
       LibraryVisibilityPublic,
       libBuildInfo = BuildInfo {
-        buildInfoImports = [],
         buildable = True,
         buildTools = [],
         buildToolDepends = [],
@@ -90,7 +89,6 @@ Just
             libVisibility =
             LibraryVisibilityPublic,
             libBuildInfo = BuildInfo {
-              buildInfoImports = ["windows"],
               buildable = True,
               buildTools = [],
               buildToolDepends = [],
@@ -171,5 +169,84 @@ Just
               (PackageName "containers")
               (OrLaterVersion (mkVersion [0]))
               mainLibSet],
-          condTreeComponents = []},
+          condTreeComponents = [
+            CondBranch {
+              condBranchCondition =
+              `Var (OS Windows)`,
+              condBranchIfTrue = CondNode {
+                condTreeData = Library {
+                  libName = LMainLibName,
+                  exposedModules = [],
+                  reexportedModules = [],
+                  signatures = [],
+                  libExposed = True,
+                  libVisibility =
+                  LibraryVisibilityPublic,
+                  libBuildInfo = BuildInfo {
+                    buildable = True,
+                    buildTools = [],
+                    buildToolDepends = [],
+                    cppOptions = [],
+                    asmOptions = [],
+                    cmmOptions = [],
+                    ccOptions = [],
+                    cxxOptions = [],
+                    jsppOptions = [],
+                    ldOptions = [],
+                    hsc2hsOptions = [],
+                    pkgconfigDepends = [],
+                    frameworks = [],
+                    extraFrameworkDirs = [],
+                    asmSources = [],
+                    cmmSources = [],
+                    cSources = [],
+                    cxxSources = [],
+                    jsSources = [],
+                    hsSourceDirs = [],
+                    otherModules = [],
+                    virtualModules = [],
+                    autogenModules = [],
+                    defaultLanguage = Nothing,
+                    otherLanguages = [],
+                    defaultExtensions = [],
+                    otherExtensions = [],
+                    oldExtensions = [],
+                    extraLibs = [],
+                    extraLibsStatic = [],
+                    extraGHCiLibs = [],
+                    extraBundledLibs = [],
+                    extraLibFlavours = [],
+                    extraDynLibFlavours = [],
+                    extraLibDirs = [],
+                    extraLibDirsStatic = [],
+                    includeDirs = [],
+                    includes = [],
+                    autogenIncludes = [],
+                    installIncludes = [],
+                    options = PerCompilerFlavor
+                      []
+                      [],
+                    profOptions = PerCompilerFlavor
+                      []
+                      [],
+                    sharedOptions =
+                    PerCompilerFlavor [] [],
+                    profSharedOptions =
+                    PerCompilerFlavor [] [],
+                    staticOptions =
+                    PerCompilerFlavor [] [],
+                    customFieldsBI = [],
+                    targetBuildDepends = [
+                      Dependency
+                        (PackageName "Win32")
+                        (OrLaterVersion (mkVersion [0]))
+                        mainLibSet],
+                    mixins = []}},
+                condTreeConstraints = [
+                  Dependency
+                    (PackageName "Win32")
+                    (OrLaterVersion (mkVersion [0]))
+                    mainLibSet],
+                condTreeComponents = []},
+              condBranchIfFalse = Nothing}]},
         condBranchIfFalse = Nothing}]}
