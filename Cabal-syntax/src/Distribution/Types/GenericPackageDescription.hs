@@ -84,43 +84,31 @@ data GenericPackageDescription = GenericPackageDescription
   }
   deriving (Show, Eq, Data, Generic)
 
--- libraryFromBuildInfo :: LibraryName -> BuildInfo -> Library
--- libraryFromBuildInfo n bi =
---   emptyLibrary
---     { libName = n
---     , libVisibility = case n of
---         LMainLibName -> LibraryVisibilityPublic
---         LSubLibName _ -> LibraryVisibilityPrivate
---     , libBuildInfo = bi
---     }
---
--- condLibrary :: GenericPackageDescription -> Maybe (CondTree ConfVar [Dependency] Library)
--- condLibrary gpd = fmap go $ condLibrary gpd
---   where
---     go :: CondTree ConfVar [Dependency] Library -> CondTree ConfVar [Dependency] Library
---     go libTree =
---       let rootLib :: Library
---           rootLib = condTreeData libTree
---
---           commonTrees :: [CondTree ConfVar [Dependency] BuildInfo]
---           commonTrees =
---             map
---               (fromMaybe (error "failed to merge imports, did you mess with GenericPackageDescription?")
---                 . flip Map.lookup (gpdCommonStanzas gpd))
---               (libImports rootLib)
---
---           fromBuildInfo :: BuildInfo -> Library
---           fromBuildInfo = libraryFromBuildInfo (libName rootLib)
---
---       -- TODO(leana8959): figure out merge direction
---       in  foldr (mergeCommonStanza fromBuildInfo) libTree commonTrees
+libraryFromBuildInfo :: LibraryName -> BuildInfo -> Library
+libraryFromBuildInfo n bi =
+  emptyLibrary
+    { libName = n
+    , libVisibility = case n of
+        LMainLibName -> LibraryVisibilityPublic
+        LSubLibName _ -> LibraryVisibilityPrivate
+    , libBuildInfo = bi
+    }
+
+_condLibrary :: GenericPackageDescription -> Maybe (CondTree ConfVar [Dependency] Library)
+_condLibrary gpd =
+  let commonStanzas = gpdCommonStanzas gpd
+
+      fromBuildInfo :: Library -> (BuildInfo -> Library)
+      fromBuildInfo = libraryFromBuildInfo . libName
+
+  in  mergeImports commonStanzas fromBuildInfo <$> (condLibrary gpd)
 
 mergeImports
   :: forall a
    . L.HasBuildInfo a
   => Map ImportName (CondTree ConfVar [Dependency] BuildInfo)
-  -> (BuildInfo -> a)
-  -- ^ fromBuildInfo
+  -> (a -> (BuildInfo -> a))
+  -- ^ We need the information regarding the root node to be able to build such a constructor function
   -> CondTree ConfVar [Dependency] (WithImports a)
   -> CondTree ConfVar [Dependency] a
 mergeImports commonStanzas fromBuildInfo (CondNode root c zs) =
@@ -163,13 +151,16 @@ mergeImports commonStanzas fromBuildInfo (CondNode root c zs) =
         -> CondTree ConfVar [Dependency] a
       mergeCondTree (CondNode bi _ bis) (CondNode x _ cs) = CondNode x' (x' ^. L.targetBuildDepends) cs'
         where
+          fromBuildInfo' :: (BuildInfo -> a)
+          fromBuildInfo' = fromBuildInfo (unImportNames root)
+
           -- new value is old value with buildInfo field _prepended_.
           x' :: a
           x' = x & L.buildInfo %~ (bi <>)
 
           -- tree components are appended together.
           cs' :: [CondBranch ConfVar [Dependency] a]
-          cs' = map (fromBuildInfo <$>) bis ++ cs
+          cs' = map (fromBuildInfo' <$>) bis ++ cs
 
 
 -- condSubLibraries :: GenericPackageDescription -> [(UnqualComponentName, CondTree ConfVar [Dependency] Library)]
