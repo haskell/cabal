@@ -86,6 +86,7 @@ import qualified Data.Set as Set
 import qualified Distribution.Utils.ShortText as ShortText
 
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
+import Distribution.Types.Imports
 
 import Control.Monad
 
@@ -239,7 +240,8 @@ checkGenericPackageDescription
       checkPackageDescription packageDescription_
       -- Targets should be present...
       let condAllLibraries =
-            maybeToList condLibrary_
+      -- TODO(leana8959):
+            maybeToList (mapTreeData unImportNames <$> condLibrary_)
               ++ (map snd condSubLibraries_)
       checkP
         ( and
@@ -294,7 +296,8 @@ checkGenericPackageDescription
               . ccNames
           )
       let ads =
-            maybe [] ((: []) . extractAssocDeps pName) condLibrary_
+        -- TODO(leana8959):
+            maybe [] ((: []) . extractAssocDeps pName . mapTreeData unImportNames) condLibrary_
               ++ map (uncurry extractAssocDeps) condSubLibraries_
 
       case condLibrary_ of
@@ -303,7 +306,7 @@ checkGenericPackageDescription
             genPackageFlags_
             (checkLibrary False ads)
             (const id)
-            (mempty, cl)
+            (mempty, mapTreeData unImportNames cl)
         Nothing -> return ()
       mapM_
         ( checkCondTarget
@@ -960,7 +963,7 @@ pd2gpd pd = gpd
       emptyGenericPackageDescription
         { packageDescription = pd
         -- TODO(leana8959): think about reverse conversion
-        , _condLibrary = fmap t2c (library pd)
+        , condLibrary = t2c . noImports <$> (library pd)
         , condSubLibraries = map (t2cName ln id) (subLibraries pd)
         , condForeignLibs =
             map

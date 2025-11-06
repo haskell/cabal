@@ -26,6 +26,7 @@ import Distribution.Types.ComponentId              (ComponentId)
 import Distribution.Types.DumpBuildInfo            (DumpBuildInfo)
 import Distribution.Types.PackageVersionConstraint
 import Distribution.Types.UnitId                   (DefUnitId, UnitId)
+import Distribution.Types.Imports
 import Distribution.Utils.NubList                  (NubList)
 import Distribution.Utils.Path                     (SymbolicPathX)
 import Distribution.Utils.ShortText                (ShortText, fromShortText)
@@ -55,6 +56,7 @@ instance ToExpr Dependency where
 instance ToExpr (SymbolicPathX allowAbs from to)
 
 instance ToExpr a => ToExpr (InstallDirs a)
+instance ToExpr a => ToExpr (WithImports a)
 
 instance ToExpr AbiDependency
 instance ToExpr AbiHash

@@ -1,12 +1,21 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 
 module Distribution.Types.Imports where
+
+import Distribution.Compat.Lens
+import Distribution.Compat.Prelude
 
 data WithImports a = WithImports
   { getImportNames :: ![ImportName]
   , unImportNames :: !a
   }
-  deriving (Show, Functor)
+  deriving (Show, Functor, Eq, Ord, Read, Data, Generic)
+
+instance Binary a => Binary (WithImports a)
+instance Structured a => Structured (WithImports a)
+instance NFData a => NFData (WithImports a) where rnf = genericRnf
 
 type ImportName = String
 

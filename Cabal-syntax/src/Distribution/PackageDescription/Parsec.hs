@@ -300,10 +300,9 @@ goSections specVer fields = do
           commonStanzas <- use stateCommonStanzas
           let name' = LMainLibName
           lib <- lift $ parseCondTree' (libraryFieldGrammar name') (libraryFromBuildInfo name') commonStanzas fields
-          let lib' = insertLibImports lib
           --
           -- TODO check that not set
-          stateGpd . L.condLibrary ?= lib'
+          stateGpd . L.condLibrary ?= lib
 
       -- Sublibraries
       -- TODO: check cabal-version
@@ -312,7 +311,7 @@ goSections specVer fields = do
           name' <- parseUnqualComponentName pos args
           let name'' = LSubLibName name'
           lib <- lift $ parseCondTree' (libraryFieldGrammar name'') (libraryFromBuildInfo name'') commonStanzas fields
-          let lib' = insertLibImports lib
+          let lib' = mapTreeData unImportNames lib
           -- TODO check duplicate name here?
           stateGpd . L.condSubLibraries %= snoc (name', lib')
 

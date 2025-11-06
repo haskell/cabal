@@ -54,7 +54,6 @@ checkLibrary
   ads
   lib@( Library
           libName_
-          _libImports_
           _exposedModules_
           reexportedModules_
           signatures_

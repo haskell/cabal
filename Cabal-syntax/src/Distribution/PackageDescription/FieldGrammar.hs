@@ -192,7 +192,7 @@ libraryFieldGrammar
   => LibraryName
   -> g Library Library
 libraryFieldGrammar n =
-  Library n [] {- imports are later filled in -}
+  Library n
     <$> monoidalFieldAla "exposed-modules" formatExposedModules L.exposedModules
     <*> monoidalFieldAla "reexported-modules" (alaList CommaVCat) L.reexportedModules
     <*> monoidalFieldAla "signatures" (alaList' VCat MQuoted) L.signatures

@@ -54,6 +54,7 @@ import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.System
 import Distribution.Types.Component
+import Distribution.Types.Imports
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.DependencyMap
 import Distribution.Types.DependencySatisfaction (DependencySatisfaction (..))
@@ -319,7 +320,8 @@ extractConditions
   -> [Condition ConfVar]
 extractConditions f gpkg =
   concat
-    [ extractCondition (f . libBuildInfo) <$> maybeToList (condLibrary gpkg)
+  -- TODO(leana8959): merge this and not just drop the imports
+    [ extractCondition (f . libBuildInfo) <$> maybeToList (mapTreeData unImportNames <$> condLibrary gpkg)
     , extractCondition (f . libBuildInfo) . snd <$> condSubLibraries gpkg
     , extractCondition (f . buildInfo) . snd <$> condExecutables gpkg
     , extractCondition (f . testBuildInfo) . snd <$> condTestSuites gpkg
@@ -494,7 +496,8 @@ finalizePD
     where
       -- Combine lib, exes, and tests into one list of @CondTree@s with tagged data
       condTrees =
-        maybeToList (fmap (mapTreeData Lib) mb_lib0)
+      -- TODO(leana8959): handle imports
+        maybeToList (fmap (mapTreeData $ Lib . unImportNames) mb_lib0)
           ++ map (\(name, tree) -> mapTreeData (SubComp name . CLib) tree) sub_libs0
           ++ map (\(name, tree) -> mapTreeData (SubComp name . CFLib) tree) flibs0
           ++ map (\(name, tree) -> mapTreeData (SubComp name . CExe) tree) exes0
@@ -553,7 +556,8 @@ flattenPackageDescription
       , benchmarks = reverse bms
       }
     where
-      mlib = f <$> mlib0
+      -- TODO(leana8959): handle imports
+      mlib = f . mapTreeData unImportNames <$> mlib0
         where
           f lib = (libFillInDefaults . fst . ignoreConditions $ lib){libName = LMainLibName}
       sub_libs = flattenLib <$> sub_libs0

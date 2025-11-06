@@ -54,6 +54,7 @@ import Distribution.Pretty
 import Distribution.Utils.Generic (writeFileAtomic, writeUTF8File)
 
 import qualified Distribution.PackageDescription.FieldGrammar as FG
+import Distribution.Types.Imports
 import qualified Distribution.Types.BuildInfo.Lens as L
 import qualified Distribution.Types.SetupBuildInfo.Lens as L
 
@@ -79,7 +80,7 @@ ppGenericPackageDescription v gpd0 =
     [ ppPackageDescription v (packageDescription gpd)
     , ppSetupBInfo v (setupBuildInfo (packageDescription gpd))
     , ppGenPackageFlags v (genPackageFlags gpd)
-    , ppCondLibrary v (condLibrary gpd)
+    , ppCondLibrary v (mapTreeData unImportNames <$> condLibrary gpd)
     , ppCondSubLibraries v (condSubLibraries gpd)
     , ppCondForeignLibs v (condForeignLibs gpd)
     , ppCondExecutables v (condExecutables gpd)
@@ -232,7 +233,7 @@ pdToGpd pd =
     , gpdScannedVersion = Nothing
     , genPackageFlags = []
     -- TODO(leana8959): what to do here
-    , _condLibrary = mkCondTree <$> library pd
+    , condLibrary = mapTreeData noImports . mkCondTree <$> library pd
     , condSubLibraries = mkCondTreeL <$> subLibraries pd
     , condForeignLibs = mkCondTree' foreignLibName <$> foreignLibs pd
     , condExecutables = mkCondTree' exeName <$> executables pd

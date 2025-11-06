@@ -6,7 +6,6 @@ module Distribution.Types.Library
   , emptyLibrary
   , explicitLibModules
   , libModulesAutogen
-  , insertLibImports
   ) where
 
 import Distribution.Compat.Prelude
@@ -14,10 +13,6 @@ import Prelude ()
 
 import Distribution.ModuleName
 import Distribution.Types.BuildInfo
-import Distribution.Types.CondTree
-import Distribution.Types.ConfVar
-import Distribution.Types.Dependency
-import Distribution.Types.Imports
 import Distribution.Types.LibraryName
 import Distribution.Types.LibraryVisibility
 import Distribution.Types.ModuleReexport
@@ -26,7 +21,6 @@ import qualified Distribution.Types.BuildInfo.Lens as L
 
 data Library = Library
   { libName :: LibraryName
-  , libImports :: [ImportName]
   , exposedModules :: [ModuleName]
   , reexportedModules :: [ModuleReexport]
   , signatures :: [ModuleName]
@@ -39,14 +33,6 @@ data Library = Library
   }
   deriving (Generic, Show, Eq, Ord, Read, Data)
 
-insertLibImports
-  :: CondTree ConfVar [Dependency] (WithImports Library)
-  -> CondTree ConfVar [Dependency] Library
-insertLibImports = mapCondTree f id id
-  where
-    f :: WithImports Library -> Library
-    f (WithImports importNames lib) = lib{libImports = importNames}
-
 instance L.HasBuildInfo Library where
   buildInfo f l = (\x -> l{libBuildInfo = x}) <$> f (libBuildInfo l)
 
@@ -58,7 +44,6 @@ emptyLibrary :: Library
 emptyLibrary =
   Library
     { libName = LMainLibName
-    , libImports = mempty
     , exposedModules = mempty
     , reexportedModules = mempty
     , signatures = mempty
@@ -82,7 +67,6 @@ instance Semigroup Library where
   a <> b =
     Library
       { libName = combineLibraryName (libName a) (libName b)
-      , libImports = combine libImports
       , exposedModules = combine exposedModules
       , reexportedModules = combine reexportedModules
       , signatures = combine signatures

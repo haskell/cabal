@@ -13,6 +13,7 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import qualified Distribution.Types.GenericPackageDescription as T
+import qualified Distribution.Types.Imports as T
 
 -- We import types from their packages, so we can remove unused imports
 -- and have wider inter-module dependency graph
@@ -56,8 +57,8 @@ gpdCommonStanzas f s = fmap (\x -> s{T.gpdCommonStanzas = x}) (f (T.gpdCommonSta
 {-# INLINE gpdCommonStanzas #-}
 
 -- TODO(leana8959): how to deal with this
-condLibrary :: Lens' GenericPackageDescription (Maybe (CondTree ConfVar [Dependency] Library))
-condLibrary f s = fmap (\x -> s{T._condLibrary = x}) (f (T._condLibrary s))
+condLibrary :: Lens' GenericPackageDescription (Maybe (CondTree ConfVar [Dependency] (T.WithImports Library)))
+condLibrary f s = fmap (\x -> s{T.condLibrary = x}) (f (T.condLibrary s))
 {-# INLINE condLibrary #-}
 
 condSubLibraries :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTree ConfVar [Dependency] Library))]
