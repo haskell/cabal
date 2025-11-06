@@ -6,7 +6,6 @@
 module Distribution.Types.GenericPackageDescription
   ( GenericPackageDescription (..)
   , emptyGenericPackageDescription
-
   , _condLibrary
   ) where
 
@@ -16,23 +15,24 @@ import Prelude ()
 -- lens
 import Distribution.Compat.Lens as L
 import qualified Distribution.Types.BuildInfo.Lens as L
+
 -- TODO(leana8959): fix it this orphan
 import qualified Distribution.Types.Imports.Lens as L ()
 
 import Distribution.Types.PackageDescription
 
 import Distribution.Package
-import Distribution.Types.Imports
-import Distribution.Types.Library
-import Distribution.Types.LibraryName
-import Distribution.Types.LibraryVisibility
-import Distribution.Types.BuildInfo
 import Distribution.Types.Benchmark
+import Distribution.Types.BuildInfo
 import Distribution.Types.CondTree
 import Distribution.Types.ConfVar
 import Distribution.Types.Executable
 import Distribution.Types.Flag
 import Distribution.Types.ForeignLib
+import Distribution.Types.Imports
+import Distribution.Types.Library
+import Distribution.Types.LibraryName
+import Distribution.Types.LibraryVisibility
 import Distribution.Types.TestSuite
 import Distribution.Types.UnqualComponentName
 import Distribution.Version
@@ -100,8 +100,7 @@ _condLibrary gpd =
 
       fromBuildInfo :: Library -> (BuildInfo -> Library)
       fromBuildInfo = libraryFromBuildInfo . libName
-
-  in  mergeImports commonStanzas fromBuildInfo <$> (condLibrary gpd)
+   in mergeImports commonStanzas fromBuildInfo <$> (condLibrary gpd)
 
 mergeImports
   :: forall a
@@ -117,56 +116,53 @@ mergeImports commonStanzas fromBuildInfo (CondNode root c zs) =
 
       tree :: CondTree ConfVar [Dependency] a
       tree = CondNode (unImportNames root) c (map goBranch zs)
+   in endo tree
+  where
+    goBranch
+      :: L.HasBuildInfo a
+      => CondBranch ConfVar [Dependency] (WithImports a)
+      -> CondBranch ConfVar [Dependency] a
+    goBranch (CondBranch cond ifTrue ifFalse) = CondBranch cond (goNode ifTrue) (goNode <$> ifFalse)
+      where
+        goNode = mergeImports commonStanzas fromBuildInfo
 
-  in  endo tree
-
-    where
-      goBranch
-        :: L.HasBuildInfo a
-        => CondBranch ConfVar [Dependency] (WithImports a)
-        -> CondBranch ConfVar [Dependency] a
-      goBranch (CondBranch cond ifTrue ifFalse) = CondBranch cond (goNode ifTrue) (goNode <$> ifFalse)
-        where
-          goNode = mergeImports commonStanzas fromBuildInfo
-
-      -- TODO(leana8959): (at some point it'll become (WithImports BuildInfo) and it'll force us to handle its imports too)
-      resolveImports
-        :: L.HasBuildInfo a
-        => [ImportName]
-        -> (CondTree ConfVar [Dependency] a -> CondTree ConfVar [Dependency] a)
-      resolveImports importNames =
-        let commonTrees :: [CondTree ConfVar [Dependency] (WithImports BuildInfo)]
-            commonTrees =
-              map
-                ( fromMaybe (error "failed to merge imports, did you mess with GenericPackageDescription?")
+    -- TODO(leana8959): (at some point it'll become (WithImports BuildInfo) and it'll force us to handle its imports too)
+    resolveImports
+      :: L.HasBuildInfo a
+      => [ImportName]
+      -> (CondTree ConfVar [Dependency] a -> CondTree ConfVar [Dependency] a)
+    resolveImports importNames =
+      let commonTrees :: [CondTree ConfVar [Dependency] (WithImports BuildInfo)]
+          commonTrees =
+            map
+              ( fromMaybe (error "failed to merge imports, did you mess with GenericPackageDescription?")
                   . flip Map.lookup commonStanzas
-                )
-                importNames
+              )
+              importNames
 
-            commonTrees' :: [CondTree ConfVar [Dependency] BuildInfo]
-            commonTrees' = map goNode commonTrees
-        in \x -> foldr mergeCondTree x commonTrees'
-        where
-          goNode = mergeImports commonStanzas (const id)
+          commonTrees' :: [CondTree ConfVar [Dependency] BuildInfo]
+          commonTrees' = map goNode commonTrees
+       in \x -> foldr mergeCondTree x commonTrees'
+      where
+        goNode = mergeImports commonStanzas (const id)
 
-      mergeCondTree
-        :: L.HasBuildInfo a
-        => CondTree ConfVar [Dependency] BuildInfo
-        -> CondTree ConfVar [Dependency] a
-        -> CondTree ConfVar [Dependency] a
-      mergeCondTree (CondNode bi _ bis) (CondNode x _ cs) = CondNode x' (x' ^. L.targetBuildDepends) cs'
-        where
-          fromBuildInfo' :: (BuildInfo -> a)
-          fromBuildInfo' = fromBuildInfo (unImportNames root)
+    mergeCondTree
+      :: L.HasBuildInfo a
+      => CondTree ConfVar [Dependency] BuildInfo
+      -> CondTree ConfVar [Dependency] a
+      -> CondTree ConfVar [Dependency] a
+    mergeCondTree (CondNode bi _ bis) (CondNode x _ cs) = CondNode x' (x' ^. L.targetBuildDepends) cs'
+      where
+        fromBuildInfo' :: (BuildInfo -> a)
+        fromBuildInfo' = fromBuildInfo (unImportNames root)
 
-          -- new value is old value with buildInfo field _prepended_.
-          x' :: a
-          x' = x & L.buildInfo %~ (bi <>)
+        -- new value is old value with buildInfo field _prepended_.
+        x' :: a
+        x' = x & L.buildInfo %~ (bi <>)
 
-          -- tree components are appended together.
-          cs' :: [CondBranch ConfVar [Dependency] a]
-          cs' = map (fromBuildInfo' <$>) bis ++ cs
-
+        -- tree components are appended together.
+        cs' :: [CondBranch ConfVar [Dependency] a]
+        cs' = map (fromBuildInfo' <$>) bis ++ cs
 
 -- condSubLibraries :: GenericPackageDescription -> [(UnqualComponentName, CondTree ConfVar [Dependency] Library)]
 -- condSubLibraries = ()
@@ -189,7 +185,7 @@ instance NFData GenericPackageDescription where rnf = genericRnf
 emptyGenericPackageDescription :: GenericPackageDescription
 emptyGenericPackageDescription =
   GenericPackageDescription
-    { packageDescription = emptyPackageDescription 
+    { packageDescription = emptyPackageDescription
     , gpdScannedVersion = Nothing
     , genPackageFlags = []
     , gpdCommonStanzas = mempty

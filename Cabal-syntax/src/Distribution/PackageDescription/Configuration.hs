@@ -54,10 +54,10 @@ import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.System
 import Distribution.Types.Component
-import Distribution.Types.Imports
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.DependencyMap
 import Distribution.Types.DependencySatisfaction (DependencySatisfaction (..))
+import Distribution.Types.Imports
 import Distribution.Types.MissingDependency (MissingDependency (..))
 import Distribution.Types.PackageVersionConstraint
 import Distribution.Utils.Generic
@@ -320,7 +320,7 @@ extractConditions
   -> [Condition ConfVar]
 extractConditions f gpkg =
   concat
-  -- TODO(leana8959): merge this and not just drop the imports
+    -- TODO(leana8959): merge this and not just drop the imports
     [ extractCondition (f . libBuildInfo) <$> maybeToList (mapTreeData unImportNames <$> condLibrary gpkg)
     , extractCondition (f . libBuildInfo) . snd <$> condSubLibraries gpkg
     , extractCondition (f . buildInfo) . snd <$> condExecutables gpkg
@@ -496,7 +496,7 @@ finalizePD
     where
       -- Combine lib, exes, and tests into one list of @CondTree@s with tagged data
       condTrees =
-      -- TODO(leana8959): handle imports
+        -- TODO(leana8959): handle imports
         maybeToList (fmap (mapTreeData $ Lib . unImportNames) mb_lib0)
           ++ map (\(name, tree) -> mapTreeData (SubComp name . CLib) tree) sub_libs0
           ++ map (\(name, tree) -> mapTreeData (SubComp name . CFLib) tree) flibs0

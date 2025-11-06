@@ -240,7 +240,7 @@ checkGenericPackageDescription
       checkPackageDescription packageDescription_
       -- Targets should be present...
       let condAllLibraries =
-      -- TODO(leana8959):
+            -- TODO(leana8959):
             maybeToList (mapTreeData unImportNames <$> condLibrary_)
               ++ (map snd condSubLibraries_)
       checkP
@@ -296,7 +296,7 @@ checkGenericPackageDescription
               . ccNames
           )
       let ads =
-        -- TODO(leana8959):
+            -- TODO(leana8959):
             maybe [] ((: []) . extractAssocDeps pName . mapTreeData unImportNames) condLibrary_
               ++ map (uncurry extractAssocDeps) condSubLibraries_
 
@@ -962,8 +962,8 @@ pd2gpd pd = gpd
     gpd =
       emptyGenericPackageDescription
         { packageDescription = pd
-        -- TODO(leana8959): think about reverse conversion
-        , condLibrary = t2c . noImports <$> (library pd)
+        , -- TODO(leana8959): think about reverse conversion
+          condLibrary = t2c . noImports <$> (library pd)
         , condSubLibraries = map (t2cName ln id) (subLibraries pd)
         , condForeignLibs =
             map

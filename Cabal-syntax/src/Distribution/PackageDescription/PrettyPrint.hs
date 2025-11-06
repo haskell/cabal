@@ -54,8 +54,8 @@ import Distribution.Pretty
 import Distribution.Utils.Generic (writeFileAtomic, writeUTF8File)
 
 import qualified Distribution.PackageDescription.FieldGrammar as FG
-import Distribution.Types.Imports
 import qualified Distribution.Types.BuildInfo.Lens as L
+import Distribution.Types.Imports
 import qualified Distribution.Types.SetupBuildInfo.Lens as L
 
 import Text.PrettyPrint (Doc, char, hsep, parens, text)
@@ -232,8 +232,8 @@ pdToGpd pd =
     { packageDescription = pd
     , gpdScannedVersion = Nothing
     , genPackageFlags = []
-    -- TODO(leana8959): what to do here
-    , condLibrary = mapTreeData noImports . mkCondTree <$> library pd
+    , -- TODO(leana8959): what to do here
+      condLibrary = mapTreeData noImports . mkCondTree <$> library pd
     , condSubLibraries = mkCondTreeL <$> subLibraries pd
     , condForeignLibs = mkCondTree' foreignLibName <$> foreignLibs pd
     , condExecutables = mkCondTree' exeName <$> executables pd
