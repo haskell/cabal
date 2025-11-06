@@ -7,7 +7,7 @@ module Distribution.Types.GenericPackageDescription
   ( GenericPackageDescription (..)
   , emptyGenericPackageDescription
 
-  , condLibrary
+  , _condLibrary
   ) where
 
 import Distribution.Compat.Prelude

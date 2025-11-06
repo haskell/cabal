@@ -15,6 +15,7 @@ import Data.Algorithm.Diff                         (PolyDiff (..), getGroupedDif
 import Data.Maybe                                  (isNothing)
 import Distribution.Fields                         (pwarning)
 import Distribution.PackageDescription             (GenericPackageDescription)
+import Distribution.Types.GenericPackageDescription(_condLibrary)
 import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.Parsec                         (PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
@@ -34,6 +35,7 @@ import qualified Distribution.InstalledPackageInfo as IPI
 
 #ifdef MIN_VERSION_tree_diff
 import Data.TreeDiff                 (ansiWlEditExpr, ediff, toExpr)
+import Data.TreeDiff.Class           (ToExpr)
 import Data.TreeDiff.Golden          (ediffGolden)
 import Data.TreeDiff.Instances.Cabal ()
 #endif
@@ -41,6 +43,7 @@ import Data.TreeDiff.Instances.Cabal ()
 tests :: TestTree
 tests = testGroup "parsec tests"
     [ regressionTests
+    , accessorsTests
     , warningTests
     , errorTests
     , ipiTests
@@ -149,6 +152,40 @@ errorTest fp = cabalGoldenTest fp correct $ do
   where
     input = "tests" </> "ParserTests" </> "errors" </> fp
     correct = replaceExtension input "errors"
+
+-------------------------------------------------------------------------------
+-- Merging accessors tests
+-------------------------------------------------------------------------------
+
+accessorsTests :: TestTree
+accessorsTests = testGroup "accessors"
+    [
+#ifdef MIN_VERSION_tree_diff
+      accessorsGoldenTestCondLibrary
+        [ "library-merging.cabal"
+        ]
+#endif
+    ]
+
+#ifdef MIN_VERSION_tree_diff
+accessorsGoldenTestCondLibrary :: [FilePath] -> TestTree
+accessorsGoldenTestCondLibrary = testGroup "condLibrary" . map (accessorsGoldenTest _condLibrary)
+
+accessorsGoldenTest
+  :: ToExpr a
+  => (GenericPackageDescription -> a)
+  -> FilePath -> TestTree
+accessorsGoldenTest f fp = ediffGolden goldenTest fp exprFile $ do
+    contents <- BS.readFile input
+    let res = withSource (PCabalFile (fp, contents)) $ parseGenericPackageDescription contents
+    let (_, x) = runParseResult res
+    case x of
+        Right gpd      -> pure . toExpr $ f gpd
+        Left (_, errs) -> fail $ unlines $ "ERROR" : map (showPErrorWithSource . fmap renderCabalFileSource) (NE.toList errs)
+  where
+    input = "tests" </> "ParserTests" </> "accessors" </> fp
+    exprFile = replaceExtension input "expr"
+#endif
 
 -------------------------------------------------------------------------------
 -- Regressions
