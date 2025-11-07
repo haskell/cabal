@@ -69,7 +69,7 @@ condForeignLibs :: Lens' GenericPackageDescription [(UnqualComponentName, (CondT
 condForeignLibs f s = fmap (\x -> s{T.condForeignLibs = x}) (f (T.condForeignLibs s))
 {-# INLINE condForeignLibs #-}
 
-condExecutables :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTree ConfVar [Dependency] Executable))]
+condExecutables :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTree ConfVar [Dependency] (T.WithImports Executable)))]
 condExecutables f s = fmap (\x -> s{T.condExecutables = x}) (f (T.condExecutables s))
 {-# INLINE condExecutables #-}
 

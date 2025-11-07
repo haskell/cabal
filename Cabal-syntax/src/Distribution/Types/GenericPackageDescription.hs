@@ -13,6 +13,8 @@ module Distribution.Types.GenericPackageDescription
   , mergeCondSubLibraries
   , condForeignLibs'
   , mergeCondForeignLibs
+  , condExecutables'
+  , mergeCondExecutables
   ) where
 
 import Distribution.Compat.Prelude
@@ -74,7 +76,7 @@ data GenericPackageDescription = GenericPackageDescription
          ]
   , condExecutables
       :: [ ( UnqualComponentName
-           , CondTree ConfVar [Dependency] Executable
+           , CondTree ConfVar [Dependency] (WithImports Executable)
            )
          ]
   , condTestSuites
@@ -102,6 +104,9 @@ libraryFromBuildInfo n bi =
 
 foreignLibFromBuildInfo :: UnqualComponentName -> BuildInfo -> ForeignLib
 foreignLibFromBuildInfo n bi = emptyForeignLib{foreignLibName = n, foreignLibBuildInfo = bi}
+
+executableFromBuildInfo :: UnqualComponentName -> BuildInfo -> Executable
+executableFromBuildInfo n bi = emptyExecutable{exeName = n, buildInfo = bi}
 
 condLibrary'
   :: GenericPackageDescription
@@ -136,10 +141,21 @@ mergeCondForeignLibs
   :: Map ImportName (CondTree ConfVar [Dependency] (WithImports BuildInfo))
   -> [(UnqualComponentName, CondTree ConfVar [Dependency] (WithImports ForeignLib))]
   -> [(UnqualComponentName, CondTree ConfVar [Dependency] ForeignLib)]
-mergeCondForeignLibs commonStanzas = map go
-  where
-    -- TODO(leana8959): is the name within the foreignlib important, on the name in the tuple?
-    go (name, tree) = (name, mergeImports commonStanzas (const $ foreignLibFromBuildInfo name) tree)
+mergeCondForeignLibs commonStanzas = map $ \(name, tree) ->
+  -- TODO(leana8959): is the name within the foreignlib important or we should use the name in the tuple?
+  (name, mergeImports commonStanzas (const $ foreignLibFromBuildInfo name) tree)
+
+condExecutables'
+  :: GenericPackageDescription
+  -> [(UnqualComponentName, CondTree ConfVar [Dependency] Executable)]
+condExecutables' gpd = mergeCondExecutables (gpdCommonStanzas gpd) (condExecutables gpd)
+
+mergeCondExecutables
+  :: Map ImportName (CondTree ConfVar [Dependency] (WithImports BuildInfo))
+  -> [(UnqualComponentName, CondTree ConfVar [Dependency] (WithImports Executable))]
+  -> [(UnqualComponentName, CondTree ConfVar [Dependency] Executable)]
+mergeCondExecutables commonStanzas = map $ \(name, tree) ->
+  (name, mergeImports commonStanzas (const $ executableFromBuildInfo name) tree)
 
 mergeImports
   :: forall a

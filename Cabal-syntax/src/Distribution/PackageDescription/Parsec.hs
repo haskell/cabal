@@ -336,9 +336,8 @@ goSections specVer fields = do
           commonStanzas <- use stateCommonStanzas
           name' <- parseUnqualComponentName pos args
           exe <- lift $ parseCondTree' (executableFieldGrammar name') (fromBuildInfo' name') commonStanzas fields
-          let exe' = insertExeImports exe
           -- TODO check duplicate name here?
-          stateGpd . L.condExecutables %= snoc (name', exe')
+          stateGpd . L.condExecutables %= snoc (name', exe)
       | name == "test-suite" = do
           commonStanzas <- use stateCommonStanzas
           name' <- parseUnqualComponentName pos args

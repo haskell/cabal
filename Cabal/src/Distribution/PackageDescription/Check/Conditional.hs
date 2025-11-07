@@ -229,7 +229,7 @@ checkCondVars cond =
 checkDuplicateModules :: GenericPackageDescription -> [PackageCheck]
 checkDuplicateModules pkg =
   concatMap checkLib (maybe id (:) (condLibrary' pkg) . map snd $ condSubLibraries' pkg)
-    ++ concatMap checkExe (map snd $ condExecutables pkg)
+    ++ concatMap checkExe (map snd $ condExecutables' pkg)
     ++ concatMap checkTest (map snd $ condTestSuites pkg)
     ++ concatMap checkBench (map snd $ condBenchmarks pkg)
   where

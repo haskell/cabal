@@ -326,7 +326,7 @@ checkGenericPackageDescription
             (checkExecutable ads)
             (const id)
         )
-        condExecutables_
+        (condExecutables' gpd)
       mapM_
         ( checkCondTarget
             genPackageFlags_
@@ -969,7 +969,7 @@ pd2gpd pd = gpd
               (foreignLibs pd)
         , condExecutables =
             map
-              (t2cName exeName id)
+              (fmap (mapTreeData noImports) . t2cName exeName id)
               (executables pd)
         , condTestSuites =
             map
