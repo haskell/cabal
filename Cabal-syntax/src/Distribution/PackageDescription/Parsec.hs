@@ -317,10 +317,9 @@ goSections specVer fields = do
           commonStanzas <- use stateCommonStanzas
           name' <- parseUnqualComponentName pos args
           flib <- lift $ parseCondTree' (foreignLibFieldGrammar name') (fromBuildInfo' name') commonStanzas fields
-          let flib' = insertForeignLibImports flib
 
           let hasType ts = foreignLibType ts /= foreignLibType mempty
-          unless (onAllBranches hasType flib') $
+          unless (onAllBranches hasType (mapTreeData unImportNames flib)) $
             lift $
               parseFailure pos $
                 concat
@@ -332,7 +331,7 @@ goSections specVer fields = do
                   ]
 
           -- TODO check duplicate name here?
-          stateGpd . L.condForeignLibs %= snoc (name', flib')
+          stateGpd . L.condForeignLibs %= snoc (name', flib)
       | name == "executable" = do
           commonStanzas <- use stateCommonStanzas
           name' <- parseUnqualComponentName pos args

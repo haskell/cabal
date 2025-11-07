@@ -82,7 +82,7 @@ ppGenericPackageDescription v gpd0 =
     , ppGenPackageFlags v (genPackageFlags gpd)
     , ppCondLibrary v (condLibrary' gpd)
     , ppCondSubLibraries v (condSubLibraries' gpd)
-    , ppCondForeignLibs v (condForeignLibs gpd)
+    , ppCondForeignLibs v (condForeignLibs' gpd)
     , ppCondExecutables v (condExecutables gpd)
     , ppCondTestSuites v (condTestSuites gpd)
     , ppCondBenchmarks v (condBenchmarks gpd)
@@ -235,7 +235,7 @@ pdToGpd pd =
     , -- TODO(leana8959): what to do here
       condLibrary = mapTreeData noImports . mkCondTree <$> library pd
     , condSubLibraries = fmap (mapTreeData noImports) . mkCondTreeL <$> subLibraries pd
-    , condForeignLibs = mkCondTree' foreignLibName <$> foreignLibs pd
+    , condForeignLibs = fmap (mapTreeData noImports) . mkCondTree' foreignLibName <$> foreignLibs pd
     , condExecutables = mkCondTree' exeName <$> executables pd
     , condTestSuites = mkCondTree' testName <$> testSuites pd
     , condBenchmarks = mkCondTree' benchmarkName <$> benchmarks pd

@@ -65,7 +65,7 @@ condSubLibraries :: Lens' GenericPackageDescription [(UnqualComponentName, (Cond
 condSubLibraries f s = fmap (\x -> s{T.condSubLibraries = x}) (f (T.condSubLibraries s))
 {-# INLINE condSubLibraries #-}
 
-condForeignLibs :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTree ConfVar [Dependency] ForeignLib))]
+condForeignLibs :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTree ConfVar [Dependency] (T.WithImports ForeignLib)))]
 condForeignLibs f s = fmap (\x -> s{T.condForeignLibs = x}) (f (T.condForeignLibs s))
 {-# INLINE condForeignLibs #-}
 

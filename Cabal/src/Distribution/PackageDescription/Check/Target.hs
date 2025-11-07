@@ -116,7 +116,6 @@ checkForeignLib :: Monad m => ForeignLib -> CheckM m ()
 checkForeignLib
   ( ForeignLib
       foreignLibName_
-      _foreignLibImports_
       _foreignLibType_
       _foreignLibOptions_
       foreignLibBuildInfo_

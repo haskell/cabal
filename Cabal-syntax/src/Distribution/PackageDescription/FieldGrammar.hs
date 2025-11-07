@@ -242,7 +242,7 @@ foreignLibFieldGrammar
   => UnqualComponentName
   -> g ForeignLib ForeignLib
 foreignLibFieldGrammar n =
-  ForeignLib n []
+  ForeignLib n
     <$> optionalFieldDef "type" L.foreignLibType ForeignLibTypeUnknown
     <*> monoidalFieldAla "options" (alaList FSep) L.foreignLibOptions
     <*> blurFieldGrammar L.foreignLibBuildInfo buildInfoFieldGrammar

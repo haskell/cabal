@@ -11,6 +11,8 @@ module Distribution.Types.GenericPackageDescription
   , mergeCondLibrary
   , condSubLibraries'
   , mergeCondSubLibraries
+  , condForeignLibs'
+  , mergeCondForeignLibs
   ) where
 
 import Distribution.Compat.Prelude
@@ -67,7 +69,7 @@ data GenericPackageDescription = GenericPackageDescription
          ]
   , condForeignLibs
       :: [ ( UnqualComponentName
-           , CondTree ConfVar [Dependency] ForeignLib
+           , CondTree ConfVar [Dependency] (WithImports ForeignLib)
            )
          ]
   , condExecutables
@@ -98,6 +100,9 @@ libraryFromBuildInfo n bi =
     , libBuildInfo = bi
     }
 
+foreignLibFromBuildInfo :: UnqualComponentName -> BuildInfo -> ForeignLib
+foreignLibFromBuildInfo n bi = emptyForeignLib{foreignLibName = n, foreignLibBuildInfo = bi}
+
 condLibrary'
   :: GenericPackageDescription
   -> Maybe (CondTree ConfVar [Dependency] Library)
@@ -109,7 +114,6 @@ mergeCondLibrary
   -> CondTree ConfVar [Dependency] Library
 mergeCondLibrary = flip mergeImports fromBuildInfo
   where
-    fromBuildInfo :: Library -> (BuildInfo -> Library)
     fromBuildInfo = libraryFromBuildInfo . libName
 
 condSubLibraries'
@@ -122,6 +126,20 @@ mergeCondSubLibraries
   -> [(UnqualComponentName, CondTree ConfVar [Dependency] (WithImports Library))]
   -> [(UnqualComponentName, CondTree ConfVar [Dependency] Library)]
 mergeCondSubLibraries commonStanzas = map (mergeCondLibrary commonStanzas <$>)
+
+condForeignLibs'
+  :: GenericPackageDescription
+  -> [(UnqualComponentName, CondTree ConfVar [Dependency] ForeignLib)]
+condForeignLibs' gpd = mergeCondForeignLibs (gpdCommonStanzas gpd) (condForeignLibs gpd)
+
+mergeCondForeignLibs
+  :: Map ImportName (CondTree ConfVar [Dependency] (WithImports BuildInfo))
+  -> [(UnqualComponentName, CondTree ConfVar [Dependency] (WithImports ForeignLib))]
+  -> [(UnqualComponentName, CondTree ConfVar [Dependency] ForeignLib)]
+mergeCondForeignLibs commonStanzas = map go
+  where
+    -- TODO(leana8959): is the name within the foreignlib important, on the name in the tuple?
+    go (name, tree) = (name, mergeImports commonStanzas (const $ foreignLibFromBuildInfo name) tree)
 
 mergeImports
   :: forall a

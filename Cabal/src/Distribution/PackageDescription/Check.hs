@@ -319,7 +319,7 @@ checkGenericPackageDescription
             checkForeignLib
             (const id)
         )
-        condForeignLibs_
+        (condForeignLibs' gpd)
       mapM_
         ( checkCondTarget
             genPackageFlags_
@@ -965,7 +965,7 @@ pd2gpd pd = gpd
         , condSubLibraries = map (fmap (mapTreeData noImports) . t2cName ln id) (subLibraries pd)
         , condForeignLibs =
             map
-              (t2cName foreignLibName id)
+              (fmap (mapTreeData noImports) . t2cName foreignLibName id)
               (foreignLibs pd)
         , condExecutables =
             map

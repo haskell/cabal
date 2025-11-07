@@ -458,7 +458,7 @@ finalizePD
   (Platform arch os)
   impl
   constraints
-  gpd@(GenericPackageDescription pkg _ver flags _commonStanzas _mb_lib0 _sub_libs0 flibs0 exes0 tests0 bms0) = do
+  gpd@(GenericPackageDescription pkg _ver flags _commonStanzas _mb_lib0 _sub_libs0 _flibs0 exes0 tests0 bms0) = do
     (targetSet, flagVals) <-
       resolveWithFlags flagChoices enabled os arch impl constraints condTrees check
     let
@@ -495,7 +495,7 @@ finalizePD
       condTrees =
         maybeToList (mapTreeData Lib <$> condLibrary' gpd)
           ++ map (\(name, tree) -> mapTreeData (SubComp name . CLib) tree) (condSubLibraries' gpd)
-          ++ map (\(name, tree) -> mapTreeData (SubComp name . CFLib) tree) flibs0
+          ++ map (\(name, tree) -> mapTreeData (SubComp name . CFLib) tree) (condForeignLibs' gpd)
           ++ map (\(name, tree) -> mapTreeData (SubComp name . CExe) tree) exes0
           ++ map (\(name, tree) -> mapTreeData (SubComp name . CTest) tree) tests0
           ++ map (\(name, tree) -> mapTreeData (SubComp name . CBench) tree) bms0
@@ -542,7 +542,7 @@ resolveWithFlags [] Distribution.System.Linux Distribution.System.I386 (Distribu
 -- function.
 flattenPackageDescription :: GenericPackageDescription -> PackageDescription
 flattenPackageDescription
-  gpd@(GenericPackageDescription pkg _ _ gpdCommonStanzas_ _mlib0 sub_libs0 flibs0 exes0 tests0 bms0) =
+  gpd@(GenericPackageDescription pkg _ _ _gpdCommonStanzas_ _mlib0 _sub_libs0 _flibs0 exes0 tests0 bms0) =
     pkg
       { library = mlib
       , subLibraries = reverse sub_libs
@@ -555,8 +555,8 @@ flattenPackageDescription
       mlib = f <$> condLibrary' gpd
         where
           f lib = (libFillInDefaults . fst . ignoreConditions $ lib){libName = LMainLibName}
-      sub_libs = flattenLib <$> (mergeCondSubLibraries gpdCommonStanzas_ sub_libs0)
-      flibs = flattenFLib <$> flibs0
+      sub_libs = flattenLib <$> (condSubLibraries' gpd)
+      flibs = flattenFLib <$> (condForeignLibs' gpd)
       exes = flattenExe <$> exes0
       tests = flattenTst <$> tests0
       bms = flattenBm <$> bms0

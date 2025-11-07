@@ -14,7 +14,6 @@ module Distribution.Types.ForeignLib
   , libVersionNumber
   , libVersionNumberShow
   , libVersionMajor
-  , insertForeignLibImports
   ) where
 
 import Distribution.Compat.Prelude
@@ -25,12 +24,8 @@ import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.System
 import Distribution.Types.BuildInfo
-import Distribution.Types.CondTree
-import Distribution.Types.ConfVar
-import Distribution.Types.Dependency
 import Distribution.Types.ForeignLibOption
 import Distribution.Types.ForeignLibType
-import Distribution.Types.Imports
 import Distribution.Types.UnqualComponentName
 import Distribution.Utils.Path
 import Distribution.Version
@@ -47,8 +42,6 @@ import qualified Distribution.Types.BuildInfo.Lens as L
 data ForeignLib = ForeignLib
   { foreignLibName :: UnqualComponentName
   -- ^ Name of the foreign library
-  , foreignLibImports :: [ImportName]
-  -- ^ Retained imports for exact printing
   , foreignLibType :: ForeignLibType
   -- ^ What kind of foreign library is this (static or dynamic).
   , foreignLibOptions :: [ForeignLibOption]
@@ -71,14 +64,6 @@ data ForeignLib = ForeignLib
   deriving (Generic, Show, Read, Eq, Ord, Data)
 
 data LibVersionInfo = LibVersionInfo Int Int Int deriving (Data, Eq, Generic)
-
-insertForeignLibImports
-  :: CondTree ConfVar [Dependency] (WithImports ForeignLib)
-  -> CondTree ConfVar [Dependency] ForeignLib
-insertForeignLibImports = mapCondTree f id id
-  where
-    f :: WithImports ForeignLib -> ForeignLib
-    f (WithImports importNames flib) = flib{foreignLibImports = importNames}
 
 instance Ord LibVersionInfo where
   LibVersionInfo c r _ `compare` LibVersionInfo c' r' _ =
@@ -159,7 +144,6 @@ instance Semigroup ForeignLib where
   a <> b =
     ForeignLib
       { foreignLibName = combineNames a b foreignLibName "foreign library"
-      , foreignLibImports = combine foreignLibImports
       , foreignLibType = combine foreignLibType
       , foreignLibOptions = combine foreignLibOptions
       , foreignLibBuildInfo = combine foreignLibBuildInfo
@@ -176,7 +160,6 @@ instance Monoid ForeignLib where
   mempty =
     ForeignLib
       { foreignLibName = mempty
-      , foreignLibImports = mempty
       , foreignLibType = ForeignLibTypeUnknown
       , foreignLibOptions = []
       , foreignLibBuildInfo = mempty
