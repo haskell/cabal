@@ -10,7 +10,7 @@ a.k.a. The Cabal Maintainers Team:
 
 * Brandon Allbery ([`@geekosaur`](https://github.com/geekosaur), allbery.b@gmail.com, [`227ee1942b0bdb95`](https://keyserver.ubuntu.com/pks/lookup?op=vindex&search=0x227ee1942b0bdb95))
 
-*  Matthew Pickering ([`@mpickering`](https://github.com/mpickering), matthew@well-typed.com, [`0989b5f5527847c8`](https://keyserver.ubuntu.com/pks/lookup?op=vindex&search=0x0989b5f5527847c8))
+*  Matthew Pickering ([`@mpickering`](https://github.com/mpickering), matthew@well-typed.com)
 
 ### How we compose this list
 
