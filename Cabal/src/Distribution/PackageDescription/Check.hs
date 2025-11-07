@@ -229,23 +229,19 @@ checkGenericPackageDescription
           genPackageFlags_
           gpdCommonStanzas_
           condLibrary_
-          condSubLibraries_
+          _condSubLibraries_ -- we use the merged version
           condForeignLibs_
           condExecutables_
           condTestSuites_
           condBenchmarks_
         ) =
-    let
-      condSubLibrariesMerged = mergeCondSubLibraries gpdCommonStanzas_ condSubLibraries_
-    in
     do
       -- § Description and names.
       checkPackageDescription packageDescription_
       -- Targets should be present...
       let condAllLibraries =
-            -- TODO(leana8959):
-            maybeToList (mapTreeData unImportNames <$> condLibrary_)
-              ++ (map snd condSubLibrariesMerged)
+            maybeToList (condLibrary' gpd)
+              ++ (map snd $ condSubLibraries' gpd)
       checkP
         ( and
             [ null condExecutables_
@@ -280,7 +276,7 @@ checkGenericPackageDescription
       -- § Feature checks.
       checkSpecVer
         CabalSpecV2_0
-        (not . null $ condSubLibrariesMerged)
+        (not . null $ condSubLibraries' gpd)
         (PackageDistInexcusable CVMultiLib)
       checkSpecVer
         CabalSpecV1_8
@@ -299,9 +295,8 @@ checkGenericPackageDescription
               . ccNames
           )
       let ads =
-        -- TODO(leana8959):
-            maybe [] ((: []) . extractAssocDeps pName . mapTreeData unImportNames) condLibrary_
-              ++ map (uncurry extractAssocDeps) condSubLibrariesMerged
+            maybe [] ((: []) . extractAssocDeps pName . (mergeCondLibrary gpdCommonStanzas_)) condLibrary_
+              ++ map (uncurry extractAssocDeps) (condSubLibraries' gpd)
 
       case condLibrary_ of
         Just cl ->
@@ -309,7 +304,7 @@ checkGenericPackageDescription
             genPackageFlags_
             (checkLibrary False ads)
             (const id)
-            (mempty, mapTreeData unImportNames cl)
+            (mempty, mergeCondLibrary gpdCommonStanzas_ cl)
         Nothing -> return ()
       mapM_
         ( checkCondTarget
@@ -317,7 +312,7 @@ checkGenericPackageDescription
             (checkLibrary False ads)
             (\u l -> l{libName = maybeToLibraryName (Just u)})
         )
-        condSubLibrariesMerged
+        (condSubLibraries' gpd)
       mapM_
         ( checkCondTarget
             genPackageFlags_

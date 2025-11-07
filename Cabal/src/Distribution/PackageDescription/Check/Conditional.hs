@@ -26,7 +26,6 @@ import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Check.Monad
 import Distribution.System
-import Distribution.Types.Imports
 
 import qualified Data.Map as Map
 
@@ -229,8 +228,7 @@ checkCondVars cond =
 -- this particular check.
 checkDuplicateModules :: GenericPackageDescription -> [PackageCheck]
 checkDuplicateModules pkg =
-  -- TODO(leana8959):
-  concatMap checkLib (maybe id (:) (mapTreeData unImportNames <$> condLibrary pkg) . map snd $ condSubLibraries' pkg)
+  concatMap checkLib (maybe id (:) (condLibrary' pkg) . map snd $ condSubLibraries' pkg)
     ++ concatMap checkExe (map snd $ condExecutables pkg)
     ++ concatMap checkTest (map snd $ condTestSuites pkg)
     ++ concatMap checkBench (map snd $ condBenchmarks pkg)

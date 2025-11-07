@@ -7,8 +7,8 @@ module Distribution.Types.GenericPackageDescription
   ( GenericPackageDescription (..)
   , emptyGenericPackageDescription
 
-  -- TODO(leana8959): rename this
-  , _condLibrary
+  , condLibrary'
+  , mergeCondLibrary
   , condSubLibraries'
   , mergeCondSubLibraries
   ) where
@@ -98,27 +98,30 @@ libraryFromBuildInfo n bi =
     , libBuildInfo = bi
     }
 
-_condLibrary :: GenericPackageDescription -> Maybe (CondTree ConfVar [Dependency] Library)
-_condLibrary gpd =
-  let commonStanzas = gpdCommonStanzas gpd
-      fromBuildInfo :: Library -> (BuildInfo -> Library)
-      fromBuildInfo = libraryFromBuildInfo . libName
-   in mergeImports commonStanzas fromBuildInfo <$> (condLibrary gpd)
+condLibrary'
+  :: GenericPackageDescription
+  -> Maybe (CondTree ConfVar [Dependency] Library)
+condLibrary' gpd = mergeCondLibrary (gpdCommonStanzas gpd) <$> (condLibrary gpd)
 
-condSubLibraries' :: GenericPackageDescription -> [(UnqualComponentName, CondTree ConfVar [Dependency] Library)]
+mergeCondLibrary
+  :: Map ImportName (CondTree ConfVar [Dependency] (WithImports BuildInfo))
+  -> CondTree ConfVar [Dependency] (WithImports Library)
+  -> CondTree ConfVar [Dependency] Library
+mergeCondLibrary = flip mergeImports fromBuildInfo
+  where
+    fromBuildInfo :: Library -> (BuildInfo -> Library)
+    fromBuildInfo = libraryFromBuildInfo . libName
+
+condSubLibraries'
+  :: GenericPackageDescription
+  -> [(UnqualComponentName, CondTree ConfVar [Dependency] Library)]
 condSubLibraries' gpd = mergeCondSubLibraries (gpdCommonStanzas gpd) (condSubLibraries gpd)
 
 mergeCondSubLibraries
   :: Map ImportName (CondTree ConfVar [Dependency] (WithImports BuildInfo))
   -> [(UnqualComponentName, CondTree ConfVar [Dependency] (WithImports Library))]
   -> [(UnqualComponentName, CondTree ConfVar [Dependency] Library)]
-mergeCondSubLibraries commonStanzas = map (fmap go)
-  where
-    go :: CondTree ConfVar [Dependency] (WithImports Library) -> CondTree ConfVar [Dependency] Library
-    go lib =
-      let fromBuildInfo :: Library -> (BuildInfo -> Library)
-          fromBuildInfo = libraryFromBuildInfo . libName
-      in  mergeImports commonStanzas fromBuildInfo lib
+mergeCondSubLibraries commonStanzas = map (mergeCondLibrary commonStanzas <$>)
 
 mergeImports
   :: forall a
@@ -144,7 +147,6 @@ mergeImports commonStanzas fromBuildInfo (CondNode root c zs) =
       where
         goNode = mergeImports commonStanzas fromBuildInfo
 
-    -- TODO(leana8959): (at some point it'll become (WithImports BuildInfo) and it'll force us to handle its imports too)
     resolveImports
       :: L.HasBuildInfo a
       => [ImportName]

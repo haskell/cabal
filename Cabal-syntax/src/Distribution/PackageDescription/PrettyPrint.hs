@@ -80,7 +80,7 @@ ppGenericPackageDescription v gpd0 =
     [ ppPackageDescription v (packageDescription gpd)
     , ppSetupBInfo v (setupBuildInfo (packageDescription gpd))
     , ppGenPackageFlags v (genPackageFlags gpd)
-    , ppCondLibrary v (mapTreeData unImportNames <$> condLibrary gpd)
+    , ppCondLibrary v (condLibrary' gpd)
     , ppCondSubLibraries v (condSubLibraries' gpd)
     , ppCondForeignLibs v (condForeignLibs gpd)
     , ppCondExecutables v (condExecutables gpd)

@@ -57,7 +57,6 @@ import Distribution.Types.Component
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.DependencyMap
 import Distribution.Types.DependencySatisfaction (DependencySatisfaction (..))
-import Distribution.Types.Imports
 import Distribution.Types.MissingDependency (MissingDependency (..))
 import Distribution.Types.PackageVersionConstraint
 import Distribution.Utils.Generic
@@ -320,8 +319,7 @@ extractConditions
   -> [Condition ConfVar]
 extractConditions f gpkg =
   concat
-    -- TODO(leana8959): merge this and not just drop the imports
-    [ extractCondition (f . libBuildInfo) <$> maybeToList (mapTreeData unImportNames <$> condLibrary gpkg)
+    [ extractCondition (f . libBuildInfo) <$> maybeToList (condLibrary' gpkg)
     , extractCondition (f . libBuildInfo) . snd <$> condSubLibraries' gpkg
     , extractCondition (f . buildInfo) . snd <$> condExecutables gpkg
     , extractCondition (f . testBuildInfo) . snd <$> condTestSuites gpkg
@@ -460,8 +458,7 @@ finalizePD
   (Platform arch os)
   impl
   constraints
-  -- TODO(leana8959): we maybe want to resolve the imports here ?
-  (GenericPackageDescription pkg _ver flags commonStanzas mb_lib0 sub_libs0 flibs0 exes0 tests0 bms0) = do
+  gpd@(GenericPackageDescription pkg _ver flags _commonStanzas _mb_lib0 _sub_libs0 flibs0 exes0 tests0 bms0) = do
     (targetSet, flagVals) <-
       resolveWithFlags flagChoices enabled os arch impl constraints condTrees check
     let
@@ -496,9 +493,8 @@ finalizePD
     where
       -- Combine lib, exes, and tests into one list of @CondTree@s with tagged data
       condTrees =
-        -- TODO(leana8959): handle imports
-        maybeToList (fmap (mapTreeData $ Lib . unImportNames) mb_lib0)
-          ++ map (\(name, tree) -> mapTreeData (SubComp name . CLib) tree) (mergeCondSubLibraries commonStanzas sub_libs0)
+        maybeToList (mapTreeData Lib <$> condLibrary' gpd)
+          ++ map (\(name, tree) -> mapTreeData (SubComp name . CLib) tree) (condSubLibraries' gpd)
           ++ map (\(name, tree) -> mapTreeData (SubComp name . CFLib) tree) flibs0
           ++ map (\(name, tree) -> mapTreeData (SubComp name . CExe) tree) exes0
           ++ map (\(name, tree) -> mapTreeData (SubComp name . CTest) tree) tests0
@@ -546,7 +542,7 @@ resolveWithFlags [] Distribution.System.Linux Distribution.System.I386 (Distribu
 -- function.
 flattenPackageDescription :: GenericPackageDescription -> PackageDescription
 flattenPackageDescription
-  (GenericPackageDescription pkg _ _ commonStanzas mlib0 sub_libs0 flibs0 exes0 tests0 bms0) =
+  gpd@(GenericPackageDescription pkg _ _ gpdCommonStanzas_ _mlib0 sub_libs0 flibs0 exes0 tests0 bms0) =
     pkg
       { library = mlib
       , subLibraries = reverse sub_libs
@@ -556,11 +552,10 @@ flattenPackageDescription
       , benchmarks = reverse bms
       }
     where
-      -- TODO(leana8959): handle imports
-      mlib = f . mapTreeData unImportNames <$> mlib0
+      mlib = f <$> condLibrary' gpd
         where
           f lib = (libFillInDefaults . fst . ignoreConditions $ lib){libName = LMainLibName}
-      sub_libs = flattenLib <$> (mergeCondSubLibraries commonStanzas sub_libs0)
+      sub_libs = flattenLib <$> (mergeCondSubLibraries gpdCommonStanzas_ sub_libs0)
       flibs = flattenFLib <$> flibs0
       exes = flattenExe <$> exes0
       tests = flattenTst <$> tests0
