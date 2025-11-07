@@ -227,7 +227,7 @@ checkGenericPackageDescription
           packageDescription_
           _gpdScannedVersion_
           genPackageFlags_
-          _gpdCommonStanzas
+          gpdCommonStanzas_
           condLibrary_
           condSubLibraries_
           condForeignLibs_
@@ -235,6 +235,9 @@ checkGenericPackageDescription
           condTestSuites_
           condBenchmarks_
         ) =
+    let
+      condSubLibrariesMerged = mergeCondSubLibraries gpdCommonStanzas_ condSubLibraries_
+    in
     do
       -- § Description and names.
       checkPackageDescription packageDescription_
@@ -242,7 +245,7 @@ checkGenericPackageDescription
       let condAllLibraries =
             -- TODO(leana8959):
             maybeToList (mapTreeData unImportNames <$> condLibrary_)
-              ++ (map snd condSubLibraries_)
+              ++ (map snd condSubLibrariesMerged)
       checkP
         ( and
             [ null condExecutables_
@@ -277,7 +280,7 @@ checkGenericPackageDescription
       -- § Feature checks.
       checkSpecVer
         CabalSpecV2_0
-        (not . null $ condSubLibraries_)
+        (not . null $ condSubLibrariesMerged)
         (PackageDistInexcusable CVMultiLib)
       checkSpecVer
         CabalSpecV1_8
@@ -296,9 +299,9 @@ checkGenericPackageDescription
               . ccNames
           )
       let ads =
-            -- TODO(leana8959):
+        -- TODO(leana8959):
             maybe [] ((: []) . extractAssocDeps pName . mapTreeData unImportNames) condLibrary_
-              ++ map (uncurry extractAssocDeps) condSubLibraries_
+              ++ map (uncurry extractAssocDeps) condSubLibrariesMerged
 
       case condLibrary_ of
         Just cl ->
@@ -314,7 +317,7 @@ checkGenericPackageDescription
             (checkLibrary False ads)
             (\u l -> l{libName = maybeToLibraryName (Just u)})
         )
-        condSubLibraries_
+        condSubLibrariesMerged
       mapM_
         ( checkCondTarget
             genPackageFlags_
@@ -962,9 +965,9 @@ pd2gpd pd = gpd
     gpd =
       emptyGenericPackageDescription
         { packageDescription = pd
-        , -- TODO(leana8959): think about reverse conversion
-          condLibrary = t2c . noImports <$> (library pd)
-        , condSubLibraries = map (t2cName ln id) (subLibraries pd)
+        -- TODO(leana8959): think about reverse conversion
+        , condLibrary = t2c . noImports <$> (library pd)
+        , condSubLibraries = map (fmap (mapTreeData noImports) . t2cName ln id) (subLibraries pd)
         , condForeignLibs =
             map
               (t2cName foreignLibName id)

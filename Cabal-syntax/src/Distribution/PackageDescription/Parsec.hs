@@ -309,9 +309,8 @@ goSections specVer fields = do
           name' <- parseUnqualComponentName pos args
           let name'' = LSubLibName name'
           lib <- lift $ parseCondTree' (libraryFieldGrammar name'') (libraryFromBuildInfo name'') commonStanzas fields
-          let lib' = mapTreeData unImportNames lib
           -- TODO check duplicate name here?
-          stateGpd . L.condSubLibraries %= snoc (name', lib')
+          stateGpd . L.condSubLibraries %= snoc (name', lib)
 
       -- TODO: check cabal-version
       | name == "foreign-library" = do

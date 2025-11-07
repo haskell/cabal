@@ -6,7 +6,11 @@
 module Distribution.Types.GenericPackageDescription
   ( GenericPackageDescription (..)
   , emptyGenericPackageDescription
+
+  -- TODO(leana8959): rename this
   , _condLibrary
+  , condSubLibraries'
+  , mergeCondSubLibraries
   ) where
 
 import Distribution.Compat.Prelude
@@ -58,7 +62,7 @@ data GenericPackageDescription = GenericPackageDescription
   , condLibrary :: Maybe (CondTree ConfVar [Dependency] (WithImports Library))
   , condSubLibraries
       :: [ ( UnqualComponentName
-           , CondTree ConfVar [Dependency] Library
+           , CondTree ConfVar [Dependency] (WithImports Library)
            )
          ]
   , condForeignLibs
@@ -97,10 +101,24 @@ libraryFromBuildInfo n bi =
 _condLibrary :: GenericPackageDescription -> Maybe (CondTree ConfVar [Dependency] Library)
 _condLibrary gpd =
   let commonStanzas = gpdCommonStanzas gpd
-
       fromBuildInfo :: Library -> (BuildInfo -> Library)
       fromBuildInfo = libraryFromBuildInfo . libName
    in mergeImports commonStanzas fromBuildInfo <$> (condLibrary gpd)
+
+condSubLibraries' :: GenericPackageDescription -> [(UnqualComponentName, CondTree ConfVar [Dependency] Library)]
+condSubLibraries' gpd = mergeCondSubLibraries (gpdCommonStanzas gpd) (condSubLibraries gpd)
+
+mergeCondSubLibraries
+  :: Map ImportName (CondTree ConfVar [Dependency] (WithImports BuildInfo))
+  -> [(UnqualComponentName, CondTree ConfVar [Dependency] (WithImports Library))]
+  -> [(UnqualComponentName, CondTree ConfVar [Dependency] Library)]
+mergeCondSubLibraries commonStanzas = map (fmap go)
+  where
+    go :: CondTree ConfVar [Dependency] (WithImports Library) -> CondTree ConfVar [Dependency] Library
+    go lib =
+      let fromBuildInfo :: Library -> (BuildInfo -> Library)
+          fromBuildInfo = libraryFromBuildInfo . libName
+      in  mergeImports commonStanzas fromBuildInfo lib
 
 mergeImports
   :: forall a
