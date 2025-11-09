@@ -13,9 +13,15 @@ library
   build-depends:
     , base
     , bytestring
+<<<<<<< HEAD
     , Cabal         ^>=3.12.1.0
     , Cabal-syntax  ^>=3.12.1.0
     , QuickCheck    ^>=2.13.2 || ^>=2.14
+=======
+    , Cabal         ^>=3.17.0.0
+    , Cabal-syntax  ^>=3.17.0.0
+    , QuickCheck    >= 2.13.2 && < 2.18
+>>>>>>> af3395c34 (Bump QuickCheck)
 
   exposed-modules:
     Test.QuickCheck.GenericArbitrary
