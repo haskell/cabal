@@ -332,6 +332,7 @@ test-suite unit-tests
       UnitTests.Options
 
     build-depends:
+<<<<<<< HEAD
           array,
           bytestring,
           cabal-install,
@@ -354,6 +355,30 @@ test-suite unit-tests
           tasty-hunit >= 0.10,
           tree-diff,
           QuickCheck >= 2.14.3 && <2.16
+=======
+      , array
+      , bytestring
+      , cabal-install
+      , Cabal-tree-diff
+      , Cabal-QuickCheck
+      , Cabal-tests
+      , containers
+      , directory
+      , filepath
+      , mtl
+      , network-uri >= 2.6.2.0 && <2.7
+      , random
+      , tar
+      , time
+      , zlib
+      , tasty >= 1.2.3 && <1.6
+      , tasty-golden >=2.3.1.1 && <2.4
+      , tasty-quickcheck ^>=0.11
+      , tasty-expected-failure
+      , tasty-hunit >= 0.10
+      , tree-diff
+      , QuickCheck >= 2.14.3 && <2.18
+>>>>>>> af3395c34 (Bump QuickCheck)
 
 
 -- Tests to run with a limited stack and heap size
@@ -438,5 +463,5 @@ test-suite long-tests
         tasty-expected-failure,
         tasty-hunit >= 0.10,
         tasty-quickcheck <0.12,
-        QuickCheck >= 2.14 && <2.16,
+        QuickCheck >= 2.14 && <2.18,
         pretty-show >= 1.6.15
