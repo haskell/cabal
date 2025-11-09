@@ -2,15 +2,15 @@
 
 a.k.a. The Cabal Maintainers Team:
 
-* Mikolaj Konarski ([`@Mikolaj`](https://github.com/Mikolaj))
+* Mikolaj Konarski ([`@Mikolaj`](https://github.com/Mikolaj), mikolaj@well-typed.com, [`ce1ed8ae0b011d8c`](https://keyserver.ubuntu.com/pks/lookup?op=vindex&search=0xce1ed8ae0b011d8c))
 
-* Francesco Ariis ([`@ffaf1`](https://github.com/ffaf1))
+* Francesco Ariis ([`@ffaf1`](https://github.com/ffaf1), fa-ml@ariis.it, [`a9af0aaa6b87ec51`](https://keyserver.ubuntu.com/pks/lookup?op=vindex&search=0xa9af0aaa6b87ec51))
 
-* Artem Pelenitsyn ([`@ulysses4ever`](https://github.com/ulysses4ever))
+* Artem Pelenitsyn ([`@ulysses4ever`](https://github.com/ulysses4ever), a@pelenitsyn.top, [`a31c1bfa09b1f47d`](https://keyserver.ubuntu.com/pks/lookup?op=vindex&search=0xa31c1bfa09b1f47d))
 
-* Brandon Allbery ([`@geekosaur`](https://github.com/geekosaur))
+* Brandon Allbery ([`@geekosaur`](https://github.com/geekosaur), allbery.b@gmail.com, [`227ee1942b0bdb95`](https://keyserver.ubuntu.com/pks/lookup?op=vindex&search=0x227ee1942b0bdb95))
 
-*  Matthew Pickering ([`@mpickering`](https://github.com/mpickering))
+*  Matthew Pickering ([`@mpickering`](https://github.com/mpickering), matthew@well-typed.com)
 
 ### How we compose this list
 
