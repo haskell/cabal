@@ -353,7 +353,7 @@ test-suite unit-tests
           tasty-expected-failure,
           tasty-hunit >= 0.10,
           tree-diff,
-          QuickCheck >= 2.14.3 && <2.16
+          QuickCheck >= 2.14.3 && <2.18
 
 
 -- Tests to run with a limited stack and heap size
@@ -438,5 +438,5 @@ test-suite long-tests
         tasty-expected-failure,
         tasty-hunit >= 0.10,
         tasty-quickcheck <0.12,
-        QuickCheck >= 2.14 && <2.16,
+        QuickCheck >= 2.14 && <2.18,
         pretty-show >= 1.6.15

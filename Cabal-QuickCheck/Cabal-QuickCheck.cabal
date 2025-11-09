@@ -16,7 +16,7 @@ library
     , bytestring
     , Cabal         ^>=3.14.0.0
     , Cabal-syntax  ^>=3.14.0.0
-    , QuickCheck    ^>=2.13.2 || ^>=2.14
+    , QuickCheck    >= 2.13.2 && < 2.18
 
   exposed-modules:
     Test.QuickCheck.GenericArbitrary
