@@ -4,7 +4,6 @@
 
 module Distribution.Types.Imports where
 
-import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 
 data WithImports a = WithImports

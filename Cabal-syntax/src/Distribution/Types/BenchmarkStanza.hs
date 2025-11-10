@@ -1,7 +1,7 @@
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -11,32 +11,19 @@ module Distribution.Types.BenchmarkStanza where
 
 import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
-import Language.Haskell.Extension
 import Prelude ()
 
 import Distribution.CabalSpecVersion
-import Distribution.Compat.Newtype (Newtype, pack', unpack')
-import Distribution.Compiler (CompilerFlavor (..), PerCompilerFlavor (..))
-import Distribution.FieldGrammar
 import Distribution.Fields
 import Distribution.ModuleName (ModuleName)
-import Distribution.Package
 import Distribution.Parsec
-import Distribution.Pretty (Pretty (..), prettyShow, showToken)
-import Distribution.Types.Imports
-import Distribution.Types.ConfVar
-import Distribution.Types.CondTree
+import Distribution.Pretty (prettyShow)
+import Distribution.Types.Benchmark
+import Distribution.Types.BenchmarkInterface
+import Distribution.Types.BenchmarkType
 import Distribution.Types.BuildInfo
 import qualified Distribution.Types.BuildInfo.Lens as L
-import Distribution.Types.BenchmarkType
-import Distribution.Types.BenchmarkInterface
-import Distribution.Types.Benchmark
 import Distribution.Utils.Path
-import Distribution.Version (Version, VersionRange)
-
-import qualified Data.ByteString.Char8 as BS8
-import qualified Distribution.Compat.CharParsing as P
-import qualified Distribution.SPDX as SPDX
 
 -- | An intermediate type just used for parsing the benchmark stanza.
 -- After validation it is converted into the proper 'Benchmark' type.
@@ -52,53 +39,14 @@ instance Binary BenchmarkStanza
 instance Structured BenchmarkStanza
 instance NFData BenchmarkStanza where rnf = genericRnf
 
-convertBenchmark :: BenchmarkStanza -> Benchmark
-convertBenchmark stanza = case _benchmarkStanzaBenchmarkType stanza of
-  Nothing ->
-      emptyBenchmark
-        { benchmarkBuildInfo = _benchmarkStanzaBuildInfo stanza
-        }
-  Just tt@(BenchmarkTypeUnknown _ _) ->
-      emptyBenchmark
-        { benchmarkInterface = BenchmarkUnsupported tt
-        , benchmarkBuildInfo = _benchmarkStanzaBuildInfo stanza
-        }
-  Just tt
-    | tt `notElem` knownBenchmarkTypes ->
-          emptyBenchmark
-            { benchmarkInterface = BenchmarkUnsupported tt
-            , benchmarkBuildInfo = _benchmarkStanzaBuildInfo stanza
-            }
-  Just tt@(BenchmarkTypeExe ver) -> case _benchmarkStanzaMainIs stanza of
-    Nothing -> emptyBenchmark
-    Just file -> 
-        emptyBenchmark
-          { benchmarkInterface = BenchmarkExeV10 ver file
-          , benchmarkBuildInfo = _benchmarkStanzaBuildInfo stanza
-          }
-  where
-    missingField name tt =
-      "The '"
-        ++ name
-        ++ "' field is required for the "
-        ++ prettyShow tt
-        ++ " benchmark type."
-
-    extraField name tt =
-      "The '"
-        ++ name
-        ++ "' field is not used for the '"
-        ++ prettyShow tt
-        ++ "' benchmark type."
-
 validateBenchmark :: Position -> BenchmarkStanza -> ParseResult src ()
 validateBenchmark pos stanza = case _benchmarkStanzaBenchmarkType stanza of
   Nothing -> pure ()
-  Just tt@(BenchmarkTypeUnknown _ _) -> pure ()
+  Just (BenchmarkTypeUnknown _ _) -> pure ()
   Just tt | tt `notElem` knownBenchmarkTypes -> pure ()
-  Just tt@(BenchmarkTypeExe ver) -> case _benchmarkStanzaMainIs stanza of
+  Just tt@(BenchmarkTypeExe _ver) -> case _benchmarkStanzaMainIs stanza of
     Nothing -> parseFailure pos (missingField "main-is" tt)
-    Just file ->
+    Just _file ->
       when (isJust (_benchmarkStanzaBenchmarkModule stanza)) $
         parseWarning pos PWTExtraBenchmarkModule (extraField "benchmark-module" tt)
   where
@@ -115,6 +63,31 @@ validateBenchmark pos stanza = case _benchmarkStanzaBenchmarkType stanza of
         ++ "' field is not used for the '"
         ++ prettyShow tt
         ++ "' benchmark type."
+
+convertBenchmark :: BenchmarkStanza -> Benchmark
+convertBenchmark stanza = case _benchmarkStanzaBenchmarkType stanza of
+  Nothing ->
+    emptyBenchmark
+      { benchmarkBuildInfo = _benchmarkStanzaBuildInfo stanza
+      }
+  Just tt@(BenchmarkTypeUnknown _ _) ->
+    emptyBenchmark
+      { benchmarkInterface = BenchmarkUnsupported tt
+      , benchmarkBuildInfo = _benchmarkStanzaBuildInfo stanza
+      }
+  Just tt
+    | tt `notElem` knownBenchmarkTypes ->
+        emptyBenchmark
+          { benchmarkInterface = BenchmarkUnsupported tt
+          , benchmarkBuildInfo = _benchmarkStanzaBuildInfo stanza
+          }
+  Just (BenchmarkTypeExe ver) -> case _benchmarkStanzaMainIs stanza of
+    Nothing -> emptyBenchmark
+    Just file ->
+      emptyBenchmark
+        { benchmarkInterface = BenchmarkExeV10 ver file
+        , benchmarkBuildInfo = _benchmarkStanzaBuildInfo stanza
+        }
 
 unvalidateBenchmark :: Benchmark -> BenchmarkStanza
 unvalidateBenchmark b =
@@ -135,12 +108,12 @@ unvalidateBenchmark b =
 
 patchBenchmarkType :: CabalSpecVersion -> BenchmarkStanza -> BenchmarkStanza
 patchBenchmarkType cabalSpecVersion stanza =
-  stanza {
-    _benchmarkStanzaBenchmarkType =
-      _benchmarkStanzaBenchmarkType stanza <|> do
-        guard (cabalSpecVersion >= CabalSpecV3_8)
-        benchmarkTypeExe <$ _benchmarkStanzaMainIs stanza
-  }
+  stanza
+    { _benchmarkStanzaBenchmarkType =
+        _benchmarkStanzaBenchmarkType stanza <|> do
+          guard (cabalSpecVersion >= CabalSpecV3_8)
+          benchmarkTypeExe <$ _benchmarkStanzaMainIs stanza
+    }
 
 instance L.HasBuildInfo BenchmarkStanza where
   buildInfo = benchmarkStanzaBuildInfo

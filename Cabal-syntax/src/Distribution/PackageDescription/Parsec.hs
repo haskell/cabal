@@ -35,7 +35,6 @@ import Prelude ()
 
 import Control.Monad.State.Strict (StateT, execStateT)
 import Control.Monad.Trans.Class (lift)
-import Distribution.Types.TestSuiteStanza
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
 import Distribution.FieldGrammar
@@ -54,6 +53,7 @@ import Distribution.Parsec.FieldLineStream (fieldLineStreamFromBS)
 import Distribution.Parsec.Position (Position (..), incPos, zeroPos)
 import Distribution.Parsec.Warning (PWarnType (..))
 import Distribution.Pretty (prettyShow)
+import Distribution.Types.TestSuiteStanza
 import Distribution.Utils.Generic (breakMaybe, fromUTF8BS, toUTF8BS, unfoldrM, validateUTF8)
 import Distribution.Version (Version, mkVersion, versionNumbers)
 
@@ -63,12 +63,10 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import qualified Distribution.Compat.Newtype as Newtype
 import qualified Distribution.Compat.NonEmptySet as NES
+import Distribution.Types.BenchmarkStanza
 import qualified Distribution.Types.BuildInfo.Lens as L
-import qualified Distribution.Types.Executable.Lens as L
-import qualified Distribution.Types.ForeignLib.Lens as L
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
 import Distribution.Types.Imports
-import Distribution.Types.BenchmarkStanza
 import qualified Distribution.Types.PackageDescription.Lens as L
 import qualified Distribution.Types.SetupBuildInfo.Lens as L
 import qualified Text.Parsec as P
@@ -244,8 +242,8 @@ cabalFormatVersionsDesc :: String
 cabalFormatVersionsDesc = "Current cabal-version values are listed at https://cabal.readthedocs.io/en/stable/file-format-changelog.html."
 
 goSections :: forall src. CabalSpecVersion -> [Field Position] -> SectionParser src ()
-goSections specVer fields = do
-  traverse_ process fields
+goSections specVer fieldPositions = do
+  traverse_ process fieldPositions
 
   -- Retain commen stanzas after parsing sections
   commonStanzas <- use stateCommonStanzas
@@ -268,7 +266,6 @@ goSections specVer fields = do
       :: L.HasBuildInfo a
       => ParsecFieldGrammar' a
       -- \^ grammar
-      -> (BuildInfo -> a)
       -> Map String CondTreeBuildInfoWithImports
       -- \^ common stanzas
       -> [Field Position]
@@ -283,7 +280,7 @@ goSections specVer fields = do
       | name == "common" = do
           commonStanzas <- use stateCommonStanzas
           name' <- lift $ parseCommonName pos args
-          biTree <- lift $ parseCondTree' buildInfoFieldGrammar id commonStanzas fields
+          biTree <- lift $ parseCondTree' buildInfoFieldGrammar commonStanzas fields
           case Map.lookup name' commonStanzas of
             Nothing -> stateCommonStanzas .= Map.insert name' biTree commonStanzas
             Just _ ->
@@ -299,7 +296,7 @@ goSections specVer fields = do
 
           commonStanzas <- use stateCommonStanzas
           let name' = LMainLibName
-          lib <- lift $ parseCondTree' (libraryFieldGrammar name') (libraryFromBuildInfo name') commonStanzas fields
+          lib <- lift $ parseCondTree' (libraryFieldGrammar name') commonStanzas fields
           --
           -- TODO check that not set
           stateGpd . L.condLibrary ?= lib
@@ -310,7 +307,7 @@ goSections specVer fields = do
           commonStanzas <- use stateCommonStanzas
           name' <- parseUnqualComponentName pos args
           let name'' = LSubLibName name'
-          lib <- lift $ parseCondTree' (libraryFieldGrammar name'') (libraryFromBuildInfo name'') commonStanzas fields
+          lib <- lift $ parseCondTree' (libraryFieldGrammar name'') commonStanzas fields
           -- TODO check duplicate name here?
           stateGpd . L.condSubLibraries %= snoc (name', lib)
 
@@ -318,7 +315,7 @@ goSections specVer fields = do
       | name == "foreign-library" = do
           commonStanzas <- use stateCommonStanzas
           name' <- parseUnqualComponentName pos args
-          flib <- lift $ parseCondTree' (foreignLibFieldGrammar name') (fromBuildInfo' name') commonStanzas fields
+          flib <- lift $ parseCondTree' (foreignLibFieldGrammar name') commonStanzas fields
 
           let hasType ts = foreignLibType ts /= foreignLibType mempty
           unless (onAllBranches hasType (mapTreeData unImportNames flib)) $
@@ -337,7 +334,7 @@ goSections specVer fields = do
       | name == "executable" = do
           commonStanzas <- use stateCommonStanzas
           name' <- parseUnqualComponentName pos args
-          exe <- lift $ parseCondTree' (executableFieldGrammar name') (fromBuildInfo' name') commonStanzas fields
+          exe <- lift $ parseCondTree' (executableFieldGrammar name') commonStanzas fields
           -- TODO check duplicate name here?
           stateGpd . L.condExecutables %= snoc (name', exe)
       | name == "test-suite" = do
@@ -346,12 +343,13 @@ goSections specVer fields = do
 
           testStanza <-
             (fmap . mapTreeData . fmap) (patchTestSuiteType specVer) $
-              lift $ parseCondTree' testSuiteFieldGrammar (fromBuildInfo' name') commonStanzas fields
+              lift $
+                parseCondTree' testSuiteFieldGrammar commonStanzas fields
 
           -- Merge and then validate
           let testStanza' :: CondTree ConfVar [Dependency] TestSuiteStanza
               testStanza' = mergeTestSuiteStanza commonStanzas testStanza
-          _ok <- lift $ traverse (validateTestSuite specVer pos) testStanza'
+          _ok <- lift $ traverse (validateTestSuite pos) testStanza'
           let validated = mapTreeData convertTestSuite testStanza'
 
           let hasType ts = testInterface ts /= testInterface mempty
@@ -383,11 +381,12 @@ goSections specVer fields = do
 
           benchStanza <-
             (fmap . mapTreeData . fmap) (patchBenchmarkType specVer) $
-              lift $ parseCondTree' benchmarkFieldGrammar (fromBuildInfo' name') commonStanzas fields
+              lift $
+                parseCondTree' benchmarkFieldGrammar commonStanzas fields
 
           let benchStanza' :: CondTree ConfVar [Dependency] BenchmarkStanza
               benchStanza' = mergeBenchmarkStanza commonStanzas benchStanza
-          _ok <- lift $ traverse (validateBenchmark pos) (fmap unImportNames benchStanza)
+          _ok <- lift $ traverse (validateBenchmark pos . unImportNames) benchStanza
           let validated = mapTreeData convertBenchmark benchStanza'
 
           let hasType ts = benchmarkInterface ts /= benchmarkInterface mempty
@@ -493,27 +492,24 @@ warnInvalidSubsection (MkSection (Name pos name) _ _) =
 
 parseCondTree
   :: forall src a
-   . L.HasBuildInfo a
-  => CabalSpecVersion
+   . CabalSpecVersion
   -> HasElif
   -- ^ accept @elif@
   -> ParsecFieldGrammar' a
   -- ^ grammar
   -> Map String CondTreeBuildInfoWithImports
   -- ^ common stanzas
-  -> (BuildInfo -> a)
-  -- ^ constructor from buildInfo
   -> (a -> [Dependency])
   -- ^ condition extractor
   -> [Field Position]
   -> ParseResult src (CondTree ConfVar [Dependency] (WithImports a))
-parseCondTree v hasElif grammar commonStanzas fromBuildInfo cond = go
+parseCondTree v hasElif grammar commonStanzas cond = go
   where
     go :: [Field Position] -> ParseResult src (CondTree ConfVar [Dependency] (WithImports a))
     go fields0 = do
       (fields, imports) <-
         if v >= CabalSpecV3_0
-          then processImports v fromBuildInfo commonStanzas fields0
+          then processImports v commonStanzas fields0
           else traverse (warnImport v) fields0 >>= \fields1 -> return (catMaybes fields1, mempty)
 
       let (fs, ss) = partitionFields fields
@@ -619,39 +615,7 @@ with new AST, this all need to be rewritten.
 -- The approach is simple, and have good properties:
 --
 -- * Common stanzas are parsed exactly once, even if not-used. Thus we report errors in them.
-type CondTreeBuildInfo = CondTree ConfVar [Dependency] BuildInfo
 type CondTreeBuildInfoWithImports = CondTree ConfVar [Dependency] (WithImports BuildInfo)
-
--- | Create @a@ from 'BuildInfo'.
--- This class is used to implement common stanza parsing.
---
--- Law: @view buildInfo . fromBuildInfo = id@
---
--- This takes name, as 'FieldGrammar's take names too.
-class L.HasBuildInfo a => FromBuildInfo a where
-  fromBuildInfo' :: UnqualComponentName -> BuildInfo -> a
-
-libraryFromBuildInfo :: LibraryName -> BuildInfo -> Library
-libraryFromBuildInfo n bi =
-  emptyLibrary
-    { libName = n
-    , libVisibility = case n of
-        LMainLibName -> LibraryVisibilityPublic
-        LSubLibName _ -> LibraryVisibilityPrivate
-    , libBuildInfo = bi
-    }
-
-
--- TODO(leana8959): remove this typeclass
-instance FromBuildInfo BuildInfo where fromBuildInfo' _ = id
-instance FromBuildInfo ForeignLib where fromBuildInfo' n bi = set L.foreignLibName n $ set L.buildInfo bi emptyForeignLib
-instance FromBuildInfo Executable where fromBuildInfo' n bi = set L.exeName n $ set L.buildInfo bi emptyExecutable
-
-instance FromBuildInfo TestSuiteStanza where
-  fromBuildInfo' _ bi = TestSuiteStanza Nothing Nothing Nothing bi []
-
-instance FromBuildInfo BenchmarkStanza where
-  fromBuildInfo' _ bi = BenchmarkStanza Nothing Nothing Nothing bi
 
 parseCondTreeWithCommonStanzas
   :: forall src a
@@ -659,47 +623,34 @@ parseCondTreeWithCommonStanzas
   => CabalSpecVersion
   -> ParsecFieldGrammar' a
   -- ^ grammar
-  -> (BuildInfo -> a)
-  -- ^ construct fromBuildInfo
   -> Map String CondTreeBuildInfoWithImports
   -- ^ common stanzas
   -> [Field Position]
   -> ParseResult src (CondTree ConfVar [Dependency] (WithImports a))
-parseCondTreeWithCommonStanzas v grammar fromBuildInfo commonStanzas fields = do
-  (fields', imports) <- processImports v fromBuildInfo commonStanzas fields
-  x <- parseCondTree v hasElif grammar commonStanzas fromBuildInfo (view L.targetBuildDepends) fields'
-  -- TODO(leana8959): we replace this with the one from parseCondTree, because
-  -- it is duplicated (if such imports should exist, that is >= cabal 3.0)
-  -- However I'm so very unsure so let's do a concat and see what happens
-  return (prependImportsOnRoot imports $ x)
+parseCondTreeWithCommonStanzas v grammar commonStanzas fields = do
+  (fields', imports) <- processImports v commonStanzas fields
+  x <- parseCondTree v hasElif grammar commonStanzas (view L.targetBuildDepends) fields'
+  -- We replace the imports from parseCondTree, because it comes right after
+  -- the import processing and hence is always empty, if such imports should
+  -- exist in the grammar, that is >= cabal 3.0.
+  return (replaceImportsOnRoot imports x)
   where
     hasElif = specHasElif v
 
 -- | only attach import annotation on root
-attachImportsOnRoot
-  :: [ImportName]
-  -> CondTree v c a
-  -> CondTree v c (WithImports a)
-attachImportsOnRoot imports = mapTreeData' (WithImports imports) noImports
-
--- | only prepend import annotation on root
-prependImportsOnRoot
+replaceImportsOnRoot
   :: [ImportName]
   -> CondTree v c (WithImports a)
   -> CondTree v c (WithImports a)
-prependImportsOnRoot imports = mapTreeData' (mapImports (imports <>)) id
+replaceImportsOnRoot imports = mapTreeData' (WithImports imports . unImportNames) id
 
 processImports
-  :: forall src a
-   . L.HasBuildInfo a
-  => CabalSpecVersion
-  -> (BuildInfo -> a)
-  -- ^ construct fromBuildInfo
+  :: CabalSpecVersion
   -> Map String CondTreeBuildInfoWithImports
   -- ^ common stanzas
   -> [Field Position]
   -> ParseResult src ([Field Position], [ImportName])
-processImports v fromBuildInfo commonStanzas = go []
+processImports v commonStanzas = go []
   where
     hasCommonStanzas = specHasCommonStanzas v
 

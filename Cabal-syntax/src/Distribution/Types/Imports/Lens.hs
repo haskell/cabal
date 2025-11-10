@@ -1,6 +1,6 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# OPTIONS_GHC "-Wno-orphans" #-}
+
+-- TODO(leana8959): how can I put HasBuildInfo elsewhere
 
 module Distribution.Types.Imports.Lens where
 

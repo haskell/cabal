@@ -8,7 +8,7 @@ module Distribution.Types.GenericPackageDescription
   , emptyGenericPackageDescription
   , mergeImports
 
-  -- * Accessors
+    -- * Accessors
   , condLibrary'
   , condSubLibraries'
   , condForeignLibs'
@@ -16,7 +16,7 @@ module Distribution.Types.GenericPackageDescription
   , condTestSuites'
   , condBenchmarks'
 
-  -- * Merging helpers
+    -- * Merging helpers
   , mergeCondLibrary
   , mergeCondSubLibraries
   , mergeCondForeignLibs
@@ -38,21 +38,20 @@ import qualified Distribution.Types.Imports.Lens as L ()
 import Distribution.Types.PackageDescription
 
 import Distribution.Package
-import Distribution.CabalSpecVersion
 import Distribution.Types.Benchmark
+import Distribution.Types.BenchmarkStanza
 import Distribution.Types.BuildInfo
 import Distribution.Types.CondTree
 import Distribution.Types.ConfVar
 import Distribution.Types.Executable
 import Distribution.Types.Flag
-import Distribution.Types.TestSuiteStanza
-import Distribution.Types.BenchmarkStanza
 import Distribution.Types.ForeignLib
 import Distribution.Types.Imports
 import Distribution.Types.Library
 import Distribution.Types.LibraryName
 import Distribution.Types.LibraryVisibility
 import Distribution.Types.TestSuite
+import Distribution.Types.TestSuiteStanza
 import Distribution.Types.UnqualComponentName
 import Distribution.Version
 
@@ -193,28 +192,32 @@ condTestSuites'
   -> [(UnqualComponentName, CondTree ConfVar [Dependency] TestSuite)]
 condTestSuites' gpd =
   mergeTestSuiteStanza' (gpdCommonStanzas gpd) (condTestSuites gpd)
-  & (map . fmap . mapTreeData) convertTestSuite
+    & (map . fmap . mapTreeData) convertTestSuite
 
 mergeTestSuiteStanza'
   :: Map ImportName (CondTree ConfVar [Dependency] (WithImports BuildInfo))
   -> [(UnqualComponentName, CondTree ConfVar [Dependency] (WithImports TestSuiteStanza))]
   -> [(UnqualComponentName, CondTree ConfVar [Dependency] TestSuiteStanza)]
-mergeTestSuiteStanza' commonStanza = map $ \(name, tree) ->
-  (name, mergeImports commonStanza (const $ testSuiteStanzaFromBuildInfo) tree)
+mergeTestSuiteStanza' commonStanza =
+  map $
+    fmap $
+      mergeImports commonStanza (const $ testSuiteStanzaFromBuildInfo)
 
 condBenchmarks'
   :: GenericPackageDescription
   -> [(UnqualComponentName, CondTree ConfVar [Dependency] Benchmark)]
 condBenchmarks' gpd =
   mergeBenchmarkStanza' (gpdCommonStanzas gpd) (condBenchmarks gpd)
-  & (map . fmap . mapTreeData) convertBenchmark
+    & (map . fmap . mapTreeData) convertBenchmark
 
 mergeBenchmarkStanza'
   :: Map ImportName (CondTree ConfVar [Dependency] (WithImports BuildInfo))
   -> [(UnqualComponentName, CondTree ConfVar [Dependency] (WithImports BenchmarkStanza))]
   -> [(UnqualComponentName, CondTree ConfVar [Dependency] BenchmarkStanza)]
-mergeBenchmarkStanza' commonStanza = map $ \(name, tree) ->
-  (name, mergeImports commonStanza (const $ benchmarkStanzaFromBuildInfo) tree)
+mergeBenchmarkStanza' commonStanza =
+  map $
+    fmap $
+      mergeImports commonStanza (const $ benchmarkStanzaFromBuildInfo)
 
 mergeImports
   :: forall a

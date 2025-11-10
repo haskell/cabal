@@ -84,10 +84,8 @@ import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Parsec
 import Distribution.Pretty (Pretty (..), prettyShow, showToken)
-import Distribution.Types.GenericPackageDescription
-import Distribution.Types.TestSuiteStanza
 import Distribution.Types.BenchmarkStanza
-import Distribution.Types.Imports
+import Distribution.Types.TestSuiteStanza
 import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
 
@@ -330,31 +328,23 @@ testSuiteFieldGrammar =
     <*> monoidalFieldAla "code-generators" (alaList' CommaFSep Token) testStanzaCodeGenerators
       ^^^ availableSince CabalSpecV3_8 []
 
-validateTestSuite :: CabalSpecVersion -> Position -> TestSuiteStanza -> ParseResult src ()
-validateTestSuite cabalSpecVersion pos stanza = case _testStanzaTestType stanza of
+validateTestSuite :: Position -> TestSuiteStanza -> ParseResult src ()
+validateTestSuite pos stanza = case _testStanzaTestType stanza of
   Nothing -> pure ()
-  Just tt@(TestTypeUnknown _ _) -> pure ()
+  Just (TestTypeUnknown _ _) -> pure ()
   Just tt | tt `notElem` knownTestTypes -> pure ()
-  Just tt@(TestTypeExe ver) -> case _testStanzaMainIs stanza of
+  Just tt@(TestTypeExe _ver) -> case _testStanzaMainIs stanza of
     Nothing -> parseFailure pos (missingField "main-is" tt)
-    Just file ->
+    Just _file ->
       when (isJust (_testStanzaTestModule stanza)) $
         parseWarning pos PWTExtraBenchmarkModule (extraField "test-module" tt)
-  Just tt@(TestTypeLib ver) -> case _testStanzaTestModule stanza of
+  Just tt@(TestTypeLib _ver) -> case _testStanzaTestModule stanza of
     Nothing ->
       parseFailure pos (missingField "test-module" tt)
-    Just module_ ->
+    Just _module ->
       when (isJust (_testStanzaMainIs stanza)) $
         parseWarning pos PWTExtraMainIs (extraField "main-is" tt)
   where
-    testSuiteType =
-      _testStanzaTestType stanza
-        <|> do
-          guard (cabalSpecVersion >= CabalSpecV3_8)
-
-          testTypeExe <$ _testStanzaMainIs stanza
-        <|> testTypeLib <$ _testStanzaTestModule stanza
-
     missingField name tt =
       "The '"
         ++ name
@@ -372,7 +362,6 @@ validateTestSuite cabalSpecVersion pos stanza = case _testStanzaTestType stanza 
 -------------------------------------------------------------------------------
 -- Benchmark
 -------------------------------------------------------------------------------
-
 
 benchmarkFieldGrammar
   :: ( FieldGrammar c g

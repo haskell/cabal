@@ -69,13 +69,13 @@ import Distribution.Simple.Glob
   , runDirFileGlob
   )
 import Distribution.Simple.Utils hiding (findPackageDesc, notice)
+import Distribution.Types.BenchmarkStanza
+import Distribution.Types.TestSuiteStanza
 import Distribution.Utils.Generic (isAscii)
 import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version
 import System.FilePath (splitExtension, takeFileName)
-import Distribution.Types.TestSuiteStanza
-import Distribution.Types.BenchmarkStanza
 
 import qualified Data.ByteString.Lazy as BS
 import qualified Distribution.SPDX as SPDX
@@ -962,8 +962,8 @@ pd2gpd pd = gpd
     gpd =
       emptyGenericPackageDescription
         { packageDescription = pd
-        -- TODO(leana8959): think about reverse conversion
-        , condLibrary = t2c . noImports <$> (library pd)
+        , -- TODO(leana8959): think about reverse conversion
+          condLibrary = t2c . noImports <$> (library pd)
         , condSubLibraries = map (fmap (mapTreeData noImports) . t2cName ln id) (subLibraries pd)
         , condForeignLibs =
             map
@@ -979,7 +979,7 @@ pd2gpd pd = gpd
               (testSuites pd)
         , condBenchmarks =
             map
-              (fmap (mapTreeData $ noImports . unvalidateBenchmark). t2cName benchmarkName remBench)
+              (fmap (mapTreeData $ noImports . unvalidateBenchmark) . t2cName benchmarkName remBench)
               (benchmarks pd)
         }
 

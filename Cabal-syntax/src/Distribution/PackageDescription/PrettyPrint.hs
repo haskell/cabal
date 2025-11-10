@@ -54,11 +54,11 @@ import Distribution.Pretty
 import Distribution.Utils.Generic (writeFileAtomic, writeUTF8File)
 
 import qualified Distribution.PackageDescription.FieldGrammar as FG
+import Distribution.Types.BenchmarkStanza
 import qualified Distribution.Types.BuildInfo.Lens as L
 import Distribution.Types.Imports
-import Distribution.Types.TestSuiteStanza
-import Distribution.Types.BenchmarkStanza
 import qualified Distribution.Types.SetupBuildInfo.Lens as L
+import Distribution.Types.TestSuiteStanza
 
 import Text.PrettyPrint (Doc, char, hsep, parens, text)
 

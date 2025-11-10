@@ -20,7 +20,7 @@ import qualified Distribution.Types.Imports as T
 
 import Distribution.Compiler (CompilerFlavor)
 import Distribution.System (Arch, OS)
-import Distribution.Types.Benchmark (Benchmark)
+import Distribution.Types.BenchmarkStanza (BenchmarkStanza)
 import Distribution.Types.BuildInfo (BuildInfo)
 import Distribution.Types.CondTree (CondTree)
 import Distribution.Types.ConfVar (ConfVar (..))
@@ -32,10 +32,8 @@ import Distribution.Types.GenericPackageDescription (GenericPackageDescription (
 import Distribution.Types.Imports (ImportName)
 import Distribution.Types.Library (Library)
 import Distribution.Types.PackageDescription (PackageDescription)
-import Distribution.Types.TestSuite (TestSuite)
-import Distribution.Types.UnqualComponentName (UnqualComponentName)
 import Distribution.Types.TestSuiteStanza (TestSuiteStanza)
-import Distribution.Types.BenchmarkStanza (BenchmarkStanza)
+import Distribution.Types.UnqualComponentName (UnqualComponentName)
 import Distribution.Version (Version, VersionRange)
 
 -------------------------------------------------------------------------------

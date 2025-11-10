@@ -45,7 +45,6 @@ import Distribution.FieldGrammar.Newtypes
 import Distribution.FieldGrammar.Parsec
 import Distribution.FieldGrammar.Pretty
 import Distribution.Fields.Field
-import Distribution.Types.TestSuiteStanza
 import Distribution.Utils.Generic (spanMaybe)
 
 type ParsecFieldGrammar' a = ParsecFieldGrammar a a
