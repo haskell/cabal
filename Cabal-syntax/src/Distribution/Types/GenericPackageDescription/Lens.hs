@@ -35,6 +35,7 @@ import Distribution.Types.PackageDescription (PackageDescription)
 import Distribution.Types.TestSuite (TestSuite)
 import Distribution.Types.UnqualComponentName (UnqualComponentName)
 import Distribution.Types.TestSuiteStanza (TestSuiteStanza)
+import Distribution.Types.BenchmarkStanza (BenchmarkStanza)
 import Distribution.Version (Version, VersionRange)
 
 -------------------------------------------------------------------------------
@@ -78,7 +79,7 @@ condTestSuites :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTr
 condTestSuites f s = fmap (\x -> s{T.condTestSuites = x}) (f (T.condTestSuites s))
 {-# INLINE condTestSuites #-}
 
-condBenchmarks :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTree ConfVar [Dependency] Benchmark))]
+condBenchmarks :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTree ConfVar [Dependency] (T.WithImports BenchmarkStanza)))]
 condBenchmarks f s = fmap (\x -> s{T.condBenchmarks = x}) (f (T.condBenchmarks s))
 {-# INLINE condBenchmarks #-}
 

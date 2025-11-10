@@ -231,7 +231,7 @@ checkDuplicateModules pkg =
   concatMap checkLib (maybe id (:) (condLibrary' pkg) . map snd $ condSubLibraries' pkg)
     ++ concatMap checkExe (map snd $ condExecutables' pkg)
     ++ concatMap checkTest (map snd $ condTestSuites' pkg)
-    ++ concatMap checkBench (map snd $ condBenchmarks pkg)
+    ++ concatMap checkBench (map snd $ condBenchmarks' pkg)
   where
     -- the duplicate modules check is has not been thoroughly vetted for backpack
     checkLib = checkDups "library" (\l -> explicitLibModules l ++ map moduleReexportName (reexportedModules l))

@@ -40,7 +40,6 @@ module Distribution.PackageDescription.FieldGrammar
   , benchmarkFieldGrammar
   , validateBenchmark
   , unvalidateBenchmark
-  , insertBenchmarkStanzaImports
 
     -- * Field grammars
   , formatDependencyList
@@ -87,6 +86,7 @@ import Distribution.Parsec
 import Distribution.Pretty (Pretty (..), prettyShow, showToken)
 import Distribution.Types.GenericPackageDescription
 import Distribution.Types.TestSuiteStanza
+import Distribution.Types.BenchmarkStanza
 import Distribution.Types.Imports
 import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
@@ -373,43 +373,6 @@ validateTestSuite cabalSpecVersion pos stanza = case _testStanzaTestType stanza 
 -- Benchmark
 -------------------------------------------------------------------------------
 
--- | An intermediate type just used for parsing the benchmark stanza.
--- After validation it is converted into the proper 'Benchmark' type.
-data BenchmarkStanza = BenchmarkStanza
-  { _benchmarkStanzaImports :: [ImportName]
-  -- ^ retained imports
-  , _benchmarkStanzaBenchmarkType :: Maybe BenchmarkType
-  , _benchmarkStanzaMainIs :: Maybe (RelativePath Source File)
-  , _benchmarkStanzaBenchmarkModule :: Maybe ModuleName
-  , _benchmarkStanzaBuildInfo :: BuildInfo
-  }
-
-insertBenchmarkStanzaImports
-  :: CondTree ConfVar [Dependency] (WithImports BenchmarkStanza)
-  -> CondTree ConfVar [Dependency] BenchmarkStanza
-insertBenchmarkStanzaImports = mapCondTree f id id
-  where
-    f :: WithImports BenchmarkStanza -> BenchmarkStanza
-    f (WithImports importNames bs) = bs{_benchmarkStanzaImports = importNames}
-
-instance L.HasBuildInfo BenchmarkStanza where
-  buildInfo = benchmarkStanzaBuildInfo
-
-benchmarkStanzaBenchmarkType :: Lens' BenchmarkStanza (Maybe BenchmarkType)
-benchmarkStanzaBenchmarkType f s = fmap (\x -> s{_benchmarkStanzaBenchmarkType = x}) (f (_benchmarkStanzaBenchmarkType s))
-{-# INLINE benchmarkStanzaBenchmarkType #-}
-
-benchmarkStanzaMainIs :: Lens' BenchmarkStanza (Maybe (RelativePath Source File))
-benchmarkStanzaMainIs f s = fmap (\x -> s{_benchmarkStanzaMainIs = x}) (f (_benchmarkStanzaMainIs s))
-{-# INLINE benchmarkStanzaMainIs #-}
-
-benchmarkStanzaBenchmarkModule :: Lens' BenchmarkStanza (Maybe ModuleName)
-benchmarkStanzaBenchmarkModule f s = fmap (\x -> s{_benchmarkStanzaBenchmarkModule = x}) (f (_benchmarkStanzaBenchmarkModule s))
-{-# INLINE benchmarkStanzaBenchmarkModule #-}
-
-benchmarkStanzaBuildInfo :: Lens' BenchmarkStanza BuildInfo
-benchmarkStanzaBuildInfo f s = fmap (\x -> s{_benchmarkStanzaBuildInfo = x}) (f (_benchmarkStanzaBuildInfo s))
-{-# INLINE benchmarkStanzaBuildInfo #-}
 
 benchmarkFieldGrammar
   :: ( FieldGrammar c g
@@ -436,82 +399,11 @@ benchmarkFieldGrammar
      )
   => g BenchmarkStanza BenchmarkStanza
 benchmarkFieldGrammar =
-  BenchmarkStanza []
+  BenchmarkStanza
     <$> optionalField "type" benchmarkStanzaBenchmarkType
     <*> optionalFieldAla "main-is" RelativePathNT benchmarkStanzaMainIs
     <*> optionalField "benchmark-module" benchmarkStanzaBenchmarkModule
     <*> blurFieldGrammar benchmarkStanzaBuildInfo buildInfoFieldGrammar
-
-validateBenchmark :: CabalSpecVersion -> Position -> BenchmarkStanza -> ParseResult src Benchmark
-validateBenchmark cabalSpecVersion pos stanza = fmap (L.benchmarkImports .~ (_benchmarkStanzaImports stanza)) $ case benchmarkStanzaType of
-  Nothing ->
-    pure
-      emptyBenchmark
-        { benchmarkBuildInfo = _benchmarkStanzaBuildInfo stanza
-        }
-  Just tt@(BenchmarkTypeUnknown _ _) ->
-    pure
-      emptyBenchmark
-        { benchmarkInterface = BenchmarkUnsupported tt
-        , benchmarkBuildInfo = _benchmarkStanzaBuildInfo stanza
-        }
-  Just tt
-    | tt `notElem` knownBenchmarkTypes ->
-        pure
-          emptyBenchmark
-            { benchmarkInterface = BenchmarkUnsupported tt
-            , benchmarkBuildInfo = _benchmarkStanzaBuildInfo stanza
-            }
-  Just tt@(BenchmarkTypeExe ver) -> case _benchmarkStanzaMainIs stanza of
-    Nothing -> do
-      parseFailure pos (missingField "main-is" tt)
-      pure emptyBenchmark
-    Just file -> do
-      when (isJust (_benchmarkStanzaBenchmarkModule stanza)) $
-        parseWarning pos PWTExtraBenchmarkModule (extraField "benchmark-module" tt)
-      pure
-        emptyBenchmark
-          { benchmarkInterface = BenchmarkExeV10 ver file
-          , benchmarkBuildInfo = _benchmarkStanzaBuildInfo stanza
-          }
-  where
-    benchmarkStanzaType =
-      _benchmarkStanzaBenchmarkType stanza <|> do
-        guard (cabalSpecVersion >= CabalSpecV3_8)
-
-        benchmarkTypeExe <$ _benchmarkStanzaMainIs stanza
-
-    missingField name tt =
-      "The '"
-        ++ name
-        ++ "' field is required for the "
-        ++ prettyShow tt
-        ++ " benchmark type."
-
-    extraField name tt =
-      "The '"
-        ++ name
-        ++ "' field is not used for the '"
-        ++ prettyShow tt
-        ++ "' benchmark type."
-
-unvalidateBenchmark :: Benchmark -> BenchmarkStanza
-unvalidateBenchmark b =
-  BenchmarkStanza
-    { _benchmarkStanzaImports = benchmarkImports b
-    , _benchmarkStanzaBenchmarkType = ty
-    , _benchmarkStanzaMainIs = ma
-    , _benchmarkStanzaBenchmarkModule = mo
-    , _benchmarkStanzaBuildInfo = benchmarkBuildInfo b
-    }
-  where
-    (ty, ma, mo) = case benchmarkInterface b of
-      BenchmarkExeV10 ver ma'
-        | getSymbolicPath ma' == "" ->
-            (Just $ BenchmarkTypeExe ver, Nothing, Nothing)
-        | otherwise ->
-            (Just $ BenchmarkTypeExe ver, Just ma', Nothing)
-      _ -> (Nothing, Nothing, Nothing)
 
 -------------------------------------------------------------------------------
 -- Build info

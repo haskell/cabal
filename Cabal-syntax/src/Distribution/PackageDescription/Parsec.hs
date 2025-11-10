@@ -68,6 +68,7 @@ import qualified Distribution.Types.Executable.Lens as L
 import qualified Distribution.Types.ForeignLib.Lens as L
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
 import Distribution.Types.Imports
+import Distribution.Types.BenchmarkStanza
 import qualified Distribution.Types.PackageDescription.Lens as L
 import qualified Distribution.Types.SetupBuildInfo.Lens as L
 import qualified Text.Parsec as P
@@ -350,7 +351,7 @@ goSections specVer fields = do
           -- Merge and then validate
           let testStanza' :: CondTree ConfVar [Dependency] TestSuiteStanza
               testStanza' = mergeTestSuiteStanza commonStanzas testStanza
-          ok <- lift $ traverse (validateTestSuite specVer pos) testStanza'
+          _ok <- lift $ traverse (validateTestSuite specVer pos) testStanza'
           let validated = mapTreeData convertTestSuite testStanza'
 
           let hasType ts = testInterface ts /= testInterface mempty
@@ -379,12 +380,18 @@ goSections specVer fields = do
       | name == "benchmark" = do
           commonStanzas <- use stateCommonStanzas
           name' <- parseUnqualComponentName pos args
-          benchStanza <- lift $ parseCondTree' benchmarkFieldGrammar (fromBuildInfo' name') commonStanzas fields
-          let benchStanza' = insertBenchmarkStanzaImports benchStanza
-          bench <- lift $ traverse (validateBenchmark specVer pos) benchStanza'
+
+          benchStanza <-
+            (fmap . mapTreeData . fmap) (patchBenchmarkType specVer) $
+              lift $ parseCondTree' benchmarkFieldGrammar (fromBuildInfo' name') commonStanzas fields
+
+          let benchStanza' :: CondTree ConfVar [Dependency] BenchmarkStanza
+              benchStanza' = mergeBenchmarkStanza commonStanzas benchStanza
+          _ok <- lift $ traverse (validateBenchmark pos) (fmap unImportNames benchStanza)
+          let validated = mapTreeData convertBenchmark benchStanza'
 
           let hasType ts = benchmarkInterface ts /= benchmarkInterface mempty
-          unless (onAllBranches hasType bench) $
+          unless (onAllBranches hasType validated) $
             lift $
               parseFailure pos $
                 concat
@@ -404,7 +411,7 @@ goSections specVer fields = do
                   ]
 
           -- TODO check duplicate name here?
-          stateGpd . L.condBenchmarks %= snoc (name', bench)
+          stateGpd . L.condBenchmarks %= snoc (name', benchStanza)
       | name == "flag" = do
           name' <- parseNameBS pos args
           name'' <- lift $ runFieldParser' [pos] parsec specVer (fieldLineStreamFromBS name') `recoverWith` mkFlagName ""
@@ -634,6 +641,8 @@ libraryFromBuildInfo n bi =
     , libBuildInfo = bi
     }
 
+
+-- TODO(leana8959): remove this typeclass
 instance FromBuildInfo BuildInfo where fromBuildInfo' _ = id
 instance FromBuildInfo ForeignLib where fromBuildInfo' n bi = set L.foreignLibName n $ set L.buildInfo bi emptyForeignLib
 instance FromBuildInfo Executable where fromBuildInfo' n bi = set L.exeName n $ set L.buildInfo bi emptyExecutable
@@ -642,7 +651,7 @@ instance FromBuildInfo TestSuiteStanza where
   fromBuildInfo' _ bi = TestSuiteStanza Nothing Nothing Nothing bi []
 
 instance FromBuildInfo BenchmarkStanza where
-  fromBuildInfo' _ bi = BenchmarkStanza [] Nothing Nothing Nothing bi
+  fromBuildInfo' _ bi = BenchmarkStanza Nothing Nothing Nothing bi
 
 parseCondTreeWithCommonStanzas
   :: forall src a

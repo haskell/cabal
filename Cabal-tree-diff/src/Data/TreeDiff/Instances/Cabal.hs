@@ -28,6 +28,7 @@ import Distribution.Types.PackageVersionConstraint
 import Distribution.Types.UnitId                   (DefUnitId, UnitId)
 import Distribution.Types.Imports
 import Distribution.Types.TestSuiteStanza
+import Distribution.Types.BenchmarkStanza
 import Distribution.Utils.NubList                  (NubList)
 import Distribution.Utils.Path                     (SymbolicPathX)
 import Distribution.Utils.ShortText                (ShortText, fromShortText)
@@ -63,6 +64,7 @@ instance ToExpr AbiDependency
 instance ToExpr AbiHash
 instance ToExpr Arch
 instance ToExpr Benchmark
+instance ToExpr BenchmarkStanza
 instance ToExpr BenchmarkInterface
 instance ToExpr BenchmarkType
 instance ToExpr BuildInfo

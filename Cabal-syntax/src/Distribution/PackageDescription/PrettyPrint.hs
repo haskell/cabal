@@ -57,6 +57,7 @@ import qualified Distribution.PackageDescription.FieldGrammar as FG
 import qualified Distribution.Types.BuildInfo.Lens as L
 import Distribution.Types.Imports
 import Distribution.Types.TestSuiteStanza
+import Distribution.Types.BenchmarkStanza
 import qualified Distribution.Types.SetupBuildInfo.Lens as L
 
 import Text.PrettyPrint (Doc, char, hsep, parens, text)
@@ -86,7 +87,7 @@ ppGenericPackageDescription v gpd0 =
     , ppCondForeignLibs v (condForeignLibs' gpd)
     , ppCondExecutables v (condExecutables' gpd)
     , ppCondTestSuites v (condTestSuites' gpd)
-    , ppCondBenchmarks v (condBenchmarks gpd)
+    , ppCondBenchmarks v (condBenchmarks' gpd)
     ]
   where
     gpd = preProcessInternalDeps (specVersion (packageDescription gpd0)) gpd0
@@ -239,7 +240,7 @@ pdToGpd pd =
     , condForeignLibs = fmap (mapTreeData noImports) . mkCondTree' foreignLibName <$> foreignLibs pd
     , condExecutables = fmap (mapTreeData noImports) . mkCondTree' exeName <$> executables pd
     , condTestSuites = fmap (mapTreeData $ noImports . unvalidateTestSuite) . mkCondTree' testName <$> testSuites pd
-    , condBenchmarks = mkCondTree' benchmarkName <$> benchmarks pd
+    , condBenchmarks = fmap (mapTreeData $ noImports . unvalidateBenchmark) . mkCondTree' benchmarkName <$> benchmarks pd
     }
   where
     -- We set CondTree's [Dependency] to an empty list, as it

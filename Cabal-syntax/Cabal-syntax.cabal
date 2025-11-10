@@ -121,6 +121,7 @@ library
     Distribution.Types.AbiDependency
     Distribution.Types.AbiHash
     Distribution.Types.Benchmark
+    Distribution.Types.BenchmarkStanza
     Distribution.Types.Benchmark.Lens
     Distribution.Types.BenchmarkInterface
     Distribution.Types.BenchmarkType

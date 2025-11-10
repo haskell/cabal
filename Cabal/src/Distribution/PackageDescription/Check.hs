@@ -75,6 +75,7 @@ import Distribution.Verbosity
 import Distribution.Version
 import System.FilePath (splitExtension, takeFileName)
 import Distribution.Types.TestSuiteStanza
+import Distribution.Types.BenchmarkStanza
 
 import qualified Data.ByteString.Lazy as BS
 import qualified Distribution.SPDX as SPDX
@@ -341,7 +342,7 @@ checkGenericPackageDescription
             (checkBenchmark ads)
             (\u l -> l{benchmarkName = u})
         )
-        condBenchmarks_
+        (condBenchmarks' gpd)
 
       -- For unused flags it is clearer and more convenient to fold the
       -- data rather than walk it, an exception to the rule.
@@ -978,7 +979,7 @@ pd2gpd pd = gpd
               (testSuites pd)
         , condBenchmarks =
             map
-              (t2cName benchmarkName remBench)
+              (fmap (mapTreeData $ noImports . unvalidateBenchmark). t2cName benchmarkName remBench)
               (benchmarks pd)
         }
 
