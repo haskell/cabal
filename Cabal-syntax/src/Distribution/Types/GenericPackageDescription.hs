@@ -6,15 +6,21 @@
 module Distribution.Types.GenericPackageDescription
   ( GenericPackageDescription (..)
   , emptyGenericPackageDescription
+  , mergeImports
 
+  -- * Accessors
   , condLibrary'
-  , mergeCondLibrary
   , condSubLibraries'
-  , mergeCondSubLibraries
   , condForeignLibs'
-  , mergeCondForeignLibs
   , condExecutables'
+  , condTestSuites'
+
+  -- * Merging helpers
+  , mergeCondLibrary
+  , mergeCondSubLibraries
+  , mergeCondForeignLibs
   , mergeCondExecutables
+  , mergeTestSuiteStanza
   ) where
 
 import Distribution.Compat.Prelude
@@ -30,12 +36,14 @@ import qualified Distribution.Types.Imports.Lens as L ()
 import Distribution.Types.PackageDescription
 
 import Distribution.Package
+import Distribution.CabalSpecVersion
 import Distribution.Types.Benchmark
 import Distribution.Types.BuildInfo
 import Distribution.Types.CondTree
 import Distribution.Types.ConfVar
 import Distribution.Types.Executable
 import Distribution.Types.Flag
+import Distribution.Types.TestSuiteStanza
 import Distribution.Types.ForeignLib
 import Distribution.Types.Imports
 import Distribution.Types.Library
@@ -81,7 +89,7 @@ data GenericPackageDescription = GenericPackageDescription
          ]
   , condTestSuites
       :: [ ( UnqualComponentName
-           , CondTree ConfVar [Dependency] TestSuite
+           , CondTree ConfVar [Dependency] (WithImports TestSuiteStanza)
            )
          ]
   , condBenchmarks
@@ -107,6 +115,9 @@ foreignLibFromBuildInfo n bi = emptyForeignLib{foreignLibName = n, foreignLibBui
 
 executableFromBuildInfo :: UnqualComponentName -> BuildInfo -> Executable
 executableFromBuildInfo n bi = emptyExecutable{exeName = n, buildInfo = bi}
+
+testSuiteStanzaFromBuildInfo :: BuildInfo -> TestSuiteStanza
+testSuiteStanzaFromBuildInfo bi = TestSuiteStanza Nothing Nothing Nothing bi []
 
 condLibrary'
   :: GenericPackageDescription
@@ -156,6 +167,28 @@ mergeCondExecutables
   -> [(UnqualComponentName, CondTree ConfVar [Dependency] Executable)]
 mergeCondExecutables commonStanzas = map $ \(name, tree) ->
   (name, mergeImports commonStanzas (const $ executableFromBuildInfo name) tree)
+
+mergeTestSuiteStanza
+  :: Map ImportName (CondTree ConfVar [Dependency] (WithImports BuildInfo))
+  -> CondTree ConfVar [Dependency] (WithImports TestSuiteStanza)
+  -> CondTree ConfVar [Dependency] TestSuiteStanza
+mergeTestSuiteStanza commonStanza =
+  mergeImports commonStanza (const $ testSuiteStanzaFromBuildInfo)
+
+condTestSuites'
+  :: GenericPackageDescription
+  -> [(UnqualComponentName, CondTree ConfVar [Dependency] TestSuite)]
+condTestSuites' gpd =
+  mergeTestSuiteStanza' (gpdCommonStanzas gpd) (condTestSuites gpd)
+  & (map . fmap . mapTreeData) convertTestSuite
+
+
+mergeTestSuiteStanza'
+  :: Map ImportName (CondTree ConfVar [Dependency] (WithImports BuildInfo))
+  -> [(UnqualComponentName, CondTree ConfVar [Dependency] (WithImports TestSuiteStanza))]
+  -> [(UnqualComponentName, CondTree ConfVar [Dependency] TestSuiteStanza)]
+mergeTestSuiteStanza' commonStanza = map $ \(name, tree) ->
+  (name, mergeImports commonStanza (const $ testSuiteStanzaFromBuildInfo) tree)
 
 mergeImports
   :: forall a
@@ -217,17 +250,6 @@ mergeImports commonStanzas fromBuildInfo (CondNode root c zs) =
         -- tree components are appended together.
         cs' :: [CondBranch ConfVar [Dependency] a]
         cs' = map (fromBuildInfo' <$>) bis ++ cs
-
--- condSubLibraries :: GenericPackageDescription -> [(UnqualComponentName, CondTree ConfVar [Dependency] Library)]
--- condSubLibraries = ()
--- condForeignLibs :: GenericPackageDescription -> [(UnqualComponentName, CondTree ConfVar [Dependency] ForeignLib)]
--- condForeignLibs = ()
--- condExecutables :: GenericPackageDescription -> [(UnqualComponentName, CondTree ConfVar [Dependency] Executable)]
--- condExecutables = ()
--- condTestSuites :: GenericPackageDescription -> [(UnqualComponentName, CondTree ConfVar [Dependency] TestSuite)]
--- condTestSuites = ()
--- condBenchmarks :: GenericPackageDescription -> [(UnqualComponentName, CondTree ConfVar [Dependency] Benchmark)]
--- condBenchmarks = ()
 
 instance Package GenericPackageDescription where
   packageId = packageId . packageDescription

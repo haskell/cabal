@@ -25,8 +25,9 @@ module Distribution.PackageDescription.FieldGrammar
   , TestSuiteStanza (..)
   , testSuiteFieldGrammar
   , validateTestSuite
-  , unvalidateTestSuite
-  , insertTestSuiteStanzaImports
+  , convertTestSuite
+  -- TODO(leana8959): move this to gpd
+  , mergeTestSuiteStanza
 
     -- ** Lenses
   , testStanzaTestType
@@ -84,6 +85,8 @@ import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Parsec
 import Distribution.Pretty (Pretty (..), prettyShow, showToken)
+import Distribution.Types.GenericPackageDescription
+import Distribution.Types.TestSuiteStanza
 import Distribution.Types.Imports
 import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
@@ -293,54 +296,6 @@ executableFieldGrammar n =
 {-# SPECIALIZE executableFieldGrammar :: UnqualComponentName -> ParsecFieldGrammar' Executable #-}
 {-# SPECIALIZE executableFieldGrammar :: UnqualComponentName -> PrettyFieldGrammar' Executable #-}
 
--------------------------------------------------------------------------------
--- TestSuite
--------------------------------------------------------------------------------
-
--- | An intermediate type just used for parsing the test-suite stanza.
--- After validation it is converted into the proper 'TestSuite' type.
-data TestSuiteStanza = TestSuiteStanza
-  { _testStanzaImports :: [ImportName]
-  , _testStanzaTestType :: Maybe TestType
-  -- ^ Retained imports for exact printing
-  , _testStanzaMainIs :: Maybe (RelativePath Source File)
-  , _testStanzaTestModule :: Maybe ModuleName
-  , _testStanzaBuildInfo :: BuildInfo
-  , _testStanzaCodeGenerators :: [String]
-  }
-  deriving (Show)
-
-insertTestSuiteStanzaImports
-  :: CondTree ConfVar [Dependency] (WithImports TestSuiteStanza)
-  -> CondTree ConfVar [Dependency] TestSuiteStanza
-insertTestSuiteStanzaImports = mapCondTree f id id
-  where
-    f :: WithImports TestSuiteStanza -> TestSuiteStanza
-    f (WithImports importNames ts) = ts{_testStanzaImports = importNames}
-
-instance L.HasBuildInfo TestSuiteStanza where
-  buildInfo = testStanzaBuildInfo
-
-testStanzaTestType :: Lens' TestSuiteStanza (Maybe TestType)
-testStanzaTestType f s = fmap (\x -> s{_testStanzaTestType = x}) (f (_testStanzaTestType s))
-{-# INLINE testStanzaTestType #-}
-
-testStanzaMainIs :: Lens' TestSuiteStanza (Maybe (RelativePath Source File))
-testStanzaMainIs f s = fmap (\x -> s{_testStanzaMainIs = x}) (f (_testStanzaMainIs s))
-{-# INLINE testStanzaMainIs #-}
-
-testStanzaTestModule :: Lens' TestSuiteStanza (Maybe ModuleName)
-testStanzaTestModule f s = fmap (\x -> s{_testStanzaTestModule = x}) (f (_testStanzaTestModule s))
-{-# INLINE testStanzaTestModule #-}
-
-testStanzaBuildInfo :: Lens' TestSuiteStanza BuildInfo
-testStanzaBuildInfo f s = fmap (\x -> s{_testStanzaBuildInfo = x}) (f (_testStanzaBuildInfo s))
-{-# INLINE testStanzaBuildInfo #-}
-
-testStanzaCodeGenerators :: Lens' TestSuiteStanza [String]
-testStanzaCodeGenerators f s = fmap (\x -> s{_testStanzaCodeGenerators = x}) (f (_testStanzaCodeGenerators s))
-{-# INLINE testStanzaCodeGenerators #-}
-
 testSuiteFieldGrammar
   :: ( FieldGrammar c g
      , Applicative (g TestSuiteStanza)
@@ -367,7 +322,7 @@ testSuiteFieldGrammar
      )
   => g TestSuiteStanza TestSuiteStanza
 testSuiteFieldGrammar =
-  TestSuiteStanza []
+  TestSuiteStanza
     <$> optionalField "type" testStanzaTestType
     <*> optionalFieldAla "main-is" RelativePathNT testStanzaMainIs
     <*> optionalField "test-module" testStanzaTestModule
@@ -375,42 +330,22 @@ testSuiteFieldGrammar =
     <*> monoidalFieldAla "code-generators" (alaList' CommaFSep Token) testStanzaCodeGenerators
       ^^^ availableSince CabalSpecV3_8 []
 
-validateTestSuite :: CabalSpecVersion -> Position -> TestSuiteStanza -> ParseResult src TestSuite
-validateTestSuite cabalSpecVersion pos stanza = fmap (L.testSuiteImports .~ (_testStanzaImports stanza)) $ case testSuiteType of
-  Nothing -> pure basicTestSuite
-  Just tt@(TestTypeUnknown _ _) ->
-    pure
-      basicTestSuite
-        { testInterface = TestSuiteUnsupported tt
-        }
-  Just tt
-    | tt `notElem` knownTestTypes ->
-        pure
-          basicTestSuite
-            { testInterface = TestSuiteUnsupported tt
-            }
+validateTestSuite :: CabalSpecVersion -> Position -> TestSuiteStanza -> ParseResult src ()
+validateTestSuite cabalSpecVersion pos stanza = case _testStanzaTestType stanza of
+  Nothing -> pure ()
+  Just tt@(TestTypeUnknown _ _) -> pure ()
+  Just tt | tt `notElem` knownTestTypes -> pure ()
   Just tt@(TestTypeExe ver) -> case _testStanzaMainIs stanza of
-    Nothing -> do
-      parseFailure pos (missingField "main-is" tt)
-      pure emptyTestSuite
-    Just file -> do
+    Nothing -> parseFailure pos (missingField "main-is" tt)
+    Just file ->
       when (isJust (_testStanzaTestModule stanza)) $
         parseWarning pos PWTExtraBenchmarkModule (extraField "test-module" tt)
-      pure
-        basicTestSuite
-          { testInterface = TestSuiteExeV10 ver file
-          }
   Just tt@(TestTypeLib ver) -> case _testStanzaTestModule stanza of
-    Nothing -> do
+    Nothing ->
       parseFailure pos (missingField "test-module" tt)
-      pure emptyTestSuite
-    Just module_ -> do
+    Just module_ ->
       when (isJust (_testStanzaMainIs stanza)) $
         parseWarning pos PWTExtraMainIs (extraField "main-is" tt)
-      pure
-        basicTestSuite
-          { testInterface = TestSuiteLibV09 ver module_
-          }
   where
     testSuiteType =
       _testStanzaTestType stanza
@@ -433,27 +368,6 @@ validateTestSuite cabalSpecVersion pos stanza = fmap (L.testSuiteImports .~ (_te
         ++ "' field is not used for the '"
         ++ prettyShow tt
         ++ "' test suite type."
-    basicTestSuite =
-      emptyTestSuite
-        { testBuildInfo = _testStanzaBuildInfo stanza
-        , testCodeGenerators = _testStanzaCodeGenerators stanza
-        }
-
-unvalidateTestSuite :: TestSuite -> TestSuiteStanza
-unvalidateTestSuite t =
-  TestSuiteStanza
-    { _testStanzaImports = testSuiteImports t
-    , _testStanzaTestType = ty
-    , _testStanzaMainIs = ma
-    , _testStanzaTestModule = mo
-    , _testStanzaBuildInfo = testBuildInfo t
-    , _testStanzaCodeGenerators = testCodeGenerators t
-    }
-  where
-    (ty, ma, mo) = case testInterface t of
-      TestSuiteExeV10 ver file -> (Just $ TestTypeExe ver, Just file, Nothing)
-      TestSuiteLibV09 ver modu -> (Just $ TestTypeLib ver, Nothing, Just modu)
-      _ -> (Nothing, Nothing, Nothing)
 
 -------------------------------------------------------------------------------
 -- Benchmark

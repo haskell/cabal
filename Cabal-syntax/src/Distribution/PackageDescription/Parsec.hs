@@ -35,6 +35,7 @@ import Prelude ()
 
 import Control.Monad.State.Strict (StateT, execStateT)
 import Control.Monad.Trans.Class (lift)
+import Distribution.Types.TestSuiteStanza
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
 import Distribution.FieldGrammar
@@ -341,12 +342,19 @@ goSections specVer fields = do
       | name == "test-suite" = do
           commonStanzas <- use stateCommonStanzas
           name' <- parseUnqualComponentName pos args
-          testStanza <- lift $ parseCondTree' testSuiteFieldGrammar (fromBuildInfo' name') commonStanzas fields
-          let testStanza' = insertTestSuiteStanzaImports testStanza
-          testSuite <- lift $ traverse (validateTestSuite specVer pos) testStanza'
+
+          testStanza <-
+            (fmap . mapTreeData . fmap) (patchTestSuiteType specVer) $
+              lift $ parseCondTree' testSuiteFieldGrammar (fromBuildInfo' name') commonStanzas fields
+
+          -- Merge and then validate
+          let testStanza' :: CondTree ConfVar [Dependency] TestSuiteStanza
+              testStanza' = mergeTestSuiteStanza commonStanzas testStanza
+          ok <- lift $ traverse (validateTestSuite specVer pos) testStanza'
+          let validated = mapTreeData convertTestSuite testStanza'
 
           let hasType ts = testInterface ts /= testInterface mempty
-          unless (onAllBranches hasType testSuite) $
+          unless (onAllBranches hasType validated) $
             lift $
               parseFailure pos $
                 concat
@@ -366,7 +374,8 @@ goSections specVer fields = do
                   ]
 
           -- TODO check duplicate name here?
-          stateGpd . L.condTestSuites %= snoc (name', testSuite)
+          -- Store the unmerged unvalidated version
+          stateGpd . L.condTestSuites %= snoc (name', testStanza)
       | name == "benchmark" = do
           commonStanzas <- use stateCommonStanzas
           name' <- parseUnqualComponentName pos args
@@ -630,7 +639,7 @@ instance FromBuildInfo ForeignLib where fromBuildInfo' n bi = set L.foreignLibNa
 instance FromBuildInfo Executable where fromBuildInfo' n bi = set L.exeName n $ set L.buildInfo bi emptyExecutable
 
 instance FromBuildInfo TestSuiteStanza where
-  fromBuildInfo' _ bi = TestSuiteStanza [] Nothing Nothing Nothing bi []
+  fromBuildInfo' _ bi = TestSuiteStanza Nothing Nothing Nothing bi []
 
 instance FromBuildInfo BenchmarkStanza where
   fromBuildInfo' _ bi = BenchmarkStanza [] Nothing Nothing Nothing bi

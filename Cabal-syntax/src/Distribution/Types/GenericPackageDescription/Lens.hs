@@ -34,6 +34,7 @@ import Distribution.Types.Library (Library)
 import Distribution.Types.PackageDescription (PackageDescription)
 import Distribution.Types.TestSuite (TestSuite)
 import Distribution.Types.UnqualComponentName (UnqualComponentName)
+import Distribution.Types.TestSuiteStanza (TestSuiteStanza)
 import Distribution.Version (Version, VersionRange)
 
 -------------------------------------------------------------------------------
@@ -73,7 +74,7 @@ condExecutables :: Lens' GenericPackageDescription [(UnqualComponentName, (CondT
 condExecutables f s = fmap (\x -> s{T.condExecutables = x}) (f (T.condExecutables s))
 {-# INLINE condExecutables #-}
 
-condTestSuites :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTree ConfVar [Dependency] TestSuite))]
+condTestSuites :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTree ConfVar [Dependency] (T.WithImports TestSuiteStanza)))]
 condTestSuites f s = fmap (\x -> s{T.condTestSuites = x}) (f (T.condTestSuites s))
 {-# INLINE condTestSuites #-}
 

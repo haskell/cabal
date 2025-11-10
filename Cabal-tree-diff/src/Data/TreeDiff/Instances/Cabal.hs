@@ -27,6 +27,7 @@ import Distribution.Types.DumpBuildInfo            (DumpBuildInfo)
 import Distribution.Types.PackageVersionConstraint
 import Distribution.Types.UnitId                   (DefUnitId, UnitId)
 import Distribution.Types.Imports
+import Distribution.Types.TestSuiteStanza
 import Distribution.Utils.NubList                  (NubList)
 import Distribution.Utils.Path                     (SymbolicPathX)
 import Distribution.Utils.ShortText                (ShortText, fromShortText)
@@ -119,6 +120,7 @@ instance ToExpr SetupBuildInfo
 instance ToExpr SourceRepo
 instance ToExpr TestShowDetails
 instance ToExpr TestSuite
+instance ToExpr TestSuiteStanza
 instance ToExpr TestSuiteInterface
 instance ToExpr TestType
 instance ToExpr UnitId

@@ -74,6 +74,7 @@ import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version
 import System.FilePath (splitExtension, takeFileName)
+import Distribution.Types.TestSuiteStanza
 
 import qualified Data.ByteString.Lazy as BS
 import qualified Distribution.SPDX as SPDX
@@ -333,7 +334,7 @@ checkGenericPackageDescription
             (checkTestSuite ads)
             (\u l -> l{testName = u})
         )
-        condTestSuites_
+        (condTestSuites' gpd)
       mapM_
         ( checkCondTarget
             genPackageFlags_
@@ -973,7 +974,7 @@ pd2gpd pd = gpd
               (executables pd)
         , condTestSuites =
             map
-              (t2cName testName remTest)
+              (fmap (mapTreeData $ noImports . unvalidateTestSuite) . t2cName testName remTest)
               (testSuites pd)
         , condBenchmarks =
             map

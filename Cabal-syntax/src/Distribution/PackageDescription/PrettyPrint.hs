@@ -56,6 +56,7 @@ import Distribution.Utils.Generic (writeFileAtomic, writeUTF8File)
 import qualified Distribution.PackageDescription.FieldGrammar as FG
 import qualified Distribution.Types.BuildInfo.Lens as L
 import Distribution.Types.Imports
+import Distribution.Types.TestSuiteStanza
 import qualified Distribution.Types.SetupBuildInfo.Lens as L
 
 import Text.PrettyPrint (Doc, char, hsep, parens, text)
@@ -84,7 +85,7 @@ ppGenericPackageDescription v gpd0 =
     , ppCondSubLibraries v (condSubLibraries' gpd)
     , ppCondForeignLibs v (condForeignLibs' gpd)
     , ppCondExecutables v (condExecutables' gpd)
-    , ppCondTestSuites v (condTestSuites gpd)
+    , ppCondTestSuites v (condTestSuites' gpd)
     , ppCondBenchmarks v (condBenchmarks gpd)
     ]
   where
@@ -172,7 +173,7 @@ ppCondExecutables v exes =
 ppCondTestSuites :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar [Dependency] TestSuite)] -> [PrettyField ()]
 ppCondTestSuites v suites =
   [ PrettySection () "test-suite" [pretty n] $
-    ppCondTree2 v testSuiteFieldGrammar (fmap FG.unvalidateTestSuite condTree)
+    ppCondTree2 v testSuiteFieldGrammar (fmap unvalidateTestSuite condTree)
   | (n, condTree) <- suites
   ]
 
@@ -237,7 +238,7 @@ pdToGpd pd =
     , condSubLibraries = fmap (mapTreeData noImports) . mkCondTreeL <$> subLibraries pd
     , condForeignLibs = fmap (mapTreeData noImports) . mkCondTree' foreignLibName <$> foreignLibs pd
     , condExecutables = fmap (mapTreeData noImports) . mkCondTree' exeName <$> executables pd
-    , condTestSuites = mkCondTree' testName <$> testSuites pd
+    , condTestSuites = fmap (mapTreeData $ noImports . unvalidateTestSuite) . mkCondTree' testName <$> testSuites pd
     , condBenchmarks = mkCondTree' benchmarkName <$> benchmarks pd
     }
   where

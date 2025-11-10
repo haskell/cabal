@@ -185,6 +185,7 @@ library
     Distribution.Types.SourceRepo
     Distribution.Types.SourceRepo.Lens
     Distribution.Types.TestSuite
+    Distribution.Types.TestSuiteStanza
     Distribution.Types.TestSuite.Lens
     Distribution.Types.TestSuiteInterface
     Distribution.Types.TestType
