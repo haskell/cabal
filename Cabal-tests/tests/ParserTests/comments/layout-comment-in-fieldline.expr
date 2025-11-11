@@ -1,0 +1,77 @@
+[
+  Section
+    (Name
+      WithComments {
+        justComments = [],
+        unComments = Position 1 1}
+      "executable")
+    []
+    [
+      Field
+        (Name
+          WithComments {
+            justComments = [],
+            unComments = Position 2 5}
+          "main-is")
+        [
+          FieldLine
+            WithComments {
+              justComments = [],
+              unComments = Position 2 26}
+            "Main.hs"],
+      Field
+        (Name
+          WithComments {
+            justComments = [],
+            unComments = Position 3 5}
+          "hs-source-dirs")
+        [
+          FieldLine
+            WithComments {
+              justComments = [],
+              unComments = Position 4 9}
+            "src"],
+      Field
+        (Name
+          WithComments {
+            justComments = [],
+            unComments = Position 5 5}
+          "ghc-options")
+        [
+          FieldLine
+            WithComments {
+              justComments = [],
+              unComments = Position 5 18}
+            "-Wall"],
+      Field
+        (Name
+          WithComments {
+            justComments = [],
+            unComments = Position 6 5}
+          "build-depends")
+        [
+          FieldLine
+            WithComments {
+              justComments =
+              [
+                Comment
+                  "                     -- , foo"
+                  (Position 7 1),
+                Comment
+                  "                     -- ^ This should be consumed after fieldContent"
+                  (Position 8 1)],
+              unComments = Position 6 22}
+            "base",
+          FieldLine
+            WithComments {
+              justComments = [
+                Comment
+                  "                     -- , comemnt"
+                  (Position 10 1)],
+              unComments = Position 9 22}
+            ", bar",
+          FieldLine
+            WithComments {
+              justComments = [],
+              unComments = Position 11 22}
+            ", baz"]]]

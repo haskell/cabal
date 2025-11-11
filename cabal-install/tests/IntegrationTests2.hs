@@ -651,7 +651,7 @@ testTargetSelectorAmbiguous reportSubCase = do
         , srcpkgSource = LocalUnpackedPackage loc
         , srcpkgDescrOverride = Nothing
         , srcpkgDescription =
-            GenericPackageDescription
+            emptyGenericPackageDescription
               { packageDescription = emptyPackageDescription{package = pkgid}
               , gpdScannedVersion = Nothing
               , genPackageFlags = []

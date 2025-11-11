@@ -30,7 +30,7 @@ import Distribution.FieldGrammar
 import Distribution.FieldGrammar.Parsec (NamelessField (..), namelessFieldAnn)
 import Distribution.Fields (Field (..), FieldLine (..), FieldName, Name (..), SectionArg (..), readFields')
 import Distribution.Fields.ConfVar (parseConditionConfVar)
-import Distribution.Fields.Field (fieldLinesToString, sectionArgAnn)
+import Distribution.Fields.Field (fieldLinesToString, sectionArgAnn, unComments)
 import Distribution.Fields.LexerMonad (toPWarnings)
 import Distribution.Fields.ParseResult
 import Distribution.Parsec (ParsecParser, eitherParsec, parsec, parsecFilePath, runParsecParser)
@@ -75,7 +75,8 @@ readPreprocessFields bs = do
       parseWarnings (toPWarnings lexWarnings)
       for_ invalidUtf8 $ \pos ->
         parseWarning zeroPos PWTUTF $ "UTF8 encoding problem at byte offset " ++ show pos
-      return fs
+      let fs' = map (fmap unComments) fs
+      return fs'
     Left perr -> parseFatalFailure pos (show perr)
       where
         ppos = Text.Parsec.errorPos perr

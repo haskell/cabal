@@ -100,6 +100,9 @@ import Distribution.Fields
   , parseFatalFailure
   , readFields
   )
+import Distribution.Fields.Field
+  ( unComments
+  )
 import Distribution.PackageDescription
   ( ignoreConditions
   )
@@ -481,7 +484,8 @@ parseScriptBlock :: BS.ByteString -> ParseResult src Executable
 parseScriptBlock str =
   case readFields str of
     Right fs -> do
-      let (fields, _) = takeFields fs
+      let fs' = map (fmap unComments) fs
+      let (fields, _) = takeFields fs'
       parseFieldGrammar cabalSpecLatest fields (executableFieldGrammar "script")
     Left perr -> parseFatalFailure pos (show perr)
       where

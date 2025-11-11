@@ -1,0 +1,11 @@
+Map.fromList
+  [
+    _×_
+      (Position 13 1)
+      "    -- foo",
+    _×_
+      (Position 15 1)
+      "    -- bar",
+    _×_
+      (Position 17 1)
+      "    -- baz"]
