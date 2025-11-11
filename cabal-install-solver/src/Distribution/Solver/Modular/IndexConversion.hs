@@ -176,7 +176,7 @@ convGPD :: OS -> Arch -> CompilerInfo -> [LabeledPackageConstraint]
         -> StrongFlags -> SolveExecutables -> PN -> GenericPackageDescription
         -> PInfo
 convGPD os arch cinfo constraints strfl solveExes pn
-        (GenericPackageDescription pkg scannedVersion flags mlib sub_libs flibs exes tests benchs _comments) =
+        (GenericPackageDescription pkg scannedVersion flags mlib sub_libs flibs exes tests benchs) =
   let
     fds  = flagInfo strfl flags
 
