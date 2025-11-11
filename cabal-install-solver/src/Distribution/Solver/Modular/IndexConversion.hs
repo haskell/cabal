@@ -176,7 +176,7 @@ convGPD :: OS -> Arch -> CompilerInfo -> [LabeledPackageConstraint]
         -> StrongFlags -> SolveExecutables -> PN -> GenericPackageDescription
         -> PInfo
 convGPD os arch cinfo constraints strfl solveExes pn
-        (GenericPackageDescription pkg scannedVersion flags mlib sub_libs flibs exes tests benchs) =
+        gpd@(GenericPackageDescription pkg scannedVersion flags _commonStanzas _mlib _sub_libs _flibs _exes _tests _benchs) =
   let
     fds  = flagInfo strfl flags
 
@@ -190,16 +190,16 @@ convGPD os arch cinfo constraints strfl solveExes pn
     initDR = DependencyReason pn M.empty S.empty
 
     flagged_deps
-        = concatMap (\ds ->       conv ComponentLib         libBuildInfo        initDR ds) (maybeToList mlib)
-       ++ concatMap (\(nm, ds) -> conv (ComponentSubLib nm) libBuildInfo        initDR ds) sub_libs
-       ++ concatMap (\(nm, ds) -> conv (ComponentFLib nm)   foreignLibBuildInfo initDR ds) flibs
-       ++ concatMap (\(nm, ds) -> conv (ComponentExe nm)    buildInfo           initDR ds) exes
+        = concatMap (\ds ->       conv ComponentLib         libBuildInfo        initDR ds) (maybeToList $ condLibrary' gpd)
+       ++ concatMap (\(nm, ds) -> conv (ComponentSubLib nm) libBuildInfo        initDR ds) (condSubLibraries' gpd)
+       ++ concatMap (\(nm, ds) -> conv (ComponentFLib nm)   foreignLibBuildInfo initDR ds) (condForeignLibs' gpd)
+       ++ concatMap (\(nm, ds) -> conv (ComponentExe nm)    buildInfo           initDR ds) (condExecutables' gpd)
        ++ prefix (Stanza (SN pn TestStanzas))
             (L.map  (\(nm, ds) -> conv (ComponentTest nm)   testBuildInfo (addStanza TestStanzas initDR) ds)
-                    tests)
+                    (condTestSuites' gpd))
        ++ prefix (Stanza (SN pn BenchStanzas))
             (L.map  (\(nm, ds) -> conv (ComponentBench nm)  benchmarkBuildInfo (addStanza BenchStanzas initDR) ds)
-                    benchs)
+                    (condBenchmarks' gpd))
        ++ maybe []  (convSetupBuildInfo pn) (setupBuildInfo pkg)
 
     addStanza :: Stanza -> DependencyReason pn -> DependencyReason pn
@@ -216,16 +216,16 @@ convGPD os arch cinfo constraints strfl solveExes pn
     components = M.fromList $ libComps ++ subLibComps ++ exeComps
       where
         libComps = [ (ExposedLib LMainLibName, libToComponentInfo lib)
-                   | lib <- maybeToList mlib ]
+                   | lib <- maybeToList (condLibrary' gpd) ]
         subLibComps = [ (ExposedLib (LSubLibName name), libToComponentInfo lib)
-                      | (name, lib) <- sub_libs ]
+                      | (name, lib) <- condSubLibraries' gpd  ]
         exeComps = [ ( ExposedExe name
                      , ComponentInfo {
                            compIsVisible = IsVisible True
                          , compIsBuildable = IsBuildable $ testCondition (buildable . buildInfo) exe /= Just False
                          }
                      )
-                   | (name, exe) <- exes ]
+                   | (name, exe) <- (condExecutables' gpd) ]
 
         libToComponentInfo lib =
             ComponentInfo {

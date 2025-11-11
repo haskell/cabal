@@ -10,14 +10,9 @@ import Prelude ()
 import Distribution.Types.Benchmark (Benchmark)
 import Distribution.Types.BenchmarkInterface (BenchmarkInterface)
 import Distribution.Types.BuildInfo (BuildInfo)
-import Distribution.Types.Imports (ImportName)
 import Distribution.Types.UnqualComponentName (UnqualComponentName)
 
 import qualified Distribution.Types.Benchmark as T
-
-benchmarkImports :: Lens' Benchmark [ImportName]
-benchmarkImports f s = fmap (\x -> s{T.benchmarkImports = x}) (f (T.benchmarkImports s))
-{-# INLINE benchmarkImports #-}
 
 benchmarkName :: Lens' Benchmark UnqualComponentName
 benchmarkName f s = fmap (\x -> s{T.benchmarkName = x}) (f (T.benchmarkName s))

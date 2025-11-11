@@ -1113,7 +1113,7 @@ packageListFromCache verbosity mkPkg hnd Cache{..} = accum mempty [] mempty cach
       where
         dummyPackageDescription :: Version -> GenericPackageDescription
         dummyPackageDescription specVer =
-          GenericPackageDescription
+          emptyPackageDescription
             { packageDescription =
                 emptyPackageDescription
                   { package = pkgid
