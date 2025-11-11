@@ -205,11 +205,7 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
   maybeWarnCabalVersion syntax pd
 
   -- Sections
-  let gpd =
-        emptyGenericPackageDescription
-          { exactComments = commentsMap
-          }
-          & L.packageDescription .~ pd
+  let gpd = emptyGenericPackageDescription & L.packageDescription .~ pd
   gpd1 <- view stateGpd <$> execStateT (goSections specVer sectionFields) (SectionS gpd Map.empty)
 
   let gpd2 = postProcessInternalDeps specVer gpd1

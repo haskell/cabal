@@ -237,7 +237,6 @@ pdToGpd pd =
     , condExecutables = mkCondTree' exeName <$> executables pd
     , condTestSuites = mkCondTree' testName <$> testSuites pd
     , condBenchmarks = mkCondTree' benchmarkName <$> benchmarks pd
-    , exactComments = mempty -- We preserve the behaviour of "drop all comments" for now
     }
   where
     -- We set CondTree's [Dependency] to an empty list, as it

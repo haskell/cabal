@@ -15,7 +15,7 @@ import Data.Algorithm.Diff                         (PolyDiff (..), getGroupedDif
 import Data.Maybe                                  (isNothing)
 import Distribution.Fields                         (pwarning)
 import Distribution.Fields.Parser                  (readFields', formatError)
-import Distribution.PackageDescription             (GenericPackageDescription(exactComments))
+import Distribution.PackageDescription             (GenericPackageDescription)
 import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.Parsec                         (PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
@@ -146,7 +146,8 @@ commentTest fname = ediffGolden goldenTest fname exprFile $ do
     )
 
   case x of
-    Right output -> pure $ toExpr (exactComments output)
+    -- TODO(leana8959): teste the proper output of Exact comment
+    Right output -> pure $ toExpr output
     Left (v, errs) ->
       fail $
         unlines $ ("VERSION: " ++ show v) : map (showPErrorWithSource . fmap renderCabalFileSource) (NE.toList errs)
@@ -314,8 +315,7 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
     -- previously we mangled licenses a bit
     let y' = y
 {- FOURMOLU_DISABLE -}
-    -- we disable comparison on exactComments for now because we can't print it yet
-    unless (x { exactComments = mempty } == y') $
+    unless (x == y') $
 #ifdef MIN_VERSION_tree_diff
         assertFailure $ unlines
             [ "re-parsed doesn't match"

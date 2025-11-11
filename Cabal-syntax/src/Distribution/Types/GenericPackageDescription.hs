@@ -5,7 +5,6 @@
 
 module Distribution.Types.GenericPackageDescription
   ( GenericPackageDescription (..)
-  , ExactComments
   , emptyGenericPackageDescription
   ) where
 
@@ -74,11 +73,8 @@ data GenericPackageDescription = GenericPackageDescription
            , CondTree ConfVar [Dependency] Benchmark
            )
          ]
-  , exactComments :: ExactComments Position
   }
   deriving (Show, Eq, Data, Generic)
-
-type ExactComments ann = Map ann ByteString
 
 instance Package GenericPackageDescription where
   packageId = packageId . packageDescription
@@ -88,13 +84,13 @@ instance Structured GenericPackageDescription
 instance NFData GenericPackageDescription where rnf = genericRnf
 
 emptyGenericPackageDescription :: GenericPackageDescription
-emptyGenericPackageDescription = GenericPackageDescription emptyPackageDescription Nothing [] Nothing [] [] [] [] [] mempty
+emptyGenericPackageDescription = GenericPackageDescription emptyPackageDescription Nothing [] Nothing [] [] [] [] []
 
 -- -----------------------------------------------------------------------------
 -- Traversal Instances
 
 instance L.HasBuildInfos GenericPackageDescription where
-  traverseBuildInfos f (GenericPackageDescription p v a1 x1 x2 x3 x4 x5 x6 comments) =
+  traverseBuildInfos f (GenericPackageDescription p v a1 x1 x2 x3 x4 x5 x6) =
     GenericPackageDescription
       <$> L.traverseBuildInfos f p
       <*> pure v
@@ -105,7 +101,6 @@ instance L.HasBuildInfos GenericPackageDescription where
       <*> (traverse . L._2 . traverseCondTreeBuildInfo) f x4
       <*> (traverse . L._2 . traverseCondTreeBuildInfo) f x5
       <*> (traverse . L._2 . traverseCondTreeBuildInfo) f x6
-      <*> pure comments
 
 -- We use this traversal to keep [Dependency] field in CondTree up to date.
 traverseCondTreeBuildInfo
