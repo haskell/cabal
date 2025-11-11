@@ -120,6 +120,10 @@ commentTests = testGroup "comments"
     , commentTest "layout-many-sections.cabal"
     , commentTest "layout-interleaved-in-section.cabal"
     , commentTest "layout-fieldline-is-flag.cabal"
+
+    -- Imported from regression test
+    -- This one has a lot of comments
+    , commentTest "hasktorch.cabal"
     ]
 
 -- Use this test to bypass the more sophisticated checks of whether a cabal file is valid
