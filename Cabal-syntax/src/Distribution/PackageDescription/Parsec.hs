@@ -75,12 +75,26 @@ import qualified Text.Parsec as P
 
 ------------------------------------------------------------------------------
 
+-- Deep Evaluation
+-- ~~~~~~~~~~~~~~~
+--
+-- See nothunks test, without this deepseq we get (at least):
+-- Thunk in ThunkInfo {thunkContext = ["GenericPackageDescription"]}
+--
+-- TODO: re-benchmark, whether `deepseq` is important (both cabal-benchmarks and solver-benchmarks)
+-- TODO: remove the need for deepseq if `deepseq` in fact matters
+-- NOTE: IIRC it does affect (maximal) memory usage, which causes less GC pressure
+
 -- | Parses the given file into a 'GenericPackageDescription'.
 --
 -- In Cabal 1.2 the syntax for package descriptions was changed to a format
 -- with sections and possibly indented property descriptions.
 parseGenericPackageDescription :: BS.ByteString -> ParseResult src GenericPackageDescription
-parseGenericPackageDescription = fmap unannotatedGpd . parseAnnotatedGenericPackageDescription
+parseGenericPackageDescription bs = do
+  gpd <- parseAnnotatedGenericPackageDescription bs
+  let gpd' = unannotatedGpd gpd
+  -- See "Deep Evaluation" note
+  gpd' `deepseq` return gpd'
 
 parseAnnotatedGenericPackageDescription :: BS.ByteString -> ParseResult src AnnotatedGenericPackageDescription
 parseAnnotatedGenericPackageDescription bs = do
@@ -123,7 +137,11 @@ parseAnnotatedGenericPackageDescription bs = do
 
 -- | 'Maybe' variant of 'parseGenericPackageDescription'
 parseGenericPackageDescriptionMaybe :: BS.ByteString -> Maybe GenericPackageDescription
-parseGenericPackageDescriptionMaybe = fmap unannotatedGpd . parseAnnotatedGenericPackageDescriptionMaybe
+parseGenericPackageDescriptionMaybe bs = do
+  gpd <- parseAnnotatedGenericPackageDescriptionMaybe bs
+  let gpd' = unannotatedGpd gpd
+  -- See "Deep Evaluation" note
+  gpd' `deepseq` return gpd'
 
 parseAnnotatedGenericPackageDescriptionMaybe :: BS.ByteString -> Maybe AnnotatedGenericPackageDescription
 parseAnnotatedGenericPackageDescriptionMaybe =
@@ -219,18 +237,11 @@ parseAnnotatedGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs =
   let gpd2 = postProcessInternalDeps specVer gpd1
   checkForUndefinedFlags gpd2
   checkForUndefinedCustomSetup gpd2
-  -- See nothunks test, without this deepseq we get (at least):
-  -- Thunk in ThunkInfo {thunkContext = ["PackageIdentifier","PackageDescription","GenericPackageDescription"]}
-  --
-  -- TODO: re-benchmark, whether `deepseq` is important (both cabal-benchmarks and solver-benchmarks)
-  -- TODO: remove the need for deepseq if `deepseq` in fact matters
-  -- NOTE: IIRC it does affect (maximal) memory usage, which causes less GC pressure
-  gpd2 `deepseq`
-    return
-      AnnotatedGenericPackageDescription
-        { exactComments = commentsMap
-        , unannotatedGpd = gpd2
-        }
+  return
+    AnnotatedGenericPackageDescription
+      { exactComments = commentsMap
+      , unannotatedGpd = gpd2
+      }
   where
     safeLast :: [a] -> Maybe a
     safeLast = listToMaybe . reverse
