@@ -12,7 +12,7 @@
 -- about @.cabal@ files.
 module Distribution.PackageDescription
   ( -- * PD and GPD
-    module Distribution.Types.PackageDescription
+      module Distribution.Types.PackageDescription
   , module Distribution.Types.AnnotatedGenericPackageDescription
   , module Distribution.Types.GenericPackageDescription
 
@@ -87,6 +87,7 @@ import Prelude ()
 
 -- import Distribution.Compat.Prelude
 
+import Distribution.Types.AnnotatedGenericPackageDescription
 import Distribution.Types.Benchmark
 import Distribution.Types.BenchmarkInterface
 import Distribution.Types.BenchmarkType
@@ -104,7 +105,6 @@ import Distribution.Types.Flag
 import Distribution.Types.ForeignLib
 import Distribution.Types.ForeignLibOption
 import Distribution.Types.ForeignLibType
-import Distribution.Types.AnnotatedGenericPackageDescription
 import Distribution.Types.GenericPackageDescription
 import Distribution.Types.HookedBuildInfo
 import Distribution.Types.IncludeRenaming

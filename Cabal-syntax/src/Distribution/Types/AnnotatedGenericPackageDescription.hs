@@ -4,7 +4,7 @@
 -- | Contains 'AnnotatedGenericPackageDescription', useful for exact print
 -- We split this from 'GenericPackageDescription' type notably because the
 -- exact comments breaks its 'Eq' instance.
-module Distribution.Types.AnnotatedGenericPackageDescription 
+module Distribution.Types.AnnotatedGenericPackageDescription
   ( AnnotatedGenericPackageDescription (..)
   , ExactComments
   ) where

@@ -47,7 +47,6 @@ import Distribution.Fields.Field (Comment (..), FieldName, WithComments, getName
 import Distribution.Fields.LexerMonad (LexWarning, toPWarnings)
 import Distribution.Fields.ParseResult
 import Distribution.Fields.Parser
-import Distribution.Types.AnnotatedGenericPackageDescription
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration (freeVars, transformAllBuildInfos)
 import Distribution.PackageDescription.FieldGrammar
@@ -57,6 +56,7 @@ import Distribution.Parsec.FieldLineStream (fieldLineStreamFromBS)
 import Distribution.Parsec.Position (Position (..), incPos, zeroPos)
 import Distribution.Parsec.Warning (PWarnType (..))
 import Distribution.Pretty (prettyShow)
+import Distribution.Types.AnnotatedGenericPackageDescription
 import Distribution.Utils.Generic (breakMaybe, fromUTF8BS, toUTF8BS, unfoldrM, validateUTF8)
 import Distribution.Version (Version, mkVersion, versionNumbers)
 
@@ -226,10 +226,12 @@ parseAnnotatedGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs =
   -- TODO: re-benchmark, whether `deepseq` is important (both cabal-benchmarks and solver-benchmarks)
   -- TODO: remove the need for deepseq if `deepseq` in fact matters
   -- NOTE: IIRC it does affect (maximal) memory usage, which causes less GC pressure
-  gpd2 `deepseq` return AnnotatedGenericPackageDescription 
-    { exactComments = commentsMap
-    , unannotatedGpd = gpd2
-    }
+  gpd2 `deepseq`
+    return
+      AnnotatedGenericPackageDescription
+        { exactComments = commentsMap
+        , unannotatedGpd = gpd2
+        }
   where
     safeLast :: [a] -> Maybe a
     safeLast = listToMaybe . reverse
