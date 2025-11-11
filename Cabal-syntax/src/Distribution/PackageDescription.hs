@@ -12,7 +12,8 @@
 -- about @.cabal@ files.
 module Distribution.PackageDescription
   ( -- * PD and GPD
-      module Distribution.Types.PackageDescription
+    module Distribution.Types.PackageDescription
+  , module Distribution.Types.AnnotatedGenericPackageDescription
   , module Distribution.Types.GenericPackageDescription
 
     -- * Components
@@ -103,6 +104,7 @@ import Distribution.Types.Flag
 import Distribution.Types.ForeignLib
 import Distribution.Types.ForeignLibOption
 import Distribution.Types.ForeignLibType
+import Distribution.Types.AnnotatedGenericPackageDescription
 import Distribution.Types.GenericPackageDescription
 import Distribution.Types.HookedBuildInfo
 import Distribution.Types.IncludeRenaming

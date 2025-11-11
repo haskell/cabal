@@ -17,6 +17,8 @@ module Distribution.PackageDescription.Parsec
   ( -- * Package descriptions
     parseGenericPackageDescription
   , parseGenericPackageDescriptionMaybe
+  , parseAnnotatedGenericPackageDescription
+  , parseAnnotatedGenericPackageDescriptionMaybe
 
     -- ** Parsing
   , ParseResult
@@ -45,6 +47,7 @@ import Distribution.Fields.Field (Comment (..), FieldName, WithComments, getName
 import Distribution.Fields.LexerMonad (LexWarning, toPWarnings)
 import Distribution.Fields.ParseResult
 import Distribution.Fields.Parser
+import Distribution.Types.AnnotatedGenericPackageDescription
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration (freeVars, transformAllBuildInfos)
 import Distribution.PackageDescription.FieldGrammar
@@ -78,7 +81,10 @@ import qualified Text.Parsec as P
 -- In Cabal 1.2 the syntax for package descriptions was changed to a format
 -- with sections and possibly indented property descriptions.
 parseGenericPackageDescription :: BS.ByteString -> ParseResult src GenericPackageDescription
-parseGenericPackageDescription bs = do
+parseGenericPackageDescription = fmap unannotatedGpd . parseAnnotatedGenericPackageDescription
+
+parseAnnotatedGenericPackageDescription :: BS.ByteString -> ParseResult src AnnotatedGenericPackageDescription
+parseAnnotatedGenericPackageDescription bs = do
   -- set scanned version
   setCabalSpecVersion ver
 
@@ -99,7 +105,7 @@ parseGenericPackageDescription bs = do
       when patched $
         parseWarning zeroPos PWTQuirkyCabalFile "Legacy cabal file"
       -- UTF8 is validated in a prepass step, afterwards parsing is lenient.
-      parseGenericPackageDescription' csv lexWarnings invalidUtf8 fs
+      parseAnnotatedGenericPackageDescription' csv lexWarnings invalidUtf8 fs
     -- TODO: better marshalling of errors
     Left perr -> parseFatalFailure pos (show perr)
       where
@@ -118,8 +124,11 @@ parseGenericPackageDescription bs = do
 
 -- | 'Maybe' variant of 'parseGenericPackageDescription'
 parseGenericPackageDescriptionMaybe :: BS.ByteString -> Maybe GenericPackageDescription
-parseGenericPackageDescriptionMaybe =
-  either (const Nothing) Just . snd . runParseResult . parseGenericPackageDescription
+parseGenericPackageDescriptionMaybe = fmap unannotatedGpd . parseAnnotatedGenericPackageDescriptionMaybe
+
+parseAnnotatedGenericPackageDescriptionMaybe :: BS.ByteString -> Maybe AnnotatedGenericPackageDescription
+parseAnnotatedGenericPackageDescriptionMaybe =
+  either (const Nothing) Just . snd . runParseResult . parseAnnotatedGenericPackageDescription
 
 fieldlinesToBS :: [FieldLine ann] -> BS.ByteString
 fieldlinesToBS = BS.intercalate "\n" . map (\(FieldLine _ bs) -> bs)
@@ -148,13 +157,13 @@ stateCommonStanzas f (SectionS gpd cs) = SectionS gpd <$> f cs
 -- * first we parse fields of PackageDescription
 
 -- * then we parse sections (libraries, executables, etc)
-parseGenericPackageDescription'
+parseAnnotatedGenericPackageDescription'
   :: Maybe CabalSpecVersion
   -> [LexWarning]
   -> Maybe Int
   -> [Field (WithComments Position)]
-  -> ParseResult src GenericPackageDescription
-parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
+  -> ParseResult src AnnotatedGenericPackageDescription
+parseAnnotatedGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
   parseWarnings (toPWarnings lexWarnings)
   for_ utf8WarnPos $ \pos ->
     parseWarning zeroPos PWTUTF $ "UTF8 encoding problem at byte offset " ++ show pos
@@ -217,7 +226,10 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
   -- TODO: re-benchmark, whether `deepseq` is important (both cabal-benchmarks and solver-benchmarks)
   -- TODO: remove the need for deepseq if `deepseq` in fact matters
   -- NOTE: IIRC it does affect (maximal) memory usage, which causes less GC pressure
-  gpd2 `deepseq` return gpd2
+  gpd2 `deepseq` return AnnotatedGenericPackageDescription 
+    { exactComments = commentsMap
+    , unannotatedGpd = gpd2
+    }
   where
     safeLast :: [a] -> Maybe a
     safeLast = listToMaybe . reverse

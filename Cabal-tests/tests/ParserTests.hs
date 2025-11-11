@@ -15,8 +15,11 @@ import Data.Algorithm.Diff                         (PolyDiff (..), getGroupedDif
 import Data.Maybe                                  (isNothing)
 import Distribution.Fields                         (pwarning)
 import Distribution.Fields.Parser                  (readFields', formatError)
-import Distribution.PackageDescription             (GenericPackageDescription)
-import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription)
+import Distribution.PackageDescription             (GenericPackageDescription, exactComments)
+import Distribution.PackageDescription.Parsec
+  ( parseGenericPackageDescription
+  , parseAnnotatedGenericPackageDescription
+  )
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.Parsec                         (PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
 import Distribution.Pretty                         (prettyShow)
@@ -138,7 +141,7 @@ readFieldTest fname = ediffGolden goldenTest fname exprFile $ do
 commentTest :: FilePath -> TestTree
 commentTest fname = ediffGolden goldenTest fname exprFile $ do
   contents <- BS.readFile input
-  let res = withSource (PCabalFile (input, contents)) $ parseGenericPackageDescription contents
+  let res = withSource (PCabalFile (input, contents)) $ parseAnnotatedGenericPackageDescription contents
   let (warns, x) = runParseResult res
 
   unless (null warns) (fail $
@@ -146,8 +149,7 @@ commentTest fname = ediffGolden goldenTest fname exprFile $ do
     )
 
   case x of
-    -- TODO(leana8959): teste the proper output of Exact comment
-    Right output -> pure $ toExpr output
+    Right output -> pure $ toExpr (exactComments output)
     Left (v, errs) ->
       fail $
         unlines $ ("VERSION: " ++ show v) : map (showPErrorWithSource . fmap renderCabalFileSource) (NE.toList errs)

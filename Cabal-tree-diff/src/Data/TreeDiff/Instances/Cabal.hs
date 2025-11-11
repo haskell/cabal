@@ -88,6 +88,7 @@ instance ToExpr FlagName
 instance ToExpr ForeignLib
 instance ToExpr ForeignLibOption
 instance ToExpr ForeignLibType
+instance ToExpr AnnotatedGenericPackageDescription
 instance ToExpr GenericPackageDescription
 instance ToExpr HaddockTarget
 instance ToExpr IncludeRenaming
