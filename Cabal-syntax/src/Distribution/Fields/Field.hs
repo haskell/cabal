@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -20,9 +21,9 @@ module Distribution.Fields.Field
 
     -- * Comment
   , Comment (..)
-  , WithComments
-  , justComments
-  , unComments
+  , WithComments (..)
+  , mapComments
+  , mapCommentedData
 
     -- * Name
   , FieldName
@@ -52,15 +53,19 @@ import qualified Data.Foldable1 as F1
 -------------------------------------------------------------------------------
 
 data Comment ann = Comment !ByteString !ann
-  deriving (Show, Eq, Generic)
+  deriving (Show, Generic, Eq, Ord, Functor)
 
-type WithComments ann = ([Comment ann], ann)
+data WithComments ann = WithComments
+  { justComments :: ![Comment ann]
+  , unComments :: !ann
+  }
+  deriving (Show, Generic, Eq, Ord, Functor)
 
-unComments :: WithComments ann -> ann
-unComments = snd
+mapComments :: ([Comment ann] -> [Comment ann]) -> WithComments ann -> WithComments ann
+mapComments f (WithComments cs x) = WithComments (f cs) x
 
-justComments :: WithComments ann -> [Comment ann]
-justComments = fst
+mapCommentedData :: (ann -> ann) -> WithComments ann -> WithComments ann
+mapCommentedData f (WithComments cs x) = WithComments cs (f x)
 
 -- | A Cabal-like file consists of a series of fields (@foo: bar@) and sections (@library ...@).
 data Field ann
