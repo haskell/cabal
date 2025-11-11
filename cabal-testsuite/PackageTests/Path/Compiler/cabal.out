@@ -10,3 +10,8 @@ compiler-flavour: ghc
 compiler-id: ghc-<GHCVER>
 compiler-path: <GHCPATH>
 compiler-store-path: <ROOT>/cabal.dist/home/.cabal/store/ghc-<GHCVER>
+# cabal path
+compiler-flavour: ghc
+compiler-id: ghc-<GHCVER>
+compiler-path: <GHCPATH>
+compiler-store-path: fake-dir/ghc-<GHCVER>
