@@ -13,11 +13,11 @@ module Distribution.Types.Lens
   , module Distribution.Types.TestSuite.Lens
   ) where
 
+import Distribution.Types.AnnotatedGenericPackageDescription.Lens
 import Distribution.Types.Benchmark.Lens
 import Distribution.Types.BuildInfo.Lens
 import Distribution.Types.Executable.Lens
 import Distribution.Types.ForeignLib.Lens
-import Distribution.Types.AnnotatedGenericPackageDescription.Lens
 import Distribution.Types.GenericPackageDescription.Lens
 import Distribution.Types.Library.Lens
 import Distribution.Types.PackageDescription.Lens
