@@ -435,7 +435,7 @@ fieldInlineOrBraces name =
 -- Therefore bytestrings inside returned 'Field' will be invalid as UTF8 if the input were.
 --
 -- >>> readFields "foo: \223"
--- Right [Field (Name ([],Position 1 1) "foo") [FieldLine ([],Position 1 6) "\223"]]
+-- Right [Field (Name (WithComments {justComments = [], unComments = Position 1 1}) "foo") [FieldLine (WithComments {justComments = [], unComments = Position 1 6}) "\223"]]
 --
 -- 'readFields' won't (necessarily) fail on invalid UTF8 data, but the reported positions may be off.
 --
@@ -449,12 +449,12 @@ fieldInlineOrBraces name =
 -- If there are just latin1 non-breaking spaces, they become part of the name:
 --
 -- >>> readFields "\xa0\&foo: bar"
--- Right [Field (Name ([],Position 1 1) "\160foo") [FieldLine ([],Position 1 7) "bar"]]
+-- Right [Field (Name (WithComments {justComments = [], unComments = Position 1 1}) "\160foo") [FieldLine (WithComments {justComments = [], unComments = Position 1 7}) "bar"]]
 --
 -- The UTF8 non-breaking space is accepted as an indentation character (but warned about by 'readFields'').
 --
 -- >>> readFields' "\xc2\xa0 foo: bar"
--- Right ([Field (Name ([],Position 1 3) "foo") [FieldLine ([],Position 1 8) "bar"]],[LexWarning LexWarningNBSP (Position 1 1)])
+-- Right ([Field (Name (WithComments {justComments = [], unComments = Position 1 3}) "foo") [FieldLine (WithComments {justComments = [], unComments = Position 1 8}) "bar"]],[LexWarning LexWarningNBSP (Position 1 1)])
 readFields :: B8.ByteString -> Either ParseError [Field (WithComments Position)]
 readFields s = fmap fst (readFields' s)
 
