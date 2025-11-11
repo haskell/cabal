@@ -162,15 +162,4 @@ GenericPackageDescription {
             mainLibSet],
         condTreeComponents = []}],
   condTestSuites = [],
-  condBenchmarks = [],
-  exactComments = Map.fromList
-    [
-      _×_
-        (Position 5 1)
-        "-- mixin field:",
-      _×_
-        (Position 6 1)
-        "-- in 2.2 we got leading/trailing commas",
-      _×_
-        (Position 7 1)
-        "-- in 3.0 we got lax space parsing"]}
+  condBenchmarks = []}

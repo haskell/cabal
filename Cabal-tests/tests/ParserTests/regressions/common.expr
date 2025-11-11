@@ -209,9 +209,4 @@ GenericPackageDescription {
             (OrLaterVersion (mkVersion [0]))
             mainLibSet],
         condTreeComponents = []}],
-  condBenchmarks = [],
-  exactComments = Map.fromList
-    [
-      _×_
-        (Position 7 1)
-        "-- note: empty field"]}
+  condBenchmarks = []}

@@ -750,13 +750,4 @@ GenericPackageDescription {
               condTreeConstraints = [],
               condTreeComponents = []},
             condBranchIfFalse = Nothing}]}],
-  condBenchmarks = [],
-  exactComments =
-  Map.fromList
-    [
-      _×_
-        (Position 31 1)
-        "-- .expr should show libVisible: False",
-      _×_
-        (Position 44 1)
-        "  -- buildable fields verify that we don't have duplicate field warnings"]}
+  condBenchmarks = []}

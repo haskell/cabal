@@ -713,10 +713,4 @@ GenericPackageDescription {
                     condTreeComponents = []},
                   condBranchIfFalse = Nothing}]},
             condBranchIfFalse = Nothing}]}],
-  condBenchmarks = [],
-  exactComments =
-  Map.fromList
-    [
-      _×_
-        (Position 37 1)
-        "  -- buildable fields verify that we don't have duplicate field warnings"]}
+  condBenchmarks = []}

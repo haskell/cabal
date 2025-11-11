@@ -286,12 +286,4 @@ GenericPackageDescription {
               condTreeConstraints = [],
               condTreeComponents = []},
             condBranchIfFalse = Nothing}]}],
-  condBenchmarks = [],
-  exactComments = Map.fromList
-    [
-      _×_
-        (Position 16 1)
-        "  -- TODO: fix so `type` can be on the top level",
-      _×_
-        (Position 25 1)
-        "    -- type:                exitcode-stdio-1.0"]}
+  condBenchmarks = []}

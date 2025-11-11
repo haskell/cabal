@@ -766,31 +766,4 @@ GenericPackageDescription {
   condForeignLibs = [],
   condExecutables = [],
   condTestSuites = [],
-  condBenchmarks = [],
-  exactComments =
-  Map.fromList
-    [
-      _×_
-        (Position 42 1)
-        "-- If true,  use pkg-config,  otherwise use the pg_config based build",
-      _×_
-        (Position 43 1)
-        "-- configuration",
-      _×_
-        (Position 69 1)
-        "      -- Due to https://sourceware.org/bugzilla/show_bug.cgi?id=22948,",
-      _×_
-        (Position 70 1)
-        "      -- if we specify pq instead of libpq, then ld might link against",
-      _×_
-        (Position 71 1)
-        "      -- libpq.dll directly, which can lead to segfaults. As a temporary hack,",
-      _×_
-        (Position 72 1)
-        "      -- we force ld to link against the libpq.lib import library directly",
-      _×_
-        (Position 73 1)
-        "      -- by specifying libpq here.",
-      _×_
-        (Position 80 1)
-        "  -- Other-modules:"]}
+  condBenchmarks = []}

@@ -1,58 +1,77 @@
 [
   Section
     (Name
-      (_×_ [] (Position 1 1))
+      WithComments {
+        justComments = [],
+        unComments = Position 1 1}
       "executable")
     []
     [
       Field
         (Name
-          (_×_ [] (Position 2 5))
+          WithComments {
+            justComments = [],
+            unComments = Position 2 5}
           "main-is")
         [
           FieldLine
-            (_×_ [] (Position 2 26))
+            WithComments {
+              justComments = [],
+              unComments = Position 2 26}
             "Main.hs"],
       Field
         (Name
-          (_×_ [] (Position 3 5))
+          WithComments {
+            justComments = [],
+            unComments = Position 3 5}
           "hs-source-dirs")
         [
           FieldLine
-            (_×_ [] (Position 4 9))
+            WithComments {
+              justComments = [],
+              unComments = Position 4 9}
             "src"],
       Field
         (Name
-          (_×_ [] (Position 5 5))
+          WithComments {
+            justComments = [],
+            unComments = Position 5 5}
           "ghc-options")
         [
           FieldLine
-            (_×_ [] (Position 5 18))
+            WithComments {
+              justComments = [],
+              unComments = Position 5 18}
             "-Wall"],
       Field
         (Name
-          (_×_ [] (Position 6 5))
+          WithComments {
+            justComments = [],
+            unComments = Position 6 5}
           "build-depends")
         [
           FieldLine
-            (_×_
+            WithComments {
+              justComments =
               [
                 Comment
                   "                     -- , foo"
                   (Position 7 1),
                 Comment
                   "                     -- ^ This should be consumed after fieldContent"
-                  (Position 8 1)]
-              (Position 6 22))
+                  (Position 8 1)],
+              unComments = Position 6 22}
             "base",
           FieldLine
-            (_×_
-              [
+            WithComments {
+              justComments = [
                 Comment
                   "                     -- , comemnt"
-                  (Position 10 1)]
-              (Position 9 22))
+                  (Position 10 1)],
+              unComments = Position 9 22}
             ", bar",
           FieldLine
-            (_×_ [] (Position 11 22))
+            WithComments {
+              justComments = [],
+              unComments = Position 11 22}
             ", baz"]]]

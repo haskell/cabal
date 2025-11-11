@@ -852,9 +852,4 @@ GenericPackageDescription {
             (OrLaterVersion (mkVersion [0]))
             mainLibSet],
         condTreeComponents = []}],
-  condBenchmarks = [],
-  exactComments = Map.fromList
-    [
-      _×_
-        (Position 58 1)
-        "                       -- exposed via Generics.SOP:"]}
+  condBenchmarks = []}

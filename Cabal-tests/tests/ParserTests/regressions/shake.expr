@@ -2501,18 +2501,4 @@ GenericPackageDescription {
                   mainLibSet],
               condTreeComponents = []},
             condBranchIfFalse = Nothing}]}],
-  condBenchmarks = [],
-  exactComments = Map.fromList
-    [
-      _×_
-        (Position 83 1)
-        "    -- dot directory on own row",
-      _×_
-        (Position 176 1)
-        "    -- GHC bug 7646 means -threaded causes errors",
-      _×_
-        (Position 274 1)
-        "        -- space leak introduced by -O1 in 7.4, see #445",
-      _×_
-        (Position 277 1)
-        "        -- GHC bug 7646 (fixed in 7.8) means -threaded causes errors"]}
+  condBenchmarks = []}

@@ -477,9 +477,4 @@ GenericPackageDescription {
               (mkVersion [0, 10]))
             mainLibSet],
         condTreeComponents = []}],
-  condBenchmarks = [],
-  exactComments = Map.fromList
-    [
-      _×_
-        (Position 32 1)
-        "-- https://www.haskell.org/cabal/users-guide/cabal-projectindex.html"]}
+  condBenchmarks = []}

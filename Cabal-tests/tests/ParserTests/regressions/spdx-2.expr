@@ -114,5 +114,4 @@ GenericPackageDescription {
   condForeignLibs = [],
   condExecutables = [],
   condTestSuites = [],
-  condBenchmarks = [],
-  exactComments = Map.fromList []}
+  condBenchmarks = []}

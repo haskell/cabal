@@ -599,5 +599,4 @@ GenericPackageDescription {
               condTreeConstraints = [],
               condTreeComponents = []},
             condBranchIfFalse = Nothing}]}],
-  condBenchmarks = [],
-  exactComments = Map.fromList []}
+  condBenchmarks = []}

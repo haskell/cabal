@@ -123,15 +123,4 @@ GenericPackageDescription {
   condForeignLibs = [],
   condExecutables = [],
   condTestSuites = [],
-  condBenchmarks = [],
-  exactComments = Map.fromList
-    [
-      _×_
-        (Position 12 1)
-        "-- we test that check warns about this",
-      _×_
-        (Position 19 1)
-        "  -- Test for round-trip of ghc-options here too",
-      _×_
-        (Position 20 1)
-        "  -- See https://github.com/haskell/cabal/issues/2661"]}
+  condBenchmarks = []}

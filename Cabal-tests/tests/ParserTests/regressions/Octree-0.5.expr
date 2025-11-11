@@ -401,9 +401,4 @@ GenericPackageDescription {
             (OrLaterVersion (mkVersion [0]))
             mainLibSet],
         condTreeComponents = []}],
-  condBenchmarks = [],
-  exactComments = Map.fromList
-    [
-      _×_
-        (Position 40 1)
-        "  -- We have a symlink: README.lhs -> README.md"]}
+  condBenchmarks = []}

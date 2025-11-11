@@ -162,5 +162,4 @@ GenericPackageDescription {
             mainLibSet],
         condTreeComponents = []}],
   condTestSuites = [],
-  condBenchmarks = [],
-  exactComments = Map.fromList []}
+  condBenchmarks = []}
