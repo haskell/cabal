@@ -11,9 +11,6 @@ module Distribution.Types.GenericPackageDescription
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Data.ByteString
-import Distribution.Parsec.Position (Position)
-
 -- lens
 import Distribution.Compat.Lens as L
 import qualified Distribution.Types.BuildInfo.Lens as L

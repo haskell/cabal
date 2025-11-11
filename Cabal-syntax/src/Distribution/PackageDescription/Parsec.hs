@@ -56,7 +56,6 @@ import Distribution.Parsec.FieldLineStream (fieldLineStreamFromBS)
 import Distribution.Parsec.Position (Position (..), incPos, zeroPos)
 import Distribution.Parsec.Warning (PWarnType (..))
 import Distribution.Pretty (prettyShow)
-import Distribution.Types.AnnotatedGenericPackageDescription
 import Distribution.Utils.Generic (breakMaybe, fromUTF8BS, toUTF8BS, unfoldrM, validateUTF8)
 import Distribution.Version (Version, mkVersion, versionNumbers)
 
