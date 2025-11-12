@@ -1,7 +1,9 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Distribution.Types.GenericPackageDescription
   ( GenericPackageDescription (..)
@@ -60,6 +62,8 @@ import qualified Data.Map as Map
 -- ---------------------------------------------------------------------------
 -- The 'GenericPackageDescription' type
 
+type DependencyTree a = CondTree ConfVar [Dependency] a
+
 data GenericPackageDescription = GenericPackageDescription
   { packageDescription :: PackageDescription
   , gpdScannedVersion :: Maybe Version
@@ -72,33 +76,13 @@ data GenericPackageDescription = GenericPackageDescription
   --   Perfectly, PackageIndex should have sum type, so we don't need to
   --   have dummy GPDs.
   , genPackageFlags :: [PackageFlag]
-  , gpdCommonStanzas :: Map ImportName (CondTree ConfVar [Dependency] (WithImports BuildInfo))
-  , condLibrary :: Maybe (CondTree ConfVar [Dependency] (WithImports Library))
-  , condSubLibraries
-      :: [ ( UnqualComponentName
-           , CondTree ConfVar [Dependency] (WithImports Library)
-           )
-         ]
-  , condForeignLibs
-      :: [ ( UnqualComponentName
-           , CondTree ConfVar [Dependency] (WithImports ForeignLib)
-           )
-         ]
-  , condExecutables
-      :: [ ( UnqualComponentName
-           , CondTree ConfVar [Dependency] (WithImports Executable)
-           )
-         ]
-  , condTestSuites
-      :: [ ( UnqualComponentName
-           , CondTree ConfVar [Dependency] (WithImports TestSuiteStanza)
-           )
-         ]
-  , condBenchmarks
-      :: [ ( UnqualComponentName
-           , CondTree ConfVar [Dependency] (WithImports BenchmarkStanza)
-           )
-         ]
+  , gpdCommonStanzas :: Map ImportName (DependencyTree (WithImports BuildInfo))
+  , condLibrary :: Maybe (DependencyTree (WithImports Library))
+  , condSubLibraries :: [(UnqualComponentName, DependencyTree (WithImports Library))]
+  , condForeignLibs :: [(UnqualComponentName, DependencyTree (WithImports ForeignLib))]
+  , condExecutables :: [(UnqualComponentName, DependencyTree (WithImports Executable))]
+  , condTestSuites :: [(UnqualComponentName, DependencyTree (WithImports TestSuiteStanza))]
+  , condBenchmarks :: [(UnqualComponentName, DependencyTree (WithImports BenchmarkStanza))]
   }
   deriving (Show, Eq, Data, Generic)
 
@@ -126,78 +110,78 @@ benchmarkStanzaFromBuildInfo bi = BenchmarkStanza Nothing Nothing Nothing bi
 
 condLibrary'
   :: GenericPackageDescription
-  -> Maybe (CondTree ConfVar [Dependency] Library)
+  -> Maybe (DependencyTree Library)
 condLibrary' gpd = mergeCondLibrary (gpdCommonStanzas gpd) <$> (condLibrary gpd)
 
 mergeCondLibrary
-  :: Map ImportName (CondTree ConfVar [Dependency] (WithImports BuildInfo))
-  -> CondTree ConfVar [Dependency] (WithImports Library)
-  -> CondTree ConfVar [Dependency] Library
+  :: Map ImportName (DependencyTree (WithImports BuildInfo))
+  -> DependencyTree (WithImports Library)
+  -> DependencyTree Library
 mergeCondLibrary = flip mergeImports fromBuildInfo
   where
     fromBuildInfo = libraryFromBuildInfo . libName
 
 condSubLibraries'
   :: GenericPackageDescription
-  -> [(UnqualComponentName, CondTree ConfVar [Dependency] Library)]
+  -> [(UnqualComponentName, DependencyTree Library)]
 condSubLibraries' gpd = mergeCondSubLibraries (gpdCommonStanzas gpd) (condSubLibraries gpd)
 
 mergeCondSubLibraries
-  :: Map ImportName (CondTree ConfVar [Dependency] (WithImports BuildInfo))
-  -> [(UnqualComponentName, CondTree ConfVar [Dependency] (WithImports Library))]
-  -> [(UnqualComponentName, CondTree ConfVar [Dependency] Library)]
+  :: Map ImportName (DependencyTree (WithImports BuildInfo))
+  -> [(UnqualComponentName, DependencyTree (WithImports Library))]
+  -> [(UnqualComponentName, DependencyTree Library)]
 mergeCondSubLibraries commonStanzas = map (mergeCondLibrary commonStanzas <$>)
 
 condForeignLibs'
   :: GenericPackageDescription
-  -> [(UnqualComponentName, CondTree ConfVar [Dependency] ForeignLib)]
+  -> [(UnqualComponentName, DependencyTree ForeignLib)]
 condForeignLibs' gpd = mergeCondForeignLibs (gpdCommonStanzas gpd) (condForeignLibs gpd)
 
 mergeCondForeignLibs
-  :: Map ImportName (CondTree ConfVar [Dependency] (WithImports BuildInfo))
-  -> [(UnqualComponentName, CondTree ConfVar [Dependency] (WithImports ForeignLib))]
-  -> [(UnqualComponentName, CondTree ConfVar [Dependency] ForeignLib)]
+  :: Map ImportName (DependencyTree (WithImports BuildInfo))
+  -> [(UnqualComponentName, DependencyTree (WithImports ForeignLib))]
+  -> [(UnqualComponentName, DependencyTree ForeignLib)]
 mergeCondForeignLibs commonStanzas = map $ \(name, tree) ->
   -- TODO(leana8959): is the name within the foreignlib important or we should use the name in the tuple?
   (name, mergeImports commonStanzas (const $ foreignLibFromBuildInfo name) tree)
 
 condExecutables'
   :: GenericPackageDescription
-  -> [(UnqualComponentName, CondTree ConfVar [Dependency] Executable)]
+  -> [(UnqualComponentName, DependencyTree Executable)]
 condExecutables' gpd = mergeCondExecutables (gpdCommonStanzas gpd) (condExecutables gpd)
 
 mergeCondExecutables
-  :: Map ImportName (CondTree ConfVar [Dependency] (WithImports BuildInfo))
-  -> [(UnqualComponentName, CondTree ConfVar [Dependency] (WithImports Executable))]
-  -> [(UnqualComponentName, CondTree ConfVar [Dependency] Executable)]
+  :: Map ImportName (DependencyTree (WithImports BuildInfo))
+  -> [(UnqualComponentName, DependencyTree (WithImports Executable))]
+  -> [(UnqualComponentName, DependencyTree Executable)]
 mergeCondExecutables commonStanzas = map $ \(name, tree) ->
   (name, mergeImports commonStanzas (const $ executableFromBuildInfo name) tree)
 
 mergeTestSuiteStanza
-  :: Map ImportName (CondTree ConfVar [Dependency] (WithImports BuildInfo))
-  -> CondTree ConfVar [Dependency] (WithImports TestSuiteStanza)
-  -> CondTree ConfVar [Dependency] TestSuiteStanza
+  :: Map ImportName (DependencyTree (WithImports BuildInfo))
+  -> DependencyTree (WithImports TestSuiteStanza)
+  -> DependencyTree TestSuiteStanza
 mergeTestSuiteStanza commonStanza =
   mergeImports commonStanza (const $ testSuiteStanzaFromBuildInfo)
 
 mergeBenchmarkStanza
-  :: Map ImportName (CondTree ConfVar [Dependency] (WithImports BuildInfo))
-  -> CondTree ConfVar [Dependency] (WithImports BenchmarkStanza)
-  -> CondTree ConfVar [Dependency] BenchmarkStanza
+  :: Map ImportName (DependencyTree (WithImports BuildInfo))
+  -> DependencyTree (WithImports BenchmarkStanza)
+  -> DependencyTree BenchmarkStanza
 mergeBenchmarkStanza commonStanza =
   mergeImports commonStanza (const $ benchmarkStanzaFromBuildInfo)
 
 condTestSuites'
   :: GenericPackageDescription
-  -> [(UnqualComponentName, CondTree ConfVar [Dependency] TestSuite)]
+  -> [(UnqualComponentName, DependencyTree TestSuite)]
 condTestSuites' gpd =
   mergeTestSuiteStanza' (gpdCommonStanzas gpd) (condTestSuites gpd)
     & (map . fmap . mapTreeData) convertTestSuite
 
 mergeTestSuiteStanza'
-  :: Map ImportName (CondTree ConfVar [Dependency] (WithImports BuildInfo))
-  -> [(UnqualComponentName, CondTree ConfVar [Dependency] (WithImports TestSuiteStanza))]
-  -> [(UnqualComponentName, CondTree ConfVar [Dependency] TestSuiteStanza)]
+  :: Map ImportName (DependencyTree (WithImports BuildInfo))
+  -> [(UnqualComponentName, DependencyTree (WithImports TestSuiteStanza))]
+  -> [(UnqualComponentName, DependencyTree TestSuiteStanza)]
 mergeTestSuiteStanza' commonStanza =
   map $
     fmap $
@@ -205,15 +189,15 @@ mergeTestSuiteStanza' commonStanza =
 
 condBenchmarks'
   :: GenericPackageDescription
-  -> [(UnqualComponentName, CondTree ConfVar [Dependency] Benchmark)]
+  -> [(UnqualComponentName, DependencyTree Benchmark)]
 condBenchmarks' gpd =
   mergeBenchmarkStanza' (gpdCommonStanzas gpd) (condBenchmarks gpd)
     & (map . fmap . mapTreeData) convertBenchmark
 
 mergeBenchmarkStanza'
-  :: Map ImportName (CondTree ConfVar [Dependency] (WithImports BuildInfo))
-  -> [(UnqualComponentName, CondTree ConfVar [Dependency] (WithImports BenchmarkStanza))]
-  -> [(UnqualComponentName, CondTree ConfVar [Dependency] BenchmarkStanza)]
+  :: Map ImportName (DependencyTree (WithImports BuildInfo))
+  -> [(UnqualComponentName, DependencyTree (WithImports BenchmarkStanza))]
+  -> [(UnqualComponentName, DependencyTree BenchmarkStanza)]
 mergeBenchmarkStanza' commonStanza =
   map $
     fmap $
@@ -222,16 +206,16 @@ mergeBenchmarkStanza' commonStanza =
 mergeImports
   :: forall a
    . L.HasBuildInfo a
-  => Map ImportName (CondTree ConfVar [Dependency] (WithImports BuildInfo))
+  => Map ImportName (DependencyTree (WithImports BuildInfo))
   -> (a -> (BuildInfo -> a))
   -- ^ We need the information regarding the root node to be able to build such a constructor function
-  -> CondTree ConfVar [Dependency] (WithImports a)
-  -> CondTree ConfVar [Dependency] a
+  -> DependencyTree (WithImports a)
+  -> DependencyTree a
 mergeImports commonStanzas fromBuildInfo (CondNode root c zs) =
-  let endo :: CondTree ConfVar [Dependency] a -> CondTree ConfVar [Dependency] a
+  let endo :: DependencyTree a -> DependencyTree a
       endo = resolveImports (getImportNames root)
 
-      tree :: CondTree ConfVar [Dependency] a
+      tree :: DependencyTree a
       tree = CondNode (unImportNames root) c (map goBranch zs)
    in endo tree
   where
@@ -246,9 +230,9 @@ mergeImports commonStanzas fromBuildInfo (CondNode root c zs) =
     resolveImports
       :: L.HasBuildInfo a
       => [ImportName]
-      -> (CondTree ConfVar [Dependency] a -> CondTree ConfVar [Dependency] a)
+      -> (DependencyTree a -> DependencyTree a)
     resolveImports importNames =
-      let commonTrees :: [CondTree ConfVar [Dependency] (WithImports BuildInfo)]
+      let commonTrees :: [DependencyTree (WithImports BuildInfo)]
           commonTrees =
             map
               ( fromMaybe (error "failed to merge imports, did you mess with GenericPackageDescription?")
@@ -256,7 +240,7 @@ mergeImports commonStanzas fromBuildInfo (CondNode root c zs) =
               )
               importNames
 
-          commonTrees' :: [CondTree ConfVar [Dependency] BuildInfo]
+          commonTrees' :: [DependencyTree BuildInfo]
           commonTrees' = map goNode commonTrees
        in \x -> foldr mergeCondTree x commonTrees'
       where
@@ -264,9 +248,9 @@ mergeImports commonStanzas fromBuildInfo (CondNode root c zs) =
 
     mergeCondTree
       :: L.HasBuildInfo a
-      => CondTree ConfVar [Dependency] BuildInfo
-      -> CondTree ConfVar [Dependency] a
-      -> CondTree ConfVar [Dependency] a
+      => DependencyTree BuildInfo
+      -> DependencyTree a
+      -> DependencyTree a
     mergeCondTree (CondNode bi _ bis) (CondNode x _ cs) = CondNode x' (x' ^. L.targetBuildDepends) cs'
       where
         fromBuildInfo' :: (BuildInfo -> a)
