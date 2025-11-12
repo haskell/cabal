@@ -22,14 +22,6 @@ module Distribution.Types.GenericPackageDescription
   , condTestSuites
   , condBenchmarks
 
-    -- * Accessors
-  , condLibrary'
-  , condSubLibraries'
-  , condForeignLibs'
-  , condExecutables'
-  , condTestSuites'
-  , condBenchmarks'
-
     -- * Merging helpers
   , mergeCondLibrary
   , mergeCondSubLibraries

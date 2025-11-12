@@ -15,7 +15,7 @@ import Data.Algorithm.Diff                         (PolyDiff (..), getGroupedDif
 import Data.Maybe                                  (isNothing)
 import Distribution.Fields                         (pwarning)
 import Distribution.PackageDescription             (GenericPackageDescription)
-import Distribution.Types.GenericPackageDescription(condLibrary')
+import Distribution.Types.GenericPackageDescription(condLibrary)
 import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.Parsec                         (PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
@@ -169,7 +169,7 @@ accessorsTests = testGroup "accessors"
 
 #ifdef MIN_VERSION_tree_diff
 accessorsGoldenTestCondLibrary :: [FilePath] -> TestTree
-accessorsGoldenTestCondLibrary = testGroup "condLibrary" . map (accessorsGoldenTest condLibrary')
+accessorsGoldenTestCondLibrary = testGroup "condLibrary" . map (accessorsGoldenTest condLibrary)
 
 accessorsGoldenTest
   :: ToExpr a

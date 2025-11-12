@@ -273,7 +273,7 @@ checkGenericPackageDescription
       -- § Feature checks.
       checkSpecVer
         CabalSpecV2_0
-        (not . null $ condSubLibraries' gpd)
+        (not . null $ condSubLibraries_)
         (PackageDistInexcusable CVMultiLib)
       checkSpecVer
         CabalSpecV1_8
@@ -293,7 +293,7 @@ checkGenericPackageDescription
           )
       let ads =
             maybe [] ((: []) . extractAssocDeps pName) condLibrary_
-              ++ map (uncurry extractAssocDeps) (condSubLibraries' gpd)
+              ++ map (uncurry extractAssocDeps) condSubLibraries_
 
       case condLibrary_ of
         Just cl ->

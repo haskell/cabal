@@ -176,7 +176,7 @@ convGPD :: OS -> Arch -> CompilerInfo -> [LabeledPackageConstraint]
         -> StrongFlags -> SolveExecutables -> PN -> GenericPackageDescription
         -> PInfo
 convGPD os arch cinfo constraints strfl solveExes pn
-        gpd@(GenericPackageDescription pkg scannedVersion flags mlib sub_libs flibs exes tests benchs) =
+        (GenericPackageDescription pkg scannedVersion flags mlib sub_libs flibs exes tests benchs) =
   let
     fds  = flagInfo strfl flags
 
@@ -216,16 +216,16 @@ convGPD os arch cinfo constraints strfl solveExes pn
     components = M.fromList $ libComps ++ subLibComps ++ exeComps
       where
         libComps = [ (ExposedLib LMainLibName, libToComponentInfo lib)
-                   | lib <- maybeToList (condLibrary' gpd) ]
+                   | lib <- maybeToList mlib ]
         subLibComps = [ (ExposedLib (LSubLibName name), libToComponentInfo lib)
-                      | (name, lib) <- condSubLibraries' gpd  ]
+                      | (name, lib) <- sub_libs  ]
         exeComps = [ ( ExposedExe name
                      , ComponentInfo {
                            compIsVisible = IsVisible True
                          , compIsBuildable = IsBuildable $ testCondition (buildable . buildInfo) exe /= Just False
                          }
                      )
-                   | (name, exe) <- (condExecutables' gpd) ]
+                   | (name, exe) <- exes ]
 
         libToComponentInfo lib =
             ComponentInfo {

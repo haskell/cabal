@@ -79,12 +79,12 @@ ppGenericPackageDescription v gpd0 =
     [ ppPackageDescription v (packageDescription gpd)
     , ppSetupBInfo v (setupBuildInfo (packageDescription gpd))
     , ppGenPackageFlags v (genPackageFlags gpd)
-    , ppCondLibrary v (condLibrary' gpd)
-    , ppCondSubLibraries v (condSubLibraries' gpd)
-    , ppCondForeignLibs v (condForeignLibs' gpd)
-    , ppCondExecutables v (condExecutables' gpd)
-    , ppCondTestSuites v (condTestSuites' gpd)
-    , ppCondBenchmarks v (condBenchmarks' gpd)
+    , ppCondLibrary v (condLibrary gpd)
+    , ppCondSubLibraries v (condSubLibraries gpd)
+    , ppCondForeignLibs v (condForeignLibs gpd)
+    , ppCondExecutables v (condExecutables gpd)
+    , ppCondTestSuites v (condTestSuites gpd)
+    , ppCondBenchmarks v (condBenchmarks gpd)
     ]
   where
     gpd = preProcessInternalDeps (specVersion (packageDescription gpd0)) gpd0

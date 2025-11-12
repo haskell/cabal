@@ -319,11 +319,11 @@ extractConditions
   -> [Condition ConfVar]
 extractConditions f gpkg =
   concat
-    [ extractCondition (f . libBuildInfo) <$> maybeToList (condLibrary' gpkg)
-    , extractCondition (f . libBuildInfo) . snd <$> condSubLibraries' gpkg
-    , extractCondition (f . buildInfo) . snd <$> condExecutables' gpkg
-    , extractCondition (f . testBuildInfo) . snd <$> condTestSuites' gpkg
-    , extractCondition (f . benchmarkBuildInfo) . snd <$> condBenchmarks' gpkg
+    [ extractCondition (f . libBuildInfo) <$> maybeToList (condLibrary gpkg)
+    , extractCondition (f . libBuildInfo) . snd <$> condSubLibraries gpkg
+    , extractCondition (f . buildInfo) . snd <$> condExecutables gpkg
+    , extractCondition (f . testBuildInfo) . snd <$> condTestSuites gpkg
+    , extractCondition (f . benchmarkBuildInfo) . snd <$> condBenchmarks gpkg
     ]
 
 freeVars :: CondTree ConfVar c a -> [FlagName]
