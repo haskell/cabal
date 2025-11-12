@@ -28,7 +28,7 @@ import Distribution.Types.Dependency (Dependency)
 import Distribution.Types.Executable (Executable)
 import Distribution.Types.Flag (FlagName, PackageFlag (MkPackageFlag))
 import Distribution.Types.ForeignLib (ForeignLib)
-import Distribution.Types.GenericPackageDescription (GenericPackageDescription (GenericPackageDescription))
+import Distribution.Types.GenericPackageDescription
 import Distribution.Types.Imports (ImportName)
 import Distribution.Types.Library (Library)
 import Distribution.Types.PackageDescription (PackageDescription)
@@ -57,29 +57,29 @@ gpdCommonStanzas f s = fmap (\x -> s{T.gpdCommonStanzas = x}) (f (T.gpdCommonSta
 {-# INLINE gpdCommonStanzas #-}
 
 -- TODO(leana8959): how to deal with this
-condLibrary :: Lens' GenericPackageDescription (Maybe (CondTree ConfVar [Dependency] (T.WithImports Library)))
-condLibrary f s = fmap (\x -> s{T.condLibrary = x}) (f (T.condLibrary s))
-{-# INLINE condLibrary #-}
+condLibraryUnmerged :: Lens' GenericPackageDescription (Maybe (CondTree ConfVar [Dependency] (T.WithImports Library)))
+condLibraryUnmerged f s = fmap (\x -> s{T.condLibraryUnmerged = x}) (f (T.condLibraryUnmerged s))
+{-# INLINE condLibraryUnmerged #-}
 
-condSubLibraries :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTree ConfVar [Dependency] (T.WithImports Library)))]
-condSubLibraries f s = fmap (\x -> s{T.condSubLibraries = x}) (f (T.condSubLibraries s))
-{-# INLINE condSubLibraries #-}
+condSubLibrariesUnmerged :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTree ConfVar [Dependency] (T.WithImports Library)))]
+condSubLibrariesUnmerged f s = fmap (\x -> s{T.condSubLibrariesUnmerged = x}) (f (T.condSubLibrariesUnmerged s))
+{-# INLINE condSubLibrariesUnmerged #-}
 
-condForeignLibs :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTree ConfVar [Dependency] (T.WithImports ForeignLib)))]
-condForeignLibs f s = fmap (\x -> s{T.condForeignLibs = x}) (f (T.condForeignLibs s))
-{-# INLINE condForeignLibs #-}
+condForeignLibsUnmerged :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTree ConfVar [Dependency] (T.WithImports ForeignLib)))]
+condForeignLibsUnmerged f s = fmap (\x -> s{T.condForeignLibsUnmerged = x}) (f (T.condForeignLibsUnmerged s))
+{-# INLINE condForeignLibsUnmerged #-}
 
-condExecutables :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTree ConfVar [Dependency] (T.WithImports Executable)))]
-condExecutables f s = fmap (\x -> s{T.condExecutables = x}) (f (T.condExecutables s))
-{-# INLINE condExecutables #-}
+condExecutablesUnmerged :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTree ConfVar [Dependency] (T.WithImports Executable)))]
+condExecutablesUnmerged f s = fmap (\x -> s{T.condExecutablesUnmerged = x}) (f (T.condExecutablesUnmerged s))
+{-# INLINE condExecutablesUnmerged #-}
 
-condTestSuites :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTree ConfVar [Dependency] (T.WithImports TestSuiteStanza)))]
-condTestSuites f s = fmap (\x -> s{T.condTestSuites = x}) (f (T.condTestSuites s))
-{-# INLINE condTestSuites #-}
+condTestSuitesUnmerged :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTree ConfVar [Dependency] (T.WithImports TestSuiteStanza)))]
+condTestSuitesUnmerged f s = fmap (\x -> s{T.condTestSuitesUnmerged = x}) (f (T.condTestSuitesUnmerged s))
+{-# INLINE condTestSuitesUnmerged #-}
 
-condBenchmarks :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTree ConfVar [Dependency] (T.WithImports BenchmarkStanza)))]
-condBenchmarks f s = fmap (\x -> s{T.condBenchmarks = x}) (f (T.condBenchmarks s))
-{-# INLINE condBenchmarks #-}
+condBenchmarksUnmerged :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTree ConfVar [Dependency] (T.WithImports BenchmarkStanza)))]
+condBenchmarksUnmerged f s = fmap (\x -> s{T.condBenchmarksUnmerged = x}) (f (T.condBenchmarksUnmerged s))
+{-# INLINE condBenchmarksUnmerged #-}
 
 allCondTrees
   :: Applicative f
@@ -89,8 +89,8 @@ allCondTrees
      )
   -> GenericPackageDescription
   -> f GenericPackageDescription
-allCondTrees f (GenericPackageDescription p v a1 commonStanzas x1 x2 x3 x4 x5 x6) =
-  GenericPackageDescription
+allCondTrees f (GenericPackageDescription' p v a1 commonStanzas x1 x2 x3 x4 x5 x6) =
+  GenericPackageDescription'
     <$> pure p
     <*> pure v
     <*> pure a1

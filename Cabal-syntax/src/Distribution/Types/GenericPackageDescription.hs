@@ -7,8 +7,20 @@
 
 module Distribution.Types.GenericPackageDescription
   ( GenericPackageDescription (..)
+  , pattern GenericPackageDescription
   , emptyGenericPackageDescription
   , mergeImports
+
+  -- * Accessors from 'PatternSynonyms'\'s record syntax
+  , packageDescription
+  , gpdScannedVersion
+  , genPackageFlags
+  , condLibrary
+  , condSubLibraries
+  , condForeignLibs
+  , condExecutables
+  , condTestSuites
+  , condBenchmarks
 
     -- * Accessors
   , condLibrary'
@@ -64,9 +76,11 @@ import qualified Data.Map as Map
 
 type DependencyTree a = CondTree ConfVar [Dependency] a
 
-data GenericPackageDescription = GenericPackageDescription
-  { packageDescription :: PackageDescription
-  , gpdScannedVersion :: Maybe Version
+-- | The internal representation of 'GenericPackageDescription', containing the unmerged stanzas
+-- We provide a pattern below for backward compatibility, as well for hiding the internals of wiring the imports
+data GenericPackageDescription = GenericPackageDescription'
+  { packageDescriptionInternal :: PackageDescription
+  , gpdScannedVersionInternal :: Maybe Version
   -- ^ This is a version as specified in source.
   --   We populate this field in index reading for dummy GPDs,
   --   only when GPD reading failed, but scanning haven't.
@@ -75,16 +89,100 @@ data GenericPackageDescription = GenericPackageDescription
   --
   --   Perfectly, PackageIndex should have sum type, so we don't need to
   --   have dummy GPDs.
-  , genPackageFlags :: [PackageFlag]
+  , genPackageFlagsInternal :: [PackageFlag]
   , gpdCommonStanzas :: Map ImportName (DependencyTree (WithImports BuildInfo))
-  , condLibrary :: Maybe (DependencyTree (WithImports Library))
-  , condSubLibraries :: [(UnqualComponentName, DependencyTree (WithImports Library))]
-  , condForeignLibs :: [(UnqualComponentName, DependencyTree (WithImports ForeignLib))]
-  , condExecutables :: [(UnqualComponentName, DependencyTree (WithImports Executable))]
-  , condTestSuites :: [(UnqualComponentName, DependencyTree (WithImports TestSuiteStanza))]
-  , condBenchmarks :: [(UnqualComponentName, DependencyTree (WithImports BenchmarkStanza))]
+  , condLibraryUnmerged :: Maybe (DependencyTree (WithImports Library))
+  , condSubLibrariesUnmerged :: [(UnqualComponentName, DependencyTree (WithImports Library))]
+  , condForeignLibsUnmerged :: [(UnqualComponentName, DependencyTree (WithImports ForeignLib))]
+  , condExecutablesUnmerged :: [(UnqualComponentName, DependencyTree (WithImports Executable))]
+  , condTestSuitesUnmerged :: [(UnqualComponentName, DependencyTree (WithImports TestSuiteStanza))]
+  , condBenchmarksUnmerged :: [(UnqualComponentName, DependencyTree (WithImports BenchmarkStanza))]
   }
   deriving (Show, Eq, Data, Generic)
+
+-- TODO(leana8959): change the name when it compiles
+
+pattern GenericPackageDescription
+  :: PackageDescription
+  -> Maybe Version
+  -> [PackageFlag]
+  -> Maybe (DependencyTree Library)
+  -> [(UnqualComponentName, DependencyTree Library)]
+  -> [(UnqualComponentName, DependencyTree ForeignLib)]
+  -> [(UnqualComponentName, DependencyTree Executable)]
+  -> [(UnqualComponentName, DependencyTree TestSuite)]
+  -> [(UnqualComponentName, DependencyTree Benchmark)]
+  -> GenericPackageDescription
+pattern GenericPackageDescription
+  { packageDescription
+  , gpdScannedVersion
+  , genPackageFlags
+  , condLibrary
+  , condSubLibraries
+  , condForeignLibs
+  , condExecutables
+  , condTestSuites
+  , condBenchmarks
+  }
+  <- ( viewGenericPackageDescription ->
+       ( packageDescription
+       , gpdScannedVersion
+       , genPackageFlags
+       , condLibrary
+       , condSubLibraries
+       , condForeignLibs
+       , condExecutables
+       , condTestSuites
+       , condBenchmarks
+       )
+     )
+  where
+    GenericPackageDescription
+      pd
+      scannedVersion
+      packageFlags
+      lib
+      sublibs
+      flibs
+      exes
+      tests
+      bms
+       =
+       GenericPackageDescription'
+       pd
+       scannedVersion
+       packageFlags
+       mempty
+       ((fmap . fmap) noImports lib)
+       ((fmap . fmap . fmap) noImports sublibs)
+       ((fmap . fmap . fmap) noImports flibs)
+       ((fmap . fmap . fmap) noImports exes)
+       ((fmap . fmap . fmap) (noImports . unvalidateTestSuite) tests)
+       ((fmap . fmap . fmap) (noImports . unvalidateBenchmark) bms)
+
+viewGenericPackageDescription
+  :: GenericPackageDescription
+  -> ( PackageDescription
+     , Maybe Version
+     , [PackageFlag]
+     , Maybe (DependencyTree Library)
+     , [(UnqualComponentName, DependencyTree Library)]
+     , [(UnqualComponentName, DependencyTree ForeignLib)]
+     , [(UnqualComponentName, DependencyTree Executable)]
+     , [(UnqualComponentName, DependencyTree TestSuite)]
+     , [(UnqualComponentName, DependencyTree Benchmark)]
+     )
+viewGenericPackageDescription gpd =
+  ( packageDescriptionInternal gpd
+  , gpdScannedVersionInternal gpd
+  , genPackageFlagsInternal gpd
+  , condLibrary' gpd
+  , condSubLibraries' gpd
+  , condForeignLibs' gpd
+  , condExecutables' gpd
+  , condTestSuites' gpd
+  , condBenchmarks' gpd
+  )
 
 libraryFromBuildInfo :: LibraryName -> BuildInfo -> Library
 libraryFromBuildInfo n bi =
@@ -111,7 +209,7 @@ benchmarkStanzaFromBuildInfo bi = BenchmarkStanza Nothing Nothing Nothing bi
 condLibrary'
   :: GenericPackageDescription
   -> Maybe (DependencyTree Library)
-condLibrary' gpd = mergeCondLibrary (gpdCommonStanzas gpd) <$> (condLibrary gpd)
+condLibrary' gpd = mergeCondLibrary (gpdCommonStanzas gpd) <$> (condLibraryUnmerged gpd)
 
 mergeCondLibrary
   :: Map ImportName (DependencyTree (WithImports BuildInfo))
@@ -124,7 +222,7 @@ mergeCondLibrary = flip mergeImports fromBuildInfo
 condSubLibraries'
   :: GenericPackageDescription
   -> [(UnqualComponentName, DependencyTree Library)]
-condSubLibraries' gpd = mergeCondSubLibraries (gpdCommonStanzas gpd) (condSubLibraries gpd)
+condSubLibraries' gpd = mergeCondSubLibraries (gpdCommonStanzas gpd) (condSubLibrariesUnmerged gpd)
 
 mergeCondSubLibraries
   :: Map ImportName (DependencyTree (WithImports BuildInfo))
@@ -135,7 +233,7 @@ mergeCondSubLibraries commonStanzas = map (mergeCondLibrary commonStanzas <$>)
 condForeignLibs'
   :: GenericPackageDescription
   -> [(UnqualComponentName, DependencyTree ForeignLib)]
-condForeignLibs' gpd = mergeCondForeignLibs (gpdCommonStanzas gpd) (condForeignLibs gpd)
+condForeignLibs' gpd = mergeCondForeignLibs (gpdCommonStanzas gpd) (condForeignLibsUnmerged gpd)
 
 mergeCondForeignLibs
   :: Map ImportName (DependencyTree (WithImports BuildInfo))
@@ -148,7 +246,7 @@ mergeCondForeignLibs commonStanzas = map $ \(name, tree) ->
 condExecutables'
   :: GenericPackageDescription
   -> [(UnqualComponentName, DependencyTree Executable)]
-condExecutables' gpd = mergeCondExecutables (gpdCommonStanzas gpd) (condExecutables gpd)
+condExecutables' gpd = mergeCondExecutables (gpdCommonStanzas gpd) (condExecutablesUnmerged gpd)
 
 mergeCondExecutables
   :: Map ImportName (DependencyTree (WithImports BuildInfo))
@@ -175,7 +273,7 @@ condTestSuites'
   :: GenericPackageDescription
   -> [(UnqualComponentName, DependencyTree TestSuite)]
 condTestSuites' gpd =
-  mergeTestSuiteStanza' (gpdCommonStanzas gpd) (condTestSuites gpd)
+  mergeTestSuiteStanza' (gpdCommonStanzas gpd) (condTestSuitesUnmerged gpd)
     & (map . fmap . mapTreeData) convertTestSuite
 
 mergeTestSuiteStanza'
@@ -191,7 +289,7 @@ condBenchmarks'
   :: GenericPackageDescription
   -> [(UnqualComponentName, DependencyTree Benchmark)]
 condBenchmarks' gpd =
-  mergeBenchmarkStanza' (gpdCommonStanzas gpd) (condBenchmarks gpd)
+  mergeBenchmarkStanza' (gpdCommonStanzas gpd) (condBenchmarksUnmerged gpd)
     & (map . fmap . mapTreeData) convertBenchmark
 
 mergeBenchmarkStanza'
@@ -265,7 +363,7 @@ mergeImports commonStanzas fromBuildInfo (CondNode root c zs) =
         cs' = map (fromBuildInfo' <$>) bis ++ cs
 
 instance Package GenericPackageDescription where
-  packageId = packageId . packageDescription
+  packageId = packageId . packageDescriptionInternal
 
 instance Binary GenericPackageDescription
 instance Structured GenericPackageDescription
@@ -277,7 +375,6 @@ emptyGenericPackageDescription =
     { packageDescription = emptyPackageDescription
     , gpdScannedVersion = Nothing
     , genPackageFlags = []
-    , gpdCommonStanzas = mempty
     , condLibrary = Nothing
     , condSubLibraries = []
     , condForeignLibs = []
@@ -290,8 +387,8 @@ emptyGenericPackageDescription =
 -- Traversal Instances
 
 instance L.HasBuildInfos GenericPackageDescription where
-  traverseBuildInfos f (GenericPackageDescription p v a1 commonStanzas x1 x2 x3 x4 x5 x6) =
-    GenericPackageDescription
+  traverseBuildInfos f ( GenericPackageDescription' p v a1 commonStanzas x1 x2 x3 x4 x5 x6) =
+    GenericPackageDescription'
       <$> L.traverseBuildInfos f p
       <*> pure v
       <*> pure a1
