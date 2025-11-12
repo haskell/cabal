@@ -92,6 +92,7 @@ unvalidateTestSuite t =
       TestSuiteLibV09 ver modu -> (Just $ TestTypeLib ver, Nothing, Just modu)
       _ -> (Nothing, Nothing, Nothing)
 
+-- TODO(leana8959): we need to keep a cabal spec version around, and then interpret this after the merging
 -- | We try to guess the TestSuiteType if it's not specified
 patchTestSuiteType :: CabalSpecVersion -> TestSuiteStanza -> TestSuiteStanza
 patchTestSuiteType cabalSpecVersion stanza =
