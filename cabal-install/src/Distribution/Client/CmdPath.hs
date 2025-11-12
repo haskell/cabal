@@ -324,6 +324,7 @@ data PathOutputs = PathOutputs
 data PathCompilerInfo = PathCompilerInfo
   { pathCompilerInfoFlavour :: CompilerFlavor
   , pathCompilerInfoId :: CompilerId
+  , pathCompilerInfoAbiTag :: String
   , pathCompilerInfoPath :: FilePath
   , pathCompilerInfoStorePath :: FilePath
   }
@@ -334,6 +335,7 @@ mkCompilerInfo compilerProgram compiler storeLayout =
   PathCompilerInfo
     { pathCompilerInfoFlavour = compilerFlavor compiler
     , pathCompilerInfoId = compilerId compiler
+    , pathCompilerInfoAbiTag = showCompilerIdWithAbi compiler
     , pathCompilerInfoPath = programPath compilerProgram
     , pathCompilerInfoStorePath = storeDirectory storeLayout compiler
     }
@@ -380,6 +382,7 @@ compilerInfoToJson pci =
         .= Json.object
           [ "flavour" .= jdisplay (pathCompilerInfoFlavour pci)
           , "id" .= jdisplay (pathCompilerInfoId pci)
+          , "abi-tag" .= Json.String (pathCompilerInfoAbiTag pci)
           , "path" .= Json.String (pathCompilerInfoPath pci)
           , "store-path" .= Json.String (pathCompilerInfoStorePath pci)
           ]
@@ -410,6 +413,7 @@ compilerInfoToKeyValue :: PathCompilerInfo -> [(String, String)]
 compilerInfoToKeyValue pci =
   [ ("compiler-flavour", prettyShow $ pathCompilerInfoFlavour pci)
   , ("compiler-id", prettyShow $ pathCompilerInfoId pci)
+  , ("compiler-abi-tag", pathCompilerInfoAbiTag pci)
   , ("compiler-path", pathCompilerInfoPath pci)
   , ("compiler-store-path", pathCompilerInfoStorePath pci)
   ]

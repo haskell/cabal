@@ -1,17 +1,20 @@
 # cabal path
 compiler-flavour: ghc
 compiler-id: ghc-<GHCVER>
+compiler-abi-tag: ghc-<GHCVER>
 compiler-path: <GHCPATH>
 compiler-store-path: <ROOT>/cabal.dist/home/.cabal/store/ghc-<GHCVER>
 # cabal path
-{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","path":"<GHCPATH>","store-path":"<ROOT>/cabal.dist/home/.cabal/store/ghc-<GHCVER>"}}
+{"cabal-version":"<CABAL_INSTALL_VER>","compiler":{"flavour":"ghc","id":"ghc-<GHCVER>","abi-tag":"ghc-<GHCVER>","path":"<GHCPATH>","store-path":"<ROOT>/cabal.dist/home/.cabal/store/ghc-<GHCVER>"}}
 # cabal path
 compiler-flavour: ghc
 compiler-id: ghc-<GHCVER>
+compiler-abi-tag: ghc-<GHCVER>
 compiler-path: <GHCPATH>
 compiler-store-path: <ROOT>/cabal.dist/home/.cabal/store/ghc-<GHCVER>
 # cabal path
 compiler-flavour: ghc
 compiler-id: ghc-<GHCVER>
+compiler-abi-tag: ghc-<GHCVER>
 compiler-path: <GHCPATH>
 compiler-store-path: fake-dir/ghc-<GHCVER>
