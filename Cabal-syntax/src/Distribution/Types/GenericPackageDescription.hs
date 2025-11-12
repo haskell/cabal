@@ -160,6 +160,8 @@ pattern GenericPackageDescription
        ((fmap . fmap . fmap) (noImports . unvalidateTestSuite) tests)
        ((fmap . fmap . fmap) (noImports . unvalidateBenchmark) bms)
 
+{-# COMPLETE GenericPackageDescription #-}
+
 viewGenericPackageDescription
   :: GenericPackageDescription
   -> ( PackageDescription

@@ -20,6 +20,7 @@ import qualified Distribution.Types.Imports as T
 
 import Distribution.Compiler (CompilerFlavor)
 import Distribution.System (Arch, OS)
+import Distribution.Types.Benchmark (Benchmark)
 import Distribution.Types.BenchmarkStanza (BenchmarkStanza)
 import Distribution.Types.BuildInfo (BuildInfo)
 import Distribution.Types.CondTree (CondTree)
@@ -33,12 +34,15 @@ import Distribution.Types.Imports (ImportName)
 import Distribution.Types.Library (Library)
 import Distribution.Types.PackageDescription (PackageDescription)
 import Distribution.Types.TestSuiteStanza (TestSuiteStanza)
+import Distribution.Types.TestSuite (TestSuite)
 import Distribution.Types.UnqualComponentName (UnqualComponentName)
 import Distribution.Version (Version, VersionRange)
 
 -------------------------------------------------------------------------------
 -- GenericPackageDescription
 -------------------------------------------------------------------------------
+
+type DependencyTree a = CondTree ConfVar [Dependency] a
 
 packageDescription :: Lens' GenericPackageDescription PackageDescription
 packageDescription f s = fmap (\x -> s{T.packageDescription = x}) (f (T.packageDescription s))
@@ -52,40 +56,66 @@ genPackageFlags :: Lens' GenericPackageDescription [PackageFlag]
 genPackageFlags f s = fmap (\x -> s{T.genPackageFlags = x}) (f (T.genPackageFlags s))
 {-# INLINE genPackageFlags #-}
 
-gpdCommonStanzas :: Lens' GenericPackageDescription (Map ImportName (CondTree ConfVar [Dependency] (T.WithImports BuildInfo)))
+gpdCommonStanzas :: Lens' GenericPackageDescription (Map ImportName (DependencyTree (T.WithImports BuildInfo)))
 gpdCommonStanzas f s = fmap (\x -> s{T.gpdCommonStanzas = x}) (f (T.gpdCommonStanzas s))
 {-# INLINE gpdCommonStanzas #-}
 
--- TODO(leana8959): how to deal with this
-condLibraryUnmerged :: Lens' GenericPackageDescription (Maybe (CondTree ConfVar [Dependency] (T.WithImports Library)))
+condLibraryUnmerged :: Lens' GenericPackageDescription (Maybe (DependencyTree (T.WithImports Library)))
 condLibraryUnmerged f s = fmap (\x -> s{T.condLibraryUnmerged = x}) (f (T.condLibraryUnmerged s))
 {-# INLINE condLibraryUnmerged #-}
 
-condSubLibrariesUnmerged :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTree ConfVar [Dependency] (T.WithImports Library)))]
+condSubLibrariesUnmerged :: Lens' GenericPackageDescription [(UnqualComponentName, (DependencyTree (T.WithImports Library)))]
 condSubLibrariesUnmerged f s = fmap (\x -> s{T.condSubLibrariesUnmerged = x}) (f (T.condSubLibrariesUnmerged s))
 {-# INLINE condSubLibrariesUnmerged #-}
 
-condForeignLibsUnmerged :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTree ConfVar [Dependency] (T.WithImports ForeignLib)))]
+condForeignLibsUnmerged :: Lens' GenericPackageDescription [(UnqualComponentName, (DependencyTree (T.WithImports ForeignLib)))]
 condForeignLibsUnmerged f s = fmap (\x -> s{T.condForeignLibsUnmerged = x}) (f (T.condForeignLibsUnmerged s))
 {-# INLINE condForeignLibsUnmerged #-}
 
-condExecutablesUnmerged :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTree ConfVar [Dependency] (T.WithImports Executable)))]
+condExecutablesUnmerged :: Lens' GenericPackageDescription [(UnqualComponentName, (DependencyTree (T.WithImports Executable)))]
 condExecutablesUnmerged f s = fmap (\x -> s{T.condExecutablesUnmerged = x}) (f (T.condExecutablesUnmerged s))
 {-# INLINE condExecutablesUnmerged #-}
 
-condTestSuitesUnmerged :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTree ConfVar [Dependency] (T.WithImports TestSuiteStanza)))]
+condTestSuitesUnmerged :: Lens' GenericPackageDescription [(UnqualComponentName, (DependencyTree (T.WithImports TestSuiteStanza)))]
 condTestSuitesUnmerged f s = fmap (\x -> s{T.condTestSuitesUnmerged = x}) (f (T.condTestSuitesUnmerged s))
 {-# INLINE condTestSuitesUnmerged #-}
 
-condBenchmarksUnmerged :: Lens' GenericPackageDescription [(UnqualComponentName, (CondTree ConfVar [Dependency] (T.WithImports BenchmarkStanza)))]
+condBenchmarksUnmerged :: Lens' GenericPackageDescription [(UnqualComponentName, (DependencyTree (T.WithImports BenchmarkStanza)))]
 condBenchmarksUnmerged f s = fmap (\x -> s{T.condBenchmarksUnmerged = x}) (f (T.condBenchmarksUnmerged s))
 {-# INLINE condBenchmarksUnmerged #-}
+
+-- TODO(leana8959): These accessor will merge the imports, apply f, and then put them back as if the imports weren't there
+-- This is a good way to mask the import behaviour.
+-- However, I do not know when this might be surprising
+condLibrary :: Lens' GenericPackageDescription (Maybe (DependencyTree (Library)))
+condLibrary f s = fmap (\x -> s{T.condLibrary = x}) (f (T.condLibrary s))
+{-# INLINE condLibrary #-}
+
+condSubLibraries :: Lens' GenericPackageDescription [(UnqualComponentName, (DependencyTree Library))]
+condSubLibraries f s = fmap (\x -> s{T.condSubLibraries = x}) (f (T.condSubLibraries s))
+{-# INLINE condSubLibraries #-}
+
+condForeignLibs :: Lens' GenericPackageDescription [(UnqualComponentName, (DependencyTree ForeignLib))]
+condForeignLibs f s = fmap (\x -> s{T.condForeignLibs = x}) (f (T.condForeignLibs s))
+{-# INLINE condForeignLibs #-}
+
+condExecutables :: Lens' GenericPackageDescription [(UnqualComponentName, (DependencyTree Executable))]
+condExecutables f s = fmap (\x -> s{T.condExecutables = x}) (f (T.condExecutables s))
+{-# INLINE condExecutables #-}
+
+condTestSuites :: Lens' GenericPackageDescription [(UnqualComponentName, (DependencyTree TestSuite))]
+condTestSuites f s = fmap (\x -> s{T.condTestSuites = x}) (f (T.condTestSuites s))
+{-# INLINE condTestSuites #-}
+
+condBenchmarks :: Lens' GenericPackageDescription [(UnqualComponentName, (DependencyTree Benchmark))]
+condBenchmarks f s = fmap (\x -> s{T.condBenchmarks = x}) (f (T.condBenchmarks s))
+{-# INLINE condBenchmarks #-}
 
 allCondTrees
   :: Applicative f
   => ( forall a
-        . CondTree ConfVar [Dependency] a
-       -> f (CondTree ConfVar [Dependency] a)
+        . DependencyTree a
+       -> f (DependencyTree a)
      )
   -> GenericPackageDescription
   -> f GenericPackageDescription
