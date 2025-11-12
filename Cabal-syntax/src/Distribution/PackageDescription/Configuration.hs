@@ -458,7 +458,7 @@ finalizePD
   (Platform arch os)
   impl
   constraints
-  gpd@(GenericPackageDescription pkg _ver flags _commonStanzas _mb_lib0 _sub_libs0 _flibs0 _exes0 _tests0 _bms0) = do
+  (GenericPackageDescription pkg _ver flags mb_lib0 sub_libs0 flibs0 exes0 tests0 bms0) = do
     (targetSet, flagVals) <-
       resolveWithFlags flagChoices enabled os arch impl constraints condTrees check
     let
@@ -493,12 +493,12 @@ finalizePD
     where
       -- Combine lib, exes, and tests into one list of @CondTree@s with tagged data
       condTrees =
-        maybeToList (mapTreeData Lib <$> condLibrary' gpd)
-          ++ map (\(name, tree) -> mapTreeData (SubComp name . CLib) tree) (condSubLibraries' gpd)
-          ++ map (\(name, tree) -> mapTreeData (SubComp name . CFLib) tree) (condForeignLibs' gpd)
-          ++ map (\(name, tree) -> mapTreeData (SubComp name . CExe) tree) (condExecutables' gpd)
-          ++ map (\(name, tree) -> mapTreeData (SubComp name . CTest) tree) (condTestSuites' gpd)
-          ++ map (\(name, tree) -> mapTreeData (SubComp name . CBench) tree) (condBenchmarks' gpd)
+        maybeToList (fmap (mapTreeData Lib) mb_lib0)
+          ++ map (\(name, tree) -> mapTreeData (SubComp name . CLib) tree) sub_libs0
+          ++ map (\(name, tree) -> mapTreeData (SubComp name . CFLib) tree) flibs0
+          ++ map (\(name, tree) -> mapTreeData (SubComp name . CExe) tree) exes0
+          ++ map (\(name, tree) -> mapTreeData (SubComp name . CTest) tree) tests0
+          ++ map (\(name, tree) -> mapTreeData (SubComp name . CBench) tree) bms0
 
       flagChoices = map (\(MkPackageFlag n _ d manual) -> (n, d2c manual n d)) flags
       d2c manual n b = case lookupFlagAssignment n userflags of
@@ -542,7 +542,7 @@ resolveWithFlags [] Distribution.System.Linux Distribution.System.I386 (Distribu
 -- function.
 flattenPackageDescription :: GenericPackageDescription -> PackageDescription
 flattenPackageDescription
-  gpd@(GenericPackageDescription pkg _ _ _gpdCommonStanzas_ _mlib0 _sub_libs0 _flibs0 _exes0 _tests0 _bms0) =
+  (GenericPackageDescription pkg _ _ mlib0 sub_libs0 flibs0 exes0 tests0 bms0) =
     pkg
       { library = mlib
       , subLibraries = reverse sub_libs
@@ -552,14 +552,14 @@ flattenPackageDescription
       , benchmarks = reverse bms
       }
     where
-      mlib = f <$> condLibrary' gpd
+      mlib = f <$> mlib0
         where
           f lib = (libFillInDefaults . fst . ignoreConditions $ lib){libName = LMainLibName}
-      sub_libs = flattenLib <$> (condSubLibraries' gpd)
-      flibs = flattenFLib <$> (condForeignLibs' gpd)
-      exes = flattenExe <$> (condExecutables' gpd)
-      tests = flattenTst <$> (condTestSuites' gpd)
-      bms = flattenBm <$> (condBenchmarks' gpd)
+      sub_libs = flattenLib <$> sub_libs0
+      flibs = flattenFLib <$> flibs0
+      exes = flattenExe <$> exes0
+      tests = flattenTst <$> tests0
+      bms = flattenBm <$> bms0
       flattenLib (n, t) =
         libFillInDefaults $
           (fst $ ignoreConditions t)

@@ -40,8 +40,6 @@ instance NFData TestSuiteStanza where rnf = genericRnf
 instance L.HasBuildInfo TestSuiteStanza where
   buildInfo = testStanzaBuildInfo
 
--- TODO(leana8959): an experiment to validate directly on the TestSuite data type
-
 -- | Convert a previously validated 'TestSuiteStanza' to 'GenericPackageDescription''s 'TestSuite' type
 convertTestSuite :: TestSuiteStanza -> TestSuite
 convertTestSuite stanza = case _testStanzaTestType stanza of

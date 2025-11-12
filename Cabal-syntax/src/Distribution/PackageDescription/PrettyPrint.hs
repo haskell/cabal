@@ -54,11 +54,8 @@ import Distribution.Pretty
 import Distribution.Utils.Generic (writeFileAtomic, writeUTF8File)
 
 import qualified Distribution.PackageDescription.FieldGrammar as FG
-import Distribution.Types.BenchmarkStanza
 import qualified Distribution.Types.BuildInfo.Lens as L
-import Distribution.Types.Imports
 import qualified Distribution.Types.SetupBuildInfo.Lens as L
-import Distribution.Types.TestSuiteStanza
 
 import Text.PrettyPrint (Doc, char, hsep, parens, text)
 
@@ -234,13 +231,12 @@ pdToGpd pd =
     { packageDescription = pd
     , gpdScannedVersion = Nothing
     , genPackageFlags = []
-    , -- TODO(leana8959): what to do here
-      condLibrary = mapTreeData noImports . mkCondTree <$> library pd
-    , condSubLibraries = fmap (mapTreeData noImports) . mkCondTreeL <$> subLibraries pd
-    , condForeignLibs = fmap (mapTreeData noImports) . mkCondTree' foreignLibName <$> foreignLibs pd
-    , condExecutables = fmap (mapTreeData noImports) . mkCondTree' exeName <$> executables pd
-    , condTestSuites = fmap (mapTreeData $ noImports . unvalidateTestSuite) . mkCondTree' testName <$> testSuites pd
-    , condBenchmarks = fmap (mapTreeData $ noImports . unvalidateBenchmark) . mkCondTree' benchmarkName <$> benchmarks pd
+    , condLibrary = mkCondTree <$> library pd
+    , condSubLibraries = mkCondTreeL <$> subLibraries pd
+    , condForeignLibs = mkCondTree' foreignLibName <$> foreignLibs pd
+    , condExecutables = mkCondTree' exeName <$> executables pd
+    , condTestSuites = mkCondTree' testName <$> testSuites pd
+    , condBenchmarks = mkCondTree' benchmarkName <$> benchmarks pd
     }
   where
     -- We set CondTree's [Dependency] to an empty list, as it

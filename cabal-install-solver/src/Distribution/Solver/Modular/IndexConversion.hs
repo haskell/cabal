@@ -176,7 +176,7 @@ convGPD :: OS -> Arch -> CompilerInfo -> [LabeledPackageConstraint]
         -> StrongFlags -> SolveExecutables -> PN -> GenericPackageDescription
         -> PInfo
 convGPD os arch cinfo constraints strfl solveExes pn
-        gpd@(GenericPackageDescription pkg scannedVersion flags _commonStanzas _mlib _sub_libs _flibs _exes _tests _benchs) =
+        gpd@(GenericPackageDescription pkg scannedVersion flags mlib sub_libs flibs exes tests benchs) =
   let
     fds  = flagInfo strfl flags
 
@@ -190,16 +190,16 @@ convGPD os arch cinfo constraints strfl solveExes pn
     initDR = DependencyReason pn M.empty S.empty
 
     flagged_deps
-        = concatMap (\ds ->       conv ComponentLib         libBuildInfo        initDR ds) (maybeToList $ condLibrary' gpd)
-       ++ concatMap (\(nm, ds) -> conv (ComponentSubLib nm) libBuildInfo        initDR ds) (condSubLibraries' gpd)
-       ++ concatMap (\(nm, ds) -> conv (ComponentFLib nm)   foreignLibBuildInfo initDR ds) (condForeignLibs' gpd)
-       ++ concatMap (\(nm, ds) -> conv (ComponentExe nm)    buildInfo           initDR ds) (condExecutables' gpd)
+        = concatMap (\ds ->       conv ComponentLib         libBuildInfo        initDR ds) (maybeToList mlib)
+       ++ concatMap (\(nm, ds) -> conv (ComponentSubLib nm) libBuildInfo        initDR ds) sub_libs
+       ++ concatMap (\(nm, ds) -> conv (ComponentFLib nm)   foreignLibBuildInfo initDR ds) flibs
+       ++ concatMap (\(nm, ds) -> conv (ComponentExe nm)    buildInfo           initDR ds) exes
        ++ prefix (Stanza (SN pn TestStanzas))
             (L.map  (\(nm, ds) -> conv (ComponentTest nm)   testBuildInfo (addStanza TestStanzas initDR) ds)
-                    (condTestSuites' gpd))
+                    tests)
        ++ prefix (Stanza (SN pn BenchStanzas))
             (L.map  (\(nm, ds) -> conv (ComponentBench nm)  benchmarkBuildInfo (addStanza BenchStanzas initDR) ds)
-                    (condBenchmarks' gpd))
+                    benchs)
        ++ maybe []  (convSetupBuildInfo pn) (setupBuildInfo pkg)
 
     addStanza :: Stanza -> DependencyReason pn -> DependencyReason pn

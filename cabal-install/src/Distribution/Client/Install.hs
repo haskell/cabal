@@ -165,6 +165,7 @@ import Distribution.Package
 import Distribution.PackageDescription
   ( GenericPackageDescription (..)
   , PackageDescription
+  , genPackageFlags
   )
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription.Configuration

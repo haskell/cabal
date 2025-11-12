@@ -11,7 +11,7 @@ module Distribution.Types.GenericPackageDescription
   , emptyGenericPackageDescription
   , mergeImports
 
-  -- * Accessors from 'PatternSynonyms'\'s record syntax
+    -- * Accessors from 'PatternSynonyms'\'s record syntax
   , packageDescription
   , gpdScannedVersion
   , genPackageFlags
@@ -100,8 +100,6 @@ data GenericPackageDescription = GenericPackageDescription'
   }
   deriving (Show, Eq, Data, Generic)
 
--- TODO(leana8959): change the name when it compiles
-
 pattern GenericPackageDescription
   :: PackageDescription
   -> Maybe Version
@@ -123,19 +121,19 @@ pattern GenericPackageDescription
   , condExecutables
   , condTestSuites
   , condBenchmarks
-  }
-  <- ( viewGenericPackageDescription ->
-       ( packageDescription
-       , gpdScannedVersion
-       , genPackageFlags
-       , condLibrary
-       , condSubLibraries
-       , condForeignLibs
-       , condExecutables
-       , condTestSuites
-       , condBenchmarks
-       )
-     )
+  } <-
+  ( viewGenericPackageDescription ->
+      ( packageDescription
+        , gpdScannedVersion
+        , genPackageFlags
+        , condLibrary
+        , condSubLibraries
+        , condForeignLibs
+        , condExecutables
+        , condTestSuites
+        , condBenchmarks
+        )
+    )
   where
     GenericPackageDescription
       pd
@@ -146,19 +144,18 @@ pattern GenericPackageDescription
       flibs
       exes
       tests
-      bms
-       =
-       GenericPackageDescription'
-       pd
-       scannedVersion
-       packageFlags
-       mempty
-       ((fmap . fmap) noImports lib)
-       ((fmap . fmap . fmap) noImports sublibs)
-       ((fmap . fmap . fmap) noImports flibs)
-       ((fmap . fmap . fmap) noImports exes)
-       ((fmap . fmap . fmap) (noImports . unvalidateTestSuite) tests)
-       ((fmap . fmap . fmap) (noImports . unvalidateBenchmark) bms)
+      bms =
+        GenericPackageDescription'
+          pd
+          scannedVersion
+          packageFlags
+          mempty
+          ((fmap . fmap) noImports lib)
+          ((fmap . fmap . fmap) noImports sublibs)
+          ((fmap . fmap . fmap) noImports flibs)
+          ((fmap . fmap . fmap) noImports exes)
+          ((fmap . fmap . fmap) (noImports . unvalidateTestSuite) tests)
+          ((fmap . fmap . fmap) (noImports . unvalidateBenchmark) bms)
 
 {-# COMPLETE GenericPackageDescription #-}
 
@@ -389,7 +386,7 @@ emptyGenericPackageDescription =
 -- Traversal Instances
 
 instance L.HasBuildInfos GenericPackageDescription where
-  traverseBuildInfos f ( GenericPackageDescription' p v a1 commonStanzas x1 x2 x3 x4 x5 x6) =
+  traverseBuildInfos f (GenericPackageDescription' p v a1 commonStanzas x1 x2 x3 x4 x5 x6) =
     GenericPackageDescription'
       <$> L.traverseBuildInfos f p
       <*> pure v

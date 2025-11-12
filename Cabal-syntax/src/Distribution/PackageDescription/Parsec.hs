@@ -53,7 +53,6 @@ import Distribution.Parsec.FieldLineStream (fieldLineStreamFromBS)
 import Distribution.Parsec.Position (Position (..), incPos, zeroPos)
 import Distribution.Parsec.Warning (PWarnType (..))
 import Distribution.Pretty (prettyShow)
-import Distribution.Types.TestSuiteStanza
 import Distribution.Utils.Generic (breakMaybe, fromUTF8BS, toUTF8BS, unfoldrM, validateUTF8)
 import Distribution.Version (Version, mkVersion, versionNumbers)
 
@@ -63,10 +62,8 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import qualified Distribution.Compat.Newtype as Newtype
 import qualified Distribution.Compat.NonEmptySet as NES
-import Distribution.Types.BenchmarkStanza
 import qualified Distribution.Types.BuildInfo.Lens as L
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
-import Distribution.Types.Imports
 import qualified Distribution.Types.PackageDescription.Lens as L
 import qualified Distribution.Types.SetupBuildInfo.Lens as L
 import qualified Text.Parsec as P
@@ -288,7 +285,7 @@ goSections specVer fieldPositions = do
                 parseFailure pos $
                   "Duplicate common stanza: " ++ name'
       | name == "library" && null args = do
-          prev <- use $ stateGpd . L.condLibrary
+          prev <- use $ stateGpd . L.condLibraryUnmerged
           when (isJust prev) $
             lift $
               parseFailure pos $
@@ -299,7 +296,7 @@ goSections specVer fieldPositions = do
           lib <- lift $ parseCondTree' (libraryFieldGrammar name') commonStanzas fields
           --
           -- TODO check that not set
-          stateGpd . L.condLibrary ?= lib
+          stateGpd . L.condLibraryUnmerged ?= lib
 
       -- Sublibraries
       -- TODO: check cabal-version
@@ -309,7 +306,7 @@ goSections specVer fieldPositions = do
           let name'' = LSubLibName name'
           lib <- lift $ parseCondTree' (libraryFieldGrammar name'') commonStanzas fields
           -- TODO check duplicate name here?
-          stateGpd . L.condSubLibraries %= snoc (name', lib)
+          stateGpd . L.condSubLibrariesUnmerged %= snoc (name', lib)
 
       -- TODO: check cabal-version
       | name == "foreign-library" = do
@@ -330,13 +327,13 @@ goSections specVer fieldPositions = do
                   ]
 
           -- TODO check duplicate name here?
-          stateGpd . L.condForeignLibs %= snoc (name', flib)
+          stateGpd . L.condForeignLibsUnmerged %= snoc (name', flib)
       | name == "executable" = do
           commonStanzas <- use stateCommonStanzas
           name' <- parseUnqualComponentName pos args
           exe <- lift $ parseCondTree' (executableFieldGrammar name') commonStanzas fields
           -- TODO check duplicate name here?
-          stateGpd . L.condExecutables %= snoc (name', exe)
+          stateGpd . L.condExecutablesUnmerged %= snoc (name', exe)
       | name == "test-suite" = do
           commonStanzas <- use stateCommonStanzas
           name' <- parseUnqualComponentName pos args
@@ -374,7 +371,7 @@ goSections specVer fieldPositions = do
 
           -- TODO check duplicate name here?
           -- Store the unmerged unvalidated version
-          stateGpd . L.condTestSuites %= snoc (name', testStanza)
+          stateGpd . L.condTestSuitesUnmerged %= snoc (name', testStanza)
       | name == "benchmark" = do
           commonStanzas <- use stateCommonStanzas
           name' <- parseUnqualComponentName pos args
@@ -410,7 +407,7 @@ goSections specVer fieldPositions = do
                   ]
 
           -- TODO check duplicate name here?
-          stateGpd . L.condBenchmarks %= snoc (name', benchStanza)
+          stateGpd . L.condBenchmarksUnmerged %= snoc (name', benchStanza)
       | name == "flag" = do
           name' <- parseNameBS pos args
           name'' <- lift $ runFieldParser' [pos] parsec specVer (fieldLineStreamFromBS name') `recoverWith` mkFlagName ""

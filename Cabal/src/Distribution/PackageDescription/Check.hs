@@ -69,8 +69,6 @@ import Distribution.Simple.Glob
   , runDirFileGlob
   )
 import Distribution.Simple.Utils hiding (findPackageDesc, notice)
-import Distribution.Types.BenchmarkStanza
-import Distribution.Types.TestSuiteStanza
 import Distribution.Utils.Generic (isAscii)
 import Distribution.Utils.Path
 import Distribution.Verbosity
@@ -88,7 +86,6 @@ import qualified Data.Set as Set
 import qualified Distribution.Utils.ShortText as ShortText
 
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
-import Distribution.Types.Imports
 
 import Control.Monad
 
@@ -229,9 +226,8 @@ checkGenericPackageDescription
           packageDescription_
           _gpdScannedVersion_
           genPackageFlags_
-          gpdCommonStanzas_
           condLibrary_
-          _condSubLibraries_ -- we use the merged version
+          condSubLibraries_
           condForeignLibs_
           condExecutables_
           condTestSuites_
@@ -242,8 +238,7 @@ checkGenericPackageDescription
       checkPackageDescription packageDescription_
       -- Targets should be present...
       let condAllLibraries =
-            maybeToList (condLibrary' gpd)
-              ++ (map snd $ condSubLibraries' gpd)
+            maybeToList condLibrary_ ++ map snd condSubLibraries_
       checkP
         ( and
             [ null condExecutables_
@@ -297,7 +292,7 @@ checkGenericPackageDescription
               . ccNames
           )
       let ads =
-            maybe [] ((: []) . extractAssocDeps pName . (mergeCondLibrary gpdCommonStanzas_)) condLibrary_
+            maybe [] ((: []) . extractAssocDeps pName) condLibrary_
               ++ map (uncurry extractAssocDeps) (condSubLibraries' gpd)
 
       case condLibrary_ of
@@ -306,7 +301,7 @@ checkGenericPackageDescription
             genPackageFlags_
             (checkLibrary False ads)
             (const id)
-            (mempty, mergeCondLibrary gpdCommonStanzas_ cl)
+            (mempty, cl)
         Nothing -> return ()
       mapM_
         ( checkCondTarget
@@ -314,35 +309,35 @@ checkGenericPackageDescription
             (checkLibrary False ads)
             (\u l -> l{libName = maybeToLibraryName (Just u)})
         )
-        (condSubLibraries' gpd)
+        condSubLibraries_
       mapM_
         ( checkCondTarget
             genPackageFlags_
             checkForeignLib
             (const id)
         )
-        (condForeignLibs' gpd)
+        condForeignLibs_
       mapM_
         ( checkCondTarget
             genPackageFlags_
             (checkExecutable ads)
             (const id)
         )
-        (condExecutables' gpd)
+        condExecutables_
       mapM_
         ( checkCondTarget
             genPackageFlags_
             (checkTestSuite ads)
             (\u l -> l{testName = u})
         )
-        (condTestSuites' gpd)
+        condTestSuites_
       mapM_
         ( checkCondTarget
             genPackageFlags_
             (checkBenchmark ads)
             (\u l -> l{benchmarkName = u})
         )
-        (condBenchmarks' gpd)
+        condBenchmarks_
 
       -- For unused flags it is clearer and more convenient to fold the
       -- data rather than walk it, an exception to the rule.
@@ -370,12 +365,12 @@ checkGenericPackageDescription
       usedFlags :: Set.Set FlagName
       usedFlags =
         mconcat
-          [ toSetOf (L.condLibrary . traverse . traverseCondTreeV . L._PackageFlag) gpd
-          , toSetOf (L.condSubLibraries . traverse . _2 . traverseCondTreeV . L._PackageFlag) gpd
-          , toSetOf (L.condForeignLibs . traverse . _2 . traverseCondTreeV . L._PackageFlag) gpd
-          , toSetOf (L.condExecutables . traverse . _2 . traverseCondTreeV . L._PackageFlag) gpd
-          , toSetOf (L.condTestSuites . traverse . _2 . traverseCondTreeV . L._PackageFlag) gpd
-          , toSetOf (L.condBenchmarks . traverse . _2 . traverseCondTreeV . L._PackageFlag) gpd
+          [ toSetOf (traverse . traverseCondTreeV . L._PackageFlag) (condLibrary gpd)
+          , toSetOf (L.condSubLibrariesUnmerged . traverse . _2 . traverseCondTreeV . L._PackageFlag) gpd
+          , toSetOf (L.condForeignLibsUnmerged . traverse . _2 . traverseCondTreeV . L._PackageFlag) gpd
+          , toSetOf (L.condExecutablesUnmerged . traverse . _2 . traverseCondTreeV . L._PackageFlag) gpd
+          , toSetOf (L.condTestSuitesUnmerged . traverse . _2 . traverseCondTreeV . L._PackageFlag) gpd
+          , toSetOf (L.condBenchmarksUnmerged . traverse . _2 . traverseCondTreeV . L._PackageFlag) gpd
           ]
 
 checkPackageDescription :: Monad m => PackageDescription -> CheckM m ()
@@ -962,25 +957,12 @@ pd2gpd pd = gpd
     gpd =
       emptyGenericPackageDescription
         { packageDescription = pd
-        , -- TODO(leana8959): think about reverse conversion
-          condLibrary = t2c . noImports <$> (library pd)
-        , condSubLibraries = map (fmap (mapTreeData noImports) . t2cName ln id) (subLibraries pd)
-        , condForeignLibs =
-            map
-              (fmap (mapTreeData noImports) . t2cName foreignLibName id)
-              (foreignLibs pd)
-        , condExecutables =
-            map
-              (fmap (mapTreeData noImports) . t2cName exeName id)
-              (executables pd)
-        , condTestSuites =
-            map
-              (fmap (mapTreeData $ noImports . unvalidateTestSuite) . t2cName testName remTest)
-              (testSuites pd)
-        , condBenchmarks =
-            map
-              (fmap (mapTreeData $ noImports . unvalidateBenchmark) . t2cName benchmarkName remBench)
-              (benchmarks pd)
+        , condLibrary = t2c <$> (library pd)
+        , condSubLibraries = map (t2cName ln id) (subLibraries pd)
+        , condForeignLibs = map (t2cName foreignLibName id) (foreignLibs pd)
+        , condExecutables = map (t2cName exeName id) (executables pd)
+        , condTestSuites = map (t2cName testName remTest) (testSuites pd)
+        , condBenchmarks = map (t2cName benchmarkName remBench) (benchmarks pd)
         }
 
     -- From target to simple, unconditional CondTree.

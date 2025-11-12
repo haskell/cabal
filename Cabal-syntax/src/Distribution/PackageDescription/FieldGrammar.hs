@@ -84,8 +84,6 @@ import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Parsec
 import Distribution.Pretty (Pretty (..), prettyShow, showToken)
-import Distribution.Types.BenchmarkStanza
-import Distribution.Types.TestSuiteStanza
 import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
 

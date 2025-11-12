@@ -33,8 +33,8 @@ import Distribution.Types.GenericPackageDescription
 import Distribution.Types.Imports (ImportName)
 import Distribution.Types.Library (Library)
 import Distribution.Types.PackageDescription (PackageDescription)
-import Distribution.Types.TestSuiteStanza (TestSuiteStanza)
 import Distribution.Types.TestSuite (TestSuite)
+import Distribution.Types.TestSuiteStanza (TestSuiteStanza)
 import Distribution.Types.UnqualComponentName (UnqualComponentName)
 import Distribution.Version (Version, VersionRange)
 
@@ -87,6 +87,8 @@ condBenchmarksUnmerged f s = fmap (\x -> s{T.condBenchmarksUnmerged = x}) (f (T.
 -- TODO(leana8959): These accessor will merge the imports, apply f, and then put them back as if the imports weren't there
 -- This is a good way to mask the import behaviour.
 -- However, I do not know when this might be surprising
+--
+-- If this is used in the parser for example, it would be a massive footgun because it would essentially "erase" all the imports and put the merged one back
 condLibrary :: Lens' GenericPackageDescription (Maybe (DependencyTree (Library)))
 condLibrary f s = fmap (\x -> s{T.condLibrary = x}) (f (T.condLibrary s))
 {-# INLINE condLibrary #-}
