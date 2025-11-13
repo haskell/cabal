@@ -193,7 +193,8 @@ accessorsGoldenTest f fp = ediffGolden goldenTest fp exprFile $ do
 
 regressionTests :: TestTree
 regressionTests = testGroup "regressions"
-    [ regressionTest "encoding-0.8.cabal"
+    [ regressionTest "supervisors-0.1.cabal"
+    , regressionTest "encoding-0.8.cabal"
     , regressionTest "Octree-0.5.cabal"
     , regressionTest "nothing-unicode.cabal"
     , regressionTest "multiple-libs-2.cabal"
