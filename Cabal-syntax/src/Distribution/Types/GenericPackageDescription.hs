@@ -43,6 +43,7 @@ import qualified Distribution.Types.Imports.Lens as L ()
 
 import Distribution.Types.PackageDescription
 
+import Distribution.CabalSpecVersion
 import Distribution.Package
 import Distribution.Types.Benchmark
 import Distribution.Types.BenchmarkStanza
@@ -265,7 +266,10 @@ condTestSuites'
   -> [(UnqualComponentName, DependencyTree TestSuite)]
 condTestSuites' gpd =
   mergeTestSuiteStanza' (gpdCommonStanzas gpd) (condTestSuitesUnmerged gpd)
-    & (map . fmap . mapTreeData) convertTestSuite
+    & (map . fmap . mapTreeData) (convertTestSuite .  patchTestSuiteType specVer)
+  where
+    specVer :: CabalSpecVersion
+    specVer = specVersion . packageDescriptionInternal $ gpd
 
 mergeTestSuiteStanza'
   :: Map ImportName (DependencyTree (WithImports BuildInfo))
@@ -281,7 +285,10 @@ condBenchmarks'
   -> [(UnqualComponentName, DependencyTree Benchmark)]
 condBenchmarks' gpd =
   mergeBenchmarkStanza' (gpdCommonStanzas gpd) (condBenchmarksUnmerged gpd)
-    & (map . fmap . mapTreeData) convertBenchmark
+    & (map . fmap . mapTreeData) (convertBenchmark . patchBenchmarkType specVer)
+  where
+    specVer :: CabalSpecVersion
+    specVer = specVersion . packageDescriptionInternal $ gpd
 
 mergeBenchmarkStanza'
   :: Map ImportName (DependencyTree (WithImports BuildInfo))

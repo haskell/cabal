@@ -337,15 +337,13 @@ goSections specVer fieldPositions = do
       | name == "test-suite" = do
           commonStanzas <- use stateCommonStanzas
           name' <- parseUnqualComponentName pos args
+          testStanza <- lift $ parseCondTree' testSuiteFieldGrammar commonStanzas fields
 
-          testStanza <-
-            (fmap . mapTreeData . fmap) (patchTestSuiteType specVer) $
-              lift $
-                parseCondTree' testSuiteFieldGrammar commonStanzas fields
-
-          -- Merge and then validate
+          -- Patching depends on merging, validation depends on patching
           let testStanza' :: CondTree ConfVar [Dependency] TestSuiteStanza
-              testStanza' = mergeTestSuiteStanza commonStanzas testStanza
+              testStanza' =
+                  mergeTestSuiteStanza commonStanzas testStanza
+                    & fmap (patchTestSuiteType specVer)
           _ok <- lift $ traverse (validateTestSuite pos) testStanza'
           let validated = mapTreeData convertTestSuite testStanza'
 
@@ -375,14 +373,13 @@ goSections specVer fieldPositions = do
       | name == "benchmark" = do
           commonStanzas <- use stateCommonStanzas
           name' <- parseUnqualComponentName pos args
+          benchStanza <- lift $ parseCondTree' benchmarkFieldGrammar commonStanzas fields
 
-          benchStanza <-
-            (fmap . mapTreeData . fmap) (patchBenchmarkType specVer) $
-              lift $
-                parseCondTree' benchmarkFieldGrammar commonStanzas fields
-
+          -- Patching depends on merging, validation depends on patching
           let benchStanza' :: CondTree ConfVar [Dependency] BenchmarkStanza
-              benchStanza' = mergeBenchmarkStanza commonStanzas benchStanza
+              benchStanza' =
+                    mergeBenchmarkStanza commonStanzas benchStanza
+                      & fmap (patchBenchmarkType specVer)
           _ok <- lift $ traverse (validateBenchmark pos . unImportNames) benchStanza
           let validated = mapTreeData convertBenchmark benchStanza'
 
