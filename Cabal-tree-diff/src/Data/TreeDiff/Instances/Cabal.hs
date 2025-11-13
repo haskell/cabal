@@ -1,8 +1,10 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# OPTIONS_GHC -freduction-depth=0 #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 module Data.TreeDiff.Instances.Cabal () where
 
 import Data.TreeDiff
+import qualified Data.TreeDiff.OMap as OMap
 
 import Data.TreeDiff.Instances.CabalLanguage ()
 import Data.TreeDiff.Instances.CabalSPDX ()
@@ -56,6 +58,35 @@ instance ToExpr (SymbolicPathX allowAbs from to)
 
 instance ToExpr a => ToExpr (InstallDirs a)
 
+-- Note: The pattern matching is to ensure this doesn't go unnoticed when new fields are added.
+instance ToExpr GenericPackageDescription where
+  toExpr
+    ( GenericPackageDescription
+      { packageDescription
+      , gpdScannedVersion
+      , genPackageFlags
+      , condLibrary
+      , condSubLibraries
+      , condForeignLibs
+      , condExecutables
+      , condTestSuites
+      , condBenchmarks
+      }
+    ) = Rec
+          "GenericPackageDescription"
+          ( OMap.fromList
+              [ ("packageDescription", toExpr packageDescription)
+              , ("gpdScannedVersion", toExpr gpdScannedVersion)
+              , ("genPackageFlags", toExpr genPackageFlags)
+              , ("condLibrary", toExpr condLibrary)
+              , ("condSubLibraries", toExpr condSubLibraries)
+              , ("condForeignLibs", toExpr condForeignLibs)
+              , ("condExecutables", toExpr condExecutables)
+              , ("condTestSuites", toExpr condTestSuites)
+              , ("condBenchmarks", toExpr condBenchmarks)
+              ]
+          )
+
 instance ToExpr AbiDependency
 instance ToExpr AbiHash
 instance ToExpr Arch
@@ -80,7 +111,6 @@ instance ToExpr FlagName
 instance ToExpr ForeignLib
 instance ToExpr ForeignLibOption
 instance ToExpr ForeignLibType
-instance ToExpr GenericPackageDescription
 instance ToExpr HaddockTarget
 instance ToExpr IncludeRenaming
 instance ToExpr InstalledPackageInfo
