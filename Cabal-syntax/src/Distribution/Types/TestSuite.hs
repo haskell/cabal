@@ -13,7 +13,6 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Types.BuildInfo
-import Distribution.Types.Imports
 import Distribution.Types.TestSuiteInterface
 import Distribution.Types.TestType
 import Distribution.Types.UnqualComponentName
@@ -25,7 +24,6 @@ import qualified Distribution.Types.BuildInfo.Lens as L
 -- | A \"test-suite\" stanza in a cabal file.
 data TestSuite = TestSuite
   { testName :: UnqualComponentName
-  , testSuiteImports :: [ImportName]
   , testInterface :: TestSuiteInterface
   , testBuildInfo :: BuildInfo
   , testCodeGenerators :: [String]
@@ -44,7 +42,6 @@ instance Monoid TestSuite where
   mempty =
     TestSuite
       { testName = mempty
-      , testSuiteImports = mempty
       , testInterface = mempty
       , testBuildInfo = mempty
       , testCodeGenerators = mempty
@@ -55,7 +52,6 @@ instance Semigroup TestSuite where
   a <> b =
     TestSuite
       { testName = combineNames a b testName "test"
-      , testSuiteImports = combine testSuiteImports
       , testInterface = combine testInterface
       , testBuildInfo = combine testBuildInfo
       , testCodeGenerators = combine testCodeGenerators

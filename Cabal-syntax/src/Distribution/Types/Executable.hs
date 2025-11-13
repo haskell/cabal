@@ -15,7 +15,6 @@ import Prelude ()
 import Distribution.ModuleName
 import Distribution.Types.BuildInfo
 import Distribution.Types.ExecutableScope
-import Distribution.Types.Imports
 import Distribution.Types.UnqualComponentName
 import Distribution.Utils.Path
 
@@ -23,8 +22,6 @@ import qualified Distribution.Types.BuildInfo.Lens as L
 
 data Executable = Executable
   { exeName :: UnqualComponentName
-  , exeImports :: [ImportName]
-  -- ^ Retained for exact print
   , modulePath :: RelativePath Source File
   , exeScope :: ExecutableScope
   , buildInfo :: BuildInfo
@@ -42,7 +39,6 @@ instance Monoid Executable where
   mempty =
     Executable
       { exeName = mempty
-      , exeImports = mempty
       , modulePath = unsafeMakeSymbolicPath ""
       , exeScope = mempty
       , buildInfo = mempty
@@ -53,7 +49,6 @@ instance Semigroup Executable where
   a <> b =
     Executable
       { exeName = combineNames a b exeName "executable"
-      , exeImports = combine exeImports
       , modulePath = unsafeMakeSymbolicPath $ combineNames a b (getSymbolicPath . modulePath) "modulePath"
       , exeScope = combine exeScope
       , buildInfo = combine buildInfo

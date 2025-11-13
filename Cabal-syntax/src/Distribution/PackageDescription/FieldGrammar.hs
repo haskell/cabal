@@ -283,7 +283,7 @@ executableFieldGrammar
   => UnqualComponentName
   -> g Executable Executable
 executableFieldGrammar n =
-  Executable n []
+  Executable n
     -- main-is is optional as conditional blocks don't have it
     <$> optionalFieldDefAla "main-is" RelativePathNT L.modulePath (modulePath mempty)
     <*> optionalFieldDef "scope" L.exeScope ExecutablePublic

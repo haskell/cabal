@@ -138,7 +138,6 @@ checkExecutable
   ads
   exe@( Executable
           exeName_
-          _exeImports_
           symbolicModulePath_
           _exeScope_
           buildInfo_
@@ -195,7 +194,6 @@ checkTestSuite
   ads
   ts@( TestSuite
         testName_
-        _testImports_
         testInterface_
         testBuildInfo_
         _testCodeGenerators_
