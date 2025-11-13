@@ -44,16 +44,24 @@ import Distribution.Version (Version, VersionRange)
 
 type DependencyTree a = CondTree ConfVar [Dependency] a
 
+-- Merging drops commonStanzas!
+-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--
+-- When using an the bidirectional PatternSynonym 'GenericPackageDescription' and its accessors,
+-- commonStanzas is filled with mempty.
+--
+-- When there's no specific reason to use merging pattern accessors, use the internal one!
+
 packageDescription :: Lens' GenericPackageDescription PackageDescription
-packageDescription f s = fmap (\x -> s{T.packageDescription = x}) (f (T.packageDescription s))
+packageDescription f s = fmap (\x -> s{T.packageDescriptionInternal = x}) (f (T.packageDescriptionInternal s))
 {-# INLINE packageDescription #-}
 
 gpdScannedVersion :: Lens' GenericPackageDescription (Maybe Version)
-gpdScannedVersion f s = fmap (\x -> s{T.gpdScannedVersion = x}) (f (T.gpdScannedVersion s))
+gpdScannedVersion f s = fmap (\x -> s{T.gpdScannedVersionInternal = x}) (f (T.gpdScannedVersionInternal s))
 {-# INLINE gpdScannedVersion #-}
 
 genPackageFlags :: Lens' GenericPackageDescription [PackageFlag]
-genPackageFlags f s = fmap (\x -> s{T.genPackageFlags = x}) (f (T.genPackageFlags s))
+genPackageFlags f s = fmap (\x -> s{T.genPackageFlagsInternal = x}) (f (T.genPackageFlagsInternal s))
 {-# INLINE genPackageFlags #-}
 
 gpdCommonStanzas :: Lens' GenericPackageDescription (Map ImportName (DependencyTree (T.WithImports BuildInfo)))
