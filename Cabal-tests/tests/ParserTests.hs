@@ -16,7 +16,10 @@ import Data.Maybe                                  (isNothing)
 import Distribution.Fields                         (pwarning)
 import Distribution.PackageDescription
   ( GenericPackageDescription
-      ( condLibrary
+      ( packageDescription
+      , gpdScannedVersion
+      , genPackageFlags
+      , condLibrary
       , condSubLibraries
       , condForeignLibs
       , condExecutables
@@ -268,24 +271,38 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
     x <- parse contents
     let contents' = showGenericPackageDescription x
     y <- parse (toUTF8BS contents')
-    -- previously we mangled licenses a bit
-    let y' = y
+
+    let checkField field =
+          unless (field x == field y) $
 {- FOURMOLU_DISABLE -}
-    unless (x == y') $
 #ifdef MIN_VERSION_tree_diff
-        assertFailure $ unlines
-            [ "re-parsed doesn't match"
-            , show $ ansiWlEditExpr $ ediff x y
-            ]
+            assertFailure $ unlines
+                [ "re-parsed doesn't match"
+                , show $ ansiWlEditExpr $ ediff x y
+                ]
 #else
-        assertFailure $ unlines
-            [ "re-parsed doesn't match"
-            , "expected"
-            , show x
-            , "actual"
-            , show y
-            ]
+            assertFailure $ unlines
+                [ "re-parsed doesn't match"
+                , "expected"
+                , show x
+                , "actual"
+                , show y
+                ]
 #endif
+    -- Due to the imports being merged, the structural comparison will fail
+    -- Instead, we check the equality after merging
+    sequence_
+      [ checkField packageDescription
+      , checkField gpdScannedVersion
+      , checkField genPackageFlags
+      , checkField condLibrary
+      , checkField condSubLibraries
+      , checkField condForeignLibs
+      , checkField condExecutables
+      , checkField condTestSuites
+      , checkField condBenchmarks
+      ]
+
   where
     parse :: BS.ByteString -> IO GenericPackageDescription
     parse c = do
