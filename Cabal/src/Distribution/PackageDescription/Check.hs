@@ -365,12 +365,12 @@ checkGenericPackageDescription
       usedFlags :: Set.Set FlagName
       usedFlags =
         mconcat
-          [ toSetOf (traverse . traverseCondTreeV . L._PackageFlag) (condLibrary gpd)
-          , toSetOf (L.condSubLibrariesUnmerged . traverse . _2 . traverseCondTreeV . L._PackageFlag) gpd
-          , toSetOf (L.condForeignLibsUnmerged . traverse . _2 . traverseCondTreeV . L._PackageFlag) gpd
-          , toSetOf (L.condExecutablesUnmerged . traverse . _2 . traverseCondTreeV . L._PackageFlag) gpd
-          , toSetOf (L.condTestSuitesUnmerged . traverse . _2 . traverseCondTreeV . L._PackageFlag) gpd
-          , toSetOf (L.condBenchmarksUnmerged . traverse . _2 . traverseCondTreeV . L._PackageFlag) gpd
+          [ toSetOf (L.condLibrary . traverse . traverseCondTreeV . L._PackageFlag) gpd
+          , toSetOf (L.condSubLibraries . traverse . _2 . traverseCondTreeV . L._PackageFlag) gpd
+          , toSetOf (L.condForeignLibs . traverse . _2 . traverseCondTreeV . L._PackageFlag) gpd
+          , toSetOf (L.condExecutables . traverse . _2 . traverseCondTreeV . L._PackageFlag) gpd
+          , toSetOf (L.condTestSuites . traverse . _2 . traverseCondTreeV . L._PackageFlag) gpd
+          , toSetOf (L.condBenchmarks . traverse . _2 . traverseCondTreeV . L._PackageFlag) gpd
           ]
 
 checkPackageDescription :: Monad m => PackageDescription -> CheckM m ()

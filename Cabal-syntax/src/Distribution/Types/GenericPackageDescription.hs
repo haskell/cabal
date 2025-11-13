@@ -354,7 +354,7 @@ mergeImports commonStanzas fromBuildInfo (CondNode root c zs) =
         cs' = map (fromBuildInfo' <$>) bis ++ cs
 
 instance Package GenericPackageDescription where
-  packageId = packageId . packageDescriptionInternal
+  packageId = packageId . packageDescription
 
 instance Binary GenericPackageDescription
 instance Structured GenericPackageDescription

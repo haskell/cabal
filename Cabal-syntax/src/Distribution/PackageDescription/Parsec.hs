@@ -667,7 +667,6 @@ processImports v commonStanzas = go []
     go acc (Field (Name pos name) fls : fields) | name == "import" = do
       names <- getList' <$> runFieldParser pos parsec v fls
       validNames <- for names $ \commonName ->
-        -- Common Stanza sections are already parsed as 'BuildInfo's with import names inserted
         if Map.member commonName commonStanzas
           then pure (Just commonName)
           else do
@@ -679,7 +678,7 @@ processImports v commonStanzas = go []
     -- parse actual CondTree
     go names fields = do
       fields' <- catMaybes <$> traverse (warnImport v) fields
-      pure (fields', reverse names)
+      pure (fields', names)
 
 -- | Warn on "import" fields, also map to Maybe, so erroneous fields can be filtered
 warnImport :: CabalSpecVersion -> Field Position -> ParseResult src (Maybe (Field Position))
