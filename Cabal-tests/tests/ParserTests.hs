@@ -14,7 +14,16 @@ import Control.Monad                               (unless, void)
 import Data.Algorithm.Diff                         (PolyDiff (..), getGroupedDiff)
 import Data.Maybe                                  (isNothing)
 import Distribution.Fields                         (pwarning)
-import Distribution.PackageDescription             (GenericPackageDescription)
+import Distribution.PackageDescription
+  ( GenericPackageDescription
+      ( condLibrary
+      , condSubLibraries
+      , condForeignLibs
+      , condExecutables
+      , condTestSuites
+      , condBenchmarks
+    )
+  )
 import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.Parsec                         (PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
@@ -237,7 +246,16 @@ treeDiffGoldenTest fp = ediffGolden goldenTest "expr" exprFile $ do
     let res = withSource (PCabalFile (fp, contents)) $ parseGenericPackageDescription contents
     let (_, x) = runParseResult res
     case x of
-        Right gpd      -> pure (toExpr gpd)
+        Right gpd      -> pure $ toExpr
+          ( gpd
+          -- Test accessors because they encapsulate the merging behaviour
+          , condLibrary gpd
+          , condSubLibraries gpd
+          , condForeignLibs gpd
+          , condExecutables gpd
+          , condTestSuites gpd
+          , condBenchmarks gpd
+          )
         Left (_, errs) -> fail $ unlines $ "ERROR" : map (showPErrorWithSource . fmap renderCabalFileSource) (NE.toList errs)
   where
     input = "tests" </> "ParserTests" </> "regressions" </> fp
