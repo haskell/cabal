@@ -22,24 +22,10 @@ module Distribution.PackageDescription.FieldGrammar
   , executableFieldGrammar
 
     -- * Test suite
-  , TestSuiteStanza (..)
   , testSuiteFieldGrammar
-  , validateTestSuite
-  , convertTestSuite
-  -- TODO(leana8959): move this to gpd
-  , mergeTestSuiteStanza
 
-    -- ** Lenses
-  , testStanzaTestType
-  , testStanzaMainIs
-  , testStanzaTestModule
-  , testStanzaBuildInfo
-
-    -- * Benchmark
-  , BenchmarkStanza (..)
+  -- * Benchmark
   , benchmarkFieldGrammar
-  , validateBenchmark
-  , unvalidateBenchmark
 
     -- * Field grammars
   , formatDependencyList
@@ -688,8 +674,8 @@ _syntaxFieldNames =
               , fieldGrammarKnownFieldList $ libraryFieldGrammar LMainLibName
               , fieldGrammarKnownFieldList $ executableFieldGrammar "exe"
               , fieldGrammarKnownFieldList $ foreignLibFieldGrammar "flib"
-              , fieldGrammarKnownFieldList $ testSuiteFieldGrammar
-              , fieldGrammarKnownFieldList $ benchmarkFieldGrammar
+              , fieldGrammarKnownFieldList testSuiteFieldGrammar
+              , fieldGrammarKnownFieldList benchmarkFieldGrammar
               , fieldGrammarKnownFieldList $ flagFieldGrammar (error "flagname")
               , fieldGrammarKnownFieldList $ sourceRepoFieldGrammar (error "repokind")
               , fieldGrammarKnownFieldList $ setupBInfoFieldGrammar True

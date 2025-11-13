@@ -53,7 +53,6 @@ import Distribution.PackageDescription.FieldGrammar
 import Distribution.Pretty
 import Distribution.Utils.Generic (writeFileAtomic, writeUTF8File)
 
-import qualified Distribution.PackageDescription.FieldGrammar as FG
 import qualified Distribution.Types.BuildInfo.Lens as L
 import qualified Distribution.Types.SetupBuildInfo.Lens as L
 
@@ -150,7 +149,7 @@ ppCondLibrary v (Just condTree) =
 ppCondSubLibraries :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar [Dependency] Library)] -> [PrettyField ()]
 ppCondSubLibraries v libs =
   [ PrettySection () "library" [pretty n] $
-    ppCondTree2 v (libraryFieldGrammar (LSubLibName n)) condTree
+    ppCondTree2 v (libraryFieldGrammar $ LSubLibName n) condTree
   | (n, condTree) <- libs
   ]
 
@@ -178,7 +177,7 @@ ppCondTestSuites v suites =
 ppCondBenchmarks :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar [Dependency] Benchmark)] -> [PrettyField ()]
 ppCondBenchmarks v suites =
   [ PrettySection () "benchmark" [pretty n] $
-    ppCondTree2 v benchmarkFieldGrammar (fmap FG.unvalidateBenchmark condTree)
+    ppCondTree2 v benchmarkFieldGrammar (fmap unvalidateBenchmark condTree)
   | (n, condTree) <- suites
   ]
 
@@ -227,7 +226,7 @@ showPackageDescription = showGenericPackageDescription . pdToGpd
 
 pdToGpd :: PackageDescription -> GenericPackageDescription
 pdToGpd pd =
-  emptyGenericPackageDescription
+  GenericPackageDescription
     { packageDescription = pd
     , gpdScannedVersion = Nothing
     , genPackageFlags = []
