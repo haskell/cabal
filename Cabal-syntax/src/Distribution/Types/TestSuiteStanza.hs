@@ -18,6 +18,9 @@ import Distribution.ModuleName (ModuleName)
 import Distribution.Types.BuildInfo
 import qualified Distribution.Types.BuildInfo.Lens as L
 import Distribution.Types.TestSuite
+import Distribution.Parsec
+import Distribution.Fields.ParseResult
+import Distribution.Pretty (prettyShow)
 import Distribution.Types.TestSuiteInterface
 import Distribution.Types.TestType
 import Distribution.Utils.Path
@@ -40,7 +43,39 @@ instance NFData TestSuiteStanza where rnf = genericRnf
 instance L.HasBuildInfo TestSuiteStanza where
   buildInfo = testStanzaBuildInfo
 
+validateTestSuite :: Position -> TestSuiteStanza -> ParseResult src ()
+validateTestSuite pos stanza = case _testStanzaTestType stanza of
+  Nothing -> pure ()
+  Just (TestTypeUnknown _ _) -> pure ()
+  Just tt | tt `notElem` knownTestTypes -> pure ()
+  Just tt@(TestTypeExe _ver) -> case _testStanzaMainIs stanza of
+    Nothing -> parseFailure pos (missingField "main-is" tt)
+    Just _file ->
+      when (isJust (_testStanzaTestModule stanza)) $
+        parseWarning pos PWTExtraBenchmarkModule (extraField "test-module" tt)
+  Just tt@(TestTypeLib _ver) -> case _testStanzaTestModule stanza of
+    Nothing ->
+      parseFailure pos (missingField "test-module" tt)
+    Just _module ->
+      when (isJust (_testStanzaMainIs stanza)) $
+        parseWarning pos PWTExtraMainIs (extraField "main-is" tt)
+  where
+    missingField name tt =
+      "The '"
+        ++ name
+        ++ "' field is required for the "
+        ++ prettyShow tt
+        ++ " test suite type."
+
+    extraField name tt =
+      "The '"
+        ++ name
+        ++ "' field is not used for the '"
+        ++ prettyShow tt
+        ++ "' test suite type."
+
 -- | Convert a previously validated 'TestSuiteStanza' to 'GenericPackageDescription''s 'TestSuite' type
+-- We do not check the validity here
 convertTestSuite :: TestSuiteStanza -> TestSuite
 convertTestSuite stanza = case _testStanzaTestType stanza of
   Nothing -> basicTestSuite
