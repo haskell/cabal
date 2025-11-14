@@ -1,0 +1,68 @@
+PackageDescription {
+  specVersion = CabalSpecV1_8,
+  package = PackageIdentifier {
+    pkgName = PackageName "Octree",
+    pkgVersion = mkVersion [0, 5]},
+  licenseRaw = Right BSD3,
+  licenseFiles = [
+    SymbolicPath "LICENSE"],
+  copyright =
+  "Copyright by Michal J. Gajda '2012",
+  maintainer =
+  "mjgajda@googlemail.com",
+  author = "Michal J. Gajda",
+  stability = "beta",
+  testedWith = [
+    _×_
+      GHC
+      (ThisVersion
+        (mkVersion [7, 0, 4])),
+    _×_
+      GHC
+      (ThisVersion
+        (mkVersion [7, 4, 1])),
+    _×_
+      GHC
+      (ThisVersion
+        (mkVersion [7, 4, 2])),
+    _×_
+      GHC
+      (ThisVersion
+        (mkVersion [7, 6, 0]))],
+  homepage =
+  "https://github.com/mgajda/octree",
+  pkgUrl =
+  "http://hackage.haskell.org/package/octree",
+  bugReports =
+  "mailto:mjgajda@googlemail.com",
+  sourceRepos = [
+    SourceRepo {
+      repoKind = RepoHead,
+      repoType = Just
+        (KnownRepoType Git),
+      repoLocation = Just
+        "git@github.com:mgajda/octree.git",
+      repoModule = Nothing,
+      repoBranch = Nothing,
+      repoTag = Nothing,
+      repoSubdir = Nothing}],
+  synopsis =
+  "Simple unbalanced Octree for storing data about 3D points",
+  description =
+  "Octree data structure is relatively shallow data structure for space partitioning.",
+  category = "Data",
+  customFieldsPD = [],
+  buildTypeRaw = Just Simple,
+  setupBuildInfo = Nothing,
+  library = Nothing,
+  subLibraries = [],
+  executables = [],
+  foreignLibs = [],
+  testSuites = [],
+  benchmarks = [],
+  dataFiles = [],
+  dataDir = SymbolicPath ".",
+  extraSrcFiles = [],
+  extraTmpFiles = [],
+  extraDocFiles = [],
+  extraFiles = []}

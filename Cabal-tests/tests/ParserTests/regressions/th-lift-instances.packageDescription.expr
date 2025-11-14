@@ -1,0 +1,63 @@
+PackageDescription {
+  specVersion = CabalSpecV1_10,
+  package = PackageIdentifier {
+    pkgName = PackageName
+      "th-lift-instances",
+    pkgVersion = mkVersion
+      [0, 1, 4]},
+  licenseRaw = Right BSD3,
+  licenseFiles = [
+    SymbolicPath "LICENSE"],
+  copyright =
+  "Copyright (C) 2013-2014 Benno F\252nfst\252ck",
+  maintainer =
+  "Benno F\252nfst\252ck <benno.fuenfstueck@gmail.com>",
+  author =
+  "Benno F\252nfst\252ck",
+  stability = "experimental",
+  testedWith = [],
+  homepage =
+  "http://github.com/bennofs/th-lift-instances/",
+  pkgUrl = "",
+  bugReports =
+  "http://github.com/bennofs/th-lift-instances/issues",
+  sourceRepos = [
+    SourceRepo {
+      repoKind = RepoHead,
+      repoType = Just
+        (KnownRepoType Git),
+      repoLocation = Just
+        "https://github.com/bennofs/th-lift-instances.git",
+      repoModule = Nothing,
+      repoBranch = Nothing,
+      repoTag = Nothing,
+      repoSubdir = Nothing}],
+  synopsis =
+  "Lift instances for template-haskell for common data types.",
+  description =
+  concat
+    [
+      "Most data types in haskell platform do not have Lift instances. This package provides orphan instances\n",
+      "for containers, text, bytestring and vector."],
+  category = "Template Haskell",
+  customFieldsPD = [
+    _×_ "x-revision" "1"],
+  buildTypeRaw = Just Custom,
+  setupBuildInfo = Nothing,
+  library = Nothing,
+  subLibraries = [],
+  executables = [],
+  foreignLibs = [],
+  testSuites = [],
+  benchmarks = [],
+  dataFiles = [],
+  dataDir = SymbolicPath ".",
+  extraSrcFiles = [
+    SymbolicPath ".ghci",
+    SymbolicPath ".gitignore",
+    SymbolicPath ".travis.yml",
+    SymbolicPath ".vim.custom",
+    SymbolicPath "README.md"],
+  extraTmpFiles = [],
+  extraDocFiles = [],
+  extraFiles = []}
