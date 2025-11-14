@@ -1,0 +1,141 @@
+Just
+  CondNode {
+    condTreeData = Library {
+      libName = LMainLibName,
+      exposedModules = [
+        ModuleName "\937"],
+      reexportedModules = [],
+      signatures = [],
+      libExposed = True,
+      libVisibility =
+      LibraryVisibilityPublic,
+      libBuildInfo = BuildInfo {
+        buildable = True,
+        buildTools = [],
+        buildToolDepends = [],
+        cppOptions = [],
+        asmOptions = [],
+        cmmOptions = [],
+        ccOptions = [],
+        cxxOptions = [],
+        jsppOptions = [],
+        ldOptions = [],
+        hsc2hsOptions = [],
+        pkgconfigDepends = [],
+        frameworks = [],
+        extraFrameworkDirs = [],
+        asmSources = [],
+        cmmSources = [],
+        cSources = [],
+        cxxSources = [],
+        jsSources = [],
+        hsSourceDirs = [],
+        otherModules = [],
+        virtualModules = [],
+        autogenModules = [],
+        defaultLanguage = Just
+          Haskell2010,
+        otherLanguages = [],
+        defaultExtensions = [],
+        otherExtensions = [],
+        oldExtensions = [],
+        extraLibs = [],
+        extraLibsStatic = [],
+        extraGHCiLibs = [],
+        extraBundledLibs = [],
+        extraLibFlavours = [],
+        extraDynLibFlavours = [],
+        extraLibDirs = [],
+        extraLibDirsStatic = [],
+        includeDirs = [],
+        includes = [],
+        autogenIncludes = [],
+        installIncludes = [],
+        options = PerCompilerFlavor
+          []
+          [],
+        profOptions = PerCompilerFlavor
+          []
+          [],
+        sharedOptions =
+        PerCompilerFlavor [] [],
+        profSharedOptions =
+        PerCompilerFlavor [] [],
+        staticOptions =
+        PerCompilerFlavor [] [],
+        customFieldsBI = [],
+        targetBuildDepends = [],
+        mixins = []}},
+    condTreeConstraints = [],
+    condTreeComponents = [
+      CondBranch {
+        condBranchCondition =
+        `CNot (Var (PackageFlag (FlagName "\\28961")))`,
+        condBranchIfTrue = CondNode {
+          condTreeData = Library {
+            libName = LMainLibName,
+            exposedModules = [],
+            reexportedModules = [],
+            signatures = [],
+            libExposed = True,
+            libVisibility =
+            LibraryVisibilityPublic,
+            libBuildInfo = BuildInfo {
+              buildable = False,
+              buildTools = [],
+              buildToolDepends = [],
+              cppOptions = [],
+              asmOptions = [],
+              cmmOptions = [],
+              ccOptions = [],
+              cxxOptions = [],
+              jsppOptions = [],
+              ldOptions = [],
+              hsc2hsOptions = [],
+              pkgconfigDepends = [],
+              frameworks = [],
+              extraFrameworkDirs = [],
+              asmSources = [],
+              cmmSources = [],
+              cSources = [],
+              cxxSources = [],
+              jsSources = [],
+              hsSourceDirs = [],
+              otherModules = [],
+              virtualModules = [],
+              autogenModules = [],
+              defaultLanguage = Nothing,
+              otherLanguages = [],
+              defaultExtensions = [],
+              otherExtensions = [],
+              oldExtensions = [],
+              extraLibs = [],
+              extraLibsStatic = [],
+              extraGHCiLibs = [],
+              extraBundledLibs = [],
+              extraLibFlavours = [],
+              extraDynLibFlavours = [],
+              extraLibDirs = [],
+              extraLibDirsStatic = [],
+              includeDirs = [],
+              includes = [],
+              autogenIncludes = [],
+              installIncludes = [],
+              options = PerCompilerFlavor
+                []
+                [],
+              profOptions = PerCompilerFlavor
+                []
+                [],
+              sharedOptions =
+              PerCompilerFlavor [] [],
+              profSharedOptions =
+              PerCompilerFlavor [] [],
+              staticOptions =
+              PerCompilerFlavor [] [],
+              customFieldsBI = [],
+              targetBuildDepends = [],
+              mixins = []}},
+          condTreeConstraints = [],
+          condTreeComponents = []},
+        condBranchIfFalse = Nothing}]}

@@ -1,0 +1,133 @@
+Just
+  CondNode {
+    condTreeData = Library {
+      libName = LMainLibName,
+      exposedModules = [
+        ModuleName "Supervisors"],
+      reexportedModules = [],
+      signatures = [],
+      libExposed = True,
+      libVisibility =
+      LibraryVisibilityPublic,
+      libBuildInfo = BuildInfo {
+        buildable = True,
+        buildTools = [],
+        buildToolDepends = [],
+        cppOptions = [],
+        asmOptions = [],
+        cmmOptions = [],
+        ccOptions = [],
+        cxxOptions = [],
+        jsppOptions = [],
+        ldOptions = [],
+        hsc2hsOptions = [],
+        pkgconfigDepends = [],
+        frameworks = [],
+        extraFrameworkDirs = [],
+        asmSources = [],
+        cmmSources = [],
+        cSources = [],
+        cxxSources = [],
+        jsSources = [],
+        hsSourceDirs = [
+          SymbolicPath "src/"],
+        otherModules = [],
+        virtualModules = [],
+        autogenModules = [],
+        defaultLanguage = Just
+          Haskell2010,
+        otherLanguages = [],
+        defaultExtensions = [],
+        otherExtensions = [],
+        oldExtensions = [],
+        extraLibs = [],
+        extraLibsStatic = [],
+        extraGHCiLibs = [],
+        extraBundledLibs = [],
+        extraLibFlavours = [],
+        extraDynLibFlavours = [],
+        extraLibDirs = [],
+        extraLibDirsStatic = [],
+        includeDirs = [],
+        includes = [],
+        autogenIncludes = [],
+        installIncludes = [],
+        options = PerCompilerFlavor
+          []
+          [],
+        profOptions = PerCompilerFlavor
+          []
+          [],
+        sharedOptions =
+        PerCompilerFlavor [] [],
+        profSharedOptions =
+        PerCompilerFlavor [] [],
+        staticOptions =
+        PerCompilerFlavor [] [],
+        customFieldsBI = [],
+        targetBuildDepends = [
+          Dependency
+            (PackageName "base")
+            (IntersectVersionRanges
+              (OrLaterVersion
+                (mkVersion [4, 11]))
+              (EarlierVersion
+                (mkVersion [5])))
+            mainLibSet,
+          Dependency
+            (PackageName "stm")
+            (MajorBoundVersion
+              (mkVersion [2, 5]))
+            mainLibSet,
+          Dependency
+            (PackageName "containers")
+            (IntersectVersionRanges
+              (OrLaterVersion
+                (mkVersion [0, 5, 9]))
+              (EarlierVersion
+                (mkVersion [0, 7])))
+            mainLibSet,
+          Dependency
+            (PackageName "safe-exceptions")
+            (MajorBoundVersion
+              (mkVersion [0, 1, 7]))
+            mainLibSet,
+          Dependency
+            (PackageName "async")
+            (MajorBoundVersion
+              (mkVersion [2, 2, 1]))
+            mainLibSet],
+        mixins = []}},
+    condTreeConstraints = [
+      Dependency
+        (PackageName "base")
+        (IntersectVersionRanges
+          (OrLaterVersion
+            (mkVersion [4, 11]))
+          (EarlierVersion
+            (mkVersion [5])))
+        mainLibSet,
+      Dependency
+        (PackageName "stm")
+        (MajorBoundVersion
+          (mkVersion [2, 5]))
+        mainLibSet,
+      Dependency
+        (PackageName "containers")
+        (IntersectVersionRanges
+          (OrLaterVersion
+            (mkVersion [0, 5, 9]))
+          (EarlierVersion
+            (mkVersion [0, 7])))
+        mainLibSet,
+      Dependency
+        (PackageName "safe-exceptions")
+        (MajorBoundVersion
+          (mkVersion [0, 1, 7]))
+        mainLibSet,
+      Dependency
+        (PackageName "async")
+        (MajorBoundVersion
+          (mkVersion [2, 2, 1]))
+        mainLibSet],
+    condTreeComponents = []}

@@ -1,0 +1,7 @@
+[
+  MkPackageFlag {
+    flagName = FlagName
+      "use-pkg-config",
+    flagDescription = "",
+    flagDefault = False,
+    flagManual = True}]

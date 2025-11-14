@@ -1,0 +1,111 @@
+[
+  _×_
+    (UnqualComponentName "tests")
+    CondNode {
+      condTreeData = TestSuite {
+        testName = UnqualComponentName
+          "",
+        testInterface = TestSuiteExeV10
+          (mkVersion [1, 0])
+          (SymbolicPath "Main.hs"),
+        testBuildInfo = BuildInfo {
+          buildable = True,
+          buildTools = [],
+          buildToolDepends = [],
+          cppOptions = [],
+          asmOptions = [],
+          cmmOptions = [],
+          ccOptions = [],
+          cxxOptions = [],
+          jsppOptions = [],
+          ldOptions = [],
+          hsc2hsOptions = [],
+          pkgconfigDepends = [],
+          frameworks = [],
+          extraFrameworkDirs = [],
+          asmSources = [],
+          cmmSources = [],
+          cSources = [],
+          cxxSources = [],
+          jsSources = [],
+          hsSourceDirs = [
+            SymbolicPath "tests/"],
+          otherModules = [],
+          virtualModules = [],
+          autogenModules = [],
+          defaultLanguage = Just
+            Haskell2010,
+          otherLanguages = [],
+          defaultExtensions = [],
+          otherExtensions = [],
+          oldExtensions = [],
+          extraLibs = [],
+          extraLibsStatic = [],
+          extraGHCiLibs = [],
+          extraBundledLibs = [],
+          extraLibFlavours = [],
+          extraDynLibFlavours = [],
+          extraLibDirs = [],
+          extraLibDirsStatic = [],
+          includeDirs = [],
+          includes = [],
+          autogenIncludes = [],
+          installIncludes = [],
+          options = PerCompilerFlavor
+            []
+            [],
+          profOptions = PerCompilerFlavor
+            []
+            [],
+          sharedOptions =
+          PerCompilerFlavor [] [],
+          profSharedOptions =
+          PerCompilerFlavor [] [],
+          staticOptions =
+          PerCompilerFlavor [] [],
+          customFieldsBI = [],
+          targetBuildDepends = [
+            Dependency
+              (PackageName "base")
+              (IntersectVersionRanges
+                (OrLaterVersion
+                  (mkVersion [4, 11]))
+                (EarlierVersion
+                  (mkVersion [5])))
+              mainLibSet,
+            Dependency
+              (PackageName "supervisors")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet,
+            Dependency
+              (PackageName "hspec")
+              (IntersectVersionRanges
+                (OrLaterVersion
+                  (mkVersion [2, 6, 0]))
+                (EarlierVersion
+                  (mkVersion [2, 8])))
+              mainLibSet],
+          mixins = []},
+        testCodeGenerators = []},
+      condTreeConstraints = [
+        Dependency
+          (PackageName "base")
+          (IntersectVersionRanges
+            (OrLaterVersion
+              (mkVersion [4, 11]))
+            (EarlierVersion
+              (mkVersion [5])))
+          mainLibSet,
+        Dependency
+          (PackageName "supervisors")
+          (OrLaterVersion (mkVersion [0]))
+          mainLibSet,
+        Dependency
+          (PackageName "hspec")
+          (IntersectVersionRanges
+            (OrLaterVersion
+              (mkVersion [2, 6, 0]))
+            (EarlierVersion
+              (mkVersion [2, 8])))
+          mainLibSet],
+      condTreeComponents = []}]

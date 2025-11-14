@@ -1,0 +1,528 @@
+Just
+  CondNode {
+    condTreeData = Library {
+      libName = LMainLibName,
+      exposedModules = [
+        ModuleName "Generics.SOP",
+        ModuleName "Generics.SOP.GGP",
+        ModuleName "Generics.SOP.TH",
+        ModuleName "Generics.SOP.Dict",
+        ModuleName
+          "Generics.SOP.Type.Metadata",
+        ModuleName
+          "Generics.SOP.BasicFunctors",
+        ModuleName
+          "Generics.SOP.Classes",
+        ModuleName
+          "Generics.SOP.Constraint",
+        ModuleName
+          "Generics.SOP.Instances",
+        ModuleName
+          "Generics.SOP.Metadata",
+        ModuleName "Generics.SOP.NP",
+        ModuleName "Generics.SOP.NS",
+        ModuleName
+          "Generics.SOP.Universe",
+        ModuleName "Generics.SOP.Sing"],
+      reexportedModules = [],
+      signatures = [],
+      libExposed = True,
+      libVisibility =
+      LibraryVisibilityPublic,
+      libBuildInfo = BuildInfo {
+        buildable = True,
+        buildTools = [],
+        buildToolDepends = [],
+        cppOptions = [],
+        asmOptions = [],
+        cmmOptions = [],
+        ccOptions = [],
+        cxxOptions = [],
+        jsppOptions = [],
+        ldOptions = [],
+        hsc2hsOptions = [],
+        pkgconfigDepends = [],
+        frameworks = [],
+        extraFrameworkDirs = [],
+        asmSources = [],
+        cmmSources = [],
+        cSources = [],
+        cxxSources = [],
+        jsSources = [],
+        hsSourceDirs = [
+          SymbolicPath "src"],
+        otherModules = [],
+        virtualModules = [],
+        autogenModules = [],
+        defaultLanguage = Just
+          Haskell2010,
+        otherLanguages = [],
+        defaultExtensions = [
+          EnableExtension CPP,
+          EnableExtension
+            ScopedTypeVariables,
+          EnableExtension TypeFamilies,
+          EnableExtension RankNTypes,
+          EnableExtension TypeOperators,
+          EnableExtension GADTs,
+          EnableExtension ConstraintKinds,
+          EnableExtension
+            MultiParamTypeClasses,
+          EnableExtension
+            TypeSynonymInstances,
+          EnableExtension
+            FlexibleInstances,
+          EnableExtension
+            FlexibleContexts,
+          EnableExtension DeriveFunctor,
+          EnableExtension DeriveFoldable,
+          EnableExtension
+            DeriveTraversable,
+          EnableExtension
+            DefaultSignatures,
+          EnableExtension KindSignatures,
+          EnableExtension DataKinds,
+          EnableExtension
+            FunctionalDependencies],
+        otherExtensions = [
+          EnableExtension
+            OverloadedStrings,
+          EnableExtension PolyKinds,
+          EnableExtension
+            UndecidableInstances,
+          EnableExtension TemplateHaskell,
+          EnableExtension DeriveGeneric,
+          EnableExtension
+            StandaloneDeriving],
+        oldExtensions = [],
+        extraLibs = [],
+        extraLibsStatic = [],
+        extraGHCiLibs = [],
+        extraBundledLibs = [],
+        extraLibFlavours = [],
+        extraDynLibFlavours = [],
+        extraLibDirs = [],
+        extraLibDirsStatic = [],
+        includeDirs = [],
+        includes = [],
+        autogenIncludes = [],
+        installIncludes = [],
+        options = PerCompilerFlavor
+          ["-Wall"]
+          [],
+        profOptions = PerCompilerFlavor
+          []
+          [],
+        sharedOptions =
+        PerCompilerFlavor [] [],
+        profSharedOptions =
+        PerCompilerFlavor [] [],
+        staticOptions =
+        PerCompilerFlavor [] [],
+        customFieldsBI = [],
+        targetBuildDepends = [
+          Dependency
+            (PackageName "base")
+            (IntersectVersionRanges
+              (OrLaterVersion
+                (mkVersion [4, 7]))
+              (EarlierVersion
+                (mkVersion [5])))
+            mainLibSet,
+          Dependency
+            (PackageName "template-haskell")
+            (IntersectVersionRanges
+              (OrLaterVersion
+                (mkVersion [2, 8]))
+              (EarlierVersion
+                (mkVersion [2, 13])))
+            mainLibSet,
+          Dependency
+            (PackageName "ghc-prim")
+            (IntersectVersionRanges
+              (OrLaterVersion
+                (mkVersion [0, 3]))
+              (EarlierVersion
+                (mkVersion [0, 6])))
+            mainLibSet,
+          Dependency
+            (PackageName "deepseq")
+            (IntersectVersionRanges
+              (OrLaterVersion
+                (mkVersion [1, 3]))
+              (EarlierVersion
+                (mkVersion [1, 5])))
+            mainLibSet],
+        mixins = []}},
+    condTreeConstraints = [
+      Dependency
+        (PackageName "base")
+        (IntersectVersionRanges
+          (OrLaterVersion
+            (mkVersion [4, 7]))
+          (EarlierVersion
+            (mkVersion [5])))
+        mainLibSet,
+      Dependency
+        (PackageName "template-haskell")
+        (IntersectVersionRanges
+          (OrLaterVersion
+            (mkVersion [2, 8]))
+          (EarlierVersion
+            (mkVersion [2, 13])))
+        mainLibSet,
+      Dependency
+        (PackageName "ghc-prim")
+        (IntersectVersionRanges
+          (OrLaterVersion
+            (mkVersion [0, 3]))
+          (EarlierVersion
+            (mkVersion [0, 6])))
+        mainLibSet,
+      Dependency
+        (PackageName "deepseq")
+        (IntersectVersionRanges
+          (OrLaterVersion
+            (mkVersion [1, 3]))
+          (EarlierVersion
+            (mkVersion [1, 5])))
+        mainLibSet],
+    condTreeComponents = [
+      CondBranch {
+        condBranchCondition =
+        `CNot (Var (Impl GHC (OrLaterVersion (mkVersion [7,8]))))`,
+        condBranchIfTrue = CondNode {
+          condTreeData = Library {
+            libName = LMainLibName,
+            exposedModules = [],
+            reexportedModules = [],
+            signatures = [],
+            libExposed = True,
+            libVisibility =
+            LibraryVisibilityPublic,
+            libBuildInfo = BuildInfo {
+              buildable = True,
+              buildTools = [],
+              buildToolDepends = [],
+              cppOptions = [],
+              asmOptions = [],
+              cmmOptions = [],
+              ccOptions = [],
+              cxxOptions = [],
+              jsppOptions = [],
+              ldOptions = [],
+              hsc2hsOptions = [],
+              pkgconfigDepends = [],
+              frameworks = [],
+              extraFrameworkDirs = [],
+              asmSources = [],
+              cmmSources = [],
+              cSources = [],
+              cxxSources = [],
+              jsSources = [],
+              hsSourceDirs = [],
+              otherModules = [],
+              virtualModules = [],
+              autogenModules = [],
+              defaultLanguage = Nothing,
+              otherLanguages = [],
+              defaultExtensions = [],
+              otherExtensions = [],
+              oldExtensions = [],
+              extraLibs = [],
+              extraLibsStatic = [],
+              extraGHCiLibs = [],
+              extraBundledLibs = [],
+              extraLibFlavours = [],
+              extraDynLibFlavours = [],
+              extraLibDirs = [],
+              extraLibDirsStatic = [],
+              includeDirs = [],
+              includes = [],
+              autogenIncludes = [],
+              installIncludes = [],
+              options = PerCompilerFlavor
+                []
+                [],
+              profOptions = PerCompilerFlavor
+                []
+                [],
+              sharedOptions =
+              PerCompilerFlavor [] [],
+              profSharedOptions =
+              PerCompilerFlavor [] [],
+              staticOptions =
+              PerCompilerFlavor [] [],
+              customFieldsBI = [],
+              targetBuildDepends = [
+                Dependency
+                  (PackageName "tagged")
+                  (IntersectVersionRanges
+                    (OrLaterVersion
+                      (mkVersion [0, 7]))
+                    (EarlierVersion
+                      (mkVersion [0, 9])))
+                  mainLibSet],
+              mixins = []}},
+          condTreeConstraints = [
+            Dependency
+              (PackageName "tagged")
+              (IntersectVersionRanges
+                (OrLaterVersion
+                  (mkVersion [0, 7]))
+                (EarlierVersion
+                  (mkVersion [0, 9])))
+              mainLibSet],
+          condTreeComponents = []},
+        condBranchIfFalse = Nothing},
+      CondBranch {
+        condBranchCondition =
+        `CNot (Var (Impl GHC (OrLaterVersion (mkVersion [8,0]))))`,
+        condBranchIfTrue = CondNode {
+          condTreeData = Library {
+            libName = LMainLibName,
+            exposedModules = [],
+            reexportedModules = [],
+            signatures = [],
+            libExposed = True,
+            libVisibility =
+            LibraryVisibilityPublic,
+            libBuildInfo = BuildInfo {
+              buildable = True,
+              buildTools = [],
+              buildToolDepends = [],
+              cppOptions = [],
+              asmOptions = [],
+              cmmOptions = [],
+              ccOptions = [],
+              cxxOptions = [],
+              jsppOptions = [],
+              ldOptions = [],
+              hsc2hsOptions = [],
+              pkgconfigDepends = [],
+              frameworks = [],
+              extraFrameworkDirs = [],
+              asmSources = [],
+              cmmSources = [],
+              cSources = [],
+              cxxSources = [],
+              jsSources = [],
+              hsSourceDirs = [],
+              otherModules = [],
+              virtualModules = [],
+              autogenModules = [],
+              defaultLanguage = Nothing,
+              otherLanguages = [],
+              defaultExtensions = [],
+              otherExtensions = [],
+              oldExtensions = [],
+              extraLibs = [],
+              extraLibsStatic = [],
+              extraGHCiLibs = [],
+              extraBundledLibs = [],
+              extraLibFlavours = [],
+              extraDynLibFlavours = [],
+              extraLibDirs = [],
+              extraLibDirsStatic = [],
+              includeDirs = [],
+              includes = [],
+              autogenIncludes = [],
+              installIncludes = [],
+              options = PerCompilerFlavor
+                []
+                [],
+              profOptions = PerCompilerFlavor
+                []
+                [],
+              sharedOptions =
+              PerCompilerFlavor [] [],
+              profSharedOptions =
+              PerCompilerFlavor [] [],
+              staticOptions =
+              PerCompilerFlavor [] [],
+              customFieldsBI = [],
+              targetBuildDepends = [
+                Dependency
+                  (PackageName
+                    "transformers-compat")
+                  (IntersectVersionRanges
+                    (OrLaterVersion
+                      (mkVersion [0, 3]))
+                    (EarlierVersion
+                      (mkVersion [0, 6])))
+                  mainLibSet,
+                Dependency
+                  (PackageName "transformers")
+                  (IntersectVersionRanges
+                    (OrLaterVersion
+                      (mkVersion [0, 3]))
+                    (EarlierVersion
+                      (mkVersion [0, 6])))
+                  mainLibSet],
+              mixins = []}},
+          condTreeConstraints = [
+            Dependency
+              (PackageName
+                "transformers-compat")
+              (IntersectVersionRanges
+                (OrLaterVersion
+                  (mkVersion [0, 3]))
+                (EarlierVersion
+                  (mkVersion [0, 6])))
+              mainLibSet,
+            Dependency
+              (PackageName "transformers")
+              (IntersectVersionRanges
+                (OrLaterVersion
+                  (mkVersion [0, 3]))
+                (EarlierVersion
+                  (mkVersion [0, 6])))
+              mainLibSet],
+          condTreeComponents = []},
+        condBranchIfFalse = Nothing},
+      CondBranch {
+        condBranchCondition =
+        `Var (Impl GHC (OrLaterVersion (mkVersion [7,8])))`,
+        condBranchIfTrue = CondNode {
+          condTreeData = Library {
+            libName = LMainLibName,
+            exposedModules = [],
+            reexportedModules = [],
+            signatures = [],
+            libExposed = True,
+            libVisibility =
+            LibraryVisibilityPublic,
+            libBuildInfo = BuildInfo {
+              buildable = True,
+              buildTools = [],
+              buildToolDepends = [],
+              cppOptions = [],
+              asmOptions = [],
+              cmmOptions = [],
+              ccOptions = [],
+              cxxOptions = [],
+              jsppOptions = [],
+              ldOptions = [],
+              hsc2hsOptions = [],
+              pkgconfigDepends = [],
+              frameworks = [],
+              extraFrameworkDirs = [],
+              asmSources = [],
+              cmmSources = [],
+              cSources = [],
+              cxxSources = [],
+              jsSources = [],
+              hsSourceDirs = [],
+              otherModules = [],
+              virtualModules = [],
+              autogenModules = [],
+              defaultLanguage = Nothing,
+              otherLanguages = [],
+              defaultExtensions = [
+                EnableExtension
+                  AutoDeriveTypeable],
+              otherExtensions = [],
+              oldExtensions = [],
+              extraLibs = [],
+              extraLibsStatic = [],
+              extraGHCiLibs = [],
+              extraBundledLibs = [],
+              extraLibFlavours = [],
+              extraDynLibFlavours = [],
+              extraLibDirs = [],
+              extraLibDirsStatic = [],
+              includeDirs = [],
+              includes = [],
+              autogenIncludes = [],
+              installIncludes = [],
+              options = PerCompilerFlavor
+                []
+                [],
+              profOptions = PerCompilerFlavor
+                []
+                [],
+              sharedOptions =
+              PerCompilerFlavor [] [],
+              profSharedOptions =
+              PerCompilerFlavor [] [],
+              staticOptions =
+              PerCompilerFlavor [] [],
+              customFieldsBI = [],
+              targetBuildDepends = [],
+              mixins = []}},
+          condTreeConstraints = [],
+          condTreeComponents = []},
+        condBranchIfFalse = Nothing},
+      CondBranch {
+        condBranchCondition =
+        `Var (Impl GHC (EarlierVersion (mkVersion [7,10])))`,
+        condBranchIfTrue = CondNode {
+          condTreeData = Library {
+            libName = LMainLibName,
+            exposedModules = [],
+            reexportedModules = [],
+            signatures = [],
+            libExposed = True,
+            libVisibility =
+            LibraryVisibilityPublic,
+            libBuildInfo = BuildInfo {
+              buildable = True,
+              buildTools = [],
+              buildToolDepends = [],
+              cppOptions = [],
+              asmOptions = [],
+              cmmOptions = [],
+              ccOptions = [],
+              cxxOptions = [],
+              jsppOptions = [],
+              ldOptions = [],
+              hsc2hsOptions = [],
+              pkgconfigDepends = [],
+              frameworks = [],
+              extraFrameworkDirs = [],
+              asmSources = [],
+              cmmSources = [],
+              cSources = [],
+              cxxSources = [],
+              jsSources = [],
+              hsSourceDirs = [],
+              otherModules = [],
+              virtualModules = [],
+              autogenModules = [],
+              defaultLanguage = Nothing,
+              otherLanguages = [],
+              defaultExtensions = [],
+              otherExtensions = [
+                EnableExtension
+                  OverlappingInstances],
+              oldExtensions = [],
+              extraLibs = [],
+              extraLibsStatic = [],
+              extraGHCiLibs = [],
+              extraBundledLibs = [],
+              extraLibFlavours = [],
+              extraDynLibFlavours = [],
+              extraLibDirs = [],
+              extraLibDirsStatic = [],
+              includeDirs = [],
+              includes = [],
+              autogenIncludes = [],
+              installIncludes = [],
+              options = PerCompilerFlavor
+                []
+                [],
+              profOptions = PerCompilerFlavor
+                []
+                [],
+              sharedOptions =
+              PerCompilerFlavor [] [],
+              profSharedOptions =
+              PerCompilerFlavor [] [],
+              staticOptions =
+              PerCompilerFlavor [] [],
+              customFieldsBI = [],
+              targetBuildDepends = [],
+              mixins = []}},
+          condTreeConstraints = [],
+          condTreeComponents = []},
+        condBranchIfFalse = Nothing}]}

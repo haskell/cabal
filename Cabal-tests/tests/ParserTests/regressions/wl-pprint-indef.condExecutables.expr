@@ -1,0 +1,97 @@
+[
+  _×_
+    (UnqualComponentName
+      "wl-pprint-string-example")
+    CondNode {
+      condTreeData = Executable {
+        exeName = UnqualComponentName
+          "wl-pprint-string-example",
+        modulePath = SymbolicPath
+          "Main.hs",
+        exeScope = ExecutablePublic,
+        buildInfo = BuildInfo {
+          buildable = True,
+          buildTools = [],
+          buildToolDepends = [],
+          cppOptions = [],
+          asmOptions = [],
+          cmmOptions = [],
+          ccOptions = [],
+          cxxOptions = [],
+          jsppOptions = [],
+          ldOptions = [],
+          hsc2hsOptions = [],
+          pkgconfigDepends = [],
+          frameworks = [],
+          extraFrameworkDirs = [],
+          asmSources = [],
+          cmmSources = [],
+          cSources = [],
+          cxxSources = [],
+          jsSources = [],
+          hsSourceDirs = [
+            SymbolicPath "example-string"],
+          otherModules = [
+            ModuleName "StringImpl"],
+          virtualModules = [],
+          autogenModules = [],
+          defaultLanguage = Nothing,
+          otherLanguages = [],
+          defaultExtensions = [],
+          otherExtensions = [],
+          oldExtensions = [],
+          extraLibs = [],
+          extraLibsStatic = [],
+          extraGHCiLibs = [],
+          extraBundledLibs = [],
+          extraLibFlavours = [],
+          extraDynLibFlavours = [],
+          extraLibDirs = [],
+          extraLibDirsStatic = [],
+          includeDirs = [],
+          includes = [],
+          autogenIncludes = [],
+          installIncludes = [],
+          options = PerCompilerFlavor
+            []
+            [],
+          profOptions = PerCompilerFlavor
+            []
+            [],
+          sharedOptions =
+          PerCompilerFlavor [] [],
+          profSharedOptions =
+          PerCompilerFlavor [] [],
+          staticOptions =
+          PerCompilerFlavor [] [],
+          customFieldsBI = [],
+          targetBuildDepends = [
+            Dependency
+              (PackageName "base")
+              (EarlierVersion (mkVersion [5]))
+              mainLibSet,
+            Dependency
+              (PackageName "str-string")
+              (OrLaterVersion
+                (mkVersion [0, 1, 0, 0]))
+              mainLibSet,
+            Dependency
+              (PackageName "wl-pprint-indef")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet],
+          mixins = []}},
+      condTreeConstraints = [
+        Dependency
+          (PackageName "base")
+          (EarlierVersion (mkVersion [5]))
+          mainLibSet,
+        Dependency
+          (PackageName "str-string")
+          (OrLaterVersion
+            (mkVersion [0, 1, 0, 0]))
+          mainLibSet,
+        Dependency
+          (PackageName "wl-pprint-indef")
+          (OrLaterVersion (mkVersion [0]))
+          mainLibSet],
+      condTreeComponents = []}]

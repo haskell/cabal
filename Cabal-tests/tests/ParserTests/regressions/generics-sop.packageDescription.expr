@@ -1,0 +1,125 @@
+PackageDescription {
+  specVersion = CabalSpecV1_10,
+  package = PackageIdentifier {
+    pkgName = PackageName
+      "generics-sop",
+    pkgVersion = mkVersion
+      [0, 3, 1, 0]},
+  licenseRaw = Right BSD3,
+  licenseFiles = [
+    SymbolicPath "LICENSE"],
+  copyright = "",
+  maintainer =
+  "andres@well-typed.com",
+  author =
+  "Edsko de Vries <edsko@well-typed.com>, Andres L\246h <andres@well-typed.com>",
+  stability = "",
+  testedWith = [
+    _×_
+      GHC
+      (ThisVersion
+        (mkVersion [7, 8, 4])),
+    _×_
+      GHC
+      (ThisVersion
+        (mkVersion [7, 10, 3])),
+    _×_
+      GHC
+      (ThisVersion
+        (mkVersion [8, 0, 1])),
+    _×_
+      GHC
+      (ThisVersion
+        (mkVersion [8, 0, 2])),
+    _×_
+      GHC
+      (ThisVersion
+        (mkVersion [8, 2, 1])),
+    _×_
+      GHC
+      (IntersectVersionRanges
+        (OrLaterVersion
+          (mkVersion [8, 3]))
+        (EarlierVersion
+          (mkVersion [8, 4])))],
+  homepage = "",
+  pkgUrl = "",
+  bugReports = "",
+  sourceRepos = [
+    SourceRepo {
+      repoKind = RepoHead,
+      repoType = Just
+        (KnownRepoType Git),
+      repoLocation = Just
+        "https://github.com/well-typed/generics-sop",
+      repoModule = Nothing,
+      repoBranch = Nothing,
+      repoTag = Nothing,
+      repoSubdir = Nothing}],
+  synopsis =
+  "Generic Programming using True Sums of Products",
+  description =
+  concat
+    [
+      "A library to support the definition of generic functions.\n",
+      "Datatypes are viewed in a uniform, structured way:\n",
+      "the choice between constructors is represented using an n-ary\n",
+      "sum, and the arguments of each constructor are represented using\n",
+      "an n-ary product.\n",
+      "\n",
+      "The module \"Generics.SOP\" is the main module of this library and contains\n",
+      "more detailed documentation.\n",
+      "\n",
+      "Examples of using this library are provided by the following\n",
+      "packages:\n",
+      "\n",
+      "* @<https://hackage.haskell.org/package/basic-sop basic-sop>@ basic examples,\n",
+      "\n",
+      "* @<https://hackage.haskell.org/package/pretty-sop pretty-sop>@ generic pretty printing,\n",
+      "\n",
+      "* @<https://hackage.haskell.org/package/lens-sop lens-sop>@ generically computed lenses,\n",
+      "\n",
+      "* @<https://hackage.haskell.org/package/json-sop json-sop>@ generic JSON conversions.\n",
+      "\n",
+      "A detailed description of the ideas behind this library is provided by\n",
+      "the paper:\n",
+      "\n",
+      "* Edsko de Vries and Andres L\246h.\n",
+      "<http://www.andres-loeh.de/TrueSumsOfProducts True Sums of Products>.\n",
+      "Workshop on Generic Programming (WGP) 2014.\n"],
+  category = "Generics",
+  customFieldsPD = [],
+  buildTypeRaw = Just Custom,
+  setupBuildInfo = Just
+    SetupBuildInfo {
+      setupDepends = [
+        Dependency
+          (PackageName "base")
+          (OrLaterVersion (mkVersion [0]))
+          mainLibSet,
+        Dependency
+          (PackageName "Cabal")
+          (OrLaterVersion (mkVersion [0]))
+          mainLibSet,
+        Dependency
+          (PackageName "cabal-doctest")
+          (IntersectVersionRanges
+            (OrLaterVersion
+              (mkVersion [1, 0, 2]))
+            (EarlierVersion
+              (mkVersion [1, 1])))
+          mainLibSet],
+      defaultSetupDepends = False},
+  library = Nothing,
+  subLibraries = [],
+  executables = [],
+  foreignLibs = [],
+  testSuites = [],
+  benchmarks = [],
+  dataFiles = [],
+  dataDir = SymbolicPath ".",
+  extraSrcFiles = [
+    SymbolicPath "CHANGELOG.md"],
+  extraTmpFiles = [],
+  extraDocFiles = [],
+  extraFiles = []}
