@@ -19,12 +19,19 @@ import Distribution.PackageDescription
   , packageDescription
   , gpdScannedVersion
   , genPackageFlags
+  , gpdCommonStanzas
   , condLibrary
   , condSubLibraries
   , condForeignLibs
   , condExecutables
   , condTestSuites
   , condBenchmarks
+  , condLibraryUnmerged
+  , condSubLibrariesUnmerged
+  , condForeignLibsUnmerged
+  , condExecutablesUnmerged
+  , condTestSuitesUnmerged
+  , condBenchmarksUnmerged
   )
 import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
@@ -52,6 +59,7 @@ import Data.TreeDiff.Instances.Cabal ()
 tests :: TestTree
 tests = testGroup "parsec tests"
     [ regressionTests
+    , accessorsTests
     , warningTests
     , errorTests
     , ipiTests
@@ -162,6 +170,42 @@ errorTest fp = cabalGoldenTest fp correct $ do
     correct = replaceExtension input "errors"
 
 -------------------------------------------------------------------------------
+-- Merging accessors tests
+-------------------------------------------------------------------------------
+
+accessorsTests :: TestTree
+accessorsTests = testGroup "accessors"
+    [
+#ifdef MIN_VERSION_tree_diff
+      accessorsGoldenTest "library-merging.cabal"
+#endif
+    ]
+
+#ifdef MIN_VERSION_tree_diff
+accessorsGoldenTest :: FilePath -> TestTree
+accessorsGoldenTest fp =
+  let go label f = ediffGolden goldenTest label exprFile $ do
+        contents <- BS.readFile input
+        let res = withSource (PCabalFile (fp, contents)) $ parseGenericPackageDescription contents
+        let (_, x) = runParseResult res
+        case x of
+            Right gpd      -> pure (toExpr $ f gpd)
+            Left (_, errs) -> fail $ unlines $ "ERROR" : map (showPErrorWithSource . fmap renderCabalFileSource) (NE.toList errs)
+        where
+          input = "tests" </> "ParserTests" </> "accessors" </> fp
+          exprFile = replaceExtension input (label <> ".expr")
+  in  testGroup "accessors"
+        [ go "gpdCommonStanzas" gpdCommonStanzas
+        , go "condLibraryUnmerged" condLibraryUnmerged
+        , go "condSubLibrariesUnmerged" condSubLibrariesUnmerged
+        , go "condForeignLibsUnmerged" condForeignLibsUnmerged
+        , go "condExecutablesUnmerged" condExecutablesUnmerged
+        , go "condTestSuitesUnmerged" condTestSuitesUnmerged
+        , go "condBenchmarksUnmerged" condBenchmarksUnmerged
+        ]
+#endif
+
+-------------------------------------------------------------------------------
 -- Regressions
 -------------------------------------------------------------------------------
 
@@ -255,18 +299,18 @@ treeDiffGoldenTest fp =
         where
           input = "tests" </> "ParserTests" </> "regressions" </> fp
           exprFile = replaceExtension input (label <> ".expr")
-  in testGroup "expr"
-      [ go "packageDescription" packageDescription
-      , go "gpdScannedVersion" gpdScannedVersion
-      , go "genPackageFlags" genPackageFlags
-      -- Test accessors because they encapsulate the merging behaviour
-      , go "condLibrary" condLibrary
-      , go "condSubLibraries" condSubLibraries
-      , go "condForeignLibs" condForeignLibs
-      , go "condExecutables" condExecutables
-      , go "condTestSuites" condTestSuites
-      , go "condBenchmarks" condBenchmarks
-      ]
+  in  testGroup "expr"
+        [ go "packageDescription" packageDescription
+        , go "gpdScannedVersion" gpdScannedVersion
+        , go "genPackageFlags" genPackageFlags
+        -- Test accessors because they encapsulate the merging behaviour
+        , go "condLibrary" condLibrary
+        , go "condSubLibraries" condSubLibraries
+        , go "condForeignLibs" condForeignLibs
+        , go "condExecutables" condExecutables
+        , go "condTestSuites" condTestSuites
+        , go "condBenchmarks" condBenchmarks
+        ]
 #endif
 
 formatRoundTripTest :: FilePath -> TestTree
