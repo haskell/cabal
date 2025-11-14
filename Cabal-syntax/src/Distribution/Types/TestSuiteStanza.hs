@@ -14,13 +14,13 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.CabalSpecVersion
+import Distribution.Fields.ParseResult
 import Distribution.ModuleName (ModuleName)
+import Distribution.Parsec
+import Distribution.Pretty (prettyShow)
 import Distribution.Types.BuildInfo
 import qualified Distribution.Types.BuildInfo.Lens as L
 import Distribution.Types.TestSuite
-import Distribution.Parsec
-import Distribution.Fields.ParseResult
-import Distribution.Pretty (prettyShow)
 import Distribution.Types.TestSuiteInterface
 import Distribution.Types.TestType
 import Distribution.Utils.Path

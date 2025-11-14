@@ -266,7 +266,7 @@ condTestSuites'
   -> [(UnqualComponentName, DependencyTree TestSuite)]
 condTestSuites' gpd =
   mergeTestSuiteStanza' (gpdCommonStanzas gpd) (condTestSuitesUnmerged gpd)
-    & (map . fmap . mapTreeData) (convertTestSuite .  patchTestSuiteType specVer)
+    & (map . fmap . mapTreeData) (convertTestSuite . patchTestSuiteType specVer)
   where
     specVer :: CabalSpecVersion
     specVer = specVersion . packageDescriptionInternal $ gpd

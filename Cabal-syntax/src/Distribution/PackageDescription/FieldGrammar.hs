@@ -24,7 +24,7 @@ module Distribution.PackageDescription.FieldGrammar
     -- * Test suite
   , testSuiteFieldGrammar
 
-  -- * Benchmark
+    -- * Benchmark
   , benchmarkFieldGrammar
 
     -- * Field grammars

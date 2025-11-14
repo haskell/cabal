@@ -342,8 +342,8 @@ goSections specVer fieldPositions = do
           -- Patching depends on merging, validation depends on patching
           let testStanza' :: CondTree ConfVar [Dependency] TestSuiteStanza
               testStanza' =
-                  mergeTestSuiteStanza commonStanzas testStanza
-                    & fmap (patchTestSuiteType specVer)
+                mergeTestSuiteStanza commonStanzas testStanza
+                  & fmap (patchTestSuiteType specVer)
           _ok <- lift $ traverse (validateTestSuite pos) testStanza'
           let validated = mapTreeData convertTestSuite testStanza'
 
@@ -378,8 +378,8 @@ goSections specVer fieldPositions = do
           -- Patching depends on merging, validation depends on patching
           let benchStanza' :: CondTree ConfVar [Dependency] BenchmarkStanza
               benchStanza' =
-                    mergeBenchmarkStanza commonStanzas benchStanza
-                      & fmap (patchBenchmarkType specVer)
+                mergeBenchmarkStanza commonStanzas benchStanza
+                  & fmap (patchBenchmarkType specVer)
           _ok <- lift $ traverse (validateBenchmark pos . unImportNames) benchStanza
           let validated = mapTreeData convertBenchmark benchStanza'
 
