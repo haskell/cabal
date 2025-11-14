@@ -16,16 +16,15 @@ import Data.Maybe                                  (isNothing)
 import Distribution.Fields                         (pwarning)
 import Distribution.PackageDescription
   ( GenericPackageDescription
-      ( packageDescription
-      , gpdScannedVersion
-      , genPackageFlags
-      , condLibrary
-      , condSubLibraries
-      , condForeignLibs
-      , condExecutables
-      , condTestSuites
-      , condBenchmarks
-    )
+  , packageDescription
+  , gpdScannedVersion
+  , genPackageFlags
+  , condLibrary
+  , condSubLibraries
+  , condForeignLibs
+  , condExecutables
+  , condTestSuites
+  , condBenchmarks
   )
 import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
