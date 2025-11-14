@@ -56,10 +56,6 @@ instance ToExpr (SymbolicPathX allowAbs from to)
 
 instance ToExpr a => ToExpr (InstallDirs a)
 
--- For gpd and its accessors
--- Upstream only supports up to quintuples
-instance (ToExpr a, ToExpr b, ToExpr c, ToExpr d, ToExpr e, ToExpr f, ToExpr g) => ToExpr (a, b, c, d, e, f, g)
-
 instance ToExpr AbiDependency
 instance ToExpr AbiHash
 instance ToExpr Arch
