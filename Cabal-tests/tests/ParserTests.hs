@@ -10,7 +10,7 @@ import Test.Tasty
 import Test.Tasty.Golden.Advanced (goldenTest)
 import Test.Tasty.HUnit
 
-import Control.Monad                               (unless, void)
+import Control.Monad                               (void)
 import Data.Algorithm.Diff                         (PolyDiff (..), getGroupedDiff)
 import Data.Maybe                                  (isNothing)
 import Distribution.Fields                         (pwarning)
@@ -276,15 +276,15 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
     y <- parse (toUTF8BS contents')
 
     let checkField field =
-          unless (field x == field y) $
+          field x == field y @?
 {- FOURMOLU_DISABLE -}
 #ifdef MIN_VERSION_tree_diff
-            assertFailure $ unlines
+            unlines
                 [ "re-parsed doesn't match"
                 , show $ ansiWlEditExpr $ ediff x y
                 ]
 #else
-            assertFailure $ unlines
+            unlines
                 [ "re-parsed doesn't match"
                 , "expected"
                 , show x
