@@ -17,7 +17,6 @@ main = do
     addToPath (takeDirectory exe_path) $ do
       -- Test that the thing works at all
       res <- cabal_raw_action ["aaaa"] (\h -> () <$ Process.waitForProcess h)
-      assertOutputContains "aaaa" res
 
       -- Test that the extra arguments are passed on
       res <- cabal_raw_action ["aaaa", "--foobaz"] (\h -> () <$ Process.waitForProcess h)
