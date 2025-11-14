@@ -1,0 +1,5 @@
+# cabal clean
+# cabal v2-repl
+Error: [Cabal-7076]
+Please pick a single [package:][ctype:]component (or all) as target for the REPL command. The packages in 'alt.project' from which to select a component target are:
+ - alt
