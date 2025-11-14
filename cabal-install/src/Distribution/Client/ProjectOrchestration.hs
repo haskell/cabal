@@ -209,12 +209,12 @@ import Distribution.Utils.LogProgress
 import Distribution.Utils.NubList
   ( fromNubList
   )
-import Distribution.Utils.Path (makeSymbolicPath, (</>))
+import Distribution.Utils.Path (makeSymbolicPath, (</>), (<.>))
 import Distribution.Verbosity
 #ifdef MIN_VERSION_unix
-import           System.Posix.Signals (sigKILL, sigSEGV)
-
+import System.Posix.Signals (sigKILL, sigSEGV)
 #endif
+import Distribution.Simple.BuildPaths (exeExtension)
 
 -- | Tracks what command is being executed, because we need to hide this somewhere
 -- for cases that need special handling (usually for error reporting).
@@ -545,9 +545,12 @@ installExecutables
         , pkg `Set.member` packagesDefinitelyUpToDate postBuildStatus
         , Just (InstallPlan.Configured elab) <- [InstallPlan.lookup elaboratedPlanOriginal pkg]
         , (ComponentTarget (CExeName cname) _subtarget, _targetSelectors) <- targets
-        , let exe = unUnqualComponentName cname
-        , let dir = binDirectoryFor distDirLayout elaboratedShared elab exe
+        , let platform = toolchainPlatform (getStage toolchains (elabStage elab))
+        , let exeName = unUnqualComponentName cname
+        , let dir = binDirectoryFor distDirLayout elaboratedShared elab exeName
+        , let exe = exeName <.>  exeExtension platform
         ]
+      toolchains =  pkgConfigToolchains elaboratedShared
 
 -- Note that it is a deliberate design choice that the 'buildTargets' is
 -- not passed to phase 1, and the various bits of input config is not
