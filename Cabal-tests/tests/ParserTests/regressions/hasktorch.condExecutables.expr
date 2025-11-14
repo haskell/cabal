@@ -1,0 +1,412 @@
+[
+  _×_
+    (UnqualComponentName
+      "isdefinite-cpu")
+    CondNode {
+      condTreeData = Executable {
+        exeName = UnqualComponentName
+          "isdefinite-cpu",
+        modulePath = SymbolicPath
+          "Noop.hs",
+        exeScope = ExecutablePublic,
+        buildInfo = BuildInfo {
+          buildable = True,
+          buildTools = [],
+          buildToolDepends = [],
+          cppOptions = [],
+          asmOptions = [],
+          cmmOptions = [],
+          ccOptions = [],
+          cxxOptions = [],
+          jsppOptions = [],
+          ldOptions = [],
+          hsc2hsOptions = [],
+          pkgconfigDepends = [],
+          frameworks = [],
+          extraFrameworkDirs = [],
+          asmSources = [],
+          cmmSources = [],
+          cSources = [],
+          cxxSources = [],
+          jsSources = [],
+          hsSourceDirs = [
+            SymbolicPath "exe"],
+          otherModules = [],
+          virtualModules = [],
+          autogenModules = [],
+          defaultLanguage = Just
+            Haskell2010,
+          otherLanguages = [],
+          defaultExtensions = [],
+          otherExtensions = [],
+          oldExtensions = [],
+          extraLibs = [],
+          extraLibsStatic = [],
+          extraGHCiLibs = [],
+          extraBundledLibs = [],
+          extraLibFlavours = [],
+          extraDynLibFlavours = [],
+          extraLibDirs = [],
+          extraLibDirsStatic = [],
+          includeDirs = [],
+          includes = [],
+          autogenIncludes = [],
+          installIncludes = [],
+          options = PerCompilerFlavor
+            []
+            [],
+          profOptions = PerCompilerFlavor
+            []
+            [],
+          sharedOptions =
+          PerCompilerFlavor [] [],
+          profSharedOptions =
+          PerCompilerFlavor [] [],
+          staticOptions =
+          PerCompilerFlavor [] [],
+          customFieldsBI = [],
+          targetBuildDepends = [
+            Dependency
+              (PackageName "base")
+              (IntersectVersionRanges
+                (UnionVersionRanges
+                  (ThisVersion (mkVersion [4, 7]))
+                  (LaterVersion
+                    (mkVersion [4, 7])))
+                (EarlierVersion
+                  (mkVersion [5])))
+              mainLibSet,
+            Dependency
+              (PackageName "hasktorch")
+              (OrLaterVersion (mkVersion [0]))
+              (NonEmptySet.fromNonEmpty
+                (NE.fromList
+                  [
+                    LSubLibName
+                      (UnqualComponentName
+                        "hasktorch-cpu")]))],
+          mixins = []}},
+      condTreeConstraints = [
+        Dependency
+          (PackageName "base")
+          (IntersectVersionRanges
+            (UnionVersionRanges
+              (ThisVersion (mkVersion [4, 7]))
+              (LaterVersion
+                (mkVersion [4, 7])))
+            (EarlierVersion
+              (mkVersion [5])))
+          mainLibSet,
+        Dependency
+          (PackageName "hasktorch")
+          (OrLaterVersion (mkVersion [0]))
+          (NonEmptySet.fromNonEmpty
+            (NE.fromList
+              [
+                LSubLibName
+                  (UnqualComponentName
+                    "hasktorch-cpu")]))],
+      condTreeComponents = []},
+  _×_
+    (UnqualComponentName
+      "isdefinite-gpu")
+    CondNode {
+      condTreeData = Executable {
+        exeName = UnqualComponentName
+          "isdefinite-gpu",
+        modulePath = SymbolicPath
+          "Noop.hs",
+        exeScope = ExecutablePublic,
+        buildInfo = BuildInfo {
+          buildable = True,
+          buildTools = [],
+          buildToolDepends = [],
+          cppOptions = [],
+          asmOptions = [],
+          cmmOptions = [],
+          ccOptions = [],
+          cxxOptions = [],
+          jsppOptions = [],
+          ldOptions = [],
+          hsc2hsOptions = [],
+          pkgconfigDepends = [],
+          frameworks = [],
+          extraFrameworkDirs = [],
+          asmSources = [],
+          cmmSources = [],
+          cSources = [],
+          cxxSources = [],
+          jsSources = [],
+          hsSourceDirs = [
+            SymbolicPath "exe"],
+          otherModules = [],
+          virtualModules = [],
+          autogenModules = [],
+          defaultLanguage = Just
+            Haskell2010,
+          otherLanguages = [],
+          defaultExtensions = [],
+          otherExtensions = [],
+          oldExtensions = [],
+          extraLibs = [],
+          extraLibsStatic = [],
+          extraGHCiLibs = [],
+          extraBundledLibs = [],
+          extraLibFlavours = [],
+          extraDynLibFlavours = [],
+          extraLibDirs = [],
+          extraLibDirsStatic = [],
+          includeDirs = [],
+          includes = [],
+          autogenIncludes = [],
+          installIncludes = [],
+          options = PerCompilerFlavor
+            []
+            [],
+          profOptions = PerCompilerFlavor
+            []
+            [],
+          sharedOptions =
+          PerCompilerFlavor [] [],
+          profSharedOptions =
+          PerCompilerFlavor [] [],
+          staticOptions =
+          PerCompilerFlavor [] [],
+          customFieldsBI = [],
+          targetBuildDepends = [
+            Dependency
+              (PackageName "base")
+              (IntersectVersionRanges
+                (UnionVersionRanges
+                  (ThisVersion (mkVersion [4, 7]))
+                  (LaterVersion
+                    (mkVersion [4, 7])))
+                (EarlierVersion
+                  (mkVersion [5])))
+              mainLibSet,
+            Dependency
+              (PackageName "hasktorch")
+              (OrLaterVersion (mkVersion [0]))
+              (NonEmptySet.fromNonEmpty
+                (NE.fromList
+                  [
+                    LSubLibName
+                      (UnqualComponentName
+                        "hasktorch-gpu")]))],
+          mixins = []}},
+      condTreeConstraints = [
+        Dependency
+          (PackageName "base")
+          (IntersectVersionRanges
+            (UnionVersionRanges
+              (ThisVersion (mkVersion [4, 7]))
+              (LaterVersion
+                (mkVersion [4, 7])))
+            (EarlierVersion
+              (mkVersion [5])))
+          mainLibSet,
+        Dependency
+          (PackageName "hasktorch")
+          (OrLaterVersion (mkVersion [0]))
+          (NonEmptySet.fromNonEmpty
+            (NE.fromList
+              [
+                LSubLibName
+                  (UnqualComponentName
+                    "hasktorch-gpu")]))],
+      condTreeComponents = []},
+  _×_
+    (UnqualComponentName
+      "isdefinite")
+    CondNode {
+      condTreeData = Executable {
+        exeName = UnqualComponentName
+          "isdefinite",
+        modulePath = SymbolicPath
+          "Noop.hs",
+        exeScope = ExecutablePublic,
+        buildInfo = BuildInfo {
+          buildable = True,
+          buildTools = [],
+          buildToolDepends = [],
+          cppOptions = [],
+          asmOptions = [],
+          cmmOptions = [],
+          ccOptions = [],
+          cxxOptions = [],
+          jsppOptions = [],
+          ldOptions = [],
+          hsc2hsOptions = [],
+          pkgconfigDepends = [],
+          frameworks = [],
+          extraFrameworkDirs = [],
+          asmSources = [],
+          cmmSources = [],
+          cSources = [],
+          cxxSources = [],
+          jsSources = [],
+          hsSourceDirs = [
+            SymbolicPath "exe"],
+          otherModules = [],
+          virtualModules = [],
+          autogenModules = [],
+          defaultLanguage = Just
+            Haskell2010,
+          otherLanguages = [],
+          defaultExtensions = [],
+          otherExtensions = [],
+          oldExtensions = [],
+          extraLibs = [],
+          extraLibsStatic = [],
+          extraGHCiLibs = [],
+          extraBundledLibs = [],
+          extraLibFlavours = [],
+          extraDynLibFlavours = [],
+          extraLibDirs = [],
+          extraLibDirsStatic = [],
+          includeDirs = [],
+          includes = [],
+          autogenIncludes = [],
+          installIncludes = [],
+          options = PerCompilerFlavor
+            []
+            [],
+          profOptions = PerCompilerFlavor
+            []
+            [],
+          sharedOptions =
+          PerCompilerFlavor [] [],
+          profSharedOptions =
+          PerCompilerFlavor [] [],
+          staticOptions =
+          PerCompilerFlavor [] [],
+          customFieldsBI = [],
+          targetBuildDepends = [
+            Dependency
+              (PackageName "base")
+              (IntersectVersionRanges
+                (UnionVersionRanges
+                  (ThisVersion (mkVersion [4, 7]))
+                  (LaterVersion
+                    (mkVersion [4, 7])))
+                (EarlierVersion
+                  (mkVersion [5])))
+              mainLibSet,
+            Dependency
+              (PackageName "hasktorch")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet],
+          mixins = []}},
+      condTreeConstraints = [
+        Dependency
+          (PackageName "base")
+          (IntersectVersionRanges
+            (UnionVersionRanges
+              (ThisVersion (mkVersion [4, 7]))
+              (LaterVersion
+                (mkVersion [4, 7])))
+            (EarlierVersion
+              (mkVersion [5])))
+          mainLibSet,
+        Dependency
+          (PackageName "hasktorch")
+          (OrLaterVersion (mkVersion [0]))
+          mainLibSet],
+      condTreeComponents = []},
+  _×_
+    (UnqualComponentName "memcheck")
+    CondNode {
+      condTreeData = Executable {
+        exeName = UnqualComponentName
+          "memcheck",
+        modulePath = SymbolicPath
+          "Memcheck.hs",
+        exeScope = ExecutablePublic,
+        buildInfo = BuildInfo {
+          buildable = True,
+          buildTools = [],
+          buildToolDepends = [],
+          cppOptions = [],
+          asmOptions = [],
+          cmmOptions = [],
+          ccOptions = [],
+          cxxOptions = [],
+          jsppOptions = [],
+          ldOptions = [],
+          hsc2hsOptions = [],
+          pkgconfigDepends = [],
+          frameworks = [],
+          extraFrameworkDirs = [],
+          asmSources = [],
+          cmmSources = [],
+          cSources = [],
+          cxxSources = [],
+          jsSources = [],
+          hsSourceDirs = [
+            SymbolicPath "exe"],
+          otherModules = [],
+          virtualModules = [],
+          autogenModules = [],
+          defaultLanguage = Just
+            Haskell2010,
+          otherLanguages = [],
+          defaultExtensions = [],
+          otherExtensions = [],
+          oldExtensions = [],
+          extraLibs = [],
+          extraLibsStatic = [],
+          extraGHCiLibs = [],
+          extraBundledLibs = [],
+          extraLibFlavours = [],
+          extraDynLibFlavours = [],
+          extraLibDirs = [],
+          extraLibDirsStatic = [],
+          includeDirs = [],
+          includes = [],
+          autogenIncludes = [],
+          installIncludes = [],
+          options = PerCompilerFlavor
+            []
+            [],
+          profOptions = PerCompilerFlavor
+            []
+            [],
+          sharedOptions =
+          PerCompilerFlavor [] [],
+          profSharedOptions =
+          PerCompilerFlavor [] [],
+          staticOptions =
+          PerCompilerFlavor [] [],
+          customFieldsBI = [],
+          targetBuildDepends = [
+            Dependency
+              (PackageName "base")
+              (IntersectVersionRanges
+                (UnionVersionRanges
+                  (ThisVersion (mkVersion [4, 7]))
+                  (LaterVersion
+                    (mkVersion [4, 7])))
+                (EarlierVersion
+                  (mkVersion [5])))
+              mainLibSet,
+            Dependency
+              (PackageName "hasktorch")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet],
+          mixins = []}},
+      condTreeConstraints = [
+        Dependency
+          (PackageName "base")
+          (IntersectVersionRanges
+            (UnionVersionRanges
+              (ThisVersion (mkVersion [4, 7]))
+              (LaterVersion
+                (mkVersion [4, 7])))
+            (EarlierVersion
+              (mkVersion [5])))
+          mainLibSet,
+        Dependency
+          (PackageName "hasktorch")
+          (OrLaterVersion (mkVersion [0]))
+          mainLibSet],
+      condTreeComponents = []}]

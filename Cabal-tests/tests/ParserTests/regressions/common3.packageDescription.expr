@@ -1,0 +1,49 @@
+PackageDescription {
+  specVersion = CabalSpecV2_2,
+  package = PackageIdentifier {
+    pkgName = PackageName "common",
+    pkgVersion = mkVersion [0]},
+  licenseRaw = Left NONE,
+  licenseFiles = [],
+  copyright = "",
+  maintainer = "",
+  author = "",
+  stability = "",
+  testedWith = [],
+  homepage = "",
+  pkgUrl = "",
+  bugReports = "",
+  sourceRepos = [
+    SourceRepo {
+      repoKind = RepoHead,
+      repoType = Just
+        (KnownRepoType Git),
+      repoLocation = Just
+        "https://github.com/hvr/-.git",
+      repoModule = Nothing,
+      repoBranch = Nothing,
+      repoTag = Nothing,
+      repoSubdir = Nothing}],
+  synopsis =
+  "Common-stanza demo demo",
+  description = "",
+  category = "",
+  customFieldsPD = [
+    _×_ "x-revision" "1",
+    _×_
+      "x-follows-version-policy"
+      ""],
+  buildTypeRaw = Just Simple,
+  setupBuildInfo = Nothing,
+  library = Nothing,
+  subLibraries = [],
+  executables = [],
+  foreignLibs = [],
+  testSuites = [],
+  benchmarks = [],
+  dataFiles = [],
+  dataDir = SymbolicPath ".",
+  extraSrcFiles = [],
+  extraTmpFiles = [],
+  extraDocFiles = [],
+  extraFiles = []}

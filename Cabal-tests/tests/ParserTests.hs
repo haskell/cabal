@@ -244,25 +244,29 @@ formatGoldenTest fp = cabalGoldenTest "format" correct $ do
 
 #ifdef MIN_VERSION_tree_diff
 treeDiffGoldenTest :: FilePath -> TestTree
-treeDiffGoldenTest fp = ediffGolden goldenTest "expr" exprFile $ do
-    contents <- BS.readFile input
-    let res = withSource (PCabalFile (fp, contents)) $ parseGenericPackageDescription contents
-    let (_, x) = runParseResult res
-    case x of
-        Right gpd      -> pure $ toExpr
-          ( gpd
-          -- Test accessors because they encapsulate the merging behaviour
-          , condLibrary gpd
-          , condSubLibraries gpd
-          , condForeignLibs gpd
-          , condExecutables gpd
-          , condTestSuites gpd
-          , condBenchmarks gpd
-          )
-        Left (_, errs) -> fail $ unlines $ "ERROR" : map (showPErrorWithSource . fmap renderCabalFileSource) (NE.toList errs)
-  where
-    input = "tests" </> "ParserTests" </> "regressions" </> fp
-    exprFile = replaceExtension input "expr"
+treeDiffGoldenTest fp =
+  let go label f = ediffGolden goldenTest label exprFile $ do
+        contents <- BS.readFile input
+        let res = withSource (PCabalFile (fp, contents)) $ parseGenericPackageDescription contents
+        let (_, x) = runParseResult res
+        case x of
+            Right gpd      -> pure (toExpr $ f gpd)
+            Left (_, errs) -> fail $ unlines $ "ERROR" : map (showPErrorWithSource . fmap renderCabalFileSource) (NE.toList errs)
+        where
+          input = "tests" </> "ParserTests" </> "regressions" </> fp
+          exprFile = replaceExtension input (label <> ".expr")
+  in testGroup "expr"
+      [ go "packageDescription" packageDescription
+      , go "gpdScannedVersion" gpdScannedVersion
+      , go "genPackageFlags" genPackageFlags
+      -- Test accessors because they encapsulate the merging behaviour
+      , go "condLibrary" condLibrary
+      , go "condSubLibraries" condSubLibraries
+      , go "condForeignLibs" condForeignLibs
+      , go "condExecutables" condExecutables
+      , go "condTestSuites" condTestSuites
+      , go "condBenchmarks" condBenchmarks
+      ]
 #endif
 
 formatRoundTripTest :: FilePath -> TestTree
