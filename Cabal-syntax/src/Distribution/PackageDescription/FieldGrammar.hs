@@ -36,12 +36,6 @@ module Distribution.PackageDescription.FieldGrammar
   , formatOtherExtensions
   , formatOtherModules
 
-    -- ** Lenses
-  , benchmarkStanzaBenchmarkType
-  , benchmarkStanzaMainIs
-  , benchmarkStanzaBenchmarkModule
-  , benchmarkStanzaBuildInfo
-
     -- * Flag
   , flagFieldGrammar
 
