@@ -42,6 +42,7 @@ executable cabal-validate
         , filepath >=1 && <2
         , optparse-applicative >=0.18 && <1
         , terminal-size >=0.3 && <1
-        , text >=2 && <3
+          -- https://github.com/haskell/cabal/pull/11280#issuecomment-3534506424
+        , text >=1.2 && <3
         , time >=1 && <2
         , typed-process >=0.2 && <1
