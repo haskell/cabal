@@ -218,11 +218,6 @@ jobs:
           name: cabal-${{ runner.os }}-${{ env.CABAL_ARCH }}
           path: ${{ env.CABAL_EXEC_TAR }}
 
-      - name: Debug GLIBCXX_3.4.32 error
-        if: runner.os == 'Linux'
-        run: |
-          strings /lib/x86_64-linux-gnu/libstdc++.so.6 | grep GLIBCXX_
-
       - name: Validate tests
         env:
           # `rawSystemStdInOut reports text decoding errors`
