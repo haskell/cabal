@@ -170,7 +170,7 @@ errorTest fp = cabalGoldenTest fp correct $ do
     correct = replaceExtension input "errors"
 
 -------------------------------------------------------------------------------
--- Merging accessors tests
+-- Internal accessors tests
 -------------------------------------------------------------------------------
 
 accessorsTests :: TestTree
