@@ -1,13 +1,21 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ViewPatterns #-}
+#if __GLASGOW_HASKELL__ >= 914
+{-# LANGUAGE ExplicitNamespaces #-}
+#endif
 
 module Distribution.Types.GenericPackageDescription
   ( GenericPackageDescription (..)
+#if __GLASGOW_HASKELL__ >= 914
+  , data GenericPackageDescription
+#else
   , pattern GenericPackageDescription
+#endif
   , emptyGenericPackageDescription
   , mergeImports
 
