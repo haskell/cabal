@@ -1,0 +1,194 @@
+[
+  _×_
+    (UnqualComponentName "doctests")
+    CondNode {
+      condTreeData = TestSuite {
+        testName = UnqualComponentName
+          "",
+        testInterface = TestSuiteExeV10
+          (mkVersion [1, 0])
+          (SymbolicPath "doctests.hs"),
+        testBuildInfo = BuildInfo {
+          buildable = True,
+          buildTools = [],
+          buildToolDepends = [],
+          cppOptions = [],
+          asmOptions = [],
+          cmmOptions = [],
+          ccOptions = [],
+          cxxOptions = [],
+          jsppOptions = [],
+          ldOptions = [],
+          hsc2hsOptions = [],
+          pkgconfigDepends = [],
+          frameworks = [],
+          extraFrameworkDirs = [],
+          asmSources = [],
+          cmmSources = [],
+          cSources = [],
+          cxxSources = [],
+          jsSources = [],
+          hsSourceDirs = [
+            SymbolicPath "test"],
+          otherModules = [],
+          virtualModules = [],
+          autogenModules = [],
+          defaultLanguage = Just
+            Haskell2010,
+          otherLanguages = [],
+          defaultExtensions = [],
+          otherExtensions = [],
+          oldExtensions = [],
+          extraLibs = [],
+          extraLibsStatic = [],
+          extraGHCiLibs = [],
+          extraBundledLibs = [],
+          extraLibFlavours = [],
+          extraDynLibFlavours = [],
+          extraLibDirs = [],
+          extraLibDirsStatic = [],
+          includeDirs = [],
+          includes = [],
+          autogenIncludes = [],
+          installIncludes = [],
+          options = PerCompilerFlavor
+            ["-Wall", "-threaded"]
+            [],
+          profOptions = PerCompilerFlavor
+            []
+            [],
+          sharedOptions =
+          PerCompilerFlavor [] [],
+          profSharedOptions =
+          PerCompilerFlavor [] [],
+          staticOptions =
+          PerCompilerFlavor [] [],
+          customFieldsBI = [
+            _×_
+              "x-doctest-options"
+              "--preserve-it"],
+          targetBuildDepends = [
+            Dependency
+              (PackageName "base")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet,
+            Dependency
+              (PackageName "doctest")
+              (IntersectVersionRanges
+                (OrLaterVersion
+                  (mkVersion [0, 13]))
+                (EarlierVersion
+                  (mkVersion [0, 14])))
+              mainLibSet],
+          mixins = []},
+        testCodeGenerators = []},
+      condTreeConstraints = [
+        Dependency
+          (PackageName "base")
+          (OrLaterVersion (mkVersion [0]))
+          mainLibSet,
+        Dependency
+          (PackageName "doctest")
+          (IntersectVersionRanges
+            (OrLaterVersion
+              (mkVersion [0, 13]))
+            (EarlierVersion
+              (mkVersion [0, 14])))
+          mainLibSet],
+      condTreeComponents = []},
+  _×_
+    (UnqualComponentName
+      "generics-sop-examples")
+    CondNode {
+      condTreeData = TestSuite {
+        testName = UnqualComponentName
+          "",
+        testInterface = TestSuiteExeV10
+          (mkVersion [1, 0])
+          (SymbolicPath "Example.hs"),
+        testBuildInfo = BuildInfo {
+          buildable = True,
+          buildTools = [],
+          buildToolDepends = [],
+          cppOptions = [],
+          asmOptions = [],
+          cmmOptions = [],
+          ccOptions = [],
+          cxxOptions = [],
+          jsppOptions = [],
+          ldOptions = [],
+          hsc2hsOptions = [],
+          pkgconfigDepends = [],
+          frameworks = [],
+          extraFrameworkDirs = [],
+          asmSources = [],
+          cmmSources = [],
+          cSources = [],
+          cxxSources = [],
+          jsSources = [],
+          hsSourceDirs = [
+            SymbolicPath "test"],
+          otherModules = [
+            ModuleName "HTransExample"],
+          virtualModules = [],
+          autogenModules = [],
+          defaultLanguage = Just
+            Haskell2010,
+          otherLanguages = [],
+          defaultExtensions = [],
+          otherExtensions = [],
+          oldExtensions = [],
+          extraLibs = [],
+          extraLibsStatic = [],
+          extraGHCiLibs = [],
+          extraBundledLibs = [],
+          extraLibFlavours = [],
+          extraDynLibFlavours = [],
+          extraLibDirs = [],
+          extraLibDirsStatic = [],
+          includeDirs = [],
+          includes = [],
+          autogenIncludes = [],
+          installIncludes = [],
+          options = PerCompilerFlavor
+            ["-Wall"]
+            [],
+          profOptions = PerCompilerFlavor
+            []
+            [],
+          sharedOptions =
+          PerCompilerFlavor [] [],
+          profSharedOptions =
+          PerCompilerFlavor [] [],
+          staticOptions =
+          PerCompilerFlavor [] [],
+          customFieldsBI = [],
+          targetBuildDepends = [
+            Dependency
+              (PackageName "base")
+              (IntersectVersionRanges
+                (OrLaterVersion
+                  (mkVersion [4, 6]))
+                (EarlierVersion
+                  (mkVersion [5])))
+              mainLibSet,
+            Dependency
+              (PackageName "generics-sop")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet],
+          mixins = []},
+        testCodeGenerators = []},
+      condTreeConstraints = [
+        Dependency
+          (PackageName "base")
+          (IntersectVersionRanges
+            (OrLaterVersion
+              (mkVersion [4, 6]))
+            (EarlierVersion
+              (mkVersion [5])))
+          mainLibSet,
+        Dependency
+          (PackageName "generics-sop")
+          (OrLaterVersion (mkVersion [0]))
+          mainLibSet],
+      condTreeComponents = []}]

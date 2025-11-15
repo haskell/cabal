@@ -1,0 +1,6 @@
+[
+  MkPackageFlag {
+    flagName = FlagName "\28961",
+    flagDescription = "\28961",
+    flagDefault = True,
+    flagManual = False}]

@@ -1,0 +1,53 @@
+PackageDescription {
+  specVersion = CabalSpecV1_6,
+  package = PackageIdentifier {
+    pkgName = PackageName
+      "wl-pprint-indef",
+    pkgVersion = mkVersion [1, 2]},
+  licenseRaw = Right BSD3,
+  licenseFiles = [
+    SymbolicPath "LICENSE"],
+  copyright = "",
+  maintainer =
+  "Noam Lewis <jones.noamle@gmail.com>",
+  author = "Daan Leijen",
+  stability = "",
+  testedWith = [],
+  homepage = "",
+  pkgUrl = "",
+  bugReports = "",
+  sourceRepos = [
+    SourceRepo {
+      repoKind = RepoHead,
+      repoType = Just
+        (KnownRepoType Git),
+      repoLocation = Just
+        "git@github.com:danidiaz/wl-pprint-indef.git",
+      repoModule = Nothing,
+      repoBranch = Nothing,
+      repoTag = Nothing,
+      repoSubdir = Nothing}],
+  synopsis =
+  "The Wadler/Leijen Pretty Printer",
+  description =
+  concat
+    [
+      "This is a pretty printing library based on Wadler's paper \"A Prettier\n",
+      "Printer\".  See the haddocks for full info.  This version allows the\n",
+      "library user to declare overlapping instances of the 'Pretty' class."],
+  category = "Text",
+  customFieldsPD = [],
+  buildTypeRaw = Just Simple,
+  setupBuildInfo = Nothing,
+  library = Nothing,
+  subLibraries = [],
+  executables = [],
+  foreignLibs = [],
+  testSuites = [],
+  benchmarks = [],
+  dataFiles = [],
+  dataDir = SymbolicPath ".",
+  extraSrcFiles = [],
+  extraTmpFiles = [],
+  extraDocFiles = [],
+  extraFiles = []}

@@ -1,0 +1,99 @@
+Just
+  CondNode {
+    condTreeData = Library {
+      libName = LMainLibName,
+      exposedModules = [
+        ModuleName "Interval"],
+      reexportedModules = [],
+      signatures = [],
+      libExposed = True,
+      libVisibility =
+      LibraryVisibilityPublic,
+      libBuildInfo = BuildInfo {
+        buildable = True,
+        buildTools = [],
+        buildToolDepends = [],
+        cppOptions = [],
+        asmOptions = [],
+        cmmOptions = [],
+        ccOptions = [],
+        cxxOptions = [],
+        jsppOptions = [],
+        ldOptions = [],
+        hsc2hsOptions = [],
+        pkgconfigDepends = [],
+        frameworks = [],
+        extraFrameworkDirs = [],
+        asmSources = [],
+        cmmSources = [],
+        cSources = [],
+        cxxSources = [],
+        jsSources = [],
+        hsSourceDirs = [
+          SymbolicPath "library"],
+        otherModules = [],
+        virtualModules = [],
+        autogenModules = [],
+        defaultLanguage = Just
+          Haskell2010,
+        otherLanguages = [],
+        defaultExtensions = [],
+        otherExtensions = [],
+        oldExtensions = [],
+        extraLibs = [],
+        extraLibsStatic = [],
+        extraGHCiLibs = [],
+        extraBundledLibs = [],
+        extraLibFlavours = [],
+        extraDynLibFlavours = [],
+        extraLibDirs = [],
+        extraLibDirsStatic = [],
+        includeDirs = [],
+        includes = [],
+        autogenIncludes = [],
+        installIncludes = [],
+        options = PerCompilerFlavor
+          [
+            "-Wall",
+            "-Werror=missing-home-modules"]
+          [],
+        profOptions = PerCompilerFlavor
+          []
+          [],
+        sharedOptions =
+        PerCompilerFlavor [] [],
+        profSharedOptions =
+        PerCompilerFlavor [] [],
+        staticOptions =
+        PerCompilerFlavor [] [],
+        customFieldsBI = [],
+        targetBuildDepends = [
+          Dependency
+            (PackageName "base")
+            (UnionVersionRanges
+              (MajorBoundVersion
+                (mkVersion [4, 11, 1, 0]))
+              (MajorBoundVersion
+                (mkVersion [4, 12, 0, 0])))
+            mainLibSet,
+          Dependency
+            (PackageName "QuickCheck")
+            (MajorBoundVersion
+              (mkVersion [2, 12, 6, 1]))
+            mainLibSet],
+        mixins = []}},
+    condTreeConstraints = [
+      Dependency
+        (PackageName "base")
+        (UnionVersionRanges
+          (MajorBoundVersion
+            (mkVersion [4, 11, 1, 0]))
+          (MajorBoundVersion
+            (mkVersion [4, 12, 0, 0])))
+        mainLibSet,
+      Dependency
+        (PackageName "QuickCheck")
+        (MajorBoundVersion
+          (mkVersion [2, 12, 6, 1]))
+        mainLibSet],
+    condTreeComponents = []}

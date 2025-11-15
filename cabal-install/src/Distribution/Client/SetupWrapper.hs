@@ -48,7 +48,7 @@ import Distribution.Package
   )
 import Distribution.PackageDescription
   ( BuildType (..)
-  , GenericPackageDescription (packageDescription)
+  , packageDescription
   , PackageDescription (..)
   , buildType
   , specVersion

@@ -1,0 +1,141 @@
+Just
+  CondNode {
+    condTreeData = Library {
+      libName = LMainLibName,
+      exposedModules = [],
+      reexportedModules = [],
+      signatures = [],
+      libExposed = True,
+      libVisibility =
+      LibraryVisibilityPublic,
+      libBuildInfo = BuildInfo {
+        buildable = True,
+        buildTools = [],
+        buildToolDepends = [],
+        cppOptions = [],
+        asmOptions = [],
+        cmmOptions = [],
+        ccOptions = [],
+        cxxOptions = [],
+        jsppOptions = [],
+        ldOptions = [],
+        hsc2hsOptions = [],
+        pkgconfigDepends = [],
+        frameworks = [],
+        extraFrameworkDirs = [],
+        asmSources = [],
+        cmmSources = [],
+        cSources = [],
+        cxxSources = [],
+        jsSources = [],
+        hsSourceDirs = [],
+        otherModules = [],
+        virtualModules = [],
+        autogenModules = [],
+        defaultLanguage = Just
+          Haskell2010,
+        otherLanguages = [],
+        defaultExtensions = [],
+        otherExtensions = [],
+        oldExtensions = [],
+        extraLibs = [],
+        extraLibsStatic = [],
+        extraGHCiLibs = [],
+        extraBundledLibs = [],
+        extraLibFlavours = [],
+        extraDynLibFlavours = [],
+        extraLibDirs = [],
+        extraLibDirsStatic = [],
+        includeDirs = [],
+        includes = [],
+        autogenIncludes = [],
+        installIncludes = [],
+        options = PerCompilerFlavor
+          []
+          [],
+        profOptions = PerCompilerFlavor
+          []
+          [],
+        sharedOptions =
+        PerCompilerFlavor [] [],
+        profSharedOptions =
+        PerCompilerFlavor [] [],
+        staticOptions =
+        PerCompilerFlavor [] [],
+        customFieldsBI = [],
+        targetBuildDepends = [
+          Dependency
+            (PackageName "lib1")
+            (OrLaterVersion (mkVersion [0]))
+            (NonEmptySet.fromNonEmpty
+              (NE.fromList
+                [
+                  LSubLibName
+                    (UnqualComponentName "a"),
+                  LSubLibName
+                    (UnqualComponentName "b")])),
+          Dependency
+            (PackageName "lib2")
+            (OrLaterVersion (mkVersion [0]))
+            (NonEmptySet.fromNonEmpty
+              (NE.fromList
+                [
+                  LSubLibName
+                    (UnqualComponentName "c")])),
+          Dependency
+            (PackageName "lib3")
+            (OrLaterVersion (mkVersion [1]))
+            (NonEmptySet.fromNonEmpty
+              (NE.fromList
+                [
+                  LSubLibName
+                    (UnqualComponentName "d")])),
+          Dependency
+            (PackageName "lib4")
+            (OrLaterVersion (mkVersion [1]))
+            (NonEmptySet.fromNonEmpty
+              (NE.fromList
+                [
+                  LSubLibName
+                    (UnqualComponentName "a"),
+                  LSubLibName
+                    (UnqualComponentName "b")]))],
+        mixins = []}},
+    condTreeConstraints = [
+      Dependency
+        (PackageName "lib1")
+        (OrLaterVersion (mkVersion [0]))
+        (NonEmptySet.fromNonEmpty
+          (NE.fromList
+            [
+              LSubLibName
+                (UnqualComponentName "a"),
+              LSubLibName
+                (UnqualComponentName "b")])),
+      Dependency
+        (PackageName "lib2")
+        (OrLaterVersion (mkVersion [0]))
+        (NonEmptySet.fromNonEmpty
+          (NE.fromList
+            [
+              LSubLibName
+                (UnqualComponentName "c")])),
+      Dependency
+        (PackageName "lib3")
+        (OrLaterVersion (mkVersion [1]))
+        (NonEmptySet.fromNonEmpty
+          (NE.fromList
+            [
+              LSubLibName
+                (UnqualComponentName "d")])),
+      Dependency
+        (PackageName "lib4")
+        (OrLaterVersion (mkVersion [1]))
+        (NonEmptySet.fromNonEmpty
+          (NE.fromList
+            [
+              LSubLibName
+                (UnqualComponentName "a"),
+              LSubLibName
+                (UnqualComponentName "b")]))],
+    condTreeComponents = []}

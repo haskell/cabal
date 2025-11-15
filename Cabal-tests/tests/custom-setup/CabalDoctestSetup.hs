@@ -143,7 +143,9 @@ import Distribution.Types.UnqualComponentName
 import Distribution.PackageDescription
        (CondTree (..))
 import Distribution.Types.GenericPackageDescription
-       (GenericPackageDescription (condTestSuites))
+       ( GenericPackageDescription
+       , condTestSuites
+       )
 
 import Distribution.Version
        (mkVersion)

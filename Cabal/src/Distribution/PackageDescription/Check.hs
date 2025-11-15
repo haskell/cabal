@@ -238,8 +238,7 @@ checkGenericPackageDescription
       checkPackageDescription packageDescription_
       -- Targets should be present...
       let condAllLibraries =
-            maybeToList condLibrary_
-              ++ (map snd condSubLibraries_)
+            maybeToList condLibrary_ ++ map snd condSubLibraries_
       checkP
         ( and
             [ null condExecutables_
@@ -958,24 +957,12 @@ pd2gpd pd = gpd
     gpd =
       emptyGenericPackageDescription
         { packageDescription = pd
-        , condLibrary = fmap t2c (library pd)
+        , condLibrary = t2c <$> (library pd)
         , condSubLibraries = map (t2cName ln id) (subLibraries pd)
-        , condForeignLibs =
-            map
-              (t2cName foreignLibName id)
-              (foreignLibs pd)
-        , condExecutables =
-            map
-              (t2cName exeName id)
-              (executables pd)
-        , condTestSuites =
-            map
-              (t2cName testName remTest)
-              (testSuites pd)
-        , condBenchmarks =
-            map
-              (t2cName benchmarkName remBench)
-              (benchmarks pd)
+        , condForeignLibs = map (t2cName foreignLibName id) (foreignLibs pd)
+        , condExecutables = map (t2cName exeName id) (executables pd)
+        , condTestSuites = map (t2cName testName remTest) (testSuites pd)
+        , condBenchmarks = map (t2cName benchmarkName remBench) (benchmarks pd)
         }
 
     -- From target to simple, unconditional CondTree.

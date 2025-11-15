@@ -1,0 +1,74 @@
+Just
+  CondNode {
+    condTreeData = Library {
+      libName = LMainLibName,
+      exposedModules = [
+        ModuleName "Issue"],
+      reexportedModules = [],
+      signatures = [],
+      libExposed = True,
+      libVisibility =
+      LibraryVisibilityPublic,
+      libBuildInfo = BuildInfo {
+        buildable = True,
+        buildTools = [],
+        buildToolDepends = [],
+        cppOptions = [],
+        asmOptions = [],
+        cmmOptions = [],
+        ccOptions = [],
+        cxxOptions = [],
+        jsppOptions = [],
+        ldOptions = [],
+        hsc2hsOptions = [],
+        pkgconfigDepends = [],
+        frameworks = [],
+        extraFrameworkDirs = [],
+        asmSources = [],
+        cmmSources = [],
+        cSources = [],
+        cxxSources = [],
+        jsSources = [],
+        hsSourceDirs = [],
+        otherModules = [],
+        virtualModules = [],
+        autogenModules = [],
+        defaultLanguage = Just
+          Haskell2010,
+        otherLanguages = [],
+        defaultExtensions = [],
+        otherExtensions = [],
+        oldExtensions = [],
+        extraLibs = [],
+        extraLibsStatic = [],
+        extraGHCiLibs = [],
+        extraBundledLibs = [],
+        extraLibFlavours = [],
+        extraDynLibFlavours = [],
+        extraLibDirs = [],
+        extraLibDirsStatic = [],
+        includeDirs = [],
+        includes = [],
+        autogenIncludes = [],
+        installIncludes = [],
+        options = PerCompilerFlavor
+          [
+            "-Wall",
+            "-threaded",
+            "-with-rtsopts=-N -s -M1G -c",
+            "-rtsopts"]
+          [],
+        profOptions = PerCompilerFlavor
+          []
+          [],
+        sharedOptions =
+        PerCompilerFlavor [] [],
+        profSharedOptions =
+        PerCompilerFlavor [] [],
+        staticOptions =
+        PerCompilerFlavor [] [],
+        customFieldsBI = [],
+        targetBuildDepends = [],
+        mixins = []}},
+    condTreeConstraints = [],
+    condTreeComponents = []}
