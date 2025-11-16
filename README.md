@@ -7,7 +7,7 @@
 [![Matrix chat](https://img.shields.io/badge/chat-via%20matrix-brightgreen.svg)](https://matrix.to/#/#hackage:matrix.org)
 [![GitLab pipeline status](https://gitlab.haskell.org/haskell/cabal/badges/cabal-head/pipeline.svg?key_text=Release%20CI%20Early%20Warning&key_width=150)](https://gitlab.haskell.org/haskell/cabal/-/commits/cabal-head)
 
-<img src="https://www.haskell.org/cabal/images/Cabal-light.png" align="right">
+<img src="Cabal-light.png" align="right">
 
 This Cabal Git repository contains the following main packages:
 
