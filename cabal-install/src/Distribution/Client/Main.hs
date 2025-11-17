@@ -372,17 +372,20 @@ mainWorker args = do
       -> [String]
       -> IO (CommandParse Action)
     delegateToExternal commands' name cmdArgs = do
+      -- we rely on cabal's implementation of findProgramOnSearchPath not following
+      -- symlinks here. If that ever happens, then the argv[0] of the called executable
+      -- will be different from the intended one and will break tools that work by reading it.
       mCommand <- findProgramOnSearchPath normal defaultProgramSearchPath ("cabal-" <> name)
       case mCommand of
-        Just (exec, _) -> return (CommandReadyToGo $ \_ -> callExternal exec name cmdArgs)
+        Just (exec, _) -> return (CommandReadyToGo $ \_ -> callExternal exec cmdArgs)
         Nothing -> defaultCommandFallback commands' name cmdArgs
 
-    callExternal :: String -> String -> [String] -> IO ()
-    callExternal exec name cmdArgs = do
+    callExternal :: String -> [String] -> IO ()
+    callExternal exec cmdArgs = do
       cur_env <- getEnvironment
       cabal_exe <- getExecutablePath
-      let new_env = ("CABAL", cabal_exe) : cur_env
-      result <- try $ createProcess ((proc exec (name : cmdArgs)){env = Just new_env})
+      let new_env = ("CABAL_EXTERNAL_CABAL_PATH", cabal_exe) : cur_env
+      result <- try $ createProcess ((proc exec cmdArgs){env = Just new_env})
       case result of
         Left ex -> printErrors ["Error executing external command: " ++ show (ex :: SomeException)]
         Right (_, _, _, ph) -> waitForProcess ph >>= exitWith
