@@ -53,7 +53,7 @@ jobs:
       matrix:
         sys:
           - { os: windows-latest, shell: "C:/msys64/usr/bin/bash.exe -e {0}" }
-          - { os: ubuntu-22.04, shell: bash }
+          - { os: ubuntu-latest, shell: bash }
           - { os: macos-latest, shell: bash }
         # If you remove something from here, then add it to the old-ghcs job.
         # Also a removed GHC from here means that we are actually dropping
