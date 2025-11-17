@@ -47,6 +47,7 @@ import Distribution.Backpack
 import Distribution.CabalSpecVersion (cabalSpecLatest)
 import Distribution.FieldGrammar
 import Distribution.FieldGrammar.FieldDescrs
+import Distribution.Fields.Field
 import Distribution.Fields.ParseResult
 import Distribution.Fields.Pretty
 import Distribution.ModuleName
@@ -99,19 +100,21 @@ parseInstalledPackageInfo
   -> Either (NonEmpty String) ([String], InstalledPackageInfo)
 parseInstalledPackageInfo s = case P.readFields s of
   Left err -> Left (show err :| [])
-  Right fs -> case partitionFields fs of
-    (fs', _) -> case P.runParseResult $ withSource PInstalledPackageInfo $ parseFieldGrammar cabalSpecLatest fs' ipiFieldGrammar of
-      (ws, Right x) -> x `deepseq` Right (ws', x)
-        where
-          ws' =
-            [ P.showPWarningWithSource (fmap renderInstalledPackageInfoSource w)
-            | w@(P.PWarningWithSource _ (P.PWarning wt _ _)) <- ws
-            , -- filter out warnings about experimental features
-            wt /= P.PWTExperimental
-            ]
-      (_, Left (_, errs)) -> Left errs'
-        where
-          errs' = fmap (P.showPErrorWithSource . fmap renderInstalledPackageInfoSource) errs
+  Right fs ->
+    let fs' = map (fmap unComments) fs
+     in case partitionFields fs' of
+          (fs'', _) -> case P.runParseResult $ withSource PInstalledPackageInfo $ parseFieldGrammar cabalSpecLatest fs'' ipiFieldGrammar of
+            (ws, Right x) -> x `deepseq` Right (ws', x)
+              where
+                ws' =
+                  [ P.showPWarningWithSource (fmap renderInstalledPackageInfoSource w)
+                  | w@(P.PWarningWithSource _ (P.PWarning wt _ _)) <- ws
+                  , -- filter out warnings about experimental features
+                  wt /= P.PWTExperimental
+                  ]
+            (_, Left (_, errs)) -> Left errs'
+              where
+                errs' = fmap (P.showPErrorWithSource . fmap renderInstalledPackageInfoSource) errs
 
 -- -----------------------------------------------------------------------------
 -- Pretty-printing

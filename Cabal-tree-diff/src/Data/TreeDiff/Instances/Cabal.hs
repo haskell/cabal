@@ -13,9 +13,11 @@ import Data.TreeDiff.Instances.CabalVersion ()
 import Distribution.Backpack                       (OpenModule, OpenUnitId)
 import Distribution.CabalSpecVersion               (CabalSpecVersion)
 import Distribution.Compiler                       (CompilerFlavor, CompilerId, PerCompilerFlavor)
+import Distribution.Fields.Field                   (Field, Name, FieldLine, SectionArg, Comment, WithComments)
 import Distribution.InstalledPackageInfo           (AbiDependency, ExposedModule, InstalledPackageInfo)
 import Distribution.ModuleName                     (ModuleName)
 import Distribution.PackageDescription
+import Distribution.Parsec.Position                (Position)
 import Distribution.Simple.Compiler                (DebugInfoLevel, OptimisationLevel, ProfDetailLevel)
 import Distribution.Simple.InstallDirs
 import Distribution.Simple.InstallDirs.Internal
@@ -56,6 +58,12 @@ instance ToExpr (SymbolicPathX allowAbs from to)
 
 instance ToExpr a => ToExpr (InstallDirs a)
 
+instance (ToExpr ann) => ToExpr (Comment ann)
+instance (ToExpr ann) => ToExpr (WithComments ann)
+instance (ToExpr ann) => ToExpr (Field ann)
+instance (ToExpr ann) => ToExpr (FieldLine ann)
+instance (ToExpr ann) => ToExpr (Name ann)
+instance (ToExpr ann) => ToExpr (SectionArg ann)
 instance ToExpr AbiDependency
 instance ToExpr AbiHash
 instance ToExpr Arch
@@ -80,6 +88,7 @@ instance ToExpr FlagName
 instance ToExpr ForeignLib
 instance ToExpr ForeignLibOption
 instance ToExpr ForeignLibType
+instance ToExpr AnnotatedGenericPackageDescription
 instance ToExpr GenericPackageDescription
 instance ToExpr HaddockTarget
 instance ToExpr IncludeRenaming
@@ -110,6 +119,7 @@ instance ToExpr PkgconfigDependency
 instance ToExpr PkgconfigName
 instance ToExpr PkgconfigVersion
 instance ToExpr PkgconfigVersionRange
+instance ToExpr Position
 instance ToExpr ProfDetailLevel
 instance ToExpr RepoKind
 instance ToExpr RepoType
