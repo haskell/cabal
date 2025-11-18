@@ -1,21 +1,22 @@
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RecordWildCards #-}
+
 module Test.Cabal.DecodeShowBuildInfo where
 
-import           Test.Cabal.Prelude
-import           Test.Cabal.Plan
-import           Distribution.Compat.Stack
-import           Distribution.Text (display)
-import           Distribution.Types.ComponentName
-import           Distribution.Types.LibraryName
-import           Distribution.Types.UnqualComponentName
-import           Distribution.Package
-import           Distribution.Pretty (prettyShow)
-import           Control.Monad.Trans.Reader
-import           Data.Aeson
-import           GHC.Generics
-import           System.Exit
+import Control.Monad.Trans.Reader
+import Data.Aeson
+import Distribution.Compat.Stack
+import Distribution.Package
+import Distribution.Pretty (prettyShow)
+import Distribution.Text (display)
+import Distribution.Types.ComponentName
+import Distribution.Types.LibraryName
+import Distribution.Types.UnqualComponentName
+import GHC.Generics
+import System.Exit
+import Test.Cabal.Plan
+import Test.Cabal.Prelude
 
 -- | Execute 'cabal build --enable-build-info'.
 --
@@ -129,7 +130,7 @@ assertComponentPure :: WithCallStack (ComponentInfo -> ComponentAssertion -> Tes
 assertComponentPure component ComponentAssertion{..} = do
   assertEqual "Component type" compType (componentType component)
   assertBool  "Component Unit Id" (unitIdPred $ componentUnitId component)
-  assertBool  "Component compiler args" (compilerArgsPred  $ componentCompilerArgs component)
+  assertBool  "Component compiler args" (compilerArgsPred $ componentCompilerArgs component)
   assertEqual "Component modules" modules (componentModules component)
   assertEqual "Component source files" sourceFiles (componentSrcFiles component)
   assertEqual "Component source directories" sourceDirs (componentHsSrcDirs component)
@@ -152,7 +153,7 @@ assertComponent pkgName cname assert = do
   assertComponentPure component assertWithCompType
   where
     compTypeStr :: ComponentName -> String
-    compTypeStr (CLibName _)    = "lib"
+    compTypeStr (CLibName _)   = "lib"
     compTypeStr (CFLibName _) = "flib"
     compTypeStr (CExeName _) = "exe"
     compTypeStr (CTestName _) = "test"

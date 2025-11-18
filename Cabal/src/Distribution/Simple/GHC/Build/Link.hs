@@ -121,10 +121,9 @@ linkOrLoadComponent
       linkerOpts rpaths =
         mempty
           { ghcOptLinkOptions =
-              PD.ldOptions bi
-                ++ [ "-static"
-                   | withFullyStaticExe lbi
-                   ]
+              [ "-static"
+              | withFullyStaticExe lbi
+              ]
                 -- Pass extra `ld-options` given
                 -- through to GHC's linker.
                 ++ maybe
@@ -344,36 +343,11 @@ linkLibrary buildTargetDir cleanedExtraLibDirs pkg_descr verbosity runGhcProg li
     --
     -- Right now, instead, we pass the path to each object file.
     ghcBaseLinkArgs =
-      mempty
-        { -- TODO: This basically duplicates componentGhcOptions.
-          -- I think we want to do the same as we do for executables: re-use the
-          -- base options, and link by module names, not object paths.
-          ghcOptExtra = hcStaticOptions GHC libBi
-        , ghcOptHideAllPackages = toFlag True
-        , ghcOptNoAutoLinkPackages = toFlag True
-        , ghcOptPackageDBs = withPackageDB lbi
-        , ghcOptThisUnitId = case clbi of
-            LibComponentLocalBuildInfo{componentCompatPackageKey = pk} ->
-              toFlag pk
-            _ -> mempty
-        , ghcOptThisComponentId = case clbi of
-            LibComponentLocalBuildInfo
-              { componentInstantiatedWith = insts
-              } ->
-                if null insts
-                  then mempty
-                  else toFlag (componentComponentId clbi)
-            _ -> mempty
-        , ghcOptInstantiatedWith = case clbi of
-            LibComponentLocalBuildInfo
-              { componentInstantiatedWith = insts
-              } ->
-                insts
-            _ -> []
-        , ghcOptPackages =
-            toNubListR $
-              Internal.mkGhcOptPackages mempty clbi
-        }
+      Internal.linkGhcOptions verbosity lbi libBi clbi
+        <> mempty
+          { ghcOptExtra = hcStaticOptions GHC libBi
+          , ghcOptNoAutoLinkPackages = toFlag True
+          }
 
     -- After the relocation lib is created we invoke ghc -shared
     -- with the dependencies spelled out as -package arguments
