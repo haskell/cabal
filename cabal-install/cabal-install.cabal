@@ -245,7 +245,7 @@ library
       , filepath   >= 1.4.0.0  && < 1.6
       , HTTP       >= 4000.1.5 && < 4000.5
       , mtl        >= 2.0      && < 2.4
-      , network-uri >= 2.6.0.2 && < 2.7
+      , network-uri >= 2.6.2.0 && < 2.7
       , pretty     >= 1.1      && < 1.2
       , process    >= 1.2.3.0  && < 1.7
       , random     >= 1.2      && < 1.4
