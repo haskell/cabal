@@ -18,6 +18,7 @@ module Distribution.Client.Init.FileCreators
   ( -- * Commands
     writeProject
   , writeLicense
+  , writeReadme
   , writeChangeLog
   , prepareLibTarget
   , prepareExeTarget
@@ -70,6 +71,7 @@ writeProject (ProjectSettings opts pkgDesc libTarget exeTarget testTarget)
 
       writeLicense opts pkgDesc
       writeChangeLog opts pkgDesc
+      writeReadme opts pkgDesc
 
       let pkgFields = mkPkgDescription opts pkgDesc
           commonStanza = mkCommonStanza opts
@@ -239,6 +241,28 @@ writeChangeLog opts pkgDesc
 
     go =
       void $ writeFileSafe opts defaultChangelog changeLog
+
+writeReadme :: Interactive m => WriteOpts -> PkgDescription -> m ()
+writeReadme opts pkgDesc
+  | Just docs <- _pkgExtraDocFiles pkgDesc
+  , defaultReadme `Set.member` docs =
+      go
+  | defaultReadme `elem` _pkgExtraSrcFiles pkgDesc = go
+  | otherwise = return ()
+  where
+    readme =
+      unlines
+        [ "# " ++ prettyShow (_pkgName pkgDesc)
+        , ""
+        , "## Build"
+        , ""
+        , "Run `$ cabal build` to build the project"
+        , "## Documentation"
+        , ""
+        , "Run `$ cabal haddock --open` to generate a reference for the API of the project."
+        ]
+    go =
+      void $ writeFileSafe opts defaultReadme readme
 
 -- -------------------------------------------------------------------- --
 -- Utilities
