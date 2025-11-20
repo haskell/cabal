@@ -1,5 +1,4 @@
-GenericPackageDescription {
-  packageDescription =
+`(,,,,,,,,)`
   PackageDescription {
     specVersion = CabalSpecV1_6,
     package = PackageIdentifier {
@@ -52,10 +51,10 @@ GenericPackageDescription {
     extraSrcFiles = [],
     extraTmpFiles = [],
     extraDocFiles = [],
-    extraFiles = []},
-  gpdScannedVersion = Nothing,
-  genPackageFlags = [],
-  condLibrary = Just
+    extraFiles = []}
+  Nothing
+  []
+  (Just
     CondNode {
       condTreeData = Library {
         libName = LMainLibName,
@@ -72,11 +71,11 @@ GenericPackageDescription {
           buildTools = [],
           buildToolDepends = [],
           cppOptions = [],
-          jsppOptions = [],
           asmOptions = [],
           cmmOptions = [],
           ccOptions = [],
           cxxOptions = [],
+          jsppOptions = [],
           ldOptions = [],
           hsc2hsOptions = [],
           pkgconfigDepends = [],
@@ -142,10 +141,10 @@ GenericPackageDescription {
           (OrLaterVersion
             (mkVersion [0, 1, 0, 0]))
           mainLibSet],
-      condTreeComponents = []},
-  condSubLibraries = [],
-  condForeignLibs = [],
-  condExecutables = [
+      condTreeComponents = []})
+  []
+  []
+  [
     _×_
       (UnqualComponentName
         "wl-pprint-string-example")
@@ -161,11 +160,11 @@ GenericPackageDescription {
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
-            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
             cxxOptions = [],
+            jsppOptions = [],
             ldOptions = [],
             hsc2hsOptions = [],
             pkgconfigDepends = [],
@@ -241,6 +240,6 @@ GenericPackageDescription {
             (PackageName "wl-pprint-indef")
             (OrLaterVersion (mkVersion [0]))
             mainLibSet],
-        condTreeComponents = []}],
-  condTestSuites = [],
-  condBenchmarks = []}
+        condTreeComponents = []}]
+  []
+  []

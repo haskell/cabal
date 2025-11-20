@@ -55,11 +55,53 @@ instance ToExpr Dependency where
 instance ToExpr (SymbolicPathX allowAbs from to)
 
 instance ToExpr a => ToExpr (InstallDirs a)
+instance ToExpr a => ToExpr (WithImports a)
+
+instance
+  ( ToExpr a
+  , ToExpr b
+  , ToExpr c
+  , ToExpr d
+  , ToExpr e
+  , ToExpr f
+  , ToExpr g
+  ) =>
+  ToExpr ( a
+         , b
+         , c
+         , d
+         , e
+         , f
+         , g
+         )
+
+instance
+  ( ToExpr a
+  , ToExpr b
+  , ToExpr c
+  , ToExpr d
+  , ToExpr e
+  , ToExpr f
+  , ToExpr g
+  , ToExpr h
+  , ToExpr i
+  ) =>
+  ToExpr ( a
+         , b
+         , c
+         , d
+         , e
+         , f
+         , g
+         , h
+         , i
+         )
 
 instance ToExpr AbiDependency
 instance ToExpr AbiHash
 instance ToExpr Arch
 instance ToExpr Benchmark
+instance ToExpr BenchmarkStanza
 instance ToExpr BenchmarkInterface
 instance ToExpr BenchmarkType
 instance ToExpr BuildInfo
@@ -117,6 +159,7 @@ instance ToExpr SetupBuildInfo
 instance ToExpr SourceRepo
 instance ToExpr TestShowDetails
 instance ToExpr TestSuite
+instance ToExpr TestSuiteStanza
 instance ToExpr TestSuiteInterface
 instance ToExpr TestType
 instance ToExpr UnitId

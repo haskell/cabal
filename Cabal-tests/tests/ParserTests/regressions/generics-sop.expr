@@ -1,5 +1,4 @@
-GenericPackageDescription {
-  packageDescription =
+`(,,,,,,,,)`
   PackageDescription {
     specVersion = CabalSpecV1_10,
     package = PackageIdentifier {
@@ -124,10 +123,10 @@ GenericPackageDescription {
       SymbolicPath "CHANGELOG.md"],
     extraTmpFiles = [],
     extraDocFiles = [],
-    extraFiles = []},
-  gpdScannedVersion = Nothing,
-  genPackageFlags = [],
-  condLibrary = Just
+    extraFiles = []}
+  Nothing
+  []
+  (Just
     CondNode {
       condTreeData = Library {
         libName = LMainLibName,
@@ -163,11 +162,11 @@ GenericPackageDescription {
           buildTools = [],
           buildToolDepends = [],
           cppOptions = [],
-          jsppOptions = [],
           asmOptions = [],
           cmmOptions = [],
           ccOptions = [],
           cxxOptions = [],
+          jsppOptions = [],
           ldOptions = [],
           hsc2hsOptions = [],
           pkgconfigDepends = [],
@@ -334,11 +333,11 @@ GenericPackageDescription {
                 buildTools = [],
                 buildToolDepends = [],
                 cppOptions = [],
-                jsppOptions = [],
                 asmOptions = [],
                 cmmOptions = [],
                 ccOptions = [],
                 cxxOptions = [],
+                jsppOptions = [],
                 ldOptions = [],
                 hsc2hsOptions = [],
                 pkgconfigDepends = [],
@@ -421,11 +420,11 @@ GenericPackageDescription {
                 buildTools = [],
                 buildToolDepends = [],
                 cppOptions = [],
-                jsppOptions = [],
                 asmOptions = [],
                 cmmOptions = [],
                 ccOptions = [],
                 cxxOptions = [],
+                jsppOptions = [],
                 ldOptions = [],
                 hsc2hsOptions = [],
                 pkgconfigDepends = [],
@@ -526,11 +525,11 @@ GenericPackageDescription {
                 buildTools = [],
                 buildToolDepends = [],
                 cppOptions = [],
-                jsppOptions = [],
                 asmOptions = [],
                 cmmOptions = [],
                 ccOptions = [],
                 cxxOptions = [],
+                jsppOptions = [],
                 ldOptions = [],
                 hsc2hsOptions = [],
                 pkgconfigDepends = [],
@@ -599,11 +598,11 @@ GenericPackageDescription {
                 buildTools = [],
                 buildToolDepends = [],
                 cppOptions = [],
-                jsppOptions = [],
                 asmOptions = [],
                 cmmOptions = [],
                 ccOptions = [],
                 cxxOptions = [],
+                jsppOptions = [],
                 ldOptions = [],
                 hsc2hsOptions = [],
                 pkgconfigDepends = [],
@@ -654,11 +653,11 @@ GenericPackageDescription {
                 mixins = []}},
             condTreeConstraints = [],
             condTreeComponents = []},
-          condBranchIfFalse = Nothing}]},
-  condSubLibraries = [],
-  condForeignLibs = [],
-  condExecutables = [],
-  condTestSuites = [
+          condBranchIfFalse = Nothing}]})
+  []
+  []
+  []
+  [
     _×_
       (UnqualComponentName "doctests")
       CondNode {
@@ -673,11 +672,11 @@ GenericPackageDescription {
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
-            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
             cxxOptions = [],
+            jsppOptions = [],
             ldOptions = [],
             hsc2hsOptions = [],
             pkgconfigDepends = [],
@@ -771,11 +770,11 @@ GenericPackageDescription {
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
-            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
             cxxOptions = [],
+            jsppOptions = [],
             ldOptions = [],
             hsc2hsOptions = [],
             pkgconfigDepends = [],
@@ -851,5 +850,5 @@ GenericPackageDescription {
             (PackageName "generics-sop")
             (OrLaterVersion (mkVersion [0]))
             mainLibSet],
-        condTreeComponents = []}],
-  condBenchmarks = []}
+        condTreeComponents = []}]
+  []

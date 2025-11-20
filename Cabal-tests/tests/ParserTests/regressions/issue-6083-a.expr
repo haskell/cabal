@@ -1,5 +1,4 @@
-GenericPackageDescription {
-  packageDescription =
+`(,,,,,,,,)`
   PackageDescription {
     specVersion = CabalSpecV3_4,
     package = PackageIdentifier {
@@ -33,10 +32,10 @@ GenericPackageDescription {
     extraSrcFiles = [],
     extraTmpFiles = [],
     extraDocFiles = [],
-    extraFiles = []},
-  gpdScannedVersion = Nothing,
-  genPackageFlags = [],
-  condLibrary = Just
+    extraFiles = []}
+  Nothing
+  []
+  (Just
     CondNode {
       condTreeData = Library {
         libName = LMainLibName,
@@ -51,11 +50,11 @@ GenericPackageDescription {
           buildTools = [],
           buildToolDepends = [],
           cppOptions = [],
-          jsppOptions = [],
           asmOptions = [],
           cmmOptions = [],
           ccOptions = [],
           cxxOptions = [],
+          jsppOptions = [],
           ldOptions = [],
           hsc2hsOptions = [],
           pkgconfigDepends = [],
@@ -130,8 +129,8 @@ GenericPackageDescription {
                 LSubLibName
                   (UnqualComponentName
                     "sublib")]))],
-      condTreeComponents = []},
-  condSubLibraries = [
+      condTreeComponents = []})
+  [
     _×_
       (UnqualComponentName "sublib")
       CondNode {
@@ -149,11 +148,11 @@ GenericPackageDescription {
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
-            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
             cxxOptions = [],
+            jsppOptions = [],
             ldOptions = [],
             hsc2hsOptions = [],
             pkgconfigDepends = [],
@@ -202,9 +201,9 @@ GenericPackageDescription {
             targetBuildDepends = [],
             mixins = []}},
         condTreeConstraints = [],
-        condTreeComponents = []}],
-  condForeignLibs = [],
-  condExecutables = [
+        condTreeComponents = []}]
+  []
+  [
     _×_
       (UnqualComponentName "demo-a")
       CondNode {
@@ -219,11 +218,11 @@ GenericPackageDescription {
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
-            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
             cxxOptions = [],
+            jsppOptions = [],
             ldOptions = [],
             hsc2hsOptions = [],
             pkgconfigDepends = [],
@@ -302,11 +301,11 @@ GenericPackageDescription {
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
-            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
             cxxOptions = [],
+            jsppOptions = [],
             ldOptions = [],
             hsc2hsOptions = [],
             pkgconfigDepends = [],
@@ -380,6 +379,6 @@ GenericPackageDescription {
                   LSubLibName
                     (UnqualComponentName
                       "sublib")]))],
-        condTreeComponents = []}],
-  condTestSuites = [],
-  condBenchmarks = []}
+        condTreeComponents = []}]
+  []
+  []

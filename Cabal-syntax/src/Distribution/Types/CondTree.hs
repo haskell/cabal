@@ -13,6 +13,7 @@ module Distribution.Types.CondTree
   , mapTreeConstrs
   , mapTreeConds
   , mapTreeData
+  , mapTreeData'
   , traverseCondTreeV
   , traverseCondBranchV
   , traverseCondTreeC
@@ -122,6 +123,26 @@ mapTreeConds f = mapCondTree id id f
 
 mapTreeData :: (a -> b) -> CondTree v c a -> CondTree v c b
 mapTreeData f = mapCondTree f id id
+
+-- | Transform data and branches differently
+mapTreeData'
+  :: (a -> b)
+  -- ^ transform root
+  -> (a -> b)
+  -- ^ transform subtrees
+  -> CondTree v c a
+  -> CondTree v c b
+mapTreeData' f g n =
+  n
+    { condTreeData = f (condTreeData n)
+    , condTreeComponents = map g' (condTreeComponents n)
+    }
+  where
+    g' (CondBranch cond ifTrue ifFalse) =
+      CondBranch
+        (cond)
+        (mapTreeData' g g $ ifTrue)
+        (mapTreeData' g g <$> ifFalse)
 
 -- | @@Traversal@@ for the variables
 traverseCondTreeV :: L.Traversal (CondTree v c a) (CondTree w c a) v w

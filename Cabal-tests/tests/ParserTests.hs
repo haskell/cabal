@@ -10,11 +10,29 @@ import Test.Tasty
 import Test.Tasty.Golden.Advanced (goldenTest)
 import Test.Tasty.HUnit
 
-import Control.Monad                               (unless, void)
+import Control.Monad                               (void)
 import Data.Algorithm.Diff                         (PolyDiff (..), getGroupedDiff)
 import Data.Maybe                                  (isNothing)
 import Distribution.Fields                         (pwarning)
-import Distribution.PackageDescription             (GenericPackageDescription)
+import Distribution.PackageDescription
+  ( GenericPackageDescription
+  , packageDescription
+  , gpdScannedVersion
+  , genPackageFlags
+  , gpdCommonStanzas
+  , condLibrary
+  , condSubLibraries
+  , condForeignLibs
+  , condExecutables
+  , condTestSuites
+  , condBenchmarks
+  , condLibraryUnmerged
+  , condSubLibrariesUnmerged
+  , condForeignLibsUnmerged
+  , condExecutablesUnmerged
+  , condTestSuitesUnmerged
+  , condBenchmarksUnmerged
+  )
 import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.Parsec                         (PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
@@ -41,6 +59,7 @@ import Data.TreeDiff.Instances.Cabal ()
 tests :: TestTree
 tests = testGroup "parsec tests"
     [ regressionTests
+    , accessorsTests
     , warningTests
     , errorTests
     , ipiTests
@@ -151,12 +170,48 @@ errorTest fp = cabalGoldenTest fp correct $ do
     correct = replaceExtension input "errors"
 
 -------------------------------------------------------------------------------
+-- Internal accessors tests
+-------------------------------------------------------------------------------
+
+accessorsTests :: TestTree
+accessorsTests = testGroup "accessors"
+    [
+#ifdef MIN_VERSION_tree_diff
+      accessorsGoldenTest "library-merging.cabal"
+#endif
+    ]
+
+#ifdef MIN_VERSION_tree_diff
+-- Here, we test the unmerged internal representation
+accessorsGoldenTest :: FilePath -> TestTree
+accessorsGoldenTest fp = ediffGolden goldenTest "expr" exprFile $ do
+    contents <- BS.readFile input
+    let res = withSource (PCabalFile (fp, contents)) $ parseGenericPackageDescription contents
+    let (_, x) = runParseResult res
+    case x of
+        Right gpd      -> pure $ toExpr
+            ( gpdCommonStanzas gpd
+            , condLibraryUnmerged gpd
+            , condSubLibrariesUnmerged gpd
+            , condForeignLibsUnmerged gpd
+            , condExecutablesUnmerged gpd
+            , condTestSuitesUnmerged gpd
+            , condBenchmarksUnmerged gpd
+            )
+        Left (_, errs) -> fail $ unlines $ "ERROR" : map (showPErrorWithSource . fmap renderCabalFileSource) (NE.toList errs)
+    where
+      input = "tests" </> "ParserTests" </> "accessors" </> fp
+      exprFile = replaceExtension input "expr"
+#endif
+
+-------------------------------------------------------------------------------
 -- Regressions
 -------------------------------------------------------------------------------
 
 regressionTests :: TestTree
 regressionTests = testGroup "regressions"
-    [ regressionTest "encoding-0.8.cabal"
+    [ regressionTest "supervisors-0.1.cabal"
+    , regressionTest "encoding-0.8.cabal"
     , regressionTest "Octree-0.5.cabal"
     , regressionTest "nothing-unicode.cabal"
     , regressionTest "multiple-libs-2.cabal"
@@ -233,12 +288,22 @@ formatGoldenTest fp = cabalGoldenTest "format" correct $ do
 #ifdef MIN_VERSION_tree_diff
 treeDiffGoldenTest :: FilePath -> TestTree
 treeDiffGoldenTest fp = ediffGolden goldenTest "expr" exprFile $ do
-    contents <- BS.readFile input
-    let res = withSource (PCabalFile (fp, contents)) $ parseGenericPackageDescription contents
-    let (_, x) = runParseResult res
-    case x of
-        Right gpd      -> pure (toExpr gpd)
-        Left (_, errs) -> fail $ unlines $ "ERROR" : map (showPErrorWithSource . fmap renderCabalFileSource) (NE.toList errs)
+  contents <- BS.readFile input
+  let res = withSource (PCabalFile (fp, contents)) $ parseGenericPackageDescription contents
+  let (_, x) = runParseResult res
+  case x of
+      Right gpd -> pure $ toExpr
+          ( packageDescription gpd
+          , gpdScannedVersion gpd
+          , genPackageFlags gpd
+          , condLibrary gpd
+          , condSubLibraries gpd
+          , condForeignLibs gpd
+          , condExecutables gpd
+          , condTestSuites gpd
+          , condBenchmarks gpd
+          )
+      Left (_, errs) -> fail $ unlines $ "ERROR" : map (showPErrorWithSource . fmap renderCabalFileSource) (NE.toList errs)
   where
     input = "tests" </> "ParserTests" </> "regressions" </> fp
     exprFile = replaceExtension input "expr"
@@ -250,24 +315,38 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
     x <- parse contents
     let contents' = showGenericPackageDescription x
     y <- parse (toUTF8BS contents')
-    -- previously we mangled licenses a bit
-    let y' = y
+
+    let checkField field =
+          field x == field y @?
 {- FOURMOLU_DISABLE -}
-    unless (x == y') $
 #ifdef MIN_VERSION_tree_diff
-        assertFailure $ unlines
-            [ "re-parsed doesn't match"
-            , show $ ansiWlEditExpr $ ediff x y
-            ]
+            unlines
+                [ "re-parsed doesn't match"
+                , show $ ansiWlEditExpr $ ediff x y
+                ]
 #else
-        assertFailure $ unlines
-            [ "re-parsed doesn't match"
-            , "expected"
-            , show x
-            , "actual"
-            , show y
-            ]
+            unlines
+                [ "re-parsed doesn't match"
+                , "expected"
+                , show x
+                , "actual"
+                , show y
+                ]
 #endif
+    -- Due to the imports being merged, the structural comparison will fail
+    -- Instead, we check the equality after merging
+    sequence_
+      [ checkField packageDescription
+      , checkField gpdScannedVersion
+      , checkField genPackageFlags
+      , checkField condLibrary
+      , checkField condSubLibraries
+      , checkField condForeignLibs
+      , checkField condExecutables
+      , checkField condTestSuites
+      , checkField condBenchmarks
+      ]
+
   where
     parse :: BS.ByteString -> IO GenericPackageDescription
     parse c = do

@@ -17,14 +17,16 @@ tests =
 
 gpdFields :: [(String, GenericPackageDescription -> GenericPackageDescription)]
 gpdFields =
-  [ ("packageDescription", \gpd -> gpd { packageDescription = undefined })
-  , ("genPackageFlags",    \gpd -> gpd { genPackageFlags    = undefined })
-  , ("condLibrary",        \gpd -> gpd { condLibrary        = undefined })
-  , ("condSubLibraries",   \gpd -> gpd { condSubLibraries   = undefined })
-  , ("condForeignLibs",    \gpd -> gpd { condForeignLibs    = undefined })
-  , ("condExecutables",    \gpd -> gpd { condExecutables    = undefined })
-  , ("condTestSuites",     \gpd -> gpd { condTestSuites     = undefined })
-  , ("condBenchmarks",     \gpd -> gpd { condBenchmarks     = undefined })
+  [ ("packageDescriptionInternal", \gpd -> gpd { packageDescriptionInternal = undefined })
+  , ("gpdScannedVersionInternal",  \gpd -> gpd { gpdScannedVersionInternal  = undefined })
+  , ("genPackageFlagsInternal",    \gpd -> gpd { genPackageFlagsInternal    = undefined })
+  , ("gpdCommonStanzas",           \gpd -> gpd { gpdCommonStanzas           = undefined })
+  , ("condLibraryUnmerged",        \gpd -> gpd { condLibraryUnmerged        = undefined })
+  , ("condSubLibrariesUnmerged",   \gpd -> gpd { condSubLibrariesUnmerged   = undefined })
+  , ("condForeignLibsUnmerged",    \gpd -> gpd { condForeignLibsUnmerged    = undefined })
+  , ("condExecutablesUnmerged",    \gpd -> gpd { condExecutablesUnmerged    = undefined })
+  , ("condTestSuitesUnmerged",     \gpd -> gpd { condTestSuitesUnmerged     = undefined })
+  , ("condBenchmarksUnmerged",     \gpd -> gpd { condBenchmarksUnmerged     = undefined })
   ]
 
 gpdDeepseq :: Assertion

@@ -163,8 +163,8 @@ import Distribution.Package
   , packageVersion
   )
 import Distribution.PackageDescription
-  ( GenericPackageDescription (..)
-  , PackageDescription
+  ( PackageDescription
+  , genPackageFlags
   )
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription.Configuration
