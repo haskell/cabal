@@ -1,5 +1,4 @@
-GenericPackageDescription {
-  packageDescription =
+`(,,,,,,,,)`
   PackageDescription {
     specVersion = CabalSpecV3_0,
     package = PackageIdentifier {
@@ -116,16 +115,16 @@ GenericPackageDescription {
       SymbolicPath "CHANGELOG.md"],
     extraTmpFiles = [],
     extraDocFiles = [],
-    extraFiles = []},
-  gpdScannedVersion = Nothing,
-  genPackageFlags = [
+    extraFiles = []}
+  Nothing
+  [
     MkPackageFlag {
       flagName = FlagName
         "use-pkg-config",
       flagDescription = "",
       flagDefault = False,
-      flagManual = True}],
-  condLibrary = Just
+      flagManual = True}]
+  (Just
     CondNode {
       condTreeData = Library {
         libName = LMainLibName,
@@ -149,11 +148,11 @@ GenericPackageDescription {
               (OrLaterVersion
                 (mkVersion [0]))],
           cppOptions = [],
-          jsppOptions = [],
           asmOptions = [],
           cmmOptions = [],
           ccOptions = [],
           cxxOptions = [],
+          jsppOptions = [],
           ldOptions = [],
           hsc2hsOptions = [],
           pkgconfigDepends = [],
@@ -255,11 +254,11 @@ GenericPackageDescription {
                 buildTools = [],
                 buildToolDepends = [],
                 cppOptions = [],
-                jsppOptions = [],
                 asmOptions = [],
                 cmmOptions = [],
                 ccOptions = [],
                 cxxOptions = [],
+                jsppOptions = [],
                 ldOptions = [],
                 hsc2hsOptions = [],
                 pkgconfigDepends = [],
@@ -342,11 +341,11 @@ GenericPackageDescription {
                 buildTools = [],
                 buildToolDepends = [],
                 cppOptions = [],
-                jsppOptions = [],
                 asmOptions = [],
                 cmmOptions = [],
                 ccOptions = [],
                 cxxOptions = [],
+                jsppOptions = [],
                 ldOptions = [],
                 hsc2hsOptions = [],
                 pkgconfigDepends = [],
@@ -429,11 +428,11 @@ GenericPackageDescription {
                 buildTools = [],
                 buildToolDepends = [],
                 cppOptions = [],
-                jsppOptions = [],
                 asmOptions = [],
                 cmmOptions = [],
                 ccOptions = [],
                 cxxOptions = [],
+                jsppOptions = [],
                 ldOptions = [],
                 hsc2hsOptions = [],
                 pkgconfigDepends = [
@@ -501,11 +500,11 @@ GenericPackageDescription {
                   buildTools = [],
                   buildToolDepends = [],
                   cppOptions = [],
-                  jsppOptions = [],
                   asmOptions = [],
                   cmmOptions = [],
                   ccOptions = [],
                   cxxOptions = [],
+                  jsppOptions = [],
                   ldOptions = [],
                   hsc2hsOptions = [],
                   pkgconfigDepends = [],
@@ -571,11 +570,11 @@ GenericPackageDescription {
                         buildTools = [],
                         buildToolDepends = [],
                         cppOptions = [],
-                        jsppOptions = [],
                         asmOptions = [],
                         cmmOptions = [],
                         ccOptions = [],
                         cxxOptions = [],
+                        jsppOptions = [],
                         ldOptions = [],
                         hsc2hsOptions = [],
                         pkgconfigDepends = [],
@@ -639,11 +638,11 @@ GenericPackageDescription {
                           buildTools = [],
                           buildToolDepends = [],
                           cppOptions = [],
-                          jsppOptions = [],
                           asmOptions = [],
                           cmmOptions = [],
                           ccOptions = [],
                           cxxOptions = [],
+                          jsppOptions = [],
                           ldOptions = [],
                           hsc2hsOptions = [],
                           pkgconfigDepends = [],
@@ -709,11 +708,11 @@ GenericPackageDescription {
                                 buildTools = [],
                                 buildToolDepends = [],
                                 cppOptions = [],
-                                jsppOptions = [],
                                 asmOptions = [],
                                 cmmOptions = [],
                                 ccOptions = [],
                                 cxxOptions = [],
+                                jsppOptions = [],
                                 ldOptions = [],
                                 hsc2hsOptions = [],
                                 pkgconfigDepends = [],
@@ -763,9 +762,9 @@ GenericPackageDescription {
                             condTreeConstraints = [],
                             condTreeComponents = []},
                           condBranchIfFalse =
-                          Nothing}]}}]}}]},
-  condSubLibraries = [],
-  condForeignLibs = [],
-  condExecutables = [],
-  condTestSuites = [],
-  condBenchmarks = []}
+                          Nothing}]}}]}}]})
+  []
+  []
+  []
+  []
+  []

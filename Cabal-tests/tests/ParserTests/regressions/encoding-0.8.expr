@@ -1,5 +1,4 @@
-GenericPackageDescription {
-  packageDescription =
+`(,,,,,,,,)`
   PackageDescription {
     specVersion = CabalSpecV1_12,
     package = PackageIdentifier {
@@ -48,10 +47,10 @@ GenericPackageDescription {
       SymbolicPath "--"],
     extraTmpFiles = [],
     extraDocFiles = [],
-    extraFiles = []},
-  gpdScannedVersion = Nothing,
-  genPackageFlags = [],
-  condLibrary = Just
+    extraFiles = []}
+  Nothing
+  []
+  (Just
     CondNode {
       condTreeData = Library {
         libName = LMainLibName,
@@ -67,11 +66,11 @@ GenericPackageDescription {
           buildTools = [],
           buildToolDepends = [],
           cppOptions = [],
-          jsppOptions = [],
           asmOptions = [],
           cmmOptions = [],
           ccOptions = [],
           cxxOptions = [],
+          jsppOptions = [],
           ldOptions = [],
           hsc2hsOptions = [],
           pkgconfigDepends = [],
@@ -140,9 +139,9 @@ GenericPackageDescription {
             (ThisVersion
               (mkVersion [4, 4])))
           mainLibSet],
-      condTreeComponents = []},
-  condSubLibraries = [],
-  condForeignLibs = [],
-  condExecutables = [],
-  condTestSuites = [],
-  condBenchmarks = []}
+      condTreeComponents = []})
+  []
+  []
+  []
+  []
+  []

@@ -1,5 +1,4 @@
-GenericPackageDescription {
-  packageDescription =
+`(,,,,,,,,)`
   PackageDescription {
     specVersion = CabalSpecV2_0,
     package = PackageIdentifier {
@@ -35,13 +34,13 @@ GenericPackageDescription {
     extraSrcFiles = [],
     extraTmpFiles = [],
     extraDocFiles = [],
-    extraFiles = []},
-  gpdScannedVersion = Nothing,
-  genPackageFlags = [],
-  condLibrary = Nothing,
-  condSubLibraries = [],
-  condForeignLibs = [],
-  condExecutables = [
+    extraFiles = []}
+  Nothing
+  []
+  Nothing
+  []
+  []
+  [
     _×_
       (UnqualComponentName
         "flag-test-exe")
@@ -57,11 +56,11 @@ GenericPackageDescription {
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
-            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
             cxxOptions = [],
+            jsppOptions = [],
             ldOptions = [],
             hsc2hsOptions = [],
             pkgconfigDepends = [],
@@ -126,8 +125,8 @@ GenericPackageDescription {
               (EarlierVersion
                 (mkVersion [5])))
             mainLibSet],
-        condTreeComponents = []}],
-  condTestSuites = [
+        condTreeComponents = []}]
+  [
     _×_
       (UnqualComponentName
         "flag-cabal-test")
@@ -143,11 +142,11 @@ GenericPackageDescription {
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
-            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
             cxxOptions = [],
+            jsppOptions = [],
             ldOptions = [],
             hsc2hsOptions = [],
             pkgconfigDepends = [],
@@ -231,11 +230,11 @@ GenericPackageDescription {
                   buildTools = [],
                   buildToolDepends = [],
                   cppOptions = [],
-                  jsppOptions = [],
                   asmOptions = [],
                   cmmOptions = [],
                   ccOptions = [],
                   cxxOptions = [],
+                  jsppOptions = [],
                   ldOptions = [],
                   hsc2hsOptions = [],
                   pkgconfigDepends = [],
@@ -285,5 +284,5 @@ GenericPackageDescription {
                 testCodeGenerators = []},
               condTreeConstraints = [],
               condTreeComponents = []},
-            condBranchIfFalse = Nothing}]}],
-  condBenchmarks = []}
+            condBranchIfFalse = Nothing}]}]
+  []

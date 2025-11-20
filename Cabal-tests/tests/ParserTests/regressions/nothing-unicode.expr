@@ -1,5 +1,4 @@
-GenericPackageDescription {
-  packageDescription =
+`(,,,,,,,,)`
   PackageDescription {
     specVersion = CabalSpecV1_10,
     package = PackageIdentifier {
@@ -45,15 +44,15 @@ GenericPackageDescription {
     extraSrcFiles = [],
     extraTmpFiles = [],
     extraDocFiles = [],
-    extraFiles = []},
-  gpdScannedVersion = Nothing,
-  genPackageFlags = [
+    extraFiles = []}
+  Nothing
+  [
     MkPackageFlag {
       flagName = FlagName "\28961",
       flagDescription = "\28961",
       flagDefault = True,
-      flagManual = False}],
-  condLibrary = Just
+      flagManual = False}]
+  (Just
     CondNode {
       condTreeData = Library {
         libName = LMainLibName,
@@ -69,11 +68,11 @@ GenericPackageDescription {
           buildTools = [],
           buildToolDepends = [],
           cppOptions = [],
-          jsppOptions = [],
           asmOptions = [],
           cmmOptions = [],
           ccOptions = [],
           cxxOptions = [],
+          jsppOptions = [],
           ldOptions = [],
           hsc2hsOptions = [],
           pkgconfigDepends = [],
@@ -140,11 +139,11 @@ GenericPackageDescription {
                 buildTools = [],
                 buildToolDepends = [],
                 cppOptions = [],
-                jsppOptions = [],
                 asmOptions = [],
                 cmmOptions = [],
                 ccOptions = [],
                 cxxOptions = [],
+                jsppOptions = [],
                 ldOptions = [],
                 hsc2hsOptions = [],
                 pkgconfigDepends = [],
@@ -193,9 +192,9 @@ GenericPackageDescription {
                 mixins = []}},
             condTreeConstraints = [],
             condTreeComponents = []},
-          condBranchIfFalse = Nothing}]},
-  condSubLibraries = [],
-  condForeignLibs = [],
-  condExecutables = [],
-  condTestSuites = [],
-  condBenchmarks = []}
+          condBranchIfFalse = Nothing}]})
+  []
+  []
+  []
+  []
+  []

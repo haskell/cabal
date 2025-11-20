@@ -1,5 +1,4 @@
-GenericPackageDescription {
-  packageDescription =
+`(,,,,,,,,)`
   PackageDescription {
     specVersion = CabalSpecV2_0,
     package = PackageIdentifier {
@@ -35,10 +34,10 @@ GenericPackageDescription {
     extraSrcFiles = [],
     extraTmpFiles = [],
     extraDocFiles = [],
-    extraFiles = []},
-  gpdScannedVersion = Nothing,
-  genPackageFlags = [],
-  condLibrary = Just
+    extraFiles = []}
+  Nothing
+  []
+  (Just
     CondNode {
       condTreeData = Library {
         libName = LMainLibName,
@@ -54,11 +53,11 @@ GenericPackageDescription {
           buildTools = [],
           buildToolDepends = [],
           cppOptions = [],
-          jsppOptions = [],
           asmOptions = [],
           cmmOptions = [],
           ccOptions = [],
           cxxOptions = [],
+          jsppOptions = [],
           ldOptions = [],
           hsc2hsOptions = [],
           pkgconfigDepends = [],
@@ -115,8 +114,8 @@ GenericPackageDescription {
           (PackageName "base")
           (OrLaterVersion (mkVersion [0]))
           mainLibSet],
-      condTreeComponents = []},
-  condSubLibraries = [
+      condTreeComponents = []})
+  [
     _×_
       (UnqualComponentName "public")
       CondNode {
@@ -135,11 +134,11 @@ GenericPackageDescription {
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
-            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
             cxxOptions = [],
+            jsppOptions = [],
             ldOptions = [],
             hsc2hsOptions = [],
             pkgconfigDepends = [],
@@ -196,8 +195,8 @@ GenericPackageDescription {
             (PackageName "base")
             (OrLaterVersion (mkVersion [0]))
             mainLibSet],
-        condTreeComponents = []}],
-  condForeignLibs = [],
-  condExecutables = [],
-  condTestSuites = [],
-  condBenchmarks = []}
+        condTreeComponents = []}]
+  []
+  []
+  []
+  []

@@ -1,5 +1,4 @@
-GenericPackageDescription {
-  packageDescription =
+`(,,,,,,,,)`
   PackageDescription {
     specVersion = CabalSpecV2_2,
     package = PackageIdentifier {
@@ -55,9 +54,9 @@ GenericPackageDescription {
     extraSrcFiles = [],
     extraTmpFiles = [],
     extraDocFiles = [],
-    extraFiles = []},
-  gpdScannedVersion = Nothing,
-  genPackageFlags = [
+    extraFiles = []}
+  Nothing
+  [
     MkPackageFlag {
       flagName = FlagName "cuda",
       flagDescription =
@@ -69,8 +68,8 @@ GenericPackageDescription {
       flagDescription =
       "only build with Double and Long support",
       flagDefault = False,
-      flagManual = False}],
-  condLibrary = Just
+      flagManual = False}]
+  (Just
     CondNode {
       condTreeData = Library {
         libName = LMainLibName,
@@ -268,11 +267,11 @@ GenericPackageDescription {
           buildTools = [],
           buildToolDepends = [],
           cppOptions = [],
-          jsppOptions = [],
           asmOptions = [],
           cmmOptions = [],
           ccOptions = [],
           cxxOptions = [],
+          jsppOptions = [],
           ldOptions = [],
           hsc2hsOptions = [],
           pkgconfigDepends = [],
@@ -603,11 +602,11 @@ GenericPackageDescription {
                 buildTools = [],
                 buildToolDepends = [],
                 cppOptions = [],
-                jsppOptions = [],
                 asmOptions = [],
                 cmmOptions = [],
                 ccOptions = [],
                 cxxOptions = [],
+                jsppOptions = [],
                 ldOptions = [],
                 hsc2hsOptions = [],
                 pkgconfigDepends = [],
@@ -848,11 +847,11 @@ GenericPackageDescription {
                 buildTools = [],
                 buildToolDepends = [],
                 cppOptions = [],
-                jsppOptions = [],
                 asmOptions = [],
                 cmmOptions = [],
                 ccOptions = [],
                 cxxOptions = [],
+                jsppOptions = [],
                 ldOptions = [],
                 hsc2hsOptions = [],
                 pkgconfigDepends = [],
@@ -1051,11 +1050,11 @@ GenericPackageDescription {
                       buildTools = [],
                       buildToolDepends = [],
                       cppOptions = [],
-                      jsppOptions = [],
                       asmOptions = [],
                       cmmOptions = [],
                       ccOptions = [],
                       cxxOptions = [],
+                      jsppOptions = [],
                       ldOptions = [],
                       hsc2hsOptions = [],
                       pkgconfigDepends = [],
@@ -1105,8 +1104,7 @@ GenericPackageDescription {
                   condTreeConstraints = [],
                   condTreeComponents = []},
                 condBranchIfFalse = Nothing}]},
-          condBranchIfFalse = Nothing}]},
-  condSubLibraries =
+          condBranchIfFalse = Nothing}]})
   [
     _×_
       (UnqualComponentName
@@ -1391,11 +1389,11 @@ GenericPackageDescription {
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
-            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
             cxxOptions = [],
+            jsppOptions = [],
             ldOptions = [],
             hsc2hsOptions = [],
             pkgconfigDepends = [],
@@ -2713,11 +2711,11 @@ GenericPackageDescription {
                   buildTools = [],
                   buildToolDepends = [],
                   cppOptions = [],
-                  jsppOptions = [],
                   asmOptions = [],
                   cmmOptions = [],
                   ccOptions = [],
                   cxxOptions = [],
+                  jsppOptions = [],
                   ldOptions = [],
                   hsc2hsOptions = [],
                   pkgconfigDepends = [],
@@ -2805,11 +2803,11 @@ GenericPackageDescription {
                     buildTools = [],
                     buildToolDepends = [],
                     cppOptions = [],
-                    jsppOptions = [],
                     asmOptions = [],
                     cmmOptions = [],
                     ccOptions = [],
                     cxxOptions = [],
+                    jsppOptions = [],
                     ldOptions = [],
                     hsc2hsOptions = [],
                     pkgconfigDepends = [],
@@ -5034,11 +5032,11 @@ GenericPackageDescription {
             cppOptions = [
               "-DCUDA",
               "-DHASKTORCH_INTERNAL_CUDA"],
-            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
             cxxOptions = [],
+            jsppOptions = [],
             ldOptions = [],
             hsc2hsOptions = [],
             pkgconfigDepends = [],
@@ -6406,11 +6404,11 @@ GenericPackageDescription {
                   buildTools = [],
                   buildToolDepends = [],
                   cppOptions = [],
-                  jsppOptions = [],
                   asmOptions = [],
                   cmmOptions = [],
                   ccOptions = [],
                   cxxOptions = [],
+                  jsppOptions = [],
                   ldOptions = [],
                   hsc2hsOptions = [],
                   pkgconfigDepends = [],
@@ -6499,11 +6497,11 @@ GenericPackageDescription {
                     buildTools = [],
                     buildToolDepends = [],
                     cppOptions = [],
-                    jsppOptions = [],
                     asmOptions = [],
                     cmmOptions = [],
                     ccOptions = [],
                     cxxOptions = [],
+                    jsppOptions = [],
                     ldOptions = [],
                     hsc2hsOptions = [],
                     pkgconfigDepends = [],
@@ -8169,11 +8167,11 @@ GenericPackageDescription {
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
-            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
             cxxOptions = [],
+            jsppOptions = [],
             ldOptions = [],
             hsc2hsOptions = [],
             pkgconfigDepends = [],
@@ -8660,11 +8658,11 @@ GenericPackageDescription {
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
-            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
             cxxOptions = [],
+            jsppOptions = [],
             ldOptions = [],
             hsc2hsOptions = [],
             pkgconfigDepends = [],
@@ -9426,11 +9424,11 @@ GenericPackageDescription {
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
-            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
             cxxOptions = [],
+            jsppOptions = [],
             ldOptions = [],
             hsc2hsOptions = [],
             pkgconfigDepends = [],
@@ -9531,9 +9529,9 @@ GenericPackageDescription {
               (EarlierVersion
                 (mkVersion [0, 0, 2])))
             mainLibSet],
-        condTreeComponents = []}],
-  condForeignLibs = [],
-  condExecutables = [
+        condTreeComponents = []}]
+  []
+  [
     _×_
       (UnqualComponentName
         "isdefinite-cpu")
@@ -9549,11 +9547,11 @@ GenericPackageDescription {
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
-            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
             cxxOptions = [],
+            jsppOptions = [],
             ldOptions = [],
             hsc2hsOptions = [],
             pkgconfigDepends = [],
@@ -9657,11 +9655,11 @@ GenericPackageDescription {
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
-            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
             cxxOptions = [],
+            jsppOptions = [],
             ldOptions = [],
             hsc2hsOptions = [],
             pkgconfigDepends = [],
@@ -9765,11 +9763,11 @@ GenericPackageDescription {
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
-            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
             cxxOptions = [],
+            jsppOptions = [],
             ldOptions = [],
             hsc2hsOptions = [],
             pkgconfigDepends = [],
@@ -9862,11 +9860,11 @@ GenericPackageDescription {
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
-            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
             cxxOptions = [],
+            jsppOptions = [],
             ldOptions = [],
             hsc2hsOptions = [],
             pkgconfigDepends = [],
@@ -9944,8 +9942,8 @@ GenericPackageDescription {
             (PackageName "hasktorch")
             (OrLaterVersion (mkVersion [0]))
             mainLibSet],
-        condTreeComponents = []}],
-  condTestSuites = [
+        condTreeComponents = []}]
+  [
     _×_
       (UnqualComponentName "spec")
       CondNode {
@@ -9960,11 +9958,11 @@ GenericPackageDescription {
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
-            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
             cxxOptions = [],
+            jsppOptions = [],
             ldOptions = [],
             hsc2hsOptions = [],
             pkgconfigDepends = [],
@@ -10244,5 +10242,5 @@ GenericPackageDescription {
             (PackageName "generic-lens")
             (OrLaterVersion (mkVersion [0]))
             mainLibSet],
-        condTreeComponents = []}],
-  condBenchmarks = []}
+        condTreeComponents = []}]
+  []
