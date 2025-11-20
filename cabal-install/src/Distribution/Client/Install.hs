@@ -1264,7 +1264,7 @@ regenerateHaddockIndex
     | otherwise = return ()
     where
       haddockIndexFileIsRequested =
-        fromFlag (installDocumentation installFlags)
+        fromFlagOrDefault False (installDocumentation installFlags)
           && isJust (flagToMaybe (installHaddockIndex installFlags))
 
       -- We want to regenerate the index if some new documentation was actually
@@ -1890,7 +1890,7 @@ installUnpackedPackage
 
         buildFlags vers =
           emptyBuildFlags{buildCommonFlags = commonFlags vers}
-        shouldHaddock = fromFlag (installDocumentation installFlags)
+        shouldHaddock = fromFlagOrDefault False (installDocumentation installFlags)
         haddockFlags' vers =
           haddockFlags{haddockCommonFlags = commonFlags vers}
         testsEnabled =
