@@ -1,6 +1,0 @@
-[
-  MkPackageFlag {
-    flagName = FlagName "foo",
-    flagDescription = "",
-    flagDefault = True,
-    flagManual = True}]
