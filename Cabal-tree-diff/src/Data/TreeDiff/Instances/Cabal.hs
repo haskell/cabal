@@ -57,6 +57,28 @@ instance ToExpr (SymbolicPathX allowAbs from to)
 instance ToExpr a => ToExpr (InstallDirs a)
 instance ToExpr a => ToExpr (WithImports a)
 
+instance
+  ( ToExpr a
+  , ToExpr b
+  , ToExpr c
+  , ToExpr d
+  , ToExpr e
+  , ToExpr f
+  , ToExpr g
+  , ToExpr h
+  , ToExpr i
+  ) =>
+  ToExpr ( a
+         , b
+         , c
+         , d
+         , e
+         , f
+         , g
+         , h
+         , i
+         )
+
 instance ToExpr AbiDependency
 instance ToExpr AbiHash
 instance ToExpr Arch

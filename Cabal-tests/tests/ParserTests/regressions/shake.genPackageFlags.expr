@@ -1,7 +1,0 @@
-[
-  MkPackageFlag {
-    flagName = FlagName "portable",
-    flagDescription =
-    "Obtain FileTime using portable functions",
-    flagDefault = False,
-    flagManual = True}]

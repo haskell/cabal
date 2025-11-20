@@ -1,0 +1,2503 @@
+`(,,,,,,,,)`
+  PackageDescription {
+    specVersion = CabalSpecV1_18,
+    package = PackageIdentifier {
+      pkgName = PackageName "shake",
+      pkgVersion = mkVersion
+        [0, 15, 11]},
+    licenseRaw = Right BSD3,
+    licenseFiles = [
+      SymbolicPath "LICENSE"],
+    copyright =
+    "Neil Mitchell 2011-2017",
+    maintainer =
+    "Neil Mitchell <ndmitchell@gmail.com>",
+    author =
+    "Neil Mitchell <ndmitchell@gmail.com>",
+    stability = "",
+    testedWith = [
+      _×_
+        GHC
+        (ThisVersion
+          (mkVersion [8, 0, 1])),
+      _×_
+        GHC
+        (ThisVersion
+          (mkVersion [7, 10, 3])),
+      _×_
+        GHC
+        (ThisVersion
+          (mkVersion [7, 8, 4])),
+      _×_
+        GHC
+        (ThisVersion
+          (mkVersion [7, 6, 3])),
+      _×_
+        GHC
+        (ThisVersion
+          (mkVersion [7, 4, 2]))],
+    homepage =
+    "http://shakebuild.com",
+    pkgUrl = "",
+    bugReports =
+    "https://github.com/ndmitchell/shake/issues",
+    sourceRepos = [
+      SourceRepo {
+        repoKind = RepoHead,
+        repoType = Just
+          (KnownRepoType Git),
+        repoLocation = Just
+          "https://github.com/ndmitchell/shake.git",
+        repoModule = Nothing,
+        repoBranch = Nothing,
+        repoTag = Nothing,
+        repoSubdir = Nothing}],
+    synopsis =
+    "Build system library, like Make, but more accurate dependencies.",
+    description =
+    concat
+      [
+        "Shake is a Haskell library for writing build systems - designed as a\n",
+        "replacement for @make@. See \"Development.Shake\" for an introduction,\n",
+        "including an example. Further examples are included in the Cabal tarball,\n",
+        "under the @Examples@ directory. The homepage contains links to a user\n",
+        "manual, an academic paper and further information:\n",
+        "<http://shakebuild.com>\n",
+        "\n",
+        "To use Shake the user writes a Haskell program\n",
+        "that imports \"Development.Shake\", defines some build rules, and calls\n",
+        "the 'Development.Shake.shakeArgs' function. Thanks to do notation and infix\n",
+        "operators, a simple Shake build system\n",
+        "is not too dissimilar from a simple Makefile. However, as build systems\n",
+        "get more complex, Shake is able to take advantage of the excellent\n",
+        "abstraction facilities offered by Haskell and easily support much larger\n",
+        "projects. The Shake library provides all the standard features available in other\n",
+        "build systems, including automatic parallelism and minimal rebuilds.\n",
+        "Shake also provides more accurate dependency tracking, including seamless\n",
+        "support for generated files, and dependencies on system information\n",
+        "(e.g. compiler version)."],
+    category = "Development, Shake",
+    customFieldsPD = [],
+    buildTypeRaw = Just Simple,
+    setupBuildInfo = Nothing,
+    library = Nothing,
+    subLibraries = [],
+    executables = [],
+    foreignLibs = [],
+    testSuites = [],
+    benchmarks = [],
+    dataFiles = [
+      SymbolicPath "html/viz.js",
+      SymbolicPath
+        "html/profile.html",
+      SymbolicPath
+        "html/progress.html",
+      SymbolicPath "html/shake.js",
+      SymbolicPath
+        "docs/manual/build.bat",
+      SymbolicPath
+        "docs/manual/Build.hs",
+      SymbolicPath
+        "docs/manual/build.sh",
+      SymbolicPath
+        "docs/manual/constants.c",
+      SymbolicPath
+        "docs/manual/constants.h",
+      SymbolicPath
+        "docs/manual/main.c"],
+    dataDir = SymbolicPath ".",
+    extraSrcFiles = [
+      SymbolicPath
+        "src/Test/C/constants.c",
+      SymbolicPath
+        "src/Test/C/constants.h",
+      SymbolicPath
+        "src/Test/C/main.c",
+      SymbolicPath
+        "src/Test/MakeTutor/Makefile",
+      SymbolicPath
+        "src/Test/MakeTutor/hellofunc.c",
+      SymbolicPath
+        "src/Test/MakeTutor/hellomake.c",
+      SymbolicPath
+        "src/Test/MakeTutor/hellomake.h",
+      SymbolicPath
+        "src/Test/Tar/list.txt",
+      SymbolicPath
+        "src/Test/Ninja/*.ninja",
+      SymbolicPath
+        "src/Test/Ninja/subdir/*.ninja",
+      SymbolicPath
+        "src/Test/Ninja/*.output",
+      SymbolicPath
+        "src/Test/Progress/*.prog",
+      SymbolicPath
+        "src/Test/Tup/hello.c",
+      SymbolicPath
+        "src/Test/Tup/root.cfg",
+      SymbolicPath
+        "src/Test/Tup/newmath/root.cfg",
+      SymbolicPath
+        "src/Test/Tup/newmath/square.c",
+      SymbolicPath
+        "src/Test/Tup/newmath/square.h",
+      SymbolicPath "src/Paths.hs",
+      SymbolicPath "docs/Manual.md",
+      SymbolicPath
+        "docs/shake-progress.png"],
+    extraTmpFiles = [],
+    extraDocFiles = [
+      SymbolicPath "CHANGES.txt",
+      SymbolicPath "README.md"],
+    extraFiles = []}
+  Nothing
+  [
+    MkPackageFlag {
+      flagName = FlagName "portable",
+      flagDescription =
+      "Obtain FileTime using portable functions",
+      flagDefault = False,
+      flagManual = True}]
+  (Just
+    CondNode {
+      condTreeData = Library {
+        libName = LMainLibName,
+        exposedModules = [
+          ModuleName "Development.Shake",
+          ModuleName
+            "Development.Shake.Classes",
+          ModuleName
+            "Development.Shake.Command",
+          ModuleName
+            "Development.Shake.Config",
+          ModuleName
+            "Development.Shake.FilePath",
+          ModuleName
+            "Development.Shake.Forward",
+          ModuleName
+            "Development.Shake.Rule",
+          ModuleName
+            "Development.Shake.Util"],
+        reexportedModules = [],
+        signatures = [],
+        libExposed = True,
+        libVisibility =
+        LibraryVisibilityPublic,
+        libBuildInfo = BuildInfo {
+          buildable = True,
+          buildTools = [],
+          buildToolDepends = [],
+          cppOptions = [],
+          asmOptions = [],
+          cmmOptions = [],
+          ccOptions = [],
+          cxxOptions = [],
+          jsppOptions = [],
+          ldOptions = [],
+          hsc2hsOptions = [],
+          pkgconfigDepends = [],
+          frameworks = [],
+          extraFrameworkDirs = [],
+          asmSources = [],
+          cmmSources = [],
+          cSources = [],
+          cxxSources = [],
+          jsSources = [],
+          hsSourceDirs = [
+            SymbolicPath ".",
+            SymbolicPath "src"],
+          otherModules = [
+            ModuleName
+              "Development.Ninja.Env",
+            ModuleName
+              "Development.Ninja.Lexer",
+            ModuleName
+              "Development.Ninja.Parse",
+            ModuleName
+              "Development.Ninja.Type",
+            ModuleName
+              "Development.Shake.Args",
+            ModuleName
+              "Development.Shake.ByteString",
+            ModuleName
+              "Development.Shake.Core",
+            ModuleName
+              "Development.Shake.CmdOption",
+            ModuleName
+              "Development.Shake.Database",
+            ModuleName
+              "Development.Shake.Demo",
+            ModuleName
+              "Development.Shake.Derived",
+            ModuleName
+              "Development.Shake.Errors",
+            ModuleName
+              "Development.Shake.FileInfo",
+            ModuleName
+              "Development.Shake.FilePattern",
+            ModuleName
+              "Development.Shake.Monad",
+            ModuleName
+              "Development.Shake.Pool",
+            ModuleName
+              "Development.Shake.Profile",
+            ModuleName
+              "Development.Shake.Progress",
+            ModuleName
+              "Development.Shake.Resource",
+            ModuleName
+              "Development.Shake.Rules.Directory",
+            ModuleName
+              "Development.Shake.Rules.File",
+            ModuleName
+              "Development.Shake.Rules.Files",
+            ModuleName
+              "Development.Shake.Rules.Oracle",
+            ModuleName
+              "Development.Shake.Rules.OrderOnly",
+            ModuleName
+              "Development.Shake.Rules.Rerun",
+            ModuleName
+              "Development.Shake.Shake",
+            ModuleName
+              "Development.Shake.Special",
+            ModuleName
+              "Development.Shake.Storage",
+            ModuleName
+              "Development.Shake.Types",
+            ModuleName
+              "Development.Shake.Value",
+            ModuleName "General.Bilist",
+            ModuleName "General.Binary",
+            ModuleName "General.Cleanup",
+            ModuleName "General.Concurrent",
+            ModuleName "General.Extra",
+            ModuleName "General.FileLock",
+            ModuleName "General.Intern",
+            ModuleName "General.Process",
+            ModuleName "General.String",
+            ModuleName "General.Template",
+            ModuleName "General.Timing",
+            ModuleName "Paths_shake"],
+          virtualModules = [],
+          autogenModules = [],
+          defaultLanguage = Just
+            Haskell2010,
+          otherLanguages = [],
+          defaultExtensions = [],
+          otherExtensions = [],
+          oldExtensions = [],
+          extraLibs = [],
+          extraLibsStatic = [],
+          extraGHCiLibs = [],
+          extraBundledLibs = [],
+          extraLibFlavours = [],
+          extraDynLibFlavours = [],
+          extraLibDirs = [],
+          extraLibDirsStatic = [],
+          includeDirs = [],
+          includes = [],
+          autogenIncludes = [],
+          installIncludes = [],
+          options = PerCompilerFlavor
+            []
+            [],
+          profOptions = PerCompilerFlavor
+            []
+            [],
+          sharedOptions =
+          PerCompilerFlavor [] [],
+          profSharedOptions =
+          PerCompilerFlavor [] [],
+          staticOptions =
+          PerCompilerFlavor [] [],
+          customFieldsBI = [],
+          targetBuildDepends = [
+            Dependency
+              (PackageName "base")
+              (OrLaterVersion
+                (mkVersion [4, 5]))
+              mainLibSet,
+            Dependency
+              (PackageName "directory")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet,
+            Dependency
+              (PackageName "hashable")
+              (OrLaterVersion
+                (mkVersion [1, 1, 2, 3]))
+              mainLibSet,
+            Dependency
+              (PackageName "binary")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet,
+            Dependency
+              (PackageName "filepath")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet,
+            Dependency
+              (PackageName "process")
+              (OrLaterVersion
+                (mkVersion [1, 1]))
+              mainLibSet,
+            Dependency
+              (PackageName
+                "unordered-containers")
+              (OrLaterVersion
+                (mkVersion [0, 2, 1]))
+              mainLibSet,
+            Dependency
+              (PackageName "bytestring")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet,
+            Dependency
+              (PackageName "utf8-string")
+              (OrLaterVersion
+                (mkVersion [0, 3]))
+              mainLibSet,
+            Dependency
+              (PackageName "time")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet,
+            Dependency
+              (PackageName "random")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet,
+            Dependency
+              (PackageName "js-jquery")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet,
+            Dependency
+              (PackageName "js-flot")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet,
+            Dependency
+              (PackageName "transformers")
+              (OrLaterVersion
+                (mkVersion [0, 2]))
+              mainLibSet,
+            Dependency
+              (PackageName "extra")
+              (OrLaterVersion
+                (mkVersion [1, 4, 8]))
+              mainLibSet,
+            Dependency
+              (PackageName "deepseq")
+              (OrLaterVersion
+                (mkVersion [1, 1]))
+              mainLibSet],
+          mixins = []}},
+      condTreeConstraints = [
+        Dependency
+          (PackageName "base")
+          (OrLaterVersion
+            (mkVersion [4, 5]))
+          mainLibSet,
+        Dependency
+          (PackageName "directory")
+          (OrLaterVersion (mkVersion [0]))
+          mainLibSet,
+        Dependency
+          (PackageName "hashable")
+          (OrLaterVersion
+            (mkVersion [1, 1, 2, 3]))
+          mainLibSet,
+        Dependency
+          (PackageName "binary")
+          (OrLaterVersion (mkVersion [0]))
+          mainLibSet,
+        Dependency
+          (PackageName "filepath")
+          (OrLaterVersion (mkVersion [0]))
+          mainLibSet,
+        Dependency
+          (PackageName "process")
+          (OrLaterVersion
+            (mkVersion [1, 1]))
+          mainLibSet,
+        Dependency
+          (PackageName
+            "unordered-containers")
+          (OrLaterVersion
+            (mkVersion [0, 2, 1]))
+          mainLibSet,
+        Dependency
+          (PackageName "bytestring")
+          (OrLaterVersion (mkVersion [0]))
+          mainLibSet,
+        Dependency
+          (PackageName "utf8-string")
+          (OrLaterVersion
+            (mkVersion [0, 3]))
+          mainLibSet,
+        Dependency
+          (PackageName "time")
+          (OrLaterVersion (mkVersion [0]))
+          mainLibSet,
+        Dependency
+          (PackageName "random")
+          (OrLaterVersion (mkVersion [0]))
+          mainLibSet,
+        Dependency
+          (PackageName "js-jquery")
+          (OrLaterVersion (mkVersion [0]))
+          mainLibSet,
+        Dependency
+          (PackageName "js-flot")
+          (OrLaterVersion (mkVersion [0]))
+          mainLibSet,
+        Dependency
+          (PackageName "transformers")
+          (OrLaterVersion
+            (mkVersion [0, 2]))
+          mainLibSet,
+        Dependency
+          (PackageName "extra")
+          (OrLaterVersion
+            (mkVersion [1, 4, 8]))
+          mainLibSet,
+        Dependency
+          (PackageName "deepseq")
+          (OrLaterVersion
+            (mkVersion [1, 1]))
+          mainLibSet],
+      condTreeComponents = [
+        CondBranch {
+          condBranchCondition =
+          `Var (PackageFlag (FlagName "portable"))`,
+          condBranchIfTrue = CondNode {
+            condTreeData = Library {
+              libName = LMainLibName,
+              exposedModules = [],
+              reexportedModules = [],
+              signatures = [],
+              libExposed = True,
+              libVisibility =
+              LibraryVisibilityPublic,
+              libBuildInfo = BuildInfo {
+                buildable = True,
+                buildTools = [],
+                buildToolDepends = [],
+                cppOptions = ["-DPORTABLE"],
+                asmOptions = [],
+                cmmOptions = [],
+                ccOptions = [],
+                cxxOptions = [],
+                jsppOptions = [],
+                ldOptions = [],
+                hsc2hsOptions = [],
+                pkgconfigDepends = [],
+                frameworks = [],
+                extraFrameworkDirs = [],
+                asmSources = [],
+                cmmSources = [],
+                cSources = [],
+                cxxSources = [],
+                jsSources = [],
+                hsSourceDirs = [],
+                otherModules = [],
+                virtualModules = [],
+                autogenModules = [],
+                defaultLanguage = Nothing,
+                otherLanguages = [],
+                defaultExtensions = [],
+                otherExtensions = [],
+                oldExtensions = [],
+                extraLibs = [],
+                extraLibsStatic = [],
+                extraGHCiLibs = [],
+                extraBundledLibs = [],
+                extraLibFlavours = [],
+                extraDynLibFlavours = [],
+                extraLibDirs = [],
+                extraLibDirsStatic = [],
+                includeDirs = [],
+                includes = [],
+                autogenIncludes = [],
+                installIncludes = [],
+                options = PerCompilerFlavor
+                  []
+                  [],
+                profOptions = PerCompilerFlavor
+                  []
+                  [],
+                sharedOptions =
+                PerCompilerFlavor [] [],
+                profSharedOptions =
+                PerCompilerFlavor [] [],
+                staticOptions =
+                PerCompilerFlavor [] [],
+                customFieldsBI = [],
+                targetBuildDepends = [],
+                mixins = []}},
+            condTreeConstraints = [],
+            condTreeComponents = [
+              CondBranch {
+                condBranchCondition =
+                `Var (Impl GHC (EarlierVersion (mkVersion [7,6])))`,
+                condBranchIfTrue = CondNode {
+                  condTreeData = Library {
+                    libName = LMainLibName,
+                    exposedModules = [],
+                    reexportedModules = [],
+                    signatures = [],
+                    libExposed = True,
+                    libVisibility =
+                    LibraryVisibilityPublic,
+                    libBuildInfo = BuildInfo {
+                      buildable = True,
+                      buildTools = [],
+                      buildToolDepends = [],
+                      cppOptions = [],
+                      asmOptions = [],
+                      cmmOptions = [],
+                      ccOptions = [],
+                      cxxOptions = [],
+                      jsppOptions = [],
+                      ldOptions = [],
+                      hsc2hsOptions = [],
+                      pkgconfigDepends = [],
+                      frameworks = [],
+                      extraFrameworkDirs = [],
+                      asmSources = [],
+                      cmmSources = [],
+                      cSources = [],
+                      cxxSources = [],
+                      jsSources = [],
+                      hsSourceDirs = [],
+                      otherModules = [],
+                      virtualModules = [],
+                      autogenModules = [],
+                      defaultLanguage = Nothing,
+                      otherLanguages = [],
+                      defaultExtensions = [],
+                      otherExtensions = [],
+                      oldExtensions = [],
+                      extraLibs = [],
+                      extraLibsStatic = [],
+                      extraGHCiLibs = [],
+                      extraBundledLibs = [],
+                      extraLibFlavours = [],
+                      extraDynLibFlavours = [],
+                      extraLibDirs = [],
+                      extraLibDirsStatic = [],
+                      includeDirs = [],
+                      includes = [],
+                      autogenIncludes = [],
+                      installIncludes = [],
+                      options = PerCompilerFlavor
+                        []
+                        [],
+                      profOptions = PerCompilerFlavor
+                        []
+                        [],
+                      sharedOptions =
+                      PerCompilerFlavor [] [],
+                      profSharedOptions =
+                      PerCompilerFlavor [] [],
+                      staticOptions =
+                      PerCompilerFlavor [] [],
+                      customFieldsBI = [],
+                      targetBuildDepends = [
+                        Dependency
+                          (PackageName "old-time")
+                          (OrLaterVersion (mkVersion [0]))
+                          mainLibSet],
+                      mixins = []}},
+                  condTreeConstraints = [
+                    Dependency
+                      (PackageName "old-time")
+                      (OrLaterVersion (mkVersion [0]))
+                      mainLibSet],
+                  condTreeComponents = []},
+                condBranchIfFalse = Nothing}]},
+          condBranchIfFalse = Just
+            CondNode {
+              condTreeData = Library {
+                libName = LMainLibName,
+                exposedModules = [],
+                reexportedModules = [],
+                signatures = [],
+                libExposed = True,
+                libVisibility =
+                LibraryVisibilityPublic,
+                libBuildInfo = BuildInfo {
+                  buildable = True,
+                  buildTools = [],
+                  buildToolDepends = [],
+                  cppOptions = [],
+                  asmOptions = [],
+                  cmmOptions = [],
+                  ccOptions = [],
+                  cxxOptions = [],
+                  jsppOptions = [],
+                  ldOptions = [],
+                  hsc2hsOptions = [],
+                  pkgconfigDepends = [],
+                  frameworks = [],
+                  extraFrameworkDirs = [],
+                  asmSources = [],
+                  cmmSources = [],
+                  cSources = [],
+                  cxxSources = [],
+                  jsSources = [],
+                  hsSourceDirs = [],
+                  otherModules = [],
+                  virtualModules = [],
+                  autogenModules = [],
+                  defaultLanguage = Nothing,
+                  otherLanguages = [],
+                  defaultExtensions = [],
+                  otherExtensions = [],
+                  oldExtensions = [],
+                  extraLibs = [],
+                  extraLibsStatic = [],
+                  extraGHCiLibs = [],
+                  extraBundledLibs = [],
+                  extraLibFlavours = [],
+                  extraDynLibFlavours = [],
+                  extraLibDirs = [],
+                  extraLibDirsStatic = [],
+                  includeDirs = [],
+                  includes = [],
+                  autogenIncludes = [],
+                  installIncludes = [],
+                  options = PerCompilerFlavor
+                    []
+                    [],
+                  profOptions = PerCompilerFlavor
+                    []
+                    [],
+                  sharedOptions =
+                  PerCompilerFlavor [] [],
+                  profSharedOptions =
+                  PerCompilerFlavor [] [],
+                  staticOptions =
+                  PerCompilerFlavor [] [],
+                  customFieldsBI = [],
+                  targetBuildDepends = [],
+                  mixins = []}},
+              condTreeConstraints = [],
+              condTreeComponents = [
+                CondBranch {
+                  condBranchCondition =
+                  `CNot (Var (OS Windows))`,
+                  condBranchIfTrue = CondNode {
+                    condTreeData = Library {
+                      libName = LMainLibName,
+                      exposedModules = [],
+                      reexportedModules = [],
+                      signatures = [],
+                      libExposed = True,
+                      libVisibility =
+                      LibraryVisibilityPublic,
+                      libBuildInfo = BuildInfo {
+                        buildable = True,
+                        buildTools = [],
+                        buildToolDepends = [],
+                        cppOptions = [],
+                        asmOptions = [],
+                        cmmOptions = [],
+                        ccOptions = [],
+                        cxxOptions = [],
+                        jsppOptions = [],
+                        ldOptions = [],
+                        hsc2hsOptions = [],
+                        pkgconfigDepends = [],
+                        frameworks = [],
+                        extraFrameworkDirs = [],
+                        asmSources = [],
+                        cmmSources = [],
+                        cSources = [],
+                        cxxSources = [],
+                        jsSources = [],
+                        hsSourceDirs = [],
+                        otherModules = [],
+                        virtualModules = [],
+                        autogenModules = [],
+                        defaultLanguage = Nothing,
+                        otherLanguages = [],
+                        defaultExtensions = [],
+                        otherExtensions = [],
+                        oldExtensions = [],
+                        extraLibs = [],
+                        extraLibsStatic = [],
+                        extraGHCiLibs = [],
+                        extraBundledLibs = [],
+                        extraLibFlavours = [],
+                        extraDynLibFlavours = [],
+                        extraLibDirs = [],
+                        extraLibDirsStatic = [],
+                        includeDirs = [],
+                        includes = [],
+                        autogenIncludes = [],
+                        installIncludes = [],
+                        options = PerCompilerFlavor
+                          []
+                          [],
+                        profOptions = PerCompilerFlavor
+                          []
+                          [],
+                        sharedOptions =
+                        PerCompilerFlavor [] [],
+                        profSharedOptions =
+                        PerCompilerFlavor [] [],
+                        staticOptions =
+                        PerCompilerFlavor [] [],
+                        customFieldsBI = [],
+                        targetBuildDepends = [
+                          Dependency
+                            (PackageName "unix")
+                            (OrLaterVersion
+                              (mkVersion [2, 5, 1]))
+                            mainLibSet],
+                        mixins = []}},
+                    condTreeConstraints = [
+                      Dependency
+                        (PackageName "unix")
+                        (OrLaterVersion
+                          (mkVersion [2, 5, 1]))
+                        mainLibSet],
+                    condTreeComponents = []},
+                  condBranchIfFalse = Nothing}]}},
+        CondBranch {
+          condBranchCondition =
+          `CNot (Var (OS Windows))`,
+          condBranchIfTrue = CondNode {
+            condTreeData = Library {
+              libName = LMainLibName,
+              exposedModules = [],
+              reexportedModules = [],
+              signatures = [],
+              libExposed = True,
+              libVisibility =
+              LibraryVisibilityPublic,
+              libBuildInfo = BuildInfo {
+                buildable = True,
+                buildTools = [],
+                buildToolDepends = [],
+                cppOptions = [],
+                asmOptions = [],
+                cmmOptions = [],
+                ccOptions = [],
+                cxxOptions = [],
+                jsppOptions = [],
+                ldOptions = [],
+                hsc2hsOptions = [],
+                pkgconfigDepends = [],
+                frameworks = [],
+                extraFrameworkDirs = [],
+                asmSources = [],
+                cmmSources = [],
+                cSources = [],
+                cxxSources = [],
+                jsSources = [],
+                hsSourceDirs = [],
+                otherModules = [],
+                virtualModules = [],
+                autogenModules = [],
+                defaultLanguage = Nothing,
+                otherLanguages = [],
+                defaultExtensions = [],
+                otherExtensions = [],
+                oldExtensions = [],
+                extraLibs = [],
+                extraLibsStatic = [],
+                extraGHCiLibs = [],
+                extraBundledLibs = [],
+                extraLibFlavours = [],
+                extraDynLibFlavours = [],
+                extraLibDirs = [],
+                extraLibDirsStatic = [],
+                includeDirs = [],
+                includes = [],
+                autogenIncludes = [],
+                installIncludes = [],
+                options = PerCompilerFlavor
+                  []
+                  [],
+                profOptions = PerCompilerFlavor
+                  []
+                  [],
+                sharedOptions =
+                PerCompilerFlavor [] [],
+                profSharedOptions =
+                PerCompilerFlavor [] [],
+                staticOptions =
+                PerCompilerFlavor [] [],
+                customFieldsBI = [],
+                targetBuildDepends = [
+                  Dependency
+                    (PackageName "unix")
+                    (OrLaterVersion (mkVersion [0]))
+                    mainLibSet],
+                mixins = []}},
+            condTreeConstraints = [
+              Dependency
+                (PackageName "unix")
+                (OrLaterVersion (mkVersion [0]))
+                mainLibSet],
+            condTreeComponents = []},
+          condBranchIfFalse = Nothing}]})
+  []
+  []
+  [
+    _×_
+      (UnqualComponentName "shake")
+      CondNode {
+        condTreeData = Executable {
+          exeName = UnqualComponentName
+            "shake",
+          modulePath = SymbolicPath
+            "Run.hs",
+          exeScope = ExecutablePublic,
+          buildInfo = BuildInfo {
+            buildable = True,
+            buildTools = [],
+            buildToolDepends = [],
+            cppOptions = [],
+            asmOptions = [],
+            cmmOptions = [],
+            ccOptions = [],
+            cxxOptions = [],
+            jsppOptions = [],
+            ldOptions = [],
+            hsc2hsOptions = [],
+            pkgconfigDepends = [],
+            frameworks = [],
+            extraFrameworkDirs = [],
+            asmSources = [],
+            cmmSources = [],
+            cSources = [],
+            cxxSources = [],
+            jsSources = [],
+            hsSourceDirs = [
+              SymbolicPath "src"],
+            otherModules = [
+              ModuleName
+                "Development.Make.All",
+              ModuleName
+                "Development.Make.Env",
+              ModuleName
+                "Development.Make.Parse",
+              ModuleName
+                "Development.Make.Rules",
+              ModuleName
+                "Development.Make.Type",
+              ModuleName
+                "Development.Ninja.All",
+              ModuleName
+                "Development.Ninja.Env",
+              ModuleName
+                "Development.Ninja.Lexer",
+              ModuleName
+                "Development.Ninja.Parse",
+              ModuleName
+                "Development.Ninja.Type",
+              ModuleName "Development.Shake",
+              ModuleName
+                "Development.Shake.Args",
+              ModuleName
+                "Development.Shake.ByteString",
+              ModuleName
+                "Development.Shake.Classes",
+              ModuleName
+                "Development.Shake.CmdOption",
+              ModuleName
+                "Development.Shake.Command",
+              ModuleName
+                "Development.Shake.Core",
+              ModuleName
+                "Development.Shake.Database",
+              ModuleName
+                "Development.Shake.Demo",
+              ModuleName
+                "Development.Shake.Derived",
+              ModuleName
+                "Development.Shake.Errors",
+              ModuleName
+                "Development.Shake.FileInfo",
+              ModuleName
+                "Development.Shake.FilePath",
+              ModuleName
+                "Development.Shake.FilePattern",
+              ModuleName
+                "Development.Shake.Forward",
+              ModuleName
+                "Development.Shake.Monad",
+              ModuleName
+                "Development.Shake.Pool",
+              ModuleName
+                "Development.Shake.Profile",
+              ModuleName
+                "Development.Shake.Progress",
+              ModuleName
+                "Development.Shake.Resource",
+              ModuleName
+                "Development.Shake.Rule",
+              ModuleName
+                "Development.Shake.Rules.Directory",
+              ModuleName
+                "Development.Shake.Rules.File",
+              ModuleName
+                "Development.Shake.Rules.Files",
+              ModuleName
+                "Development.Shake.Rules.Oracle",
+              ModuleName
+                "Development.Shake.Rules.OrderOnly",
+              ModuleName
+                "Development.Shake.Rules.Rerun",
+              ModuleName
+                "Development.Shake.Shake",
+              ModuleName
+                "Development.Shake.Special",
+              ModuleName
+                "Development.Shake.Storage",
+              ModuleName
+                "Development.Shake.Types",
+              ModuleName
+                "Development.Shake.Value",
+              ModuleName "General.Bilist",
+              ModuleName "General.Binary",
+              ModuleName "General.Cleanup",
+              ModuleName "General.Concurrent",
+              ModuleName "General.Extra",
+              ModuleName "General.FileLock",
+              ModuleName "General.Intern",
+              ModuleName "General.Process",
+              ModuleName "General.String",
+              ModuleName "General.Template",
+              ModuleName "General.Timing",
+              ModuleName "Paths_shake",
+              ModuleName "Run"],
+            virtualModules = [],
+            autogenModules = [],
+            defaultLanguage = Just
+              Haskell2010,
+            otherLanguages = [],
+            defaultExtensions = [],
+            otherExtensions = [],
+            oldExtensions = [],
+            extraLibs = [],
+            extraLibsStatic = [],
+            extraGHCiLibs = [],
+            extraBundledLibs = [],
+            extraLibFlavours = [],
+            extraDynLibFlavours = [],
+            extraLibDirs = [],
+            extraLibDirsStatic = [],
+            includeDirs = [],
+            includes = [],
+            autogenIncludes = [],
+            installIncludes = [],
+            options = PerCompilerFlavor
+              [
+                "-main-is",
+                "Run.main",
+                "-rtsopts"]
+              [],
+            profOptions = PerCompilerFlavor
+              []
+              [],
+            sharedOptions =
+            PerCompilerFlavor [] [],
+            profSharedOptions =
+            PerCompilerFlavor [] [],
+            staticOptions =
+            PerCompilerFlavor [] [],
+            customFieldsBI = [],
+            targetBuildDepends = [
+              Dependency
+                (PackageName "base")
+                (IntersectVersionRanges
+                  (OrLaterVersion (mkVersion [4]))
+                  (EarlierVersion
+                    (mkVersion [5])))
+                mainLibSet,
+              Dependency
+                (PackageName "directory")
+                (OrLaterVersion (mkVersion [0]))
+                mainLibSet,
+              Dependency
+                (PackageName "hashable")
+                (OrLaterVersion
+                  (mkVersion [1, 1, 2, 3]))
+                mainLibSet,
+              Dependency
+                (PackageName "binary")
+                (OrLaterVersion (mkVersion [0]))
+                mainLibSet,
+              Dependency
+                (PackageName "filepath")
+                (OrLaterVersion (mkVersion [0]))
+                mainLibSet,
+              Dependency
+                (PackageName "process")
+                (OrLaterVersion
+                  (mkVersion [1, 1]))
+                mainLibSet,
+              Dependency
+                (PackageName
+                  "unordered-containers")
+                (OrLaterVersion
+                  (mkVersion [0, 2, 1]))
+                mainLibSet,
+              Dependency
+                (PackageName "bytestring")
+                (OrLaterVersion (mkVersion [0]))
+                mainLibSet,
+              Dependency
+                (PackageName "utf8-string")
+                (OrLaterVersion
+                  (mkVersion [0, 3]))
+                mainLibSet,
+              Dependency
+                (PackageName "time")
+                (OrLaterVersion (mkVersion [0]))
+                mainLibSet,
+              Dependency
+                (PackageName "random")
+                (OrLaterVersion (mkVersion [0]))
+                mainLibSet,
+              Dependency
+                (PackageName "js-jquery")
+                (OrLaterVersion (mkVersion [0]))
+                mainLibSet,
+              Dependency
+                (PackageName "js-flot")
+                (OrLaterVersion (mkVersion [0]))
+                mainLibSet,
+              Dependency
+                (PackageName "transformers")
+                (OrLaterVersion
+                  (mkVersion [0, 2]))
+                mainLibSet,
+              Dependency
+                (PackageName "extra")
+                (OrLaterVersion
+                  (mkVersion [1, 4, 8]))
+                mainLibSet,
+              Dependency
+                (PackageName "deepseq")
+                (OrLaterVersion
+                  (mkVersion [1, 1]))
+                mainLibSet,
+              Dependency
+                (PackageName "primitive")
+                (OrLaterVersion (mkVersion [0]))
+                mainLibSet],
+            mixins = []}},
+        condTreeConstraints = [
+          Dependency
+            (PackageName "base")
+            (IntersectVersionRanges
+              (OrLaterVersion (mkVersion [4]))
+              (EarlierVersion
+                (mkVersion [5])))
+            mainLibSet,
+          Dependency
+            (PackageName "directory")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet,
+          Dependency
+            (PackageName "hashable")
+            (OrLaterVersion
+              (mkVersion [1, 1, 2, 3]))
+            mainLibSet,
+          Dependency
+            (PackageName "binary")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet,
+          Dependency
+            (PackageName "filepath")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet,
+          Dependency
+            (PackageName "process")
+            (OrLaterVersion
+              (mkVersion [1, 1]))
+            mainLibSet,
+          Dependency
+            (PackageName
+              "unordered-containers")
+            (OrLaterVersion
+              (mkVersion [0, 2, 1]))
+            mainLibSet,
+          Dependency
+            (PackageName "bytestring")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet,
+          Dependency
+            (PackageName "utf8-string")
+            (OrLaterVersion
+              (mkVersion [0, 3]))
+            mainLibSet,
+          Dependency
+            (PackageName "time")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet,
+          Dependency
+            (PackageName "random")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet,
+          Dependency
+            (PackageName "js-jquery")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet,
+          Dependency
+            (PackageName "js-flot")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet,
+          Dependency
+            (PackageName "transformers")
+            (OrLaterVersion
+              (mkVersion [0, 2]))
+            mainLibSet,
+          Dependency
+            (PackageName "extra")
+            (OrLaterVersion
+              (mkVersion [1, 4, 8]))
+            mainLibSet,
+          Dependency
+            (PackageName "deepseq")
+            (OrLaterVersion
+              (mkVersion [1, 1]))
+            mainLibSet,
+          Dependency
+            (PackageName "primitive")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet],
+        condTreeComponents = [
+          CondBranch {
+            condBranchCondition =
+            `Var (Impl GHC (OrLaterVersion (mkVersion [7,8])))`,
+            condBranchIfTrue = CondNode {
+              condTreeData = Executable {
+                exeName = UnqualComponentName
+                  "shake",
+                modulePath = SymbolicPath "",
+                exeScope = ExecutablePublic,
+                buildInfo = BuildInfo {
+                  buildable = True,
+                  buildTools = [],
+                  buildToolDepends = [],
+                  cppOptions = [],
+                  asmOptions = [],
+                  cmmOptions = [],
+                  ccOptions = [],
+                  cxxOptions = [],
+                  jsppOptions = [],
+                  ldOptions = [],
+                  hsc2hsOptions = [],
+                  pkgconfigDepends = [],
+                  frameworks = [],
+                  extraFrameworkDirs = [],
+                  asmSources = [],
+                  cmmSources = [],
+                  cSources = [],
+                  cxxSources = [],
+                  jsSources = [],
+                  hsSourceDirs = [],
+                  otherModules = [],
+                  virtualModules = [],
+                  autogenModules = [],
+                  defaultLanguage = Nothing,
+                  otherLanguages = [],
+                  defaultExtensions = [],
+                  otherExtensions = [],
+                  oldExtensions = [],
+                  extraLibs = [],
+                  extraLibsStatic = [],
+                  extraGHCiLibs = [],
+                  extraBundledLibs = [],
+                  extraLibFlavours = [],
+                  extraDynLibFlavours = [],
+                  extraLibDirs = [],
+                  extraLibDirsStatic = [],
+                  includeDirs = [],
+                  includes = [],
+                  autogenIncludes = [],
+                  installIncludes = [],
+                  options = PerCompilerFlavor
+                    [
+                      "-threaded",
+                      "-with-rtsopts=-I0 -qg -qb"]
+                    [],
+                  profOptions = PerCompilerFlavor
+                    []
+                    [],
+                  sharedOptions =
+                  PerCompilerFlavor [] [],
+                  profSharedOptions =
+                  PerCompilerFlavor [] [],
+                  staticOptions =
+                  PerCompilerFlavor [] [],
+                  customFieldsBI = [],
+                  targetBuildDepends = [],
+                  mixins = []}},
+              condTreeConstraints = [],
+              condTreeComponents = []},
+            condBranchIfFalse = Nothing},
+          CondBranch {
+            condBranchCondition =
+            `Var (PackageFlag (FlagName "portable"))`,
+            condBranchIfTrue = CondNode {
+              condTreeData = Executable {
+                exeName = UnqualComponentName
+                  "shake",
+                modulePath = SymbolicPath "",
+                exeScope = ExecutablePublic,
+                buildInfo = BuildInfo {
+                  buildable = True,
+                  buildTools = [],
+                  buildToolDepends = [],
+                  cppOptions = ["-DPORTABLE"],
+                  asmOptions = [],
+                  cmmOptions = [],
+                  ccOptions = [],
+                  cxxOptions = [],
+                  jsppOptions = [],
+                  ldOptions = [],
+                  hsc2hsOptions = [],
+                  pkgconfigDepends = [],
+                  frameworks = [],
+                  extraFrameworkDirs = [],
+                  asmSources = [],
+                  cmmSources = [],
+                  cSources = [],
+                  cxxSources = [],
+                  jsSources = [],
+                  hsSourceDirs = [],
+                  otherModules = [],
+                  virtualModules = [],
+                  autogenModules = [],
+                  defaultLanguage = Nothing,
+                  otherLanguages = [],
+                  defaultExtensions = [],
+                  otherExtensions = [],
+                  oldExtensions = [],
+                  extraLibs = [],
+                  extraLibsStatic = [],
+                  extraGHCiLibs = [],
+                  extraBundledLibs = [],
+                  extraLibFlavours = [],
+                  extraDynLibFlavours = [],
+                  extraLibDirs = [],
+                  extraLibDirsStatic = [],
+                  includeDirs = [],
+                  includes = [],
+                  autogenIncludes = [],
+                  installIncludes = [],
+                  options = PerCompilerFlavor
+                    []
+                    [],
+                  profOptions = PerCompilerFlavor
+                    []
+                    [],
+                  sharedOptions =
+                  PerCompilerFlavor [] [],
+                  profSharedOptions =
+                  PerCompilerFlavor [] [],
+                  staticOptions =
+                  PerCompilerFlavor [] [],
+                  customFieldsBI = [],
+                  targetBuildDepends = [],
+                  mixins = []}},
+              condTreeConstraints = [],
+              condTreeComponents = [
+                CondBranch {
+                  condBranchCondition =
+                  `Var (Impl GHC (EarlierVersion (mkVersion [7,6])))`,
+                  condBranchIfTrue = CondNode {
+                    condTreeData = Executable {
+                      exeName = UnqualComponentName
+                        "shake",
+                      modulePath = SymbolicPath "",
+                      exeScope = ExecutablePublic,
+                      buildInfo = BuildInfo {
+                        buildable = True,
+                        buildTools = [],
+                        buildToolDepends = [],
+                        cppOptions = [],
+                        asmOptions = [],
+                        cmmOptions = [],
+                        ccOptions = [],
+                        cxxOptions = [],
+                        jsppOptions = [],
+                        ldOptions = [],
+                        hsc2hsOptions = [],
+                        pkgconfigDepends = [],
+                        frameworks = [],
+                        extraFrameworkDirs = [],
+                        asmSources = [],
+                        cmmSources = [],
+                        cSources = [],
+                        cxxSources = [],
+                        jsSources = [],
+                        hsSourceDirs = [],
+                        otherModules = [],
+                        virtualModules = [],
+                        autogenModules = [],
+                        defaultLanguage = Nothing,
+                        otherLanguages = [],
+                        defaultExtensions = [],
+                        otherExtensions = [],
+                        oldExtensions = [],
+                        extraLibs = [],
+                        extraLibsStatic = [],
+                        extraGHCiLibs = [],
+                        extraBundledLibs = [],
+                        extraLibFlavours = [],
+                        extraDynLibFlavours = [],
+                        extraLibDirs = [],
+                        extraLibDirsStatic = [],
+                        includeDirs = [],
+                        includes = [],
+                        autogenIncludes = [],
+                        installIncludes = [],
+                        options = PerCompilerFlavor
+                          []
+                          [],
+                        profOptions = PerCompilerFlavor
+                          []
+                          [],
+                        sharedOptions =
+                        PerCompilerFlavor [] [],
+                        profSharedOptions =
+                        PerCompilerFlavor [] [],
+                        staticOptions =
+                        PerCompilerFlavor [] [],
+                        customFieldsBI = [],
+                        targetBuildDepends = [
+                          Dependency
+                            (PackageName "old-time")
+                            (OrLaterVersion (mkVersion [0]))
+                            mainLibSet],
+                        mixins = []}},
+                    condTreeConstraints = [
+                      Dependency
+                        (PackageName "old-time")
+                        (OrLaterVersion (mkVersion [0]))
+                        mainLibSet],
+                    condTreeComponents = []},
+                  condBranchIfFalse = Nothing}]},
+            condBranchIfFalse = Just
+              CondNode {
+                condTreeData = Executable {
+                  exeName = UnqualComponentName
+                    "shake",
+                  modulePath = SymbolicPath "",
+                  exeScope = ExecutablePublic,
+                  buildInfo = BuildInfo {
+                    buildable = True,
+                    buildTools = [],
+                    buildToolDepends = [],
+                    cppOptions = [],
+                    asmOptions = [],
+                    cmmOptions = [],
+                    ccOptions = [],
+                    cxxOptions = [],
+                    jsppOptions = [],
+                    ldOptions = [],
+                    hsc2hsOptions = [],
+                    pkgconfigDepends = [],
+                    frameworks = [],
+                    extraFrameworkDirs = [],
+                    asmSources = [],
+                    cmmSources = [],
+                    cSources = [],
+                    cxxSources = [],
+                    jsSources = [],
+                    hsSourceDirs = [],
+                    otherModules = [],
+                    virtualModules = [],
+                    autogenModules = [],
+                    defaultLanguage = Nothing,
+                    otherLanguages = [],
+                    defaultExtensions = [],
+                    otherExtensions = [],
+                    oldExtensions = [],
+                    extraLibs = [],
+                    extraLibsStatic = [],
+                    extraGHCiLibs = [],
+                    extraBundledLibs = [],
+                    extraLibFlavours = [],
+                    extraDynLibFlavours = [],
+                    extraLibDirs = [],
+                    extraLibDirsStatic = [],
+                    includeDirs = [],
+                    includes = [],
+                    autogenIncludes = [],
+                    installIncludes = [],
+                    options = PerCompilerFlavor
+                      []
+                      [],
+                    profOptions = PerCompilerFlavor
+                      []
+                      [],
+                    sharedOptions =
+                    PerCompilerFlavor [] [],
+                    profSharedOptions =
+                    PerCompilerFlavor [] [],
+                    staticOptions =
+                    PerCompilerFlavor [] [],
+                    customFieldsBI = [],
+                    targetBuildDepends = [],
+                    mixins = []}},
+                condTreeConstraints = [],
+                condTreeComponents = [
+                  CondBranch {
+                    condBranchCondition =
+                    `CNot (Var (OS Windows))`,
+                    condBranchIfTrue = CondNode {
+                      condTreeData = Executable {
+                        exeName = UnqualComponentName
+                          "shake",
+                        modulePath = SymbolicPath "",
+                        exeScope = ExecutablePublic,
+                        buildInfo = BuildInfo {
+                          buildable = True,
+                          buildTools = [],
+                          buildToolDepends = [],
+                          cppOptions = [],
+                          asmOptions = [],
+                          cmmOptions = [],
+                          ccOptions = [],
+                          cxxOptions = [],
+                          jsppOptions = [],
+                          ldOptions = [],
+                          hsc2hsOptions = [],
+                          pkgconfigDepends = [],
+                          frameworks = [],
+                          extraFrameworkDirs = [],
+                          asmSources = [],
+                          cmmSources = [],
+                          cSources = [],
+                          cxxSources = [],
+                          jsSources = [],
+                          hsSourceDirs = [],
+                          otherModules = [],
+                          virtualModules = [],
+                          autogenModules = [],
+                          defaultLanguage = Nothing,
+                          otherLanguages = [],
+                          defaultExtensions = [],
+                          otherExtensions = [],
+                          oldExtensions = [],
+                          extraLibs = [],
+                          extraLibsStatic = [],
+                          extraGHCiLibs = [],
+                          extraBundledLibs = [],
+                          extraLibFlavours = [],
+                          extraDynLibFlavours = [],
+                          extraLibDirs = [],
+                          extraLibDirsStatic = [],
+                          includeDirs = [],
+                          includes = [],
+                          autogenIncludes = [],
+                          installIncludes = [],
+                          options = PerCompilerFlavor
+                            []
+                            [],
+                          profOptions = PerCompilerFlavor
+                            []
+                            [],
+                          sharedOptions =
+                          PerCompilerFlavor [] [],
+                          profSharedOptions =
+                          PerCompilerFlavor [] [],
+                          staticOptions =
+                          PerCompilerFlavor [] [],
+                          customFieldsBI = [],
+                          targetBuildDepends = [
+                            Dependency
+                              (PackageName "unix")
+                              (OrLaterVersion
+                                (mkVersion [2, 5, 1]))
+                              mainLibSet],
+                          mixins = []}},
+                      condTreeConstraints = [
+                        Dependency
+                          (PackageName "unix")
+                          (OrLaterVersion
+                            (mkVersion [2, 5, 1]))
+                          mainLibSet],
+                      condTreeComponents = []},
+                    condBranchIfFalse = Nothing}]}},
+          CondBranch {
+            condBranchCondition =
+            `CNot (Var (OS Windows))`,
+            condBranchIfTrue = CondNode {
+              condTreeData = Executable {
+                exeName = UnqualComponentName
+                  "shake",
+                modulePath = SymbolicPath "",
+                exeScope = ExecutablePublic,
+                buildInfo = BuildInfo {
+                  buildable = True,
+                  buildTools = [],
+                  buildToolDepends = [],
+                  cppOptions = [],
+                  asmOptions = [],
+                  cmmOptions = [],
+                  ccOptions = [],
+                  cxxOptions = [],
+                  jsppOptions = [],
+                  ldOptions = [],
+                  hsc2hsOptions = [],
+                  pkgconfigDepends = [],
+                  frameworks = [],
+                  extraFrameworkDirs = [],
+                  asmSources = [],
+                  cmmSources = [],
+                  cSources = [],
+                  cxxSources = [],
+                  jsSources = [],
+                  hsSourceDirs = [],
+                  otherModules = [],
+                  virtualModules = [],
+                  autogenModules = [],
+                  defaultLanguage = Nothing,
+                  otherLanguages = [],
+                  defaultExtensions = [],
+                  otherExtensions = [],
+                  oldExtensions = [],
+                  extraLibs = [],
+                  extraLibsStatic = [],
+                  extraGHCiLibs = [],
+                  extraBundledLibs = [],
+                  extraLibFlavours = [],
+                  extraDynLibFlavours = [],
+                  extraLibDirs = [],
+                  extraLibDirsStatic = [],
+                  includeDirs = [],
+                  includes = [],
+                  autogenIncludes = [],
+                  installIncludes = [],
+                  options = PerCompilerFlavor
+                    []
+                    [],
+                  profOptions = PerCompilerFlavor
+                    []
+                    [],
+                  sharedOptions =
+                  PerCompilerFlavor [] [],
+                  profSharedOptions =
+                  PerCompilerFlavor [] [],
+                  staticOptions =
+                  PerCompilerFlavor [] [],
+                  customFieldsBI = [],
+                  targetBuildDepends = [
+                    Dependency
+                      (PackageName "unix")
+                      (OrLaterVersion (mkVersion [0]))
+                      mainLibSet],
+                  mixins = []}},
+              condTreeConstraints = [
+                Dependency
+                  (PackageName "unix")
+                  (OrLaterVersion (mkVersion [0]))
+                  mainLibSet],
+              condTreeComponents = []},
+            condBranchIfFalse = Nothing}]}]
+  [
+    _×_
+      (UnqualComponentName
+        "shake-test")
+      CondNode {
+        condTreeData = TestSuite {
+          testName = UnqualComponentName
+            "",
+          testInterface = TestSuiteExeV10
+            (mkVersion [1, 0])
+            (SymbolicPath "Test.hs"),
+          testBuildInfo = BuildInfo {
+            buildable = True,
+            buildTools = [],
+            buildToolDepends = [],
+            cppOptions = [],
+            asmOptions = [],
+            cmmOptions = [],
+            ccOptions = [],
+            cxxOptions = [],
+            jsppOptions = [],
+            ldOptions = [],
+            hsc2hsOptions = [],
+            pkgconfigDepends = [],
+            frameworks = [],
+            extraFrameworkDirs = [],
+            asmSources = [],
+            cmmSources = [],
+            cSources = [],
+            cxxSources = [],
+            jsSources = [],
+            hsSourceDirs = [
+              SymbolicPath "src"],
+            otherModules = [
+              ModuleName
+                "Development.Make.All",
+              ModuleName
+                "Development.Make.Env",
+              ModuleName
+                "Development.Make.Parse",
+              ModuleName
+                "Development.Make.Rules",
+              ModuleName
+                "Development.Make.Type",
+              ModuleName
+                "Development.Ninja.All",
+              ModuleName
+                "Development.Ninja.Env",
+              ModuleName
+                "Development.Ninja.Lexer",
+              ModuleName
+                "Development.Ninja.Parse",
+              ModuleName
+                "Development.Ninja.Type",
+              ModuleName "Development.Shake",
+              ModuleName
+                "Development.Shake.Args",
+              ModuleName
+                "Development.Shake.ByteString",
+              ModuleName
+                "Development.Shake.Classes",
+              ModuleName
+                "Development.Shake.CmdOption",
+              ModuleName
+                "Development.Shake.Command",
+              ModuleName
+                "Development.Shake.Config",
+              ModuleName
+                "Development.Shake.Core",
+              ModuleName
+                "Development.Shake.Database",
+              ModuleName
+                "Development.Shake.Demo",
+              ModuleName
+                "Development.Shake.Derived",
+              ModuleName
+                "Development.Shake.Errors",
+              ModuleName
+                "Development.Shake.FileInfo",
+              ModuleName
+                "Development.Shake.FilePath",
+              ModuleName
+                "Development.Shake.FilePattern",
+              ModuleName
+                "Development.Shake.Forward",
+              ModuleName
+                "Development.Shake.Monad",
+              ModuleName
+                "Development.Shake.Pool",
+              ModuleName
+                "Development.Shake.Profile",
+              ModuleName
+                "Development.Shake.Progress",
+              ModuleName
+                "Development.Shake.Resource",
+              ModuleName
+                "Development.Shake.Rule",
+              ModuleName
+                "Development.Shake.Rules.Directory",
+              ModuleName
+                "Development.Shake.Rules.File",
+              ModuleName
+                "Development.Shake.Rules.Files",
+              ModuleName
+                "Development.Shake.Rules.Oracle",
+              ModuleName
+                "Development.Shake.Rules.OrderOnly",
+              ModuleName
+                "Development.Shake.Rules.Rerun",
+              ModuleName
+                "Development.Shake.Shake",
+              ModuleName
+                "Development.Shake.Special",
+              ModuleName
+                "Development.Shake.Storage",
+              ModuleName
+                "Development.Shake.Types",
+              ModuleName
+                "Development.Shake.Util",
+              ModuleName
+                "Development.Shake.Value",
+              ModuleName "General.Bilist",
+              ModuleName "General.Binary",
+              ModuleName "General.Cleanup",
+              ModuleName "General.Concurrent",
+              ModuleName "General.Extra",
+              ModuleName "General.FileLock",
+              ModuleName "General.Intern",
+              ModuleName "General.Process",
+              ModuleName "General.String",
+              ModuleName "General.Template",
+              ModuleName "General.Timing",
+              ModuleName "Paths_shake",
+              ModuleName "Run",
+              ModuleName "Test.Assume",
+              ModuleName "Test.Basic",
+              ModuleName "Test.Benchmark",
+              ModuleName "Test.C",
+              ModuleName "Test.Cache",
+              ModuleName "Test.Command",
+              ModuleName "Test.Config",
+              ModuleName "Test.Digest",
+              ModuleName "Test.Directory",
+              ModuleName "Test.Docs",
+              ModuleName "Test.Errors",
+              ModuleName "Test.FileLock",
+              ModuleName "Test.FilePath",
+              ModuleName "Test.FilePattern",
+              ModuleName "Test.Files",
+              ModuleName "Test.Forward",
+              ModuleName "Test.Journal",
+              ModuleName "Test.Lint",
+              ModuleName "Test.Live",
+              ModuleName "Test.Makefile",
+              ModuleName "Test.Manual",
+              ModuleName "Test.Match",
+              ModuleName "Test.Monad",
+              ModuleName "Test.Ninja",
+              ModuleName "Test.Oracle",
+              ModuleName "Test.OrderOnly",
+              ModuleName "Test.Parallel",
+              ModuleName "Test.Pool",
+              ModuleName "Test.Progress",
+              ModuleName "Test.Random",
+              ModuleName "Test.Resources",
+              ModuleName "Test.Self",
+              ModuleName "Test.Tar",
+              ModuleName "Test.Tup",
+              ModuleName "Test.Type",
+              ModuleName "Test.Unicode",
+              ModuleName "Test.Util",
+              ModuleName "Test.Verbosity",
+              ModuleName "Test.Version"],
+            virtualModules = [],
+            autogenModules = [],
+            defaultLanguage = Just
+              Haskell2010,
+            otherLanguages = [],
+            defaultExtensions = [],
+            otherExtensions = [],
+            oldExtensions = [],
+            extraLibs = [],
+            extraLibsStatic = [],
+            extraGHCiLibs = [],
+            extraBundledLibs = [],
+            extraLibFlavours = [],
+            extraDynLibFlavours = [],
+            extraLibDirs = [],
+            extraLibDirsStatic = [],
+            includeDirs = [],
+            includes = [],
+            autogenIncludes = [],
+            installIncludes = [],
+            options = PerCompilerFlavor
+              [
+                "-main-is",
+                "Test.main",
+                "-rtsopts"]
+              [],
+            profOptions = PerCompilerFlavor
+              []
+              [],
+            sharedOptions =
+            PerCompilerFlavor [] [],
+            profSharedOptions =
+            PerCompilerFlavor [] [],
+            staticOptions =
+            PerCompilerFlavor [] [],
+            customFieldsBI = [],
+            targetBuildDepends = [
+              Dependency
+                (PackageName "base")
+                (IntersectVersionRanges
+                  (OrLaterVersion (mkVersion [4]))
+                  (EarlierVersion
+                    (mkVersion [5])))
+                mainLibSet,
+              Dependency
+                (PackageName "directory")
+                (OrLaterVersion (mkVersion [0]))
+                mainLibSet,
+              Dependency
+                (PackageName "hashable")
+                (OrLaterVersion
+                  (mkVersion [1, 1, 2, 3]))
+                mainLibSet,
+              Dependency
+                (PackageName "binary")
+                (OrLaterVersion (mkVersion [0]))
+                mainLibSet,
+              Dependency
+                (PackageName "filepath")
+                (OrLaterVersion (mkVersion [0]))
+                mainLibSet,
+              Dependency
+                (PackageName "process")
+                (OrLaterVersion
+                  (mkVersion [1, 1]))
+                mainLibSet,
+              Dependency
+                (PackageName
+                  "unordered-containers")
+                (OrLaterVersion
+                  (mkVersion [0, 2, 1]))
+                mainLibSet,
+              Dependency
+                (PackageName "bytestring")
+                (OrLaterVersion (mkVersion [0]))
+                mainLibSet,
+              Dependency
+                (PackageName "utf8-string")
+                (OrLaterVersion
+                  (mkVersion [0, 3]))
+                mainLibSet,
+              Dependency
+                (PackageName "time")
+                (OrLaterVersion (mkVersion [0]))
+                mainLibSet,
+              Dependency
+                (PackageName "random")
+                (OrLaterVersion (mkVersion [0]))
+                mainLibSet,
+              Dependency
+                (PackageName "js-jquery")
+                (OrLaterVersion (mkVersion [0]))
+                mainLibSet,
+              Dependency
+                (PackageName "js-flot")
+                (OrLaterVersion (mkVersion [0]))
+                mainLibSet,
+              Dependency
+                (PackageName "transformers")
+                (OrLaterVersion
+                  (mkVersion [0, 2]))
+                mainLibSet,
+              Dependency
+                (PackageName "deepseq")
+                (OrLaterVersion
+                  (mkVersion [1, 1]))
+                mainLibSet,
+              Dependency
+                (PackageName "extra")
+                (OrLaterVersion
+                  (mkVersion [1, 4, 8]))
+                mainLibSet,
+              Dependency
+                (PackageName "QuickCheck")
+                (OrLaterVersion
+                  (mkVersion [2, 0]))
+                mainLibSet],
+            mixins = []},
+          testCodeGenerators = []},
+        condTreeConstraints = [
+          Dependency
+            (PackageName "base")
+            (IntersectVersionRanges
+              (OrLaterVersion (mkVersion [4]))
+              (EarlierVersion
+                (mkVersion [5])))
+            mainLibSet,
+          Dependency
+            (PackageName "directory")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet,
+          Dependency
+            (PackageName "hashable")
+            (OrLaterVersion
+              (mkVersion [1, 1, 2, 3]))
+            mainLibSet,
+          Dependency
+            (PackageName "binary")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet,
+          Dependency
+            (PackageName "filepath")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet,
+          Dependency
+            (PackageName "process")
+            (OrLaterVersion
+              (mkVersion [1, 1]))
+            mainLibSet,
+          Dependency
+            (PackageName
+              "unordered-containers")
+            (OrLaterVersion
+              (mkVersion [0, 2, 1]))
+            mainLibSet,
+          Dependency
+            (PackageName "bytestring")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet,
+          Dependency
+            (PackageName "utf8-string")
+            (OrLaterVersion
+              (mkVersion [0, 3]))
+            mainLibSet,
+          Dependency
+            (PackageName "time")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet,
+          Dependency
+            (PackageName "random")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet,
+          Dependency
+            (PackageName "js-jquery")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet,
+          Dependency
+            (PackageName "js-flot")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet,
+          Dependency
+            (PackageName "transformers")
+            (OrLaterVersion
+              (mkVersion [0, 2]))
+            mainLibSet,
+          Dependency
+            (PackageName "deepseq")
+            (OrLaterVersion
+              (mkVersion [1, 1]))
+            mainLibSet,
+          Dependency
+            (PackageName "extra")
+            (OrLaterVersion
+              (mkVersion [1, 4, 8]))
+            mainLibSet,
+          Dependency
+            (PackageName "QuickCheck")
+            (OrLaterVersion
+              (mkVersion [2, 0]))
+            mainLibSet],
+        condTreeComponents = [
+          CondBranch {
+            condBranchCondition =
+            `Var (Impl GHC (OrLaterVersion (mkVersion [7,6])))`,
+            condBranchIfTrue = CondNode {
+              condTreeData = TestSuite {
+                testName = UnqualComponentName
+                  "",
+                testInterface =
+                TestSuiteUnsupported
+                  (TestTypeUnknown
+                    ""
+                    (mkVersion [])),
+                testBuildInfo = BuildInfo {
+                  buildable = True,
+                  buildTools = [],
+                  buildToolDepends = [],
+                  cppOptions = [],
+                  asmOptions = [],
+                  cmmOptions = [],
+                  ccOptions = [],
+                  cxxOptions = [],
+                  jsppOptions = [],
+                  ldOptions = [],
+                  hsc2hsOptions = [],
+                  pkgconfigDepends = [],
+                  frameworks = [],
+                  extraFrameworkDirs = [],
+                  asmSources = [],
+                  cmmSources = [],
+                  cSources = [],
+                  cxxSources = [],
+                  jsSources = [],
+                  hsSourceDirs = [],
+                  otherModules = [],
+                  virtualModules = [],
+                  autogenModules = [],
+                  defaultLanguage = Nothing,
+                  otherLanguages = [],
+                  defaultExtensions = [],
+                  otherExtensions = [],
+                  oldExtensions = [],
+                  extraLibs = [],
+                  extraLibsStatic = [],
+                  extraGHCiLibs = [],
+                  extraBundledLibs = [],
+                  extraLibFlavours = [],
+                  extraDynLibFlavours = [],
+                  extraLibDirs = [],
+                  extraLibDirsStatic = [],
+                  includeDirs = [],
+                  includes = [],
+                  autogenIncludes = [],
+                  installIncludes = [],
+                  options = PerCompilerFlavor
+                    ["-with-rtsopts=-K1K"]
+                    [],
+                  profOptions = PerCompilerFlavor
+                    []
+                    [],
+                  sharedOptions =
+                  PerCompilerFlavor [] [],
+                  profSharedOptions =
+                  PerCompilerFlavor [] [],
+                  staticOptions =
+                  PerCompilerFlavor [] [],
+                  customFieldsBI = [],
+                  targetBuildDepends = [],
+                  mixins = []},
+                testCodeGenerators = []},
+              condTreeConstraints = [],
+              condTreeComponents = []},
+            condBranchIfFalse = Nothing},
+          CondBranch {
+            condBranchCondition =
+            `Var (Impl GHC (OrLaterVersion (mkVersion [7,8])))`,
+            condBranchIfTrue = CondNode {
+              condTreeData = TestSuite {
+                testName = UnqualComponentName
+                  "",
+                testInterface =
+                TestSuiteUnsupported
+                  (TestTypeUnknown
+                    ""
+                    (mkVersion [])),
+                testBuildInfo = BuildInfo {
+                  buildable = True,
+                  buildTools = [],
+                  buildToolDepends = [],
+                  cppOptions = [],
+                  asmOptions = [],
+                  cmmOptions = [],
+                  ccOptions = [],
+                  cxxOptions = [],
+                  jsppOptions = [],
+                  ldOptions = [],
+                  hsc2hsOptions = [],
+                  pkgconfigDepends = [],
+                  frameworks = [],
+                  extraFrameworkDirs = [],
+                  asmSources = [],
+                  cmmSources = [],
+                  cSources = [],
+                  cxxSources = [],
+                  jsSources = [],
+                  hsSourceDirs = [],
+                  otherModules = [],
+                  virtualModules = [],
+                  autogenModules = [],
+                  defaultLanguage = Nothing,
+                  otherLanguages = [],
+                  defaultExtensions = [],
+                  otherExtensions = [],
+                  oldExtensions = [],
+                  extraLibs = [],
+                  extraLibsStatic = [],
+                  extraGHCiLibs = [],
+                  extraBundledLibs = [],
+                  extraLibFlavours = [],
+                  extraDynLibFlavours = [],
+                  extraLibDirs = [],
+                  extraLibDirsStatic = [],
+                  includeDirs = [],
+                  includes = [],
+                  autogenIncludes = [],
+                  installIncludes = [],
+                  options = PerCompilerFlavor
+                    ["-threaded"]
+                    [],
+                  profOptions = PerCompilerFlavor
+                    []
+                    [],
+                  sharedOptions =
+                  PerCompilerFlavor [] [],
+                  profSharedOptions =
+                  PerCompilerFlavor [] [],
+                  staticOptions =
+                  PerCompilerFlavor [] [],
+                  customFieldsBI = [],
+                  targetBuildDepends = [],
+                  mixins = []},
+                testCodeGenerators = []},
+              condTreeConstraints = [],
+              condTreeComponents = []},
+            condBranchIfFalse = Nothing},
+          CondBranch {
+            condBranchCondition =
+            `Var (PackageFlag (FlagName "portable"))`,
+            condBranchIfTrue = CondNode {
+              condTreeData = TestSuite {
+                testName = UnqualComponentName
+                  "",
+                testInterface =
+                TestSuiteUnsupported
+                  (TestTypeUnknown
+                    ""
+                    (mkVersion [])),
+                testBuildInfo = BuildInfo {
+                  buildable = True,
+                  buildTools = [],
+                  buildToolDepends = [],
+                  cppOptions = ["-DPORTABLE"],
+                  asmOptions = [],
+                  cmmOptions = [],
+                  ccOptions = [],
+                  cxxOptions = [],
+                  jsppOptions = [],
+                  ldOptions = [],
+                  hsc2hsOptions = [],
+                  pkgconfigDepends = [],
+                  frameworks = [],
+                  extraFrameworkDirs = [],
+                  asmSources = [],
+                  cmmSources = [],
+                  cSources = [],
+                  cxxSources = [],
+                  jsSources = [],
+                  hsSourceDirs = [],
+                  otherModules = [],
+                  virtualModules = [],
+                  autogenModules = [],
+                  defaultLanguage = Nothing,
+                  otherLanguages = [],
+                  defaultExtensions = [],
+                  otherExtensions = [],
+                  oldExtensions = [],
+                  extraLibs = [],
+                  extraLibsStatic = [],
+                  extraGHCiLibs = [],
+                  extraBundledLibs = [],
+                  extraLibFlavours = [],
+                  extraDynLibFlavours = [],
+                  extraLibDirs = [],
+                  extraLibDirsStatic = [],
+                  includeDirs = [],
+                  includes = [],
+                  autogenIncludes = [],
+                  installIncludes = [],
+                  options = PerCompilerFlavor
+                    []
+                    [],
+                  profOptions = PerCompilerFlavor
+                    []
+                    [],
+                  sharedOptions =
+                  PerCompilerFlavor [] [],
+                  profSharedOptions =
+                  PerCompilerFlavor [] [],
+                  staticOptions =
+                  PerCompilerFlavor [] [],
+                  customFieldsBI = [],
+                  targetBuildDepends = [],
+                  mixins = []},
+                testCodeGenerators = []},
+              condTreeConstraints = [],
+              condTreeComponents = [
+                CondBranch {
+                  condBranchCondition =
+                  `Var (Impl GHC (EarlierVersion (mkVersion [7,6])))`,
+                  condBranchIfTrue = CondNode {
+                    condTreeData = TestSuite {
+                      testName = UnqualComponentName
+                        "",
+                      testInterface =
+                      TestSuiteUnsupported
+                        (TestTypeUnknown
+                          ""
+                          (mkVersion [])),
+                      testBuildInfo = BuildInfo {
+                        buildable = True,
+                        buildTools = [],
+                        buildToolDepends = [],
+                        cppOptions = [],
+                        asmOptions = [],
+                        cmmOptions = [],
+                        ccOptions = [],
+                        cxxOptions = [],
+                        jsppOptions = [],
+                        ldOptions = [],
+                        hsc2hsOptions = [],
+                        pkgconfigDepends = [],
+                        frameworks = [],
+                        extraFrameworkDirs = [],
+                        asmSources = [],
+                        cmmSources = [],
+                        cSources = [],
+                        cxxSources = [],
+                        jsSources = [],
+                        hsSourceDirs = [],
+                        otherModules = [],
+                        virtualModules = [],
+                        autogenModules = [],
+                        defaultLanguage = Nothing,
+                        otherLanguages = [],
+                        defaultExtensions = [],
+                        otherExtensions = [],
+                        oldExtensions = [],
+                        extraLibs = [],
+                        extraLibsStatic = [],
+                        extraGHCiLibs = [],
+                        extraBundledLibs = [],
+                        extraLibFlavours = [],
+                        extraDynLibFlavours = [],
+                        extraLibDirs = [],
+                        extraLibDirsStatic = [],
+                        includeDirs = [],
+                        includes = [],
+                        autogenIncludes = [],
+                        installIncludes = [],
+                        options = PerCompilerFlavor
+                          []
+                          [],
+                        profOptions = PerCompilerFlavor
+                          []
+                          [],
+                        sharedOptions =
+                        PerCompilerFlavor [] [],
+                        profSharedOptions =
+                        PerCompilerFlavor [] [],
+                        staticOptions =
+                        PerCompilerFlavor [] [],
+                        customFieldsBI = [],
+                        targetBuildDepends = [
+                          Dependency
+                            (PackageName "old-time")
+                            (OrLaterVersion (mkVersion [0]))
+                            mainLibSet],
+                        mixins = []},
+                      testCodeGenerators = []},
+                    condTreeConstraints = [
+                      Dependency
+                        (PackageName "old-time")
+                        (OrLaterVersion (mkVersion [0]))
+                        mainLibSet],
+                    condTreeComponents = []},
+                  condBranchIfFalse = Nothing}]},
+            condBranchIfFalse = Just
+              CondNode {
+                condTreeData = TestSuite {
+                  testName = UnqualComponentName
+                    "",
+                  testInterface =
+                  TestSuiteUnsupported
+                    (TestTypeUnknown
+                      ""
+                      (mkVersion [])),
+                  testBuildInfo = BuildInfo {
+                    buildable = True,
+                    buildTools = [],
+                    buildToolDepends = [],
+                    cppOptions = [],
+                    asmOptions = [],
+                    cmmOptions = [],
+                    ccOptions = [],
+                    cxxOptions = [],
+                    jsppOptions = [],
+                    ldOptions = [],
+                    hsc2hsOptions = [],
+                    pkgconfigDepends = [],
+                    frameworks = [],
+                    extraFrameworkDirs = [],
+                    asmSources = [],
+                    cmmSources = [],
+                    cSources = [],
+                    cxxSources = [],
+                    jsSources = [],
+                    hsSourceDirs = [],
+                    otherModules = [],
+                    virtualModules = [],
+                    autogenModules = [],
+                    defaultLanguage = Nothing,
+                    otherLanguages = [],
+                    defaultExtensions = [],
+                    otherExtensions = [],
+                    oldExtensions = [],
+                    extraLibs = [],
+                    extraLibsStatic = [],
+                    extraGHCiLibs = [],
+                    extraBundledLibs = [],
+                    extraLibFlavours = [],
+                    extraDynLibFlavours = [],
+                    extraLibDirs = [],
+                    extraLibDirsStatic = [],
+                    includeDirs = [],
+                    includes = [],
+                    autogenIncludes = [],
+                    installIncludes = [],
+                    options = PerCompilerFlavor
+                      []
+                      [],
+                    profOptions = PerCompilerFlavor
+                      []
+                      [],
+                    sharedOptions =
+                    PerCompilerFlavor [] [],
+                    profSharedOptions =
+                    PerCompilerFlavor [] [],
+                    staticOptions =
+                    PerCompilerFlavor [] [],
+                    customFieldsBI = [],
+                    targetBuildDepends = [],
+                    mixins = []},
+                  testCodeGenerators = []},
+                condTreeConstraints = [],
+                condTreeComponents = [
+                  CondBranch {
+                    condBranchCondition =
+                    `CNot (Var (OS Windows))`,
+                    condBranchIfTrue = CondNode {
+                      condTreeData = TestSuite {
+                        testName = UnqualComponentName
+                          "",
+                        testInterface =
+                        TestSuiteUnsupported
+                          (TestTypeUnknown
+                            ""
+                            (mkVersion [])),
+                        testBuildInfo = BuildInfo {
+                          buildable = True,
+                          buildTools = [],
+                          buildToolDepends = [],
+                          cppOptions = [],
+                          asmOptions = [],
+                          cmmOptions = [],
+                          ccOptions = [],
+                          cxxOptions = [],
+                          jsppOptions = [],
+                          ldOptions = [],
+                          hsc2hsOptions = [],
+                          pkgconfigDepends = [],
+                          frameworks = [],
+                          extraFrameworkDirs = [],
+                          asmSources = [],
+                          cmmSources = [],
+                          cSources = [],
+                          cxxSources = [],
+                          jsSources = [],
+                          hsSourceDirs = [],
+                          otherModules = [],
+                          virtualModules = [],
+                          autogenModules = [],
+                          defaultLanguage = Nothing,
+                          otherLanguages = [],
+                          defaultExtensions = [],
+                          otherExtensions = [],
+                          oldExtensions = [],
+                          extraLibs = [],
+                          extraLibsStatic = [],
+                          extraGHCiLibs = [],
+                          extraBundledLibs = [],
+                          extraLibFlavours = [],
+                          extraDynLibFlavours = [],
+                          extraLibDirs = [],
+                          extraLibDirsStatic = [],
+                          includeDirs = [],
+                          includes = [],
+                          autogenIncludes = [],
+                          installIncludes = [],
+                          options = PerCompilerFlavor
+                            []
+                            [],
+                          profOptions = PerCompilerFlavor
+                            []
+                            [],
+                          sharedOptions =
+                          PerCompilerFlavor [] [],
+                          profSharedOptions =
+                          PerCompilerFlavor [] [],
+                          staticOptions =
+                          PerCompilerFlavor [] [],
+                          customFieldsBI = [],
+                          targetBuildDepends = [
+                            Dependency
+                              (PackageName "unix")
+                              (OrLaterVersion
+                                (mkVersion [2, 5, 1]))
+                              mainLibSet],
+                          mixins = []},
+                        testCodeGenerators = []},
+                      condTreeConstraints = [
+                        Dependency
+                          (PackageName "unix")
+                          (OrLaterVersion
+                            (mkVersion [2, 5, 1]))
+                          mainLibSet],
+                      condTreeComponents = []},
+                    condBranchIfFalse = Nothing}]}},
+          CondBranch {
+            condBranchCondition =
+            `CNot (Var (OS Windows))`,
+            condBranchIfTrue = CondNode {
+              condTreeData = TestSuite {
+                testName = UnqualComponentName
+                  "",
+                testInterface =
+                TestSuiteUnsupported
+                  (TestTypeUnknown
+                    ""
+                    (mkVersion [])),
+                testBuildInfo = BuildInfo {
+                  buildable = True,
+                  buildTools = [],
+                  buildToolDepends = [],
+                  cppOptions = [],
+                  asmOptions = [],
+                  cmmOptions = [],
+                  ccOptions = [],
+                  cxxOptions = [],
+                  jsppOptions = [],
+                  ldOptions = [],
+                  hsc2hsOptions = [],
+                  pkgconfigDepends = [],
+                  frameworks = [],
+                  extraFrameworkDirs = [],
+                  asmSources = [],
+                  cmmSources = [],
+                  cSources = [],
+                  cxxSources = [],
+                  jsSources = [],
+                  hsSourceDirs = [],
+                  otherModules = [],
+                  virtualModules = [],
+                  autogenModules = [],
+                  defaultLanguage = Nothing,
+                  otherLanguages = [],
+                  defaultExtensions = [],
+                  otherExtensions = [],
+                  oldExtensions = [],
+                  extraLibs = [],
+                  extraLibsStatic = [],
+                  extraGHCiLibs = [],
+                  extraBundledLibs = [],
+                  extraLibFlavours = [],
+                  extraDynLibFlavours = [],
+                  extraLibDirs = [],
+                  extraLibDirsStatic = [],
+                  includeDirs = [],
+                  includes = [],
+                  autogenIncludes = [],
+                  installIncludes = [],
+                  options = PerCompilerFlavor
+                    []
+                    [],
+                  profOptions = PerCompilerFlavor
+                    []
+                    [],
+                  sharedOptions =
+                  PerCompilerFlavor [] [],
+                  profSharedOptions =
+                  PerCompilerFlavor [] [],
+                  staticOptions =
+                  PerCompilerFlavor [] [],
+                  customFieldsBI = [],
+                  targetBuildDepends = [
+                    Dependency
+                      (PackageName "unix")
+                      (OrLaterVersion (mkVersion [0]))
+                      mainLibSet],
+                  mixins = []},
+                testCodeGenerators = []},
+              condTreeConstraints = [
+                Dependency
+                  (PackageName "unix")
+                  (OrLaterVersion (mkVersion [0]))
+                  mainLibSet],
+              condTreeComponents = []},
+            condBranchIfFalse = Nothing}]}]
+  []
