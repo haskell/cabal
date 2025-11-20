@@ -65,6 +65,24 @@ instance
   , ToExpr e
   , ToExpr f
   , ToExpr g
+  ) =>
+  ToExpr ( a
+         , b
+         , c
+         , d
+         , e
+         , f
+         , g
+         )
+
+instance
+  ( ToExpr a
+  , ToExpr b
+  , ToExpr c
+  , ToExpr d
+  , ToExpr e
+  , ToExpr f
+  , ToExpr g
   , ToExpr h
   , ToExpr i
   ) =>

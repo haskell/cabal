@@ -182,27 +182,26 @@ accessorsTests = testGroup "accessors"
     ]
 
 #ifdef MIN_VERSION_tree_diff
+-- Here, we test the unmerged internal representation
 accessorsGoldenTest :: FilePath -> TestTree
-accessorsGoldenTest fp =
-  let go label f = ediffGolden goldenTest label exprFile $ do
-        contents <- BS.readFile input
-        let res = withSource (PCabalFile (fp, contents)) $ parseGenericPackageDescription contents
-        let (_, x) = runParseResult res
-        case x of
-            Right gpd      -> pure (toExpr $ f gpd)
-            Left (_, errs) -> fail $ unlines $ "ERROR" : map (showPErrorWithSource . fmap renderCabalFileSource) (NE.toList errs)
-        where
-          input = "tests" </> "ParserTests" </> "accessors" </> fp
-          exprFile = replaceExtension input (label <> ".expr")
-  in  testGroup "accessors"
-        [ go "gpdCommonStanzas" gpdCommonStanzas
-        , go "condLibraryUnmerged" condLibraryUnmerged
-        , go "condSubLibrariesUnmerged" condSubLibrariesUnmerged
-        , go "condForeignLibsUnmerged" condForeignLibsUnmerged
-        , go "condExecutablesUnmerged" condExecutablesUnmerged
-        , go "condTestSuitesUnmerged" condTestSuitesUnmerged
-        , go "condBenchmarksUnmerged" condBenchmarksUnmerged
-        ]
+accessorsGoldenTest fp = ediffGolden goldenTest "expr" exprFile $ do
+    contents <- BS.readFile input
+    let res = withSource (PCabalFile (fp, contents)) $ parseGenericPackageDescription contents
+    let (_, x) = runParseResult res
+    case x of
+        Right gpd      -> pure $ toExpr
+            ( gpdCommonStanzas gpd
+            , condLibraryUnmerged gpd
+            , condSubLibrariesUnmerged gpd
+            , condForeignLibsUnmerged gpd
+            , condExecutablesUnmerged gpd
+            , condTestSuitesUnmerged gpd
+            , condBenchmarksUnmerged gpd
+            )
+        Left (_, errs) -> fail $ unlines $ "ERROR" : map (showPErrorWithSource . fmap renderCabalFileSource) (NE.toList errs)
+    where
+      input = "tests" </> "ParserTests" </> "accessors" </> fp
+      exprFile = replaceExtension input "expr"
 #endif
 
 -------------------------------------------------------------------------------
