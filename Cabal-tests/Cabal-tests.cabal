@@ -155,7 +155,7 @@ test-suite hackage-tests
     , base-orphans          >=0.6      && <0.10
     , clock                 >=0.8      && <0.9
     , optparse-applicative  >=0.13.2.0 && <0.19
-    , tar                   >=0.5.0.3  && <0.7
+    , tar                   >=0.5.0.3  && <0.8
     , tree-diff             >=0.1      && <0.4
 
   ghc-options:        -Wall -rtsopts -threaded
