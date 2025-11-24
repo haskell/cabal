@@ -28,7 +28,7 @@ common shared
   build-depends:
     , base >= 4.11 && < 4.22
     -- this needs to match the in-tree lib:Cabal version
-    , Cabal ^>= 3.16.0.0
+    , Cabal ^>= 3.16.1.0
 
   ghc-options:
     -Wall

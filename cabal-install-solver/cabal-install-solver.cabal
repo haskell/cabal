@@ -1,6 +1,6 @@
 cabal-version: 3.6
 name:          cabal-install-solver
-version:       3.16.0.0
+version:       3.16.1.0
 synopsis:      The solver component of cabal-install
 description:
   The solver component used in the cabal-install command-line program.
@@ -101,8 +101,8 @@ library
     , array         >=0.4      && <0.6
     , base          >=4.13     && <4.22
     , bytestring    >=0.10.6.0 && <0.13
-    , Cabal         ^>=3.16
-    , Cabal-syntax  ^>=3.16
+    , Cabal         ^>=3.16.1.0
+    , Cabal-syntax  ^>=3.16.1.0
     , containers    >=0.5.6.2  && <0.9
     , edit-distance ^>= 0.2.2
     , directory     >= 1.3.7.0  && < 1.4
