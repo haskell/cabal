@@ -21,7 +21,6 @@ module Distribution.Client.Init.Format
   , postProcessFieldLines
 
     -- * stanza generation
-  , mkCommonStanza
   , mkLibStanza
   , mkExeStanza
   , mkTestStanza
@@ -123,18 +122,6 @@ postProcessFieldLines ann
 
 -- -------------------------------------------------------------------- --
 -- Stanzas
-
--- The common stanzas are hardcoded for simplicity purposes,
--- see https://github.com/haskell/cabal/pull/7558#discussion_r693173846
-mkCommonStanza :: WriteOpts -> PrettyField FieldAnnotation
-mkCommonStanza opts = case specHasCommonStanzas $ _optCabalSpec opts of
-  NoCommonStanzas -> PrettyEmpty
-  _ ->
-    PrettySection
-      annNoComments
-      "common"
-      [text "warnings"]
-      [field "ghc-options" text "-Wall" [] False opts]
 
 mkGhcOptionsStanza :: WriteOpts -> PrettyField FieldAnnotation
 mkGhcOptionsStanza opts = case specHasCommonStanzas $ _optCabalSpec opts of
