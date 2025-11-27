@@ -218,7 +218,7 @@ convGPD os arch cinfo constraints strfl solveExes pn
         libComps = [ (ExposedLib LMainLibName, libToComponentInfo lib)
                    | lib <- maybeToList mlib ]
         subLibComps = [ (ExposedLib (LSubLibName name), libToComponentInfo lib)
-                      | (name, lib) <- sub_libs ]
+                      | (name, lib) <- sub_libs  ]
         exeComps = [ ( ExposedExe name
                      , ComponentInfo {
                            compIsVisible = IsVisible True
