@@ -40,7 +40,7 @@ jobs:
           ghc-version: ${{ matrix.ghc }}
           cabal-version: latest
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Make sdist
         run: cabal sdist cabal-install

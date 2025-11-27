@@ -113,7 +113,7 @@ jobs:
         run: |
            echo "TMP=${{ runner.temp }}" >> "$GITHUB_ENV"
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       # See https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#hackage-revisions
       - name: Add manually supplied allow-newer
@@ -268,7 +268,7 @@ jobs:
       fail-fast: false
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Install prerequisites for old GHCs
         run: |
@@ -333,7 +333,7 @@ jobs:
       # that Alpine's git doesn't like. Hack around it.
       - run: git config --global --add safe.directory $(pwd)
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       # See https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#hackage-revisions
       - name: Manually supplied constraints/allow-newer
@@ -427,7 +427,7 @@ jobs:
         run: |
            echo "TMP=${{ runner.temp }}" >> "$GITHUB_ENV"
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - uses: haskell-actions/setup@v2
         id: setup-haskell

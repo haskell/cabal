@@ -41,7 +41,7 @@ jobs:
           cabal --version
       - name: Update Hackage index
         run: cabal v2-update
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Generate build plan for correct cache key
         run: ${{ env.cabal_build }} --dry-run
       - name: Restore cached dependencies
@@ -99,7 +99,7 @@ jobs:
           restore-keys: linux-store-doctest
       - name: Update Hackage index
         run: cabal v2-update
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Install doctest
         run: make doctest-install
       - name: Doctest
@@ -129,7 +129,7 @@ jobs:
           cabal --version
       - name: Update Hackage index
         run: cabal v2-update
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Generate build plan for correct cache key
         run: ${{ env.cabal_build }} --dry-run
       - name: Restore cached dependencies
@@ -166,7 +166,7 @@ jobs:
           cabal --version
       - name: Update Hackage Index
         run: cabal v2-update
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Check Release with Pinned Hackage
         run: cabal build all --dry-run --project-file=cabal.release.project
       - name: Check Release with Latest Hackage

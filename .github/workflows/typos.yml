@@ -18,7 +18,7 @@ jobs:
 
     steps:
 
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
 
     - run: |
         wget -q https://github.com/crate-ci/typos/releases/download/${{ env.TYPOS_VER }}/typos-${{ env.TYPOS_VER }}-${{ env.TYPOS_PLATFORM }}.tar.gz

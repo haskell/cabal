@@ -161,7 +161,7 @@ jobs:
         with:
           cabal: ${{ env.CABAL_VERSION }}
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           ref: ${{ matrix.branch }}
 
@@ -200,7 +200,7 @@ jobs:
       ADD_CABAL_ARGS: "--enable-split-sections --enable-executable-static"
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           ref: ${{ matrix.branch }}
 
@@ -241,7 +241,7 @@ jobs:
                     }
                   ]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           ref: ${{ matrix.branch }}
 
@@ -290,7 +290,7 @@ jobs:
       matrix:
         branch: ${{ fromJSON(inputs.branches) }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           ref: ${{ matrix.branch }}
 
@@ -330,7 +330,7 @@ jobs:
       matrix:
         branch: ${{ fromJSON(inputs.branches) }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           ref: ${{ matrix.branch }}
 
@@ -369,7 +369,7 @@ jobs:
       matrix:
         branch: ${{ fromJSON(inputs.branches) }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           ref: ${{ matrix.branch }}
 
@@ -423,7 +423,7 @@ jobs:
       matrix:
         branch: ${{ fromJSON(inputs.branches) }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           ref: ${{ matrix.branch }}
 
@@ -538,7 +538,7 @@ jobs:
         run: |
           ${{ matrix.platform.installCmd }} curl bash git ${{ matrix.platform.toolRequirements }}
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           ref: ${{ matrix.branch }}
 
@@ -583,7 +583,7 @@ jobs:
 #      matrix:
 #        branch: ${{ fromJSON(inputs.branches) }}
 #    steps:
-#      - uses: actions/checkout@v5
+#      - uses: actions/checkout@v6
 #        with:
 #          ref: ${{ matrix.branch }}
 #
@@ -620,7 +620,7 @@ jobs:
                     }
                   ]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           ref: ${{ matrix.branch }}
 
@@ -664,7 +664,7 @@ jobs:
       matrix:
         branch: ${{ fromJSON(inputs.branches) }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           ref: ${{ matrix.branch }}
 
@@ -705,7 +705,7 @@ jobs:
       matrix:
         branch: ${{ fromJSON(inputs.branches) }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           ref: ${{ matrix.branch }}
 
@@ -741,7 +741,7 @@ jobs:
       matrix:
         branch: ${{ fromJSON(inputs.branches) }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           ref: ${{ matrix.branch }}
 
@@ -790,7 +790,7 @@ jobs:
       matrix:
         branch: ${{ fromJSON(inputs.branches) }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           ref: ${{ matrix.branch }}
 
