@@ -168,7 +168,7 @@ simplePkgDesc pkgName =
     ""
     ""
     mempty
-    (Just $ Set.singleton defaultChangelog)
+    (Just $ Set.fromList [defaultReadme, defaultChangelog])
 
 simpleLibTarget :: [Dependency] -> LibTarget
 simpleLibTarget baseDep =
