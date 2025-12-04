@@ -17,7 +17,7 @@
 -- Reading, writing and manipulating \"@.tar@\" archive files.
 module Distribution.Client.Tar
   ( -- * @tar.gz@ operations
-    createTarGzFile
+    TarComp.createTarGzFile
   , TarComp.extractTarGzFile
 
     -- * Other local utils
@@ -34,8 +34,6 @@ import Prelude ()
 
 import qualified Codec.Archive.Tar as Tar
 import qualified Codec.Archive.Tar.Entry as Tar
-import qualified Codec.Compression.GZip as GZip
-import qualified Data.ByteString.Lazy as BS
 import qualified Distribution.Client.Compat.Tar as TarComp
 
 -- for foldEntries...
@@ -44,19 +42,6 @@ import Control.Exception (throw)
 --
 
 -- * High level operations
-
---
-
-createTarGzFile
-  :: FilePath
-  -- ^ Full Tarball path
-  -> FilePath
-  -- ^ Base directory
-  -> FilePath
-  -- ^ Directory to archive, relative to base dir
-  -> IO ()
-createTarGzFile tar base dir =
-  BS.writeFile tar . GZip.compress . Tar.write =<< Tar.pack base [dir]
 
 -- | Type code for the local build tree reference entry type. We don't use the
 -- symbolic link entry type because it allows only 100 ASCII characters for the
