@@ -31,7 +31,7 @@ cabal-install and cabal-install-solver 3.16.1.0 changelog and release notes
 
   With a project, the REPL command requires a target. If one is not given then a
   message is shown explaining this and naming the project if the `--project-file`
-  option was given (but not when the default 'cabal.project' project name is used
+  option was given (but not when the default `cabal.project` project name is used
   implicitly).  We're not yet able to list project targets so in the meantime, the
   messages lists the packages of the project.
 
