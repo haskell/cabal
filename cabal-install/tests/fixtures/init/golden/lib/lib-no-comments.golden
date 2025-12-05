@@ -1,7 +1,6 @@
 library
     import:           extensions
     import:           ghc-options
-    import:           rts-options
     exposed-modules:  MyLib
     -- other-modules:
     -- other-extensions:
