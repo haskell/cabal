@@ -1,7 +1,6 @@
 library
     import:           extensions
     import:           ghc-options
-    import:           rts-options
     exposed-modules:  MyLib
     build-depends:    base
     hs-source-dirs:   src

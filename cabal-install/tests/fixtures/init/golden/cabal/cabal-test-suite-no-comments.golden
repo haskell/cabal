@@ -14,8 +14,14 @@ build-type:         Simple
 extra-doc-files:    CHANGELOG.md
 -- extra-source-files:
 
-common warnings
-    ghc-options: -Wall
+common extensions
+    default-language: GHC2021
+
+common ghc-options
+    ghc-options: -Wall -Widentities -Wcompat
+
+common rts-options
+    ghc-options: -rtsopts -threaded "-with-rtsopts=-N -T"
 
 test-suite y-test
     import:           extensions
