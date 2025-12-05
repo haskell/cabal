@@ -37,7 +37,7 @@ cabal-install and cabal-install-solver 3.16.1.0 changelog and release notes
 
   Before the fix the message mentioned a `fake-package-0`. This was confusing. It is no longer mentioned.
 
-- Fix regression when -b option is used in a non-project context [#11107](https://github.com/haskell/cabal/issues/11107) [#11237](https://github.com/haskell/cabal/pull/11237)
+- Fix regression when `-b` option is used in a non-project context [#11107](https://github.com/haskell/cabal/issues/11107) [#11237](https://github.com/haskell/cabal/pull/11237)
 
   The `repl -b` option can be used to create a repl which contains certain specific
   packages.
