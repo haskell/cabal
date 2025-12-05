@@ -27,3 +27,22 @@ cabal-install and cabal-install-solver 3.16.1.0 changelog and release notes
 
   This adds the GHC Project Unit ID (ABI tag) and store path to the cabal path output as "compiler-abi-tag" and "compiler-store-path". These have been used in cabal-install since 3.12.1.0.
 
+- Better error messages when repl command is missing a target [#10527](https://github.com/haskell/cabal/issues/10527) [#10684](https://github.com/haskell/cabal/pull/10684)
+
+  With a project, the REPL command requires a target. If one is not given then a
+  message is shown explaining this and naming the project if the `--project-file`
+  option was given (but not when the default `cabal.project` project name is used
+  implicitly).  We're not yet able to list project targets so in the meantime, the
+  messages lists the packages of the project.
+
+  Before the fix the message mentioned a `fake-package-0`. This was confusing. It is no longer mentioned.
+
+- Fix regression when `-b` option is used in a non-project context [#11107](https://github.com/haskell/cabal/issues/11107) [#11237](https://github.com/haskell/cabal/pull/11237)
+
+  The `repl -b` option can be used to create a repl which contains certain specific
+  packages.
+
+  `cabal repl -b vector`, starts a GHCi session with the `vector` package available.
+
+  The flag was broken in the 3.16.0.0 release, and now fixed.
+
