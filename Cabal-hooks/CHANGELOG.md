@@ -1,6 +1,6 @@
 # Changelog for `Cabal-hooks`
 
-## 3.16.1 – November 2025
+## 3.16.1 – December 2025
   * No changes
 
 ## 3.16.0 – July 2025
