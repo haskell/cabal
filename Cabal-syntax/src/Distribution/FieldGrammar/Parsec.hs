@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -69,6 +70,7 @@ module Distribution.FieldGrammar.Parsec
   ) where
 
 import Distribution.Compat.Newtype
+import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Distribution.Utils.Generic (fromUTF8BS)
 import Distribution.Utils.String (trim)
@@ -270,11 +272,18 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
           | v >= CabalSpecV3_0 -> pure (ShortText.toShortText $ fieldlinesToFreeText3 pos fls)
           | otherwise -> pure (ShortText.toShortText $ fieldlinesToFreeText fls)
 
+  -- TODO(leana8959): trace monoidal field merging
+  monoidalFieldAla :: forall a b s. (Monoid a, Parsec b, Newtype a b) => FieldName -> (a -> b) -> ALens' s a -> ParsecFieldGrammar s a
   monoidalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
+      parser :: CabalSpecVersion -> Map FieldName [NamelessField Position] -> ParseResult src a
       parser v fields = case Map.lookup fn fields of
         Nothing -> pure mempty
-        Just xs -> foldMap (unpack' _pack) <$> traverse (parseOne v) xs
+        Just xs ->
+          let traceIf cond = if cond then trace else const id
+          in
+              traceIf (length xs /= 1) ("field " <> show fn <> " has \t" <> show (length xs) <> " definitions")
+                $ foldMap (unpack' _pack) <$> traverse (parseOne v) xs
 
       parseOne v (MkNamelessField pos fls) = runFieldParser pos parsec v fls
 
