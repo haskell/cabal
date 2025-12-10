@@ -184,6 +184,7 @@ import Distribution.Simple.LocalBuildInfo
   , pkgComponents
   )
 
+import Distribution.Simple.BuildWay
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Program
 import Distribution.Simple.Program.Db
@@ -219,6 +220,8 @@ import qualified Distribution.InstalledPackageInfo as IPI
 import qualified Distribution.PackageDescription as PD
 import qualified Distribution.PackageDescription.Configuration as PD
 import qualified Distribution.Simple.Configure as Cabal
+import qualified Distribution.Simple.GHC as GHC
+import qualified Distribution.Simple.GHCJS as GHCJS
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.Simple.LocalBuildInfo as Cabal
 import qualified Distribution.Simple.Setup as Cabal
@@ -2391,7 +2394,7 @@ elaborateInstallPlan
             elabBuildOptions =
               LBC.BuildOptions
                 { withVanillaLib = perPkgOptionFlag srcpkgPackageId True packageConfigVanillaLib -- TODO: [required feature]: also needs to be handled recursively
-                , withSharedLib = srcpkgPackageId `Set.member` pkgsUseSharedLibrary
+                , withSharedLib = srcpkgPackageId `Set.member` pkgsUseSharedLibrary elabCompiler
                 , withStaticLib = perPkgOptionFlag srcpkgPackageId False packageConfigStaticLib
                 , withDynExe =
                     perPkgOptionFlag srcpkgPackageId False packageConfigDynExe
@@ -2565,15 +2568,13 @@ elaborateInstallPlan
       -- TODO: localPackages is a misnomer, it's all project packages
       -- here is where we decide which ones will be local!
 
-      pkgsUseSharedLibrary :: Set PackageId
-      pkgsUseSharedLibrary =
-        packagesWithLibDepsDownwardClosedProperty needsSharedLib
+      pkgsUseSharedLibrary :: Compiler -> Set PackageId
+      pkgsUseSharedLibrary compiler =
+        packagesWithLibDepsDownwardClosedProperty (needsSharedLib compiler)
 
-      needsSharedLib pkgid =
+      needsSharedLib compiler pkgid =
         fromMaybe
-          -- FIXME
-          -- compilerShouldUseSharedLibByDefault
-          False
+          compilerShouldUseSharedLibByDefault
           -- Case 1: --enable-shared or --disable-shared is passed explicitly, honour that.
           ( case pkgSharedLib of
               Just v -> Just v
@@ -2595,6 +2596,21 @@ elaborateInstallPlan
           pkgSharedLib = perPkgOptionMaybe pkgid packageConfigSharedLib
           pkgDynExe = perPkgOptionMaybe pkgid packageConfigDynExe
           pkgProf = perPkgOptionMaybe pkgid packageConfigProf
+
+          compilerShouldUseSharedLibByDefault =
+            case compilerFlavor compiler of
+              GHC -> GHC.compilerBuildWay compiler == DynWay && canBuildSharedLibs
+              GHCJS -> GHCJS.isDynamic compiler
+              _ -> False
+
+          canBuildWayLibs predicate = case predicate compiler of
+            Just can_build -> can_build
+            -- If we don't know for certain, just assume we can
+            -- which matches behaviour in previous cabal releases
+            Nothing -> True
+
+          canBuildSharedLibs = canBuildWayLibs dynamicSupported
+
 
       pkgsUseProfilingLibrary :: Set PackageId
       pkgsUseProfilingLibrary =
