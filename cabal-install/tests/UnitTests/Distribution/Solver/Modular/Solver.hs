@@ -2081,7 +2081,7 @@ dbIndepGoals78 =
 -- If you specify `any.A == 2`, then that should apply inside an independent goal.
 testIndepGoals8 :: String -> SolverTest
 testIndepGoals8 name =
-  constraints [ExVersionConstraint (ScopeAnyQualifier "A") (V.thisVersion (V.mkVersion [2]))] $
+  constraints [ExVersionConstraint (ConstraintScope Nothing (ScopeAnyQualifier "A")) (V.thisVersion (V.mkVersion [2]))] $
     independentGoals $
       mkTest dbIndepGoals78 name ["A"] $
         solverSuccess [("A", 2)]

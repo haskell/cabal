@@ -26,7 +26,8 @@ import Distribution.Compat.Lens
 import qualified Distribution.Types.Lens as L
 
 import Distribution.Client.CmdErrorMessages
-  ( Plural (..)
+  ( ComponentKind (..)
+  , Plural (..)
   , componentKind
   , renderComponentKind
   , renderListCommaAnd
@@ -192,6 +193,7 @@ import Distribution.Client.ReplFlags
   )
 import Distribution.Compat.Binary (decode)
 import qualified Distribution.Compat.Graph as Graph
+import Distribution.Types.PackageName.Magic (fakePackageId)
 import Distribution.Simple.Flag (flagToMaybe, fromFlagOrDefault, pattern Flag)
 import Distribution.Simple.Program.Builtin (ghcProgram)
 import Distribution.Simple.Program.Db (requireProgram)
@@ -608,12 +610,14 @@ targetedRepl
         go m ("PATH", Just s) = foldl' (\m' f -> Map.insertWith (+) f 1 m') m (splitSearchPath s)
         go m _ = m
 
+    projectRoot = distProjectRootDirectory $ distDirLayout ctx
+    distDir = distDirectory $ distDirLayout ctx
     verbosity = cfgVerbosity normal flags
     tempFileOptions = commonSetupTempFileOptions $ configCommonFlags configFlags
 
     -- FIXME: the compiler depends on the stage!!
     validatedTargets ctx compiler elaboratedPlan targetSelectors = do
-      let multi_repl_enabled = multiReplDecision ctx compiler r
+      let multi_repl_enabled = multiReplDecision ctx compiler replFlags
       -- Interpret the targets on the command line as repl targets
       -- (as opposed to say build or haddock targets).
       targets <-
@@ -634,6 +638,17 @@ targetedRepl
           [multipleTargetsProblem multi_repl_enabled targets]
 
       return targets
+
+withCtx :: NixStyleFlags a -> [String] -> GlobalFlags -> TargetsAction [TargetSelector] b -> IO b
+withCtx flags targetStrings globalFlags =
+  withContextAndSelectors
+    (cfgVerbosity normal flags)
+    (if null targetStrings then AcceptNoTargets else RejectNoTargets)
+    (Just LibKind)
+    flags
+    targetStrings
+    globalFlags
+    ReplCommand
 
 -- | Create a constraint which requires a later version of Cabal.
 -- This is used for commands which require a specific feature from the Cabal library
@@ -685,7 +700,7 @@ validatedTargets
   -> Compiler
   -> ElaboratedInstallPlan
   -> [TargetSelector]
-  -> IO TargetsMap
+  -> IO TargetsMapS
 validatedTargets verbosity replFlags ctx compiler elaboratedPlan targetSelectors = do
   let multi_repl_enabled = multiReplDecision ctx compiler replFlags
   -- Interpret the targets on the command line as repl targets (as opposed to

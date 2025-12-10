@@ -80,7 +80,7 @@ runLogProgress' (LogProgress m) = foldProgress (\_ x -> x) Left Right (m env)
   where
     env =
       LogEnv
-        { le_verbosity = silent
+        { le_verbosity = mkVerbosity defaultVerbosityHandles silent
         , le_context = []
         }
 

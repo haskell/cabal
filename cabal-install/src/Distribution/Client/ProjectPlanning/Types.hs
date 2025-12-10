@@ -128,6 +128,7 @@ import qualified Distribution.Types.LocalBuildConfig as LBC
 import Distribution.Types.PackageDescription (PackageDescription (..))
 import Distribution.Types.PkgconfigVersion
 import Distribution.Utils.Path (getSymbolicPath)
+import Distribution.Verbosity (Verbosity, VerbosityLevel (..), verbosityLevel)
 import Distribution.Version
 
 import qualified Data.ByteString.Lazy as LBS
@@ -607,7 +608,7 @@ elabOrderLibDependencies elab =
   case elabPkgOrComp elab of
     ElabPackage pkg ->
       -- Note: flatDeps include the setup dependencies too
-      ordNub $ CD.flatDeps (pkgOrderLibDependencies pkg)
+      ordNub $ concatMap snd . CD.toList $ (pkgOrderLibDependencies pkg)
     ElabComponent comp ->
       map (WithStage (elabStage elab)) (compOrderLibDependencies comp)
 
@@ -616,7 +617,7 @@ elabOrderExeDependencies :: ElaboratedConfiguredPackage -> [WithStage UnitId]
 elabOrderExeDependencies elab =
   case elabPkgOrComp elab of
     ElabPackage pkg ->
-      ordNub $ CD.flatDeps (pkgOrderExeDependencies pkg)
+      ordNub $ concatMap snd . CD.toList $ (pkgOrderExeDependencies pkg)
     ElabComponent comp ->
       map (fmap fromConfiguredId) (compExeDependencies comp)
 

@@ -1128,7 +1128,7 @@ printPlan
             (not . null)
             [ " -"
             , prettyShow (elabStage elab)
-            , if verbosity >= deafening
+            , if verbosityLevel verbosity >= Deafening
                 then prettyShow (installedUnitId elab)
                 else prettyShow (packageId elab)
             , case elabBuildStyle elab of

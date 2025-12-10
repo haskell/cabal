@@ -206,7 +206,7 @@ validate = go
       let I stage _vr _loc = i
       let (PInfo deps comps _ mfr) = idx ! pn ! i
       -- qualify the deps in the current scope
-      let qdeps = qualifyDeps qo qpn deps
+      let qdeps = qualifyDeps qpn deps
       -- the new active constraints are given by the instance we have chosen,
       -- plus the dependency information we have for that instance
       let newactives = extractAllDeps pfa psa qdeps

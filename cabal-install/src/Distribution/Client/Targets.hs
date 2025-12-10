@@ -619,6 +619,7 @@ data UserConstraintScope = UserConstraintScope (Maybe Stage) UserConstraintQuali
 
 instance Binary UserConstraintScope
 instance Structured UserConstraintScope
+instance NFData UserConstraintScope
 
 data UserConstraintQualifier
   = -- | Scope that applies to the package when it has the specified qualifier.
@@ -633,6 +634,7 @@ data UserConstraintQualifier
 
 instance Binary UserConstraintQualifier
 instance Structured UserConstraintQualifier
+instance NFData UserConstraintQualifier
 
 fromUserQualifier :: UserQualifier -> Qualifier
 fromUserQualifier UserQualToplevel = QualToplevel

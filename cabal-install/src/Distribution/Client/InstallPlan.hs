@@ -393,7 +393,7 @@ mkInstallPlan
 mkInstallPlan graph =
   case NE.nonEmpty (problems graph) of
     Just problems' -> Left $ renderPlanProblems (NE.toList problems')
-    Nothing -> Right $ GenericInstallPlan{planGraph = graph}
+    Nothing -> Right $ GenericInstallPlan{planGraph = graph, planIndepGoals = IndependentGoals False}
 
 mkInstallPlan'
   :: ( IsGraph ipkg srcpkg
@@ -404,7 +404,7 @@ mkInstallPlan'
 mkInstallPlan' graph =
   case NE.nonEmpty (problems graph) of
     Just problems' -> Left problems'
-    Nothing -> Right $ GenericInstallPlan{planGraph = graph}
+    Nothing -> Right $ GenericInstallPlan{planGraph = graph, planIndepGoals = IndependentGoals False}
 
 -- | Build an installation plan from a set of packages.
 new

@@ -37,6 +37,9 @@ import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.SetupHooks.Internal
 import qualified Distribution.Simple.Test as Cabal
 import Distribution.Simple.Utils
+import Distribution.Client.Toolchain (Toolchain (..))
+import Distribution.Solver.Types.Stage (Stage (..))
+import Distribution.Solver.Types.Stage (getStage)
 import Distribution.System (Platform)
 import Distribution.Types.BuildType
 import Distribution.Types.ComponentRequestedSpec
@@ -86,8 +89,7 @@ libraryConfigureInputsFromElabPackage
   -- NB: don't use the ProgramDb from the ElaboratedSharedConfig;
   -- that one is only for the compiler itself and not for the package.
   ElaboratedSharedConfig
-    { pkgConfigPlatform = plat
-    , pkgConfigCompiler = compil
+    { pkgConfigToolchains = toolchains
     }
   (ReadyPackage pkg)
   userTargets =
@@ -123,6 +125,9 @@ libraryConfigureInputsFromElabPackage
     where
       pkgDescr = elabPkgDescription pkg
       gpkgDescr = elabGPkgDescription pkg
+      hostToolchain = getStage toolchains Host
+      plat = toolchainPlatform hostToolchain
+      compil = toolchainCompiler hostToolchain
 
 configure
   :: LibraryConfigureInputs
