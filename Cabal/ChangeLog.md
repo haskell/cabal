@@ -1,4 +1,4 @@
-# 3.16.1.0 [Artem Pelenitsyn](mailto:a@pelenitsyn.top) November 2025
+# 3.16.1.0 [Artem Pelenitsyn](mailto:a@pelenitsyn.top) December 2025
 * See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.16.1.0.md
 
 # 3.16.0.0 [Artem Pelenitsyn](mailto:a@pelenitsyn.top) July 2025
