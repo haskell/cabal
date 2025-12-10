@@ -51,6 +51,7 @@ jobs:
     uses: ./.github/workflows/reusable-release.yml
     with:
       branches: '["${{ github.ref }}"]'
+      test: false
 
   release:
     name: release
