@@ -75,7 +75,7 @@ import Distribution.Simple.Setup
          ( BooleanFlag(..) )
 import Distribution.Simple.Utils
     ( ordNubBy )
-import Distribution.Verbosity ( normal, verbose )
+import Distribution.Verbosity ( VerbosityLevel (..) )
 
 -- | Ties the two worlds together: classic cabal-install vs. the modular
 -- solver. Performs the necessary translations before and after.

@@ -75,7 +75,7 @@ import Control.Monad
 import Control.Monad.Reader as Reader
 import Control.Monad.State as State
 import qualified Data.Map.Strict as Map
-import Distribution.Client.Compat.ExecutablePath (getExecutablePath)
+import System.Environment (getExecutablePath)
 import System.Directory
 import System.FilePath
 

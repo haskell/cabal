@@ -11,7 +11,6 @@ module Distribution.Solver.Modular.Package
   , QPV
   , instI
   , instUid
-  , makeIndependent
   , primaryPP
   , setupPP
   , showI
@@ -75,7 +74,7 @@ instI (I _ _ (Inst _)) = True
 instI _              = False
 
 instUid :: UnitId -> I -> Bool
-instUid uid (I _ (Inst uid')) = uid == uid'
+instUid uid (I _ _ (Inst uid')) = uid == uid'
 instUid _ _ = False
 
 -- | Is the package in the primary group of packages.  This is used to
@@ -101,7 +100,3 @@ setupPP :: PackagePath -> Bool
 setupPP (PackagePath _ns (QualSetup _)) = True
 setupPP (PackagePath _ns _)         = False
 
--- | Qualify a target package with its own name so that its dependencies are not
--- required to be consistent with other targets.
-makeIndependent :: PN -> QPN
-makeIndependent pn = Q (PackagePath (Independent pn) QualToplevel) pn

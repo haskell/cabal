@@ -2,7 +2,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Distribution.Solver.Types.PackagePath
     ( PackagePath(..)
-    , Namespace(..)
     , Qualifier(..)
     , dispQualifier
     , Qualified(..)

@@ -37,6 +37,7 @@ data Stage
 
 instance Binary Stage
 instance Structured Stage
+instance NFData Stage
 
 instance Pretty Stage where
   pretty = Disp.text . showStage

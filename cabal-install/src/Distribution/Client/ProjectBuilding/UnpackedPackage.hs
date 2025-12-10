@@ -122,7 +122,6 @@ import GHC.Stack
 import Web.Browser (openBrowser)
 
 import Distribution.Client.Errors
-import Distribution.Compat.Directory (listDirectory)
 
 import Distribution.Client.ProjectBuilding.PackageFileMonitor
 import qualified Distribution.Compat.Graph as Graph
@@ -196,11 +195,13 @@ buildAndRegisterUnpackedPackage
   delegate = do
     info verbosity $ "\n\nbuildAndRegisterUnpackedPackage: " ++ prettyShow (Graph.nodeKey pkg)
     -- Configure phase
-    delegate $
-      PBConfigurePhase $
-        annotateFailure mlogFile ConfigureFailed $ do
-          info verbosity $ "--- Configure phase " ++ prettyShow (Graph.nodeKey pkg)
-          setup configureCommand Cabal.configCommonFlags configureFlags configureArgs
+    mbLBI <-
+      delegate $
+        PBConfigurePhase $
+          annotateFailure mlogFile ConfigureFailed $ do
+            info verbosity $ "--- Configure phase " ++ prettyShow (Graph.nodeKey pkg)
+            setup configureCommand Cabal.configCommonFlags configureFlags configureArgs
+              (InLibraryArgs $ InLibraryConfigureArgs pkgshared rpkg)
 
     -- Build phase
     delegate $
@@ -208,6 +209,7 @@ buildAndRegisterUnpackedPackage
         annotateFailure mlogFile BuildFailed $ do
           info verbosity $ "--- Build phase " ++ prettyShow (Graph.nodeKey pkg)
           setup buildCommand Cabal.buildCommonFlags (return . buildFlags) buildArgs
+            (InLibraryArgs $ InLibraryPostConfigureArgs SBuildPhase mbLBI)
 
     -- Haddock phase
     whenHaddock $
@@ -216,6 +218,7 @@ buildAndRegisterUnpackedPackage
           annotateFailure mlogFile HaddocksFailed $ do
             info verbosity $ "--- Haddock phase " ++ prettyShow (Graph.nodeKey pkg)
             setup haddockCommand Cabal.haddockCommonFlags (return . haddockFlags) haddockArgs
+              (InLibraryArgs $ InLibraryPostConfigureArgs SHaddockPhase mbLBI)
 
     -- Install phase
     delegate $
@@ -224,6 +227,7 @@ buildAndRegisterUnpackedPackage
             annotateFailure mlogFile InstallFailed $ do
               info verbosity $ "--- Install phase, copy " ++ prettyShow (Graph.nodeKey pkg)
               setup Cabal.copyCommand Cabal.copyCommonFlags (return . copyFlags destdir) copyArgs
+                (InLibraryArgs $ InLibraryPostConfigureArgs SCopyPhase mbLBI)
         , runRegister = \pkgDBStack registerOpts ->
             annotateFailure mlogFile InstallFailed $ do
               info verbosity $ "--- Install phase, register " ++ prettyShow (Graph.nodeKey pkg)
@@ -251,6 +255,7 @@ buildAndRegisterUnpackedPackage
           annotateFailure mlogFile TestsFailed $ do
             info verbosity $ "--- Test phase " ++ prettyShow (Graph.nodeKey pkg)
             setup testCommand Cabal.testCommonFlags (return . testFlags) testArgs
+              (InLibraryArgs $ InLibraryPostConfigureArgs STestPhase mbLBI)
 
     -- Bench phase
     whenBench $
@@ -259,6 +264,7 @@ buildAndRegisterUnpackedPackage
           annotateFailure mlogFile BenchFailed $ do
             info verbosity $ "--- Benchmark phase " ++ prettyShow (Graph.nodeKey pkg)
             setup benchCommand Cabal.benchmarkCommonFlags (return . benchFlags) benchArgs
+              (InLibraryArgs $ InLibraryPostConfigureArgs SBenchPhase mbLBI)
 
     -- Repl phase
     whenRepl $
@@ -266,7 +272,8 @@ buildAndRegisterUnpackedPackage
         PBReplPhase $
           annotateFailure mlogFile ReplFailed $ do
             info verbosity $ "--- Repl phase " ++ prettyShow (Graph.nodeKey pkg)
-            setupInteractive replCommand Cabal.replCommonFlags replFlags replArgs
+            setupInteractive replCommand Cabal.replCommonFlags (return . replFlags) replArgs
+              (InLibraryArgs $ InLibraryPostConfigureArgs SReplPhase mbLBI)
 
     return ()
     where

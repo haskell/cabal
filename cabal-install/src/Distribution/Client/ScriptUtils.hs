@@ -382,7 +382,7 @@ withContextAndSelectors verbosity noTargets kind flags@NixStyleFlags{..} targetS
           createDirectoryIfMissingVerbose verbosity True (distProjectCacheDirectory $ distDirLayout baseCtx)
 
           toolchains <-
-            runRebuild projectRoot $ configureToolchains verbosity (distDirLayout baseCtx) (fst (ignoreConditions projectCfgSkeleton) <> projectConfig baseCtx)
+            runRebuild projectRoot $ configureToolchains verbosity (distDirLayout baseCtx) (snd (ignoreConditions projectCfgSkeleton) <> projectConfig baseCtx)
 
           let Toolchain{toolchainCompiler, toolchainPlatform = toolchainPlatform@(Platform arch os)} = getStage toolchains Host
 
@@ -480,7 +480,7 @@ updateContextAndWriteProjectFile ctx scriptPath scriptExecutable = do
   let sourcePackage =
         fakeProjectSourcePackage projectRoot
           & lSrcpkgDescription . L.condExecutables
-            .~ [(scriptComponentName scriptPath, CondNode executable (targetBuildDepends $ buildInfo executable) [])]
+            .~ [(scriptComponentName scriptPath, CondNode executable [])]
       executable =
         scriptExecutable
           & L.modulePath .~ absScript

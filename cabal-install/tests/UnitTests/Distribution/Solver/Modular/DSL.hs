@@ -879,7 +879,7 @@ exResolve
                               setEnableBackjumping enableBj $
                                 setSolveExecutables solveExes $
                                   setGoalOrder goalOrder $
-                                    setSolverVerbosity verbosity $
+                                    setSolverVerbosity (C.verbosityLevel verbosity) $
                                       standardInstallPolicy avaiIdx targets'
       toLpc pc = LabeledPackageConstraint pc ConstraintSourceUnknown
 

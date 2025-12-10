@@ -36,6 +36,7 @@ import qualified Distribution.Solver.Modular.WeightedPSQ as W
 
 import Distribution.Solver.Types.ComponentDeps
 import Distribution.Solver.Types.PackagePath
+import Distribution.Solver.Types.Settings (IndependentGoals (..))
 import qualified Distribution.Solver.Types.Stage as Stage
 
 -- | All state needed to build and link the search tree. It has a type variable
@@ -113,7 +114,7 @@ scopedExtendOpen :: QPN -> FlaggedDeps PN -> FlagInfo ->
 scopedExtendOpen qpn fdeps fdefs s = extendOpen qpn gs s
   where
     -- Qualify all package names
-    qfdeps = qualifyDeps (qualifyOptions s) qpn fdeps
+    qfdeps = qualifyDeps qpn fdeps
     -- Introduce all package flags
     qfdefs = L.map (\ (fn, b) -> Flagged (FN qpn fn) b [] []) $ M.toList fdefs
     -- Combine new package and flag goals

@@ -253,7 +253,7 @@ pathAction flags@NixStyleFlags{extraFlags = pathFlags'} cliTargetStrings globalF
         let Toolchain{..} = getStage toolchains Host
         compilerProg <- requireCompilerProg verbosity toolchainCompiler
         (configuredCompilerProg, _) <- requireProgram verbosity compilerProg toolchainProgramDb
-        pure $ Just $ mkCompilerInfo configuredCompilerProg toolchainCompiler
+        pure $ Just $ mkCompilerInfo configuredCompilerProg toolchainCompiler (cabalStoreDirLayout $ cabalDirLayout baseCtx)
 
   paths <- for (fromFlagOrDefault [] $ pathDirectories pathFlags) $ \p -> do
     t <- getPathLocation verbosity baseCtx p

@@ -376,6 +376,7 @@ instance NFData ProjectConfigToParse where
 
 instance NFData ProjectConfig
 instance NFData ProjectConfigBuildOnly
+instance NFData ProjectConfigToolchain
 instance NFData ProjectConfigShared
 
 instance NFData ProjectConfigProvenance where

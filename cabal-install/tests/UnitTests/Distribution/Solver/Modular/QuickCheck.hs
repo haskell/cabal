@@ -632,7 +632,6 @@ instance ArbitraryOrd pn => ArbitraryOrd (Variable pn)
 instance ArbitraryOrd a => ArbitraryOrd (P.Qualified a)
 instance ArbitraryOrd P.PackagePath
 instance ArbitraryOrd P.Qualifier
-instance ArbitraryOrd P.Namespace
 instance ArbitraryOrd OptionalStanza
 instance ArbitraryOrd FlagName
 instance ArbitraryOrd PackageName

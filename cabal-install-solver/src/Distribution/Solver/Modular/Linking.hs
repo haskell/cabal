@@ -101,7 +101,7 @@ validateLinking index = (`runReader` initVS) . go
     goP qpn@(Q _pp pn) opt@(POption i _) r = do
       vs <- ask
       let PInfo deps _ _ _ = vsIndex vs ! pn ! i
-          qdeps            = qualifyDeps (vsQualifyOptions vs) qpn deps
+          qdeps            = qualifyDeps qpn deps
           newSaved         = M.insert qpn qdeps (vsSaved vs)
       case execUpdateState (pickPOption qpn opt qdeps) vs of
         Left  (cs, err) -> return $ Fail cs (DependenciesNotLinked err)
@@ -274,9 +274,8 @@ linkDeps target = \deps -> do
       (Simple (LDep _ (Pkg  _ _)) _, _) -> return ()
 
     requalify :: FlaggedDeps QPN -> UpdateState (FlaggedDeps QPN)
-    requalify deps = do
-      vs <- get
-      return $ qualifyDeps (vsQualifyOptions vs) target (unqualifyDeps deps)
+    requalify deps =
+      return $ qualifyDeps target (unqualifyDeps deps)
 
 pickFlag :: QFN -> Bool -> UpdateState ()
 pickFlag qfn b = do

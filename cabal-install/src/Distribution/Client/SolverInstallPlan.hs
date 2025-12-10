@@ -242,7 +242,7 @@ problems _indepGoals index =
        ]
     ++ [ PackageInconsistency name inconsistencies
        | (name, inconsistencies) <-
-          dependencyInconsistencies indepGoals index
+          dependencyInconsistencies index
        ]
     ++ [ PackageStateInvalid pkg pkg'
        | pkg <- Foldable.toList index
@@ -271,7 +271,7 @@ dependencyInconsistencies index =
       -- Not Graph.closure!!
       map
         (nonSetupClosure index)
-        (rootSets indepGoals index)
+        (rootSets (IndependentGoals False) index)
 
 -- NB: When we check for inconsistencies, packages from the setup
 -- scripts don't count as part of the closure (this way, we
@@ -426,7 +426,7 @@ closed = null . Graph.broken
 -- * if the result is @False@ use 'PackageIndex.dependencyInconsistencies' to
 --   find out which packages are.
 consistent :: SolverPlanIndex -> Bool
-consistent = null . dependencyInconsistencies (IndependentGoals False)
+consistent = null . dependencyInconsistencies
 
 -- | The states of packages have that depend on each other must respect
 -- this relation. That is for very case where package @a@ depends on

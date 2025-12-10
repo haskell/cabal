@@ -69,7 +69,7 @@ defaultQualifyOptions idx = QO {
                               | -- Find all versions of base ..
                                 Just is <- [M.lookup base idx]
                                 -- .. which are installed ..
-                              , (I _ver (Inst _), PInfo deps _comps _flagNfo _fr) <- M.toList is
+                              , (I _ _ver (Inst _), PInfo deps _comps _flagNfo _fr) <- M.toList is
                                 -- .. and flatten all their dependencies ..
                               , (LDep _ (Dep (PkgComponent dep _) _ci), _comp) <- flattenFlaggedDeps deps
                               ]

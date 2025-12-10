@@ -460,7 +460,7 @@ rebuildTargets'
                       getStage (pkgConfigToolchains sharedPackageConfig) (elabStage elab)
                 unless exists $ do
                   createDirectoryIfMissingVerbose verbosity True (takeDirectory dbPath)
-                  Cabal.createPackageDB verbosity toolchainCompiler toolchainProgramDb False dbPath
+                  Cabal.createPackageDB verbosity toolchainCompiler toolchainProgramDb dbPath
               _ -> pure ()
           _ -> pure ()
 

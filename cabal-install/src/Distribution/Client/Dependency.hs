@@ -137,7 +137,8 @@ import Distribution.Types.DependencySatisfaction
   ( DependencySatisfaction (..)
   )
 import Distribution.Verbosity
-  ( deafening
+  ( VerbosityLevel (..)
+  , deafening
   , normal
   )
 import Distribution.Version
@@ -229,7 +230,7 @@ showDepResolverParams p =
       , hang (text "constraints:") 2 $
           vcat [prettyLabeledConstraint lc | lc <- depResolverConstraints p]
       , hang (text "preferences:") 2 $
-          if depResolverVerbosity p >= deafening
+          if depResolverVerbosity p >= Deafening
             then vcat [text (showPackagePreference pref) | pref <- depResolverPreferences p]
             else text "... increase verbosity to see"
       , hang (text "strategy:") 2 $
@@ -453,7 +454,7 @@ dependOnWiredIns compiler params = addConstraints extraConstraints params
   where
     extraConstraints =
       [ LabeledPackageConstraint
-        (PackageConstraint (ScopeAnyQualifier pkgName) (PackagePropertyInstalledSpecificUnitId unitId))
+        (PackageConstraint (ConstraintScope Nothing (ScopeAnyQualifier pkgName)) (PackagePropertyInstalledSpecificUnitId unitId))
         ConstraintSourceNonReinstallablePackage
       | (pkgName, unitId) <- fromMaybe [] $ compilerInfoWiredInUnitIds compiler
       ]
@@ -796,7 +797,7 @@ standardInstallPolicy
   -> [PackageSpecifier UnresolvedSourcePackage]
   -> DepResolverParams
 standardInstallPolicy sourcePkgDb pkgSpecifiers =
-  addDefaultSetupDependencies mkDefaultSetupDeps $
+  addDefaultSetupDependencies setImplicitSetupInfo mkDefaultSetupDeps $
     basicInstallPolicy
       sourcePkgDb
       pkgSpecifiers
@@ -858,6 +859,7 @@ resolveDependencies toolchains pkgConfigDB installedPkgIndex params =
               cntConflicts
               fineGrained
               minimize
+              indGoals
               noReinstalls
               shadowing
               strFlags
@@ -903,6 +905,8 @@ resolveDependencies toolchains pkgConfigDB installedPkgIndex params =
         if isJust (compilerInfoWiredInUnitIds comp) || asBool (depResolverAllowBootLibInstalls params)
           then dependOnWiredIns comp params
           else dontInstallNonReinstallablePackages params
+
+    comp = fst (getStage toolchains Host)
 
     formatProgress :: Progress SummarizedMessage String a -> Progress String String a
     formatProgress p = foldProgress (\x xs -> Step (renderSummarizedMessage x) xs) Fail Done p
@@ -978,7 +982,7 @@ validateSolverResult
   -> SolverInstallPlan
 validateSolverResult toolchains pkgs =
   case planPackagesProblems toolchains pkgs of
-    [] -> case SolverInstallPlan.new graph of
+    [] -> case SolverInstallPlan.new (IndependentGoals False) graph of
       Right plan -> plan
       Left problems -> error (formatPlanProblems problems)
     problems -> error (formatPkgProblems problems)

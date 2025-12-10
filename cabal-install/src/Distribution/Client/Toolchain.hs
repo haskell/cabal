@@ -16,7 +16,7 @@ where
 import Distribution.Client.Setup (ConfigExFlags (..))
 import Distribution.Simple (Compiler, CompilerFlavor)
 import Distribution.Simple.Compiler (interpretPackageDBStack)
-import Distribution.Simple.Configure
+import Distribution.Simple.Configure hiding (mkProgramDb)
 import Distribution.Simple.Program (ProgArg)
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Setup
@@ -24,7 +24,7 @@ import Distribution.Solver.Types.Stage
 import Distribution.Solver.Types.Toolchain
 import Distribution.System (Platform)
 import Distribution.Utils.NubList
-import Distribution.Verbosity (Verbosity)
+import Distribution.Verbosity (Verbosity, defaultVerbosityHandles, mkVerbosity)
 
 mkProgramDb
   :: Verbosity
@@ -65,7 +65,7 @@ configToolchain configFlags@ConfigFlags{..} = do
   return Toolchain{..}
   where
     -- FIXME
-    verbosity = fromFlag (configVerbosity configFlags)
+    verbosity = mkVerbosity defaultVerbosityHandles (fromFlag (configVerbosity configFlags))
 
 configToolchains :: Verbosity -> ConfigFlags -> ConfigExFlags -> IO (Staged Toolchain)
 configToolchains verbosity ConfigFlags{..} ConfigExFlags{..} = do
