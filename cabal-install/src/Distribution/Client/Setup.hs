@@ -491,6 +491,13 @@ globalCommand commands =
           trueArg
       , option
           []
+          ["full-version"]
+          "Print full version information with git revision (if available) and compiler"
+          globalFullVersion
+          (\v flags -> flags{globalFullVersion = v})
+          trueArg
+      , option
+          []
           ["numeric-version"]
           "Print just the version number"
           globalNumericVersion
