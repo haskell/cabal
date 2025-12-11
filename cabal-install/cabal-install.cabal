@@ -1,7 +1,7 @@
 Cabal-Version:      3.6
 
 Name:               cabal-install
-Version:            3.17.0.0
+Version:            3.17.0.1
 Synopsis:           The command-line interface for Cabal and Hackage.
 Description:
     The \'cabal\' command-line program simplifies the process of managing
