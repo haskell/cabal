@@ -170,7 +170,8 @@ import Distribution.Client.Utils
   , relaxEncodingErrors
   )
 import Distribution.Client.Version
-  ( cabalInstallGitInfo
+  ( cabalInstallCompilerInfo
+  , cabalInstallGitInfo
   , cabalInstallVersion
   )
 
@@ -424,6 +425,8 @@ mainWorker args = do
           ++ display cabalVersion
           ++ " of the Cabal library "
           ++ cabalGitInfo'
+          ++ "\nwith "
+          ++ cabalInstallCompilerInfo
       where
         cabalGitInfo'
           | cabalGitInfo == cabalInstallGitInfo = "(in-tree)"
