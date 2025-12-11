@@ -358,6 +358,7 @@ instance Semigroup SavedConfig where
       combinedSavedGlobalFlags =
         GlobalFlags
           { globalVersion = combine globalVersion
+          , globalFullVersion = combine globalFullVersion
           , globalNumericVersion = combine globalNumericVersion
           , globalConfigFile = combine globalConfigFile
           , globalConstraintsFile = combine globalConstraintsFile

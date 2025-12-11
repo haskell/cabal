@@ -226,6 +226,7 @@ import Distribution.Simple.Program.Db (reconfigurePrograms)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
   ( VerboseException
+  , cabalCompilerInfo
   , cabalGitInfo
   , cabalVersion
   , createDirectoryIfMissingVerbose
@@ -346,6 +347,8 @@ mainWorker args = do
           _
             | fromFlagOrDefault False (globalVersion globalFlags) ->
                 printVersion
+            | fromFlagOrDefault False (globalFullVersion globalFlags) ->
+                printFullVersion
             | fromFlagOrDefault False (globalNumericVersion globalFlags) ->
                 printNumericVersion
           CommandHelp help -> printCommandHelp help
@@ -418,11 +421,22 @@ mainWorker args = do
       putStrLn $
         "cabal-install version "
           ++ display cabalInstallVersion
+          ++ "\ncompiled using version "
+          ++ display cabalVersion
+          ++ " of the Cabal library "
+    printFullVersion =
+      putStrLn $
+        "cabal-install version "
+          ++ display cabalInstallVersion
           ++ cabalInstallGitInfo'
           ++ "\ncompiled using version "
           ++ display cabalVersion
           ++ " of the Cabal library "
           ++ cabalGitInfo'
+          ++ "\nwith "
+          -- it's impossible for cabal-install to have been built with a different compiler
+          -- from Cabal, so just reuse its info
+          ++ cabalCompilerInfo
       where
         cabalInstallGitInfo'
           | null cabalInstallGitInfo = ""

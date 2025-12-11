@@ -1,0 +1,13 @@
+---
+synopsis: Add `--version-full` option and move additional version information to it
+packages: [Cabal, cabal-install]
+prs: 11339
+---
+
+A new option `--version-full` has been added to `cabal` and `Setup.hs`. The previously added git revision information has been moved to it, and compiler and host information added to it.
+
+The `--version` option now reports the same information it originally did, in case scripts were relying on its output.
+
+Git revision information still is not provided for release builds, largely to avoid bootstrapping issues when building GHC. (Both cabal-install (not distributed, but used by hadrian) and the Cabal library are built as part of GHC builds.)
+
+This _shouldn't_ affect most people, unless someone has been relying on the output of `--version` instead of using `--numeric-version`; but they would have been forced to support both output forms, and that only if supporting unreleased cabal builds.

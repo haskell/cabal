@@ -96,6 +96,7 @@ defaultMainHelper args = do
       case commandParse of
         _
           | fromFlag (globalVersion flags) -> printVersion
+          | fromFlag (globalFullVersion flags) -> printFullVersion
           | fromFlag (globalNumericVersion flags) -> printNumericVersion
         CommandHelp help -> printHelp help
         CommandList opts -> printOptionsList opts
@@ -112,6 +113,16 @@ defaultMainHelper args = do
       putStrLn $
         "Cabal library version "
           ++ prettyShow cabalVersion
+    printFullVersion =
+      putStrLn $
+        "Cabal library version "
+          ++ prettyShow cabalVersion
+          ++ cabalGitInfo'
+          ++ "\nwith "
+          ++ cabalCompilerInfo
+    cabalGitInfo'
+      | null cabalGitInfo = []
+      | otherwise = ' ' : cabalGitInfo
     progs = defaultProgramDb
     commands =
       [ configureCommand progs `commandAddAction` configureAction
