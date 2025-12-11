@@ -806,9 +806,9 @@ rebuildInstallPlan
       phaseConfigureToolchains projectConfig = do
         toolchains <- configureToolchains verbosity distDirLayout projectConfig
         liftIO $ do
-          putStrLn "Toolchains:"
+          notice verbosity "Toolchains:"
           for_ stages $ \s ->
-            print $ Disp.hsep [Disp.text "-" <+> pretty s <+> Disp.text "compiler" <+> pretty (compilerId (toolchainCompiler (getStage toolchains s)))]
+            notice verbosity $ show $ Disp.hsep [Disp.text "-" <+> pretty s <+> Disp.text "compiler" <+> pretty (compilerId (toolchainCompiler (getStage toolchains s)))]
         return toolchains
 
       -- Configuring other programs.
