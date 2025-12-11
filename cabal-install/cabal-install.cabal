@@ -243,7 +243,7 @@ library
       , edit-distance >= 0.2.2 && < 0.3
       , exceptions >= 0.10.4   && < 0.11
       , filepath   >= 1.4.0.0  && < 1.6
-      , HTTP       >= 4000.1.5 && < 4000.5
+      , HTTP       >= 4000.1.5 && < 4000.6
       , mtl        >= 2.0      && < 2.4
       , network-uri >= 2.6.2.0 && < 2.7
       , pretty     >= 1.1      && < 1.2
