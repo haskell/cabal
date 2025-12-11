@@ -81,6 +81,7 @@ import qualified Hackage.Security.Util.Pretty as Sec
 -- | Flags that apply at the top level, not to any sub-command.
 data GlobalFlags = GlobalFlags
   { globalVersion :: Flag Bool
+  , globalFullVersion :: Flag Bool
   , globalNumericVersion :: Flag Bool
   , globalConfigFile :: Flag FilePath
   , globalConstraintsFile :: Flag FilePath
@@ -103,6 +104,7 @@ defaultGlobalFlags :: GlobalFlags
 defaultGlobalFlags =
   GlobalFlags
     { globalVersion = Flag False
+    , globalFullVersion = Flag False
     , globalNumericVersion = Flag False
     , globalConfigFile = mempty
     , globalConstraintsFile = mempty
