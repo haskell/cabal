@@ -1,0 +1,14 @@
+Map.fromList
+  [
+    _×_
+      (Position 4 1)
+      "  -- comment 1",
+    _×_
+      (Position 10 1)
+      "    -- comment 2",
+    _×_
+      (Position 25 1)
+      "    -- comment 3",
+    _×_
+      (Position 28 1)
+      "-- comment 4"]

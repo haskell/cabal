@@ -1,0 +1,14 @@
+Map.fromList
+  [
+    _×_
+      (Position 1 1)
+      "-- comment before",
+    _×_
+      (Position 4 1)
+      "    -- comment within",
+    _×_
+      (Position 6 1)
+      "    -- another comment within",
+    _×_
+      (Position 8 1)
+      "-- comment after"]
