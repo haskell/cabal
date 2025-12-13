@@ -4,6 +4,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
@@ -80,7 +81,17 @@ import Distribution.Package
 import Distribution.PackageDescription
   ( GenericPackageDescription (..)
   , PackageDescription (..)
+  , condBenchmarks
+  , condExecutables
+  , condForeignLibs
+  , condLibrary
+  , condSubLibraries
+  , condTestSuites
   , emptyPackageDescription
+  , genPackageFlags
+  , gpdScannedVersion
+  , packageDescription
+  , pattern GenericPackageDescription
   )
 import Distribution.Simple.Compiler
 import qualified Distribution.Simple.Configure as Configure

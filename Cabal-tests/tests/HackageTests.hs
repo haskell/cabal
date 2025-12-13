@@ -5,6 +5,7 @@
 #if !MIN_VERSION_deepseq(1,4,0)
 {-# OPTIONS_GHC -Wno-orphans #-}
 #endif
+{-# OPTIONS_GHC -Wno-unused-pattern-binds #-} -- pattern match to assert field count
 
 module Main where
 
@@ -23,6 +24,18 @@ import Data.Monoid                                 (Sum (..))
 import Distribution.PackageDescription.Check       (PackageCheck (..), checkPackage)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.PackageDescription.Quirks      (patchQuirks)
+import Distribution.PackageDescription
+  ( GenericPackageDescription(GenericPackageDescription')
+  , packageDescription
+  , gpdScannedVersion
+  , genPackageFlags
+  , condLibrary
+  , condSubLibraries
+  , condForeignLibs
+  , condExecutables
+  , condTestSuites
+  , condBenchmarks
+  )
 import Distribution.Simple.Utils                   (fromUTF8BS, toUTF8BS)
 import Distribution.Fields.ParseResult
 import Distribution.Parsec.Source
@@ -54,8 +67,8 @@ import qualified Distribution.Types.PackageDescription.Lens        as L
 -- import qualified Distribution.Types.BuildInfo.Lens                 as L
 
 #ifdef MIN_VERSION_tree_diff
-import Data.TreeDiff                 (ediff)
-import Data.TreeDiff.Instances.Cabal ()
+import Data.TreeDiff                 (ediff, ToExpr)
+import Data.TreeDiff.Instances.Cabal (MergedGPD(..))
 import Data.TreeDiff.Pretty          (ansiWlEditExprCompact)
 #endif
 
@@ -257,7 +270,21 @@ roundtripTest testFieldsTransform fpath bs = do
     let y = y0 & L.packageDescription . L.description .~ mempty
     let x = x0 & L.packageDescription . L.description .~ mempty
 
-    assertEqual' bs' x y
+    -- Note: The pattern matching is to ensure this doesn't go unnoticed when new fields are added.
+    let checkField :: (Eq a, ToExpr a) => (GenericPackageDescription -> a) -> IO ()
+        checkField field = assertEqual' bs' (field x) (field y)
+    let (GenericPackageDescription' _ _ _ _ _ _ _ _ _ _) = x0
+    sequence_
+      [ checkField packageDescription
+      , checkField gpdScannedVersion
+      , checkField genPackageFlags
+      , checkField condLibrary
+      , checkField condSubLibraries
+      , checkField condForeignLibs
+      , checkField condExecutables
+      , checkField condTestSuites
+      , checkField condBenchmarks
+      ]
 
     -- fromParsecField, "shallow" parser/pretty roundtrip
     when testFieldsTransform $
@@ -269,7 +296,7 @@ roundtripTest testFieldsTransform fpath bs = do
             z0 <- parse "3rd" (toUTF8BS bs'')
 
             -- note: we compare "raw" GPDs, on purpose; stricter equality
-            assertEqual' bs'' x0 z0
+            assertEqualWith MergedGPD bs'' x0 z0
         else
             putStrLn $ fpath ++ " : looks like invalid UTF8"
 
@@ -287,11 +314,15 @@ roundtripTest testFieldsTransform fpath bs = do
         print err
         exitFailure
 
-    assertEqual' bs' x y = unless (x == y || fpath == "ixset/1.0.4/ixset.cabal") $ do
+    assertEqual' :: (ToExpr a, Eq a) => String -> a -> a -> IO ()
+    assertEqual' = assertEqualWith id
+
+    assertEqualWith :: (ToExpr expr, Eq a) => (a -> expr) -> String -> a -> a -> IO ()
+    assertEqualWith f bs' x y = unless (x == y || fpath == "ixset/1.0.4/ixset.cabal") $ do
         putStrLn fpath
 #ifdef MIN_VERSION_tree_diff
         putStrLn "====== tree-diff:"
-        print $ ansiWlEditExprCompact $ ediff x y
+        print $ ansiWlEditExprCompact $ ediff (f x) (f x)
 #else
         putStrLn "<<<<<<"
         print x
