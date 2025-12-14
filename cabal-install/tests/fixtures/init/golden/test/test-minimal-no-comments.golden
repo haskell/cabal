@@ -1,4 +1,7 @@
 test-suite y-test
+    import:           extensions
+    import:           ghc-options
+    import:           rts-options
     import:           warnings
     default-language: Haskell2010
     type:             exitcode-stdio-1.0
