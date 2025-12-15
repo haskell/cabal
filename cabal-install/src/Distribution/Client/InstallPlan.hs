@@ -2,12 +2,8 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeFamilies #-}
-
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Client.InstallPlan
@@ -193,7 +189,7 @@ foldPlanPackage f _ (PreExisting ipkg) = f ipkg
 foldPlanPackage _ g (Configured srcpkg) = g srcpkg
 foldPlanPackage _ g (Installed srcpkg) = g srcpkg
 
-type IsUnit a = (IsNode a, Key a ~ UnitId)
+type IsUnit a = IsNode UnitId a
 
 depends :: IsUnit a => a -> [UnitId]
 depends = nodeNeighbors
@@ -201,10 +197,9 @@ depends = nodeNeighbors
 -- NB: Expanded constraint synonym here to avoid undecidable
 -- instance errors in GHC 7.8 and earlier.
 instance
-  (IsNode ipkg, IsNode srcpkg, Key ipkg ~ UnitId, Key srcpkg ~ UnitId)
-  => IsNode (GenericPlanPackage ipkg srcpkg)
+  (IsNode UnitId ipkg, IsNode UnitId srcpkg)
+  => IsNode UnitId (GenericPlanPackage ipkg srcpkg)
   where
-  type Key (GenericPlanPackage ipkg srcpkg) = UnitId
   nodeKey (PreExisting ipkg) = nodeKey ipkg
   nodeKey (Configured spkg) = nodeKey spkg
   nodeKey (Installed spkg) = nodeKey spkg
@@ -254,7 +249,7 @@ instance
   configuredId (Installed spkg) = configuredId spkg
 
 data GenericInstallPlan ipkg srcpkg = GenericInstallPlan
-  { planGraph :: !(Graph (GenericPlanPackage ipkg srcpkg))
+  { planGraph :: !(Graph UnitId (GenericPlanPackage ipkg srcpkg))
   , planIndepGoals :: !IndependentGoals
   }
 
@@ -268,7 +263,7 @@ type InstallPlan =
 mkInstallPlan
   :: (IsUnit ipkg, IsUnit srcpkg)
   => String
-  -> Graph (GenericPlanPackage ipkg srcpkg)
+  -> Graph UnitId (GenericPlanPackage ipkg srcpkg)
   -> IndependentGoals
   -> GenericInstallPlan ipkg srcpkg
 mkInstallPlan loc graph indepGoals =
@@ -297,10 +292,8 @@ instance (Structured ipkg, Structured srcpkg) => Structured (GenericInstallPlan 
       ]
 
 instance
-  ( IsNode ipkg
-  , Key ipkg ~ UnitId
-  , IsNode srcpkg
-  , Key srcpkg ~ UnitId
+  ( IsNode UnitId ipkg
+  , IsNode UnitId srcpkg
   , Binary ipkg
   , Binary srcpkg
   )
@@ -365,13 +358,13 @@ showPlanPackageTag (Installed _) = "Installed"
 new
   :: (IsUnit ipkg, IsUnit srcpkg)
   => IndependentGoals
-  -> Graph (GenericPlanPackage ipkg srcpkg)
+  -> Graph UnitId (GenericPlanPackage ipkg srcpkg)
   -> GenericInstallPlan ipkg srcpkg
 new indepGoals graph = mkInstallPlan "new" graph indepGoals
 
 toGraph
   :: GenericInstallPlan ipkg srcpkg
-  -> Graph (GenericPlanPackage ipkg srcpkg)
+  -> Graph UnitId (GenericPlanPackage ipkg srcpkg)
 toGraph = planGraph
 
 toList
@@ -1004,7 +997,7 @@ execute jobCtl keepGoing depFailure plan installPkg =
 valid
   :: (IsUnit ipkg, IsUnit srcpkg)
   => String
-  -> Graph (GenericPlanPackage ipkg srcpkg)
+  -> Graph UnitId (GenericPlanPackage ipkg srcpkg)
   -> Bool
 valid loc graph =
   case problems graph of
@@ -1046,7 +1039,7 @@ showPlanProblem (PackageStateInvalid pkg pkg') =
 -- Use 'showPlanProblem' for a human readable explanation.
 problems
   :: (IsUnit ipkg, IsUnit srcpkg)
-  => Graph (GenericPlanPackage ipkg srcpkg)
+  => Graph UnitId (GenericPlanPackage ipkg srcpkg)
   -> [PlanProblem ipkg srcpkg]
 problems graph =
   [ PackageMissingDeps

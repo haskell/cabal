@@ -21,20 +21,20 @@ import Data.List (sort)
 
 tests :: [TestTree]
 tests =
-    [ testProperty "arbitrary unbroken" (prop_arbitrary_unbroken :: Graph (Node Int ()) -> Bool)
-    , testProperty "nodes consistent" (prop_nodes_consistent :: Graph (Node Int ()) -> Bool)
-    , testProperty "edges consistent" (prop_edges_consistent :: Graph (Node Int ()) -> Property)
-    , testProperty "closure consistent" (prop_closure_consistent :: Graph (Node Int ()) -> Property)
+    [ testProperty "arbitrary unbroken" (prop_arbitrary_unbroken :: Graph Int (Node Int ()) -> Bool)
+    , testProperty "nodes consistent" (prop_nodes_consistent :: Graph Int (Node Int ()) -> Bool)
+    , testProperty "edges consistent" (prop_edges_consistent :: Graph Int (Node Int ()) -> Property)
+    , testProperty "closure consistent" (prop_closure_consistent :: Graph Int (Node Int ()) -> Property)
     ]
 
 -- Our arbitrary instance does not generate broken graphs
-prop_arbitrary_unbroken :: Graph a -> Bool
+prop_arbitrary_unbroken :: Graph keyA a -> Bool
 prop_arbitrary_unbroken g = Prelude.null (broken g)
 
 -- Every node from 'toList' maps to a vertex which
 -- is present in the constructed graph, and maps back
 -- to a node correctly.
-prop_nodes_consistent :: (Eq a, IsNode a) => Graph a -> Bool
+prop_nodes_consistent :: (Eq a, IsNode keyA a) => Graph keyA a -> Bool
 prop_nodes_consistent g = all p (toList g)
   where
     (_, vtn, ktv) = toGraph g
@@ -44,7 +44,7 @@ prop_nodes_consistent g = all p (toList g)
 
 -- A non-broken graph has the 'nodeNeighbors' of each node
 -- equal the recorded adjacent edges in the node graph.
-prop_edges_consistent :: IsNode a => Graph a -> Property
+prop_edges_consistent :: IsNode keyA a => Graph keyA a -> Property
 prop_edges_consistent g = Prelude.null (broken g) ==> all p (toList g)
   where
     (gr, vtn, ktv) = toGraph g
@@ -52,7 +52,7 @@ prop_edges_consistent g = Prelude.null (broken g) ==> all p (toList g)
        == sort (map (nodeKey . vtn) (gr ! fromJust (ktv (nodeKey n))))
 
 -- Closure is consistent with reachable
-prop_closure_consistent :: (Show a, IsNode a) => Graph a -> Property
+prop_closure_consistent :: (Show a, IsNode keyA a) => Graph keyA a -> Property
 prop_closure_consistent g =
     not (null g) ==>
     forAll (elements (toList g)) $ \n ->
@@ -73,7 +73,7 @@ hasNoDups = loop Set.empty
 -- | Produces a graph of size @len@.  We sample with 'suchThat'; if we
 -- dropped duplicate entries our size could be smaller.
 arbitraryGraph :: (Ord k, Show k, Arbitrary k, Arbitrary a)
-               => Int -> Gen (Graph (Node k a))
+               => Int -> Gen (Graph k (Node k a))
 arbitraryGraph len = do
     -- Careful! Assume k is much larger than size.
     ks <- vectorOf len arbitrary `suchThat` hasNoDups
@@ -85,7 +85,7 @@ arbitraryGraph len = do
     return (fromDistinctList ns)
 
 instance (Ord k, Show k, Arbitrary k, Arbitrary a)
-      => Arbitrary (Graph (Node k a)) where
+      => Arbitrary (Graph k (Node k a)) where
     arbitrary = sized $ \n -> do
         len <- choose (0, n)
         arbitraryGraph len

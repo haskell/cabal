@@ -1,4 +1,5 @@
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Distribution.Solver.Modular.Cycles (
     detectCyclesPhase
   ) where
@@ -71,7 +72,7 @@ findCycles pkg rdm =
     -- strongly connected component.
     --
     if hasCycle
-    then let scc :: G.Graph RevDepMapNode
+    then let scc :: G.Graph QPN RevDepMapNode
              scc = case G.cycles $ revDepMapToGraph rdm of
                      []    -> findCyclesError "cannot find a strongly connected component"
                      c : _ -> G.fromDistinctList c
@@ -110,11 +111,10 @@ findCycles pkg rdm =
 
 data RevDepMapNode = RevDepMapNode QPN [(Component, QPN)]
 
-instance G.IsNode RevDepMapNode where
-  type Key RevDepMapNode = QPN
+instance G.IsNode QPN RevDepMapNode where
   nodeKey (RevDepMapNode qpn _) = qpn
   nodeNeighbors (RevDepMapNode _ ns) = ordNub $ map snd ns
 
-revDepMapToGraph :: RevDepMap -> G.Graph RevDepMapNode
+revDepMapToGraph :: RevDepMap -> G.Graph QPN RevDepMapNode
 revDepMapToGraph rdm = G.fromDistinctList
                        [RevDepMapNode qpn ns | (qpn, ns) <- M.toList rdm]

@@ -2,7 +2,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE NoMonoLocalBinds #-}
 
 -- | See <https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst>
@@ -232,12 +231,12 @@ toComponentLocalBuildInfos
       -- since we will pay for the ALL installed packages even if
       -- they are not related to what we are building.  This was true
       -- in the old configure code.
-      external_graph :: Graph (Either InstalledPackageInfo ReadyComponent)
+      external_graph :: Graph UnitId (Either InstalledPackageInfo ReadyComponent)
       external_graph =
         Graph.fromDistinctList
           . map Left
           $ PackageIndex.allPackages installedPackageSet
-      internal_graph :: Graph (Either InstalledPackageInfo ReadyComponent)
+      internal_graph :: Graph UnitId (Either InstalledPackageInfo ReadyComponent)
       internal_graph =
         Graph.fromDistinctList
           . map Right

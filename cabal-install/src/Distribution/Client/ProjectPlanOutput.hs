@@ -509,7 +509,7 @@ data PostBuildProjectStatus = PostBuildProjectStatus
   -- or data file generation failing.
   --
   -- This is a subset of 'packagesInvalidByChangedLibDeps'.
-  , packagesLibDepGraph :: Graph (Node UnitId ElaboratedPlanPackage)
+  , packagesLibDepGraph :: Graph UnitId (Node UnitId ElaboratedPlanPackage)
   -- ^ A subset of the plan graph, including only dependency-on-library
   -- edges. That is, dependencies /on/ libraries, not dependencies /of/
   -- libraries. This tells us all the libraries that packages link to.
@@ -629,7 +629,7 @@ postBuildProjectStatus
               )
 
       -- The plan graph but only counting dependency-on-library edges
-      packagesLibDepGraph :: Graph (Node UnitId ElaboratedPlanPackage)
+      packagesLibDepGraph :: Graph UnitId (Node UnitId ElaboratedPlanPackage)
       packagesLibDepGraph =
         Graph.fromDistinctList
           [ Graph.N pkg (installedUnitId pkg) libdeps

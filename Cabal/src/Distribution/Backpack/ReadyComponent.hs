@@ -1,6 +1,6 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeFamilies #-}
 
 -- | See <https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst>
 module Distribution.Backpack.ReadyComponent
@@ -164,8 +164,7 @@ instance Package ReadyComponent where
 instance HasUnitId ReadyComponent where
   installedUnitId = rc_uid
 
-instance IsNode ReadyComponent where
-  type Key ReadyComponent = UnitId
+instance IsNode UnitId ReadyComponent where
   nodeKey = rc_uid
   nodeNeighbors rc =
     ( case rc_i rc of

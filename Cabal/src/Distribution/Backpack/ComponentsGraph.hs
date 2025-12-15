@@ -30,7 +30,7 @@ import Text.PrettyPrint
 
 -- | A graph of source-level components by their source-level
 -- dependencies
-type ComponentsGraph = Graph (Node ComponentName Component)
+type ComponentsGraph = Graph ComponentName (Node ComponentName Component)
 
 -- | A list of components associated with the source level
 -- dependencies between them.

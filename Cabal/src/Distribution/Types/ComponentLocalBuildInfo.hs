@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Distribution.Types.ComponentLocalBuildInfo
   ( ComponentLocalBuildInfo (..)
@@ -114,8 +114,7 @@ data ComponentLocalBuildInfo
 instance Binary ComponentLocalBuildInfo
 instance Structured ComponentLocalBuildInfo
 
-instance IsNode ComponentLocalBuildInfo where
-  type Key ComponentLocalBuildInfo = UnitId
+instance IsNode UnitId ComponentLocalBuildInfo where
   nodeKey = componentUnitId
   nodeNeighbors = componentInternalDeps
 

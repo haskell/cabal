@@ -62,7 +62,6 @@ library
     ScopedTypeVariables
     StandaloneDeriving
     Trustworthy
-    TypeFamilies
     TypeOperators
     TypeSynonymInstances
     UndecidableInstances

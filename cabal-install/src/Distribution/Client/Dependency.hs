@@ -943,7 +943,7 @@ validateSolverResult platform comp indepGoals pkgs =
       Left problems -> error (formatPlanProblems problems)
     problems -> error (formatPkgProblems problems)
   where
-    graph :: Graph.Graph (ResolverPackage UnresolvedPkgLoc)
+    graph :: Graph.Graph SolverId (ResolverPackage UnresolvedPkgLoc)
     graph = Graph.fromDistinctList pkgs
 
     formatPkgProblems :: [PlanPackageProblem] -> String

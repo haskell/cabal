@@ -158,7 +158,7 @@ pattern LocalBuildInfo
   -> Compiler
   -> Platform
   -> Maybe (SymbolicPath Pkg File)
-  -> Graph ComponentLocalBuildInfo
+  -> Graph UnitId ComponentLocalBuildInfo
   -> Map ComponentName [ComponentLocalBuildInfo]
   -> Map (PackageName, ComponentName) PromisedComponent
   -> InstalledPackageIndex

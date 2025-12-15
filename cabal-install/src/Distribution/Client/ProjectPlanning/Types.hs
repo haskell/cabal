@@ -2,8 +2,8 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE TypeFamilies #-}
 
 -- | Types used while planning how to build everything in a project.
 --
@@ -493,8 +493,7 @@ instance HasConfiguredId ElaboratedConfiguredPackage where
 instance HasUnitId ElaboratedConfiguredPackage where
   installedUnitId = elabUnitId
 
-instance IsNode ElaboratedConfiguredPackage where
-  type Key ElaboratedConfiguredPackage = UnitId
+instance IsNode UnitId ElaboratedConfiguredPackage where
   nodeKey = elabUnitId
   nodeNeighbors = elabOrderDependencies
 

@@ -1,8 +1,8 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 -- |
@@ -107,40 +107,40 @@ import qualified Distribution.Compat.Prelude as Prelude
 
 -- | A graph of nodes @a@.  The nodes are expected to have instance
 -- of class 'IsNode'.
-data Graph a = Graph
-  { graphMap :: !(Map (Key a) a)
+data Graph keyA a = Graph
+  { graphMap :: !(Map keyA a)
   , -- Lazily cached graph representation
     graphForward :: G.Graph
   , graphAdjoint :: G.Graph
   , graphVertexToNode :: G.Vertex -> a
-  , graphKeyToVertex :: Key a -> Maybe G.Vertex
-  , graphBroken :: [(a, [Key a])]
+  , graphKeyToVertex :: keyA -> Maybe G.Vertex
+  , graphBroken :: [(a, [keyA])]
   }
 
 -- NB: Not a Functor! (or Traversable), because you need
--- to restrict Key a ~ Key b.  We provide our own mapping
+-- to restrict keyA ~ Key b.  We provide our own mapping
 -- functions.
 
 -- General strategy is most operations are deferred to the
 -- Map representation.
 
-instance Show a => Show (Graph a) where
+instance Show a => Show (Graph keyA a) where
   show = show . toList
 
-instance (IsNode a, Read a, Show (Key a)) => Read (Graph a) where
+instance (IsNode keyA a, Read a, Show keyA) => Read (Graph keyA a) where
   readsPrec d s = map (first fromDistinctList) (readsPrec d s)
 
-instance (IsNode a, Binary a, Show (Key a)) => Binary (Graph a) where
+instance (IsNode keyA a, Binary a, Show keyA) => Binary (Graph keyA a) where
   put x = put (toList x)
   get = fmap fromDistinctList get
 
-instance Structured a => Structured (Graph a) where
+instance (Structured a, Typeable keyA) => Structured (Graph keyA a) where
   structure p = Nominal (typeRep p) 0 "Graph" [structure (Proxy :: Proxy a)]
 
-instance (Eq (Key a), Eq a) => Eq (Graph a) where
+instance (Eq keyA, Eq a) => Eq (Graph keyA a) where
   g1 == g2 = graphMap g1 == graphMap g2
 
-instance Foldable.Foldable Graph where
+instance Foldable.Foldable (Graph keyA) where
   elem x = Foldable.elem x . graphMap
   fold = Foldable.fold . graphMap
   foldl f z = Foldable.foldl f z . graphMap
@@ -156,7 +156,7 @@ instance Foldable.Foldable Graph where
   sum = Foldable.sum . graphMap
   toList = Foldable.toList . graphMap
 
-instance (NFData a, NFData (Key a)) => NFData (Graph a) where
+instance (NFData a, NFData keyA) => NFData (Graph keyA a) where
   rnf
     Graph
       { graphMap = m
@@ -173,13 +173,11 @@ instance (NFData a, NFData (Key a)) => NFData (Graph a) where
 -- graph nodes.  A node of type @a@ is associated with some unique key of
 -- type @'Key' a@; given a node we can determine its key ('nodeKey')
 -- and the keys of its neighbors ('nodeNeighbors').
-class Ord (Key a) => IsNode a where
-  type Key a
-  nodeKey :: a -> Key a
-  nodeNeighbors :: a -> [Key a]
+class Ord keyA => IsNode keyA a | a -> keyA where
+  nodeKey :: a -> keyA
+  nodeNeighbors :: a -> [keyA]
 
-instance (IsNode a, IsNode b, Key a ~ Key b) => IsNode (Either a b) where
-  type Key (Either a b) = Key a
+instance (IsNode key a, IsNode key b) => IsNode key (Either a b) where
   nodeKey (Left x) = nodeKey x
   nodeKey (Right x) = nodeKey x
   nodeNeighbors (Left x) = nodeNeighbors x
@@ -196,50 +194,49 @@ nodeValue (N a _ _) = a
 instance Functor (Node k) where
   fmap f (N a k ks) = N (f a) k ks
 
-instance Ord k => IsNode (Node k a) where
-  type Key (Node k a) = k
+instance Ord k => IsNode k (Node k a) where
   nodeKey (N _ k _) = k
   nodeNeighbors (N _ _ ks) = ks
 
 -- TODO: Maybe introduce a typeclass for items which just
--- keys (so, Key associated type, and nodeKey method).  But
+-- keys (so, keyAssociated type, and nodeKey method).  But
 -- I didn't need it here, so I didn't introduce it.
 
 -- Query
 
 -- | /O(1)/. Is the graph empty?
-null :: Graph a -> Bool
+null :: Graph keyA a -> Bool
 null = Map.null . toMap
 
 -- | /O(1)/. The number of nodes in the graph.
-size :: Graph a -> Int
+size :: Graph keyA a -> Int
 size = Map.size . toMap
 
 -- | /O(log V)/. Check if the key is in the graph.
-member :: IsNode a => Key a -> Graph a -> Bool
+member :: IsNode keyA a => keyA -> Graph keyA a -> Bool
 member k g = Map.member k (toMap g)
 
 -- | /O(log V)/. Lookup the node at a key in the graph.
-lookup :: IsNode a => Key a -> Graph a -> Maybe a
+lookup :: IsNode keyA a => keyA -> Graph keyA a -> Maybe a
 lookup k g = Map.lookup k (toMap g)
 
 -- Construction
 
 -- | /O(1)/. The empty graph.
-empty :: IsNode a => Graph a
+empty :: IsNode keyA a => Graph keyA a
 empty = fromMap Map.empty
 
 -- | /O(log V)/. Insert a node into a graph.
-insert :: IsNode a => a -> Graph a -> Graph a
+insert :: IsNode keyA a => a -> Graph keyA a -> Graph keyA a
 insert !n g = fromMap (Map.insert (nodeKey n) n (toMap g))
 
 -- | /O(log V)/. Delete the node at a key from the graph.
-deleteKey :: IsNode a => Key a -> Graph a -> Graph a
+deleteKey :: IsNode keyA a => keyA -> Graph keyA a -> Graph keyA a
 deleteKey k g = fromMap (Map.delete k (toMap g))
 
 -- | /O(log V)/. Lookup and delete.  This function returns the deleted
 -- value if it existed.
-deleteLookup :: IsNode a => Key a -> Graph a -> (Maybe a, Graph a)
+deleteLookup :: IsNode keyA a => keyA -> Graph keyA a -> (Maybe a, Graph keyA a)
 deleteLookup k g =
   let (r, m') = Map.updateLookupWithKey (\_ _ -> Nothing) k (toMap g)
    in (r, fromMap m')
@@ -249,19 +246,19 @@ deleteLookup k g =
 -- | /O(V + V')/. Right-biased union, preferring entries
 -- from the second map when conflicts occur.
 -- @'nodeKey' x = 'nodeKey' (f x)@.
-unionRight :: IsNode a => Graph a -> Graph a -> Graph a
+unionRight :: IsNode keyA a => Graph keyA a -> Graph keyA a -> Graph keyA a
 unionRight g g' = fromMap (Map.union (toMap g') (toMap g))
 
 -- | /O(V + V')/. Left-biased union, preferring entries from
 -- the first map when conflicts occur.
-unionLeft :: IsNode a => Graph a -> Graph a -> Graph a
+unionLeft :: IsNode keyA a => Graph keyA a -> Graph keyA a -> Graph keyA a
 unionLeft = flip unionRight
 
 -- Graph-like operations
 
 -- | /Ω(V + E)/. Compute the strongly connected components of a graph.
 -- Requires amortized construction of graph.
-stronglyConnComp :: Graph a -> [SCC a]
+stronglyConnComp :: Graph keyA a -> [SCC a]
 stronglyConnComp g = map decode forest
   where
     forest = G.scc (graphForward g)
@@ -278,25 +275,25 @@ stronglyConnComp g = map decode forest
 
 -- | /Ω(V + E)/. Compute the cycles of a graph.
 -- Requires amortized construction of graph.
-cycles :: Graph a -> [[a]]
+cycles :: Graph keyA a -> [[a]]
 cycles g = [vs | CyclicSCC vs <- stronglyConnComp g]
 
 -- | /O(1)/.  Return a list of nodes paired with their broken
 -- neighbors (i.e., neighbor keys which are not in the graph).
 -- Requires amortized construction of graph.
-broken :: Graph a -> [(a, [Key a])]
+broken :: Graph keyA a -> [(a, [keyA])]
 broken g = graphBroken g
 
 -- | Lookup the immediate neighbors from a key in the graph.
 -- Requires amortized construction of graph.
-neighbors :: Graph a -> Key a -> Maybe [a]
+neighbors :: Graph keyA a -> keyA -> Maybe [a]
 neighbors g k = do
   v <- graphKeyToVertex g k
   return (map (graphVertexToNode g) (graphForward g ! v))
 
 -- | Lookup the immediate reverse neighbors from a key in the graph.
 -- Requires amortized construction of graph.
-revNeighbors :: Graph a -> Key a -> Maybe [a]
+revNeighbors :: Graph keyA a -> keyA -> Maybe [a]
 revNeighbors g k = do
   v <- graphKeyToVertex g k
   return (map (graphVertexToNode g) (graphAdjoint g ! v))
@@ -305,7 +302,7 @@ revNeighbors g k = do
 -- Returns @Nothing@ if one (or more) keys are not present in
 -- the graph.
 -- Requires amortized construction of graph.
-closure :: Graph a -> [Key a] -> Maybe [a]
+closure :: Graph keyA a -> [keyA] -> Maybe [a]
 closure g ks = do
   vs <- traverse (graphKeyToVertex g) ks
   return (decodeVertexForest g (G.dfs (graphForward g) vs))
@@ -314,7 +311,7 @@ closure g ks = do
 -- of keys.  Returns @Nothing@ if one (or more) keys are not present in
 -- the graph.
 -- Requires amortized construction of graph.
-revClosure :: Graph a -> [Key a] -> Maybe [a]
+revClosure :: Graph keyA a -> [keyA] -> Maybe [a]
 revClosure g ks = do
   vs <- traverse (graphKeyToVertex g) ks
   return (decodeVertexForest g (G.dfs (graphAdjoint g) vs))
@@ -322,17 +319,17 @@ revClosure g ks = do
 flattenForest :: Tree.Forest a -> [a]
 flattenForest = concatMap Tree.flatten
 
-decodeVertexForest :: Graph a -> Tree.Forest G.Vertex -> [a]
+decodeVertexForest :: Graph keyA a -> Tree.Forest G.Vertex -> [a]
 decodeVertexForest g = map (graphVertexToNode g) . flattenForest
 
 -- | Topologically sort the nodes of a graph.
 -- Requires amortized construction of graph.
-topSort :: Graph a -> [a]
+topSort :: Graph keyA a -> [a]
 topSort g = map (graphVertexToNode g) $ G.topSort (graphForward g)
 
 -- | Reverse topologically sort the nodes of a graph.
 -- Requires amortized construction of graph.
-revTopSort :: Graph a -> [a]
+revTopSort :: Graph keyA a -> [a]
 revTopSort g = map (graphVertexToNode g) $ G.topSort (graphAdjoint g)
 
 -- Conversions
@@ -343,7 +340,7 @@ revTopSort g = map (graphVertexToNode g) $ G.topSort (graphAdjoint g)
 -- if you can't fulfill this invariant use @'fromList' ('Data.Map.elems' m)@
 -- instead.  The values of the map are assumed to already
 -- be in WHNF.
-fromMap :: IsNode a => Map (Key a) a -> Graph a
+fromMap :: IsNode keyA a => Map keyA a -> Graph keyA a
 fromMap m =
   Graph
     { graphMap = m
@@ -377,7 +374,7 @@ fromMap m =
     bounds = (0, Map.size m - 1)
 
 -- | /O(V log V)/. Convert a list of nodes (with distinct keys) into a graph.
-fromDistinctList :: (IsNode a, Show (Key a)) => [a] -> Graph a
+fromDistinctList :: (IsNode keyA a, Show keyA) => [a] -> Graph keyA a
 fromDistinctList =
   fromMap
     . Map.fromListWith (\_ -> duplicateError)
@@ -391,26 +388,26 @@ fromDistinctList =
 -- Map-like operations
 
 -- | /O(V)/. Convert a graph into a list of nodes.
-toList :: Graph a -> [a]
+toList :: Graph keyA a -> [a]
 toList g = Map.elems (toMap g)
 
 -- | /O(V)/. Convert a graph into a list of keys.
-keys :: Graph a -> [Key a]
+keys :: Graph keyA a -> [keyA]
 keys g = Map.keys (toMap g)
 
 -- | /O(V)/. Convert a graph into a set of keys.
-keysSet :: Graph a -> Set.Set (Key a)
+keysSet :: Graph keyA a -> Set.Set keyA
 keysSet g = Map.keysSet (toMap g)
 
 -- | /O(1)/. Convert a graph into a map from keys to nodes.
 -- The resulting map @m@ is guaranteed to have the property that
 -- @'Prelude.all' (\(k,n) -> k == 'nodeKey' n) ('Data.Map.toList' m)@.
-toMap :: Graph a -> Map (Key a) a
+toMap :: Graph keyA a -> Map keyA a
 toMap = graphMap
 
 -- Graph-like operations
 
 -- | /O(1)/. Convert a graph into a 'Data.Graph.Graph'.
 -- Requires amortized construction of graph.
-toGraph :: Graph a -> (G.Graph, G.Vertex -> a, Key a -> Maybe G.Vertex)
+toGraph :: Graph keyA a -> (G.Graph, G.Vertex -> a, keyA -> Maybe G.Vertex)
 toGraph g = (graphForward g, graphVertexToNode g, graphKeyToVertex g)

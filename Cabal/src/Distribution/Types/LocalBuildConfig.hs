@@ -89,7 +89,7 @@ data PackageBuildDescr = PackageBuildDescr
 -- | Information about individual components in a package,
 -- determined after the configure step.
 data ComponentBuildDescr = ComponentBuildDescr
-  { componentGraph :: Graph ComponentLocalBuildInfo
+  { componentGraph :: Graph UnitId ComponentLocalBuildInfo
   -- ^ All the components to build, ordered by topological
   -- sort, and with their INTERNAL dependencies over the
   -- intrapackage dependency graph.

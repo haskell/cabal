@@ -1,10 +1,10 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TypeFamilies #-}
 
 -- |
 -- /Elaborated: worked out with great care and nicety of detail; executed with great minuteness: elaborate preparations; elaborate care./
@@ -3380,8 +3380,7 @@ instance Package PrunedPackage where
 instance HasUnitId PrunedPackage where
   installedUnitId = Graph.nodeKey
 
-instance Graph.IsNode PrunedPackage where
-  type Key PrunedPackage = UnitId
+instance Graph.IsNode UnitId PrunedPackage where
   nodeKey (PrunedPackage elab _) = Graph.nodeKey elab
   nodeNeighbors (PrunedPackage _ deps) = deps
 
@@ -3472,7 +3471,7 @@ pruneInstallPlanPass1 pkgs
     pruned_packages :: [ElaboratedPlanPackage]
     pruned_packages = map (mapConfiguredPackage fromPrunedPackage) (fromMaybe [] $ Graph.closure graph roots)
 
-    closed_graph :: Graph.Graph ElaboratedPlanPackage
+    closed_graph :: Graph.Graph UnitId ElaboratedPlanPackage
     closed_graph = Graph.fromDistinctList pruned_packages
 
     -- whether any package has repl targets enabled, and we need to use multi-repl.
@@ -3828,10 +3827,10 @@ pruneInstallPlanToDependencies pkgTargets installPlan =
     -- if the remaining graph is broken or not, ie any packages with dangling
     -- dependencies. If there are then we cannot prune the given targets.
     checkBrokenDeps
-      :: Graph.Graph ElaboratedPlanPackage
+      :: Graph.Graph UnitId ElaboratedPlanPackage
       -> Either
           CannotPruneDependencies
-          (Graph.Graph ElaboratedPlanPackage)
+          (Graph.Graph UnitId ElaboratedPlanPackage)
     checkBrokenDeps graph =
       case Graph.broken graph of
         [] -> Right graph

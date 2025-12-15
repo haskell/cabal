@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 -- | Setup.hs script policy
 --
@@ -170,9 +170,7 @@ instance Package NonSetupLibDepSolverPlanPackage where
   packageId (NonSetupLibDepSolverPlanPackage spkg) =
     packageId spkg
 
-instance IsNode NonSetupLibDepSolverPlanPackage where
-  type Key NonSetupLibDepSolverPlanPackage = SolverId
-
+instance IsNode SolverId NonSetupLibDepSolverPlanPackage where
   nodeKey (NonSetupLibDepSolverPlanPackage spkg) =
     nodeKey spkg
 
@@ -190,7 +188,7 @@ instance IsNode NonSetupLibDepSolverPlanPackage where
 packageSetupScriptSpecVersion
   :: SetupScriptStyle
   -> PackageDescription
-  -> Graph.Graph NonSetupLibDepSolverPlanPackage
+  -> Graph.Graph SolverId NonSetupLibDepSolverPlanPackage
   -> ComponentDeps [SolverId]
   -> Version
 -- We're going to be using the internal Cabal library, so the spec version of

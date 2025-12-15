@@ -1,9 +1,4 @@
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE TypeFamilies #-}
-
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Client.SolverInstallPlan
@@ -86,7 +81,7 @@ import qualified Distribution.Compat.Graph as Graph
 
 type SolverPlanPackage = ResolverPackage UnresolvedPkgLoc
 
-type SolverPlanIndex = Graph SolverPlanPackage
+type SolverPlanIndex = Graph SolverId SolverPlanPackage
 
 data SolverInstallPlan = SolverInstallPlan
   { planIndex :: !SolverPlanIndex
@@ -301,7 +296,7 @@ nonSetupClosure
   -> SolverPlanIndex
 nonSetupClosure index pkgids0 = closure Graph.empty pkgids0
   where
-    closure :: Graph SolverPlanPackage -> [SolverId] -> SolverPlanIndex
+    closure :: Graph SolverId SolverPlanPackage -> [SolverId] -> SolverPlanIndex
     closure completed [] = completed
     closure completed (pkgid : pkgids) =
       case Graph.lookup pkgid index of

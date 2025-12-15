@@ -1,5 +1,6 @@
 {-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoMonoLocalBinds #-}
 
 module UnitTests.Distribution.Client.InstallPlan (tests) where
@@ -169,8 +170,7 @@ instance Show TestInstallPlan where
 data TestPkg = TestPkg PackageId UnitId [UnitId]
   deriving (Eq, Show)
 
-instance IsNode TestPkg where
-  type Key TestPkg = UnitId
+instance IsNode UnitId TestPkg where
   nodeKey (TestPkg _ ipkgid _) = ipkgid
   nodeNeighbors (TestPkg _ _ deps) = deps
 
