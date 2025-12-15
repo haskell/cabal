@@ -833,7 +833,9 @@ checkSetupExists _ =
     ( \ops -> do
         ba <- doesFileExist ops "Setup.hs"
         bb <- doesFileExist ops "Setup.lhs"
-        return (not $ ba || bb)
+        bc <- doesFileExist ops "SetupHooks.hs"
+        bd <- doesFileExist ops "SetupHooks.lhs"
+        return (not $ ba || bb || bc || bd)
     )
     (PackageDistInexcusable MissingSetupFile)
 
