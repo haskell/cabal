@@ -119,6 +119,7 @@ library
     Distribution.System
     Distribution.Text
     Distribution.Types.AbiDependency
+    Distribution.Types.AnnotatedGenericPackageDescription
     Distribution.Types.AbiHash
     Distribution.Types.Benchmark
     Distribution.Types.Benchmark.Lens
