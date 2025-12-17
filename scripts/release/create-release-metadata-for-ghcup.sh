@@ -36,14 +36,7 @@ cat <<EOF > /dev/stdout
               dlHash: $(sha256sum "cabal-install-$RELEASE-x86_64-linux-alpine3_12.tar.xz" | awk '{ print $1 }')
           Linux_Alpine:
             unknown_versioning: *cabal-${RELEASE//./}-64
-          Linux_CentOS:
-            unknown_versioning: &cabal-${RELEASE//./}-64-centos7
-              dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-x86_64-linux-centos7.tar.xz
-              dlHash: $(sha256sum "cabal-install-$RELEASE-x86_64-linux-centos7.tar.xz" | awk '{ print $1 }')
           Linux_Debian:
-            '( >= 9 && < 10)': &cabal-${RELEASE//./}-64-debian
-              dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-x86_64-linux-deb9.tar.xz
-              dlHash: $(sha256sum "cabal-install-$RELEASE-x86_64-linux-deb9.tar.xz" | awk '{ print $1 }')
             '( == 10 && < 11)':
               dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-x86_64-linux-deb10.tar.xz
               dlHash: $(sha256sum "cabal-install-$RELEASE-x86_64-linux-deb10.tar.xz" | awk '{ print $1 }')
@@ -57,9 +50,6 @@ cat <<EOF > /dev/stdout
               dlHash: $(sha256sum "cabal-install-$RELEASE-x86_64-linux-fedora33.tar.xz" | awk '{ print $1 }')
             unknown_versioning: *cabal-${RELEASE//./}-64-centos7
           Linux_Ubuntu:
-            '< 20': &cabal-${RELEASE//./}-64-ubuntu18
-              dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-x86_64-linux-ubuntu18_04.tar.xz
-              dlHash: $(sha256sum "cabal-install-$RELEASE-x86_64-linux-ubuntu18_04.tar.xz" | awk '{ print $1 }')
             '>= 20': &cabal-${RELEASE//./}-64-ubuntu20
               dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-x86_64-linux-ubuntu20_04.tar.xz
               dlHash: $(sha256sum "cabal-install-$RELEASE-x86_64-linux-ubuntu20_04.tar.xz" | awk '{ print $1 }')
@@ -76,21 +66,8 @@ cat <<EOF > /dev/stdout
             unknown_versioning:
               dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-x86_64-windows.zip
               dlHash: $(sha256sum "cabal-install-$RELEASE-x86_64-windows.zip" | awk '{ print $1 }')
-          FreeBSD:
-            unknown_versioning:
-              dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-x86_64-freebsd-14.tar.xz
-              dlHash: $(sha256sum "cabal-install-$RELEASE-x86_64-freebsd-14.tar.xz" | awk '{ print $1 }')
         A_32:
-          Linux_UnknownLinux:
-            unknown_versioning: &cabal-${RELEASE//./}-32
-              dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-i386-linux-alpine3_12.tar.xz
-              dlHash: $(sha256sum "cabal-install-$RELEASE-i386-linux-alpine3_12.tar.xz" | awk '{ print $1 }')
           Linux_Alpine:
-            unknown_versioning: *cabal-${RELEASE//./}-32
-          Linux_Debian:
-            '( >= 9 )':
-              dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-i386-linux-deb9.tar.xz
-              dlHash: $(sha256sum "cabal-install-$RELEASE-i386-linux-deb9.tar.xz" | awk '{ print $1 }')
             unknown_versioning: *cabal-${RELEASE//./}-32
         A_ARM64:
           Darwin:
@@ -105,10 +82,6 @@ cat <<EOF > /dev/stdout
               dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-aarch64-linux-deb11.tar.xz
               dlHash: $(sha256sum "cabal-install-$RELEASE-aarch64-linux-deb11.tar.xz" | awk '{ print $1 }')
             unknown_versioning: *cabal-${RELEASE//./}-arm64
-          Linux_Alpine:
-            unknown_versioning:
-              dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-aarch64-linux-alpine3_18.tar.xz
-              dlHash: $(sha256sum "cabal-install-$RELEASE-aarch64-linux-alpine3_18.tar.xz" | awk '{ print $1 }')
           Linux_UnknownLinux:
             unknown_versioning: *cabal-${RELEASE//./}-arm64
 EOF
