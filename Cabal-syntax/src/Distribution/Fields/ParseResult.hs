@@ -28,6 +28,9 @@ import Distribution.Parsec.Source
 import Distribution.Parsec.Warning
 import Distribution.Version (Version)
 
+import Distribution.Types.AnnotationNamespace
+import Distribution.Types.AnnotationTrivium
+
 -- | A monad with failure and accumulating errors and warnings.
 newtype ParseResult src a = PR
   { unPR
@@ -45,11 +48,14 @@ data PRContext src = PRContext
   -- use the same parser for cabal files and project files.
   }
 
+-- TODO(leana8959): dummy, make it a map later
+type PAnnotation = Map Namespace [Trivium]
+
 -- Note: we have version here, as we could get any version.
-data PRState src = PRState ![PWarningWithSource src] ![PErrorWithSource src] !(Maybe Version)
+data PRState src = PRState ![PWarningWithSource src] ![PErrorWithSource src] ![PAnnotation] !(Maybe Version)
 
 emptyPRState :: PRState src
-emptyPRState = PRState [] [] Nothing
+emptyPRState = PRState [] [] [] Nothing
 
 -- | Forget 'ParseResult's warnings.
 --
@@ -58,7 +64,7 @@ withoutWarnings :: ParseResult src a -> ParseResult src a
 withoutWarnings m = PR $ \s ctx failure success ->
   unPR m s ctx failure $ \ !s1 -> success (s1 `withWarningsOf` s)
   where
-    withWarningsOf (PRState _ e v) (PRState w _ _) = PRState w e v
+    withWarningsOf (PRState _ e t1 v) (PRState w _ _ _) = PRState w e t1 v
 
 -- | Destruct a 'ParseResult' into the emitted warnings and either
 -- a successful value or
@@ -68,12 +74,12 @@ runParseResult pr = unPR pr emptyPRState initialCtx failure success
   where
     initialCtx = PRContext PUnknownSource
 
-    failure (PRState warns [] v) = (warns, Left (v, PErrorWithSource PUnknownSource (PError zeroPos "panic") :| []))
-    failure (PRState warns (err : errs) v) = (warns, Left (v, err :| errs))
+    failure (PRState warns [] _ v) = (warns, Left (v, PErrorWithSource PUnknownSource (PError zeroPos "panic") :| []))
+    failure (PRState warns (err : errs) _ v) = (warns, Left (v, err :| errs))
 
-    success (PRState warns [] _) x = (warns, Right x)
+    success (PRState warns [] _ _) x = (warns, Right x)
     -- If there are any errors, don't return the result
-    success (PRState warns (err : errs) v) _ = (warns, Left (v, err :| errs))
+    success (PRState warns (err : errs) _ v) _ = (warns, Left (v, err :| errs))
 
 -- | Chain parsing operations that involve 'IO' actions.
 liftParseResult :: (a -> IO (ParseResult src b)) -> ParseResult src a -> IO (ParseResult src b)
@@ -85,8 +91,8 @@ liftParseResult f pr = unPR pr emptyPRState initialCtx failure success
     success s a = do
       pr' <- f a
       return $ PR $ \s' ctx failure' success' -> unPR pr' (concatPRState s s') ctx failure' success'
-    concatPRState (PRState warnings errors version) (PRState warnings' errors' version') =
-      (PRState (warnings ++ warnings') (toList errors ++ errors') (version <|> version'))
+    concatPRState (PRState warnings errors t version) (PRState warnings' errors' _ version') =
+      (PRState (warnings ++ warnings') (toList errors ++ errors') t (version <|> version'))
 
 withSource :: src -> ParseResult src a -> ParseResult src a
 withSource source (PR pr) = PR $ \s ctx failure success ->
@@ -136,41 +142,41 @@ recoverWith (PR pr) x = PR $ \ !s fp _failure success ->
 
 -- | Set cabal spec version.
 setCabalSpecVersion :: Maybe Version -> ParseResult src ()
-setCabalSpecVersion v = PR $ \(PRState warns errs _) _fp _failure success ->
-  success (PRState warns errs v) ()
+setCabalSpecVersion v = PR $ \(PRState warns errs t _) _fp _failure success ->
+  success (PRState warns errs t v) ()
 
 -- | Get cabal spec version.
 getCabalSpecVersion :: ParseResult src (Maybe Version)
-getCabalSpecVersion = PR $ \s@(PRState _ _ v) _fp _failure success ->
+getCabalSpecVersion = PR $ \s@(PRState _ _ _ v) _fp _failure success ->
   success s v
 
 -- | Add a warning. This doesn't fail the parsing process.
 parseWarning :: Position -> PWarnType -> String -> ParseResult src ()
-parseWarning pos t msg = PR $ \(PRState warns errs v) ctx _failure success ->
-  success (PRState (PWarningWithSource (prContextSource ctx) (PWarning t pos msg) : warns) errs v) ()
+parseWarning pos t msg = PR $ \(PRState warns errs trivia v) ctx _failure success ->
+  success (PRState (PWarningWithSource (prContextSource ctx) (PWarning t pos msg) : warns) errs trivia v) ()
 
 -- | Add multiple warnings at once.
 parseWarnings :: [PWarning] -> ParseResult src ()
-parseWarnings newWarns = PR $ \(PRState warns errs v) ctx _failure success ->
-  success (PRState (map (PWarningWithSource (prContextSource ctx)) newWarns ++ warns) errs v) ()
+parseWarnings newWarns = PR $ \(PRState warns errs trivia v) ctx _failure success ->
+  success (PRState (map (PWarningWithSource (prContextSource ctx)) newWarns ++ warns) errs trivia v) ()
 
 -- | Add an error, but not fail the parser yet.
 --
 -- For fatal failure use 'parseFatalFailure'
 parseFailure :: Position -> String -> ParseResult src ()
-parseFailure pos msg = PR $ \(PRState warns errs v) ctx _failure success ->
-  success (PRState warns (PErrorWithSource (prContextSource ctx) (PError pos msg) : errs) v) ()
+parseFailure pos msg = PR $ \(PRState warns errs trivia v) ctx _failure success ->
+  success (PRState warns (PErrorWithSource (prContextSource ctx) (PError pos msg) : errs) trivia v) ()
 
 -- | Add an fatal error.
 parseFatalFailure :: Position -> String -> ParseResult src a
-parseFatalFailure pos msg = PR $ \(PRState warns errs v) ctx failure _success ->
-  failure (PRState warns (PErrorWithSource (prContextSource ctx) (PError pos msg) : errs) v)
+parseFatalFailure pos msg = PR $ \(PRState warns errs trivia v) ctx failure _success ->
+  failure (PRState warns (PErrorWithSource (prContextSource ctx) (PError pos msg) : errs) trivia v)
 
 -- | A 'mzero'.
 parseFatalFailure' :: ParseResult src a
 parseFatalFailure' = PR pr
   where
-    pr (PRState warns [] v) _ctx failure _success = failure (PRState warns [err] v)
+    pr (PRState warns [] trivia v) _ctx failure _success = failure (PRState warns [err] trivia v)
     pr s _ctx failure _success = failure s
 
     err = PErrorWithSource PUnknownSource (PError zeroPos "Unknown fatal error")

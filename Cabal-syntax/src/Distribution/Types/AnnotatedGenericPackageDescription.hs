@@ -9,27 +9,13 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 
 import Distribution.Types.GenericPackageDescription
-import Distribution.Types.Dependency
+import Distribution.Types.AnnotationNamespace
+import Distribution.Types.AnnotationTrivium
 
 type SectionArg = String
 
--- TODO: namespace
-data Namespace
-  = Field String
-  | Section String [SectionArg] Namespace
-
 data AnnotatedGenericPackageDescription = AnnotatedGenericPackageDescription
   { unannotateGenericPackageDescription :: GenericPackageDescription
-  , annotationMap :: Map Namespace FieldToAnnotation
+  , annotationMap :: Map Namespace [Trivium]
   }
 
-type FieldToAnnotation = Map FieldData [Trivium]
-
-data FieldData
-  = BuildDepends Dependency
-
-data Trivium
-  = FieldNth Int
-  | Nth Int
-  | PreTrivia String
-  | PostTrivia String
