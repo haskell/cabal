@@ -73,7 +73,7 @@ jobs:
       run: |
         make SPHINX_HTML_OUTDIR=html users-guide
 
-    - uses: actions/upload-artifact@v5
+    - uses: actions/upload-artifact@v6
       with:
         name: users-guide-html
         path: html/
