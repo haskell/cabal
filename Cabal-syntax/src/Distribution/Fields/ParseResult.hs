@@ -31,6 +31,8 @@ import Distribution.Version (Version)
 import Distribution.Types.AnnotationNamespace
 import Distribution.Types.AnnotationTrivium
 
+import qualified Data.Map as Map
+
 -- | A monad with failure and accumulating errors and warnings.
 newtype ParseResult src a = PR
   { unPR
@@ -52,10 +54,14 @@ data PRContext src = PRContext
 type PAnnotation = Map Namespace [Trivium]
 
 -- Note: we have version here, as we could get any version.
-data PRState src = PRState ![PWarningWithSource src] ![PErrorWithSource src] ![PAnnotation] !(Maybe Version)
+data PRState src = PRState ![PWarningWithSource src] ![PErrorWithSource src] !PAnnotation !(Maybe Version)
 
 emptyPRState :: PRState src
-emptyPRState = PRState [] [] [] Nothing
+emptyPRState = PRState [] [] Map.empty Nothing
+
+annotate :: Namespace -> Trivium -> ParseResult src ()
+annotate namespace trivium = PR $ \(PRState warns errs trivia v) ctx failure success ->
+  success (PRState warns errs (Map.insertWith (<>) namespace [trivium] trivia) v) ()
 
 -- | Forget 'ParseResult's warnings.
 --
