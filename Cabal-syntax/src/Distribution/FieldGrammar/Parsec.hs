@@ -92,8 +92,6 @@ import Distribution.Parsec
 import Distribution.Parsec.FieldLineStream
 import Distribution.Parsec.Position (positionCol, positionRow)
 
-import Distribution.Types.Annotation
-
 -------------------------------------------------------------------------------
 -- Auxiliary types
 -------------------------------------------------------------------------------
@@ -118,7 +116,6 @@ data Section ann = MkSection !(Name ann) [SectionArg ann] [Field ann]
 data ParsecFieldGrammar s a = ParsecFG
   { fieldGrammarKnownFields :: !(Set FieldName)
   , fieldGrammarKnownPrefixes :: !(Set FieldName)
-  , fieldGrammarAnnotationMap :: !(FieldToAnnotation)
   , fieldGrammarParser :: forall src. (CabalSpecVersion -> Fields Position -> ParseResult src a)
   }
   deriving (Functor)
@@ -153,14 +150,13 @@ fieldGrammarKnownFieldList :: ParsecFieldGrammar s a -> [FieldName]
 fieldGrammarKnownFieldList = Set.toList . fieldGrammarKnownFields
 
 instance Applicative (ParsecFieldGrammar s) where
-  pure x = ParsecFG mempty mempty mempty (\_ _ -> pure x)
+  pure x = ParsecFG mempty mempty (\_ _ -> pure x)
   {-# INLINE pure #-}
 
-  ParsecFG f f' m1 f'' <*> ParsecFG x x' m2 x'' =
+  ParsecFG f f' f'' <*> ParsecFG x x' x'' =
     ParsecFG
       (mappend f x)
       (mappend f' x')
-      (mappend m1 m2)
       (\v fields -> f'' v fields <*> x'' v fields)
   {-# INLINE (<*>) #-}
 
@@ -173,9 +169,9 @@ warnMultipleSingularFields fn (x : xs) = do
     "The field " <> show fn <> " is specified more than once at positions " ++ intercalate ", " (map showPos (pos : poss))
 
 instance FieldGrammar Parsec ParsecFieldGrammar where
-  blurFieldGrammar _ (ParsecFG s s' m parser) = ParsecFG s s' m parser
+  blurFieldGrammar _ (ParsecFG s s' parser) = ParsecFG s s' parser
 
-  uniqueFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty Map.empty parser
+  uniqueFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
       parser v fields = case Map.lookup fn fields of
         Nothing -> parseFatalFailure zeroPos $ show fn ++ " field missing"
@@ -188,7 +184,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
       parseOne v (MkNamelessField pos fls) =
         unpack' _pack <$> runFieldParser pos parsec v fls
 
-  booleanFieldDef fn _extract def = ParsecFG (Set.singleton fn) Set.empty Map.empty parser
+  booleanFieldDef fn _extract def = ParsecFG (Set.singleton fn) Set.empty parser
     where
       parser v fields = case Map.lookup fn fields of
         Nothing -> pure def
@@ -200,7 +196,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
 
       parseOne v (MkNamelessField pos fls) = runFieldParser pos parsec v fls
 
-  optionalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty Map.empty parser
+  optionalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
       parser v fields = case Map.lookup fn fields of
         Nothing -> pure Nothing
@@ -214,7 +210,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
         | null fls = pure Nothing
         | otherwise = Just . unpack' _pack <$> runFieldParser pos parsec v fls
 
-  optionalFieldDefAla fn _pack _extract def = ParsecFG (Set.singleton fn) Set.empty Map.empty parser
+  optionalFieldDefAla fn _pack _extract def = ParsecFG (Set.singleton fn) Set.empty parser
     where
       parser v fields = case Map.lookup fn fields of
         Nothing -> pure def
@@ -228,7 +224,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
         | null fls = pure def
         | otherwise = unpack' _pack <$> runFieldParser pos parsec v fls
 
-  freeTextField fn _ = ParsecFG (Set.singleton fn) Set.empty Map.empty parser
+  freeTextField fn _ = ParsecFG (Set.singleton fn) Set.empty parser
     where
       parser v fields = case Map.lookup fn fields of
         Nothing -> pure Nothing
@@ -243,7 +239,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
         | v >= CabalSpecV3_0 = pure (Just (fieldlinesToFreeText3 pos fls))
         | otherwise = pure (Just (fieldlinesToFreeText fls))
 
-  freeTextFieldDef fn _ = ParsecFG (Set.singleton fn) Set.empty Map.empty parser
+  freeTextFieldDef fn _ = ParsecFG (Set.singleton fn) Set.empty parser
     where
       parser v fields = case Map.lookup fn fields of
         Nothing -> pure ""
@@ -259,7 +255,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
         | otherwise = pure (fieldlinesToFreeText fls)
 
   -- freeTextFieldDefST = defaultFreeTextFieldDefST
-  freeTextFieldDefST fn _ = ParsecFG (Set.singleton fn) Set.empty Map.empty parser
+  freeTextFieldDefST fn _ = ParsecFG (Set.singleton fn) Set.empty parser
     where
       parser v fields = case Map.lookup fn fields of
         Nothing -> pure mempty
@@ -278,7 +274,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
 
   -- TODO(leana8959): trace monoidal field merging
   monoidalFieldAla :: forall a b s. (Monoid a, Parsec b, Newtype a b) => FieldName -> (a -> b) -> ALens' s a -> ParsecFieldGrammar s a
-  monoidalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty Map.empty parser
+  monoidalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
       parser :: CabalSpecVersion -> Map FieldName [NamelessField Position] -> ParseResult src a
       parser v fields = case Map.lookup fn fields of
@@ -291,7 +287,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
 
       parseOne v (MkNamelessField pos fls) = runFieldParser pos parsec v fls
 
-  prefixedFields fnPfx _extract = ParsecFG mempty (Set.singleton fnPfx) Map.empty (\_ fs -> pure (parser fs))
+  prefixedFields fnPfx _extract = ParsecFG mempty (Set.singleton fnPfx) (\_ fs -> pure (parser fs))
     where
       parser :: Fields Position -> [(String, String)]
       parser values = reorder $ concatMap convert $ filter match $ Map.toList values
@@ -304,7 +300,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
       -- hack: recover the order of prefixed fields
       reorder = map snd . sortBy (comparing fst)
 
-  availableSince vs def (ParsecFG names prefixes m parser) = ParsecFG names prefixes Map.empty parser'
+  availableSince vs def (ParsecFG names prefixes parser) = ParsecFG names prefixes parser'
     where
       parser' v values
         | v >= vs = parser v values
@@ -317,7 +313,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
 
             pure def
 
-  availableSinceWarn vs (ParsecFG names prefixes m parser) = ParsecFG names prefixes Map.empty parser'
+  availableSinceWarn vs (ParsecFG names prefixes parser) = ParsecFG names prefixes parser'
     where
       parser' v values
         | v >= vs = parser v values
@@ -331,7 +327,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
             parser v values
 
   -- todo we know about this field
-  deprecatedSince vs msg (ParsecFG names prefixes m parser) = ParsecFG names prefixes Map.empty parser'
+  deprecatedSince vs msg (ParsecFG names prefixes parser) = ParsecFG names prefixes parser'
     where
       parser' v values
         | v >= vs = do
@@ -344,7 +340,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
             parser v values
         | otherwise = parser v values
 
-  removedIn vs msg (ParsecFG names prefixes m parser) = ParsecFG names prefixes Map.empty parser'
+  removedIn vs msg (ParsecFG names prefixes parser) = ParsecFG names prefixes parser'
     where
       parser' v values
         | v >= vs = do
@@ -367,7 +363,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
                 parseFatalFailure pos $ makeMsg name
         | otherwise = parser v values
 
-  knownField fn = ParsecFG (Set.singleton fn) Set.empty Map.empty (\_ _ -> pure ())
+  knownField fn = ParsecFG (Set.singleton fn) Set.empty (\_ _ -> pure ())
 
   hiddenField = id
 
