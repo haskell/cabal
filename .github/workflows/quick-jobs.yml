@@ -45,7 +45,7 @@ jobs:
       - name: Generate build plan for correct cache key
         run: ${{ env.cabal_build }} --dry-run
       - name: Restore cached dependencies
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         id: cache
         with:
           path: ~/.local/state/cabal
@@ -62,7 +62,7 @@ jobs:
           git status > /dev/null
           git diff-files -p --exit-code
       - name: Cache dependencies
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         if: always() && steps.cache.outputs.cache-hit != 'true'
         with:
           path: ~/.local/state/cabal
@@ -91,7 +91,7 @@ jobs:
         run: |
           echo "DATE=$(date +'%Y-%m-%d')" >> "${GITHUB_ENV}"
       - name: Restore cached dependencies
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         id: cache
         with:
           path: ~/.local/state/cabal
@@ -106,7 +106,7 @@ jobs:
         run: make doctest
       - name: Cache dependencies
         if: always() && steps.cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: ~/.local/state/cabal
           key: ${{ steps.cache.outputs.cache-primary-key }}
@@ -133,7 +133,7 @@ jobs:
       - name: Generate build plan for correct cache key
         run: ${{ env.cabal_build }} --dry-run
       - name: Restore cached dependencies
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         id: cache
         with:
           path: ~/.local/state/cabal
@@ -144,7 +144,7 @@ jobs:
       - name: Are buildinfo docs up to date?
         run: make doc/buildinfo-fields-reference.rst
       - name: Cache dependencies
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         if: always() && steps.cache.outputs.cache-hit != 'true'
         with:
           path: ~/.local/state/cabal

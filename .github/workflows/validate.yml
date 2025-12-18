@@ -135,7 +135,7 @@ jobs:
 
       #  See the following link for a breakdown of the following step
       #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           # validate.sh uses a special build dir
           path: |
@@ -297,7 +297,7 @@ jobs:
       # As we are reusing the cached build dir from the previous step
       # the generated artifacts are available here,
       # including the cabal executable and the test suite
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ${{ steps.setup-haskell.outputs.cabal-store }}
@@ -350,7 +350,7 @@ jobs:
 
       #  See the following link for a breakdown of the following step
       #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           # validate.sh uses a special build dir
           path: |
