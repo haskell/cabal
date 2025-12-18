@@ -1521,7 +1521,7 @@ A list of all warnings with their constructor:
 - ``no-cabal-file``: no ``.cabal`` file found in folder.
 - ``multiple-cabal-file``: multiple ``.cabal`` files found in folder.
 - ``unknown-file``: path refers to a file which does not exist.
-- ``missing-setup``: missing ``Setup.hs`` or ``Setup.lsh``.
+- ``missing-setup``: missing ``Setup.hs`` or ``Setup.lhs`` or ``SetupHooks.hs``  or ``SetupHooks.lhs``.
 - ``missing-conf-script``: missing ``configure`` script with ``build-type: Configure``.
 - ``unknown-directory``: paths refer to a directory which does not exist.
 - ``no-repository``: missing ``source-repository`` section.

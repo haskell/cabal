@@ -1,0 +1,8 @@
+---
+synopsis: Recognise SetupHooks.hs
+packages: [cabal-install]
+prs: 11351
+issues: 11349
+---
+
+`cabal check` now recogsnises `SetupHooks.hs` as a valid setup script.

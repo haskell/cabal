@@ -1463,7 +1463,8 @@ ppExplanation (UnknownFile fieldname file) =
     ++ quote (getSymbolicPath file)
     ++ " which does not exist."
 ppExplanation MissingSetupFile =
-  "The package is missing a Setup.hs or Setup.lhs script."
+  "The package is missing a Setup.hs or Setup.lhs or SetupHooks.hs "
+    ++ "or SetupHooks.lhs script."
 ppExplanation MissingConfigureScript =
   "The 'build-type' is 'Configure' but there is no 'configure' script. "
     ++ "You probably need to run 'autoreconf -i' to generate it."
