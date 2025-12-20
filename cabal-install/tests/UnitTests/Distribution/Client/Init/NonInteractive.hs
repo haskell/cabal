@@ -113,7 +113,7 @@ driverFunctionTest pkgIx srcDb comp =
                 _pkgSynopsis desc @?= "We are Qux, and this is our package"
                 _pkgCategory desc @?= "Control"
                 _pkgExtraSrcFiles desc @?= mempty
-                _pkgExtraDocFiles desc @?= pure (Set.singleton "CHANGELOG.md")
+                _pkgExtraDocFiles desc @?= pure (Set.fromList ["CHANGELOG.md", "README.md"])
 
                 _libSourceDirs lib @?= ["quxSrc"]
                 _libLanguage lib @?= Haskell98
@@ -200,7 +200,7 @@ driverFunctionTest pkgIx srcDb comp =
                 _pkgSynopsis desc @?= "We are Qux, and this is our package"
                 _pkgCategory desc @?= "Control"
                 _pkgExtraSrcFiles desc @?= mempty
-                _pkgExtraDocFiles desc @?= pure (Set.singleton "CHANGELOG.md")
+                _pkgExtraDocFiles desc @?= pure (Set.fromList ["CHANGELOG.md", "README.md"])
 
                 _libSourceDirs lib @?= ["quxSrc"]
                 _libLanguage lib @?= Haskell98
@@ -388,7 +388,7 @@ driverFunctionTest pkgIx srcDb comp =
                 _pkgSynopsis desc @?= ""
                 _pkgCategory desc @?= ""
                 _pkgExtraSrcFiles desc @?= mempty
-                _pkgExtraDocFiles desc @?= pure (Set.singleton "CHANGELOG.md")
+                _pkgExtraDocFiles desc @?= pure (Set.fromList ["CHANGELOG.md", "README.md"])
 
                 _libSourceDirs lib @?= ["src"]
                 _libLanguage lib @?= Haskell2010
@@ -540,7 +540,7 @@ driverFunctionTest pkgIx srcDb comp =
                 _pkgSynopsis desc @?= ""
                 _pkgCategory desc @?= ""
                 _pkgExtraSrcFiles desc @?= mempty
-                _pkgExtraDocFiles desc @?= pure (Set.singleton "CHANGELOG.md")
+                _pkgExtraDocFiles desc @?= pure (Set.fromList ["CHANGELOG.md", "README.md"])
 
                 _libSourceDirs lib @?= ["src"]
                 _libLanguage lib @?= Haskell2010
@@ -684,7 +684,7 @@ driverFunctionTest pkgIx srcDb comp =
                 _pkgSynopsis desc @?= ""
                 _pkgCategory desc @?= ""
                 _pkgExtraSrcFiles desc @?= mempty
-                _pkgExtraDocFiles desc @?= pure (Set.singleton "CHANGELOG.md")
+                _pkgExtraDocFiles desc @?= pure (Set.fromList ["CHANGELOG.md", "README.md"])
 
                 _libSourceDirs lib @?= ["src"]
                 _libLanguage lib @?= Haskell2010
@@ -794,7 +794,7 @@ driverFunctionTest pkgIx srcDb comp =
                 _pkgSynopsis desc @?= ""
                 _pkgCategory desc @?= ""
                 _pkgExtraSrcFiles desc @?= mempty
-                _pkgExtraDocFiles desc @?= pure (Set.singleton "CHANGELOG.md")
+                _pkgExtraDocFiles desc @?= pure (Set.fromList ["CHANGELOG.md", "README.md"])
 
                 _libSourceDirs lib @?= ["src"]
                 _libLanguage lib @?= Haskell2010
@@ -885,7 +885,7 @@ driverFunctionTest pkgIx srcDb comp =
                 _pkgSynopsis desc @?= ""
                 _pkgCategory desc @?= ""
                 _pkgExtraSrcFiles desc @?= mempty
-                _pkgExtraDocFiles desc @?= pure (Set.singleton "CHANGELOG.md")
+                _pkgExtraDocFiles desc @?= pure (Set.fromList ["CHANGELOG.md", "README.md"])
 
                 _exeMainIs exe @?= HsFilePath "Main.hs" Standard
                 _exeApplicationDirs exe @?= ["app"]
@@ -1190,14 +1190,14 @@ nonInteractiveTests pkgIx srcDb comp =
             [ testSimple
                 "No extra sources"
                 extraDocFileHeuristics
-                (pure (Set.singleton "CHANGELOG.md"))
+                (pure (Set.fromList ["CHANGELOG.md", "README.md"]))
                 [ "test-package"
                 , "[]"
                 ]
             , testSimple
                 "Extra doc files present"
                 extraDocFileHeuristics
-                (pure $ Set.singleton "README.md")
+                (pure $ Set.fromList ["CHANGELOG.md", "README.md"])
                 [ "test-package"
                 , "[\"README.md\"]"
                 ]
