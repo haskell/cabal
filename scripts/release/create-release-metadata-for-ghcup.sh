@@ -67,6 +67,10 @@ cat <<EOF > /dev/stdout
               dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-x86_64-windows.zip
               dlHash: $(sha256sum "cabal-install-$RELEASE-x86_64-windows.zip" | awk '{ print $1 }')
         A_32:
+          Linux_UnknownLinux:
+            unknown_versioning: &cabal-${RELEASE//./}-32
+              dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-i386-linux-alpine3_12.tar.xz
+              dlHash: $(sha256sum "cabal-install-$RELEASE-i386-linux-alpine3_12.tar.xz" | awk '{ print $1 }')
           Linux_Alpine:
             unknown_versioning: *cabal-${RELEASE//./}-32
         A_ARM64:
