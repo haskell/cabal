@@ -61,8 +61,11 @@ noThunksParse = do
 -- NoThunks instances
 -------------------------------------------------------------------------------
 
+instance NoThunks a => NoThunks (WithImports a)
+
 instance NoThunks Arch
 instance NoThunks Benchmark
+instance NoThunks BenchmarkStanza
 instance NoThunks BenchmarkInterface
 instance NoThunks BenchmarkType
 instance NoThunks BuildInfo
@@ -112,6 +115,7 @@ instance NoThunks SourceRepo
 instance NoThunks IncludeRenaming
 instance NoThunks ModuleRenaming
 instance NoThunks TestSuite
+instance NoThunks TestSuiteStanza
 instance NoThunks TestSuiteInterface
 instance NoThunks TestType
 instance NoThunks UnqualComponentName

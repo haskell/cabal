@@ -121,6 +121,7 @@ library
     Distribution.Types.AbiDependency
     Distribution.Types.AbiHash
     Distribution.Types.Benchmark
+    Distribution.Types.BenchmarkStanza
     Distribution.Types.Benchmark.Lens
     Distribution.Types.BenchmarkInterface
     Distribution.Types.BenchmarkType
@@ -160,6 +161,8 @@ library
     Distribution.Types.Library.Lens
     Distribution.Types.LibraryName
     Distribution.Types.LibraryVisibility
+    Distribution.Types.Imports
+    Distribution.Types.Imports.Lens
     Distribution.Types.MissingDependency
     Distribution.Types.MissingDependencyReason
     Distribution.Types.Mixin
@@ -183,6 +186,7 @@ library
     Distribution.Types.SourceRepo
     Distribution.Types.SourceRepo.Lens
     Distribution.Types.TestSuite
+    Distribution.Types.TestSuiteStanza
     Distribution.Types.TestSuite.Lens
     Distribution.Types.TestSuiteInterface
     Distribution.Types.TestType
