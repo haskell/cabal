@@ -10,11 +10,22 @@ import Test.Tasty
 import Test.Tasty.Golden.Advanced (goldenTest)
 import Test.Tasty.HUnit
 
-import Control.Monad                               (unless, void)
+import Control.Monad                               (void)
 import Data.Algorithm.Diff                         (PolyDiff (..), getGroupedDiff)
 import Data.Maybe                                  (isNothing)
 import Distribution.Fields                         (pwarning)
-import Distribution.PackageDescription             (GenericPackageDescription)
+import Distribution.PackageDescription
+  ( GenericPackageDescription
+  , packageDescription
+  , gpdScannedVersion
+  , genPackageFlags
+  , condLibrary
+  , condSubLibraries
+  , condForeignLibs
+  , condExecutables
+  , condTestSuites
+  , condBenchmarks
+  )
 import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.Parsec                         (PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
@@ -233,12 +244,12 @@ formatGoldenTest fp = cabalGoldenTest "format" correct $ do
 #ifdef MIN_VERSION_tree_diff
 treeDiffGoldenTest :: FilePath -> TestTree
 treeDiffGoldenTest fp = ediffGolden goldenTest "expr" exprFile $ do
-    contents <- BS.readFile input
-    let res = withSource (PCabalFile (fp, contents)) $ parseGenericPackageDescription contents
-    let (_, x) = runParseResult res
-    case x of
-        Right gpd      -> pure (toExpr gpd)
-        Left (_, errs) -> fail $ unlines $ "ERROR" : map (showPErrorWithSource . fmap renderCabalFileSource) (NE.toList errs)
+  contents <- BS.readFile input
+  let res = withSource (PCabalFile (fp, contents)) $ parseGenericPackageDescription contents
+  let (_, x) = runParseResult res
+  case x of
+      Right gpd -> pure (toExpr gpd)
+      Left (_, errs) -> fail $ unlines $ "ERROR" : map (showPErrorWithSource . fmap renderCabalFileSource) (NE.toList errs)
   where
     input = "tests" </> "ParserTests" </> "regressions" </> fp
     exprFile = replaceExtension input "expr"
@@ -250,24 +261,36 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
     x <- parse contents
     let contents' = showGenericPackageDescription x
     y <- parse (toUTF8BS contents')
-    -- previously we mangled licenses a bit
-    let y' = y
+
+    let checkField field =
+          field x == field y @?
 {- FOURMOLU_DISABLE -}
-    unless (x == y') $
 #ifdef MIN_VERSION_tree_diff
-        assertFailure $ unlines
-            [ "re-parsed doesn't match"
-            , show $ ansiWlEditExpr $ ediff x y
-            ]
+            unlines
+                [ "re-parsed doesn't match"
+                , show $ ansiWlEditExpr $ ediff x y
+                ]
 #else
-        assertFailure $ unlines
-            [ "re-parsed doesn't match"
-            , "expected"
-            , show x
-            , "actual"
-            , show y
-            ]
+            unlines
+                [ "re-parsed doesn't match"
+                , "expected"
+                , show x
+                , "actual"
+                , show y
+                ]
 #endif
+    sequence_
+      [ checkField packageDescription
+      , checkField gpdScannedVersion
+      , checkField genPackageFlags
+      , checkField condLibrary
+      , checkField condSubLibraries
+      , checkField condForeignLibs
+      , checkField condExecutables
+      , checkField condTestSuites
+      , checkField condBenchmarks
+      ]
+
   where
     parse :: BS.ByteString -> IO GenericPackageDescription
     parse c = do

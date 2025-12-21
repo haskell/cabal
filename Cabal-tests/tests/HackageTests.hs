@@ -5,6 +5,7 @@
 #if !MIN_VERSION_deepseq(1,4,0)
 {-# OPTIONS_GHC -Wno-orphans #-}
 #endif
+{-# OPTIONS_GHC -Wno-unused-pattern-binds #-} -- pattern match to assert field count
 
 module Main where
 
@@ -23,6 +24,18 @@ import Data.Monoid                                 (Sum (..))
 import Distribution.PackageDescription.Check       (PackageCheck (..), checkPackage)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.PackageDescription.Quirks      (patchQuirks)
+import Distribution.PackageDescription
+  ( GenericPackageDescription(GenericPackageDescription)
+  , packageDescription
+  , gpdScannedVersion
+  , genPackageFlags
+  , condLibrary
+  , condSubLibraries
+  , condForeignLibs
+  , condExecutables
+  , condTestSuites
+  , condBenchmarks
+  )
 import Distribution.Simple.Utils                   (fromUTF8BS, toUTF8BS)
 import Distribution.Fields.ParseResult
 import Distribution.Parsec.Source
@@ -257,7 +270,20 @@ roundtripTest testFieldsTransform fpath bs = do
     let y = y0 & L.packageDescription . L.description .~ mempty
     let x = x0 & L.packageDescription . L.description .~ mempty
 
-    assertEqual' bs' x y
+    -- Note: The pattern matching is to ensure this doesn't go unnoticed when new fields are added.
+    let checkField field = assertEqual' bs' (field x) (field y)
+    let (GenericPackageDescription _ _ _ _ _ _ _ _ _) = x0
+    sequence_
+      [ checkField packageDescription
+      , checkField gpdScannedVersion
+      , checkField genPackageFlags
+      , checkField condLibrary
+      , checkField condSubLibraries
+      , checkField condForeignLibs
+      , checkField condExecutables
+      , checkField condTestSuites
+      , checkField condBenchmarks
+      ]
 
     -- fromParsecField, "shallow" parser/pretty roundtrip
     when testFieldsTransform $
