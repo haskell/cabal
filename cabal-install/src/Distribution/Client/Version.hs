@@ -34,7 +34,7 @@ cabalInstallVersion = mkVersion' PackageInfo.version
 cabalInstallGitInfo :: String
 #ifdef GIT_REV
 cabalInstallGitInfo = if giHash' == ""
-                        then ""
+                        then concat ["[ERROR: ", show gi', "]"]
                         else concat [ "(commit "
                                     , giHash'
                                     , branchInfo
