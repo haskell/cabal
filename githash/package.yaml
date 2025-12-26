@@ -1,0 +1,40 @@
+name:        githash
+version:     0.1.7.0
+synopsis:    Compile git revision info into Haskell projects
+description: Please see the README and documentation at <https://www.stackage.org/package/githash>
+category:    Development
+author:      Michael Snoyman, Adam C. Foltzer
+maintainer:  michael@snoyman.com
+license:     BSD3
+github:      snoyberg/githash
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+dependencies:
+- base >= 4.9.1 && < 5
+- bytestring
+- directory
+- filepath
+- template-haskell
+- th-compat
+- process
+
+library:
+  source-dirs: src
+
+tests:
+  githash-spec:
+    source-dirs: test
+    main:        Spec.hs
+    dependencies:
+    - githash
+    - hspec
+    - temporary
+    - unliftio
+  sanity:
+    source-dirs: sanity
+    main: sanityTest.hs
+    dependencies:
+    - githash

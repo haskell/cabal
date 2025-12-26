@@ -131,7 +131,12 @@ jobs:
         with:
           ghc-version: ${{ matrix.ghc }}
           cabal-version: 3.12.1.0 # see https://github.com/haskell/cabal/pull/10251
+          enable-stack: true
           ghcup-release-channel: https://raw.githubusercontent.com/haskell/ghcup-metadata/master/ghcup-prereleases-0.0.9.yaml
+
+      # apparently if I arrange for stack to be installed (needed on Mac) that prevents
+      # `cabal update` from being run???
+      - run: cabal update
 
       #  See the following link for a breakdown of the following step
       #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
@@ -223,6 +228,18 @@ jobs:
         with:
           name: cabal-${{ runner.os }}-${{ env.CABAL_ARCH }}
           path: ${{ env.CABAL_EXEC_TAR }}
+
+      - name: Show version output to try to debug githash
+        if: matrix.ghc == env.GHC_FOR_RELEASE
+        run: |
+          $(cabal list-bin --builddir=dist-newstyle-validate-ghc-${{ matrix.ghc }} --project-file=cabal.validate.project cabal-install:exe:cabal) --version
+
+      # NB. requires stack
+      - name: 'HACK! Run githash quick test for comparison to preceding'
+        if: matrix.ghc == env.GHC_FOR_RELEASE
+        run: |
+          cd githash
+          stack test --skip githash-spec
 
       - name: Validate tests
         env:

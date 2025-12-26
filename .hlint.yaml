@@ -84,3 +84,4 @@
     - --ignore-glob=templates/SPDX.LicenseExceptionId.template.hs
     - --ignore-glob=templates/SPDX.LicenseId.template.hs
     - --ignore-glob=dist-*
+    - --ignore-glob=githash/*

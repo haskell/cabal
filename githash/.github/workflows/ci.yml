@@ -1,0 +1,44 @@
+#
+# Quick sanity check: build a small program using `$$tGitInfoCwdTry`
+# and print its output. Mostly intended to validate the fix for #26.
+#
+
+name: Sanity
+
+concurrency:
+  group: ${{github.ref}}-${{github.workflow}}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - master
+      - ci
+  pull_request:
+
+jobs:
+  sanity:
+    name: Sanity check ${{matrix.sys.os}}
+    runs-on: ${{matrix.sys.os}}
+
+    strategy:
+      matrix:
+        sys:
+          - {os: windows-latest, shell: "C:/msys64/usr/bin/bash.exe -e {0}"}
+          - {os: windows-latest, shell: bash}
+          - {os: ubuntu-latest, shell: bash}
+          - {os: macos-latest, shell: bash}
+
+    defaults:
+      run:
+        shell: ${{matrix.sys.shell}}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: haskell-actions/setup@v2
+        with:
+          enable-stack: true
+
+      - run: |
+          stack test --skip githash-spec

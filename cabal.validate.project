@@ -14,3 +14,6 @@ program-options
 -- the result of the legacy and parsec parser and fail if they are not equal.
 package cabal-install
   flags: +git-rev +legacy-comparison
+
+package Cabal
+  flags: +git-rev
