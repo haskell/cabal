@@ -418,14 +418,17 @@ mainWorker args = do
       putStrLn $
         "cabal-install version "
           ++ display cabalInstallVersion
-          ++ cabalInstallGitInfo
+          ++ cabalInstallGitInfo'
           ++ "\ncompiled using version "
           ++ display cabalVersion
           ++ " of the Cabal library "
           ++ cabalGitInfo'
       where
+        cabalInstallGitInfo'
+          | null cabalInstallGitInfo = ""
+          | otherwise = ' ' : cabalInstallGitInfo
         cabalGitInfo'
-          | cabalGitInfo == "" && cabalInstallGitInfo == "" = ""
+          | null cabalGitInfo && null cabalInstallGitInfo = ""
           | cabalGitInfo == cabalInstallGitInfo = "(in-tree)"
           | otherwise = cabalGitInfo
 
