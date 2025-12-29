@@ -199,8 +199,10 @@ instance CabalParsing ParsecParser where
         (PWarning t (Position (Parsec.sourceLine spos) (Parsec.sourceColumn spos)) w : warns)
         trivia
   askCabalSpecVersion = PP pure
-  -- annotate =
-  --   -- TODO(leana8959): inject trivia into the userstate
+  annotate namespace trivium = liftParsec $ do
+    Parsec.modifyState $ \(PPUserState warns trivia) ->
+      -- TODO(leana8959): proof of concept
+      PPUserState warns (trivium : trivia)
 
 -- | Parse a 'String' with 'lexemeParsec'.
 simpleParsec :: Parsec a => String -> Maybe a
