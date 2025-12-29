@@ -14,6 +14,7 @@ module Distribution.Fields.ParseResult
   , parseFailure
   , parseFatalFailure
   , parseFatalFailure'
+  , annotateParseResult
   , getCabalSpecVersion
   , setCabalSpecVersion
   , withoutWarnings
@@ -50,11 +51,8 @@ data PRContext src = PRContext
   -- use the same parser for cabal files and project files.
   }
 
--- TODO(leana8959): dummy, make it a map later
-type PAnnotation = Map Namespace [Trivium]
-
 -- Note: we have version here, as we could get any version.
-data PRState src = PRState ![PWarningWithSource src] ![PErrorWithSource src] !PAnnotation !(Maybe Version)
+data PRState src = PRState ![PWarningWithSource src] ![PErrorWithSource src] !(Map Namespace [Trivium]) !(Maybe Version)
 
 emptyPRState :: PRState src
 emptyPRState = PRState [] [] Map.empty Nothing
@@ -141,6 +139,10 @@ instance Monad (ParseResult src) where
 recoverWith :: ParseResult src a -> a -> ParseResult src a
 recoverWith (PR pr) x = PR $ \ !s fp _failure success ->
   pr s fp (\ !s' -> success s' x) success
+
+annotateParseResult :: Map Namespace [Trivium] -> ParseResult src ()
+annotateParseResult t = PR $ \ !(PRState warns errs t0 v) _fp _failure success ->
+  success (PRState warns errs (t0 <> t) v) ()
 
 -- | Set cabal spec version.
 setCabalSpecVersion :: Maybe Version -> ParseResult src ()
