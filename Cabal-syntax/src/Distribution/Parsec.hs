@@ -82,6 +82,8 @@ import qualified Distribution.Compat.DList as DList
 import qualified Distribution.Compat.MonadFail as Fail
 import qualified Text.Parsec as Parsec
 
+import qualified Data.Map as Map
+
 -------------------------------------------------------------------------------
 -- Class
 -------------------------------------------------------------------------------
@@ -121,11 +123,11 @@ newtype ParsecParser a = PP
 
 data PPUserState = PPUserState
   { ppWarnings :: [PWarning]
-  , ppTrivia :: [Trivium] -- TODO(leana8959): make this a map
+  , ppTrivia :: Map Namespace [Trivium] -- TODO(leana8959): make this a map
   }
 
 emptyPPUserState :: PPUserState
-emptyPPUserState = PPUserState [] []
+emptyPPUserState = PPUserState [] Map.empty
 
 liftParsec :: Parsec.Parsec FieldLineStream PPUserState a -> ParsecParser a
 liftParsec p = PP $ \_ -> p
@@ -202,7 +204,7 @@ instance CabalParsing ParsecParser where
   annotate namespace trivium = liftParsec $ do
     Parsec.modifyState $ \(PPUserState warns trivia) ->
       -- TODO(leana8959): proof of concept
-      PPUserState warns (trivium : trivia)
+      PPUserState warns (Map.insertWith (<>) namespace [trivium] trivia)
 
 -- | Parse a 'String' with 'lexemeParsec'.
 simpleParsec :: Parsec a => String -> Maybe a
