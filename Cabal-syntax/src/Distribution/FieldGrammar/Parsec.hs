@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -376,6 +377,7 @@ runFieldParser' inputPoss p v str = case P.runParser p' emptyPPUserState "<field
   Right (pok, (PPUserState{ppWarnings=warns, ppTrivia=trivia})) -> do
     traverse_ (\(PWarning t pos w) -> parseWarning (mapPosition pos) t w) warns
     -- TODO(leana8959): pass the trivia state from PP (ParsecParser) to PR (ParseResult)
+    let !() = trace (show trivia) ()
     pure pok
   Left err -> do
     let ppos = P.errorPos err

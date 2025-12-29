@@ -5,3 +5,4 @@ data Trivium
   | Nth Int
   | PreTrivia String
   | PostTrivia String
+  deriving (Show)
