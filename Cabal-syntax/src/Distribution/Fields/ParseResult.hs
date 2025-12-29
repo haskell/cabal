@@ -59,10 +59,6 @@ data PRState src = PRState ![PWarningWithSource src] ![PErrorWithSource src] !PA
 emptyPRState :: PRState src
 emptyPRState = PRState [] [] Map.empty Nothing
 
-annotate :: Namespace -> Trivium -> ParseResult src ()
-annotate namespace trivium = PR $ \(PRState warns errs trivia v) ctx failure success ->
-  success (PRState warns errs (Map.insertWith (<>) namespace [trivium] trivia) v) ()
-
 -- | Forget 'ParseResult's warnings.
 --
 -- @since 3.4.0.0

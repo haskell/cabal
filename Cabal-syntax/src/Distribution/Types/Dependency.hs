@@ -26,6 +26,9 @@ import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
 
+import Distribution.Types.AnnotationNamespace
+import Distribution.Types.AnnotationTrivium
+
 import qualified Distribution.Compat.NonEmptySet as NES
 import qualified Text.PrettyPrint as PP
 
@@ -134,6 +137,10 @@ instance Parsec Dependency where
       NES.singleton <$> parseLib <|> parseMultipleLibs
 
     spaces -- https://github.com/haskell/cabal/issues/5846
+    annotate
+      (Section "library" "" $ Field "fake-build-depends")
+      (PostTrivia "  ") -- TODO(leana8959): don't fake this space
+
     ver <- parsec <|> pure anyVersion
     return $ mkDependency name ver libs
     where

@@ -20,6 +20,8 @@ module Distribution.Parsec
 
     -- * CabalParsing and diagnostics
   , CabalParsing (..)
+  , PPUserState (..)
+  , emptyPPUserState
 
     -- ** Warnings
   , PWarnType (..)
@@ -72,6 +74,9 @@ import Distribution.Parsec.Warning
 import Numeric (showIntAtBase)
 import Prelude ()
 
+import Distribution.Types.AnnotationNamespace
+import Distribution.Types.AnnotationTrivium
+
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.DList as DList
 import qualified Distribution.Compat.MonadFail as Fail
@@ -92,6 +97,8 @@ class Parsec a where
 -- * can report Cabal parser warnings.
 --
 -- * knows @cabal-version@ we work with
+--
+-- * can add trivia annotations
 class (P.CharParsing m, MonadPlus m, Fail.MonadFail m) => CabalParsing m where
   parsecWarning :: PWarnType -> String -> m ()
 
@@ -100,6 +107,8 @@ class (P.CharParsing m, MonadPlus m, Fail.MonadFail m) => CabalParsing m where
 
   askCabalSpecVersion :: m CabalSpecVersion
 
+  annotate :: Namespace -> Trivium -> m ()
+
 -- | 'parsec' /could/ consume trailing spaces, this function /will/ consume.
 lexemeParsec :: (CabalParsing m, Parsec a) => m a
 lexemeParsec = parsec <* P.spaces
@@ -107,10 +116,18 @@ lexemeParsec = parsec <* P.spaces
 newtype ParsecParser a = PP
   { unPP
       :: CabalSpecVersion
-      -> Parsec.Parsec FieldLineStream [PWarning] a
+      -> Parsec.Parsec FieldLineStream PPUserState a
   }
 
-liftParsec :: Parsec.Parsec FieldLineStream [PWarning] a -> ParsecParser a
+data PPUserState = PPUserState
+  { ppWarnings :: [PWarning]
+  , ppTrivia :: [Trivium] -- TODO(leana8959): make this a map
+  }
+
+emptyPPUserState :: PPUserState
+emptyPPUserState = PPUserState [] []
+
+liftParsec :: Parsec.Parsec FieldLineStream PPUserState a -> ParsecParser a
 liftParsec p = PP $ \_ -> p
 
 instance Functor ParsecParser where
@@ -177,9 +194,13 @@ instance P.CharParsing ParsecParser where
 instance CabalParsing ParsecParser where
   parsecWarning t w = liftParsec $ do
     spos <- Parsec.getPosition
-    Parsec.modifyState
-      (PWarning t (Position (Parsec.sourceLine spos) (Parsec.sourceColumn spos)) w :)
+    Parsec.modifyState $ \(PPUserState warns trivia) ->
+      PPUserState
+        (PWarning t (Position (Parsec.sourceLine spos) (Parsec.sourceColumn spos)) w : warns)
+        trivia
   askCabalSpecVersion = PP pure
+  -- annotate =
+  --   -- TODO(leana8959): inject trivia into the userstate
 
 -- | Parse a 'String' with 'lexemeParsec'.
 simpleParsec :: Parsec a => String -> Maybe a
@@ -210,7 +231,7 @@ simpleParsec' spec =
 -- @since 3.4.0.0
 simpleParsecW' :: Parsec a => CabalSpecVersion -> String -> Maybe a
 simpleParsecW' spec =
-  either (const Nothing) (\(x, ws) -> if null ws then Just x else Nothing)
+  either (const Nothing) (\(x, PPUserState ws _) -> if null ws then Just x else Nothing)
     . runParsecParser' spec ((,) <$> lexemeParsec <*> liftParsec Parsec.getState) "<simpleParsec>"
     . fieldLineStreamFromString
 
@@ -243,7 +264,7 @@ runParsecParser = runParsecParser' cabalSpecLatest
 --
 -- @since 3.0.0.0
 runParsecParser' :: CabalSpecVersion -> ParsecParser a -> FilePath -> FieldLineStream -> Either Parsec.ParseError a
-runParsecParser' v p n = Parsec.runParser (unPP p v <* P.eof) [] n
+runParsecParser' v p n = Parsec.runParser (unPP p v <* P.eof) emptyPPUserState n
 
 instance Parsec a => Parsec (Identity a) where
   parsec = Identity <$> parsec

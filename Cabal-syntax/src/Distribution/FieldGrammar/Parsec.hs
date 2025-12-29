@@ -372,9 +372,10 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
 -------------------------------------------------------------------------------
 
 runFieldParser' :: [Position] -> ParsecParser a -> CabalSpecVersion -> FieldLineStream -> ParseResult src a
-runFieldParser' inputPoss p v str = case P.runParser p' [] "<field>" str of
-  Right (pok, ws) -> do
-    traverse_ (\(PWarning t pos w) -> parseWarning (mapPosition pos) t w) ws
+runFieldParser' inputPoss p v str = case P.runParser p' emptyPPUserState "<field>" str of
+  Right (pok, (PPUserState{ppWarnings=warns, ppTrivia=trivia})) -> do
+    traverse_ (\(PWarning t pos w) -> parseWarning (mapPosition pos) t w) warns
+    -- TODO(leana8959): pass the trivia state from PP (ParsecParser) to PR (ParseResult)
     pure pok
   Left err -> do
     let ppos = P.errorPos err
