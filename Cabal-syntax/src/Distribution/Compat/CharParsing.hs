@@ -24,6 +24,7 @@ module Distribution.Compat.CharParsing
     oneOf -- :: CharParsing m => [Char] -> m Char
   , noneOf -- :: CharParsing m => [Char] -> m Char
   , spaces -- :: CharParsing m => m ()
+  , spaces' -- :: CharParsing m => m [Char]
   , space -- :: CharParsing m => m Char
   , newline -- :: CharParsing m => m Char
   , tab -- :: CharParsing m => m Char
@@ -89,6 +90,11 @@ noneOf xs = satisfy (\c -> c `notElem` xs)
 spaces :: CharParsing m => m ()
 spaces = skipMany space <?> "white space"
 {-# INLINE spaces #-}
+
+-- | Like 'spaces', but returns the spaces for exact printing
+spaces' :: CharParsing m => m [Char]
+spaces' = many space <?> "white space"
+{-# INLINE spaces' #-}
 
 -- | Parses a white space character (any character which satisfies 'isSpace')
 -- Returns the parsed character.
