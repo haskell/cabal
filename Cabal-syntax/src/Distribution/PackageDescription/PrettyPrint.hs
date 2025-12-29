@@ -53,7 +53,6 @@ import Distribution.PackageDescription.FieldGrammar
 import Distribution.Pretty
 import Distribution.Utils.Generic (writeFileAtomic, writeUTF8File)
 
-import qualified Distribution.PackageDescription.FieldGrammar as FG
 import qualified Distribution.Types.BuildInfo.Lens as L
 import qualified Distribution.Types.SetupBuildInfo.Lens as L
 
@@ -171,14 +170,14 @@ ppCondExecutables v exes =
 ppCondTestSuites :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar [Dependency] TestSuite)] -> [PrettyField ()]
 ppCondTestSuites v suites =
   [ PrettySection () "test-suite" [pretty n] $
-    ppCondTree2 v testSuiteFieldGrammar (fmap FG.unvalidateTestSuite condTree)
+    ppCondTree2 v testSuiteFieldGrammar (fmap unvalidateTestSuite condTree)
   | (n, condTree) <- suites
   ]
 
 ppCondBenchmarks :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar [Dependency] Benchmark)] -> [PrettyField ()]
 ppCondBenchmarks v suites =
   [ PrettySection () "benchmark" [pretty n] $
-    ppCondTree2 v benchmarkFieldGrammar (fmap FG.unvalidateBenchmark condTree)
+    ppCondTree2 v benchmarkFieldGrammar (fmap unvalidateBenchmark condTree)
   | (n, condTree) <- suites
   ]
 

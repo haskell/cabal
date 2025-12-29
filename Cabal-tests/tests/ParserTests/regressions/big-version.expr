@@ -1,4 +1,4 @@
-GenericPackageDescription {
+`GenericPackageDescription (merged)` {
   packageDescription =
   PackageDescription {
     specVersion = CabalSpecV3_0,
@@ -53,11 +53,11 @@ GenericPackageDescription {
           buildTools = [],
           buildToolDepends = [],
           cppOptions = [],
-          jsppOptions = [],
           asmOptions = [],
           cmmOptions = [],
           ccOptions = [],
           cxxOptions = [],
+          jsppOptions = [],
           ldOptions = [],
           hsc2hsOptions = [],
           pkgconfigDepends = [],
