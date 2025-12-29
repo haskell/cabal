@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE Rank2Types #-}
@@ -16,6 +17,8 @@ module Distribution.PackageDescription.Parsec
   ( -- * Package descriptions
     parseGenericPackageDescription
   , parseGenericPackageDescriptionMaybe
+  , parseAnnotatedGenericPackageDescription
+  , parseAnnotatedGenericPackageDescriptionMaybe
 
     -- ** Parsing
   , ParseResult
@@ -40,7 +43,7 @@ import Distribution.Compat.Lens
 import Distribution.FieldGrammar
 import Distribution.FieldGrammar.Parsec (NamelessField (..))
 import Distribution.Fields.ConfVar (parseConditionConfVar)
-import Distribution.Fields.Field (FieldName, getName, sectionArgAnn)
+import Distribution.Fields.Field (Comment (..), FieldName, WithComments, getName, sectionArgAnn)
 import Distribution.Fields.LexerMonad (LexWarning, toPWarnings)
 import Distribution.Fields.ParseResult
 import Distribution.Fields.Parser
@@ -72,12 +75,29 @@ import qualified Text.Parsec as P
 
 ------------------------------------------------------------------------------
 
+-- Deep Evaluation
+-- ~~~~~~~~~~~~~~~
+--
+-- See nothunks test, without this deepseq we get (at least):
+-- Thunk in ThunkInfo {thunkContext = ["GenericPackageDescription"]}
+--
+-- TODO: re-benchmark, whether `deepseq` is important (both cabal-benchmarks and solver-benchmarks)
+-- TODO: remove the need for deepseq if `deepseq` in fact matters
+-- NOTE: IIRC it does affect (maximal) memory usage, which causes less GC pressure
+
 -- | Parses the given file into a 'GenericPackageDescription'.
 --
 -- In Cabal 1.2 the syntax for package descriptions was changed to a format
 -- with sections and possibly indented property descriptions.
 parseGenericPackageDescription :: BS.ByteString -> ParseResult src GenericPackageDescription
 parseGenericPackageDescription bs = do
+  gpd <- parseAnnotatedGenericPackageDescription bs
+  let gpd' = unannotatedGpd gpd
+  -- See "Deep Evaluation" note
+  gpd' `deepseq` return gpd'
+
+parseAnnotatedGenericPackageDescription :: BS.ByteString -> ParseResult src AnnotatedGenericPackageDescription
+parseAnnotatedGenericPackageDescription bs = do
   -- set scanned version
   setCabalSpecVersion ver
 
@@ -93,12 +113,12 @@ parseGenericPackageDescription bs = do
             ++ cabalFormatVersionsDesc
     _ -> pure Nothing
 
-  case readFields' bs'' of
+  case readFieldsWithComments' bs'' of
     Right (fs, lexWarnings) -> do
       when patched $
         parseWarning zeroPos PWTQuirkyCabalFile "Legacy cabal file"
       -- UTF8 is validated in a prepass step, afterwards parsing is lenient.
-      parseGenericPackageDescription' csv lexWarnings invalidUtf8 fs
+      parseAnnotatedGenericPackageDescription' csv lexWarnings invalidUtf8 fs
     -- TODO: better marshalling of errors
     Left perr -> parseFatalFailure pos (show perr)
       where
@@ -117,8 +137,15 @@ parseGenericPackageDescription bs = do
 
 -- | 'Maybe' variant of 'parseGenericPackageDescription'
 parseGenericPackageDescriptionMaybe :: BS.ByteString -> Maybe GenericPackageDescription
-parseGenericPackageDescriptionMaybe =
-  either (const Nothing) Just . snd . runParseResult . parseGenericPackageDescription
+parseGenericPackageDescriptionMaybe bs = do
+  gpd <- parseAnnotatedGenericPackageDescriptionMaybe bs
+  let gpd' = unannotatedGpd gpd
+  -- See "Deep Evaluation" note
+  gpd' `deepseq` return gpd'
+
+parseAnnotatedGenericPackageDescriptionMaybe :: BS.ByteString -> Maybe AnnotatedGenericPackageDescription
+parseAnnotatedGenericPackageDescriptionMaybe =
+  either (const Nothing) Just . snd . runParseResult . parseAnnotatedGenericPackageDescription
 
 fieldlinesToBS :: [FieldLine ann] -> BS.ByteString
 fieldlinesToBS = BS.intercalate "\n" . map (\(FieldLine _ bs) -> bs)
@@ -147,18 +174,22 @@ stateCommonStanzas f (SectionS gpd cs) = SectionS gpd <$> f cs
 -- * first we parse fields of PackageDescription
 
 -- * then we parse sections (libraries, executables, etc)
-parseGenericPackageDescription'
+parseAnnotatedGenericPackageDescription'
   :: Maybe CabalSpecVersion
   -> [LexWarning]
   -> Maybe Int
-  -> [Field Position]
-  -> ParseResult src GenericPackageDescription
-parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
+  -> [Field (WithComments Position)]
+  -> ParseResult src AnnotatedGenericPackageDescription
+parseAnnotatedGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
   parseWarnings (toPWarnings lexWarnings)
   for_ utf8WarnPos $ \pos ->
     parseWarning zeroPos PWTUTF $ "UTF8 encoding problem at byte offset " ++ show pos
-  let (syntax, fs') = sectionizeFields fs
-  let (fields, sectionFields) = takeFields fs'
+
+  let (comments, fs') = extractComments fs
+      !commentsMap = Map.fromList . map (\(Comment cmt pos) -> (pos, cmt)) $ comments
+
+  let (syntax, fs'') = sectionizeFields fs'
+  let (fields, sectionFields) = takeFields fs''
 
   -- cabal-version
   specVer <- case scannedVer of
@@ -208,13 +239,11 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
   let gpd2 = postProcessInternalDeps specVer gpd1
   checkForUndefinedFlags gpd2
   checkForUndefinedCustomSetup gpd2
-  -- See nothunks test, without this deepseq we get (at least):
-  -- Thunk in ThunkInfo {thunkContext = ["PackageIdentifier","PackageDescription","GenericPackageDescription"]}
-  --
-  -- TODO: re-benchmark, whether `deepseq` is important (both cabal-benchmarks and solver-benchmarks)
-  -- TODO: remove the need for deepseq if `deepseq` in fact matters
-  -- NOTE: IIRC it does affect (maximal) memory usage, which causes less GC pressure
-  gpd2 `deepseq` return gpd2
+  return
+    AnnotatedGenericPackageDescription
+      { exactComments = commentsMap
+      , unannotatedGpd = gpd2
+      }
   where
     safeLast :: [a] -> Maybe a
     safeLast = listToMaybe . reverse

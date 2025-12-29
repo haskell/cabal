@@ -20,6 +20,7 @@ import Distribution.CabalSpecVersion          (CabalSpecVersion)
 import Distribution.Compat.NonEmptySet        (NonEmptySet)
 import Distribution.Compiler                  (CompilerFlavor, PerCompilerFlavor)
 import Distribution.Fields                    (runParseResult)
+import Distribution.Parsec.Position           (Position)
 import Distribution.ModuleName                (ModuleName)
 import Distribution.PackageDescription.Parsec (parseGenericPackageDescription, withSource)
 import Distribution.Parsec.Source
@@ -94,6 +95,7 @@ instance NoThunks PackageDescription
 instance NoThunks PackageFlag
 instance NoThunks PackageIdentifier
 instance NoThunks PackageName
+instance NoThunks Position
 instance NoThunks LegacyExeDependency
 instance NoThunks ExeDependency
 instance NoThunks PkgconfigName

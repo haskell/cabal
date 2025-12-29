@@ -1,0 +1,175 @@
+[
+  Section
+    (Name
+      WithComments {
+        justComments =
+        [
+          Comment
+            "-- This is the configuration file for the 'cabal' command line tool."
+            (Position 1 1),
+          Comment "--" (Position 2 1),
+          Comment
+            "-- The available configuration options are listed below."
+            (Position 3 1)],
+        unComments = Position 6 1}
+      "repository")
+    [
+      SecArgName
+        WithComments {
+          justComments = [],
+          unComments = Position 6 12}
+        "hackage.haskell.org"]
+    [
+      Field
+        (Name
+          WithComments {
+            justComments = [],
+            unComments = Position 7 3}
+          "url")
+        [
+          FieldLine
+            WithComments {
+              justComments = [
+                Comment
+                  "  -- secure: True"
+                  (Position 8 1),
+                Comment
+                  "  -- root-keys:"
+                  (Position 9 1),
+                Comment
+                  "-- ignore-expiry: False"
+                  (Position 11 1),
+                Comment
+                  "-- http-transport:"
+                  (Position 12 1)],
+              unComments = Position 7 8}
+            "http://hackage.haskell.org/"]],
+  Field
+    (Name
+      WithComments {
+        justComments = [],
+        unComments = Position 13 1}
+      "remote-repo-cache")
+    [
+      FieldLine
+        WithComments {
+          justComments = [
+            Comment
+              "-- logs-dir: /home/foo/.cache/cabal/logs"
+              (Position 14 1),
+            Comment
+              "-- default-user-config:"
+              (Position 15 1)],
+          unComments = Position 13 20}
+        "/home/foo/.cache/cabal/packages"],
+  Field
+    (Name
+      WithComments {
+        justComments = [],
+        unComments = Position 16 1}
+      "build-summary")
+    [
+      FieldLine
+        WithComments {
+          justComments = [
+            Comment
+              "-- build-log:"
+              (Position 17 1)],
+          unComments = Position 16 16}
+        "/home/foo/.cache/cabal/logs/build.log"],
+  Field
+    (Name
+      WithComments {
+        justComments = [],
+        unComments = Position 18 1}
+      "remote-build-reporting")
+    [
+      FieldLine
+        WithComments {
+          justComments = [
+            Comment
+              "-- report-planning-failure: False"
+              (Position 19 1),
+            Comment
+              "-- per-component: True"
+              (Position 20 1)],
+          unComments = Position 18 25}
+        "none"],
+  Field
+    (Name
+      WithComments {
+        justComments = [],
+        unComments = Position 21 1}
+      "jobs")
+    [
+      FieldLine
+        WithComments {
+          justComments = [
+            Comment
+              "-- keep-going: False"
+              (Position 22 1),
+            Comment
+              "-- offline: False"
+              (Position 23 1)],
+          unComments = Position 21 7}
+        "$ncpus"],
+  Field
+    (Name
+      WithComments {
+        justComments = [],
+        unComments = Position 24 1}
+      "installdir")
+    [
+      FieldLine
+        WithComments {
+          justComments = [
+            Comment
+              "-- token:"
+              (Position 25 1),
+            Comment
+              "-- username:"
+              (Position 26 1)],
+          unComments = Position 24 13}
+        "/home/foo/.local/bin"],
+  Section
+    (Name
+      WithComments {
+        justComments = [
+          Comment
+            "  -- keep-temp-files: False"
+            (Position 29 1),
+          Comment
+            "  -- hoogle: False"
+            (Position 30 1)],
+        unComments = Position 28 1}
+      "haddock")
+    []
+    [],
+  Section
+    (Name
+      WithComments {
+        justComments = [
+          Comment
+            "  -- interactive: False"
+            (Position 33 1),
+          Comment
+            "  -- quiet: False"
+            (Position 34 1)],
+        unComments = Position 32 1}
+      "init")
+    []
+    [],
+  Section
+    (Name
+      WithComments {
+        justComments = [
+          Comment
+            "  -- alex-location:"
+            (Position 37 1),
+          Comment
+            "  -- ar-location:"
+            (Position 38 1)],
+        unComments = Position 36 1}
+      "program-locations")
+    []
+    []]
