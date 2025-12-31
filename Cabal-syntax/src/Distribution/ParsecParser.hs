@@ -7,28 +7,18 @@
 
 module Distribution.ParsecParser where
 
-import Data.ByteString (ByteString)
-import Data.Char (digitToInt, intToDigit)
-import Data.List (transpose)
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Prelude
-import Distribution.Parsec.Error (PError (..), PErrorWithSource (..), showPError, showPErrorWithSource)
 
-import Data.Monoid (Last (..))
-import Distribution.Parsec.FieldLineStream (FieldLineStream, fieldLineStreamFromBS, fieldLineStreamFromString)
-import Distribution.Parsec.Position (Position (..), incPos, retPos, showPos, zeroPos)
+import Distribution.Parsec.FieldLineStream (FieldLineStream, fieldLineStreamFromString)
+import Distribution.Parsec.Position (Position (..))
 import Distribution.Parsec.Warning
-import Numeric (showIntAtBase)
 import Prelude ()
 
 import Distribution.CabalParsing
 import Distribution.PPUserState
 
-import Distribution.Types.AnnotationNamespace
-import Distribution.Types.AnnotationTrivium
-
 import qualified Distribution.Compat.CharParsing as P
-import qualified Distribution.Compat.DList as DList
 import qualified Distribution.Compat.MonadFail as Fail
 import qualified Text.Parsec as Parsec
 
