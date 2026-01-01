@@ -44,8 +44,8 @@ cat <<EOF > /dev/stdout
               dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-x86_64-linux-deb11.tar.xz
               dlHash: $(sha256sum "cabal-install-$RELEASE-x86_64-linux-deb11.tar.xz" | awk '{ print $1 }')
             unknown_versioning: *cabal-${RELEASE//./}-64-debian
-          Linux_Fedora: &cabal-${RELEASE//./}-64-fedora33
-            '>= 33':
+          Linux_Fedora:
+            '>= 33': &cabal-${RELEASE//./}-64-fedora33
               dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-x86_64-linux-fedora33.tar.xz
               dlHash: $(sha256sum "cabal-install-$RELEASE-x86_64-linux-fedora33.tar.xz" | awk '{ print $1 }')
             unknown_versioning: *cabal-${RELEASE//./}-64-fedora33
@@ -69,8 +69,8 @@ cat <<EOF > /dev/stdout
         A_32:
           Linux_UnknownLinux:
             unknown_versioning: &cabal-${RELEASE//./}-32
-              dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-i386-linux-alpine3_12.tar.xz
-              dlHash: $(sha256sum "cabal-install-$RELEASE-i386-linux-alpine3_12.tar.xz" | awk '{ print $1 }')
+              dlUri: https://downloads.haskell.org/~cabal/cabal-install-$RELEASE/cabal-install-$RELEASE-i386-linux-alpine3_22.tar.xz
+              dlHash: $(sha256sum "cabal-install-$RELEASE-i386-linux-alpine3_22.tar.xz" | awk '{ print $1 }')
           Linux_Alpine:
             unknown_versioning: *cabal-${RELEASE//./}-32
         A_ARM64:
