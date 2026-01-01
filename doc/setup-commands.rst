@@ -1065,6 +1065,11 @@ This command takes the following options:
     database for searching. This is equivalent to running Haddock_
     with the ``--hoogle`` flag.
 
+.. option:: --html
+
+    Generate Haddock_ documentation in HTML format (the default). This is
+    equivalent to running Haddock_ with the ``--html`` flag.
+
 .. option:: --html-location=url
 
     Specify a template for the location of HTML documentation for
@@ -1082,6 +1087,12 @@ This command takes the following options:
     Here the argument is quoted to prevent substitution by the shell. If
     this option is omitted, the location for each package is obtained
     using the package tool (e.g. ``ghc-pkg``).
+
+.. option:: --contents-location=url
+
+    Specify a template for the location for the contents page. The substitutions
+    (`see listing <#paths-in-the-simple-build-system>`__) are applied to the
+    template to obtain a location for each package.
 
 .. option:: --executables
 
@@ -1110,6 +1121,10 @@ This command takes the following options:
     generate HTML documentation. Each entity shown in the documentation is
     linked to its definition in the colourised code.
 
+.. option:: --quickjump
+
+    Generate an index for interactive navigation of Haddock_ documentation.
+
 .. option:: --hscolour-css=path
 
     The argument *path* denotes a CSS file, which is passed to HsColour_ as in
@@ -1117,6 +1132,16 @@ This command takes the following options:
     ::
 
         $ runhaskell Setup.hs hscolour --css=*path*
+
+.. option:: --for-hackage
+
+    Sets flags to generate Haddock_ documentation that is suitable for upload to
+    Hackage.
+
+    Equivalent to setting :option:`--hoogle`, :option:`--html`,
+    :option:`--html-location` equal to ``/package/$pkg-$version/docs``,
+    :option:`--contents-location` equal to ``/package/$pkg-$version``,
+    :option:`--hyperlink-source`, and :option:`--quickjump`.
 
 .. _setup-hscolour:
 
