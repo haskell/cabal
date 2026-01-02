@@ -30,8 +30,6 @@ import qualified Distribution.Compat.MonadFail as Fail
 --
 -- * can add trivia annotations
 class (P.CharParsing m, MonadPlus m, Fail.MonadFail m) => CabalParsing m where
-  -- type XXX m
-
   parsecWarning :: PWarnType -> String -> m ()
 
   parsecHaskellString :: m String
@@ -39,7 +37,6 @@ class (P.CharParsing m, MonadPlus m, Fail.MonadFail m) => CabalParsing m where
 
   askCabalSpecVersion :: m CabalSpecVersion
 
-  -- annotate :: XXX m -> Trivium -> m ()
   annotate :: Namespace -> Trivium -> m ()
 
 stringLiteral :: forall m. P.CharParsing m => m String
