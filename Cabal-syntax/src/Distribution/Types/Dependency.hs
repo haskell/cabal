@@ -18,16 +18,13 @@ import Distribution.Types.VersionRange (isAnyVersionLight)
 import Distribution.Version (VersionRange, anyVersion, simplifyVersionRange)
 
 import Distribution.CabalSpecVersion
-import Distribution.Compat.CharParsing (char, spaces')
+import Distribution.Compat.CharParsing (char, spaces)
 import Distribution.Compat.Parsing (between, option)
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
-
-import Distribution.Types.AnnotationNamespace
-import Distribution.Types.AnnotationTrivium
 
 import qualified Distribution.Compat.NonEmptySet as NES
 import qualified Text.PrettyPrint as PP
@@ -136,22 +133,16 @@ instance Parsec Dependency where
       versionGuardMultilibs
       NES.singleton <$> parseLib <|> parseMultipleLibs
 
-    postSpaces -- https://github.com/haskell/cabal/issues/5846
-
+    spaces -- https://github.com/haskell/cabal/issues/5846
     ver <- parsec <|> pure anyVersion
     return $ mkDependency name ver libs
     where
       parseLib = LSubLibName <$> parsec
       parseMultipleLibs =
         between
-          (char '{' *> postSpaces)
-          (preSpaces *> char '}')
+          (char '{' *> spaces)
+          (spaces *> char '}')
           (NES.fromNonEmpty <$> parsecCommaNonEmpty parseLib)
-
-      -- TODO(leana8959): find a way to add actual namespace info to the trivia
-      spacesAt f = spaces' >>= annotate (Section "library" "" $ Field "fake-build-depends") . f
-      preSpaces = spacesAt PreTrivia
-      postSpaces = spacesAt PostTrivia
 
 versionGuardMultilibs :: CabalParsing m => m ()
 versionGuardMultilibs = do
