@@ -103,6 +103,7 @@ library
     Distribution.PackageDescription.Quirks
     Distribution.PackageDescription.Utils
     Distribution.Parsec
+    Distribution.Parsec.Class
     Distribution.ParsecParser
     Distribution.CabalParsing
     Distribution.PPUserState

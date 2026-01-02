@@ -13,7 +13,7 @@ import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
 import Prelude ()
 
-import Distribution.Parsec
+import Distribution.Parsec.Class
 import Distribution.Pretty
 import qualified Text.PrettyPrint as Disp
 

@@ -16,7 +16,6 @@ import Distribution.Parsec.Warning
 import Numeric (showIntAtBase)
 import Prelude ()
 
-import Distribution.Types.AnnotationNamespace
 import Distribution.Types.AnnotationTrivium
 
 import qualified Distribution.Compat.CharParsing as P
@@ -30,7 +29,7 @@ import qualified Distribution.Compat.MonadFail as Fail
 --
 -- * can add trivia annotations
 class (P.CharParsing m, MonadPlus m, Fail.MonadFail m) => CabalParsing m where
-  -- type XXX m
+  type XXX m
 
   parsecWarning :: PWarnType -> String -> m ()
 
@@ -39,8 +38,8 @@ class (P.CharParsing m, MonadPlus m, Fail.MonadFail m) => CabalParsing m where
 
   askCabalSpecVersion :: m CabalSpecVersion
 
-  -- annotate :: XXX m -> Trivium -> m ()
-  annotate :: Namespace -> Trivium -> m ()
+  annotate :: XXX m -> Trivium -> m ()
+  -- annotate :: Namespace -> Trivium -> m ()
 
 stringLiteral :: forall m. P.CharParsing m => m String
 stringLiteral = lit
