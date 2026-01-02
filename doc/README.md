@@ -11,7 +11,8 @@ http://cabal.readthedocs.io/
 
 ### How to build it
 
-Building the documentation requires Python 3, PIP, and `pip-tools` (see the second note below for how to install it). Run the following command either from the root of the cabal repository or from the `docs/` subdirectory:
+Building the documentation requires uv and Python 3. Run the following command
+either from the root of the cabal repository or from the `docs/` subdirectory:
 
 ``` console
 > make users-guide
@@ -20,25 +21,37 @@ Building the documentation requires Python 3, PIP, and `pip-tools` (see the seco
 Note: Python on Mac OS X dislikes `LC_CTYPE=UTF-8`, so unset the variable
 and instead set `LC_ALL=en_US.UTF-8`.
 
-Note: You can use a vendor package for `pip-tools`, or run
-
-``` console
-> pip install pip-tools
-```
-
-Make sure the installation directory (often `$HOME/.local/bin`) is on your `$PATH`.
-
 ### How to update dependencies
 
-The list of transitive dependencies (`requirements.txt`) is generated from the list of direct dependencies in `requirements.in`. To perform the generation step, run
+The list of transitive dependencies (`requirements.txt`) is generated from the
+list of direct dependencies in `pyproject.toml`. Find outdated dependencies with:
 
 ```console
-> make users-guide-requirements
+> cd doc
+> uv pip list --outdated
+Package            Version    Latest   Type
+------------------ ---------- -------- -----
+certifi            2025.11.12 2026.1.4 wheel
+docutils           0.21.2     0.22.4   wheel
+sphinx             8.2.3      9.1.0    wheel
+sphinxnotes-strike 1.5        2.0      wheel
+urllib3            2.6.2      2.6.3    wheel
 ```
 
-either from the root of the cabal repository or from the `docs/` subdirectory. You will need to do this before building documentation the first time, but should only need to repeat it after a `git clean` or if the dependencies in `requirements.in` change.
+Upgrade the lock file to the latest satisfiable requirements with:
 
-In some cases, you may have to add a bound manually to `requirements.in`, e.g. `requests >= 2.31.0`.
+```console
+> uv sync --upgrade
+...
+ - certifi==2025.11.12
+ + certifi==2026.1.4
+ - sphinxnotes-strike==1.5
+ + sphinxnotes-strike==2.0
+ - urllib3==2.6.2
+ + urllib3==2.6.3
+```
+
+In some cases, you may have to add a bound manually to `pyproject.toml`, e.g. `requests >= 2.31.0`.
 
 ### How to check spelling
 

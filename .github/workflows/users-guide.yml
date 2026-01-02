@@ -14,7 +14,6 @@ on:
     paths:
     - 'doc/Makefile'
     - 'doc/pyproject.toml'
-    - 'doc/requirements.in'
     - 'doc/*.inc'
     - 'doc/*.py'
     - 'doc/*.rst'
@@ -24,7 +23,6 @@ on:
     paths:
     - 'doc/Makefile'
     - 'doc/pyproject.toml'
-    - 'doc/requirements.in'
     - 'doc/*.inc'
     - 'doc/*.py'
     - 'doc/*.rst'
@@ -56,18 +54,8 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Install pip-compile
-      run: |
-        pip install pip-tools
-
-    - name: Create requirements.txt from requirements.in
-      run: |
-        make users-guide-requirements
-
-    # Subsumed by make users-guide
-    # - name: Install dependencies
-    #   run: |
-    #     pip install -r doc/requirements.txt
+    - name: Install the latest version of uv
+      uses: astral-sh/setup-uv@v7
 
     - name: Build User's Guide in HTML
       run: |
@@ -78,7 +66,7 @@ jobs:
         name: users-guide-html
         path: html/
 
-    - name: Check security of requirements.txt
+    - name: Check security of requirements (dependencies)
       env:
         SKJOLD_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
