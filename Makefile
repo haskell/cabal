@@ -286,10 +286,6 @@ bootstrap-jsons: $(BOOTSTRAP_GHC_VERSIONS:%=bootstrap-json-%)
 users-guide: ## Build the users guide.
 	$(MAKE) -C doc users-guide
 
-.PHONY: users-guide-requirements
-users-guide-requirements: ## Install the requirements for building the users guide.
-	$(MAKE) -C doc users-guide-requirements
-
 ifeq ($(shell uname), Darwin)
 PROCS := $(shell sysctl -n hw.logicalcpu)
 else
