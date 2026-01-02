@@ -1,5 +1,6 @@
 library
-    import:           warnings
+    import:           extensions
+    import:           ghc-options
     exposed-modules:  MyLib
     build-depends:    base
     hs-source-dirs:   src
