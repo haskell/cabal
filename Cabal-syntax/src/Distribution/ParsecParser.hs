@@ -35,7 +35,7 @@ liftParsec :: Parsec.Parsec FieldLineStream PPUserState a -> ParsecParser a
 liftParsec p = PP $ \_ -> p
 
 instance CabalParsing ParsecParser where
-  type XXX ParsecParser = Namespace
+  -- type XXX ParsecParser = Namespace
 
   parsecWarning t w = liftParsec $ do
     spos <- Parsec.getPosition

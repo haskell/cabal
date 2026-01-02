@@ -180,6 +180,7 @@ library
     Distribution.Types.PackageId
     Distribution.Types.PackageId.Lens
     Distribution.Types.PackageName
+    Distribution.Types.PackageName.Parsec
     Distribution.Types.PackageVersionConstraint
     Distribution.Types.PkgconfigDependency
     Distribution.Types.PkgconfigName

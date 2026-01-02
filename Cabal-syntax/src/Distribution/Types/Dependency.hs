@@ -24,6 +24,7 @@ import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
+import Distribution.Types.PackageName.Parsec
 import Distribution.Types.UnqualComponentName
 
 import qualified Distribution.Compat.NonEmptySet as NES

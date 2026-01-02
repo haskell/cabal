@@ -13,7 +13,6 @@ import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
 import Prelude ()
 
-import Distribution.Parsec.Class
 import Distribution.Pretty
 import qualified Text.PrettyPrint as Disp
 
@@ -67,9 +66,6 @@ instance Structured PackageName
 
 instance Pretty PackageName where
   pretty = Disp.text . unPackageName
-
-instance Parsec PackageName where
-  parsec = mkPackageName <$> parsecUnqualComponentName
 
 instance NFData PackageName where
   rnf (PackageName pkg) = rnf pkg

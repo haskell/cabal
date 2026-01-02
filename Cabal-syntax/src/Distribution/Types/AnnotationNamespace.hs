@@ -1,6 +1,7 @@
 module Distribution.Types.AnnotationNamespace where
 
--- import Distribution.Types.PackageName
+-- TODO: import all the types that we need to use as key to index the trivia
+import Distribution.Types.PackageName
 
 data Namespace
   = Field String
