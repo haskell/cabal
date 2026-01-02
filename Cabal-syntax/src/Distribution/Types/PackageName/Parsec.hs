@@ -9,9 +9,10 @@ import Distribution.CabalParsing
 
 instance Parsec PackageName where
   parsec = do
+    x <- mkPackageName <$> parsecUnqualComponentName
     annotate
-      (Section "library" "" $ Field "build-depends"
-        -- TODO: put the parsed component name inside the namespace
+      ( Section "library" "" $ Section "build-depends" "" $ NSPackageName x
       )
       (PreTrivia "fake trivia")
-    mkPackageName <$> parsecUnqualComponentName
+
+    pure x
