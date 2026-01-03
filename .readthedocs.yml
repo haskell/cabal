@@ -13,9 +13,11 @@ build:
       - asdf install uv latest
       - asdf global uv latest
     create_environment:
-      - uv venv "${READTHEDOCS_VIRTUALENV_PATH}"
+      - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv venv --project doc --clear
     post_create_environment:
-      - make users-guide-requirements
+      - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv pip --project doc install --upgrade 'pip!=25.3'
+      - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv pip --project doc install packaging
+      - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv pip --project doc compile doc/requirements.in
     install:
       - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv sync --project doc
 
