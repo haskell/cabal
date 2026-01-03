@@ -27,17 +27,19 @@ PYTHON_VIRTUALENV_ACTIVATE:=../.python-sphinx-virtualenv/bin/activate
 
 # Create a python virtual environment in the root of the cabal repository.
 $(PYTHON_VIRTUALENV_ACTIVATE):
-	python3 -m venv ../.python-sphinx-virtualenv
+	uv venv --clear ../.python-sphinx-virtualenv
 	(. $(PYTHON_VIRTUALENV_ACTIVATE))
 
 # Users guide
 ##############################################################################
 
-# do pip install every time so we have up to date requirements when we build
+# do uv pip install every time so we have up to date requirements when we build
 users-guide: $(PYTHON_VIRTUALENV_ACTIVATE) $(USERGUIDE_STAMP)
 $(USERGUIDE_STAMP) : *.rst
 	mkdir -p $(SPHINX_HTML_OUTDIR)
-	(. $(PYTHON_VIRTUALENV_ACTIVATE) && pip install -r requirements.txt && $(SPHINXCMD) $(SPHINX_FLAGS) . $(SPHINX_HTML_OUTDIR))
+	(. $(PYTHON_VIRTUALENV_ACTIVATE) \
+	&& uv pip install -r requirements.txt \
+	&& $(SPHINXCMD) $(SPHINX_FLAGS) . $(SPHINX_HTML_OUTDIR))
 
 # Requirements
 ##############################################################################
@@ -53,13 +55,13 @@ build-and-check-requirements: requirements.txt check-requirements
 # Always rebuild requirements.txt
 .PHONY: requirements.txt
 # requirements.txt is generated from requirements.in
-# via pip-compile included in the pip-tools package.
+# via uv pip compile
 # See https://modelpredict.com/wht-requirements-txt-is-not-enough
 requirements.txt: requirements.in $(PYTHON_VIRTUALENV_ACTIVATE)
 	. $(PYTHON_VIRTUALENV_ACTIVATE) \
-	  && pip install --upgrade 'pip!=25.3' \
-	  && pip install pip-tools \
-	  && pip-compile requirements.in
+	  && uv pip install --upgrade 'pip!=25.3' \
+	  && uv pip install packaging \
+	  && uv pip compile requirements.in
 
 # Check requirements.txt for security violations via skjold,
 # configured in pyproject.toml.
@@ -72,7 +74,7 @@ check-requirements:
 	; echo "Vulnerability check via skjold might fail when using the GitHub GraphQL API." \
 	; fi
 	. $(PYTHON_VIRTUALENV_ACTIVATE) \
-	  && pip install skjold \
+	  && uv pip install skjold \
 	  && skjold audit
 # NB: For portability, we use '.' (sh etc.) instead of 'source' (bash).
 

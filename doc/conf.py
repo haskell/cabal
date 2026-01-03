@@ -63,9 +63,6 @@ html_theme = 'sphinx_rtd_theme'
 if on_rtd:
     html_style = None
     using_rtd_theme = True
-else:
-    import sphinx_rtd_theme
-    html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".

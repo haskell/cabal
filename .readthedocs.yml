@@ -4,13 +4,25 @@ sphinx:
   configuration: doc/conf.py
 
 build:
-  os: "ubuntu-22.04"
+  os: "ubuntu-24.04"
   tools:
-    python: "3.8"
+    python: "3.13"
   jobs:
+    pre_create_environment:
+      - asdf plugin add uv
+      - asdf install uv latest
+      - asdf global uv latest
+    create_environment:
+      - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv venv --project doc --clear
     post_create_environment:
-      - pip install pip-tools
-      - make users-guide-requirements
+      - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv pip --project doc install --upgrade 'pip!=25.3'
+      - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv pip --project doc install packaging
+      - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv pip --project doc compile doc/requirements.in
+    install:
+      - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv sync --project doc
+    build:
+      html:
+        - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv run --project doc sphinx-build -T -d _build/doctrees -D language=en doc "${READTHEDOCS_OUTPUT}/html"
 
 python:
   install:
