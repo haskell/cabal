@@ -37,7 +37,9 @@ $(PYTHON_VIRTUALENV_ACTIVATE):
 users-guide: $(PYTHON_VIRTUALENV_ACTIVATE) $(USERGUIDE_STAMP)
 $(USERGUIDE_STAMP) : *.rst
 	mkdir -p $(SPHINX_HTML_OUTDIR)
-	(. $(PYTHON_VIRTUALENV_ACTIVATE) && uv pip install -r requirements.txt && $(SPHINXCMD) $(SPHINX_FLAGS) . $(SPHINX_HTML_OUTDIR))
+	(. $(PYTHON_VIRTUALENV_ACTIVATE) \
+	&& uv pip install -r requirements.txt \
+	&& $(SPHINXCMD) $(SPHINX_FLAGS) . $(SPHINX_HTML_OUTDIR))
 
 # Requirements
 ##############################################################################
