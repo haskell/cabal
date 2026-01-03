@@ -20,6 +20,9 @@ build:
       - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv pip --project doc compile doc/requirements.in
     install:
       - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv sync --project doc
+    build:
+      html:
+        - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv run --project doc sphinx-build -T -d _build/doctrees -D language=en doc "${READTHEDOCS_OUTPUT}/html"
 
 python:
   install:
