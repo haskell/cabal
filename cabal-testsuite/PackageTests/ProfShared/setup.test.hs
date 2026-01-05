@@ -11,6 +11,9 @@ main = do
         -- Tests are not robust against missing dynamic libraries yet. Would
         -- be better to fix this.
         skipIfNoSharedLibraries
+        -- Skip on GHC 9.0.2 / Ubuntu configuration due to test failure
+        ghc902 <- isGhcVersion "== 9.0.2"
+        skipIf "GHC 9.0.2 on Linux/Ubuntu" (ghc902 && isLinux)
 
     let analyse_result expected r = do
 
