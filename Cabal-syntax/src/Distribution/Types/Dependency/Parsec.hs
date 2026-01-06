@@ -6,6 +6,9 @@ import Prelude ()
 import Distribution.Types.VersionRange (isAnyVersionLight)
 import Distribution.Version (VersionRange, anyVersion, simplifyVersionRange)
 
+import Distribution.Types.AnnotationNamespace
+import Distribution.Types.AnnotationTrivium
+
 import Distribution.CabalSpecVersion
 import Distribution.Compat.CharParsing (char, spaces)
 import Distribution.Compat.Parsing (between, option)
@@ -65,8 +68,17 @@ instance Parsec Dependency where
       NES.singleton <$> parseLib <|> parseMultipleLibs
 
     spaces -- https://github.com/haskell/cabal/issues/5846
-    ver <- parsec <|> pure anyVersion
-    return $ mkDependency name ver libs
+    ver <-
+      parsec
+      <|>
+        ( do
+            v <- pure anyVersion
+            annotate (NSVersionRange v Nothing) IsInjected
+            pure v
+        )
+    let dep = mkDependency name ver libs
+    mapAnnotationKeys (NSDependency dep . Just)
+    return dep
     where
       parseLib = LSubLibName <$> parsec
       parseMultipleLibs =

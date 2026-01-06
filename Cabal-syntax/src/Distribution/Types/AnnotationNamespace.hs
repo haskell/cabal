@@ -10,6 +10,6 @@ data Namespace
   = NSVersion Version
   | NSVersionRange VersionRange (Maybe Namespace)
   | NSPackageName PackageName (Maybe Namespace)
-  | NSDepedency Dependency (Maybe Namespace)
+  | NSDependency Dependency (Maybe Namespace)
   | Section String String {- SectionArgs -} (Maybe Namespace)
   deriving (Eq, Ord, Show)
