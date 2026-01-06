@@ -56,6 +56,9 @@ import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Version
 
+import Distribution.Types.VersionRange.Parsec
+import Distribution.Types.Version.Parsec
+
 import qualified Data.Map.Strict as Map
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.SPDX as SPDX

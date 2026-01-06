@@ -43,8 +43,8 @@ module Distribution.Types.VersionRange
   , withinRange
   , foldVersionRange
 
-    -- ** Parser
-  , versionRangeParser
+  --   -- ** Parser
+  -- , versionRangeParser
 
     -- * Version F-Algebra
   , VersionRangeF (..)

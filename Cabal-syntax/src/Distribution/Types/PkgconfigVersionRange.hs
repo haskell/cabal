@@ -22,6 +22,7 @@ import Distribution.Types.PkgconfigVersion
 import Distribution.Types.Version
 import Distribution.Types.VersionInterval
 import Distribution.Types.VersionRange
+import Distribution.Types.VersionRange.Parsec
 
 import qualified Data.ByteString.Char8 as BS8
 import qualified Distribution.Compat.CharParsing as P

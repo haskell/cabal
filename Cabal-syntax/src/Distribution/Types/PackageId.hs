@@ -18,6 +18,10 @@ import qualified Data.List.NonEmpty as NE
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
+import Distribution.Types.VersionRange.Parsec
+import Distribution.Types.Version.Parsec
+
+
 -- | Type alias so we can use the shorter name PackageId.
 type PackageId = PackageIdentifier
 

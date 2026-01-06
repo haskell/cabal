@@ -27,6 +27,9 @@ import Distribution.Types.PackageName
 import Distribution.Types.PackageName.Parsec
 import Distribution.Types.UnqualComponentName
 
+import Distribution.Types.Version.Parsec
+import Distribution.Types.VersionRange.Parsec
+
 import qualified Distribution.Compat.NonEmptySet as NES
 import qualified Text.PrettyPrint as PP
 

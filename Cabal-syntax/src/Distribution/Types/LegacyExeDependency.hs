@@ -15,6 +15,9 @@ import Distribution.Version (VersionRange, anyVersion)
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
+import Distribution.Types.VersionRange.Parsec
+import Distribution.Types.Version.Parsec
+
 -- | Describes a legacy `build-tools`-style dependency on an executable
 --
 -- It is "legacy" because we do not know what the build-tool referred to. It

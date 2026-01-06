@@ -5,4 +5,5 @@ data Trivium
   | Nth Int
   | PreTrivia String
   | PostTrivia String
+  | IsInjected
   deriving (Show)
