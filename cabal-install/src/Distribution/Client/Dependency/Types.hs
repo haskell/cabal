@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE InstanceSigs #-}
 
 module Distribution.Client.Dependency.Types
   ( PreSolver (..)
@@ -9,9 +10,8 @@ module Distribution.Client.Dependency.Types
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Text.PrettyPrint (text)
-
 import qualified Distribution.Compat.CharParsing as P
+import GHC.IO (unsafePerformIO)
 
 -- | All the solvers that can be selected.
 data PreSolver = AlwaysModular
@@ -29,14 +29,14 @@ instance NFData PreSolver
 instance Structured PreSolver
 instance Structured Solver
 
-instance Pretty PreSolver where
-  pretty AlwaysModular = text "modular"
-
 instance Parsec PreSolver where
+  parsec :: CabalParsing m => m PreSolver
   parsec = do
     name <- P.munch1 isAlpha
     case map toLower name of
-      "modular" -> return AlwaysModular
+      "modular" -> return $ unsafePerformIO $ do
+        putStrLn "[WARNING] The `solver' config option is deprecated and will be removed in a future release."
+        return AlwaysModular
       _ -> P.unexpected $ "PreSolver: " ++ name
 
 -- | Global policy for all packages to say if we prefer package versions that
