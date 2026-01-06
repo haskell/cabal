@@ -18,6 +18,7 @@ import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
 import Distribution.Types.PackageName.Parsec
 import Distribution.Types.UnqualComponentName
+import Distribution.Types.UnqualComponentName.Parsec
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as PP

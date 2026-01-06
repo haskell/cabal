@@ -26,6 +26,9 @@ import Distribution.Types.LibraryName
 import Distribution.Types.LibraryVisibility
 import Distribution.Types.MungedPackageName
 import Distribution.Types.UnqualComponentName
+import Distribution.Types.UnqualComponentName.Parsec
+import Distribution.Types.PackageName
+import Distribution.Types.PackageName.Parsec
 import Distribution.Version
 
 import qualified Data.Char as Char

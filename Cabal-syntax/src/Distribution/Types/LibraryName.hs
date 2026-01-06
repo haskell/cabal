@@ -12,13 +12,12 @@ module Distribution.Types.LibraryName
     -- * Pretty & Parse
   , prettyLibraryNames
   , prettyLibraryNameComponent
-  , parsecLibraryNameComponent
+  -- , parsecLibraryNameComponent
   ) where
 
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.UnqualComponentName
 
@@ -60,15 +59,6 @@ prettyLibraryNames package libraries =
         LSubLibName component :| [] -> doc <<>> Disp.colon <<>> pretty component
         _ -> doc <<>> Disp.colon <<>> Disp.braces prettyComponents
 
-parsecLibraryNameComponent :: CabalParsing m => m LibraryName
-parsecLibraryNameComponent = do
-  _ <- P.string "lib"
-  parseComposite <|> parseSingle
-  where
-    parseSingle = return LMainLibName
-    parseComposite = do
-      _ <- P.char ':'
-      LSubLibName <$> parsec
 
 defaultLibName :: LibraryName
 defaultLibName = LMainLibName

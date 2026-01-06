@@ -15,7 +15,6 @@ module Distribution.Types.UnqualComponentName
 import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
 
-import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.PackageName
 
@@ -71,8 +70,6 @@ instance Structured UnqualComponentName
 instance Pretty UnqualComponentName where
   pretty = showToken . unUnqualComponentName
 
-instance Parsec UnqualComponentName where
-  parsec = mkUnqualComponentName <$> parsecUnqualComponentName
 
 instance NFData UnqualComponentName where
   rnf (UnqualComponentName pkg) = rnf pkg
