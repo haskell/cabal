@@ -1,5 +1,7 @@
 module Distribution.Types.AnnotationNamespace where
 
+import qualified Data.ByteString as BS
+
 -- TODO: import all the types that we need to use as key to index the trivia
 import Distribution.Types.PackageName
 import Distribution.Types.VersionRange
@@ -11,5 +13,6 @@ data Namespace
   | NSVersionRange VersionRange (Maybe Namespace)
   | NSPackageName PackageName (Maybe Namespace)
   | NSDependency Dependency (Maybe Namespace)
+  | NSField BS.ByteString Namespace
   | Section String String {- SectionArgs -} (Maybe Namespace)
   deriving (Eq, Ord, Show)

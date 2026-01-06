@@ -77,6 +77,8 @@ import Distribution.Utils.Generic (fromUTF8BS)
 import Distribution.Utils.String (trim)
 import Prelude ()
 
+import Distribution.Types.AnnotationNamespace
+
 import qualified Data.ByteString as BS
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
@@ -273,7 +275,6 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
           | v >= CabalSpecV3_0 -> pure (ShortText.toShortText $ fieldlinesToFreeText3 pos fls)
           | otherwise -> pure (ShortText.toShortText $ fieldlinesToFreeText fls)
 
-  -- TODO(leana8959): trace monoidal field merging
   monoidalFieldAla :: forall a b s. (Monoid a, Parsec b, Newtype a b) => FieldName -> (a -> b) -> ALens' s a -> ParsecFieldGrammar s a
   monoidalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
@@ -286,7 +287,12 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
               traceIf (length xs /= 1) ("field " <> show fn <> " has \t" <> show (length xs) <> " definitions")
                 $ foldMap (unpack' _pack) <$> traverse (parseOne v) xs
 
-      parseOne v (MkNamelessField pos fls) = runFieldParser pos parsec v fls
+      parseOne v (MkNamelessField pos fls) = runFieldParser pos parsec' v fls
+
+      parsec' = do
+        x <- parsec
+        mapAnnotationKeys (NSField fn)
+        pure x
 
   prefixedFields fnPfx _extract = ParsecFG mempty (Set.singleton fnPfx) (\_ fs -> pure (parser fs))
     where
