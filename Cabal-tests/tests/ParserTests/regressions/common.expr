@@ -214,17 +214,9 @@ GenericPackageDescription {
             staticOptions =
             PerCompilerFlavor [] [],
             customFieldsBI = [],
-            targetBuildDepends = [
-              Dependency
-                (PackageName "HUnit")
-                (OrLaterVersion (mkVersion [0]))
-                mainLibSet],
+            targetBuildDepends = [],
             mixins = []},
           testCodeGenerators = []},
-        condTreeConstraints = [
-          Dependency
-            (PackageName "HUnit")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet],
+        condTreeConstraints = [],
         condTreeComponents = []}],
   condBenchmarks = []}

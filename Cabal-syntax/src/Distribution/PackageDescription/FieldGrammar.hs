@@ -1,5 +1,4 @@
 {-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -220,10 +219,9 @@ libraryFieldPrinterGrammar :: LibraryName -> PrettyFieldGrammar' Library
 libraryFieldPrinterGrammar = libraryFieldGrammar
 
 libraryFieldParserGrammar :: LibraryName -> ParsecFieldGrammar' Library
-libraryFieldParserGrammar name = do
-  x <- libraryFieldGrammar name
-  mapAnnotationKeysFieldGrammar (NSLibrarySection name)
-  pure x
+libraryFieldParserGrammar name =
+  libraryFieldGrammar name
+    <* mapAnnotationKeysFieldGrammar (NSLibrarySection name)
 
 -------------------------------------------------------------------------------
 -- Foreign library

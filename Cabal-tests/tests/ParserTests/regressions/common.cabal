@@ -27,5 +27,9 @@ test-suite tests
   type: exitcode-stdio-1.0
   main-is: Tests.hs
 
-  build-depends:
-    HUnit
+  -- FIXME:
+  -- In the testing for exact parser/printer, having multiple build-depends would smash the
+  -- trivia together, causing loss of trivia
+
+  -- build-depends:
+  --   HUnit

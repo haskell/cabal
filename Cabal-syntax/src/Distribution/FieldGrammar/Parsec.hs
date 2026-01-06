@@ -390,7 +390,6 @@ runFieldParser' :: [Position] -> ParsecParser a -> CabalSpecVersion -> FieldLine
 runFieldParser' inputPoss p v str = case P.runParser p' emptyPPUserState "<field>" str of
   Right (pok, (PPUserState{ppWarnings=warns, ppTrivia=trivia})) -> do
     traverse_ (\(PWarning t pos w) -> parseWarning (mapPosition pos) t w) warns
-    let !() = trace (show trivia) ()
     annotateParseResult trivia
     pure pok
   Left err -> do
