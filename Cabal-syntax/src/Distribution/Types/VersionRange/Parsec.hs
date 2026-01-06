@@ -90,13 +90,15 @@ versionRangeParser digitParser csv = expr
           preSpaces' <- P.spaces'
           e <- expr
           let e' = unionVersionRanges t e
-          annotate (NSVersionRange e') (PreTrivia preSpaces')
+          mapAnnotationKeys (NSVersionRange e' . Just)
+          annotate (NSVersionRange e' Nothing) (PreTrivia preSpaces')
           return e'
         )
           <|>
             ( do
-                annotate (NSVersionRange t) (PreTrivia preSpaces)
-                annotate (NSVersionRange t) (PostTrivia postSpaces)
+                mapAnnotationKeys (NSVersionRange t . Just)
+                annotate (NSVersionRange t Nothing) (PreTrivia preSpaces)
+                annotate (NSVersionRange t Nothing) (PostTrivia postSpaces)
                 return t
               )
     term = do
@@ -107,12 +109,14 @@ versionRangeParser digitParser csv = expr
           checkOp
           preSpaces' <- P.spaces'
           t <- term
-          annotate (NSVersionRange t) (PreTrivia preSpaces')
+          mapAnnotationKeys (NSVersionRange t . Just)
+          annotate (NSVersionRange t Nothing) (PreTrivia preSpaces')
           return (intersectVersionRanges f t)
         )
           <|>
             ( do
-                annotate (NSVersionRange f) (PostTrivia postSpaces)
+                mapAnnotationKeys (NSVersionRange f. Just)
+                annotate (NSVersionRange f Nothing) (PostTrivia postSpaces)
                 return f
               )
 

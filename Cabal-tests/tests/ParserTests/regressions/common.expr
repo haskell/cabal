@@ -120,11 +120,8 @@ GenericPackageDescription {
           targetBuildDepends = [
             Dependency
               (PackageName "base")
-              (UnionVersionRanges
-                (OrLaterVersion
-                  (mkVersion [4, 10]))
-                (OrLaterVersion
-                  (mkVersion [4, 13])))
+              (OrLaterVersion
+                (mkVersion [4, 10]))
               mainLibSet,
             Dependency
               (PackageName "containers")
@@ -138,11 +135,8 @@ GenericPackageDescription {
       condTreeConstraints = [
         Dependency
           (PackageName "base")
-          (UnionVersionRanges
-            (OrLaterVersion
-              (mkVersion [4, 10]))
-            (OrLaterVersion
-              (mkVersion [4, 13])))
+          (OrLaterVersion
+            (mkVersion [4, 10]))
           mainLibSet,
         Dependency
           (PackageName "containers")

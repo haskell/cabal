@@ -8,8 +8,8 @@ import Distribution.Types.Dependency
 
 data Namespace
   = NSVersion Version
-  | NSVersionRange VersionRange
-  | NSPackageName PackageName
-  | NSDepedency Dependency
-  | Section String String {- SectionArgs -} Namespace
+  | NSVersionRange VersionRange (Maybe Namespace)
+  | NSPackageName PackageName (Maybe Namespace)
+  | NSDepedency Dependency (Maybe Namespace)
+  | Section String String {- SectionArgs -} (Maybe Namespace)
   deriving (Eq, Ord, Show)
