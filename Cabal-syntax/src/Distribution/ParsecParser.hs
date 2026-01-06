@@ -42,6 +42,11 @@ instance CabalParsing ParsecParser where
         (PWarning t (Position (Parsec.sourceLine spos) (Parsec.sourceColumn spos)) w : warns)
         trivia
   askCabalSpecVersion = PP pure
+
+  mapAnnotationKeys f = liftParsec $ do
+    Parsec.modifyState $ \(PPUserState warns trivia) ->
+      PPUserState warns (Map.mapKeys f trivia)
+
   annotate namespace trivium = liftParsec $ do
     Parsec.modifyState $ \(PPUserState warns trivia) ->
       -- TODO(leana8959): proof of concept
