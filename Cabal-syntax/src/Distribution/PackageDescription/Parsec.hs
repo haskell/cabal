@@ -291,7 +291,7 @@ goSections specVer = traverse_ process
 
           commonStanzas <- use stateCommonStanzas
           let name'' = LMainLibName
-          lib <- lift $ parseCondTree' (libraryFieldGrammar name'') (libraryFromBuildInfo name'') commonStanzas fields
+          lib <- lift $ parseCondTree' (libraryFieldParserGrammar name'') (libraryFromBuildInfo name'') commonStanzas fields
           --
           -- TODO check that not set
           stateGpd . L.condLibrary ?= lib
@@ -302,7 +302,7 @@ goSections specVer = traverse_ process
           commonStanzas <- use stateCommonStanzas
           name' <- parseUnqualComponentName pos args
           let name'' = LSubLibName name'
-          lib <- lift $ parseCondTree' (libraryFieldGrammar name'') (libraryFromBuildInfo name'') commonStanzas fields
+          lib <- lift $ parseCondTree' (libraryFieldParserGrammar name'') (libraryFromBuildInfo name'') commonStanzas fields
           -- TODO check duplicate name here?
           stateGpd . L.condSubLibraries %= snoc (name', lib)
 

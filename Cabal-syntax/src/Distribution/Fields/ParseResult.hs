@@ -15,6 +15,7 @@ module Distribution.Fields.ParseResult
   , parseFatalFailure
   , parseFatalFailure'
   , annotateParseResult
+  , mapParseResultAnnotation
   , getCabalSpecVersion
   , setCabalSpecVersion
   , withoutWarnings
@@ -139,6 +140,11 @@ instance Monad (ParseResult src) where
 recoverWith :: ParseResult src a -> a -> ParseResult src a
 recoverWith (PR pr) x = PR $ \ !s fp _failure success ->
   pr s fp (\ !s' -> success s' x) success
+
+mapParseResultAnnotation :: (Namespace -> Namespace) -> ParseResult src ()
+mapParseResultAnnotation f = do
+  PR $ \ !(PRState warns errs t0 v) _fp _failure success ->
+    success (PRState warns errs (Map.mapKeys f t0) v) ()
 
 annotateParseResult :: Map Namespace [Trivium] -> ParseResult src ()
 annotateParseResult t = PR $ \ !(PRState warns errs t0 v) _fp _failure success ->

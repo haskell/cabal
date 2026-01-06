@@ -59,6 +59,7 @@ module Distribution.FieldGrammar.Parsec
   , parseFieldGrammar
   , parseFieldGrammarCheckingStanzas
   , fieldGrammarKnownFieldList
+  , mapAnnotationKeysFieldGrammar
 
     -- * Auxiliary
   , Fields
@@ -151,6 +152,13 @@ parseFieldGrammarCheckingStanzas v fields grammar sections = do
 
 fieldGrammarKnownFieldList :: ParsecFieldGrammar s a -> [FieldName]
 fieldGrammarKnownFieldList = Set.toList . fieldGrammarKnownFields
+
+mapAnnotationKeysFieldGrammar :: (Namespace -> Namespace) -> ParsecFieldGrammar s ()
+mapAnnotationKeysFieldGrammar f =
+  ParsecFG
+    mempty
+    mempty
+    (\_ _ -> mapParseResultAnnotation f)
 
 instance Applicative (ParsecFieldGrammar s) where
   pure x = ParsecFG mempty mempty (\_ _ -> pure x)

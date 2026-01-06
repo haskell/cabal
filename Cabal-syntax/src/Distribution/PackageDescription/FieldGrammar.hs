@@ -1,4 +1,6 @@
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -14,6 +16,8 @@ module Distribution.PackageDescription.FieldGrammar
 
     -- * Library
   , libraryFieldGrammar
+  , libraryFieldPrinterGrammar
+  , libraryFieldParserGrammar
 
     -- * Foreign library
   , foreignLibFieldGrammar
@@ -81,10 +85,12 @@ import Distribution.ModuleName (ModuleName)
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Parsec
+import Distribution.FieldGrammar.Parsec
 import Distribution.Pretty (Pretty (..), prettyShow, showToken)
 import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
 
+import Distribution.Types.AnnotationNamespace
 import Distribution.Types.Dependency.Parsec
 
 import qualified Data.ByteString.Char8 as BS8
@@ -209,6 +215,15 @@ libraryFieldGrammar n =
           ^^^ availableSince CabalSpecV3_0 LibraryVisibilityPrivate
 {-# SPECIALIZE libraryFieldGrammar :: LibraryName -> ParsecFieldGrammar' Library #-}
 {-# SPECIALIZE libraryFieldGrammar :: LibraryName -> PrettyFieldGrammar' Library #-}
+
+libraryFieldPrinterGrammar :: LibraryName -> PrettyFieldGrammar' Library
+libraryFieldPrinterGrammar = libraryFieldGrammar
+
+libraryFieldParserGrammar :: LibraryName -> ParsecFieldGrammar' Library
+libraryFieldParserGrammar name = do
+  x <- libraryFieldGrammar name
+  mapAnnotationKeysFieldGrammar (NSLibrarySection name)
+  pure x
 
 -------------------------------------------------------------------------------
 -- Foreign library

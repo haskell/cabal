@@ -7,6 +7,7 @@ import Distribution.Types.PackageName
 import Distribution.Types.VersionRange
 import Distribution.Types.Version
 import Distribution.Types.Dependency
+import Distribution.Types.LibraryName
 
 data Namespace
   = NSVersion Version
@@ -14,5 +15,5 @@ data Namespace
   | NSPackageName PackageName (Maybe Namespace)
   | NSDependency Dependency (Maybe Namespace)
   | NSField BS.ByteString Namespace
-  | Section String String {- SectionArgs -} (Maybe Namespace)
+  | NSLibrarySection LibraryName Namespace
   deriving (Eq, Ord, Show)
