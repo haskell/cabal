@@ -11,13 +11,10 @@ source-repository head
   Type:     git
   Location: https://github.com/hvr/-.git
 
-common deps
-  build-depends:
-    base >=4.10 && <4.11,
-    containers
-
 library
-  import: deps
+  build-depends:
+    base >=  4.10  ||        >= 4.13,
+    containers
 
   default-language: Haskell2010
   exposed-modules:  "ElseIf"
@@ -26,8 +23,6 @@ library
     ghc-prim
 
 test-suite tests
-  import: deps
-
   type: exitcode-stdio-1.0
   main-is: Tests.hs
 

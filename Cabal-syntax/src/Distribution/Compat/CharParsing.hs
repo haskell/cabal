@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fspec-constr -fspec-constr-count=8 #-}
@@ -87,13 +88,19 @@ noneOf xs = satisfy (\c -> c `notElem` xs)
 {-# INLINE noneOf #-}
 
 -- | Skips /zero/ or more white space characters. See also 'skipMany'.
-spaces :: CharParsing m => m ()
-spaces = skipMany space <?> "white space"
+spaces :: (Monad m, CharParsing m) => m ()
+spaces = do
+  s <- many space <?> "white space"
+  let !() = trace ("got spaces: " <> show (length s)) ()
+  pure ()
 {-# INLINE spaces #-}
 
 -- | Like 'spaces', but returns the spaces for exact printing
-spaces' :: CharParsing m => m [Char]
-spaces' = many space <?> "white space"
+spaces' :: (Monad m, CharParsing m) => m [Char]
+spaces' = do
+  s <- many space <?> "white space"
+  let !() = trace ("got spaces': " <> show (length s)) ()
+  pure s
 {-# INLINE spaces' #-}
 
 -- | Parses a white space character (any character which satisfies 'isSpace')

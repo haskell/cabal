@@ -22,6 +22,9 @@ import Distribution.Types.VersionRange
 import Distribution.Types.VersionRange.Internal
 import Distribution.Types.Version.Parsec
 
+import Distribution.Types.AnnotationNamespace
+import Distribution.Types.AnnotationTrivium
+
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.DList as DList
 import qualified Text.PrettyPrint as Disp
@@ -77,28 +80,42 @@ versionRangeParser :: forall m. CabalParsing m => m Int -> CabalSpecVersion -> m
 versionRangeParser digitParser csv = expr
   where
     expr = do
-      P.spaces
+      preSpaces <- P.spaces'
       t <- term
-      P.spaces
+      postSpaces <- P.spaces'
+
       ( do
           _ <- P.string "||"
           checkOp
-          P.spaces
+          preSpaces' <- P.spaces'
           e <- expr
-          return (unionVersionRanges t e)
-          <|> return t
+          let e' = unionVersionRanges t e
+          annotate (NSVersionRange e') (PreTrivia preSpaces')
+          return e'
         )
+          <|>
+            ( do
+                annotate (NSVersionRange t) (PreTrivia preSpaces)
+                annotate (NSVersionRange t) (PostTrivia postSpaces)
+                return t
+              )
     term = do
       f <- factor
-      P.spaces
+      postSpaces <- P.spaces'
       ( do
           _ <- P.string "&&"
           checkOp
-          P.spaces
+          preSpaces' <- P.spaces'
           t <- term
+          annotate (NSVersionRange t) (PreTrivia preSpaces')
           return (intersectVersionRanges f t)
-          <|> return f
         )
+          <|>
+            ( do
+                annotate (NSVersionRange f) (PostTrivia postSpaces)
+                return f
+              )
+
     factor = parens expr <|> prim
 
     prim = do
@@ -106,29 +123,36 @@ versionRangeParser digitParser csv = expr
       case op of
         "-" -> anyVersion <$ P.string "any" <|> P.string "none" *> noVersion'
         "==" -> do
-          P.spaces
+          preSpaces <- P.spaces'
           ( do
               (wild, v) <- verOrWild
               checkWild wild
+              annotate (NSVersion v) (PreTrivia preSpaces)
+
               pure $ (if wild then withinVersion else thisVersion) v
+              -- ignore braces for now
               <|> (verSet' thisVersion =<< verSet)
             )
         "^>=" -> do
-          P.spaces
+          preSpaces <- P.spaces'
           ( do
               (wild, v) <- verOrWild
               when wild $
-                P.unexpected $
-                  "wild-card version after ^>= operator"
+                P.unexpected "wild-card version after ^>= operator"
+              annotate (NSVersion v) (PreTrivia preSpaces)
+
               majorBoundVersion' v
+              -- ignore braces for now
               <|> (verSet' majorBoundVersion =<< verSet)
             )
         _ -> do
-          P.spaces
+          preSpaces <- P.spaces'
           (wild, v) <- verOrWild
           when wild $
             P.unexpected $
               "wild-card version after non-== operator: " ++ show op
+
+          annotate (NSVersion v) (PreTrivia preSpaces)
           case op of
             ">=" -> pure $ orLaterVersion v
             "<" -> pure $ earlierVersion v
