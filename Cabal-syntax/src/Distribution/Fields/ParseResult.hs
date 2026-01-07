@@ -90,6 +90,27 @@ runParseResult pr = unPR pr emptyPRState initialCtx failure success
         let !() = trace (show t) () in
         (warns, Left (v, err :| errs))
 
+-- | `runParseResult'` but with the final state
+runParseResult' :: ParseResult src a -> ([PWarningWithSource src], Map Namespace [Trivium], Either (Maybe Version, NonEmpty (PErrorWithSource src)) a)
+runParseResult' pr = unPR pr emptyPRState initialCtx failure success
+  where
+    initialCtx = PRContext PUnknownSource
+
+    failure (PRState warns [] t v) =
+        let !() = trace (show t) () in
+        (warns, t, Left (v, PErrorWithSource PUnknownSource (PError zeroPos "panic") :| []))
+    failure (PRState warns (err : errs) t v) =
+        let !() = trace (show t) () in
+        (warns, t, Left (v, err :| errs))
+
+    success (PRState warns [] t _) x =
+        let !() = trace (show t) () in
+        (warns, t, Right x)
+    -- If there are any errors, don't return the result
+    success (PRState warns (err : errs) t v) _ =
+        let !() = trace (show t) () in
+        (warns, t, Left (v, err :| errs))
+
 -- | Chain parsing operations that involve 'IO' actions.
 liftParseResult :: (a -> IO (ParseResult src b)) -> ParseResult src a -> IO (ParseResult src b)
 liftParseResult f pr = unPR pr emptyPRState initialCtx failure success
