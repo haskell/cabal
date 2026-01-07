@@ -7,7 +7,7 @@ import Distribution.Types.PackageName
 import Distribution.Types.VersionRange
 import Distribution.Types.Version
 import Distribution.Types.Dependency.Internal
-import Distribution.Types.LibraryName
+import Distribution.Types.LibraryName.Internal
 
 data Namespace
   = NSVersion Version

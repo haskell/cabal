@@ -21,7 +21,7 @@ import Distribution.CabalSpecVersion
 import Distribution.Compat.CharParsing (char, spaces)
 import Distribution.Compat.Parsing (between, option)
 import Distribution.Pretty
-import Distribution.Types.LibraryName
+import Distribution.Types.LibraryName.Internal
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
 

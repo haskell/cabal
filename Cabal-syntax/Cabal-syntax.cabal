@@ -168,6 +168,7 @@ library
     Distribution.Types.Library
     Distribution.Types.Library.Lens
     Distribution.Types.LibraryName
+    Distribution.Types.LibraryName.Internal
     Distribution.Types.LibraryName.Parsec
     Distribution.Types.LibraryVisibility
     Distribution.Types.MissingDependency

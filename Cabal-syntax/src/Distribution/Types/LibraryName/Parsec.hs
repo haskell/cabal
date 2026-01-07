@@ -4,9 +4,7 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Parsec
-import Distribution.Types.LibraryName
-
-import Distribution.Types.UnqualComponentName
+import Distribution.Types.LibraryName.Internal
 import Distribution.Types.UnqualComponentName.Parsec
 
 import qualified Distribution.Compat.CharParsing as P
