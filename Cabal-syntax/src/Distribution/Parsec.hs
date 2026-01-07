@@ -72,9 +72,9 @@ import Distribution.Parsec.Warning
 import Numeric (showIntAtBase)
 import Prelude ()
 
+import qualified Control.Monad.Fail as Fail
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.DList as DList
-import qualified Distribution.Compat.MonadFail as Fail
 import qualified Text.Parsec as Parsec
 
 -------------------------------------------------------------------------------
