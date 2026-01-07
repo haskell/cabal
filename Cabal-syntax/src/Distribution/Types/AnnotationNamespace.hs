@@ -4,7 +4,7 @@ import qualified Data.ByteString as BS
 
 -- TODO: import all the types that we need to use as key to index the trivia
 import Distribution.Types.VersionRange
-import Distribution.Types.Version
+import Distribution.Types.Version.Internal
 import Distribution.Types.PackageName.Internal
 import Distribution.Types.Dependency.Internal
 import Distribution.Types.LibraryName.Internal

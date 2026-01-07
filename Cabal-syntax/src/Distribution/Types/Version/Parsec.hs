@@ -7,7 +7,7 @@ import Prelude ()
 import Distribution.Parsec
 import Distribution.Pretty
 
-import Distribution.Types.Version
+import Distribution.Types.Version.Internal
 
 import qualified Data.Version as Base
 import qualified Distribution.Compat.CharParsing as P

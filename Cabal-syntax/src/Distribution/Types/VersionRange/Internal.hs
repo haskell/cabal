@@ -37,7 +37,7 @@ module Distribution.Types.VersionRange.Internal
   ) where
 
 import Distribution.Compat.Prelude
-import Distribution.Types.Version
+import Distribution.Types.Version.Internal
 import Prelude ()
 
 import Distribution.CabalSpecVersion

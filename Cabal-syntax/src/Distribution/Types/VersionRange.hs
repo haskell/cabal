@@ -63,7 +63,7 @@ module Distribution.Types.VersionRange
   ) where
 
 import Distribution.Compat.Prelude
-import Distribution.Types.Version
+import Distribution.Types.Version.Internal
 import Distribution.Types.VersionInterval
 import Distribution.Types.VersionRange.Internal
 import Prelude ()
