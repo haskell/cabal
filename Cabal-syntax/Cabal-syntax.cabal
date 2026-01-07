@@ -201,6 +201,7 @@ library
     Distribution.Types.TestType
     Distribution.Types.UnitId
     Distribution.Types.UnqualComponentName
+    Distribution.Types.UnqualComponentName.Internal
     Distribution.Types.UnqualComponentName.Parsec
     Distribution.Types.Version
     Distribution.Types.Version.Parsec

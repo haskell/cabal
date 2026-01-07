@@ -19,7 +19,7 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Pretty
-import Distribution.Types.UnqualComponentName
+import Distribution.Types.UnqualComponentName.Internal
 
 import qualified Data.List.NonEmpty as NEL
 import qualified Distribution.Compat.CharParsing as P
