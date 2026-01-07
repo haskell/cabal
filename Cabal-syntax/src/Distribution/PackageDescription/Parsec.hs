@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -98,7 +99,10 @@ parseGenericPackageDescription bs = do
       when patched $
         parseWarning zeroPos PWTQuirkyCabalFile "Legacy cabal file"
       -- UTF8 is validated in a prepass step, afterwards parsing is lenient.
-      parseGenericPackageDescription' csv lexWarnings invalidUtf8 fs
+      parsedGpd <- parseGenericPackageDescription' csv lexWarnings invalidUtf8 fs
+      trivia <- getParseResultAnnotation
+      let !() = trace ("Printed from top-level gpd parser" <> show trivia) ()
+      pure parsedGpd
     -- TODO: better marshalling of errors
     Left perr -> parseFatalFailure pos (show perr)
       where

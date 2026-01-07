@@ -16,6 +16,7 @@ module Distribution.Fields.ParseResult
   , parseFatalFailure'
   , annotateParseResult
   , mapParseResultAnnotation
+  , getParseResultAnnotation
   , getCabalSpecVersion
   , setCabalSpecVersion
   , withoutWarnings
@@ -73,21 +74,22 @@ withoutWarnings m = PR $ \s ctx failure success ->
 runParseResult :: ParseResult src a -> ([PWarningWithSource src], Either (Maybe Version, NonEmpty (PErrorWithSource src)) a)
 runParseResult pr = unPR pr emptyPRState initialCtx failure success
   where
+    -- NOTE(leana8959): trace the parse result when its run
     initialCtx = PRContext PUnknownSource
 
     failure (PRState warns [] t v) =
-        let !() = trace (show t) () in
+        -- let !() = trace (show t) () in
         (warns, Left (v, PErrorWithSource PUnknownSource (PError zeroPos "panic") :| []))
     failure (PRState warns (err : errs) t v) =
-        let !() = trace (show t) () in
+        -- let !() = trace (show t) () in
         (warns, Left (v, err :| errs))
 
     success (PRState warns [] t _) x =
-        let !() = trace (show t) () in
+        -- let !() = trace (show t) () in
         (warns, Right x)
     -- If there are any errors, don't return the result
     success (PRState warns (err : errs) t v) _ =
-        let !() = trace (show t) () in
+        -- let !() = trace (show t) () in
         (warns, Left (v, err :| errs))
 
 -- | `runParseResult'` but with the final state
@@ -171,9 +173,14 @@ recoverWith (PR pr) x = PR $ \ !s fp _failure success ->
   pr s fp (\ !s' -> success s' x) success
 
 mapParseResultAnnotation :: (Namespace -> Namespace) -> ParseResult src ()
-mapParseResultAnnotation f = do
+mapParseResultAnnotation f =
   PR $ \ !(PRState warns errs t0 v) _fp _failure success ->
     success (PRState warns errs (Map.mapKeys f t0) v) ()
+
+getParseResultAnnotation :: ParseResult src (Map Namespace [Trivium])
+getParseResultAnnotation =
+  PR $ \ !s@(PRState _warns _errs t v) _fp _failure success ->
+    success s t
 
 annotateParseResult :: Map Namespace [Trivium] -> ParseResult src ()
 annotateParseResult t = PR $ \ !(PRState warns errs t0 v) _fp _failure success ->
