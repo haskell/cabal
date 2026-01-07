@@ -18,32 +18,44 @@ import Text.PrettyPrint (Doc)
 import qualified Text.PrettyPrint as PP
 import Prelude ()
 
+import Distribution.Types.AnnotationNamespace
+import Distribution.Types.AnnotationTrivium
+
 import Distribution.FieldGrammar.Class
 
 newtype PrettyFieldGrammar s a = PrettyFG
-  { fieldGrammarPretty :: CabalSpecVersion -> s -> [PrettyField ()]
+  { fieldGrammarPretty :: CabalSpecVersion -> Map Namespace [Trivium] -> s -> [PrettyField ()]
   }
   deriving (Functor)
 
 instance Applicative (PrettyFieldGrammar s) where
-  pure _ = PrettyFG (\_ _ -> mempty)
-  PrettyFG f <*> PrettyFG x = PrettyFG (\v s -> f v s <> x v s)
+  pure _ = PrettyFG (\_ _ _ -> mempty)
+  PrettyFG f <*> PrettyFG x = PrettyFG (\v t s -> f v t s <> x v t s)
 
 -- | We can use 'PrettyFieldGrammar' to pp print the @s@.
 --
 -- /Note:/ there is not trailing @($+$ text "")@.
 prettyFieldGrammar :: CabalSpecVersion -> PrettyFieldGrammar s a -> s -> [PrettyField ()]
-prettyFieldGrammar = flip fieldGrammarPretty
+prettyFieldGrammar v g = prettyAnnotatedFieldGrammar v mempty g
+
+prettyAnnotatedFieldGrammar
+  :: CabalSpecVersion
+  -> Map Namespace [Trivium]
+  -> PrettyFieldGrammar s a
+  -> s
+  -> [PrettyField ()]
+prettyAnnotatedFieldGrammar v t g = fieldGrammarPretty g v t
 
 instance FieldGrammar Pretty PrettyFieldGrammar where
-  blurFieldGrammar f (PrettyFG pp) = PrettyFG (\v -> pp v . aview f)
+  blurFieldGrammar f (PrettyFG pp) = PrettyFG (\v t -> pp v t . aview f)
 
-  uniqueFieldAla fn _pack l = PrettyFG $ \_v s ->
+  -- TODO(leana8959): use the trivia in the methods implemented here
+  uniqueFieldAla fn _pack l = PrettyFG $ \_v t s ->
     ppField fn (pretty (pack' _pack (aview l s)))
 
   booleanFieldDef fn l def = PrettyFG pp
     where
-      pp _v s
+      pp _v t s
         | b == def = mempty
         | otherwise = ppField fn (PP.text (show b))
         where
@@ -51,13 +63,13 @@ instance FieldGrammar Pretty PrettyFieldGrammar where
 
   optionalFieldAla fn _pack l = PrettyFG pp
     where
-      pp v s = case aview l s of
+      pp v t s = case aview l s of
         Nothing -> mempty
         Just a -> ppField fn (prettyVersioned v (pack' _pack a))
 
   optionalFieldDefAla fn _pack l def = PrettyFG pp
     where
-      pp v s
+      pp v t s
         | x == def = mempty
         | otherwise = ppField fn (prettyVersioned v (pack' _pack x))
         where
@@ -65,7 +77,7 @@ instance FieldGrammar Pretty PrettyFieldGrammar where
 
   freeTextField fn l = PrettyFG pp
     where
-      pp v s = maybe mempty (ppField fn . showFT) (aview l s)
+      pp v t s = maybe mempty (ppField fn . showFT) (aview l s)
         where
           showFT
             | v >= CabalSpecV3_0 = showFreeTextV3
@@ -74,7 +86,7 @@ instance FieldGrammar Pretty PrettyFieldGrammar where
   -- it's ok to just show, as showFreeText of empty string is empty.
   freeTextFieldDef fn l = PrettyFG pp
     where
-      pp v s = ppField fn (showFT (aview l s))
+      pp v t s = ppField fn (showFT (aview l s))
         where
           showFT
             | v >= CabalSpecV3_0 = showFreeTextV3
@@ -84,9 +96,9 @@ instance FieldGrammar Pretty PrettyFieldGrammar where
 
   monoidalFieldAla fn _pack l = PrettyFG pp
     where
-      pp v s = ppField fn (prettyVersioned v (pack' _pack (aview l s)))
+      pp v t s = ppField fn (prettyVersioned v (pack' _pack (aview l s)))
 
-  prefixedFields _fnPfx l = PrettyFG (\_ -> pp . aview l)
+  prefixedFields _fnPfx l = PrettyFG (\_ t -> pp . aview l)
     where
       pp xs =
         -- always print the field, even its Doc is empty.
