@@ -16,7 +16,7 @@ import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
 
 import Distribution.Pretty
-import Distribution.Types.PackageName
+import Distribution.Types.PackageName.Internal
 
 -- | An unqualified component name, for any kind of component.
 --

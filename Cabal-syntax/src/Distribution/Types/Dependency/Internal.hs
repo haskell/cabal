@@ -22,7 +22,7 @@ import Distribution.Compat.CharParsing (char, spaces)
 import Distribution.Compat.Parsing (between, option)
 import Distribution.Pretty
 import Distribution.Types.LibraryName.Internal
-import Distribution.Types.PackageName
+import Distribution.Types.PackageName.Internal
 import Distribution.Types.UnqualComponentName
 
 import qualified Distribution.Compat.NonEmptySet as NES
