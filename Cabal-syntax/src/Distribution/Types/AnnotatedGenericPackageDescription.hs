@@ -1,5 +1,5 @@
 module Distribution.Types.AnnotatedGenericPackageDescription
-  (
+  ( AnnotatedGenericPackageDescription (..)
   ) where
 
 import Distribution.Compat.Prelude

@@ -57,6 +57,8 @@ import Distribution.Pretty (prettyShow)
 import Distribution.Utils.Generic (breakMaybe, fromUTF8BS, toUTF8BS, unfoldrM, validateUTF8)
 import Distribution.Version (Version, mkVersion, versionNumbers)
 
+import Distribution.Types.AnnotatedGenericPackageDescription
+
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.Map.Strict as Map
@@ -78,7 +80,12 @@ import qualified Text.Parsec as P
 -- In Cabal 1.2 the syntax for package descriptions was changed to a format
 -- with sections and possibly indented property descriptions.
 parseGenericPackageDescription :: BS.ByteString -> ParseResult src GenericPackageDescription
-parseGenericPackageDescription bs = do
+parseGenericPackageDescription =
+  fmap unannotateGenericPackageDescription
+    . parseAnnotatedGenericPackageDescription
+
+parseAnnotatedGenericPackageDescription :: BS.ByteString -> ParseResult src AnnotatedGenericPackageDescription
+parseAnnotatedGenericPackageDescription bs = do
   -- set scanned version
   setCabalSpecVersion ver
 
@@ -102,7 +109,11 @@ parseGenericPackageDescription bs = do
       parsedGpd <- parseGenericPackageDescription' csv lexWarnings invalidUtf8 fs
       trivia <- getParseResultAnnotation
       let !() = trace ("Printed from top-level gpd parser" <> show trivia) ()
-      pure parsedGpd
+      pure $!
+        AnnotatedGenericPackageDescription
+        parsedGpd
+        trivia
+
     -- TODO: better marshalling of errors
     Left perr -> parseFatalFailure pos (show perr)
       where
