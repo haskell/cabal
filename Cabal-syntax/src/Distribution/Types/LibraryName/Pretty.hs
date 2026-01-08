@@ -11,6 +11,7 @@ module Distribution.Types.LibraryName.Pretty
 
     -- * Pretty & Parse
   , prettyLibraryNames
+  , prettierLibraryNames
   , prettyLibraryNameComponent
   -- , parsecLibraryNameComponent
   ) where
@@ -22,6 +23,9 @@ import Distribution.Pretty
 import Distribution.Types.LibraryName.Internal
 import Distribution.Types.UnqualComponentName.Internal
 import Distribution.Types.UnqualComponentName.Pretty
+
+import Distribution.Types.AnnotationNamespace
+import Distribution.Types.AnnotationTrivium
 
 import qualified Data.List.NonEmpty as NEL
 import qualified Distribution.Compat.CharParsing as P
@@ -40,7 +44,11 @@ prettyLibraryNameComponent (LSubLibName str) = Disp.text "lib:" <<>> pretty str
 --
 -- Produces output like @foo@, @foo:bar@, or @foo:{bar,baz}@
 prettyLibraryNames :: Pretty a => a -> NonEmpty LibraryName -> Disp.Doc
-prettyLibraryNames package libraries =
+prettyLibraryNames = prettierLibraryNames mempty
+-- ^ backwards compat
+
+prettierLibraryNames :: Pretty a => Map Namespace [Trivium] -> a -> NonEmpty LibraryName -> Disp.Doc
+prettierLibraryNames t package libraries =
   let doc = pretty package
 
       prettyComponent LMainLibName = pretty package

@@ -27,14 +27,17 @@ import Distribution.Types.AnnotationTrivium
 import qualified Text.PrettyPrint as PP
 
 class Pretty a where
+  {-# MINIMAL prettier | pretty #-}
+
   -- NOTE(leana8959): by default we fall back to the printer that doesn't care about trivia
   prettier :: Map Namespace [Trivium] -> a -> PP.Doc
-  prettier trivia = pretty
+  prettier _ = pretty
 
   prettierVersioned :: CabalSpecVersion -> Map Namespace [Trivium] -> a -> PP.Doc
   prettierVersioned _ = prettier
 
   pretty :: a -> PP.Doc
+  pretty = prettier mempty
 
   prettyVersioned :: CabalSpecVersion -> a -> PP.Doc
   prettyVersioned _ = pretty
