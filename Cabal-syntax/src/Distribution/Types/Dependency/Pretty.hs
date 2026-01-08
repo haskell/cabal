@@ -72,7 +72,7 @@ instance Pretty Dependency where
 
         !() = trace ("=== Printed from \"instance Pretty Dependency\", \"t0\"\n" <> show t0) ()
         -- !() = trace ("=== Printed from \"instance Pretty Dependency\", \"here\"\n" <> show here) ()
-        !() = trace ("=== Printed from \"instance Pretty Dependency\", \"below\"\n" <> show below) ()
+        -- !() = trace ("=== Printed from \"instance Pretty Dependency\", \"below\"\n" <> show below) ()
     in  prettierLibraryNames below name (NES.toNonEmpty sublibs) <+> pver
     where
       -- TODO: change to isAnyVersion after #6736

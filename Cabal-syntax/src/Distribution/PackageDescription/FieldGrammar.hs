@@ -234,7 +234,24 @@ libraryFieldPrinterGrammar name0 =
       t' = M.mapKeys unwrap t
 
       !() = trace ("=== Trivia from library field pretty printer\n" <> show t') ()
-    in prettierFieldGrammar v t' (libraryFieldGrammar name0)
+    in prettierFieldGrammar v t' (g name0)
+  where
+    g n = Library n
+      <$> monoidalFieldAla "exposed-modules" formatExposedModules L.exposedModules
+      <*> monoidalFieldAla "reexported-modules" (alaList CommaVCat) L.reexportedModules
+      <*> monoidalFieldAla "signatures" (alaList' VCat MQuoted) L.signatures
+        ^^^ availableSince CabalSpecV2_0 []
+      <*> booleanFieldDef "exposed" L.libExposed True
+      <*> visibilityField
+      <*> blurFieldGrammar L.libBuildInfo buildInfoPrettyGrammar
+      where
+        visibilityField = case n of
+          -- nameless/"main" libraries are public
+          LMainLibName -> pure LibraryVisibilityPublic
+          -- named libraries have the field
+          LSubLibName _ ->
+            optionalFieldDef "visibility" L.libVisibility LibraryVisibilityPrivate
+              ^^^ availableSince CabalSpecV3_0 LibraryVisibilityPrivate
 
 -------------------------------------------------------------------------------
 -- Foreign library
@@ -713,7 +730,13 @@ buildInfoFieldGrammar =
       ^^^ availableSince CabalSpecV2_0 []
 {-# SPECIALIZE buildInfoFieldGrammar :: ParsecFieldGrammar' BuildInfo #-}
 {-# SPECIALIZE buildInfoFieldGrammar :: PrettyFieldGrammar' BuildInfo #-}
+
 -- Doesn't need key mapping because it doesn't represent a field in the GPD directly
+buildInfoPrettyGrammar :: PrettyFieldGrammar' BuildInfo
+buildInfoPrettyGrammar =
+  PrettyFG $ \v t ->
+    let !() = trace ("=== Printed from buildInfoFieldGrammar\n" <> show t) () in
+    prettierFieldGrammar v t buildInfoFieldGrammar
 
 hsSourceDirsGrammar
   :: ( FieldGrammar c g
