@@ -179,7 +179,7 @@ import Distribution.Verbosity
 
 import Data.List (foldl1')
 import qualified Data.Map.Lazy as Map
-import Distribution.Client.Compat.ExecutablePath (getExecutablePath)
+import System.Environment (getExecutablePath)
 import Distribution.Compat.Process (proc)
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
