@@ -107,7 +107,7 @@ instance FieldGrammar Pretty PrettyFieldGrammar where
   monoidalFieldAla fn _pack l = PrettyFG pp
     where
       pp :: CabalSpecVersion -> Map Namespace [Trivium] -> s -> [PrettyField ()]
-      pp v t s = ppField fn (prettierVersioned v () (pack' _pack (aview l s)))
+      pp v t s = ppField fn (prettierVersioned v t (pack' _pack (aview l s)))
 
   prefixedFields _fnPfx l = PrettyFG (\_ t -> pp . aview l)
     where
