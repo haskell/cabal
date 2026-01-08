@@ -2,7 +2,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module Distribution.FieldGrammar.Pretty
-  ( PrettyFieldGrammar
+  ( PrettyFieldGrammar(..)
   , prettyFieldGrammar
   , prettierFieldGrammar
   ) where
@@ -98,6 +98,7 @@ instance FieldGrammar Pretty PrettyFieldGrammar where
 
   freeTextFieldDefST = defaultFreeTextFieldDefST
 
+  -- NOTE(leana8959): build-depends is such a field
   monoidalFieldAla fn _pack l = PrettyFG pp
     where
       pp v t s = ppField fn (prettyVersioned v (pack' _pack (aview l s)))

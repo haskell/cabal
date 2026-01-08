@@ -48,7 +48,7 @@ import Distribution.PackageDescription.FieldGrammar
   , executableFieldGrammar
   , flagFieldGrammar
   , foreignLibFieldGrammar
-  , libraryFieldGrammar
+  , libraryFieldPrinterGrammar
   , packageDescriptionFieldGrammar
   , setupBInfoFieldGrammar
   , sourceRepoFieldGrammar
@@ -157,12 +157,12 @@ ppCondLibrary _ _ Nothing = mempty
 ppCondLibrary v t (Just condTree) =
   pure $
     PrettySection () "library" [] $
-      ppCondTree2 v t (libraryFieldGrammar LMainLibName) condTree
+      ppCondTree2 v t (libraryFieldPrinterGrammar LMainLibName) condTree
 
 ppCondSubLibraries :: CabalSpecVersion -> Map Namespace [Trivium] -> [(UnqualComponentName, CondTree ConfVar [Dependency] Library)] -> [PrettyField ()]
 ppCondSubLibraries v t libs =
   [ PrettySection () "library" [pretty n] $
-    ppCondTree2 v t (libraryFieldGrammar $ LSubLibName n) condTree
+    ppCondTree2 v t (libraryFieldPrinterGrammar $ LSubLibName n) condTree
   | (n, condTree) <- libs
   ]
 

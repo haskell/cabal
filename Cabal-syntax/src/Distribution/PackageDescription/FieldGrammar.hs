@@ -1,4 +1,5 @@
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -86,12 +87,14 @@ import Distribution.PackageDescription
 import Distribution.Parsec
 import Distribution.FieldGrammar.Parsec
 import Distribution.Pretty (Pretty (..), prettyShow, showToken)
+import Distribution.FieldGrammar.Pretty (PrettyFieldGrammar (..))
 import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
 
 import Distribution.Types.AnnotationNamespace
 import Distribution.Types.Dependency.Parsec
 
+import qualified Data.Map as M
 import qualified Data.ByteString.Char8 as BS8
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.SPDX as SPDX
@@ -215,13 +218,23 @@ libraryFieldGrammar n =
 {-# SPECIALIZE libraryFieldGrammar :: LibraryName -> ParsecFieldGrammar' Library #-}
 {-# SPECIALIZE libraryFieldGrammar :: LibraryName -> PrettyFieldGrammar' Library #-}
 
-libraryFieldPrinterGrammar :: LibraryName -> PrettyFieldGrammar' Library
-libraryFieldPrinterGrammar = libraryFieldGrammar
-
 libraryFieldParserGrammar :: LibraryName -> ParsecFieldGrammar' Library
 libraryFieldParserGrammar name =
   libraryFieldGrammar name
     <* mapAnnotationKeysFieldGrammar (NSLibrarySection name)
+
+libraryFieldPrinterGrammar :: LibraryName -> PrettyFieldGrammar' Library
+libraryFieldPrinterGrammar name0 =
+  PrettyFG $ \v t -> let
+      unwrap :: Namespace -> Namespace
+      unwrap (NSLibrarySection name s) | name == name0 = s
+      -- Not the right section, do nothing
+      unwrap s = s
+
+      t' = M.mapKeys unwrap t
+
+      !() = trace ("=== Trivia from library field pretty printer\n" <> show t') ()
+    in prettierFieldGrammar v t' (libraryFieldGrammar name0)
 
 -------------------------------------------------------------------------------
 -- Foreign library
