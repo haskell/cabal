@@ -60,7 +60,7 @@ jobs:
             # IMPORTANT: If you remove a version from this list, then add it to the old-ghcs job below.
             # Also a removed GHC from here means that we are actually dropping
             # support, so the PR *must* have a changelog entry.
-            "9.14.0.20250908",
+            "9.14.1",
             "9.12.2",
             "9.10.2",
             "9.8.4",
