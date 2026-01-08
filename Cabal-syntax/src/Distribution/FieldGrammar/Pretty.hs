@@ -3,6 +3,7 @@
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# OPTIONS_GHC -Wno-unused-matches -Wno-unused-local-binds #-}
 
 module Distribution.FieldGrammar.Pretty
   ( PrettyFieldGrammar(..)

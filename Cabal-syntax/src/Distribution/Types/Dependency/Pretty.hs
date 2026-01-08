@@ -52,13 +52,13 @@ import qualified Text.PrettyPrint as PP
 -- "pkg:{sublib-a,sublib-b}"
 instance Pretty Dependency where
   prettier t0 dep0@(Dependency name ver sublibs) =
-    let isHere :: Namespace -> Bool
-        isHere (NSDependency dep Nothing) | dep == dep0 = True
-        isHere _ = True
+    let -- isHere :: Namespace -> Bool
+        -- isHere (NSDependency dep Nothing) | dep == dep0 = True
+        -- isHere _ = True
 
         projectBelow :: Namespace -> [Namespace]
         projectBelow (NSDependency dep (Just s)) | dep == dep0 = [s]
-        projectBelow s = []
+        projectBelow _ = []
 
       -- NOTE(leana8959): Here, we can see how the mapping method breaks down
       -- We don't have a filterMap
@@ -67,11 +67,11 @@ instance Pretty Dependency where
       --
       -- Maybe come up with a better representation in the future.
 
-        here = [ v | (k, v) <- M.toList t0, isHere k ]
+        -- here = [ v | (k, v) <- M.toList t0, isHere k ]
         below = M.fromList [ (k', v) | (k, v) <- M.toList t0, k' <- projectBelow k ]
 
         !() = trace ("=== Printed from \"instance Pretty Dependency\", \"t0\"\n" <> show t0) ()
-        !() = trace ("=== Printed from \"instance Pretty Dependency\", \"here\"\n" <> show here) ()
+        -- !() = trace ("=== Printed from \"instance Pretty Dependency\", \"here\"\n" <> show here) ()
         !() = trace ("=== Printed from \"instance Pretty Dependency\", \"below\"\n" <> show below) ()
     in  prettierLibraryNames below name (NES.toNonEmpty sublibs) <+> pver
     where

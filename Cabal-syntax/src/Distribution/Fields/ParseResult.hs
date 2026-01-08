@@ -77,18 +77,18 @@ runParseResult pr = unPR pr emptyPRState initialCtx failure success
     -- NOTE(leana8959): trace the parse result when its run
     initialCtx = PRContext PUnknownSource
 
-    failure (PRState warns [] t v) =
+    failure (PRState warns [] _t v) =
         -- let !() = trace (show t) () in
         (warns, Left (v, PErrorWithSource PUnknownSource (PError zeroPos "panic") :| []))
-    failure (PRState warns (err : errs) t v) =
+    failure (PRState warns (err : errs) _t v) =
         -- let !() = trace (show t) () in
         (warns, Left (v, err :| errs))
 
-    success (PRState warns [] t _) x =
+    success (PRState warns [] _t _) x =
         -- let !() = trace (show t) () in
         (warns, Right x)
     -- If there are any errors, don't return the result
-    success (PRState warns (err : errs) t v) _ =
+    success (PRState warns (err : errs) _t v) _ =
         -- let !() = trace (show t) () in
         (warns, Left (v, err :| errs))
 
@@ -179,7 +179,7 @@ mapParseResultAnnotation f =
 
 getParseResultAnnotation :: ParseResult src (Map Namespace [Trivium])
 getParseResultAnnotation =
-  PR $ \ !s@(PRState _warns _errs t v) _fp _failure success ->
+  PR $ \ !s@(PRState _warns _errs t _v) _fp _failure success ->
     success s t
 
 annotateParseResult :: Map Namespace [Trivium] -> ParseResult src ()

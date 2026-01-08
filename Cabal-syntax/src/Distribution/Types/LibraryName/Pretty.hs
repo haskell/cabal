@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 module Distribution.Types.LibraryName.Pretty
@@ -53,6 +54,8 @@ prettierLibraryNames t package libraries =
 
       prettyComponent LMainLibName = pretty package
       prettyComponent (LSubLibName component) = Disp.text $ unUnqualComponentName component
+
+      !() = trace ("=== Printed from prettierLibraryNames" <> show t) ()
 
       prettyComponents = commaSep $ prettyComponent <$> NEL.toList libraries
    in case libraries of
