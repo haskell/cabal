@@ -15,7 +15,6 @@ module Distribution.Types.UnqualComponentName.Internal
 import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
 
-import Distribution.Pretty
 import Distribution.Types.PackageName.Internal
 
 -- | An unqualified component name, for any kind of component.
@@ -66,9 +65,6 @@ instance IsString UnqualComponentName where
 
 instance Binary UnqualComponentName
 instance Structured UnqualComponentName
-
-instance Pretty UnqualComponentName where
-  pretty = showToken . unUnqualComponentName
 
 
 instance NFData UnqualComponentName where

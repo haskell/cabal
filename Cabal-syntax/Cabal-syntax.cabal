@@ -203,6 +203,7 @@ library
     Distribution.Types.UnitId
     Distribution.Types.UnqualComponentName
     Distribution.Types.UnqualComponentName.Internal
+    Distribution.Types.UnqualComponentName.Pretty
     Distribution.Types.UnqualComponentName.Parsec
     Distribution.Types.Version
     Distribution.Types.Version.Internal
