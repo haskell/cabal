@@ -4,6 +4,7 @@
 module Distribution.FieldGrammar.Pretty
   ( PrettyFieldGrammar
   , prettyFieldGrammar
+  , prettierFieldGrammar
   ) where
 
 import Distribution.CabalSpecVersion
@@ -37,6 +38,9 @@ instance Applicative (PrettyFieldGrammar s) where
 -- /Note:/ there is not trailing @($+$ text "")@.
 prettyFieldGrammar :: CabalSpecVersion -> PrettyFieldGrammar s a -> s -> [PrettyField ()]
 prettyFieldGrammar v g = prettyAnnotatedFieldGrammar v mempty g
+
+prettierFieldGrammar :: CabalSpecVersion -> Map Namespace [Trivium] -> PrettyFieldGrammar s a -> s -> [PrettyField ()]
+prettierFieldGrammar v t g = prettyAnnotatedFieldGrammar v t g
 
 prettyAnnotatedFieldGrammar
   :: CabalSpecVersion

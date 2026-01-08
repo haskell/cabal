@@ -20,6 +20,7 @@ module Distribution.FieldGrammar
   , PrettyFieldGrammar
   , PrettyFieldGrammar'
   , prettyFieldGrammar
+  , prettierFieldGrammar
 
     -- * Auxiliary
   , (^^^)
