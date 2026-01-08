@@ -205,6 +205,7 @@ library
     Distribution.Types.UnqualComponentName.Parsec
     Distribution.Types.Version
     Distribution.Types.Version.Internal
+    Distribution.Types.Version.Pretty
     Distribution.Types.Version.Parsec
     Distribution.Types.VersionInterval
     Distribution.Types.VersionInterval.Legacy

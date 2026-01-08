@@ -20,8 +20,6 @@ import Data.Bits (shiftL, shiftR, (.&.), (.|.))
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Pretty
-
 import qualified Data.Version as Base
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
@@ -89,13 +87,6 @@ instance NFData Version where
   rnf (PV0 _) = ()
   rnf (PV1 _ ns) = rnf ns
 
-instance Pretty Version where
-  pretty ver =
-    Disp.hcat
-      ( Disp.punctuate
-          (Disp.char '.')
-          (map Disp.int $ versionNumbers ver)
-      )
 
 -- | Construct 'Version' from list of version number components.
 --
