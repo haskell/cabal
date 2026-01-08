@@ -70,8 +70,9 @@ instance Pretty Dependency where
         here = [ v | (k, v) <- M.toList t0, isHere k ]
         below = M.fromList [ (k', v) | (k, v) <- M.toList t0, k' <- projectBelow k ]
 
-        !() = trace ("Printed from \"instance Pretty Dependency\", \"here\"\n" <> show here) ()
-        !() = trace ("Printed from \"instance Pretty Dependency\", \"below\"\n" <> show below) ()
+        !() = trace ("=== Printed from \"instance Pretty Dependency\", \"t0\"\n" <> show t0) ()
+        !() = trace ("=== Printed from \"instance Pretty Dependency\", \"here\"\n" <> show here) ()
+        !() = trace ("=== Printed from \"instance Pretty Dependency\", \"below\"\n" <> show below) ()
     in  prettierLibraryNames below name (NES.toNonEmpty sublibs) <+> pver
     where
       -- TODO: change to isAnyVersion after #6736

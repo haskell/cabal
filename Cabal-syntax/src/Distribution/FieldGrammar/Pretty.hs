@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -25,6 +26,8 @@ import Distribution.Types.AnnotationNamespace
 import Distribution.Types.AnnotationTrivium
 
 import Distribution.FieldGrammar.Class
+
+import qualified Data.Map as M
 
 newtype PrettyFieldGrammar s a = PrettyFG
   { fieldGrammarPretty :: CabalSpecVersion -> Map Namespace [Trivium] -> s -> [PrettyField ()]
@@ -107,7 +110,13 @@ instance FieldGrammar Pretty PrettyFieldGrammar where
   monoidalFieldAla fn _pack l = PrettyFG pp
     where
       pp :: CabalSpecVersion -> Map Namespace [Trivium] -> s -> [PrettyField ()]
-      pp v t s = ppField fn (prettierVersioned v t (pack' _pack (aview l s)))
+      pp v t s =
+        -- let !() = trace ("=== Printed from monoidalFieldAla\n" <> show t) () in
+        let unwrap :: Namespace -> Namespace
+            unwrap (NSField name s) | name == fn = s
+            unwrap s = s
+            t' = M.mapKeys unwrap t
+        in  ppField fn (prettierVersioned v t' (pack' _pack (aview l s)))
 
   prefixedFields _fnPfx l = PrettyFG (\_ t -> pp . aview l)
     where
