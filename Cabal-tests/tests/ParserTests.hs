@@ -1,4 +1,6 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE BangPatterns #-}
+
 module Main
     ( main
     ) where
@@ -15,7 +17,11 @@ import Data.Algorithm.Diff                         (PolyDiff (..), getGroupedDif
 import Data.Maybe                                  (isNothing)
 import Distribution.Fields                         (pwarning)
 import Distribution.PackageDescription             (GenericPackageDescription)
-import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription)
+import Distribution.Types.AnnotatedGenericPackageDescription
+import Distribution.PackageDescription.Parsec
+  ( parseGenericPackageDescription
+  , parseAnnotatedGenericPackageDescription
+  )
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.Parsec                         (PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
 import Distribution.Pretty                         (prettyShow)
@@ -25,6 +31,9 @@ import System.Directory                            (setCurrentDirectory)
 import System.Environment                          (getArgs, withArgs)
 import System.FilePath                             (replaceExtension, (</>))
 import Distribution.Parsec.Source
+
+import Debug.Trace
+
 
 import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as BS8
@@ -228,11 +237,12 @@ printerTest fp = testGroup fp
 formatGoldenTest :: FilePath -> TestTree
 formatGoldenTest fp = cabalGoldenTest "format" correct $ do
     contents <- BS.readFile input
-    let res = withSource (PCabalFile (fp, contents)) $ parseGenericPackageDescription contents
+    let res = withSource (PCabalFile (fp, contents)) $ parseAnnotatedGenericPackageDescription contents
     let (warns, x) = runParseResult res
 
     return $ toUTF8BS $ case x of
-        Right gpd ->
+        Right (AnnotatedGenericPackageDescription gpd trivia) ->
+          let !() = trace ("=== Trivia viewed from the test suite\n" <> show trivia) () in
             unlines (map (showPWarningWithSource . fmap renderCabalFileSource) warns)
             ++ showGenericPackageDescription gpd
         Left (csv, errs) ->

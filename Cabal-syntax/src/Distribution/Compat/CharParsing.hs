@@ -89,18 +89,12 @@ noneOf xs = satisfy (\c -> c `notElem` xs)
 
 -- | Skips /zero/ or more white space characters. See also 'skipMany'.
 spaces :: (Monad m, CharParsing m) => m ()
-spaces = do
-  s <- many space <?> "white space"
-  let !() = trace ("got spaces: " <> show (length s)) ()
-  pure ()
+spaces = skipMany space <?> "white space"
 {-# INLINE spaces #-}
 
 -- | Like 'spaces', but returns the spaces for exact printing
 spaces' :: (Monad m, CharParsing m) => m [Char]
-spaces' = do
-  s <- many space <?> "white space"
-  let !() = trace ("got spaces': " <> show (length s)) ()
-  pure s
+spaces' = many space <?> "white space"
 {-# INLINE spaces' #-}
 
 -- | Parses a white space character (any character which satisfies 'isSpace')

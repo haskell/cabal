@@ -16,6 +16,7 @@
 module Distribution.PackageDescription.Parsec
   ( -- * Package descriptions
     parseGenericPackageDescription
+  , parseAnnotatedGenericPackageDescription
   , parseGenericPackageDescriptionMaybe
 
     -- ** Parsing
@@ -108,7 +109,6 @@ parseAnnotatedGenericPackageDescription bs = do
       -- UTF8 is validated in a prepass step, afterwards parsing is lenient.
       parsedGpd <- parseGenericPackageDescription' csv lexWarnings invalidUtf8 fs
       trivia <- getParseResultAnnotation
-      let !() = trace ("Printed from top-level gpd parser" <> show trivia) ()
       pure $!
         AnnotatedGenericPackageDescription
         parsedGpd

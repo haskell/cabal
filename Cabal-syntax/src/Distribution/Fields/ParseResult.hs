@@ -99,18 +99,18 @@ runParseResult' pr = unPR pr emptyPRState initialCtx failure success
     initialCtx = PRContext PUnknownSource
 
     failure (PRState warns [] t v) =
-        let !() = trace (show t) () in
+        -- let !() = trace (show t) () in
         (warns, t, Left (v, PErrorWithSource PUnknownSource (PError zeroPos "panic") :| []))
     failure (PRState warns (err : errs) t v) =
-        let !() = trace (show t) () in
+        -- let !() = trace (show t) () in
         (warns, t, Left (v, err :| errs))
 
     success (PRState warns [] t _) x =
-        let !() = trace (show t) () in
+        -- let !() = trace (show t) () in
         (warns, t, Right x)
     -- If there are any errors, don't return the result
     success (PRState warns (err : errs) t v) _ =
-        let !() = trace (show t) () in
+        -- let !() = trace (show t) () in
         (warns, t, Left (v, err :| errs))
 
 -- | Chain parsing operations that involve 'IO' actions.
