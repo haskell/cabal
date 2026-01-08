@@ -41,7 +41,6 @@ import Distribution.Types.Version.Internal
 import Prelude ()
 
 import Distribution.CabalSpecVersion
-import Distribution.Pretty
 import Distribution.Utils.Generic (unsnoc)
 
 import qualified Distribution.Compat.CharParsing as P
@@ -253,60 +252,6 @@ hyloVersionRange f g = h where h = f . fmap h . g
 -- Parsec & Pretty
 -------------------------------------------------------------------------------
 
--- |
---
--- >>> fmap pretty (simpleParsec' CabalSpecV1_6 "== 3.2.*" :: Maybe VersionRange)
--- Just >=3.2 && <3.3
---
--- >>> fmap (prettyVersioned CabalSpecV1_6) (simpleParsec' CabalSpecV1_6 "== 3.2.*" :: Maybe VersionRange)
--- Just ==3.2.*
---
--- >>> fmap pretty (simpleParsec' CabalSpecV1_6 "-any" :: Maybe VersionRange)
--- Just >=0
---
--- >>> fmap (prettyVersioned CabalSpecV1_6) (simpleParsec' CabalSpecV1_6 "-any" :: Maybe VersionRange)
--- Just >=0
-instance Pretty VersionRange where
-  pretty = prettyVersioned cabalSpecLatest
-
-  prettyVersioned csv
-    | csv > CabalSpecV1_6 = prettyVersionRange
-    | otherwise = prettyVersionRange16
-
-prettyVersionRange :: VersionRange -> Disp.Doc
-prettyVersionRange vr = cataVersionRange alg vr 0
-  where
-    alg :: VersionRangeF (Int -> Disp.Doc) -> Int -> Disp.Doc
-    alg (ThisVersionF v) _ = Disp.text "==" <<>> pretty v
-    alg (LaterVersionF v) _ = Disp.text ">" <<>> pretty v
-    alg (OrLaterVersionF v) _ = Disp.text ">=" <<>> pretty v
-    alg (EarlierVersionF v) _ = Disp.text "<" <<>> pretty v
-    alg (OrEarlierVersionF v) _ = Disp.text "<=" <<>> pretty v
-    alg (MajorBoundVersionF v) _ = Disp.text "^>=" <<>> pretty v
-    alg (UnionVersionRangesF r1 r2) d =
-      parens (d > 0) $
-        r1 1 <+> Disp.text "||" <+> r2 0
-    alg (IntersectVersionRangesF r1 r2) d =
-      parens (d > 1) $
-        r1 2 <+> Disp.text "&&" <+> r2 1
-
-    parens True = Disp.parens
-    parens False = id
-
--- | Don't use && and || operators. If possible.
-prettyVersionRange16 :: VersionRange -> Disp.Doc
-prettyVersionRange16 (IntersectVersionRanges (OrLaterVersion v) (EarlierVersion u))
-  | u == wildcardUpperBound v =
-      Disp.text "==" <<>> dispWild v
-  where
-    dispWild ver =
-      Disp.hcat
-        ( Disp.punctuate
-            (Disp.char '.')
-            (map Disp.int $ versionNumbers ver)
-        )
-        <<>> Disp.text ".*"
-prettyVersionRange16 vr = prettyVersionRange vr
 
 ----------------------------
 -- Wildcard range utilities

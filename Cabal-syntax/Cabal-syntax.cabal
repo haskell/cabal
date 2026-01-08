@@ -211,6 +211,7 @@ library
     Distribution.Types.VersionInterval.Legacy
     Distribution.Types.VersionRange
     Distribution.Types.VersionRange.Parsec
+    Distribution.Types.VersionRange.Pretty
     Distribution.Types.VersionRange.Internal
     Distribution.Utils.Base62
     Distribution.Utils.Generic
