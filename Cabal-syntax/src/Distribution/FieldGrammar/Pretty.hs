@@ -1,4 +1,6 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module Distribution.FieldGrammar.Pretty
@@ -99,9 +101,13 @@ instance FieldGrammar Pretty PrettyFieldGrammar where
   freeTextFieldDefST = defaultFreeTextFieldDefST
 
   -- NOTE(leana8959): build-depends is such a field
+  monoidalFieldAla :: forall b a s.
+                     (Pretty b, Monoid a, Newtype a b) =>
+                     FieldName -> (a -> b) -> ALens' s a -> PrettyFieldGrammar s a
   monoidalFieldAla fn _pack l = PrettyFG pp
     where
-      pp v t s = ppField fn (prettyVersioned v (pack' _pack (aview l s)))
+      pp :: CabalSpecVersion -> Map Namespace [Trivium] -> s -> [PrettyField ()]
+      pp v t s = ppField fn (prettierVersioned v () (pack' _pack (aview l s)))
 
   prefixedFields _fnPfx l = PrettyFG (\_ t -> pp . aview l)
     where

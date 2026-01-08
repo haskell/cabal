@@ -713,6 +713,7 @@ buildInfoFieldGrammar =
       ^^^ availableSince CabalSpecV2_0 []
 {-# SPECIALIZE buildInfoFieldGrammar :: ParsecFieldGrammar' BuildInfo #-}
 {-# SPECIALIZE buildInfoFieldGrammar :: PrettyFieldGrammar' BuildInfo #-}
+-- Doesn't need key mapping because it doesn't represent a field in the GPD directly
 
 hsSourceDirsGrammar
   :: ( FieldGrammar c g
