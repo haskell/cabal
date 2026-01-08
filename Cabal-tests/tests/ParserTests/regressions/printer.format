@@ -1,0 +1,18 @@
+cabal-version: 2.0
+name:          common
+version:       0
+synopsis:      Common-stanza demo demo
+x-revision:    1
+build-type:    Simple
+
+library
+    exposed-modules:  ElseIf
+    default-language: Haskell2010
+    build-depends:
+        base >=4.10,
+        containers,
+        ghc-prim
+
+test-suite tests
+    type:    exitcode-stdio-1.0
+    main-is: Tests.hs

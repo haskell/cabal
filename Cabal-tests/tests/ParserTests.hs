@@ -44,6 +44,7 @@ tests = testGroup "parsec tests"
     , warningTests
     , errorTests
     , ipiTests
+    , printerTests
     ]
 
 -------------------------------------------------------------------------------
@@ -210,6 +211,19 @@ regressionTest fp = testGroup fp
 #endif
     ]
 {- FOURMOLU_ENABLE -}
+
+printerTests :: TestTree
+printerTests = testGroup "printer"
+  [ printerTest "printer.cabal"
+  ]
+
+printerTest :: FilePath -> TestTree
+printerTest fp = testGroup fp
+  [
+#ifdef MIN_VERSION_tree_diff
+    formatGoldenTest fp
+#endif
+  ]
 
 formatGoldenTest :: FilePath -> TestTree
 formatGoldenTest fp = cabalGoldenTest "format" correct $ do

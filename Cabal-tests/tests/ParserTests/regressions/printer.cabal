@@ -1,0 +1,29 @@
+cabal-version:       2.0
+name:                common
+version:             0
+x-revision:          1
+synopsis:            Common-stanza demo demo
+build-type:          Simple
+
+library
+  build-depends:
+    -- base >=  4.10  ||        >= 4.13,
+    base >= 4.10 ,
+    containers
+
+  default-language: Haskell2010
+  exposed-modules:  "ElseIf"
+
+  build-depends:
+    ghc-prim
+
+test-suite tests
+  type: exitcode-stdio-1.0
+  main-is: Tests.hs
+
+  -- FIXME:
+  -- In the testing for exact parser/printer, having multiple build-depends would smash the
+  -- trivia together, causing loss of trivia
+
+  -- build-depends:
+  --   HUnit
