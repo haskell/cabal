@@ -38,6 +38,8 @@ module Distribution.Types.VersionRange.Pretty
 
 import Distribution.Compat.Prelude
 import Distribution.Types.Version.Internal
+import Distribution.Types.Version.Pretty
+import Distribution.Types.VersionRange.Internal
 import Prelude ()
 
 import Distribution.CabalSpecVersion

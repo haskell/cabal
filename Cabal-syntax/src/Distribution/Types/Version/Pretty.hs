@@ -22,6 +22,8 @@ import Prelude ()
 
 import Distribution.Pretty
 
+import Distribution.Types.Version.Internal
+
 import qualified Data.Version as Base
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp

@@ -17,6 +17,7 @@ import Distribution.Utils.ShortText
 
 import Distribution.Pretty
 import Distribution.Types.PackageName.Internal
+import Distribution.Types.UnqualComponentName.Internal
 
 instance Pretty UnqualComponentName where
   pretty = showToken . unUnqualComponentName

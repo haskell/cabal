@@ -21,14 +21,12 @@ import Distribution.CabalSpecVersion
 import Distribution.Compat.Prelude
 import Prelude ()
 
--- TODO(leana8959): solve the cycle
 import Distribution.Types.AnnotationNamespace
 import Distribution.Types.AnnotationTrivium
 
 import qualified Text.PrettyPrint as PP
 
 class Pretty a where
-  -- TODO(leana8959): solve the cycle first
   prettier :: () -> a -> PP.Doc
   prettier _trivia = pretty
 

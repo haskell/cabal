@@ -20,6 +20,7 @@ import Distribution.Utils.Generic (unsnoc)
 
 import Distribution.Types.VersionRange
 import Distribution.Types.VersionRange.Internal
+import Distribution.Types.VersionRange.Pretty
 import Distribution.Types.Version.Parsec
 
 import Distribution.Types.AnnotationNamespace

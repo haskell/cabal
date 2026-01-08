@@ -14,6 +14,7 @@ module Distribution.Types.Dependency.Pretty
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Distribution.Types.Dependency.Internal
 import Distribution.Types.VersionRange (isAnyVersionLight)
 import Distribution.Version (VersionRange, anyVersion, simplifyVersionRange)
 
@@ -22,7 +23,10 @@ import Distribution.Compat.CharParsing (char, spaces)
 import Distribution.Compat.Parsing (between, option)
 import Distribution.Pretty
 import Distribution.Types.LibraryName.Internal
+import Distribution.Types.LibraryName.Pretty
 import Distribution.Types.PackageName.Internal
+import Distribution.Types.PackageName.Pretty
+import Distribution.Types.VersionRange.Pretty
 import Distribution.Types.UnqualComponentName.Internal
 
 import qualified Distribution.Compat.NonEmptySet as NES
