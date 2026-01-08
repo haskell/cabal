@@ -926,7 +926,8 @@ ppExplanation ShortDesc =
     ++ "(e.g. 'cabal info', Haddock, Hackage) below the 'synopsis' which "
     ++ "serves as a headline. "
     ++ "Please refer to <https://cabal.readthedocs.io/en/stable/"
-    ++ "cabal-package.html#package-properties> for more details."
+    ++ "cabal-package-description-file.html#package-properties> "
+    ++ "for more details."
 ppExplanation (InvalidTestWith testedWithImpossibleRanges) =
   "Invalid 'tested-with' version range: "
     ++ commaSep (map prettyShow testedWithImpossibleRanges)
