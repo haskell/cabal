@@ -22,7 +22,10 @@ import Distribution.PackageDescription.Parsec
   ( parseGenericPackageDescription
   , parseAnnotatedGenericPackageDescription
   )
-import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
+import Distribution.PackageDescription.PrettyPrint
+  ( showGenericPackageDescription
+  , showGenericPackageDescription'
+  )
 import Distribution.Parsec                         (PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
 import Distribution.Pretty                         (prettyShow)
 import Distribution.Fields.ParseResult
@@ -244,7 +247,7 @@ formatGoldenTest fp = cabalGoldenTest "format" correct $ do
         Right (AnnotatedGenericPackageDescription gpd trivia) ->
           let !() = trace ("=== Trivia viewed from the test suite\n" <> show trivia) () in
             unlines (map (showPWarningWithSource . fmap renderCabalFileSource) warns)
-            ++ showGenericPackageDescription gpd
+            ++ showGenericPackageDescription' gpd trivia
         Left (csv, errs) ->
             unlines $
                 "ERROR" :
