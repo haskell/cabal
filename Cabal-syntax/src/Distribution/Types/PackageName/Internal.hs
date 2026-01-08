@@ -13,7 +13,6 @@ import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
 import Prelude ()
 
-import Distribution.Pretty
 import qualified Text.PrettyPrint as Disp
 
 -- | A package name.
@@ -64,8 +63,6 @@ instance IsString PackageName where
 instance Binary PackageName
 instance Structured PackageName
 
-instance Pretty PackageName where
-  pretty = Disp.text . unPackageName
 
 instance NFData PackageName where
   rnf (PackageName pkg) = rnf pkg
