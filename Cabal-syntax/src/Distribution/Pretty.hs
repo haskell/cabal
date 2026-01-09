@@ -29,10 +29,10 @@ class Pretty a where
   {-# MINIMAL prettier | pretty #-}
 
   -- NOTE(leana8959): by default we fall back to the printer that doesn't care about trivia
-  prettier :: Map Namespace [Trivium] -> a -> PP.Doc
+  prettier :: TriviaTree -> a -> PP.Doc
   prettier _ = pretty
 
-  prettierVersioned :: CabalSpecVersion -> Map Namespace [Trivium] -> a -> PP.Doc
+  prettierVersioned :: CabalSpecVersion -> TriviaTree -> a -> PP.Doc
   prettierVersioned _ = prettier
 
   pretty :: a -> PP.Doc

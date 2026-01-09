@@ -30,7 +30,7 @@ import Distribution.FieldGrammar.Class
 import qualified Data.Map as M
 
 newtype PrettyFieldGrammar s a = PrettyFG
-  { fieldGrammarPretty :: CabalSpecVersion -> Map Namespace [Trivium] -> s -> [PrettyField ()]
+  { fieldGrammarPretty :: CabalSpecVersion -> TriviaTree -> s -> [PrettyField ()]
   }
   deriving (Functor)
 
@@ -44,12 +44,12 @@ instance Applicative (PrettyFieldGrammar s) where
 prettyFieldGrammar :: CabalSpecVersion -> PrettyFieldGrammar s a -> s -> [PrettyField ()]
 prettyFieldGrammar v g = prettyAnnotatedFieldGrammar v mempty g
 
-prettierFieldGrammar :: CabalSpecVersion -> Map Namespace [Trivium] -> PrettyFieldGrammar s a -> s -> [PrettyField ()]
+prettierFieldGrammar :: CabalSpecVersion -> TriviaTree -> PrettyFieldGrammar s a -> s -> [PrettyField ()]
 prettierFieldGrammar v t g = prettyAnnotatedFieldGrammar v t g
 
 prettyAnnotatedFieldGrammar
   :: CabalSpecVersion
-  -> Map Namespace [Trivium]
+  -> TriviaTree
   -> PrettyFieldGrammar s a
   -> s
   -> [PrettyField ()]
@@ -109,13 +109,10 @@ instance FieldGrammar Pretty PrettyFieldGrammar where
                      FieldName -> (a -> b) -> ALens' s a -> PrettyFieldGrammar s a
   monoidalFieldAla fn _pack l = PrettyFG pp
     where
-      pp :: CabalSpecVersion -> Map Namespace [Trivium] -> s -> [PrettyField ()]
+      pp :: CabalSpecVersion -> TriviaTree -> s -> [PrettyField ()]
       pp v t s =
-        let unwrap :: Namespace -> Namespace
-            unwrap (NSField name s) | name == fn = s
-            unwrap s = s
-            t' = M.mapKeys unwrap t
-            -- !() = trace ("=== Printed from monoidalFieldAla\n" <> show t') ()
+        let t' = unmark (NSField fn) t
+          -- !() = trace ("=== Printed from monoidalFieldAla\n" <> show t') ()
         in  ppField fn (prettierVersioned v t' (pack' _pack (aview l s)))
 
   prefixedFields _fnPfx l = PrettyFG (\_ t -> pp . aview l)

@@ -10,6 +10,6 @@ import Distribution.Types.Annotation
 
 data AnnotatedGenericPackageDescription = AnnotatedGenericPackageDescription
   { unannotateGenericPackageDescription :: GenericPackageDescription
-  , annotationMap :: Map Namespace [Trivium]
+  , annotationMap :: TriviaTree
   }
 

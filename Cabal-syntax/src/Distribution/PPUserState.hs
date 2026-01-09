@@ -10,11 +10,10 @@ import Distribution.Types.Annotation
 import qualified Data.Map as Map
 
 
-
 data PPUserState = PPUserState
   { ppWarnings :: [PWarning]
-  , ppTrivia :: Map Namespace [Trivium] -- TODO(leana8959): make this a map
+  , ppTrivia :: TriviaTree
   }
 
 emptyPPUserState :: PPUserState
-emptyPPUserState = PPUserState [] Map.empty
+emptyPPUserState = PPUserState [] mempty

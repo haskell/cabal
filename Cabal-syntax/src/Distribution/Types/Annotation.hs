@@ -24,11 +24,11 @@ data Trivium
 
 data Namespace
   = NSVersion Version
-  | NSVersionRange VersionRange (Maybe Namespace)
-  | NSPackageName PackageName (Maybe Namespace)
-  | NSDependency Dependency (Maybe Namespace)
-  | NSField BS.ByteString Namespace
-  | NSLibrarySection LibraryName Namespace
+  | NSVersionRange VersionRange
+  | NSPackageName PackageName
+  | NSDependency Dependency
+  | NSField BS.ByteString
+  | NSLibrarySection LibraryName
   deriving (Eq, Ord, Show)
 
 -- data TriviaTree
@@ -59,6 +59,7 @@ data TriviaTree = TriviaTree
   { annotationsLocal :: Trivia
   , annotationsBelow :: Map Namespace TriviaTree
   }
+  deriving (Show)
 
 instance Semigroup TriviaTree where
   TriviaTree locala belowa <> TriviaTree localb belowb = TriviaTree (locala <> localb) (belowa <> belowb)
@@ -72,6 +73,10 @@ emptyTriviaTree = TriviaTree mempty mempty
 -- | Get the trivia of this scope
 trivia :: TriviaTree -> Trivia
 trivia = annotationsLocal
+
+annotateTriviaTree :: Namespace -> Trivia -> TriviaTree -> TriviaTree
+annotateTriviaTree ns t (TriviaTree local below) =
+  TriviaTree local (M.insertWith (<>) ns (TriviaTree t mempty) below)
 
 -- | Wrap the trivia within a namespace
 mark :: Namespace -> TriviaTree -> TriviaTree

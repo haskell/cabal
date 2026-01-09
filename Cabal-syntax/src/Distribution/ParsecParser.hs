@@ -43,14 +43,13 @@ instance CabalParsing ParsecParser where
         trivia
   askCabalSpecVersion = PP pure
 
-  mapAnnotationKeys f = liftParsec $ do
-    Parsec.modifyState $ \(PPUserState warns trivia) ->
-      PPUserState warns (Map.mapKeys f trivia)
+  markNamespace ns = liftParsec $ do
+    Parsec.modifyState $ \(PPUserState warns triviaTree) ->
+      PPUserState warns (mark ns triviaTree)
 
   annotate namespace trivium = liftParsec $ do
-    Parsec.modifyState $ \(PPUserState warns trivia) ->
-      -- TODO(leana8959): proof of concept
-      PPUserState warns (Map.insertWith (<>) namespace [trivium] trivia)
+    Parsec.modifyState $ \(PPUserState warns triviaTree) ->
+      PPUserState warns (annotateTriviaTree namespace [trivium] triviaTree)
 
 instance Functor ParsecParser where
   fmap f p = PP $ \v -> fmap f (unPP p v)

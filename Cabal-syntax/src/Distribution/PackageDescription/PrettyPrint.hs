@@ -73,7 +73,7 @@ writeGenericPackageDescription fpath pkg = writeUTF8File fpath (showGenericPacka
 showGenericPackageDescription :: GenericPackageDescription -> String
 showGenericPackageDescription = flip showGenericPackageDescription' mempty
 
-showGenericPackageDescription' :: GenericPackageDescription -> Map Namespace [Trivium] -> String
+showGenericPackageDescription' :: GenericPackageDescription -> TriviaTree -> String
 showGenericPackageDescription' gpd t =
   -- TODO(leana8959): we can later use the "showFields" mechanism to inject the comments stored from the comment PR
   showFields (const NoComment) $ ppGenericPackageDescription' v t gpd
@@ -84,7 +84,7 @@ ppGenericPackageDescription :: CabalSpecVersion -> GenericPackageDescription -> 
 ppGenericPackageDescription = flip ppGenericPackageDescription' mempty
 
 -- | Convert a generic package description to 'PrettyField's.
-ppGenericPackageDescription' :: CabalSpecVersion -> Map Namespace [Trivium] -> GenericPackageDescription -> [PrettyField ()]
+ppGenericPackageDescription' :: CabalSpecVersion -> TriviaTree -> GenericPackageDescription -> [PrettyField ()]
 ppGenericPackageDescription' v t gpd0 =
   concat
     [ ppPackageDescription v t (packageDescription gpd)
@@ -100,22 +100,22 @@ ppGenericPackageDescription' v t gpd0 =
   where
     gpd = preProcessInternalDeps (specVersion (packageDescription gpd0)) gpd0
 
-ppPackageDescription :: CabalSpecVersion -> Map Namespace [Trivium] -> PackageDescription -> [PrettyField ()]
+ppPackageDescription :: CabalSpecVersion -> TriviaTree -> PackageDescription -> [PrettyField ()]
 ppPackageDescription v t pd =
   prettierFieldGrammar v t packageDescriptionFieldGrammar pd
     ++ ppSourceRepos v t (sourceRepos pd)
 
-ppSourceRepos :: CabalSpecVersion -> Map Namespace [Trivium] -> [SourceRepo] -> [PrettyField ()]
+ppSourceRepos :: CabalSpecVersion -> TriviaTree -> [SourceRepo] -> [PrettyField ()]
 ppSourceRepos v t = map (ppSourceRepo v t)
 
-ppSourceRepo :: CabalSpecVersion -> Map Namespace [Trivium] -> SourceRepo -> PrettyField ()
+ppSourceRepo :: CabalSpecVersion -> TriviaTree -> SourceRepo -> PrettyField ()
 ppSourceRepo v t repo =
   PrettySection () "source-repository" [pretty kind] $
     prettierFieldGrammar v t (sourceRepoFieldGrammar kind) repo
   where
     kind = repoKind repo
 
-ppSetupBInfo :: CabalSpecVersion -> Map Namespace [Trivium] -> Maybe SetupBuildInfo -> [PrettyField ()]
+ppSetupBInfo :: CabalSpecVersion -> TriviaTree -> Maybe SetupBuildInfo -> [PrettyField ()]
 ppSetupBInfo _ _ Nothing = mempty
 ppSetupBInfo v t (Just sbi)
   | defaultSetupDepends sbi = mempty
@@ -124,15 +124,15 @@ ppSetupBInfo v t (Just sbi)
         PrettySection () "custom-setup" [] $
           prettierFieldGrammar v t (setupBInfoFieldGrammar False) sbi
 
-ppGenPackageFlags :: CabalSpecVersion -> Map Namespace [Trivium] -> [PackageFlag] -> [PrettyField ()]
+ppGenPackageFlags :: CabalSpecVersion -> TriviaTree -> [PackageFlag] -> [PrettyField ()]
 ppGenPackageFlags v t = map (ppFlag v t)
 
-ppFlag :: CabalSpecVersion -> Map Namespace [Trivium] -> PackageFlag -> PrettyField ()
+ppFlag :: CabalSpecVersion -> TriviaTree -> PackageFlag -> PrettyField ()
 ppFlag v t flag@(MkPackageFlag name _ _ _) =
   PrettySection () "flag" [ppFlagName name] $
     prettierFieldGrammar v t (flagFieldGrammar name) flag
 
-ppCondTree2 :: CabalSpecVersion -> Map Namespace [Trivium] -> PrettyFieldGrammar' s -> CondTree ConfVar [Dependency] s -> [PrettyField ()]
+ppCondTree2 :: CabalSpecVersion -> TriviaTree -> PrettyFieldGrammar' s -> CondTree ConfVar [Dependency] s -> [PrettyField ()]
 ppCondTree2 v t grammar = go
   where
     -- TODO: recognise elif opportunities
@@ -151,42 +151,42 @@ ppCondTree2 v t grammar = go
       , PrettySection () "else" [] (go elseTree)
       ]
 
-ppCondLibrary :: CabalSpecVersion -> Map Namespace [Trivium] -> Maybe (CondTree ConfVar [Dependency] Library) -> [PrettyField ()]
+ppCondLibrary :: CabalSpecVersion -> TriviaTree -> Maybe (CondTree ConfVar [Dependency] Library) -> [PrettyField ()]
 ppCondLibrary _ _ Nothing = mempty
 ppCondLibrary v t (Just condTree) =
   pure $
     PrettySection () "library" [] $
       ppCondTree2 v t (libraryFieldPrinterGrammar LMainLibName) condTree
 
-ppCondSubLibraries :: CabalSpecVersion -> Map Namespace [Trivium] -> [(UnqualComponentName, CondTree ConfVar [Dependency] Library)] -> [PrettyField ()]
+ppCondSubLibraries :: CabalSpecVersion -> TriviaTree -> [(UnqualComponentName, CondTree ConfVar [Dependency] Library)] -> [PrettyField ()]
 ppCondSubLibraries v t libs =
   [ PrettySection () "library" [pretty n] $
     ppCondTree2 v t (libraryFieldPrinterGrammar $ LSubLibName n) condTree
   | (n, condTree) <- libs
   ]
 
-ppCondForeignLibs :: CabalSpecVersion -> Map Namespace [Trivium] -> [(UnqualComponentName, CondTree ConfVar [Dependency] ForeignLib)] -> [PrettyField ()]
+ppCondForeignLibs :: CabalSpecVersion -> TriviaTree -> [(UnqualComponentName, CondTree ConfVar [Dependency] ForeignLib)] -> [PrettyField ()]
 ppCondForeignLibs v t flibs =
   [ PrettySection () "foreign-library" [pretty n] $
     ppCondTree2 v t (foreignLibFieldGrammar n) condTree
   | (n, condTree) <- flibs
   ]
 
-ppCondExecutables :: CabalSpecVersion -> Map Namespace [Trivium] -> [(UnqualComponentName, CondTree ConfVar [Dependency] Executable)] -> [PrettyField ()]
+ppCondExecutables :: CabalSpecVersion -> TriviaTree -> [(UnqualComponentName, CondTree ConfVar [Dependency] Executable)] -> [PrettyField ()]
 ppCondExecutables v t exes =
   [ PrettySection () "executable" [pretty n] $
     ppCondTree2 v t (executableFieldGrammar n) condTree
   | (n, condTree) <- exes
   ]
 
-ppCondTestSuites :: CabalSpecVersion -> Map Namespace [Trivium] -> [(UnqualComponentName, CondTree ConfVar [Dependency] TestSuite)] -> [PrettyField ()]
+ppCondTestSuites :: CabalSpecVersion -> TriviaTree -> [(UnqualComponentName, CondTree ConfVar [Dependency] TestSuite)] -> [PrettyField ()]
 ppCondTestSuites v t suites =
   [ PrettySection () "test-suite" [pretty n] $
     ppCondTree2 v t testSuiteFieldGrammar (fmap FG.unvalidateTestSuite condTree)
   | (n, condTree) <- suites
   ]
 
-ppCondBenchmarks :: CabalSpecVersion -> Map Namespace [Trivium] -> [(UnqualComponentName, CondTree ConfVar [Dependency] Benchmark)] -> [PrettyField ()]
+ppCondBenchmarks :: CabalSpecVersion -> TriviaTree -> [(UnqualComponentName, CondTree ConfVar [Dependency] Benchmark)] -> [PrettyField ()]
 ppCondBenchmarks v t suites =
   [ PrettySection () "benchmark" [pretty n] $
     ppCondTree2 v t benchmarkFieldGrammar (fmap FG.unvalidateBenchmark condTree)

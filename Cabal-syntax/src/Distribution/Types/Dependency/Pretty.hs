@@ -51,11 +51,7 @@ import qualified Text.PrettyPrint as PP
 -- "pkg:{sublib-a,sublib-b}"
 instance Pretty Dependency where
   prettier t0 dep0@(Dependency name vRange sublibs) =
-    let t2 = M.mapKeys unwrap t0
-          where
-            unwrap :: Namespace -> Namespace
-            unwrap (NSDependency dep (Just s)) | dep == dep0 = s
-            unwrap s = s
+    let t2 = unmark (NSDependency dep0) t0
 
         -- TODO: change to isAnyVersion after #6736
         pver

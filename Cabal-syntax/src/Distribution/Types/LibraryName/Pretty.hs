@@ -47,7 +47,7 @@ prettyLibraryNames :: Pretty a => a -> NonEmpty LibraryName -> Disp.Doc
 prettyLibraryNames = prettierLibraryNames mempty
 -- ^ backwards compat
 
-prettierLibraryNames :: Pretty a => Map Namespace [Trivium] -> a -> NonEmpty LibraryName -> Disp.Doc
+prettierLibraryNames :: Pretty a => TriviaTree -> a -> NonEmpty LibraryName -> Disp.Doc
 prettierLibraryNames t package libraries =
   let doc = pretty package
 

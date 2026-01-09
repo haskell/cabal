@@ -221,18 +221,12 @@ libraryFieldGrammar n =
 libraryFieldParserGrammar :: LibraryName -> ParsecFieldGrammar' Library
 libraryFieldParserGrammar name =
   libraryFieldGrammar name
-    <* mapAnnotationKeysFieldGrammar (NSLibrarySection name)
+    <* markAnnotationKeysFieldGrammar (NSLibrarySection name)
 
 libraryFieldPrinterGrammar :: LibraryName -> PrettyFieldGrammar' Library
 libraryFieldPrinterGrammar name0 =
   PrettyFG $ \v t -> let
-      unwrap :: Namespace -> Namespace
-      unwrap (NSLibrarySection name s) | name == name0 = s
-      -- Not the right section, do nothing
-      unwrap s = s
-
-      t' = M.mapKeys unwrap t
-
+      t' = unmark (NSLibrarySection name0) t
       -- !() = trace ("=== Trivia from library field pretty printer\n" <> show t') ()
     in prettierFieldGrammar v t' (g name0)
   where

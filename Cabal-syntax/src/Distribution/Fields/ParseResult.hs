@@ -15,7 +15,7 @@ module Distribution.Fields.ParseResult
   , parseFatalFailure
   , parseFatalFailure'
   , annotateParseResult
-  , mapParseResultAnnotation
+  , markParseResultAnnotation
   , getParseResultAnnotation
   , getCabalSpecVersion
   , setCabalSpecVersion
@@ -53,10 +53,10 @@ data PRContext src = PRContext
   }
 
 -- Note: we have version here, as we could get any version.
-data PRState src = PRState ![PWarningWithSource src] ![PErrorWithSource src] !(Map Namespace [Trivium]) !(Maybe Version)
+data PRState src = PRState ![PWarningWithSource src] ![PErrorWithSource src] !(TriviaTree) !(Maybe Version)
 
 emptyPRState :: PRState src
-emptyPRState = PRState [] [] Map.empty Nothing
+emptyPRState = PRState [] [] mempty Nothing
 
 -- | Forget 'ParseResult's warnings.
 --
@@ -92,7 +92,7 @@ runParseResult pr = unPR pr emptyPRState initialCtx failure success
         (warns, Left (v, err :| errs))
 
 -- | `runParseResult'` but with the final state
-runParseResult' :: ParseResult src a -> ([PWarningWithSource src], Map Namespace [Trivium], Either (Maybe Version, NonEmpty (PErrorWithSource src)) a)
+runParseResult' :: ParseResult src a -> ([PWarningWithSource src], TriviaTree, Either (Maybe Version, NonEmpty (PErrorWithSource src)) a)
 runParseResult' pr = unPR pr emptyPRState initialCtx failure success
   where
     initialCtx = PRContext PUnknownSource
@@ -171,17 +171,17 @@ recoverWith :: ParseResult src a -> a -> ParseResult src a
 recoverWith (PR pr) x = PR $ \ !s fp _failure success ->
   pr s fp (\ !s' -> success s' x) success
 
-mapParseResultAnnotation :: (Namespace -> Namespace) -> ParseResult src ()
-mapParseResultAnnotation f =
+markParseResultAnnotation :: Namespace -> ParseResult src ()
+markParseResultAnnotation ns =
   PR $ \ !(PRState warns errs t0 v) _fp _failure success ->
-    success (PRState warns errs (Map.mapKeys f t0) v) ()
+    success (PRState warns errs (mark ns t0) v) ()
 
-getParseResultAnnotation :: ParseResult src (Map Namespace [Trivium])
+getParseResultAnnotation :: ParseResult src TriviaTree
 getParseResultAnnotation =
   PR $ \ !s@(PRState _warns _errs t _v) _fp _failure success ->
     success s t
 
-annotateParseResult :: Map Namespace [Trivium] -> ParseResult src ()
+annotateParseResult :: TriviaTree -> ParseResult src ()
 annotateParseResult t = PR $ \ !(PRState warns errs t0 v) _fp _failure success ->
   success (PRState warns errs (t0 <> t) v) ()
 

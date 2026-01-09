@@ -72,11 +72,11 @@ instance Parsec Dependency where
       <|>
         ( do
             v <- pure anyVersion
-            annotate (NSVersionRange v Nothing) IsInjected
+            annotate (NSVersionRange v) IsInjected
             pure v
         )
     let dep = mkDependency name ver libs
-    mapAnnotationKeys (NSDependency dep . Just)
+    markNamespace (NSDependency dep)
     return dep
     where
       parseLib = LSubLibName <$> parsec

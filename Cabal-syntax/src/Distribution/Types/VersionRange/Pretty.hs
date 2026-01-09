@@ -76,14 +76,10 @@ instance Pretty VersionRange where
     | otherwise = prettyVersionRange16
 
 -- TODO(leana8959): unpack trivium we have saved
-prettyVersionRange :: Map Namespace [Trivium] -> VersionRange -> Disp.Doc
+prettyVersionRange :: TriviaTree -> VersionRange -> Disp.Doc
 prettyVersionRange t0 vr = cataVersionRange alg vr 0
   where
-    unwrap :: Namespace -> Namespace
-    unwrap (NSVersionRange vRange (Just s)) | vRange == vr = s
-    unwrap s = s
-
-    t = M.mapKeys unwrap t0
+    t = unmark (NSVersionRange vr) t0
 
     alg :: VersionRangeF (Int -> Disp.Doc) -> Int -> Disp.Doc
     alg (ThisVersionF v) _ = Disp.text "==" <<>> prettier t v
@@ -103,7 +99,7 @@ prettyVersionRange t0 vr = cataVersionRange alg vr 0
     parens False = id
 
 -- | Don't use && and || operators. If possible.
-prettyVersionRange16 :: Map Namespace [Trivium] -> VersionRange -> Disp.Doc
+prettyVersionRange16 :: TriviaTree -> VersionRange -> Disp.Doc
 prettyVersionRange16 t (IntersectVersionRanges (OrLaterVersion v) (EarlierVersion u))
   | u == wildcardUpperBound v =
       Disp.text "==" <<>> dispWild v
