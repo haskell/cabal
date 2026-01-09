@@ -131,6 +131,7 @@ library
         Distribution.Client.Compat.Orphans
         Distribution.Client.Compat.Prelude
         Distribution.Client.Compat.Semaphore
+        Distribution.Client.Compat.SysInfo
         Distribution.Client.Compat.Tar
         Distribution.Client.Config
         Distribution.Client.Configure
