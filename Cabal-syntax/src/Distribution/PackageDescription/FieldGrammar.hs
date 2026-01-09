@@ -717,6 +717,8 @@ optionsFieldGrammar =
     <* knownField "jhc-options"
     <* knownField "hugs-options"
     <* knownField "nhc98-options"
+    -- NOTE: These are used by MicroCabal for MicroHs
+    <* knownField "mhs-options"
   where
     extract :: CompilerFlavor -> ALens' BuildInfo [String]
     extract flavor = L.options . lookupLens flavor
