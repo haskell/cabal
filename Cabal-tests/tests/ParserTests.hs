@@ -245,7 +245,7 @@ formatGoldenTest fp = cabalGoldenTest "format" correct $ do
 
     return $ toUTF8BS $ case x of
         Right (AnnotatedGenericPackageDescription gpd trivia) ->
-          let !() = trace ("=== Trivia viewed from the test suite\n" <> show trivia) () in
+          -- let !() = trace ("=== Trivia viewed from the test suite\n" <> show trivia) () in
             unlines (map (showPWarningWithSource . fmap renderCabalFileSource) warns)
             ++ showGenericPackageDescription' gpd trivia
         Left (csv, errs) ->

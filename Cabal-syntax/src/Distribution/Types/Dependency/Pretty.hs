@@ -51,7 +51,7 @@ import qualified Text.PrettyPrint as PP
 -- >>> prettyShow $ Dependency (mkPackageName "pkg") anyVersion $ NES.insert (LSubLibName $ mkUnqualComponentName "sublib-b") $ NES.singleton (LSubLibName $ mkUnqualComponentName "sublib-a")
 -- "pkg:{sublib-a,sublib-b}"
 instance Pretty Dependency where
-  prettier t0 dep0@(Dependency name ver sublibs) =
+  prettier t0 dep0@(Dependency name vRange sublibs) =
     let -- isHere :: Namespace -> Bool
         -- isHere (NSDependency dep Nothing) | dep == dep0 = True
         -- isHere _ = True
@@ -70,12 +70,12 @@ instance Pretty Dependency where
         -- here = [ v | (k, v) <- M.toList t0, isHere k ]
         below = M.fromList [ (k', v) | (k, v) <- M.toList t0, k' <- projectBelow k ]
 
-        !() = trace ("=== Printed from \"instance Pretty Dependency\", \"t0\"\n" <> show t0) ()
+        -- !() = trace ("=== Printed from \"instance Pretty Dependency\", \"t0\"\n" <> show t0) ()
         -- !() = trace ("=== Printed from \"instance Pretty Dependency\", \"here\"\n" <> show here) ()
         -- !() = trace ("=== Printed from \"instance Pretty Dependency\", \"below\"\n" <> show below) ()
     in  prettierLibraryNames below name (NES.toNonEmpty sublibs) <+> pver
     where
       -- TODO: change to isAnyVersion after #6736
       pver
-        | isAnyVersionLight ver = PP.empty
-        | otherwise = pretty ver
+        | isAnyVersionLight vRange = PP.empty
+        | otherwise = pretty vRange

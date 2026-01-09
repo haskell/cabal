@@ -50,6 +50,9 @@ import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.DList as DList
 import qualified Text.PrettyPrint as Disp
 
+import Data.Map (Map)
+import Distribution.Types.AnnotationNamespace
+import Distribution.Types.AnnotationTrivium
 
 -- |
 --
@@ -66,14 +69,15 @@ import qualified Text.PrettyPrint as Disp
 -- Just >=0
 
 instance Pretty VersionRange where
-  pretty = prettyVersioned cabalSpecLatest
+  prettier = prettierVersioned cabalSpecLatest
 
-  prettyVersioned csv
+  prettierVersioned csv
     | csv > CabalSpecV1_6 = prettyVersionRange
     | otherwise = prettyVersionRange16
 
-prettyVersionRange :: VersionRange -> Disp.Doc
-prettyVersionRange vr = cataVersionRange alg vr 0
+-- TODO(leana8959): unpack trivium we have saved
+prettyVersionRange :: Map Namespace [Trivium] -> VersionRange -> Disp.Doc
+prettyVersionRange t vr = cataVersionRange alg vr 0
   where
     alg :: VersionRangeF (Int -> Disp.Doc) -> Int -> Disp.Doc
     alg (ThisVersionF v) _ = Disp.text "==" <<>> pretty v
@@ -93,8 +97,8 @@ prettyVersionRange vr = cataVersionRange alg vr 0
     parens False = id
 
 -- | Don't use && and || operators. If possible.
-prettyVersionRange16 :: VersionRange -> Disp.Doc
-prettyVersionRange16 (IntersectVersionRanges (OrLaterVersion v) (EarlierVersion u))
+prettyVersionRange16 :: Map Namespace [Trivium] -> VersionRange -> Disp.Doc
+prettyVersionRange16 t (IntersectVersionRanges (OrLaterVersion v) (EarlierVersion u))
   | u == wildcardUpperBound v =
       Disp.text "==" <<>> dispWild v
   where
@@ -105,4 +109,4 @@ prettyVersionRange16 (IntersectVersionRanges (OrLaterVersion v) (EarlierVersion 
             (map Disp.int $ versionNumbers ver)
         )
         <<>> Disp.text ".*"
-prettyVersionRange16 vr = prettyVersionRange vr
+prettyVersionRange16 t vr = prettyVersionRange t vr

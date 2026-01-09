@@ -233,7 +233,7 @@ libraryFieldPrinterGrammar name0 =
 
       t' = M.mapKeys unwrap t
 
-      !() = trace ("=== Trivia from library field pretty printer\n" <> show t') ()
+      -- !() = trace ("=== Trivia from library field pretty printer\n" <> show t') ()
     in prettierFieldGrammar v t' (g name0)
   where
     g n = Library n
@@ -735,7 +735,7 @@ buildInfoFieldGrammar =
 buildInfoPrettyGrammar :: PrettyFieldGrammar' BuildInfo
 buildInfoPrettyGrammar =
   PrettyFG $ \v t ->
-    let !() = trace ("=== Printed from buildInfoFieldGrammar\n" <> show t) () in
+    -- let !() = trace ("=== Printed from buildInfoFieldGrammar\n" <> show t) () in
     prettierFieldGrammar v t buildInfoFieldGrammar
 
 hsSourceDirsGrammar
