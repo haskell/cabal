@@ -30,7 +30,7 @@ import qualified Text.PrettyPrint as Disp
 import qualified Text.Read as Read
 
 instance Pretty Version where
-  pretty ver =
+  prettier t ver =
     Disp.hcat
       ( Disp.punctuate
           (Disp.char '.')

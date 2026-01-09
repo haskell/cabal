@@ -80,12 +80,12 @@ prettyVersionRange :: Map Namespace [Trivium] -> VersionRange -> Disp.Doc
 prettyVersionRange t vr = cataVersionRange alg vr 0
   where
     alg :: VersionRangeF (Int -> Disp.Doc) -> Int -> Disp.Doc
-    alg (ThisVersionF v) _ = Disp.text "==" <<>> pretty v
-    alg (LaterVersionF v) _ = Disp.text ">" <<>> pretty v
-    alg (OrLaterVersionF v) _ = Disp.text ">=" <<>> pretty v
-    alg (EarlierVersionF v) _ = Disp.text "<" <<>> pretty v
-    alg (OrEarlierVersionF v) _ = Disp.text "<=" <<>> pretty v
-    alg (MajorBoundVersionF v) _ = Disp.text "^>=" <<>> pretty v
+    alg (ThisVersionF v) _ = Disp.text "==" <<>> prettier t v
+    alg (LaterVersionF v) _ = Disp.text ">" <<>> prettier t v
+    alg (OrLaterVersionF v) _ = Disp.text ">=" <<>> prettier t v
+    alg (EarlierVersionF v) _ = Disp.text "<" <<>> prettier t v
+    alg (OrEarlierVersionF v) _ = Disp.text "<=" <<>> prettier t v
+    alg (MajorBoundVersionF v) _ = Disp.text "^>=" <<>> prettier t v
     alg (UnionVersionRangesF r1 r2) d =
       parens (d > 0) $
         r1 1 <+> Disp.text "||" <+> r2 0
