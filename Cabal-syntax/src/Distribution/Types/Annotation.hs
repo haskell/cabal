@@ -56,8 +56,8 @@ data Namespace
 
 -- TODO(leana8959): can I encode namespace type in the signature or somehow make this more type safe?
 data TriviaTree = TriviaTree
-  { annotationsLocal :: Trivia
-  , annotationsBelow :: Map Namespace TriviaTree
+  { justAnnotation :: Trivia
+  , namedAnnotations :: Map Namespace TriviaTree
   }
   deriving (Show)
 
@@ -72,7 +72,7 @@ emptyTriviaTree = TriviaTree mempty mempty
 
 -- | Get the trivia of this scope
 trivia :: TriviaTree -> Trivia
-trivia = annotationsLocal
+trivia = justAnnotation
 
 annotateTriviaTree :: Namespace -> Trivia -> TriviaTree -> TriviaTree
 annotateTriviaTree ns t (TriviaTree local below) =
@@ -84,4 +84,4 @@ mark ns tt = TriviaTree mempty (M.singleton ns tt)
 
 -- | If the trivia map is for this scope
 unmark :: Namespace -> TriviaTree -> TriviaTree
-unmark ns tt = fromMaybe mempty (M.lookup ns (annotationsBelow tt))
+unmark ns tt = fromMaybe mempty (M.lookup ns (namedAnnotations tt))
