@@ -51,6 +51,7 @@ import qualified Distribution.Compat.DList as DList
 import qualified Text.PrettyPrint as Disp
 
 import Data.Map (Map)
+import qualified Data.Map as M
 import Distribution.Types.AnnotationNamespace
 import Distribution.Types.AnnotationTrivium
 
@@ -77,8 +78,14 @@ instance Pretty VersionRange where
 
 -- TODO(leana8959): unpack trivium we have saved
 prettyVersionRange :: Map Namespace [Trivium] -> VersionRange -> Disp.Doc
-prettyVersionRange t vr = cataVersionRange alg vr 0
+prettyVersionRange t0 vr = cataVersionRange alg vr 0
   where
+    unwrap :: Namespace -> Namespace
+    unwrap (NSVersionRange vRange (Just s)) | vRange == vr = s
+    unwrap s = s
+
+    t = M.mapKeys unwrap t0
+
     alg :: VersionRangeF (Int -> Disp.Doc) -> Int -> Disp.Doc
     alg (ThisVersionF v) _ = Disp.text "==" <<>> prettier t v
     alg (LaterVersionF v) _ = Disp.text ">" <<>> prettier t v

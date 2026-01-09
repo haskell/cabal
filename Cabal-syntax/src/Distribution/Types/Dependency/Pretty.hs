@@ -52,30 +52,16 @@ import qualified Text.PrettyPrint as PP
 -- "pkg:{sublib-a,sublib-b}"
 instance Pretty Dependency where
   prettier t0 dep0@(Dependency name vRange sublibs) =
-    let -- isHere :: Namespace -> Bool
-        -- isHere (NSDependency dep Nothing) | dep == dep0 = True
-        -- isHere _ = True
+    let t2 = M.mapKeys unwrap t0
+          where
+            unwrap :: Namespace -> Namespace
+            unwrap (NSDependency dep (Just s)) | dep == dep0 = s
+            unwrap s = s
 
-        projectBelow :: Namespace -> [Namespace]
-        projectBelow (NSDependency dep (Just s)) | dep == dep0 = [s]
-        projectBelow _ = []
-
-      -- NOTE(leana8959): Here, we can see how the mapping method breaks down
-      -- We don't have a filterMap
-      -- The Nothing values are supposed to mean what's in this scope, but they will be
-      -- mixed up with what are not in this scope which we want to discard.
-      --
-      -- Maybe come up with a better representation in the future.
-
-        -- here = [ v | (k, v) <- M.toList t0, isHere k ]
-        below = M.fromList [ (k', v) | (k, v) <- M.toList t0, k' <- projectBelow k ]
+        -- TODO: change to isAnyVersion after #6736
+        pver
+          | isAnyVersionLight vRange = PP.empty
+          | otherwise = prettier t2 vRange
 
         -- !() = trace ("=== Printed from \"instance Pretty Dependency\", \"t0\"\n" <> show t0) ()
-        -- !() = trace ("=== Printed from \"instance Pretty Dependency\", \"here\"\n" <> show here) ()
-        -- !() = trace ("=== Printed from \"instance Pretty Dependency\", \"below\"\n" <> show below) ()
-    in  prettierLibraryNames below name (NES.toNonEmpty sublibs) <+> pver
-    where
-      -- TODO: change to isAnyVersion after #6736
-      pver
-        | isAnyVersionLight vRange = PP.empty
-        | otherwise = pretty vRange
+    in  prettierLibraryNames t2 name (NES.toNonEmpty sublibs) <+> pver

@@ -160,7 +160,7 @@ instance (Newtype a b, Sep sep, Parsec b) => Parsec (List sep b a) where
 instance (Newtype a b, Sep sep, Pretty b) => Pretty (List sep b a) where
   pretty = prettySep (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . unpack
   prettier t =
-    let !() = trace ("== Printed from List\n" <> show t) () in
+    -- let !() = trace ("== Printed from List\n" <> show t) () in
     prettySep (Proxy :: Proxy sep) . map (prettier t . (pack :: a -> b)) . unpack
 
 --
