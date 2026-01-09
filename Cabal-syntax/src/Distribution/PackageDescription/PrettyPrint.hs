@@ -33,8 +33,7 @@ module Distribution.PackageDescription.PrettyPrint
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Types.AnnotationNamespace
-import Distribution.Types.AnnotationTrivium
+import Distribution.Types.Annotation
 
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens

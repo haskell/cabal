@@ -23,8 +23,7 @@ import Distribution.Types.VersionRange.Internal
 import Distribution.Types.VersionRange.Pretty
 import Distribution.Types.Version.Parsec
 
-import Distribution.Types.AnnotationNamespace
-import Distribution.Types.AnnotationTrivium
+import Distribution.Types.Annotation
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.DList as DList

@@ -52,8 +52,7 @@ import qualified Text.PrettyPrint as Disp
 
 import Data.Map (Map)
 import qualified Data.Map as M
-import Distribution.Types.AnnotationNamespace
-import Distribution.Types.AnnotationTrivium
+import Distribution.Types.Annotation
 
 -- |
 --

@@ -17,7 +17,7 @@ import Prelude ()
 
 import Distribution.CabalParsing
 import Distribution.PPUserState
-import Distribution.Types.AnnotationNamespace
+import Distribution.Types.Annotation
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.MonadFail as Fail

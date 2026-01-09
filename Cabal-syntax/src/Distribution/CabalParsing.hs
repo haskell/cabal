@@ -16,8 +16,7 @@ import Distribution.Parsec.Warning
 import Numeric (showIntAtBase)
 import Prelude ()
 
-import Distribution.Types.AnnotationTrivium
-import Distribution.Types.AnnotationNamespace
+import Distribution.Types.Annotation
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.MonadFail as Fail

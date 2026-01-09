@@ -23,8 +23,7 @@ import Text.PrettyPrint (Doc)
 import qualified Text.PrettyPrint as PP
 import Prelude ()
 
-import Distribution.Types.AnnotationNamespace
-import Distribution.Types.AnnotationTrivium
+import Distribution.Types.Annotation
 
 import Distribution.FieldGrammar.Class
 

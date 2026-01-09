@@ -25,8 +25,7 @@ import Distribution.Types.LibraryName.Internal
 import Distribution.Types.UnqualComponentName.Internal
 import Distribution.Types.UnqualComponentName.Pretty
 
-import Distribution.Types.AnnotationNamespace
-import Distribution.Types.AnnotationTrivium
+import Distribution.Types.Annotation
 
 import qualified Data.List.NonEmpty as NEL
 import qualified Distribution.Compat.CharParsing as P

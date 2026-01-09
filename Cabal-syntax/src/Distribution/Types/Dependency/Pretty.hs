@@ -30,8 +30,7 @@ import Distribution.Types.PackageName.Pretty
 import Distribution.Types.VersionRange.Pretty
 import Distribution.Types.UnqualComponentName.Internal
 
-import Distribution.Types.AnnotationNamespace
-import Distribution.Types.AnnotationTrivium
+import Distribution.Types.Annotation
 
 import qualified Data.Map as M
 import qualified Distribution.Compat.NonEmptySet as NES

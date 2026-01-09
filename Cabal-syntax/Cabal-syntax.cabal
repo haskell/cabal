@@ -124,8 +124,7 @@ library
     Distribution.Text
     Distribution.Types.AbiDependency
     Distribution.Types.AnnotatedGenericPackageDescription
-    Distribution.Types.AnnotationNamespace
-    Distribution.Types.AnnotationTrivium
+    Distribution.Types.Annotation
     Distribution.Types.AbiHash
     Distribution.Types.Benchmark
     Distribution.Types.Benchmark.Lens

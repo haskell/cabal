@@ -31,8 +31,7 @@ import Distribution.Parsec.Source
 import Distribution.Parsec.Warning
 import Distribution.Version (Version)
 
-import Distribution.Types.AnnotationNamespace
-import Distribution.Types.AnnotationTrivium
+import Distribution.Types.Annotation
 
 import qualified Data.Map as Map
 

@@ -91,7 +91,7 @@ import Distribution.FieldGrammar.Pretty (PrettyFieldGrammar (..))
 import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
 
-import Distribution.Types.AnnotationNamespace
+import Distribution.Types.Annotation
 import Distribution.Types.Dependency.Parsec
 
 import qualified Data.Map as M

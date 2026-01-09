@@ -6,8 +6,7 @@ import Prelude ()
 import Distribution.Types.VersionRange (isAnyVersionLight)
 import Distribution.Version (VersionRange, anyVersion, simplifyVersionRange)
 
-import Distribution.Types.AnnotationNamespace
-import Distribution.Types.AnnotationTrivium
+import Distribution.Types.Annotation
 
 import Distribution.CabalSpecVersion
 import Distribution.Compat.CharParsing (char, spaces)

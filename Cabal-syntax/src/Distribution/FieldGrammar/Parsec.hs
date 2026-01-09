@@ -78,7 +78,7 @@ import Distribution.Utils.Generic (fromUTF8BS)
 import Distribution.Utils.String (trim)
 import Prelude ()
 
-import Distribution.Types.AnnotationNamespace
+import Distribution.Types.Annotation
 
 import qualified Data.ByteString as BS
 import qualified Data.List.NonEmpty as NE

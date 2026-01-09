@@ -24,8 +24,7 @@ import Prelude ()
 import Distribution.Pretty
 
 import Distribution.Types.Version.Internal
-import Distribution.Types.AnnotationNamespace
-import Distribution.Types.AnnotationTrivium
+import Distribution.Types.Annotation
 
 import qualified Data.Map as M
 

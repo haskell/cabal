@@ -5,8 +5,7 @@ import Distribution.Compat.Prelude
 import Distribution.Parsec.Warning
 import Prelude ()
 
-import Distribution.Types.AnnotationNamespace
-import Distribution.Types.AnnotationTrivium
+import Distribution.Types.Annotation
 
 import qualified Data.Map as Map
 

@@ -6,8 +6,7 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Types.GenericPackageDescription
-import Distribution.Types.AnnotationNamespace
-import Distribution.Types.AnnotationTrivium
+import Distribution.Types.Annotation
 
 data AnnotatedGenericPackageDescription = AnnotatedGenericPackageDescription
   { unannotateGenericPackageDescription :: GenericPackageDescription

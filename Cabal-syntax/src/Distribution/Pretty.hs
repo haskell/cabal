@@ -21,8 +21,7 @@ import Distribution.CabalSpecVersion
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Types.AnnotationNamespace
-import Distribution.Types.AnnotationTrivium
+import Distribution.Types.Annotation
 
 import qualified Text.PrettyPrint as PP
 
