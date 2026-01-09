@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -80,6 +81,7 @@ prettyVersionRange :: TriviaTree -> VersionRange -> Disp.Doc
 prettyVersionRange t0 vr = cataVersionRange alg vr 0
   where
     t = unmark (NSVersionRange vr) t0
+    !() = trace ("=== Printed from instance Pretty VersionRange\n" <> show t) ()
 
     alg :: VersionRangeF (Int -> Disp.Doc) -> Int -> Disp.Doc
     alg (ThisVersionF v) _ = Disp.text "==" <<>> prettier t v

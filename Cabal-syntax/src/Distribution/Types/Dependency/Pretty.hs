@@ -35,6 +35,9 @@ import Distribution.Types.Annotation
 import qualified Data.Map as M
 import qualified Distribution.Compat.NonEmptySet as NES
 import qualified Text.PrettyPrint as PP
+import qualified Data.Text.Lazy as T
+
+import Text.Pretty.Simple
 
 -- |
 --
@@ -52,6 +55,11 @@ import qualified Text.PrettyPrint as PP
 instance Pretty Dependency where
   prettier t0 dep0@(Dependency name vRange sublibs) =
     let t2 = unmark (NSDependency dep0) t0
+        !() = trace
+          ( "=== Printed from instance Pretty Dependency, t0\n" <> T.unpack (pStringNoColor (show t0)) <> "\n\n"
+          <> "=== Printed from instance Pretty Dependency, t2\n" <> T.unpack (pStringNoColor (show t2)) <> "\n\n"
+          <> "=== Printed from instance Pretty Dependency, dep0\n" <> T.unpack (pStringNoColor (show dep0)) <> "\n\n"
+          ) ()
 
         -- TODO: change to isAnyVersion after #6736
         pver

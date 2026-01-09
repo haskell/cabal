@@ -45,6 +45,8 @@ library
     -- See also https://github.com/ekmett/transformers-compat/issues/35
     , transformers (>= 0.3      && < 0.4) || (>=0.4.1.0 && <0.7)
 
+    , pretty-simple
+
   ghc-options:
     -Wall
     -fno-ignore-asserts
