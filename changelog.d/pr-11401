@@ -4,8 +4,8 @@ prs: #11401
 
 description: {
 
-Following https://github.com/haskell/cabal/pull/9434/files , and as seen
-in the various gnu_HOST_OS usages in the ghc source code, it is expected that
+Following [#9434](https://github.com/haskell/cabal/pull/9434/), and as seen
+in the various `gnu_HOST_OS` usages in the GHC source code, it is expected that
 GNU/Hurd is advertised as "gnu", so the OS String encoding for OSHurd was
 updated into "gnu".
 
