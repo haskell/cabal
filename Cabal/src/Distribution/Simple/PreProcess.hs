@@ -797,7 +797,7 @@ platformDefines lbi =
       Android -> ["android"]
       Ghcjs -> ["ghcjs"]
       Wasi -> ["wasi"]
-      Hurd -> ["hurd"]
+      Hurd -> ["gnu"]
       Haiku -> ["haiku"]
       OtherOS _ -> []
     archStr = case hostArch of
