@@ -104,10 +104,13 @@ import System.IO
   )
 import System.IO.Unsafe (unsafePerformIO)
 
+import qualified Data.Set as Set
 import Data.Time (utcToLocalTime)
 import Data.Time.Calendar (toGregorian)
 import Data.Time.Clock.POSIX (getCurrentTime)
 import Data.Time.LocalTime (getCurrentTimeZone, localDay)
+import Distribution.Simple.PackageDescription (readGenericPackageDescription)
+import Distribution.Types.GenericPackageDescription (GenericPackageDescription)
 import GHC.Conc.Sync (getNumProcessors)
 import GHC.IO.Encoding
   ( TextEncoding (TextEncoding)
@@ -117,13 +120,8 @@ import GHC.IO.Encoding.Failure
   ( CodingFailureMode (TransliterateCodingFailure)
   , recoverEncode
   )
-#if defined(mingw32_HOST_OS) || MIN_VERSION_directory(1,2,3)
 import qualified System.Directory as Dir
 import qualified System.IO.Error as IOError
-#endif
-import qualified Data.Set as Set
-import Distribution.Simple.PackageDescription (readGenericPackageDescription)
-import Distribution.Types.GenericPackageDescription (GenericPackageDescription)
 
 -- | Generic merging utility. For sorted input lists this is a full outer join.
 mergeBy :: forall a b. (a -> b -> Ordering) -> [a] -> [b] -> [MergeResult a b]
@@ -333,18 +331,18 @@ byteStringToFilePath bs
 
 -- | Workaround for the inconsistent behaviour of 'canonicalizePath'. Always
 -- throws an error if the path refers to a non-existent file.
-{- FOURMOLU_DISABLE -}
 tryCanonicalizePath :: FilePath -> IO FilePath
 tryCanonicalizePath path = do
   ret <- canonicalizePath path
-#if defined(mingw32_HOST_OS) || MIN_VERSION_directory(1,2,3)
   exists <- liftM2 (||) (doesFileExist ret) (Dir.doesDirectoryExist ret)
   unless exists $
-    IOError.ioError $ IOError.mkIOError IOError.doesNotExistErrorType "canonicalizePath"
-                        Nothing (Just ret)
-#endif
+    IOError.ioError $
+      IOError.mkIOError
+        IOError.doesNotExistErrorType
+        "canonicalizePath"
+        Nothing
+        (Just ret)
   return ret
-{- FOURMOLU_ENABLE -}
 
 -- | A non-throwing wrapper for 'canonicalizePath'. If 'canonicalizePath' throws
 -- an exception, returns the path argument unmodified.

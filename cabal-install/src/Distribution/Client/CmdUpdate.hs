@@ -12,9 +12,6 @@ import Control.Exception
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Client.Compat.Directory
-  ( setModificationTime
-  )
 import Distribution.Client.FetchUtils
   ( downloadIndex
   )
@@ -76,6 +73,9 @@ import Distribution.Simple.Utils
 import Distribution.Verbosity
   ( lessVerbose
   , normal
+  )
+import System.Directory
+  ( setModificationTime
   )
 
 import qualified Data.Maybe as Unsafe (fromJust)
