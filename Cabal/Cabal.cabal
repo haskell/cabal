@@ -197,7 +197,6 @@ library
     Distribution.Compat.Exception,
     Distribution.Compat.Graph,
     Distribution.Compat.Lens,
-    Distribution.Compat.MonadFail,
     Distribution.Compat.Newtype,
     Distribution.Compat.NonEmptySet,
     Distribution.Compat.Parsing,
