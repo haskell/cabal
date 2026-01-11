@@ -1,9 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RankNTypes #-}
-
--- Compatibility layer for GHC.ResponseFile
--- Implementation from base 4.12.0 is used.
--- http://hackage.haskell.org/package/base-4.12.0.0/src/LICENSE
 module Distribution.Compat.ResponseFile (expandResponse, escapeArgs) where
 
 import Distribution.Compat.Prelude
@@ -16,12 +10,12 @@ import System.FilePath
 import System.IO (hPutStrLn, stderr)
 import System.IO.Error
 
--- | The arg file / response file parser.
---
--- This is not a well-documented capability, and is a bit eccentric
--- (try @cabal \@foo \@bar@ to see what that does), but is crucial
--- for allowing complex arguments to cabal and cabal-install when
--- using command prompts with strongly-limited argument length.
+-- | This is a more elaborate version of 'GHC.ResponseFile.expandResponse',
+-- which not only substitute @\@foo@ with the contents of file @foo@,
+-- but performs such substitution recursively.
+-- In doing so we keep closer to the reference implementation
+-- of @expandargv@ in @argv.c@ from @binutils@, although this additional functionality
+-- likely remains unused by Haskell tooling.
 expandResponse :: [String] -> IO [String]
 expandResponse = go recursionLimit "."
   where
