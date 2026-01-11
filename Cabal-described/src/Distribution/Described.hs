@@ -53,7 +53,7 @@ import Test.QuickCheck       (Arbitrary (..), Property, counterexample)
 import Test.Tasty            (TestTree, testGroup)
 import Test.Tasty.QuickCheck (testProperty)
 
-import Distribution.Compat.Semigroup (Semigroup (..))
+import Data.Semigroup                (Semigroup (..))
 import Distribution.Parsec           (Parsec, eitherParsec)
 import Distribution.Pretty           (Pretty, prettyShow)
 
