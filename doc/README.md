@@ -63,21 +63,6 @@ make: *** [Makefile: users-guide-typos] Error 2
 # spellchecker:on
 ```
 
-### Gitpod workflow
-
-From a fork of cabal, these docs can be edited online with
-[gitpod](https://www.gitpod.io/):
-
-* Open in gitpod https://gitpod.io/#https://github.com/username/cabal
-* Install the virtual environment prerequisite.
-  `> sudo apt install python3.8-venv`
-* Build the user guide `> make users-guide`.
-* Open the guide in a local browser.
-  `> python -m http.server 8000 --directory=dist-newstyle/doc/users-guide`
-
-Make your edits, rebuild the guide and refresh the browser to preview the
-changes. When happy, commit your changes with git in the included terminal.
-
 ### Caveats, for newcomers to RST from MD
 
 RST does not allow you to skip section levels when nesting, like MD
