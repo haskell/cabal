@@ -45,7 +45,7 @@ instance CabalParsing ParsecParser where
 
   markNamespace ns = liftParsec $ do
     Parsec.modifyState $ \(PPUserState warns triviaTree) ->
-      PPUserState warns (mark ns triviaTree)
+      PPUserState warns (mark ns [triviaTree])
 
   annotate namespace trivium = liftParsec $ do
     Parsec.modifyState $ \(PPUserState warns triviaTree) ->

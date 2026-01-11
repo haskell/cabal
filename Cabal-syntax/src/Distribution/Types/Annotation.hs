@@ -67,6 +67,9 @@ instance Semigroup TriviaTree where
 instance Monoid TriviaTree where
   mempty = emptyTriviaTree
 
+fromNamedTrivia :: Namespace -> Trivia -> TriviaTree
+fromNamedTrivia ns ts = annotateTriviaTree ns ts mempty
+
 emptyTriviaTree :: TriviaTree
 emptyTriviaTree = TriviaTree mempty mempty
 
@@ -79,8 +82,8 @@ annotateTriviaTree ns t (TriviaTree local below) =
   TriviaTree local (M.insertWith (<>) ns (TriviaTree t mempty) below)
 
 -- | Wrap the trivia within a namespace
-mark :: Namespace -> TriviaTree -> TriviaTree
-mark ns tt = TriviaTree mempty (M.singleton ns tt)
+mark :: Namespace -> [TriviaTree] -> TriviaTree
+mark ns tts = TriviaTree mempty (M.fromList $ zip (repeat ns) tts)
 
 -- | If the trivia map is for this scope
 unmark :: Namespace -> TriviaTree -> TriviaTree

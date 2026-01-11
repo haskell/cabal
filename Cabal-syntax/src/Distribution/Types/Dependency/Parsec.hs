@@ -22,6 +22,8 @@ import Distribution.Types.VersionRange.Parsec
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.UnqualComponentName.Parsec
 
+import qualified Data.Map as M
+
 import qualified Distribution.Compat.NonEmptySet as NES
 import qualified Text.PrettyPrint as PP
 
@@ -58,7 +60,7 @@ import qualified Text.PrettyPrint as PP
 -- >>> map (`simpleParsec'` "mylib:sub") [CabalSpecV2_4, CabalSpecV3_0] :: [Maybe Dependency]
 -- [Nothing,Just (Dependency (PackageName "mylib") (OrLaterVersion (mkVersion [0])) (fromNonEmpty (LSubLibName (UnqualComponentName "sub") :| [])))]
 instance Parsec Dependency where
-  parsec = do
+  triviaParsec = do
     name <- parsec
 
     libs <- option mainLibSet $ do
@@ -67,17 +69,16 @@ instance Parsec Dependency where
       NES.singleton <$> parseLib <|> parseMultipleLibs
 
     spaces -- https://github.com/haskell/cabal/issues/5846
-    ver <-
-      parsec
-      <|>
-        ( do
-            v <- pure anyVersion
-            annotate (NSVersionRange v) IsInjected
-            pure v
-        )
+    -- TODO(leana8959): ^ register space at local scope
+    (verTrivia, ver) <-
+            let t = fromNamedTrivia (NSVersionRange anyVersion) [IsInjected]
+            in  triviaParsec <|> pure (t, anyVersion)
     let dep = mkDependency name ver libs
-    markNamespace (NSDependency dep)
-    return dep
+    let depTrivia = mark (NSDependency dep) [verTrivia]
+    return
+      ( depTrivia
+      , dep
+      )
     where
       parseLib = LSubLibName <$> parsec
       parseMultipleLibs =

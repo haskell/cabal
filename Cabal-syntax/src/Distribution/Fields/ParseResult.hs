@@ -174,7 +174,7 @@ recoverWith (PR pr) x = PR $ \ !s fp _failure success ->
 markParseResultAnnotation :: Namespace -> ParseResult src ()
 markParseResultAnnotation ns =
   PR $ \ !(PRState warns errs t0 v) _fp _failure success ->
-    success (PRState warns errs (mark ns t0) v) ()
+    success (PRState warns errs (mark ns [t0]) v) ()
 
 getParseResultAnnotation :: ParseResult src TriviaTree
 getParseResultAnnotation =
