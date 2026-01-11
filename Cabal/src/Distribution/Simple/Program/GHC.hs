@@ -24,8 +24,8 @@ module Distribution.Simple.Program.GHC
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Data.Semigroup (First (..), Last (..))
 import Distribution.Backpack
-import Distribution.Compat.Semigroup (First' (..), Last' (..), Option' (..))
 import Distribution.ModuleName
 import Distribution.PackageDescription
 import Distribution.Pretty
@@ -146,15 +146,15 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
     flagArgumentFilter :: [String] -> [String] -> [String]
     flagArgumentFilter flags = go
       where
-        makeFilter :: String -> String -> Option' (First' ([String] -> [String]))
-        makeFilter flag arg = Option' $ First' . filterRest <$> stripPrefix flag arg
+        makeFilter :: String -> String -> Maybe (First ([String] -> [String]))
+        makeFilter flag arg = First . filterRest <$> stripPrefix flag arg
           where
             filterRest leftOver = case dropEq leftOver of
               [] -> drop 1
               _ -> id
 
         checkFilter :: String -> Maybe ([String] -> [String])
-        checkFilter = fmap getFirst' . getOption' . foldMap makeFilter flags
+        checkFilter = fmap getFirst . foldMap makeFilter flags
 
         go :: [String] -> [String]
         go [] = []
@@ -364,12 +364,12 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
     safeToFilterHoles :: Bool
     safeToFilterHoles =
       getAll . checkGhcFlags $
-        All . fromMaybe True . fmap getLast' . getOption' . foldMap notDeferred
+        All . fromMaybe True . fmap getLast . foldMap notDeferred
       where
-        notDeferred :: String -> Option' (Last' Bool)
-        notDeferred "-fdefer-typed-holes" = Option' . Just . Last' $ False
-        notDeferred "-fno-defer-typed-holes" = Option' . Just . Last' $ True
-        notDeferred _ = Option' Nothing
+        notDeferred :: String -> Maybe (Last Bool)
+        notDeferred "-fdefer-typed-holes" = Just . Last $ False
+        notDeferred "-fno-defer-typed-holes" = Just . Last $ True
+        notDeferred _ = Nothing
 
     isTypedHoleFlag :: String -> Any
     isTypedHoleFlag =

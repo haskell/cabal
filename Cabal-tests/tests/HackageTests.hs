@@ -9,7 +9,6 @@
 
 module Main where
 
-import Distribution.Compat.Semigroup
 import Prelude ()
 import Prelude.Compat
 

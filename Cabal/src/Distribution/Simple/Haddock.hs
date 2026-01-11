@@ -40,9 +40,9 @@ import qualified Distribution.Simple.GHCJS as GHCJS
 
 -- local
 
+import Data.Semigroup (All (..), Any (..))
 import Distribution.Backpack (OpenModule)
 import Distribution.Backpack.DescribeUnitId
-import Distribution.Compat.Semigroup (All (..), Any (..))
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
 import qualified Distribution.ModuleName as ModuleName
