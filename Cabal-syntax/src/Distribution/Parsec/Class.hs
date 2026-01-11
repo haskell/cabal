@@ -13,6 +13,7 @@ import Distribution.Parsec.Warning
 import Prelude ()
 
 import Distribution.CabalParsing
+import Distribution.Types.Annotation
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.DList as DList
@@ -21,7 +22,12 @@ import qualified Distribution.Compat.DList as DList
 --
 -- For parsing @.cabal@ like file structure, see "Distribution.Fields".
 class Parsec a where
+  {-# MINIMAL parsec | triviaParsec #-}
   parsec :: CabalParsing m => m a
+  parsec = (\(_, y) -> y) <$> triviaParsec
+
+  triviaParsec :: CabalParsing m => m (TriviaTree, a)
+  triviaParsec = (\y -> (mempty, y)) <$> parsec
 
 instance Parsec a => Parsec (Identity a) where
   parsec = Identity <$> parsec
