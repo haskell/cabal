@@ -163,6 +163,7 @@ library
     Distribution.Simple.Test.LibV09
     Distribution.Simple.Test.Log
     Distribution.Simple.UHC
+    Distribution.Simple.MHS
     Distribution.Simple.UserHooks
     Distribution.Simple.SetupHooks.Errors
     Distribution.Simple.SetupHooks.Internal
