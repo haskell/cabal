@@ -979,18 +979,21 @@ libFieldNames = fieldGrammarKnownFieldList (libraryFieldGrammar LMainLibName)
 -- Supplementary build information
 -------------------------------------------------------------------------------
 
-parseHookedBuildInfo :: BS.ByteString -> ParseResult src (TriviaTree, HookedBuildInfo)
-parseHookedBuildInfo bs = case readFields' bs of
+parseHookedBuildInfo :: BS.ByteString -> ParseResult src (HookedBuildInfo)
+parseHookedBuildInfo = fmap (\(_, x) -> x) . parseHookedBuildInfo'
+
+parseHookedBuildInfo' :: BS.ByteString -> ParseResult src (TriviaTree, HookedBuildInfo)
+parseHookedBuildInfo' bs = case readFields' bs of
   Right (fs, lexWarnings) -> do
-    parseHookedBuildInfo' lexWarnings fs
+    parseHookedBuildInfo'' lexWarnings fs
   -- TODO: better marshalling of errors
   Left perr -> parseFatalFailure zeroPos (show perr)
 
-parseHookedBuildInfo'
+parseHookedBuildInfo''
   :: [LexWarning]
   -> [Field Position]
   -> ParseResult src (TriviaTree, HookedBuildInfo)
-parseHookedBuildInfo' lexWarnings fs = do
+parseHookedBuildInfo'' lexWarnings fs = do
   parseWarnings (toPWarnings lexWarnings)
   (tStanzas, (mLibFields, exes)) <- stanzas fs
   (tLib, mLib) <- parseLib mLibFields
