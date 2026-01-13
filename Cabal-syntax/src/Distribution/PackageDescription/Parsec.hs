@@ -37,7 +37,7 @@ module Distribution.PackageDescription.Parsec
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Control.Monad.State.Strict (StateT, execStateT)
+import Control.Monad.State.Strict (StateT, runStateT)
 import Control.Monad.Trans.Class (lift)
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
@@ -208,7 +208,7 @@ parseAnnotatedGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs =
   setCabalSpecVersion (Just specVer')
 
   -- Package description
-  (pdTrivia, pd) <- parseFieldGrammar specVer fields packageDescriptionFieldGrammar
+  (tPd, pd) <- parseFieldGrammar specVer fields packageDescriptionFieldGrammar
 
   -- Check that scanned and parsed versions match.
   unless (specVer == specVersion pd) $
@@ -221,17 +221,17 @@ parseAnnotatedGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs =
   maybeWarnCabalVersion syntax pd
 
   -- Sections
-  -- TODO(leana8959): get trivia from sections
   let gpd =
         emptyGenericPackageDescription
           & L.packageDescription .~ pd
-  gpd1 <- view stateGpd <$> execStateT (goSections specVer sectionFields) (SectionS gpd Map.empty)
+  (tSections, gpd1) <- fmap (view stateGpd) <$> runStateT (goSections specVer sectionFields) (SectionS gpd Map.empty)
 
   let gpd2 = postProcessInternalDeps specVer gpd1
   checkForUndefinedFlags gpd2
   checkForUndefinedCustomSetup gpd2
 
-  let agpd = AnnotatedGenericPackageDescription gpd2 pdTrivia
+  let t = tPd <> tSections
+  let agpd = AnnotatedGenericPackageDescription gpd2 t
   -- See nothunks test, without this deepseq we get (at least):
   -- Thunk in ThunkInfo {thunkContext = ["PackageIdentifier","PackageDescription","GenericPackageDescription"]}
   --
@@ -685,7 +685,7 @@ parseCondTreeWithCommonStanzas
   -> [Field Position]
   -> ParseResult src (TriviaTree, CondTree ConfVar [Dependency] a)
 parseCondTreeWithCommonStanzas v grammar fromBuildInfo commonStanzas fields = do
-  -- TODO(leana8959): does the imports have trivia
+  -- TODO(leana8959): think about how to adapt the trivia handling with defer imports, and maybe merge that in for a complete poc
   (fields', endo) <- processImports v fromBuildInfo commonStanzas fields
   (tx, x) <- parseCondTree v hasElif grammar commonStanzas fromBuildInfo (view L.targetBuildDepends) fields'
   return (tx, (endo x))
