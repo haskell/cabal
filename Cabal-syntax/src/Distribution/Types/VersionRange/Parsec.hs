@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -24,6 +25,8 @@ import Distribution.Types.VersionRange.Pretty
 import Distribution.Types.Version.Parsec
 
 import Distribution.Types.Annotation
+
+import Data.Function
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.DList as DList
@@ -67,7 +70,9 @@ import qualified Text.PrettyPrint as Disp
 -- >>> map (`simpleParsecW'` "== 1.2.*") [CabalSpecV1_4, CabalSpecV1_6] :: [Maybe VersionRange]
 -- [Nothing,Just (IntersectVersionRanges (OrLaterVersion (mkVersion [1,2])) (EarlierVersion (mkVersion [1,3])))]
 instance Parsec VersionRange where
-  parsec = askCabalSpecVersion >>= versionRangeParser versionDigitParser
+  triviaParsec = askCabalSpecVersion >>= versionRangeTriviaParser versionDigitParser
+
+versionRangeParser digitParser csv = fmap (\(_, x) -> x) $ versionRangeTriviaParser digitParser csv
 
 -- | 'VersionRange' parser parametrised by version digit parser.
 --
@@ -76,64 +81,70 @@ instance Parsec VersionRange where
 --   versions, 'PkgConfigVersionRange'.
 --
 -- @since 3.0
-versionRangeParser :: forall m. CabalParsing m => m Int -> CabalSpecVersion -> m VersionRange
-versionRangeParser digitParser csv = expr
+versionRangeTriviaParser :: forall m. CabalParsing m => m Int -> CabalSpecVersion -> m (TriviaTree, VersionRange)
+versionRangeTriviaParser digitParser csv = expr
   where
+    expr :: m (TriviaTree, VersionRange)
     expr = do
       preSpaces <- P.spaces'
-      t <- term
+      (tTerm, t) <- term
       postSpaces <- P.spaces'
 
       ( do
           _ <- P.string "||"
           checkOp
           preSpaces' <- P.spaces'
-          e <- expr
+          (tExpr, e) <- expr
           let e' = unionVersionRanges t e
-          -- markNamespace (NSVersionRange e')
-          -- annotate (NSVersionRange e') (PreTrivia preSpaces')
-          return e'
+          let tExpr' = [TriviaTree [PreTrivia preSpaces] mempty]
+                      & mark (NSVersionRange e')
+          return (tExpr', e')
         )
           <|>
             ( do
-                -- markNamespace (NSVersionRange t)
-                -- annotate (NSVersionRange t) (PreTrivia preSpaces)
-                -- annotate (NSVersionRange t) (PostTrivia postSpaces)
-                return t
+                let tTerm' = [TriviaTree [PreTrivia preSpaces, PostTrivia postSpaces] mempty]
+                            & mark (NSVersionRange t)
+                return (tTerm <> tTerm', t)
               )
+
+    term :: m (TriviaTree, VersionRange)
     term = do
-      f <- factor
+      (tFact, f) <- factor
       postSpaces <- P.spaces'
       ( do
           _ <- P.string "&&"
           checkOp
           preSpaces' <- P.spaces'
-          t <- term
-          -- markNamespace (NSVersionRange t)
-          -- annotate (NSVersionRange t) (PreTrivia preSpaces')
-          return (intersectVersionRanges f t)
+          (tTerm, t) <- term
+          let tTerm' = [TriviaTree [PreTrivia preSpaces', PostTrivia postSpaces] mempty]
+                      & mark (NSVersionRange t)
+          return (tTerm <> tFact <> tTerm', intersectVersionRanges f t)
         )
           <|>
             ( do
-                -- markNamespace (NSVersionRange f)
-                -- annotate (NSVersionRange f) (PostTrivia postSpaces)
-                return f
+                let tFact' = [TriviaTree [PostTrivia postSpaces] mempty]
+                             & mark (NSVersionRange f)
+                return (tFact, f)
               )
 
+    factor :: m (TriviaTree, VersionRange)
     factor = parens expr <|> prim
 
+    prim :: m (TriviaTree, VersionRange)
     prim = do
       op <- P.munch1 isOpChar P.<?> "operator"
       case op of
-        "-" -> anyVersion <$ P.string "any" <|> P.string "none" *> noVersion'
+        "-" -> (pure anyVersion) <$ P.string "any" <|> P.string "none" *> noVersion'
         "==" -> do
           preSpaces <- P.spaces'
           ( do
               (wild, v) <- verOrWild
               checkWild wild
-              -- annotate (NSVersion v) (PreTrivia preSpaces)
 
-              pure $ (if wild then withinVersion else thisVersion) v
+              let t = [TriviaTree [PreTrivia preSpaces] mempty]
+                      & mark (NSVersion v)
+              pure $ (t,) $ (if wild then withinVersion else thisVersion) v
+
               -- ignore braces for now
               <|> (verSet' thisVersion =<< verSet)
             )
@@ -143,25 +154,28 @@ versionRangeParser digitParser csv = expr
               (wild, v) <- verOrWild
               when wild $
                 P.unexpected "wild-card version after ^>= operator"
-              -- annotate (NSVersion v) (PreTrivia preSpaces)
 
-              majorBoundVersion' v
+              let t = [TriviaTree [PreTrivia preSpaces] mempty]
+                      & mark (NSVersion v)
+              (t,) <$> majorBoundVersion' v
+
               -- ignore braces for now
               <|> (verSet' majorBoundVersion =<< verSet)
             )
         _ -> do
           preSpaces <- P.spaces'
           (wild, v) <- verOrWild
-          when wild $
-            P.unexpected $
-              "wild-card version after non-== operator: " ++ show op
+          when wild
+            $ P.unexpected $ "wild-card version after non-== operator: " ++ show op
 
-          -- annotate (NSVersion v) (PreTrivia preSpaces)
+          let t = [TriviaTree [PreTrivia preSpaces] mempty]
+                  & mark (NSVersion v)
+
           case op of
-            ">=" -> pure $ orLaterVersion v
-            "<" -> pure $ earlierVersion v
-            "<=" -> pure $ orEarlierVersion v
-            ">" -> pure $ laterVersion v
+            ">=" -> pure $ (t, orLaterVersion v)
+            "<" -> pure $ (t, earlierVersion v)
+            "<=" -> pure $ (t, orEarlierVersion v)
+            ">" -> pure $ (t, laterVersion v)
             _ -> fail $ "Unknown version operator " ++ show op
 
     -- Cannot be warning
@@ -203,9 +217,10 @@ versionRangeParser digitParser csv = expr
     isOpChar _ = False
 
     -- -none version range is available since 1.22
+    noVersion' :: m (TriviaTree, VersionRange)
     noVersion' =
       if csv >= CabalSpecV1_22
-        then pure noVersion
+        then (pure . pure) noVersion
         else
           fail $
             unwords
@@ -238,7 +253,7 @@ versionRangeParser digitParser csv = expr
     -- version set notation (e.g. "== { 0.0.1.0, 0.0.2.0, 0.1.0.0 }")
     verSet' op vs =
       if csv >= CabalSpecV3_0
-        then pure $ foldr1 unionVersionRanges (fmap op vs)
+        then (pure . pure) $ foldr1 unionVersionRanges (fmap op vs)
         else
           fail $
             unwords

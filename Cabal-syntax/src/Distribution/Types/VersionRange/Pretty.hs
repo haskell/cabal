@@ -32,7 +32,6 @@ module Distribution.Types.VersionRange.Pretty
   , cataVersionRange
   , anaVersionRange
   , hyloVersionRange
-  -- , versionRangeParser
   , majorUpperBound
   , wildcardUpperBound
   ) where

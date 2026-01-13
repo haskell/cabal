@@ -31,7 +31,6 @@ module Distribution.Types.VersionRange.Internal
   , cataVersionRange
   , anaVersionRange
   , hyloVersionRange
-  -- , versionRangeParser
   , majorUpperBound
   , wildcardUpperBound
   ) where

@@ -109,12 +109,10 @@ instance FieldGrammar Pretty PrettyFieldGrammar where
 
   freeTextFieldDefST = defaultFreeTextFieldDefST
 
-  -- NOTE(leana8959): build-depends is such a field
   monoidalFieldAla fn _pack l = PrettyFG pp
     where
       pp v t s =
         let t' = unmark (NSField fn) t
-          -- !() = trace ("=== Printed from monoidalFieldAla\n" <> show t') ()
         in  ppField fn (prettierVersioned v t' (pack' _pack (aview l s)))
 
   prefixedFields _fnPfx l = PrettyFG (\_ t -> pp . aview l)
