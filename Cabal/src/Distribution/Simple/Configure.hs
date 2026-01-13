@@ -137,10 +137,6 @@ import Data.List
   )
 import qualified Data.List.NonEmpty as NEL
 import qualified Data.Map as Map
-import Distribution.Compat.Directory
-  ( doesPathExist
-  , listDirectory
-  )
 import Distribution.Compat.Environment (lookupEnv)
 import Distribution.Parsec
   ( simpleParsec
@@ -158,6 +154,8 @@ import System.Directory
   ( canonicalizePath
   , createDirectoryIfMissing
   , doesFileExist
+  , doesPathExist
+  , listDirectory
   , removeFile
   )
 import System.FilePath

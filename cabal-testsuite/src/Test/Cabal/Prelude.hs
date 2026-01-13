@@ -1254,10 +1254,6 @@ withDelay m = do
 -- | Create a symlink for the duration of the provided action. If the symlink
 -- already exists, it is deleted.
 withSymlink :: FilePath -> FilePath -> TestM a -> TestM a
-#if defined(mingw32_HOST_OS) && !MIN_VERSION_directory(1,3,1)
-withSymlink _oldpath _newpath _act =
-  error "Test.Cabal.Prelude.withSymlink: does not work on Windows with directory <1.3.1!"
-#else
 withSymlink oldpath newpath0 act = do
   liftIO $ hPutStrLn stderr $ "Symlinking " <> oldpath <> " <== " <> newpath0
   env <- getTestEnv
@@ -1266,7 +1262,6 @@ withSymlink oldpath newpath0 act = do
   when symlinkExists $ liftIO $ removeFile newpath
   bracket_ (liftIO $ createFileLink oldpath newpath)
            (liftIO $ pure ()) act
-#endif
 
 writeSourceFile :: FilePath -> String -> TestM ()
 writeSourceFile fp s = do
