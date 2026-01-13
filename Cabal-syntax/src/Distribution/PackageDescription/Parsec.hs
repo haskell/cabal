@@ -4,7 +4,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# OPTIONS_GHC -Wunused-local-binds #-}
+{-# OPTIONS_GHC -Werror=unused-local-binds -Werror=unused-matches #-}
 
 -- |
 -- Module      :  Distribution.PackageDescription.Parsec
@@ -85,7 +85,7 @@ import qualified Text.Parsec as P
 -- with sections and possibly indented property descriptions.
 parseGenericPackageDescription :: BS.ByteString -> ParseResult src GenericPackageDescription
 parseGenericPackageDescription =
-  fmap unannotateGenericPackageDescription
+  fmap unAnnotateGPD
     . parseAnnotatedGenericPackageDescription
 
 parseAnnotatedGenericPackageDescription :: BS.ByteString -> ParseResult src AnnotatedGenericPackageDescription
@@ -111,11 +111,11 @@ parseAnnotatedGenericPackageDescription bs = do
         parseWarning zeroPos PWTQuirkyCabalFile "Legacy cabal file"
       -- UTF8 is validated in a prepass step, afterwards parsing is lenient.
       parsedGpd <- parseGenericPackageDescription' csv lexWarnings invalidUtf8 fs
-      trivia <- getParseResultAnnotation
+      t <- getParseResultAnnotation
       pure $!
         AnnotatedGenericPackageDescription
         parsedGpd
-        trivia
+        t
 
     -- TODO: better marshalling of errors
     Left perr -> parseFatalFailure pos (show perr)
@@ -171,7 +171,15 @@ parseGenericPackageDescription'
   -> Maybe Int
   -> [Field Position]
   -> ParseResult src GenericPackageDescription
-parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
+parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos = fmap unAnnotateGPD . parseAnnotatedGenericPackageDescription' scannedVer lexWarnings utf8WarnPos
+
+parseAnnotatedGenericPackageDescription'
+  :: Maybe CabalSpecVersion
+  -> [LexWarning]
+  -> Maybe Int
+  -> [Field Position]
+  -> ParseResult src AnnotatedGenericPackageDescription
+parseAnnotatedGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
   parseWarnings (toPWarnings lexWarnings)
   for_ utf8WarnPos $ \pos ->
     parseWarning zeroPos PWTUTF $ "UTF8 encoding problem at byte offset " ++ show pos
@@ -205,7 +213,6 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
   setCabalSpecVersion (Just specVer')
 
   -- Package description
-  -- TODO(leana8959): maybe pass this upwards
   (pdTrivia, pd) <- parseFieldGrammar specVer fields packageDescriptionFieldGrammar
 
   -- Check that scanned and parsed versions match.
@@ -219,6 +226,7 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
   maybeWarnCabalVersion syntax pd
 
   -- Sections
+  -- TODO(leana8959): get trivia from sections
   let gpd =
         emptyGenericPackageDescription
           & L.packageDescription .~ pd
@@ -227,13 +235,16 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
   let gpd2 = postProcessInternalDeps specVer gpd1
   checkForUndefinedFlags gpd2
   checkForUndefinedCustomSetup gpd2
+
+  let agpd = AnnotatedGenericPackageDescription gpd2 pdTrivia
   -- See nothunks test, without this deepseq we get (at least):
   -- Thunk in ThunkInfo {thunkContext = ["PackageIdentifier","PackageDescription","GenericPackageDescription"]}
   --
   -- TODO: re-benchmark, whether `deepseq` is important (both cabal-benchmarks and solver-benchmarks)
   -- TODO: remove the need for deepseq if `deepseq` in fact matters
   -- NOTE: IIRC it does affect (maximal) memory usage, which causes less GC pressure
-  gpd2 `deepseq` return gpd2
+  -- gpd2 `deepseq` return gpd2
+  agpd `deepseq` return agpd
   where
     safeLast :: [a] -> Maybe a
     safeLast = listToMaybe . reverse
@@ -259,13 +270,13 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
 cabalFormatVersionsDesc :: String
 cabalFormatVersionsDesc = "Current cabal-version values are listed at https://cabal.readthedocs.io/en/stable/file-format-changelog.html."
 
-goSections :: CabalSpecVersion -> [Field Position] -> SectionParser src ()
-goSections specVer = traverse_ process
+goSections :: CabalSpecVersion -> [Field Position] -> SectionParser src TriviaTree
+goSections specVer = fmap mconcat . traverse process
   where
-    process (Field (Name pos name) _) =
-      lift $
-        parseWarning pos PWTTrailingFields $
-          "Ignoring trailing fields after sections: " ++ show name
+    process :: Field Position -> SectionParser src TriviaTree
+    process (Field (Name pos name) _) = do
+      lift $ parseWarning pos PWTTrailingFields $ "Ignoring trailing fields after sections: " ++ show name
+      pure mempty
     process (Section name args secFields) =
       parseSection name args secFields
 
@@ -285,11 +296,12 @@ goSections specVer = traverse_ process
       -> ParseResult src (TriviaTree, CondTree ConfVar [Dependency] a)
     parseCondTree' = parseCondTreeWithCommonStanzas specVer
 
-    parseSection :: Name Position -> [SectionArg Position] -> [Field Position] -> SectionParser src ()
+    parseSection :: Name Position -> [SectionArg Position] -> [Field Position] -> SectionParser src TriviaTree
     parseSection (Name pos name) args fields
       | hasCommonStanzas == NoCommonStanzas
       , name == "common" = lift $ do
           parseWarning pos PWTUnknownSection $ "Ignoring section: common. You should set cabal-version: 2.2 or larger to use common stanzas."
+          pure mempty
       | name == "common" = do
           commonStanzas <- use stateCommonStanzas
           name' <- lift $ parseCommonName pos args
@@ -297,10 +309,9 @@ goSections specVer = traverse_ process
 
           case Map.lookup name' commonStanzas of
             Nothing -> stateCommonStanzas .= Map.insert name' biTree commonStanzas
-            Just _ ->
-              lift $
-                parseFailure pos $
-                  "Duplicate common stanza: " ++ name'
+            Just _ -> lift $ parseFailure pos $ "Duplicate common stanza: " ++ name'
+
+          pure tBiTree
       | name == "library" && null args = do
           prev <- use $ stateGpd . L.condLibrary
           when (isJust prev) $
@@ -314,6 +325,7 @@ goSections specVer = traverse_ process
           --
           -- TODO check that not set
           stateGpd . L.condLibrary ?= lib
+          pure tLib
 
       -- Sublibraries
       -- TODO: check cabal-version
@@ -324,6 +336,7 @@ goSections specVer = traverse_ process
           (tLib, lib) <- lift $ parseCondTree' (libraryFieldGrammar name'') (libraryFromBuildInfo name'') commonStanzas fields
           -- TODO check duplicate name here?
           stateGpd . L.condSubLibraries %= snoc (name', lib)
+          pure tLib
 
       -- TODO: check cabal-version
       | name == "foreign-library" = do
@@ -345,12 +358,14 @@ goSections specVer = traverse_ process
 
           -- TODO check duplicate name here?
           stateGpd . L.condForeignLibs %= snoc (name', flib)
+          pure tFlib
       | name == "executable" = do
           commonStanzas <- use stateCommonStanzas
           name' <- parseUnqualComponentName pos args
           (tExe, exe) <- lift $ parseCondTree' (executableFieldGrammar name') (fromBuildInfo' name') commonStanzas fields
           -- TODO check duplicate name here?
           stateGpd . L.condExecutables %= snoc (name', exe)
+          pure tExe
       | name == "test-suite" = do
           commonStanzas <- use stateCommonStanzas
           name' <- parseUnqualComponentName pos args
@@ -379,6 +394,7 @@ goSections specVer = traverse_ process
 
           -- TODO check duplicate name here?
           stateGpd . L.condTestSuites %= snoc (name', testSuite)
+          pure tTestStanza
       | name == "benchmark" = do
           commonStanzas <- use stateCommonStanzas
           name' <- parseUnqualComponentName pos args
@@ -407,15 +423,18 @@ goSections specVer = traverse_ process
 
           -- TODO check duplicate name here?
           stateGpd . L.condBenchmarks %= snoc (name', bench)
+          pure tBenchStanza
       | name == "flag" = do
           name' <- parseNameBS pos args
           name'' <- lift $ runFieldParser' [pos] parsec specVer (fieldLineStreamFromBS name') `recoverWith` mkFlagName ""
           (tFlag, flag) <- lift $ parseFields specVer fields (flagFieldGrammar name'')
           -- Check default flag
           stateGpd . L.genPackageFlags %= snoc flag
+          pure tFlag
       | name == "custom-setup" && null args = do
           (tSbi, sbi) <- lift $ parseFields specVer fields (setupBInfoFieldGrammar False)
           stateGpd . L.packageDescription . L.setupBuildInfo ?= sbi
+          pure tSbi
       | name == "source-repository" = do
           kind <- lift $ case args of
             [SecArgName spos secName] ->
@@ -429,10 +448,10 @@ goSections specVer = traverse_ process
 
           (tSr, sr) <- lift $ parseFields specVer fields (sourceRepoFieldGrammar kind)
           stateGpd . L.packageDescription . L.sourceRepos %= snoc sr
-      | otherwise =
-          lift $
-            parseWarning pos PWTUnknownSection $
-              "Ignoring section: " ++ show name
+          pure tSr
+      | otherwise = do
+        lift $ parseWarning pos PWTUnknownSection $ "Ignoring section: " ++ show name
+        pure mempty
 
 parseName :: Position -> [SectionArg Position] -> SectionParser src String
 parseName pos args = fromUTF8BS <$> parseNameBS pos args
@@ -514,7 +533,8 @@ parseCondTree v hasElif grammar commonStanzas fromBuildInfo cond = go
       let (fs, ss) = partitionFields fields
       (tx, x) <- parseFieldGrammar v fs grammar
       (tBranches, branches) <- fmap concat . unzip <$> traverse parseIfs ss
-      return $ (tx,) $ endo $ CondNode x (cond x) branches
+      let t = tx <> mconcat tBranches
+      return $ (t,) $ endo $ CondNode x (cond x) branches
 
     parseIfs :: [Section Position] -> ParseResult src (TriviaTree, [CondBranch ConfVar [Dependency] a])
     parseIfs [] = return (mempty, [])
@@ -522,7 +542,8 @@ parseCondTree v hasElif grammar commonStanzas fromBuildInfo cond = go
       test' <- parseConditionConfVar (startOfSection (incPos 2 pos) test) test
       (tFields', fields') <- go fields
       (tElseFields, (elseFields, sections')) <- parseElseIfs sections
-      return (tFields', (CondBranch test' fields' elseFields : sections'))
+      let t = tFields' <> tElseFields
+      return (t, (CondBranch test' fields' elseFields : sections'))
     parseIfs (MkSection (Name pos name) _ _ : sections) = do
       parseWarning pos PWTInvalidSubsection $ "invalid subsection " ++ show name
       parseIfs sections
@@ -540,8 +561,8 @@ parseCondTree v hasElif grammar commonStanzas fromBuildInfo cond = go
           "`else` section has section arguments " ++ show args
       (tElseFields, elseFields) <- go fields
       (tSections', sections') <- parseIfs sections
-      -- TODO(leana8959): merge the triviatree
-      return (mempty, (Just elseFields, sections'))
+      let t = tElseFields <> tSections'
+      return (t, (Just elseFields, sections'))
     parseElseIfs (MkSection (Name pos name) test fields : sections)
       | hasElif == HasElif
       , name == "elif" = do
@@ -550,8 +571,9 @@ parseCondTree v hasElif grammar commonStanzas fromBuildInfo cond = go
           (tElseFields, (elseFields, sections')) <- parseElseIfs sections
           -- we parse an empty 'Fields', to get empty value for a node
           (_, a) <- parseFieldGrammar v mempty grammar
+          let t = tFields' <> tElseFields
           return
-            ( mempty -- TODO(leana8959): join the triviatrees
+            ( t
             , (Just $ CondNode a (cond a) [CondBranch test' fields' elseFields], sections')
             )
     parseElseIfs (MkSection (Name pos name) _ _ : sections) | name == "elif" = do
@@ -962,7 +984,7 @@ libFieldNames = fieldGrammarKnownFieldList (libraryFieldGrammar LMainLibName)
 -- Supplementary build information
 -------------------------------------------------------------------------------
 
-parseHookedBuildInfo :: BS.ByteString -> ParseResult src HookedBuildInfo
+parseHookedBuildInfo :: BS.ByteString -> ParseResult src (TriviaTree, HookedBuildInfo)
 parseHookedBuildInfo bs = case readFields' bs of
   Right (fs, lexWarnings) -> do
     parseHookedBuildInfo' lexWarnings fs
@@ -972,30 +994,31 @@ parseHookedBuildInfo bs = case readFields' bs of
 parseHookedBuildInfo'
   :: [LexWarning]
   -> [Field Position]
-  -> ParseResult src HookedBuildInfo
+  -> ParseResult src (TriviaTree, HookedBuildInfo)
 parseHookedBuildInfo' lexWarnings fs = do
   parseWarnings (toPWarnings lexWarnings)
-  (mLibFields, exes) <- stanzas fs
-  mLib <- parseLib mLibFields
-  biExes <- traverse parseExe exes
-  return (mLib, biExes)
+  (tStanzas, (mLibFields, exes)) <- stanzas fs
+  (tLib, mLib) <- parseLib mLibFields
+  (tBiExes, biExes) <- unzip <$> traverse parseExe exes
+  let t = tStanzas <> tLib <> mconcat tBiExes
+  return (t, (mLib, biExes))
   where
-    parseLib :: Fields Position -> ParseResult src (Maybe BuildInfo)
+    parseLib :: Fields Position -> ParseResult src (TriviaTree, Maybe BuildInfo)
     parseLib fields
-      | Map.null fields = pure Nothing
-      | otherwise = Just . (\(t, x) -> x) <$> parseFieldGrammar cabalSpecLatest fields buildInfoFieldGrammar
+      | Map.null fields = (pure . pure) Nothing
+      | otherwise = (fmap Just) <$> parseFieldGrammar cabalSpecLatest fields buildInfoFieldGrammar
 
-    parseExe :: (UnqualComponentName, Fields Position) -> ParseResult src (UnqualComponentName, BuildInfo)
+    parseExe :: (UnqualComponentName, Fields Position) -> ParseResult src (TriviaTree, (UnqualComponentName, BuildInfo))
     parseExe (n, fields) = do
       (tBi, bi) <- parseFieldGrammar cabalSpecLatest fields buildInfoFieldGrammar
-      pure (n, bi)
+      pure (tBi, (n, bi))
 
-    stanzas :: [Field Position] -> ParseResult src (Fields Position, [(UnqualComponentName, Fields Position)])
+    stanzas :: [Field Position] -> ParseResult src (TriviaTree, (Fields Position, [(UnqualComponentName, Fields Position)]))
     stanzas fields = do
       let (hdr0, exes0) = breakMaybe isExecutableField fields
       hdr <- toFields hdr0
       exes <- unfoldrM (traverse toExe) exes0
-      pure (hdr, exes)
+      (pure . pure) (hdr, exes)
 
     toFields :: [Field Position] -> ParseResult src (Fields Position)
     toFields fields = do

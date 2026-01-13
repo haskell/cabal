@@ -1,10 +1,16 @@
+{-# LANGUAGE DeriveGeneric #-}
 module Distribution.Types.Annotation where
+
+import Distribution.Compat.Prelude
+import Prelude ()
 
 import Data.Map (Map)
 import Data.Maybe (fromMaybe)
 import qualified Data.Map as M
 import qualified Data.ByteString as BS
 import qualified Data.List.NonEmpty as NE
+
+import Control.DeepSeq
 
 -- TODO: import all the types that we need to use as key to index the trivia
 import Distribution.Types.VersionRange
@@ -20,7 +26,9 @@ data Trivium
   | PreTrivia String
   | PostTrivia String
   | IsInjected
-  deriving (Show)
+  deriving (Generic, Show)
+
+instance NFData Trivium
 
 data Namespace
   = NSVersion Version
@@ -29,37 +37,18 @@ data Namespace
   | NSDependency Dependency
   | NSField BS.ByteString
   | NSLibrarySection LibraryName
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Generic, Show)
 
--- data TriviaTree
---   = Node Namespace Trivia (NE.NonEmpty TriviaTree)
---   | Leaf Namespace Trivia
---
--- instance Semigroup TriviaTree where
---   Node nsa ta <> Node nsb tb
---     | nsa == nsb = Node nsa (ta <> tb)
---     | otherwise = Node 
---
--- trivia :: Namespace -> TriviaTree -> Trivia
--- trivia ns0 tt = case tt of
---   Node ns t ts | ns == ns0 -> t
---   Leaf ns t | ns == ns0 -> t
---   _ -> mempty
---
--- mark :: Namespace -> TriviaTree -> TriviaTree
--- mark ns tt = Node ns mempty (pure tt)
---
--- unmark :: Namespace -> TriviaTree -> (NE.NonEmpty TriviaTree)
--- unmark ns0 tt = case tt of
---   Node ns t ts | ns == ns0 -> ts
---   _ -> mempty
+instance NFData Namespace
 
 -- TODO(leana8959): can I encode namespace type in the signature or somehow make this more type safe?
 data TriviaTree = TriviaTree
   { justAnnotation :: Trivia
   , namedAnnotations :: Map Namespace TriviaTree
   }
-  deriving (Show)
+  deriving (Generic, Show)
+
+instance NFData TriviaTree
 
 instance Semigroup TriviaTree where
   TriviaTree locala belowa <> TriviaTree localb belowb = TriviaTree (locala <> localb) (belowa <> belowb)
