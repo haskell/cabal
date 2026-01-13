@@ -32,7 +32,7 @@ import Data.Char                     (chr, isAlpha, isAlphaNum, isDigit, isUpper
 import Data.List                     (foldl')
 import Data.Monoid                   (Monoid (..))
 import Data.String                   (IsString (..))
-import Distribution.Compat.Semigroup (Semigroup (..))
+import Data.Semigroup                (Semigroup (..))
 import Prelude
        (Bounded (..), Char, Enum (..), Eq (..), Int, Num (..), Ord (..), Show (..), String, (&&), concatMap, flip, not, otherwise, showParen,
        showString, uncurry, ($), (.))
