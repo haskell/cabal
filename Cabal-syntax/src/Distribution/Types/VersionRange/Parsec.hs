@@ -89,43 +89,42 @@ versionRangeTriviaParser digitParser csv = expr
       preSpaces <- P.spaces'
       (tTerm, t) <- term
       postSpaces <- P.spaces'
-
+      let tTerm' = annotateTriviaTree (NSVersionRange t) [PreTrivia preSpaces, PostTrivia postSpaces] tTerm
       ( do
           _ <- P.string "||"
           checkOp
           preSpaces' <- P.spaces'
           (tExpr, e) <- expr
-          let e' = unionVersionRanges t e
-          let tExpr' = [TriviaTree [PreTrivia preSpaces] mempty]
-                      & mark (NSVersionRange e')
-          return (tExpr', e')
+          let eUnion = unionVersionRanges t e
+          let tExpr' =
+                mark (NSVersionRange eUnion)
+                (annotateTriviaTree (NSVersionRange e) [PreTrivia preSpaces'] tExpr
+                <> tTerm'
+                )
+          return (tExpr', eUnion)
         )
-          <|>
-            ( do
-                let tTerm' = [TriviaTree [PreTrivia preSpaces, PostTrivia postSpaces] mempty]
-                            & mark (NSVersionRange t)
-                return (tTerm <> tTerm', t)
-              )
+          <|> return (tTerm', t)
 
     term :: m (TriviaTree, VersionRange)
     term = do
       (tFact, f) <- factor
       postSpaces <- P.spaces'
+      let tFact' = annotateTriviaTree (NSVersionRange f) [PostTrivia postSpaces] tFact
+
       ( do
           _ <- P.string "&&"
           checkOp
           preSpaces' <- P.spaces'
           (tTerm, t) <- term
-          let tTerm' = [TriviaTree [PreTrivia preSpaces', PostTrivia postSpaces] mempty]
-                      & mark (NSVersionRange t)
-          return (tTerm <> tFact <> tTerm', intersectVersionRanges f t)
+          let tUnion = intersectVersionRanges f t
+          let tTerm' =
+                mark (NSVersionRange tUnion)
+                 ( annotateTriviaTree (NSVersionRange t) [PreTrivia preSpaces'] tTerm
+                 <> tFact
+                 )
+          return (tTerm', tUnion)
         )
-          <|>
-            ( do
-                let tFact' = [TriviaTree [PostTrivia postSpaces] mempty]
-                             & mark (NSVersionRange f)
-                return (tFact, f)
-              )
+          <|> return (tFact', f)
 
     factor :: m (TriviaTree, VersionRange)
     factor = parens expr <|> prim
@@ -134,16 +133,14 @@ versionRangeTriviaParser digitParser csv = expr
     prim = do
       op <- P.munch1 isOpChar P.<?> "operator"
       case op of
-        "-" -> (pure anyVersion) <$ P.string "any" <|> P.string "none" *> noVersion'
+        "-" -> (pure anyVersion) <$ P.string "any" <|> P.string "none" *> (pure <$> noVersion')
         "==" -> do
           preSpaces <- P.spaces'
           ( do
               (wild, v) <- verOrWild
               checkWild wild
-
-              let t = [TriviaTree [PreTrivia preSpaces] mempty]
-                      & mark (NSVersion v)
-              pure $ (t,) $ (if wild then withinVersion else thisVersion) v
+              let tVer = annotateTriviaTree (NSVersion v) [PreTrivia preSpaces] mempty
+              pure $ (tVer,) $ (if wild then withinVersion else thisVersion) v
 
               -- ignore braces for now
               <|> (verSet' thisVersion =<< verSet)
@@ -155,9 +152,8 @@ versionRangeTriviaParser digitParser csv = expr
               when wild $
                 P.unexpected "wild-card version after ^>= operator"
 
-              let t = [TriviaTree [PreTrivia preSpaces] mempty]
-                      & mark (NSVersion v)
-              (t,) <$> majorBoundVersion' v
+              let tVer = annotateTriviaTree (NSVersion v) [PreTrivia preSpaces] mempty
+              (tVer,) <$> majorBoundVersion' v
 
               -- ignore braces for now
               <|> (verSet' majorBoundVersion =<< verSet)
@@ -168,14 +164,12 @@ versionRangeTriviaParser digitParser csv = expr
           when wild
             $ P.unexpected $ "wild-card version after non-== operator: " ++ show op
 
-          let t = [TriviaTree [PreTrivia preSpaces] mempty]
-                  & mark (NSVersion v)
-
+          let tVer = annotateTriviaTree (NSVersion v) [PreTrivia preSpaces] mempty
           case op of
-            ">=" -> pure $ (t, orLaterVersion v)
-            "<" -> pure $ (t, earlierVersion v)
-            "<=" -> pure $ (t, orEarlierVersion v)
-            ">" -> pure $ (t, laterVersion v)
+            ">=" -> pure $ (tVer, orLaterVersion v)
+            "<" -> pure $ (tVer, earlierVersion v)
+            "<=" -> pure $ (tVer, orEarlierVersion v)
+            ">" -> pure $ (tVer, laterVersion v)
             _ -> fail $ "Unknown version operator " ++ show op
 
     -- Cannot be warning
@@ -217,10 +211,10 @@ versionRangeTriviaParser digitParser csv = expr
     isOpChar _ = False
 
     -- -none version range is available since 1.22
-    noVersion' :: m (TriviaTree, VersionRange)
+    noVersion' :: m VersionRange
     noVersion' =
       if csv >= CabalSpecV1_22
-        then (pure . pure) noVersion
+        then pure noVersion
         else
           fail $
             unwords

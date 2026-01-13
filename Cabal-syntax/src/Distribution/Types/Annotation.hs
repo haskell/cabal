@@ -75,8 +75,8 @@ annotateTriviaTreeLocal t (TriviaTree local below) =
   TriviaTree (t <> local) below
 
 -- | Wrap the trivia within a namespace
-mark :: Namespace -> [TriviaTree] -> TriviaTree
-mark ns tts = TriviaTree mempty (M.fromList $ zip (repeat ns) tts)
+mark :: Namespace -> TriviaTree -> TriviaTree
+mark ns ts = TriviaTree mempty (M.singleton ns ts)
 
 -- | If the trivia map is for this scope
 unmark :: Namespace -> TriviaTree -> TriviaTree

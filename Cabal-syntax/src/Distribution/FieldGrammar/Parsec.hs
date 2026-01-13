@@ -179,7 +179,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
     ParsecFG s s' $ \v fs -> do
       -- Run the inner parser and mark its annotation
       (t, x) <- parser v fs
-      let t' = mark ns [t]
+      let t' = mark ns t
       pure (t', x)
 
   blurFieldGrammar _ (ParsecFG s s' parser) = ParsecFG s s' parser
@@ -291,7 +291,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
         Nothing -> (pure . pure) mempty
         Just xs -> do
           (t, x) <- foldMap (unpack' _pack <$>) <$> traverse (uncurry (parseOne v)) (zip xs [1..])
-          let t' = mark (NSField fn) [t]
+          let t' = mark (NSField fn) t
           pure (t', x)
 
       parseOne v (MkNamelessField pos fls) n = do

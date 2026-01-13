@@ -74,7 +74,7 @@ instance Parsec Dependency where
             let t = fromNamedTrivia (NSVersionRange anyVersion) [IsInjected]
             in  triviaParsec <|> pure (t, anyVersion)
     let dep = mkDependency name ver libs
-    let depTrivia = mark (NSDependency dep) [verTrivia]
+    let depTrivia = mark (NSDependency dep) verTrivia
     return
       ( depTrivia
       , dep
