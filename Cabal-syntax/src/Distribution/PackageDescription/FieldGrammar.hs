@@ -16,8 +16,6 @@ module Distribution.PackageDescription.FieldGrammar
 
     -- * Library
   , libraryFieldGrammar
-  , libraryFieldPrinterGrammar
-  , libraryFieldParserGrammar
 
     -- * Foreign library
   , foreignLibFieldGrammar
@@ -217,35 +215,6 @@ libraryFieldGrammar n =
           ^^^ availableSince CabalSpecV3_0 LibraryVisibilityPrivate
 {-# SPECIALIZE libraryFieldGrammar :: LibraryName -> ParsecFieldGrammar' Library #-}
 {-# SPECIALIZE libraryFieldGrammar :: LibraryName -> PrettyFieldGrammar' Library #-}
-
-libraryFieldParserGrammar :: LibraryName -> ParsecFieldGrammar' Library
-libraryFieldParserGrammar name =
-  libraryFieldGrammar name
-    <* markAnnotationKeysFieldGrammar (NSLibrarySection name)
-
-libraryFieldPrinterGrammar :: LibraryName -> PrettyFieldGrammar' Library
-libraryFieldPrinterGrammar name0 =
-  PrettyFG $ \v t -> let
-      t' = unmark (NSLibrarySection name0) t
-      -- !() = trace ("=== Trivia from library field pretty printer\n" <> show t') ()
-    in prettierFieldGrammar v t' (g name0)
-  where
-    g n = Library n
-      <$> monoidalFieldAla "exposed-modules" formatExposedModules L.exposedModules
-      <*> monoidalFieldAla "reexported-modules" (alaList CommaVCat) L.reexportedModules
-      <*> monoidalFieldAla "signatures" (alaList' VCat MQuoted) L.signatures
-        ^^^ availableSince CabalSpecV2_0 []
-      <*> booleanFieldDef "exposed" L.libExposed True
-      <*> visibilityField
-      <*> blurFieldGrammar L.libBuildInfo buildInfoPrettyGrammar
-      where
-        visibilityField = case n of
-          -- nameless/"main" libraries are public
-          LMainLibName -> pure LibraryVisibilityPublic
-          -- named libraries have the field
-          LSubLibName _ ->
-            optionalFieldDef "visibility" L.libVisibility LibraryVisibilityPrivate
-              ^^^ availableSince CabalSpecV3_0 LibraryVisibilityPrivate
 
 -------------------------------------------------------------------------------
 -- Foreign library

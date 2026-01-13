@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_GHC -Wunused-local-binds #-}
 
 -- |
 -- Module      :  Distribution.PackageDescription.Parsec
@@ -58,6 +59,7 @@ import Distribution.Pretty (prettyShow)
 import Distribution.Utils.Generic (breakMaybe, fromUTF8BS, toUTF8BS, unfoldrM, validateUTF8)
 import Distribution.Version (Version, mkVersion, versionNumbers)
 
+import Distribution.Types.Annotation
 import Distribution.Types.AnnotatedGenericPackageDescription
 
 import qualified Data.ByteString as BS
@@ -202,7 +204,8 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
   setCabalSpecVersion (Just specVer')
 
   -- Package description
-  pd <- parseFieldGrammar specVer fields packageDescriptionFieldGrammar
+  -- TODO(leana8959): maybe pass this upwards
+  (pdTrivia, pd) <- parseFieldGrammar specVer fields packageDescriptionFieldGrammar
 
   -- Check that scanned and parsed versions match.
   unless (specVer == specVersion pd) $
@@ -306,7 +309,7 @@ goSections specVer = traverse_ process
 
           commonStanzas <- use stateCommonStanzas
           let name'' = LMainLibName
-          lib <- lift $ parseCondTree' (libraryFieldParserGrammar name'') (libraryFromBuildInfo name'') commonStanzas fields
+          lib <- lift $ parseCondTree' (libraryFieldGrammar name'') (libraryFromBuildInfo name'') commonStanzas fields
           --
           -- TODO check that not set
           stateGpd . L.condLibrary ?= lib
@@ -317,7 +320,7 @@ goSections specVer = traverse_ process
           commonStanzas <- use stateCommonStanzas
           name' <- parseUnqualComponentName pos args
           let name'' = LSubLibName name'
-          lib <- lift $ parseCondTree' (libraryFieldParserGrammar name'') (libraryFromBuildInfo name'') commonStanzas fields
+          lib <- lift $ parseCondTree' (libraryFieldGrammar name'') (libraryFromBuildInfo name'') commonStanzas fields
           -- TODO check duplicate name here?
           stateGpd . L.condSubLibraries %= snoc (name', lib)
 
@@ -406,11 +409,11 @@ goSections specVer = traverse_ process
       | name == "flag" = do
           name' <- parseNameBS pos args
           name'' <- lift $ runFieldParser' [pos] parsec specVer (fieldLineStreamFromBS name') `recoverWith` mkFlagName ""
-          flag <- lift $ parseFields specVer fields (flagFieldGrammar name'')
+          (tFlag, flag) <- lift $ parseFields specVer fields (flagFieldGrammar name'')
           -- Check default flag
           stateGpd . L.genPackageFlags %= snoc flag
       | name == "custom-setup" && null args = do
-          sbi <- lift $ parseFields specVer fields (setupBInfoFieldGrammar False)
+          (tSbi, sbi) <- lift $ parseFields specVer fields (setupBInfoFieldGrammar False)
           stateGpd . L.packageDescription . L.setupBuildInfo ?= sbi
       | name == "source-repository" = do
           kind <- lift $ case args of
@@ -423,7 +426,7 @@ goSections specVer = traverse_ process
               parseFailure pos $ "Invalid source-repository kind " ++ show args
               pure RepoHead
 
-          sr <- lift $ parseFields specVer fields (sourceRepoFieldGrammar kind)
+          (tSr, sr) <- lift $ parseFields specVer fields (sourceRepoFieldGrammar kind)
           stateGpd . L.packageDescription . L.sourceRepos %= snoc sr
       | otherwise =
           lift $
@@ -472,7 +475,7 @@ parseFields
   -> [Field Position]
   -- ^ fields to be parsed
   -> ParsecFieldGrammar' a
-  -> ParseResult src a
+  -> ParseResult src (TriviaTree, a)
 parseFields v fields grammar = do
   let (fs0, ss) = partitionFields fields
   traverse_ (traverse_ warnInvalidSubsection) ss
@@ -967,11 +970,11 @@ parseHookedBuildInfo' lexWarnings fs = do
     parseLib :: Fields Position -> ParseResult src (Maybe BuildInfo)
     parseLib fields
       | Map.null fields = pure Nothing
-      | otherwise = Just <$> parseFieldGrammar cabalSpecLatest fields buildInfoFieldGrammar
+      | otherwise = Just . (\(t, x) -> x) <$> parseFieldGrammar cabalSpecLatest fields buildInfoFieldGrammar
 
     parseExe :: (UnqualComponentName, Fields Position) -> ParseResult src (UnqualComponentName, BuildInfo)
     parseExe (n, fields) = do
-      bi <- parseFieldGrammar cabalSpecLatest fields buildInfoFieldGrammar
+      (tBi, bi) <- parseFieldGrammar cabalSpecLatest fields buildInfoFieldGrammar
       pure (n, bi)
 
     stanzas :: [Field Position] -> ParseResult src (Fields Position, [(UnqualComponentName, Fields Position)])
