@@ -347,7 +347,6 @@ library
     Distribution.Compat.Async
     Distribution.Compat.CopyFile
     Distribution.Compat.GetShortPathName
-    Distribution.Compat.SnocList
     Distribution.GetOpt
     Distribution.Lex
     Distribution.PackageDescription.Check.Common
