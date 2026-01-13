@@ -35,6 +35,7 @@ import System.Environment                          (getArgs, withArgs)
 import System.FilePath                             (replaceExtension, (</>))
 import Distribution.Parsec.Source
 
+import Debug.Pretty.Simple
 import Debug.Trace
 
 
@@ -245,7 +246,7 @@ formatGoldenTest fp = cabalGoldenTest "format" correct $ do
 
     return $ toUTF8BS $ case x of
         Right (AnnotatedGenericPackageDescription gpd trivia) ->
-          -- let !() = trace ("=== Trivia viewed from the test suite\n" <> show trivia) () in
+          let !() = pTrace ("=== Trivia viewed from the test suite\n" <> show trivia) () in
             unlines (map (showPWarningWithSource . fmap renderCabalFileSource) warns)
             ++ showGenericPackageDescription' gpd trivia
         Left (csv, errs) ->

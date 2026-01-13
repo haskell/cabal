@@ -155,10 +155,11 @@ alaList' _ _ = List
 instance Newtype [a] (List sep wrapper a)
 
 instance (Newtype a b, Sep sep, Parsec b) => Parsec (List sep b a) where
-  parsec = pack . map (unpack :: b -> a) <$> parseSep (Proxy :: Proxy sep) parsec
+  triviaParsec = do
+    (ts, bs) <- unzip <$> parseSep (Proxy :: Proxy sep) triviaParsec
+    pure (mconcat ts, pack $ map (unpack :: b -> a) bs)
 
 instance (Newtype a b, Sep sep, Pretty b) => Pretty (List sep b a) where
-  pretty = prettySep (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . unpack
   prettier t =
     -- let !() = trace ("== Printed from List\n" <> show t) () in
     prettySep (Proxy :: Proxy sep) . map (prettier t . (pack :: a -> b)) . unpack

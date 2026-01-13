@@ -35,8 +35,9 @@ import qualified Text.Read as Read
 
 instance Pretty Version where
   prettier t ver =
-    let !() = trace ("=== Printed from instance Pretty Version\n" <> show t) ()
-    in  Disp.hcat
+    -- let !() = trace ("=== Printed from instance Pretty Version\n" <> show t) ()
+    -- in
+        Disp.hcat
       ( Disp.punctuate
           (Disp.char '.')
           (map Disp.int $ versionNumbers ver)
