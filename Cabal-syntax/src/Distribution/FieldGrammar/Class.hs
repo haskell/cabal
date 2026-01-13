@@ -17,6 +17,8 @@ import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Distribution.Types.Annotation
+
 import Distribution.CabalSpecVersion (CabalSpecVersion)
 import Distribution.Compat.Newtype (Newtype)
 import Distribution.FieldGrammar.Newtypes
@@ -42,6 +44,10 @@ class
   FieldGrammar c g
     | g -> c
   where
+  -- | Useful for wrapping and unwrapping of namespace label for identifying trivia
+  withScope :: Namespace -> g s a -> g s a
+  withScope _ = id
+
   -- | Unfocus, zoom out, /blur/ 'FieldGrammar'.
   blurFieldGrammar :: ALens' a b -> g b d -> g a d
 

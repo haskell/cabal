@@ -174,6 +174,14 @@ warnMultipleSingularFields fn (x : xs) = do
     "The field " <> show fn <> " is specified more than once at positions " ++ intercalate ", " (map showPos (pos : poss))
 
 instance FieldGrammar Parsec ParsecFieldGrammar where
+  withScope :: Namespace -> ParsecFieldGrammar s a -> ParsecFieldGrammar s a
+  withScope ns (ParsecFG s s' parser) =
+    ParsecFG s s' $ \v fs -> do
+      -- Run the inner parser and mark its annotation
+      (t, x) <- parser v fs
+      let t' = mark ns [t]
+      pure (t', x)
+
   blurFieldGrammar _ (ParsecFG s s' parser) = ParsecFG s s' parser
 
   uniqueFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser

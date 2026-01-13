@@ -56,6 +56,12 @@ prettyAnnotatedFieldGrammar
 prettyAnnotatedFieldGrammar v t g = fieldGrammarPretty g v t
 
 instance FieldGrammar Pretty PrettyFieldGrammar where
+  withScope :: Namespace -> PrettyFieldGrammar s a -> PrettyFieldGrammar s a
+  withScope ns (PrettyFG printer) =
+    PrettyFG $ \v t s ->
+      let t' = unmark ns t
+      in  printer v t s
+
   blurFieldGrammar f (PrettyFG pp) = PrettyFG (\v t -> pp v t . aview f)
 
   -- TODO(leana8959): use the trivia in the methods implemented here
