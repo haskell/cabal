@@ -694,13 +694,6 @@ buildInfoFieldGrammar =
 {-# SPECIALIZE buildInfoFieldGrammar :: ParsecFieldGrammar' BuildInfo #-}
 {-# SPECIALIZE buildInfoFieldGrammar :: PrettyFieldGrammar' BuildInfo #-}
 
--- Doesn't need key mapping because it doesn't represent a field in the GPD directly
-buildInfoPrettyGrammar :: PrettyFieldGrammar' BuildInfo
-buildInfoPrettyGrammar =
-  PrettyFG $ \v t ->
-    -- let !() = trace ("=== Printed from buildInfoFieldGrammar\n" <> show t) () in
-    prettierFieldGrammar v t buildInfoFieldGrammar
-
 hsSourceDirsGrammar
   :: ( FieldGrammar c g
      , Applicative (g BuildInfo)

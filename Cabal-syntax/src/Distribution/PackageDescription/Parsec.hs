@@ -110,12 +110,7 @@ parseAnnotatedGenericPackageDescription bs = do
       when patched $
         parseWarning zeroPos PWTQuirkyCabalFile "Legacy cabal file"
       -- UTF8 is validated in a prepass step, afterwards parsing is lenient.
-      parsedGpd <- parseGenericPackageDescription' csv lexWarnings invalidUtf8 fs
-      t <- getParseResultAnnotation
-      pure $!
-        AnnotatedGenericPackageDescription
-        parsedGpd
-        t
+      parseAnnotatedGenericPackageDescription' csv lexWarnings invalidUtf8 fs
 
     -- TODO: better marshalling of errors
     Left perr -> parseFatalFailure pos (show perr)

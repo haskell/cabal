@@ -36,10 +36,6 @@ class (P.CharParsing m, MonadPlus m, Fail.MonadFail m) => CabalParsing m where
 
   askCabalSpecVersion :: m CabalSpecVersion
 
-  -- TODO(leana8959): /maybe/ make the types polymorphe here
-  markNamespace :: Namespace -> m ()
-  annotate :: Namespace -> Trivium -> m ()
-
 stringLiteral :: forall m. P.CharParsing m => m String
 stringLiteral = lit
   where

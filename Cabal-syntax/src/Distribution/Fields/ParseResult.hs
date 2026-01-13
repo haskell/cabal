@@ -14,9 +14,6 @@ module Distribution.Fields.ParseResult
   , parseFailure
   , parseFatalFailure
   , parseFatalFailure'
-  , annotateParseResult
-  , markParseResultAnnotation
-  , getParseResultAnnotation
   , getCabalSpecVersion
   , setCabalSpecVersion
   , withoutWarnings
@@ -170,20 +167,6 @@ instance Monad (ParseResult src) where
 recoverWith :: ParseResult src a -> a -> ParseResult src a
 recoverWith (PR pr) x = PR $ \ !s fp _failure success ->
   pr s fp (\ !s' -> success s' x) success
-
-markParseResultAnnotation :: Namespace -> ParseResult src ()
-markParseResultAnnotation ns =
-  PR $ \ !(PRState warns errs t0 v) _fp _failure success ->
-    success (PRState warns errs (mark ns [t0]) v) ()
-
-getParseResultAnnotation :: ParseResult src TriviaTree
-getParseResultAnnotation =
-  PR $ \ !s@(PRState _warns _errs t _v) _fp _failure success ->
-    success s t
-
-annotateParseResult :: TriviaTree -> ParseResult src ()
-annotateParseResult t = PR $ \ !(PRState warns errs t0 v) _fp _failure success ->
-  success (PRState warns errs (t0 <> t) v) ()
 
 -- | Set cabal spec version.
 setCabalSpecVersion :: Maybe Version -> ParseResult src ()

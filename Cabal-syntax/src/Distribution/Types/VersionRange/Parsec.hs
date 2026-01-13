@@ -90,15 +90,15 @@ versionRangeParser digitParser csv = expr
           preSpaces' <- P.spaces'
           e <- expr
           let e' = unionVersionRanges t e
-          markNamespace (NSVersionRange e')
-          annotate (NSVersionRange e') (PreTrivia preSpaces')
+          -- markNamespace (NSVersionRange e')
+          -- annotate (NSVersionRange e') (PreTrivia preSpaces')
           return e'
         )
           <|>
             ( do
-                markNamespace (NSVersionRange t)
-                annotate (NSVersionRange t) (PreTrivia preSpaces)
-                annotate (NSVersionRange t) (PostTrivia postSpaces)
+                -- markNamespace (NSVersionRange t)
+                -- annotate (NSVersionRange t) (PreTrivia preSpaces)
+                -- annotate (NSVersionRange t) (PostTrivia postSpaces)
                 return t
               )
     term = do
@@ -109,14 +109,14 @@ versionRangeParser digitParser csv = expr
           checkOp
           preSpaces' <- P.spaces'
           t <- term
-          markNamespace (NSVersionRange t)
-          annotate (NSVersionRange t) (PreTrivia preSpaces')
+          -- markNamespace (NSVersionRange t)
+          -- annotate (NSVersionRange t) (PreTrivia preSpaces')
           return (intersectVersionRanges f t)
         )
           <|>
             ( do
-                markNamespace (NSVersionRange f)
-                annotate (NSVersionRange f) (PostTrivia postSpaces)
+                -- markNamespace (NSVersionRange f)
+                -- annotate (NSVersionRange f) (PostTrivia postSpaces)
                 return f
               )
 
@@ -131,7 +131,7 @@ versionRangeParser digitParser csv = expr
           ( do
               (wild, v) <- verOrWild
               checkWild wild
-              annotate (NSVersion v) (PreTrivia preSpaces)
+              -- annotate (NSVersion v) (PreTrivia preSpaces)
 
               pure $ (if wild then withinVersion else thisVersion) v
               -- ignore braces for now
@@ -143,7 +143,7 @@ versionRangeParser digitParser csv = expr
               (wild, v) <- verOrWild
               when wild $
                 P.unexpected "wild-card version after ^>= operator"
-              annotate (NSVersion v) (PreTrivia preSpaces)
+              -- annotate (NSVersion v) (PreTrivia preSpaces)
 
               majorBoundVersion' v
               -- ignore braces for now
@@ -156,7 +156,7 @@ versionRangeParser digitParser csv = expr
             P.unexpected $
               "wild-card version after non-== operator: " ++ show op
 
-          annotate (NSVersion v) (PreTrivia preSpaces)
+          -- annotate (NSVersion v) (PreTrivia preSpaces)
           case op of
             ">=" -> pure $ orLaterVersion v
             "<" -> pure $ earlierVersion v

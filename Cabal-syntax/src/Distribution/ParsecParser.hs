@@ -16,7 +16,6 @@ import Distribution.Parsec.Warning
 import Prelude ()
 
 import Distribution.CabalParsing
-import Distribution.PPUserState
 import Distribution.Types.Annotation
 
 import qualified Distribution.Compat.CharParsing as P
@@ -26,30 +25,18 @@ import qualified Text.Parsec as Parsec
 import qualified Data.Map as Map
 
 newtype ParsecParser a = PP
-  { unPP
-      :: CabalSpecVersion
-      -> Parsec.Parsec FieldLineStream PPUserState a
+  { unPP :: CabalSpecVersion -> Parsec.Parsec FieldLineStream [PWarning] a
   }
 
-liftParsec :: Parsec.Parsec FieldLineStream PPUserState a -> ParsecParser a
+liftParsec :: Parsec.Parsec FieldLineStream [PWarning] a -> ParsecParser a
 liftParsec p = PP $ \_ -> p
 
 instance CabalParsing ParsecParser where
   parsecWarning t w = liftParsec $ do
     spos <- Parsec.getPosition
-    Parsec.modifyState $ \(PPUserState warns trivia) ->
-      PPUserState
+    Parsec.modifyState $ \warns ->
         (PWarning t (Position (Parsec.sourceLine spos) (Parsec.sourceColumn spos)) w : warns)
-        trivia
   askCabalSpecVersion = PP pure
-
-  markNamespace ns = liftParsec $ do
-    Parsec.modifyState $ \(PPUserState warns triviaTree) ->
-      PPUserState warns (mark ns [triviaTree])
-
-  annotate namespace trivium = liftParsec $ do
-    Parsec.modifyState $ \(PPUserState warns triviaTree) ->
-      PPUserState warns (annotateTriviaTree namespace [trivium] triviaTree)
 
 instance Functor ParsecParser where
   fmap f p = PP $ \v -> fmap f (unPP p v)
@@ -117,7 +104,7 @@ instance P.CharParsing ParsecParser where
 --
 -- @since 3.0.0.0
 runParsecParser' :: CabalSpecVersion -> ParsecParser a -> FilePath -> FieldLineStream -> Either Parsec.ParseError a
-runParsecParser' v p n = Parsec.runParser (unPP p v <* P.eof) emptyPPUserState n
+runParsecParser' v p n = Parsec.runParser (unPP p v <* P.eof) [] n
 
 -- | Run 'ParsecParser' with 'cabalSpecLatest'.
 runParsecParser :: ParsecParser a -> FilePath -> FieldLineStream -> Either Parsec.ParseError a

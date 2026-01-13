@@ -20,8 +20,6 @@ module Distribution.Parsec
 
     -- * CabalParsing and diagnostics
   , CabalParsing (..)
-  , PPUserState (..)
-  , emptyPPUserState
 
     -- ** Warnings
   , PWarnType (..)
@@ -73,7 +71,6 @@ import Prelude ()
 import Distribution.Parsec.Class
 import Distribution.ParsecParser
 import Distribution.CabalParsing
-import Distribution.PPUserState
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.Parsec as Parsec
@@ -111,7 +108,7 @@ simpleParsec' spec =
 -- @since 3.4.0.0
 simpleParsecW' :: Parsec a => CabalSpecVersion -> String -> Maybe a
 simpleParsecW' spec =
-  either (const Nothing) (\(x, PPUserState ws _) -> if null ws then Just x else Nothing)
+  either (const Nothing) (\(x, ws) -> if null ws then Just x else Nothing)
     . runParsecParser' spec ((,) <$> lexemeParsec <*> liftParsec Parsec.getState) "<simpleParsec>"
     . fieldLineStreamFromString
 
