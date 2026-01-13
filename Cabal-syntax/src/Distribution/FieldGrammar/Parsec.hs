@@ -289,9 +289,15 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
     where
       parser v fields = case Map.lookup fn fields of
         Nothing -> (pure . pure) mempty
-        Just xs -> foldMap (unpack' _pack <$>) <$> traverse (parseOne v) xs
+        Just xs -> do
+          (t, x) <- foldMap (unpack' _pack <$>) <$> traverse (uncurry (parseOne v)) (zip xs [1..])
+          let t' = mark (NSField fn) [t]
+          pure (t', x)
 
-      parseOne v (MkNamelessField pos fls) = runFieldParser pos triviaParsec v fls
+      parseOne v (MkNamelessField pos fls) n = do
+        (t, x) <- runFieldParser pos triviaParsec v fls
+        let t' = annotateTriviaTreeLocal [FieldNth n] t
+        pure (t', x)
 
   -- NOTE(leana8959): Field is exactly sent out so there's no trivia?
   prefixedFields fnPfx _extract = ParsecFG mempty (Set.singleton fnPfx) (\_ fs -> pure (mempty, parser fs))

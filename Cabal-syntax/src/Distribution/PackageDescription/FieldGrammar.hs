@@ -197,14 +197,15 @@ libraryFieldGrammar
   => LibraryName
   -> g Library Library
 libraryFieldGrammar n =
-  Library n
-    <$> monoidalFieldAla "exposed-modules" formatExposedModules L.exposedModules
-    <*> monoidalFieldAla "reexported-modules" (alaList CommaVCat) L.reexportedModules
-    <*> monoidalFieldAla "signatures" (alaList' VCat MQuoted) L.signatures
-      ^^^ availableSince CabalSpecV2_0 []
-    <*> booleanFieldDef "exposed" L.libExposed True
-    <*> visibilityField
-    <*> blurFieldGrammar L.libBuildInfo buildInfoFieldGrammar
+  withScope (NSLibrarySection n) $
+    Library n
+      <$> monoidalFieldAla "exposed-modules" formatExposedModules L.exposedModules
+      <*> monoidalFieldAla "reexported-modules" (alaList CommaVCat) L.reexportedModules
+      <*> monoidalFieldAla "signatures" (alaList' VCat MQuoted) L.signatures
+        ^^^ availableSince CabalSpecV2_0 []
+      <*> booleanFieldDef "exposed" L.libExposed True
+      <*> visibilityField
+      <*> blurFieldGrammar L.libBuildInfo buildInfoFieldGrammar
   where
     visibilityField = case n of
       -- nameless/"main" libraries are public

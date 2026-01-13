@@ -70,6 +70,10 @@ annotateTriviaTree :: Namespace -> Trivia -> TriviaTree -> TriviaTree
 annotateTriviaTree ns t (TriviaTree local below) =
   TriviaTree local (M.insertWith (<>) ns (TriviaTree t mempty) below)
 
+annotateTriviaTreeLocal :: Trivia -> TriviaTree -> TriviaTree
+annotateTriviaTreeLocal t (TriviaTree local below) =
+  TriviaTree (t <> local) below
+
 -- | Wrap the trivia within a namespace
 mark :: Namespace -> [TriviaTree] -> TriviaTree
 mark ns tts = TriviaTree mempty (M.fromList $ zip (repeat ns) tts)

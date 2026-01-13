@@ -110,12 +110,8 @@ instance FieldGrammar Pretty PrettyFieldGrammar where
   freeTextFieldDefST = defaultFreeTextFieldDefST
 
   -- NOTE(leana8959): build-depends is such a field
-  monoidalFieldAla :: forall b a s.
-                     (Pretty b, Monoid a, Newtype a b) =>
-                     FieldName -> (a -> b) -> ALens' s a -> PrettyFieldGrammar s a
   monoidalFieldAla fn _pack l = PrettyFG pp
     where
-      pp :: CabalSpecVersion -> TriviaTree -> s -> [PrettyField ()]
       pp v t s =
         let t' = unmark (NSField fn) t
           -- !() = trace ("=== Printed from monoidalFieldAla\n" <> show t') ()
