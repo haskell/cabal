@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE Rank2Types #-}
@@ -281,7 +282,7 @@ goSections specVer = traverse_ process
       -> Map String CondTreeBuildInfo
       -- \^ common stanzas
       -> [Field Position]
-      -> ParseResult src (CondTree ConfVar [Dependency] a)
+      -> ParseResult src (TriviaTree, CondTree ConfVar [Dependency] a)
     parseCondTree' = parseCondTreeWithCommonStanzas specVer
 
     parseSection :: Name Position -> [SectionArg Position] -> [Field Position] -> SectionParser src ()
@@ -292,7 +293,7 @@ goSections specVer = traverse_ process
       | name == "common" = do
           commonStanzas <- use stateCommonStanzas
           name' <- lift $ parseCommonName pos args
-          biTree <- lift $ parseCondTree' buildInfoFieldGrammar id commonStanzas fields
+          (tBiTree, biTree) <- lift $ parseCondTree' buildInfoFieldGrammar id commonStanzas fields
 
           case Map.lookup name' commonStanzas of
             Nothing -> stateCommonStanzas .= Map.insert name' biTree commonStanzas
@@ -309,7 +310,7 @@ goSections specVer = traverse_ process
 
           commonStanzas <- use stateCommonStanzas
           let name'' = LMainLibName
-          lib <- lift $ parseCondTree' (libraryFieldGrammar name'') (libraryFromBuildInfo name'') commonStanzas fields
+          (tLib, lib) <- lift $ parseCondTree' (libraryFieldGrammar name'') (libraryFromBuildInfo name'') commonStanzas fields
           --
           -- TODO check that not set
           stateGpd . L.condLibrary ?= lib
@@ -320,7 +321,7 @@ goSections specVer = traverse_ process
           commonStanzas <- use stateCommonStanzas
           name' <- parseUnqualComponentName pos args
           let name'' = LSubLibName name'
-          lib <- lift $ parseCondTree' (libraryFieldGrammar name'') (libraryFromBuildInfo name'') commonStanzas fields
+          (tLib, lib) <- lift $ parseCondTree' (libraryFieldGrammar name'') (libraryFromBuildInfo name'') commonStanzas fields
           -- TODO check duplicate name here?
           stateGpd . L.condSubLibraries %= snoc (name', lib)
 
@@ -328,7 +329,7 @@ goSections specVer = traverse_ process
       | name == "foreign-library" = do
           commonStanzas <- use stateCommonStanzas
           name' <- parseUnqualComponentName pos args
-          flib <- lift $ parseCondTree' (foreignLibFieldGrammar name') (fromBuildInfo' name') commonStanzas fields
+          (tFlib, flib) <- lift $ parseCondTree' (foreignLibFieldGrammar name') (fromBuildInfo' name') commonStanzas fields
 
           let hasType ts = foreignLibType ts /= foreignLibType mempty
           unless (onAllBranches hasType flib) $
@@ -347,13 +348,13 @@ goSections specVer = traverse_ process
       | name == "executable" = do
           commonStanzas <- use stateCommonStanzas
           name' <- parseUnqualComponentName pos args
-          exe <- lift $ parseCondTree' (executableFieldGrammar name') (fromBuildInfo' name') commonStanzas fields
+          (tExe, exe) <- lift $ parseCondTree' (executableFieldGrammar name') (fromBuildInfo' name') commonStanzas fields
           -- TODO check duplicate name here?
           stateGpd . L.condExecutables %= snoc (name', exe)
       | name == "test-suite" = do
           commonStanzas <- use stateCommonStanzas
           name' <- parseUnqualComponentName pos args
-          testStanza <- lift $ parseCondTree' testSuiteFieldGrammar (fromBuildInfo' name') commonStanzas fields
+          (tTestStanza, testStanza) <- lift $ parseCondTree' testSuiteFieldGrammar (fromBuildInfo' name') commonStanzas fields
           testSuite <- lift $ traverse (validateTestSuite specVer pos) testStanza
 
           let hasType ts = testInterface ts /= testInterface mempty
@@ -381,7 +382,7 @@ goSections specVer = traverse_ process
       | name == "benchmark" = do
           commonStanzas <- use stateCommonStanzas
           name' <- parseUnqualComponentName pos args
-          benchStanza <- lift $ parseCondTree' benchmarkFieldGrammar (fromBuildInfo' name') commonStanzas fields
+          (tBenchStanza, benchStanza) <- lift $ parseCondTree' benchmarkFieldGrammar (fromBuildInfo' name') commonStanzas fields
           bench <- lift $ traverse (validateBenchmark specVer pos) benchStanza
 
           let hasType ts = benchmarkInterface ts /= benchmarkInterface mempty
@@ -500,9 +501,10 @@ parseCondTree
   -> (a -> [Dependency])
   -- ^ condition extractor
   -> [Field Position]
-  -> ParseResult src (CondTree ConfVar [Dependency] a)
+  -> ParseResult src (TriviaTree, CondTree ConfVar [Dependency] a)
 parseCondTree v hasElif grammar commonStanzas fromBuildInfo cond = go
   where
+    go :: [Field Position] -> ParseResult src (TriviaTree, CondTree ConfVar [Dependency] a)
     go fields0 = do
       (fields, endo) <-
         if v >= CabalSpecV3_0
@@ -510,45 +512,55 @@ parseCondTree v hasElif grammar commonStanzas fromBuildInfo cond = go
           else traverse (warnImport v) fields0 >>= \fields1 -> return (catMaybes fields1, id)
 
       let (fs, ss) = partitionFields fields
-      x <- parseFieldGrammar v fs grammar
-      branches <- concat <$> traverse parseIfs ss
-      return $ endo $ CondNode x (cond x) branches
+      (tx, x) <- parseFieldGrammar v fs grammar
+      (tBranches, branches) <- fmap concat . unzip <$> traverse parseIfs ss
+      return $ (tx,) $ endo $ CondNode x (cond x) branches
 
-    parseIfs :: [Section Position] -> ParseResult src [CondBranch ConfVar [Dependency] a]
-    parseIfs [] = return []
+    parseIfs :: [Section Position] -> ParseResult src (TriviaTree, [CondBranch ConfVar [Dependency] a])
+    parseIfs [] = return (mempty, [])
     parseIfs (MkSection (Name pos name) test fields : sections) | name == "if" = do
       test' <- parseConditionConfVar (startOfSection (incPos 2 pos) test) test
-      fields' <- go fields
-      (elseFields, sections') <- parseElseIfs sections
-      return (CondBranch test' fields' elseFields : sections')
+      (tFields', fields') <- go fields
+      (tElseFields, (elseFields, sections')) <- parseElseIfs sections
+      return (tFields', (CondBranch test' fields' elseFields : sections'))
     parseIfs (MkSection (Name pos name) _ _ : sections) = do
       parseWarning pos PWTInvalidSubsection $ "invalid subsection " ++ show name
       parseIfs sections
 
     parseElseIfs
       :: [Section Position]
-      -> ParseResult src (Maybe (CondTree ConfVar [Dependency] a), [CondBranch ConfVar [Dependency] a])
-    parseElseIfs [] = return (Nothing, [])
+      -> ParseResult src
+        ( TriviaTree
+        , (Maybe (CondTree ConfVar [Dependency] a), [CondBranch ConfVar [Dependency] a])
+        )
+    parseElseIfs [] = return (mempty, (Nothing, []))
     parseElseIfs (MkSection (Name pos name) args fields : sections) | name == "else" = do
       unless (null args) $
         parseFailure pos $
           "`else` section has section arguments " ++ show args
-      elseFields <- go fields
-      sections' <- parseIfs sections
-      return (Just elseFields, sections')
+      (tElseFields, elseFields) <- go fields
+      (tSections', sections') <- parseIfs sections
+      -- TODO(leana8959): merge the triviatree
+      return (mempty, (Just elseFields, sections'))
     parseElseIfs (MkSection (Name pos name) test fields : sections)
       | hasElif == HasElif
       , name == "elif" = do
           test' <- parseConditionConfVar (startOfSection (incPos 4 pos) test) test
-          fields' <- go fields
-          (elseFields, sections') <- parseElseIfs sections
+          (tFields', fields') <- go fields
+          (tElseFields, (elseFields, sections')) <- parseElseIfs sections
           -- we parse an empty 'Fields', to get empty value for a node
-          a <- parseFieldGrammar v mempty grammar
-          return (Just $ CondNode a (cond a) [CondBranch test' fields' elseFields], sections')
+          (_, a) <- parseFieldGrammar v mempty grammar
+          return
+            ( mempty -- TODO(leana8959): join the triviatrees
+            , (Just $ CondNode a (cond a) [CondBranch test' fields' elseFields], sections')
+            )
     parseElseIfs (MkSection (Name pos name) _ _ : sections) | name == "elif" = do
       parseWarning pos PWTInvalidSubsection $ "invalid subsection \"elif\". You should set cabal-version: 2.2 or larger to use elif-conditionals."
-      (,) Nothing <$> parseIfs sections
-    parseElseIfs sections = (,) Nothing <$> parseIfs sections
+      (tSections, sections) <- parseIfs sections
+      pure (tSections, (Nothing, sections))
+    parseElseIfs sections = do
+      (tSections, sections) <- parseIfs sections
+      pure (tSections, (Nothing, sections))
 
 startOfSection :: Position -> [SectionArg Position] -> Position
 -- The case where we have no args is the start of the section
@@ -654,11 +666,12 @@ parseCondTreeWithCommonStanzas
   -> Map String CondTreeBuildInfo
   -- ^ common stanzas
   -> [Field Position]
-  -> ParseResult src (CondTree ConfVar [Dependency] a)
+  -> ParseResult src (TriviaTree, CondTree ConfVar [Dependency] a)
 parseCondTreeWithCommonStanzas v grammar fromBuildInfo commonStanzas fields = do
+  -- TODO(leana8959): does the imports have trivia
   (fields', endo) <- processImports v fromBuildInfo commonStanzas fields
-  x <- parseCondTree v hasElif grammar commonStanzas fromBuildInfo (view L.targetBuildDepends) fields'
-  return (endo x)
+  (tx, x) <- parseCondTree v hasElif grammar commonStanzas fromBuildInfo (view L.targetBuildDepends) fields'
+  return (tx, (endo x))
   where
     hasElif = specHasElif v
 
