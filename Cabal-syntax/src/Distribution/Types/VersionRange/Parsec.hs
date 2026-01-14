@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -27,6 +28,7 @@ import Distribution.Types.VersionRange.Pretty
 import Distribution.Types.Annotation
 
 import Data.Function
+import Debug.Pretty.Simple
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.DList as DList
@@ -89,7 +91,7 @@ versionRangeTriviaParser digitParser csv = expr
       preSpaces <- P.spaces'
       (tTerm, t) <- term
       postSpaces <- P.spaces'
-      let tTerm' = annotateTriviaTree (NSVersionRange t) [PreTrivia preSpaces, PostTrivia postSpaces] tTerm
+      let tTerm' = fromNamedTrivia (NSVersionRange t) [PreTrivia preSpaces, PostTrivia postSpaces] <> tTerm
       ( do
           _ <- P.string "||"
           checkOp
@@ -99,7 +101,8 @@ versionRangeTriviaParser digitParser csv = expr
           let tExpr' =
                 mark
                   (NSVersionRange eUnion)
-                  ( annotateTriviaTree (NSVersionRange e) [PreTrivia preSpaces'] tExpr
+                  ( fromNamedTrivia (NSVersionRange e) [PreTrivia preSpaces']
+                      <> tExpr
                       <> tTerm'
                   )
           return (tExpr', eUnion)
@@ -110,21 +113,21 @@ versionRangeTriviaParser digitParser csv = expr
     term = do
       (tFact, f) <- factor
       postSpaces <- P.spaces'
-      let tFact' = annotateTriviaTree (NSVersionRange f) [PostTrivia postSpaces] tFact
-
+      let tFact' = fromNamedTrivia (NSVersionRange f) [PostTrivia postSpaces] <> tFact
       ( do
           _ <- P.string "&&"
           checkOp
           preSpaces' <- P.spaces'
           (tTerm, t) <- term
-          let tUnion = intersectVersionRanges f t
+          let tInter = intersectVersionRanges f t
           let tTerm' =
                 mark
-                  (NSVersionRange tUnion)
-                  ( annotateTriviaTree (NSVersionRange t) [PreTrivia preSpaces'] tTerm
+                  (NSVersionRange tInter)
+                  ( fromNamedTrivia (NSVersionRange t) [PreTrivia preSpaces']
+                      <> tTerm
                       <> tFact
                   )
-          return (tTerm', tUnion)
+          return (tTerm', tInter)
         )
         <|> return (tFact', f)
 
@@ -141,8 +144,9 @@ versionRangeTriviaParser digitParser csv = expr
           ( do
               (wild, v) <- verOrWild
               checkWild wild
-              let tVer = annotateTriviaTree (NSVersion v) [PreTrivia preSpaces] mempty
-              pure $ (tVer,) $ (if wild then withinVersion else thisVersion) v
+              let vr = (if wild then withinVersion else thisVersion) v
+              let tvr = mark (NSVersionRange vr) $ fromNamedTrivia (NSVersion v) [PreTrivia preSpaces]
+              pure $ (tvr,vr)
 
               -- ignore braces for now
               <|> (verSet' thisVersion =<< verSet)
@@ -154,8 +158,9 @@ versionRangeTriviaParser digitParser csv = expr
               when wild $
                 P.unexpected "wild-card version after ^>= operator"
 
-              let tVer = annotateTriviaTree (NSVersion v) [PreTrivia preSpaces] mempty
-              (tVer,) <$> majorBoundVersion' v
+              vr <- majorBoundVersion' v
+              let tvr = mark (NSVersionRange vr) $ fromNamedTrivia (NSVersion v) [PreTrivia preSpaces]
+              pure (tvr,vr)
 
               -- ignore braces for now
               <|> (verSet' majorBoundVersion =<< verSet)
@@ -167,12 +172,17 @@ versionRangeTriviaParser digitParser csv = expr
             P.unexpected $
               "wild-card version after non-== operator: " ++ show op
 
-          let tVer = annotateTriviaTree (NSVersion v) [PreTrivia preSpaces] mempty
+          let withTVer ver =
+                let t = fromNamedTrivia (NSVersion v) [PreTrivia preSpaces]
+                in
+                      pTrace ("t1 is" <> show t)
+                    $ pTrace ("t2 is" <> show (mark (NSVersionRange ver) t))
+                    $ (mark (NSVersionRange ver) t, ver)
           case op of
-            ">=" -> pure $ (tVer, orLaterVersion v)
-            "<" -> pure $ (tVer, earlierVersion v)
-            "<=" -> pure $ (tVer, orEarlierVersion v)
-            ">" -> pure $ (tVer, laterVersion v)
+            ">=" -> pure $ withTVer (orLaterVersion v)
+            "<" -> pure $ withTVer (earlierVersion v)
+            "<=" -> pure $ withTVer (orEarlierVersion v)
+            ">" -> pure $ withTVer (laterVersion v)
             _ -> fail $ "Unknown version operator " ++ show op
 
     -- Cannot be warning

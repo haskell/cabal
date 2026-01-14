@@ -53,13 +53,15 @@ data TriviaTree = TriviaTree
 instance NFData TriviaTree
 
 instance Semigroup TriviaTree where
-  TriviaTree locala belowa <> TriviaTree localb belowb = TriviaTree (locala <> localb) (belowa <> belowb)
+  TriviaTree locala belowa <> TriviaTree localb belowb =
+    TriviaTree (locala <> localb)
+      (M.unionWith (<>) belowa belowb) -- The (<>) of map is clobbering, we need to use (<>) to join the values
 
 instance Monoid TriviaTree where
   mempty = emptyTriviaTree
 
 fromNamedTrivia :: Namespace -> Trivia -> TriviaTree
-fromNamedTrivia ns ts = annotateTriviaTree ns ts mempty
+fromNamedTrivia ns ts = TriviaTree mempty (M.singleton ns (TriviaTree ts mempty))
 
 emptyTriviaTree :: TriviaTree
 emptyTriviaTree = TriviaTree mempty mempty
@@ -67,14 +69,6 @@ emptyTriviaTree = TriviaTree mempty mempty
 -- | Get the trivia of this scope
 trivia :: TriviaTree -> Trivia
 trivia = justAnnotation
-
-annotateTriviaTree :: Namespace -> Trivia -> TriviaTree -> TriviaTree
-annotateTriviaTree ns t (TriviaTree local below) =
-  TriviaTree local (M.insertWith (<>) ns (TriviaTree t mempty) below)
-
-annotateTriviaTreeLocal :: Trivia -> TriviaTree -> TriviaTree
-annotateTriviaTreeLocal t (TriviaTree local below) =
-  TriviaTree (t <> local) below
 
 -- | Wrap the trivia within a namespace
 mark :: Namespace -> TriviaTree -> TriviaTree
