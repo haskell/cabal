@@ -78,6 +78,8 @@ import Distribution.Utils.Generic (fromUTF8BS)
 import Distribution.Utils.String (trim)
 import Prelude ()
 
+import Debug.Pretty.Simple
+
 import Distribution.Types.Annotation
 
 import qualified Data.ByteString as BS
@@ -292,8 +294,11 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
         Just xs -> do
           (t, x) <- foldMap (unpack' _pack <$>) <$> traverse (uncurry (parseOne v)) (zip xs [1..])
           let t' = mark (NSField fn) t
+          let !() = pTrace ("=== Trivia \"t\" viewed from monoidalFieldAla\n" <> show t) ()
+          let !() = pTrace ("=== Trivia \"t'\" viewed from monoidalFieldAla\n" <> show t') ()
           pure (t', x)
 
+      -- Different fields
       parseOne v (MkNamelessField pos fls) n = do
         (t, x) <- runFieldParser pos triviaParsec v fls
         let t' = annotateTriviaTreeLocal [FieldNth n] t

@@ -1,3 +1,5 @@
+{-# LANGUAGE BangPatterns #-}
+
 module Distribution.Types.Dependency.Parsec where
 
 import Distribution.Compat.Prelude
@@ -21,6 +23,8 @@ import Distribution.Types.Version.Parsec
 import Distribution.Types.VersionRange.Parsec
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.UnqualComponentName.Parsec
+
+import Debug.Pretty.Simple
 
 import qualified Data.Map as M
 
@@ -60,6 +64,7 @@ import qualified Text.PrettyPrint as PP
 -- >>> map (`simpleParsec'` "mylib:sub") [CabalSpecV2_4, CabalSpecV3_0] :: [Maybe Dependency]
 -- [Nothing,Just (Dependency (PackageName "mylib") (OrLaterVersion (mkVersion [0])) (fromNonEmpty (LSubLibName (UnqualComponentName "sub") :| [])))]
 instance Parsec Dependency where
+  parsec = error "dependency parsec"
   triviaParsec = do
     name <- parsec
 
@@ -75,6 +80,8 @@ instance Parsec Dependency where
             in  triviaParsec <|> pure (t, anyVersion)
     let dep = mkDependency name ver libs
     let depTrivia = mark (NSDependency dep) verTrivia
+
+    let !() = pTrace ("=== Trivia \"ts\" viewed from Dependency\n" <> show depTrivia) ()
     return
       ( depTrivia
       , dep
