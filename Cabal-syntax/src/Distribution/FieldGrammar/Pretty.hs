@@ -1,12 +1,12 @@
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-unused-matches -Wno-unused-local-binds #-}
 
 module Distribution.FieldGrammar.Pretty
-  ( PrettyFieldGrammar(..)
+  ( PrettyFieldGrammar (..)
   , prettyFieldGrammar
   , prettierFieldGrammar
   ) where
@@ -60,7 +60,7 @@ instance FieldGrammar Pretty PrettyFieldGrammar where
   withScope ns (PrettyFG printer) =
     PrettyFG $ \v t s ->
       let t' = unmark ns t
-      in  printer v t s
+       in printer v t s
 
   blurFieldGrammar f (PrettyFG pp) = PrettyFG (\v t -> pp v t . aview f)
 
@@ -113,7 +113,7 @@ instance FieldGrammar Pretty PrettyFieldGrammar where
     where
       pp v t s =
         let t' = unmark (NSField fn) t
-        in  ppField fn (prettierVersioned v t' (pack' _pack (aview l s)))
+         in ppField fn (prettierVersioned v t' (pack' _pack (aview l s)))
 
   prefixedFields _fnPfx l = PrettyFG (\_ t -> pp . aview l)
     where

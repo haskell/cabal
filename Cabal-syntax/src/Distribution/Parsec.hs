@@ -68,9 +68,9 @@ import Distribution.Parsec.Position (Position (..), incPos, retPos, showPos, zer
 import Distribution.Parsec.Warning
 import Prelude ()
 
+import Distribution.CabalParsing
 import Distribution.Parsec.Class
 import Distribution.ParsecParser
-import Distribution.CabalParsing
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.Parsec as Parsec

@@ -15,14 +15,13 @@ import Distribution.Compat.CharParsing (char, spaces)
 import Distribution.Compat.Parsing (between, option)
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.Types.Dependency.Internal
 import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
-import Distribution.Types.PackageName
-import Distribution.Types.Dependency.Internal
-import Distribution.Types.Version.Parsec
-import Distribution.Types.VersionRange.Parsec
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.UnqualComponentName.Parsec
+import Distribution.Types.Version.Parsec
+import Distribution.Types.VersionRange.Parsec
 
 import Debug.Pretty.Simple
 
@@ -30,7 +29,6 @@ import qualified Data.Map as M
 
 import qualified Distribution.Compat.NonEmptySet as NES
 import qualified Text.PrettyPrint as PP
-
 
 -- |
 --
@@ -75,8 +73,8 @@ instance Parsec Dependency where
     spaces -- https://github.com/haskell/cabal/issues/5846
     -- TODO(leana8959): ^ register space at local scope
     (verTrivia, ver) <-
-            let t = fromNamedTrivia (NSVersionRange anyVersion) [IsInjected]
-            in  triviaParsec <|> pure (t, anyVersion)
+      let t = fromNamedTrivia (NSVersionRange anyVersion) [IsInjected]
+       in triviaParsec <|> pure (t, anyVersion)
     let dep = mkDependency name ver libs
     let depTrivia = mark (NSDependency dep) verTrivia
 

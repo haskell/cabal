@@ -1,5 +1,5 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 module Distribution.Types.LibraryName.Pretty
@@ -61,7 +61,6 @@ prettierLibraryNames t package libraries =
         LMainLibName :| [] -> doc
         LSubLibName component :| [] -> doc <<>> Disp.colon <<>> pretty component
         _ -> doc <<>> Disp.colon <<>> Disp.braces prettyComponents
-
 
 showLibraryName :: LibraryName -> String
 showLibraryName LMainLibName = "library"

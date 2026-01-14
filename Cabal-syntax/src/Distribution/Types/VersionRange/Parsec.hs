@@ -1,11 +1,11 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ViewPatterns #-}
 
 module Distribution.Types.VersionRange.Parsec where
@@ -19,10 +19,10 @@ import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Utils.Generic (unsnoc)
 
+import Distribution.Types.Version.Parsec
 import Distribution.Types.VersionRange
 import Distribution.Types.VersionRange.Internal
 import Distribution.Types.VersionRange.Pretty
-import Distribution.Types.Version.Parsec
 
 import Distribution.Types.Annotation
 
@@ -97,13 +97,14 @@ versionRangeTriviaParser digitParser csv = expr
           (tExpr, e) <- expr
           let eUnion = unionVersionRanges t e
           let tExpr' =
-                mark (NSVersionRange eUnion)
-                (annotateTriviaTree (NSVersionRange e) [PreTrivia preSpaces'] tExpr
-                <> tTerm'
-                )
+                mark
+                  (NSVersionRange eUnion)
+                  ( annotateTriviaTree (NSVersionRange e) [PreTrivia preSpaces'] tExpr
+                      <> tTerm'
+                  )
           return (tExpr', eUnion)
         )
-          <|> return (tTerm', t)
+        <|> return (tTerm', t)
 
     term :: m (TriviaTree, VersionRange)
     term = do
@@ -118,13 +119,14 @@ versionRangeTriviaParser digitParser csv = expr
           (tTerm, t) <- term
           let tUnion = intersectVersionRanges f t
           let tTerm' =
-                mark (NSVersionRange tUnion)
-                 ( annotateTriviaTree (NSVersionRange t) [PreTrivia preSpaces'] tTerm
-                 <> tFact
-                 )
+                mark
+                  (NSVersionRange tUnion)
+                  ( annotateTriviaTree (NSVersionRange t) [PreTrivia preSpaces'] tTerm
+                      <> tFact
+                  )
           return (tTerm', tUnion)
         )
-          <|> return (tFact', f)
+        <|> return (tFact', f)
 
     factor :: m (TriviaTree, VersionRange)
     factor = parens expr <|> prim
@@ -161,8 +163,9 @@ versionRangeTriviaParser digitParser csv = expr
         _ -> do
           preSpaces <- P.spaces'
           (wild, v) <- verOrWild
-          when wild
-            $ P.unexpected $ "wild-card version after non-== operator: " ++ show op
+          when wild $
+            P.unexpected $
+              "wild-card version after non-== operator: " ++ show op
 
           let tVer = annotateTriviaTree (NSVersion v) [PreTrivia preSpaces] mempty
           case op of
@@ -303,4 +306,3 @@ versionRangeTriviaParser digitParser csv = expr
       case ts of
         [] -> pure ()
         (_ : _) -> parsecWarning PWTVersionTag "version with tags"
-

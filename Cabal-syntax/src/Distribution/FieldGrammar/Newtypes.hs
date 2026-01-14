@@ -1,5 +1,5 @@
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE InstanceSigs #-}
@@ -53,6 +53,7 @@ import Distribution.Compat.Newtype
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Debug.Pretty.Simple
 import Distribution.CabalSpecVersion
 import Distribution.Compiler (CompilerFlavor)
 import Distribution.License (License)
@@ -73,7 +74,6 @@ import Distribution.Version
   , versionNumbers
   )
 import Text.PrettyPrint (Doc, comma, fsep, punctuate, text, vcat)
-import Debug.Pretty.Simple
 
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Set as Set

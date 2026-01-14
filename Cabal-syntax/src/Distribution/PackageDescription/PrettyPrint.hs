@@ -37,7 +37,7 @@ import Distribution.Types.Annotation
 
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
-import Distribution.FieldGrammar (PrettyFieldGrammar', prettyFieldGrammar, prettierFieldGrammar)
+import Distribution.FieldGrammar (PrettyFieldGrammar', prettierFieldGrammar, prettyFieldGrammar)
 import Distribution.Fields.Pretty
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration (transformAllBuildInfos)

@@ -66,7 +66,6 @@ instance IsString UnqualComponentName where
 instance Binary UnqualComponentName
 instance Structured UnqualComponentName
 
-
 instance NFData UnqualComponentName where
   rnf (UnqualComponentName pkg) = rnf pkg
 

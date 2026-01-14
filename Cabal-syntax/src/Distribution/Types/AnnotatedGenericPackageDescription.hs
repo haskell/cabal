@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+
 module Distribution.Types.AnnotatedGenericPackageDescription
   ( AnnotatedGenericPackageDescription (..)
   ) where
@@ -8,8 +9,8 @@ import Prelude ()
 
 import Control.DeepSeq
 
-import Distribution.Types.GenericPackageDescription
 import Distribution.Types.Annotation
+import Distribution.Types.GenericPackageDescription
 
 data AnnotatedGenericPackageDescription = AnnotatedGenericPackageDescription
   { unAnnotateGPD :: GenericPackageDescription

@@ -1,5 +1,5 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 module Distribution.Types.Version.Pretty
@@ -23,8 +23,8 @@ import Prelude ()
 
 import Distribution.Pretty
 
-import Distribution.Types.Version.Internal
 import Distribution.Types.Annotation
+import Distribution.Types.Version.Internal
 
 import qualified Data.Map as M
 
@@ -37,7 +37,7 @@ instance Pretty Version where
   prettier t ver =
     -- let !() = trace ("=== Printed from instance Pretty Version\n" <> show t) ()
     -- in
-        Disp.hcat
+    Disp.hcat
       ( Disp.punctuate
           (Disp.char '.')
           (map Disp.int $ versionNumbers ver)

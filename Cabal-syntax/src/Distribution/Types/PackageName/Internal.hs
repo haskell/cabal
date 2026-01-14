@@ -63,6 +63,5 @@ instance IsString PackageName where
 instance Binary PackageName
 instance Structured PackageName
 
-
 instance NFData PackageName where
   rnf (PackageName pkg) = rnf pkg

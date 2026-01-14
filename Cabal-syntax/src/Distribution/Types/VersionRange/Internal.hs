@@ -251,7 +251,6 @@ hyloVersionRange f g = h where h = f . fmap h . g
 -- Parsec & Pretty
 -------------------------------------------------------------------------------
 
-
 ----------------------------
 -- Wildcard range utilities
 --

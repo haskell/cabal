@@ -42,7 +42,6 @@ module Distribution.Types.VersionRange
     -- ** Inspection
   , withinRange
   , foldVersionRange
-
   --   -- ** Parser
   -- , versionRangeParser
 

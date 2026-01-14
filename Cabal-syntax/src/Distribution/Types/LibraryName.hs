@@ -3,8 +3,8 @@ module Distribution.Types.LibraryName
   , module Distribution.Types.LibraryName.Internal
   , module Distribution.Types.LibraryName.Pretty
   )
-  where
+where
 
-import Distribution.Types.LibraryName.Parsec
 import Distribution.Types.LibraryName.Internal
+import Distribution.Types.LibraryName.Parsec
 import Distribution.Types.LibraryName.Pretty

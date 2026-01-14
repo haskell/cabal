@@ -73,9 +73,9 @@ runParseResult pr = unPR pr emptyPRState initialCtx failure success
     initialCtx = PRContext PUnknownSource
 
     failure (PRState warns [] v) =
-        (warns, Left (v, PErrorWithSource PUnknownSource (PError zeroPos "panic") :| []))
+      (warns, Left (v, PErrorWithSource PUnknownSource (PError zeroPos "panic") :| []))
     failure (PRState warns (err : errs) v) =
-        (warns, Left (v, err :| errs))
+      (warns, Left (v, err :| errs))
 
     success (PRState warns [] _) x = (warns, Right x)
     -- If there are any errors, don't return the result

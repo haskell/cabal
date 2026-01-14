@@ -20,6 +20,7 @@ import Distribution.Version (VersionRange, anyVersion, simplifyVersionRange)
 import Distribution.CabalSpecVersion
 import Distribution.Compat.CharParsing (char, spaces)
 import Distribution.Compat.Parsing (between, option)
+
 -- import Distribution.Pretty
 import Distribution.Types.LibraryName.Internal
 import Distribution.Types.PackageName.Internal
@@ -70,8 +71,6 @@ mkDependency pn vr lb = Dependency pn vr (NES.map conv lb)
 instance Binary Dependency
 instance Structured Dependency
 instance NFData Dependency where rnf = genericRnf
-
-
 
 -- | Library set with main library.
 --

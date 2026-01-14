@@ -1,11 +1,11 @@
-{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE TypeOperators #-}
 
 -- | 'GenericPackageDescription' Field descriptions
 module Distribution.PackageDescription.FieldGrammar
@@ -78,22 +78,22 @@ import Distribution.CabalSpecVersion
 import Distribution.Compat.Newtype (Newtype, pack', unpack')
 import Distribution.Compiler (CompilerFlavor (..), PerCompilerFlavor (..))
 import Distribution.FieldGrammar
+import Distribution.FieldGrammar.Parsec
+import Distribution.FieldGrammar.Pretty (PrettyFieldGrammar (..))
 import Distribution.Fields
 import Distribution.ModuleName (ModuleName)
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Parsec
-import Distribution.FieldGrammar.Parsec
 import Distribution.Pretty (Pretty (..), prettyShow, showToken)
-import Distribution.FieldGrammar.Pretty (PrettyFieldGrammar (..))
 import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
 
 import Distribution.Types.Annotation
 import Distribution.Types.Dependency.Parsec
 
-import qualified Data.Map as M
 import qualified Data.ByteString.Char8 as BS8
+import qualified Data.Map as M
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.SPDX as SPDX
 import qualified Distribution.Types.Lens as L

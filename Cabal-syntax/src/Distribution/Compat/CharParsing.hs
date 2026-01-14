@@ -1,5 +1,5 @@
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fspec-constr -fspec-constr-count=8 #-}

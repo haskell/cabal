@@ -1,5 +1,5 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -67,7 +67,6 @@ import Distribution.Types.Annotation
 --
 -- >>> fmap (prettyVersioned CabalSpecV1_6) (simpleParsec' CabalSpecV1_6 "-any" :: Maybe VersionRange)
 -- Just >=0
-
 instance Pretty VersionRange where
   prettier = prettierVersioned cabalSpecLatest
 

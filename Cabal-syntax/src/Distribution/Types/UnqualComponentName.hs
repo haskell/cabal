@@ -3,7 +3,7 @@ module Distribution.Types.UnqualComponentName
   , module Distribution.Types.UnqualComponentName.Parsec
   , module Distribution.Types.UnqualComponentName.Pretty
   )
-  where
+where
 
 import Distribution.Types.UnqualComponentName.Internal
 import Distribution.Types.UnqualComponentName.Parsec

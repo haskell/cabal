@@ -1,11 +1,11 @@
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 
 -- | This module provides a 'FieldGrammarParser', one way to parse
 -- @.cabal@ -like files.
@@ -71,8 +71,8 @@ module Distribution.FieldGrammar.Parsec
   , fieldLinesToStream
   ) where
 
-import Distribution.Compat.Newtype
 import Distribution.Compat.Lens
+import Distribution.Compat.Newtype
 import Distribution.Compat.Prelude
 import Distribution.Utils.Generic (fromUTF8BS)
 import Distribution.Utils.String (trim)
@@ -292,7 +292,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
       parser v fields = case Map.lookup fn fields of
         Nothing -> (pure . pure) mempty
         Just xs -> do
-          (t, x) <- foldMap (unpack' _pack <$>) <$> traverse (uncurry (parseOne v)) (zip xs [1..])
+          (t, x) <- foldMap (unpack' _pack <$>) <$> traverse (uncurry (parseOne v)) (zip xs [1 ..])
           let t' = mark (NSField fn) t
           let !() = pTrace ("=== Trivia \"t\" viewed from monoidalFieldAla\n" <> show t) ()
           let !() = pTrace ("=== Trivia \"t'\" viewed from monoidalFieldAla\n" <> show t') ()

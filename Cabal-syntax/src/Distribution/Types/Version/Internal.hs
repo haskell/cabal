@@ -87,7 +87,6 @@ instance NFData Version where
   rnf (PV0 _) = ()
   rnf (PV1 _ ns) = rnf ns
 
-
 -- | Construct 'Version' from list of version number components.
 --
 -- For instance, @mkVersion [3,2,1]@ constructs a 'Version'

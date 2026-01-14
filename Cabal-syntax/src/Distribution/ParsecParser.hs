@@ -1,9 +1,9 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Distribution.ParsecParser where
 
@@ -35,7 +35,7 @@ instance CabalParsing ParsecParser where
   parsecWarning t w = liftParsec $ do
     spos <- Parsec.getPosition
     Parsec.modifyState $ \warns ->
-        (PWarning t (Position (Parsec.sourceLine spos) (Parsec.sourceColumn spos)) w : warns)
+      (PWarning t (Position (Parsec.sourceLine spos) (Parsec.sourceColumn spos)) w : warns)
   askCabalSpecVersion = PP pure
 
 instance Functor ParsecParser where
@@ -67,7 +67,6 @@ instance Alternative ParsecParser where
 
   some p = PP $ \v -> some (unPP p v)
   {-# INLINE some #-}
-
 
 instance Monad ParsecParser where
   return = pure

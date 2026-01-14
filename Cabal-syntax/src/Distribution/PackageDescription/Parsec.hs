@@ -1,9 +1,9 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -Werror=unused-local-binds -Werror=unused-matches #-}
 
 -- |
@@ -60,8 +60,8 @@ import Distribution.Pretty (prettyShow)
 import Distribution.Utils.Generic (breakMaybe, fromUTF8BS, toUTF8BS, unfoldrM, validateUTF8)
 import Distribution.Version (Version, mkVersion, versionNumbers)
 
-import Distribution.Types.Annotation
 import Distribution.Types.AnnotatedGenericPackageDescription
+import Distribution.Types.Annotation
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
@@ -448,8 +448,8 @@ goSections specVer = fmap mconcat . traverse process
           stateGpd . L.packageDescription . L.sourceRepos %= snoc sr
           pure tSr
       | otherwise = do
-        lift $ parseWarning pos PWTUnknownSection $ "Ignoring section: " ++ show name
-        pure mempty
+          lift $ parseWarning pos PWTUnknownSection $ "Ignoring section: " ++ show name
+          pure mempty
 
 parseName :: Position -> [SectionArg Position] -> SectionParser src String
 parseName pos args = fromUTF8BS <$> parseNameBS pos args
@@ -548,10 +548,11 @@ parseCondTree v hasElif grammar commonStanzas fromBuildInfo cond = go
 
     parseElseIfs
       :: [Section Position]
-      -> ParseResult src
-        ( TriviaTree
-        , (Maybe (CondTree ConfVar [Dependency] a), [CondBranch ConfVar [Dependency] a])
-        )
+      -> ParseResult
+          src
+          ( TriviaTree
+          , (Maybe (CondTree ConfVar [Dependency] a), [CondBranch ConfVar [Dependency] a])
+          )
     parseElseIfs [] = return (mempty, (Nothing, []))
     parseElseIfs (MkSection (Name pos name) args fields : sections) | name == "else" = do
       unless (null args) $

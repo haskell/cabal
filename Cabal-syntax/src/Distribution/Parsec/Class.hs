@@ -52,7 +52,6 @@ instance Parsec a => Parsec (Last a) where
 parsecLast :: (Parsec a, CabalParsing m) => m (TriviaTree, Last a)
 parsecLast = ((fmap . fmap) (Last . Just) triviaParsec) <|> (pure . pure) mempty
 
-
 -- | @[^ ,]@
 parsecToken :: CabalParsing m => m String
 parsecToken = parsecHaskellString <|> ((P.munch1 (\x -> not (isSpace x) && x /= ',') P.<?> "identifier") >>= checkNotDoubleDash)
@@ -232,5 +231,3 @@ parsecUnqualComponentName = state0 DList.empty
 
     alt :: m String -> m String -> m String
     !alt = (<|>)
-
-

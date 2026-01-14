@@ -1,23 +1,25 @@
 {-# LANGUAGE DeriveGeneric #-}
+
 module Distribution.Types.Annotation where
 
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Data.Map (Map)
-import Data.Maybe (fromMaybe)
-import qualified Data.Map as M
 import qualified Data.ByteString as BS
 import qualified Data.List.NonEmpty as NE
+import Data.Map (Map)
+import qualified Data.Map as M
+import Data.Maybe (fromMaybe)
 
 import Control.DeepSeq
 
 -- TODO: import all the types that we need to use as key to index the trivia
-import Distribution.Types.VersionRange
-import Distribution.Types.Version.Internal
-import Distribution.Types.PackageName.Internal
+
 import Distribution.Types.Dependency.Internal
 import Distribution.Types.LibraryName.Internal
+import Distribution.Types.PackageName.Internal
+import Distribution.Types.Version.Internal
+import Distribution.Types.VersionRange
 
 type Trivia = [Trivium]
 data Trivium

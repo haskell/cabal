@@ -26,10 +26,8 @@ instance Binary LibraryName
 instance Structured LibraryName
 instance NFData LibraryName where rnf = genericRnf
 
-
 defaultLibName :: LibraryName
 defaultLibName = LMainLibName
-
 
 libraryNameString :: LibraryName -> Maybe UnqualComponentName
 libraryNameString LMainLibName = Nothing
