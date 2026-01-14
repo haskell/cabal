@@ -182,21 +182,8 @@ import Distribution.Types.LibraryName
        (libraryNameString)
 #endif
 
-#if MIN_VERSION_directory(1,2,2)
 import System.Directory
        (makeAbsolute)
-#else
-import System.Directory
-       (getCurrentDirectory)
-import System.FilePath
-       (isAbsolute)
-
-makeAbsolute :: FilePath -> IO FilePath
-makeAbsolute p | isAbsolute p = return p
-               | otherwise    = do
-    cwd <- getCurrentDirectory
-    return $ cwd </> p
-#endif
 
 findFile' :: Verbosity -> [FilePath] -> FilePath -> IO FilePath
 #if MIN_VERSION_Cabal(3,11,0)

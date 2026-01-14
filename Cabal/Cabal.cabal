@@ -45,7 +45,7 @@ library
     , bytestring >= 0.10.0.0 && < 0.13
     , containers >= 0.5.8.2  && < 0.9
     , deepseq    >= 1.3.0.1  && < 1.7
-    , directory  >= 1.2      && < 1.4
+    , directory  >= 1.2.7    && < 1.4
     , filepath   >= 1.3.0.1  && < 1.6
     , pretty     >= 1.1.1    && < 1.2
     , process    >= 1.2.1.0  && < 1.7
@@ -94,7 +94,6 @@ library
     Distribution.Utils.LogProgress
     Distribution.Utils.MapAccum
     Distribution.Compat.CreatePipe
-    Distribution.Compat.Directory
     Distribution.Compat.Environment
     Distribution.Compat.FilePath
     Distribution.Compat.Internal.TempFile

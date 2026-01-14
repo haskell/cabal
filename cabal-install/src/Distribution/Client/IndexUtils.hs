@@ -134,11 +134,10 @@ import Distribution.Client.Utils
   ( byteStringToFilePath
   , tryReadAddSourcePackageDesc
   )
-import Distribution.Compat.Directory (listDirectory)
 import Distribution.Compat.Time (getFileAge, getModTime)
 import Distribution.Utils.Generic (fstOf3)
 import Distribution.Utils.Structured (Structured (..), nominalStructure, structuredDecodeFileOrFail, structuredEncodeFile)
-import System.Directory (doesDirectoryExist, doesFileExist)
+import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath
   ( normalise
   , splitDirectories

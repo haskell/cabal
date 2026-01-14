@@ -63,7 +63,7 @@ test-suite unit-tests
     , Cabal-QuickCheck
     , containers
     , Diff                >=0.4   && <0.6
-    , directory
+    , directory           >=1.2.7
     , filepath
     , pretty
     , QuickCheck          >=2.14  && <2.15

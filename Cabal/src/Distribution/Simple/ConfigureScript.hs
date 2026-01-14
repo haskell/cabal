@@ -37,12 +37,11 @@ import Distribution.Utils.NubList
 import Distribution.Utils.Path
 
 -- Base
-import System.Directory (createDirectoryIfMissing, doesFileExist)
+import System.Directory (createDirectoryIfMissing, doesFileExist, makeAbsolute)
 import qualified System.FilePath as FilePath
 #ifdef mingw32_HOST_OS
 import System.FilePath    (normalise, splitDrive)
 #endif
-import Distribution.Compat.Directory (makeAbsolute)
 import Distribution.Compat.Environment (getEnvironment)
 import Distribution.Compat.GetShortPathName (getShortPathName)
 

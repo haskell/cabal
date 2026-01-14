@@ -21,9 +21,6 @@ module Distribution.Client.CmdInstall
   ) where
 
 import Distribution.Client.Compat.Prelude
-import Distribution.Compat.Directory
-  ( doesPathExist
-  )
 import Prelude ()
 
 import Distribution.Client.CmdErrorMessages
@@ -238,6 +235,7 @@ import System.Directory
   , createDirectoryIfMissing
   , doesDirectoryExist
   , doesFileExist
+  , doesPathExist
   , getTemporaryDirectory
   , makeAbsolute
   , removeDirectory

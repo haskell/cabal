@@ -24,9 +24,6 @@ module Distribution.Client.Get
 
 import Distribution.Client.Compat.Prelude hiding (get)
 import Distribution.Client.Types.SourceRepo (SourceRepoProxy, SourceRepositoryPackage (..), srpToProxy)
-import Distribution.Compat.Directory
-  ( listDirectory
-  )
 import Distribution.Package
   ( PackageId
   , packageId
@@ -83,6 +80,7 @@ import System.Directory
   ( createDirectoryIfMissing
   , doesDirectoryExist
   , doesFileExist
+  , listDirectory
   )
 import System.FilePath
   ( addTrailingPathSeparator
