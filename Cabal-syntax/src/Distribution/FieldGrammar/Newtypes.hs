@@ -160,14 +160,11 @@ instance (Newtype a b, Sep sep, Parsec b) => Parsec (List sep b a) where
   parsec = error "list parsec"
   triviaParsec = do
     (ts, bs) <- unzip <$> parseSep (Proxy :: Proxy sep) triviaParsec
-    let !() = pTrace ("=== Trivia \"ts\" viewed from List\n" <> show ts) ()
     -- TODO(leana8959): list numbering
     pure (mconcat ts, pack $ map (unpack :: b -> a) bs)
 
 instance (Newtype a b, Sep sep, Pretty b) => Pretty (List sep b a) where
-  prettier t =
-    -- let !() = trace ("== Printed from List\n" <> show t) () in
-    prettySep (Proxy :: Proxy sep) . map (prettier t . (pack :: a -> b)) . unpack
+  prettier t = prettySep (Proxy :: Proxy sep) . map (prettier t . (pack :: a -> b)) . unpack
 
 -- | Like 'List', but for 'Set'.
 --

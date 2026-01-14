@@ -50,6 +50,8 @@ import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.DList as DList
 import qualified Text.PrettyPrint as Disp
 
+import Debug.Pretty.Simple
+
 import Data.Map (Map)
 import qualified Data.Map as M
 import Distribution.Types.Annotation
@@ -79,8 +81,6 @@ prettyVersionRange :: TriviaTree -> VersionRange -> Disp.Doc
 prettyVersionRange t0 vr = cataVersionRange alg vr 0
   where
     t = unmark (NSVersionRange vr) t0
-    !() = trace ("=== Printed from instance Pretty VersionRange\n" <> show t) ()
-
     alg :: VersionRangeF (Int -> Disp.Doc) -> Int -> Disp.Doc
     alg (ThisVersionF v) _ = Disp.text "==" <<>> prettier t v
     alg (LaterVersionF v) _ = Disp.text ">" <<>> prettier t v

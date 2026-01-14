@@ -60,10 +60,7 @@ instance FieldGrammar Pretty PrettyFieldGrammar where
   withScope :: Namespace -> PrettyFieldGrammar s a -> PrettyFieldGrammar s a
   withScope ns (PrettyFG printer) =
     PrettyFG $ \v t s ->
-      let t' = unmark ns t
-       in pTrace ("Trivia t viewed from withScope (pretty)" <> show ns <> "\n" <> show t)
-          $ pTrace ("Trivia t' viewed from withScope (pretty)" <> show ns <> "\n" <> show t')
-          $ printer v t' s
+      let t' = unmark ns t in printer v t' s
 
   blurFieldGrammar f (PrettyFG pp) = PrettyFG (\v t -> pp v t . aview f)
 
@@ -116,10 +113,7 @@ instance FieldGrammar Pretty PrettyFieldGrammar where
     where
       pp v t s =
         let t' = unmark (NSField fn) t
-         in
-                pTrace ("Trivia t viewed from monoidalFieldAla (pretty)" <> show t)
-              $ pTrace ("Trivia t' viewed from monoidalFieldAla (pretty)" <> show t')
-              $ ppField fn (prettierVersioned v t' (pack' _pack (aview l s)))
+         in ppField fn (prettierVersioned v t' (pack' _pack (aview l s)))
 
   prefixedFields _fnPfx l = PrettyFG (\_ t -> pp . aview l)
     where

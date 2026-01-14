@@ -294,8 +294,6 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
         Just xs -> do
           (t, x) <- foldMap (unpack' _pack <$>) <$> traverse (uncurry (parseOne v)) (zip xs [1 ..])
           let t' = mark (NSField fn) t
-          let !() = pTrace ("=== Trivia \"t\" viewed from monoidalFieldAla\n" <> show t) ()
-          let !() = pTrace ("=== Trivia \"t'\" viewed from monoidalFieldAla\n" <> show t') ()
           pure (t', x)
 
       -- Different fields

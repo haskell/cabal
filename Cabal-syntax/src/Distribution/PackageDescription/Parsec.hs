@@ -233,7 +233,6 @@ parseAnnotatedGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs =
   checkForUndefinedCustomSetup gpd2
 
   let t = tPd <> tSections
-  let !() = pTrace ("=== Trivia viewed from parseAnnotatedGenericPackageDescription\n" <> show t) ()
   let agpd = AnnotatedGenericPackageDescription gpd2 t
   -- See nothunks test, without this deepseq we get (at least):
   -- Thunk in ThunkInfo {thunkContext = ["PackageIdentifier","PackageDescription","GenericPackageDescription"]}

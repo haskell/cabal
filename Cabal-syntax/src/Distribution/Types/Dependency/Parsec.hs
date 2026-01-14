@@ -78,7 +78,6 @@ instance Parsec Dependency where
     let dep = mkDependency name ver libs
     let depTrivia = mark (NSDependency dep) verTrivia
 
-    let !() = pTrace ("=== Trivia \"ts\" viewed from Dependency\n" <> show depTrivia) ()
     return
       ( depTrivia
       , dep
