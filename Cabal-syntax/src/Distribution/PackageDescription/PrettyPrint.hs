@@ -61,6 +61,7 @@ import qualified Distribution.Types.BuildInfo.Lens as L
 import qualified Distribution.Types.SetupBuildInfo.Lens as L
 
 import Text.PrettyPrint (Doc, char, hsep, parens, text)
+import Debug.Pretty.Simple
 
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import qualified Distribution.Compat.NonEmptySet as NES
@@ -86,7 +87,8 @@ ppGenericPackageDescription = flip ppGenericPackageDescription' mempty
 -- | Convert a generic package description to 'PrettyField's.
 ppGenericPackageDescription' :: CabalSpecVersion -> TriviaTree -> GenericPackageDescription -> [PrettyField ()]
 ppGenericPackageDescription' v t gpd0 =
-  concat
+  pTrace ("Trivia viewed from ppGenericPackageDescription\n" <> show t)
+  $ concat
     [ ppPackageDescription v t (packageDescription gpd)
     , ppSetupBInfo v t (setupBuildInfo (packageDescription gpd))
     , ppGenPackageFlags v t (genPackageFlags gpd)
@@ -132,8 +134,9 @@ ppFlag v t flag@(MkPackageFlag name _ _ _) =
   PrettySection () "flag" [ppFlagName name] $
     prettierFieldGrammar v t (flagFieldGrammar name) flag
 
+-- TODO(leana8959): deal with condtree
 ppCondTree2 :: CabalSpecVersion -> TriviaTree -> PrettyFieldGrammar' s -> CondTree ConfVar [Dependency] s -> [PrettyField ()]
-ppCondTree2 v t grammar = go
+ppCondTree2 v t grammar = pTrace ("Trivia t viewed from ppCondTree2\n" <> show t) go
   where
     -- TODO: recognise elif opportunities
     go (CondNode it _ ifs) =
@@ -154,7 +157,8 @@ ppCondTree2 v t grammar = go
 ppCondLibrary :: CabalSpecVersion -> TriviaTree -> Maybe (CondTree ConfVar [Dependency] Library) -> [PrettyField ()]
 ppCondLibrary _ _ Nothing = mempty
 ppCondLibrary v t (Just condTree) =
-  pure $
+  pTrace ("Trivia viewed from ppCondLibrary\n" <> show t)
+  $ pure $
     PrettySection () "library" [] $
       ppCondTree2 v t (libraryFieldGrammar LMainLibName) condTree
 

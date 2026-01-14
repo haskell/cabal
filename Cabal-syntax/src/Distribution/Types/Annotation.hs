@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE StrictData #-}
 
 module Distribution.Types.Annotation where
 
