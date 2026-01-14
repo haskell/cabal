@@ -12,6 +12,8 @@ import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
 
+import qualified Text.PrettyPrint as Disp
+
 import Control.DeepSeq
 
 -- TODO: import all the types that we need to use as key to index the trivia
@@ -67,10 +69,6 @@ fromNamedTrivia ns ts = TriviaTree mempty (M.singleton ns (TriviaTree ts mempty)
 emptyTriviaTree :: TriviaTree
 emptyTriviaTree = TriviaTree mempty mempty
 
--- | Get the trivia of this scope
-trivia :: TriviaTree -> Trivia
-trivia = justAnnotation
-
 -- | Wrap the trivia within a namespace
 mark :: Namespace -> TriviaTree -> TriviaTree
 mark ns ts = TriviaTree mempty (M.singleton ns ts)
@@ -78,3 +76,13 @@ mark ns ts = TriviaTree mempty (M.singleton ns ts)
 -- | If the trivia map is for this scope
 unmark :: Namespace -> TriviaTree -> TriviaTree
 unmark ns tt = fromMaybe mempty (M.lookup ns (namedAnnotations tt))
+
+triviaToDoc :: Trivia -> Disp.Doc -> Disp.Doc
+triviaToDoc [] x = x
+triviaToDoc (t:ts) x = triviaToDoc ts (triviumToDoc t x)
+
+triviumToDoc :: Trivium -> Disp.Doc -> Disp.Doc
+triviumToDoc t x = case t of
+  PreTrivia s -> Disp.text s <> x
+  PostTrivia s -> x <> Disp.text s
+  IsInjected -> mempty -- the doc in question shouldn't be rendered

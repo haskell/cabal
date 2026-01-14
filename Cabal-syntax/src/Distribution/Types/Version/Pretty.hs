@@ -35,7 +35,8 @@ import qualified Text.Read as Read
 
 instance Pretty Version where
   prettier t ver =
-    Disp.hcat
+    triviaToDoc (justAnnotation t)
+    $ Disp.hcat
       ( Disp.punctuate
           (Disp.char '.')
           (map Disp.int $ versionNumbers ver)
