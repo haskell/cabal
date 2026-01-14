@@ -174,10 +174,7 @@ versionRangeTriviaParser digitParser csv = expr
 
           let withTVer ver =
                 let t = fromNamedTrivia (NSVersion v) [PreTrivia preSpaces]
-                in
-                      pTrace ("t1 is" <> show t)
-                    $ pTrace ("t2 is" <> show (mark (NSVersionRange ver) t))
-                    $ (mark (NSVersionRange ver) t, ver)
+                in (mark (NSVersionRange ver) t, ver)
           case op of
             ">=" -> pure $ withTVer (orLaterVersion v)
             "<" -> pure $ withTVer (earlierVersion v)

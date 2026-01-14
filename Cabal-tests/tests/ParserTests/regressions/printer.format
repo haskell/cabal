@@ -9,9 +9,11 @@ library
     exposed-modules:  ElseIf
     default-language: Haskell2010
     build-depends:
-        base >=4.10,
+        base >=4.10 || >=4.13,
         containers,
-        ghc-prim
+        base >=4,
+        ghc-prim,
+        text <2
 
 test-suite tests
     type:    exitcode-stdio-1.0
