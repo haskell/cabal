@@ -64,7 +64,6 @@ import qualified Text.PrettyPrint as PP
 -- >>> map (`simpleParsec'` "mylib:sub") [CabalSpecV2_4, CabalSpecV3_0] :: [Maybe Dependency]
 -- [Nothing,Just (Dependency (PackageName "mylib") (OrLaterVersion (mkVersion [0])) (fromNonEmpty (LSubLibName (UnqualComponentName "sub") :| [])))]
 instance Parsec Dependency where
-  parsec = error "dependency parsec"
   triviaParsec = do
     name <- parsec
 

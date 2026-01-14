@@ -30,10 +30,10 @@ class Parsec a where
   triviaParsec = (\y -> (mempty, y)) <$> parsec
 
 instance Parsec a => Parsec (Identity a) where
-  parsec = Identity <$> parsec
+  triviaParsec = (fmap . fmap) Identity triviaParsec
 
 instance Parsec Bool where
-  parsec = P.munch1 isAlpha >>= postprocess
+  triviaParsec = P.munch1 isAlpha >>= fmap pure . postprocess
     where
       postprocess str
         | str == "True" = pure True
@@ -47,10 +47,10 @@ instance Parsec Bool where
             "Boolean values are case sensitive, use 'True' or 'False'."
 
 instance Parsec a => Parsec (Last a) where
-  parsec = parsecLast
+  triviaParsec = parsecLast
 
-parsecLast :: (Parsec a, CabalParsing m) => m (Last a)
-parsecLast = (Last . Just <$> parsec) <|> pure mempty
+parsecLast :: (Parsec a, CabalParsing m) => m (TriviaTree, Last a)
+parsecLast = ((fmap . fmap) (Last . Just) triviaParsec) <|> (pure . pure) mempty
 
 
 -- | @[^ ,]@
