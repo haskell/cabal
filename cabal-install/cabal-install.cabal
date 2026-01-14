@@ -127,7 +127,6 @@ library
         Distribution.Client.CmdTest
         Distribution.Client.CmdUpdate
         Distribution.Client.CmdGenBounds
-        Distribution.Client.Compat.Directory
         Distribution.Client.Compat.Orphans
         Distribution.Client.Compat.Prelude
         Distribution.Client.Compat.Semaphore
@@ -447,9 +446,6 @@ test-suite integration-tests2
   main-is: IntegrationTests2.hs
   hs-source-dirs: tests
   default-language: Haskell2010
-
-  other-modules:
-    IntegrationTests2.CPP
 
   build-depends:
     , bytestring

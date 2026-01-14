@@ -68,7 +68,6 @@ import Distribution.System
 import Distribution.Text
 import Distribution.Utils.Path (unsafeMakeSymbolicPath)
 import Distribution.Version
-import IntegrationTests2.CPP
 
 import Data.List (isInfixOf)
 import qualified Data.Map as Map
@@ -81,6 +80,7 @@ import System.Directory
 import System.Environment (setEnv)
 import System.FilePath
 import System.IO (hPutStrLn, stderr)
+import qualified System.Info
 import System.Process (callProcess)
 
 import Data.Tagged (Tagged (..))
@@ -178,7 +178,7 @@ tests config =
       [ testCaseSteps "Setup script styles" (testSetupScriptStyles config)
       , testCase "keep-going" (testBuildKeepGoing config)
       ]
-        ++ if isMingw32
+        ++ if System.Info.os == "mingw32"
           then -- disabled because https://github.com/haskell/cabal/issues/6272
             []
           else

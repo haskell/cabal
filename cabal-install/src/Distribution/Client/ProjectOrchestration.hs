@@ -105,7 +105,7 @@ module Distribution.Client.ProjectOrchestration
   ) where
 
 import Distribution.Client.Compat.Prelude
-import Distribution.Compat.Directory
+import System.Directory
   ( makeAbsolute
   )
 import Prelude ()
