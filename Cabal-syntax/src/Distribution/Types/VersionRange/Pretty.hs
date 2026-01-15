@@ -55,6 +55,7 @@ import Debug.Pretty.Simple
 import Data.Map (Map)
 import qualified Data.Map as M
 import Distribution.Types.Annotation
+import Distribution.Types.Namespace
 
 -- |
 --
@@ -84,20 +85,20 @@ prettyVersionRange' :: TriviaTree -> Int -> VersionRange -> Disp.Doc
 prettyVersionRange' t0 d vr =
   pTrace ("prettyVersionRange' t0\n" <> show t0)
   $ case vr of
-    v0@(ThisVersion v)       -> let t = unmark (NSVersionRange v0) t0 in triviaToDoc (justAnnotation t0) $ Disp.text "==" <<>> prettier t v
-    v0@(LaterVersion v)      -> let t = unmark (NSVersionRange v0) t0 in triviaToDoc (justAnnotation t0) $ Disp.text ">" <<>> prettier t v
-    v0@(OrLaterVersion v)    -> let t = unmark (NSVersionRange v0) t0 in triviaToDoc (justAnnotation t0) $ Disp.text ">=" <<>> prettier t v
-    v0@(EarlierVersion v)    -> let t = unmark (NSVersionRange v0) t0 in triviaToDoc (justAnnotation t0) $ Disp.text "<" <<>> prettier t v
-    v0@(OrEarlierVersion v)  -> let t = unmark (NSVersionRange v0) t0 in triviaToDoc (justAnnotation t0) $ Disp.text "<=" <<>> prettier t v
-    v0@(MajorBoundVersion v) -> let t = unmark (NSVersionRange v0) t0 in triviaToDoc (justAnnotation t0) $ Disp.text "^>=" <<>> prettier t v
+    v0@(ThisVersion v)       -> let t = unmark (SomeNamespace v0) t0 in triviaToDoc (justAnnotation t0) $ Disp.text "==" <<>> prettier t v
+    v0@(LaterVersion v)      -> let t = unmark (SomeNamespace v0) t0 in triviaToDoc (justAnnotation t0) $ Disp.text ">" <<>> prettier t v
+    v0@(OrLaterVersion v)    -> let t = unmark (SomeNamespace v0) t0 in triviaToDoc (justAnnotation t0) $ Disp.text ">=" <<>> prettier t v
+    v0@(EarlierVersion v)    -> let t = unmark (SomeNamespace v0) t0 in triviaToDoc (justAnnotation t0) $ Disp.text "<" <<>> prettier t v
+    v0@(OrEarlierVersion v)  -> let t = unmark (SomeNamespace v0) t0 in triviaToDoc (justAnnotation t0) $ Disp.text "<=" <<>> prettier t v
+    v0@(MajorBoundVersion v) -> let t = unmark (SomeNamespace v0) t0 in triviaToDoc (justAnnotation t0) $ Disp.text "^>=" <<>> prettier t v
 
     v@(UnionVersionRanges r1 r2) ->
-        let t = unmark (NSVersionRange v) t0
+        let t = unmark (SomeNamespace v) t0
         in triviaToDoc (justAnnotation t0)
             $ parens (d > 0)
             $ prettyVersionRange' t (d+1) r1 <+> Disp.text "||" <+> prettyVersionRange' t (d+0) r2
     v@(IntersectVersionRanges r1 r2) ->
-        let t = unmark (NSVersionRange v) t0
+        let t = unmark (SomeNamespace v) t0
         in    triviaToDoc (justAnnotation t0)
               $ parens (d > 1)
               $ prettyVersionRange' t (d+2) r1 <+> Disp.text "&&" <+> prettyVersionRange' t (d+1) r2

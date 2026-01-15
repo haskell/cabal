@@ -81,6 +81,7 @@ import Prelude ()
 import Debug.Pretty.Simple
 
 import Distribution.Types.Annotation
+import Distribution.Types.Namespace
 
 import qualified Data.ByteString as BS
 import qualified Data.List.NonEmpty as NE
@@ -176,7 +177,7 @@ warnMultipleSingularFields fn (x : xs) = do
     "The field " <> show fn <> " is specified more than once at positions " ++ intercalate ", " (map showPos (pos : poss))
 
 instance FieldGrammar Parsec ParsecFieldGrammar where
-  withScope :: Namespace -> ParsecFieldGrammar s a -> ParsecFieldGrammar s a
+  withScope :: SomeNamespace -> ParsecFieldGrammar s a -> ParsecFieldGrammar s a
   withScope ns (ParsecFG s s' parser) =
     ParsecFG s s' $ \v fs -> do
       -- Run the inner parser and mark its annotation
@@ -293,7 +294,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
         Nothing -> (pure . pure) mempty
         Just xs -> do
           (t, x) <- foldMap (unpack' _pack <$>) <$> traverse (uncurry (parseOne v)) (zip xs [1 ..])
-          let t' = mark (NSField fn) t
+          let t' = mark (SomeNamespace fn) t
           pure (t', x)
 
       -- Different fields

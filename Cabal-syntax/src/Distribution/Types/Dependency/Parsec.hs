@@ -23,6 +23,7 @@ import Distribution.Types.UnqualComponentName.Parsec
 import Distribution.Types.Version.Parsec
 import Distribution.Types.VersionRange.Parsec
 
+import Distribution.Types.Namespace
 import Debug.Pretty.Simple
 
 import qualified Data.Map as M
@@ -73,10 +74,10 @@ instance Parsec Dependency where
     spaces -- https://github.com/haskell/cabal/issues/5846
     -- TODO(leana8959): ^ register space at local scope
     (verTrivia, ver) <-
-      let t = fromNamedTrivia (NSVersionRange anyVersion) [IsInjected]
+      let t = fromNamedTrivia (SomeNamespace anyVersion) [IsInjected]
        in triviaParsec <|> pure (t, anyVersion)
     let dep = mkDependency name ver libs
-    let depTrivia = mark (NSDependency dep) verTrivia
+    let depTrivia = mark (SomeNamespace dep) verTrivia
 
     return
       ( depTrivia

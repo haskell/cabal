@@ -18,4 +18,4 @@ data AnnotatedGenericPackageDescription = AnnotatedGenericPackageDescription
   }
   deriving (Generic)
 
-instance NFData AnnotatedGenericPackageDescription
+-- instance NFData AnnotatedGenericPackageDescription

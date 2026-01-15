@@ -90,6 +90,7 @@ import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
 
 import Distribution.Types.Annotation
+import Distribution.Types.Namespace
 import Distribution.Types.Dependency.Parsec
 
 import qualified Data.ByteString.Char8 as BS8
@@ -197,7 +198,7 @@ libraryFieldGrammar
   => LibraryName
   -> g Library Library
 libraryFieldGrammar n =
-  withScope (NSLibrarySection n) $
+  withScope (SomeNamespace n) $
     Library n
       <$> monoidalFieldAla "exposed-modules" formatExposedModules L.exposedModules
       <*> monoidalFieldAla "reexported-modules" (alaList CommaVCat) L.reexportedModules

@@ -28,7 +28,7 @@ data AbiDependency = AbiDependency
   { depUnitId :: Package.UnitId
   , depAbiHash :: Package.AbiHash
   }
-  deriving (Eq, Generic, Read, Show)
+  deriving (Eq, Generic, Read, Show, Ord)
 
 instance Namespace AbiDependency
 

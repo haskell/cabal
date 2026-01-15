@@ -25,7 +25,7 @@ import Text.PrettyPrint (text)
 --
 -- @since 2.0.0.2
 newtype AbiHash = AbiHash ShortText
-  deriving (Eq, Show, Read, Generic)
+  deriving (Eq, Show, Read, Generic, Ord)
 
 -- | Convert 'AbiHash' to 'String'
 --

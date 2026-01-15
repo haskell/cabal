@@ -19,7 +19,7 @@ data ExposedModule = ExposedModule
   { exposedName :: ModuleName
   , exposedReexport :: Maybe OpenModule
   }
-  deriving (Eq, Generic, Read, Show)
+  deriving (Eq, Generic, Read, Show, Ord)
 
 instance Namespace ExposedModule
 

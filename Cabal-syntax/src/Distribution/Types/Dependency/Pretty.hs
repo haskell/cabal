@@ -31,6 +31,7 @@ import Distribution.Types.UnqualComponentName.Internal
 import Distribution.Types.VersionRange.Pretty
 
 import Distribution.Types.Annotation
+import Distribution.Types.Namespace
 
 import qualified Data.Map as M
 import qualified Data.Text.Lazy as T
@@ -54,7 +55,7 @@ import Text.Pretty.Simple
 -- "pkg:{sublib-a,sublib-b}"
 instance Pretty Dependency where
   prettier t0 dep0@(Dependency name vRange sublibs) =
-    let t2 = unmark (NSDependency dep0) t0
+    let t2 = unmark (SomeNamespace dep0) t0
         -- TODO: change to isAnyVersion after #6736
         pver
           | isAnyVersionLight vRange = PP.empty

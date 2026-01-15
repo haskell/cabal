@@ -17,9 +17,7 @@ import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Types.Annotation
-
-import qualified Distribution.Types.Namespace as NS
+import Distribution.Types.Namespace
 
 import Distribution.CabalSpecVersion (CabalSpecVersion)
 import Distribution.Compat.Newtype (Newtype)
@@ -47,7 +45,7 @@ class
     | g -> c
   where
   -- | Useful for wrapping and unwrapping of namespace label for identifying trivia
-  withScope :: Namespace -> g s a -> g s a
+  withScope :: SomeNamespace -> g s a -> g s a
   withScope _ = id
 
   -- | Unfocus, zoom out, /blur/ 'FieldGrammar'.
@@ -131,7 +129,7 @@ class
   --
   -- /Note:/ 'optionalFieldAla' is a @monoidalField@ with 'Last' monoid.
   monoidalFieldAla
-    :: (c b, Monoid a, Newtype a b, NS.Namespace a)
+    :: (c b, Monoid a, Newtype a b, Namespace a)
     => FieldName
     -- ^ field name
     -> (a -> b)
@@ -229,7 +227,7 @@ optionalFieldDef fn l x = optionalFieldDefAla fn Identity l x
 
 -- | Field which can be define multiple times, and the results are @mappend@ed.
 monoidalField
-  :: (FieldGrammar c g, c (Identity a), Monoid a, NS.Namespace a)
+  :: (FieldGrammar c g, c (Identity a), Monoid a, Namespace a)
   => FieldName
   -- ^ field name
   -> ALens' s a

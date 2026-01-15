@@ -24,6 +24,7 @@ import qualified Text.PrettyPrint as PP
 import Prelude ()
 
 import Distribution.Types.Annotation
+import Distribution.Types.Namespace
 
 import Distribution.FieldGrammar.Class
 import Debug.Pretty.Simple
@@ -57,7 +58,7 @@ prettyAnnotatedFieldGrammar
 prettyAnnotatedFieldGrammar v t g = fieldGrammarPretty g v t
 
 instance FieldGrammar Pretty PrettyFieldGrammar where
-  withScope :: Namespace -> PrettyFieldGrammar s a -> PrettyFieldGrammar s a
+  withScope :: SomeNamespace -> PrettyFieldGrammar s a -> PrettyFieldGrammar s a
   withScope ns (PrettyFG printer) =
     PrettyFG $ \v t s ->
       let t' = unmark ns t in printer v t' s
@@ -112,7 +113,7 @@ instance FieldGrammar Pretty PrettyFieldGrammar where
   monoidalFieldAla fn _pack l = PrettyFG pp
     where
       pp v t s =
-        let t' = unmark (NSField fn) t
+        let t' = unmark (SomeNamespace fn) t
          in ppField fn (prettierVersioned v t' (pack' _pack (aview l s)))
 
   prefixedFields _fnPfx l = PrettyFG (\_ t -> pp . aview l)
