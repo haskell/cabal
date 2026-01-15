@@ -84,6 +84,8 @@ import Distribution.Utils.Generic (isAbsoluteOnAnyPlatform)
 
 import qualified Distribution.Compat.CharParsing as P
 
+import Distribution.Types.Namespace
+
 import qualified System.Directory as Directory
 import qualified System.FilePath as FilePath
 
@@ -228,6 +230,13 @@ instance
   (Typeable allowAbsolute, Typeable from, Typeable to)
   => Structured (SymbolicPathX allowAbsolute from to)
 instance NFData (SymbolicPathX allowAbsolute from to) where rnf = genericRnf
+
+instance
+  ( Typeable allowAbsolute
+  , Typeable from
+  , Typeable to
+  )
+  => Namespace (SymbolicPathX allowAbsolute from to)
 
 -- | Extract the 'FilePath' underlying a 'SymbolicPath' or 'RelativePath',
 -- without interpreting it.

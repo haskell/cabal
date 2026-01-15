@@ -19,6 +19,8 @@ import Prelude ()
 
 import Distribution.Types.Annotation
 
+import qualified Distribution.Types.Namespace as NS
+
 import Distribution.CabalSpecVersion (CabalSpecVersion)
 import Distribution.Compat.Newtype (Newtype)
 import Distribution.FieldGrammar.Newtypes
@@ -129,7 +131,7 @@ class
   --
   -- /Note:/ 'optionalFieldAla' is a @monoidalField@ with 'Last' monoid.
   monoidalFieldAla
-    :: (c b, Monoid a, Newtype a b)
+    :: (c b, Monoid a, Newtype a b, NS.Namespace a)
     => FieldName
     -- ^ field name
     -> (a -> b)
@@ -227,7 +229,7 @@ optionalFieldDef fn l x = optionalFieldDefAla fn Identity l x
 
 -- | Field which can be define multiple times, and the results are @mappend@ed.
 monoidalField
-  :: (FieldGrammar c g, c (Identity a), Monoid a)
+  :: (FieldGrammar c g, c (Identity a), Monoid a, NS.Namespace a)
   => FieldName
   -- ^ field name
   -> ALens' s a

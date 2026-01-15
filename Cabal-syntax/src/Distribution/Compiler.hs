@@ -54,6 +54,7 @@ import Prelude ()
 import Language.Haskell.Extension
 
 import Distribution.Version (Version, mkVersion', nullVersion)
+import Distribution.Types.Namespace
 
 import qualified Distribution.Compat.CharParsing as P
 import Distribution.Package (PackageName)
@@ -80,6 +81,8 @@ data CompilerFlavor
     MHS
   | OtherCompiler String
   deriving (Generic, Show, Read, Eq, Ord, Data)
+
+instance Namespace CompilerFlavor
 
 instance Binary CompilerFlavor
 instance Structured CompilerFlavor

@@ -14,6 +14,9 @@ import Distribution.Pretty
 import Distribution.Types.PackageName
 import Distribution.Types.PackageName.Parsec
 
+import Distribution.Types.Namespace
+
+
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
@@ -26,6 +29,8 @@ data ModuleReexport = ModuleReexport
   , moduleReexportName :: ModuleName
   }
   deriving (Eq, Ord, Generic, Read, Show, Data)
+
+instance Namespace ModuleReexport
 
 instance Binary ModuleReexport
 instance Structured ModuleReexport

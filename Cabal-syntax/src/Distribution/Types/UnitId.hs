@@ -25,6 +25,8 @@ import Distribution.Pretty
 import Distribution.Types.ComponentId
 import Distribution.Types.PackageId
 
+import Distribution.Types.Namespace
+
 import Text.PrettyPrint (text)
 
 -- | A unit identifier identifies a (possibly instantiated)
@@ -65,6 +67,8 @@ import Text.PrettyPrint (text)
 -- versions of Cabal.
 newtype UnitId = UnitId ShortText
   deriving (Generic, Read, Show, Eq, Ord, Data, NFData)
+
+instance Namespace UnitId
 
 instance Binary UnitId
 instance Structured UnitId

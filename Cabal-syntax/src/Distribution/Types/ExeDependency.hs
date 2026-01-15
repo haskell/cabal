@@ -19,6 +19,7 @@ import Distribution.Version (VersionRange, anyVersion, isAnyVersion)
 
 import Distribution.Types.Version.Parsec
 import Distribution.Types.VersionRange.Parsec
+import Distribution.Types.Namespace
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as PP
@@ -30,6 +31,8 @@ data ExeDependency
       UnqualComponentName -- name of executable component of package
       VersionRange
   deriving (Generic, Read, Show, Eq, Ord, Data)
+
+instance Namespace ExeDependency
 
 instance Binary ExeDependency
 instance Structured ExeDependency

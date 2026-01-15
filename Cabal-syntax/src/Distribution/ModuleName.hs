@@ -34,6 +34,8 @@ import Distribution.Pretty
 import Distribution.Utils.ShortText (ShortText, fromShortText, toShortText)
 import System.FilePath (pathSeparator)
 
+import Distribution.Types.Namespace
+
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.DList as DList
 import qualified Text.PrettyPrint as Disp
@@ -41,6 +43,8 @@ import qualified Text.PrettyPrint as Disp
 -- | A valid Haskell module name.
 newtype ModuleName = ModuleName ShortText
   deriving (Eq, Generic, Ord, Read, Show, Data)
+
+instance Namespace ModuleName
 
 unModuleName :: ModuleName -> String
 unModuleName (ModuleName s) = fromShortText s

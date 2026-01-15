@@ -17,6 +17,7 @@ import qualified Text.PrettyPrint as Disp
 
 import Distribution.Types.Version.Parsec
 import Distribution.Types.VersionRange.Parsec
+import Distribution.Types.Namespace
 
 -- | Describes a legacy `build-tools`-style dependency on an executable
 --
@@ -30,6 +31,8 @@ data LegacyExeDependency
       String
       VersionRange
   deriving (Generic, Read, Show, Eq, Ord, Data)
+
+instance Namespace LegacyExeDependency
 
 instance Binary LegacyExeDependency
 instance Structured LegacyExeDependency

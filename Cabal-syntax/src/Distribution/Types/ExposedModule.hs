@@ -13,11 +13,15 @@ import Distribution.Pretty
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
+import Distribution.Types.Namespace
+
 data ExposedModule = ExposedModule
   { exposedName :: ModuleName
   , exposedReexport :: Maybe OpenModule
   }
   deriving (Eq, Generic, Read, Show)
+
+instance Namespace ExposedModule
 
 instance Pretty ExposedModule where
   pretty (ExposedModule m reexport) =

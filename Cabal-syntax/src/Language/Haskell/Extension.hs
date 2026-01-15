@@ -34,6 +34,8 @@ import Distribution.Pretty
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
+import Distribution.Types.Namespace
+
 -- ------------------------------------------------------------
 
 -- * Language
@@ -60,6 +62,8 @@ data Language
   | -- | An unknown language, identified by its name.
     UnknownLanguage String
   deriving (Generic, Show, Read, Eq, Ord, Data)
+
+instance Namespace Language
 
 instance Binary Language
 instance Structured Language
@@ -116,6 +120,8 @@ data Extension
     -- pragma.
     UnknownExtension String
   deriving (Generic, Show, Read, Eq, Ord, Data)
+
+instance Namespace Extension
 
 instance Binary Extension
 instance Structured Extension

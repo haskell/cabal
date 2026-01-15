@@ -25,6 +25,7 @@ import Distribution.Compat.Parsing (between, option)
 import Distribution.Types.LibraryName.Internal
 import Distribution.Types.PackageName.Internal
 import Distribution.Types.UnqualComponentName.Internal
+import Distribution.Types.Namespace
 
 import qualified Distribution.Compat.NonEmptySet as NES
 import qualified Text.PrettyPrint as PP
@@ -42,6 +43,8 @@ data Dependency
       VersionRange
       (NonEmptySet LibraryName)
   deriving (Generic, Read, Show, Eq, Ord, Data)
+
+instance Namespace Dependency
 
 depPkgName :: Dependency -> PackageName
 depPkgName (Dependency pn _ _) = pn

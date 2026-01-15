@@ -12,6 +12,8 @@ import Prelude ()
 import Distribution.Parsec
 import Distribution.Pretty
 
+import Distribution.Types.Namespace
+
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
@@ -23,6 +25,8 @@ data ForeignLibOption
     -- on other platforms.
     ForeignLibStandalone
   deriving (Generic, Show, Read, Eq, Ord, Data)
+
+instance Namespace ForeignLibOption
 
 instance Pretty ForeignLibOption where
   pretty ForeignLibStandalone = Disp.text "standalone"

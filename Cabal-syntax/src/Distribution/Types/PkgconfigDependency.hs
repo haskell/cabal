@@ -10,6 +10,7 @@ import Prelude ()
 
 import Distribution.Types.PkgconfigName
 import Distribution.Types.PkgconfigVersionRange
+import Distribution.Types.Namespace
 
 import Distribution.Parsec
 import Distribution.Pretty
@@ -24,6 +25,8 @@ data PkgconfigDependency
       PkgconfigName
       PkgconfigVersionRange
   deriving (Generic, Read, Show, Eq, Ord, Data)
+
+instance Namespace PkgconfigDependency
 
 instance Binary PkgconfigDependency
 instance Structured PkgconfigDependency

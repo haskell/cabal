@@ -20,6 +20,9 @@ import Distribution.Types.PackageName.Parsec
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.UnqualComponentName.Parsec
 
+
+import Distribution.Types.Namespace
+
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as PP
 
@@ -34,6 +37,8 @@ data Mixin = Mixin
   , mixinIncludeRenaming :: IncludeRenaming
   }
   deriving (Show, Read, Eq, Ord, Data, Generic)
+
+instance Namespace Mixin
 
 instance Binary Mixin
 instance Structured Mixin
