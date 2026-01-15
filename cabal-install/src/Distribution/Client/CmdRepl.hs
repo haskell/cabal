@@ -346,8 +346,8 @@ replAction flags@NixStyleFlags{extraFlags = ReplFlags{..}} targetStrings globalF
         -- Write the fake package
         updatedCtx <- updateContextAndWriteProjectFile' ctx sourcePackage
         -- Specify the selector for this package
-        let fakeSelector = [TargetPackage TargetExplicitNamed [fakePackageId] Nothing]
-        return $ Right ((updatedCtx, isMultiReplEnabled updatedCtx), fakeSelector)
+        let fakeSelector = TargetPackage TargetExplicitNamed [fakePackageId] Nothing
+        return $ Right ((updatedCtx, isMultiReplEnabled updatedCtx), [fakeSelector])
 
       -- For the script context, no special behaviour.
       ScriptContext scriptPath scriptExecutable -> do
