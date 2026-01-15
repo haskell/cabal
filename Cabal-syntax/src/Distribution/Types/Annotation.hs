@@ -16,13 +16,7 @@ import qualified Text.PrettyPrint as Disp
 
 import Control.DeepSeq
 
--- TODO: import all the types that we need to use as key to index the trivia
-
-import Distribution.Types.Dependency.Internal
-import Distribution.Types.LibraryName.Internal
-import Distribution.Types.PackageName.Internal
-import Distribution.Types.Version.Internal
-import Distribution.Types.VersionRange
+import Distribution.Types.Namespace
 
 type Trivia = [Trivium]
 data Trivium
@@ -35,25 +29,12 @@ data Trivium
 
 instance NFData Trivium
 
-data Namespace
-  = NSVersion Version
-  | NSVersionRange VersionRange
-  | NSPackageName PackageName
-  | NSDependency Dependency
-  | NSField BS.ByteString
-  | NSLibrarySection LibraryName
-  deriving (Eq, Ord, Generic, Show)
-
-instance NFData Namespace
-
 -- TODO(leana8959): can I encode namespace type in the signature or somehow make this more type safe?
 data TriviaTree = TriviaTree
   { justAnnotation :: Trivia
-  , namedAnnotations :: Map Namespace TriviaTree
+  , namedAnnotations :: Map SomeNamespace TriviaTree
   }
   deriving (Generic, Show)
-
-instance NFData TriviaTree
 
 instance Semigroup TriviaTree where
   TriviaTree locala belowa <> TriviaTree localb belowb =
@@ -63,18 +44,18 @@ instance Semigroup TriviaTree where
 instance Monoid TriviaTree where
   mempty = emptyTriviaTree
 
-fromNamedTrivia :: Namespace -> Trivia -> TriviaTree
+fromNamedTrivia :: SomeNamespace -> Trivia -> TriviaTree
 fromNamedTrivia ns ts = TriviaTree mempty (M.singleton ns (TriviaTree ts mempty))
 
 emptyTriviaTree :: TriviaTree
 emptyTriviaTree = TriviaTree mempty mempty
 
 -- | Wrap the trivia within a namespace
-mark :: Namespace -> TriviaTree -> TriviaTree
+mark :: SomeNamespace -> TriviaTree -> TriviaTree
 mark ns ts = TriviaTree mempty (M.singleton ns ts)
 
 -- | If the trivia map is for this scope
-unmark :: Namespace -> TriviaTree -> TriviaTree
+unmark :: SomeNamespace -> TriviaTree -> TriviaTree
 unmark ns tt = fromMaybe mempty (M.lookup ns (namedAnnotations tt))
 
 triviaToDoc :: Trivia -> Disp.Doc -> Disp.Doc
