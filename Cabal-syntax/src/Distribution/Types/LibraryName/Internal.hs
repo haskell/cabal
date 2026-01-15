@@ -17,10 +17,14 @@ import qualified Data.List.NonEmpty as NEL
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
+import Distribution.Types.Namespace
+
 data LibraryName
   = LMainLibName
   | LSubLibName UnqualComponentName
   deriving (Eq, Generic, Ord, Read, Show, Data)
+
+instance Namespace LibraryName
 
 instance Binary LibraryName
 instance Structured LibraryName

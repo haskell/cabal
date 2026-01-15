@@ -13,6 +13,8 @@ import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
 import Prelude ()
 
+import Distribution.Types.Namespace
+
 import qualified Text.PrettyPrint as Disp
 
 -- | A package name.
@@ -25,6 +27,8 @@ import qualified Text.PrettyPrint as Disp
 -- @since 2.0.0.2
 newtype PackageName = PackageName ShortText
   deriving (Generic, Read, Show, Eq, Ord, Data)
+
+instance Namespace PackageName
 
 -- | Convert 'PackageName' to 'String'
 unPackageName :: PackageName -> String

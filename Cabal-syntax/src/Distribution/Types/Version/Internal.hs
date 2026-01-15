@@ -25,6 +25,8 @@ import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 import qualified Text.Read as Read
 
+import Distribution.Types.Namespace
+
 -- | A 'Version' represents the version of a software entity.
 --
 -- Instances of 'Eq' and 'Ord' are provided, which gives exact
@@ -45,6 +47,8 @@ data Version
   -- MUST be used. This is essential for the 'Eq' instance
   -- to work.
   deriving (Data, Eq, Generic)
+
+instance Namespace Version
 
 instance Ord Version where
   compare (PV0 x) (PV0 y) = compare x y
