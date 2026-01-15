@@ -1,3 +1,4 @@
+{-# LANGUAGE CApiFFI #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
@@ -550,14 +551,7 @@ csidl_PROGRAM_FILES = 0x0026
 -- csidl_PROGRAM_FILES_COMMON :: CInt
 -- csidl_PROGRAM_FILES_COMMON = 0x002b
 
-{- FOURMOLU_DISABLE -}
-#if defined(x86_64_HOST_ARCH) || defined(aarch64_HOST_ARCH)
-#define CALLCONV ccall
-#else
-#define CALLCONV stdcall
-#endif
-
-foreign import CALLCONV unsafe "shlobj.h SHGetFolderPathW"
+foreign import capi unsafe "shlobj.h SHGetFolderPathW"
             c_SHGetFolderPath :: Ptr ()
                               -> CInt
                               -> Ptr ()
@@ -565,7 +559,6 @@ foreign import CALLCONV unsafe "shlobj.h SHGetFolderPathW"
                               -> CWString
                               -> Prelude.IO CInt
 #endif
-{- FOURMOLU_ENABLE -}
 
 -- ---------------------------------------------------------------------------
 -- FieldGrammar

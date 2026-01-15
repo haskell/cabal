@@ -1,3 +1,4 @@
+{-# LANGUAGE CApiFFI #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
@@ -61,15 +62,7 @@ setEnv_ key value = withCWString key $ \k -> withCWString value $ \v -> do
   _ = callStack -- TODO: attach CallStack to exception
 
 {- FOURMOLU_DISABLE -}
-# if defined(i386_HOST_ARCH)
-#  define WINDOWS_CCONV stdcall
-# elif defined(x86_64_HOST_ARCH) || defined(aarch64_HOST_ARCH)
-#  define WINDOWS_CCONV ccall
-# else
-#  error Unknown mingw32 arch
-# endif /* i386_HOST_ARCH */
-
-foreign import WINDOWS_CCONV unsafe "windows.h SetEnvironmentVariableW"
+foreign import capi unsafe "windows.h SetEnvironmentVariableW"
   c_SetEnvironmentVariable :: LPTSTR -> LPTSTR -> Prelude.IO Bool
 #else
 setEnv_ key value = do
@@ -80,7 +73,7 @@ setEnv_ key value = do
  where
   _ = callStack -- TODO: attach CallStack to exception
 
-foreign import ccall unsafe "setenv"
+foreign import capi unsafe "setenv"
    c_setenv :: CString -> CString -> CInt -> Prelude.IO CInt
 #endif /* mingw32_HOST_OS */
 {- FOURMOLU_ENABLE -}
