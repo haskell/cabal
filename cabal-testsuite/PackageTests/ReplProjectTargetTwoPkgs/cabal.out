@@ -47,6 +47,7 @@ Preprocessing library for pkg-two-0.1...
 # checking multi-repl command with no target, should default to the 'all' target
 # cabal clean
 # cabal repl
+No target specified, using 'all' as the target for the REPL.
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:

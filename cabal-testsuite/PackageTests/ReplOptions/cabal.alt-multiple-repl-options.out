@@ -1,5 +1,6 @@
 # cabal clean
 # cabal v2-repl
+No target specified, using package 'alt' as the target for the REPL.
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
