@@ -34,7 +34,7 @@ test-suite tests
     type:          exitcode-stdio-1.0
     main-is:       Tests.hs
     build-depends:
-        base >=4.10 && <4.11,
+        base >=4.10 && < 4.11,
         containers,
         HUnit
 

@@ -28,7 +28,7 @@ library
     other-modules:   Data.Octree.Internal
     extensions:      ScopedTypeVariables
     build-depends:
-        base >=4.0 && <4.7,
+        base >=4.0 && < 4.7,
         AC-Vector >=2.3.0,
         QuickCheck >=2.4.0
 
@@ -36,7 +36,7 @@ test-suite test_Octree
     type:          exitcode-stdio-1.0
     main-is:       tests/test_Octree.hs
     build-depends:
-        base >=4.0 && <4.7,
+        base >=4.0 && <  4.7,
         AC-Vector >=2.3.0,
         QuickCheck >=2.4.0
 
@@ -45,7 +45,7 @@ test-suite readme
     main-is:       README.lhs
     ghc-options:   -pgmL markdown-unlit
     build-depends:
-        base >=4.0 && <4.7,
+        base >=4.0 && <  4.7,
         AC-Vector >=2.3.0,
         QuickCheck >=2.4.0,
         markdown-unlit

@@ -34,7 +34,7 @@ test-suite tests
 
     if flag(foo)
         build-depends:
-            base >=4.10 && <4.11,
+            base >=4.10 && < 4.11,
             containers
 
         if os(windows)

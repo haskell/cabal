@@ -31,8 +31,8 @@ extra-source-files:
 
 custom-setup
     setup-depends:
-        base >=4.3 && <5,
-        Cabal >=1.10 && <2.5
+        base >=4.3 && < 5,
+        Cabal >=1.10 && < 2.5
 
 flag use-pkg-config
     default: False
@@ -49,14 +49,15 @@ library
     include-dirs:       cbits
     ghc-options:        -Wall
     build-depends:
-        base >=4.3 && <4.13,
-        bytestring >=0.9.1.0 && <0.11
+        base >=4.3 && < 4.13
+        ,
+        bytestring >=0.9.1.0 && < 0.11
 
     if !os(windows)
-        build-depends: unix >=2.4.2.0 && <2.8
+        build-depends: unix >=2.4.2.0 && < 2.8
 
     if os(windows)
-        build-depends: Win32 >=2.2.0.2 && <2.7
+        build-depends: Win32 >=2.2.0.2 && < 2.7
 
     if flag(use-pkg-config)
         pkgconfig-depends: libpq >=9.3h
