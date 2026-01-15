@@ -501,7 +501,7 @@ executable isdefinite-cpu
     hs-source-dirs:   exe
     default-language: Haskell2010
     build-depends:
-        base (==4.7      || >     4.7) && <     5,
+        base (==4.7 || >4.7) && <5,
         hasktorch-cpu
 
 executable isdefinite-gpu
@@ -509,7 +509,7 @@ executable isdefinite-gpu
     hs-source-dirs:   exe
     default-language: Haskell2010
     build-depends:
-        base (==4.7      || >     4.7) && <     5,
+        base (==4.7 || >4.7) && <5,
         hasktorch-gpu
 
 executable isdefinite
@@ -517,7 +517,7 @@ executable isdefinite
     hs-source-dirs:   exe
     default-language: Haskell2010
     build-depends:
-        base (==4.7      || >     4.7) && <     5,
+        base (==4.7 || >4.7) && <5,
         hasktorch
 
 executable memcheck
@@ -525,7 +525,7 @@ executable memcheck
     hs-source-dirs:   exe
     default-language: Haskell2010
     build-depends:
-        base (==4.7      || >     4.7) && <     5,
+        base (==4.7 || >4.7) && <5,
         hasktorch
 
 test-suite spec
@@ -549,17 +549,17 @@ test-suite spec
         ScopedTypeVariables FlexibleContexts CPP
 
     build-depends:
-        QuickCheck ==2.11  || > 2.11,
-        backprop ==0.2.5  || > 0.2.5,
-        base (==4.7      || >     4.7) && <     5,
-        dimensions ==1.0  || > 1.0,
+        QuickCheck ==2.11 || >2.11,
+        backprop ==0.2.5 || >0.2.5,
+        base (==4.7 || >4.7) && <5,
+        dimensions ==1.0 || >1.0,
         ghc-typelits-natnormalise,
         hasktorch,
-        hspec ==2.4.4  || > 2.4.4,
-        singletons ==2.2  || > 2.2,
-        mtl ==2.2.2  || > 2.2.2,
-        microlens-platform ==0.3.10  || > 0.3.10,
-        monad-loops ==0.4.3  || > 0.4.3,
-        time ==1.8.0  || > 1.8.0,
-        transformers ==0.5.5  || > 0.5.5,
+        hspec ==2.4.4 || >2.4.4,
+        singletons ==2.2 || >2.2,
+        mtl ==2.2.2 || >2.2.2,
+        microlens-platform ==0.3.10 || >0.3.10,
+        monad-loops ==0.4.3 || >0.4.3,
+        time ==1.8.0 || >1.8.0,
+        transformers ==0.5.5 || >0.5.5,
         generic-lens

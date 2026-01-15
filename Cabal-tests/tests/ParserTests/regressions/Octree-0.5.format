@@ -28,7 +28,7 @@ library
     other-modules:   Data.Octree.Internal
     extensions:      ScopedTypeVariables
     build-depends:
-        base >=4.0 && < 4.7,
+        base >=4.0 && <4.7,
         AC-Vector >=2.3.0,
         QuickCheck >=2.4.0
 
