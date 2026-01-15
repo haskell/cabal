@@ -157,7 +157,6 @@ instance Newtype [a] (List sep wrapper a)
 
 -- Multiplicity within fields
 instance (Newtype a b, Sep sep, Parsec b) => Parsec (List sep b a) where
-  parsec = error "list parsec"
   triviaParsec = do
     (ts, bs) <- unzip <$> parseSep (Proxy :: Proxy sep) triviaParsec
     -- TODO(leana8959): list numbering
