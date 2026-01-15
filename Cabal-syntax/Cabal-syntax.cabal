@@ -126,6 +126,7 @@ library
     Distribution.Types.AbiDependency
     Distribution.Types.AnnotatedGenericPackageDescription
     Distribution.Types.Annotation
+    Distribution.Types.Namespace
     Distribution.Types.AbiHash
     Distribution.Types.Benchmark
     Distribution.Types.Benchmark.Lens
