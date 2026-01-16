@@ -301,6 +301,8 @@ instance Prettier Token' where prettier _ = pretty
 newtype MQuoted a = MQuoted {getMQuoted :: a}
   deriving (Eq, Ord, Show)
 
+instance Namespace a => Namespace (MQuoted a)
+
 instance Newtype a (MQuoted a)
 
 instance Parsec a => Parsec (MQuoted a) where
@@ -334,6 +336,9 @@ instance Pretty FilePathNT where
 -- | Newtype for 'SymbolicPath', with a different 'Parsec' instance
 -- to disallow empty paths.
 newtype SymbolicPathNT from to = SymbolicPathNT {getSymbolicPathNT :: SymbolicPath from to}
+  deriving (Ord, Eq, Show)
+
+instance (Typeable from, Typeable to) => Namespace (SymbolicPathNT from to)
 
 instance Newtype (SymbolicPath from to) (SymbolicPathNT from to)
 
@@ -347,10 +352,16 @@ instance Parsec (SymbolicPathNT from to) where
 instance Pretty (SymbolicPathNT from to) where
   pretty = showFilePath . getSymbolicPath . getSymbolicPathNT
 
+instance (Typeable from, Typeable to) => Prettier (SymbolicPathNT from to) where
+  prettier _ = pretty
+
 -- | Newtype for 'RelativePath', with a different 'Parsec' instance
 -- to disallow empty paths but allow non-relative paths (which get rejected
 -- later with a different error message, see 'Distribution.PackageDescription.Check.Paths.checkPath')
 newtype RelativePathNT from to = RelativePathNT {getRelativePathNT :: RelativePath from to}
+  deriving (Ord, Eq, Show)
+
+instance (Typeable from, Typeable to) => Namespace (RelativePathNT from to)
 
 instance Newtype (RelativePath from to) (RelativePathNT from to)
 
@@ -365,6 +376,9 @@ instance Parsec (RelativePathNT from to) where
 
 instance Pretty (RelativePathNT from to) where
   pretty = showFilePath . getSymbolicPath . getRelativePathNT
+
+instance (Typeable from, Typeable to) => Prettier (RelativePathNT from to) where
+  prettier _ = pretty
 
 -------------------------------------------------------------------------------
 -- SpecVersion

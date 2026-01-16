@@ -61,5 +61,8 @@ instance NFData AbiHash where rnf = genericRnf
 instance Pretty AbiHash where
   pretty = text . unAbiHash
 
+instance Prettier AbiHash where
+  prettier _ = pretty
+
 instance Parsec AbiHash where
   parsec = fmap mkAbiHash (P.munch isAlphaNum)

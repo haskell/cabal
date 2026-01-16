@@ -55,8 +55,8 @@ instance Structured ModuleName
 instance NFData ModuleName where
   rnf (ModuleName ms) = rnf ms
 
-instance Pretty ModuleName where
-  pretty = Disp.text . unModuleName
+instance Pretty ModuleName where pretty = Disp.text . unModuleName
+instance Prettier ModuleName where prettier _ = pretty
 
 instance Parsec ModuleName where
   parsec = parsecModuleName

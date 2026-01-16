@@ -33,6 +33,9 @@ instance Pretty LibraryVisibility where
   pretty LibraryVisibilityPublic = Disp.text "public"
   pretty LibraryVisibilityPrivate = Disp.text "private"
 
+instance Prettier LibraryVisibility where
+  prettier _ = pretty
+
 instance Parsec LibraryVisibility where
   parsec = do
     name <- P.munch1 isAlpha

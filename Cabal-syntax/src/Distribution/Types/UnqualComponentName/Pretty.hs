@@ -21,3 +21,6 @@ import Distribution.Types.UnqualComponentName.Internal
 
 instance Pretty UnqualComponentName where
   pretty = showToken . unUnqualComponentName
+
+instance Prettier UnqualComponentName where
+  prettier _ = pretty

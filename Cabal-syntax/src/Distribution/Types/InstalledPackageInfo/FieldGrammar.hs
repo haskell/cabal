@@ -30,6 +30,7 @@ import Distribution.Types.PackageName.Parsec
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.UnqualComponentName.Parsec
 import Distribution.Version
+import Distribution.Types.Namespace
 
 import qualified Data.Char as Char
 import qualified Data.Map as Map
@@ -201,6 +202,9 @@ maybePackageName ipi = case sourceLibName ipi of
 -------------------------------------------------------------------------------
 
 newtype ExposedModules = ExposedModules {getExposedModules :: [ExposedModule]}
+  deriving (Show, Eq, Ord)
+
+instance Namespace ExposedModules
 
 instance Newtype [ExposedModule] ExposedModules
 
@@ -210,12 +214,21 @@ instance Parsec ExposedModules where
 instance Pretty ExposedModules where
   pretty = showExposedModules . getExposedModules
 
+instance Prettier ExposedModules where
+  prettier _ = pretty
+
 newtype CompatPackageKey = CompatPackageKey {getCompatPackageKey :: String}
+  deriving (Ord, Eq, Show)
+
+instance Namespace CompatPackageKey
 
 instance Newtype String CompatPackageKey
 
 instance Pretty CompatPackageKey where
   pretty = Disp.text . getCompatPackageKey
+
+instance Prettier CompatPackageKey where
+  prettier _ = pretty
 
 instance Parsec CompatPackageKey where
   parsec = CompatPackageKey <$> P.munch1 uid_char
@@ -223,17 +236,26 @@ instance Parsec CompatPackageKey where
       uid_char c = Char.isAlphaNum c || c `elem` ("-_.=[],:<>+" :: String)
 
 newtype InstWith = InstWith {getInstWith :: [(ModuleName, OpenModule)]}
+  deriving (Ord, Eq, Show)
+
+instance Namespace InstWith
 
 instance Newtype [(ModuleName, OpenModule)] InstWith
 
 instance Pretty InstWith where
   pretty = dispOpenModuleSubst . Map.fromList . getInstWith
 
+instance Prettier InstWith where
+  prettier _ = pretty
+
 instance Parsec InstWith where
   parsec = InstWith . Map.toList <$> parsecOpenModuleSubst
 
 -- | SPDX License expression or legacy license. Lenient parser, accepts either.
 newtype SpecLicenseLenient = SpecLicenseLenient {getSpecLicenseLenient :: Either SPDX.License License}
+  deriving (Ord, Eq, Show)
+
+instance Namespace SpecLicenseLenient
 
 instance Newtype (Either SPDX.License License) SpecLicenseLenient
 
@@ -242,6 +264,9 @@ instance Parsec SpecLicenseLenient where
 
 instance Pretty SpecLicenseLenient where
   pretty = either pretty pretty . getSpecLicenseLenient
+
+instance Prettier SpecLicenseLenient where
+  prettier _ = pretty
 
 -------------------------------------------------------------------------------
 -- Basic fields

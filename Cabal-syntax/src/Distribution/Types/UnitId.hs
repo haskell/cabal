@@ -78,6 +78,9 @@ instance Structured UnitId
 instance Pretty UnitId where
   pretty = text . unUnitId
 
+instance Prettier UnitId where
+  prettier _ = pretty
+
 -- | The textual format for 'UnitId' coincides with the format
 -- GHC accepts for @-package-id@.
 instance Parsec UnitId where

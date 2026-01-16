@@ -20,3 +20,6 @@ import qualified Text.PrettyPrint as Disp
 
 instance Pretty PackageName where
   pretty = Disp.text . unPackageName
+
+instance Prettier PackageName where
+  prettier _ = pretty

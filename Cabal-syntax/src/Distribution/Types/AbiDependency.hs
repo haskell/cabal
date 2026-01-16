@@ -36,6 +36,10 @@ instance Pretty AbiDependency where
   pretty (AbiDependency uid abi) =
     pretty uid <<>> Disp.char '=' <<>> pretty abi
 
+-- TODO(leana8959): maybe this matters?
+instance Prettier AbiDependency where
+  prettier _ = pretty
+
 instance Parsec AbiDependency where
   parsec = do
     uid <- parsec

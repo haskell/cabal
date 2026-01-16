@@ -10,6 +10,8 @@ module Distribution.Types.MungedPackageName
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Distribution.Types.Namespace
+
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.LibraryName
@@ -32,6 +34,8 @@ import qualified Text.PrettyPrint as Disp
 -- @since 2.0.0.2
 data MungedPackageName = MungedPackageName !PackageName !LibraryName
   deriving (Generic, Read, Show, Eq, Ord, Data)
+
+instance Namespace MungedPackageName
 
 instance Binary MungedPackageName
 instance Structured MungedPackageName
@@ -76,6 +80,10 @@ instance Pretty MungedPackageName where
   -- This is for the PRIMARY library, and it is non-Backpack, or the
   -- indefinite package for us.
   pretty = Disp.text . encodeCompatPackageName'
+
+instance Prettier MungedPackageName where
+  prettier _ = pretty
+
 
 -- |
 --
