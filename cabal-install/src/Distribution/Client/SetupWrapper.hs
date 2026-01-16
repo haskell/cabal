@@ -908,8 +908,22 @@ getExternalSetupMethod verbosity options pkg bt = do
         [] ->
           dieWithException verbosity $ InstalledCabalVersion (packageName pkg) (useCabalVersion options)
         pkgs ->
-          let ipkginfo = fromMaybe err $ safeHead . snd . bestVersion fst $ pkgs
-              err = error "Distribution.Client.installedCabalVersion: empty version list"
+          let ipkginfo
+                -- If using build-type: Hooks, pick the Cabal unit Id that is
+                -- a dependency of Cabal-hooks (#11331).
+                --
+                -- This is not very elegant, but the alternative of adding a
+                -- Cabal dependency BEFORE solving is not appropriate, because
+                -- we only need Cabal to compile Setup.hs. It would be wrong to
+                -- impose a Cabal dependency in the general case
+                -- (e.g. compiling an external Hooks executable).
+                | bt == Hooks
+                , Just (cabalHooksCompId, _) <- find (isCabalHooksPkgId . snd) (useDependencies options)
+                , Just cabalHooksIPI <- PackageIndex.lookupComponentId index cabalHooksCompId
+                , Just cabalIPI <- find (isCabalPkgId . IPI.sourcePackageId) $ mapMaybe (PackageIndex.lookupUnitId index) (IPI.depends cabalHooksIPI)
+                = cabalIPI
+                | let err = error "Distribution.Client.installedCabalVersion: empty version list"
+                = fromMaybe err $ safeHead . snd . bestVersion fst $ pkgs
            in return
                 ( packageVersion ipkginfo
                 , Just . IPI.installedComponentId $ ipkginfo
@@ -1166,6 +1180,7 @@ getExternalSetupMethod verbosity options pkg bt = do
               hPutStr logHandle output
         return $ i setupProgFile
 
-isCabalPkgId, isBasePkgId :: PackageIdentifier -> Bool
+isCabalPkgId, isCabalHooksPkgId, isBasePkgId :: PackageIdentifier -> Bool
 isCabalPkgId (PackageIdentifier pname _) = pname == mkPackageName "Cabal"
+isCabalHooksPkgId (PackageIdentifier pname _) = pname == mkPackageName "Cabal-hooks"
 isBasePkgId (PackageIdentifier pname _) = pname == mkPackageName "base"
