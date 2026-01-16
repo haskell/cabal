@@ -54,6 +54,9 @@ import Text.Pretty.Simple
 -- >>> prettyShow $ Dependency (mkPackageName "pkg") anyVersion $ NES.insert (LSubLibName $ mkUnqualComponentName "sublib-b") $ NES.singleton (LSubLibName $ mkUnqualComponentName "sublib-a")
 -- "pkg:{sublib-a,sublib-b}"
 instance Pretty Dependency where
+  pretty = prettier mempty
+
+instance Prettier Dependency where
   prettier t0 dep0@(Dependency name vRange sublibs) =
     let t2 = unmark (SomeNamespace dep0) t0
         -- TODO: change to isAnyVersion after #6736

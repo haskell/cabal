@@ -17,7 +17,7 @@ import Distribution.Compat.Newtype
 import Distribution.Compat.Prelude
 import Distribution.Fields.Field (FieldName)
 import Distribution.Fields.Pretty (PrettyField (..))
-import Distribution.Pretty (Pretty (..), showFreeText, showFreeTextV3)
+import Distribution.Pretty (Pretty, Prettier (..), showFreeText, showFreeTextV3)
 import Distribution.Utils.Generic (toUTF8BS)
 import Text.PrettyPrint (Doc)
 import qualified Text.PrettyPrint as PP
@@ -57,7 +57,7 @@ prettyAnnotatedFieldGrammar
   -> [PrettyField ()]
 prettyAnnotatedFieldGrammar v t g = fieldGrammarPretty g v t
 
-instance FieldGrammar Pretty PrettyFieldGrammar where
+instance FieldGrammar Prettier PrettyFieldGrammar where
   withScope :: SomeNamespace -> PrettyFieldGrammar s a -> PrettyFieldGrammar s a
   withScope ns (PrettyFG printer) =
     PrettyFG $ \v t s ->
@@ -67,7 +67,7 @@ instance FieldGrammar Pretty PrettyFieldGrammar where
 
   -- TODO(leana8959): use the trivia in the methods implemented here
   uniqueFieldAla fn _pack l = PrettyFG $ \_v t s ->
-    ppField fn (pretty (pack' _pack (aview l s)))
+    ppField fn (prettier mempty (pack' _pack (aview l s)))
 
   booleanFieldDef fn l def = PrettyFG pp
     where
@@ -81,13 +81,13 @@ instance FieldGrammar Pretty PrettyFieldGrammar where
     where
       pp v t s = case aview l s of
         Nothing -> mempty
-        Just a -> ppField fn (prettyVersioned v (pack' _pack a))
+        Just a -> ppField fn (prettierVersioned v mempty (pack' _pack a))
 
   optionalFieldDefAla fn _pack l def = PrettyFG pp
     where
       pp v t s
         | x == def = mempty
-        | otherwise = ppField fn (prettyVersioned v (pack' _pack x))
+        | otherwise = ppField fn (prettierVersioned v mempty (pack' _pack x))
         where
           x = aview l s
 

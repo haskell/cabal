@@ -5,6 +5,8 @@ module Distribution.Pretty
   , defaultStyle
   , flatStyle
 
+  , Prettier (..)
+
     -- * Utilities
   , showFilePath
   , showToken
@@ -27,9 +29,16 @@ import Distribution.Types.Namespace
 
 import qualified Text.PrettyPrint as PP
 
-class Namespace a => Pretty a where
-  {-# MINIMAL prettier | pretty #-}
+class Pretty a where
+  pretty :: a -> PP.Doc
 
+  prettyVersioned :: CabalSpecVersion -> a -> PP.Doc
+  prettyVersioned _ = pretty
+
+-- NOTE(leana8959):
+-- Split due to the Namespace contraint posing problem, not everything is Ord
+-- Doc is not Ord for example
+class (Namespace a, Pretty a) => Prettier a where
   -- NOTE(leana8959): by default we fall back to the printer that doesn't care about trivia
   prettier :: TriviaTree -> a -> PP.Doc
   prettier _ = pretty
@@ -37,15 +46,9 @@ class Namespace a => Pretty a where
   prettierVersioned :: CabalSpecVersion -> TriviaTree -> a -> PP.Doc
   prettierVersioned _ = prettier
 
-  pretty :: a -> PP.Doc
-  pretty = prettier mempty
-
-  prettyVersioned :: CabalSpecVersion -> a -> PP.Doc
-  prettyVersioned _ = pretty
-
--- -- | @since 3.4.0.0
--- instance Pretty PP.Doc where
---   pretty = id
+-- | @since 3.4.0.0
+instance Pretty PP.Doc where
+  pretty = id
 
 instance Pretty Bool where
   pretty = PP.text . show
@@ -54,8 +57,9 @@ instance Pretty Int where
   pretty = PP.text . show
 
 instance Pretty a => Pretty (Identity a) where
-  -- pretty = pretty . runIdentity
-  prettier t = prettier t . runIdentity
+  pretty = pretty . runIdentity
+
+instance Prettier a => Prettier (Identity a) where prettier t = prettier t . runIdentity
 
 prettyShow :: Pretty a => a -> String
 prettyShow = PP.renderStyle defaultStyle . pretty

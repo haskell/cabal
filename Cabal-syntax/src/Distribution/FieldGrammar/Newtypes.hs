@@ -75,6 +75,9 @@ import Distribution.Version
   )
 import Text.PrettyPrint (Doc, comma, fsep, punctuate, text, vcat)
 
+import Distribution.Types.Namespace
+import Distribution.Types.Annotation
+
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Set as Set
 import qualified Distribution.Compat.CharParsing as P
@@ -137,6 +140,14 @@ instance Sep NoCommaFSep where
 -- | List separated with optional commas. Displayed with @sep@, arguments of
 -- type @a@ are parsed and pretty-printed as @b@.
 newtype List sep b a = List {_getList :: [a]}
+  deriving (Show, Ord, Eq)
+
+instance
+  ( Typeable sep
+  , Typeable a
+  , Typeable b
+  , Namespace a
+  ) => Namespace (List sep b a)
 
 -- | 'alaList' and 'alaList'' are simply 'List', with additional phantom
 -- arguments to constrain the resulting type
@@ -163,7 +174,24 @@ instance (Newtype a b, Sep sep, Parsec b) => Parsec (List sep b a) where
     pure (mconcat ts, pack $ map (unpack :: b -> a) bs)
 
 instance (Newtype a b, Sep sep, Pretty b) => Pretty (List sep b a) where
-  prettier t = prettySep (Proxy :: Proxy sep) . map (prettier t . (pack :: a -> b)) . unpack
+  pretty = prettySep (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . unpack
+
+instance
+  ( Newtype a b
+  , Typeable sep
+  , Sep sep
+  , Prettier b
+  , Namespace a -- it's the old type we are trying to index in the trivia map
+  ) => Prettier (List sep b a) where
+  prettier t0 =
+    let tLocal = justAnnotation t0
+    in  prettySep (Proxy :: Proxy sep)
+        . map
+            (\o ->
+              let tChildren = unmark (SomeNamespace o) t0
+              in  prettier tChildren $ (pack :: a -> b) $ o
+            )
+          . unpack
 
 -- | Like 'List', but for 'Set'.
 --
@@ -240,6 +268,8 @@ instance (Newtype a b, Sep sep, Pretty b) => Pretty (NonEmpty' sep b a) where
 
 -- | Haskell string or @[^ ,]+@
 newtype Token = Token {getToken :: String}
+  deriving (Eq, Ord, Show)
+instance Namespace Token
 
 instance Newtype String Token
 
@@ -249,8 +279,13 @@ instance Parsec Token where
 instance Pretty Token where
   pretty = showToken . unpack
 
+instance Prettier Token where prettier _ = pretty
+
 -- | Haskell string or @[^ ]+@
 newtype Token' = Token' {getToken' :: String}
+  deriving (Eq, Show, Ord)
+
+instance Namespace Token'
 
 instance Newtype String Token'
 
@@ -260,8 +295,11 @@ instance Parsec Token' where
 instance Pretty Token' where
   pretty = showToken . unpack
 
+instance Prettier Token' where prettier _ = pretty
+
 -- | Either @"quoted"@ or @un-quoted@.
 newtype MQuoted a = MQuoted {getMQuoted :: a}
+  deriving (Eq, Ord, Show)
 
 instance Newtype a (MQuoted a)
 
@@ -271,8 +309,15 @@ instance Parsec a => Parsec (MQuoted a) where
 instance Pretty a => Pretty (MQuoted a) where
   pretty = pretty . unpack
 
+instance (Prettier a) => Prettier (MQuoted a) where
+  prettier t = prettier t . unpack
+
 -- | Filepath are parsed as 'Token'.
 newtype FilePathNT = FilePathNT {getFilePathNT :: String}
+  deriving (Ord, Eq, Show)
+
+instance Namespace FilePathNT
+instance Prettier FilePathNT where prettier _ = pretty
 
 instance Newtype String FilePathNT
 
@@ -338,7 +383,9 @@ instance Pretty (RelativePathNT from to) where
 -- for CabalSpecVersion would cause cycle in modules:
 --     Version -> CabalSpecVersion -> Parsec -> ...
 newtype SpecVersion = SpecVersion {getSpecVersion :: CabalSpecVersion}
-  deriving (Eq, Show) -- instances needed for tests
+  deriving (Eq, Show, Ord) -- instances needed for tests
+
+instance Namespace SpecVersion
 
 instance Newtype CabalSpecVersion SpecVersion
 
@@ -417,13 +464,18 @@ instance Pretty SpecVersion where
     | csv >= CabalSpecV1_12 = text (showCabalSpecVersion csv)
     | otherwise = text ">=" <<>> text (showCabalSpecVersion csv)
 
+-- TODO(leana8959): this should be implemented differently
+instance Prettier SpecVersion where prettier _ = pretty
+
 -------------------------------------------------------------------------------
 -- SpecLicense
 -------------------------------------------------------------------------------
 
 -- | SPDX License expression or legacy license
 newtype SpecLicense = SpecLicense {getSpecLicense :: Either SPDX.License License}
-  deriving (Show, Eq)
+  deriving (Show, Ord, Eq)
+
+instance Namespace SpecLicense
 
 instance Newtype (Either SPDX.License License) SpecLicense
 
@@ -436,6 +488,7 @@ instance Parsec SpecLicense where
 
 instance Pretty SpecLicense where
   pretty = either pretty pretty . unpack
+instance Prettier SpecLicense where prettier _ = pretty 
 
 -------------------------------------------------------------------------------
 -- TestedWith
@@ -443,6 +496,9 @@ instance Pretty SpecLicense where
 
 -- | Version range or just version
 newtype TestedWith = TestedWith {getTestedWith :: (CompilerFlavor, VersionRange)}
+  deriving (Ord, Eq, Show)
+
+instance Namespace TestedWith
 
 instance Newtype (CompilerFlavor, VersionRange) TestedWith
 
@@ -452,6 +508,8 @@ instance Parsec TestedWith where
 instance Pretty TestedWith where
   pretty x = case unpack x of
     (compiler, vr) -> pretty compiler <+> pretty vr
+
+instance Prettier TestedWith where prettier _ = pretty
 
 parsecTestedWith :: CabalParsing m => m (CompilerFlavor, VersionRange)
 parsecTestedWith = do

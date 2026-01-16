@@ -34,10 +34,15 @@ import qualified Text.PrettyPrint as Disp
 import qualified Text.Read as Read
 
 instance Pretty Version where
-  prettier t ver =
-    triviaToDoc (justAnnotation t)
-    $ Disp.hcat
-      ( Disp.punctuate
-          (Disp.char '.')
-          (map Disp.int $ versionNumbers ver)
-      )
+  pretty = prettierVersion mempty
+
+instance Prettier Version where
+  prettier = prettierVersion
+
+prettierVersion t ver =
+  triviaToDoc (justAnnotation t)
+  $ Disp.hcat
+    ( Disp.punctuate
+        (Disp.char '.')
+        (map Disp.int $ versionNumbers ver)
+    )

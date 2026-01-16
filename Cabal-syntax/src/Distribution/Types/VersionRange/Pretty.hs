@@ -71,6 +71,9 @@ import Distribution.Types.Namespace
 -- >>> fmap (prettyVersioned CabalSpecV1_6) (simpleParsec' CabalSpecV1_6 "-any" :: Maybe VersionRange)
 -- Just >=0
 instance Pretty VersionRange where
+  pretty = prettier mempty
+
+instance Prettier VersionRange where
   prettier = prettierVersioned cabalSpecLatest
 
   prettierVersioned csv
