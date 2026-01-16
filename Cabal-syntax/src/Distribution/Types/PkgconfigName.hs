@@ -13,6 +13,7 @@ import Prelude ()
 
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.Types.Namespace
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
@@ -24,6 +25,8 @@ import qualified Text.PrettyPrint as Disp
 -- @since 2.0.0.2
 newtype PkgconfigName = PkgconfigName ShortText
   deriving (Generic, Read, Show, Eq, Ord, Data)
+
+instance Namespace PkgconfigName
 
 -- | Convert 'PkgconfigName' to 'String'
 --

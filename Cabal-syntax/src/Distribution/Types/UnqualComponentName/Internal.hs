@@ -15,6 +15,8 @@ module Distribution.Types.UnqualComponentName.Internal
 import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
 
+import Distribution.Types.Namespace
+
 import Distribution.Types.PackageName.Internal
 
 -- | An unqualified component name, for any kind of component.
@@ -35,6 +37,8 @@ newtype UnqualComponentName = UnqualComponentName ShortText
     , Semigroup
     , Monoid -- TODO: bad enabler of bad monoids
     )
+
+instance Namespace UnqualComponentName
 
 -- | Convert 'UnqualComponentName' to 'String'
 --

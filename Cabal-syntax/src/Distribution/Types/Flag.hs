@@ -341,7 +341,7 @@ parsecFlagAssignmentNonEmpty = mkFlagAssignment <$> sepByEnding1 (onFlag <|> off
 --
 -- @since 3.4.0.0
 showFlagAssignment :: FlagAssignment -> String
-showFlagAssignment = prettyShow . dispFlagAssignment
+showFlagAssignment = renderPrettyDefault . dispFlagAssignment
 
 -------------------------------------------------------------------------------
 -- Legacy: without requiring +
@@ -352,7 +352,7 @@ showFlagAssignment = prettyShow . dispFlagAssignment
 -- @since 3.4.0.0
 legacyShowFlagAssignment :: FlagAssignment -> String
 legacyShowFlagAssignment =
-  prettyShow . Disp.hsep . map Disp.text . legacyShowFlagAssignment'
+  renderPrettyDefault . Disp.hsep . map Disp.text . legacyShowFlagAssignment'
 
 -- | @since 3.4.0.0
 legacyShowFlagAssignment' :: FlagAssignment -> [String]

@@ -1,6 +1,7 @@
 module Distribution.Pretty
   ( Pretty (..)
   , prettyShow
+  , renderPrettyDefault
   , defaultStyle
   , flatStyle
 
@@ -58,6 +59,8 @@ instance Pretty a => Pretty (Identity a) where
 
 prettyShow :: Pretty a => a -> String
 prettyShow = PP.renderStyle defaultStyle . pretty
+
+renderPrettyDefault = PP.renderStyle defaultStyle
 
 -- | The default rendering style used in Cabal for console
 -- output. It has a fixed page width and adds line breaks

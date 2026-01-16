@@ -15,6 +15,8 @@ import Prelude ()
 import Distribution.Parsec
 import Distribution.Pretty
 
+import Distribution.Types.Namespace
+
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
@@ -28,6 +30,8 @@ data ForeignLibType
   | -- TODO: Maybe this should record a string?
     ForeignLibTypeUnknown
   deriving (Generic, Show, Read, Eq, Ord, Data)
+
+instance Namespace ForeignLibType
 
 instance Pretty ForeignLibType where
   pretty ForeignLibNativeShared = Disp.text "native-shared"

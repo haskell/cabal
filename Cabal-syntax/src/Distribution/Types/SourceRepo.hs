@@ -19,6 +19,7 @@ import Distribution.Utils.Generic (lowercase)
 
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.Types.Namespace
 
 import qualified Data.Map.Strict as M
 import qualified Distribution.Compat.CharParsing as P
@@ -107,6 +108,7 @@ data RepoKind
     RepoThis
   | RepoKindUnknown String
   deriving (Eq, Generic, Ord, Read, Show, Data)
+instance Namespace RepoKind
 
 instance Binary RepoKind
 instance Structured RepoKind
@@ -128,6 +130,8 @@ data KnownRepoType
     Pijul
   deriving (Eq, Generic, Ord, Read, Show, Data, Enum, Bounded)
 
+instance Namespace KnownRepoType
+
 instance Binary KnownRepoType
 instance Structured KnownRepoType
 instance NFData KnownRepoType where rnf = genericRnf
@@ -147,6 +151,8 @@ data RepoType
   = KnownRepoType KnownRepoType
   | OtherRepoType String
   deriving (Eq, Generic, Ord, Read, Show, Data)
+
+instance Namespace RepoType
 
 instance Binary RepoType
 instance Structured RepoType

@@ -12,6 +12,7 @@ import Prelude ()
 import Control.DeepSeq
 import Data.Typeable
 import qualified Data.ByteString as BS
+import qualified Distribution.Utils.ShortText as ST
 
 class
   ( Typeable a
@@ -23,6 +24,7 @@ instance Namespace Char
 instance Namespace Int
 instance Namespace Bool
 instance Namespace BS.ByteString
+instance Namespace ST.ShortText
 instance Namespace a => Namespace [a]
 instance Namespace a => Namespace (Identity a)
 instance (Namespace a, Namespace b) => Namespace (a, b)

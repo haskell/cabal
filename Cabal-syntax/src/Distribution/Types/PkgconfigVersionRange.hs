@@ -18,6 +18,7 @@ import Prelude ()
 import Distribution.CabalSpecVersion
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.Types.Namespace
 import Distribution.Types.PkgconfigVersion
 import Distribution.Types.Version
 import Distribution.Types.VersionInterval
@@ -39,6 +40,8 @@ data PkgconfigVersionRange
   | PcUnionVersionRanges PkgconfigVersionRange PkgconfigVersionRange
   | PcIntersectVersionRanges PkgconfigVersionRange PkgconfigVersionRange
   deriving (Generic, Read, Show, Eq, Ord, Data)
+
+instance Namespace PkgconfigVersionRange
 
 instance Binary PkgconfigVersionRange
 instance Structured PkgconfigVersionRange

@@ -12,6 +12,8 @@ import Prelude ()
 import Distribution.Parsec
 import Distribution.Pretty
 
+import Distribution.Types.Namespace
+
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
@@ -24,6 +26,8 @@ data LibraryVisibility
   | -- | Internal library, default
     LibraryVisibilityPrivate
   deriving (Generic, Show, Read, Eq, Ord, Data)
+
+instance Namespace LibraryVisibility
 
 instance Pretty LibraryVisibility where
   pretty LibraryVisibilityPublic = Disp.text "public"

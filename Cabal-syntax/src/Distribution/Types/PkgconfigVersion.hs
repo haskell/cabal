@@ -12,6 +12,7 @@ import Prelude ()
 
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.Types.Namespace
 import Distribution.Utils.Generic (isAsciiAlphaNum)
 
 import qualified Data.ByteString as BS
@@ -27,6 +28,8 @@ import qualified Text.PrettyPrint as PP
 -- @since 3.0
 newtype PkgconfigVersion = PkgconfigVersion BS.ByteString
   deriving (Generic, Read, Show, Data)
+
+instance Namespace PkgconfigVersion
 
 instance Eq PkgconfigVersion where
   PkgconfigVersion a == PkgconfigVersion b = rpmvercmp a b == EQ
