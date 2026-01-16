@@ -1,6 +1,5 @@
+{-# LANGUAGE CApiFFI #-}
 {-# LANGUAGE CPP #-}
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Compat.GetShortPathName
@@ -22,14 +21,7 @@ import qualified System.Win32 as Win32
 import System.Win32          (LPCTSTR, LPTSTR, DWORD)
 import Foreign.Marshal.Array (allocaArray)
 
-{- FOURMOLU_DISABLE -}
-#if defined(x86_64_HOST_ARCH) || defined(aarch64_HOST_ARCH)
-#define WINAPI ccall
-#else
-#define WINAPI stdcall
-#endif
-
-foreign import WINAPI unsafe "windows.h GetShortPathNameW"
+foreign import capi unsafe "windows.h GetShortPathNameW"
   c_GetShortPathName :: LPCTSTR -> LPTSTR -> DWORD -> Prelude.IO DWORD
 
 -- | On Windows, retrieves the short path form of the specified path. On
@@ -58,4 +50,3 @@ getShortPathName :: FilePath -> IO FilePath
 getShortPathName path = return path
 
 #endif
-{- FOURMOLU_ENABLE -}
