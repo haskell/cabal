@@ -32,11 +32,10 @@ instance Eq SomeNamespace where
     Just x' -> x' == y
     Nothing -> False
 
--- TODO(leana8959): is this bad
 instance Ord SomeNamespace where
   (SomeNamespace x) <= (SomeNamespace y) = case cast x of
     Just x' -> x' <= y
-    Nothing -> False
+    Nothing -> typeOf x <= typeOf y
 
 fromNamespace :: Namespace a => SomeNamespace -> Maybe a
 fromNamespace (SomeNamespace ns) = cast ns
