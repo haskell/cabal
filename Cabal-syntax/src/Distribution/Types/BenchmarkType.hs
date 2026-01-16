@@ -45,6 +45,9 @@ instance Pretty BenchmarkType where
   pretty (BenchmarkTypeExe ver) = text "exitcode-stdio-" <<>> pretty ver
   pretty (BenchmarkTypeUnknown name ver) = text name <<>> char '-' <<>> pretty ver
 
+instance Prettier BenchmarkType where
+  prettier _ = pretty
+
 instance Parsec BenchmarkType where
   parsec = parsecStandard $ \ver name -> case name of
     "exitcode-stdio" -> BenchmarkTypeExe ver

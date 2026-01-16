@@ -46,6 +46,9 @@ knownBuildTypes = [Simple, Configure, Make, Custom, Hooks]
 instance Pretty BuildType where
   pretty = Disp.text . show
 
+instance Prettier BuildType where
+  prettier _ = pretty
+
 instance Parsec BuildType where
   parsec = do
     name <- P.munch1 isAlphaNum

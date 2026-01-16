@@ -56,6 +56,9 @@ instance Pretty TestType where
   pretty (TestTypeLib ver) = text "detailed-" <<>> pretty ver
   pretty (TestTypeUnknown name ver) = text name <<>> char '-' <<>> pretty ver
 
+instance Prettier TestType where
+  prettier _ = pretty
+
 instance Parsec TestType where
   parsec = parsecStandard $ \ver name -> case name of
     "exitcode-stdio" -> TestTypeExe ver

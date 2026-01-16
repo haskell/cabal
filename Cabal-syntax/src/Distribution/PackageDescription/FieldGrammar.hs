@@ -85,7 +85,7 @@ import Distribution.ModuleName (ModuleName)
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Parsec
-import Distribution.Pretty (Pretty (..), prettyShow, showToken)
+import Distribution.Pretty (Prettier (..), Pretty (..), prettyShow, showToken)
 import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
 
@@ -110,8 +110,8 @@ packageDescriptionFieldGrammar
      , c (Identity BuildType)
      , c (Identity PackageName)
      , c (Identity Version)
-     , forall from to. c (List FSep (RelativePathNT from to) (RelativePath from to))
-     , forall from to. c (List VCat (RelativePathNT from to) (RelativePath from to))
+     , forall from to. (Typeable from, Typeable to) => c (List FSep (RelativePathNT from to) (RelativePath from to))
+     , forall from to. (Typeable from, Typeable to) => c (List VCat (RelativePathNT from to) (RelativePath from to))
      , c (List FSep TestedWith (CompilerFlavor, VersionRange))
      , c CompatLicenseFile
      , c CompatDataDir
@@ -354,10 +354,10 @@ testSuiteFieldGrammar
      , c (List FSep Token String)
      , c (List NoCommaFSep Token' String)
      , c (List VCat (MQuoted ModuleName) ModuleName)
-     , forall from to. c (List FSep (SymbolicPathNT from to) (SymbolicPath from to))
-     , forall from to. c (List FSep (RelativePathNT from to) (RelativePath from to))
-     , forall from to. c (List VCat (SymbolicPathNT from to) (SymbolicPath from to))
-     , forall from to. c (RelativePathNT from to)
+     , forall from to. (Typeable from, Typeable to) => c (List FSep (SymbolicPathNT from to) (SymbolicPath from to))
+     , forall from to. (Typeable from, Typeable to) => c (List FSep (RelativePathNT from to) (RelativePath from to))
+     , forall from to. (Typeable from, Typeable to) => c (List VCat (SymbolicPathNT from to) (SymbolicPath from to))
+     , forall from to. (Typeable from, Typeable to) => c (RelativePathNT from to)
      , c (List VCat Token String)
      , c (MQuoted Language)
      )
@@ -498,10 +498,10 @@ benchmarkFieldGrammar
      , c (List FSep Token String)
      , c (List NoCommaFSep Token' String)
      , c (List VCat (MQuoted ModuleName) ModuleName)
-     , forall from to. c (List FSep (SymbolicPathNT from to) (SymbolicPath from to))
-     , forall from to. c (List FSep (RelativePathNT from to) (RelativePath from to))
-     , forall from to. c (List VCat (SymbolicPathNT from to) (SymbolicPath from to))
-     , forall from to. c (RelativePathNT from to)
+     , forall from to. (Typeable from, Typeable to) => c (List FSep (SymbolicPathNT from to) (SymbolicPath from to))
+     , forall from to. (Typeable from, Typeable to) => c (List FSep (RelativePathNT from to) (RelativePath from to))
+     , forall from to. (Typeable from, Typeable to) => c (List VCat (SymbolicPathNT from to) (SymbolicPath from to))
+     , forall from to. (Typeable from, Typeable to) => c (RelativePathNT from to)
      , c (List VCat Token String)
      , c (MQuoted Language)
      )
@@ -862,6 +862,9 @@ formatOtherModules = alaList' VCat MQuoted
 -- across Hackage to outrule them completely.
 -- I suspect some of them are generated (e.g. formatted) by machine.
 newtype CompatDataDir = CompatDataDir {getCompatDataDir :: SymbolicPath Pkg (Dir DataDir)}
+  deriving (Ord, Eq, Show)
+
+instance Namespace CompatDataDir
 
 instance Newtype (SymbolicPath Pkg (Dir DataDir)) CompatDataDir
 
@@ -875,7 +878,13 @@ instance Parsec CompatDataDir where
 instance Pretty CompatDataDir where
   pretty = showToken . getSymbolicPath . getCompatDataDir
 
+instance Prettier CompatDataDir where
+  prettier _ = pretty
+
 newtype CompatLicenseFile = CompatLicenseFile {getCompatLicenseFile :: [RelativePath Pkg File]}
+  deriving (Ord, Eq, Show)
+
+instance Namespace CompatLicenseFile
 
 instance Newtype [RelativePath Pkg File] CompatLicenseFile
 
@@ -891,6 +900,10 @@ instance Parsec CompatLicenseFile where
 
 instance Pretty CompatLicenseFile where
   pretty = pretty . pack' (alaList FSep) . getCompatLicenseFile
+
+-- TODO(leana8959): might be important
+instance Prettier CompatLicenseFile where
+  prettier _ = pretty
 
 -------------------------------------------------------------------------------
 -- vim syntax definitions
