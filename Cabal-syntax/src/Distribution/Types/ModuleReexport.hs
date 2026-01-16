@@ -44,6 +44,10 @@ instance Pretty ModuleReexport where
         then Disp.empty
         else Disp.text "as" <+> pretty newname
 
+-- TODO(leana8959): might be important
+instance Prettier ModuleReexport where
+  prettier _ = pretty
+
 instance Parsec ModuleReexport where
   parsec = do
     mpkgname <- P.optional (P.try $ parsec <* P.char ':')

@@ -28,6 +28,9 @@ instance Pretty ExecutableScope where
   pretty ExecutablePublic = Disp.text "public"
   pretty ExecutablePrivate = Disp.text "private"
 
+instance Prettier ExecutableScope where
+  prettier _ = pretty
+
 instance Parsec ExecutableScope where
   parsec = P.try pub <|> pri
     where

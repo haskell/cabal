@@ -38,6 +38,9 @@ instance Pretty ForeignLibType where
   pretty ForeignLibNativeStatic = Disp.text "native-static"
   pretty ForeignLibTypeUnknown = Disp.text "unknown"
 
+instance Prettier ForeignLibType where
+  prettier _ = pretty
+
 instance Parsec ForeignLibType where
   parsec = do
     name <- P.munch1 (\c -> isAlphaNum c || c == '-')

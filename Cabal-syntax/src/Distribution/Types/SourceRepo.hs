@@ -172,6 +172,9 @@ instance Pretty RepoKind where
   pretty RepoThis = Disp.text "this"
   pretty (RepoKindUnknown other) = Disp.text other
 
+instance Prettier RepoKind where
+  prettier _ = pretty
+
 instance Parsec RepoKind where
   parsec = classifyRepoKind <$> P.munch1 isIdent
 
@@ -187,6 +190,9 @@ instance Parsec RepoType where
 instance Pretty RepoType where
   pretty (OtherRepoType other) = Disp.text other
   pretty (KnownRepoType t) = pretty t
+
+instance Prettier RepoType where
+  prettier _ = pretty
 
 classifyRepoType :: String -> RepoType
 classifyRepoType s =

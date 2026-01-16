@@ -78,6 +78,9 @@ instance Pretty Language where
   pretty (UnknownLanguage other) = Disp.text other
   pretty other = Disp.text (show other)
 
+instance Prettier Language where
+  prettier _ = pretty
+
 instance Parsec Language where
   parsec = classifyLanguage <$> P.munch1 isAlphaNum
 
@@ -590,6 +593,9 @@ instance Pretty Extension where
   pretty (UnknownExtension other) = Disp.text other
   pretty (EnableExtension ke) = Disp.text (show ke)
   pretty (DisableExtension ke) = Disp.text ("No" ++ show ke)
+
+instance Prettier Extension where
+  prettier _ = pretty
 
 instance Parsec Extension where
   parsec = classifyExtension <$> P.munch1 isAlphaNum

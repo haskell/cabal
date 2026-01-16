@@ -49,6 +49,10 @@ instance Pretty Mixin where
   pretty (Mixin pn LMainLibName incl) = pretty pn <+> pretty incl
   pretty (Mixin pn (LSubLibName ln) incl) = pretty pn <<>> PP.colon <<>> pretty ln <+> pretty incl
 
+-- TODO(leana8959): maybe import
+instance Prettier Mixin where
+  prettier _ = pretty
+
 -- |
 --
 -- >>>  simpleParsec "mylib" :: Maybe Mixin

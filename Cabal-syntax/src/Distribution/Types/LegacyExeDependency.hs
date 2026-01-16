@@ -42,6 +42,10 @@ instance Pretty LegacyExeDependency where
   pretty (LegacyExeDependency name ver) =
     Disp.text name <+> pretty ver
 
+-- TODO(leana8959): maybe important
+instance Prettier LegacyExeDependency where
+  prettier _ = pretty
+
 instance Parsec LegacyExeDependency where
   parsec = do
     name <- parsecMaybeQuoted nameP

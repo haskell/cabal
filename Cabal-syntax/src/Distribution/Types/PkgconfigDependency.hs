@@ -36,6 +36,9 @@ instance Pretty PkgconfigDependency where
   pretty (PkgconfigDependency name PcAnyVersion) = pretty name
   pretty (PkgconfigDependency name ver) = pretty name <+> pretty ver
 
+instance Prettier PkgconfigDependency where
+  prettier _ = pretty
+
 instance Parsec PkgconfigDependency where
   parsec = do
     name <- parsec

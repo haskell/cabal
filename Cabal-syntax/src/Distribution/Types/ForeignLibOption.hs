@@ -31,6 +31,9 @@ instance Namespace ForeignLibOption
 instance Pretty ForeignLibOption where
   pretty ForeignLibStandalone = Disp.text "standalone"
 
+instance Prettier ForeignLibOption where
+  prettier _ = pretty
+
 instance Parsec ForeignLibOption where
   parsec = do
     name <- P.munch1 (\c -> isAlphaNum c || c == '-')

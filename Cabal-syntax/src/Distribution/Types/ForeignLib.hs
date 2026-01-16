@@ -27,6 +27,7 @@ import Distribution.Types.BuildInfo
 import Distribution.Types.ForeignLibOption
 import Distribution.Types.ForeignLibType
 import Distribution.Types.UnqualComponentName
+import Distribution.Types.Namespace
 import Distribution.Utils.Path
 import Distribution.Version
 
@@ -63,6 +64,8 @@ data ForeignLib = ForeignLib
   }
   deriving (Generic, Show, Read, Eq, Ord, Data)
 
+instance Namespace LibVersionInfo
+
 data LibVersionInfo = LibVersionInfo Int Int Int deriving (Data, Eq, Generic)
 
 instance Ord LibVersionInfo where
@@ -90,6 +93,10 @@ instance NFData LibVersionInfo where rnf = genericRnf
 instance Pretty LibVersionInfo where
   pretty (LibVersionInfo c r a) =
     Disp.hcat $ Disp.punctuate (Disp.char ':') $ map Disp.int [c, r, a]
+
+-- TODO(leana8959): maybe important
+instance Prettier LibVersionInfo where
+  prettier _ = pretty
 
 instance Parsec LibVersionInfo where
   parsec = do

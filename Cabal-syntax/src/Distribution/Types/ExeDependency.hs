@@ -46,6 +46,10 @@ instance Pretty ExeDependency where
         | isAnyVersion ver = PP.empty
         | otherwise = pretty ver
 
+-- TODO(leana8959): maybe important
+instance Prettier ExeDependency where
+  prettier _ = pretty
+
 -- |
 --
 -- Examples
