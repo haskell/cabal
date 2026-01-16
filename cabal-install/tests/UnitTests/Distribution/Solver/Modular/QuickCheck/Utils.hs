@@ -40,7 +40,7 @@ instance IsTest QCWithSeed where
     replay <- case lookupOption options of
       QuickCheckReplayLegacy override -> return override
       _ -> getStdRandom random
-    notice normal $ "Using --quickcheck-replay=" ++ show replay
+    notice (mkVerbosity defaultVerbosityHandles normal) $ "Using --quickcheck-replay=" ++ show replay
     run (setOption (QuickCheckReplayLegacy replay) options) test progress
 
 -- | Typeclass for doing arbitrary (but law-abiding) comparisons.  See also

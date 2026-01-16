@@ -16,6 +16,7 @@ import System.FilePath ((</>), splitFileName, normalise)
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Tasty
 import Test.Tasty.HUnit
+import Distribution.Verbosity
 
 sampleFileNames :: [FilePath]
 sampleFileNames =
@@ -100,6 +101,7 @@ testMatchesVersion version pat expected = do
   checkPure globPat
   checkIO globPat
   where
+    verbosity = mkVerbosity defaultVerbosityHandles Verbosity.normal
     isEqual = (==) `on` (sort . fmap (fmap normalise))
     checkPure globPat = do
       let actual = mapMaybe (\p -> (p <$) <$> fileGlobMatches version globPat p) sampleFileNames
@@ -111,7 +113,7 @@ testMatchesVersion version pat expected = do
     checkIO globPat =
       withSystemTempDirectory "globstar-sample" $ \tmpdir -> do
         makeSampleFiles tmpdir
-        actual <- runDirFileGlob Verbosity.normal (Just version) tmpdir globPat
+        actual <- runDirFileGlob verbosity (Just version) tmpdir globPat
         unless (isEqual actual expected) $
           assertFailure $ "Unexpected result (impure matcher): " ++ show actual ++ "\nExpected: " ++ show expected
 

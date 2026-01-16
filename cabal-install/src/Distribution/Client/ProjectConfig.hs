@@ -215,8 +215,8 @@ import Distribution.Utils.NubList
   ( fromNubList
   )
 import Distribution.Verbosity
-  ( modifyVerbosity
-  , verbose
+  ( makeVerbose
+  , modifyVerbosityFlags
   )
 import Distribution.Version
 
@@ -541,7 +541,7 @@ resolveBuildTimeSettings
       --
       buildSettingLogVerbosity :: Verbosity
       buildSettingLogVerbosity
-        | overrideVerbosity = modifyVerbosity (max verbose) verbosity
+        | overrideVerbosity = modifyVerbosityFlags makeVerbose verbosity
         | otherwise = verbosity
 
       overrideVerbosity :: Bool

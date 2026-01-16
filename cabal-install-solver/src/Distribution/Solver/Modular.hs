@@ -72,7 +72,7 @@ import Distribution.Simple.Setup
          ( BooleanFlag(..) )
 import Distribution.Simple.Utils
     ( ordNubBy )
-import Distribution.Verbosity ( normal, verbose )
+import Distribution.Verbosity
 import Distribution.Solver.Modular.Message ( renderSummarizedMessage )
 
 -- | Ties the two worlds together: classic cabal-install vs. the modular
@@ -202,7 +202,7 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
 
       in unlines ("Could not resolve dependencies:" : map renderSummarizedMessage (messages (toProgress (runSolver True sc'))))
 
-    printFullLog = solverVerbosity sc >= verbose
+    printFullLog = solverVerbosity sc >= Verbose
 
     messages :: Progress step fail done -> [step]
     messages = foldProgress (:) (const []) (const [])
@@ -343,7 +343,7 @@ finalErrorMsg sc failure =
           ++ showCS cm cs
           ++ flagSuggestion
         where
-          showCS = if solverVerbosity sc > normal
+          showCS = if solverVerbosity sc > Normal
                    then CS.showCSWithFrequency
                    else CS.showCSSortedByFrequency
           flagSuggestion =

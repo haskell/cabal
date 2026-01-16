@@ -12,7 +12,7 @@ import System.FilePath
 import Distribution.Package (UnitId, mkUnitId)
 import Distribution.Simple.Compiler (AbiTag (..), Compiler (..), CompilerFlavor (..), CompilerId (..))
 import Distribution.Simple.Utils (withTempDirectory)
-import Distribution.Verbosity (Verbosity, silent)
+import Distribution.Verbosity
 import Distribution.Version (mkVersion)
 
 import Distribution.Client.RebuildMonad
@@ -31,7 +31,7 @@ tests =
 
 testListEmpty :: Assertion
 testListEmpty =
-  withTempDirectory verbosity "." "store-" $ \tmp -> do
+  withTempDirectory "." "store-" $ \tmp -> do
     let storeDirLayout = defaultStoreDirLayout (tmp </> "store")
 
     assertStoreEntryExists storeDirLayout compiler unitid False
@@ -53,7 +53,7 @@ testListEmpty =
 
 testInstallSerial :: Assertion
 testInstallSerial =
-  withTempDirectory verbosity "." "store-" $ \tmp -> do
+  withTempDirectory "." "store-" $ \tmp -> do
     let storeDirLayout = defaultStoreDirLayout (tmp </> "store")
         copyFiles file content dir = do
           -- we copy into a prefix inside the tmp dir and return the prefix
@@ -117,7 +117,7 @@ testInstallSerial =
 
 testInstallParallel :: Assertion
 testInstallParallel =
-  withTempDirectory verbosity "." "store-" $ \tmp -> do
+  withTempDirectory "." "store-" $ \tmp -> do
     let storeDirLayout = defaultStoreDirLayout (tmp </> "store")
 
     sync1 <- newEmptyMVar
@@ -228,4 +228,4 @@ assertFileEqual path expected = do
   assertEqual ("file content for:\n" ++ path) expected actual
 
 verbosity :: Verbosity
-verbosity = silent
+verbosity = mkVerbosity defaultVerbosityHandles silent

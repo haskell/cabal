@@ -130,8 +130,7 @@ runProgramInvocation
     , progInvokeEnv = []
     , progInvokeCwd = Nothing
     , progInvokeInput = Nothing
-    } =
-    rawSystemExit verbosity Nothing path args
+    } = rawSystemExit verbosity Nothing path args
 runProgramInvocation
   verbosity
   ProgramInvocation

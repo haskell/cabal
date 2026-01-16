@@ -72,6 +72,7 @@ import Distribution.Simple.Utils
   )
 import Distribution.Verbosity
   ( lessVerbose
+  , modifyVerbosityFlags
   , normal
   )
 import System.Directory
@@ -250,7 +251,7 @@ updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
     RepoSecure{} -> repoContextWithSecureRepo repoCtxt repo $ \repoSecure -> do
       let index = RepoIndex repoCtxt repo
       -- NB: This may be a NoTimestamp if we've never updated before
-      current_ts <- currentIndexTimestamp (lessVerbose verbosity) index
+      current_ts <- currentIndexTimestamp (modifyVerbosityFlags lessVerbose verbosity) index
       -- NB: always update the timestamp, even if we didn't actually
       -- download anything
       writeIndexTimestamp index indexState
@@ -282,7 +283,7 @@ updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
       -- This resolves indexState (which could be HEAD) into a timestamp
       -- This could be null but should not be, since the above guarantees
       -- we have an updated index.
-      new_ts <- currentIndexTimestamp (lessVerbose verbosity) index
+      new_ts <- currentIndexTimestamp (modifyVerbosityFlags lessVerbose verbosity) index
 
       noticeNoWrap verbosity $
         "The index-state is set to " ++ prettyShow (IndexStateTime new_ts) ++ "."

@@ -46,7 +46,7 @@ import Distribution.Types.UnqualComponentName
 import Distribution.Types.LocalBuildInfo
 import Distribution.PackageDescription
 import Test.Utils.TempTestDir (withTestDir)
-import Distribution.Verbosity (normal)
+import Distribution.Verbosity
 import Distribution.Utils.Path
   ( makeSymbolicPath, relativeSymbolicPath, interpretSymbolicPathCWD )
 
@@ -97,7 +97,7 @@ runM path args input = do
 runM' :: Maybe FilePath -> FilePath -> [String] -> Maybe String -> TestM Result
 runM' run_dir path args input = do
     env <- getTestEnv
-    r <- liftIO $ run (testVerbosity env)
+    r <- liftIO $ run
                  run_dir
                  (testEnvironment env)
                  path
@@ -175,7 +175,9 @@ setup''
   -> TestM Result
 setup'' prefix cmd args = do
     env <- getTestEnv
-    let work_dir = if testRelativeCurrentDir env == "." then Nothing else Just (testRelativeCurrentDir env)
+    let
+      verbosity = testVerbosity env
+      work_dir = if testRelativeCurrentDir env == "." then Nothing else Just (testRelativeCurrentDir env)
     when ((cmd == "register" || cmd == "copy") && not (testHavePackageDb env)) $
         error "Cannot register/copy without using 'withPackageDb'"
     ghc_path     <- programPathM ghcProgram
@@ -216,8 +218,8 @@ setup'' prefix cmd args = do
     -- `cabal` and `Setup.hs` do have different interface.
     --
     let pkgDir = makeSymbolicPath $ testTmpDir env </> testRelativeCurrentDir env </> prefix
-    pdfile <- liftIO $ tryFindPackageDesc (testVerbosity env) (Just pkgDir)
-    pdesc <- liftIO $ readGenericPackageDescription (testVerbosity env) (Just pkgDir) $ relativeSymbolicPath pdfile
+    pdfile <- liftIO $ tryFindPackageDesc verbosity (Just pkgDir)
+    pdesc <- liftIO $ readGenericPackageDescription verbosity (Just pkgDir) $ relativeSymbolicPath pdfile
     if testCabalInstallAsSetup env
     then if buildType (packageDescription pdesc) == Simple
          then runProgramM' (Just (testTmpDir env)) cabalProgram ("act-as-setup" : "--" : full_args) Nothing
@@ -969,7 +971,7 @@ testCompilerWithArgs args = do
     ghc_path <- programPathM ghcProgram
     let prof_test_hs = testWorkDir env </> "Prof.hs"
     liftIO $ writeFile prof_test_hs "module Prof where"
-    r <- liftIO $ run (testVerbosity env) (Just $ testCurrentDir env)
+    r <- liftIO $ run (Just $ testCurrentDir env)
                       (testEnvironment env) ghc_path (["-c", prof_test_hs] ++ args)
                       Nothing
     return (resultExitCode r == ExitSuccess)
@@ -1279,7 +1281,10 @@ copySourceFileTo src dest = do
 -- The directory must be passed to new- commands with --store-dir.
 withShorterPathForNewBuildStore :: TestM a -> TestM a
 withShorterPathForNewBuildStore test =
-  withTestDir normal "cabal-test-store" (\f -> withStoreDir f test)
+  withTestDir
+    (mkVerbosity defaultVerbosityHandles normal)
+    "cabal-test-store"
+    (\f -> withStoreDir f test)
 
 -- | Find where a package locates in the store dir. This works only if there is exactly one 1 ghc version
 -- and exactly 1 directory for the given package in the store dir.

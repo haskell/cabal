@@ -45,7 +45,7 @@ tests = do
       ]
   where
     v :: Verbosity
-    v = normal
+    v = mkVerbosity defaultVerbosityHandles normal
 
     compFlags :: ConfigFlags
     compFlags = mempty{configHcPath = initHcPath emptyFlags}
