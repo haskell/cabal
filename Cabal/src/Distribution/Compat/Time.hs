@@ -1,3 +1,4 @@
+{-# LANGUAGE CApiFFI #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -93,14 +94,7 @@ getModTime path = allocaBytes size_WIN32_FILE_ATTRIBUTE_DATA $ \info -> do
             .|. (fromIntegral (dwLow :: DWORD))
       return $! ModTime (qwTime :: Word64)
 
-{- FOURMOLU_DISABLE -}
-#if defined(x86_64_HOST_ARCH) || defined(aarch64_HOST_ARCH)
-#define CALLCONV ccall
-#else
-#define CALLCONV stdcall
-#endif
-
-foreign import CALLCONV "windows.h GetFileAttributesExW"
+foreign import capi "windows.h GetFileAttributesExW"
   c_getFileAttributesEx :: LPCTSTR -> Int32 -> LPVOID -> Prelude.IO BOOL
 
 getFileAttributesEx :: String -> LPVOID -> IO BOOL
@@ -131,7 +125,6 @@ extractFileTime :: FileStatus -> ModTime
 extractFileTime x = posixTimeToModTime (modificationTimeHiRes x)
 
 #endif
-{- FOURMOLU_ENABLE -}
 
 windowsTick, secToUnixEpoch :: Word64
 windowsTick = 10000000
