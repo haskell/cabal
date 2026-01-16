@@ -16,6 +16,8 @@ import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Utils.Generic (isAsciiAlphaNum)
 
+import Distribution.Types.Namespace
+
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
@@ -25,6 +27,8 @@ data LicenseRef = LicenseRef
   , _lrLicense :: !String
   }
   deriving (Show, Read, Eq, Ord, Data, Generic)
+
+instance Namespace LicenseRef
 
 -- | License reference.
 licenseRef :: LicenseRef -> String

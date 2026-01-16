@@ -18,6 +18,8 @@ import Distribution.SPDX.LicenseListVersion
 import Distribution.SPDX.LicenseReference
 import Distribution.Utils.Generic (isAsciiAlphaNum)
 
+import Distribution.Types.Namespace
+
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
@@ -45,6 +47,8 @@ data LicenseExpression
   | EOr !LicenseExpression !LicenseExpression
   deriving (Show, Read, Eq, Ord, Data, Generic)
 
+instance Namespace LicenseExpression
+
 -- | Simple License Expressions.
 data SimpleLicenseExpression
   = -- | An SPDX License List Short Form Identifier. For example: @GPL-2.0-only@
@@ -54,6 +58,8 @@ data SimpleLicenseExpression
   | -- | A SPDX user defined license reference: For example: @LicenseRef-23@, @LicenseRef-MIT-Style-1@, or @DocumentRef-spdx-tool-1.2:LicenseRef-MIT-Style-2@
     ELicenseRef LicenseRef
   deriving (Show, Read, Eq, Ord, Data, Generic)
+
+instance Namespace SimpleLicenseExpression
 
 simpleLicenseExpression :: LicenseId -> LicenseExpression
 simpleLicenseExpression i = ELicense (ELicenseId i) Nothing

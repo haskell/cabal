@@ -14,6 +14,8 @@ import qualified Distribution.Compat.CharParsing as P
 import Distribution.Parsec
 import Distribution.Pretty
 
+import Distribution.Types.Namespace
+
 import Text.PrettyPrint (text)
 
 -- | ABI Hashes
@@ -26,6 +28,8 @@ import Text.PrettyPrint (text)
 -- @since 2.0.0.2
 newtype AbiHash = AbiHash ShortText
   deriving (Eq, Show, Read, Generic, Ord)
+
+instance Namespace AbiHash
 
 -- | Convert 'AbiHash' to 'String'
 --

@@ -18,6 +18,8 @@ import qualified Data.List.NonEmpty as NE
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
+import Distribution.Types.Namespace
+
 import Distribution.Types.Version.Parsec
 import Distribution.Types.VersionRange.Parsec
 
@@ -32,6 +34,8 @@ data PackageIdentifier = PackageIdentifier
   -- ^ the version of this package, eg 1.2
   }
   deriving (Generic, Read, Show, Eq, Ord, Data)
+
+instance Namespace PackageIdentifier
 
 instance Binary PackageIdentifier
 instance Structured PackageIdentifier

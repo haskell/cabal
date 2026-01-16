@@ -22,6 +22,8 @@ import qualified Data.Set as Set
 import qualified Distribution.Compat.CharParsing as P
 import Text.PrettyPrint (comma, hsep, parens, punctuate, text)
 
+import Distribution.Types.Namespace
+
 -- | Renaming applied to the modules provided by a package.
 -- The boolean indicates whether or not to also include all of the
 -- original names of modules.  Thus, @ModuleRenaming False []@ is
@@ -41,6 +43,9 @@ data ModuleRenaming
     -- exported modules into scope except the hidden ones.
     HidingRenaming [ModuleName]
   deriving (Show, Read, Eq, Ord, Data, Generic)
+
+instance Namespace ModuleRenaming
+
 
 -- | Interpret a 'ModuleRenaming' as a partial map from 'ModuleName'
 -- to 'ModuleName'.  For efficiency, you should partially apply it

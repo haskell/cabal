@@ -564,6 +564,8 @@ data KnownExtension
     OrPatterns
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Data)
 
+instance Namespace KnownExtension
+
 instance Binary KnownExtension
 instance Structured KnownExtension
 

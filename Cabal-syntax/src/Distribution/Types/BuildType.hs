@@ -14,6 +14,8 @@ import Distribution.CabalSpecVersion (CabalSpecVersion (..))
 import Distribution.Parsec
 import Distribution.Pretty
 
+import Distribution.Types.Namespace
+
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
@@ -31,6 +33,8 @@ data BuildType
     Custom
   | Hooks
   deriving (Generic, Show, Read, Eq, Ord, Data)
+
+instance Namespace BuildType
 
 instance Binary BuildType
 instance Structured BuildType

@@ -124,6 +124,8 @@ getHSLibraryName uid = "HS" ++ prettyShow uid
 newtype DefUnitId = DefUnitId {unDefUnitId :: UnitId}
   deriving (Generic, Read, Show, Eq, Ord, Data, Binary, NFData, Pretty)
 
+instance Namespace DefUnitId
+
 instance Structured DefUnitId
 
 -- Workaround for a GHC 8.0.1 bug, see

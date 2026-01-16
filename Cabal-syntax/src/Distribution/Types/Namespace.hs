@@ -6,6 +6,9 @@
 
 module Distribution.Types.Namespace where
 
+import Distribution.Compat.Prelude
+import Prelude ()
+
 import Control.DeepSeq
 import Data.Typeable
 import qualified Data.ByteString as BS
@@ -17,8 +20,11 @@ class
   , Show a -- The Show constraint is simply for debugging
   ) => Namespace a
 instance Namespace Char
+instance Namespace Int
+instance Namespace Bool
 instance Namespace BS.ByteString
 instance Namespace a => Namespace [a]
+instance Namespace a => Namespace (Identity a)
 instance (Namespace a, Namespace b) => Namespace (a, b)
 instance (Namespace a, Namespace b, Namespace c) => Namespace (a, b, c)
 instance (Namespace a, Namespace b, Namespace c, Namespace d) => Namespace (a, b, c, d)

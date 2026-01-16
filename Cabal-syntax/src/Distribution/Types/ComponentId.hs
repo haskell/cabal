@@ -14,6 +14,8 @@ import Prelude ()
 import Distribution.Parsec
 import Distribution.Pretty
 
+import Distribution.Types.Namespace
+
 import qualified Distribution.Compat.CharParsing as P
 import Text.PrettyPrint (text)
 
@@ -32,6 +34,8 @@ import Text.PrettyPrint (text)
 -- @since 2.0.0.2
 newtype ComponentId = ComponentId ShortText
   deriving (Generic, Read, Show, Eq, Ord, Data)
+
+instance Namespace ComponentId
 
 -- | Construct a 'ComponentId' from a 'String'
 --

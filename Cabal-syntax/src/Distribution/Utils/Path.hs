@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -403,7 +404,9 @@ instance Parsec (SymbolicPathX 'AllowAbsolute from to) where
       then P.unexpected "empty FilePath"
       else return (SymbolicPath token)
 
-instance Pretty (SymbolicPathX allowAbsolute from to) where
+instance
+  ( Namespace (SymbolicPathX allowAbsolute from to)
+  ) => Pretty (SymbolicPathX allowAbsolute from to) where
   pretty = showFilePath . getSymbolicPath
 
 -------------------------------------------------------------------------------

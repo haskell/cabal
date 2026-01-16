@@ -18,6 +18,8 @@ import Distribution.Types.Version
 import Distribution.Types.VersionRange.Internal
 import Distribution.Version (simplifyVersionRange)
 
+import Distribution.Types.Namespace
+
 import qualified Distribution.Compat.CharParsing as P
 
 -- | A version constraint on a package. Different from 'ExeDependency' and
@@ -26,7 +28,9 @@ import qualified Distribution.Compat.CharParsing as P
 -- There are a few places in the codebase where 'Dependency' was used where
 -- 'PackageVersionConstraint' is not used instead (#5570).
 data PackageVersionConstraint = PackageVersionConstraint PackageName VersionRange
-  deriving (Generic, Read, Show, Eq, Data)
+  deriving (Generic, Read, Show, Eq, Data, Ord)
+
+instance Namespace PackageVersionConstraint
 
 instance Binary PackageVersionConstraint
 instance Structured PackageVersionConstraint

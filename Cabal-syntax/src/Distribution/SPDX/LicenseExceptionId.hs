@@ -20,6 +20,8 @@ import Distribution.Utils.Generic (isAsciiAlphaNum)
 import Distribution.Utils.Structured (Structured (..), nominalStructure, typeVersion)
 import Distribution.SPDX.LicenseListVersion
 
+import Distribution.Types.Namespace
+
 import qualified Data.Binary.Get as Binary
 import qualified Data.Binary.Put as Binary
 import qualified Data.Map.Strict as Map
@@ -112,6 +114,8 @@ data LicenseExceptionId
     | WxWindows_exception_3_1 -- ^ @WxWindows-exception-3.1@, WxWindows Library Exception 3.1
     | X11vnc_openssl_exception -- ^ @x11vnc-openssl-exception@, x11vnc OpenSSL Exception, SPDX License List 3.23, SPDX License List 3.25, SPDX License List 3.26
   deriving (Eq, Ord, Enum, Bounded, Show, Read, Data, Generic)
+
+instance Namespace LicenseExceptionId
 
 instance Binary LicenseExceptionId where
     put = Binary.putWord8 . fromIntegral . fromEnum

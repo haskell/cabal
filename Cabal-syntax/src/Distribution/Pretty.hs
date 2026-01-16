@@ -22,10 +22,11 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Types.Annotation
+import Distribution.Types.Namespace
 
 import qualified Text.PrettyPrint as PP
 
-class Pretty a where
+class Namespace a => Pretty a where
   {-# MINIMAL prettier | pretty #-}
 
   -- NOTE(leana8959): by default we fall back to the printer that doesn't care about trivia
@@ -41,9 +42,9 @@ class Pretty a where
   prettyVersioned :: CabalSpecVersion -> a -> PP.Doc
   prettyVersioned _ = pretty
 
--- | @since 3.4.0.0
-instance Pretty PP.Doc where
-  pretty = id
+-- -- | @since 3.4.0.0
+-- instance Pretty PP.Doc where
+--   pretty = id
 
 instance Pretty Bool where
   pretty = PP.text . show

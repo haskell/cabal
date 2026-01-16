@@ -17,6 +17,8 @@ import Distribution.Parsec
 import Distribution.Pretty
 import Text.PrettyPrint (char, text)
 
+import Distribution.Types.Namespace
+
 import Distribution.Types.Version.Parsec
 import Distribution.Types.VersionRange.Parsec
 
@@ -29,6 +31,8 @@ data TestType
   | -- | Some unknown test type e.g. \"type: foo\"
     TestTypeUnknown String Version
   deriving (Generic, Show, Read, Eq, Ord, Data)
+
+instance Namespace TestType
 
 instance Binary TestType
 instance Structured TestType

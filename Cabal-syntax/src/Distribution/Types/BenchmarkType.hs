@@ -16,6 +16,8 @@ import Distribution.Pretty
 import Distribution.Version
 import Text.PrettyPrint (char, text)
 
+import Distribution.Types.Namespace
+
 import Distribution.Types.Version.Parsec
 import Distribution.Types.VersionRange.Parsec
 
@@ -26,6 +28,8 @@ data BenchmarkType
   | -- | Some unknown benchmark type e.g. \"type: foo\"
     BenchmarkTypeUnknown String Version
   deriving (Generic, Show, Read, Eq, Ord, Data)
+
+instance Namespace BenchmarkType
 
 instance Binary BenchmarkType
 instance Structured BenchmarkType
