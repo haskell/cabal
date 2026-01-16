@@ -270,9 +270,10 @@ outdatedAction flags targetStrings globalFlags =
   where
     OutdatedFlags{..} = extraFlags flags
     verbosity =
-      if quiet
-        then silent
-        else fromFlagOrDefault normal (setupVerbosity (configCommonFlags (configFlags flags)))
+      mkVerbosity defaultVerbosityHandles $
+        if quiet
+          then silent
+          else fromFlagOrDefault normal (setupVerbosity (configCommonFlags (configFlags flags)))
     freezeFile = fromFlagOrDefault False outdatedFreezeFile
     newFreezeFile = fromFlagOrDefault False outdatedNewFreezeFile
     simpleOutput = fromFlagOrDefault False outdatedSimpleOutput

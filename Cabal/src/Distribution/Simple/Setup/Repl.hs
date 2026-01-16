@@ -59,7 +59,7 @@ data ReplOptions = ReplOptions
   deriving (Show, Generic)
 
 pattern ReplCommonFlags
-  :: Flag Verbosity
+  :: Flag VerbosityFlags
   -> Flag (SymbolicPath Pkg (Dir Dist))
   -> Flag (SymbolicPath CWD (Dir Pkg))
   -> Flag (SymbolicPath Pkg File)

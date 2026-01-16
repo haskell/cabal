@@ -100,7 +100,7 @@ projectConfigSpecificPackage :: Lens' ProjectConfig (MapMappend PackageName Pack
 projectConfigSpecificPackage f s = fmap (\x -> s{T.projectConfigSpecificPackage = x}) (f (T.projectConfigSpecificPackage s))
 {-# INLINEABLE projectConfigSpecificPackage #-}
 
-projectConfigVerbosity :: Lens' ProjectConfigBuildOnly (Flag Verbosity)
+projectConfigVerbosity :: Lens' ProjectConfigBuildOnly (Flag VerbosityFlags)
 projectConfigVerbosity f s = fmap (\x -> s{T.projectConfigVerbosity = x}) (f (T.projectConfigVerbosity s))
 {-# INLINEABLE projectConfigVerbosity #-}
 

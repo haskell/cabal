@@ -17,7 +17,7 @@ main = do
   (mtimeChange, mtimeChange') <- calibrateMtimeChangeDelay
   let toMillis :: Int -> Double
       toMillis x = fromIntegral x / 1000.0
-  notice normal $
+  notice (mkVerbosity defaultVerbosityHandles normal) $
     "File modification time resolution calibration completed, "
       ++ "maximum delay observed: "
       ++ (show . toMillis $ mtimeChange)

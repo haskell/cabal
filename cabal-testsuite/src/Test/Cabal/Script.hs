@@ -36,7 +36,7 @@ import qualified Data.Monoid as M
 data ScriptEnv = ScriptEnv
         { runnerProgramDb       :: ProgramDb
         , runnerPackageDbStack  :: PackageDBStackCWD
-        , runnerVerbosity       :: Verbosity
+        , runnerVerbosity       :: VerbosityFlags
         , runnerPlatform        :: Platform
         , runnerCompiler        :: Compiler
         , runnerPackages        :: [(OpenUnitId, ModuleRenaming)]
@@ -60,7 +60,7 @@ canonicalizePackageDB x = return x
 mkScriptEnv :: Verbosity -> IO ScriptEnv
 mkScriptEnv verbosity =
   return $ ScriptEnv
-    { runnerVerbosity       = verbosity
+    { runnerVerbosity       = verbosityFlags verbosity
     , runnerProgramDb       = lbiProgramDb
     , runnerPackageDbStack  = lbiPackageDbStack
     , runnerPlatform        = lbiPlatform
@@ -76,7 +76,7 @@ runghc :: ScriptEnv -> Maybe FilePath -> [(String, Maybe String)]
        -> FilePath -> [String] -> IO Result
 runghc senv mb_cwd env_overrides script_path args = do
     (real_path, real_args) <- runnerCommand senv mb_cwd env_overrides script_path args
-    run (runnerVerbosity senv) mb_cwd env_overrides real_path real_args Nothing
+    run mb_cwd env_overrides real_path real_args Nothing
 
 -- | Compute the command line which should be used to run a Haskell
 -- script with 'runghc'.
@@ -88,7 +88,7 @@ runnerCommand senv mb_cwd _env_overrides script_path args = do
       (programPath prog,
         runghc_args ++ ["--"] ++ map ("--ghc-arg="++) ghc_args ++ [script_path] ++ args)
   where
-    verbosity = runnerVerbosity senv
+    verbosity = mkVerbosity defaultVerbosityHandles $ runnerVerbosity senv
     runghc_args = []
     ghc_args = runnerGhcArgs senv mb_cwd
 
