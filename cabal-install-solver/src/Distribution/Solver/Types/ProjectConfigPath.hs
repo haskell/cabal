@@ -1,10 +1,12 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ViewPatterns #-}
 
 module Distribution.Solver.Types.ProjectConfigPath
     (
     -- * Project Config Path Manipulation
-      ProjectConfigPath(..)
+      ProjectImport(..)
+    , ProjectConfigPath(..)
     , projectConfigPathRoot
     , nullProjectConfigPath
     , consProjectConfigPath
@@ -16,6 +18,7 @@ module Distribution.Solver.Types.ProjectConfigPath
     , docProjectImportedBy
     , docProjectConfigFiles
     , cyclicalImportMsg
+    , duplicateImportMsg
     , untrimmedUriImportMsg
     , docProjectConfigPathFailReason
     , quoteUntrimmed
@@ -46,6 +49,13 @@ import Distribution.Utils.String (trim)
 import Text.PrettyPrint
 import Distribution.Simple.Utils (ordNub)
 import Distribution.System (OS(Windows), buildOS)
+
+data ProjectImport =
+    ProjectImport
+        { importOf :: FilePath
+        , importBy :: ProjectConfigPath
+        }
+    deriving (Eq, Ord)
 
 -- | Path to a configuration file, either a singleton project root, or a longer
 -- list representing a path to an import.  The path is a non-empty list that we
@@ -188,9 +198,27 @@ docProjectConfigFiles ps = vcat
 -- | A message for a cyclical import, a "cyclical import of".
 cyclicalImportMsg :: ProjectConfigPath -> Doc
 cyclicalImportMsg path@(ProjectConfigPath (duplicate :| _)) =
+    seenImportMsg
+        (text "cyclical import of" <+> text duplicate <> semi)
+        (ProjectImport duplicate path)
+        []
+
+-- | A message for a duplicate import, a "duplicate import of". If a check for
+-- cyclical imports has already been made then this would report a duplicate
+-- import by two different paths.
+duplicateImportMsg :: Doc -> ProjectImport -> [ProjectImport] -> Doc
+duplicateImportMsg intro = seenImportMsg intro
+
+seenImportMsg :: Doc -> ProjectImport -> [ProjectImport] -> Doc
+seenImportMsg intro ProjectImport{importOf = duplicate, importBy = path} seenImports =
     vcat
-    [ text "cyclical import of" <+> text duplicate <> semi
+    [ intro
     , nest 2 (docProjectConfigPath path)
+    , nest 2 $
+        vcat
+        [ docProjectConfigPath importBy
+        | ProjectImport{importBy} <- filter ((duplicate ==) . importOf) seenImports
+        ]
     ]
 
 -- | A message for an import that has leading or trailing spaces.
