@@ -114,6 +114,8 @@ data ConfigFlags = ConfigFlags
   -- ^ Build shared library
   , configStaticLib :: Flag Bool
   -- ^ Build static library
+  , configBytecodeLib :: Flag Bool
+  -- ^ Build bytecode library
   , configDynExe :: Flag Bool
   -- ^ Enable dynamic linking of the
   --  executables.
@@ -285,6 +287,7 @@ instance Eq ConfigFlags where
       && equal configProfLib
       && equal configSharedLib
       && equal configStaticLib
+      && equal configBytecodeLib
       && equal configDynExe
       && equal configFullyStaticExe
       && equal configProfExe
@@ -341,6 +344,7 @@ defaultConfigFlags progDb =
     , configProfLib = NoFlag
     , configSharedLib = NoFlag
     , configStaticLib = NoFlag
+    , configBytecodeLib = NoFlag
     , configDynExe = Flag False
     , configFullyStaticExe = Flag False
     , configProfExe = NoFlag
@@ -496,6 +500,13 @@ configureOptions showOrParseArgs =
           "Static library"
           configStaticLib
           (\v flags -> flags{configStaticLib = v})
+          (boolOpt [] [])
+       , option
+          ""
+          ["library-bytecode"]
+          "Bytecode library"
+          configBytecodeLib
+          (\v flags -> flags{configBytecodeLib = v})
           (boolOpt [] [])
        , option
           ""

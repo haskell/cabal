@@ -1,0 +1,10 @@
+Cabal-Version: 3.8
+Name: pkg-b
+Version: 0.1
+Build-Type: Simple
+
+library
+    exposed-modules: LibB
+    Build-Depends: base, pkg-a
+    default-language: Haskell2010
+

@@ -751,6 +751,9 @@ computeLocalBuildConfig cfg comp programDb = do
         -- into a huge .a archive) via GHCs -staticlib flag.
         fromFlagOrDefault False $ configStaticLib cfg
 
+      withBytecodeLib_ =
+        fromFlagOrDefault False $ configBytecodeLib cfg
+
       withDynExe_ = fromFlag $ configDynExe cfg
 
       withFullyStaticExe_ = fromFlag $ configFullyStaticExe cfg
@@ -778,12 +781,22 @@ computeLocalBuildConfig cfg comp programDb = do
   strip_lib <- strip_libexe "library" configStripLibs
   strip_exe <- strip_libexe "executable" configStripExes
 
+  checkedWithBytecodeLib <-
+    if bytecodeArtifactsSupported comp
+      then return withBytecodeLib_
+      else do
+        when withBytecodeLib_ $
+          warn verbosity $
+            "This compiler does not support bytecode libraries; ignoring --enable-library-bytecode"
+        return False
+
   let buildOptions =
         setCoverage . setProfiling $
           LBC.BuildOptions
             { withVanillaLib = fromFlag $ configVanillaLib cfg
             , withSharedLib = withSharedLib_
             , withStaticLib = withStaticLib_
+            , withBytecodeLib = checkedWithBytecodeLib
             , withDynExe = withDynExe_
             , withFullyStaticExe = withFullyStaticExe_
             , withProfLib = False
