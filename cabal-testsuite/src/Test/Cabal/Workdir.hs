@@ -3,19 +3,19 @@
 -- | Functions for interrogating the current working directory
 module Test.Cabal.Workdir where
 
-import Distribution.Simple.Setup
 import Distribution.Simple.Configure
+import Distribution.Simple.Setup
 import Distribution.Utils.Path
-  ( FileOrDir(..)
+  ( Dist
+  , FileOrDir (..)
   , Pkg
-  , Dist
   , SymbolicPath
-  , makeSymbolicPath
   , getSymbolicPath
+  , makeSymbolicPath
   )
 
 import System.Directory
-import System.Environment ( getExecutablePath )
+import System.Environment (getExecutablePath)
 import System.FilePath
 
 -- | Guess what the dist directory of a running executable is,
@@ -24,10 +24,10 @@ import System.FilePath
 -- if the executable has been installed somewhere else.
 guessDistDir :: IO (SymbolicPath Pkg (Dir Dist))
 guessDistDir = do
-    exe_path <- canonicalizePath =<< getExecutablePath
-    let dist0 = dropFileName exe_path </> ".." </> ".."
-    b <- doesFileExist (dist0 </> "setup-config")
-    if b
+  exe_path <- canonicalizePath =<< getExecutablePath
+  let dist0 = dropFileName exe_path </> ".." </> ".."
+  b <- doesFileExist (dist0 </> "setup-config")
+  if b
     then do
       cwd <- getCurrentDirectory
       dist1 <- canonicalizePath dist0

@@ -32,6 +32,7 @@ FORMAT_DIRS := \
 	Cabal \
 	Cabal-syntax \
 	cabal-install \
+	cabal-testsuite/src \
 	cabal-validate
 
 FORMAT_DIRS_TODO := \
@@ -46,7 +47,6 @@ FORMAT_DIRS_TODO := \
 	cabal-dev-scripts \
 	cabal-install-solver \
 	cabal-testsuite/main \
-	cabal-testsuite/src \
 	cabal-testsuite/static \
 	solver-benchmarks
 
