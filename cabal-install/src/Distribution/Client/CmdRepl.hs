@@ -2,7 +2,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- | cabal-install CLI command: repl
 module Distribution.Client.CmdRepl
@@ -24,6 +26,7 @@ import Prelude ()
 import Distribution.Compat.Lens
 import qualified Distribution.Types.Lens as L
 
+import qualified Data.List.NonEmpty as NE
 import Distribution.Client.CmdErrorMessages
   ( Plural (..)
   , componentKind
@@ -113,6 +116,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Utils
   ( debugNoWrap
   , dieWithException
+  , notice
   , withTempDirectoryEx
   , wrapText
   )
@@ -273,6 +277,10 @@ multiReplDecision ctx compiler flags =
     -- a repl specific option.
     (fromFlagOrDefault False (projectConfigMultiRepl ctx <> replUseMulti flags))
 
+type TargetResolved = ((ProjectBaseContext, Bool), NonEmpty TargetSelector)
+type TargetUnresolved = (String, String)
+type TargetPick = Either TargetUnresolved TargetResolved
+
 -- | The @repl@ command is very much like @build@. It brings the install plan
 -- up to date, selects that part of the plan needed by the given or implicit
 -- repl target and then executes the plan.
@@ -284,26 +292,32 @@ multiReplDecision ctx compiler flags =
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 replAction :: NixStyleFlags ReplFlags -> [String] -> GlobalFlags -> IO ()
-replAction flags@NixStyleFlags{extraFlags = replFlags@ReplFlags{..}, configFlags} targetStrings globalFlags = do
+replAction flags@NixStyleFlags{extraFlags = ReplFlags{..}} targetStrings globalFlags = do
   withCtx verbosity targetStrings $ \targetCtx ctx userTargetSelectors -> do
     when (buildSettingOnlyDeps (buildSettings ctx)) $
       dieWithException verbosity ReplCommandDoesn'tSupport
     let projectRoot = distProjectRootDirectory $ distDirLayout ctx
-        distDir = distDirectory $ distDirLayout ctx
 
     -- After ther user selectors have been resolved, and it's decided what context
     -- we're in, implement repl-specific behaviour.
-    (baseCtx, targetSelectors) <- case targetCtx of
-      -- If in the project context, and no selectors are provided
-      -- then produce an error.
+    pickOrDecided :: TargetPick <- case targetCtx of
+      -- If in the project context, and no selectors are provided then produce
+      -- an error unless there is exactly one package in the project in which
+      -- case we pick that package as the target for the user.
       ProjectContext -> do
-        let projectFile = projectConfigProjectFile . projectConfigShared $ projectConfig ctx
-        let pkgs = projectPackages $ projectConfig ctx
         case userTargetSelectors of
-          [] ->
-            dieWithException verbosity $
-              RenderReplTargetProblem [render (reportProjectNoTarget projectFile pkgs)]
-          _ -> return (ctx, userTargetSelectors)
+          [] -> do
+            let projectFile = projectConfigProjectFile . projectConfigShared $ projectConfig ctx
+            let pkgs = projectPackages $ projectConfig ctx
+            case pkgs of
+              [pkg] -> return $ Left (pkg, retarget ("package '" ++ pkg ++ "'"))
+              _ ->
+                if isMultiReplEnabled ctx
+                  then return $ Left ("all", retarget "'all'")
+                  else
+                    dieWithException verbosity $
+                      RenderReplTargetProblem [render (reportProjectNoTarget projectFile pkgs)]
+          _ -> return $ Right ((ctx, isMultiReplEnabled ctx), NE.fromList userTargetSelectors)
       -- In the global context, construct a fake package which can be used to start
       -- a repl with extra arguments if `-b` is given.
       GlobalContext -> do
@@ -327,8 +341,8 @@ replAction flags@NixStyleFlags{extraFlags = replFlags@ReplFlags{..}, configFlags
         -- Write the fake package
         updatedCtx <- updateContextAndWriteProjectFile' ctx sourcePackage
         -- Specify the selector for this package
-        let fakeSelector = TargetPackage TargetExplicitNamed [fakePackageId] Nothing
-        return (updatedCtx, [fakeSelector])
+        let fakeSelector = TargetPackage TargetExplicitNamed [fakePackageId] Nothing :| []
+        return $ Right ((updatedCtx, isMultiReplEnabled updatedCtx), fakeSelector)
 
       -- For the script context, no special behaviour.
       ScriptContext scriptPath scriptExecutable -> do
@@ -341,18 +355,48 @@ replAction flags@NixStyleFlags{extraFlags = replFlags@ReplFlags{..}, configFlags
             ReplTakesSingleArgument targetStrings
 
         updatedCtx <- updateContextAndWriteProjectFile ctx scriptPath scriptExecutable
-        return (updatedCtx, userTargetSelectors)
+        return $ Right ((updatedCtx, isMultiReplEnabled updatedCtx), NE.fromList userTargetSelectors)
 
-    -- If multi-repl is used, we need a Cabal recent enough to handle it.
-    -- We need to do this before solving, but the compiler version is only known
+    either retargetRepl (targetRepl flags ctx targetCtx) pickOrDecided
+  where
+    retargetRepl :: TargetUnresolved -> IO ()
+    retargetRepl (newTarget, retargetMsg) = do
+      notice verbosity retargetMsg
+      replAction flags [newTarget] globalFlags
+
+    withCtx ctxVerbosity strings =
+      withContextAndSelectors
+        ctxVerbosity
+        (if null strings then AcceptNoTargets else RejectNoTargets)
+        (Just LibKind)
+        flags
+        strings
+        globalFlags
+        ReplCommand
+
+    verbosity = cfgVerbosity normal flags
+
+    -- If multi-repl is used, we need a Cabal recent enough to handle it.  We
+    -- need to do this before solving, but the compiler version is only known
     -- after solving (phaseConfigureCompiler), so instead of using
     -- multiReplDecision we just check the flag.
-    let multiReplEnabled =
-          fromFlagOrDefault False $
-            projectConfigMultiRepl (projectConfigShared $ projectConfig baseCtx)
-              <> replUseMulti
+    isMultiReplEnabled :: ProjectBaseContext -> Bool
+    isMultiReplEnabled ctx =
+      fromFlagOrDefault False $
+        projectConfigMultiRepl (projectConfigShared $ projectConfig ctx)
+          <> replUseMulti
 
-        withReplEnabled =
+    retarget :: String -> String
+    retarget newTarget = "No target specified, using " ++ newTarget ++ " as the target for the REPL."
+
+-- | Bring up a REPL with the targets.
+targetRepl :: NixStyleFlags ReplFlags -> ProjectBaseContext -> TargetContext -> TargetResolved -> IO ()
+targetRepl
+  flags@NixStyleFlags{extraFlags = replFlags@ReplFlags{..}, configFlags}
+  ctx
+  targetCtx
+  ((baseCtx, multiReplEnabled), targetSelectors) = do
+    let withReplEnabled =
           isJust $ flagToMaybe $ replWithRepl configureReplOptions
 
         addConstraintWhen cond constraint base_ctx =
@@ -412,10 +456,15 @@ replAction flags@NixStyleFlags{extraFlags = replFlags@ReplFlags{..}, configFlags
 
         let
           elaboratedPlan' =
-            pruneInstallPlanToTargets
-              TargetActionRepl
-              targets
-              elaboratedPlan
+            -- Guard against pruning with empty targets and failing an assertion
+            -- within pruneInstallPlanToTargets.
+            if null targets
+              then elaboratedPlan
+              else
+                pruneInstallPlanToTargets
+                  TargetActionRepl
+                  targets
+                  elaboratedPlan
           includeTransitive = fromFlagOrDefault True (envIncludeTransitive replEnvFlags)
 
         pkgsBuildStatus <-
@@ -493,7 +542,7 @@ replAction flags@NixStyleFlags{extraFlags = replFlags@ReplFlags{..}, configFlags
         let active_unit_fp :: Maybe FilePath
             active_unit_fp = do
               -- Get the first target selectors from the cli
-              activeTarget <- safeHead targetSelectors
+              let activeTarget = NE.head targetSelectors
               -- Lookup the targets :: Map UnitId [(ComponentTarget, NonEmpty TargetSelector)]
               unitId <-
                 Map.toList targets
@@ -534,20 +583,19 @@ replAction flags@NixStyleFlags{extraFlags = replFlags@ReplFlags{..}, configFlags
 
         buildOutcomes <- runProjectBuildPhase verbosity baseCtx'' buildCtx'
         runProjectPostBuildPhase verbosity baseCtx'' buildCtx' buildOutcomes
-  where
-    combine_search_paths paths =
-      foldl' go Map.empty paths
-      where
-        go m ("PATH", Just s) = foldl' (\m' f -> Map.insertWith (+) f 1 m') m (splitSearchPath s)
-        go m _ = m
+    where
+      projectRoot = distProjectRootDirectory $ distDirLayout ctx
+      distDir = distDirectory $ distDirLayout ctx
 
-    withCtx ctxVerbosity strings =
-      withContextAndSelectors ctxVerbosity AcceptNoTargets (Just LibKind) flags strings globalFlags ReplCommand
+      combine_search_paths paths =
+        foldl' go Map.empty paths
+        where
+          go m ("PATH", Just s) = foldl' (\m' f -> Map.insertWith (+) f 1 m') m (splitSearchPath s)
+          go m _ = m
 
-    verbosity = cfgVerbosity normal flags
-    tempFileOptions = commonSetupTempFileOptions $ configCommonFlags configFlags
-
-    validatedTargets' = validatedTargets verbosity replFlags
+      verbosity = cfgVerbosity normal flags
+      tempFileOptions = commonSetupTempFileOptions $ configCommonFlags configFlags
+      validatedTargets' = validatedTargets verbosity replFlags
 
 -- | Create a constraint which requires a later version of Cabal.
 -- This is used for commands which require a specific feature from the Cabal library
@@ -598,9 +646,9 @@ validatedTargets
   -> ProjectConfigShared
   -> Compiler
   -> ElaboratedInstallPlan
-  -> [TargetSelector]
+  -> NonEmpty TargetSelector
   -> IO TargetsMap
-validatedTargets verbosity replFlags ctx compiler elaboratedPlan targetSelectors = do
+validatedTargets verbosity replFlags ctx compiler elaboratedPlan (NE.toList -> targetSelectors) = do
   let multi_repl_enabled = multiReplDecision ctx compiler replFlags
   -- Interpret the targets on the command line as repl targets (as opposed to
   -- say build or haddock targets).

@@ -12,8 +12,8 @@ main = do
 
   cabalTest' "alt-single-repl-options" $ do
     cabal' "clean" []
-    -- We can't 'cabal repl' without a target when the project has a single package.
-    void $ fails $ cabalWithStdin "v2-repl" (altProject singleOpts) ":set"
+    -- We can 'cabal repl' without a target when the project has a single package.
+    void $ cabalWithStdin "v2-repl" (altProject singleOpts) ":set"
 
   cabalTest' "multiple-repl-options" $ do
     cabal' "clean" []
@@ -24,8 +24,8 @@ main = do
 
   cabalTest' "alt-multiple-repl-options" $ do
     cabal' "clean" []
-    -- We can't 'cabal repl' without a target when the project has a single package.
-    void $ fails $ cabalWithStdin "v2-repl" (altProject multiOpts) ":set"
+    -- We can 'cabal repl' without a target when the project has a single package.
+    void $ cabalWithStdin "v2-repl" (altProject multiOpts) ":set"
 
   cabalTest' "single-repl-options-multiple-flags" $ do
     cabal' "clean" []

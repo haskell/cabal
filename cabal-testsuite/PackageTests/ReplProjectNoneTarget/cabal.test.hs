@@ -7,13 +7,13 @@ main = cabalTest . recordMode RecordMarked $ do
   -- refers to the fake package.
   log "checking repl command with no project and --ignore-project"
   ignored <- cabalWithStdin "repl" ["--ignore-project"] ""
-  assertOutputContains "fake-package-0 (interactive) (lib) (first run)" ignored
+  assertOutputContains "fake-package-0 (interactive) (lib)" ignored
 
   -- The following output is not what we want but is the current behaviour that
   -- refers to the fake package.
   log "checking repl command with no project and no project options"
   noOptions <- cabalWithStdin "repl" [] ""
-  assertOutputContains "fake-package-0 (interactive) (lib) (configuration changed)" noOptions
+  assertOutputContains "fake-package-0 (interactive) (lib)" noOptions
 
   log "checking repl command with a missing project"
   missing <- fails $ cabalWithStdin "repl" [ "--project-file=missing.project" ] ""
