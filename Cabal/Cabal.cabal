@@ -53,7 +53,7 @@ library
 
   if os(windows)
     build-depends:
-      , Win32 >= 2.3.0.0 && < 2.15
+      , Win32 >= 2.4.0.0 && < 2.15
   else
     build-depends:
       , unix  >= 2.8.6.0 && < 2.9
