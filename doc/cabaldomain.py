@@ -116,7 +116,7 @@ from docutils.parsers.rst import Directive, directives, roles
 import pygments.lexer as lexer
 import pygments.token as token
 
-from distutils.version import StrictVersion
+from packaging.version import Version
 
 from sphinx import addnodes
 from sphinx.directives import ObjectDescription
@@ -131,7 +131,7 @@ def parse_deprecated(txt):
     if txt is None:
         return True
     try:
-        return StrictVersion(txt)
+        return Version(txt)
     except ValueError:
         return True
 
@@ -218,8 +218,8 @@ class CabalSection(Directive):
     option_spec = {
         'name': lambda x: x,
         'deprecated': parse_deprecated,
-        'removed': StrictVersion,
-        'since' : StrictVersion,
+        'removed': Version,
+        'since' : Version,
         'synopsis' : lambda x:x,
     }
     section_key = 'cabal:pkg-section'
@@ -281,8 +281,8 @@ class CabalObject(ObjectDescription):
     option_spec = {
         'noindex'   : directives.flag,
         'deprecated': parse_deprecated,
-        'removed'   : StrictVersion,
-        'since'     : StrictVersion,
+        'removed'   : Version,
+        'since'     : Version,
         'synopsis'  : lambda x:x
     }
 
@@ -408,7 +408,7 @@ class CabalObject(ObjectDescription):
             if self.cabal_meta.deprecated is not None:
                 field = nodes.field('')
                 field_name = nodes.field_name('Deprecated', 'Deprecated')
-                if isinstance(self.cabal_meta.deprecated, StrictVersion):
+                if isinstance(self.cabal_meta.deprecated, Version):
                     since = 'Cabal ' + str(self.cabal_meta.deprecated)
                 else:
                     since = ''
@@ -421,7 +421,7 @@ class CabalObject(ObjectDescription):
             if self.cabal_meta.removed is not None:
                 field = nodes.field('')
                 field_name = nodes.field_name('Removed', 'Removed')
-                if isinstance(self.cabal_meta.removed, StrictVersion):
+                if isinstance(self.cabal_meta.removed, Version):
                     since = 'Cabal ' + str(self.cabal_meta.removed)
                 else:
                     since = ''
@@ -480,8 +480,8 @@ class CabalField(CabalObject):
     option_spec = {
         'noindex'   : directives.flag,
         'deprecated': parse_deprecated,
-        'removed'   : StrictVersion,
-        'since'     : StrictVersion,
+        'removed'   : Version,
+        'since'     : Version,
         'synopsis'  : lambda x:x
     }
 
@@ -752,13 +752,13 @@ def make_data_keys(typ, target, node):
 
 
 def render_deprecated(deprecated):
-    if isinstance(deprecated, StrictVersion):
+    if isinstance(deprecated, Version):
         return 'deprecated since: '+str(deprecated)
     else:
         return 'deprecated'
 
 def render_removed(deprecated, removed):
-    if isinstance(deprecated, StrictVersion):
+    if isinstance(deprecated, Version):
         return 'removed in: ' + str(removed) + '; deprecated since: '+str(deprecated)
     else:
         return 'removed in: ' + str(removed)
