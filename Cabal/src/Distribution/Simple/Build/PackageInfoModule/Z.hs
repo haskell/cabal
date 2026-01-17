@@ -22,7 +22,6 @@ render z_root = execWriter $ do
       return ()
     else do
       return ()
-  tell "{-# OPTIONS_GHC -Wno-missing-import-lists #-}\n"
   tell "{-# OPTIONS_GHC -w #-}\n"
   tell "\n"
   tell "{-|\n"

@@ -43,15 +43,6 @@ render z_root = execWriter $ do
     return ()
   else do
     return ()
-  if (zSupportsCpp z_root)
-  then do
-    tell "#if __GLASGOW_HASKELL__ >= 810\n"
-    tell "{-# OPTIONS_GHC -Wno-prepositive-qualified-module #-}\n"
-    tell "#endif\n"
-    return ()
-  else do
-    return ()
-  tell "{-# OPTIONS_GHC -Wno-missing-import-lists #-}\n"
   tell "{-# OPTIONS_GHC -w #-}\n"
   tell "\n"
   tell "{-|\n"
