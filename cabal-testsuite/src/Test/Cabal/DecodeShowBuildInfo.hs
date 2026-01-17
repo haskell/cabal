@@ -1,27 +1,28 @@
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RecordWildCards #-}
+
 module Test.Cabal.DecodeShowBuildInfo where
 
-import           Test.Cabal.Prelude
-import           Test.Cabal.Plan
-import           Distribution.Compat.Stack
-import           Distribution.Text (display)
-import           Distribution.Types.ComponentName
-import           Distribution.Types.LibraryName
-import           Distribution.Types.UnqualComponentName
-import           Distribution.Package
-import           Distribution.Pretty (prettyShow)
-import           Control.Monad.Trans.Reader
-import           Data.Aeson
-import           GHC.Generics
-import           System.Exit
+import Control.Monad.Trans.Reader
+import Data.Aeson
+import Distribution.Compat.Stack
+import Distribution.Package
+import Distribution.Pretty (prettyShow)
+import Distribution.Text (display)
+import Distribution.Types.ComponentName
+import Distribution.Types.LibraryName
+import Distribution.Types.UnqualComponentName
+import GHC.Generics
+import System.Exit
+import Test.Cabal.Plan
+import Test.Cabal.Prelude
 
 -- | Execute 'cabal build --enable-build-info'.
 --
 -- Results can be read via 'withPlan', 'buildInfoFile' and 'decodeBuildInfoFile'.
 runShowBuildInfo :: [String] -> TestM ()
-runShowBuildInfo args = noCabalPackageDb $ cabal "build" ("--enable-build-info":args)
+runShowBuildInfo args = noCabalPackageDb $ cabal "build" ("--enable-build-info" : args)
 
 -- | Read 'build-info.json' for a given package and component
 -- from disk and record the content. Helpful for defining test-cases
@@ -51,13 +52,15 @@ data BuildInfo = BuildInfo
   { cabalLibVersion :: String
   , compiler :: CompilerInfo
   , components :: [ComponentInfo]
-  } deriving (Generic, Show)
+  }
+  deriving (Generic, Show)
 
 data CompilerInfo = CompilerInfo
   { flavour :: String
   , compilerId :: String
   , path :: String
-  } deriving (Generic, Show)
+  }
+  deriving (Generic, Show)
 
 data ComponentInfo = ComponentInfo
   { componentType :: String
@@ -68,22 +71,23 @@ data ComponentInfo = ComponentInfo
   , componentSrcFiles :: [FilePath]
   , componentHsSrcDirs :: [FilePath]
   , componentSrcDir :: FilePath
-  } deriving (Generic, Show)
+  }
+  deriving (Generic, Show)
 
 instance ToJSON BuildInfo where
   toEncoding = genericToEncoding defaultOptions
 instance FromJSON BuildInfo where
-  parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = camelTo2 '-' }
+  parseJSON = genericParseJSON defaultOptions{fieldLabelModifier = camelTo2 '-'}
 
 instance ToJSON CompilerInfo where
   toEncoding = genericToEncoding defaultOptions
 instance FromJSON CompilerInfo where
-  parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = camelTo2 '-' }
+  parseJSON = genericParseJSON defaultOptions{fieldLabelModifier = camelTo2 '-'}
 
 instance ToJSON ComponentInfo where
   toEncoding = genericToEncoding defaultOptions
 instance FromJSON ComponentInfo where
-  parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 10 . camelTo2 '-' }
+  parseJSON = genericParseJSON defaultOptions{fieldLabelModifier = drop 10 . camelTo2 '-'}
 
 -- -----------------------------------------------------------
 -- Assertion Helpers to define succinct test cases
@@ -105,14 +109,15 @@ data ComponentAssertion = ComponentAssertion
   }
 
 defCompAssertion :: ComponentAssertion
-defCompAssertion = ComponentAssertion
-  { unitIdPred = not . null
-  , compilerArgsPred = not . null
-  , modules = []
-  , sourceFiles = []
-  , sourceDirs = []
-  , compType = ""
-  }
+defCompAssertion =
+  ComponentAssertion
+    { unitIdPred = not . null
+    , compilerArgsPred = not . null
+    , modules = []
+    , sourceFiles = []
+    , sourceDirs = []
+    , compType = ""
+    }
 
 -- | Assert common build information, such as compiler location, compiler version
 -- and cabal library version.
@@ -128,8 +133,8 @@ assertCommonBuildInfo buildInfo = do
 assertComponentPure :: WithCallStack (ComponentInfo -> ComponentAssertion -> TestM ())
 assertComponentPure component ComponentAssertion{..} = do
   assertEqual "Component type" compType (componentType component)
-  assertBool  "Component Unit Id" (unitIdPred $ componentUnitId component)
-  assertBool  "Component compiler args" (compilerArgsPred  $ componentCompilerArgs component)
+  assertBool "Component Unit Id" (unitIdPred $ componentUnitId component)
+  assertBool "Component compiler args" (compilerArgsPred $ componentCompilerArgs component)
   assertEqual "Component modules" modules (componentModules component)
   assertEqual "Component source files" sourceFiles (componentSrcFiles component)
   assertEqual "Component source directories" sourceDirs (componentHsSrcDirs component)
@@ -148,11 +153,11 @@ assertComponent pkgName cname assert = do
   assertCommonBuildInfo buildInfo
 
   let component = findComponentInfo buildInfo
-  let assertWithCompType = assert { compType = compTypeStr cname }
+  let assertWithCompType = assert{compType = compTypeStr cname}
   assertComponentPure component assertWithCompType
   where
     compTypeStr :: ComponentName -> String
-    compTypeStr (CLibName _)    = "lib"
+    compTypeStr (CLibName _) = "lib"
     compTypeStr (CFLibName _) = "flib"
     compTypeStr (CExeName _) = "exe"
     compTypeStr (CTestName _) = "test"
@@ -162,10 +167,17 @@ assertComponent pkgName cname assert = do
     findComponentInfo buildInfo =
       case filter (\c -> prettyShow cname == componentName c) (components buildInfo) of
         [x] -> x
-        [] ->  error $ "findComponentInfo: component " ++ prettyShow cname ++ " does not"
-                    ++ " exist in build info-file"
-        _   -> error $ "findComponentInfo: found multiple copies of component " ++ prettyShow cname
-                    ++ " in build info plan"
+        [] ->
+          error $
+            "findComponentInfo: component "
+              ++ prettyShow cname
+              ++ " does not"
+              ++ " exist in build info-file"
+        _ ->
+          error $
+            "findComponentInfo: found multiple copies of component "
+              ++ prettyShow cname
+              ++ " in build info plan"
 
 -- | Helper function to create an executable component name.
 exe :: String -> ComponentName

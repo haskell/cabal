@@ -1,47 +1,46 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE NondecreasingIndentation #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 -- | A GHC run-server, which supports running multiple GHC scripts
 -- without having to restart from scratch.
-module Test.Cabal.Server (
-    Server,
-    serverProcessId,
-    ServerLogMsg(..),
-    ServerLogMsgType(..),
-    ServerResult(..),
-    withNewServer,
-    runOnServer,
-    runMain,
-) where
+module Test.Cabal.Server
+  ( Server
+  , serverProcessId
+  , ServerLogMsg (..)
+  , ServerLogMsgType (..)
+  , ServerResult (..)
+  , withNewServer
+  , runOnServer
+  , runMain
+  ) where
 
 import Test.Cabal.Script
 import Test.Cabal.TestCode
 
-import Prelude hiding (log)
-import Control.Concurrent.MVar
 import Control.Concurrent
 import Control.Concurrent.Async
-import System.Process
-import System.IO
-import System.Exit
-import Data.List (intercalate, isPrefixOf)
-import Distribution.Simple.Program.Db
-import Distribution.Simple.Program
 import Control.Exception
 import qualified Control.Exception as E
 import Control.Monad
 import Data.IORef
+import Data.List (intercalate, isPrefixOf)
 import Data.Maybe
-import Text.Read (readMaybe)
+import Distribution.Simple.Program
 import Foreign.C.Error (Errno (..), ePIPE)
+import System.Exit
+import System.IO
+import System.Process
+import Text.Read (readMaybe)
+import Prelude hiding (log)
 
 import qualified GHC.IO.Exception as GHC
 
 import Distribution.Verbosity
 
 import System.Process.Internals
-  ( ProcessHandle__( OpenHandle )
+  ( ProcessHandle__ (OpenHandle)
   , withProcessHandle
   )
 #if mingw32_HOST_OS
@@ -59,46 +58,48 @@ import qualified System.Win32.Process as Win32
 -- | A GHCi server session, which we can ask to run scripts.
 -- It operates in a *fixed* runner environment as specified
 -- by 'serverScriptEnv'.
-data Server = Server {
-        serverStdin         :: Handle,
-        serverStdout        :: Handle,
-        serverStderr        :: Handle,
-        serverProcessHandle :: ProcessHandle,
-        serverProcessId     :: ProcessId,
-        serverScriptEnv     :: ScriptEnv,
-        -- | Accumulators which we use to keep tracking
-        -- of stdout/stderr we've incrementally read out.  In the event
-        -- of an error we'll use this to give diagnostic information.
-        serverStdoutAccum   :: MVar [String],
-        serverStderrAccum   :: MVar [String],
-        serverLogChan       :: Chan ServerLogMsg
-    }
+data Server = Server
+  { serverStdin :: Handle
+  , serverStdout :: Handle
+  , serverStderr :: Handle
+  , serverProcessHandle :: ProcessHandle
+  , serverProcessId :: ProcessId
+  , serverScriptEnv :: ScriptEnv
+  , serverStdoutAccum :: MVar [String]
+  -- ^ Accumulators which we use to keep tracking
+  -- of stdout/stderr we've incrementally read out.  In the event
+  -- of an error we'll use this to give diagnostic information.
+  , serverStderrAccum :: MVar [String]
+  , serverLogChan :: Chan ServerLogMsg
+  }
 
 -- | Portable representation of process ID; just a string rendered
 -- number.
 type ProcessId = String
 
-data ServerLogMsg = ServerLogMsg ServerLogMsgType String
-                  | ServerLogEnd
-data ServerLogMsgType = ServerOut  ProcessId
-                      | ServerErr  ProcessId
-                      | ServerIn   ProcessId
-                      | ServerMeta ProcessId
-                      | AllServers
+data ServerLogMsg
+  = ServerLogMsg ServerLogMsgType String
+  | ServerLogEnd
+data ServerLogMsgType
+  = ServerOut ProcessId
+  | ServerErr ProcessId
+  | ServerIn ProcessId
+  | ServerMeta ProcessId
+  | AllServers
 
 data ServerResult = ServerResult
-    { serverResultTestCode :: TestCode
-    , serverResultCommand  :: String
-    , serverResultStdout   :: String
-    , serverResultStderr   :: String
-    }
+  { serverResultTestCode :: TestCode
+  , serverResultCommand :: String
+  , serverResultStdout :: String
+  , serverResultStderr :: String
+  }
 
 -- | With 'ScriptEnv', create a new GHCi 'Server' session.
 -- When @f@ returns, the server is terminated and no longer
 -- valid.
 withNewServer :: Chan ServerLogMsg -> ScriptEnv -> (Server -> IO a) -> IO a
 withNewServer chan senv f =
-    bracketWithInit (startServer chan senv) initServer stopServer f
+  bracketWithInit (startServer chan senv) initServer stopServer f
 
 -- | Like 'bracket', but with an initialization function on the resource
 -- which will be called, unmasked, on the resource to transform it
@@ -116,8 +117,8 @@ bracketWithInit :: IO a -> (a -> IO a) -> (a -> IO b) -> (a -> IO c) -> IO c
 bracketWithInit before initialize after thing =
   mask $ \restore -> do
     a0 <- before
-    a <- restore (initialize a0) `onException` uninterruptibleMask_  (after a0)
-    r <- restore (thing a) `onException` uninterruptibleMask_  (after a)
+    a <- restore (initialize a0) `onException` uninterruptibleMask_ (after a0)
+    r <- restore (thing a) `onException` uninterruptibleMask_ (after a)
     _ <- uninterruptibleMask_ (after a)
     return r
 
@@ -135,82 +136,89 @@ bracketWithInit before initialize after thing =
 --
 --      * Current working directory and environment overrides
 --        are currently not implemented.
---
-runOnServer :: Server -> Maybe FilePath -> [(String, Maybe String)]
-            -> FilePath -> [String] -> IO ServerResult
+runOnServer
+  :: Server
+  -> Maybe FilePath
+  -> [(String, Maybe String)]
+  -> FilePath
+  -> [String]
+  -> IO ServerResult
 runOnServer s mb_cwd env_overrides script_path args = do
-    -- TODO: cwd not implemented
-    when (isJust mb_cwd)        $ error "runOnServer change directory not implemented"
-    -- TODO: env_overrides not implemented
-    unless (null env_overrides) $ error "runOnServer set environment not implemented"
+  -- TODO: cwd not implemented
+  when (isJust mb_cwd) $ error "runOnServer change directory not implemented"
+  -- TODO: env_overrides not implemented
+  unless (null env_overrides) $ error "runOnServer set environment not implemented"
 
-    -- Set arguments returned by System.getArgs
-    write s $ ":set args " ++ show args
-    -- Output start sigil (do it here so we pick up compilation
-    -- failures)
-    write s $ "System.IO.hPutStrLn System.IO.stdout " ++ show start_sigil
-    write s $ "System.IO.hPutStrLn System.IO.stderr " ++ show start_sigil
-    _ <- readUntilSigil s start_sigil IsOut
-    _ <- readUntilSigil s start_sigil IsErr
-    -- Drain the output produced by the script as we are running so that
-    -- we do not deadlock over a full pipe.
-    withAsync (readUntilEnd s IsOut) $ \a_exit_out -> do
+  -- Set arguments returned by System.getArgs
+  write s $ ":set args " ++ show args
+  -- Output start sigil (do it here so we pick up compilation
+  -- failures)
+  write s $ "System.IO.hPutStrLn System.IO.stdout " ++ show start_sigil
+  write s $ "System.IO.hPutStrLn System.IO.stderr " ++ show start_sigil
+  _ <- readUntilSigil s start_sigil IsOut
+  _ <- readUntilSigil s start_sigil IsErr
+  -- Drain the output produced by the script as we are running so that
+  -- we do not deadlock over a full pipe.
+  withAsync (readUntilEnd s IsOut) $ \a_exit_out -> do
     withAsync (readUntilSigil s end_sigil IsErr) $ \a_err -> do
-    -- NB: No :set prog; don't rely on this value in test scripts,
-    -- we pass it in via the arguments
-    -- NB: load drops all bindings, which is GOOD.  Avoid holding onto
-    -- garbage.
-    write s $ ":load " ++ script_path
-    -- Create a ref which will record the exit status of the command
-    -- NB: do this after :load so it doesn't get dropped
-    write s $ "ref <- Data.IORef.newIORef Test.Cabal.TestCode.TestCodeFail"
-    -- TODO: What if an async exception gets raised here?  At the
-    -- moment, there is no way to recover until we get to the top-level
-    -- bracket; then stopServer which correctly handles this case.
-    -- If you do want to be able to abort this computation but KEEP
-    -- USING THE SERVER SESSION, you will need to have a lot more
-    -- sophisticated logic.
-    write s $ "Test.Cabal.Server.runMain ref Main.main"
-    -- Output end sigil.
-    -- NB: We're line-oriented, so we MUST add an extra newline
-    -- to ensure that we see the end sigil.
-    write s $ "System.IO.hPutStrLn System.IO.stdout " ++ show ""
-    write s $ "System.IO.hPutStrLn System.IO.stderr " ++ show ""
-    write s $ "Data.IORef.readIORef ref >>= \\e -> " ++
-              " System.IO.hPutStrLn System.IO.stdout (" ++ show end_sigil ++ " ++ \" \" ++ show e)"
-    write s $ "System.IO.hPutStrLn System.IO.stderr " ++ show end_sigil
-    (code, out) <- wait a_exit_out
-    err <- wait a_err
+      -- NB: No :set prog; don't rely on this value in test scripts,
+      -- we pass it in via the arguments
+      -- NB: load drops all bindings, which is GOOD.  Avoid holding onto
+      -- garbage.
+      write s $ ":load " ++ script_path
+      -- Create a ref which will record the exit status of the command
+      -- NB: do this after :load so it doesn't get dropped
+      write s $ "ref <- Data.IORef.newIORef Test.Cabal.TestCode.TestCodeFail"
+      -- TODO: What if an async exception gets raised here?  At the
+      -- moment, there is no way to recover until we get to the top-level
+      -- bracket; then stopServer which correctly handles this case.
+      -- If you do want to be able to abort this computation but KEEP
+      -- USING THE SERVER SESSION, you will need to have a lot more
+      -- sophisticated logic.
+      write s $ "Test.Cabal.Server.runMain ref Main.main"
+      -- Output end sigil.
+      -- NB: We're line-oriented, so we MUST add an extra newline
+      -- to ensure that we see the end sigil.
+      write s $ "System.IO.hPutStrLn System.IO.stdout " ++ show ""
+      write s $ "System.IO.hPutStrLn System.IO.stderr " ++ show ""
+      write s $
+        "Data.IORef.readIORef ref >>= \\e -> "
+          ++ " System.IO.hPutStrLn System.IO.stdout ("
+          ++ show end_sigil
+          ++ " ++ \" \" ++ show e)"
+      write s $ "System.IO.hPutStrLn System.IO.stderr " ++ show end_sigil
+      (code, out) <- wait a_exit_out
+      err <- wait a_err
 
-    -- Give the user some indication about how they could run the
-    -- command by hand.
-    (real_path, real_args) <- runnerCommand (serverScriptEnv s) mb_cwd env_overrides script_path args
-    return $
-      ServerResult {
-              serverResultTestCode = code,
-              serverResultCommand = showCommandForUser real_path real_args,
-              serverResultStdout = out,
-              serverResultStderr = err
+      -- Give the user some indication about how they could run the
+      -- command by hand.
+      (real_path, real_args) <- runnerCommand (serverScriptEnv s) mb_cwd env_overrides script_path args
+      return $
+        ServerResult
+          { serverResultTestCode = code
+          , serverResultCommand = showCommandForUser real_path real_args
+          , serverResultStdout = out
+          , serverResultStderr = err
           }
 
 -- | Helper function which we use in the GHCi session to communicate
 -- the exit code of the process.
 runMain :: IORef TestCode -> IO () -> IO ()
 runMain ref m = do
-    E.catch (m >> writeIORef ref TestCodeOk) serverHandler
+  E.catch (m >> writeIORef ref TestCodeOk) serverHandler
   where
     serverHandler :: SomeException -> IO ()
     serverHandler e = do
-        -- TODO: Probably a few more cases you could handle;
-        -- e.g., StackOverflow should return ExitCode 2; also signals.
-        writeIORef ref $ case fromException e of
-            Just test_code -> test_code
-            _              -> TestCodeFail
+      -- TODO: Probably a few more cases you could handle;
+      -- e.g., StackOverflow should return ExitCode 2; also signals.
+      writeIORef ref $ case fromException e of
+        Just test_code -> test_code
+        _ -> TestCodeFail
 
-        -- Only rethrow for non ExitFailure exceptions
-        case fromException e :: Maybe TestCode of
-          Just _ -> return ()
-          _      -> throwIO e
+      -- Only rethrow for non ExitFailure exceptions
+      case fromException e :: Maybe TestCode of
+        Just _ -> return ()
+        _ -> throwIO e
 
 -- ----------------------------------------------------------------- --
 -- Initialize/tear down
@@ -219,35 +227,37 @@ runMain ref m = do
 -- | Start a new GHCi session.
 startServer :: Chan ServerLogMsg -> ScriptEnv -> IO Server
 startServer chan senv = do
-    (prog, _) <- requireProgram verbosity ghcProgram (runnerProgramDb senv)
-    let ghc_args = runnerGhcArgs senv Nothing ++ ["--interactive", "-v0", "-ignore-dot-ghci"]
-        proc_spec = (proc (programPath prog) ghc_args) {
-                        create_group = True,
-                        -- Closing fds is VERY important to avoid
-                        -- deadlock; we won't see the end of a
-                        -- stream until everyone gives up.
-                        close_fds = True,
-                        std_in  = CreatePipe,
-                        std_out = CreatePipe,
-                        std_err = CreatePipe
-                    }
-    when (verbosity >= verbose) $
-        writeChan chan (ServerLogMsg AllServers (showCommandForUser (programPath prog) ghc_args))
-    (Just hin, Just hout, Just herr, proch) <- createProcess proc_spec
-    out_acc <- newMVar []
-    err_acc <- newMVar []
-    tid <- myThreadId
-    return Server {
-                serverStdin     = hin,
-                serverStdout    = hout,
-                serverStderr    = herr,
-                serverProcessHandle = proch,
-                serverProcessId = show tid,
-                serverLogChan   = chan,
-                serverStdoutAccum = out_acc,
-                serverStderrAccum = err_acc,
-                serverScriptEnv = senv
-              }
+  (prog, _) <- requireProgram verbosity ghcProgram (runnerProgramDb senv)
+  let ghc_args = runnerGhcArgs senv Nothing ++ ["--interactive", "-v0", "-ignore-dot-ghci"]
+      proc_spec =
+        (proc (programPath prog) ghc_args)
+          { create_group = True
+          , -- Closing fds is VERY important to avoid
+            -- deadlock; we won't see the end of a
+            -- stream until everyone gives up.
+            close_fds = True
+          , std_in = CreatePipe
+          , std_out = CreatePipe
+          , std_err = CreatePipe
+          }
+  when (verbosity >= verbose) $
+    writeChan chan (ServerLogMsg AllServers (showCommandForUser (programPath prog) ghc_args))
+  (Just hin, Just hout, Just herr, proch) <- createProcess proc_spec
+  out_acc <- newMVar []
+  err_acc <- newMVar []
+  tid <- myThreadId
+  return
+    Server
+      { serverStdin = hin
+      , serverStdout = hout
+      , serverStderr = herr
+      , serverProcessHandle = proch
+      , serverProcessId = show tid
+      , serverLogChan = chan
+      , serverStdoutAccum = out_acc
+      , serverStderrAccum = err_acc
+      , serverScriptEnv = senv
+      }
   where
     verbosity = runnerVerbosity senv
 
@@ -281,89 +291,90 @@ initServer s0 = do
 -- | Stop a GHCi session.
 stopServer :: Server -> IO ()
 stopServer s = do
-    -- This is quite a bit of funny business.
-    -- On Linux, terminateProcess will send a SIGINT, which
-    -- GHCi will swallow and actually only use to terminate
-    -- whatever computation is going on at that time.  So we
-    -- have to follow up with an actual :quit command to
-    -- finish it up (if you delete it, the processes will
-    -- hang around).  On Windows, this will just actually kill
-    -- the process so the rest should be unnecessary.
-    mb_exit <- getProcessExitCode (serverProcessHandle s)
+  -- This is quite a bit of funny business.
+  -- On Linux, terminateProcess will send a SIGINT, which
+  -- GHCi will swallow and actually only use to terminate
+  -- whatever computation is going on at that time.  So we
+  -- have to follow up with an actual :quit command to
+  -- finish it up (if you delete it, the processes will
+  -- hang around).  On Windows, this will just actually kill
+  -- the process so the rest should be unnecessary.
+  mb_exit <- getProcessExitCode (serverProcessHandle s)
 
-    let hardKiller = do
-            threadDelay 2000000 -- 2sec
-            log ServerMeta s $ "Terminating..."
-            terminateProcess (serverProcessHandle s)
-        softKiller = do
-            -- Ask to quit.  If we're in the middle of a computation,
-            -- this will buffer up (unless the program is intercepting
-            -- stdin, but that should NOT happen.)
-            ignore $ write s ":quit"
+  let hardKiller = do
+        threadDelay 2000000 -- 2sec
+        log ServerMeta s $ "Terminating..."
+        terminateProcess (serverProcessHandle s)
+      softKiller = do
+        -- Ask to quit.  If we're in the middle of a computation,
+        -- this will buffer up (unless the program is intercepting
+        -- stdin, but that should NOT happen.)
+        ignore $ write s ":quit"
 
-            -- NB: it's important that we used create_group.  We
-            -- run this AFTER write s ":quit" because if we C^C
-            -- sufficiently early in GHCi startup process, GHCi
-            -- will actually die, and then hClose will fail because
-            -- the ":quit" command was buffered up but never got
-            -- flushed.
-            interruptProcessGroupOf (serverProcessHandle s)
+        -- NB: it's important that we used create_group.  We
+        -- run this AFTER write s ":quit" because if we C^C
+        -- sufficiently early in GHCi startup process, GHCi
+        -- will actually die, and then hClose will fail because
+        -- the ":quit" command was buffered up but never got
+        -- flushed.
+        interruptProcessGroupOf (serverProcessHandle s)
 
-            log ServerMeta s $ "Waiting..."
-            -- Close input BEFORE waiting, close output AFTER waiting.
-            -- If you get either order wrong, deadlock!
-            ignoreSigPipe $ hClose (serverStdin s)
-            -- waitForProcess has race condition
-            -- https://github.com/haskell/process/issues/46
-            waitForProcess $ serverProcessHandle s
+        log ServerMeta s $ "Waiting..."
+        -- Close input BEFORE waiting, close output AFTER waiting.
+        -- If you get either order wrong, deadlock!
+        ignoreSigPipe $ hClose (serverStdin s)
+        -- waitForProcess has race condition
+        -- https://github.com/haskell/process/issues/46
+        waitForProcess $ serverProcessHandle s
 
-    let drain f = do
-            r <- hGetContents (f s)
-            _ <- evaluate (length r)
-            hClose (f s)
-            return r
+  let drain f = do
+        r <- hGetContents (f s)
+        _ <- evaluate (length r)
+        hClose (f s)
+        return r
 
-    withAsync (drain serverStdout) $ \a_out -> do
+  withAsync (drain serverStdout) $ \a_out -> do
     withAsync (drain serverStderr) $ \a_err -> do
-
-    r <- case mb_exit of
+      r <- case mb_exit of
         Nothing -> do
-            log ServerMeta s $ "Terminating GHCi"
-            race hardKiller softKiller
+          log ServerMeta s $ "Terminating GHCi"
+          race hardKiller softKiller
         Just exit -> do
-            log ServerMeta s $ "GHCi died unexpectedly"
-            return (Right exit)
+          log ServerMeta s $ "GHCi died unexpectedly"
+          return (Right exit)
 
-    -- Drain the output buffers
-    rest_out <- wait a_out
-    rest_err <- wait a_err
-    if r /= Right ExitSuccess &&
-       r /= Right (ExitFailure (-2)) -- SIGINT; happens frequently for some reason
-        then do withMVar (serverStdoutAccum s) $ \acc ->
-                    mapM_ (info ServerOut s) (reverse acc)
-                info ServerOut  s rest_out
-                withMVar (serverStderrAccum s) $ \acc ->
-                    mapM_ (info ServerErr s) (reverse acc)
-                info ServerErr  s rest_err
-                info ServerMeta s $
-                    (case r of
-                        Left () -> "GHCi was forcibly terminated"
-                        Right exit -> "GHCi exited with " ++ show exit) ++
-                    if verbosity < verbose
-                        then " (use -v for more information)"
-                        else ""
+      -- Drain the output buffers
+      rest_out <- wait a_out
+      rest_err <- wait a_err
+      if r /= Right ExitSuccess
+        && r /= Right (ExitFailure (-2)) -- SIGINT; happens frequently for some reason
+        then do
+          withMVar (serverStdoutAccum s) $ \acc ->
+            mapM_ (info ServerOut s) (reverse acc)
+          info ServerOut s rest_out
+          withMVar (serverStderrAccum s) $ \acc ->
+            mapM_ (info ServerErr s) (reverse acc)
+          info ServerErr s rest_err
+          info ServerMeta s $
+            ( case r of
+                Left () -> "GHCi was forcibly terminated"
+                Right exit -> "GHCi exited with " ++ show exit
+            )
+              ++ if verbosity < verbose
+                then " (use -v for more information)"
+                else ""
         else log ServerOut s rest_out
 
-    log ServerMeta s $ "Done"
-    return ()
+      log ServerMeta s $ "Done"
+      return ()
   where
     verbosity = runnerVerbosity (serverScriptEnv s)
 
     ignoreSigPipe :: IO () -> IO ()
     ignoreSigPipe = E.handle $ \e -> case e of
-        GHC.IOError { GHC.ioe_type  = GHC.ResourceVanished, GHC.ioe_errno = Just ioe }
-            | Errno ioe == ePIPE -> return ()
-        _ -> throwIO e
+      GHC.IOError{GHC.ioe_type = GHC.ResourceVanished, GHC.ioe_errno = Just ioe}
+        | Errno ioe == ePIPE -> return ()
+      _ -> throwIO e
 
 -- Using the procedure from
 -- https://www.schoolofhaskell.com/user/snoyberg/general-haskell/exceptions/catching-all-exceptions
@@ -376,26 +387,26 @@ ignore m = withAsync m $ \a -> void (waitCatch a)
 
 log :: (ProcessId -> ServerLogMsgType) -> Server -> String -> IO ()
 log ctor s msg =
-    when (verbosity >= verbose) $ info ctor s msg
+  when (verbosity >= verbose) $ info ctor s msg
   where
     verbosity = runnerVerbosity (serverScriptEnv s)
 
 info :: (ProcessId -> ServerLogMsgType) -> Server -> String -> IO ()
 info ctor s msg =
-    writeChan chan (ServerLogMsg (ctor (serverProcessId s)) msg)
+  writeChan chan (ServerLogMsg (ctor (serverProcessId s)) msg)
   where
     chan = serverLogChan s
 
 -- | Write a string to the prompt of the GHCi server.
 write :: Server -> String -> IO ()
 write s msg = do
-    log ServerIn s $ msg
-    hPutStrLn (serverStdin s) msg
-    hFlush (serverStdin s) -- line buffering should get it, but just for good luck
+  log ServerIn s $ msg
+  hPutStrLn (serverStdin s) msg
+  hFlush (serverStdin s) -- line buffering should get it, but just for good luck
 
 accumulate :: MVar [String] -> String -> IO ()
 accumulate acc msg =
-    modifyMVar_ acc (\msgs -> return (msg:msgs))
+  modifyMVar_ acc (\msgs -> return (msg : msgs))
 
 flush :: MVar [String] -> IO [String]
 flush acc = modifyMVar acc (\msgs -> return ([], reverse msgs))
@@ -420,12 +431,13 @@ outOrErrMsgType IsErr = ServerErr
 -- send a command to GHCi to emit the start sigil.
 readUntilSigil :: Server -> String -> OutOrErr -> IO String
 readUntilSigil s sigil outerr = do
-    l <- hGetLine (serverHandle s outerr)
-    log (outOrErrMsgType outerr) s l
-    if sigil `isPrefixOf` l -- NB: on Windows there might be extra goo at end
-        then intercalate "\n" `fmap` flush (serverAccum s outerr)
-        else do accumulate (serverAccum s outerr) l
-                readUntilSigil s sigil outerr
+  l <- hGetLine (serverHandle s outerr)
+  log (outOrErrMsgType outerr) s l
+  if sigil `isPrefixOf` l -- NB: on Windows there might be extra goo at end
+    then intercalate "\n" `fmap` flush (serverAccum s outerr)
+    else do
+      accumulate (serverAccum s outerr) l
+      readUntilSigil s sigil outerr
 
 -- | Consume output from the GHCi server until we hit the
 -- end sigil.  Return the consumed output as well as the
@@ -434,18 +446,20 @@ readUntilEnd :: Server -> OutOrErr -> IO (TestCode, String)
 readUntilEnd s outerr = go []
   where
     go rs = do
-        l <- hGetLine (serverHandle s outerr)
-        log (outOrErrMsgType outerr) s l
-        if end_sigil `isPrefixOf` l
-            -- NB: NOT unlines, we don't want the trailing newline!
-            then do exit <- evaluate (parseExit l)
-                    _ <- flush (serverAccum s outerr) -- TODO: don't toss this out
-                    return (exit, intercalate "\n" (reverse rs))
-            else do accumulate (serverAccum s outerr) l
-                    go (l:rs)
+      l <- hGetLine (serverHandle s outerr)
+      log (outOrErrMsgType outerr) s l
+      if end_sigil `isPrefixOf` l
+        then -- NB: NOT unlines, we don't want the trailing newline!
+        do
+          exit <- evaluate (parseExit l)
+          _ <- flush (serverAccum s outerr) -- TODO: don't toss this out
+          return (exit, intercalate "\n" (reverse rs))
+        else do
+          accumulate (serverAccum s outerr) l
+          go (l : rs)
     parseExit l = case readMaybe (drop (length end_sigil) l) of
-        Nothing -> error $ "Cannot parse TestCode at the end of: " ++ l
-        Just tc -> tc
+      Nothing -> error $ "Cannot parse TestCode at the end of: " ++ l
+      Just tc -> tc
 
 -- | The start and end sigils.  This should be chosen to be
 -- reasonably unique, so that test scripts don't accidentally
@@ -453,4 +467,4 @@ readUntilEnd s outerr = go []
 -- probably deadlock.
 start_sigil, end_sigil :: String
 start_sigil = "BEGIN Test.Cabal.Server"
-end_sigil   = "END Test.Cabal.Server"
+end_sigil = "END Test.Cabal.Server"
