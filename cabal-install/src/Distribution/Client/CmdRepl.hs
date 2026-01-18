@@ -315,9 +315,10 @@ replAction flags@NixStyleFlags{extraFlags = ReplFlags{..}} targetStrings globalF
             let projectFile = projectConfigProjectFile . projectConfigShared $ projectConfig ctx
             let pkgs = projectPackages $ projectConfig ctx
             case pkgs of
-              [pkg] -> return $ Left (pkg, retargetMsg ("package '" ++ pkg ++ "'"))
+              -- Guard against an infinite retargeting loop.
+              [pkg] | pkg `notElem` targetStrings -> return $ Left (pkg, retargetMsg ("package '" ++ pkg ++ "'"))
               _ ->
-                if isMultiReplEnabled ctx
+                if isMultiReplEnabled ctx && not (null pkgs)
                   then return $ Left ("all", retargetMsg "'all'")
                   else
                     dieWithException verbosity $
