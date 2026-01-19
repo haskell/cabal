@@ -39,7 +39,6 @@ import Distribution.Utils.Generic (lowercase)
 import Distribution.Utils.ShortText
 import Prelude ()
 
-import Distribution.Types.Namespace
 import Distribution.Parsec
 import Distribution.Pretty
 
@@ -58,9 +57,7 @@ data PackageFlag = MkPackageFlag
   , flagDefault :: Bool
   , flagManual :: Bool
   }
-  deriving (Show, Eq, Data, Generic, Ord)
-
-instance Namespace PackageFlag
+  deriving (Show, Eq, Data, Generic)
 
 instance Binary PackageFlag
 instance Structured PackageFlag
@@ -85,8 +82,6 @@ emptyFlag name =
 -- @since 2.0.0.2
 newtype FlagName = FlagName ShortText
   deriving (Eq, Generic, Ord, Show, Read, Data, NFData)
-
-instance Namespace FlagName
 
 -- | Construct a 'FlagName' from a 'String'
 --
@@ -134,8 +129,6 @@ instance Parsec FlagName where
 -- TODO: Why we record the multiplicity of the flag?
 newtype FlagAssignment = FlagAssignment {getFlagAssignment :: Map.Map FlagName (Int, Bool)}
   deriving (Binary, Generic, NFData)
-
-instance Namespace FlagAssignment
 
 instance Structured FlagAssignment
 
@@ -341,7 +334,7 @@ parsecFlagAssignmentNonEmpty = mkFlagAssignment <$> sepByEnding1 (onFlag <|> off
 --
 -- @since 3.4.0.0
 showFlagAssignment :: FlagAssignment -> String
-showFlagAssignment = renderPrettyDefault . dispFlagAssignment
+showFlagAssignment = prettyShow . dispFlagAssignment
 
 -------------------------------------------------------------------------------
 -- Legacy: without requiring +
@@ -352,7 +345,7 @@ showFlagAssignment = renderPrettyDefault . dispFlagAssignment
 -- @since 3.4.0.0
 legacyShowFlagAssignment :: FlagAssignment -> String
 legacyShowFlagAssignment =
-  renderPrettyDefault . Disp.hsep . map Disp.text . legacyShowFlagAssignment'
+  prettyShow . Disp.hsep . map Disp.text . legacyShowFlagAssignment'
 
 -- | @since 3.4.0.0
 legacyShowFlagAssignment' :: FlagAssignment -> [String]
