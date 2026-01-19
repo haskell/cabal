@@ -56,8 +56,6 @@ import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Version
 
-import Distribution.Types.Namespace
-
 import qualified Data.Map.Strict as Map
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.SPDX as SPDX
@@ -114,8 +112,6 @@ data License
   | -- | Indicates an erroneous license name.
     UnknownLicense String
   deriving (Generic, Read, Show, Eq, Ord, Data)
-
-instance Namespace License
 
 instance Binary License
 instance Structured License
