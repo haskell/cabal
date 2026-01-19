@@ -288,7 +288,7 @@ prettyVersionRange t0 vr = prettyVersionRange' t0 0 vr
 
 prettyVersionRange' :: TriviaTree -> Int -> VersionRange -> Disp.Doc
 prettyVersionRange' t0 d vr =
-  pTrace ("prettyVersionRange' t0\n" <> show t0) $
+  -- pTrace ("prettyVersionRange' t0\n" <> show t0) $
     case vr of
       v0@(ThisVersion v) -> let t = unmark (SomeNamespace v0) t0 in triviaToDoc (justAnnotation t0) $ Disp.text "==" <<>> prettier t v
       v0@(LaterVersion v) -> let t = unmark (SomeNamespace v0) t0 in triviaToDoc (justAnnotation t0) $ Disp.text ">" <<>> prettier t v
