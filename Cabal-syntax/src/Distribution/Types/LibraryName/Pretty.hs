@@ -22,8 +22,7 @@ import Prelude ()
 
 import Distribution.Pretty
 import Distribution.Types.LibraryName.Internal
-import Distribution.Types.UnqualComponentName.Internal
-import Distribution.Types.UnqualComponentName.Pretty
+import Distribution.Types.UnqualComponentName
 
 import Distribution.Types.Annotation
 

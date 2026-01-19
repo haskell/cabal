@@ -19,7 +19,6 @@ import Distribution.Types.Dependency.Internal
 import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
-import Distribution.Types.UnqualComponentName.Parsec
 import Distribution.Types.Version.Parsec
 import Distribution.Types.VersionRange.Parsec
 

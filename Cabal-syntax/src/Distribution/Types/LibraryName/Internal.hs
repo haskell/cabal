@@ -11,7 +11,7 @@ module Distribution.Types.LibraryName.Internal
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Types.UnqualComponentName.Internal
+import Distribution.Types.UnqualComponentName
 
 import qualified Data.List.NonEmpty as NEL
 import qualified Distribution.Compat.CharParsing as P

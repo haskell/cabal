@@ -28,7 +28,6 @@ import Distribution.Types.MungedPackageName
 import Distribution.Types.PackageName
 import Distribution.Types.PackageName.Parsec
 import Distribution.Types.UnqualComponentName
-import Distribution.Types.UnqualComponentName.Parsec
 import Distribution.Version
 import Distribution.Types.Namespace
 
