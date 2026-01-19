@@ -49,8 +49,6 @@ import qualified System.Info (arch, os)
 import Distribution.Parsec
 import Distribution.Pretty
 
-import Distribution.Types.Namespace
-
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
@@ -110,8 +108,6 @@ data OS
   | Haiku
   | OtherOS String
   deriving (Eq, Generic, Ord, Show, Read, Data)
-
-instance Namespace OS
 
 instance Binary OS
 instance Structured OS
@@ -216,8 +212,6 @@ data Arch
   | OtherArch String
   deriving (Eq, Generic, Ord, Show, Read, Data)
 
-instance Namespace Arch
-
 instance Binary Arch
 instance Structured Arch
 instance NFData Arch where rnf = genericRnf
@@ -288,8 +282,6 @@ buildArch = classifyArch Permissive System.Info.arch
 
 data Platform = Platform Arch OS
   deriving (Eq, Generic, Ord, Show, Read, Data)
-
-instance Namespace Platform
 
 instance Binary Platform
 instance Structured Platform
