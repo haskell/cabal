@@ -185,6 +185,10 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
       let t' = mark ns t
       pure (t', x)
 
+      >>= \(t, x) ->
+        -- pTrace ("withScope\n" <> show t) $
+          pure (t, x)
+
   blurFieldGrammar _ (ParsecFG s s' parser) = ParsecFG s s' parser
 
   uniqueFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
@@ -296,6 +300,10 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
           (t, x) <- foldMap (unpack' _pack <$>) <$> traverse (uncurry (parseOne v)) (zip xs [1 ..])
           let t' = mark (SomeNamespace fn) t
           pure (t', x)
+
+          >>= \(t, x) ->
+            -- pTrace ("monoidalFieldAla\n" <> show t) $
+              pure (t, x)
 
       -- Different fields
       parseOne v (MkNamelessField pos fls) n = do

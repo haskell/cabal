@@ -171,6 +171,7 @@ instance (Newtype a b, Sep sep, Parsec b) => Parsec (List sep b a) where
   triviaParsec = do
     (ts, bs) <- unzip <$> parseSep (Proxy :: Proxy sep) triviaParsec
     -- TODO(leana8959): list numbering
+    -- TODO(leana8959): mirror the unmarking below
     pure (mconcat ts, pack $ map (unpack :: b -> a) bs)
 
 instance (Newtype a b, Sep sep, Pretty b) => Pretty (List sep b a) where
@@ -189,7 +190,11 @@ instance
         . map
             (\o ->
               let tChildren = unmark (SomeNamespace o) t0
-              in  prettier tChildren $ (pack :: a -> b) $ o
+              in
+                -- TODO(leana8959): restore unmarking
+                  -- pTrace ("instance prettierList tChildren\n" <> show tChildren) $
+                  -- pTrace ("instance prettierList t0\n" <> show t0) $
+                    prettier t0 $ (pack :: a -> b) $ o
             )
           . unpack
 

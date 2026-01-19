@@ -83,6 +83,10 @@ instance Parsec Dependency where
       ( depTrivia
       , dep
       )
+
+    >>= \(t, x) ->
+      -- pTrace ("dependencyTriviaParser\n" <> show t) $
+        pure (t, x)
     where
       parseLib = LSubLibName <$> parsec
       parseMultipleLibs =
