@@ -17,7 +17,7 @@ import Distribution.Types.PackageName.Parsec
 import Distribution.Types.UnqualComponentName
 import Distribution.Version (VersionRange, anyVersion, isAnyVersion)
 
-import Distribution.Types.Version.Parsec
+import Distribution.Types.Version
 import Distribution.Types.Namespace
 
 import qualified Distribution.Compat.CharParsing as P

@@ -203,9 +203,6 @@ library
     Distribution.Types.UnitId
     Distribution.Types.UnqualComponentName
     Distribution.Types.Version
-    Distribution.Types.Version.Internal
-    Distribution.Types.Version.Pretty
-    Distribution.Types.Version.Parsec
     Distribution.Types.VersionInterval
     Distribution.Types.VersionInterval.Legacy
     Distribution.Types.VersionRange

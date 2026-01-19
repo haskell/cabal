@@ -40,7 +40,7 @@ import Control.Exception (assert)
 import Distribution.Compat.Prelude hiding (Applicative (..))
 import Prelude ()
 
-import Distribution.Types.Version.Internal
+import Distribution.Types.Version
 import Distribution.Types.VersionRange.Internal
 
 -- To test this module, and to run version range normalisation benchmarks:

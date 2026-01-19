@@ -20,7 +20,7 @@ import qualified Text.PrettyPrint as Disp
 
 import Distribution.Types.Namespace
 
-import Distribution.Types.Version.Parsec
+import Distribution.Types.Version
 
 -- | Type alias so we can use the shorter name PackageId.
 type PackageId = PackageIdentifier

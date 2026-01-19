@@ -92,7 +92,7 @@ module Distribution.Version
   , unVersionIntervals
   ) where
 
-import Distribution.Types.Version.Internal
+import Distribution.Types.Version
 import Distribution.Types.VersionInterval
 import Distribution.Types.VersionRange
 

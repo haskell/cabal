@@ -19,7 +19,7 @@ import Text.PrettyPrint (char, text)
 
 import Distribution.Types.Namespace
 
-import Distribution.Types.Version.Parsec
+import Distribution.Types.Version
 
 -- | The \"test-type\" field in the test suite stanza.
 data TestType
