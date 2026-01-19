@@ -91,7 +91,7 @@ import Distribution.Version (Version, VersionRange)
 
 import Distribution.Types.Annotation
 import Distribution.Types.Namespace
-import Distribution.Types.Dependency.Parsec
+import Distribution.Types.Dependency
 
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.Map as M

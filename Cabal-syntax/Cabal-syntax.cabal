@@ -143,9 +143,6 @@ library
     Distribution.Types.Condition
     Distribution.Types.ConfVar
     Distribution.Types.Dependency
-    Distribution.Types.Dependency.Internal
-    Distribution.Types.Dependency.Pretty
-    Distribution.Types.Dependency.Parsec
     Distribution.Types.DependencyMap
     Distribution.Types.DependencySatisfaction
     Distribution.Types.ExeDependency
