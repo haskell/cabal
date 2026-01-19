@@ -18,8 +18,6 @@ import Distribution.Pretty
 import Text.PrettyPrint (text)
 import qualified Text.PrettyPrint as Disp
 
-import Distribution.Types.Namespace
-
 -- ---------------------------------------------------------------------------
 -- Module renaming
 
@@ -29,8 +27,6 @@ data IncludeRenaming = IncludeRenaming
   , includeRequiresRn :: ModuleRenaming
   }
   deriving (Show, Read, Eq, Ord, Data, Generic)
-
-instance Namespace IncludeRenaming
 
 instance Binary IncludeRenaming
 instance Structured IncludeRenaming
