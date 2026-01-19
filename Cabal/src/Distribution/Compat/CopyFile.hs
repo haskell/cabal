@@ -1,6 +1,8 @@
 {-# LANGUAGE CPP #-}
 {-# OPTIONS_HADDOCK hide #-}
 
+{- HLINT ignore "Use fewer imports" -}
+
 module Distribution.Compat.CopyFile
   ( copyFile
   , copyFileChanged
@@ -15,23 +17,29 @@ module Distribution.Compat.CopyFile
 import Distribution.Compat.Prelude
 import Prelude ()
 
-#ifndef mingw32_HOST_OS
-import Distribution.Compat.Internal.TempFile
+import qualified Data.ByteString.Lazy as BSL
+import System.Directory
+  ( doesFileExist
+  )
+import System.IO
+  ( IOMode (ReadMode)
+  , hFileSize
+  , withBinaryFile
+  )
 
+#ifndef mingw32_HOST_OS
 import Control.Exception
          ( bracketOnError )
-import qualified Data.ByteString.Lazy as BSL
 import Data.Bits
          ( (.|.) )
 import System.IO.Error
          ( ioeSetLocation )
 import System.Directory
-         ( doesFileExist, renameFile, removeFile )
+         ( renameFile, removeFile )
 import System.FilePath
          ( takeDirectory )
 import System.IO
-         ( IOMode(ReadMode), hClose, hGetBuf, hPutBuf, hFileSize
-         , withBinaryFile )
+         ( hClose, hGetBuf, hPutBuf, openBinaryTempFile )
 import Foreign
          ( allocaBytes )
 
@@ -42,28 +50,9 @@ import System.Posix.Files
 
 #else /* else mingw32_HOST_OS */
 
-import qualified Data.ByteString.Lazy as BSL
-import System.IO.Error
-  ( ioeSetLocation )
 import System.Directory
-  ( doesFileExist )
-import System.FilePath
-  ( addTrailingPathSeparator
-  , hasTrailingPathSeparator
-  , isPathSeparator
-  , isRelative
-  , joinDrive
-  , joinPath
-  , pathSeparator
-  , pathSeparators
-  , splitDirectories
-  , splitDrive
-  )
-import System.IO
-  ( IOMode(ReadMode), hFileSize
-  , withBinaryFile )
+  ( copyFileWithMetadata )
 
-import qualified System.Win32.File as Win32 ( copyFile )
 #endif /* mingw32_HOST_OS */
 
 copyOrdinaryFile, copyExecutableFile :: FilePath -> FilePath -> IO ()
@@ -91,11 +80,11 @@ setDirOrdinary = setFileExecutable
 -- | Copies a file to a new destination.
 -- Often you should use `copyFileChanged` instead.
 copyFile :: FilePath -> FilePath -> IO ()
+#ifndef mingw32_HOST_OS
 copyFile fromFPath toFPath =
   copy
     `catchIO` (\ioe -> throwIO (ioeSetLocation ioe "copyFile"))
   where
-#ifndef mingw32_HOST_OS
       copy = withBinaryFile fromFPath ReadMode $ \hFrom ->
              bracketOnError openTmp cleanTmp $ \(tmpFPath, hTmp) ->
              do allocaBytes bufferSize $ copyContents hFrom hTmp
@@ -113,116 +102,7 @@ copyFile fromFPath toFPath =
                       hPutBuf hTo buffer count
                       copyContents hFrom hTo buffer
 #else
-      copy = Win32.copyFile (toExtendedLengthPath fromFPath)
-                            (toExtendedLengthPath toFPath)
-                            False
-
--- NOTE: Shamelessly lifted from System.Directory.Internal.Windows
-
--- | Add the @"\\\\?\\"@ prefix if necessary or possible.  The path remains
--- unchanged if the prefix is not added.  This function can sometimes be used
--- to bypass the @MAX_PATH@ length restriction in Windows API calls.
---
--- See Note [Path normalization].
-toExtendedLengthPath :: FilePath -> FilePath
-toExtendedLengthPath path
-  | isRelative path = path
-  | otherwise =
-      case normalisedPath of
-        '\\' : '?'  : '?' : '\\' : _ -> normalisedPath
-        '\\' : '\\' : '?' : '\\' : _ -> normalisedPath
-        '\\' : '\\' : '.' : '\\' : _ -> normalisedPath
-        '\\' : subpath@('\\' : _)    -> "\\\\?\\UNC" <> subpath
-        _                            -> "\\\\?\\" <> normalisedPath
-    where normalisedPath = simplifyWindows path
-
--- | Similar to 'normalise' but:
---
--- * empty paths stay empty,
--- * parent dirs (@..@) are expanded, and
--- * paths starting with @\\\\?\\@ are preserved.
---
--- The goal is to preserve the meaning of paths better than 'normalise'.
---
--- Note [Path normalization]
--- 'normalise' doesn't simplify path names but will convert / into \\
--- this would normally not be a problem as once the path hits the RTS we would
--- have simplified the path then.  However since we're calling the WIn32 API
--- directly we have to do the simplification before the call.  Without this the
--- path Z:// would become Z:\\\\ and when converted to a device path the path
--- becomes \\?\Z:\\\\ which is an invalid path.
---
--- This is not a bug in normalise as it explicitly states that it won't simplify
--- a FilePath.
-simplifyWindows :: FilePath -> FilePath
-simplifyWindows "" = ""
-simplifyWindows path =
-  case drive' of
-    "\\\\?\\" -> drive' <> subpath
-    _ -> simplifiedPath
-  where
-    simplifiedPath = joinDrive drive' subpath'
-    (drive, subpath) = splitDrive path
-    drive' = upperDrive (normaliseTrailingSep (normalisePathSeps drive))
-    subpath' = appendSep . avoidEmpty . prependSep . joinPath .
-               stripPardirs . expandDots . skipSeps .
-               splitDirectories $ subpath
-
-    upperDrive d = case d of
-      c : ':' : s | isAlpha c && all isPathSeparator s -> toUpper c : ':' : s
-      _ -> d
-    skipSeps = filter (not . (`elem` (pure <$> pathSeparators)))
-    stripPardirs | pathIsAbsolute || subpathIsAbsolute = dropWhile (== "..")
-                 | otherwise = id
-    prependSep | subpathIsAbsolute = (pathSeparator :)
-               | otherwise = id
-    avoidEmpty | not pathIsAbsolute
-                 && (null drive || hasTrailingPathSep) -- prefer "C:" over "C:."
-                 = emptyToCurDir
-               | otherwise = id
-    appendSep p | hasTrailingPathSep
-                  && not (pathIsAbsolute && null p)
-                  = addTrailingPathSeparator p
-                | otherwise = p
-    pathIsAbsolute = not (isRelative path)
-    subpathIsAbsolute = any isPathSeparator (take 1 subpath)
-    hasTrailingPathSep = hasTrailingPathSeparator subpath
-
--- | Given a list of path segments, expand @.@ and @..@.  The path segments
--- must not contain path separators.
-expandDots :: [FilePath] -> [FilePath]
-expandDots = reverse . go []
-  where
-    go ys' xs' =
-      case xs' of
-        [] -> ys'
-        x : xs ->
-          case x of
-            "." -> go ys' xs
-            ".." ->
-              case ys' of
-                [] -> go (x : ys') xs
-                ".." : _ -> go (x : ys') xs
-                _ : ys -> go ys xs
-            _ -> go (x : ys') xs
-
--- | Convert to the right kind of slashes.
-normalisePathSeps :: FilePath -> FilePath
-normalisePathSeps p = (\ c -> if isPathSeparator c then pathSeparator else c) <$> p
-
--- | Remove redundant trailing slashes and pick the right kind of slash.
-normaliseTrailingSep :: FilePath -> FilePath
-normaliseTrailingSep path = do
-  let path' = reverse path
-  let (sep, path'') = span isPathSeparator path'
-  let addSep = if null sep then id else (pathSeparator :)
-  reverse (addSep path'')
-
--- | Convert empty paths to the current directory, otherwise leave it
--- unchanged.
-emptyToCurDir :: FilePath -> FilePath
-emptyToCurDir ""   = "."
-emptyToCurDir path = path
+copyFile = copyFileWithMetadata
 #endif /* mingw32_HOST_OS */
 
 -- | Like `copyFile`, but does not touch the target if source and destination
