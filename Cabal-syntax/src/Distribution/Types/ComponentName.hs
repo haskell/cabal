@@ -15,7 +15,6 @@ import Prelude ()
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.LibraryName
-import Distribution.Types.LibraryName.Parsec
 import Distribution.Types.UnqualComponentName
 
 import qualified Distribution.Compat.CharParsing as P
