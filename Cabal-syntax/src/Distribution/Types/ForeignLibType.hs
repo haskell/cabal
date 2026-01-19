@@ -29,7 +29,6 @@ data ForeignLibType
     ForeignLibTypeUnknown
   deriving (Generic, Show, Read, Eq, Ord, Data)
 
-
 instance Pretty ForeignLibType where
   pretty ForeignLibNativeShared = Disp.text "native-shared"
   pretty ForeignLibNativeStatic = Disp.text "native-static"

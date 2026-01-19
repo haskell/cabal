@@ -61,7 +61,6 @@ data Language
     UnknownLanguage String
   deriving (Generic, Show, Read, Eq, Ord, Data)
 
-
 instance Binary Language
 instance Structured Language
 
@@ -120,7 +119,6 @@ data Extension
     -- pragma.
     UnknownExtension String
   deriving (Generic, Show, Read, Eq, Ord, Data)
-
 
 instance Binary Extension
 instance Structured Extension
@@ -562,7 +560,6 @@ data KnownExtension
     -- into a single one.
     OrPatterns
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Data)
-
 
 instance Binary KnownExtension
 instance Structured KnownExtension

@@ -45,7 +45,8 @@ data TriviaTree = TriviaTree
 
 instance Semigroup TriviaTree where
   TriviaTree locala belowa <> TriviaTree localb belowb =
-    TriviaTree (locala <> localb)
+    TriviaTree
+      (locala <> localb)
       (M.unionWith (<>) belowa belowb) -- The (<>) of map is clobbering, we need to use (<>) to join the values
 
 instance Monoid TriviaTree where
@@ -67,7 +68,7 @@ unmark ns tt = fromMaybe mempty (M.lookup ns (namedAnnotations tt))
 
 triviaToDoc :: Trivia -> Disp.Doc -> Disp.Doc
 triviaToDoc [] x = x
-triviaToDoc (t:ts) x = triviaToDoc ts (triviumToDoc t x)
+triviaToDoc (t : ts) x = triviaToDoc ts (triviumToDoc t x)
 
 triviumToDoc :: Trivium -> Disp.Doc -> Disp.Doc
 triviumToDoc t x = case t of

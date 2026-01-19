@@ -66,7 +66,6 @@ import Text.PrettyPrint (text)
 newtype UnitId = UnitId ShortText
   deriving (Generic, Read, Show, Eq, Ord, Data, NFData)
 
-
 instance Binary UnitId
 instance Structured UnitId
 
@@ -123,7 +122,6 @@ getHSLibraryName uid = "HS" ++ prettyShow uid
 -- unfilled holes.
 newtype DefUnitId = DefUnitId {unDefUnitId :: UnitId}
   deriving (Generic, Read, Show, Eq, Ord, Data, Binary, NFData, Pretty)
-
 
 instance Structured DefUnitId
 

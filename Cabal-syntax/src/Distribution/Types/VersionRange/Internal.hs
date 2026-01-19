@@ -69,7 +69,6 @@ instance Binary VersionRange
 instance Structured VersionRange
 instance NFData VersionRange where rnf = genericRnf
 
-
 -- | The version range @-any@. That is, a version range containing all
 -- versions.
 --
@@ -287,27 +286,26 @@ instance Prettier VersionRange where
 prettyVersionRange :: TriviaTree -> VersionRange -> Disp.Doc
 prettyVersionRange t0 vr = prettyVersionRange' t0 0 vr
 
-prettyVersionRange' :: TriviaTree -> Int -> VersionRange -> Disp.Doc 
+prettyVersionRange' :: TriviaTree -> Int -> VersionRange -> Disp.Doc
 prettyVersionRange' t0 d vr =
-  pTrace ("prettyVersionRange' t0\n" <> show t0)
-  $ case vr of
-    v0@(ThisVersion v)       -> let t = unmark (SomeNamespace v0) t0 in triviaToDoc (justAnnotation t0) $ Disp.text "==" <<>> prettier t v
-    v0@(LaterVersion v)      -> let t = unmark (SomeNamespace v0) t0 in triviaToDoc (justAnnotation t0) $ Disp.text ">" <<>> prettier t v
-    v0@(OrLaterVersion v)    -> let t = unmark (SomeNamespace v0) t0 in triviaToDoc (justAnnotation t0) $ Disp.text ">=" <<>> prettier t v
-    v0@(EarlierVersion v)    -> let t = unmark (SomeNamespace v0) t0 in triviaToDoc (justAnnotation t0) $ Disp.text "<" <<>> prettier t v
-    v0@(OrEarlierVersion v)  -> let t = unmark (SomeNamespace v0) t0 in triviaToDoc (justAnnotation t0) $ Disp.text "<=" <<>> prettier t v
-    v0@(MajorBoundVersion v) -> let t = unmark (SomeNamespace v0) t0 in triviaToDoc (justAnnotation t0) $ Disp.text "^>=" <<>> prettier t v
-
-    v@(UnionVersionRanges r1 r2) ->
+  pTrace ("prettyVersionRange' t0\n" <> show t0) $
+    case vr of
+      v0@(ThisVersion v) -> let t = unmark (SomeNamespace v0) t0 in triviaToDoc (justAnnotation t0) $ Disp.text "==" <<>> prettier t v
+      v0@(LaterVersion v) -> let t = unmark (SomeNamespace v0) t0 in triviaToDoc (justAnnotation t0) $ Disp.text ">" <<>> prettier t v
+      v0@(OrLaterVersion v) -> let t = unmark (SomeNamespace v0) t0 in triviaToDoc (justAnnotation t0) $ Disp.text ">=" <<>> prettier t v
+      v0@(EarlierVersion v) -> let t = unmark (SomeNamespace v0) t0 in triviaToDoc (justAnnotation t0) $ Disp.text "<" <<>> prettier t v
+      v0@(OrEarlierVersion v) -> let t = unmark (SomeNamespace v0) t0 in triviaToDoc (justAnnotation t0) $ Disp.text "<=" <<>> prettier t v
+      v0@(MajorBoundVersion v) -> let t = unmark (SomeNamespace v0) t0 in triviaToDoc (justAnnotation t0) $ Disp.text "^>=" <<>> prettier t v
+      v@(UnionVersionRanges r1 r2) ->
         let t = unmark (SomeNamespace v) t0
-        in triviaToDoc (justAnnotation t0)
-            $ parens (d > 0)
-            $ prettyVersionRange' t (d+1) r1 <+> Disp.text "||" <+> prettyVersionRange' t (d+0) r2
-    v@(IntersectVersionRanges r1 r2) ->
+         in triviaToDoc (justAnnotation t0) $
+              parens (d > 0) $
+                prettyVersionRange' t (d + 1) r1 <+> Disp.text "||" <+> prettyVersionRange' t (d + 0) r2
+      v@(IntersectVersionRanges r1 r2) ->
         let t = unmark (SomeNamespace v) t0
-        in    triviaToDoc (justAnnotation t0)
-              $ parens (d > 1)
-              $ prettyVersionRange' t (d+2) r1 <+> Disp.text "&&" <+> prettyVersionRange' t (d+1) r2
+         in triviaToDoc (justAnnotation t0) $
+              parens (d > 1) $
+                prettyVersionRange' t (d + 2) r1 <+> Disp.text "&&" <+> prettyVersionRange' t (d + 1) r2
   where
     parens True = Disp.parens
     parens False = id
@@ -377,8 +375,9 @@ versionRangeParser digitParser csv = fmap (\(_, x) -> x) $ versionRangeTriviaPar
 --
 -- @since 3.0
 versionRangeTriviaParser :: forall m. CabalParsing m => m Int -> CabalSpecVersion -> m (TriviaTree, VersionRange)
-versionRangeTriviaParser digitParser csv = expr >>= \x ->
-  -- pTrace ("versionRangeTriviaParser\n" <> show x) $
+versionRangeTriviaParser digitParser csv =
+  expr >>= \x ->
+    -- pTrace ("versionRangeTriviaParser\n" <> show x) $
     pure x
   where
     expr :: m (TriviaTree, VersionRange)
@@ -441,7 +440,7 @@ versionRangeTriviaParser digitParser csv = expr >>= \x ->
               checkWild wild
               let vr = (if wild then withinVersion else thisVersion) v
               let tvr = mark (SomeNamespace vr) $ fromNamedTrivia (SomeNamespace v) [PreTrivia preSpaces]
-              pure $ (tvr,vr)
+              pure $ (tvr, vr)
 
               -- ignore braces for now
               <|> (verSet' thisVersion =<< verSet)
@@ -455,7 +454,7 @@ versionRangeTriviaParser digitParser csv = expr >>= \x ->
 
               vr <- majorBoundVersion' v
               let tvr = mark (SomeNamespace vr) $ fromNamedTrivia (SomeNamespace v) [PreTrivia preSpaces]
-              pure (tvr,vr)
+              pure (tvr, vr)
 
               -- ignore braces for now
               <|> (verSet' majorBoundVersion =<< verSet)
@@ -469,7 +468,7 @@ versionRangeTriviaParser digitParser csv = expr >>= \x ->
 
           let withTVer ver =
                 let t = fromNamedTrivia (SomeNamespace v) [PreTrivia preSpaces]
-                in (mark (SomeNamespace ver) t, ver)
+                 in (mark (SomeNamespace ver) t, ver)
           case op of
             ">=" -> pure $ withTVer (orLaterVersion v)
             "<" -> pure $ withTVer (earlierVersion v)

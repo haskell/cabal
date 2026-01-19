@@ -25,10 +25,10 @@ import Distribution.Pretty
 import Distribution.Types.LibraryName
 import Distribution.Types.LibraryVisibility
 import Distribution.Types.MungedPackageName
+import Distribution.Types.Namespace
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
 import Distribution.Version
-import Distribution.Types.Namespace
 
 import qualified Data.Char as Char
 import qualified Data.Map as Map
@@ -202,7 +202,6 @@ maybePackageName ipi = case sourceLibName ipi of
 newtype ExposedModules = ExposedModules {getExposedModules :: [ExposedModule]}
   deriving (Show, Eq, Ord)
 
-
 instance Newtype [ExposedModule] ExposedModules
 
 instance Parsec ExposedModules where
@@ -216,7 +215,6 @@ instance Prettier ExposedModules where
 
 newtype CompatPackageKey = CompatPackageKey {getCompatPackageKey :: String}
   deriving (Ord, Eq, Show)
-
 
 instance Newtype String CompatPackageKey
 
@@ -234,7 +232,6 @@ instance Parsec CompatPackageKey where
 newtype InstWith = InstWith {getInstWith :: [(ModuleName, OpenModule)]}
   deriving (Ord, Eq, Show)
 
-
 instance Newtype [(ModuleName, OpenModule)] InstWith
 
 instance Pretty InstWith where
@@ -249,7 +246,6 @@ instance Parsec InstWith where
 -- | SPDX License expression or legacy license. Lenient parser, accepts either.
 newtype SpecLicenseLenient = SpecLicenseLenient {getSpecLicenseLenient :: Either SPDX.License License}
   deriving (Ord, Eq, Show)
-
 
 instance Newtype (Either SPDX.License License) SpecLicenseLenient
 

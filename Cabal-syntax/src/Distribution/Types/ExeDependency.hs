@@ -27,7 +27,6 @@ data ExeDependency
       VersionRange
   deriving (Generic, Read, Show, Eq, Ord, Data)
 
-
 instance Binary ExeDependency
 instance Structured ExeDependency
 instance NFData ExeDependency where rnf = genericRnf

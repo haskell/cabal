@@ -28,7 +28,6 @@ data AbiDependency = AbiDependency
   }
   deriving (Eq, Generic, Read, Show, Ord)
 
-
 instance Pretty AbiDependency where
   pretty (AbiDependency uid abi) =
     pretty uid <<>> Disp.char '=' <<>> pretty abi

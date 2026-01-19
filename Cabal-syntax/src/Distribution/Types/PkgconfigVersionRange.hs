@@ -39,7 +39,6 @@ data PkgconfigVersionRange
   | PcIntersectVersionRanges PkgconfigVersionRange PkgconfigVersionRange
   deriving (Generic, Read, Show, Eq, Ord, Data)
 
-
 instance Binary PkgconfigVersionRange
 instance Structured PkgconfigVersionRange
 instance NFData PkgconfigVersionRange where rnf = genericRnf

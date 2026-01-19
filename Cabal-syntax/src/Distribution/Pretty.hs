@@ -3,7 +3,6 @@ module Distribution.Pretty
   , prettyShow
   , defaultStyle
   , flatStyle
-
   , Prettier (..)
 
     -- * Utilities

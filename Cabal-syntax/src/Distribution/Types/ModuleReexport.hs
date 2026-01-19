@@ -26,7 +26,6 @@ data ModuleReexport = ModuleReexport
   }
   deriving (Eq, Ord, Generic, Read, Show, Data)
 
-
 instance Binary ModuleReexport
 instance Structured ModuleReexport
 instance NFData ModuleReexport where rnf = genericRnf

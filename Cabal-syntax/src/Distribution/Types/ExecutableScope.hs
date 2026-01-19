@@ -20,7 +20,6 @@ data ExecutableScope
   | ExecutablePrivate
   deriving (Generic, Show, Read, Eq, Ord, Data)
 
-
 instance Pretty ExecutableScope where
   pretty ExecutablePublic = Disp.text "public"
   pretty ExecutablePrivate = Disp.text "private"

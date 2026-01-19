@@ -90,8 +90,8 @@ import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
 
 import Distribution.Types.Annotation
-import Distribution.Types.Namespace
 import Distribution.Types.Dependency
+import Distribution.Types.Namespace
 
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.Map as M
@@ -864,7 +864,6 @@ formatOtherModules = alaList' VCat MQuoted
 newtype CompatDataDir = CompatDataDir {getCompatDataDir :: SymbolicPath Pkg (Dir DataDir)}
   deriving (Ord, Eq, Show)
 
-
 instance Newtype (SymbolicPath Pkg (Dir DataDir)) CompatDataDir
 
 instance Parsec CompatDataDir where
@@ -882,7 +881,6 @@ instance Prettier CompatDataDir where
 
 newtype CompatLicenseFile = CompatLicenseFile {getCompatLicenseFile :: [RelativePath Pkg File]}
   deriving (Ord, Eq, Show)
-
 
 instance Newtype [RelativePath Pkg File] CompatLicenseFile
 

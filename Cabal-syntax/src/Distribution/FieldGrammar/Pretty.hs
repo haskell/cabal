@@ -17,7 +17,7 @@ import Distribution.Compat.Newtype
 import Distribution.Compat.Prelude
 import Distribution.Fields.Field (FieldName)
 import Distribution.Fields.Pretty (PrettyField (..))
-import Distribution.Pretty (Pretty, Prettier (..), showFreeText, showFreeTextV3)
+import Distribution.Pretty (Prettier (..), Pretty, showFreeText, showFreeTextV3)
 import Distribution.Utils.Generic (toUTF8BS)
 import Text.PrettyPrint (Doc)
 import qualified Text.PrettyPrint as PP
@@ -26,8 +26,8 @@ import Prelude ()
 import Distribution.Types.Annotation
 import Distribution.Types.Namespace
 
-import Distribution.FieldGrammar.Class
 import Debug.Pretty.Simple
+import Distribution.FieldGrammar.Class
 
 import qualified Data.Map as M
 
@@ -62,8 +62,7 @@ instance FieldGrammar Prettier PrettyFieldGrammar where
   withScope ns (PrettyFG printer) =
     PrettyFG $ \v t s ->
       let t' = unmark ns t
-      in
-        -- pTrace ("withScope\n" <> show t') $
+       in -- pTrace ("withScope\n" <> show t') $
           printer v t' s
 
   blurFieldGrammar f (PrettyFG pp) = PrettyFG (\v t -> pp v t . aview f)
@@ -117,9 +116,8 @@ instance FieldGrammar Prettier PrettyFieldGrammar where
     where
       pp v t s =
         let t' = unmark (SomeNamespace fn) t
-         in
-            -- pTrace ("monoidalFieldAla\n" <> show t') $
-              ppField fn (prettierVersioned v t' (pack' _pack (aview l s)))
+         in -- pTrace ("monoidalFieldAla\n" <> show t') $
+            ppField fn (prettierVersioned v t' (pack' _pack (aview l s)))
 
   prefixedFields _fnPfx l = PrettyFG (\_ t -> pp . aview l)
     where

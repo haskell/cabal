@@ -18,7 +18,6 @@ import qualified Data.List.NonEmpty as NE
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
-
 -- | Type alias so we can use the shorter name PackageId.
 type PackageId = PackageIdentifier
 
@@ -30,7 +29,6 @@ data PackageIdentifier = PackageIdentifier
   -- ^ the version of this package, eg 1.2
   }
   deriving (Generic, Read, Show, Eq, Ord, Data)
-
 
 instance Binary PackageIdentifier
 instance Structured PackageIdentifier

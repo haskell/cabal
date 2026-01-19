@@ -128,7 +128,6 @@ data KnownRepoType
     Pijul
   deriving (Eq, Generic, Ord, Read, Show, Data, Enum, Bounded)
 
-
 instance Binary KnownRepoType
 instance Structured KnownRepoType
 instance NFData KnownRepoType where rnf = genericRnf
@@ -148,7 +147,6 @@ data RepoType
   = KnownRepoType KnownRepoType
   | OtherRepoType String
   deriving (Eq, Generic, Ord, Read, Show, Data)
-
 
 instance Binary RepoType
 instance Structured RepoType

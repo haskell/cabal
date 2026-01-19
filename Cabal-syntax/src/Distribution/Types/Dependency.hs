@@ -26,8 +26,8 @@ import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
 
-import Distribution.Types.Namespace
 import Distribution.Types.Annotation
+import Distribution.Types.Namespace
 
 import qualified Distribution.Compat.NonEmptySet as NES
 import qualified Text.PrettyPrint as PP
@@ -45,7 +45,6 @@ data Dependency
       VersionRange
       (NonEmptySet LibraryName)
   deriving (Generic, Read, Show, Eq, Ord, Data)
-
 
 depPkgName :: Dependency -> PackageName
 depPkgName (Dependency pn _ _) = pn
@@ -133,29 +132,29 @@ instance Prettier Dependency where
 -- >>> map (`simpleParsec'` "mylib:sub") [CabalSpecV2_4, CabalSpecV3_0] :: [Maybe Dependency]
 -- [Nothing,Just (Dependency (PackageName "mylib") (OrLaterVersion (mkVersion [0])) (fromNonEmpty (LSubLibName (UnqualComponentName "sub") :| [])))]
 instance Parsec Dependency where
-  triviaParsec = do
-    name <- parsec
+  triviaParsec =
+    do
+      name <- parsec
 
-    libs <- option mainLibSet $ do
-      _ <- char ':'
-      versionGuardMultilibs
-      NES.singleton <$> parseLib <|> parseMultipleLibs
+      libs <- option mainLibSet $ do
+        _ <- char ':'
+        versionGuardMultilibs
+        NES.singleton <$> parseLib <|> parseMultipleLibs
 
-    spaces -- https://github.com/haskell/cabal/issues/5846
-    -- TODO(leana8959): ^ register space at local scope
-    (verTrivia, ver) <-
-      let t = fromNamedTrivia (SomeNamespace anyVersion) [IsInjected]
-       in triviaParsec <|> pure (t, anyVersion)
-    let dep = mkDependency name ver libs
-    let depTrivia = mark (SomeNamespace dep) verTrivia
+      spaces -- https://github.com/haskell/cabal/issues/5846
+      -- TODO(leana8959): ^ register space at local scope
+      (verTrivia, ver) <-
+        let t = fromNamedTrivia (SomeNamespace anyVersion) [IsInjected]
+         in triviaParsec <|> pure (t, anyVersion)
+      let dep = mkDependency name ver libs
+      let depTrivia = mark (SomeNamespace dep) verTrivia
 
-    return
-      ( depTrivia
-      , dep
-      )
-
-    >>= \(t, x) ->
-      -- pTrace ("dependencyTriviaParser\n" <> show t) $
+      return
+        ( depTrivia
+        , dep
+        )
+      >>= \(t, x) ->
+        -- pTrace ("dependencyTriviaParser\n" <> show t) $
         pure (t, x)
     where
       parseLib = LSubLibName <$> parsec

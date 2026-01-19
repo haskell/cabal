@@ -42,8 +42,6 @@ data ModuleRenaming
     HidingRenaming [ModuleName]
   deriving (Show, Read, Eq, Ord, Data, Generic)
 
-
-
 -- | Interpret a 'ModuleRenaming' as a partial map from 'ModuleName'
 -- to 'ModuleName'.  For efficiency, you should partially apply it
 -- with 'ModuleRenaming' and then reuse it.

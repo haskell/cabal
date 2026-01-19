@@ -32,7 +32,6 @@ data BuildType
   | Hooks
   deriving (Generic, Show, Read, Eq, Ord, Data)
 
-
 instance Binary BuildType
 instance Structured BuildType
 instance NFData BuildType where rnf = genericRnf

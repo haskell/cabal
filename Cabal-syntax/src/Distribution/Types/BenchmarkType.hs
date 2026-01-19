@@ -24,7 +24,6 @@ data BenchmarkType
     BenchmarkTypeUnknown String Version
   deriving (Generic, Show, Read, Eq, Ord, Data)
 
-
 instance Binary BenchmarkType
 instance Structured BenchmarkType
 instance NFData BenchmarkType where rnf = genericRnf

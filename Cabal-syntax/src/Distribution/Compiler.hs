@@ -81,7 +81,6 @@ data CompilerFlavor
   | OtherCompiler String
   deriving (Generic, Show, Read, Eq, Ord, Data)
 
-
 instance Binary CompilerFlavor
 instance Structured CompilerFlavor
 instance NFData CompilerFlavor where rnf = genericRnf

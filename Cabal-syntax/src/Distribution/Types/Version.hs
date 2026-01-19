@@ -51,7 +51,6 @@ data Version
   -- to work.
   deriving (Data, Eq, Generic)
 
-
 instance Ord Version where
   compare (PV0 x) (PV0 y) = compare x y
   compare (PV1 x xs) (PV1 y ys) = case compare x y of
@@ -100,12 +99,12 @@ instance Prettier Version where
   prettier = prettierVersion
 
 prettierVersion t ver =
-  triviaToDoc (justAnnotation t)
-  $ Disp.hcat
-    ( Disp.punctuate
-        (Disp.char '.')
-        (map Disp.int $ versionNumbers ver)
-    )
+  triviaToDoc (justAnnotation t) $
+    Disp.hcat
+      ( Disp.punctuate
+          (Disp.char '.')
+          (map Disp.int $ versionNumbers ver)
+      )
 
 instance Parsec Version where
   parsec = mkVersion <$> toList <$> P.sepByNonEmpty versionDigitParser (P.char '.') <* tags

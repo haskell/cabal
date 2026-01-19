@@ -25,7 +25,6 @@ data PkgconfigDependency
       PkgconfigVersionRange
   deriving (Generic, Read, Show, Eq, Ord, Data)
 
-
 instance Binary PkgconfigDependency
 instance Structured PkgconfigDependency
 instance NFData PkgconfigDependency where rnf = genericRnf

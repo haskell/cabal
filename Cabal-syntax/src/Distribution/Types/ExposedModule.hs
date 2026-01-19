@@ -19,7 +19,6 @@ data ExposedModule = ExposedModule
   }
   deriving (Eq, Generic, Read, Show, Ord)
 
-
 instance Pretty ExposedModule where
   pretty (ExposedModule m reexport) =
     Disp.hsep

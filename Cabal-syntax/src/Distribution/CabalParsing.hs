@@ -35,4 +35,3 @@ class (P.CharParsing m, MonadPlus m, Fail.MonadFail m) => CabalParsing m where
   parsecHaskellString = stringLiteral
 
   askCabalSpecVersion :: m CabalSpecVersion
-

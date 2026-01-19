@@ -25,7 +25,6 @@ data LibraryVisibility
     LibraryVisibilityPrivate
   deriving (Generic, Show, Read, Eq, Ord, Data)
 
-
 instance Pretty LibraryVisibility where
   pretty LibraryVisibilityPublic = Disp.text "public"
   pretty LibraryVisibilityPrivate = Disp.text "private"

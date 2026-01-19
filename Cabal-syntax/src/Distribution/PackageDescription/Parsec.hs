@@ -241,7 +241,7 @@ parseAnnotatedGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs =
   -- TODO: remove the need for deepseq if `deepseq` in fact matters
   -- NOTE: IIRC it does affect (maximal) memory usage, which causes less GC pressure
   -- gpd2 `deepseq` return gpd2
-  -- agpd `deepseq` 
+  -- agpd `deepseq`
 
   -- TODO(leana8959): we currenty don't make this NFData for simplicity
   return agpd

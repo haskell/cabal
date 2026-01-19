@@ -33,7 +33,6 @@ data Mixin = Mixin
   }
   deriving (Show, Read, Eq, Ord, Data, Generic)
 
-
 instance Binary Mixin
 instance Structured Mixin
 

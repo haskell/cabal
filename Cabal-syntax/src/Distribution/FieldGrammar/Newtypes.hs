@@ -75,8 +75,8 @@ import Distribution.Version
   )
 import Text.PrettyPrint (Doc, comma, fsep, punctuate, text, vcat)
 
-import Distribution.Types.Namespace
 import Distribution.Types.Annotation
+import Distribution.Types.Namespace
 
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Set as Set
@@ -176,17 +176,18 @@ instance
   , Sep sep
   , Prettier b
   , Namespace a -- it's the old type we are trying to index in the trivia map
-  ) => Prettier (List sep b a) where
+  )
+  => Prettier (List sep b a)
+  where
   prettier t0 =
     let tLocal = justAnnotation t0
-    in  prettySep (Proxy :: Proxy sep)
-        . map
-            (\o ->
-              let tChildren = unmark (SomeNamespace o) t0
-              in
-                -- TODO(leana8959): restore unmarking
-                  -- pTrace ("instance prettierList tChildren\n" <> show tChildren) $
-                  -- pTrace ("instance prettierList t0\n" <> show t0) $
+     in prettySep (Proxy :: Proxy sep)
+          . map
+            ( \o ->
+                let tChildren = unmark (SomeNamespace o) t0
+                 in -- TODO(leana8959): restore unmarking
+                    -- pTrace ("instance prettierList tChildren\n" <> show tChildren) $
+                    -- pTrace ("instance prettierList t0\n" <> show t0) $
                     prettier t0 $ (pack :: a -> b) $ o
             )
           . unpack
@@ -282,7 +283,6 @@ instance Prettier Token where prettier _ = pretty
 newtype Token' = Token' {getToken' :: String}
   deriving (Eq, Show, Ord)
 
-
 instance Newtype String Token'
 
 instance Parsec Token' where
@@ -297,7 +297,6 @@ instance Prettier Token' where prettier _ = pretty
 newtype MQuoted a = MQuoted {getMQuoted :: a}
   deriving (Eq, Ord, Show)
 
-
 instance Newtype a (MQuoted a)
 
 instance Parsec a => Parsec (MQuoted a) where
@@ -306,7 +305,7 @@ instance Parsec a => Parsec (MQuoted a) where
 instance Pretty a => Pretty (MQuoted a) where
   pretty = pretty . unpack
 
-instance (Prettier a) => Prettier (MQuoted a) where
+instance Prettier a => Prettier (MQuoted a) where
   prettier t = prettier t . unpack
 
 -- | Filepath are parsed as 'Token'.
@@ -388,7 +387,6 @@ instance (Typeable from, Typeable to) => Prettier (RelativePathNT from to) where
 --     Version -> CabalSpecVersion -> Parsec -> ...
 newtype SpecVersion = SpecVersion {getSpecVersion :: CabalSpecVersion}
   deriving (Eq, Show, Ord) -- instances needed for tests
-
 
 instance Newtype CabalSpecVersion SpecVersion
 
@@ -478,7 +476,6 @@ instance Prettier SpecVersion where prettier _ = pretty
 newtype SpecLicense = SpecLicense {getSpecLicense :: Either SPDX.License License}
   deriving (Show, Ord, Eq)
 
-
 instance Newtype (Either SPDX.License License) SpecLicense
 
 instance Parsec SpecLicense where
@@ -490,7 +487,7 @@ instance Parsec SpecLicense where
 
 instance Pretty SpecLicense where
   pretty = either pretty pretty . unpack
-instance Prettier SpecLicense where prettier _ = pretty 
+instance Prettier SpecLicense where prettier _ = pretty
 
 -------------------------------------------------------------------------------
 -- TestedWith
@@ -499,7 +496,6 @@ instance Prettier SpecLicense where prettier _ = pretty
 -- | Version range or just version
 newtype TestedWith = TestedWith {getTestedWith :: (CompilerFlavor, VersionRange)}
   deriving (Ord, Eq, Show)
-
 
 instance Newtype (CompilerFlavor, VersionRange) TestedWith
 

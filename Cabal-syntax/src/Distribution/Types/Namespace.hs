@@ -1,9 +1,9 @@
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- This module defines class 'Namespace' and 'SomeNamespace'.
@@ -15,16 +15,16 @@
 -- This solves module cycle and allows us to deal with FieldGrammar polymorphically.
 module Distribution.Types.Namespace where
 
+import Data.Typeable
 import Distribution.Compat.Prelude
 import Prelude ()
-import Data.Typeable
 
 type Namespace a =
-      ( Typeable a
-      , Eq a
-      , Ord a
-      , Show a -- The Show constraint is simply for debugging
-      )
+  ( Typeable a
+  , Eq a
+  , Ord a
+  , Show a -- The Show constraint is simply for debugging
+  )
 
 data SomeNamespace = forall a. Namespace a => SomeNamespace a
 deriving instance Show SomeNamespace
@@ -43,4 +43,4 @@ fromNamespace :: Namespace a => SomeNamespace -> Maybe a
 fromNamespace (SomeNamespace ns) = cast ns
 
 isNamespace :: Namespace a => a -> SomeNamespace -> Bool
-isNamespace a someB = maybe False (==a) (fromNamespace someB)
+isNamespace a someB = maybe False (== a) (fromNamespace someB)

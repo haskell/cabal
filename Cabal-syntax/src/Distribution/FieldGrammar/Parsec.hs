@@ -179,14 +179,14 @@ warnMultipleSingularFields fn (x : xs) = do
 instance FieldGrammar Parsec ParsecFieldGrammar where
   withScope :: SomeNamespace -> ParsecFieldGrammar s a -> ParsecFieldGrammar s a
   withScope ns (ParsecFG s s' parser) =
-    ParsecFG s s' $ \v fs -> do
-      -- Run the inner parser and mark its annotation
-      (t, x) <- parser v fs
-      let t' = mark ns t
-      pure (t', x)
-
-      >>= \(t, x) ->
-        -- pTrace ("withScope\n" <> show t) $
+    ParsecFG s s' $ \v fs ->
+      do
+        -- Run the inner parser and mark its annotation
+        (t, x) <- parser v fs
+        let t' = mark ns t
+        pure (t', x)
+        >>= \(t, x) ->
+          -- pTrace ("withScope\n" <> show t) $
           pure (t, x)
 
   blurFieldGrammar _ (ParsecFG s s' parser) = ParsecFG s s' parser
@@ -296,13 +296,13 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
     where
       parser v fields = case Map.lookup fn fields of
         Nothing -> (pure . pure) mempty
-        Just xs -> do
-          (t, x) <- foldMap (unpack' _pack <$>) <$> traverse (uncurry (parseOne v)) (zip xs [1 ..])
-          let t' = mark (SomeNamespace fn) t
-          pure (t', x)
-
-          >>= \(t, x) ->
-            -- pTrace ("monoidalFieldAla\n" <> show t) $
+        Just xs ->
+          do
+            (t, x) <- foldMap (unpack' _pack <$>) <$> traverse (uncurry (parseOne v)) (zip xs [1 ..])
+            let t' = mark (SomeNamespace fn) t
+            pure (t', x)
+            >>= \(t, x) ->
+              -- pTrace ("monoidalFieldAla\n" <> show t) $
               pure (t, x)
 
       -- Different fields
