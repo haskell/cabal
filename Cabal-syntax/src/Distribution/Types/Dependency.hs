@@ -46,7 +46,6 @@ data Dependency
       (NonEmptySet LibraryName)
   deriving (Generic, Read, Show, Eq, Ord, Data)
 
-instance Namespace Dependency
 
 depPkgName :: Dependency -> PackageName
 depPkgName (Dependency pn _ _) = pn

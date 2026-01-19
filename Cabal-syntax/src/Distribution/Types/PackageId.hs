@@ -34,7 +34,6 @@ data PackageIdentifier = PackageIdentifier
   }
   deriving (Generic, Read, Show, Eq, Ord, Data)
 
-instance Namespace PackageIdentifier
 
 instance Binary PackageIdentifier
 instance Structured PackageIdentifier

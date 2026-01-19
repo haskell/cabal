@@ -108,7 +108,6 @@ data RepoKind
     RepoThis
   | RepoKindUnknown String
   deriving (Eq, Generic, Ord, Read, Show, Data)
-instance Namespace RepoKind
 
 instance Binary RepoKind
 instance Structured RepoKind
@@ -130,7 +129,6 @@ data KnownRepoType
     Pijul
   deriving (Eq, Generic, Ord, Read, Show, Data, Enum, Bounded)
 
-instance Namespace KnownRepoType
 
 instance Binary KnownRepoType
 instance Structured KnownRepoType
@@ -152,7 +150,6 @@ data RepoType
   | OtherRepoType String
   deriving (Eq, Generic, Ord, Read, Show, Data)
 
-instance Namespace RepoType
 
 instance Binary RepoType
 instance Structured RepoType

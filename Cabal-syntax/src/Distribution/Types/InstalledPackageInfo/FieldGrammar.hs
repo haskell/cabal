@@ -202,7 +202,6 @@ maybePackageName ipi = case sourceLibName ipi of
 newtype ExposedModules = ExposedModules {getExposedModules :: [ExposedModule]}
   deriving (Show, Eq, Ord)
 
-instance Namespace ExposedModules
 
 instance Newtype [ExposedModule] ExposedModules
 
@@ -218,7 +217,6 @@ instance Prettier ExposedModules where
 newtype CompatPackageKey = CompatPackageKey {getCompatPackageKey :: String}
   deriving (Ord, Eq, Show)
 
-instance Namespace CompatPackageKey
 
 instance Newtype String CompatPackageKey
 
@@ -236,7 +234,6 @@ instance Parsec CompatPackageKey where
 newtype InstWith = InstWith {getInstWith :: [(ModuleName, OpenModule)]}
   deriving (Ord, Eq, Show)
 
-instance Namespace InstWith
 
 instance Newtype [(ModuleName, OpenModule)] InstWith
 
@@ -253,7 +250,6 @@ instance Parsec InstWith where
 newtype SpecLicenseLenient = SpecLicenseLenient {getSpecLicenseLenient :: Either SPDX.License License}
   deriving (Ord, Eq, Show)
 
-instance Namespace SpecLicenseLenient
 
 instance Newtype (Either SPDX.License License) SpecLicenseLenient
 

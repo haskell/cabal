@@ -27,7 +27,6 @@ data LibraryVisibility
     LibraryVisibilityPrivate
   deriving (Generic, Show, Read, Eq, Ord, Data)
 
-instance Namespace LibraryVisibility
 
 instance Pretty LibraryVisibility where
   pretty LibraryVisibilityPublic = Disp.text "public"

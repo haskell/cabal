@@ -45,7 +45,6 @@ data License
     License LicenseExpression
   deriving (Show, Read, Eq, Ord, Data, Generic)
 
-instance Namespace License
 
 instance Binary License
 instance Structured License

@@ -35,7 +35,6 @@ data LibraryName
   | LSubLibName UnqualComponentName
   deriving (Eq, Generic, Ord, Read, Show, Data)
 
-instance Namespace LibraryName
 
 instance Binary LibraryName
 instance Structured LibraryName

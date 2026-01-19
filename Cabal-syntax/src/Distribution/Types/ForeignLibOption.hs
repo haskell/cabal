@@ -26,7 +26,6 @@ data ForeignLibOption
     ForeignLibStandalone
   deriving (Generic, Show, Read, Eq, Ord, Data)
 
-instance Namespace ForeignLibOption
 
 instance Pretty ForeignLibOption where
   pretty ForeignLibStandalone = Disp.text "standalone"

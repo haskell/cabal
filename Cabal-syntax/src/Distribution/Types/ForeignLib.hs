@@ -64,7 +64,6 @@ data ForeignLib = ForeignLib
   }
   deriving (Generic, Show, Read, Eq, Ord, Data)
 
-instance Namespace LibVersionInfo
 
 data LibVersionInfo = LibVersionInfo Int Int Int deriving (Data, Eq, Generic)
 

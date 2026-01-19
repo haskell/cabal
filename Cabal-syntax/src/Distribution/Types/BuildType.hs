@@ -34,7 +34,6 @@ data BuildType
   | Hooks
   deriving (Generic, Show, Read, Eq, Ord, Data)
 
-instance Namespace BuildType
 
 instance Binary BuildType
 instance Structured BuildType

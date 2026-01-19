@@ -30,7 +30,6 @@ data Module
   = Module DefUnitId ModuleName
   deriving (Generic, Read, Show, Eq, Ord, Data)
 
-instance Namespace Module
 
 instance Binary Module
 instance Structured Module

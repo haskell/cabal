@@ -26,7 +26,6 @@ data PkgconfigDependency
       PkgconfigVersionRange
   deriving (Generic, Read, Show, Eq, Ord, Data)
 
-instance Namespace PkgconfigDependency
 
 instance Binary PkgconfigDependency
 instance Structured PkgconfigDependency

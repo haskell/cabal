@@ -31,7 +31,6 @@ data TestType
     TestTypeUnknown String Version
   deriving (Generic, Show, Read, Eq, Ord, Data)
 
-instance Namespace TestType
 
 instance Binary TestType
 instance Structured TestType

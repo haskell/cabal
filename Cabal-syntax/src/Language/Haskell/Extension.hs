@@ -63,7 +63,6 @@ data Language
     UnknownLanguage String
   deriving (Generic, Show, Read, Eq, Ord, Data)
 
-instance Namespace Language
 
 instance Binary Language
 instance Structured Language
@@ -124,7 +123,6 @@ data Extension
     UnknownExtension String
   deriving (Generic, Show, Read, Eq, Ord, Data)
 
-instance Namespace Extension
 
 instance Binary Extension
 instance Structured Extension
@@ -567,7 +565,6 @@ data KnownExtension
     OrPatterns
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Data)
 
-instance Namespace KnownExtension
 
 instance Binary KnownExtension
 instance Structured KnownExtension

@@ -35,7 +35,6 @@ import qualified Text.PrettyPrint as Disp
 data MungedPackageName = MungedPackageName !PackageName !LibraryName
   deriving (Generic, Read, Show, Eq, Ord, Data)
 
-instance Namespace MungedPackageName
 
 instance Binary MungedPackageName
 instance Structured MungedPackageName

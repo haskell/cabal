@@ -40,7 +40,6 @@ newtype UnqualComponentName = UnqualComponentName ShortText
     , Monoid -- TODO: bad enabler of bad monoids
     )
 
-instance Namespace UnqualComponentName
 
 -- | Convert 'UnqualComponentName' to 'String'
 --

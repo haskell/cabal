@@ -30,7 +30,6 @@ data ExeDependency
       VersionRange
   deriving (Generic, Read, Show, Eq, Ord, Data)
 
-instance Namespace ExeDependency
 
 instance Binary ExeDependency
 instance Structured ExeDependency

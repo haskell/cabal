@@ -22,7 +22,6 @@ data ExecutableScope
   | ExecutablePrivate
   deriving (Generic, Show, Read, Eq, Ord, Data)
 
-instance Namespace ExecutableScope
 
 instance Pretty ExecutableScope where
   pretty ExecutablePublic = Disp.text "public"

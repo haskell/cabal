@@ -52,7 +52,6 @@ data Version
   -- to work.
   deriving (Data, Eq, Generic)
 
-instance Namespace Version
 
 instance Ord Version where
   compare (PV0 x) (PV0 y) = compare x y

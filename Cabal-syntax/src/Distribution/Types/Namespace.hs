@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -22,23 +23,12 @@ import Data.Typeable
 import qualified Data.ByteString as BS
 import qualified Distribution.Utils.ShortText as ST
 
-class
-  ( Typeable a
-  , Eq a
-  , Ord a
-  , Show a -- The Show constraint is simply for debugging
-  ) => Namespace a
-instance Namespace Char
-instance Namespace Int
-instance Namespace Bool
-instance Namespace BS.ByteString
-instance Namespace ST.ShortText
-instance Namespace a => Namespace [a]
-instance Namespace a => Namespace (Identity a)
-instance (Namespace a, Namespace b) => Namespace (a, b)
-instance (Namespace a, Namespace b, Namespace c) => Namespace (a, b, c)
-instance (Namespace a, Namespace b, Namespace c, Namespace d) => Namespace (a, b, c, d)
-instance (Namespace a, Namespace b, Namespace c, Namespace d, Namespace e) => Namespace (a, b, c, d, e)
+type Namespace a =
+      ( Typeable a
+      , Eq a
+      , Ord a
+      , Show a -- The Show constraint is simply for debugging
+      )
 
 data SomeNamespace = forall a. Namespace a => SomeNamespace a
 deriving instance Show SomeNamespace

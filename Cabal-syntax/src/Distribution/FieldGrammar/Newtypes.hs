@@ -142,13 +142,6 @@ instance Sep NoCommaFSep where
 newtype List sep b a = List {_getList :: [a]}
   deriving (Show, Ord, Eq)
 
-instance
-  ( Typeable sep
-  , Typeable a
-  , Typeable b
-  , Namespace a
-  ) => Namespace (List sep b a)
-
 -- | 'alaList' and 'alaList'' are simply 'List', with additional phantom
 -- arguments to constrain the resulting type
 --
@@ -274,7 +267,6 @@ instance (Newtype a b, Sep sep, Pretty b) => Pretty (NonEmpty' sep b a) where
 -- | Haskell string or @[^ ,]+@
 newtype Token = Token {getToken :: String}
   deriving (Eq, Ord, Show)
-instance Namespace Token
 
 instance Newtype String Token
 
@@ -290,7 +282,6 @@ instance Prettier Token where prettier _ = pretty
 newtype Token' = Token' {getToken' :: String}
   deriving (Eq, Show, Ord)
 
-instance Namespace Token'
 
 instance Newtype String Token'
 
@@ -306,7 +297,6 @@ instance Prettier Token' where prettier _ = pretty
 newtype MQuoted a = MQuoted {getMQuoted :: a}
   deriving (Eq, Ord, Show)
 
-instance Namespace a => Namespace (MQuoted a)
 
 instance Newtype a (MQuoted a)
 
@@ -323,7 +313,6 @@ instance (Prettier a) => Prettier (MQuoted a) where
 newtype FilePathNT = FilePathNT {getFilePathNT :: String}
   deriving (Ord, Eq, Show)
 
-instance Namespace FilePathNT
 instance Prettier FilePathNT where prettier _ = pretty
 
 instance Newtype String FilePathNT
@@ -342,8 +331,6 @@ instance Pretty FilePathNT where
 -- to disallow empty paths.
 newtype SymbolicPathNT from to = SymbolicPathNT {getSymbolicPathNT :: SymbolicPath from to}
   deriving (Ord, Eq, Show)
-
-instance (Typeable from, Typeable to) => Namespace (SymbolicPathNT from to)
 
 instance Newtype (SymbolicPath from to) (SymbolicPathNT from to)
 
@@ -365,8 +352,6 @@ instance (Typeable from, Typeable to) => Prettier (SymbolicPathNT from to) where
 -- later with a different error message, see 'Distribution.PackageDescription.Check.Paths.checkPath')
 newtype RelativePathNT from to = RelativePathNT {getRelativePathNT :: RelativePath from to}
   deriving (Ord, Eq, Show)
-
-instance (Typeable from, Typeable to) => Namespace (RelativePathNT from to)
 
 instance Newtype (RelativePath from to) (RelativePathNT from to)
 
@@ -404,7 +389,6 @@ instance (Typeable from, Typeable to) => Prettier (RelativePathNT from to) where
 newtype SpecVersion = SpecVersion {getSpecVersion :: CabalSpecVersion}
   deriving (Eq, Show, Ord) -- instances needed for tests
 
-instance Namespace SpecVersion
 
 instance Newtype CabalSpecVersion SpecVersion
 
@@ -494,7 +478,6 @@ instance Prettier SpecVersion where prettier _ = pretty
 newtype SpecLicense = SpecLicense {getSpecLicense :: Either SPDX.License License}
   deriving (Show, Ord, Eq)
 
-instance Namespace SpecLicense
 
 instance Newtype (Either SPDX.License License) SpecLicense
 
@@ -517,7 +500,6 @@ instance Prettier SpecLicense where prettier _ = pretty
 newtype TestedWith = TestedWith {getTestedWith :: (CompilerFlavor, VersionRange)}
   deriving (Ord, Eq, Show)
 
-instance Namespace TestedWith
 
 instance Newtype (CompilerFlavor, VersionRange) TestedWith
 

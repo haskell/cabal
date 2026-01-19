@@ -44,7 +44,6 @@ data ModuleRenaming
     HidingRenaming [ModuleName]
   deriving (Show, Read, Eq, Ord, Data, Generic)
 
-instance Namespace ModuleRenaming
 
 
 -- | Interpret a 'ModuleRenaming' as a partial map from 'ModuleName'

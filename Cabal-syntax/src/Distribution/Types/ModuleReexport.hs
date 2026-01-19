@@ -29,7 +29,6 @@ data ModuleReexport = ModuleReexport
   }
   deriving (Eq, Ord, Generic, Read, Show, Data)
 
-instance Namespace ModuleReexport
 
 instance Binary ModuleReexport
 instance Structured ModuleReexport

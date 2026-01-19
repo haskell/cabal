@@ -30,7 +30,6 @@ import qualified Text.PrettyPrint as Disp
 newtype PackageName = PackageName ShortText
   deriving (Generic, Read, Show, Eq, Ord, Data)
 
-instance Namespace PackageName
 
 -- | Convert 'PackageName' to 'String'
 unPackageName :: PackageName -> String

@@ -21,7 +21,6 @@ data ExposedModule = ExposedModule
   }
   deriving (Eq, Generic, Read, Show, Ord)
 
-instance Namespace ExposedModule
 
 instance Pretty ExposedModule where
   pretty (ExposedModule m reexport) =

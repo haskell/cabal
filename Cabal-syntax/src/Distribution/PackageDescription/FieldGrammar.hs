@@ -864,7 +864,6 @@ formatOtherModules = alaList' VCat MQuoted
 newtype CompatDataDir = CompatDataDir {getCompatDataDir :: SymbolicPath Pkg (Dir DataDir)}
   deriving (Ord, Eq, Show)
 
-instance Namespace CompatDataDir
 
 instance Newtype (SymbolicPath Pkg (Dir DataDir)) CompatDataDir
 
@@ -884,7 +883,6 @@ instance Prettier CompatDataDir where
 newtype CompatLicenseFile = CompatLicenseFile {getCompatLicenseFile :: [RelativePath Pkg File]}
   deriving (Ord, Eq, Show)
 
-instance Namespace CompatLicenseFile
 
 instance Newtype [RelativePath Pkg File] CompatLicenseFile
 

@@ -82,7 +82,6 @@ data CompilerFlavor
   | OtherCompiler String
   deriving (Generic, Show, Read, Eq, Ord, Data)
 
-instance Namespace CompilerFlavor
 
 instance Binary CompilerFlavor
 instance Structured CompilerFlavor

@@ -30,7 +30,6 @@ data AbiDependency = AbiDependency
   }
   deriving (Eq, Generic, Read, Show, Ord)
 
-instance Namespace AbiDependency
 
 instance Pretty AbiDependency where
   pretty (AbiDependency uid abi) =

@@ -31,7 +31,6 @@ data LegacyExeDependency
       VersionRange
   deriving (Generic, Read, Show, Eq, Ord, Data)
 
-instance Namespace LegacyExeDependency
 
 instance Binary LegacyExeDependency
 instance Structured LegacyExeDependency

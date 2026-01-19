@@ -30,7 +30,6 @@ import qualified Distribution.Compat.CharParsing as P
 data PackageVersionConstraint = PackageVersionConstraint PackageName VersionRange
   deriving (Generic, Read, Show, Eq, Data, Ord)
 
-instance Namespace PackageVersionConstraint
 
 instance Binary PackageVersionConstraint
 instance Structured PackageVersionConstraint

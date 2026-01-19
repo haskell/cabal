@@ -35,7 +35,6 @@ import Text.PrettyPrint (text)
 newtype ComponentId = ComponentId ShortText
   deriving (Generic, Read, Show, Eq, Ord, Data)
 
-instance Namespace ComponentId
 
 -- | Construct a 'ComponentId' from a 'String'
 --

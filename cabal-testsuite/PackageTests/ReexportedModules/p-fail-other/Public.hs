@@ -1,1 +1,2 @@
-../p/Public.hs
+module Public where
+modname = "Public"
