@@ -12,7 +12,6 @@ import Prelude ()
 
 import Distribution.Parsec
 import Distribution.Pretty
-import Distribution.Types.Namespace
 import Distribution.Utils.Generic (isAsciiAlphaNum)
 
 import qualified Data.ByteString as BS

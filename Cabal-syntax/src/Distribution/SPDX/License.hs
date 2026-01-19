@@ -15,8 +15,6 @@ import Distribution.SPDX.LicenseExpression
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
-import Distribution.Types.Namespace
-
 -- | Declared license.
 -- See [section 3.15 of SPDX Specification 2.1](https://spdx.org/spdx-specification-21-web-version#h.1hmsyys)
 --

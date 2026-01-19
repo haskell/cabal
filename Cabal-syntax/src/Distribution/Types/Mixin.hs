@@ -18,9 +18,6 @@ import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
 
-
-import Distribution.Types.Namespace
-
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as PP
 

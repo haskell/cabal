@@ -17,10 +17,6 @@ import Distribution.Parsec
 import Distribution.Pretty
 import Text.PrettyPrint (char, text)
 
-import Distribution.Types.Namespace
-
-import Distribution.Types.Version
-
 -- | The \"test-type\" field in the test suite stanza.
 data TestType
   = -- | \"type: exitcode-stdio-x.y\"

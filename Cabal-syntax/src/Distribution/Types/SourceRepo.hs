@@ -19,7 +19,6 @@ import Distribution.Utils.Generic (lowercase)
 
 import Distribution.Parsec
 import Distribution.Pretty
-import Distribution.Types.Namespace
 
 import qualified Data.Map.Strict as M
 import qualified Distribution.Compat.CharParsing as P

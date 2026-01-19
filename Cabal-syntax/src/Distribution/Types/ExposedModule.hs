@@ -13,8 +13,6 @@ import Distribution.Pretty
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
-import Distribution.Types.Namespace
-
 data ExposedModule = ExposedModule
   { exposedName :: ModuleName
   , exposedReexport :: Maybe OpenModule

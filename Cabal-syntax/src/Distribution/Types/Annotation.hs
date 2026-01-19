@@ -20,17 +20,10 @@ module Distribution.Types.Annotation where
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import qualified Data.ByteString as BS
-import qualified Data.List.NonEmpty as NE
-import Data.Map (Map)
-import qualified Data.Map as M
-import Data.Maybe (fromMaybe)
-
-import qualified Text.PrettyPrint as Disp
-
-import Control.DeepSeq
-
 import Distribution.Types.Namespace
+
+import qualified Data.Map as M
+import qualified Text.PrettyPrint as Disp
 
 type Trivia = [Trivium]
 data Trivium

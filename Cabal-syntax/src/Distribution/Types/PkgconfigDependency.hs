@@ -10,7 +10,6 @@ import Prelude ()
 
 import Distribution.Types.PkgconfigName
 import Distribution.Types.PkgconfigVersionRange
-import Distribution.Types.Namespace
 
 import Distribution.Parsec
 import Distribution.Pretty

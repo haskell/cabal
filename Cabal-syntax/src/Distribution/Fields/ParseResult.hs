@@ -28,10 +28,6 @@ import Distribution.Parsec.Source
 import Distribution.Parsec.Warning
 import Distribution.Version (Version)
 
-import Distribution.Types.Annotation
-
-import qualified Data.Map as Map
-
 -- | A monad with failure and accumulating errors and warnings.
 newtype ParseResult src a = PR
   { unPR

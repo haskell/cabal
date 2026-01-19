@@ -19,8 +19,6 @@ import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.PackageName
 
-import Distribution.Types.Namespace
-
 -- | An unqualified component name, for any kind of component.
 --
 -- This is distinguished from a 'ComponentName' and 'ComponentId'. The former

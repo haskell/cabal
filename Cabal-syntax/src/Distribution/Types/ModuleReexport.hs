@@ -13,9 +13,6 @@ import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.PackageName
 
-import Distribution.Types.Namespace
-
-
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 

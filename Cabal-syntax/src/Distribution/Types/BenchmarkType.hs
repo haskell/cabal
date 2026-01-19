@@ -16,8 +16,6 @@ import Distribution.Pretty
 import Distribution.Version
 import Text.PrettyPrint (char, text)
 
-import Distribution.Types.Namespace
-
 -- | The \"benchmark-type\" field in the benchmark stanza.
 data BenchmarkType
   = -- | \"type: exitcode-stdio-x.y\"

@@ -15,9 +15,6 @@ import Distribution.Pretty
 import Distribution.Types.UnitId
 import qualified Text.PrettyPrint as Disp
 
-import Distribution.Types.Namespace
-
-
 -- | A module identity uniquely identifies a Haskell module by
 -- qualifying a 'ModuleName' with the 'UnitId' which defined
 -- it.  This type distinguishes between two packages

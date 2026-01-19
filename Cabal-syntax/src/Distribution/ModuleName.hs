@@ -34,8 +34,6 @@ import Distribution.Pretty
 import Distribution.Utils.ShortText (ShortText, fromShortText, toShortText)
 import System.FilePath (pathSeparator)
 
-import Distribution.Types.Namespace
-
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.DList as DList
 import qualified Text.PrettyPrint as Disp

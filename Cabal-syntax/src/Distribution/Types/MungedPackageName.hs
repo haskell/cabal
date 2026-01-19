@@ -10,8 +10,6 @@ module Distribution.Types.MungedPackageName
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Types.Namespace
-
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.LibraryName

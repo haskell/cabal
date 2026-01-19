@@ -13,8 +13,6 @@ import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
 import Prelude ()
 
-import Distribution.Types.Namespace
-
 import Distribution.Parsec
 import Distribution.Pretty
 import qualified Text.PrettyPrint as Disp

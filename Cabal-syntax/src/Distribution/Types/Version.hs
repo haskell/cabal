@@ -24,7 +24,6 @@ import Distribution.Parsec
 import Distribution.Pretty
 
 import Distribution.Types.Annotation
-import Distribution.Types.Namespace
 
 import qualified Data.Version as Base
 import qualified Distribution.Compat.CharParsing as P

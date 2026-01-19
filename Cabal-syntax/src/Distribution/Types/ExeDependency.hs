@@ -16,9 +16,6 @@ import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
 import Distribution.Version (VersionRange, anyVersion, isAnyVersion)
 
-import Distribution.Types.Version
-import Distribution.Types.Namespace
-
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as PP
 

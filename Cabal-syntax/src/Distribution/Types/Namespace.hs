@@ -17,11 +17,7 @@ module Distribution.Types.Namespace where
 
 import Distribution.Compat.Prelude
 import Prelude ()
-
-import Control.DeepSeq
 import Data.Typeable
-import qualified Data.ByteString as BS
-import qualified Distribution.Utils.ShortText as ST
 
 type Namespace a =
       ( Typeable a

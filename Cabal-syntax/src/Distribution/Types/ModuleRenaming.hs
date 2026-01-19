@@ -22,8 +22,6 @@ import qualified Data.Set as Set
 import qualified Distribution.Compat.CharParsing as P
 import Text.PrettyPrint (comma, hsep, parens, punctuate, text)
 
-import Distribution.Types.Namespace
-
 -- | Renaming applied to the modules provided by a package.
 -- The boolean indicates whether or not to also include all of the
 -- original names of modules.  Thus, @ModuleRenaming False []@ is

@@ -14,8 +14,6 @@ import qualified Distribution.Compat.CharParsing as P
 import Distribution.Parsec
 import Distribution.Pretty
 
-import Distribution.Types.Namespace
-
 import Text.PrettyPrint (text)
 
 -- | ABI Hashes

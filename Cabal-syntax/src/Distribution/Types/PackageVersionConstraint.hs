@@ -18,8 +18,6 @@ import Distribution.Types.Version
 import Distribution.Types.VersionRange.Internal
 import Distribution.Version (simplifyVersionRange)
 
-import Distribution.Types.Namespace
-
 import qualified Distribution.Compat.CharParsing as P
 
 -- | A version constraint on a package. Different from 'ExeDependency' and

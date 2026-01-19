@@ -7,8 +7,6 @@ module Distribution.Types.AnnotatedGenericPackageDescription
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Control.DeepSeq
-
 import Distribution.Types.Annotation
 import Distribution.Types.GenericPackageDescription
 

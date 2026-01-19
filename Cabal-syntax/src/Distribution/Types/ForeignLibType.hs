@@ -15,8 +15,6 @@ import Prelude ()
 import Distribution.Parsec
 import Distribution.Pretty
 
-import Distribution.Types.Namespace
-
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 

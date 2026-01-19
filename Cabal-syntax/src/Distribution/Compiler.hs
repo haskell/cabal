@@ -54,7 +54,6 @@ import Prelude ()
 import Language.Haskell.Extension
 
 import Distribution.Version (Version, mkVersion', nullVersion)
-import Distribution.Types.Namespace
 
 import qualified Distribution.Compat.CharParsing as P
 import Distribution.Package (PackageName)

@@ -27,7 +27,6 @@ import Distribution.Types.BuildInfo
 import Distribution.Types.ForeignLibOption
 import Distribution.Types.ForeignLibType
 import Distribution.Types.UnqualComponentName
-import Distribution.Types.Namespace
 import Distribution.Utils.Path
 import Distribution.Version
 

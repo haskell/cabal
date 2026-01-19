@@ -24,7 +24,6 @@ import Distribution.Pretty
 import Distribution.Types.UnqualComponentName
 
 import Distribution.Types.Annotation
-import Distribution.Types.Namespace
 
 import qualified Data.List.NonEmpty as NEL
 import qualified Distribution.Compat.CharParsing as P

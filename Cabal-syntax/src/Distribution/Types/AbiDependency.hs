@@ -12,8 +12,6 @@ import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Package as Package
 import qualified Text.PrettyPrint as Disp
 
-import Distribution.Types.Namespace
-
 -- | An ABI dependency is a dependency on a library which also
 -- records the ABI hash ('abiHash') of the library it depends
 -- on.

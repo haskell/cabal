@@ -18,7 +18,6 @@ import Prelude ()
 import Distribution.CabalSpecVersion
 import Distribution.Parsec
 import Distribution.Pretty
-import Distribution.Types.Namespace
 import Distribution.Types.PkgconfigVersion
 import Distribution.Types.Version
 import Distribution.Types.VersionInterval
