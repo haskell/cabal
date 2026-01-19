@@ -23,8 +23,6 @@ import Distribution.Utils.Generic (isAsciiAlphaNum)
 import Distribution.Utils.Structured (Structured (..), nominalStructure, typeVersion)
 import Distribution.SPDX.LicenseListVersion
 
-import Distribution.Types.Namespace
-
 import qualified Data.Binary.Get as Binary
 import qualified Data.Binary.Put as Binary
 import qualified Data.Map.Strict as Map
@@ -709,8 +707,6 @@ data LicenseId
     | ZPL_2_0 -- ^ @ZPL-2.0@, Zope Public License 2.0
     | ZPL_2_1 -- ^ @ZPL-2.1@, Zope Public License 2.1
   deriving (Eq, Ord, Enum, Bounded, Show, Read, Data)
-
-instance Namespace LicenseId
 
 instance Binary LicenseId where
     -- Word16 is encoded in big endianness
