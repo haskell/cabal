@@ -56,9 +56,6 @@ import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Version
 
-import Distribution.Types.Version.Parsec
-import Distribution.Types.VersionRange.Parsec
-
 import Distribution.Types.Namespace
 
 import qualified Data.Map.Strict as Map

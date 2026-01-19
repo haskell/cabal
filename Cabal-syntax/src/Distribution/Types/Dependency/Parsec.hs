@@ -20,7 +20,6 @@ import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.Version.Parsec
-import Distribution.Types.VersionRange.Parsec
 
 import Distribution.Types.Namespace
 import Debug.Pretty.Simple

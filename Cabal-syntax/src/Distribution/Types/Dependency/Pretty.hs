@@ -28,7 +28,6 @@ import Distribution.Types.LibraryName.Pretty
 import Distribution.Types.PackageName.Internal
 import Distribution.Types.PackageName.Pretty
 import Distribution.Types.UnqualComponentName
-import Distribution.Types.VersionRange.Pretty
 
 import Distribution.Types.Annotation
 import Distribution.Types.Namespace

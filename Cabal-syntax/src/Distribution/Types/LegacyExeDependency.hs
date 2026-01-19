@@ -16,7 +16,6 @@ import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
 import Distribution.Types.Version.Parsec
-import Distribution.Types.VersionRange.Parsec
 import Distribution.Types.Namespace
 
 -- | Describes a legacy `build-tools`-style dependency on an executable
