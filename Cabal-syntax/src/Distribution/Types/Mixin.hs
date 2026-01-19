@@ -16,7 +16,6 @@ import Distribution.Pretty
 import Distribution.Types.IncludeRenaming
 import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
-import Distribution.Types.PackageName.Parsec
 import Distribution.Types.UnqualComponentName
 
 

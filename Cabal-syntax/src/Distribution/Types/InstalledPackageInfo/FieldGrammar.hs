@@ -26,7 +26,6 @@ import Distribution.Types.LibraryName
 import Distribution.Types.LibraryVisibility
 import Distribution.Types.MungedPackageName
 import Distribution.Types.PackageName
-import Distribution.Types.PackageName.Parsec
 import Distribution.Types.UnqualComponentName
 import Distribution.Version
 import Distribution.Types.Namespace

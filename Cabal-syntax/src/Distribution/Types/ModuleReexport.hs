@@ -12,7 +12,6 @@ import Distribution.ModuleName
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.PackageName
-import Distribution.Types.PackageName.Parsec
 
 import Distribution.Types.Namespace
 

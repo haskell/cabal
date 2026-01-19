@@ -184,9 +184,6 @@ library
     Distribution.Types.PackageId
     Distribution.Types.PackageId.Lens
     Distribution.Types.PackageName
-    Distribution.Types.PackageName.Internal
-    Distribution.Types.PackageName.Pretty
-    Distribution.Types.PackageName.Parsec
     Distribution.Types.PackageVersionConstraint
     Distribution.Types.PkgconfigDependency
     Distribution.Types.PkgconfigName
