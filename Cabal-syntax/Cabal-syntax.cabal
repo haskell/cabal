@@ -105,9 +105,6 @@ library
     Distribution.PackageDescription.Quirks
     Distribution.PackageDescription.Utils
     Distribution.Parsec
-    Distribution.Parsec.Class
-    Distribution.ParsecParser
-    Distribution.CabalParsing
     Distribution.Parsec.Error
     Distribution.Parsec.FieldLineStream
     Distribution.Parsec.Position
