@@ -50,8 +50,6 @@ import Distribution.Types.Module
 import Distribution.Types.UnitId
 import Distribution.Utils.Base62
 
-import Distribution.Types.Namespace
-
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
@@ -92,8 +90,6 @@ data OpenUnitId
     -- is guaranteed not to have any holes.
     DefiniteUnitId DefUnitId
   deriving (Generic, Read, Show, Eq, Ord, Data)
-
-instance Namespace OpenUnitId
 
 -- TODO: cache holes?
 
@@ -168,8 +164,6 @@ data OpenModule
   = OpenModule OpenUnitId ModuleName
   | OpenModuleVar ModuleName
   deriving (Generic, Read, Show, Eq, Ord, Data)
-
-instance Namespace OpenModule
 
 instance Binary OpenModule
 instance Structured OpenModule
