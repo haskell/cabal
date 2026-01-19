@@ -4,6 +4,14 @@
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
+-- |
+-- This module defines class 'Namespace' and 'SomeNamespace'.
+-- The idea is taken from here https://hackage.haskell.org/package/xmonad-0.18.0/docs/src/XMonad.Core.html#Message.
+--
+-- The goal is to create a "open" sum type where it becomes possible to put
+-- any (with constraints) datatype we want as a key so it is associated with some trivia.
+--
+-- This solves module cycle and allows us to deal with FieldGrammar polymorphically.
 module Distribution.Types.Namespace where
 
 import Distribution.Compat.Prelude

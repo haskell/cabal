@@ -1,6 +1,20 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE StrictData #-}
 
+-- |
+-- This module defines 'TriviaTree', a recursive map structure.
+-- It helps us remember which data is associated with which trivia, by mirroring the shape of the parse tree.
+--
+-- A trivia tree is (currently) defined as a tree that has "unnamed" and those that are named.
+-- The unnamed ones 'justAnnotation' is associated to the current data structure we have in scope,
+-- and the named ones 'namedAnnotations' corresponds to the substructures.
+--
+-- See Distribution.Types.Namespace to see how we compare data as a key of the tree.
+--
+-- Two important ways to manipulate a 'TriviaTree' is 'mark' and 'unmark'.
+--
+-- 'mark' takes a namespace and a trivia tree, and "marks" it as below a Namespace
+-- 'unmark' is the inverse of 'mark', asks the question "what are the trivia associated with Namespace ns".
 module Distribution.Types.Annotation where
 
 import Distribution.Compat.Prelude
