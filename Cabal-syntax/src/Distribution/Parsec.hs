@@ -49,8 +49,10 @@ module Distribution.Parsec
   , parsecQuoted
   , parsecMaybeQuoted
   , parsecCommaList
+  , triviaParsecCommaList
   , parsecCommaNonEmpty
   , parsecLeadingCommaList
+  , triviaParsecLeadingCommaList
   , parsecLeadingCommaNonEmpty
   , parsecOptCommaList
   , parsecLeadingOptCommaList
@@ -63,8 +65,10 @@ import Data.Char (digitToInt, intToDigit)
 import Data.List (transpose)
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Prelude
+import Distribution.Compat.CharParsing
 import Distribution.Parsec.Error (PError (..), PErrorWithSource (..), showPError, showPErrorWithSource)
 
+import qualified Data.Bifunctor as Bi
 import Data.Monoid (Last (..))
 import Distribution.Parsec.FieldLineStream (FieldLineStream, fieldLineStreamFromBS, fieldLineStreamFromString)
 import Distribution.Parsec.Position (Position (..), incPos, retPos, showPos, zeroPos)
@@ -313,11 +317,58 @@ parsecStandard f = do
 -- each component must contain an alphabetic character, to avoid
 -- ambiguity in identifiers like foo-1 (the 1 is the version number).
 
+triviaParsecCommaList :: CabalParsing m => m a -> m [(TriviaTree, a)]
+triviaParsecCommaList p = toList <$> sepByNonEmpty lp comma
+  where
+    lp = flip (,) <$> p <*> ((\s -> TriviaTree [PostTrivia s] mempty) <$> spaces')
+    comma = (++) <$> P.string "," <*> spaces' P.<?> "comma"
+
 parsecCommaList :: CabalParsing m => m a -> m [a]
 parsecCommaList p = P.sepBy (p <* P.spaces) (P.char ',' *> P.spaces P.<?> "comma")
 
 parsecCommaNonEmpty :: CabalParsing m => m a -> m (NonEmpty a)
 parsecCommaNonEmpty p = P.sepByNonEmpty (p <* P.spaces) (P.char ',' *> P.spaces P.<?> "comma")
+
+type SeparatorAnnotations a = [SeparatorAnnotation a]
+data SeparatorAnnotation a
+  = Leading a
+  | Trailing a
+
+-- |
+-- Like 'sepEndByNonEmpty' but keeps the parsed separators.
+-- Used by exact printing.
+sepEndByNonEmpty' :: CabalParsing m => m a -> m sep -> m (NonEmpty (SeparatorAnnotations sep, a))
+sepEndByNonEmpty' p sep = do
+  f <- p
+  s <- sep
+  rest <- sepEndBy' p sep
+  let rest' = case rest of
+        [] -> []
+        ( (triv, r) : rs) -> (Leading s : triv, r) : rs
+  pure
+    ( ([], f) :|  rest' )
+
+sepByNonEmpty' :: CabalParsing m => m a -> m sep -> m (NonEmpty (SeparatorAnnotations sep, a))
+sepByNonEmpty' p sep = do
+  f <- p
+  rest <- many ((,) <$> (pure . Leading <$> sep) <*> p)
+  pure
+    ( ([], f) :| rest )
+
+-- |
+-- Like 'sepEndBy' but keeps the parsed separators.
+-- Used by exact printing.
+sepEndBy' :: CabalParsing m => m a -> m sep -> m [(SeparatorAnnotations sep, a)]
+sepEndBy' p sep = sepEndBy1' p sep <|> pure []
+
+sepEndBy1' :: CabalParsing m => m a -> m sep -> m [(SeparatorAnnotations sep, a)]
+sepEndBy1' p sep = toList <$> sepEndByNonEmpty' p sep
+
+sepAnnToTriviaTree :: SeparatorAnnotations String -> TriviaTree
+sepAnnToTriviaTree [] = mempty
+sepAnnToTriviaTree ( sep : seps ) = case sep of
+  Leading l -> TriviaTree [PreTrivia l] mempty <> sepAnnToTriviaTree seps
+  Trailing t -> TriviaTree [PostTrivia t] mempty <> sepAnnToTriviaTree seps
 
 -- | Like 'parsecCommaList' but accept leading or trailing comma.
 --
@@ -326,15 +377,25 @@ parsecCommaNonEmpty p = P.sepByNonEmpty (p <* P.spaces) (P.char ',' *> P.spaces 
 -- (comma p)*    -- leading comma
 -- (p comma)*    -- trailing comma
 -- @
-parsecLeadingCommaList :: CabalParsing m => m a -> m [a]
-parsecLeadingCommaList p = do
+triviaParsecLeadingCommaList :: CabalParsing m => m a -> m [(TriviaTree, a)]
+triviaParsecLeadingCommaList p = do
   c <- P.optional comma
   case c of
-    Nothing -> toList <$> P.sepEndByNonEmpty lp comma <|> pure []
-    Just _ -> toList <$> P.sepByNonEmpty lp comma
+    Nothing -> do
+      xs <- toList <$> sepEndByNonEmpty' lp comma <|> pure []
+      let xs' = map (Bi.first sepAnnToTriviaTree) xs
+      pure xs'
+    Just _ -> do
+      xs <- toList <$> sepByNonEmpty' lp comma
+      let xs' = map (Bi.first sepAnnToTriviaTree) xs
+      pure xs'
   where
+    -- TODO(leana8959):
     lp = p <* P.spaces
-    comma = P.char ',' *> P.spaces P.<?> "comma"
+    comma = (++) <$> P.string "," <*> spaces' P.<?> "comma"
+
+parsecLeadingCommaList :: CabalParsing m => m a -> m [a]
+parsecLeadingCommaList = (fmap . fmap) snd . triviaParsecLeadingCommaList
 
 -- |
 --

@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -98,17 +99,28 @@ data FSep = FSep
 -- | Paragraph fill list without commas. Displayed with 'fsep'.
 data NoCommaFSep = NoCommaFSep
 
+-- Trivia counterparts associate trivia associated with each data
 class Sep sep where
   prettySep :: Proxy sep -> [Doc] -> Doc
+  prettierSep :: Proxy sep -> [(TriviaTree, Doc)] -> Doc
+  prettierSep p  = prettySep p . map snd
 
   parseSep :: CabalParsing m => Proxy sep -> m a -> m [a]
+  parseSep p = (fmap . map) snd . triviaParseSep p
+  triviaParseSep :: CabalParsing m => Proxy sep -> m a -> m [(TriviaTree, a)]
+  triviaParseSep p = (fmap . map) (mempty,) . parseSep p
+
   parseSepNE :: CabalParsing m => Proxy sep -> m a -> m (NonEmpty a)
+  triviaParseSepNE :: CabalParsing m => Proxy sep -> m a -> m (NonEmpty (TriviaTree, a))
+  triviaParseSepNE p = (fmap . fmap) (mempty,) . parseSepNE p
 
 instance Sep CommaVCat where
   prettySep _ = vcat . punctuate comma
-  parseSep _ p = do
+  -- Dependency List is such a type
+  triviaParseSep _ p = do
     v <- askCabalSpecVersion
-    if v >= CabalSpecV2_2 then parsecLeadingCommaList p else parsecCommaList p
+    -- TODO(leana8959): trace the output here
+    if v >= CabalSpecV2_2 then triviaParsecLeadingCommaList p else triviaParsecCommaList p
   parseSepNE _ p = do
     v <- askCabalSpecVersion
     if v >= CabalSpecV2_2 then parsecLeadingCommaNonEmpty p else parsecCommaNonEmpty p
@@ -160,12 +172,20 @@ alaList' _ _ = List
 instance Newtype [a] (List sep wrapper a)
 
 -- Multiplicity within fields
-instance (Newtype a b, Sep sep, Parsec b) => Parsec (List sep b a) where
+instance
+  ( Newtype a b
+  , Sep sep
+  , Parsec b
+  , Namespace a
+  , Show b
+  ) => Parsec (List sep b a) where
   triviaParsec = do
     (ts, bs) <- unzip <$> parseSep (Proxy :: Proxy sep) triviaParsec
+
     -- TODO(leana8959): list numbering
     -- TODO(leana8959): mirror the unmarking below
-    pure (mconcat ts, pack $ map (unpack :: b -> a) bs)
+    pTrace ("List parser got data" <> show (map (unpack :: b -> a) bs)) $
+      pure (mconcat ts, pack $ map (unpack :: b -> a) bs)
 
 instance (Newtype a b, Sep sep, Pretty b) => Pretty (List sep b a) where
   pretty = prettySep (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . unpack
@@ -182,15 +202,9 @@ instance
   prettier t0 =
     let tLocal = justAnnotation t0
      in prettySep (Proxy :: Proxy sep)
-          . map
-            ( \o ->
-                let tChildren = unmark (SomeNamespace o) t0
-                 in -- TODO(leana8959): restore unmarking
-                    -- pTrace ("instance prettierList tChildren\n" <> show tChildren) $
-                    -- pTrace ("instance prettierList t0\n" <> show t0) $
-                    prettier t0 $ (pack :: a -> b) $ o
-            )
+          . map (prettier t0 . (pack :: a -> b))
           . unpack
+          . \x -> pTrace ("List printer got data\n" <> show x) x
 
 -- | Like 'List', but for 'Set'.
 --
