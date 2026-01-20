@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RankNTypes #-}
@@ -53,6 +54,10 @@ module Distribution.Parsec
   , parsecCommaNonEmpty
   , parsecLeadingCommaList
   , triviaParsecLeadingCommaList
+  , triviaParsecLeadingCommaListNonEmpty
+  , triviaParsecCommaNonEmpty
+  , triviaParsecLeadingOptCommaList
+  , triviaParsecOptCommaList
   , parsecLeadingCommaNonEmpty
   , parsecOptCommaList
   , parsecLeadingOptCommaList
@@ -77,6 +82,7 @@ import Numeric (showIntAtBase)
 import Prelude ()
 
 import Distribution.Types.Annotation
+import Distribution.Types.Namespace
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.DList as DList
@@ -317,17 +323,51 @@ parsecStandard f = do
 -- each component must contain an alphabetic character, to avoid
 -- ambiguity in identifiers like foo-1 (the 1 is the version number).
 
-triviaParsecCommaList :: CabalParsing m => m a -> m [(TriviaTree, a)]
-triviaParsecCommaList p = toList <$> sepByNonEmpty lp comma
+triviaParsecCommaList :: (CabalParsing m, Namespace a) => m (TriviaTree, a) -> m [(TriviaTree, a)]
+triviaParsecCommaList p = toList <$> sepByNonEmpty p' comma
   where
-    lp = flip (,) <$> p <*> ((\s -> TriviaTree [PostTrivia s] mempty) <$> spaces')
     comma = (++) <$> P.string "," <*> spaces' P.<?> "comma"
+    p' = do -- p * spaces
+      (t, x) <- p
+      s <- spaces'
+      let t' = mark (SomeNamespace x) (TriviaTree [PostTrivia s] mempty)
+      pure (t', x)
+
+triviaParsecCommaListNE
+  :: (CabalParsing m, Namespace a)
+  => m (TriviaTree, a) -> m (NonEmpty (TriviaTree, a))
+triviaParsecCommaListNE p = sepByNonEmpty p comma
+  where
+    comma = (++) <$> P.string "," <*> spaces' P.<?> "comma"
+    p' = do -- p * spaces
+      (t, x) <- p
+      s <- spaces'
+      let t' = mark (SomeNamespace x) (TriviaTree [PostTrivia s] mempty)
+      pure (t', x)
 
 parsecCommaList :: CabalParsing m => m a -> m [a]
 parsecCommaList p = P.sepBy (p <* P.spaces) (P.char ',' *> P.spaces P.<?> "comma")
 
 parsecCommaNonEmpty :: CabalParsing m => m a -> m (NonEmpty a)
 parsecCommaNonEmpty p = P.sepByNonEmpty (p <* P.spaces) (P.char ',' *> P.spaces P.<?> "comma")
+
+triviaParsecCommaNonEmpty
+  :: (CabalParsing m, Namespace a)
+  => m (TriviaTree, a) -> m (NonEmpty (TriviaTree, a))
+triviaParsecCommaNonEmpty p = do
+  sepByNonEmpty' p' comma
+  where
+    p' = do -- p * spaces
+      (t, x) <- p
+      s <- spaces'
+      let t' = mark (SomeNamespace x) (TriviaTree [PostTrivia s] mempty)
+      pure (t', x)
+
+    comma :: CabalParsing m => m TriviaTree
+    comma = do
+      void $ P.string ","
+      s <- spaces'
+      pure $ TriviaTree [PostTrivia s] mempty
 
 type SeparatorAnnotations a = [SeparatorAnnotation a]
 data SeparatorAnnotation a
@@ -337,38 +377,46 @@ data SeparatorAnnotation a
 -- |
 -- Like 'sepEndByNonEmpty' but keeps the parsed separators.
 -- Used by exact printing.
-sepEndByNonEmpty' :: CabalParsing m => m a -> m sep -> m (NonEmpty (SeparatorAnnotations sep, a))
+sepEndByNonEmpty'
+  :: (CabalParsing m, Namespace a)
+  => m (TriviaTree, a) -> m TriviaTree -> m (NonEmpty (TriviaTree, a))
 sepEndByNonEmpty' p sep = do
-  f <- p
-  s <- sep
-  rest <- sepEndBy' p sep
-  let rest' = case rest of
-        [] -> []
-        ( (triv, r) : rs) -> (Leading s : triv, r) : rs
-  pure
-    ( ([], f) :|  rest' )
+  u <- do
+    (t, x) <- p
+    s :: TriviaTree <- sep
+    let t' = t <> mark (SomeNamespace x) s
+    pure (t', x)
 
-sepByNonEmpty' :: CabalParsing m => m a -> m sep -> m (NonEmpty (SeparatorAnnotations sep, a))
+  us <- sepEndBy' p sep
+  pure ( u :| us )
+
+
+sepByNonEmpty'
+  :: (CabalParsing m, Namespace a)
+  => m (TriviaTree, a) -> m TriviaTree -> m (NonEmpty (TriviaTree, a))
 sepByNonEmpty' p sep = do
-  f <- p
-  rest <- many ((,) <$> (pure . Leading <$> sep) <*> p)
-  pure
-    ( ([], f) :| rest )
+  -- p * (sep p)*
+  u <- p
+  us <- many $ do
+      s <- sep
+      (t, x) <- p
+      let t' = t <> mark (SomeNamespace x) s
+      pure (t', x)
+
+  pure ( u :| us )
 
 -- |
 -- Like 'sepEndBy' but keeps the parsed separators.
 -- Used by exact printing.
-sepEndBy' :: CabalParsing m => m a -> m sep -> m [(SeparatorAnnotations sep, a)]
+sepEndBy'
+  :: (CabalParsing m, Namespace a)
+  => m (TriviaTree, a) -> m TriviaTree -> m [(TriviaTree, a)]
 sepEndBy' p sep = sepEndBy1' p sep <|> pure []
 
-sepEndBy1' :: CabalParsing m => m a -> m sep -> m [(SeparatorAnnotations sep, a)]
+sepEndBy1'
+  :: (CabalParsing m, Namespace a)
+  => m (TriviaTree, a) -> m TriviaTree -> m [(TriviaTree, a)]
 sepEndBy1' p sep = toList <$> sepEndByNonEmpty' p sep
-
-sepAnnToTriviaTree :: SeparatorAnnotations String -> TriviaTree
-sepAnnToTriviaTree [] = mempty
-sepAnnToTriviaTree ( sep : seps ) = case sep of
-  Leading l -> TriviaTree [PreTrivia l] mempty <> sepAnnToTriviaTree seps
-  Trailing t -> TriviaTree [PostTrivia t] mempty <> sepAnnToTriviaTree seps
 
 -- | Like 'parsecCommaList' but accept leading or trailing comma.
 --
@@ -377,25 +425,67 @@ sepAnnToTriviaTree ( sep : seps ) = case sep of
 -- (comma p)*    -- leading comma
 -- (p comma)*    -- trailing comma
 -- @
-triviaParsecLeadingCommaList :: CabalParsing m => m a -> m [(TriviaTree, a)]
+triviaParsecLeadingCommaList
+  :: forall m a
+   . (CabalParsing m, Namespace a)
+  => m (TriviaTree, a) -> m [(TriviaTree, a)]
 triviaParsecLeadingCommaList p = do
   c <- P.optional comma
   case c of
-    Nothing -> do
-      xs <- toList <$> sepEndByNonEmpty' lp comma <|> pure []
-      let xs' = map (Bi.first sepAnnToTriviaTree) xs
-      pure xs'
-    Just _ -> do
-      xs <- toList <$> sepByNonEmpty' lp comma
-      let xs' = map (Bi.first sepAnnToTriviaTree) xs
-      pure xs'
+    Nothing -> toList <$> sepEndByNonEmpty' p' comma <|> pure []
+    Just _ -> toList <$> sepByNonEmpty' p' comma
   where
+    p' :: (CabalParsing m, Namespace a) => m (TriviaTree, a)
+    p' = do
+      (t, x) <- p
+      s <- spaces'
+      let t' = t <> mark (SomeNamespace x) (TriviaTree [PostTrivia s] mempty)
+      pure (t', x)
+
     -- TODO(leana8959):
-    lp = p <* P.spaces
-    comma = (++) <$> P.string "," <*> spaces' P.<?> "comma"
+    -- TriviaTree doesn't make sense when it's not in relationship with a data
+    -- How do we represent this?
+    comma :: CabalParsing m => m TriviaTree
+    comma = do
+      void $ P.string ","
+      s <- spaces'
+      pure $ TriviaTree [PostTrivia s] mempty
+
+triviaParsecLeadingCommaListNonEmpty
+  :: forall m a
+   . (CabalParsing m, Namespace a)
+  => m (TriviaTree, a) -> m (NonEmpty (TriviaTree, a))
+triviaParsecLeadingCommaListNonEmpty p = do
+  c <- P.optional comma
+  case c of
+    Nothing -> sepEndByNonEmpty' p' comma
+    Just _ -> sepByNonEmpty' p' comma
+  where
+    p' :: (CabalParsing m, Namespace a) => m (TriviaTree, a)
+    p' = do
+      (t, x) <- p
+      s <- spaces'
+      let t' = t <> mark (SomeNamespace x) (TriviaTree [PostTrivia s] mempty)
+      pure (t', x)
+
+    -- TODO(leana8959):
+    -- TriviaTree doesn't make sense when it's not in relationship with a data
+    -- How do we represent this?
+    comma :: CabalParsing m => m TriviaTree
+    comma = do
+      void $ P.string ","
+      s <- spaces'
+      pure $ TriviaTree [PostTrivia s] mempty
 
 parsecLeadingCommaList :: CabalParsing m => m a -> m [a]
-parsecLeadingCommaList = (fmap . fmap) snd . triviaParsecLeadingCommaList
+parsecLeadingCommaList p = do
+  c <- P.optional comma
+  case c of
+    Nothing -> toList <$> P.sepEndByNonEmpty lp comma <|> pure []
+    Just _ -> toList <$> P.sepByNonEmpty lp comma
+  where
+    lp = p <* P.spaces
+    comma = P.char ',' *> P.spaces P.<?> "comma"
 
 -- |
 --
@@ -414,6 +504,20 @@ parsecOptCommaList :: CabalParsing m => m a -> m [a]
 parsecOptCommaList p = P.sepBy (p <* P.spaces) (P.optional comma)
   where
     comma = P.char ',' *> P.spaces
+
+triviaParsecOptCommaList
+  :: forall m a. (CabalParsing m, Namespace a)
+  => m (TriviaTree, a) -> m [(TriviaTree, a)]
+triviaParsecOptCommaList p = P.sepBy p' (P.optional comma)
+  where
+    p' :: (CabalParsing m, Namespace a) => m (TriviaTree, a)
+    p' = do
+      (t, x) <- p
+      s <- spaces'
+      let t' = t <> mark (SomeNamespace x) (TriviaTree [PostTrivia s] mempty)
+      pure (t', x)
+
+    comma = P.char ',' *> P.spaces P.<?> "comma"
 
 -- | Like 'parsecOptCommaList' but
 --
@@ -444,6 +548,43 @@ parsecLeadingOptCommaList p = do
       case c of
         Nothing -> (x :) <$> many lp
         Just _ -> (x :) <$> P.sepEndBy lp comma
+
+sepEndBy1Start'
+  :: forall m a
+   . (CabalParsing m, Namespace a)
+  => m (TriviaTree, a) -> m TriviaTree -> m [(TriviaTree, a)]
+sepEndBy1Start' p comma = do
+  x <- p
+  c <- P.optional comma
+  case c of
+    Nothing -> (x :) <$> many p
+    Just _ -> (x :) <$> P.sepEndBy p comma
+
+triviaParsecLeadingOptCommaList
+  :: forall m a
+   . (CabalParsing m, Namespace a)
+  => m (TriviaTree, a) -> m [(TriviaTree, a)]
+triviaParsecLeadingOptCommaList p = do
+  c <- P.optional comma
+  case c of
+    Nothing -> sepEndBy1Start' p' comma <|> pure []
+    Just _ -> toList <$> sepByNonEmpty' p' comma
+  where
+    p' :: (CabalParsing m, Namespace a) => m (TriviaTree, a)
+    p' = do
+      (t, x) <- p
+      s <- spaces'
+      let t' = t <> mark (SomeNamespace x) (TriviaTree [PostTrivia s] mempty)
+      pure (t', x)
+
+    -- TODO(leana8959):
+    -- TriviaTree doesn't make sense when it's not in relationship with a data
+    -- How do we represent this?
+    comma :: CabalParsing m => m TriviaTree
+    comma = do
+      void $ P.string ","
+      s <- spaces'
+      pure $ TriviaTree [PostTrivia s] mempty
 
 -- | Content isn't unquoted
 parsecQuoted :: CabalParsing m => m a -> m a

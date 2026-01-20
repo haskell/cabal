@@ -102,25 +102,72 @@ data NoCommaFSep = NoCommaFSep
 -- Trivia counterparts associate trivia associated with each data
 class Sep sep where
   prettySep :: Proxy sep -> [Doc] -> Doc
-  prettierSep :: Proxy sep -> [(TriviaTree, Doc)] -> Doc
-  prettierSep p  = prettySep p . map snd
 
   parseSep :: CabalParsing m => Proxy sep -> m a -> m [a]
-  parseSep p = (fmap . map) snd . triviaParseSep p
-  triviaParseSep :: CabalParsing m => Proxy sep -> m a -> m [(TriviaTree, a)]
-  triviaParseSep p = (fmap . map) (mempty,) . parseSep p
-
   parseSepNE :: CabalParsing m => Proxy sep -> m a -> m (NonEmpty a)
-  triviaParseSepNE :: CabalParsing m => Proxy sep -> m a -> m (NonEmpty (TriviaTree, a))
-  triviaParseSepNE p = (fmap . fmap) (mempty,) . parseSepNE p
+
+class TriviaSep sep where
+  prettierSep :: Proxy sep -> [(TriviaTree, Doc)] -> Doc
+  triviaParseSep
+    :: (CabalParsing m, Namespace a)
+    => Proxy sep -> m (TriviaTree, a) -> m [(TriviaTree, a)]
+
+  triviaParseSepNE
+    :: (CabalParsing m, Namespace a)
+    => Proxy sep -> m (TriviaTree, a) -> m (NonEmpty (TriviaTree, a))
+
+-- NOTE(leana8959): Dependency List is such a type
+instance TriviaSep CommaVCat where
+  -- FIXME(leana8959):
+  prettierSep _ = undefined
+    vcat . punctuate comma . map snd
+
+  triviaParseSep _ p = do
+    v <- askCabalSpecVersion
+    if v >= CabalSpecV2_2 then triviaParsecLeadingCommaList p else triviaParsecCommaList p
+
+instance TriviaSep CommaFSep where
+  -- FIXME(leana8959):
+  prettierSep _ = fsep . punctuate comma . map snd
+
+  triviaParseSep _ p = do
+    v <- askCabalSpecVersion
+    if v >= CabalSpecV2_2 then triviaParsecLeadingCommaList p else triviaParsecCommaList p
+
+  triviaParseSepNE _ p = do
+    v <- askCabalSpecVersion
+    if v >= CabalSpecV2_2 then triviaParsecLeadingCommaListNonEmpty p else triviaParsecCommaNonEmpty p
+
+instance TriviaSep VCat where
+  -- FIXME(leana8959):
+  prettierSep _ = vcat . map snd
+
+  triviaParseSep _ p = do
+    v <- askCabalSpecVersion
+    if v >= CabalSpecV3_0 then triviaParsecLeadingOptCommaList p else triviaParsecOptCommaList p
+
+  -- TODO(leana8959):
+  triviaParseSepNE _ p = NE.some1 (p <* P.spaces)
+
+instance TriviaSep FSep where
+  prettierSep _ = fsep . map snd
+  triviaParseSep _ p = do
+    v <- askCabalSpecVersion
+    if v >= CabalSpecV3_0 then triviaParsecLeadingOptCommaList p else triviaParsecOptCommaList p
+
+  -- TODO(leana8959):
+  triviaParseSepNE _ p = NE.some1 (p <* P.spaces)
+
+instance TriviaSep NoCommaFSep where
+  prettierSep _ = fsep . map snd
+  triviaParseSep _ p = many (p <* P.spaces)
+  triviaParseSepNE _ p = NE.some1 (p <* P.spaces)
 
 instance Sep CommaVCat where
   prettySep _ = vcat . punctuate comma
-  -- Dependency List is such a type
-  triviaParseSep _ p = do
+  parseSep _ p = do
     v <- askCabalSpecVersion
-    -- TODO(leana8959): trace the output here
-    if v >= CabalSpecV2_2 then triviaParsecLeadingCommaList p else triviaParsecCommaList p
+    if v >= CabalSpecV2_2 then parsecLeadingCommaList p else parsecCommaList p
   parseSepNE _ p = do
     v <- askCabalSpecVersion
     if v >= CabalSpecV2_2 then parsecLeadingCommaNonEmpty p else parsecCommaNonEmpty p
@@ -174,13 +221,16 @@ instance Newtype [a] (List sep wrapper a)
 -- Multiplicity within fields
 instance
   ( Newtype a b
-  , Sep sep
+  -- , Sep sep
+  , TriviaSep sep
   , Parsec b
   , Namespace a
+  , Typeable b
+  , Ord b
   , Show b
   ) => Parsec (List sep b a) where
   triviaParsec = do
-    (ts, bs) <- unzip <$> parseSep (Proxy :: Proxy sep) triviaParsec
+    (ts, bs) <- unzip <$> triviaParseSep (Proxy :: Proxy sep) triviaParsec
 
     -- TODO(leana8959): list numbering
     -- TODO(leana8959): mirror the unmarking below
