@@ -524,6 +524,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     , IPI.libraryDirs = libdirs
     , IPI.libraryDirsStatic = libdirsStatic
     , IPI.libraryDynDirs = dynlibdirs
+    , IPI.libraryBytecodeDirs = []
     , IPI.dataDir = datadir installDirs
     , IPI.hsLibraries =
         ( if hasLibrary

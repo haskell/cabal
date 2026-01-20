@@ -37,6 +37,7 @@ benchmarks: True
 coverage: True
 relocatable: True
 debug-info: 3
+library-bytecode: False
 build-info: True
 run-tests: True
 documentation: True
