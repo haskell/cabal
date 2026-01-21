@@ -57,7 +57,8 @@ instance Pretty Int where
 instance Pretty a => Pretty (Identity a) where
   pretty = pretty . runIdentity
 
-instance Prettier a => Prettier (Identity a) where prettier t = prettier t . runIdentity
+instance Prettier a => Prettier (Identity a) where
+  prettier t = prettier t . runIdentity
 
 prettyShow :: Pretty a => a -> String
 prettyShow = PP.renderStyle defaultStyle . pretty

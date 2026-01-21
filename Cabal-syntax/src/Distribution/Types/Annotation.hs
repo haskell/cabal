@@ -32,7 +32,7 @@ data Trivium
   | PreTrivia String
   | PostTrivia String
   | IsInjected
-  deriving (Generic, Show)
+  deriving (Generic, Show, Eq)
 
 instance NFData Trivium
 
@@ -41,7 +41,7 @@ data TriviaTree = TriviaTree
   { justAnnotation :: Trivia
   , namedAnnotations :: Map SomeNamespace TriviaTree
   }
-  deriving (Generic, Show)
+  deriving (Generic, Show, Eq)
 
 instance Semigroup TriviaTree where
   TriviaTree locala belowa <> TriviaTree localb belowb =

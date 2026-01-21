@@ -232,9 +232,8 @@ instance
   triviaParsec = do
     (ts, bs) <- unzip <$> triviaParseSep (Proxy :: Proxy sep) triviaParsec
 
-    -- TODO(leana8959): list numbering
-    -- TODO(leana8959): mirror the unmarking below
-    pTrace ("List parser got data" <> show (map (unpack :: b -> a) bs)) $
+    -- pTrace ("List parser got trivia" <> show ts) $
+    pTrace ("List parser got data" <> show bs) $
       pure (mconcat ts, pack $ map (unpack :: b -> a) bs)
 
 instance (Newtype a b, Sep sep, Pretty b) => Pretty (List sep b a) where
@@ -252,9 +251,16 @@ instance
   prettier t0 =
     let tLocal = justAnnotation t0
      in prettySep (Proxy :: Proxy sep)
-          . map (prettier t0 . (pack :: a -> b))
+          . map
+              (\o ->
+                let n = (pack :: a -> b) o
+                    tChildren = unmark (SomeNamespace n) t0
+                in -- pTrace ("indexing with " <> show ((pack :: a -> b) o) <> " getting " <> show tChildren) $
+                      prettier t0 n
+              )
           . unpack
-          . \x -> pTrace ("List printer got data\n" <> show x) x
+          . if t0 == mempty then id
+            else \x -> pTrace ("List printer got trivia\n" <> show t0) x
 
 -- | Like 'List', but for 'Set'.
 --
