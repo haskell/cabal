@@ -276,12 +276,14 @@ multiReplDecision ctx compiler flags =
     -- a repl specific option.
     (fromFlagOrDefault False (projectConfigMultiRepl ctx <> replUseMulti flags))
 
--- | An explicit target resolved to a context and selectors.
-type ResolvedTarget = ((ProjectBaseContext, Bool), [TargetSelector])
+-- | A function that resolves targets within a project context.
+type TargetResolver = ProjectBaseContext -> [TargetSelector] -> IO ResolvedTargets
 
--- | When an explicit target could not be resolved this is the retarget
--- suggestion and message.
-type RetargetSuggestion = (String, String)
+-- | Targets resolved from target strings with context and multi-repl flag.
+type ResolvedTargets = ((ProjectBaseContext, Bool), [TargetSelector])
+
+-- | A function dealing with REPL targets.
+type Repl targets a = TargetContext -> ProjectBaseContext -> targets -> IO a
 
 -- | The @repl@ command is very much like @build@. It brings the install plan
 -- up to date, selects that part of the plan needed by the given or implicit
@@ -294,112 +296,111 @@ type RetargetSuggestion = (String, String)
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 replAction :: NixStyleFlags ReplFlags -> [String] -> GlobalFlags -> IO ()
-replAction flags@NixStyleFlags{extraFlags = ReplFlags{..}} targetStrings globalFlags = withCtx $
-  \targetCtx ctx userTargetSelectors -> do
+replAction flags targetStrings globalFlags =
+  withCtx flags targetStrings globalFlags $ \targetCtx ctx selectors -> do
     when (buildSettingOnlyDeps (buildSettings ctx)) $
-      dieWithException verbosity ReplCommandDoesn'tSupport
-    let projectRoot = distProjectRootDirectory $ distDirLayout ctx
+      dieWithException (cfgVerbosity normal flags) ReplCommandDoesn'tSupport
+    targetedRepl flags targetCtx ctx =<< case targetCtx of
+      ProjectContext -> resolveProjectTarget globalFlags flags targetStrings ctx selectors
+      GlobalContext -> resolveGlobalTarget flags targetStrings ctx selectors
+      ScriptContext scriptPath scriptExecutable -> resolveScriptTarget scriptPath scriptExecutable flags targetStrings ctx selectors
 
-    targetPick <- case targetCtx of
-      ProjectContext -> do
-        case userTargetSelectors of
-          [] -> do
-            -- If in the project context with no selectors then for a target we:
-            -- 1. pick the only package in the project
-            -- 2. pick 'all' if multiple packages and multi-repl is enabled
-            --
-            -- We could have picked 'all' even for a single package project with
-            -- multi-repl but that is not as specific.
-            let projectFile = projectConfigProjectFile . projectConfigShared $ projectConfig ctx
-            let pkgs = projectPackages $ projectConfig ctx
-            case pkgs of
-              -- Guard against an infinite retargeting loop.
-              [pkg] | pkg `notElem` targetStrings -> return $ Left (pkg, retargetMsg ("package '" ++ pkg ++ "'"))
-              _ ->
-                if isMultiReplEnabled ctx && not (null pkgs)
-                  then return $ Left ("all", retargetMsg "'all'")
-                  else
-                    dieWithException verbosity $
-                      RenderReplTargetProblem [render (reportProjectNoTarget projectFile pkgs)]
-          _ -> return $ Right ((ctx, isMultiReplEnabled ctx), userTargetSelectors)
-      -- In the global context, construct a fake package which can be used to start
-      -- a repl with extra arguments if `-b` is given.
-      GlobalContext -> do
-        unless (null userTargetSelectors) $
-          dieWithException verbosity $
-            ReplTakesNoArguments targetStrings
-        let
-          sourcePackage =
-            fakeProjectSourcePackage projectRoot
-              & ( (lSrcpkgDescription . L.condLibrary)
-                    ?~ (CondNode library [baseDep] [])
-                )
-          library = emptyLibrary{libBuildInfo = lBuildInfo}
-          lBuildInfo =
-            emptyBuildInfo
-              { targetBuildDepends = [baseDep] ++ envPackages replEnvFlags
-              , defaultLanguage = Just Haskell2010
-              }
-          baseDep = Dependency "base" anyVersion mainLibSet
-
-        -- Write the fake package
-        updatedCtx <- updateContextAndWriteProjectFile' ctx sourcePackage
-        -- Specify the selector for this package
-        let fakeSelector = TargetPackage TargetExplicitNamed [fakePackageId] Nothing
-        return $ Right ((updatedCtx, isMultiReplEnabled updatedCtx), [fakeSelector])
-
-      -- For the script context, no special behaviour.
-      ScriptContext scriptPath scriptExecutable -> do
-        unless (length targetStrings == 1) $
-          dieWithException verbosity $
-            ReplTakesSingleArgument targetStrings
-        existsScriptPath <- doesFileExist scriptPath
-        unless existsScriptPath $
-          dieWithException verbosity $
-            ReplTakesSingleArgument targetStrings
-
-        updatedCtx <- updateContextAndWriteProjectFile ctx scriptPath scriptExecutable
-        return $ Right ((updatedCtx, isMultiReplEnabled updatedCtx), userTargetSelectors)
-
-    either retargetRepl (targetedRepl flags ctx targetCtx) targetPick
+resolveProjectTarget :: GlobalFlags -> NixStyleFlags ReplFlags -> [String] -> TargetResolver
+resolveProjectTarget globalFlags flags@NixStyleFlags{extraFlags = ReplFlags{..}} targetStrings ctx userTargetSelectors = do
+  case userTargetSelectors of
+    [] -> do
+      -- If in the project context with no selectors then for a target we:
+      -- 1. pick the only package in the project
+      -- 2. pick 'all' if multiple packages and multi-repl is enabled
+      --
+      -- We could have picked 'all' even for a single package project with
+      -- multi-repl but that is not as specific.
+      let projectFile = projectConfigProjectFile . projectConfigShared $ projectConfig ctx
+      let pkgs = projectPackages $ projectConfig ctx
+      case pkgs of
+        [pkg] | pkg `notElem` targetStrings -> do
+          retargetNotice ("package '" ++ pkg ++ "'")
+          retarget pkg
+        _ ->
+          if isMultiReplEnabled' ctx && not (null pkgs)
+            then do
+              retargetNotice "'all'"
+              retarget "all"
+            else
+              dieWithException verbosity $
+                RenderReplTargetProblem [render (reportProjectNoTarget projectFile pkgs)]
+    _ -> return ((ctx, isMultiReplEnabled' ctx), userTargetSelectors)
   where
-    retargetRepl :: RetargetSuggestion -> IO ()
-    retargetRepl (newTarget, msg) = do
-      notice verbosity msg
-      replAction flags [newTarget] globalFlags
+    verbosity = cfgVerbosity normal flags
+    isMultiReplEnabled' = isMultiReplEnabled replUseMulti
+    retargetMsg newTarget = "No target specified, using " ++ newTarget ++ " as the target for the REPL."
+    retargetNotice newTarget = notice verbosity (retargetMsg newTarget)
+    retarget newTarget = withCtx flags [newTarget] globalFlags $ \_ ctx' selectors -> return ((ctx', isMultiReplEnabled' ctx'), selectors)
 
-    withCtx =
-      withContextAndSelectors
-        verbosity
-        (if null targetStrings then AcceptNoTargets else RejectNoTargets)
-        (Just LibKind)
-        flags
-        targetStrings
-        globalFlags
-        ReplCommand
+resolveGlobalTarget :: NixStyleFlags ReplFlags -> [String] -> TargetResolver
+resolveGlobalTarget flags@NixStyleFlags{extraFlags = ReplFlags{..}} targetStrings ctx userTargetSelectors = do
+  let projectRoot = distProjectRootDirectory $ distDirLayout ctx
 
+  -- In the global context, construct a fake package which can be used to start
+  -- a repl with extra arguments if `-b` is given.
+  do
+    unless (null userTargetSelectors) $
+      dieWithException (cfgVerbosity normal flags) $
+        ReplTakesNoArguments targetStrings
+    let
+      sourcePackage =
+        fakeProjectSourcePackage projectRoot
+          & ( (lSrcpkgDescription . L.condLibrary)
+                ?~ (CondNode library [baseDep] [])
+            )
+      library = emptyLibrary{libBuildInfo = lBuildInfo}
+      lBuildInfo =
+        emptyBuildInfo
+          { targetBuildDepends = [baseDep] ++ envPackages replEnvFlags
+          , defaultLanguage = Just Haskell2010
+          }
+      baseDep = Dependency "base" anyVersion mainLibSet
+
+    -- Write the fake package
+    updatedCtx <- updateContextAndWriteProjectFile' ctx sourcePackage
+    -- Specify the selector for this package
+    let fakeSelector = TargetPackage TargetExplicitNamed [fakePackageId] Nothing
+    return ((updatedCtx, isMultiReplEnabled replUseMulti updatedCtx), [fakeSelector])
+
+resolveScriptTarget :: FilePath -> L.Executable -> NixStyleFlags ReplFlags -> [String] -> TargetResolver
+resolveScriptTarget scriptPath scriptExecutable flags@NixStyleFlags{extraFlags = ReplFlags{..}} targetStrings ctx userTargetSelectors = do
+  -- For the script context, no special behaviour.
+  do
+    unless (length targetStrings == 1) $
+      dieWithException verbosity $
+        ReplTakesSingleArgument targetStrings
+    existsScriptPath <- doesFileExist scriptPath
+    unless existsScriptPath $
+      dieWithException verbosity $
+        ReplTakesSingleArgument targetStrings
+
+    updatedCtx <- updateContextAndWriteProjectFile ctx scriptPath scriptExecutable
+    return ((updatedCtx, isMultiReplEnabled replUseMulti updatedCtx), userTargetSelectors)
+  where
     verbosity = cfgVerbosity normal flags
 
-    -- If multi-repl is used, we need a Cabal recent enough to handle it.  We
-    -- need to do this before solving, but the compiler version is only known
-    -- after solving (phaseConfigureCompiler), so instead of using
-    -- multiReplDecision we just check the flag.
-    isMultiReplEnabled :: ProjectBaseContext -> Bool
-    isMultiReplEnabled ctx =
-      fromFlagOrDefault False $
-        projectConfigMultiRepl (projectConfigShared $ projectConfig ctx)
-          <> replUseMulti
-
-    retargetMsg :: String -> String
-    retargetMsg newTarget = "No target specified, using " ++ newTarget ++ " as the target for the REPL."
+-- If multi-repl is used, we need a Cabal recent enough to handle it.  We need
+-- to do this before solving, but the compiler version is only known after
+-- solving (phaseConfigureCompiler), so instead of using multiReplDecision we
+-- just check the flag.
+isMultiReplEnabled :: Flag Bool -> ProjectBaseContext -> Bool
+isMultiReplEnabled replUseMulti ctx =
+  fromFlagOrDefault False $
+    projectConfigMultiRepl (projectConfigShared $ projectConfig ctx)
+      <> replUseMulti
 
 -- | Bring up a REPL with the targets.  With resolved user selectors and
 -- context, adjust the REPL behaviour for the target.
-targetedRepl :: NixStyleFlags ReplFlags -> ProjectBaseContext -> TargetContext -> ResolvedTarget -> IO ()
+targetedRepl :: NixStyleFlags ReplFlags -> Repl ResolvedTargets ()
 targetedRepl
   flags@NixStyleFlags{extraFlags = replFlags@ReplFlags{..}, configFlags}
-  ctx
   targetCtx
+  ctx
   ((baseCtx, multiReplEnabled), targetSelectors) = do
     let withReplEnabled =
           isJust $ flagToMaybe $ replWithRepl configureReplOptions
@@ -601,6 +602,17 @@ targetedRepl
       verbosity = cfgVerbosity normal flags
       tempFileOptions = commonSetupTempFileOptions $ configCommonFlags configFlags
       validatedTargets' = validatedTargets verbosity replFlags
+
+withCtx :: NixStyleFlags a -> [String] -> GlobalFlags -> Repl [TargetSelector] b -> IO b
+withCtx flags targetStrings globalFlags =
+  withContextAndSelectors
+    (cfgVerbosity normal flags)
+    (if null targetStrings then AcceptNoTargets else RejectNoTargets)
+    (Just LibKind)
+    flags
+    targetStrings
+    globalFlags
+    ReplCommand
 
 -- | Create a constraint which requires a later version of Cabal.
 -- This is used for commands which require a specific feature from the Cabal library
