@@ -275,15 +275,12 @@ multiReplDecision ctx compiler flags =
     -- a repl specific option.
     (fromFlagOrDefault False (projectConfigMultiRepl ctx <> replUseMulti flags))
 
--- | An explicit target has been resolved to a context and selectors.
+-- | An explicit target resolved to a context and selectors.
 type ResolvedTarget = ((ProjectBaseContext, Bool), [TargetSelector])
 
 -- | When an explicit target could not be resolved this is the retarget
 -- suggestion and message.
 type RetargetSuggestion = (String, String)
-
--- | Either an explicit target could be resolved or we need to retarget.
-type TargetPick = Either RetargetSuggestion ResolvedTarget
 
 -- | The @repl@ command is very much like @build@. It brings the install plan
 -- up to date, selects that part of the plan needed by the given or implicit
@@ -302,7 +299,7 @@ replAction flags@NixStyleFlags{extraFlags = ReplFlags{..}} targetStrings globalF
       dieWithException verbosity ReplCommandDoesn'tSupport
     let projectRoot = distProjectRootDirectory $ distDirLayout ctx
 
-    targetPick :: TargetPick <- case targetCtx of
+    targetPick <- case targetCtx of
       ProjectContext -> do
         case userTargetSelectors of
           [] -> do
