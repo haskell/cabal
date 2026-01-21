@@ -308,7 +308,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
       -- Different fields
       parseOne v (MkNamelessField pos fls) n = do
         (t, x) <- runFieldParser pos triviaParsec v fls
-        let t' = annotateAt 1 [FieldNth n] t
+        let t' = mark (SomeNamespace x) (TriviaTree [FieldNth n] mempty) <> t
         pure (t', x)
 
   -- NOTE(leana8959): Field is exactly sent out so there's no trivia?

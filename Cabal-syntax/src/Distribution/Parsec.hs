@@ -324,7 +324,10 @@ parsecStandard f = do
 -- ambiguity in identifiers like foo-1 (the 1 is the version number).
 
 triviaParsecCommaList :: (CabalParsing m, Namespace a) => m (TriviaTree, a) -> m [(TriviaTree, a)]
-triviaParsecCommaList p = toList <$> sepByNonEmpty p' comma
+triviaParsecCommaList p = do
+  xs <- toList <$> sepByNonEmpty p' comma
+  let xs' = map (\(n, (t, x)) -> (mark (SomeNamespace x) (TriviaTree [Nth n] mempty) <> t, x)) (zip [1..] xs)
+  pure xs'
   where
     comma = (++) <$> P.string "," <*> spaces' P.<?> "comma"
     p' = do -- p * spaces

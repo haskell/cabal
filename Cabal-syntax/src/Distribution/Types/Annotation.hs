@@ -66,12 +66,6 @@ mark ns ts = TriviaTree mempty (M.singleton ns ts)
 unmark :: SomeNamespace -> TriviaTree -> TriviaTree
 unmark ns tt = fromMaybe mempty (M.lookup ns (namedAnnotations tt))
 
-annotateAt :: Int -> Trivia -> TriviaTree -> TriviaTree
-annotateAt n ann (TriviaTree ann0 m)
-  | n == 0 = TriviaTree (ann0 <> ann) m
-  | n > 0 = TriviaTree ann0 (annotateAt (n-1) ann <$> m)
-  | otherwise = error "annotateAt: expects positive index"
-
 atFieldNth :: Trivia -> Maybe Int
 atFieldNth [] = Nothing
 atFieldNth ( t : ts ) = case t of
