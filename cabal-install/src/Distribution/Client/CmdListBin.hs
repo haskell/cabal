@@ -18,7 +18,7 @@ import Prelude ()
 
 import Distribution.Client.CmdErrorMessages
   ( plural
-  , renderListCommaAnd
+  , renderListPretty
   , renderTargetProblem
   , renderTargetProblemNoTargets
   , renderTargetSelector
@@ -371,27 +371,27 @@ renderListBinTargetProblem problem =
 
 renderListBinProblem :: ListBinProblem -> String
 renderListBinProblem (TargetProblemMatchesMultiple targetSelector targets) =
-  "The list-bin command is for finding a single binary at once. The target '"
-    ++ showTargetSelector targetSelector
-    ++ "' refers to "
-    ++ renderTargetSelector targetSelector
-    ++ " which includes "
-    ++ renderListCommaAnd
-      ( ("the " ++)
-          <$> showComponentName
-          <$> availableTargetComponentName
-          <$> foldMap
-            (\kind -> filterTargetsKind kind targets)
-            [ExeKind, TestKind, BenchKind]
-      )
-    ++ "."
+    "The list-bin command is for finding a single binary at once. The target '"
+      ++ showTargetSelector targetSelector 
+      ++ "' refers to "
+      ++ renderTargetSelector targetSelector 
+      ++ " which includes "
+      ++ renderListPretty 
+        ( ("the " ++) 
+            <$> showComponentName 
+            <$> availableTargetComponentName 
+            <$> foldMap
+              (\kind -> filterTargetsKind kind targets)
+              [ExeKind, TestKind, BenchKind] 
+        )
+        ++ "."
 renderListBinProblem (TargetProblemMultipleTargets selectorMap) =
-  "The list-bin command is for finding a single binary at once. The targets "
-    ++ renderListCommaAnd
-      [ "'" ++ showTargetSelector ts ++ "'"
-      | ts <- uniqueTargetSelectors selectorMap
-      ]
-    ++ " refer to different executables."
+    "The list-bin command is for finding a single binary at once. The targets "
+      ++ renderListPretty 
+        [ "'" ++ showTargetSelector ts ++ "'"
+        | ts <- uniqueTargetSelectors selectorMap 
+        ]
+ ++ " refer to different executables."
 renderListBinProblem (TargetProblemComponentNotRightKind pkgid cname) =
   "The list-bin command is for finding binaries, but the target '"
     ++ showTargetSelector targetSelector
