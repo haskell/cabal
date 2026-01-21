@@ -72,6 +72,12 @@ annotateAt n ann (TriviaTree ann0 m)
   | n > 0 = TriviaTree ann0 (annotateAt (n-1) ann <$> m)
   | otherwise = error "annotateAt: expects positive index"
 
+atFieldNth :: Trivia -> Maybe Int
+atFieldNth [] = Nothing
+atFieldNth ( t : ts ) = case t of
+  FieldNth n -> Just n
+  _ -> atFieldNth ts
+
 triviaToDoc :: Trivia -> Disp.Doc -> Disp.Doc
 triviaToDoc [] x = x
 triviaToDoc (t : ts) x = triviaToDoc ts (triviumToDoc t x)

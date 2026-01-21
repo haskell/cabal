@@ -79,6 +79,7 @@ import Text.PrettyPrint (Doc, comma, fsep, punctuate, text, vcat)
 import Distribution.Types.Annotation
 import Distribution.Types.Namespace
 
+import Data.List (sortOn)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Set as Set
 import qualified Distribution.Compat.CharParsing as P
@@ -248,19 +249,25 @@ instance
   )
   => Prettier (List sep b a)
   where
-  prettier t0 =
+  prettier t0 n =
     let tLocal = justAnnotation t0
+        docs =
+              map snd
+              $ sortOn (fromMaybe 0 . fst)
+              $ map
+                ( \o ->
+                    let n = (pack :: a -> b) o -- pack each element
+                        tChildren = unmark (SomeNamespace n) t0
+                    in pTrace ("indexing with " <> show ((pack :: a -> b) o) <> " getting " <> show tChildren) $
+                          ( atFieldNth (justAnnotation tChildren)
+                          , prettier t0 n
+                          )
+                )
+              $ unpack -- unpack the list
+              $ (if t0 == mempty then id else pTrace ("List printer got trivia\n" <> show t0) id)
+              $ n
      in prettySep (Proxy :: Proxy sep)
-          . map
-              (\o ->
-                let n = (pack :: a -> b) o
-                    tChildren = unmark (SomeNamespace n) t0
-                in -- pTrace ("indexing with " <> show ((pack :: a -> b) o) <> " getting " <> show tChildren) $
-                      prettier t0 n
-              )
-          . unpack
-          . if t0 == mempty then id
-            else \x -> pTrace ("List printer got trivia\n" <> show t0) x
+          $ docs
 
 -- | Like 'List', but for 'Set'.
 --
