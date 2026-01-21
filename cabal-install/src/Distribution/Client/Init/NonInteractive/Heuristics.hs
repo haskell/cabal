@@ -101,7 +101,7 @@ guessExtraDocFiles flags = do
   return $
     Just $
       if null extraDocs
-        then Set.singleton defaultChangelog
+        then Set.fromList [defaultChangelog, defaultReadme]
         else Set.fromList extraDocs
 
 -- | Try to guess the package type from the files in the package directory,

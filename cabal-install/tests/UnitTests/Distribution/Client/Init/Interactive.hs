@@ -96,7 +96,7 @@ createProjectTest pkgIx srcDb =
                 _pkgSynopsis desc @?= "We are Qux, and this is our package"
                 _pkgCategory desc @?= "Control"
                 _pkgExtraSrcFiles desc @?= mempty
-                _pkgExtraDocFiles desc @?= pure (Set.singleton "CHANGELOG.md")
+                _pkgExtraDocFiles desc @?= pure (Set.fromList ["CHANGELOG.md", "README.md"])
 
                 _libSourceDirs lib @?= ["quxSrc"]
                 _libLanguage lib @?= Haskell98
@@ -206,7 +206,7 @@ createProjectTest pkgIx srcDb =
                 _pkgSynopsis desc @?= "Qux's package"
                 _pkgCategory desc @?= "Control"
                 _pkgExtraSrcFiles desc @?= mempty
-                _pkgExtraDocFiles desc @?= pure (Set.singleton "CHANGELOG.md")
+                _pkgExtraDocFiles desc @?= pure (Set.fromList ["CHANGELOG.md", "README.md"])
 
                 _libSourceDirs lib @?= ["src"]
                 _libLanguage lib @?= Haskell98
@@ -306,7 +306,7 @@ createProjectTest pkgIx srcDb =
                 _pkgSynopsis desc @?= "Qux's package"
                 _pkgCategory desc @?= "Control"
                 _pkgExtraSrcFiles desc @?= mempty
-                _pkgExtraDocFiles desc @?= pure (Set.singleton "CHANGELOG.md")
+                _pkgExtraDocFiles desc @?= pure (Set.fromList ["CHANGELOG.md", "README.md"])
 
                 _libSourceDirs lib @?= ["src"]
                 _libLanguage lib @?= Haskell98
@@ -392,7 +392,7 @@ createProjectTest pkgIx srcDb =
                 _pkgSynopsis desc @?= "Qux's package"
                 _pkgCategory desc @?= "Control"
                 _pkgExtraSrcFiles desc @?= mempty
-                _pkgExtraDocFiles desc @?= pure (Set.singleton "CHANGELOG.md")
+                _pkgExtraDocFiles desc @?= pure (Set.fromList ["CHANGELOG.md", "README.md"])
 
                 _testMainIs test @?= HsFilePath "Main.hs" Standard
                 _testDirs test @?= ["test"]
@@ -480,7 +480,7 @@ createProjectTest pkgIx srcDb =
                 _pkgSynopsis desc @?= "Qux's package"
                 _pkgCategory desc @?= "Control"
                 _pkgExtraSrcFiles desc @?= mempty
-                _pkgExtraDocFiles desc @?= pure (Set.singleton "CHANGELOG.md")
+                _pkgExtraDocFiles desc @?= pure (Set.fromList ["CHANGELOG.md", "README.md"])
 
                 _libSourceDirs lib @?= ["src"]
                 _libLanguage lib @?= Haskell98
@@ -566,7 +566,7 @@ createProjectTest pkgIx srcDb =
                 _pkgSynopsis desc @?= "Qux's package"
                 _pkgCategory desc @?= "Control"
                 _pkgExtraSrcFiles desc @?= mempty
-                _pkgExtraDocFiles desc @?= pure (Set.singleton "CHANGELOG.md")
+                _pkgExtraDocFiles desc @?= pure (Set.fromList ["CHANGELOG.md", "README.md"])
 
                 _libSourceDirs lib @?= ["src"]
                 _libLanguage lib @?= Haskell98
@@ -627,7 +627,7 @@ createProjectTest pkgIx srcDb =
                 flags =
                   emptyFlags
                     { cabalVersion = Flag CabalSpecV1_10
-                    , extraDoc = Flag [defaultChangelog]
+                    , extraDoc = Flag [defaultChangelog, defaultReadme]
                     , extraSrc = Flag ["README.md"]
                     }
 
@@ -650,7 +650,7 @@ createProjectTest pkgIx srcDb =
                 _pkgHomePage desc @?= "qux.com"
                 _pkgSynopsis desc @?= "Qux's package"
                 _pkgCategory desc @?= "Control"
-                _pkgExtraSrcFiles desc @?= Set.fromList [defaultChangelog, "README.md"]
+                _pkgExtraSrcFiles desc @?= Set.fromList [defaultChangelog, defaultReadme]
                 _pkgExtraDocFiles desc @?= Nothing
 
                 _libSourceDirs lib @?= ["src"]
@@ -729,7 +729,7 @@ createProjectTest pkgIx srcDb =
                 _pkgSynopsis desc @?= "Qux's package"
                 _pkgCategory desc @?= "Control"
                 _pkgExtraSrcFiles desc @?= mempty
-                _pkgExtraDocFiles desc @?= pure (Set.singleton "CHANGELOG.md")
+                _pkgExtraDocFiles desc @?= pure (Set.fromList ["CHANGELOG.md", "README.md"])
 
                 _exeMainIs exe @?= HsFilePath "Main.hs" Standard
                 _exeApplicationDirs exe @?= ["exe"]

@@ -138,7 +138,7 @@ getExtraDocFiles :: Interactive m => InitFlags -> m (Maybe (Set String))
 getExtraDocFiles =
   pure
     . Just
-    . flagElim (Set.singleton defaultChangelog) Set.fromList
+    . flagElim (Set.fromList [defaultChangelog, defaultReadme]) Set.fromList
     . extraDoc
 
 -- | Ask whether the project builds a library or executable.
