@@ -67,7 +67,7 @@ unmark :: SomeNamespace -> TriviaTree -> TriviaTree
 unmark ns tt = fromMaybe mempty (M.lookup ns (namedAnnotations tt))
 
 annotateAt :: Int -> Trivia -> TriviaTree -> TriviaTree
-annotateAt 0 ann (TriviaTree ann0 m)
+annotateAt n ann (TriviaTree ann0 m)
   | n == 0 = TriviaTree (ann0 <> ann) m
   | n > 0 = TriviaTree ann0 (annotateAt (n-1) ann <$> m)
   | otherwise = error "annotateAt: expects positive index"
