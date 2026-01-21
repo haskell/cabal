@@ -23,6 +23,7 @@ module Distribution.Client.Init.Defaults
   , defaultLicenseIds
   , defaultMainIs
   , defaultChangelog
+  , defaultReadme
   , defaultCategories
   , defaultInitFlags
   , defaultLanguage
@@ -74,6 +75,9 @@ defaultPackageType = Executable
 
 defaultChangelog :: FilePath
 defaultChangelog = "CHANGELOG.md"
+
+defaultReadme :: FilePath
+defaultReadme = "README.md"
 
 defaultLicense :: CabalSpecVersion -> SpecLicense
 defaultLicense csv
