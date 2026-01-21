@@ -120,8 +120,9 @@ class TriviaSep sep where
 -- NOTE(leana8959): Dependency List is such a type
 instance TriviaSep CommaVCat where
   -- FIXME(leana8959):
-  prettierSep _ = undefined
-    vcat . punctuate comma . map snd
+  prettierSep _ docs =
+    let docs' = map snd $ sortOn (fromMaybe 0 . atNth . justAnnotation . fst) docs
+    in  vcat $ punctuate comma $ docs'
 
   triviaParseSep _ p = do
     v <- askCabalSpecVersion
@@ -244,6 +245,7 @@ instance
   ( Newtype a b
   , Typeable sep
   , Sep sep
+  , TriviaSep sep
   , Prettier b
   , Namespace a -- it's the old type we are trying to index in the trivia map
   )
@@ -252,22 +254,26 @@ instance
   prettier t0 n =
     let tLocal = justAnnotation t0
         docs =
-              map snd
-              $ sortOn (fromMaybe 0 . fst)
+              sortOn
+                ( fromMaybe 0
+                . atFieldNth
+                . justAnnotation
+                . fst
+                )
               $ map
                 ( \o ->
                     let n = (pack :: a -> b) o -- pack each element
                         tChildren = unmark (SomeNamespace n) t0
                     in pTrace ("indexing with " <> show ((pack :: a -> b) o) <> " getting " <> show tChildren) $
-                          ( atFieldNth (justAnnotation tChildren)
+                          ( tChildren
                           , prettier t0 n
                           )
                 )
               $ unpack -- unpack the list
               $ (if t0 == mempty then id else pTrace ("List printer got trivia\n" <> show t0) id)
               $ n
-     in prettySep (Proxy :: Proxy sep)
-          $ docs
+     in prettierSep (Proxy :: Proxy sep)
+          docs
 
 -- | Like 'List', but for 'Set'.
 --

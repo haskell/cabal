@@ -72,6 +72,12 @@ atFieldNth ( t : ts ) = case t of
   FieldNth n -> Just n
   _ -> atFieldNth ts
 
+atNth :: Trivia -> Maybe Int
+atNth [] = Nothing
+atNth ( t : ts ) = case t of
+  Nth n -> Just n
+  _ -> atNth ts
+
 triviaToDoc :: Trivia -> Disp.Doc -> Disp.Doc
 triviaToDoc [] x = x
 triviaToDoc (t : ts) x = triviaToDoc ts (triviumToDoc t x)
