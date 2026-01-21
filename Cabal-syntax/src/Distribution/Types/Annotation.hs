@@ -66,6 +66,15 @@ mark ns ts = TriviaTree mempty (M.singleton ns ts)
 unmark :: SomeNamespace -> TriviaTree -> TriviaTree
 unmark ns tt = fromMaybe mempty (M.lookup ns (namedAnnotations tt))
 
+-- |
+-- WARNING: if this is used on something that has no trivia map, we can't create
+-- an annotation because the namespace will not exist.
+annotateAt :: Int -> Trivia -> TriviaTree -> TriviaTree
+annotateAt n ann (TriviaTree ann0 m)
+  | n == 0 = TriviaTree (ann0 <> ann) m
+  | n > 0 = TriviaTree ann0 (annotateAt (n-1) ann <$> m)
+  | otherwise = error "annotateAt: expects positive index"
+
 atFieldNth :: Trivia -> Maybe Int
 atFieldNth [] = Nothing
 atFieldNth ( t : ts ) = case t of

@@ -308,8 +308,11 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
       -- Different fields
       parseOne v (MkNamelessField pos fls) n = do
         (t, x) <- runFieldParser pos triviaParsec v fls
-        let t' = mark (SomeNamespace x) (TriviaTree [FieldNth n] mempty) <> t
-        pure (t', x)
+        -- HACK(leana8959): this is a trick to not pass in the annotation the underlying parser
+        -- we don't have the right data (before list parsing)
+        let t' = annotateAt 1 [FieldNth n] t
+        pTrace ("parseOne\n" <> show t') $
+          pure (t', x)
 
   -- NOTE(leana8959): Field is exactly sent out so there's no trivia?
   prefixedFields fnPfx _extract = ParsecFG mempty (Set.singleton fnPfx) (\_ fs -> pure (mempty, parser fs))

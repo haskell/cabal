@@ -79,7 +79,7 @@ import Text.PrettyPrint (Doc, comma, fsep, punctuate, text, vcat)
 import Distribution.Types.Annotation
 import Distribution.Types.Namespace
 
-import Data.List (sortOn)
+import Data.List (sortOn, groupBy)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Set as Set
 import qualified Distribution.Compat.CharParsing as P
@@ -253,13 +253,9 @@ instance
   where
   prettier t0 n =
     let tLocal = justAnnotation t0
-        docs =
-              sortOn
-                ( fromMaybe 0
-                . atFieldNth
-                . justAnnotation
-                . fst
-                )
+        docGroups :: [[(TriviaTree, Doc)]] =
+              groupBy ((==) `on` (fromMaybe 0 . atFieldNth . justAnnotation . fst))
+              $ sortOn (fromMaybe 0 . atFieldNth . justAnnotation . fst)
               $ map
                 ( \o ->
                     let n = (pack :: a -> b) o -- pack each element
@@ -272,8 +268,11 @@ instance
               $ unpack -- unpack the list
               $ (if t0 == mempty then id else pTrace ("List printer got trivia\n" <> show t0) id)
               $ n
-     in prettierSep (Proxy :: Proxy sep)
-          docs
+     in
+        vcat
+        $ map (prettierSep (Proxy :: Proxy sep))
+        $ docGroups
+
 
 -- | Like 'List', but for 'Set'.
 --

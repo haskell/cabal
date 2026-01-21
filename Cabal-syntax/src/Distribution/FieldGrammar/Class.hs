@@ -129,7 +129,7 @@ class
   --
   -- /Note:/ 'optionalFieldAla' is a @monoidalField@ with 'Last' monoid.
   monoidalFieldAla
-    :: (c b, Monoid a, Newtype a b, Namespace a, Namespace b)
+    :: (c b, Monoid a, Newtype a b, Namespace a)
     => FieldName
     -- ^ field name
     -> (a -> b)
