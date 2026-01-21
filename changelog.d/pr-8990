@@ -1,0 +1,9 @@
+synopsis: Fix a bug that would make cabal haddock generate broken links
+packages: Cabal
+prs: #8990
+
+description: {
+
+Interprets `pkgroot` in the `haddock-html` field of package descriptions.
+
+}

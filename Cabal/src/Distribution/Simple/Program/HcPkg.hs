@@ -351,7 +351,8 @@ mungePackagePaths pkgroot pkginfo =
     , libraryDynDirs = mungePaths (libraryDynDirs pkginfo)
     , frameworkDirs = mungePaths (frameworkDirs pkginfo)
     , haddockInterfaces = mungePaths (haddockInterfaces pkginfo)
-    , haddockHTMLs = mungeUrls (haddockHTMLs pkginfo)
+    , -- haddock-html may be a URL or a path
+      haddockHTMLs = mungePaths (mungeUrls (haddockHTMLs pkginfo))
     }
   where
     mungePaths = map mungePath
