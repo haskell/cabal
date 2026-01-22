@@ -302,10 +302,12 @@ replAction flags targetStrings globalFlags =
   withCtx flags targetStrings globalFlags $ \targetCtx ctx selectors -> do
     when (buildSettingOnlyDeps (buildSettings ctx)) $
       dieWithException (cfgVerbosity normal flags) ReplCommandDoesn'tSupport
-    targetedRepl flags targetCtx ctx =<< case targetCtx of
-      ProjectContext -> resolveProjectTarget flags targetStrings ctx selectors
-      GlobalContext -> resolveGlobalTarget flags targetStrings ctx selectors
-      ScriptContext scriptPath scriptExecutable -> resolveScriptTarget scriptPath scriptExecutable flags targetStrings ctx selectors
+    let resolveTarget = case targetCtx of
+          ProjectContext -> resolveProjectTarget
+          GlobalContext -> resolveGlobalTarget
+          ScriptContext path exe -> resolveScriptTarget path exe
+    resolvedTargets <- resolveTarget flags targetStrings ctx selectors
+    targetedRepl flags targetCtx ctx resolvedTargets
 
 resolveProjectTarget :: NixStyleFlags ReplFlags -> [String] -> TargetResolver
 resolveProjectTarget flags@NixStyleFlags{extraFlags = ReplFlags{..}} targetStrings ctx userTargetSelectors = do
