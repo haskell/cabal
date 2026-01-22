@@ -277,7 +277,11 @@ multiReplDecision ctx compiler flags =
     -- a repl specific option.
     (fromFlagOrDefault False (projectConfigMultiRepl ctx <> replUseMulti flags))
 
--- | A function that resolves targets within a project context.
+-- | A function that resolves targets within a project context. The input target
+-- selectors may be empty with a project in which case a default target is
+-- chosen. The input target selectors must be empty with a global context that
+-- will construct a fake package target. For a script context, the input target
+-- selectors must contain only one element.
 type TargetResolver = ProjectBaseContext -> [TargetSelector] -> IO ResolvedTargets
 
 -- | Targets resolved from target strings with context and multi-repl flag.
