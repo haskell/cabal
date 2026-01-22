@@ -84,7 +84,7 @@ import Distribution.Types.PackageName.Magic
 import Distribution.Types.ParStrat
 import Distribution.Utils.NubList
 import Distribution.Utils.Path
-import Distribution.Verbosity (Verbosity)
+import Distribution.Verbosity (Verbosity (..), VerbosityLevel, verbosityLevel)
 import Distribution.Version
 
 import Control.Arrow ((***))
@@ -580,7 +580,7 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
   let cLikeFiles = fromNubListR $ toNubListR (cSources libBi) <> toNubListR (cxxSources libBi)
       jsSrcs = jsSources libBi
       cObjs = map ((`replaceExtensionSymbolicPath` objExtension)) cLikeFiles
-      baseOpts = componentGhcOptions verbosity lbi libBi clbi libTargetDir
+      baseOpts = componentGhcOptions (verbosityLevel verbosity) lbi libBi clbi libTargetDir
       linkJsLibOpts =
         mempty
           { ghcOptExtra =
@@ -1314,7 +1314,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
         TestComponentLocalBuildInfo{} -> True
         BenchComponentLocalBuildInfo{} -> True
       baseOpts =
-        (componentGhcOptions verbosity lbi bnfo clbi tmpDir)
+        (componentGhcOptions (verbosityLevel verbosity) lbi bnfo clbi tmpDir)
           `mappend` mempty
             { ghcOptMode = toFlag GhcModeMake
             , ghcOptInputFiles =
@@ -1471,7 +1471,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
       [ do
         let baseCxxOpts =
               Internal.componentCxxGhcOptions
-                verbosity
+                (verbosityLevel verbosity)
                 lbi
                 bnfo
                 clbi
@@ -1517,7 +1517,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
       [ do
         let baseCcOpts =
               Internal.componentCcGhcOptions
-                verbosity
+                (verbosityLevel verbosity)
                 lbi
                 bnfo
                 clbi
@@ -1798,7 +1798,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
     platform = hostPlatform lbi
     mbWorkDir = mbWorkDirLBI lbi
     vanillaArgs =
-      (componentGhcOptions verbosity lbi libBi clbi (componentBuildDir lbi clbi))
+      (componentGhcOptions (verbosityLevel verbosity) lbi libBi clbi (componentBuildDir lbi clbi))
         `mappend` mempty
           { ghcOptMode = toFlag GhcModeAbiHash
           , ghcOptInputModules = toNubListR $ exposedModules lib
@@ -1838,7 +1838,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
   return (takeWhile (not . isSpace) hash)
 
 componentGhcOptions
-  :: Verbosity
+  :: VerbosityLevel
   -> LocalBuildInfo
   -> BuildInfo
   -> ComponentLocalBuildInfo

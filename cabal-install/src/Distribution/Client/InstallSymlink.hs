@@ -396,7 +396,7 @@ makeRelative a b =
 trySymlink :: Verbosity -> IO Bool
 trySymlink verbosity = do
   tmp <- getTemporaryDirectory
-  withTempDirectory verbosity tmp "cabal-symlink-test" $ \tmpDirPath -> do
+  withTempDirectory tmp "cabal-symlink-test" $ \tmpDirPath -> do
     let from = tmpDirPath </> "file.txt"
     let to = tmpDirPath </> "file2.txt"
 

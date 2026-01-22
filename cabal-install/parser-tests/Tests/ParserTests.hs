@@ -147,7 +147,7 @@ testProjectConfigBuildOnly = do
   assertConfigEquals expected config legacy (projectConfigBuildOnly . condTreeData)
   where
     expected = ProjectConfigBuildOnly{..}
-    projectConfigVerbosity = toFlag (toEnum 2)
+    projectConfigVerbosity = toFlag (mkVerbosityFlags Verbose)
     projectConfigDryRun = mempty -- cli only
     projectConfigOnlyDeps = mempty -- cli only
     projectConfigOnlyDownload = mempty -- cli only
@@ -554,7 +554,7 @@ baseDir :: FilePath
 baseDir = "parser-tests" </> "Tests" </> "files"
 
 verbosity :: Verbosity
-verbosity = normal
+verbosity = mkVerbosity defaultVerbosityHandles normal
 
 readConfigDefault :: FilePath -> IO (ProjectConfigSkeleton, ProjectConfigSkeleton)
 readConfigDefault testSubDir = readConfig testSubDir "cabal.project"

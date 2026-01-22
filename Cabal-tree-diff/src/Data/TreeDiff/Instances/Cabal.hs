@@ -151,7 +151,7 @@ instance ToExpr TestSuiteInterface
 instance ToExpr TestType
 instance ToExpr UnitId
 instance ToExpr UnqualComponentName
-instance ToExpr Verbosity
+instance ToExpr VerbosityFlags
 instance ToExpr VerbosityFlag
 instance ToExpr VerbosityLevel
 

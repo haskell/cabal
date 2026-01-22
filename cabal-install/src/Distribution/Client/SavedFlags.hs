@@ -22,7 +22,7 @@ import System.FilePath (takeDirectory)
 writeSavedArgs :: Verbosity -> FilePath -> [String] -> IO ()
 writeSavedArgs verbosity path args = do
   createDirectoryIfMissingVerbose
-    (lessVerbose verbosity)
+    (modifyVerbosityFlags lessVerbose verbosity)
     True
     (takeDirectory path)
   writeFile path (intercalate "\0" args)

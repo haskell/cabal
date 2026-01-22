@@ -99,7 +99,7 @@ import Distribution.Types.TestType                 (TestType)
 import Distribution.Types.UnitId                   (UnitId)
 import Distribution.Types.UnqualComponentName      (UnqualComponentName)
 import Distribution.Utils.Path                     (SymbolicPath, RelativePath)
-import Distribution.Verbosity                      (Verbosity)
+import Distribution.Verbosity                      (VerbosityFlags)
 import Distribution.Version                        (Version, VersionRange)
 import Language.Haskell.Extension                  (Extension, Language, knownLanguages)
 
@@ -493,7 +493,7 @@ instance Described RepoType where
 instance Described TestType where
     describe _ = REUnion ["exitcode-stdio-1.0", "detailed-0.9"]
 
-instance Described Verbosity where
+instance Described VerbosityFlags where
     describe _ = REUnion
         [ REUnion ["0", "1", "2", "3"]
         , REUnion ["silent", "normal", "verbose", "debug", "deafening"]

@@ -280,10 +280,10 @@ constructUHCCmdLine
   -> [String]
 constructUHCCmdLine user system lbi bi clbi odir verbosity =
   -- verbosity
-  ( if verbosity >= deafening
+  ( if verbosityLevel verbosity >= Deafening
       then ["-v4"]
       else
-        if verbosity >= normal
+        if verbosityLevel verbosity >= Normal
           then []
           else ["-v0"]
   )

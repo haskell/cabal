@@ -655,15 +655,16 @@ getInstalledPackagesMonitorFiles verbosity mbWorkDir platform progdb =
 -- Building a library
 
 buildLib
-  :: BuildFlags
+  :: VerbosityHandles
+  -> BuildFlags
   -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> Library
   -> ComponentLocalBuildInfo
   -> IO ()
-buildLib flags numJobs pkg lbi lib clbi =
-  GHC.build numJobs pkg $
+buildLib verbHandles flags numJobs pkg lbi lib clbi =
+  GHC.build numJobs verbHandles pkg $
     PreBuildComponentInputs
       { buildingWhat = BuildNormal flags
       , localBuildInfo = lbi
@@ -671,15 +672,16 @@ buildLib flags numJobs pkg lbi lib clbi =
       }
 
 replLib
-  :: ReplFlags
+  :: VerbosityHandles
+  -> ReplFlags
   -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> Library
   -> ComponentLocalBuildInfo
   -> IO ()
-replLib flags numJobs pkg lbi lib clbi =
-  GHC.build numJobs pkg $
+replLib verbHandles flags numJobs pkg lbi lib clbi =
+  GHC.build numJobs verbHandles pkg $
     PreBuildComponentInputs
       { buildingWhat = BuildRepl flags
       , localBuildInfo = lbi
@@ -719,28 +721,29 @@ buildFLib
   -> ComponentLocalBuildInfo
   -> IO ()
 buildFLib v numJobs pkg lbi flib clbi =
-  GHC.build numJobs pkg $
+  GHC.build numJobs (verbosityHandles v) pkg $
     PreBuildComponentInputs
       { buildingWhat =
           BuildNormal $
             mempty
               { buildCommonFlags =
-                  mempty{setupVerbosity = toFlag v}
+                  mempty{setupVerbosity = toFlag $ verbosityFlags v}
               }
       , localBuildInfo = lbi
       , targetInfo = TargetInfo clbi (CFLib flib)
       }
 
 replFLib
-  :: ReplFlags
+  :: VerbosityHandles
+  -> ReplFlags
   -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> ForeignLib
   -> ComponentLocalBuildInfo
   -> IO ()
-replFLib replFlags njobs pkg lbi flib clbi =
-  GHC.build njobs pkg $
+replFLib verbHandles replFlags njobs pkg lbi flib clbi =
+  GHC.build njobs verbHandles pkg $
     PreBuildComponentInputs
       { buildingWhat = BuildRepl replFlags
       , localBuildInfo = lbi
@@ -757,28 +760,29 @@ buildExe
   -> ComponentLocalBuildInfo
   -> IO ()
 buildExe v njobs pkg lbi exe clbi =
-  GHC.build njobs pkg $
+  GHC.build njobs (verbosityHandles v) pkg $
     PreBuildComponentInputs
       { buildingWhat =
           BuildNormal $
             mempty
               { buildCommonFlags =
-                  mempty{setupVerbosity = toFlag v}
+                  mempty{setupVerbosity = toFlag $ verbosityFlags v}
               }
       , localBuildInfo = lbi
       , targetInfo = TargetInfo clbi (CExe exe)
       }
 
 replExe
-  :: ReplFlags
+  :: VerbosityHandles
+  -> ReplFlags
   -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> Executable
   -> ComponentLocalBuildInfo
   -> IO ()
-replExe replFlags njobs pkg lbi exe clbi =
-  GHC.build njobs pkg $
+replExe verbHandles replFlags njobs pkg lbi exe clbi =
+  GHC.build njobs verbHandles pkg $
     PreBuildComponentInputs
       { buildingWhat = BuildRepl replFlags
       , localBuildInfo = lbi
@@ -801,7 +805,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
     platform = hostPlatform lbi
     mbWorkDir = mbWorkDirLBI lbi
     vanillaArgs =
-      (Internal.componentGhcOptions verbosity lbi libBi clbi (componentBuildDir lbi clbi))
+      (Internal.componentGhcOptions (verbosityLevel verbosity) lbi libBi clbi (componentBuildDir lbi clbi))
         `mappend` mempty
           { ghcOptMode = toFlag GhcModeAbiHash
           , ghcOptInputModules = toNubListR $ exposedModules lib
@@ -940,7 +944,7 @@ installFLib verbosity lbi targetDir builtDir _pkg flib =
         -- directory it's created in.
         -- Finally, we first create the symlinks in a temporary
         -- directory and then rename to simulate 'ln --force'.
-        withTempDirectory verbosity dstDir nm $ \tmpDir -> do
+        withTempDirectory dstDir nm $ \tmpDir -> do
             let link1 = flibBuildName lbi flib
                 link2 = "lib" ++ nm <.> "so"
             createSymbolicLink name (tmpDir </> link1)
