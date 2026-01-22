@@ -17,11 +17,18 @@ extra-doc-files:
 
 -- extra-source-files:
 
-common warnings
-    ghc-options: -Wall
+common extensions
+    default-language: GHC2021
+
+common ghc-options
+    ghc-options: -Wall -Widentities
+
+common rts-options
+    ghc-options: -rtsopts -threaded "-with-rtsopts=-N"
 
 library
-    import:           warnings
+    import:           extensions
+    import:           ghc-options
     exposed-modules:  MyLib
     -- other-modules:
     -- other-extensions:
@@ -30,7 +37,9 @@ library
     default-language: Haskell98
 
 executable y
-    import:           warnings
+    import:           extensions
+    import:           ghc-options
+    import:           rts-options
     main-is:          Main.hs
     -- other-modules:
     -- other-extensions:
@@ -42,6 +51,9 @@ executable y
     default-language: Haskell2010
 
 test-suite y-test
+    import:           extensions
+    import:           ghc-options
+    import:           rts-options
     import:           warnings
     default-language: Haskell2010
     -- other-modules:

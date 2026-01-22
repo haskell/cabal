@@ -74,7 +74,9 @@ writeProject (ProjectSettings opts pkgDesc libTarget exeTarget testTarget)
       writeReadme opts pkgDesc
 
       let pkgFields = mkPkgDescription opts pkgDesc
-          commonStanza = mkCommonStanza opts
+          extensionsStanza = mkExtensionsStanza opts
+          ghcOptionsStanza = mkGhcOptionsStanza opts
+          rtsOptionsStanza = mkRtsOptionsStanza opts
 
       libStanza <- prepareLibTarget opts libTarget
       exeStanza <- prepareExeTarget opts exeTarget
@@ -82,7 +84,7 @@ writeProject (ProjectSettings opts pkgDesc libTarget exeTarget testTarget)
 
       (reusedCabal, cabalContents) <-
         writeCabalFile opts $
-          pkgFields ++ [commonStanza, libStanza, exeStanza, testStanza]
+          pkgFields ++ [extensionsStanza, ghcOptionsStanza, rtsOptionsStanza, libStanza, exeStanza, testStanza]
 
       when (null $ _pkgSynopsis pkgDesc) $
         message opts T.Warning "No synopsis given. You should edit the .cabal file and add one."

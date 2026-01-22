@@ -289,25 +289,31 @@ goldenCabalTests v pkgIx srcDb =
         Left e -> assertFailure $ show e
         (Right (ProjectSettings opts pkgDesc (Just libTarget) (Just exeTarget) (Just testTarget), _)) -> do
           let pkgFields = mkPkgDescription opts pkgDesc
-              commonStanza = mkCommonStanza opts
+              rtsOptionsStanza = mkRtsOptionsStanza opts
+              ghcOptionsStanza = mkGhcOptionsStanza opts
+              extensionsStanza = mkExtensionsStanza opts
               libStanza = mkLibStanza opts $ libTarget{_libDependencies = mangleBaseDep libTarget _libDependencies}
               exeStanza = mkExeStanza opts $ exeTarget{_exeDependencies = mangleBaseDep exeTarget _exeDependencies}
               testStanza = mkTestStanza opts $ testTarget{_testDependencies = mangleBaseDep testTarget _testDependencies}
 
-          mkStanza $ pkgFields ++ [commonStanza, libStanza, exeStanza, testStanza]
+          mkStanza $ pkgFields ++ [extensionsStanza, ghcOptionsStanza, rtsOptionsStanza, libStanza, exeStanza, testStanza]
         (Right (ProjectSettings opts pkgDesc (Just libTarget) Nothing (Just testTarget), _)) -> do
           let pkgFields = mkPkgDescription opts pkgDesc
-              commonStanza = mkCommonStanza opts
+              rtsOptionsStanza = mkRtsOptionsStanza opts
+              ghcOptionsStanza = mkGhcOptionsStanza opts
+              extensionsStanza = mkExtensionsStanza opts
               libStanza = mkLibStanza opts $ libTarget{_libDependencies = mangleBaseDep libTarget _libDependencies}
               testStanza = mkTestStanza opts $ testTarget{_testDependencies = mangleBaseDep testTarget _testDependencies}
 
-          mkStanza $ pkgFields ++ [commonStanza, libStanza, testStanza]
+          mkStanza $ pkgFields ++ [extensionsStanza, ghcOptionsStanza, rtsOptionsStanza, libStanza, testStanza]
         (Right (ProjectSettings opts pkgDesc Nothing Nothing (Just testTarget), _)) -> do
           let pkgFields = mkPkgDescription opts pkgDesc
-              commonStanza = mkCommonStanza opts
+              rtsOptionsStanza = mkRtsOptionsStanza opts
+              ghcOptionsStanza = mkGhcOptionsStanza opts
+              extensionsStanza = mkExtensionsStanza opts
               testStanza = mkTestStanza opts $ testTarget{_testDependencies = mangleBaseDep testTarget _testDependencies}
 
-          mkStanza $ pkgFields ++ [commonStanza, testStanza]
+          mkStanza $ pkgFields ++ [extensionsStanza, ghcOptionsStanza, rtsOptionsStanza, testStanza]
         (Right (ProjectSettings _ _ l e t, _)) ->
           assertFailure $
             show l ++ "\n" ++ show e ++ "\n" ++ show t

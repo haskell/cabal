@@ -1,6 +1,12 @@
 executable y
-    -- Import common warning flags.
-    import:           warnings
+    -- Common language extensions
+    import:           extensions
+
+    -- Common compiler warnings and optimisations
+    import:           ghc-options
+
+    -- Common RTS options
+    import:           rts-options
 
     -- .hs or .lhs file containing the Main module.
     main-is:          Main.hs
