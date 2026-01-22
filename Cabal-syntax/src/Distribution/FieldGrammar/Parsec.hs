@@ -310,7 +310,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
         (t, x) <- runFieldParser pos triviaParsec v fls
         -- HACK(leana8959): this is a trick to not pass in the annotation the underlying parser
         -- we don't have the right data (before list parsing)
-        let t' = annotateAt 1 [FieldNth n] t
+        let t' = annotateAt 1 [FieldNth n, ExactPosition pos] t
         pTrace ("parseOne\n" <> show t') $
           pure (t', x)
 
