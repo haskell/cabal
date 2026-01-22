@@ -1,0 +1,7 @@
+Cabal-Version: 3.8
+Name: extrasourcesbatched
+Version: 0.1
+Build-Type: Simple
+
+library
+    c-sources: X.c, Y.c

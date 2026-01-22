@@ -112,6 +112,8 @@ linkOrLoadComponent
     let
       extraSourcesObjs :: [RelativePath Artifacts File]
       extraSourcesObjs =
+        -- note that extra-sources objects are not suffixed with the way suffix
+        -- right now
         [ makeRelativePathEx $ getSymbolicPath src `replaceExtension` objExtension
         | src <- extraSources
         ]

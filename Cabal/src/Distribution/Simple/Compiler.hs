@@ -67,6 +67,7 @@ module Distribution.Simple.Compiler
   , extensionsToFlags
   , unsupportedExtensions
   , parmakeSupported
+  , parBatchSupported
   , reexportedModulesSupported
   , renamingPackageFlagsSupported
   , unifiedIPIDRequired
@@ -446,6 +447,10 @@ extensionToFlag' comp ext = lookup ext (compilerExtensions comp)
 -- | Does this compiler support parallel --make mode?
 parmakeSupported :: Compiler -> Bool
 parmakeSupported = ghcSupported "Support parallel --make"
+
+-- | Does this compiler support parallel batch mode?
+parBatchSupported :: Compiler -> Bool
+parBatchSupported = ghcSupported "Support parallel batch mode"
 
 -- | Does this compiler support reexported-modules?
 reexportedModulesSupported :: Compiler -> Bool
