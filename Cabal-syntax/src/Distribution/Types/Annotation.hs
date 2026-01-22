@@ -104,3 +104,4 @@ triviumToDoc t x = case t of
   PreTrivia s -> Disp.text s <> x
   PostTrivia s -> x <> Disp.text s
   IsInjected -> mempty -- the doc in question shouldn't be rendered
+  _ -> x -- TODO(leana8959): ignore the rest for now

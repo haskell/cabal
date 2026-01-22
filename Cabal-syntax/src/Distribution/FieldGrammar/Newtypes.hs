@@ -108,7 +108,10 @@ class Sep sep where
   parseSepNE :: CabalParsing m => Proxy sep -> m a -> m (NonEmpty a)
 
 class TriviaSep sep where
-  prettierSep :: Proxy sep -> [(TriviaTree, Doc)] -> Doc
+  prettierSep
+    :: (Prettier a)
+    => Proxy sep -> [(TriviaTree, a)] -> Doc
+
   triviaParseSep
     :: (CabalParsing m, Namespace a)
     => Proxy sep -> m (TriviaTree, a) -> m [(TriviaTree, a)]
@@ -121,7 +124,12 @@ class TriviaSep sep where
 instance TriviaSep CommaVCat where
   -- FIXME(leana8959):
   prettierSep _ docs =
-    let docs' = map snd $ sortOn (fromMaybe 0 . atNth . justAnnotation . fst) docs
+    let docs' =
+          map
+            ( \(t, x) -> triviaToDoc (justAnnotation t) $ prettier t x
+            )
+          $ sortOn (fromMaybe 0 . atNth . justAnnotation . fst) 
+          $ docs
     in  vcat $ punctuate comma $ docs'
 
   triviaParseSep _ p = do
@@ -129,8 +137,7 @@ instance TriviaSep CommaVCat where
     if v >= CabalSpecV2_2 then triviaParsecLeadingCommaList p else triviaParsecCommaList p
 
 instance TriviaSep CommaFSep where
-  -- FIXME(leana8959):
-  prettierSep _ = fsep . punctuate comma . map snd
+  prettierSep _ = fsep . punctuate comma . map (uncurry prettier)
 
   triviaParseSep _ p = do
     v <- askCabalSpecVersion
@@ -141,8 +148,7 @@ instance TriviaSep CommaFSep where
     if v >= CabalSpecV2_2 then triviaParsecLeadingCommaListNonEmpty p else triviaParsecCommaNonEmpty p
 
 instance TriviaSep VCat where
-  -- FIXME(leana8959):
-  prettierSep _ = vcat . map snd
+  prettierSep _ = vcat . map (uncurry prettier)
 
   triviaParseSep _ p = do
     v <- askCabalSpecVersion
@@ -152,7 +158,7 @@ instance TriviaSep VCat where
   triviaParseSepNE _ p = NE.some1 (p <* P.spaces)
 
 instance TriviaSep FSep where
-  prettierSep _ = fsep . map snd
+  prettierSep _ = fsep . map (uncurry prettier)
   triviaParseSep _ p = do
     v <- askCabalSpecVersion
     if v >= CabalSpecV3_0 then triviaParsecLeadingOptCommaList p else triviaParsecOptCommaList p
@@ -161,7 +167,7 @@ instance TriviaSep FSep where
   triviaParseSepNE _ p = NE.some1 (p <* P.spaces)
 
 instance TriviaSep NoCommaFSep where
-  prettierSep _ = fsep . map snd
+  prettierSep _ = fsep . map (uncurry prettier)
   triviaParseSep _ p = many (p <* P.spaces)
   triviaParseSepNE _ p = NE.some1 (p <* P.spaces)
 
@@ -253,7 +259,7 @@ instance
   where
   prettier t0 n =
     let tLocal = justAnnotation t0
-        docGroups :: [[(TriviaTree, Doc)]] =
+        docGroups :: [[(TriviaTree, b)]] =
               groupBy ((==) `on` (fromMaybe 0 . atFieldNth . justAnnotation . fst))
               $ sortOn (fromMaybe 0 . atFieldNth . justAnnotation . fst)
               $ map
@@ -262,7 +268,7 @@ instance
                         tChildren = unmark (SomeNamespace n) t0
                     in pTrace ("indexing with " <> show ((pack :: a -> b) o) <> " getting " <> show tChildren) $
                           ( tChildren
-                          , prettier t0 n
+                          , n
                           )
                 )
               $ unpack -- unpack the list
