@@ -241,8 +241,8 @@ instance
     (ts, bs) <- unzip <$> triviaParseSep (Proxy :: Proxy sep) triviaParsec
 
     -- pTrace ("List parser got trivia" <> show ts) $
-    pTrace ("List parser got data" <> show bs) $
-      pure (mconcat ts, pack $ map (unpack :: b -> a) bs)
+    -- pTrace ("List parser got data" <> show bs) $
+    pure (mconcat ts, pack $ map (unpack :: b -> a) bs)
 
 instance (Newtype a b, Sep sep, Pretty b) => Pretty (List sep b a) where
   pretty = prettySep (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . unpack
@@ -266,13 +266,14 @@ instance
                 ( \o ->
                     let n = (pack :: a -> b) o -- pack each element
                         tChildren = unmark (SomeNamespace n) t0
-                    in pTrace ("indexing with " <> show ((pack :: a -> b) o) <> " getting " <> show tChildren) $
+                    in
+                      -- pTrace ("indexing with " <> show ((pack :: a -> b) o) <> " getting " <> show tChildren) $
                           ( tChildren
                           , n
                           )
                 )
               $ unpack -- unpack the list
-              $ (if t0 == mempty then id else pTrace ("List printer got trivia\n" <> show t0) id)
+              -- $ (if t0 == mempty then id else pTrace ("List printer got trivia\n" <> show t0) id)
               $ n
      in
         vcat

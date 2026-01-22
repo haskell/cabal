@@ -43,7 +43,7 @@ data PrettyField ann
   = PrettyField ann FieldName PP.Doc
   | PrettySection ann FieldName [PP.Doc] [PrettyField ann]
   | PrettyEmpty
-  deriving (Functor, Foldable, Traversable)
+  deriving (Functor, Foldable, Traversable, Show {- NOTE(leana8959): for debugging -})
 
 -- | Prettyprint a list of fields.
 --

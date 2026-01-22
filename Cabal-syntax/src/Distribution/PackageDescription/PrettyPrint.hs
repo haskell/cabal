@@ -79,7 +79,9 @@ showGenericPackageDescription = flip showGenericPackageDescription' mempty
 showGenericPackageDescription' :: GenericPackageDescription -> TriviaTree -> String
 showGenericPackageDescription' gpd t =
   -- TODO(leana8959): we can later use the "showFields" mechanism to inject the comments stored from the comment PR
-  showFields (const NoComment) $ ppGenericPackageDescription' v t gpd
+  showFields (const NoComment)
+    $ (\x -> pTrace ("ppGenericPackageDescription\n" <> show x) x)
+    $ ppGenericPackageDescription' v t gpd
   where
     v = specVersion $ packageDescription gpd
 
