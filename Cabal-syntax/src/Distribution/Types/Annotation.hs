@@ -21,6 +21,7 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Types.Namespace
+import Distribution.Parsec.Position
 
 import qualified Data.Map as M
 import qualified Text.PrettyPrint as Disp
@@ -31,6 +32,7 @@ data Trivium
   | Nth Int
   | PreTrivia String
   | PostTrivia String
+  | ExactPosition Position
   | IsInjected
   deriving (Generic, Show, Eq)
 
@@ -86,6 +88,12 @@ atNth [] = Nothing
 atNth ( t : ts ) = case t of
   Nth n -> Just n
   _ -> atNth ts
+
+atPosition :: Trivia -> Maybe Position
+atPosition [] = Nothing
+atPosition ( t : ts ) = case t of
+  ExactPosition pos -> Just pos
+  _ -> atPosition ts
 
 triviaToDoc :: Trivia -> Disp.Doc -> Disp.Doc
 triviaToDoc [] x = x

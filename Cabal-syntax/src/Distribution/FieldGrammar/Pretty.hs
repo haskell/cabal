@@ -25,6 +25,7 @@ import Prelude ()
 
 import Distribution.Types.Annotation
 import Distribution.Types.Namespace
+import Distribution.Parsec.Position
 
 import Debug.Pretty.Simple
 import Distribution.FieldGrammar.Class
@@ -32,7 +33,7 @@ import Distribution.FieldGrammar.Class
 import qualified Data.Map as M
 
 newtype PrettyFieldGrammar s a = PrettyFG
-  { fieldGrammarPretty :: CabalSpecVersion -> TriviaTree -> s -> [PrettyField ()]
+  { fieldGrammarPretty :: CabalSpecVersion -> TriviaTree -> s -> [PrettyField (Maybe Position)]
   }
   deriving (Functor)
 
@@ -40,13 +41,16 @@ instance Applicative (PrettyFieldGrammar s) where
   pure _ = PrettyFG (\_ _ _ -> mempty)
   PrettyFG f <*> PrettyFG x = PrettyFG (\v t s -> f v t s <> x v t s)
 
+noPosition :: PrettyField ann -> PrettyField (Maybe Position)
+noPosition = fmap (const Nothing)
+
 -- | We can use 'PrettyFieldGrammar' to pp print the @s@.
 --
 -- /Note:/ there is not trailing @($+$ text "")@.
-prettyFieldGrammar :: CabalSpecVersion -> PrettyFieldGrammar s a -> s -> [PrettyField ()]
+prettyFieldGrammar :: CabalSpecVersion -> PrettyFieldGrammar s a -> s -> [PrettyField (Maybe Position)]
 prettyFieldGrammar v g = prettyAnnotatedFieldGrammar v mempty g
 
-prettierFieldGrammar :: CabalSpecVersion -> TriviaTree -> PrettyFieldGrammar s a -> s -> [PrettyField ()]
+prettierFieldGrammar :: CabalSpecVersion -> TriviaTree -> PrettyFieldGrammar s a -> s -> [PrettyField (Maybe Position)]
 prettierFieldGrammar v t g = prettyAnnotatedFieldGrammar v t g
 
 prettyAnnotatedFieldGrammar
@@ -54,7 +58,7 @@ prettyAnnotatedFieldGrammar
   -> TriviaTree
   -> PrettyFieldGrammar s a
   -> s
-  -> [PrettyField ()]
+  -> [PrettyField (Maybe Position)]
 prettyAnnotatedFieldGrammar v t g = fieldGrammarPretty g v t
 
 instance FieldGrammar Prettier PrettyFieldGrammar where
@@ -119,7 +123,7 @@ instance FieldGrammar Prettier PrettyFieldGrammar where
          in -- pTrace ("monoidalFieldAla\n" <> show t') $
             ppField fn (prettierVersioned v t' (pack' _pack (aview l s)))
 
-  prefixedFields _fnPfx l = PrettyFG (\_ t -> pp . aview l)
+  prefixedFields _fnPfx l = PrettyFG (\_ t -> map noPosition . pp . aview l)
     where
       pp xs =
         -- always print the field, even its Doc is empty.
@@ -139,7 +143,12 @@ instance FieldGrammar Prettier PrettyFieldGrammar where
   availableSince _ _ = id
   hiddenField _ = PrettyFG (\_ -> mempty)
 
-ppField :: FieldName -> Doc -> [PrettyField ()]
-ppField name fielddoc
+ppField :: FieldName -> Doc -> [PrettyField (Maybe Position)]
+ppField name fielddoc = ppTriviaField name mempty fielddoc
+
+ppTriviaField :: FieldName -> TriviaTree -> Doc  -> [PrettyField (Maybe Position)]
+ppTriviaField name tree fielddoc
   | PP.isEmpty fielddoc = []
-  | otherwise = [PrettyField () name fielddoc]
+  | otherwise =
+      let mPos = atPosition (justAnnotation tree)
+      in  [PrettyField mPos name fielddoc]
