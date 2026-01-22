@@ -18,10 +18,10 @@ common extensions
     default-language: GHC2021
 
 common ghc-options
-    ghc-options: -Wall -Widentities -Wcompat
+    ghc-options: -Wall -Widentities
 
 common rts-options
-    ghc-options: -rtsopts -threaded "-with-rtsopts=-N -T"
+    ghc-options: -rtsopts -threaded "-with-rtsopts=-N"
 
 test-suite y-test
     import:           extensions

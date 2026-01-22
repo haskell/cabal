@@ -131,7 +131,7 @@ mkGhcOptionsStanza opts = case specHasCommonStanzas $ _optCabalSpec opts of
       annNoComments
       "common"
       [text "ghc-options"]
-      [ field "ghc-options" text "-Wall -Widentities -Wcompat" [] False opts
+      [ field "ghc-options" text "-Wall -Widentities" [] False opts
       ]
 
 mkRtsOptionsStanza :: WriteOpts -> PrettyField FieldAnnotation
@@ -142,7 +142,7 @@ mkRtsOptionsStanza opts = case specHasCommonStanzas $ _optCabalSpec opts of
       annNoComments
       "common"
       [text "rts-options"]
-      [ field "ghc-options" text "-rtsopts -threaded \"-with-rtsopts=-N -T\"" [] False opts
+      [ field "ghc-options" text "-rtsopts -threaded \"-with-rtsopts=-N\"" [] False opts
       ]
 
 mkExtensionsStanza :: WriteOpts -> PrettyField FieldAnnotation
