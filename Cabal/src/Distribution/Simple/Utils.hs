@@ -209,7 +209,6 @@ module Distribution.Simple.Utils
 
 import Distribution.Compat.Async (waitCatch, withAsyncNF)
 import Distribution.Compat.CopyFile
-import Distribution.Compat.FilePath as FilePath
 import Distribution.Compat.Internal.TempFile
 import Distribution.Compat.Lens (Lens', over)
 import Distribution.Compat.Prelude
@@ -268,11 +267,13 @@ import System.Environment
 import System.FilePath (takeFileName)
 import System.FilePath as FilePath
   ( getSearchPath
+  , isExtensionOf
   , joinPath
   , normalise
   , searchPathSeparator
   , splitDirectories
   , splitExtension
+  , stripExtension
   , takeDirectory
   )
 import System.IO

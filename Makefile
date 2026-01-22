@@ -32,6 +32,7 @@ FORMAT_DIRS := \
 	Cabal \
 	Cabal-syntax \
 	cabal-install \
+	cabal-testsuite/src \
 	cabal-validate
 
 FORMAT_DIRS_TODO := \
@@ -46,7 +47,6 @@ FORMAT_DIRS_TODO := \
 	cabal-dev-scripts \
 	cabal-install-solver \
 	cabal-testsuite/main \
-	cabal-testsuite/src \
 	cabal-testsuite/static \
 	solver-benchmarks
 
@@ -285,10 +285,6 @@ bootstrap-jsons: $(BOOTSTRAP_GHC_VERSIONS:%=bootstrap-json-%)
 .PHONY: users-guide
 users-guide: ## Build the users guide.
 	$(MAKE) -C doc users-guide
-
-.PHONY: users-guide-requirements
-users-guide-requirements: ## Install the requirements for building the users guide.
-	$(MAKE) -C doc users-guide-requirements
 
 ifeq ($(shell uname), Darwin)
 PROCS := $(shell sysctl -n hw.logicalcpu)

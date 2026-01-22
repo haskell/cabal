@@ -91,7 +91,6 @@ cabal-testsuite/**/haddocks
 venv
 .venv
 /doc/.skjold_cache/
-/doc/requirements.txt
 
 # macOS folder metadata
 .DS_Store

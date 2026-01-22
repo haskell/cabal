@@ -11,7 +11,10 @@ maintainer:         foo-kmett@kmett.kmett
 -- copyright:
 category:           Data
 build-type:         Simple
-extra-doc-files:    CHANGELOG.md
+extra-doc-files:
+    CHANGELOG.md
+    README.md
+
 -- extra-source-files:
 
 common extensions

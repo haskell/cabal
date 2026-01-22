@@ -8,10 +8,12 @@ build:
   tools:
     python: "3.13"
   jobs:
-    post_create_environment:
-      - pip install pip-tools
-      - make users-guide-requirements
-
-python:
-  install:
-    - requirements: doc/requirements.txt
+    pre_create_environment:
+      - asdf plugin add uv
+      - asdf install uv latest
+      - asdf global uv latest
+    install:
+      - uv sync --project doc
+    build:
+      html:
+        - uv run --project doc sphinx-build -n -W --keep-going -E -T -d _build/doctrees -D language=en doc "${READTHEDOCS_OUTPUT}/html"

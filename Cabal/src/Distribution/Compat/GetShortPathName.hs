@@ -1,56 +1,29 @@
 {-# LANGUAGE CPP #-}
 
------------------------------------------------------------------------------
-
--- |
--- Module      :  Distribution.Compat.GetShortPathName
+-- | Win32 API 'GetShortPathName' function, which returns MS DOS short path name
+-- (up to 8 characters for file name + 3 for file extension).
 --
--- Maintainer  :  cabal-devel@haskell.org
--- Portability :  Windows-only
+-- What's going on here? Why do we care about MS DOS?
+-- In practice the short name serves as an alternative name,
+-- which does not contain spaces even if the original name does.
+-- Some applications (including certain versions of Autoconf) do not like
+-- spaces in filenames, so getting a short path name gives us
+-- a chance to work around it. That's not bullet proof though:
+-- some objects might not have a short name.
 --
--- Win32 API 'GetShortPathName' function.
+-- Writing this comment in 2026, I don't know whether the aforementioned
+-- issue with Autoconf and spaces remains relevant. It's possible
+-- that things have improved during the last 10 years
+-- since https://github.com/haskell/cabal/issues/3185 was merged.
+--
+-- Compare to the similar functionality in Stack:
+-- https://hackage.haskell.org/package/stack-3.3.1/docs/src/Stack.Config.html#local-6989586621679973356
 module Distribution.Compat.GetShortPathName (getShortPathName)
 where
 
-import Distribution.Compat.Prelude
-import Prelude ()
-
 #ifdef mingw32_HOST_OS
 
-import qualified Prelude
-import qualified System.Win32 as Win32
-import System.Win32          (LPCTSTR, LPTSTR, DWORD)
-import Foreign.Marshal.Array (allocaArray)
-
-{- FOURMOLU_DISABLE -}
-#if defined(x86_64_HOST_ARCH) || defined(aarch64_HOST_ARCH)
-#define WINAPI ccall
-#else
-#define WINAPI stdcall
-#endif
-
-foreign import WINAPI unsafe "windows.h GetShortPathNameW"
-  c_GetShortPathName :: LPCTSTR -> LPTSTR -> DWORD -> Prelude.IO DWORD
-
--- | On Windows, retrieves the short path form of the specified path. On
--- non-Windows, does nothing. See https://github.com/haskell/cabal/issues/3185.
---
--- From MS's GetShortPathName docs:
---
---      Passing NULL for [the second] parameter and zero for cchBuffer
---      will always return the required buffer size for a
---      specified lpszLongPath.
---
-getShortPathName :: FilePath -> IO FilePath
-getShortPathName path =
-  Win32.withTString path $ \c_path -> do
-    c_len <- Win32.failIfZero "GetShortPathName #1 failed!" $
-      c_GetShortPathName c_path Win32.nullPtr 0
-    let arr_len = fromIntegral c_len
-    allocaArray arr_len $ \c_out -> do
-      void $ Win32.failIfZero "GetShortPathName #2 failed!" $
-        c_GetShortPathName c_path c_out c_len
-      Win32.peekTString c_out
+import System.Win32.Info (getShortPathName)
 
 #else
 
@@ -58,4 +31,3 @@ getShortPathName :: FilePath -> IO FilePath
 getShortPathName path = return path
 
 #endif
-{- FOURMOLU_ENABLE -}
