@@ -318,21 +318,22 @@ resolveProjectTarget flags@NixStyleFlags{extraFlags = ReplFlags{..}} targetStrin
       case pkgs of
         [pkg] | pkg `notElem` targetStrings -> do
           retargetNotice ("package '" ++ pkg ++ "'")
-          return ((ctx, isMultiReplEnabled' ctx), [TargetPackageNamed (mkPackageName pkg) Nothing])
+          return (ctxMulti, [TargetPackageNamed (mkPackageName pkg) Nothing])
         _ ->
-          if isMultiReplEnabled' ctx && not (null pkgs)
+          if isMulti && not (null pkgs)
             then do
               retargetNotice "'all'"
-              return ((ctx, isMultiReplEnabled' ctx), [TargetAllPackages Nothing])
+              return (ctxMulti, [TargetAllPackages Nothing])
             else
               dieWithException verbosity $
                 RenderReplTargetProblem [render (reportProjectNoTarget projectFile pkgs)]
-    _ -> return ((ctx, isMultiReplEnabled' ctx), userTargetSelectors)
+    _ -> return (ctxMulti, userTargetSelectors)
   where
     verbosity = cfgVerbosity normal flags
-    isMultiReplEnabled' = isMultiReplEnabled replUseMulti
-    retargetMsg newTarget = "No target specified, using " ++ newTarget ++ " as the target for the REPL."
-    retargetNotice newTarget = notice verbosity (retargetMsg newTarget)
+    ctxMulti@(_, isMulti) = (ctx, isMultiReplEnabled replUseMulti ctx)
+    retargetNotice newTarget =
+      notice verbosity $
+        "No target specified, using " ++ newTarget ++ " as the target for the REPL."
 
 resolveGlobalTarget :: NixStyleFlags ReplFlags -> [String] -> TargetResolver
 resolveGlobalTarget flags@NixStyleFlags{extraFlags = ReplFlags{..}} targetStrings ctx userTargetSelectors = do
