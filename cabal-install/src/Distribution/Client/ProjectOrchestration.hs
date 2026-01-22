@@ -579,7 +579,7 @@ uniqueTargetSelectors = ordNub . allTargetSelectors
 
 -- | Resolve targets from a solver result.
 --
--- This is a convenience wrapper around 'resolveTargetsFromSolver' that takes an
+-- This is a convenience wrapper around 'resolveTargets' that takes an
 -- 'ElaboratedInstallPlan' directly, rather than requiring the caller to
 -- construct the 'AvailableTargetIndexes' first.
 resolveTargetsFromSolver
