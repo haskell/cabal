@@ -83,6 +83,7 @@ import Prelude ()
 
 import Distribution.Types.Annotation
 import Distribution.Types.Namespace
+import Debug.Pretty.Simple
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.DList as DList
@@ -325,11 +326,22 @@ parsecStandard f = do
 
 triviaParsecCommaList :: (CabalParsing m, Namespace a) => m (TriviaTree, a) -> m [(TriviaTree, a)]
 triviaParsecCommaList p = do
-  xs <- toList <$> sepByNonEmpty p' comma
-  let xs' = map (\(n, (t, x)) -> (mark (SomeNamespace x) (TriviaTree [Nth n] mempty) <> t, x)) (zip [1..] xs)
+  xs <- toList <$> sepByNonEmpty' p' comma
+  let xs' =
+        map
+          (\(n, (t, x)) -> (mark (SomeNamespace x) (TriviaTree [Nth n] mempty) <> t, x))
+          (zip [1..] xs)
   pure xs'
   where
-    comma = (++) <$> P.string "," <*> spaces' P.<?> "comma"
+    -- TODO(leana8959):
+    -- TriviaTree doesn't make sense when it's not in relationship with a data
+    -- How do we represent this?
+    comma :: CabalParsing m => m TriviaTree
+    comma = do
+      void $ P.string ","
+      s <- spaces'
+      pure $ TriviaTree [PostTrivia s] mempty
+
     p' = do -- p * spaces
       (t, x) <- p
       s <- spaces'
