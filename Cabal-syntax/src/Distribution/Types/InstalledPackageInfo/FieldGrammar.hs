@@ -1,4 +1,5 @@
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -26,10 +27,14 @@ import Distribution.Types.LibraryName
 import Distribution.Types.LibraryVisibility
 import Distribution.Types.MungedPackageName
 import Distribution.Types.Namespace
-import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
 import Distribution.Version
 
+import Distribution.Types.Annotation
+import Distribution.PrettierField
+import Distribution.Fields.Pretty
+
+import Data.List (sortOn, groupBy)
 import qualified Data.Char as Char
 import qualified Data.Map as Map
 import qualified Distribution.Compat.CharParsing as P
@@ -212,6 +217,29 @@ instance Pretty ExposedModules where
 
 instance Prettier ExposedModules where
   prettier _ = pretty
+
+instance
+  ( 
+  ) => PrettierField ExposedModules where
+  prettierField fieldName t0 n =
+    let -- tLocal = justAnnotation t0
+        docGroups =
+              groupBy ((==) `on` (fromMaybe 0 . atFieldNth . justAnnotation . fst))
+              $ sortOn (fromMaybe 0 . atFieldNth . justAnnotation . fst)
+              $ map
+                ( \o ->
+                    let tChildren = unmark (SomeNamespace o) t0
+                    in  (tChildren , o)
+                )
+              $ unpack -- unpack the list
+              $ n
+     in
+        map
+          ( PrettyField Nothing fieldName
+            . Disp.vcat -- TODO(leana8959): should be exact
+            . map (uncurry prettier)
+          )
+        $ docGroups
 
 newtype CompatPackageKey = CompatPackageKey {getCompatPackageKey :: String}
   deriving (Ord, Eq, Show)

@@ -22,6 +22,7 @@ module Distribution.FieldGrammar.Newtypes
   , FSep (..)
   , NoCommaFSep (..)
   , Sep (..)
+  , TriviaSep (..)
 
     -- ** Type
   , List
@@ -60,6 +61,8 @@ import Distribution.Compiler (CompilerFlavor)
 import Distribution.License (License)
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.Fields.Pretty
+import Distribution.PrettierField
 import Distribution.Utils.Path
 import Distribution.Version
   ( LowerBound (..)
@@ -255,8 +258,7 @@ instance
   , Prettier b
   , Namespace a -- it's the old type we are trying to index in the trivia map
   )
-  => Prettier (List sep b a)
-  where
+  => Prettier (List sep b a) where
   prettier t0 n =
     let tLocal = justAnnotation t0
         docGroups :: [[(TriviaTree, b)]] =
@@ -278,6 +280,36 @@ instance
      in
         vcat
         $ map (prettierSep (Proxy :: Proxy sep))
+        $ docGroups
+
+instance
+  ( Newtype a b
+  , Sep sep
+  , TriviaSep sep
+  , Prettier b
+  , Typeable b
+  , Typeable sep
+  , Namespace a
+  ) => PrettierField (List sep b a) where
+  prettierField fieldName t0 n =
+    let tLocal = justAnnotation t0
+        docGroups :: [[(TriviaTree, b)]] =
+              groupBy ((==) `on` (fromMaybe 0 . atFieldNth . justAnnotation . fst))
+              $ sortOn (fromMaybe 0 . atFieldNth . justAnnotation . fst)
+              $ map
+                ( \o ->
+                    let n = (pack :: a -> b) o -- pack each element
+                        tChildren = unmark (SomeNamespace n) t0
+                    in
+                          (tChildren , n)
+                )
+              $ unpack -- unpack the list
+              $ n
+     in
+        map
+          ( PrettyField Nothing fieldName
+            . prettierSep (Proxy :: Proxy sep)
+          )
         $ docGroups
 
 

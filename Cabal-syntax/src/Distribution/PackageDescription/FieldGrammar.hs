@@ -1,4 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -89,10 +91,14 @@ import Distribution.Pretty (Prettier (..), Pretty (..), prettyShow, showToken)
 import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
 
+import Data.List (sortOn, groupBy)
+import Distribution.PrettierField
+
 import Distribution.Types.Annotation
 import Distribution.Types.Dependency
 import Distribution.Types.Namespace
 
+import qualified Text.PrettyPrint as Disp
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.Map as M
 import qualified Distribution.Compat.CharParsing as P
@@ -900,6 +906,29 @@ instance Pretty CompatLicenseFile where
 -- TODO(leana8959): might be important
 instance Prettier CompatLicenseFile where
   prettier _ = pretty
+
+instance
+  (
+  ) => PrettierField (CompatLicenseFile) where
+  prettierField fieldName t0 n =
+    let tLocal = justAnnotation t0
+        docGroups :: [[(TriviaTree, RelativePath Pkg File)]] =
+              groupBy ((==) `on` (fromMaybe 0 . atFieldNth . justAnnotation . fst))
+              $ sortOn (fromMaybe 0 . atFieldNth . justAnnotation . fst)
+              $ map
+                ( \o ->
+                    let tChildren = unmark (SomeNamespace o) t0
+                    in  (tChildren, o)
+                )
+              $ getCompatLicenseFile -- unpack the list
+              $ n
+     in
+        map
+          ( PrettyField Nothing fieldName
+            . Disp.vcat -- TODO(leana8959): should be exact
+            . map (uncurry $ const pretty)
+          )
+        $ docGroups
 
 -------------------------------------------------------------------------------
 -- vim syntax definitions

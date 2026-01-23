@@ -15,6 +15,7 @@ import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
 import Distribution.Compat.Newtype
 import Distribution.Compat.Prelude
+import Distribution.PrettierField
 import Distribution.Fields.Field (FieldName)
 import Distribution.Fields.Pretty (PrettyField (..))
 import Distribution.Pretty (Prettier (..), Pretty, showFreeText, showFreeTextV3)
@@ -121,7 +122,8 @@ instance FieldGrammar Prettier PrettyFieldGrammar where
       pp v t s =
         let t' = unmark (SomeNamespace fn) t
          in -- pTrace ("monoidalFieldAla\n" <> show t') $
-            ppField fn (prettierVersioned v t' (pack' _pack (aview l s)))
+            -- ppField fn (prettierVersioned v t' (pack' _pack (aview l s)))
+            prettierField fn t' (pack' _pack (aview l s))
 
   prefixedFields _fnPfx l = PrettyFG (\_ t -> map noPosition . pp . aview l)
     where
