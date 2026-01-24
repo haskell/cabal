@@ -8,6 +8,7 @@ main = do
   cabalTest $ do
     -- the With GHC-9.2+ output contains -this-unit-id
     -- the With GHC-9.4+ output contains -pgmc by default
+    -- the With GHC-9.10+ output path was changed in windows
     skipUnlessGhcVersion ">= 9.6 && <= 9.10"
     withRepo "repo" $ do
       runShowBuildInfo ["exe:Complex"]

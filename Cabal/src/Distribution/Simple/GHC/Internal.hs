@@ -426,7 +426,7 @@ defaultGhcOptCcProgram :: LocalBuildInfo -> Flag FilePath
 defaultGhcOptCcProgram lbi =
   maybeToFlag $ programPath <$> lookupProgram gccProgram (withPrograms lbi)
 
--- Since the GHС is sensitive to what is given to it, we sometimes need to
+-- Since GHC is sensitive to what is given to it, we sometimes need to
 -- be able to pass options only to new versions
 -- We want to be able to support C++ and C separately in older ghc
 -- See example in buildExtraSources "C++ Sources" or "C Sources"
