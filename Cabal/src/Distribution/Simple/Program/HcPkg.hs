@@ -1,10 +1,7 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Simple.Program.HcPkg
@@ -321,21 +318,12 @@ parsePackages lbs0 =
             go [] = [LBS.toStrict lbs]
             go (idx : idxs) =
               let (pfx, sfx) = LBS.splitAt idx lbs
-               in case foldr (<|>) Nothing $ map (`lbsStripPrefix` sfx) separators of
+               in case foldr (<|>) Nothing $ map (`LBS.stripPrefix` sfx) separators of
                     Just sfx' -> LBS.toStrict pfx : doSplit sfx'
                     Nothing -> go idxs
 
             separators :: [LBS.ByteString]
             separators = ["\n---\n", "\r\n---\r\n", "\r---\r"]
-
-lbsStripPrefix :: LBS.ByteString -> LBS.ByteString -> Maybe LBS.ByteString
-#if MIN_VERSION_bytestring(0,10,8)
-lbsStripPrefix pfx lbs = LBS.stripPrefix pfx lbs
-#else
-lbsStripPrefix pfx lbs
-    | LBS.isPrefixOf pfx lbs = Just (LBS.drop (LBS.length pfx) lbs)
-    | otherwise              = Nothing
-#endif
 
 mungePackagePaths :: FilePath -> InstalledPackageInfo -> InstalledPackageInfo
 -- Perform path/URL variable substitution as per the Cabal ${pkgroot} spec

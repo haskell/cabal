@@ -145,7 +145,7 @@ test-suite hackage-tests
     , Cabal
     , Cabal-syntax
     , Cabal-tree-diff
-    , deepseq
+    , deepseq >= 1.4
     , directory
     , filepath
     , time
