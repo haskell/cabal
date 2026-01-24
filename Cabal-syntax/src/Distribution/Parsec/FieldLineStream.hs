@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -11,7 +12,6 @@ module Distribution.Parsec.FieldLineStream
   , fieldLineStreamEnd
   ) where
 
-import Data.Bits
 import Data.ByteString (ByteString)
 import Distribution.Compat.Prelude
 import Distribution.Utils.Generic (toUTF8BS)
@@ -19,6 +19,12 @@ import Prelude ()
 
 import qualified Data.ByteString as BS
 import qualified Text.Parsec as Parsec
+
+#if MIN_VERSION_text(2,0,0)
+import Data.Text.Internal.Encoding.Utf8
+#else
+import Data.Bits
+#endif
 
 -- | This is essentially a lazy bytestring, but chunks are glued with newline @\'\\n\'@.
 data FieldLineStream
@@ -47,6 +53,17 @@ instance Monad m => Parsec.Stream FieldLineStream m Char where
     Nothing -> Just ('\n', s)
     Just (c, bs') -> Just (unconsChar c bs' (\bs'' -> FLSCons bs'' s) s)
 
+#if MIN_VERSION_text(2,0,0)
+unconsChar :: forall a. Word8 -> ByteString -> (ByteString -> a) -> a -> (Char, a)
+unconsChar c0 bs0 f next = go (utf8DecodeStart c0) bs0
+  where
+    go decoderResult bs = case decoderResult of
+      Accept ch -> (ch, f bs)
+      Reject -> (replacementChar, f bs)
+      Incomplete state codePoint -> case BS.uncons bs of
+        Nothing -> (replacementChar, next)
+        Just (w, bs') -> go (utf8DecodeContinue w state codePoint) bs'
+#else
 -- Based on implementation 'decodeStringUtf8'
 unconsChar :: forall a. Word8 -> ByteString -> (ByteString -> a) -> a -> (Char, a)
 unconsChar c0 bs0 f next
@@ -88,6 +105,7 @@ unconsChar c0 bs0 f next
               bs1
               ((acc `shiftL` 6) .|. fromIntegral cn .&. 0x3F)
         | otherwise -> (replacementChar, f bs1)
+#endif
 
 replacementChar :: Char
 replacementChar = '\xfffd'
