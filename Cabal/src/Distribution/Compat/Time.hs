@@ -44,11 +44,7 @@ import System.Win32.Types ( BOOL, DWORD, LPCTSTR, LPVOID, withTString )
 
 import System.Posix.Files
   ( FileStatus, getFileStatus
-#if MIN_VERSION_unix(2,6,0)
   , modificationTimeHiRes
-#else
-  , modificationTime
-#endif
   )
 
 #endif

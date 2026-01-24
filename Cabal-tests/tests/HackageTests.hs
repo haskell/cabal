@@ -2,9 +2,6 @@
 {-# LANGUAGE CPP                 #-}
 {-# LANGUAGE Rank2Types          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-#if !MIN_VERSION_deepseq(1,4,0)
-{-# OPTIONS_GHC -Wno-orphans #-}
-#endif
 {-# OPTIONS_GHC -Wno-unused-pattern-binds #-} -- pattern match to assert field count
 
 module Main where
@@ -476,12 +473,3 @@ foldIO :: forall a m. (Monoid m, NFData m) => (a -> IO m) -> [a] -> IO m
 foldIO f = go mempty where
     go !acc [] = acc
     go !acc (x:xs) = go (mappend acc (f x)) xs
-
--------------------------------------------------------------------------------
--- Orphans
--------------------------------------------------------------------------------
-
-#if !MIN_VERSION_deepseq(1,4,0)
-instance NFData a => NFData (Sum a) where
-    rnf (Sum a)  = rnf a
-#endif

@@ -42,7 +42,7 @@ library
     , Cabal-syntax ^>= 3.17
     , array      >= 0.4.0.1  && < 0.6
     , base       >= 4.13     && < 5
-    , bytestring >= 0.10.0.0 && < 0.13
+    , bytestring >= 0.10.8   && < 0.13
     , containers >= 0.5.8.2  && < 0.9
     , deepseq    >= 1.3.0.1  && < 1.7
     , directory  >= 1.2.7    && < 1.4
@@ -328,9 +328,7 @@ library
 
   -- Parsec parser-related modules
   build-depends:
-    -- transformers-0.4.0.0 doesn't have record syntax e.g. for Identity
-    -- See also https://github.com/ekmett/transformers-compat/issues/35
-    , transformers (>= 0.3      && < 0.4) || (>=0.4.1.0 && <0.7)
+    , transformers  >= 0.5.6    && < 0.7
     , mtl           >= 2.1      && < 2.4
     , parsec        >= 3.1.13.0 && < 3.2
 
