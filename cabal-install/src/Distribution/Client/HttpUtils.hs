@@ -1,10 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE TupleSections #-}
-
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
 
 -- | Separate module for HTTP actions, using a proxy server if one exists.
 module Distribution.Client.HttpUtils
@@ -242,11 +237,7 @@ downloadURI transport verbosity uri path = do
       _ <- P.string "#sha256="
       str <- some P.hexDigit
       let bs = Base16.decode (BS8.pack str)
-#if MIN_VERSION_base16_bytestring(1,0,0)
       either fail return bs
-#else
-      return (fst bs)
-#endif
 
 ------------------------------------------------------------------------------
 -- Utilities for repo url management

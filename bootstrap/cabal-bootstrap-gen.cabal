@@ -18,7 +18,7 @@ executable cabal-bootstrap-gen
         -- not yet on Hackage and we are bumping versions.  The second for
         -- when Cabal-syntax has been actually uploaded to Hackage and we
         -- rerun `make bootstrap-jsons`.
-    , cabal-install-parsers  ^>=0.3.0.1  || ^>=0.4.5 || ^>=0.6
+    , cabal-install-parsers  ^>=0.6
     , cabal-plan             ^>=0.7.0.0
     , containers             ^>=0.6.0.1
     , text                   ^>=1.2.3.0  || ^>=2.0.1

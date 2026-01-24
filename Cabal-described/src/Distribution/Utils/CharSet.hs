@@ -1,5 +1,4 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE CPP          #-}
 -- | Sets of characters.
 --
 -- Using this is more efficient than 'RE.Type.Alt':ng individual characters.
@@ -37,11 +36,7 @@ import Prelude
        (Bounded (..), Char, Enum (..), Eq (..), Int, Num (..), Ord (..), Show (..), String, (&&), concatMap, flip, not, otherwise, showParen,
        showString, uncurry, ($), (.))
 
-#if MIN_VERSION_containers(0,5,0)
 import qualified Data.IntMap.Strict as IM
-#else
-import qualified Data.IntMap as IM
-#endif
 
 -- | A set of 'Char's.
 --
