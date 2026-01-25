@@ -52,7 +52,7 @@ import Distribution.System (Platform)
 import Distribution.Types.ComponentName (showComponentName)
 import Distribution.Types.UnitId (UnitId)
 import Distribution.Types.UnqualComponentName (UnqualComponentName)
-import Distribution.Verbosity (silent, verboseStderr)
+import Distribution.Verbosity (silent, verboseStderr, verbosityFlags)
 import System.FilePath ((<.>), (</>))
 
 import qualified Data.Map as Map
@@ -155,7 +155,7 @@ listbinAction flags args globalFlags = do
 
     case binfiles of
       [] -> dieWithException verbosity NoTargetFound
-      [exe] -> putStr $ withOutputMarker verbosity $ exe ++ "\n"
+      [exe] -> putStr $ withOutputMarker (verbosityFlags verbosity) $ exe ++ "\n"
       -- Andreas, 2023-01-13, issue #8400:
       -- Regular output of `list-bin` should go to stdout unconditionally,
       -- but for the sake of the testsuite, we want to mark it so it goes

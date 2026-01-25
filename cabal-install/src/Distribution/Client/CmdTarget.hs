@@ -42,7 +42,9 @@ import Distribution.Simple.Utils
   , wrapText
   )
 import Distribution.Verbosity
-  ( normal
+  ( defaultVerbosityHandles
+  , mkVerbosity
+  , normal
   )
 import Text.PrettyPrint
 import qualified Text.PrettyPrint as Pretty
@@ -181,7 +183,9 @@ targetAction flags@NixStyleFlags{..} ts globalFlags = do
 
   printTargetForms verbosity targetStrings targets elaboratedPlan
   where
-    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    verbosity =
+      mkVerbosity defaultVerbosityHandles $
+        fromFlagOrDefault normal (configVerbosity configFlags)
     targetStrings = if null ts then ["all"] else ts
     cliConfig =
       commandLineFlagsToProjectConfig

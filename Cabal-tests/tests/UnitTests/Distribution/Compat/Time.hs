@@ -4,7 +4,6 @@ import Control.Concurrent (threadDelay)
 import System.FilePath
 
 import Distribution.Simple.Utils (withTempDirectory)
-import Distribution.Verbosity
 
 import Distribution.Compat.Time
 
@@ -19,7 +18,7 @@ tests mtimeChange =
 
 getModTimeTest :: Int -> Assertion
 getModTimeTest mtimeChange =
-  withTempDirectory silent "." "getmodtime-" $ \dir -> do
+  withTempDirectory "." "getmodtime-" $ \dir -> do
     let fileName = dir </> "foo"
     writeFile fileName "bar"
     t0 <- getModTime fileName
@@ -31,7 +30,7 @@ getModTimeTest mtimeChange =
 
 getCurTimeTest :: Int -> Assertion
 getCurTimeTest mtimeChange =
-  withTempDirectory silent "." "getmodtime-" $ \dir -> do
+  withTempDirectory "." "getmodtime-" $ \dir -> do
     let fileName = dir </> "foo"
     writeFile fileName "bar"
     t0 <- getModTime fileName

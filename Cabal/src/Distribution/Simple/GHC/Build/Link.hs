@@ -67,6 +67,8 @@ import System.FilePath
 linkOrLoadComponent
   :: ConfiguredProgram
   -- ^ The configured GHC program that will be used for linking
+  -> VerbosityHandles
+  -- ^ Handles used for logging
   -> PackageDescription
   -- ^ The package description containing the component being built
   -> [SymbolicPath Pkg File]
@@ -85,13 +87,14 @@ linkOrLoadComponent
   -> IO ()
 linkOrLoadComponent
   ghcProg
+  verbHandles
   pkg_descr
   extraSources
   (buildTargetDir, targetDir)
   ((wantedLibWays, wantedFLibWay, wantedExeWay), buildOpts)
   pbci = do
     let
-      verbosity = buildVerbosity pbci
+      verbosity = mkVerbosity verbHandles $ buildVerbosity pbci
       target = targetInfo pbci
       component = buildComponent pbci
       what = buildingWhat pbci
@@ -193,6 +196,7 @@ linkOrLoadComponent
           warn verbosity "No exposed modules"
         runReplOrWriteFlags
           ghcProg
+          verbHandles
           lbi
           replFlags
           replOpts_final
@@ -476,7 +480,15 @@ linkLibrary buildTargetDir cleanedExtraLibDirs pkg_descr verbosity runGhcProg li
   -- This would be simpler by not adding every object to the invocation, and
   -- rather using module names.
   unless (null staticObjectFiles) $ do
-    info verbosity (show (ghcOptPackages (Internal.componentGhcOptions verbosity lbi libBi clbi buildTargetDir)))
+    info verbosity $
+      show $
+        ghcOptPackages $
+          Internal.componentGhcOptions
+            (verbosityLevel verbosity)
+            lbi
+            libBi
+            clbi
+            buildTargetDir
     traverse_ linkWay wantedWays
 
 -- | Link the executable resulting from building this component, be it an
@@ -734,13 +746,14 @@ hasThreaded bi = "-threaded" `elem` ghc
 -- GHCi with the GHC options Cabal elaborated to load the component interactively.
 runReplOrWriteFlags
   :: ConfiguredProgram
+  -> VerbosityHandles
   -> LocalBuildInfo
   -> ReplFlags
   -> GhcOptions
   -> PackageName
   -> TargetInfo
   -> IO ()
-runReplOrWriteFlags ghcProg lbi rflags ghcOpts pkg_name target =
+runReplOrWriteFlags ghcProg verbHandles lbi rflags ghcOpts pkg_name target =
   let bi = componentBuildInfo $ targetComponent target
       clbi = targetCLBI target
       cname = componentName (targetComponent target)
@@ -748,7 +761,7 @@ runReplOrWriteFlags ghcProg lbi rflags ghcOpts pkg_name target =
       platform = hostPlatform lbi
       common = configCommonFlags $ configFlags lbi
       mbWorkDir = mbWorkDirLBI lbi
-      verbosity = fromFlag $ setupVerbosity common
+      verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
       tempFileOptions = commonSetupTempFileOptions common
    in case replOptionsFlagOutput (replReplOptions rflags) of
         NoFlag -> do

@@ -53,7 +53,7 @@ data CleanFlags = CleanFlags
   deriving (Show, Generic)
 
 pattern CleanCommonFlags
-  :: Flag Verbosity
+  :: Flag VerbosityFlags
   -> Flag (SymbolicPath Pkg (Dir Dist))
   -> Flag (SymbolicPath CWD (Dir Pkg))
   -> Flag (SymbolicPath Pkg File)

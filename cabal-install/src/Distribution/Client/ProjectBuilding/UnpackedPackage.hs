@@ -115,6 +115,7 @@ import Web.Browser (openBrowser)
 import Distribution.Client.Errors
 
 import Distribution.Client.ProjectBuilding.PackageFileMonitor
+import Distribution.Verbosity (setVerbosityHandles)
 
 -- | Each unpacked package is processed in the following phases:
 --
@@ -367,7 +368,7 @@ buildAndRegisterUnpackedPackage
       setup cmd getCommonFlags flags args =
         withLogging $ \mLogFileHandle -> do
           setupWrapper
-            verbosity
+            (setVerbosityHandles mLogFileHandle verbosity)
             scriptOptions
               { useLoggingHandle = mLogFileHandle
               , useExtraEnvOverrides =
@@ -932,7 +933,7 @@ withTempInstalledPackageInfoFile
   -> (FilePath -> IO ())
   -> IO InstalledPackageInfo
 withTempInstalledPackageInfoFile verbosity tempdir action =
-  withTempDirectory verbosity tempdir "package-registration-" $ \dir -> do
+  withTempDirectory tempdir "package-registration-" $ \dir -> do
     -- make absolute since @action@ will often change directory
     abs_dir <- canonicalizePath dir
 

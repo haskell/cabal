@@ -48,6 +48,7 @@ module Test.Cabal.Monad
   , testStoreDir
   , testUserCabalConfigFile
   , testActualFile
+  , testVerbosity
 
     -- * Skipping tests
   , skip
@@ -437,7 +438,7 @@ runTestM mode m =
                 , testCompiler = comp
                 , testCompilerPath = programPath configuredGhcProg
                 , testPackageDBStack = db_stack
-                , testVerbosity = verbosity
+                , testVerbosityFlags = verbosityFlags verbosity
                 , testMtimeChangeDelay = Nothing
                 , testScriptEnv = senv
                 , testSetupPath = dist_dir </> "build" </> "setup" </> "setup"
@@ -491,7 +492,9 @@ runTestM mode m =
                       _ -> E.throwIO e
             )
   where
-    verbosity = normal -- TODO: configurable
+    verbosity = mkVerbosity defaultVerbosityHandles normal
+    -- TODO: make this configurable by the test-suite driver
+
     cleanup = do
       env <- getTestEnv
       onlyIfExists . removeDirectoryRecursiveHack verbosity $ testWorkDir env
@@ -584,7 +587,7 @@ withSourceCopy m = do
       createDirectoryIfMissing True (takeDirectory (dest </> f))
       d <- liftIO $ doesDirectoryExist (curdir </> f)
       if d
-        then copyDirectoryRecursive normal (curdir </> f) (dest </> f)
+        then copyDirectoryRecursive (mkVerbosity defaultVerbosityHandles normal) (curdir </> f) (dest </> f)
         else copyFile (curdir </> f) (dest </> f)
   m
 
@@ -609,7 +612,6 @@ getSourceFiles = do
   r <-
     liftIO $
       run
-        (testVerbosity env)
         (Just $ testSourceDir env)
         (testEnvironment env)
         (programPath configured_prog)
@@ -719,7 +721,12 @@ mkNormalizerEnv = do
     case cabalProgM of
       Nothing -> pure Nothing
       Just cabalProg -> do
-        liftIO (findProgramVersion "--numeric-version" id (testVerbosity env) (programPath cabalProg))
+        liftIO $
+          findProgramVersion
+            "--numeric-version"
+            id
+            (testVerbosity env)
+            (programPath cabalProg)
 
   return
     NormalizerEnv
@@ -769,7 +776,10 @@ requireProgramM program = do
   env <- getTestEnv
   (configured_program, _) <-
     liftIO $
-      requireProgram (testVerbosity env) program (testProgramDb env)
+      requireProgram
+        (testVerbosity env)
+        program
+        (testProgramDb env)
   return configured_program
 
 needProgramM :: String -> TestM (Maybe ConfiguredProgram)
@@ -788,7 +798,12 @@ isAvailableProgram program = do
     Just _ -> return True
     Nothing -> do
       -- It might not have been configured. Try to configure.
-      progdb <- liftIO $ configureProgram (testVerbosity env) program (testProgramDb env)
+      progdb <-
+        liftIO $
+          configureProgram
+            (testVerbosity env)
+            program
+            (testProgramDb env)
       case lookupProgram program progdb of
         Just _ -> return True
         Nothing -> return False
@@ -830,7 +845,7 @@ data TestEnv = TestEnv
   -- ^ Platform we are running tests on
   , testPackageDBStack :: PackageDBStackCWD
   -- ^ Package database stack (actually this changes lol)
-  , testVerbosity :: Verbosity
+  , testVerbosityFlags :: VerbosityFlags
   -- ^ How verbose to be
   , testMtimeChangeDelay :: Maybe Int
   -- ^ How long we should 'threadDelay' to make sure the file timestamp is
@@ -876,6 +891,9 @@ data TestEnv = TestEnv
   -- ^ Path to the storedir used by the test, if not the default
   }
   deriving (Show)
+
+testVerbosity :: TestEnv -> Verbosity
+testVerbosity = mkVerbosity defaultVerbosityHandles . testVerbosityFlags
 
 testRecordMode :: TestEnv -> RecordMode
 testRecordMode env = fromMaybe (testRecordDefaultMode env) (testRecordUserMode env)

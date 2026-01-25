@@ -42,6 +42,7 @@ import Distribution.TestSuite
 import qualified Distribution.Types.LocalBuildInfo as LBI
 import Distribution.Types.UnqualComponentName
 import Distribution.Utils.Path
+import Distribution.Verbosity
 
 import Distribution.Simple.Configure (getInstalledPackagesById)
 import Distribution.Simple.Errors
@@ -62,6 +63,7 @@ import System.Directory
 test
   :: Args
   -- ^ positional command-line arguments
+  -> VerbosityHandles
   -> PD.PackageDescription
   -- ^ information from the .cabal file
   -> LBI.LocalBuildInfo
@@ -69,10 +71,10 @@ test
   -> TestFlags
   -- ^ flags sent to test
   -> IO ()
-test args pkg_descr lbi0 flags = do
+test args verbHandles pkg_descr lbi0 flags = do
   curDir <- LBI.absoluteWorkingDirLBI lbi0
   let common = testCommonFlags flags
-      verbosity = fromFlag $ setupVerbosity common
+      verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
       distPref = fromFlag $ setupDistPref common
       i = LBI.interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path
       machineTemplate = fromFlag $ testMachineLog flags
@@ -105,9 +107,9 @@ test args pkg_descr lbi0 flags = do
                 }
         case PD.testInterface suite of
           PD.TestSuiteExeV10 _ _ ->
-            ExeV10.runTest pkg_descr lbiForTest clbi hpcMarkupInfo flags suite
+            ExeV10.runTest verbHandles pkg_descr lbiForTest clbi hpcMarkupInfo flags suite
           PD.TestSuiteLibV09 _ _ ->
-            LibV09.runTest pkg_descr lbiForTest clbi hpcMarkupInfo flags suite
+            LibV09.runTest verbHandles pkg_descr lbiForTest clbi hpcMarkupInfo flags suite
           _ ->
             return
               TestSuiteLog

@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TypeApplications #-}
 
 -----------------------------------------------------------------------------
 
@@ -24,8 +25,22 @@
 -- are interested in.)  It's important to note that the instances
 -- for 'Verbosity' assume that this does not exist.
 module Distribution.Verbosity
-  ( -- * Verbosity
-    Verbosity
+  ( -- * Rich verbosity
+    Verbosity (..)
+  , VerbosityHandles (..)
+  , defaultVerbosityHandles
+  , VerbosityLevel (..)
+  , verbosityLevel
+  , verbosityChosenOutputHandle
+  , verbosityErrorHandle
+  , modifyVerbosityFlags
+  , mkVerbosity
+  , setVerbosityHandles
+
+    -- * Verbosity flags
+  , VerbosityFlags (vLevel)
+  , mkVerbosityFlags
+  , makeVerbose
   , silent
   , normal
   , verbose
@@ -39,7 +54,6 @@ module Distribution.Verbosity
   , showForGHC
   , verboseNoFlags
   , verboseHasFlags
-  , modifyVerbosity
 
     -- * Call stacks
   , verboseCallSite
@@ -47,7 +61,7 @@ module Distribution.Verbosity
   , isVerboseCallSite
   , isVerboseCallStack
 
-    -- * Output markets
+    -- * Output markers
   , verboseMarkOutput
   , isVerboseMarkOutput
   , verboseUnmarkOutput
@@ -84,55 +98,121 @@ import Distribution.Verbosity.Internal
 
 import qualified Data.Set as Set
 import qualified Distribution.Compat.CharParsing as P
+import Distribution.Utils.Structured
+import System.IO (Handle, stderr, stdout)
 import qualified Text.PrettyPrint as PP
+import qualified Type.Reflection as Typeable
 
+-- | Rich verbosity, used for the Cabal library interface.
 data Verbosity = Verbosity
+  { verbosityFlags :: VerbosityFlags
+  , verbosityHandles :: VerbosityHandles
+  }
+  deriving (Generic)
+
+-- | Handles to use for logging (e.g. log to stdout, or log to a file).
+data VerbosityHandles = VerbosityHandles
+  { vStdoutHandle :: Handle
+  , vStderrHandle :: Handle
+  }
+
+defaultVerbosityHandles :: VerbosityHandles
+defaultVerbosityHandles =
+  VerbosityHandles
+    { vStdoutHandle = stdout
+    , vStderrHandle = stderr
+    }
+
+-- | Verbosity information which can be passed by the CLI.
+data VerbosityFlags = VerbosityFlags
   { vLevel :: VerbosityLevel
   , vFlags :: Set VerbosityFlag
   , vQuiet :: Bool
   }
-  deriving (Generic, Show, Read)
+  deriving (Generic, Show, Read, Eq)
 
-mkVerbosity :: VerbosityLevel -> Verbosity
-mkVerbosity l = Verbosity{vLevel = l, vFlags = Set.empty, vQuiet = False}
+verbosityLevel :: Verbosity -> VerbosityLevel
+verbosityLevel = vLevel . verbosityFlags
 
-instance Eq Verbosity where
-  x == y = vLevel x == vLevel y
+-- | The handle used for normal output.
+--
+-- With the @+stderr@ verbosity flag, this is the error handle.
+verbosityChosenOutputHandle :: Verbosity -> Handle
+verbosityChosenOutputHandle verb =
+  if isVerboseStderr (verbosityFlags verb)
+    then vStderrHandle $ verbosityHandles verb
+    else vStdoutHandle $ verbosityHandles verb
 
-instance Ord Verbosity where
-  compare x y = compare (vLevel x) (vLevel y)
+-- | The verbosity handle used for error output.
+verbosityErrorHandle :: Verbosity -> Handle
+verbosityErrorHandle = vStderrHandle . verbosityHandles
 
-instance Enum Verbosity where
-  toEnum = mkVerbosity . toEnum
-  fromEnum = fromEnum . vLevel
+setVerbosityHandles :: Maybe Handle -> Verbosity -> Verbosity
+setVerbosityHandles Nothing v = v
+setVerbosityHandles (Just h) v =
+  v{verbosityHandles = VerbosityHandles{vStdoutHandle = h, vStderrHandle = h}}
 
-instance Bounded Verbosity where
-  minBound = mkVerbosity minBound
-  maxBound = mkVerbosity maxBound
+mkVerbosity :: VerbosityHandles -> VerbosityFlags -> Verbosity
+mkVerbosity handles flags =
+  Verbosity
+    { verbosityFlags = flags
+    , verbosityHandles = handles
+    }
 
-instance Binary Verbosity
+modifyVerbosityFlags :: (VerbosityFlags -> VerbosityFlags) -> Verbosity -> Verbosity
+modifyVerbosityFlags f v@(Verbosity{verbosityFlags = flags}) =
+  v{verbosityFlags = f flags}
+
+mkVerbosityFlags :: VerbosityLevel -> VerbosityFlags
+mkVerbosityFlags l = VerbosityFlags{vLevel = l, vFlags = Set.empty, vQuiet = False}
+
+instance Binary VerbosityFlags
+instance NFData VerbosityFlags
+instance Structured VerbosityFlags
+
+-- Hand-written instances, because there are no NFData/Structured instances
+-- for Handle.
+instance NFData VerbosityHandles where
+  rnf (VerbosityHandles o e) = o `seq` e `seq` ()
+instance Structured VerbosityHandles where
+  structure _ =
+    Structure
+      tr
+      0
+      (show tr)
+      [
+        ( "VerbosityHandles"
+        ,
+          [ nominalStructure $ Proxy @Handle
+          , nominalStructure $ Proxy @Handle
+          ]
+        )
+      ]
+    where
+      tr = Typeable.SomeTypeRep $ Typeable.typeRep @VerbosityHandles
+
 instance NFData Verbosity
 instance Structured Verbosity
 
 -- | In 'silent' mode, we should not print /anything/ unless an error occurs.
-silent :: Verbosity
-silent = mkVerbosity Silent
+silent :: VerbosityFlags
+silent = mkVerbosityFlags Silent
 
 -- | Print stuff we want to see by default.
-normal :: Verbosity
-normal = mkVerbosity Normal
+normal :: VerbosityFlags
+normal = mkVerbosityFlags Normal
 
 -- | Be more verbose about what's going on.
-verbose :: Verbosity
-verbose = mkVerbosity Verbose
+verbose :: VerbosityFlags
+verbose = mkVerbosityFlags Verbose
 
 -- | Not only are we verbose ourselves (perhaps even noisier than when
 -- being 'verbose'), but we tell everything we run to be verbose too.
-deafening :: Verbosity
-deafening = mkVerbosity Deafening
+deafening :: VerbosityFlags
+deafening = mkVerbosityFlags Deafening
 
 -- | Increase verbosity level, but stay 'silent' if we are.
-moreVerbose :: Verbosity -> Verbosity
+moreVerbose :: VerbosityFlags -> VerbosityFlags
 moreVerbose v =
   case vLevel v of
     Silent -> v -- silent should stay silent
@@ -140,8 +220,18 @@ moreVerbose v =
     Verbose -> v{vLevel = Deafening}
     Deafening -> v
 
+-- | Make sure the verbosity level is at least 'verbose',
+-- but stay 'silent' if we are.
+makeVerbose :: VerbosityFlags -> VerbosityFlags
+makeVerbose v =
+  case vLevel v of
+    Silent -> v -- silent should stay silent
+    Normal -> v{vLevel = Verbose}
+    Verbose -> v
+    Deafening -> v
+
 -- | Decrease verbosity level, but stay 'deafening' if we are.
-lessVerbose :: Verbosity -> Verbosity
+lessVerbose :: VerbosityFlags -> VerbosityFlags
 lessVerbose v =
   verboseQuiet $
     case vLevel v of
@@ -150,56 +240,42 @@ lessVerbose v =
       Normal -> v{vLevel = Silent}
       Silent -> v
 
--- | Combinator for transforming verbosity level while retaining the
--- original hidden state.
---
--- For instance, the following property holds
---
--- prop> isVerboseNoWrap (modifyVerbosity (max verbose) v) == isVerboseNoWrap v
---
--- __Note__: you can use @modifyVerbosity (const v1) v0@ to overwrite
--- @v1@'s flags with @v0@'s flags.
---
--- @since 2.0.1.0
-modifyVerbosity :: (Verbosity -> Verbosity) -> Verbosity -> Verbosity
-modifyVerbosity f v = v{vLevel = vLevel (f v)}
-
 -- | Numeric verbosity level @0..3@: @0@ is 'silent', @3@ is 'deafening'.
-intToVerbosity :: Int -> Maybe Verbosity
-intToVerbosity 0 = Just (mkVerbosity Silent)
-intToVerbosity 1 = Just (mkVerbosity Normal)
-intToVerbosity 2 = Just (mkVerbosity Verbose)
-intToVerbosity 3 = Just (mkVerbosity Deafening)
+intToVerbosity :: Int -> Maybe VerbosityFlags
+intToVerbosity 0 = Just (mkVerbosityFlags Silent)
+intToVerbosity 1 = Just (mkVerbosityFlags Normal)
+intToVerbosity 2 = Just (mkVerbosityFlags Verbose)
+intToVerbosity 3 = Just (mkVerbosityFlags Deafening)
 intToVerbosity _ = Nothing
 
 -- | Parser verbosity
 --
 -- >>> explicitEitherParsec parsecVerbosity "normal"
--- Right (Verbosity {vLevel = Normal, vFlags = fromList [], vQuiet = False})
+-- Right (VerbosityFlags {vLevel = Normal, vFlags = fromList [], vQuiet = False})
 --
 -- >>> explicitEitherParsec parsecVerbosity "normal+nowrap  "
--- Right (Verbosity {vLevel = Normal, vFlags = fromList [VNoWrap], vQuiet = False})
+-- Right (VerbosityFlags {vLevel = Normal, vFlags = fromList [VNoWrap], vQuiet = False})
 --
 -- >>> explicitEitherParsec parsecVerbosity "normal+nowrap +markoutput"
--- Right (Verbosity {vLevel = Normal, vFlags = fromList [VNoWrap,VMarkOutput], vQuiet = False})
+-- Right (VerbosityFlags {vLevel = Normal, vFlags = fromList [VNoWrap,VMarkOutput], vQuiet = False})
 --
 -- >>> explicitEitherParsec parsecVerbosity "normal +nowrap +markoutput"
--- Right (Verbosity {vLevel = Normal, vFlags = fromList [VNoWrap,VMarkOutput], vQuiet = False})
+-- Right (VerbosityFlags {vLevel = Normal, vFlags = fromList [VNoWrap,VMarkOutput], vQuiet = False})
 --
 -- >>> explicitEitherParsec parsecVerbosity "normal+nowrap+markoutput"
--- Right (Verbosity {vLevel = Normal, vFlags = fromList [VNoWrap,VMarkOutput], vQuiet = False})
+-- Right (VerbosityFlags {vLevel = Normal, vFlags = fromList [VNoWrap,VMarkOutput], vQuiet = False})
 --
 -- >>> explicitEitherParsec parsecVerbosity "deafening+nowrap+stdout+stderr+callsite+callstack"
--- Right (Verbosity {vLevel = Deafening, vFlags = fromList [VCallStack,VCallSite,VNoWrap,VStderr], vQuiet = False})
+-- Right (VerbosityFlags {vLevel = Deafening, vFlags = fromList [VCallStack,VCallSite,VNoWrap,VStderr], vQuiet = False})
 --
 -- /Note:/ this parser will eat trailing spaces.
-instance Parsec Verbosity where
+instance Parsec VerbosityFlags where
   parsec = parsecVerbosity
 
-instance Pretty Verbosity where
+instance Pretty VerbosityFlags where
   pretty = PP.text . showForCabal
 
-parsecVerbosity :: CabalParsing m => m Verbosity
+parsecVerbosity :: CabalParsing m => m VerbosityFlags
 parsecVerbosity = parseIntVerbosity <|> parseStringVerbosity
   where
     parseIntVerbosity = do
@@ -212,7 +288,7 @@ parsecVerbosity = parseIntVerbosity <|> parseStringVerbosity
       level <- parseVerbosityLevel
       _ <- P.spaces
       flags <- many (parseFlag <* P.spaces)
-      return $ foldl' (flip ($)) (mkVerbosity level) flags
+      return $ foldl' (flip ($)) (mkVerbosityFlags level) flags
 
     parseVerbosityLevel = do
       token <- P.munch1 isAsciiAlpha
@@ -237,18 +313,18 @@ parsecVerbosity = parseIntVerbosity <|> parseStringVerbosity
         "nowarn" -> return verboseNoWarn
         _ -> P.unexpected $ "Bad verbosity flag: " ++ token
 
-flagToVerbosity :: ReadE Verbosity
+flagToVerbosity :: ReadE VerbosityFlags
 flagToVerbosity = parsecToReadE id parsecVerbosity
 
-showForCabal :: Verbosity -> String
-showForCabal v
-  | Set.null (vFlags v) =
+showForCabal :: VerbosityFlags -> String
+showForCabal (VerbosityFlags{vLevel = lvl, vFlags = flags})
+  | Set.null flags =
       maybe (error "unknown verbosity") show $
-        elemIndex v [silent, normal, verbose, deafening]
+        elemIndex lvl [Silent, Normal, Verbose, Deafening]
   | otherwise =
       unwords $
-        showLevel (vLevel v)
-          : concatMap showFlag (Set.toList (vFlags v))
+        showLevel lvl
+          : concatMap showFlag (Set.toList flags)
   where
     showLevel Silent = "silent"
     showLevel Normal = "normal"
@@ -263,116 +339,116 @@ showForCabal v
     showFlag VStderr = ["+stderr"]
     showFlag VNoWarn = ["+nowarn"]
 
-showForGHC :: Verbosity -> String
+showForGHC :: VerbosityFlags -> String
 showForGHC v =
   maybe (error "unknown verbosity") show $
-    elemIndex v [silent, normal, __, verbose, deafening]
+    elemIndex (vLevel v) [Silent, Normal, __, Verbose, Deafening]
   where
-    __ = silent -- this will be always ignored by elemIndex
+    __ = Silent -- this will be always ignored by elemIndex
 
 -- | Turn on verbose call-site printing when we log.
-verboseCallSite :: Verbosity -> Verbosity
+verboseCallSite :: VerbosityFlags -> VerbosityFlags
 verboseCallSite = verboseFlag VCallSite
 
 -- | Turn on verbose call-stack printing when we log.
-verboseCallStack :: Verbosity -> Verbosity
+verboseCallStack :: VerbosityFlags -> VerbosityFlags
 verboseCallStack = verboseFlag VCallStack
 
 -- | Turn on @-----BEGIN CABAL OUTPUT-----@ markers for output
 -- from Cabal (as opposed to GHC, or system dependent).
-verboseMarkOutput :: Verbosity -> Verbosity
+verboseMarkOutput :: VerbosityFlags -> VerbosityFlags
 verboseMarkOutput = verboseFlag VMarkOutput
 
 -- | Turn off marking; useful for suppressing nondeterministic output.
-verboseUnmarkOutput :: Verbosity -> Verbosity
+verboseUnmarkOutput :: VerbosityFlags -> VerbosityFlags
 verboseUnmarkOutput = verboseNoFlag VMarkOutput
 
 -- | Disable line-wrapping for log messages.
-verboseNoWrap :: Verbosity -> Verbosity
+verboseNoWrap :: VerbosityFlags -> VerbosityFlags
 verboseNoWrap = verboseFlag VNoWrap
 
 -- | Mark the verbosity as quiet.
-verboseQuiet :: Verbosity -> Verbosity
+verboseQuiet :: VerbosityFlags -> VerbosityFlags
 verboseQuiet v = v{vQuiet = True}
 
 -- | Turn on timestamps for log messages.
-verboseTimestamp :: Verbosity -> Verbosity
+verboseTimestamp :: VerbosityFlags -> VerbosityFlags
 verboseTimestamp = verboseFlag VTimestamp
 
 -- | Turn off timestamps for log messages.
-verboseNoTimestamp :: Verbosity -> Verbosity
+verboseNoTimestamp :: VerbosityFlags -> VerbosityFlags
 verboseNoTimestamp = verboseNoFlag VTimestamp
 
 -- | Switch logging to 'stderr'.
 --
 -- @since 3.4.0.0
-verboseStderr :: Verbosity -> Verbosity
+verboseStderr :: VerbosityFlags -> VerbosityFlags
 verboseStderr = verboseFlag VStderr
 
 -- | Switch logging to 'stdout'.
 --
 -- @since 3.4.0.0
-verboseNoStderr :: Verbosity -> Verbosity
+verboseNoStderr :: VerbosityFlags -> VerbosityFlags
 verboseNoStderr = verboseNoFlag VStderr
 
 -- | Turn off warnings for log messages.
-verboseNoWarn :: Verbosity -> Verbosity
+verboseNoWarn :: VerbosityFlags -> VerbosityFlags
 verboseNoWarn = verboseFlag VNoWarn
 
 -- | Helper function for flag enabling functions.
-verboseFlag :: VerbosityFlag -> (Verbosity -> Verbosity)
-verboseFlag flag v = v{vFlags = Set.insert flag (vFlags v)}
+verboseFlag :: VerbosityFlag -> (VerbosityFlags -> VerbosityFlags)
+verboseFlag flag v@(VerbosityFlags{vFlags = flags}) = v{vFlags = Set.insert flag flags}
 
 -- | Helper function for flag disabling functions.
-verboseNoFlag :: VerbosityFlag -> (Verbosity -> Verbosity)
-verboseNoFlag flag v = v{vFlags = Set.delete flag (vFlags v)}
+verboseNoFlag :: VerbosityFlag -> (VerbosityFlags -> VerbosityFlags)
+verboseNoFlag flag v@(VerbosityFlags{vFlags = flags}) = v{vFlags = Set.delete flag flags}
 
 -- | Turn off all flags.
-verboseNoFlags :: Verbosity -> Verbosity
+verboseNoFlags :: VerbosityFlags -> VerbosityFlags
 verboseNoFlags v = v{vFlags = Set.empty}
 
-verboseHasFlags :: Verbosity -> Bool
-verboseHasFlags = not . Set.null . vFlags
+verboseHasFlags :: VerbosityFlags -> Bool
+verboseHasFlags (VerbosityFlags{vFlags = flags}) = not $ Set.null flags
 
 -- | Test if we should output call sites when we log.
-isVerboseCallSite :: Verbosity -> Bool
+isVerboseCallSite :: VerbosityFlags -> Bool
 isVerboseCallSite = isVerboseFlag VCallSite
 
 -- | Test if we should output call stacks when we log.
-isVerboseCallStack :: Verbosity -> Bool
+isVerboseCallStack :: VerbosityFlags -> Bool
 isVerboseCallStack = isVerboseFlag VCallStack
 
--- | Test if we should output markets.
-isVerboseMarkOutput :: Verbosity -> Bool
+-- | Test if we should output markers.
+isVerboseMarkOutput :: VerbosityFlags -> Bool
 isVerboseMarkOutput = isVerboseFlag VMarkOutput
 
 -- | Test if line-wrapping is disabled for log messages.
-isVerboseNoWrap :: Verbosity -> Bool
+isVerboseNoWrap :: VerbosityFlags -> Bool
 isVerboseNoWrap = isVerboseFlag VNoWrap
 
 -- | Test if we had called 'lessVerbose' on the verbosity.
-isVerboseQuiet :: Verbosity -> Bool
+isVerboseQuiet :: VerbosityFlags -> Bool
 isVerboseQuiet = vQuiet
 
 -- | Test if we should output timestamps when we log.
-isVerboseTimestamp :: Verbosity -> Bool
+isVerboseTimestamp :: VerbosityFlags -> Bool
 isVerboseTimestamp = isVerboseFlag VTimestamp
 
 -- | Test if we should output to 'stderr' when we log.
 --
 -- @since 3.4.0.0
-isVerboseStderr :: Verbosity -> Bool
+isVerboseStderr :: VerbosityFlags -> Bool
 isVerboseStderr = isVerboseFlag VStderr
 
 -- | Test if we should output warnings when we log.
-isVerboseNoWarn :: Verbosity -> Bool
+isVerboseNoWarn :: VerbosityFlags -> Bool
 isVerboseNoWarn = isVerboseFlag VNoWarn
 
 -- | Helper function for flag testing functions.
-isVerboseFlag :: VerbosityFlag -> Verbosity -> Bool
-isVerboseFlag flag = (Set.member flag) . vFlags
+isVerboseFlag :: VerbosityFlag -> VerbosityFlags -> Bool
+isVerboseFlag flag v = flag `Set.member` vFlags v
 
 -- $setup
 -- >>> import Test.QuickCheck (Arbitrary (..), arbitraryBoundedEnum)
 -- >>> instance Arbitrary VerbosityLevel where arbitrary = arbitraryBoundedEnum
--- >>> instance Arbitrary Verbosity where arbitrary = fmap mkVerbosity arbitrary
+-- >>> instance Arbitrary VerbosityFlags where arbitrary = fmap mkVerbosityFlags arbitrary

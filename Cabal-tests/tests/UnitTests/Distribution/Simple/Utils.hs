@@ -38,7 +38,7 @@ withTempDirTest :: Assertion
 withTempDirTest = do
   dirName <- newIORef ""
   tempDir <- getTemporaryDirectory
-  withTempDirectory normal tempDir "foo" $ \dirName' -> do
+  withTempDirectory tempDir "foo" $ \dirName' -> do
     writeIORef dirName dirName'
   dirExists <- readIORef dirName >>= doesDirectoryExist
   assertBool "Temporary directory not deleted by 'withTempDirectory'!"
@@ -47,7 +47,7 @@ withTempDirTest = do
 withTempDirRemovedTest :: Assertion
 withTempDirRemovedTest = do
   tempDir <- getTemporaryDirectory
-  withTempDirectory normal tempDir "foo" $ \dirPath -> do
+  withTempDirectory tempDir "foo" $ \dirPath -> do
     removeDirectoryRecursive dirPath
 
 rawSystemStdInOutTextDecodingTest :: FilePath -> Assertion
@@ -67,7 +67,7 @@ rawSystemStdInOutTextDecodingTest ghcPath
       hClose handleExe
 
       -- Compile
-      (resOutput, resErrors, resExitCode) <- rawSystemStdInOut normal
+      (resOutput, resErrors, resExitCode) <- rawSystemStdInOut (mkVerbosity defaultVerbosityHandles normal)
          ghcPath ["-o", filenameExe, filenameHs]
          Nothing Nothing Nothing
          IODataModeText
@@ -75,7 +75,7 @@ rawSystemStdInOutTextDecodingTest ghcPath
 
       -- Execute
       Exception.try $ do
-        rawSystemStdInOut normal
+        rawSystemStdInOut (mkVerbosity defaultVerbosityHandles normal)
            filenameExe []
            Nothing Nothing Nothing
            IODataModeText -- not binary mode output, ie utf8 text mode so try to decode

@@ -250,7 +250,7 @@ testSetup vcs mkVCSTestDriver repoRecipe theTest = do
 
     return result
   where
-    verbosity = silent
+    verbosity = mkVerbosity defaultVerbosityHandles silent
 
 -- ------------------------------------------------------------
 
@@ -282,7 +282,7 @@ prop_framework vcs mkVCSTestDriver repoRecipe =
         Right checkoutCloneTo -> do
           checkoutCloneTo tagname destRepoPath
           checkExpectedWorkingState vcsIgnoreFiles destRepoPath expectedState
-          removeDirectoryRecursiveHack silent destRepoPath
+          removeDirectoryRecursiveHack (mkVerbosity defaultVerbosityHandles silent) destRepoPath
       where
         destRepoPath = tmpdir </> "dest"
 
@@ -316,7 +316,7 @@ prop_cloneRepo vcs mkVCSTestDriver repoRecipe =
             , srpSubdir = []
             , srpCommand = []
             }
-    verbosity = silent
+    verbosity = mkVerbosity defaultVerbosityHandles silent
 
 -- ------------------------------------------------------------
 
@@ -355,7 +355,7 @@ prop_syncRepos
             syncTargetSetIterations
             seed
     where
-      verbosity = silent
+      verbosity = mkVerbosity defaultVerbosityHandles silent
 
       getRepoDirs :: RepoDirSet -> [FilePath]
       getRepoDirs (RepoDirSet n) =
@@ -989,7 +989,7 @@ vcsTestDriverGit
       gitQuiet [] = git []
       gitQuiet (cmd : args) = git (cmd : verboseArg ++ args)
 
-      verboseArg = ["--quiet" | verbosity < Verbosity.normal]
+      verboseArg = ["--quiet" | Verbosity.verbosityLevel verbosity < Verbosity.Normal]
 
       submoduleGitDir path = repoRoot </> ".git" </> "modules" </> path
 
@@ -1149,4 +1149,4 @@ vcsTestDriverHg
           }
       hg = runProgramInvocation verbosity . hgInvocation
       hg' = getProgramInvocationOutput verbosity . hgInvocation
-      verboseArg = ["--quiet" | verbosity < Verbosity.normal]
+      verboseArg = ["--quiet" | Verbosity.verbosityLevel verbosity < Verbosity.Normal]

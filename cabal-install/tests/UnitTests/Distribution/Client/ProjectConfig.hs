@@ -48,7 +48,7 @@ import Distribution.Client.Targets
 import Distribution.Client.Types
 import Distribution.Client.Types.SourceRepo
 import Distribution.Utils.NubList
-import Distribution.Verbosity (silent)
+import Distribution.Verbosity
 
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.PackageConstraint
@@ -176,17 +176,17 @@ testFindProjectRoot =
 
     test name wrap projectDir projectFile validate =
       testCaseSteps name $ \step -> fromMaybe id wrap $ do
-        result <- findProjectRoot silent projectDir projectFile
+        result <- findProjectRoot (mkVerbosity defaultVerbosityHandles silent) projectDir projectFile
         _ <- validate result
 
         when (isRight result) $ do
           for_ projectDir $ \path -> do
             step "missing project dir"
-            fails =<< findProjectRoot silent (missing path) projectFile
+            fails =<< findProjectRoot (mkVerbosity defaultVerbosityHandles silent) (missing path) projectFile
 
           for_ projectFile $ \path -> do
             step "missing project file"
-            fails =<< findProjectRoot silent projectDir (missing path)
+            fails =<< findProjectRoot (mkVerbosity defaultVerbosityHandles silent) projectDir (missing path)
 
     cd d = Just (withCurrentDirectory d)
 

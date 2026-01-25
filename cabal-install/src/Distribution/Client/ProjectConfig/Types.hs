@@ -100,6 +100,7 @@ import Distribution.Version
 import qualified Data.Map as Map
 import Distribution.Solver.Types.ProjectConfigPath (ProjectConfigPath)
 import Distribution.Types.ParStrat
+import Distribution.Verbosity (VerbosityFlags)
 
 -------------------------------
 -- Project config types
@@ -161,7 +162,7 @@ data ProjectConfig = ProjectConfig
 -- does not need to be tracked for changes since it does not affect the
 -- outcome.
 data ProjectConfigBuildOnly = ProjectConfigBuildOnly
-  { projectConfigVerbosity :: Flag Verbosity
+  { projectConfigVerbosity :: Flag VerbosityFlags
   , projectConfigDryRun :: Flag Bool
   , projectConfigOnlyDeps :: Flag Bool
   , projectConfigOnlyDownload :: Flag Bool

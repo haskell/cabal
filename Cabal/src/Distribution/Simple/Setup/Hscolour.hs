@@ -57,7 +57,7 @@ data HscolourFlags = HscolourFlags
   deriving (Show, Generic)
 
 pattern HscolourCommonFlags
-  :: Flag Verbosity
+  :: Flag VerbosityFlags
   -> Flag (SymbolicPath Pkg (Dir Dist))
   -> Flag (SymbolicPath CWD (Dir Pkg))
   -> Flag (SymbolicPath Pkg File)
