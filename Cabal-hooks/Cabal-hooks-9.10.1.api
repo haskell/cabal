@@ -1,0 +1,913 @@
+
+module Distribution.Simple.SetupHooks where
+  type Benchmark :: *
+  data Benchmark = Benchmark {benchmarkName :: Distribution.Types.UnqualComponentName.UnqualComponentName, benchmarkInterface :: Distribution.Types.BenchmarkInterface.BenchmarkInterface, benchmarkBuildInfo :: BuildInfo}
+  type BenchmarkDiff :: *
+  type BenchmarkDiff = Benchmark
+  pattern BuildCommonFlags :: Distribution.Simple.Flag.Flag Verbosity -> Distribution.Simple.Flag.Flag (Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg (Distribution.Utils.Path.Dir Distribution.Utils.Path.Dist)) -> Distribution.Simple.Flag.Flag (Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.CWD (Distribution.Utils.Path.Dir Distribution.Utils.Path.Pkg)) -> Distribution.Simple.Flag.Flag (Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg Distribution.Utils.Path.File) -> [GHC.Internal.Base.String] -> BuildFlags
+  pattern BuildCommonFlags {buildVerbosity, buildDistPref, buildWorkingDir, buildCabalFilePath, buildTargets}
+  type BuildFlags :: *
+  data BuildFlags = BuildFlags {buildCommonFlags :: !Cabal-3.15.0.0:Distribution.Simple.Setup.Common.CommonSetupFlags, buildProgramPaths :: [(GHC.Internal.Base.String, GHC.Internal.IO.FilePath)], buildProgramArgs :: [(GHC.Internal.Base.String, [GHC.Internal.Base.String])], buildNumJobs :: Distribution.Simple.Flag.Flag (GHC.Internal.Maybe.Maybe GHC.Types.Int), buildUseSemaphore :: Distribution.Simple.Flag.Flag GHC.Internal.Base.String}
+  type BuildHooks :: *
+  data BuildHooks = BuildHooks {preBuildComponentRules :: GHC.Internal.Maybe.Maybe PreBuildComponentRules, postBuildComponentHook :: GHC.Internal.Maybe.Maybe PostBuildComponentHook}
+  type BuildInfo :: *
+  data BuildInfo
+    = BuildInfo {buildable :: GHC.Types.Bool,
+                 buildTools :: [Distribution.Types.LegacyExeDependency.LegacyExeDependency],
+                 buildToolDepends :: [Distribution.Types.ExeDependency.ExeDependency],
+                 cppOptions :: [GHC.Internal.Base.String],
+                 asmOptions :: [GHC.Internal.Base.String],
+                 cmmOptions :: [GHC.Internal.Base.String],
+                 ccOptions :: [GHC.Internal.Base.String],
+                 cxxOptions :: [GHC.Internal.Base.String],
+                 ldOptions :: [GHC.Internal.Base.String],
+                 hsc2hsOptions :: [GHC.Internal.Base.String],
+                 pkgconfigDepends :: [Distribution.Types.PkgconfigDependency.PkgconfigDependency],
+                 frameworks :: [Distribution.Utils.Path.RelativePath Distribution.Utils.Path.Framework Distribution.Utils.Path.File],
+                 extraFrameworkDirs :: [Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg (Distribution.Utils.Path.Dir Distribution.Utils.Path.Framework)],
+                 asmSources :: [Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg Distribution.Utils.Path.File],
+                 cmmSources :: [Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg Distribution.Utils.Path.File],
+                 cSources :: [Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg Distribution.Utils.Path.File],
+                 cxxSources :: [Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg Distribution.Utils.Path.File],
+                 jsSources :: [Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg Distribution.Utils.Path.File],
+                 hsSourceDirs :: [Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg (Distribution.Utils.Path.Dir Distribution.Utils.Path.Source)],
+                 otherModules :: [Distribution.ModuleName.ModuleName],
+                 virtualModules :: [Distribution.ModuleName.ModuleName],
+                 autogenModules :: [Distribution.ModuleName.ModuleName],
+                 defaultLanguage :: GHC.Internal.Maybe.Maybe Language.Haskell.Extension.Language,
+                 otherLanguages :: [Language.Haskell.Extension.Language],
+                 defaultExtensions :: [Language.Haskell.Extension.Extension],
+                 otherExtensions :: [Language.Haskell.Extension.Extension],
+                 oldExtensions :: [Language.Haskell.Extension.Extension],
+                 extraLibs :: [GHC.Internal.Base.String],
+                 extraLibsStatic :: [GHC.Internal.Base.String],
+                 extraGHCiLibs :: [GHC.Internal.Base.String],
+                 extraBundledLibs :: [GHC.Internal.Base.String],
+                 extraLibFlavours :: [GHC.Internal.Base.String],
+                 extraDynLibFlavours :: [GHC.Internal.Base.String],
+                 extraLibDirs :: [Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg (Distribution.Utils.Path.Dir Distribution.Utils.Path.Lib)],
+                 extraLibDirsStatic :: [Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg (Distribution.Utils.Path.Dir Distribution.Utils.Path.Lib)],
+                 includeDirs :: [Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg (Distribution.Utils.Path.Dir Distribution.Utils.Path.Include)],
+                 includes :: [Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Include Distribution.Utils.Path.File],
+                 autogenIncludes :: [Distribution.Utils.Path.RelativePath Distribution.Utils.Path.Include Distribution.Utils.Path.File],
+                 installIncludes :: [Distribution.Utils.Path.RelativePath Distribution.Utils.Path.Include Distribution.Utils.Path.File],
+                 options :: Distribution.Compiler.PerCompilerFlavor [GHC.Internal.Base.String],
+                 profOptions :: Distribution.Compiler.PerCompilerFlavor [GHC.Internal.Base.String],
+                 sharedOptions :: Distribution.Compiler.PerCompilerFlavor [GHC.Internal.Base.String],
+                 profSharedOptions :: Distribution.Compiler.PerCompilerFlavor [GHC.Internal.Base.String],
+                 staticOptions :: Distribution.Compiler.PerCompilerFlavor [GHC.Internal.Base.String],
+                 customFieldsBI :: [(GHC.Internal.Base.String, GHC.Internal.Base.String)],
+                 targetBuildDepends :: [Distribution.Types.Dependency.Dependency],
+                 mixins :: [Distribution.Types.Mixin.Mixin]}
+  type BuildInfoDiff :: *
+  type BuildInfoDiff = BuildInfo
+  type BuildingWhat :: *
+  data BuildingWhat = BuildNormal BuildFlags | BuildRepl ReplFlags | BuildHaddock HaddockFlags | BuildHscolour HscolourFlags
+  pattern CBenchName :: Distribution.Types.UnqualComponentName.UnqualComponentName -> ComponentName
+  pattern CExeName :: Distribution.Types.UnqualComponentName.UnqualComponentName -> ComponentName
+  pattern CFLibName :: Distribution.Types.UnqualComponentName.UnqualComponentName -> ComponentName
+  pattern CTestName :: Distribution.Types.UnqualComponentName.UnqualComponentName -> ComponentName
+  type Command :: * -> * -> *
+  type Command = Distribution.Simple.SetupHooks.Rule.CommandData Distribution.Simple.SetupHooks.Rule.User :: * -> * -> *
+  type Compiler :: *
+  data Compiler = Compiler {compilerId :: Distribution.Compiler.CompilerId, compilerAbiTag :: Distribution.Compiler.AbiTag, compilerCompat :: [Distribution.Compiler.CompilerId], compilerLanguages :: [(Language.Haskell.Extension.Language, Distribution.Simple.Compiler.CompilerFlag)], compilerExtensions :: [(Language.Haskell.Extension.Extension, GHC.Internal.Maybe.Maybe Distribution.Simple.Compiler.CompilerFlag)], compilerProperties :: Data.Map.Internal.Map GHC.Internal.Base.String GHC.Internal.Base.String}
+  type Component :: *
+  data Component = CLib Library | CFLib ForeignLib | CExe Executable | CTest TestSuite | CBench Benchmark
+  type ComponentDiff :: *
+  newtype ComponentDiff = ComponentDiff {componentDiff :: Component}
+  type ComponentLocalBuildInfo :: *
+  data ComponentLocalBuildInfo
+    = LibComponentLocalBuildInfo {componentLocalName :: ComponentName,
+                                  componentComponentId :: Distribution.Types.ComponentId.ComponentId,
+                                  componentUnitId :: Distribution.Types.UnitId.UnitId,
+                                  componentIsIndefinite_ :: GHC.Types.Bool,
+                                  componentInstantiatedWith :: [(Distribution.ModuleName.ModuleName, Distribution.Backpack.OpenModule)],
+                                  componentPackageDeps :: [(Distribution.Types.UnitId.UnitId, Distribution.Types.MungedPackageId.MungedPackageId)],
+                                  componentIncludes :: [(Distribution.Backpack.OpenUnitId, Distribution.Types.ModuleRenaming.ModuleRenaming)],
+                                  componentExeDeps :: [Distribution.Types.UnitId.UnitId],
+                                  componentInternalDeps :: [Distribution.Types.UnitId.UnitId],
+                                  componentCompatPackageKey :: GHC.Internal.Base.String,
+                                  componentCompatPackageName :: Distribution.Types.MungedPackageName.MungedPackageName,
+                                  componentExposedModules :: [Distribution.Types.ExposedModule.ExposedModule],
+                                  componentIsPublic :: GHC.Types.Bool}
+    | FLibComponentLocalBuildInfo {componentLocalName :: ComponentName, componentComponentId :: Distribution.Types.ComponentId.ComponentId, componentUnitId :: Distribution.Types.UnitId.UnitId, componentPackageDeps :: [(Distribution.Types.UnitId.UnitId, Distribution.Types.MungedPackageId.MungedPackageId)], componentIncludes :: [(Distribution.Backpack.OpenUnitId, Distribution.Types.ModuleRenaming.ModuleRenaming)], componentExeDeps :: [Distribution.Types.UnitId.UnitId], componentInternalDeps :: [Distribution.Types.UnitId.UnitId]}
+    | ExeComponentLocalBuildInfo {componentLocalName :: ComponentName, componentComponentId :: Distribution.Types.ComponentId.ComponentId, componentUnitId :: Distribution.Types.UnitId.UnitId, componentPackageDeps :: [(Distribution.Types.UnitId.UnitId, Distribution.Types.MungedPackageId.MungedPackageId)], componentIncludes :: [(Distribution.Backpack.OpenUnitId, Distribution.Types.ModuleRenaming.ModuleRenaming)], componentExeDeps :: [Distribution.Types.UnitId.UnitId], componentInternalDeps :: [Distribution.Types.UnitId.UnitId]}
+    | TestComponentLocalBuildInfo {componentLocalName :: ComponentName, componentComponentId :: Distribution.Types.ComponentId.ComponentId, componentUnitId :: Distribution.Types.UnitId.UnitId, componentPackageDeps :: [(Distribution.Types.UnitId.UnitId, Distribution.Types.MungedPackageId.MungedPackageId)], componentIncludes :: [(Distribution.Backpack.OpenUnitId, Distribution.Types.ModuleRenaming.ModuleRenaming)], componentExeDeps :: [Distribution.Types.UnitId.UnitId], componentInternalDeps :: [Distribution.Types.UnitId.UnitId]}
+    | BenchComponentLocalBuildInfo {componentLocalName :: ComponentName, componentComponentId :: Distribution.Types.ComponentId.ComponentId, componentUnitId :: Distribution.Types.UnitId.UnitId, componentPackageDeps :: [(Distribution.Types.UnitId.UnitId, Distribution.Types.MungedPackageId.MungedPackageId)], componentIncludes :: [(Distribution.Backpack.OpenUnitId, Distribution.Types.ModuleRenaming.ModuleRenaming)], componentExeDeps :: [Distribution.Types.UnitId.UnitId], componentInternalDeps :: [Distribution.Types.UnitId.UnitId]}
+  type ComponentName :: *
+  data ComponentName = CLibName LibraryName | CNotLibName Distribution.Types.ComponentName.NotLibComponentName
+  pattern ConfigCommonFlags :: Distribution.Simple.Flag.Flag Verbosity -> Distribution.Simple.Flag.Flag (Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg (Distribution.Utils.Path.Dir Distribution.Utils.Path.Dist)) -> Distribution.Simple.Flag.Flag (Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.CWD (Distribution.Utils.Path.Dir Distribution.Utils.Path.Pkg)) -> Distribution.Simple.Flag.Flag (Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg Distribution.Utils.Path.File) -> [GHC.Internal.Base.String] -> ConfigFlags
+  pattern ConfigCommonFlags {configVerbosity, configDistPref, configWorkingDir, configCabalFilePath, configTargets}
+  type ConfigFlags :: *
+  data ConfigFlags
+    = ConfigFlags {configCommonFlags :: !Cabal-3.15.0.0:Distribution.Simple.Setup.Common.CommonSetupFlags,
+                   configPrograms_ :: Distribution.Compat.Semigroup.Option' (Distribution.Compat.Semigroup.Last' ProgramDb),
+                   configProgramPaths :: [(GHC.Internal.Base.String, GHC.Internal.IO.FilePath)],
+                   configProgramArgs :: [(GHC.Internal.Base.String, [GHC.Internal.Base.String])],
+                   configProgramPathExtra :: Distribution.Utils.NubList.NubList GHC.Internal.IO.FilePath,
+                   configHcFlavor :: Distribution.Simple.Flag.Flag Distribution.Compiler.CompilerFlavor,
+                   configHcPath :: Distribution.Simple.Flag.Flag GHC.Internal.IO.FilePath,
+                   configHcPkg :: Distribution.Simple.Flag.Flag GHC.Internal.IO.FilePath,
+                   configVanillaLib :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                   configProfLib :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                   configSharedLib :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                   configStaticLib :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                   configDynExe :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                   configFullyStaticExe :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                   configProfExe :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                   configProf :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                   configProfShared :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                   configProfDetail :: Distribution.Simple.Flag.Flag Distribution.Simple.Compiler.ProfDetailLevel,
+                   configProfLibDetail :: Distribution.Simple.Flag.Flag Distribution.Simple.Compiler.ProfDetailLevel,
+                   configConfigureArgs :: [GHC.Internal.Base.String],
+                   configOptimization :: Distribution.Simple.Flag.Flag Distribution.Simple.Compiler.OptimisationLevel,
+                   configProgPrefix :: Distribution.Simple.Flag.Flag Distribution.Simple.InstallDirs.PathTemplate,
+                   configProgSuffix :: Distribution.Simple.Flag.Flag Distribution.Simple.InstallDirs.PathTemplate,
+                   configInstallDirs :: Distribution.Simple.InstallDirs.InstallDirs (Distribution.Simple.Flag.Flag Distribution.Simple.InstallDirs.PathTemplate),
+                   configScratchDir :: Distribution.Simple.Flag.Flag GHC.Internal.IO.FilePath,
+                   configExtraLibDirs :: [Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg (Distribution.Utils.Path.Dir Distribution.Utils.Path.Lib)],
+                   configExtraLibDirsStatic :: [Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg (Distribution.Utils.Path.Dir Distribution.Utils.Path.Lib)],
+                   configExtraFrameworkDirs :: [Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg (Distribution.Utils.Path.Dir Distribution.Utils.Path.Framework)],
+                   configExtraIncludeDirs :: [Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg (Distribution.Utils.Path.Dir Distribution.Utils.Path.Include)],
+                   configIPID :: Distribution.Simple.Flag.Flag GHC.Internal.Base.String,
+                   configCID :: Distribution.Simple.Flag.Flag Distribution.Types.ComponentId.ComponentId,
+                   configDeterministic :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                   configUserInstall :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                   configPackageDBs :: [GHC.Internal.Maybe.Maybe Distribution.Simple.Compiler.PackageDB],
+                   configGHCiLib :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                   configSplitSections :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                   configSplitObjs :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                   configStripExes :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                   configStripLibs :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                   configConstraints :: [Distribution.Types.PackageVersionConstraint.PackageVersionConstraint],
+                   configDependencies :: [Distribution.Types.GivenComponent.GivenComponent],
+                   configPromisedDependencies :: [Distribution.Types.GivenComponent.PromisedComponent],
+                   configInstantiateWith :: [(Distribution.ModuleName.ModuleName, Distribution.Types.Module.Module)],
+                   configConfigurationsFlags :: Distribution.Types.Flag.FlagAssignment,
+                   configTests :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                   configBenchmarks :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                   configCoverage :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                   configLibCoverage :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                   configExactConfiguration :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                   configFlagError :: Distribution.Simple.Flag.Flag GHC.Internal.Base.String,
+                   configRelocatable :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                   configDebugInfo :: Distribution.Simple.Flag.Flag Distribution.Simple.Compiler.DebugInfoLevel,
+                   configDumpBuildInfo :: Distribution.Simple.Flag.Flag Distribution.Types.DumpBuildInfo.DumpBuildInfo,
+                   configUseResponseFiles :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                   configAllowDependingOnPrivateLibs :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                   configCoverageFor :: Distribution.Simple.Flag.Flag [Distribution.Types.UnitId.UnitId],
+                   configIgnoreBuildTools :: Distribution.Simple.Flag.Flag GHC.Types.Bool}
+  type ConfigureHooks :: *
+  data ConfigureHooks = ConfigureHooks {preConfPackageHook :: GHC.Internal.Maybe.Maybe PreConfPackageHook, postConfPackageHook :: GHC.Internal.Maybe.Maybe PostConfPackageHook, preConfComponentHook :: GHC.Internal.Maybe.Maybe PreConfComponentHook}
+  type ConfiguredProgram :: *
+  data ConfiguredProgram = ConfiguredProgram {programId :: GHC.Internal.Base.String, programVersion :: GHC.Internal.Maybe.Maybe Distribution.Types.Version.Version, programDefaultArgs :: [GHC.Internal.Base.String], programOverrideArgs :: [GHC.Internal.Base.String], programOverrideEnv :: [(GHC.Internal.Base.String, GHC.Internal.Maybe.Maybe GHC.Internal.Base.String)], programProperties :: Data.Map.Internal.Map GHC.Internal.Base.String GHC.Internal.Base.String, programLocation :: ProgramLocation, programMonitorFiles :: [GHC.Internal.IO.FilePath]}
+  pattern CopyCommonFlags :: Distribution.Simple.Flag.Flag Verbosity -> Distribution.Simple.Flag.Flag (Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg (Distribution.Utils.Path.Dir Distribution.Utils.Path.Dist)) -> Distribution.Simple.Flag.Flag (Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.CWD (Distribution.Utils.Path.Dir Distribution.Utils.Path.Pkg)) -> Distribution.Simple.Flag.Flag (Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg Distribution.Utils.Path.File) -> [GHC.Internal.Base.String] -> CopyFlags
+  pattern CopyCommonFlags {copyVerbosity, copyDistPref, copyWorkingDir, copyCabalFilePath, copyTargets}
+  type CopyFlags :: *
+  data CopyFlags = CopyFlags {copyCommonFlags :: !Cabal-3.15.0.0:Distribution.Simple.Setup.Common.CommonSetupFlags, copyDest :: Distribution.Simple.Flag.Flag Distribution.Simple.InstallDirs.CopyDest}
+  type Dependency :: *
+  data Dependency = RuleDependency !RuleOutput | FileDependency !Location
+  type Dict :: Constraint -> *
+  data Dict c where
+    Dict :: forall (c :: Constraint). c => Dict c
+  type Executable :: *
+  data Executable = Executable {exeName :: Distribution.Types.UnqualComponentName.UnqualComponentName, modulePath :: Distribution.Utils.Path.RelativePath Distribution.Utils.Path.Source Distribution.Utils.Path.File, exeScope :: Distribution.Types.ExecutableScope.ExecutableScope, buildInfo :: BuildInfo}
+  type ExecutableDiff :: *
+  type ExecutableDiff = Executable
+  type FilePathRoot :: *
+  data FilePathRoot = FilePathRelative | FilePathRoot GHC.Internal.IO.FilePath | FilePathHomeDir
+  type ForeignLib :: *
+  data ForeignLib = ForeignLib {foreignLibName :: Distribution.Types.UnqualComponentName.UnqualComponentName, foreignLibType :: Distribution.Types.ForeignLibType.ForeignLibType, foreignLibOptions :: [Distribution.Types.ForeignLibOption.ForeignLibOption], foreignLibBuildInfo :: BuildInfo, foreignLibVersionInfo :: GHC.Internal.Maybe.Maybe Distribution.Types.ForeignLib.LibVersionInfo, foreignLibVersionLinux :: GHC.Internal.Maybe.Maybe Distribution.Types.Version.Version, foreignLibModDefFile :: [Distribution.Utils.Path.RelativePath Distribution.Utils.Path.Source Distribution.Utils.Path.File]}
+  type ForeignLibDiff :: *
+  type ForeignLibDiff = ForeignLib
+  type Glob :: *
+  data Glob = ...
+  pattern HaddockCommonFlags :: Distribution.Simple.Flag.Flag Verbosity -> Distribution.Simple.Flag.Flag (Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg (Distribution.Utils.Path.Dir Distribution.Utils.Path.Dist)) -> Distribution.Simple.Flag.Flag (Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.CWD (Distribution.Utils.Path.Dir Distribution.Utils.Path.Pkg)) -> Distribution.Simple.Flag.Flag (Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg Distribution.Utils.Path.File) -> [GHC.Internal.Base.String] -> HaddockFlags
+  pattern HaddockCommonFlags {haddockVerbosity, haddockDistPref, haddockWorkingDir, haddockCabalFilePath, haddockTargets}
+  type HaddockFlags :: *
+  data HaddockFlags
+    = HaddockFlags {haddockCommonFlags :: !Cabal-3.15.0.0:Distribution.Simple.Setup.Common.CommonSetupFlags,
+                    haddockProgramPaths :: [(GHC.Internal.Base.String, GHC.Internal.IO.FilePath)],
+                    haddockProgramArgs :: [(GHC.Internal.Base.String, [GHC.Internal.Base.String])],
+                    haddockHoogle :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                    haddockHtml :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                    haddockHtmlLocation :: Distribution.Simple.Flag.Flag GHC.Internal.Base.String,
+                    haddockForHackage :: Distribution.Simple.Flag.Flag Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock.HaddockTarget,
+                    haddockExecutables :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                    haddockTestSuites :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                    haddockBenchmarks :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                    haddockForeignLibs :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                    haddockInternal :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                    haddockCss :: Distribution.Simple.Flag.Flag GHC.Internal.IO.FilePath,
+                    haddockLinkedSource :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                    haddockQuickJump :: Distribution.Simple.Flag.Flag GHC.Types.Bool,
+                    haddockHscolourCss :: Distribution.Simple.Flag.Flag GHC.Internal.IO.FilePath,
+                    haddockContents :: Distribution.Simple.Flag.Flag Distribution.Simple.InstallDirs.PathTemplate,
+                    haddockIndex :: Distribution.Simple.Flag.Flag Distribution.Simple.InstallDirs.PathTemplate,
+                    haddockBaseUrl :: Distribution.Simple.Flag.Flag GHC.Internal.Base.String,
+                    haddockResourcesDir :: Distribution.Simple.Flag.Flag GHC.Internal.Base.String,
+                    haddockOutputDir :: Distribution.Simple.Flag.Flag GHC.Internal.IO.FilePath,
+                    haddockUseUnicode :: Distribution.Simple.Flag.Flag GHC.Types.Bool}
+  pattern HscolourCommonFlags :: Distribution.Simple.Flag.Flag Verbosity -> Distribution.Simple.Flag.Flag (Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg (Distribution.Utils.Path.Dir Distribution.Utils.Path.Dist)) -> Distribution.Simple.Flag.Flag (Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.CWD (Distribution.Utils.Path.Dir Distribution.Utils.Path.Pkg)) -> Distribution.Simple.Flag.Flag (Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg Distribution.Utils.Path.File) -> [GHC.Internal.Base.String] -> HscolourFlags
+  pattern HscolourCommonFlags {hscolourVerbosity, hscolourDistPref, hscolourWorkingDir, hscolourCabalFilePath, hscolourTargets}
+  type HscolourFlags :: *
+  data HscolourFlags = HscolourFlags {hscolourCommonFlags :: !Cabal-3.15.0.0:Distribution.Simple.Setup.Common.CommonSetupFlags, hscolourCSS :: Distribution.Simple.Flag.Flag GHC.Internal.IO.FilePath, hscolourExecutables :: Distribution.Simple.Flag.Flag GHC.Types.Bool, hscolourTestSuites :: Distribution.Simple.Flag.Flag GHC.Types.Bool, hscolourBenchmarks :: Distribution.Simple.Flag.Flag GHC.Types.Bool, hscolourForeignLibs :: Distribution.Simple.Flag.Flag GHC.Types.Bool}
+  type InstallComponentHook :: *
+  type InstallComponentHook = InstallComponentInputs -> GHC.Types.IO ()
+  type InstallComponentInputs :: *
+  data InstallComponentInputs = InstallComponentInputs {copyFlags :: CopyFlags, localBuildInfo :: LocalBuildInfo, targetInfo :: TargetInfo}
+  type InstallHooks :: *
+  data InstallHooks = InstallHooks {installComponentHook :: GHC.Internal.Maybe.Maybe InstallComponentHook}
+  type Library :: *
+  data Library = Library {libName :: LibraryName, exposedModules :: [Distribution.ModuleName.ModuleName], reexportedModules :: [Distribution.Types.ModuleReexport.ModuleReexport], signatures :: [Distribution.ModuleName.ModuleName], libExposed :: GHC.Types.Bool, libVisibility :: Distribution.Types.LibraryVisibility.LibraryVisibility, libBuildInfo :: BuildInfo}
+  type LibraryDiff :: *
+  type LibraryDiff = Library
+  type LibraryName :: *
+  data LibraryName = LMainLibName | LSubLibName Distribution.Types.UnqualComponentName.UnqualComponentName
+  type LocalBuildConfig :: *
+  data LocalBuildConfig = ...
+  type LocalBuildInfo :: *
+  data LocalBuildInfo = ...
+  type Location :: *
+  data Location where
+    Location :: forall baseDir. {locationBaseDir :: !(Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg (Distribution.Utils.Path.Dir baseDir)), locationRelPath :: !(Distribution.Utils.Path.RelativePath baseDir Distribution.Utils.Path.File)} -> Location
+  type MonitorFilePath :: *
+  data MonitorFilePath = MonitorFile {monitorKindFile :: !MonitorKindFile, monitorKindDir :: !MonitorKindDir, monitorPath :: !GHC.Internal.IO.FilePath} | MonitorFileGlob {monitorKindFile :: !MonitorKindFile, monitorKindDir :: !MonitorKindDir, monitorPathGlob :: !RootedGlob}
+  type MonitorKindDir :: *
+  data MonitorKindDir = DirExists | DirModTime | DirNotExists
+  type MonitorKindFile :: *
+  data MonitorKindFile = FileExists | FileModTime | FileHashed | FileNotExists
+  type PackageBuildDescr :: *
+  data PackageBuildDescr = ...
+  type PackageDescription :: *
+  data PackageDescription
+    = PackageDescription {specVersion :: Distribution.CabalSpecVersion.CabalSpecVersion,
+                          package :: Distribution.Types.PackageId.PackageIdentifier,
+                          licenseRaw :: GHC.Internal.Data.Either.Either Distribution.SPDX.License.License Distribution.License.License,
+                          licenseFiles :: [Distribution.Utils.Path.RelativePath Distribution.Utils.Path.Pkg Distribution.Utils.Path.File],
+                          copyright :: ! {-# UNPACK #-}(Distribution.Utils.ShortText.N:ShortText[0]
+                                                        ; Data.ByteString.Short.Internal.N:ShortByteString[0])Distribution.Utils.ShortText.ShortText,
+                          maintainer :: ! {-# UNPACK #-}(Distribution.Utils.ShortText.N:ShortText[0]
+                                                         ; Data.ByteString.Short.Internal.N:ShortByteString[0])Distribution.Utils.ShortText.ShortText,
+                          author :: ! {-# UNPACK #-}(Distribution.Utils.ShortText.N:ShortText[0]
+                                                     ; Data.ByteString.Short.Internal.N:ShortByteString[0])Distribution.Utils.ShortText.ShortText,
+                          stability :: ! {-# UNPACK #-}(Distribution.Utils.ShortText.N:ShortText[0]
+                                                        ; Data.ByteString.Short.Internal.N:ShortByteString[0])Distribution.Utils.ShortText.ShortText,
+                          testedWith :: [(Distribution.Compiler.CompilerFlavor, Distribution.Types.VersionRange.Internal.VersionRange)],
+                          homepage :: ! {-# UNPACK #-}(Distribution.Utils.ShortText.N:ShortText[0]
+                                                       ; Data.ByteString.Short.Internal.N:ShortByteString[0])Distribution.Utils.ShortText.ShortText,
+                          pkgUrl :: ! {-# UNPACK #-}(Distribution.Utils.ShortText.N:ShortText[0]
+                                                     ; Data.ByteString.Short.Internal.N:ShortByteString[0])Distribution.Utils.ShortText.ShortText,
+                          bugReports :: ! {-# UNPACK #-}(Distribution.Utils.ShortText.N:ShortText[0]
+                                                         ; Data.ByteString.Short.Internal.N:ShortByteString[0])Distribution.Utils.ShortText.ShortText,
+                          sourceRepos :: [Distribution.Types.SourceRepo.SourceRepo],
+                          synopsis :: ! {-# UNPACK #-}(Distribution.Utils.ShortText.N:ShortText[0]
+                                                       ; Data.ByteString.Short.Internal.N:ShortByteString[0])Distribution.Utils.ShortText.ShortText,
+                          description :: ! {-# UNPACK #-}(Distribution.Utils.ShortText.N:ShortText[0]
+                                                          ; Data.ByteString.Short.Internal.N:ShortByteString[0])Distribution.Utils.ShortText.ShortText,
+                          category :: ! {-# UNPACK #-}(Distribution.Utils.ShortText.N:ShortText[0]
+                                                       ; Data.ByteString.Short.Internal.N:ShortByteString[0])Distribution.Utils.ShortText.ShortText,
+                          customFieldsPD :: [(GHC.Internal.Base.String, GHC.Internal.Base.String)],
+                          buildTypeRaw :: GHC.Internal.Maybe.Maybe Distribution.Types.BuildType.BuildType,
+                          setupBuildInfo :: GHC.Internal.Maybe.Maybe Distribution.Types.SetupBuildInfo.SetupBuildInfo,
+                          library :: GHC.Internal.Maybe.Maybe Library,
+                          subLibraries :: [Library],
+                          executables :: [Executable],
+                          foreignLibs :: [ForeignLib],
+                          testSuites :: [TestSuite],
+                          benchmarks :: [Benchmark],
+                          dataFiles :: [Distribution.Utils.Path.RelativePath Distribution.Utils.Path.DataDir Distribution.Utils.Path.File],
+                          dataDir :: Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg (Distribution.Utils.Path.Dir Distribution.Utils.Path.DataDir),
+                          extraSrcFiles :: [Distribution.Utils.Path.RelativePath Distribution.Utils.Path.Pkg Distribution.Utils.Path.File],
+                          extraTmpFiles :: [Distribution.Utils.Path.RelativePath Distribution.Utils.Path.Pkg Distribution.Utils.Path.File],
+                          extraDocFiles :: [Distribution.Utils.Path.RelativePath Distribution.Utils.Path.Pkg Distribution.Utils.Path.File],
+                          extraFiles :: [Distribution.Utils.Path.RelativePath Distribution.Utils.Path.Pkg Distribution.Utils.Path.File]}
+  type Platform :: *
+  data Platform = Platform Distribution.System.Arch Distribution.System.OS
+  type PostBuildComponentHook :: *
+  type PostBuildComponentHook = PostBuildComponentInputs -> GHC.Types.IO ()
+  type PostBuildComponentInputs :: *
+  data PostBuildComponentInputs = PostBuildComponentInputs {buildFlags :: BuildFlags, localBuildInfo :: LocalBuildInfo, targetInfo :: TargetInfo}
+  type PostConfPackageHook :: *
+  type PostConfPackageHook = PostConfPackageInputs -> GHC.Types.IO ()
+  type PostConfPackageInputs :: *
+  data PostConfPackageInputs = PostConfPackageInputs {localBuildConfig :: LocalBuildConfig, packageBuildDescr :: PackageBuildDescr}
+  type PreBuildComponentInputs :: *
+  data PreBuildComponentInputs = PreBuildComponentInputs {buildingWhat :: BuildingWhat, localBuildInfo :: LocalBuildInfo, targetInfo :: TargetInfo}
+  type PreBuildComponentRules :: *
+  type PreBuildComponentRules = Rules PreBuildComponentInputs
+  type PreConfComponentHook :: *
+  type PreConfComponentHook = PreConfComponentInputs -> GHC.Types.IO PreConfComponentOutputs
+  type PreConfComponentInputs :: *
+  data PreConfComponentInputs = PreConfComponentInputs {localBuildConfig :: LocalBuildConfig, packageBuildDescr :: PackageBuildDescr, component :: Component}
+  type PreConfComponentOutputs :: *
+  data PreConfComponentOutputs = PreConfComponentOutputs {componentDiff :: ComponentDiff}
+  type PreConfPackageHook :: *
+  type PreConfPackageHook = PreConfPackageInputs -> GHC.Types.IO PreConfPackageOutputs
+  type PreConfPackageInputs :: *
+  data PreConfPackageInputs = PreConfPackageInputs {configFlags :: ConfigFlags, localBuildConfig :: LocalBuildConfig, compiler :: Compiler, platform :: Platform}
+  type PreConfPackageOutputs :: *
+  data PreConfPackageOutputs = PreConfPackageOutputs {buildOptions :: Distribution.Types.LocalBuildConfig.BuildOptions, extraConfiguredProgs :: Distribution.Simple.Program.Db.ConfiguredProgs}
+  type ProgArg :: *
+  type ProgArg = GHC.Internal.Base.String
+  type Program :: *
+  data Program = Program {programName :: GHC.Internal.Base.String, programFindLocation :: Verbosity -> Distribution.Simple.Program.Types.ProgramSearchPath -> GHC.Types.IO (GHC.Internal.Maybe.Maybe (GHC.Internal.IO.FilePath, [GHC.Internal.IO.FilePath])), programFindVersion :: Verbosity -> GHC.Internal.IO.FilePath -> GHC.Types.IO (GHC.Internal.Maybe.Maybe Distribution.Types.Version.Version), programPostConf :: Verbosity -> ConfiguredProgram -> GHC.Types.IO ConfiguredProgram, programNormaliseArgs :: GHC.Internal.Maybe.Maybe Distribution.Types.Version.Version -> PackageDescription -> [GHC.Internal.Base.String] -> [GHC.Internal.Base.String]}
+  type ProgramDb :: *
+  data ProgramDb = ...
+  type ProgramLocation :: *
+  data ProgramLocation = UserSpecified {locationPath :: GHC.Internal.IO.FilePath} | FoundOnSystem {locationPath :: GHC.Internal.IO.FilePath}
+  pattern ReplCommonFlags :: Distribution.Simple.Flag.Flag Verbosity -> Distribution.Simple.Flag.Flag (Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg (Distribution.Utils.Path.Dir Distribution.Utils.Path.Dist)) -> Distribution.Simple.Flag.Flag (Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.CWD (Distribution.Utils.Path.Dir Distribution.Utils.Path.Pkg)) -> Distribution.Simple.Flag.Flag (Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg Distribution.Utils.Path.File) -> [GHC.Internal.Base.String] -> ReplFlags
+  pattern ReplCommonFlags {replVerbosity, replDistPref, replWorkingDir, replCabalFilePath, replTargets}
+  type ReplFlags :: *
+  data ReplFlags = ReplFlags {replCommonFlags :: !Cabal-3.15.0.0:Distribution.Simple.Setup.Common.CommonSetupFlags, replProgramPaths :: [(GHC.Internal.Base.String, GHC.Internal.IO.FilePath)], replProgramArgs :: [(GHC.Internal.Base.String, [GHC.Internal.Base.String])], replReload :: Distribution.Simple.Flag.Flag GHC.Types.Bool, replReplOptions :: Cabal-3.15.0.0:Distribution.Simple.Setup.Repl.ReplOptions}
+  type RootedGlob :: *
+  data RootedGlob = RootedGlob FilePathRoot Glob
+  type Rule :: *
+  type Rule = Distribution.Simple.SetupHooks.Rule.RuleData Distribution.Simple.SetupHooks.Rule.User
+  type role RuleCommands nominal representational representational
+  type RuleCommands :: Distribution.Simple.SetupHooks.Rule.Scope -> (Distribution.Simple.SetupHooks.Rule.Scope -> * -> * -> *) -> (Distribution.Simple.SetupHooks.Rule.Scope -> * -> * -> *) -> *
+  data RuleCommands scope deps ruleCmd where
+    StaticRuleCommand :: forall arg (deps :: Distribution.Simple.SetupHooks.Rule.Scope -> * -> * -> *) (ruleCmd :: Distribution.Simple.SetupHooks.Rule.Scope -> * -> * -> *) (scope :: Distribution.Simple.SetupHooks.Rule.Scope).
+                         GHC.Internal.Data.Type.Bool.If (scope GHC.Internal.Data.Type.Equality.== Distribution.Simple.SetupHooks.Rule.System) (arg ~ Data.ByteString.Lazy.Internal.ByteString) (() :: Constraint) =>
+                         {staticRuleCommand :: !(ruleCmd scope arg (GHC.Types.IO ())), staticRuleArgRep :: !(GHC.Internal.Data.Type.Bool.If (scope GHC.Internal.Data.Type.Equality.== Distribution.Simple.SetupHooks.Rule.System) ghc-internal-9.1001.0:GHC.Internal.Data.Typeable.Internal.SomeTypeRep (ghc-internal-9.1001.0:GHC.Internal.Data.Typeable.Internal.TypeRep arg))} -> RuleCommands scope deps ruleCmd
+    DynamicRuleCommands :: forall depsArg depsRes arg (deps :: Distribution.Simple.SetupHooks.Rule.Scope -> * -> * -> *) (ruleCmd :: Distribution.Simple.SetupHooks.Rule.Scope -> * -> * -> *) (scope :: Distribution.Simple.SetupHooks.Rule.Scope).
+                           GHC.Internal.Data.Type.Bool.If (scope GHC.Internal.Data.Type.Equality.== Distribution.Simple.SetupHooks.Rule.System) (depsArg ~ Data.ByteString.Lazy.Internal.ByteString, depsRes ~ Data.ByteString.Lazy.Internal.ByteString, arg ~ Data.ByteString.Lazy.Internal.ByteString) (() :: Constraint) =>
+                           {dynamicRuleInstances :: !(Distribution.Simple.SetupHooks.Rule.Static scope (Dict (binary-0.8.9.2:Data.Binary.Class.Binary depsRes, GHC.Internal.Show.Show depsRes, GHC.Classes.Eq depsRes))), dynamicDeps :: !(deps scope depsArg depsRes), dynamicRuleCommand :: !(ruleCmd scope arg (depsRes -> GHC.Types.IO ())), dynamicRuleTypeRep :: !(GHC.Internal.Data.Type.Bool.If (scope GHC.Internal.Data.Type.Equality.== Distribution.Simple.SetupHooks.Rule.System) ghc-internal-9.1001.0:GHC.Internal.Data.Typeable.Internal.SomeTypeRep (ghc-internal-9.1001.0:GHC.Internal.Data.Typeable.Internal.TypeRep (depsArg, depsRes, arg)))} -> RuleCommands scope deps ruleCmd
+  type RuleId :: *
+  data RuleId = ...
+  type RuleOutput :: *
+  data RuleOutput = RuleOutput {outputOfRule :: !RuleId, outputIndex :: {-# UNPACK #-}GHC.Types.Word}
+  type Rules :: * -> *
+  newtype Rules env = ...
+  type RulesM :: * -> *
+  type RulesM a = Distribution.Simple.SetupHooks.Rule.RulesT GHC.Types.IO a
+  type SetupHooks :: *
+  data SetupHooks = SetupHooks {configureHooks :: ConfigureHooks, buildHooks :: BuildHooks, installHooks :: InstallHooks}
+  type Suffix :: *
+  newtype Suffix = Suffix GHC.Internal.Base.String
+  type TargetInfo :: *
+  data TargetInfo = TargetInfo {targetCLBI :: ComponentLocalBuildInfo, targetComponent :: Component}
+  type TestSuite :: *
+  data TestSuite = TestSuite {testName :: Distribution.Types.UnqualComponentName.UnqualComponentName, testInterface :: Distribution.Types.TestSuiteInterface.TestSuiteInterface, testBuildInfo :: BuildInfo, testCodeGenerators :: [GHC.Internal.Base.String]}
+  type TestSuiteDiff :: *
+  type TestSuiteDiff = TestSuite
+  type Verbosity :: *
+  data Verbosity = ...
+  addKnownPrograms :: [Program] -> ProgramDb -> ProgramDb
+  addRuleMonitors :: forall (m :: * -> *). GHC.Internal.Base.Monad m => [MonitorFilePath] -> Distribution.Simple.SetupHooks.Rule.RulesT m ()
+  autogenComponentModulesDir :: LocalBuildInfo -> ComponentLocalBuildInfo -> Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg (Distribution.Utils.Path.Dir Distribution.Utils.Path.Source)
+  buildInfoComponentDiff :: ComponentName -> BuildInfo -> ComponentDiff
+  buildingWhatDistPref :: BuildingWhat -> Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg (Distribution.Utils.Path.Dir Distribution.Utils.Path.Dist)
+  buildingWhatVerbosity :: BuildingWhat -> Verbosity
+  componentBuildDir :: LocalBuildInfo -> ComponentLocalBuildInfo -> Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg (Distribution.Utils.Path.Dir Distribution.Utils.Path.Build)
+  componentName :: Component -> ComponentName
+  configureUnconfiguredProgram :: Verbosity -> Program -> ProgramDb -> GHC.Types.IO (GHC.Internal.Maybe.Maybe ConfiguredProgram)
+  dynamicRule :: forall depsArg depsRes arg. (ghc-internal-9.1001.0:GHC.Internal.Data.Typeable.Internal.Typeable depsArg, ghc-internal-9.1001.0:GHC.Internal.Data.Typeable.Internal.Typeable depsRes, ghc-internal-9.1001.0:GHC.Internal.Data.Typeable.Internal.Typeable arg) => GHC.Internal.StaticPtr.StaticPtr (Dict (binary-0.8.9.2:Data.Binary.Class.Binary depsRes, GHC.Internal.Show.Show depsRes, GHC.Classes.Eq depsRes)) -> Command depsArg (GHC.Types.IO ([Dependency], depsRes)) -> Command arg (depsRes -> GHC.Types.IO ()) -> [Dependency] -> GHC.Internal.Base.NonEmpty Location -> Rule
+  emptyBenchmark :: Benchmark
+  emptyBuildInfo :: BuildInfo
+  emptyComponentDiff :: ComponentName -> ComponentDiff
+  emptyExecutable :: Executable
+  emptyForeignLib :: ForeignLib
+  emptyLibrary :: Library
+  emptyTestSuite :: TestSuite
+  installFileGlob :: Verbosity -> Distribution.CabalSpecVersion.CabalSpecVersion -> GHC.Internal.Maybe.Maybe (Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.CWD (Distribution.Utils.Path.Dir Distribution.Utils.Path.Pkg)) -> (GHC.Internal.Maybe.Maybe (Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.CWD (Distribution.Utils.Path.Dir Distribution.Utils.Path.DataDir)), Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg (Distribution.Utils.Path.Dir Distribution.Utils.Path.DataDir)) -> Distribution.Utils.Path.RelativePath Distribution.Utils.Path.DataDir Distribution.Utils.Path.File -> GHC.Types.IO ()
+  location :: Location -> Distribution.Utils.Path.SymbolicPath Distribution.Utils.Path.Pkg Distribution.Utils.Path.File
+  mkCommand :: forall arg res. GHC.Internal.StaticPtr.StaticPtr (Dict (binary-0.8.9.2:Data.Binary.Class.Binary arg, GHC.Internal.Show.Show arg)) -> GHC.Internal.StaticPtr.StaticPtr (arg -> res) -> arg -> Command arg res
+  monitorDirectory :: GHC.Internal.IO.FilePath -> MonitorFilePath
+  monitorDirectoryExistence :: GHC.Internal.IO.FilePath -> MonitorFilePath
+  monitorFile :: GHC.Internal.IO.FilePath -> MonitorFilePath
+  monitorFileExistence :: GHC.Internal.IO.FilePath -> MonitorFilePath
+  monitorFileGlob :: RootedGlob -> MonitorFilePath
+  monitorFileGlobExistence :: RootedGlob -> MonitorFilePath
+  monitorFileHashed :: GHC.Internal.IO.FilePath -> MonitorFilePath
+  monitorFileHashedSearchPath :: [GHC.Internal.IO.FilePath] -> GHC.Internal.IO.FilePath -> [MonitorFilePath]
+  monitorFileOrDirectory :: GHC.Internal.IO.FilePath -> MonitorFilePath
+  monitorFileSearchPath :: [GHC.Internal.IO.FilePath] -> GHC.Internal.IO.FilePath -> [MonitorFilePath]
+  monitorNonExistentDirectory :: GHC.Internal.IO.FilePath -> MonitorFilePath
+  monitorNonExistentFile :: GHC.Internal.IO.FilePath -> MonitorFilePath
+  noBuildHooks :: BuildHooks
+  noConfigureHooks :: ConfigureHooks
+  noInstallHooks :: InstallHooks
+  noPreConfComponentOutputs :: PreConfComponentInputs -> PreConfComponentOutputs
+  noPreConfPackageOutputs :: PreConfPackageInputs -> PreConfPackageOutputs
+  noRules :: RulesM ()
+  noSetupHooks :: SetupHooks
+  registerRule :: Distribution.Utils.ShortText.ShortText -> Rule -> RulesM RuleId
+  registerRule_ :: Distribution.Utils.ShortText.ShortText -> Rule -> Distribution.Simple.SetupHooks.Rule.RulesT GHC.Types.IO ()
+  rules :: forall label env. GHC.Internal.StaticPtr.StaticPtr label -> (env -> RulesM ()) -> Rules env
+  simpleProgram :: GHC.Internal.Base.String -> Program
+  staticRule :: forall arg. ghc-internal-9.1001.0:GHC.Internal.Data.Typeable.Internal.Typeable arg => Command arg (GHC.Types.IO ()) -> [Dependency] -> GHC.Internal.Base.NonEmpty Location -> Rule
+
+
+-- Instances:
+instance Distribution.Compat.Graph.IsNode Distribution.Types.ComponentLocalBuildInfo.ComponentLocalBuildInfo -- Defined in ‘Distribution.Types.ComponentLocalBuildInfo’
+instance Distribution.Compat.Graph.IsNode Distribution.Types.TargetInfo.TargetInfo -- Defined in ‘Distribution.Types.TargetInfo’
+instance Distribution.Package.Package Distribution.Types.PackageDescription.PackageDescription -- Defined in ‘Distribution.Types.PackageDescription’
+instance Distribution.Parsec.Parsec Distribution.Types.ComponentName.ComponentName -- Defined in ‘Distribution.Types.ComponentName’
+instance Distribution.Parsec.Parsec Distribution.Simple.FileMonitor.Types.FilePathRoot -- Defined in ‘Distribution.Simple.FileMonitor.Types’
+instance Distribution.Parsec.Parsec Distribution.Simple.FileMonitor.Types.RootedGlob -- Defined in ‘Distribution.Simple.FileMonitor.Types’
+instance Distribution.Parsec.Parsec Distribution.Types.ForeignLib.LibVersionInfo -- Defined in ‘Distribution.Types.ForeignLib’
+instance Distribution.Parsec.Parsec Distribution.Simple.Glob.Internal.Glob -- Defined in ‘Distribution.Simple.Glob.Internal’
+instance Distribution.Parsec.Parsec Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock.HaddockTarget -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock’
+instance Distribution.Parsec.Parsec Distribution.System.Arch -- Defined in ‘Distribution.System’
+instance Distribution.Parsec.Parsec Distribution.System.OS -- Defined in ‘Distribution.System’
+instance Distribution.Parsec.Parsec Distribution.System.Platform -- Defined in ‘Distribution.System’
+instance Distribution.Parsec.Parsec Distribution.Verbosity.Verbosity -- Defined in ‘Distribution.Verbosity’
+instance Distribution.Pretty.Pretty Distribution.Types.ComponentName.ComponentName -- Defined in ‘Distribution.Types.ComponentName’
+instance Distribution.Pretty.Pretty Distribution.Simple.FileMonitor.Types.FilePathRoot -- Defined in ‘Distribution.Simple.FileMonitor.Types’
+instance Distribution.Pretty.Pretty Distribution.Simple.FileMonitor.Types.RootedGlob -- Defined in ‘Distribution.Simple.FileMonitor.Types’
+instance Distribution.Pretty.Pretty Distribution.Types.ForeignLib.LibVersionInfo -- Defined in ‘Distribution.Types.ForeignLib’
+instance Distribution.Pretty.Pretty Distribution.Simple.Glob.Internal.Glob -- Defined in ‘Distribution.Simple.Glob.Internal’
+instance Distribution.Pretty.Pretty Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock.HaddockTarget -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock’
+instance Distribution.Pretty.Pretty Distribution.System.Arch -- Defined in ‘Distribution.System’
+instance Distribution.Pretty.Pretty Distribution.System.OS -- Defined in ‘Distribution.System’
+instance Distribution.Pretty.Pretty Distribution.System.Platform -- Defined in ‘Distribution.System’
+instance Distribution.Pretty.Pretty Distribution.Simple.PreProcess.Types.Suffix -- Defined in ‘Distribution.Simple.PreProcess.Types’
+instance Distribution.Pretty.Pretty Distribution.Verbosity.Verbosity -- Defined in ‘Distribution.Verbosity’
+instance Distribution.Types.BuildInfo.Lens.HasBuildInfo Distribution.Types.Benchmark.Benchmark -- Defined in ‘Distribution.Types.Benchmark’
+instance Distribution.Types.BuildInfo.Lens.HasBuildInfo Distribution.Types.Component.Component -- Defined in ‘Distribution.Types.Component’
+instance Distribution.Types.BuildInfo.Lens.HasBuildInfo Distribution.Types.Executable.Executable -- Defined in ‘Distribution.Types.Executable’
+instance Distribution.Types.BuildInfo.Lens.HasBuildInfo Distribution.Types.ForeignLib.ForeignLib -- Defined in ‘Distribution.Types.ForeignLib’
+instance Distribution.Types.BuildInfo.Lens.HasBuildInfo Distribution.Types.Library.Library -- Defined in ‘Distribution.Types.Library’
+instance Distribution.Types.BuildInfo.Lens.HasBuildInfo Distribution.Types.TestSuite.TestSuite -- Defined in ‘Distribution.Types.TestSuite’
+instance Distribution.Types.BuildInfo.Lens.HasBuildInfos Distribution.Types.PackageDescription.PackageDescription -- Defined in ‘Distribution.Types.PackageDescription’
+instance Distribution.Utils.Structured.Structured Distribution.Types.ComponentLocalBuildInfo.ComponentLocalBuildInfo -- Defined in ‘Distribution.Types.ComponentLocalBuildInfo’
+instance Distribution.Utils.Structured.Structured Distribution.Types.Benchmark.Benchmark -- Defined in ‘Distribution.Types.Benchmark’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.SetupHooks.Internal.ComponentDiff -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.SetupHooks.Internal.InstallComponentInputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.SetupHooks.Internal.PostBuildComponentInputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.SetupHooks.Internal.PostConfPackageInputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.SetupHooks.Internal.PreBuildComponentInputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.SetupHooks.Internal.PreConfComponentInputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.SetupHooks.Internal.PreConfComponentOutputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.SetupHooks.Internal.PreConfPackageInputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.SetupHooks.Internal.PreConfPackageOutputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance Distribution.Utils.Structured.Structured Cabal-3.15.0.0:Distribution.Simple.Setup.Build.BuildFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Build’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.Setup.BuildingWhat -- Defined in ‘Distribution.Simple.Setup’
+instance Distribution.Utils.Structured.Structured Distribution.Types.BuildInfo.BuildInfo -- Defined in ‘Distribution.Types.BuildInfo’
+instance Distribution.Utils.Structured.Structured Distribution.Types.Component.Component -- Defined in ‘Distribution.Types.Component’
+instance Distribution.Utils.Structured.Structured Distribution.Types.ComponentName.ComponentName -- Defined in ‘Distribution.Types.ComponentName’
+instance Distribution.Utils.Structured.Structured Distribution.Types.ComponentName.NotLibComponentName -- Defined in ‘Distribution.Types.ComponentName’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.SetupHooks.Rule.Dependency -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.SetupHooks.Rule.Location -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.SetupHooks.Rule.RuleId -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.SetupHooks.Rule.RuleOutput -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.SetupHooks.Rule.RulesNameSpace -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.Compiler.Compiler -- Defined in ‘Distribution.Simple.Compiler’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.Compiler.DebugInfoLevel -- Defined in ‘Distribution.Simple.Compiler’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.Compiler.OptimisationLevel -- Defined in ‘Distribution.Simple.Compiler’
+instance forall fp. Distribution.Utils.Structured.Structured fp => Distribution.Utils.Structured.Structured (Distribution.Simple.Compiler.PackageDBX fp) -- Defined in ‘Distribution.Simple.Compiler’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.Compiler.ProfDetailLevel -- Defined in ‘Distribution.Simple.Compiler’
+instance Distribution.Utils.Structured.Structured Cabal-3.15.0.0:Distribution.Simple.Setup.Config.ConfigFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Config’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.Program.Types.ConfiguredProgram -- Defined in ‘Distribution.Simple.Program.Types’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.Program.Types.ProgramLocation -- Defined in ‘Distribution.Simple.Program.Types’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.Program.Types.ProgramSearchPathEntry -- Defined in ‘Distribution.Simple.Program.Types’
+instance Distribution.Utils.Structured.Structured Cabal-3.15.0.0:Distribution.Simple.Setup.Copy.CopyFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Copy’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.FileMonitor.Types.FilePathRoot -- Defined in ‘Distribution.Simple.FileMonitor.Types’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.FileMonitor.Types.MonitorFilePath -- Defined in ‘Distribution.Simple.FileMonitor.Types’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.FileMonitor.Types.MonitorKindDir -- Defined in ‘Distribution.Simple.FileMonitor.Types’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.FileMonitor.Types.MonitorKindFile -- Defined in ‘Distribution.Simple.FileMonitor.Types’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.FileMonitor.Types.RootedGlob -- Defined in ‘Distribution.Simple.FileMonitor.Types’
+instance Distribution.Utils.Structured.Structured Distribution.Types.Executable.Executable -- Defined in ‘Distribution.Types.Executable’
+instance Distribution.Utils.Structured.Structured Distribution.Types.ForeignLib.ForeignLib -- Defined in ‘Distribution.Types.ForeignLib’
+instance Distribution.Utils.Structured.Structured Distribution.Types.ForeignLib.LibVersionInfo -- Defined in ‘Distribution.Types.ForeignLib’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.Glob.Internal.Glob -- Defined in ‘Distribution.Simple.Glob.Internal’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.Glob.Internal.GlobPiece -- Defined in ‘Distribution.Simple.Glob.Internal’
+instance Distribution.Utils.Structured.Structured Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock.HaddockFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock’
+instance Distribution.Utils.Structured.Structured Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock.HaddockTarget -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock’
+instance Distribution.Utils.Structured.Structured Cabal-3.15.0.0:Distribution.Simple.Setup.Hscolour.HscolourFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Hscolour’
+instance Distribution.Utils.Structured.Structured Distribution.Types.LibraryName.LibraryName -- Defined in ‘Distribution.Types.LibraryName’
+instance Distribution.Utils.Structured.Structured Distribution.Types.Library.Library -- Defined in ‘Distribution.Types.Library’
+instance Distribution.Utils.Structured.Structured Distribution.Types.LocalBuildConfig.BuildOptions -- Defined in ‘Distribution.Types.LocalBuildConfig’
+instance Distribution.Utils.Structured.Structured Distribution.Types.LocalBuildConfig.ComponentBuildDescr -- Defined in ‘Distribution.Types.LocalBuildConfig’
+instance Distribution.Utils.Structured.Structured Distribution.Types.LocalBuildConfig.LocalBuildConfig -- Defined in ‘Distribution.Types.LocalBuildConfig’
+instance Distribution.Utils.Structured.Structured Distribution.Types.LocalBuildConfig.LocalBuildDescr -- Defined in ‘Distribution.Types.LocalBuildConfig’
+instance Distribution.Utils.Structured.Structured Distribution.Types.LocalBuildConfig.PackageBuildDescr -- Defined in ‘Distribution.Types.LocalBuildConfig’
+instance Distribution.Utils.Structured.Structured Distribution.Types.LocalBuildInfo.LocalBuildInfo -- Defined in ‘Distribution.Types.LocalBuildInfo’
+instance Distribution.Utils.Structured.Structured Distribution.Types.PackageDescription.PackageDescription -- Defined in ‘Distribution.Types.PackageDescription’
+instance Distribution.Utils.Structured.Structured Distribution.System.Arch -- Defined in ‘Distribution.System’
+instance Distribution.Utils.Structured.Structured Distribution.System.OS -- Defined in ‘Distribution.System’
+instance Distribution.Utils.Structured.Structured Distribution.System.Platform -- Defined in ‘Distribution.System’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.Program.Db.ProgramDb -- Defined in ‘Distribution.Simple.Program.Db’
+instance Distribution.Utils.Structured.Structured Cabal-3.15.0.0:Distribution.Simple.Setup.Repl.ReplFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Repl’
+instance Distribution.Utils.Structured.Structured Cabal-3.15.0.0:Distribution.Simple.Setup.Repl.ReplOptions -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Repl’
+instance Distribution.Utils.Structured.Structured Distribution.Simple.PreProcess.Types.Suffix -- Defined in ‘Distribution.Simple.PreProcess.Types’
+instance Distribution.Utils.Structured.Structured Distribution.Types.TargetInfo.TargetInfo -- Defined in ‘Distribution.Types.TargetInfo’
+instance Distribution.Utils.Structured.Structured Distribution.Types.TestSuite.TestSuite -- Defined in ‘Distribution.Types.TestSuite’
+instance Distribution.Utils.Structured.Structured Distribution.Verbosity.Verbosity -- Defined in ‘Distribution.Verbosity’
+instance forall (m :: * -> *). Control.Monad.IO.Class.MonadIO m => Control.Monad.IO.Class.MonadIO (Distribution.Simple.SetupHooks.Rule.RulesT m) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Types.ComponentLocalBuildInfo.ComponentLocalBuildInfo -- Defined in ‘Distribution.Types.ComponentLocalBuildInfo’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Types.Benchmark.Benchmark -- Defined in ‘Distribution.Types.Benchmark’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.SetupHooks.Internal.ComponentDiff -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.SetupHooks.Internal.InstallComponentInputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.SetupHooks.Internal.PostBuildComponentInputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.SetupHooks.Internal.PostConfPackageInputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.SetupHooks.Internal.PreBuildComponentInputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.SetupHooks.Internal.PreConfComponentInputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.SetupHooks.Internal.PreConfComponentOutputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.SetupHooks.Internal.PreConfPackageInputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.SetupHooks.Internal.PreConfPackageOutputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Cabal-3.15.0.0:Distribution.Simple.Setup.Build.BuildFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Build’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.Setup.BuildingWhat -- Defined in ‘Distribution.Simple.Setup’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Types.BuildInfo.BuildInfo -- Defined in ‘Distribution.Types.BuildInfo’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Types.Component.Component -- Defined in ‘Distribution.Types.Component’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Types.ComponentName.ComponentName -- Defined in ‘Distribution.Types.ComponentName’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Types.ComponentName.NotLibComponentName -- Defined in ‘Distribution.Types.ComponentName’
+instance forall arg res. binary-0.8.9.2:Data.Binary.Class.Binary (Distribution.Simple.SetupHooks.Rule.CommandData Distribution.Simple.SetupHooks.Rule.User arg res) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall arg res. (arg ~ Data.ByteString.Lazy.Internal.ByteString) => binary-0.8.9.2:Data.Binary.Class.Binary (Distribution.Simple.SetupHooks.Rule.CommandData Distribution.Simple.SetupHooks.Rule.System arg res) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.SetupHooks.Rule.Dependency -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall k (scope :: Distribution.Simple.SetupHooks.Rule.Scope) depsRes (depsArg :: k). binary-0.8.9.2:Data.Binary.Class.Binary (Distribution.Simple.SetupHooks.Rule.ScopedArgument scope depsRes) => binary-0.8.9.2:Data.Binary.Class.Binary (Distribution.Simple.SetupHooks.Rule.DepsRes scope depsArg depsRes) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall depsArg depsRes. binary-0.8.9.2:Data.Binary.Class.Binary (Distribution.Simple.SetupHooks.Rule.DynDepsCmd Distribution.Simple.SetupHooks.Rule.User depsArg depsRes) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall arg depsRes. (arg ~ Data.ByteString.Lazy.Internal.ByteString, depsRes ~ Data.ByteString.Lazy.Internal.ByteString) => binary-0.8.9.2:Data.Binary.Class.Binary (Distribution.Simple.SetupHooks.Rule.DynDepsCmd Distribution.Simple.SetupHooks.Rule.System arg depsRes) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.SetupHooks.Rule.Location -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall (scope :: Distribution.Simple.SetupHooks.Rule.Scope) k1 (arg :: k1) k2 (res :: k2). binary-0.8.9.2:Data.Binary.Class.Binary (Distribution.Simple.SetupHooks.Rule.NoCmd scope arg res) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall (ruleCmd :: Distribution.Simple.SetupHooks.Rule.Scope -> * -> * -> *) (deps :: Distribution.Simple.SetupHooks.Rule.Scope -> * -> * -> *). (forall arg res. binary-0.8.9.2:Data.Binary.Class.Binary (ruleCmd Distribution.Simple.SetupHooks.Rule.User arg res), forall depsArg depsRes. binary-0.8.9.2:Data.Binary.Class.Binary depsRes => binary-0.8.9.2:Data.Binary.Class.Binary (deps Distribution.Simple.SetupHooks.Rule.User depsArg depsRes)) => binary-0.8.9.2:Data.Binary.Class.Binary (Distribution.Simple.SetupHooks.Rule.RuleCommands Distribution.Simple.SetupHooks.Rule.User deps ruleCmd) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall (ruleCmd :: Distribution.Simple.SetupHooks.Rule.Scope -> * -> * -> *) (deps :: Distribution.Simple.SetupHooks.Rule.Scope -> * -> * -> *). (forall res. binary-0.8.9.2:Data.Binary.Class.Binary (ruleCmd Distribution.Simple.SetupHooks.Rule.System Data.ByteString.Lazy.Internal.ByteString res), binary-0.8.9.2:Data.Binary.Class.Binary (deps Distribution.Simple.SetupHooks.Rule.System Data.ByteString.Lazy.Internal.ByteString Data.ByteString.Lazy.Internal.ByteString)) => binary-0.8.9.2:Data.Binary.Class.Binary (Distribution.Simple.SetupHooks.Rule.RuleCommands Distribution.Simple.SetupHooks.Rule.System deps ruleCmd)
+  -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance binary-0.8.9.2:Data.Binary.Class.Binary (Distribution.Simple.SetupHooks.Rule.RuleData Distribution.Simple.SetupHooks.Rule.User) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance binary-0.8.9.2:Data.Binary.Class.Binary (Distribution.Simple.SetupHooks.Rule.RuleData Distribution.Simple.SetupHooks.Rule.System) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.SetupHooks.Rule.RuleId -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.SetupHooks.Rule.RuleOutput -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.SetupHooks.Rule.RulesNameSpace -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall arg. binary-0.8.9.2:Data.Binary.Class.Binary arg => binary-0.8.9.2:Data.Binary.Class.Binary (Distribution.Simple.SetupHooks.Rule.ScopedArgument Distribution.Simple.SetupHooks.Rule.User arg) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall arg. (arg ~ Data.ByteString.Lazy.Internal.ByteString) => binary-0.8.9.2:Data.Binary.Class.Binary (Distribution.Simple.SetupHooks.Rule.ScopedArgument Distribution.Simple.SetupHooks.Rule.System arg) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall fnTy. binary-0.8.9.2:Data.Binary.Class.Binary (Distribution.Simple.SetupHooks.Rule.Static Distribution.Simple.SetupHooks.Rule.System fnTy) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall fnTy. binary-0.8.9.2:Data.Binary.Class.Binary (Distribution.Simple.SetupHooks.Rule.Static Distribution.Simple.SetupHooks.Rule.User fnTy) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.Compiler.Compiler -- Defined in ‘Distribution.Simple.Compiler’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.Compiler.DebugInfoLevel -- Defined in ‘Distribution.Simple.Compiler’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.Compiler.OptimisationLevel -- Defined in ‘Distribution.Simple.Compiler’
+instance forall fp. binary-0.8.9.2:Data.Binary.Class.Binary fp => binary-0.8.9.2:Data.Binary.Class.Binary (Distribution.Simple.Compiler.PackageDBX fp) -- Defined in ‘Distribution.Simple.Compiler’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.Compiler.ProfDetailLevel -- Defined in ‘Distribution.Simple.Compiler’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Cabal-3.15.0.0:Distribution.Simple.Setup.Config.ConfigFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Config’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.Program.Types.ConfiguredProgram -- Defined in ‘Distribution.Simple.Program.Types’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.Program.Types.ProgramLocation -- Defined in ‘Distribution.Simple.Program.Types’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.Program.Types.ProgramSearchPathEntry -- Defined in ‘Distribution.Simple.Program.Types’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Cabal-3.15.0.0:Distribution.Simple.Setup.Copy.CopyFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Copy’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.FileMonitor.Types.FilePathRoot -- Defined in ‘Distribution.Simple.FileMonitor.Types’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.FileMonitor.Types.MonitorFilePath -- Defined in ‘Distribution.Simple.FileMonitor.Types’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.FileMonitor.Types.MonitorKindDir -- Defined in ‘Distribution.Simple.FileMonitor.Types’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.FileMonitor.Types.MonitorKindFile -- Defined in ‘Distribution.Simple.FileMonitor.Types’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.FileMonitor.Types.RootedGlob -- Defined in ‘Distribution.Simple.FileMonitor.Types’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Types.Executable.Executable -- Defined in ‘Distribution.Types.Executable’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Types.ForeignLib.ForeignLib -- Defined in ‘Distribution.Types.ForeignLib’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Types.ForeignLib.LibVersionInfo -- Defined in ‘Distribution.Types.ForeignLib’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.Glob.Internal.Glob -- Defined in ‘Distribution.Simple.Glob.Internal’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.Glob.Internal.GlobPiece -- Defined in ‘Distribution.Simple.Glob.Internal’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock.HaddockFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock.HaddockTarget -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Cabal-3.15.0.0:Distribution.Simple.Setup.Hscolour.HscolourFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Hscolour’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Types.LibraryName.LibraryName -- Defined in ‘Distribution.Types.LibraryName’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Types.Library.Library -- Defined in ‘Distribution.Types.Library’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Types.LocalBuildConfig.BuildOptions -- Defined in ‘Distribution.Types.LocalBuildConfig’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Types.LocalBuildConfig.ComponentBuildDescr -- Defined in ‘Distribution.Types.LocalBuildConfig’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Types.LocalBuildConfig.LocalBuildConfig -- Defined in ‘Distribution.Types.LocalBuildConfig’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Types.LocalBuildConfig.LocalBuildDescr -- Defined in ‘Distribution.Types.LocalBuildConfig’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Types.LocalBuildConfig.PackageBuildDescr -- Defined in ‘Distribution.Types.LocalBuildConfig’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Types.LocalBuildInfo.LocalBuildInfo -- Defined in ‘Distribution.Types.LocalBuildInfo’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Types.PackageDescription.PackageDescription -- Defined in ‘Distribution.Types.PackageDescription’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.System.Arch -- Defined in ‘Distribution.System’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.System.OS -- Defined in ‘Distribution.System’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.System.Platform -- Defined in ‘Distribution.System’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.Program.Db.ProgramDb -- Defined in ‘Distribution.Simple.Program.Db’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Cabal-3.15.0.0:Distribution.Simple.Setup.Repl.ReplFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Repl’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Cabal-3.15.0.0:Distribution.Simple.Setup.Repl.ReplOptions -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Repl’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Simple.PreProcess.Types.Suffix -- Defined in ‘Distribution.Simple.PreProcess.Types’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Types.TargetInfo.TargetInfo -- Defined in ‘Distribution.Types.TargetInfo’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Types.TestSuite.TestSuite -- Defined in ‘Distribution.Types.TestSuite’
+instance binary-0.8.9.2:Data.Binary.Class.Binary Distribution.Verbosity.Verbosity -- Defined in ‘Distribution.Verbosity’
+instance Control.DeepSeq.NFData Distribution.Types.Benchmark.Benchmark -- Defined in ‘Distribution.Types.Benchmark’
+instance Control.DeepSeq.NFData Distribution.Types.BuildInfo.BuildInfo -- Defined in ‘Distribution.Types.BuildInfo’
+instance Control.DeepSeq.NFData Distribution.Types.Executable.Executable -- Defined in ‘Distribution.Types.Executable’
+instance Control.DeepSeq.NFData Distribution.Types.ForeignLib.ForeignLib -- Defined in ‘Distribution.Types.ForeignLib’
+instance Control.DeepSeq.NFData Distribution.Types.ForeignLib.LibVersionInfo -- Defined in ‘Distribution.Types.ForeignLib’
+instance Control.DeepSeq.NFData Distribution.Types.LibraryName.LibraryName -- Defined in ‘Distribution.Types.LibraryName’
+instance Control.DeepSeq.NFData Distribution.Types.Library.Library -- Defined in ‘Distribution.Types.Library’
+instance Control.DeepSeq.NFData Distribution.Types.PackageDescription.PackageDescription -- Defined in ‘Distribution.Types.PackageDescription’
+instance Control.DeepSeq.NFData Distribution.System.Arch -- Defined in ‘Distribution.System’
+instance Control.DeepSeq.NFData Distribution.System.OS -- Defined in ‘Distribution.System’
+instance Control.DeepSeq.NFData Distribution.System.Platform -- Defined in ‘Distribution.System’
+instance Control.DeepSeq.NFData Distribution.Types.TestSuite.TestSuite -- Defined in ‘Distribution.Types.TestSuite’
+instance forall (m :: * -> *). GHC.Internal.Base.Monad m => GHC.Internal.Base.Applicative (Distribution.Simple.SetupHooks.Rule.RulesT m) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall (m :: * -> *). GHC.Internal.Base.Functor m => GHC.Internal.Base.Functor (Distribution.Simple.SetupHooks.Rule.RulesT m) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance GHC.Internal.Base.Functor Distribution.Simple.Compiler.PackageDBX -- Defined in ‘Distribution.Simple.Compiler’
+instance forall (m :: * -> *). GHC.Internal.Base.Monad m => GHC.Internal.Base.Monad (Distribution.Simple.SetupHooks.Rule.RulesT m) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance GHC.Internal.Base.Monoid Distribution.Types.Benchmark.Benchmark -- Defined in ‘Distribution.Types.Benchmark’
+instance GHC.Internal.Base.Monoid Distribution.Simple.SetupHooks.Internal.BuildHooks -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance GHC.Internal.Base.Monoid Distribution.Simple.SetupHooks.Internal.ConfigureHooks -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance GHC.Internal.Base.Monoid Distribution.Simple.SetupHooks.Internal.InstallHooks -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance GHC.Internal.Base.Monoid Distribution.Simple.SetupHooks.Internal.SetupHooks -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance GHC.Internal.Base.Monoid Cabal-3.15.0.0:Distribution.Simple.Setup.Build.BuildFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Build’
+instance GHC.Internal.Base.Monoid Distribution.Types.BuildInfo.BuildInfo -- Defined in ‘Distribution.Types.BuildInfo’
+instance forall env. GHC.Internal.Base.Monoid (Distribution.Simple.SetupHooks.Rule.Rules env) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance GHC.Internal.Base.Monoid Cabal-3.15.0.0:Distribution.Simple.Setup.Config.ConfigFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Config’
+instance GHC.Internal.Base.Monoid Cabal-3.15.0.0:Distribution.Simple.Setup.Copy.CopyFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Copy’
+instance GHC.Internal.Base.Monoid Distribution.Types.Executable.Executable -- Defined in ‘Distribution.Types.Executable’
+instance GHC.Internal.Base.Monoid Distribution.Types.ForeignLib.ForeignLib -- Defined in ‘Distribution.Types.ForeignLib’
+instance GHC.Internal.Base.Monoid Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock.HaddockFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock’
+instance GHC.Internal.Base.Monoid Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock.HaddockProjectFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock’
+instance GHC.Internal.Base.Monoid Cabal-3.15.0.0:Distribution.Simple.Setup.Hscolour.HscolourFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Hscolour’
+instance GHC.Internal.Base.Monoid Distribution.Types.Library.Library -- Defined in ‘Distribution.Types.Library’
+instance GHC.Internal.Base.Monoid Cabal-3.15.0.0:Distribution.Simple.Setup.Repl.ReplFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Repl’
+instance GHC.Internal.Base.Monoid Cabal-3.15.0.0:Distribution.Simple.Setup.Repl.ReplOptions -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Repl’
+instance GHC.Internal.Base.Monoid Distribution.Types.TestSuite.TestSuite -- Defined in ‘Distribution.Types.TestSuite’
+instance GHC.Internal.Base.Semigroup Distribution.Types.Benchmark.Benchmark -- Defined in ‘Distribution.Types.Benchmark’
+instance GHC.Internal.Base.Semigroup Distribution.Simple.SetupHooks.Internal.BuildHooks -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance GHC.Internal.Base.Semigroup Distribution.Simple.SetupHooks.Internal.ComponentDiff -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance GHC.Internal.Base.Semigroup Distribution.Simple.SetupHooks.Internal.ConfigureHooks -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance GHC.Internal.Base.Semigroup Distribution.Simple.SetupHooks.Internal.InstallHooks -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance GHC.Internal.Base.Semigroup Distribution.Simple.SetupHooks.Internal.PreConfComponentSemigroup -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance GHC.Internal.Base.Semigroup Distribution.Simple.SetupHooks.Internal.PreConfPkgSemigroup -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance GHC.Internal.Base.Semigroup Distribution.Simple.SetupHooks.Internal.SetupHooks -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance GHC.Internal.Base.Semigroup Cabal-3.15.0.0:Distribution.Simple.Setup.Build.BuildFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Build’
+instance GHC.Internal.Base.Semigroup Distribution.Types.BuildInfo.BuildInfo -- Defined in ‘Distribution.Types.BuildInfo’
+instance GHC.Internal.Base.Semigroup Distribution.Types.Component.Component -- Defined in ‘Distribution.Types.Component’
+instance forall env. GHC.Internal.Base.Semigroup (Distribution.Simple.SetupHooks.Rule.Rules env) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance GHC.Internal.Base.Semigroup Cabal-3.15.0.0:Distribution.Simple.Setup.Config.ConfigFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Config’
+instance GHC.Internal.Base.Semigroup Cabal-3.15.0.0:Distribution.Simple.Setup.Copy.CopyFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Copy’
+instance GHC.Internal.Base.Semigroup Distribution.Types.Executable.Executable -- Defined in ‘Distribution.Types.Executable’
+instance GHC.Internal.Base.Semigroup Distribution.Types.ForeignLib.ForeignLib -- Defined in ‘Distribution.Types.ForeignLib’
+instance GHC.Internal.Base.Semigroup Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock.HaddockFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock’
+instance GHC.Internal.Base.Semigroup Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock.HaddockProjectFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock’
+instance GHC.Internal.Base.Semigroup Cabal-3.15.0.0:Distribution.Simple.Setup.Hscolour.HscolourFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Hscolour’
+instance GHC.Internal.Base.Semigroup Distribution.Types.Library.Library -- Defined in ‘Distribution.Types.Library’
+instance GHC.Internal.Base.Semigroup Cabal-3.15.0.0:Distribution.Simple.Setup.Repl.ReplFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Repl’
+instance GHC.Internal.Base.Semigroup Cabal-3.15.0.0:Distribution.Simple.Setup.Repl.ReplOptions -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Repl’
+instance GHC.Internal.Base.Semigroup Distribution.Types.TestSuite.TestSuite -- Defined in ‘Distribution.Types.TestSuite’
+instance forall (m :: * -> *). GHC.Internal.Control.Monad.Fix.MonadFix m => GHC.Internal.Control.Monad.Fix.MonadFix (Distribution.Simple.SetupHooks.Rule.RulesT m) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance GHC.Internal.Data.Data.Data Distribution.Types.Benchmark.Benchmark -- Defined in ‘Distribution.Types.Benchmark’
+instance GHC.Internal.Data.Data.Data Distribution.Types.BuildInfo.BuildInfo -- Defined in ‘Distribution.Types.BuildInfo’
+instance GHC.Internal.Data.Data.Data Distribution.Types.Executable.Executable -- Defined in ‘Distribution.Types.Executable’
+instance GHC.Internal.Data.Data.Data Distribution.Types.ForeignLib.ForeignLib -- Defined in ‘Distribution.Types.ForeignLib’
+instance GHC.Internal.Data.Data.Data Distribution.Types.ForeignLib.LibVersionInfo -- Defined in ‘Distribution.Types.ForeignLib’
+instance GHC.Internal.Data.Data.Data Distribution.Types.LibraryName.LibraryName -- Defined in ‘Distribution.Types.LibraryName’
+instance GHC.Internal.Data.Data.Data Distribution.Types.Library.Library -- Defined in ‘Distribution.Types.Library’
+instance GHC.Internal.Data.Data.Data Distribution.Types.PackageDescription.PackageDescription -- Defined in ‘Distribution.Types.PackageDescription’
+instance GHC.Internal.Data.Data.Data Distribution.System.Arch -- Defined in ‘Distribution.System’
+instance GHC.Internal.Data.Data.Data Distribution.System.OS -- Defined in ‘Distribution.System’
+instance GHC.Internal.Data.Data.Data Distribution.System.Platform -- Defined in ‘Distribution.System’
+instance GHC.Internal.Data.Data.Data Distribution.Types.TestSuite.TestSuite -- Defined in ‘Distribution.Types.TestSuite’
+instance GHC.Internal.Data.Foldable.Foldable Distribution.Simple.Compiler.PackageDBX -- Defined in ‘Distribution.Simple.Compiler’
+instance GHC.Internal.Data.String.IsString Distribution.Simple.PreProcess.Types.Suffix -- Defined in ‘Distribution.Simple.PreProcess.Types’
+instance GHC.Internal.Data.Traversable.Traversable Distribution.Simple.Compiler.PackageDBX -- Defined in ‘Distribution.Simple.Compiler’
+instance GHC.Internal.Enum.Bounded Distribution.Simple.Compiler.DebugInfoLevel -- Defined in ‘Distribution.Simple.Compiler’
+instance GHC.Internal.Enum.Bounded Distribution.Simple.Compiler.OptimisationLevel -- Defined in ‘Distribution.Simple.Compiler’
+instance GHC.Internal.Enum.Bounded Distribution.Verbosity.Verbosity -- Defined in ‘Distribution.Verbosity’
+instance GHC.Internal.Enum.Enum Distribution.Simple.Compiler.DebugInfoLevel -- Defined in ‘Distribution.Simple.Compiler’
+instance GHC.Internal.Enum.Enum Distribution.Simple.Compiler.OptimisationLevel -- Defined in ‘Distribution.Simple.Compiler’
+instance GHC.Internal.Enum.Enum Distribution.Verbosity.Verbosity -- Defined in ‘Distribution.Verbosity’
+instance GHC.Internal.Generics.Generic Distribution.Types.ComponentLocalBuildInfo.ComponentLocalBuildInfo -- Defined in ‘Distribution.Types.ComponentLocalBuildInfo’
+instance GHC.Internal.Generics.Generic Distribution.Types.Benchmark.Benchmark -- Defined in ‘Distribution.Types.Benchmark’
+instance GHC.Internal.Generics.Generic Distribution.Simple.SetupHooks.Internal.InstallComponentInputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance GHC.Internal.Generics.Generic Distribution.Simple.SetupHooks.Internal.PostBuildComponentInputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance GHC.Internal.Generics.Generic Distribution.Simple.SetupHooks.Internal.PostConfPackageInputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance GHC.Internal.Generics.Generic Distribution.Simple.SetupHooks.Internal.PreBuildComponentInputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance GHC.Internal.Generics.Generic Distribution.Simple.SetupHooks.Internal.PreConfComponentInputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance GHC.Internal.Generics.Generic Distribution.Simple.SetupHooks.Internal.PreConfComponentOutputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance GHC.Internal.Generics.Generic Distribution.Simple.SetupHooks.Internal.PreConfPackageInputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance GHC.Internal.Generics.Generic Distribution.Simple.SetupHooks.Internal.PreConfPackageOutputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance GHC.Internal.Generics.Generic Cabal-3.15.0.0:Distribution.Simple.Setup.Build.BuildFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Build’
+instance GHC.Internal.Generics.Generic Distribution.Simple.Setup.BuildingWhat -- Defined in ‘Distribution.Simple.Setup’
+instance GHC.Internal.Generics.Generic Distribution.Types.BuildInfo.BuildInfo -- Defined in ‘Distribution.Types.BuildInfo’
+instance GHC.Internal.Generics.Generic Distribution.Types.Component.Component -- Defined in ‘Distribution.Types.Component’
+instance GHC.Internal.Generics.Generic Distribution.Types.ComponentName.ComponentName -- Defined in ‘Distribution.Types.ComponentName’
+instance GHC.Internal.Generics.Generic Distribution.Types.ComponentName.NotLibComponentName -- Defined in ‘Distribution.Types.ComponentName’
+instance GHC.Internal.Generics.Generic Distribution.Simple.SetupHooks.Rule.Dependency -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall (scope :: Distribution.Simple.SetupHooks.Rule.Scope) k1 (arg :: k1) k2 (res :: k2). GHC.Internal.Generics.Generic (Distribution.Simple.SetupHooks.Rule.NoCmd scope arg res) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall (scope :: Distribution.Simple.SetupHooks.Rule.Scope). GHC.Internal.Generics.Generic (Distribution.Simple.SetupHooks.Rule.RuleData scope) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance GHC.Internal.Generics.Generic Distribution.Simple.SetupHooks.Rule.RuleId -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance GHC.Internal.Generics.Generic Distribution.Simple.SetupHooks.Rule.RuleOutput -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance GHC.Internal.Generics.Generic Distribution.Simple.SetupHooks.Rule.RulesNameSpace -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance GHC.Internal.Generics.Generic Distribution.Simple.Compiler.Compiler -- Defined in ‘Distribution.Simple.Compiler’
+instance GHC.Internal.Generics.Generic Distribution.Simple.Compiler.DebugInfoLevel -- Defined in ‘Distribution.Simple.Compiler’
+instance GHC.Internal.Generics.Generic Distribution.Simple.Compiler.OptimisationLevel -- Defined in ‘Distribution.Simple.Compiler’
+instance forall fp. GHC.Internal.Generics.Generic (Distribution.Simple.Compiler.PackageDBX fp) -- Defined in ‘Distribution.Simple.Compiler’
+instance GHC.Internal.Generics.Generic Distribution.Simple.Compiler.ProfDetailLevel -- Defined in ‘Distribution.Simple.Compiler’
+instance GHC.Internal.Generics.Generic Cabal-3.15.0.0:Distribution.Simple.Setup.Config.ConfigFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Config’
+instance GHC.Internal.Generics.Generic Distribution.Simple.Program.Types.ConfiguredProgram -- Defined in ‘Distribution.Simple.Program.Types’
+instance GHC.Internal.Generics.Generic Distribution.Simple.Program.Types.ProgramLocation -- Defined in ‘Distribution.Simple.Program.Types’
+instance GHC.Internal.Generics.Generic Distribution.Simple.Program.Types.ProgramSearchPathEntry -- Defined in ‘Distribution.Simple.Program.Types’
+instance GHC.Internal.Generics.Generic Cabal-3.15.0.0:Distribution.Simple.Setup.Copy.CopyFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Copy’
+instance GHC.Internal.Generics.Generic Distribution.Simple.FileMonitor.Types.FilePathRoot -- Defined in ‘Distribution.Simple.FileMonitor.Types’
+instance GHC.Internal.Generics.Generic Distribution.Simple.FileMonitor.Types.MonitorFilePath -- Defined in ‘Distribution.Simple.FileMonitor.Types’
+instance GHC.Internal.Generics.Generic Distribution.Simple.FileMonitor.Types.MonitorKindDir -- Defined in ‘Distribution.Simple.FileMonitor.Types’
+instance GHC.Internal.Generics.Generic Distribution.Simple.FileMonitor.Types.MonitorKindFile -- Defined in ‘Distribution.Simple.FileMonitor.Types’
+instance GHC.Internal.Generics.Generic Distribution.Simple.FileMonitor.Types.RootedGlob -- Defined in ‘Distribution.Simple.FileMonitor.Types’
+instance GHC.Internal.Generics.Generic Distribution.Types.Executable.Executable -- Defined in ‘Distribution.Types.Executable’
+instance GHC.Internal.Generics.Generic Distribution.Types.ForeignLib.ForeignLib -- Defined in ‘Distribution.Types.ForeignLib’
+instance GHC.Internal.Generics.Generic Distribution.Types.ForeignLib.LibVersionInfo -- Defined in ‘Distribution.Types.ForeignLib’
+instance GHC.Internal.Generics.Generic Distribution.Simple.Glob.Internal.Glob -- Defined in ‘Distribution.Simple.Glob.Internal’
+instance GHC.Internal.Generics.Generic Distribution.Simple.Glob.Internal.GlobPiece -- Defined in ‘Distribution.Simple.Glob.Internal’
+instance GHC.Internal.Generics.Generic Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock.HaddockFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock’
+instance GHC.Internal.Generics.Generic Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock.HaddockProjectFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock’
+instance GHC.Internal.Generics.Generic Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock.HaddockTarget -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock’
+instance GHC.Internal.Generics.Generic Cabal-3.15.0.0:Distribution.Simple.Setup.Hscolour.HscolourFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Hscolour’
+instance GHC.Internal.Generics.Generic Distribution.Types.LibraryName.LibraryName -- Defined in ‘Distribution.Types.LibraryName’
+instance GHC.Internal.Generics.Generic Distribution.Types.Library.Library -- Defined in ‘Distribution.Types.Library’
+instance GHC.Internal.Generics.Generic Distribution.Types.LocalBuildConfig.BuildOptions -- Defined in ‘Distribution.Types.LocalBuildConfig’
+instance GHC.Internal.Generics.Generic Distribution.Types.LocalBuildConfig.ComponentBuildDescr -- Defined in ‘Distribution.Types.LocalBuildConfig’
+instance GHC.Internal.Generics.Generic Distribution.Types.LocalBuildConfig.LocalBuildConfig -- Defined in ‘Distribution.Types.LocalBuildConfig’
+instance GHC.Internal.Generics.Generic Distribution.Types.LocalBuildConfig.LocalBuildDescr -- Defined in ‘Distribution.Types.LocalBuildConfig’
+instance GHC.Internal.Generics.Generic Distribution.Types.LocalBuildConfig.PackageBuildDescr -- Defined in ‘Distribution.Types.LocalBuildConfig’
+instance GHC.Internal.Generics.Generic Distribution.Types.LocalBuildInfo.LocalBuildInfo -- Defined in ‘Distribution.Types.LocalBuildInfo’
+instance GHC.Internal.Generics.Generic Distribution.Types.PackageDescription.PackageDescription -- Defined in ‘Distribution.Types.PackageDescription’
+instance GHC.Internal.Generics.Generic Distribution.System.Arch -- Defined in ‘Distribution.System’
+instance GHC.Internal.Generics.Generic Distribution.System.OS -- Defined in ‘Distribution.System’
+instance GHC.Internal.Generics.Generic Distribution.System.Platform -- Defined in ‘Distribution.System’
+instance GHC.Internal.Generics.Generic Cabal-3.15.0.0:Distribution.Simple.Setup.Repl.ReplFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Repl’
+instance GHC.Internal.Generics.Generic Cabal-3.15.0.0:Distribution.Simple.Setup.Repl.ReplOptions -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Repl’
+instance GHC.Internal.Generics.Generic Distribution.Simple.PreProcess.Types.Suffix -- Defined in ‘Distribution.Simple.PreProcess.Types’
+instance GHC.Internal.Generics.Generic Distribution.Types.TargetInfo.TargetInfo -- Defined in ‘Distribution.Types.TargetInfo’
+instance GHC.Internal.Generics.Generic Distribution.Types.TestSuite.TestSuite -- Defined in ‘Distribution.Types.TestSuite’
+instance GHC.Internal.Generics.Generic Distribution.Verbosity.Verbosity -- Defined in ‘Distribution.Verbosity’
+instance GHC.Internal.Read.Read Distribution.Types.ComponentLocalBuildInfo.ComponentLocalBuildInfo -- Defined in ‘Distribution.Types.ComponentLocalBuildInfo’
+instance GHC.Internal.Read.Read Distribution.Types.Benchmark.Benchmark -- Defined in ‘Distribution.Types.Benchmark’
+instance GHC.Internal.Read.Read Cabal-3.15.0.0:Distribution.Simple.Setup.Build.BuildFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Build’
+instance GHC.Internal.Read.Read Distribution.Types.BuildInfo.BuildInfo -- Defined in ‘Distribution.Types.BuildInfo’
+instance GHC.Internal.Read.Read Distribution.Types.Component.Component -- Defined in ‘Distribution.Types.Component’
+instance GHC.Internal.Read.Read Distribution.Types.ComponentName.ComponentName -- Defined in ‘Distribution.Types.ComponentName’
+instance GHC.Internal.Read.Read Distribution.Types.ComponentName.NotLibComponentName -- Defined in ‘Distribution.Types.ComponentName’
+instance GHC.Internal.Read.Read Distribution.Simple.Compiler.Compiler -- Defined in ‘Distribution.Simple.Compiler’
+instance GHC.Internal.Read.Read Distribution.Simple.Compiler.DebugInfoLevel -- Defined in ‘Distribution.Simple.Compiler’
+instance GHC.Internal.Read.Read Distribution.Simple.Compiler.OptimisationLevel -- Defined in ‘Distribution.Simple.Compiler’
+instance forall fp. GHC.Internal.Read.Read fp => GHC.Internal.Read.Read (Distribution.Simple.Compiler.PackageDBX fp) -- Defined in ‘Distribution.Simple.Compiler’
+instance GHC.Internal.Read.Read Distribution.Simple.Compiler.ProfDetailLevel -- Defined in ‘Distribution.Simple.Compiler’
+instance GHC.Internal.Read.Read Cabal-3.15.0.0:Distribution.Simple.Setup.Config.ConfigFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Config’
+instance GHC.Internal.Read.Read Distribution.Simple.Program.Types.ConfiguredProgram -- Defined in ‘Distribution.Simple.Program.Types’
+instance GHC.Internal.Read.Read Distribution.Simple.Program.Types.ProgramLocation -- Defined in ‘Distribution.Simple.Program.Types’
+instance GHC.Internal.Read.Read Distribution.Types.Executable.Executable -- Defined in ‘Distribution.Types.Executable’
+instance GHC.Internal.Read.Read Distribution.Types.ForeignLib.ForeignLib -- Defined in ‘Distribution.Types.ForeignLib’
+instance GHC.Internal.Read.Read Distribution.Types.ForeignLib.LibVersionInfo -- Defined in ‘Distribution.Types.ForeignLib’
+instance GHC.Internal.Read.Read Distribution.Types.LibraryName.LibraryName -- Defined in ‘Distribution.Types.LibraryName’
+instance GHC.Internal.Read.Read Distribution.Types.Library.Library -- Defined in ‘Distribution.Types.Library’
+instance GHC.Internal.Read.Read Distribution.Types.LocalBuildConfig.BuildOptions -- Defined in ‘Distribution.Types.LocalBuildConfig’
+instance GHC.Internal.Read.Read Distribution.Types.LocalBuildConfig.ComponentBuildDescr -- Defined in ‘Distribution.Types.LocalBuildConfig’
+instance GHC.Internal.Read.Read Distribution.Types.LocalBuildConfig.LocalBuildConfig -- Defined in ‘Distribution.Types.LocalBuildConfig’
+instance GHC.Internal.Read.Read Distribution.Types.LocalBuildConfig.LocalBuildDescr -- Defined in ‘Distribution.Types.LocalBuildConfig’
+instance GHC.Internal.Read.Read Distribution.Types.LocalBuildConfig.PackageBuildDescr -- Defined in ‘Distribution.Types.LocalBuildConfig’
+instance GHC.Internal.Read.Read Distribution.Types.LocalBuildInfo.LocalBuildInfo -- Defined in ‘Distribution.Types.LocalBuildInfo’
+instance GHC.Internal.Read.Read Distribution.Types.PackageDescription.PackageDescription -- Defined in ‘Distribution.Types.PackageDescription’
+instance GHC.Internal.Read.Read Distribution.System.Arch -- Defined in ‘Distribution.System’
+instance GHC.Internal.Read.Read Distribution.System.OS -- Defined in ‘Distribution.System’
+instance GHC.Internal.Read.Read Distribution.System.Platform -- Defined in ‘Distribution.System’
+instance GHC.Internal.Read.Read Distribution.Simple.Program.Db.ProgramDb -- Defined in ‘Distribution.Simple.Program.Db’
+instance GHC.Internal.Read.Read Distribution.Types.TestSuite.TestSuite -- Defined in ‘Distribution.Types.TestSuite’
+instance GHC.Internal.Read.Read Distribution.Verbosity.Verbosity -- Defined in ‘Distribution.Verbosity’
+instance GHC.Internal.Show.Show Distribution.Types.ComponentLocalBuildInfo.ComponentLocalBuildInfo -- Defined in ‘Distribution.Types.ComponentLocalBuildInfo’
+instance GHC.Internal.Show.Show Distribution.Types.Benchmark.Benchmark -- Defined in ‘Distribution.Types.Benchmark’
+instance GHC.Internal.Show.Show Distribution.Simple.SetupHooks.Internal.ComponentDiff -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance GHC.Internal.Show.Show Distribution.Simple.SetupHooks.Internal.InstallComponentInputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance GHC.Internal.Show.Show Distribution.Simple.SetupHooks.Internal.PostBuildComponentInputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance GHC.Internal.Show.Show Distribution.Simple.SetupHooks.Internal.PostConfPackageInputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance GHC.Internal.Show.Show Distribution.Simple.SetupHooks.Internal.PreBuildComponentInputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance GHC.Internal.Show.Show Distribution.Simple.SetupHooks.Internal.PreConfComponentInputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance GHC.Internal.Show.Show Distribution.Simple.SetupHooks.Internal.PreConfComponentOutputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance GHC.Internal.Show.Show Distribution.Simple.SetupHooks.Internal.PreConfPackageInputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance GHC.Internal.Show.Show Distribution.Simple.SetupHooks.Internal.PreConfPackageOutputs -- Defined in ‘Distribution.Simple.SetupHooks.Internal’
+instance GHC.Internal.Show.Show Cabal-3.15.0.0:Distribution.Simple.Setup.Build.BuildFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Build’
+instance GHC.Internal.Show.Show Distribution.Simple.Setup.BuildingWhat -- Defined in ‘Distribution.Simple.Setup’
+instance GHC.Internal.Show.Show Distribution.Types.BuildInfo.BuildInfo -- Defined in ‘Distribution.Types.BuildInfo’
+instance GHC.Internal.Show.Show Distribution.Types.Component.Component -- Defined in ‘Distribution.Types.Component’
+instance GHC.Internal.Show.Show Distribution.Types.ComponentName.ComponentName -- Defined in ‘Distribution.Types.ComponentName’
+instance GHC.Internal.Show.Show Distribution.Types.ComponentName.NotLibComponentName -- Defined in ‘Distribution.Types.ComponentName’
+instance forall arg res. GHC.Internal.Show.Show (Distribution.Simple.SetupHooks.Rule.CommandData Distribution.Simple.SetupHooks.Rule.User arg res) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance GHC.Internal.Show.Show Distribution.Simple.SetupHooks.Rule.Dependency -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall (scope :: Distribution.Simple.SetupHooks.Rule.Scope) k (depsArg :: k) depsRes. GHC.Internal.Show.Show depsRes => GHC.Internal.Show.Show (Distribution.Simple.SetupHooks.Rule.DepsRes scope depsArg depsRes) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall depsArg depsRes. GHC.Internal.Show.Show (Distribution.Simple.SetupHooks.Rule.DynDepsCmd Distribution.Simple.SetupHooks.Rule.User depsArg depsRes) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance GHC.Internal.Show.Show Distribution.Simple.SetupHooks.Rule.Location -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall (scope :: Distribution.Simple.SetupHooks.Rule.Scope) k1 (arg :: k1) k2 (res :: k2). GHC.Internal.Show.Show (Distribution.Simple.SetupHooks.Rule.NoCmd scope arg res) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall (ruleCmd :: Distribution.Simple.SetupHooks.Rule.Scope -> * -> * -> *) (deps :: Distribution.Simple.SetupHooks.Rule.Scope -> * -> * -> *). (forall arg res. GHC.Internal.Show.Show (ruleCmd Distribution.Simple.SetupHooks.Rule.User arg res), forall depsArg depsRes. GHC.Internal.Show.Show depsRes => GHC.Internal.Show.Show (deps Distribution.Simple.SetupHooks.Rule.User depsArg depsRes)) => GHC.Internal.Show.Show (Distribution.Simple.SetupHooks.Rule.RuleCommands Distribution.Simple.SetupHooks.Rule.User deps ruleCmd) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance GHC.Internal.Show.Show (Distribution.Simple.SetupHooks.Rule.RuleData Distribution.Simple.SetupHooks.Rule.User) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance GHC.Internal.Show.Show Distribution.Simple.SetupHooks.Rule.RuleBinary -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance GHC.Internal.Show.Show Distribution.Simple.SetupHooks.Rule.RuleId -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance GHC.Internal.Show.Show Distribution.Simple.SetupHooks.Rule.RuleOutput -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance GHC.Internal.Show.Show Distribution.Simple.SetupHooks.Rule.RulesNameSpace -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall (scope :: Distribution.Simple.SetupHooks.Rule.Scope) arg. GHC.Internal.Show.Show arg => GHC.Internal.Show.Show (Distribution.Simple.SetupHooks.Rule.ScopedArgument scope arg) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall fnTy. GHC.Internal.Show.Show (Distribution.Simple.SetupHooks.Rule.Static Distribution.Simple.SetupHooks.Rule.System fnTy) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall fnTy. GHC.Internal.Show.Show (Distribution.Simple.SetupHooks.Rule.Static Distribution.Simple.SetupHooks.Rule.User fnTy) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance GHC.Internal.Show.Show Distribution.Simple.Compiler.Compiler -- Defined in ‘Distribution.Simple.Compiler’
+instance GHC.Internal.Show.Show Distribution.Simple.Compiler.DebugInfoLevel -- Defined in ‘Distribution.Simple.Compiler’
+instance GHC.Internal.Show.Show Distribution.Simple.Compiler.OptimisationLevel -- Defined in ‘Distribution.Simple.Compiler’
+instance forall fp. GHC.Internal.Show.Show fp => GHC.Internal.Show.Show (Distribution.Simple.Compiler.PackageDBX fp) -- Defined in ‘Distribution.Simple.Compiler’
+instance GHC.Internal.Show.Show Distribution.Simple.Compiler.ProfDetailLevel -- Defined in ‘Distribution.Simple.Compiler’
+instance GHC.Internal.Show.Show Cabal-3.15.0.0:Distribution.Simple.Setup.Config.ConfigFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Config’
+instance GHC.Internal.Show.Show Distribution.Simple.Program.Types.ConfiguredProgram -- Defined in ‘Distribution.Simple.Program.Types’
+instance GHC.Internal.Show.Show Distribution.Simple.Program.Types.Program -- Defined in ‘Distribution.Simple.Program.Types’
+instance GHC.Internal.Show.Show Distribution.Simple.Program.Types.ProgramLocation -- Defined in ‘Distribution.Simple.Program.Types’
+instance GHC.Internal.Show.Show Distribution.Simple.Program.Types.ProgramSearchPathEntry -- Defined in ‘Distribution.Simple.Program.Types’
+instance GHC.Internal.Show.Show Cabal-3.15.0.0:Distribution.Simple.Setup.Copy.CopyFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Copy’
+instance GHC.Internal.Show.Show Distribution.Simple.FileMonitor.Types.FilePathRoot -- Defined in ‘Distribution.Simple.FileMonitor.Types’
+instance GHC.Internal.Show.Show Distribution.Simple.FileMonitor.Types.MonitorFilePath -- Defined in ‘Distribution.Simple.FileMonitor.Types’
+instance GHC.Internal.Show.Show Distribution.Simple.FileMonitor.Types.MonitorKindDir -- Defined in ‘Distribution.Simple.FileMonitor.Types’
+instance GHC.Internal.Show.Show Distribution.Simple.FileMonitor.Types.MonitorKindFile -- Defined in ‘Distribution.Simple.FileMonitor.Types’
+instance GHC.Internal.Show.Show Distribution.Simple.FileMonitor.Types.RootedGlob -- Defined in ‘Distribution.Simple.FileMonitor.Types’
+instance GHC.Internal.Show.Show Distribution.Types.Executable.Executable -- Defined in ‘Distribution.Types.Executable’
+instance GHC.Internal.Show.Show Distribution.Types.ForeignLib.ForeignLib -- Defined in ‘Distribution.Types.ForeignLib’
+instance GHC.Internal.Show.Show Distribution.Types.ForeignLib.LibVersionInfo -- Defined in ‘Distribution.Types.ForeignLib’
+instance GHC.Internal.Show.Show Distribution.Simple.Glob.Internal.Glob -- Defined in ‘Distribution.Simple.Glob.Internal’
+instance GHC.Internal.Show.Show Distribution.Simple.Glob.Internal.GlobPiece -- Defined in ‘Distribution.Simple.Glob.Internal’
+instance GHC.Internal.Show.Show Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock.HaddockFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock’
+instance GHC.Internal.Show.Show Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock.HaddockProjectFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock’
+instance GHC.Internal.Show.Show Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock.HaddockTarget -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock’
+instance GHC.Internal.Show.Show Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock.Visibility -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock’
+instance GHC.Internal.Show.Show Cabal-3.15.0.0:Distribution.Simple.Setup.Hscolour.HscolourFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Hscolour’
+instance GHC.Internal.Show.Show Distribution.Types.LibraryName.LibraryName -- Defined in ‘Distribution.Types.LibraryName’
+instance GHC.Internal.Show.Show Distribution.Types.Library.Library -- Defined in ‘Distribution.Types.Library’
+instance GHC.Internal.Show.Show Distribution.Types.LocalBuildConfig.BuildOptions -- Defined in ‘Distribution.Types.LocalBuildConfig’
+instance GHC.Internal.Show.Show Distribution.Types.LocalBuildConfig.ComponentBuildDescr -- Defined in ‘Distribution.Types.LocalBuildConfig’
+instance GHC.Internal.Show.Show Distribution.Types.LocalBuildConfig.LocalBuildConfig -- Defined in ‘Distribution.Types.LocalBuildConfig’
+instance GHC.Internal.Show.Show Distribution.Types.LocalBuildConfig.LocalBuildDescr -- Defined in ‘Distribution.Types.LocalBuildConfig’
+instance GHC.Internal.Show.Show Distribution.Types.LocalBuildConfig.PackageBuildDescr -- Defined in ‘Distribution.Types.LocalBuildConfig’
+instance GHC.Internal.Show.Show Distribution.Types.LocalBuildInfo.LocalBuildInfo -- Defined in ‘Distribution.Types.LocalBuildInfo’
+instance GHC.Internal.Show.Show Distribution.Types.PackageDescription.PackageDescription -- Defined in ‘Distribution.Types.PackageDescription’
+instance GHC.Internal.Show.Show Distribution.System.Arch -- Defined in ‘Distribution.System’
+instance GHC.Internal.Show.Show Distribution.System.OS -- Defined in ‘Distribution.System’
+instance GHC.Internal.Show.Show Distribution.System.Platform -- Defined in ‘Distribution.System’
+instance GHC.Internal.Show.Show Distribution.Simple.Program.Db.ProgramDb -- Defined in ‘Distribution.Simple.Program.Db’
+instance GHC.Internal.Show.Show Cabal-3.15.0.0:Distribution.Simple.Setup.Repl.ReplFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Repl’
+instance GHC.Internal.Show.Show Cabal-3.15.0.0:Distribution.Simple.Setup.Repl.ReplOptions -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Repl’
+instance GHC.Internal.Show.Show Distribution.Simple.PreProcess.Types.Suffix -- Defined in ‘Distribution.Simple.PreProcess.Types’
+instance GHC.Internal.Show.Show Distribution.Types.TargetInfo.TargetInfo -- Defined in ‘Distribution.Types.TargetInfo’
+instance GHC.Internal.Show.Show Distribution.Types.TestSuite.TestSuite -- Defined in ‘Distribution.Types.TestSuite’
+instance GHC.Internal.Show.Show Distribution.Verbosity.Verbosity -- Defined in ‘Distribution.Verbosity’
+instance GHC.Classes.Eq Distribution.Types.Benchmark.Benchmark -- Defined in ‘Distribution.Types.Benchmark’
+instance GHC.Classes.Eq Distribution.Types.BuildInfo.BuildInfo -- Defined in ‘Distribution.Types.BuildInfo’
+instance GHC.Classes.Eq Distribution.Types.Component.Component -- Defined in ‘Distribution.Types.Component’
+instance GHC.Classes.Eq Distribution.Types.ComponentName.ComponentName -- Defined in ‘Distribution.Types.ComponentName’
+instance GHC.Classes.Eq Distribution.Types.ComponentName.NotLibComponentName -- Defined in ‘Distribution.Types.ComponentName’
+instance forall arg res. GHC.Classes.Eq (Distribution.Simple.SetupHooks.Rule.CommandData Distribution.Simple.SetupHooks.Rule.User arg res) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall arg res. (arg ~ Data.ByteString.Lazy.Internal.ByteString) => GHC.Classes.Eq (Distribution.Simple.SetupHooks.Rule.CommandData Distribution.Simple.SetupHooks.Rule.System arg res) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance GHC.Classes.Eq Distribution.Simple.SetupHooks.Rule.Dependency -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall (scope :: Distribution.Simple.SetupHooks.Rule.Scope) k (depsArg :: k) depsRes. GHC.Classes.Eq depsRes => GHC.Classes.Eq (Distribution.Simple.SetupHooks.Rule.DepsRes scope depsArg depsRes) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall depsArg depsRes. GHC.Classes.Eq (Distribution.Simple.SetupHooks.Rule.DynDepsCmd Distribution.Simple.SetupHooks.Rule.User depsArg depsRes) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall arg depsRes. (arg ~ Data.ByteString.Lazy.Internal.ByteString, depsRes ~ Data.ByteString.Lazy.Internal.ByteString) => GHC.Classes.Eq (Distribution.Simple.SetupHooks.Rule.DynDepsCmd Distribution.Simple.SetupHooks.Rule.System arg depsRes) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance GHC.Classes.Eq Distribution.Simple.SetupHooks.Rule.Location -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall (scope :: Distribution.Simple.SetupHooks.Rule.Scope) k1 (arg :: k1) k2 (res :: k2). GHC.Classes.Eq (Distribution.Simple.SetupHooks.Rule.NoCmd scope arg res) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall (ruleCmd :: Distribution.Simple.SetupHooks.Rule.Scope -> * -> * -> *) (deps :: Distribution.Simple.SetupHooks.Rule.Scope -> * -> * -> *). (forall arg res. GHC.Classes.Eq (ruleCmd Distribution.Simple.SetupHooks.Rule.User arg res), forall depsArg depsRes. GHC.Classes.Eq depsRes => GHC.Classes.Eq (deps Distribution.Simple.SetupHooks.Rule.User depsArg depsRes)) => GHC.Classes.Eq (Distribution.Simple.SetupHooks.Rule.RuleCommands Distribution.Simple.SetupHooks.Rule.User deps ruleCmd) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall (ruleCmd :: Distribution.Simple.SetupHooks.Rule.Scope -> * -> * -> *) (deps :: Distribution.Simple.SetupHooks.Rule.Scope -> * -> * -> *). (forall res. GHC.Classes.Eq (ruleCmd Distribution.Simple.SetupHooks.Rule.System Data.ByteString.Lazy.Internal.ByteString res), GHC.Classes.Eq (deps Distribution.Simple.SetupHooks.Rule.System Data.ByteString.Lazy.Internal.ByteString Data.ByteString.Lazy.Internal.ByteString)) => GHC.Classes.Eq (Distribution.Simple.SetupHooks.Rule.RuleCommands Distribution.Simple.SetupHooks.Rule.System deps ruleCmd) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance GHC.Classes.Eq (Distribution.Simple.SetupHooks.Rule.RuleData Distribution.Simple.SetupHooks.Rule.User) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance GHC.Classes.Eq (Distribution.Simple.SetupHooks.Rule.RuleData Distribution.Simple.SetupHooks.Rule.System) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance GHC.Classes.Eq Distribution.Simple.SetupHooks.Rule.RuleId -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance GHC.Classes.Eq Distribution.Simple.SetupHooks.Rule.RuleOutput -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance GHC.Classes.Eq Distribution.Simple.SetupHooks.Rule.RulesNameSpace -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall (scope :: Distribution.Simple.SetupHooks.Rule.Scope) arg. GHC.Classes.Eq arg => GHC.Classes.Eq (Distribution.Simple.SetupHooks.Rule.ScopedArgument scope arg) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall fnTy. GHC.Classes.Eq (Distribution.Simple.SetupHooks.Rule.Static Distribution.Simple.SetupHooks.Rule.System fnTy) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall fnTy. GHC.Classes.Eq (Distribution.Simple.SetupHooks.Rule.Static Distribution.Simple.SetupHooks.Rule.User fnTy) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance GHC.Classes.Eq Distribution.Simple.Compiler.Compiler -- Defined in ‘Distribution.Simple.Compiler’
+instance GHC.Classes.Eq Distribution.Simple.Compiler.DebugInfoLevel -- Defined in ‘Distribution.Simple.Compiler’
+instance GHC.Classes.Eq Distribution.Simple.Compiler.OptimisationLevel -- Defined in ‘Distribution.Simple.Compiler’
+instance forall fp. GHC.Classes.Eq fp => GHC.Classes.Eq (Distribution.Simple.Compiler.PackageDBX fp) -- Defined in ‘Distribution.Simple.Compiler’
+instance GHC.Classes.Eq Distribution.Simple.Compiler.ProfDetailLevel -- Defined in ‘Distribution.Simple.Compiler’
+instance GHC.Classes.Eq Cabal-3.15.0.0:Distribution.Simple.Setup.Config.ConfigFlags -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Config’
+instance GHC.Classes.Eq Distribution.Simple.Program.Types.ConfiguredProgram -- Defined in ‘Distribution.Simple.Program.Types’
+instance GHC.Classes.Eq Distribution.Simple.Program.Types.ProgramLocation -- Defined in ‘Distribution.Simple.Program.Types’
+instance GHC.Classes.Eq Distribution.Simple.Program.Types.ProgramSearchPathEntry -- Defined in ‘Distribution.Simple.Program.Types’
+instance GHC.Classes.Eq Distribution.Simple.FileMonitor.Types.FilePathRoot -- Defined in ‘Distribution.Simple.FileMonitor.Types’
+instance GHC.Classes.Eq Distribution.Simple.FileMonitor.Types.MonitorFilePath -- Defined in ‘Distribution.Simple.FileMonitor.Types’
+instance GHC.Classes.Eq Distribution.Simple.FileMonitor.Types.MonitorKindDir -- Defined in ‘Distribution.Simple.FileMonitor.Types’
+instance GHC.Classes.Eq Distribution.Simple.FileMonitor.Types.MonitorKindFile -- Defined in ‘Distribution.Simple.FileMonitor.Types’
+instance GHC.Classes.Eq Distribution.Simple.FileMonitor.Types.RootedGlob -- Defined in ‘Distribution.Simple.FileMonitor.Types’
+instance GHC.Classes.Eq Distribution.Types.Executable.Executable -- Defined in ‘Distribution.Types.Executable’
+instance GHC.Classes.Eq Distribution.Types.ForeignLib.ForeignLib -- Defined in ‘Distribution.Types.ForeignLib’
+instance GHC.Classes.Eq Distribution.Types.ForeignLib.LibVersionInfo -- Defined in ‘Distribution.Types.ForeignLib’
+instance GHC.Classes.Eq Distribution.Simple.Glob.Internal.Glob -- Defined in ‘Distribution.Simple.Glob.Internal’
+instance GHC.Classes.Eq Distribution.Simple.Glob.Internal.GlobPiece -- Defined in ‘Distribution.Simple.Glob.Internal’
+instance GHC.Classes.Eq Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock.HaddockTarget -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock’
+instance GHC.Classes.Eq Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock.Visibility -- Defined in ‘Cabal-3.15.0.0:Distribution.Simple.Setup.Haddock’
+instance GHC.Classes.Eq Distribution.Types.LibraryName.LibraryName -- Defined in ‘Distribution.Types.LibraryName’
+instance GHC.Classes.Eq Distribution.Types.Library.Library -- Defined in ‘Distribution.Types.Library’
+instance GHC.Classes.Eq Distribution.Types.LocalBuildConfig.BuildOptions -- Defined in ‘Distribution.Types.LocalBuildConfig’
+instance GHC.Classes.Eq Distribution.Types.PackageDescription.PackageDescription -- Defined in ‘Distribution.Types.PackageDescription’
+instance GHC.Classes.Eq Distribution.System.Arch -- Defined in ‘Distribution.System’
+instance GHC.Classes.Eq Distribution.System.OS -- Defined in ‘Distribution.System’
+instance GHC.Classes.Eq Distribution.System.Platform -- Defined in ‘Distribution.System’
+instance GHC.Classes.Eq Distribution.Simple.PreProcess.Types.Suffix -- Defined in ‘Distribution.Simple.PreProcess.Types’
+instance GHC.Classes.Eq Distribution.Types.TestSuite.TestSuite -- Defined in ‘Distribution.Types.TestSuite’
+instance GHC.Classes.Eq Distribution.Verbosity.Verbosity -- Defined in ‘Distribution.Verbosity’
+instance GHC.Classes.Ord Distribution.Types.Benchmark.Benchmark -- Defined in ‘Distribution.Types.Benchmark’
+instance GHC.Classes.Ord Distribution.Types.BuildInfo.BuildInfo -- Defined in ‘Distribution.Types.BuildInfo’
+instance GHC.Classes.Ord Distribution.Types.ComponentName.ComponentName -- Defined in ‘Distribution.Types.ComponentName’
+instance GHC.Classes.Ord Distribution.Types.ComponentName.NotLibComponentName -- Defined in ‘Distribution.Types.ComponentName’
+instance GHC.Classes.Ord Distribution.Simple.SetupHooks.Rule.Dependency -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall (scope :: Distribution.Simple.SetupHooks.Rule.Scope) k (depsArg :: k) depsRes. GHC.Classes.Ord depsRes => GHC.Classes.Ord (Distribution.Simple.SetupHooks.Rule.DepsRes scope depsArg depsRes) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance GHC.Classes.Ord Distribution.Simple.SetupHooks.Rule.Location -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall (scope :: Distribution.Simple.SetupHooks.Rule.Scope) k1 (arg :: k1) k2 (res :: k2). GHC.Classes.Ord (Distribution.Simple.SetupHooks.Rule.NoCmd scope arg res) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance GHC.Classes.Ord Distribution.Simple.SetupHooks.Rule.RuleId -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance GHC.Classes.Ord Distribution.Simple.SetupHooks.Rule.RuleOutput -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance GHC.Classes.Ord Distribution.Simple.SetupHooks.Rule.RulesNameSpace -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall (scope :: Distribution.Simple.SetupHooks.Rule.Scope) arg. GHC.Classes.Ord arg => GHC.Classes.Ord (Distribution.Simple.SetupHooks.Rule.ScopedArgument scope arg) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall fnTy. GHC.Classes.Ord (Distribution.Simple.SetupHooks.Rule.Static Distribution.Simple.SetupHooks.Rule.System fnTy) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall fnTy. GHC.Classes.Ord (Distribution.Simple.SetupHooks.Rule.Static Distribution.Simple.SetupHooks.Rule.User fnTy) -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
+instance forall fp. GHC.Classes.Ord fp => GHC.Classes.Ord (Distribution.Simple.Compiler.PackageDBX fp) -- Defined in ‘Distribution.Simple.Compiler’
+instance GHC.Classes.Ord Distribution.Types.Executable.Executable -- Defined in ‘Distribution.Types.Executable’
+instance GHC.Classes.Ord Distribution.Types.ForeignLib.ForeignLib -- Defined in ‘Distribution.Types.ForeignLib’
+instance GHC.Classes.Ord Distribution.Types.ForeignLib.LibVersionInfo -- Defined in ‘Distribution.Types.ForeignLib’
+instance GHC.Classes.Ord Distribution.Types.LibraryName.LibraryName -- Defined in ‘Distribution.Types.LibraryName’
+instance GHC.Classes.Ord Distribution.Types.Library.Library -- Defined in ‘Distribution.Types.Library’
+instance GHC.Classes.Ord Distribution.Types.PackageDescription.PackageDescription -- Defined in ‘Distribution.Types.PackageDescription’
+instance GHC.Classes.Ord Distribution.System.Arch -- Defined in ‘Distribution.System’
+instance GHC.Classes.Ord Distribution.System.OS -- Defined in ‘Distribution.System’
+instance GHC.Classes.Ord Distribution.System.Platform -- Defined in ‘Distribution.System’
+instance GHC.Classes.Ord Distribution.Simple.PreProcess.Types.Suffix -- Defined in ‘Distribution.Simple.PreProcess.Types’
+instance GHC.Classes.Ord Distribution.Types.TestSuite.TestSuite -- Defined in ‘Distribution.Types.TestSuite’
+instance GHC.Classes.Ord Distribution.Verbosity.Verbosity -- Defined in ‘Distribution.Verbosity’
+instance Control.Monad.Trans.Class.MonadTrans Distribution.Simple.SetupHooks.Rule.RulesT -- Defined in ‘Distribution.Simple.SetupHooks.Rule’
