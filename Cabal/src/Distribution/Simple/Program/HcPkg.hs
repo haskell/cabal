@@ -339,7 +339,7 @@ mungePackagePaths pkgroot pkginfo =
     , libraryDynDirs = mungePaths (libraryDynDirs pkginfo)
     , frameworkDirs = mungePaths (frameworkDirs pkginfo)
     , haddockInterfaces = mungePaths (haddockInterfaces pkginfo)
-    , haddockHTMLs = mungeUrls (haddockHTMLs pkginfo)
+    , haddockHTMLs = mungePaths (mungeUrls (haddockHTMLs pkginfo))
     }
   where
     mungePaths = map mungePath
