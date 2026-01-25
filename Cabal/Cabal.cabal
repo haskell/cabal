@@ -113,6 +113,7 @@ library
     Distribution.Simple.Build.PathsModule
     Distribution.Simple.BuildPaths
     Distribution.Simple.BuildTarget
+    Distribution.Simple.BuildTarget.Types
     Distribution.Simple.BuildToolDepends
     Distribution.Simple.BuildWay
     Distribution.Simple.CCompiler
