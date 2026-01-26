@@ -16,6 +16,7 @@ module Distribution.Parsec
   , simpleParsecW'
   , lexemeParsec
   , eitherParsec
+  , eitherTriviaParsec
   , explicitEitherParsec
   , explicitEitherParsec'
 
@@ -235,6 +236,10 @@ simpleParsecW' spec =
 -- | Parse a 'String' with 'lexemeParsec'.
 eitherParsec :: Parsec a => String -> Either String a
 eitherParsec = explicitEitherParsec parsec
+
+-- | Parse a 'String' with 'lexemeParsec'
+eitherTriviaParsec :: Parsec a => String -> Either String (TriviaTree, a)
+eitherTriviaParsec = explicitEitherParsec triviaParsec
 
 -- | Parse a 'String' with given 'ParsecParser'. Trailing whitespace is accepted.
 explicitEitherParsec :: ParsecParser a -> String -> Either String a

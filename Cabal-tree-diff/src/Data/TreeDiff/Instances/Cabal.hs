@@ -21,6 +21,9 @@ import Distribution.Simple.InstallDirs
 import Distribution.Simple.InstallDirs.Internal
 import Distribution.Simple.Setup                   (HaddockTarget, TestShowDetails)
 import Distribution.System
+import Distribution.Parsec.Position
+import Distribution.Types.Namespace                (Namespace, SomeNamespace(..))
+import Distribution.Types.Annotation               (Trivium, TriviaTree)
 import Distribution.Types.AbiHash                  (AbiHash)
 import Distribution.Types.ComponentId              (ComponentId)
 import Distribution.Types.DumpBuildInfo            (DumpBuildInfo)
@@ -124,5 +127,10 @@ instance ToExpr UnqualComponentName
 instance ToExpr Verbosity
 instance ToExpr VerbosityFlag
 instance ToExpr VerbosityLevel
+
+instance ToExpr Trivium
+instance ToExpr TriviaTree
+instance ToExpr Position
+instance ToExpr SomeNamespace where toExpr = defaultExprViaShow
 
 instance ToExpr ShortText where toExpr = toExpr . fromShortText

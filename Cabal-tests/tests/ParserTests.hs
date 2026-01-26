@@ -1,4 +1,6 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE BangPatterns #-}
 
 module Main
@@ -35,9 +37,17 @@ import System.Environment                          (getArgs, withArgs)
 import System.FilePath                             (replaceExtension, (</>))
 import Distribution.Parsec.Source
 
+import Distribution.Parsec
+import Distribution.Types.Annotation
+
+import Distribution.Types.VersionRange.Internal
+import Distribution.Types.Dependency
+
+import Data.Proxy
 import Debug.Pretty.Simple
 import Debug.Trace
 
+import Data.TreeDiff.Class
 
 import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as BS8
@@ -58,6 +68,7 @@ tests = testGroup "parsec tests"
     , errorTests
     , ipiTests
     , printerTests
+    , parsecTriviaGoldenTests
     ]
 
 -------------------------------------------------------------------------------
@@ -256,6 +267,26 @@ formatGoldenTest fp = cabalGoldenTest "format" correct $ do
   where
     input = "tests" </> "ParserTests" </> "regressions" </> fp
     correct = replaceExtension input "format"
+
+parsecTriviaGoldenTests :: TestTree
+parsecTriviaGoldenTests = testGroup "parser-trivia"
+  [ parsecTriviaGoldenTest (Proxy :: Proxy VersionRange) "build-depends.fragment"
+  ]
+
+parsecTriviaGoldenTest
+  :: forall a. (Show a, Parsec a, ToExpr a)
+  => Proxy a
+  -> FilePath
+  -> TestTree
+parsecTriviaGoldenTest _ fp = ediffGolden goldenTest fp exprFile $ do
+    contents <- readFile input
+    let parseResult :: Either String (TriviaTree, a) = eitherTriviaParsec contents
+    pure $ case parseResult of
+      Left err -> toExpr $ unlines $ "ERROR" : show err : []
+      Right ok -> toExpr $ ok
+  where
+    input = "tests" </> "ParserTests" </> "trivia" </> fp
+    exprFile = replaceExtension input "parser-trivia"
 
 #ifdef MIN_VERSION_tree_diff
 treeDiffGoldenTest :: FilePath -> TestTree
