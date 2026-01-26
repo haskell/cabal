@@ -411,7 +411,7 @@ versionRangeTriviaParser digitParser csv =
                   (SomeNamespace tInter)
                   ( fromNamedTrivia (SomeNamespace t) [PreTrivia preSpaces']
                       <> tTerm
-                      <> tFact
+                      <> tFact'
                   )
           return (tTerm', tInter)
         )

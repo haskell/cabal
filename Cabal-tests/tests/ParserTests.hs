@@ -346,10 +346,10 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
 triviaRoundTripTests :: TestTree
 triviaRoundTripTests = testGroup "trivia-roundtrip"
   [ triviaRoundTripTest (Proxy :: Proxy VersionRange) "build-depends1.fragment"
-  -- , triviaRoundTripTest (Proxy :: Proxy VersionRange) "build-depends2.fragment"
-  -- , triviaRoundTripTest (Proxy :: Proxy VersionRange) "build-depends3.fragment"
-  -- , triviaRoundTripTest (Proxy :: Proxy VersionRange) "build-depends4.fragment"
-  -- , triviaRoundTripTest (Proxy :: Proxy VersionRange) "build-depends5.fragment"
+  , triviaRoundTripTest (Proxy :: Proxy VersionRange) "build-depends2.fragment"
+  , triviaRoundTripTest (Proxy :: Proxy VersionRange) "build-depends3.fragment"
+  , triviaRoundTripTest (Proxy :: Proxy VersionRange) "build-depends4.fragment"
+  , triviaRoundTripTest (Proxy :: Proxy VersionRange) "build-depends5.fragment"
   ]
 
 -- |

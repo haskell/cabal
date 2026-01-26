@@ -15,7 +15,8 @@ _×_
                 _×_
                   `SomeNamespace (OrLaterVersion (mkVersion [4,10]))`
                   TriviaTree {
-                    justAnnotation = [],
+                    justAnnotation = [
+                      PostTrivia "    "],
                     namedAnnotations = Map.fromList
                       [
                         _×_
