@@ -29,7 +29,7 @@ import Distribution.PackageDescription.PrettyPrint
   , showGenericPackageDescription'
   )
 import Distribution.Parsec                         (PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
-import Distribution.Pretty                         (prettyShow)
+import Distribution.Pretty                         (prettyShow, Prettier (..))
 import Distribution.Fields.ParseResult
 import Distribution.Utils.Generic                  (fromUTF8BS, toUTF8BS)
 import System.Directory                            (setCurrentDirectory)
@@ -69,6 +69,7 @@ tests = testGroup "parsec tests"
     , ipiTests
     , printerTests
     , parsecTriviaGoldenTests
+    , triviaRoundTripTests
     ]
 
 -------------------------------------------------------------------------------
@@ -336,6 +337,50 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
                 void $ assertFailure $ unlines (map (showPErrorWithSource . fmap renderCabalFileSource) $ NE.toList errs)
                 fail "failure"
     input = "tests" </> "ParserTests" </> "regressions" </> fp
+{- FOURMOLU_ENABLE -}
+
+triviaRoundTripTests :: TestTree
+triviaRoundTripTests = testGroup "trivia-roundtrip"
+  [ triviaRoundTripTest (Proxy :: Proxy VersionRange) "build-depends.fragment"
+  ]
+
+-- |
+-- Test whether the leaf Parsec and Pretty instances are dual of each other.
+triviaRoundTripTest
+  :: forall a
+   . (Show a, Parsec a, Prettier a)
+  => Proxy a
+  -> FilePath
+  -> TestTree
+triviaRoundTripTest _ fp = testCase fp $ do
+    x <- readFile input
+    parsed <- parse x
+    let y = prettyShow $ uncurry prettier parsed
+
+{- FOURMOLU_DISABLE -}
+    unless (x == y) $
+#ifdef MIN_VERSION_tree_diff
+        assertFailure $ unlines
+            [ "re-parsed doesn't match"
+            , show $ ansiWlEditExpr $ ediff x y
+            ]
+#else
+        assertFailure $ unlines
+            [ "re-parsed doesn't match"
+            , "expected"
+            , show x
+            , "actual"
+            , show y
+            ]
+#endif
+  where
+    parse :: String -> IO (TriviaTree, a)
+    parse c = do
+        let parseResult :: Either String (TriviaTree, a) = eitherTriviaParsec c
+        case parseResult of
+          Left err -> fail $ unlines $ "ERROR" : show err : []
+          Right ok -> pure $ ok
+    input = "tests" </> "ParserTests" </> "trivia" </> fp
 {- FOURMOLU_ENABLE -}
 
 -------------------------------------------------------------------------------
