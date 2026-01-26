@@ -24,11 +24,14 @@ import Distribution.Parsec
 import Distribution.Pretty
 
 import Distribution.Types.Annotation
+import Distribution.Types.Namespace
 
 import qualified Data.Version as Base
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 import qualified Text.Read as Read
+
+import Debug.Pretty.Simple
 
 -- | A 'Version' represents the version of a software entity.
 --
@@ -93,18 +96,18 @@ instance NFData Version where
   rnf (PV1 _ ns) = rnf ns
 
 instance Pretty Version where
-  pretty = prettierVersion mempty
+  pretty = prettier mempty
 
 instance Prettier Version where
-  prettier = prettierVersion
-
-prettierVersion t ver =
-  triviaToDoc (justAnnotation t) $
-    Disp.hcat
-      ( Disp.punctuate
-          (Disp.char '.')
-          (map Disp.int $ versionNumbers ver)
-      )
+  prettier t0 ver =
+    let t = unmark (SomeNamespace ver) t0
+        tLocal = justAnnotation t
+    in triviaToDoc tLocal $
+        Disp.hcat
+          ( Disp.punctuate
+              (Disp.char '.')
+              (map Disp.int $ versionNumbers ver)
+          )
 
 instance Parsec Version where
   parsec = mkVersion <$> toList <$> P.sepByNonEmpty versionDigitParser (P.char '.') <* tags

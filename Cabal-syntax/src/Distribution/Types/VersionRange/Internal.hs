@@ -288,26 +288,19 @@ prettyVersionRange t0 vr = prettyVersionRange' t0 0 vr
 
 prettyVersionRange' :: TriviaTree -> Int -> VersionRange -> Disp.Doc
 prettyVersionRange' t0 d0 vr =
-  let tLocal = justAnnotation t0
-      tChildren = unmark (SomeNamespace vr) t0
-  in  case vr of
-    ThisVersion v            -> triviaToDoc tLocal $ Disp.text "=="  <<>> prettier tChildren v
-    LaterVersion v           -> triviaToDoc tLocal $ Disp.text ">"   <<>> prettier tChildren v
-    OrLaterVersion v         -> triviaToDoc tLocal $ Disp.text ">="  <<>> prettier tChildren v
-    EarlierVersion v         -> triviaToDoc tLocal $ Disp.text "<"   <<>> prettier tChildren v
-    OrEarlierVersion v       -> triviaToDoc tLocal $ Disp.text "<="  <<>> prettier tChildren v
-    MajorBoundVersion v      -> triviaToDoc tLocal $ Disp.text "^>=" <<>> prettier tChildren v
+  let t = unmark (SomeNamespace vr) t0
+      tLocal = justAnnotation t
+  in  triviaToDoc tLocal $ case vr of
+    ThisVersion v            -> Disp.text "=="  <> prettier t v
+    LaterVersion v           -> Disp.text ">"   <> prettier t v
+    OrLaterVersion v         -> Disp.text ">="  <> prettier t v
+    EarlierVersion v         -> Disp.text "<"   <> prettier t v
+    OrEarlierVersion v       -> Disp.text "<="  <> prettier t v
+    MajorBoundVersion v      -> Disp.text "^>=" <> prettier t v
     UnionVersionRanges r1 r2 ->
-       triviaToDoc tLocal $
-            parens (d0 > 0) $
-              prettyVersionRange' tChildren (d0 + 1) r1 <+> Disp.text "||" <+> prettyVersionRange' tChildren (d0 + 0) r2
+      prettyVersionRange' t (d0 + 1) r1 <> Disp.text "||" <> prettyVersionRange' t (d0 + 0) r2
     IntersectVersionRanges r1 r2 ->
-       triviaToDoc tLocal $
-            parens (d0 > 1) $
-              prettyVersionRange' tChildren (d0 + 2) r1 <+> Disp.text "&&" <+> prettyVersionRange' tChildren (d0 + 1) r2
-  where
-    parens True = Disp.parens
-    parens False = id
+      prettyVersionRange' t (d0 + 2) r1 <> Disp.text "&&" <> prettyVersionRange' t (d0 + 1) r2
 
 -- | Don't use && and || operators. If possible.
 prettyVersionRange16 :: TriviaTree -> VersionRange -> Disp.Doc
