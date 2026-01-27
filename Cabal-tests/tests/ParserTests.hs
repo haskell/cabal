@@ -370,6 +370,10 @@ triviaRoundTripTests = testGroup "trivia-roundtrip"
 
   -- Pair up Identity with a simple parser to assert its behaviour
   , triviaRoundTripTest (Proxy :: Proxy (Identity VersionRange)) "Identity_VersionRange1.fragment"
+
+  , triviaRoundTripTest
+      (Proxy :: Proxy (List CommaVCat (Identity Dependency) Dependency))
+      "List_CommaVCat_Identity_Dependency1.fragment"
   ]
 
 -- |
