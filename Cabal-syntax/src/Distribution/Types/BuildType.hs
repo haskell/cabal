@@ -14,6 +14,7 @@ import Prelude ()
 import Distribution.CabalSpecVersion (CabalSpecVersion (..))
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.Types.Annotation
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
@@ -44,6 +45,7 @@ instance Pretty BuildType where
   pretty = Disp.text . show
 
 instance ExactParsec BuildType where exactParsec = (mempty,) <$> parsec
+instance Markable BuildType
 instance Prettier BuildType where
   prettier _ = pretty
 

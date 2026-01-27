@@ -84,7 +84,6 @@ import Numeric (showIntAtBase)
 import Prelude ()
 
 import Distribution.Types.Annotation
-import Distribution.Types.Namespace
 import Debug.Pretty.Simple
 
 import qualified Distribution.Compat.CharParsing as P
@@ -269,11 +268,11 @@ runParsecParser' v p n = Parsec.runParser (unPP p v <* P.eof) [] n
 
 -- Keep the pattern consistent. Even if Identity is id we wrap the trivia tree.
 instance Parsec a => Parsec (Identity a) where parsec = parsec
-instance ExactParsec a => ExactParsec (Identity a) where
+instance (Markable a, ExactParsec a) => ExactParsec (Identity a) where
   exactParsec = do
     (t, x :: a) <- exactParsec
     let x' = Identity x
-    let t' = mark (SomeNamespace x') t
+    let t' = markTriviaTree x' t
     pure (t', x')
 
 instance Parsec Bool where parsec = snd <$> exactParsec
@@ -335,12 +334,15 @@ parsecStandard f = do
 -- each component must contain an alphabetic character, to avoid
 -- ambiguity in identifiers like foo-1 (the 1 is the version number).
 
-triviaParsecCommaList :: (CabalParsing m, Namespace a) => m (TriviaTree, a) -> m [(TriviaTree, a)]
+triviaParsecCommaList
+  :: (CabalParsing m, Markable a, Namespace a)
+  => m (TriviaTree, a)
+  -> m [(TriviaTree, a)]
 triviaParsecCommaList p = do
   xs <- toList <$> sepByNonEmpty' p' comma
   let xs' =
         map
-          (\(n, (t, x)) -> (mark (SomeNamespace x) (TriviaTree [Nth n] mempty) <> t, x))
+          (\(n, (t, x)) -> (markTriviaTree x (TriviaTree [Nth n] mempty) <> t, x))
           (zip [1..] xs)
   pure xs'
   where
@@ -356,11 +358,11 @@ triviaParsecCommaList p = do
     p' = do -- p * spaces
       (t, x) <- p
       s <- spaces'
-      let t' = mark (SomeNamespace x) (TriviaTree [PostTrivia s] mempty)
+      let t' = markTriviaTree x (TriviaTree [PostTrivia s] mempty)
       pure (t', x)
 
 triviaParsecCommaListNE
-  :: (CabalParsing m, Namespace a)
+  :: (CabalParsing m, Markable a, Namespace a)
   => m (TriviaTree, a) -> m (NonEmpty (TriviaTree, a))
 triviaParsecCommaListNE p = sepByNonEmpty p comma
   where
@@ -368,7 +370,7 @@ triviaParsecCommaListNE p = sepByNonEmpty p comma
     p' = do -- p * spaces
       (t, x) <- p
       s <- spaces'
-      let t' = mark (SomeNamespace x) (TriviaTree [PostTrivia s] mempty)
+      let t' = markTriviaTree x (TriviaTree [PostTrivia s] mempty)
       pure (t', x)
 
 parsecCommaList :: CabalParsing m => m a -> m [a]
@@ -378,7 +380,7 @@ parsecCommaNonEmpty :: CabalParsing m => m a -> m (NonEmpty a)
 parsecCommaNonEmpty p = P.sepByNonEmpty (p <* P.spaces) (P.char ',' *> P.spaces P.<?> "comma")
 
 triviaParsecCommaNonEmpty
-  :: (CabalParsing m, Namespace a)
+  :: (CabalParsing m, Markable a, Namespace a)
   => m (TriviaTree, a) -> m (NonEmpty (TriviaTree, a))
 triviaParsecCommaNonEmpty p = do
   sepByNonEmpty' p' comma
@@ -386,7 +388,7 @@ triviaParsecCommaNonEmpty p = do
     p' = do -- p * spaces
       (t, x) <- p
       s <- spaces'
-      let t' = mark (SomeNamespace x) (TriviaTree [PostTrivia s] mempty)
+      let t' = markTriviaTree x (TriviaTree [PostTrivia s] mempty)
       pure (t', x)
 
     comma :: CabalParsing m => m String
@@ -404,13 +406,13 @@ data SeparatorAnnotation a
 -- Like 'sepEndByNonEmpty' but keeps the parsed separators.
 -- Used by exact printing.
 sepEndByNonEmpty'
-  :: (CabalParsing m, Namespace a)
+  :: (CabalParsing m, Markable a, Namespace a)
   => m (TriviaTree, a) -> m String -> m (NonEmpty (TriviaTree, a))
 sepEndByNonEmpty' p sep = do
   u <- do
     (t, x) <- p
     s <- sep
-    let t' = t <> mark (SomeNamespace x) (TriviaTree [PostTrivia s] mempty)
+    let t' = t <> markTriviaTree x (TriviaTree [PostTrivia s] mempty)
     pure (t', x)
 
   us <- sepEndBy' p sep
@@ -418,7 +420,7 @@ sepEndByNonEmpty' p sep = do
 
 
 sepByNonEmpty'
-  :: (CabalParsing m, Namespace a)
+  :: (CabalParsing m, Markable a, Namespace a)
   => m (TriviaTree, a) -> m String -> m (NonEmpty (TriviaTree, a))
 sepByNonEmpty' p sep = do
   -- p * (sep p)*
@@ -426,7 +428,7 @@ sepByNonEmpty' p sep = do
   us <- many $ do
       s <- sep
       (t, x) <- p
-      let t' = t <> mark (SomeNamespace x) (TriviaTree [PreTrivia s] mempty)
+      let t' = t <> markTriviaTree x (TriviaTree [PreTrivia s] mempty)
       pure (t', x)
 
   pure ( u :| us )
@@ -435,12 +437,12 @@ sepByNonEmpty' p sep = do
 -- Like 'sepEndBy' but keeps the parsed separators.
 -- Used by exact printing.
 sepEndBy'
-  :: (CabalParsing m, Namespace a)
+  :: (CabalParsing m, Markable a, Namespace a)
   => m (TriviaTree, a) -> m String -> m [(TriviaTree, a)]
 sepEndBy' p sep = sepEndBy1' p sep <|> pure []
 
 sepEndBy1'
-  :: (CabalParsing m, Namespace a)
+  :: (CabalParsing m, Markable a, Namespace a)
   => m (TriviaTree, a) -> m String -> m [(TriviaTree, a)]
 sepEndBy1' p sep = toList <$> sepEndByNonEmpty' p sep
 
@@ -453,7 +455,7 @@ sepEndBy1' p sep = toList <$> sepEndByNonEmpty' p sep
 -- @
 triviaParsecLeadingCommaList
   :: forall m a
-   . (CabalParsing m, Namespace a)
+   . (CabalParsing m, Markable a, Namespace a)
   => m (TriviaTree, a) -> m [(TriviaTree, a)]
 triviaParsecLeadingCommaList p = do
   c <- P.optional comma
@@ -465,7 +467,7 @@ triviaParsecLeadingCommaList p = do
     p' = do
       (t, x) <- p
       s <- spaces'
-      let t' = t <> mark (SomeNamespace x) (TriviaTree [PostTrivia s] mempty)
+      let t' = t <> markTriviaTree x (TriviaTree [PostTrivia s] mempty)
       pure (t', x)
 
     -- TODO(leana8959):
@@ -479,7 +481,7 @@ triviaParsecLeadingCommaList p = do
 
 triviaParsecLeadingCommaListNonEmpty
   :: forall m a
-   . (CabalParsing m, Namespace a)
+   . (CabalParsing m, Markable a, Namespace a)
   => m (TriviaTree, a) -> m (NonEmpty (TriviaTree, a))
 triviaParsecLeadingCommaListNonEmpty p = do
   c <- P.optional comma
@@ -487,11 +489,11 @@ triviaParsecLeadingCommaListNonEmpty p = do
     Nothing -> sepEndByNonEmpty' p' comma
     Just _ -> sepByNonEmpty' p' comma
   where
-    p' :: (CabalParsing m, Namespace a) => m (TriviaTree, a)
+    p' :: (CabalParsing m, Markable a, Namespace a) => m (TriviaTree, a)
     p' = do
       (t, x) <- p
       s <- spaces'
-      let t' = t <> mark (SomeNamespace x) (TriviaTree [PostTrivia s] mempty)
+      let t' = t <> markTriviaTree x (TriviaTree [PostTrivia s] mempty)
       pure (t', x)
 
     -- TODO(leana8959):
@@ -532,15 +534,15 @@ parsecOptCommaList p = P.sepBy (p <* P.spaces) (P.optional comma)
     comma = P.char ',' *> P.spaces
 
 triviaParsecOptCommaList
-  :: forall m a. (CabalParsing m, Namespace a)
+  :: forall m a. (CabalParsing m, Markable a, Namespace a)
   => m (TriviaTree, a) -> m [(TriviaTree, a)]
 triviaParsecOptCommaList p = P.sepBy p' (P.optional comma)
   where
-    p' :: (CabalParsing m, Namespace a) => m (TriviaTree, a)
+    p' :: (CabalParsing m, Markable a, Namespace a) => m (TriviaTree, a)
     p' = do
       (t, x) <- p
       s <- spaces'
-      let t' = t <> mark (SomeNamespace x) (TriviaTree [PostTrivia s] mempty)
+      let t' = t <> markTriviaTree x (TriviaTree [PostTrivia s] mempty)
       pure (t', x)
 
     comma = P.char ',' *> P.spaces P.<?> "comma"
@@ -588,7 +590,7 @@ sepEndBy1Start' p comma = do
 
 triviaParsecLeadingOptCommaList
   :: forall m a
-   . (CabalParsing m, Namespace a)
+   . (CabalParsing m, Markable a, Namespace a)
   => m (TriviaTree, a) -> m [(TriviaTree, a)]
 triviaParsecLeadingOptCommaList p = do
   c <- P.optional comma
@@ -596,11 +598,11 @@ triviaParsecLeadingOptCommaList p = do
     Nothing -> sepEndBy1Start' p' comma <|> pure []
     Just _ -> toList <$> sepByNonEmpty' p' comma
   where
-    p' :: (CabalParsing m, Namespace a) => m (TriviaTree, a)
+    p' :: (CabalParsing m, Markable a, Namespace a) => m (TriviaTree, a)
     p' = do
       (t, x) <- p
       s <- spaces'
-      let t' = t <> mark (SomeNamespace x) (TriviaTree [PostTrivia s] mempty)
+      let t' = t <> markTriviaTree x (TriviaTree [PostTrivia s] mempty)
       pure (t', x)
 
     -- TODO(leana8959):

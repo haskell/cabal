@@ -14,6 +14,7 @@ import Distribution.Compat.Prelude
 import Distribution.Version
 import Prelude ()
 
+import Distribution.Types.Annotation
 import Distribution.Parsec
 import Distribution.Pretty
 import Text.PrettyPrint (char, text)
@@ -50,6 +51,7 @@ instance Pretty TestType where
   pretty (TestTypeLib ver) = text "detailed-" <<>> pretty ver
   pretty (TestTypeUnknown name ver) = text name <<>> char '-' <<>> pretty ver
 
+instance Markable TestType
 instance Prettier TestType where
   prettier _ = pretty
 

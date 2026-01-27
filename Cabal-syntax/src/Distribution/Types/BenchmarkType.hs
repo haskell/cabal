@@ -12,6 +12,8 @@ module Distribution.Types.BenchmarkType
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Distribution.Types.Annotation
+
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Version
@@ -39,6 +41,7 @@ instance Pretty BenchmarkType where
   pretty (BenchmarkTypeExe ver) = text "exitcode-stdio-" <<>> pretty ver
   pretty (BenchmarkTypeUnknown name ver) = text name <<>> char '-' <<>> pretty ver
 
+instance Markable BenchmarkType
 instance Prettier BenchmarkType where
   prettier _ = pretty
 

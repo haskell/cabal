@@ -86,7 +86,7 @@ import Distribution.Utils.Generic (isAbsoluteOnAnyPlatform)
 
 import qualified Distribution.Compat.CharParsing as P
 
-import Distribution.Types.Namespace
+import Distribution.Types.Annotation
 
 import qualified System.Directory as Directory
 import qualified System.FilePath as FilePath
@@ -206,6 +206,10 @@ data AllowAbsolute
 newtype SymbolicPathX (allowAbsolute :: AllowAbsolute) (from :: Type) (to :: FileOrDir)
   = SymbolicPath FilePath
   deriving (Generic, Show, Read, Eq, Ord, Data)
+
+instance
+  forall (allowAbsolute :: AllowAbsolute) from to. (Typeable allowAbsolute, Typeable from, Typeable to)
+  => Markable (SymbolicPathX allowAbsolute from to)
 
 type role SymbolicPathX nominal nominal nominal
 

@@ -25,6 +25,7 @@ import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.ComponentId
 import Distribution.Types.PackageId
+import Distribution.Types.Annotation
 
 import Text.PrettyPrint (text)
 
@@ -75,6 +76,7 @@ instance Structured UnitId
 instance Pretty UnitId where
   pretty = text . unUnitId
 
+instance Markable UnitId
 instance Prettier UnitId where
   prettier _ = pretty
 

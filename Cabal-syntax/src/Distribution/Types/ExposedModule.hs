@@ -10,6 +10,8 @@ import Distribution.ModuleName
 import Distribution.Parsec
 import Distribution.Pretty
 
+import Distribution.Types.Annotation
+
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
@@ -18,6 +20,8 @@ data ExposedModule = ExposedModule
   , exposedReexport :: Maybe OpenModule
   }
   deriving (Eq, Generic, Read, Show, Ord)
+
+instance Markable ExposedModule
 
 instance Pretty ExposedModule where
   pretty (ExposedModule m reexport) =

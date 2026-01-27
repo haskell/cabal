@@ -31,6 +31,8 @@ import Distribution.Types.UnqualComponentName
 import Distribution.Utils.Path
 import Distribution.Version
 
+import Distribution.Types.Annotation
+
 import Data.Monoid
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
@@ -65,6 +67,7 @@ data ForeignLib = ForeignLib
   deriving (Generic, Show, Read, Eq, Ord, Data)
 
 data LibVersionInfo = LibVersionInfo Int Int Int deriving (Data, Eq, Generic)
+instance Markable LibVersionInfo
 
 instance Ord LibVersionInfo where
   LibVersionInfo c r _ `compare` LibVersionInfo c' r' _ =

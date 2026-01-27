@@ -11,6 +11,7 @@ import Prelude ()
 
 import Distribution.Types.PkgconfigName
 import Distribution.Types.PkgconfigVersionRange
+import Distribution.Types.Annotation
 
 import Distribution.Parsec
 import Distribution.Pretty
@@ -34,6 +35,7 @@ instance Pretty PkgconfigDependency where
   pretty (PkgconfigDependency name PcAnyVersion) = pretty name
   pretty (PkgconfigDependency name ver) = pretty name <+> pretty ver
 
+instance Markable PkgconfigDependency
 instance Prettier PkgconfigDependency where
   prettier _ = pretty
 

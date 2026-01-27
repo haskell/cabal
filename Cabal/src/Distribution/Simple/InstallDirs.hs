@@ -64,6 +64,8 @@ import Distribution.Simple.Flag
 import Distribution.Simple.InstallDirs.Internal
 import Distribution.System
 
+import Distribution.Types.Annotation
+
 import System.Directory (getAppUserDataDirectory)
 import System.FilePath
   ( dropDrive
@@ -397,6 +399,8 @@ prefixRelativeInstallDirs pkgId libname compilerId platform dirs =
 -- substituted for to get a real 'FilePath'.
 newtype PathTemplate = PathTemplate [PathComponent]
   deriving (Eq, Ord, Generic)
+
+instance Markable PathTemplate
 
 instance Binary PathTemplate
 instance NFData PathTemplate

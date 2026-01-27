@@ -27,7 +27,6 @@ import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
 
 import Distribution.Types.Annotation
-import Distribution.Types.Namespace
 
 import qualified Distribution.Compat.NonEmptySet as NES
 import qualified Text.PrettyPrint as PP
@@ -91,9 +90,10 @@ instance NFData Dependency where rnf = genericRnf
 instance Pretty Dependency where
   pretty = prettier mempty
 
+instance Markable Dependency
 instance Prettier Dependency where
   prettier t0 dep0@(Dependency name vRange sublibs) =
-    let t2 = unmark (SomeNamespace dep0) t0
+    let t2 = unmarkTriviaTree dep0 t0
         -- TODO: change to isAnyVersion after #6736
         pver
           | isAnyVersionLight vRange = PP.empty
@@ -146,10 +146,10 @@ instance ExactParsec Dependency where
       spaces -- https://github.com/haskell/cabal/issues/5846
       -- TODO(leana8959): ^ register space at local scope
       (verTrivia, ver) <-
-        let t = fromNamedTrivia (SomeNamespace anyVersion) [IsInjected]
+        let t = fromNamedTrivia anyVersion [IsInjected]
          in exactParsec <|> pure (t, anyVersion)
       let dep = mkDependency name ver libs
-      let depTrivia = mark (SomeNamespace dep) verTrivia
+      let depTrivia = markTriviaTree dep verTrivia
 
       return
         ( depTrivia

@@ -12,6 +12,7 @@ import Prelude ()
 
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.Types.Annotation
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
@@ -30,6 +31,7 @@ instance Pretty LibraryVisibility where
   pretty LibraryVisibilityPublic = Disp.text "public"
   pretty LibraryVisibilityPrivate = Disp.text "private"
 
+instance Markable LibraryVisibility
 instance Prettier LibraryVisibility where
   prettier _ = pretty
 

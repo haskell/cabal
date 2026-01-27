@@ -25,7 +25,6 @@ import qualified Text.PrettyPrint as PP
 import Prelude ()
 
 import Distribution.Types.Annotation
-import Distribution.Types.Namespace
 import Distribution.Parsec.Position
 
 import Debug.Pretty.Simple
@@ -63,12 +62,11 @@ prettyAnnotatedFieldGrammar
 prettyAnnotatedFieldGrammar v t g = fieldGrammarPretty g v t
 
 instance FieldGrammar Prettier PrettyFieldGrammar where
-  withScope :: SomeNamespace -> PrettyFieldGrammar s a -> PrettyFieldGrammar s a
-  withScope ns (PrettyFG printer) =
+  withScope :: Markable ns => ns -> PrettyFieldGrammar s a -> PrettyFieldGrammar s a
+  withScope x (PrettyFG printer) =
     PrettyFG $ \v t s ->
-      let t' = unmark ns t
-       in -- pTrace ("withScope\n" <> show t') $
-          printer v t' s
+      let t' = unmarkTriviaTree x t
+      in  printer v t' s
 
   blurFieldGrammar f (PrettyFG pp) = PrettyFG (\v t -> pp v t . aview f)
 
@@ -120,7 +118,7 @@ instance FieldGrammar Prettier PrettyFieldGrammar where
   monoidalFieldAla fn _pack l = PrettyFG pp
     where
       pp v t s =
-        let t' = unmark (SomeNamespace fn) t
+        let t' = unmarkTriviaTree fn t
          in -- pTrace ("monoidalFieldAla\n" <> show t') $
             -- ppField fn (prettierVersioned v t' (pack' _pack (aview l s)))
             prettierField fn t' (pack' _pack (aview l s))

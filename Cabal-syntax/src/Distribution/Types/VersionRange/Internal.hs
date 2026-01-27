@@ -46,7 +46,6 @@ import Distribution.Pretty
 import Distribution.Utils.Generic (unsnoc)
 
 import Distribution.Types.Annotation
-import Distribution.Types.Namespace
 
 import Debug.Pretty.Simple
 
@@ -275,6 +274,7 @@ hyloVersionRange f g = h where h = f . fmap h . g
 instance Pretty VersionRange where
   pretty = prettier mempty
 
+instance Markable VersionRange
 instance Prettier VersionRange where
   prettier = prettierVersioned cabalSpecLatest
 
@@ -288,7 +288,7 @@ prettyVersionRange t0 vr = prettyVersionRange' t0 0 vr
 
 prettyVersionRange' :: TriviaTree -> Int -> VersionRange -> Disp.Doc
 prettyVersionRange' t0 d0 vr =
-  let t = unmark (SomeNamespace vr) t0
+  let t = unmarkTriviaTree vr t0
       tLocal = justAnnotation t
   in  triviaToDoc tLocal $ case vr of
     ThisVersion v            -> Disp.text "=="  <> prettier t v
@@ -380,7 +380,7 @@ versionRangeTriviaParser digitParser csv =
       preSpaces <- P.spaces'
       (tTerm, t) <- term
       postSpaces <- P.spaces'
-      let tTerm' = fromNamedTrivia (SomeNamespace t) [PreTrivia preSpaces, PostTrivia postSpaces] <> tTerm
+      let tTerm' = fromNamedTrivia t [PreTrivia preSpaces, PostTrivia postSpaces] <> tTerm
       ( do
           _ <- P.string "||"
           checkOp
@@ -388,9 +388,9 @@ versionRangeTriviaParser digitParser csv =
           (tExpr, e) <- expr
           let eUnion = unionVersionRanges t e
           let tExpr' =
-                mark
-                  (SomeNamespace eUnion)
-                  ( fromNamedTrivia (SomeNamespace e) [PreTrivia preSpaces']
+                markTriviaTree
+                  eUnion
+                  ( fromNamedTrivia e [PreTrivia preSpaces']
                       <> tExpr
                       <> tTerm'
                   )
@@ -402,7 +402,7 @@ versionRangeTriviaParser digitParser csv =
     term = do
       (tFact, f) <- factor
       postSpaces <- P.spaces'
-      let tFact' = fromNamedTrivia (SomeNamespace f) [PostTrivia postSpaces] <> tFact
+      let tFact' = fromNamedTrivia f [PostTrivia postSpaces] <> tFact
       ( do
           _ <- P.string "&&"
           checkOp
@@ -410,9 +410,9 @@ versionRangeTriviaParser digitParser csv =
           (tTerm, t) <- term
           let tInter = intersectVersionRanges f t
           let tTerm' =
-                mark
-                  (SomeNamespace tInter)
-                  ( fromNamedTrivia (SomeNamespace t) [PreTrivia preSpaces']
+                markTriviaTree
+                  tInter
+                  ( fromNamedTrivia t [PreTrivia preSpaces']
                       <> tTerm
                       <> tFact'
                   )
@@ -434,7 +434,7 @@ versionRangeTriviaParser digitParser csv =
               (wild, v) <- verOrWild
               checkWild wild
               let vr = (if wild then withinVersion else thisVersion) v
-              let tvr = mark (SomeNamespace vr) $ fromNamedTrivia (SomeNamespace v) [PreTrivia preSpaces]
+              let tvr = markTriviaTree vr $ fromNamedTrivia v [PreTrivia preSpaces]
               pure $ (tvr, vr)
 
               -- ignore braces for now
@@ -448,7 +448,7 @@ versionRangeTriviaParser digitParser csv =
                 P.unexpected "wild-card version after ^>= operator"
 
               vr <- majorBoundVersion' v
-              let tvr = mark (SomeNamespace vr) $ fromNamedTrivia (SomeNamespace v) [PreTrivia preSpaces]
+              let tvr = markTriviaTree vr $ fromNamedTrivia v [PreTrivia preSpaces]
               pure (tvr, vr)
 
               -- ignore braces for now
@@ -462,8 +462,8 @@ versionRangeTriviaParser digitParser csv =
               "wild-card version after non-== operator: " ++ show op
 
           let withTVer ver =
-                let t = fromNamedTrivia (SomeNamespace v) [PreTrivia preSpaces]
-                 in (mark (SomeNamespace ver) t, ver)
+                let t = fromNamedTrivia v [PreTrivia preSpaces]
+                 in (markTriviaTree ver t, ver)
           case op of
             ">=" -> pure $ withTVer (orLaterVersion v)
             "<" -> pure $ withTVer (earlierVersion v)

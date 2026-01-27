@@ -16,6 +16,8 @@ import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
 
+import Distribution.Types.Annotation
+
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
@@ -77,6 +79,7 @@ instance Pretty MungedPackageName where
   -- indefinite package for us.
   pretty = Disp.text . encodeCompatPackageName'
 
+instance Markable MungedPackageName
 instance Prettier MungedPackageName where
   prettier _ = pretty
 

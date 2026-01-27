@@ -16,6 +16,7 @@ import Prelude ()
 
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.Types.Annotation
 import qualified Text.PrettyPrint as Disp
 
 -- | A package name.
@@ -69,6 +70,7 @@ instance Structured PackageName
 instance Pretty PackageName where
   pretty = Disp.text . unPackageName
 
+instance Markable PackageName
 instance Prettier PackageName where
   prettier _ = pretty
 

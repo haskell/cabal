@@ -22,7 +22,6 @@ import Distribution.Simple.InstallDirs.Internal
 import Distribution.Simple.Setup                   (HaddockTarget, TestShowDetails)
 import Distribution.System
 import Distribution.Parsec.Position
-import Distribution.Types.Namespace                (Namespace, SomeNamespace(..))
 import Distribution.Types.Annotation               (Trivium, TriviaTree)
 import Distribution.Types.AbiHash                  (AbiHash)
 import Distribution.Types.ComponentId              (ComponentId)
@@ -35,6 +34,8 @@ import Distribution.Utils.ShortText                (ShortText, fromShortText)
 import Distribution.Verbosity
 import Distribution.Verbosity.Internal
 import Distribution.FieldGrammar.Newtypes
+
+import Distribution.Types.Annotation
 
 import qualified Distribution.Compat.NonEmptySet as NES
 

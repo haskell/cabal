@@ -55,6 +55,8 @@ import Language.Haskell.Extension
 
 import Distribution.Version (Version, mkVersion', nullVersion)
 
+import Distribution.Types.Annotation
+
 import qualified Distribution.Compat.CharParsing as P
 import Distribution.Package (PackageName)
 import Distribution.Parsec (Parsec (..))
@@ -81,6 +83,7 @@ data CompilerFlavor
   | OtherCompiler String
   deriving (Generic, Show, Read, Eq, Ord, Data)
 
+instance Markable CompilerFlavor
 instance Binary CompilerFlavor
 instance Structured CompilerFlavor
 instance NFData CompilerFlavor where rnf = genericRnf

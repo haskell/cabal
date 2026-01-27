@@ -97,7 +97,6 @@ import Distribution.PrettierField
 
 import Distribution.Types.Annotation
 import Distribution.Types.Dependency
-import Distribution.Types.Namespace
 
 import qualified Text.PrettyPrint as Disp
 import qualified Data.ByteString.Char8 as BS8
@@ -205,7 +204,7 @@ libraryFieldGrammar
   => LibraryName
   -> g Library Library
 libraryFieldGrammar n =
-  withScope (SomeNamespace n) $
+  withScope n $
     Library n
       <$> monoidalFieldAla "exposed-modules" formatExposedModules L.exposedModules
       <*> monoidalFieldAla "reexported-modules" (alaList CommaVCat) L.reexportedModules
@@ -884,6 +883,7 @@ instance Parsec CompatDataDir where
 instance Pretty CompatDataDir where
   pretty = showToken . getSymbolicPath . getCompatDataDir
 
+instance Markable CompatDataDir
 instance Prettier CompatDataDir where
   prettier _ = pretty
 
@@ -893,6 +893,7 @@ newtype CompatLicenseFile = CompatLicenseFile {getCompatLicenseFile :: [Relative
 instance Newtype [RelativePath Pkg File] CompatLicenseFile
 
 -- TODO
+instance Markable CompatLicenseFile
 instance ExactParsec CompatLicenseFile where exactParsec = (mempty,) <$> parsec
 instance Parsec CompatLicenseFile where
   parsec = emptyToken <|> CompatLicenseFile . unpack' (alaList FSep) <$> parsec
@@ -920,7 +921,7 @@ instance
               $ sortOn (fromMaybe 0 . atFieldNth . justAnnotation . fst)
               $ map
                 ( \o ->
-                    let tChildren = unmark (SomeNamespace o) t0
+                    let tChildren = unmarkTriviaTree o t0
                     in  (tChildren, o)
                 )
               $ getCompatLicenseFile -- unpack the list

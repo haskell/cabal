@@ -18,7 +18,8 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.PrettierField
-import Distribution.Types.Namespace
+
+import Distribution.Types.Annotation
 
 import Distribution.CabalSpecVersion (CabalSpecVersion)
 import Distribution.Compat.Newtype (Newtype)
@@ -46,7 +47,7 @@ class
     | g -> c
   where
   -- | Useful for wrapping and unwrapping of namespace label for identifying trivia
-  withScope :: SomeNamespace -> g s a -> g s a
+  withScope :: Markable ns => ns -> g s a -> g s a
   withScope _ = id
 
   -- | Unfocus, zoom out, /blur/ 'FieldGrammar'.

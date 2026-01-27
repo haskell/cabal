@@ -13,6 +13,7 @@ import Distribution.ModuleName
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.PackageName
+import Distribution.Types.Annotation
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
@@ -40,6 +41,7 @@ instance Pretty ModuleReexport where
         else Disp.text "as" <+> pretty newname
 
 -- TODO(leana8959): might be important
+instance Markable ModuleReexport
 instance Prettier ModuleReexport where
   prettier _ = pretty
 

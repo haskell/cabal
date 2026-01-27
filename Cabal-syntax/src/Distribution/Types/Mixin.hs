@@ -18,6 +18,7 @@ import Distribution.Types.IncludeRenaming
 import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
+import Distribution.Types.Annotation
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as PP
@@ -44,6 +45,7 @@ instance Pretty Mixin where
   pretty (Mixin pn (LSubLibName ln) incl) = pretty pn <<>> PP.colon <<>> pretty ln <+> pretty incl
 
 -- TODO(leana8959): maybe import
+instance Markable Mixin
 instance Prettier Mixin where
   prettier _ = pretty
 

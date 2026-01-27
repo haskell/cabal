@@ -16,6 +16,7 @@ import Distribution.Types.ComponentName
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
 import Distribution.Version (VersionRange, anyVersion, isAnyVersion)
+import Distribution.Types.Annotation
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as PP
@@ -41,6 +42,7 @@ instance Pretty ExeDependency where
         | otherwise = pretty ver
 
 -- TODO(leana8959): maybe important
+instance Markable ExeDependency
 instance Prettier ExeDependency where
   prettier _ = pretty
 

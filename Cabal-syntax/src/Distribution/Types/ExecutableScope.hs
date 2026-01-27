@@ -12,6 +12,7 @@ import Prelude ()
 
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.Types.Annotation
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
@@ -25,6 +26,7 @@ instance Pretty ExecutableScope where
   pretty ExecutablePublic = Disp.text "public"
   pretty ExecutablePrivate = Disp.text "private"
 
+instance Markable ExecutableScope
 instance Prettier ExecutableScope where
   prettier _ = pretty
 

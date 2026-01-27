@@ -30,6 +30,7 @@ import Data.Array (Array, Ix (inRange), accumArray, bounds, (!))
 
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.Types.Annotation
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
@@ -74,6 +75,7 @@ instance Pretty Language where
   pretty (UnknownLanguage other) = Disp.text other
   pretty other = Disp.text (show other)
 
+instance Markable Language
 instance Prettier Language where
   prettier _ = pretty
 
@@ -586,6 +588,7 @@ instance Pretty Extension where
   pretty (EnableExtension ke) = Disp.text (show ke)
   pretty (DisableExtension ke) = Disp.text ("No" ++ show ke)
 
+instance Markable Extension
 instance Prettier Extension where
   prettier _ = pretty
 

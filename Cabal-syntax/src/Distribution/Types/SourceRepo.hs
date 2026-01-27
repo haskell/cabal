@@ -21,6 +21,8 @@ import Distribution.Utils.Generic (lowercase)
 import Distribution.Parsec
 import Distribution.Pretty
 
+import Distribution.Types.Annotation
+
 import qualified Data.Map.Strict as M
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
@@ -167,6 +169,7 @@ instance Pretty RepoKind where
   pretty RepoThis = Disp.text "this"
   pretty (RepoKindUnknown other) = Disp.text other
 
+instance Markable RepoKind
 instance Prettier RepoKind where
   prettier _ = pretty
 
@@ -187,6 +190,7 @@ instance Pretty RepoType where
   pretty (OtherRepoType other) = Disp.text other
   pretty (KnownRepoType t) = pretty t
 
+instance Markable RepoType
 instance Prettier RepoType where
   prettier _ = pretty
 

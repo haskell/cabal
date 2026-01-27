@@ -8,6 +8,7 @@ import Prelude ()
 
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.Types.Annotation
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Package as Package
@@ -28,6 +29,8 @@ data AbiDependency = AbiDependency
   , depAbiHash :: Package.AbiHash
   }
   deriving (Eq, Generic, Read, Show, Ord)
+
+instance Markable AbiDependency
 
 instance Pretty AbiDependency where
   pretty (AbiDependency uid abi) =

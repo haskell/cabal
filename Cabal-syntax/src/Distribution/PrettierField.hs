@@ -5,7 +5,6 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Types.Annotation
-import Distribution.Types.Namespace
 
 import Distribution.Fields
 
@@ -26,10 +25,7 @@ class Prettier a => PrettierField a where
 
 instance PrettierField a => PrettierField (Identity a) where
   prettierField name t x =
-    let tChildren = unmark (SomeNamespace x) t
-    in
-        case prettier t (runIdentity x) of
+    let tChildren = unmarkTriviaTree x t
+    in case prettier t (runIdentity x) of
           doc | PP.isEmpty doc -> []
           doc -> [ PrettyField Nothing name doc ]
-
-

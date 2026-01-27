@@ -14,6 +14,7 @@ import Prelude ()
 import qualified Distribution.Compat.CharParsing as P
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.Types.Annotation
 
 import Text.PrettyPrint (text)
 
@@ -58,6 +59,7 @@ instance NFData AbiHash where rnf = genericRnf
 instance Pretty AbiHash where
   pretty = text . unAbiHash
 
+instance Markable AbiHash
 instance Prettier AbiHash where
   prettier _ = pretty
 

@@ -15,6 +15,7 @@ import Prelude ()
 
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.Types.Annotation
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
@@ -35,6 +36,7 @@ instance Pretty ForeignLibType where
   pretty ForeignLibNativeStatic = Disp.text "native-static"
   pretty ForeignLibTypeUnknown = Disp.text "unknown"
 
+instance Markable ForeignLibType
 instance Prettier ForeignLibType where
   prettier _ = pretty
 

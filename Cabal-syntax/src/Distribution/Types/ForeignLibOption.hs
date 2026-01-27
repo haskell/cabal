@@ -12,6 +12,7 @@ import Prelude ()
 
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.Types.Annotation
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
@@ -28,6 +29,7 @@ data ForeignLibOption
 instance Pretty ForeignLibOption where
   pretty ForeignLibStandalone = Disp.text "standalone"
 
+instance Markable ForeignLibOption
 instance Prettier ForeignLibOption where
   prettier _ = pretty
 

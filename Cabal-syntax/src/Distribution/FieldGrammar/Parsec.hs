@@ -81,7 +81,6 @@ import Prelude ()
 import Debug.Pretty.Simple
 
 import Distribution.Types.Annotation
-import Distribution.Types.Namespace
 
 import qualified Data.ByteString as BS
 import qualified Data.List.NonEmpty as NE
@@ -177,12 +176,12 @@ warnMultipleSingularFields fn (x : xs) = do
     "The field " <> show fn <> " is specified more than once at positions " ++ intercalate ", " (map showPos (pos : poss))
 
 instance FieldGrammar ExactParsec ParsecFieldGrammar where
-  withScope :: SomeNamespace -> ParsecFieldGrammar s a -> ParsecFieldGrammar s a
+  withScope :: (Markable ns) => ns -> ParsecFieldGrammar s a -> ParsecFieldGrammar s a
   withScope ns (ParsecFG s s' parser) =
     ParsecFG s s' $ \v fs -> do
       -- Run the inner parser and mark its annotation
       (t, x) <- parser v fs
-      let t' = mark ns t
+      let t' = markTriviaTree ns t
       pure (t', x)
 
   blurFieldGrammar _ (ParsecFG s s' parser) = ParsecFG s s' parser
@@ -292,23 +291,15 @@ instance FieldGrammar ExactParsec ParsecFieldGrammar where
     where
       parser v fields = case Map.lookup fn fields of
         Nothing -> (pure . pure) mempty
-        Just xs ->
-          do
-            (t, x) <- foldMap (unpack' _pack <$>) <$> traverse (uncurry (parseOne v)) (zip xs [1 ..])
-            let t' = mark (SomeNamespace fn) t
-            pure (t', x)
-            >>= \(t, x) ->
-              -- pTrace ("monoidalFieldAla\n" <> show t) $
-              pure (t, x)
+        Just xs -> do
+          (t, x) <- foldMap (unpack' _pack <$>) <$> traverse (uncurry (parseOne v)) (zip xs [1 ..])
+          let t' = markTriviaTree fn t
+          pure (t', x)
 
       -- Different fields
       parseOne v (MkNamelessField pos fls) n = do
         (t, x) <- runFieldParser pos exactParsec v fls
-        -- NOTE(leana8959): can we invoke unpack here somehow and remove the hack?
-        -- HACK(leana8959): this is a trick to not pass in the annotation the underlying parser
-        -- we don't have the right data (before list parsing)
-        let t' = annotateAt 1 [FieldNth n, ExactPosition pos] t
-        -- pTrace ("parseOne\n" <> show t') $
+        let t' = fromNamedTrivia x [FieldNth n, ExactPosition pos] <> t
         pure (t', x)
 
   -- NOTE(leana8959): Field is exactly sent out so there's no trivia?

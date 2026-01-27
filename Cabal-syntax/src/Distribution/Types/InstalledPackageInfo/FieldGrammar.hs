@@ -27,7 +27,6 @@ import Distribution.Pretty
 import Distribution.Types.LibraryName
 import Distribution.Types.LibraryVisibility
 import Distribution.Types.MungedPackageName
-import Distribution.Types.Namespace
 import Distribution.Types.UnqualComponentName
 import Distribution.Version
 
@@ -210,6 +209,7 @@ newtype ExposedModules = ExposedModules {getExposedModules :: [ExposedModule]}
 
 instance Newtype [ExposedModule] ExposedModules
 
+instance Markable ExposedModules
 instance ExactParsec ExposedModules where exactParsec = (mempty,) <$> parsec
 instance Parsec ExposedModules where
   parsec = ExposedModules <$> parsecOptCommaList parsec
@@ -220,9 +220,7 @@ instance Pretty ExposedModules where
 instance Prettier ExposedModules where
   prettier _ = pretty
 
-instance
-  ( 
-  ) => PrettierField ExposedModules where
+instance PrettierField ExposedModules where
   prettierField fieldName t0 n =
     let -- tLocal = justAnnotation t0
         docGroups =
@@ -230,7 +228,7 @@ instance
               $ sortOn (fromMaybe 0 . atFieldNth . justAnnotation . fst)
               $ map
                 ( \o ->
-                    let tChildren = unmark (SomeNamespace o) t0
+                    let tChildren = unmarkTriviaTree o t0
                     in  (tChildren , o)
                 )
               $ unpack -- unpack the list
@@ -251,6 +249,7 @@ instance Newtype String CompatPackageKey
 instance Pretty CompatPackageKey where
   pretty = Disp.text . getCompatPackageKey
 
+instance Markable CompatPackageKey
 instance Prettier CompatPackageKey where
   prettier _ = pretty
 
@@ -265,6 +264,7 @@ newtype InstWith = InstWith {getInstWith :: [(ModuleName, OpenModule)]}
 
 instance Newtype [(ModuleName, OpenModule)] InstWith
 
+instance Markable InstWith
 instance Pretty InstWith where
   pretty = dispOpenModuleSubst . Map.fromList . getInstWith
 
@@ -292,6 +292,7 @@ instance Parsec SpecLicenseLenient where
 instance Pretty SpecLicenseLenient where
   pretty = either pretty pretty . getSpecLicenseLenient
 
+instance Markable SpecLicenseLenient
 instance Prettier SpecLicenseLenient where
   prettier _ = pretty
 

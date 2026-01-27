@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DataKinds #-}
@@ -81,8 +82,8 @@ import Distribution.Version
 import Text.PrettyPrint (Doc, comma, fsep, punctuate, text, vcat)
 
 import Distribution.Types.Annotation
-import Distribution.Types.Namespace
 
+import qualified Data.Map as M
 import Data.List (sortOn, groupBy)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Set as Set
@@ -118,11 +119,11 @@ class TriviaSep sep where
     => Proxy sep -> [(TriviaTree, a)] -> Doc
 
   triviaParseSep
-    :: (CabalParsing m, Namespace a)
+    :: (CabalParsing m, Markable a, Namespace a)
     => Proxy sep -> m (TriviaTree, a) -> m [(TriviaTree, a)]
 
   triviaParseSepNE
-    :: (CabalParsing m, Namespace a)
+    :: (CabalParsing m, Markable a, Namespace a)
     => Proxy sep -> m (TriviaTree, a) -> m (NonEmpty (TriviaTree, a))
 
 -- NOTE(leana8959): Dependency List is such a type
@@ -242,6 +243,7 @@ instance
   , Typeable b
   , Ord b
   , Show b
+  , Markable b
   ) => Parsec (List sep b a) where
   parsec = snd <$> exactParsec
 
@@ -255,6 +257,7 @@ instance
   , Typeable b
   , Ord b
   , Show b
+  , Markable b
   ) => ExactParsec (List sep b a) where
   exactParsec = do
     (ts, bs) <- unzip <$> triviaParseSep (Proxy :: Proxy sep) exactParsec
@@ -264,12 +267,35 @@ instance (Newtype a b, Sep sep, Pretty b) => Pretty (List sep b a) where
   pretty = prettySep (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . unpack
 
 instance
+  ( Typeable sep
+  , Typeable b
+  , Namespace a
+  , Markable a
+  -- ^ This constraint is bad, think about how to remove it
+  ) => Markable (List sep b a) where
+  markTriviaTree bs t =
+    mconcat
+    $ map
+      ( (\namespace -> TriviaTree mempty (M.singleton namespace t))
+          . SomeNamespace
+      )
+      (_getList bs)
+
+  unmarkTriviaTree bs t =
+    fromMaybe mempty
+      $ mconcat
+      $ map
+        ( flip M.lookup (namedAnnotations t) . SomeNamespace)
+        (_getList bs)
+
+instance
   ( Newtype a b
   , Typeable sep
   , Sep sep
   , TriviaSep sep
   , Prettier b
   , Namespace a
+  , Markable a
   )
   => Prettier (List sep b a) where
   prettier t0 n =
@@ -280,7 +306,7 @@ instance
               $ map
                 ( \o ->
                     let n = (pack :: a -> b) o -- pack each element
-                        tChildren = unmark (SomeNamespace n) t0
+                        tChildren = unmarkTriviaTree n t0
                     in
                           ( tChildren
                           , n
@@ -301,6 +327,7 @@ instance
   , Typeable b
   , Typeable sep
   , Namespace a
+  , Markable a
   ) => PrettierField (List sep b a) where
   prettierField fieldName t0 n =
     let tLocal = justAnnotation t0
@@ -310,7 +337,7 @@ instance
               $ map
                 ( \o ->
                     let n = (pack :: a -> b) o -- pack each element
-                        tChildren = unmark (SomeNamespace n) t0
+                        tChildren = unmarkTriviaTree n t0
                     in
                           (tChildren , n)
                 )
@@ -410,6 +437,7 @@ instance ExactParsec Token where
 instance Pretty Token where
   pretty = showToken . unpack
 
+instance Markable Token
 instance Prettier Token where prettier _ = pretty
 
 -- | Haskell string or @[^ ]+@
@@ -425,6 +453,7 @@ instance ExactParsec Token' where
 instance Pretty Token' where
   pretty = showToken . unpack
 
+instance Markable Token'
 instance Prettier Token' where prettier _ = pretty
 
 -- | Either @"quoted"@ or @un-quoted@.
@@ -440,6 +469,7 @@ instance Parsec a => Parsec (MQuoted a) where
 instance Pretty a => Pretty (MQuoted a) where
   pretty = pretty . unpack
 
+instance (Markable a, Namespace a) => Markable (MQuoted a)
 instance Prettier a => Prettier (MQuoted a) where
   prettier t = prettier t . unpack
 
@@ -447,6 +477,7 @@ instance Prettier a => Prettier (MQuoted a) where
 newtype FilePathNT = FilePathNT {getFilePathNT :: String}
   deriving (Ord, Eq, Show)
 
+instance Markable FilePathNT
 instance Prettier FilePathNT where prettier _ = pretty
 
 instance Newtype String FilePathNT
@@ -466,6 +497,11 @@ instance Pretty FilePathNT where
 -- to disallow empty paths.
 newtype SymbolicPathNT from to = SymbolicPathNT {getSymbolicPathNT :: SymbolicPath from to}
   deriving (Ord, Eq, Show)
+
+instance
+  ( Typeable from
+  , Typeable to
+  ) => Markable (SymbolicPathNT from to)
 
 instance Newtype (SymbolicPath from to) (SymbolicPathNT from to)
 
@@ -492,6 +528,11 @@ instance (Typeable from, Typeable to) => Prettier (SymbolicPathNT from to) where
 -- later with a different error message, see 'Distribution.PackageDescription.Check.Paths.checkPath')
 newtype RelativePathNT from to = RelativePathNT {getRelativePathNT :: RelativePath from to}
   deriving (Ord, Eq, Show)
+
+instance
+  ( Typeable from
+  , Typeable to
+  ) => Markable (RelativePathNT from to)
 
 instance Newtype (RelativePath from to) (RelativePathNT from to)
 
@@ -533,6 +574,8 @@ instance (Typeable from, Typeable to) => Prettier (RelativePathNT from to) where
 --     Version -> CabalSpecVersion -> Parsec -> ...
 newtype SpecVersion = SpecVersion {getSpecVersion :: CabalSpecVersion}
   deriving (Eq, Show, Ord) -- instances needed for tests
+
+instance Markable SpecVersion
 
 instance Newtype CabalSpecVersion SpecVersion
 
@@ -624,6 +667,8 @@ instance Prettier SpecVersion where prettier _ = pretty
 newtype SpecLicense = SpecLicense {getSpecLicense :: Either SPDX.License License}
   deriving (Show, Ord, Eq)
 
+instance Markable SpecLicense
+
 instance Newtype (Either SPDX.License License) SpecLicense
 
 -- TODO(leana8959): defined in reverse
@@ -649,6 +694,7 @@ newtype TestedWith = TestedWith {getTestedWith :: (CompilerFlavor, VersionRange)
 
 instance Newtype (CompilerFlavor, VersionRange) TestedWith
 
+instance Markable TestedWith
 instance Parsec TestedWith where parsec = snd <$> exactParsec
 instance ExactParsec TestedWith where
   exactParsec = (mempty,) . pack <$> parsecTestedWith

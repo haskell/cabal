@@ -12,6 +12,7 @@ import Prelude ()
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Version (VersionRange, anyVersion)
+import Distribution.Types.Annotation
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
@@ -38,6 +39,7 @@ instance Pretty LegacyExeDependency where
     Disp.text name <+> pretty ver
 
 -- TODO(leana8959): maybe important
+instance Markable LegacyExeDependency
 instance Prettier LegacyExeDependency where
   prettier _ = pretty
 

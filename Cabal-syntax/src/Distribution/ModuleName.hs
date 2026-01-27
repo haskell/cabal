@@ -30,6 +30,7 @@ module Distribution.ModuleName
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Distribution.Types.Annotation
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Utils.ShortText (ShortText, fromShortText, toShortText)
@@ -52,6 +53,7 @@ instance Structured ModuleName
 instance NFData ModuleName where
   rnf (ModuleName ms) = rnf ms
 
+instance Markable ModuleName
 instance Pretty ModuleName where pretty = Disp.text . unModuleName
 instance Prettier ModuleName where prettier _ = pretty
 

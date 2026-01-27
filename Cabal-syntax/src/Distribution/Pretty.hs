@@ -23,7 +23,6 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Types.Annotation
-import Distribution.Types.Namespace
 
 import qualified Text.PrettyPrint as PP
 
@@ -36,7 +35,7 @@ class Pretty a where
 -- NOTE(leana8959):
 -- Split due to the Namespace contraint posing problem, not everything is Ord
 -- Doc is not Ord for example
-class (Namespace a, Pretty a) => Prettier a where
+class (Namespace a, Pretty a, Markable a) => Prettier a where
   -- NOTE(leana8959): by default we fall back to the printer that doesn't care about trivia
   prettier :: TriviaTree -> a -> PP.Doc
   prettier _ = pretty
@@ -59,7 +58,7 @@ instance Pretty a => Pretty (Identity a) where
 
 instance Prettier a => Prettier (Identity a) where
   prettier t x =
-    let t' = unmark (SomeNamespace x) t
+    let t' = unmarkTriviaTree x t
     in  prettier t' (runIdentity x)
 
 prettyShow :: Pretty a => a -> String

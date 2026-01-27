@@ -19,6 +19,7 @@ import Distribution.Utils.ShortText
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.PackageName
+import Distribution.Types.Annotation
 
 -- | An unqualified component name, for any kind of component.
 --
@@ -72,6 +73,7 @@ instance Structured UnqualComponentName
 instance Pretty UnqualComponentName where
   pretty = showToken . unUnqualComponentName
 
+instance Markable UnqualComponentName
 instance Prettier UnqualComponentName where
   prettier _ = pretty
 

@@ -25,7 +25,6 @@ import Distribution.Parsec
 import Distribution.Pretty
 
 import Distribution.Types.Annotation
-import Distribution.Types.Namespace
 
 import qualified Data.Version as Base
 import qualified Distribution.Compat.CharParsing as P
@@ -99,9 +98,10 @@ instance NFData Version where
 instance Pretty Version where
   pretty = prettier mempty
 
+instance Markable Version
 instance Prettier Version where
   prettier t0 ver =
-    let t = unmark (SomeNamespace ver) t0
+    let t = unmarkTriviaTree ver t0
         tLocal = justAnnotation t
     in triviaToDoc tLocal $
         Disp.hcat

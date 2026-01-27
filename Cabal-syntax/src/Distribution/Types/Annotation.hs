@@ -1,4 +1,10 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE StrictData #-}
 
 -- |
@@ -15,16 +21,85 @@
 --
 -- 'mark' takes a namespace and a trivia tree, and "marks" it as below a Namespace
 -- 'unmark' is the inverse of 'mark', asks the question "what are the trivia associated with Namespace ns".
-module Distribution.Types.Annotation where
+module Distribution.Types.Annotation
+  ( Namespace
+  , SomeNamespace (..)
+  , fromNamespace
+  , isNamespace
+  , Trivia
+  , Trivium (..)
+  , TriviaTree (..)
+
+  , Markable (..)
+
+  , fromNamedTrivia
+  , emptyTriviaTree
+  , atFieldNth
+  , atNth
+  , atPosition
+  , triviaToDoc
+  , triviumToDoc
+  )
+  where
 
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Types.Namespace
 import Distribution.Parsec.Position
+
+import Data.Typeable
+import Data.Kind
+import Data.Monoid
 
 import qualified Data.Map as M
 import qualified Text.PrettyPrint as Disp
+
+import qualified Data.ByteString as BS
+
+type Namespace a =
+  ( Typeable a
+  , Eq a
+  , Ord a
+  , Show a -- The Show constraint is simply for debugging
+  )
+
+data SomeNamespace = forall a. Namespace a => SomeNamespace a
+deriving instance Show SomeNamespace
+
+instance Eq SomeNamespace where
+  (SomeNamespace x) == (SomeNamespace y) = case cast x of
+    Just x' -> x' == y
+    Nothing -> False
+
+instance Ord SomeNamespace where
+  (SomeNamespace x) <= (SomeNamespace y) = case cast x of
+    Just x' -> x' <= y
+    Nothing -> typeOf x <= typeOf y
+
+fromNamespace :: Namespace a => SomeNamespace -> Maybe a
+fromNamespace (SomeNamespace ns) = cast ns
+
+isNamespace :: Namespace a => a -> SomeNamespace -> Bool
+isNamespace a someB = maybe False (== a) (fromNamespace someB)
+
+class Markable a where
+  markTriviaTree :: a -> TriviaTree -> TriviaTree
+  default markTriviaTree :: (Namespace a) => a -> TriviaTree -> TriviaTree
+  markTriviaTree x t = TriviaTree mempty (M.singleton (SomeNamespace x) t)
+
+  unmarkTriviaTree :: a -> TriviaTree -> TriviaTree
+  default unmarkTriviaTree :: (Namespace a) => a -> TriviaTree -> TriviaTree
+  unmarkTriviaTree x t = fromMaybe mempty (M.lookup (SomeNamespace x) (namedAnnotations t))
+
+instance Markable BS.ByteString
+instance (Markable a, Namespace a) => Markable (Identity a)
+instance (Markable a, Namespace a) => Markable (Last a)
+
+-- This instance is for String and alike
+-- For actual lists where multiplicity matters, see List sep b a
+instance (Typeable a, Namespace a) => Markable [a] where
+
+instance (Namespace a, Markable a, Namespace b, Markable b) => Markable (a, b)
 
 type Trivia = [Trivium]
 data Trivium
@@ -54,28 +129,11 @@ instance Semigroup TriviaTree where
 instance Monoid TriviaTree where
   mempty = emptyTriviaTree
 
-fromNamedTrivia :: SomeNamespace -> Trivia -> TriviaTree
-fromNamedTrivia ns ts = TriviaTree mempty (M.singleton ns (TriviaTree ts mempty))
+fromNamedTrivia :: (Markable a) => a -> Trivia -> TriviaTree
+fromNamedTrivia x ts = markTriviaTree x (TriviaTree ts mempty)
 
 emptyTriviaTree :: TriviaTree
 emptyTriviaTree = TriviaTree mempty mempty
-
--- | Wrap the trivia within a namespace
-mark :: SomeNamespace -> TriviaTree -> TriviaTree
-mark ns ts = TriviaTree mempty (M.singleton ns ts)
-
--- | If the trivia map is for this scope
-unmark :: SomeNamespace -> TriviaTree -> TriviaTree
-unmark ns tt = fromMaybe mempty (M.lookup ns (namedAnnotations tt))
-
--- |
--- WARNING: if this is used on something that has no trivia map, we can't create
--- an annotation because the namespace will not exist.
-annotateAt :: Int -> Trivia -> TriviaTree -> TriviaTree
-annotateAt n ann (TriviaTree ann0 m)
-  | n == 0 = TriviaTree (ann0 <> ann) m
-  | n > 0 = TriviaTree ann0 (annotateAt (n-1) ann <$> m)
-  | otherwise = error "annotateAt: expects positive index"
 
 atFieldNth :: Trivia -> Maybe Int
 atFieldNth [] = Nothing
