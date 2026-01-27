@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -514,6 +515,7 @@ instance Read PathTemplate where
     , (template, "") <- reads path
     ]
 
+instance ExactParsec PathTemplate where exactParsec = (mempty,) <$> parsec
 instance Parsec PathTemplate where
   parsec = parsecPathTemplate
 

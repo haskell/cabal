@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
@@ -74,6 +75,7 @@ instance Pretty UnqualComponentName where
 instance Prettier UnqualComponentName where
   prettier _ = pretty
 
+instance ExactParsec UnqualComponentName where exactParsec = (mempty,) <$> parsec
 instance Parsec UnqualComponentName where
   parsec = mkUnqualComponentName <$> parsecUnqualComponentName
 

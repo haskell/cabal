@@ -303,7 +303,7 @@ parsecTriviaGoldenTests = testGroup "parsec-trivia-golden"
   ]
 
 parsecTriviaGoldenTest
-  :: forall a. (Show a, Parsec a, ToExpr a)
+  :: forall a. (Show a, ExactParsec a, ToExpr a)
   => Proxy a
   -> FilePath
   -> TestTree
@@ -421,7 +421,7 @@ parsecPrettyRoundTripTests = testGroup "parsecpretty-roundtrip"
 -- Test whether the leaf Parsec and Pretty instances are dual of each other.
 parsecPrettyRoundTripTest
   :: forall a
-   . (Show a, Parsec a, Prettier a)
+   . (Show a, ExactParsec a, Prettier a)
   => Proxy a
   -> FilePath
   -> TestTree

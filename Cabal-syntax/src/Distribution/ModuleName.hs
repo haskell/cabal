@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -54,6 +55,7 @@ instance NFData ModuleName where
 instance Pretty ModuleName where pretty = Disp.text . unModuleName
 instance Prettier ModuleName where prettier _ = pretty
 
+instance ExactParsec ModuleName where exactParsec = (mempty,) <$> parsec
 instance Parsec ModuleName where
   parsec = parsecModuleName
 

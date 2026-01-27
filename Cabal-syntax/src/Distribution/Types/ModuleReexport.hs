@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 module Distribution.Types.ModuleReexport
@@ -42,6 +43,8 @@ instance Pretty ModuleReexport where
 instance Prettier ModuleReexport where
   prettier _ = pretty
 
+-- TODO(leana8959): dropped whitespaces!
+instance ExactParsec ModuleReexport where exactParsec = (mempty,) <$> parsec
 instance Parsec ModuleReexport where
   parsec = do
     mpkgname <- P.optional (P.try $ parsec <* P.char ':')

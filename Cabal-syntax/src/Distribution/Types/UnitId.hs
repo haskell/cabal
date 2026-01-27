@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -76,6 +77,8 @@ instance Pretty UnitId where
 
 instance Prettier UnitId where
   prettier _ = pretty
+
+instance ExactParsec UnitId where exactParsec = (mempty,) <$> parsec
 
 -- | The textual format for 'UnitId' coincides with the format
 -- GHC accepts for @-package-id@.

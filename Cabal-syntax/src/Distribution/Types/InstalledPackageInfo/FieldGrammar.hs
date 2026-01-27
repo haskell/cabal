@@ -1,4 +1,5 @@
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -209,6 +210,7 @@ newtype ExposedModules = ExposedModules {getExposedModules :: [ExposedModule]}
 
 instance Newtype [ExposedModule] ExposedModules
 
+instance ExactParsec ExposedModules where exactParsec = (mempty,) <$> parsec
 instance Parsec ExposedModules where
   parsec = ExposedModules <$> parsecOptCommaList parsec
 
@@ -252,6 +254,7 @@ instance Pretty CompatPackageKey where
 instance Prettier CompatPackageKey where
   prettier _ = pretty
 
+instance ExactParsec CompatPackageKey where exactParsec = (mempty,) <$> parsec
 instance Parsec CompatPackageKey where
   parsec = CompatPackageKey <$> P.munch1 uid_char
     where
@@ -268,6 +271,9 @@ instance Pretty InstWith where
 instance Prettier InstWith where
   prettier _ = pretty
 
+instance ExactParsec InstWith where
+  exactParsec = (mempty,) <$> parsec
+
 instance Parsec InstWith where
   parsec = InstWith . Map.toList <$> parsecOpenModuleSubst
 
@@ -276,6 +282,9 @@ newtype SpecLicenseLenient = SpecLicenseLenient {getSpecLicenseLenient :: Either
   deriving (Ord, Eq, Show)
 
 instance Newtype (Either SPDX.License License) SpecLicenseLenient
+
+instance ExactParsec SpecLicenseLenient where
+  exactParsec = (mempty,) <$> parsec
 
 instance Parsec SpecLicenseLenient where
   parsec = fmap SpecLicenseLenient $ Left <$> P.try parsec <|> Right <$> parsec

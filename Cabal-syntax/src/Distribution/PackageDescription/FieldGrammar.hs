@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ConstraintKinds #-}
@@ -872,6 +873,7 @@ newtype CompatDataDir = CompatDataDir {getCompatDataDir :: SymbolicPath Pkg (Dir
 
 instance Newtype (SymbolicPath Pkg (Dir DataDir)) CompatDataDir
 
+instance ExactParsec CompatDataDir where exactParsec = (mempty,) <$> parsec
 instance Parsec CompatDataDir where
   parsec = do
     token <- parsecToken
@@ -891,6 +893,7 @@ newtype CompatLicenseFile = CompatLicenseFile {getCompatLicenseFile :: [Relative
 instance Newtype [RelativePath Pkg File] CompatLicenseFile
 
 -- TODO
+instance ExactParsec CompatLicenseFile where exactParsec = (mempty,) <$> parsec
 instance Parsec CompatLicenseFile where
   parsec = emptyToken <|> CompatLicenseFile . unpack' (alaList FSep) <$> parsec
     where

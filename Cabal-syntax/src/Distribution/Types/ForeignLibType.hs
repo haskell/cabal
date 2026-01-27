@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -37,6 +38,7 @@ instance Pretty ForeignLibType where
 instance Prettier ForeignLibType where
   prettier _ = pretty
 
+instance ExactParsec ForeignLibType where exactParsec = (mempty,) <$> parsec
 instance Parsec ForeignLibType where
   parsec = do
     name <- P.munch1 (\c -> isAlphaNum c || c == '-')

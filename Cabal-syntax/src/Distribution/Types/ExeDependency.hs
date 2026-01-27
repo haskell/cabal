@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 module Distribution.Types.ExeDependency
@@ -64,6 +65,8 @@ instance Prettier ExeDependency where
 --
 -- >>> simpleParsec "happy :happy >= 1.19.12" :: Maybe ExeDependency
 -- Nothing
+
+instance ExactParsec ExeDependency where exactParsec = (mempty,) <$> parsec
 instance Parsec ExeDependency where
   parsec = do
     name <- parsec

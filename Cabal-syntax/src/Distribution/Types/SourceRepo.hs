@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 module Distribution.Types.SourceRepo
@@ -178,6 +179,7 @@ classifyRepoKind name = case lowercase name of
   "this" -> RepoThis
   _ -> RepoKindUnknown name
 
+instance ExactParsec RepoType where exactParsec = (mempty,) <$> parsec
 instance Parsec RepoType where
   parsec = classifyRepoType <$> P.munch1 isIdent
 

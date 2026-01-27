@@ -354,8 +354,11 @@ prettyVersionRange16 t vr = prettyVersionRange t vr
 --
 -- >>> map (`simpleParsecW'` "== 1.2.*") [CabalSpecV1_4, CabalSpecV1_6] :: [Maybe VersionRange]
 -- [Nothing,Just (IntersectVersionRanges (OrLaterVersion (mkVersion [1,2])) (EarlierVersion (mkVersion [1,3])))]
-instance Parsec VersionRange where
-  triviaParsec = askCabalSpecVersion >>= versionRangeTriviaParser versionDigitParser
+
+instance Parsec VersionRange where parsec = snd <$> exactParsec
+
+instance ExactParsec VersionRange where
+  exactParsec = askCabalSpecVersion >>= versionRangeTriviaParser versionDigitParser
 
 versionRangeParser digitParser csv = fmap (\(_, x) -> x) $ versionRangeTriviaParser digitParser csv
 

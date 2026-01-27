@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 
@@ -95,6 +96,7 @@ instance Pretty LibVersionInfo where
 instance Prettier LibVersionInfo where
   prettier _ = pretty
 
+instance ExactParsec LibVersionInfo where exactParsec = (mempty,) <$> parsec
 instance Parsec LibVersionInfo where
   parsec = do
     c <- P.integral

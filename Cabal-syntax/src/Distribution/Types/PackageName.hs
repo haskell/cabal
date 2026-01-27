@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 module Distribution.Types.PackageName
@@ -71,6 +72,7 @@ instance Pretty PackageName where
 instance Prettier PackageName where
   prettier _ = pretty
 
+instance ExactParsec PackageName where exactParsec = (mempty,) <$> parsec
 instance Parsec PackageName where
   parsec = mkPackageName <$> parsecUnqualComponentName
 

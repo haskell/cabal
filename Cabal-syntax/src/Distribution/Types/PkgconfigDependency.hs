@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 module Distribution.Types.PkgconfigDependency
@@ -36,6 +37,8 @@ instance Pretty PkgconfigDependency where
 instance Prettier PkgconfigDependency where
   prettier _ = pretty
 
+-- TODO(leana8959): dropped spaces
+instance ExactParsec PkgconfigDependency where exactParsec = (mempty,) <$> parsec
 instance Parsec PkgconfigDependency where
   parsec = do
     name <- parsec

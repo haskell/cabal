@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -379,6 +380,11 @@ tryMakeRelative mbWorkDir (SymbolicPath fp) = do
 -- ** Parsing and pretty printing
 
 -------------------------------------------------------------------------------
+
+instance
+  Namespace (SymbolicPathX 'OnlyRelative from to)
+  => ExactParsec (SymbolicPathX 'OnlyRelative from to) where
+  exactParsec = (mempty,) <$> parsec
 
 instance Parsec (SymbolicPathX 'OnlyRelative from to) where
   parsec = do

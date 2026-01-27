@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -42,6 +43,7 @@ knownBuildTypes = [Simple, Configure, Make, Custom, Hooks]
 instance Pretty BuildType where
   pretty = Disp.text . show
 
+instance ExactParsec BuildType where exactParsec = (mempty,) <$> parsec
 instance Prettier BuildType where
   prettier _ = pretty
 

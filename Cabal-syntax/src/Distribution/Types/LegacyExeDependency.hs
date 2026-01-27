@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 module Distribution.Types.LegacyExeDependency
@@ -40,6 +41,7 @@ instance Pretty LegacyExeDependency where
 instance Prettier LegacyExeDependency where
   prettier _ = pretty
 
+instance ExactParsec LegacyExeDependency where exactParsec = (mempty,) <$> parsec
 instance Parsec LegacyExeDependency where
   parsec = do
     name <- parsecMaybeQuoted nameP

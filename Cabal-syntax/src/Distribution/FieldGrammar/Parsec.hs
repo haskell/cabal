@@ -176,18 +176,14 @@ warnMultipleSingularFields fn (x : xs) = do
   parseWarning pos PWTMultipleSingularField $
     "The field " <> show fn <> " is specified more than once at positions " ++ intercalate ", " (map showPos (pos : poss))
 
-instance FieldGrammar Parsec ParsecFieldGrammar where
+instance FieldGrammar ExactParsec ParsecFieldGrammar where
   withScope :: SomeNamespace -> ParsecFieldGrammar s a -> ParsecFieldGrammar s a
   withScope ns (ParsecFG s s' parser) =
-    ParsecFG s s' $ \v fs ->
-      do
-        -- Run the inner parser and mark its annotation
-        (t, x) <- parser v fs
-        let t' = mark ns t
-        pure (t', x)
-        >>= \(t, x) ->
-          -- pTrace ("withScope\n" <> show t) $
-          pure (t, x)
+    ParsecFG s s' $ \v fs -> do
+      -- Run the inner parser and mark its annotation
+      (t, x) <- parser v fs
+      let t' = mark ns t
+      pure (t', x)
 
   blurFieldGrammar _ (ParsecFG s s' parser) = ParsecFG s s' parser
 
@@ -202,7 +198,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
           NE.last <$> traverse (parseOne v) (y :| ys)
 
       parseOne v (MkNamelessField pos fls) =
-        fmap (unpack' _pack) <$> runFieldParser pos triviaParsec v fls
+        fmap (unpack' _pack) <$> runFieldParser pos exactParsec v fls
 
   booleanFieldDef fn _extract def = ParsecFG (Set.singleton fn) Set.empty parser
     where
@@ -214,7 +210,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
           warnMultipleSingularFields fn xs
           NE.last <$> traverse (parseOne v) (y :| ys)
 
-      parseOne v (MkNamelessField pos fls) = runFieldParser pos triviaParsec v fls
+      parseOne v (MkNamelessField pos fls) = runFieldParser pos exactParsec v fls
 
   optionalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
@@ -228,7 +224,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
 
       parseOne v (MkNamelessField pos fls)
         | null fls = (pure . pure) Nothing
-        | otherwise = fmap (Just . unpack' _pack) <$> runFieldParser pos triviaParsec v fls
+        | otherwise = fmap (Just . unpack' _pack) <$> runFieldParser pos exactParsec v fls
 
   optionalFieldDefAla fn _pack _extract def = ParsecFG (Set.singleton fn) Set.empty parser
     where
@@ -242,7 +238,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
 
       parseOne v (MkNamelessField pos fls)
         | null fls = (pure . pure) def
-        | otherwise = fmap (unpack' _pack) <$> runFieldParser pos triviaParsec v fls
+        | otherwise = fmap (unpack' _pack) <$> runFieldParser pos exactParsec v fls
 
   freeTextField fn _ = ParsecFG (Set.singleton fn) Set.empty parser
     where
@@ -307,7 +303,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
 
       -- Different fields
       parseOne v (MkNamelessField pos fls) n = do
-        (t, x) <- runFieldParser pos triviaParsec v fls
+        (t, x) <- runFieldParser pos exactParsec v fls
         -- NOTE(leana8959): can we invoke unpack here somehow and remove the hack?
         -- HACK(leana8959): this is a trick to not pass in the annotation the underlying parser
         -- we don't have the right data (before list parsing)

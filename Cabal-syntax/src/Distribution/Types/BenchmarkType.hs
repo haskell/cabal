@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -41,6 +42,7 @@ instance Pretty BenchmarkType where
 instance Prettier BenchmarkType where
   prettier _ = pretty
 
+instance ExactParsec BenchmarkType where exactParsec = (mempty,) <$> parsec
 instance Parsec BenchmarkType where
   parsec = parsecStandard $ \ver name -> case name of
     "exitcode-stdio" -> BenchmarkTypeExe ver

@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -32,6 +33,7 @@ instance Pretty LibraryVisibility where
 instance Prettier LibraryVisibility where
   prettier _ = pretty
 
+instance ExactParsec LibraryVisibility where exactParsec = (mempty,) <$> parsec
 instance Parsec LibraryVisibility where
   parsec = do
     name <- P.munch1 isAlpha

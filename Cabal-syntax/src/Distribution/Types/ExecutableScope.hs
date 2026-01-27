@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -27,6 +28,7 @@ instance Pretty ExecutableScope where
 instance Prettier ExecutableScope where
   prettier _ = pretty
 
+instance ExactParsec ExecutableScope where exactParsec = (mempty,) <$> parsec
 instance Parsec ExecutableScope where
   parsec = P.try pub <|> pri
     where

@@ -233,18 +233,31 @@ alaList' _ _ = List
 
 instance Newtype [a] (List sep wrapper a)
 
--- Multiplicity within fields
 instance
   ( Newtype a b
+  , Typeable sep
   , TriviaSep sep
-  , Parsec b
+  , ExactParsec b
   , Namespace a
   , Typeable b
   , Ord b
   , Show b
   ) => Parsec (List sep b a) where
-  triviaParsec = do
-    (ts, bs) <- unzip <$> triviaParseSep (Proxy :: Proxy sep) triviaParsec
+  parsec = snd <$> exactParsec
+
+-- Multiplicity within fields
+instance
+  ( Newtype a b
+  , Typeable sep
+  , TriviaSep sep
+  , ExactParsec b
+  , Namespace a
+  , Typeable b
+  , Ord b
+  , Show b
+  ) => ExactParsec (List sep b a) where
+  exactParsec = do
+    (ts, bs) <- unzip <$> triviaParseSep (Proxy :: Proxy sep) exactParsec
     pure (mconcat ts, pack $ map (unpack :: b -> a) bs)
 
 instance (Newtype a b, Sep sep, Pretty b) => Pretty (List sep b a) where
@@ -390,8 +403,9 @@ newtype Token = Token {getToken :: String}
 
 instance Newtype String Token
 
-instance Parsec Token where
-  parsec = pack <$> parsecToken
+instance Parsec Token where parsec = snd <$> exactParsec
+instance ExactParsec Token where
+  exactParsec = (mempty,) . pack <$> parsecToken
 
 instance Pretty Token where
   pretty = showToken . unpack
@@ -404,8 +418,9 @@ newtype Token' = Token' {getToken' :: String}
 
 instance Newtype String Token'
 
-instance Parsec Token' where
-  parsec = pack <$> parsecToken'
+instance Parsec Token' where parsec = snd <$> exactParsec
+instance ExactParsec Token' where
+  exactParsec = (mempty,) . pack <$> parsecToken'
 
 instance Pretty Token' where
   pretty = showToken . unpack
@@ -418,6 +433,7 @@ newtype MQuoted a = MQuoted {getMQuoted :: a}
 
 instance Newtype a (MQuoted a)
 
+instance (Parsec a, Namespace a) => ExactParsec (MQuoted a) where exactParsec = (mempty,) <$> parsec
 instance Parsec a => Parsec (MQuoted a) where
   parsec = pack <$> parsecMaybeQuoted parsec
 
@@ -435,12 +451,13 @@ instance Prettier FilePathNT where prettier _ = pretty
 
 instance Newtype String FilePathNT
 
-instance Parsec FilePathNT where
-  parsec = do
+instance Parsec FilePathNT where parsec = snd <$> exactParsec
+instance ExactParsec FilePathNT where
+  exactParsec = do
     token <- parsecToken
     if null token
       then P.unexpected "empty FilePath"
-      else return (FilePathNT token)
+      else return (mempty, FilePathNT token)
 
 instance Pretty FilePathNT where
   pretty = showFilePath . unpack
@@ -452,6 +469,11 @@ newtype SymbolicPathNT from to = SymbolicPathNT {getSymbolicPathNT :: SymbolicPa
 
 instance Newtype (SymbolicPath from to) (SymbolicPathNT from to)
 
+-- TODO(leana8959): reversed
+instance
+  ( Typeable from
+  , Typeable to
+  ) => ExactParsec (SymbolicPathNT from to) where exactParsec = (mempty,) <$> parsec
 instance Parsec (SymbolicPathNT from to) where
   parsec = do
     token <- parsecToken
@@ -475,6 +497,11 @@ instance Newtype (RelativePath from to) (RelativePathNT from to)
 
 -- NB: we don't reject non-relative paths here; we allow them here and reject
 -- later (see 'Distribution.PackageDescription.Check.Paths.checkPath').
+-- TODO(leana8959): reversed
+instance
+  ( Typeable from
+  , Typeable to
+  ) => ExactParsec (RelativePathNT from to) where exactParsec = (mempty,) <$> parsec
 instance Parsec (RelativePathNT from to) where
   parsec = do
     token <- parsecToken
@@ -509,6 +536,8 @@ newtype SpecVersion = SpecVersion {getSpecVersion :: CabalSpecVersion}
 
 instance Newtype CabalSpecVersion SpecVersion
 
+-- TODO(leana8959): defined in reversed order
+instance ExactParsec SpecVersion where exactParsec = (mempty,) <$> parsec
 instance Parsec SpecVersion where
   parsec = do
     e <- parsecSpecVersion
@@ -597,6 +626,8 @@ newtype SpecLicense = SpecLicense {getSpecLicense :: Either SPDX.License License
 
 instance Newtype (Either SPDX.License License) SpecLicense
 
+-- TODO(leana8959): defined in reverse
+instance ExactParsec SpecLicense where exactParsec = (mempty,) <$> parsec
 instance Parsec SpecLicense where
   parsec = do
     v <- askCabalSpecVersion
@@ -618,8 +649,9 @@ newtype TestedWith = TestedWith {getTestedWith :: (CompilerFlavor, VersionRange)
 
 instance Newtype (CompilerFlavor, VersionRange) TestedWith
 
-instance Parsec TestedWith where
-  parsec = pack <$> parsecTestedWith
+instance Parsec TestedWith where parsec = snd <$> exactParsec
+instance ExactParsec TestedWith where
+  exactParsec = (mempty,) . pack <$> parsecTestedWith
 
 instance Pretty TestedWith where
   pretty x = case unpack x of

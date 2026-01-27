@@ -7,6 +7,7 @@
 
 module Distribution.Parsec
   ( Parsec (..)
+  , ExactParsec (..)
   , ParsecParser (..)
   , runParsecParser
   , runParsecParser'
@@ -99,12 +100,10 @@ import qualified Text.Parsec as Parsec
 --
 -- For parsing @.cabal@ like file structure, see "Distribution.Fields".
 class Parsec a where
-  {-# MINIMAL parsec | triviaParsec #-}
   parsec :: CabalParsing m => m a
-  parsec = (\(_, y) -> y) <$> triviaParsec
 
-  triviaParsec :: CabalParsing m => m (TriviaTree, a)
-  triviaParsec = (\y -> (mempty, y)) <$> parsec
+class Namespace a => ExactParsec a where
+  exactParsec :: CabalParsing m => m (TriviaTree, a)
 
 -- | Parsing class which
 --
@@ -238,8 +237,8 @@ eitherParsec :: Parsec a => String -> Either String a
 eitherParsec = explicitEitherParsec parsec
 
 -- | Parse a 'String' with 'lexemeParsec'
-eitherTriviaParsec :: Parsec a => String -> Either String (TriviaTree, a)
-eitherTriviaParsec = explicitEitherParsec triviaParsec
+eitherTriviaParsec :: ExactParsec a => String -> Either String (TriviaTree, a)
+eitherTriviaParsec = explicitEitherParsec exactParsec
 
 -- | Parse a 'String' with given 'ParsecParser'. Trailing whitespace is accepted.
 explicitEitherParsec :: ParsecParser a -> String -> Either String a
@@ -268,11 +267,16 @@ runParsecParser = runParsecParser' cabalSpecLatest
 runParsecParser' :: CabalSpecVersion -> ParsecParser a -> FilePath -> FieldLineStream -> Either Parsec.ParseError a
 runParsecParser' v p n = Parsec.runParser (unPP p v <* P.eof) [] n
 
-instance Parsec a => Parsec (Identity a) where
-  triviaParsec = (fmap . fmap) Identity triviaParsec
+instance Parsec a => Parsec (Identity a) where parsec = parsec
+instance ExactParsec a => ExactParsec (Identity a) where
+  exactParsec = do
+    (t, x :: a) <- exactParsec
+    let t' = mark (SomeNamespace x) t
+    pure (t', Identity x)
 
-instance Parsec Bool where
-  triviaParsec = P.munch1 isAlpha >>= fmap pure . postprocess
+instance Parsec Bool where parsec = snd <$> exactParsec
+instance ExactParsec Bool where
+  exactParsec = P.munch1 isAlpha >>= fmap pure . postprocess
     where
       postprocess str
         | str == "True" = pure True
@@ -286,10 +290,10 @@ instance Parsec Bool where
             "Boolean values are case sensitive, use 'True' or 'False'."
 
 instance Parsec a => Parsec (Last a) where
-  triviaParsec = parsecLast
+  parsec = fmap (Last . Just) parsec <|> pure mempty
 
-parsecLast :: (Parsec a, CabalParsing m) => m (TriviaTree, Last a)
-parsecLast = ((fmap . fmap) (Last . Just) triviaParsec) <|> (pure . pure) mempty
+instance ExactParsec a => ExactParsec (Last a) where
+  exactParsec = ((fmap . fmap) (Last . Just) exactParsec) <|> (pure . pure) mempty
 
 -- | @[^ ,]@
 parsecToken :: CabalParsing m => m String

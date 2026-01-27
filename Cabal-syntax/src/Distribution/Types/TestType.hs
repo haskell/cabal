@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -52,6 +53,7 @@ instance Pretty TestType where
 instance Prettier TestType where
   prettier _ = pretty
 
+instance ExactParsec TestType where exactParsec = (mempty,) <$> parsec
 instance Parsec TestType where
   parsec = parsecStandard $ \ver name -> case name of
     "exitcode-stdio" -> TestTypeExe ver

@@ -131,8 +131,10 @@ instance Prettier Dependency where
 --
 -- >>> map (`simpleParsec'` "mylib:sub") [CabalSpecV2_4, CabalSpecV3_0] :: [Maybe Dependency]
 -- [Nothing,Just (Dependency (PackageName "mylib") (OrLaterVersion (mkVersion [0])) (fromNonEmpty (LSubLibName (UnqualComponentName "sub") :| [])))]
-instance Parsec Dependency where
-  triviaParsec =
+instance Parsec Dependency where parsec = snd <$> exactParsec
+
+instance ExactParsec Dependency where
+  exactParsec =
     do
       name <- parsec
 
@@ -145,7 +147,7 @@ instance Parsec Dependency where
       -- TODO(leana8959): ^ register space at local scope
       (verTrivia, ver) <-
         let t = fromNamedTrivia (SomeNamespace anyVersion) [IsInjected]
-         in triviaParsec <|> pure (t, anyVersion)
+         in exactParsec <|> pure (t, anyVersion)
       let dep = mkDependency name ver libs
       let depTrivia = mark (SomeNamespace dep) verTrivia
 

@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TupleSections #-}
 
 module Distribution.Types.AbiDependency where
 
@@ -36,6 +37,8 @@ instance Pretty AbiDependency where
 instance Prettier AbiDependency where
   prettier _ = pretty
 
+-- TODO(leana8959): reversed
+instance ExactParsec AbiDependency where exactParsec = (mempty,) <$> parsec
 instance Parsec AbiDependency where
   parsec = do
     uid <- parsec

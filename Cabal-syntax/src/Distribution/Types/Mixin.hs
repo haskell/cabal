@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 module Distribution.Types.Mixin
@@ -61,6 +62,7 @@ instance Prettier Mixin where
 --
 -- >>> map (`simpleParsec'` "mylib:sub") [CabalSpecV3_0, CabalSpecV3_4] :: [Maybe Mixin]
 -- [Nothing,Just (Mixin {mixinPackageName = PackageName "mylib", mixinLibraryName = LSubLibName (UnqualComponentName "sub"), mixinIncludeRenaming = IncludeRenaming {includeProvidesRn = DefaultRenaming, includeRequiresRn = DefaultRenaming}})]
+instance ExactParsec Mixin where exactParsec = (mempty,) <$> parsec
 instance Parsec Mixin where
   parsec = do
     pn <- parsec

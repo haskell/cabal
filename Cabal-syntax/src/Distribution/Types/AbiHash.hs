@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TupleSections #-}
 
 module Distribution.Types.AbiHash
   ( AbiHash
@@ -60,5 +61,6 @@ instance Pretty AbiHash where
 instance Prettier AbiHash where
   prettier _ = pretty
 
+instance ExactParsec AbiHash where exactParsec = (mempty,) <$> parsec
 instance Parsec AbiHash where
   parsec = fmap mkAbiHash (P.munch isAlphaNum)

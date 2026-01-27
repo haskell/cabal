@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 module Distribution.Types.Version
@@ -109,6 +110,7 @@ instance Prettier Version where
               (map Disp.int $ versionNumbers ver)
           )
 
+instance ExactParsec Version where exactParsec = (mempty,) <$> parsec
 instance Parsec Version where
   parsec = mkVersion <$> toList <$> P.sepByNonEmpty versionDigitParser (P.char '.') <* tags
     where
