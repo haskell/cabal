@@ -238,6 +238,11 @@ Ensuring everything is frozen
     cannot change and, at that point when every dependency is frozen, ``cabal
     freeze`` becomes an idempotent operation.
 
+.. Warning::
+    Setting :cfg-field:`reject-unconstrained-dependencies` to ``all`` will
+    ensure that dependencies have version constraints but does not require these
+    be equality constraints.
+
 Adding a dependency to one of the packages in a project without freezing harder
 leaves the newly added dependency susceptible to getting updated unexpectedly
 when the solver can find a different version for it.  Running ``cabal freeze``
