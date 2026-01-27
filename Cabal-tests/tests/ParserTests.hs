@@ -319,10 +319,13 @@ parsecTriviaGoldenTest _ fp = ediffGolden goldenTest fp exprFile $ do
 
 fieldGrammarGoldenTests :: TestTree
 fieldGrammarGoldenTests = testGroup "fieldgrammar-golden"
-  [ ( let parser = monoidalFieldAla "build-depends" formatDependencyList id
-      in  fieldGrammarGoldenTest parser "build-depends1.fragment"
-    )
-  ]
+  ( let parser = monoidalFieldAla "build-depends" formatDependencyList id
+    in  map (fieldGrammarGoldenTest parser)
+          [ "build-depends1.fragment"
+          , "build-depends2.fragment"
+          , "build-depends3.fragment"
+          ]
+  )
 
 fieldGrammarGoldenTest
   :: forall a

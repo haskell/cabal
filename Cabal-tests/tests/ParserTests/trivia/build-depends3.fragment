@@ -1,0 +1,4 @@
+build-depends:
+        base >4.10 && < 5,
+        text < 2,
+        containers,
