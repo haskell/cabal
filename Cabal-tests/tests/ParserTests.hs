@@ -278,6 +278,7 @@ parsecTriviaGoldenTests = testGroup "parser-trivia"
   , parsecTriviaGoldenTest (Proxy :: Proxy VersionRange) "VersionRange5.fragment"
 
   , parsecTriviaGoldenTest (Proxy :: Proxy Dependency) "Dependency1.fragment"
+  , parsecTriviaGoldenTest (Proxy :: Proxy Dependency) "Dependency2.fragment"
   ]
 
 parsecTriviaGoldenTest
@@ -352,6 +353,9 @@ triviaRoundTripTests = testGroup "trivia-roundtrip"
   , triviaRoundTripTest (Proxy :: Proxy VersionRange) "VersionRange3.fragment"
   , triviaRoundTripTest (Proxy :: Proxy VersionRange) "VersionRange4.fragment"
   , triviaRoundTripTest (Proxy :: Proxy VersionRange) "VersionRange5.fragment"
+
+  , triviaRoundTripTest (Proxy :: Proxy Dependency) "Dependency1.fragment"
+  , triviaRoundTripTest (Proxy :: Proxy Dependency) "Dependency2.fragment"
   ]
 
 -- |
