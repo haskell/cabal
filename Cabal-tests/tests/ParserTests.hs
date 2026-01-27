@@ -42,7 +42,12 @@ import Distribution.Types.Annotation
 
 import Distribution.Types.VersionRange
 import Distribution.Types.Dependency
+import Distribution.FieldGrammar
 import Distribution.FieldGrammar.Newtypes
+import Distribution.FieldGrammar.Parsec
+import Distribution.Fields
+import Distribution.Fields.Field
+import Distribution.CabalSpecVersion
 
 import Data.Functor.Identity
 import Data.Proxy
@@ -303,6 +308,30 @@ parsecTriviaGoldenTest _ fp = ediffGolden goldenTest fp exprFile $ do
     case parseResult of
       Left err -> fail $ unlines $ "ERROR" : show err : []
       Right ok -> pure $ toExpr ok
+  where
+    input = "tests" </> "ParserTests" </> "trivia" </> fp
+    exprFile = replaceExtension input "parser-trivia"
+
+fieldGrammarGoldenTest
+  :: forall a
+   . (ToExpr a)
+  => ParsecFieldGrammar' a
+  -> FilePath
+  -> TestTree
+fieldGrammarGoldenTest g fp = ediffGolden goldenTest fp exprFile $ do
+  contents <- BS.readFile input
+  let fs = case readFields contents of
+        Left err -> fail $ unlines $ "readFields error:" : show err : []
+        Right ok -> ok
+
+  let (fieldMap, _) = takeFields fs
+  let (_warns, res) =
+          runParseResult
+          $ fieldGrammarParser g cabalSpecLatest fieldMap 
+
+  case res of
+    Left _ -> fail "fieldParser failed unrecoverably"
+    Right (_errs, ok) -> pure $ toExpr ok
   where
     input = "tests" </> "ParserTests" </> "trivia" </> fp
     exprFile = replaceExtension input "parser-trivia"

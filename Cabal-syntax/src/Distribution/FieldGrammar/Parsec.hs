@@ -56,7 +56,7 @@
 -- slightly higher-level API, so we can process unspecified fields,
 -- to report unknown fields and save custom @x-fields@.
 module Distribution.FieldGrammar.Parsec
-  ( ParsecFieldGrammar
+  ( ParsecFieldGrammar (..)
   , parseFieldGrammar
   , parseFieldGrammarCheckingStanzas
   , fieldGrammarKnownFieldList
@@ -308,6 +308,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
       -- Different fields
       parseOne v (MkNamelessField pos fls) n = do
         (t, x) <- runFieldParser pos triviaParsec v fls
+        -- NOTE(leana8959): can we invoke unpack here somehow and remove the hack?
         -- HACK(leana8959): this is a trick to not pass in the annotation the underlying parser
         -- we don't have the right data (before list parsing)
         let t' = annotateAt 1 [FieldNth n, ExactPosition pos] t
