@@ -204,7 +204,7 @@ For the versions of all dependencies at once:
     all dependencies but once it has decided, those versions are immediately
     pinned.
 
-    This is "thaw and freeze" workflow is the simplest way to work with a
+    This "thaw and freeze" workflow is the simplest way to work with a
     ``cabal.project.freeze`` file committed to source control.
 
 For the version of a single dependency:
