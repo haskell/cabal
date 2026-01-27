@@ -274,6 +274,7 @@ data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
   , elabDumpBuildInfo :: DumpBuildInfo
   , elabProgramPaths :: Map String FilePath
   , elabProgramArgs :: Map String [String]
+  , elabNormalisedProgramArgs :: Map String [String]
   , elabProgramPathExtra :: [FilePath]
   , elabConfiguredPrograms :: [ConfiguredProgram]
   , elabConfigureScriptArgs :: [String]
@@ -345,7 +346,7 @@ normaliseConfiguredPackage
   -> ElaboratedConfiguredPackage
   -> ElaboratedConfiguredPackage
 normaliseConfiguredPackage ElaboratedSharedConfig{pkgConfigCompilerProgs} pkg =
-  pkg{elabProgramArgs = Map.mapMaybeWithKey lookupFilter (elabProgramArgs pkg)}
+  pkg{elabNormalisedProgramArgs = Map.mapMaybeWithKey lookupFilter (elabProgramArgs pkg)}
   where
     knownProgramDb = addKnownPrograms builtinPrograms pkgConfigCompilerProgs
 
