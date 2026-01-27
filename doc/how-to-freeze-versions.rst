@@ -12,6 +12,10 @@ Version constraints
     Within a project, version constraints for dependencies limit the versions
     that the solver can pick.
 
+Mandatory version constraints
+    With :cfg-field:`reject-unconstrained-dependencies` set to ``all``
+    dependencies must have version constraints.
+
 Curated version sets
     A project can import curated sets of packages and versions that are known to
     work together, such as those Stackage provides for Cabal's use.
