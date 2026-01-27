@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE BangPatterns #-}
@@ -40,14 +41,17 @@ import Distribution.Parsec.Source
 import Distribution.Parsec
 import Distribution.Types.Annotation
 
+import qualified Distribution.Types.Lens as L
 import Distribution.Types.VersionRange
 import Distribution.Types.Dependency
+
 import Distribution.FieldGrammar
 import Distribution.FieldGrammar.Newtypes
 import Distribution.FieldGrammar.Parsec
 import Distribution.Fields
 import Distribution.Fields.Field
 import Distribution.CabalSpecVersion
+import Distribution.PackageDescription.FieldGrammar
 
 import Data.Functor.Identity
 import Data.Proxy
@@ -79,6 +83,7 @@ tests = testGroup "parsec tests"
     , printerTests
     , parsecTriviaGoldenTests
     , parsecPrettyRoundTripTests
+    , fieldGrammarGoldenTests
     ]
 
 -------------------------------------------------------------------------------
@@ -312,6 +317,13 @@ parsecTriviaGoldenTest _ fp = ediffGolden goldenTest fp exprFile $ do
     input = "tests" </> "ParserTests" </> "trivia" </> fp
     exprFile = replaceExtension input "parser-trivia"
 
+fieldGrammarGoldenTests :: TestTree
+fieldGrammarGoldenTests = testGroup "fieldgrammar-golden"
+  [ ( let parser = monoidalFieldAla "build-depends" formatDependencyList id
+      in  fieldGrammarGoldenTest parser "build-depends1.fragment"
+    )
+  ]
+
 fieldGrammarGoldenTest
   :: forall a
    . (ToExpr a)
@@ -331,7 +343,7 @@ fieldGrammarGoldenTest g fp = ediffGolden goldenTest fp exprFile $ do
 
   case res of
     Left _ -> fail "fieldParser failed unrecoverably"
-    Right (_errs, ok) -> pure $ toExpr ok
+    Right ok -> pure $ toExpr ok
   where
     input = "tests" </> "ParserTests" </> "trivia" </> fp
     exprFile = replaceExtension input "parser-trivia"

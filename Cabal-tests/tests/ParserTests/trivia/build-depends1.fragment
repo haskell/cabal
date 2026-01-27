@@ -1,0 +1,3 @@
+build-depends:
+        base > 1,
+        text < 2,
