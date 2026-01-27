@@ -73,7 +73,7 @@ tests = testGroup "parsec tests"
     , ipiTests
     , printerTests
     , parsecTriviaGoldenTests
-    , triviaRoundTripTests
+    , parsecPrettyRoundTripTests
     ]
 
 -------------------------------------------------------------------------------
@@ -274,7 +274,7 @@ formatGoldenTest fp = cabalGoldenTest "format" correct $ do
     correct = replaceExtension input "format"
 
 parsecTriviaGoldenTests :: TestTree
-parsecTriviaGoldenTests = testGroup "parser-trivia"
+parsecTriviaGoldenTests = testGroup "parsec-trivia-golden"
   [ parsecTriviaGoldenTest (Proxy :: Proxy VersionRange) "VersionRange1.fragment"
   , parsecTriviaGoldenTest (Proxy :: Proxy VersionRange) "VersionRange2.fragment"
   , parsecTriviaGoldenTest (Proxy :: Proxy VersionRange) "VersionRange3.fragment"
@@ -357,34 +357,34 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
     input = "tests" </> "ParserTests" </> "regressions" </> fp
 {- FOURMOLU_ENABLE -}
 
-triviaRoundTripTests :: TestTree
-triviaRoundTripTests = testGroup "trivia-roundtrip"
-  [ triviaRoundTripTest (Proxy :: Proxy VersionRange) "VersionRange1.fragment"
-  , triviaRoundTripTest (Proxy :: Proxy VersionRange) "VersionRange2.fragment"
-  , triviaRoundTripTest (Proxy :: Proxy VersionRange) "VersionRange3.fragment"
-  , triviaRoundTripTest (Proxy :: Proxy VersionRange) "VersionRange4.fragment"
-  , triviaRoundTripTest (Proxy :: Proxy VersionRange) "VersionRange5.fragment"
+parsecPrettyRoundTripTests :: TestTree
+parsecPrettyRoundTripTests = testGroup "parsecpretty-roundtrip"
+  [ parsecPrettyRoundTripTest (Proxy :: Proxy VersionRange) "VersionRange1.fragment"
+  , parsecPrettyRoundTripTest (Proxy :: Proxy VersionRange) "VersionRange2.fragment"
+  , parsecPrettyRoundTripTest (Proxy :: Proxy VersionRange) "VersionRange3.fragment"
+  , parsecPrettyRoundTripTest (Proxy :: Proxy VersionRange) "VersionRange4.fragment"
+  , parsecPrettyRoundTripTest (Proxy :: Proxy VersionRange) "VersionRange5.fragment"
 
-  , triviaRoundTripTest (Proxy :: Proxy Dependency) "Dependency1.fragment"
-  , triviaRoundTripTest (Proxy :: Proxy Dependency) "Dependency2.fragment"
+  , parsecPrettyRoundTripTest (Proxy :: Proxy Dependency) "Dependency1.fragment"
+  , parsecPrettyRoundTripTest (Proxy :: Proxy Dependency) "Dependency2.fragment"
 
   -- Pair up Identity with a simple parser to assert its behaviour
-  , triviaRoundTripTest (Proxy :: Proxy (Identity VersionRange)) "Identity_VersionRange1.fragment"
+  , parsecPrettyRoundTripTest (Proxy :: Proxy (Identity VersionRange)) "Identity_VersionRange1.fragment"
 
-  , triviaRoundTripTest
+  , parsecPrettyRoundTripTest
       (Proxy :: Proxy (List CommaVCat (Identity Dependency) Dependency))
       "List_CommaVCat_Identity_Dependency1.fragment"
   ]
 
 -- |
 -- Test whether the leaf Parsec and Pretty instances are dual of each other.
-triviaRoundTripTest
+parsecPrettyRoundTripTest
   :: forall a
    . (Show a, Parsec a, Prettier a)
   => Proxy a
   -> FilePath
   -> TestTree
-triviaRoundTripTest _ fp = testCase fp $ do
+parsecPrettyRoundTripTest _ fp = testCase fp $ do
     x <- readFile input
     parsed <- parse x
     let y = prettyShow $ uncurry prettier parsed
