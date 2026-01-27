@@ -276,6 +276,8 @@ parsecTriviaGoldenTests = testGroup "parser-trivia"
   , parsecTriviaGoldenTest (Proxy :: Proxy VersionRange) "VersionRange3.fragment"
   , parsecTriviaGoldenTest (Proxy :: Proxy VersionRange) "VersionRange4.fragment"
   , parsecTriviaGoldenTest (Proxy :: Proxy VersionRange) "VersionRange5.fragment"
+
+  , parsecTriviaGoldenTest (Proxy :: Proxy Dependency) "Dependency1.fragment"
   ]
 
 parsecTriviaGoldenTest
