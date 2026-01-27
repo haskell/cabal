@@ -467,9 +467,9 @@ triviaParsecLeadingCommaList p = do
     -- How do we represent this?
     comma :: CabalParsing m => m TriviaTree
     comma = do
-      void $ P.string ","
+      c <- P.string ","
       s <- spaces'
-      pure $ TriviaTree [PostTrivia s] mempty
+      pure $ TriviaTree [PostTrivia (c <> s)] mempty
 
 triviaParsecLeadingCommaListNonEmpty
   :: forall m a

@@ -133,9 +133,11 @@ instance TriviaSep CommaVCat where
           map
             ( \(t, x) -> triviaToDoc (justAnnotation t) $ prettier t x
             )
-          $ sortOn (fromMaybe 0 . atNth . justAnnotation . fst) 
+          $ sortOn (fromMaybe 0 . atNth . justAnnotation . fst)
           $ docs
-    in  vcat $ punctuate comma $ docs'
+        -- NOTE(leana8959): we don't "punctuate" anymore
+        -- The separators are in the trivia
+    in  mconcat docs'
 
   triviaParseSep _ p = do
     v <- askCabalSpecVersion
@@ -234,7 +236,6 @@ instance Newtype [a] (List sep wrapper a)
 -- Multiplicity within fields
 instance
   ( Newtype a b
-  -- , Sep sep
   , TriviaSep sep
   , Parsec b
   , Namespace a
@@ -244,9 +245,6 @@ instance
   ) => Parsec (List sep b a) where
   triviaParsec = do
     (ts, bs) <- unzip <$> triviaParseSep (Proxy :: Proxy sep) triviaParsec
-
-    -- pTrace ("List parser got trivia" <> show ts) $
-    -- pTrace ("List parser got data" <> show bs) $
     pure (mconcat ts, pack $ map (unpack :: b -> a) bs)
 
 instance (Newtype a b, Sep sep, Pretty b) => Pretty (List sep b a) where
@@ -258,7 +256,7 @@ instance
   , Sep sep
   , TriviaSep sep
   , Prettier b
-  , Namespace a -- it's the old type we are trying to index in the trivia map
+  , Namespace a
   )
   => Prettier (List sep b a) where
   prettier t0 n =
@@ -271,13 +269,11 @@ instance
                     let n = (pack :: a -> b) o -- pack each element
                         tChildren = unmark (SomeNamespace n) t0
                     in
-                      -- pTrace ("indexing with " <> show ((pack :: a -> b) o) <> " getting " <> show tChildren) $
                           ( tChildren
                           , n
                           )
                 )
               $ unpack -- unpack the list
-              -- $ (if t0 == mempty then id else pTrace ("List printer got trivia\n" <> show t0) id)
               $ n
      in
         vcat
