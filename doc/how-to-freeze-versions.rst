@@ -212,7 +212,7 @@ For the version of a single dependency:
 - To pin the version of a new dependency
 
     The steps of this workflow are add the new dependency and freeze. The solver
-    is free to chose its version for the new dependency while retaining the
+    is free to choose a version for the new dependency while retaining the
     already pinned versions for the rest of the dependencies.
 
 - To update the version of one dependency
