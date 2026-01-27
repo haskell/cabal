@@ -267,12 +267,14 @@ runParsecParser = runParsecParser' cabalSpecLatest
 runParsecParser' :: CabalSpecVersion -> ParsecParser a -> FilePath -> FieldLineStream -> Either Parsec.ParseError a
 runParsecParser' v p n = Parsec.runParser (unPP p v <* P.eof) [] n
 
+-- Keep the pattern consistent. Even if Identity is id we wrap the trivia tree.
 instance Parsec a => Parsec (Identity a) where parsec = parsec
 instance ExactParsec a => ExactParsec (Identity a) where
   exactParsec = do
     (t, x :: a) <- exactParsec
-    let t' = mark (SomeNamespace x) t
-    pure (t', Identity x)
+    let x' = Identity x
+    let t' = mark (SomeNamespace x') t
+    pure (t', x')
 
 instance Parsec Bool where parsec = snd <$> exactParsec
 instance ExactParsec Bool where
