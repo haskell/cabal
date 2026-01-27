@@ -53,6 +53,8 @@ import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.List.NonEmpty    as NE
 
+import Data.Functor.Identity
+
 import qualified Distribution.InstalledPackageInfo as IPI
 
 #ifdef MIN_VERSION_tree_diff
@@ -279,6 +281,9 @@ parsecTriviaGoldenTests = testGroup "parser-trivia"
 
   , parsecTriviaGoldenTest (Proxy :: Proxy Dependency) "Dependency1.fragment"
   , parsecTriviaGoldenTest (Proxy :: Proxy Dependency) "Dependency2.fragment"
+
+  -- Pair up Identity with a simple parser to assert its behaviour
+  , parsecTriviaGoldenTest (Proxy :: Proxy (Identity VersionRange)) "Identity_VersionRange1.fragment"
   ]
 
 parsecTriviaGoldenTest
@@ -356,6 +361,9 @@ triviaRoundTripTests = testGroup "trivia-roundtrip"
 
   , triviaRoundTripTest (Proxy :: Proxy Dependency) "Dependency1.fragment"
   , triviaRoundTripTest (Proxy :: Proxy Dependency) "Dependency2.fragment"
+
+  -- Pair up Identity with a simple parser to assert its behaviour
+  , triviaRoundTripTest (Proxy :: Proxy (Identity VersionRange)) "Identity_VersionRange1.fragment"
   ]
 
 -- |
