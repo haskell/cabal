@@ -314,80 +314,75 @@ mkExeStanza opts (ExeTarget exeMain appDirs lang otherMods exts deps tools) =
 
 mkTestStanza :: WriteOpts -> TestTarget -> PrettyField FieldAnnotation
 mkTestStanza opts (TestTarget testMain dirs lang otherMods exts deps tools) =
-  PrettySection
-    annNoComments
-    (toUTF8BS "test-suite")
-    [suiteName]
-    ( insertCommonStanzas opts
-        ++ insertRtsOptionsStanza opts
-        ++ [ case specHasCommonStanzas $ _optCabalSpec opts of
-              NoCommonStanzas -> PrettyEmpty
-              _ ->
-                field
-                  "import"
-                  (hsep . map text)
-                  ["warnings"]
-                  ["Import common warning flags."]
+  let commonSections =
+        case specHasCommonStanzas $ _optCabalSpec opts of
+          NoCommonStanzas -> [PrettyEmpty]
+          _ ->
+            insertCommonStanzas opts
+              ++ insertRtsOptionsStanza opts
+   in PrettySection
+        annNoComments
+        (toUTF8BS "test-suite")
+        [suiteName]
+        ( commonSections
+            ++ [ field
+                  "default-language"
+                  id
+                  lang
+                  ["Base language which the package is written in."]
+                  True
+                  opts
+               , field
+                  "other-modules"
+                  formatOtherModules
+                  otherMods
+                  ["Modules included in this executable, other than Main."]
+                  True
+                  opts
+               , field
+                  "other-extensions"
+                  formatOtherExtensions
+                  exts
+                  ["LANGUAGE extensions used by modules in this package."]
+                  True
+                  opts
+               , field
+                  "type"
+                  text
+                  "exitcode-stdio-1.0"
+                  ["The interface type and version of the test suite."]
+                  True
+                  opts
+               , field
+                  "hs-source-dirs"
+                  formatHsSourceDirs
+                  (makeSymbolicPath <$> dirs)
+                  ["Directories containing source files."]
+                  True
+                  opts
+               , field
+                  "main-is"
+                  unsafeFromHs
+                  testMain
+                  ["The entrypoint to the test suite."]
+                  True
+                  opts
+               , field
+                  "build-depends"
+                  formatDependencyList
+                  deps
+                  ["Test dependencies."]
+                  True
+                  opts
+               , field
+                  (buildToolTag opts)
+                  formatDependencyList
+                  tools
+                  ["Extra tools (e.g. alex, hsc2hs, ...) needed to build the source."]
                   False
                   opts
-           , field
-              "default-language"
-              id
-              lang
-              ["Base language which the package is written in."]
-              True
-              opts
-           , field
-              "other-modules"
-              formatOtherModules
-              otherMods
-              ["Modules included in this executable, other than Main."]
-              True
-              opts
-           , field
-              "other-extensions"
-              formatOtherExtensions
-              exts
-              ["LANGUAGE extensions used by modules in this package."]
-              True
-              opts
-           , field
-              "type"
-              text
-              "exitcode-stdio-1.0"
-              ["The interface type and version of the test suite."]
-              True
-              opts
-           , field
-              "hs-source-dirs"
-              formatHsSourceDirs
-              (makeSymbolicPath <$> dirs)
-              ["Directories containing source files."]
-              True
-              opts
-           , field
-              "main-is"
-              unsafeFromHs
-              testMain
-              ["The entrypoint to the test suite."]
-              True
-              opts
-           , field
-              "build-depends"
-              formatDependencyList
-              deps
-              ["Test dependencies."]
-              True
-              opts
-           , field
-              (buildToolTag opts)
-              formatDependencyList
-              tools
-              ["Extra tools (e.g. alex, hsc2hs, ...) needed to build the source."]
-              False
-              opts
-           ]
-    )
+               ]
+        )
   where
     suiteName = text $ unPackageName (_optPkgName opts) ++ "-test"
 
