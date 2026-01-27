@@ -271,11 +271,11 @@ formatGoldenTest fp = cabalGoldenTest "format" correct $ do
 
 parsecTriviaGoldenTests :: TestTree
 parsecTriviaGoldenTests = testGroup "parser-trivia"
-  [ parsecTriviaGoldenTest (Proxy :: Proxy VersionRange) "build-depends1.fragment"
-  , parsecTriviaGoldenTest (Proxy :: Proxy VersionRange) "build-depends2.fragment"
-  , parsecTriviaGoldenTest (Proxy :: Proxy VersionRange) "build-depends3.fragment"
-  , parsecTriviaGoldenTest (Proxy :: Proxy VersionRange) "build-depends4.fragment"
-  , parsecTriviaGoldenTest (Proxy :: Proxy VersionRange) "build-depends5.fragment"
+  [ parsecTriviaGoldenTest (Proxy :: Proxy VersionRange) "VersionRange1.fragment"
+  , parsecTriviaGoldenTest (Proxy :: Proxy VersionRange) "VersionRange2.fragment"
+  , parsecTriviaGoldenTest (Proxy :: Proxy VersionRange) "VersionRange3.fragment"
+  , parsecTriviaGoldenTest (Proxy :: Proxy VersionRange) "VersionRange4.fragment"
+  , parsecTriviaGoldenTest (Proxy :: Proxy VersionRange) "VersionRange5.fragment"
   ]
 
 parsecTriviaGoldenTest
@@ -345,11 +345,11 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
 
 triviaRoundTripTests :: TestTree
 triviaRoundTripTests = testGroup "trivia-roundtrip"
-  [ triviaRoundTripTest (Proxy :: Proxy VersionRange) "build-depends1.fragment"
-  , triviaRoundTripTest (Proxy :: Proxy VersionRange) "build-depends2.fragment"
-  , triviaRoundTripTest (Proxy :: Proxy VersionRange) "build-depends3.fragment"
-  , triviaRoundTripTest (Proxy :: Proxy VersionRange) "build-depends4.fragment"
-  , triviaRoundTripTest (Proxy :: Proxy VersionRange) "build-depends5.fragment"
+  [ triviaRoundTripTest (Proxy :: Proxy VersionRange) "VersionRange1.fragment"
+  , triviaRoundTripTest (Proxy :: Proxy VersionRange) "VersionRange2.fragment"
+  , triviaRoundTripTest (Proxy :: Proxy VersionRange) "VersionRange3.fragment"
+  , triviaRoundTripTest (Proxy :: Proxy VersionRange) "VersionRange4.fragment"
+  , triviaRoundTripTest (Proxy :: Proxy VersionRange) "VersionRange5.fragment"
   ]
 
 -- |

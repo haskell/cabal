@@ -1,0 +1,48 @@
+_×_
+  TriviaTree {
+    justAnnotation = [],
+    namedAnnotations =
+    Map.fromList
+      [
+        _×_
+          `SomeNamespace (IntersectVersionRanges (MajorBoundVersion (mkVersion [4,10])) (ThisVersion (mkVersion [99,1])))`
+          TriviaTree {
+            justAnnotation = [
+              PreTrivia "",
+              PostTrivia ""],
+            namedAnnotations = Map.fromList
+              [
+                _×_
+                  `SomeNamespace (ThisVersion (mkVersion [99,1]))`
+                  TriviaTree {
+                    justAnnotation = [
+                      PreTrivia "        ",
+                      PostTrivia "\n"],
+                    namedAnnotations = Map.fromList
+                      [
+                        _×_
+                          `SomeNamespace (mkVersion [99,1])`
+                          TriviaTree {
+                            justAnnotation = [
+                              PreTrivia " "],
+                            namedAnnotations = Map.fromList
+                              []}]},
+                _×_
+                  `SomeNamespace (MajorBoundVersion (mkVersion [4,10]))`
+                  TriviaTree {
+                    justAnnotation = [
+                      PostTrivia "        "],
+                    namedAnnotations = Map.fromList
+                      [
+                        _×_
+                          `SomeNamespace (mkVersion [4,10])`
+                          TriviaTree {
+                            justAnnotation = [
+                              PreTrivia "  "],
+                            namedAnnotations = Map.fromList
+                              []}]}]}]}
+  (IntersectVersionRanges
+    (MajorBoundVersion
+      (mkVersion [4, 10]))
+    (ThisVersion
+      (mkVersion [99, 1])))

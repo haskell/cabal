@@ -22,15 +22,14 @@ _×_
                         _×_
                           `SomeNamespace (mkVersion [4,10])`
                           TriviaTree {
-                            justAnnotation = [
-                              PreTrivia "  "],
+                            justAnnotation = [PreTrivia ""],
                             namedAnnotations = Map.fromList
                               []}]},
                 _×_
                   `SomeNamespace (OrLaterVersion (mkVersion [4,13]))`
                   TriviaTree {
                     justAnnotation = [
-                      PreTrivia "        ",
+                      PreTrivia "",
                       PreTrivia "",
                       PostTrivia "",
                       PostTrivia "\n"],
@@ -39,8 +38,7 @@ _×_
                         _×_
                           `SomeNamespace (mkVersion [4,13])`
                           TriviaTree {
-                            justAnnotation = [
-                              PreTrivia " "],
+                            justAnnotation = [PreTrivia ""],
                             namedAnnotations = Map.fromList
                               []}]}]}]}
   (UnionVersionRanges
