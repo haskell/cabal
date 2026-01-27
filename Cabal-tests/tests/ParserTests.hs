@@ -40,9 +40,11 @@ import Distribution.Parsec.Source
 import Distribution.Parsec
 import Distribution.Types.Annotation
 
-import Distribution.Types.VersionRange.Internal
+import Distribution.Types.VersionRange
 import Distribution.Types.Dependency
+import Distribution.FieldGrammar.Newtypes
 
+import Data.Functor.Identity
 import Data.Proxy
 import Debug.Pretty.Simple
 import Debug.Trace
@@ -284,6 +286,10 @@ parsecTriviaGoldenTests = testGroup "parser-trivia"
 
   -- Pair up Identity with a simple parser to assert its behaviour
   , parsecTriviaGoldenTest (Proxy :: Proxy (Identity VersionRange)) "Identity_VersionRange1.fragment"
+
+  , parsecTriviaGoldenTest
+      (Proxy :: Proxy (List CommaVCat (Identity Dependency) Dependency))
+      "List_CommaVCat_Identity_Dependency1.fragment"
   ]
 
 parsecTriviaGoldenTest
@@ -294,9 +300,9 @@ parsecTriviaGoldenTest
 parsecTriviaGoldenTest _ fp = ediffGolden goldenTest fp exprFile $ do
     contents <- readFile input
     let parseResult :: Either String (TriviaTree, a) = eitherTriviaParsec contents
-    pure $ case parseResult of
-      Left err -> toExpr $ unlines $ "ERROR" : show err : []
-      Right ok -> toExpr $ ok
+    case parseResult of
+      Left err -> fail $ unlines $ "ERROR" : show err : []
+      Right ok -> pure $ toExpr ok
   where
     input = "tests" </> "ParserTests" </> "trivia" </> fp
     exprFile = replaceExtension input "parser-trivia"

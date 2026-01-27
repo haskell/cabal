@@ -1,0 +1,80 @@
+_×_
+  TriviaTree {
+    justAnnotation = [],
+    namedAnnotations =
+    Map.fromList
+      [
+        _×_
+          `SomeNamespace (Identity (Dependency (PackageName "base") (OrLaterVersion (mkVersion [0])) (fromNonEmpty (LMainLibName :| []))))`
+          TriviaTree {
+            justAnnotation = [
+              PostTrivia "",
+              PostTrivia "\n"],
+            namedAnnotations = Map.fromList
+              []},
+        _×_
+          `SomeNamespace (Identity (Dependency (PackageName "ghc") (OrLaterVersion (mkVersion [0])) (fromNonEmpty (LMainLibName :| []))))`
+          TriviaTree {
+            justAnnotation = [
+              PostTrivia "",
+              PostTrivia "\n"],
+            namedAnnotations = Map.fromList
+              []},
+        _×_
+          `SomeNamespace (Identity (Dependency (PackageName "text") (OrLaterVersion (mkVersion [0])) (fromNonEmpty (LMainLibName :| []))))`
+          TriviaTree {
+            justAnnotation = [
+              PostTrivia "",
+              PostTrivia "\n"],
+            namedAnnotations = Map.fromList
+              []},
+        _×_
+          `SomeNamespace (Dependency (PackageName "base") (OrLaterVersion (mkVersion [0])) (fromNonEmpty (LMainLibName :| [])))`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              [
+                _×_
+                  `SomeNamespace (OrLaterVersion (mkVersion [0]))`
+                  TriviaTree {
+                    justAnnotation = [IsInjected],
+                    namedAnnotations = Map.fromList
+                      []}]},
+        _×_
+          `SomeNamespace (Dependency (PackageName "ghc") (OrLaterVersion (mkVersion [0])) (fromNonEmpty (LMainLibName :| [])))`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              [
+                _×_
+                  `SomeNamespace (OrLaterVersion (mkVersion [0]))`
+                  TriviaTree {
+                    justAnnotation = [IsInjected],
+                    namedAnnotations = Map.fromList
+                      []}]},
+        _×_
+          `SomeNamespace (Dependency (PackageName "text") (OrLaterVersion (mkVersion [0])) (fromNonEmpty (LMainLibName :| [])))`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              [
+                _×_
+                  `SomeNamespace (OrLaterVersion (mkVersion [0]))`
+                  TriviaTree {
+                    justAnnotation = [IsInjected],
+                    namedAnnotations = Map.fromList
+                      []}]}]}
+  (List
+    [
+      Dependency
+        (PackageName "base")
+        (OrLaterVersion (mkVersion [0]))
+        mainLibSet,
+      Dependency
+        (PackageName "text")
+        (OrLaterVersion (mkVersion [0]))
+        mainLibSet,
+      Dependency
+        (PackageName "ghc")
+        (OrLaterVersion (mkVersion [0]))
+        mainLibSet])

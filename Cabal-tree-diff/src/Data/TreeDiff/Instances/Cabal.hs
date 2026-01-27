@@ -34,6 +34,7 @@ import Distribution.Utils.Path                     (SymbolicPathX)
 import Distribution.Utils.ShortText                (ShortText, fromShortText)
 import Distribution.Verbosity
 import Distribution.Verbosity.Internal
+import Distribution.FieldGrammar.Newtypes
 
 import qualified Distribution.Compat.NonEmptySet as NES
 
@@ -132,5 +133,8 @@ instance ToExpr Trivium
 instance ToExpr TriviaTree
 instance ToExpr Position
 instance ToExpr SomeNamespace where toExpr = defaultExprViaShow
+
+instance (ToExpr sep, ToExpr b, ToExpr a) => ToExpr (List sep b a)
+instance ToExpr CommaVCat
 
 instance ToExpr ShortText where toExpr = toExpr . fromShortText
