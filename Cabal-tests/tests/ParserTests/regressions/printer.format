@@ -9,9 +9,8 @@ library
     exposed-modules:  ElseIf
     default-language: Haskell2010
     build-depends:
-        base >=4.10 || >=4.13,
-        containers
-        ,
+        base >=4.10||>=4.13,
+        containers,
         base >=4
 
     build-depends:
