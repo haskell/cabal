@@ -894,7 +894,7 @@ instance Pretty CompatDataDir where
 
 instance Markable CompatDataDir
 instance ExactPretty CompatDataDir where
-  exactPretty _ = pretty
+  
 
 newtype CompatLicenseFile = CompatLicenseFile {getCompatLicenseFile :: [RelativePath Pkg File]}
   deriving (Ord, Eq, Show)
@@ -918,7 +918,7 @@ instance Pretty CompatLicenseFile where
 
 -- TODO(leana8959): might be important
 instance ExactPretty CompatLicenseFile where
-  exactPretty _ = pretty
+  
 
 instance
   (

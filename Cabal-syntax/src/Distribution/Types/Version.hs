@@ -96,19 +96,17 @@ instance NFData Version where
   rnf (PV1 _ ns) = rnf ns
 
 instance Pretty Version where
-  pretty = exactPretty mempty
-
 instance Markable Version
 instance ExactPretty Version where
   exactPretty t0 ver =
     let t = unmarkTriviaTree ver t0
         tLocal = justAnnotation t
-    in triviaToDoc tLocal $
-        Disp.hcat
-          ( Disp.punctuate
+    in    ((:[]) . flip DocAnn mempty)
+          $ triviaToDoc tLocal
+          $ Disp.hcat
+          $ Disp.punctuate
               (Disp.char '.')
               (map Disp.int $ versionNumbers ver)
-          )
 
 instance ExactParsec Version where exactParsec = (mempty,) <$> parsec
 instance Parsec Version where

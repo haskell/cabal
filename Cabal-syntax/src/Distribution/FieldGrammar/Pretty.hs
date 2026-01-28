@@ -25,6 +25,8 @@ import Text.PrettyPrint (Doc)
 import qualified Text.PrettyPrint as PP
 import Prelude ()
 
+import Distribution.Pretty
+
 import Distribution.Types.Annotation
 import Distribution.Parsec.Position
 
@@ -73,7 +75,7 @@ instance FieldGrammar ExactPretty PrettyFieldGrammar where
 
   -- TODO(leana8959): use the trivia in the methods implemented here
   uniqueFieldAla fn _pack l = PrettyFG $ \_v t s ->
-    ppField fn (exactPretty mempty (pack' _pack (aview l s)))
+    mconcat $ map (ppTriviaField fn) (exactPretty mempty (pack' _pack (aview l s)))
 
   booleanFieldDef fn l def = PrettyFG pp
     where
@@ -87,13 +89,14 @@ instance FieldGrammar ExactPretty PrettyFieldGrammar where
     where
       pp v t s = case aview l s of
         Nothing -> mempty
-        Just a -> ppField fn (exactPrettyVersioned v mempty (pack' _pack a))
+        Just a ->
+          mconcat $ map (ppTriviaField fn) (exactPrettyVersioned v mempty (pack' _pack a))
 
   optionalFieldDefAla fn _pack l def = PrettyFG pp
     where
       pp v t s
         | x == def = mempty
-        | otherwise = ppField fn (exactPrettyVersioned v mempty (pack' _pack x))
+        | otherwise = mconcat $ map (ppTriviaField fn) (exactPrettyVersioned v mempty (pack' _pack x))
         where
           x = aview l s
 
@@ -145,10 +148,10 @@ instance FieldGrammar ExactPretty PrettyFieldGrammar where
   hiddenField _ = PrettyFG (\_ -> mempty)
 
 ppField :: FieldName -> Doc -> [PrettyField (Maybe Position)]
-ppField name fielddoc = ppTriviaField name mempty fielddoc
+ppField name fielddoc = ppTriviaField name (DocAnn fielddoc mempty)
 
-ppTriviaField :: FieldName -> TriviaTree -> Doc  -> [PrettyField (Maybe Position)]
-ppTriviaField name tree fielddoc
+ppTriviaField :: FieldName -> DocAnn TriviaTree -> [PrettyField (Maybe Position)]
+ppTriviaField name (DocAnn fielddoc tree)
   | PP.isEmpty fielddoc = []
   | otherwise =
       let mPos = atPosition (justAnnotation tree)

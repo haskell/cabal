@@ -271,16 +271,17 @@ hyloVersionRange f g = h where h = f . fmap h . g
 --
 -- >>> fmap (prettyVersioned CabalSpecV1_6) (simpleParsec' CabalSpecV1_6 "-any" :: Maybe VersionRange)
 -- Just >=0
-instance Pretty VersionRange where
-  pretty = exactPretty mempty
+instance Pretty VersionRange where pretty = mconcat . map unAnnDoc . exactPretty mempty
 
 instance Markable VersionRange
 instance ExactPretty VersionRange where
   exactPretty = exactPrettyVersioned cabalSpecLatest
 
   exactPrettyVersioned csv
-    | csv > CabalSpecV1_6 = prettyVersionRange
-    | otherwise = prettyVersionRange16
+    | csv > CabalSpecV1_6 = (singletonNoAnn .) . prettyVersionRange
+    | otherwise = (singletonNoAnn .) . prettyVersionRange16
+    where
+      singletonNoAnn x = [DocAnn x mempty]
 
 -- TODO(leana8959): unpack trivium we have saved
 prettyVersionRange :: TriviaTree -> VersionRange -> Disp.Doc
@@ -290,13 +291,14 @@ prettyVersionRange' :: TriviaTree -> Int -> VersionRange -> Disp.Doc
 prettyVersionRange' t0 d0 vr =
   let t = unmarkTriviaTree vr t0
       tLocal = justAnnotation t
+      justMergedDoc = mconcat . map unAnnDoc
   in  triviaToDoc tLocal $ case vr of
-    ThisVersion v            -> Disp.text "=="  <> exactPretty t v
-    LaterVersion v           -> Disp.text ">"   <> exactPretty t v
-    OrLaterVersion v         -> Disp.text ">="  <> exactPretty t v
-    EarlierVersion v         -> Disp.text "<"   <> exactPretty t v
-    OrEarlierVersion v       -> Disp.text "<="  <> exactPretty t v
-    MajorBoundVersion v      -> Disp.text "^>=" <> exactPretty t v
+    ThisVersion v            -> Disp.text "=="  <> justMergedDoc (exactPretty t v)
+    LaterVersion v           -> Disp.text ">"   <> justMergedDoc (exactPretty t v)
+    OrLaterVersion v         -> Disp.text ">="  <> justMergedDoc (exactPretty t v)
+    EarlierVersion v         -> Disp.text "<"   <> justMergedDoc (exactPretty t v)
+    OrEarlierVersion v       -> Disp.text "<="  <> justMergedDoc (exactPretty t v)
+    MajorBoundVersion v      -> Disp.text "^>=" <> justMergedDoc (exactPretty t v)
     UnionVersionRanges r1 r2 ->
       prettyVersionRange' t (d0 + 1) r1 <> Disp.text "||" <> prettyVersionRange' t (d0 + 0) r2
     IntersectVersionRanges r1 r2 ->

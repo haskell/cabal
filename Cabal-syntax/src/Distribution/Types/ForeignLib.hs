@@ -97,7 +97,7 @@ instance Pretty LibVersionInfo where
 
 -- TODO(leana8959): maybe important
 instance ExactPretty LibVersionInfo where
-  exactPretty _ = pretty
+  
 
 instance ExactParsec LibVersionInfo where exactParsec = (mempty,) <$> parsec
 instance Parsec LibVersionInfo where

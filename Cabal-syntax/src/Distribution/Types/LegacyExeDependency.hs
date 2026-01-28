@@ -41,7 +41,7 @@ instance Pretty LegacyExeDependency where
 -- TODO(leana8959): maybe important
 instance Markable LegacyExeDependency
 instance ExactPretty LegacyExeDependency where
-  exactPretty _ = pretty
+  
 
 instance ExactParsec LegacyExeDependency where exactParsec = (mempty,) <$> parsec
 instance Parsec LegacyExeDependency where

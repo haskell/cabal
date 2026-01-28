@@ -72,7 +72,7 @@ instance Pretty PackageName where
 
 instance Markable PackageName
 instance ExactPretty PackageName where
-  exactPretty _ = pretty
+  
 
 instance ExactParsec PackageName where exactParsec = (mempty,) <$> parsec
 instance Parsec PackageName where

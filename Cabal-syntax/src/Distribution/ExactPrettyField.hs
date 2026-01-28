@@ -27,6 +27,8 @@ class (ExactPretty a) => ExactPrettyField a where
 instance (Namespace a, ExactPrettyField a) => ExactPrettyField (Identity a) where
   exactPrettyField name t x =
     let tChildren = unmarkTriviaTree x t
-    in case exactPretty t (runIdentity x) of
-          doc | PP.isEmpty doc -> []
-          doc -> [ PrettyField Nothing name doc ]
+    in  mconcat
+        $ flip map (exactPretty t (runIdentity x))
+        $ \(DocAnn doc _) ->
+          if PP.isEmpty doc then []
+          else [PrettyField Nothing name doc]

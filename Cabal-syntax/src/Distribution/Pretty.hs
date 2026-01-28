@@ -7,6 +7,8 @@ module Distribution.Pretty
   , flatStyle
   , ExactPretty (..)
 
+  , DocAnn (..)
+
     -- * Utilities
   , showFilePath
   , showToken
@@ -34,15 +36,18 @@ class Pretty a where
   prettyVersioned :: CabalSpecVersion -> a -> PP.Doc
   prettyVersioned _ = pretty
 
+data DocAnn a = DocAnn { unAnnDoc :: PP.Doc, docAnn :: a }
+  deriving (Eq, Show)
+
 -- NOTE(leana8959):
 -- Split due to the Namespace contraint posing problem, not everything is Ord
 -- Doc is not Ord for example
 class Markable a => ExactPretty a where
-  exactPretty :: TriviaTree -> a -> PP.Doc
-  default exactPretty :: Pretty a => TriviaTree -> a -> PP.Doc
-  exactPretty _ = pretty
+  exactPretty :: TriviaTree -> a -> [DocAnn TriviaTree]
+  default exactPretty :: Pretty a => TriviaTree -> a -> [DocAnn TriviaTree]
+  exactPretty _ x =  [DocAnn (pretty x) mempty ]
 
-  exactPrettyVersioned :: CabalSpecVersion -> TriviaTree -> a -> PP.Doc
+  exactPrettyVersioned :: CabalSpecVersion -> TriviaTree -> a -> [DocAnn TriviaTree]
   exactPrettyVersioned _ = exactPretty
 
 -- | @since 3.4.0.0

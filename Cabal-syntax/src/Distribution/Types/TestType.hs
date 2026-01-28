@@ -53,7 +53,7 @@ instance Pretty TestType where
 
 instance Markable TestType
 instance ExactPretty TestType where
-  exactPretty _ = pretty
+  
 
 instance ExactParsec TestType where exactParsec = (mempty,) <$> parsec
 instance Parsec TestType where

@@ -61,7 +61,7 @@ instance Pretty AbiHash where
 
 instance Markable AbiHash
 instance ExactPretty AbiHash where
-  exactPretty _ = pretty
+  
 
 instance ExactParsec AbiHash where exactParsec = (mempty,) <$> parsec
 instance Parsec AbiHash where

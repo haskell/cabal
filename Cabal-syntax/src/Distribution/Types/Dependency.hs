@@ -88,17 +88,23 @@ instance NFData Dependency where rnf = genericRnf
 -- >>> prettyShow $ Dependency (mkPackageName "pkg") anyVersion $ NES.insert (LSubLibName $ mkUnqualComponentName "sublib-b") $ NES.singleton (LSubLibName $ mkUnqualComponentName "sublib-a")
 -- "pkg:{sublib-a,sublib-b}"
 instance Pretty Dependency where
-  pretty = exactPretty mempty
+  pretty = mconcat . map unAnnDoc . exactPretty mempty
 
 instance Markable Dependency
 instance ExactPretty Dependency where
   exactPretty t0 dep0@(Dependency name vRange sublibs) =
     let t2 = unmarkTriviaTree dep0 t0
+
+        singletonNoAnn x = [DocAnn x mempty]
+        justMergedDoc = mconcat . map unAnnDoc
+
         -- TODO: change to isAnyVersion after #6736
         pver
           | isAnyVersionLight vRange = PP.empty
-          | otherwise = exactPretty t2 vRange
-     in prettierLibraryNames t2 name (NES.toNonEmpty sublibs) <+> pver
+          | otherwise = justMergedDoc $ exactPretty t2 vRange
+     in
+        singletonNoAnn
+        $ prettierLibraryNames t2 name (NES.toNonEmpty sublibs) <+> pver
 
 -- |
 --

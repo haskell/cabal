@@ -33,7 +33,7 @@ instance Pretty ExposedModule where
       ]
 
 instance ExactPretty ExposedModule where
-  exactPretty _ = pretty
+  
 
 instance Parsec ExposedModule where
   parsec = do

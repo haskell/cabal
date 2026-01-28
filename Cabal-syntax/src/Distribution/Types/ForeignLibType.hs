@@ -38,7 +38,7 @@ instance Pretty ForeignLibType where
 
 instance Markable ForeignLibType
 instance ExactPretty ForeignLibType where
-  exactPretty _ = pretty
+  
 
 instance ExactParsec ForeignLibType where exactParsec = (mempty,) <$> parsec
 instance Parsec ForeignLibType where

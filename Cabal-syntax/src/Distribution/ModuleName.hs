@@ -55,7 +55,7 @@ instance NFData ModuleName where
 
 instance Markable ModuleName
 instance Pretty ModuleName where pretty = Disp.text . unModuleName
-instance ExactPretty ModuleName where exactPretty _ = pretty
+instance ExactPretty ModuleName where 
 
 instance ExactParsec ModuleName where exactParsec = (mempty,) <$> parsec
 instance Parsec ModuleName where

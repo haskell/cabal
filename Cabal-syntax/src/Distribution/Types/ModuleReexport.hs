@@ -43,7 +43,7 @@ instance Pretty ModuleReexport where
 -- TODO(leana8959): might be important
 instance Markable ModuleReexport
 instance ExactPretty ModuleReexport where
-  exactPretty _ = pretty
+  
 
 -- TODO(leana8959): dropped whitespaces!
 instance ExactParsec ModuleReexport where exactParsec = (mempty,) <$> parsec

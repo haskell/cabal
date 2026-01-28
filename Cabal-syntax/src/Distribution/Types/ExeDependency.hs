@@ -44,7 +44,7 @@ instance Pretty ExeDependency where
 -- TODO(leana8959): maybe important
 instance Markable ExeDependency
 instance ExactPretty ExeDependency where
-  exactPretty _ = pretty
+  
 
 -- |
 --

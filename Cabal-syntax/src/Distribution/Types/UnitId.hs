@@ -78,7 +78,7 @@ instance Pretty UnitId where
 
 instance Markable UnitId
 instance ExactPretty UnitId where
-  exactPretty _ = pretty
+  
 
 instance ExactParsec UnitId where exactParsec = (mempty,) <$> parsec
 

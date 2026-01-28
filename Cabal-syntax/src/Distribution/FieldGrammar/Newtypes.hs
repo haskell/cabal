@@ -90,6 +90,11 @@ import qualified Data.Set as Set
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.SPDX as SPDX
 
+
+-- NOTE(leana8959): we can rewrite the separators.
+-- Once exact print is done, there will be no more need to print differently.
+-- We only parse differently, and print exactly.
+
 -- | Vertical list with commas. Displayed with 'vcat'
 data CommaVCat = CommaVCat
   deriving (Generic)
@@ -116,7 +121,7 @@ class Sep sep where
 class TriviaSep sep where
   prettierSep
     :: (ExactPretty a)
-    => Proxy sep -> [(TriviaTree, a)] -> Doc
+    => Proxy sep -> [(TriviaTree, a)] -> [DocAnn TriviaTree]
 
   triviaParseSep
     :: (CabalParsing m, Markable a, Namespace a)
@@ -126,26 +131,28 @@ class TriviaSep sep where
     :: (CabalParsing m, Markable a, Namespace a)
     => Proxy sep -> m (TriviaTree, a) -> m (NonEmpty (TriviaTree, a))
 
--- NOTE(leana8959): Dependency List is such a type
 instance TriviaSep CommaVCat where
-  -- FIXME(leana8959):
+  -- NOTE(leana8959): we don't "punctuate" anymore
+  -- The separators are in the trivia
   prettierSep _ docs =
     let docs' =
           map
-            ( \(t, x) -> triviaToDoc (justAnnotation t) $ exactPretty t x
+            ( \(t, x) ->
+                (flip DocAnn t)
+                  $ triviaToDoc (justAnnotation t)
+                  $ mconcat . map unAnnDoc
+                  $ exactPretty t x
             )
           $ sortOn (fromMaybe 0 . atNth . justAnnotation . fst)
           $ docs
-        -- NOTE(leana8959): we don't "punctuate" anymore
-        -- The separators are in the trivia
-    in  mconcat docs'
+    in  docs'
 
   triviaParseSep _ p = do
     v <- askCabalSpecVersion
     if v >= CabalSpecV2_2 then triviaParsecLeadingCommaList p else triviaParsecCommaList p
 
 instance TriviaSep CommaFSep where
-  prettierSep _ = fsep . punctuate comma . map (uncurry exactPretty)
+  prettierSep _ = mconcat . map (uncurry exactPretty)
 
   triviaParseSep _ p = do
     v <- askCabalSpecVersion
@@ -156,7 +163,7 @@ instance TriviaSep CommaFSep where
     if v >= CabalSpecV2_2 then triviaParsecLeadingCommaListNonEmpty p else triviaParsecCommaNonEmpty p
 
 instance TriviaSep VCat where
-  prettierSep _ = vcat . map (uncurry exactPretty)
+  prettierSep _ = mconcat . map (uncurry exactPretty)
 
   triviaParseSep _ p = do
     v <- askCabalSpecVersion
@@ -166,7 +173,7 @@ instance TriviaSep VCat where
   triviaParseSepNE _ p = NE.some1 (p <* P.spaces)
 
 instance TriviaSep FSep where
-  prettierSep _ = fsep . map (uncurry exactPretty)
+  prettierSep _ = mconcat . map (uncurry exactPretty)
   triviaParseSep _ p = do
     v <- askCabalSpecVersion
     if v >= CabalSpecV3_0 then triviaParsecLeadingOptCommaList p else triviaParsecOptCommaList p
@@ -175,7 +182,7 @@ instance TriviaSep FSep where
   triviaParseSepNE _ p = NE.some1 (p <* P.spaces)
 
 instance TriviaSep NoCommaFSep where
-  prettierSep _ = fsep . map (uncurry exactPretty)
+  prettierSep _ = mconcat . map (uncurry exactPretty)
   triviaParseSep _ p = many (p <* P.spaces)
   triviaParseSepNE _ p = NE.some1 (p <* P.spaces)
 
@@ -309,7 +316,7 @@ instance
               $ unpack -- unpack the list
               $ n
      in
-        vcat
+        mconcat
         $ map (prettierSep (Proxy :: Proxy sep))
         $ docGroups
 
@@ -340,7 +347,7 @@ instance
                 (_getList list)
      in
           map
-            ( PrettyField Nothing fieldName . prettierSep (Proxy :: Proxy sep)
+            ( PrettyField Nothing fieldName . mconcat . map unAnnDoc . prettierSep (Proxy :: Proxy sep)
             )
             docGroups
 
@@ -432,7 +439,7 @@ instance Pretty Token where
   pretty = showToken . unpack
 
 instance Markable Token
-instance ExactPretty Token where exactPretty _ = pretty
+instance ExactPretty Token where 
 
 -- | Haskell string or @[^ ]+@
 newtype Token' = Token' {getToken' :: String}
@@ -448,7 +455,7 @@ instance Pretty Token' where
   pretty = showToken . unpack
 
 instance Markable Token'
-instance ExactPretty Token' where exactPretty _ = pretty
+instance ExactPretty Token' where 
 
 -- | Either @"quoted"@ or @un-quoted@.
 newtype MQuoted a = MQuoted {getMQuoted :: a}
@@ -472,7 +479,7 @@ newtype FilePathNT = FilePathNT {getFilePathNT :: String}
   deriving (Ord, Eq, Show)
 
 instance Markable FilePathNT
-instance ExactPretty FilePathNT where exactPretty _ = pretty
+instance ExactPretty FilePathNT where 
 
 instance Newtype String FilePathNT
 
@@ -515,7 +522,7 @@ instance Pretty (SymbolicPathNT from to) where
   pretty = showFilePath . getSymbolicPath . getSymbolicPathNT
 
 instance (Typeable from, Typeable to) => ExactPretty (SymbolicPathNT from to) where
-  exactPretty _ = pretty
+  
 
 -- | Newtype for 'RelativePath', with a different 'Parsec' instance
 -- to disallow empty paths but allow non-relative paths (which get rejected
@@ -548,7 +555,7 @@ instance Pretty (RelativePathNT from to) where
   pretty = showFilePath . getSymbolicPath . getRelativePathNT
 
 instance (Typeable from, Typeable to) => ExactPretty (RelativePathNT from to) where
-  exactPretty _ = pretty
+  
 
 -------------------------------------------------------------------------------
 -- SpecVersion
@@ -651,7 +658,7 @@ instance Pretty SpecVersion where
     | otherwise = text ">=" <<>> text (showCabalSpecVersion csv)
 
 -- TODO(leana8959): this should be implemented differently
-instance ExactPretty SpecVersion where exactPretty _ = pretty
+instance ExactPretty SpecVersion where 
 
 -------------------------------------------------------------------------------
 -- SpecLicense
@@ -676,7 +683,7 @@ instance Parsec SpecLicense where
 
 instance Pretty SpecLicense where
   pretty = either pretty pretty . unpack
-instance ExactPretty SpecLicense where exactPretty _ = pretty
+instance ExactPretty SpecLicense where 
 
 -------------------------------------------------------------------------------
 -- TestedWith
@@ -697,7 +704,7 @@ instance Pretty TestedWith where
   pretty x = case unpack x of
     (compiler, vr) -> pretty compiler <+> pretty vr
 
-instance ExactPretty TestedWith where exactPretty _ = pretty
+instance ExactPretty TestedWith where 
 
 parsecTestedWith :: CabalParsing m => m (CompilerFlavor, VersionRange)
 parsecTestedWith = do

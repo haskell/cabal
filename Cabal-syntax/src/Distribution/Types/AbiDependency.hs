@@ -38,7 +38,7 @@ instance Pretty AbiDependency where
 
 -- TODO(leana8959): maybe this matters?
 instance ExactPretty AbiDependency where
-  exactPretty _ = pretty
+  
 
 -- TODO(leana8959): reversed
 instance ExactParsec AbiDependency where exactParsec = (mempty,) <$> parsec

@@ -33,7 +33,7 @@ instance Pretty LibraryVisibility where
 
 instance Markable LibraryVisibility
 instance ExactPretty LibraryVisibility where
-  exactPretty _ = pretty
+  
 
 instance ExactParsec LibraryVisibility where exactParsec = (mempty,) <$> parsec
 instance Parsec LibraryVisibility where

@@ -218,7 +218,6 @@ instance Pretty ExposedModules where
   pretty = showExposedModules . getExposedModules
 
 instance ExactPretty ExposedModules where
-  exactPretty _ = pretty
 
 instance ExactPrettyField ExposedModules where
   exactPrettyField fieldName t0 n =
@@ -237,7 +236,7 @@ instance ExactPrettyField ExposedModules where
         map
           ( PrettyField Nothing fieldName
             . Disp.vcat -- TODO(leana8959): should be exact
-            . map (uncurry exactPretty)
+            . map (mconcat . map unAnnDoc . uncurry exactPretty)
           )
         $ docGroups
 
@@ -251,7 +250,7 @@ instance Pretty CompatPackageKey where
 
 instance Markable CompatPackageKey
 instance ExactPretty CompatPackageKey where
-  exactPretty _ = pretty
+  
 
 instance ExactParsec CompatPackageKey where exactParsec = (mempty,) <$> parsec
 instance Parsec CompatPackageKey where
@@ -269,7 +268,7 @@ instance Pretty InstWith where
   pretty = dispOpenModuleSubst . Map.fromList . getInstWith
 
 instance ExactPretty InstWith where
-  exactPretty _ = pretty
+  
 
 instance ExactParsec InstWith where
   exactParsec = (mempty,) <$> parsec
@@ -294,7 +293,7 @@ instance Pretty SpecLicenseLenient where
 
 instance Markable SpecLicenseLenient
 instance ExactPretty SpecLicenseLenient where
-  exactPretty _ = pretty
+  
 
 -------------------------------------------------------------------------------
 -- Basic fields

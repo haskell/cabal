@@ -47,7 +47,7 @@ instance Pretty BuildType where
 instance ExactParsec BuildType where exactParsec = (mempty,) <$> parsec
 instance Markable BuildType
 instance ExactPretty BuildType where
-  exactPretty _ = pretty
+  
 
 instance Parsec BuildType where
   parsec = do

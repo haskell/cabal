@@ -77,7 +77,7 @@ instance Pretty Language where
 
 instance Markable Language
 instance ExactPretty Language where
-  exactPretty _ = pretty
+  
 
 instance Parsec Language where
   parsec = classifyLanguage <$> P.munch1 isAlphaNum
@@ -590,7 +590,7 @@ instance Pretty Extension where
 
 instance Markable Extension
 instance ExactPretty Extension where
-  exactPretty _ = pretty
+  
 
 instance Parsec Extension where
   parsec = classifyExtension <$> P.munch1 isAlphaNum

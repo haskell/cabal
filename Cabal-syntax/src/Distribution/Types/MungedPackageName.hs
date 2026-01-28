@@ -81,7 +81,7 @@ instance Pretty MungedPackageName where
 
 instance Markable MungedPackageName
 instance ExactPretty MungedPackageName where
-  exactPretty _ = pretty
+  
 
 -- |
 --

@@ -38,6 +38,7 @@ import System.Environment                          (getArgs, withArgs)
 import System.FilePath                             (replaceExtension, (</>))
 import Distribution.Parsec.Source
 
+import Distribution.Pretty
 import Distribution.Parsec
 import Distribution.Types.Annotation
 
@@ -498,7 +499,10 @@ parsecPrettyRoundTripTest
 parsecPrettyRoundTripTest _ fp = testCase fp $ do
     x <- readFile input
     parsed <- parse x
-    let y = prettyShow $ uncurry exactPretty parsed
+    let y =
+          prettyShow
+            $ mconcat . map unAnnDoc
+            $ uncurry exactPretty parsed
 
 {- FOURMOLU_DISABLE -}
     unless (x == y) $

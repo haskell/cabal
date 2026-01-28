@@ -43,7 +43,7 @@ instance Pretty BenchmarkType where
 
 instance Markable BenchmarkType
 instance ExactPretty BenchmarkType where
-  exactPretty _ = pretty
+  
 
 instance ExactParsec BenchmarkType where exactParsec = (mempty,) <$> parsec
 instance Parsec BenchmarkType where
