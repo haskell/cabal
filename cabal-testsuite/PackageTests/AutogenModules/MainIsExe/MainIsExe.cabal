@@ -1,0 +1,22 @@
+cabal-version: 3.12
+name: MainIsExe
+version: 0.1
+license: BSD-3-Clause
+license-file: LICENSE
+author: Federico Mastellone
+maintainer: Federico Mastellone
+synopsis: AutogenModules
+category: PackageTests
+build-type: Simple
+
+description:
+    Check if Cabal accepts an autogen-module in an executable as the main-is field.
+
+Executable Exe
+    default-language: Haskell2010
+    main-is: MyDummy.hs
+    build-depends: base == 4.*
+    other-modules:
+        MyDummy
+    autogen-modules:
+        MyDummy

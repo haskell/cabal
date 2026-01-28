@@ -1,0 +1,11 @@
+# cabal build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - MainIsExe-0.1 (exe:Exe) (first run)
+Configuring executable 'Exe' for MainIsExe-0.1...
+Preprocessing executable 'Exe' for MainIsExe-0.1...
+Error: [Cabal-7554]
+can't find source for MyDummy in ., cabal.dist/work/./dist/build/<ARCH>/ghc-<GHCVER>/MainIsExe-0.1/x/Exe/build/Exe/autogen, cabal.dist/work/./dist/build/<ARCH>/ghc-<GHCVER>/MainIsExe-0.1/x/Exe/build/global-autogen
+Error: [Cabal-7125]
+Failed to build MainIsExe-0.1-inplace-Exe.
