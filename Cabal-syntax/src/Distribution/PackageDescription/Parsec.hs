@@ -243,7 +243,7 @@ parseAnnotatedGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs =
   -- gpd2 `deepseq` return gpd2
   -- agpd `deepseq`
 
-  -- TODO(leana8959): we currenty don't make this NFData for simplicity
+  -- TODO(leana8959): we currently don't make this NFData for simplicity
   return agpd
   where
     safeLast :: [a] -> Maybe a
