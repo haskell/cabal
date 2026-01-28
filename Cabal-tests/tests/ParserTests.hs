@@ -326,6 +326,7 @@ fieldGrammarGoldenTests = testGroup "fieldgrammar-golden"
           [ "build-depends1.fragment"
           , "build-depends2.fragment"
           , "build-depends3.fragment"
+          , "build-depends4.fragment"
           ]
   )
 
@@ -423,7 +424,7 @@ parsecPrettyRoundTripTests = testGroup "parsecpretty-roundtrip"
   ]
 
 fieldGrammarRoundTripTests :: TestTree
-fieldGrammarRoundTripTests = testGroup "fieldGrammar-roundtrip" $
+fieldGrammarRoundTripTests = testGroup "fieldgrammar-roundtrip" $
   ( map
       ( fieldGrammarRoundTripTest
           parsecDependencyList
@@ -432,6 +433,7 @@ fieldGrammarRoundTripTests = testGroup "fieldGrammar-roundtrip" $
       [ "build-depends1.fragment"
       , "build-depends2.fragment"
       , "build-depends3.fragment"
+      , "build-depends4.fragment"
       ]
    )
 -- TODO(leana8959): we need to detect indentation of field content
