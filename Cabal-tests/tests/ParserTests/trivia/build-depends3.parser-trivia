@@ -15,10 +15,10 @@ _×_
                   `SomeNamespace (Identity (Dependency (PackageName "base") (IntersectVersionRanges (LaterVersion (mkVersion [4,10])) (EarlierVersion (mkVersion [5]))) (fromNonEmpty (LMainLibName :| []))))`
                   TriviaTree {
                     justAnnotation = [
-                      PostTrivia "",
-                      PostTrivia ",\n",
                       FieldNth 1,
-                      ExactPosition (Position 1 1)],
+                      ExactPosition (Position 1 1),
+                      PostTrivia "",
+                      PostTrivia ",\n"],
                     namedAnnotations =
                     Map.fromList
                       [
@@ -73,10 +73,10 @@ _×_
                   `SomeNamespace (Identity (Dependency (PackageName "containers") (OrLaterVersion (mkVersion [0])) (fromNonEmpty (LMainLibName :| []))))`
                   TriviaTree {
                     justAnnotation = [
-                      PostTrivia "",
-                      PostTrivia ",",
                       FieldNth 1,
-                      ExactPosition (Position 1 1)],
+                      ExactPosition (Position 1 1),
+                      PostTrivia "",
+                      PostTrivia ","],
                     namedAnnotations =
                     Map.fromList
                       [
@@ -97,10 +97,10 @@ _×_
                   `SomeNamespace (Identity (Dependency (PackageName "text") (EarlierVersion (mkVersion [2])) (fromNonEmpty (LMainLibName :| []))))`
                   TriviaTree {
                     justAnnotation = [
-                      PostTrivia "",
-                      PostTrivia ",\n",
                       FieldNth 1,
-                      ExactPosition (Position 1 1)],
+                      ExactPosition (Position 1 1),
+                      PostTrivia "",
+                      PostTrivia ",\n"],
                     namedAnnotations =
                     Map.fromList
                       [

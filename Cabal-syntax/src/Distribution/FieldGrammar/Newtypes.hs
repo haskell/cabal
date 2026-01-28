@@ -266,11 +266,13 @@ instance
 instance (Newtype a b, Sep sep, Pretty b) => Pretty (List sep b a) where
   pretty = prettySep (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . unpack
 
+-- The inner type is parsed as b, so we wrap it and mark with that data.
 instance
   ( Typeable sep
   , Typeable b
+  , Newtype a b
   , Namespace a
-  , Markable a
+  , Namespace b
   -- ^ This constraint is bad, think about how to remove it
   ) => Markable (List sep b a) where
   markTriviaTree bs t =
@@ -278,6 +280,7 @@ instance
     $ map
       ( (\namespace -> TriviaTree mempty (M.singleton namespace t))
           . SomeNamespace
+          . (pack :: a -> b)
       )
       (_getList bs)
 
