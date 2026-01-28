@@ -17,6 +17,9 @@ module Distribution.PackageDescription.FieldGrammar
   , CompatDataDir (..)
   , CompatLicenseFile (..)
 
+  , parsecDependencyList
+  , prettyDependencyList
+
     -- * Library
   , libraryFieldGrammar
 
@@ -592,6 +595,12 @@ unvalidateBenchmark b =
 -------------------------------------------------------------------------------
 -- Build info
 -------------------------------------------------------------------------------
+
+parsecDependencyList :: ParsecFieldGrammar' [Dependency]
+parsecDependencyList = monoidalFieldAla "build-depends" formatDependencyList id
+
+prettyDependencyList :: PrettyFieldGrammar' [Dependency]
+prettyDependencyList = monoidalFieldAla "build-depends" formatDependencyList id
 
 buildInfoFieldGrammar
   :: ( FieldGrammar c g

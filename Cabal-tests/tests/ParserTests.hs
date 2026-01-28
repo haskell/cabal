@@ -85,6 +85,7 @@ tests = testGroup "parsec tests"
     , parsecTriviaGoldenTests
     , parsecPrettyRoundTripTests
     , fieldGrammarGoldenTests
+    , fieldGrammarRoundTripTests
     ]
 
 -------------------------------------------------------------------------------
@@ -310,7 +311,7 @@ parsecTriviaGoldenTest
   -> TestTree
 parsecTriviaGoldenTest _ fp = ediffGolden goldenTest fp exprFile $ do
     contents <- readFile input
-    let parseResult :: Either String (TriviaTree, a) = eitherTriviaParsec contents
+    let parseResult :: Either String (TriviaTree, a) = eitherExactParsec contents
     case parseResult of
       Left err -> fail $ unlines $ "ERROR" : show err : []
       Right ok -> pure $ toExpr ok
@@ -403,7 +404,7 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
 {- FOURMOLU_ENABLE -}
 
 parsecPrettyRoundTripTests :: TestTree
-parsecPrettyRoundTripTests = testGroup "parsecpretty-roundtrip" $
+parsecPrettyRoundTripTests = testGroup "parsecpretty-roundtrip"
   [ parsecPrettyRoundTripTest (Proxy :: Proxy VersionRange) "VersionRange1.fragment"
   , parsecPrettyRoundTripTest (Proxy :: Proxy VersionRange) "VersionRange2.fragment"
   , parsecPrettyRoundTripTest (Proxy :: Proxy VersionRange) "VersionRange3.fragment"
@@ -421,23 +422,23 @@ parsecPrettyRoundTripTests = testGroup "parsecpretty-roundtrip" $
       "List_CommaVCat_Identity_Dependency1.fragment"
   ]
 
-  -- ++ ( map
-  --       ( fieldGrammarRoundTripTest
-  --         (monoidalFieldAla "build-depends" formatDependencyList id :: ParsecFieldGrammar' [Dependency])
-  --         (monoidalFieldAla "build-depends" formatDependencyList id :: PrettyFieldGrammar' [Dependency])
-  --       )
-  --       [ "build-depends1.fragment"
-  --       , "build-depends2.fragment"
-  --       , "build-depends3.fragment"
-  --       ]
-  --    )
+fieldGrammarRoundTripTests :: TestTree
+fieldGrammarRoundTripTests = testGroup "fieldGrammar-roundtrip" $
+  ( map
+      ( fieldGrammarRoundTripTest
+          parsecDependencyList
+          prettyDependencyList
+      )
+      [ "build-depends1.fragment"
+      , "build-depends2.fragment"
+      , "build-depends3.fragment"
+      ]
+   )
 
 -- |
 -- Test whether the leaf Parsec and Pretty instances are dual of each other.
 fieldGrammarRoundTripTest
-  :: forall a
-   . (ExactParsec a)
-  => ParsecFieldGrammar' a
+  :: ParsecFieldGrammar' a
   -> PrettyFieldGrammar' a
   -> FilePath
   -> TestTree
@@ -479,12 +480,6 @@ fieldGrammarRoundTripTest parsec pretty fp = testCase fp $ do
           ]
 #endif
   where
-    parse :: String -> IO (TriviaTree, a)
-    parse c = do
-        let parseResult :: Either String (TriviaTree, a) = eitherTriviaParsec c
-        case parseResult of
-          Left err -> fail $ unlines $ "ERROR" : show err : []
-          Right ok -> pure $ ok
     input = "tests" </> "ParserTests" </> "trivia" </> fp
 {- FOURMOLU_ENABLE -}
 
@@ -520,7 +515,7 @@ parsecPrettyRoundTripTest _ fp = testCase fp $ do
   where
     parse :: String -> IO (TriviaTree, a)
     parse c = do
-        let parseResult :: Either String (TriviaTree, a) = eitherTriviaParsec c
+        let parseResult :: Either String (TriviaTree, a) = eitherExactParsec c
         case parseResult of
           Left err -> fail $ unlines $ "ERROR" : show err : []
           Right ok -> pure $ ok

@@ -17,7 +17,7 @@ module Distribution.Parsec
   , simpleParsecW'
   , lexemeParsec
   , eitherParsec
-  , eitherTriviaParsec
+  , eitherExactParsec
   , explicitEitherParsec
   , explicitEitherParsec'
 
@@ -103,9 +103,6 @@ class Parsec a where
 
 class ExactParsec a where
   exactParsec :: CabalParsing m => m (TriviaTree, a)
-
--- -- FIXME(leana8959): This instance changes how things are parsed
--- instance ExactParsec a => ExactParsec [a]
 
 -- | Parsing class which
 --
@@ -239,8 +236,8 @@ eitherParsec :: Parsec a => String -> Either String a
 eitherParsec = explicitEitherParsec parsec
 
 -- | Parse a 'String' with 'lexemeParsec'
-eitherTriviaParsec :: ExactParsec a => String -> Either String (TriviaTree, a)
-eitherTriviaParsec = explicitEitherParsec exactParsec
+eitherExactParsec :: ExactParsec a => String -> Either String (TriviaTree, a)
+eitherExactParsec = explicitEitherParsec exactParsec
 
 -- | Parse a 'String' with given 'ParsecParser'. Trailing whitespace is accepted.
 explicitEitherParsec :: ParsecParser a -> String -> Either String a
