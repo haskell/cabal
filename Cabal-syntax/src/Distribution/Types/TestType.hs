@@ -52,8 +52,8 @@ instance Pretty TestType where
   pretty (TestTypeUnknown name ver) = text name <<>> char '-' <<>> pretty ver
 
 instance Markable TestType
-instance Prettier TestType where
-  prettier _ = pretty
+instance ExactPretty TestType where
+  exactPretty _ = pretty
 
 instance ExactParsec TestType where exactParsec = (mempty,) <$> parsec
 instance Parsec TestType where

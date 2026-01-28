@@ -96,8 +96,8 @@ instance Pretty LibVersionInfo where
     Disp.hcat $ Disp.punctuate (Disp.char ':') $ map Disp.int [c, r, a]
 
 -- TODO(leana8959): maybe important
-instance Prettier LibVersionInfo where
-  prettier _ = pretty
+instance ExactPretty LibVersionInfo where
+  exactPretty _ = pretty
 
 instance ExactParsec LibVersionInfo where exactParsec = (mempty,) <$> parsec
 instance Parsec LibVersionInfo where

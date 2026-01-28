@@ -27,8 +27,8 @@ instance Pretty ExecutableScope where
   pretty ExecutablePrivate = Disp.text "private"
 
 instance Markable ExecutableScope
-instance Prettier ExecutableScope where
-  prettier _ = pretty
+instance ExactPretty ExecutableScope where
+  exactPretty _ = pretty
 
 instance ExactParsec ExecutableScope where exactParsec = (mempty,) <$> parsec
 instance Parsec ExecutableScope where

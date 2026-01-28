@@ -96,11 +96,11 @@ instance NFData Version where
   rnf (PV1 _ ns) = rnf ns
 
 instance Pretty Version where
-  pretty = prettier mempty
+  pretty = exactPretty mempty
 
 instance Markable Version
-instance Prettier Version where
-  prettier t0 ver =
+instance ExactPretty Version where
+  exactPretty t0 ver =
     let t = unmarkTriviaTree ver t0
         tLocal = justAnnotation t
     in triviaToDoc tLocal $

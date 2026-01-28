@@ -19,7 +19,7 @@ import Distribution.Compat.Prelude
 import Distribution.PrettierField
 import Distribution.Fields.Field (FieldName)
 import Distribution.Fields.Pretty (PrettyField (..))
-import Distribution.Pretty (Prettier (..), Pretty, showFreeText, showFreeTextV3)
+import Distribution.Pretty (ExactPretty (..), Pretty, showFreeText, showFreeTextV3)
 import Distribution.Utils.Generic (toUTF8BS)
 import Text.PrettyPrint (Doc)
 import qualified Text.PrettyPrint as PP
@@ -62,7 +62,7 @@ prettyAnnotatedFieldGrammar
   -> [PrettyField (Maybe Position)]
 prettyAnnotatedFieldGrammar v t g = fieldGrammarPretty g v t
 
-instance FieldGrammar Prettier PrettyFieldGrammar where
+instance FieldGrammar ExactPretty PrettyFieldGrammar where
   withScope :: Markable ns => ns -> PrettyFieldGrammar s a -> PrettyFieldGrammar s a
   withScope x (PrettyFG printer) =
     PrettyFG $ \v t s ->
@@ -73,7 +73,7 @@ instance FieldGrammar Prettier PrettyFieldGrammar where
 
   -- TODO(leana8959): use the trivia in the methods implemented here
   uniqueFieldAla fn _pack l = PrettyFG $ \_v t s ->
-    ppField fn (prettier mempty (pack' _pack (aview l s)))
+    ppField fn (exactPretty mempty (pack' _pack (aview l s)))
 
   booleanFieldDef fn l def = PrettyFG pp
     where
@@ -87,13 +87,13 @@ instance FieldGrammar Prettier PrettyFieldGrammar where
     where
       pp v t s = case aview l s of
         Nothing -> mempty
-        Just a -> ppField fn (prettierVersioned v mempty (pack' _pack a))
+        Just a -> ppField fn (exactPrettyVersioned v mempty (pack' _pack a))
 
   optionalFieldDefAla fn _pack l def = PrettyFG pp
     where
       pp v t s
         | x == def = mempty
-        | otherwise = ppField fn (prettierVersioned v mempty (pack' _pack x))
+        | otherwise = ppField fn (exactPrettyVersioned v mempty (pack' _pack x))
         where
           x = aview l s
 
@@ -121,7 +121,7 @@ instance FieldGrammar Prettier PrettyFieldGrammar where
       pp v t s =
         let t' = unmarkTriviaTree fn t
          in -- pTrace ("monoidalFieldAla\n" <> show t') $
-            -- ppField fn (prettierVersioned v t' (pack' _pack (aview l s)))
+            -- ppField fn (exactPrettyVersioned v t' (pack' _pack (aview l s)))
             prettierField fn t' (pack' _pack (aview l s))
 
   prefixedFields _fnPfx l = PrettyFG (\_ t -> map noPosition . pp . aview l)

@@ -36,8 +36,8 @@ instance Pretty PkgconfigDependency where
   pretty (PkgconfigDependency name ver) = pretty name <+> pretty ver
 
 instance Markable PkgconfigDependency
-instance Prettier PkgconfigDependency where
-  prettier _ = pretty
+instance ExactPretty PkgconfigDependency where
+  exactPretty _ = pretty
 
 -- TODO(leana8959): dropped spaces
 instance ExactParsec PkgconfigDependency where exactParsec = (mempty,) <$> parsec

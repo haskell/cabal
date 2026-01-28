@@ -88,16 +88,16 @@ instance NFData Dependency where rnf = genericRnf
 -- >>> prettyShow $ Dependency (mkPackageName "pkg") anyVersion $ NES.insert (LSubLibName $ mkUnqualComponentName "sublib-b") $ NES.singleton (LSubLibName $ mkUnqualComponentName "sublib-a")
 -- "pkg:{sublib-a,sublib-b}"
 instance Pretty Dependency where
-  pretty = prettier mempty
+  pretty = exactPretty mempty
 
 instance Markable Dependency
-instance Prettier Dependency where
-  prettier t0 dep0@(Dependency name vRange sublibs) =
+instance ExactPretty Dependency where
+  exactPretty t0 dep0@(Dependency name vRange sublibs) =
     let t2 = unmarkTriviaTree dep0 t0
         -- TODO: change to isAnyVersion after #6736
         pver
           | isAnyVersionLight vRange = PP.empty
-          | otherwise = prettier t2 vRange
+          | otherwise = exactPretty t2 vRange
      in prettierLibraryNames t2 name (NES.toNonEmpty sublibs) <+> pver
 
 -- |

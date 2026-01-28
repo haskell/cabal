@@ -71,8 +71,8 @@ instance Pretty PackageName where
   pretty = Disp.text . unPackageName
 
 instance Markable PackageName
-instance Prettier PackageName where
-  prettier _ = pretty
+instance ExactPretty PackageName where
+  exactPretty _ = pretty
 
 instance ExactParsec PackageName where exactParsec = (mempty,) <$> parsec
 instance Parsec PackageName where

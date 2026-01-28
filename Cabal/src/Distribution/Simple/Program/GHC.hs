@@ -1003,7 +1003,7 @@ packageDbArgsConf dbstack = case dbstack of
 -- | GHC >= 7.6 uses the '-package-db' flag. See
 -- https://gitlab.haskell.org/ghc/ghc/-/issues/5977.
 packageDbArgsDb :: PackageDBStackCWD -> [String]
--- special cases to make arguments prettier in common scenarios
+-- special cases to make arguments exactPretty in common scenarios
 packageDbArgsDb dbstack = case dbstack of
   (GlobalPackageDB : UserPackageDB : dbs)
     | all isSpecific dbs -> concatMap single dbs

@@ -60,8 +60,8 @@ instance Pretty AbiHash where
   pretty = text . unAbiHash
 
 instance Markable AbiHash
-instance Prettier AbiHash where
-  prettier _ = pretty
+instance ExactPretty AbiHash where
+  exactPretty _ = pretty
 
 instance ExactParsec AbiHash where exactParsec = (mempty,) <$> parsec
 instance Parsec AbiHash where

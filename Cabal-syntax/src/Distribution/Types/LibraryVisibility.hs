@@ -32,8 +32,8 @@ instance Pretty LibraryVisibility where
   pretty LibraryVisibilityPrivate = Disp.text "private"
 
 instance Markable LibraryVisibility
-instance Prettier LibraryVisibility where
-  prettier _ = pretty
+instance ExactPretty LibraryVisibility where
+  exactPretty _ = pretty
 
 instance ExactParsec LibraryVisibility where exactParsec = (mempty,) <$> parsec
 instance Parsec LibraryVisibility where

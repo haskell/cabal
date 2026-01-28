@@ -74,8 +74,8 @@ instance Pretty UnqualComponentName where
   pretty = showToken . unUnqualComponentName
 
 instance Markable UnqualComponentName
-instance Prettier UnqualComponentName where
-  prettier _ = pretty
+instance ExactPretty UnqualComponentName where
+  exactPretty _ = pretty
 
 instance ExactParsec UnqualComponentName where exactParsec = (mempty,) <$> parsec
 instance Parsec UnqualComponentName where

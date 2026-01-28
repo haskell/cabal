@@ -272,13 +272,13 @@ hyloVersionRange f g = h where h = f . fmap h . g
 -- >>> fmap (prettyVersioned CabalSpecV1_6) (simpleParsec' CabalSpecV1_6 "-any" :: Maybe VersionRange)
 -- Just >=0
 instance Pretty VersionRange where
-  pretty = prettier mempty
+  pretty = exactPretty mempty
 
 instance Markable VersionRange
-instance Prettier VersionRange where
-  prettier = prettierVersioned cabalSpecLatest
+instance ExactPretty VersionRange where
+  exactPretty = exactPrettyVersioned cabalSpecLatest
 
-  prettierVersioned csv
+  exactPrettyVersioned csv
     | csv > CabalSpecV1_6 = prettyVersionRange
     | otherwise = prettyVersionRange16
 
@@ -291,12 +291,12 @@ prettyVersionRange' t0 d0 vr =
   let t = unmarkTriviaTree vr t0
       tLocal = justAnnotation t
   in  triviaToDoc tLocal $ case vr of
-    ThisVersion v            -> Disp.text "=="  <> prettier t v
-    LaterVersion v           -> Disp.text ">"   <> prettier t v
-    OrLaterVersion v         -> Disp.text ">="  <> prettier t v
-    EarlierVersion v         -> Disp.text "<"   <> prettier t v
-    OrEarlierVersion v       -> Disp.text "<="  <> prettier t v
-    MajorBoundVersion v      -> Disp.text "^>=" <> prettier t v
+    ThisVersion v            -> Disp.text "=="  <> exactPretty t v
+    LaterVersion v           -> Disp.text ">"   <> exactPretty t v
+    OrLaterVersion v         -> Disp.text ">="  <> exactPretty t v
+    EarlierVersion v         -> Disp.text "<"   <> exactPretty t v
+    OrEarlierVersion v       -> Disp.text "<="  <> exactPretty t v
+    MajorBoundVersion v      -> Disp.text "^>=" <> exactPretty t v
     UnionVersionRanges r1 r2 ->
       prettyVersionRange' t (d0 + 1) r1 <> Disp.text "||" <> prettyVersionRange' t (d0 + 0) r2
     IntersectVersionRanges r1 r2 ->

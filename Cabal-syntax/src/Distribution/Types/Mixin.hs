@@ -46,8 +46,8 @@ instance Pretty Mixin where
 
 -- TODO(leana8959): maybe import
 instance Markable Mixin
-instance Prettier Mixin where
-  prettier _ = pretty
+instance ExactPretty Mixin where
+  exactPretty _ = pretty
 
 -- |
 --

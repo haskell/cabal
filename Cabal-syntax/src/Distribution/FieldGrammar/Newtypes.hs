@@ -115,7 +115,7 @@ class Sep sep where
 
 class TriviaSep sep where
   prettierSep
-    :: (Prettier a)
+    :: (ExactPretty a)
     => Proxy sep -> [(TriviaTree, a)] -> Doc
 
   triviaParseSep
@@ -132,7 +132,7 @@ instance TriviaSep CommaVCat where
   prettierSep _ docs =
     let docs' =
           map
-            ( \(t, x) -> triviaToDoc (justAnnotation t) $ prettier t x
+            ( \(t, x) -> triviaToDoc (justAnnotation t) $ exactPretty t x
             )
           $ sortOn (fromMaybe 0 . atNth . justAnnotation . fst)
           $ docs
@@ -145,7 +145,7 @@ instance TriviaSep CommaVCat where
     if v >= CabalSpecV2_2 then triviaParsecLeadingCommaList p else triviaParsecCommaList p
 
 instance TriviaSep CommaFSep where
-  prettierSep _ = fsep . punctuate comma . map (uncurry prettier)
+  prettierSep _ = fsep . punctuate comma . map (uncurry exactPretty)
 
   triviaParseSep _ p = do
     v <- askCabalSpecVersion
@@ -156,7 +156,7 @@ instance TriviaSep CommaFSep where
     if v >= CabalSpecV2_2 then triviaParsecLeadingCommaListNonEmpty p else triviaParsecCommaNonEmpty p
 
 instance TriviaSep VCat where
-  prettierSep _ = vcat . map (uncurry prettier)
+  prettierSep _ = vcat . map (uncurry exactPretty)
 
   triviaParseSep _ p = do
     v <- askCabalSpecVersion
@@ -166,7 +166,7 @@ instance TriviaSep VCat where
   triviaParseSepNE _ p = NE.some1 (p <* P.spaces)
 
 instance TriviaSep FSep where
-  prettierSep _ = fsep . map (uncurry prettier)
+  prettierSep _ = fsep . map (uncurry exactPretty)
   triviaParseSep _ p = do
     v <- askCabalSpecVersion
     if v >= CabalSpecV3_0 then triviaParsecLeadingOptCommaList p else triviaParsecOptCommaList p
@@ -175,7 +175,7 @@ instance TriviaSep FSep where
   triviaParseSepNE _ p = NE.some1 (p <* P.spaces)
 
 instance TriviaSep NoCommaFSep where
-  prettierSep _ = fsep . map (uncurry prettier)
+  prettierSep _ = fsep . map (uncurry exactPretty)
   triviaParseSep _ p = many (p <* P.spaces)
   triviaParseSepNE _ p = NE.some1 (p <* P.spaces)
 
@@ -286,13 +286,13 @@ instance
 
 instance
   ( Newtype a b
-  , Prettier b
+  , ExactPretty b
   , TriviaSep sep
   , Namespace b
   , Markable b
   )
-  => Prettier (List sep b a) where
-  prettier t0 n =
+  => ExactPretty (List sep b a) where
+  exactPretty t0 n =
     let tLocal = justAnnotation t0
         docGroups :: [[(TriviaTree, b)]] =
               groupBy ((==) `on` (fromMaybe 0 . atFieldNth . justAnnotation . fst))
@@ -317,7 +317,7 @@ instance
   ( Newtype a b
   , Sep sep
   , TriviaSep sep
-  , Prettier b
+  , ExactPretty b
   , Namespace b
   ) => PrettierField (List sep b a) where
   prettierField fieldName t0 n =
@@ -429,7 +429,7 @@ instance Pretty Token where
   pretty = showToken . unpack
 
 instance Markable Token
-instance Prettier Token where prettier _ = pretty
+instance ExactPretty Token where exactPretty _ = pretty
 
 -- | Haskell string or @[^ ]+@
 newtype Token' = Token' {getToken' :: String}
@@ -445,7 +445,7 @@ instance Pretty Token' where
   pretty = showToken . unpack
 
 instance Markable Token'
-instance Prettier Token' where prettier _ = pretty
+instance ExactPretty Token' where exactPretty _ = pretty
 
 -- | Either @"quoted"@ or @un-quoted@.
 newtype MQuoted a = MQuoted {getMQuoted :: a}
@@ -461,15 +461,15 @@ instance Pretty a => Pretty (MQuoted a) where
   pretty = pretty . unpack
 
 instance (Markable a, Namespace a) => Markable (MQuoted a)
-instance (Namespace a, Prettier a) => Prettier (MQuoted a) where
-  prettier t = prettier t . unpack
+instance (Namespace a, ExactPretty a) => ExactPretty (MQuoted a) where
+  exactPretty t = exactPretty t . unpack
 
 -- | Filepath are parsed as 'Token'.
 newtype FilePathNT = FilePathNT {getFilePathNT :: String}
   deriving (Ord, Eq, Show)
 
 instance Markable FilePathNT
-instance Prettier FilePathNT where prettier _ = pretty
+instance ExactPretty FilePathNT where exactPretty _ = pretty
 
 instance Newtype String FilePathNT
 
@@ -511,8 +511,8 @@ instance Parsec (SymbolicPathNT from to) where
 instance Pretty (SymbolicPathNT from to) where
   pretty = showFilePath . getSymbolicPath . getSymbolicPathNT
 
-instance (Typeable from, Typeable to) => Prettier (SymbolicPathNT from to) where
-  prettier _ = pretty
+instance (Typeable from, Typeable to) => ExactPretty (SymbolicPathNT from to) where
+  exactPretty _ = pretty
 
 -- | Newtype for 'RelativePath', with a different 'Parsec' instance
 -- to disallow empty paths but allow non-relative paths (which get rejected
@@ -544,8 +544,8 @@ instance Parsec (RelativePathNT from to) where
 instance Pretty (RelativePathNT from to) where
   pretty = showFilePath . getSymbolicPath . getRelativePathNT
 
-instance (Typeable from, Typeable to) => Prettier (RelativePathNT from to) where
-  prettier _ = pretty
+instance (Typeable from, Typeable to) => ExactPretty (RelativePathNT from to) where
+  exactPretty _ = pretty
 
 -------------------------------------------------------------------------------
 -- SpecVersion
@@ -648,7 +648,7 @@ instance Pretty SpecVersion where
     | otherwise = text ">=" <<>> text (showCabalSpecVersion csv)
 
 -- TODO(leana8959): this should be implemented differently
-instance Prettier SpecVersion where prettier _ = pretty
+instance ExactPretty SpecVersion where exactPretty _ = pretty
 
 -------------------------------------------------------------------------------
 -- SpecLicense
@@ -673,7 +673,7 @@ instance Parsec SpecLicense where
 
 instance Pretty SpecLicense where
   pretty = either pretty pretty . unpack
-instance Prettier SpecLicense where prettier _ = pretty
+instance ExactPretty SpecLicense where exactPretty _ = pretty
 
 -------------------------------------------------------------------------------
 -- TestedWith
@@ -694,7 +694,7 @@ instance Pretty TestedWith where
   pretty x = case unpack x of
     (compiler, vr) -> pretty compiler <+> pretty vr
 
-instance Prettier TestedWith where prettier _ = pretty
+instance ExactPretty TestedWith where exactPretty _ = pretty
 
 parsecTestedWith :: CabalParsing m => m (CompilerFlavor, VersionRange)
 parsecTestedWith = do

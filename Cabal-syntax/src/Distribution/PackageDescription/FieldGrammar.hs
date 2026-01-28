@@ -88,7 +88,7 @@ import Distribution.ModuleName (ModuleName)
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Parsec
-import Distribution.Pretty (Prettier (..), Pretty (..), prettyShow, showToken)
+import Distribution.Pretty (ExactPretty (..), Pretty (..), prettyShow, showToken)
 import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
 
@@ -884,8 +884,8 @@ instance Pretty CompatDataDir where
   pretty = showToken . getSymbolicPath . getCompatDataDir
 
 instance Markable CompatDataDir
-instance Prettier CompatDataDir where
-  prettier _ = pretty
+instance ExactPretty CompatDataDir where
+  exactPretty _ = pretty
 
 newtype CompatLicenseFile = CompatLicenseFile {getCompatLicenseFile :: [RelativePath Pkg File]}
   deriving (Ord, Eq, Show)
@@ -908,8 +908,8 @@ instance Pretty CompatLicenseFile where
   pretty = pretty . pack' (alaList FSep) . getCompatLicenseFile
 
 -- TODO(leana8959): might be important
-instance Prettier CompatLicenseFile where
-  prettier _ = pretty
+instance ExactPretty CompatLicenseFile where
+  exactPretty _ = pretty
 
 instance
   (

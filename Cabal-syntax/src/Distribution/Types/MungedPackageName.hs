@@ -80,8 +80,8 @@ instance Pretty MungedPackageName where
   pretty = Disp.text . encodeCompatPackageName'
 
 instance Markable MungedPackageName
-instance Prettier MungedPackageName where
-  prettier _ = pretty
+instance ExactPretty MungedPackageName where
+  exactPretty _ = pretty
 
 -- |
 --

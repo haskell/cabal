@@ -37,8 +37,8 @@ instance Pretty AbiDependency where
     pretty uid <<>> Disp.char '=' <<>> pretty abi
 
 -- TODO(leana8959): maybe this matters?
-instance Prettier AbiDependency where
-  prettier _ = pretty
+instance ExactPretty AbiDependency where
+  exactPretty _ = pretty
 
 -- TODO(leana8959): reversed
 instance ExactParsec AbiDependency where exactParsec = (mempty,) <$> parsec

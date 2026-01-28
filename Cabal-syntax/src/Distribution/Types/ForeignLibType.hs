@@ -37,8 +37,8 @@ instance Pretty ForeignLibType where
   pretty ForeignLibTypeUnknown = Disp.text "unknown"
 
 instance Markable ForeignLibType
-instance Prettier ForeignLibType where
-  prettier _ = pretty
+instance ExactPretty ForeignLibType where
+  exactPretty _ = pretty
 
 instance ExactParsec ForeignLibType where exactParsec = (mempty,) <$> parsec
 instance Parsec ForeignLibType where

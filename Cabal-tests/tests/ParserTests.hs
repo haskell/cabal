@@ -30,7 +30,7 @@ import Distribution.PackageDescription.PrettyPrint
   , showGenericPackageDescription'
   )
 import Distribution.Parsec                         (PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
-import Distribution.Pretty                         (prettyShow, Prettier (..))
+import Distribution.Pretty                         (prettyShow, ExactPretty (..))
 import Distribution.Fields.ParseResult
 import Distribution.Utils.Generic                  (fromUTF8BS, toUTF8BS)
 import System.Directory                            (setCurrentDirectory)
@@ -424,14 +424,14 @@ parsecPrettyRoundTripTests = testGroup "parsecpretty-roundtrip"
 -- Test whether the leaf Parsec and Pretty instances are dual of each other.
 parsecPrettyRoundTripTest
   :: forall a
-   . (Show a, ExactParsec a, Prettier a)
+   . (Show a, ExactParsec a, ExactPretty a)
   => Proxy a
   -> FilePath
   -> TestTree
 parsecPrettyRoundTripTest _ fp = testCase fp $ do
     x <- readFile input
     parsed <- parse x
-    let y = prettyShow $ uncurry prettier parsed
+    let y = prettyShow $ uncurry exactPretty parsed
 
 {- FOURMOLU_DISABLE -}
     unless (x == y) $

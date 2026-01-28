@@ -42,8 +42,8 @@ instance Pretty BenchmarkType where
   pretty (BenchmarkTypeUnknown name ver) = text name <<>> char '-' <<>> pretty ver
 
 instance Markable BenchmarkType
-instance Prettier BenchmarkType where
-  prettier _ = pretty
+instance ExactPretty BenchmarkType where
+  exactPretty _ = pretty
 
 instance ExactParsec BenchmarkType where exactParsec = (mempty,) <$> parsec
 instance Parsec BenchmarkType where

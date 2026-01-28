@@ -5,7 +5,7 @@ module Distribution.Pretty
   , prettyShow
   , defaultStyle
   , flatStyle
-  , Prettier (..)
+  , ExactPretty (..)
 
     -- * Utilities
   , showFilePath
@@ -37,13 +37,13 @@ class Pretty a where
 -- NOTE(leana8959):
 -- Split due to the Namespace contraint posing problem, not everything is Ord
 -- Doc is not Ord for example
-class Markable a => Prettier a where
-  prettier :: TriviaTree -> a -> PP.Doc
-  default prettier :: Pretty a => TriviaTree -> a -> PP.Doc
-  prettier _ = pretty
+class Markable a => ExactPretty a where
+  exactPretty :: TriviaTree -> a -> PP.Doc
+  default exactPretty :: Pretty a => TriviaTree -> a -> PP.Doc
+  exactPretty _ = pretty
 
-  prettierVersioned :: CabalSpecVersion -> TriviaTree -> a -> PP.Doc
-  prettierVersioned _ = prettier
+  exactPrettyVersioned :: CabalSpecVersion -> TriviaTree -> a -> PP.Doc
+  exactPrettyVersioned _ = exactPretty
 
 -- | @since 3.4.0.0
 instance Pretty PP.Doc where
@@ -58,10 +58,10 @@ instance Pretty Int where
 instance Pretty a => Pretty (Identity a) where
   pretty = pretty . runIdentity
 
-instance (Namespace a, Prettier a) => Prettier (Identity a) where
-  prettier t x =
+instance (Namespace a, ExactPretty a) => ExactPretty (Identity a) where
+  exactPretty t x =
     let t' = unmarkTriviaTree x t
-    in  prettier t' (runIdentity x)
+    in  exactPretty t' (runIdentity x)
 
 prettyShow :: Pretty a => a -> String
 prettyShow = PP.renderStyle defaultStyle . pretty

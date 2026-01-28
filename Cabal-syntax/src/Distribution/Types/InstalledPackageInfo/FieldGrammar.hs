@@ -217,8 +217,8 @@ instance Parsec ExposedModules where
 instance Pretty ExposedModules where
   pretty = showExposedModules . getExposedModules
 
-instance Prettier ExposedModules where
-  prettier _ = pretty
+instance ExactPretty ExposedModules where
+  exactPretty _ = pretty
 
 instance PrettierField ExposedModules where
   prettierField fieldName t0 n =
@@ -237,7 +237,7 @@ instance PrettierField ExposedModules where
         map
           ( PrettyField Nothing fieldName
             . Disp.vcat -- TODO(leana8959): should be exact
-            . map (uncurry prettier)
+            . map (uncurry exactPretty)
           )
         $ docGroups
 
@@ -250,8 +250,8 @@ instance Pretty CompatPackageKey where
   pretty = Disp.text . getCompatPackageKey
 
 instance Markable CompatPackageKey
-instance Prettier CompatPackageKey where
-  prettier _ = pretty
+instance ExactPretty CompatPackageKey where
+  exactPretty _ = pretty
 
 instance ExactParsec CompatPackageKey where exactParsec = (mempty,) <$> parsec
 instance Parsec CompatPackageKey where
@@ -268,8 +268,8 @@ instance Markable InstWith
 instance Pretty InstWith where
   pretty = dispOpenModuleSubst . Map.fromList . getInstWith
 
-instance Prettier InstWith where
-  prettier _ = pretty
+instance ExactPretty InstWith where
+  exactPretty _ = pretty
 
 instance ExactParsec InstWith where
   exactParsec = (mempty,) <$> parsec
@@ -293,8 +293,8 @@ instance Pretty SpecLicenseLenient where
   pretty = either pretty pretty . getSpecLicenseLenient
 
 instance Markable SpecLicenseLenient
-instance Prettier SpecLicenseLenient where
-  prettier _ = pretty
+instance ExactPretty SpecLicenseLenient where
+  exactPretty _ = pretty
 
 -------------------------------------------------------------------------------
 -- Basic fields

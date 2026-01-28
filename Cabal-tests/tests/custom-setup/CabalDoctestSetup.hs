@@ -550,7 +550,7 @@ generateBuildModule testSuiteName flags pkg lbi = do
     -- GHC >= 7.6 uses the '-package-db' flag. See
     -- https://ghc.haskell.org/trac/ghc/ticket/5977.
     packageDbArgsDb :: [PackageDB] -> [String]
-    -- special cases to make arguments prettier in common scenarios
+    -- special cases to make arguments exactPretty in common scenarios
     packageDbArgsDb dbstack = case dbstack of
       (GlobalPackageDB:UserPackageDB:dbs)
         | all isSpecific dbs              -> concatMap single dbs

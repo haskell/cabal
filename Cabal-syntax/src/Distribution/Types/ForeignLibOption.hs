@@ -30,8 +30,8 @@ instance Pretty ForeignLibOption where
   pretty ForeignLibStandalone = Disp.text "standalone"
 
 instance Markable ForeignLibOption
-instance Prettier ForeignLibOption where
-  prettier _ = pretty
+instance ExactPretty ForeignLibOption where
+  exactPretty _ = pretty
 
 instance ExactParsec ForeignLibOption where exactParsec = (mempty,) <$> parsec
 instance Parsec ForeignLibOption where
