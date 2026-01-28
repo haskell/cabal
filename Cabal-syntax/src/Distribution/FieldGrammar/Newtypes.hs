@@ -240,18 +240,8 @@ alaList' _ _ = List
 
 instance Newtype [a] (List sep wrapper a)
 
-instance
-  ( Newtype a b
-  , Typeable sep
-  , TriviaSep sep
-  , ExactParsec b
-  , Namespace a
-  , Typeable b
-  , Ord b
-  , Show b
-  , Markable b
-  ) => Parsec (List sep b a) where
-  parsec = snd <$> exactParsec
+instance (Newtype a b, Sep sep, Parsec b) => Parsec (List sep b a) where
+  parsec = pack . map (unpack :: b -> a) <$> parseSep (Proxy :: Proxy sep) parsec
 
 -- Multiplicity within fields
 instance
