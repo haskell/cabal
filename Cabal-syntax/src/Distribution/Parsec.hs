@@ -361,19 +361,19 @@ triviaParsecCommaList p = do
     p' = do -- p * spaces
       (t, x) <- p
       s <- spaces'
-      let t' = markTriviaTree x (TriviaTree [PostTrivia s] mempty)
+      let t' = markTriviaTree x (TriviaTree [PostTrivia s] mempty) <> t
       pure (t', x)
 
 triviaParsecCommaListNE
   :: (CabalParsing m, Markable a, Namespace a)
   => m (TriviaTree, a) -> m (NonEmpty (TriviaTree, a))
-triviaParsecCommaListNE p = sepByNonEmpty p comma
+triviaParsecCommaListNE p = sepByNonEmpty p' comma
   where
     comma = (++) <$> P.string "," <*> spaces' P.<?> "comma"
     p' = do -- p * spaces
       (t, x) <- p
       s <- spaces'
-      let t' = markTriviaTree x (TriviaTree [PostTrivia s] mempty)
+      let t' = markTriviaTree x (TriviaTree [PostTrivia s] mempty) <> t
       pure (t', x)
 
 parsecCommaList :: CabalParsing m => m a -> m [a]
@@ -391,7 +391,7 @@ triviaParsecCommaNonEmpty p = do
     p' = do -- p * spaces
       (t, x) <- p
       s <- spaces'
-      let t' = markTriviaTree x (TriviaTree [PostTrivia s] mempty)
+      let t' = markTriviaTree x (TriviaTree [PostTrivia s] mempty) <> t
       pure (t', x)
 
     comma :: CabalParsing m => m String
@@ -399,11 +399,6 @@ triviaParsecCommaNonEmpty p = do
       c <- P.string ","
       s <- spaces'
       pure (c <> s)
-
-type SeparatorAnnotations a = [SeparatorAnnotation a]
-data SeparatorAnnotation a
-  = Leading a
-  | Trailing a
 
 -- |
 -- Like 'sepEndByNonEmpty' but keeps the parsed separators.

@@ -370,10 +370,7 @@ versionRangeParser digitParser csv = fmap (\(_, x) -> x) $ versionRangeTriviaPar
 --
 -- @since 3.0
 versionRangeTriviaParser :: forall m. CabalParsing m => m Int -> CabalSpecVersion -> m (TriviaTree, VersionRange)
-versionRangeTriviaParser digitParser csv =
-  expr >>= \x ->
-    -- pTrace ("versionRangeTriviaParser\n" <> show x) $
-    pure x
+versionRangeTriviaParser digitParser csv = expr
   where
     expr :: m (TriviaTree, VersionRange)
     expr = do
