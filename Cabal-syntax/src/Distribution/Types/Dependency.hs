@@ -18,7 +18,7 @@ import Distribution.Types.VersionRange (isAnyVersionLight)
 import Distribution.Version (VersionRange, anyVersion, simplifyVersionRange)
 
 import Distribution.CabalSpecVersion
-import Distribution.Compat.CharParsing (char, spaces)
+import Distribution.Compat.CharParsing (char, spaces, spaces')
 import Distribution.Compat.Parsing (between, option)
 import Distribution.Parsec
 import Distribution.Pretty
@@ -93,7 +93,10 @@ instance Pretty Dependency where
 instance Markable Dependency
 instance ExactPretty Dependency where
   exactPretty t0 dep0@(Dependency name vRange sublibs) =
-    let t2 = unmarkTriviaTree dep0 t0
+    let tLocal = justAnnotation t1
+        t1 = unmarkTriviaTree dep0 t0
+
+        libNameTrivia = justAnnotation $ unmarkTriviaTree name t1
 
         singletonNoAnn x = [DocAnn x mempty]
         justMergedDoc = mconcat . map unAnnDoc
@@ -101,10 +104,15 @@ instance ExactPretty Dependency where
         -- TODO: change to isAnyVersion after #6736
         pver
           | isAnyVersionLight vRange = PP.empty
-          | otherwise = justMergedDoc $ exactPretty t2 vRange
+          | otherwise = justMergedDoc $ exactPretty t1 vRange
      in
         singletonNoAnn
-        $ prettierLibraryNames t2 name (NES.toNonEmpty sublibs) <+> pver
+        $ triviaToDoc tLocal
+        $ triviaToDoc
+            libNameTrivia
+            ( prettierLibraryNames t1 name (NES.toNonEmpty sublibs)
+            )
+          <> pver
 
 -- |
 --
@@ -140,30 +148,29 @@ instance ExactPretty Dependency where
 instance Parsec Dependency where parsec = snd <$> exactParsec
 
 instance ExactParsec Dependency where
-  exactParsec =
-    do
-      name <- parsec
+  exactParsec = do
+    name <- parsec
 
-      libs <- option mainLibSet $ do
-        _ <- char ':'
-        versionGuardMultilibs
-        NES.singleton <$> parseLib <|> parseMultipleLibs
+    libs <- option mainLibSet $ do
+      _ <- char ':'
+      versionGuardMultilibs
+      NES.singleton <$> parseLib <|> parseMultipleLibs
 
-      spaces -- https://github.com/haskell/cabal/issues/5846
-      -- TODO(leana8959): ^ register space at local scope
-      (verTrivia, ver) <-
-        let t = fromNamedTrivia anyVersion [IsInjected]
-         in exactParsec <|> pure (t, anyVersion)
-      let dep = mkDependency name ver libs
-      let depTrivia = markTriviaTree dep verTrivia
+    s <- spaces' -- https://github.com/haskell/cabal/issues/5846
+    let spaceTrivia =
+          markTriviaTree name
+          $ TriviaTree [PostTrivia s] mempty
 
-      return
-        ( depTrivia
-        , dep
-        )
-      >>= \(t, x) ->
-        -- pTrace ("dependencyTriviaParser\n" <> show t) $
-        pure (t, x)
+    (verTrivia, ver) <-
+      let t = fromNamedTrivia anyVersion [IsInjected]
+       in exactParsec <|> pure (t, anyVersion)
+    let dep = mkDependency name ver libs
+    let depTrivia = markTriviaTree dep (verTrivia <> spaceTrivia)
+
+    return
+      ( depTrivia
+      , dep
+      )
     where
       parseLib = LSubLibName <$> parsec
       parseMultipleLibs =
