@@ -64,7 +64,7 @@ import Distribution.License (License)
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Fields.Pretty
-import Distribution.PrettierField
+import Distribution.ExactPrettyField
 import Distribution.Utils.Path
 import Distribution.Version
   ( LowerBound (..)
@@ -319,8 +319,8 @@ instance
   , TriviaSep sep
   , ExactPretty b
   , Namespace b
-  ) => PrettierField (List sep b a) where
-  prettierField fieldName t0 n =
+  ) => ExactPrettyField (List sep b a) where
+  exactPrettyField fieldName t0 n =
     let tLocal = justAnnotation t0
         docGroups :: [[(TriviaTree, b)]] =
               groupBy ((==) `on` (fromMaybe 0 . atFieldNth . justAnnotation . fst))

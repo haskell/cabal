@@ -31,7 +31,7 @@ import Distribution.Types.UnqualComponentName
 import Distribution.Version
 
 import Distribution.Types.Annotation
-import Distribution.PrettierField
+import Distribution.ExactPrettyField
 import Distribution.Fields.Pretty
 
 import Data.List (sortOn, groupBy)
@@ -220,8 +220,8 @@ instance Pretty ExposedModules where
 instance ExactPretty ExposedModules where
   exactPretty _ = pretty
 
-instance PrettierField ExposedModules where
-  prettierField fieldName t0 n =
+instance ExactPrettyField ExposedModules where
+  exactPrettyField fieldName t0 n =
     let -- tLocal = justAnnotation t0
         docGroups =
               groupBy ((==) `on` (fromMaybe 0 . atFieldNth . justAnnotation . fst))

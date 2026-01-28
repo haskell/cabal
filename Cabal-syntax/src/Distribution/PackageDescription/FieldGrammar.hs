@@ -93,7 +93,7 @@ import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
 
 import Data.List (sortOn, groupBy)
-import Distribution.PrettierField
+import Distribution.ExactPrettyField
 
 import Distribution.Types.Annotation
 import Distribution.Types.Dependency
@@ -913,8 +913,8 @@ instance ExactPretty CompatLicenseFile where
 
 instance
   (
-  ) => PrettierField (CompatLicenseFile) where
-  prettierField fieldName t0 n =
+  ) => ExactPrettyField (CompatLicenseFile) where
+  exactPrettyField fieldName t0 n =
     let tLocal = justAnnotation t0
         docGroups :: [[(TriviaTree, RelativePath Pkg File)]] =
               groupBy ((==) `on` (fromMaybe 0 . atFieldNth . justAnnotation . fst))

@@ -1,5 +1,5 @@
 {-# LANGUAGE DefaultSignatures #-}
-module Distribution.PrettierField where
+module Distribution.ExactPrettyField where
 
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Prelude
@@ -21,11 +21,11 @@ import qualified Text.PrettyPrint as PP
 -- Similar to Pretty but outputs a Field
 -- This is important to implement reordering the field.
 -- The existing Prett{y,ier} classe doesn't allow us to do so.
-class (ExactPretty a) => PrettierField a where
-  prettierField :: FieldName -> TriviaTree -> a -> [PrettyField (Maybe Position)]
+class (ExactPretty a) => ExactPrettyField a where
+  exactPrettyField :: FieldName -> TriviaTree -> a -> [PrettyField (Maybe Position)]
 
-instance (Namespace a, PrettierField a) => PrettierField (Identity a) where
-  prettierField name t x =
+instance (Namespace a, ExactPrettyField a) => ExactPrettyField (Identity a) where
+  exactPrettyField name t x =
     let tChildren = unmarkTriviaTree x t
     in case exactPretty t (runIdentity x) of
           doc | PP.isEmpty doc -> []

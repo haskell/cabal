@@ -17,7 +17,7 @@ import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.PrettierField
+import Distribution.ExactPrettyField
 
 import Distribution.Types.Annotation
 
@@ -131,7 +131,7 @@ class
   --
   -- /Note:/ 'optionalFieldAla' is a @monoidalField@ with 'Last' monoid.
   monoidalFieldAla
-    :: (c b, PrettierField b, Monoid a, Newtype a b, Namespace a)
+    :: (c b, ExactPrettyField b, Monoid a, Newtype a b, Namespace a)
     => FieldName
     -- ^ field name
     -> (a -> b)
@@ -229,7 +229,7 @@ optionalFieldDef fn l x = optionalFieldDefAla fn Identity l x
 
 -- | Field which can be define multiple times, and the results are @mappend@ed.
 monoidalField
-  :: (FieldGrammar c g, PrettierField a, c (Identity a), Monoid a, Namespace a)
+  :: (FieldGrammar c g, ExactPrettyField a, c (Identity a), Monoid a, Namespace a)
   => FieldName
   -- ^ field name
   -> ALens' s a
