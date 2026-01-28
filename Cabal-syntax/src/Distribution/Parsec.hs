@@ -346,9 +346,6 @@ triviaParsecCommaList p = do
           (zip [1..] xs)
   pure xs'
   where
-    -- TODO(leana8959):
-    -- TriviaTree doesn't make sense when it's not in relationship with a data
-    -- How do we represent this?
     comma :: CabalParsing m => m String
     comma = do
       c <- P.string ","
@@ -465,9 +462,6 @@ triviaParsecLeadingCommaList p = do
       let t' = t <> markTriviaTree x (TriviaTree [PostTrivia s] mempty)
       pure (t', x)
 
-    -- TODO(leana8959):
-    -- TriviaTree doesn't make sense when it's not in relationship with a data
-    -- How do we represent this?
     comma :: CabalParsing m => m String
     comma = do
       c <- P.string ","
@@ -491,9 +485,6 @@ triviaParsecLeadingCommaListNonEmpty p = do
       let t' = t <> markTriviaTree x (TriviaTree [PostTrivia s] mempty)
       pure (t', x)
 
-    -- TODO(leana8959):
-    -- TriviaTree doesn't make sense when it's not in relationship with a data
-    -- How do we represent this?
     comma :: CabalParsing m => m String
     comma = do
       c <- P.string ","
@@ -600,9 +591,6 @@ triviaParsecLeadingOptCommaList p = do
       let t' = t <> markTriviaTree x (TriviaTree [PostTrivia s] mempty)
       pure (t', x)
 
-    -- TODO(leana8959):
-    -- TriviaTree doesn't make sense when it's not in relationship with a data
-    -- How do we represent this?
     comma :: CabalParsing m => m String
     comma = do
       c <- P.string ","
