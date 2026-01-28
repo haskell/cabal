@@ -296,7 +296,6 @@ instance FieldGrammar ExactParsec ParsecFieldGrammar where
           let t' = markTriviaTree fn t
           pure (t', x)
 
-      -- Different fields
       parseOne v (MkNamelessField pos fls) n = do
         (t, x) <- runFieldParser pos exactParsec v fls
         let t' = fromNamedTrivia x [FieldNth n, ExactPosition pos] <> t

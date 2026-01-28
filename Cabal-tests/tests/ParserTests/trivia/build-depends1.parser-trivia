@@ -29,6 +29,13 @@ _×_
                             namedAnnotations = Map.fromList
                               [
                                 _×_
+                                  `SomeNamespace (PackageName "base")`
+                                  TriviaTree {
+                                    justAnnotation = [
+                                      PostTrivia " "],
+                                    namedAnnotations = Map.fromList
+                                      []},
+                                _×_
                                   `SomeNamespace (LaterVersion (mkVersion [1]))`
                                   TriviaTree {
                                     justAnnotation = [
@@ -62,6 +69,13 @@ _×_
                             namedAnnotations =
                             Map.fromList
                               [
+                                _×_
+                                  `SomeNamespace (PackageName "text")`
+                                  TriviaTree {
+                                    justAnnotation = [
+                                      PostTrivia " "],
+                                    namedAnnotations = Map.fromList
+                                      []},
                                 _×_
                                   `SomeNamespace (EarlierVersion (mkVersion [2]))`
                                   TriviaTree {

@@ -64,7 +64,6 @@ import Distribution.License (License)
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Fields.Pretty
-import Distribution.ExactPrettyField
 import Distribution.Utils.Path
 import Distribution.Version
   ( LowerBound (..)
@@ -135,17 +134,17 @@ instance TriviaSep CommaVCat where
   -- NOTE(leana8959): we don't "punctuate" anymore
   -- The separators are in the trivia
   prettierSep _ docs =
-    let docs' =
-          map
-            ( \(t, x) ->
-                (flip DocAnn t)
-                  $ triviaToDoc (justAnnotation t)
+    let atNthOr0 = fromMaybe 0 . atNth . justAnnotation
+    in  map
+            ( \(t0, x) ->
+              let tLocal = justAnnotation t0
+              in (flip DocAnn t0)
+                  $ triviaToDoc tLocal
                   $ mconcat . map unAnnDoc
-                  $ exactPretty t x
+                  $ exactPretty t0 x
             )
-          $ sortOn (fromMaybe 0 . atNth . justAnnotation . fst)
+          $ sortOn (atNthOr0 . fst)
           $ docs
-    in  docs'
 
   triviaParseSep _ p = do
     v <- askCabalSpecVersion
@@ -289,8 +288,6 @@ instance
         (flip M.lookup (namedAnnotations t) . SomeNamespace . (pack :: a -> b))
         (_getList bs)
 
--- TODO(leana8959): we are forced to define this and we don't use it
--- It is due to the ExactPretty constraint.
 instance
   ( Newtype a b
   , ExactPretty b
@@ -300,57 +297,27 @@ instance
   )
   => ExactPretty (List sep b a) where
   exactPretty t0 n =
-    let
-        docGroups :: [[(TriviaTree, b)]] =
-              groupBy ((==) `on` (fromMaybe 0 . atFieldNth . justAnnotation . fst))
-              $ sortOn (fromMaybe 0 . atFieldNth . justAnnotation . fst)
-              $ map
-                ( \o ->
-                    let n = (pack :: a -> b) o -- pack each element
-                        tChildren = unmarkTriviaTree n t0
-                    in
-                          ( tChildren
-                          , n
-                          )
-                )
-              $ unpack -- unpack the list
-              $ n
-     in
-        mconcat
-        $ map (prettierSep (Proxy :: Proxy sep))
-        $ docGroups
-
-instance
-  ( Newtype a b
-  , Sep sep
-  , TriviaSep sep
-  , ExactPretty b
-  , Namespace b
-  ) => ExactPrettyField (List sep b a) where
-  exactPrettyField fieldName t0 list =
-    let docGroups :: [[(TriviaTree, b)]] =
-              groupBy
-                ( (==) `on` (fromMaybe 0 . atFieldNth . justAnnotation . fst)
-                )
-              $ sortOn
-                ( fromMaybe 0 . atFieldNth . justAnnotation . fst
-                )
-              $ map
-                ( \old ->
-                    let new = (pack :: a -> b) old
-                        -- The numbering are associated under the newtype
-                        -- Move them upwards so we can sort
-                        numbering = justAnnotation (unmarkTriviaTree new t0)
-                        t = TriviaTree numbering mempty <> t0
-                    in  (t, new)
-                )
-                (_getList list)
-     in
-          map
-            ( PrettyField Nothing fieldName . mconcat . map unAnnDoc . prettierSep (Proxy :: Proxy sep)
-            )
-            docGroups
-
+    let fieldNthOr0 = fromMaybe 0 . atFieldNth . justAnnotation
+        docGroups :: [[(TriviaTree, b)]]
+        docGroups =
+            groupBy ((==) `on` (fieldNthOr0 . fst))
+            $ sortOn (fieldNthOr0 . fst)
+            $ map
+              ( \o ->
+                  let n = (pack :: a -> b) o -- pack each element
+                      -- The numbering are associated under the newtype
+                      -- Move them upwards so we can sort
+                      numbering = justAnnotation (unmarkTriviaTree n t0)
+                      t = TriviaTree numbering mempty <> t0
+                  in  (t, n)
+              )
+            $ unpack -- unpack the list
+            $ n
+     in 
+            map
+              ( mconcat . prettierSep (Proxy :: Proxy sep)
+              )
+            $ docGroups
 
 -- | Like 'List', but for 'Set'.
 --

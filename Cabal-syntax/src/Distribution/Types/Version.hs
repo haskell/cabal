@@ -95,7 +95,7 @@ instance NFData Version where
   rnf (PV0 _) = ()
   rnf (PV1 _ ns) = rnf ns
 
-instance Pretty Version where
+instance Pretty Version where pretty = mconcat . map unAnnDoc . exactPretty mempty
 instance Markable Version
 instance ExactPretty Version where
   exactPretty t0 ver =

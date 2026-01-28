@@ -16,7 +16,6 @@ import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
 import Distribution.Compat.Newtype
 import Distribution.Compat.Prelude
-import Distribution.ExactPrettyField
 import Distribution.Fields.Field (FieldName)
 import Distribution.Fields.Pretty (PrettyField (..))
 import Distribution.Pretty (ExactPretty (..), Pretty, showFreeText, showFreeTextV3)
@@ -125,7 +124,7 @@ instance FieldGrammar ExactPretty PrettyFieldGrammar where
         let t' = unmarkTriviaTree fn t
          in -- pTrace ("monoidalFieldAla\n" <> show t') $
             -- ppField fn (exactPrettyVersioned v t' (pack' _pack (aview l s)))
-            exactPrettyField fn t' (pack' _pack (aview l s))
+            mconcat $ map (ppTriviaField fn) (exactPrettyVersioned v t' (pack' _pack (aview l s)))
 
   prefixedFields _fnPfx l = PrettyFG (\_ t -> map noPosition . pp . aview l)
     where

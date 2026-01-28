@@ -30,6 +30,13 @@ _×_
                             Map.fromList
                               [
                                 _×_
+                                  `SomeNamespace (PackageName "base")`
+                                  TriviaTree {
+                                    justAnnotation = [
+                                      PostTrivia " "],
+                                    namedAnnotations = Map.fromList
+                                      []},
+                                _×_
                                   `SomeNamespace (IntersectVersionRanges (LaterVersion (mkVersion [4,10])) (EarlierVersion (mkVersion [5])))`
                                   TriviaTree {
                                     justAnnotation = [
@@ -88,6 +95,13 @@ _×_
                             Map.fromList
                               [
                                 _×_
+                                  `SomeNamespace (PackageName "containers")`
+                                  TriviaTree {
+                                    justAnnotation = [
+                                      PostTrivia ""],
+                                    namedAnnotations = Map.fromList
+                                      []},
+                                _×_
                                   `SomeNamespace (OrLaterVersion (mkVersion [0]))`
                                   TriviaTree {
                                     justAnnotation = [IsInjected],
@@ -111,6 +125,13 @@ _×_
                             namedAnnotations =
                             Map.fromList
                               [
+                                _×_
+                                  `SomeNamespace (PackageName "text")`
+                                  TriviaTree {
+                                    justAnnotation = [
+                                      PostTrivia " "],
+                                    namedAnnotations = Map.fromList
+                                      []},
                                 _×_
                                   `SomeNamespace (EarlierVersion (mkVersion [2]))`
                                   TriviaTree {

@@ -31,7 +31,6 @@ import Distribution.Types.UnqualComponentName
 import Distribution.Version
 
 import Distribution.Types.Annotation
-import Distribution.ExactPrettyField
 import Distribution.Fields.Pretty
 
 import Data.List (sortOn, groupBy)
@@ -217,28 +216,7 @@ instance Parsec ExposedModules where
 instance Pretty ExposedModules where
   pretty = showExposedModules . getExposedModules
 
-instance ExactPretty ExposedModules where
-
-instance ExactPrettyField ExposedModules where
-  exactPrettyField fieldName t0 n =
-    let -- tLocal = justAnnotation t0
-        docGroups =
-              groupBy ((==) `on` (fromMaybe 0 . atFieldNth . justAnnotation . fst))
-              $ sortOn (fromMaybe 0 . atFieldNth . justAnnotation . fst)
-              $ map
-                ( \o ->
-                    let tChildren = unmarkTriviaTree o t0
-                    in  (tChildren , o)
-                )
-              $ unpack -- unpack the list
-              $ n
-     in
-        map
-          ( PrettyField Nothing fieldName
-            . Disp.vcat -- TODO(leana8959): should be exact
-            . map (mconcat . map unAnnDoc . uncurry exactPretty)
-          )
-        $ docGroups
+instance ExactPretty ExposedModules
 
 newtype CompatPackageKey = CompatPackageKey {getCompatPackageKey :: String}
   deriving (Ord, Eq, Show)

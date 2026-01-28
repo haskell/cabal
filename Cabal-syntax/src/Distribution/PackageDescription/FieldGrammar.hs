@@ -96,7 +96,6 @@ import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
 
 import Data.List (sortOn, groupBy)
-import Distribution.ExactPrettyField
 
 import Distribution.Types.Annotation
 import Distribution.Types.Dependency
@@ -916,33 +915,8 @@ instance Parsec CompatLicenseFile where
 instance Pretty CompatLicenseFile where
   pretty = pretty . pack' (alaList FSep) . getCompatLicenseFile
 
--- TODO(leana8959): might be important
-instance ExactPretty CompatLicenseFile where
+instance ExactPretty CompatLicenseFile
   
-
-instance
-  (
-  ) => ExactPrettyField (CompatLicenseFile) where
-  exactPrettyField fieldName t0 n =
-    let tLocal = justAnnotation t0
-        docGroups :: [[(TriviaTree, RelativePath Pkg File)]] =
-              groupBy ((==) `on` (fromMaybe 0 . atFieldNth . justAnnotation . fst))
-              $ sortOn (fromMaybe 0 . atFieldNth . justAnnotation . fst)
-              $ map
-                ( \o ->
-                    let tChildren = unmarkTriviaTree o t0
-                    in  (tChildren, o)
-                )
-              $ getCompatLicenseFile -- unpack the list
-              $ n
-     in
-        map
-          ( PrettyField Nothing fieldName
-            . Disp.vcat -- TODO(leana8959): should be exact
-            . map (uncurry $ const pretty)
-          )
-        $ docGroups
-
 -------------------------------------------------------------------------------
 -- vim syntax definitions
 -------------------------------------------------------------------------------

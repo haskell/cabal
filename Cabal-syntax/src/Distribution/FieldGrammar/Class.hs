@@ -1,4 +1,5 @@
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -16,8 +17,6 @@ module Distribution.FieldGrammar.Class
 import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Prelude ()
-
-import Distribution.ExactPrettyField
 
 import Distribution.Types.Annotation
 
@@ -131,7 +130,7 @@ class
   --
   -- /Note:/ 'optionalFieldAla' is a @monoidalField@ with 'Last' monoid.
   monoidalFieldAla
-    :: (c b, ExactPrettyField b, Monoid a, Newtype a b, Namespace a)
+    :: (c b, Monoid a, Newtype a b, Namespace a, Markable b)
     => FieldName
     -- ^ field name
     -> (a -> b)
@@ -229,7 +228,8 @@ optionalFieldDef fn l x = optionalFieldDefAla fn Identity l x
 
 -- | Field which can be define multiple times, and the results are @mappend@ed.
 monoidalField
-  :: (FieldGrammar c g, ExactPrettyField a, c (Identity a), Monoid a, Namespace a)
+  :: (FieldGrammar c g,
+    c (Identity a), Monoid a, Namespace a, Markable (Identity a))
   => FieldName
   -- ^ field name
   -> ALens' s a

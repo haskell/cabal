@@ -39,13 +39,20 @@ class Pretty a where
 data DocAnn a = DocAnn { unAnnDoc :: PP.Doc, docAnn :: a }
   deriving (Eq, Show)
 
+instance (Semigroup a) => Semigroup (DocAnn a) where
+  DocAnn s t <> DocAnn u v = DocAnn (s <> u) (t <> v)
+
+instance (Monoid a) => Monoid (DocAnn a) where
+  mempty = DocAnn mempty mempty
+  mappend = (<>)
+
 -- NOTE(leana8959):
 -- Split due to the Namespace contraint posing problem, not everything is Ord
 -- Doc is not Ord for example
 class Markable a => ExactPretty a where
   exactPretty :: TriviaTree -> a -> [DocAnn TriviaTree]
   default exactPretty :: Pretty a => TriviaTree -> a -> [DocAnn TriviaTree]
-  exactPretty _ x =  [DocAnn (pretty x) mempty ]
+  exactPretty _ x =  [DocAnn (pretty x) mempty]
 
   exactPrettyVersioned :: CabalSpecVersion -> TriviaTree -> a -> [DocAnn TriviaTree]
   exactPrettyVersioned _ = exactPretty
