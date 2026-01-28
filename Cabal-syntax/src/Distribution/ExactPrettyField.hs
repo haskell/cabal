@@ -20,7 +20,7 @@ import qualified Text.PrettyPrint as PP
 -- |
 -- Similar to Pretty but outputs a Field
 -- This is important to implement reordering the field.
--- The existing Prett{y,ier} classe doesn't allow us to do so.
+-- The existing Prett{y,ier} classes don't allow us to do so.
 class (ExactPretty a) => ExactPrettyField a where
   exactPrettyField :: FieldName -> TriviaTree -> a -> [PrettyField (Maybe Position)]
 
