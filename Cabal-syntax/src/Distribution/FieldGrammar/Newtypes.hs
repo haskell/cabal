@@ -271,9 +271,7 @@ instance
   markTriviaTree bs t =
     mconcat
     $ map
-      ( (\namespace -> TriviaTree mempty (M.singleton namespace t))
-          . SomeNamespace
-          . (pack :: a -> b)
+      ( TriviaTree mempty . flip M.singleton t . SomeNamespace . (pack :: a -> b)
       )
       (_getList bs)
 
@@ -281,9 +279,11 @@ instance
     fromMaybe mempty
       $ mconcat
       $ map
-        ( flip M.lookup (namedAnnotations t) . SomeNamespace . (pack :: a -> b))
+        (flip M.lookup (namedAnnotations t) . SomeNamespace . (pack :: a -> b))
         (_getList bs)
 
+-- TODO(leana8959): we are forced to define this and we don't use it
+-- It is due to the ExactPretty constraint.
 instance
   ( Newtype a b
   , ExactPretty b
@@ -293,7 +293,7 @@ instance
   )
   => ExactPretty (List sep b a) where
   exactPretty t0 n =
-    let tLocal = justAnnotation t0
+    let
         docGroups :: [[(TriviaTree, b)]] =
               groupBy ((==) `on` (fromMaybe 0 . atFieldNth . justAnnotation . fst))
               $ sortOn (fromMaybe 0 . atFieldNth . justAnnotation . fst)
@@ -320,26 +320,29 @@ instance
   , ExactPretty b
   , Namespace b
   ) => ExactPrettyField (List sep b a) where
-  exactPrettyField fieldName t0 n =
-    let tLocal = justAnnotation t0
-        docGroups :: [[(TriviaTree, b)]] =
-              groupBy ((==) `on` (fromMaybe 0 . atFieldNth . justAnnotation . fst))
-              $ sortOn (fromMaybe 0 . atFieldNth . justAnnotation . fst)
-              $ map
-                ( \o ->
-                    let n = (pack :: a -> b) o -- pack each element
-                        tChildren = unmarkTriviaTree n t0
-                    in
-                          (tChildren , n)
+  exactPrettyField fieldName t0 list =
+    let docGroups :: [[(TriviaTree, b)]] =
+              groupBy
+                ( (==) `on` (fromMaybe 0 . atFieldNth . justAnnotation . fst)
                 )
-              $ unpack -- unpack the list
-              $ n
+              $ sortOn
+                ( fromMaybe 0 . atFieldNth . justAnnotation . fst
+                )
+              $ map
+                ( \old ->
+                    let new = (pack :: a -> b) old
+                        -- The numbering are associated under the newtype
+                        -- Move them upwards so we can sort
+                        numbering = justAnnotation (unmarkTriviaTree new t0)
+                        t = TriviaTree numbering mempty <> t0
+                    in  (t, new)
+                )
+                (_getList list)
      in
-        map
-          ( PrettyField Nothing fieldName
-            . prettierSep (Proxy :: Proxy sep)
-          )
-        $ docGroups
+          map
+            ( PrettyField Nothing fieldName . prettierSep (Proxy :: Proxy sep)
+            )
+            docGroups
 
 
 -- | Like 'List', but for 'Set'.
