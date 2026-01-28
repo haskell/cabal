@@ -293,6 +293,7 @@ defaultMainHelper hooks args = topHandler (isUserException (Proxy @(VerboseExcep
       case commandParse of
         _
           | fromFlag (globalVersion globalFlags) -> printVersion
+          | fromFlag (globalFullVersion globalFlags) -> printFullVersion
           | fromFlag (globalNumericVersion globalFlags) -> printNumericVersion
         CommandHelp help -> printHelp help
         CommandList opts -> printOptionsList opts
@@ -309,7 +310,16 @@ defaultMainHelper hooks args = topHandler (isUserException (Proxy @(VerboseExcep
       putStrLn $
         "Cabal library version "
           ++ prettyShow cabalVersion
-
+    printFullVersion =
+      putStrLn $
+        "Cabal library version "
+          ++ prettyShow cabalVersion
+          ++ cabalGitInfo'
+          ++ "\nwith "
+          ++ cabalCompilerInfo
+    cabalGitInfo'
+      | null cabalGitInfo = []
+      | otherwise = ' ' : cabalGitInfo
     progs = addKnownPrograms (hookedPrograms hooks) defaultProgramDb
     addAction :: CommandUI flags -> (GlobalFlags -> UserHooks -> flags -> [String] -> IO res) -> Command (GlobalFlags -> IO ())
     addAction cmd action =
