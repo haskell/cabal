@@ -1,3 +1,5 @@
+{-# LANGUAGE DefaultSignatures #-}
+
 module Distribution.Pretty
   ( Pretty (..)
   , prettyShow
@@ -35,9 +37,9 @@ class Pretty a where
 -- NOTE(leana8959):
 -- Split due to the Namespace contraint posing problem, not everything is Ord
 -- Doc is not Ord for example
-class (Namespace a, Pretty a, Markable a) => Prettier a where
-  -- NOTE(leana8959): by default we fall back to the printer that doesn't care about trivia
+class Markable a => Prettier a where
   prettier :: TriviaTree -> a -> PP.Doc
+  default prettier :: Pretty a => TriviaTree -> a -> PP.Doc
   prettier _ = pretty
 
   prettierVersioned :: CabalSpecVersion -> TriviaTree -> a -> PP.Doc
@@ -56,7 +58,7 @@ instance Pretty Int where
 instance Pretty a => Pretty (Identity a) where
   pretty = pretty . runIdentity
 
-instance Prettier a => Prettier (Identity a) where
+instance (Namespace a, Prettier a) => Prettier (Identity a) where
   prettier t x =
     let t' = unmarkTriviaTree x t
     in  prettier t' (runIdentity x)

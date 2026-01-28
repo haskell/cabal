@@ -9,6 +9,7 @@ module Distribution.FieldGrammar.Pretty
   ( PrettyFieldGrammar (..)
   , prettyFieldGrammar
   , prettierFieldGrammar
+  , prettyAnnotatedFieldGrammar
   ) where
 
 import Distribution.CabalSpecVersion

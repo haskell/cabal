@@ -253,11 +253,8 @@ instance
   , Typeable sep
   , TriviaSep sep
   , ExactParsec b
-  , Namespace a
-  , Typeable b
-  , Ord b
-  , Show b
   , Markable b
+  , Namespace b
   ) => ExactParsec (List sep b a) where
   exactParsec = do
     (ts, bs) <- unzip <$> triviaParseSep (Proxy :: Proxy sep) exactParsec
@@ -268,12 +265,8 @@ instance (Newtype a b, Sep sep, Pretty b) => Pretty (List sep b a) where
 
 -- The inner type is parsed as b, so we wrap it and mark with that data.
 instance
-  ( Typeable sep
-  , Typeable b
-  , Newtype a b
-  , Namespace a
+  ( Newtype a b
   , Namespace b
-  -- ^ This constraint is bad, think about how to remove it
   ) => Markable (List sep b a) where
   markTriviaTree bs t =
     mconcat
@@ -288,17 +281,15 @@ instance
     fromMaybe mempty
       $ mconcat
       $ map
-        ( flip M.lookup (namedAnnotations t) . SomeNamespace)
+        ( flip M.lookup (namedAnnotations t) . SomeNamespace . (pack :: a -> b))
         (_getList bs)
 
 instance
   ( Newtype a b
-  , Typeable sep
-  , Sep sep
-  , TriviaSep sep
   , Prettier b
-  , Namespace a
-  , Markable a
+  , TriviaSep sep
+  , Namespace b
+  , Markable b
   )
   => Prettier (List sep b a) where
   prettier t0 n =
@@ -327,10 +318,7 @@ instance
   , Sep sep
   , TriviaSep sep
   , Prettier b
-  , Typeable b
-  , Typeable sep
-  , Namespace a
-  , Markable a
+  , Namespace b
   ) => PrettierField (List sep b a) where
   prettierField fieldName t0 n =
     let tLocal = justAnnotation t0
@@ -473,7 +461,7 @@ instance Pretty a => Pretty (MQuoted a) where
   pretty = pretty . unpack
 
 instance (Markable a, Namespace a) => Markable (MQuoted a)
-instance Prettier a => Prettier (MQuoted a) where
+instance (Namespace a, Prettier a) => Prettier (MQuoted a) where
   prettier t = prettier t . unpack
 
 -- | Filepath are parsed as 'Token'.

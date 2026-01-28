@@ -101,7 +101,7 @@ import qualified Text.Parsec as Parsec
 class Parsec a where
   parsec :: CabalParsing m => m a
 
-class Namespace a => ExactParsec a where
+class ExactParsec a where
   exactParsec :: CabalParsing m => m (TriviaTree, a)
 
 -- | Parsing class which
@@ -268,7 +268,7 @@ runParsecParser' v p n = Parsec.runParser (unPP p v <* P.eof) [] n
 
 -- Keep the pattern consistent. Even if Identity is id we wrap the trivia tree.
 instance Parsec a => Parsec (Identity a) where parsec = parsec
-instance (Markable a, ExactParsec a) => ExactParsec (Identity a) where
+instance (Namespace a, Markable a, ExactParsec a) => ExactParsec (Identity a) where
   exactParsec = do
     (t, x :: a) <- exactParsec
     let x' = Identity x
