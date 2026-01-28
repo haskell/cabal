@@ -48,6 +48,7 @@ import Distribution.Types.Dependency
 import Distribution.FieldGrammar
 import Distribution.FieldGrammar.Newtypes
 import Distribution.FieldGrammar.Parsec
+import Distribution.FieldGrammar.Pretty
 import Distribution.Fields
 import Distribution.Fields.Field
 import Distribution.CabalSpecVersion
@@ -402,7 +403,7 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
 {- FOURMOLU_ENABLE -}
 
 parsecPrettyRoundTripTests :: TestTree
-parsecPrettyRoundTripTests = testGroup "parsecpretty-roundtrip"
+parsecPrettyRoundTripTests = testGroup "parsecpretty-roundtrip" $
   [ parsecPrettyRoundTripTest (Proxy :: Proxy VersionRange) "VersionRange1.fragment"
   , parsecPrettyRoundTripTest (Proxy :: Proxy VersionRange) "VersionRange2.fragment"
   , parsecPrettyRoundTripTest (Proxy :: Proxy VersionRange) "VersionRange3.fragment"
@@ -419,6 +420,73 @@ parsecPrettyRoundTripTests = testGroup "parsecpretty-roundtrip"
       (Proxy :: Proxy (List CommaVCat (Identity Dependency) Dependency))
       "List_CommaVCat_Identity_Dependency1.fragment"
   ]
+
+  -- ++ ( map
+  --       ( fieldGrammarRoundTripTest
+  --         (monoidalFieldAla "build-depends" formatDependencyList id :: ParsecFieldGrammar' [Dependency])
+  --         (monoidalFieldAla "build-depends" formatDependencyList id :: PrettyFieldGrammar' [Dependency])
+  --       )
+  --       [ "build-depends1.fragment"
+  --       , "build-depends2.fragment"
+  --       , "build-depends3.fragment"
+  --       ]
+  --    )
+
+-- |
+-- Test whether the leaf Parsec and Pretty instances are dual of each other.
+fieldGrammarRoundTripTest
+  :: forall a
+   . (ExactParsec a)
+  => ParsecFieldGrammar' a
+  -> PrettyFieldGrammar' a
+  -> FilePath
+  -> TestTree
+fieldGrammarRoundTripTest parsec pretty fp = testCase fp $ do
+  x <- BS.readFile input
+  let fs = case readFields x of
+        Left err -> fail $ unlines $ "readFields error:" : show err : []
+        Right ok -> ok
+
+  let (fieldMap, _) = takeFields fs
+  let (_warns, res) =
+          runParseResult
+          $ fieldGrammarParser parsec cabalSpecLatest fieldMap 
+
+  (trivia, parsed) <- case res of
+        Left _ -> fail "fieldParser failed unrecoverably"
+        Right ok -> pure ok
+
+  let prettyFields = prettyAnnotatedFieldGrammar cabalSpecLatest trivia pretty parsed
+  let y =
+        BS8.pack
+        $ showFields (const NoComment)
+        $ prettyFields
+
+{- FOURMOLU_DISABLE -}
+  unless (x == y) $
+#ifdef MIN_VERSION_tree_diff
+      assertFailure $ unlines
+          [ "re-parsed doesn't match"
+          , show $ ansiWlEditExpr $ ediff x y
+          ]
+#else
+      assertFailure $ unlines
+          [ "re-parsed doesn't match"
+          , "expected"
+          , show x
+          , "actual"
+          , show y
+          ]
+#endif
+  where
+    parse :: String -> IO (TriviaTree, a)
+    parse c = do
+        let parseResult :: Either String (TriviaTree, a) = eitherTriviaParsec c
+        case parseResult of
+          Left err -> fail $ unlines $ "ERROR" : show err : []
+          Right ok -> pure $ ok
+    input = "tests" </> "ParserTests" </> "trivia" </> fp
+{- FOURMOLU_ENABLE -}
 
 -- |
 -- Test whether the leaf Parsec and Pretty instances are dual of each other.

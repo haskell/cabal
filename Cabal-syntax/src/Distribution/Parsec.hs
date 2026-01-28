@@ -104,6 +104,9 @@ class Parsec a where
 class ExactParsec a where
   exactParsec :: CabalParsing m => m (TriviaTree, a)
 
+-- -- FIXME(leana8959): This instance changes how things are parsed
+-- instance ExactParsec a => ExactParsec [a]
+
 -- | Parsing class which
 --
 -- * can report Cabal parser warnings.
