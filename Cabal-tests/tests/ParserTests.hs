@@ -328,6 +328,7 @@ fieldGrammarGoldenTests = testGroup "fieldgrammar-golden"
           , "build-depends2.fragment"
           , "build-depends3.fragment"
           , "build-depends4.fragment"
+          , "build-depends5.fragment"
           ]
   )
 
@@ -435,6 +436,7 @@ fieldGrammarRoundTripTests = testGroup "fieldgrammar-roundtrip" $
       , "build-depends2.fragment"
       , "build-depends3.fragment"
       , "build-depends4.fragment"
+      , "build-depends5.fragment"
       ]
    )
 -- TODO(leana8959): we need to detect indentation of field content
