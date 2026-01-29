@@ -301,7 +301,6 @@ instance FieldGrammar ExactParsec ParsecFieldGrammar where
         let t' = fromNamedTrivia x [FieldNth n, ExactPosition pos] <> t
         pure (t', x)
 
-  -- NOTE(leana8959): Field is exactly sent out so there's no trivia?
   prefixedFields fnPfx _extract = ParsecFG mempty (Set.singleton fnPfx) (\_ fs -> pure (mempty, parser fs))
     where
       parser :: Fields Position -> [(String, String)]

@@ -283,7 +283,6 @@ instance ExactPretty VersionRange where
     where
       singletonNoAnn x = [DocAnn x mempty]
 
--- TODO(leana8959): unpack trivium we have saved
 prettyVersionRange :: TriviaTree -> VersionRange -> Disp.Doc
 prettyVersionRange t0 vr = prettyVersionRange' t0 0 vr
 
