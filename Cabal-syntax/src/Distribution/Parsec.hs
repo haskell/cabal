@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
@@ -103,6 +104,8 @@ class Parsec a where
 
 class ExactParsec a where
   exactParsec :: CabalParsing m => m (TriviaTree, a)
+  default exactParsec :: (Parsec a, CabalParsing m) => m (TriviaTree, a)
+  exactParsec = (mempty,) <$> parsec
 
 -- | Parsing class which
 --
