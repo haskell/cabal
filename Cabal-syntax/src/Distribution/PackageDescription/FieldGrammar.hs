@@ -1,13 +1,13 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeOperators #-}
 
 -- | 'GenericPackageDescription' Field descriptions
@@ -16,7 +16,6 @@ module Distribution.PackageDescription.FieldGrammar
     packageDescriptionFieldGrammar
   , CompatDataDir (..)
   , CompatLicenseFile (..)
-
   , parsecDependencyList
   , prettyDependencyList
 
@@ -95,17 +94,17 @@ import Distribution.Pretty (ExactPretty (..), Pretty (..), prettyShow, showToken
 import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
 
-import Data.List (sortOn, groupBy)
+import Data.List (groupBy, sortOn)
 
 import Distribution.Types.Annotation
 import Distribution.Types.Dependency
 
-import qualified Text.PrettyPrint as Disp
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.Map as M
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.SPDX as SPDX
 import qualified Distribution.Types.Lens as L
+import qualified Text.PrettyPrint as Disp
 
 -------------------------------------------------------------------------------
 -- PackageDescription
@@ -880,7 +879,7 @@ newtype CompatDataDir = CompatDataDir {getCompatDataDir :: SymbolicPath Pkg (Dir
 
 instance Newtype (SymbolicPath Pkg (Dir DataDir)) CompatDataDir
 
-instance ExactParsec CompatDataDir where 
+instance ExactParsec CompatDataDir
 instance Parsec CompatDataDir where
   parsec = do
     token <- parsecToken
@@ -892,8 +891,7 @@ instance Pretty CompatDataDir where
   pretty = showToken . getSymbolicPath . getCompatDataDir
 
 instance Markable CompatDataDir
-instance ExactPretty CompatDataDir where
-
+instance ExactPretty CompatDataDir
 
 newtype CompatLicenseFile = CompatLicenseFile {getCompatLicenseFile :: [RelativePath Pkg File]}
   deriving (Ord, Eq, Show)
@@ -902,7 +900,7 @@ instance Newtype [RelativePath Pkg File] CompatLicenseFile
 
 -- TODO
 instance Markable CompatLicenseFile
-instance ExactParsec CompatLicenseFile where 
+instance ExactParsec CompatLicenseFile
 instance Parsec CompatLicenseFile where
   parsec = emptyToken <|> CompatLicenseFile . unpack' (alaList FSep) <$> parsec
     where

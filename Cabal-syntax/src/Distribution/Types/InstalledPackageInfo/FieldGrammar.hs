@@ -1,10 +1,10 @@
 {-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 
 module Distribution.Types.InstalledPackageInfo.FieldGrammar
   ( ipiFieldGrammar
@@ -30,11 +30,11 @@ import Distribution.Types.MungedPackageName
 import Distribution.Types.UnqualComponentName
 import Distribution.Version
 
-import Distribution.Types.Annotation
 import Distribution.Fields.Pretty
+import Distribution.Types.Annotation
 
-import Data.List (sortOn, groupBy)
 import qualified Data.Char as Char
+import Data.List (groupBy, sortOn)
 import qualified Data.Map as Map
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.SPDX as SPDX
@@ -209,7 +209,7 @@ newtype ExposedModules = ExposedModules {getExposedModules :: [ExposedModule]}
 instance Newtype [ExposedModule] ExposedModules
 
 instance Markable ExposedModules
-instance ExactParsec ExposedModules where 
+instance ExactParsec ExposedModules
 instance Parsec ExposedModules where
   parsec = ExposedModules <$> parsecOptCommaList parsec
 
@@ -227,10 +227,9 @@ instance Pretty CompatPackageKey where
   pretty = Disp.text . getCompatPackageKey
 
 instance Markable CompatPackageKey
-instance ExactPretty CompatPackageKey where
+instance ExactPretty CompatPackageKey
 
-
-instance ExactParsec CompatPackageKey where 
+instance ExactParsec CompatPackageKey
 instance Parsec CompatPackageKey where
   parsec = CompatPackageKey <$> P.munch1 uid_char
     where
@@ -245,11 +244,9 @@ instance Markable InstWith
 instance Pretty InstWith where
   pretty = dispOpenModuleSubst . Map.fromList . getInstWith
 
-instance ExactPretty InstWith where
+instance ExactPretty InstWith
 
-
-instance ExactParsec InstWith where
-  
+instance ExactParsec InstWith
 
 instance Parsec InstWith where
   parsec = InstWith . Map.toList <$> parsecOpenModuleSubst
@@ -260,8 +257,7 @@ newtype SpecLicenseLenient = SpecLicenseLenient {getSpecLicenseLenient :: Either
 
 instance Newtype (Either SPDX.License License) SpecLicenseLenient
 
-instance ExactParsec SpecLicenseLenient where
-  
+instance ExactParsec SpecLicenseLenient
 
 instance Parsec SpecLicenseLenient where
   parsec = fmap SpecLicenseLenient $ Left <$> P.try parsec <|> Right <$> parsec
@@ -270,8 +266,7 @@ instance Pretty SpecLicenseLenient where
   pretty = either pretty pretty . getSpecLicenseLenient
 
 instance Markable SpecLicenseLenient
-instance ExactPretty SpecLicenseLenient where
-
+instance ExactPretty SpecLicenseLenient
 
 -------------------------------------------------------------------------------
 -- Basic fields

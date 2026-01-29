@@ -6,7 +6,6 @@ module Distribution.Pretty
   , defaultStyle
   , flatStyle
   , ExactPretty (..)
-
   , DocAnn (..)
 
     -- * Utilities
@@ -36,13 +35,13 @@ class Pretty a where
   prettyVersioned :: CabalSpecVersion -> a -> PP.Doc
   prettyVersioned _ = pretty
 
-data DocAnn a = DocAnn { unAnnDoc :: PP.Doc, docAnn :: a }
+data DocAnn a = DocAnn {unAnnDoc :: PP.Doc, docAnn :: a}
   deriving (Eq, Show)
 
-instance (Semigroup a) => Semigroup (DocAnn a) where
+instance Semigroup a => Semigroup (DocAnn a) where
   DocAnn s t <> DocAnn u v = DocAnn (s <> u) (t <> v)
 
-instance (Monoid a) => Monoid (DocAnn a) where
+instance Monoid a => Monoid (DocAnn a) where
   mempty = DocAnn mempty mempty
   mappend = (<>)
 
@@ -52,7 +51,7 @@ instance (Monoid a) => Monoid (DocAnn a) where
 class Markable a => ExactPretty a where
   exactPretty :: TriviaTree -> a -> [DocAnn TriviaTree]
   default exactPretty :: Pretty a => TriviaTree -> a -> [DocAnn TriviaTree]
-  exactPretty _ x =  [DocAnn (pretty x) mempty]
+  exactPretty _ x = [DocAnn (pretty x) mempty]
 
   exactPrettyVersioned :: CabalSpecVersion -> TriviaTree -> a -> [DocAnn TriviaTree]
   exactPrettyVersioned _ = exactPretty
@@ -73,7 +72,7 @@ instance Pretty a => Pretty (Identity a) where
 instance (Namespace a, ExactPretty a) => ExactPretty (Identity a) where
   exactPretty t x =
     let t' = unmarkTriviaTree x t
-    in  exactPretty t' (runIdentity x)
+     in exactPretty t' (runIdentity x)
 
 prettyShow :: Pretty a => a -> String
 prettyShow = PP.renderStyle defaultStyle . pretty

@@ -105,14 +105,13 @@ instance ExactPretty Dependency where
         pver
           | isAnyVersionLight vRange = PP.empty
           | otherwise = justMergedDoc $ exactPretty t1 vRange
-     in
-        singletonNoAnn
-        $ triviaToDoc tLocal
-        $ triviaToDoc
-            libNameTrivia
-            ( prettierLibraryNames t1 name (NES.toNonEmpty sublibs)
-            )
-          <> pver
+     in singletonNoAnn $
+          triviaToDoc tLocal $
+            triviaToDoc
+              libNameTrivia
+              ( prettierLibraryNames t1 name (NES.toNonEmpty sublibs)
+              )
+              <> pver
 
 -- |
 --
@@ -158,8 +157,8 @@ instance ExactParsec Dependency where
 
     s <- spaces' -- https://github.com/haskell/cabal/issues/5846
     let spaceTrivia =
-          markTriviaTree name
-          $ TriviaTree [PostTrivia s] mempty
+          markTriviaTree name $
+            TriviaTree [PostTrivia s] mempty
 
     (verTrivia, ver) <-
       let t = fromNamedTrivia anyVersion [IsInjected]

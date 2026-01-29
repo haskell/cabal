@@ -1,8 +1,8 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 
 -----------------------------------------------------------------------------
 
@@ -30,9 +30,9 @@ module Distribution.ModuleName
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Types.Annotation
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.Types.Annotation
 import Distribution.Utils.ShortText (ShortText, fromShortText, toShortText)
 import System.FilePath (pathSeparator)
 
@@ -55,7 +55,7 @@ instance NFData ModuleName where
 
 instance Markable ModuleName
 instance Pretty ModuleName where pretty = Disp.text . unModuleName
-instance ExactPretty ModuleName where
+instance ExactPretty ModuleName
 
 instance Parsec ModuleName where parsec = parsecModuleName
 instance ExactParsec ModuleName

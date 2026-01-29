@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TupleSections #-}
 
 module Distribution.Types.UnqualComponentName
   ( UnqualComponentName
@@ -18,8 +18,8 @@ import Distribution.Utils.ShortText
 
 import Distribution.Parsec
 import Distribution.Pretty
-import Distribution.Types.PackageName
 import Distribution.Types.Annotation
+import Distribution.Types.PackageName
 
 -- | An unqualified component name, for any kind of component.
 --
@@ -74,10 +74,9 @@ instance Pretty UnqualComponentName where
   pretty = showToken . unUnqualComponentName
 
 instance Markable UnqualComponentName
-instance ExactPretty UnqualComponentName where
+instance ExactPretty UnqualComponentName
 
-
-instance ExactParsec UnqualComponentName where 
+instance ExactParsec UnqualComponentName
 instance Parsec UnqualComponentName where
   parsec = mkUnqualComponentName <$> parsecUnqualComponentName
 

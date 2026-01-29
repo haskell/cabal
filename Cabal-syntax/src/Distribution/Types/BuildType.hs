@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections #-}
 
 module Distribution.Types.BuildType
   ( BuildType (..)
@@ -46,8 +46,7 @@ instance Pretty BuildType where
 
 instance ExactParsec BuildType
 instance Markable BuildType
-instance ExactPretty BuildType where
-
+instance ExactPretty BuildType
 
 instance Parsec BuildType where
   parsec = do

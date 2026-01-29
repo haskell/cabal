@@ -1,11 +1,11 @@
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 
 -- |
 -- This module defines 'TriviaTree', a recursive map structure.
@@ -29,9 +29,7 @@ module Distribution.Types.Annotation
   , Trivia
   , Trivium (..)
   , TriviaTree (..)
-
   , Markable (..)
-
   , fromNamedTrivia
   , emptyTriviaTree
   , atFieldNth
@@ -40,16 +38,16 @@ module Distribution.Types.Annotation
   , triviaToDoc
   , triviumToDoc
   )
-  where
+where
 
 import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Parsec.Position
 
-import Data.Typeable
 import Data.Kind
 import Data.Monoid
+import Data.Typeable
 
 import qualified Data.Map as M
 import qualified Text.PrettyPrint as Disp
@@ -84,11 +82,11 @@ isNamespace a someB = maybe False (== a) (fromNamespace someB)
 
 class Markable a where
   markTriviaTree :: a -> TriviaTree -> TriviaTree
-  default markTriviaTree :: (Namespace a) => a -> TriviaTree -> TriviaTree
+  default markTriviaTree :: Namespace a => a -> TriviaTree -> TriviaTree
   markTriviaTree x t = TriviaTree mempty (M.singleton (SomeNamespace x) t)
 
   unmarkTriviaTree :: a -> TriviaTree -> TriviaTree
-  default unmarkTriviaTree :: (Namespace a) => a -> TriviaTree -> TriviaTree
+  default unmarkTriviaTree :: Namespace a => a -> TriviaTree -> TriviaTree
   unmarkTriviaTree x t = fromMaybe mempty (M.lookup (SomeNamespace x) (namedAnnotations t))
 
 instance Markable BS.ByteString
@@ -97,7 +95,7 @@ instance (Markable a, Namespace a) => Markable (Last a)
 
 -- This instance is for String and alike
 -- For actual lists where multiplicity matters, see List sep b a
-instance (Typeable a, Namespace a) => Markable [a] where
+instance (Typeable a, Namespace a) => Markable [a]
 
 instance (Namespace a, Markable a, Namespace b, Markable b) => Markable (a, b)
 
@@ -129,7 +127,7 @@ instance Semigroup TriviaTree where
 instance Monoid TriviaTree where
   mempty = emptyTriviaTree
 
-fromNamedTrivia :: (Markable a) => a -> Trivia -> TriviaTree
+fromNamedTrivia :: Markable a => a -> Trivia -> TriviaTree
 fromNamedTrivia x ts = markTriviaTree x (TriviaTree ts mempty)
 
 emptyTriviaTree :: TriviaTree
@@ -137,19 +135,19 @@ emptyTriviaTree = TriviaTree mempty mempty
 
 atFieldNth :: Trivia -> Maybe Int
 atFieldNth [] = Nothing
-atFieldNth ( t : ts ) = case t of
+atFieldNth (t : ts) = case t of
   FieldNth n -> Just n
   _ -> atFieldNth ts
 
 atNth :: Trivia -> Maybe Int
 atNth [] = Nothing
-atNth ( t : ts ) = case t of
+atNth (t : ts) = case t of
   Nth n -> Just n
   _ -> atNth ts
 
 atPosition :: Trivia -> Maybe Position
 atPosition [] = Nothing
-atPosition ( t : ts ) = case t of
+atPosition (t : ts) = case t of
   ExactPosition pos -> Just pos
   _ -> atPosition ts
 

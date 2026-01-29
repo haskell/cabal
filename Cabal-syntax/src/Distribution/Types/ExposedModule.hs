@@ -32,8 +32,7 @@ instance Pretty ExposedModule where
           Nothing -> Disp.empty
       ]
 
-instance ExactPretty ExposedModule where
-  
+instance ExactPretty ExposedModule
 
 instance Parsec ExposedModule where
   parsec = do

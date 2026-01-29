@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TupleSections #-}
 
 module Distribution.Types.SourceRepo
   ( SourceRepo (..)
@@ -170,8 +170,7 @@ instance Pretty RepoKind where
   pretty (RepoKindUnknown other) = Disp.text other
 
 instance Markable RepoKind
-instance ExactPretty RepoKind where
-
+instance ExactPretty RepoKind
 
 instance Parsec RepoKind where
   parsec = classifyRepoKind <$> P.munch1 isIdent
@@ -182,7 +181,7 @@ classifyRepoKind name = case lowercase name of
   "this" -> RepoThis
   _ -> RepoKindUnknown name
 
-instance ExactParsec RepoType where 
+instance ExactParsec RepoType
 instance Parsec RepoType where
   parsec = classifyRepoType <$> P.munch1 isIdent
 
@@ -191,8 +190,7 @@ instance Pretty RepoType where
   pretty (KnownRepoType t) = pretty t
 
 instance Markable RepoType
-instance ExactPretty RepoType where
-
+instance ExactPretty RepoType
 
 classifyRepoType :: String -> RepoType
 classifyRepoType s =

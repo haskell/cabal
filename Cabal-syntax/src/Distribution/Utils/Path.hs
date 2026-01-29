@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -7,6 +6,7 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RoleAnnotations #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -208,7 +208,8 @@ newtype SymbolicPathX (allowAbsolute :: AllowAbsolute) (from :: Type) (to :: Fil
   deriving (Generic, Show, Read, Eq, Ord, Data)
 
 instance
-  forall (allowAbsolute :: AllowAbsolute) from to. (Typeable allowAbsolute, Typeable from, Typeable to)
+  forall (allowAbsolute :: AllowAbsolute) from to
+   . (Typeable allowAbsolute, Typeable from, Typeable to)
   => Markable (SymbolicPathX allowAbsolute from to)
 
 type role SymbolicPathX nominal nominal nominal

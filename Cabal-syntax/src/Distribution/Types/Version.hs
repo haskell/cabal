@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TupleSections #-}
 
 module Distribution.Types.Version
   ( -- * Package versions
@@ -101,14 +101,14 @@ instance ExactPretty Version where
   exactPretty t0 ver =
     let t = unmarkTriviaTree ver t0
         tLocal = justAnnotation t
-    in    ((:[]) . flip DocAnn mempty)
-          $ triviaToDoc tLocal
-          $ Disp.hcat
-          $ Disp.punctuate
-              (Disp.char '.')
-              (map Disp.int $ versionNumbers ver)
+     in ((: []) . flip DocAnn mempty) $
+          triviaToDoc tLocal $
+            Disp.hcat $
+              Disp.punctuate
+                (Disp.char '.')
+                (map Disp.int $ versionNumbers ver)
 
-instance ExactParsec Version where 
+instance ExactParsec Version
 instance Parsec Version where
   parsec = mkVersion <$> toList <$> P.sepByNonEmpty versionDigitParser (P.char '.') <* tags
     where

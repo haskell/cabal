@@ -228,8 +228,12 @@ optionalFieldDef fn l x = optionalFieldDefAla fn Identity l x
 
 -- | Field which can be define multiple times, and the results are @mappend@ed.
 monoidalField
-  :: (FieldGrammar c g,
-    c (Identity a), Monoid a, Namespace a, Markable (Identity a))
+  :: ( FieldGrammar c g
+     , c (Identity a)
+     , Monoid a
+     , Namespace a
+     , Markable (Identity a)
+     )
   => FieldName
   -- ^ field name
   -> ALens' s a

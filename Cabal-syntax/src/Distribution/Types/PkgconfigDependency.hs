@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TupleSections #-}
 
 module Distribution.Types.PkgconfigDependency
   ( PkgconfigDependency (..)
@@ -9,9 +9,9 @@ module Distribution.Types.PkgconfigDependency
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Distribution.Types.Annotation
 import Distribution.Types.PkgconfigName
 import Distribution.Types.PkgconfigVersionRange
-import Distribution.Types.Annotation
 
 import Distribution.Parsec
 import Distribution.Pretty
@@ -36,11 +36,10 @@ instance Pretty PkgconfigDependency where
   pretty (PkgconfigDependency name ver) = pretty name <+> pretty ver
 
 instance Markable PkgconfigDependency
-instance ExactPretty PkgconfigDependency where
-
+instance ExactPretty PkgconfigDependency
 
 -- TODO(leana8959): dropped spaces
-instance ExactParsec PkgconfigDependency where 
+instance ExactParsec PkgconfigDependency
 instance Parsec PkgconfigDependency where
   parsec = do
     name <- parsec

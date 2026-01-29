@@ -176,7 +176,7 @@ warnMultipleSingularFields fn (x : xs) = do
     "The field " <> show fn <> " is specified more than once at positions " ++ intercalate ", " (map showPos (pos : poss))
 
 instance FieldGrammar ExactParsec ParsecFieldGrammar where
-  withScope :: (Markable ns) => ns -> ParsecFieldGrammar s a -> ParsecFieldGrammar s a
+  withScope :: Markable ns => ns -> ParsecFieldGrammar s a -> ParsecFieldGrammar s a
   withScope ns (ParsecFG s s' parser) =
     ParsecFG s s' $ \v fs -> do
       -- Run the inner parser and mark its annotation

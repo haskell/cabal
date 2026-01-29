@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections #-}
 
 module Distribution.Types.ForeignLibOption
   ( ForeignLibOption (..)
@@ -30,8 +30,7 @@ instance Pretty ForeignLibOption where
   pretty ForeignLibStandalone = Disp.text "standalone"
 
 instance Markable ForeignLibOption
-instance ExactPretty ForeignLibOption where
-
+instance ExactPretty ForeignLibOption
 
 instance ExactParsec ForeignLibOption
 instance Parsec ForeignLibOption where

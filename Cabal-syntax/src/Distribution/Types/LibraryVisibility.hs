@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections #-}
 
 module Distribution.Types.LibraryVisibility
   ( LibraryVisibility (..)
@@ -32,10 +32,9 @@ instance Pretty LibraryVisibility where
   pretty LibraryVisibilityPrivate = Disp.text "private"
 
 instance Markable LibraryVisibility
-instance ExactPretty LibraryVisibility where
+instance ExactPretty LibraryVisibility
 
-
-instance ExactParsec LibraryVisibility where 
+instance ExactParsec LibraryVisibility
 instance Parsec LibraryVisibility where
   parsec = do
     name <- P.munch1 isAlpha

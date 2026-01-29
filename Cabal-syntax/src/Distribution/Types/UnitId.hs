@@ -1,8 +1,8 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TupleSections #-}
 
 module Distribution.Types.UnitId
   ( UnitId
@@ -23,9 +23,9 @@ import Prelude ()
 import qualified Distribution.Compat.CharParsing as P
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.Types.Annotation
 import Distribution.Types.ComponentId
 import Distribution.Types.PackageId
-import Distribution.Types.Annotation
 
 import Text.PrettyPrint (text)
 
@@ -77,10 +77,9 @@ instance Pretty UnitId where
   pretty = text . unUnitId
 
 instance Markable UnitId
-instance ExactPretty UnitId where
+instance ExactPretty UnitId
 
-
-instance ExactParsec UnitId where 
+instance ExactParsec UnitId
 
 -- | The textual format for 'UnitId' coincides with the format
 -- GHC accepts for @-package-id@.

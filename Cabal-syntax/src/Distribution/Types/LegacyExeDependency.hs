@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TupleSections #-}
 
 module Distribution.Types.LegacyExeDependency
   ( LegacyExeDependency (..)
@@ -11,8 +11,8 @@ import Prelude ()
 
 import Distribution.Parsec
 import Distribution.Pretty
-import Distribution.Version (VersionRange, anyVersion)
 import Distribution.Types.Annotation
+import Distribution.Version (VersionRange, anyVersion)
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
@@ -40,10 +40,9 @@ instance Pretty LegacyExeDependency where
 
 -- TODO(leana8959): maybe important
 instance Markable LegacyExeDependency
-instance ExactPretty LegacyExeDependency where
+instance ExactPretty LegacyExeDependency
 
-
-instance ExactParsec LegacyExeDependency where 
+instance ExactParsec LegacyExeDependency
 instance Parsec LegacyExeDependency where
   parsec = do
     name <- parsecMaybeQuoted nameP

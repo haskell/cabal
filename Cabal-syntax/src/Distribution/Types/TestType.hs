@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections #-}
 
 module Distribution.Types.TestType
   ( TestType (..)
@@ -14,9 +14,9 @@ import Distribution.Compat.Prelude
 import Distribution.Version
 import Prelude ()
 
-import Distribution.Types.Annotation
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.Types.Annotation
 import Text.PrettyPrint (char, text)
 
 -- | The \"test-type\" field in the test suite stanza.
@@ -52,10 +52,9 @@ instance Pretty TestType where
   pretty (TestTypeUnknown name ver) = text name <<>> char '-' <<>> pretty ver
 
 instance Markable TestType
-instance ExactPretty TestType where
+instance ExactPretty TestType
 
-
-instance ExactParsec TestType where 
+instance ExactParsec TestType
 instance Parsec TestType where
   parsec = parsecStandard $ \ver name -> case name of
     "exitcode-stdio" -> TestTypeExe ver

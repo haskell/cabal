@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TupleSections #-}
 
 module Distribution.Types.ExeDependency
   ( ExeDependency (..)
@@ -12,11 +12,11 @@ import Prelude ()
 
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.Types.Annotation
 import Distribution.Types.ComponentName
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
 import Distribution.Version (VersionRange, anyVersion, isAnyVersion)
-import Distribution.Types.Annotation
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as PP
@@ -43,8 +43,7 @@ instance Pretty ExeDependency where
 
 -- TODO(leana8959): maybe important
 instance Markable ExeDependency
-instance ExactPretty ExeDependency where
-
+instance ExactPretty ExeDependency
 
 -- |
 --
@@ -67,8 +66,8 @@ instance ExactPretty ExeDependency where
 --
 -- >>> simpleParsec "happy :happy >= 1.19.12" :: Maybe ExeDependency
 -- Nothing
+instance ExactParsec ExeDependency
 
-instance ExactParsec ExeDependency where 
 instance Parsec ExeDependency where
   parsec = do
     name <- parsec

@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections #-}
 
 module Distribution.Types.BenchmarkType
   ( BenchmarkType (..)
@@ -42,10 +42,9 @@ instance Pretty BenchmarkType where
   pretty (BenchmarkTypeUnknown name ver) = text name <<>> char '-' <<>> pretty ver
 
 instance Markable BenchmarkType
-instance ExactPretty BenchmarkType where
+instance ExactPretty BenchmarkType
 
-
-instance ExactParsec BenchmarkType where 
+instance ExactParsec BenchmarkType
 instance Parsec BenchmarkType where
   parsec = parsecStandard $ \ver name -> case name of
     "exitcode-stdio" -> BenchmarkTypeExe ver

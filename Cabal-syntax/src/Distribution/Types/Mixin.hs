@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TupleSections #-}
 
 module Distribution.Types.Mixin
   ( Mixin (..)
@@ -14,11 +14,11 @@ import Prelude ()
 import Distribution.CabalSpecVersion
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.Types.Annotation
 import Distribution.Types.IncludeRenaming
 import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
-import Distribution.Types.Annotation
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as PP
@@ -46,8 +46,7 @@ instance Pretty Mixin where
 
 -- TODO(leana8959): maybe import
 instance Markable Mixin
-instance ExactPretty Mixin where
-
+instance ExactPretty Mixin
 
 -- |
 --
@@ -64,7 +63,8 @@ instance ExactPretty Mixin where
 --
 -- >>> map (`simpleParsec'` "mylib:sub") [CabalSpecV3_0, CabalSpecV3_4] :: [Maybe Mixin]
 -- [Nothing,Just (Mixin {mixinPackageName = PackageName "mylib", mixinLibraryName = LSubLibName (UnqualComponentName "sub"), mixinIncludeRenaming = IncludeRenaming {includeProvidesRn = DefaultRenaming, includeRequiresRn = DefaultRenaming}})]
-instance ExactParsec Mixin where 
+instance ExactParsec Mixin
+
 instance Parsec Mixin where
   parsec = do
     pn <- parsec

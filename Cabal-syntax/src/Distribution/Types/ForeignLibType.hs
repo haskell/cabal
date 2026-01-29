@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections #-}
 
 module Distribution.Types.ForeignLibType
   ( ForeignLibType (..)
@@ -37,10 +37,9 @@ instance Pretty ForeignLibType where
   pretty ForeignLibTypeUnknown = Disp.text "unknown"
 
 instance Markable ForeignLibType
-instance ExactPretty ForeignLibType where
+instance ExactPretty ForeignLibType
 
-
-instance ExactParsec ForeignLibType where 
+instance ExactParsec ForeignLibType
 instance Parsec ForeignLibType where
   parsec = do
     name <- P.munch1 (\c -> isAlphaNum c || c == '-')

@@ -1,7 +1,7 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TupleSections #-}
 
 module Distribution.Types.ForeignLib
   ( ForeignLib (..)
@@ -96,10 +96,9 @@ instance Pretty LibVersionInfo where
     Disp.hcat $ Disp.punctuate (Disp.char ':') $ map Disp.int [c, r, a]
 
 -- TODO(leana8959): maybe important
-instance ExactPretty LibVersionInfo where
+instance ExactPretty LibVersionInfo
 
-
-instance ExactParsec LibVersionInfo where 
+instance ExactParsec LibVersionInfo
 instance Parsec LibVersionInfo where
   parsec = do
     c <- P.integral

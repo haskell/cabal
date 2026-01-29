@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections #-}
 
 module Distribution.Types.ExecutableScope
   ( ExecutableScope (..)
@@ -27,8 +27,7 @@ instance Pretty ExecutableScope where
   pretty ExecutablePrivate = Disp.text "private"
 
 instance Markable ExecutableScope
-instance ExactPretty ExecutableScope where
-
+instance ExactPretty ExecutableScope
 
 instance ExactParsec ExecutableScope
 instance Parsec ExecutableScope where

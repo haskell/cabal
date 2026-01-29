@@ -292,17 +292,17 @@ prettyVersionRange' t0 d0 vr =
   let t = unmarkTriviaTree vr t0
       tLocal = justAnnotation t
       justMergedDoc = mconcat . map unAnnDoc
-  in  triviaToDoc tLocal $ case vr of
-    ThisVersion v            -> Disp.text "=="  <> justMergedDoc (exactPretty t v)
-    LaterVersion v           -> Disp.text ">"   <> justMergedDoc (exactPretty t v)
-    OrLaterVersion v         -> Disp.text ">="  <> justMergedDoc (exactPretty t v)
-    EarlierVersion v         -> Disp.text "<"   <> justMergedDoc (exactPretty t v)
-    OrEarlierVersion v       -> Disp.text "<="  <> justMergedDoc (exactPretty t v)
-    MajorBoundVersion v      -> Disp.text "^>=" <> justMergedDoc (exactPretty t v)
-    UnionVersionRanges r1 r2 ->
-      prettyVersionRange' t (d0 + 1) r1 <> Disp.text "||" <> prettyVersionRange' t (d0 + 0) r2
-    IntersectVersionRanges r1 r2 ->
-      prettyVersionRange' t (d0 + 2) r1 <> Disp.text "&&" <> prettyVersionRange' t (d0 + 1) r2
+   in triviaToDoc tLocal $ case vr of
+        ThisVersion v -> Disp.text "==" <> justMergedDoc (exactPretty t v)
+        LaterVersion v -> Disp.text ">" <> justMergedDoc (exactPretty t v)
+        OrLaterVersion v -> Disp.text ">=" <> justMergedDoc (exactPretty t v)
+        EarlierVersion v -> Disp.text "<" <> justMergedDoc (exactPretty t v)
+        OrEarlierVersion v -> Disp.text "<=" <> justMergedDoc (exactPretty t v)
+        MajorBoundVersion v -> Disp.text "^>=" <> justMergedDoc (exactPretty t v)
+        UnionVersionRanges r1 r2 ->
+          prettyVersionRange' t (d0 + 1) r1 <> Disp.text "||" <> prettyVersionRange' t (d0 + 0) r2
+        IntersectVersionRanges r1 r2 ->
+          prettyVersionRange' t (d0 + 2) r1 <> Disp.text "&&" <> prettyVersionRange' t (d0 + 1) r2
 
 -- | Don't use && and || operators. If possible.
 prettyVersionRange16 :: TriviaTree -> VersionRange -> Disp.Doc
@@ -356,7 +356,6 @@ prettyVersionRange16 t vr = prettyVersionRange t vr
 --
 -- >>> map (`simpleParsecW'` "== 1.2.*") [CabalSpecV1_4, CabalSpecV1_6] :: [Maybe VersionRange]
 -- [Nothing,Just (IntersectVersionRanges (OrLaterVersion (mkVersion [1,2])) (EarlierVersion (mkVersion [1,3])))]
-
 instance Parsec VersionRange where parsec = snd <$> exactParsec
 
 instance ExactParsec VersionRange where

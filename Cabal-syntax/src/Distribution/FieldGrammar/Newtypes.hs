@@ -1,8 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE InstanceSigs #-}
@@ -10,6 +8,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- | This module provides @newtype@ wrappers to be used with "Distribution.FieldGrammar".
 module Distribution.FieldGrammar.Newtypes
@@ -60,10 +60,10 @@ import Prelude ()
 import Debug.Pretty.Simple
 import Distribution.CabalSpecVersion
 import Distribution.Compiler (CompilerFlavor)
+import Distribution.Fields.Pretty
 import Distribution.License (License)
 import Distribution.Parsec
 import Distribution.Pretty
-import Distribution.Fields.Pretty
 import Distribution.Utils.Path
 import Distribution.Version
   ( LowerBound (..)
@@ -82,13 +82,12 @@ import Text.PrettyPrint (Doc, comma, fsep, punctuate, text, vcat)
 
 import Distribution.Types.Annotation
 
-import qualified Data.Map as M
-import Data.List (sortOn, groupBy)
+import Data.List (groupBy, sortOn)
 import qualified Data.List.NonEmpty as NE
+import qualified Data.Map as M
 import qualified Data.Set as Set
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.SPDX as SPDX
-
 
 -- NOTE(leana8959): we can rewrite the separators.
 -- Once exact print is done, there will be no more need to print differently.
@@ -119,30 +118,36 @@ class Sep sep where
 
 class TriviaSep sep where
   prettierSep
-    :: (ExactPretty a)
-    => Proxy sep -> [(TriviaTree, a)] -> [DocAnn TriviaTree]
+    :: ExactPretty a
+    => Proxy sep
+    -> [(TriviaTree, a)]
+    -> [DocAnn TriviaTree]
 
   triviaParseSep
     :: (CabalParsing m, Markable a, Namespace a)
-    => Proxy sep -> m (TriviaTree, a) -> m [(TriviaTree, a)]
+    => Proxy sep
+    -> m (TriviaTree, a)
+    -> m [(TriviaTree, a)]
 
   triviaParseSepNE
     :: (CabalParsing m, Markable a, Namespace a)
-    => Proxy sep -> m (TriviaTree, a) -> m (NonEmpty (TriviaTree, a))
+    => Proxy sep
+    -> m (TriviaTree, a)
+    -> m (NonEmpty (TriviaTree, a))
 
 instance TriviaSep CommaVCat where
   -- NOTE(leana8959): we don't "punctuate" anymore
   -- The separators are in the trivia
   prettierSep _ docs =
     let atNthOr0 = fromMaybe 0 . atNth . justAnnotation
-    in  map
-            ( \(t0, x) ->
+     in map
+          ( \(t0, x) ->
               let tLocal = justAnnotation t0
-              in (flip DocAnn t0)
-                  $ triviaToDoc tLocal
-                  $ mconcat . map unAnnDoc
-                  $ exactPretty t0 x
-            )
+               in (flip DocAnn t0) $
+                    triviaToDoc tLocal $
+                      mconcat . map unAnnDoc $
+                        exactPretty t0 x
+          )
           $ sortOn (atNthOr0 . fst)
           $ docs
 
@@ -251,7 +256,9 @@ instance
   , ExactParsec b
   , Markable b
   , Namespace b
-  ) => ExactParsec (List sep b a) where
+  )
+  => ExactParsec (List sep b a)
+  where
   exactParsec = do
     (ts, bs) <- unzip <$> triviaParseSep (Proxy :: Proxy sep) exactParsec
     pure (mconcat ts, pack $ map (unpack :: b -> a) bs)
@@ -263,20 +270,22 @@ instance (Newtype a b, Sep sep, Pretty b) => Pretty (List sep b a) where
 instance
   ( Newtype a b
   , Namespace b
-  ) => Markable (List sep b a) where
+  )
+  => Markable (List sep b a)
+  where
   markTriviaTree bs t =
-    mconcat
-    $ map
-      ( TriviaTree mempty . flip M.singleton t . SomeNamespace . (pack :: a -> b)
-      )
-      (_getList bs)
+    mconcat $
+      map
+        ( TriviaTree mempty . flip M.singleton t . SomeNamespace . (pack :: a -> b)
+        )
+        (_getList bs)
 
   unmarkTriviaTree bs t =
-    fromMaybe mempty
-      $ mconcat
-      $ map
-        (flip M.lookup (namedAnnotations t) . SomeNamespace . (pack :: a -> b))
-        (_getList bs)
+    fromMaybe mempty $
+      mconcat $
+        map
+          (flip M.lookup (namedAnnotations t) . SomeNamespace . (pack :: a -> b))
+          (_getList bs)
 
 instance
   ( Newtype a b
@@ -285,29 +294,29 @@ instance
   , Namespace b
   , Markable b
   )
-  => ExactPretty (List sep b a) where
+  => ExactPretty (List sep b a)
+  where
   exactPretty t0 n =
     let fieldNthOr0 = fromMaybe 0 . atFieldNth . justAnnotation
         docGroups :: [[(TriviaTree, b)]]
         docGroups =
-            groupBy ((==) `on` (fieldNthOr0 . fst))
+          groupBy ((==) `on` (fieldNthOr0 . fst))
             $ sortOn (fieldNthOr0 . fst)
             $ map
               ( \o ->
                   let n = (pack :: a -> b) o -- pack each element
-                      -- The numbering are associated under the newtype
-                      -- Move them upwards so we can sort
+                  -- The numbering are associated under the newtype
+                  -- Move them upwards so we can sort
                       numbering = justAnnotation (unmarkTriviaTree n t0)
                       t = TriviaTree numbering mempty <> t0
-                  in  (t, n)
+                   in (t, n)
               )
             $ unpack -- unpack the list
             $ n
-     in
-            map
-              ( mconcat . prettierSep (Proxy :: Proxy sep)
-              )
-            $ docGroups
+     in map
+          ( mconcat . prettierSep (Proxy :: Proxy sep)
+          )
+          $ docGroups
 
 -- | Like 'List', but for 'Set'.
 --
@@ -396,7 +405,7 @@ instance Pretty Token where
   pretty = showToken . unpack
 
 instance Markable Token
-instance ExactPretty Token where
+instance ExactPretty Token
 
 -- | Haskell string or @[^ ]+@
 newtype Token' = Token' {getToken' :: String}
@@ -412,7 +421,7 @@ instance Pretty Token' where
   pretty = showToken . unpack
 
 instance Markable Token'
-instance ExactPretty Token' where
+instance ExactPretty Token'
 
 -- | Either @"quoted"@ or @un-quoted@.
 newtype MQuoted a = MQuoted {getMQuoted :: a}
@@ -420,7 +429,7 @@ newtype MQuoted a = MQuoted {getMQuoted :: a}
 
 instance Newtype a (MQuoted a)
 
-instance (Parsec a, Namespace a) => ExactParsec (MQuoted a) where 
+instance (Parsec a, Namespace a) => ExactParsec (MQuoted a)
 instance Parsec a => Parsec (MQuoted a) where
   parsec = pack <$> parsecMaybeQuoted parsec
 
@@ -436,7 +445,7 @@ newtype FilePathNT = FilePathNT {getFilePathNT :: String}
   deriving (Ord, Eq, Show)
 
 instance Markable FilePathNT
-instance ExactPretty FilePathNT where
+instance ExactPretty FilePathNT
 
 instance Newtype String FilePathNT
 
@@ -459,7 +468,8 @@ newtype SymbolicPathNT from to = SymbolicPathNT {getSymbolicPathNT :: SymbolicPa
 instance
   ( Typeable from
   , Typeable to
-  ) => Markable (SymbolicPathNT from to)
+  )
+  => Markable (SymbolicPathNT from to)
 
 instance Newtype (SymbolicPath from to) (SymbolicPathNT from to)
 
@@ -467,7 +477,8 @@ instance Newtype (SymbolicPath from to) (SymbolicPathNT from to)
 instance
   ( Typeable from
   , Typeable to
-  ) => ExactParsec (SymbolicPathNT from to) where 
+  )
+  => ExactParsec (SymbolicPathNT from to)
 instance Parsec (SymbolicPathNT from to) where
   parsec = do
     token <- parsecToken
@@ -478,8 +489,7 @@ instance Parsec (SymbolicPathNT from to) where
 instance Pretty (SymbolicPathNT from to) where
   pretty = showFilePath . getSymbolicPath . getSymbolicPathNT
 
-instance (Typeable from, Typeable to) => ExactPretty (SymbolicPathNT from to) where
-
+instance (Typeable from, Typeable to) => ExactPretty (SymbolicPathNT from to)
 
 -- | Newtype for 'RelativePath', with a different 'Parsec' instance
 -- to disallow empty paths but allow non-relative paths (which get rejected
@@ -490,7 +500,8 @@ newtype RelativePathNT from to = RelativePathNT {getRelativePathNT :: RelativePa
 instance
   ( Typeable from
   , Typeable to
-  ) => Markable (RelativePathNT from to)
+  )
+  => Markable (RelativePathNT from to)
 
 instance Newtype (RelativePath from to) (RelativePathNT from to)
 
@@ -500,7 +511,8 @@ instance Newtype (RelativePath from to) (RelativePathNT from to)
 instance
   ( Typeable from
   , Typeable to
-  ) => ExactParsec (RelativePathNT from to) where 
+  )
+  => ExactParsec (RelativePathNT from to)
 instance Parsec (RelativePathNT from to) where
   parsec = do
     token <- parsecToken
@@ -511,8 +523,7 @@ instance Parsec (RelativePathNT from to) where
 instance Pretty (RelativePathNT from to) where
   pretty = showFilePath . getSymbolicPath . getRelativePathNT
 
-instance (Typeable from, Typeable to) => ExactPretty (RelativePathNT from to) where
-
+instance (Typeable from, Typeable to) => ExactPretty (RelativePathNT from to)
 
 -------------------------------------------------------------------------------
 -- SpecVersion
@@ -538,7 +549,7 @@ instance Markable SpecVersion
 instance Newtype CabalSpecVersion SpecVersion
 
 -- TODO(leana8959): defined in reversed order
-instance ExactParsec SpecVersion where 
+instance ExactParsec SpecVersion
 instance Parsec SpecVersion where
   parsec = do
     e <- parsecSpecVersion
@@ -615,7 +626,7 @@ instance Pretty SpecVersion where
     | otherwise = text ">=" <<>> text (showCabalSpecVersion csv)
 
 -- TODO(leana8959): this should be implemented differently
-instance ExactPretty SpecVersion where
+instance ExactPretty SpecVersion
 
 -------------------------------------------------------------------------------
 -- SpecLicense
@@ -630,7 +641,7 @@ instance Markable SpecLicense
 instance Newtype (Either SPDX.License License) SpecLicense
 
 -- TODO(leana8959): defined in reverse
-instance ExactParsec SpecLicense where 
+instance ExactParsec SpecLicense
 instance Parsec SpecLicense where
   parsec = do
     v <- askCabalSpecVersion
@@ -640,7 +651,7 @@ instance Parsec SpecLicense where
 
 instance Pretty SpecLicense where
   pretty = either pretty pretty . unpack
-instance ExactPretty SpecLicense where
+instance ExactPretty SpecLicense
 
 -------------------------------------------------------------------------------
 -- TestedWith
@@ -661,7 +672,7 @@ instance Pretty TestedWith where
   pretty x = case unpack x of
     (compiler, vr) -> pretty compiler <+> pretty vr
 
-instance ExactPretty TestedWith where
+instance ExactPretty TestedWith
 
 parsecTestedWith :: CabalParsing m => m (CompilerFlavor, VersionRange)
 parsecTestedWith = do

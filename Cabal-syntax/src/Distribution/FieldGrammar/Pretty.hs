@@ -26,8 +26,8 @@ import Prelude ()
 
 import Distribution.Pretty
 
-import Distribution.Types.Annotation
 import Distribution.Parsec.Position
+import Distribution.Types.Annotation
 
 import Debug.Pretty.Simple
 import Distribution.FieldGrammar.Class
@@ -68,7 +68,7 @@ instance FieldGrammar ExactPretty PrettyFieldGrammar where
   withScope x (PrettyFG printer) =
     PrettyFG $ \v t s ->
       let t' = unmarkTriviaTree x t
-      in  printer v t' s
+       in printer v t' s
 
   blurFieldGrammar f (PrettyFG pp) = PrettyFG (\v t -> pp v t . aview f)
 
@@ -154,4 +154,4 @@ ppTriviaField name (DocAnn fielddoc tree)
   | PP.isEmpty fielddoc = []
   | otherwise =
       let mPos = atPosition (justAnnotation tree)
-      in  [PrettyField mPos name fielddoc]
+       in [PrettyField mPos name fielddoc]

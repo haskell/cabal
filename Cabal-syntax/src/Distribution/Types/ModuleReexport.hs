@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TupleSections #-}
 
 module Distribution.Types.ModuleReexport
   ( ModuleReexport (..)
@@ -12,8 +12,8 @@ import Prelude ()
 import Distribution.ModuleName
 import Distribution.Parsec
 import Distribution.Pretty
-import Distribution.Types.PackageName
 import Distribution.Types.Annotation
+import Distribution.Types.PackageName
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
@@ -42,11 +42,10 @@ instance Pretty ModuleReexport where
 
 -- TODO(leana8959): might be important
 instance Markable ModuleReexport
-instance ExactPretty ModuleReexport where
-
+instance ExactPretty ModuleReexport
 
 -- TODO(leana8959): dropped whitespaces!
-instance ExactParsec ModuleReexport where 
+instance ExactParsec ModuleReexport
 instance Parsec ModuleReexport where
   parsec = do
     mpkgname <- P.optional (P.try $ parsec <* P.char ':')
