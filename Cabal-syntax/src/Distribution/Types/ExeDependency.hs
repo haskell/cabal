@@ -44,7 +44,7 @@ instance Pretty ExeDependency where
 -- TODO(leana8959): maybe important
 instance Markable ExeDependency
 instance ExactPretty ExeDependency where
-  
+
 
 -- |
 --
@@ -68,7 +68,7 @@ instance ExactPretty ExeDependency where
 -- >>> simpleParsec "happy :happy >= 1.19.12" :: Maybe ExeDependency
 -- Nothing
 
-instance ExactParsec ExeDependency where exactParsec = (mempty,) <$> parsec
+instance ExactParsec ExeDependency where 
 instance Parsec ExeDependency where
   parsec = do
     name <- parsec

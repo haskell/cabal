@@ -209,7 +209,7 @@ newtype ExposedModules = ExposedModules {getExposedModules :: [ExposedModule]}
 instance Newtype [ExposedModule] ExposedModules
 
 instance Markable ExposedModules
-instance ExactParsec ExposedModules where exactParsec = (mempty,) <$> parsec
+instance ExactParsec ExposedModules where 
 instance Parsec ExposedModules where
   parsec = ExposedModules <$> parsecOptCommaList parsec
 
@@ -228,9 +228,9 @@ instance Pretty CompatPackageKey where
 
 instance Markable CompatPackageKey
 instance ExactPretty CompatPackageKey where
-  
 
-instance ExactParsec CompatPackageKey where exactParsec = (mempty,) <$> parsec
+
+instance ExactParsec CompatPackageKey where 
 instance Parsec CompatPackageKey where
   parsec = CompatPackageKey <$> P.munch1 uid_char
     where
@@ -246,10 +246,10 @@ instance Pretty InstWith where
   pretty = dispOpenModuleSubst . Map.fromList . getInstWith
 
 instance ExactPretty InstWith where
-  
+
 
 instance ExactParsec InstWith where
-  exactParsec = (mempty,) <$> parsec
+  
 
 instance Parsec InstWith where
   parsec = InstWith . Map.toList <$> parsecOpenModuleSubst
@@ -261,7 +261,7 @@ newtype SpecLicenseLenient = SpecLicenseLenient {getSpecLicenseLenient :: Either
 instance Newtype (Either SPDX.License License) SpecLicenseLenient
 
 instance ExactParsec SpecLicenseLenient where
-  exactParsec = (mempty,) <$> parsec
+  
 
 instance Parsec SpecLicenseLenient where
   parsec = fmap SpecLicenseLenient $ Left <$> P.try parsec <|> Right <$> parsec
@@ -271,7 +271,7 @@ instance Pretty SpecLicenseLenient where
 
 instance Markable SpecLicenseLenient
 instance ExactPretty SpecLicenseLenient where
-  
+
 
 -------------------------------------------------------------------------------
 -- Basic fields

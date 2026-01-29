@@ -171,7 +171,7 @@ instance Pretty RepoKind where
 
 instance Markable RepoKind
 instance ExactPretty RepoKind where
-  
+
 
 instance Parsec RepoKind where
   parsec = classifyRepoKind <$> P.munch1 isIdent
@@ -182,7 +182,7 @@ classifyRepoKind name = case lowercase name of
   "this" -> RepoThis
   _ -> RepoKindUnknown name
 
-instance ExactParsec RepoType where exactParsec = (mempty,) <$> parsec
+instance ExactParsec RepoType where 
 instance Parsec RepoType where
   parsec = classifyRepoType <$> P.munch1 isIdent
 
@@ -192,7 +192,7 @@ instance Pretty RepoType where
 
 instance Markable RepoType
 instance ExactPretty RepoType where
-  
+
 
 classifyRepoType :: String -> RepoType
 classifyRepoType s =

@@ -37,10 +37,10 @@ instance Pretty PkgconfigDependency where
 
 instance Markable PkgconfigDependency
 instance ExactPretty PkgconfigDependency where
-  
+
 
 -- TODO(leana8959): dropped spaces
-instance ExactParsec PkgconfigDependency where exactParsec = (mempty,) <$> parsec
+instance ExactParsec PkgconfigDependency where 
 instance Parsec PkgconfigDependency where
   parsec = do
     name <- parsec

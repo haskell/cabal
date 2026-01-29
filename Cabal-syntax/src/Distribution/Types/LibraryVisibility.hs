@@ -33,9 +33,9 @@ instance Pretty LibraryVisibility where
 
 instance Markable LibraryVisibility
 instance ExactPretty LibraryVisibility where
-  
 
-instance ExactParsec LibraryVisibility where exactParsec = (mempty,) <$> parsec
+
+instance ExactParsec LibraryVisibility where 
 instance Parsec LibraryVisibility where
   parsec = do
     name <- P.munch1 isAlpha

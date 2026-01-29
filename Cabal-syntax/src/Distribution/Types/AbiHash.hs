@@ -61,8 +61,7 @@ instance Pretty AbiHash where
 
 instance Markable AbiHash
 instance ExactPretty AbiHash where
-  
 
-instance ExactParsec AbiHash where exactParsec = (mempty,) <$> parsec
+instance ExactParsec AbiHash
 instance Parsec AbiHash where
   parsec = fmap mkAbiHash (P.munch isAlphaNum)

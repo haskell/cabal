@@ -385,11 +385,7 @@ tryMakeRelative mbWorkDir (SymbolicPath fp) = do
 
 -------------------------------------------------------------------------------
 
-instance
-  Namespace (SymbolicPathX 'OnlyRelative from to)
-  => ExactParsec (SymbolicPathX 'OnlyRelative from to) where
-  exactParsec = (mempty,) <$> parsec
-
+instance Namespace (SymbolicPathX 'OnlyRelative from to) => ExactParsec (SymbolicPathX 'OnlyRelative from to)
 instance Parsec (SymbolicPathX 'OnlyRelative from to) where
   parsec = do
     token <- parsecToken

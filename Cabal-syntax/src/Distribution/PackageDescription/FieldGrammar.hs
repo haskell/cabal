@@ -880,7 +880,7 @@ newtype CompatDataDir = CompatDataDir {getCompatDataDir :: SymbolicPath Pkg (Dir
 
 instance Newtype (SymbolicPath Pkg (Dir DataDir)) CompatDataDir
 
-instance ExactParsec CompatDataDir where exactParsec = (mempty,) <$> parsec
+instance ExactParsec CompatDataDir where 
 instance Parsec CompatDataDir where
   parsec = do
     token <- parsecToken
@@ -893,7 +893,7 @@ instance Pretty CompatDataDir where
 
 instance Markable CompatDataDir
 instance ExactPretty CompatDataDir where
-  
+
 
 newtype CompatLicenseFile = CompatLicenseFile {getCompatLicenseFile :: [RelativePath Pkg File]}
   deriving (Ord, Eq, Show)
@@ -902,7 +902,7 @@ instance Newtype [RelativePath Pkg File] CompatLicenseFile
 
 -- TODO
 instance Markable CompatLicenseFile
-instance ExactParsec CompatLicenseFile where exactParsec = (mempty,) <$> parsec
+instance ExactParsec CompatLicenseFile where 
 instance Parsec CompatLicenseFile where
   parsec = emptyToken <|> CompatLicenseFile . unpack' (alaList FSep) <$> parsec
     where
@@ -916,7 +916,7 @@ instance Pretty CompatLicenseFile where
   pretty = pretty . pack' (alaList FSep) . getCompatLicenseFile
 
 instance ExactPretty CompatLicenseFile
-  
+
 -------------------------------------------------------------------------------
 -- vim syntax definitions
 -------------------------------------------------------------------------------

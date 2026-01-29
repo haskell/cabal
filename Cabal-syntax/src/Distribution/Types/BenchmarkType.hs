@@ -43,9 +43,9 @@ instance Pretty BenchmarkType where
 
 instance Markable BenchmarkType
 instance ExactPretty BenchmarkType where
-  
 
-instance ExactParsec BenchmarkType where exactParsec = (mempty,) <$> parsec
+
+instance ExactParsec BenchmarkType where 
 instance Parsec BenchmarkType where
   parsec = parsecStandard $ \ver name -> case name of
     "exitcode-stdio" -> BenchmarkTypeExe ver

@@ -53,9 +53,9 @@ instance Pretty TestType where
 
 instance Markable TestType
 instance ExactPretty TestType where
-  
 
-instance ExactParsec TestType where exactParsec = (mempty,) <$> parsec
+
+instance ExactParsec TestType where 
 instance Parsec TestType where
   parsec = parsecStandard $ \ver name -> case name of
     "exitcode-stdio" -> TestTypeExe ver

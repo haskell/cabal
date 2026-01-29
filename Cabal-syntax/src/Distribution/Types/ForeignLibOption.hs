@@ -31,9 +31,9 @@ instance Pretty ForeignLibOption where
 
 instance Markable ForeignLibOption
 instance ExactPretty ForeignLibOption where
-  
 
-instance ExactParsec ForeignLibOption where exactParsec = (mempty,) <$> parsec
+
+instance ExactParsec ForeignLibOption
 instance Parsec ForeignLibOption where
   parsec = do
     name <- P.munch1 (\c -> isAlphaNum c || c == '-')

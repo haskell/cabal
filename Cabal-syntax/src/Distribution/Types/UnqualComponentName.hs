@@ -75,9 +75,9 @@ instance Pretty UnqualComponentName where
 
 instance Markable UnqualComponentName
 instance ExactPretty UnqualComponentName where
-  
 
-instance ExactParsec UnqualComponentName where exactParsec = (mempty,) <$> parsec
+
+instance ExactParsec UnqualComponentName where 
 instance Parsec UnqualComponentName where
   parsec = mkUnqualComponentName <$> parsecUnqualComponentName
 

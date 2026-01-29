@@ -303,7 +303,7 @@ instance
               )
             $ unpack -- unpack the list
             $ n
-     in 
+     in
             map
               ( mconcat . prettierSep (Proxy :: Proxy sep)
               )
@@ -396,7 +396,7 @@ instance Pretty Token where
   pretty = showToken . unpack
 
 instance Markable Token
-instance ExactPretty Token where 
+instance ExactPretty Token where
 
 -- | Haskell string or @[^ ]+@
 newtype Token' = Token' {getToken' :: String}
@@ -412,7 +412,7 @@ instance Pretty Token' where
   pretty = showToken . unpack
 
 instance Markable Token'
-instance ExactPretty Token' where 
+instance ExactPretty Token' where
 
 -- | Either @"quoted"@ or @un-quoted@.
 newtype MQuoted a = MQuoted {getMQuoted :: a}
@@ -420,7 +420,7 @@ newtype MQuoted a = MQuoted {getMQuoted :: a}
 
 instance Newtype a (MQuoted a)
 
-instance (Parsec a, Namespace a) => ExactParsec (MQuoted a) where exactParsec = (mempty,) <$> parsec
+instance (Parsec a, Namespace a) => ExactParsec (MQuoted a) where 
 instance Parsec a => Parsec (MQuoted a) where
   parsec = pack <$> parsecMaybeQuoted parsec
 
@@ -436,7 +436,7 @@ newtype FilePathNT = FilePathNT {getFilePathNT :: String}
   deriving (Ord, Eq, Show)
 
 instance Markable FilePathNT
-instance ExactPretty FilePathNT where 
+instance ExactPretty FilePathNT where
 
 instance Newtype String FilePathNT
 
@@ -467,7 +467,7 @@ instance Newtype (SymbolicPath from to) (SymbolicPathNT from to)
 instance
   ( Typeable from
   , Typeable to
-  ) => ExactParsec (SymbolicPathNT from to) where exactParsec = (mempty,) <$> parsec
+  ) => ExactParsec (SymbolicPathNT from to) where 
 instance Parsec (SymbolicPathNT from to) where
   parsec = do
     token <- parsecToken
@@ -479,7 +479,7 @@ instance Pretty (SymbolicPathNT from to) where
   pretty = showFilePath . getSymbolicPath . getSymbolicPathNT
 
 instance (Typeable from, Typeable to) => ExactPretty (SymbolicPathNT from to) where
-  
+
 
 -- | Newtype for 'RelativePath', with a different 'Parsec' instance
 -- to disallow empty paths but allow non-relative paths (which get rejected
@@ -500,7 +500,7 @@ instance Newtype (RelativePath from to) (RelativePathNT from to)
 instance
   ( Typeable from
   , Typeable to
-  ) => ExactParsec (RelativePathNT from to) where exactParsec = (mempty,) <$> parsec
+  ) => ExactParsec (RelativePathNT from to) where 
 instance Parsec (RelativePathNT from to) where
   parsec = do
     token <- parsecToken
@@ -512,7 +512,7 @@ instance Pretty (RelativePathNT from to) where
   pretty = showFilePath . getSymbolicPath . getRelativePathNT
 
 instance (Typeable from, Typeable to) => ExactPretty (RelativePathNT from to) where
-  
+
 
 -------------------------------------------------------------------------------
 -- SpecVersion
@@ -538,7 +538,7 @@ instance Markable SpecVersion
 instance Newtype CabalSpecVersion SpecVersion
 
 -- TODO(leana8959): defined in reversed order
-instance ExactParsec SpecVersion where exactParsec = (mempty,) <$> parsec
+instance ExactParsec SpecVersion where 
 instance Parsec SpecVersion where
   parsec = do
     e <- parsecSpecVersion
@@ -615,7 +615,7 @@ instance Pretty SpecVersion where
     | otherwise = text ">=" <<>> text (showCabalSpecVersion csv)
 
 -- TODO(leana8959): this should be implemented differently
-instance ExactPretty SpecVersion where 
+instance ExactPretty SpecVersion where
 
 -------------------------------------------------------------------------------
 -- SpecLicense
@@ -630,7 +630,7 @@ instance Markable SpecLicense
 instance Newtype (Either SPDX.License License) SpecLicense
 
 -- TODO(leana8959): defined in reverse
-instance ExactParsec SpecLicense where exactParsec = (mempty,) <$> parsec
+instance ExactParsec SpecLicense where 
 instance Parsec SpecLicense where
   parsec = do
     v <- askCabalSpecVersion
@@ -640,7 +640,7 @@ instance Parsec SpecLicense where
 
 instance Pretty SpecLicense where
   pretty = either pretty pretty . unpack
-instance ExactPretty SpecLicense where 
+instance ExactPretty SpecLicense where
 
 -------------------------------------------------------------------------------
 -- TestedWith
@@ -661,7 +661,7 @@ instance Pretty TestedWith where
   pretty x = case unpack x of
     (compiler, vr) -> pretty compiler <+> pretty vr
 
-instance ExactPretty TestedWith where 
+instance ExactPretty TestedWith where
 
 parsecTestedWith :: CabalParsing m => m (CompilerFlavor, VersionRange)
 parsecTestedWith = do

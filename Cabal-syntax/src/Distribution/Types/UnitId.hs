@@ -78,9 +78,9 @@ instance Pretty UnitId where
 
 instance Markable UnitId
 instance ExactPretty UnitId where
-  
 
-instance ExactParsec UnitId where exactParsec = (mempty,) <$> parsec
+
+instance ExactParsec UnitId where 
 
 -- | The textual format for 'UnitId' coincides with the format
 -- GHC accepts for @-package-id@.

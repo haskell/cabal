@@ -108,7 +108,7 @@ instance ExactPretty Version where
               (Disp.char '.')
               (map Disp.int $ versionNumbers ver)
 
-instance ExactParsec Version where exactParsec = (mempty,) <$> parsec
+instance ExactParsec Version where 
 instance Parsec Version where
   parsec = mkVersion <$> toList <$> P.sepByNonEmpty versionDigitParser (P.char '.') <* tags
     where

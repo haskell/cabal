@@ -28,9 +28,9 @@ instance Pretty ExecutableScope where
 
 instance Markable ExecutableScope
 instance ExactPretty ExecutableScope where
-  
 
-instance ExactParsec ExecutableScope where exactParsec = (mempty,) <$> parsec
+
+instance ExactParsec ExecutableScope
 instance Parsec ExecutableScope where
   parsec = P.try pub <|> pri
     where

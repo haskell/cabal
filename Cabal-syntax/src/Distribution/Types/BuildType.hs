@@ -44,10 +44,10 @@ knownBuildTypes = [Simple, Configure, Make, Custom, Hooks]
 instance Pretty BuildType where
   pretty = Disp.text . show
 
-instance ExactParsec BuildType where exactParsec = (mempty,) <$> parsec
+instance ExactParsec BuildType
 instance Markable BuildType
 instance ExactPretty BuildType where
-  
+
 
 instance Parsec BuildType where
   parsec = do

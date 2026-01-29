@@ -55,11 +55,10 @@ instance NFData ModuleName where
 
 instance Markable ModuleName
 instance Pretty ModuleName where pretty = Disp.text . unModuleName
-instance ExactPretty ModuleName where 
+instance ExactPretty ModuleName where
 
-instance ExactParsec ModuleName where exactParsec = (mempty,) <$> parsec
-instance Parsec ModuleName where
-  parsec = parsecModuleName
+instance Parsec ModuleName where parsec = parsecModuleName
+instance ExactParsec ModuleName
 
 parsecModuleName :: forall m. CabalParsing m => m ModuleName
 parsecModuleName = state0 DList.empty

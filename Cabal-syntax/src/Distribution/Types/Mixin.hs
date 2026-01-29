@@ -47,7 +47,7 @@ instance Pretty Mixin where
 -- TODO(leana8959): maybe import
 instance Markable Mixin
 instance ExactPretty Mixin where
-  
+
 
 -- |
 --
@@ -64,7 +64,7 @@ instance ExactPretty Mixin where
 --
 -- >>> map (`simpleParsec'` "mylib:sub") [CabalSpecV3_0, CabalSpecV3_4] :: [Maybe Mixin]
 -- [Nothing,Just (Mixin {mixinPackageName = PackageName "mylib", mixinLibraryName = LSubLibName (UnqualComponentName "sub"), mixinIncludeRenaming = IncludeRenaming {includeProvidesRn = DefaultRenaming, includeRequiresRn = DefaultRenaming}})]
-instance ExactParsec Mixin where exactParsec = (mempty,) <$> parsec
+instance ExactParsec Mixin where 
 instance Parsec Mixin where
   parsec = do
     pn <- parsec
