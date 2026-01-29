@@ -65,14 +65,14 @@ library
         ScopedTypeVariables FlexibleContexts CPP
 
     build-depends:
-        base (==4.7  || > 4.7) && < 5,
-        dimensions ==1.0  || > 1.0,
-        safe-exceptions ==0.1.0  || > 0.1.0,
-        singletons ==2.2  || > 2.2,
-        text ==1.2.2  || > 1.2.2,
+        base (==4.7 || >4.7) && <5,
+        dimensions ==1.0 || >1.0,
+        safe-exceptions ==0.1.0 || >0.1.0,
+        singletons ==2.2 || >2.2,
+        text ==1.2.2 || >1.2.2,
         hasktorch-cpu,
-        hasktorch-ffi-th (==0.0.1  || > 0.0.1) && < 0.0.2,
-        hasktorch-types-th (==0.0.1  || > 0.0.1) && < 0.0.2
+        hasktorch-ffi-th (==0.0.1 || >0.0.1) && <0.0.2,
+        hasktorch-types-th (==0.0.1 || >0.0.1) && <0.0.2
 
     if !flag(lite)
         reexported-modules:
@@ -192,14 +192,14 @@ library hasktorch-cpu
         ScopedTypeVariables FlexibleContexts CPP
 
     build-depends:
-        base (==4.7  || > 4.7) && < 5,
-        hasktorch-types-th (==0.0.1   || >  0.0.1) && <  0.0.2,
-        dimensions ==1.0  || > 1.0,
-        hasktorch-ffi-th (==0.0.1  || > 0.0.1) && < 0.0.2,
-        hasktorch-types-th (==0.0.1   || >  0.0.1) && <  0.0.2,
-        safe-exceptions ==0.1.0  || > 0.1.0,
-        singletons ==2.2  || > 2.2,
-        text ==1.2.2  || > 1.2.2,
+        base (==4.7 || >4.7) && <5,
+        hasktorch-types-th (==0.0.1 || >0.0.1) && <0.0.2,
+        dimensions ==1.0 || >1.0,
+        hasktorch-ffi-th (==0.0.1 || >0.0.1) && <0.0.2,
+        hasktorch-types-th (==0.0.1 || >0.0.1) && <0.0.2,
+        safe-exceptions ==0.1.0 || >0.1.0,
+        singletons ==2.2 || >2.2,
+        text ==1.2.2 || >1.2.2,
         hasktorch-indef-floating,
         hasktorch-indef-signed
 
@@ -275,18 +275,18 @@ library hasktorch-gpu
         ScopedTypeVariables FlexibleContexts CPP
 
     build-depends:
-        base (==4.7  || > 4.7) && < 5,
-        hasktorch-types-th (==0.0.1   || >  0.0.1) && <  0.0.2,
-        dimensions ==1.0  || > 1.0,
-        hasktorch-ffi-th (==0.0.1  || > 0.0.1) && < 0.0.2,
-        hasktorch-types-th (==0.0.1   || >  0.0.1) && <  0.0.2,
-        safe-exceptions ==0.1.0  || > 0.1.0,
-        singletons ==2.2  || > 2.2,
-        text ==1.2.2  || > 1.2.2,
+        base (==4.7 || >4.7) && <5,
+        hasktorch-types-th (==0.0.1 || >0.0.1) && <0.0.2,
+        dimensions ==1.0 || >1.0,
+        hasktorch-ffi-th (==0.0.1 || >0.0.1) && <0.0.2,
+        hasktorch-types-th (==0.0.1 || >0.0.1) && <0.0.2,
+        safe-exceptions ==0.1.0 || >0.1.0,
+        singletons ==2.2 || >2.2,
+        text ==1.2.2 || >1.2.2,
         hasktorch-indef-floating,
         hasktorch-indef-signed,
-        hasktorch-ffi-thc (==0.0.1  || > 0.0.1) && < 0.0.2,
-        hasktorch-types-thc (==0.0.1  || > 0.0.1) && < 0.0.2
+        hasktorch-ffi-thc (==0.0.1 || >0.0.1) && <0.0.2,
+        hasktorch-types-thc (==0.0.1 || >0.0.1) && <0.0.2
 
     mixins:
         hasktorch-indef-signed (Torch.Indef.Storage as Torch.Indef.Cuda.Long.Storage, Torch.Indef.Storage.Copy as Torch.Indef.Cuda.Long.Storage.Copy, Torch.Indef.Static.Tensor as Torch.Indef.Cuda.Long.Tensor, Torch.Indef.Static.Tensor.Copy as Torch.Indef.Cuda.Long.Tensor.Copy, Torch.Indef.Static.Tensor.Index as Torch.Indef.Cuda.Long.Tensor.Index, Torch.Indef.Static.Tensor.Masked as Torch.Indef.Cuda.Long.Tensor.Masked, Torch.Indef.Static.Tensor.Math as Torch.Indef.Cuda.Long.Tensor.Math, Torch.Indef.Static.Tensor.Math.Compare as Torch.Indef.Cuda.Long.Tensor.Math.Compare, Torch.Indef.Static.Tensor.Math.CompareT as Torch.Indef.Cuda.Long.Tensor.Math.CompareT, Torch.Indef.Static.Tensor.Math.Pairwise as Torch.Indef.Cuda.Long.Tensor.Math.Pairwise, Torch.Indef.Static.Tensor.Math.Pointwise as Torch.Indef.Cuda.Long.Tensor.Math.Pointwise, Torch.Indef.Static.Tensor.Math.Reduce as Torch.Indef.Cuda.Long.Tensor.Math.Reduce, Torch.Indef.Static.Tensor.Math.Scan as Torch.Indef.Cuda.Long.Tensor.Math.Scan, Torch.Indef.Static.Tensor.Mode as Torch.Indef.Cuda.Long.Tensor.Mode, Torch.Indef.Static.Tensor.ScatterGather as Torch.Indef.Cuda.Long.Tensor.ScatterGather, Torch.Indef.Static.Tensor.Sort as Torch.Indef.Cuda.Long.Tensor.Sort, Torch.Indef.Static.Tensor.TopK as Torch.Indef.Cuda.Long.Tensor.TopK, Torch.Indef.Dynamic.Tensor as Torch.Indef.Cuda.Long.Dynamic.Tensor, Torch.Indef.Dynamic.Tensor.Copy as Torch.Indef.Cuda.Long.Dynamic.Tensor.Copy, Torch.Indef.Dynamic.Tensor.Index as Torch.Indef.Cuda.Long.Dynamic.Tensor.Index, Torch.Indef.Dynamic.Tensor.Masked as Torch.Indef.Cuda.Long.Dynamic.Tensor.Masked, Torch.Indef.Dynamic.Tensor.Math as Torch.Indef.Cuda.Long.Dynamic.Tensor.Math, Torch.Indef.Dynamic.Tensor.Math.Compare as Torch.Indef.Cuda.Long.Dynamic.Tensor.Math.Compare, Torch.Indef.Dynamic.Tensor.Math.CompareT as Torch.Indef.Cuda.Long.Dynamic.Tensor.Math.CompareT, Torch.Indef.Dynamic.Tensor.Math.Pairwise as Torch.Indef.Cuda.Long.Dynamic.Tensor.Math.Pairwise, Torch.Indef.Dynamic.Tensor.Math.Pointwise as Torch.Indef.Cuda.Long.Dynamic.Tensor.Math.Pointwise, Torch.Indef.Dynamic.Tensor.Math.Reduce as Torch.Indef.Cuda.Long.Dynamic.Tensor.Math.Reduce, Torch.Indef.Dynamic.Tensor.Math.Scan as Torch.Indef.Cuda.Long.Dynamic.Tensor.Math.Scan, Torch.Indef.Dynamic.Tensor.Mode as Torch.Indef.Cuda.Long.Dynamic.Tensor.Mode, Torch.Indef.Dynamic.Tensor.ScatterGather as Torch.Indef.Cuda.Long.Dynamic.Tensor.ScatterGather, Torch.Indef.Dynamic.Tensor.Sort as Torch.Indef.Cuda.Long.Dynamic.Tensor.Sort, Torch.Indef.Dynamic.Tensor.TopK as Torch.Indef.Cuda.Long.Dynamic.Tensor.TopK, Torch.Indef.Types as Torch.Cuda.Long.Types, Torch.Indef.Index as Torch.Cuda.Long.Index, Torch.Indef.Mask as Torch.Cuda.Long.Mask, Torch.Indef.Static.Tensor.Math.Pointwise.Signed as Torch.Indef.Cuda.Long.Tensor.Math.Pointwise.Signed, Torch.Indef.Dynamic.Tensor.Math.Pointwise.Signed as Torch.Indef.Cuda.Long.Dynamic.Tensor.Math.Pointwise.Signed) requires (Torch.Sig.Index.Tensor as Torch.FFI.THC.Long.Tensor, Torch.Sig.Index.TensorFree as Torch.FFI.THC.Long.Tensor, Torch.Sig.Mask.Tensor as Torch.FFI.THC.Byte.Tensor, Torch.Sig.Mask.TensorFree as Torch.FFI.THC.Byte.Tensor, Torch.Sig.Mask.MathReduce as Torch.FFI.THC.Byte.TensorMathReduce, Torch.Sig.State as Torch.FFI.THC.State, Torch.Sig.Types.Global as Torch.Types.THC, Torch.Sig.Types as Torch.Types.THC.Long, Torch.Sig.Storage as Torch.FFI.THC.Long.Storage, Torch.Sig.Storage.Copy as Torch.FFI.THC.Long.StorageCopy, Torch.Sig.Storage.Memory as Torch.FFI.THC.Long.Storage, Torch.Sig.Tensor as Torch.FFI.THC.Long.Tensor, Torch.Sig.Tensor.Copy as Torch.FFI.THC.Long.TensorCopy, Torch.Sig.Tensor.Memory as Torch.FFI.THC.Long.Tensor, Torch.Sig.Tensor.Index as Torch.FFI.THC.Long.TensorIndex, Torch.Sig.Tensor.Masked as Torch.FFI.THC.Long.TensorMasked, Torch.Sig.Tensor.Math as Torch.FFI.THC.Long.TensorMath, Torch.Sig.Tensor.Math.Compare as Torch.FFI.THC.Long.TensorMathCompare, Torch.Sig.Tensor.Math.CompareT as Torch.FFI.THC.Long.TensorMathCompareT, Torch.Sig.Tensor.Math.Pairwise as Torch.FFI.THC.Long.TensorMathPairwise, Torch.Sig.Tensor.Math.Pointwise as Torch.FFI.THC.Long.TensorMathPointwise, Torch.Sig.Tensor.Math.Reduce as Torch.FFI.THC.Long.TensorMathReduce, Torch.Sig.Tensor.Math.Scan as Torch.FFI.THC.Long.TensorMathScan, Torch.Sig.Tensor.Mode as Torch.FFI.THC.Long.TensorMode, Torch.Sig.Tensor.ScatterGather as Torch.FFI.THC.Long.TensorScatterGather, Torch.Sig.Tensor.Sort as Torch.FFI.THC.Long.TensorSort, Torch.Sig.Tensor.TopK as Torch.FFI.THC.Long.TensorTopK, Torch.Sig.Tensor.Math.Pointwise.Signed as Torch.FFI.THC.Long.TensorMathPointwise),
@@ -357,8 +357,8 @@ library hasktorch-indef-unsigned
 
     default-language:   Haskell2010
     build-depends:
-        base (==4.7  || > 4.7) && < 5,
-        hasktorch-signatures-partial (==0.0.1  || > 0.0.1) && < 0.0.2,
+        base (==4.7 || >4.7) && <5,
+        hasktorch-signatures-partial (==0.0.1 || >0.0.1) && <0.0.2,
         hasktorch-indef
 
     mixins:
@@ -407,8 +407,8 @@ library hasktorch-indef-signed
 
     default-language:   Haskell2010
     build-depends:
-        base (==4.7  || > 4.7) && < 5,
-        hasktorch-signatures-partial (==0.0.1  || > 0.0.1) && < 0.0.2,
+        base (==4.7 || >4.7) && <5,
+        hasktorch-signatures-partial (==0.0.1 || >0.0.1) && <0.0.2,
         hasktorch-indef
 
     mixins:
@@ -492,16 +492,16 @@ library hasktorch-indef-floating
 
     default-language:   Haskell2010
     build-depends:
-        base (==4.7  || > 4.7) && < 5,
+        base (==4.7 || >4.7) && <5,
         hasktorch-indef,
-        hasktorch-signatures-partial (==0.0.1  || > 0.0.1) && < 0.0.2
+        hasktorch-signatures-partial (==0.0.1 || >0.0.1) && <0.0.2
 
 executable isdefinite-cpu
     main-is:          Noop.hs
     hs-source-dirs:   exe
     default-language: Haskell2010
     build-depends:
-        base (==4.7      || >     4.7) && <     5,
+        base (==4.7 || >4.7) && <5,
         hasktorch-cpu
 
 executable isdefinite-gpu
@@ -509,7 +509,7 @@ executable isdefinite-gpu
     hs-source-dirs:   exe
     default-language: Haskell2010
     build-depends:
-        base (==4.7      || >     4.7) && <     5,
+        base (==4.7 || >4.7) && <5,
         hasktorch-gpu
 
 executable isdefinite
@@ -517,7 +517,7 @@ executable isdefinite
     hs-source-dirs:   exe
     default-language: Haskell2010
     build-depends:
-        base (==4.7      || >     4.7) && <     5,
+        base (==4.7 || >4.7) && <5,
         hasktorch
 
 executable memcheck
@@ -525,7 +525,7 @@ executable memcheck
     hs-source-dirs:   exe
     default-language: Haskell2010
     build-depends:
-        base (==4.7      || >     4.7) && <     5,
+        base (==4.7 || >4.7) && <5,
         hasktorch
 
 test-suite spec
@@ -549,17 +549,17 @@ test-suite spec
         ScopedTypeVariables FlexibleContexts CPP
 
     build-depends:
-        QuickCheck ==2.11  || > 2.11,
-        backprop ==0.2.5  || > 0.2.5,
-        base (==4.7      || >     4.7) && <     5,
-        dimensions ==1.0  || > 1.0,
+        QuickCheck ==2.11 || >2.11,
+        backprop ==0.2.5 || >0.2.5,
+        base (==4.7 || >4.7) && <5,
+        dimensions ==1.0 || >1.0,
         ghc-typelits-natnormalise,
         hasktorch,
-        hspec ==2.4.4  || > 2.4.4,
-        singletons ==2.2  || > 2.2,
-        mtl ==2.2.2  || > 2.2.2,
-        microlens-platform ==0.3.10  || > 0.3.10,
-        monad-loops ==0.4.3  || > 0.4.3,
-        time ==1.8.0  || > 1.8.0,
-        transformers ==0.5.5  || > 0.5.5,
+        hspec ==2.4.4 || >2.4.4,
+        singletons ==2.2 || >2.2,
+        mtl ==2.2.2 || >2.2.2,
+        microlens-platform ==0.3.10 || >0.3.10,
+        monad-loops ==0.4.3 || >0.4.3,
+        time ==1.8.0 || >1.8.0,
+        transformers ==0.5.5 || >0.5.5,
         generic-lens

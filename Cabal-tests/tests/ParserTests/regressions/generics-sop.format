@@ -53,7 +53,7 @@ custom-setup
     setup-depends:
         base,
         Cabal,
-        cabal-doctest >=1.0.2 && < 1.1
+        cabal-doctest >=1.0.2 && <1.1
 
 library
     exposed-modules:
@@ -87,18 +87,18 @@ library
 
     ghc-options:        -Wall
     build-depends:
-        base >=4.7 && < 5,
-        template-haskell >=2.8 && < 2.13,
-        ghc-prim >=0.3 && < 0.6,
-        deepseq >=1.3 && < 1.5
+        base >=4.7 && <5,
+        template-haskell >=2.8 && <2.13,
+        ghc-prim >=0.3 && <0.6,
+        deepseq >=1.3 && <1.5
 
     if !impl(ghc >=7.8)
-        build-depends: tagged >=0.7 && < 0.9
+        build-depends: tagged >=0.7 && <0.9
 
     if !impl(ghc >=8.0)
         build-depends:
-            transformers-compat >=0.3 && < 0.6,
-            transformers >=0.3 && < 0.6
+            transformers-compat >=0.3 && <0.6,
+            transformers >=0.3 && <0.6
 
     if impl(ghc >=7.8)
         default-extensions: AutoDeriveTypeable
@@ -115,7 +115,7 @@ test-suite doctests
     x-doctest-options: --preserve-it
     build-depends:
         base,
-        doctest >=0.13 && < 0.14
+        doctest >=0.13 && <0.14
 
 test-suite generics-sop-examples
     type:             exitcode-stdio-1.0
@@ -125,5 +125,5 @@ test-suite generics-sop-examples
     default-language: Haskell2010
     ghc-options:      -Wall
     build-depends:
-        base >=4.6 && < 5,
+        base >=4.6 && <5,
         generics-sop

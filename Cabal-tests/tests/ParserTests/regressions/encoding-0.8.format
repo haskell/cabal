@@ -16,4 +16,4 @@ custom-setup
 library
     exposed-modules: Data.Encoding
     ghc-options:     -Wall -O2 -threaded -rtsopts "-with-rtsopts=-N1 -A64m"
-    build-depends:   base >4.4  || == 4.4
+    build-depends:   base >4.4 || ==4.4

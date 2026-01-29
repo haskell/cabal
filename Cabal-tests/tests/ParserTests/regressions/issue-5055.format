@@ -10,12 +10,12 @@ build-type:    Simple
 executable flag-test-exe
     main-is:          FirstMain.hs
     default-language: Haskell2010
-    build-depends:    base >=4.8 && <  5
+    build-depends:    base >=4.8 && <5
 
 test-suite flag-cabal-test
     type:             exitcode-stdio-1.0
     main-is:          SecondMain.hs
     default-language: Haskell2010
-    build-depends:    base >=4.8 && <  5
+    build-depends:    base >=4.8 && <5
 
     if os(windows)

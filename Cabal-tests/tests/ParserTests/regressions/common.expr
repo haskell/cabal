@@ -67,11 +67,11 @@ GenericPackageDescription {
           buildTools = [],
           buildToolDepends = [],
           cppOptions = [],
+          jsppOptions = [],
           asmOptions = [],
           cmmOptions = [],
           ccOptions = [],
           cxxOptions = [],
-          jsppOptions = [],
           ldOptions = [],
           hsc2hsOptions = [],
           pkgconfigDepends = [],
@@ -119,29 +119,11 @@ GenericPackageDescription {
           customFieldsBI = [],
           targetBuildDepends = [
             Dependency
-              (PackageName "base")
-              (OrLaterVersion
-                (mkVersion [4, 10]))
-              mainLibSet,
-            Dependency
-              (PackageName "containers")
-              (OrLaterVersion (mkVersion [0]))
-              mainLibSet,
-            Dependency
               (PackageName "ghc-prim")
               (OrLaterVersion (mkVersion [0]))
               mainLibSet],
           mixins = []}},
       condTreeConstraints = [
-        Dependency
-          (PackageName "base")
-          (OrLaterVersion
-            (mkVersion [4, 10]))
-          mainLibSet,
-        Dependency
-          (PackageName "containers")
-          (OrLaterVersion (mkVersion [0]))
-          mainLibSet,
         Dependency
           (PackageName "ghc-prim")
           (OrLaterVersion (mkVersion [0]))
@@ -165,11 +147,11 @@ GenericPackageDescription {
             buildTools = [],
             buildToolDepends = [],
             cppOptions = [],
+            jsppOptions = [],
             asmOptions = [],
             cmmOptions = [],
             ccOptions = [],
             cxxOptions = [],
-            jsppOptions = [],
             ldOptions = [],
             hsc2hsOptions = [],
             pkgconfigDepends = [],
@@ -214,9 +196,17 @@ GenericPackageDescription {
             staticOptions =
             PerCompilerFlavor [] [],
             customFieldsBI = [],
-            targetBuildDepends = [],
+            targetBuildDepends = [
+              Dependency
+                (PackageName "HUnit")
+                (OrLaterVersion (mkVersion [0]))
+                mainLibSet],
             mixins = []},
           testCodeGenerators = []},
-        condTreeConstraints = [],
+        condTreeConstraints = [
+          Dependency
+            (PackageName "HUnit")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet],
         condTreeComponents = []}],
   condBenchmarks = []}
