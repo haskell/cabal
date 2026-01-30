@@ -1,0 +1,4 @@
+synopsis: Don't warn on mhs-options
+packages: Cabal-syntax
+issues: #11341
+prs: #11344
