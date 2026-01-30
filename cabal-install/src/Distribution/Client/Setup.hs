@@ -3695,9 +3695,9 @@ optionSolverFlags
         getoc
         setoc
         ( reqArg
-            "none|all"
+            "none|all|eq"
             ( parsecToReadE
-                (const "reject-unconstrained-dependencies must be 'none' or 'all'")
+                (const "reject-unconstrained-dependencies must be 'none', 'all', or 'eq'")
                 (toFlag `fmap` parsec)
             )
             (flagToList . fmap prettyShow)

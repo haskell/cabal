@@ -23,6 +23,8 @@ import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.PackagePreferences
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb)
 import Distribution.Solver.Types.LabeledPackageConstraint
+import Distribution.Solver.Types.PackageConstraint (PackageConstraint(..), PackageProperty(..))
+import Distribution.Types.VersionRange (normaliseVersionRange, projectVersionRange, VersionRangeF(ThisVersionF))
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.Variable
 
@@ -140,16 +142,13 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
                        validateTree cinfo idx pkgConfigDB
     prunePhase       = (if asBool (avoidReinstalls sc) then P.avoidReinstalls (const True) else id) .
                        (case onlyConstrained sc of
-                          OnlyConstrainedAll ->
-                            P.onlyConstrained pkgIsExplicit
-                          OnlyConstrainedNone ->
-                            id)
+                          OnlyConstrainedEq -> P.onlyConstrained (`S.member` allExplicitEq)
+                          OnlyConstrainedAll -> P.onlyConstrained (`S.member` allExplicit)
+                          OnlyConstrainedNone -> id)
     buildPhase       = buildTree idx (independentGoals sc) (S.toList userGoals)
 
+    allExplicitEq = M.keysSet (filterThisVersion userConstraints) `S.union` userGoals
     allExplicit = M.keysSet userConstraints `S.union` userGoals
-
-    pkgIsExplicit :: PN -> Bool
-    pkgIsExplicit pn = S.member pn allExplicit
 
     -- When --reorder-goals is set, we use preferReallyEasyGoalChoices, which
     -- prefers (keeps) goals only if the have 0 or 1 enabled choice.
@@ -166,6 +165,14 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
     goalChoiceHeuristics
       | asBool (reorderGoals sc) = P.preferReallyEasyGoalChoices
       | otherwise                = id {- P.firstGoal -}
+
+-- | Keep version ranges that normalise to equality version constraints (== v).
+filterThisVersion :: M.Map PN [LabeledPackageConstraint] -> M.Map PN [LabeledPackageConstraint]
+filterThisVersion = M.filter (not . null) . M.map (filter isThisVersion) where
+  isThisVersion lpc
+    | LabeledPackageConstraint (PackageConstraint _ (PackagePropertyVersion vr)) _ <- lpc
+    , ThisVersionF _ <- projectVersionRange $ normaliseVersionRange vr = True
+    | otherwise = False
 
 -- | Dump solver tree to a file (in debugging mode)
 --

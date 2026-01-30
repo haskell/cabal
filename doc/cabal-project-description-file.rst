@@ -790,8 +790,8 @@ The following settings control the behavior of the dependency solver:
       active-repositories: :none
 
 
-.. cfg-field:: reject-unconstrained-dependencies: all, none
-               --reject-unconstrained-dependencies=[all|none]
+.. cfg-field:: reject-unconstrained-dependencies: eq, all, none
+               --reject-unconstrained-dependencies=[eq|all|none]
    :synopsis: Restrict the solver to packages that have constraints on them.
 
    :default: none
@@ -801,9 +801,11 @@ The following settings control the behavior of the dependency solver:
    aware of in a build plan. If you wish to restrict the build plan to
    a closed set of packages (e.g., from a freeze file), use this flag.
 
-   When set to `all`, all non-local packages that aren't goals must be
-   explicitly constrained. When set to `none`, the solver will
-   consider all packages.
+   When set to `eq` or `all`, all non-local packages that aren't goals must be
+   explicitly constrained. where `all` accepts any version constraint and `eq`
+   accepts version ranges that normalise to an equality constraint.
+
+   When set to `none`, the solver will consider all packages.
 
 .. _package-configuration-options:
 
