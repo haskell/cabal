@@ -2,7 +2,7 @@ import Test.Cabal.Prelude
 
 -- See #4332, dep solving output is not deterministic
 
-assertErr = assertOutputContains "not a user-provided goal nor mentioned as a constraint, but reject-unconstrained-dependencies was set"
+assertErr x = assertOutputContains ("not a user-provided goal nor mentioned as a constraint, but reject-unconstrained-dependencies=" ++ x ++ " was set")
 
 constraint x = "--constraint=" ++ x
 
@@ -15,12 +15,11 @@ main = do
 
     -- other-lib is a dependency of b, but it's not listed in cabal.project
     res <- fails $ cabal' "build" ("all" : opts ++ [constraint "some-exe -any"])
-    assertErr res
+    assertErr "all" res
 
     -- and some-exe is a build-tool dependency of b, again not listed
     res <- fails $ cabal' "build" ("all" : opts ++ [constraint "other-lib -any"])
-    assertErr res
-
+    assertErr "all" res
     -- everything's listed, good to go
     cabal "build" $
       "all"
@@ -65,4 +64,4 @@ main = do
           ++ [ constraint "some-lib >0"
              , constraint "some-lib <2"
              ]
-    assertErr res
+    assertErr "eq" res
