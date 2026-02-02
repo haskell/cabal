@@ -36,6 +36,7 @@ import Distribution.Solver.Types.PackagePath
 import Distribution.Types.PkgconfigVersionRange
 import Distribution.Types.UnitId (UnitId)
 import Language.Haskell.Extension (Extension, Language)
+import Distribution.Solver.Types.Settings (OnlyConstrained(..))
 
 type Weight = Double
 
@@ -112,7 +113,7 @@ data FailReason = UnsupportedExtension Extension
                 | PackageRequiresPrivateComponent QPN ExposedComponent
                 | PackageRequiresUnbuildableComponent QPN ExposedComponent
                 | CannotReinstall
-                | NotExplicit
+                | NotExplicit OnlyConstrained
                 | Shadowed
                 | Broken UnitId
                 | UnknownPackage
