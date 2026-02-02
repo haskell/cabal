@@ -168,6 +168,27 @@ jobs:
         if: runner.os == 'Windows'
         run: /usr/bin/pacman --noconfirm -S autotools
 
+      - name: Get GCC path
+        id: gcc-path
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            if which clang > /dev/null 2>&1; then
+              COMPILER_PATH=$(which clang)
+              COMPILER_PATH=$(cygpath -w "$COMPILER_PATH")
+            else
+              echo "clang not found on Windows"
+              exit 1
+            fi
+          else
+            if which gcc > /dev/null 2>&1; then
+              COMPILER_PATH=$(which gcc)
+            else
+              echo "gcc not found"
+              exit 1
+            fi
+          fi
+          echo "GCCPATH=$COMPILER_PATH" >> $GITHUB_ENV
+
       - name: Set validate inputs
         run: |
           FLAGS="${{ env.COMMON_FLAGS }}"
@@ -229,6 +250,8 @@ jobs:
           # `rawSystemStdInOut reports text decoding errors`
           # test does not find ghc without the full path in windows
           GHCPATH: ${{ steps.setup-haskell.outputs.ghc-exe }}
+
+          GCCPATH: ${{ env.GCCPATH }}
         run: |
           set +e
           rc=0
