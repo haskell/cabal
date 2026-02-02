@@ -6,7 +6,7 @@ Error: [Cabal-7107]
 Could not resolve dependencies:
 [__0] trying: b-0 (user goal)
 [__1] next goal: other-lib (dependency of b)
-[__1] fail (not a user-provided goal nor mentioned as a constraint, but reject-unconstrained-dependencies was set)
+[__1] fail (not a user-provided goal nor mentioned as a constraint, but reject-unconstrained-dependencies=all was set)
 [__1] fail (backjumping, conflict set: b, other-lib)
 After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: b (2), other-lib (1)
 # cabal build
@@ -15,7 +15,7 @@ Error: [Cabal-7107]
 Could not resolve dependencies:
 [__0] trying: b-0 (user goal)
 [__1] next goal: b:some-exe:exe.some-exe (dependency of b)
-[__1] fail (not a user-provided goal nor mentioned as a constraint, but reject-unconstrained-dependencies was set)
+[__1] fail (not a user-provided goal nor mentioned as a constraint, but reject-unconstrained-dependencies=all was set)
 [__1] fail (backjumping, conflict set: b, b:some-exe:exe.some-exe)
 After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: b (2), b:some-exe:exe.some-exe (1)
 # cabal build

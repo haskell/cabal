@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE LambdaCase #-}
 #ifdef DEBUG_TRACETREE
 {-# OPTIONS_GHC -Wno-orphans #-}
 #endif
@@ -10,6 +11,7 @@ module Distribution.Solver.Modular.Solver
 
 import Distribution.Solver.Compat.Prelude
 import Prelude ()
+import Data.Function ((&))
 
 import qualified Data.Map as M
 import qualified Data.List as L
@@ -140,9 +142,9 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
                        validateLinking idx .
                        validateTree cinfo idx pkgConfigDB
     prunePhase       = (if asBool (avoidReinstalls sc) then P.avoidReinstalls (const True) else id) .
-                       (case onlyConstrained sc of
-                          OnlyConstrainedEq -> P.onlyConstrained (`S.member` allExplicitEq)
-                          OnlyConstrainedAll -> P.onlyConstrained (`S.member` allExplicit)
+                       (let oc = onlyConstrained sc in oc & \case
+                          OnlyConstrainedEq -> P.onlyConstrained oc (`S.member` allExplicitEq)
+                          OnlyConstrainedAll -> P.onlyConstrained oc (`S.member` allExplicit)
                           OnlyConstrainedNone -> id)
     buildPhase       = buildTree idx (independentGoals sc) (S.toList userGoals)
 
