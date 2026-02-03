@@ -66,6 +66,7 @@ import Distribution.Version (Version)
 
 import Distribution.License (knownLicenses)
 import Distribution.Parsec (simpleParsec')
+import Distribution.Verbosity (verbosityFlags)
 import Language.Haskell.Extension (Language (..))
 
 -- | Main driver for interactive prompt code.
@@ -107,7 +108,7 @@ createProject v pkgIx srcDb initFlags = do
           doOverwrite
           isMinimal
           cs
-          v
+          (verbosityFlags v)
           pkgDir
           pkgType
           pkgName

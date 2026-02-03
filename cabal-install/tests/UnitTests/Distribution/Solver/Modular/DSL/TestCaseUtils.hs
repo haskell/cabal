@@ -138,7 +138,7 @@ data SolverTest = SolverTest
   , testGoalOrder :: Maybe [ExampleVar]
   , testConstraints :: [ExConstraint]
   , testSoftConstraints :: [ExPreference]
-  , testVerbosity :: Verbosity
+  , testVerbosity :: VerbosityFlags
   , testDb :: ExampleDb
   , testSupportedExts :: Maybe [Extension]
   , testSupportedLangs :: Maybe [Language]
@@ -276,7 +276,7 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
             (sortGoals <$> testGoalOrder)
             testConstraints
             testSoftConstraints
-            testVerbosity
+            (mkVerbosity defaultVerbosityHandles testVerbosity)
             testEnableAllTests
         printMsg msg = when showSolverLog $ putStrLn msg
         msgs = foldProgress (:) (const []) (const []) progress

@@ -113,7 +113,7 @@ createProject comp v pkgIx srcDb initFlags = do
           doOverwrite
           isMinimal
           cs
-          v
+          (verbosityFlags v)
           pkgDir
           pkgType
           pkgName
@@ -497,8 +497,9 @@ dependenciesHeuristics flags fp pkgIx = getDependencies flags $ do
       groupedDeps = concatMap (\s -> map (moduleName s,) (imports s)) sources
       filteredDeps = filter ((`notElem` mods) . snd) groupedDeps
       preludeNub = nubBy (\a b -> snd a == snd b) $ (fromString "Prelude", fromString "Prelude") : filteredDeps
+      verbosity = mkVerbosity defaultVerbosityHandles (fromFlagOrDefault normal $ initVerbosity flags)
 
-  retrieveDependencies (fromFlagOrDefault normal $ initVerbosity flags) flags preludeNub pkgIx
+  retrieveDependencies verbosity flags preludeNub pkgIx
 
 -- | Retrieve the list of extensions
 otherExtsHeuristics :: Interactive m => InitFlags -> FilePath -> m [Extension]

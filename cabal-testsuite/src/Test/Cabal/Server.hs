@@ -240,7 +240,7 @@ startServer chan senv = do
           , std_out = CreatePipe
           , std_err = CreatePipe
           }
-  when (verbosity >= verbose) $
+  when (verbosityLevel verbosity >= Verbose) $
     writeChan chan (ServerLogMsg AllServers (showCommandForUser (programPath prog) ghc_args))
   (Just hin, Just hout, Just herr, proch) <- createProcess proc_spec
   out_acc <- newMVar []
@@ -259,7 +259,7 @@ startServer chan senv = do
       , serverScriptEnv = senv
       }
   where
-    verbosity = runnerVerbosity senv
+    verbosity = mkVerbosity defaultVerbosityHandles $ runnerVerbosity senv
 
 -- | Unmasked initialization for the server
 initServer :: Server -> IO Server
@@ -360,7 +360,7 @@ stopServer s = do
                 Left () -> "GHCi was forcibly terminated"
                 Right exit -> "GHCi exited with " ++ show exit
             )
-              ++ if verbosity < verbose
+              ++ if vLevel verbosity < Verbose
                 then " (use -v for more information)"
                 else ""
         else log ServerOut s rest_out
@@ -387,7 +387,7 @@ ignore m = withAsync m $ \a -> void (waitCatch a)
 
 log :: (ProcessId -> ServerLogMsgType) -> Server -> String -> IO ()
 log ctor s msg =
-  when (verbosity >= verbose) $ info ctor s msg
+  when (vLevel verbosity >= Verbose) $ info ctor s msg
   where
     verbosity = runnerVerbosity (serverScriptEnv s)
 

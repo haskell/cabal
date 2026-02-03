@@ -27,7 +27,7 @@ import Distribution.Simple.Setup.Common (commonSetupTempFileOptions)
 import Distribution.System (Arch (JavaScript), Platform (..))
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Utils.Path
-import Distribution.Verbosity (Verbosity)
+import Distribution.Verbosity (VerbosityHandles, VerbosityLevel, mkVerbosity, verbosityLevel)
 
 -- | An action that builds all the extra build sources of a component, i.e. C,
 -- C++, Js, Asm, C-- sources.
@@ -40,6 +40,8 @@ buildAllExtraSources
   -- ^ The build directory for this target
   -> (Bool -> [BuildWay], Bool -> BuildWay, BuildWay)
   -- ^ Needed build ways
+  -> VerbosityHandles
+  -- ^ Logging handles
   -> PreBuildComponentInputs
   -- ^ The context and component being built in it.
   -> IO (NubListR (SymbolicPath Pkg File))
@@ -66,6 +68,8 @@ buildCSources
     -- ^ The build directory for this target
     -> (Bool -> [BuildWay], Bool -> BuildWay, BuildWay)
     -- ^ Needed build ways
+    -> VerbosityHandles
+    -- ^ Logging handles
     -> PreBuildComponentInputs
     -- ^ The context and component being built in it.
     -> IO (NubListR (SymbolicPath Pkg File))
@@ -96,7 +100,7 @@ buildCxxSources mbMainFile =
                 cxxFiles ++ [main]
           _otherwise -> cxxFiles
     )
-buildJsSources _mbMainFile ghcProg buildTargetDir neededWays = do
+buildJsSources _mbMainFile ghcProg buildTargetDir neededWays verbHandles = do
   Platform hostArch _ <- hostPlatform <$> localBuildInfo
   let hasJsSupport = hostArch == JavaScript
   buildExtraSources
@@ -114,6 +118,7 @@ buildJsSources _mbMainFile ghcProg buildTargetDir neededWays = do
     ghcProg
     buildTargetDir
     neededWays
+    verbHandles
 buildAsmSources _mbMainFile =
   buildExtraSources
     "Assembler Sources"
@@ -131,7 +136,7 @@ buildCmmSources _mbMainFile =
 buildExtraSources
   :: String
   -- ^ String describing the extra sources being built, for printing.
-  -> ( Verbosity
+  -> ( VerbosityLevel
        -> LocalBuildInfo
        -> BuildInfo
        -> ComponentLocalBuildInfo
@@ -155,6 +160,8 @@ buildExtraSources
   -- ^ The build directory for this target
   -> (Bool -> [BuildWay], Bool -> BuildWay, BuildWay)
   -- ^ Needed build ways
+  -> VerbosityHandles
+  -- ^ Handles for logging
   -> PreBuildComponentInputs
   -- ^ The context and component being built in it.
   -> IO (NubListR (SymbolicPath Pkg File))
@@ -165,11 +172,12 @@ buildExtraSources
   viewSources
   ghcProg
   buildTargetDir
-  (neededLibWays, neededFLibWay, neededExeWay) =
+  (neededLibWays, neededFLibWay, neededExeWay)
+  verbHandles =
     \PreBuildComponentInputs{buildingWhat, localBuildInfo = lbi, targetInfo} -> do
       let
         bi = componentBuildInfo (targetComponent targetInfo)
-        verbosity = buildingWhatVerbosity buildingWhat
+        verbosity = mkVerbosity verbHandles $ buildingWhatVerbosity buildingWhat
         clbi = targetCLBI targetInfo
         isIndef = componentIsIndefinite clbi
         mbWorkDir = mbWorkDirLBI lbi
@@ -193,7 +201,7 @@ buildExtraSources
         buildAction sourceFile = do
           let baseSrcOpts =
                 componentSourceGhcOptions
-                  verbosity
+                  (verbosityLevel verbosity)
                   lbi
                   bi
                   clbi

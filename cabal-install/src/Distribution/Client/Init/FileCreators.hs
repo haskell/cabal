@@ -54,6 +54,7 @@ import Distribution.Types.PackageName
 
 import Distribution.FieldGrammar.Newtypes
 import Distribution.License (licenseToSPDX)
+import Distribution.Verbosity (defaultVerbosityHandles, mkVerbosity)
 import System.FilePath ((<.>), (</>))
 
 -- -------------------------------------------------------------------- --
@@ -279,7 +280,7 @@ instance Show WriteAction where
 -- | Possibly generate a message to stdout, taking into account the
 --   --quiet flag.
 message :: Interactive m => WriteOpts -> T.Severity -> String -> m ()
-message opts = T.message (_optVerbosity opts)
+message opts = T.message (mkVerbosity defaultVerbosityHandles $ _optVerbosity opts)
 
 -- | Write a file \"safely\" if it doesn't exist, backing up any existing version when
 --   the overwrite flag is set.

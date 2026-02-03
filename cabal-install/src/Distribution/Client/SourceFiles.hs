@@ -38,7 +38,7 @@ import Distribution.Utils.Path
 import Distribution.ModuleName
 
 import Distribution.Client.Compat.Prelude
-import Distribution.Verbosity (normal)
+import Distribution.Verbosity (defaultVerbosityHandles, mkVerbosity, normal)
 import Prelude ()
 
 import System.FilePath
@@ -173,7 +173,12 @@ needBuildInfo pkg_descr bi modules = do
   expandedExtraSrcFiles <- liftIO $
     fmap concat . for (extraSrcFiles pkg_descr) $
       \fpath ->
-        matchDirFileGlobWithDie normal (\_ _ -> return []) (specVersion pkg_descr) (Just $ makeSymbolicPath root) fpath
+        matchDirFileGlobWithDie
+          (mkVerbosity defaultVerbosityHandles normal)
+          (\_ _ -> return [])
+          (specVersion pkg_descr)
+          (Just $ makeSymbolicPath root)
+          fpath
   traverse_ needIfExists $
     concat
       [ map getSymbolicPath $ cSources bi

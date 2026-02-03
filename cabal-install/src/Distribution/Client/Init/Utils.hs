@@ -48,7 +48,7 @@ import Distribution.Types.Dependency (Dependency, mkDependency)
 import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
 import Distribution.Utils.String (trim)
-import Distribution.Verbosity (silent)
+import Distribution.Verbosity (defaultVerbosityHandles, mkVerbosity, silent)
 import Distribution.Version
 
 -- | Data type of source files found in the working directory
@@ -323,7 +323,7 @@ mkStringyDep = mkPackageNameDep . mkPackageName
 getBaseDep :: Interactive m => InstalledPackageIndex -> InitFlags -> m [Dependency]
 getBaseDep pkgIx flags =
   retrieveDependencies
-    silent
+    (mkVerbosity defaultVerbosityHandles silent)
     flags
     [(fromString "Prelude", fromString "Prelude")]
     pkgIx
