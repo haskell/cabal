@@ -29,6 +29,7 @@ import Distribution.Types.UnqualComponentName
 import Distribution.Types.Annotation
 
 import qualified Distribution.Compat.NonEmptySet as NES
+import qualified Text.Parsec as Parsec
 import qualified Text.PrettyPrint as PP
 
 -- | Describes a dependency on a source package (API)
@@ -148,6 +149,13 @@ instance Parsec Dependency where parsec = snd <$> exactParsec
 
 instance ExactParsec Dependency where
   exactParsec = do
+    startPos <- getPosition
+    let
+      row = Parsec.sourceLine startPos
+      col = Parsec.sourceColumn startPos
+
+      posTrivia = TriviaTree [ExactPosition (Position row col)] mempty
+
     name <- parsec
 
     libs <- option mainLibSet $ do
@@ -164,7 +172,7 @@ instance ExactParsec Dependency where
       let t = fromNamedTrivia anyVersion [IsInjected]
        in exactParsec <|> pure (t, anyVersion)
     let dep = mkDependency name ver libs
-    let depTrivia = markTriviaTree dep (verTrivia <> spaceTrivia)
+    let depTrivia = markTriviaTree dep (verTrivia <> spaceTrivia <> posTrivia)
 
     return
       ( depTrivia
