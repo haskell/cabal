@@ -78,7 +78,7 @@ import Distribution.Parsec.Error (PError (..), PErrorWithSource (..), showPError
 
 import qualified Data.Bifunctor as Bi
 import Data.Monoid (Last (..))
-import Distribution.Parsec.FieldLineStream (FieldLineStream, fieldLineStreamFromBS, fieldLineStreamFromString)
+import Distribution.Parsec.FieldLineStream (FieldLineStream, fieldLineStreamFromBS, fieldLineStreamFromString, fieldLineStreamPosition)
 import Distribution.Parsec.Position (Position (..), incPos, retPos, showPos, zeroPos)
 import Distribution.Parsec.Warning
 import Numeric (showIntAtBase)
@@ -119,6 +119,8 @@ class (P.CharParsing m, MonadPlus m, Fail.MonadFail m) => CabalParsing m where
   parsecHaskellString = stringLiteral
 
   askCabalSpecVersion :: m CabalSpecVersion
+
+  getPosition :: m Parsec.SourcePos
 
 -- | 'parsec' /could/ consume trailing spaces, this function /will/ consume.
 lexemeParsec :: (CabalParsing m, Parsec a) => m a
@@ -200,6 +202,17 @@ instance CabalParsing ParsecParser where
     Parsec.modifyState
       (PWarning t (Position (Parsec.sourceLine spos) (Parsec.sourceColumn spos)) w :)
   askCabalSpecVersion = PP pure
+
+  getPosition = liftParsec $ do
+    offset <- fieldLineStreamPosition <$> Parsec.getInput
+    curPos <- Parsec.getPosition
+    case offset of
+      Nothing -> pure curPos
+      Just (Position row col) ->
+        -- Fix up the source position
+        -- Override the line due to line jumps, and offset the column due to dropped leading spaced
+        let newPos = curPos `Parsec.incSourceColumn` col `Parsec.setSourceLine` row
+        in  pure newPos
 
 -- | Parse a 'String' with 'lexemeParsec'.
 simpleParsec :: Parsec a => String -> Maybe a

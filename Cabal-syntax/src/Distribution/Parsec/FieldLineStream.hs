@@ -6,6 +6,7 @@
 
 module Distribution.Parsec.FieldLineStream
   ( FieldLineStream (..)
+  , fieldLineStreamPosition
   , fieldLineStreamFromString
   , fieldLineStreamFromBS
   , fieldLineStreamEnd
@@ -15,37 +16,45 @@ import Data.Bits
 import Data.ByteString (ByteString)
 import Distribution.Compat.Prelude
 import Distribution.Utils.Generic (toUTF8BS)
+import Distribution.Parsec.Position
 import Prelude ()
 
 import qualified Data.ByteString as BS
 import qualified Text.Parsec as Parsec
 
--- | This is essentially a lazy bytestring, but chunks are glued with newline @\'\\n\'@.
+-- |
+-- This is essentially a lazy bytestring, but chunks are glued with newline @\'\\n\'@.
+--
+-- The Position argument was added to allow each Parsec instance to recover the position of content.
 data FieldLineStream
-  = FLSLast !ByteString
-  | FLSCons {-# UNPACK #-} !ByteString FieldLineStream
+  = FLSLast !ByteString !(Maybe Position)
+  | FLSCons {-# UNPACK #-} !ByteString !(Maybe Position) FieldLineStream
   deriving (Show)
 
+fieldLineStreamPosition :: FieldLineStream -> Maybe Position
+fieldLineStreamPosition (FLSLast _ pos) = pos
+fieldLineStreamPosition (FLSCons _ pos _) = pos
+
 fieldLineStreamEnd :: FieldLineStream
-fieldLineStreamEnd = FLSLast mempty
+fieldLineStreamEnd = FLSLast mempty Nothing
 
 -- | Convert 'String' to 'FieldLineStream'.
 --
 -- /Note:/ inefficient!
 fieldLineStreamFromString :: String -> FieldLineStream
-fieldLineStreamFromString = FLSLast . toUTF8BS
+fieldLineStreamFromString = flip FLSLast Nothing . toUTF8BS
 
 fieldLineStreamFromBS :: ByteString -> FieldLineStream
-fieldLineStreamFromBS = FLSLast
+fieldLineStreamFromBS = flip FLSLast Nothing
 
 instance Monad m => Parsec.Stream FieldLineStream m Char where
-  uncons (FLSLast bs) = return $ case BS.uncons bs of
+  uncons (FLSLast bs pos) = return $ case BS.uncons bs of
     Nothing -> Nothing
-    Just (c, bs') -> Just (unconsChar c bs' (\bs'' -> FLSLast bs'') fieldLineStreamEnd)
-  uncons (FLSCons bs s) = return $ case BS.uncons bs of
+    Just (c, bs') -> Just (unconsChar c bs' (\bs'' -> FLSLast bs'' pos) fieldLineStreamEnd)
+  uncons (FLSCons bs pos s) = return $ case BS.uncons bs of
     -- as lines are glued with '\n', we return '\n' here!
     Nothing -> Just ('\n', s)
-    Just (c, bs') -> Just (unconsChar c bs' (\bs'' -> FLSCons bs'' s) s)
+    Just (c, bs') -> Just (unconsChar c bs' (\bs'' -> FLSCons bs'' pos s) s)
 
 -- Based on implementation 'decodeStringUtf8'
 unconsChar :: forall a. Word8 -> ByteString -> (ByteString -> a) -> a -> (Char, a)

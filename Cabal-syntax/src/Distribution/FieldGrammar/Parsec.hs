@@ -474,7 +474,7 @@ mealy f = go
     go _ [] = []
     go s (x : xs) = let ~(s', y) = f s x in y : go s' xs
 
-fieldLinesToStream :: [FieldLine ann] -> FieldLineStream
+fieldLinesToStream :: [FieldLine Position] -> FieldLineStream
 fieldLinesToStream [] = fieldLineStreamEnd
-fieldLinesToStream [FieldLine _ bs] = FLSLast bs
-fieldLinesToStream (FieldLine _ bs : fs) = FLSCons bs (fieldLinesToStream fs)
+fieldLinesToStream [FieldLine pos bs] = FLSLast bs (Just pos)
+fieldLinesToStream (FieldLine pos bs : fs) = FLSCons bs (Just pos) (fieldLinesToStream fs)
