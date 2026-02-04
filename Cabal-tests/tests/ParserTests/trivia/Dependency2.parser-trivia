@@ -7,9 +7,17 @@ _×_
         _×_
           `SomeNamespace (Dependency (PackageName "text") (LaterVersion (mkVersion [0])) (fromNonEmpty (LMainLibName :| [])))`
           TriviaTree {
-            justAnnotation = [],
+            justAnnotation = [
+              ExactPosition (Position 1 1)],
             namedAnnotations = Map.fromList
               [
+                _×_
+                  `SomeNamespace (PackageName "text")`
+                  TriviaTree {
+                    justAnnotation = [
+                      PostTrivia " "],
+                    namedAnnotations = Map.fromList
+                      []},
                 _×_
                   `SomeNamespace (LaterVersion (mkVersion [0]))`
                   TriviaTree {

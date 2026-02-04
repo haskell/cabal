@@ -7,10 +7,18 @@ _×_
         _×_
           `SomeNamespace (Dependency (PackageName "base") (UnionVersionRanges (OrLaterVersion (mkVersion [4,10])) (OrEarlierVersion (mkVersion [4,13]))) (fromNonEmpty (LMainLibName :| [])))`
           TriviaTree {
-            justAnnotation = [],
+            justAnnotation = [
+              ExactPosition (Position 1 1)],
             namedAnnotations =
             Map.fromList
               [
+                _×_
+                  `SomeNamespace (PackageName "base")`
+                  TriviaTree {
+                    justAnnotation = [
+                      PostTrivia "   "],
+                    namedAnnotations = Map.fromList
+                      []},
                 _×_
                   `SomeNamespace (UnionVersionRanges (OrLaterVersion (mkVersion [4,10])) (OrEarlierVersion (mkVersion [4,13])))`
                   TriviaTree {

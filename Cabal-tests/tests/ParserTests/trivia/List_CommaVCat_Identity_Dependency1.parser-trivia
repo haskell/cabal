@@ -16,9 +16,17 @@ _×_
                 _×_
                   `SomeNamespace (Dependency (PackageName "base") (OrLaterVersion (mkVersion [0])) (fromNonEmpty (LMainLibName :| [])))`
                   TriviaTree {
-                    justAnnotation = [],
+                    justAnnotation = [
+                      ExactPosition (Position 1 1)],
                     namedAnnotations = Map.fromList
                       [
+                        _×_
+                          `SomeNamespace (PackageName "base")`
+                          TriviaTree {
+                            justAnnotation = [
+                              PostTrivia ""],
+                            namedAnnotations = Map.fromList
+                              []},
                         _×_
                           `SomeNamespace (OrLaterVersion (mkVersion [0]))`
                           TriviaTree {
@@ -37,9 +45,17 @@ _×_
                 _×_
                   `SomeNamespace (Dependency (PackageName "ghc") (OrLaterVersion (mkVersion [0])) (fromNonEmpty (LMainLibName :| [])))`
                   TriviaTree {
-                    justAnnotation = [],
+                    justAnnotation = [
+                      ExactPosition (Position 3 1)],
                     namedAnnotations = Map.fromList
                       [
+                        _×_
+                          `SomeNamespace (PackageName "ghc")`
+                          TriviaTree {
+                            justAnnotation = [
+                              PostTrivia ""],
+                            namedAnnotations = Map.fromList
+                              []},
                         _×_
                           `SomeNamespace (OrLaterVersion (mkVersion [0]))`
                           TriviaTree {
@@ -58,9 +74,17 @@ _×_
                 _×_
                   `SomeNamespace (Dependency (PackageName "text") (OrLaterVersion (mkVersion [0])) (fromNonEmpty (LMainLibName :| [])))`
                   TriviaTree {
-                    justAnnotation = [],
+                    justAnnotation = [
+                      ExactPosition (Position 2 1)],
                     namedAnnotations = Map.fromList
                       [
+                        _×_
+                          `SomeNamespace (PackageName "text")`
+                          TriviaTree {
+                            justAnnotation = [
+                              PostTrivia ""],
+                            namedAnnotations = Map.fromList
+                              []},
                         _×_
                           `SomeNamespace (OrLaterVersion (mkVersion [0]))`
                           TriviaTree {
