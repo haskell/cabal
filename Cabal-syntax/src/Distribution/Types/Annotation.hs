@@ -35,6 +35,7 @@ module Distribution.Types.Annotation
   , atFieldNth
   , atNth
   , atPosition
+  , patchPosition
   , triviaToDoc
   , triviumToDoc
   )
@@ -48,6 +49,7 @@ import Distribution.Parsec.Position
 import Data.Kind
 import Data.Monoid
 import Data.Typeable
+import Data.Monoid
 
 import qualified Data.Map as M
 import qualified Text.PrettyPrint as Disp
@@ -161,3 +163,16 @@ triviumToDoc t x = case t of
   PostTrivia s -> x <> Disp.text s
   IsInjected -> mempty -- the doc in question shouldn't be rendered
   _ -> x -- TODO(leana8959): ignore the rest for now
+
+-- There's no hardbreak primitive in printer
+--
+-- Precondition:
+-- The previous element must be before current element
+--
+-- https://github.com/haskell/pretty/issues/26
+patchPosition :: Position -> Position -> Disp.Doc -> Disp.Doc
+patchPosition (Position prevRow _) (Position curRow _) =
+  let rowDiff = curRow - prevRow
+
+  in  appEndo . foldMap Endo
+        $ replicate rowDiff ((Disp.text "") Disp.$+$)

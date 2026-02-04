@@ -83,6 +83,7 @@ import Text.PrettyPrint (Doc, comma, fsep, punctuate, text, vcat)
 import Distribution.Types.Annotation
 
 import Data.List (groupBy, sortOn)
+import qualified Data.List as List
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as M
 import qualified Data.Set as Set
@@ -140,16 +141,28 @@ instance TriviaSep CommaVCat where
   -- The separators are in the trivia
   prettierSep _ docs =
     let atNthOr0 = fromMaybe 0 . atNth . justAnnotation
+        sortedDocs = sortOn (atNthOr0 . fst) $ docs
+
+        withPreviousPos =
+            zip
+              ( Nothing : map (atPosition . justAnnotation . fst) (List.tail sortedDocs)
+              )
+              sortedDocs
+
      in map
-          ( \(t0, x) ->
+          ( \(mPrevPos, (t0, x)) ->
               let tLocal = justAnnotation t0
-               in (flip DocAnn t0) $
-                    triviaToDoc tLocal $
-                      mconcat . map unAnnDoc $
-                        exactPretty t0 x
+                  tryPatchPosition =
+                    fromMaybe id $
+                      patchPosition <$> mPrevPos <*> (atPosition $ justAnnotation t0)
+               in
+                    (flip DocAnn t0) $
+                      tryPatchPosition $
+                        triviaToDoc tLocal $
+                          mconcat . map unAnnDoc $
+                            exactPretty t0 x
           )
-          $ sortOn (atNthOr0 . fst)
-          $ docs
+        $ withPreviousPos
 
   triviaParseSep _ p = do
     v <- askCabalSpecVersion
