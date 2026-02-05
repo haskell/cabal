@@ -35,7 +35,7 @@ import Distribution.FieldGrammar.Class
 import qualified Data.Map as M
 
 newtype PrettyFieldGrammar s a = PrettyFG
-  { fieldGrammarPretty :: CabalSpecVersion -> TriviaTree -> s -> [PrettyField (Maybe Position)]
+  { fieldGrammarPretty :: CabalSpecVersion -> TriviaTree -> s -> [PrettyField Trivia]
   }
   deriving (Functor)
 
@@ -43,16 +43,16 @@ instance Applicative (PrettyFieldGrammar s) where
   pure _ = PrettyFG (\_ _ _ -> mempty)
   PrettyFG f <*> PrettyFG x = PrettyFG (\v t s -> f v t s <> x v t s)
 
-noPosition :: PrettyField ann -> PrettyField (Maybe Position)
-noPosition = fmap (const Nothing)
+noTrivia :: PrettyField ann -> PrettyField Trivia
+noTrivia = fmap (const mempty)
 
 -- | We can use 'PrettyFieldGrammar' to pp print the @s@.
 --
 -- /Note:/ there is not trailing @($+$ text "")@.
-prettyFieldGrammar :: CabalSpecVersion -> PrettyFieldGrammar s a -> s -> [PrettyField (Maybe Position)]
+prettyFieldGrammar :: CabalSpecVersion -> PrettyFieldGrammar s a -> s -> [PrettyField Trivia]
 prettyFieldGrammar v g = prettyAnnotatedFieldGrammar v mempty g
 
-prettierFieldGrammar :: CabalSpecVersion -> TriviaTree -> PrettyFieldGrammar s a -> s -> [PrettyField (Maybe Position)]
+prettierFieldGrammar :: CabalSpecVersion -> TriviaTree -> PrettyFieldGrammar s a -> s -> [PrettyField Trivia]
 prettierFieldGrammar v t g = prettyAnnotatedFieldGrammar v t g
 
 prettyAnnotatedFieldGrammar
@@ -60,7 +60,7 @@ prettyAnnotatedFieldGrammar
   -> TriviaTree
   -> PrettyFieldGrammar s a
   -> s
-  -> [PrettyField (Maybe Position)]
+  -> [PrettyField Trivia]
 prettyAnnotatedFieldGrammar v t g = fieldGrammarPretty g v t
 
 instance FieldGrammar ExactPretty PrettyFieldGrammar where
@@ -126,7 +126,7 @@ instance FieldGrammar ExactPretty PrettyFieldGrammar where
             -- ppField fn (exactPrettyVersioned v t' (pack' _pack (aview l s)))
             mconcat $ map (ppTriviaField fn) (exactPrettyVersioned v t' (pack' _pack (aview l s)))
 
-  prefixedFields _fnPfx l = PrettyFG (\_ t -> map noPosition . pp . aview l)
+  prefixedFields _fnPfx l = PrettyFG (\_ t -> map noTrivia . pp . aview l)
     where
       pp xs =
         -- always print the field, even its Doc is empty.
@@ -146,12 +146,10 @@ instance FieldGrammar ExactPretty PrettyFieldGrammar where
   availableSince _ _ = id
   hiddenField _ = PrettyFG (\_ -> mempty)
 
-ppField :: FieldName -> Doc -> [PrettyField (Maybe Position)]
+ppField :: FieldName -> Doc -> [PrettyField Trivia]
 ppField name fielddoc = ppTriviaField name (DocAnn fielddoc mempty)
 
-ppTriviaField :: FieldName -> DocAnn TriviaTree -> [PrettyField (Maybe Position)]
+ppTriviaField :: FieldName -> DocAnn TriviaTree -> [PrettyField Trivia]
 ppTriviaField name (DocAnn fielddoc tree)
   | PP.isEmpty fielddoc = []
-  | otherwise =
-      let mPos = atPosition (justAnnotation tree)
-       in [PrettyField mPos name fielddoc]
+  | otherwise = [PrettyField (justAnnotation tree) name fielddoc]

@@ -84,11 +84,11 @@ showGenericPackageDescription' gpd t =
   where
     v = specVersion $ packageDescription gpd
 
-ppGenericPackageDescription :: CabalSpecVersion -> GenericPackageDescription -> [PrettyField (Maybe Position)]
+ppGenericPackageDescription :: CabalSpecVersion -> GenericPackageDescription -> [PrettyField Trivia]
 ppGenericPackageDescription = flip ppGenericPackageDescription' mempty
 
 -- | Convert a generic package description to 'PrettyField's.
-ppGenericPackageDescription' :: CabalSpecVersion -> TriviaTree -> GenericPackageDescription -> [PrettyField (Maybe Position)]
+ppGenericPackageDescription' :: CabalSpecVersion -> TriviaTree -> GenericPackageDescription -> [PrettyField Trivia]
 ppGenericPackageDescription' v t gpd0 =
   concat
     [ ppPackageDescription v t (packageDescription gpd)
@@ -104,40 +104,40 @@ ppGenericPackageDescription' v t gpd0 =
   where
     gpd = preProcessInternalDeps (specVersion (packageDescription gpd0)) gpd0
 
-ppPackageDescription :: CabalSpecVersion -> TriviaTree -> PackageDescription -> [PrettyField (Maybe Position)]
+ppPackageDescription :: CabalSpecVersion -> TriviaTree -> PackageDescription -> [PrettyField Trivia]
 ppPackageDescription v t pd =
   prettierFieldGrammar v t packageDescriptionFieldGrammar pd
     ++ ppSourceRepos v t (sourceRepos pd)
 
-ppSourceRepos :: CabalSpecVersion -> TriviaTree -> [SourceRepo] -> [PrettyField (Maybe Position)]
+ppSourceRepos :: CabalSpecVersion -> TriviaTree -> [SourceRepo] -> [PrettyField Trivia]
 ppSourceRepos v t = map (ppSourceRepo v t)
 
-ppSourceRepo :: CabalSpecVersion -> TriviaTree -> SourceRepo -> PrettyField (Maybe Position)
+ppSourceRepo :: CabalSpecVersion -> TriviaTree -> SourceRepo -> PrettyField Trivia
 ppSourceRepo v t repo =
-  PrettySection Nothing "source-repository" [pretty kind] $
+  PrettySection mempty "source-repository" [pretty kind] $
     prettierFieldGrammar v t (sourceRepoFieldGrammar kind) repo
   where
     kind = repoKind repo
 
-ppSetupBInfo :: CabalSpecVersion -> TriviaTree -> Maybe SetupBuildInfo -> [PrettyField (Maybe Position)]
+ppSetupBInfo :: CabalSpecVersion -> TriviaTree -> Maybe SetupBuildInfo -> [PrettyField Trivia]
 ppSetupBInfo _ _ Nothing = mempty
 ppSetupBInfo v t (Just sbi)
   | defaultSetupDepends sbi = mempty
   | otherwise =
       pure $
-        PrettySection Nothing "custom-setup" [] $
+        PrettySection mempty "custom-setup" [] $
           prettierFieldGrammar v t (setupBInfoFieldGrammar False) sbi
 
-ppGenPackageFlags :: CabalSpecVersion -> TriviaTree -> [PackageFlag] -> [PrettyField (Maybe Position)]
+ppGenPackageFlags :: CabalSpecVersion -> TriviaTree -> [PackageFlag] -> [PrettyField Trivia]
 ppGenPackageFlags v t = map (ppFlag v t)
 
-ppFlag :: CabalSpecVersion -> TriviaTree -> PackageFlag -> PrettyField (Maybe Position)
+ppFlag :: CabalSpecVersion -> TriviaTree -> PackageFlag -> PrettyField Trivia
 ppFlag v t flag@(MkPackageFlag name _ _ _) =
-  PrettySection Nothing "flag" [ppFlagName name] $
+  PrettySection mempty "flag" [ppFlagName name] $
     prettierFieldGrammar v t (flagFieldGrammar name) flag
 
 -- TODO(leana8959): deal with condtree
-ppCondTree2 :: CabalSpecVersion -> TriviaTree -> PrettyFieldGrammar' s -> CondTree ConfVar [Dependency] s -> [PrettyField (Maybe Position)]
+ppCondTree2 :: CabalSpecVersion -> TriviaTree -> PrettyFieldGrammar' s -> CondTree ConfVar [Dependency] s -> [PrettyField Trivia]
 ppCondTree2 v t grammar = go
   where
     -- TODO: recognise elif opportunities
@@ -153,47 +153,47 @@ ppCondTree2 v t grammar = go
     ppIf (CondBranch c thenTree (Just elseTree)) =
       -- See #6193
       [ ppIfCondition c (go thenTree)
-      , PrettySection Nothing "else" [] (go elseTree)
+      , PrettySection mempty "else" [] (go elseTree)
       ]
 
-ppCondLibrary :: CabalSpecVersion -> TriviaTree -> Maybe (CondTree ConfVar [Dependency] Library) -> [PrettyField (Maybe Position)]
+ppCondLibrary :: CabalSpecVersion -> TriviaTree -> Maybe (CondTree ConfVar [Dependency] Library) -> [PrettyField Trivia]
 ppCondLibrary _ _ Nothing = mempty
 ppCondLibrary v t (Just condTree) =
   pure $
-    PrettySection Nothing "library" [] $
+    PrettySection mempty "library" [] $
       ppCondTree2 v t (libraryFieldGrammar LMainLibName) condTree
 
-ppCondSubLibraries :: CabalSpecVersion -> TriviaTree -> [(UnqualComponentName, CondTree ConfVar [Dependency] Library)] -> [PrettyField (Maybe Position)]
+ppCondSubLibraries :: CabalSpecVersion -> TriviaTree -> [(UnqualComponentName, CondTree ConfVar [Dependency] Library)] -> [PrettyField Trivia]
 ppCondSubLibraries v t libs =
-  [ PrettySection Nothing "library" [pretty n] $
+  [ PrettySection mempty "library" [pretty n] $
     ppCondTree2 v t (libraryFieldGrammar $ LSubLibName n) condTree
   | (n, condTree) <- libs
   ]
 
-ppCondForeignLibs :: CabalSpecVersion -> TriviaTree -> [(UnqualComponentName, CondTree ConfVar [Dependency] ForeignLib)] -> [PrettyField (Maybe Position)]
+ppCondForeignLibs :: CabalSpecVersion -> TriviaTree -> [(UnqualComponentName, CondTree ConfVar [Dependency] ForeignLib)] -> [PrettyField Trivia]
 ppCondForeignLibs v t flibs =
-  [ PrettySection Nothing "foreign-library" [pretty n] $
+  [ PrettySection mempty "foreign-library" [pretty n] $
     ppCondTree2 v t (foreignLibFieldGrammar n) condTree
   | (n, condTree) <- flibs
   ]
 
-ppCondExecutables :: CabalSpecVersion -> TriviaTree -> [(UnqualComponentName, CondTree ConfVar [Dependency] Executable)] -> [PrettyField (Maybe Position)]
+ppCondExecutables :: CabalSpecVersion -> TriviaTree -> [(UnqualComponentName, CondTree ConfVar [Dependency] Executable)] -> [PrettyField Trivia]
 ppCondExecutables v t exes =
-  [ PrettySection Nothing "executable" [pretty n] $
+  [ PrettySection mempty "executable" [pretty n] $
     ppCondTree2 v t (executableFieldGrammar n) condTree
   | (n, condTree) <- exes
   ]
 
-ppCondTestSuites :: CabalSpecVersion -> TriviaTree -> [(UnqualComponentName, CondTree ConfVar [Dependency] TestSuite)] -> [PrettyField (Maybe Position)]
+ppCondTestSuites :: CabalSpecVersion -> TriviaTree -> [(UnqualComponentName, CondTree ConfVar [Dependency] TestSuite)] -> [PrettyField Trivia]
 ppCondTestSuites v t suites =
-  [ PrettySection Nothing "test-suite" [pretty n] $
+  [ PrettySection mempty "test-suite" [pretty n] $
     ppCondTree2 v t testSuiteFieldGrammar (fmap FG.unvalidateTestSuite condTree)
   | (n, condTree) <- suites
   ]
 
-ppCondBenchmarks :: CabalSpecVersion -> TriviaTree -> [(UnqualComponentName, CondTree ConfVar [Dependency] Benchmark)] -> [PrettyField (Maybe Position)]
+ppCondBenchmarks :: CabalSpecVersion -> TriviaTree -> [(UnqualComponentName, CondTree ConfVar [Dependency] Benchmark)] -> [PrettyField Trivia]
 ppCondBenchmarks v t suites =
-  [ PrettySection Nothing "benchmark" [pretty n] $
+  [ PrettySection mempty "benchmark" [pretty n] $
     ppCondTree2 v t benchmarkFieldGrammar (fmap FG.unvalidateBenchmark condTree)
   | (n, condTree) <- suites
   ]
@@ -227,8 +227,8 @@ ppConfVar (Impl c v) = text "impl" <<>> parens (pretty c <+> pretty v)
 ppFlagName :: FlagName -> Doc
 ppFlagName = text . unFlagName
 
-ppIfCondition :: Condition ConfVar -> [PrettyField (Maybe Position)] -> PrettyField (Maybe Position)
-ppIfCondition c = PrettySection Nothing "if" [ppCondition c]
+ppIfCondition :: Condition ConfVar -> [PrettyField Trivia] -> PrettyField Trivia
+ppIfCondition c = PrettySection mempty "if" [ppCondition c]
 
 -- | @since 2.0.0.2
 writePackageDescription :: FilePath -> PackageDescription -> IO ()
@@ -326,7 +326,7 @@ showHookedBuildInfo :: HookedBuildInfo -> String
 showHookedBuildInfo (mb_lib_bi, ex_bis) =
   showFields (const NoComment) $
     maybe mempty (prettyFieldGrammar cabalSpecLatest buildInfoFieldGrammar) mb_lib_bi
-      ++ [ PrettySection Nothing "executable:" [pretty name] $
+      ++ [ PrettySection mempty "executable:" [pretty name] $
           prettyFieldGrammar cabalSpecLatest buildInfoFieldGrammar bi
          | (name, bi) <- ex_bis
          ]
