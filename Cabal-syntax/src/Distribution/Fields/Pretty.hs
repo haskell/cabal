@@ -41,6 +41,8 @@ import qualified Data.List as List (tail)
 import qualified Data.ByteString as BS
 import qualified Text.PrettyPrint as PP
 
+import Debug.Pretty.Simple
+
 -- | This type is used to discern when a comment block should go
 --   before or after a cabal-like file field, otherwise it would
 --   be hardcoded to a single position. It is often used in
@@ -59,6 +61,9 @@ unAnnotatePrettyFieldLine (PrettyFieldLine _ doc) = doc
 -- position annotation.
 data PrettyFieldLine ann = PrettyFieldLine ann PP.Doc
   deriving (Functor, Foldable, Traversable, Show {-NOTE(leana8959): for debugging-})
+
+prettyFieldLineAnn :: PrettyFieldLine ann -> ann
+prettyFieldLineAnn (PrettyFieldLine ann _) = ann
 
 data PrettyField ann
   = PrettyField ann FieldName [PrettyFieldLine ann]
@@ -85,7 +90,11 @@ showFieldsWithTrivia = showFields' (const NoComment) atPosition postProcess 4
   where
     postProcess :: Maybe Position -> Trivia -> [String] -> [String]
     postProcess prevPos trivia xs =
-      trace ("Got previous position " <> show prevPos) xs
+      let mDiff = liftA2 offset (atPosition trivia) prevPos
+          offset (Position rx cx) (Position ry cy) = (rx - ry, cx - cy)
+      in  case mDiff of
+            Just (rDiff, cDiff) -> replicate rDiff "\n" <> replicate cDiff " " <> xs
+            Nothing -> xs
 
 -- | 'showFields' with user specified indentation.
 showFields'
@@ -135,7 +144,7 @@ renderFields prevPos opts fields = flattenBlocks blocks
       filter (not . null . _contentsBlock) -- empty blocks cause extra newlines #8236
         $ map
             ( \(prevPos, x) ->
-                trace ("zipping with prevPos" <> show prevPos) $
+                trace ("zipping with prevPos\n" <> show prevPos) $
                   renderField opts prevPos len x
             )
         $ zip (Nothing : map posFromPrettyField fields) fields
@@ -174,10 +183,19 @@ flattenBlocks = go0
           | otherwise = id
 
 renderField :: Opts ann -> Maybe Position -> Int -> PrettyField ann -> Block
-renderField (Opts rann _ indent postWithPrev) prevPos fw (PrettyField ann name fieldLines) =
+renderField opts@(Opts rann getPos indent postWithPrev) prevPos fw (PrettyField ann name fieldLines) =
   Block before after content
   where
-    doc = mconcat $ unAnnotatePrettyFieldLines fieldLines
+    fieldLines' :: [String]
+    fieldLines' =
+        map
+          ( \(prevLinePos, fl) ->
+              renderPrettyFieldLine opts prevLinePos fw fl
+          )
+        $ zip
+          (prevPos : map (getPos . prettyFieldLineAnn) fieldLines)
+          fieldLines
+
     post = postWithPrev prevPos
     content = case comments of
       CommentBefore cs -> cs ++ post ann lines'
@@ -190,18 +208,15 @@ renderField (Opts rann _ indent postWithPrev) prevPos fw (PrettyField ann name f
       NoComment -> NoMargin
       _ -> Margin
 
-    (lines', after) = case lines narrow of
+    (lines', after) = case fieldLines' of
       [] -> ([name' ++ ":"], NoMargin)
       [singleLine]
         | length singleLine < 60 ->
-            ([name' ++ ": " ++ replicate (fw - length name') ' ' ++ narrow], NoMargin)
-      _ -> ((name' ++ ":") : map indent (lines (PP.render doc)), Margin)
+            ([name' ++ ": " ++ replicate (fw - length name') ' ' ++ unlines fieldLines'], NoMargin)
+      _ -> ((name' ++ ":") : map indent fieldLines', Margin)
 
     name' = fromUTF8BS name
-    narrow = PP.renderStyle narrowStyle doc
 
-    narrowStyle :: PP.Style
-    narrowStyle = PP.style{PP.lineLength = PP.lineLength PP.style - fw}
 renderField opts@(Opts rann getPos indent postWithPrev) prevPos _ (PrettySection ann name args fields) =
   Block Margin Margin $
     attachComments
@@ -214,6 +229,18 @@ renderField opts@(Opts rann getPos indent postWithPrev) prevPos _ (PrettySection
       CommentAfter cs -> content ++ cs
       NoComment -> content
 renderField _ _ _ PrettyEmpty = Block NoMargin NoMargin mempty
+
+-- |
+-- Invariant: a PrettyFieldLine is never more than one line
+renderPrettyFieldLine :: Opts ann -> Maybe Position -> Int -> PrettyFieldLine ann -> String
+renderPrettyFieldLine (Opts rann _ indent postWithPrevPos) prevPos fw (PrettyFieldLine ann doc) =
+  let postProcess = postWithPrevPos prevPos
+      narrowStyle :: PP.Style
+      narrowStyle = PP.style{PP.lineLength = PP.lineLength PP.style - fw}
+
+  in  concat
+      $ postProcess ann
+      $ (PP.renderStyle narrowStyle doc : [])
 
 -------------------------------------------------------------------------------
 -- Transform from Parsec.Field
