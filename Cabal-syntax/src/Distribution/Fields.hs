@@ -40,6 +40,7 @@ module Distribution.Fields
   , CommentPosition (..)
   , PrettyField (..)
   , showFields
+  , showFields'
 
     -- ** Transformation from Field
   , genericFromParsecFields

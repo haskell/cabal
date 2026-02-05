@@ -467,7 +467,7 @@ fieldGrammarRoundTripTest parsec pretty fp = testCase fp $ do
   let prettyFields = prettyAnnotatedFieldGrammar cabalSpecLatest trivia pretty parsed
   let y =
         BS8.pack
-        $ showFields (const NoComment)
+        $ showFields' (const NoComment) (const id) 4
         $ prettyFields
 
 {- FOURMOLU_DISABLE -}
