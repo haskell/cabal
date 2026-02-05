@@ -37,7 +37,7 @@ import Distribution.Types.Annotation
 
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
-import Distribution.FieldGrammar (PrettyFieldGrammar', prettierFieldGrammar, prettyFieldGrammar)
+import Distribution.FieldGrammar (PrettyFieldGrammar', exactPrettyFieldGrammar, prettyFieldGrammar)
 import Distribution.Fields.Pretty
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration (transformAllBuildInfos)
@@ -106,7 +106,7 @@ ppGenericPackageDescription' v t gpd0 =
 
 ppPackageDescription :: CabalSpecVersion -> TriviaTree -> PackageDescription -> [PrettyField Trivia]
 ppPackageDescription v t pd =
-  prettierFieldGrammar v t packageDescriptionFieldGrammar pd
+  exactPrettyFieldGrammar v t packageDescriptionFieldGrammar pd
     ++ ppSourceRepos v t (sourceRepos pd)
 
 ppSourceRepos :: CabalSpecVersion -> TriviaTree -> [SourceRepo] -> [PrettyField Trivia]
@@ -115,7 +115,7 @@ ppSourceRepos v t = map (ppSourceRepo v t)
 ppSourceRepo :: CabalSpecVersion -> TriviaTree -> SourceRepo -> PrettyField Trivia
 ppSourceRepo v t repo =
   PrettySection mempty "source-repository" [pretty kind] $
-    prettierFieldGrammar v t (sourceRepoFieldGrammar kind) repo
+    exactPrettyFieldGrammar v t (sourceRepoFieldGrammar kind) repo
   where
     kind = repoKind repo
 
@@ -126,7 +126,7 @@ ppSetupBInfo v t (Just sbi)
   | otherwise =
       pure $
         PrettySection mempty "custom-setup" [] $
-          prettierFieldGrammar v t (setupBInfoFieldGrammar False) sbi
+          exactPrettyFieldGrammar v t (setupBInfoFieldGrammar False) sbi
 
 ppGenPackageFlags :: CabalSpecVersion -> TriviaTree -> [PackageFlag] -> [PrettyField Trivia]
 ppGenPackageFlags v t = map (ppFlag v t)
@@ -134,7 +134,7 @@ ppGenPackageFlags v t = map (ppFlag v t)
 ppFlag :: CabalSpecVersion -> TriviaTree -> PackageFlag -> PrettyField Trivia
 ppFlag v t flag@(MkPackageFlag name _ _ _) =
   PrettySection mempty "flag" [ppFlagName name] $
-    prettierFieldGrammar v t (flagFieldGrammar name) flag
+    exactPrettyFieldGrammar v t (flagFieldGrammar name) flag
 
 -- TODO(leana8959): deal with condtree
 ppCondTree2 :: CabalSpecVersion -> TriviaTree -> PrettyFieldGrammar' s -> CondTree ConfVar [Dependency] s -> [PrettyField Trivia]
@@ -142,7 +142,7 @@ ppCondTree2 v t grammar = go
   where
     -- TODO: recognise elif opportunities
     go (CondNode it _ ifs) =
-      prettierFieldGrammar v t grammar it
+      exactPrettyFieldGrammar v t grammar it
         ++ concatMap ppIf ifs
 
     ppIf (CondBranch c thenTree Nothing)

@@ -8,7 +8,7 @@
 module Distribution.FieldGrammar.Pretty
   ( PrettyFieldGrammar (..)
   , prettyFieldGrammar
-  , prettierFieldGrammar
+  , exactPrettyFieldGrammar
   , prettyAnnotatedFieldGrammar
   ) where
 
@@ -52,8 +52,8 @@ noTrivia = fmap (const mempty)
 prettyFieldGrammar :: CabalSpecVersion -> PrettyFieldGrammar s a -> s -> [PrettyField Trivia]
 prettyFieldGrammar v g = prettyAnnotatedFieldGrammar v mempty g
 
-prettierFieldGrammar :: CabalSpecVersion -> TriviaTree -> PrettyFieldGrammar s a -> s -> [PrettyField Trivia]
-prettierFieldGrammar v t g = prettyAnnotatedFieldGrammar v t g
+exactPrettyFieldGrammar :: CabalSpecVersion -> TriviaTree -> PrettyFieldGrammar s a -> s -> [PrettyField Trivia]
+exactPrettyFieldGrammar v t g = prettyAnnotatedFieldGrammar v t g
 
 prettyAnnotatedFieldGrammar
   :: CabalSpecVersion
