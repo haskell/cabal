@@ -25,7 +25,8 @@ _×_
                         _×_
                           `SomeNamespace (Dependency (PackageName "base") (LaterVersion (mkVersion [1])) (fromNonEmpty (LMainLibName :| [])))`
                           TriviaTree {
-                            justAnnotation = [],
+                            justAnnotation = [
+                              ExactPosition (Position 2 6)],
                             namedAnnotations = Map.fromList
                               [
                                 _×_
@@ -65,7 +66,8 @@ _×_
                         _×_
                           `SomeNamespace (Dependency (PackageName "text") (EarlierVersion (mkVersion [2])) (fromNonEmpty (LMainLibName :| [])))`
                           TriviaTree {
-                            justAnnotation = [],
+                            justAnnotation = [
+                              ExactPosition (Position 3 6)],
                             namedAnnotations =
                             Map.fromList
                               [
