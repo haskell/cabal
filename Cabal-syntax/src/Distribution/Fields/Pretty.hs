@@ -14,6 +14,7 @@ module Distribution.Fields.Pretty
   , PrettyField (..)
   , showFields
   , showFields'
+  , showFieldsWithTrivia
 
     -- * Transformation from 'P.Field'
   , fromParsecFields
@@ -56,11 +57,6 @@ prettyFieldAnn (PrettyField ann _ _) = Just ann
 prettyFieldAnn (PrettySection ann _ _ _) = Just ann
 prettyFieldAnn _ = Nothing
 
-postProcess :: Maybe Position -> Trivia -> [String] -> [String]
-postProcess prevPos trivia xs =
-  trace ("Got previous position " <> show prevPos) xs
-
-
 -- | Prettyprint a list of fields.
 --
 -- Note: the first argument should return 'String's without newlines
@@ -69,6 +65,13 @@ postProcess prevPos trivia xs =
 -- between comment lines.
 showFields :: (ann -> CommentPosition) -> [PrettyField ann] -> String
 showFields rann = showFields' rann (const Nothing) (const $ const id) 4
+
+showFieldsWithTrivia :: [PrettyField Trivia] -> String
+showFieldsWithTrivia = showFields' (const NoComment) atPosition postProcess 4
+  where
+    postProcess :: Maybe Position -> Trivia -> [String] -> [String]
+    postProcess prevPos trivia xs =
+      trace ("Got previous position " <> show prevPos) xs
 
 -- | 'showFields' with user specified indentation.
 showFields'
