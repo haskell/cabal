@@ -545,8 +545,18 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     , IPI.ldOptions = ldOptions bi
     , IPI.frameworks = map getSymbolicPath $ frameworks bi
     , IPI.frameworkDirs = map getSymbolicPath $ extraFrameworkDirs bi
-    , IPI.haddockInterfaces = [haddockdir installDirs </> haddockLibraryPath pkg lib | hasModules]
-    , IPI.haddockHTMLs = [htmldir installDirs | hasModules]
+    , IPI.haddockInterfaces =
+        [ case libName lib of
+          LSubLibName n -> haddockdir installDirs </> prettyShow n </> haddockLibraryPath pkg lib
+          LMainLibName -> haddockdir installDirs </> haddockLibraryPath pkg lib
+        | hasModules
+        ]
+    , IPI.haddockHTMLs =
+        [ case libName lib of
+          LSubLibName n -> htmldir installDirs </> prettyShow n
+          LMainLibName -> htmldir installDirs
+        | hasModules
+        ]
     , IPI.pkgRoot = Nothing
     , IPI.libVisibility = libVisibility lib
     }
