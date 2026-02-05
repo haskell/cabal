@@ -73,6 +73,7 @@ data InstalledPackageInfo = InstalledPackageInfo
   , libraryDirs :: [FilePath]
   , libraryDirsStatic :: [FilePath]
   , libraryDynDirs :: [FilePath]
+  , libraryBytecodeDirs :: [FilePath]
   -- ^ overrides 'libraryDirs'
   , dataDir :: FilePath
   , hsLibraries :: [String]
@@ -160,6 +161,7 @@ emptyInstalledPackageInfo =
     , hsLibraries = []
     , extraLibraries = []
     , extraLibrariesStatic = []
+    , libraryBytecodeDirs = []
     , extraGHCiLibraries = []
     , includeDirs = []
     , includes = []

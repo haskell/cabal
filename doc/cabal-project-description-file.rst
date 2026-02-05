@@ -1249,6 +1249,25 @@ Dynamic linking options
     The command line variant of this flag is
     ``--enable-library-for-ghci`` and ``--disable-library-for-ghci``.
 
+.. cfg-field:: library-bytecode: boolean
+               --enable-library-bytecode
+               --disable-library-bytecode
+    :synopsis: Build bytecode libraries.
+
+    :default: False
+
+    Build bytecode libraries (``.bytecodelib`` artifacts) alongside the
+    normal object code libraries. Bytecode libraries are useful when you
+    need to force ``ghci`` to run in bytecode mode, for example by
+    passing ``-fprefer-byte-code``. This option currently requires GHC
+    9.15 or newer; older compilers ignore the flag.
+
+    Profiled bytecode libraries are not currently supported. Bytecode files are always
+    produced alongside a vanilla object format.
+
+    The command line variant of this flag is
+    ``--enable-library-bytecode`` and ``--disable-library-bytecode``.
+
 .. cfg-field:: relocatable:
                --relocatable
     :synopsis: Build relocatable package.

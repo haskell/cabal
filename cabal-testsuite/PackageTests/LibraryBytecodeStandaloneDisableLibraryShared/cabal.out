@@ -1,0 +1,13 @@
+# cabal build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - library-bytecode-standalone-disable-library-shared-0.1 (lib) (first run)
+Configuring library for library-bytecode-standalone-disable-library-shared-0.1...
+Preprocessing library for library-bytecode-standalone-disable-library-shared-0.1...
+Building library for library-bytecode-standalone-disable-library-shared-0.1...
+Error: [Cabal-9356]
+The ecosystem doesn't support building packages with just bytecode libraries yet.
+If you have run into this error, please comment on issue #11471
+Error: [Cabal-7125]
+Failed to build library-bytecode-standalone-disable-library-shared-0.1-inplace.

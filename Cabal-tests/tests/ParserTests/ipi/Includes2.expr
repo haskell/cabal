@@ -54,6 +54,7 @@ InstalledPackageInfo {
   libraryDynDirs =
   [
     "/home/travis/build/haskell/cabal/cabal-testsuite/PackageTests/Backpack/Includes2/cabal-internal.dist/work/./dist/build/x86_64-linux/ghc-8.2.2/Includes2-0.1.0.0/l/mylib/Includes2-0.1.0.0-inplace-mylib+3gY9SyjX86dBypHcOaev1n/build/Includes2-0.1.0.0-inplace-mylib+3gY9SyjX86dBypHcOaev1n"],
+  libraryBytecodeDirs = [],
   dataDir =
   "/home/travis/build/haskell/cabal/cabal-testsuite/PackageTests/Backpack/Includes2",
   hsLibraries = [

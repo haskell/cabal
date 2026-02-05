@@ -79,6 +79,7 @@ module Distribution.Simple.Compiler
   , profilingVanillaSupported
   , profilingVanillaSupportedOrUnknown
   , dynamicSupported
+  , bytecodeArtifactsSupported
   , backpackSupported
   , arResponseFilesSupported
   , arDashLSupported
@@ -574,6 +575,14 @@ profilingDynamicSupportedOrUnknown comp =
 -- | Is the compiler distributed with dynamic libraries
 dynamicSupported :: Compiler -> Maybe Bool
 dynamicSupported comp = waySupported "dyn" comp
+
+-- | Does the compiler support producing bytecode objects and bytecode libraries?
+bytecodeArtifactsSupported :: Compiler -> Bool
+bytecodeArtifactsSupported comp
+  | GHC <- compilerFlavor comp
+  , compilerVersion comp >= mkVersion [9, 15, 0] =
+      True
+  | otherwise = False
 
 -- | Does this compiler support a package database entry with:
 -- "visibility"?

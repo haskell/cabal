@@ -205,6 +205,7 @@ data PackageHashConfigInputs = PackageHashConfigInputs
   , pkgHashProfExe :: Bool
   , pkgHashProfLibDetail :: ProfDetailLevel
   , pkgHashProfExeDetail :: ProfDetailLevel
+  , pkgHashBytecodeLib :: Bool
   , pkgHashCoverage :: Bool
   , pkgHashOptimization :: OptimisationLevel
   , pkgHashSplitObjs :: Bool
@@ -317,6 +318,7 @@ renderPackageHashInputs
           , opt "prof-exe" False prettyShow pkgHashProfExe
           , opt "prof-lib-detail" ProfDetailDefault showProfDetailLevel pkgHashProfLibDetail
           , opt "prof-exe-detail" ProfDetailDefault showProfDetailLevel pkgHashProfExeDetail
+          , opt "bytecode-lib" False prettyShow pkgHashBytecodeLib
           , opt "hpc" False prettyShow pkgHashCoverage
           , opt "optimisation" NormalOptimisation (show . fromEnum) pkgHashOptimization
           , opt "split-objs" False prettyShow pkgHashSplitObjs

@@ -352,6 +352,7 @@ testProjectConfigLocalPackages = do
     packageConfigExtraFrameworkDirs = ["osx/framework", "dirs"]
     packageConfigExtraIncludeDirs = ["incredible/amount", "of", "include", "directories"]
     packageConfigGHCiLib = Flag False
+    packageConfigBytecodeLib = Flag False
     packageConfigSplitSections = Flag True
     packageConfigSplitObjs = Flag True
     packageConfigStripExes = Flag False

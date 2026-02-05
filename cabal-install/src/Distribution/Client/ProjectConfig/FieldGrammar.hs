@@ -121,6 +121,7 @@ packageConfigFieldGrammar knownPrograms =
     <*> optionalFieldDef "library-vanilla" L.packageConfigVanillaLib mempty
     <*> optionalFieldDef "shared" L.packageConfigSharedLib mempty
     <*> optionalFieldDef "static" L.packageConfigStaticLib mempty
+    <*> optionalFieldDef "library-bytecode" L.packageConfigBytecodeLib mempty
     <*> optionalFieldDef "executable-dynamic" L.packageConfigDynExe mempty
     <*> optionalFieldDef "executable-static" L.packageConfigFullyStaticExe mempty
     <*> optionalFieldDef "profiling" L.packageConfigProf mempty
@@ -192,6 +193,7 @@ packageConfigFieldGrammar knownPrograms =
       packageConfigVanillaLib
       packageConfigSharedLib
       packageConfigStaticLib
+      packageConfigBytecodeLib
       packageConfigDynExe
       packageConfigFullyStaticExe
       packageConfigProf
