@@ -143,26 +143,16 @@ instance TriviaSep CommaVCat where
     let atNthOr0 = fromMaybe 0 . atNth . justAnnotation
         sortedDocs = sortOn (atNthOr0 . fst) $ docs
 
-        withPreviousPos =
-            zip
-              ( Nothing : map (atPosition . justAnnotation . fst) (List.tail sortedDocs)
-              )
-              sortedDocs
-
      in map
-          ( \(mPrevPos, (t0, x)) ->
+          ( \(t0, x) ->
               let tLocal = justAnnotation t0
-                  tryPatchPosition =
-                    fromMaybe id $
-                      patchPosition <$> mPrevPos <*> (atPosition $ justAnnotation t0)
                in
                     (flip DocAnn t0) $
-                      tryPatchPosition $
-                        triviaToDoc tLocal $
-                          mconcat . map unAnnDoc $
-                            exactPretty t0 x
+                      triviaToDoc tLocal $
+                        mconcat . map unAnnDoc $
+                          exactPretty t0 x
           )
-        $ withPreviousPos
+        $ sortedDocs
 
   triviaParseSep _ p = do
     v <- askCabalSpecVersion
