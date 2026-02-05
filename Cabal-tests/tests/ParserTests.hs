@@ -464,7 +464,9 @@ fieldGrammarRoundTripTest parsec pretty fp = testCase fp $ do
         Left _ -> fail "fieldParser failed unrecoverably"
         Right ok -> pure ok
 
-  let prettyFields = prettyAnnotatedFieldGrammar cabalSpecLatest trivia pretty parsed
+  let prettyFields =
+        (\x -> trace ("Got PrettyFields\n" <> show x) x) $
+          prettyAnnotatedFieldGrammar cabalSpecLatest trivia pretty parsed
   let y = BS8.pack (showFieldsWithTrivia prettyFields)
 
 {- FOURMOLU_DISABLE -}

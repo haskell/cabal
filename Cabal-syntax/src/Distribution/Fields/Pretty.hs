@@ -86,7 +86,7 @@ showFields'
   -> [PrettyField ann]
   -- ^ Fields/sections to show.
   -> String
-showFields' rann getPos post n = unlines . renderFields (Opts rann getPos indent post)
+showFields' rann getPos post n = unlines . renderFields Nothing (Opts rann getPos indent post)
   where
     -- few hardcoded, "unrolled"  variants.
     indent
@@ -109,8 +109,8 @@ data Opts ann = Opts
   , _optPostprocess :: Maybe Position -> ann -> [String] -> [String]
   }
 
-renderFields :: forall ann. Opts ann -> [PrettyField ann] -> [String]
-renderFields opts fields = flattenBlocks blocks
+renderFields :: forall ann. Maybe Position -> Opts ann -> [PrettyField ann] -> [String]
+renderFields prevPos opts fields = flattenBlocks blocks
   where
     len = maxNameLength 0 fields
 
@@ -119,7 +119,11 @@ renderFields opts fields = flattenBlocks blocks
 
     blocks =
       filter (not . null . _contentsBlock) -- empty blocks cause extra newlines #8236
-        $ map (\(prevPos, x) -> renderField opts prevPos len x)
+        $ map
+            ( \(prevPos, x) ->
+                trace ("zipping with prevPos" <> show prevPos) $
+                  renderField opts prevPos len x
+            )
         $ zip (Nothing : map posFromPrettyField fields) fields
 
     maxNameLength !acc [] = acc
@@ -183,11 +187,11 @@ renderField (Opts rann _ indent postWithPrev) prevPos fw (PrettyField ann name d
 
     narrowStyle :: PP.Style
     narrowStyle = PP.style{PP.lineLength = PP.lineLength PP.style - fw}
-renderField opts@(Opts rann _ indent postWithPrev) prevPos _ (PrettySection ann name args fields) =
+renderField opts@(Opts rann getPos indent postWithPrev) prevPos _ (PrettySection ann name args fields) =
   Block Margin Margin $
     attachComments
       (post ann [PP.render $ PP.hsep $ PP.text (fromUTF8BS name) : args])
-      ++ map indent (renderFields opts fields)
+      ++ map indent (renderFields (getPos ann) opts fields)
   where
     post = postWithPrev prevPos
     attachComments content = case rann ann of
