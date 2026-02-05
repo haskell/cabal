@@ -15,6 +15,7 @@ on:
       - created
 
 env:
+  # XXX: This is held back because of an old `base` dependency in `cabal-dev-scripts`
   GHC_FOR_QUICK_JOBS: 9.6.5
 
 jobs:
@@ -44,13 +45,16 @@ jobs:
       - uses: actions/checkout@v6
       - name: Generate build plan for correct cache key
         run: ${{ env.cabal_build }} --dry-run
+      - name: Get runner OS/version for cache keys
+        id: get-osver
+        run: echo "osver=$ImageOS" >> "$GITHUB_OUTPUT"
       - name: Restore cached dependencies
         uses: actions/cache/restore@v5
         id: cache
         with:
           path: ~/.local/state/cabal
-          key: linux-store-meta-${{ hashfiles('dist-newstyle-meta/cache/plan.json') }}
-          restore-keys: linux-store-meta-
+          key: ${{ steps.get-osver.outputs.osver }}-store-meta-${{ hashfiles('dist-newstyle-meta/cache/plan.json') }}
+          restore-keys: ${{ steps.get-osver.outputs.osver }}-store-meta-
       - name: Build tools
         run: ${{ env.cabal_build }}
       - name: Regenerate files
@@ -90,13 +94,16 @@ jobs:
       - name: Use date as cache key
         run: |
           echo "DATE=$(date +'%Y-%m-%d')" >> "${GITHUB_ENV}"
+      - name: Get runner OS/version for cache keys
+        id: get-osver
+        run: echo "osver=$ImageOS" >> "$GITHUB_OUTPUT"
       - name: Restore cached dependencies
         uses: actions/cache/restore@v5
         id: cache
         with:
           path: ~/.local/state/cabal
-          key: linux-store-doctest-${{ env.DATE }}
-          restore-keys: linux-store-doctest
+          key: ${{ steps.get-osver.outputs.osver }}-store-doctest-${{ env.DATE }}
+          restore-keys: ${{ steps.get-osver.outputs.osver }}-store-doctest
       - name: Update Hackage index
         run: cabal v2-update
       - uses: actions/checkout@v6
@@ -132,13 +139,16 @@ jobs:
       - uses: actions/checkout@v6
       - name: Generate build plan for correct cache key
         run: ${{ env.cabal_build }} --dry-run
+      - name: Get runner OS/version for cache keys
+        id: get-osver
+        run: echo "osver=$ImageOS" >> "$GITHUB_OUTPUT"
       - name: Restore cached dependencies
         uses: actions/cache/restore@v5
         id: cache
         with:
           path: ~/.local/state/cabal
-          key: linux-store-buildinfo-doc-diff-${{ hashfiles('dist-newstyle/cache/plan.json') }}
-          restore-keys: linux-store-buildinfo-doc-diff
+          key: ${{ steps.get-osver.outputs.osver }}-store-buildinfo-doc-diff-${{ hashfiles('dist-newstyle/cache/plan.json') }}
+          restore-keys: ${{ steps.get-osver.outputs.osver }}-store-buildinfo-doc-diff
       - name: Build buildinfo-reference-generator
         run: ${{ env.cabal_build }}
       - name: Are buildinfo docs up to date?

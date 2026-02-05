@@ -133,6 +133,11 @@ jobs:
           cabal-version: 3.12.1.0 # see https://github.com/haskell/cabal/pull/10251
           ghcup-release-channel: https://raw.githubusercontent.com/haskell/ghcup-metadata/master/ghcup-prereleases-0.0.9.yaml
 
+      # runner.os isn't sufficient for binary compatible caches
+      - name: Get runner OS/version for cache keys
+        id: get-osver
+        run: echo "osver=$ImageOS" >> "$GITHUB_OUTPUT"
+
       #  See the following link for a breakdown of the following step
       #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
       - uses: actions/cache@v5
@@ -141,8 +146,8 @@ jobs:
           path: |
             ${{ steps.setup-haskell.outputs.cabal-store }}
             dist-*
-          key: ${{ runner.os }}-${{ matrix.ghc }}-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-
+          key: ${{ steps.get-osver.outputs.osver }}-${{ matrix.ghc }}-${{ github.sha }}
+          restore-keys: ${{ steps.get-osver.outputs.osver }}-${{ matrix.ghc }}-
 
       - name: "Work around git problem https://bugs.launchpad.net/ubuntu/+source/git/+bug/1993586 (cabal PR #8546)"
         # alternatively, use 'continue-on-error: true'
@@ -294,6 +299,11 @@ jobs:
           ghc --version
           "ghc-${{ matrix.extra-ghc }}" --version
 
+      # runner.os isn't sufficient for binary compatible caches
+      - name: Get runner OS/version for cache keys
+        id: get-osver
+        run: echo "osver=$ImageOS" >> "$GITHUB_OUTPUT"
+
       # As we are reusing the cached build dir from the previous step
       # the generated artifacts are available here,
       # including the cabal executable and the test suite
@@ -302,8 +312,8 @@ jobs:
           path: |
             ${{ steps.setup-haskell.outputs.cabal-store }}
             dist-*
-          key: ${{ runner.os }}-${{ env.GHC_FOR_RELEASE }}-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-${{ env.GHC_FOR_RELEASE }}-
+          key: ${{ steps.get-osver.outputs.osver }}-${{ env.GHC_FOR_RELEASE }}-${{ github.sha }}
+          restore-keys: ${{ steps.get-osver.outputs.osver }}-${{ env.GHC_FOR_RELEASE }}-
 
       - name: Validate build
         id: build
@@ -356,8 +366,8 @@ jobs:
           path: |
             ${{ steps.setup-haskell.outputs.cabal-store }}
             dist-*
-          key: ${{ runner.os }}-${{ env.GHC_FOR_RELEASE }}-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-${{ env.GHC_FOR_RELEASE }}-
+          key: ${{ steps.get-osver.outputs.osver }}-${{ env.GHC_FOR_RELEASE }}-${{ github.sha }}
+          restore-keys: ${{ steps.get-osver.outputs.osver }}-${{ env.GHC_FOR_RELEASE }}-
 
       - name: Enable statically linked executables
         run: |

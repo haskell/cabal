@@ -32,13 +32,18 @@ jobs:
           rm -rf ~/.config/cabal
           rm -rf ~/.cache/cabal
 
+      # runner.os isn't sufficient for binary compatible caches
+      - name: Get runner OS/version for cache keys
+        id: get-osver
+        run: echo "osver=$ImageOS" >> "$GITHUB_OUTPUT"
+
       - uses: actions/cache@v5
         name: Cache the downloads
         id: bootstrap-cache
         with:
           path: "/home/runner/work/cabal/cabal/_build"
-          key: bootstrap-${{ runner.os }}-${{ matrix.ghc }}-20221115-${{ github.sha }}
-          restore-keys: bootstrap-${{ runner.os }}-${{ matrix.ghc }}-20221115-
+          key: bootstrap-${{ steps.get-osver.outputs.osver }}-${{ matrix.ghc }}-20221115-${{ github.sha }}
+          restore-keys: bootstrap-${{ steps.get-osver.outputs.osver }}-${{ matrix.ghc }}-20221115-
 
       - uses: actions/checkout@v6
       - uses: haskell-actions/setup@v2
