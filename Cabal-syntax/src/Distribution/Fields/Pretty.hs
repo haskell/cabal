@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE LambdaCase #-}
 
@@ -21,15 +22,20 @@ module Distribution.Fields.Pretty
   , prettySectionArgs
   ) where
 
+import Control.Monad
 import Distribution.Compat.Prelude
 import Distribution.Pretty (showToken)
+import Distribution.Parsec.Position
 import Prelude ()
+
+import Distribution.Types.Annotation
 
 import Distribution.Fields.Field (FieldName)
 import Distribution.Utils.Generic (fromUTF8BS)
 
 import qualified Distribution.Fields.Parser as P
 
+import qualified Data.List as List (tail)
 import qualified Data.ByteString as BS
 import qualified Text.PrettyPrint as PP
 
@@ -45,6 +51,16 @@ data PrettyField ann
   | PrettyEmpty
   deriving (Functor, Foldable, Traversable, Show {- NOTE(leana8959): for debugging -})
 
+prettyFieldAnn :: PrettyField ann -> Maybe ann
+prettyFieldAnn (PrettyField ann _ _) = Just ann
+prettyFieldAnn (PrettySection ann _ _ _) = Just ann
+prettyFieldAnn _ = Nothing
+
+postProcess :: Maybe Position -> Trivia -> [String] -> [String]
+postProcess prevPos trivia xs =
+  trace ("Got previous position " <> show prevPos) xs
+
+
 -- | Prettyprint a list of fields.
 --
 -- Note: the first argument should return 'String's without newlines
@@ -52,20 +68,22 @@ data PrettyField ann
 -- This unsafety is left in place so one could generate empty lines
 -- between comment lines.
 showFields :: (ann -> CommentPosition) -> [PrettyField ann] -> String
-showFields rann = showFields' rann (const id) 4
+showFields rann = showFields' rann (const Nothing) (const $ const id) 4
 
 -- | 'showFields' with user specified indentation.
 showFields'
   :: (ann -> CommentPosition)
   -- ^ Convert an annotation to lined to precede the field or section.
-  -> (ann -> [String] -> [String])
+  -> (ann -> Maybe Position)
+  -- ^ Extract the position information from the annotation
+  -> (Maybe Position -> ann -> [String] -> [String])
   -- ^ Post-process non-annotation produced lines.
   -> Int
   -- ^ Indentation level.
   -> [PrettyField ann]
   -- ^ Fields/sections to show.
   -> String
-showFields' rann post n = unlines . renderFields (Opts rann indent post)
+showFields' rann getPos post n = unlines . renderFields (Opts rann getPos indent post)
   where
     -- few hardcoded, "unrolled"  variants.
     indent
@@ -83,17 +101,23 @@ showFields' rann post n = unlines . renderFields (Opts rann indent post)
 
 data Opts ann = Opts
   { _optAnnotation :: ann -> CommentPosition
+  , _optPosition :: ann -> Maybe Position
   , _optIndent :: String -> String
-  , _optPostprocess :: ann -> [String] -> [String]
+  , _optPostprocess :: Maybe Position -> ann -> [String] -> [String]
   }
 
-renderFields :: Opts ann -> [PrettyField ann] -> [String]
+renderFields :: forall ann. Opts ann -> [PrettyField ann] -> [String]
 renderFields opts fields = flattenBlocks blocks
   where
     len = maxNameLength 0 fields
+
+    posFromPrettyField :: PrettyField ann -> Maybe Position
+    posFromPrettyField = _optPosition opts <=< prettyFieldAnn
+
     blocks =
-      filter (not . null . _contentsBlock) $ -- empty blocks cause extra newlines #8236
-        map (renderField opts len) fields
+      filter (not . null . _contentsBlock) -- empty blocks cause extra newlines #8236
+        $ map (\(prevPos, x) -> renderField opts prevPos len x)
+        $ zip (Nothing : map posFromPrettyField fields) fields
 
     maxNameLength !acc [] = acc
     maxNameLength !acc (PrettyField _ name _ : rest) = maxNameLength (max acc (BS.length name)) rest
@@ -128,10 +152,11 @@ flattenBlocks = go0
           | surr' <> before == Margin = ("" :)
           | otherwise = id
 
-renderField :: Opts ann -> Int -> PrettyField ann -> Block
-renderField (Opts rann indent post) fw (PrettyField ann name doc) =
+renderField :: Opts ann -> Maybe Position -> Int -> PrettyField ann -> Block
+renderField (Opts rann _ indent postWithPrev) prevPos fw (PrettyField ann name doc) =
   Block before after content
   where
+    post = postWithPrev prevPos
     content = case comments of
       CommentBefore cs -> cs ++ post ann lines'
       CommentAfter cs -> post ann lines' ++ cs
@@ -155,17 +180,18 @@ renderField (Opts rann indent post) fw (PrettyField ann name doc) =
 
     narrowStyle :: PP.Style
     narrowStyle = PP.style{PP.lineLength = PP.lineLength PP.style - fw}
-renderField opts@(Opts rann indent post) _ (PrettySection ann name args fields) =
+renderField opts@(Opts rann _ indent postWithPrev) prevPos _ (PrettySection ann name args fields) =
   Block Margin Margin $
     attachComments
       (post ann [PP.render $ PP.hsep $ PP.text (fromUTF8BS name) : args])
       ++ map indent (renderFields opts fields)
   where
+    post = postWithPrev prevPos
     attachComments content = case rann ann of
       CommentBefore cs -> cs ++ content
       CommentAfter cs -> content ++ cs
       NoComment -> content
-renderField _ _ PrettyEmpty = Block NoMargin NoMargin mempty
+renderField _ _ _ PrettyEmpty = Block NoMargin NoMargin mempty
 
 -------------------------------------------------------------------------------
 -- Transform from Parsec.Field
