@@ -82,6 +82,7 @@ import Text.PrettyPrint (Doc, comma, fsep, punctuate, text, vcat)
 
 import Distribution.Types.Annotation
 
+import Data.Maybe (maybeToList)
 import Data.List (groupBy, sortOn)
 import qualified Data.List as List
 import qualified Data.List.NonEmpty as NE
@@ -139,6 +140,8 @@ class TriviaSep sep where
 instance TriviaSep CommaVCat where
   -- NOTE(leana8959): we don't "punctuate" anymore
   -- The separators are in the trivia
+  --
+  -- This function currently only does sorting
   prettierSep _ docs =
     let atNthOr0 = fromMaybe 0 . atNth . justAnnotation
         sortedDocs = sortOn (atNthOr0 . fst) $ docs
@@ -296,6 +299,7 @@ instance
   , TriviaSep sep
   , Namespace b
   , Markable b
+  , Markable a
   )
   => ExactPretty (List sep b a)
   where
@@ -303,6 +307,8 @@ instance
     let fieldNthOr0 = fromMaybe 0 . atFieldNth . justAnnotation
         docGroups :: [[(TriviaTree, b)]]
         docGroups =
+        -- TODO(leana8959): move the grouping code to monoidalField
+        -- With the Markable constraint I should be able to retrieve the order associated
           groupBy ((==) `on` (fieldNthOr0 . fst))
             $ sortOn (fieldNthOr0 . fst)
             $ map
@@ -310,14 +316,21 @@ instance
                   let n = (pack :: a -> b) o -- pack each element
                   -- The numbering are associated under the newtype
                   -- Move them upwards so we can sort
-                      numbering = justAnnotation (unmarkTriviaTree n t0)
-                      t = TriviaTree numbering mempty <> t0
+                      numbering =
+                          maybeToList . fmap FieldNth . atFieldNth
+                            $ justAnnotation (unmarkTriviaTree n t0)
+
+                  -- The positions are associated under the oldtype
+                      position =
+                             maybeToList . fmap ExactPosition . atPosition
+                             $ justAnnotation (unmarkTriviaTree o (unmarkTriviaTree n t0))
+                      t = TriviaTree (numbering <> position) mempty <> t0
                    in (t, n)
               )
             $ unpack -- unpack the list
             $ n
-     in map
-          ( mconcat . prettierSep (Proxy :: Proxy sep)
+     in concatMap
+          ( prettierSep (Proxy :: Proxy sep)
           )
           $ docGroups
 
