@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -17,7 +18,7 @@ import Distribution.Compat.Lens
 import Distribution.Compat.Newtype
 import Distribution.Compat.Prelude
 import Distribution.Fields.Field (FieldName)
-import Distribution.Fields.Pretty (PrettyField (..))
+import Distribution.Fields.Pretty (PrettyField (..), PrettyFieldLine (..))
 import Distribution.Pretty (ExactPretty (..), Pretty, showFreeText, showFreeTextV3)
 import Distribution.Utils.Generic (toUTF8BS)
 import Text.PrettyPrint (Doc)
@@ -74,7 +75,7 @@ instance FieldGrammar ExactPretty PrettyFieldGrammar where
 
   -- TODO(leana8959): use the trivia in the methods implemented here
   uniqueFieldAla fn _pack l = PrettyFG $ \_v t s ->
-    mconcat $ map (ppTriviaField fn) (exactPretty mempty (pack' _pack (aview l s)))
+      ppTriviaField fn (exactPretty mempty (pack' _pack (aview l s)))
 
   booleanFieldDef fn l def = PrettyFG pp
     where
@@ -88,14 +89,13 @@ instance FieldGrammar ExactPretty PrettyFieldGrammar where
     where
       pp v t s = case aview l s of
         Nothing -> mempty
-        Just a ->
-          mconcat $ map (ppTriviaField fn) (exactPrettyVersioned v mempty (pack' _pack a))
+        Just a -> ppTriviaField fn (exactPrettyVersioned v mempty (pack' _pack a))
 
   optionalFieldDefAla fn _pack l def = PrettyFG pp
     where
       pp v t s
         | x == def = mempty
-        | otherwise = mconcat $ map (ppTriviaField fn) (exactPrettyVersioned v mempty (pack' _pack x))
+        | otherwise = ppTriviaField fn (exactPrettyVersioned v mempty (pack' _pack x))
         where
           x = aview l s
 
@@ -124,14 +124,19 @@ instance FieldGrammar ExactPretty PrettyFieldGrammar where
         let t' = unmarkTriviaTree fn t
          in -- pTrace ("monoidalFieldAla\n" <> show t') $
             -- ppField fn (exactPrettyVersioned v t' (pack' _pack (aview l s)))
-            mconcat $ map (ppTriviaField fn) (exactPrettyVersioned v t' (pack' _pack (aview l s)))
+              (\x -> pTrace ("pretty trivia field \n" <> show x) x)
+              $ ppTriviaField fn
+              $ (\x -> pTrace ("pretty monoidal \n" <> show x) x)
+              $ exactPrettyVersioned v t' (pack' _pack (aview l s))
 
   prefixedFields _fnPfx l = PrettyFG (\_ t -> map noTrivia . pp . aview l)
     where
       pp xs =
         -- always print the field, even its Doc is empty.
         -- i.e. don't use ppField
-        [ PrettyField () (toUTF8BS n) $ PP.vcat $ map PP.text $ lines s
+        [ let docs = map PP.text $ lines s
+              pfls = map (PrettyFieldLine mempty) docs
+          in  PrettyField () (toUTF8BS n) $ pfls
         | (n, s) <- xs
         -- fnPfx `isPrefixOf` n
         ]
@@ -147,9 +152,14 @@ instance FieldGrammar ExactPretty PrettyFieldGrammar where
   hiddenField _ = PrettyFG (\_ -> mempty)
 
 ppField :: FieldName -> Doc -> [PrettyField Trivia]
-ppField name fielddoc = ppTriviaField name (DocAnn fielddoc mempty)
+ppField name fielddoc = ppTriviaField name [DocAnn fielddoc mempty]
 
-ppTriviaField :: FieldName -> DocAnn TriviaTree -> [PrettyField Trivia]
-ppTriviaField name (DocAnn fielddoc tree)
-  | PP.isEmpty fielddoc = []
-  | otherwise = [PrettyField (justAnnotation tree) name fielddoc]
+ppTriviaField :: FieldName -> [DocAnn TriviaTree] -> [PrettyField Trivia]
+ppTriviaField name docAnns
+  | null docAnns = []
+  | otherwise =
+      let proj (DocAnn doc (justAnnotation->ann)) = (PrettyFieldLine ann doc, ann)
+
+          (pfls, anns) = unzip $ map proj docAnns
+
+      in  [PrettyField (mconcat anns) name pfls]

@@ -12,6 +12,7 @@ module Distribution.Fields.Pretty
   ( -- * Fields
     CommentPosition (..)
   , PrettyField (..)
+  , PrettyFieldLine (..)
   , showFields
   , showFields'
   , showFieldsWithTrivia
@@ -46,8 +47,21 @@ import qualified Text.PrettyPrint as PP
 --   conjunction with @PrettyField@.
 data CommentPosition = CommentBefore [String] | CommentAfter [String] | NoComment
 
+unAnnotatePrettyFieldLines :: [PrettyFieldLine ann] -> [PP.Doc]
+unAnnotatePrettyFieldLines = map unAnnotatePrettyFieldLine
+
+unAnnotatePrettyFieldLine :: PrettyFieldLine ann -> PP.Doc
+unAnnotatePrettyFieldLine (PrettyFieldLine _ doc) = doc
+
+-- |
+-- Each PrettyFieldLine within a PrettyField is a line
+-- They defer the merging of Doc and allow meaningful line-wise
+-- position annotation.
+data PrettyFieldLine ann = PrettyFieldLine ann PP.Doc
+  deriving (Functor, Foldable, Traversable, Show {-NOTE(leana8959): for debugging-})
+
 data PrettyField ann
-  = PrettyField ann FieldName PP.Doc
+  = PrettyField ann FieldName [PrettyFieldLine ann]
   | PrettySection ann FieldName [PP.Doc] [PrettyField ann]
   | PrettyEmpty
   deriving (Functor, Foldable, Traversable, Show {- NOTE(leana8959): for debugging -})
@@ -160,9 +174,10 @@ flattenBlocks = go0
           | otherwise = id
 
 renderField :: Opts ann -> Maybe Position -> Int -> PrettyField ann -> Block
-renderField (Opts rann _ indent postWithPrev) prevPos fw (PrettyField ann name doc) =
+renderField (Opts rann _ indent postWithPrev) prevPos fw (PrettyField ann name fieldLines) =
   Block before after content
   where
+    doc = mconcat $ unAnnotatePrettyFieldLines fieldLines
     post = postWithPrev prevPos
     content = case comments of
       CommentBefore cs -> cs ++ post ann lines'
@@ -206,7 +221,7 @@ renderField _ _ _ PrettyEmpty = Block NoMargin NoMargin mempty
 
 genericFromParsecFields
   :: Applicative f
-  => (FieldName -> [P.FieldLine ann] -> f PP.Doc)
+  => (FieldName -> [P.FieldLine ann] -> f [PrettyFieldLine ann])
   -- ^ transform field contents
   -> (FieldName -> [P.SectionArg ann] -> f [PP.Doc])
   -- ^ transform section arguments
@@ -219,13 +234,18 @@ genericFromParsecFields f g = goMany
     go (P.Field (P.Name ann name) fls) = PrettyField ann name <$> f name fls
     go (P.Section (P.Name ann name) secargs fs) = PrettySection ann name <$> g name secargs <*> goMany fs
 
--- | Used in 'fromParsecFields'.
-prettyFieldLines :: FieldName -> [P.FieldLine ann] -> PP.Doc
-prettyFieldLines _ fls =
-  PP.vcat
-    [ PP.text $ fromUTF8BS bs
-    | P.FieldLine _ bs <- fls
-    ]
+-- -- | Used in 'fromParsecFields'.
+-- prettyFieldLines :: FieldName -> [P.FieldLine ann] -> PP.Doc
+-- prettyFieldLines _ fls =
+--   PP.vcat
+--     [ PP.text $ fromUTF8BS bs
+--     | P.FieldLine _ bs <- fls
+--     ]
+
+prettyFieldLines :: [P.FieldLine ann] -> [PrettyFieldLine ann]
+prettyFieldLines = map go
+  where go (P.FieldLine ann bs) =
+          PrettyFieldLine ann (PP.text $ fromUTF8BS bs)
 
 -- | Used in 'fromParsecFields'.
 prettySectionArgs :: FieldName -> [P.SectionArg ann] -> [PP.Doc]
@@ -239,7 +259,7 @@ fromParsecFields :: [P.Field ann] -> [PrettyField ann]
 fromParsecFields =
   runIdentity
     . genericFromParsecFields
-      (Identity .: prettyFieldLines)
+      (Identity .: const prettyFieldLines)
       (Identity .: prettySectionArgs)
   where
     (.:) :: (a -> b) -> (c -> d -> a) -> (c -> d -> b)
