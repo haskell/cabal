@@ -32,8 +32,8 @@ module Distribution.Types.Annotation
   , Markable (..)
   , fromNamedTrivia
   , emptyTriviaTree
-  , atFieldNth
   , atPosition
+  , atFieldPosition
   , patchPosition
   , triviaToDoc
   , triviumToDoc
@@ -102,11 +102,10 @@ instance (Namespace a, Markable a, Namespace b, Markable b) => Markable (a, b)
 
 type Trivia = [Trivium]
 data Trivium
-  = FieldNth Int
-  -- | Nth Int
-  | PreTrivia String
+  = PreTrivia String
   | PostTrivia String
   | ExactPosition Position
+  | ExactFieldPosition Position
   | IsInjected
   deriving (Generic, Show, Eq)
 
@@ -134,17 +133,17 @@ fromNamedTrivia x ts = markTriviaTree x (TriviaTree ts mempty)
 emptyTriviaTree :: TriviaTree
 emptyTriviaTree = TriviaTree mempty mempty
 
-atFieldNth :: Trivia -> Maybe Int
-atFieldNth [] = Nothing
-atFieldNth (t : ts) = case t of
-  FieldNth n -> Just n
-  _ -> atFieldNth ts
-
 atPosition :: Trivia -> Maybe Position
 atPosition [] = Nothing
 atPosition (t : ts) = case t of
   ExactPosition pos -> Just pos
   _ -> atPosition ts
+
+atFieldPosition :: Trivia -> Maybe Position
+atFieldPosition [] = Nothing
+atFieldPosition (t : ts) = case t of
+  ExactFieldPosition pos -> Just pos
+  _ -> atFieldPosition ts
 
 triviaToDoc :: Trivia -> Disp.Doc -> Disp.Doc
 triviaToDoc [] x = x

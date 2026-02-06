@@ -31,6 +31,7 @@ import Distribution.Types.Annotation
 
 import Debug.Pretty.Simple
 import Distribution.FieldGrammar.Class
+import Data.List (groupBy)
 
 import qualified Data.Map as M
 
@@ -122,8 +123,13 @@ instance FieldGrammar ExactPretty PrettyFieldGrammar where
       pp v t s =
         let t' = unmarkTriviaTree fn t
             posTrivia = justAnnotation t
+            fieldPositionOr0 = fromMaybe (Position 0 0) . atFieldPosition . justAnnotation
         in
-            ppTriviaField (fn, posTrivia)
+            concatMap
+              ( \docAnns ->
+                  ppTriviaField (fn, posTrivia) docAnns
+              )
+            $ groupBy ((==) `on` (fieldPositionOr0 . docAnn))
             $ exactPrettyVersioned v t' (pack' _pack (aview l s))
 
   prefixedFields _fnPfx l = PrettyFG (\_ t -> map noTrivia . pp . aview l)

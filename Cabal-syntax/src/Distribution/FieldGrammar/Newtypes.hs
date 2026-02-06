@@ -304,13 +304,13 @@ instance
   => ExactPretty (List sep b a)
   where
   exactPretty t0 n =
-    let fieldNthOr0 = fromMaybe 0 . atFieldNth . justAnnotation
+    let fieldPositionOr0 = fromMaybe (Position 0 0) . atFieldPosition . justAnnotation
         docGroups :: [[(TriviaTree, b)]]
         docGroups =
         -- TODO(leana8959): move the grouping code to monoidalField
         -- With the Markable constraint I should be able to retrieve the order associated
-          groupBy ((==) `on` (fieldNthOr0 . fst))
-            $ sortOn (fieldNthOr0 . fst)
+            groupBy ((==) `on` (fieldPositionOr0 . fst))
+            $ sortOn (fieldPositionOr0 . fst)
             $ map
               ( \o ->
                   let n = (pack :: a -> b) o -- pack each element
