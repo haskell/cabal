@@ -83,18 +83,33 @@ prettyFieldAnn _ = Nothing
 -- This unsafety is left in place so one could generate empty lines
 -- between comment lines.
 showFields :: (ann -> CommentPosition) -> [PrettyField ann] -> String
-showFields rann = showFields' rann (const Nothing) (const $ const id) 4
+showFields rann = showFields' rann (const Nothing) (const $ const id)
 
 showFieldsWithTrivia :: [PrettyField Trivia] -> String
-showFieldsWithTrivia = showFields' (const NoComment) atPosition postProcess 4
+showFieldsWithTrivia = showFields' (const NoComment) atPosition postProcess
   where
-    postProcess :: Maybe Position -> Trivia -> [String] -> [String]
-    postProcess prevPos trivia xs =
+    postProcess :: Maybe Position -> Trivia -> PP.Doc -> PP.Doc
+    postProcess prevPos trivia doc =
       let mDiff = liftA2 offset (atPosition trivia) prevPos
-          offset (Position rx cx) (Position ry cy) = (rx - ry, cx - cy)
+          offset x@(Position rx cx) y@(Position ry cy) =
+            pTrace ("diffing position " <> show x <> " and " <> show y)
+              (rx - ry, if rx /= ry then cx else cx - cy)
       in  case mDiff of
-            Just (rDiff, cDiff) -> replicate rDiff "\n" <> replicate cDiff " " <> xs
-            Nothing -> xs
+            Just (rDiff, cDiff) ->
+              (\x -> pTrace ("fixed up x\n" <> show x) x)
+              $ foldr (.) id
+                ( replicate (rDiff - 1) (PP.text "" PP.$$) ++ replicate (cDiff - 1) (PP.text " " <>)
+                )
+                doc
+            Nothing -> case atPosition trivia of
+              Just (Position _ col) -> 
+                -- No previous position to calculate line jump, but still compute column offset
+                (\x -> pTrace ("original x\n" <> show x) x)
+                $ foldr (.) id
+                  ( replicate (col - 1) (PP.text " " <>)
+                  )
+                  doc
+              Nothing -> doc -- give up all position adjustment
 
 -- | 'showFields' with user specified indentation.
 showFields'
@@ -102,34 +117,18 @@ showFields'
   -- ^ Convert an annotation to lined to precede the field or section.
   -> (ann -> Maybe Position)
   -- ^ Extract the position information from the annotation
-  -> (Maybe Position -> ann -> [String] -> [String])
+  -> (Maybe Position -> ann -> PP.Doc -> PP.Doc)
   -- ^ Post-process non-annotation produced lines.
-  -> Int
-  -- ^ Indentation level.
   -> [PrettyField ann]
   -- ^ Fields/sections to show.
   -> String
-showFields' rann getPos post n = unlines . renderFields Nothing (Opts rann getPos indent post)
+showFields' rann getPos post = unlines . renderFields Nothing (Opts rann getPos post)
   where
-    -- few hardcoded, "unrolled"  variants.
-    indent
-      | n == 4 = indent4
-      | n == 2 = indent2
-      | otherwise = (replicate (max n 1) ' ' ++)
-
-    indent4 :: String -> String
-    indent4 [] = []
-    indent4 xs = ' ' : ' ' : ' ' : ' ' : xs
-
-    indent2 :: String -> String
-    indent2 [] = []
-    indent2 xs = ' ' : ' ' : xs
 
 data Opts ann = Opts
   { _optAnnotation :: ann -> CommentPosition
   , _optPosition :: ann -> Maybe Position
-  , _optIndent :: String -> String
-  , _optPostprocess :: Maybe Position -> ann -> [String] -> [String]
+  , _optPostprocess :: Maybe Position -> ann -> PP.Doc -> PP.Doc
   }
 
 renderFields :: forall ann. Maybe Position -> Opts ann -> [PrettyField ann] -> [String]
@@ -183,7 +182,7 @@ flattenBlocks = go0
           | otherwise = id
 
 renderField :: Opts ann -> Maybe Position -> Int -> PrettyField ann -> Block
-renderField opts@(Opts rann getPos indent postWithPrev) prevPos fw (PrettyField ann name fieldLines) =
+renderField opts@(Opts rann getPos postWithPrev) prevPos fw (PrettyField ann name fieldLines) =
   Block before after content
   where
     fieldLines' :: [String]
@@ -198,9 +197,9 @@ renderField opts@(Opts rann getPos indent postWithPrev) prevPos fw (PrettyField 
 
     post = postWithPrev prevPos
     content = case comments of
-      CommentBefore cs -> cs ++ post ann lines'
-      CommentAfter cs -> post ann lines' ++ cs
-      NoComment -> post ann lines'
+      CommentBefore cs -> cs ++ lines'
+      CommentAfter cs -> lines' ++ cs
+      NoComment -> lines'
     comments = rann ann
     before = case comments of
       CommentBefore [] -> NoMargin
@@ -213,15 +212,17 @@ renderField opts@(Opts rann getPos indent postWithPrev) prevPos fw (PrettyField 
       [singleLine]
         | length singleLine < 60 ->
             ([name' ++ ": " ++ replicate (fw - length name') ' ' ++ unlines fieldLines'], NoMargin)
-      _ -> ((name' ++ ":") : map indent fieldLines', Margin)
+            -- TODO(leana8959): fix indentation with exact positioning
+      _ -> ((name' ++ ":") : {- map indent -} fieldLines', Margin)
 
     name' = fromUTF8BS name
 
-renderField opts@(Opts rann getPos indent postWithPrev) prevPos _ (PrettySection ann name args fields) =
+renderField opts@(Opts rann getPos postWithPrev) prevPos _ (PrettySection ann name args fields) =
   Block Margin Margin $
     attachComments
-      (post ann [PP.render $ PP.hsep $ PP.text (fromUTF8BS name) : args])
-      ++ map indent (renderFields (getPos ann) opts fields)
+      [PP.render $ PP.hsep $ PP.text (fromUTF8BS name) : args]
+      -- TODO(leana8959): fix indentation with exact positioning
+      ++ {- map indent -} (renderFields (getPos ann) opts fields)
   where
     post = postWithPrev prevPos
     attachComments content = case rann ann of
@@ -233,14 +234,14 @@ renderField _ _ _ PrettyEmpty = Block NoMargin NoMargin mempty
 -- |
 -- Invariant: a PrettyFieldLine is never more than one line
 renderPrettyFieldLine :: Opts ann -> Maybe Position -> Int -> PrettyFieldLine ann -> String
-renderPrettyFieldLine (Opts rann _ indent postWithPrevPos) prevPos fw (PrettyFieldLine ann doc) =
+renderPrettyFieldLine (Opts rann _ postWithPrevPos) prevPos fw (PrettyFieldLine ann doc) =
   let postProcess = postWithPrevPos prevPos
       narrowStyle :: PP.Style
       narrowStyle = PP.style{PP.lineLength = PP.lineLength PP.style - fw}
 
-  in  concat
+  in  PP.renderStyle narrowStyle
       $ postProcess ann
-      $ (PP.renderStyle narrowStyle doc : [])
+      $ doc
 
 -------------------------------------------------------------------------------
 -- Transform from Parsec.Field

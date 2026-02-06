@@ -211,7 +211,8 @@ instance CabalParsing ParsecParser where
       Just (Position row col) ->
         -- Fix up the source position
         -- Override the line due to line jumps, and offset the column due to dropped leading spaced
-        let newPos = curPos `Parsec.incSourceColumn` col `Parsec.setSourceLine` row
+        --
+        let newPos = curPos `Parsec.incSourceColumn` (col - 1) `Parsec.setSourceLine` row
         in  pure newPos
 
 -- | Parse a 'String' with 'lexemeParsec'.
