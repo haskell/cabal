@@ -94,18 +94,14 @@ showFieldsWithTrivia = showFields' (const NoComment) atPosition postProcess
           offset x@(Position rx cx) y@(Position ry cy) = (rx - ry, if rx /= ry then cx else cx - cy)
       in  case mDiff of
             Just (rDiff, cDiff) ->
-              (\x -> trace ("patching with " <> show (rDiff - 2, cDiff - 1, doc) ) x)
-              $ foldr (.) id
-                ( 
-                replicate (rDiff -  1) (PP.text "" PP.$$) ++
-                replicate (cDiff - 1) (PP.text " " <>)
+              foldr (.) id
+                ( replicate (rDiff -  1) (PP.text "" PP.$$) ++ replicate (cDiff - 1) (PP.text " " <>)
                 )
                 doc
             Nothing -> case atPosition trivia of
               Just (Position _ col) ->
                 -- No previous position to calculate line jump, but still compute column offset
-                (\x -> trace ("patching with " <> show (col - 1, doc)) x)
-                $ foldr (.) id
+                foldr (.) id
                   ( replicate (col - 1) (PP.text " " <>)
                   )
                   doc
@@ -209,13 +205,7 @@ renderField opts@(Opts rann getPos postWithPrev) prevPos fw (PrettyField ann nam
     -- TODO(leana8959): use the pretty library to render the field names
     (lines', after) = case fieldLines' of
       [] -> ([name' ++ ":"], NoMargin)
-      -- [singleLine]
-      --   | length singleLine < 60 ->
-      --       ([name' ++ ": " ++ replicate (fw - length name') ' ' ++ concat fieldLines'], NoMargin)
-
-            -- TODO(leana8959): fix indentation with exact positioning
-
-      _ -> ((name' ++ ":") : "\n" : {- map indent -} fieldLines', Margin)
+      _ -> ((name' ++ ":") : "\n" : fieldLines', Margin)
 
     name' = fromUTF8BS name
 
@@ -241,9 +231,7 @@ renderPrettyFieldLine (Opts rann _ postWithPrevPos) prevPos fw (PrettyFieldLine 
       narrowStyle :: PP.Style
       narrowStyle = PP.style{PP.lineLength = PP.lineLength PP.style - fw}
 
-  in
-      (\x -> trace ("rendered PFL " <> show x) x)
-      $ PP.renderStyle narrowStyle
+  in  PP.renderStyle narrowStyle
       $ postProcess ann
       $ doc
 
