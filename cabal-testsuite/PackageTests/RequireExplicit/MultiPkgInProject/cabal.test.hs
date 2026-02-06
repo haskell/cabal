@@ -9,6 +9,14 @@ constraint x = "--constraint=" ++ x
 opts = [ "all", "--dry-run" ]
 
 main = do
+  skipIfOSX "macOS has a different solver output format"
+  -- - - other-lib-1.0 (lib) (requires build)
+  -- - - some-exe-1.0 (exe:some-exe) (requires build)
+  --   - some-lib-1.0 (lib) (requires build)
+  -- + - some-exe-1.0 (exe:some-exe) (requires build)
+  -- + - other-lib-1.0 (lib) (requires build)
+  --   - b-0 (lib) (first run)
+  --   - a-0 (lib) (first run)
   cabalTest' "multipkg-all" . withRepo "repo" $ do
     let proj n = "--project-file=cabal.all" <.> n <.> ".project" : opts
     let no n = assertErr "all" =<< fails (cabal' "build" $ proj n)
