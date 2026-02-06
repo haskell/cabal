@@ -1,0 +1,4 @@
+import: cabal.project
+reject-unconstrained-dependencies: eq
+constraints:
+    some-exe ==1.0
