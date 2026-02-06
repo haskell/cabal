@@ -15,8 +15,8 @@ _×_
                   `SomeNamespace (Identity (Dependency (PackageName "base") (LaterVersion (mkVersion [1])) (fromNonEmpty (LMainLibName :| []))))`
                   TriviaTree {
                     justAnnotation = [
-                      FieldNth 1,
-                      ExactPosition (Position 1 1),
+                      ExactFieldPosition
+                        (Position 1 1),
                       PostTrivia "",
                       PostTrivia ",\n"],
                     namedAnnotations =
@@ -26,7 +26,7 @@ _×_
                           `SomeNamespace (Dependency (PackageName "base") (LaterVersion (mkVersion [1])) (fromNonEmpty (LMainLibName :| [])))`
                           TriviaTree {
                             justAnnotation = [
-                              ExactPosition (Position 2 6)],
+                              ExactPosition (Position 2 5)],
                             namedAnnotations = Map.fromList
                               [
                                 _×_
@@ -56,8 +56,8 @@ _×_
                   `SomeNamespace (Identity (Dependency (PackageName "text") (EarlierVersion (mkVersion [2])) (fromNonEmpty (LMainLibName :| []))))`
                   TriviaTree {
                     justAnnotation = [
-                      FieldNth 1,
-                      ExactPosition (Position 1 1),
+                      ExactFieldPosition
+                        (Position 1 1),
                       PostTrivia "",
                       PostTrivia ","],
                     namedAnnotations =
@@ -67,7 +67,7 @@ _×_
                           `SomeNamespace (Dependency (PackageName "text") (EarlierVersion (mkVersion [2])) (fromNonEmpty (LMainLibName :| [])))`
                           TriviaTree {
                             justAnnotation = [
-                              ExactPosition (Position 3 6)],
+                              ExactPosition (Position 3 5)],
                             namedAnnotations =
                             Map.fromList
                               [
