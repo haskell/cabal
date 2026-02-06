@@ -122,12 +122,12 @@ instance FieldGrammar ExactPretty PrettyFieldGrammar where
     where
       pp v t s =
         let t' = unmarkTriviaTree fn t
-            posTrivia = justAnnotation t
             fieldPositionOr0 = fromMaybe (Position 0 0) . atFieldPosition . justAnnotation
         in
             concatMap
-              ( \docAnns ->
-                  ppTriviaField (fn, posTrivia) docAnns
+              ( \groupedDocAnn ->
+                  let fieldNamePos = fieldPositionOr0 $ mconcat $ map docAnn groupedDocAnn
+                  in  ppTriviaField (fn, [ExactFieldPosition fieldNamePos]) groupedDocAnn
               )
             $ groupBy ((==) `on` (fieldPositionOr0 . docAnn))
             $ exactPrettyVersioned v t' (pack' _pack (aview l s))
