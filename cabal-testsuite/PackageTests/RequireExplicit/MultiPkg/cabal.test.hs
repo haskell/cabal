@@ -20,6 +20,7 @@ main = do
     -- and some-exe is a build-tool dependency of b, again not listed
     res <- fails $ cabal' "build" ("all" : opts ++ [constraint "other-lib -any"])
     assertErr "all" res
+
     -- everything's listed, good to go
     cabal "build" $
       "all"
@@ -54,7 +55,7 @@ main = do
       opts
         ++ [ constraint "some-lib ==1.0"
            , constraint "some-lib >0"
-           , constraint "some-lib <2"
+           , constraint "some-lib <=2"
            ]
 
     -- not everything's listed as == constraint when normalised
@@ -62,6 +63,6 @@ main = do
       fails . cabal' "build" $
         opts
           ++ [ constraint "some-lib >0"
-             , constraint "some-lib <2"
+             , constraint "some-lib <=2"
              ]
     assertErr "eq" res
