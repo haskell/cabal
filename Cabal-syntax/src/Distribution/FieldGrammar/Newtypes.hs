@@ -316,14 +316,10 @@ instance
                   let n = (pack :: a -> b) o -- pack each element
                   -- The numbering are associated under the newtype
                   -- Move them upwards so we can sort
-                      numbering =
-                          maybeToList . fmap FieldNth . atFieldNth
-                            $ justAnnotation (unmarkTriviaTree n t0)
+                      numbering = justAnnotation (unmarkTriviaTree n t0)
 
                   -- The positions are associated under the oldtype
-                      position =
-                             maybeToList . fmap ExactPosition . atPosition
-                             $ justAnnotation (unmarkTriviaTree o (unmarkTriviaTree n t0))
+                      position = justAnnotation (unmarkTriviaTree o (unmarkTriviaTree n t0))
                       t = TriviaTree (numbering <> position) mempty <> t0
                    in (t, n)
               )

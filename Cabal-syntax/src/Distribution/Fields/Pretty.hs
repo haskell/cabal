@@ -91,25 +91,24 @@ showFieldsWithTrivia = showFields' (const NoComment) atPosition postProcess
     postProcess :: Maybe Position -> Trivia -> PP.Doc -> PP.Doc
     postProcess prevPos trivia doc =
       let mDiff = liftA2 offset (atPosition trivia) prevPos
-          offset x@(Position rx cx) y@(Position ry cy) =
-            pTrace ("diffing position " <> show x <> " and " <> show y)
-              (rx - ry, if rx /= ry then cx else cx - cy)
+          offset x@(Position rx cx) y@(Position ry cy) = (rx - ry, if rx /= ry then cx else cx - cy)
       in  case mDiff of
             Just (rDiff, cDiff) ->
-              (\x -> pTrace ("fixed up x\n" <> show x) x)
+              (\x -> trace ("patching with " <> show (rDiff - 2, cDiff - 1, doc) ) x)
               $ foldr (.) id
-                ( replicate (rDiff - 1) (PP.text "" PP.$$) ++ replicate (cDiff - 1) (PP.text " " <>)
+                ( 
+                replicate (rDiff -  1) (PP.text "" PP.$$) ++
+                replicate (cDiff - 1) (PP.text " " <>)
                 )
                 doc
             Nothing -> case atPosition trivia of
-              Just (Position _ col) -> 
+              Just (Position _ col) ->
                 -- No previous position to calculate line jump, but still compute column offset
-                (\x -> pTrace ("original x\n" <> show x) x)
+                (\x -> trace ("patching with " <> show (col - 1, doc)) x)
                 $ foldr (.) id
                   ( replicate (col - 1) (PP.text " " <>)
                   )
                   doc
-              Nothing -> doc -- give up all position adjustment
 
 -- | 'showFields' with user specified indentation.
 showFields'
@@ -122,7 +121,7 @@ showFields'
   -> [PrettyField ann]
   -- ^ Fields/sections to show.
   -> String
-showFields' rann getPos post = unlines . renderFields Nothing (Opts rann getPos post)
+showFields' rann getPos post = concat . renderFields Nothing (Opts rann getPos post)
   where
 
 data Opts ann = Opts
@@ -207,13 +206,16 @@ renderField opts@(Opts rann getPos postWithPrev) prevPos fw (PrettyField ann nam
       NoComment -> NoMargin
       _ -> Margin
 
+    -- TODO(leana8959): use the pretty library to render the field names
     (lines', after) = case fieldLines' of
       [] -> ([name' ++ ":"], NoMargin)
-      [singleLine]
-        | length singleLine < 60 ->
-            ([name' ++ ": " ++ replicate (fw - length name') ' ' ++ unlines fieldLines'], NoMargin)
+      -- [singleLine]
+      --   | length singleLine < 60 ->
+      --       ([name' ++ ": " ++ replicate (fw - length name') ' ' ++ concat fieldLines'], NoMargin)
+
             -- TODO(leana8959): fix indentation with exact positioning
-      _ -> ((name' ++ ":") : {- map indent -} fieldLines', Margin)
+
+      _ -> ((name' ++ ":") : "\n" : {- map indent -} fieldLines', Margin)
 
     name' = fromUTF8BS name
 
@@ -239,7 +241,9 @@ renderPrettyFieldLine (Opts rann _ postWithPrevPos) prevPos fw (PrettyFieldLine 
       narrowStyle :: PP.Style
       narrowStyle = PP.style{PP.lineLength = PP.lineLength PP.style - fw}
 
-  in  PP.renderStyle narrowStyle
+  in
+      (\x -> trace ("rendered PFL " <> show x) x)
+      $ PP.renderStyle narrowStyle
       $ postProcess ann
       $ doc
 
