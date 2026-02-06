@@ -33,7 +33,6 @@ module Distribution.Types.Annotation
   , fromNamedTrivia
   , emptyTriviaTree
   , atFieldNth
-  , atNth
   , atPosition
   , patchPosition
   , triviaToDoc
@@ -104,7 +103,7 @@ instance (Namespace a, Markable a, Namespace b, Markable b) => Markable (a, b)
 type Trivia = [Trivium]
 data Trivium
   = FieldNth Int
-  | Nth Int
+  -- | Nth Int
   | PreTrivia String
   | PostTrivia String
   | ExactPosition Position
@@ -140,12 +139,6 @@ atFieldNth [] = Nothing
 atFieldNth (t : ts) = case t of
   FieldNth n -> Just n
   _ -> atFieldNth ts
-
-atNth :: Trivia -> Maybe Int
-atNth [] = Nothing
-atNth (t : ts) = case t of
-  Nth n -> Just n
-  _ -> atNth ts
 
 atPosition :: Trivia -> Maybe Position
 atPosition [] = Nothing

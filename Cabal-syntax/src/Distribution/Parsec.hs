@@ -356,12 +356,7 @@ triviaParsecCommaList
   => m (TriviaTree, a)
   -> m [(TriviaTree, a)]
 triviaParsecCommaList p = do
-  xs <- toList <$> sepByNonEmpty' p' comma
-  let xs' =
-        map
-          (\(n, (t, x)) -> (markTriviaTree x (TriviaTree [Nth n] mempty) <> t, x))
-          (zip [1 ..] xs)
-  pure xs'
+  toList <$> sepByNonEmpty' p' comma
   where
     comma :: CabalParsing m => m String
     comma = do

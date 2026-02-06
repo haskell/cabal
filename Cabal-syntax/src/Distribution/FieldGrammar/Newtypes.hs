@@ -143,8 +143,8 @@ instance TriviaSep CommaVCat where
   --
   -- This function currently only does sorting
   prettierSep _ docs =
-    let atNthOr0 = fromMaybe 0 . atNth . justAnnotation
-        sortedDocs = sortOn (atNthOr0 . fst) $ docs
+    let atPositionOr0 = fromMaybe (Position 0 0) . atPosition . justAnnotation
+        sortedDocs = sortOn (atPositionOr0 . fst) $ docs
 
      in map
           ( \(t0, x) ->
