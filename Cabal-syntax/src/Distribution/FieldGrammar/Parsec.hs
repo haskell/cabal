@@ -298,7 +298,7 @@ instance FieldGrammar ExactParsec ParsecFieldGrammar where
 
       parseOne v (MkNamelessField pos fls) n = do
         (t, x) <- runFieldParser pos exactParsec v fls
-        let t' = fromNamedTrivia x [FieldNth n] <> t
+        let t' = TriviaTree [ExactPosition pos] mempty <> fromNamedTrivia x [FieldNth n] <> t
         pure (t', x)
 
   prefixedFields fnPfx _extract = ParsecFG mempty (Set.singleton fnPfx) (\_ fs -> pure (mempty, parser fs))

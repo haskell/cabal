@@ -86,12 +86,12 @@ showFields :: (ann -> CommentPosition) -> [PrettyField ann] -> String
 showFields rann = showFields' rann (const Nothing) (const $ const id)
 
 showFieldsWithTrivia :: [PrettyField Trivia] -> String
-showFieldsWithTrivia = showFields' (const NoComment) atPosition postProcess
+showFieldsWithTrivia = showFields' (const NoComment) atPosition fixupPosition
   where
-    postProcess :: Maybe Position -> Trivia -> PP.Doc -> PP.Doc
-    postProcess prevPos trivia doc =
+    fixupPosition :: Maybe Position -> Trivia -> PP.Doc -> PP.Doc
+    fixupPosition prevPos trivia doc =
       let mDiff = liftA2 offset (atPosition trivia) prevPos
-          offset x@(Position rx cx) y@(Position ry cy) = (rx - ry, if rx /= ry then cx else cx - cy)
+          offset (Position rx cx) (Position ry cy) = (rx - ry, if rx /= ry then cx else 0)
       in  case mDiff of
             Just (rDiff, cDiff) ->
               foldr (.) id
@@ -205,7 +205,8 @@ renderField opts@(Opts rann getPos postWithPrev) prevPos fw (PrettyField ann nam
     -- TODO(leana8959): use the pretty library to render the field names
     (lines', after) = case fieldLines' of
       [] -> ([name' ++ ":"], NoMargin)
-      _ -> ((name' ++ ":") : "\n" : fieldLines', Margin)
+      -- FIXME(leana8959): decide whether trailing newlines is wanted
+      _ -> ((name' ++ ":") : "\n" : fieldLines' ++ ["\n"], Margin)
 
     name' = fromUTF8BS name
 
