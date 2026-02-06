@@ -7,6 +7,14 @@ assertErr x = assertOutputContains ("not a user-provided goal nor mentioned as a
 constraint x = "--constraint=" ++ x
 
 main = do
+  skipIfOSX "macOS has a different solver output format"
+  -- - - other-lib-1.0 (lib) (requires build)
+  -- - - some-exe-1.0 (exe:some-exe) (requires build)
+  --   - some-lib-1.0 (lib) (requires build)
+  -- + - some-exe-1.0 (exe:some-exe) (requires build)
+  -- + - other-lib-1.0 (lib) (requires build)
+  --   - b-0 (lib) (first run)
+  --   - a-0 (lib) (first run)
   cabalTest' "multipkg-all" . withRepo "repo" $ do
     let opts =
           [ "--dry-run"
