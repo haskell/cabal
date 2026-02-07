@@ -1644,7 +1644,9 @@ to Hackage.
     ::
 
         password-command: sh -c "grep hackage ~/secrets | cut -d : -f 2"
-
+..
+.. option:: -R, --repository-name
+     Package repository to which the package is to be uploaded.
 
 cabal report
 ^^^^^^^^^^^^
@@ -1664,5 +1666,9 @@ cabal report
 .. option:: -p PASSWORD or -pPASSWORD, --password=PASSWORD
 
     Your Hackage password.
+
+
+.. option:: -R, --repository-name
+   Package repository to which the report is to be uploaded.
 
 .. include:: references.inc
