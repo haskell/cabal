@@ -1,0 +1,9 @@
+synopsis: Enable uploading to a specific repository
+packages: cabal-install
+prs: #11478
+
+description: {
+
+Enable uploading packages and reports to a specific repository with the -R/--repository option
+of `cabal upload`, `cabal get`, and `cabal report`.
+}
