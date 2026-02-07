@@ -2,7 +2,7 @@
 - ignore: {name: "Avoid NonEmpty.unzip"} # 1 hint
 - ignore: {name: "Avoid lambda"} # 50 hints
 - ignore: {name: "Avoid lambda using `infix`"} # 23 hints
-- ignore: {name: "Eta reduce"} # 136 hints
+- ignore: {name: "Eta reduce"} # 137 hints
 - ignore: {name: "Evaluate"} # 10 hints
 - ignore: {name: "Functor law"} # 10 hints
 - ignore: {name: "Fuse concatMap/map"} # 3 hints
@@ -19,27 +19,25 @@
 - ignore: {name: "Redundant guard"} # 2 hints
 - ignore: {name: "Redundant if"} # 6 hints
 - ignore: {name: "Redundant lambda"} # 19 hints
-- ignore: {name: "Redundant maybe"} # 2 hints
 - ignore: {name: "Redundant multi-way if"} # 1 hint
-- ignore: {name: "Redundant return"} # 10 hints
+- ignore: {name: "Redundant return"} # 9 hints
 - ignore: {name: "Replace case with fromMaybe"} # 4 hints
 - ignore: {name: "Replace case with maybe"} # 10 hints
 - ignore: {name: "Use $>"} # 5 hints
 - ignore: {name: "Use ++"} # 4 hints
-- ignore: {name: "Use :"} # 28 hints
+- ignore: {name: "Use :"} # 29 hints
 - ignore: {name: "Use <$"} # 2 hints
-- ignore: {name: "Use <$>"} # 87 hints
+- ignore: {name: "Use <$>"} # 86 hints
 - ignore: {name: "Use <&>"} # 16 hints
 - ignore: {name: "Use <=<"} # 4 hints
 - ignore: {name: "Use =<<"} # 7 hints
-- ignore: {name: "Use =="} # 2 hints
 - ignore: {name: "Use >=>"} # 3 hints
 - ignore: {name: "Use Down"} # 3 hints
 - ignore: {name: "Use bimap"} # 7 hints
 - ignore: {name: "Use camelCase"} # 96 hints
 - ignore: {name: "Use catMaybes"} # 4 hints
 - ignore: {name: "Use concatMap"} # 2 hints
-- ignore: {name: "Use const"} # 37 hints
+- ignore: {name: "Use const"} # 36 hints
 - ignore: {name: "Use fmap"} # 23 hints
 - ignore: {name: "Use fold"} # 1 hint
 - ignore: {name: "Use fromMaybe"} # 5 hints
