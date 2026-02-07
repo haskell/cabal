@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -- | This is a set of unit tests for the dependency solver,
 -- which uses the solver DSL ("UnitTests.Distribution.Solver.Modular.DSL")
@@ -23,10 +24,12 @@ import Language.Haskell.Extension
   )
 
 -- cabal-install
+
 import Distribution.Solver.Types.Flag
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
 import qualified Distribution.Solver.Types.PackagePath as P
+import Distribution.Solver.Types.Settings (OnlyConstrained (..))
 import UnitTests.Distribution.Solver.Modular.DSL
 import UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
 
@@ -234,32 +237,96 @@ tests =
       ]
   , testGroup
       "reject-unconstrained"
-      [ runTest $
-          onlyConstrained $
-            mkTest db12 "missing syb" ["E"] $
-              solverFailure (isInfixOf "not a user-provided goal")
-      , runTest $
-          onlyConstrained $
-            mkTest db12 "all goals" ["E", "syb"] $
-              solverSuccess [("E", 1), ("syb", 2)]
-      , runTest $
-          onlyConstrained $
-            mkTest db17 "backtracking" ["A", "B"] $
-              solverSuccess [("A", 2), ("B", 1)]
-      , runTest $
-          onlyConstrained $
-            mkTest db17 "failure message" ["A"] $
-              solverFailure $
-                isInfixOf $
-                  "Could not resolve dependencies:\n"
-                    ++ "[__0] trying: A-3.0.0 (user goal)\n"
-                    ++ "[__1] next goal: C (dependency of A)\n"
-                    ++ "[__1] fail (not a user-provided goal nor mentioned as a constraint, "
-                    ++ "but reject-unconstrained-dependencies was set)\n"
-                    ++ "[__1] fail (backjumping, conflict set: A, C)\n"
-                    ++ "After searching the rest of the dependency tree exhaustively, "
-                    ++ "these were the goals I've had most trouble fulfilling: A, C, B"
-      ]
+      $ let solverMsg condition =
+              "Could not resolve dependencies:\n"
+                ++ "[__0] trying: A-3.0.0 (user goal)\n"
+                ++ "[__1] next goal: C (dependency of A)\n"
+                ++ "[__1] fail (not a user-provided goal nor mentioned as a constraint, "
+                ++ "but reject-unconstrained-dependencies="
+                ++ condition
+                ++ " was set)\n"
+                ++ "[__1] fail (backjumping, conflict set: A, C)\n"
+                ++ "After searching the rest of the dependency tree exhaustively, "
+                ++ "these were the goals I've had most trouble fulfilling: A, C, B"
+            whenNone = onlyConstrained OnlyConstrainedNone
+            whenAll = onlyConstrained OnlyConstrainedAll
+            whenEq = onlyConstrained OnlyConstrainedEq
+         in [ testGroup
+                "=none"
+                [ runTest $
+                    whenNone $
+                      mkTest db12 "goal E" ["E"] $
+                        solverSuccess [("E", 1), ("syb", 2)]
+                , runTest $
+                    whenNone $
+                      mkTest db12 "all goals" ["E", "syb"] $
+                        solverSuccess [("E", 1), ("syb", 2)]
+                , runTest $
+                    whenNone $
+                      mkTest db17 "goal A B: backtracking" ["A", "B"] $
+                        solverSuccess [("A", 3), ("B", 1), ("C", 1)]
+                , runTest $
+                    whenNone $
+                      mkTest db17 "goal A" ["A"] $
+                        solverSuccess [("A", 3), ("B", 1), ("C", 1)]
+                ]
+            , testGroup
+                "=all"
+                [ runTest $
+                    whenAll $
+                      mkTest db12 "goal E: missing syb" ["E"] $
+                        solverFailure
+                          ( \m ->
+                              all
+                                (`isInfixOf` m)
+                                [ "next goal: syb (dependency of E)"
+                                , "not a user-provided goal nor mentioned as a constraint"
+                                , "but reject-unconstrained-dependencies=all was set"
+                                ]
+                          )
+                , runTest $
+                    whenAll $
+                      mkTest db12 "all goals" ["E", "syb"] $
+                        solverSuccess [("E", 1), ("syb", 2)]
+                , runTest $
+                    whenAll $
+                      mkTest db17 "goal A B: backtracking" ["A", "B"] $
+                        solverSuccess [("A", 2), ("B", 1)]
+                , runTest $
+                    whenAll $
+                      mkTest db17 "goal A: failure message" ["A"] $
+                        solverFailure $
+                          isInfixOf $
+                            solverMsg "all"
+                ]
+            , testGroup "=eq" $
+                let eGoalFailure m =
+                      all
+                        (`isInfixOf` m)
+                        [ "next goal: E.base (dependency of E)"
+                        , "not a user-provided goal nor mentioned as a constraint"
+                        , "but reject-unconstrained-dependencies=eq was set"
+                        ]
+                 in [ runTest $
+                        whenEq $
+                          mkTest db12 "goal E: missing syb" ["E"] $
+                            solverFailure eGoalFailure
+                    , runTest $
+                        whenEq $
+                          mkTest db12 "all goals" ["E", "syb"] $
+                            solverFailure eGoalFailure
+                    , runTest $
+                        whenEq $
+                          mkTest db17 "goal A B: backtracking" ["A", "B"] $
+                            solverSuccess [("A", 2), ("B", 1)]
+                    , runTest $
+                        whenEq $
+                          mkTest db17 "goal A: failure message" ["A"] $
+                            solverFailure $
+                              isInfixOf $
+                                solverMsg "eq"
+                    ]
+            ]
   , testGroup
       "Cycles"
       [ runTest $ mkTest db14 "simpleCycle1" ["A"] anySolverFailure
