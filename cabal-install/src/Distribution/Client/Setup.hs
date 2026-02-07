@@ -103,6 +103,7 @@ import Prelude ()
 import Distribution.Client.Types.AllowNewer (AllowNewer (..), AllowOlder (..), RelaxDeps (..))
 import Distribution.Client.Types.Credentials (Password (..), Token (..), Username (..))
 import Distribution.Client.Types.Repo (LocalRepo (..), RemoteRepo (..))
+import Distribution.Client.Types.RepoName
 import Distribution.Client.Types.WriteGhcEnvironmentFilesPolicy
 
 import Distribution.Client.BuildReports.Types
@@ -1812,6 +1813,7 @@ data ReportFlags = ReportFlags
   , reportUsername :: Flag Username
   , reportPassword :: Flag Password
   , reportVerbosity :: Flag VerbosityFlags
+  , reportRepoName :: Flag RepoName
   }
   deriving (Generic)
 
@@ -1822,6 +1824,7 @@ defaultReportFlags =
     , reportUsername = mempty
     , reportPassword = mempty
     , reportVerbosity = toFlag normal
+    , reportRepoName = mempty
     }
 
 reportCommand :: CommandUI ReportFlags
@@ -1870,6 +1873,13 @@ reportCommand =
                 (toFlag . Password)
                 (flagToList . fmap unPassword)
             )
+        , option
+            ['R']
+            ["repository"]
+            "Package repository to upload to."
+            reportRepoName
+            (\v flags -> flags{reportRepoName = v})
+            (reqArg' "REPOSITORY" (toFlag . RepoName) (flagToList . fmap unRepoName))
         ]
     }
 
@@ -2865,6 +2875,7 @@ data UploadFlags = UploadFlags
   , uploadPassword :: Flag Password
   , uploadPasswordCmd :: Flag [String]
   , uploadVerbosity :: Flag VerbosityFlags
+  , uploadRepoName :: Flag RepoName
   }
   deriving (Generic)
 
@@ -2878,6 +2889,7 @@ defaultUploadFlags =
     , uploadPassword = mempty
     , uploadPasswordCmd = mempty
     , uploadVerbosity = toFlag normal
+    , uploadRepoName = mempty
     }
 
 uploadCommand :: CommandUI UploadFlags
@@ -2962,6 +2974,13 @@ uploadCommand =
                 )
                 (flagElim [] (pure . unwords . fmap show))
             )
+        , option
+            ['R']
+            ["repository"]
+            "Package repository to upload to."
+            uploadRepoName
+            (\v flags -> flags{uploadRepoName = v})
+            (reqArg' "REPOSITORY" (toFlag . RepoName) (flagToList . fmap unRepoName))
         ]
     }
 
