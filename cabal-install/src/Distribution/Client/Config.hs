@@ -544,7 +544,6 @@ instance Semigroup SavedConfig where
           , configCoverage = combine configCoverage
           , configLibCoverage = combine configLibCoverage
           , configExactConfiguration = combine configExactConfiguration
-          , configFlagError = combine configFlagError
           , configRelocatable = combine configRelocatable
           , configUseResponseFiles = combine configUseResponseFiles
           , configDumpBuildInfo = combine configDumpBuildInfo
