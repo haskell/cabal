@@ -90,6 +90,7 @@ tests = testGroup "parsec tests"
     , parsecPrettyRoundTripTests
     , fieldGrammarGoldenTests
     , fieldGrammarRoundTripTests
+    , fieldGrammarTransformTests
     ]
 
 -------------------------------------------------------------------------------
@@ -336,7 +337,7 @@ fieldGrammarGoldenTests = testGroup "fieldgrammar-golden" $
     ++ ( map (fieldGrammarGoldenTest buildInfoDependencyListFieldGrammar)
             [ "buildInfo-build-depends1.fragment"
             ]
-      )
+       )
   -- TODO: figure out an efficient way to test sections
   --
   -- ++ ( map (fieldGrammarGoldenTest $ librarySectionDependencyList LMainLibName)
@@ -359,14 +360,14 @@ fieldGrammarGoldenTest g fp = ediffGolden goldenTest fp exprFile $ do
   let (fieldMap, _) = takeFields fs
   let (_warns, res) =
           runParseResult
-          $ fieldGrammarParser g cabalSpecLatest fieldMap 
+          $ fieldGrammarParser g cabalSpecLatest fieldMap
 
   case res of
     Left _ -> fail "fieldParser failed unrecoverably"
     Right ok -> pure $ toExpr ok
   where
     input = "tests" </> "ParserTests" </> "trivia" </> fp
-    exprFile = replaceExtension input "parser-trivia"
+    exprFile = replaceExtension input "fieldgrammar-trivia"
 
 #ifdef MIN_VERSION_tree_diff
 treeDiffGoldenTest :: FilePath -> TestTree
@@ -449,17 +450,6 @@ fieldGrammarRoundTripTests = testGroup "fieldgrammar-roundtrip" $
       , "build-depends5.fragment"
       ]
    )
-  ++ ( let  goDeps [] = []
-            goDeps (d : ds) = goDep d : ds
-            goDep (Dependency pName _ libNames) = Dependency pName fakeVersion libNames
-              where fakeVersion = ThisVersion $ mkVersion [1337, 99]
-       in
-         map
-          ( fieldGrammarRoundTripTestWith dependencyListFieldGrammar dependencyListFieldGrammar goDeps
-          )
-          [ "build-depends1.fragment"
-          ]
-     )
   -- TODO(leana8959): sections are parsed with goSections, extend the testsuite so we can test these cases too
   --
   -- ++ ( map
@@ -469,25 +459,18 @@ fieldGrammarRoundTripTests = testGroup "fieldgrammar-roundtrip" $
   --       ]
   --    )
 
+
 -- TODO(leana8959): we need to detect indentation of field content
 -- Let's ignore whether they all have the same indent for now.
 
+-- |
+-- Test whether the leaf Parsec and Pretty instances are dual of each other.
 fieldGrammarRoundTripTest
   :: ParsecFieldGrammar' a
   -> PrettyFieldGrammar' a
   -> FilePath
   -> TestTree
-fieldGrammarRoundTripTest gParsec gPretty = fieldGrammarRoundTripTestWith gParsec gPretty id
-
--- |
--- Test whether the leaf Parsec and Pretty instances are dual of each other.
-fieldGrammarRoundTripTestWith
-  :: ParsecFieldGrammar' a
-  -> PrettyFieldGrammar' a
-  -> (a -> a)
-  -> FilePath
-  -> TestTree
-fieldGrammarRoundTripTestWith gParsec gPretty f fp = testCase fp $ do
+fieldGrammarRoundTripTest gParsec gPretty fp = testCase fp $ do
   x <- BS.readFile input
   let fs = case readFields x of
         Left err -> fail $ unlines $ "readFields error:" : show err : []
@@ -502,10 +485,8 @@ fieldGrammarRoundTripTestWith gParsec gPretty f fp = testCase fp $ do
         Left _ -> fail "fieldParser failed unrecoverably"
         Right ok -> pure ok
 
-  let transformed = f parsed
-
   let prettyFields =
-          prettyAnnotatedFieldGrammar cabalSpecLatest trivia gPretty transformed
+          prettyAnnotatedFieldGrammar cabalSpecLatest trivia gPretty parsed
   let y = BS8.pack (showFieldsWithTrivia prettyFields)
 
 {- FOURMOLU_DISABLE -}
@@ -527,6 +508,51 @@ fieldGrammarRoundTripTestWith gParsec gPretty f fp = testCase fp $ do
   where
     input = "tests" </> "ParserTests" </> "trivia" </> fp
 {- FOURMOLU_ENABLE -}
+
+fieldGrammarTransformTests :: TestTree
+fieldGrammarTransformTests = testGroup "fieldgrammar-transform" $
+  ( let  goDeps [] = []
+         goDeps (d : ds) = goDep d : ds
+         goDep (Dependency pName _ libNames) = Dependency pName fakeVersion libNames
+           where fakeVersion = ThisVersion $ mkVersion [1337, 99]
+    in
+      map
+       ( fieldGrammarTransformTest dependencyListFieldGrammar dependencyListFieldGrammar goDeps
+       )
+       [ "build-depends1.fragment"
+       ]
+  )
+
+fieldGrammarTransformTest
+  :: forall a
+   . (ToExpr a)
+  => ParsecFieldGrammar' a
+  -> PrettyFieldGrammar' a
+  -> (a -> a)
+  -> FilePath
+  -> TestTree
+fieldGrammarTransformTest gParse gPrint f fp = ediffGolden goldenTest fp exprFile $ do
+  contents <- BS.readFile input
+  let fs = case readFields contents of
+        Left err -> fail $ unlines $ "readFields error:" : show err : []
+        Right ok -> ok
+
+  let (fieldMap, _) = takeFields fs
+  let (_warns, res) =
+          runParseResult
+          $ fieldGrammarParser gParse cabalSpecLatest fieldMap
+
+  (trivia, parsed) <- case res of
+        Left _ -> fail "fieldParser failed unrecoverably"
+        Right ok -> pure (fmap f ok)
+
+  let prettyFields = prettyAnnotatedFieldGrammar cabalSpecLatest trivia gPrint parsed
+      renderedFields = BS8.pack (showFieldsWithTrivia prettyFields)
+
+  pure renderedFields
+  where
+    input = "tests" </> "ParserTests" </> "trivia" </> fp
+    exprFile = replaceExtension input "fieldgrammar-trivia-trans"
 
 -- |
 -- Test whether the leaf Parsec and Pretty instances are dual of each other.

@@ -1,0 +1,7 @@
+BS.concat
+  [
+    "build-depends:\n",
+    "    base==1337.99\n",
+    "build-depends:\n",
+    "\n",
+    "    text < 2,\n"]
