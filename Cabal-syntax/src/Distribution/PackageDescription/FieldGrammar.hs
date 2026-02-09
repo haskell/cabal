@@ -214,10 +214,7 @@ librarySectionDependencyList n =
         ^^^ availableSince CabalSpecV2_0 []
       <*> pure True
       <*> libraryVisibilityField n
-      <*> (
-            (\x -> trace ("what xs buildInfoFieldGrammar doing? " <> show x) x)
-            <$> blurFieldGrammar L.libBuildInfo buildInfoDependencyListFieldGrammar
-          )
+      <*> blurFieldGrammar L.libBuildInfo buildInfoDependencyListFieldGrammar
 {-# SPECIALIZE librarySectionDependencyList :: LibraryName -> ParsecFieldGrammar' Library #-}
 {-# SPECIALIZE librarySectionDependencyList :: LibraryName -> PrettyFieldGrammar' Library #-}
 
