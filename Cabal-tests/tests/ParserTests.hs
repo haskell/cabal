@@ -335,6 +335,8 @@ fieldGrammarGoldenTests = testGroup "fieldgrammar-golden" $
             [ "buildInfo-build-depends1.fragment"
             ]
       )
+  -- TODO: figure out an efficient way to test sections
+  --
   -- ++ ( map (fieldGrammarGoldenTest $ librarySectionDependencyList LMainLibName)
   --       [ "library-build-depends1.fragment"
   --       ]
