@@ -456,14 +456,22 @@ fieldGrammarRoundTripTests = testGroup "fieldgrammar-roundtrip" $
 -- TODO(leana8959): we need to detect indentation of field content
 -- Let's ignore whether they all have the same indent for now.
 
--- |
--- Test whether the leaf Parsec and Pretty instances are dual of each other.
 fieldGrammarRoundTripTest
   :: ParsecFieldGrammar' a
   -> PrettyFieldGrammar' a
   -> FilePath
   -> TestTree
-fieldGrammarRoundTripTest parsec pretty fp = testCase fp $ do
+fieldGrammarRoundTripTest gParsec gPretty fp = fieldGrammarRoundTripTestWith gParsec gPretty fp id
+
+-- |
+-- Test whether the leaf Parsec and Pretty instances are dual of each other.
+fieldGrammarRoundTripTestWith
+  :: ParsecFieldGrammar' a
+  -> PrettyFieldGrammar' a
+  -> FilePath
+  -> (a -> a)
+  -> TestTree
+fieldGrammarRoundTripTestWith parsec pretty fp f = testCase fp $ do
   x <- BS.readFile input
   let fs = case readFields x of
         Left err -> fail $ unlines $ "readFields error:" : show err : []
@@ -478,8 +486,10 @@ fieldGrammarRoundTripTest parsec pretty fp = testCase fp $ do
         Left _ -> fail "fieldParser failed unrecoverably"
         Right ok -> pure ok
 
+  let transformed = f parsed
+
   let prettyFields =
-          prettyAnnotatedFieldGrammar cabalSpecLatest trivia pretty parsed
+          prettyAnnotatedFieldGrammar cabalSpecLatest trivia pretty transformed
   let y = BS8.pack (showFieldsWithTrivia prettyFields)
 
 {- FOURMOLU_DISABLE -}
