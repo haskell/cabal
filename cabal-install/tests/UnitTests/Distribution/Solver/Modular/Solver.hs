@@ -253,13 +253,21 @@ tests =
             whenNone = onlyConstrained OnlyConstrainedNone
             whenAll = onlyConstrained OnlyConstrainedAll
             whenEq = onlyConstrained OnlyConstrainedEq
+            eq1 = C.thisVersion $ mkSimpleVersion 1
+            gt0 = C.laterVersion $ C.mkVersion [0]
+            eqGt = C.intersectVersionRanges eq1 gt0
+            mkConstraint pkg vr = ExVersionConstraint (ScopeAnyQualifier pkg) vr
             eqConstraints =
-              [ ExVersionConstraint (ScopeAnyQualifier "B") (C.thisVersion $ mkSimpleVersion 1)
-              , ExVersionConstraint (ScopeAnyQualifier "C") (C.thisVersion $ mkSimpleVersion 1)
+              [ mkConstraint "B" eq1
+              , mkConstraint "C" eq1
               ]
             gtConstraints =
-              [ ExVersionConstraint (ScopeAnyQualifier "B") (C.laterVersion $ mkSimpleVersion 0)
-              , ExVersionConstraint (ScopeAnyQualifier "C") (C.laterVersion $ mkSimpleVersion 0)
+              [ mkConstraint "B" gt0
+              , mkConstraint "C" gt0
+              ]
+            eqGtConstraints =
+              [ mkConstraint "B" eqGt
+              , mkConstraint "C" eqGt
               ]
          in [ testGroup
                 "=none"
@@ -335,6 +343,12 @@ tests =
                     )
                       { testConstraints = gtConstraints
                       }
+                , runTest . whenAll $
+                    ( mkTest db17 "goal A with B >0 && ==1, C >0 && ==1" ["A"] $
+                        (solverSuccess [("A", 3), ("B", 1), ("C", 1)])
+                    )
+                      { testConstraints = eqGtConstraints
+                      }
                 ]
             , testGroup "=eq" $
                 let eGoalFailure m =
@@ -394,6 +408,15 @@ tests =
                             )
                         )
                           { testConstraints = gtConstraints
+                          }
+                    , runTest . whenEq $
+                        ( mkTest
+                            db17
+                            "goal A with B >0 && ==1, C >0 && ==1"
+                            ["A"]
+                            (solverSuccess [("A", 3), ("B", 1), ("C", 1)])
+                        )
+                          { testConstraints = eqGtConstraints
                           }
                     ]
             ]
