@@ -96,21 +96,18 @@ showFieldsWithTrivia = showFields' (const NoComment) getPos fixupPosition
 
     fixupPosition :: Maybe Position -> Trivia -> PP.Doc -> PP.Doc
     fixupPosition prevPos trivia doc =
-      let mDiff = liftA2 offset (atPosition trivia) prevPos
-          offset (Position rx cx) (Position ry cy) = (rx - ry, if rx /= ry then cx else 0)
-      in  case mDiff of
+      let mDiff = liftA2 diffPositions (atPosition trivia) prevPos
+          diffPositions (Position rx cx) (Position ry cy) = (rx - ry, if rx /= ry then cx else 0)
+
+          patch = foldr (.) id $ case mDiff of
             Just (rDiff, cDiff) ->
-              foldr (.) id
-                ( replicate (rDiff -  1) (PP.text "" PP.$$) ++ replicate (cDiff - 1) (PP.text " " <>)
-                )
-                doc
+                replicate (rDiff -  1) (PP.text "" PP.$$) ++ replicate (cDiff - 1) (PP.text " " <>)
             Nothing -> case atPosition trivia of
-              Just (Position _ col) ->
                 -- No previous position to calculate line jump, but still compute column offset
-                foldr (.) id
-                  ( replicate (col - 1) (PP.text " " <>)
-                  )
-                  doc
+              Just (Position _ col) -> replicate (col - 1) (PP.text " " <>)
+              Nothing -> [(PP.text "    " <>)] -- default to indent of 4
+
+      in  patch doc
 
 data PositionFromPrettyField ann = PositionFromPrettyField
   { fieldPosition :: ann -> Maybe Position

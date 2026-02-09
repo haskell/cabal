@@ -43,7 +43,9 @@ import Distribution.Parsec
 import Distribution.Types.Annotation
 
 import qualified Distribution.Types.Lens as L
+import Distribution.Types.Version
 import Distribution.Types.VersionRange
+import Distribution.Types.VersionRange.Internal
 import Distribution.Types.LibraryName
 import Distribution.Types.Dependency
 
@@ -447,12 +449,26 @@ fieldGrammarRoundTripTests = testGroup "fieldgrammar-roundtrip" $
       , "build-depends5.fragment"
       ]
    )
-  ++ ( map
-        ( fieldGrammarRoundTripTest (librarySectionDependencyList LMainLibName) (librarySectionDependencyList LMainLibName)
-        )
-        [ "library-build-depends1.fragment"
-        ]
+  ++ ( let  goDeps [] = []
+            goDeps (d : ds) = goDep d : ds
+            goDep (Dependency pName _ libNames) = Dependency pName fakeVersion libNames
+              where fakeVersion = ThisVersion $ mkVersion [1337, 99]
+       in
+         map
+          ( fieldGrammarRoundTripTestWith dependencyListFieldGrammar dependencyListFieldGrammar goDeps
+          )
+          [ "build-depends1.fragment"
+          ]
      )
+  -- TODO(leana8959): sections are parsed with goSections, extend the testsuite so we can test these cases too
+  --
+  -- ++ ( map
+  --       ( fieldGrammarRoundTripTest (librarySectionDependencyList LMainLibName) (librarySectionDependencyList LMainLibName)
+  --       )
+  --       [ "library-build-depends1.fragment"
+  --       ]
+  --    )
+
 -- TODO(leana8959): we need to detect indentation of field content
 -- Let's ignore whether they all have the same indent for now.
 
@@ -461,17 +477,17 @@ fieldGrammarRoundTripTest
   -> PrettyFieldGrammar' a
   -> FilePath
   -> TestTree
-fieldGrammarRoundTripTest gParsec gPretty fp = fieldGrammarRoundTripTestWith gParsec gPretty fp id
+fieldGrammarRoundTripTest gParsec gPretty = fieldGrammarRoundTripTestWith gParsec gPretty id
 
 -- |
 -- Test whether the leaf Parsec and Pretty instances are dual of each other.
 fieldGrammarRoundTripTestWith
   :: ParsecFieldGrammar' a
   -> PrettyFieldGrammar' a
-  -> FilePath
   -> (a -> a)
+  -> FilePath
   -> TestTree
-fieldGrammarRoundTripTestWith parsec pretty fp f = testCase fp $ do
+fieldGrammarRoundTripTestWith gParsec gPretty f fp = testCase fp $ do
   x <- BS.readFile input
   let fs = case readFields x of
         Left err -> fail $ unlines $ "readFields error:" : show err : []
@@ -480,7 +496,7 @@ fieldGrammarRoundTripTestWith parsec pretty fp f = testCase fp $ do
   let (fieldMap, _) = takeFields fs
   let (_warns, res) =
           runParseResult
-          $ fieldGrammarParser parsec cabalSpecLatest fieldMap 
+          $ fieldGrammarParser gParsec cabalSpecLatest fieldMap
 
   (trivia, parsed) <- case res of
         Left _ -> fail "fieldParser failed unrecoverably"
@@ -489,7 +505,7 @@ fieldGrammarRoundTripTestWith parsec pretty fp f = testCase fp $ do
   let transformed = f parsed
 
   let prettyFields =
-          prettyAnnotatedFieldGrammar cabalSpecLatest trivia pretty transformed
+          prettyAnnotatedFieldGrammar cabalSpecLatest trivia gPretty transformed
   let y = BS8.pack (showFieldsWithTrivia prettyFields)
 
 {- FOURMOLU_DISABLE -}
