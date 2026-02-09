@@ -323,19 +323,22 @@ parsecTriviaGoldenTest _ fp = ediffGolden goldenTest fp exprFile $ do
 
 fieldGrammarGoldenTests :: TestTree
 fieldGrammarGoldenTests = testGroup "fieldgrammar-golden" $
-  ( let parser = monoidalFieldAla "build-depends" formatDependencyList id
-    in  map (fieldGrammarGoldenTest parser)
-          [ "build-depends1.fragment"
-          , "build-depends2.fragment"
-          , "build-depends3.fragment"
-          , "build-depends4.fragment"
-          , "build-depends5.fragment"
-          ]
+  ( map (fieldGrammarGoldenTest dependencyListFieldGrammar)
+      [ "build-depends1.fragment"
+      , "build-depends2.fragment"
+      , "build-depends3.fragment"
+      , "build-depends4.fragment"
+      , "build-depends5.fragment"
+      ]
   )
-  ++ ( map (fieldGrammarGoldenTest $ librarySectionDependencyList LMainLibName)
-        [ "library-build-depends1.fragment"
-        ]
-     )
+    ++ ( map (fieldGrammarGoldenTest buildInfoDependencyListFieldGrammar)
+            [ "buildInfo-build-depends1.fragment"
+            ]
+      )
+  -- ++ ( map (fieldGrammarGoldenTest $ librarySectionDependencyList LMainLibName)
+  --       [ "library-build-depends1.fragment"
+  --       ]
+  --    )
 
 fieldGrammarGoldenTest
   :: forall a
@@ -433,7 +436,7 @@ parsecPrettyRoundTripTests = testGroup "parsecpretty-roundtrip"
 fieldGrammarRoundTripTests :: TestTree
 fieldGrammarRoundTripTests = testGroup "fieldgrammar-roundtrip" $
   ( map
-      ( fieldGrammarRoundTripTest parsecDependencyList prettyDependencyList
+      ( fieldGrammarRoundTripTest dependencyListFieldGrammar dependencyListFieldGrammar
       )
       [ "build-depends1.fragment"
       , "build-depends2.fragment"

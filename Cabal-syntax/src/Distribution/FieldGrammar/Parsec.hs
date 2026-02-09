@@ -181,10 +181,13 @@ instance FieldGrammar ExactParsec ParsecFieldGrammar where
     ParsecFG s s' $ \v fs -> do
       -- Run the inner parser and mark its annotation
       (t, x) <- parser v fs
-      let t' = markTriviaTree ns t
+      let t' = trace ("marking tree " <> show t) $ markTriviaTree ns t
       pure (t', x)
 
-  blurFieldGrammar _ (ParsecFG s s' parser) = ParsecFG s s' parser
+  blurFieldGrammar _ (ParsecFG s s' parser) = ParsecFG s s' $ \v inp -> do
+    (t, x) <- parser v inp
+    trace ("blur \n" <> show t) $
+      pure (t, x)
 
   uniqueFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
@@ -295,6 +298,8 @@ instance FieldGrammar ExactParsec ParsecFieldGrammar where
           (t, x) <- foldMap (unpack' _pack <$>) <$> traverse (uncurry (parseOne v)) (zip xs [1 ..])
           let t' = markTriviaTree fn t
           pure (t', x)
+          >>= \(t, x) ->
+            trace ("monoidal\n" <> show t) $ pure (t, x)
 
       parseOne v (MkNamelessField pos fls) n = do
         (t, x) <- runFieldParser pos exactParsec v fls

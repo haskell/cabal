@@ -16,8 +16,8 @@ module Distribution.PackageDescription.FieldGrammar
     packageDescriptionFieldGrammar
   , CompatDataDir (..)
   , CompatLicenseFile (..)
-  , parsecDependencyList
-  , prettyDependencyList
+  , dependencyListFieldGrammar
+  , buildInfoDependencyListFieldGrammar
 
     -- * Library
   , libraryFieldGrammar
@@ -185,6 +185,7 @@ librarySectionDependencyList
   :: ( FieldGrammar c g
      , Applicative (g Library)
      , Applicative (g BuildInfo)
+     , Applicative (g [Dependency])
      , c (Identity LibraryVisibility)
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
      , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
@@ -213,7 +214,10 @@ librarySectionDependencyList n =
         ^^^ availableSince CabalSpecV2_0 []
       <*> pure True
       <*> libraryVisibilityField n
-      <*> blurFieldGrammar L.libBuildInfo buildInfoFieldGrammar
+      <*> (
+            (\x -> trace ("what xs buildInfoFieldGrammar doing? " <> show x) x)
+            <$> blurFieldGrammar L.libBuildInfo buildInfoDependencyListFieldGrammar
+          )
 {-# SPECIALIZE librarySectionDependencyList :: LibraryName -> ParsecFieldGrammar' Library #-}
 {-# SPECIALIZE librarySectionDependencyList :: LibraryName -> PrettyFieldGrammar' Library #-}
 
@@ -634,11 +638,26 @@ unvalidateBenchmark b =
 -- Build info
 -------------------------------------------------------------------------------
 
-parsecDependencyList :: ParsecFieldGrammar' [Dependency]
-parsecDependencyList = monoidalFieldAla "build-depends" formatDependencyList id
+dependencyListFieldGrammar
+  :: ( FieldGrammar c g
+     , c (List CommaVCat (Identity Dependency) Dependency)
+     )
+  => g [Dependency] [Dependency]
+dependencyListFieldGrammar = monoidalFieldAla "build-depends" formatDependencyList id
+{-# SPECIALIZE dependencyListFieldGrammar :: ParsecFieldGrammar' [Dependency] #-}
+{-# SPECIALIZE dependencyListFieldGrammar :: PrettyFieldGrammar' [Dependency] #-}
 
-prettyDependencyList :: PrettyFieldGrammar' [Dependency]
-prettyDependencyList = monoidalFieldAla "build-depends" formatDependencyList id
+buildInfoDependencyListFieldGrammar
+  :: ( FieldGrammar c g
+     , Functor (g BuildInfo)
+     , c (List CommaVCat (Identity Dependency) Dependency)
+     )
+  => g BuildInfo BuildInfo
+buildInfoDependencyListFieldGrammar =
+  (\deps -> (mempty :: BuildInfo) { targetBuildDepends = deps })
+  <$> monoidalFieldAla "build-depends" formatDependencyList L.targetBuildDepends
+{-# SPECIALIZE buildInfoDependencyListFieldGrammar :: ParsecFieldGrammar' BuildInfo #-}
+{-# SPECIALIZE buildInfoDependencyListFieldGrammar :: PrettyFieldGrammar' BuildInfo #-}
 
 buildInfoFieldGrammar
   :: ( FieldGrammar c g

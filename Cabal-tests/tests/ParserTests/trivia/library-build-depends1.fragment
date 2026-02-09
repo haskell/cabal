@@ -1,2 +1,3 @@
 library:
-  build-depends: foo
+  build-depends:
+        foo
