@@ -21,6 +21,7 @@ module Distribution.PackageDescription.FieldGrammar
 
     -- * Library
   , libraryFieldGrammar
+  , librarySectionDependencyList
 
     -- * Foreign library
   , foreignLibFieldGrammar
@@ -181,7 +182,7 @@ packageDescriptionFieldGrammar =
 -------------------------------------------------------------------------------
 
 librarySectionDependencyList
-  :: (FieldGrammar c g
+  :: ( FieldGrammar c g
      , Applicative (g Library)
      , Applicative (g BuildInfo)
      , c (Identity LibraryVisibility)

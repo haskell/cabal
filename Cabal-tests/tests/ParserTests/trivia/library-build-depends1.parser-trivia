@@ -1,0 +1,75 @@
+_×_
+  TriviaTree {
+    justAnnotation = [],
+    namedAnnotations = Map.fromList
+      [
+        _×_
+          `SomeNamespace LMainLibName`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              []}]}
+  Library {
+    libName = LMainLibName,
+    exposedModules = [],
+    reexportedModules = [],
+    signatures = [],
+    libExposed = True,
+    libVisibility =
+    LibraryVisibilityPublic,
+    libBuildInfo = BuildInfo {
+      buildable = True,
+      buildTools = [],
+      buildToolDepends = [],
+      cppOptions = [],
+      asmOptions = [],
+      cmmOptions = [],
+      ccOptions = [],
+      cxxOptions = [],
+      jsppOptions = [],
+      ldOptions = [],
+      hsc2hsOptions = [],
+      pkgconfigDepends = [],
+      frameworks = [],
+      extraFrameworkDirs = [],
+      asmSources = [],
+      cmmSources = [],
+      cSources = [],
+      cxxSources = [],
+      jsSources = [],
+      hsSourceDirs = [],
+      otherModules = [],
+      virtualModules = [],
+      autogenModules = [],
+      defaultLanguage = Nothing,
+      otherLanguages = [],
+      defaultExtensions = [],
+      otherExtensions = [],
+      oldExtensions = [],
+      extraLibs = [],
+      extraLibsStatic = [],
+      extraGHCiLibs = [],
+      extraBundledLibs = [],
+      extraLibFlavours = [],
+      extraDynLibFlavours = [],
+      extraLibDirs = [],
+      extraLibDirsStatic = [],
+      includeDirs = [],
+      includes = [],
+      autogenIncludes = [],
+      installIncludes = [],
+      options = PerCompilerFlavor
+        []
+        [],
+      profOptions = PerCompilerFlavor
+        []
+        [],
+      sharedOptions =
+      PerCompilerFlavor [] [],
+      profSharedOptions =
+      PerCompilerFlavor [] [],
+      staticOptions =
+      PerCompilerFlavor [] [],
+      customFieldsBI = [],
+      targetBuildDepends = [],
+      mixins = []}}

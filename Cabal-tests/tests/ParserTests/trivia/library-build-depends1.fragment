@@ -1,0 +1,2 @@
+library:
+  build-depends: foo

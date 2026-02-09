@@ -44,6 +44,7 @@ import Distribution.Types.Annotation
 
 import qualified Distribution.Types.Lens as L
 import Distribution.Types.VersionRange
+import Distribution.Types.LibraryName
 import Distribution.Types.Dependency
 
 import Distribution.FieldGrammar
@@ -321,7 +322,7 @@ parsecTriviaGoldenTest _ fp = ediffGolden goldenTest fp exprFile $ do
     exprFile = replaceExtension input "parser-trivia"
 
 fieldGrammarGoldenTests :: TestTree
-fieldGrammarGoldenTests = testGroup "fieldgrammar-golden"
+fieldGrammarGoldenTests = testGroup "fieldgrammar-golden" $
   ( let parser = monoidalFieldAla "build-depends" formatDependencyList id
     in  map (fieldGrammarGoldenTest parser)
           [ "build-depends1.fragment"
@@ -331,6 +332,10 @@ fieldGrammarGoldenTests = testGroup "fieldgrammar-golden"
           , "build-depends5.fragment"
           ]
   )
+  ++ ( map (fieldGrammarGoldenTest $ librarySectionDependencyList LMainLibName)
+        [ "library-build-depends1.fragment"
+        ]
+     )
 
 fieldGrammarGoldenTest
   :: forall a
@@ -428,9 +433,7 @@ parsecPrettyRoundTripTests = testGroup "parsecpretty-roundtrip"
 fieldGrammarRoundTripTests :: TestTree
 fieldGrammarRoundTripTests = testGroup "fieldgrammar-roundtrip" $
   ( map
-      ( fieldGrammarRoundTripTest
-          parsecDependencyList
-          prettyDependencyList
+      ( fieldGrammarRoundTripTest parsecDependencyList prettyDependencyList
       )
       [ "build-depends1.fragment"
       , "build-depends2.fragment"
@@ -439,6 +442,12 @@ fieldGrammarRoundTripTests = testGroup "fieldgrammar-roundtrip" $
       , "build-depends5.fragment"
       ]
    )
+  ++ ( map
+        ( fieldGrammarRoundTripTest (librarySectionDependencyList LMainLibName) (librarySectionDependencyList LMainLibName)
+        )
+        [ "library-build-depends1.fragment"
+        ]
+     )
 -- TODO(leana8959): we need to detect indentation of field content
 -- Let's ignore whether they all have the same indent for now.
 
