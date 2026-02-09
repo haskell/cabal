@@ -180,6 +180,42 @@ packageDescriptionFieldGrammar =
 -- Library
 -------------------------------------------------------------------------------
 
+librarySectionDependencyList
+  :: (FieldGrammar c g
+     , Applicative (g Library)
+     , Applicative (g BuildInfo)
+     , c (Identity LibraryVisibility)
+     , c (List CommaFSep (Identity ExeDependency) ExeDependency)
+     , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
+     , c (List CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
+     , c (List CommaVCat (Identity Dependency) Dependency)
+     , c (List CommaVCat (Identity Mixin) Mixin)
+     , c (List CommaVCat (Identity ModuleReexport) ModuleReexport)
+     , c (List FSep (MQuoted Extension) Extension)
+     , c (List FSep (MQuoted Language) Language)
+     , c (List FSep Token String)
+     , c (List NoCommaFSep Token' String)
+     , c (List VCat (MQuoted ModuleName) ModuleName)
+     , forall from to. (Typeable from, Typeable to) => c (List FSep (SymbolicPathNT from to) (SymbolicPath from to))
+     , forall from to. (Typeable from, Typeable to) => c (List FSep (RelativePathNT from to) (RelativePath from to))
+     , forall from to. (Typeable from, Typeable to) => c (List VCat (SymbolicPathNT from to) (SymbolicPath from to))
+     , c (List VCat Token String)
+     , c (MQuoted Language)
+     )
+  => LibraryName -> g Library Library
+librarySectionDependencyList n =
+  withScope n $
+    Library n
+      <$> pure mempty
+      <*> pure mempty
+      <*> pure mempty
+        ^^^ availableSince CabalSpecV2_0 []
+      <*> pure True
+      <*> libraryVisibilityField n
+      <*> blurFieldGrammar L.libBuildInfo buildInfoFieldGrammar
+{-# SPECIALIZE librarySectionDependencyList :: LibraryName -> ParsecFieldGrammar' Library #-}
+{-# SPECIALIZE librarySectionDependencyList :: LibraryName -> PrettyFieldGrammar' Library #-}
+
 libraryFieldGrammar
   :: ( FieldGrammar c g
      , Applicative (g Library)
@@ -212,18 +248,21 @@ libraryFieldGrammar n =
       <*> monoidalFieldAla "signatures" (alaList' VCat MQuoted) L.signatures
         ^^^ availableSince CabalSpecV2_0 []
       <*> booleanFieldDef "exposed" L.libExposed True
-      <*> visibilityField
+      <*> libraryVisibilityField n
       <*> blurFieldGrammar L.libBuildInfo buildInfoFieldGrammar
-  where
-    visibilityField = case n of
-      -- nameless/"main" libraries are public
-      LMainLibName -> pure LibraryVisibilityPublic
-      -- named libraries have the field
-      LSubLibName _ ->
-        optionalFieldDef "visibility" L.libVisibility LibraryVisibilityPrivate
-          ^^^ availableSince CabalSpecV3_0 LibraryVisibilityPrivate
 {-# SPECIALIZE libraryFieldGrammar :: LibraryName -> ParsecFieldGrammar' Library #-}
 {-# SPECIALIZE libraryFieldGrammar :: LibraryName -> PrettyFieldGrammar' Library #-}
+
+libraryVisibilityField
+  :: (FieldGrammar c g, Applicative (g Library), c (Identity LibraryVisibility))
+  => LibraryName -> g Library LibraryVisibility
+libraryVisibilityField n = case n of
+  -- nameless/"main" libraries are public
+  LMainLibName -> pure LibraryVisibilityPublic
+  -- named libraries have the field
+  LSubLibName _ ->
+    optionalFieldDef "visibility" L.libVisibility LibraryVisibilityPrivate
+      ^^^ availableSince CabalSpecV3_0 LibraryVisibilityPrivate
 
 -------------------------------------------------------------------------------
 -- Foreign library
