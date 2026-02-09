@@ -17,6 +17,8 @@ import Test.Tasty as TF
 import Test.Tasty.ExpectedFailure
 
 -- Cabal
+
+import qualified Distribution.Version as C
 import Language.Haskell.Extension
   ( Extension (..)
   , KnownExtension (..)
@@ -31,7 +33,7 @@ import Distribution.Solver.Types.PackageConstraint
 import qualified Distribution.Solver.Types.PackagePath as P
 import Distribution.Solver.Types.Settings (OnlyConstrained (..))
 import UnitTests.Distribution.Solver.Modular.DSL
-import UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
+import UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils hiding (testMinimizeConflictSet)
 
 tests :: [TF.TestTree]
 tests =
@@ -251,31 +253,49 @@ tests =
             whenNone = onlyConstrained OnlyConstrainedNone
             whenAll = onlyConstrained OnlyConstrainedAll
             whenEq = onlyConstrained OnlyConstrainedEq
+            eqConstraints =
+              [ ExVersionConstraint (ScopeAnyQualifier "B") (C.thisVersion $ mkSimpleVersion 1)
+              , ExVersionConstraint (ScopeAnyQualifier "C") (C.thisVersion $ mkSimpleVersion 1)
+              ]
+            gtConstraints =
+              [ ExVersionConstraint (ScopeAnyQualifier "B") (C.laterVersion $ mkSimpleVersion 0)
+              , ExVersionConstraint (ScopeAnyQualifier "C") (C.laterVersion $ mkSimpleVersion 0)
+              ]
          in [ testGroup
                 "=none"
-                [ runTest $
-                    whenNone $
-                      mkTest db12 "goal E" ["E"] $
-                        solverSuccess [("E", 1), ("syb", 2)]
-                , runTest $
-                    whenNone $
-                      mkTest db12 "all goals" ["E", "syb"] $
-                        solverSuccess [("E", 1), ("syb", 2)]
-                , runTest $
-                    whenNone $
-                      mkTest db17 "goal A B: backtracking" ["A", "B"] $
-                        solverSuccess [("A", 3), ("B", 1), ("C", 1)]
-                , runTest $
-                    whenNone $
-                      mkTest db17 "goal A" ["A"] $
-                        solverSuccess [("A", 3), ("B", 1), ("C", 1)]
+                [ runTest . whenNone $
+                    mkTest
+                      db12
+                      "goal E"
+                      ["E"]
+                      (solverSuccess [("E", 1), ("syb", 2)])
+                , runTest . whenNone $
+                    mkTest
+                      db12
+                      "all goals"
+                      ["E", "syb"]
+                      (solverSuccess [("E", 1), ("syb", 2)])
+                , runTest . whenNone $
+                    mkTest
+                      db17
+                      "goal A B backtracking"
+                      ["A", "B"]
+                      (solverSuccess [("A", 3), ("B", 1), ("C", 1)])
+                , runTest . whenNone $
+                    mkTest
+                      db17
+                      "goal A"
+                      ["A"]
+                      (solverSuccess [("A", 3), ("B", 1), ("C", 1)])
                 ]
             , testGroup
                 "=all"
-                [ runTest $
-                    whenAll $
-                      mkTest db12 "goal E: missing syb" ["E"] $
-                        solverFailure
+                [ runTest . whenAll $
+                    mkTest
+                      db12
+                      "goal E missing syb"
+                      ["E"]
+                      ( solverFailure
                           ( \m ->
                               all
                                 (`isInfixOf` m)
@@ -284,20 +304,37 @@ tests =
                                 , "but reject-unconstrained-dependencies=all was set"
                                 ]
                           )
-                , runTest $
-                    whenAll $
-                      mkTest db12 "all goals" ["E", "syb"] $
-                        solverSuccess [("E", 1), ("syb", 2)]
-                , runTest $
-                    whenAll $
-                      mkTest db17 "goal A B: backtracking" ["A", "B"] $
-                        solverSuccess [("A", 2), ("B", 1)]
-                , runTest $
-                    whenAll $
-                      mkTest db17 "goal A: failure message" ["A"] $
-                        solverFailure $
-                          isInfixOf $
-                            solverMsg "all"
+                      )
+                , runTest . whenAll $
+                    mkTest
+                      db12
+                      "all goals"
+                      ["E", "syb"]
+                      (solverSuccess [("E", 1), ("syb", 2)])
+                , runTest . whenAll $
+                    mkTest
+                      db17
+                      "goal A B backtracking"
+                      ["A", "B"]
+                      (solverSuccess [("A", 2), ("B", 1)])
+                , runTest . whenAll $
+                    mkTest
+                      db17
+                      "goal A failure message"
+                      ["A"]
+                      (solverFailure . isInfixOf $ solverMsg "all")
+                , runTest . whenAll $
+                    ( mkTest db17 "goal A with B ==1, C ==1" ["A"] $
+                        (solverSuccess [("A", 3), ("B", 1), ("C", 1)])
+                    )
+                      { testConstraints = eqConstraints
+                      }
+                , runTest . whenAll $
+                    ( mkTest db17 "goal A with B >0, C >0" ["A"] $
+                        (solverSuccess [("A", 3), ("B", 1), ("C", 1)])
+                    )
+                      { testConstraints = gtConstraints
+                      }
                 ]
             , testGroup "=eq" $
                 let eGoalFailure m =
@@ -307,24 +344,57 @@ tests =
                         , "not a user-provided goal nor mentioned as a constraint"
                         , "but reject-unconstrained-dependencies=eq was set"
                         ]
-                 in [ runTest $
-                        whenEq $
-                          mkTest db12 "goal E: missing syb" ["E"] $
-                            solverFailure eGoalFailure
-                    , runTest $
-                        whenEq $
-                          mkTest db12 "all goals" ["E", "syb"] $
-                            solverFailure eGoalFailure
-                    , runTest $
-                        whenEq $
-                          mkTest db17 "goal A B: backtracking" ["A", "B"] $
-                            solverSuccess [("A", 2), ("B", 1)]
-                    , runTest $
-                        whenEq $
-                          mkTest db17 "goal A: failure message" ["A"] $
-                            solverFailure $
-                              isInfixOf $
-                                solverMsg "eq"
+                 in [ runTest . whenEq $
+                        mkTest
+                          db12
+                          "goal E missing syb"
+                          ["E"]
+                          (solverFailure eGoalFailure)
+                    , runTest . whenEq $
+                        mkTest
+                          db12
+                          "all goals"
+                          ["E", "syb"]
+                          (solverFailure eGoalFailure)
+                    , runTest . whenEq $
+                        mkTest
+                          db17
+                          "goal A B backtracking"
+                          ["A", "B"]
+                          (solverSuccess [("A", 2), ("B", 1)])
+                    , runTest . whenEq $
+                        mkTest
+                          db17
+                          "goal A failure message"
+                          ["A"]
+                          (solverFailure . isInfixOf $ solverMsg "eq")
+                    , runTest . whenEq $
+                        ( mkTest
+                            db17
+                            "goal A with B ==1, C ==1"
+                            ["A"]
+                            (solverSuccess [("A", 3), ("B", 1), ("C", 1)])
+                        )
+                          { testConstraints = eqConstraints
+                          }
+                    , runTest . whenEq $
+                        ( mkTest
+                            db17
+                            "goal A with B >0, C >0 failure message"
+                            ["A"]
+                            ( solverFailure
+                                ( \m ->
+                                    all
+                                      (`isInfixOf` m)
+                                      [ "next goal: C (dependency of A)"
+                                      , "not a user-provided goal nor mentioned as a constraint"
+                                      , "but reject-unconstrained-dependencies=eq was set"
+                                      ]
+                                )
+                            )
+                        )
+                          { testConstraints = gtConstraints
+                          }
                     ]
             ]
   , testGroup

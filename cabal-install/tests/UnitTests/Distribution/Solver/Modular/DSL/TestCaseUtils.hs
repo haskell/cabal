@@ -2,7 +2,7 @@
 
 -- | Utilities for creating HUnit test cases with the solver DSL.
 module UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
-  ( SolverTest
+  ( SolverTest (..)
   , SolverResult (..)
   , maxBackjumps
   , disableFineGrainedConflicts
