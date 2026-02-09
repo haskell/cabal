@@ -225,13 +225,14 @@ renderField opts@(Opts rann getPos postWithPrev) prevPos fw (PrettyField ann nam
     -- TODO(leana8959): use the pretty library to render the field names
     (lines', after) = case fieldLines' of
       [] -> ([name' ++ ":"], NoMargin)
-      -- FIXME(leana8959): decide whether trailing newlines is wanted
       _ ->
           let selfPos = fieldPosition getPos ann
               rowDiff = liftA2 subtractRow selfPos prevPos
               subtractRow (Position rowx _) (Position rowy _) = rowx - rowy - 1
 
               maybeNewlines = mconcat $ replicate (fromMaybe 0 rowDiff) ["\n"]
+              -- The POSIX definition of a line always ends with a newline
+              -- We patch up the last newline
           in  ( maybeNewlines ++ (name' ++ ":") : "\n" : fieldLines' ++ ["\n"]
               , Margin
               )
