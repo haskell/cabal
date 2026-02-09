@@ -148,8 +148,6 @@ renderFields startPos opts@(Opts _ getPos _) fields = flattenBlocks blocks
         $ (\(accBlocks, _lastFieldLinePos) -> reverse accBlocks)
         $ foldl
             ( \(accBlocks, lastFieldLinePos) (pos, x) ->
-                trace ("zipping with prevPos\n" <> show pos) $
-
                 let (newPos, block) = renderField opts (lastFieldLinePos <|> pos) len x
                 in  (block : accBlocks, newPos)
             )

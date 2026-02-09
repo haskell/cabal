@@ -465,7 +465,6 @@ fieldGrammarRoundTripTest parsec pretty fp = testCase fp $ do
         Right ok -> pure ok
 
   let prettyFields =
-        (\x -> trace ("Got PrettyFields\n" <> show x) x) $
           prettyAnnotatedFieldGrammar cabalSpecLatest trivia pretty parsed
   let y = BS8.pack (showFieldsWithTrivia prettyFields)
 
