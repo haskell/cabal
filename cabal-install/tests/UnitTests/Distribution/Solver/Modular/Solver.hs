@@ -256,6 +256,8 @@ tests =
             eq1 = C.thisVersion $ mkSimpleVersion 1
             gt0 = C.laterVersion $ C.mkVersion [0]
             ge1 = C.orLaterVersion $ C.mkVersion [1]
+            -- TODO: Find out why <=1 is not the same as <=1.0.0
+            le1 = C.orEarlierVersion $ C.mkVersion [1, 0, 0]
             eqGt = C.intersectVersionRanges eq1 gt0
             mkConstraint pkg vr = ExVersionConstraint (ScopeAnyQualifier pkg) vr
             eqConstraints =
@@ -273,6 +275,10 @@ tests =
             geConstraints =
               [ mkConstraint "B" ge1
               , mkConstraint "C" ge1
+              ]
+            leConstraints =
+              [ mkConstraint "B" le1
+              , mkConstraint "C" le1
               ]
          in [ testGroup
                 "=none"
@@ -338,6 +344,12 @@ tests =
                         (solverSuccess [("A", 3), ("B", 1), ("C", 1)])
                     )
                       { testConstraints = geConstraints
+                      }
+                , runTest . whenAll $
+                    ( mkTest db17 "goal A with B <=1, C <=1" ["A"] $
+                        (solverSuccess [("A", 3), ("B", 1), ("C", 1)])
+                    )
+                      { testConstraints = leConstraints
                       }
                 ]
             , testGroup
@@ -446,6 +458,21 @@ tests =
                             )
                         )
                           { testConstraints = geConstraints
+                          }
+                    , runTest . whenEq $
+                        ( mkTest
+                            db17
+                            "goal A with B <=1, C <=1"
+                            ["A"]
+                            ( solverFailure
+                                ( \m ->
+                                    all
+                                      (`isInfixOf` m)
+                                      ("next goal: C (dependency of A)" : neq)
+                                )
+                            )
+                        )
+                          { testConstraints = leConstraints
                           }
                     ]
             ]
