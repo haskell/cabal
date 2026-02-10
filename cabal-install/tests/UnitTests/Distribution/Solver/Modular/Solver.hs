@@ -306,21 +306,6 @@ tests =
                 [ runTest . whenAll $
                     mkTest
                       db12
-                      "goal E missing syb failure"
-                      ["E"]
-                      ( solverFailure
-                          ( \m ->
-                              all
-                                (`isInfixOf` m)
-                                [ "next goal: syb (dependency of E)"
-                                , "not a user-provided goal nor mentioned as a constraint"
-                                , "but reject-unconstrained-dependencies=all was set"
-                                ]
-                          )
-                      )
-                , runTest . whenAll $
-                    mkTest
-                      db12
                       "all goals"
                       ["E", "syb"]
                       (solverSuccess [("E", 1), ("syb", 2)])
@@ -330,12 +315,6 @@ tests =
                       "goal A B backtracking"
                       ["A", "B"]
                       (solverSuccess [("A", 2), ("B", 1)])
-                , runTest . whenAll $
-                    mkTest
-                      db17
-                      "goal A failure"
-                      ["A"]
-                      (solverFailure . isInfixOf $ solverMsg "all")
                 , runTest . whenAll $
                     ( mkTest db17 "goal A with B ==1, C ==1" ["A"] $
                         (solverSuccess [("A", 3), ("B", 1), ("C", 1)])
@@ -361,60 +340,93 @@ tests =
                       { testConstraints = geConstraints
                       }
                 ]
+            , testGroup
+                "=all rejects"
+                [ runTest . whenAll $
+                    mkTest
+                      db12
+                      "goal E missing syb"
+                      ["E"]
+                      ( solverFailure
+                          ( \m ->
+                              all
+                                (`isInfixOf` m)
+                                [ "next goal: syb (dependency of E)"
+                                , "not a user-provided goal nor mentioned as a constraint"
+                                , "but reject-unconstrained-dependencies=all was set"
+                                ]
+                          )
+                      )
+                , runTest . whenAll $
+                    mkTest
+                      db17
+                      "goal A"
+                      ["A"]
+                      (solverFailure . isInfixOf $ solverMsg "all")
+                ]
             , testGroup "=eq" $
-                let eGoalFailure m =
+                [ runTest . whenEq $
+                    mkTest
+                      db17
+                      "goal A B backtracking"
+                      ["A", "B"]
+                      (solverSuccess [("A", 2), ("B", 1)])
+                , runTest . whenEq $
+                    ( mkTest
+                        db17
+                        "goal A with B ==1, C ==1"
+                        ["A"]
+                        (solverSuccess [("A", 3), ("B", 1), ("C", 1)])
+                    )
+                      { testConstraints = eqConstraints
+                      }
+                , runTest . whenEq $
+                    ( mkTest
+                        db17
+                        "goal A with B >0 && ==1, C >0 && ==1"
+                        ["A"]
+                        (solverSuccess [("A", 3), ("B", 1), ("C", 1)])
+                    )
+                      { testConstraints = eqGtConstraints
+                      }
+                ]
+            , testGroup "=eq rejects" $
+                let neq =
+                      [ "not a user-provided goal nor mentioned as a constraint"
+                      , "but reject-unconstrained-dependencies=eq was set"
+                      ]
+                    eGoalFailure m =
                       all
                         (`isInfixOf` m)
-                        [ "next goal: E.base (dependency of E)"
-                        , "not a user-provided goal nor mentioned as a constraint"
-                        , "but reject-unconstrained-dependencies=eq was set"
-                        ]
+                        ("next goal: E.base (dependency of E)" : neq)
                  in [ runTest . whenEq $
                         mkTest
                           db12
-                          "goal E missing syb failure"
+                          "goal E missing syb"
                           ["E"]
                           (solverFailure eGoalFailure)
                     , runTest . whenEq $
                         mkTest
                           db12
-                          "all goals failure"
+                          "all goals"
                           ["E", "syb"]
                           (solverFailure eGoalFailure)
                     , runTest . whenEq $
                         mkTest
                           db17
-                          "goal A B backtracking"
-                          ["A", "B"]
-                          (solverSuccess [("A", 2), ("B", 1)])
-                    , runTest . whenEq $
-                        mkTest
-                          db17
-                          "goal A failure"
+                          "goal A"
                           ["A"]
                           (solverFailure . isInfixOf $ solverMsg "eq")
                     , runTest . whenEq $
                         ( mkTest
                             db17
-                            "goal A with B ==1, C ==1"
-                            ["A"]
-                            (solverSuccess [("A", 3), ("B", 1), ("C", 1)])
-                        )
-                          { testConstraints = eqConstraints
-                          }
-                    , runTest . whenEq $
-                        ( mkTest
-                            db17
-                            "goal A with B >0, C >0 failure"
+                            "goal A with B >0, C >0"
                             ["A"]
                             ( solverFailure
                                 ( \m ->
                                     all
                                       (`isInfixOf` m)
-                                      [ "next goal: C (dependency of A)"
-                                      , "not a user-provided goal nor mentioned as a constraint"
-                                      , "but reject-unconstrained-dependencies=eq was set"
-                                      ]
+                                      ("next goal: C (dependency of A)" : neq)
                                 )
                             )
                         )
@@ -423,25 +435,13 @@ tests =
                     , runTest . whenEq $
                         ( mkTest
                             db17
-                            "goal A with B >0 && ==1, C >0 && ==1"
-                            ["A"]
-                            (solverSuccess [("A", 3), ("B", 1), ("C", 1)])
-                        )
-                          { testConstraints = eqGtConstraints
-                          }
-                    , runTest . whenEq $
-                        ( mkTest
-                            db17
-                            "goal A with B >=1, C >=1 failure"
+                            "goal A with B >=1, C >=1"
                             ["A"]
                             ( solverFailure
                                 ( \m ->
                                     all
                                       (`isInfixOf` m)
-                                      [ "next goal: C (dependency of A)"
-                                      , "not a user-provided goal nor mentioned as a constraint"
-                                      , "but reject-unconstrained-dependencies=eq was set"
-                                      ]
+                                      ("next goal: C (dependency of A)" : neq)
                                 )
                             )
                         )
