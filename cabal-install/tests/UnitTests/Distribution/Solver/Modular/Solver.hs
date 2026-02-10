@@ -255,6 +255,7 @@ tests =
             whenEq = onlyConstrained OnlyConstrainedEq
             eq1 = C.thisVersion $ mkSimpleVersion 1
             gt0 = C.laterVersion $ C.mkVersion [0]
+            lt2 = C.earlierVersion $ C.mkVersion [2]
             ge1 = C.orLaterVersion $ C.mkVersion [1]
             -- TODO: Find out why <=1 is not the same as <=1.0.0
             le1 = C.orEarlierVersion $ C.mkVersion [1, 0, 0]
@@ -262,11 +263,14 @@ tests =
             -- ==1 && >0
             eqGt = C.intersectVersionRanges eq1 gt0
 
-            -- ==1 && >0
+            -- >0 && ==1
             gtEq = C.intersectVersionRanges gt0 eq1
 
             -- <=1 && >=1
             lege1 = C.intersectVersionRanges le1 ge1
+
+            -- >0 && ==1 && <2
+            gtEqLt = C.intersectVersionRanges gtEq lt2
 
             mkConstraint pkg vr = ExVersionConstraint (ScopeAnyQualifier pkg) vr
             -- B ==1, C ==1
@@ -293,6 +297,11 @@ tests =
             legeConstraints =
               [ mkConstraint "B" lege1
               , mkConstraint "C" lege1
+              ]
+            -- B >0 && ==1 && <2, C >0 && ==1 && <2
+            gtEqLtConstraints =
+              [ mkConstraint "B" gtEqLt
+              , mkConstraint "C" gtEqLt
               ]
 
             solveABC = solverSuccess [("A", 3), ("B", 1), ("C", 1)]
@@ -329,6 +338,10 @@ tests =
                     (mkTest db17 "goal A with B <=1 && >=1, C <=1 && >=1" ["A"] solveABC)
                       { testConstraints = legeConstraints
                       }
+                , runTest . whenAll $
+                    (mkTest db17 "goal A with B >0 && ==1 && <2, C >0 && ==1 && <2" ["A"] solveABC)
+                      { testConstraints = gtEqLtConstraints
+                      }
                 ]
             , testGroup "=all rejects" $
                 let nall =
@@ -363,6 +376,10 @@ tests =
                 , runTest . whenEq $
                     (mkTest db17 "goal A with B ==1 && >0, C >0 && ==1" ["A"] solveABC)
                       { testConstraints = eqGtConstraints
+                      }
+                , runTest . whenEq $
+                    (mkTest db17 "goal A with B >0 && ==1 && <2, C >0 && ==1 && <2" ["A"] solveABC)
+                      { testConstraints = gtEqLtConstraints
                       }
                 ]
             , testGroup "=eq rejects" $
