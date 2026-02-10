@@ -423,6 +423,13 @@ tests =
                       all
                         (`isInfixOf` m)
                         ("next goal: E.base (dependency of E)" : neq)
+                    eqFailure =
+                      solverFailure
+                        ( \m ->
+                            all
+                              (`isInfixOf` m)
+                              ("next goal: C (dependency of A)" : neq)
+                        )
                  in [ runTest . whenEq $
                         mkTest db12 "goal E missing syb" ["E"] (solverFailure eGoalFailure)
                     , runTest . whenEq $
@@ -430,63 +437,19 @@ tests =
                     , runTest . whenEq $
                         mkTest db17 "goal A" ["A"] (solverFailure . isInfixOf $ solverMsg "eq")
                     , runTest . whenEq $
-                        ( mkTest
-                            db17
-                            "goal A with B >0, C >0"
-                            ["A"]
-                            ( solverFailure
-                                ( \m ->
-                                    all
-                                      (`isInfixOf` m)
-                                      ("next goal: C (dependency of A)" : neq)
-                                )
-                            )
-                        )
+                        (mkTest db17 "goal A with B >0, C >0" ["A"] eqFailure)
                           { testConstraints = gtConstraints
                           }
                     , runTest . whenEq $
-                        ( mkTest
-                            db17
-                            "goal A with B >=1, C <=1"
-                            ["A"]
-                            ( solverFailure
-                                ( \m ->
-                                    all
-                                      (`isInfixOf` m)
-                                      ("next goal: C (dependency of A)" : neq)
-                                )
-                            )
-                        )
+                        (mkTest db17 "goal A with B >=1, C <=1" ["A"] eqFailure)
                           { testConstraints = geleConstraints
                           }
                     , runTest . whenEq $
-                        ( mkTest
-                            db17
-                            "goal A with B <=1 && >=1, C <=1 && >=1"
-                            ["A"]
-                            ( solverFailure
-                                ( \m ->
-                                    all
-                                      (`isInfixOf` m)
-                                      ("next goal: C (dependency of A)" : neq)
-                                )
-                            )
-                        )
+                        (mkTest db17 "goal A with B <=1 && >=1, C <=1 && >=1" ["A"] eqFailure)
                           { testConstraints = legeConstraints
                           }
                     , runTest . whenEq $
-                        ( mkTest
-                            db17
-                            "goal A with B ==1 || >0, C >0 || ==1"
-                            ["A"]
-                            ( solverFailure
-                                ( \m ->
-                                    all
-                                      (`isInfixOf` m)
-                                      ("next goal: C (dependency of A)" : neq)
-                                )
-                            )
-                        )
+                        (mkTest db17 "goal A with B ==1 || >0, C >0 || ==1" ["A"] eqFailure)
                           { testConstraints = eqOrGtConstraints
                           }
                     ]
