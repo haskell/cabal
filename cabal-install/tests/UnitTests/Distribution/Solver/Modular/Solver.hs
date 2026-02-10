@@ -294,78 +294,39 @@ tests =
               [ mkConstraint "B" lege1
               , mkConstraint "C" lege1
               ]
+
+            solveABC = solverSuccess [("A", 3), ("B", 1), ("C", 1)]
+            solveAB = solverSuccess [("A", 2), ("B", 1)]
+            solveEsyb = solverSuccess [("E", 1), ("syb", 2)]
          in [ testGroup
                 "=none"
-                [ runTest . whenNone $
-                    mkTest
-                      db12
-                      "goal E"
-                      ["E"]
-                      (solverSuccess [("E", 1), ("syb", 2)])
-                , runTest . whenNone $
-                    mkTest
-                      db12
-                      "all goals"
-                      ["E", "syb"]
-                      (solverSuccess [("E", 1), ("syb", 2)])
-                , runTest . whenNone $
-                    mkTest
-                      db17
-                      "goal A B backtracking"
-                      ["A", "B"]
-                      (solverSuccess [("A", 3), ("B", 1), ("C", 1)])
-                , runTest . whenNone $
-                    mkTest
-                      db17
-                      "goal A"
-                      ["A"]
-                      (solverSuccess [("A", 3), ("B", 1), ("C", 1)])
+                [ runTest . whenNone $ mkTest db12 "goal E" ["E"] solveEsyb
+                , runTest . whenNone $ mkTest db12 "all goals" ["E", "syb"] solveEsyb
+                , runTest . whenNone $ mkTest db17 "goal A B backtracking" ["A", "B"] solveABC
+                , runTest . whenNone $ mkTest db17 "goal A" ["A"] solveABC
                 ]
             , testGroup
                 "=all"
-                [ runTest . whenAll $
-                    mkTest
-                      db12
-                      "all goals"
-                      ["E", "syb"]
-                      (solverSuccess [("E", 1), ("syb", 2)])
+                [ runTest . whenAll $ mkTest db12 "all goals" ["E", "syb"] solveEsyb
+                , runTest . whenAll $ mkTest db17 "goal A B backtracking" ["A", "B"] solveAB
                 , runTest . whenAll $
-                    mkTest
-                      db17
-                      "goal A B backtracking"
-                      ["A", "B"]
-                      (solverSuccess [("A", 2), ("B", 1)])
-                , runTest . whenAll $
-                    ( mkTest db17 "goal A with B ==1, C ==1" ["A"] $
-                        (solverSuccess [("A", 3), ("B", 1), ("C", 1)])
-                    )
+                    (mkTest db17 "goal A with B ==1, C ==1" ["A"] solveABC)
                       { testConstraints = eqConstraints
                       }
                 , runTest . whenAll $
-                    ( mkTest db17 "goal A with B >0, C >0" ["A"] $
-                        (solverSuccess [("A", 3), ("B", 1), ("C", 1)])
-                    )
+                    (mkTest db17 "goal A with B >0, C >0" ["A"] solveABC)
                       { testConstraints = gtConstraints
                       }
                 , runTest . whenAll $
-                    ( mkTest db17 "goal A with B ==1 && >0, C >0 && ==1" ["A"] $
-                        (solverSuccess [("A", 3), ("B", 1), ("C", 1)])
-                    )
+                    (mkTest db17 "goal A with B ==1 && >0, C >0 && ==1" ["A"] solveABC)
                       { testConstraints = eqGtConstraints
                       }
                 , runTest . whenAll $
-                    ( mkTest db17 "goal A with B >=1, C <=1" ["A"] $
-                        (solverSuccess [("A", 3), ("B", 1), ("C", 1)])
-                    )
+                    (mkTest db17 "goal A with B >=1, C <=1" ["A"] solveABC)
                       { testConstraints = geleConstraints
                       }
                 , runTest . whenAll $
-                    ( mkTest
-                        db17
-                        "goal A with B <=1 && >=1, C <=1 && >=1"
-                        ["A"]
-                        (solverSuccess [("A", 3), ("B", 1), ("C", 1)])
-                    )
+                    (mkTest db17 "goal A with B <=1 && >=1, C <=1 && >=1" ["A"] solveABC)
                       { testConstraints = legeConstraints
                       }
                 ]
@@ -394,28 +355,13 @@ tests =
                           (solverFailure . isInfixOf $ solverMsg "all")
                     ]
             , testGroup "=eq" $
-                [ runTest . whenEq $
-                    mkTest
-                      db17
-                      "goal A B backtracking"
-                      ["A", "B"]
-                      (solverSuccess [("A", 2), ("B", 1)])
+                [ runTest . whenEq $ mkTest db17 "goal A B backtracking" ["A", "B"] solveAB
                 , runTest . whenEq $
-                    ( mkTest
-                        db17
-                        "goal A with B ==1, C ==1"
-                        ["A"]
-                        (solverSuccess [("A", 3), ("B", 1), ("C", 1)])
-                    )
+                    (mkTest db17 "goal A with B ==1, C ==1" ["A"] solveABC)
                       { testConstraints = eqConstraints
                       }
                 , runTest . whenEq $
-                    ( mkTest
-                        db17
-                        "goal A with B ==1 && >0, C >0 && ==1"
-                        ["A"]
-                        (solverSuccess [("A", 3), ("B", 1), ("C", 1)])
-                    )
+                    (mkTest db17 "goal A with B ==1 && >0, C >0 && ==1" ["A"] solveABC)
                       { testConstraints = eqGtConstraints
                       }
                 ]
@@ -429,23 +375,11 @@ tests =
                         (`isInfixOf` m)
                         ("next goal: E.base (dependency of E)" : neq)
                  in [ runTest . whenEq $
-                        mkTest
-                          db12
-                          "goal E missing syb"
-                          ["E"]
-                          (solverFailure eGoalFailure)
+                        mkTest db12 "goal E missing syb" ["E"] (solverFailure eGoalFailure)
                     , runTest . whenEq $
-                        mkTest
-                          db12
-                          "all goals"
-                          ["E", "syb"]
-                          (solverFailure eGoalFailure)
+                        mkTest db12 "all goals" ["E", "syb"] (solverFailure eGoalFailure)
                     , runTest . whenEq $
-                        mkTest
-                          db17
-                          "goal A"
-                          ["A"]
-                          (solverFailure . isInfixOf $ solverMsg "eq")
+                        mkTest db17 "goal A" ["A"] (solverFailure . isInfixOf $ solverMsg "eq")
                     , runTest . whenEq $
                         ( mkTest
                             db17
