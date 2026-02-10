@@ -3,4 +3,5 @@ import Test.Cabal.Prelude
 -- interface file for an internal sub-library (no "could not find link
 -- destinations" warning).
 main = cabalTest $ do
-    cabal "haddock" ["--haddock-all"]
+    res <- cabal' "haddock" ["--haddock-all"]
+    assertOutputDoesNotContain "Could not find documentation for exported module" res
