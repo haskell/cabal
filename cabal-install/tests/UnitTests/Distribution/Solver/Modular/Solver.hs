@@ -259,6 +259,7 @@ tests =
             whenEq = onlyConstrained OnlyConstrainedEq
             eq1 = C.thisVersion $ mkSimpleVersion 1
             gt0 = C.laterVersion $ C.mkVersion [0]
+            ge1 = C.orLaterVersion $ C.mkVersion [1]
             eqGt = C.intersectVersionRanges eq1 gt0
             mkConstraint pkg vr = ExVersionConstraint (ScopeAnyQualifier pkg) vr
             eqConstraints =
@@ -272,6 +273,10 @@ tests =
             eqGtConstraints =
               [ mkConstraint "B" eqGt
               , mkConstraint "C" eqGt
+              ]
+            geConstraints =
+              [ mkConstraint "B" ge1
+              , mkConstraint "C" ge1
               ]
          in [ testGroup
                 "=none"
@@ -305,7 +310,7 @@ tests =
                 [ runTest . whenAll $
                     mkTest
                       db12
-                      "goal E missing syb"
+                      "goal E missing syb failure"
                       ["E"]
                       ( solverFailure
                           ( \m ->
@@ -332,7 +337,7 @@ tests =
                 , runTest . whenAll $
                     mkTest
                       db17
-                      "goal A failure message"
+                      "goal A failure"
                       ["A"]
                       (solverFailure . isInfixOf $ solverMsg "all")
                 , runTest . whenAll $
@@ -353,6 +358,12 @@ tests =
                     )
                       { testConstraints = eqGtConstraints
                       }
+                , runTest . whenAll $
+                    ( mkTest db17 "goal A with B >=1, C >=1" ["A"] $
+                        (solverSuccess [("A", 3), ("B", 1), ("C", 1)])
+                    )
+                      { testConstraints = geConstraints
+                      }
                 ]
             , testGroup "=eq" $
                 let eGoalFailure m =
@@ -365,13 +376,13 @@ tests =
                  in [ runTest . whenEq $
                         mkTest
                           db12
-                          "goal E missing syb"
+                          "goal E missing syb failure"
                           ["E"]
                           (solverFailure eGoalFailure)
                     , runTest . whenEq $
                         mkTest
                           db12
-                          "all goals"
+                          "all goals failure"
                           ["E", "syb"]
                           (solverFailure eGoalFailure)
                     , runTest . whenEq $
@@ -383,7 +394,7 @@ tests =
                     , runTest . whenEq $
                         mkTest
                           db17
-                          "goal A failure message"
+                          "goal A failure"
                           ["A"]
                           (solverFailure . isInfixOf $ solverMsg "eq")
                     , runTest . whenEq $
@@ -398,7 +409,7 @@ tests =
                     , runTest . whenEq $
                         ( mkTest
                             db17
-                            "goal A with B >0, C >0 failure message"
+                            "goal A with B >0, C >0 failure"
                             ["A"]
                             ( solverFailure
                                 ( \m ->
@@ -421,6 +432,24 @@ tests =
                             (solverSuccess [("A", 3), ("B", 1), ("C", 1)])
                         )
                           { testConstraints = eqGtConstraints
+                          }
+                    , runTest . whenEq $
+                        ( mkTest
+                            db17
+                            "goal A with B >=1, C >=1 failure"
+                            ["A"]
+                            ( solverFailure
+                                ( \m ->
+                                    all
+                                      (`isInfixOf` m)
+                                      [ "next goal: C (dependency of A)"
+                                      , "not a user-provided goal nor mentioned as a constraint"
+                                      , "but reject-unconstrained-dependencies=eq was set"
+                                      ]
+                                )
+                            )
+                        )
+                          { testConstraints = geConstraints
                           }
                     ]
             ]
