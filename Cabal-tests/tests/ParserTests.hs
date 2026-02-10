@@ -420,7 +420,7 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
 {- FOURMOLU_ENABLE -}
 
 parsecPrettyRoundTripTests :: TestTree
-parsecPrettyRoundTripTests = testGroup "parsecpretty-roundtrip"
+parsecPrettyRoundTripTests = testGroup "parsec-pretty-roundtrip"
   [ parsecPrettyRoundTripTest (Proxy :: Proxy VersionRange) "VersionRange1.fragment"
   , parsecPrettyRoundTripTest (Proxy :: Proxy VersionRange) "VersionRange2.fragment"
   , parsecPrettyRoundTripTest (Proxy :: Proxy VersionRange) "VersionRange3.fragment"
@@ -514,7 +514,11 @@ fieldGrammarTransformTests = testGroup "fieldgrammar-transform" $
   ( let  goDeps [] = []
          goDeps (d : ds) = goDep d : ds
          goDep (Dependency pName _ libNames) = Dependency pName fakeVersion libNames
-           where fakeVersion = ThisVersion $ mkVersion [1337, 99]
+           where fakeVersion =
+                  ThisVersion (mkVersion [1337, 1])
+                    `IntersectVersionRanges`
+                    (ThisVersion (mkVersion [1337, 2]) `UnionVersionRanges` ThisVersion (mkVersion [1337, 3])
+                    )
     in
       map
        ( fieldGrammarTransformTest dependencyListFieldGrammar dependencyListFieldGrammar goDeps

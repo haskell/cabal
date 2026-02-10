@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -284,24 +285,47 @@ instance ExactPretty VersionRange where
       singletonNoAnn x = [DocAnn x mempty]
 
 prettyVersionRange :: TriviaTree -> VersionRange -> Disp.Doc
-prettyVersionRange t0 vr = prettyVersionRange' t0 0 vr
+prettyVersionRange t0 vr = snd $ prettyVersionRange' t0 0 vr
 
-prettyVersionRange' :: TriviaTree -> Int -> VersionRange -> Disp.Doc
+data PrettyMode = Exact | BestEffort
+
+prettyVersionRange' :: TriviaTree -> Int -> VersionRange -> (PrettyMode, Disp.Doc)
 prettyVersionRange' t0 d0 vr =
   let t = unmarkTriviaTree vr t0
       tLocal = justAnnotation t
-      justMergedDoc = mconcat . map unAnnDoc
-   in triviaToDoc tLocal $ case vr of
-        ThisVersion v -> Disp.text "==" <> justMergedDoc (exactPretty t v)
-        LaterVersion v -> Disp.text ">" <> justMergedDoc (exactPretty t v)
-        OrLaterVersion v -> Disp.text ">=" <> justMergedDoc (exactPretty t v)
-        EarlierVersion v -> Disp.text "<" <> justMergedDoc (exactPretty t v)
-        OrEarlierVersion v -> Disp.text "<=" <> justMergedDoc (exactPretty t v)
-        MajorBoundVersion v -> Disp.text "^>=" <> justMergedDoc (exactPretty t v)
+      leafMode (mconcat->DocAnn doc ann) =
+            let m = if ann == mempty then BestEffort else Exact
+            in  (m, doc)
+
+   in triviaToDoc tLocal <$> case vr of
+        ThisVersion v       ->  (Disp.text "=="  <>) <$> leafMode (exactPretty t v)
+        LaterVersion v      ->  (Disp.text ">"   <>) <$> leafMode (exactPretty t v)
+        OrLaterVersion v    ->  (Disp.text ">="  <>) <$> leafMode (exactPretty t v)
+        EarlierVersion v    ->  (Disp.text "<"   <>) <$> leafMode (exactPretty t v)
+        OrEarlierVersion v  ->  (Disp.text "<="  <>) <$> leafMode (exactPretty t v)
+        MajorBoundVersion v ->  (Disp.text "^>=" <>) <$> leafMode (exactPretty t v)
+
+        -- Recursive, parenthesize to disambiguate
         UnionVersionRanges r1 r2 ->
-          prettyVersionRange' t (d0 + 1) r1 <> Disp.text "||" <> prettyVersionRange' t (d0 + 0) r2
+          let (lMode, lDoc) = prettyVersionRange' t (d0 + 1) r1
+              (rMode, rDoc) = prettyVersionRange' t (d0 + 0) r2
+
+              doc = lDoc <> Disp.text "||" <> rDoc
+          in  case (lMode, rMode) of
+                (Exact, Exact) -> (Exact, doc)
+                _ -> (BestEffort, parens (d0 > 0) doc)
         IntersectVersionRanges r1 r2 ->
-          prettyVersionRange' t (d0 + 2) r1 <> Disp.text "&&" <> prettyVersionRange' t (d0 + 1) r2
+            let (lMode, lDoc) = prettyVersionRange' t (d0 + 2) r1
+                (rMode, rDoc) = prettyVersionRange' t (d0 + 1) r2
+
+                doc = lDoc <> Disp.text "&&" <> rDoc
+            in  case (lMode, rMode) of
+                (Exact, Exact) -> (Exact, doc)
+                _ -> (BestEffort, parens (d0 > 1) doc)
+
+    where
+      parens True = Disp.parens
+      parens False = id
 
 -- | Don't use && and || operators. If possible.
 prettyVersionRange16 :: TriviaTree -> VersionRange -> Disp.Doc
