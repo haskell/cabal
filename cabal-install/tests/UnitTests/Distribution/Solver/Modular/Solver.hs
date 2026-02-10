@@ -273,8 +273,14 @@ tests =
             -- ==1 && >0
             eqGt = C.intersectVersionRanges eq1 gt0
 
+            -- ==1 | >0
+            eqOrGt = C.unionVersionRanges eq1 gt0
+
             -- >0 && ==1
             gtEq = C.intersectVersionRanges gt0 eq1
+
+            -- >0 || ==1
+            gtOrEq = C.unionVersionRanges gt0 eq1
 
             -- <=1 && >=1
             lege1 = C.intersectVersionRanges le1 ge1
@@ -300,6 +306,12 @@ tests =
             eqGtConstraints =
               [ mkConstraint "B" eqGt
               , mkConstraint "C" gtEq
+              ]
+
+            -- B ==1 || >0, C >0 || ==1
+            eqOrGtConstraints =
+              [ mkConstraint "B" eqOrGt
+              , mkConstraint "C" gtOrEq
               ]
 
             -- B >=1, C <=1
@@ -357,6 +369,10 @@ tests =
                 , runTest . whenAll $
                     (mkTest db17 "goal A with B >0 && ==1 && <2, C >0 && ==1 && <2" ["A"] solveABC)
                       { testConstraints = gtEqLtConstraints
+                      }
+                , runTest . whenAll $
+                    (mkTest db17 "goal A with B ==1 || >0, C >0 || ==1" ["A"] solveABC)
+                      { testConstraints = eqOrGtConstraints
                       }
                 ]
             , testGroup "=all rejects" $
@@ -457,6 +473,21 @@ tests =
                             )
                         )
                           { testConstraints = legeConstraints
+                          }
+                    , runTest . whenEq $
+                        ( mkTest
+                            db17
+                            "goal A with B ==1 || >0, C >0 || ==1"
+                            ["A"]
+                            ( solverFailure
+                                ( \m ->
+                                    all
+                                      (`isInfixOf` m)
+                                      ("next goal: C (dependency of A)" : neq)
+                                )
+                            )
+                        )
+                          { testConstraints = eqOrGtConstraints
                           }
                     ]
             ]
