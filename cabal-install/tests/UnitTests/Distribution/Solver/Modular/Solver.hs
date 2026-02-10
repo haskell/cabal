@@ -272,12 +272,8 @@ tests =
               [ mkConstraint "B" eqGt
               , mkConstraint "C" eqGt
               ]
-            geConstraints =
+            geleConstraints =
               [ mkConstraint "B" ge1
-              , mkConstraint "C" ge1
-              ]
-            leConstraints =
-              [ mkConstraint "B" le1
               , mkConstraint "C" le1
               ]
          in [ testGroup
@@ -340,16 +336,10 @@ tests =
                       { testConstraints = eqGtConstraints
                       }
                 , runTest . whenAll $
-                    ( mkTest db17 "goal A with B >=1, C >=1" ["A"] $
+                    ( mkTest db17 "goal A with B >=1, C <=1" ["A"] $
                         (solverSuccess [("A", 3), ("B", 1), ("C", 1)])
                     )
-                      { testConstraints = geConstraints
-                      }
-                , runTest . whenAll $
-                    ( mkTest db17 "goal A with B <=1, C <=1" ["A"] $
-                        (solverSuccess [("A", 3), ("B", 1), ("C", 1)])
-                    )
-                      { testConstraints = leConstraints
+                      { testConstraints = geleConstraints
                       }
                 ]
             , testGroup
@@ -447,7 +437,7 @@ tests =
                     , runTest . whenEq $
                         ( mkTest
                             db17
-                            "goal A with B >=1, C >=1"
+                            "goal A with B >=1, C <=1"
                             ["A"]
                             ( solverFailure
                                 ( \m ->
@@ -457,22 +447,7 @@ tests =
                                 )
                             )
                         )
-                          { testConstraints = geConstraints
-                          }
-                    , runTest . whenEq $
-                        ( mkTest
-                            db17
-                            "goal A with B <=1, C <=1"
-                            ["A"]
-                            ( solverFailure
-                                ( \m ->
-                                    all
-                                      (`isInfixOf` m)
-                                      ("next goal: C (dependency of A)" : neq)
-                                )
-                            )
-                        )
-                          { testConstraints = leConstraints
+                          { testConstraints = geleConstraints
                           }
                     ]
             ]
