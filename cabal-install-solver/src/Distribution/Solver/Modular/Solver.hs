@@ -21,12 +21,12 @@ import Distribution.Verbosity
 
 import Distribution.Compiler (CompilerInfo)
 
+import Distribution.Version
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.PackagePreferences
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb)
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.PackageConstraint (PackageConstraint(..), PackageProperty(..))
-import Distribution.Types.VersionRange (normaliseVersionRange, projectVersionRange, VersionRangeF(ThisVersionF))
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.Variable
 
@@ -171,9 +171,10 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
 -- | Keep version ranges that normalise to equality version constraints (== v).
 filterThisVersion :: M.Map PN [LabeledPackageConstraint] -> M.Map PN [LabeledPackageConstraint]
 filterThisVersion = M.filter (not . null) . M.map (filter isThisVersion) where
+  normalise = fromVersionIntervals . toVersionIntervals
   isThisVersion lpc
     | LabeledPackageConstraint (PackageConstraint _ (PackagePropertyVersion vr)) _ <- lpc
-    , ThisVersionF _ <- projectVersionRange $ normaliseVersionRange vr = True
+    , ThisVersionF _ <- projectVersionRange $ normalise vr = True
     | otherwise = False
 
 -- | Dump solver tree to a file (in debugging mode)
