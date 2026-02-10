@@ -262,7 +262,13 @@ tests =
             ge1 = C.orLaterVersion $ C.mkVersion [1]
             -- TODO: Find out why <=1 is not the same as <=1.0.0
             le1 = C.orEarlierVersion $ C.mkVersion [1, 0, 0]
+
+            -- ==1 && >0
             eqGt = C.intersectVersionRanges eq1 gt0
+
+            -- ==1 && >0
+            gtEq = C.intersectVersionRanges gt0 eq1
+
             mkConstraint pkg vr = ExVersionConstraint (ScopeAnyQualifier pkg) vr
             eqConstraints =
               [ mkConstraint "B" eq1
@@ -274,7 +280,7 @@ tests =
               ]
             eqGtConstraints =
               [ mkConstraint "B" eqGt
-              , mkConstraint "C" eqGt
+              , mkConstraint "C" gtEq
               ]
             geleConstraints =
               [ mkConstraint "B" ge1
@@ -334,7 +340,7 @@ tests =
                       { testConstraints = gtConstraints
                       }
                 , runTest . whenAll $
-                    ( mkTest db17 "goal A with B >0 && ==1, C >0 && ==1" ["A"] $
+                    ( mkTest db17 "goal A with B ==1 && >0, C >0 && ==1" ["A"] $
                         (solverSuccess [("A", 3), ("B", 1), ("C", 1)])
                     )
                       { testConstraints = eqGtConstraints
@@ -389,7 +395,7 @@ tests =
                 , runTest . whenEq $
                     ( mkTest
                         db17
-                        "goal A with B >0 && ==1, C >0 && ==1"
+                        "goal A with B ==1 && >0, C >0 && ==1"
                         ["A"]
                         (solverSuccess [("A", 3), ("B", 1), ("C", 1)])
                     )
