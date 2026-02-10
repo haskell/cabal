@@ -253,11 +253,21 @@ tests =
             whenNone = onlyConstrained OnlyConstrainedNone
             whenAll = onlyConstrained OnlyConstrainedAll
             whenEq = onlyConstrained OnlyConstrainedEq
+
+            -- ==1
             eq1 = C.thisVersion $ mkSimpleVersion 1
+
+            -- >0
             gt0 = C.laterVersion $ C.mkVersion [0]
+
+            -- <2
             lt2 = C.earlierVersion $ C.mkVersion [2]
+
+            -- >=1
             ge1 = C.orLaterVersion $ C.mkVersion [1]
+
             -- TODO: Find out why <=1 is not the same as <=1.0.0
+            -- <=1
             le1 = C.orEarlierVersion $ C.mkVersion [1, 0, 0]
 
             -- ==1 && >0
@@ -273,31 +283,37 @@ tests =
             gtEqLt = C.intersectVersionRanges gtEq lt2
 
             mkConstraint pkg vr = ExVersionConstraint (ScopeAnyQualifier pkg) vr
+
             -- B ==1, C ==1
             eqConstraints =
               [ mkConstraint "B" eq1
               , mkConstraint "C" eq1
               ]
+
             -- B >0, C >0
             gtConstraints =
               [ mkConstraint "B" gt0
               , mkConstraint "C" gt0
               ]
+
             -- B ==1 && >0, C >0 && ==1
             eqGtConstraints =
               [ mkConstraint "B" eqGt
               , mkConstraint "C" gtEq
               ]
+
             -- B >=1, C <=1
             geleConstraints =
               [ mkConstraint "B" ge1
               , mkConstraint "C" le1
               ]
+
             -- B <=1 && >=1, C <=1 && >=1
             legeConstraints =
               [ mkConstraint "B" lege1
               , mkConstraint "C" lege1
               ]
+
             -- B >0 && ==1 && <2, C >0 && ==1 && <2
             gtEqLtConstraints =
               [ mkConstraint "B" gtEqLt
