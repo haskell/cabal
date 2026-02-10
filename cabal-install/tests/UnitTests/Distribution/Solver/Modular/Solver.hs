@@ -265,22 +265,34 @@ tests =
             -- ==1 && >0
             gtEq = C.intersectVersionRanges gt0 eq1
 
+            -- <=1 && >=1
+            lege1 = C.intersectVersionRanges le1 ge1
+
             mkConstraint pkg vr = ExVersionConstraint (ScopeAnyQualifier pkg) vr
+            -- B ==1, C ==1
             eqConstraints =
               [ mkConstraint "B" eq1
               , mkConstraint "C" eq1
               ]
+            -- B >0, C >0
             gtConstraints =
               [ mkConstraint "B" gt0
               , mkConstraint "C" gt0
               ]
+            -- B ==1 && >0, C >0 && ==1
             eqGtConstraints =
               [ mkConstraint "B" eqGt
               , mkConstraint "C" gtEq
               ]
+            -- B >=1, C <=1
             geleConstraints =
               [ mkConstraint "B" ge1
               , mkConstraint "C" le1
+              ]
+            -- B <=1 && >=1, C <=1 && >=1
+            legeConstraints =
+              [ mkConstraint "B" lege1
+              , mkConstraint "C" lege1
               ]
          in [ testGroup
                 "=none"
@@ -347,31 +359,40 @@ tests =
                     )
                       { testConstraints = geleConstraints
                       }
-                ]
-            , testGroup
-                "=all rejects"
-                [ runTest . whenAll $
-                    mkTest
-                      db12
-                      "goal E missing syb"
-                      ["E"]
-                      ( solverFailure
-                          ( \m ->
-                              all
-                                (`isInfixOf` m)
-                                [ "next goal: syb (dependency of E)"
-                                , "not a user-provided goal nor mentioned as a constraint"
-                                , "but reject-unconstrained-dependencies=all was set"
-                                ]
-                          )
-                      )
                 , runTest . whenAll $
-                    mkTest
-                      db17
-                      "goal A"
-                      ["A"]
-                      (solverFailure . isInfixOf $ solverMsg "all")
+                    ( mkTest
+                        db17
+                        "goal A with B <=1 && >=1, C <=1 && >=1"
+                        ["A"]
+                        (solverSuccess [("A", 3), ("B", 1), ("C", 1)])
+                    )
+                      { testConstraints = legeConstraints
+                      }
                 ]
+            , testGroup "=all rejects" $
+                let nall =
+                      [ "not a user-provided goal nor mentioned as a constraint"
+                      , "but reject-unconstrained-dependencies=all was set"
+                      ]
+                 in [ runTest . whenAll $
+                        mkTest
+                          db12
+                          "goal E missing syb"
+                          ["E"]
+                          ( solverFailure
+                              ( \m ->
+                                  all
+                                    (`isInfixOf` m)
+                                    ("next goal: syb (dependency of E)" : nall)
+                              )
+                          )
+                    , runTest . whenAll $
+                        mkTest
+                          db17
+                          "goal A"
+                          ["A"]
+                          (solverFailure . isInfixOf $ solverMsg "all")
+                    ]
             , testGroup "=eq" $
                 [ runTest . whenEq $
                     mkTest
@@ -454,6 +475,21 @@ tests =
                             )
                         )
                           { testConstraints = geleConstraints
+                          }
+                    , runTest . whenEq $
+                        ( mkTest
+                            db17
+                            "goal A with B <=1 && >=1, C <=1 && >=1"
+                            ["A"]
+                            ( solverFailure
+                                ( \m ->
+                                    all
+                                      (`isInfixOf` m)
+                                      ("next goal: C (dependency of A)" : neq)
+                                )
+                            )
+                        )
+                          { testConstraints = legeConstraints
                           }
                     ]
             ]
