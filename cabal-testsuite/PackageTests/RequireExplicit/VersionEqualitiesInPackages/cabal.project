@@ -1,0 +1,8 @@
+packages:
+  ./a
+  ./b
+
+constraints:
+    some-lib ==1.0
+  , other-lib ==1.0
+  , some-exe ==1.0
