@@ -347,13 +347,13 @@ tests =
          in [ testGroup
                 "=none"
                 [ runTest . whenNone $ mkTest db12 "goal E" ["E"] solveEsyb
-                , runTest . whenNone $ mkTest db12 "all goals" ["E", "syb"] solveEsyb
+                , runTest . whenNone $ mkTest db12 "goal all" ["E", "syb"] solveEsyb
                 , runTest . whenNone $ mkTest db17 "goal A B backtracking" ["A", "B"] solveABC
                 , runTest . whenNone $ mkTest db17 "goal A" ["A"] solveABC
                 ]
             , testGroup
                 "=all"
-                [ runTest . whenAll $ mkTest db12 "all goals" ["E", "syb"] solveEsyb
+                [ runTest . whenAll $ mkTest db12 "goal all" ["E", "syb"] solveEsyb
                 , runTest . whenAll $ mkTest db17 "goal A B backtracking" ["A", "B"] solveAB
                 , runTest . whenAll $
                     (mkTest db17 "goal A with B ==1, C ==1" ["A"] solveABC)
@@ -446,7 +446,7 @@ tests =
                  in [ runTest . whenEq $
                         mkTest db12 "goal E missing syb" ["E"] (solverFailure eGoalFailure)
                     , runTest . whenEq $
-                        mkTest db12 "all goals" ["E", "syb"] (solverFailure eGoalFailure)
+                        mkTest db12 "goal all" ["E", "syb"] (solverFailure eGoalFailure)
                     , runTest . whenEq $
                         mkTest db17 "goal A" ["A"] (solverFailure . isInfixOf $ solverMsg "eq")
                     , runTest . whenEq $
