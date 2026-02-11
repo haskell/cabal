@@ -266,6 +266,9 @@ tests =
             -- >=1
             ge1 = C.orLaterVersion $ C.mkVersion [1]
 
+            -- \^>=1
+            ce1 = C.majorBoundVersion $ mkSimpleVersion 1
+
             -- TODO: Find out why <=1 is not the same as <=1.0.0
             -- <=1
             le1 = C.orEarlierVersion $ C.mkVersion [1, 0, 0]
@@ -320,6 +323,12 @@ tests =
               , mkConstraint "C" le1
               ]
 
+            -- B ^>=1, C <=1
+            celeConstraints =
+              [ mkConstraint "B" ce1
+              , mkConstraint "C" ce1
+              ]
+
             -- B <=1 && >=1, C <=1 && >=1
             legeConstraints =
               [ mkConstraint "B" lege1
@@ -361,6 +370,10 @@ tests =
                 , runTest . whenAll $
                     (mkTest db17 "goal A with B >=1, C <=1" ["A"] solveABC)
                       { testConstraints = geleConstraints
+                      }
+                , runTest . whenAll $
+                    (mkTest db17 "goal A with B ^>=1, C ^>=1" ["A"] solveABC)
+                      { testConstraints = celeConstraints
                       }
                 , runTest . whenAll $
                     (mkTest db17 "goal A with B <=1 && >=1, C <=1 && >=1" ["A"] solveABC)
@@ -443,6 +456,10 @@ tests =
                     , runTest . whenEq $
                         (mkTest db17 "goal A with B >=1, C <=1" ["A"] eqFailure)
                           { testConstraints = geleConstraints
+                          }
+                    , runTest . whenEq $
+                        (mkTest db17 "goal A with B ^>=1, C ^>=1" ["A"] eqFailure)
+                          { testConstraints = celeConstraints
                           }
                     , runTest . whenEq $
                         (mkTest db17 "goal A with B <=1 && >=1, C <=1 && >=1" ["A"] eqFailure)
