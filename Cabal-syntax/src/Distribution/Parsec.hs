@@ -420,14 +420,21 @@ sepEndByNonEmpty'
   -> m String
   -> m (NonEmpty (TriviaTree, a))
 sepEndByNonEmpty' p sep = do
-  u <- do
-    (t, x) <- p
-    s <- sep
-    let t' = t <> markTriviaTree x (TriviaTree [PostTrivia s] mempty)
-    pure (t', x)
+  u <- p
 
-  us <- sepEndBy' p sep
-  pure (u :| us)
+  (maybeFirstSep, us) <-
+      ( liftA2 (,) (Just <$> sep) (sepEndBy' p sep)
+      )
+        <|> pure (Nothing, [])
+
+  let u' =
+        let (t, x) = u
+            t' = case maybeFirstSep of
+              Nothing -> t
+              Just s -> t <> markTriviaTree x (TriviaTree [PostTrivia s] mempty)
+         in (t', x)
+
+  pure (u' :| us)
 
 sepByNonEmpty'
   :: (CabalParsing m, Markable a, Namespace a)
