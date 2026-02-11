@@ -35,7 +35,7 @@ import Distribution.Fields.ParseResult
 import Distribution.Utils.Generic                  (fromUTF8BS, toUTF8BS)
 import System.Directory                            (setCurrentDirectory)
 import System.Environment                          (getArgs, withArgs)
-import System.FilePath                             (replaceExtension, (</>))
+import System.FilePath                             (replaceExtension, (</>), (<.>))
 import Distribution.Parsec.Source
 
 import Distribution.Pretty
@@ -48,6 +48,7 @@ import Distribution.Types.VersionRange
 import Distribution.Types.VersionRange.Internal
 import Distribution.Types.LibraryName
 import Distribution.Types.Dependency
+import Distribution.Types.PackageName
 
 import Distribution.FieldGrammar
 import Distribution.FieldGrammar.Newtypes
@@ -68,6 +69,7 @@ import Data.TreeDiff.Class
 import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.List.NonEmpty    as NE
+import qualified Distribution.Compat.NonEmptySet as NES
 
 import Data.Functor.Identity
 
@@ -510,22 +512,35 @@ fieldGrammarRoundTripTest gParsec gPretty fp = testCase fp $ do
 {- FOURMOLU_ENABLE -}
 
 fieldGrammarTransformTests :: TestTree
-fieldGrammarTransformTests = testGroup "fieldgrammar-transform" $
-  ( let  goDeps [] = []
-         goDeps (d : ds) = goDep d : ds
-         goDep (Dependency pName _ libNames) = Dependency pName fakeVersion libNames
-           where fakeVersion =
-                  ThisVersion (mkVersion [1337, 1])
-                    `IntersectVersionRanges`
-                    (ThisVersion (mkVersion [1337, 2]) `UnionVersionRanges` ThisVersion (mkVersion [1337, 3])
-                    )
-    in
-      map
-       ( fieldGrammarTransformTest dependencyListFieldGrammar dependencyListFieldGrammar goDeps
-       )
-       [ "build-depends1.fragment"
-       ]
-  )
+fieldGrammarTransformTests =
+  testGroup "fieldgrammar-transform" $
+    map ( \(trans, fp, suffix) -> fieldGrammarTransformTest dependencyListFieldGrammar dependencyListFieldGrammar trans fp suffix) $
+
+    ( let  modifyVersionAtFirst [] = []
+           modifyVersionAtFirst (d : ds) = go d : ds
+            where go (Dependency pName _ libNames) = Dependency pName fakeVersion libNames
+      in
+          ( modifyVersionAtFirst
+          , "build-depends1.fragment"
+          , "modify-version-first"
+          )
+    )
+    :
+    ( let  insertDependency ds = fakeDep : ds
+             where fakeDep = Dependency (mkPackageName "not-like-the-others") fakeVersion (NES.singleton LMainLibName)
+      in
+          ( insertDependency
+          , "build-depends1.fragment"
+          , "insert-dependency"
+          )
+    )
+    : []
+  where
+         fakeVersion =
+            ThisVersion (mkVersion [1337, 1])
+              `IntersectVersionRanges`
+              (ThisVersion (mkVersion [1337, 2]) `UnionVersionRanges` ThisVersion (mkVersion [1337, 3])
+              )
 
 fieldGrammarTransformTest
   :: forall a
@@ -534,8 +549,9 @@ fieldGrammarTransformTest
   -> PrettyFieldGrammar' a
   -> (a -> a)
   -> FilePath
+  -> String
   -> TestTree
-fieldGrammarTransformTest gParse gPrint f fp = ediffGolden goldenTest fp exprFile $ do
+fieldGrammarTransformTest gParse gPrint f fp suffix = ediffGolden goldenTest fp exprFile $ do
   contents <- BS.readFile input
   let fs = case readFields contents of
         Left err -> fail $ unlines $ "readFields error:" : show err : []
@@ -556,7 +572,7 @@ fieldGrammarTransformTest gParse gPrint f fp = ediffGolden goldenTest fp exprFil
   pure renderedFields
   where
     input = "tests" </> "ParserTests" </> "trivia" </> fp
-    exprFile = replaceExtension input "fieldgrammar-trivia-trans"
+    exprFile = replaceExtension input ("trans" <.> suffix)
 
 -- |
 -- Test whether the leaf Parsec and Pretty instances are dual of each other.
