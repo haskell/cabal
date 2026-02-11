@@ -254,8 +254,9 @@ tests =
             whenAll = onlyConstrained OnlyConstrainedAll
             whenEq = onlyConstrained OnlyConstrainedEq
 
-            -- ==1
+            -- ==1, ==2
             eq1 = C.thisVersion $ mkSimpleVersion 1
+            eq2 = C.thisVersion $ mkSimpleVersion 2
 
             -- >0
             gt0 = C.laterVersion $ C.mkVersion [0]
@@ -276,7 +277,7 @@ tests =
             -- ==1 && >0
             eqGt = C.intersectVersionRanges eq1 gt0
 
-            -- ==1 | >0
+            -- ==1 || >0
             eqOrGt = C.unionVersionRanges eq1 gt0
 
             -- >0 && ==1
@@ -284,6 +285,9 @@ tests =
 
             -- >0 || ==1
             gtOrEq = C.unionVersionRanges gt0 eq1
+
+            -- ==1 || ==2
+            eqOrEq = C.unionVersionRanges eq1 eq2
 
             -- <=1 && >=1
             lege1 = C.intersectVersionRanges le1 ge1
@@ -327,6 +331,12 @@ tests =
             celeConstraints =
               [ mkConstraint "B" ce1
               , mkConstraint "C" ce1
+              ]
+
+            -- B ==1 || ==2, C ==1 || ==2
+            eqOrEqConstraints =
+              [ mkConstraint "B" eqOrEq
+              , mkConstraint "C" eqOrEq
               ]
 
             -- B <=1 && >=1, C <=1 && >=1
@@ -378,6 +388,10 @@ tests =
                 , runTest . whenAll $
                     (mkTest db17 "goal A with B <=1 && >=1, C <=1 && >=1" ["A"] solveABC)
                       { testConstraints = legeConstraints
+                      }
+                , runTest . whenAll $
+                    (mkTest db17 "goal A with B ==1 || ==2, C ==1 || ==2" ["A"] solveABC)
+                      { testConstraints = eqOrEqConstraints
                       }
                 , runTest . whenAll $
                     (mkTest db17 "goal A with B >0 && ==1 && <2, C >0 && ==1 && <2" ["A"] solveABC)
@@ -460,6 +474,10 @@ tests =
                     , runTest . whenEq $
                         (mkTest db17 "goal A with B ^>=1, C ^>=1" ["A"] eqFailure)
                           { testConstraints = celeConstraints
+                          }
+                    , runTest . whenEq $
+                        (mkTest db17 "goal A with B ==1 || ==2, C ==1 || ==2" ["A"] eqFailure)
+                          { testConstraints = eqOrEqConstraints
                           }
                     , runTest . whenEq $
                         (mkTest db17 "goal A with B <=1 && >=1, C <=1 && >=1" ["A"] eqFailure)
