@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
@@ -284,7 +285,9 @@ runParsecParser' :: CabalSpecVersion -> ParsecParser a -> FilePath -> FieldLineS
 runParsecParser' v p n = Parsec.runParser (unPP p v <* P.eof) [] n
 
 -- Keep the pattern consistent. Even if Identity is id we wrap the trivia tree.
-instance Parsec a => Parsec (Identity a) where parsec = parsec
+instance Parsec a => Parsec (Identity a) where
+  parsec = Identity <$> parsec
+
 instance (Namespace a, Markable a, ExactParsec a) => ExactParsec (Identity a) where
   exactParsec = do
     (t, x :: a) <- exactParsec
