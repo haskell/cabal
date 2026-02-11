@@ -388,13 +388,13 @@ treeDiffGoldenTest fp = ediffGolden goldenTest "expr" exprFile $ do
 formatRoundTripTest :: FilePath -> TestTree
 formatRoundTripTest fp = testCase "roundtrip" $ do
     contents <- BS.readFile input
-    x <- parse contents
-    let contents' = showGenericPackageDescription x
-    y <- parse (toUTF8BS contents')
-    -- previously we mangled licenses a bit
-    let y' = y
+    AnnotatedGenericPackageDescription x t <- parse contents
+    let contents' = showGenericPackageDescription' x t
+    AnnotatedGenericPackageDescription y _ <-
+      trace ("Parsing reprinted content: \n" <> replicate 80 '=' <> "\n" <> contents' <> "\n" <> replicate 80 '=')
+      parse (toUTF8BS contents')
 {- FOURMOLU_DISABLE -}
-    unless (x == y') $
+    unless (x == y) $
 #ifdef MIN_VERSION_tree_diff
         assertFailure $ unlines
             [ "re-parsed doesn't match"
@@ -410,9 +410,9 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
             ]
 #endif
   where
-    parse :: BS.ByteString -> IO GenericPackageDescription
+    parse :: BS.ByteString -> IO AnnotatedGenericPackageDescription
     parse c = do
-        let (_, x') = runParseResult $ withSource (PCabalFile (fp, c)) $ parseGenericPackageDescription c
+        let (_, x') = runParseResult $ withSource (PCabalFile (fp, c)) $ parseAnnotatedGenericPackageDescription c
         case x' of
             Right gpd      -> pure gpd
             Left (_, errs) -> do
