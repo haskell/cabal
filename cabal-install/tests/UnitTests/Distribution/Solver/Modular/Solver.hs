@@ -258,14 +258,20 @@ tests =
             eq1 = C.thisVersion $ mkSimpleVersion 1
             eq2 = C.thisVersion $ mkSimpleVersion 2
 
-            -- >0
+            -- >0, >1
             gt0 = C.laterVersion $ C.mkVersion [0]
+            gt1 = C.laterVersion $ C.mkVersion [1]
 
-            -- <2
+            -- <1, <2
+            lt1 = C.earlierVersion $ C.mkVersion [2]
             lt2 = C.earlierVersion $ C.mkVersion [2]
 
             -- >=1
             ge1 = C.orLaterVersion $ C.mkVersion [1]
+
+            -- ==1 || >1, ==1 || <1
+            eqOrGt1 = C.unionVersionRanges eq1 gt1
+            eqOrLt1 = C.unionVersionRanges eq1 lt1
 
             -- \^>=1
             ce1 = C.majorBoundVersion $ mkSimpleVersion 1
@@ -278,13 +284,13 @@ tests =
             eqGt = C.intersectVersionRanges eq1 gt0
 
             -- ==1 || >0
-            eqOrGt = C.unionVersionRanges eq1 gt0
+            eq1OrGt0 = C.unionVersionRanges eq1 gt0
 
             -- >0 && ==1
             gtEq = C.intersectVersionRanges gt0 eq1
 
             -- >0 || ==1
-            gtOrEq = C.unionVersionRanges gt0 eq1
+            gt0OrEq1 = C.unionVersionRanges gt0 eq1
 
             -- ==1 || ==2
             eqOrEq = C.unionVersionRanges eq1 eq2
@@ -317,8 +323,8 @@ tests =
 
             -- B ==1 || >0, C >0 || ==1
             eqOrGtConstraints =
-              [ mkConstraint "B" eqOrGt
-              , mkConstraint "C" gtOrEq
+              [ mkConstraint "B" eq1OrGt0
+              , mkConstraint "C" gt0OrEq1
               ]
 
             -- B >=1, C <=1
@@ -331,6 +337,12 @@ tests =
             celeConstraints =
               [ mkConstraint "B" ce1
               , mkConstraint "C" ce1
+              ]
+
+            -- B ==1 || >1, C ==1 || <1
+            eqOrGt1Constraints =
+              [ mkConstraint "B" eqOrGt1
+              , mkConstraint "C" eqOrLt1
               ]
 
             -- B ==1 || ==2, C ==1 || ==2
@@ -388,6 +400,10 @@ tests =
                 , runTest . whenAll $
                     (mkTest db17 "goal A with B <=1 && >=1, C <=1 && >=1" ["A"] solveABC)
                       { testConstraints = legeConstraints
+                      }
+                , runTest . whenAll $
+                    (mkTest db17 "goal A with B ==1 || >1, C ==1 || <1" ["A"] solveABC)
+                      { testConstraints = eqOrGt1Constraints
                       }
                 , runTest . whenAll $
                     (mkTest db17 "goal A with B ==1 || ==2, C ==1 || ==2" ["A"] solveABC)
@@ -474,6 +490,10 @@ tests =
                     , runTest . whenEq $
                         (mkTest db17 "goal A with B ^>=1, C ^>=1" ["A"] eqFailure)
                           { testConstraints = celeConstraints
+                          }
+                    , runTest . whenEq $
+                        (mkTest db17 "goal A with B ==1 || >1, C ==1 || <1" ["A"] eqFailure)
+                          { testConstraints = eqOrGt1Constraints
                           }
                     , runTest . whenEq $
                         (mkTest db17 "goal A with B ==1 || ==2, C ==1 || ==2" ["A"] eqFailure)
