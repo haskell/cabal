@@ -34,6 +34,8 @@ module Distribution.Types.Annotation
   , emptyTriviaTree
   , atPosition
   , atFieldPosition
+  , hasTrailingSymbol
+  , hasLeadingSymbol
   , patchPosition
   , triviaToDoc
   , triviumToDoc
@@ -154,6 +156,18 @@ triviumToDoc t x = case t of
   PostTrivia s -> x <> Disp.text s
   IsInjected -> mempty -- the doc in question shouldn't be rendered
   _ -> x -- TODO(leana8959): ignore the rest for now
+
+hasTrailingSymbol :: (String -> Bool) -> Trivia -> Bool
+hasTrailingSymbol _ [] = False
+hasTrailingSymbol f (t : ts) = case t of
+  PostTrivia s -> f s || hasTrailingSymbol f ts
+  _ -> hasTrailingSymbol f ts
+
+hasLeadingSymbol :: (String -> Bool) -> Trivia -> Bool
+hasLeadingSymbol f [ ] = False 
+hasLeadingSymbol f (t : ts) = case t of
+  PreTrivia s -> f s || hasLeadingSymbol f ts
+  _ -> hasLeadingSymbol f ts
 
 -- There's no hardbreak primitive in printer
 --

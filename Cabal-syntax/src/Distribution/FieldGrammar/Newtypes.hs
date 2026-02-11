@@ -138,22 +138,54 @@ class ExactSep sep where
     -> m (NonEmpty (TriviaTree, a))
 
 instance ExactSep CommaVCat where
-  -- NOTE(leana8959): we don't "punctuate" anymore
-  -- The separators are in the trivia
-  --
-  -- This function currently only does sorting
+  exactPrettySep :: forall a sep. ExactPretty a => Proxy sep -> [(TriviaTree, a)] -> [DocAnn TriviaTree]
   exactPrettySep _ docs =
     let atPositionOr0 = fromMaybe (Position 0 0) . atPosition . justAnnotation
+
+        sortedDocs :: [(TriviaTree, a)]
         sortedDocs = sortOn (atPositionOr0 . fst) $ docs
+
+        -- Last, current, next
+        withNeighbors :: [(Maybe Trivia, (TriviaTree, a), Maybe Trivia)]
+        withNeighbors = zip3
+          (Nothing : (Just . justAnnotation . fst <$> sortedDocs))
+          sortedDocs
+          (drop 1 (Just . justAnnotation . fst <$> sortedDocs) ++ [Nothing])
      in map
-          ( \(t0, x) ->
-              let tLocal = justAnnotation t0
-               in (flip DocAnn t0) $
-                    triviaToDoc tLocal $
-                      mconcat . map unAnnDoc $
-                        exactPretty t0 x
+          ( \
+            ( tPrev
+            , (t0, x)
+            , tNext
+            )
+            ->
+              let -- tLocal /should/ contain the {leading,trailing} annotation
+                  -- If it doesn't (programmatic modifications to gpd), then we fallback to patching the separators
+                  tLocal = justAnnotation t0
+                  trim = dropWhile isSpace . dropWhileEnd isSpace
+                  isComma = (== ",") . trim
+
+                  docOut = triviaToDoc tLocal $
+                        mconcat . map unAnnDoc $
+                          exactPretty t0 x
+               in
+                (flip DocAnn t0) $
+                  ( if tLocal == mempty
+                    -- Fallback
+                    then
+                      ( case tPrev of
+                        Nothing -> id -- isFirst
+                        Just t -> if not (hasTrailingSymbol isComma t) then (text "," <> ) else id
+                        ) .
+                      ( case tPrev of
+                        Nothing -> id -- isLast
+                        Just t -> if not (hasTrailingSymbol isComma t) then (<> text ",") else id
+                        )
+                    -- Separator already in the trivia
+                    else id
+                  ) $
+                  docOut
           )
-          $ sortedDocs
+          $ withNeighbors
 
   exactParseSep _ p = do
     v <- askCabalSpecVersion
