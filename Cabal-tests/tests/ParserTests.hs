@@ -526,8 +526,12 @@ fieldGrammarTransformTests =
           )
     )
     :
-    ( let  insertDependency ds = fakeDep : ds
-             where fakeDep = Dependency (mkPackageName "not-like-the-others") fakeVersion (NES.singleton LMainLibName)
+    -- FIXME(leana8959): when falling back to normal print we lose the separator
+    -- This can be triggered with more than one fake item (because they don't have associated trivia)
+    ( let  insertDependency ds =
+             Dependency (mkPackageName "foo") fakeVersion (NES.singleton LMainLibName)
+              : Dependency (mkPackageName "bar") fakeVersion (NES.singleton LMainLibName)
+              : ds
       in
           ( insertDependency
           , "build-depends1.fragment"
