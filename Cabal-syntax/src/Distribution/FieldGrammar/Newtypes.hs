@@ -24,7 +24,7 @@ module Distribution.FieldGrammar.Newtypes
   , FSep (..)
   , NoCommaFSep (..)
   , Sep (..)
-  , TriviaSep (..)
+  , ExactSep (..)
 
     -- ** Type
   , List
@@ -118,31 +118,31 @@ class Sep sep where
   parseSep :: CabalParsing m => Proxy sep -> m a -> m [a]
   parseSepNE :: CabalParsing m => Proxy sep -> m a -> m (NonEmpty a)
 
-class TriviaSep sep where
-  prettierSep
+class ExactSep sep where
+  exactPrettySep
     :: ExactPretty a
     => Proxy sep
     -> [(TriviaTree, a)]
     -> [DocAnn TriviaTree]
 
-  triviaParseSep
+  exactParseSep
     :: (CabalParsing m, Markable a, Namespace a)
     => Proxy sep
     -> m (TriviaTree, a)
     -> m [(TriviaTree, a)]
 
-  triviaParseSepNE
+  exactParseSepNE
     :: (CabalParsing m, Markable a, Namespace a)
     => Proxy sep
     -> m (TriviaTree, a)
     -> m (NonEmpty (TriviaTree, a))
 
-instance TriviaSep CommaVCat where
+instance ExactSep CommaVCat where
   -- NOTE(leana8959): we don't "punctuate" anymore
   -- The separators are in the trivia
   --
   -- This function currently only does sorting
-  prettierSep _ docs =
+  exactPrettySep _ docs =
     let atPositionOr0 = fromMaybe (Position 0 0) . atPosition . justAnnotation
         sortedDocs = sortOn (atPositionOr0 . fst) $ docs
      in map
@@ -155,44 +155,44 @@ instance TriviaSep CommaVCat where
           )
           $ sortedDocs
 
-  triviaParseSep _ p = do
+  exactParseSep _ p = do
     v <- askCabalSpecVersion
     if v >= CabalSpecV2_2 then triviaParsecLeadingCommaList p else triviaParsecCommaList p
 
-instance TriviaSep CommaFSep where
-  prettierSep _ = mconcat . map (uncurry exactPretty)
+instance ExactSep CommaFSep where
+  exactPrettySep _ = mconcat . map (uncurry exactPretty)
 
-  triviaParseSep _ p = do
+  exactParseSep _ p = do
     v <- askCabalSpecVersion
     if v >= CabalSpecV2_2 then triviaParsecLeadingCommaList p else triviaParsecCommaList p
 
-  triviaParseSepNE _ p = do
+  exactParseSepNE _ p = do
     v <- askCabalSpecVersion
     if v >= CabalSpecV2_2 then triviaParsecLeadingCommaListNonEmpty p else triviaParsecCommaNonEmpty p
 
-instance TriviaSep VCat where
-  prettierSep _ = mconcat . map (uncurry exactPretty)
+instance ExactSep VCat where
+  exactPrettySep _ = mconcat . map (uncurry exactPretty)
 
-  triviaParseSep _ p = do
+  exactParseSep _ p = do
     v <- askCabalSpecVersion
     if v >= CabalSpecV3_0 then triviaParsecLeadingOptCommaList p else triviaParsecOptCommaList p
 
   -- TODO(leana8959):
-  triviaParseSepNE _ p = NE.some1 (p <* P.spaces)
+  exactParseSepNE _ p = NE.some1 (p <* P.spaces)
 
-instance TriviaSep FSep where
-  prettierSep _ = mconcat . map (uncurry exactPretty)
-  triviaParseSep _ p = do
+instance ExactSep FSep where
+  exactPrettySep _ = mconcat . map (uncurry exactPretty)
+  exactParseSep _ p = do
     v <- askCabalSpecVersion
     if v >= CabalSpecV3_0 then triviaParsecLeadingOptCommaList p else triviaParsecOptCommaList p
 
   -- TODO(leana8959):
-  triviaParseSepNE _ p = NE.some1 (p <* P.spaces)
+  exactParseSepNE _ p = NE.some1 (p <* P.spaces)
 
-instance TriviaSep NoCommaFSep where
-  prettierSep _ = mconcat . map (uncurry exactPretty)
-  triviaParseSep _ p = many (p <* P.spaces)
-  triviaParseSepNE _ p = NE.some1 (p <* P.spaces)
+instance ExactSep NoCommaFSep where
+  exactPrettySep _ = mconcat . map (uncurry exactPretty)
+  exactParseSep _ p = many (p <* P.spaces)
+  exactParseSepNE _ p = NE.some1 (p <* P.spaces)
 
 instance Sep CommaVCat where
   prettySep _ = vcat . punctuate comma
@@ -256,7 +256,7 @@ instance (Newtype a b, Sep sep, Parsec b) => Parsec (List sep b a) where
 instance
   ( Newtype a b
   , Typeable sep
-  , TriviaSep sep
+  , ExactSep sep
   , ExactParsec b
   , Markable b
   , Namespace b
@@ -264,7 +264,7 @@ instance
   => ExactParsec (List sep b a)
   where
   exactParsec = do
-    (ts, bs) <- unzip <$> triviaParseSep (Proxy :: Proxy sep) exactParsec
+    (ts, bs) <- unzip <$> exactParseSep (Proxy :: Proxy sep) exactParsec
     pure (mconcat ts, pack $ map (unpack :: b -> a) bs)
 
 instance (Newtype a b, Sep sep, Pretty b) => Pretty (List sep b a) where
@@ -294,7 +294,7 @@ instance
 instance
   ( Newtype a b
   , ExactPretty b
-  , TriviaSep sep
+  , ExactSep sep
   , Namespace b
   , Markable b
   , Markable a
@@ -324,7 +324,7 @@ instance
             $ unpack -- unpack the list
             $ n
      in concatMap
-          ( prettierSep (Proxy :: Proxy sep)
+          ( exactPrettySep (Proxy :: Proxy sep)
           )
           $ docGroups
 
