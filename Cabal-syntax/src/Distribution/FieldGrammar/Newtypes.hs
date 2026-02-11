@@ -82,11 +82,11 @@ import Text.PrettyPrint (Doc, comma, fsep, punctuate, text, vcat)
 
 import Distribution.Types.Annotation
 
-import Data.Maybe (maybeToList)
 import Data.List (groupBy, sortOn)
 import qualified Data.List as List
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as M
+import Data.Maybe (maybeToList)
 import qualified Data.Set as Set
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.SPDX as SPDX
@@ -145,17 +145,15 @@ instance TriviaSep CommaVCat where
   prettierSep _ docs =
     let atPositionOr0 = fromMaybe (Position 0 0) . atPosition . justAnnotation
         sortedDocs = sortOn (atPositionOr0 . fst) $ docs
-
      in map
           ( \(t0, x) ->
               let tLocal = justAnnotation t0
-               in
-                    (flip DocAnn t0) $
-                      triviaToDoc tLocal $
-                        mconcat . map unAnnDoc $
-                          exactPretty t0 x
+               in (flip DocAnn t0) $
+                    triviaToDoc tLocal $
+                      mconcat . map unAnnDoc $
+                        exactPretty t0 x
           )
-        $ sortedDocs
+          $ sortedDocs
 
   triviaParseSep _ p = do
     v <- askCabalSpecVersion
@@ -307,9 +305,9 @@ instance
     let fieldPositionOr0 = fromMaybe (Position 0 0) . atFieldPosition . justAnnotation
         docGroups :: [[(TriviaTree, b)]]
         docGroups =
-        -- TODO(leana8959): move the grouping code to monoidalField
-        -- With the Markable constraint I should be able to retrieve the order associated
-            groupBy ((==) `on` (fieldPositionOr0 . fst))
+          -- TODO(leana8959): move the grouping code to monoidalField
+          -- With the Markable constraint I should be able to retrieve the order associated
+          groupBy ((==) `on` (fieldPositionOr0 . fst))
             $ sortOn (fieldPositionOr0 . fst)
             $ map
               ( \o ->
@@ -318,7 +316,7 @@ instance
                   -- Move them upwards so we can sort
                       numbering = justAnnotation (unmarkTriviaTree n t0)
 
-                  -- The positions are associated under the oldtype
+                      -- The positions are associated under the oldtype
                       position = justAnnotation (unmarkTriviaTree o (unmarkTriviaTree n t0))
                       t = TriviaTree (numbering <> position) mempty <> t0
                    in (t, n)

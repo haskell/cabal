@@ -1,11 +1,11 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ViewPatterns #-}
 
 -- | The only purpose of this module is to prevent the export of
@@ -293,39 +293,36 @@ prettyVersionRange' :: TriviaTree -> Int -> VersionRange -> (PrettyMode, Disp.Do
 prettyVersionRange' t0 d0 vr =
   let t = unmarkTriviaTree vr t0
       tLocal = justAnnotation t
-      leafMode (mconcat->DocAnn doc ann) =
-            let m = if ann == mempty then BestEffort else Exact
-            in  (m, doc)
-
+      leafMode (mconcat -> DocAnn doc ann) =
+        let m = if ann == mempty then BestEffort else Exact
+         in (m, doc)
    in triviaToDoc tLocal <$> case vr of
-        ThisVersion v       ->  (Disp.text "=="  <>) <$> leafMode (exactPretty t v)
-        LaterVersion v      ->  (Disp.text ">"   <>) <$> leafMode (exactPretty t v)
-        OrLaterVersion v    ->  (Disp.text ">="  <>) <$> leafMode (exactPretty t v)
-        EarlierVersion v    ->  (Disp.text "<"   <>) <$> leafMode (exactPretty t v)
-        OrEarlierVersion v  ->  (Disp.text "<="  <>) <$> leafMode (exactPretty t v)
-        MajorBoundVersion v ->  (Disp.text "^>=" <>) <$> leafMode (exactPretty t v)
-
+        ThisVersion v -> (Disp.text "==" <>) <$> leafMode (exactPretty t v)
+        LaterVersion v -> (Disp.text ">" <>) <$> leafMode (exactPretty t v)
+        OrLaterVersion v -> (Disp.text ">=" <>) <$> leafMode (exactPretty t v)
+        EarlierVersion v -> (Disp.text "<" <>) <$> leafMode (exactPretty t v)
+        OrEarlierVersion v -> (Disp.text "<=" <>) <$> leafMode (exactPretty t v)
+        MajorBoundVersion v -> (Disp.text "^>=" <>) <$> leafMode (exactPretty t v)
         -- Recursive, parenthesize to disambiguate
         UnionVersionRanges r1 r2 ->
           let (lMode, lDoc) = prettyVersionRange' t (d0 + 1) r1
               (rMode, rDoc) = prettyVersionRange' t (d0 + 0) r2
 
               doc = lDoc <> Disp.text "||" <> rDoc
-          in  case (lMode, rMode) of
+           in case (lMode, rMode) of
                 (Exact, Exact) -> (Exact, doc)
                 _ -> (BestEffort, parens (d0 > 0) doc)
         IntersectVersionRanges r1 r2 ->
-            let (lMode, lDoc) = prettyVersionRange' t (d0 + 2) r1
-                (rMode, rDoc) = prettyVersionRange' t (d0 + 1) r2
+          let (lMode, lDoc) = prettyVersionRange' t (d0 + 2) r1
+              (rMode, rDoc) = prettyVersionRange' t (d0 + 1) r2
 
-                doc = lDoc <> Disp.text "&&" <> rDoc
-            in  case (lMode, rMode) of
+              doc = lDoc <> Disp.text "&&" <> rDoc
+           in case (lMode, rMode) of
                 (Exact, Exact) -> (Exact, doc)
                 _ -> (BestEffort, parens (d0 > 1) doc)
-
-    where
-      parens True = Disp.parens
-      parens False = id
+  where
+    parens True = Disp.parens
+    parens False = id
 
 -- | Don't use && and || operators. If possible.
 prettyVersionRange16 :: TriviaTree -> VersionRange -> Disp.Doc

@@ -1,8 +1,8 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 
 -- | Cabal-like file AST types: 'Field', 'Section' etc,
 --
@@ -27,8 +27,8 @@ module Distribution.Fields.Pretty
 
 import Control.Monad
 import Distribution.Compat.Prelude
-import Distribution.Pretty (showToken)
 import Distribution.Parsec.Position
+import Distribution.Pretty (showToken)
 import Prelude ()
 
 import Distribution.Types.Annotation
@@ -38,8 +38,8 @@ import Distribution.Utils.Generic (fromUTF8BS)
 
 import qualified Distribution.Fields.Parser as P
 
-import qualified Data.List as List (tail)
 import qualified Data.ByteString as BS
+import qualified Data.List as List (tail)
 import qualified Text.PrettyPrint as PP
 
 import Debug.Pretty.Simple
@@ -101,13 +101,12 @@ showFieldsWithTrivia = showFields' (const NoComment) getPos fixupPosition
 
           patch = foldr (.) id $ case mDiff of
             Just (rDiff, cDiff) ->
-                replicate (rDiff -  1) (PP.text "" PP.$$) ++ replicate (cDiff - 1) (PP.text " " <>)
+              replicate (rDiff - 1) (PP.text "" PP.$$) ++ replicate (cDiff - 1) (PP.text " " <>)
             Nothing -> case atPosition trivia of
-                -- No previous position to calculate line jump, but still compute column offset
+              -- No previous position to calculate line jump, but still compute column offset
               Just (Position _ col) -> replicate (col - 1) (PP.text " " <>)
               Nothing -> [(PP.text "    " <>)] -- default to indent of 4
-
-      in  patch doc
+       in patch doc
 
 data PositionFromPrettyField ann = PositionFromPrettyField
   { fieldPosition :: ann -> Maybe Position
@@ -144,11 +143,11 @@ renderFields startPos opts@(Opts _ getPos _) fields = flattenBlocks blocks
       filter (not . null . _contentsBlock) -- empty blocks cause extra newlines #8236
         $ (\(accBlocks, _lastFieldLinePos) -> reverse accBlocks)
         $ foldl
-            ( \(accBlocks, lastFieldLinePos) (pos, x) ->
-                let (newPos, block) = renderField opts (lastFieldLinePos <|> pos) len x
-                in  (block : accBlocks, newPos)
-            )
-            ([], Nothing)
+          ( \(accBlocks, lastFieldLinePos) (pos, x) ->
+              let (newPos, block) = renderField opts (lastFieldLinePos <|> pos) len x
+               in (block : accBlocks, newPos)
+          )
+          ([], Nothing)
         $ zip (startPos : map (fieldLinePosition getPos <=< prettyFieldAnn) fields) fields
 
     maxNameLength !acc [] = acc
@@ -196,14 +195,15 @@ renderField opts@(Opts rann getPos postWithPrev) prevPos fw (PrettyField ann nam
 
     fieldLines' :: [String]
     fieldLines' =
-        map
-          ( \(prevLinePos, fl) ->
-              renderPrettyFieldLine opts prevLinePos fw fl
-          )
+      map
+        ( \(prevLinePos, fl) ->
+            renderPrettyFieldLine opts prevLinePos fw fl
+        )
         $ zip
           (startPos : fieldLinesPos)
           fieldLines
-      where startPos = foldl (<|>) Nothing (fieldPosition getPos . prettyFieldLineAnn <$> fieldLines)
+      where
+        startPos = foldl (<|>) Nothing (fieldPosition getPos . prettyFieldLineAnn <$> fieldLines)
 
     post = postWithPrev prevPos
     content = case comments of
@@ -221,37 +221,34 @@ renderField opts@(Opts rann getPos postWithPrev) prevPos fw (PrettyField ann nam
     (lines', after) = case fieldLines' of
       [] -> ([name' ++ ":"], NoMargin)
       _ ->
-          let selfPos = fieldPosition getPos ann
-              rowDiff = liftA2 subtractRow selfPos prevPos
-              subtractRow (Position rowx _) (Position rowy _) = rowx - rowy - 1
+        let selfPos = fieldPosition getPos ann
+            rowDiff = liftA2 subtractRow selfPos prevPos
+            subtractRow (Position rowx _) (Position rowy _) = rowx - rowy - 1
 
-              maybeNewlines = mconcat $ replicate (fromMaybe 0 rowDiff) ["\n"]
-              -- The POSIX definition of a line always ends with a newline
-              -- We patch up the last newline
-          in  ( maybeNewlines ++ (name' ++ ":") : "\n" : fieldLines' ++ ["\n"]
-              , Margin
-              )
+            maybeNewlines = mconcat $ replicate (fromMaybe 0 rowDiff) ["\n"]
+         in -- The POSIX definition of a line always ends with a newline
+            -- We patch up the last newline
+            ( maybeNewlines ++ (name' ++ ":") : "\n" : fieldLines' ++ ["\n"]
+            , Margin
+            )
     name' = fromUTF8BS name
-
 renderField opts@(Opts rann getPos postWithPrev) prevPos _ (PrettySection ann name args fields) =
-  (lastPos,)
-  $ Block Margin Margin
-  $ -- TODO(leana8959): fix indentation with exact positioning
-    attachComments [PP.render $ PP.hsep $ PP.text (fromUTF8BS name) : args]
-      ++ renderFields (fieldLinePosition getPos ann) opts fields
+  (lastPos,) $
+    Block Margin Margin $ -- TODO(leana8959): fix indentation with exact positioning
+      attachComments [PP.render $ PP.hsep $ PP.text (fromUTF8BS name) : args]
+        ++ renderFields (fieldLinePosition getPos ann) opts fields
   where
     lastPos :: Maybe Position
     lastPos = foldl (flip (<|>)) Nothing $ concatMap fPos fields
       where
         fPos :: PrettyField ann -> [Maybe Position]
         fPos field = case field of
-            PrettyField _ _ fls -> concatMap flPos fls
-            PrettySection _ _ _ fs' -> concatMap fPos fs'
-            PrettyEmpty -> []
+          PrettyField _ _ fls -> concatMap flPos fls
+          PrettySection _ _ _ fs' -> concatMap fPos fs'
+          PrettyEmpty -> []
 
         flPos :: PrettyFieldLine ann -> [Maybe Position]
         flPos = pure . fieldLinePosition getPos . prettyFieldLineAnn
-
 
     post = postWithPrev prevPos
     attachComments content = case rann ann of
@@ -267,10 +264,9 @@ renderPrettyFieldLine (Opts rann _ postWithPrevPos) prevPos fw (PrettyFieldLine 
   let postProcess = postWithPrevPos prevPos
       narrowStyle :: PP.Style
       narrowStyle = PP.style{PP.lineLength = PP.lineLength PP.style - fw}
-
-  in  PP.renderStyle narrowStyle
-      $ postProcess ann
-      $ doc
+   in PP.renderStyle narrowStyle $
+        postProcess ann $
+          doc
 
 -------------------------------------------------------------------------------
 -- Transform from Parsec.Field
@@ -301,8 +297,9 @@ genericFromParsecFields f g = goMany
 
 prettyFieldLines :: [P.FieldLine ann] -> [PrettyFieldLine ann]
 prettyFieldLines = map go
-  where go (P.FieldLine ann bs) =
-          PrettyFieldLine ann (PP.text $ fromUTF8BS bs)
+  where
+    go (P.FieldLine ann bs) =
+      PrettyFieldLine ann (PP.text $ fromUTF8BS bs)
 
 -- | Used in 'fromParsecFields'.
 prettySectionArgs :: FieldName -> [P.SectionArg ann] -> [PP.Doc]

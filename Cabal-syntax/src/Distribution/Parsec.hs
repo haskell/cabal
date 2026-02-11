@@ -213,7 +213,7 @@ instance CabalParsing ParsecParser where
         -- Override the line due to line jumps, and offset the column due to dropped leading spaced
         --
         let newPos = curPos `Parsec.incSourceColumn` (col - 1) `Parsec.setSourceLine` row
-        in  pure newPos
+         in pure newPos
 
 -- | Parse a 'String' with 'lexemeParsec'.
 simpleParsec :: Parsec a => String -> Maybe a

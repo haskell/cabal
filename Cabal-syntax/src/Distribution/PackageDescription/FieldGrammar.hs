@@ -204,7 +204,8 @@ librarySectionDependencyList
      , c (List VCat Token String)
      , c (MQuoted Language)
      )
-  => LibraryName -> g Library Library
+  => LibraryName
+  -> g Library Library
 librarySectionDependencyList n =
   withScope n $
     Library n
@@ -257,7 +258,8 @@ libraryFieldGrammar n =
 
 libraryVisibilityField
   :: (FieldGrammar c g, Applicative (g Library), c (Identity LibraryVisibility))
-  => LibraryName -> g Library LibraryVisibility
+  => LibraryName
+  -> g Library LibraryVisibility
 libraryVisibilityField n = case n of
   -- nameless/"main" libraries are public
   LMainLibName -> pure LibraryVisibilityPublic
@@ -651,8 +653,8 @@ buildInfoDependencyListFieldGrammar
      )
   => g BuildInfo BuildInfo
 buildInfoDependencyListFieldGrammar =
-  (\deps -> (mempty :: BuildInfo) { targetBuildDepends = deps })
-  <$> monoidalFieldAla "build-depends" formatDependencyList L.targetBuildDepends
+  (\deps -> (mempty :: BuildInfo){targetBuildDepends = deps})
+    <$> monoidalFieldAla "build-depends" formatDependencyList L.targetBuildDepends
 {-# SPECIALIZE buildInfoDependencyListFieldGrammar :: ParsecFieldGrammar' BuildInfo #-}
 {-# SPECIALIZE buildInfoDependencyListFieldGrammar :: PrettyFieldGrammar' BuildInfo #-}
 

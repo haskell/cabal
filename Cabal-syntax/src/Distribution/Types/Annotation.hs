@@ -48,7 +48,6 @@ import Distribution.Parsec.Position
 import Data.Kind
 import Data.Monoid
 import Data.Typeable
-import Data.Monoid
 
 import qualified Data.Map as M
 import qualified Text.PrettyPrint as Disp
@@ -165,6 +164,5 @@ triviumToDoc t x = case t of
 patchPosition :: Position -> Position -> Disp.Doc -> Disp.Doc
 patchPosition (Position prevRow _) (Position curRow _) =
   let rowDiff = curRow - prevRow
-
-  in  appEndo . foldMap Endo
-        $ replicate rowDiff ((Disp.text "") Disp.$+$)
+   in appEndo . foldMap Endo $
+        replicate rowDiff ((Disp.text "") Disp.$+$)

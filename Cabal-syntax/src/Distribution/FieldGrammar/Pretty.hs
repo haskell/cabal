@@ -29,9 +29,9 @@ import Distribution.Pretty
 import Distribution.Parsec.Position
 import Distribution.Types.Annotation
 
+import Data.List (groupBy)
 import Debug.Pretty.Simple
 import Distribution.FieldGrammar.Class
-import Data.List (groupBy)
 
 import qualified Data.Map as M
 
@@ -75,7 +75,7 @@ instance FieldGrammar ExactPretty PrettyFieldGrammar where
 
   -- TODO(leana8959): use the trivia in the methods implemented here
   uniqueFieldAla fn _pack l = PrettyFG $ \_v t s ->
-      ppTriviaField (fn, mempty) (exactPretty mempty (pack' _pack (aview l s)))
+    ppTriviaField (fn, mempty) (exactPretty mempty (pack' _pack (aview l s)))
 
   booleanFieldDef fn l def = PrettyFG pp
     where
@@ -123,14 +123,13 @@ instance FieldGrammar ExactPretty PrettyFieldGrammar where
       pp v t s =
         let t' = unmarkTriviaTree fn t
             fieldPositionOr0 = fromMaybe (Position 0 0) . atFieldPosition . justAnnotation
-        in
-            concatMap
+         in concatMap
               ( \groupedDocAnn ->
                   let fieldNamePos = fieldPositionOr0 $ mconcat $ map docAnn groupedDocAnn
-                  in  ppTriviaField (fn, [ExactFieldPosition fieldNamePos]) groupedDocAnn
+                   in ppTriviaField (fn, [ExactFieldPosition fieldNamePos]) groupedDocAnn
               )
-            $ groupBy ((==) `on` (fieldPositionOr0 . docAnn))
-            $ exactPrettyVersioned v t' (pack' _pack (aview l s))
+              $ groupBy ((==) `on` (fieldPositionOr0 . docAnn))
+              $ exactPrettyVersioned v t' (pack' _pack (aview l s))
 
   prefixedFields _fnPfx l = PrettyFG (\_ t -> map noTrivia . pp . aview l)
     where
@@ -139,7 +138,7 @@ instance FieldGrammar ExactPretty PrettyFieldGrammar where
         -- i.e. don't use ppField
         [ let docs = map PP.text $ lines s
               pfls = map (PrettyFieldLine mempty) docs
-          in  PrettyField () (toUTF8BS n) $ pfls
+           in PrettyField () (toUTF8BS n) $ pfls
         | (n, s) <- xs
         -- fnPfx `isPrefixOf` n
         ]
@@ -162,5 +161,5 @@ ppTriviaField (name, nameTrivia) docAnns
   | null docAnns = []
   | otherwise =
       let proj (DocAnn doc trivia) = PrettyFieldLine (justAnnotation trivia) doc
-      in  [ PrettyField nameTrivia name (map proj docAnns)
+       in [ PrettyField nameTrivia name (map proj docAnns)
           ]

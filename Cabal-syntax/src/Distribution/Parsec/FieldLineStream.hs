@@ -15,8 +15,8 @@ module Distribution.Parsec.FieldLineStream
 import Data.Bits
 import Data.ByteString (ByteString)
 import Distribution.Compat.Prelude
-import Distribution.Utils.Generic (toUTF8BS)
 import Distribution.Parsec.Position
+import Distribution.Utils.Generic (toUTF8BS)
 import Prelude ()
 
 import qualified Data.ByteString as BS
