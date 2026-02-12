@@ -142,23 +142,16 @@ data Opts ann = Opts
 renderFields :: forall ann. Maybe Position -> Opts ann -> [PrettyField ann] -> [String]
 renderFields startPos opts@(Opts getPos _) fields = flattenBlocks blocks
   where
-    len = maxNameLength 0 fields
-
     blocks =
       filter (not . null . _contentsBlock) -- empty blocks cause extra newlines #8236
         $ (\(accBlocks, _lastFieldLinePos) -> reverse accBlocks)
         $ foldl
           ( \(accBlocks, lastFieldLinePos) (pos, x) ->
-              let (newPos, block) = renderField opts (lastFieldLinePos <|> pos) len x
+              let (newPos, block) = renderField opts (lastFieldLinePos <|> pos) x
                in (block : accBlocks, newPos)
           )
           ([], Nothing)
         $ zip (startPos : map (fieldLinePosition getPos <=< prettyFieldAnn) fields) fields
-
-    maxNameLength !acc [] = acc
-    maxNameLength !acc (PrettyField _ name _ : rest) = maxNameLength (max acc (BS.length name)) rest
-    maxNameLength !acc (PrettySection{} : rest) = maxNameLength acc rest
-    maxNameLength !acc (PrettyEmpty : rest) = maxNameLength acc rest
 
 -- | Block of lines with flags for optional blank lines before and after
 data Block = Block
@@ -188,8 +181,8 @@ flattenBlocks = go0
           | surr' <> before == Margin = ("" :)
           | otherwise = id
 
-renderField :: forall ann. Opts ann -> Maybe Position -> Int -> PrettyField ann -> (Maybe Position, Block)
-renderField opts@(Opts getPos postWithPrev) prevPos fw (PrettyField ann name fieldLines) =
+renderField :: forall ann. Opts ann -> Maybe Position -> PrettyField ann -> (Maybe Position, Block)
+renderField opts@(Opts getPos postWithPrev) prevPos (PrettyField ann name fieldLines) =
   (fieldLinesLastPos, Block NoMargin after content)
   where
     fieldLinesPos :: [Maybe Position]
@@ -202,7 +195,7 @@ renderField opts@(Opts getPos postWithPrev) prevPos fw (PrettyField ann name fie
     fieldLines' =
       map
         ( \(prevLinePos, fl) ->
-            renderPrettyFieldLine opts prevLinePos fw fl
+            renderPrettyFieldLine opts prevLinePos fl
         )
         $ zip
           (startPos : fieldLinesPos)
@@ -228,7 +221,7 @@ renderField opts@(Opts getPos postWithPrev) prevPos fw (PrettyField ann name fie
             , Margin
             )
     name' = fromUTF8BS name
-renderField opts@(Opts getPos postWithPrev) prevPos _ (PrettySection ann name args fields) =
+renderField opts@(Opts getPos postWithPrev) prevPos (PrettySection ann name args fields) =
   (lastPos,) $
     Block Margin Margin $ -- TODO(leana8959): fix indentation with exact positioning
       [PP.render $ PP.hsep $ PP.text (fromUTF8BS name) : args]
@@ -247,16 +240,14 @@ renderField opts@(Opts getPos postWithPrev) prevPos _ (PrettySection ann name ar
         flPos = pure . fieldLinePosition getPos . prettyFieldLineAnn
 
     post = postWithPrev prevPos
-renderField _ prevPos _ PrettyEmpty = (prevPos, Block NoMargin NoMargin mempty)
+renderField _ prevPos PrettyEmpty = (prevPos, Block NoMargin NoMargin mempty)
 
 -- |
 -- Invariant: a PrettyFieldLine is never more than one line
-renderPrettyFieldLine :: Opts ann -> Maybe Position -> Int -> PrettyFieldLine ann -> String
-renderPrettyFieldLine (Opts getPos fixupPosition) prevPos fw (PrettyFieldLine ann doc) =
-  let narrowStyle :: PP.Style
-      narrowStyle = PP.style{PP.lineLength = PP.lineLength PP.style - fw}
-      curPos = fieldLinePosition getPos $ ann
-   in PP.renderStyle narrowStyle $
+renderPrettyFieldLine :: Opts ann -> Maybe Position -> PrettyFieldLine ann -> String
+renderPrettyFieldLine (Opts getPos fixupPosition) prevPos (PrettyFieldLine ann doc) =
+  let curPos = fieldLinePosition getPos $ ann
+   in PP.renderStyle PP.style $
         fixupPosition prevPos curPos $
           doc
 
