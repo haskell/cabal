@@ -293,3 +293,53 @@ fromParsecFields =
   where
     (.:) :: (a -> b) -> (c -> d -> a) -> (c -> d -> b)
     (f .: g) x y = f (g x y)
+
+-- Experiment on preprocessing [PrettyField ann], mainly fixing up the position
+
+type PrettyFieldPositionContext ann =
+  ( PrettyField ann
+  , Maybe (PrettyFieldLine ann)
+  )
+
+preprocessPrettyFields
+  :: PrettyFieldPositionContext ann
+  -> [PrettyField ann]
+  -> (PrettyFieldPositionContext ann, [PrettyField ann])
+preprocessPrettyFields ctx0 = fmap reverse . foldl go state0
+  where
+    state0 = (ctx0, [])
+    go (ctx, processed) field =
+      let (ctx', field') = preprocessPrettyField ctx field
+      in  (ctx', field' : processed)
+
+preprocessPrettyField
+  :: PrettyFieldPositionContext ann
+  -> PrettyField ann
+  -> (PrettyFieldPositionContext ann, PrettyField ann)
+preprocessPrettyField ctx0@(lastField, lastFieldLine) field = case field of
+  -- ignore completely
+  -- TODO(leana8959): project to a different type to show we handled this case and we discarded this possibility.
+  PrettyEmpty -> (ctx0, field)
+  PrettyField ann fieldName fieldLines ->
+    let (ctx', fieldLines') = preprocessPrettyFieldLines (field, lastFieldLine) fieldLines
+    in  (ctx', PrettyField ann fieldName fieldLines')
+  PrettySection ann fieldName sectionArgs fields ->
+    let (ctx', fields') = preprocessPrettyFields (field, lastFieldLine) fields
+    in  (ctx', PrettySection ann fieldName sectionArgs fields')
+
+preprocessPrettyFieldLines
+  :: PrettyFieldPositionContext ann
+  -> [PrettyFieldLine ann]
+  -> (PrettyFieldPositionContext ann, [PrettyFieldLine ann])
+preprocessPrettyFieldLines ctx0 = fmap reverse . foldl go state0
+  where
+    state0 = (ctx0, [])
+    go (ctx, processed) fieldLine =
+      let (ctx', fieldLine') = preprocessPrettyFieldLine ctx fieldLine
+      in  (ctx', fieldLine' : processed)
+
+preprocessPrettyFieldLine
+  :: PrettyFieldPositionContext ann
+  -> PrettyFieldLine ann
+  -> (PrettyFieldPositionContext ann, PrettyFieldLine ann)
+preprocessPrettyFieldLine (lastField, lastFieldLine) fieldLine = undefined
