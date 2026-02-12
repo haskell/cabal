@@ -303,7 +303,7 @@ fromParsecFields =
 -- Experiment on preprocessing [PrettyField ann], mainly fixing up the position
 
 type PrettyFieldPositionContext ann =
-  ( PrettyField ann
+  ( Maybe (PrettyField ann)
   , Maybe (PrettyFieldLine ann)
   )
 
@@ -330,7 +330,7 @@ exactRenderPrettyField ctx0@(lastField, lastFieldLine) field = case field of
   PrettyField ann fieldName fieldLines ->
     let ctx' :: PrettyFieldPositionContext Trivia
         fieldLines' :: [PP.Doc]
-        (ctx', fieldLines') = exactRenderPrettyFieldLines (field, lastFieldLine) fieldLines
+        (ctx', fieldLines') = exactRenderPrettyFieldLines (Just field, lastFieldLine) fieldLines
 
         fieldNamePosition :: Maybe Position
         fieldNamePosition = prettyFieldPosition field
@@ -347,7 +347,7 @@ exactRenderPrettyField ctx0@(lastField, lastFieldLine) field = case field of
   PrettySection ann fieldName sectionArgs fields ->
     let ctx' :: PrettyFieldPositionContext Trivia
         fields' :: [PP.Doc]
-        (ctx', fields') = exactRenderPrettyFields (field, lastFieldLine) fields
+        (ctx', fields') = exactRenderPrettyFields (Just field, lastFieldLine) fields
 
         sectionNamePosition :: Maybe Position
         sectionNamePosition = prettyFieldPosition field
@@ -380,7 +380,7 @@ exactRenderPrettyFieldLine
   -> (PrettyFieldPositionContext Trivia, PP.Doc)
 exactRenderPrettyFieldLine (lastField, lastFieldLine) fieldLine@(PrettyFieldLine _ doc) =
   let lastPosition :: Maybe Position
-      lastPosition = (prettyFieldLinePosition =<< lastFieldLine) <|> prettyFieldPosition lastField
+      lastPosition = (prettyFieldLinePosition =<< lastFieldLine) <|> (prettyFieldPosition =<< lastField)
 
       fieldLinePosition :: Maybe Position
       fieldLinePosition = prettyFieldLinePosition fieldLine
