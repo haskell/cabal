@@ -96,12 +96,9 @@ exactShowFields = showFields' getPos fixupPosition
 
     fixupPosition :: Maybe Position -> Maybe Position -> PP.Doc -> PP.Doc
     fixupPosition prevPos curPos doc =
-      let mDiff = diffPositions <$> curPos <*> prevPos
-          diffPositions (Position rx cx) (Position ry cy) = (rx - ry, if rx /= ry then cx else 0)
-
-          patch = foldr (.) id $ case (curPos, prevPos) of
+      let patch = foldr (.) id $ case (curPos, prevPos) of
             ( Just (Position rx cx)
-              , Just (Position ry cy)
+              , Just (Position ry _cy)
               ) ->
                 let (rDiff, cDiff) = (rx - ry, if rx /= ry then cx else 0)
                 in  replicate (rDiff - 1) (PP.text "" PP.$$) ++ replicate (cDiff - 1) (PP.text " " <>)
@@ -182,8 +179,8 @@ flattenBlocks = go0
           | otherwise = id
 
 renderField :: forall ann. Opts ann -> Maybe Position -> PrettyField ann -> (Maybe Position, Block)
-renderField opts@(Opts getPos postWithPrev) prevPos (PrettyField ann name fieldLines) =
-  (fieldLinesLastPos, Block NoMargin after content)
+renderField opts@(Opts getPos fixupPosition) prevPos (PrettyField ann name fieldLines) =
+  (fieldLinesLastPos, Block NoMargin NoMargin content)
   where
     fieldLinesPos :: [Maybe Position]
     fieldLinesPos = map (fieldLinePosition getPos . prettyFieldLineAnn) fieldLines
@@ -203,12 +200,9 @@ renderField opts@(Opts getPos postWithPrev) prevPos (PrettyField ann name fieldL
       where
         startPos = foldl (<|>) Nothing (fieldPosition getPos . prettyFieldLineAnn <$> fieldLines)
 
-    post = postWithPrev prevPos
-    content = lines'
-
     -- TODO(leana8959): use the pretty library to render the field names
-    (lines', after) = case fieldLines' of
-      [] -> ([name' ++ ":"], NoMargin)
+    content = case fieldLines' of
+      [] -> [name' ++ ":"]
       _ ->
         let selfPos = fieldPosition getPos ann
             rowDiff = liftA2 subtractRow selfPos prevPos
@@ -217,11 +211,9 @@ renderField opts@(Opts getPos postWithPrev) prevPos (PrettyField ann name fieldL
             maybeNewlines = mconcat $ replicate (fromMaybe 0 rowDiff) ["\n"]
          in -- The POSIX definition of a line always ends with a newline
             -- We patch up the last newline
-            ( maybeNewlines ++ (name' ++ ":") : "\n" : fieldLines' ++ ["\n"]
-            , Margin
-            )
+            maybeNewlines ++ (name' ++ ":") : "\n" : fieldLines' ++ ["\n"]
     name' = fromUTF8BS name
-renderField opts@(Opts getPos postWithPrev) prevPos (PrettySection ann name args fields) =
+renderField opts@(Opts getPos fixupPosition) prevPos (PrettySection ann name args fields) =
   (lastPos,) $
     Block Margin Margin $ -- TODO(leana8959): fix indentation with exact positioning
       [PP.render $ PP.hsep $ PP.text (fromUTF8BS name) : args]
@@ -238,8 +230,6 @@ renderField opts@(Opts getPos postWithPrev) prevPos (PrettySection ann name args
 
         flPos :: PrettyFieldLine ann -> [Maybe Position]
         flPos = pure . fieldLinePosition getPos . prettyFieldLineAnn
-
-    post = postWithPrev prevPos
 renderField _ prevPos PrettyEmpty = (prevPos, Block NoMargin NoMargin mempty)
 
 -- |
