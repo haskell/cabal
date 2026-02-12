@@ -97,20 +97,20 @@ exactShowFields = showFields' getPos fixupPosition
     fixupPosition :: Maybe Position -> Maybe Position -> PP.Doc -> PP.Doc
     fixupPosition prevPos curPos doc =
       let patch = foldr (.) id $ case (curPos, prevPos) of
-            ( Just (Position rx cx)
-              , Just (Position ry _cy)
-              ) ->
+            -- TODO(leana8959): make indentation modification apply to more than one lines
+            (Just (Position rx cx), Just (Position ry _cy)) ->
                 let (rDiff, cDiff) = (rx - ry, if rx /= ry then cx else 0)
                 in  replicate (rDiff - 1) (PP.text "" PP.$$) ++ replicate (cDiff - 1) (PP.text " " <>)
 
-            ( Nothing
-              , Just (Position _ cy)
-              ) ->
-                -- No previous position to calculate line jump, but still compute column offset
-                replicate (cy - 1) (PP.text " " <>)
+            -- No previous position to calculate line jump, but still compute column offset
+            (Nothing, Just (Position _ cy)) -> replicate (cy - 1) (PP.text " " <>)
 
-            _ ->
-                [(PP.text "    " <>)] -- default to indent of 4
+            -- Has previous position but current entry has no position
+            -- Probably inserted programmatically, default to indent of 4
+            (Just _, Nothing) -> [(PP.text "    " <>)]
+
+            -- Prepend space purely for readability
+            (Nothing, Nothing) -> [(PP.text " " <>)]
        in patch doc
 
 data PositionFromPrettyField ann = PositionFromPrettyField
@@ -213,7 +213,7 @@ renderField opts@(Opts getPos fixupPosition) prevPos (PrettyField ann name field
             -- We patch up the last newline
             -- FIXME(leana8959): the newline after name is artificial
             -- It should depend on the original cabal source file
-            maybeNewlines ++ (name' ++ ":") : "\n" : fieldLines' ++ ["\n"]
+            maybeNewlines ++ [name' ++ ":"] ++ fieldLines' ++ ["\n"]
     name' = fromUTF8BS name
 renderField opts@(Opts getPos fixupPosition) prevPos (PrettySection ann name args fields) =
   (lastPos,) $
