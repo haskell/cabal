@@ -489,7 +489,7 @@ fieldGrammarRoundTripTest gParsec gPretty fp = testCase fp $ do
 
   let prettyFields =
           prettyAnnotatedFieldGrammar cabalSpecLatest trivia gPretty parsed
-  let y = BS8.pack (showFieldsWithTrivia prettyFields)
+  let y = BS8.pack (exactShowFields prettyFields)
 
 {- FOURMOLU_DISABLE -}
   unless (x == y) $
@@ -571,7 +571,7 @@ fieldGrammarTransformTest gParse gPrint f fp suffix = ediffGolden goldenTest fp 
         Right ok -> pure (fmap f ok)
 
   let prettyFields = prettyAnnotatedFieldGrammar cabalSpecLatest trivia gPrint parsed
-      renderedFields = BS8.pack (showFieldsWithTrivia prettyFields)
+      renderedFields = BS8.pack (exactShowFields prettyFields)
 
   pure renderedFields
   where

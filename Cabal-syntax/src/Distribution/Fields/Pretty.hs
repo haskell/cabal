@@ -16,7 +16,7 @@ module Distribution.Fields.Pretty
   , PrettyFieldLine (..)
   , showFields
   , showFields'
-  , showFieldsWithTrivia
+  , exactShowFields
 
     -- * Transformation from 'P.Field'
   , fromParsecFields
@@ -88,8 +88,8 @@ showFields = showFields' getPos (const $ const id)
   where
     getPos = PositionFromPrettyField (const Nothing) (const Nothing)
 
-showFieldsWithTrivia :: [PrettyField Trivia] -> String
-showFieldsWithTrivia = showFields' getPos fixupPosition
+exactShowFields :: [PrettyField Trivia] -> String
+exactShowFields = showFields' getPos fixupPosition
   where
     getPos :: PositionFromPrettyField Trivia
     getPos = PositionFromPrettyField atFieldPosition atPosition

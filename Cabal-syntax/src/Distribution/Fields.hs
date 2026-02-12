@@ -41,7 +41,7 @@ module Distribution.Fields
   , PrettyField (..)
   , showFields
   , showFields'
-  , showFieldsWithTrivia
+  , exactShowFields
 
     -- ** Transformation from Field
   , genericFromParsecFields
