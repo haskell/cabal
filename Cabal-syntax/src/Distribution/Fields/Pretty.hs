@@ -95,29 +95,9 @@ showFields = showFields' getPos (const $ const id)
     getPos = PositionFromPrettyField (const Nothing) (const Nothing)
 
 exactShowFields :: [PrettyField Trivia] -> String
-exactShowFields = showFields' getPos fixupPosition
+exactShowFields = PP.renderStyle PP.style . mconcat . snd . exactRenderPrettyFields ctx0
   where
-    getPos :: PositionFromPrettyField Trivia
-    getPos = PositionFromPrettyField atFieldPosition atPosition
-
-    fixupPosition :: Maybe Position -> Maybe Position -> PP.Doc -> PP.Doc
-    fixupPosition prevPos curPos doc =
-      let patch = foldr (.) id $ case (curPos, prevPos) of
-            -- TODO(leana8959): make indentation modification apply to more than one lines
-            (Just (Position rx cx), Just (Position ry _cy)) ->
-                let (rDiff, cDiff) = (rx - ry, if rx /= ry then cx else 0)
-                in  replicate (rDiff - 1) (PP.text "" PP.$$) ++ replicate (cDiff - 1) (PP.text " " <>)
-
-            -- No previous position to calculate line jump, but still compute column offset
-            (Nothing, Just (Position _ cy)) -> replicate (cy - 1) (PP.text " " <>)
-
-            -- Has previous position but current entry has no position
-            -- Probably inserted programmatically, default to indent of 4
-            (Just _, Nothing) -> [(PP.text "    " <>)]
-
-            -- Prepend space purely for readability
-            (Nothing, Nothing) -> [(PP.text " " <>)]
-       in patch doc
+    ctx0 = (Nothing, Nothing)
 
 data PositionFromPrettyField ann = PositionFromPrettyField
   { fieldPosition :: ann -> Maybe Position
