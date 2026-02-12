@@ -1,25 +1,21 @@
 import Test.Cabal.Prelude
 import Data.List (isInfixOf)
 
-main = cabalTest . recordMode RecordMarked $ do
-  liftIO $ skipIfWindows "I'm seeing extra newlines in the output on Windows"
-  let log = recordHeader . pure
+-- output contains filepaths into /tmp, so we only match parts of the output
+main = cabalTest . recordMode DoNotRecord $ do
+      liftIO $ skipIfWindows "\\r\\n confused with \\n"
 
-  -- If there is only one package in the project then the target could be inferred.
-  log "checking repl command with a 'cabal.project' and no project options"
-  defaultProject <- cabal' "repl" ["pkg-one"]
-  assertOutputContains "the following will be built" defaultProject
-  assertOutputContains "pkg-one-0.1" defaultProject
-  -- Foo is a module in one of the packages pkg-one-0.1
-  -- assertOutputContains "Compiling Foo" defaultProject
-  assertOutputContains "Compiling Bar" defaultProject
+      let msg = unlines
+            [ "cabal project has multiple sources for pkg-one-0.1:"
+            , "  .*/pkg-one"
+            , "  .*/pkg-two"
+            , "the choice of source that will be used is undefined."
+            ]
 
-  log "checking repl command with the 'all' target"
-  allTarget <- cabal' "repl" ["all"]
-  assertOutputContains "the following will be built" allTarget
-  assertOutputContains "pkg-one-0.1" allTarget
-  -- Foo is a module in one of the packages pkg-one-0.1
-  -- assertOutputContains "Compiling Foo" allTarget
-  assertOutputContains "Compiling Bar" allTarget
+      normal <- cabal' "configure" ["-v1", "pkg-one"]
+      assertOutputMatches msg normal
 
-  return ()
+      quiet <- cabal' "configure" ["-v0", "pkg-one"]
+      assertOutputDoesNotMatch msg quiet
+
+      return ()
