@@ -83,13 +83,13 @@ prettyFieldAnn _ = Nothing
 -- and properly prefixes (with @--@) to count as comments.
 -- This unsafety is left in place so one could generate empty lines
 -- between comment lines.
-showFields :: (ann -> CommentPosition) -> [PrettyField ann] -> String
-showFields rann = showFields' rann getPos (const $ const id)
+showFields :: [PrettyField ann] -> String
+showFields = showFields' getPos (const $ const id)
   where
     getPos = PositionFromPrettyField (const Nothing) (const Nothing)
 
 showFieldsWithTrivia :: [PrettyField Trivia] -> String
-showFieldsWithTrivia = showFields' (const NoComment) getPos fixupPosition
+showFieldsWithTrivia = showFields' getPos fixupPosition
   where
     getPos :: PositionFromPrettyField Trivia
     getPos = PositionFromPrettyField atFieldPosition atPosition
@@ -115,27 +115,24 @@ data PositionFromPrettyField ann = PositionFromPrettyField
 
 -- | 'showFields' with user specified indentation.
 showFields'
-  :: (ann -> CommentPosition)
-  -- ^ Convert an annotation to lined to precede the field or section.
-  -> PositionFromPrettyField ann
+  :: PositionFromPrettyField ann
   -- ^ Extract the position information from the fields
   -> (Maybe Position -> ann -> PP.Doc -> PP.Doc)
   -- ^ Post-process non-annotation produced lines.
   -> [PrettyField ann]
   -- ^ Fields/sections to show.
   -> String
-showFields' rann getPos post fs = concat $ renderFields startPos (Opts rann getPos post) $ fs
+showFields' getPos post fs = concat $ renderFields startPos (Opts getPos post) $ fs
   where
     startPos = foldl (<|>) Nothing ((fieldPosition getPos <=< prettyFieldAnn) <$> fs)
 
 data Opts ann = Opts
-  { _optAnnotation :: ann -> CommentPosition
-  , _optPosition :: PositionFromPrettyField ann
+  { _optPosition :: PositionFromPrettyField ann
   , _optPostprocess :: Maybe Position -> ann -> PP.Doc -> PP.Doc
   }
 
 renderFields :: forall ann. Maybe Position -> Opts ann -> [PrettyField ann] -> [String]
-renderFields startPos opts@(Opts _ getPos _) fields = flattenBlocks blocks
+renderFields startPos opts@(Opts getPos _) fields = flattenBlocks blocks
   where
     len = maxNameLength 0 fields
 
@@ -184,8 +181,8 @@ flattenBlocks = go0
           | otherwise = id
 
 renderField :: forall ann. Opts ann -> Maybe Position -> Int -> PrettyField ann -> (Maybe Position, Block)
-renderField opts@(Opts rann getPos postWithPrev) prevPos fw (PrettyField ann name fieldLines) =
-  (fieldLinesLastPos, Block before after content)
+renderField opts@(Opts getPos postWithPrev) prevPos fw (PrettyField ann name fieldLines) =
+  (fieldLinesLastPos, Block NoMargin after content)
   where
     fieldLinesPos :: [Maybe Position]
     fieldLinesPos = map (fieldLinePosition getPos . prettyFieldLineAnn) fieldLines
@@ -206,16 +203,7 @@ renderField opts@(Opts rann getPos postWithPrev) prevPos fw (PrettyField ann nam
         startPos = foldl (<|>) Nothing (fieldPosition getPos . prettyFieldLineAnn <$> fieldLines)
 
     post = postWithPrev prevPos
-    content = case comments of
-      CommentBefore cs -> cs ++ lines'
-      CommentAfter cs -> lines' ++ cs
-      NoComment -> lines'
-    comments = rann ann
-    before = case comments of
-      CommentBefore [] -> NoMargin
-      CommentAfter [] -> NoMargin
-      NoComment -> NoMargin
-      _ -> Margin
+    content = lines'
 
     -- TODO(leana8959): use the pretty library to render the field names
     (lines', after) = case fieldLines' of
@@ -232,10 +220,10 @@ renderField opts@(Opts rann getPos postWithPrev) prevPos fw (PrettyField ann nam
             , Margin
             )
     name' = fromUTF8BS name
-renderField opts@(Opts rann getPos postWithPrev) prevPos _ (PrettySection ann name args fields) =
+renderField opts@(Opts getPos postWithPrev) prevPos _ (PrettySection ann name args fields) =
   (lastPos,) $
     Block Margin Margin $ -- TODO(leana8959): fix indentation with exact positioning
-      attachComments [PP.render $ PP.hsep $ PP.text (fromUTF8BS name) : args]
+      [PP.render $ PP.hsep $ PP.text (fromUTF8BS name) : args]
         ++ renderFields (fieldLinePosition getPos ann) opts fields
   where
     lastPos :: Maybe Position
@@ -251,16 +239,12 @@ renderField opts@(Opts rann getPos postWithPrev) prevPos _ (PrettySection ann na
         flPos = pure . fieldLinePosition getPos . prettyFieldLineAnn
 
     post = postWithPrev prevPos
-    attachComments content = case rann ann of
-      CommentBefore cs -> cs ++ content
-      CommentAfter cs -> content ++ cs
-      NoComment -> content
 renderField _ prevPos _ PrettyEmpty = (prevPos, Block NoMargin NoMargin mempty)
 
 -- |
 -- Invariant: a PrettyFieldLine is never more than one line
 renderPrettyFieldLine :: Opts ann -> Maybe Position -> Int -> PrettyFieldLine ann -> String
-renderPrettyFieldLine (Opts rann _ postWithPrevPos) prevPos fw (PrettyFieldLine ann doc) =
+renderPrettyFieldLine (Opts _ postWithPrevPos) prevPos fw (PrettyFieldLine ann doc) =
   let postProcess = postWithPrevPos prevPos
       narrowStyle :: PP.Style
       narrowStyle = PP.style{PP.lineLength = PP.lineLength PP.style - fw}
