@@ -34,12 +34,12 @@ import Prelude ()
 import Distribution.Types.Annotation
 
 import Distribution.Fields.Field (FieldName)
-import Distribution.Utils.Generic (fromUTF8BS)
+import Distribution.Utils.Generic (fromUTF8BS, safeHead)
 
 import qualified Distribution.Fields.Parser as P
 
 import qualified Data.ByteString as BS
-import qualified Data.List as List (tail)
+import qualified Data.List as List (tail, sortOn)
 import qualified Text.PrettyPrint as PP
 
 import Debug.Pretty.Simple
@@ -66,6 +66,9 @@ data PrettyFieldLine ann = PrettyFieldLine ann PP.Doc
 prettyFieldLineAnn :: PrettyFieldLine ann -> ann
 prettyFieldLineAnn (PrettyFieldLine ann _) = ann
 
+prettyFieldLinePosition :: PrettyFieldLine Trivia -> Maybe Position
+prettyFieldLinePosition = atPosition . prettyFieldLineAnn
+
 data PrettyField ann
   = PrettyField ann FieldName [PrettyFieldLine ann]
   | PrettySection ann FieldName [PP.Doc] [PrettyField ann]
@@ -76,6 +79,9 @@ prettyFieldAnn :: PrettyField ann -> Maybe ann
 prettyFieldAnn (PrettyField ann _ _) = Just ann
 prettyFieldAnn (PrettySection ann _ _ _) = Just ann
 prettyFieldAnn _ = Nothing
+
+prettyFieldPosition :: PrettyField Trivia -> Maybe Position
+prettyFieldPosition = atFieldPosition <=< prettyFieldAnn
 
 -- | Prettyprint a list of fields.
 --
@@ -302,44 +308,110 @@ type PrettyFieldPositionContext ann =
   )
 
 preprocessPrettyFields
-  :: PrettyFieldPositionContext ann
-  -> [PrettyField ann]
-  -> (PrettyFieldPositionContext ann, [PrettyField ann])
-preprocessPrettyFields ctx0 = fmap reverse . foldl go state0
+  :: PrettyFieldPositionContext Trivia
+  -> [PrettyField Trivia]
+  -> (PrettyFieldPositionContext Trivia, [PP.Doc])
+preprocessPrettyFields ctx0 = fmap reverse . foldl go state0 . sortPrettyFields
   where
+    state0 :: (PrettyFieldPositionContext Trivia, [PP.Doc])
     state0 = (ctx0, [])
+
     go (ctx, processed) field =
       let (ctx', field') = preprocessPrettyField ctx field
       in  (ctx', field' : processed)
 
 preprocessPrettyField
-  :: PrettyFieldPositionContext ann
-  -> PrettyField ann
-  -> (PrettyFieldPositionContext ann, PrettyField ann)
+  :: PrettyFieldPositionContext Trivia
+  -> PrettyField Trivia
+  -> (PrettyFieldPositionContext Trivia, PP.Doc)
 preprocessPrettyField ctx0@(lastField, lastFieldLine) field = case field of
-  -- ignore completely
-  -- TODO(leana8959): project to a different type to show we handled this case and we discarded this possibility.
-  PrettyEmpty -> (ctx0, field)
+  -- Absorb empty
+  PrettyEmpty -> (ctx0, mempty)
   PrettyField ann fieldName fieldLines ->
-    let (ctx', fieldLines') = preprocessPrettyFieldLines (field, lastFieldLine) fieldLines
-    in  (ctx', PrettyField ann fieldName fieldLines')
+    let ctx' :: PrettyFieldPositionContext Trivia
+        fieldLines' :: [PP.Doc]
+        (ctx', fieldLines') = preprocessPrettyFieldLines (field, lastFieldLine) fieldLines
+
+        fieldNamePosition :: Maybe Position
+        fieldNamePosition = prettyFieldPosition field
+
+        fieldLinesFirstPos :: Maybe Position
+        fieldLinesFirstPos = prettyFieldLinePosition <=< safeHead $ fieldLines
+
+        -- The fieldLines are all patched and we only need to concat them together
+        fieldLinesFinal :: PP.Doc
+        fieldLinesFinal = fixupPosition fieldNamePosition fieldLinesFirstPos
+                          $ mconcat fieldLines'
+
+    in  (ctx', fieldLinesFinal)
   PrettySection ann fieldName sectionArgs fields ->
-    let (ctx', fields') = preprocessPrettyFields (field, lastFieldLine) fields
-    in  (ctx', PrettySection ann fieldName sectionArgs fields')
+    let ctx' :: PrettyFieldPositionContext Trivia
+        fields' :: [PP.Doc]
+        (ctx', fields') = preprocessPrettyFields (field, lastFieldLine) fields
+
+        sectionNamePosition :: Maybe Position
+        sectionNamePosition = prettyFieldPosition field
+
+        fieldsFirstPosition :: Maybe Position
+        fieldsFirstPosition = prettyFieldPosition <=< safeHead $ fields
+
+        -- TODO(leana8959): section args are currently not exactly positioned
+        fieldsFinal :: PP.Doc
+        fieldsFinal = fixupPosition sectionNamePosition fieldsFirstPosition
+                      $ mconcat fields'
+    in  (ctx', fieldsFinal)
 
 preprocessPrettyFieldLines
-  :: PrettyFieldPositionContext ann
-  -> [PrettyFieldLine ann]
-  -> (PrettyFieldPositionContext ann, [PrettyFieldLine ann])
-preprocessPrettyFieldLines ctx0 = fmap reverse . foldl go state0
+  :: PrettyFieldPositionContext Trivia
+  -> [PrettyFieldLine Trivia]
+  -> (PrettyFieldPositionContext Trivia, [PP.Doc])
+preprocessPrettyFieldLines ctx0 = fmap reverse . foldl go state0 . sortPrettyFieldLines
   where
+    state0 :: (PrettyFieldPositionContext Trivia, [PP.Doc])
     state0 = (ctx0, [])
+
     go (ctx, processed) fieldLine =
       let (ctx', fieldLine') = preprocessPrettyFieldLine ctx fieldLine
       in  (ctx', fieldLine' : processed)
 
 preprocessPrettyFieldLine
-  :: PrettyFieldPositionContext ann
-  -> PrettyFieldLine ann
-  -> (PrettyFieldPositionContext ann, PrettyFieldLine ann)
-preprocessPrettyFieldLine (lastField, lastFieldLine) fieldLine = undefined
+  :: PrettyFieldPositionContext Trivia
+  -> PrettyFieldLine Trivia
+  -> (PrettyFieldPositionContext Trivia, PP.Doc)
+preprocessPrettyFieldLine (lastField, lastFieldLine) fieldLine@(PrettyFieldLine _ doc) =
+  let lastPosition :: Maybe Position
+      lastPosition = (prettyFieldLinePosition =<< lastFieldLine) <|> prettyFieldPosition lastField
+
+      fieldLinePosition :: Maybe Position
+      fieldLinePosition = prettyFieldLinePosition fieldLine
+
+      ctx' :: PrettyFieldPositionContext Trivia
+      ctx' = (lastField, Just fieldLine)
+
+      fieldLine' :: PP.Doc
+      fieldLine' = fixupPosition lastPosition fieldLinePosition doc
+  in  (ctx', fieldLine')
+
+sortPrettyFields :: [PrettyField Trivia] -> [PrettyField Trivia]
+sortPrettyFields = List.sortOn $ fromMaybe zeroPos . prettyFieldPosition
+
+sortPrettyFieldLines :: [PrettyFieldLine Trivia] -> [PrettyFieldLine Trivia]
+sortPrettyFieldLines = List.sortOn $ fromMaybe zeroPos . prettyFieldLinePosition
+
+fixupPosition :: Maybe Position -> Maybe Position -> PP.Doc -> PP.Doc
+fixupPosition prevPos curPos =
+  foldr (.) id $ case (curPos, prevPos) of
+    -- TODO(leana8959): make indentation modification apply to more than one lines
+    (Just (Position rx cx), Just (Position ry _cy)) ->
+        let (rDiff, cDiff) = (rx - ry, if rx /= ry then cx else 0)
+        in  replicate (rDiff - 1) (PP.text "" PP.$$) ++ replicate (cDiff - 1) (PP.text " " <>)
+
+    -- No previous position to calculate line jump, but still compute column offset
+    (Nothing, Just (Position _ cy)) -> replicate (cy - 1) (PP.text " " <>)
+
+    -- Has previous position but current entry has no position
+    -- Probably inserted programmatically, default to indent of 4
+    (Just _, Nothing) -> [(PP.text "    " <>)]
+
+    -- Prepend space purely for readability
+    (Nothing, Nothing) -> [(PP.text " " <>)]
