@@ -304,7 +304,7 @@ exactRenderPrettyField
   :: PrettyFieldPositionContext Trivia
   -> PrettyField Trivia
   -> (PrettyFieldPositionContext Trivia, PP.Doc)
-exactRenderPrettyField ctx0@(lastField, lastFieldLine) field = case field of
+exactRenderPrettyField ctx0@(lastField, lastFieldLine) field = (\x -> pTrace ("pf = " <> show (field, snd x) <> "\n") x) $ case field of
   -- Absorb empty
   PrettyEmpty -> (ctx0, mempty)
   PrettyField ann fieldName fieldLines ->
@@ -323,7 +323,13 @@ exactRenderPrettyField ctx0@(lastField, lastFieldLine) field = case field of
         fieldLinesFinal = fixupPosition fieldNamePosition fieldLinesFirstPos
                           $ mconcat fieldLines'
 
-    in  (ctx', fieldLinesFinal)
+        lastPosition :: Maybe Position
+        lastPosition = (prettyFieldLinePosition =<< lastFieldLine) <|> (prettyFieldPosition =<< lastField)
+
+        docOut :: PP.Doc
+        docOut = fixupPosition lastPosition fieldNamePosition
+                $ PP.text (fromUTF8BS fieldName <> ":") <> fieldLinesFinal
+    in  (ctx', docOut)
   PrettySection ann fieldName sectionArgs fields ->
     let ctx' :: PrettyFieldPositionContext Trivia
         fields' :: [PP.Doc]
@@ -339,7 +345,7 @@ exactRenderPrettyField ctx0@(lastField, lastFieldLine) field = case field of
         fieldsFinal :: PP.Doc
         fieldsFinal = fixupPosition sectionNamePosition fieldsFirstPosition
                       $ mconcat fields'
-    in  (ctx', fieldsFinal)
+    in  (ctx', PP.text (fromUTF8BS fieldName) <> PP.hsep sectionArgs <> PP.text ":" <> fieldsFinal)
 
 exactRenderPrettyFieldLines
   :: PrettyFieldPositionContext Trivia
@@ -359,6 +365,7 @@ exactRenderPrettyFieldLine
   -> PrettyFieldLine Trivia
   -> (PrettyFieldPositionContext Trivia, PP.Doc)
 exactRenderPrettyFieldLine (lastField, lastFieldLine) fieldLine@(PrettyFieldLine _ doc) =
+  (\x -> pTrace ("pfl = " <> show (fieldLine, snd x) <> "\n") x) $
   let lastPosition :: Maybe Position
       lastPosition = (prettyFieldLinePosition =<< lastFieldLine) <|> (prettyFieldPosition =<< lastField)
 
