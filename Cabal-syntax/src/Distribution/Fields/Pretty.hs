@@ -211,6 +211,8 @@ renderField opts@(Opts getPos fixupPosition) prevPos (PrettyField ann name field
             maybeNewlines = mconcat $ replicate (fromMaybe 0 rowDiff) ["\n"]
          in -- The POSIX definition of a line always ends with a newline
             -- We patch up the last newline
+            -- FIXME(leana8959): the newline after name is artificial
+            -- It should depend on the original cabal source file
             maybeNewlines ++ (name' ++ ":") : "\n" : fieldLines' ++ ["\n"]
     name' = fromUTF8BS name
 renderField opts@(Opts getPos fixupPosition) prevPos (PrettySection ann name args fields) =
