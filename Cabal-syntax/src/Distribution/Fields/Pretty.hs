@@ -307,30 +307,30 @@ type PrettyFieldPositionContext ann =
   , Maybe (PrettyFieldLine ann)
   )
 
-preprocessPrettyFields
+exactRenderPrettyFields
   :: PrettyFieldPositionContext Trivia
   -> [PrettyField Trivia]
   -> (PrettyFieldPositionContext Trivia, [PP.Doc])
-preprocessPrettyFields ctx0 = fmap reverse . foldl go state0 . sortPrettyFields
+exactRenderPrettyFields ctx0 = fmap reverse . foldl go state0 . sortPrettyFields
   where
     state0 :: (PrettyFieldPositionContext Trivia, [PP.Doc])
     state0 = (ctx0, [])
 
     go (ctx, processed) field =
-      let (ctx', field') = preprocessPrettyField ctx field
+      let (ctx', field') = exactRenderPrettyField ctx field
       in  (ctx', field' : processed)
 
-preprocessPrettyField
+exactRenderPrettyField
   :: PrettyFieldPositionContext Trivia
   -> PrettyField Trivia
   -> (PrettyFieldPositionContext Trivia, PP.Doc)
-preprocessPrettyField ctx0@(lastField, lastFieldLine) field = case field of
+exactRenderPrettyField ctx0@(lastField, lastFieldLine) field = case field of
   -- Absorb empty
   PrettyEmpty -> (ctx0, mempty)
   PrettyField ann fieldName fieldLines ->
     let ctx' :: PrettyFieldPositionContext Trivia
         fieldLines' :: [PP.Doc]
-        (ctx', fieldLines') = preprocessPrettyFieldLines (field, lastFieldLine) fieldLines
+        (ctx', fieldLines') = exactRenderPrettyFieldLines (field, lastFieldLine) fieldLines
 
         fieldNamePosition :: Maybe Position
         fieldNamePosition = prettyFieldPosition field
@@ -347,7 +347,7 @@ preprocessPrettyField ctx0@(lastField, lastFieldLine) field = case field of
   PrettySection ann fieldName sectionArgs fields ->
     let ctx' :: PrettyFieldPositionContext Trivia
         fields' :: [PP.Doc]
-        (ctx', fields') = preprocessPrettyFields (field, lastFieldLine) fields
+        (ctx', fields') = exactRenderPrettyFields (field, lastFieldLine) fields
 
         sectionNamePosition :: Maybe Position
         sectionNamePosition = prettyFieldPosition field
@@ -361,24 +361,24 @@ preprocessPrettyField ctx0@(lastField, lastFieldLine) field = case field of
                       $ mconcat fields'
     in  (ctx', fieldsFinal)
 
-preprocessPrettyFieldLines
+exactRenderPrettyFieldLines
   :: PrettyFieldPositionContext Trivia
   -> [PrettyFieldLine Trivia]
   -> (PrettyFieldPositionContext Trivia, [PP.Doc])
-preprocessPrettyFieldLines ctx0 = fmap reverse . foldl go state0 . sortPrettyFieldLines
+exactRenderPrettyFieldLines ctx0 = fmap reverse . foldl go state0 . sortPrettyFieldLines
   where
     state0 :: (PrettyFieldPositionContext Trivia, [PP.Doc])
     state0 = (ctx0, [])
 
     go (ctx, processed) fieldLine =
-      let (ctx', fieldLine') = preprocessPrettyFieldLine ctx fieldLine
+      let (ctx', fieldLine') = exactRenderPrettyFieldLine ctx fieldLine
       in  (ctx', fieldLine' : processed)
 
-preprocessPrettyFieldLine
+exactRenderPrettyFieldLine
   :: PrettyFieldPositionContext Trivia
   -> PrettyFieldLine Trivia
   -> (PrettyFieldPositionContext Trivia, PP.Doc)
-preprocessPrettyFieldLine (lastField, lastFieldLine) fieldLine@(PrettyFieldLine _ doc) =
+exactRenderPrettyFieldLine (lastField, lastFieldLine) fieldLine@(PrettyFieldLine _ doc) =
   let lastPosition :: Maybe Position
       lastPosition = (prettyFieldLinePosition =<< lastFieldLine) <|> prettyFieldPosition lastField
 
