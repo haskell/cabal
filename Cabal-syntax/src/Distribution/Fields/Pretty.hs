@@ -94,18 +94,26 @@ exactShowFields = showFields' getPos fixupPosition
     getPos :: PositionFromPrettyField Trivia
     getPos = PositionFromPrettyField atFieldPosition atPosition
 
-    fixupPosition :: Maybe Position -> Trivia -> PP.Doc -> PP.Doc
-    fixupPosition prevPos trivia doc =
-      let mDiff = liftA2 diffPositions (atPosition trivia) prevPos
+    fixupPosition :: Maybe Position -> Maybe Position -> PP.Doc -> PP.Doc
+    fixupPosition prevPos curPos doc =
+      let mDiff = diffPositions <$> curPos <*> prevPos
           diffPositions (Position rx cx) (Position ry cy) = (rx - ry, if rx /= ry then cx else 0)
 
-          patch = foldr (.) id $ case mDiff of
-            Just (rDiff, cDiff) ->
-              replicate (rDiff - 1) (PP.text "" PP.$$) ++ replicate (cDiff - 1) (PP.text " " <>)
-            Nothing -> case atPosition trivia of
-              -- No previous position to calculate line jump, but still compute column offset
-              Just (Position _ col) -> replicate (col - 1) (PP.text " " <>)
-              Nothing -> [(PP.text "    " <>)] -- default to indent of 4
+          patch = foldr (.) id $ case (curPos, prevPos) of
+            ( Just (Position rx cx)
+              , Just (Position ry cy)
+              ) ->
+                let (rDiff, cDiff) = (rx - ry, if rx /= ry then cx else 0)
+                in  replicate (rDiff - 1) (PP.text "" PP.$$) ++ replicate (cDiff - 1) (PP.text " " <>)
+
+            ( Nothing
+              , Just (Position _ cy)
+              ) ->
+                -- No previous position to calculate line jump, but still compute column offset
+                replicate (cy - 1) (PP.text " " <>)
+
+            _ ->
+                [(PP.text "    " <>)] -- default to indent of 4
        in patch doc
 
 data PositionFromPrettyField ann = PositionFromPrettyField
@@ -117,7 +125,7 @@ data PositionFromPrettyField ann = PositionFromPrettyField
 showFields'
   :: PositionFromPrettyField ann
   -- ^ Extract the position information from the fields
-  -> (Maybe Position -> ann -> PP.Doc -> PP.Doc)
+  -> (Maybe Position -> Maybe Position -> PP.Doc -> PP.Doc)
   -- ^ Post-process non-annotation produced lines.
   -> [PrettyField ann]
   -- ^ Fields/sections to show.
@@ -128,7 +136,7 @@ showFields' getPos post fs = concat $ renderFields startPos (Opts getPos post) $
 
 data Opts ann = Opts
   { _optPosition :: PositionFromPrettyField ann
-  , _optPostprocess :: Maybe Position -> ann -> PP.Doc -> PP.Doc
+  , _optPostprocess :: Maybe Position -> Maybe Position -> PP.Doc -> PP.Doc
   }
 
 renderFields :: forall ann. Maybe Position -> Opts ann -> [PrettyField ann] -> [String]
@@ -244,12 +252,12 @@ renderField _ prevPos _ PrettyEmpty = (prevPos, Block NoMargin NoMargin mempty)
 -- |
 -- Invariant: a PrettyFieldLine is never more than one line
 renderPrettyFieldLine :: Opts ann -> Maybe Position -> Int -> PrettyFieldLine ann -> String
-renderPrettyFieldLine (Opts _ postWithPrevPos) prevPos fw (PrettyFieldLine ann doc) =
-  let postProcess = postWithPrevPos prevPos
-      narrowStyle :: PP.Style
+renderPrettyFieldLine (Opts getPos fixupPosition) prevPos fw (PrettyFieldLine ann doc) =
+  let narrowStyle :: PP.Style
       narrowStyle = PP.style{PP.lineLength = PP.lineLength PP.style - fw}
+      curPos = fieldLinePosition getPos $ ann
    in PP.renderStyle narrowStyle $
-        postProcess ann $
+        fixupPosition prevPos curPos $
           doc
 
 -------------------------------------------------------------------------------
