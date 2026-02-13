@@ -984,6 +984,7 @@ convertToLegacySharedConfig
       globalFlags =
         GlobalFlags
           { globalVersion = mempty
+          , globalFullVersion = mempty
           , globalNumericVersion = mempty
           , globalConfigFile = projectConfigConfigFile
           , globalConstraintsFile = mempty

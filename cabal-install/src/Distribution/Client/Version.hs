@@ -9,7 +9,11 @@ module Distribution.Client.Version
   , cabalInstallGitInfo
   ) where
 
+import Data.List (intercalate)
+import qualified Data.Version as DV
+import qualified Distribution.Compat.SysInfo as SIC
 import Distribution.Version
+import qualified System.Info as SI
 
 import qualified Paths_cabal_install as PackageInfo
 
@@ -27,6 +31,20 @@ import GitHash
 -- This value determines the output of `cabal-install --version`.
 cabalInstallVersion :: Version
 cabalInstallVersion = mkVersion' PackageInfo.version
+
+-- |
+-- `cabal-install` compiler information.
+cabalInstallCompilerInfo :: String
+cabalInstallCompilerInfo =
+  concat
+    [ SI.compilerName
+    , " "
+    , intercalate "." (map show (DV.versionBranch SIC.fullCompilerVersion))
+    , " on "
+    , SI.os
+    , " "
+    , SI.arch
+    ]
 
 -- |
 -- `cabal-install` Git information. Only filled in if built in a Git tree in
