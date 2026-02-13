@@ -112,7 +112,7 @@ hscolourCommand =
         "Generate HsColour colourised code, in HTML format."
     , commandDescription = Just (\_ -> "Requires the hscolour program.\n")
     , commandNotes = Just $ \_ ->
-        "Deprecated in favour of 'cabal haddock --hyperlink-source'."
+        "Deprecated in favour of 'cabal haddock --hyperlink-source'.\n"
     , commandUsage = \pname ->
         "Usage: " ++ pname ++ " hscolour [FLAGS]\n"
     , commandDefaultFlags = defaultHscolourFlags
