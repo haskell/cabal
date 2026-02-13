@@ -77,6 +77,7 @@ import Distribution.Simple.Program
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import Distribution.Simple.Program.Script
 import Distribution.Simple.Setup.Common
+import Distribution.Simple.Setup.Haddock (HaddockTarget (ForDevelopment))
 import Distribution.Simple.Setup.Register
 import Distribution.Simple.Utils
 import Distribution.System
@@ -545,7 +546,8 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     , IPI.ldOptions = ldOptions bi
     , IPI.frameworks = map getSymbolicPath $ frameworks bi
     , IPI.frameworkDirs = map getSymbolicPath $ extraFrameworkDirs bi
-    , IPI.haddockInterfaces = [haddockdir installDirs </> haddockLibraryPath pkg lib | hasModules]
+    , IPI.haddockInterfaces =
+        [haddockdir installDirs </> haddockLibraryPath pkg lib | hasModules]
     , IPI.haddockHTMLs = [htmldir installDirs | hasModules]
     , IPI.pkgRoot = Nothing
     , IPI.libVisibility = libVisibility lib
@@ -647,7 +649,10 @@ inplaceInstalledPackageInfo inplaceDir distPref pkg abi_hash lib lbi clbi =
         , haddockdir = inplaceHtmldir
         }
     inplaceDocdir = distPref </> makeRelativePathEx "doc"
-    inplaceHtmldir = i $ inplaceDocdir </> makeRelativePathEx ("html" </> prettyShow (packageName pkg))
+    inplaceHtmldir =
+      i $
+        (inplaceDocdir </> makeRelativePathEx "html")
+          </> makeRelativePathEx (haddockLibraryDirPath ForDevelopment pkg lib)
 
 -- | Construct 'InstalledPackageInfo' for the final install location of a
 -- library package.
