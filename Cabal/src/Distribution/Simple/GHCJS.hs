@@ -1476,7 +1476,6 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
                 bnfo
                 clbi
                 tmpDir
-                filename
             vanillaCxxOpts =
               if isGhcDynamic
                 then -- Dynamic GHC requires C++ sources to be built
@@ -1506,7 +1505,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
         createDirectoryIfMissingVerbose verbosity True (i odir)
         needsRecomp <- checkNeedsRecompilation mbWorkDir filename opts
         when needsRecomp $
-          runGhcProg opts
+          runGhcProg opts{ghcOptInputFiles = toNubListR [filename]}
       | filename <- cxxSrcs
       ]
 
@@ -1522,7 +1521,6 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
                 bnfo
                 clbi
                 tmpDir
-                filename
             vanillaCcOpts =
               if isGhcDynamic
                 then -- Dynamic GHC requires C sources to be built
@@ -1548,7 +1546,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
         createDirectoryIfMissingVerbose verbosity True (i odir)
         needsRecomp <- checkNeedsRecompilation mbWorkDir filename opts
         when needsRecomp $
-          runGhcProg opts
+          runGhcProg opts{ghcOptInputFiles = toNubListR [filename]}
       | filename <- cSrcs
       ]
 

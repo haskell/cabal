@@ -145,7 +145,7 @@ build numJobs pkg_descr pbci = do
                 (Nothing, Just mainFile)
           Nothing -> (Nothing, Nothing)
   buildOpts <- buildHaskellModules numJobs ghcProg hsMainFile inputModules buildTargetDir finalModBuildWays pbci
-  extraSources <- buildAllExtraSources nonHsMainFile ghcProg buildTargetDir wantedWays pbci
+  extraSources <- buildAllExtraSources numJobs nonHsMainFile ghcProg buildTargetDir wantedWays pbci
   linkOrLoadComponent
     ghcProg
     pkg_descr
