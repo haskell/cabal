@@ -63,7 +63,7 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
             flags = emptyFlags{packageType = Flag Library}
             settings =
               ProjectSettings
-                (WriteOpts False False False v "/home/test/1" Library pkgName defaultCabalVersion)
+                (WriteOpts False False False (verbosityFlags v) "/home/test/1" Library pkgName defaultCabalVersion)
                 (simplePkgDesc pkgName)
                 (Just $ simpleLibTarget baseDep)
                 Nothing
@@ -77,7 +77,7 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
             flags = emptyFlags{packageType = Flag Library}
             settings =
               ProjectSettings
-                (WriteOpts False False False v "/home/test/1" Library pkgName defaultCabalVersion)
+                (WriteOpts False False False (verbosityFlags v) "/home/test/1" Library pkgName defaultCabalVersion)
                 (simplePkgDesc pkgName)
                 (Just $ simpleLibTarget baseDep)
                 Nothing
@@ -91,7 +91,7 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
             flags = emptyFlags{packageType = Flag Executable}
             settings =
               ProjectSettings
-                (WriteOpts False False False v "/home/test/2" Executable pkgName defaultCabalVersion)
+                (WriteOpts False False False (verbosityFlags v) "/home/test/2" Executable pkgName defaultCabalVersion)
                 (simplePkgDesc pkgName)
                 Nothing
                 (Just $ simpleExeTarget Nothing baseDep)
@@ -105,7 +105,7 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
             flags = emptyFlags{packageType = Flag LibraryAndExecutable}
             settings =
               ProjectSettings
-                (WriteOpts False False False v "/home/test/2" LibraryAndExecutable pkgName defaultCabalVersion)
+                (WriteOpts False False False (verbosityFlags v) "/home/test/2" LibraryAndExecutable pkgName defaultCabalVersion)
                 (simplePkgDesc pkgName)
                 (Just $ simpleLibTarget baseDep)
                 (Just $ simpleExeTarget (Just pkgName) baseDep)
@@ -119,7 +119,7 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
             flags = emptyFlags{packageType = Flag LibraryAndExecutable}
             settings =
               ProjectSettings
-                (WriteOpts False False False v "/home/test/2" LibraryAndExecutable pkgName defaultCabalVersion)
+                (WriteOpts False False False (verbosityFlags v) "/home/test/2" LibraryAndExecutable pkgName defaultCabalVersion)
                 (simplePkgDesc pkgName)
                 (Just $ simpleLibTarget baseDep)
                 (Just $ simpleExeTarget (Just pkgName) baseDep)
@@ -133,7 +133,7 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
             flags = emptyFlags{packageType = Flag TestSuite}
             settings =
               ProjectSettings
-                (WriteOpts False False False v "/home/test/2" TestSuite pkgName defaultCabalVersion)
+                (WriteOpts False False False (verbosityFlags v) "/home/test/2" TestSuite pkgName defaultCabalVersion)
                 (simplePkgDesc pkgName)
                 Nothing
                 Nothing

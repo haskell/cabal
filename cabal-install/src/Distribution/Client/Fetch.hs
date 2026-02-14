@@ -60,6 +60,7 @@ import Distribution.Simple.Utils
 import Distribution.System
   ( Platform
   )
+import Distribution.Verbosity (verbosityLevel)
 
 -- ------------------------------------------------------------
 
@@ -206,7 +207,7 @@ planPackages
           . setStrongFlags strongFlags
           . setAllowBootLibInstalls allowBootLibInstalls
           . setOnlyConstrained onlyConstrained
-          . setSolverVerbosity verbosity
+          . setSolverVerbosity (verbosityLevel verbosity)
           . addConstraints
             [ let pc =
                     PackageConstraint

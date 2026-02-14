@@ -181,7 +181,7 @@ register hpi verbosity mbWorkDir packagedbs pkgInfo registerOptions
   | otherwise =
       runProgramInvocation
         verbosity
-        (registerInvocation hpi verbosity mbWorkDir packagedbs pkgInfo registerOptions)
+        (registerInvocation hpi (verbosityLevel verbosity) mbWorkDir packagedbs pkgInfo registerOptions)
 
 writeRegistrationFileDirectly
   :: Verbosity
@@ -209,7 +209,7 @@ unregister :: HcPkgInfo -> Verbosity -> Maybe (SymbolicPath CWD (Dir Pkg)) -> Pa
 unregister hpi verbosity mbWorkDir packagedb pkgid =
   runProgramInvocation
     verbosity
-    (unregisterInvocation hpi verbosity mbWorkDir packagedb pkgid)
+    (unregisterInvocation hpi (verbosityLevel verbosity) mbWorkDir packagedb pkgid)
 
 -- | Call @hc-pkg@ to recache the registered packages.
 --
@@ -218,7 +218,7 @@ recache :: HcPkgInfo -> Verbosity -> Maybe (SymbolicPath CWD (Dir from)) -> Pack
 recache hpi verbosity mbWorkDir packagedb =
   runProgramInvocation
     verbosity
-    (recacheInvocation hpi verbosity mbWorkDir packagedb)
+    (recacheInvocation hpi (verbosityLevel verbosity) mbWorkDir packagedb)
 
 -- | Call @hc-pkg@ to expose a package.
 --
@@ -233,7 +233,7 @@ expose
 expose hpi verbosity mbWorkDir packagedb pkgid =
   runProgramInvocation
     verbosity
-    (exposeInvocation hpi verbosity mbWorkDir packagedb pkgid)
+    (exposeInvocation hpi (verbosityLevel verbosity) mbWorkDir packagedb pkgid)
 
 -- | Call @hc-pkg@ to retrieve a specific package
 --
@@ -249,7 +249,7 @@ describe hpi verbosity mbWorkDir packagedb pid = do
   output <-
     getProgramInvocationLBS
       verbosity
-      (describeInvocation hpi verbosity mbWorkDir packagedb pid)
+      (describeInvocation hpi (verbosityLevel verbosity) mbWorkDir packagedb pid)
       `catchIO` \_ -> return mempty
 
   case parsePackages output of
@@ -269,7 +269,7 @@ hide
 hide hpi verbosity mbWorkDir packagedb pkgid =
   runProgramInvocation
     verbosity
-    (hideInvocation hpi verbosity mbWorkDir packagedb pkgid)
+    (hideInvocation hpi (verbosityLevel verbosity) mbWorkDir packagedb pkgid)
 
 -- | Call @hc-pkg@ to get all the details of all the packages in the given
 -- package database.
@@ -283,7 +283,7 @@ dump hpi verbosity mbWorkDir packagedb = do
   output <-
     getProgramInvocationLBS
       verbosity
-      (dumpInvocation hpi verbosity mbWorkDir packagedb)
+      (dumpInvocation hpi (verbosityLevel verbosity) mbWorkDir packagedb)
       `catchIO` \e ->
         dieWithException verbosity $ DumpFailed (programId (hcPkgProgram hpi)) (displayException e)
 
@@ -397,7 +397,7 @@ list hpi verbosity mbWorkDir packagedb = do
   output <-
     getProgramInvocationOutput
       verbosity
-      (listInvocation hpi verbosity mbWorkDir packagedb)
+      (listInvocation hpi (verbosityLevel verbosity) mbWorkDir packagedb)
       `catchIO` \_ -> dieWithException verbosity $ ListFailed (programId (hcPkgProgram hpi))
 
   case parsePackageIds output of
@@ -416,11 +416,11 @@ initInvocation hpi verbosity path =
   where
     args =
       ["init", path]
-        ++ verbosityOpts hpi verbosity
+        ++ verbosityOpts hpi (verbosityLevel verbosity)
 
 registerInvocation
   :: HcPkgInfo
-  -> Verbosity
+  -> VerbosityLevel
   -> Maybe (SymbolicPath CWD (Dir from))
   -> PackageDBStackS from
   -> InstalledPackageInfo
@@ -450,7 +450,7 @@ registerInvocation hpi verbosity mbWorkDir packagedbs pkgInfo registerOptions =
 
 unregisterInvocation
   :: HcPkgInfo
-  -> Verbosity
+  -> VerbosityLevel
   -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDB
   -> PackageId
@@ -462,7 +462,7 @@ unregisterInvocation hpi verbosity mbWorkDir packagedb pkgid =
 
 recacheInvocation
   :: HcPkgInfo
-  -> Verbosity
+  -> VerbosityLevel
   -> Maybe (SymbolicPath CWD (Dir from))
   -> PackageDBS from
   -> ProgramInvocation
@@ -473,7 +473,7 @@ recacheInvocation hpi verbosity mbWorkDir packagedb =
 
 exposeInvocation
   :: HcPkgInfo
-  -> Verbosity
+  -> VerbosityLevel
   -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDB
   -> PackageId
@@ -485,7 +485,7 @@ exposeInvocation hpi verbosity mbWorkDir packagedb pkgid =
 
 describeInvocation
   :: HcPkgInfo
-  -> Verbosity
+  -> VerbosityLevel
   -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDBStack
   -> PackageId
@@ -498,7 +498,7 @@ describeInvocation hpi verbosity mbWorkDir packagedbs pkgid =
 
 hideInvocation
   :: HcPkgInfo
-  -> Verbosity
+  -> VerbosityLevel
   -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDB
   -> PackageId
@@ -510,7 +510,7 @@ hideInvocation hpi verbosity mbWorkDir packagedb pkgid =
 
 dumpInvocation
   :: HcPkgInfo
-  -> Verbosity
+  -> VerbosityLevel
   -> Maybe (SymbolicPath CWD (Dir from))
   -> PackageDBX (SymbolicPath from (Dir PkgDB))
   -> ProgramInvocation
@@ -521,14 +521,14 @@ dumpInvocation hpi _verbosity mbWorkDir packagedb =
   where
     args =
       ["dump", packageDbOpts hpi packagedb]
-        ++ verbosityOpts hpi silent
+        ++ verbosityOpts hpi Silent
 
--- We use verbosity level 'silent' because it is important that we
+-- We use verbosity level 'Silent' because it is important that we
 -- do not contaminate the output with info/debug messages.
 
 listInvocation
   :: HcPkgInfo
-  -> Verbosity
+  -> VerbosityLevel
   -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> PackageDB
   -> ProgramInvocation
@@ -539,9 +539,9 @@ listInvocation hpi _verbosity mbWorkDir packagedb =
   where
     args =
       ["list", "--simple-output", packageDbOpts hpi packagedb]
-        ++ verbosityOpts hpi silent
+        ++ verbosityOpts hpi Silent
 
--- We use verbosity level 'silent' because it is important that we
+-- We use verbosity level 'Silent' because it is important that we
 -- do not contaminate the output with info/debug messages.
 
 packageDbStackOpts :: HcPkgInfo -> PackageDBStackS from -> [String]
@@ -575,10 +575,10 @@ packageDbOpts _ GlobalPackageDB = "--global"
 packageDbOpts _ UserPackageDB = "--user"
 packageDbOpts hpi (SpecificPackageDB db) = "--" ++ packageDbFlag hpi ++ "=" ++ interpretSymbolicPathCWD db
 
-verbosityOpts :: HcPkgInfo -> Verbosity -> [String]
+verbosityOpts :: HcPkgInfo -> VerbosityLevel -> [String]
 verbosityOpts hpi v
   | noVerboseFlag hpi =
       []
-  | v >= deafening = ["-v2"]
-  | v == silent = ["-v0"]
+  | v >= Deafening = ["-v2"]
+  | v == Silent = ["-v0"]
   | otherwise = []

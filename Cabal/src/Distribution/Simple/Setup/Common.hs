@@ -71,7 +71,7 @@ import Distribution.Verbosity
 -- | A datatype that stores common flags for different invocations
 -- of a @Setup@ executable, e.g. configure, build, install.
 data CommonSetupFlags = CommonSetupFlags
-  { setupVerbosity :: !(Flag Verbosity)
+  { setupVerbosity :: !(Flag VerbosityFlags)
   -- ^ Verbosity
   , setupWorkingDir :: !(Flag (SymbolicPath CWD (Dir Pkg)))
   -- ^ Working directory (optional)
@@ -396,8 +396,8 @@ reqSymbolicPathArgFlag title sf lf d get set =
     (set . fmap makeSymbolicPath)
 
 optionVerbosity
-  :: (flags -> Flag Verbosity)
-  -> (Flag Verbosity -> flags -> flags)
+  :: (flags -> Flag VerbosityFlags)
+  -> (Flag VerbosityFlags -> flags -> flags)
   -> OptionField flags
 optionVerbosity get set =
   option

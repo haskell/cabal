@@ -56,6 +56,7 @@ import Distribution.Simple.InstallDirs as I
 import Distribution.Simple.LocalBuildInfo as L
 import qualified Distribution.Simple.Setup as S
 import qualified Distribution.Simple.Program as P
+import qualified Distribution.Verbosity as V
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, notice, installOrdinaryFiles)
 import Distribution.Simple.Utils (rewriteFileEx)
 import Distribution.Compiler
@@ -156,12 +157,26 @@ mkFlagName :: String -> FlagName
 mkFlagName = FlagName
 #endif
 
+mkVerbosity
+  ::
+#if MIN_VERSION_Cabal(3,17,0)
+    S.Flag V.VerbosityFlags
+#else
+    S.Flag V.Verbosity
+#endif
+  -> V.Verbosity
+mkVerbosity v =
+#if MIN_VERSION_Cabal(3,17,0)
+  V.mkVerbosity V.defaultVerbosityHandles $
+#endif
+  S.fromFlag v
+
 -- -----------------------------------------------------------------------------
 -- Clean
 
 idrisClean _ flags _ _ = cleanStdLib
    where
-      verbosity = S.fromFlag $ S.cleanVerbosity flags
+      verbosity = mkVerbosity $ S.cleanVerbosity flags
 
       cleanStdLib = makeClean "libs"
 
@@ -247,7 +262,7 @@ idrisConfigure _ flags pkgdesc local = do
           else
                   generateToolchainModule verbosity libAutogenDir Nothing
     where
-      verbosity = S.fromFlag $ S.configVerbosity flags
+      verbosity = mkVerbosity $ S.configVerbosity flags
       version   = pkgVersion . package $ localPkgDescr local
 
       -- This is a hack. I don't know how to tell cabal that a data file needs
@@ -307,7 +322,7 @@ idrisPreBuild args flags = do
         windres verbosity ["icons/idris_icon.rc","-o", dir++"/idris_icon.o"]
         return (Nothing, [(fromString "idris", emptyBuildInfo { ldOptions = [dir ++ "/idris_icon.o"] })])
      where
-        verbosity = S.fromFlag $ S.buildVerbosity flags
+        verbosity = mkVerbosity $ S.buildVerbosity flags
 
         dir =
 #if MIN_VERSION_Cabal(3,11,0)
@@ -325,7 +340,7 @@ idrisBuild _ flags _ local
         else do buildStdLib
                 buildRTS
    where
-      verbosity = S.fromFlag $ S.buildVerbosity flags
+      verbosity = mkVerbosity $ S.buildVerbosity flags
 
       buildStdLib = do
             putStrLn "Building libraries..."
@@ -396,10 +411,10 @@ main = defaultMainWithHooks $ simpleUserHooks
    , preBuild = idrisPreBuild
    , postBuild = idrisBuild
    , postCopy = \_ flags pkg local ->
-                  idrisInstall (S.fromFlag $ S.copyVerbosity flags)
+                  idrisInstall (mkVerbosity $ S.copyVerbosity flags)
                                (S.fromFlag $ S.copyDest flags) pkg local
    , postInst = \_ flags pkg local ->
-                  idrisInstall (S.fromFlag $ S.installVerbosity flags)
+                  idrisInstall (mkVerbosity $ S.installVerbosity flags)
                                NoCopyDest pkg local
 #if !MIN_VERSION_Cabal(3,0,0)
    , preSDist = idrisPreSDist

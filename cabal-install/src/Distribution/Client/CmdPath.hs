@@ -81,6 +81,7 @@ import Distribution.Simple.Utils
   )
 import Distribution.Verbosity
   ( normal
+  , verbosityFlags
   )
 
 -------------------------------------------------------------------------------
@@ -272,7 +273,7 @@ pathAction flags@NixStyleFlags{extraFlags = pathFlags'} cliTargetStrings globalF
         KeyValue -> do
           showAsKeyValuePair pathOutputs
 
-  putStr $ withOutputMarker verbosity output
+  putStr $ withOutputMarker (verbosityFlags verbosity) output
   where
     verbosity = cfgVerbosity normal flags
 

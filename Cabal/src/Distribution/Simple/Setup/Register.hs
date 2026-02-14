@@ -61,7 +61,7 @@ data RegisterFlags = RegisterFlags
   deriving (Show, Generic)
 
 pattern RegisterCommonFlags
-  :: Flag Verbosity
+  :: Flag VerbosityFlags
   -> Flag (SymbolicPath Pkg (Dir Dist))
   -> Flag (SymbolicPath CWD (Dir Pkg))
   -> Flag (SymbolicPath Pkg File)

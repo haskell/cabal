@@ -47,18 +47,18 @@ import System.Directory
   , doesFileExist
   , removeDirectoryRecursive
   )
-import System.IO (stderr, stdout)
 import System.Process (createPipe)
 
 runTest
-  :: PD.PackageDescription
+  :: VerbosityHandles
+  -> PD.PackageDescription
   -> LBI.LocalBuildInfo
   -> LBI.ComponentLocalBuildInfo
   -> HPCMarkupInfo
   -> TestFlags
   -> PD.TestSuite
   -> IO TestSuiteLog
-runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
+runTest verbHandles pkg_descr lbi clbi hpcMarkupInfo flags suite = do
   let isCoverageEnabled = LBI.testCoverage lbi
       way = guessWay lbi
       tixDir_ = i $ tixDir distPref way
@@ -113,16 +113,17 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
 
   -- Output logger
   (wOut, wErr, getLogText) <- case details of
-    Direct -> return (stdout, stderr, return LBS.empty)
+    Direct -> return (Nothing, Nothing, return LBS.empty)
     _ -> do
       (rOut, wOut) <- createPipe
 
-      return $ (,,) wOut wOut $ do
+      return $ (,,) (Just wOut) (Just wOut) $ do
         -- Read test executables' output
         logText <- LBS.hGetContents rOut
 
         -- '--show-details=streaming': print the log output in another thread
-        when (details == Streaming) $ LBS.putStr logText
+        when (details == Streaming) $
+          LBS.hPutStr (verbosityChosenOutputHandle verbosity) logText
 
         -- drain the output.
         evaluate (force logText)
@@ -139,11 +140,10 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
         (cmd : opts)
         mbWorkDir
         (Just shellEnv')
-        getLogText
-        -- these handles are automatically closed
+        (\_ _ _ -> getLogText)
         Nothing
-        (Just wOut)
-        (Just wErr)
+        wOut
+        wErr
     NoFlag ->
       rawSystemIOWithEnvAndAction
         verbosity
@@ -151,11 +151,10 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
         opts
         mbWorkDir
         (Just shellEnv')
-        getLogText
-        -- these handles are automatically closed
+        (\_ _ _ -> getLogText)
         Nothing
-        (Just wOut)
-        (Just wErr)
+        wOut
+        wErr
 
   -- Generate TestSuiteLog from executable exit code and a machine-
   -- readable test log.
@@ -179,9 +178,9 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
               || details == Failures && not (suitePassed $ testLogs suiteLog)
           )
             -- verbosity overrides show-details
-            && verbosity >= normal
+            && verbosityLevel verbosity >= Normal
   whenPrinting $ do
-    LBS.putStr logText
+    LBS.hPutStr (verbosityChosenOutputHandle verbosity) logText
     putChar '\n'
 
   -- Write summary notice to terminal indicating end of test suite
@@ -206,7 +205,7 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
     testName' = unUnqualComponentName $ PD.testName suite
 
     distPref = fromFlag $ setupDistPref commonFlags
-    verbosity = fromFlag $ setupVerbosity commonFlags
+    verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity commonFlags)
     details = fromFlag $ testShowDetails flags
     testLogDir = distPref </> makeRelativePathEx "test"
 

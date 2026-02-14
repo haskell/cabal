@@ -73,7 +73,8 @@ import Distribution.Types.SourceRepo
   , RepoType (..)
   )
 import Distribution.Verbosity as Verbosity
-  ( normal
+  ( VerbosityLevel (..)
+  , verbosityLevel
   )
 import Distribution.Version
   ( mkVersion
@@ -331,7 +332,7 @@ vcsBzr =
           Nothing -> []
           Just tag -> ["-r", "tag:" ++ tag]
         verboseArg :: [String]
-        verboseArg = ["--quiet" | verbosity < Verbosity.normal]
+        verboseArg = ["--quiet" | verbosityLevel verbosity < Verbosity.Normal]
 
     vcsSyncRepos
       :: Verbosity
@@ -384,7 +385,7 @@ vcsDarcs =
           Nothing -> []
           Just tag -> ["-t", tag]
         verboseArg :: [String]
-        verboseArg = ["--quiet" | verbosity < Verbosity.normal]
+        verboseArg = ["--quiet" | verbosityLevel verbosity < Verbosity.Normal]
 
     vcsSyncRepos
       :: Verbosity
@@ -436,7 +437,7 @@ vcsDarcs =
           Nothing -> []
           Just tag -> ["-t" ++ tag]
         verboseArg :: [String]
-        verboseArg = ["--quiet" | verbosity < Verbosity.normal]
+        verboseArg = ["--quiet" | verbosityLevel verbosity < Verbosity.Normal]
 
 darcsProgram :: Program
 darcsProgram =
@@ -489,7 +490,7 @@ vcsGit =
           Just b -> ["--branch", b]
           Nothing -> []
         resetArgs tag = "reset" : verboseArg ++ ["--hard", tag, "--"]
-        verboseArg = ["--quiet" | verbosity < Verbosity.normal]
+        verboseArg = ["--quiet" | verbosityLevel verbosity < Verbosity.Normal]
 
     -- Note: No --depth=1 for vcsCloneRepo since that is used for `cabal get -s`,
     -- whereas `vcsSyncRepo` is used for source-repository-package where we do want shallow clones.
@@ -617,7 +618,7 @@ vcsGit =
           where
             loc = srpLocation
 
-        verboseArg = ["--quiet" | verbosity < Verbosity.normal]
+        verboseArg = ["--quiet" | verbosityLevel verbosity < Verbosity.Normal]
 
 gitProgram :: Program
 gitProgram =
@@ -671,7 +672,7 @@ vcsHg =
         tagArgs = case srpTag repo of
           Just t -> ["--rev", t]
           Nothing -> []
-        verboseArg = ["--quiet" | verbosity < Verbosity.normal]
+        verboseArg = ["--quiet" | verbosityLevel verbosity < Verbosity.Normal]
 
     vcsSyncRepos
       :: Verbosity
@@ -708,7 +709,7 @@ vcsHg =
         cloneArgs =
           ["clone", "--noupdate", (srpLocation repo), localDir]
             ++ verboseArg
-        verboseArg = ["--quiet" | verbosity < Verbosity.normal]
+        verboseArg = ["--quiet" | verbosityLevel verbosity < Verbosity.Normal]
         checkoutArgs =
           ["checkout", "--clean"]
             ++ tagArgs
@@ -747,7 +748,7 @@ vcsSvn =
       [programInvocation prog checkoutArgs]
       where
         checkoutArgs = ["checkout", srcuri, destdir] ++ verboseArg
-        verboseArg = ["--quiet" | verbosity < Verbosity.normal]
+        verboseArg = ["--quiet" | verbosityLevel verbosity < Verbosity.Normal]
     -- TODO: branch or tag?
 
     vcsSyncRepos

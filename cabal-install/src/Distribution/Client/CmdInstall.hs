@@ -215,6 +215,7 @@ import Distribution.Utils.Generic
   )
 import Distribution.Verbosity
   ( lessVerbose
+  , modifyVerbosityFlags
   , normal
   )
 
@@ -460,7 +461,7 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
   -- temporary dist directory.
   globalTmp <- getTemporaryDirectory
 
-  withTempDirectory verbosity globalTmp "cabal-install." $ \tmpDir -> do
+  withTempDirectory globalTmp "cabal-install." $ \tmpDir -> do
     distDirLayout <- establishDummyDistDirLayout verbosity config tmpDir
 
     uriSpecs <-
@@ -593,7 +594,7 @@ withProject verbosity cliConfig targetStrings installLibs = do
           concatMap (targetPkgNames $ localPackages baseCtx) targetSelectors
   return (pkgSpecs, targetSelectors, config)
   where
-    reducedVerbosity = lessVerbose verbosity
+    reducedVerbosity = modifyVerbosityFlags lessVerbose verbosity
 
     -- We take the targets and try to parse them as package ids (with name and version).
     -- The ones who don't parse will have to be resolved in the project context.
@@ -623,7 +624,7 @@ resolveTargetSelectorsInProjectBaseContext
   -> Maybe ComponentKindFilter
   -> IO ([PackageSpecifier UnresolvedSourcePackage], [TargetSelector])
 resolveTargetSelectorsInProjectBaseContext verbosity baseCtx targetStrings targetFilter = do
-  let reducedVerbosity = lessVerbose verbosity
+  let reducedVerbosity = modifyVerbosityFlags lessVerbose verbosity
 
   sourcePkgDb <-
     projectConfigWithBuilderRepoContext
