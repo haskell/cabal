@@ -16,6 +16,7 @@ import Prelude ()
 import Distribution.Simple.Utils
 import Distribution.Utils.Progress
 import Distribution.Verbosity
+import System.IO (hPutStrLn)
 import Text.PrettyPrint
 
 type CtxMsg = Doc
@@ -55,7 +56,7 @@ runLogProgress verbosity (LogProgress m) =
         }
     step_fn :: LogMsg -> IO a -> IO a
     step_fn doc go = do
-      putStrLn (render doc)
+      hPutStrLn (verbosityChosenOutputHandle verbosity) (render doc)
       go
     fail_fn :: Doc -> IO a
     fail_fn doc = do
@@ -64,14 +65,14 @@ runLogProgress verbosity (LogProgress m) =
 -- | Output a warning trace message in 'LogProgress'.
 warnProgress :: Doc -> LogProgress ()
 warnProgress s = LogProgress $ \env ->
-  when (le_verbosity env >= normal) $
+  when (verbosityLevel (le_verbosity env) >= Normal) $
     stepProgress $
       hang (text "Warning:") 4 (formatMsg (le_context env) s)
 
 -- | Output an informational trace message in 'LogProgress'.
 infoProgress :: Doc -> LogProgress ()
 infoProgress s = LogProgress $ \env ->
-  when (le_verbosity env >= verbose) $
+  when (verbosityLevel (le_verbosity env) >= Verbose) $
     stepProgress s
 
 -- | Fail the computation with an error message.

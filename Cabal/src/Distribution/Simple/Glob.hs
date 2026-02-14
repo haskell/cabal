@@ -59,6 +59,8 @@ import Distribution.Simple.Utils
 import Distribution.Utils.Path
 import Distribution.Verbosity
   ( Verbosity
+  , defaultVerbosityHandles
+  , mkVerbosity
   , silent
   )
 
@@ -88,7 +90,7 @@ matchGlob root glob =
         GlobMatchesDirectory a -> Just a
         GlobMissingDirectory{} -> Nothing
     )
-    <$> runDirFileGlob silent Nothing root glob
+    <$> runDirFileGlob (mkVerbosity defaultVerbosityHandles silent) Nothing root glob
 
 -- | Match a globbing pattern against a file path component
 matchGlobPieces :: GlobPieces -> String -> Bool

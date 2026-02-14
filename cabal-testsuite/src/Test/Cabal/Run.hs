@@ -9,7 +9,6 @@ module Test.Cabal.Run
   ) where
 
 import Distribution.Simple.Program.Run
-import Distribution.Verbosity
 
 import Control.Concurrent.Async
 import System.Directory
@@ -29,26 +28,24 @@ data Result = Result
 -- | Run a command, streaming its output to stdout, and return a 'Result'
 -- with this information.
 run
-  :: Verbosity
-  -> Maybe FilePath
+  :: Maybe FilePath
   -> [(String, Maybe String)]
   -> FilePath
   -> [String]
   -> Maybe String
   -> IO Result
-run verbosity mb_cwd env_overrides path0 args input =
-  runAction verbosity mb_cwd env_overrides path0 args input (\_ -> return ())
+run mb_cwd env_overrides path0 args input =
+  runAction mb_cwd env_overrides path0 args input (\_ -> return ())
 
 runAction
-  :: Verbosity
-  -> Maybe FilePath
+  :: Maybe FilePath
   -> [(String, Maybe String)]
   -> FilePath
   -> [String]
   -> Maybe String
   -> (ProcessHandle -> IO ())
   -> IO Result
-runAction _verbosity mb_cwd env_overrides path0 args input action = do
+runAction mb_cwd env_overrides path0 args input action = do
   -- In our test runner, we allow a path to be relative to the
   -- current directory using the same heuristic as shells:
   -- 'foo' refers to an executable in the PATH, but './foo'

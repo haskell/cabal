@@ -54,7 +54,7 @@ import System.Process (runProcess)
 import System.Directory (canonicalizePath)
 import System.FilePath (takeBaseName, replaceBaseName, equalFilePath)
 
-import Distribution.Verbosity as Verbosity (showForCabal)
+import Distribution.Verbosity as Verbosity (showForCabal, verbosityFlags)
 import Distribution.Simple.Utils (debug, info)
 
 
@@ -81,7 +81,7 @@ possibleSelfUpgrade verbosity newPaths action = do
       result <- action
       scheduleOurDemise verbosity dstPath tmpPath
         (\pid path -> ["win32selfupgrade", pid, path
-                      ,"--verbose=" ++ Verbosity.showForCabal verbosity])
+                      ,"--verbose=" ++ Verbosity.showForCabal (verbosityFlags verbosity)])
       return result
 
 -- | The name of a Win32 Event object that we use to synchronise between the

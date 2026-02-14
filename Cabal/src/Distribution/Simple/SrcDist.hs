@@ -73,7 +73,8 @@ import System.IO (IOMode (WriteMode), hPutStrLn, withFile)
 
 -- | Create a source distribution.
 sdist
-  :: PackageDescription
+  :: VerbosityHandles
+  -> PackageDescription
   -- ^ information from the tarball
   -> SDistFlags
   -- ^ verbosity & snapshot
@@ -82,7 +83,7 @@ sdist
   -> [PPSuffixHandler]
   -- ^ extra preprocessors (includes suffixes)
   -> IO ()
-sdist pkg flags mkTmpDir pps = do
+sdist verbHandles pkg flags mkTmpDir pps = do
   distPref <- findDistPrefOrDefault $ setupDistPref common
   let targetPref = i distPref
       tmpTargetDir = mkTmpDir (i distPref)
@@ -108,7 +109,7 @@ sdist pkg flags mkTmpDir pps = do
           info verbosity $ "Source directory created: " ++ targetDir
         Nothing -> do
           createDirectoryIfMissingVerbose verbosity True tmpTargetDir
-          withTempDirectory verbosity tmpTargetDir "sdist." $ \tmpDir -> do
+          withTempDirectory tmpTargetDir "sdist." $ \tmpDir -> do
             let targetDir = tmpDir </> tarBallName pkg'
             generateSourceDir targetDir pkg'
             targzFile <- createArchive verbosity pkg' tmpDir targetPref
@@ -122,7 +123,7 @@ sdist pkg flags mkTmpDir pps = do
         overwriteSnapshotPackageDesc verbosity pkg' targetDir
 
     common = sDistCommonFlags flags
-    verbosity = fromFlag $ setupVerbosity common
+    verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
     mbWorkDir = flagToMaybe $ setupWorkingDir common
     i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
     snapshot = fromFlag (sDistSnapshot flags)

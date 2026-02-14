@@ -41,6 +41,7 @@ import Distribution.System (Platform (Platform))
 import Distribution.Types.Benchmark (Benchmark (benchmarkBuildInfo))
 import Distribution.Types.UnqualComponentName
 import Distribution.Utils.Path
+import Distribution.Verbosity
 
 import System.Directory (doesFileExist)
 
@@ -48,6 +49,7 @@ import System.Directory (doesFileExist)
 bench
   :: Args
   -- ^ positional command-line arguments
+  -> VerbosityHandles
   -> PD.PackageDescription
   -- ^ information from the .cabal file
   -> LBI.LocalBuildInfo
@@ -55,9 +57,9 @@ bench
   -> BenchmarkFlags
   -- ^ flags sent to benchmark
   -> IO ()
-bench args pkg_descr lbi flags = do
+bench args verbHandles pkg_descr lbi flags = do
   curDir <- LBI.absoluteWorkingDirLBI lbi
-  let verbosity = fromFlag $ benchmarkVerbosity flags
+  let verbosity = mkVerbosity verbHandles (fromFlag $ benchmarkVerbosity flags)
       benchmarkNames = args
       pkgBenchmarks = PD.benchmarks pkg_descr
       enabledBenchmarks = LBI.enabledBenchLBIs pkg_descr lbi

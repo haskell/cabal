@@ -1,6 +1,7 @@
 -- This is Distribution.Extra.Doctest module from cabal-doctest-1.0.4
 -- This isn't technically a Custom-Setup script, but it /was/.
 
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances #-}
 
 {-
@@ -322,7 +323,11 @@ generateBuildModule
     -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO ()
 {- FOURMOLU_DISABLE -}
 generateBuildModule testSuiteName flags pkg lbi = do
-  let verbosity = fromFlag (buildVerbosity flags)
+  let verbosity =
+#if MIN_VERSION_Cabal(3,17,0)
+          mkVerbosity defaultVerbosityHandles $
+#endif
+          fromFlag (buildVerbosity flags)
   let distPref = fromFlag (buildDistPref flags)
 
   -- Package DBs & environments

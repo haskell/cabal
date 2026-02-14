@@ -69,7 +69,8 @@ import Distribution.Simple.Utils
   , warn
   )
 import Distribution.Verbosity
-  ( verboseUnmarkOutput
+  ( modifyVerbosityFlags
+  , verboseUnmarkOutput
   )
 
 import Control.Concurrent.Async
@@ -266,7 +267,7 @@ fetchRepoTarball verbosity' repoCtxt repo pkgid = do
       return res
   where
     -- whether we download or not is non-deterministic
-    verbosity = verboseUnmarkOutput verbosity'
+    verbosity = modifyVerbosityFlags verboseUnmarkOutput verbosity'
 
     downloadRepoPackage :: IO FilePath
     downloadRepoPackage = case repo of
@@ -353,7 +354,7 @@ asyncFetchPackages verbosity repoCtxt pkglocs body = do
           -- specifically 'AsyncCancelled' thrown at us from 'concurrently'.
           result <-
             Safe.try $
-              fetchPackage (verboseUnmarkOutput verbosity) repoCtxt pkgloc
+              fetchPackage (modifyVerbosityFlags verboseUnmarkOutput verbosity) repoCtxt pkgloc
           putMVar var result
 
   (_, res) <-

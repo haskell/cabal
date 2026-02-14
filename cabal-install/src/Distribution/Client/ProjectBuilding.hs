@@ -713,7 +713,7 @@ withTarballLocalDirectory
       BuildAndInstall ->
         let tmpdir = distTempDirectory
             builddir = relativeSymbolicPath $ makeRelativePathEx "dist"
-         in withTempDirectory verbosity tmpdir "src" $ \unpackdir -> do
+         in withTempDirectory tmpdir "src" $ \unpackdir -> do
               let srcdir = makeSymbolicPath $ unpackdir </> prettyShow pkgid
               unpackPackageTarball
                 verbosity

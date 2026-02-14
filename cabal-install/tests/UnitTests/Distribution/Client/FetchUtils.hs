@@ -38,7 +38,7 @@ tests =
   ]
 
 verbosity :: Verbosity.Verbosity
-verbosity = Verbosity.silent
+verbosity = Verbosity.mkVerbosity Verbosity.defaultVerbosityHandles Verbosity.silent
 
 -- | An interval that we use to assert that something happens "immediately".
 -- Must be shorter than 'longSleep' to ensure those are interrupted.

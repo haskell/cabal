@@ -35,6 +35,7 @@ import Distribution.Simple.Utils
 import Distribution.System (Platform, buildPlatform)
 import Distribution.Utils.NubList
 import Distribution.Utils.Path
+import Distribution.Verbosity
 
 -- Base
 import System.Directory (createDirectoryIfMissing, doesFileExist, makeAbsolute)
@@ -49,15 +50,16 @@ import qualified Data.List.NonEmpty as NonEmpty
 import qualified Data.Map as Map
 
 runConfigureScript
-  :: ConfigFlags
+  :: VerbosityHandles
+  -> ConfigFlags
   -> FlagAssignment
   -> ProgramDb
   -> Platform
   -- ^ host platform
   -> IO ()
-runConfigureScript cfg flags programDb hp = do
+runConfigureScript verbHandles cfg flags programDb hp = do
   let commonCfg = configCommonFlags cfg
-      verbosity = fromFlag $ setupVerbosity commonCfg
+      verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity commonCfg)
   dist_dir <- findDistPrefOrDefault $ setupDistPref commonCfg
   let build_dir = dist_dir </> makeRelativePathEx "build"
       mbWorkDir = flagToMaybe $ setupWorkingDir commonCfg
