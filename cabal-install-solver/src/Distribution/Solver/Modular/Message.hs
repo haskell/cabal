@@ -54,6 +54,7 @@ import Distribution.Types.LibraryName
     ( LibraryName(LSubLibName, LMainLibName) )
 import Distribution.Types.UnqualComponentName
     ( unUnqualComponentName )
+import Distribution.Verbosity (Verbosity, verbose)
 
 import Text.PrettyPrint ( nest, render )
 
@@ -69,32 +70,32 @@ data Message =
   | Success
   | Failure ConflictSet FailReason
 
-renderSummarizedMessage :: SummarizedMessage -> String
-renderSummarizedMessage (SummarizedMsg i) = displayMessageAtLevel i
-renderSummarizedMessage (StringMsg s) = s
+renderSummarizedMessage :: Verbosity -> SummarizedMessage -> String
+renderSummarizedMessage verb (SummarizedMsg i) = displayMessageAtLevel verb i
+renderSummarizedMessage _ (StringMsg s) = s
 
-displayMessageAtLevel :: EntryAtLevel -> String
-displayMessageAtLevel (AtLevel l msg) =
+displayMessageAtLevel :: Verbosity -> EntryAtLevel -> String
+displayMessageAtLevel verb (AtLevel l msg) =
   let s = show l
-  in  "[" ++ replicate (3 - length s) '_' ++ s ++ "] " ++ displayMessage msg
+  in  "[" ++ replicate (3 - length s) '_' ++ s ++ "] " ++ displayMessage verb msg
 
-displayMessage :: Entry -> String
-displayMessage (EntryPackageGoal qpn gr) = "next goal: " ++ showQPN qpn ++ showGR gr
-displayMessage (EntryRejectF qfn b c fr) = "rejecting: " ++ showQFNBool qfn b ++ showFR c fr
-displayMessage (EntryRejectS qsn b c fr) = "rejecting: " ++ showQSNBool qsn b ++ showFR c fr
-displayMessage (EntrySkipping cs) = "skipping: " ++ showConflicts cs
-displayMessage (EntryTryingF qfn b) = "trying: " ++ showQFNBool qfn b
-displayMessage (EntryTryingP qpn i) = "trying: " ++ showOption qpn i
-displayMessage (EntryTryingNewP qpn i gr) = "trying: " ++ showOption qpn i ++ showGR gr
-displayMessage (EntryTryingS qsn b) = "trying: " ++ showQSNBool qsn b
-displayMessage (EntryUnknownPackage qpn gr) = "unknown package: " ++ showQPN qpn ++ showGR gr
-displayMessage EntrySuccess = "done"
-displayMessage (EntryFailure c fr) = "fail" ++ showFR c fr
-displayMessage (EntrySkipMany qsn b cs) = "skipping: " ++ showOptions qsn b ++ " " ++ showConflicts cs
+displayMessage :: Verbosity -> Entry -> String
+displayMessage _ (EntryPackageGoal qpn gr) = "next goal: " ++ showQPN qpn ++ showGR gr
+displayMessage _ (EntryRejectF qfn b c fr) = "rejecting: " ++ showQFNBool qfn b ++ showFR c fr
+displayMessage _ (EntryRejectS qsn b c fr) = "rejecting: " ++ showQSNBool qsn b ++ showFR c fr
+displayMessage _ (EntrySkipping cs) = "skipping: " ++ showConflicts cs
+displayMessage _ (EntryTryingF qfn b) = "trying: " ++ showQFNBool qfn b
+displayMessage _ (EntryTryingP qpn i) = "trying: " ++ showOption qpn i
+displayMessage _ (EntryTryingNewP qpn i gr) = "trying: " ++ showOption qpn i ++ showGR gr
+displayMessage _ (EntryTryingS qsn b) = "trying: " ++ showQSNBool qsn b
+displayMessage _ (EntryUnknownPackage qpn gr) = "unknown package: " ++ showQPN qpn ++ showGR gr
+displayMessage _ EntrySuccess = "done"
+displayMessage _ (EntryFailure c fr) = "fail" ++ showFR c fr
+displayMessage verb (EntrySkipMany qsn b cs) = "skipping: " ++ showOptions verb qsn b ++ " " ++ showConflicts cs
 -- Instead of displaying `aeson-1.0.2.1, aeson-1.0.2.0, aeson-1.0.1.0, ...`,
 -- the following line aims to display `aeson: 1.0.2.1, 1.0.2.0, 1.0.1.0, ...`.
 --
-displayMessage (EntryRejectMany qpn is c fr) = "rejecting: " ++ showOptions qpn is ++ showFR c fr
+displayMessage verb (EntryRejectMany qpn is c fr) = "rejecting: " ++ showOptions verb qpn is ++ showFR c fr
 
 -- | Transforms the structured message type to actual messages (SummarizedMessage s).
 --
@@ -267,31 +268,31 @@ showOption qpn@(Q _pp pn) (POption i linkedTo) =
 
 -- | Shows a mixed list of instances and versions in a human-friendly way,
 -- abbreviated.
--- >>> showOptions foobarQPN [v0, v1]
+-- >>> showOptions verbose foobarQPN [v0, v1]
 -- "foo-bar; 0, 1"
--- >>> showOptions foobarQPN [v0]
+-- >>> showOptions verbose foobarQPN [v0]
 -- "foo-bar-0"
--- >>> showOptions foobarQPN [i0, i1]
+-- >>> showOptions verbose foobarQPN [i0, i1]
 -- "foo-bar; 0/installed-inplace, 1/installed-inplace"
--- >>> showOptions foobarQPN [i0, v1]
+-- >>> showOptions verbose foobarQPN [i0, v1]
 -- "foo-bar; 0/installed-inplace, 1"
--- >>> showOptions foobarQPN [v0, i1]
+-- >>> showOptions verbose foobarQPN [v0, i1]
 -- "foo-bar; 0, 1/installed-inplace"
--- >>> showOptions foobarQPN []
+-- >>> showOptions verbose foobarQPN []
 -- "unexpected empty list of versions"
--- >>> showOptions foobarQPN [k1, k2]
+-- >>> showOptions verbose foobarQPN [k1, k2]
 -- "foo-bar; foo-bar~>bazqux.foo-bar-1, foo-bar~>bazqux.foo-bar-2"
--- >>> showOptions foobarQPN [v0, i1, k2]
+-- >>> showOptions verbose foobarQPN [v0, i1, k2]
 -- "foo-bar; 0, 1/installed-inplace, foo-bar~>bazqux.foo-bar-2"
-showOptions :: QPN -> [POption] -> String
-showOptions _ [] = "unexpected empty list of versions"
-showOptions q [x] = showOption q x
-showOptions q xs = showQPN q ++ "; " ++ (L.intercalate ", "
+showOptions :: Verbosity -> QPN -> [POption] -> String
+showOptions _ _ [] = "unexpected empty list of versions"
+showOptions _ q [x] = showOption q x
+showOptions verb q xs = showQPN q ++ "; " ++ (L.intercalate ", "
   [if isJust linkedTo
     then showOption q x
     else showI i -- Don't show the package, just the version
-  | x@(POption i linkedTo) <- xs
-  ])
+  | x@(POption i linkedTo) <- if verb >= verbose then xs else take 1 xs
+  ] ++ if verb < verbose && length xs > 1 then " and " ++ show (length xs - 1) ++" other versions" else "")
 
 showGR :: QGoalReason -> String
 showGR UserGoal            = " (user goal)"

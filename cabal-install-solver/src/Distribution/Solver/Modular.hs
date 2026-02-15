@@ -200,7 +200,7 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
           -- original goal order.
           goalOrder' = preferGoalsFromConflictSet cs <> fromMaybe mempty (goalOrder sc)
 
-      in unlines ("Could not resolve dependencies:" : map renderSummarizedMessage (messages (toProgress (runSolver True sc'))))
+      in unlines ("Could not resolve dependencies:" : map (renderSummarizedMessage (solverVerbosity sc)) (messages (toProgress (runSolver True sc'))))
 
     printFullLog = solverVerbosity sc >= Verbose
 
