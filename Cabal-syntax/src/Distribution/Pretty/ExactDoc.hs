@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
 
@@ -34,11 +35,11 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 
 data ExactDoc where
-  Text :: T.Text -> ExactDoc
+  Text :: !T.Text -> ExactDoc
   Nil :: ExactDoc
-  Concat :: ExactDoc -> ExactDoc -> ExactDoc
-  Place :: Int -> Int -> ExactDoc -> ExactDoc
-  Nest :: Int -> ExactDoc -> ExactDoc
+  Concat :: !ExactDoc -> !ExactDoc -> ExactDoc
+  Place :: !Int -> !Int -> !ExactDoc -> ExactDoc
+  Nest :: !Int -> !ExactDoc -> ExactDoc
 
   deriving (Show, Eq)
 

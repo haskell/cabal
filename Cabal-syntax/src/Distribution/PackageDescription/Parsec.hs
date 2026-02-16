@@ -322,10 +322,10 @@ goSections specVer = fmap mconcat . traverse process
           commonStanzas <- use stateCommonStanzas
           let name'' = LMainLibName
           (tLib, lib) <- lift $ parseCondTree' (libraryFieldGrammar name'') (libraryFromBuildInfo name'') commonStanzas fields
-          --
+          let tLib' = fromNamedTrivia name'' [ExactSectionPosition pos] <> tLib
           -- TODO check that not set
           stateGpd . L.condLibrary ?= lib
-          pure tLib
+          pure tLib'
 
       -- Sublibraries
       -- TODO: check cabal-version
@@ -334,9 +334,10 @@ goSections specVer = fmap mconcat . traverse process
           name' <- parseUnqualComponentName pos args
           let name'' = LSubLibName name'
           (tLib, lib) <- lift $ parseCondTree' (libraryFieldGrammar name'') (libraryFromBuildInfo name'') commonStanzas fields
+          let tLib' = fromNamedTrivia name'' [ExactSectionPosition pos] <> tLib
           -- TODO check duplicate name here?
           stateGpd . L.condSubLibraries %= snoc (name', lib)
-          pure tLib
+          pure tLib'
 
       -- TODO: check cabal-version
       | name == "foreign-library" = do

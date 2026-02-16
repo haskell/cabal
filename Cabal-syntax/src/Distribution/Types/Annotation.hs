@@ -107,6 +107,7 @@ data Trivium
   | PostTrivia String
   | ExactPosition Position
   | ExactFieldPosition Position
+  | ExactSectionPosition Position
   | IsInjected
   deriving (Generic, Show, Eq)
 

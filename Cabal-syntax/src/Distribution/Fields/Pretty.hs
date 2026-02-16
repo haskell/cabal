@@ -313,7 +313,8 @@ exactRenderPrettyField
   :: PrettyFieldPositionContext Trivia
   -> PrettyField Trivia
   -> (PrettyFieldPositionContext Trivia, ExactDoc)
-exactRenderPrettyField ctx0@(lastField, lastFieldLine) field = case field of
+exactRenderPrettyField ctx0@(lastField, lastFieldLine) field =
+  (\x -> pTrace ("prettyField = " <> show (snd x) <> "\n") x) $ case field of
   -- Absorb empty
   PrettyEmpty -> (ctx0, mempty)
   PrettyField ann fieldName fieldLines ->
@@ -379,6 +380,7 @@ exactRenderPrettyFieldLine
   -> PrettyFieldLine Trivia
   -> (PrettyFieldPositionContext Trivia, ExactDoc)
 exactRenderPrettyFieldLine (lastField, lastFieldLine) fieldLine@(PrettyFieldLine _ doc) =
+  (\x -> pTrace ("prettyFieldLine = " <> show (snd x) <> "\n") x) $
   let lastPosition :: Maybe Position
       lastPosition = liftA2 max (prettyFieldLinePosition =<< lastFieldLine) (prettyFieldPosition =<< lastField)
 
@@ -415,6 +417,8 @@ fixupPosition prevPos curPos = case (prevPos, curPos) of
 
   -- Has previous position but current entry has no position
   -- Probably inserted programmatically, default to indent of 4
-  (Just _, Nothing) -> EPP.nest 4
-  -- Prepend space purely for readability
-  (Nothing, Nothing) -> \x -> EPP.text " " <> x <> EPP.newline
+  -- (Just _, Nothing) -> EPP.nest 4
+  -- -- Prepend space purely for readability
+  -- (Nothing, Nothing) -> \x -> EPP.text " " <> x <> EPP.newline
+
+  _ -> (EPP.newline <>)
