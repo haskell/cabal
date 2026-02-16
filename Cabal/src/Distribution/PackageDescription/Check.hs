@@ -413,9 +413,13 @@ checkPackageDescription
     checkPackageId package_
     -- TODO `name` is caught at parse level, remove this test.
     let pn = packageName package_
+        pns = unPackageName pn
     checkP
-      (null . unPackageName $ pn)
+      (null pns)
       (PackageBuildImpossible NoNameField)
+    checkP
+      (any (not . isAscii) pns)
+      (PackageDistInexcusable NonASCIIName)
     -- TODO `version` is caught at parse level, remove this test.
     checkP
       (nullVersion == packageVersion package_)

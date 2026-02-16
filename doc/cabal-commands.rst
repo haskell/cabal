@@ -1385,6 +1385,7 @@ A list of all warnings with their constructor:
 
 - ``parser-warning``: inherited from parser.
 - ``no-name-field``: missing ``name`` field.
+- ``non-ascii-name``: non-ASCII characters in ``name`` field.
 - ``no-version-field``: missing ``version`` field.
 - ``no-target``: missing target in ``.cabal``.
 - ``unnamed-internal-library``: unnamed internal library.
