@@ -111,6 +111,7 @@ library
     Distribution.Parsec.Warning
     Distribution.Parsec.Source
     Distribution.Pretty
+    Distribution.Pretty.ExactDoc
     Distribution.SPDX
     Distribution.SPDX.License
     Distribution.SPDX.LicenseExceptionId
