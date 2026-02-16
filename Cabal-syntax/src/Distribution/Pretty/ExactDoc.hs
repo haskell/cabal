@@ -83,7 +83,6 @@ place :: Int -> Int -> ExactDoc -> ExactDoc
 place s t d0 = case d0 of
   Nil -> Nil
   Place u v d -> place u v d -- Once placed, can't be moved
-  Concat d1 d2 -> place s 0 d1 <> place 0 t d2
   _ -> Place s t d0
 
 nest :: Int -> ExactDoc -> ExactDoc
