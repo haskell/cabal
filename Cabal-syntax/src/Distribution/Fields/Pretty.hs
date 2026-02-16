@@ -364,7 +364,7 @@ exactRenderPrettyField ctx0@(lastField, lastFieldLine) field =
         docOut :: ExactDoc
         docOut = fixupSectionPosition lastPosition sectionNamePosition  $
               EPP.text (T.pack $ fromUTF8BS fieldName)
-              <> EPP.text " " <> EPP.sep (EPP.text " ") (map docToExactDoc sectionArgs) <> EPP.text ":"
+              <> EPP.text " " <> EPP.sep (EPP.text " ") (map docToExactDoc sectionArgs)
               <> EPP.nest 4 fieldsFinal
     in  ( ctx'
         , docOut
@@ -388,7 +388,6 @@ exactRenderPrettyFieldLine
   -> PrettyFieldLine Trivia
   -> (PrettyFieldPositionContext Trivia, ExactDoc)
 exactRenderPrettyFieldLine (lastField, lastFieldLine) fieldLine@(PrettyFieldLine _ doc) =
-  (\x -> pTrace ("prettyFieldLine = " <> show (snd x) <> "\n") x) $
   let lastPosition :: Maybe Position
       lastPosition = liftA2 max (prettyFieldLinePosition =<< lastFieldLine) (prettyFieldPosition =<< lastField)
 
@@ -436,6 +435,6 @@ fixupPosition prevPos curPos = case (prevPos, curPos) of
       in  Just (EPP.place rDiff (cDiff -1))
 
   -- No previous position to calculate line jump, but still compute column offset
-  (Nothing, Just (Position _ cy)) -> Just ((EPP.newline <>). EPP.nest (cy - 1))
+  (Nothing, Just (Position _ cy)) -> Just (EPP.place 1 (cy - 1))
 
   _ -> Nothing
