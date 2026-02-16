@@ -364,7 +364,7 @@ exactRenderPrettyField ctx0@(lastField, lastFieldLine) field =
         docOut :: ExactDoc
         docOut = fixupSectionPosition lastPosition sectionNamePosition  $
               EPP.text (T.pack $ fromUTF8BS fieldName)
-              <> EPP.sep (EPP.text " ") (map docToExactDoc sectionArgs) <> EPP.text ":"
+              <> EPP.text " " <> EPP.sep (EPP.text " ") (map docToExactDoc sectionArgs) <> EPP.text ":"
               <> EPP.nest 4 fieldsFinal
     in  ( ctx'
         , docOut
