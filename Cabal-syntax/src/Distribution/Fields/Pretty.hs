@@ -101,7 +101,10 @@ showFields = showFields' getPos (const $ const id)
     getPos = PositionFromPrettyField (const Nothing) (const Nothing)
 
 exactShowFields :: [PrettyField Trivia] -> String
-exactShowFields = T.unpack . EPP.renderText . mconcat . snd . exactRenderPrettyFields ctx0
+exactShowFields =
+  -- HACK(leana8959): patch trailing newline for now
+  (<> "\n") .
+  T.unpack . EPP.renderText . (\x -> trace ("exactDoc = " <> show x <> "\n") x) . mconcat . snd . exactRenderPrettyFields ctx0
   where
     ctx0 = (Nothing, Nothing)
 
@@ -399,9 +402,8 @@ docToExactDoc :: PP.Doc -> ExactDoc
 docToExactDoc = EPP.multilineText . T.lines . T.pack . PP.renderStyle PP.style
 
 fixupPosition :: Maybe Position -> Maybe Position -> ExactDoc -> ExactDoc
-fixupPosition prevPos curPos = case (curPos, prevPos) of
-  -- TODO(leana8959): make indentation modification apply to more than one lines
-  (Just (Position rx cx), Just (Position ry _cy)) ->
+fixupPosition prevPos curPos = case (prevPos, curPos) of
+  (Just (Position ry _cy), Just (Position rx cx)) ->
       let (rDiff, cDiff) = (rx - ry, if rx /= ry then cx else 0)
       in  EPP.place rDiff (cDiff -1)
 
