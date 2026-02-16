@@ -105,6 +105,7 @@ exactShowFields =
   -- HACK(leana8959): patch trailing newline for now
   (<> "\n") .
   T.unpack . EPP.renderText . mconcat . snd . exactRenderPrettyFields ctx0
+  . (\x -> trace ("pre = " <> show x <> "\n") x)
   where
     ctx0 = (Nothing, Nothing)
 
@@ -349,6 +350,9 @@ exactRenderPrettyField ctx0@(lastField, lastFieldLine) field =
         sectionNamePosition :: Maybe Position
         sectionNamePosition = prettyFieldPosition field
 
+        lastPosition :: Maybe Position
+        lastPosition = (prettyFieldLinePosition =<< lastFieldLine) <|> (prettyFieldPosition =<< lastField)
+
         fieldsFirstPosition :: Maybe Position
         fieldsFirstPosition = prettyFieldPosition <=< safeHead $ fields
 
@@ -356,10 +360,14 @@ exactRenderPrettyField ctx0@(lastField, lastFieldLine) field =
         fieldsFinal :: ExactDoc
         fieldsFinal = fixupFieldPosition sectionNamePosition fieldsFirstPosition
                       $ mconcat fields'
+
+        docOut :: ExactDoc
+        docOut = fixupSectionPosition lastPosition sectionNamePosition  $
+              EPP.text (T.pack $ fromUTF8BS fieldName)
+              <> EPP.sep (EPP.text " ") (map docToExactDoc sectionArgs) <> EPP.text ":"
+              <> EPP.nest 4 fieldsFinal
     in  ( ctx'
-        , EPP.text (T.pack $ fromUTF8BS fieldName)
-          <> EPP.sep (EPP.text " ") (map docToExactDoc sectionArgs) <> EPP.text ":"
-          <> EPP.nest 4 fieldsFinal
+        , docOut
         )
 
 exactRenderPrettyFieldLines
