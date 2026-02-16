@@ -15,11 +15,14 @@ module Distribution.Pretty.ExactDoc
   , multilineText
   , nil
 
-  -- * Combinators
+  -- * Primitive combinators
   , concat
   , place
   , nest
+
+  -- * Helpers
   , newline
+  , sep
 
   -- * Rendering
   , renderText
@@ -89,3 +92,6 @@ nest k d0 = case d0 of
   Place u v d -> place u v d -- Once placed, can't be moved
   Concat d1 d2 -> nest k d1 <> nest k d2
   _ -> Nest k d0
+
+sep :: ExactDoc -> [ExactDoc] -> ExactDoc
+sep by = mconcat . intersperse by
