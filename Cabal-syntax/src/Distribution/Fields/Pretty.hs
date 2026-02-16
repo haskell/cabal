@@ -310,7 +310,9 @@ exactRenderPrettyField ctx0@(lastField, lastFieldLine) field = (\x -> pTrace ("p
   PrettyField ann fieldName fieldLines ->
     let ctx' :: PrettyFieldPositionContext Trivia
         fieldLines' :: [PP.Doc]
-        (ctx', fieldLines') = exactRenderPrettyFieldLines (Just field, lastFieldLine) fieldLines
+        (ctx', fieldLines') =
+            (\x -> pTrace ("fieldLines' = " <> show (show x) <> "\n") x) $
+            exactRenderPrettyFieldLines (Just field, lastFieldLine) fieldLines
 
         fieldNamePosition :: Maybe Position
         fieldNamePosition = prettyFieldPosition field
@@ -391,10 +393,10 @@ fixupPosition prevPos curPos =
     -- TODO(leana8959): make indentation modification apply to more than one lines
     (Just (Position rx cx), Just (Position ry _cy)) ->
         let (rDiff, cDiff) = (rx - ry, if rx /= ry then cx else 0)
-        in  replicate (rDiff - 1) (PP.text "" PP.$$) ++ replicate (cDiff - 1) (PP.text " " <>)
+        in  replicate rDiff (PP.text "" PP.$$) ++ [PP.nest (cDiff - 1)]
 
     -- No previous position to calculate line jump, but still compute column offset
-    (Nothing, Just (Position _ cy)) -> replicate (cy - 1) (PP.text " " <>)
+    (Nothing, Just (Position _ cy)) -> [PP.nest (cy - 1)]
 
     -- Has previous position but current entry has no position
     -- Probably inserted programmatically, default to indent of 4
