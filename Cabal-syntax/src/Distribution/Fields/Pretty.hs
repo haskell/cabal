@@ -104,7 +104,7 @@ exactShowFields :: [PrettyField Trivia] -> String
 exactShowFields =
   -- HACK(leana8959): patch trailing newline for now
   (<> "\n") .
-  T.unpack . EPP.renderText . (\x -> trace ("exactDoc = " <> show x <> "\n") x) . mconcat . snd . exactRenderPrettyFields ctx0
+  T.unpack . EPP.renderText . mconcat . snd . exactRenderPrettyFields ctx0
   where
     ctx0 = (Nothing, Nothing)
 
@@ -380,7 +380,7 @@ exactRenderPrettyFieldLine
   -> (PrettyFieldPositionContext Trivia, ExactDoc)
 exactRenderPrettyFieldLine (lastField, lastFieldLine) fieldLine@(PrettyFieldLine _ doc) =
   let lastPosition :: Maybe Position
-      lastPosition = (prettyFieldLinePosition =<< lastFieldLine) <|> (prettyFieldPosition =<< lastField)
+      lastPosition = liftA2 max (prettyFieldLinePosition =<< lastFieldLine) (prettyFieldPosition =<< lastField)
 
       fieldLinePosition :: Maybe Position
       fieldLinePosition = prettyFieldLinePosition fieldLine
