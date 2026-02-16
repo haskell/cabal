@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 module Main (main) where
 
-import Control.Applicative    (liftA2, many, (<|>))
+import Control.Applicative
 import Control.Monad          (void)
 import Data.Foldable          (for_)
 import Data.List              (sortBy)

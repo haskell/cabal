@@ -71,7 +71,7 @@ data SolverConfig = SolverConfig {
   enableBackjumping      :: EnableBackjumping,
   solveExecutables       :: SolveExecutables,
   goalOrder              :: Maybe (Variable QPN -> Variable QPN -> Ordering),
-  solverVerbosity        :: Verbosity,
+  solverVerbosity        :: VerbosityLevel,
   pruneAfterFirstSuccess :: PruneAfterFirstSuccess
 }
 

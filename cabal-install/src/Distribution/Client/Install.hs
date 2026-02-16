@@ -266,11 +266,7 @@ import Distribution.Types.PackageVersionConstraint
   , thisPackageVersionConstraint
   )
 import Distribution.Utils.NubList
-import Distribution.Verbosity as Verbosity
-  ( modifyVerbosity
-  , normal
-  , verbose
-  )
+import Distribution.Verbosity
 import Distribution.Version
   ( Version
   , VersionRange
@@ -608,7 +604,7 @@ planPackages
           . setStrongFlags strongFlags
           . setAllowBootLibInstalls allowBootLibInstalls
           . setOnlyConstrained onlyConstrained
-          . setSolverVerbosity verbosity
+          . setSolverVerbosity (verbosityLevel verbosity)
           . setPreferenceDefault
             ( if upgradeDeps
                 then PreferAllLatest
@@ -791,7 +787,7 @@ checkPrintPlan
     let adaptedVerbosity
           | containsReinstalls
           , not overrideReinstall =
-              modifyVerbosity (max verbose) verbosity
+              modifyVerbosityFlags makeVerbose verbosity
           | otherwise = verbosity
 
     -- We print the install plan if we are in a dry-run or if we are confronted
@@ -917,7 +913,7 @@ printPlan
 printPlan dryRun verbosity plan sourcePkgDb = case plan of
   [] -> return ()
   pkgs
-    | verbosity >= Verbosity.verbose ->
+    | verbosityLevel verbosity >= Verbose ->
         notice verbosity $
           unlines $
             ("In order, the following " ++ wouldWill ++ " be installed:")
@@ -1536,7 +1532,7 @@ performInstallations
           -- --build-log, use more verbose logging.
           loggingVerbosity :: Verbosity
           loggingVerbosity
-            | overrideVerbosity = modifyVerbosity (max verbose) verbosity
+            | overrideVerbosity = modifyVerbosityFlags makeVerbose verbosity
             | otherwise = verbosity
 
           useDefaultTemplate :: Bool
@@ -1599,7 +1595,7 @@ executeInstallPlan verbosity jobCtl keepGoing useLogFile plan0 installPkg =
       (Right _) -> progressMessage verbosity ProgressCompleted (prettyShow pkgid)
       (Left _) -> do
         notice verbosity $ "Failed to install " ++ prettyShow pkgid
-        when (verbosity >= normal) $
+        when (verbosityLevel verbosity >= Normal) $
           case useLogFile of
             Nothing -> return ()
             Just (mkLogFileName, _) -> do
@@ -1754,7 +1750,7 @@ installLocalTarballPackage
   distPref
   installPkg = do
     tmp <- getTemporaryDirectory
-    withTempDirectory verbosity tmp "cabal-tmp" $ \tmpDirPath ->
+    withTempDirectory tmp "cabal-tmp" $ \tmpDirPath ->
       onFailure UnpackFailed $ do
         let relUnpackedPath = prettyShow pkgid
             absUnpackedPath = tmpDirPath </> relUnpackedPath
@@ -1870,7 +1866,7 @@ installUnpackedPackage
           (`filterCommonFlags` ver) $
             defaultCommonSetupFlags
               { setupDistPref = setupDistPref $ configCommonFlags configFlags
-              , setupVerbosity = toFlag verbosity'
+              , setupVerbosity = toFlag $ verbosityFlags verbosity'
               , setupWorkingDir = maybeToFlag mbWorkDir
               }
 
@@ -1884,7 +1880,7 @@ installUnpackedPackage
             configFlags'
               { configCommonFlags =
                   (configCommonFlags (configFlags'))
-                    { setupVerbosity = toFlag verbosity'
+                    { setupVerbosity = toFlag $ verbosityFlags verbosity'
                     }
               }
 
@@ -2023,7 +2019,7 @@ installUnpackedPackage
         -> IO [Installed.InstalledPackageInfo]
       genPkgConfs flags mLogPath = do
         tmp <- getTemporaryDirectory
-        withTempDirectory verbosity tmp (tempTemplate "pkgConf") $ \dir -> do
+        withTempDirectory tmp (tempTemplate "pkgConf") $ \dir -> do
           let pkgConfDest = makeSymbolicPath dir </> makeRelativePathEx "pkgConf"
               registerFlags' version =
                 (flags version)
@@ -2081,7 +2077,7 @@ installUnpackedPackage
           (traverse_ hClose)
           ( \logFileHandle ->
               setupWrapper
-                verbosity
+                (setVerbosityHandles logFileHandle verbosity)
                 scriptOptions
                   { useLoggingHandle = logFileHandle
                   , useWorkingDir = makeSymbolicPath <$> workingDir

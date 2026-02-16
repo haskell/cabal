@@ -237,7 +237,7 @@ data ConfigFlags = ConfigFlags
   deriving (Generic, Read, Show)
 
 pattern ConfigCommonFlags
-  :: Flag Verbosity
+  :: Flag VerbosityFlags
   -> Flag (SymbolicPath Pkg (Dir Dist))
   -> Flag (SymbolicPath CWD (Dir Pkg))
   -> Flag (SymbolicPath Pkg File)

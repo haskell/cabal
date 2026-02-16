@@ -15,7 +15,7 @@ on:
       - created
 
 env:
-  GHC_FOR_QUICK_JOBS: 9.6.5
+  GHC_FOR_QUICK_JOBS: 9.10.3
 
 jobs:
   meta:

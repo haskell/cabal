@@ -34,9 +34,6 @@ import Distribution.Simple.Utils
   , info
   , withTempDirectory
   )
-import Distribution.Verbosity
-  ( silent
-  )
 
 import Control.Exception
 import qualified Data.Set as Set
@@ -233,7 +230,7 @@ withTempIncomingDir
   -> IO a
 withTempIncomingDir StoreDirLayout{storeIncomingDirectory} compiler action = do
   createDirectoryIfMissing True incomingDir
-  withTempDirectory silent incomingDir "new" action
+  withTempDirectory incomingDir "new" action
   where
     incomingDir = storeIncomingDirectory compiler
 

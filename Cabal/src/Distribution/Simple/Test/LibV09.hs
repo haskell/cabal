@@ -57,14 +57,15 @@ import System.IO (hClose, hPutStr)
 import qualified System.Process as Process
 
 runTest
-  :: PD.PackageDescription
+  :: VerbosityHandles
+  -> PD.PackageDescription
   -> LBI.LocalBuildInfo
   -> LBI.ComponentLocalBuildInfo
   -> HPCMarkupInfo
   -> TestFlags
   -> PD.TestSuite
   -> IO TestSuiteLog
-runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
+runTest verbHandles pkg_descr lbi clbi hpcMarkupInfo flags suite = do
   let isCoverageEnabled = LBI.testCoverage lbi
       way = guessWay lbi
 
@@ -183,9 +184,9 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
           when $
             (details > Never)
               && (not (suitePassed $ testLogs suiteLog) || details == Always)
-              && verbosity >= normal
+              && verbosityLevel verbosity >= Normal
     whenPrinting $ do
-      LBS.putStr logText
+      LBS.hPutStr (verbosityChosenOutputHandle verbosity) logText
       putChar '\n'
 
     return suiteLog
@@ -220,7 +221,7 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
       hClose h >> return f
 
     distPref = fromFlag $ setupDistPref common
-    verbosity = fromFlag $ setupVerbosity common
+    verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
 
 -- TODO: This is abusing the notion of a 'PathTemplate'.  The result isn't
 -- necessarily a path.
@@ -312,7 +313,7 @@ stubRunTests tests = do
   where
     stubRunTests' (Test t) = do
       l <- run t >>= finish
-      summarizeTest normal Always l
+      summarizeTest (mkVerbosity defaultVerbosityHandles normal) Always l
       return l
       where
         finish (Finished result) =

@@ -213,6 +213,7 @@ import Distribution.Solver.Types.ConstraintSource
 import Distribution.Utils.Path (getSymbolicPath, unsafeMakeSymbolicPath)
 import Distribution.Verbosity
   ( normal
+  , verbosityFlags
   )
 import Network.URI
   ( URI (..)
@@ -1941,7 +1942,7 @@ parseExtraLines verbosity extraLines =
 -- config file and the one that cabal would generate if it didn't exist.
 userConfigDiff :: Verbosity -> GlobalFlags -> [String] -> IO [String]
 userConfigDiff verbosity globalFlags extraLines = do
-  userConfig <- loadRawConfig normal (globalConfigFile globalFlags)
+  userConfig <- loadRawConfig (verbosity{verbosityFlags = normal}) (globalConfigFile globalFlags)
   extraConfig <- parseExtraLines verbosity extraLines
   testConfig <- initialSavedConfig
   return $
@@ -1995,7 +1996,7 @@ userConfigDiff verbosity globalFlags extraLines = do
 -- | Update the user's config file keeping the user's customizations.
 userConfigUpdate :: Verbosity -> GlobalFlags -> [String] -> IO ()
 userConfigUpdate verbosity globalFlags extraLines = do
-  userConfig <- loadRawConfig normal (globalConfigFile globalFlags)
+  userConfig <- loadRawConfig (verbosity{verbosityFlags = normal}) (globalConfigFile globalFlags)
   extraConfig <- parseExtraLines verbosity extraLines
   newConfig <- initialSavedConfig
   commentConf <- commentSavedConfig

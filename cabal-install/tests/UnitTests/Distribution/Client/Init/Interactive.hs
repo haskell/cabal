@@ -76,7 +76,7 @@ createProjectTest pkgIx srcDb =
                     , dependencies = Flag []
                     }
 
-            case (runPrompt $ createProject silent pkgIx srcDb dummyFlags') (fromList ["[]", "3", "quxTest/Main.hs"]) of
+            case (runPrompt $ createProject (mkVerbosity defaultVerbosityHandles silent) pkgIx srcDb dummyFlags') (fromList ["[]", "3", "quxTest/Main.hs"]) of
               Right (ProjectSettings opts desc (Just lib) (Just exe) (Just test), _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False
@@ -186,7 +186,7 @@ createProjectTest pkgIx srcDb =
                       "y"
                     ]
 
-            case (runPrompt $ createProject silent pkgIx srcDb emptyFlags) inputs of
+            case (runPrompt $ createProject (mkVerbosity defaultVerbosityHandles silent) pkgIx srcDb emptyFlags) inputs of
               Right (ProjectSettings opts desc (Just lib) (Just exe) (Just test), _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False
@@ -286,7 +286,7 @@ createProjectTest pkgIx srcDb =
                       "y"
                     ]
 
-            case (runPrompt $ createProject silent pkgIx srcDb emptyFlags) inputs of
+            case (runPrompt $ createProject (mkVerbosity defaultVerbosityHandles silent) pkgIx srcDb emptyFlags) inputs of
               Right (ProjectSettings opts desc (Just lib) Nothing (Just test), _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False
@@ -372,7 +372,7 @@ createProjectTest pkgIx srcDb =
                       "y"
                     ]
 
-            case (runPrompt $ createProject silent pkgIx srcDb emptyFlags) inputs of
+            case (runPrompt $ createProject (mkVerbosity defaultVerbosityHandles silent) pkgIx srcDb emptyFlags) inputs of
               Right (ProjectSettings opts desc Nothing Nothing (Just test), _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False
@@ -460,7 +460,7 @@ createProjectTest pkgIx srcDb =
                       "y"
                     ]
 
-            case (runPrompt $ createProject silent pkgIx srcDb emptyFlags) inputs of
+            case (runPrompt $ createProject (mkVerbosity defaultVerbosityHandles silent) pkgIx srcDb emptyFlags) inputs of
               Right (ProjectSettings opts desc (Just lib) (Just exe) Nothing, _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False
@@ -546,7 +546,7 @@ createProjectTest pkgIx srcDb =
                       "y"
                     ]
 
-            case (runPrompt $ createProject silent pkgIx srcDb emptyFlags) inputs of
+            case (runPrompt $ createProject (mkVerbosity defaultVerbosityHandles silent) pkgIx srcDb emptyFlags) inputs of
               Right (ProjectSettings opts desc (Just lib) Nothing Nothing, _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False
@@ -631,7 +631,7 @@ createProjectTest pkgIx srcDb =
                     , extraSrc = Flag ["README.md"]
                     }
 
-            case (runPrompt $ createProject silent pkgIx srcDb flags) inputs of
+            case (runPrompt $ createProject (mkVerbosity defaultVerbosityHandles silent) pkgIx srcDb flags) inputs of
               Right (ProjectSettings opts desc (Just lib) Nothing Nothing, _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False
@@ -709,7 +709,7 @@ createProjectTest pkgIx srcDb =
                       "y"
                     ]
 
-            case (runPrompt $ createProject silent pkgIx srcDb emptyFlags) inputs of
+            case (runPrompt $ createProject (mkVerbosity defaultVerbosityHandles silent) pkgIx srcDb emptyFlags) inputs of
               Right (ProjectSettings opts desc Nothing (Just exe) Nothing, _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False

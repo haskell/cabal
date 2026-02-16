@@ -116,7 +116,7 @@ data HaddockFlags = HaddockFlags
   deriving (Show, Generic)
 
 pattern HaddockCommonFlags
-  :: Flag Verbosity
+  :: Flag VerbosityFlags
   -> Flag (SymbolicPath Pkg (Dir Dist))
   -> Flag (SymbolicPath CWD (Dir Pkg))
   -> Flag (SymbolicPath Pkg File)
