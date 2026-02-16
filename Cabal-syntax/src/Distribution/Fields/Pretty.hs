@@ -410,9 +410,11 @@ fixupPosition prevPos curPos = case (prevPos, curPos) of
   -- No previous position to calculate line jump, but still compute column offset
   (Nothing, Just (Position _ cy)) -> EPP.nest (cy - 1)
 
+  -- FIXME: regarding whether it's a section or a fieldLine, we should do different things
+  -- we need more context
+
   -- Has previous position but current entry has no position
   -- Probably inserted programmatically, default to indent of 4
   (Just _, Nothing) -> EPP.nest 4
-
   -- Prepend space purely for readability
-  (Nothing, Nothing) -> EPP.nest 1
+  (Nothing, Nothing) -> \x -> EPP.text " " <> x <> EPP.newline
