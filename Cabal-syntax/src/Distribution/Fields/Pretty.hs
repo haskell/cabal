@@ -358,7 +358,7 @@ exactRenderPrettyField ctx0@(lastField, lastFieldLine) field = case field of
     in  ( ctx'
         , EPP.text (T.pack $ fromUTF8BS fieldName)
           <> EPP.sep (EPP.text " ") (map docToExactDoc sectionArgs) <> EPP.text ":"
-          <> fieldsFinal
+          <> EPP.nest 4 fieldsFinal
         )
 
 exactRenderPrettyFieldLines
