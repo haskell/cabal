@@ -359,6 +359,9 @@ exactRenderPrettyField ctx0@(lastField, lastFieldLine) field =
         fieldsFirstPosition :: Maybe Position
         fieldsFirstPosition = prettyFieldPosition <=< safeHead $ fields
 
+        guessedIndentation :: Int
+        guessedIndentation = fromMaybe 4 $ subtract 1 . positionCol <$> fieldsFirstPosition
+
         -- TODO(leana8959): section args are currently not exactly positioned
         fieldsFinal :: ExactDoc
         fieldsFinal = fixupFieldPosition sectionNamePosition fieldsFirstPosition
@@ -371,7 +374,7 @@ exactRenderPrettyField ctx0@(lastField, lastFieldLine) field =
             (if isFirst then id else fixupSectionPosition lastPosition sectionNamePosition) $
               EPP.text (T.pack $ fromUTF8BS fieldName)
               <> EPP.text " " <> EPP.sep (EPP.text " ") (map docToExactDoc sectionArgs)
-              <> EPP.nest 4 fieldsFinal
+              <> EPP.nest guessedIndentation fieldsFinal
     in  ( ctx'
         , docOut
         )
@@ -429,7 +432,10 @@ fixupFieldPosition prevPos curPos =
 fixupFieldLinePosition :: Maybe Position -> Maybe Position -> ExactDoc -> ExactDoc
 fixupFieldLinePosition prevPos curPos =
   -- a field falls back to a newline and is indented
-  fromMaybe (EPP.nest 4) (fixupPosition prevPos curPos)
+  fromMaybe (EPP.nest guessedIndentation) (fixupPosition prevPos curPos)
+  where
+    guessedIndentation :: Int
+    guessedIndentation = fromMaybe 4 $ subtract 1 . positionCol <$> prevPos
 
 -- |
 -- Try to return a function that patches a document's position.
