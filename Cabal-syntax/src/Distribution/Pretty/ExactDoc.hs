@@ -40,6 +40,8 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 
+import Debug.Pretty.Simple
+
 data ExactDoc where
   Text :: !T.Text -> ExactDoc
   Nil :: ExactDoc
@@ -64,7 +66,7 @@ type RenderState = Position
 updateCursorRow :: Int -> State RenderState Text
 updateCursorRow row = do
   Position currentRow currentCol <- get
-  let rowDiff = currentRow - row
+  let rowDiff = row - currentRow
       padding = T.replicate rowDiff "\n"
 
   when (rowDiff < 0) $
@@ -75,14 +77,13 @@ updateCursorRow row = do
 updateCursorCol :: Int -> State RenderState Text
 updateCursorCol col = do
   Position currentRow currentCol <- get
-  let colDiff = currentCol - col
+  let colDiff = col - currentCol - 1
       padding = T.replicate colDiff " "
 
   when (colDiff < 0) $
     put (Position currentRow col)
 
   pure padding
-
 
 renderText :: ExactDoc -> Text
 renderText doc = evalState (renderTextStep doc) state0

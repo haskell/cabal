@@ -707,28 +707,40 @@ exactDocTests = testGroup "exactDoc"
 
 exactDocRenderTests :: TestTree
 exactDocRenderTests = testGroup "render"
-  [ exactDocRenderTest ""
+  [ exactDocRenderTest "exact placement"
       (EPP.place 1 1 (EPP.text "hi"))
-      ("\n hi")
+      "\n hi"
+  , exactDocRenderTest "exact placement"
+      (EPP.place 2 5 (EPP.text "hi"))
+      "\n\n     hi"
+  , exactDocRenderTest "indent over place"
+      (EPP.nest 4 (EPP.place 2 2 (EPP.text "hi")))
+      "\n\n  hi"
+  , exactDocRenderTest "indent over place"
+      (EPP.place 5 6 (EPP.place 2 2 (EPP.text "hi")))
+      "\n\n  hi"
+  , exactDocRenderTest "place over indent"
+      (EPP.place 1 1 (EPP.nest 2 (EPP.text "hi")))
+      "\n  hi"
   ]
 
 exactDocRenderTest :: String ->  ExactDoc -> Text -> TestTree
-exactDocRenderTest name doc expected = testCase "name" $
+exactDocRenderTest name doc expected = testCase name $
   let rendered = EPP.renderText doc
   in  rendered == expected @?
 #ifdef MIN_VERSION_tree_diff
         ( unlines
             [ "re-parsed doesn't match"
-            , show $ ansiWlEditExpr $ ediff rendered expected
+            , show $ ansiWlEditExpr $ ediff expected rendered
             ]
         )
 #else
         ( unlines
             [ "re-parsed doesn't match"
             , "expected"
-            , show renderText
-            , "actual"
             , show expected
+            , "actual"
+            , show rendered
             ]
         )
 #endif

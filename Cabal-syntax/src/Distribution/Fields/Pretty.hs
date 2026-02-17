@@ -314,8 +314,7 @@ exactRenderPrettyField
   :: PrettyFieldPositionContext Trivia
   -> PrettyField Trivia
   -> (PrettyFieldPositionContext Trivia, ExactDoc)
-exactRenderPrettyField ctx0@(lastField, lastFieldLine) field =
-  (\x -> pTrace ("prettyField = " <> show (snd x) <> "\n") x) $ case field of
+exactRenderPrettyField ctx0@(lastField, lastFieldLine) field = case field of
   -- Absorb empty
   PrettyEmpty -> (ctx0, mempty)
   PrettyField ann fieldName fieldLines ->
