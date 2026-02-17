@@ -99,7 +99,7 @@ data CabalInstallException
   | UnknownExecutable String UnitId
   | MultipleMatchingExecutables String [String]
   | CmdRunReportTargetProblems String
-  | CleanAction [String]
+  | CleanActionNotScript [String]
   | ReportCannotPruneDependencies String
   | ReplCommandDoesn'tSupport
   | ReplTakesNoArguments [String]
@@ -192,6 +192,7 @@ data CabalInstallException
   | LegacyAndParsecParseResultsDiffer FilePath String String
   | CabalFileParseFailure CabalFileParseError
   | ProjectConfigParseFailure ProjectConfigParseError
+  | CleanActionNotPackage
   deriving (Show)
 
 exceptionCodeCabalInstall :: CabalInstallException -> Int
@@ -255,7 +256,7 @@ exceptionCodeCabalInstall e = case e of
   UnknownExecutable{} -> 7068
   MultipleMatchingExecutables{} -> 7069
   CmdRunReportTargetProblems{} -> 7070
-  CleanAction{} -> 7071
+  CleanActionNotScript{} -> 7071
   ReportCannotPruneDependencies{} -> 7072
   ReplCommandDoesn'tSupport{} -> 7073
   ReplTakesNoArguments{} -> 7074
@@ -348,6 +349,7 @@ exceptionCodeCabalInstall e = case e of
   LegacyAndParsecParseResultsDiffer{} -> 7165
   CabalFileParseFailure{} -> 7166
   ProjectConfigParseFailure{} -> 7167
+  CleanActionNotPackage{} -> 7168
 
 exceptionMessageCabalInstall :: CabalInstallException -> String
 exceptionMessageCabalInstall e = case e of
@@ -458,7 +460,7 @@ exceptionMessageCabalInstall e = case e of
       ++ ":\n"
       ++ unlines elabUnitId
   CmdRunReportTargetProblems renderProb -> renderProb
-  CleanAction notScripts ->
+  CleanActionNotScript notScripts ->
     "'clean' extra arguments should be script files: "
       ++ unwords notScripts
   ReportCannotPruneDependencies renderCannotPruneDependencies -> renderCannotPruneDependencies
@@ -885,6 +887,8 @@ exceptionMessageCabalInstall e = case e of
     renderCabalFileParseError cbfError
   ProjectConfigParseFailure pcfError ->
     renderProjectConfigParseError pcfError
+  CleanActionNotPackage ->
+    "Not a cabal project or package directory; skipping project cleanup."
 
 instance Exception (VerboseException CabalInstallException) where
   displayException :: VerboseException CabalInstallException -> [Char]
