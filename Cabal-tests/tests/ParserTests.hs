@@ -59,6 +59,9 @@ import Distribution.Fields.Field
 import Distribution.CabalSpecVersion
 import Distribution.PackageDescription.FieldGrammar
 
+import Data.Text (Text)
+import Distribution.Pretty.ExactDoc (ExactDoc)
+import qualified Distribution.Pretty.ExactDoc as EPP
 import Data.Functor.Identity
 import Data.Proxy
 import Debug.Pretty.Simple
@@ -93,6 +96,7 @@ tests = testGroup "parsec tests"
     , fieldGrammarGoldenTests
     , fieldGrammarRoundTripTests
     , fieldGrammarTransformTests
+    , exactDocTests
     ]
 
 -------------------------------------------------------------------------------
@@ -695,6 +699,39 @@ ipiFormatRoundTripTest fp = testCase "roundtrip" $ do
               void $ assertFailure $ show err
               fail "failure"
     input = "tests" </> "ParserTests" </> "ipi" </> fp
+
+exactDocTests :: TestTree
+exactDocTests = testGroup "exactDoc"
+  [ exactDocRenderTests
+  ]
+
+exactDocRenderTests :: TestTree
+exactDocRenderTests = testGroup "render"
+  [ exactDocRenderTest ""
+      (EPP.place 1 1 (EPP.text "hi"))
+      ("\n hi")
+  ]
+
+exactDocRenderTest :: String ->  ExactDoc -> Text -> TestTree
+exactDocRenderTest name doc expected = testCase "name" $
+  let rendered = EPP.renderText doc
+  in  rendered == expected @?
+#ifdef MIN_VERSION_tree_diff
+        ( unlines
+            [ "re-parsed doesn't match"
+            , show $ ansiWlEditExpr $ ediff rendered expected
+            ]
+        )
+#else
+        ( unlines
+            [ "re-parsed doesn't match"
+            , "expected"
+            , show renderText
+            , "actual"
+            , show expected
+            ]
+        )
+#endif
 
 -------------------------------------------------------------------------------
 -- Main
