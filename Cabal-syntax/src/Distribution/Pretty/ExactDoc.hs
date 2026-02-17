@@ -30,7 +30,13 @@ module Distribution.Pretty.ExactDoc
   )
   where
 
+import Distribution.Parsec.Position
+
+import Control.Applicative
+import Control.Monad
+import Control.Monad.Trans.State.Strict
 import Data.List (intersperse)
+import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 
@@ -50,13 +56,54 @@ instance Monoid ExactDoc where
   mempty = Nil
   mconcat = foldl concatDoc Nil
 
-renderText :: ExactDoc -> T.Text
-renderText d0 = case d0 of
-  Text t -> t
-  Nil -> mempty
-  Concat d1 d2 -> renderText d1 <> renderText d2
-  Place n m d -> T.replicate n "\n" <> T.replicate m " " <> renderText d
-  Nest n d -> T.replicate n " " <> renderText d
+type RenderState = Position
+
+-- |
+-- Outputs the padding Text to currect the cursor position if needed,
+-- changes the state otherwise.
+updateCursorRow :: Int -> State RenderState Text
+updateCursorRow row = do
+  Position currentRow currentCol <- get
+  let rowDiff = currentRow - row
+      padding = T.replicate rowDiff "\n"
+
+  when (rowDiff < 0) $
+    put (Position row currentCol)
+
+  pure padding
+
+updateCursorCol :: Int -> State RenderState Text
+updateCursorCol col = do
+  Position currentRow currentCol <- get
+  let colDiff = currentCol - col
+      padding = T.replicate colDiff " "
+
+  when (colDiff < 0) $
+    put (Position currentRow col)
+
+  pure padding
+
+
+renderText :: ExactDoc -> Text
+renderText doc = evalState (renderTextStep doc) state0
+  where
+    state0 = zeroPos
+
+renderTextStep :: ExactDoc -> State RenderState Text
+renderTextStep d0 = get >>= \(Position row col) -> case d0 of
+  Nil -> pure mempty
+
+  Place atRow atCol d ->
+    liftA3 (\x y z -> x <> y <> z)
+      (updateCursorRow atRow)
+      (updateCursorCol atCol)
+      (renderTextStep d)
+
+  Nest indentSize d -> liftA2 (<>) (updateCursorCol indentSize) (renderTextStep d)
+
+  Text t -> liftA2 (<>) (updateCursorCol (T.length t)) (pure t)
+
+  Concat d1 d2 -> liftA2 (<>) (renderTextStep d1) (renderTextStep d2)
 
 -- | Invariant: this assumes the input text doesn't have more than one line
 text :: T.Text -> ExactDoc
