@@ -67,7 +67,7 @@ unAnnotatePrettyFieldLine (PrettyFieldLine _ doc) = doc
 -- They defer the merging of Doc and allow meaningful line-wise
 -- position annotation.
 data PrettyFieldLine ann = PrettyFieldLine ann PP.Doc
-  deriving (Functor, Foldable, Traversable, Show {-NOTE(leana8959): for debugging-})
+  deriving (Eq, Functor, Foldable, Traversable, Show {-NOTE(leana8959): for debugging-})
 
 prettyFieldLineAnn :: PrettyFieldLine ann -> ann
 prettyFieldLineAnn (PrettyFieldLine ann _) = ann
@@ -79,7 +79,7 @@ data PrettyField ann
   = PrettyField ann FieldName [PrettyFieldLine ann]
   | PrettySection ann FieldName [PP.Doc] [PrettyField ann]
   | PrettyEmpty
-  deriving (Functor, Foldable, Traversable, Show {- NOTE(leana8959): for debugging -})
+  deriving (Eq, Functor, Foldable, Traversable, Show {- NOTE(leana8959): for debugging -})
 
 prettyFieldAnn :: PrettyField ann -> Maybe ann
 prettyFieldAnn (PrettyField ann _ _) = Just ann
@@ -338,8 +338,11 @@ exactRenderPrettyField ctx0@(lastField, lastFieldLine) field =
         lastPosition :: Maybe Position
         lastPosition = (prettyFieldLinePosition =<< lastFieldLine) <|> (prettyFieldPosition =<< lastField)
 
+        isFirst = lastField == Nothing && lastFieldLine == Nothing
+
         docOut :: ExactDoc
-        docOut = fixupFieldPosition lastPosition fieldNamePosition
+        docOut =
+                (if isFirst then id else fixupFieldPosition lastPosition fieldNamePosition)
                 $ EPP.text (T.pack $ fromUTF8BS fieldName <> ":") <> fieldLinesFinal
     in  (ctx', docOut)
   PrettySection ann fieldName sectionArgs fields ->
@@ -361,8 +364,11 @@ exactRenderPrettyField ctx0@(lastField, lastFieldLine) field =
         fieldsFinal = fixupFieldPosition sectionNamePosition fieldsFirstPosition
                       $ mconcat fields'
 
+        isFirst = lastField == Nothing && lastFieldLine == Nothing
+
         docOut :: ExactDoc
-        docOut = fixupSectionPosition lastPosition sectionNamePosition  $
+        docOut =
+            (if isFirst then id else fixupSectionPosition lastPosition sectionNamePosition) $
               EPP.text (T.pack $ fromUTF8BS fieldName)
               <> EPP.text " " <> EPP.sep (EPP.text " ") (map docToExactDoc sectionArgs)
               <> EPP.nest 4 fieldsFinal
