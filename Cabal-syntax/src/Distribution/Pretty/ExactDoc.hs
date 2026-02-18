@@ -10,7 +10,8 @@
 module Distribution.Pretty.ExactDoc
   (
   -- * Type
-    ExactDoc
+    ExactDoc (..)
+    -- TODO: hide the constructors in an internal module
 
   -- * Constructors
   , text
@@ -80,18 +81,19 @@ updateCursorRow row = do
   let rowDiff = row - currentRow
       padding = T.replicate rowDiff "\n"
 
-  when (rowDiff < 0) $
-    put (Position row currentCol)
+  when (rowDiff > 0) $
+    -- jumped, we move cursor forward to desired row and reset col
+    put (Position row 0)
 
   pure padding
 
 updateCursorCol :: Int -> State RenderState Text
 updateCursorCol col = do
   Position currentRow currentCol <- get
-  let colDiff = col - currentCol - 1
+  let colDiff = col - currentCol
       padding = T.replicate colDiff " "
 
-  when (colDiff < 0) $
+  when (colDiff > 0) $
     put (Position currentRow col)
 
   pure padding
@@ -113,9 +115,12 @@ renderTextStep d0 = case d0 of
 
   Nest indentSize d ->
     get >>= \(Position row col) ->
-      liftA2 (<>) (updateCursorCol (col + indentSize + 1)) (renderTextStep d)
+      liftA2 (<>) (updateCursorCol (col + indentSize)) (renderTextStep d)
 
-  Text t -> liftA2 (<>) (updateCursorCol (T.length t)) (pure t)
+  Text t -> do
+    modify
+      $ \(Position row col) -> Position row (col + T.length t)
+    pure t
 
   Concat d1 d2 -> liftA2 (<>) (renderTextStep d1) (renderTextStep d2)
 

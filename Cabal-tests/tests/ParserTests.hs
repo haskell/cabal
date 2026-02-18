@@ -793,6 +793,12 @@ exactDocRenderTests = testGroup "render"
   , exactDocRenderTest "place over indent"
       (EPP.place 1 1 (EPP.nest 2 (EPP.text "hi")))
       "\n   hi"
+  , exactDocRenderTest "build-depends"
+      ( EPP.Concat
+        (EPP.Text "foo")
+        (EPP.Place 1 4 (EPP.text "bar"))
+      )
+      "foo\n    bar"
   ]
 
 exactDocRenderTest :: String ->  ExactDoc -> Text -> TestTree
