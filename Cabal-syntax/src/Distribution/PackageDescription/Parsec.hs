@@ -27,6 +27,8 @@ module Distribution.PackageDescription.Parsec
   , PSource (..)
   , withSource
 
+  , parseSection
+
     -- * New-style spec-version
   , scanSpecVersion
 
@@ -278,10 +280,167 @@ goSections specVer = fmap mconcat . traverse process
       lift $ parseWarning pos PWTTrailingFields $ "Ignoring trailing fields after sections: " ++ show name
       pure mempty
     process (Section name args secFields) =
-      parseSection name args secFields
+      parseSection specVer name args secFields
 
+parseSection :: CabalSpecVersion -> Name Position -> [SectionArg Position] -> [Field Position] -> SectionParser src TriviaTree
+parseSection specVer (Name pos name) args fields
+  | hasCommonStanzas == NoCommonStanzas
+  , name == "common" = lift $ do
+      parseWarning pos PWTUnknownSection $ "Ignoring section: common. You should set cabal-version: 2.2 or larger to use common stanzas."
+      pure mempty
+  | name == "common" = do
+      commonStanzas <- use stateCommonStanzas
+      name' <- lift $ parseCommonName pos args
+      (tBiTree, biTree) <- lift $ parseCondTree' buildInfoFieldGrammar id commonStanzas fields
+
+      case Map.lookup name' commonStanzas of
+        Nothing -> stateCommonStanzas .= Map.insert name' biTree commonStanzas
+        Just _ -> lift $ parseFailure pos $ "Duplicate common stanza: " ++ name'
+
+      pure tBiTree
+  | name == "library" && null args = do
+      prev <- use $ stateGpd . L.condLibrary
+      when (isJust prev) $
+        lift $
+          parseFailure pos $
+            "Multiple main libraries; have you forgotten to specify a name for an internal library?"
+
+      commonStanzas <- use stateCommonStanzas
+      let name'' = LMainLibName
+      (tLib, lib) <- lift $ parseCondTree' (libraryFieldGrammar name'') (libraryFromBuildInfo name'') commonStanzas fields
+      let tLib' = fromNamedTrivia name'' [ExactSectionPosition pos] <> tLib
+      -- TODO check that not set
+      stateGpd . L.condLibrary ?= lib
+      pure tLib'
+
+  -- Sublibraries
+  -- TODO: check cabal-version
+  | name == "library" = do
+      commonStanzas <- use stateCommonStanzas
+      name' <- parseUnqualComponentName pos args
+      let name'' = LSubLibName name'
+      (tLib, lib) <- lift $ parseCondTree' (libraryFieldGrammar name'') (libraryFromBuildInfo name'') commonStanzas fields
+      let tLib' = fromNamedTrivia name'' [ExactSectionPosition pos] <> tLib
+      -- TODO check duplicate name here?
+      stateGpd . L.condSubLibraries %= snoc (name', lib)
+      pure tLib'
+
+  -- TODO: check cabal-version
+  | name == "foreign-library" = do
+      commonStanzas <- use stateCommonStanzas
+      name' <- parseUnqualComponentName pos args
+      (tFlib, flib) <- lift $ parseCondTree' (foreignLibFieldGrammar name') (fromBuildInfo' name') commonStanzas fields
+
+      let hasType ts = foreignLibType ts /= foreignLibType mempty
+      unless (onAllBranches hasType flib) $
+        lift $
+          parseFailure pos $
+            concat
+              [ "Foreign library " ++ show (prettyShow name')
+              , " is missing required field \"type\" or the field "
+              , "is not present in all conditional branches. The "
+              , "available test types are: "
+              , intercalate ", " (map prettyShow knownForeignLibTypes)
+              ]
+
+      -- TODO check duplicate name here?
+      stateGpd . L.condForeignLibs %= snoc (name', flib)
+      pure tFlib
+  | name == "executable" = do
+      commonStanzas <- use stateCommonStanzas
+      name' <- parseUnqualComponentName pos args
+      (tExe, exe) <- lift $ parseCondTree' (executableFieldGrammar name') (fromBuildInfo' name') commonStanzas fields
+      -- TODO check duplicate name here?
+      stateGpd . L.condExecutables %= snoc (name', exe)
+      pure tExe
+  | name == "test-suite" = do
+      commonStanzas <- use stateCommonStanzas
+      name' <- parseUnqualComponentName pos args
+      (tTestStanza, testStanza) <- lift $ parseCondTree' testSuiteFieldGrammar (fromBuildInfo' name') commonStanzas fields
+      testSuite <- lift $ traverse (validateTestSuite specVer pos) testStanza
+
+      let hasType ts = testInterface ts /= testInterface mempty
+      unless (onAllBranches hasType testSuite) $
+        lift $
+          parseFailure pos $
+            concat
+              [ "Test suite " ++ show (prettyShow name')
+              , concat $ case specVer of
+                  v
+                    | v >= CabalSpecV3_8 ->
+                        [ " is missing required field \"main-is\" or the field "
+                        , "is not present in all conditional branches."
+                        ]
+                  _ ->
+                    [ " is missing required field \"type\" or the field "
+                    , "is not present in all conditional branches. The "
+                    , "available test types are: "
+                    , intercalate ", " (map prettyShow knownTestTypes)
+                    ]
+              ]
+
+      -- TODO check duplicate name here?
+      stateGpd . L.condTestSuites %= snoc (name', testSuite)
+      pure tTestStanza
+  | name == "benchmark" = do
+      commonStanzas <- use stateCommonStanzas
+      name' <- parseUnqualComponentName pos args
+      (tBenchStanza, benchStanza) <- lift $ parseCondTree' benchmarkFieldGrammar (fromBuildInfo' name') commonStanzas fields
+      bench <- lift $ traverse (validateBenchmark specVer pos) benchStanza
+
+      let hasType ts = benchmarkInterface ts /= benchmarkInterface mempty
+      unless (onAllBranches hasType bench) $
+        lift $
+          parseFailure pos $
+            concat
+              [ "Benchmark " ++ show (prettyShow name')
+              , concat $ case specVer of
+                  v
+                    | v >= CabalSpecV3_8 ->
+                        [ " is missing required field \"main-is\" or the field "
+                        , "is not present in all conditional branches."
+                        ]
+                  _ ->
+                    [ " is missing required field \"type\" or the field "
+                    , "is not present in all conditional branches. The "
+                    , "available benchmark types are: "
+                    , intercalate ", " (map prettyShow knownBenchmarkTypes)
+                    ]
+              ]
+
+      -- TODO check duplicate name here?
+      stateGpd . L.condBenchmarks %= snoc (name', bench)
+      pure tBenchStanza
+  | name == "flag" = do
+      name' <- parseNameBS pos args
+      name'' <- lift $ runFieldParser' [pos] parsec specVer (fieldLineStreamFromBS name') `recoverWith` mkFlagName ""
+      (tFlag, flag) <- lift $ parseFields specVer fields (flagFieldGrammar name'')
+      -- Check default flag
+      stateGpd . L.genPackageFlags %= snoc flag
+      pure tFlag
+  | name == "custom-setup" && null args = do
+      (tSbi, sbi) <- lift $ parseFields specVer fields (setupBInfoFieldGrammar False)
+      stateGpd . L.packageDescription . L.setupBuildInfo ?= sbi
+      pure tSbi
+  | name == "source-repository" = do
+      kind <- lift $ case args of
+        [SecArgName spos secName] ->
+          runFieldParser' [spos] parsec specVer (fieldLineStreamFromBS secName) `recoverWith` RepoHead
+        [] -> do
+          parseFailure pos "'source-repository' requires exactly one argument"
+          pure RepoHead
+        _ -> do
+          parseFailure pos $ "Invalid source-repository kind " ++ show args
+          pure RepoHead
+
+      (tSr, sr) <- lift $ parseFields specVer fields (sourceRepoFieldGrammar kind)
+      stateGpd . L.packageDescription . L.sourceRepos %= snoc sr
+      pure tSr
+  | otherwise = do
+      lift $ parseWarning pos PWTUnknownSection $ "Ignoring section: " ++ show name
+      pure mempty
+  where
     snoc x xs = xs ++ [x]
-
     hasCommonStanzas = specHasCommonStanzas specVer
 
     -- we need signature, because this is polymorphic, but not-closed
@@ -295,164 +454,6 @@ goSections specVer = fmap mconcat . traverse process
       -> [Field Position]
       -> ParseResult src (TriviaTree, CondTree ConfVar [Dependency] a)
     parseCondTree' = parseCondTreeWithCommonStanzas specVer
-
-    parseSection :: Name Position -> [SectionArg Position] -> [Field Position] -> SectionParser src TriviaTree
-    parseSection (Name pos name) args fields
-      | hasCommonStanzas == NoCommonStanzas
-      , name == "common" = lift $ do
-          parseWarning pos PWTUnknownSection $ "Ignoring section: common. You should set cabal-version: 2.2 or larger to use common stanzas."
-          pure mempty
-      | name == "common" = do
-          commonStanzas <- use stateCommonStanzas
-          name' <- lift $ parseCommonName pos args
-          (tBiTree, biTree) <- lift $ parseCondTree' buildInfoFieldGrammar id commonStanzas fields
-
-          case Map.lookup name' commonStanzas of
-            Nothing -> stateCommonStanzas .= Map.insert name' biTree commonStanzas
-            Just _ -> lift $ parseFailure pos $ "Duplicate common stanza: " ++ name'
-
-          pure tBiTree
-      | name == "library" && null args = do
-          prev <- use $ stateGpd . L.condLibrary
-          when (isJust prev) $
-            lift $
-              parseFailure pos $
-                "Multiple main libraries; have you forgotten to specify a name for an internal library?"
-
-          commonStanzas <- use stateCommonStanzas
-          let name'' = LMainLibName
-          (tLib, lib) <- lift $ parseCondTree' (libraryFieldGrammar name'') (libraryFromBuildInfo name'') commonStanzas fields
-          let tLib' = fromNamedTrivia name'' [ExactSectionPosition pos] <> tLib
-          -- TODO check that not set
-          stateGpd . L.condLibrary ?= lib
-          pure tLib'
-
-      -- Sublibraries
-      -- TODO: check cabal-version
-      | name == "library" = do
-          commonStanzas <- use stateCommonStanzas
-          name' <- parseUnqualComponentName pos args
-          let name'' = LSubLibName name'
-          (tLib, lib) <- lift $ parseCondTree' (libraryFieldGrammar name'') (libraryFromBuildInfo name'') commonStanzas fields
-          let tLib' = fromNamedTrivia name'' [ExactSectionPosition pos] <> tLib
-          -- TODO check duplicate name here?
-          stateGpd . L.condSubLibraries %= snoc (name', lib)
-          pure tLib'
-
-      -- TODO: check cabal-version
-      | name == "foreign-library" = do
-          commonStanzas <- use stateCommonStanzas
-          name' <- parseUnqualComponentName pos args
-          (tFlib, flib) <- lift $ parseCondTree' (foreignLibFieldGrammar name') (fromBuildInfo' name') commonStanzas fields
-
-          let hasType ts = foreignLibType ts /= foreignLibType mempty
-          unless (onAllBranches hasType flib) $
-            lift $
-              parseFailure pos $
-                concat
-                  [ "Foreign library " ++ show (prettyShow name')
-                  , " is missing required field \"type\" or the field "
-                  , "is not present in all conditional branches. The "
-                  , "available test types are: "
-                  , intercalate ", " (map prettyShow knownForeignLibTypes)
-                  ]
-
-          -- TODO check duplicate name here?
-          stateGpd . L.condForeignLibs %= snoc (name', flib)
-          pure tFlib
-      | name == "executable" = do
-          commonStanzas <- use stateCommonStanzas
-          name' <- parseUnqualComponentName pos args
-          (tExe, exe) <- lift $ parseCondTree' (executableFieldGrammar name') (fromBuildInfo' name') commonStanzas fields
-          -- TODO check duplicate name here?
-          stateGpd . L.condExecutables %= snoc (name', exe)
-          pure tExe
-      | name == "test-suite" = do
-          commonStanzas <- use stateCommonStanzas
-          name' <- parseUnqualComponentName pos args
-          (tTestStanza, testStanza) <- lift $ parseCondTree' testSuiteFieldGrammar (fromBuildInfo' name') commonStanzas fields
-          testSuite <- lift $ traverse (validateTestSuite specVer pos) testStanza
-
-          let hasType ts = testInterface ts /= testInterface mempty
-          unless (onAllBranches hasType testSuite) $
-            lift $
-              parseFailure pos $
-                concat
-                  [ "Test suite " ++ show (prettyShow name')
-                  , concat $ case specVer of
-                      v
-                        | v >= CabalSpecV3_8 ->
-                            [ " is missing required field \"main-is\" or the field "
-                            , "is not present in all conditional branches."
-                            ]
-                      _ ->
-                        [ " is missing required field \"type\" or the field "
-                        , "is not present in all conditional branches. The "
-                        , "available test types are: "
-                        , intercalate ", " (map prettyShow knownTestTypes)
-                        ]
-                  ]
-
-          -- TODO check duplicate name here?
-          stateGpd . L.condTestSuites %= snoc (name', testSuite)
-          pure tTestStanza
-      | name == "benchmark" = do
-          commonStanzas <- use stateCommonStanzas
-          name' <- parseUnqualComponentName pos args
-          (tBenchStanza, benchStanza) <- lift $ parseCondTree' benchmarkFieldGrammar (fromBuildInfo' name') commonStanzas fields
-          bench <- lift $ traverse (validateBenchmark specVer pos) benchStanza
-
-          let hasType ts = benchmarkInterface ts /= benchmarkInterface mempty
-          unless (onAllBranches hasType bench) $
-            lift $
-              parseFailure pos $
-                concat
-                  [ "Benchmark " ++ show (prettyShow name')
-                  , concat $ case specVer of
-                      v
-                        | v >= CabalSpecV3_8 ->
-                            [ " is missing required field \"main-is\" or the field "
-                            , "is not present in all conditional branches."
-                            ]
-                      _ ->
-                        [ " is missing required field \"type\" or the field "
-                        , "is not present in all conditional branches. The "
-                        , "available benchmark types are: "
-                        , intercalate ", " (map prettyShow knownBenchmarkTypes)
-                        ]
-                  ]
-
-          -- TODO check duplicate name here?
-          stateGpd . L.condBenchmarks %= snoc (name', bench)
-          pure tBenchStanza
-      | name == "flag" = do
-          name' <- parseNameBS pos args
-          name'' <- lift $ runFieldParser' [pos] parsec specVer (fieldLineStreamFromBS name') `recoverWith` mkFlagName ""
-          (tFlag, flag) <- lift $ parseFields specVer fields (flagFieldGrammar name'')
-          -- Check default flag
-          stateGpd . L.genPackageFlags %= snoc flag
-          pure tFlag
-      | name == "custom-setup" && null args = do
-          (tSbi, sbi) <- lift $ parseFields specVer fields (setupBInfoFieldGrammar False)
-          stateGpd . L.packageDescription . L.setupBuildInfo ?= sbi
-          pure tSbi
-      | name == "source-repository" = do
-          kind <- lift $ case args of
-            [SecArgName spos secName] ->
-              runFieldParser' [spos] parsec specVer (fieldLineStreamFromBS secName) `recoverWith` RepoHead
-            [] -> do
-              parseFailure pos "'source-repository' requires exactly one argument"
-              pure RepoHead
-            _ -> do
-              parseFailure pos $ "Invalid source-repository kind " ++ show args
-              pure RepoHead
-
-          (tSr, sr) <- lift $ parseFields specVer fields (sourceRepoFieldGrammar kind)
-          stateGpd . L.packageDescription . L.sourceRepos %= snoc sr
-          pure tSr
-      | otherwise = do
-          lift $ parseWarning pos PWTUnknownSection $ "Ignoring section: " ++ show name
-          pure mempty
 
 parseName :: Position -> [SectionArg Position] -> SectionParser src String
 parseName pos args = fromUTF8BS <$> parseNameBS pos args
