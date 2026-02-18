@@ -450,11 +450,6 @@ fieldGrammarRoundTripTests = testGroup "fieldgrammar-roundtrip" $
       , "build-depends5.fragment"
       ]
 
--- TODO(leana8959): we need to detect indentation of field content
--- Let's ignore whether they all have the same indent for now.
-
--- |
--- Test whether the leaf Parsec and Pretty instances are dual of each other.
 fieldGrammarRoundTripTest
   :: ParsecFieldGrammar' a
   -> PrettyFieldGrammar' a
