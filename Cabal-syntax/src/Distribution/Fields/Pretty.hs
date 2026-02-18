@@ -105,7 +105,6 @@ exactShowFields =
   -- HACK(leana8959): patch trailing newline for now
   (<> "\n") .
   T.unpack . EPP.renderText . mconcat . snd . exactRenderPrettyFields ctx0
-  . (\x -> trace ("pre = " <> show x <> "\n") x)
   where
     ctx0 = (Nothing, Nothing)
 

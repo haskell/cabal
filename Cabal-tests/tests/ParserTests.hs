@@ -344,12 +344,6 @@ fieldGrammarGoldenTests = testGroup "fieldgrammar-golden" $
             [ "buildInfo-build-depends1.fragment"
             ]
        )
-  -- TODO: figure out an efficient way to test sections
-  --
-  -- ++ ( map (fieldGrammarGoldenTest $ librarySectionDependencyList LMainLibName)
-  --       [ "library-build-depends1.fragment"
-  --       ]
-  --    )
 
 fieldGrammarGoldenTest
   :: forall a
@@ -446,7 +440,7 @@ parsecPrettyRoundTripTests = testGroup "parsec-pretty-roundtrip"
 
 fieldGrammarRoundTripTests :: TestTree
 fieldGrammarRoundTripTests = testGroup "fieldgrammar-roundtrip" $
-  ( map
+  map
       ( fieldGrammarRoundTripTest dependencyListFieldGrammar dependencyListFieldGrammar
       )
       [ "build-depends1.fragment"
@@ -455,16 +449,6 @@ fieldGrammarRoundTripTests = testGroup "fieldgrammar-roundtrip" $
       , "build-depends4.fragment"
       , "build-depends5.fragment"
       ]
-   )
-  -- TODO(leana8959): sections are parsed with goSections, extend the testsuite so we can test these cases too
-  --
-  -- ++ ( map
-  --       ( fieldGrammarRoundTripTest (librarySectionDependencyList LMainLibName) (librarySectionDependencyList LMainLibName)
-  --       )
-  --       [ "library-build-depends1.fragment"
-  --       ]
-  --    )
-
 
 -- TODO(leana8959): we need to detect indentation of field content
 -- Let's ignore whether they all have the same indent for now.
@@ -721,7 +705,7 @@ exactDocRenderTests = testGroup "render"
       "\n\n  hi"
   , exactDocRenderTest "place over indent"
       (EPP.place 1 1 (EPP.nest 2 (EPP.text "hi")))
-      "\n  hi"
+      "\n   hi"
   ]
 
 exactDocRenderTest :: String ->  ExactDoc -> Text -> TestTree

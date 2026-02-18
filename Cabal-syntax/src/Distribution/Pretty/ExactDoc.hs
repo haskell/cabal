@@ -43,10 +43,19 @@ import qualified Data.Text.IO as TIO
 import Debug.Pretty.Simple
 
 data ExactDoc where
+  -- | Turn a Text into a document
   Text :: !T.Text -> ExactDoc
+
+  -- | The empty document, 0 in width and height
   Nil :: ExactDoc
+
+  -- | Join two documents together
   Concat :: !ExactDoc -> !ExactDoc -> ExactDoc
+
+  -- | The document should be placed at (Row, Col)
   Place :: !Int -> !Int -> !ExactDoc -> ExactDoc
+
+  -- | The document should be indented with n more spaces
   Nest :: !Int -> !ExactDoc -> ExactDoc
 
   deriving (Show, Eq)
@@ -91,7 +100,7 @@ renderText doc = evalState (renderTextStep doc) state0
     state0 = zeroPos
 
 renderTextStep :: ExactDoc -> State RenderState Text
-renderTextStep d0 = get >>= \(Position row col) -> case d0 of
+renderTextStep d0 = case d0 of
   Nil -> pure mempty
 
   Place atRow atCol d ->
@@ -100,7 +109,9 @@ renderTextStep d0 = get >>= \(Position row col) -> case d0 of
       (updateCursorCol atCol)
       (renderTextStep d)
 
-  Nest indentSize d -> liftA2 (<>) (updateCursorCol indentSize) (renderTextStep d)
+  Nest indentSize d ->
+    get >>= \(Position row col) ->
+      liftA2 (<>) (updateCursorCol (col + indentSize + 1)) (renderTextStep d)
 
   Text t -> liftA2 (<>) (updateCursorCol (T.length t)) (pure t)
 
