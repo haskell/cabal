@@ -3,7 +3,6 @@ import Control.Monad.IO.Class
 -- Test that executable recompilation works
 -- https://github.com/haskell/setup/issues/3294
 main = setupAndCabalTest $ do
-    withDelay $ do
         writeSourceFile "Main.hs" "main = putStrLn \"aaa\""
         setup "configure" []
         setup "build" []

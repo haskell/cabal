@@ -21,8 +21,7 @@
 
 import Test.Cabal.Prelude
 main =
-  cabalTest $ withShorterPathForNewBuildStore .
-    withDelay $ do
+  cabalTest $ withShorterPathForNewBuildStore $ do
         storeDir <- testStoreDir <$> getTestEnv
         writeSourceFile "issue5782/src/Module.hs" "module Module where\nf = \"AAA\""
         recordMode DoNotRecord $
