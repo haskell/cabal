@@ -244,7 +244,6 @@ renderPrettyFieldLine :: Opts ann -> Maybe Position -> PrettyFieldLine ann -> St
 renderPrettyFieldLine (Opts getPos fixupPosition) prevPos (PrettyFieldLine ann doc) =
   let curPos = fieldLinePosition getPos $ ann
    in PP.renderStyle PP.style $
-        fixupPosition prevPos curPos $
           doc
 
 -------------------------------------------------------------------------------
@@ -305,6 +304,9 @@ type PrettyFieldPositionContext ann =
   , Maybe (PrettyFieldLine ann)
   )
 
+placeAt :: Position -> ExactDoc -> ExactDoc
+placeAt (Position r c) = EPP.place r c
+
 exactRenderPrettyFields
   :: PrettyFieldPositionContext Trivia
   -> [PrettyField Trivia]
@@ -339,7 +341,7 @@ exactRenderPrettyField ctx0@(lastField, lastFieldLine) field = case field of
 
         -- The fieldLines are all patched and we only need to concat them together
         fieldLinesFinal :: ExactDoc
-        fieldLinesFinal = fixupFieldLinePosition fieldNamePosition fieldLinesFirstPos
+        fieldLinesFinal = maybe id placeAt fieldLinesFirstPos
                           $ mconcat fieldLines'
 
         lastPosition :: Maybe Position
@@ -349,7 +351,7 @@ exactRenderPrettyField ctx0@(lastField, lastFieldLine) field = case field of
 
         docOut :: ExactDoc
         docOut =
-                (if isFirst then id else fixupFieldPosition lastPosition fieldNamePosition)
+                maybe id placeAt fieldNamePosition
                 $ EPP.text (T.pack $ fromUTF8BS fieldName <> ":") <> fieldLinesFinal
     in  (ctx', docOut)
   PrettySection ann fieldName sectionArgs fields ->
@@ -371,15 +373,15 @@ exactRenderPrettyField ctx0@(lastField, lastFieldLine) field = case field of
 
         -- TODO(leana8959): section args are currently not exactly positioned
         fieldsFinal :: ExactDoc
-        fieldsFinal = fixupFieldPosition sectionNamePosition fieldsFirstPosition
+        fieldsFinal = maybe id placeAt fieldsFirstPosition
                       $ mconcat fields'
 
         isFirst = lastField == Nothing && lastFieldLine == Nothing
 
         docOut :: ExactDoc
         docOut =
-            (if isFirst then id else fixupSectionPosition lastPosition sectionNamePosition) $
-              EPP.text (T.pack $ fromUTF8BS fieldName)
+            maybe id placeAt sectionNamePosition
+            $ EPP.text (T.pack $ fromUTF8BS fieldName)
               <> EPP.text " " <> EPP.sep (EPP.text " ") (map docToExactDoc sectionArgs)
               <> EPP.nest guessedIndentation fieldsFinal
     in  ( ctx'
@@ -414,7 +416,7 @@ exactRenderPrettyFieldLine (lastField, lastFieldLine) fieldLine@(PrettyFieldLine
       ctx' = (lastField, Just fieldLine)
 
       fieldLine' :: ExactDoc
-      fieldLine' = fixupFieldLinePosition lastPosition fieldLinePosition (docToExactDoc doc)
+      fieldLine' = maybe id placeAt fieldLinePosition $ docToExactDoc doc
   in  (ctx', fieldLine')
 
 sortPrettyFields :: [PrettyField Trivia] -> [PrettyField Trivia]
@@ -425,35 +427,3 @@ sortPrettyFieldLines = List.sortOn $ fromMaybe zeroPos . prettyFieldLinePosition
 
 docToExactDoc :: PP.Doc -> ExactDoc
 docToExactDoc = EPP.multilineText . T.lines . T.pack . PP.renderStyle PP.style
-
-fixupSectionPosition :: Maybe Position -> Maybe Position -> ExactDoc -> ExactDoc
-fixupSectionPosition prevPos curPos =
-  -- a section falls back to a newline
-  fromMaybe (EPP.newline <>) (fixupPosition prevPos curPos)
-
-fixupFieldPosition :: Maybe Position -> Maybe Position -> ExactDoc -> ExactDoc
-fixupFieldPosition prevPos curPos =
-  -- a field falls back to a newline
-  fromMaybe (EPP.newline <>) (fixupPosition prevPos curPos)
-
-fixupFieldLinePosition :: Maybe Position -> Maybe Position -> ExactDoc -> ExactDoc
-fixupFieldLinePosition prevPos curPos =
-  -- a field falls back to a newline and is indented
-  fromMaybe (EPP.nest guessedIndentation) (fixupPosition prevPos curPos)
-  where
-    guessedIndentation :: Int
-    guessedIndentation = fromMaybe 4 $ subtract 1 . positionCol <$> prevPos
-
--- |
--- Try to return a function that patches a document's position.
--- If there are more than one sensible patch function, return Nothing.
-fixupPosition :: Maybe Position -> Maybe Position -> Maybe (ExactDoc -> ExactDoc)
-fixupPosition prevPos curPos = case (prevPos, curPos) of
-  (Just (Position ry _cy), Just (Position rx cx)) ->
-      let (rDiff, cDiff) = (rx - ry, if rx /= ry then cx else 0)
-      in  Just (EPP.place rDiff (cDiff -1))
-
-  -- No previous position to calculate line jump, but still compute column offset
-  (Nothing, Just (Position _ cy)) -> Just (EPP.place 1 (cy - 1))
-
-  _ -> Nothing
