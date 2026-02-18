@@ -21,6 +21,7 @@ import Data.Maybe                                  (isNothing)
 import Distribution.Fields                         (pwarning)
 import Distribution.Fields.Pretty                  (prettyFieldsToExactDoc)
 import Distribution.PackageDescription             (GenericPackageDescription)
+import Distribution.PackageDescription.FieldGrammar (optionsFieldGrammar)
 import Distribution.Types.AnnotatedGenericPackageDescription
 import Distribution.PackageDescription.Parsec
   ( parseGenericPackageDescription
@@ -347,11 +348,15 @@ fieldGrammarGoldenTests = testGroup "fieldgrammar-golden" $
             [ "buildInfo-build-depends1.fragment"
             ]
        )
+    ++ ( map (fieldGrammarGoldenTest optionsFieldGrammar)
+            [ "ghc-options1.fragment"
+            ]
+       )
 
 fieldGrammarGoldenTest
-  :: forall a
+  :: forall s a
    . (ToExpr a)
-  => ParsecFieldGrammar' a
+  => ParsecFieldGrammar s a
   -> FilePath
   -> TestTree
 fieldGrammarGoldenTest g fp = ediffGolden goldenTest fp exprFile $ do

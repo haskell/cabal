@@ -35,6 +35,9 @@ module Distribution.PackageDescription.FieldGrammar
   , validateTestSuite
   , unvalidateTestSuite
 
+  -- * Options
+  , optionsFieldGrammar
+
     -- ** Lenses
   , testStanzaTestType
   , testStanzaMainIs

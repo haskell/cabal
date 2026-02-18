@@ -1,0 +1,4 @@
+ghc-options:
+        -Wall -Wcompat -Widentities -Wincomplete-record-updates
+        -Wincomplete-patterns -Wincomplete-uni-patterns
+        -Wredundant-constraints -Werror=missing-fields
