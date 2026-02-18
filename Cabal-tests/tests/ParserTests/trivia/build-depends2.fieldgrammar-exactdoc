@@ -1,0 +1,8 @@
+Concat
+  (Text "build-depends:")
+  (Place
+    1
+    4
+    (Concat
+      (Place 1 4 (Text "base > 1,"))
+      (Place 1 4 (Text "text < 2,"))))

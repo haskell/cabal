@@ -19,6 +19,7 @@ module Distribution.Fields.Pretty
   , showFields
   , showFields'
   , exactShowFields
+  , prettyFieldsToExactDoc
 
     -- * Transformation from 'P.Field'
   , fromParsecFields
@@ -108,9 +109,13 @@ exactShowFields :: [PrettyField Trivia] -> String
 exactShowFields =
   -- HACK(leana8959): patch trailing newline for now
   (<> "\n") .
-  T.unpack . EPP.renderText . mconcat . snd . exactRenderPrettyFields ctx0
+  T.unpack . EPP.renderText . prettyFieldsToExactDoc
   where
     ctx0 = (Nothing, Nothing)
+
+prettyFieldsToExactDoc :: [PrettyField Trivia] -> ExactDoc
+prettyFieldsToExactDoc = mconcat . snd . exactRenderPrettyFields ctx0
+  where ctx0 = (Nothing, Nothing)
 
 data PositionFromPrettyField ann = PositionFromPrettyField
   { fieldPosition :: ann -> Maybe Position

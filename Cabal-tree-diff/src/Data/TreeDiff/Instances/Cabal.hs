@@ -35,6 +35,7 @@ import Distribution.Utils.ShortText                (ShortText, fromShortText)
 import Distribution.Verbosity
 import Distribution.Verbosity.Internal
 import Distribution.FieldGrammar.Newtypes
+import Distribution.Pretty.ExactDoc
 
 import Distribution.Types.Annotation
 
@@ -134,6 +135,7 @@ instance ToExpr VerbosityLevel
 instance ToExpr ann => ToExpr (PrettyField ann)
 instance ToExpr ann => ToExpr (PrettyFieldLine ann)
 instance ToExpr Doc where toExpr = defaultExprViaShow
+instance ToExpr ExactDoc
 
 instance ToExpr Trivium
 instance ToExpr TriviaTree

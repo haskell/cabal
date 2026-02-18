@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
@@ -32,6 +33,7 @@ module Distribution.Pretty.ExactDoc
 
 import Distribution.Parsec.Position
 
+import GHC.Generics
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans.State.Strict
@@ -58,7 +60,7 @@ data ExactDoc where
   -- | The document should be indented with n more spaces
   Nest :: !Int -> !ExactDoc -> ExactDoc
 
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic)
 
 instance Semigroup ExactDoc where
   (<>) = concatDoc

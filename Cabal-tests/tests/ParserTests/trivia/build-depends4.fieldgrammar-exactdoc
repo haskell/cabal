@@ -1,0 +1,23 @@
+Concat
+  (Concat
+    (Text "build-depends:")
+    (Place
+      1
+      4
+      (Concat
+        (Concat
+          (Place
+            1
+            4
+            (Text "base >4.10 && < 5,"))
+          (Place 1 4 (Text "text < 2,")))
+        (Place
+          1
+          4
+          (Text "containers,")))))
+  (Place
+    2
+    0
+    (Concat
+      (Text "build-depends:")
+      (Place 1 4 (Text "base <0,"))))

@@ -19,6 +19,7 @@ import Control.Monad                               (unless, void)
 import Data.Algorithm.Diff                         (PolyDiff (..), getGroupedDiff)
 import Data.Maybe                                  (isNothing)
 import Distribution.Fields                         (pwarning)
+import Distribution.Fields.Pretty                  (prettyFieldsToExactDoc)
 import Distribution.PackageDescription             (GenericPackageDescription)
 import Distribution.Types.AnnotatedGenericPackageDescription
 import Distribution.PackageDescription.Parsec
@@ -96,6 +97,7 @@ tests = testGroup "parsec tests"
     , fieldGrammarGoldenTests
     , fieldGrammarPrettyFieldTests
     , fieldGrammarRoundTripTests
+    , fieldGrammarExactDocTests
     , fieldGrammarTransformTests
     , exactDocTests
     ]
@@ -538,6 +540,51 @@ fieldGrammarPrettyFieldTest gParsec gPretty fp = ediffGolden goldenTest fp exprF
   where
     input = "tests" </> "ParserTests" </> "trivia" </> fp
     exprFile = replaceExtension input "fieldgrammar-prettyfields"
+
+fieldGrammarExactDocTests :: TestTree
+fieldGrammarExactDocTests = testGroup "fieldgrammar-exactdoc" $
+  map
+      ( fieldGrammarExactDocTest dependencyListFieldGrammar dependencyListFieldGrammar
+      )
+      [ "build-depends1.fragment"
+      , "build-depends2.fragment"
+      , "build-depends3.fragment"
+      , "build-depends4.fragment"
+      , "build-depends5.fragment"
+      ]
+
+-- | Make sure the ExactDoc is correct
+fieldGrammarExactDocTest
+  :: forall a
+   . (ToExpr a)
+  => ParsecFieldGrammar' a
+  -> PrettyFieldGrammar' a
+  -> FilePath
+  -> TestTree
+fieldGrammarExactDocTest gParsec gPretty fp = ediffGolden goldenTest fp exprFile $ do
+  contents <- BS.readFile input
+  let fs = case readFields contents of
+        Left err -> fail $ unlines $ "readFields error:" : show err : []
+        Right ok -> ok
+
+  let (fieldMap, _) = takeFields fs
+  let (_warns, res) =
+          runParseResult
+          $ fieldGrammarParser gParsec cabalSpecLatest fieldMap
+
+  (trivia, parsed) <- case res of
+    Left _ -> fail "fieldParser failed unrecoverably"
+    Right ok -> pure ok
+
+  let prettyFields =
+          prettyAnnotatedFieldGrammar cabalSpecLatest trivia gPretty parsed
+
+  let result = prettyFieldsToExactDoc prettyFields
+
+  pure (toExpr result)
+  where
+    input = "tests" </> "ParserTests" </> "trivia" </> fp
+    exprFile = replaceExtension input "fieldgrammar-exactdoc"
 
 fieldGrammarTransformTests :: TestTree
 fieldGrammarTransformTests =
