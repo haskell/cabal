@@ -83,7 +83,7 @@ updateCursorRow row = do
 
   when (rowDiff > 0) $
     -- jumped, we move cursor forward to desired row and reset col
-    put (Position row 0)
+    put (Position row 1)
 
   pure padding
 
