@@ -100,8 +100,7 @@ updateCursorCol col = do
 
 renderText :: ExactDoc -> Text
 renderText doc = evalState (renderTextStep doc) state0
-  where
-    state0 = zeroPos
+  where state0 = Position 1 1 -- the parser is 1,1 indexed
 
 renderTextStep :: ExactDoc -> State RenderState Text
 renderTextStep d0 = case d0 of
