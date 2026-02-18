@@ -367,8 +367,10 @@ installIncludeFiles verbosity libBi lbi buildPref destIncludeDir = do
     ]
   where
     baseDir lbi' = packageRoot $ configCommonFlags $ configFlags lbi'
-    findInc [] file = dieWithException verbosity $ CantFindIncludeFile file
-    findInc (dir : dirs) file = do
-      let path = dir </> file
-      exists <- doesFileExist path
-      if exists then return (file, path) else findInc dirs file
+    findInc fs f = go fs
+      where
+        go [] = dieWithException verbosity $ CantFindIncludeFile f fs
+        go (d : ds) = do
+          let path = d </> f
+          b <- doesFileExist path
+          if b then return (f, path) else go ds
