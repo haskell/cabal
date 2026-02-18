@@ -1,0 +1,23 @@
+[
+  PrettyField
+    [
+      ExactFieldPosition
+        (Position 1 1)]
+    "build-depends"
+    [
+      PrettyFieldLine
+        [
+          ExactFieldPosition
+            (Position 1 1),
+          PostTrivia "",
+          PostTrivia ",\n",
+          ExactPosition (Position 2 5)]
+        `base > 1,\xa;`,
+      PrettyFieldLine
+        [
+          ExactFieldPosition
+            (Position 1 1),
+          PostTrivia "",
+          PostTrivia ",",
+          ExactPosition (Position 3 5)]
+        `text < 2,`]]

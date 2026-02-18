@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE LambdaCase #-}
@@ -24,6 +25,9 @@ module Distribution.Fields.Pretty
   , genericFromParsecFields
   , prettyFieldLines
   , prettySectionArgs
+
+  -- * reexport PP.Doc for tests
+  , Doc
   ) where
 
 import Control.Monad
@@ -67,7 +71,7 @@ unAnnotatePrettyFieldLine (PrettyFieldLine _ doc) = doc
 -- They defer the merging of Doc and allow meaningful line-wise
 -- position annotation.
 data PrettyFieldLine ann = PrettyFieldLine ann PP.Doc
-  deriving (Eq, Functor, Foldable, Traversable, Show {-NOTE(leana8959): for debugging-})
+  deriving (Generic, Eq, Functor, Foldable, Traversable, Show {-NOTE(leana8959): for debugging-})
 
 prettyFieldLineAnn :: PrettyFieldLine ann -> ann
 prettyFieldLineAnn (PrettyFieldLine ann _) = ann
@@ -79,7 +83,7 @@ data PrettyField ann
   = PrettyField ann FieldName [PrettyFieldLine ann]
   | PrettySection ann FieldName [PP.Doc] [PrettyField ann]
   | PrettyEmpty
-  deriving (Eq, Functor, Foldable, Traversable, Show {- NOTE(leana8959): for debugging -})
+  deriving (Generic, Eq, Functor, Foldable, Traversable, Show {- NOTE(leana8959): for debugging -})
 
 prettyFieldAnn :: PrettyField ann -> Maybe ann
 prettyFieldAnn (PrettyField ann _ _) = Just ann

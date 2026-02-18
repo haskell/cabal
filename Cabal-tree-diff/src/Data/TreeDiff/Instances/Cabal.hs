@@ -14,6 +14,7 @@ import Distribution.Backpack                       (OpenModule, OpenUnitId)
 import Distribution.CabalSpecVersion               (CabalSpecVersion)
 import Distribution.Compiler                       (CompilerFlavor, CompilerId, PerCompilerFlavor)
 import Distribution.InstalledPackageInfo           (AbiDependency, ExposedModule, InstalledPackageInfo)
+import Distribution.Fields.Pretty                  (PrettyField, PrettyFieldLine, Doc)
 import Distribution.ModuleName                     (ModuleName)
 import Distribution.PackageDescription
 import Distribution.Simple.Compiler                (DebugInfoLevel, OptimisationLevel, ProfDetailLevel)
@@ -129,6 +130,10 @@ instance ToExpr UnqualComponentName
 instance ToExpr Verbosity
 instance ToExpr VerbosityFlag
 instance ToExpr VerbosityLevel
+
+instance ToExpr ann => ToExpr (PrettyField ann)
+instance ToExpr ann => ToExpr (PrettyFieldLine ann)
+instance ToExpr Doc where toExpr = defaultExprViaShow
 
 instance ToExpr Trivium
 instance ToExpr TriviaTree
