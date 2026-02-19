@@ -95,11 +95,11 @@ tests = testGroup "parsec tests"
     , printerTests
     , parsecTriviaGoldenTests
     , parsecPrettyRoundTripTests
-    , fieldGrammarGoldenTests
-    , fieldGrammarPrettyFieldTests
-    , fieldGrammarRoundTripTests
-    , fieldGrammarExactDocTests
-    , fieldGrammarTransformTests
+    , fieldGrammarFieldGoldenTests
+    , fieldGrammarFieldPrettyFieldTests
+    , fieldGrammarFieldExactDocTests
+    , fieldGrammarFieldTransformTests
+    , fieldGrammarFieldRoundTripTests
     , exactDocTests
     ]
 
@@ -334,49 +334,6 @@ parsecTriviaGoldenTest _ fp = ediffGolden goldenTest fp exprFile $ do
     input = "tests" </> "ParserTests" </> "trivia" </> fp
     exprFile = replaceExtension input "parser-trivia"
 
-fieldGrammarGoldenTests :: TestTree
-fieldGrammarGoldenTests = testGroup "fieldgrammar-golden" $
-  ( map (fieldGrammarGoldenTest dependencyListFieldGrammar)
-      [ "build-depends1.fragment"
-      , "build-depends2.fragment"
-      , "build-depends3.fragment"
-      , "build-depends4.fragment"
-      , "build-depends5.fragment"
-      ]
-  )
-    ++ ( map (fieldGrammarGoldenTest buildInfoDependencyListFieldGrammar)
-            [ "buildInfo-build-depends1.fragment"
-            ]
-       )
-    ++ ( map (fieldGrammarGoldenTest optionsFieldGrammar)
-            [ "ghc-options1.fragment"
-            ]
-       )
-
-fieldGrammarGoldenTest
-  :: forall s a
-   . (ToExpr a)
-  => ParsecFieldGrammar s a
-  -> FilePath
-  -> TestTree
-fieldGrammarGoldenTest g fp = ediffGolden goldenTest fp exprFile $ do
-  contents <- BS.readFile input
-  let fs = case readFields contents of
-        Left err -> fail $ unlines $ "readFields error:" : show err : []
-        Right ok -> ok
-
-  let (fieldMap, _) = takeFields fs
-  let (_warns, res) =
-          runParseResult
-          $ fieldGrammarParser g cabalSpecLatest fieldMap
-
-  case res of
-    Left _ -> fail "fieldParser failed unrecoverably"
-    Right ok -> pure $ toExpr ok
-  where
-    input = "tests" </> "ParserTests" </> "trivia" </> fp
-    exprFile = replaceExtension input "fieldgrammar-trivia"
-
 #ifdef MIN_VERSION_tree_diff
 treeDiffGoldenTest :: FilePath -> TestTree
 treeDiffGoldenTest fp = ediffGolden goldenTest "expr" exprFile $ do
@@ -446,218 +403,6 @@ parsecPrettyRoundTripTests = testGroup "parsec-pretty-roundtrip"
       "List_CommaVCat_Identity_Dependency1.fragment"
   ]
 
-fieldGrammarRoundTripTests :: TestTree
-fieldGrammarRoundTripTests = testGroup "fieldgrammar-roundtrip" $
-  map
-      ( fieldGrammarRoundTripTest dependencyListFieldGrammar dependencyListFieldGrammar
-      )
-      [ "build-depends1.fragment"
-      , "build-depends2.fragment"
-      , "build-depends3.fragment"
-      , "build-depends4.fragment"
-      , "build-depends5.fragment"
-      ]
-
-fieldGrammarRoundTripTest
-  :: ParsecFieldGrammar' a
-  -> PrettyFieldGrammar' a
-  -> FilePath
-  -> TestTree
-fieldGrammarRoundTripTest gParsec gPretty fp = testCase fp $ do
-  x <- BS.readFile input
-  let fs = case readFields x of
-        Left err -> fail $ unlines $ "readFields error:" : show err : []
-        Right ok -> ok
-
-  let (fieldMap, _) = takeFields fs
-  let (_warns, res) =
-          runParseResult
-          $ fieldGrammarParser gParsec cabalSpecLatest fieldMap
-
-  (trivia, parsed) <- case res of
-        Left _ -> fail "fieldParser failed unrecoverably"
-        Right ok -> pure ok
-
-  let prettyFields =
-          prettyAnnotatedFieldGrammar cabalSpecLatest trivia gPretty parsed
-  let y = BS8.pack (exactShowFields prettyFields)
-
-{- FOURMOLU_DISABLE -}
-  unless (x == y) $
-#ifdef MIN_VERSION_tree_diff
-      assertFailure $ unlines
-          [ "re-parsed doesn't match"
-          , show $ ansiWlEditExpr $ ediff x y
-          ]
-#else
-      assertFailure $ unlines
-          [ "re-parsed doesn't match"
-          , "expected"
-          , show x
-          , "actual"
-          , show y
-          ]
-#endif
-  where
-    input = "tests" </> "ParserTests" </> "trivia" </> fp
-{- FOURMOLU_ENABLE -}
-
-fieldGrammarPrettyFieldTests :: TestTree
-fieldGrammarPrettyFieldTests = testGroup "fieldgrammar-prettyfield" $
-  map
-      ( fieldGrammarPrettyFieldTest dependencyListFieldGrammar dependencyListFieldGrammar
-      )
-      [ "build-depends1.fragment"
-      , "build-depends2.fragment"
-      , "build-depends3.fragment"
-      , "build-depends4.fragment"
-      , "build-depends5.fragment"
-      ]
-
--- |
--- Make sure the outputted PrettyFields from fieldgrammar printer are correct
-fieldGrammarPrettyFieldTest
-  :: forall a
-   . (ToExpr a)
-  => ParsecFieldGrammar' a
-  -> PrettyFieldGrammar' a
-  -> FilePath
-  -> TestTree
-fieldGrammarPrettyFieldTest gParsec gPretty fp = ediffGolden goldenTest fp exprFile $ do
-  contents <- BS.readFile input
-  let fs = case readFields contents of
-        Left err -> fail $ unlines $ "readFields error:" : show err : []
-        Right ok -> ok
-
-  let (fieldMap, _) = takeFields fs
-  let (_warns, res) =
-          runParseResult
-          $ fieldGrammarParser gParsec cabalSpecLatest fieldMap
-
-  (trivia, parsed) <- case res of
-    Left _ -> fail "fieldParser failed unrecoverably"
-    Right ok -> pure ok
-
-  let prettyFields =
-          prettyAnnotatedFieldGrammar cabalSpecLatest trivia gPretty parsed
-
-  pure (toExpr prettyFields)
-  where
-    input = "tests" </> "ParserTests" </> "trivia" </> fp
-    exprFile = replaceExtension input "fieldgrammar-prettyfields"
-
-fieldGrammarExactDocTests :: TestTree
-fieldGrammarExactDocTests = testGroup "fieldgrammar-exactdoc" $
-  map
-      ( fieldGrammarExactDocTest dependencyListFieldGrammar dependencyListFieldGrammar
-      )
-      [ "build-depends1.fragment"
-      , "build-depends2.fragment"
-      , "build-depends3.fragment"
-      , "build-depends4.fragment"
-      , "build-depends5.fragment"
-      ]
-
--- | Make sure the ExactDoc is correct
-fieldGrammarExactDocTest
-  :: forall a
-   . (ToExpr a)
-  => ParsecFieldGrammar' a
-  -> PrettyFieldGrammar' a
-  -> FilePath
-  -> TestTree
-fieldGrammarExactDocTest gParsec gPretty fp = ediffGolden goldenTest fp exprFile $ do
-  contents <- BS.readFile input
-  let fs = case readFields contents of
-        Left err -> fail $ unlines $ "readFields error:" : show err : []
-        Right ok -> ok
-
-  let (fieldMap, _) = takeFields fs
-  let (_warns, res) =
-          runParseResult
-          $ fieldGrammarParser gParsec cabalSpecLatest fieldMap
-
-  (trivia, parsed) <- case res of
-    Left _ -> fail "fieldParser failed unrecoverably"
-    Right ok -> pure ok
-
-  let prettyFields =
-          prettyAnnotatedFieldGrammar cabalSpecLatest trivia gPretty parsed
-
-  let result = prettyFieldsToExactDoc prettyFields
-
-  pure (toExpr result)
-  where
-    input = "tests" </> "ParserTests" </> "trivia" </> fp
-    exprFile = replaceExtension input "fieldgrammar-exactdoc"
-
-fieldGrammarTransformTests :: TestTree
-fieldGrammarTransformTests =
-  testGroup "fieldgrammar-transform" $
-    map ( \(trans, fp, suffix) -> fieldGrammarTransformTest dependencyListFieldGrammar dependencyListFieldGrammar trans fp suffix) $
-
-    ( let  modifyVersionAtFirst [] = []
-           modifyVersionAtFirst (d : ds) = go d : ds
-            where go (Dependency pName _ libNames) = Dependency pName fakeVersion libNames
-      in
-          ( modifyVersionAtFirst
-          , "build-depends1.fragment"
-          , "modify-version-first"
-          )
-    )
-    :
-    -- FIXME(leana8959): when falling back to normal print we lose the separator
-    -- This can be triggered with more than one fake item (because they don't have associated trivia)
-    ( let  insertDependency ds =
-             Dependency (mkPackageName "foo") fakeVersion (NES.singleton LMainLibName)
-              : Dependency (mkPackageName "bar") fakeVersion (NES.singleton LMainLibName)
-              : ds
-      in
-          ( insertDependency
-          , "build-depends1.fragment"
-          , "insert-dependency"
-          )
-    )
-    : []
-  where
-         fakeVersion =
-            ThisVersion (mkVersion [1337, 1])
-              `IntersectVersionRanges`
-              (ThisVersion (mkVersion [1337, 2]) `UnionVersionRanges` ThisVersion (mkVersion [1337, 3])
-              )
-
-fieldGrammarTransformTest
-  :: forall a
-   . (ToExpr a)
-  => ParsecFieldGrammar' a
-  -> PrettyFieldGrammar' a
-  -> (a -> a)
-  -> FilePath
-  -> String
-  -> TestTree
-fieldGrammarTransformTest gParse gPrint f fp suffix = ediffGolden goldenTest fp exprFile $ do
-  contents <- BS.readFile input
-  let fs = case readFields contents of
-        Left err -> fail $ unlines $ "readFields error:" : show err : []
-        Right ok -> ok
-
-  let (fieldMap, _) = takeFields fs
-  let (_warns, res) =
-          runParseResult
-          $ fieldGrammarParser gParse cabalSpecLatest fieldMap
-
-  (trivia, parsed) <- case res of
-        Left _ -> fail "fieldParser failed unrecoverably"
-        Right ok -> pure (fmap f ok)
-
-  let prettyFields = prettyAnnotatedFieldGrammar cabalSpecLatest trivia gPrint parsed
-      renderedFields = BS8.pack (exactShowFields prettyFields)
-
-  pure renderedFields
-  where
-    input = "tests" </> "ParserTests" </> "trivia" </> fp
-    exprFile = replaceExtension input ("trans" <.> suffix)
-
 -- |
 -- Test whether the leaf Parsec and Pretty instances are dual of each other.
 parsecPrettyRoundTripTest
@@ -699,6 +444,267 @@ parsecPrettyRoundTripTest _ fp = testCase fp $ do
           Right ok -> pure $ ok
     input = "tests" </> "ParserTests" </> "trivia" </> fp
 {- FOURMOLU_ENABLE -}
+
+-- |
+-- First step, parse correctly with trivia
+fieldGrammarFieldGoldenTests :: TestTree
+fieldGrammarFieldGoldenTests = testGroup "fieldgrammar-field" $
+  ( map (fieldGrammarFieldGoldenTest dependencyListFieldGrammar)
+      [ "build-depends1.fragment"
+      , "build-depends2.fragment"
+      , "build-depends3.fragment"
+      , "build-depends4.fragment"
+      , "build-depends5.fragment"
+      ]
+  )
+    ++ ( map (fieldGrammarFieldGoldenTest buildInfoDependencyListFieldGrammar)
+            [ "buildInfo-build-depends1.fragment"
+            ]
+       )
+    ++ ( map (fieldGrammarFieldGoldenTest optionsFieldGrammar)
+            [ "ghc-options1.fragment"
+            ]
+       )
+
+fieldGrammarFieldGoldenTest
+  :: forall s a
+   . (ToExpr a)
+  => ParsecFieldGrammar s a
+  -> FilePath
+  -> TestTree
+fieldGrammarFieldGoldenTest g fp = ediffGolden goldenTest fp exprFile $ do
+  contents <- BS.readFile input
+  let fs = case readFields contents of
+        Left err -> fail $ unlines $ "readFields error:" : show err : []
+        Right ok -> ok
+
+  let (fieldMap, _) = takeFields fs
+  let (_warns, res) =
+          runParseResult
+          $ fieldGrammarParser g cabalSpecLatest fieldMap
+
+  case res of
+    Left _ -> fail "fieldParser failed unrecoverably"
+    Right ok -> pure $ toExpr ok
+  where
+    input = "tests" </> "ParserTests" </> "trivia" </> fp
+    exprFile = replaceExtension input "fieldgrammar-field"
+
+-- |
+-- Second step, transform to pretty field
+fieldGrammarFieldPrettyFieldTests :: TestTree
+fieldGrammarFieldPrettyFieldTests = testGroup "fieldgrammar-field-prettyfield" $
+  map
+      ( fieldGrammarFieldPrettyFieldTest dependencyListFieldGrammar dependencyListFieldGrammar
+      )
+      [ "build-depends1.fragment"
+      , "build-depends2.fragment"
+      , "build-depends3.fragment"
+      , "build-depends4.fragment"
+      , "build-depends5.fragment"
+      ]
+
+fieldGrammarFieldPrettyFieldTest
+  :: forall a
+   . (ToExpr a)
+  => ParsecFieldGrammar' a
+  -> PrettyFieldGrammar' a
+  -> FilePath
+  -> TestTree
+fieldGrammarFieldPrettyFieldTest gParsec gPretty fp = ediffGolden goldenTest fp exprFile $ do
+  contents <- BS.readFile input
+  let fs = case readFields contents of
+        Left err -> fail $ unlines $ "readFields error:" : show err : []
+        Right ok -> ok
+
+  let (fieldMap, _) = takeFields fs
+  let (_warns, res) =
+          runParseResult
+          $ fieldGrammarParser gParsec cabalSpecLatest fieldMap
+
+  (trivia, parsed) <- case res of
+    Left _ -> fail "fieldParser failed unrecoverably"
+    Right ok -> pure ok
+
+  let prettyFields =
+          prettyAnnotatedFieldGrammar cabalSpecLatest trivia gPretty parsed
+
+  pure (toExpr prettyFields)
+  where
+    input = "tests" </> "ParserTests" </> "trivia" </> fp
+    exprFile = replaceExtension input "fieldgrammar-field-prettyfield"
+
+-- |
+-- Third step, transform to ExactDoc
+fieldGrammarFieldExactDocTests :: TestTree
+fieldGrammarFieldExactDocTests = testGroup "fieldgrammar-exactdoc" $
+  map
+      ( fieldGrammarFieldExactDocTest dependencyListFieldGrammar dependencyListFieldGrammar
+      )
+      [ "build-depends1.fragment"
+      , "build-depends2.fragment"
+      , "build-depends3.fragment"
+      , "build-depends4.fragment"
+      , "build-depends5.fragment"
+      ]
+
+fieldGrammarFieldExactDocTest
+  :: forall a
+   . (ToExpr a)
+  => ParsecFieldGrammar' a
+  -> PrettyFieldGrammar' a
+  -> FilePath
+  -> TestTree
+fieldGrammarFieldExactDocTest gParsec gPretty fp = ediffGolden goldenTest fp exprFile $ do
+  contents <- BS.readFile input
+  let fs = case readFields contents of
+        Left err -> fail $ unlines $ "readFields error:" : show err : []
+        Right ok -> ok
+
+  let (fieldMap, _) = takeFields fs
+  let (_warns, res) =
+          runParseResult
+          $ fieldGrammarParser gParsec cabalSpecLatest fieldMap
+
+  (trivia, parsed) <- case res of
+    Left _ -> fail "fieldParser failed unrecoverably"
+    Right ok -> pure ok
+
+  let prettyFields =
+          prettyAnnotatedFieldGrammar cabalSpecLatest trivia gPretty parsed
+
+  let result = prettyFieldsToExactDoc prettyFields
+
+  pure (toExpr result)
+  where
+    input = "tests" </> "ParserTests" </> "trivia" </> fp
+    exprFile = replaceExtension input "fieldgrammar-exactdoc"
+
+-- |
+-- Fifth step, render to text and test for syntaxic idempotency
+fieldGrammarFieldRoundTripTests :: TestTree
+fieldGrammarFieldRoundTripTests = testGroup "fieldgrammar-field-roundtrip" $
+  map
+      ( fieldGrammarFieldRoundTripTest dependencyListFieldGrammar dependencyListFieldGrammar
+      )
+      [ "build-depends1.fragment"
+      , "build-depends2.fragment"
+      , "build-depends3.fragment"
+      , "build-depends4.fragment"
+      , "build-depends5.fragment"
+      ]
+
+fieldGrammarFieldRoundTripTest
+  :: ParsecFieldGrammar' a
+  -> PrettyFieldGrammar' a
+  -> FilePath
+  -> TestTree
+fieldGrammarFieldRoundTripTest gParsec gPretty fp = testCase fp $ do
+  x <- BS.readFile input
+  let fs = case readFields x of
+        Left err -> fail $ unlines $ "readFields error:" : show err : []
+        Right ok -> ok
+
+  let (fieldMap, _) = takeFields fs
+  let (_warns, res) =
+          runParseResult
+          $ fieldGrammarParser gParsec cabalSpecLatest fieldMap
+
+  (trivia, parsed) <- case res of
+        Left _ -> fail "fieldParser failed unrecoverably"
+        Right ok -> pure ok
+
+  let prettyFields =
+          prettyAnnotatedFieldGrammar cabalSpecLatest trivia gPretty parsed
+  let y = BS8.pack (exactShowFields prettyFields)
+
+{- FOURMOLU_DISABLE -}
+  unless (x == y) $
+#ifdef MIN_VERSION_tree_diff
+      assertFailure $ unlines
+          [ "re-parsed doesn't match"
+          , show $ ansiWlEditExpr $ ediff x y
+          ]
+#else
+      assertFailure $ unlines
+          [ "re-parsed doesn't match"
+          , "expected"
+          , show x
+          , "actual"
+          , show y
+          ]
+#endif
+  where
+    input = "tests" </> "ParserTests" </> "trivia" </> fp
+{- FOURMOLU_ENABLE -}
+
+fieldGrammarFieldTransformTests :: TestTree
+fieldGrammarFieldTransformTests =
+  testGroup "fieldgrammar-transform" $
+    map ( \(trans, fp, suffix) -> fieldGrammarFieldTransformTest dependencyListFieldGrammar dependencyListFieldGrammar trans fp suffix) $
+
+    ( let  modifyVersionAtFirst [] = []
+           modifyVersionAtFirst (d : ds) = go d : ds
+            where go (Dependency pName _ libNames) = Dependency pName fakeVersion libNames
+      in
+          ( modifyVersionAtFirst
+          , "build-depends1.fragment"
+          , "modify-version-first"
+          )
+    )
+    :
+    -- FIXME(leana8959): when falling back to normal print we lose the separator
+    -- This can be triggered with more than one fake item (because they don't have associated trivia)
+    ( let  insertDependency ds =
+             Dependency (mkPackageName "foo") fakeVersion (NES.singleton LMainLibName)
+              : Dependency (mkPackageName "bar") fakeVersion (NES.singleton LMainLibName)
+              : ds
+      in
+          ( insertDependency
+          , "build-depends1.fragment"
+          , "insert-dependency"
+          )
+    )
+    : []
+  where
+         fakeVersion =
+            ThisVersion (mkVersion [1337, 1])
+              `IntersectVersionRanges`
+              (ThisVersion (mkVersion [1337, 2]) `UnionVersionRanges` ThisVersion (mkVersion [1337, 3])
+              )
+
+fieldGrammarFieldTransformTest
+  :: forall a
+   . (ToExpr a)
+  => ParsecFieldGrammar' a
+  -> PrettyFieldGrammar' a
+  -> (a -> a)
+  -> FilePath
+  -> String
+  -> TestTree
+fieldGrammarFieldTransformTest gParse gPrint f fp suffix = ediffGolden goldenTest fp exprFile $ do
+  contents <- BS.readFile input
+  let fs = case readFields contents of
+        Left err -> fail $ unlines $ "readFields error:" : show err : []
+        Right ok -> ok
+
+  let (fieldMap, _) = takeFields fs
+  let (_warns, res) =
+          runParseResult
+          $ fieldGrammarParser gParse cabalSpecLatest fieldMap
+
+  (trivia, parsed) <- case res of
+        Left _ -> fail "fieldParser failed unrecoverably"
+        Right ok -> pure (fmap f ok)
+
+  let prettyFields = prettyAnnotatedFieldGrammar cabalSpecLatest trivia gPrint parsed
+      renderedFields = BS8.pack (exactShowFields prettyFields)
+
+  pure renderedFields
+  where
+    input = "tests" </> "ParserTests" </> "trivia" </> fp
+    exprFile = replaceExtension input ("trans" <.> suffix)
+
 
 -------------------------------------------------------------------------------
 -- InstalledPackageInfo regressions
