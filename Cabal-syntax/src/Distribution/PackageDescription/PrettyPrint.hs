@@ -19,8 +19,19 @@ module Distribution.PackageDescription.PrettyPrint
     writeGenericPackageDescription
   , showGenericPackageDescription
   , showGenericPackageDescription'
+
+  -- * Printer of GPD Sections
   , ppGenericPackageDescription
   , ppGenericPackageDescription'
+  , ppPackageDescription
+  , ppSetupBInfo
+  , ppGenPackageFlags
+  , ppCondLibrary
+  , ppCondSubLibraries
+  , ppCondForeignLibs
+  , ppCondExecutables
+  , ppCondTestSuites
+  , ppCondBenchmarks
 
     -- * Package descriptions
   , writePackageDescription

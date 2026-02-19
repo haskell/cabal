@@ -24,7 +24,10 @@ import Distribution.Fields                         (pwarning)
 import Distribution.Fields.Pretty                  (prettyFieldsToExactDoc)
 import Distribution.PackageDescription             (GenericPackageDescription)
 import Distribution.PackageDescription.FieldGrammar (optionsFieldGrammar)
-import Distribution.Types.GenericPackageDescription (emptyGenericPackageDescription)
+import Distribution.Types.GenericPackageDescription
+  ( emptyGenericPackageDescription
+  , condLibrary
+  )
 import Distribution.Types.AnnotatedGenericPackageDescription
 import Distribution.PackageDescription.Parsec
   ( parseGenericPackageDescription
@@ -37,6 +40,7 @@ import Distribution.PackageDescription.PrettyPrint
   ( showGenericPackageDescription
   , showGenericPackageDescription'
   , ppGenericPackageDescription'
+  , ppCondLibrary
   )
 import Distribution.Parsec                         (PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
 import Distribution.Pretty                         (prettyShow, ExactPretty (..))
@@ -775,23 +779,27 @@ fieldGrammarSectionGoldenTest' specVer fp = ediffGolden goldenTest fp exprFile $
 
 fieldGrammarSectionPrettyFieldTests :: TestTree
 fieldGrammarSectionPrettyFieldTests = testGroup "fieldgrammar-section-prettyfield" $
-  (map fieldGrammarSectionPrettyFieldTest
-    [ "library-build-depends1.fragment"
+  (map (uncurry $ flip fieldGrammarSectionPrettyFieldTest)
+    [ ( "library-build-depends1.fragment"
+      ,  \specVer trivia gpd -> ppCondLibrary specVer trivia (condLibrary gpd)
+      )
     ]
   )
 
 -- |
 -- Ensure a section parses correctly.
 fieldGrammarSectionPrettyFieldTest
-  :: FilePath
+  :: (CabalSpecVersion -> TriviaTree -> GenericPackageDescription -> [PrettyField Trivia])
+  -> FilePath
   -> TestTree
 fieldGrammarSectionPrettyFieldTest = fieldGrammarSectionPrettyFieldTest' cabalSpecLatest
 
 fieldGrammarSectionPrettyFieldTest'
   :: CabalSpecVersion
+  -> (CabalSpecVersion -> TriviaTree -> GenericPackageDescription -> [PrettyField Trivia])
   -> FilePath
   -> TestTree
-fieldGrammarSectionPrettyFieldTest' specVer fp = ediffGolden goldenTest fp exprFile $ do
+fieldGrammarSectionPrettyFieldTest' specVer gpdToPrettyFields fp = ediffGolden goldenTest fp exprFile $ do
   contents <- BS.readFile input
   let fs = case readFields contents of
         Left err -> fail $ unlines $ "readFields error:" : show err : []
@@ -815,7 +823,7 @@ fieldGrammarSectionPrettyFieldTest' specVer fp = ediffGolden goldenTest fp exprF
     Left _ -> fail "fieldParser failed unrecoverably"
     Right ok -> pure ok
 
-  let prettyFields = ppGenericPackageDescription' specVer trivia parsed
+  let prettyFields = gpdToPrettyFields specVer trivia parsed
   pure (toExpr prettyFields)
   where
     input = "tests" </> "ParserTests" </> "trivia" </> fp
