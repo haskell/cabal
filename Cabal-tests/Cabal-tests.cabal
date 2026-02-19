@@ -84,11 +84,13 @@ test-suite parser-tests
     , base
     , base-compat       >=0.11.0  && <0.14
     , bytestring
+    , containers >= 0.5.0.0  && < 0.9
     , Cabal-syntax
     , Cabal-tree-diff
     , Diff              >=0.4     && <0.6
     , directory
     , filepath
+    , mtl        >= 2.1      && < 2.4
     , tasty             >=1.2.3   && <1.6
     , tasty-golden      >=2.3.1.1 && <2.4
     , tasty-hunit

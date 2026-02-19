@@ -1,0 +1,173 @@
+_×_
+  TriviaTree {
+    justAnnotation = [],
+    namedAnnotations =
+    Map.fromList
+      [
+        _×_
+          `SomeNamespace LMainLibName`
+          TriviaTree {
+            justAnnotation = [
+              ExactSectionPosition
+                (Position 1 1)],
+            namedAnnotations =
+            Map.fromList
+              [
+                _×_
+                  `SomeNamespace "build-depends"`
+                  TriviaTree {
+                    justAnnotation = [],
+                    namedAnnotations =
+                    Map.fromList
+                      [
+                        _×_
+                          `SomeNamespace (Identity (Dependency (PackageName "foo") (OrLaterVersion (mkVersion [0])) (fromNonEmpty (LMainLibName :| []))))`
+                          TriviaTree {
+                            justAnnotation = [
+                              ExactFieldPosition
+                                (Position 2 3),
+                              PostTrivia ""],
+                            namedAnnotations =
+                            Map.fromList
+                              [
+                                _×_
+                                  `SomeNamespace (Dependency (PackageName "foo") (OrLaterVersion (mkVersion [0])) (fromNonEmpty (LMainLibName :| [])))`
+                                  TriviaTree {
+                                    justAnnotation = [
+                                      ExactPosition (Position 3 9)],
+                                    namedAnnotations =
+                                    Map.fromList
+                                      [
+                                        _×_
+                                          `SomeNamespace (PackageName "foo")`
+                                          TriviaTree {
+                                            justAnnotation = [
+                                              PostTrivia ""],
+                                            namedAnnotations = Map.fromList
+                                              []},
+                                        _×_
+                                          `SomeNamespace (OrLaterVersion (mkVersion [0]))`
+                                          TriviaTree {
+                                            justAnnotation = [IsInjected],
+                                            namedAnnotations = Map.fromList
+                                              []}]}]}]}]}]}
+  GenericPackageDescription {
+    packageDescription =
+    PackageDescription {
+      specVersion = CabalSpecV1_0,
+      package = PackageIdentifier {
+        pkgName = PackageName "",
+        pkgVersion = mkVersion []},
+      licenseRaw = Right
+        UnspecifiedLicense,
+      licenseFiles = [],
+      copyright = "",
+      maintainer = "",
+      author = "",
+      stability = "",
+      testedWith = [],
+      homepage = "",
+      pkgUrl = "",
+      bugReports = "",
+      sourceRepos = [],
+      synopsis = "",
+      description = "",
+      category = "",
+      customFieldsPD = [],
+      buildTypeRaw = Nothing,
+      setupBuildInfo = Nothing,
+      library = Nothing,
+      subLibraries = [],
+      executables = [],
+      foreignLibs = [],
+      testSuites = [],
+      benchmarks = [],
+      dataFiles = [],
+      dataDir = SymbolicPath ".",
+      extraSrcFiles = [],
+      extraTmpFiles = [],
+      extraDocFiles = [],
+      extraFiles = []},
+    gpdScannedVersion = Nothing,
+    genPackageFlags = [],
+    condLibrary = Just
+      CondNode {
+        condTreeData = Library {
+          libName = LMainLibName,
+          exposedModules = [],
+          reexportedModules = [],
+          signatures = [],
+          libExposed = True,
+          libVisibility =
+          LibraryVisibilityPublic,
+          libBuildInfo = BuildInfo {
+            buildable = True,
+            buildTools = [],
+            buildToolDepends = [],
+            cppOptions = [],
+            asmOptions = [],
+            cmmOptions = [],
+            ccOptions = [],
+            cxxOptions = [],
+            jsppOptions = [],
+            ldOptions = [],
+            hsc2hsOptions = [],
+            pkgconfigDepends = [],
+            frameworks = [],
+            extraFrameworkDirs = [],
+            asmSources = [],
+            cmmSources = [],
+            cSources = [],
+            cxxSources = [],
+            jsSources = [],
+            hsSourceDirs = [],
+            otherModules = [],
+            virtualModules = [],
+            autogenModules = [],
+            defaultLanguage = Nothing,
+            otherLanguages = [],
+            defaultExtensions = [],
+            otherExtensions = [],
+            oldExtensions = [],
+            extraLibs = [],
+            extraLibsStatic = [],
+            extraGHCiLibs = [],
+            extraBundledLibs = [],
+            extraLibFlavours = [],
+            extraDynLibFlavours = [],
+            extraLibDirs = [],
+            extraLibDirsStatic = [],
+            includeDirs = [],
+            includes = [],
+            autogenIncludes = [],
+            installIncludes = [],
+            options = PerCompilerFlavor
+              []
+              [],
+            profOptions = PerCompilerFlavor
+              []
+              [],
+            sharedOptions =
+            PerCompilerFlavor [] [],
+            profSharedOptions =
+            PerCompilerFlavor [] [],
+            staticOptions =
+            PerCompilerFlavor [] [],
+            customFieldsBI = [],
+            targetBuildDepends = [
+              Dependency
+                (PackageName "foo")
+                (OrLaterVersion (mkVersion [0]))
+                mainLibSet],
+            mixins = []}},
+        condTreeConstraints = [
+          Dependency
+            (PackageName "foo")
+            (OrLaterVersion (mkVersion [0]))
+            mainLibSet],
+        condTreeComponents = []},
+    condSubLibraries = [],
+    condForeignLibs = [],
+    condExecutables = [],
+    condTestSuites = [],
+    condBenchmarks = []}

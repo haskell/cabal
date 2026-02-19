@@ -10,11 +10,13 @@ module Main
 
 import Prelude ()
 import Prelude.Compat
+import Distribution.Compat.Lens
 
 import Test.Tasty
 import Test.Tasty.Golden.Advanced (goldenTest)
 import Test.Tasty.HUnit
 
+import Control.Monad.State.Strict (runStateT)
 import Control.Monad                               (unless, void)
 import Data.Algorithm.Diff                         (PolyDiff (..), getGroupedDiff)
 import Data.Maybe                                  (isNothing)
@@ -22,10 +24,14 @@ import Distribution.Fields                         (pwarning)
 import Distribution.Fields.Pretty                  (prettyFieldsToExactDoc)
 import Distribution.PackageDescription             (GenericPackageDescription)
 import Distribution.PackageDescription.FieldGrammar (optionsFieldGrammar)
+import Distribution.Types.GenericPackageDescription (emptyGenericPackageDescription)
 import Distribution.Types.AnnotatedGenericPackageDescription
 import Distribution.PackageDescription.Parsec
   ( parseGenericPackageDescription
   , parseAnnotatedGenericPackageDescription
+  , parseSection
+  , SectionS (..)
+  , stateGpd
   )
 import Distribution.PackageDescription.PrettyPrint
   ( showGenericPackageDescription
@@ -74,6 +80,9 @@ import Data.TreeDiff.Class
 import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.List.NonEmpty    as NE
+import Data.List (find)
+import Data.Maybe (fromMaybe)
+import qualified Data.Map as Map
 import qualified Distribution.Compat.NonEmptySet as NES
 
 import Data.Functor.Identity
@@ -93,13 +102,21 @@ tests = testGroup "parsec tests"
     , errorTests
     , ipiTests
     , printerTests
+
+    -- parsec/pretty
     , parsecTriviaGoldenTests
     , parsecPrettyRoundTripTests
+
+    -- fieldGrammar for fields
     , fieldGrammarFieldGoldenTests
     , fieldGrammarFieldPrettyFieldTests
     , fieldGrammarFieldExactDocTests
     , fieldGrammarFieldTransformTests
     , fieldGrammarFieldRoundTripTests
+
+    -- fieldGrammar for sections
+    , fieldGrammarSectionGoldenTests
+
     , exactDocTests
     ]
 
@@ -705,6 +722,54 @@ fieldGrammarFieldTransformTest gParse gPrint f fp suffix = ediffGolden goldenTes
     input = "tests" </> "ParserTests" </> "trivia" </> fp
     exprFile = replaceExtension input ("trans" <.> suffix)
 
+-- Note: Section tests is are written separately because its semantic is not encoded in the fieldGrammar parsers.
+
+-- |
+-- First step, parse correctly with trivia
+fieldGrammarSectionGoldenTests :: TestTree
+fieldGrammarSectionGoldenTests = testGroup "fieldgrammar-section" $
+  ( map fieldGrammarSectionGoldenTest
+      [ "library-build-depends1.fragment"
+      ]
+  )
+
+-- |
+-- Ensure a section parses correctly.
+fieldGrammarSectionGoldenTest
+  :: FilePath
+  -> TestTree
+fieldGrammarSectionGoldenTest = fieldGrammarSectionGoldenTest' cabalSpecLatest
+
+fieldGrammarSectionGoldenTest'
+  :: CabalSpecVersion
+  -> FilePath
+  -> TestTree
+fieldGrammarSectionGoldenTest' specVer fp = ediffGolden goldenTest fp exprFile $ do
+  contents <- BS.readFile input
+  let fs = case readFields contents of
+        Left err -> fail $ unlines $ "readFields error:" : show err : []
+        Right ok -> ok
+
+  let (_, sectionFields) = takeFields fs
+
+  (secName, secArgs, secFields) <-
+    let -- mimics goSection
+        findSection [] = assertFailure "No section was found"
+        findSection (Section name args fs : _) = pure (name, args, fs)
+        findSection (_ : fs) = findSection fs
+    in  findSection sectionFields
+
+  let emptySectionState = SectionS emptyGenericPackageDescription Map.empty
+      (_warns, res) =
+        runParseResult $
+          fmap (view stateGpd) <$> runStateT (parseSection specVer secName secArgs secFields) emptySectionState
+
+  case res of
+    Left _ -> fail "fieldParser failed unrecoverably"
+    Right ok -> pure $ toExpr ok
+  where
+    input = "tests" </> "ParserTests" </> "trivia" </> fp
+    exprFile = replaceExtension input "fieldgrammar-section"
 
 -------------------------------------------------------------------------------
 -- InstalledPackageInfo regressions

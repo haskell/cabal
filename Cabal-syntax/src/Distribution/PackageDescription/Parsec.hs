@@ -27,6 +27,10 @@ module Distribution.PackageDescription.Parsec
   , PSource (..)
   , withSource
   , parseSection
+  , stateGpd
+
+  -- ** Section parsing types
+  , SectionS (..)
 
     -- * New-style spec-version
   , scanSpecVersion

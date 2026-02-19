@@ -1,3 +1,3 @@
-library:
+library
   build-depends:
         foo
