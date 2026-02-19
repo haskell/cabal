@@ -147,43 +147,44 @@ instance ExactSep CommaVCat where
 
         -- Last, current, next
         withNeighbors :: [(Maybe Trivia, (TriviaTree, a), Maybe Trivia)]
-        withNeighbors = zip3
-          (Nothing : (Just . justAnnotation . fst <$> sortedDocs))
-          sortedDocs
-          (drop 1 (Just . justAnnotation . fst <$> sortedDocs) ++ [Nothing])
+        withNeighbors =
+          zip3
+            (Nothing : (Just . justAnnotation . fst <$> sortedDocs))
+            sortedDocs
+            (drop 1 (Just . justAnnotation . fst <$> sortedDocs) ++ [Nothing])
      in map
-          ( \
-            ( tPrev
-            , (t0, x)
-            , tNext
-            )
-            ->
-              let -- tLocal /should/ contain the {leading,trailing} annotation
+          ( \( tPrev
+              , (t0, x)
+              , tNext
+              ) ->
+                let
+                  -- tLocal /should/ contain the {leading,trailing} annotation
                   -- If it doesn't (programmatic modifications to gpd), then we fallback to patching the separators
                   tLocal = justAnnotation t0
                   trim = dropWhile isSpace . dropWhileEnd isSpace
                   isComma = (== ",") . trim
 
-                  docOut = triviaToDoc tLocal $
-                        mconcat . map unAnnDoc $
-                          exactPretty t0 x
-               in
-                (flip DocAnn t0) $
-                  ( if tLocal == mempty
-                    -- Fallback
-                    then
-                      ( case tPrev of
-                        Nothing -> id -- isFirst
-                        Just t -> if not (hasTrailingSymbol isComma t) then (text "," <> ) else id
-                        ) .
-                      ( case tPrev of
-                        Nothing -> id -- isLast
-                        Just t -> if not (hasTrailingSymbol isComma t) then (<> text ",") else id
-                        )
-                    -- Separator already in the trivia
-                    else id
-                  ) $
-                  docOut
+                  docOut =
+                    triviaToDoc tLocal $
+                      mconcat . map unAnnDoc $
+                        exactPretty t0 x
+                 in
+                  (flip DocAnn t0)
+                    $ ( if tLocal == mempty
+                          then -- Fallback
+
+                            ( case tPrev of
+                                Nothing -> id -- isFirst
+                                Just t -> if not (hasTrailingSymbol isComma t) then (text "," <>) else id
+                            )
+                              . ( case tPrev of
+                                    Nothing -> id -- isLast
+                                    Just t -> if not (hasTrailingSymbol isComma t) then (<> text ",") else id
+                                )
+                          else -- Separator already in the trivia
+                            id
+                      )
+                    $ docOut
           )
           $ withNeighbors
 

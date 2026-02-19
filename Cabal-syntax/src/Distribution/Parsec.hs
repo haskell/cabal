@@ -1,8 +1,8 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
@@ -426,9 +426,9 @@ sepEndByNonEmpty' p sep = do
   u <- p
 
   (maybeFirstSep, us) <-
-      ( liftA2 (,) (Just <$> sep) (sepEndBy' p sep)
+    ( liftA2 (,) (Just <$> sep) (sepEndBy' p sep)
       )
-        <|> pure (Nothing, [])
+      <|> pure (Nothing, [])
 
   let u' =
         let (t, x) = u

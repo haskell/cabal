@@ -165,7 +165,7 @@ hasTrailingSymbol f (t : ts) = case t of
   _ -> hasTrailingSymbol f ts
 
 hasLeadingSymbol :: (String -> Bool) -> Trivia -> Bool
-hasLeadingSymbol f [ ] = False 
+hasLeadingSymbol f [] = False
 hasLeadingSymbol f (t : ts) = case t of
   PreTrivia s -> f s || hasLeadingSymbol f ts
   _ -> hasLeadingSymbol f ts

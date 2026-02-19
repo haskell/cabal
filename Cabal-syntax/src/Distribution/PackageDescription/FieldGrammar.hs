@@ -35,7 +35,7 @@ module Distribution.PackageDescription.FieldGrammar
   , validateTestSuite
   , unvalidateTestSuite
 
-  -- * Options
+    -- * Options
   , optionsFieldGrammar
 
     -- ** Lenses

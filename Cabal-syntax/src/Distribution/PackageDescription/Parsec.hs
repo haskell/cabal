@@ -26,7 +26,6 @@ module Distribution.PackageDescription.Parsec
   , runParseResult
   , PSource (..)
   , withSource
-
   , parseSection
 
     -- * New-style spec-version

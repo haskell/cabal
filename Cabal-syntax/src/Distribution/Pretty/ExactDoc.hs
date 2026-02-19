@@ -1,40 +1,38 @@
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 -- |
 -- This module is a twist on the existing pretty library, mainly making it
 -- possible to place elements relatively.
 module Distribution.Pretty.ExactDoc
-  (
-  -- * Type
+  ( -- * Type
     ExactDoc (..)
-    -- TODO: hide the constructors in an internal module
+  -- TODO: hide the constructors in an internal module
 
-  -- * Constructors
+    -- * Constructors
   , text
   , multilineText
   , nil
 
-  -- * Primitive combinators
+    -- * Primitive combinators
   , concat
   , place
   , nest
 
-  -- * Helpers
+    -- * Helpers
   , newline
   , sep
 
-  -- * Rendering
+    -- * Rendering
   , renderText
   )
-  where
+where
 
 import Distribution.Parsec.Position
 
-import GHC.Generics
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans.State.Strict
@@ -42,25 +40,21 @@ import Data.List (intersperse)
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
+import GHC.Generics
 
 import Debug.Pretty.Simple
 
 data ExactDoc where
   -- | Turn a Text into a document
   Text :: !T.Text -> ExactDoc
-
   -- | The empty document, 0 in width and height
   Nil :: ExactDoc
-
   -- | Join two documents together
   Concat :: !ExactDoc -> !ExactDoc -> ExactDoc
-
   -- | The document should be placed at (Row, Col)
   Place :: !Int -> !Int -> !ExactDoc -> ExactDoc
-
   -- | The document should be indented with n more spaces
   Nest :: !Int -> !ExactDoc -> ExactDoc
-
   deriving (Show, Eq, Generic)
 
 instance Semigroup ExactDoc where
@@ -100,27 +94,25 @@ updateCursorCol col = do
 
 renderText :: ExactDoc -> Text
 renderText doc = evalState (renderTextStep doc) state0
-  where state0 = Position 1 1 -- the parser is 1,1 indexed
+  where
+    state0 = Position 1 1 -- the parser is 1,1 indexed
 
 renderTextStep :: ExactDoc -> State RenderState Text
 renderTextStep d0 = case d0 of
   Nil -> pure mempty
-
   Place atRow atCol d ->
-    liftA3 (\x y z -> x <> y <> z)
+    liftA3
+      (\x y z -> x <> y <> z)
       (updateCursorRow atRow)
       (updateCursorCol atCol)
       (renderTextStep d)
-
   Nest indentSize d ->
     get >>= \(Position row col) ->
       liftA2 (<>) (updateCursorCol (col + indentSize)) (renderTextStep d)
-
   Text t -> do
-    modify
-      $ \(Position row col) -> Position row (col + T.length t)
+    modify $
+      \(Position row col) -> Position row (col + T.length t)
     pure t
-
   Concat d1 d2 -> liftA2 (<>) (renderTextStep d1) (renderTextStep d2)
 
 -- | Invariant: this assumes the input text doesn't have more than one line
