@@ -36,6 +36,7 @@ import Distribution.PackageDescription.Parsec
 import Distribution.PackageDescription.PrettyPrint
   ( showGenericPackageDescription
   , showGenericPackageDescription'
+  , ppGenericPackageDescription'
   )
 import Distribution.Parsec                         (PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
 import Distribution.Pretty                         (prettyShow, ExactPretty (..))
@@ -116,6 +117,7 @@ tests = testGroup "parsec tests"
 
     -- fieldGrammar for sections
     , fieldGrammarSectionGoldenTests
+    , fieldGrammarSectionPrettyFieldTests
 
     , exactDocTests
     ]
@@ -770,6 +772,54 @@ fieldGrammarSectionGoldenTest' specVer fp = ediffGolden goldenTest fp exprFile $
   where
     input = "tests" </> "ParserTests" </> "trivia" </> fp
     exprFile = replaceExtension input "fieldgrammar-section"
+
+fieldGrammarSectionPrettyFieldTests :: TestTree
+fieldGrammarSectionPrettyFieldTests = testGroup "fieldgrammar-section-prettyfield" $
+  (map fieldGrammarSectionPrettyFieldTest
+    [ "library-build-depends1.fragment"
+    ]
+  )
+
+-- |
+-- Ensure a section parses correctly.
+fieldGrammarSectionPrettyFieldTest
+  :: FilePath
+  -> TestTree
+fieldGrammarSectionPrettyFieldTest = fieldGrammarSectionPrettyFieldTest' cabalSpecLatest
+
+fieldGrammarSectionPrettyFieldTest'
+  :: CabalSpecVersion
+  -> FilePath
+  -> TestTree
+fieldGrammarSectionPrettyFieldTest' specVer fp = ediffGolden goldenTest fp exprFile $ do
+  contents <- BS.readFile input
+  let fs = case readFields contents of
+        Left err -> fail $ unlines $ "readFields error:" : show err : []
+        Right ok -> ok
+
+  let (_, sectionFields) = takeFields fs
+
+  (secName, secArgs, secFields) <-
+    let -- mimics goSection
+        findSection [] = assertFailure "No section was found"
+        findSection (Section name args fs : _) = pure (name, args, fs)
+        findSection (_ : fs) = findSection fs
+    in  findSection sectionFields
+
+  let emptySectionState = SectionS emptyGenericPackageDescription Map.empty
+      (_warns, res) =
+        runParseResult $
+          fmap (view stateGpd) <$> runStateT (parseSection specVer secName secArgs secFields) emptySectionState
+
+  (trivia, parsed) <- case res of
+    Left _ -> fail "fieldParser failed unrecoverably"
+    Right ok -> pure ok
+
+  let prettyFields = ppGenericPackageDescription' specVer trivia parsed
+  pure (toExpr prettyFields)
+  where
+    input = "tests" </> "ParserTests" </> "trivia" </> fp
+    exprFile = replaceExtension input "fieldgrammar-section-prettyfield"
 
 -------------------------------------------------------------------------------
 -- InstalledPackageInfo regressions

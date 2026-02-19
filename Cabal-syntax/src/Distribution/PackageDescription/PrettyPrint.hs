@@ -20,6 +20,7 @@ module Distribution.PackageDescription.PrettyPrint
   , showGenericPackageDescription
   , showGenericPackageDescription'
   , ppGenericPackageDescription
+  , ppGenericPackageDescription'
 
     -- * Package descriptions
   , writePackageDescription
