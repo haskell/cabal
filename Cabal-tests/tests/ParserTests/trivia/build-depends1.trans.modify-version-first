@@ -1,7 +1,0 @@
-BS.concat
-  [
-    "build-depends:\n",
-    "    base==1337.1&&(==1337.2||==1337.3)\n",
-    "build-depends:\n",
-    "\n",
-    "    text < 2,\n"]
