@@ -1,0 +1,29 @@
+# cabal v2-update
+Downloading the latest package list from test-local-repo
+# cabal build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - other-lib-1.0 (lib) (requires build)
+ - some-exe-1.0 (exe:some-exe) (requires build)
+ - some-lib-1.0 (lib) (requires build)
+ - b-0 (lib) (first run)
+ - a-0 (lib) (first run)
+# cabal build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - other-lib-1.0 (lib) (requires build)
+ - some-exe-1.0 (exe:some-exe) (requires build)
+ - some-lib-1.0 (lib) (requires build)
+ - b-0 (lib) (first run)
+ - a-0 (lib) (first run)
+# cabal build
+Resolving dependencies...
+Error: [Cabal-7107]
+Could not resolve dependencies:
+[__0] trying: a-0 (user goal)
+[__1] next goal: some-lib (dependency of a)
+[__1] fail (not a user-provided goal nor mentioned as a constraint, but reject-unconstrained-dependencies=eq was set)
+[__1] fail (backjumping, conflict set: a, some-lib)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: a (2), some-lib (1)

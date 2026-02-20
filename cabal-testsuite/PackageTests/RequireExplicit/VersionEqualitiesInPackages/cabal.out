@@ -1,0 +1,29 @@
+# cabal v2-update
+Downloading the latest package list from test-local-repo
+# cabal build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - other-lib-1.0 (lib) (requires build)
+ - some-exe-1.0 (exe:some-exe) (requires build)
+ - some-lib-1.0 (lib) (requires build)
+ - b-0 (lib) (first run)
+ - a-0 (lib) (first run)
+# cabal build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - other-lib-1.0 (lib) (requires build)
+ - some-exe-1.0 (exe:some-exe) (requires build)
+ - some-lib-1.0 (lib) (requires build)
+ - b-0 (lib) (first run)
+ - a-0 (lib) (first run)
+# cabal build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - other-lib-1.0 (lib) (requires build)
+ - some-exe-1.0 (exe:some-exe) (requires build)
+ - some-lib-1.0 (lib) (requires build)
+ - b-0 (lib) (first run)
+ - a-0 (lib) (first run)

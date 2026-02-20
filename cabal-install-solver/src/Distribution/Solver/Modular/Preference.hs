@@ -43,6 +43,7 @@ import Distribution.Solver.Modular.Tree
 import Distribution.Solver.Modular.Version
 import qualified Distribution.Solver.Modular.ConflictSet as CS
 import qualified Distribution.Solver.Modular.WeightedPSQ as W
+import Distribution.Solver.Types.Settings (OnlyConstrained(..))
 
 -- | Update the weights of children under 'PChoice' nodes. 'addWeights' takes a
 -- list of weight-calculating functions in order to avoid sorting the package
@@ -351,13 +352,13 @@ avoidReinstalls p = go
     go x          = x
 
 -- | Require all packages to be mentioned in a constraint or as a goal.
-onlyConstrained :: (PN -> Bool) -> EndoTreeTrav d QGoalReason
-onlyConstrained p = go
+onlyConstrained :: OnlyConstrained -> (PN -> Bool) -> EndoTreeTrav d QGoalReason
+onlyConstrained oc p = go
   where
     go (PChoiceF v@(Q _ pn) _ gr _) | not (p pn)
       = FailF
         (varToConflictSet (P v) `CS.union` goalReasonToConflictSetWithConflict v gr)
-        NotExplicit
+        (NotExplicit oc)
     go x
       = x
 

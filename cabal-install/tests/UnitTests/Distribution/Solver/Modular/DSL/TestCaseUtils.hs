@@ -2,7 +2,7 @@
 
 -- | Utilities for creating HUnit test cases with the solver DSL.
 module UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
-  ( SolverTest
+  ( SolverTest (..)
   , SolverResult (..)
   , maxBackjumps
   , disableFineGrainedConflicts
@@ -79,9 +79,9 @@ allowBootLibInstalls :: SolverTest -> SolverTest
 allowBootLibInstalls test =
   test{testAllowBootLibInstalls = AllowBootLibInstalls True}
 
-onlyConstrained :: SolverTest -> SolverTest
-onlyConstrained test =
-  test{testOnlyConstrained = OnlyConstrainedAll}
+onlyConstrained :: OnlyConstrained -> SolverTest -> SolverTest
+onlyConstrained oc test =
+  test{testOnlyConstrained = oc}
 
 disableBackjumping :: SolverTest -> SolverTest
 disableBackjumping test =

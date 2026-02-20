@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -- | This is a set of unit tests for the dependency solver,
 -- which uses the solver DSL ("UnitTests.Distribution.Solver.Modular.DSL")
@@ -16,6 +17,8 @@ import Test.Tasty as TF
 import Test.Tasty.ExpectedFailure
 
 -- Cabal
+
+import qualified Distribution.Version as C
 import Language.Haskell.Extension
   ( Extension (..)
   , KnownExtension (..)
@@ -23,12 +26,14 @@ import Language.Haskell.Extension
   )
 
 -- cabal-install
+
 import Distribution.Solver.Types.Flag
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
 import qualified Distribution.Solver.Types.PackagePath as P
+import Distribution.Solver.Types.Settings (OnlyConstrained (..))
 import UnitTests.Distribution.Solver.Modular.DSL
-import UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
+import UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils hiding (testMinimizeConflictSet)
 
 tests :: [TF.TestTree]
 tests =
@@ -234,32 +239,276 @@ tests =
       ]
   , testGroup
       "reject-unconstrained"
-      [ runTest $
-          onlyConstrained $
-            mkTest db12 "missing syb" ["E"] $
-              solverFailure (isInfixOf "not a user-provided goal")
-      , runTest $
-          onlyConstrained $
-            mkTest db12 "all goals" ["E", "syb"] $
-              solverSuccess [("E", 1), ("syb", 2)]
-      , runTest $
-          onlyConstrained $
-            mkTest db17 "backtracking" ["A", "B"] $
-              solverSuccess [("A", 2), ("B", 1)]
-      , runTest $
-          onlyConstrained $
-            mkTest db17 "failure message" ["A"] $
-              solverFailure $
-                isInfixOf $
-                  "Could not resolve dependencies:\n"
-                    ++ "[__0] trying: A-3.0.0 (user goal)\n"
-                    ++ "[__1] next goal: C (dependency of A)\n"
-                    ++ "[__1] fail (not a user-provided goal nor mentioned as a constraint, "
-                    ++ "but reject-unconstrained-dependencies was set)\n"
-                    ++ "[__1] fail (backjumping, conflict set: A, C)\n"
-                    ++ "After searching the rest of the dependency tree exhaustively, "
-                    ++ "these were the goals I've had most trouble fulfilling: A, C, B"
-      ]
+      $ let solverMsg condition =
+              "Could not resolve dependencies:\n"
+                ++ "[__0] trying: A-3.0.0 (user goal)\n"
+                ++ "[__1] next goal: C (dependency of A)\n"
+                ++ "[__1] fail (not a user-provided goal nor mentioned as a constraint, "
+                ++ "but reject-unconstrained-dependencies="
+                ++ condition
+                ++ " was set)\n"
+                ++ "[__1] fail (backjumping, conflict set: A, C)\n"
+                ++ "After searching the rest of the dependency tree exhaustively, "
+                ++ "these were the goals I've had most trouble fulfilling: A, C, B"
+            whenNone = onlyConstrained OnlyConstrainedNone
+            whenAll = onlyConstrained OnlyConstrainedAll
+            whenEq = onlyConstrained OnlyConstrainedEq
+
+            -- ==1, ==2
+            eq1 = C.thisVersion $ mkSimpleVersion 1
+            eq2 = C.thisVersion $ mkSimpleVersion 2
+
+            -- >0, >1
+            gt0 = C.laterVersion $ C.mkVersion [0]
+            gt1 = C.laterVersion $ C.mkVersion [1]
+
+            -- <1, <2
+            lt1 = C.earlierVersion $ C.mkVersion [2]
+            lt2 = C.earlierVersion $ C.mkVersion [2]
+
+            -- >=1
+            ge1 = C.orLaterVersion $ C.mkVersion [1]
+
+            -- ==1 || >1, ==1 || <1
+            eqOrGt1 = C.unionVersionRanges eq1 gt1
+            eqOrLt1 = C.unionVersionRanges eq1 lt1
+
+            -- \^>=1
+            ce1 = C.majorBoundVersion $ mkSimpleVersion 1
+
+            -- TODO: Find out why <=1 is not the same as <=1.0.0
+            -- <=1
+            le1 = C.orEarlierVersion $ C.mkVersion [1, 0, 0]
+
+            -- ==1 && >0
+            eqGt = C.intersectVersionRanges eq1 gt0
+
+            -- ==1 || >0
+            eq1OrGt0 = C.unionVersionRanges eq1 gt0
+
+            -- >0 && ==1
+            gtEq = C.intersectVersionRanges gt0 eq1
+
+            -- >0 || ==1
+            gt0OrEq1 = C.unionVersionRanges gt0 eq1
+
+            -- ==1 || ==2
+            eqOrEq = C.unionVersionRanges eq1 eq2
+
+            -- <=1 && >=1
+            lege1 = C.intersectVersionRanges le1 ge1
+
+            -- >0 && ==1 && <2
+            gtEqLt = C.intersectVersionRanges gtEq lt2
+
+            mkConstraint pkg vr = ExVersionConstraint (ScopeAnyQualifier pkg) vr
+
+            -- B ==1, C ==1
+            eqConstraints =
+              [ mkConstraint "B" eq1
+              , mkConstraint "C" eq1
+              ]
+
+            -- B >0, C >0
+            gtConstraints =
+              [ mkConstraint "B" gt0
+              , mkConstraint "C" gt0
+              ]
+
+            -- B ==1 && >0, C >0 && ==1
+            eqGtConstraints =
+              [ mkConstraint "B" eqGt
+              , mkConstraint "C" gtEq
+              ]
+
+            -- B ==1 || >0, C >0 || ==1
+            eqOrGtConstraints =
+              [ mkConstraint "B" eq1OrGt0
+              , mkConstraint "C" gt0OrEq1
+              ]
+
+            -- B >=1, C <=1
+            geleConstraints =
+              [ mkConstraint "B" ge1
+              , mkConstraint "C" le1
+              ]
+
+            -- B ^>=1, C <=1
+            celeConstraints =
+              [ mkConstraint "B" ce1
+              , mkConstraint "C" ce1
+              ]
+
+            -- B ==1 || >1, C ==1 || <1
+            eqOrGt1Constraints =
+              [ mkConstraint "B" eqOrGt1
+              , mkConstraint "C" eqOrLt1
+              ]
+
+            -- B ==1 || ==2, C ==1 || ==2
+            eqOrEqConstraints =
+              [ mkConstraint "B" eqOrEq
+              , mkConstraint "C" eqOrEq
+              ]
+
+            -- B <=1 && >=1, C <=1 && >=1
+            legeConstraints =
+              [ mkConstraint "B" lege1
+              , mkConstraint "C" lege1
+              ]
+
+            -- B >0 && ==1 && <2, C >0 && ==1 && <2
+            gtEqLtConstraints =
+              [ mkConstraint "B" gtEqLt
+              , mkConstraint "C" gtEqLt
+              ]
+
+            solveABC = solverSuccess [("A", 3), ("B", 1), ("C", 1)]
+            solveAB = solverSuccess [("A", 2), ("B", 1)]
+            solveEsyb = solverSuccess [("E", 1), ("syb", 2)]
+         in [ testGroup
+                "=none"
+                [ runTest . whenNone $ mkTest db12 "goal E" ["E"] solveEsyb
+                , runTest . whenNone $ mkTest db12 "goal all" ["E", "syb"] solveEsyb
+                , runTest . whenNone $ mkTest db17 "goal A B backtracking" ["A", "B"] solveABC
+                , runTest . whenNone $ mkTest db17 "goal A" ["A"] solveABC
+                ]
+            , testGroup
+                "=all"
+                [ runTest . whenAll $ mkTest db12 "goal all" ["E", "syb"] solveEsyb
+                , runTest . whenAll $ mkTest db17 "goal A B backtracking" ["A", "B"] solveAB
+                , runTest . whenAll $
+                    (mkTest db17 "goal A with B ==1, C ==1" ["A"] solveABC)
+                      { testConstraints = eqConstraints
+                      }
+                , runTest . whenAll $
+                    (mkTest db17 "goal A with B >0, C >0" ["A"] solveABC)
+                      { testConstraints = gtConstraints
+                      }
+                , runTest . whenAll $
+                    (mkTest db17 "goal A with B ==1 && >0, C >0 && ==1" ["A"] solveABC)
+                      { testConstraints = eqGtConstraints
+                      }
+                , runTest . whenAll $
+                    (mkTest db17 "goal A with B >=1, C <=1" ["A"] solveABC)
+                      { testConstraints = geleConstraints
+                      }
+                , runTest . whenAll $
+                    (mkTest db17 "goal A with B ^>=1, C ^>=1" ["A"] solveABC)
+                      { testConstraints = celeConstraints
+                      }
+                , runTest . whenAll $
+                    (mkTest db17 "goal A with B <=1 && >=1, C <=1 && >=1" ["A"] solveABC)
+                      { testConstraints = legeConstraints
+                      }
+                , runTest . whenAll $
+                    (mkTest db17 "goal A with B ==1 || >1, C ==1 || <1" ["A"] solveABC)
+                      { testConstraints = eqOrGt1Constraints
+                      }
+                , runTest . whenAll $
+                    (mkTest db17 "goal A with B ==1 || ==2, C ==1 || ==2" ["A"] solveABC)
+                      { testConstraints = eqOrEqConstraints
+                      }
+                , runTest . whenAll $
+                    (mkTest db17 "goal A with B >0 && ==1 && <2, C >0 && ==1 && <2" ["A"] solveABC)
+                      { testConstraints = gtEqLtConstraints
+                      }
+                , runTest . whenAll $
+                    (mkTest db17 "goal A with B ==1 || >0, C >0 || ==1" ["A"] solveABC)
+                      { testConstraints = eqOrGtConstraints
+                      }
+                ]
+            , testGroup "=all rejects" $
+                let nall =
+                      [ "not a user-provided goal nor mentioned as a constraint"
+                      , "but reject-unconstrained-dependencies=all was set"
+                      ]
+                 in [ runTest . whenAll $
+                        mkTest
+                          db12
+                          "goal E missing syb"
+                          ["E"]
+                          ( solverFailure
+                              ( \m ->
+                                  all
+                                    (`isInfixOf` m)
+                                    ("next goal: syb (dependency of E)" : nall)
+                              )
+                          )
+                    , runTest . whenAll $
+                        mkTest
+                          db17
+                          "goal A"
+                          ["A"]
+                          (solverFailure . isInfixOf $ solverMsg "all")
+                    ]
+            , testGroup "=eq" $
+                [ runTest . whenEq $ mkTest db17 "goal A B backtracking" ["A", "B"] solveAB
+                , runTest . whenEq $
+                    (mkTest db17 "goal A with B ==1, C ==1" ["A"] solveABC)
+                      { testConstraints = eqConstraints
+                      }
+                , runTest . whenEq $
+                    (mkTest db17 "goal A with B ==1 && >0, C >0 && ==1" ["A"] solveABC)
+                      { testConstraints = eqGtConstraints
+                      }
+                , runTest . whenEq $
+                    (mkTest db17 "goal A with B >0 && ==1 && <2, C >0 && ==1 && <2" ["A"] solveABC)
+                      { testConstraints = gtEqLtConstraints
+                      }
+                ]
+            , testGroup "=eq rejects" $
+                let neq =
+                      [ "not a user-provided goal nor mentioned as a constraint"
+                      , "but reject-unconstrained-dependencies=eq was set"
+                      ]
+                    eGoalFailure m =
+                      all
+                        (`isInfixOf` m)
+                        ("next goal: E.base (dependency of E)" : neq)
+                    eqFailure =
+                      solverFailure
+                        ( \m ->
+                            all
+                              (`isInfixOf` m)
+                              ("next goal: C (dependency of A)" : neq)
+                        )
+                 in [ runTest . whenEq $
+                        mkTest db12 "goal E missing syb" ["E"] (solverFailure eGoalFailure)
+                    , runTest . whenEq $
+                        mkTest db12 "goal all" ["E", "syb"] (solverFailure eGoalFailure)
+                    , runTest . whenEq $
+                        mkTest db17 "goal A" ["A"] (solverFailure . isInfixOf $ solverMsg "eq")
+                    , runTest . whenEq $
+                        (mkTest db17 "goal A with B >0, C >0" ["A"] eqFailure)
+                          { testConstraints = gtConstraints
+                          }
+                    , runTest . whenEq $
+                        (mkTest db17 "goal A with B >=1, C <=1" ["A"] eqFailure)
+                          { testConstraints = geleConstraints
+                          }
+                    , runTest . whenEq $
+                        (mkTest db17 "goal A with B ^>=1, C ^>=1" ["A"] eqFailure)
+                          { testConstraints = celeConstraints
+                          }
+                    , runTest . whenEq $
+                        (mkTest db17 "goal A with B ==1 || >1, C ==1 || <1" ["A"] eqFailure)
+                          { testConstraints = eqOrGt1Constraints
+                          }
+                    , runTest . whenEq $
+                        (mkTest db17 "goal A with B ==1 || ==2, C ==1 || ==2" ["A"] eqFailure)
+                          { testConstraints = eqOrEqConstraints
+                          }
+                    , runTest . whenEq $
+                        (mkTest db17 "goal A with B <=1 && >=1, C <=1 && >=1" ["A"] eqFailure)
+                          { testConstraints = legeConstraints
+                          }
+                    , runTest . whenEq $
+                        (mkTest db17 "goal A with B ==1 || >0, C >0 || ==1" ["A"] eqFailure)
+                          { testConstraints = eqOrGtConstraints
+                          }
+                    ]
+            ]
   , testGroup
       "Cycles"
       [ runTest $ mkTest db14 "simpleCycle1" ["A"] anySolverFailure

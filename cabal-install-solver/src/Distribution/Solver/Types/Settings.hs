@@ -61,6 +61,7 @@ newtype AllowBootLibInstalls = AllowBootLibInstalls Bool
 data OnlyConstrained
   = OnlyConstrainedNone
   | OnlyConstrainedAll
+  | OnlyConstrainedEq
   deriving (Eq, Generic, Show)
 
 newtype EnableBackjumping = EnableBackjumping Bool
@@ -108,12 +109,14 @@ instance NFData AllowBootLibInstalls
 instance NFData OnlyConstrained
 
 instance Pretty OnlyConstrained where
+  pretty OnlyConstrainedEq  = PP.text "eq"
   pretty OnlyConstrainedAll  = PP.text "all"
   pretty OnlyConstrainedNone = PP.text "none"
 
 instance Parsec OnlyConstrained where
   parsec = P.choice
-    [ P.string "all"  >> return OnlyConstrainedAll
+    [ P.string "eq"  >> return OnlyConstrainedEq
+    , P.string "all"  >> return OnlyConstrainedAll
     , P.string "none" >> return OnlyConstrainedNone
     ]
 
