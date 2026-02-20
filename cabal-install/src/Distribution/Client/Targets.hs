@@ -245,7 +245,7 @@ reportUserTargetProblems verbosity problems = do
   case [target | UserTargetNonexistantFile target <- problems] of
     [] -> return ()
     target ->
-      dieWithException verbosity $ ReportUserTargerNonexistantFile target
+      dieWithException verbosity $ ReportUserTargetNonexistantFile target
 
   case [target | UserTargetUnexpectedFile target <- problems] of
     [] -> return ()
