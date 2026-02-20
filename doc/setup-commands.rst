@@ -1045,6 +1045,26 @@ This command takes the following options:
     specified at the build step are in addition not in replacement of
     any options specified at the configure step.
 
+.. option:: -j[NUM], --jobs[=NUM]
+
+    :default: ``$ncpus`` (the number of CPUs)
+
+    Run ``NUM`` jobs simultaneously when building.
+
+    :option:`--jobs` is ignored when :option:`--semaphore` is present.
+
+.. option:: --semaphore=SEMAPHORE
+
+    :since: 3.12.0.0
+
+    GHC 9.8.1 and later can act as a jobserver client, which enables two or more
+    GHC processes running at once to share system resources with each other,
+    communicating via a specified system semaphore. The system semaphore is
+    identified by a name (a string).
+
+    This option causes Cabal to control parallelism by using the specified
+    system semaphore.
+
 .. _setup-haddock:
 
 runhaskell Setup.hs haddock
