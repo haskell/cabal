@@ -67,11 +67,16 @@ module Distribution.Version
   , majorUpperBound
 
     -- ** Modification
-  , removeUpperBound
-  , removeLowerBound
+    -- $modification
+
+    -- *** Range-Preserving Modification
   , transformCaret
+
+    -- *** Range-Relaxing Modification
   , transformCaretUpper
   , transformCaretLower
+  , removeUpperBound
+  , removeLowerBound
 
     -- * Version intervals view
   , asVersionIntervals
@@ -125,6 +130,13 @@ isSpecificVersion vr = case asVersionIntervals vr of
 -- Transformations
 -------------------------------------------------------------------------------
 
+-- $modification
+--
+-- Examples use the following function to map version ranges:
+--
+-- > mapVR :: (VersionRange -> VersionRange) -> [String] -> [String]
+-- > mapVR f xs = [pretty $ f v| Just v <- simpleParsec <$> xs]
+
 -- | Simplify a 'VersionRange' expression. For non-empty version ranges
 -- this produces a canonical form. Empty or inconsistent version ranges
 -- are left as-is because that provides more information.
@@ -161,7 +173,13 @@ removeUpperBound = fromVersionIntervals . relaxLastInterval . toVersionIntervals
 removeLowerBound :: VersionRange -> VersionRange
 removeLowerBound = fromVersionIntervals . relaxHeadInterval . toVersionIntervals
 
--- | Rewrite @^>= x.y.z@ into @>= x.y.z && < x.(y+1)@
+-- | Rewrite @^>= x.y.z@ into @>= x.y.z && < x.(y+1)@ with explicit lower bound
+-- and upper bound. It has the same effect as:
+--
+-- > \v -> transformCaretLower v `intersectVersionRanges` transformCaretUpper v
+--
+-- >>> mapVR transformCaret ["^>=1.2.3.4", "^>=1.2.3", "^>=1.2", "^>=1"]
+-- [>=1.2.3.4 && <1.3,>=1.2.3 && <1.3,>=1.2 && <1.3,>=1 && <1.1]
 --
 -- @since 3.6.0.0
 transformCaret :: VersionRange -> VersionRange
@@ -170,20 +188,39 @@ transformCaret = hyloVersionRange embed projectVersionRange
     embed (MajorBoundVersionF v) = orLaterVersion v `intersectVersionRanges` earlierVersion (majorUpperBound v)
     embed vr = embedVersionRange vr
 
--- | Rewrite @^>= x.y.z@ into @>= x.y.z@
+-- | Rewrite @^>= x.y.z@ into explicit lower bound @>= x.y.z@, removing the
+-- upper bound. This function doesn't transform the lower bound. It changes the
+-- operator from @^>=@ to @>=@.
 --
--- @since 3.6.0.0
-transformCaretUpper :: VersionRange -> VersionRange
-transformCaretUpper = hyloVersionRange embed projectVersionRange
-  where
-    embed (MajorBoundVersionF v) = orLaterVersion v
-    embed vr = embedVersionRange vr
-
--- | Rewrite @^>= x.y.z@ into @<x.(y+1)@
+-- >>> mapVR transformCaretLower ["^>=1.2.3.4", "^>=1.2.3", "^>=1.2", "^>=1"]
+-- [>=1.2.3.4,>=1.2.3,>=1.2,>=1]
 --
 -- @since 3.6.0.0
 transformCaretLower :: VersionRange -> VersionRange
 transformCaretLower = hyloVersionRange embed projectVersionRange
   where
+    embed (MajorBoundVersionF v) = orLaterVersion v
+    embed vr = embedVersionRange vr
+
+-- | Rewrite @^>= x.y.z@ into explicit upper bound @<x.(y+1)@, removing the
+-- lower bound.
+--
+-- >>> mapVR transformCaretUpper ["^>=0.0.0.0", "^>=0.0.0", "^>=0.0", "^>=0"]
+-- [<0.1,<0.1,<0.1,<0.1]
+--
+-- >>> mapVR transformCaretUpper ["^>=1.1.1.1", "^>=1.1.1", "^>=1.1", "^>=1"]
+-- [<1.2,<1.2,<1.2,<1.1]
+--
+-- @since 3.6.0.0
+transformCaretUpper :: VersionRange -> VersionRange
+transformCaretUpper = hyloVersionRange embed projectVersionRange
+  where
     embed (MajorBoundVersionF v) = earlierVersion (majorUpperBound v)
     embed vr = embedVersionRange vr
+
+-- $setup
+-- >>> :set -XScopedTypeVariables
+-- >>> import Distribution.Parsec
+-- >>> import Distribution.Pretty
+-- >>>
+-- >>> mapVR f xs = [pretty $ f v| Just v <- simpleParsec <$> xs]
