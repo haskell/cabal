@@ -444,6 +444,9 @@ The ``cabal get`` command supports the following options:
     ``.cabal`` file with the latest revision from the package archive.
 
 
+.. option:: -R, --repository-name
+   Package repository from which the package is to be fetched.
+
 .. _command-group-config:
 
 Project configuration
@@ -1644,7 +1647,7 @@ to Hackage.
     ::
 
         password-command: sh -c "grep hackage ~/secrets | cut -d : -f 2"
-..
+
 .. option:: -R, --repository-name
      Package repository to which the package is to be uploaded.
 
