@@ -398,11 +398,13 @@ findModDefFile verbosity cwd flibBi _pps modDefPath =
 -- @f@. Return the name of the file and the full path, or exit with error if
 -- there's no such file.
 findIncludeFile :: Verbosity -> FilePath -> [FilePath] -> String -> IO (String, FilePath)
-findIncludeFile verbosity _ [] f = dieWithException verbosity $ NoIncludeFileFound f
-findIncludeFile verbosity cwd (d : ds) f = do
-  let path = d </> f
-  b <- doesFileExist (cwd </> path)
-  if b then return (f, path) else findIncludeFile verbosity cwd ds f
+findIncludeFile verbosity cwd fs f = go fs
+  where
+    go [] = dieWithException verbosity $ NoIncludeFileFound f fs
+    go (d : ds) = do
+      let path = d </> f
+      b <- doesFileExist (cwd </> path)
+      if b then return (f, path) else go ds
 
 -- | Remove the auto-generated modules (like 'Paths_*') from 'exposed-modules'
 -- and 'other-modules'.

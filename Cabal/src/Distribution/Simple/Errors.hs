@@ -49,10 +49,10 @@ data CabalException
   | -- | @NoLibraryFound@ has been downgraded to a warning, and is therefore no longer emitted.
     NoLibraryFound
   | CompilerNotInstalled CompilerFlavor
-  | CantFindIncludeFile String
+  | CantFindIncludeFile String [String]
   | UnsupportedTestSuite String
   | UnsupportedBenchMark String
-  | NoIncludeFileFound String
+  | NoIncludeFileFound String [String]
   | NoModuleFound ModuleName [Suffix]
   | RegMultipleInstancePkg
   | SuppressingChecksOnFile
@@ -318,10 +318,10 @@ exceptionMessage e = case e of
   NoBenchMark bmName -> "no such benchmark: " ++ bmName
   NoLibraryFound -> "No executables and no library found. Nothing to do."
   CompilerNotInstalled compilerFlavor -> "installing with " ++ prettyShow compilerFlavor ++ "is not implemented"
-  CantFindIncludeFile file -> "can't find include file " ++ file
+  CantFindIncludeFile file sd -> "can't find include file " ++ file ++ " in any of the search dirs " ++ show sd
   UnsupportedTestSuite test_type -> "Unsupported test suite type: " ++ test_type
   UnsupportedBenchMark benchMarkType -> "Unsupported benchmark type: " ++ benchMarkType
-  NoIncludeFileFound f -> "can't find include file " ++ f
+  NoIncludeFileFound f sd -> "can't find include file " ++ f ++ " in any of the search dirs " ++ show sd
   NoModuleFound m suffixes ->
     "Could not find module: "
       ++ prettyShow m
