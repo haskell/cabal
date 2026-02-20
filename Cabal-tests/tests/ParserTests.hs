@@ -1033,27 +1033,28 @@ exactDocTests = testGroup "exactDoc"
   [ exactDocRenderTests
   ]
 
+-- TODO(leana8959): rewrite these as golden tests
 exactDocRenderTests :: TestTree
 exactDocRenderTests = testGroup "render"
   [ exactDocRenderTest "exact placement"
-      (EPP.place 1 1 (EPP.text "hi"))
+      (EPP.place 2 2 (EPP.text "hi"))
       "\n hi"
   , exactDocRenderTest "exact placement"
-      (EPP.place 2 5 (EPP.text "hi"))
+      (EPP.place 3 6 (EPP.text "hi"))
       "\n\n     hi"
   , exactDocRenderTest "indent over place"
-      (EPP.nest 4 (EPP.place 2 2 (EPP.text "hi")))
+      (EPP.nest 4 (EPP.place 3 3 (EPP.text "hi")))
       "\n\n  hi"
   , exactDocRenderTest "indent over place"
-      (EPP.place 5 6 (EPP.place 2 2 (EPP.text "hi")))
+      (EPP.place 6 7 (EPP.place 3 3 (EPP.text "hi")))
       "\n\n  hi"
   , exactDocRenderTest "place over indent"
-      (EPP.place 1 1 (EPP.nest 2 (EPP.text "hi")))
+      (EPP.place 2 2 (EPP.nest 2 (EPP.text "hi")))
       "\n   hi"
   , exactDocRenderTest "build-depends"
       ( EPP.Concat
         (EPP.Text "foo")
-        (EPP.Place 1 4 (EPP.text "bar"))
+        (EPP.Place 2 5 (EPP.text "bar"))
       )
       "foo\n    bar"
   ]
