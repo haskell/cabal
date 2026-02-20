@@ -116,13 +116,14 @@ tests = testGroup "parsec tests"
     , fieldGrammarFieldGoldenTests
     , fieldGrammarFieldPrettyFieldTests
     , fieldGrammarFieldExactDocTests
-    , fieldGrammarFieldTransformTests
     , fieldGrammarFieldRoundTripTests
+    , fieldGrammarFieldTransformTests
 
     -- fieldGrammar for sections
     , fieldGrammarSectionGoldenTests
     , fieldGrammarSectionPrettyFieldTests
     , fieldGrammarSectionExactDocTests
+    , fieldGrammarSectionRoundTripTests
 
     , exactDocTests
     ]
@@ -883,6 +884,73 @@ fieldGrammarSectionExactDocTest' specVer gpdToPrettyFields fp = ediffGolden gold
   where
     input = "tests" </> "ParserTests" </> "trivia" </> fp
     exprFile = replaceExtension input "fieldgrammar-section-exactdoc"
+
+fieldGrammarSectionRoundTripTests :: TestTree
+fieldGrammarSectionRoundTripTests = testGroup "fieldgrammar-section-roundtrip" $
+  (map (uncurry $ flip fieldGrammarSectionRoundTripTest)
+    [ ( "library-build-depends1.fragment"
+      ,  \specVer trivia gpd -> ppCondLibrary specVer trivia (condLibrary gpd)
+      )
+    ]
+  )
+
+fieldGrammarSectionRoundTripTest
+  :: (CabalSpecVersion -> TriviaTree -> GenericPackageDescription -> [PrettyField Trivia])
+  -> FilePath
+  -> TestTree
+fieldGrammarSectionRoundTripTest = fieldGrammarSectionRoundTripTest' cabalSpecLatest
+
+fieldGrammarSectionRoundTripTest'
+  :: CabalSpecVersion
+  -> (CabalSpecVersion -> TriviaTree -> GenericPackageDescription -> [PrettyField Trivia])
+  -> FilePath
+  -> TestTree
+fieldGrammarSectionRoundTripTest' specVer gpdToPrettyFields fp = testCase fp $ do
+  x <- BS.readFile input
+  let fs = case readFields x of
+        Left err -> fail $ unlines $ "readFields error:" : show err : []
+        Right ok -> ok
+
+  let (_, sectionFields) = takeFields fs
+
+  (secName, secArgs, secFields) <-
+    let -- mimics goSection
+        findSection [] = assertFailure "No section was found"
+        findSection (Section name args fs : _) = pure (name, args, fs)
+        findSection (_ : fs) = findSection fs
+    in  findSection sectionFields
+
+  let emptySectionState = SectionS emptyGenericPackageDescription Map.empty
+      (_warns, res) =
+        runParseResult $
+          fmap (view stateGpd) <$> runStateT (parseSection specVer secName secArgs secFields) emptySectionState
+
+  (trivia, parsed) <- case res of
+    Left _ -> fail "fieldParser failed unrecoverably"
+    Right ok -> pure ok
+
+  let prettyFields = gpdToPrettyFields specVer trivia parsed
+  let y = BS8.pack (exactShowFields prettyFields)
+
+{- FOURMOLU_DISABLE -}
+  unless (x == y) $
+#ifdef MIN_VERSION_tree_diff
+      assertFailure $ unlines
+          [ "re-parsed doesn't match"
+          , show $ ansiWlEditExpr $ ediff x y
+          ]
+#else
+      assertFailure $ unlines
+          [ "re-parsed doesn't match"
+          , "expected"
+          , show x
+          , "actual"
+          , show y
+          ]
+#endif
+  where
+    input = "tests" </> "ParserTests" </> "trivia" </> fp
+{- FOURMOLU_ENABLE -}
 
 -------------------------------------------------------------------------------
 -- InstalledPackageInfo regressions

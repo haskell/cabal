@@ -390,8 +390,7 @@ exactRenderPrettyField ctx0@(lastField, lastFieldLine) field = case field of
         docOut =
           maybe id placeAt sectionNamePosition $
             EPP.text (T.pack $ fromUTF8BS fieldName)
-              <> EPP.text " "
-              <> EPP.sep (EPP.text " ") (map docToExactDoc sectionArgs)
+              <> mconcat (map docToExactDoc sectionArgs)
               <> EPP.nest guessedIndentation fieldsFinal
      in ( ctx'
         , docOut
