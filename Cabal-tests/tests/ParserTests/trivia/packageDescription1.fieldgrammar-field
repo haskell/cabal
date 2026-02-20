@@ -1,0 +1,56 @@
+_×_
+  TriviaTree {
+    justAnnotation = [],
+    namedAnnotations = Map.fromList
+      [
+        _×_
+          `SomeNamespace (Identity (PackageName "base"))`
+          TriviaTree {
+            justAnnotation = [
+              ExactFieldPosition
+                (Position 1 1)],
+            namedAnnotations = Map.fromList
+              []},
+        _×_
+          `SomeNamespace (Identity (mkVersion [0,0,0]))`
+          TriviaTree {
+            justAnnotation = [
+              ExactFieldPosition
+                (Position 2 1)],
+            namedAnnotations = Map.fromList
+              []}]}
+  PackageDescription {
+    specVersion = CabalSpecV1_0,
+    package = PackageIdentifier {
+      pkgName = PackageName "base",
+      pkgVersion = mkVersion
+        [0, 0, 0]},
+    licenseRaw = Left NONE,
+    licenseFiles = [],
+    copyright = "",
+    maintainer = "",
+    author = "",
+    stability = "",
+    testedWith = [],
+    homepage = "",
+    pkgUrl = "",
+    bugReports = "",
+    sourceRepos = [],
+    synopsis = "",
+    description = "",
+    category = "",
+    customFieldsPD = [],
+    buildTypeRaw = Nothing,
+    setupBuildInfo = Nothing,
+    library = Nothing,
+    subLibraries = [],
+    executables = [],
+    foreignLibs = [],
+    testSuites = [],
+    benchmarks = [],
+    dataFiles = [],
+    dataDir = SymbolicPath ".",
+    extraSrcFiles = [],
+    extraTmpFiles = [],
+    extraDocFiles = [],
+    extraFiles = []}

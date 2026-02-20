@@ -490,6 +490,10 @@ fieldGrammarFieldGoldenTests = testGroup "fieldgrammar-field" $
             [ "ghc-options1.fragment"
             ]
        )
+    ++ ( map (fieldGrammarFieldGoldenTest packageDescriptionFieldGrammar)
+          [ "packageDescription1.fragment"
+          ]
+       )
 
 fieldGrammarFieldGoldenTest
   :: forall s a
