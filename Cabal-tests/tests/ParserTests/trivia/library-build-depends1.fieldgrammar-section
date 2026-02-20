@@ -9,7 +9,7 @@ _×_
           TriviaTree {
             justAnnotation = [
               ExactSectionPosition
-                (Position 1 1)],
+                (Position 4 1)],
             namedAnnotations =
             Map.fromList
               [
@@ -25,7 +25,7 @@ _×_
                           TriviaTree {
                             justAnnotation = [
                               ExactFieldPosition
-                                (Position 2 3),
+                                (Position 7 3),
                               PostTrivia ""],
                             namedAnnotations =
                             Map.fromList
@@ -34,7 +34,7 @@ _×_
                                   `SomeNamespace (Dependency (PackageName "foo") (OrLaterVersion (mkVersion [0])) (fromNonEmpty (LMainLibName :| [])))`
                                   TriviaTree {
                                     justAnnotation = [
-                                      ExactPosition (Position 3 9)],
+                                      ExactPosition (Position 9 9)],
                                     namedAnnotations =
                                     Map.fromList
                                       [
