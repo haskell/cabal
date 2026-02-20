@@ -1,0 +1,38 @@
+Concat
+  (Concat
+    (Concat
+      (Concat
+        (Concat
+          (Concat
+            (Concat
+              (Concat
+                (Concat
+                  (Concat
+                    (Concat
+                      (Concat
+                        (Place
+                          0
+                          0
+                          (Text "license-file:"))
+                        (Text "copyright:"))
+                      (Text "maintainer:"))
+                    (Text "author:"))
+                  (Text "stability:"))
+                (Text "homepage:"))
+              (Text "package-url:"))
+            (Text "bug-reports:"))
+          (Text "synopsis:"))
+        (Text "description:"))
+      (Text "category:"))
+    (Place
+      1
+      1
+      (Concat
+        (Text "name:")
+        (Text "base"))))
+  (Place
+    2
+    1
+    (Concat
+      (Text "version:")
+      (Text "0.0.0")))

@@ -571,8 +571,8 @@ fieldGrammarFieldPrettyFieldTest gParsec gPretty fp = ediffGolden goldenTest fp 
 -- |
 -- Third step, transform to ExactDoc
 fieldGrammarFieldExactDocTests :: TestTree
-fieldGrammarFieldExactDocTests = testGroup "fieldgrammar-exactdoc" $
-  map
+fieldGrammarFieldExactDocTests = testGroup "fieldgrammar-field-exactdoc" $
+  ( map
       ( fieldGrammarFieldExactDocTest dependencyListFieldGrammar dependencyListFieldGrammar
       )
       [ "build-depends1.fragment"
@@ -581,6 +581,13 @@ fieldGrammarFieldExactDocTests = testGroup "fieldgrammar-exactdoc" $
       , "build-depends4.fragment"
       , "build-depends5.fragment"
       ]
+  )
+    ++ ( map
+          ( fieldGrammarFieldExactDocTest packageDescriptionFieldGrammar packageDescriptionFieldGrammar
+          )
+          [ "packageDescription1.fragment"
+          ]
+       )
 
 fieldGrammarFieldExactDocTest
   :: forall a
@@ -612,7 +619,7 @@ fieldGrammarFieldExactDocTest gParsec gPretty fp = ediffGolden goldenTest fp exp
   pure (toExpr result)
   where
     input = "tests" </> "ParserTests" </> "trivia" </> fp
-    exprFile = replaceExtension input "fieldgrammar-exactdoc"
+    exprFile = replaceExtension input "fieldgrammar-field-exactdoc"
 
 -- |
 -- Fifth step, render to text and test for syntaxic idempotency
