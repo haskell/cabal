@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -162,9 +163,15 @@ ppField :: FieldName -> Doc -> [PrettyField Trivia]
 ppField name fielddoc = ppTriviaField (name, mempty) [DocAnn fielddoc mempty]
 
 ppTriviaField :: (FieldName, Trivia) -> [DocAnn TriviaTree] -> [PrettyField Trivia]
-ppTriviaField (name, nameTrivia) docAnns
+ppTriviaField (name, nameTrivia) (filterEmptyFieldLine->docAnns)
+  -- Absorb empty elements that should not be printed
   | null docAnns = []
   | otherwise =
-      let proj (DocAnn doc trivia) = PrettyFieldLine (justAnnotation trivia) doc
-       in [ PrettyField nameTrivia name (map proj docAnns)
-          ]
+    [ PrettyField nameTrivia name (map ppTriviaFieldLine docAnns)
+    ]
+
+filterEmptyFieldLine :: [DocAnn TriviaTree] -> [DocAnn TriviaTree]
+filterEmptyFieldLine = filter (/= mempty)
+
+ppTriviaFieldLine :: DocAnn TriviaTree -> PrettyFieldLine Trivia
+ppTriviaFieldLine (DocAnn doc trivia) = PrettyFieldLine (justAnnotation trivia) doc
