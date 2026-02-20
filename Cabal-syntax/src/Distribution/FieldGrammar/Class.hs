@@ -54,7 +54,7 @@ class
 
   -- | Field which should be defined, exactly once.
   uniqueFieldAla
-    :: (c b, Newtype a b)
+    :: (c b, Newtype a b, Markable b)
     => FieldName
     -- ^ field name
     -> (a -> b)
@@ -196,7 +196,7 @@ class
 
 -- | Field which can be defined at most once.
 uniqueField
-  :: (FieldGrammar c g, c (Identity a))
+  :: (FieldGrammar c g, c (Identity a), Markable (Identity a))
   => FieldName
   -- ^ field name
   -> ALens' s a

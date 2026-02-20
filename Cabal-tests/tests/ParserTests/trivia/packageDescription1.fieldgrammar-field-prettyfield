@@ -1,10 +1,14 @@
 [
   PrettyField
-    []
+    [
+      ExactFieldPosition
+        (Position 1 1)]
     "name"
     [PrettyFieldLine [] base],
   PrettyField
-    []
+    [
+      ExactFieldPosition
+        (Position 2 1)]
     "version"
     [PrettyFieldLine [] 0.0.0],
   PrettyField

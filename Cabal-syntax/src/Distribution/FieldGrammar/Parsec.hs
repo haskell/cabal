@@ -188,7 +188,9 @@ instance FieldGrammar ExactParsec ParsecFieldGrammar where
 
   uniqueFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
-      parser v fields = case Map.lookup fn fields of
+      markFieldName (t, x) = let t' = markTriviaTree fn t in  (t', x)
+
+      parser v fields = markFieldName <$> case Map.lookup fn fields of
         Nothing -> parseFatalFailure zeroPos $ show fn ++ " field missing"
         Just [] -> parseFatalFailure zeroPos $ show fn ++ " field missing"
         Just [x] -> parseOne v x
@@ -196,8 +198,10 @@ instance FieldGrammar ExactParsec ParsecFieldGrammar where
           warnMultipleSingularFields fn xs
           NE.last <$> traverse (parseOne v) (y :| ys)
 
-      parseOne v (MkNamelessField pos fls) =
-        fmap (unpack' _pack) <$> runFieldParser pos exactParsec v fls
+      parseOne v (MkNamelessField pos fls) = do
+        (t, x) <-  runFieldParser pos exactParsec v fls
+        let t' = fromNamedTrivia x [ExactFieldPosition pos] <> t
+        pure (t', unpack' _pack x)
 
   booleanFieldDef fn _extract def = ParsecFG (Set.singleton fn) Set.empty parser
     where

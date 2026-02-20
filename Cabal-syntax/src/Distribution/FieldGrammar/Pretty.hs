@@ -74,8 +74,13 @@ instance FieldGrammar ExactPretty PrettyFieldGrammar where
   blurFieldGrammar f (PrettyFG pp) = PrettyFG (\v t -> pp v t . aview f)
 
   -- TODO(leana8959): use the trivia in the methods implemented here
-  uniqueFieldAla fn _pack l = PrettyFG $ \_v t s ->
-    ppTriviaField (fn, mempty) (exactPretty mempty (pack' _pack (aview l s)))
+  uniqueFieldAla fn _pack l = PrettyFG $ \_v t0 s ->
+    let t = unmarkTriviaTree fn t0
+        x = pack' _pack (aview l s)
+        tChildren = unmarkTriviaTree x t
+        fieldPositionOr0 = fromMaybe (Position 0 0) . atFieldPosition . justAnnotation
+        fieldNamePos = fieldPositionOr0 tChildren
+     in ppTriviaField (fn, [ExactFieldPosition fieldNamePos]) (exactPretty tChildren x)
 
   booleanFieldDef fn l def = PrettyFG pp
     where
