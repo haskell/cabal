@@ -1,5 +1,5 @@
-elif.cabal:19:3: invalid subsection "else"
 elif.cabal:17:3: invalid subsection "elif". You should set cabal-version: 2.2 or larger to use elif-conditionals.
+elif.cabal:19:3: invalid subsection "else"
 cabal-version: >=1.10
 name:          elif
 version:       0
