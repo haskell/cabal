@@ -1,5 +1,5 @@
 import Test.Cabal.Prelude
 
--- Uknown OS name.
+-- Unknown OS name.
 main = cabalTest $
   fails $ cabal "check" []

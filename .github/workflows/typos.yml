@@ -30,3 +30,4 @@ jobs:
 
     - run: make users-guide-typos
     - run: make markdown-typos
+    - run: make hs-typos
