@@ -1572,9 +1572,10 @@ manpageAction commands flags extraArgs _ = do
 
 chooseRepo :: Verbosity -> RepoContext -> Maybe String -> IO RepoContext
 chooseRepo verbosity ctx mrepo = do
-  let rs = filter isRepoRemote (repoContextRepos ctx)
+  let repos = repoContextRepos ctx
+  let remoteRepositories = filter isRepoRemote repos
   filtered <- case mrepo of
-    Just name -> case find (maybe False ((name ==) . (unRepoName . remoteRepoName)) . maybeRepoRemote) rs of
+    Just name -> case find (maybe False ((name ==) . (unRepoName . remoteRepoName)) . maybeRepoRemote) repos of
       Just found -> return [found]
       Nothing ->
         die' verbosity $
@@ -1585,7 +1586,7 @@ chooseRepo verbosity ctx mrepo = do
             , " Available repositories are: "
             , intercalate ", " (fmap (unRepoName . repoName) (repoContextRepos ctx))
             ]
-    Nothing -> return rs
+    Nothing -> return remoteRepositories
   if length filtered > 1
     then
       die'
