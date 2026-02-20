@@ -8,5 +8,5 @@ main = cabalTest $ withRepo "repo" $ do
   cabal "update" []
   cabal
     "get"
-    [ "criterion", "--only-package-description" ]
+    [ "-R hackage.haskell.org", "criterion", "--only-package-description" ]
   void (shell "rm" ["criterion-1.1.4.0.cabal"])

@@ -33,6 +33,7 @@ import Distribution.Client.Setup
   , InitFlags (initHcPath, initVerbosity)
   , InstallFlags (..)
   , ListFlags (..)
+  , RepoContext (..)
   , ReportFlags (..)
   , UploadFlags (..)
   , UserConfigFlags (..)
@@ -229,6 +230,7 @@ import Distribution.Simple.Utils
   , cabalGitInfo
   , cabalVersion
   , createDirectoryIfMissingVerbose
+  , die'
   , dieNoVerbosity
   , dieWithException
   , findPackageDesc
@@ -263,6 +265,7 @@ import Distribution.Version
 
 import Control.Exception (AssertionFailed, assert, try)
 import Data.Monoid (Any (..))
+import Distribution.Client.Types
 import System.Directory
   ( doesFileExist
   , withCurrentDirectory
@@ -1321,6 +1324,7 @@ uploadAction uploadFlags extraArgs globalFlags = do
   let uploadFlags' = savedUploadFlags config `mappend` uploadFlags
       globalFlags' = savedGlobalFlags config `mappend` globalFlags
       tarfiles = extraArgs
+      chosenRepo = flagToMaybe $ uploadRepoName uploadFlags'
   when (null tarfiles && not (fromFlag (uploadDoc uploadFlags'))) $
     dieWithException verbosity UploadAction
   checkTarFiles extraArgs
@@ -1333,6 +1337,7 @@ uploadAction uploadFlags extraArgs globalFlags = do
             (simpleProgramInvocation xs xss)
       _ -> pure $ flagToMaybe $ uploadPassword uploadFlags'
   withRepoContext verbosity globalFlags' $ \repoContext -> do
+    filteredRepoContext <- chooseRepo verbosity repoContext (unRepoName <$> chosenRepo)
     if fromFlag (uploadDoc uploadFlags')
       then do
         when (length tarfiles > 1) $
@@ -1340,7 +1345,7 @@ uploadAction uploadFlags extraArgs globalFlags = do
         tarfile <- maybe (generateDocTarball config) return $ listToMaybe tarfiles
         Upload.uploadDoc
           verbosity
-          repoContext
+          filteredRepoContext
           (flagToMaybe $ uploadToken uploadFlags')
           (flagToMaybe $ uploadUsername uploadFlags')
           maybe_password
@@ -1349,7 +1354,7 @@ uploadAction uploadFlags extraArgs globalFlags = do
       else do
         Upload.upload
           verbosity
-          repoContext
+          filteredRepoContext
           (flagToMaybe $ uploadToken uploadFlags')
           (flagToMaybe $ uploadUsername uploadFlags')
           maybe_password
@@ -1422,11 +1427,12 @@ reportAction reportFlags extraArgs globalFlags = do
   config <- loadConfig verbosity (globalConfigFile globalFlags)
   let globalFlags' = savedGlobalFlags config `mappend` globalFlags
       reportFlags' = savedReportFlags config `mappend` reportFlags
-
-  withRepoContext verbosity globalFlags' $ \repoContext ->
+      chosenRepo = flagToMaybe $ reportRepoName reportFlags'
+  withRepoContext verbosity globalFlags' $ \repoContext -> do
+    filteredRepoContext <- chooseRepo verbosity repoContext (unRepoName <$> chosenRepo)
     Upload.report
       verbosity
-      repoContext
+      filteredRepoContext
       (flagToMaybe $ reportToken reportFlags')
       (flagToMaybe $ reportUsername reportFlags')
       (flagToMaybe $ reportPassword reportFlags')
@@ -1465,10 +1471,12 @@ getAction getFlags extraArgs globalFlags = do
   targets <- readUserTargets verbosity extraArgs
   config <- loadConfigOrSandboxConfig verbosity globalFlags
   let globalFlags' = savedGlobalFlags config `mappend` globalFlags
-  withRepoContext verbosity (savedGlobalFlags config) $ \repoContext ->
+      chosenRepo = flagToMaybe $ getRepoName getFlags
+  withRepoContext verbosity (savedGlobalFlags config) $ \repoContext -> do
+    filteredRepoContext <- chooseRepo verbosity repoContext (unRepoName <$> chosenRepo)
     get
       verbosity
-      repoContext
+      filteredRepoContext
       globalFlags'
       getFlags
       targets
@@ -1561,3 +1569,30 @@ manpageAction commands flags extraArgs _ = do
           then dropExtension pname
           else pname
   manpageCmd cabalCmd commands flags
+
+chooseRepo :: Verbosity -> RepoContext -> Maybe String -> IO RepoContext
+chooseRepo verbosity ctx mrepo = do
+  let rs = filter isRepoRemote (repoContextRepos ctx)
+  filtered <- case mrepo of
+    Just name -> case find (maybe False ((name ==) . (unRepoName . remoteRepoName)) . maybeRepoRemote) rs of
+      Just found -> return [found]
+      Nothing ->
+        die' verbosity $
+          mconcat
+            [ "Cannot find chosen repository "
+            , name
+            , "."
+            , " Available repositories are: "
+            , intercalate ", " (fmap (unRepoName . repoName) (repoContextRepos ctx))
+            ]
+    Nothing -> return rs
+  if length filtered > 1
+    then
+      die'
+        verbosity
+        $ mconcat
+          [ "Cannot determine a specific hackage repository. Please choose one with --repository-name."
+          , " Available repositories are: "
+          , intercalate ", " (fmap (unRepoName . repoName) (repoContextRepos ctx))
+          ]
+    else pure ctx{repoContextRepos = filtered}
