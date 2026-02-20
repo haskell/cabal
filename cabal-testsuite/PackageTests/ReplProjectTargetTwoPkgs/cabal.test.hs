@@ -43,10 +43,17 @@ main = cabalTest . recordMode RecordMarked $ do
   -- before we reach the skip.
   skipUnlessGhcVersion ">= 9.4.1"
 
-  log "checking repl command with the 'all' target"
-  allTarget <- cabalWithStdin "repl" ["all", "--enable-multi-repl"] ""
+  log "checking multi-repl command with the 'all' target"
+  allTargetExplicit <- cabalWithStdin "repl" ["all", "--enable-multi-repl"] ""
 
   readFileVerbatim "all-repl.txt"
-    >>= flip (assertOn isInfixOf multilineNeedleHaystack) allTarget . normalizePathSeparators
+    >>= flip (assertOn isInfixOf multilineNeedleHaystack) allTargetExplicit . normalizePathSeparators
+
+  log "checking multi-repl command with no target, should default to the 'all' target"
+  cabal "clean" []
+  allTargetImplicit <- cabalWithStdin "repl" ["--enable-multi-repl"] ""
+
+  readFileVerbatim "all-repl.txt"
+    >>= flip (assertOn isInfixOf multilineNeedleHaystack) allTargetImplicit . normalizePathSeparators
 
   return ()
