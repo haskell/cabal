@@ -1471,10 +1471,12 @@ getAction getFlags extraArgs globalFlags = do
   targets <- readUserTargets verbosity extraArgs
   config <- loadConfigOrSandboxConfig verbosity globalFlags
   let globalFlags' = savedGlobalFlags config `mappend` globalFlags
-  withRepoContext verbosity (savedGlobalFlags config) $ \repoContext ->
+      chosenRepo = flagToMaybe $ getRepoName getFlags
+  withRepoContext verbosity (savedGlobalFlags config) $ \repoContext -> do
+    filteredRepoContext <- chooseRepo verbosity repoContext (unRepoName <$> chosenRepo)
     get
       verbosity
-      repoContext
+      filteredRepoContext
       globalFlags'
       getFlags
       targets
@@ -1574,11 +1576,23 @@ chooseRepo verbosity ctx mrepo = do
   filtered <- case mrepo of
     Just name -> case find (maybe False ((name ==) . (unRepoName . remoteRepoName)) . maybeRepoRemote) rs of
       Just found -> return [found]
-      Nothing -> die' verbosity $ "Cannot find chosen repository " <> name <> "."
+      Nothing ->
+        die' verbosity $
+          mconcat
+            [ "Cannot find chosen repository "
+            , name
+            , "."
+            , " Available repositories are: "
+            , intercalate ", " (fmap (unRepoName . repoName) (repoContextRepos ctx))
+            ]
     Nothing -> return rs
   if length filtered > 1
     then
       die'
         verbosity
-        "Cannot determine a specific hackage repository. Please choose one with --repository-name."
+        $ mconcat
+          [ "Cannot determine a specific hackage repository. Please choose one with --repository-name."
+          , " Available repositories are: "
+          , intercalate ", " (fmap (unRepoName . repoName) (repoContextRepos ctx))
+          ]
     else pure ctx{repoContextRepos = filtered}

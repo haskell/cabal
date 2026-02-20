@@ -1897,6 +1897,7 @@ data GetFlags = GetFlags
   , getActiveRepos :: Flag ActiveRepos
   , getSourceRepository :: Flag (Maybe RepoKind)
   , getVerbosity :: Flag VerbosityFlags
+  , getRepoName :: Flag RepoName
   }
   deriving (Generic)
 
@@ -1910,6 +1911,7 @@ defaultGetFlags =
     , getActiveRepos = mempty
     , getSourceRepository = mempty
     , getVerbosity = toFlag normal
+    , getRepoName = mempty
     }
 
 getCommand :: CommandUI GetFlags
@@ -1992,6 +1994,13 @@ getCommand =
             getPristine
             (\v flags -> flags{getPristine = v})
             trueArg
+        , option
+            ['R']
+            ["repository"]
+            "Package repository to fetch from."
+            getRepoName
+            (\v flags -> flags{getRepoName = v})
+            (reqArg' "REPOSITORY" (toFlag . RepoName) (flagToList . fmap unRepoName))
         ]
     }
 
