@@ -122,6 +122,7 @@ tests = testGroup "parsec tests"
     -- fieldGrammar for sections
     , fieldGrammarSectionGoldenTests
     , fieldGrammarSectionPrettyFieldTests
+    , fieldGrammarSectionExactDocTests
 
     , exactDocTests
     ]
@@ -828,6 +829,60 @@ fieldGrammarSectionPrettyFieldTest' specVer gpdToPrettyFields fp = ediffGolden g
   where
     input = "tests" </> "ParserTests" </> "trivia" </> fp
     exprFile = replaceExtension input "fieldgrammar-section-prettyfield"
+
+fieldGrammarSectionExactDocTests :: TestTree
+fieldGrammarSectionExactDocTests = testGroup "fieldgrammar-section-exactdoc" $
+  (map (uncurry $ flip fieldGrammarSectionExactDocTest)
+    [ ( "library-build-depends1.fragment"
+      ,  \specVer trivia gpd -> ppCondLibrary specVer trivia (condLibrary gpd)
+      )
+    ]
+  )
+
+-- |
+-- Ensure a section parses correctly.
+fieldGrammarSectionExactDocTest
+  :: (CabalSpecVersion -> TriviaTree -> GenericPackageDescription -> [PrettyField Trivia])
+  -> FilePath
+  -> TestTree
+fieldGrammarSectionExactDocTest = fieldGrammarSectionExactDocTest' cabalSpecLatest
+
+fieldGrammarSectionExactDocTest'
+  :: CabalSpecVersion
+  -> (CabalSpecVersion -> TriviaTree -> GenericPackageDescription -> [PrettyField Trivia])
+  -> FilePath
+  -> TestTree
+fieldGrammarSectionExactDocTest' specVer gpdToPrettyFields fp = ediffGolden goldenTest fp exprFile $ do
+  contents <- BS.readFile input
+  let fs = case readFields contents of
+        Left err -> fail $ unlines $ "readFields error:" : show err : []
+        Right ok -> ok
+
+  let (_, sectionFields) = takeFields fs
+
+  (secName, secArgs, secFields) <-
+    let -- mimics goSection
+        findSection [] = assertFailure "No section was found"
+        findSection (Section name args fs : _) = pure (name, args, fs)
+        findSection (_ : fs) = findSection fs
+    in  findSection sectionFields
+
+  let emptySectionState = SectionS emptyGenericPackageDescription Map.empty
+      (_warns, res) =
+        runParseResult $
+          fmap (view stateGpd) <$> runStateT (parseSection specVer secName secArgs secFields) emptySectionState
+
+  (trivia, parsed) <- case res of
+    Left _ -> fail "fieldParser failed unrecoverably"
+    Right ok -> pure ok
+
+  let prettyFields = gpdToPrettyFields specVer trivia parsed
+  let result = prettyFieldsToExactDoc prettyFields
+
+  pure (toExpr result)
+  where
+    input = "tests" </> "ParserTests" </> "trivia" </> fp
+    exprFile = replaceExtension input "fieldgrammar-section-exactdoc"
 
 -------------------------------------------------------------------------------
 -- InstalledPackageInfo regressions
