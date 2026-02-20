@@ -34,6 +34,7 @@ module Distribution.Types.Annotation
   , emptyTriviaTree
   , atPosition
   , atFieldPosition
+  , atSectionPosition
   , hasTrailingSymbol
   , hasLeadingSymbol
   , patchPosition
@@ -146,6 +147,12 @@ atFieldPosition [] = Nothing
 atFieldPosition (t : ts) = case t of
   ExactFieldPosition pos -> Just pos
   _ -> atFieldPosition ts
+
+atSectionPosition :: Trivia -> Maybe Position
+atSectionPosition [] = Nothing
+atSectionPosition (t : ts) = case t of
+  ExactSectionPosition pos -> Just pos
+  _ -> atSectionPosition ts
 
 triviaToDoc :: Trivia -> Disp.Doc -> Disp.Doc
 triviaToDoc [] x = x

@@ -1,10 +1,13 @@
-Concat
-  (Text "library")
+Place
+  4
+  1
   (Concat
-    (Text " ")
-    (Place
-      7
-      3
-      (Concat
-        (Text "build-depends:")
-        (Place 9 9 (Text "foo")))))
+    (Text "library")
+    (Concat
+      (Text " ")
+      (Place
+        7
+        3
+        (Concat
+          (Text "build-depends:")
+          (Place 9 9 (Text "foo"))))))

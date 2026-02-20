@@ -94,6 +94,9 @@ prettyFieldAnn _ = Nothing
 prettyFieldPosition :: PrettyField Trivia -> Maybe Position
 prettyFieldPosition = atFieldPosition <=< prettyFieldAnn
 
+prettySectionPosition :: PrettyField Trivia -> Maybe Position
+prettySectionPosition = atSectionPosition <=< prettyFieldAnn
+
 -- | Prettyprint a list of fields.
 --
 -- Note: the first argument should return 'String's without newlines
@@ -364,7 +367,7 @@ exactRenderPrettyField ctx0@(lastField, lastFieldLine) field = case field of
         (ctx', fields') = exactRenderPrettyFields (Just field, lastFieldLine) fields
 
         sectionNamePosition :: Maybe Position
-        sectionNamePosition = prettyFieldPosition field
+        sectionNamePosition = prettySectionPosition field
 
         lastPosition :: Maybe Position
         lastPosition = (prettyFieldLinePosition =<< lastFieldLine) <|> (prettyFieldPosition =<< lastField)
