@@ -169,10 +169,10 @@ ppCondTree2 v t grammar = go
       ]
 
 ppCondLibrary :: CabalSpecVersion -> TriviaTree -> Maybe (CondTree ConfVar [Dependency] Library) -> [PrettyField Trivia]
-ppCondLibrary _ _ Nothing = mempty
+ppCondLibrary _ _ Nothing = []
 ppCondLibrary v t (Just condTree) =
   pure $
-    PrettySection mempty "library" [] $
+    PrettySection (justAnnotation $ unmarkTriviaTree LMainLibName t) "library" [] $
       ppCondTree2 v t (libraryFieldGrammar LMainLibName) condTree
 
 ppCondSubLibraries :: CabalSpecVersion -> TriviaTree -> [(UnqualComponentName, CondTree ConfVar [Dependency] Library)] -> [PrettyField Trivia]

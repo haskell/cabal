@@ -1,19 +1,21 @@
 [
   PrettySection
-    []
+    [
+      ExactSectionPosition
+        (Position 4 1)]
     "library"
     []
     [
       PrettyField
         [
           ExactFieldPosition
-            (Position 2 3)]
+            (Position 7 3)]
         "build-depends"
         [
           PrettyFieldLine
             [
               ExactFieldPosition
-                (Position 2 3),
+                (Position 7 3),
               PostTrivia "",
-              ExactPosition (Position 3 9)]
+              ExactPosition (Position 9 9)]
             foo]]]
