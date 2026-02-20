@@ -523,7 +523,7 @@ fieldGrammarFieldGoldenTest g fp = ediffGolden goldenTest fp exprFile $ do
 -- Second step, transform to pretty field
 fieldGrammarFieldPrettyFieldTests :: TestTree
 fieldGrammarFieldPrettyFieldTests = testGroup "fieldgrammar-field-prettyfield" $
-  map
+  ( map
       ( fieldGrammarFieldPrettyFieldTest dependencyListFieldGrammar dependencyListFieldGrammar
       )
       [ "build-depends1.fragment"
@@ -532,6 +532,11 @@ fieldGrammarFieldPrettyFieldTests = testGroup "fieldgrammar-field-prettyfield" $
       , "build-depends4.fragment"
       , "build-depends5.fragment"
       ]
+  )
+    ++ ( map (fieldGrammarFieldPrettyFieldTest packageDescriptionFieldGrammar packageDescriptionFieldGrammar)
+          [ "packageDescription1.fragment"
+          ]
+       )
 
 fieldGrammarFieldPrettyFieldTest
   :: forall a
