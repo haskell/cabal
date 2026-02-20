@@ -33,7 +33,8 @@ instance IsOption OptionShowSolverLog where
 newtype OptionMtimeChangeDelay = OptionMtimeChangeDelay Int
 
 instance IsOption OptionMtimeChangeDelay where
-  defaultValue = OptionMtimeChangeDelay 0
+  defaultValue = OptionMtimeChangeDelay 10000
+  showDefaultValue (OptionMtimeChangeDelay v) = Just (show v)
   parseValue = fmap OptionMtimeChangeDelay . safeRead
   optionName = return "mtime-change-delay"
   optionHelp =
