@@ -1,5 +1,5 @@
 import Test.Cabal.Prelude
 
--- Uknown compiler.
+-- Unknown compiler.
 main = cabalTest $
   fails $ cabal "check" []

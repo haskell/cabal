@@ -1,5 +1,5 @@
 import Test.Cabal.Prelude
 
--- Uknown arch name.
+-- Unknown arch name.
 main = cabalTest $
   fails $ cabal "check" []

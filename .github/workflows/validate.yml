@@ -397,7 +397,7 @@ jobs:
           - { os: ubuntu-latest, shell: bash }
           - { os: macos-latest, shell: bash }
         # We only use one ghc version the used one for the next release (defined at top of the workflow)
-        # We need to build an array dynamically to inject the appropiate env var in a previous job,
+        # We need to build an array dynamically to inject the appropriate env var in a previous job,
         # see https://docs.github.com/en/actions/learn-github-actions/expressions#fromjson
         ghc: ${{ fromJSON (needs.validate.outputs.GHC_FOR_RELEASE) }}
     defaults:
