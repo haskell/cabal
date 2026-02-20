@@ -501,7 +501,7 @@ checkInvalidPath :: String -> a -> PurePrompt a
 checkInvalidPath path act =
   -- The check below is done this way so it's easier to append
   -- more invalid paths in the future, if necessary
-  if path `elem` ["."]
+  if path == "."
     then throwPrompt $ BreakException $ "Invalid path: " ++ path
     else return act
 

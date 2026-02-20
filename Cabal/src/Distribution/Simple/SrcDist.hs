@@ -513,10 +513,7 @@ createArchive verbosity pkg_descr tmpDir targetPref = do
   let tarBallFilePath = targetPref </> tarBallName pkg_descr <.> "tar.gz"
   (tarProg, _) <- requireProgram verbosity tarProgram defaultProgramDb
   let formatOptSupported =
-        maybe False (== "YES") $
-          Map.lookup
-            "Supports --format"
-            (programProperties tarProg)
+        Just "YES" == Map.lookup "Supports --format" (programProperties tarProg)
   runProgram verbosity tarProg $
     -- Hmm: I could well be skating on thinner ice here by using the -C option
     -- (=> seems to be supported at least by GNU and *BSD tar) [The

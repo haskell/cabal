@@ -2836,7 +2836,7 @@ checkRelocatable verbosity pkg lbi =
 
     -- Check if the Compiler support relocatable builds
     checkCompiler =
-      unless (compilerFlavor comp `elem` [GHC]) $
+      unless (compilerFlavor comp == GHC) $
         dieWithException verbosity $
           NoCompilerSupport (show comp)
       where
@@ -2877,7 +2877,7 @@ checkRelocatable verbosity pkg lbi =
       traverse_ (doCheck $ getSymbolicPath pkgr) ipkgs
       where
         doCheck pkgr ipkg
-          | maybe False (== pkgr) (IPI.pkgRoot ipkg) =
+          | Just pkgr == IPI.pkgRoot ipkg =
               for_ (IPI.libraryDirs ipkg) $ \libdir -> do
                 -- When @prefix@ is not under @pkgroot@,
                 -- @shortRelativePath prefix pkgroot@ will return a path with
