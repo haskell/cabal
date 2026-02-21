@@ -369,8 +369,8 @@ deletePackageName name original@(PackageIndex pids pnames) =
 -- | Removes all packages satisfying this dependency from the index.
 --
 deleteDependency :: Dependency -> PackageIndex -> PackageIndex
-deleteDependency (Dependency name verstionRange) =
-  delete' name (\pkg -> packageVersion pkg `withinRange` verstionRange)
+deleteDependency (Dependency name versionRange) =
+  delete' name (\pkg -> packageVersion pkg `withinRange` versionRange)
 -}
 
 --

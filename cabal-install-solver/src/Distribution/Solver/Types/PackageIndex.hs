@@ -227,8 +227,8 @@ deletePackageName name =
 deleteDependency :: Package pkg
                  => PackageName -> VersionRange -> PackageIndex pkg
                  -> PackageIndex pkg
-deleteDependency name verstionRange =
-  delete name (\pkg -> packageVersion pkg `withinRange` verstionRange)
+deleteDependency name versionRange =
+  delete name (\pkg -> packageVersion pkg `withinRange` versionRange)
 
 --
 -- * Bulk queries
