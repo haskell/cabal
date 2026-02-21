@@ -1,0 +1,153 @@
+name: Check API
+
+on:
+  push:
+    paths-ignore:
+      - "doc/**"
+      - "**/README.md"
+      - "CONTRIBUTING.md"
+      - "changelog.d/**"
+      # only top level for these, because various test packages have them too
+      - "*/ChangeLog.md"
+      - "*/changelog.md"
+      - "release-notes/**"
+    branches:
+      - master
+  pull_request:
+    paths-ignore:
+      - "doc/**"
+      - "**/README.md"
+      - "CONTRIBUTING.md"
+      - "changelog.d/**"
+      - "*/ChangeLog.md"
+      - "*/changelog.md"
+      - "release-notes/**"
+  release:
+    types:
+      - created
+  workflow_call:
+
+jobs:
+  check-api:
+    name: Check API using ${{ matrix.sys.os }} ghc-${{ matrix.ghc }}
+    runs-on: ${{ matrix.sys.os }}
+    strategy:
+      matrix:
+        # we check API only on one platform and ghc release, since it shouldn't
+        # vary elsewhere (hopefully) and the API tracer is sensitive to both
+        sys:
+          - { os: ubuntu-latest }
+        ghc:
+          [
+            # print-api only supports a small subset of ghc versions
+            "9.10.1",
+          ]
+
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - uses: haskell-actions/setup@v2
+        id: setup-haskell
+        with:
+          ghc-version: ${{ matrix.ghc }}
+          cabal-version: 3.12.1.0 # see https://github.com/haskell/cabal/pull/10251
+          ghcup-release-channel: https://raw.githubusercontent.com/haskell/ghcup-metadata/master/ghcup-prereleases-0.0.8.yaml
+
+      # I was going to use the canned action, but it only supports a single package and reinstalls the same binary each time
+      - name: Install print-api
+        run: |
+          wget -q https://github.com/Kleidukos/print-api/releases/download/v0.1.0.1/print-api-0.1.0.1-Linux-static-${{ matrix.ghc }}-x86_64.tar.gz
+          tar -xzf print-api-0.1.0.1-Linux-static-${{ matrix.ghc }}-x86_64.tar.gz
+          mkdir -p "$HOME/.local/bin"
+          mv print-api "$HOME/.local/bin/print-api"
+          chmod +x "$HOME/.local/bin/print-api"
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      # print-api needs environment files. It also doesn't make a lot of sense to use the cached builds, sadly,
+      # since they're special in different ways (bootstrap and validate) and we want a vanilla build. And there
+      # isn't enough cache space to make a third cache, even though this is a very limited build.
+      - name: Build Cabal with environment files
+        run: |
+          cabal build Cabal-syntax Cabal cabal-install-solver --write-ghc-environment-files=always
+          if test -d Cabal-hooks; then
+            cabal build Cabal-hooks --write-ghc-environment-files=always
+          fi
+
+      - name: Generate APIs
+        run: make generate-api
+
+      # upload the new API records as artifacts, since there's no guarantee that a contributor could produce
+      # them (wrong platform or ghc version). This must happen _before_ we check the API, because the
+      # point is to have them available on API mismatch so they can be updated.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Cabal-api
+          path: '*.api'
+
+      - name: Check APIs
+        run: |
+          rc=0
+          if diff -c Cabal-syntax/Cabal-syntax-${{ matrix.ghc }}.api Cabal-syntax-${{ matrix.ghc }}.api >api.tmp; then
+            :
+          else
+            echo "Cabal-syntax API changed"
+            if [ $(wc -l < api.tmp) -lt 50 ]; then
+              cat api.tmp
+            else
+              echo Diff too large for GitHub viewer
+            fi
+            rc=1
+          fi
+          if diff -c Cabal/Cabal-${{ matrix.ghc }}.api Cabal-${{ matrix.ghc }}.api >api.tmp; then
+            :
+          else
+            echo "Cabal API changed"
+            if [ $(wc -l < api.tmp) -lt 50 ]; then
+              cat api.tmp
+            else
+              echo Diff too large for GitHub viewer
+            fi
+            rc=1
+          fi
+          if test \! -d Cabal-hooks; then
+            echo "No Cabal-hooks in this version"
+          elif diff -c Cabal-hooks/Cabal-hooks-${{ matrix.ghc }}.api Cabal-hooks-${{ matrix.ghc }}.api >api.tmp; then
+            :
+          else
+            echo "Cabal-hooks API changed"
+            if [ $(wc -l < api.tmp) -lt 50 ]; then
+              cat api.tmp
+            else
+              echo Diff too large for GitHub viewer
+            fi
+            rc=1
+          fi
+          if diff -c cabal-install-solver/cabal-install-solver-${{ matrix.ghc }}.api cabal-install-solver-${{ matrix.ghc }}.api >api.tmp; then
+            :
+          else
+            echo "cabal-install-solver API changed"
+            if [ $(wc -l < api.tmp) -lt 50 ]; then
+              cat api.tmp
+            else
+              echo Diff too large for GitHub viewer
+            fi
+            rc=1
+          fi
+          if [ $rc -ne 0 ]; then
+            echo "The new APIs are in the artifact uploaded in the previous step."
+            exit $rc
+          fi
+
+  # See check-api.skip.yml for why we need this
+  check-api-post-job:
+    if: always()
+    name: Check API post job
+    runs-on: ubuntu-latest
+    needs: check-api
+
+    steps:
+      - run: |
+          echo "jobs info: ${{ toJSON(needs) }}"
+      - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1

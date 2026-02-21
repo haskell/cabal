@@ -87,7 +87,7 @@ lint-json: ## Run HLint in JSON mode.
 # local checks
 
 .PHONY: checks
-checks: whitespace users-guide-typos markdown-typos style lint-json  ## Run all local checks; whitespace, typos, style, and lint.
+checks: whitespace users-guide-typos markdown-typos style lint-json  check-api ## Run all local checks; whitespace, typos, style, and lint.
 
 # source generation: SPDX
 
@@ -213,6 +213,76 @@ hackage-benchmarks-run:
 cabal-install-test-accept:
 	rm -rf .ghc.environment.*
 	cd cabal-testsuite && `cabal list-bin cabal-tests` --with-cabal=`cabal list-bin cabal` --hide-successes -j3 --accept ${TEST}
+
+# API generation
+
+API_GHC=9.10.1
+API_PRE_FLAGS:=-w ghc-$(API_GHC) --disable-documentation --project-file=cabal.release.project
+API_FLAGS:=$(API_PRE_FLAGS) --write-ghc-environment-files=always --builddir=dist-newstyle.apigen
+
+.PHONY: generate-api
+generate-api: generate-api-cabal-syntax generate-api-cabal generate-api-cabal-hooks generate-api-cabal-install-solver
+
+.PHONY: check-api
+check-api: check-api-cabal-syntax check-api-cabal check-api-cabal-hooks check-api-cabal-install-solver
+
+.PHONY: update-api
+update-api: generate-api
+	mv Cabal-syntax-$(API_GHC).api Cabal-syntax/Cabal-syntax-$(API_GHC).api
+	mv Cabal-$(API_GHC).api Cabal/Cabal-$(API_GHC).api
+	if test -f Cabal-hooks-$(API_GHC).api; then mv Cabal-hooks-$(API_GHC).api Cabal-hooks/Cabal-hooks-$(API_GHC).api; fi
+	mv cabal-install-solver-$(API_GHC).api cabal-install-solver/cabal-install-solver-$(API_GHC).api
+
+.PHONY: check-api-cabal-syntax
+check-api-cabal-syntax: generate-api-cabal-syntax
+	diff -c Cabal-syntax/Cabal-syntax-$(API_GHC).api Cabal-syntax-$(API_GHC).api
+
+.PHONY: check-api-cabal
+check-api-cabal: generate-api-cabal
+	diff -c Cabal/Cabal-$(API_GHC).api Cabal-$(API_GHC).api
+
+.PHONY: check-api-cabal-hooks
+check-api-cabal-hooks: generate-api-cabal-hooks
+	if test -d Cabal-hooks; then diff -c Cabal-hooks/Cabal-hooks-$(API_GHC).api Cabal-hooks-$(API_GHC).api; fi
+
+.PHONY: check-api-cabal-install-solver
+check-api-cabal-install-solver: generate-api-cabal-install-solver
+	diff -c cabal-install-solver/cabal-install-solver-$(API_GHC).api cabal-install-solver-$(API_GHC).api
+
+# NB. currently print-api has no way to specify a target ghc version itself.
+# The dependency on ghcup should be removed once it has one; Nix users, among
+# others, won't be very happy with it.
+
+# NB. ghc-api throws an error about a missing package db if you don't do a
+# normal build before the API_FLAGS build.
+
+.PHONY: generate-api-cabal-syntax
+generate-api-cabal-syntax:
+	$(CABALBUILD) Cabal-syntax $(API_PRE_FLAGS)
+	$(CABALBUILD) Cabal-syntax $(API_FLAGS)
+	ghcup run --ghc $(API_GHC) -- print-api --package-name Cabal-syntax >Cabal-syntax-$(API_GHC).api
+
+.PHONY: generate-api-cabal
+generate-api-cabal:
+	$(CABALBUILD) Cabal $(API_PRE_FLAGS)
+	$(CABALBUILD) Cabal $(API_FLAGS)
+	ghcup run --ghc $(API_GHC) -- print-api --package-name Cabal >Cabal-$(API_GHC).api
+
+.PHONY: generate-api-cabal-hooks
+generate-api-cabal-hooks:
+	if test \! -d Cabal-hooks; then \
+		:; \
+	else \
+		$(CABALBUILD) Cabal-hooks $(API_PRE_FLAGS); \
+		$(CABALBUILD) Cabal-hooks $(API_FLAGS); \
+		ghcup run --ghc $(API_GHC) -- print-api --package-name Cabal-hooks >Cabal-hooks-$(API_GHC).api; \
+	fi
+
+.PHONY: generate-api-cabal-install-solver
+generate-api-cabal-install-solver:
+	$(CABALBUILD) cabal-install-solver $(API_PRE_FLAGS)
+	$(CABALBUILD) cabal-install-solver $(API_FLAGS)
+	ghcup run --ghc $(API_GHC) -- print-api --package-name cabal-install-solver >cabal-install-solver-$(API_GHC).api
 
 # Docker validation
 
