@@ -282,25 +282,6 @@ compilerProgramDb
   -- ^ user-specified @ghc-pkg@ path (optional)
   -> IO ProgramDb
 compilerProgramDb verbosity comp progdb1 hcPkgPath = do
-  let
-    ghcProg = fromJust $ lookupProgram ghcProgram progdb1
-    ghcVersion = compilerVersion comp
-
-  -- This is slightly tricky, we have to configure ghc first, then we use the
-  -- location of ghc to help find ghc-pkg in the case that the user did not
-  -- specify the location of ghc-pkg directly:
-  (ghcPkgProg, ghcPkgVersion, progdb2) <-
-    requireProgramVersion
-      verbosity
-      ghcPkgProgram
-        { programFindLocation = guessGhcPkgFromGhcPath ghcProg
-        }
-      anyVersion
-      (userMaybeSpecifyPath "ghc-pkg" hcPkgPath progdb1)
-
-  when (ghcVersion /= ghcPkgVersion) $
-    dieWithException verbosity $
-      VersionMismatchGHC (programPath ghcProg) ghcVersion (programPath ghcPkgProg) ghcPkgVersion
   -- Likewise we try to find the matching hsc2hs and haddock programs.
   let hsc2hsProgram' =
         hsc2hsProgram
@@ -318,20 +299,45 @@ compilerProgramDb verbosity comp progdb1 hcPkgPath = do
         runghcProgram
           { programFindLocation = guessRunghcFromGhcPath ghcProg
           }
-      progdb3 =
-        addKnownProgram haddockProgram' $
-          addKnownProgram hsc2hsProgram' $
-            addKnownProgram hpcProgram' $
-              addKnownProgram runghcProgram' progdb2
+      ghcPkgProgram' =
+        ghcPkgProgram
+          { programFindLocation = guessGhcPkgFromGhcPath ghcProg
+          }
+      progdb2 =
+        userMaybeSpecifyPath "ghc-pkg" hcPkgPath $
+          addKnownProgram haddockProgram' $
+            addKnownProgram hsc2hsProgram' $
+              addKnownProgram hpcProgram' $
+                addKnownProgram runghcProgram' $
+                  addKnownProgram ghcPkgProgram' $
+                    progdb1
+
+      ghcProg = fromJust $ lookupProgram ghcProgram progdb1
+      ghcVersion = compilerVersion comp
 
       -- configure gcc, ld, ar etc... based on the paths stored
       -- in the GHC settings file
-      progdb4 =
+      progdb3 =
         Internal.configureToolchain
           (ghcVersionImplInfo ghcVersion)
           ghcProg
           (compilerProperties comp)
-          progdb3
+          progdb2
+
+  -- This is slightly tricky, we have to configure ghc first, then we use the
+  -- location of ghc to help find ghc-pkg in the case that the user did not
+  -- specify the location of ghc-pkg directly:
+  (ghcPkgProg, ghcPkgVersion, progdb4) <-
+    requireProgramVersion
+      verbosity
+      ghcPkgProgram'
+      anyVersion
+      progdb3
+
+  when (ghcVersion /= ghcPkgVersion) $
+    dieWithException verbosity $
+      VersionMismatchGHC (programPath ghcProg) ghcVersion (programPath ghcPkgProg) ghcPkgVersion
+
   return progdb4
 
 -- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find
