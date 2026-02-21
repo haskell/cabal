@@ -311,33 +311,26 @@ typos-install: ## Install typos-cli for typos target using cargo
 GREP_EXCLUDE := grep -v -E 'dist-|cabal-testsuite|python-'
 FIND_NAMED := find . -type f -name
 
-# `./cabal-install/tests/IntegrationTests2/targets/simple/a` doesn't exist
-# ./cabal-testsuite/PackageTests/NewBuild/T8875/a` doesn't exist
-FIND_HS := find . -type f -name '*.hs' \
-	! -path './dist-newstyle/*' \
-	! -path '**/targets/simple/*' \
-	! -path '**/NewBuild/T8875/*'
-
 .PHONY: hs-typos
-hs-typos: ## Find typos in Haskell *.hs source files.
-	$(FIND_HS) | xargs typos
+hs-typos: ## Find typos in Haskell source files; .hs, .cabal, etc.
+	typos --config .typos-srcs.toml --force-exclude
 
 .PHONY: hs-fix-typos
-hs-fix-typos: ## Fix typos in Haskell *.hs source files.
-	$(FIND_HS) | xargs typos --write-changes
+hs-fix-typos: ## Fix typos in Haskell source files; .hs, .cabal, etc.
+	typos --config .typos-srcs.toml --write-changes --force-exclude
 
 .PHONY: users-guide-typos
 users-guide-typos: ## Find typos in users guide
-	cd doc && $(FIND_NAMED) '*.rst' | xargs typos
+	cd doc && $(FIND_NAMED) '*.rst' | xargs typos --config ../.typos-docs.toml
 
 .PHONY: users-guide-fix-typos
 users-guide-fix-typos: ## Fix typos in users guide
-	cd doc && $(FIND_NAMED) '*.rst' | xargs typos --write-changes
+	cd doc && $(FIND_NAMED) '*.rst' | xargs typos --config ../.typos-docs.toml --write-changes 
 
 .PHONY: markdown-typos
 markdown-typos: ## Find typos in markdown files
-	$(FIND_NAMED) '*.md' | $(GREP_EXCLUDE) | xargs typos
+	$(FIND_NAMED) '*.md' | $(GREP_EXCLUDE) | xargs typos --config .typos-docs.toml
 
 .PHONY: markdown-fix-typos
 markdown-fix-typos: ## Fix typos in markdown files
-	$(FIND_NAMED) '*.md' | $(GREP_EXCLUDE) | xargs typos --write-changes
+	$(FIND_NAMED) '*.md' | $(GREP_EXCLUDE) | xargs typos --config .typos-docs.toml --write-changes

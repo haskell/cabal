@@ -1,0 +1,10 @@
+[default]
+extend-ignore-re = [
+    "(?s)(#|//)\\s*spellchecker:off.*?\\n\\s*(#|//)\\s*spellchecker:on",
+]
+
+[default.extend-words]
+# Extinguish false positive in cabal-package-description-file.rst. 'Nd' is a
+# Unicode category, not a misspelling of 'And'.
+nd = "nd"
+certifi = "certifi" # Python package name
