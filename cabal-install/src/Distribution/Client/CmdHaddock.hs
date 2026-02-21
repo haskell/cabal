@@ -34,7 +34,6 @@ import Distribution.Client.ProjectPlanning
   )
 import Distribution.Client.Setup
   ( GlobalFlags
-  , InstallFlags (..)
   )
 import Distribution.Client.TargetProblem
   ( TargetProblem (..)
@@ -150,9 +149,7 @@ haddockAction relFlags targetStrings globalFlags = do
 
   let
     verbosity = cfgVerbosity normal flags
-    installDoc = fromFlagOrDefault True (installDocumentation installFlags)
-    flags' = flags{installFlags = installFlags{installDocumentation = Flag installDoc}}
-    cliConfig = commandLineFlagsToProjectConfig globalFlags flags' mempty -- ClientInstallFlags, not needed here
+    cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty -- ClientInstallFlags, not needed here
   projCtx <- establishProjectBaseContext verbosity cliConfig HaddockCommand
 
   let relBaseCtx@ProjectBaseContext{projectConfig = relProjectConfig}
