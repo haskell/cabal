@@ -1,6 +1,6 @@
 import Test.Cabal.Prelude
 
-main = cabalTest . flakyIfCI 10975 . recordMode RecordMarked $ do
+main = cabalTest . flakyIfCI 10975 . flakyIfCI 10927 . recordMode RecordMarked $ do
   let log = recordHeader . pure
 
   out <- fails $ cabal' "v2-build" [ "all", "--dry-run" ]
