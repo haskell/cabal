@@ -292,7 +292,7 @@ replAction flags@NixStyleFlags{extraFlags = replFlags@ReplFlags{..}, configFlags
     let projectRoot = distProjectRootDirectory $ distDirLayout ctx
         distDir = distDirectory $ distDirLayout ctx
 
-    -- After ther user selectors have been resolved, and it's decided what context
+    -- After the user selectors have been resolved, and it's decided what context
     -- we're in, implement repl-specific behaviour.
     (baseCtx, targetSelectors) <- case targetCtx of
       -- If in the project context, and no selectors are provided

@@ -128,7 +128,7 @@ ghcProgram =
         maybe
           ghcProg
           ( \v ->
-              -- By default, ignore GHC_ENVIRONMENT variable of any package environmnet
+              -- By default, ignore GHC_ENVIRONMENT variable of any package environment
               -- files. See #10759
               applyWhen (withinRange v canIgnorePackageEnv) ignorePackageEnv
               -- Workaround for https://gitlab.haskell.org/ghc/ghc/-/issues/8825

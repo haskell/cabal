@@ -283,7 +283,7 @@ preProcessInternalDeps specVer gpd
     transformD d = [d]
 
     -- Always perform transformation for mixins as syntax was only introduced in 3.4
-    -- This guard is uncessary as no transformations take place when cabalSpec >= CabalSpecV3_4 but
+    -- This guard is unnecessary as no transformations take place when cabalSpec >= CabalSpecV3_4 but
     -- it more clearly signifies the intent. (See the specVer >= CabalSpecV3_4 line above).
     transformM :: Mixin -> Mixin
     transformM (Mixin pn (LSubLibName uqn) inc)

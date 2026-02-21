@@ -10,7 +10,7 @@ program-options
 
 -- if you are developing on a system without TH, use a `cabal.validate.project.local`
 -- to disable the git-rev flag.
--- The +legacy-comparision flag is to set the default project file parser to compare
+-- The +legacy-comparison flag is to set the default project file parser to compare
 -- the result of the legacy and parsec parser and fail if they are not equal.
 package cabal-install
   flags: +git-rev +legacy-comparison

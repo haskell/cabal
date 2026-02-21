@@ -3,10 +3,9 @@ name: Typos
 on:
   pull_request:
   push:
-    branches: ["master"]
 
 env:
-  TYPOS_VER: v1.28.1
+  TYPOS_VER: v1.43.5
   TYPOS_PLATFORM: x86_64-unknown-linux-musl
 
 jobs:
@@ -30,3 +29,4 @@ jobs:
 
     - run: make users-guide-typos
     - run: make markdown-typos
+    - run: make hs-typos

@@ -6,7 +6,7 @@ import System.FilePath
     ( (</>) )
 
     -- Note: we cannot simply use `expectBroken` or `skip` or similar
-    -- becuase this test fails on imports (see #8357).
+    -- because this test fails on imports (see #8357).
 
 main = cabalTest $ do
     cabal "v2-sdist" ["deterministic"]

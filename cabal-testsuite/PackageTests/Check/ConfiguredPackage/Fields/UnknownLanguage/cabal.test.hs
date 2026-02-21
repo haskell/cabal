@@ -1,5 +1,5 @@
 import Test.Cabal.Prelude
 
--- Uknown language.
+-- Unknown language.
 main = cabalTest $
   fails $ cabal "check" []

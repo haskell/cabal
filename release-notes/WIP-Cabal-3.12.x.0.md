@@ -1,6 +1,6 @@
 Cabal 3.12.1.0 changelog and release notes.
 
-This file will be edited and the changes incorprated into the official
+This file will be edited and the changes incorporated into the official
 3.12.1.0 Cabal and Cabal-syntax release notes.
 
 ---

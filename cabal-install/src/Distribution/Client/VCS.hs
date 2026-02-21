@@ -577,7 +577,7 @@ vcsGit =
           --    containing the commit that was just fetched. This feels a bit
           --    nasty but seems to work reliably, even if nothing was fetched.
           --    (That is, deleting `FETCH_HEAD` and re-running a `git fetch`
-          --    command will succesfully recreate the `FETCH_HEAD` ref.)
+          --    command will successfully recreate the `FETCH_HEAD` ref.)
           --
           -- Option 2 is what Cabal has done historically, and we're keeping it
           -- for now. Option 1 is possible but seems to have little benefit.
