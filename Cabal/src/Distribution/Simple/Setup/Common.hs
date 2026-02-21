@@ -167,7 +167,7 @@ withCommonSetupOptions getCommon setCommon showOrParseArgs opts =
 
 -- FIXME Not sure where this should live
 defaultDistPref :: SymbolicPath Pkg (Dir Dist)
-defaultDistPref = makeSymbolicPath "dist"
+defaultDistPref = makeSymbolicPath "dist-newstyle"
 
 -- | The name of the directory where optional compilation artifacts
 -- go, such as ghc plugins and .hie files.
