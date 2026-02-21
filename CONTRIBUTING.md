@@ -1,5 +1,15 @@
 # Contributing to Cabal
 
+## The fortnightly meeting
+
+We have a dev call every 2 weeks at https://meet.jit.si/FavourableEvilsAnnounceAppallingly. All contributors and potential contributors are welcome.
+
+
+## Issue triage [![Open Source Helpers](https://www.codetriage.com/haskell/cabal/badges/users.svg)](https://www.codetriage.com/haskell/cabal)
+
+You can contribute by triaging issues, which may include reproducing bug reports or asking for vital information such as version numbers or reproduction instructions. If you would like to start triaging issues, one easy way to get started is to [subscribe to cabal on CodeTriage](https://www.codetriage.com/haskell/cabal).
+
+
 ## Building Cabal for hacking
 
 If you use the `cabal` executable from the latest version of the
@@ -62,7 +72,7 @@ $ cabal build cabal-tests            # etc...
 There are two ways to run tests: in CI with GitHub actions and locally with
 `./validate.sh`.
 
-### Using GitHub Actions.
+### Using GitHub Actions
 
 If you are not in a hurry, the most convenient way to run tests on Cabal
 is to make a branch on GitHub and then open a pull request; our
@@ -87,7 +97,7 @@ Some tips for using GitHub Actions effectively:
   already failed), be nice to others and cancel the rest of the jobs,
   so that other commits on the build queue can be processed.
 
-### How to debug a failing CI test.
+### How to debug a failing CI test
 
 One of the annoying things about running tests on CI is when they
 fail, there is often no easy way to further troubleshoot the broken
@@ -107,7 +117,7 @@ failures:
    a specific operating system?  If so, try reproducing the
    problem on the specific configuration.
 
-4. Is the test failing on a GitHub Actions per-GHC build.
+4. Is the test failing on a GitHub Actions per-GHC build?
    In this case, if you click on "Branch", you can get access to
    the precise binaries that were built by GitHub Actions that are being
    tested.  If you have an Ubuntu system, you can download
@@ -116,7 +126,7 @@ failures:
 If none of these let you reproduce, there might be some race condition
 or continuous integration breakage; please file a bug.
 
-### Running tests locally.
+### Running tests locally
 
 The [`./validate.sh`](./validate.sh) script runs all the test suites. It takes
 various options to restrict the test suites it runs; use `--help` to list them.
@@ -358,10 +368,6 @@ If your pull request consists of several commits, consider using `squash+merge
 me` instead of `merge me`: the Mergify bot will squash all the commits into one
 and concatenate the commit messages of the commits before merging.
 
-There is also a `merge+no rebase` label. Use this very sparingly, as not rebasing
-severely complicates Git history. It is intended for special circumstances, as when
-the PR branch cannot or should not be modified. If you have any questions about it,
-please ask us.
 
 ### Pull Requests & Issues
 
@@ -371,7 +377,7 @@ your proposed design, UX considerations, tradeoffs etc. and work them out with
 other contributors. The PR itself is for implementation.
 
 If a PR becomes out of sync with its issue, go back to the issue, update
-it, and continue the conversation there. Telltale signs of Issue/PR diverging
+it, and continue the conversation there. Telltale signs of an issue and PR diverging
 are, for example: the PR growing bigger in scope; lengthy discussions
 about things that are *not* implementation choices; a change in design.
 
@@ -379,23 +385,25 @@ If your PR is trivial you can omit this process (but explain in the PR why you
 think it does not warrant an issue). Feel free to open a new issue (or new
 issues) when appropriate.
 
+
 ### Pull request size
 
-Keep your pull requests small, write one pull request per feature, let
+Keep your pull requests small, write one pull request per feature, make
 the content of the pull request match the title of the pull request.
 
-To get merged, your pull request needs to be reviewed by two other
+As mentioned above, your pull request needs to be reviewed by two other
 contributors. Large pull requests are daunting to inspect, and the
 back-and-forth between the author and reviewer can get frustrating and
 difficult to follow.
 
-Split your pull requests in multiple ones if possible (e.g. a refactor
+Split your pull requests into multiple ones if possible (e.g. a refactor
 and a feature implementation should go in two different pull requests).
 This is *especially* important when we decide to backport a pull request
 (be it fix or a feature).
 
 Thorough reviews mean fewer regressions, keeping your pull requests small
 will improve Cabal codebase quality.
+
 
 ### Pull requests for `gh` users
 
@@ -410,16 +418,17 @@ This way you will not erase the
 [PR template](https://github.com/haskell/cabal/blob/master/.github/pull_request_template.md)
 all contributors use.
 
+
 ## Changelog
 
-Anything that changes `cabal-install:exe:cabal` or changes exports from library
-modules or changes behaviour of functions exported from packages published to
+Anything that changes `cabal-install:exe:cabal`, changes exports from library
+modules, or changes behaviour of functions exported from packages published to
 hackage is a <a id="user-visible-change">user-visible change</a>. Raising the
 lower bound on `base` is most definitely a user-visible change because it
 excludes versions of GHC from being able to build these packages.
 
 When opening a pull request with a user-visible change, you should write one
-changelog entry (or more in case of multiple independent changes) — the
+changelog entry (or more in case of multiple independent changes). The
 information will end up in our release notes.
 
 Changelogs for the next release are stored in the `changelog.d` directory.
@@ -493,15 +502,17 @@ add an entry in `doc/file-format-changelog.rst`.
 
 ### Is my change `significant`?
 
-Use your best judgement and if unsure ask other maintainers. If your PR fixes
-a specific ticket, how busy was the discussion there? A new command or option
-most likely warrants a `significance: significant` tag, same with command
-line changes that disrupts the workflow of many users or an API change
-that requires substantial time to integrate in a program.
+Use your best judgement and if unsure ask the
+[maintainers](https://github.com/haskell/cabal-CABAL-MAINTAINERS.md).
+If your PR fixes a specific ticket, how busy was the discussion there?
+A new command or option most likely warrants a `significance: significant`
+tag, as do command line changes that disrupt the workflow of many users or
+API changes that require substantial updates for downstream users.
 
 Put yourself in the shoes of the user: would you appreciate seeing this
 change highlighted in the announcement post or release notes overview? If
 so, add `significance: significant`.
+
 
 ## Communicating
 
@@ -516,20 +527,13 @@ There are a few main venues of communication:
   * You can join the channel using a web client, even anonymously: https://web.libera.chat/#hackage
   * Alternatively you can join it using [matrix](https://matrix.org/): https://matrix.to/#/#hackage:matrix.org
 
-## Releases
-
-Notes for how to make a release are at the
-wiki page ["Making a release"](https://github.com/haskell/cabal/wiki/Making-a-release).
-Currently, [@emilypi](https://github.com/emilypi), [@fgaz](https://github.com/fgaz) and [@Mikolaj](https://github.com/Mikolaj) have access to
-`haskell.org/cabal`, and [@Mikolaj](https://github.com/Mikolaj) is the point of contact for getting
-permissions.
 
 ## Preview Releases
 
 We make preview releases available to facilitate testing of development builds.
 
 Artifacts can be found on the [`cabal-head` release page](https://github.com/haskell/cabal/releases/tag/cabal-head).
-The Validate CI pipeline generates tarballs with a `cabal` executable. The executable gets uploaded to this release by the pipelines that run on `master`.
+The Build and release CI pipeline generates tarballs with a `cabal` executable. The executable gets uploaded to this release by the pipelines that run on `master`.
 
 We currently make available builds for:
   - Linux, dynamically linked (requiring `zlib`, `gmp`, `glibc`)
@@ -546,9 +550,6 @@ and then build by calling `cabal build cabal-install --enable-executable-static`
 
 Auto-generated API documentation for the `master` branch of Cabal is automatically uploaded here: http://haskell.github.io/cabal-website/doc/html/Cabal/.
 
-## Issue triage [![Open Source Helpers](https://www.codetriage.com/haskell/cabal/badges/users.svg)](https://www.codetriage.com/haskell/cabal)
-
-You can contribute by triaging issues which may include reproducing bug reports or asking for vital information, such as version numbers or reproduction instructions. If you would like to start triaging issues, one easy way to get started is to [subscribe to cabal on CodeTriage](https://www.codetriage.com/haskell/cabal).
 
 ## Hackage Revisions
 
@@ -556,27 +557,5 @@ We are reactive rather than proactive with revising bounds on our dependencies
 for code already released on Hackage. If you would benefit from a version bump,
 please, open a ticket and get familiar with
 [our revision policy](https://github.com/haskell/cabal/issues/9531#issuecomment-1866930240).
-
-The burden of proof that the bump is harmless remains with you, but we have a CI
-setup to show that our main pipeline ("Validate") is fine with the bump. To use
-it, someone with enough permissions needs to go on the
-[Validate workflow page](https://github.com/haskell/cabal/actions/workflows/validate.yml)
-and dispatch it manually by clicking "Run workflow".
-
-Running workflow manually as discussed above allows you to supply two inputs:
-
-> allow-newer line
-> constraints line
-
-Going via an example, imagine that Cabal only allows `tar` or version less then
-or equal to 0.6, and you want to bump it to 0.6. Then, to show that Validate
-succeeds with `tar` 0.6, you should input
-
-- `tar` to the "allow-newer line"
-- `tar ==0.6` to the "constraints line"
-
-Hopefully, running the Validate pipeline with these inputs succeeds and you
-supply the link to the run in the ticket about bumping the bound and making a revision.
-
-If interested in technical details, refer to the parts of `validate.yml` that
-mention `hackage-revisions`.
+You should ensure that the bump is harmless remains with you, but we will test in our CI
+before making the revision.
