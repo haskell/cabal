@@ -20,20 +20,18 @@ module Distribution.Utils.ShortText
     -- * Operations
   , null
   , length
-
-    -- * internal utilities
-  , decodeStringUtf8
-  , encodeStringUtf8
   ) where
 
 import Distribution.Compat.Prelude hiding (length, null)
 import Prelude ()
 
-import Distribution.Utils.String (decodeStringUtf8, encodeStringUtf8)
 import Distribution.Utils.Structured (Structured (..), nominalStructure)
 
 import qualified Data.ByteString as BS
 import qualified Data.List as List
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
+import qualified Data.Text.Encoding.Error as T
 
 import qualified Data.ByteString.Short as BS.Short
 
@@ -69,9 +67,9 @@ instance Binary ShortText where
   put = put . unST
   get = fmap ST get
 
-toShortText = ST . BS.Short.pack . encodeStringUtf8
+toShortText = ST . BS.Short.toShort . T.encodeUtf8 . T.pack
 
-fromShortText = decodeStringUtf8 . BS.Short.unpack . unST
+fromShortText = T.unpack . T.decodeUtf8With T.lenientDecode . BS.Short.fromShort . unST
 
 unsafeFromUTF8BS = ST . BS.Short.toShort
 

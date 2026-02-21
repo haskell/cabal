@@ -25,10 +25,6 @@
             "version": "1.4.6.1"
         },
         {
-            "package": "containers",
-            "version": "0.6.5.1"
-        },
-        {
             "package": "ghc-boot-th",
             "version": "9.2.8"
         },
@@ -43,6 +39,14 @@
         {
             "package": "bytestring",
             "version": "0.11.4.0"
+        },
+        {
+            "package": "containers",
+            "version": "0.6.5.1"
+        },
+        {
+            "package": "binary",
+            "version": "0.8.9.0"
         },
         {
             "package": "transformers",
@@ -63,51 +67,39 @@
         {
             "package": "time",
             "version": "1.11.1.1"
-        },
-        {
-            "package": "binary",
-            "version": "0.8.9.0"
-        },
-        {
-            "package": "text",
-            "version": "1.2.5.0"
-        },
-        {
-            "package": "parsec",
-            "version": "3.1.15.0"
         }
     ],
     "dependencies": [
         {
-            "cabal_sha256": "2efc549644dd418bad537d1601fdd437c440d807265016bd993b6996c679ad2f",
+            "cabal_sha256": "cb5408281cb0e7cea41885611e06ee6208e3dae90c98f6901a9f20c58f930414",
             "component": "lib:os-string",
             "flags": [],
             "package": "os-string",
-            "revision": 0,
+            "revision": 1,
             "source": "hackage",
             "src_sha256": "339c35fd3a290522f23de4e33528423cfd0b0a8f22946b0b9816a817b926cba0",
             "version": "2.0.7"
         },
         {
-            "cabal_sha256": "099c33e0e570dad93390e1c01c1f4bc6e4f13587de8e199df3c94a6cb62c7434",
+            "cabal_sha256": "1497c2630af2dd41397905ff0dff79f842bd80a139d7c5bfba3789fc3caef02c",
             "component": "lib:filepath",
             "flags": [
                 "-cpphs"
             ],
             "package": "filepath",
-            "revision": 0,
+            "revision": 1,
             "source": "hackage",
             "src_sha256": "54aa86c432f593273d7b9f607c5b5e0a1628c2674c6f4e3b5a54eb0c83db5caf",
             "version": "1.5.4.0"
         },
         {
-            "cabal_sha256": "1f5f3cf31be1a052ab2d7caebc5185888adeca0c6606c6bc7e45223d09cca9f0",
+            "cabal_sha256": "da731114a8ec7106c76c7d96c2b02f1b4963cb12e360a2029f4248e22a327375",
             "component": "lib:unix",
             "flags": [
                 "+os-string"
             ],
             "package": "unix",
-            "revision": 0,
+            "revision": 2,
             "source": "hackage",
             "src_sha256": "cbdd879d5aaf0755eeeedc95e3c4adde74edb8dbb7164aa1297b0b84d916fb83",
             "version": "2.8.7.0"
@@ -125,13 +117,13 @@
             "version": "0.1.5"
         },
         {
-            "cabal_sha256": "2490137bb7738bd79392959458ef5f276219ea5ba8a9a56d3e0b06315c1bb917",
+            "cabal_sha256": "ed6784601c6a800d4c1e40efbc9f20cf33ae2f25cac301fc239f9c91947b816b",
             "component": "lib:directory",
             "flags": [
                 "+os-string"
             ],
             "package": "directory",
-            "revision": 1,
+            "revision": 2,
             "source": "hackage",
             "src_sha256": "20a24846117fc5f8751d974b7de07210a161989410467e9adca525381b8e64cc",
             "version": "1.3.9.0"
@@ -147,6 +139,41 @@
             "version": "3.5.3.0"
         },
         {
+            "cabal_sha256": "0cf2a0543fb7003e0389c92840ee6326cadf762266da9cb13d67dff7c189ae1b",
+            "component": "lib:data-array-byte",
+            "flags": [],
+            "package": "data-array-byte",
+            "revision": 5,
+            "source": "hackage",
+            "src_sha256": "1bb6eca0b3e02d057fe7f4e14c81ef395216f421ab30fdaa1b18017c9c025600",
+            "version": "0.1.0.1"
+        },
+        {
+            "cabal_sha256": "457c3b7a8bc7d8290793d152d6077efdde33c21ba300635e824bf0df38b9edfb",
+            "component": "lib:text",
+            "flags": [
+                "-developer",
+                "-extendedbenchmarks",
+                "-pure-haskell",
+                "+simdutf"
+            ],
+            "package": "text",
+            "revision": 2,
+            "source": "hackage",
+            "src_sha256": "84a60cf59287d38e9a25910f90e9cb818e18656532034e60c9c5aaaddeceacb6",
+            "version": "2.1.2"
+        },
+        {
+            "cabal_sha256": "dfbb9835b8abc966b6bbd34340ef5122227b4cf4480062b85ca4c4704f054f98",
+            "component": "lib:parsec",
+            "flags": [],
+            "package": "parsec",
+            "revision": 0,
+            "source": "hackage",
+            "src_sha256": "402f9f133a71462678f9c257934f504f55e441d70c54a73ee70582182450d0af",
+            "version": "3.1.18.0"
+        },
+        {
             "cabal_sha256": null,
             "component": "lib:Cabal-syntax",
             "flags": [],
@@ -157,13 +184,13 @@
             "version": "3.17.0.0"
         },
         {
-            "cabal_sha256": "6def2e07c317f52f4d30c43e92f97b7bc5f7c27cb1270d386b15dce429e1180f",
+            "cabal_sha256": "9571f573339d6189ebd4f492e692f604aa19fe03d7c0992b8aa071e873e23a95",
             "component": "lib:process",
             "flags": [
                 "+os-string"
             ],
             "package": "process",
-            "revision": 0,
+            "revision": 1,
             "source": "hackage",
             "src_sha256": "b431d2ba77607986fa84b42ff3021505b8637b8d638ff664be3292dd44aba8f0",
             "version": "1.6.26.1"
@@ -191,13 +218,13 @@
             "version": "3.17"
         },
         {
-            "cabal_sha256": "725ef6da03d3d6e332db4de0a35bee45d72e4d31decc5ec7f153e6837af5f03e",
+            "cabal_sha256": "39b25fd929b02b01a3fe59fec7ca8b2da6f0f9e282276b7a84e63a4702c4d725",
             "component": "exe:hsc2hs",
             "flags": [
                 "-in-ghc-tree"
             ],
             "package": "hsc2hs",
-            "revision": 4,
+            "revision": 5,
             "source": "hackage",
             "src_sha256": "6f4e34d788fe2ca7091ee0a10307ee8a7c060a1ba890f2bffad16a7d4d5cef76",
             "version": "0.68.10"
@@ -248,55 +275,6 @@
             "source": "hackage",
             "src_sha256": "df31d8efec775124dab856d7177ddcba31be9f9e0836ebdab03d94392f2dd453",
             "version": "4000.4.1"
-        },
-        {
-            "cabal_sha256": "3a4040018d8f90beef81ecd0ba37f266a9aaad3e902dd790f09056f892ba22fb",
-            "component": "lib:data-array-byte",
-            "flags": [],
-            "package": "data-array-byte",
-            "revision": 4,
-            "source": "hackage",
-            "src_sha256": "1bb6eca0b3e02d057fe7f4e14c81ef395216f421ab30fdaa1b18017c9c025600",
-            "version": "0.1.0.1"
-        },
-        {
-            "cabal_sha256": "573f3ab242f75465a0d67ce9d84202650a1606575e6dbd6d31ffcf4767a9a379",
-            "component": "lib:hashable",
-            "flags": [
-                "-arch-native",
-                "+integer-gmp",
-                "-random-initial-seed"
-            ],
-            "package": "hashable",
-            "revision": 0,
-            "source": "hackage",
-            "src_sha256": "3baee4c9027a08830d148ec524cbc0471de645e1e8426d46780ef2758df0e8da",
-            "version": "1.4.7.0"
-        },
-        {
-            "cabal_sha256": "b7648c6165729a973d95cb328f9fd874813a81c727707e8b2552b4f03399763b",
-            "component": "lib:async",
-            "flags": [
-                "-bench"
-            ],
-            "package": "async",
-            "revision": 3,
-            "source": "hackage",
-            "src_sha256": "1818473ebab9212afad2ed76297aefde5fae8b5d4404daf36939aece6a8f16f7",
-            "version": "2.2.5"
-        },
-        {
-            "cabal_sha256": "81a105aed2ee2f5e479448e44252b24cdfacf81a5a2106aabdd217bad94b6f40",
-            "component": "lib:atomic-counter",
-            "flags": [
-                "-dev",
-                "-no-cmm"
-            ],
-            "package": "atomic-counter",
-            "revision": 0,
-            "source": "hackage",
-            "src_sha256": "ce4b63391b3c0d426cbe32af89f483222602a5b43aa5379aa720bf6f45f4cf04",
-            "version": "0.1.2.3"
         },
         {
             "cabal_sha256": "a694e88f9ec9fc79f0b03f233d3fea592b68f70a34aac2ddb5bcaecb6562e2fd",
@@ -364,6 +342,18 @@
             "version": "3.17.0.0"
         },
         {
+            "cabal_sha256": "ccce771562c49a2b29a52046ca68c62179e97e8fbeacdae32ca84a85445e8f42",
+            "component": "lib:echo",
+            "flags": [
+                "-example"
+            ],
+            "package": "echo",
+            "revision": 0,
+            "source": "hackage",
+            "src_sha256": "c9fe1bf2904825a65b667251ec644f197b71dc5c209d2d254be5de3d496b0e43",
+            "version": "0.1.4"
+        },
+        {
             "cabal_sha256": "0e9de2ccce261e7a5b027e842f6f47f50eb0e6059a0de98a5479f75aa8164107",
             "component": "lib:cryptohash-sha256",
             "flags": [
@@ -375,18 +365,6 @@
             "source": "hackage",
             "src_sha256": "73a7dc7163871a80837495039a099967b11f5c4fe70a118277842f7a713c6bf6",
             "version": "0.11.102.1"
-        },
-        {
-            "cabal_sha256": "ccce771562c49a2b29a52046ca68c62179e97e8fbeacdae32ca84a85445e8f42",
-            "component": "lib:echo",
-            "flags": [
-                "-example"
-            ],
-            "package": "echo",
-            "revision": 0,
-            "source": "hackage",
-            "src_sha256": "c9fe1bf2904825a65b667251ec644f197b71dc5c209d2d254be5de3d496b0e43",
-            "version": "0.1.4"
         },
         {
             "cabal_sha256": "f1550ddbe3b53f1087a035667364011460896cc2b1ff328b521c05ed5973bb78",
@@ -404,33 +382,46 @@
             "version": "0.0.5.0"
         },
         {
-            "cabal_sha256": "8931b9ce6e63bf6202dc0c992ae3e6f2ad8e7f4b6eb69994ac6d512c6c9c0f77",
+            "cabal_sha256": "81a105aed2ee2f5e479448e44252b24cdfacf81a5a2106aabdd217bad94b6f40",
+            "component": "lib:atomic-counter",
+            "flags": [
+                "-dev",
+                "-no-cmm"
+            ],
+            "package": "atomic-counter",
+            "revision": 0,
+            "source": "hackage",
+            "src_sha256": "ce4b63391b3c0d426cbe32af89f483222602a5b43aa5379aa720bf6f45f4cf04",
+            "version": "0.1.2.3"
+        },
+        {
+            "cabal_sha256": "b24ec42ce02c42a76732323c4e59414d9b5439ac5fa99304412719ba7f4c6a3f",
             "component": "lib:directory-ospath-streaming",
             "flags": [
                 "+os-string"
             ],
             "package": "directory-ospath-streaming",
-            "revision": 0,
+            "revision": 1,
             "source": "hackage",
             "src_sha256": "1ade8fbee13db15e8d22a1ecdca54794617cabc69911b51d46a65e12f4554ef7",
             "version": "0.2.2"
         },
         {
-            "cabal_sha256": "a72549370449fe99e3008744ad2e43685e96bf86aa0db15898189fcbaafcd815",
+            "cabal_sha256": "1a5ff2b64cd1bac53ea68d057631818cab6edf7108dc86e7be8ad020b2bf2580",
             "component": "lib:tar-internal",
             "flags": [],
             "package": "tar",
-            "revision": 1,
+            "revision": 4,
             "source": "hackage",
             "src_sha256": "7949a50004a80993000512079bc03ebcad4872414fc181f45b3883d743c0f3aa",
             "version": "0.6.4.0"
         },
         {
-            "cabal_sha256": "a72549370449fe99e3008744ad2e43685e96bf86aa0db15898189fcbaafcd815",
+            "cabal_sha256": "1a5ff2b64cd1bac53ea68d057631818cab6edf7108dc86e7be8ad020b2bf2580",
             "component": "lib:tar",
             "flags": [],
             "package": "tar",
-            "revision": 1,
+            "revision": 4,
             "source": "hackage",
             "src_sha256": "7949a50004a80993000512079bc03ebcad4872414fc181f45b3883d743c0f3aa",
             "version": "0.6.4.0"
@@ -527,10 +518,37 @@
             "version": "1.0.0"
         },
         {
+            "cabal_sha256": "573f3ab242f75465a0d67ce9d84202650a1606575e6dbd6d31ffcf4767a9a379",
+            "component": "lib:hashable",
+            "flags": [
+                "-arch-native",
+                "+integer-gmp",
+                "-random-initial-seed"
+            ],
+            "package": "hashable",
+            "revision": 0,
+            "source": "hackage",
+            "src_sha256": "3baee4c9027a08830d148ec524cbc0471de645e1e8426d46780ef2758df0e8da",
+            "version": "1.4.7.0"
+        },
+        {
+            "cabal_sha256": "e2a877717968edf1e2c91312fefd4fd53f4e49b27a421f98452b29a9256cad2a",
+            "component": "lib:async",
+            "flags": [
+                "-bench"
+            ],
+            "package": "async",
+            "revision": 4,
+            "source": "hackage",
+            "src_sha256": "1818473ebab9212afad2ed76297aefde5fae8b5d4404daf36939aece6a8f16f7",
+            "version": "2.2.5"
+        },
+        {
             "cabal_sha256": null,
             "component": "lib:cabal-install",
             "flags": [
                 "-git-rev",
+                "-legacy-comparison",
                 "-lukko",
                 "+native-dns"
             ],
@@ -545,6 +563,7 @@
             "component": "exe:cabal",
             "flags": [
                 "-git-rev",
+                "-legacy-comparison",
                 "-lukko",
                 "+native-dns"
             ],
