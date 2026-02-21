@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -131,7 +132,8 @@ import qualified Data.ByteString as BS
 import Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as BLC8
 import Data.List
-  ( intersect
+  ( groupBy
+  , intersect
   , stripPrefix
   , (\\)
   )
@@ -172,10 +174,15 @@ import qualified System.Info
 import Text.PrettyPrint
   ( Doc
   , char
+  , colon
   , hsep
+  , int
+  , nest
+  , parens
   , quotes
   , renderStyle
   , text
+  , vcat
   , ($+$)
   )
 
@@ -870,7 +877,7 @@ configurePackage verbHandles cfg lbc0 pkg_descr00 flags enabled comp platform pr
   -- right before calling configurePackage?
 
   -- Configure certain external build tools, see below for which ones.
-  let requiredBuildTools
+  let rawRequiredBuildTools
         -- If --ignore-build-tools is set, no build tool is required:
         | fromFlagOrDefault False $ configIgnoreBuildTools cfg =
             []
@@ -897,6 +904,20 @@ configurePackage verbHandles cfg lbc0 pkg_descr00 flags enabled comp platform pr
                   , isNothing (desugarBuildTool pkg_descr0 buildTool)
                   ]
             externBuildToolDeps ++ unknownBuildTools
+
+  let (requiredBuildTools, dups) = deduplicateBuildTools rawRequiredBuildTools
+
+  for_ dups $ \case
+    (_, []) -> return ()
+    (merged, ds@(dup : _)) ->
+      noticeDoc verbosity $
+        vcat
+          [ (text "As the build tool" <+> quotes (text $ nameOf dup) <+> "was specified more than once") <> colon
+          , nest 2 $ vcat [char '-' <+> versionOfDoc d | d <- ds]
+          , (text "We'll use the effective intersection of these" <+> int (length ds) <+> "version ranges") <> colon
+          , nest 2 $ char '-' <+> versionOfDoc merged
+          , text "Please specify build tool dependencies only once."
+          ]
 
   programDb1 <-
     configureAllKnownPrograms (modifyVerbosityFlags lessVerbose verbosity) programDb0
@@ -946,6 +967,34 @@ configurePackage verbHandles cfg lbc0 pkg_descr00 flags enabled comp platform pr
       ++ showPackageDescription pkg_descr2
 
   return (lbc, pbd)
+
+nameOf :: LegacyExeDependency -> String
+nameOf (LegacyExeDependency n _) = n
+
+versionOf :: LegacyExeDependency -> VersionRange
+versionOf (LegacyExeDependency _ v) = v
+
+versionOfDoc :: LegacyExeDependency -> Doc
+versionOfDoc (LegacyExeDependency _ v) =
+  if v == anyVersion
+    then text (prettyShow v) <+> parens (text "any version")
+    else text $ prettyShow v
+
+-- | Any duplicates in the list has their version range merged by intersection.
+-- The second list has the build tool with its merged version range and its list
+-- of duplicates.
+deduplicateBuildTools :: [LegacyExeDependency] -> ([LegacyExeDependency], [(LegacyExeDependency, [LegacyExeDependency])])
+deduplicateBuildTools xs =
+  catMaybes
+    <$> unzip
+      [ (merged, if length gs == 1 then Nothing else Just (merged, gs))
+      | gs@(g : _) <- groupBy ((==) `on` nameOf) (sortBy (comparing nameOf) xs)
+      , let merged = LegacyExeDependency (nameOf g) (mergeVersions (ordNub . filter (/= anyVersion) $ versionOf <$> gs))
+      ]
+  where
+    mergeVersions :: [VersionRange] -> VersionRange
+    mergeVersions [] = anyVersion
+    mergeVersions (v : vs) = foldr intersectVersionRanges v vs
 
 finalizeAndConfigurePackage
   :: VerbosityHandles
