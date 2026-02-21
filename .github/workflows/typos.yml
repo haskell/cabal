@@ -6,7 +6,7 @@ on:
     branches: ["master"]
 
 env:
-  TYPOS_VER: v1.28.1
+  TYPOS_VER: v1.43.5
   TYPOS_PLATFORM: x86_64-unknown-linux-musl
 
 jobs:
