@@ -4,7 +4,7 @@ Concat
     1
     (Concat
       (Text "name:")
-      (Text "base")))
+      (Place 1 7 (Text "base"))))
   (Place
     2
     1
