@@ -646,6 +646,7 @@ fieldGrammarFieldRoundTripTests = testGroup "fieldgrammar-field-roundtrip" $
           )
           [ "packageDescription1.fragment"
           , "packageDescription2.fragment"
+          , "packageDescription3.fragment"
           ]
       )
 
