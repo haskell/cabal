@@ -17,6 +17,7 @@ import Prelude ()
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.Annotation
+import qualified Text.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 -- | A package name.
@@ -73,9 +74,13 @@ instance Pretty PackageName where
 instance Markable PackageName
 instance ExactPretty PackageName
 
-instance ExactParsec PackageName
-instance Parsec PackageName where
-  parsec = mkPackageName <$> parsecUnqualComponentName
+instance Parsec PackageName where parsec = snd <$> exactParsec
+instance ExactParsec PackageName where
+  exactParsec = do
+    pos <- getPosition
+    x <- mkPackageName <$> parsecUnqualComponentName
+    let t = fromNamedTrivia x [ExactPosition (Position (P.sourceLine pos) (P.sourceColumn pos))]
+    pure (t, x)
 
 instance NFData PackageName where
   rnf (PackageName pkg) = rnf pkg

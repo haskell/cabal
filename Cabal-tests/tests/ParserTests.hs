@@ -492,6 +492,7 @@ fieldGrammarFieldGoldenTests = testGroup "fieldgrammar-field" $
        )
     ++ ( map (fieldGrammarFieldGoldenTest packageDescriptionFieldGrammar)
           [ "packageDescription1.fragment"
+          , "packageDescription2.fragment"
           ]
        )
 

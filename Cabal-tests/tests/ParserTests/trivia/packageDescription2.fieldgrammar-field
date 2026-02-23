@@ -14,14 +14,14 @@ _×_
                   TriviaTree {
                     justAnnotation = [
                       ExactFieldPosition
-                        (Position 1 1)],
+                        (Position 3 1)],
                     namedAnnotations = Map.fromList
                       [
                         _×_
                           `SomeNamespace (PackageName "base")`
                           TriviaTree {
                             justAnnotation = [
-                              ExactPosition (Position 1 7)],
+                              ExactPosition (Position 3 9)],
                             namedAnnotations = Map.fromList
                               []}]}]},
         _×_
@@ -35,11 +35,11 @@ _×_
                   TriviaTree {
                     justAnnotation = [
                       ExactFieldPosition
-                        (Position 2 1)],
+                        (Position 4 1)],
                     namedAnnotations = Map.fromList
                       []}]}]}
   PackageDescription {
-    specVersion = CabalSpecV1_0,
+    specVersion = CabalSpecV3_0,
     package = PackageIdentifier {
       pkgName = PackageName "base",
       pkgVersion = mkVersion
