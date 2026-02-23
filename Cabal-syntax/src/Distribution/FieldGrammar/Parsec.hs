@@ -231,7 +231,9 @@ instance FieldGrammar ExactParsec ParsecFieldGrammar where
 
   optionalFieldDefAla fn _pack _extract def = ParsecFG (Set.singleton fn) Set.empty parser
     where
-      parser v fields = case Map.lookup fn fields of
+      markFieldName (t, x) = let t' = markTriviaTree fn t in  (t', x)
+
+      parser v fields = markFieldName <$> case Map.lookup fn fields of
         Nothing -> (pure . pure) def
         Just [] -> (pure . pure) def
         Just [x] -> parseOne v x
