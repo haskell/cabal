@@ -1,0 +1,28 @@
+Concat
+  (Concat
+    (Concat
+      (Concat
+        (Text "copyright:")
+        (Concat
+          (Concat
+            (Text "some copyright")
+            (Place 1 0 (Text "")))
+          (Text "  text")))
+      (Place
+        1
+        1
+        (Concat
+          (Text "cabal-version:")
+          (Place 1 16 (Text ">=1.0")))))
+    (Place
+      3
+      1
+      (Concat
+        (Text "name:")
+        (Place 3 9 (Text "base")))))
+  (Place
+    4
+    1
+    (Concat
+      (Text "version:")
+      (Place 4 20 (Text "0.0.0"))))

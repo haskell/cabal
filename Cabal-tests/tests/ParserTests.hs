@@ -591,6 +591,7 @@ fieldGrammarFieldExactDocTests = testGroup "fieldgrammar-field-exactdoc" $
           )
           [ "packageDescription1.fragment"
           , "packageDescription2.fragment"
+          , "packageDescription3.fragment"
           ]
        )
 
