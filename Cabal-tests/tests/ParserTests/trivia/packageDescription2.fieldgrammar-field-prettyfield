@@ -1,0 +1,17 @@
+[
+  PrettyField
+    []
+    "cabal-version"
+    [PrettyFieldLine [] 3.0],
+  PrettyField
+    [
+      ExactFieldPosition
+        (Position 3 1)]
+    "name"
+    [PrettyFieldLine [] base],
+  PrettyField
+    [
+      ExactFieldPosition
+        (Position 4 1)]
+    "version"
+    [PrettyFieldLine [] 0.0.0]]

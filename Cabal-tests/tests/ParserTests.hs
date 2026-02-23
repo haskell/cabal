@@ -535,6 +535,7 @@ fieldGrammarFieldPrettyFieldTests = testGroup "fieldgrammar-field-prettyfield" $
   )
     ++ ( map (fieldGrammarFieldPrettyFieldTest packageDescriptionFieldGrammar packageDescriptionFieldGrammar)
           [ "packageDescription1.fragment"
+          , "packageDescription2.fragment"
           ]
        )
 
@@ -586,6 +587,7 @@ fieldGrammarFieldExactDocTests = testGroup "fieldgrammar-field-exactdoc" $
           ( fieldGrammarFieldExactDocTest packageDescriptionFieldGrammar packageDescriptionFieldGrammar
           )
           [ "packageDescription1.fragment"
+          , "packageDescription2.fragment"
           ]
        )
 

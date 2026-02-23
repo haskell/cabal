@@ -1,0 +1,17 @@
+Concat
+  (Concat
+    (Concat
+      (Text "cabal-version:")
+      (Text "3.0"))
+    (Place
+      3
+      1
+      (Concat
+        (Text "name:")
+        (Text "base"))))
+  (Place
+    4
+    1
+    (Concat
+      (Text "version:")
+      (Text "0.0.0")))
