@@ -10,7 +10,7 @@ _×_
             namedAnnotations = Map.fromList
               [
                 _×_
-                  `SomeNamespace (SpecVersion {getSpecVersion = CabalSpecV3_0})`
+                  `SomeNamespace (SpecVersion {getSpecVersion = CabalSpecV1_0})`
                   TriviaTree {
                     justAnnotation = [
                       ExactFieldPosition
@@ -73,14 +73,15 @@ _×_
                             namedAnnotations = Map.fromList
                               []}]}]}]}
   PackageDescription {
-    specVersion = CabalSpecV3_0,
+    specVersion = CabalSpecV1_0,
     package = PackageIdentifier {
       pkgName = PackageName "base",
       pkgVersion = mkVersion
         [0, 0, 0]},
     licenseRaw = Left NONE,
     licenseFiles = [],
-    copyright = "",
+    copyright =
+    "some copyright text",
     maintainer = "",
     author = "",
     stability = "",

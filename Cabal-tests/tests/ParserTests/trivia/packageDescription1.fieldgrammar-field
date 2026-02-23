@@ -4,6 +4,24 @@ _×_
     namedAnnotations = Map.fromList
       [
         _×_
+          `SomeNamespace "cabal-version"`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              []},
+        _×_
+          `SomeNamespace "data-dir"`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              []},
+        _×_
+          `SomeNamespace "license"`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              []},
+        _×_
           `SomeNamespace "name"`
           TriviaTree {
             justAnnotation = [],
