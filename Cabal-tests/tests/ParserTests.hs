@@ -627,7 +627,7 @@ fieldGrammarFieldExactDocTest gParsec gPretty fp = ediffGolden goldenTest fp exp
 -- Fifth step, render to text and test for syntaxic idempotency
 fieldGrammarFieldRoundTripTests :: TestTree
 fieldGrammarFieldRoundTripTests = testGroup "fieldgrammar-field-roundtrip" $
-  map
+  ( map
       ( fieldGrammarFieldRoundTripTest dependencyListFieldGrammar dependencyListFieldGrammar
       )
       [ "build-depends1.fragment"
@@ -636,6 +636,14 @@ fieldGrammarFieldRoundTripTests = testGroup "fieldgrammar-field-roundtrip" $
       , "build-depends4.fragment"
       , "build-depends5.fragment"
       ]
+  )
+  ++ ( map
+          ( fieldGrammarFieldRoundTripTest packageDescriptionFieldGrammar packageDescriptionFieldGrammar
+          )
+          [ "packageDescription1.fragment"
+          , "packageDescription2.fragment"
+          ]
+      )
 
 fieldGrammarFieldRoundTripTest
   :: ParsecFieldGrammar' a
