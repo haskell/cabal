@@ -30,6 +30,7 @@ import qualified Data.Version as Base
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 import qualified Text.Read as Read
+import qualified Text.Parsec as Parsec
 
 import Debug.Pretty.Simple
 
@@ -108,7 +109,6 @@ instance ExactPretty Version where
                 (Disp.char '.')
                 (map Disp.int $ versionNumbers ver)
 
-instance ExactParsec Version
 instance Parsec Version where
   parsec = mkVersion <$> toList <$> P.sepByNonEmpty versionDigitParser (P.char '.') <* tags
     where
@@ -117,6 +117,13 @@ instance Parsec Version where
         case ts of
           [] -> pure ()
           (_ : _) -> parsecWarning PWTVersionTag "version with tags"
+
+instance ExactParsec Version where
+  exactParsec = do
+    pos <- getPosition
+    x <- parsec
+    let t = fromNamedTrivia x [ExactPosition (Position (Parsec.sourceLine pos) (Parsec.sourceColumn pos))]
+    pure (t, x)
 
 -- | An integral without leading zeroes.
 --

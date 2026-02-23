@@ -37,7 +37,14 @@ _×_
                       ExactFieldPosition
                         (Position 2 1)],
                     namedAnnotations = Map.fromList
-                      []}]}]}
+                      [
+                        _×_
+                          `SomeNamespace (mkVersion [0,0,0])`
+                          TriviaTree {
+                            justAnnotation = [
+                              ExactPosition (Position 2 10)],
+                            namedAnnotations = Map.fromList
+                              []}]}]}]}
   PackageDescription {
     specVersion = CabalSpecV1_0,
     package = PackageIdentifier {
