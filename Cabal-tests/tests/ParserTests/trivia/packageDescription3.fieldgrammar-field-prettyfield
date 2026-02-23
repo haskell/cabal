@@ -1,0 +1,38 @@
+[
+  PrettyField
+    [
+      ExactFieldPosition
+        (Position 1 1)]
+    "cabal-version"
+    [
+      PrettyFieldLine
+        [
+          ExactFieldPosition
+            (Position 1 1),
+          ExactPosition (Position 1 16)]
+        >=1.0],
+  PrettyField
+    [
+      ExactFieldPosition
+        (Position 3 1)]
+    "name"
+    [
+      PrettyFieldLine
+        [ExactPosition (Position 3 9)]
+        base],
+  PrettyField
+    [
+      ExactFieldPosition
+        (Position 4 1)]
+    "version"
+    [
+      PrettyFieldLine
+        [ExactPosition (Position 4 20)]
+        0.0.0],
+  PrettyField
+    []
+    "copyright"
+    [
+      PrettyFieldLine
+        []
+        `some copyright\xa;  text`]]

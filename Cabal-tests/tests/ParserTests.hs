@@ -538,6 +538,7 @@ fieldGrammarFieldPrettyFieldTests = testGroup "fieldgrammar-field-prettyfield" $
     ++ ( map (fieldGrammarFieldPrettyFieldTest packageDescriptionFieldGrammar packageDescriptionFieldGrammar)
           [ "packageDescription1.fragment"
           , "packageDescription2.fragment"
+          , "packageDescription3.fragment"
           ]
        )
 
