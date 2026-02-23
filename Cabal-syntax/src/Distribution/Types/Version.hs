@@ -102,7 +102,7 @@ instance ExactPretty Version where
   exactPretty t0 ver =
     let t = unmarkTriviaTree ver t0
         tLocal = justAnnotation t
-     in ((: []) . flip DocAnn mempty) $
+     in ((: []) . flip DocAnn t) $
           triviaToDoc tLocal $
             Disp.hcat $
               Disp.punctuate

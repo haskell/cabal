@@ -17,4 +17,7 @@
       ExactFieldPosition
         (Position 4 1)]
     "version"
-    [PrettyFieldLine [] 0.0.0]]
+    [
+      PrettyFieldLine
+        [ExactPosition (Position 4 20)]
+        0.0.0]]
