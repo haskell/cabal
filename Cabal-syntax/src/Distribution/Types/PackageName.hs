@@ -68,11 +68,14 @@ instance IsString PackageName where
 instance Binary PackageName
 instance Structured PackageName
 
+instance Markable PackageName
 instance Pretty PackageName where
   pretty = Disp.text . unPackageName
-
-instance Markable PackageName
-instance ExactPretty PackageName
+instance ExactPretty PackageName where
+  exactPretty t0 x =
+    let doc = pretty x
+        t = unmarkTriviaTree x t0
+    in  [DocAnn doc t]
 
 instance Parsec PackageName where parsec = snd <$> exactParsec
 instance ExactParsec PackageName where

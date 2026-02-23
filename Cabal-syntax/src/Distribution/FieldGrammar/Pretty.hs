@@ -81,7 +81,7 @@ instance FieldGrammar ExactPretty PrettyFieldGrammar where
         tChildren = unmarkTriviaTree x t
         fieldPositionOr0 = fromMaybe (Position 0 0) . atFieldPosition . justAnnotation
         fieldNamePos = fieldPositionOr0 tChildren
-     in ppTriviaField (fn, [ExactFieldPosition fieldNamePos]) (exactPretty tChildren x)
+     in ppTriviaField (fn, [ExactFieldPosition fieldNamePos]) (exactPretty t x)
 
   booleanFieldDef fn l def = PrettyFG pp
     where
