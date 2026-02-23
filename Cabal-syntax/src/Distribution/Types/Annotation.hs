@@ -35,6 +35,7 @@ module Distribution.Types.Annotation
   , atPosition
   , atFieldPosition
   , atSectionPosition
+  , isInjected
   , hasTrailingSymbol
   , hasLeadingSymbol
   , patchPosition
@@ -129,6 +130,9 @@ instance Semigroup TriviaTree where
 
 instance Monoid TriviaTree where
   mempty = emptyTriviaTree
+
+isInjected :: Trivia -> Bool
+isInjected = (IsInjected `elem`)
 
 fromNamedTrivia :: Markable a => a -> Trivia -> TriviaTree
 fromNamedTrivia x ts = markTriviaTree x (TriviaTree ts mempty)

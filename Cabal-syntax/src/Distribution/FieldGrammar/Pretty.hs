@@ -100,16 +100,14 @@ instance FieldGrammar ExactPretty PrettyFieldGrammar where
   optionalFieldDefAla fn _pack l def = PrettyFG $ \ v t0 s ->
       let x = aview l s
           x' = pack' _pack x
-      in  -- TODO(leana8959): absorbs parsed values that are the default
-          -- This is not precise enough and might cause issues.
-          if x == def
-            then mempty
-            else
-              let t = unmarkTriviaTree fn t0
-                  tChildren = unmarkTriviaTree x' t
-                  fieldPositionOr0 = fromMaybe (Position 0 0) . atFieldPosition . justAnnotation
-                  fieldNamePos = fieldPositionOr0 tChildren
-              in  ppTriviaField (fn, [ExactFieldPosition fieldNamePos]) (exactPrettyVersioned v t (pack' _pack x))
+
+          t = unmarkTriviaTree fn t0
+          tChildren = unmarkTriviaTree x' t
+          fieldPositionOr0 = fromMaybe (Position 0 0) . atFieldPosition . justAnnotation
+          fieldNamePos = fieldPositionOr0 tChildren
+
+      in  if isInjected (justAnnotation t) then []
+          else ppTriviaField (fn, [ExactFieldPosition fieldNamePos]) (exactPrettyVersioned v t (pack' _pack x))
 
   freeTextField fn l = PrettyFG pp
     where
