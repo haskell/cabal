@@ -675,8 +675,11 @@ instance Pretty SpecVersion where
     | csv >= CabalSpecV1_12 = text (showCabalSpecVersion csv)
     | otherwise = text ">=" <<>> text (showCabalSpecVersion csv)
 
--- TODO(leana8959): this should be implemented differently
-instance ExactPretty SpecVersion
+instance ExactPretty SpecVersion where
+  exactPretty t0 x =
+    let doc = pretty x
+        t = unmarkTriviaTree x t0
+    in  [DocAnn doc t]
 
 -------------------------------------------------------------------------------
 -- SpecLicense

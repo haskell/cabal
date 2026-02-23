@@ -1,11 +1,11 @@
 Concat
   (Concat
     (Place
-      0
-      0
+      1
+      1
       (Concat
         (Text "cabal-version:")
-        (Text "3.0")))
+        (Place 1 16 (Text "3.0"))))
     (Place
       3
       1
