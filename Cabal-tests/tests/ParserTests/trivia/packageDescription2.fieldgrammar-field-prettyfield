@@ -1,6 +1,8 @@
 [
   PrettyField
-    []
+    [
+      ExactFieldPosition
+        (Position 0 0)]
     "cabal-version"
     [PrettyFieldLine [] 3.0],
   PrettyField
