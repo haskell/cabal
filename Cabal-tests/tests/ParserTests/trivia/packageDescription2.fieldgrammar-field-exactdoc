@@ -14,4 +14,4 @@ Concat
     1
     (Concat
       (Text "version:")
-      (Text "0.0.0")))
+      (Place 4 20 (Text "0.0.0"))))
