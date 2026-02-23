@@ -18,7 +18,8 @@ module Distribution.Pretty.ExactDoc
   , nil
 
     -- * Primitive combinators
-  , concat
+  , concatDoc
+  , stickyConcatDoc
   , place
   , nest
 
@@ -49,8 +50,12 @@ data ExactDoc where
   Text :: !T.Text -> ExactDoc
   -- | The empty document, 0 in width and height
   Nil :: ExactDoc
-  -- | Join two documents together
+  -- | Force the layout engine to render a newline
+  Newline :: ExactDoc
+  -- | Join two documents together loosely.
   Concat :: !ExactDoc -> !ExactDoc -> ExactDoc
+  -- | Stick to documents together. Placement and nesting distributes over this operator.
+  StickyConcat :: !ExactDoc -> !ExactDoc -> ExactDoc
   -- | The document should be placed at (Row, Col)
   Place :: !Int -> !Int -> !ExactDoc -> ExactDoc
   -- | The document should be indented with n more spaces
@@ -114,17 +119,19 @@ renderTextStep d0 = case d0 of
       \(Position row col) -> Position row (col + T.length t)
     pure t
   Concat d1 d2 -> liftA2 (<>) (renderTextStep d1) (renderTextStep d2)
+  StickyConcat d1 d2 -> liftA2 (<>) (renderTextStep d1) (renderTextStep d2)
+  Newline -> get >>= \(Position row col) -> updateCursorRow (row + 1)
 
 -- | Invariant: this assumes the input text doesn't have more than one line
 text :: T.Text -> ExactDoc
 text = Text
 
 multilineText :: [T.Text] -> ExactDoc
-multilineText = mconcat . intersperse newline . map Text
+multilineText = foldr stickyConcatDoc Nil . intersperse Newline . map Text
 
 -- We use the exact offset primitive to define the newline primitive
 newline :: ExactDoc
-newline = place 1 0 (text "")
+newline = Newline
 
 nil :: ExactDoc
 nil = Nil
@@ -135,19 +142,27 @@ concatDoc d1 d2 = case (d1, d2) of
   (_, Nil) -> d1
   _ -> d1 `Concat` d2
 
+stickyConcatDoc :: ExactDoc -> ExactDoc -> ExactDoc
+stickyConcatDoc d1 d2 = case (d1, d2) of
+  (Nil, _) -> d2
+  (_, Nil) -> d1
+  _ -> d1 `StickyConcat` d2
+
 -- | Absolute offset "row, col" from the previous item
 place :: Int -> Int -> ExactDoc -> ExactDoc
 place s t d0 = case d0 of
   Nil -> Nil
   Place u v d -> place u v d -- Once placed, can't be moved
+  StickyConcat d1 d2 -> place s t d1 `StickyConcat` place s t d2
   _ -> Place s t d0
 
 nest :: Int -> ExactDoc -> ExactDoc
 nest k d0 = case d0 of
+  Nest m d -> nest (k + m) d
   Nil -> Nil
-  Nest m d -> Nest (k + m) d
-  Place u v d -> place u v d -- Once placed, can't be moved
+  Place u v d -> Place u v d -- Once placed, can't be moved
   Concat d1 d2 -> nest k d1 <> nest k d2
+  StickyConcat d1 d2 -> nest k d1 `StickyConcat` nest k d2
   _ -> Nest k d0
 
 sep :: ExactDoc -> [ExactDoc] -> ExactDoc

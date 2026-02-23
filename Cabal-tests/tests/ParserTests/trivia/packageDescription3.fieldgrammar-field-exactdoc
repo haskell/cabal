@@ -3,11 +3,11 @@ Concat
     (Concat
       (Concat
         (Text "copyright:")
-        (Concat
-          (Concat
-            (Text "some copyright")
-            (Place 1 0 (Text "")))
-          (Text "text")))
+        (StickyConcat
+          (Text "some copyright")
+          (StickyConcat
+            (Place 0 0 (Text ""))
+            (Text "text"))))
       (Place
         1
         1

@@ -1082,6 +1082,26 @@ exactDocRenderTests = testGroup "render"
   , exactDocRenderTest "place over indent"
       (EPP.place 2 2 (EPP.nest 2 (EPP.text "hi")))
       "\n   hi"
+
+  , exactDocRenderTest "place over stickyconcat"
+      ( EPP.place 2 2
+        ( EPP.stickyConcatDoc
+          (EPP.stickyConcatDoc (EPP.text "hi") EPP.newline)
+          (EPP.text "hi")
+        )
+      )
+      "\n hi\n hi"
+
+  , exactDocRenderTest "multiline text"
+    ( EPP.multilineText ["foo", "bar"]
+    )
+    "foo\nbar"
+
+  , exactDocRenderTest "multiline text"
+    ( EPP.place 2 2 $ EPP.multilineText ["foo", "bar"]
+    )
+    "\n foo\n bar"
+
   ]
 
 exactDocRenderTest :: String ->  ExactDoc -> Text -> TestTree
