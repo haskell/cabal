@@ -91,6 +91,8 @@ import qualified Data.Set as Set
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.SPDX as SPDX
 
+import qualified Text.Parsec as Parsec
+
 -- NOTE(leana8959): we can rewrite the separators.
 -- Once exact print is done, there will be no more need to print differently.
 -- We only parse differently, and print exactly.
@@ -591,8 +593,13 @@ instance Markable SpecVersion
 
 instance Newtype CabalSpecVersion SpecVersion
 
--- TODO(leana8959): defined in reversed order
-instance ExactParsec SpecVersion
+instance ExactParsec SpecVersion where
+  exactParsec = do
+    pos <- getPosition
+    x <- parsec
+    let t = fromNamedTrivia x [ExactPosition (Position (Parsec.sourceLine pos) (Parsec.sourceColumn pos))]
+    pure (t, x)
+
 instance Parsec SpecVersion where
   parsec = do
     e <- parsecSpecVersion
