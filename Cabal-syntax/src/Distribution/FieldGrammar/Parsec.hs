@@ -199,7 +199,7 @@ instance FieldGrammar ExactParsec ParsecFieldGrammar where
           NE.last <$> traverse (parseOne v) (y :| ys)
 
       parseOne v (MkNamelessField pos fls) = do
-        (t, x) <-  runFieldParser pos exactParsec v fls
+        (t, x) <- runFieldParser pos exactParsec v fls
         let t' = fromNamedTrivia x [ExactFieldPosition pos] <> t
         pure (t', unpack' _pack x)
 
@@ -241,7 +241,10 @@ instance FieldGrammar ExactParsec ParsecFieldGrammar where
 
       parseOne v (MkNamelessField pos fls)
         | null fls = (pure . pure) def
-        | otherwise = fmap (unpack' _pack) <$> runFieldParser pos exactParsec v fls
+        | otherwise = do
+          (t, x) <- runFieldParser pos exactParsec v fls
+          let t' = fromNamedTrivia x [ExactFieldPosition pos] <> t
+          pure (t', unpack' _pack x)
 
   freeTextField fn _ = ParsecFG (Set.singleton fn) Set.empty parser
     where
