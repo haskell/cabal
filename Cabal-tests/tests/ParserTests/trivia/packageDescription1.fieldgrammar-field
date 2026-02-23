@@ -6,19 +6,19 @@ _×_
         _×_
           `SomeNamespace "cabal-version"`
           TriviaTree {
-            justAnnotation = [],
+            justAnnotation = [IsInjected],
             namedAnnotations = Map.fromList
               []},
         _×_
           `SomeNamespace "data-dir"`
           TriviaTree {
-            justAnnotation = [],
+            justAnnotation = [IsInjected],
             namedAnnotations = Map.fromList
               []},
         _×_
           `SomeNamespace "license"`
           TriviaTree {
-            justAnnotation = [],
+            justAnnotation = [IsInjected],
             namedAnnotations = Map.fromList
               []},
         _×_

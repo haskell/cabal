@@ -232,12 +232,13 @@ instance FieldGrammar ExactParsec ParsecFieldGrammar where
   optionalFieldDefAla fn _pack _extract def = ParsecFG (Set.singleton fn) Set.empty parser
     where
       markFieldName (t, x) = let t' = markTriviaTree fn t in  (t', x)
+      markInjected x = let t' = fromNamedTrivia fn [IsInjected] in  (t', x)
 
-      parser v fields = markFieldName <$> case Map.lookup fn fields of
-        Nothing -> (pure . pure) def
-        Just [] -> (pure . pure) def
-        Just [x] -> parseOne v x
-        Just xs@(_ : y : ys) -> do
+      parser v fields = case Map.lookup fn fields of
+        Nothing -> (pure . markInjected) def
+        Just [] -> (pure . markInjected) def
+        Just [x] -> markFieldName <$> parseOne v x
+        Just xs@(_ : y : ys) -> markFieldName <$> do
           warnMultipleSingularFields fn xs
           NE.last <$> traverse (parseOne v) (y :| ys)
 
