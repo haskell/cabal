@@ -80,8 +80,8 @@ _×_
         [0, 0, 0]},
     licenseRaw = Left NONE,
     licenseFiles = [],
-    copyright =
-    "some copyright text",
+    copyright = concat
+      ["some copyright\n", "text"],
     maintainer = "",
     author = "",
     stability = "",

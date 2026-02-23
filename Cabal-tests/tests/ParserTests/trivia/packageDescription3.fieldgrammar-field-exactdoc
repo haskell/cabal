@@ -7,7 +7,7 @@ Concat
           (Concat
             (Text "some copyright")
             (Place 1 0 (Text "")))
-          (Text "  text")))
+          (Text "text")))
       (Place
         1
         1
