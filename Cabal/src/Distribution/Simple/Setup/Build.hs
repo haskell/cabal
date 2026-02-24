@@ -151,7 +151,7 @@ buildOptions progDb showOrParseArgs =
       , option
           []
           ["semaphore"]
-          "semaphore"
+          "Use the specified semaphore so GHC can compile components in parallel"
           buildUseSemaphore
           (\v flags -> flags{buildUseSemaphore = v})
           (reqArg' "SEMAPHORE" Flag flagToList)
