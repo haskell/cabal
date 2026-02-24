@@ -4,6 +4,30 @@ _×_
     namedAnnotations = Map.fromList
       [
         _×_
+          `SomeNamespace "author"`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              [
+                _×_
+                  `SomeNamespace "author"`
+                  TriviaTree {
+                    justAnnotation = [IsInjected],
+                    namedAnnotations = Map.fromList
+                      []}]},
+        _×_
+          `SomeNamespace "bug-reports"`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              [
+                _×_
+                  `SomeNamespace "bug-reports"`
+                  TriviaTree {
+                    justAnnotation = [IsInjected],
+                    namedAnnotations = Map.fromList
+                      []}]},
+        _×_
           `SomeNamespace "cabal-version"`
           TriviaTree {
             justAnnotation = [],
@@ -19,17 +43,79 @@ _×_
                     namedAnnotations = Map.fromList
                       []}]},
         _×_
+          `SomeNamespace "category"`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              [
+                _×_
+                  `SomeNamespace "category"`
+                  TriviaTree {
+                    justAnnotation = [IsInjected],
+                    namedAnnotations = Map.fromList
+                      []}]},
+        _×_
+          `SomeNamespace "copyright"`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              [
+                _×_
+                  `SomeNamespace "some copyright\\ntext"`
+                  TriviaTree {
+                    justAnnotation = [
+                      ExactFieldPosition
+                        (Position 6 1)],
+                    namedAnnotations = Map.fromList
+                      []}]},
+        _×_
           `SomeNamespace "data-dir"`
           TriviaTree {
             justAnnotation = [IsInjected],
             namedAnnotations = Map.fromList
               []},
         _×_
+          `SomeNamespace "description"`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              [
+                _×_
+                  `SomeNamespace "description"`
+                  TriviaTree {
+                    justAnnotation = [IsInjected],
+                    namedAnnotations = Map.fromList
+                      []}]},
+        _×_
+          `SomeNamespace "homepage"`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              [
+                _×_
+                  `SomeNamespace "homepage"`
+                  TriviaTree {
+                    justAnnotation = [IsInjected],
+                    namedAnnotations = Map.fromList
+                      []}]},
+        _×_
           `SomeNamespace "license"`
           TriviaTree {
             justAnnotation = [IsInjected],
             namedAnnotations = Map.fromList
               []},
+        _×_
+          `SomeNamespace "maintainer"`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              [
+                _×_
+                  `SomeNamespace "maintainer"`
+                  TriviaTree {
+                    justAnnotation = [IsInjected],
+                    namedAnnotations = Map.fromList
+                      []}]},
         _×_
           `SomeNamespace "name"`
           TriviaTree {
@@ -51,6 +137,42 @@ _×_
                               ExactPosition (Position 3 9)],
                             namedAnnotations = Map.fromList
                               []}]}]},
+        _×_
+          `SomeNamespace "package-url"`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              [
+                _×_
+                  `SomeNamespace "package-url"`
+                  TriviaTree {
+                    justAnnotation = [IsInjected],
+                    namedAnnotations = Map.fromList
+                      []}]},
+        _×_
+          `SomeNamespace "stability"`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              [
+                _×_
+                  `SomeNamespace "stability"`
+                  TriviaTree {
+                    justAnnotation = [IsInjected],
+                    namedAnnotations = Map.fromList
+                      []}]},
+        _×_
+          `SomeNamespace "synopsis"`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              [
+                _×_
+                  `SomeNamespace "synopsis"`
+                  TriviaTree {
+                    justAnnotation = [IsInjected],
+                    namedAnnotations = Map.fromList
+                      []}]},
         _×_
           `SomeNamespace "version"`
           TriviaTree {
