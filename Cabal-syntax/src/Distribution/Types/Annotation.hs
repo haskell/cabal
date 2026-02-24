@@ -57,6 +57,7 @@ import qualified Data.Map as M
 import qualified Text.PrettyPrint as Disp
 
 import qualified Data.ByteString as BS
+import qualified Distribution.Utils.ShortText as ST
 
 type Namespace a =
   ( Typeable a
@@ -94,6 +95,7 @@ class Markable a where
   unmarkTriviaTree x t = fromMaybe mempty (M.lookup (SomeNamespace x) (namedAnnotations t))
 
 instance Markable BS.ByteString
+instance Markable ST.ShortText
 instance (Markable a, Namespace a) => Markable (Identity a)
 instance (Markable a, Namespace a) => Markable (Last a)
 

@@ -266,36 +266,46 @@ instance FieldGrammar ExactParsec ParsecFieldGrammar where
 
   freeTextFieldDef fn _ = ParsecFG (Set.singleton fn) Set.empty parser
     where
-      parser v fields = case Map.lookup fn fields of
-        Nothing -> (pure . pure) ""
-        Just [] -> (pure . pure) ""
+      markFieldName (t, x) = let t' = markTriviaTree fn t in  (t', x)
+      markInjected x = let t' = fromNamedTrivia fn [IsInjected] in  (t', x)
+
+      parser v fields = markFieldName <$> case Map.lookup fn fields of
+        Nothing -> (pure . markInjected) ""
+        Just [] -> (pure . markInjected) ""
         Just [x] -> parseOne v x
         Just xs@(_ : y : ys) -> do
           warnMultipleSingularFields fn xs
           NE.last <$> traverse (parseOne v) (y :| ys)
 
       parseOne v (MkNamelessField pos fls)
-        | null fls = (pure . pure) ""
-        | v >= CabalSpecV3_0 = (pure . pure) (fieldlinesToFreeText3 pos fls)
-        | otherwise = (pure . pure) (fieldlinesToFreeText fls)
+        | null fls = (pure . markInjected) ""
+        | v >= CabalSpecV3_0 = (pure . withPosition) (fieldlinesToFreeText3 pos fls)
+        | otherwise = (pure . withPosition) (fieldlinesToFreeText fls)
+          where
+            withPosition x = (fromNamedTrivia x [ExactFieldPosition pos], x)
 
   -- freeTextFieldDefST = defaultFreeTextFieldDefST
   freeTextFieldDefST fn _ = ParsecFG (Set.singleton fn) Set.empty parser
     where
-      parser v fields = case Map.lookup fn fields of
-        Nothing -> (pure . pure) mempty
-        Just [] -> (pure . pure) mempty
+      markFieldName (t, x) = let t' = markTriviaTree fn t in  (t', x)
+      markInjected x = let t' = fromNamedTrivia fn [IsInjected] in  (t', x)
+
+      parser v fields = markFieldName <$> case Map.lookup fn fields of
+        Nothing -> (pure . markInjected) mempty
+        Just [] -> (pure . markInjected) mempty
         Just [x] -> parseOne v x
         Just xs@(_ : y : ys) -> do
           warnMultipleSingularFields fn xs
           NE.last <$> traverse (parseOne v) (y :| ys)
 
       parseOne v (MkNamelessField pos fls) = case fls of
-        [] -> (pure . pure) mempty
-        [FieldLine _ bs] -> (pure . pure) (ShortText.unsafeFromUTF8BS bs)
+        [] -> (pure . markInjected) mempty
+        [FieldLine _ bs] -> (pure . withPosition) (ShortText.unsafeFromUTF8BS bs)
         _
-          | v >= CabalSpecV3_0 -> (pure . pure) (ShortText.toShortText $ fieldlinesToFreeText3 pos fls)
-          | otherwise -> (pure . pure) (ShortText.toShortText $ fieldlinesToFreeText fls)
+          | v >= CabalSpecV3_0 -> (pure . withPosition) (ShortText.toShortText $ fieldlinesToFreeText3 pos fls)
+          | otherwise -> (pure . withPosition) (ShortText.toShortText $ fieldlinesToFreeText fls)
+        where
+          withPosition x = (fromNamedTrivia x [ExactFieldPosition pos], x)
 
   monoidalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
@@ -440,10 +450,10 @@ fieldlinesToFreeText [FieldLine _ "."] = "."
 fieldlinesToFreeText fls = intercalate "\n" (map go fls)
   where
     go (FieldLine _ bs)
-      | s == "." = ""
+      | trim s == "." = ""
       | otherwise = s
       where
-        s = trim (fromUTF8BS bs)
+        s = fromUTF8BS bs
 
 fieldlinesToFreeText3 :: Position -> [FieldLine Position] -> String
 fieldlinesToFreeText3 _ [] = ""
