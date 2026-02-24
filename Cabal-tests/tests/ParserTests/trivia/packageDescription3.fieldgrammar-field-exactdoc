@@ -6,7 +6,7 @@ Concat
         (StickyConcat
           (Text "some copyright")
           (StickyConcat
-            (Place 0 0 (Text ""))
+            Newline
             (Text "text"))))
       (Place
         1
