@@ -1,28 +1,31 @@
 Concat
   (Concat
     (Concat
-      (Concat
-        (Text "copyright:")
-        (StickyConcat
-          (Text "some copyright")
-          (StickyConcat
-            Newline
-            (Text "text"))))
       (Place
         1
         1
         (Concat
           (Text "cabal-version:")
-          (Place 1 16 (Text ">=1.0")))))
+          (Place 1 16 (Text ">=1.0"))))
+      (Place
+        3
+        1
+        (Concat
+          (Text "name:")
+          (Place 3 9 (Text "base")))))
     (Place
-      3
+      4
       1
       (Concat
-        (Text "name:")
-        (Place 3 9 (Text "base")))))
+        (Text "version:")
+        (Place 4 20 (Text "0.0.0")))))
   (Place
-    4
+    6
     1
     (Concat
-      (Text "version:")
-      (Place 4 20 (Text "0.0.0"))))
+      (Text "copyright:")
+      (StickyConcat
+        (Text "some copyright")
+        (StickyConcat
+          Newline
+          (Text "text")))))

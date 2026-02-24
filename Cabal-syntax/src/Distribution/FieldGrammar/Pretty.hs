@@ -118,13 +118,15 @@ instance FieldGrammar ExactPretty PrettyFieldGrammar where
             | otherwise = showFreeText
 
   -- it's ok to just show, as showFreeText of empty string is empty.
-  freeTextFieldDef fn l = PrettyFG pp
-    where
-      pp v t s = ppField fn (showFT (aview l s))
-        where
-          showFT
-            | v >= CabalSpecV3_0 = showFreeTextV3
-            | otherwise = showFreeText
+  freeTextFieldDef fn l = PrettyFG $ \v t0 s ->
+    let x = aview l s
+        t = unmarkTriviaTree fn t0
+        fieldPositionOr0 = fromMaybe (Position 0 0) . atFieldPosition . justAnnotation
+        fieldNamePos = fieldPositionOr0 t
+        showFT
+          | v >= CabalSpecV3_0 = showFreeTextV3
+          | otherwise = showFreeText
+    in  ppTriviaField (fn, [ExactFieldPosition fieldNamePos]) [DocAnn (showFT x) mempty]
 
   freeTextFieldDefST = defaultFreeTextFieldDefST
 

@@ -282,7 +282,7 @@ instance FieldGrammar ExactParsec ParsecFieldGrammar where
         | v >= CabalSpecV3_0 = (pure . withPosition) (fieldlinesToFreeText3 pos fls)
         | otherwise = (pure . withPosition) (fieldlinesToFreeText fls)
           where
-            withPosition x = (fromNamedTrivia x [ExactFieldPosition pos], x)
+            withPosition x = (TriviaTree [ExactFieldPosition pos] mempty, x)
 
   -- freeTextFieldDefST = defaultFreeTextFieldDefST
   freeTextFieldDefST fn _ = ParsecFG (Set.singleton fn) Set.empty parser
@@ -305,7 +305,7 @@ instance FieldGrammar ExactParsec ParsecFieldGrammar where
           | v >= CabalSpecV3_0 -> (pure . withPosition) (ShortText.toShortText $ fieldlinesToFreeText3 pos fls)
           | otherwise -> (pure . withPosition) (ShortText.toShortText $ fieldlinesToFreeText fls)
         where
-          withPosition x = (fromNamedTrivia x [ExactFieldPosition pos], x)
+          withPosition x = (TriviaTree [ExactFieldPosition pos] mempty, x)
 
   monoidalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where

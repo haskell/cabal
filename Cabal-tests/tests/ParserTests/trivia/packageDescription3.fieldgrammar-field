@@ -57,17 +57,11 @@ _×_
         _×_
           `SomeNamespace "copyright"`
           TriviaTree {
-            justAnnotation = [],
+            justAnnotation = [
+              ExactFieldPosition
+                (Position 6 1)],
             namedAnnotations = Map.fromList
-              [
-                _×_
-                  `SomeNamespace "some copyright\\ntext"`
-                  TriviaTree {
-                    justAnnotation = [
-                      ExactFieldPosition
-                        (Position 6 1)],
-                    namedAnnotations = Map.fromList
-                      []}]},
+              []},
         _×_
           `SomeNamespace "data-dir"`
           TriviaTree {
