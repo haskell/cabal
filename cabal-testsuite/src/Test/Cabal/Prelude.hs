@@ -70,7 +70,7 @@ import qualified Data.ByteString.Base16 as Base16
 import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Char as Char
-import Data.List (intercalate, isInfixOf, isPrefixOf, stripPrefix)
+import Data.List (isInfixOf, isPrefixOf, stripPrefix)
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Network.Wait (waitTcpVerbose)
 import System.Directory
@@ -778,7 +778,7 @@ recordHeader :: [String] -> TestM ()
 recordHeader args = do
   env <- getTestEnv
   let mode = testRecordMode env
-      str_header = "# " ++ intercalate " " args ++ "\n"
+      str_header = "# " ++ unwords args ++ "\n"
       rec_header = C.pack str_header
   case mode of
     DoNotRecord -> return ()

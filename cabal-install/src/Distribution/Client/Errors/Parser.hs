@@ -232,7 +232,7 @@ renderParseErrorGeneral header err_header provenance extra_info errors warnings 
   unlines $
     [ warningsOrErrors <> " parsing" <> header' <> ":"
     ]
-      ++ [p | Just p <- [provenance]]
+      ++ catMaybes [provenance]
       ++ [""] -- Place a newline between the header and the errors/warnings
       -- Place a newline between each error and warning
       ++ intersperse "" (renderedWarnings ++ renderedErrors)

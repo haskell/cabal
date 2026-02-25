@@ -15,7 +15,7 @@ rawSGR code = "\x1b[" <> show code <> "m"
 
 -- | Render a series of `SGR` escape sequences.
 setSGR :: [SGR] -> String
-setSGR = concat . map renderSGR
+setSGR = concatMap renderSGR
 
 -- | All of the SGR sequences we want to use.
 data SGR

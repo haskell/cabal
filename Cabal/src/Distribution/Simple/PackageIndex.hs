@@ -734,7 +734,7 @@ dependencyGraph index = (graph, vertex_to_pkg, id_to_vertex)
     graph =
       Array.listArray
         bounds
-        [ [v | Just v <- map id_to_vertex (installedDepends pkg)]
+        [ mapMaybe id_to_vertex (installedDepends pkg)
         | pkg <- pkgs
         ]
 

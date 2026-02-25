@@ -31,6 +31,7 @@ module Distribution.Client.BuildReports.Anonymous
   --    showList,
   ) where
 
+import Data.Either (rights)
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
@@ -152,7 +153,7 @@ parseFields input = do
 
 parseBuildReportList :: BS.ByteString -> [BuildReport]
 parseBuildReportList str =
-  [report | Right report <- map parseBuildReport (split str)]
+  rights (map parseBuildReport $ split str)
   where
     split :: BS.ByteString -> [BS.ByteString]
     split = filter (not . BS.null) . unfoldr chunk . BS8.lines

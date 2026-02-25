@@ -61,7 +61,7 @@ upload verbosity repoCtxt mToken mUsername mPassword isCandidate paths = do
       repos = repoContextRepos repoCtxt
   transport <- repoContextGetTransport repoCtxt
   targetRepo <-
-    case [remoteRepo | Just remoteRepo <- map maybeRepoRemote repos] of
+    case mapMaybe maybeRepoRemote repos of
       [] -> dieWithException verbosity NoRemoteRepositories
       (r : rs) -> remoteRepoTryUpgradeToHttps verbosity transport (last (r :| rs))
   let targetRepoURI :: URI
@@ -120,7 +120,7 @@ uploadDoc verbosity repoCtxt mToken mUsername mPassword isCandidate path = do
   let repos = repoContextRepos repoCtxt
   transport <- repoContextGetTransport repoCtxt
   targetRepo <-
-    case [remoteRepo | Just remoteRepo <- map maybeRepoRemote repos] of
+    case mapMaybe maybeRepoRemote repos of
       [] -> dieWithException verbosity NoRemoteRepositories
       (r : rs) -> remoteRepoTryUpgradeToHttps verbosity transport (last (r :| rs))
   let targetRepoURI = remoteRepoURI targetRepo

@@ -992,7 +992,7 @@ installLibraries
               . take 1
               . sortBy (comparing (Down . fst))
               . PI.lookupPackageName installedIndex
-          globalLatest = concat (getLatest <$> globalPackages)
+          globalLatest = concatMap getLatest globalPackages
           globalEntries = GhcEnvFilePackageId . installedUnitId <$> globalLatest
           baseEntries =
             GhcEnvFileClearPackageDbStack : fmap GhcEnvFilePackageDb packageDbs

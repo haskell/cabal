@@ -86,7 +86,7 @@ instance Monoid TestShowDetails where
   mappend = (<>)
 
 instance Semigroup TestShowDetails where
-  a <> b = if a < b then b else a
+  a <> b = max a b
 
 data TestFlags = TestFlags
   { testCommonFlags :: !CommonSetupFlags

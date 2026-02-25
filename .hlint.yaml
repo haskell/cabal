@@ -2,7 +2,7 @@
 - ignore: {name: "Avoid NonEmpty.unzip"} # 1 hint
 - ignore: {name: "Avoid lambda"} # 50 hints
 - ignore: {name: "Avoid lambda using `infix`"} # 23 hints
-- ignore: {name: "Eta reduce"} # 137 hints
+- ignore: {name: "Eta reduce"} # 138 hints
 - ignore: {name: "Evaluate"} # 10 hints
 - ignore: {name: "Functor law"} # 10 hints
 - ignore: {name: "Fuse concatMap/map"} # 3 hints
@@ -27,7 +27,7 @@
 - ignore: {name: "Use ++"} # 4 hints
 - ignore: {name: "Use :"} # 29 hints
 - ignore: {name: "Use <$"} # 2 hints
-- ignore: {name: "Use <$>"} # 86 hints
+- ignore: {name: "Use <$>"} # 87 hints
 - ignore: {name: "Use <&>"} # 16 hints
 - ignore: {name: "Use <=<"} # 4 hints
 - ignore: {name: "Use =<<"} # 7 hints
@@ -35,8 +35,6 @@
 - ignore: {name: "Use Down"} # 3 hints
 - ignore: {name: "Use bimap"} # 7 hints
 - ignore: {name: "Use camelCase"} # 96 hints
-- ignore: {name: "Use catMaybes"} # 4 hints
-- ignore: {name: "Use concatMap"} # 2 hints
 - ignore: {name: "Use const"} # 36 hints
 - ignore: {name: "Use fmap"} # 23 hints
 - ignore: {name: "Use fold"} # 1 hint
@@ -47,16 +45,13 @@
 - ignore: {name: "Use map once"} # 7 hints
 - ignore: {name: "Use map with tuple-section"} # 3 hints
 - ignore: {name: "Use mapMaybe"} # 13 hints
-- ignore: {name: "Use max"} # 2 hints
 - ignore: {name: "Use maybe"} # 8 hints
 - ignore: {name: "Use newtype instead of data"} # 31 hints
 - ignore: {name: "Use null"} # 2 hints
 - ignore: {name: "Use record patterns"} # 16 hints
 - ignore: {name: "Use replicateM_"} # 2 hints
-- ignore: {name: "Use rights"} # 2 hints
 - ignore: {name: "Use typeRep"} # 2 hints
 - ignore: {name: "Use unless"} # 23 hints
-- ignore: {name: "Use unwords"} # 8 hints
 - ignore: {name: "Use void"} # 23 hints
 
 - arguments:
@@ -64,6 +59,7 @@
     - --ignore-glob=Cabal-tests/tests/custom-setup/CabalDoctestSetup.hs
     - --ignore-glob=Cabal-tests/tests/custom-setup/IdrisSetup.hs
     - --ignore-glob=cabal-testsuite/PackageTests/BuildWays/q/app/Main.hs
+    - --ignore-glob=cabal-testsuite/PackageTests/CMain/10168/src/Lib.hs
     - --ignore-glob=cabal-testsuite/PackageTests/CmmSources/src/Demo.hs
     - --ignore-glob=cabal-testsuite/PackageTests/CmmSourcesDyn/src/Demo.hs
     - --ignore-glob=cabal-testsuite/PackageTests/CmmSourcesExe/src/Demo.hs
@@ -78,7 +74,7 @@
     - --ignore-glob=cabal-testsuite/PackageTests/TemplateHaskell/dynamic/TH.hs
     - --ignore-glob=cabal-testsuite/PackageTests/TemplateHaskell/profiling/TH.hs
     - --ignore-glob=cabal-testsuite/PackageTests/TemplateHaskell/vanilla/TH.hs
+    - --ignore-glob=dist-*
     - --ignore-glob=templates/Paths_pkg.template.hs
     - --ignore-glob=templates/SPDX.LicenseExceptionId.template.hs
     - --ignore-glob=templates/SPDX.LicenseId.template.hs
-    - --ignore-glob=dist-*

@@ -69,13 +69,13 @@ data SavedArgsError
 instance Show SavedArgsError where
   show (SavedArgsErrorHelp args) =
     "unexpected flag '--help', saved command line was:\n"
-      ++ intercalate " " args
+      ++ unwords args
   show (SavedArgsErrorList args) =
     "unexpected flag '--list-options', saved command line was:\n"
-      ++ intercalate " " args
+      ++ unwords args
   show (SavedArgsErrorOther args errs) =
     "saved command line was:\n"
-      ++ intercalate " " args
+      ++ unwords args
       ++ "\n"
       ++ "encountered errors:\n"
       ++ intercalate "\n" errs

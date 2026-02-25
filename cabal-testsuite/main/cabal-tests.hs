@@ -396,9 +396,9 @@ main = do
             then logAll "OK"
             else do
                 unless (null unexpected_passes) . logAll $
-                    "UNEXPECTED OK: " ++ intercalate " " unexpected_passes
+                    "UNEXPECTED OK: " ++ unwords unexpected_passes
                 unless (null unexpected_fails) . logAll $
-                    "UNEXPECTED FAIL: " ++ intercalate " " unexpected_fails
+                    "UNEXPECTED FAIL: " ++ unwords unexpected_fails
                 exitFailure
 
 findTests :: IO [FilePath]
