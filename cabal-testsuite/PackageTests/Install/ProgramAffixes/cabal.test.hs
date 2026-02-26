@@ -1,5 +1,6 @@
 import Test.Cabal.Prelude
 import Data.Foldable (traverse_)
+import Data.Maybe (fromMaybe)
 
 -- Test that program affixes options result in successful installation:
 -- • Valid symlinks (--install-method=symlink)
@@ -19,7 +20,7 @@ main = cabalTest $ do
     traverse_ testAllAffixes ["symlink", "copy"]
   where
     mkAffixOption option = maybe [] (\a -> ["--program-" ++ option, a])
-    mkProgramName p s = maybe [] id p ++ "p" ++ maybe [] id s
+    mkProgramName p s = fromMaybe "" p ++ "p" ++ fromMaybe "" s
     testAffixes commonOpts prefix suffix = do
       cabal "install" (  commonOpts
                       ++ mkAffixOption "prefix" prefix

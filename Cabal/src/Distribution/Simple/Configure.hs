@@ -593,9 +593,8 @@ preConfigurePackage verbHandles cfg g_pkg_descr = do
 
   -- Make a data structure describing what components are enabled.
   let enabled :: ComponentRequestedSpec
-      enabled = case mb_cname of
-        Just cname -> OneComponentRequestedSpec cname
-        Nothing ->
+      enabled =
+        maybe
           ComponentRequestedSpec
             { -- The flag name (@--enable-tests@) is a
               -- little bit of a misnomer, because
@@ -605,9 +604,10 @@ preConfigurePackage verbHandles cfg g_pkg_descr = do
               -- @buildable: False@ might make it
               -- not possible to enable.
               testsRequested = fromFlag (configTests cfg)
-            , benchmarksRequested =
-                fromFlag (configBenchmarks cfg)
+            , benchmarksRequested = fromFlag (configBenchmarks cfg)
             }
+          OneComponentRequestedSpec
+          mb_cname
   -- Some sanity checks related to enabling components.
   when
     ( isJust mb_cname
@@ -1166,10 +1166,7 @@ finalCheckPackage
       -- TODO: Move this into a helper function.
       let langlist =
             nub $
-              catMaybes $
-                map
-                  defaultLanguage
-                  (enabledBuildInfos pkg_descr enabled)
+              mapMaybe defaultLanguage (enabledBuildInfos pkg_descr enabled)
       let langs = unsupportedLanguages comp langlist
       when (not (null langs)) $
         dieWithException verbosity $

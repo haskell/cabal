@@ -1058,7 +1058,7 @@ compatWithCreateProcess verbosity cp action =
 -- 'System.Process.CreatePipe'. Creating a pipe using 'CreatePipe' guarantees
 -- a 'Just' value for the corresponding handle.
 fromCreatePipe :: Maybe Handle -> Handle
-fromCreatePipe = maybe (error "fromCreatePipe: Nothing") id
+fromCreatePipe = fromMaybe (error "fromCreatePipe: Nothing")
 
 -- | Execute the given command with the given arguments and
 -- environment, exiting with the same exit code if the command fails.

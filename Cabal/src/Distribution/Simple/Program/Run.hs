@@ -261,9 +261,7 @@ getFullEnvironment
   -> IO [(String, String)]
 getFullEnvironment overrides = do
   menv <- getEffectiveEnvironment overrides
-  case menv of
-    Just env -> return env
-    Nothing -> getEnvironment
+  maybe getEnvironment return menv
 
 -- | Like the unix xargs program. Useful for when we've got very long command
 -- lines that might overflow an OS limit on command line length and so you

@@ -889,7 +889,7 @@ exResolve
 extractInstallPlan
   :: CI.SolverInstallPlan.SolverInstallPlan
   -> [(ExamplePkgName, ExamplePkgVersion)]
-extractInstallPlan = catMaybes . map confPkg . CI.SolverInstallPlan.toList
+extractInstallPlan = mapMaybe confPkg . CI.SolverInstallPlan.toList
   where
     confPkg :: CI.SolverInstallPlan.SolverPlanPackage -> Maybe (String, Int)
     confPkg (CI.SolverInstallPlan.Configured pkg) = srcPkg pkg

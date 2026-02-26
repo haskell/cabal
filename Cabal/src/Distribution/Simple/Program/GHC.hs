@@ -364,7 +364,7 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
     safeToFilterHoles :: Bool
     safeToFilterHoles =
       getAll . checkGhcFlags $
-        All . fromMaybe True . fmap getLast . foldMap notDeferred
+        All . maybe True getLast . foldMap notDeferred
       where
         notDeferred :: String -> Maybe (Last Bool)
         notDeferred "-fdefer-typed-holes" = Just . Last $ False

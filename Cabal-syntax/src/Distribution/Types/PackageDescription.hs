@@ -445,10 +445,7 @@ lookupComponent pkg (CBenchName name) =
   fmap CBench $ find ((name ==) . benchmarkName) (benchmarks pkg)
 
 getComponent :: PackageDescription -> ComponentName -> Component
-getComponent pkg cname =
-  case lookupComponent pkg cname of
-    Just cpnt -> cpnt
-    Nothing -> missingComponent
+getComponent pkg cname = fromMaybe missingComponent (lookupComponent pkg cname)
   where
     missingComponent =
       error $

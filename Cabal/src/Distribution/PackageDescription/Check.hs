@@ -884,7 +884,7 @@ checkGlobResult
   -- one).
   -> [GlobResult FilePath] -- List of glob results.
   -> [PackageCheck]
-checkGlobResult title fp rs = dirCheck ++ catMaybes (map getWarning rs)
+checkGlobResult title fp rs = dirCheck ++ mapMaybe getWarning rs
   where
     dirCheck
       | all (not . withoutNoMatchesWarning) rs =

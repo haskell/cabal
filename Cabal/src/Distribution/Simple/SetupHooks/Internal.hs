@@ -871,7 +871,7 @@ executeRulesUserOrSystem scope runDepsCmdData runCmdData verbosity lbi tgtInfo a
       Graph.graphFromEdges
         [ (rule, rId, nub $ mapMaybe directRuleDependencyMaybe allDeps)
         | (rId, rule) <- Map.toList allRules
-        , let dynDeps = fromMaybe [] (fst <$> Map.lookup rId dynDepsEdges)
+        , let dynDeps = maybe [] fst (Map.lookup rId dynDepsEdges)
               allDeps = staticDependencies rule ++ dynDeps
         ]
 
@@ -953,7 +953,7 @@ executeRulesUserOrSystem scope runDepsCmdData runCmdData verbosity lbi tgtInfo a
                 ) =
                   ruleFromVertex ruleVertex
               mbDyn = Map.lookup rId dynDepsEdges
-              allDeps = staticDeps ++ fromMaybe [] (fst <$> mbDyn)
+              allDeps = staticDeps ++ maybe [] fst mbDyn
           -- Check that the dependencies the rule expects are indeed present.
           resolvedDeps <- traverse (resolveDependency verbosity rId allRules) allDeps
           missingRuleDeps <- filterM (missingDep mbWorkDir) resolvedDeps
