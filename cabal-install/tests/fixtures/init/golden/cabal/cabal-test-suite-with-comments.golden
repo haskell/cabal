@@ -75,9 +75,6 @@ test-suite y-test
     -- Common RTS options
     import:           rts-options
 
-    -- Import common warning flags.
-    import:           warnings
-
     -- Base language which the package is written in.
     default-language: Haskell2010
 
