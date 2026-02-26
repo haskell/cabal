@@ -1973,17 +1973,34 @@ Most users generally won't need these.
                --no-prefer-oldest
     :synopsis: Prefer the oldest versions of packages available.
     :since:    3.10
+    :deprecated:
 
     :default:  False
 
     By default, when solver has a choice of multiple versions of the same
     package, it will first try to derive a build plan with the latest
-    version. This flag switches the behaviour, making the solver
-    to prefer the oldest packages available.
+    version, except if it can use a version from the global package database.
+    This flag switches the behaviour, making the solver to prefer the oldest packages available.
 
     The primary use case is to help users in establishing lower bounds
     of upstream dependencies.
 
     The command line variant of this field is ``--(no-)prefer-oldest``.
+
+.. cfg-field:: prefer-version: (oldest|latest|latest-except-installed)
+               --prefer-version=(oldest|latest|latest-except-installed)
+    :synopsis: Specify how to pick package versions
+    :since:    3.18
+
+    :default:  latest-except-installed
+
+    By default, when solver has a choice of multiple versions of the same
+    package, it will first try to derive a build plan with the latest version,
+    except if it can use a version from the global package database.  This flag
+    switches the behaviour, allowing the solver to prefer the latest packages
+    (irrespective of the global package DB) or the oldest packages available.
+
+    The primary use case of picking the oldest package is to help users in
+    establishing lower bounds of upstream dependencies.
 
 .. include:: references.inc

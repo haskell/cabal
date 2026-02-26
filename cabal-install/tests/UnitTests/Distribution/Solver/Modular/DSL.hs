@@ -793,7 +793,7 @@ exResolve
   -> FineGrainedConflicts
   -> MinimizeConflictSet
   -> IndependentGoals
-  -> PreferOldest
+  -> PreferVersion
   -> ReorderGoals
   -> AllowBootLibInstalls
   -> OnlyConstrained
@@ -863,7 +863,7 @@ exResolve
                 setFineGrainedConflicts fineGrainedConflicts $
                   setMinimizeConflictSet minimizeConflictSet $
                     setIndependentGoals indepGoals $
-                      (if asBool prefOldest then setPreferenceDefault PreferAllOldest else id) $
+                      (if prefOldest == PreferOldest then setPreferenceDefault PreferAllOldest else id) $
                         setReorderGoals reorder $
                           setMaxBackjumps mbj $
                             setAllowBootLibInstalls allowBootLibInstalls $

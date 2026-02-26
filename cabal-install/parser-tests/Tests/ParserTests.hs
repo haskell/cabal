@@ -7,6 +7,7 @@ module Tests.ParserTests (parserTests) where
 import Control.Monad.IO.Class
   ( MonadIO (liftIO)
   )
+import GHC.Stack (HasCallStack)
 import Data.Either (fromRight)
 import qualified Data.Map as Map
 import Data.Maybe (fromJust)
@@ -44,7 +45,7 @@ import Distribution.Solver.Types.Settings
   , IndependentGoals (..)
   , MinimizeConflictSet (..)
   , OnlyConstrained (..)
-  , PreferOldest (..)
+  , PreferVersion (..)
   , ReorderGoals (..)
   , StrongFlags (..)
   )
@@ -227,7 +228,7 @@ testProjectConfigShared = do
     projectConfigOnlyConstrained = Flag OnlyConstrainedAll
     projectConfigPerComponent = Flag True
     projectConfigIndependentGoals = Flag (IndependentGoals True)
-    projectConfigPreferOldest = Flag (PreferOldest True)
+    projectConfigPreferVersion = Flag PreferOldest
     projectConfigProgPathExtra = toNubList ["/foo/bar", "/baz/quux"]
     projectConfigMultiRepl = toFlag True
 
@@ -577,7 +578,7 @@ readConfig testSubDir projectFileName = do
         readProjectFileSkeletonLegacy verbosity httpTransport distDirLayout extensionName extensionDescription
   return (parsec, legacy)
 
-assertConfigEquals :: (Eq a, Show a) => a -> ProjectConfigSkeleton -> ProjectConfigSkeleton -> (ProjectConfigSkeleton -> a) -> Assertion
+assertConfigEquals :: (Eq a, Show a, HasCallStack) => a -> ProjectConfigSkeleton -> ProjectConfigSkeleton -> (ProjectConfigSkeleton -> a) -> Assertion
 assertConfigEquals expected config configLegacy access = do
   assertEqual "Expectation does not match result of Legacy parser" expected actualLegacy
   assertEqual "Parsed Config does not match expected" expected actual

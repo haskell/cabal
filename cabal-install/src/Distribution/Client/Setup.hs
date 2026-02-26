@@ -244,6 +244,7 @@ import Control.Exception
 import Data.List
   ( deleteFirstsBy
   )
+import Data.Functor (($>))
 import System.FilePath
   ( (</>)
   )
@@ -1410,7 +1411,7 @@ data FetchFlags = FetchFlags
   , fetchFineGrainedConflicts :: Flag FineGrainedConflicts
   , fetchMinimizeConflictSet :: Flag MinimizeConflictSet
   , fetchIndependentGoals :: Flag IndependentGoals
-  , fetchPreferOldest :: Flag PreferOldest
+  , fetchPreferVersion :: Flag PreferVersion
   , fetchShadowPkgs :: Flag ShadowPkgs
   , fetchStrongFlags :: Flag StrongFlags
   , fetchAllowBootLibInstalls :: Flag AllowBootLibInstalls
@@ -1433,7 +1434,7 @@ defaultFetchFlags =
     , fetchFineGrainedConflicts = Flag (FineGrainedConflicts True)
     , fetchMinimizeConflictSet = Flag (MinimizeConflictSet False)
     , fetchIndependentGoals = Flag (IndependentGoals False)
-    , fetchPreferOldest = Flag (PreferOldest False)
+    , fetchPreferVersion = Flag PreferLatestExceptInstalled
     , fetchShadowPkgs = Flag (ShadowPkgs False)
     , fetchStrongFlags = Flag (StrongFlags False)
     , fetchAllowBootLibInstalls = Flag (AllowBootLibInstalls False)
@@ -1516,8 +1517,8 @@ fetchCommand =
             (\v flags -> flags{fetchMinimizeConflictSet = v})
             fetchIndependentGoals
             (\v flags -> flags{fetchIndependentGoals = v})
-            fetchPreferOldest
-            (\v flags -> flags{fetchPreferOldest = v})
+            fetchPreferVersion
+            (\v flags -> flags{fetchPreferVersion = v})
             fetchShadowPkgs
             (\v flags -> flags{fetchShadowPkgs = v})
             fetchStrongFlags
@@ -1545,7 +1546,7 @@ data FreezeFlags = FreezeFlags
   , freezeFineGrainedConflicts :: Flag FineGrainedConflicts
   , freezeMinimizeConflictSet :: Flag MinimizeConflictSet
   , freezeIndependentGoals :: Flag IndependentGoals
-  , freezePreferOldest :: Flag PreferOldest
+  , freezePreferVersion :: Flag PreferVersion
   , freezeShadowPkgs :: Flag ShadowPkgs
   , freezeStrongFlags :: Flag StrongFlags
   , freezeAllowBootLibInstalls :: Flag AllowBootLibInstalls
@@ -1566,7 +1567,7 @@ defaultFreezeFlags =
     , freezeFineGrainedConflicts = Flag (FineGrainedConflicts True)
     , freezeMinimizeConflictSet = Flag (MinimizeConflictSet False)
     , freezeIndependentGoals = Flag (IndependentGoals False)
-    , freezePreferOldest = Flag (PreferOldest False)
+    , freezePreferVersion = Flag PreferLatestExceptInstalled
     , freezeShadowPkgs = Flag (ShadowPkgs False)
     , freezeStrongFlags = Flag (StrongFlags False)
     , freezeAllowBootLibInstalls = Flag (AllowBootLibInstalls False)
@@ -1638,8 +1639,8 @@ freezeCommand =
             (\v flags -> flags{freezeMinimizeConflictSet = v})
             freezeIndependentGoals
             (\v flags -> flags{freezeIndependentGoals = v})
-            freezePreferOldest
-            (\v flags -> flags{freezePreferOldest = v})
+            freezePreferVersion
+            (\v flags -> flags{freezePreferVersion = v})
             freezeShadowPkgs
             (\v flags -> flags{freezeShadowPkgs = v})
             freezeStrongFlags
@@ -2241,7 +2242,7 @@ data InstallFlags = InstallFlags
   , installFineGrainedConflicts :: Flag FineGrainedConflicts
   , installMinimizeConflictSet :: Flag MinimizeConflictSet
   , installIndependentGoals :: Flag IndependentGoals
-  , installPreferOldest :: Flag PreferOldest
+  , installPreferVersion :: Flag PreferVersion
   , installShadowPkgs :: Flag ShadowPkgs
   , installStrongFlags :: Flag StrongFlags
   , installAllowBootLibInstalls :: Flag AllowBootLibInstalls
@@ -2286,7 +2287,7 @@ defaultInstallFlags =
     , installFineGrainedConflicts = Flag (FineGrainedConflicts True)
     , installMinimizeConflictSet = Flag (MinimizeConflictSet False)
     , installIndependentGoals = Flag (IndependentGoals False)
-    , installPreferOldest = Flag (PreferOldest False)
+    , installPreferVersion = Flag PreferLatestExceptInstalled
     , installShadowPkgs = Flag (ShadowPkgs False)
     , installStrongFlags = Flag (StrongFlags False)
     , installAllowBootLibInstalls = Flag (AllowBootLibInstalls False)
@@ -2646,8 +2647,8 @@ installOptions showOrParseArgs =
       (\v flags -> flags{installMinimizeConflictSet = v})
       installIndependentGoals
       (\v flags -> flags{installIndependentGoals = v})
-      installPreferOldest
-      (\v flags -> flags{installPreferOldest = v})
+      installPreferVersion
+      (\v flags -> flags{installPreferVersion = v})
       installShadowPkgs
       (\v flags -> flags{installShadowPkgs = v})
       installStrongFlags
@@ -3599,8 +3600,8 @@ optionSolverFlags
   -> (Flag MinimizeConflictSet -> flags -> flags)
   -> (flags -> Flag IndependentGoals)
   -> (Flag IndependentGoals -> flags -> flags)
-  -> (flags -> Flag PreferOldest)
-  -> (Flag PreferOldest -> flags -> flags)
+  -> (flags -> Flag PreferVersion)
+  -> (Flag PreferVersion -> flags -> flags)
   -> (flags -> Flag ShadowPkgs)
   -> (Flag ShadowPkgs -> flags -> flags)
   -> (flags -> Flag StrongFlags)
@@ -3687,9 +3688,21 @@ optionSolverFlags
         []
         ["prefer-oldest"]
         "Prefer the oldest (instead of the latest) versions of packages available. Useful to determine lower bounds in the build-depends section."
-        (fmap asBool . getpo)
-        (setpo . fmap PreferOldest)
+        ((\x -> if x == Flag PreferOldest then Flag True else NoFlag) . getpo)
+        (setpo . (\x -> x $> PreferOldest))
         (yesNoOpt showOrParseArgs)
+    , option
+        []
+        ["prefer-version"]
+        "" -- TODO ...
+        (getpo)
+        (setpo)
+        (reqArg "oldest|latest|legacy"
+            ( parsecToReadEErr show --(unexpectMsgString)
+                --(\err -> "Error parsing prefer-version: " ++ err)
+                (toFlag `fmap` parsec)
+            )
+           (flagToList . fmap prettyShow))
     , option
         []
         ["shadow-installed-packages"]

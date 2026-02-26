@@ -1353,18 +1353,12 @@ planPackages
           . setAllowBootLibInstalls solverSettingAllowBootLibInstalls
           . setOnlyConstrained solverSettingOnlyConstrained
           . setSolverVerbosity verbosity
-          -- TODO: [required eventually] decide if we need to prefer
-          -- installed for global packages, or prefer latest even for
-          -- global packages. Perhaps should be configurable but with a
-          -- different name than "upgrade-dependencies".
           . setPreferenceDefault
-            ( if Cabal.asBool solverSettingPreferOldest
-                then PreferAllOldest
-                else PreferLatestForSelected
+            ( case solverSettingPreferVersion of
+                PreferOldest -> PreferAllOldest
+                PreferLatest -> PreferAllLatest
+                PreferLatestExceptInstalled -> PreferLatestForSelected
             )
-          {-(if solverSettingUpgradeDeps
-               then PreferAllLatest
-               else PreferLatestForSelected)-}
 
           . removeLowerBounds solverSettingAllowOlder
           . removeUpperBounds solverSettingAllowNewer

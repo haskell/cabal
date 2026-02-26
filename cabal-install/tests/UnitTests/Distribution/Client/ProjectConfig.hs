@@ -636,7 +636,7 @@ instance Arbitrary ProjectConfigShared where
     projectConfigOnlyConstrained <- arbitrary
     projectConfigPerComponent <- arbitrary
     projectConfigIndependentGoals <- arbitrary
-    projectConfigPreferOldest <- arbitrary
+    projectConfigPreferVersion <- arbitrary
     projectConfigProgPathExtra <- toNubList <$> listOf arbitraryShortToken
     projectConfigMultiRepl <- arbitrary
     return ProjectConfigShared{..}
@@ -683,7 +683,7 @@ instance Arbitrary ProjectConfigShared where
         <*> shrinker projectConfigOnlyConstrained
         <*> shrinker projectConfigPerComponent
         <*> shrinker projectConfigIndependentGoals
-        <*> shrinker projectConfigPreferOldest
+        <*> shrinker projectConfigPreferVersion
         <*> shrinker projectConfigProgPathExtra
         <*> shrinker projectConfigMultiRepl
     where
@@ -1046,8 +1046,13 @@ instance Arbitrary MinimizeConflictSet where
 instance Arbitrary IndependentGoals where
   arbitrary = IndependentGoals <$> arbitrary
 
-instance Arbitrary PreferOldest where
-  arbitrary = PreferOldest <$> arbitrary
+instance Arbitrary PreferVersion where
+  arbitrary =
+    oneof
+      [ pure PreferOldest
+      , pure PreferLatest
+      , pure PreferLatestExceptInstalled
+      ]
 
 instance Arbitrary StrongFlags where
   arbitrary = StrongFlags <$> arbitrary

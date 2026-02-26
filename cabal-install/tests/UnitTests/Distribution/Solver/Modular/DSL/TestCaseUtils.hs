@@ -73,7 +73,7 @@ independentGoals test = test{testIndepGoals = IndependentGoals True}
 
 -- | Combinator to turn on --prefer-oldest
 preferOldest :: SolverTest -> SolverTest
-preferOldest test = test{testPreferOldest = PreferOldest True}
+preferOldest test = test{testPreferVersion = PreferOldest}
 
 allowBootLibInstalls :: SolverTest -> SolverTest
 allowBootLibInstalls test =
@@ -130,7 +130,7 @@ data SolverTest = SolverTest
   , testFineGrainedConflicts :: FineGrainedConflicts
   , testMinimizeConflictSet :: MinimizeConflictSet
   , testIndepGoals :: IndependentGoals
-  , testPreferOldest :: PreferOldest
+  , testPreferVersion :: PreferVersion
   , testAllowBootLibInstalls :: AllowBootLibInstalls
   , testOnlyConstrained :: OnlyConstrained
   , testEnableBackjumping :: EnableBackjumping
@@ -234,7 +234,7 @@ mkTestExtLangPC exts langs mPkgConfigDb db label targets result =
     , testFineGrainedConflicts = FineGrainedConflicts True
     , testMinimizeConflictSet = MinimizeConflictSet False
     , testIndepGoals = IndependentGoals False
-    , testPreferOldest = PreferOldest False
+    , testPreferVersion = PreferLatestExceptInstalled
     , testAllowBootLibInstalls = AllowBootLibInstalls False
     , testOnlyConstrained = OnlyConstrainedNone
     , testEnableBackjumping = EnableBackjumping True
@@ -267,7 +267,7 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
             testFineGrainedConflicts
             testMinimizeConflictSet
             testIndepGoals
-            testPreferOldest
+            testPreferVersion
             (ReorderGoals False)
             testAllowBootLibInstalls
             testOnlyConstrained

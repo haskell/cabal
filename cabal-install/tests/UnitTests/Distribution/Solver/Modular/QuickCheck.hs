@@ -79,7 +79,7 @@ tests =
                 (ReorderGoals False)
                 (CountConflicts True)
                 indepGoals
-                (PreferOldest False)
+                PreferLatestExceptInstalled
                 (getBlind <$> goalOrder)
             targets = testTargets test
             targets2 = case targetOrder of
@@ -100,7 +100,7 @@ tests =
                 reorderGoals
                 (CountConflicts True)
                 indep
-                (PreferOldest False)
+                PreferLatestExceptInstalled
                 Nothing
          in counterexample (showResults r1 r2) $
               noneReachedBackjumpLimit [r1, r2] ==>
@@ -116,7 +116,7 @@ tests =
                 reorderGoals
                 (CountConflicts True)
                 indepGoals
-                (PreferOldest False)
+                PreferLatestExceptInstalled
                 Nothing
          in counterexample (showResults r1 r2) $
               noneReachedBackjumpLimit [r1, r2] ==>
@@ -132,15 +132,15 @@ tests =
                 reorderGoals
                 (CountConflicts True)
                 indepGoals
-                (PreferOldest False)
+                PreferLatestExceptInstalled
                 Nothing
          in counterexample (showResults r1 r2) $
               noneReachedBackjumpLimit [r1, r2] ==>
                 isRight (resultPlan r1) === isRight (resultPlan r2)
   , testPropertyWithSeed "prefer oldest does not affect solvability" $
       \test reorderGoals indepGoals ->
-        let r1 = solve' (PreferOldest True) test
-            r2 = solve' (PreferOldest False) test
+        let r1 = solve' PreferOldest test
+            r2 = solve' PreferLatestExceptInstalled test
             solve' prefOldest =
               solve
                 (EnableBackjumping True)
@@ -173,7 +173,7 @@ tests =
                 reorderGoals
                 (CountConflicts False)
                 indepGoals
-                (PreferOldest False)
+                PreferLatestExceptInstalled
                 Nothing
          in counterexample (showResults r1 r2) $
               noneReachedBackjumpLimit [r1, r2] ==>
@@ -190,7 +190,7 @@ tests =
                 reorderGoals
                 (CountConflicts False)
                 indepGoals
-                (PreferOldest False)
+                PreferLatestExceptInstalled
                 Nothing
          in counterexample (showResults r1 r2) $
               noneReachedBackjumpLimit [r1, r2] ==>
@@ -231,7 +231,7 @@ solve
   -> ReorderGoals
   -> CountConflicts
   -> IndependentGoals
-  -> PreferOldest
+  -> PreferVersion
   -> Maybe VarOrdering
   -> SolverTest
   -> Result
@@ -532,10 +532,13 @@ instance Arbitrary IndependentGoals where
 
   shrink (IndependentGoals indep) = [IndependentGoals False | indep]
 
-instance Arbitrary PreferOldest where
-  arbitrary = PreferOldest <$> arbitrary
-
-  shrink (PreferOldest prefOldest) = [PreferOldest False | prefOldest]
+instance Arbitrary PreferVersion where
+  arbitrary =
+    oneof
+      [ pure PreferOldest
+      , pure PreferLatest
+      , pure PreferLatestExceptInstalled
+      ]
 
 instance Arbitrary Component where
   arbitrary =

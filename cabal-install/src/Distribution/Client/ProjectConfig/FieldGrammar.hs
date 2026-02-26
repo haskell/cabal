@@ -21,6 +21,8 @@ import Distribution.Simple.InstallDirs
 import Distribution.Solver.Types.ConstraintSource (ConstraintSource (..))
 import Distribution.Solver.Types.ProjectConfigPath
 import Distribution.Types.PackageVersionConstraint (PackageVersionConstraint (..))
+import Data.Bool (bool)
+import Distribution.Solver.Types.Settings (PreferVersion(..))
 
 projectConfigFieldGrammar :: ProjectConfigPath -> [String] -> ParsecFieldGrammar' ProjectConfig
 projectConfigFieldGrammar source knownPrograms =
@@ -105,7 +107,7 @@ projectConfigSharedFieldGrammar source =
     <*> optionalFieldDef "reject-unconstrained-dependencies" L.projectConfigOnlyConstrained mempty
     <*> optionalFieldDef "per-component" L.projectConfigPerComponent mempty
     <*> optionalFieldDef "independent-goals" L.projectConfigIndependentGoals mempty
-    <*> optionalFieldDef "prefer-oldest" L.projectConfigPreferOldest mempty
+    <*> packageConfigPreferVersion
     <*> monoidalFieldAla "extra-prog-path-shared-only" (alaNubList' FSep FilePathNT) L.projectConfigProgPathExtra
     <*> optionalFieldDef "multi-repl" L.projectConfigMultiRepl mempty
 
@@ -263,3 +265,10 @@ packageConfigCoverageGrammar =
     <$> optionalFieldDef "coverage" L.packageConfigCoverage mempty
     <*> optionalFieldDef "library-coverage" L.packageConfigCoverage mempty
       ^^^ deprecatedSince CabalSpecV1_22 "Please use 'coverage' field instead."
+
+packageConfigPreferVersion :: ParsecFieldGrammar ProjectConfigShared (Flag PreferVersion)
+packageConfigPreferVersion =
+  mappend <$> (fmap (bool PreferLatestExceptInstalled PreferOldest) <$> (optionalFieldDef "prefer-oldest" L.projectConfigPreferOldest mempty)
+               ^^^ deprecatedSince CabalSpecV1_22 "Please use 'coverage' field instead."
+              )
+          <*> (optionalFieldDef "prefer-version" L.projectConfigPreferVersion mempty)
