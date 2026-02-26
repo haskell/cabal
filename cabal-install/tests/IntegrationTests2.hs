@@ -2623,6 +2623,7 @@ testConfigOptionComments = do
   "-- minimize-conflict-set" `assertHasCommentLine` "minimize-conflict-set"
   "-- independent-goals" `assertHasCommentLine` "independent-goals"
   "-- prefer-oldest" `assertHasCommentLine` "prefer-oldest"
+  "-- prefer-version" `assertHasCommentLine` "prefer-version"
   "-- shadow-installed-packages" `assertHasCommentLine` "shadow-installed-packages"
   "-- strong-flags" `assertHasCommentLine` "strong-flags"
   "-- allow-boot-library-installs" `assertHasCommentLine` "allow-boot-library-installs"
