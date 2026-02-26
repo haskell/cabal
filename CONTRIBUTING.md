@@ -277,19 +277,6 @@ you push a fix of a whitespace violation, please do so in a _separate commit_. F
   support window, except Template Haskell, which would cause
   bootstrapping problems in the GHC compilation process.
 
-* Our GHC support window is five years for the Cabal library and three
-  years for cabal-install: that is, the Cabal library must be
-  buildable out-of-the-box with the dependencies that shipped with GHC
-  for at least five years.  GitHub Actions checks this, so most
-  developers submit a PR to see if their code works on all these
-  versions of GHC.  `cabal-install` must also be buildable on all
-  supported GHCs, although it does not have to be buildable
-  out-of-the-box. Instead, the `cabal-install/bootstrap.sh` script
-  must be able to download and install all of the dependencies (this
-  is also checked by CI). Also, self-upgrade to the latest version
-  (i.e. `cabal install cabal-install`) must work with all versions of
-  `cabal-install` released during the last three years.
-
 * `Cabal` has its own Prelude, in `Distribution.Compat.Prelude`,
   that provides a compatibility layer and exports some commonly
   used additional functions. Use it in all new modules.
