@@ -35,6 +35,7 @@ data CabalSpecVersion
   | CabalSpecV3_16
   | -- 3.18: remove build-type: Make
     CabalSpecV3_18
+  | CabalSpecV3_20
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Data, Generic)
 
 instance Binary CabalSpecVersion
@@ -45,6 +46,7 @@ instance NFData CabalSpecVersion
 --
 -- @since 3.0.0.0
 showCabalSpecVersion :: CabalSpecVersion -> String
+showCabalSpecVersion CabalSpecV3_20 = "3.20"
 showCabalSpecVersion CabalSpecV3_18 = "3.18"
 showCabalSpecVersion CabalSpecV3_16 = "3.16"
 showCabalSpecVersion CabalSpecV3_14 = "3.14"
@@ -76,6 +78,7 @@ cabalSpecLatest = CabalSpecV3_16
 -- It may fail if for recent versions the version is not exact.
 cabalSpecFromVersionDigits :: [Int] -> Maybe CabalSpecVersion
 cabalSpecFromVersionDigits v
+  | v == [3, 20] = Just CabalSpecV3_20
   | v == [3, 18] = Just CabalSpecV3_18
   | v == [3, 16] = Just CabalSpecV3_16
   | v == [3, 14] = Just CabalSpecV3_14
@@ -102,6 +105,7 @@ cabalSpecFromVersionDigits v
 
 -- | @since 3.4.0.0
 cabalSpecToVersionDigits :: CabalSpecVersion -> [Int]
+cabalSpecToVersionDigits CabalSpecV3_20 = [3, 20]
 cabalSpecToVersionDigits CabalSpecV3_18 = [3, 18]
 cabalSpecToVersionDigits CabalSpecV3_16 = [3, 16]
 cabalSpecToVersionDigits CabalSpecV3_14 = [3, 14]
