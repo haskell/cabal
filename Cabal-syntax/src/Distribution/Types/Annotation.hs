@@ -35,6 +35,7 @@ module Distribution.Types.Annotation
   , atPosition
   , atFieldPosition
   , atSectionPosition
+  , getExactRepr
   , isInjected
   , hasTrailingSymbol
   , hasLeadingSymbol
@@ -160,6 +161,12 @@ atSectionPosition [] = Nothing
 atSectionPosition (t : ts) = case t of
   ExactSectionPosition pos -> Just pos
   _ -> atSectionPosition ts
+
+getExactRepr :: Trivia -> Maybe [(Position, String)]
+getExactRepr [] = Nothing
+getExactRepr (t : ts) = case t of
+  ExactRepr repr -> Just repr
+  _ -> getExactRepr ts
 
 triviaToDoc :: Trivia -> Disp.Doc -> Disp.Doc
 triviaToDoc [] x = x

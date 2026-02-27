@@ -17,7 +17,7 @@ import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
 import Distribution.Compat.Newtype
 import Distribution.Compat.Prelude
-import Distribution.Fields.Field (FieldName)
+import Distribution.Fields.Field (FieldName, FieldLine(..))
 import Distribution.Fields.Pretty (PrettyField (..), PrettyFieldLine (..))
 import Distribution.Pretty (ExactPretty (..), Pretty, showFreeText, showFreeTextV3)
 import Distribution.Utils.Generic (toUTF8BS)
@@ -146,7 +146,15 @@ instance FieldGrammar ExactPretty PrettyFieldGrammar where
         showFT
           | v >= CabalSpecV3_0 = showFreeTextV3
           | otherwise = showFreeText
-    in  ppTriviaField (fn, [ExactFieldPosition fieldNamePos]) [DocAnn (showFT $ ST.fromShortText x) tChildren]
+    in
+      case getExactRepr (justAnnotation tChildren) of
+        Just exactFieldLines | not (null exactFieldLines) ->
+          let toFieldLine (pos, line) = PrettyFieldLine [ExactPosition pos] (PP.text line)
+          in  [PrettyField [ExactFieldPosition fieldNamePos] fn (map toFieldLine exactFieldLines)
+              ]
+
+        _ -> ppTriviaField (fn, [ExactFieldPosition fieldNamePos]) [DocAnn (showFT $ ST.fromShortText x) tChildren]
+
 
   monoidalFieldAla fn _pack l = PrettyFG pp
     where
