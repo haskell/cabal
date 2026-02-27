@@ -34,6 +34,8 @@ import Data.List (groupBy)
 import Debug.Pretty.Simple
 import Distribution.FieldGrammar.Class
 
+import qualified Distribution.Utils.ShortText as ST
+
 import qualified Data.Map as M
 
 newtype PrettyFieldGrammar s a = PrettyFG
@@ -109,26 +111,42 @@ instance FieldGrammar ExactPretty PrettyFieldGrammar where
       in  if isInjected (justAnnotation t) then []
           else ppTriviaField (fn, [ExactFieldPosition fieldNamePos]) (exactPrettyVersioned v t (pack' _pack x))
 
-  freeTextField fn l = PrettyFG pp
-    where
-      pp v t s = maybe mempty (ppField fn . showFT) (aview l s)
-        where
-          showFT
+  freeTextField fn l = PrettyFG $ \v t0 s ->
+    let mx = aview l s
+        t = unmarkTriviaTree fn t0
+        fieldPositionOr0 = fromMaybe (Position 0 0) . atFieldPosition . justAnnotation
+        fieldNamePos = fieldPositionOr0 t
+        showFT
             | v >= CabalSpecV3_0 = showFreeTextV3
             | otherwise = showFreeText
+    in case mx of
+        Nothing -> []
+        Just x ->
+          let tChildren = unmarkTriviaTree x t
+          in  ppTriviaField (fn, [ExactFieldPosition fieldNamePos]) [DocAnn (showFT x) tChildren]
 
   -- it's ok to just show, as showFreeText of empty string is empty.
   freeTextFieldDef fn l = PrettyFG $ \v t0 s ->
     let x = aview l s
         t = unmarkTriviaTree fn t0
+        tChildren = unmarkTriviaTree x t
         fieldPositionOr0 = fromMaybe (Position 0 0) . atFieldPosition . justAnnotation
         fieldNamePos = fieldPositionOr0 t
         showFT
           | v >= CabalSpecV3_0 = showFreeTextV3
           | otherwise = showFreeText
-    in  ppTriviaField (fn, [ExactFieldPosition fieldNamePos]) [DocAnn (showFT x) mempty]
+    in  ppTriviaField (fn, [ExactFieldPosition fieldNamePos]) [DocAnn (showFT x) tChildren]
 
-  freeTextFieldDefST = defaultFreeTextFieldDefST
+  freeTextFieldDefST fn l = PrettyFG $ \v t0 s ->
+    let x = aview l s
+        t = unmarkTriviaTree fn t0
+        tChildren = unmarkTriviaTree x t
+        fieldPositionOr0 = fromMaybe (Position 0 0) . atFieldPosition . justAnnotation
+        fieldNamePos = fieldPositionOr0 t
+        showFT
+          | v >= CabalSpecV3_0 = showFreeTextV3
+          | otherwise = showFreeText
+    in  ppTriviaField (fn, [ExactFieldPosition fieldNamePos]) [DocAnn (showFT $ ST.fromShortText x) tChildren]
 
   monoidalFieldAla fn _pack l = PrettyFG pp
     where

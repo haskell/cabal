@@ -36,5 +36,18 @@
     "copyright"
     [
       PrettyFieldLine
-        []
+        [
+          ExactRepr
+            [
+              _×_
+                (Position 6 14)
+                "some copyright",
+              _×_ (Position 7 5) "text",
+              _×_ (Position 8 6) "foo",
+              _×_ (Position 9 7) "bar",
+              _×_ (Position 10 7) ".",
+              _×_ (Position 11 8) "baz",
+              _×_ (Position 12 7) "bar",
+              _×_ (Position 13 6) "foo",
+              _×_ (Position 14 5) "text"]]
         `some copyright\xa;text\xa; foo\xa;  bar\xa;  .\xa;   baz\xa;  bar\xa; foo\xa;text`]]
