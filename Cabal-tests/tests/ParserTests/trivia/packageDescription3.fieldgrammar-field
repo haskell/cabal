@@ -1,7 +1,8 @@
 _×_
   TriviaTree {
     justAnnotation = [],
-    namedAnnotations = Map.fromList
+    namedAnnotations =
+    Map.fromList
       [
         _×_
           `SomeNamespace "author"`
@@ -60,8 +61,28 @@ _×_
             justAnnotation = [
               ExactFieldPosition
                 (Position 6 1)],
-            namedAnnotations = Map.fromList
-              []},
+            namedAnnotations =
+            Map.fromList
+              [
+                _×_
+                  `SomeNamespace "some copyright\\ntext\\n foo\\n  bar\\n  .\\n   baz\\n  bar\\n foo\\ntext"`
+                  TriviaTree {
+                    justAnnotation = [
+                      ExactRepr
+                        [
+                          _×_
+                            (Position 6 14)
+                            "some copyright",
+                          _×_ (Position 7 5) "text",
+                          _×_ (Position 8 6) "foo",
+                          _×_ (Position 9 7) "bar",
+                          _×_ (Position 10 7) ".",
+                          _×_ (Position 11 8) "baz",
+                          _×_ (Position 12 7) "bar",
+                          _×_ (Position 13 6) "foo",
+                          _×_ (Position 14 5) "text"]],
+                    namedAnnotations = Map.fromList
+                      []}]},
         _×_
           `SomeNamespace "data-dir"`
           TriviaTree {
@@ -197,7 +218,16 @@ _×_
     licenseRaw = Left NONE,
     licenseFiles = [],
     copyright = concat
-      ["some copyright\n", "text"],
+      [
+        "some copyright\n",
+        "text\n",
+        " foo\n",
+        "  bar\n",
+        "  .\n",
+        "   baz\n",
+        "  bar\n",
+        " foo\n",
+        "text"],
     maintainer = "",
     author = "",
     stability = "",

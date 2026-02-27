@@ -464,18 +464,18 @@ fieldlinesToBS = BS.intercalate "\n" . map (\(FieldLine _ bs) -> bs)
 -- TODO: does the raw string contain indentation
 
 -- | Retain original text as a string
-fieldlinesToFreeTextExact :: [FieldLine ann] -> (String, String)
-fieldlinesToFreeTextExact fls = (fieldlinesExtractText fls, fieldlinesToFreeText fls)
+fieldlinesToFreeTextExact :: [FieldLine ann] -> ([(ann, String)], String)
+fieldlinesToFreeTextExact fls = (unfieldlines fls, fieldlinesToFreeText fls)
 
 -- | Retain original text as a string
-fieldlinesToFreeText3Exact :: Position -> [FieldLine Position] -> (String, String)
-fieldlinesToFreeText3Exact pos fls = (fieldlinesExtractText fls, fieldlinesToFreeText3 pos fls)
+fieldlinesToFreeText3Exact :: Position -> [FieldLine Position] -> ([(Position, String)], String)
+fieldlinesToFreeText3Exact pos fls = (unfieldlines fls, fieldlinesToFreeText3 pos fls)
 
 -- | Join a list of FieldLines to a String
-fieldlinesExtractText :: [FieldLine ann] -> String
-fieldlinesExtractText = intercalate "\n" . map go
+unfieldlines :: [FieldLine ann] -> [(ann, String)]
+unfieldlines = map go
   where
-    go (FieldLine _ bs) = fromUTF8BS bs
+    go (FieldLine pos bs) = (pos, fromUTF8BS bs)
 
 -- Example package with dot lines
 -- http://hackage.haskell.org/package/copilot-cbmc-0.1/copilot-cbmc.cabal

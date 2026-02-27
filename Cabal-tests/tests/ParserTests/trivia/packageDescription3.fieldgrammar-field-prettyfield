@@ -37,4 +37,4 @@
     [
       PrettyFieldLine
         []
-        `some copyright\xa;text`]]
+        `some copyright\xa;text\xa; foo\xa;  bar\xa;  .\xa;   baz\xa;  bar\xa; foo\xa;text`]]

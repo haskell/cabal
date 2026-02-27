@@ -109,7 +109,7 @@ type Trivia = [Trivium]
 data Trivium
   = PreTrivia String
   | PostTrivia String
-  | ExactRepr String
+  | ExactRepr [(Position, String)]
   | ExactPosition Position
   | ExactFieldPosition Position
   | ExactSectionPosition Position

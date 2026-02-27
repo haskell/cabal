@@ -28,4 +28,32 @@ Concat
         (Text "some copyright")
         (StickyConcat
           Newline
-          (Text "text")))))
+          (StickyConcat
+            (Text "text")
+            (StickyConcat
+              Newline
+              (StickyConcat
+                (Text " foo")
+                (StickyConcat
+                  Newline
+                  (StickyConcat
+                    (Text "  bar")
+                    (StickyConcat
+                      Newline
+                      (StickyConcat
+                        (Text "  .")
+                        (StickyConcat
+                          Newline
+                          (StickyConcat
+                            (Text "   baz")
+                            (StickyConcat
+                              Newline
+                              (StickyConcat
+                                (Text "  bar")
+                                (StickyConcat
+                                  Newline
+                                  (StickyConcat
+                                    (Text " foo")
+                                    (StickyConcat
+                                      Newline
+                                      (Text "text")))))))))))))))))))
