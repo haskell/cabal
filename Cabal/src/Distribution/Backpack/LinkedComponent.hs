@@ -161,9 +161,7 @@ toLinkedComponent
 
       lookupUid :: ComponentId -> (OpenUnitId, ModuleShape)
       lookupUid cid =
-        fromMaybe
-          (error "linkComponent: lookupUid")
-          (Map.lookup cid pkg_map)
+        Map.findWithDefault (error "linkComponent: lookupUid") cid pkg_map
 
     let orErr (Right x) = return x
         orErr (Left [err]) = dieProgress err
