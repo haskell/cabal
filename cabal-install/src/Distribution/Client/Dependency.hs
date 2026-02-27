@@ -864,7 +864,7 @@ resolveDependencies platform comp pkgConfigDB params =
           else dontInstallNonReinstallablePackages params
 
     formatProgress :: Progress SummarizedMessage String a -> Progress String String a
-    formatProgress p = foldProgress (\x xs -> Step (renderSummarizedMessage x) xs) Fail Done p
+    formatProgress p = foldProgress (\x xs -> Step (renderSummarizedMessage (depResolverVerbosity params) x) xs) Fail Done p
 
     preferences :: PackageName -> PackagePreferences
     preferences = interpretPackagesPreference targets defpref prefs
