@@ -80,8 +80,10 @@ updateCursorRow row = do
   let rowDiff = row - currentRow
       padding = T.replicate rowDiff "\n"
 
-  when (rowDiff > 0) $
-    -- jumped, we move cursor forward to desired row and reset col
+  when (rowDiff /= 0) $
+    -- Jumped, we move cursor forward (or also backward) to desired row and reset col.
+    -- It is important to move the cursor back in case of a backward jump, because it
+    -- guarantees the rest of the document to be agnostic to this jump.
     put (Position row 1)
 
   pure padding
@@ -126,6 +128,8 @@ renderTextStep d0 = case d0 of
 text :: T.Text -> ExactDoc
 text = Text
 
+-- TODO(leana8959): this was made for multiline fieldline content, but is no longer used.
+-- multiline fieldlines are individual strings with exact positioning
 multilineText :: [T.Text] -> ExactDoc
 multilineText = foldr stickyConcatDoc Nil . intersperse Newline . map Text
 

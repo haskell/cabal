@@ -313,6 +313,7 @@ type PrettyFieldPositionContext ann =
 placeAt :: Position -> ExactDoc -> ExactDoc
 placeAt (Position r c) = EPP.place r c
 
+-- | Post condition: Fields are sorted in ascending order
 exactRenderPrettyFields
   :: PrettyFieldPositionContext Trivia
   -> [PrettyField Trivia]
@@ -396,6 +397,7 @@ exactRenderPrettyField ctx0@(lastField, lastFieldLine) field = case field of
         , docOut
         )
 
+-- | Post condition: fieldlines are sorted in ascending order
 exactRenderPrettyFieldLines
   :: PrettyFieldPositionContext Trivia
   -> [PrettyFieldLine Trivia]
