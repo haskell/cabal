@@ -163,13 +163,13 @@ simplifyVersionRange vr
     vi = toVersionIntervals vr
 
 -- | Given a version range, remove the highest upper bound. Example: @(>= 1 && <
--- 3) || (>= 4 && < 5)@ is converted to @(>= 1 && < 3) || (>= 4)@.
+-- 3) || (>= 4 && < 5)@ is converted to @(>= 1 && < 3) || (\>= 4)@.
 removeUpperBound :: VersionRange -> VersionRange
 removeUpperBound = fromVersionIntervals . relaxLastInterval . toVersionIntervals
 
 -- | Given a version range, remove the lowest lower bound.
--- Example: @(>= 1 && < 3) || (>= 4 && < 5)@ is converted to
--- @(>= 0 && < 3) || (>= 4 && < 5)@.
+-- Example: @(>= 1 && < 3) || (\>= 4 && < 5)@ is converted to
+-- @(>= 0 && < 3) || (\>= 4 && < 5)@.
 removeLowerBound :: VersionRange -> VersionRange
 removeLowerBound = fromVersionIntervals . relaxHeadInterval . toVersionIntervals
 

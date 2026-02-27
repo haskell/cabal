@@ -209,7 +209,7 @@ unionBound _ _ = InclusiveBound
 -- Each interval is non-empty. The sequence is in increasing order and no
 -- intervals overlap or touch. Therefore only the first and last can be
 -- unbounded. The sequence can be empty if the range is empty
--- (e.g. a range expression like @< 1 && > 2@).
+-- (e.g. a range expression like @\< 1 && > 2@).
 --
 -- Other checks are trivial to implement using this view. For example:
 --
