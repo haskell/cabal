@@ -251,18 +251,27 @@ instance FieldGrammar ExactParsec ParsecFieldGrammar where
 
   freeTextField fn _ = ParsecFG (Set.singleton fn) Set.empty parser
     where
-      parser v fields = case Map.lookup fn fields of
-        Nothing -> (pure . pure) Nothing
-        Just [] -> (pure . pure) Nothing
+      markFieldName (t, x) = let t' = markTriviaTree fn t in  (t', x)
+      markInjected x = let t' = fromNamedTrivia fn [IsInjected] in  (t', x)
+
+      parser v fields = markFieldName <$> case Map.lookup fn fields of
+        Nothing -> (pure . markInjected) Nothing
+        Just [] -> (pure . markInjected) Nothing
         Just [x] -> parseOne v x
         Just xs@(_ : y : ys) -> do
           warnMultipleSingularFields fn xs
           NE.last <$> traverse (parseOne v) (y :| ys)
 
       parseOne v (MkNamelessField pos fls)
-        | null fls = (pure . pure) Nothing
-        | v >= CabalSpecV3_0 = (pure . pure) (Just (fieldlinesToFreeText3 pos fls))
-        | otherwise = (pure . pure) (Just (fieldlinesToFreeText fls))
+        | null fls = (pure . markInjected) Nothing
+        | v >= CabalSpecV3_0 =
+            let (raw, processed) = fieldlinesToFreeText3Exact pos fls
+                t = TriviaTree [ExactFieldPosition pos] mempty <> fromNamedTrivia processed [ExactRepr raw]
+            in  pure (t, (Just processed))
+        | otherwise =
+            let (raw, processed) = fieldlinesToFreeTextExact fls
+                t = TriviaTree [ExactFieldPosition pos] mempty <> fromNamedTrivia processed [ExactRepr raw]
+            in  pure (t, Just processed)
 
   freeTextFieldDef fn _ = ParsecFG (Set.singleton fn) Set.empty parser
     where
@@ -279,10 +288,14 @@ instance FieldGrammar ExactParsec ParsecFieldGrammar where
 
       parseOne v (MkNamelessField pos fls)
         | null fls = (pure . markInjected) ""
-        | v >= CabalSpecV3_0 = (pure . withPosition) (fieldlinesToFreeText3 pos fls)
-        | otherwise = (pure . withPosition) (fieldlinesToFreeText fls)
-          where
-            withPosition x = (TriviaTree [ExactFieldPosition pos] mempty, x)
+        | v >= CabalSpecV3_0 =
+            let (raw, processed) = fieldlinesToFreeText3Exact pos fls
+                t = TriviaTree [ExactFieldPosition pos] mempty <> fromNamedTrivia processed [ExactRepr raw]
+            in  pure (t, processed)
+        | otherwise =
+            let (raw, processed) = fieldlinesToFreeTextExact fls
+                t = TriviaTree [ExactFieldPosition pos] mempty <> fromNamedTrivia processed [ExactRepr raw]
+            in  pure (t, processed)
 
   -- freeTextFieldDefST = defaultFreeTextFieldDefST
   freeTextFieldDefST fn _ = ParsecFG (Set.singleton fn) Set.empty parser
@@ -300,12 +313,17 @@ instance FieldGrammar ExactParsec ParsecFieldGrammar where
 
       parseOne v (MkNamelessField pos fls) = case fls of
         [] -> (pure . markInjected) mempty
-        [FieldLine _ bs] -> (pure . withPosition) (ShortText.unsafeFromUTF8BS bs)
+        [FieldLine _ bs] ->
+          pure (TriviaTree [ExactFieldPosition pos] mempty, ShortText.unsafeFromUTF8BS bs)
         _
-          | v >= CabalSpecV3_0 -> (pure . withPosition) (ShortText.toShortText $ fieldlinesToFreeText3 pos fls)
-          | otherwise -> (pure . withPosition) (ShortText.toShortText $ fieldlinesToFreeText fls)
-        where
-          withPosition x = (TriviaTree [ExactFieldPosition pos] mempty, x)
+          | v >= CabalSpecV3_0 ->
+              let (raw, processed) = ShortText.toShortText <$> fieldlinesToFreeText3Exact pos fls
+                  t = TriviaTree [ExactFieldPosition pos] mempty <> fromNamedTrivia processed [ExactRepr raw]
+              in  pure (t, processed)
+          | otherwise ->
+              let (raw, processed) = ShortText.toShortText <$> fieldlinesToFreeTextExact fls
+                  t = TriviaTree [ExactFieldPosition pos] mempty <> fromNamedTrivia processed [ExactRepr raw]
+              in  pure (t, processed)
 
   monoidalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
@@ -442,6 +460,22 @@ runFieldParser pp p v ls = runFieldParser' poss p v (fieldLinesToStream ls)
 
 fieldlinesToBS :: [FieldLine ann] -> BS.ByteString
 fieldlinesToBS = BS.intercalate "\n" . map (\(FieldLine _ bs) -> bs)
+
+-- TODO: does the raw string contain indentation
+
+-- | Retain original text as a string
+fieldlinesToFreeTextExact :: [FieldLine ann] -> (String, String)
+fieldlinesToFreeTextExact fls = (fieldlinesExtractText fls, fieldlinesToFreeText fls)
+
+-- | Retain original text as a string
+fieldlinesToFreeText3Exact :: Position -> [FieldLine Position] -> (String, String)
+fieldlinesToFreeText3Exact pos fls = (fieldlinesExtractText fls, fieldlinesToFreeText3 pos fls)
+
+-- | Join a list of FieldLines to a String
+fieldlinesExtractText :: [FieldLine ann] -> String
+fieldlinesExtractText = intercalate "\n" . map go
+  where
+    go (FieldLine _ bs) = fromUTF8BS bs
 
 -- Example package with dot lines
 -- http://hackage.haskell.org/package/copilot-cbmc-0.1/copilot-cbmc.cabal
