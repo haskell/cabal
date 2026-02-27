@@ -33,7 +33,8 @@ import Distribution.Client.Targets
   , UserConstraintScope (UserAnyQualifier)
   )
 import Distribution.Client.Types
-  ( PackageLocation (..)
+  ( CurrentCommand (..)
+  , PackageLocation (..)
   , PackageSpecifier (..)
   , UnresolvedSourcePackage
   )
@@ -2180,6 +2181,7 @@ configureProject testdir cliConfig = do
       httpTransport
       distDirLayout
       cliConfig
+      OtherCommand
 
   let buildSettings =
         resolveBuildTimeSettings
