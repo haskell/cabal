@@ -24,36 +24,26 @@ Concat
     1
     (Concat
       (Text "copyright:")
-      (StickyConcat
-        (Text "some copyright")
-        (StickyConcat
-          Newline
-          (StickyConcat
-            (Text "text")
-            (StickyConcat
-              Newline
-              (StickyConcat
-                (Text " foo")
-                (StickyConcat
-                  Newline
-                  (StickyConcat
-                    (Text "  bar")
-                    (StickyConcat
-                      Newline
-                      (StickyConcat
-                        (Text "  .")
-                        (StickyConcat
-                          Newline
-                          (StickyConcat
-                            (Text "   baz")
-                            (StickyConcat
-                              Newline
-                              (StickyConcat
-                                (Text "  bar")
-                                (StickyConcat
-                                  Newline
-                                  (StickyConcat
-                                    (Text " foo")
-                                    (StickyConcat
-                                      Newline
-                                      (Text "text")))))))))))))))))))
+      (Place
+        6
+        14
+        (Concat
+          (Concat
+            (Concat
+              (Concat
+                (Concat
+                  (Concat
+                    (Concat
+                      (Concat
+                        (Place
+                          6
+                          14
+                          (Text "some copyright"))
+                        (Place 7 5 (Text "text")))
+                      (Place 8 6 (Text "foo")))
+                    (Place 9 7 (Text "bar")))
+                  (Place 10 7 (Text ".")))
+                (Place 11 8 (Text "baz")))
+              (Place 12 7 (Text "bar")))
+            (Place 13 6 (Text "foo")))
+          (Place 14 5 (Text "text"))))))
