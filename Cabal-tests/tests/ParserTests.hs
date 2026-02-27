@@ -473,7 +473,7 @@ parsecPrettyRoundTripTest _ fp = testCase fp $ do
 -- |
 -- First step, parse correctly with trivia
 fieldGrammarFieldGoldenTests :: TestTree
-fieldGrammarFieldGoldenTests = testGroup "fieldgrammar-field" $
+fieldGrammarFieldGoldenTests = testGroup "fieldgrammar-field-golden" $
   ( map (fieldGrammarFieldGoldenTest dependencyListFieldGrammar)
       [ "build-depends1.fragment"
       , "build-depends2.fragment"
@@ -505,9 +505,9 @@ fieldGrammarFieldGoldenTest
   -> TestTree
 fieldGrammarFieldGoldenTest g fp = ediffGolden goldenTest fp exprFile $ do
   contents <- BS.readFile input
-  let fs = case readFields contents of
-        Left err -> fail $ unlines $ "readFields error:" : show err : []
-        Right ok -> ok
+  fs <- case readFields contents of
+      Left err -> assertFailure $ unlines $ "readFields error:" : show err : []
+      Right ok -> pure ok
 
   let (fieldMap, _) = takeFields fs
   let (_warns, res) =
@@ -551,9 +551,9 @@ fieldGrammarFieldPrettyFieldTest
   -> TestTree
 fieldGrammarFieldPrettyFieldTest gParsec gPretty fp = ediffGolden goldenTest fp exprFile $ do
   contents <- BS.readFile input
-  let fs = case readFields contents of
-        Left err -> fail $ unlines $ "readFields error:" : show err : []
-        Right ok -> ok
+  fs <- case readFields contents of
+        Left err -> assertFailure $ unlines $ "readFields error:" : show err : []
+        Right ok -> pure ok
 
   let (fieldMap, _) = takeFields fs
   let (_warns, res) =
@@ -604,9 +604,9 @@ fieldGrammarFieldExactDocTest
   -> TestTree
 fieldGrammarFieldExactDocTest gParsec gPretty fp = ediffGolden goldenTest fp exprFile $ do
   contents <- BS.readFile input
-  let fs = case readFields contents of
-        Left err -> fail $ unlines $ "readFields error:" : show err : []
-        Right ok -> ok
+  fs <- case readFields contents of
+        Left err -> assertFailure $ unlines $ "readFields error:" : show err : []
+        Right ok -> pure ok
 
   let (fieldMap, _) = takeFields fs
   let (_warns, res) =
@@ -657,9 +657,9 @@ fieldGrammarFieldRoundTripTest
   -> TestTree
 fieldGrammarFieldRoundTripTest gParsec gPretty fp = testCase fp $ do
   x <- BS.readFile input
-  let fs = case readFields x of
-        Left err -> fail $ unlines $ "readFields error:" : show err : []
-        Right ok -> ok
+  fs <- case readFields x of
+        Left err -> assertFailure $ unlines $ "readFields error:" : show err : []
+        Right ok -> pure ok
 
   let (fieldMap, _) = takeFields fs
   let (_warns, res) =
@@ -740,9 +740,9 @@ fieldGrammarFieldTransformTest
   -> TestTree
 fieldGrammarFieldTransformTest gParse gPrint f fp suffix = ediffGolden goldenTest fp exprFile $ do
   contents <- BS.readFile input
-  let fs = case readFields contents of
-        Left err -> fail $ unlines $ "readFields error:" : show err : []
-        Right ok -> ok
+  fs <- case readFields contents of
+        Left err -> assertFailure $ unlines $ "readFields error:" : show err : []
+        Right ok -> pure ok
 
   let (fieldMap, _) = takeFields fs
   let (_warns, res) =
@@ -785,9 +785,9 @@ fieldGrammarSectionGoldenTest'
   -> TestTree
 fieldGrammarSectionGoldenTest' specVer fp = ediffGolden goldenTest fp exprFile $ do
   contents <- BS.readFile input
-  let fs = case readFields contents of
-        Left err -> fail $ unlines $ "readFields error:" : show err : []
-        Right ok -> ok
+  fs <- case readFields contents of
+        Left err -> assertFailure $ unlines $ "readFields error:" : show err : []
+        Right ok -> pure ok
 
   let (_, sectionFields) = takeFields fs
 
@@ -834,9 +834,9 @@ fieldGrammarSectionPrettyFieldTest'
   -> TestTree
 fieldGrammarSectionPrettyFieldTest' specVer gpdToPrettyFields fp = ediffGolden goldenTest fp exprFile $ do
   contents <- BS.readFile input
-  let fs = case readFields contents of
-        Left err -> fail $ unlines $ "readFields error:" : show err : []
-        Right ok -> ok
+  fs <- case readFields contents of
+        Left err -> assertFailure $ unlines $ "readFields error:" : show err : []
+        Right ok -> pure ok
 
   let (_, sectionFields) = takeFields fs
 
@@ -886,9 +886,9 @@ fieldGrammarSectionExactDocTest'
   -> TestTree
 fieldGrammarSectionExactDocTest' specVer gpdToPrettyFields fp = ediffGolden goldenTest fp exprFile $ do
   contents <- BS.readFile input
-  let fs = case readFields contents of
-        Left err -> fail $ unlines $ "readFields error:" : show err : []
-        Right ok -> ok
+  fs <- case readFields contents of
+        Left err -> assertFailure $ unlines $ "readFields error:" : show err : []
+        Right ok -> pure ok
 
   let (_, sectionFields) = takeFields fs
 
@@ -938,9 +938,9 @@ fieldGrammarSectionRoundTripTest'
   -> TestTree
 fieldGrammarSectionRoundTripTest' specVer gpdToPrettyFields fp = testCase fp $ do
   x <- BS.readFile input
-  let fs = case readFields x of
-        Left err -> fail $ unlines $ "readFields error:" : show err : []
-        Right ok -> ok
+  fs <- case readFields x of
+        Left err -> assertFailure $ unlines $ "readFields error:" : show err : []
+        Right ok -> pure ok
 
   let (_, sectionFields) = takeFields fs
 
