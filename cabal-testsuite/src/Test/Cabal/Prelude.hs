@@ -28,7 +28,6 @@ import Test.Cabal.Run
 import Test.Cabal.Script
 import Test.Cabal.TestCode
 
-import Distribution.Compat.Time (calibrateMtimeChangeDelay)
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Parsec (eitherParsec, simpleParsec)
@@ -1360,22 +1359,7 @@ delay = do
   liftIO . threadDelay $
     if is_old_ghc
       then 1000000
-      else
-        fromMaybe
-          (error "Delay must be enclosed by withDelay")
-          (testMtimeChangeDelay env)
-
--- | Calibrate file modification time delay, if not
--- already determined.
-withDelay :: TestM a -> TestM a
-withDelay m = do
-  env <- getTestEnv
-  case testMtimeChangeDelay env of
-    Nothing -> do
-      -- Figure out how long we need to delay for recompilation tests
-      (_, mtimeChange) <- liftIO $ calibrateMtimeChangeDelay
-      withReaderT (\nenv -> nenv{testMtimeChangeDelay = Just mtimeChange}) m
-    Just _ -> m
+      else (testMtimeChangeDelay env)
 
 -- | Create a symlink for the duration of the provided action. If the symlink
 -- already exists, it is deleted.
