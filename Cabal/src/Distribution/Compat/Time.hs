@@ -12,7 +12,6 @@ module Distribution.Compat.Time
   , getFileAge
   , getCurTime
   , posixSecondsToModTime
-  , calibrateMtimeChangeDelay
   )
 where
 
@@ -20,11 +19,6 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import System.Directory (getModificationTime)
-
-import Distribution.Simple.Utils (withTempDirectoryCwd)
-import Distribution.Utils.Path (getSymbolicPath, sameDirectory)
-
-import System.FilePath
 
 import Data.Time (diffUTCTime, getCurrentTime)
 import Data.Time.Clock.POSIX (POSIXTime, getPOSIXTime, posixDayLength)
@@ -147,32 +141,3 @@ getFileAge file = do
 -- | Return the current time as 'ModTime'.
 getCurTime :: IO ModTime
 getCurTime = posixTimeToModTime `fmap` getPOSIXTime -- Uses 'gettimeofday'.
-
--- | Based on code written by Neil Mitchell for Shake. See
--- 'sleepFileTimeCalibrate' in 'Test.Type'.  Returns a pair
--- of microsecond values: first, the maximum delay seen, and the
--- recommended delay to use before testing for file modification change.
--- The returned delay is never smaller
--- than 10 ms, but never larger than 1 second.
-calibrateMtimeChangeDelay :: IO (Int, Int)
-calibrateMtimeChangeDelay = do
-  withTempDirectoryCwd Nothing sameDirectory "calibration-" $ \dir -> do
-    let fileName = getSymbolicPath dir </> "probe"
-    mtimes <- for [1 .. 25] $ \(i :: Int) -> time $ do
-      writeFile fileName $ show i
-      t0 <- getModTime fileName
-      let spin j = do
-            writeFile fileName $ show (i, j)
-            t1 <- getModTime fileName
-            unless (t0 < t1) (spin $ j + 1)
-      spin (0 :: Int)
-    let mtimeChange = maximum mtimes
-        mtimeChange' = min 1000000 $ (max 10000 mtimeChange) * 2
-    return (mtimeChange, mtimeChange')
-  where
-    time :: IO () -> IO Int
-    time act = do
-      t0 <- getCurrentTime
-      act
-      t1 <- getCurrentTime
-      return . ceiling $! (t1 `diffUTCTime` t0) * 1e6 -- microseconds

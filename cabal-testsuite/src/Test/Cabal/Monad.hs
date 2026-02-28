@@ -439,7 +439,7 @@ runTestM mode m =
                 , testCompilerPath = programPath configuredGhcProg
                 , testPackageDBStack = db_stack
                 , testVerbosityFlags = verbosityFlags verbosity
-                , testMtimeChangeDelay = Nothing
+                , testMtimeChangeDelay = 10000
                 , testScriptEnv = senv
                 , testSetupPath = dist_dir </> "build" </> "setup" </> "setup"
                 , testPackageDbPath = case testArgPackageDb args of [] -> Nothing; xs -> Just xs
@@ -847,10 +847,9 @@ data TestEnv = TestEnv
   -- ^ Package database stack (actually this changes lol)
   , testVerbosityFlags :: VerbosityFlags
   -- ^ How verbose to be
-  , testMtimeChangeDelay :: Maybe Int
+  , testMtimeChangeDelay :: Int
   -- ^ How long we should 'threadDelay' to make sure the file timestamp is
-  -- updated correctly for recompilation tests.  Nothing if we haven't
-  -- calibrated yet.
+  -- updated correctly for recompilation tests.
   , testScriptEnv :: ScriptEnv
   -- ^ Script environment for runghc
   , testSetupPath :: FilePath
