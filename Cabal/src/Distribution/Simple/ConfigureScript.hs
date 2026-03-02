@@ -5,7 +5,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 -----------------------------------------------------------------------------
-{-# OPTIONS_GHC -fno-warn-deprecations #-}
+{-# OPTIONS_GHC -Wno-deprecations #-}
 
 -- |
 -- Module      :  Distribution.Simple.ConfigureScript
@@ -35,14 +35,14 @@ import Distribution.Simple.Utils
 import Distribution.System (Platform, buildPlatform)
 import Distribution.Utils.NubList
 import Distribution.Utils.Path
+import Distribution.Verbosity
 
 -- Base
-import System.Directory (createDirectoryIfMissing, doesFileExist)
+import System.Directory (createDirectoryIfMissing, doesFileExist, makeAbsolute)
 import qualified System.FilePath as FilePath
 #ifdef mingw32_HOST_OS
 import System.FilePath    (normalise, splitDrive)
 #endif
-import Distribution.Compat.Directory (makeAbsolute)
 import Distribution.Compat.Environment (getEnvironment)
 import Distribution.Compat.GetShortPathName (getShortPathName)
 
@@ -50,15 +50,16 @@ import qualified Data.List.NonEmpty as NonEmpty
 import qualified Data.Map as Map
 
 runConfigureScript
-  :: ConfigFlags
+  :: VerbosityHandles
+  -> ConfigFlags
   -> FlagAssignment
   -> ProgramDb
   -> Platform
   -- ^ host platform
   -> IO ()
-runConfigureScript cfg flags programDb hp = do
+runConfigureScript verbHandles cfg flags programDb hp = do
   let commonCfg = configCommonFlags cfg
-      verbosity = fromFlag $ setupVerbosity commonCfg
+      verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity commonCfg)
   dist_dir <- findDistPrefOrDefault $ setupDistPref commonCfg
   let build_dir = dist_dir </> makeRelativePathEx "build"
       mbWorkDir = flagToMaybe $ setupWorkingDir commonCfg
@@ -77,6 +78,18 @@ runConfigureScript cfg flags programDb hp = do
   -- to ccFlags
   -- We don't try and tell configure which ld to use, as we don't have
   -- a way to pass its flags too
+
+  -- Do not presume the CXX compiler is available, but it always will be after 9.4.
+  (mcxxProgShort, mcxxFlags) <- do
+    mprog <- needProgram verbosity gppProgram programDb
+    case mprog of
+      Just (p, _) -> do
+        let pInv = programInvocation p []
+        let cxxProg = progInvokePath pInv
+        let cxxFlags = progInvokeArgs pInv
+        cxxProgShort <- getShortPathName cxxProg
+        return (Just cxxProgShort, Just cxxFlags)
+      Nothing -> return (Nothing, Nothing)
 
   let configureFile' = toUnix configureFile
   -- autoconf is fussy about filenames, and has a set of forbidden
@@ -159,9 +172,7 @@ runConfigureScript cfg flags programDb hp = do
                )
              ]
   let extraPath = fromNubList $ configProgramPathExtra cfg
-  let cflagsEnv =
-        maybe (unwords ccFlags) (++ (" " ++ unwords ccFlags)) $
-          lookup "CFLAGS" env
+  let mkFlagsEnv fs var = maybe (unwords fs) (++ (" " ++ unwords fs)) (lookup var env)
       spSep = [FilePath.searchPathSeparator]
       pathEnv =
         maybe
@@ -169,11 +180,17 @@ runConfigureScript cfg flags programDb hp = do
           ((intercalate spSep extraPath ++ spSep) ++)
           $ lookup "PATH" env
       overEnv =
-        ("CFLAGS", Just cflagsEnv)
-          : [("PATH", Just pathEnv) | not (null extraPath)]
+        ("CFLAGS", Just (mkFlagsEnv ccFlags "CFLAGS"))
+          : [("CXXFLAGS", Just (mkFlagsEnv cxxFlags "CXXFLAGS")) | Just cxxFlags <- [mcxxFlags]]
+          ++ [("PATH", Just pathEnv) | not (null extraPath)]
           ++ cabalFlagEnv
       maybeHostFlag = if hp == buildPlatform then [] else ["--host=" ++ show (pretty hp)]
-      args' = configureFile' : args ++ ["CC=" ++ ccProgShort] ++ maybeHostFlag
+      args' =
+        configureFile'
+          : args
+          ++ ["CC=" ++ ccProgShort]
+          ++ ["CXX=" ++ cxxProgShort | Just cxxProgShort <- [mcxxProgShort]]
+          ++ maybeHostFlag
       shProg = simpleProgram "sh"
   progDb <- prependProgramSearchPath verbosity extraPath [] emptyProgramDb
   shConfiguredProg <-

@@ -34,9 +34,6 @@ import Distribution.Simple.Utils
   , info
   , withTempDirectory
   )
-import Distribution.Verbosity
-  ( silent
-  )
 
 import Control.Exception
 import qualified Data.Set as Set
@@ -47,8 +44,7 @@ import System.FilePath
 import Lukko
 #else
 import System.IO (openFile, IOMode(ReadWriteMode), hClose)
-import GHC.IO.Handle.Lock (hLock, hTryLock, LockMode(ExclusiveLock))
-import GHC.IO.Handle.Lock (hUnlock)
+import GHC.IO.Handle.Lock (LockMode (ExclusiveLock), hLock, hTryLock, hUnlock)
 #endif
 
 -- $concurrency
@@ -234,7 +230,7 @@ withTempIncomingDir
   -> IO a
 withTempIncomingDir StoreDirLayout{storeIncomingDirectory} compiler action = do
   createDirectoryIfMissing True incomingDir
-  withTempDirectory silent incomingDir "new" action
+  withTempDirectory incomingDir "new" action
   where
     incomingDir = storeIncomingDirectory compiler
 

@@ -201,8 +201,11 @@ files of a package:
     name of a program that can be found on the program search path. For
     example: ``--with-ghc=ghc-6.6.1`` or
     ``--with-cpphs=/usr/local/bin/cpphs``. The full list of accepted
-    programs is not enumerated in this user guide. Rather, run
-    ``cabal install --help`` to view the list.
+    programs is as follows:
+    ``alex``, ``ar``, ``c2hs``, ``cpphs``, ``doctest``, ``gcc``, ``ghc``,
+    ``ghc-pkg``, ``ghcjs``, ``ghcjs-pkg``, ``haddock``, ``happy``,
+    ``hpc``, ``hsc2hs``, ``hscolour``, ``jhc``, ``ld``, ``pkg-config``,
+    ``runghc``, ``strip``, ``tar``, ``uhc``.
 
 .. option:: --PROG-options=OPTS
 
@@ -210,19 +213,31 @@ files of a package:
     to Cabal can be used in place of *prog*. For example:
     ``--alex-options="--template=mytemplatedir/"``. The *options* is
     split into program options based on spaces. Any options containing
-    embedded spaced need to be quoted, for example
-    ``--foo-options='--bar="C:\Program File\Bar"'``. As an alternative
-    that takes only one option at a time but avoids the need to quote,
-    use :option:`--PROG-option` instead.
+    embedded spaces need to be quoted with double quotes (``""``), for example
+    ``--foo-options='--bar="C:\Program Files\Bar"'``. (The single quotes
+    (``''``) are for your shell, the ``"double"`` quotes are passed to Cabal.)
+    For an alternative that takes only one option at a time but avoids the need
+    to quote, use :option:`--PROG-option` instead.
+
+    Note: if *prog* is ``ghc``, then options that do not affect build
+    artifacts, such as warning flags, are dropped. This is because
+    ``--ghc-options`` applies to GHC for the entire build plan, not just the
+    current package, and recompiling the entire dependency tree is probably
+    unintended. If you want to apply some options to ``cabal repl`` only, pass
+    ``--repl-options`` to ``cabal repl``.
 
 .. option:: --PROG-option=OPT
 
-    Specify a single additional option to the program *prog*. For
+    Specify a single additional option to the program *prog*. The option is
+    passed to *prog* as a single argument, without any splitting. For
     passing an option that contains embedded spaces, such as a file name
     with embedded spaces, using this rather than :option:`--PROG-options`
     means you do not need an additional level of quoting. Of course if you
     are using a command shell you may still need to quote, for example
-    ``--foo-options="--bar=C:\Program File\Bar"``.
+    ``--foo-options="--bar=C:\Program Files\Bar"``.
+
+    The same note regarding dropping flags as for :option:`--PROG-options`
+    applies to ``--PROG-option`` as well.
 
 All of the options passed with either :option:`--PROG-options`
 or :option:`--PROG-option` are passed in the order they were
@@ -713,7 +728,7 @@ Miscellaneous options
     late-toplevel
         Like top-level but costs will be assigned to top level definitions after
         optimization. This lowers profiling overhead massively while giving similar
-        levels of detail as toplevle-functions. However it means functions introduced
+        levels of detail as toplevel-functions. However it means functions introduced
         by GHC during optimization will show up in profiles as well.
         Corresponds to ``-fprof-late`` if supported and ``-fprof-auto-top`` otherwise.
     late
@@ -1030,6 +1045,26 @@ This command takes the following options:
     specified at the build step are in addition not in replacement of
     any options specified at the configure step.
 
+.. option:: -j[NUM], --jobs[=NUM]
+
+    :default: ``$ncpus`` (the number of CPUs)
+
+    Run ``NUM`` jobs simultaneously when building.
+
+    :option:`--jobs` is ignored when :option:`--semaphore` is present.
+
+.. option:: --semaphore=SEMAPHORE
+
+    :since: 3.12.0.0
+
+    GHC 9.8.1 and later can act as a jobserver client, which enables two or more
+    GHC processes running at once to share system resources with each other,
+    communicating via a specified system semaphore. The system semaphore is
+    identified by a name (a string).
+
+    This option causes Cabal to control parallelism by using the specified
+    system semaphore.
+
 .. _setup-haddock:
 
 runhaskell Setup.hs haddock
@@ -1050,6 +1085,11 @@ This command takes the following options:
     database for searching. This is equivalent to running Haddock_
     with the ``--hoogle`` flag.
 
+.. option:: --html
+
+    Generate Haddock_ documentation in HTML format (the default). This is
+    equivalent to running Haddock_ with the ``--html`` flag.
+
 .. option:: --html-location=url
 
     Specify a template for the location of HTML documentation for
@@ -1067,6 +1107,12 @@ This command takes the following options:
     Here the argument is quoted to prevent substitution by the shell. If
     this option is omitted, the location for each package is obtained
     using the package tool (e.g. ``ghc-pkg``).
+
+.. option:: --contents-location=url
+
+    Specify a template for the location for the contents page. The substitutions
+    (`see listing <#paths-in-the-simple-build-system>`__) are applied to the
+    template to obtain a location for each package.
 
 .. option:: --executables
 
@@ -1095,6 +1141,10 @@ This command takes the following options:
     generate HTML documentation. Each entity shown in the documentation is
     linked to its definition in the colourised code.
 
+.. option:: --quickjump
+
+    Generate an index for interactive navigation of Haddock_ documentation.
+
 .. option:: --hscolour-css=path
 
     The argument *path* denotes a CSS file, which is passed to HsColour_ as in
@@ -1102,6 +1152,16 @@ This command takes the following options:
     ::
 
         $ runhaskell Setup.hs hscolour --css=*path*
+
+.. option:: --for-hackage
+
+    Sets flags to generate Haddock_ documentation that is suitable for upload to
+    Hackage.
+
+    Equivalent to setting :option:`--hoogle`, :option:`--html`,
+    :option:`--html-location` equal to ``/package/$pkg-$version/docs``,
+    :option:`--contents-location` equal to ``/package/$pkg-$version``,
+    :option:`--hyperlink-source`, and :option:`--quickjump`.
 
 .. _setup-hscolour:
 
@@ -1330,7 +1390,7 @@ the package.
 
     Default value is ``direct``: it leaves test output untouched and does not
     produce a log. This allows for colored output, which is popular with testing
-    frameworks. (On the other hand, ``streaming`` creates a log but looses
+    frameworks. (On the other hand, ``streaming`` creates a log but loses
     coloring.)
 
 .. option:: --test-options=TEMPLATES
@@ -1443,11 +1503,11 @@ Flags for repl:
 
 .. option:: --PROG-option=OPT
 
-    Give an extra option to PROG (no need to quote options containing spaces).
+    Give an extra option to PROG (passed directly to PROG as a single argument).
 
 .. option:: --PROG-options=OPTS
 
-    Give extra options to PROG.
+    Give extra options to PROG (split on spaces, use "" to prevent splitting).
 
 .. option:: --repl-no-load
 

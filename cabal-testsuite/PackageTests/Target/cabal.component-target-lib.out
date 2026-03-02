@@ -1,0 +1,13 @@
+# cabal v2-target
+Resolving dependencies...
+Fully qualified target forms:
+ - a:lib:a
+Found 1 target matching a:lib:a.
+# cabal v2-target
+Fully qualified target forms:
+ - a:lib:a
+Found 1 target matching lib:a.
+# cabal v2-target
+Fully qualified target forms:
+ - a:lib:a
+Found 1 target matching a:a.

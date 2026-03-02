@@ -123,6 +123,12 @@ import Distribution.Solver.Modular
   , SolverConfig (..)
   , modularResolver
   )
+import Distribution.Solver.Modular.Message
+  ( renderSummarizedMessage
+  )
+import Distribution.Solver.Types.SummarizedMessage
+  ( SummarizedMessage (..)
+  )
 import Distribution.System
   ( Platform
   )
@@ -131,7 +137,7 @@ import Distribution.Types.DependencySatisfaction
   ( DependencySatisfaction (..)
   )
 import Distribution.Verbosity
-  ( normal
+  ( VerbosityLevel (..)
   )
 import Distribution.Version
 
@@ -152,6 +158,8 @@ import Distribution.Solver.Types.ResolverPackage
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SolverId
 import Distribution.Solver.Types.SolverPackage
+  ( SolverPackage (SolverPackage)
+  )
 import Distribution.Solver.Types.SourcePackage
 import Distribution.Solver.Types.Variable
 
@@ -202,7 +210,7 @@ data DepResolverParams = DepResolverParams
   -- so we shouldn't solve for them.  See #3875.
   , depResolverGoalOrder :: Maybe (Variable QPN -> Variable QPN -> Ordering)
   -- ^ Function to override the solver's goal-ordering heuristics.
-  , depResolverVerbosity :: Verbosity
+  , depResolverVerbosity :: VerbosityLevel
   }
 
 showDepResolverParams :: DepResolverParams -> String
@@ -299,7 +307,7 @@ basicDepResolverParams installedPkgIndex sourcePkgIndex =
     , depResolverEnableBackjumping = EnableBackjumping True
     , depResolverSolveExecutables = SolveExecutables True
     , depResolverGoalOrder = Nothing
-    , depResolverVerbosity = normal
+    , depResolverVerbosity = Normal
     }
 
 addTargets
@@ -429,11 +437,21 @@ setGoalOrder order params =
     { depResolverGoalOrder = order
     }
 
-setSolverVerbosity :: Verbosity -> DepResolverParams -> DepResolverParams
+setSolverVerbosity :: VerbosityLevel -> DepResolverParams -> DepResolverParams
 setSolverVerbosity verbosity params =
   params
     { depResolverVerbosity = verbosity
     }
+
+dependOnWiredIns :: CompilerInfo -> DepResolverParams -> DepResolverParams
+dependOnWiredIns compiler params = addConstraints extraConstraints params
+  where
+    extraConstraints =
+      [ LabeledPackageConstraint
+        (PackageConstraint (ScopeAnyQualifier pkgName) (PackagePropertyInstalledSpecificUnitId unitId))
+        ConstraintSourceNonReinstallablePackage
+      | (pkgName, unitId) <- fromMaybe [] $ compilerInfoWiredInUnitIds compiler
+      ]
 
 -- | Some packages are specific to a given compiler version and should never be
 -- reinstalled.
@@ -790,32 +808,33 @@ resolveDependencies
 resolveDependencies platform comp pkgConfigDB params =
   Step (showDepResolverParams finalparams) $
     fmap (validateSolverResult platform comp indGoals) $
-      runSolver
-        ( SolverConfig
-            reordGoals
-            cntConflicts
-            fineGrained
-            minimize
-            indGoals
-            noReinstalls
-            shadowing
-            strFlags
-            onlyConstrained_
-            maxBkjumps
-            enableBj
-            solveExes
-            order
-            verbosity
-            (PruneAfterFirstSuccess False)
-        )
-        platform
-        comp
-        installedPkgIndex
-        sourcePkgIndex
-        pkgConfigDB
-        preferences
-        constraints
-        targets
+      formatProgress $
+        runSolver
+          ( SolverConfig
+              reordGoals
+              cntConflicts
+              fineGrained
+              minimize
+              indGoals
+              noReinstalls
+              shadowing
+              strFlags
+              onlyConstrained_
+              maxBkjumps
+              enableBj
+              solveExes
+              order
+              verbosity
+              (PruneAfterFirstSuccess False)
+          )
+          platform
+          comp
+          installedPkgIndex
+          sourcePkgIndex
+          pkgConfigDB
+          preferences
+          constraints
+          targets
   where
     finalparams@( DepResolverParams
                     targets
@@ -840,9 +859,12 @@ resolveDependencies platform comp pkgConfigDB params =
                     order
                     verbosity
                   ) =
-        if asBool (depResolverAllowBootLibInstalls params)
-          then params
+        if isJust (compilerInfoWiredInUnitIds comp) || asBool (depResolverAllowBootLibInstalls params)
+          then dependOnWiredIns comp params
           else dontInstallNonReinstallablePackages params
+
+    formatProgress :: Progress SummarizedMessage String a -> Progress String String a
+    formatProgress p = foldProgress (\x xs -> Step (renderSummarizedMessage x) xs) Fail Done p
 
     preferences :: PackageName -> PackagePreferences
     preferences = interpretPackagesPreference targets defpref prefs

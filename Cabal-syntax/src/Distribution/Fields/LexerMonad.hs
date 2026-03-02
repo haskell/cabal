@@ -94,7 +94,7 @@ toPWarnings =
       Just $ PWarning PWTLexTab (NE.head poss) $ "Tabs used as indentation at " ++ intercalate ", " (NE.toList $ fmap showPos poss)
     toWarning LexInconsistentIndentation poss =
       Just $ PWarning PWTInconsistentIndentation (NE.head poss) $ "Inconsistent indentation. Indentation jumps at lines " ++ intercalate ", " (NE.toList $ fmap (show . positionRow) poss)
-    -- LexBraces warning about using { } delimeters is not reported as parser warning.
+    -- LexBraces warning about using { } delimiters is not reported as parser warning.
     toWarning LexBraces _ =
       Nothing
 

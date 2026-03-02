@@ -1,5 +1,3 @@
-{-# LANGUAGE StandaloneDeriving #-}
-
 -- | Command line options for nix-style / v2 commands.
 --
 -- The commands take a lot of the same options, which affect how install plan
@@ -9,6 +7,7 @@ module Distribution.Client.NixStyleOptions
   , nixStyleOptions
   , defaultNixStyleFlags
   , updNixStyleCommonSetupFlags
+  , cfgVerbosity
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -20,6 +19,7 @@ import Distribution.Simple.Setup
   , CommonSetupFlags (..)
   , HaddockFlags (..)
   , TestFlags (testCommonFlags)
+  , fromFlagOrDefault
   )
 import Distribution.Solver.Types.ConstraintSource (ConstraintSource (..))
 
@@ -40,6 +40,7 @@ import Distribution.Client.Setup
   , liftOptions
   , testOptions
   )
+import Distribution.Verbosity (VerbosityFlags, defaultVerbosityHandles, mkVerbosity)
 
 data NixStyleFlags a = NixStyleFlags
   { configFlags :: ConfigFlags
@@ -156,3 +157,8 @@ updNixStyleCommonSetupFlags setFlag nixFlags =
             common = benchmarkCommonFlags flags
          in flags{benchmarkCommonFlags = setFlag common}
     }
+
+cfgVerbosity :: VerbosityFlags -> NixStyleFlags a -> Verbosity
+cfgVerbosity v flags =
+  mkVerbosity defaultVerbosityHandles $
+    fromFlagOrDefault v (setupVerbosity . configCommonFlags $ configFlags flags)

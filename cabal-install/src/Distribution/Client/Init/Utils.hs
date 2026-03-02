@@ -1,3 +1,4 @@
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Distribution.Client.Init.Utils
@@ -42,12 +43,12 @@ import Distribution.InstalledPackageInfo (InstalledPackageInfo, exposed)
 import Distribution.ModuleName (ModuleName)
 import qualified Distribution.Package as P
 import Distribution.Simple.PackageIndex (InstalledPackageIndex, moduleNameIndex)
-import Distribution.Simple.Setup (Flag (..))
+import Distribution.Simple.Setup (pattern Flag, pattern NoFlag)
 import Distribution.Types.Dependency (Dependency, mkDependency)
 import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
 import Distribution.Utils.String (trim)
-import Distribution.Verbosity (silent)
+import Distribution.Verbosity (defaultVerbosityHandles, mkVerbosity, silent)
 import Distribution.Version
 
 -- | Data type of source files found in the working directory
@@ -64,7 +65,6 @@ data SourceFileEntry = SourceFileEntry
 knownSuffixHandlers :: CabalSpecVersion -> String -> String
 knownSuffixHandlers v s
   | v < CabalSpecV3_0 = case s of
-      ".gc" -> "greencard"
       ".chs" -> "chs"
       ".hsc" -> "hsc2hs"
       ".x" -> "alex"
@@ -73,7 +73,6 @@ knownSuffixHandlers v s
       ".cpphs" -> "cpp"
       _ -> ""
   | otherwise = case s of
-      ".gc" -> "greencard:greencard"
       ".chs" -> "chs:chs"
       ".hsc" -> "hsc2hs:hsc2hs"
       ".x" -> "alex:alex"
@@ -324,7 +323,7 @@ mkStringyDep = mkPackageNameDep . mkPackageName
 getBaseDep :: Interactive m => InstalledPackageIndex -> InitFlags -> m [Dependency]
 getBaseDep pkgIx flags =
   retrieveDependencies
-    silent
+    (mkVerbosity defaultVerbosityHandles silent)
     flags
     [(fromString "Prelude", fromString "Prelude")]
     pkgIx

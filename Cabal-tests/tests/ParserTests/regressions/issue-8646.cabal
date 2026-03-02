@@ -11,6 +11,6 @@ license: BSD-3-Clause
 
 executable test
   main-is: ExeMain.hs
-  build-depends: base > 4 && < 5
+  build-depends: base >= 4 && < 5
   default-language: Haskell2010
   ghc-options: -main-is ExeMain

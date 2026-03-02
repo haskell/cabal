@@ -1,5 +1,7 @@
 test-suite y-test
-    import:           warnings
+    import:           extensions
+    import:           ghc-options
+    import:           rts-options
     default-language: Haskell2010
     -- other-modules:
     -- other-extensions:

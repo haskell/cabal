@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-
 module UnitTests.Options
   ( OptionShowSolverLog (..)
   , OptionMtimeChangeDelay (..)
@@ -9,7 +7,6 @@ module UnitTests.Options
 where
 
 import Data.Proxy
-import Data.Typeable
 
 import Test.Tasty.Options
 
@@ -25,7 +22,6 @@ extraOptions =
   ]
 
 newtype OptionShowSolverLog = OptionShowSolverLog Bool
-  deriving (Typeable)
 
 instance IsOption OptionShowSolverLog where
   defaultValue = OptionShowSolverLog False
@@ -35,10 +31,10 @@ instance IsOption OptionShowSolverLog where
   optionCLParser = flagCLParser Nothing (OptionShowSolverLog True)
 
 newtype OptionMtimeChangeDelay = OptionMtimeChangeDelay Int
-  deriving (Typeable)
 
 instance IsOption OptionMtimeChangeDelay where
-  defaultValue = OptionMtimeChangeDelay 0
+  defaultValue = OptionMtimeChangeDelay 10000
+  showDefaultValue (OptionMtimeChangeDelay v) = Just (show v)
   parseValue = fmap OptionMtimeChangeDelay . safeRead
   optionName = return "mtime-change-delay"
   optionHelp =
@@ -47,7 +43,6 @@ instance IsOption OptionMtimeChangeDelay where
         ++ "file modification, in microseconds"
 
 newtype RunNetworkTests = RunNetworkTests Bool
-  deriving (Typeable)
 
 instance IsOption RunNetworkTests where
   defaultValue = RunNetworkTests True

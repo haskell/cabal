@@ -1,0 +1,5 @@
+When using configuration from:
+  - else.project
+  - dir-else/else.config
+The following errors occurred:
+  - The package location 'no-pkg-here' does not exist.

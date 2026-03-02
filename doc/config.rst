@@ -82,7 +82,9 @@ The configuration file location is determined as follows:
 1. If option ``--config-file`` is given, use it;
 2. otherwise, if ``$CABAL_CONFIG`` is set use it;
 3. otherwise, if ``$CABAL_DIR`` is set use ``$CABAL_DIR/config``;
-4. otherwise use ``config`` in ``$XDG_CONFIG_HOME/cabal``, which
+4. otherwise, if ``~/.cabal`` exists, and is a directory, use
+   ``~/.cabal/config``;
+5. otherwise use ``config`` in ``$XDG_CONFIG_HOME/cabal``, which
    defaults to ``~/.config/cabal`` on Unix.
 
 If the configuration file does not exist, and it was not given
@@ -199,6 +201,10 @@ repository.
 ``cabal`` will construct the index automatically from the
 ``package-name-version.tar.gz`` files in the directory, and will use optional
 corresponding ``package-name-version.cabal`` files as new revisions.
+
+.. note::
+   On Windows systems, the URL must start directly with the absolute path as in
+   ``url: file+noindex:C:/absolute/path/to/directory``.
 
 For example, if ``/absolute/path/to/directory`` looks like
 ::
@@ -337,17 +343,9 @@ The list of known programs is:
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
 | ``ghcjs-pkg``         |                                                                                                                                    |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
-| ``greencard``         | Greencard hasn't been updated since 2014, it doesn't build with newer GHCs `<https://hackage.haskell.org/package/greencard>`_      |
-+-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
 | ``haddock``           | `<https://haskell-haddock.readthedocs.io/latest/>`_                                                                                |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
 | ``happy``             | `<https://haskell-happy.readthedocs.io/en/latest/>`_                                                                               |
-+-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
-| ``haskell-suite``     | Haskell suite was abandoned a long time ago.                                                                                       |
-+-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
-| ``haskell-suite-pkg`` | Haskell suite was abandoned a long time ago.                                                                                       |
-+-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
-| ``hmake``             | Seems like hmake disappeared a long time ago `<https://www.haskell.org/cabal/proposal-1.1/x756.html>`_                             |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
 | ``hpc``               | `<https://hackage.haskell.org/package/hpc>`_                                                                                       |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+

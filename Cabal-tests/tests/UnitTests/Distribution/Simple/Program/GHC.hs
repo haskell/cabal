@@ -54,6 +54,7 @@ tests = testGroup "Distribution.Simple.Program.GHC"
                       , compilerLanguages = []
                       , compilerExtensions = []
                       , compilerProperties = Map.singleton "Support parallel --make" "YES"
+                      , compilerWiredInUnitIds = Nothing
                       })
                   (Platform X86_64 Linux)
                   (mempty { ghcOptNumJobs = Flag (NumJobs (Just 4)) })

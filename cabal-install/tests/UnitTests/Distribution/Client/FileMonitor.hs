@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 module UnitTests.Distribution.Client.FileMonitor (tests) where
 
 import Distribution.Parsec (simpleParsec)
@@ -17,7 +15,6 @@ import qualified Prelude as IO (writeFile)
 import Distribution.Compat.Binary
 import Distribution.Simple.Utils (withTempDirectory)
 import Distribution.System (OS (Windows), buildOS)
-import Distribution.Verbosity (silent)
 
 import Distribution.Client.FileMonitor
 import Distribution.Compat.Time
@@ -32,7 +29,7 @@ tests :: Int -> [TestTree]
 tests mtimeChange =
   [ testGroup
       "Structured hashes"
-      [ testCase "MonitorStateFile" $ structureHash (Proxy :: Proxy MonitorStateFile) @?= Fingerprint 0xe4108804c34962f6 0x06e94f8fc9e48e13
+      [ testCase "MonitorStateFile" $ structureHash (Proxy :: Proxy MonitorStateFile) @?= Fingerprint 0xe1339b9dcfdfe19d 0x9135a5f30da7ca82
       , testCase "MonitorStateGlob" $ structureHash (Proxy :: Proxy MonitorStateGlob) @?= Fingerprint fingerprintStateGlob1 fingerprintStateGlob2
       , testCase "MonitorStateFileSet" $ structureHash (Proxy :: Proxy MonitorStateFileSet) @?= Fingerprint fingerprintStateFileSet1 fingerprintStateFileSet2
       ]
@@ -88,17 +85,17 @@ tests mtimeChange =
       Windows -> expectFailBecause msg
       _ -> id
     fingerprintStateGlob1, fingerprintStateGlob2, fingerprintStateFileSet1, fingerprintStateFileSet2 :: Word64
-    fingerprintStateGlob1 = 0x8d6292a27f48ab78
-    fingerprintStateGlob2 = 0xa69393cf17cb6c71
-    fingerprintStateFileSet1 = 0x441fcb5eaf403013
-    fingerprintStateFileSet2 = 0x129db82bba47f56f
+    fingerprintStateGlob1 = 0x1f9edda22b7e8de6
+    fingerprintStateGlob2 = 0xda1d085c9fc6f5db
+    fingerprintStateFileSet1 = 0x00ac4a0df546905d
+    fingerprintStateFileSet2 = 0x5b2b2df018b1fa83
 
 -- Check the file system behaves the way we expect it to
 
 -- we rely on file mtimes having a reasonable resolution
 testFileMTimeSanity :: Int -> Assertion
 testFileMTimeSanity mtimeChange =
-  withTempDirectory silent "." "file-status-" $ \dir -> do
+  withTempDirectory "." "file-status-" $ \dir -> do
     replicateM_ 10 $ do
       IO.writeFile (dir </> "a") "content"
       t1 <- getModTime (dir </> "a")
@@ -110,7 +107,7 @@ testFileMTimeSanity mtimeChange =
 -- We rely on directories changing mtime when entries are added or removed
 testDirChangeSanity :: Int -> Assertion
 testDirChangeSanity mtimeChange =
-  withTempDirectory silent "." "dir-mtime-" $ \dir -> do
+  withTempDirectory "." "dir-mtime-" $ \dir -> do
     expectMTimeChange dir "file add" $
       IO.writeFile (dir </> "file") "content"
 
@@ -904,7 +901,7 @@ updateMonitorWithTimestamp (RootPath root) monitor timestamp files key result =
 
 withFileMonitor :: Eq a => (RootPath -> FileMonitor a b -> IO c) -> IO c
 withFileMonitor action = do
-  withTempDirectory silent "." "file-status-" $ \root -> do
+  withTempDirectory "." "file-status-" $ \root -> do
     let file = root <.> "monitor"
         monitor = newFileMonitor file
     finally (action (RootPath root) monitor) $ do

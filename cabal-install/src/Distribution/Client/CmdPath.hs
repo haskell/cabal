@@ -1,11 +1,5 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE RecordWildCards #-}
-
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
+{-# LANGUAGE PatternSynonyms #-}
 
 -- |
 -- Module      :  Distribution.Client.CmdPath
@@ -31,11 +25,12 @@ import Distribution.Client.Config
   , defaultStoreDir
   , getConfigFilePath
   )
-import Distribution.Client.DistDirLayout (CabalDirLayout (..), distProjectRootDirectory)
+import Distribution.Client.DistDirLayout (CabalDirLayout (..), StoreDirLayout (..), distProjectRootDirectory)
 import Distribution.Client.Errors
 import Distribution.Client.GlobalFlags
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
+  , cfgVerbosity
   , defaultNixStyleFlags
   , nixStyleOptions
   )
@@ -49,8 +44,7 @@ import Distribution.Client.ProjectPlanning
 import Distribution.Client.RebuildMonad (runRebuild)
 import Distribution.Client.ScriptUtils
 import Distribution.Client.Setup
-  ( ConfigFlags (..)
-  , yesNoOpt
+  ( yesNoOpt
   )
 import Distribution.Client.Utils.Json
   ( (.=)
@@ -72,9 +66,11 @@ import Distribution.Simple.Command
   )
 import Distribution.Simple.Compiler
 import Distribution.Simple.Flag
-  ( Flag (..)
+  ( Flag
   , flagToList
   , fromFlagOrDefault
+  , pattern Flag
+  , pattern NoFlag
   )
 import Distribution.Simple.Program
 import Distribution.Simple.Utils
@@ -85,6 +81,7 @@ import Distribution.Simple.Utils
   )
 import Distribution.Verbosity
   ( normal
+  , verbosityFlags
   )
 
 -------------------------------------------------------------------------------
@@ -95,7 +92,7 @@ pathCommand :: CommandUI (NixStyleFlags PathFlags)
 pathCommand =
   CommandUI
     { commandName = "path"
-    , commandSynopsis = "Query for simple project information"
+    , commandSynopsis = "Query for simple project information."
     , commandDescription = Just $ \_ ->
         wrapText $
           "Query for configuration and project information such as project GHC.\n"
@@ -229,7 +226,7 @@ pathName ConfigPathInstallDir = "installdir"
 
 -- | Entry point for the 'path' command.
 pathAction :: NixStyleFlags PathFlags -> [String] -> GlobalFlags -> IO ()
-pathAction flags@NixStyleFlags{extraFlags = pathFlags', ..} cliTargetStrings globalFlags = withContextAndSelectors AcceptNoTargets Nothing flags [] globalFlags OtherCommand $ \_ baseCtx _ -> do
+pathAction flags@NixStyleFlags{extraFlags = pathFlags'} cliTargetStrings globalFlags = withContextAndSelectors verbosity AcceptNoTargets Nothing flags [] globalFlags OtherCommand $ \_ baseCtx _ -> do
   let pathFlags =
         if pathCompiler pathFlags' == NoFlag && pathDirectories pathFlags' == NoFlag
           then -- if not a single key to query is given, query everything!
@@ -248,13 +245,20 @@ pathAction flags@NixStyleFlags{extraFlags = pathFlags', ..} cliTargetStrings glo
     if not $ fromFlagOrDefault False (pathCompiler pathFlags)
       then pure Nothing
       else do
-        (compiler, _, progDb) <- runRebuild (distProjectRootDirectory . distDirLayout $ baseCtx) $ configureCompiler verbosity (distDirLayout baseCtx) (projectConfig baseCtx)
+        (compiler, _, progDb) <-
+          runRebuild (distProjectRootDirectory . distDirLayout $ baseCtx) $
+            configureCompiler verbosity (distDirLayout baseCtx) (projectConfig baseCtx)
         compilerProg <- requireCompilerProg verbosity compiler
         (configuredCompilerProg, _) <- requireProgram verbosity compilerProg progDb
-        pure $ Just $ mkCompilerInfo configuredCompilerProg compiler
+
+        let compilerInfo' =
+              mkCompilerInfo configuredCompilerProg compiler $
+                cabalStoreDirLayout (cabalDirLayout baseCtx)
+
+        pure $ Just compilerInfo'
 
   paths <- for (fromFlagOrDefault [] $ pathDirectories pathFlags) $ \p -> do
-    t <- getPathLocation baseCtx p
+    t <- getPathLocation verbosity baseCtx p
     pure (pathName p, t)
 
   let pathOutputs =
@@ -269,27 +273,27 @@ pathAction flags@NixStyleFlags{extraFlags = pathFlags', ..} cliTargetStrings glo
         KeyValue -> do
           showAsKeyValuePair pathOutputs
 
-  putStr $ withOutputMarker verbosity output
+  putStr $ withOutputMarker (verbosityFlags verbosity) output
   where
-    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    verbosity = cfgVerbosity normal flags
 
 -- | Find the FilePath location for common configuration paths.
 --
 -- TODO: this should come from a common source of truth to avoid code path divergence
-getPathLocation :: ProjectBaseContext -> ConfigPath -> IO FilePath
-getPathLocation _ ConfigPathCacheHome =
+getPathLocation :: Verbosity -> ProjectBaseContext -> ConfigPath -> IO FilePath
+getPathLocation _ _ ConfigPathCacheHome =
   defaultCacheHome
-getPathLocation baseCtx ConfigPathRemoteRepoCache =
+getPathLocation _ baseCtx ConfigPathRemoteRepoCache =
   pure $ buildSettingCacheDir (buildSettings baseCtx)
-getPathLocation baseCtx ConfigPathLogsDir =
+getPathLocation _ baseCtx ConfigPathLogsDir =
   pure $ cabalLogsDirectory (cabalDirLayout baseCtx)
-getPathLocation baseCtx ConfigPathStoreDir =
+getPathLocation _ baseCtx ConfigPathStoreDir =
   fromFlagOrDefault
     defaultStoreDir
     (pure <$> projectConfigStoreDir (projectConfigShared (projectConfig baseCtx)))
-getPathLocation baseCtx ConfigPathConfigFile =
-  getConfigFilePath (projectConfigConfigFile (projectConfigShared (projectConfig baseCtx)))
-getPathLocation baseCtx ConfigPathInstallDir =
+getPathLocation verbosity baseCtx ConfigPathConfigFile =
+  getConfigFilePath verbosity (projectConfigConfigFile (projectConfigShared (projectConfig baseCtx)))
+getPathLocation _ baseCtx ConfigPathInstallDir =
   fromFlagOrDefault
     defaultInstallPath
     (pure <$> cinstInstalldir (projectConfigClientInstallFlags $ projectConfigBuildOnly (projectConfig baseCtx)))
@@ -321,16 +325,20 @@ data PathOutputs = PathOutputs
 data PathCompilerInfo = PathCompilerInfo
   { pathCompilerInfoFlavour :: CompilerFlavor
   , pathCompilerInfoId :: CompilerId
+  , pathCompilerInfoAbiTag :: String
   , pathCompilerInfoPath :: FilePath
+  , pathCompilerInfoStorePath :: FilePath
   }
   deriving (Show, Eq, Ord)
 
-mkCompilerInfo :: ConfiguredProgram -> Compiler -> PathCompilerInfo
-mkCompilerInfo compilerProgram compiler =
+mkCompilerInfo :: ConfiguredProgram -> Compiler -> StoreDirLayout -> PathCompilerInfo
+mkCompilerInfo compilerProgram compiler storeLayout =
   PathCompilerInfo
     { pathCompilerInfoFlavour = compilerFlavor compiler
     , pathCompilerInfoId = compilerId compiler
+    , pathCompilerInfoAbiTag = showCompilerIdWithAbi compiler
     , pathCompilerInfoPath = programPath compilerProgram
+    , pathCompilerInfoStorePath = storeDirectory storeLayout compiler
     }
 
 -- ----------------------------------------------------------------------------
@@ -375,7 +383,9 @@ compilerInfoToJson pci =
         .= Json.object
           [ "flavour" .= jdisplay (pathCompilerInfoFlavour pci)
           , "id" .= jdisplay (pathCompilerInfoId pci)
+          , "abi-tag" .= Json.String (pathCompilerInfoAbiTag pci)
           , "path" .= Json.String (pathCompilerInfoPath pci)
+          , "store-path" .= Json.String (pathCompilerInfoStorePath pci)
           ]
     ]
 
@@ -404,5 +414,7 @@ compilerInfoToKeyValue :: PathCompilerInfo -> [(String, String)]
 compilerInfoToKeyValue pci =
   [ ("compiler-flavour", prettyShow $ pathCompilerInfoFlavour pci)
   , ("compiler-id", prettyShow $ pathCompilerInfoId pci)
+  , ("compiler-abi-tag", pathCompilerInfoAbiTag pci)
   , ("compiler-path", pathCompilerInfoPath pci)
+  , ("compiler-store-path", pathCompilerInfoStorePath pci)
   ]

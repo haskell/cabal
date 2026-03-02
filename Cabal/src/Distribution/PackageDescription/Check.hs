@@ -268,8 +268,6 @@ checkGenericPackageDescription
       checkP
         (not . null $ dups names)
         (PackageBuildImpossible $ DuplicateSections dupes)
-      -- PackageDescription checks.
-      checkPackageDescription packageDescription_
       -- Flag names.
       mapM_ checkFlagName genPackageFlags_
 
@@ -425,7 +423,7 @@ checkPackageDescription
     -- But it is OK for executables to have the same name.
     nsubs <- asksCM (pnSubLibs . ccNames)
     checkP
-      (any (== prettyShow pn) (prettyShow <$> nsubs))
+      (prettyShow pn `elem` (prettyShow <$> nsubs))
       (PackageBuildImpossible $ IllegalLibraryName pn)
 
     -- § Fields check.
@@ -568,8 +566,20 @@ checkSetupBuildInfo (Just (SetupBuildInfo ds _)) = do
       rck =
         PackageDistSuspiciousWarn
           . MissingUpperBounds CETSetup
-  checkPVP ick is
-  checkPVPs rck rs
+      leuck =
+        PackageDistSuspiciousWarn
+          . LEUpperBounds CETSetup
+      tzuck =
+        PackageDistSuspiciousWarn
+          . TrailingZeroUpperBounds CETSetup
+      gtlck =
+        PackageDistSuspiciousWarn
+          . GTLowerBounds CETSetup
+  checkPVP (checkDependencyVersionRange $ not . hasUpperBound) ick is
+  checkPVPs (checkDependencyVersionRange $ not . hasUpperBound) rck rs
+  checkPVPs (checkDependencyVersionRange hasLEUpperBound) leuck ds
+  checkPVPs (checkDependencyVersionRange hasTrailingZeroUpperBound) tzuck ds
+  checkPVPs (checkDependencyVersionRange hasGTLowerBound) gtlck ds
 
 checkPackageId :: Monad m => PackageIdentifier -> CheckM m ()
 checkPackageId (PackageIdentifier pkgName_ _pkgVersion_) = do
@@ -823,7 +833,9 @@ checkSetupExists _ =
     ( \ops -> do
         ba <- doesFileExist ops "Setup.hs"
         bb <- doesFileExist ops "Setup.lhs"
-        return (not $ ba || bb)
+        bc <- doesFileExist ops "SetupHooks.hs"
+        bd <- doesFileExist ops "SetupHooks.lhs"
+        return (not $ ba || bb || bc || bd)
     )
     (PackageDistInexcusable MissingSetupFile)
 
@@ -1050,7 +1062,7 @@ checkMissingDocs dgs esgs edgs efgs = do
       -> [FilePath] -- Actuals.
       -> [PackageCheck]
     checkDoc b ds as =
-      let fds = map ("." </>) $ filter (flip notElem as) ds
+      let fds = map ("." </>) $ filter (`notElem` as) ds
        in if null fds
             then []
             else
@@ -1065,7 +1077,7 @@ checkMissingDocs dgs esgs edgs efgs = do
       -> [FilePath] -- Actuals.
       -> [PackageCheck]
     checkDocMove b field ds as =
-      let fds = filter (flip elem as) ds
+      let fds = filter (`elem` as) ds
        in if null fds
             then []
             else

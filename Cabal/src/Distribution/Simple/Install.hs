@@ -74,7 +74,6 @@ import Distribution.Compat.Graph (IsNode (..))
 import Distribution.Simple.Errors
 import qualified Distribution.Simple.GHC as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
-import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 import Distribution.Simple.Setup.Common
 import qualified Distribution.Simple.UHC as UHC
 
@@ -105,10 +104,11 @@ install
   -> CopyFlags
   -- ^ flags sent to copy or install
   -> IO ()
-install = install_setupHooks SetupHooks.noInstallHooks
+install = install_setupHooks SetupHooks.noInstallHooks defaultVerbosityHandles
 
 install_setupHooks
   :: InstallHooks
+  -> VerbosityHandles
   -> PackageDescription
   -- ^ information from the .cabal file
   -> LocalBuildInfo
@@ -118,6 +118,7 @@ install_setupHooks
   -> IO ()
 install_setupHooks
   (InstallHooks{installComponentHook})
+  verbHandles
   pkg_descr
   lbi
   flags = do
@@ -142,7 +143,7 @@ install_setupHooks
     where
       common = copyCommonFlags flags
       distPref = fromFlag $ setupDistPref common
-      verbosity = fromFlag $ setupVerbosity common
+      verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
       copydest = fromFlag (copyDest flags)
 
       checkHasLibsOrExes =
@@ -249,16 +250,6 @@ copyComponent verbosity pkg_descr lbi (CLib lib) clbi copydest = do
     GHC -> GHC.installLib verbosity lbi libPref dynlibPref buildPref pkg_descr lib clbi
     GHCJS -> GHCJS.installLib verbosity lbi libPref dynlibPref buildPref pkg_descr lib clbi
     UHC -> UHC.installLib verbosity lbi libPref dynlibPref buildPref pkg_descr lib clbi
-    HaskellSuite _ ->
-      HaskellSuite.installLib
-        verbosity
-        lbi
-        libPref
-        dynlibPref
-        buildPref
-        pkg_descr
-        lib
-        clbi
     _ ->
       dieWithException verbosity $ CompilerNotInstalled (compilerFlavor (compiler lbi))
 copyComponent verbosity pkg_descr lbi (CFLib flib) clbi copydest = do
@@ -307,7 +298,6 @@ copyComponent verbosity pkg_descr lbi (CExe exe) clbi copydest = do
     GHC -> GHC.installExe verbosity lbi binPref buildPref progFix pkg_descr exe
     GHCJS -> GHCJS.installExe verbosity lbi binPref buildPref progFix pkg_descr exe
     UHC -> return ()
-    HaskellSuite{} -> return ()
     _ ->
       dieWithException verbosity $ CompilerNotInstalled (compilerFlavor (compiler lbi))
 
@@ -377,8 +367,10 @@ installIncludeFiles verbosity libBi lbi buildPref destIncludeDir = do
     ]
   where
     baseDir lbi' = packageRoot $ configCommonFlags $ configFlags lbi'
-    findInc [] file = dieWithException verbosity $ CantFindIncludeFile file
-    findInc (dir : dirs) file = do
-      let path = dir </> file
-      exists <- doesFileExist path
-      if exists then return (file, path) else findInc dirs file
+    findInc fs f = go fs
+      where
+        go [] = dieWithException verbosity $ CantFindIncludeFile f fs
+        go (d : ds) = do
+          let path = d </> f
+          b <- doesFileExist path
+          if b then return (f, path) else go ds

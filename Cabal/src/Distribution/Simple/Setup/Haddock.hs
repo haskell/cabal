@@ -1,13 +1,9 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ViewPatterns #-}
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Simple.Setup.Haddock
@@ -76,9 +72,10 @@ import qualified Text.PrettyPrint as Disp
 --    from documentation tarballs, and we might also want to use different
 --    flags than for development builds, so in this case we store the generated
 --    documentation in @<dist>/doc/html/<package id>-docs@.
-data HaddockTarget = ForHackage | ForDevelopment deriving (Eq, Show, Generic, Typeable)
+data HaddockTarget = ForHackage | ForDevelopment deriving (Eq, Show, Generic)
 
 instance Binary HaddockTarget
+instance NFData HaddockTarget
 instance Structured HaddockTarget
 
 instance Pretty HaddockTarget where
@@ -111,16 +108,15 @@ data HaddockFlags = HaddockFlags
   , haddockHscolourCss :: Flag FilePath
   , haddockContents :: Flag PathTemplate
   , haddockIndex :: Flag PathTemplate
-  , haddockKeepTempFiles :: Flag Bool
   , haddockBaseUrl :: Flag String
   , haddockResourcesDir :: Flag String
   , haddockOutputDir :: Flag FilePath
   , haddockUseUnicode :: Flag Bool
   }
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic)
 
 pattern HaddockCommonFlags
-  :: Flag Verbosity
+  :: Flag VerbosityFlags
   -> Flag (SymbolicPath Pkg (Dir Dist))
   -> Flag (SymbolicPath CWD (Dir Pkg))
   -> Flag (SymbolicPath Pkg File)
@@ -166,7 +162,6 @@ defaultHaddockFlags =
     , haddockQuickJump = Flag False
     , haddockHscolourCss = NoFlag
     , haddockContents = NoFlag
-    , haddockKeepTempFiles = Flag False
     , haddockIndex = NoFlag
     , haddockBaseUrl = NoFlag
     , haddockResourcesDir = NoFlag
@@ -219,13 +214,6 @@ haddockOptions showOrParseArgs =
     (\c f -> f{haddockCommonFlags = c})
     showOrParseArgs
     [ option
-        ""
-        ["keep-temp-files"]
-        "Keep temporary files"
-        haddockKeepTempFiles
-        (\b flags -> flags{haddockKeepTempFiles = b})
-        trueArg
-    , option
         ""
         ["hoogle"]
         "Generate a hoogle database"
@@ -447,13 +435,11 @@ data HaddockProjectFlags = HaddockProjectFlags
   , -- haddockContent is not supported, a fixed value is provided
     -- haddockIndex is not supported, a fixed value is provided
     -- haddockDistPerf is not supported, note: it changes location of the haddocks
-    haddockProjectKeepTempFiles :: Flag Bool
-  , haddockProjectVerbosity :: Flag Verbosity
-  , -- haddockBaseUrl is not supported, a fixed value is provided
+    -- haddockBaseUrl is not supported, a fixed value is provided
     haddockProjectResourcesDir :: Flag String
   , haddockProjectUseUnicode :: Flag Bool
   }
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic)
 
 defaultHaddockProjectFlags :: HaddockProjectFlags
 defaultHaddockProjectFlags =
@@ -473,8 +459,6 @@ defaultHaddockProjectFlags =
     , haddockProjectInternal = Flag False
     , haddockProjectCss = NoFlag
     , haddockProjectHscolourCss = NoFlag
-    , haddockProjectKeepTempFiles = Flag False
-    , haddockProjectVerbosity = Flag normal
     , haddockProjectResourcesDir = NoFlag
     , haddockProjectInterfaces = NoFlag
     , haddockProjectUseUnicode = NoFlag
@@ -632,13 +616,6 @@ haddockProjectOptions showOrParseArgs =
         haddockProjectHscolourCss
         (\v flags -> flags{haddockProjectHscolourCss = v})
         (reqArgFlag "PATH")
-    , option
-        ""
-        ["keep-temp-files"]
-        "Keep temporary files"
-        haddockProjectKeepTempFiles
-        (\b flags -> flags{haddockProjectKeepTempFiles = b})
-        trueArg
     , option
         ""
         ["resources-dir"]

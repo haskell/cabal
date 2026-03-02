@@ -1,0 +1,10 @@
+synopsis: Better document, in-app, Cabal's `--semaphore=SEMAPHORE` option
+packages: Cabal
+prs: #11503
+significance:
+
+description: {
+
+- Cabal's `--semaphore=SEMAPHORE` option is better documented on `--help`.
+
+}

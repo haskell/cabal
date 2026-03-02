@@ -6,7 +6,17 @@ priority_rules:
   - name: high priority
     conditions:
       - 'label=priority: high :fire:'
-    priority: high
+    priority: 3000
+
+  - name: priority for queue `default`
+    conditions:
+      - queue-name=default
+    priority: 2500
+
+  - name: priority for queue `squash-merge`
+    conditions:
+      - queue-name=squash-merge
+    priority: 2500
 
   # The idea is we slightly prioritize those PRs because we're in
   # a release cycle if a PR matches.
@@ -14,8 +24,7 @@ priority_rules:
     conditions:
       - 'base~=^3\.'
       - 'label!=backport'
-    # 'normal' is 2000, 'high' is 3000
-    priority: 2500
+    priority: 2750
 
 pull_request_rules:
 
@@ -28,12 +37,12 @@ pull_request_rules:
     name: Wait for 2 days before validating merge
     conditions:
       - or:
-        - 'label=priority: high :fire:'
-        - updated-at<2 days ago
+          - 'label=priority: high :fire:'
+          - updated-at<2 days ago
       - or:
-        - label=merge me
-        - label=squash+merge me
-        - label=merge+no rebase
+          - label=merge me
+          - label=squash+merge me
+          - label=merge+no rebase
       - '#approved-reviews-by>=2'
 
   # label when Mergify is ready but waiting for the above
@@ -46,12 +55,39 @@ pull_request_rules:
       - base=master
       - -draft
       - -closed
+      - '-label=merge delay passed'
+      - '-label=priority: high :fire:'
       - or:
-        - label=merge me
-        - label=squash+merge me
-        - label=merge+no rebase
+          - label=merge me
+          - label=squash+merge me
+          - label=merge+no rebase
       - '#approved-reviews-by>=2'
       - '#changes-requested-reviews-by=0'
+      # oy
+      # lifted these from branch protection imports
+      - check-success=fourmolu
+      - check-success=hlint
+      - check-success=Meta checks
+      - check-success=Doctest Cabal
+      - check-success=Validate post job
+      - check-success=Bootstrap post job
+      - 'check-success=docs/readthedocs.org:cabal'
+
+  # label when Mergify didn't trigger a merge automatically
+  - actions:
+      label:
+        add:
+          - waiting too long
+    name: Mergify hasn't merged a PR yet
+    conditions:
+      - base=master
+      - -draft
+      - -closed
+      - -merged
+      - '#approved-reviews-by>=2'
+      - '#changes-requested-reviews-by=0'
+      - updated-at<3 days ago
+      - label=merge delay passed
       # oy
       # lifted these from branch protection imports
       - check-success=fourmolu
@@ -97,10 +133,6 @@ pull_request_rules:
       - label=merge delay passed
       - '#approved-reviews-by>=2'
       - '-label~=^blocked:'
-      # unlike the others, we need to force this one to be up to date
-      # because it's intended for when Mergify doesn't have permission
-      # to rebase
-      - '#commits-behind=0'
 
   # merge strategy for release branches
   - actions:
@@ -110,7 +142,7 @@ pull_request_rules:
     conditions:
       - label=merge me
       - base!=master
-      - -body~=backport
+      - -label=backport
       - '#approved-reviews-by>=2'
       - '-label~=^blocked:'
 
@@ -122,7 +154,7 @@ pull_request_rules:
     conditions:
       - base!=master
       - label=squash+merge me
-      - -body~=backport
+      - -label=backport
       - '#approved-reviews-by>=2'
       - '-label~=^blocked:'
 
@@ -134,7 +166,7 @@ pull_request_rules:
     conditions:
       - label=merge me
       - base!=master
-      - body~=backport
+      - label=backport
       - '#approved-reviews-by>=1'
       - '-label~=^blocked:'
 
@@ -146,7 +178,7 @@ pull_request_rules:
     conditions:
       - label=squash+merge me
       - base!=master
-      - body~=backport
+      - label=backport
       - '#approved-reviews-by>=1'
       - '-label~=^blocked:'
 
@@ -159,14 +191,21 @@ pull_request_rules:
     conditions:
       - body~=automatic backport
 
+merge_queue:
+  max_parallel_checks: 2
+
 queue_rules:
   # Mergify now requires different queues for different strategies
   - name: default
+    batch_size: 3
+    batch_max_wait_time: 10 min
     update_bot_account: Mikolaj
     merge_method: merge
     update_method: rebase
 
   - name: squash-merge
+    batch_size: 3
+    batch_max_wait_time: 10 min
     update_bot_account: Mikolaj
     merge_method: squash
     update_method: merge

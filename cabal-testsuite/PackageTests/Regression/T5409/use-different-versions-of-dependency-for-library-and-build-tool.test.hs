@@ -1,4 +1,6 @@
 import Test.Cabal.Prelude
+import Data.Function ((&))
+import Data.List (isInfixOf)
 
 -- The local package, pkg-1.0, depends on build-tool-pkg-1 as a library and
 -- build-tool-pkg-2 as a build-tool.  This test checks that cabal uses the
@@ -16,16 +18,13 @@ main = cabalTest $ withShorterPathForNewBuildStore $ do
       r1 <- recordMode DoNotRecord $
             cabal' "v2-build" ["pkg:my-exe"]
 
-      let msg = concat
-              [ "In order, the following will be built:"
-              , "  - build-tool-pkg-1 (lib) (requires build)"
-              , "  - build-tool-pkg-2 (lib) (requires build)"
-              , "  - build-tool-pkg-2 (exe:build-tool-exe) (requires build)"
-              , "  - pkg-1.0 (exe:my-exe) (first run)"
-              ]
+      "In order, the following will be built:\n\
+      \ - build-tool-pkg-1 (lib) (requires build)\n\
+      \ - build-tool-pkg-2 (lib) (requires build)\n\
+      \ - build-tool-pkg-2 (exe:build-tool-exe) (requires build)\n\
+      \ - pkg-1.0 (exe:my-exe) (first run)"
+        & flip (assertOn isInfixOf multilineNeedleHaystack) r1
 
-      assertOutputContains msg r1
       withPlan $ do
         r2 <- runPlanExe' "pkg" "my-exe" []
-        assertOutputContains
-            "build-tool library version: 1, build-tool exe version: 2" r2
+        assertOn isInfixOf multilineNeedleHaystack "build-tool library version: 1,\nbuild-tool exe version: 2" r2

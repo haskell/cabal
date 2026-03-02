@@ -21,7 +21,7 @@ import Prelude ()
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
 import Distribution.Compiler
-import Distribution.ModuleName (ModuleName)
+import Distribution.ModuleName (ModuleName, toFilePath)
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Check.Common
@@ -61,6 +61,8 @@ checkLibrary
           _libVisibility_
           libBuildInfo_
         ) = do
+    mapM_ checkModuleName (explicitLibModules lib)
+
     checkP
       (libName_ == LMainLibName && isSub)
       (PackageBuildImpossible UnnamedInternal)
@@ -77,7 +79,7 @@ checkLibrary
     checkP
       ( not $
           all
-            (flip elem (explicitLibModules lib))
+            (`elem` explicitLibModules lib)
             (libModulesAutogen lib)
       )
       (PackageBuildImpossible AutogenNotExposed)
@@ -144,6 +146,8 @@ checkExecutable
     let cet = CETExecutable exeName_
         modulePath_ = getSymbolicPath symbolicModulePath_
 
+    mapM_ checkModuleName (exeModules exe)
+
     -- § Exe specific checks
     checkP
       (null modulePath_)
@@ -168,7 +172,7 @@ checkExecutable
     -- Alas exeModules ad exeModulesAutogen (exported from
     -- Distribution.Types.Executable) take `Executable` as a parameter.
     checkP
-      (not $ all (flip elem (exeModules exe)) (exeModulesAutogen exe))
+      (not $ all (`elem` exeModules exe) (exeModulesAutogen exe))
       (PackageBuildImpossible $ AutogenNoOther cet)
     checkP
       ( not $
@@ -205,13 +209,16 @@ checkTestSuite
       TestSuiteUnsupported tt ->
         tellP (PackageBuildWarning $ TestsuiteNotSupported tt)
       _ -> return ()
+
+    mapM_ checkModuleName (testModules ts)
+
     checkP
       mainIsWrongExt
       (PackageBuildImpossible NoHsLhsMain)
     checkP
       ( not $
           all
-            (flip elem (testModules ts))
+            (`elem` testModules ts)
             (testModulesAutogen ts)
       )
       (PackageBuildImpossible $ AutogenNoOther cet)
@@ -257,6 +264,8 @@ checkBenchmark
     -- Target type/name (benchmark).
     let cet = CETBenchmark benchmarkName_
 
+    mapM_ checkModuleName (benchmarkModules bm)
+
     -- § Interface & bm specific tests.
     case benchmarkInterface_ of
       BenchmarkUnsupported tt@(BenchmarkTypeUnknown _ _) ->
@@ -271,7 +280,7 @@ checkBenchmark
     checkP
       ( not $
           all
-            (flip elem (benchmarkModules bm))
+            (`elem` benchmarkModules bm)
             (benchmarkModulesAutogen bm)
       )
       (PackageBuildImpossible $ AutogenNoOther cet)
@@ -293,6 +302,11 @@ checkBenchmark
         case benchmarkInterface_ of
           BenchmarkExeV10 _ f -> takeExtension (getSymbolicPath f) `notElem` [".hs", ".lhs"]
           _ -> False
+
+-- | Check if a module name is valid on both Windows and Posix systems
+checkModuleName :: Monad m => ModuleName -> CheckM m ()
+checkModuleName moduleName =
+  checkPackageFileNamesWithGlob PathKindFile (toFilePath moduleName)
 
 -- ------------------------------------------------------------
 -- Build info
@@ -331,17 +345,30 @@ checkBuildInfo cet ams ads bi = do
   checkAutogenModules ams bi
 
   -- PVP: we check for base and all other deps.
+  let ds = mergeDependencies $ targetBuildDepends bi
   (ids, rds) <-
     partitionDeps
       ads
       [mkUnqualComponentName "base"]
-      (mergeDependencies $ targetBuildDepends bi)
+      ds
   let ick = const (PackageDistInexcusable BaseNoUpperBounds)
       rck = PackageDistSuspiciousWarn . MissingUpperBounds cet
-  checkPVP ick ids
+      leuck = PackageDistSuspiciousWarn . LEUpperBounds cet
+      tzuck = PackageDistSuspiciousWarn . TrailingZeroUpperBounds cet
+      gtlck = PackageDistSuspiciousWarn . GTLowerBounds cet
+  checkPVP (checkDependencyVersionRange $ not . hasUpperBound) ick ids
   unless
     (isInternalTarget cet)
-    (checkPVPs rck rds)
+    (checkPVPs (checkDependencyVersionRange $ not . hasUpperBound) rck rds)
+  unless
+    (isInternalTarget cet)
+    (checkPVPs (checkDependencyVersionRange hasLEUpperBound) leuck ds)
+  unless
+    (isInternalTarget cet)
+    (checkPVPs (checkDependencyVersionRange hasTrailingZeroUpperBound) tzuck ds)
+  unless
+    (isInternalTarget cet)
+    (checkPVPs (checkDependencyVersionRange hasGTLowerBound) gtlck ds)
 
   -- Custom fields well-formedness (ASCII).
   mapM_ checkCustomField (customFieldsBI bi)
@@ -665,7 +692,7 @@ checkAutogenModules ams bi = do
   -- PackageBuildImpossible and not merely PackageDistInexcusable.
   checkSpecVer
     CabalSpecV3_12
-    (elem autoInfoModuleName allModsForAuto)
+    (autoInfoModuleName `elem` allModsForAuto)
     (PackageBuildImpossible CVAutogenPackageInfoGuard)
   where
     allModsForAuto :: [ModuleName]
@@ -787,6 +814,7 @@ checkBuildInfoOptions t bi = do
   checkCLikeOptions LangC "cc-options" (ccOptions bi) ldOpts
   checkCLikeOptions LangCPlusPlus "cxx-options" (cxxOptions bi) ldOpts
   checkCPPOptions (cppOptions bi)
+  checkJSPOptions (jsppOptions bi)
 
 -- | Checks GHC options for commonly misused or non-portable flags.
 checkGHCOptions
@@ -874,6 +902,12 @@ checkGHCOptions title t opts = do
       checkAlternatives
         title
         "cpp-options"
+        ( [(flag, flag) | flag@('-' : 'D' : _) <- ghcNoRts]
+            ++ [(flag, flag) | flag@('-' : 'U' : _) <- ghcNoRts]
+        )
+      checkAlternatives
+        title
+        "jspp-options"
         ( [(flag, flag) | flag@('-' : 'D' : _) <- ghcNoRts]
             ++ [(flag, flag) | flag@('-' : 'U' : _) <- ghcNoRts]
         )
@@ -1064,5 +1098,22 @@ checkCPPOptions opts = do
         checkP
           (not $ any (`isPrefixOf` opt) ["-D", "-U", "-I"])
           (PackageBuildWarning (COptCPP opt))
+    )
+    opts
+
+checkJSPOptions
+  :: Monad m
+  => [String] -- Options in String form.
+  -> CheckM m ()
+checkJSPOptions opts = do
+  checkAlternatives
+    "jspp-options"
+    "include-dirs"
+    [(flag, dir) | flag@('-' : 'I' : dir) <- opts]
+  mapM_
+    ( \opt ->
+        checkP
+          (not $ any (`isPrefixOf` opt) ["-D", "-U", "-I"])
+          (PackageBuildWarning (OptJSPP opt))
     )
     opts

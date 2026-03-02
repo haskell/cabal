@@ -1,11 +1,10 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 -- TODO
-{-# OPTIONS_GHC -fno-warn-incomplete-uni-patterns #-}
+{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 
 -----------------------------------------------------------------------------
 
@@ -101,6 +100,7 @@ import Control.Arrow ((&&&))
 import Control.Monad hiding
   ( mfilter
   )
+import Data.Bifunctor (second)
 #if MIN_VERSION_base(4,20,0)
 import Data.Functor as UZ (unzip)
 #else
@@ -828,7 +828,7 @@ reportTargetSelectorProblems verbosity problems = do
     targets ->
       dieWithException verbosity $
         NoSuchTargetSelectorErr $
-          map (\(target, nosuch) -> (showTargetString target, nosuch)) targets
+          map (first showTargetString) targets
 
   case [(t, ts) | TargetSelectorAmbiguous t ts <- problems] of
     [] -> return ()
@@ -2187,7 +2187,7 @@ matchComponentKindAndName cs ckind str =
     (map render cs)
     $ increaseConfidenceFor
     $ matchInexactly
-      (\(ck, cn) -> (ck, caseFold cn))
+      (second caseFold)
       (\c -> (cinfoKind c, cinfoStrName c))
       cs
       (ckind, str)

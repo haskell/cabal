@@ -2,7 +2,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE ViewPatterns #-}
 
 module Distribution.Client.CmdLegacy (legacyCmd, legacyWrapperCmd, newCmd) where
 
@@ -25,7 +24,10 @@ import Distribution.Simple.Utils
   ( wrapText
   )
 import Distribution.Verbosity
-  ( normal
+  ( VerbosityFlags
+  , defaultVerbosityHandles
+  , mkVerbosity
+  , normal
   )
 
 import Control.Exception
@@ -58,7 +60,9 @@ wrapperAction command getCommonFlags =
       }
     $ \flags extraArgs globalFlags -> do
       let common = getCommonFlags flags
-          verbosity' = Setup.fromFlagOrDefault normal (Setup.setupVerbosity common)
+          verbosity' =
+            mkVerbosity defaultVerbosityHandles $
+              Setup.fromFlagOrDefault normal (Setup.setupVerbosity common)
           mbWorkDir = Setup.flagToMaybe $ Setup.setupWorkingDir common
 
       load <- try (loadConfigOrSandboxConfig verbosity' globalFlags)
@@ -84,9 +88,9 @@ wrapperAction command getCommonFlags =
 --
 
 class HasVerbosity a where
-  verbosity :: a -> Verbosity
+  verbosity :: a -> VerbosityFlags
 
-instance HasVerbosity (Setup.Flag Verbosity) where
+instance HasVerbosity (Setup.Flag VerbosityFlags) where
   verbosity = Setup.fromFlagOrDefault normal
 
 instance HasVerbosity a => HasVerbosity (a, b) where
@@ -164,7 +168,7 @@ legacyWrapperCmd ui commonFlags = toLegacyCmd (wrapperCmd ui commonFlags)
 newCmd :: CommandUI flags -> (flags -> [String] -> globals -> IO action) -> [CommandSpec (globals -> IO action)]
 newCmd origUi@CommandUI{..} action = [cmd defaultUi, cmd newUi, cmd origUi]
   where
-    cmd ui = CommandSpec ui (flip commandAddAction action) NormalCommand
+    cmd ui = CommandSpec ui (`commandAddAction` action) NormalCommand
 
     newMsg = T.unpack . T.replace "v2-" "new-" . T.pack
     newUi =

@@ -1,9 +1,7 @@
 {-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# OPTIONS_GHC -fno-warn-incomplete-uni-patterns #-}
+{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 
 -----------------------------------------------------------------------------
 
@@ -26,8 +24,8 @@ import qualified Data.ByteString.Base16 as Base16
 import qualified Data.ByteString.Char8 as BS8
 import Data.List (groupBy)
 import Distribution.Client.IndexUtils.Timestamp
-import Distribution.Client.Types.Repo
-import Distribution.Client.Types.RepoName (RepoName (..))
+import qualified Distribution.Client.Types.Repo as Repo
+import qualified Distribution.Client.Types.RepoName as RepoName
 import Distribution.Compat.Prelude
 import Distribution.Deprecated.ParseUtils (PWarning, showPWarning)
 import Distribution.Package
@@ -35,7 +33,11 @@ import Distribution.Pretty
 import Distribution.Simple (VersionRange)
 import Distribution.Simple.Utils
 import Network.URI
+import Text.PrettyPrint hiding (render, (<>))
+import qualified Text.PrettyPrint as PP
 import Text.Regex.Posix.ByteString (WrapError)
+
+import Distribution.Client.Errors.Parser
 
 data CabalInstallException
   = UnpackGet
@@ -61,7 +63,7 @@ data CabalInstallException
   | UnableToPerformInplaceUpdate
   | EmptyValuePagerEnvVariable
   | FileDoesntExist FilePath
-  | ParseError
+  | CabalCheckParseError CabalFileParseError
   | CabalFileNotFound FilePath
   | FindOpenProgramLocationErr String
   | PkgConfParseFailed String
@@ -72,7 +74,7 @@ data CabalInstallException
   | ReportTargetProblems String
   | ListBinTargetException String
   | ResolveWithoutDependency String
-  | CannotReadCabalFile FilePath
+  | CannotReadCabalFile FilePath FilePath
   | ErrorUpdatingIndex FilePath IOException
   | InternalError FilePath
   | ReadIndexCache FilePath
@@ -114,7 +116,7 @@ data CabalInstallException
   | ParseExtraLinesFailedErr String String
   | ParseExtraLinesOkError [PWarning]
   | FetchPackageErr
-  | ReportParseResult String FilePath String String
+  | ReportParseResult String FilePath String Doc
   | ReportSourceRepoProblems String
   | BenchActionException
   | RenderBenchTargetProblem [String]
@@ -182,11 +184,15 @@ data CabalInstallException
   | FreezeException String
   | PkgSpecifierException [String]
   | CorruptedIndexCache String
-  | UnusableIndexState RemoteRepo Timestamp Timestamp
-  | MissingPackageList RemoteRepo
+  | UnusableIndexState Repo.RemoteRepo Timestamp Timestamp
+  | MissingPackageList Repo.RemoteRepo
   | CmdPathAcceptsNoTargets
   | CmdPathCommandDoesn'tSupportDryRun
-  deriving (Show, Typeable)
+  | GenBoundsDoesNotSupportScript FilePath
+  | LegacyAndParsecParseResultsDiffer FilePath String String
+  | CabalFileParseFailure CabalFileParseError
+  | ProjectConfigParseFailure ProjectConfigParseError
+  deriving (Show)
 
 exceptionCodeCabalInstall :: CabalInstallException -> Int
 exceptionCodeCabalInstall e = case e of
@@ -213,7 +219,7 @@ exceptionCodeCabalInstall e = case e of
   UnableToPerformInplaceUpdate{} -> 7032
   EmptyValuePagerEnvVariable{} -> 7033
   FileDoesntExist{} -> 7034
-  ParseError{} -> 7035
+  CabalCheckParseError{} -> 7035
   CabalFileNotFound{} -> 7036
   FindOpenProgramLocationErr{} -> 7037
   PkgConfParseFailed{} -> 7038
@@ -338,6 +344,10 @@ exceptionCodeCabalInstall e = case e of
   MissingPackageList{} -> 7160
   CmdPathAcceptsNoTargets{} -> 7161
   CmdPathCommandDoesn'tSupportDryRun -> 7163
+  GenBoundsDoesNotSupportScript{} -> 7164
+  LegacyAndParsecParseResultsDiffer{} -> 7165
+  CabalFileParseFailure{} -> 7166
+  ProjectConfigParseFailure{} -> 7167
 
 exceptionMessageCabalInstall :: CabalInstallException -> String
 exceptionMessageCabalInstall e = case e of
@@ -376,7 +386,7 @@ exceptionMessageCabalInstall e = case e of
   UnableToPerformInplaceUpdate -> "local project file has conditional and/or import logic, unable to perform and automatic in-place update"
   EmptyValuePagerEnvVariable -> "man: empty value of the PAGER environment variable"
   FileDoesntExist fpath -> "Error Parsing: file \"" ++ fpath ++ "\" doesn't exist. Cannot continue."
-  ParseError -> "parse error"
+  CabalCheckParseError err -> renderCabalFileParseError err
   CabalFileNotFound cabalFile -> "Package .cabal file not found in the tarball: " ++ cabalFile
   FindOpenProgramLocationErr err -> err
   PkgConfParseFailed perror ->
@@ -392,7 +402,11 @@ exceptionMessageCabalInstall e = case e of
   ReportTargetProblems problemsMsg -> problemsMsg
   ListBinTargetException errorStr -> errorStr
   ResolveWithoutDependency errorStr -> errorStr
-  CannotReadCabalFile file -> "Cannot read .cabal file inside " ++ file
+  CannotReadCabalFile expect file ->
+    "Failed to read "
+      ++ expect
+      ++ " from archive "
+      ++ file
   ErrorUpdatingIndex name ioe -> "Error while updating index for " ++ name ++ " repository " ++ show ioe
   InternalError msg ->
     "internal error when reading package index: "
@@ -493,13 +507,12 @@ exceptionMessageCabalInstall e = case e of
   ParseExtraLinesOkError ws -> unlines (map (showPWarning "Error parsing additional config lines") ws)
   FetchPackageErr -> "fetchPackage: source repos not supported"
   ReportParseResult filetype filename line msg ->
-    "Error parsing "
-      ++ filetype
-      ++ " "
-      ++ filename
-      ++ line
-      ++ ":\n"
-      ++ msg
+    PP.render $
+      vcat
+        -- NOTE: As given to us, the line number string is prefixed by a colon.
+        [ text "Error parsing" <+> text filetype <+> text filename PP.<> text line PP.<> colon
+        , nest 1 $ text "-" <+> msg
+        ]
   ReportSourceRepoProblems errorStr -> errorStr
   BenchActionException ->
     "The bench command does not support '--only-dependencies'. "
@@ -841,7 +854,7 @@ exceptionMessageCabalInstall e = case e of
   CorruptedIndexCache str -> str
   UnusableIndexState repoRemote maxFound requested ->
     "Latest known index-state for '"
-      ++ unRepoName (remoteRepoName repoRemote)
+      ++ RepoName.unRepoName (Repo.remoteRepoName repoRemote)
       ++ "' ("
       ++ prettyShow maxFound
       ++ ") is older than the requested index-state ("
@@ -851,12 +864,27 @@ exceptionMessageCabalInstall e = case e of
       ++ "."
   MissingPackageList repoRemote ->
     "The package list for '"
-      ++ unRepoName (remoteRepoName repoRemote)
+      ++ RepoName.unRepoName (Repo.remoteRepoName repoRemote)
       ++ "' does not exist. Run 'cabal update' to download it."
   CmdPathAcceptsNoTargets ->
     "The 'path' command accepts no target arguments."
   CmdPathCommandDoesn'tSupportDryRun ->
     "The 'path' command doesn't support the flag '--dry-run'."
+  GenBoundsDoesNotSupportScript{} ->
+    "The 'gen-bounds' command does not support script targets."
+  LegacyAndParsecParseResultsDiffer _fp legacyParsec parsec ->
+    unlines
+      [ "The legacy and parsec parsers produced different results for the project file. This is unexpected, please report this as a bug."
+      , "The legacy parser will be removed in the next major version."
+      , "Legacy parse result:"
+      , legacyParsec
+      , "Parsec parse result:"
+      , parsec
+      ]
+  CabalFileParseFailure cbfError ->
+    renderCabalFileParseError cbfError
+  ProjectConfigParseFailure pcfError ->
+    renderProjectConfigParseError pcfError
 
 instance Exception (VerboseException CabalInstallException) where
   displayException :: VerboseException CabalInstallException -> [Char]

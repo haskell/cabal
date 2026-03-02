@@ -71,7 +71,7 @@ data GenericPackageDescription = GenericPackageDescription
            )
          ]
   }
-  deriving (Show, Eq, Typeable, Data, Generic)
+  deriving (Show, Eq, Data, Generic)
 
 instance Package GenericPackageDescription where
   packageId = packageId . packageDescription

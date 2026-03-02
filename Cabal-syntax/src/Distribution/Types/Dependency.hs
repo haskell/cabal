@@ -41,7 +41,7 @@ data Dependency
       PackageName
       VersionRange
       (NonEmptySet LibraryName)
-  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
+  deriving (Generic, Read, Show, Eq, Ord, Data)
 
 depPkgName :: Dependency -> PackageName
 depPkgName (Dependency pn _ _) = pn

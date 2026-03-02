@@ -15,7 +15,7 @@ on:
       - created
 
 env:
-  GHC_FOR_QUICK_JOBS: 9.6.5
+  GHC_FOR_QUICK_JOBS: 9.10.3
 
 jobs:
   meta:
@@ -41,11 +41,11 @@ jobs:
           cabal --version
       - name: Update Hackage index
         run: cabal v2-update
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Generate build plan for correct cache key
         run: ${{ env.cabal_build }} --dry-run
       - name: Restore cached dependencies
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         id: cache
         with:
           path: ~/.local/state/cabal
@@ -62,7 +62,7 @@ jobs:
           git status > /dev/null
           git diff-files -p --exit-code
       - name: Cache dependencies
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         if: always() && steps.cache.outputs.cache-hit != 'true'
         with:
           path: ~/.local/state/cabal
@@ -91,7 +91,7 @@ jobs:
         run: |
           echo "DATE=$(date +'%Y-%m-%d')" >> "${GITHUB_ENV}"
       - name: Restore cached dependencies
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         id: cache
         with:
           path: ~/.local/state/cabal
@@ -99,14 +99,14 @@ jobs:
           restore-keys: linux-store-doctest
       - name: Update Hackage index
         run: cabal v2-update
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install doctest
         run: make doctest-install
       - name: Doctest
         run: make doctest
       - name: Cache dependencies
         if: always() && steps.cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: ~/.local/state/cabal
           key: ${{ steps.cache.outputs.cache-primary-key }}
@@ -129,11 +129,11 @@ jobs:
           cabal --version
       - name: Update Hackage index
         run: cabal v2-update
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Generate build plan for correct cache key
         run: ${{ env.cabal_build }} --dry-run
       - name: Restore cached dependencies
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         id: cache
         with:
           path: ~/.local/state/cabal
@@ -144,7 +144,7 @@ jobs:
       - name: Are buildinfo docs up to date?
         run: make doc/buildinfo-fields-reference.rst
       - name: Cache dependencies
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         if: always() && steps.cache.outputs.cache-hit != 'true'
         with:
           path: ~/.local/state/cabal
@@ -166,7 +166,7 @@ jobs:
           cabal --version
       - name: Update Hackage Index
         run: cabal v2-update
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Check Release with Pinned Hackage
         run: cabal build all --dry-run --project-file=cabal.release.project
       - name: Check Release with Latest Hackage

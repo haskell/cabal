@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
+{-# LANGUAGE DeriveTraversable #-}
 module Distribution.Solver.Modular.Tree
     ( POption(..)
     , Tree(..)
@@ -118,6 +118,7 @@ data FailReason = UnsupportedExtension Extension
                 | UnknownPackage
                 | GlobalConstraintVersion VR ConstraintSource
                 | GlobalConstraintInstalled ConstraintSource
+                | GlobalConstraintInstalledSpecificUnitId UnitId ConstraintSource
                 | GlobalConstraintSource ConstraintSource
                 | GlobalConstraintFlag ConstraintSource
                 | ManualFlag

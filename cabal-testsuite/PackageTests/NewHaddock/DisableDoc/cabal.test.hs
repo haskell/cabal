@@ -1,5 +1,5 @@
 import Test.Cabal.Prelude
--- Test that `cabal haddock --disable-documention` works as expected and leads
+-- Test that `cabal haddock --disable-documentation` works as expected and leads
 -- to a warning if a local package makes an outer reference.
 main = cabalTest . withRepo "repo" $ do
     r <- cabal' "haddock" ["--disable-documentation", "B"]

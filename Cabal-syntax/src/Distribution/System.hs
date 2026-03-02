@@ -1,9 +1,6 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.System
@@ -110,7 +107,7 @@ data OS
   | Wasi
   | Haiku
   | OtherOS String
-  deriving (Eq, Generic, Ord, Show, Read, Typeable, Data)
+  deriving (Eq, Generic, Ord, Show, Read, Data)
 
 instance Binary OS
 instance Structured OS
@@ -213,7 +210,7 @@ data Arch
   | JavaScript
   | Wasm32
   | OtherArch String
-  deriving (Eq, Generic, Ord, Show, Read, Typeable, Data)
+  deriving (Eq, Generic, Ord, Show, Read, Data)
 
 instance Binary Arch
 instance Structured Arch
@@ -284,7 +281,7 @@ buildArch = classifyArch Permissive System.Info.arch
 -- ------------------------------------------------------------
 
 data Platform = Platform Arch OS
-  deriving (Eq, Generic, Ord, Show, Read, Typeable, Data)
+  deriving (Eq, Generic, Ord, Show, Read, Data)
 
 instance Binary Platform
 instance Structured Platform

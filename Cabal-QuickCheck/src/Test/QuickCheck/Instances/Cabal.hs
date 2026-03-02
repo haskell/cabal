@@ -1,7 +1,6 @@
 {-# LANGUAGE CPP           #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Test.QuickCheck.Instances.Cabal () where
 
 #if !MIN_VERSION_base(4,18,0)
@@ -20,7 +19,6 @@ import Distribution.Compiler
 import Distribution.FieldGrammar.Newtypes
 import Distribution.ModuleName
 import Distribution.Simple.Compiler
-import Distribution.Simple.Flag                    (Flag (..))
 import Distribution.Simple.InstallDirs
 import Distribution.Simple.Setup                   (HaddockTarget (..), TestShowDetails (..), DumpBuildInfo)
 import Distribution.SPDX
@@ -244,23 +242,6 @@ instance Arbitrary LibraryName where
     shrink _               = []
 
 -------------------------------------------------------------------------------
--- option flags
--------------------------------------------------------------------------------
-
-instance Arbitrary a => Arbitrary (Flag a) where
-    arbitrary = arbitrary1
-
-    shrink NoFlag   = []
-    shrink (Flag x) = NoFlag : [ Flag x' | x' <- shrink x ]
-
-instance Arbitrary1 Flag where
-    liftArbitrary genA = sized $ \sz ->
-        if sz <= 0
-        then pure NoFlag
-        else frequency [ (1, pure NoFlag)
-                       , (3, Flag <$> genA) ]
-
--------------------------------------------------------------------------------
 -- GPD flags
 -------------------------------------------------------------------------------
 
@@ -284,9 +265,9 @@ instance Arbitrary FlagAssignment where
 -- Verbosity
 -------------------------------------------------------------------------------
 
-instance Arbitrary Verbosity where
+instance Arbitrary VerbosityFlags where
     arbitrary = do
-        v <- elements [minBound..maxBound]
+        v <- mkVerbosityFlags <$> elements [minBound..maxBound]
         -- verbose markoutput is left out on purpose
         flags <- listOf $ elements
             [ verboseCallSite

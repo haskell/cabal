@@ -1,6 +1,7 @@
 -- This is Distribution.Extra.Doctest module from cabal-doctest-1.0.4
 -- This isn't technically a Custom-Setup script, but it /was/.
 
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances #-}
 
 {-
@@ -182,21 +183,8 @@ import Distribution.Types.LibraryName
        (libraryNameString)
 #endif
 
-#if MIN_VERSION_directory(1,2,2)
 import System.Directory
        (makeAbsolute)
-#else
-import System.Directory
-       (getCurrentDirectory)
-import System.FilePath
-       (isAbsolute)
-
-makeAbsolute :: FilePath -> IO FilePath
-makeAbsolute p | isAbsolute p = return p
-               | otherwise    = do
-    cwd <- getCurrentDirectory
-    return $ cwd </> p
-#endif
 
 findFile' :: Verbosity -> [FilePath] -> FilePath -> IO FilePath
 #if MIN_VERSION_Cabal(3,11,0)
@@ -283,6 +271,7 @@ addDoctestsUserHook testsuiteName uh = uh
 
 -- | Convert only flags used by 'generateBuildModule'.
 haddockToBuildFlags :: HaddockFlags -> BuildFlags
+{- FOURMOLU_DISABLE -}
 haddockToBuildFlags f =
 #if MIN_VERSION_Cabal(3,11,0)
   emptyBuildFlags
@@ -293,6 +282,7 @@ haddockToBuildFlags f =
     , buildDistPref  = haddockDistPref f
     }
 #endif
+{- FOURMOLU_ENABLE -}
 
 data Name = NameLib (Maybe String) | NameExe String deriving (Eq, Show)
 
@@ -331,8 +321,13 @@ data Component = Component Name [String] [String] [String]
 generateBuildModule
     :: String -- ^ doctests test-suite name
     -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO ()
+{- FOURMOLU_DISABLE -}
 generateBuildModule testSuiteName flags pkg lbi = do
-  let verbosity = fromFlag (buildVerbosity flags)
+  let verbosity =
+#if MIN_VERSION_Cabal(3,17,0)
+          mkVerbosity defaultVerbosityHandles $
+#endif
+          fromFlag (buildVerbosity flags)
   let distPref = fromFlag (buildDistPref flags)
 
   -- Package DBs & environments
@@ -581,6 +576,7 @@ generateBuildModule testSuiteName flags pkg lbi = do
 #else
     executableName = exeName
 #endif
+{- FOURMOLU_ENABLE -}
 
 -- | In compat settings it's better to omit the type-signature
 testDeps :: ComponentLocalBuildInfo -> ComponentLocalBuildInfo

@@ -1,11 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Utils.Generic
@@ -60,6 +56,7 @@ module Distribution.Utils.Generic
   , listUnion
   , listUnionRight
   , ordNub
+  , sortNub
   , ordNubBy
   , ordNubRight
   , safeHead
@@ -88,7 +85,7 @@ module Distribution.Utils.Generic
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Utils.String
+import Data.Char (isAsciiLower, isAsciiUpper)
 
 import Data.Bits (shiftL, (.&.), (.|.))
 import qualified Data.ByteString as SBS
@@ -97,6 +94,11 @@ import Data.List
   ( isInfixOf
   )
 import qualified Data.Set as Set
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
+import qualified Data.Text.Encoding.Error as T
+import qualified Data.Text.Lazy as TL
+import qualified Data.Text.Lazy.Encoding as TL
 
 import qualified Control.Exception as Exception
 import System.Directory
@@ -214,22 +216,22 @@ writeFileAtomic targetPath content = do
 -- Invalid data in the UTF8 stream (this includes code-points @U+D800@
 -- through @U+DFFF@) will be decoded as the replacement character (@U+FFFD@).
 fromUTF8BS :: SBS.ByteString -> String
-fromUTF8BS = decodeStringUtf8 . SBS.unpack
+fromUTF8BS = T.unpack . T.decodeUtf8With T.lenientDecode
 
 -- | Variant of 'fromUTF8BS' for lazy 'BS.ByteString's
 fromUTF8LBS :: LBS.ByteString -> String
-fromUTF8LBS = decodeStringUtf8 . LBS.unpack
+fromUTF8LBS = TL.unpack . TL.decodeUtf8With T.lenientDecode
 
 -- | Encode 'String' to UTF8-encoded 'SBS.ByteString'
 --
 -- Code-points in the @U+D800@-@U+DFFF@ range will be encoded
 -- as the replacement character (i.e. @U+FFFD@).
 toUTF8BS :: String -> SBS.ByteString
-toUTF8BS = SBS.pack . encodeStringUtf8
+toUTF8BS = T.encodeUtf8 . T.pack
 
 -- | Variant of 'toUTF8BS' for lazy 'BS.ByteString's
 toUTF8LBS :: String -> LBS.ByteString
-toUTF8LBS = LBS.pack . encodeStringUtf8
+toUTF8LBS = TL.encodeUtf8 . TL.pack
 
 -- | Check that strict 'ByteString' is valid UTF8. Returns 'Just offset' if it's not.
 validateUTF8 :: SBS.ByteString -> Maybe Int
@@ -389,6 +391,10 @@ ordNubRight = fst . foldr go ([], Set.empty)
         then p
         else (x : l, Set.insert x s)
 
+-- | Sort and nub a list
+sortNub :: Ord a => [a] -> [a]
+sortNub = Set.toList . Set.fromList
+
 -- | A right-biased version of 'listUnion'.
 --
 -- Example:
@@ -448,9 +454,7 @@ isAscii c = fromEnum c < 0x80
 
 -- | Ascii letters.
 isAsciiAlpha :: Char -> Bool
-isAsciiAlpha c =
-  ('a' <= c && c <= 'z')
-    || ('A' <= c && c <= 'Z')
+isAsciiAlpha c = (isAsciiLower c) || (isAsciiUpper c)
 
 -- | Ascii letters and digits.
 --

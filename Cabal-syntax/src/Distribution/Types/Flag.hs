@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TupleSections #-}
 
 module Distribution.Types.Flag
   ( -- * Package flag
@@ -56,7 +57,7 @@ data PackageFlag = MkPackageFlag
   , flagDefault :: Bool
   , flagManual :: Bool
   }
-  deriving (Show, Eq, Typeable, Data, Generic)
+  deriving (Show, Eq, Data, Generic)
 
 instance Binary PackageFlag
 instance Structured PackageFlag
@@ -80,7 +81,7 @@ emptyFlag name =
 --
 -- @since 2.0.0.2
 newtype FlagName = FlagName ShortText
-  deriving (Eq, Generic, Ord, Show, Read, Typeable, Data, NFData)
+  deriving (Eq, Generic, Ord, Show, Read, Data, NFData)
 
 -- | Construct a 'FlagName' from a 'String'
 --
@@ -127,7 +128,7 @@ instance Parsec FlagName where
 --
 -- TODO: Why we record the multiplicity of the flag?
 newtype FlagAssignment = FlagAssignment {getFlagAssignment :: Map.Map FlagName (Int, Bool)}
-  deriving (Binary, Generic, NFData, Typeable)
+  deriving (Binary, Generic, NFData)
 
 instance Structured FlagAssignment
 
@@ -170,7 +171,7 @@ mkFlagAssignment :: [(FlagName, Bool)] -> FlagAssignment
 mkFlagAssignment =
   FlagAssignment
     . Map.fromListWith (flip combineFlagValues)
-    . fmap (fmap (\b -> (1, b)))
+    . fmap (fmap (1,))
 
 -- | Deconstruct a 'FlagAssignment' into a list of flag/value pairs.
 --

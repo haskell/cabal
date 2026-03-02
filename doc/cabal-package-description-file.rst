@@ -277,7 +277,6 @@ files, i.e. with names ending in "``.hs``" or "``.lhs``", or to inputs for
 various Haskell preprocessors. The simple build infrastructure understands the
 extensions:
 
--  ``.gc`` (:hackage-pkg:`greencard`)
 -  ``.chs`` (:hackage-pkg:`c2hs`)
 -  ``.hsc`` (:hackage-pkg:`hsc2hs`)
 -  ``.y`` and ``.ly`` (happy_)
@@ -313,24 +312,39 @@ describe the package as a whole:
     tools require the package-name specified for this field to match
     the package description's file-name :file:`{package-name}.cabal`.
 
-    Package names are case-sensitive and must match the regular expression
-    (i.e. alphanumeric "words" separated by dashes; each alphanumeric
-    word must contain at least one letter):
-    ``[[:digit:]]*[[:alpha:]][[:alnum:]]*(-[[:digit:]]*[[:alpha:]][[:alnum:]]*)*``.
+    A valid package name comprises an alphanumeric 'word'; or two or more
+    such words separated by a hyphen character (``-``). A word cannot be
+    comprised only of the digits ``0`` to ``9``.
 
-    Or, expressed in ABNF_:
+    An alphanumeric character belongs to one of the Unicode Letter categories
+    (Lu (uppercase), Ll (lowercase), Lt (titlecase), Lm (modifier), or
+    Lo (other)) or Number categories (Nd (decimal), Nl (letter), or No (other)).
+
+    Package names are case-sensitive.
+
+    Expressed as a regular expression:
+
+    ``[0-9]*[\p{L}\p{N}-[0-9]][\p{L}\p{N}]*(-[0-9]*[\p{L}\p{N}-[0-9]][\p{L}\p{N}]*)*``
+
+    Expressed in ABNF_:
 
     .. code-block:: abnf
 
         package-name      = package-name-part *("-" package-name-part)
-        package-name-part = *DIGIT UALPHA *UALNUM
+        package-name-part = *DIGIT UALPHANUM-NOT-DIGIT *UALNUM
 
-        UALNUM = UALPHA / DIGIT
-        UALPHA = ... ; set of alphabetic Unicode code-points
+        DIGIT = %x30-39 ; 0-9
+
+        UALNUM = UALPHANUM-NOT-DIGIT / DIGIT
+        UALPHANUM-NOT-DIGIT = ... ; set of Unicode code-points in Letter or
+                                  ; Number categories, other than the DIGIT
+                                  ; code-points
 
     .. note::
 
-        Hackage restricts package names to the ASCII subset.
+        Hackage will not accept package names that use alphanumeric characters
+        other than ``A`` to ``Z``, ``a`` to ``z``, and ``0`` to ``9``
+        (the ASCII subset).
 
 .. pkg-field:: version: numbers (required)
 
@@ -1028,12 +1042,32 @@ build information fields (see the section on `build information`_).
 
 .. pkg-field:: main-is: filename (required)
 
-    The name of the ``.hs`` or ``.lhs`` file containing the ``Main``
-    module. Note that it is the ``.hs`` filename that must be listed,
-    even if that file is generated using a preprocessor. The source file
-    must be relative to one of the directories listed in
-    :pkg-field:`hs-source-dirs`. Further, while the name of the file may
-    vary, the module itself must be named ``Main``.
+    By convention, a Haskell program must have a module called ``Main`` which
+    exports an IO action named ``main``. When the program is executed, the
+    action is performed. This field specifies the name of the ``.hs`` or
+    ``.lhs`` source file containing that module. It is the ``.hs`` filename that
+    must be listed, even if that file is generated using a preprocessor. The
+    file must be relative to one of the directories listed in
+    :pkg-field:`hs-source-dirs`.
+
+    Further, while the name of the source file may vary, if the convention is
+    being followed, the module itself must be named ``Main`` and export
+    ``main``.
+
+    However, GHC's ``-main-is`` option can be used to change the name of the
+    relevant IO action. For example, if source file ``MyMainSourceFile.hs``
+    contains a module named ``MyMainModule`` exporting ``myMainFunc`` and that
+    is to be the relevant IO action, you can specify:
+
+    ::
+
+        executable my-app
+          main-is: MyMainSourceFile.hs
+          ghc-options: -main-is MyMainModule.myMainFunc
+          build-depends:
+              base
+          default-language: Haskell2010
+
 
     Starting with ``cabal-version: 1.18`` this field supports
     specifying a C, C++, or objC source file as the main entry point.
@@ -1090,7 +1124,7 @@ field.
     even if that file is generated using a preprocessor. The source file
     must be relative to one of the directories listed in
     :pkg-field:`hs-source-dirs`. This field is analogous to the ``main-is`` field
-    of an executable section.
+    of an executable section; see that documentation for further information.
 
 Test suites using the ``detailed-0.9`` interface are modules exporting
 the symbol ``tests :: IO [Test]``. The ``Test`` type is exported by the
@@ -1114,14 +1148,14 @@ the :pkg-field:`test-module` field.
     An optional list of preprocessors which can generate new modules
     for use in the test-suite.
 
- A list of executabes (possibly brought into scope by
+ A list of executables (possibly brought into scope by
  :pkg-field:`build-tool-depends`) that are run after all other
  preprocessors. These executables are invoked as so: ``exe-name
  TARGETDIR [SOURCEDIRS] -- [GHCOPTIONS]``. The arguments are, in order a target dir for
  output, a sequence of all source directories with source files of
  local lib components that the given test stanza depends on, and
  following a double dash, all options cabal would pass to ghc for a
- build. They are expected to output a newline-seperated list of
+ build. They are expected to output a newline-separated list of
  generated modules which have been written to the targetdir
  (excepting, if written, the main module). This can
  be used for driving doctests and other discover-style tests generated
@@ -1181,7 +1215,10 @@ be provided by the library that provides the testing facility.
     Test-Suite test-bar
         type:             detailed-0.9
         test-module:      Bar
-        build-depends:    base >= 4 && < 5, Cabal >= 1.9.2 && < 2
+        -- To keep this (untested) example working, we rely on the test type
+        -- version rather than an upper bound on Cabal. In real code, PVP
+        -- compliance may require including the upper bound.
+        build-depends:    base >= 4 && < 5, Cabal >= 1.9.2
         default-language: Haskell2010
 
 
@@ -1249,8 +1286,8 @@ standard output and error channels.
     even if that file is generated using a preprocessor. The source file
     must be relative to one of the directories listed in
     :pkg-field:`hs-source-dirs`. This field is analogous to the ``main-is``
-    field of an executable section. Further, while the name of the file may
-    vary, the module itself must be named ``Main``.
+    field of an executable section; see that documentation for further
+    information.
 
 Example:
 """""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -1320,6 +1357,15 @@ system-dependent values for these fields.
 
     .. Note::
 
+       The :pkg-field:`build-depends` field of an executable section (from
+       version 1.8 of the Cabal specification), test suite section (from
+       version 1.10) or benchmark section (from version 1.14) can specify a
+       library in the same package by the name of the library (without a version
+       constraint). Cabal then treats the executable, test suite or benchmark as
+       if it were in another package that depended on the package.
+
+    .. Note::
+
        Before version 3.4 of the Cabal specification, from version 2.0, a
        private sublibrary (an internal library) was identified by only the name
        of the sublibrary. An internal library could shadow a dependency on the
@@ -1344,7 +1390,7 @@ system-dependent values for these fields.
        but ``time-1.12.3`` bumps the lower bound on base to ``>=4.14``.  If we
        still want to compile with a ``ghc-8.8.*`` version of GHC that ships with
        ``base-4.13`` and with later GHC versions, then we can use ``time >=1.12
-       && (time <1.12.3 || time >1.12.3)``.
+       && (<1.12.3 || >1.12.3)``.
 
        Hackage shows deprecated and preferred versions for packages, such as for
        `containers <https://hackage.haskell.org/package/containers/preferred>`_
@@ -1534,7 +1580,7 @@ system-dependent values for these fields.
       compiled twice, once as part of the library and again for the executable.
 
 .. pkg-field:: default-extensions: identifier list
-   :since: 1.12
+   :since: 1.10
 
     A list of Haskell extensions used by every module. These determine
     corresponding compiler options enabled for all files. Extension
@@ -1544,7 +1590,7 @@ system-dependent values for these fields.
     to be preprocessed with a C preprocessor.
 
 .. pkg-field:: other-extensions: identifier list
-   :since: 1.12
+   :since: 1.10
 
     A list of Haskell extensions used by some (but not necessarily all)
     modules. From GHC version 6.6 onward, these may be specified by
@@ -1573,7 +1619,7 @@ system-dependent values for these fields.
     :pkg-field:`other-extensions` declarations.
 
 .. pkg-field:: default-language: identifier
-   :since: 1.12
+   :since: 1.10
 
     Specifies a language standard or a group of language extensions to be activated for the project. In the case of GHC, `see here for details <https://downloads.haskell.org/ghc/latest/docs/users_guide/exts/control.html#controlling-extensions>`__.
 
@@ -1585,12 +1631,12 @@ system-dependent values for these fields.
     -  ``Haskell98``
 
 .. pkg-field:: other-languages: identifier
-   :since: 1.12
+   :since: 1.10
 
-   TBW
+    Specifies a language standard used by some (but not necessarily all) modules.
 
 .. pkg-field:: extensions: identifier list
-   :deprecated: 1.12
+   :deprecated: 1.10
    :removed: 3.0
 
    Deprecated in favor of :pkg-field:`default-extensions`.
@@ -1704,8 +1750,6 @@ system-dependent values for these fields.
     | ``c2hs``                 | ``c2hs:c2hs``                     |                 |
     +--------------------------+-----------------------------------+-----------------+
     | ``cpphs``                | ``cpphs:cpphs``                   |                 |
-    +--------------------------+-----------------------------------+-----------------+
-    | ``greencard``            | ``greencard:greencard``           |                 |
     +--------------------------+-----------------------------------+-----------------+
     | ``haddock``              | ``haddock:haddock``               |                 |
     +--------------------------+-----------------------------------+-----------------+
@@ -1950,6 +1994,11 @@ system-dependent values for these fields.
     compiling phase (as ``-optc`` flags for GHC). Since the
     arguments are compiler-dependent, this field is more useful with the
     setup described in the section on `system-dependent parameters`_.
+
+.. pkg-field:: jspp-options: token list
+
+    Command-line arguments for pre-processing JS code. Applies to pre-processed
+    Haskell source like .js. Flags here will be passed as ``-optJSP`` flags to GHC.
 
 .. pkg-field:: cpp-options: token list
 
@@ -2282,7 +2331,7 @@ Configurations
 
 Library and executable sections may include conditional blocks, which
 test for various system parameters and configuration flags. The flags
-mechanism is rather generic, but most of the time a flag represents
+mechanism is rather generic, but most of the time a flag represents a
 certain feature, that can be switched on or off by the package user.
 Here is an example package description file using configurations:
 
@@ -2343,8 +2392,9 @@ Example: A package containing a library and executable programs
 
     Executable test1
       Main-is:          T1.hs
-      Other-Modules:    Testing.Test1
-      Build-Depends:    base >= 4.2 && < 4.9
+      Build-Depends:
+        , base >= 4.2 && < 4.9
+        , Test1
       Default-Language: Haskell2010
 
       if flag(debug)
@@ -2447,10 +2497,11 @@ Configuration Flags
     :default: ``False``
     :since: 1.6
 
-    By default, Cabal will first try to satisfy dependencies with the
-    default flag value and then, if that is not possible, with the
-    negated value. However, if the flag is manual, then the default
-    value (which can be overridden by commandline flags) will be used.
+      By default, Cabal tries to resolve dependencies using the flag's ``default`` value.
+      If that fails, it tries again with the negated default value. However, if the flag is
+      marked as ``manual``, Cabal will only use the default value and will not retry
+      with the negated default. Note that the default value can still be overridden
+      using command-line flags.
 
 .. _conditional-blocks:
 
@@ -2747,21 +2798,27 @@ The :ref:`VCS fields<vcs-fields>` of ``source-repository`` are:
 
     This field is required.
 
+    .. include:: vcs/kind.rst
+
 .. pkg-field:: location: VCS location
 
     This field is required.
 
-.. pkg-field:: module: token
+    .. include:: vcs/location.rst
 
-    CVS requires a named module, as each CVS server can host multiple
-    named repositories.
+.. pkg-field:: module: token
 
     This field is required for the CVS repository type and should not be
     used otherwise.
 
+    CVS requires a named module, as each CVS server can host multiple
+    named repositories.
+
 .. pkg-field:: branch: VCS branch
 
     This field is optional.
+
+    .. include:: vcs/branch.rst
 
 .. pkg-field:: tag: VCS tag
 
@@ -2770,10 +2827,13 @@ The :ref:`VCS fields<vcs-fields>` of ``source-repository`` are:
     This might be used to indicate what sources to get if someone needs to fix a
     bug in an older branch that is no longer an active head branch.
 
+    .. include:: vcs/tag.rst
+
 .. pkg-field:: subdir: VCS subdirectory
 
     This field is optional but, if given, specifies a single subdirectory.
 
+    .. include:: vcs/subdir.rst
 
 .. _setup-hooks:
 
@@ -3031,9 +3091,10 @@ modules of the package. This module defines a function
 
     getDataFileName :: FilePath -> IO FilePath
 
-If the argument is a filename listed in the :pkg-field:`data-files` field, the
-result is the name of the corresponding file on the system on which the
-program is running.
+If the argument is a filename, the result is the name of a corresponding file on
+the system on which the program is running, if the filename were listed in the
+:pkg-field:`data-files` field. No check is performed that the given filename is
+listed in that field.
 
 .. Note::
 
@@ -3081,8 +3142,8 @@ The auto generated :file:`PackageInfo_{pkgname}` module exports the constant
 which is defined as the version of your package as specified in the
 ``version`` field.
 
-Accessing package-related informations
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Accessing package-related information
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The auto generated :file:`PackageInfo_{pkgname}` module exports the following
 package-related constants:
@@ -3144,7 +3205,9 @@ platform when cross-compiling. Moreover, various bits of build configuration
 will be passed via environment variables:
 
  - ``CC`` will reflect the path to the C compiler
- - ``CFLAGS`` will reflect the path to the C compiler
+ - ``CXX`` will reflect the path to the C++ compiler (if available, it always will be if ghc >= 9.4)
+ - ``CFLAGS`` will reflect the flags to the C compiler
+ - ``CXXFLAGS`` will reflect the flags to the C++ compiler (if available)
  - ``CABAL_FLAGS`` will contain the Cabal flag assignment of the current
    package using traditional Cabal flag syntax (e.g. ``+flagA -flagB``)
  - ``CABAL_FLAG_<flag>`` will be set to either ``0`` or ``1`` depending upon
@@ -3392,9 +3455,10 @@ a few options:
 .. rubric:: Footnotes
 
 .. [#old-style-build-tool-depends]
-
-  Some packages (ab)use :pkg-field:`build-depends` on old-style builds, but this has a few major drawbacks:
-
-    - using Nix-style builds it's considered an error if you depend on a exe-only package via build-depends: the solver will refuse it.
-    - it may or may not place the executable on ``PATH``.
-    - it does not ensure the correct version of the package is installed, so you might end up overwriting versions with each other.
+   Some packages (ab)use :pkg-field:`build-depends` on old-style builds, but
+   this has a few major drawbacks. First, with Nix-style builds it's considered
+   an error if you depend on a exe-only package via ``build-depends``: the
+   solver will refuse it.  Next, ``build-depends`` may or may not place the
+   executable on ``PATH``.  Finally, ``build-depends`` does not ensure the
+   correct version of the package is installed, so you might end up overwriting
+   versions with each other.

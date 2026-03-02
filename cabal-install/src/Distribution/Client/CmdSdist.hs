@@ -1,10 +1,8 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE MultiWayIf #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE ViewPatterns #-}
 
 module Distribution.Client.CmdSdist
   ( sdistCommand
@@ -100,7 +98,7 @@ import Distribution.Simple.PreProcess
   ( knownSuffixHandlers
   )
 import Distribution.Simple.Setup
-  ( Flag (..)
+  ( Flag
   , flagToList
   , flagToMaybe
   , fromFlagOrDefault
@@ -108,6 +106,7 @@ import Distribution.Simple.Setup
   , optionVerbosity
   , toFlag
   , trueArg
+  , pattern Flag
   )
 import Distribution.Simple.SrcDist
   ( listPackageSourcesWithDie
@@ -128,7 +127,11 @@ import Distribution.Types.PackageName
   , unPackageName
   )
 import Distribution.Verbosity
-  ( normal
+  ( VerbosityFlags
+  , defaultVerbosityHandles
+  , mkVerbosity
+  , normal
+  , verbosityFlags
   )
 
 import qualified Data.ByteString.Lazy.Char8 as BSL
@@ -170,7 +173,7 @@ sdistCommand =
 -------------------------------------------------------------------------------
 
 data SdistFlags = SdistFlags
-  { sdistVerbosity :: Flag Verbosity
+  { sdistVerbosity :: Flag VerbosityFlags
   , sdistDistDir :: Flag (SymbolicPath Pkg (Dir Dist))
   , sdistListSources :: Flag Bool
   , sdistNulSeparated :: Flag Bool
@@ -283,7 +286,9 @@ sdistAction (pf@ProjectFlags{..}, SdistFlags{..}) targetStrings globalFlags = do
               (outputPath pkg)
               pkg
   where
-    verbosity = fromFlagOrDefault normal sdistVerbosity
+    verbosity =
+      mkVerbosity defaultVerbosityHandles $
+        fromFlagOrDefault normal sdistVerbosity
     listSources = fromFlagOrDefault False sdistListSources
     nulSeparated = fromFlagOrDefault False sdistNulSeparated
     mOutputPath = flagToMaybe sdistOutputPath
@@ -335,7 +340,7 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
   let
     -- Write String to stdout or file, using the default TextEncoding.
     write str
-      | outputFile == "-" = putStr (withOutputMarker verbosity str)
+      | outputFile == "-" = putStr (withOutputMarker (verbosityFlags verbosity) str)
       | otherwise = do
           writeFile outputFile str
           notice verbosity $ "Wrote source list to " ++ outputFile ++ "\n"
