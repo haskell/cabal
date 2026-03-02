@@ -3156,7 +3156,7 @@ package-related constants:
     copyright :: String
     homepage :: String
 
-Unlike :file:`Paths_{pkgname}` (see <#accessing-data-files-from-package-code>),
+Unlike :file:`Paths_{pkgname}` (see :ref:`accessing-data-files`),
 :file:`PackageInfo_{pkgname}` is system- and path-independent. It aims to be
 easier to work with for hash-based tools such as Nix.
 
