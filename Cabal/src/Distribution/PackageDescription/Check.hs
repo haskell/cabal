@@ -870,7 +870,7 @@ checkGlobFile ddir title parsedGlob = do
       pure []
     Just po -> do
       rs <- liftCM $ runDirFileGlobM po dir parsedGlob
-      mapM_ tellP (checkGlobResult title parsedGlob rs)
+      mapM_ tellCM (checkGlobResult title parsedGlob rs)
       return rs
 
 -- | Checks for matchless globs and too strict matching (<2.4 spec).
