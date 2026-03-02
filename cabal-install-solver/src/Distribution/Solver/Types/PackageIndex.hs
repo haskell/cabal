@@ -120,7 +120,7 @@ internalError name = error ("PackageIndex." ++ name ++ ": internal error")
 -- case-sensitively.
 --
 lookup :: PackageIndex pkg -> PackageName -> [pkg]
-lookup (PackageIndex m) name = fromMaybe [] $ Map.lookup name m
+lookup (PackageIndex m) name = Map.findWithDefault [] name m
 
 --
 -- * Construction
