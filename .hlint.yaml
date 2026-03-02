@@ -54,6 +54,15 @@
 - ignore: {name: "Use unless"} # 23 hints
 - ignore: {name: "Use void"} # 23 hints
 
+- group:
+    name: cabal-suggestions
+    enabled: true
+    rules:
+    - hint:
+        lhs: fromMaybe x (Data.Map.lookup k m)
+        rhs: Map.findWithDefault x k m
+        name: Use findWithDefault
+
 - arguments:
     - --ignore-glob=Cabal-syntax/src/Distribution/Fields/Lexer.hs
     - --ignore-glob=Cabal-tests/tests/custom-setup/CabalDoctestSetup.hs

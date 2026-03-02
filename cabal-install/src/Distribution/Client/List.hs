@@ -157,9 +157,7 @@ getPkgList verbosity packageDBs repoCtxt mcompprogdb listFlags pats = do
 
   let sourcePkgIndex = packageIndex sourcePkgDb
       prefs name =
-        fromMaybe
-          anyVersion
-          (Map.lookup name (packagePreferences sourcePkgDb))
+        Map.findWithDefault anyVersion name (packagePreferences sourcePkgDb)
 
       pkgsInfoMatching
         :: [(PackageName, [Installed.InstalledPackageInfo], [UnresolvedSourcePackage])]
@@ -269,9 +267,7 @@ info
     sourcePkgDb <- getSourcePackages verbosity repoCtxt
     let sourcePkgIndex = packageIndex sourcePkgDb
         prefs name =
-          fromMaybe
-            anyVersion
-            (Map.lookup name (packagePreferences sourcePkgDb))
+          Map.findWithDefault anyVersion name (packagePreferences sourcePkgDb)
 
     -- Users may specify names of packages that are only installed, not
     -- just available source packages, so we must resolve targets using
