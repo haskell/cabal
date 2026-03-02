@@ -1,0 +1,20 @@
+synopsis: Require cabal.project packages and/or optional-packages field.
+packages: cabal-install
+prs: #11574
+issues: #7401
+significance:
+
+description: {
+
+Currently, if a cabal.project file is present and the `packages` and
+`optional-packages` fields do not exist, a warning will be issued, and
+cabal will fail with a different, potentially misleading error message:
+
+  "There is no <pkgname>.cabal package file or cabal.project file..."
+
+This changes it so that the prior warning is now an error, hence will cause
+cabal to fail before the misleading error is given. That at least one of
+these fields is required is already specified in the docs, hence this is not
+a specification change.
+
+}
