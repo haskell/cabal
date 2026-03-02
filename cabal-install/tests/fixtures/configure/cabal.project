@@ -1,2 +1,4 @@
 ignore-project: False
 optimization: 2
+
+packages: .
