@@ -49,10 +49,10 @@ data CabalException
   | -- | @NoLibraryFound@ has been downgraded to a warning, and is therefore no longer emitted.
     NoLibraryFound
   | CompilerNotInstalled CompilerFlavor
-  | CantFindIncludeFile String
+  | CantFindIncludeFile String [String]
   | UnsupportedTestSuite String
   | UnsupportedBenchMark String
-  | NoIncludeFileFound String
+  | NoIncludeFileFound String [String]
   | NoModuleFound ModuleName [Suffix]
   | RegMultipleInstancePkg
   | SuppressingChecksOnFile
@@ -78,8 +78,6 @@ data CabalException
   | NoSupportBuildingTestSuite TestType
   | NoSupportBuildingBenchMark BenchmarkType
   | BuildingNotSupportedWithCompiler
-  | ProvideHaskellSuiteTool String
-  | CannotDetermineCompilerVersion
   | PkgDumpFailed
   | FailedToParseOutput
   | CantFindSourceModule ModuleName
@@ -171,6 +169,7 @@ data CabalException
   | UnknownVersionDb String VersionRange FilePath
   | MissingCoveredInstalledLibrary UnitId
   | SetupHooksException SetupHooksException
+  | MultiReplDoesNotSupportComplexReexportedModules PackageName ComponentName
   deriving (Show)
 
 exceptionCode :: CabalException -> Int
@@ -210,8 +209,8 @@ exceptionCode e = case e of
   NoSupportBuildingTestSuite{} -> 4106
   NoSupportBuildingBenchMark{} -> 5320
   BuildingNotSupportedWithCompiler{} -> 7077
-  ProvideHaskellSuiteTool{} -> 7509
-  CannotDetermineCompilerVersion{} -> 4519
+  -- Retired: ProvideHaskellSuiteTool{} -> 7509
+  -- Retired: CannotDetermineCompilerVersion{} -> 4519
   PkgDumpFailed{} -> 2291
   FailedToParseOutput{} -> 5500
   CantFindSourceModule{} -> 8870
@@ -304,6 +303,7 @@ exceptionCode e = case e of
   MissingCoveredInstalledLibrary{} -> 9341
   SetupHooksException err ->
     setupHooksExceptionCode err
+  MultiReplDoesNotSupportComplexReexportedModules{} -> 9355
 
 versionRequirement :: VersionRange -> String
 versionRequirement range
@@ -318,10 +318,10 @@ exceptionMessage e = case e of
   NoBenchMark bmName -> "no such benchmark: " ++ bmName
   NoLibraryFound -> "No executables and no library found. Nothing to do."
   CompilerNotInstalled compilerFlavor -> "installing with " ++ prettyShow compilerFlavor ++ "is not implemented"
-  CantFindIncludeFile file -> "can't find include file " ++ file
+  CantFindIncludeFile file sd -> "can't find include file " ++ file ++ " in any of the search dirs " ++ intercalate ", " sd
   UnsupportedTestSuite test_type -> "Unsupported test suite type: " ++ test_type
   UnsupportedBenchMark benchMarkType -> "Unsupported benchmark type: " ++ benchMarkType
-  NoIncludeFileFound f -> "can't find include file " ++ f
+  NoIncludeFileFound f sd -> "can't find include file " ++ f ++ " in any of the search dirs " ++ intercalate ", " sd
   NoModuleFound m suffixes ->
     "Could not find module: "
       ++ prettyShow m
@@ -364,8 +364,6 @@ exceptionMessage e = case e of
   NoSupportBuildingTestSuite test_type -> "No support for building test suite type " ++ show test_type
   NoSupportBuildingBenchMark benchMarkType -> "No support for building benchmark type " ++ show benchMarkType
   BuildingNotSupportedWithCompiler -> "Building is not supported with this compiler."
-  ProvideHaskellSuiteTool msg -> show msg
-  CannotDetermineCompilerVersion -> "haskell-suite: couldn't determine compiler version"
   PkgDumpFailed -> "pkg dump failed"
   FailedToParseOutput -> "failed to parse output of 'pkg dump'"
   CantFindSourceModule moduleName -> "can't find source for module " ++ prettyShow moduleName
@@ -799,3 +797,10 @@ exceptionMessage e = case e of
       ++ "' in package database stack."
   SetupHooksException err ->
     setupHooksExceptionMessage err
+  MultiReplDoesNotSupportComplexReexportedModules pname cname ->
+    "When attempting start the repl for "
+      ++ showComponentName cname
+      ++ " from package "
+      ++ prettyShow pname
+      ++ " a module renaming was found.\n"
+      ++ "Multi-repl does not work with complicated reexported-modules until GHC-9.12."

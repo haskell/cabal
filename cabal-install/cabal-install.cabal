@@ -1,7 +1,7 @@
-Cabal-Version:      3.4
+Cabal-Version:      3.6
 
 Name:               cabal-install
-Version:            3.15.0.0
+Version:            3.17.0.0
 Synopsis:           The command-line interface for Cabal and Hackage.
 Description:
     The \'cabal\' command-line program simplifies the process of managing
@@ -13,7 +13,7 @@ License:            BSD-3-Clause
 License-File:       LICENSE
 Author:             Cabal Development Team (see AUTHORS file)
 Maintainer:         Cabal Development Team <cabal-devel@haskell.org>
-Copyright:          2003-2024, Cabal Development Team
+Copyright:          2003-2025, Cabal Development Team
 Category:           Distribution
 Build-type:         Simple
 Extra-Source-Files:
@@ -36,11 +36,16 @@ Flag native-dns
 
 Flag lukko
   description:  Use @lukko@ for file-locking
-  default:      True
-  manual:       True
+  default:      False
+  manual:       False
 
 flag git-rev
   description: include Git revision hash in version
+  default: False
+  manual: True
+
+flag legacy-comparison
+  description: Enable comparison between the new and legacy cabal.project parser
   default: False
   manual: True
 
@@ -56,21 +61,24 @@ common warnings
     if impl(ghc < 8.8)
       ghc-options: -Wnoncanonical-monadfail-instances
 
+    if impl(ghc >= 9.14)
+      ghc-options: -Wno-pattern-namespace-specifier -Wno-incomplete-record-selectors
+
 common base-dep
     build-depends:
-      , base >=4.13 && <4.22
+      , base >=4.13 && <4.23
 
 common cabal-dep
     build-depends:
-      , Cabal ^>=3.15
+      , Cabal ^>=3.17
 
 common cabal-syntax-dep
     build-depends:
-      , Cabal-syntax ^>=3.15
+      , Cabal-syntax ^>=3.17
 
 common cabal-install-solver-dep
     build-depends:
-      , cabal-install-solver ^>=3.15
+      , cabal-install-solver ^>=3.17
 
 library
     import: warnings, base-dep, cabal-dep, cabal-syntax-dep, cabal-install-solver-dep
@@ -118,8 +126,7 @@ library
         Distribution.Client.CmdTarget
         Distribution.Client.CmdTest
         Distribution.Client.CmdUpdate
-        Distribution.Client.Compat.Directory
-        Distribution.Client.Compat.ExecutablePath
+        Distribution.Client.CmdGenBounds
         Distribution.Client.Compat.Orphans
         Distribution.Client.Compat.Prelude
         Distribution.Client.Compat.Semaphore
@@ -130,6 +137,7 @@ library
         Distribution.Client.Dependency.Types
         Distribution.Client.DistDirLayout
         Distribution.Client.Errors
+        Distribution.Client.Errors.Parser
         Distribution.Client.Fetch
         Distribution.Client.FetchUtils
         Distribution.Client.FileMonitor
@@ -167,7 +175,6 @@ library
         Distribution.Client.Main
         Distribution.Client.Manpage
         Distribution.Client.ManpageFlags
-        Distribution.Client.Nix
         Distribution.Client.NixStyleOptions
         Distribution.Client.PackageHash
         Distribution.Client.ParseUtils
@@ -176,7 +183,10 @@ library
         Distribution.Client.ProjectBuilding.PackageFileMonitor
         Distribution.Client.ProjectBuilding.Types
         Distribution.Client.ProjectConfig
+        Distribution.Client.ProjectConfig.FieldGrammar
         Distribution.Client.ProjectConfig.Legacy
+        Distribution.Client.ProjectConfig.Lens
+        Distribution.Client.ProjectConfig.Parsec
         Distribution.Client.ProjectConfig.Types
         Distribution.Client.ProjectFlags
         Distribution.Client.ProjectOrchestration
@@ -224,6 +234,7 @@ library
         Distribution.Client.Upload
         Distribution.Client.Utils
         Distribution.Client.Utils.Json
+        Distribution.Client.Utils.Newtypes
         Distribution.Client.Utils.Parsec
         Distribution.Client.VCS
         Distribution.Client.Version
@@ -232,7 +243,7 @@ library
     build-depends:
       , async      >= 2.0      && < 2.3
       , array      >= 0.4      && < 0.6
-      , base16-bytestring >= 0.1.1 && < 1.1
+      , base16-bytestring >= 1.0 && < 1.1
       , binary     >= 0.7.3    && < 0.9
       , bytestring >= 0.10.6.0 && < 0.13
       , containers >= 0.5.6.2  && < 0.9
@@ -242,20 +253,20 @@ library
       , edit-distance >= 0.2.2 && < 0.3
       , exceptions >= 0.10.4   && < 0.11
       , filepath   >= 1.4.0.0  && < 1.6
-      , HTTP       >= 4000.1.5 && < 4000.5
+      , HTTP       >= 4000.1.5 && < 4000.6
       , mtl        >= 2.0      && < 2.4
-      , network-uri >= 2.6.0.2 && < 2.7
+      , network-uri >= 2.6.2.0 && < 2.7
       , pretty     >= 1.1      && < 1.2
       , process    >= 1.2.3.0  && < 1.7
       , random     >= 1.2      && < 1.4
       , stm        >= 2.0      && < 2.6
-      , tar        >= 0.5.0.3  && < 0.7
-      , time       >= 1.5.0.1  && < 1.15
-      , zlib       >= 0.5.3    && < 0.8
+      , tar        >= 0.5.0.3  && < 0.8
+      , time       >= 1.5.0.1  && < 1.16
+      , zlib       >= 0.6      && < 0.8
       , hackage-security >= 0.6.2.0 && < 0.7
       , text       >= 1.2.3    && < 1.3 || >= 2.0 && < 2.2
       , parsec     >= 3.1.13.0 && < 3.2
-      , open-browser >= 0.2.1.0 && < 0.4
+      , open-browser >= 0.2.1.0 && < 0.5
       , regex-base  >= 0.94.0.0 && <0.95
       , regex-posix >= 0.96.0.0 && <0.97
       , safe-exceptions >= 0.1.7.0 && < 0.2
@@ -288,6 +299,9 @@ library
     if flag(git-rev)
       build-depends: githash ^>= 0.1.7.0
       cpp-options: -DGIT_REV
+
+    if flag(legacy-comparison)
+      cpp-options: -DLEGACY_COMPARISON
 
 executable cabal
     import: warnings, base-dep
@@ -375,7 +389,27 @@ test-suite unit-tests
       , tasty-expected-failure
       , tasty-hunit >= 0.10
       , tree-diff
-      , QuickCheck >= 2.14.3 && <2.16
+      , QuickCheck >= 2.14.3 && <2.18
+
+-- Tests for the project file parser
+test-suite parser-tests
+    import: warnings, base-dep, cabal-dep, cabal-syntax-dep, cabal-install-solver-dep
+    default-language: Haskell2010
+    ghc-options: -rtsopts -threaded
+
+    type: exitcode-stdio-1.0
+    main-is: Tests.hs
+    hs-source-dirs: parser-tests
+    build-depends:
+      , cabal-install
+      , containers
+      , directory
+      , filepath
+      , network-uri >= 2.6.2.0 && <2.7
+      , tasty >= 1.2.3 && <1.6
+      , tasty-hunit >= 0.10
+    other-modules:
+      Tests.ParserTests
 
 -- Tests to run with a limited stack and heap size
 -- The test suite name must be keep short cause a longer one
@@ -413,9 +447,6 @@ test-suite integration-tests2
   hs-source-dirs: tests
   default-language: Haskell2010
 
-  other-modules:
-    IntegrationTests2.CPP
-
   build-depends:
     , bytestring
     , cabal-install
@@ -423,8 +454,10 @@ test-suite integration-tests2
     , directory
     , filepath
     , process
-    , tasty >= 1.2.3 && <1.6
+    , tasty >= 1.5 && <1.6
     , tasty-hunit >= 0.10
+    , tasty-expected-failure
+    , silently
     , tagged
 
 test-suite long-tests
@@ -462,5 +495,5 @@ test-suite long-tests
     , tasty-expected-failure
     , tasty-hunit >= 0.10
     , tasty-quickcheck <0.12
-    , QuickCheck >= 2.14 && <2.16
+    , QuickCheck >= 2.14 && <2.18
     , pretty-show >= 1.6.15

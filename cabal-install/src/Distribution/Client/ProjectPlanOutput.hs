@@ -66,8 +66,11 @@ import Distribution.Verbosity
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+import Control.Monad ((<=<))
+
 import qualified Data.ByteString.Builder as BB
 import qualified Data.ByteString.Lazy as BS
+import Data.Either (fromRight)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
@@ -109,6 +112,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
     , "compiler-id"
         J..= (J.String . showCompilerId . pkgConfigCompiler)
           elaboratedSharedConfig
+    , "compiler-abi" J..= jdisplay (compilerAbiTag (pkgConfigCompiler elaboratedSharedConfig))
     , "os" J..= jdisplay os
     , "arch" J..= jdisplay arch
     , "install-plan" J..= installPlanToJ elaboratedInstallPlan
@@ -158,6 +162,11 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
         , "id" J..= (jdisplay . installedUnitId) elab
         , "pkg-name" J..= (jdisplay . pkgName . packageId) elab
         , "pkg-version" J..= (jdisplay . pkgVersion . packageId) elab
+        , -- The `x-revision` field is a feature of repos (not cabal itself),
+          -- but it's needed for external tools to unambiguously fetch
+          -- packages without having to use index-state and go through
+          -- the whole repo index, so we include it in the plan file.
+          "pkg-revision" J..= J.Number (elaboratedPackageToRevision elab)
         , "flags"
             J..= J.object
               [ PD.unFlagName fn J..= v
@@ -265,6 +274,13 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
                 [ "type" J..= J.String "secure-repo"
                 , "uri" J..= J.String (show (remoteRepoURI repoRemote))
                 ]
+
+        elaboratedPackageToRevision :: ElaboratedConfiguredPackage -> Double
+        elaboratedPackageToRevision =
+          fromMaybe 0
+            . (readMaybe <=< lookup "x-revision")
+            . PD.customFieldsPD
+            . elabPkgDescription
 
         sourceRepoToJ :: SourceRepoMaybe -> J.Value
         sourceRepoToJ SourceRepositoryPackage{..} =
@@ -767,7 +783,7 @@ readPackagesUpToDateCacheFile DistDirLayout{distProjectCacheFile} =
       withBinaryFile (distProjectCacheFile "up-to-date") ReadMode $ \hnd ->
         Binary.decodeOrFailIO =<< BS.hGetContents hnd
   where
-    handleDecodeFailure = fmap (either (const Set.empty) id)
+    handleDecodeFailure = fmap (fromRight Set.empty)
 
 -- | Helper for writing the package up-to-date cache file.
 --

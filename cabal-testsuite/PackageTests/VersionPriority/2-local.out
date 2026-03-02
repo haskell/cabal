@@ -1,13 +1,6 @@
 # cabal v2-update
 Downloading the latest package list from test-local-repo
 # cabal v2-build
-Configuration is affected by the following files:
-- 2-local-constraints-import.project
-- hop-local.config
-    imported by: 2-local-constraints-import.project
-- stackage-local.config
-    imported by: hop-local.config
-    imported by: 2-local-constraints-import.project
 Resolving dependencies...
 Error: [Cabal-7107]
 Could not resolve dependencies:
@@ -22,13 +15,6 @@ Could not resolve dependencies:
 [__1] fail (backjumping, conflict set: cabal-version-override, hashable)
 After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: hashable (3), cabal-version-override (2)
 # cabal v2-build
-Configuration is affected by the following files:
-- 2-local-import-constraints.project
-- hop-local.config
-    imported by: 2-local-import-constraints.project
-- stackage-local.config
-    imported by: hop-local.config
-    imported by: 2-local-import-constraints.project
 Resolving dependencies...
 Error: [Cabal-7107]
 Could not resolve dependencies:

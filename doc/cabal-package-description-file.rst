@@ -1215,7 +1215,10 @@ be provided by the library that provides the testing facility.
     Test-Suite test-bar
         type:             detailed-0.9
         test-module:      Bar
-        build-depends:    base >= 4 && < 5, Cabal >= 1.9.2 && < 2
+        -- To keep this (untested) example working, we rely on the test type
+        -- version rather than an upper bound on Cabal. In real code, PVP
+        -- compliance may require including the upper bound.
+        build-depends:    base >= 4 && < 5, Cabal >= 1.9.2
         default-language: Haskell2010
 
 
@@ -1991,6 +1994,11 @@ system-dependent values for these fields.
     compiling phase (as ``-optc`` flags for GHC). Since the
     arguments are compiler-dependent, this field is more useful with the
     setup described in the section on `system-dependent parameters`_.
+
+.. pkg-field:: jspp-options: token list
+
+    Command-line arguments for pre-processing JS code. Applies to pre-processed
+    Haskell source like .js. Flags here will be passed as ``-optJSP`` flags to GHC.
 
 .. pkg-field:: cpp-options: token list
 
@@ -3083,9 +3091,10 @@ modules of the package. This module defines a function
 
     getDataFileName :: FilePath -> IO FilePath
 
-If the argument is a filename listed in the :pkg-field:`data-files` field, the
-result is the name of the corresponding file on the system on which the
-program is running.
+If the argument is a filename, the result is the name of a corresponding file on
+the system on which the program is running, if the filename were listed in the
+:pkg-field:`data-files` field. No check is performed that the given filename is
+listed in that field.
 
 .. Note::
 
@@ -3196,7 +3205,9 @@ platform when cross-compiling. Moreover, various bits of build configuration
 will be passed via environment variables:
 
  - ``CC`` will reflect the path to the C compiler
- - ``CFLAGS`` will reflect the path to the C compiler
+ - ``CXX`` will reflect the path to the C++ compiler (if available, it always will be if ghc >= 9.4)
+ - ``CFLAGS`` will reflect the flags to the C compiler
+ - ``CXXFLAGS`` will reflect the flags to the C++ compiler (if available)
  - ``CABAL_FLAGS`` will contain the Cabal flag assignment of the current
    package using traditional Cabal flag syntax (e.g. ``+flagA -flagB``)
  - ``CABAL_FLAG_<flag>`` will be set to either ``0`` or ``1`` depending upon
@@ -3444,9 +3455,10 @@ a few options:
 .. rubric:: Footnotes
 
 .. [#old-style-build-tool-depends]
-
-  Some packages (ab)use :pkg-field:`build-depends` on old-style builds, but this has a few major drawbacks:
-
-    - using Nix-style builds it's considered an error if you depend on a exe-only package via build-depends: the solver will refuse it.
-    - it may or may not place the executable on ``PATH``.
-    - it does not ensure the correct version of the package is installed, so you might end up overwriting versions with each other.
+   Some packages (ab)use :pkg-field:`build-depends` on old-style builds, but
+   this has a few major drawbacks. First, with Nix-style builds it's considered
+   an error if you depend on a exe-only package via ``build-depends``: the
+   solver will refuse it.  Next, ``build-depends`` may or may not place the
+   executable on ``PATH``.  Finally, ``build-depends`` does not ensure the
+   correct version of the package is installed, so you might end up overwriting
+   versions with each other.

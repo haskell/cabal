@@ -1,3 +1,4 @@
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 
 -- | cabal-install CLI command: haddock
@@ -19,6 +20,7 @@ import Prelude ()
 import Distribution.Client.CmdErrorMessages
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
+  , cfgVerbosity
   , defaultNixStyleFlags
   , nixStyleOptions
   )
@@ -31,9 +33,7 @@ import Distribution.Client.ProjectPlanning
   ( ElaboratedSharedConfig (..)
   )
 import Distribution.Client.Setup
-  ( CommonSetupFlags (..)
-  , ConfigFlags (..)
-  , GlobalFlags
+  ( GlobalFlags
   , InstallFlags (..)
   )
 import Distribution.Client.TargetProblem
@@ -47,7 +47,7 @@ import Distribution.Simple.Command
   , option
   , usageAlternatives
   )
-import Distribution.Simple.Flag (Flag (..))
+import Distribution.Simple.Flag (Flag, pattern Flag)
 import Distribution.Simple.Program.Builtin
   ( haddockProgram
   )
@@ -149,7 +149,7 @@ haddockAction relFlags targetStrings globalFlags = do
   flags@NixStyleFlags{..} <- mkFlagsAbsolute relFlags
 
   let
-    verbosity = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags)
+    verbosity = cfgVerbosity normal flags
     installDoc = fromFlagOrDefault True (installDocumentation installFlags)
     flags' = flags{installFlags = installFlags{installDocumentation = Flag installDoc}}
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags' mempty -- ClientInstallFlags, not needed here
@@ -176,7 +176,7 @@ haddockAction relFlags targetStrings globalFlags = do
       -- haddock targets
       targets <-
         either (reportBuildDocumentationTargetProblems verbosity) return $
-          resolveTargets
+          resolveTargetsFromSolver
             (selectPackageTargets haddockFlags)
             selectComponentTarget
             elaboratedPlan

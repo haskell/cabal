@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 
 module Distribution.Compat.NonEmptySet
@@ -29,6 +28,7 @@ module Distribution.Compat.NonEmptySet
 
 import Prelude (Bool (..), Eq, Maybe (..), Ord (..), Read, Show (..), String, error, otherwise, return, showParen, showString, ($), (++), (.))
 
+import Control.Applicative (empty)
 import Control.DeepSeq (NFData (..))
 import Data.Data (Data)
 import Data.List.NonEmpty (NonEmpty (..))
@@ -39,12 +39,6 @@ import qualified Data.Set as Set
 
 import Distribution.Compat.Binary (Binary (..))
 import Distribution.Utils.Structured
-
-#if MIN_VERSION_binary(0,6,0)
-import Control.Applicative (empty)
-#else
-import Control.Monad (fail)
-#endif
 
 -- | @since 3.4.0.0
 newtype NonEmptySet a = NES (Set.Set a)
@@ -60,19 +54,13 @@ instance Show a => Show (NonEmptySet a) where
       showString "fromNonEmpty "
         . showsPrec 11 (toNonEmpty s)
 
-{- FOURMOLU_DISABLE -}
 instance Binary a => Binary (NonEmptySet a) where
   put (NES s) = put s
   get = do
-      xs <- get
-      if Set.null xs
-#if MIN_VERSION_binary(0,6,0)
+    xs <- get
+    if Set.null xs
       then empty
-#else
-      then fail "NonEmptySet: empty"
-#endif
       else return (NES xs)
-{- FOURMOLU_ENABLE -}
 
 instance Structured a => Structured (NonEmptySet a) where
   structure = containerStructure
@@ -148,16 +136,12 @@ member x (NES xs) = Set.member x xs
 -- Map
 -------------------------------------------------------------------------------
 
-{- FOURMOLU_DISABLE -}
 map
-    :: ( Ord b
-#if !MIN_VERSION_containers(0,5,2)
-       , Ord a
-#endif
-       )
-    => (a -> b) -> NonEmptySet a -> NonEmptySet b
+  :: Ord b
+  => (a -> b)
+  -> NonEmptySet a
+  -> NonEmptySet b
 map f (NES x) = NES (Set.map f x)
-{- FOURMOLU_ENABLE -}
 
 -------------------------------------------------------------------------------
 -- Internal

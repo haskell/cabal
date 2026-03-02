@@ -32,6 +32,7 @@ FORMAT_DIRS := \
 	Cabal \
 	Cabal-syntax \
 	cabal-install \
+	cabal-testsuite/src \
 	cabal-validate
 
 FORMAT_DIRS_TODO := \
@@ -46,7 +47,6 @@ FORMAT_DIRS_TODO := \
 	cabal-dev-scripts \
 	cabal-install-solver \
 	cabal-testsuite/main \
-	cabal-testsuite/src \
 	cabal-testsuite/static \
 	solver-benchmarks
 
@@ -100,7 +100,7 @@ SPDX_EXCEPTION_HS:=Cabal-syntax/src/Distribution/SPDX/LicenseExceptionId.hs
 .PHONY: spdx
 spdx : $(SPDX_LICENSE_HS) $(SPDX_EXCEPTION_HS)
 
-SPDX_LICENSE_VERSIONS:=3.0 3.2 3.6 3.9 3.10 3.16 3.23 3.25
+SPDX_LICENSE_VERSIONS:=3.0 3.2 3.6 3.9 3.10 3.16 3.23 3.25 3.26
 
 $(SPDX_LICENSE_HS) : templates/SPDX.LicenseId.template.hs cabal-dev-scripts/src/GenUtils.hs cabal-dev-scripts/src/GenSPDX.hs license-list-data/licenses-3.0.json license-list-data/licenses-3.2.json
 	cabal run --builddir=dist-newstyle-meta --project-file=cabal.meta.project gen-spdx -- templates/SPDX.LicenseId.template.hs $(SPDX_LICENSE_VERSIONS:%=license-list-data/licenses-%.json) $(SPDX_LICENSE_HS)
@@ -189,7 +189,7 @@ custom-setup-tests :
 hackage-parsec-tests :
 	$(CABALRUN) hackage-tests -- parsec +RTS -s -qg -I0 -A64M -N${THREADS} -RTS ${TEST}
 
-.PHONY: hackage-rountrip-tests
+.PHONY: hackage-roundtrip-tests
 hackage-roundtrip-tests :
 	$(CABALRUN) hackage-tests -- roundtrip +RTS -s -qg -I0 -A64M -N${THREADS} -RTS ${TEST}
 
@@ -274,7 +274,7 @@ bootstrap-json-%: phony
 	cd bootstrap && cabal run -v0 cabal-bootstrap-gen -- linux-$*.plan.json \
 		| python3 -m json.tool > linux-$*.json
 
-BOOTSTRAP_GHC_VERSIONS := 9.0.2 9.2.8 9.4.8 9.6.6 9.8.2
+BOOTSTRAP_GHC_VERSIONS := 9.2.8 9.4.8 9.6.7 9.8.4 9.10.2 9.12.2
 
 .PHONY: bootstrap-jsons
 bootstrap-jsons: $(BOOTSTRAP_GHC_VERSIONS:%=bootstrap-json-%)
@@ -285,10 +285,6 @@ bootstrap-jsons: $(BOOTSTRAP_GHC_VERSIONS:%=bootstrap-json-%)
 .PHONY: users-guide
 users-guide: ## Build the users guide.
 	$(MAKE) -C doc users-guide
-
-.PHONY: users-guide-requirements
-users-guide-requirements: ## Install the requirements for building the users guide.
-	$(MAKE) -C doc users-guide-requirements
 
 ifeq ($(shell uname), Darwin)
 PROCS := $(shell sysctl -n hw.logicalcpu)

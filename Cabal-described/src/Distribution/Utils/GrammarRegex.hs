@@ -23,7 +23,7 @@ import Data.Monoid                   (Monoid (..))
 import Data.String                   (IsString (..))
 import Data.Traversable              (Traversable)
 import Data.Void                     (Void, vacuous)
-import Distribution.Compat.Semigroup (Semigroup (..))
+import Data.Semigroup                (Semigroup (..))
 import Prelude                       (Bool (..), Char, Eq (..), Functor, Int, Maybe (..), Ord (..), Show, String, fmap, length, map, otherwise, ($), (++), (.))
 
 import qualified Distribution.Utils.CharSet as CS

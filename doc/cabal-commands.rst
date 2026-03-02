@@ -532,38 +532,74 @@ users see a consistent set of dependencies. For libraries, this is not
 recommended: users often need to build against different versions of
 libraries than what you developed against.
 
+.. _cabal-gen-bounds:
+
 cabal gen-bounds
-^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^
 
-``cabal gen-bounds [FLAGS]`` generates bounds for all dependencies that do not
-currently have them.  Generated bounds are printed to stdout. You can then
-paste them into your .cabal file.
-The generated bounds conform to the `Package Versioning Policy`_, which is
-a recommended versioning system for publicly released Cabal packages.
+::
 
-.. code-block:: console
+    cabal gen-bounds [TARGETS] [FLAGS]
+
+Generate PVP-compliant dependency bounds for packages in the project based
+on currently installed versions. This is helpful when creating or updating
+package dependencies to ensure compatibility with specific version ranges.
+
+To use it, run `cabal gen-bounds` in a directory containing a cabal.project file or
+within a subdirectory of a multi-package project. The command will analyze
+the project structure and suggest appropriate version bounds for dependencies based
+on the currently installed versions of those packages.
+
+The suggested bounds follow the Package Versioning Policy (PVP) convention,
+allowing changes in the last segment of the version number. These suggestions
+are formatted as Cabal constraint expressions that can be directly copied
+into your .cabal file in the appropriate `build-depends` section.
+
+You can also specify particular packages to analyze with `cabal gen-bounds package-name`.
+The command supports the same targets as `cabal build`.
+
+Examples:
+
+Basic usage:
+
+::
 
     $ cabal gen-bounds
 
-For example, given the following dependencies without bounds specified in
-:pkg-field:`build-depends`:
+In a multi-package project:
 
 ::
 
-    build-depends:
-      base,
-      mtl,
-      transformers,
+    $ cat cabal.project
+    packages: package-a/
+              package-b/
 
-``gen-bounds`` might suggest changing them to the following:
+    $ cabal gen-bounds all
+    Configuration is affected by the following files:
+    - cabal.project
+    Resolving dependencies...
+
+    Congratulations, all dependencies for package-a:lib:package-a are up-to-date.
+
+    The following packages need bounds and here is a suggested starting point...
+    For component package-b:lib:package-b:
+    package-a >= 0.1.0 && < 0.2,
+
+You can also specify particular target to analyze:
 
 ::
 
-    build-depends:
-      base          >= 4.15.0 && < 4.16,
-      mtl           >= 2.2.2 && < 2.3,
-      transformers  >= 0.5.6 && < 0.6,
+    $ cabal gen-bounds package-a
 
+The command output provides suggested version bounds for each component's
+dependencies that lack proper bounds. For each component, dependencies that
+need bounds are listed along with the suggested bounds, like:
+
+::
+
+    For component my-package:lib:my-package:
+    some-dependency >= 1.2.3 && < 1.3,
+    another-dependency >= 2.0.0 && < 2.1,
 
 cabal outdated
 ^^^^^^^^^^^^^^
@@ -1060,17 +1096,39 @@ Examples:
 Configuration flags can be specified on the command line and these extend the project
 configuration from the 'cabal.project', 'cabal.project.local' and other files.
 
-.. option:: --repl-options=FLAG
+.. option:: --repl-options=OPTS
 
     To avoid ``ghci``-specific flags from triggering unneeded global rebuilds, these
-    flags are stripped from the internal configuration. As a result,
-    ``--ghc-options`` will no longer (reliably) work to pass flags to ``ghci`` (or
-    other REPLs). Instead, you should use the ``--repl-options`` flag to
-    specify these options to the invoked REPL.
+    flags are stripped from the internal configuration when using
+    ``--ghc-option`` or ``--ghc-options``. As a result, ``--ghc-options`` will
+    not (reliably) work to pass flags to ``ghci`` (or other REPLs).
+    ``--repl-options`` bypasses this and allows you to specify options to the
+    invoked REPL without influencing the build configuration for other packages.
+
+    Note: ``--repl-options`` does not accept double quotes (``""``) to pass options
+    containing spaces to the REPL.
 
 .. option:: --repl-no-load
 
     Disables the loading of target modules at startup.
+
+.. option:: --with-repl=PATH
+
+    Specifies an alternative program to use when starting the REPL session,
+    instead of the default GHC. This is particularly useful for tools like
+    ``doctest`` and ``hie-bios`` that need to intercept the REPL session to
+    perform their own operations.
+
+    Unlike ``--with-ghc`` which affects all GHC invocations (including dependency
+    compilation), ``--with-repl`` only affects the final REPL invocation, making
+    it much simpler for wrapper tools to implement.
+
+    Examples:
+
+    ::
+
+        $ cabal repl --with-repl=doctest
+        $ cabal repl --with-repl=/path/to/custom/ghc
 
 .. option:: -b DEPENDENCIES or -bDEPENDENCIES, --build-depends=DEPENDENCIES
 
@@ -1401,6 +1459,7 @@ A list of all warnings with their constructor:
 - ``option-with-rtsopts``: unnecessary ``-with-rtsopts``.
 - ``option-opt-c``: unnecessary ``-O[n]`` in C code.
 - ``cpp-options``: unportable ``-cpp-options`` flag.
+- ``jspp-options``: unportable ``-jspp-options`` flag.
 - ``misplaced-c-opt``: C-like options in wrong cabal field.
 - ``relative-path-outside``: relative path outside of source tree.
 - ``absolute-path``: absolute path where not allowed.
@@ -1462,7 +1521,7 @@ A list of all warnings with their constructor:
 - ``no-cabal-file``: no ``.cabal`` file found in folder.
 - ``multiple-cabal-file``: multiple ``.cabal`` files found in folder.
 - ``unknown-file``: path refers to a file which does not exist.
-- ``missing-setup``: missing ``Setup.hs`` or ``Setup.lsh``.
+- ``missing-setup``: missing ``Setup.hs`` or ``Setup.lhs`` or ``SetupHooks.hs``  or ``SetupHooks.lhs``.
 - ``missing-conf-script``: missing ``configure`` script with ``build-type: Configure``.
 - ``unknown-directory``: paths refer to a directory which does not exist.
 - ``no-repository``: missing ``source-repository`` section.

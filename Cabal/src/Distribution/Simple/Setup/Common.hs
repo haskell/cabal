@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 
 -- |
@@ -32,7 +33,9 @@ module Distribution.Simple.Setup.Common
   , defaultDistPref
   , extraCompilationArtifacts
   , optionDistPref
-  , Flag (..)
+  , Flag
+  , pattern Flag
+  , pattern NoFlag
   , toFlag
   , fromFlag
   , fromFlagOrDefault
@@ -68,7 +71,7 @@ import Distribution.Verbosity
 -- | A datatype that stores common flags for different invocations
 -- of a @Setup@ executable, e.g. configure, build, install.
 data CommonSetupFlags = CommonSetupFlags
-  { setupVerbosity :: !(Flag Verbosity)
+  { setupVerbosity :: !(Flag VerbosityFlags)
   -- ^ Verbosity
   , setupWorkingDir :: !(Flag (SymbolicPath CWD (Dir Pkg)))
   -- ^ Working directory (optional)
@@ -275,7 +278,9 @@ programDbOption progDb showOrParseArgs get set =
         [prog ++ "-option"]
         ( "give an extra option to "
             ++ prog
-            ++ " (no need to quote options containing spaces)"
+            ++ " (passed directly to "
+            ++ prog
+            ++ " as a single argument)"
         )
         get
         set
@@ -312,7 +317,10 @@ programDbOptions progDb showOrParseArgs get set =
       option
         ""
         [prog ++ "-options"]
-        ("give extra options to " ++ prog)
+        ( "give extra options to "
+            ++ prog
+            ++ " (split on spaces, use \"\" to prevent splitting)"
+        )
         get
         set
         (reqArg' "OPTS" (\args -> [(prog, splitArgs args)]) (const []))
@@ -388,8 +396,8 @@ reqSymbolicPathArgFlag title sf lf d get set =
     (set . fmap makeSymbolicPath)
 
 optionVerbosity
-  :: (flags -> Flag Verbosity)
-  -> (Flag Verbosity -> flags -> flags)
+  :: (flags -> Flag VerbosityFlags)
+  -> (Flag VerbosityFlags -> flags -> flags)
   -> OptionField flags
 optionVerbosity get set =
   option

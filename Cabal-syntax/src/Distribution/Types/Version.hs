@@ -141,13 +141,13 @@ mkVersion :: [Int] -> Version
 -- TODO: add validity check; disallow 'mkVersion []' (we have
 -- 'nullVersion' for that)
 mkVersion [] = nullVersion
-mkVersion (v1 : [])
+mkVersion [v1]
   | inWord16VerRep1 v1 = PV0 (mkWord64VerRep1 v1)
   | otherwise = PV1 v1 []
   where
     inWord16VerRep1 x1 = inWord16 (x1 .|. (x1 + 1))
     mkWord64VerRep1 y1 = mkWord64VerRep (y1 + 1) 0 0 0
-mkVersion (v1 : vs@(v2 : []))
+mkVersion (v1 : vs@[v2])
   | inWord16VerRep2 v1 v2 = PV0 (mkWord64VerRep2 v1 v2)
   | otherwise = PV1 v1 vs
   where
@@ -159,7 +159,7 @@ mkVersion (v1 : vs@(v2 : []))
             .|. (x2 + 1)
         )
     mkWord64VerRep2 y1 y2 = mkWord64VerRep (y1 + 1) (y2 + 1) 0 0
-mkVersion (v1 : vs@(v2 : v3 : []))
+mkVersion (v1 : vs@[v2, v3])
   | inWord16VerRep3 v1 v2 v3 = PV0 (mkWord64VerRep3 v1 v2 v3)
   | otherwise = PV1 v1 vs
   where
@@ -173,7 +173,7 @@ mkVersion (v1 : vs@(v2 : v3 : []))
             .|. (x3 + 1)
         )
     mkWord64VerRep3 y1 y2 y3 = mkWord64VerRep (y1 + 1) (y2 + 1) (y3 + 1) 0
-mkVersion (v1 : vs@(v2 : v3 : v4 : []))
+mkVersion (v1 : vs@[v2, v3, v4])
   | inWord16VerRep4 v1 v2 v3 v4 = PV0 (mkWord64VerRep4 v1 v2 v3 v4)
   | otherwise = PV1 v1 vs
   where

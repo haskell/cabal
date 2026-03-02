@@ -10,19 +10,32 @@ import Test.Tasty
 import Test.Tasty.Golden.Advanced (goldenTest)
 import Test.Tasty.HUnit
 
-import Control.Monad                               (unless, void)
+import Control.Monad                               (void)
 import Data.Algorithm.Diff                         (PolyDiff (..), getGroupedDiff)
 import Data.Maybe                                  (isNothing)
-import Distribution.Fields                         (runParseResult)
-import Distribution.PackageDescription             (GenericPackageDescription)
+import Distribution.Fields                         (pwarning)
+import Distribution.PackageDescription
+  ( GenericPackageDescription
+  , packageDescription
+  , gpdScannedVersion
+  , genPackageFlags
+  , condLibrary
+  , condSubLibraries
+  , condForeignLibs
+  , condExecutables
+  , condTestSuites
+  , condBenchmarks
+  )
 import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
-import Distribution.Parsec                         (PWarnType (..), PWarning (..), showPError, showPWarning)
+import Distribution.Parsec                         (PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
 import Distribution.Pretty                         (prettyShow)
+import Distribution.Fields.ParseResult
 import Distribution.Utils.Generic                  (fromUTF8BS, toUTF8BS)
 import System.Directory                            (setCurrentDirectory)
 import System.Environment                          (getArgs, withArgs)
 import System.FilePath                             (replaceExtension, (</>))
+import Distribution.Parsec.Source
 
 import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as BS8
@@ -79,12 +92,12 @@ warningTest :: PWarnType -> FilePath -> TestTree
 warningTest wt fp = testCase (show wt) $ do
     contents <- BS.readFile $ "tests" </> "ParserTests" </> "warnings" </> fp
 
-    let res =  parseGenericPackageDescription contents
+    let res =  withSource (PCabalFile (fp, contents)) $ parseGenericPackageDescription contents
     let (warns, x) = runParseResult res
 
     assertBool ("should parse successfully: " ++ show x) $ isRight x
 
-    case warns of
+    case map pwarning warns of
         [PWarning wt' _ _] -> assertEqual "warning type" wt wt'
         []                 -> assertFailure "got no warnings"
         _                  -> assertFailure $ "got multiple warnings: " ++ show warns
@@ -135,7 +148,7 @@ errorTests = testGroup "errors"
 errorTest :: FilePath -> TestTree
 errorTest fp = cabalGoldenTest fp correct $ do
     contents <- BS.readFile input
-    let res =  parseGenericPackageDescription contents
+    let res =  withSource (PCabalFile (fp, contents)) $ parseGenericPackageDescription contents
     let (_, x) = runParseResult res
 
     return $ toUTF8BS $ case x of
@@ -143,7 +156,7 @@ errorTest fp = cabalGoldenTest fp correct $ do
             "UNEXPECTED SUCCESS\n" ++
             showGenericPackageDescription gpd
         Left (v, errs) ->
-            unlines $ ("VERSION: " ++ show v) : map (showPError fp) (NE.toList errs)
+            unlines $ ("VERSION: " ++ show v) : map (showPErrorWithSource . fmap renderCabalFileSource) (NE.toList errs)
   where
     input = "tests" </> "ParserTests" </> "errors" </> fp
     correct = replaceExtension input "errors"
@@ -212,18 +225,18 @@ regressionTest fp = testGroup fp
 formatGoldenTest :: FilePath -> TestTree
 formatGoldenTest fp = cabalGoldenTest "format" correct $ do
     contents <- BS.readFile input
-    let res = parseGenericPackageDescription contents
+    let res = withSource (PCabalFile (fp, contents)) $ parseGenericPackageDescription contents
     let (warns, x) = runParseResult res
 
     return $ toUTF8BS $ case x of
         Right gpd ->
-            unlines (map (showPWarning fp) warns)
+            unlines (map (showPWarningWithSource . fmap renderCabalFileSource) warns)
             ++ showGenericPackageDescription gpd
         Left (csv, errs) ->
             unlines $
                 "ERROR" :
                 maybe "unknown-version" prettyShow csv :
-                map (showPError fp) (NE.toList errs)
+                map (showPErrorWithSource . fmap renderCabalFileSource) (NE.toList errs)
   where
     input = "tests" </> "ParserTests" </> "regressions" </> fp
     correct = replaceExtension input "format"
@@ -231,12 +244,12 @@ formatGoldenTest fp = cabalGoldenTest "format" correct $ do
 #ifdef MIN_VERSION_tree_diff
 treeDiffGoldenTest :: FilePath -> TestTree
 treeDiffGoldenTest fp = ediffGolden goldenTest "expr" exprFile $ do
-    contents <- BS.readFile input
-    let res =  parseGenericPackageDescription contents
-    let (_, x) = runParseResult res
-    case x of
-        Right gpd      -> pure (toExpr gpd)
-        Left (_, errs) -> fail $ unlines $ "ERROR" : map (showPError fp) (NE.toList errs)
+  contents <- BS.readFile input
+  let res = withSource (PCabalFile (fp, contents)) $ parseGenericPackageDescription contents
+  let (_, x) = runParseResult res
+  case x of
+      Right gpd -> pure (toExpr gpd)
+      Left (_, errs) -> fail $ unlines $ "ERROR" : map (showPErrorWithSource . fmap renderCabalFileSource) (NE.toList errs)
   where
     input = "tests" </> "ParserTests" </> "regressions" </> fp
     exprFile = replaceExtension input "expr"
@@ -248,32 +261,44 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
     x <- parse contents
     let contents' = showGenericPackageDescription x
     y <- parse (toUTF8BS contents')
-    -- previously we mangled licenses a bit
-    let y' = y
+
+    let checkField field =
+          field x == field y @?
 {- FOURMOLU_DISABLE -}
-    unless (x == y') $
 #ifdef MIN_VERSION_tree_diff
-        assertFailure $ unlines
-            [ "re-parsed doesn't match"
-            , show $ ansiWlEditExpr $ ediff x y
-            ]
+            unlines
+                [ "re-parsed doesn't match"
+                , show $ ansiWlEditExpr $ ediff x y
+                ]
 #else
-        assertFailure $ unlines
-            [ "re-parsed doesn't match"
-            , "expected"
-            , show x
-            , "actual"
-            , show y
-            ]
+            unlines
+                [ "re-parsed doesn't match"
+                , "expected"
+                , show x
+                , "actual"
+                , show y
+                ]
 #endif
+    sequence_
+      [ checkField packageDescription
+      , checkField gpdScannedVersion
+      , checkField genPackageFlags
+      , checkField condLibrary
+      , checkField condSubLibraries
+      , checkField condForeignLibs
+      , checkField condExecutables
+      , checkField condTestSuites
+      , checkField condBenchmarks
+      ]
+
   where
     parse :: BS.ByteString -> IO GenericPackageDescription
     parse c = do
-        let (_, x') = runParseResult $ parseGenericPackageDescription c
+        let (_, x') = runParseResult $ withSource (PCabalFile (fp, c)) $ parseGenericPackageDescription c
         case x' of
             Right gpd      -> pure gpd
             Left (_, errs) -> do
-                void $ assertFailure $ unlines (map (showPError fp) $ NE.toList errs)
+                void $ assertFailure $ unlines (map (showPErrorWithSource . fmap renderCabalFileSource) $ NE.toList errs)
                 fail "failure"
     input = "tests" </> "ParserTests" </> "regressions" </> fp
 {- FOURMOLU_ENABLE -}

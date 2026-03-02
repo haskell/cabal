@@ -1,5 +1,6 @@
 module Distribution.Utils.MapAccum (mapAccumM) where
 
+import Data.Bifunctor (second)
 import Distribution.Compat.Prelude
 import Prelude ()
 
@@ -7,7 +8,7 @@ import Prelude ()
 newtype StateM s m a = StateM {runStateM :: s -> m (s, a)}
 
 instance Functor m => Functor (StateM s m) where
-  fmap f (StateM x) = StateM $ \s -> fmap (\(s', a) -> (s', f a)) (x s)
+  fmap f (StateM x) = StateM $ \s -> fmap (second f) (x s)
 
 instance Monad m => Applicative (StateM s m) where
   pure x = StateM $ \s -> return (s, x)

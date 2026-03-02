@@ -3,6 +3,9 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
+#if MIN_VERSION_base(4,21,0)
+{-# LANGUAGE ImplicitParams #-}
+#endif
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
@@ -39,6 +42,7 @@ module Distribution.Simple.Utils
   , dieNoWrap
   , topHandler
   , topHandlerWith
+  , isUserException
   , warn
   , warnError
   , notice
@@ -185,6 +189,7 @@ module Distribution.Simple.Utils
   , listUnion
   , listUnionRight
   , ordNub
+  , sortNub
   , ordNubBy
   , ordNubRight
   , safeHead
@@ -194,6 +199,7 @@ module Distribution.Simple.Utils
   , unintersperse
   , wrapText
   , wrapLine
+  , stripCommonPrefix
 
     -- * FilePath stuff
   , isAbsoluteOnAnyPlatform
@@ -203,7 +209,6 @@ module Distribution.Simple.Utils
 
 import Distribution.Compat.Async (waitCatch, withAsyncNF)
 import Distribution.Compat.CopyFile
-import Distribution.Compat.FilePath as FilePath
 import Distribution.Compat.Internal.TempFile
 import Distribution.Compat.Lens (Lens', over)
 import Distribution.Compat.Prelude
@@ -262,11 +267,13 @@ import System.Environment
 import System.FilePath (takeFileName)
 import System.FilePath as FilePath
   ( getSearchPath
+  , isExtensionOf
   , joinPath
   , normalise
   , searchPathSeparator
   , splitDirectories
   , splitExtension
+  , stripExtension
   , takeDirectory
   )
 import System.IO
@@ -280,6 +287,7 @@ import System.IO
   , hSetBinaryMode
   , hSetBuffering
   , stderr
+  , stdin
   , stdout
   )
 import System.IO.Error
@@ -297,6 +305,10 @@ import GitHash
   , giCommitDate
   , tGitInfoCwdTry
   )
+#endif
+
+#if MIN_VERSION_base(4,21,0)
+import Control.Exception.Context
 #endif
 
 -- We only get our own version number when we're building with ourselves
@@ -420,19 +432,19 @@ die' :: Verbosity -> String -> IO a
 die' verbosity msg = withFrozenCallStack $ do
   ioError . verbatimUserError
     =<< annotateErrorString verbosity
-    =<< pure . wrapTextVerbosity verbosity
+    =<< pure . wrapTextVerbosity (verbosityFlags verbosity)
     =<< pure . addErrorPrefix
     =<< prefixWithProgName msg
 
 -- Type which will be a wrapper for cabal -exceptions and cabal-install exceptions
-data VerboseException a = VerboseException CallStack POSIXTime Verbosity a
+data VerboseException a = VerboseException CallStack POSIXTime VerbosityFlags a
   deriving (Show)
 
 -- Function which will replace the existing die' call sites
 dieWithException :: (HasCallStack, Show a1, Typeable a1, Exception (VerboseException a1)) => Verbosity -> a1 -> IO a
 dieWithException verbosity exception = do
   ts <- getPOSIXTime
-  throwIO $ VerboseException callStack ts verbosity exception
+  throwIO $ VerboseException callStack ts (verbosityFlags verbosity) exception
 
 -- Instance for Cabal Exception which will display error code and error message with callStack info
 instance Exception (VerboseException CabalException) where
@@ -481,7 +493,7 @@ prefixWithProgName msg = do
 annotateErrorString :: Verbosity -> String -> IO String
 annotateErrorString verbosity msg = do
   ts <- getPOSIXTime
-  return $ withMetadata ts AlwaysMark VerboseTrace verbosity msg
+  return $ withMetadata ts AlwaysMark VerboseTrace (verbosityFlags verbosity) msg
 
 -- | Given a block of IO code that may raise an exception, annotate
 -- it with the metadata from the current scope.  Use this as close
@@ -493,7 +505,7 @@ annotateIO verbosity act = do
   ts <- getPOSIXTime
   flip modifyIOError act $
     ioeModifyErrorString $
-      withMetadata ts NeverMark VerboseTrace verbosity
+      withMetadata ts NeverMark VerboseTrace (verbosityFlags verbosity)
 
 -- | A semantic editor for the error message inside an 'IOError'.
 ioeModifyErrorString :: (String -> String) -> IOError -> IOError
@@ -503,9 +515,22 @@ ioeModifyErrorString = over ioeErrorString
 ioeErrorString :: Lens' IOError String
 ioeErrorString f ioe = ioeSetErrorString ioe <$> f (ioeGetErrorString ioe)
 
+-- | Check that the type of the exception matches the given user error type.
+isUserException :: forall user_err. Typeable user_err => Proxy user_err -> Exception.SomeException -> Bool
+isUserException Proxy (SomeException se) =
+  case cast se :: Maybe user_err of
+    Just{} -> True
+    Nothing -> False
+
 {-# NOINLINE topHandlerWith #-}
-topHandlerWith :: forall a. (Exception.SomeException -> IO a) -> IO a -> IO a
-topHandlerWith cont prog = do
+topHandlerWith
+  :: forall a
+   . (Exception.SomeException -> Bool)
+  -- ^ Identify when the error is an exception to display to users.
+  -> (Exception.SomeException -> IO a)
+  -> IO a
+  -> IO a
+topHandlerWith is_user_exception cont prog = do
   -- By default, stderr to a terminal device is NoBuffering. But this
   -- is *really slow*
   hSetBuffering stderr LineBuffering
@@ -533,7 +558,7 @@ topHandlerWith cont prog = do
       cont se
 
     message :: String -> Exception.SomeException -> String
-    message pname (Exception.SomeException se) =
+    message pname e@(Exception.SomeException se) =
       case cast se :: Maybe Exception.IOException of
         Just ioe
           | ioeGetVerbatim ioe ->
@@ -548,21 +573,27 @@ topHandlerWith cont prog = do
                     _ -> ""
                   detail = ioeGetErrorString ioe
                in wrapText $ addErrorPrefix $ pname ++ ": " ++ file ++ detail
-        _ ->
-          displaySomeException se ++ "\n"
+        -- Don't print a call stack for a "user exception"
+        _
+          | is_user_exception e -> displayException e
+          -- Other errors which have are not intended for user display, print with a callstack.
+          | otherwise -> displaySomeExceptionWithContext e ++ "\n"
 
 -- | BC wrapper around 'Exception.displayException'.
-displaySomeException :: Exception.Exception e => e -> String
-displaySomeException se = Exception.displayException se
+displaySomeExceptionWithContext :: SomeException -> String
+#if MIN_VERSION_base(4,21,0)
+displaySomeExceptionWithContext (SomeException e) =
+  case displayExceptionContext ?exceptionContext of
+    "" -> msg
+    dc -> msg ++ "\n\n" ++ dc
+  where
+    msg = displayException e
+#else
+displaySomeExceptionWithContext e = displayException e
+#endif
 
-topHandler :: IO a -> IO a
-topHandler prog = topHandlerWith (const $ exitWith (ExitFailure 1)) prog
-
--- | Depending on 'isVerboseStderr', set the output handle to 'stderr' or 'stdout'.
-verbosityHandle :: Verbosity -> Handle
-verbosityHandle verbosity
-  | isVerboseStderr verbosity = stderr
-  | otherwise = stdout
+topHandler :: (Exception.SomeException -> Bool) -> IO a -> IO a
+topHandler is_user_exception prog = topHandlerWith is_user_exception (const $ exitWith (ExitFailure 1)) prog
 
 -- | Non fatal conditions that may be indicative of an error or problem.
 --
@@ -579,13 +610,17 @@ warnError verbosity message = warnMessage "Error" verbosity message
 -- | Warning message, with a custom label.
 warnMessage :: String -> Verbosity -> String -> IO ()
 warnMessage l verbosity msg = withFrozenCallStack $ do
-  when ((verbosity >= normal) && not (isVerboseNoWarn verbosity)) $ do
+  when (verbosityLevel verbosity >= Normal && not (isVerboseNoWarn flags)) $ do
     ts <- getPOSIXTime
-    hFlush stdout
-    hPutStr stderr
-      . withMetadata ts NormalMark FlagTrace verbosity
-      . wrapTextVerbosity verbosity
+    let outHandle = verbosityChosenOutputHandle verbosity
+        errHandle = verbosityErrorHandle verbosity
+    hFlush outHandle
+    hPutStr errHandle
+      . withMetadata ts NormalMark FlagTrace flags
+      . wrapTextVerbosity flags
       $ l ++ ": " ++ msg
+  where
+    flags = verbosityFlags verbosity
 
 -- | Useful status messages.
 --
@@ -595,32 +630,35 @@ warnMessage l verbosity msg = withFrozenCallStack $ do
 -- enough information to know that things are working but not floods of detail.
 notice :: Verbosity -> String -> IO ()
 notice verbosity msg = withFrozenCallStack $ do
-  when (verbosity >= normal) $ do
-    let h = verbosityHandle verbosity
+  when (verbosityLevel verbosity >= Normal) $ do
+    let h = verbosityChosenOutputHandle verbosity
+        flags = verbosityFlags verbosity
     ts <- getPOSIXTime
     hPutStr h $
-      withMetadata ts NormalMark FlagTrace verbosity $
-        wrapTextVerbosity verbosity $
+      withMetadata ts NormalMark FlagTrace flags $
+        wrapTextVerbosity flags $
           msg
 
 -- | Display a message at 'normal' verbosity level, but without
 -- wrapping.
 noticeNoWrap :: Verbosity -> String -> IO ()
 noticeNoWrap verbosity msg = withFrozenCallStack $ do
-  when (verbosity >= normal) $ do
-    let h = verbosityHandle verbosity
+  when (verbosityLevel verbosity >= Normal) $ do
+    let h = verbosityChosenOutputHandle verbosity
+        flags = verbosityFlags verbosity
     ts <- getPOSIXTime
-    hPutStr h . withMetadata ts NormalMark FlagTrace verbosity $ msg
+    hPutStr h . withMetadata ts NormalMark FlagTrace flags $ msg
 
 -- | Pretty-print a 'Disp.Doc' status message at 'normal' verbosity
 -- level.  Use this if you need fancy formatting.
 noticeDoc :: Verbosity -> Disp.Doc -> IO ()
 noticeDoc verbosity msg = withFrozenCallStack $ do
-  when (verbosity >= normal) $ do
-    let h = verbosityHandle verbosity
+  when (verbosityLevel verbosity >= Normal) $ do
+    let h = verbosityChosenOutputHandle verbosity
+        flags = verbosityFlags verbosity
     ts <- getPOSIXTime
     hPutStr h $
-      withMetadata ts NormalMark FlagTrace verbosity $
+      withMetadata ts NormalMark FlagTrace flags $
         Disp.renderStyle defaultStyle $
           msg
 
@@ -635,21 +673,23 @@ setupMessage verbosity msg pkgid = withFrozenCallStack $ do
 -- We display these messages when the verbosity level is 'verbose'
 info :: Verbosity -> String -> IO ()
 info verbosity msg = withFrozenCallStack $
-  when (verbosity >= verbose) $ do
-    let h = verbosityHandle verbosity
+  when (verbosityLevel verbosity >= Verbose) $ do
+    let h = verbosityChosenOutputHandle verbosity
+        flags = verbosityFlags verbosity
     ts <- getPOSIXTime
     hPutStr h $
-      withMetadata ts NeverMark FlagTrace verbosity $
-        wrapTextVerbosity verbosity $
+      withMetadata ts NeverMark FlagTrace flags $
+        wrapTextVerbosity flags $
           msg
 
 infoNoWrap :: Verbosity -> String -> IO ()
 infoNoWrap verbosity msg = withFrozenCallStack $
-  when (verbosity >= verbose) $ do
-    let h = verbosityHandle verbosity
+  when (verbosityLevel verbosity >= Verbose) $ do
+    let h = verbosityChosenOutputHandle verbosity
+        flags = verbosityFlags verbosity
     ts <- getPOSIXTime
     hPutStr h $
-      withMetadata ts NeverMark FlagTrace verbosity $
+      withMetadata ts NeverMark FlagTrace flags $
         msg
 
 -- | Detailed internal debugging information
@@ -657,12 +697,13 @@ infoNoWrap verbosity msg = withFrozenCallStack $
 -- We display these messages when the verbosity level is 'deafening'
 debug :: Verbosity -> String -> IO ()
 debug verbosity msg = withFrozenCallStack $
-  when (verbosity >= deafening) $ do
-    let h = verbosityHandle verbosity
+  when (verbosityLevel verbosity >= Deafening) $ do
+    let h = verbosityChosenOutputHandle verbosity
+        flags = verbosityFlags verbosity
     ts <- getPOSIXTime
     hPutStr h $
-      withMetadata ts NeverMark FlagTrace verbosity $
-        wrapTextVerbosity verbosity $
+      withMetadata ts NeverMark FlagTrace flags $
+        wrapTextVerbosity flags $
           msg
     -- ensure that we don't lose output if we segfault/infinite loop
     hFlush stdout
@@ -671,11 +712,11 @@ debug verbosity msg = withFrozenCallStack $
 -- wrapping. Produces better output in some cases.
 debugNoWrap :: Verbosity -> String -> IO ()
 debugNoWrap verbosity msg = withFrozenCallStack $
-  when (verbosity >= deafening) $ do
-    let h = verbosityHandle verbosity
+  when (verbosityLevel verbosity >= Deafening) $ do
+    let h = verbosityChosenOutputHandle verbosity
     ts <- getPOSIXTime
     hPutStr h $
-      withMetadata ts NeverMark FlagTrace verbosity $
+      withMetadata ts NeverMark FlagTrace (verbosityFlags verbosity) $
         msg
     -- ensure that we don't lose output if we segfault/infinite loop
     hFlush stdout
@@ -683,14 +724,16 @@ debugNoWrap verbosity msg = withFrozenCallStack $
 -- | Perform an IO action, catching any IO exceptions and printing an error
 --   if one occurs.
 chattyTry
-  :: String
+  :: Verbosity
+  -> String
   -- ^ a description of the action we were attempting
   -> IO ()
   -- ^ the action itself
   -> IO ()
-chattyTry desc action =
+chattyTry verbosity desc action =
   catchIO action $ \exception ->
-    hPutStrLn stderr $ "Error while " ++ desc ++ ": " ++ show exception
+    hPutStrLn (verbosityErrorHandle verbosity) $
+      "Error while " ++ desc ++ ": " ++ show exception
 
 -- | Run an IO computation, returning @e@ if it raises a "file
 -- does not exist" error.
@@ -704,7 +747,7 @@ handleDoesNotExist e =
 -- Helper functions
 
 -- | Wraps text unless the @+nowrap@ verbosity flag is active
-wrapTextVerbosity :: Verbosity -> String -> String
+wrapTextVerbosity :: VerbosityFlags -> String -> String
 wrapTextVerbosity verb
   | isVerboseNoWrap verb = withTrailingNewline
   | otherwise = withTrailingNewline . wrapText
@@ -712,7 +755,7 @@ wrapTextVerbosity verb
 -- | Prepends a timestamp if @+timestamp@ verbosity flag is set
 --
 -- This is used by 'withMetadata'
-withTimestamp :: Verbosity -> POSIXTime -> String -> String
+withTimestamp :: VerbosityFlags -> POSIXTime -> String -> String
 withTimestamp v ts msg
   | isVerboseTimestamp v = msg'
   | otherwise = msg -- no-op
@@ -738,7 +781,7 @@ withTimestamp v ts msg
 -- we don't have the ability to interpose on the output.
 --
 -- This is used by 'withMetadata'
-withOutputMarker :: Verbosity -> String -> String
+withOutputMarker :: VerbosityFlags -> String -> String
 withOutputMarker v xs | not (isVerboseMarkOutput v) = xs
 withOutputMarker _ "" = "" -- Minor optimization, don't mark uselessly
 withOutputMarker _ xs =
@@ -757,7 +800,7 @@ withTrailingNewline (x : xs) = x : go x xs
     go _ "" = "\n"
 
 -- | Prepend a call-site and/or call-stack based on Verbosity
-withCallStackPrefix :: WithCallStack (TraceWhen -> Verbosity -> String -> String)
+withCallStackPrefix :: WithCallStack (TraceWhen -> VerbosityFlags -> String -> String)
 withCallStackPrefix tracer verbosity s =
   withFrozenCallStack $
     ( if isVerboseCallSite verbosity
@@ -789,9 +832,9 @@ data TraceWhen
 
 -- | Determine if we should emit a call stack.
 -- If we trace, it also emits any prefix we should append.
-traceWhen :: Verbosity -> TraceWhen -> Maybe String
+traceWhen :: VerbosityFlags -> TraceWhen -> Maybe String
 traceWhen _ AlwaysTrace = Just ""
-traceWhen v VerboseTrace | v >= verbose = Just ""
+traceWhen v VerboseTrace | vLevel v >= Verbose = Just ""
 traceWhen v FlagTrace | isVerboseCallStack v = Just "----\n"
 traceWhen _ _ = Nothing
 
@@ -801,7 +844,7 @@ traceWhen _ _ = Nothing
 data MarkWhen = AlwaysMark | NormalMark | NeverMark
 
 -- | Add all necessary metadata to a logging message
-withMetadata :: WithCallStack (POSIXTime -> MarkWhen -> TraceWhen -> Verbosity -> String -> String)
+withMetadata :: WithCallStack (POSIXTime -> MarkWhen -> TraceWhen -> VerbosityFlags -> String -> String)
 withMetadata ts marker tracer verbosity x =
   withFrozenCallStack
     $
@@ -824,7 +867,7 @@ withMetadata ts marker tracer verbosity x =
     $ x
 
 -- | Add all necessary metadata to a logging message
-exceptionWithMetadata :: CallStack -> POSIXTime -> Verbosity -> String -> String
+exceptionWithMetadata :: CallStack -> POSIXTime -> VerbosityFlags -> String -> String
 exceptionWithMetadata stack ts verbosity x =
   withTrailingNewline
     . exceptionWithCallStackPrefix stack verbosity
@@ -841,7 +884,7 @@ clearMarkers s = unlines . filter isMarker $ lines s
     isMarker _ = True
 
 -- | Append a call-site and/or call-stack based on Verbosity
-exceptionWithCallStackPrefix :: CallStack -> Verbosity -> String -> String
+exceptionWithCallStackPrefix :: CallStack -> VerbosityFlags -> String -> String
 exceptionWithCallStackPrefix stack verbosity s =
   s
     ++ withFrozenCallStack
@@ -855,7 +898,7 @@ exceptionWithCallStackPrefix stack verbosity s =
                   else ""
             else ""
         )
-          ++ ( if verbosity >= verbose
+          ++ ( if vLevel verbosity >= Verbose
                 then prettyCallStack stack ++ "\n"
                 else ""
              )
@@ -907,18 +950,24 @@ rawSystemExit verbosity mbWorkDir path args =
 -- the command's exit code.
 rawSystemExitCode
   :: Verbosity
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -> Maybe (SymbolicPath CWD (Dir to))
   -> FilePath
   -> [String]
   -> Maybe [(String, String)]
   -> IO ExitCode
 rawSystemExitCode verbosity mbWorkDir path args menv =
   withFrozenCallStack $
-    rawSystemProc verbosity $
-      (proc path args)
-        { Process.cwd = fmap getSymbolicPath mbWorkDir
-        , Process.env = menv
-        }
+    fmap fst $
+      rawSystemIOWithEnvAndAction
+        verbosity
+        path
+        args
+        (fmap getSymbolicPath mbWorkDir)
+        menv
+        (\_ _ _ -> return ())
+        Nothing
+        Nothing
+        Nothing
 
 -- | Execute the given command with the given arguments, returning
 -- the command's exit code.
@@ -946,7 +995,7 @@ rawSystemProcAction
   -> IO (ExitCode, a)
 rawSystemProcAction verbosity cp action = withFrozenCallStack $ do
   logCommand verbosity cp
-  (exitcode, a) <- Process.withCreateProcess cp $ \mStdin mStdout mStderr p -> do
+  (exitcode, a) <- compatWithCreateProcess verbosity cp $ \mStdin mStdout mStderr p -> do
     a <- action mStdin mStdout mStderr
     exitcode <- Process.waitForProcess p
     return (exitcode, a)
@@ -956,6 +1005,54 @@ rawSystemProcAction verbosity cp action = withFrozenCallStack $ do
           Process.RawCommand path _args -> path
     debug verbosity $ cmd ++ " returned " ++ show exitcode
   return (exitcode, a)
+
+-- | A version of 'Process.withCreateProcess' that is careful to not close
+-- the handles stored in 'Verbosity'.
+compatWithCreateProcess
+  :: Verbosity
+  -> Process.CreateProcess
+  -> (Maybe Handle -> Maybe Handle -> Maybe Handle -> Process.ProcessHandle -> IO a)
+  -> IO a
+compatWithCreateProcess verbosity cp action =
+  Exception.bracket
+    create
+    Process.cleanupProcess
+    (\(m_in, m_out, m_err, ph) -> action m_in m_out m_err ph)
+  where
+    -- The 'process' documentation for 'createProcess'/'withCreateProcess'
+    -- states:
+    --
+    --   Note that `Handle`s provided for `std_in`, `std_out`, or `std_err` via the
+    --   `UseHandle` constructor will be closed by calling this function.
+    --
+    -- We don't want that, because we don't want the Verbosity handles being
+    -- closed if they are passed to the subprocess, which would prevent
+    -- us from continuing logging.
+    --
+    -- To avoid this, we copy the implementation of 'withCreateProcess' in terms
+    -- of 'withCreateProcess_', but with special logic to avoid closing the
+    -- verbosity handles.
+    create =
+      (Process.createProcess_ "createProcess" cp)
+        `Exception.finally` do
+          maybeClose (Process.std_in cp)
+          maybeClose (Process.std_out cp)
+          maybeClose (Process.std_err cp)
+
+    maybeClose :: Process.StdStream -> IO ()
+    maybeClose (Process.UseHandle hdl)
+      | hdl
+          `elem` [ stdin
+                 , stdout
+                 , stderr
+                 , vStdoutHandle (verbosityHandles verbosity)
+                 , vStderrHandle (verbosityHandles verbosity)
+                 ] -- Don't close the verbosity handles!
+        =
+          return ()
+      | otherwise =
+          hClose hdl
+    maybeClose _ = return ()
 
 -- | fromJust for dealing with 'Maybe Handle' values as obtained via
 -- 'System.Process.CreatePipe'. Creating a pipe using 'CreatePipe' guarantees
@@ -977,7 +1074,7 @@ rawSystemExitWithEnv verbosity =
 -- | Like 'rawSystemExitWithEnv', but setting a working directory.
 rawSystemExitWithEnvCwd
   :: Verbosity
-  -> Maybe (SymbolicPath CWD to)
+  -> Maybe (SymbolicPath CWD (Dir to))
   -> FilePath
   -> [String]
   -> [(String, String)]
@@ -985,11 +1082,7 @@ rawSystemExitWithEnvCwd
 rawSystemExitWithEnvCwd verbosity mbWorkDir path args env =
   withFrozenCallStack $
     maybeExit $
-      rawSystemProc verbosity $
-        (proc path args)
-          { Process.env = Just env
-          , Process.cwd = getSymbolicPath <$> mbWorkDir
-          }
+      rawSystemExitCode verbosity mbWorkDir path args (Just env)
 
 -- | Execute the given command with the given arguments, returning
 -- the command's exit code.
@@ -1019,7 +1112,7 @@ rawSystemIOWithEnv verbosity path args mcwd menv inp out err = withFrozenCallSta
       args
       mcwd
       menv
-      action
+      (\_ _ _ -> action)
       inp
       out
       err
@@ -1038,11 +1131,12 @@ rawSystemIOWithEnvAndAction
   :: Verbosity
   -> FilePath
   -> [String]
+  -- ^ arguments
   -> Maybe FilePath
   -- ^ New working dir or inherit
   -> Maybe [(String, String)]
   -- ^ New environment or inherit
-  -> IO a
+  -> (Maybe Handle -> Maybe Handle -> Maybe Handle -> IO a)
   -- ^ action to perform after process is created, but before 'waitForProcess'.
   -> Maybe Handle
   -- ^ stdin
@@ -1051,19 +1145,30 @@ rawSystemIOWithEnvAndAction
   -> Maybe Handle
   -- ^ stderr
   -> IO (ExitCode, a)
-rawSystemIOWithEnvAndAction verbosity path args mcwd menv action inp out err = withFrozenCallStack $ do
-  let cp =
-        (proc path args)
-          { Process.cwd = mcwd
-          , Process.env = menv
-          , Process.std_in = mbToStd inp
-          , Process.std_out = mbToStd out
-          , Process.std_err = mbToStd err
-          }
-  rawSystemProcAction verbosity cp (\_ _ _ -> action)
-  where
-    mbToStd :: Maybe Handle -> Process.StdStream
-    mbToStd = maybe Process.Inherit Process.UseHandle
+rawSystemIOWithEnvAndAction verbosity path args mcwd menv action inp out err =
+  withFrozenCallStack $ do
+    -- If the output/error handle is Nothing, we need to use the corresponding
+    -- logging handle stored in 'Verbosity'.
+    let
+      outHandle =
+        case out of
+          Just h -> h
+          Nothing -> verbosityChosenOutputHandle verbosity
+      errHandle =
+        case err of
+          Just h -> h
+          Nothing -> verbosityErrorHandle verbosity
+
+    let cp =
+          (proc path args)
+            { Process.cwd = mcwd
+            , Process.env = menv
+            , Process.std_in = maybe Process.Inherit Process.UseHandle inp
+            , Process.std_out = Process.UseHandle outHandle
+            , Process.std_err = Process.UseHandle errHandle
+            }
+
+    rawSystemProcAction verbosity cp action
 
 -- | Execute the given command with the given arguments, returning
 -- the command's output. Exits if the command exits with error.
@@ -1559,7 +1664,7 @@ createDirectoryIfMissingVerbose verbosity create_parents path0
     parents = reverse . scanl1 (</>) . splitDirectories . normalise
 
     createDirs [] = return ()
-    createDirs (dir : []) = createDir dir throwIO
+    createDirs [dir] = createDir dir throwIO
     createDirs (dir : dirs) =
       createDir dir $ \_ -> do
         createDirs dirs
@@ -1824,20 +1929,18 @@ withTempFileEx opts template action = do
 -- Creates a new temporary directory inside the given directory, making use
 -- of the template. The temp directory is deleted after use. For example:
 --
--- > withTempDirectory verbosity "src" "sdist." $ \tmpDir -> do ...
+-- > withTempDirectory "src" "sdist." $ \tmpDir -> do ...
 --
 -- The @tmpDir@ will be a new subdirectory of the given directory, e.g.
 -- @src/sdist.342@.
 withTempDirectory
-  :: Verbosity
-  -> FilePath
+  :: FilePath
   -> String
   -> (FilePath -> IO a)
   -> IO a
-withTempDirectory verb targetDir template f =
+withTempDirectory targetDir template f =
   withFrozenCallStack $
     withTempDirectoryCwd
-      verb
       Nothing
       (makeSymbolicPath targetDir)
       template
@@ -1848,22 +1951,20 @@ withTempDirectory verb targetDir template f =
 -- Creates a new temporary directory inside the given directory, making use
 -- of the template. The temp directory is deleted after use. For example:
 --
--- > withTempDirectory verbosity "src" "sdist." $ \tmpDir -> do ...
+-- > withTempDirectory "src" "sdist." $ \tmpDir -> do ...
 --
 -- The @tmpDir@ will be a new subdirectory of the given directory, e.g.
 -- @src/sdist.342@.
 withTempDirectoryCwd
-  :: Verbosity
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  :: Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ Working directory
   -> SymbolicPath Pkg (Dir tmpDir1)
   -> String
   -> (SymbolicPath Pkg (Dir tmpDir2) -> IO a)
   -> IO a
-withTempDirectoryCwd verbosity mbWorkDir targetDir template f =
+withTempDirectoryCwd mbWorkDir targetDir template f =
   withFrozenCallStack $
     withTempDirectoryCwdEx
-      verbosity
       defaultTempFileOptions
       mbWorkDir
       targetDir
@@ -1873,30 +1974,28 @@ withTempDirectoryCwd verbosity mbWorkDir targetDir template f =
 -- | A version of 'withTempDirectory' that additionally takes a
 -- 'TempFileOptions' argument.
 withTempDirectoryEx
-  :: Verbosity
-  -> TempFileOptions
+  :: TempFileOptions
   -> FilePath
   -> String
   -> (FilePath -> IO a)
   -> IO a
-withTempDirectoryEx verbosity opts targetDir template f =
+withTempDirectoryEx opts targetDir template f =
   withFrozenCallStack $
-    withTempDirectoryCwdEx verbosity opts Nothing (makeSymbolicPath targetDir) template $
+    withTempDirectoryCwdEx opts Nothing (makeSymbolicPath targetDir) template $
       \fp -> f (getSymbolicPath fp)
 
 -- | A version of 'withTempDirectoryCwd' that additionally takes a
 -- 'TempFileOptions' argument.
 withTempDirectoryCwdEx
   :: forall a tmpDir1 tmpDir2
-   . Verbosity
-  -> TempFileOptions
+   . TempFileOptions
   -> Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ Working directory
   -> SymbolicPath Pkg (Dir tmpDir1)
   -> String
   -> (SymbolicPath Pkg (Dir tmpDir2) -> IO a)
   -> IO a
-withTempDirectoryCwdEx _verbosity opts mbWorkDir targetDir template f =
+withTempDirectoryCwdEx opts mbWorkDir targetDir template f =
   withFrozenCallStack $
     Exception.bracket
       (createTempDirectory (i targetDir) template)
@@ -2061,3 +2160,10 @@ findHookedPackageDesc verbosity mbWorkDir dir = do
 
 buildInfoExt :: String
 buildInfoExt = ".buildinfo"
+
+-- | @stripCommonPrefix xs ys@ gives you @ys@ without the common prefix with @xs@.
+stripCommonPrefix :: String -> String -> String
+stripCommonPrefix (x : xs) (y : ys)
+  | x == y = stripCommonPrefix xs ys
+  | otherwise = y : ys
+stripCommonPrefix _ ys = ys

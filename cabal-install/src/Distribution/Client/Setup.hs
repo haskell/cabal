@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -169,7 +170,7 @@ import Distribution.Simple.Configure
   , interpretPackageDbFlags
   )
 import Distribution.Simple.Flag
-  ( Flag (..)
+  ( Flag
   , flagElim
   , flagToList
   , flagToMaybe
@@ -177,6 +178,8 @@ import Distribution.Simple.Flag
   , maybeToFlag
   , mergeListFlag
   , toFlag
+  , pattern Flag
+  , pattern NoFlag
   )
 import Distribution.Simple.InstallDirs
   ( InstallDirs (..)
@@ -224,7 +227,9 @@ import Distribution.Types.UnqualComponentName
   ( unqualComponentNameToPackageName
   )
 import Distribution.Verbosity
-  ( lessVerbose
+  ( VerbosityFlags
+  , defaultVerbosityHandles
+  , lessVerbose
   , normal
   , verboseNoFlags
   , verboseNoTimestamp
@@ -512,32 +517,6 @@ globalCommand commands =
           globalHttpTransport
           (\v flags -> flags{globalHttpTransport = v})
           (reqArgFlag "HttpTransport")
-      , multiOption
-          "nix"
-          globalNix
-          (\v flags -> flags{globalNix = v})
-          [ optArg'
-              "(True or False)"
-              (maybeToFlag . (readMaybe =<<))
-              ( \case
-                  Flag True -> [Just "enable"]
-                  Flag False -> [Just "disable"]
-                  NoFlag -> []
-              )
-              ""
-              ["nix"] -- Must be empty because we need to return PP.empty from viewAsFieldDescr
-              "[DEPRECATED] Nix integration: run commands through nix-shell if a 'shell.nix' file exists (default is False)"
-          , noArg
-              (Flag True)
-              []
-              ["enable-nix"]
-              "[DEPRECATED] Enable Nix integration: run commands through nix-shell if a 'shell.nix' file exists"
-          , noArg
-              (Flag False)
-              []
-              ["disable-nix"]
-              "[DEPRECATED] Disable Nix integration"
-          ]
       , option
           []
           ["store-dir", "storedir"]
@@ -894,6 +873,7 @@ configCompilerAux' :: ConfigFlags -> IO (Compiler, Platform, ProgramDb)
 configCompilerAux' configFlags = do
   let commonFlags = configCommonFlags configFlags
   configCompilerAuxEx
+    defaultVerbosityHandles
     configFlags
       { -- FIXME: make configCompilerAux use a sensible verbosity
         configCommonFlags =
@@ -1414,7 +1394,7 @@ data FetchFlags = FetchFlags
   , fetchOnlyConstrained :: Flag OnlyConstrained
   , fetchTests :: Flag Bool
   , fetchBenchmarks :: Flag Bool
-  , fetchVerbosity :: Flag Verbosity
+  , fetchVerbosity :: Flag VerbosityFlags
   }
 
 defaultFetchFlags :: FetchFlags
@@ -1547,7 +1527,7 @@ data FreezeFlags = FreezeFlags
   , freezeStrongFlags :: Flag StrongFlags
   , freezeAllowBootLibInstalls :: Flag AllowBootLibInstalls
   , freezeOnlyConstrained :: Flag OnlyConstrained
-  , freezeVerbosity :: Flag Verbosity
+  , freezeVerbosity :: Flag VerbosityFlags
   }
 
 defaultFreezeFlags :: FreezeFlags
@@ -1677,7 +1657,7 @@ genBoundsCommand =
 -- ------------------------------------------------------------
 
 data CheckFlags = CheckFlags
-  { checkVerbosity :: Flag Verbosity
+  { checkVerbosity :: Flag VerbosityFlags
   , checkIgnore :: [CheckExplanationIDString]
   }
   deriving (Show)
@@ -1729,7 +1709,7 @@ checkOptions' _showOrParseArgs =
 -- ------------------------------------------------------------
 
 data UpdateFlags = UpdateFlags
-  { updateVerbosity :: Flag Verbosity
+  { updateVerbosity :: Flag VerbosityFlags
   , updateIndexState :: Flag TotalIndexState
   }
   deriving (Generic)
@@ -1754,7 +1734,7 @@ cleanCommand =
         "Usage: " ++ pname ++ " v1-clean [FLAGS]\n"
     }
 
-formatCommand :: CommandUI (Flag Verbosity)
+formatCommand :: CommandUI (Flag VerbosityFlags)
 formatCommand =
   CommandUI
     { commandName = "format"
@@ -1824,7 +1804,7 @@ data ReportFlags = ReportFlags
   { reportToken :: Flag Token
   , reportUsername :: Flag Username
   , reportPassword :: Flag Password
-  , reportVerbosity :: Flag Verbosity
+  , reportVerbosity :: Flag VerbosityFlags
   }
   deriving (Generic)
 
@@ -1906,7 +1886,7 @@ data GetFlags = GetFlags
   , getIndexState :: Flag TotalIndexState
   , getActiveRepos :: Flag ActiveRepos
   , getSourceRepository :: Flag (Maybe RepoKind)
-  , getVerbosity :: Flag Verbosity
+  , getVerbosity :: Flag VerbosityFlags
   }
   deriving (Generic)
 
@@ -2060,7 +2040,7 @@ data ListFlags = ListFlags
   { listInstalled :: Flag Bool
   , listSimpleOutput :: Flag Bool
   , listCaseInsensitive :: Flag Bool
-  , listVerbosity :: Flag Verbosity
+  , listVerbosity :: Flag VerbosityFlags
   , listPackageDBs :: [Maybe PackageDB]
   , listHcPath :: Flag FilePath
   }
@@ -2170,7 +2150,7 @@ instance Semigroup ListFlags where
 -- ------------------------------------------------------------
 
 data InfoFlags = InfoFlags
-  { infoVerbosity :: Flag Verbosity
+  { infoVerbosity :: Flag VerbosityFlags
   , infoPackageDBs :: [Maybe PackageDB]
   }
   deriving (Generic)
@@ -2877,7 +2857,7 @@ data UploadFlags = UploadFlags
   , uploadUsername :: Flag Username
   , uploadPassword :: Flag Password
   , uploadPasswordCmd :: Flag [String]
-  , uploadVerbosity :: Flag Verbosity
+  , uploadVerbosity :: Flag VerbosityFlags
   }
   deriving (Generic)
 
@@ -3474,7 +3454,7 @@ instance Semigroup ActAsSetupFlags where
 -- ------------------------------------------------------------
 
 data UserConfigFlags = UserConfigFlags
-  { userConfigVerbosity :: Flag Verbosity
+  { userConfigVerbosity :: Flag VerbosityFlags
   , userConfigForce :: Flag Bool
   , userConfigAppendLines :: Flag [String]
   }

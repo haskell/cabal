@@ -307,6 +307,25 @@ you push a fix of a whitespace violation, please do so in a _separate commit_. F
   #endif
   ```
 
+## Proposal Process
+
+For larger changes which require additional discussion or consensus building,
+the [proposal process](proposals.md) can be used. Proposals are discussed in
+the [`cabal-proposals`](http://github.com/haskell/cabal-proposals) repository.
+
+When does a change require a proposal?
+
+* Bug fixes or small improvements do not require proposals.
+* Improving features which already see wide agreement does not require
+  proposals (for example, migrating existing commands from v1- to v2-).
+* Larger features should be first discussed on a proposal (for example, a new
+  command, Hooks, private dependencies).
+* Significant changes to existing behaviour should be discussed on proposals.
+
+In general, most changes do not require proposals, developers are trusted to
+use their judgement about when seeking a broader consensus is necessary.
+
+
 ## GitHub Ticket Conventions
 
 Each major `Cabal`/`cabal-install` release (e.g. 3.4, 3.6, etc.) has a

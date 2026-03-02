@@ -2,6 +2,7 @@ import Test.Cabal.Prelude
 import Test.Cabal.OutputNormalizer
 import Data.Function ((&))
 import Data.Functor ((<&>))
+import Data.List (isInfixOf)
 
 main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   let log = recordHeader . pure
@@ -113,7 +114,7 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   hopping <- cabal' "v2-build" [ "--project-file=hops-0.project" ]
 
   readFileVerbatim "hops.expect.txt" >>=
-    flip (assertOn multilineNeedleHaystack) hopping .  normalizePathSeparators
+    flip (assertOn isInfixOf multilineNeedleHaystack) hopping .  normalizePathSeparators
 
   -- The project is named oops as it is like hops but has conflicting constraints.
   -- +-- oops-0.project
@@ -130,7 +131,7 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   oopsing <- fails $ cabal' "v2-build" [ "all", "--project-file=oops-0.project" ]
 
   readFileVerbatim "oops.expect.txt"
-    >>= flip (assertOn multilineNeedleHaystack) oopsing . normalizePathSeparators
+    >>= flip (assertOn isInfixOf multilineNeedleHaystack) oopsing . normalizePathSeparators
 
   -- The project is named yops as it is like hops but with y's for forks.
   -- +-- yops-0.project
@@ -173,6 +174,6 @@ main = cabalTest . withRepo "repo" . recordMode RecordMarked $ do
   missing <- fails $ cabal' "v2-build" [ "--project-file=cabal-missing-package.project" ]
 
   readFileVerbatim "cabal-missing-package.expect.txt"
-    >>= flip (assertOn multilineNeedleHaystack) missing . normalizePathSeparators
+    >>= flip (assertOn isInfixOf multilineNeedleHaystack) missing . normalizePathSeparators
 
   return ()

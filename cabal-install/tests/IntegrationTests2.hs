@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 -- For the handy instance IsString PackageIdentifier
@@ -17,7 +18,7 @@ import Distribution.Client.ProjectBuilding
 import Distribution.Client.ProjectConfig
 import Distribution.Client.ProjectOrchestration
   ( distinctTargetComponents
-  , resolveTargets
+  , resolveTargetsFromSolver
   )
 import Distribution.Client.ProjectPlanning
 import Distribution.Client.ProjectPlanning.Types
@@ -53,18 +54,13 @@ import qualified Distribution.Client.CmdRun as CmdRun
 import qualified Distribution.Client.CmdTest as CmdTest
 
 import qualified Distribution.Client.CmdHaddockProject as CmdHaddockProject
-import Distribution.Client.Config (SavedConfig (savedGlobalFlags), createDefaultConfigFile, loadConfig)
-import Distribution.Client.GlobalFlags
-  ( GlobalFlags
-  , defaultGlobalFlags
-  , globalNix
-  )
-import Distribution.Client.Setup (globalCommand, globalStoreDir)
+import Distribution.Client.Config (createDefaultConfigFile)
+import Distribution.Client.GlobalFlags (defaultGlobalFlags)
+import Distribution.Client.Setup (globalStoreDir)
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.ModuleName (ModuleName)
 import Distribution.Package
 import Distribution.PackageDescription
-import Distribution.Simple.Command
 import Distribution.Simple.Compiler
 import qualified Distribution.Simple.Flag as Flag
 import Distribution.Simple.Setup (CommonSetupFlags (..), HaddockFlags (..), HaddockProjectFlags (..), defaultCommonSetupFlags, defaultHaddockFlags, defaultHaddockProjectFlags, toFlag)
@@ -72,7 +68,6 @@ import Distribution.System
 import Distribution.Text
 import Distribution.Utils.Path (unsafeMakeSymbolicPath)
 import Distribution.Version
-import IntegrationTests2.CPP
 
 import Data.List (isInfixOf)
 import qualified Data.Map as Map
@@ -85,17 +80,23 @@ import System.Directory
 import System.Environment (setEnv)
 import System.FilePath
 import System.IO (hPutStrLn, stderr)
+import qualified System.Info
 import System.Process (callProcess)
 
 import Data.Tagged (Tagged (..))
 import Test.Tasty
-import Test.Tasty.HUnit
+import Test.Tasty.ExpectedFailure
+import Test.Tasty.HUnit hiding (testCase)
+import qualified Test.Tasty.HUnit as T (testCase)
 import Test.Tasty.Options
+import Test.Tasty.Runners
+
+import System.IO.Silently
 
 import qualified Data.ByteString as BS
-import Data.Maybe (fromJust)
-import Distribution.Simple.Flag (Flag (Flag, NoFlag))
+import Distribution.Simple.Flag (pattern Flag)
 import Distribution.Types.ParStrat
+import Distribution.Verbosity
 
 main :: IO ()
 main = do
@@ -112,23 +113,43 @@ main = do
   callProcess "cabal" ["update"]
   defaultMainWithIngredients
     (defaultIngredients ++ [includingOptions projectConfigOptionDescriptions])
-    ( withProjectConfig $ \config ->
-        testGroup
+    ( localOption (NumThreads 1) $ withProjectConfig $ \config ->
+        sequentialTestGroup
           "Integration tests (internal)"
+          AllFinish
           (tests config)
     )
+
+-- Tests are run silently, unless they fail. Firstly because it is annoying to
+-- see lots of stderr from your unit tests. Secondly because this output
+-- leaks into the result of github actions (#8419)
+--
+-- Note that this capture is safe to use as the testsuite runs sequentially.
+silentTest :: TestTree -> TestTree
+silentTest = wrapTest silentHelper
+  where
+    silentHelper t = do
+      (out, res) <- hCapture [stderr] t
+
+      return $
+        if not (resultSuccessful res)
+          then res{resultDescription = resultDescription res <> "\nCaptured output:\n" <> out}
+          else res
+
+testCase :: String -> Assertion -> TestTree
+testCase desc action = (T.testCase desc action)
 
 tests :: ProjectConfig -> [TestTree]
 tests config =
   -- TODO: tests for:
   -- \* normal success
   -- \* dry-run tests with changes
-  [ testGroup "Discovery and planning" $
+  [ sequentialTestGroup "Discovery and planning" AllFinish $
       [ testCase "no package" (testExceptionInFindingPackage config)
       , testCase "no package2" (testExceptionInFindingPackage2 config)
       , testCase "proj conf1" (testExceptionInProjectConfig config)
       ]
-  , testGroup "Target selectors" $
+  , sequentialTestGroup "Target selectors" AllFinish $
       [ testCaseSteps "valid" testTargetSelectors
       , testCase "bad syntax" testTargetSelectorBadSyntax
       , testCaseSteps "ambiguous syntax" testTargetSelectorAmbiguous
@@ -145,7 +166,7 @@ tests config =
       , testCaseSteps "problems (bench)" (testTargetProblemsBench config)
       , testCaseSteps "problems (haddock)" (testTargetProblemsHaddock config)
       ]
-  , testGroup "Exceptions during building (local inplace)" $
+  , sequentialTestGroup "Exceptions during building (local inplace)" AllFinish $
       [ testCase "configure" (testExceptionInConfigureStep config)
       , testCase "build" (testExceptionInBuildStep config)
       --    , testCase "register"   testExceptionInRegisterStep
@@ -154,29 +175,29 @@ tests config =
     -- TODO: need to check we can build sub-libs, foreign libs and exes
     -- components for non-local packages / packages in the store.
 
-    testGroup "Successful builds" $
+    sequentialTestGroup "Successful builds" AllFinish $
       [ testCaseSteps "Setup script styles" (testSetupScriptStyles config)
       , testCase "keep-going" (testBuildKeepGoing config)
       ]
-        ++ if isMingw32
+        ++ if System.Info.os == "mingw32"
           then -- disabled because https://github.com/haskell/cabal/issues/6272
             []
           else
             [ testCase "local tarball" (testBuildLocalTarball config)
             ]
-  , testGroup "Regression tests" $
+  , sequentialTestGroup "Regression tests" AllFinish $
       [ testCase "issue #3324" (testRegressionIssue3324 config)
       , testCase "program options scope all" (testProgramOptionsAll config)
       , testCase "program options scope local" (testProgramOptionsLocal config)
       , testCase "program options scope specific" (testProgramOptionsSpecific config)
       ]
-  , testGroup "Flag tests" $
-      [ testCase "Test Nix Flag" testNixFlags
-      , testCase "Test Config options for commented options" testConfigOptionComments
+  , sequentialTestGroup "Flag tests" AllFinish $
+      [ testCase "Test Config options for commented options" testConfigOptionComments
       , testCase "Test Ignore Project Flag" testIgnoreProjectFlag
       ]
-  , testGroup
+  , sequentialTestGroup
       "haddock-project"
+      AllFinish
       [ testCase "dependencies" (testHaddockProjectDependencies config)
       ]
   ]
@@ -1751,7 +1772,7 @@ assertProjectDistinctTargets
             ++ show results
     where
       results =
-        resolveTargets
+        resolveTargetsFromSolver
           selectPackageTargets
           selectComponentTarget
           elaboratedPlan
@@ -1801,7 +1822,7 @@ assertTargetProblems elaboratedPlan selectPackageTargets selectComponentTarget =
   where
     assertTargetProblem expected targetSelector =
       let res =
-            resolveTargets
+            resolveTargetsFromSolver
               selectPackageTargets
               selectComponentTarget
               elaboratedPlan
@@ -1812,7 +1833,7 @@ assertTargetProblems elaboratedPlan selectPackageTargets selectComponentTarget =
               problem @?= expected targetSelector
             unexpected ->
               assertFailure $
-                "expected resolveTargets result: (Left [problem]) "
+                "expected resolveTargetsFromSolver result: (Left [problem]) "
                   ++ "but got: "
                   ++ show unexpected
 
@@ -2151,18 +2172,18 @@ configureProject testdir cliConfig = do
   -- ended in an exception (as we leave the files to help with debugging).
   cleanProject testdir
 
-  httpTransport <- configureTransport verbosity [] Nothing
+  httpTransport <- configureTransport testVerbosity [] Nothing
 
   (projectConfig, localPackages) <-
     rebuildProjectConfig
-      verbosity
+      testVerbosity
       httpTransport
       distDirLayout
       cliConfig
 
   let buildSettings =
         resolveBuildTimeSettings
-          verbosity
+          testVerbosity
           cabalDirLayout
           projectConfig
 
@@ -2192,7 +2213,7 @@ planProject testdir cliConfig = do
 
   (elaboratedPlan, _, elaboratedShared, _, _) <-
     rebuildInstallPlan
-      verbosity
+      testVerbosity
       distDirLayout
       cabalDirLayout
       projectConfig
@@ -2240,7 +2261,7 @@ executePlan
 
     buildOutcomes <-
       rebuildTargets
-        verbosity
+        testVerbosity
         config
         distDirLayout
         (cabalStoreDirLayout cabalDirLayout)
@@ -2261,8 +2282,8 @@ cleanProject testdir = do
     distDirLayout = defaultDistDirLayout projectRoot Nothing Nothing
     distDir = distDirectory distDirLayout
 
-verbosity :: Verbosity
-verbosity = minBound -- normal --verbose --maxBound --minBound
+testVerbosity :: Verbosity
+testVerbosity = mkVerbosity defaultVerbosityHandles silent
 
 -------------------------------------------
 -- Tasty integration to adjust the config
@@ -2450,35 +2471,6 @@ tryFewTimes action = go (3 :: Int)
       threadDelay 10000
       go (n - 1)
 
-testNixFlags :: Assertion
-testNixFlags = do
-  let gc = globalCommand []
-  -- changing from the v1 to v2 build command does not change whether the "--enable-nix" flag
-  -- sets the globalNix param of the GlobalFlags type to True even though the v2 command doesn't use it
-  let nixEnabledFlags = getFlags gc . commandParseArgs gc True $ ["--enable-nix", "build"]
-  let nixDisabledFlags = getFlags gc . commandParseArgs gc True $ ["--disable-nix", "build"]
-  let nixDefaultFlags = getFlags gc . commandParseArgs gc True $ ["build"]
-  True @=? isJust nixDefaultFlags
-  True @=? isJust nixEnabledFlags
-  True @=? isJust nixDisabledFlags
-  Just True @=? (fromFlag . globalNix . fromJust $ nixEnabledFlags)
-  Just False @=? (fromFlag . globalNix . fromJust $ nixDisabledFlags)
-  Nothing @=? (fromFlag . globalNix . fromJust $ nixDefaultFlags)
-
-  -- Config file options
-  trueConfig <- loadConfig verbosity (Flag (basedir </> "nix-config/nix-true"))
-  falseConfig <- loadConfig verbosity (Flag (basedir </> "nix-config/nix-false"))
-
-  Just True @=? (fromFlag . globalNix . savedGlobalFlags $ trueConfig)
-  Just False @=? (fromFlag . globalNix . savedGlobalFlags $ falseConfig)
-  where
-    fromFlag :: Flag Bool -> Maybe Bool
-    fromFlag (Flag x) = Just x
-    fromFlag NoFlag = Nothing
-    getFlags :: CommandUI GlobalFlags -> CommandParse (GlobalFlags -> GlobalFlags, [String]) -> Maybe GlobalFlags
-    getFlags cui (CommandReadyToGo (mkflags, _)) = Just . mkflags . commandDefaultFlags $ cui
-    getFlags _ _ = Nothing
-
 -- Tests whether config options are commented or not
 testConfigOptionComments :: Assertion
 testConfigOptionComments = do
@@ -2504,7 +2496,7 @@ testConfigOptionComments = do
 
   cwd <- getCurrentDirectory
   let configFile = cwd </> basedir </> "config" </> "default-config"
-  _ <- createDefaultConfigFile verbosity [] configFile
+  _ <- createDefaultConfigFile testVerbosity [] configFile
   defaultConfigFile <- readFile configFile
 
   let
@@ -2546,7 +2538,6 @@ testConfigOptionComments = do
 
   "-- ignore-expiry" `assertHasCommentLine` "ignore-expiry"
   "-- http-transport" `assertHasCommentLine` "http-transport"
-  "-- nix" `assertHasCommentLine` "nix"
   "-- store-dir" `assertHasCommentLine` "store-dir"
   "-- active-repositories" `assertHasCommentLine` "active-repositories"
   "-- local-no-index-repo" `assertHasCommentLine` "local-no-index-repo"
@@ -2648,7 +2639,6 @@ testConfigOptionComments = do
   "-- username" `assertHasCommentLine` "username"
   "-- password" `assertHasCommentLine` "password"
   "-- password-command" `assertHasCommentLine` "password-command"
-  "-- builddir" `assertHasCommentLine` "builddir"
 
   "  -- hoogle" `assertHasCommentLine` "hoogle"
   "  -- html" `assertHasCommentLine` "html"
@@ -2707,9 +2697,6 @@ testConfigOptionComments = do
   "  -- ghcjs-pkg-location" `assertHasCommentLine` "ghcjs-pkg-location"
   "  -- haddock-location" `assertHasCommentLine` "haddock-location"
   "  -- happy-location" `assertHasCommentLine` "happy-location"
-  "  -- haskell-suite-location" `assertHasCommentLine` "haskell-suite-location"
-  "  -- haskell-suite-pkg-location" `assertHasCommentLine` "haskell-suite-pkg-location"
-  "  -- hmake-location" `assertHasCommentLine` "hmake-location"
   "  -- hpc-location" `assertHasCommentLine` "hpc-location"
   "  -- hscolour-location" `assertHasCommentLine` "hscolour-location"
   "  -- jhc-location" `assertHasCommentLine` "jhc-location"
@@ -2732,9 +2719,6 @@ testConfigOptionComments = do
   "  -- ghcjs-pkg-options" `assertHasCommentLine` "ghcjs-pkg-options"
   "  -- haddock-options" `assertHasCommentLine` "haddock-options"
   "  -- happy-options" `assertHasCommentLine` "happy-options"
-  "  -- haskell-suite-options" `assertHasCommentLine` "haskell-suite-options"
-  "  -- haskell-suite-pkg-options" `assertHasCommentLine` "haskell-suite-pkg-options"
-  "  -- hmake-options" `assertHasCommentLine` "hmake-options"
   "  -- hpc-options" `assertHasCommentLine` "hpc-options"
   "  -- hsc2hs-options" `assertHasCommentLine` "hsc2hs-options"
   "  -- hscolour-options" `assertHasCommentLine` "hscolour-options"
@@ -2748,7 +2732,8 @@ testConfigOptionComments = do
 
 testIgnoreProjectFlag :: Assertion
 testIgnoreProjectFlag = do
-  -- Coverage flag should be false globally by default (~/.cabal folder)
+  -- Coverage flag should be false globally by default.
+  -- This should be covered by the vanilla config file created in `main`.
   (_, _, prjConfigGlobal, _, _) <- configureProject testdir ignoreSetConfig
   let globalCoverageFlag = packageConfigCoverage . projectConfigLocalPackages $ prjConfigGlobal
   False @=? Flag.fromFlagOrDefault False globalCoverageFlag
@@ -2777,7 +2762,10 @@ testHaddockProjectDependencies config = do
   (_, _, sharedConfig) <- planProject testdir config
   -- `haddock-project` is only supported by `haddock-2.26.1` and above which is
   -- shipped with `ghc-9.4`
-  when (compilerVersion (pkgConfigCompiler sharedConfig) > mkVersion [9, 4]) $ do
+  -- And doesn't work with older ghc on Windows for some reason (file in the
+  -- wrong place, perhaps?).
+  let safeMinor = if buildOS == Windows then 10 else 4
+  when (compilerVersion (pkgConfigCompiler sharedConfig) > mkVersion [9, safeMinor]) $ do
     let dir = basedir </> testdir
     cleanHaddockProject testdir
     withCurrentDirectory dir $ do
@@ -2785,13 +2773,13 @@ testHaddockProjectDependencies config = do
         defaultHaddockProjectFlags
           { haddockProjectCommonFlags =
               defaultCommonSetupFlags
-                { setupVerbosity = Flag verbosity
+                { setupVerbosity = Flag $ verbosityFlags testVerbosity
                 }
           }
         ["all"]
         defaultGlobalFlags{globalStoreDir = Flag "store"}
 
-      let haddock = "haddocks" </> "async" </> "async.haddock"
+      let haddock = "haddocks" </> "time" </> "time.haddock"
       hasHaddock <- doesFileExist haddock
       unless hasHaddock $ assertFailure ("File `" ++ haddock ++ "` does not exist.")
     cleanHaddockProject testdir

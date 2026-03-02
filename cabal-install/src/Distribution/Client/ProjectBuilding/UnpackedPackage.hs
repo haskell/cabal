@@ -105,7 +105,7 @@ import qualified Data.ByteString.Lazy.Char8 as LBS.Char8
 import qualified Data.List.NonEmpty as NE
 
 import Control.Exception (ErrorCall, Handler (..), SomeAsyncException, assert, catches, onException)
-import System.Directory (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, removeFile)
+import System.Directory (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, listDirectory, removeFile)
 import System.FilePath (dropDrive, normalise, takeDirectory, (<.>), (</>))
 import System.IO (Handle, IOMode (AppendMode), withFile)
 import System.Semaphore (SemaphoreName (..))
@@ -113,9 +113,9 @@ import System.Semaphore (SemaphoreName (..))
 import Web.Browser (openBrowser)
 
 import Distribution.Client.Errors
-import Distribution.Compat.Directory (listDirectory)
 
 import Distribution.Client.ProjectBuilding.PackageFileMonitor
+import Distribution.Verbosity (setVerbosityHandles)
 
 -- | Each unpacked package is processed in the following phases:
 --
@@ -368,7 +368,7 @@ buildAndRegisterUnpackedPackage
       setup cmd getCommonFlags flags args =
         withLogging $ \mLogFileHandle -> do
           setupWrapper
-            verbosity
+            (setVerbosityHandles mLogFileHandle verbosity)
             scriptOptions
               { useLoggingHandle = mLogFileHandle
               , useExtraEnvOverrides =
@@ -891,11 +891,7 @@ annotateFailure mlogFile annotate action =
     -- lots, including exceptions from the hackage-security and tar packages.
     -- So we take the strategy of catching everything except async exceptions.
     [
-#if MIN_VERSION_base(4,7,0)
       Handler $ \async -> throwIO (async :: SomeAsyncException)
-#else
-      Handler $ \async -> throwIO (async :: AsyncException)
-#endif
     , Handler $ \other -> handler (other :: SomeException)
     ]
   where
@@ -937,7 +933,7 @@ withTempInstalledPackageInfoFile
   -> (FilePath -> IO ())
   -> IO InstalledPackageInfo
 withTempInstalledPackageInfoFile verbosity tempdir action =
-  withTempDirectory verbosity tempdir "package-registration-" $ \dir -> do
+  withTempDirectory tempdir "package-registration-" $ \dir -> do
     -- make absolute since @action@ will often change directory
     abs_dir <- canonicalizePath dir
 

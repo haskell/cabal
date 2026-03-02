@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 -----------------------------------------------------------------------------
 
@@ -181,7 +182,7 @@ import Distribution.Simple.Setup
   ( BenchmarkFlags (..)
   , CommonSetupFlags (..)
   , ConfigFlags (..)
-  , Flag (..)
+  , Flag
   , HaddockFlags (..)
   , TestFlags (..)
   , configureOptions
@@ -197,6 +198,8 @@ import Distribution.Simple.Setup
   , programDbOptions
   , programDbPaths'
   , toFlag
+  , pattern Flag
+  , pattern NoFlag
   )
 import Distribution.Simple.Utils
   ( cabalVersion
@@ -210,6 +213,7 @@ import Distribution.Solver.Types.ConstraintSource
 import Distribution.Utils.Path (getSymbolicPath, unsafeMakeSymbolicPath)
 import Distribution.Verbosity
   ( normal
+  , verbosityFlags
   )
 import Network.URI
   ( URI (..)
@@ -365,7 +369,6 @@ instance Semigroup SavedConfig where
           , globalLogsDir = combine globalLogsDir
           , globalIgnoreExpiry = combine globalIgnoreExpiry
           , globalHttpTransport = combine globalHttpTransport
-          , globalNix = combine globalNix
           , globalStoreDir = combine globalStoreDir
           , globalProgPathExtra = lastNonEmptyNL globalProgPathExtra
           }
@@ -672,6 +675,7 @@ instance Semigroup SavedConfig where
           { flagProjectDir = combine flagProjectDir
           , flagProjectFile = combine flagProjectFile
           , flagIgnoreProject = combine flagIgnoreProject
+          , flagProjectFileParser = combine flagProjectFileParser
           }
         where
           combine = combine' savedProjectFlags
@@ -928,10 +932,10 @@ defaultHackageRemoteRepoKeys =
     "0a5c7ea47cd1b15f01f5f51a33adda7e655bc0f0b0615baa8e271f4c3351e21d"
   , -- Norman Ramsey (ZI8di3a9Un0s2RBrt5GwVRvfOXVuywADfXGPZfkiDb0=)
     "51f0161b906011b52c6613376b1ae937670da69322113a246a09f807c62f6921"
-  , -- Mathieu Boespflug (ydN1nGGQ79K1Q0nN+ul+Ln8MxikTB95w0YdGd3v3kmg=)
-    "be75553f3c7ba1dbe298da81f1d1b05c9d39dd8ed2616c9bddf1525ca8c03e48"
   , -- Joachim Breitner (5iUgwqZCWrCJktqMx0bBMIuoIyT4A1RYGozzchRN9rA=)
     "d26e46f3b631aae1433b89379a6c68bd417eb5d1c408f0643dcc07757fece522"
+  , -- Tikhon Jelvis (06nM6r1kOYt49YE5e1+j8VKiiYUFjFQ6HrOpPZu+fDE=)
+    "c7de58fc6a224b92b5b513f26fbb8b370f2d97c7cfe0075a951314a55734be93"
   ]
 
 -- | The required threshold of root key signatures for hackage.haskell.org
@@ -949,7 +953,6 @@ defaultHackageRemoteRepoKeyThreshold = 3
 -- use 'loadRawConfig'.
 loadConfig :: Verbosity -> Flag FilePath -> IO SavedConfig
 loadConfig verbosity configFileFlag = do
-  warnOnTwoConfigs verbosity
   config <- loadRawConfig verbosity configFileFlag
   extendToEffectiveConfig config
 
@@ -976,7 +979,7 @@ extendToEffectiveConfig config = do
 -- effective configuration.
 loadRawConfig :: Verbosity -> Flag FilePath -> IO SavedConfig
 loadRawConfig verbosity configFileFlag = do
-  (source, configFile) <- getConfigFilePathAndSource configFileFlag
+  (source, configFile) <- getConfigFilePathAndSource verbosity configFileFlag
   minp <- readConfigFile mempty configFile
   case minp of
     Nothing -> do
@@ -1019,17 +1022,28 @@ data ConfigFileSource
 
 -- | Returns the config file path, without checking that the file exists.
 -- The order of precedence is: input flag, CABAL_CONFIG, default location.
-getConfigFilePath :: Flag FilePath -> IO FilePath
-getConfigFilePath = fmap snd . getConfigFilePathAndSource
+getConfigFilePath :: Verbosity -> Flag FilePath -> IO FilePath
+getConfigFilePath verbosity configFilePath = fmap snd $ getConfigFilePathAndSource verbosity configFilePath
 
-getConfigFilePathAndSource :: Flag FilePath -> IO (ConfigFileSource, FilePath)
-getConfigFilePathAndSource configFileFlag =
+getConfigFilePathAndSource :: Verbosity -> Flag FilePath -> IO (ConfigFileSource, FilePath)
+getConfigFilePathAndSource verbosity configFileFlag =
   getSource sources
   where
+    defaultSource = do
+      cfg <- defaultConfigFile
+      -- We only warn on two configs when the user has not explicitly indicated
+      -- a preference (using any of CABAL_CONFIG, CABAL_DIR, or the --config
+      -- option).
+      dir <- lookupEnv "CABAL_DIR"
+      case dir of
+        Nothing -> warnOnTwoConfigs verbosity
+        Just _ -> return ()
+      return $ Just cfg
+
     sources =
       [ (CommandlineOption, return . flagToMaybe $ configFileFlag)
       , (EnvironmentVariable, lookup "CABAL_CONFIG" `liftM` getEnvironment)
-      , (Default, Just `liftM` defaultConfigFile)
+      , (Default, defaultSource)
       ]
 
     getSource [] = error "no config file path candidate found."
@@ -1098,7 +1112,6 @@ commentSavedConfig = do
           { savedGlobalFlags =
               defaultGlobalFlags
                 { globalRemoteRepos = toNubList [defaultRemoteRepo]
-                , globalNix = mempty
                 }
           , savedInitFlags =
               mempty
@@ -1779,9 +1792,16 @@ showConfigWithComments comment vals =
         (fmap (field . savedConfigureFlags) mcomment)
         ((field . savedConfigureFlags) vals)
 
-    -- skip fields based on field name.  currently only skips "remote-repo",
-    -- because that is rendered as a section.  (see 'ppRemoteRepoSection'.)
-    skipSomeFields = filter ((/= "remote-repo") . fieldName)
+    -- Skip fields based on field name.
+    skipSomeFields =
+      filter
+        ( ( `notElem`
+              [ "remote-repo" -- rendered as a section (see 'ppRemoteRepoSection')
+              , "builddir" -- no effect in config file (see Note [reading project configuration])
+              ]
+          )
+            . fieldName
+        )
 
 -- | Fields for the 'install-dirs' sections.
 installDirsFields :: [FieldDescr (InstallDirs (Flag PathTemplate))]
@@ -1922,7 +1942,7 @@ parseExtraLines verbosity extraLines =
 -- config file and the one that cabal would generate if it didn't exist.
 userConfigDiff :: Verbosity -> GlobalFlags -> [String] -> IO [String]
 userConfigDiff verbosity globalFlags extraLines = do
-  userConfig <- loadRawConfig normal (globalConfigFile globalFlags)
+  userConfig <- loadRawConfig (verbosity{verbosityFlags = normal}) (globalConfigFile globalFlags)
   extraConfig <- parseExtraLines verbosity extraLines
   testConfig <- initialSavedConfig
   return $
@@ -1976,11 +1996,11 @@ userConfigDiff verbosity globalFlags extraLines = do
 -- | Update the user's config file keeping the user's customizations.
 userConfigUpdate :: Verbosity -> GlobalFlags -> [String] -> IO ()
 userConfigUpdate verbosity globalFlags extraLines = do
-  userConfig <- loadRawConfig normal (globalConfigFile globalFlags)
+  userConfig <- loadRawConfig (verbosity{verbosityFlags = normal}) (globalConfigFile globalFlags)
   extraConfig <- parseExtraLines verbosity extraLines
   newConfig <- initialSavedConfig
   commentConf <- commentSavedConfig
-  cabalFile <- getConfigFilePath $ globalConfigFile globalFlags
+  cabalFile <- getConfigFilePath verbosity $ globalConfigFile globalFlags
   let backup = cabalFile ++ ".backup"
   notice verbosity $ "Renaming " ++ cabalFile ++ " to " ++ backup ++ "."
   renameFile cabalFile backup

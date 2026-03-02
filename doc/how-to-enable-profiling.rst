@@ -54,7 +54,7 @@ Second, run your application with the right runtime system flags and let it crea
 
 .. code-block:: console
 
-    $ cabal run my-app +RTS -pj -RTS
+    $ cabal run my-app -- +RTS -pj -RTS
     <app builds, runs and finishes>
 
 When the application finishes, a profiling JSON report (due to option ``-pj``)

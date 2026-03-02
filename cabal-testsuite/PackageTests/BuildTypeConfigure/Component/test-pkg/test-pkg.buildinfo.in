@@ -1,0 +1,4 @@
+ghc-options: @LIB_OPTS@
+executable: exe
+ghc-options: @EXE_OPTS@
+

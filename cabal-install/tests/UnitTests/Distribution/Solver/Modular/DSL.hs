@@ -2,6 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 
 -- | DSL for testing the modular solver
 module UnitTests.Distribution.Solver.Modular.DSL
@@ -96,6 +97,7 @@ import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.SolverPackage
 import Distribution.Solver.Types.SourcePackage
 import Distribution.Solver.Types.Variable
+import Distribution.Types.UnitId (UnitId)
 
 {-------------------------------------------------------------------------------
   Example package database DSL
@@ -783,6 +785,8 @@ exResolve
   -> Maybe [Extension]
   -- List of languages supported by the compiler, or Nothing if unknown.
   -> Maybe [Language]
+  -> Maybe [(C.PackageName, UnitId)]
+  -- ^ List of units that are wired in to the compiler
   -> Maybe PC.PkgConfigDb
   -> [ExamplePkgName]
   -> Maybe Int
@@ -806,6 +810,7 @@ exResolve
   db
   exts
   langs
+  wiredInUnitIds
   pkgConfigDb
   targets
   mbj
@@ -831,6 +836,7 @@ exResolve
         defaultCompiler
           { C.compilerInfoExtensions = exts
           , C.compilerInfoLanguages = langs
+          , C.compilerInfoWiredInUnitIds = wiredInUnitIds
           }
       (inst, avai) = partitionEithers db
       instIdx = exInstIdx inst
@@ -866,7 +872,7 @@ exResolve
                                 setEnableBackjumping enableBj $
                                   setSolveExecutables solveExes $
                                     setGoalOrder goalOrder $
-                                      setSolverVerbosity verbosity $
+                                      setSolverVerbosity (C.verbosityLevel verbosity) $
                                         standardInstallPolicy instIdx avaiIdx targets'
       toLpc pc = LabeledPackageConstraint pc ConstraintSourceUnknown
 
@@ -892,7 +898,7 @@ extractInstallPlan = catMaybes . map confPkg . CI.SolverInstallPlan.toList
     srcPkg :: SolverPackage UnresolvedPkgLoc -> Maybe (String, Int)
     srcPkg cpkg =
       let C.PackageIdentifier pn ver = C.packageId (solverPkgSource cpkg)
-       in (\vn -> (C.unPackageName pn, vn)) <$> safeHead (C.versionNumbers ver)
+       in (C.unPackageName pn,) <$> safeHead (C.versionNumbers ver)
 
 {-------------------------------------------------------------------------------
   Auxiliary

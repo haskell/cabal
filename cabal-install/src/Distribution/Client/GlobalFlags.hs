@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -28,9 +29,10 @@ import Distribution.Client.Types
   , unRepoName
   )
 import Distribution.Simple.Setup
-  ( Flag (..)
+  ( Flag
   , flagToMaybe
   , fromFlag
+  , pattern Flag
   )
 import Distribution.Simple.Utils
   ( info
@@ -91,8 +93,6 @@ data GlobalFlags = GlobalFlags
   , globalIgnoreExpiry :: Flag Bool
   -- ^ Ignore security expiry dates
   , globalHttpTransport :: Flag String
-  , globalNix :: Flag Bool
-  -- ^ Integrate with Nix
   , globalStoreDir :: Flag FilePath
   , globalProgPathExtra :: NubList FilePath
   -- ^ Extra program path used for packagedb lookups in a global context (i.e. for http transports)
@@ -113,7 +113,6 @@ defaultGlobalFlags =
     , globalLogsDir = mempty
     , globalIgnoreExpiry = Flag False
     , globalHttpTransport = mempty
-    , globalNix = Flag False
     , globalStoreDir = mempty
     , globalProgPathExtra = mempty
     }

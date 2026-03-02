@@ -44,7 +44,7 @@ data PreBuildComponentInputs = PreBuildComponentInputs
   }
 
 -- | Get the @'Verbosity'@ from the context the component being built is in.
-buildVerbosity :: PreBuildComponentInputs -> Verbosity
+buildVerbosity :: PreBuildComponentInputs -> VerbosityFlags
 buildVerbosity = buildingWhatVerbosity . buildingWhat
 
 -- | Get the @'Component'@ being built.

@@ -4,6 +4,10 @@ module Distribution.Client.Types.Repo
   ( -- * Remote repository
     RemoteRepo (..)
   , emptyRemoteRepo
+  , remoteRepoKeyThresholdLens
+  , remoteRepoRootKeysLens
+  , remoteRepoSecureLens
+  , remoteRepoURILens
 
     -- * Local repository (no-index)
   , LocalRepo (..)
@@ -17,6 +21,7 @@ module Distribution.Client.Types.Repo
   , maybeRepoRemote
 
     -- * Windows
+  , asPosixPath
   , normaliseFileNoIndexURI
   ) where
 
@@ -29,6 +34,7 @@ import Distribution.Simple.Utils (toUTF8BS)
 import Distribution.System (OS (Windows))
 
 import Distribution.Client.HashValue (hashValue, showHashValue, truncateHash)
+import Distribution.Compat.Lens
 
 import qualified Data.ByteString.Lazy.Char8 as LBS
 import qualified Distribution.Compat.CharParsing as P
@@ -68,6 +74,7 @@ data RemoteRepo = RemoteRepo
   deriving (Show, Eq, Ord, Generic)
 
 instance Binary RemoteRepo
+instance NFData RemoteRepo
 instance Structured RemoteRepo
 
 instance Pretty RemoteRepo where
@@ -97,6 +104,22 @@ instance Parsec RemoteRepo where
 emptyRemoteRepo :: RepoName -> RemoteRepo
 emptyRemoteRepo name = RemoteRepo name nullURI Nothing [] 0 False
 
+remoteRepoURILens :: Lens' RemoteRepo URI
+remoteRepoURILens f s = fmap (\x -> s{remoteRepoURI = x}) (f (remoteRepoURI s))
+{-# INLINE remoteRepoURILens #-}
+
+remoteRepoSecureLens :: Lens' RemoteRepo (Maybe Bool)
+remoteRepoSecureLens f s = fmap (\x -> s{remoteRepoSecure = x}) (f (remoteRepoSecure s))
+{-# INLINE remoteRepoSecureLens #-}
+
+remoteRepoRootKeysLens :: Lens' RemoteRepo [String]
+remoteRepoRootKeysLens f s = fmap (\x -> s{remoteRepoRootKeys = x}) (f (remoteRepoRootKeys s))
+{-# INLINE remoteRepoRootKeysLens #-}
+
+remoteRepoKeyThresholdLens :: Lens' RemoteRepo Int
+remoteRepoKeyThresholdLens f s = fmap (\x -> s{remoteRepoKeyThreshold = x}) (f (remoteRepoKeyThreshold s))
+{-# INLINE remoteRepoKeyThresholdLens #-}
+
 -------------------------------------------------------------------------------
 -- Local repository
 -------------------------------------------------------------------------------
@@ -112,6 +135,7 @@ data LocalRepo = LocalRepo
   deriving (Show, Eq, Ord, Generic)
 
 instance Binary LocalRepo
+instance NFData LocalRepo
 instance Structured LocalRepo
 
 -- | Note: doesn't parse 'localRepoSharedCache' field.
@@ -180,6 +204,7 @@ data Repo
   deriving (Show, Eq, Ord, Generic)
 
 instance Binary Repo
+instance NFData Repo
 instance Structured Repo
 
 -- | Check if this is a remote repo
@@ -230,8 +255,10 @@ normaliseFileNoIndexURI os uri@(URI scheme _auth path query fragment)
   , Windows <- os =
       URI scheme Nothing (asPosixPath path) query fragment
   | otherwise = uri
-  where
-    asPosixPath p =
-      -- We don't use 'isPathSeparator' because @Windows.isPathSeparator
-      -- Posix.pathSeparator == True@.
-      [if x == Windows.pathSeparator then Posix.pathSeparator else x | x <- p]
+
+-- | Convert a path to POSIX-style.
+asPosixPath :: FilePath -> FilePath
+asPosixPath p =
+  -- We don't use 'isPathSeparator' because @Windows.isPathSeparator
+  -- Posix.pathSeparator == True@.
+  [if x == Windows.pathSeparator then Posix.pathSeparator else x | x <- p]

@@ -19,5 +19,5 @@ main = cabalTest $ withRepo "repo" $ do
           assertOutputContains "template-haskell" out
           assertOutputContains "binary" out)
 
-  fails $ cabal' "outdated" ["--project-file=cabal.project.missing.freeze", "--v2-freeze-file"]
+  cabal' "outdated" ["--project-file=cabal.project.missing.freeze", "--v2-freeze-file"]
   return ()

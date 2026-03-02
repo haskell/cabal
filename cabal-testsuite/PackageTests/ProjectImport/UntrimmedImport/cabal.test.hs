@@ -1,6 +1,6 @@
 import Test.Cabal.Prelude
 
-main = cabalTest . recordMode RecordMarked $ do
+main = cabalTest . flakyIfCI 10950. recordMode RecordMarked $ do
   let log = recordHeader . pure
 
   log "checking project import with trailing space"

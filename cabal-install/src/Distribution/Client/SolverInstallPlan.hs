@@ -262,7 +262,7 @@ problems indepGoals index =
        | pkg <- Foldable.toList index
        , Just pkg' <-
           map
-            (flip Graph.lookup index)
+            (`Graph.lookup` index)
             (nodeNeighbors pkg)
        , not (stateDependencyRelation pkg pkg')
        ]

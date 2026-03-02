@@ -35,6 +35,7 @@ data CabalSpecVersion
   | -- 3.10: no changes
     CabalSpecV3_12
   | CabalSpecV3_14
+  | CabalSpecV3_16
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Data, Generic)
 
 instance Binary CabalSpecVersion
@@ -45,6 +46,7 @@ instance NFData CabalSpecVersion where rnf = genericRnf
 --
 -- @since 3.0.0.0
 showCabalSpecVersion :: CabalSpecVersion -> String
+showCabalSpecVersion CabalSpecV3_16 = "3.16"
 showCabalSpecVersion CabalSpecV3_14 = "3.14"
 showCabalSpecVersion CabalSpecV3_12 = "3.12"
 showCabalSpecVersion CabalSpecV3_8 = "3.8"
@@ -67,13 +69,14 @@ showCabalSpecVersion CabalSpecV1_2 = "1.2"
 showCabalSpecVersion CabalSpecV1_0 = "1.0"
 
 cabalSpecLatest :: CabalSpecVersion
-cabalSpecLatest = CabalSpecV3_14
+cabalSpecLatest = CabalSpecV3_16
 
 -- | Parse 'CabalSpecVersion' from version digits.
 --
 -- It may fail if for recent versions the version is not exact.
 cabalSpecFromVersionDigits :: [Int] -> Maybe CabalSpecVersion
 cabalSpecFromVersionDigits v
+  | v == [3, 16] = Just CabalSpecV3_16
   | v == [3, 14] = Just CabalSpecV3_14
   | v == [3, 12] = Just CabalSpecV3_12
   | v == [3, 8] = Just CabalSpecV3_8
@@ -98,6 +101,7 @@ cabalSpecFromVersionDigits v
 
 -- | @since 3.4.0.0
 cabalSpecToVersionDigits :: CabalSpecVersion -> [Int]
+cabalSpecToVersionDigits CabalSpecV3_16 = [3, 16]
 cabalSpecToVersionDigits CabalSpecV3_14 = [3, 14]
 cabalSpecToVersionDigits CabalSpecV3_12 = [3, 12]
 cabalSpecToVersionDigits CabalSpecV3_8 = [3, 8]

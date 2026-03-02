@@ -10,6 +10,8 @@
 -- The cabal gen-bounds command for generating PVP-compliant version bounds.
 module Distribution.Client.GenBounds
   ( genBounds
+  , boundsNeededMsg
+  , showBounds
   ) where
 
 import Distribution.Client.Compat.Prelude

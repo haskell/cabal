@@ -142,7 +142,7 @@ download.
 
 We can also :ref:`take a dependency from a source code
 repository<pkg-consume-source>`. These are accessed via a version control system
-(VCS) such as Git and set up in the project with ``source-package-repository``
+(VCS) such as Git and set up in the project with ``source-repository-package``
 stanzas. With these, we can take dependencies on packages not published to
 Hackage, on revisions not yet published or on forks.  This is the easiest way to
 work with a fork, much easier than using a Git submodule.  A dependency taken

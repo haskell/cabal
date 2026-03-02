@@ -1,6 +1,4 @@
 # cabal v2-build
-Configuration is affected by the following files:
-- cabal.project
 Warning: cannot determine version of <ROOT>/pkg-config :
 ""
 Warning: cannot determine version of <ROOT>/pkg-config :

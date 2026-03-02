@@ -12,9 +12,6 @@ import Control.Exception
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Client.Compat.Directory
-  ( setModificationTime
-  )
 import Distribution.Client.FetchUtils
   ( downloadIndex
   )
@@ -37,6 +34,7 @@ import Distribution.Client.JobControl
   )
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
+  , cfgVerbosity
   , defaultNixStyleFlags
   , nixStyleOptions
   )
@@ -52,9 +50,7 @@ import Distribution.Client.ProjectFlags
   )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.Setup
-  ( CommonSetupFlags (..)
-  , ConfigFlags (..)
-  , GlobalFlags
+  ( GlobalFlags
   , RepoContext (..)
   , UpdateFlags
   , defaultUpdateFlags
@@ -66,9 +62,6 @@ import Distribution.Client.Types
   , repoName
   , unRepoName
   )
-import Distribution.Simple.Flag
-  ( fromFlagOrDefault
-  )
 import Distribution.Simple.Utils
   ( dieWithException
   , notice
@@ -79,7 +72,11 @@ import Distribution.Simple.Utils
   )
 import Distribution.Verbosity
   ( lessVerbose
+  , modifyVerbosityFlags
   , normal
+  )
+import System.Directory
+  ( setModificationTime
   )
 
 import qualified Data.Maybe as Unsafe (fromJust)
@@ -183,7 +180,7 @@ updateAction flags@NixStyleFlags{..} extraArgs globalFlags = do
       unless (null updateRepoRequests) $ do
         let remoteRepoNames = map repoName repos
             unknownRepos =
-              [ r | (UpdateRequest r _) <- updateRepoRequests, not (r `elem` remoteRepoNames)
+              [ r | (UpdateRequest r _) <- updateRepoRequests, r `notElem` remoteRepoNames
               ]
         unless (null unknownRepos) $
           dieWithException verbosity $
@@ -220,7 +217,7 @@ updateAction flags@NixStyleFlags{..} extraArgs globalFlags = do
           reposToUpdate
         traverse_ (\_ -> collectJob jobCtrl) reposToUpdate
   where
-    verbosity = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags)
+    verbosity = cfgVerbosity normal flags
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty -- ClientInstallFlags, not needed here
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 
@@ -254,7 +251,7 @@ updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
     RepoSecure{} -> repoContextWithSecureRepo repoCtxt repo $ \repoSecure -> do
       let index = RepoIndex repoCtxt repo
       -- NB: This may be a NoTimestamp if we've never updated before
-      current_ts <- currentIndexTimestamp (lessVerbose verbosity) index
+      current_ts <- currentIndexTimestamp (modifyVerbosityFlags lessVerbose verbosity) index
       -- NB: always update the timestamp, even if we didn't actually
       -- download anything
       writeIndexTimestamp index indexState
@@ -286,7 +283,7 @@ updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
       -- This resolves indexState (which could be HEAD) into a timestamp
       -- This could be null but should not be, since the above guarantees
       -- we have an updated index.
-      new_ts <- currentIndexTimestamp (lessVerbose verbosity) index
+      new_ts <- currentIndexTimestamp (modifyVerbosityFlags lessVerbose verbosity) index
 
       noticeNoWrap verbosity $
         "The index-state is set to " ++ prettyShow (IndexStateTime new_ts) ++ "."

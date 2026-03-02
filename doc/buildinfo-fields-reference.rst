@@ -485,6 +485,14 @@ js-sources
     .. math::
         \mathrm{commalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
+jspp-options
+    * Monoidal field
+    * Available since ``cabal-version: 3.16``.
+    * Documentation of :pkg-field:`library:jspp-options`
+
+    .. math::
+        {\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}]^c}}^+_{} \right\}}^\ast_{\bullet}
+
 ld-options
     * Monoidal field
     * Documentation of :pkg-field:`library:ld-options`

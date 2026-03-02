@@ -82,7 +82,9 @@ The configuration file location is determined as follows:
 1. If option ``--config-file`` is given, use it;
 2. otherwise, if ``$CABAL_CONFIG`` is set use it;
 3. otherwise, if ``$CABAL_DIR`` is set use ``$CABAL_DIR/config``;
-4. otherwise use ``config`` in ``$XDG_CONFIG_HOME/cabal``, which
+4. otherwise, if ``~/.cabal`` exists, and is a directory, use
+   ``~/.cabal/config``;
+5. otherwise use ``config`` in ``$XDG_CONFIG_HOME/cabal``, which
    defaults to ``~/.config/cabal`` on Unix.
 
 If the configuration file does not exist, and it was not given
@@ -344,12 +346,6 @@ The list of known programs is:
 | ``haddock``           | `<https://haskell-haddock.readthedocs.io/latest/>`_                                                                                |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
 | ``happy``             | `<https://haskell-happy.readthedocs.io/en/latest/>`_                                                                               |
-+-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
-| ``haskell-suite``     | Haskell suite was abandoned a long time ago.                                                                                       |
-+-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
-| ``haskell-suite-pkg`` | Haskell suite was abandoned a long time ago.                                                                                       |
-+-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
-| ``hmake``             | Seems like hmake disappeared a long time ago `<https://www.haskell.org/cabal/proposal-1.1/x756.html>`_                             |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+
 | ``hpc``               | `<https://hackage.haskell.org/package/hpc>`_                                                                                       |
 +-----------------------+------------------------------------------------------------------------------------------------------------------------------------+

@@ -1,32 +1,33 @@
 {-# LANGUAGE MultiWayIf #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 
 -- | Functions for searching for a needle in a haystack, with transformations
 -- for the strings to search in and the search strings such as re-encoding line
 -- breaks or delimiting lines. Both LF and CRLF line breaks are recognized.
 module Test.Cabal.NeedleHaystack
-    ( TxContains(..)
-    , txContainsId
-    , NeedleHaystack(..)
-    , symNeedleHaystack
-    , multilineNeedleHaystack
-    , needleHaystack
-    , lineBreaksToSpaces
-    , normalizePathSeparators
-    , encodeLf
-    , delimitLines
-    ) where
+  ( TxFwdBwd (..)
+  , txFwdBwdId
+  , NeedleHaystack (..)
+  , NeedleHaystackCompare
+  , symNeedleHaystack
+  , multilineNeedleHaystack
+  , needleHaystack
+  , lineBreaksToSpaces
+  , normalizePathSeparators
+  , encodeLf
+  , delimitLines
+  ) where
 
-import Prelude hiding (unlines)
-import qualified Prelude (unlines)
+import Data.List (isPrefixOf, tails)
 import Data.Maybe (isJust)
 import Distribution.System
 import Distribution.Utils.Generic (unsnoc)
-import Data.List (isPrefixOf, tails)
+import Network.URI (parseURI)
 import qualified System.FilePath.Posix as Posix
 import qualified System.FilePath.Windows as Windows
-import Network.URI (parseURI)
+import Prelude hiding (unlines)
+import qualified Prelude (unlines)
 
 {-
 Note [Multiline Needles]
@@ -127,36 +128,34 @@ before comparison and before display can help find out why an expected value is
 or isn't found in the test output.
 -}
 
+type NeedleHaystackCompare = String -> String -> Bool
+
 -- | Transformations for the search strings and the text to search in.
-data TxContains =
-    TxContains
-        {
-            -- | Reverse conversion for display, applied to the forward converted value.
-            txBwd :: (String -> String),
-            -- | Forward conversion for comparison.
-            txFwd :: (String -> String)
-        }
+data TxFwdBwd = TxFwdBwd
+  { txBwd :: (String -> String)
+  -- ^ Reverse conversion for display, applied to the forward converted value.
+  , txFwd :: (String -> String)
+  -- ^ Forward conversion for comparison.
+  }
 
 -- | Identity transformation for the search strings and the text to search in,
 -- leaves them unchanged.
-txContainsId :: TxContains
-txContainsId = TxContains id id
+txFwdBwdId :: TxFwdBwd
+txFwdBwdId = TxFwdBwd id id
 
--- | Conversions of the needle and haystack strings, the seach string and the
+-- | Conversions of the needle and haystack strings, the search string and the
 -- text to search in.
-data NeedleHaystack =
-    NeedleHaystack
-        {
-            expectNeedleInHaystack :: Bool,
-            displayHaystack :: Bool,
-            txNeedle :: TxContains,
-            txHaystack :: TxContains
-        }
+data NeedleHaystack = NeedleHaystack
+  { expectNeedleInHaystack :: Bool
+  , displayHaystack :: Bool
+  , txNeedle :: TxFwdBwd
+  , txHaystack :: TxFwdBwd
+  }
 
 -- | Symmetric needle and haystack functions, the same conversion for each going
--- forward and the same coversion for each going backward.
+-- forward and the same conversion for each going backward.
 symNeedleHaystack :: (String -> String) -> (String -> String) -> NeedleHaystack
-symNeedleHaystack bwd fwd = let tx = TxContains bwd fwd in NeedleHaystack True False tx tx
+symNeedleHaystack bwd fwd = let tx = TxFwdBwd bwd fwd in NeedleHaystack True False tx tx
 
 -- | Multiline needle and haystack functions with symmetric conversions. Going
 -- forward converts line breaks to @"\\n"@.  Going backward adds visible
@@ -167,7 +166,7 @@ multilineNeedleHaystack = symNeedleHaystack delimitLines encodeLf
 -- | Minimal set up for finding the needle in the haystack. Doesn't change the
 -- strings and doesn't display the haystack in any assertion failure message.
 needleHaystack :: NeedleHaystack
-needleHaystack = NeedleHaystack True False txContainsId txContainsId
+needleHaystack = NeedleHaystack True False txFwdBwdId txFwdBwdId
 
 -- | Replace line breaks with spaces, correctly handling @"\\r\\n"@.
 --
@@ -180,7 +179,7 @@ needleHaystack = NeedleHaystack True False txContainsId txContainsId
 -- >>> lineBreaksToSpaces "\nfoo\nbar\r\nbaz\n"
 -- " foo bar baz"
 lineBreaksToSpaces :: String -> String
-lineBreaksToSpaces = unwords . lines . filter ((/=) '\r')
+lineBreaksToSpaces = unwords . lines . filter ('\r' /=)
 
 -- | Replaces path separators found with those of the current OS, URL-like paths
 -- excluded.
@@ -189,14 +188,15 @@ lineBreaksToSpaces = unwords . lines . filter ((/=) '\r')
 -- > buildOS == Windows; normalizePathSeparators "foo/bar/baz" => "foo\bar\baz"
 normalizePathSeparators :: String -> String
 normalizePathSeparators =
-    unlines . map normalizePathSeparator . lines
-    where
-        normalizePathSeparator p =
-            if | any (isJust . parseURI) (tails p) -> p
-               | buildOS == Windows ->
-                    [if Posix.isPathSeparator c then Windows.pathSeparator else c| c <- p]
-               | otherwise ->
-                    [if Windows.isPathSeparator c then Posix.pathSeparator else c| c <- p]
+  unlines . map normalizePathSeparator . lines
+  where
+    normalizePathSeparator p =
+      if
+          | any (isJust . parseURI) (tails p) -> p
+          | buildOS == Windows ->
+              [if Posix.isPathSeparator c then Windows.pathSeparator else c | c <- p]
+          | otherwise ->
+              [if Windows.isPathSeparator c then Posix.pathSeparator else c | c <- p]
 
 -- | @unlines@ from base will add a trailing newline if there isn't one already
 -- but this one doesn't
@@ -250,27 +250,30 @@ encodeLf = filter (/= '\r')
 --
 -- >>> delimitLines $ encodeLf "\nfoo\nbar\r\nbaz\n"
 -- "^$\n^foo$\n^bar$\n^baz$\n"
-delimitLines:: String -> String
+delimitLines :: String -> String
 delimitLines "" = "^$"
 delimitLines "\n" = "^$\n"
 delimitLines ('\n' : xs) = "^$\n" ++ delimitLines xs
-delimitLines output = fixupStart . fixupEnd $
+delimitLines output =
+  fixupStart . fixupEnd $
     foldr
-            (\c acc -> c :
-                if | "\n" == acc -> "$\n"
-                   |("\n" `isPrefixOf` acc) -> "$\n^" ++ drop 1 acc
-                   | otherwise -> acc
-            )
-            ""
-    output
-    where
-        fixupStart :: String -> String
-        fixupStart s@[] = s
-        fixupStart s@('^' : _) = s
-        fixupStart s = '^' : s
+      ( \c acc ->
+          c
+            : if
+                | "\n" == acc -> "$\n"
+                | ("\n" `isPrefixOf` acc) -> "$\n^" ++ drop 1 acc
+                | otherwise -> acc
+      )
+      ""
+      output
+  where
+    fixupStart :: String -> String
+    fixupStart s@[] = s
+    fixupStart s@('^' : _) = s
+    fixupStart s = '^' : s
 
-        fixupEnd :: String -> String
-        fixupEnd s@[] = s
-        fixupEnd s@(reverse -> '$' : _) = s
-        fixupEnd s@(reverse -> '\n' : '$' : _) = s
-        fixupEnd s = s ++ "$"
+    fixupEnd :: String -> String
+    fixupEnd s@[] = s
+    fixupEnd s@(reverse -> '$' : _) = s
+    fixupEnd s@(reverse -> '\n' : '$' : _) = s
+    fixupEnd s = s ++ "$"

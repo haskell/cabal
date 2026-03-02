@@ -1,8 +1,5 @@
+{-# LANGUAGE CApiFFI #-}
 {-# LANGUAGE CPP #-}
-
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Client.Win32SelfUpgrade
@@ -57,7 +54,7 @@ import System.Process (runProcess)
 import System.Directory (canonicalizePath)
 import System.FilePath (takeBaseName, replaceBaseName, equalFilePath)
 
-import Distribution.Verbosity as Verbosity (showForCabal)
+import Distribution.Verbosity as Verbosity (showForCabal, verbosityFlags)
 import Distribution.Simple.Utils (debug, info)
 
 
@@ -84,7 +81,7 @@ possibleSelfUpgrade verbosity newPaths action = do
       result <- action
       scheduleOurDemise verbosity dstPath tmpPath
         (\pid path -> ["win32selfupgrade", pid, path
-                      ,"--verbose=" ++ Verbosity.showForCabal verbosity])
+                      ,"--verbose=" ++ Verbosity.showForCabal (verbosityFlags verbosity)])
       return result
 
 -- | The name of a Win32 Event object that we use to synchronise between the
@@ -165,17 +162,10 @@ deleteOldExeFile verbosity oldPID tmpPath = do
 
 -- A bunch of functions sadly not provided by the Win32 package.
 
-{- FOURMOLU_DISABLE -}
-#ifdef x86_64_HOST_ARCH
-#define CALLCONV ccall
-#else
-#define CALLCONV stdcall
-#endif
-
-foreign import CALLCONV unsafe "windows.h GetCurrentProcessId"
+foreign import capi unsafe "windows.h GetCurrentProcessId"
   getCurrentProcessId :: IO DWORD
 
-foreign import CALLCONV unsafe "windows.h WaitForSingleObject"
+foreign import capi unsafe "windows.h WaitForSingleObject"
   waitForSingleObject_ :: HANDLE -> DWORD -> IO DWORD
 
 waitForSingleObject :: HANDLE -> DWORD -> IO ()
@@ -186,7 +176,7 @@ waitForSingleObject handle timeout =
     bad result   = not (result == 0 || result == wAIT_TIMEOUT)
     wAIT_TIMEOUT = 0x00000102
 
-foreign import CALLCONV unsafe "windows.h CreateEventW"
+foreign import capi unsafe "windows.h CreateEventW"
   createEvent_ :: Ptr () -> BOOL -> BOOL -> LPCTSTR -> IO HANDLE
 
 createEvent :: String -> IO HANDLE
@@ -195,7 +185,7 @@ createEvent name = do
     Win32.withTString name $
       createEvent_ nullPtr False False
 
-foreign import CALLCONV unsafe "windows.h OpenEventW"
+foreign import capi unsafe "windows.h OpenEventW"
   openEvent_ :: DWORD -> BOOL -> LPCTSTR -> IO HANDLE
 
 openEvent :: String -> IO HANDLE
@@ -207,7 +197,7 @@ openEvent name = do
     eVENT_MODIFY_STATE :: DWORD
     eVENT_MODIFY_STATE = 0x0002
 
-foreign import CALLCONV unsafe "windows.h SetEvent"
+foreign import capi unsafe "windows.h SetEvent"
   setEvent_ :: HANDLE -> IO BOOL
 
 setEvent :: HANDLE -> IO ()
@@ -229,4 +219,3 @@ deleteOldExeFile :: Verbosity -> Int -> FilePath -> IO ()
 deleteOldExeFile verbosity _ _ = dieWithException verbosity Win32SelfUpgradeNotNeeded
 
 #endif
-{- FOURMOLU_ENABLE -}

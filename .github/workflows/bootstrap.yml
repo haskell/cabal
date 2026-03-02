@@ -19,7 +19,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        ghc: ["9.0.2", "9.2.8", "9.4.8", "9.6.6", "9.8.2"]
+        ghc: ["9.2.8", "9.4.8", "9.6.7", "9.8.4", "9.10.2", "9.12.2"]
         include:
           - os: macos-latest
             ghc: "9.2.8"
@@ -32,7 +32,7 @@ jobs:
           rm -rf ~/.config/cabal
           rm -rf ~/.cache/cabal
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         name: Cache the downloads
         id: bootstrap-cache
         with:
@@ -40,7 +40,7 @@ jobs:
           key: bootstrap-${{ runner.os }}-${{ matrix.ghc }}-20221115-${{ github.sha }}
           restore-keys: bootstrap-${{ runner.os }}-${{ matrix.ghc }}-20221115-
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: haskell-actions/setup@v2
         with:
           ghc-version: ${{ matrix.ghc }}
@@ -58,7 +58,7 @@ jobs:
         run: |
           _build/bin/cabal --version
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: cabal-${{ matrix.os }}-${{ matrix.ghc }}-bootstrapped
           path: _build/artifacts/*

@@ -214,6 +214,7 @@ data CheckExplanation
   | OptWithRts String
   | COptONumber String WarnLang
   | COptCPP String
+  | OptJSPP String
   | OptAlternatives String String [(String, String)]
   | RelativeOutside String FilePath
   | AbsolutePath String FilePath
@@ -380,6 +381,7 @@ data CheckExplanationID
   | CIOptWithRts
   | CICOptONumber
   | CICOptCPP
+  | CIOptJSPP
   | CIOptAlternatives
   | CIRelativeOutside
   | CIAbsolutePath
@@ -525,6 +527,7 @@ checkExplanationId (OptRts{}) = CIOptRts
 checkExplanationId (OptWithRts{}) = CIOptWithRts
 checkExplanationId (COptONumber{}) = CICOptONumber
 checkExplanationId (COptCPP{}) = CICOptCPP
+checkExplanationId (OptJSPP{}) = CIOptJSPP
 checkExplanationId (OptAlternatives{}) = CIOptAlternatives
 checkExplanationId (RelativeOutside{}) = CIRelativeOutside
 checkExplanationId (AbsolutePath{}) = CIAbsolutePath
@@ -677,6 +680,7 @@ ppCheckExplanationId CIOptRts = "option-rtsopts"
 ppCheckExplanationId CIOptWithRts = "option-with-rtsopts"
 ppCheckExplanationId CICOptONumber = "option-opt-c"
 ppCheckExplanationId CICOptCPP = "cpp-options"
+ppCheckExplanationId CIOptJSPP = "jspp-options"
 ppCheckExplanationId CIOptAlternatives = "misplaced-c-opt"
 ppCheckExplanationId CIRelativeOutside = "relative-path-outside"
 ppCheckExplanationId CIAbsolutePath = "absolute-path"
@@ -922,7 +926,8 @@ ppExplanation ShortDesc =
     ++ "(e.g. 'cabal info', Haddock, Hackage) below the 'synopsis' which "
     ++ "serves as a headline. "
     ++ "Please refer to <https://cabal.readthedocs.io/en/stable/"
-    ++ "cabal-package.html#package-properties> for more details."
+    ++ "cabal-package-description-file.html#package-properties> "
+    ++ "for more details."
 ppExplanation (InvalidTestWith testedWithImpossibleRanges) =
   "Invalid 'tested-with' version range: "
     ++ commaSep (map prettyShow testedWithImpossibleRanges)
@@ -1086,6 +1091,8 @@ ppExplanation (COptONumber prefix label) =
     ++ " --disable-optimization flag."
 ppExplanation (COptCPP opt) =
   "'cpp-options: " ++ opt ++ "' is not a portable C-preprocessor flag."
+ppExplanation (OptJSPP opt) =
+  "'jspp-options: " ++ opt ++ "' is not a portable JavaScript-preprocessor flag."
 ppExplanation (OptAlternatives badField goodField flags) =
   "Instead of "
     ++ quote (badField ++ ": " ++ unwords badFlags)
@@ -1457,7 +1464,8 @@ ppExplanation (UnknownFile fieldname file) =
     ++ quote (getSymbolicPath file)
     ++ " which does not exist."
 ppExplanation MissingSetupFile =
-  "The package is missing a Setup.hs or Setup.lhs script."
+  "The package is missing a Setup.hs or Setup.lhs or SetupHooks.hs "
+    ++ "or SetupHooks.lhs script."
 ppExplanation MissingConfigureScript =
   "The 'build-type' is 'Configure' but there is no 'configure' script. "
     ++ "You probably need to run 'autoreconf -i' to generate it."

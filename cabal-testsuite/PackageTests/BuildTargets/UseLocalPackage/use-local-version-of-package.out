@@ -1,8 +1,6 @@
 # cabal v2-update
 Downloading the latest package list from test-local-repo
 # cabal v2-build
-Configuration is affected by the following files:
-- cabal.project
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
@@ -13,8 +11,6 @@ Building executable 'my-exe' for pkg-1.0...
 # pkg my-exe
 local pkg-1.0
 # cabal v2-build
-Configuration is affected by the following files:
-- cabal.project
 Resolving dependencies...
 Error: [Cabal-7107]
 Could not resolve dependencies:

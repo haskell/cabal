@@ -75,6 +75,7 @@ import qualified Text.PrettyPrint as Disp
 data HaddockTarget = ForHackage | ForDevelopment deriving (Eq, Show, Generic)
 
 instance Binary HaddockTarget
+instance NFData HaddockTarget
 instance Structured HaddockTarget
 
 instance Pretty HaddockTarget where
@@ -115,7 +116,7 @@ data HaddockFlags = HaddockFlags
   deriving (Show, Generic)
 
 pattern HaddockCommonFlags
-  :: Flag Verbosity
+  :: Flag VerbosityFlags
   -> Flag (SymbolicPath Pkg (Dir Dist))
   -> Flag (SymbolicPath CWD (Dir Pkg))
   -> Flag (SymbolicPath Pkg File)

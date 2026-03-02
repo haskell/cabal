@@ -1,0 +1,97 @@
+---
+synopsis: Cabal library support for logging handles
+packages: [Cabal]
+prs: 11077
+issues: 9987
+significance: significant
+---
+
+The Cabal library now supports setting the handles used for logging, as
+opposed to always using stdout & stderr.
+
+To achieve this, the `Verbosity` data type has been modified:
+
+  1. The old `Verbosity` data type is now `VerbosityFlags`. This consists of
+     verbosity & logging information that can be passed via the command-line
+     interface.
+  2. The new `Verbosity` data type consists of `VerbosityFlags` together with
+     `VerbosityHandles`, which store the handles used for logging.
+     As `Handle`s cannot be serialised, neither can we serialise this new
+     `Verbosity`.
+
+The end result is that functions such as `createDirectoryIfMissingVerbose` or
+`runProgramInvocation`, which take a `Verbosity` argument, now support logging
+to arbitrary handles. Their type signature remains textually unchanged, as it is
+the `Verbosity` type itself that has changed.
+
+Several additional changes have been made in relation to the `VerbosityFlags`
+data type (which, recall, is what `Verbosity` used to be):
+
+  1. The `Ord` instance of `VerbosityFlags` has been removed. To compare
+     verbosity levels, use the `Ord` instance on `VerbosityLevel` via
+     `verbosityLevel :: Verbosity -> VerbosityLevel`.
+  2. The `Eq` instance of `VerbosityFlags` now takes into account all the fields,
+     and not only the verbosity level.
+  3. The `Enum` and `Bounded` instances of `VerbosityFlags` have been removed.
+     If you were using these, you might want to consider using the `Enum` and
+     `Bounded` instances of `VerbosityLevel` instead, in conjunction with
+     the new function `mkVerbosityFlags :: VerbosityLevel -> VerbosityFlags`.
+
+In addition, the `modifyVerbosity` function has been removed. It allowed
+arbitrarily changing the verbosity level, which is undesirable in general (e.g.
+in practice one wants the "silent" verbosity level to remain "silent"). To
+migrate, one should instead use the existing `moreVerbose`, `lessVerbose`
+combinators, or the new `makeVerbose` function which turns "normal" verbosity
+into "verbose" verbosity.
+
+
+Users of the command-line interface do not substantially benefit from this
+change, as the logging handles continue to be set for the spawned process, e.g.
+
+```hs
+  Process.createProcess $
+    (Process.proc ...)
+      { Process.std_out = customHandle1, Process.std_err = customHandle2 }
+```
+
+To migrate custom `Setup` scripts and `SetupHooks` hooks, in the typical
+situation in which one retrieves the verbosity from flags (such as `ConfigFlags`
+or `BuildFlags`), one can define the following compatibility helper:
+
+```hs
+mkVerbosityCompat
+  ::
+#if MIN_VERSION_Cabal(3,17,0)
+    Flag VerbosityFlags
+#else
+    Flag Verbosity
+#endif
+  -> Verbosity
+mkVerbosityCompat v =
+#if MIN_VERSION_Cabal(3,17,0)
+  mkVerbosity defaultVerbosityHandles $
+#endif
+  fromFlag v
+```
+
+This means that code such as:
+
+```hs
+doSomething :: BuildFlags -> IO ()
+doSomething flags = do
+  let verbosity = fromFlag $ buildVerbosity flags
+  createDirectoryIfMissingVerbose verbosity True dir
+  runProgramInvocation verbosity prog
+  ...
+```
+
+will become:
+
+```hs
+doSomething :: BuildFlags -> IO ()
+doSomething flags = do
+  let verbosity = mkVerbosityCompat $ buildVerbosity flags
+  createDirectoryIfMissingVerbose verbosity True dir
+  runProgramInvocation verbosity prog
+  ...
+```

@@ -422,7 +422,7 @@ checkPackageDescription
     -- But it is OK for executables to have the same name.
     nsubs <- asksCM (pnSubLibs . ccNames)
     checkP
-      (any (== prettyShow pn) (prettyShow <$> nsubs))
+      (prettyShow pn `elem` (prettyShow <$> nsubs))
       (PackageBuildImpossible $ IllegalLibraryName pn)
 
     -- § Fields check.
@@ -831,7 +831,9 @@ checkSetupExists _ =
     ( \ops -> do
         ba <- doesFileExist ops "Setup.hs"
         bb <- doesFileExist ops "Setup.lhs"
-        return (not $ ba || bb)
+        bc <- doesFileExist ops "SetupHooks.hs"
+        bd <- doesFileExist ops "SetupHooks.lhs"
+        return (not $ ba || bb || bc || bd)
     )
     (PackageDistInexcusable MissingSetupFile)
 
@@ -1058,7 +1060,7 @@ checkMissingDocs dgs esgs edgs efgs = do
       -> [FilePath] -- Actuals.
       -> [PackageCheck]
     checkDoc b ds as =
-      let fds = map ("." </>) $ filter (flip notElem as) ds
+      let fds = map ("." </>) $ filter (`notElem` as) ds
        in if null fds
             then []
             else
@@ -1073,7 +1075,7 @@ checkMissingDocs dgs esgs edgs efgs = do
       -> [FilePath] -- Actuals.
       -> [PackageCheck]
     checkDocMove b field ds as =
-      let fds = filter (flip elem as) ds
+      let fds = filter (`elem` as) ds
        in if null fds
             then []
             else

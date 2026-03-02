@@ -63,7 +63,8 @@ main = setupAndCabalTest . recordMode DoNotRecord $ do
                 let libraryName = "libversionedlib.so.5.4.3"
                     libdir = flibdir installDirs
                     objdumpProgram = simpleProgram "objdump"
-                (objdump, _) <- liftIO $ requireProgram normal objdumpProgram (withPrograms lbi)
+                    verbosity = mkVerbosity defaultVerbosityHandles normal
+                (objdump, _) <- liftIO $ requireProgram verbosity objdumpProgram (withPrograms lbi)
                 path1 <- liftIO $ readSymbolicLink $ libdir </> "libversionedlib.so"
                 path2 <- liftIO $ readSymbolicLink $ libdir </> "libversionedlib.so.5"
                 assertEqual "Symbolic link 'libversionedlib.so' incorrect"

@@ -12,7 +12,7 @@ main = cabalTest $ do
           { sourceFiles = ["Main.hs"]
           , sourceDirs = ["src"]
           -- does not list lib as a target
-          , compilerArgsPred = all (/= "A-0.1.0.0-inplace")
+          , compilerArgsPred = notElem "A-0.1.0.0-inplace"
           }
 
   cabal' "v2-build" ["exe:A", "--disable-build-info"]

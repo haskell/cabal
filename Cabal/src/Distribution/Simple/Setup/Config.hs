@@ -45,8 +45,8 @@ module Distribution.Simple.Setup.Config
 import Distribution.Compat.Prelude hiding (get)
 import Prelude ()
 
+import Data.Semigroup (Last (..))
 import qualified Distribution.Compat.CharParsing as P
-import Distribution.Compat.Semigroup (Last' (..), Option' (..))
 import Distribution.Compat.Stack
 import Distribution.Compiler
 import Distribution.ModuleName
@@ -90,7 +90,7 @@ data ConfigFlags = ConfigFlags
     -- because the type of configure is constrained by the UserHooks.
     -- when we change UserHooks next we should pass the initial
     -- ProgramDb directly and not via ConfigFlags
-    configPrograms_ :: Option' (Last' ProgramDb)
+    configPrograms_ :: Maybe (Last ProgramDb)
   -- ^ All programs that
   --  @cabal@ may run
   , configProgramPaths :: [(String, FilePath)]
@@ -237,7 +237,7 @@ data ConfigFlags = ConfigFlags
   deriving (Generic, Read, Show)
 
 pattern ConfigCommonFlags
-  :: Flag Verbosity
+  :: Flag VerbosityFlags
   -> Flag (SymbolicPath Pkg (Dir Dist))
   -> Flag (SymbolicPath CWD (Dir Pkg))
   -> Flag (SymbolicPath Pkg File)
@@ -268,8 +268,7 @@ instance Structured ConfigFlags
 configPrograms :: WithCallStack (ConfigFlags -> ProgramDb)
 configPrograms =
   fromMaybe (error "FIXME: remove configPrograms")
-    . fmap getLast'
-    . getOption'
+    . fmap getLast
     . configPrograms_
 
 instance Eq ConfigFlags where
@@ -336,7 +335,7 @@ defaultConfigFlags :: ProgramDb -> ConfigFlags
 defaultConfigFlags progDb =
   emptyConfigFlags
     { configCommonFlags = defaultCommonSetupFlags
-    , configPrograms_ = Option' (Just (Last' progDb))
+    , configPrograms_ = Just (Last progDb)
     , configHcFlavor = maybe NoFlag Flag defaultCompilerFlavor
     , configVanillaLib = Flag True
     , configProfLib = NoFlag
@@ -438,13 +437,6 @@ configureOptions showOrParseArgs =
             [ (Flag GHC, ("g", ["ghc"]), "compile with GHC")
             , (Flag GHCJS, ([], ["ghcjs"]), "compile with GHCJS")
             , (Flag UHC, ([], ["uhc"]), "compile with UHC")
-            , -- "haskell-suite" compiler id string will be replaced
-              -- by a more specific one during the configure stage
-
-              ( Flag (HaskellSuite "haskell-suite")
-              , ([], ["haskell-suite"])
-              , "compile with a haskell-suite compiler"
-              )
             ]
         )
     , option
@@ -896,15 +888,6 @@ configureOptions showOrParseArgs =
 
 readPackageDbList :: String -> [Maybe PackageDB]
 readPackageDbList str = [readPackageDb str]
-
--- | Parse a PackageDB stack entry
---
--- @since 3.7.0.0
-readPackageDb :: String -> Maybe PackageDB
-readPackageDb "clear" = Nothing
-readPackageDb "global" = Just GlobalPackageDB
-readPackageDb "user" = Just UserPackageDB
-readPackageDb other = Just (SpecificPackageDB (makeSymbolicPath other))
 
 showPackageDbList :: [Maybe PackageDB] -> [String]
 showPackageDbList = map showPackageDb

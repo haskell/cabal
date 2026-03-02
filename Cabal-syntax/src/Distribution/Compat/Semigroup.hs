@@ -1,69 +1,13 @@
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TypeOperators #-}
 
--- | Compatibility layer for "Data.Semigroup"
 module Distribution.Compat.Semigroup
-  ( Semigroup ((<>))
-  , Mon.Monoid (..)
-  , All (..)
-  , Any (..)
-  , First' (..)
-  , Last' (..)
-  , Option' (..)
-  , gmappend
+  ( gmappend
   , gmempty
   ) where
 
-import Distribution.Compat.Binary (Binary)
-import Distribution.Utils.Structured (Structured)
-
 import GHC.Generics
 
--- Data.Semigroup is available since GHC 8.0/base-4.9 in `base`
--- for older GHC/base, it's provided by `semigroups`
-
-import qualified Data.Monoid as Mon
-import Data.Semigroup
-
--- | A copy of 'Data.Semigroup.First'.
-newtype First' a = First' {getFirst' :: a}
-  deriving (Eq, Ord, Show)
-
-instance Semigroup (First' a) where
-  a <> _ = a
-
--- | A copy of 'Data.Semigroup.Last'.
-newtype Last' a = Last' {getLast' :: a}
-  deriving (Eq, Ord, Read, Show, Generic, Binary)
-
-instance Structured a => Structured (Last' a)
-
-instance Semigroup (Last' a) where
-  _ <> b = b
-
-instance Functor Last' where
-  fmap f (Last' x) = Last' (f x)
-
--- | A wrapper around 'Maybe', providing the 'Semigroup' and 'Monoid' instances
--- implemented for 'Maybe' since @base-4.11@.
-newtype Option' a = Option' {getOption' :: Maybe a}
-  deriving (Eq, Ord, Read, Show, Binary, Generic, Functor)
-
-instance Structured a => Structured (Option' a)
-
-instance Semigroup a => Semigroup (Option' a) where
-  Option' (Just a) <> Option' (Just b) = Option' (Just (a <> b))
-  Option' Nothing <> b = b
-  a <> Option' Nothing = a
-
-instance Semigroup a => Monoid (Option' a) where
-  mempty = Option' Nothing
-  mappend = (<>)
-
--------------------------------------------------------------------------------
--------------------------------------------------------------------------------
 -- Stolen from Edward Kmett's BSD3-licensed `semigroups` package
 
 -- | Generically generate a 'Semigroup' ('<>') operation for any type

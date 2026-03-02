@@ -42,7 +42,9 @@ import Distribution.Simple.Utils
   , wrapText
   )
 import Distribution.Verbosity
-  ( normal
+  ( defaultVerbosityHandles
+  , mkVerbosity
+  , normal
   )
 import Text.PrettyPrint
 import qualified Text.PrettyPrint as Pretty
@@ -65,7 +67,7 @@ targetCommand =
             , caution
             , unique
             ]
-    , commandNotes = Just $ \pname -> render $ examples pname
+    , commandNotes = Just $ \pname -> render (examples pname) ++ "\n"
     , commandDefaultFlags = defaultNixStyleFlags ()
     , commandOptions = nixStyleOptions (const [])
     }
@@ -172,7 +174,7 @@ targetAction flags@NixStyleFlags{..} ts globalFlags = do
 
   targets :: TargetsMap <-
     either (reportBuildTargetProblems verbosity) return $
-      resolveTargets
+      resolveTargetsFromSolver
         selectPackageTargets
         selectComponentTarget
         elaboratedPlan
@@ -181,7 +183,9 @@ targetAction flags@NixStyleFlags{..} ts globalFlags = do
 
   printTargetForms verbosity targetStrings targets elaboratedPlan
   where
-    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    verbosity =
+      mkVerbosity defaultVerbosityHandles $
+        fromFlagOrDefault normal (configVerbosity configFlags)
     targetStrings = if null ts then ["all"] else ts
     cliConfig =
       commandLineFlagsToProjectConfig

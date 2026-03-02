@@ -30,7 +30,7 @@ cabalInstallVersion = mkVersion' PackageInfo.version
 
 -- |
 -- `cabal-install` Git information. Only filled in if built in a Git tree in
--- developmnent mode and Template Haskell is available.
+-- development mode and Template Haskell is available.
 cabalInstallGitInfo :: String
 #ifdef GIT_REV
 cabalInstallGitInfo = if giHash' == ""

@@ -18,6 +18,7 @@ data Step
   | LibSuiteExtras
   | CliTests
   | CliSuite
+  | SolverTests
   | SolverBenchmarksTests
   | SolverBenchmarksRun
   deriving (Eq, Enum, Bounded, Show)
@@ -38,6 +39,7 @@ displayStep step =
     LibSuiteExtras -> "lib-suite-extras"
     CliTests -> "cli-tests"
     CliSuite -> "cli-suite"
+    SolverTests -> "solver-tests"
     SolverBenchmarksTests -> "solver-benchmarks-tests"
     SolverBenchmarksRun -> "solver-benchmarks-run"
 

@@ -73,7 +73,8 @@ import System.IO (IOMode (WriteMode), hPutStrLn, withFile)
 
 -- | Create a source distribution.
 sdist
-  :: PackageDescription
+  :: VerbosityHandles
+  -> PackageDescription
   -- ^ information from the tarball
   -> SDistFlags
   -- ^ verbosity & snapshot
@@ -82,7 +83,7 @@ sdist
   -> [PPSuffixHandler]
   -- ^ extra preprocessors (includes suffixes)
   -> IO ()
-sdist pkg flags mkTmpDir pps = do
+sdist verbHandles pkg flags mkTmpDir pps = do
   distPref <- findDistPrefOrDefault $ setupDistPref common
   let targetPref = i distPref
       tmpTargetDir = mkTmpDir (i distPref)
@@ -108,7 +109,7 @@ sdist pkg flags mkTmpDir pps = do
           info verbosity $ "Source directory created: " ++ targetDir
         Nothing -> do
           createDirectoryIfMissingVerbose verbosity True tmpTargetDir
-          withTempDirectory verbosity tmpTargetDir "sdist." $ \tmpDir -> do
+          withTempDirectory tmpTargetDir "sdist." $ \tmpDir -> do
             let targetDir = tmpDir </> tarBallName pkg'
             generateSourceDir targetDir pkg'
             targzFile <- createArchive verbosity pkg' tmpDir targetPref
@@ -122,7 +123,7 @@ sdist pkg flags mkTmpDir pps = do
         overwriteSnapshotPackageDesc verbosity pkg' targetDir
 
     common = sDistCommonFlags flags
-    verbosity = fromFlag $ setupVerbosity common
+    verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
     mbWorkDir = flagToMaybe $ setupWorkingDir common
     i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
     snapshot = fromFlag (sDistSnapshot flags)
@@ -397,11 +398,13 @@ findModDefFile verbosity cwd flibBi _pps modDefPath =
 -- @f@. Return the name of the file and the full path, or exit with error if
 -- there's no such file.
 findIncludeFile :: Verbosity -> FilePath -> [FilePath] -> String -> IO (String, FilePath)
-findIncludeFile verbosity _ [] f = dieWithException verbosity $ NoIncludeFileFound f
-findIncludeFile verbosity cwd (d : ds) f = do
-  let path = d </> f
-  b <- doesFileExist (cwd </> path)
-  if b then return (f, path) else findIncludeFile verbosity cwd ds f
+findIncludeFile verbosity cwd fs f = go fs
+  where
+    go [] = dieWithException verbosity $ NoIncludeFileFound f fs
+    go (d : ds) = do
+      let path = d </> f
+      b <- doesFileExist (cwd </> path)
+      if b then return (f, path) else go ds
 
 -- | Remove the auto-generated modules (like 'Paths_*') from 'exposed-modules'
 -- and 'other-modules'.
@@ -428,7 +431,7 @@ filterAutogenModules pkg_descr0 =
     filterFunction bi = \mn ->
       mn /= pathsModule
         && mn /= packageInfoModule
-        && not (mn `elem` autogenModules bi)
+        && notElem mn (autogenModules bi)
 
 -- | Prepare a directory tree of source files for a snapshot version.
 -- It is expected that the appropriate snapshot version has already been set
@@ -512,10 +515,7 @@ createArchive verbosity pkg_descr tmpDir targetPref = do
   let tarBallFilePath = targetPref </> tarBallName pkg_descr <.> "tar.gz"
   (tarProg, _) <- requireProgram verbosity tarProgram defaultProgramDb
   let formatOptSupported =
-        maybe False (== "YES") $
-          Map.lookup
-            "Supports --format"
-            (programProperties tarProg)
+        Just "YES" == Map.lookup "Supports --format" (programProperties tarProg)
   runProgram verbosity tarProg $
     -- Hmm: I could well be skating on thinner ice here by using the -C option
     -- (=> seems to be supported at least by GNU and *BSD tar) [The

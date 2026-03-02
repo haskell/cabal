@@ -609,6 +609,7 @@ data UserQualifier
   deriving (Eq, Show, Generic)
 
 instance Binary UserQualifier
+instance NFData UserQualifier
 instance Structured UserQualifier
 
 -- | Version of 'ConstraintScope' that a user may specify on the
@@ -623,6 +624,7 @@ data UserConstraintScope
   deriving (Eq, Show, Generic)
 
 instance Binary UserConstraintScope
+instance NFData UserConstraintScope
 instance Structured UserConstraintScope
 
 fromUserQualifier :: UserQualifier -> Qualifier
@@ -643,6 +645,7 @@ data UserConstraint
   deriving (Eq, Show, Generic)
 
 instance Binary UserConstraint
+instance NFData UserConstraint
 instance Structured UserConstraint
 
 userConstraintPackageName :: UserConstraint -> PackageName

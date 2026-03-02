@@ -80,7 +80,7 @@ splitRunArgs verbosity lbi args =
             " Interpreting all parameters to `run` as a parameter to"
               ++ " the default executable."
       -- If there is a warning, print it together with the addition.
-      warn verbosity `traverse_` fmap (++ addition) maybeWarning
+      traverse_ (warn verbosity . (++ addition)) maybeWarning
       return (exe, xs)
   where
     pkg_descr = localPkgDescr lbi

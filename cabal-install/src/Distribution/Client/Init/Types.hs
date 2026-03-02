@@ -80,8 +80,8 @@ import Distribution.Client.Utils as P
 import Distribution.Fields.Pretty
 import Distribution.ModuleName
 import qualified Distribution.Package as P
-import Distribution.Simple.Setup (Flag (..))
-import Distribution.Verbosity (silent)
+import Distribution.Simple.Setup (Flag)
+import Distribution.Verbosity (VerbosityFlags, VerbosityLevel (..), verbosityLevel)
 import Distribution.Version
 import Language.Haskell.Extension (Extension, Language (..))
 import qualified System.IO
@@ -129,7 +129,7 @@ data InitFlags = InitFlags
   , initializeTestSuite :: Flag Bool
   , testDirs :: Flag [String]
   , initHcPath :: Flag FilePath
-  , initVerbosity :: Flag Verbosity
+  , initVerbosity :: Flag VerbosityFlags
   , overwrite :: Flag Bool
   }
   deriving (Eq, Show, Generic)
@@ -209,7 +209,7 @@ data WriteOpts = WriteOpts
   { _optOverwrite :: Bool
   , _optMinimal :: Bool
   , _optNoComments :: Bool
-  , _optVerbosity :: Verbosity
+  , _optVerbosity :: VerbosityFlags
   , _optPkgDir :: FilePath
   , _optPkgType :: PackageType
   , _optPkgName :: P.PackageName
@@ -410,7 +410,7 @@ instance Interactive PromptIO where
   renameDirectory a b = liftIO $ P.renameDirectory a b
   hFlush = liftIO <$> System.IO.hFlush
   message q severity msg
-    | q == silent = pure ()
+    | verbosityLevel q == Silent = pure ()
     | otherwise = putStrLn $ "[" ++ displaySeverity severity ++ "] " ++ msg
   break = return False
   throwPrompt = liftIO <$> throwM
@@ -501,7 +501,7 @@ checkInvalidPath :: String -> a -> PurePrompt a
 checkInvalidPath path act =
   -- The check below is done this way so it's easier to append
   -- more invalid paths in the future, if necessary
-  if path `elem` ["."]
+  if path == "."
     then throwPrompt $ BreakException $ "Invalid path: " ++ path
     else return act
 

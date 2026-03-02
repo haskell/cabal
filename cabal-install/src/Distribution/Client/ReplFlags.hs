@@ -1,3 +1,5 @@
+{-# LANGUAGE PatternSynonyms #-}
+
 module Distribution.Client.ReplFlags (EnvFlags (..), ReplFlags (..), topReplOptions, multiReplOption, defaultReplFlags) where
 
 import Distribution.Client.Compat.Prelude
@@ -21,12 +23,13 @@ import Distribution.Simple.Command
   , reqArg
   )
 import Distribution.Simple.Setup
-  ( Flag (..)
+  ( Flag
   , ReplOptions (..)
   , boolOpt
   , falseArg
   , replOptions
   , toFlag
+  , pattern NoFlag
   )
 import Distribution.Types.Dependency
   ( Dependency (..)

@@ -195,7 +195,7 @@ prop_anyVersion v' =
 
 prop_noVersion :: Version -> Bool
 prop_noVersion v' =
-  withinRange v' noVersion == False
+  not (withinRange v' noVersion)
 
 prop_thisVersion :: Version -> Version -> Bool
 prop_thisVersion v v' =

@@ -32,10 +32,10 @@ on:
 env:
   # We choose a stable ghc version across all os's
   # which will be used to do the next release
-  GHC_FOR_RELEASE: "9.4.8"
+  GHC_FOR_RELEASE: "9.10.2"
   # Ideally we should use the version about to be released for hackage tests and benchmarks
-  GHC_FOR_SOLVER_BENCHMARKS: "9.4.8"
-  GHC_FOR_COMPLETE_HACKAGE_TESTS: "9.4.8"
+  GHC_FOR_SOLVER_BENCHMARKS: "9.10.2"
+  GHC_FOR_COMPLETE_HACKAGE_TESTS: "9.10.2"
   COMMON_FLAGS: "-j 2 -v"
 
   # See https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#hackage-revisions
@@ -53,17 +53,18 @@ jobs:
       matrix:
         sys:
           - { os: windows-latest, shell: "C:/msys64/usr/bin/bash.exe -e {0}" }
-          - { os: ubuntu-22.04, shell: bash }
+          - { os: ubuntu-latest, shell: bash }
           - { os: macos-latest, shell: bash }
-        # If you remove something from here, then add it to the old-ghcs job.
-        # Also a removed GHC from here means that we are actually dropping
-        # support, so the PR *must* have a changelog entry.
         ghc:
           [
-            "9.12.1",
-            "9.10.1",
+            # IMPORTANT: If you remove a version from this list, then add it to the old-ghcs job below.
+            # Also a removed GHC from here means that we are actually dropping
+            # support, so the PR *must* have a changelog entry.
+            "9.14.1",
+            "9.12.2",
+            "9.10.2",
             "9.8.4",
-            "9.6.6",
+            "9.6.7",
             "9.4.8",
             "9.2.8",
             "9.0.2",
@@ -112,7 +113,7 @@ jobs:
         run: |
            echo "TMP=${{ runner.temp }}" >> "$GITHUB_ENV"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # See https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#hackage-revisions
       - name: Add manually supplied allow-newer
@@ -130,11 +131,11 @@ jobs:
         with:
           ghc-version: ${{ matrix.ghc }}
           cabal-version: 3.12.1.0 # see https://github.com/haskell/cabal/pull/10251
-          ghcup-release-channel: https://raw.githubusercontent.com/haskell/ghcup-metadata/master/ghcup-prereleases-0.0.8.yaml
+          ghcup-release-channel: https://raw.githubusercontent.com/haskell/ghcup-metadata/master/ghcup-prereleases-0.0.9.yaml
 
       #  See the following link for a breakdown of the following step
       #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           # validate.sh uses a special build dir
           path: |
@@ -142,6 +143,11 @@ jobs:
             dist-*
           key: ${{ runner.os }}-${{ matrix.ghc }}-${{ github.sha }}
           restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-
+
+      - name: "Work around git problem https://bugs.launchpad.net/ubuntu/+source/git/+bug/1993586 (cabal PR #8546)"
+        # alternatively, use 'continue-on-error: true'
+        if: runner.os != 'Windows'
+        run: git config --global protocol.file.allow always
 
       # The tool is not essential to the rest of the test suite. If
       # hackage-repo-tool is not present, any test that requires it will
@@ -213,7 +219,7 @@ jobs:
       # - Make it available in the workflow to make easier testing it locally
       - name: Upload cabal-install executable to workflow artifacts
         if: matrix.ghc == env.GHC_FOR_RELEASE
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: cabal-${{ runner.os }}-${{ env.CABAL_ARCH }}
           path: ${{ env.CABAL_EXEC_TAR }}
@@ -226,14 +232,18 @@ jobs:
         run: |
           set +e
           rc=0
-          tests="lib-tests lib-suite cli-tests cli-suite"
+          tests="lib-tests lib-suite cli-tests cli-suite solver-tests"
           if [ "${{ matrix.ghc }}" = "${{ env.GHC_FOR_SOLVER_BENCHMARKS }}" ]; then
             tests="$tests solver-benchmarks-tests solver-benchmarks-run"
           fi
           for test in $tests; do
-            echo Validate "$test"
+            echo ::group::Validate "$test"
             sh validate.sh $FLAGS -s "$test" || rc=1
             echo End "$test"
+            echo ::endgroup::
+            if [ $rc -eq 1 ]; then
+              echo Some tests failed
+            fi
           done
           exit $rc
       # The above ensures all the tests get run, for a single platform+ghc.
@@ -245,19 +255,20 @@ jobs:
 
   validate-old-ghcs:
     name: Validate old ghcs ${{ matrix.extra-ghc }}
+    # latest/latest doesn't have the old packages the old ghcs depend on
     runs-on: ubuntu-22.04
     needs: validate
 
     strategy:
       matrix:
         extra-ghc:
-          ["8.4.4", "8.2.2", "8.0.2"]
-          ## GHC 7.10.3 does not install on ubuntu-22.04 with ghcup.
+          ["8.6.5", "8.4.4", "8.2.2", "8.0.2"]
+          ## GHC 7.10.3 does not install on ubuntu-latest with ghcup.
           ## Older GHCs are not supported by ghcup in the first place.
       fail-fast: false
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install prerequisites for old GHCs
         run: |
@@ -286,7 +297,7 @@ jobs:
       # As we are reusing the cached build dir from the previous step
       # the generated artifacts are available here,
       # including the cabal executable and the test suite
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ${{ steps.setup-haskell.outputs.cabal-store }}
@@ -308,7 +319,7 @@ jobs:
   build-alpine:
     name: Build statically linked using alpine
     runs-on: ubuntu-latest
-    container: "alpine:3.19"
+    container: "alpine:3.20"
     steps:
       - name: Install extra dependencies
         shell: sh
@@ -322,7 +333,7 @@ jobs:
       # that Alpine's git doesn't like. Hack around it.
       - run: git config --global --add safe.directory $(pwd)
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # See https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#hackage-revisions
       - name: Manually supplied constraints/allow-newer
@@ -339,7 +350,7 @@ jobs:
 
       #  See the following link for a breakdown of the following step
       #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           # validate.sh uses a special build dir
           path: |
@@ -367,7 +378,7 @@ jobs:
           echo "CABAL_EXEC_TAR=$CABAL_EXEC_TAR" >> "$GITHUB_ENV"
 
       - name: Upload cabal-install executable to workflow artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: cabal-${{ runner.os }}-static-x86_64
           path: ${{ env.CABAL_EXEC_TAR }}
@@ -383,7 +394,7 @@ jobs:
       matrix:
         sys:
           - { os: windows-latest, shell: "C:/msys64/usr/bin/bash.exe -e {0}" }
-          - { os: ubuntu-22.04, shell: bash }
+          - { os: ubuntu-latest, shell: bash }
           - { os: macos-latest, shell: bash }
         # We only use one ghc version the used one for the next release (defined at top of the workflow)
         # We need to build an array dynamically to inject the appropiate env var in a previous job,
@@ -416,7 +427,7 @@ jobs:
         run: |
            echo "TMP=${{ runner.temp }}" >> "$GITHUB_ENV"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: haskell-actions/setup@v2
         id: setup-haskell
@@ -425,7 +436,7 @@ jobs:
           cabal-version: latest # default, we are not using it in this job
 
       - name: Download cabal executable from workflow artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: cabal-${{ runner.os }}-${{ env.CABAL_ARCH }}
           path: cabal-head
@@ -449,7 +460,7 @@ jobs:
     needs: [validate, validate-old-ghcs, build-alpine, dogfooding]
 
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           pattern: cabal-*
           path: binaries
@@ -477,7 +488,7 @@ jobs:
     needs: [validate, validate-old-ghcs, build-alpine, dogfooding]
 
     steps:
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v7
       with:
         pattern: cabal-*
         path: binaries

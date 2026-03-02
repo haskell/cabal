@@ -242,6 +242,7 @@ solve enableBj fineGrainedConflicts reorder countConflicts indep prefOldest goal
             (unTestDb (testDb test))
             Nothing
             Nothing
+            Nothing
             (Just $ pkgConfigDbFromList [])
             (map unPN (testTargets test))
             -- The backjump limit prevents individual tests from using
@@ -260,7 +261,7 @@ solve enableBj fineGrainedConflicts reorder countConflicts indep prefOldest goal
             (unVarOrdering <$> goalOrder)
             (testConstraints test)
             (testPreferences test)
-            normal
+            (mkVerbosity defaultVerbosityHandles normal)
             (EnableAllTests False)
 
       failure :: String -> Failure

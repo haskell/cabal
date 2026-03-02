@@ -18,6 +18,7 @@ module Distribution.Client.Init.FileCreators
   ( -- * Commands
     writeProject
   , writeLicense
+  , writeReadme
   , writeChangeLog
   , prepareLibTarget
   , prepareExeTarget
@@ -53,6 +54,7 @@ import Distribution.Types.PackageName
 
 import Distribution.FieldGrammar.Newtypes
 import Distribution.License (licenseToSPDX)
+import Distribution.Verbosity (defaultVerbosityHandles, mkVerbosity)
 import System.FilePath ((<.>), (</>))
 
 -- -------------------------------------------------------------------- --
@@ -70,9 +72,12 @@ writeProject (ProjectSettings opts pkgDesc libTarget exeTarget testTarget)
 
       writeLicense opts pkgDesc
       writeChangeLog opts pkgDesc
+      writeReadme opts pkgDesc
 
       let pkgFields = mkPkgDescription opts pkgDesc
-          commonStanza = mkCommonStanza opts
+          extensionsStanza = mkExtensionsStanza opts
+          ghcOptionsStanza = mkGhcOptionsStanza opts
+          rtsOptionsStanza = mkRtsOptionsStanza opts
 
       libStanza <- prepareLibTarget opts libTarget
       exeStanza <- prepareExeTarget opts exeTarget
@@ -80,7 +85,7 @@ writeProject (ProjectSettings opts pkgDesc libTarget exeTarget testTarget)
 
       (reusedCabal, cabalContents) <-
         writeCabalFile opts $
-          pkgFields ++ [commonStanza, libStanza, exeStanza, testStanza]
+          pkgFields ++ [extensionsStanza, ghcOptionsStanza, rtsOptionsStanza, libStanza, exeStanza, testStanza]
 
       when (null $ _pkgSynopsis pkgDesc) $
         message opts T.Warning "No synopsis given. You should edit the .cabal file and add one."
@@ -240,6 +245,28 @@ writeChangeLog opts pkgDesc
     go =
       void $ writeFileSafe opts defaultChangelog changeLog
 
+writeReadme :: Interactive m => WriteOpts -> PkgDescription -> m ()
+writeReadme opts pkgDesc
+  | Just docs <- _pkgExtraDocFiles pkgDesc
+  , defaultReadme `Set.member` docs =
+      go
+  | defaultReadme `elem` _pkgExtraSrcFiles pkgDesc = go
+  | otherwise = return ()
+  where
+    readme =
+      unlines
+        [ "# " ++ prettyShow (_pkgName pkgDesc)
+        , ""
+        , "## Build"
+        , ""
+        , "Run `$ cabal build` to build the project"
+        , "## Documentation"
+        , ""
+        , "Run `$ cabal haddock --open` to generate a reference for the API of the project."
+        ]
+    go =
+      void $ writeFileSafe opts defaultReadme readme
+
 -- -------------------------------------------------------------------- --
 -- Utilities
 
@@ -253,7 +280,7 @@ instance Show WriteAction where
 -- | Possibly generate a message to stdout, taking into account the
 --   --quiet flag.
 message :: Interactive m => WriteOpts -> T.Severity -> String -> m ()
-message opts = T.message (_optVerbosity opts)
+message opts = T.message (mkVerbosity defaultVerbosityHandles $ _optVerbosity opts)
 
 -- | Write a file \"safely\" if it doesn't exist, backing up any existing version when
 --   the overwrite flag is set.

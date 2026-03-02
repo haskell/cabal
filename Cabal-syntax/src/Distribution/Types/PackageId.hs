@@ -65,7 +65,7 @@ instance Parsec PackageIdentifier where
     (v, xs) <- case simpleParsec (NE.last xs') of
       Nothing -> return (nullVersion, toList xs') -- all components are version
       Just v -> return (v, NE.init xs')
-    if not (null xs) && all (\c -> all (/= '.') c && not (all isDigit c)) xs
+    if not (null xs) && all (\c -> notElem '.' c && not (all isDigit c)) xs
       then return $ PackageIdentifier (mkPackageName (intercalate "-" xs)) v
       else fail "all digits or a dot in a portion of package name"
     where

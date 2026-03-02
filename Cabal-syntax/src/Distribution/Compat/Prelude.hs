@@ -186,9 +186,6 @@ import Prelude                       as BasePrelude hiding
     -- partial functions
     , read
     , foldr1, foldl1
-    -- As of base 4.11.0.0 Prelude exports part of Semigroup(..).
-    -- Hide this so we instead rely on Distribution.Compat.Semigroup.
-    , Semigroup(..)
     , Word
     -- We hide them, as we import only some members
     , Traversable, traverse, sequenceA
@@ -237,7 +234,7 @@ import Data.Typeable (TypeRep, Typeable, typeRep)
 import Data.Void (Void, absurd, vacuous)
 import Data.Word (Word, Word16, Word32, Word64, Word8)
 import Distribution.Compat.Binary (Binary (..))
-import Distribution.Compat.Semigroup (Semigroup (..), gmappend, gmempty)
+import Distribution.Compat.Semigroup (gmappend, gmempty)
 import GHC.Generics (Generic (..), K1 (unK1), M1 (unM1), U1 (U1), V1, (:*:) ((:*:)), (:+:) (L1, R1))
 import System.Exit (ExitCode (..), exitFailure, exitSuccess, exitWith)
 import Text.Read (readMaybe)

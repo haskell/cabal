@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 -- simplifier goes nuts otherwise
@@ -47,7 +48,7 @@ import Distribution.Client.Targets
 import Distribution.Client.Types
 import Distribution.Client.Types.SourceRepo
 import Distribution.Utils.NubList
-import Distribution.Verbosity (silent)
+import Distribution.Verbosity
 
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.PackageConstraint
@@ -175,17 +176,17 @@ testFindProjectRoot =
 
     test name wrap projectDir projectFile validate =
       testCaseSteps name $ \step -> fromMaybe id wrap $ do
-        result <- findProjectRoot silent projectDir projectFile
+        result <- findProjectRoot (mkVerbosity defaultVerbosityHandles silent) projectDir projectFile
         _ <- validate result
 
         when (isRight result) $ do
           for_ projectDir $ \path -> do
             step "missing project dir"
-            fails =<< findProjectRoot silent (missing path) projectFile
+            fails =<< findProjectRoot (mkVerbosity defaultVerbosityHandles silent) (missing path) projectFile
 
           for_ projectFile $ \path -> do
             step "missing project file"
-            fails =<< findProjectRoot silent projectDir (missing path)
+            fails =<< findProjectRoot (mkVerbosity defaultVerbosityHandles silent) projectDir (missing path)
 
     cd d = Just (withCurrentDirectory d)
 
@@ -606,6 +607,7 @@ instance Arbitrary ProjectConfigShared where
     projectConfigConfigFile <- arbitraryFlag arbitraryShortToken
     projectConfigProjectDir <- arbitraryFlag arbitraryShortToken
     projectConfigProjectFile <- arbitraryFlag arbitraryShortToken
+    projectConfigProjectFileParser <- arbitraryFlag arbitrary
     projectConfigIgnoreProject <- arbitrary
     projectConfigHcFlavor <- arbitrary
     projectConfigHcPath <- arbitraryFlag arbitraryShortToken
@@ -642,7 +644,7 @@ instance Arbitrary ProjectConfigShared where
     where
       arbitraryConstraints :: Gen [(UserConstraint, ConstraintSource)]
       arbitraryConstraints =
-        fmap (\uc -> (uc, projectConfigConstraintSource)) <$> arbitrary
+        fmap (,projectConfigConstraintSource) <$> arbitrary
       fixInstallDirs x = x{InstallDirs.includedir = mempty, InstallDirs.mandir = mempty, InstallDirs.flibdir = mempty}
 
   shrink ProjectConfigShared{..} =
@@ -652,6 +654,7 @@ instance Arbitrary ProjectConfigShared where
         <*> shrinker projectConfigConfigFile
         <*> shrinker projectConfigProjectDir
         <*> shrinker projectConfigProjectFile
+        <*> shrinker projectConfigProjectFileParser
         <*> shrinker projectConfigIgnoreProject
         <*> shrinker projectConfigHcFlavor
         <*> shrinkerAla (fmap NonEmpty) projectConfigHcPath
@@ -686,10 +689,13 @@ instance Arbitrary ProjectConfigShared where
         <*> shrinker projectConfigMultiRepl
     where
       preShrink_Constraints = map fst
-      postShrink_Constraints = map (\uc -> (uc, projectConfigConstraintSource))
+      postShrink_Constraints = map (,projectConfigConstraintSource)
 
 projectConfigConstraintSource :: ConstraintSource
 projectConfigConstraintSource = ConstraintSourceProjectConfig nullProjectConfigPath
+
+instance Arbitrary ProjectFileParser where
+  arbitrary = elements [ParsecParser, LegacyParser, FallbackParser, CompareParser]
 
 instance Arbitrary ProjectConfigProvenance where
   arbitrary = elements [Implicit, Explicit (ProjectConfigPath $ "cabal.project" :| [])]

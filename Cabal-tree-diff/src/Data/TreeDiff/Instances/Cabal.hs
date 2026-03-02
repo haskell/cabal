@@ -1,8 +1,10 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# OPTIONS_GHC -freduction-depth=0 #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 module Data.TreeDiff.Instances.Cabal () where
 
 import Data.TreeDiff
+import qualified Data.TreeDiff.OMap as OMap
 
 import Data.TreeDiff.Instances.CabalLanguage ()
 import Data.TreeDiff.Instances.CabalSPDX ()
@@ -17,7 +19,6 @@ import Distribution.InstalledPackageInfo           (AbiDependency, ExposedModule
 import Distribution.ModuleName                     (ModuleName)
 import Distribution.PackageDescription
 import Distribution.Simple.Compiler                (DebugInfoLevel, OptimisationLevel, ProfDetailLevel)
-import Distribution.Simple.Flag                    (Flag)
 import Distribution.Simple.InstallDirs
 import Distribution.Simple.InstallDirs.Internal
 import Distribution.Simple.Setup                   (HaddockTarget, TestShowDetails)
@@ -43,7 +44,6 @@ instance (Eq a, Show a) => ToExpr (Condition a) where toExpr = defaultExprViaSho
 instance (Show a, ToExpr b, ToExpr c, Show b, Show c, Eq a, Eq c, Eq b) => ToExpr (CondTree a b c)
 instance (Show a, ToExpr b, ToExpr c, Show b, Show c, Eq a, Eq c, Eq b) => ToExpr (CondBranch a b c)
 instance (ToExpr a) => ToExpr (NubList a)
-instance (ToExpr a) => ToExpr (Flag a)
 instance ToExpr a => ToExpr (NES.NonEmptySet a) where
     toExpr xs = App "NonEmptySet.fromNonEmpty" [toExpr $ NES.toNonEmpty xs]
 
@@ -57,6 +57,35 @@ instance ToExpr Dependency where
 instance ToExpr (SymbolicPathX allowAbs from to)
 
 instance ToExpr a => ToExpr (InstallDirs a)
+
+-- Note: The pattern matching is to ensure this doesn't go unnoticed when new fields are added.
+instance ToExpr GenericPackageDescription where
+  toExpr
+    ( GenericPackageDescription
+      { packageDescription
+      , gpdScannedVersion
+      , genPackageFlags
+      , condLibrary
+      , condSubLibraries
+      , condForeignLibs
+      , condExecutables
+      , condTestSuites
+      , condBenchmarks
+      }
+    ) = Rec
+          "GenericPackageDescription"
+          ( OMap.fromList
+              [ ("packageDescription", toExpr packageDescription)
+              , ("gpdScannedVersion", toExpr gpdScannedVersion)
+              , ("genPackageFlags", toExpr genPackageFlags)
+              , ("condLibrary", toExpr condLibrary)
+              , ("condSubLibraries", toExpr condSubLibraries)
+              , ("condForeignLibs", toExpr condForeignLibs)
+              , ("condExecutables", toExpr condExecutables)
+              , ("condTestSuites", toExpr condTestSuites)
+              , ("condBenchmarks", toExpr condBenchmarks)
+              ]
+          )
 
 instance ToExpr AbiDependency
 instance ToExpr AbiHash
@@ -82,7 +111,6 @@ instance ToExpr FlagName
 instance ToExpr ForeignLib
 instance ToExpr ForeignLibOption
 instance ToExpr ForeignLibType
-instance ToExpr GenericPackageDescription
 instance ToExpr HaddockTarget
 instance ToExpr IncludeRenaming
 instance ToExpr InstalledPackageInfo
@@ -123,7 +151,7 @@ instance ToExpr TestSuiteInterface
 instance ToExpr TestType
 instance ToExpr UnitId
 instance ToExpr UnqualComponentName
-instance ToExpr Verbosity
+instance ToExpr VerbosityFlags
 instance ToExpr VerbosityFlag
 instance ToExpr VerbosityLevel
 

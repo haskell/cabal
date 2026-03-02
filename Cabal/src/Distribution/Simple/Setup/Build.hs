@@ -61,7 +61,7 @@ data BuildFlags = BuildFlags
   deriving (Read, Show, Generic)
 
 pattern BuildCommonFlags
-  :: Flag Verbosity
+  :: Flag VerbosityFlags
   -> Flag (SymbolicPath Pkg (Dir Dist))
   -> Flag (SymbolicPath CWD (Dir Pkg))
   -> Flag (SymbolicPath Pkg File)
@@ -151,7 +151,7 @@ buildOptions progDb showOrParseArgs =
       , option
           []
           ["semaphore"]
-          "semaphore"
+          "Use the specified semaphore so GHC can compile components in parallel"
           buildUseSemaphore
           (\v flags -> flags{buildUseSemaphore = v})
           (reqArg' "SEMAPHORE" Flag flagToList)

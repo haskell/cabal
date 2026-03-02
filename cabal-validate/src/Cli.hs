@@ -198,6 +198,7 @@ resolveOpts opts = do
               , optional (rawRunLibSuite opts && not (null (rawExtraCompilers opts))) LibSuiteExtras
               , optional (rawRunCliTests opts && not (rawLibOnly opts)) CliTests
               , optional (rawRunCliSuite opts && not (rawLibOnly opts)) CliSuite
+              , optional (rawRunSolverTests opts) SolverTests
               , optionals (rawSolverBenchmarks opts) [SolverBenchmarksTests, SolverBenchmarksRun]
               ]
 
@@ -211,6 +212,7 @@ resolveOpts opts = do
             , "Cabal-QuickCheck"
             , "Cabal-tree-diff"
             , "Cabal-described"
+            , "cabal-install-solver"
             ]
           , optionals
               (not (rawLibOnly opts))
@@ -303,6 +305,7 @@ data RawOpts = RawOpts
   , rawRunCliTests :: Bool
   , rawRunLibSuite :: Bool
   , rawRunCliSuite :: Bool
+  , rawRunSolverTests :: Bool
   , rawSolverBenchmarks :: Bool
   , rawHackageTests :: HackageTests
   }
@@ -417,6 +420,11 @@ rawOptsParser =
       False
       "run-cli-suite"
       ( help "Run `cabal-testsuite` with the `cabal-install` executable"
+      )
+    <*> boolOption
+      True
+      "run-solver-tests"
+      ( help "Run `cabal-install-solver` tests"
       )
     <*> boolOption
       False

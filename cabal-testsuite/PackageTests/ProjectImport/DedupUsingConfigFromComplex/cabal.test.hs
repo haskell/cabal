@@ -1,7 +1,8 @@
 import Test.Cabal.Prelude
 import Data.Function ((&))
+import Data.List (isInfixOf)
 
-main = cabalTest . recordMode RecordMarked $ do
+main = cabalTest . flakyIfCI 10927. recordMode RecordMarked $ do
   let log = recordHeader . pure
 
   log "check \"using config from message\" with URI imports"
@@ -11,6 +12,6 @@ main = cabalTest . recordMode RecordMarked $ do
   log "check package directories and locations are reported in order"
 
   readFileVerbatim "errors.expect.txt"
-    >>= flip (assertOn multilineNeedleHaystack) out . normalizePathSeparators
+    >>= flip (assertOn isInfixOf multilineNeedleHaystack) out . normalizePathSeparators
 
   return ()

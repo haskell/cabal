@@ -50,6 +50,7 @@ module Distribution.Simple.Compiler
   , interpretPackageDBStack
   , coercePackageDB
   , coercePackageDBStack
+  , readPackageDb
 
     -- * Support for optimisation levels
   , OptimisationLevel (..)
@@ -84,6 +85,7 @@ module Distribution.Simple.Compiler
   , libraryDynDirSupported
   , libraryVisibilitySupported
   , jsemSupported
+  , reexportedAsSupported
 
     -- * Support for profiling detail levels
   , ProfDetailLevel (..)
@@ -92,17 +94,22 @@ module Distribution.Simple.Compiler
   , showProfDetailLevel
   ) where
 
+import Distribution.Compat.CharParsing
 import Distribution.Compat.Prelude
+import Distribution.Parsec
 import Distribution.Pretty
 import Prelude ()
 
 import Distribution.Compiler
+import Distribution.Package (PackageName)
 import Distribution.Simple.Utils
+import Distribution.Types.UnitId (UnitId)
 import Distribution.Utils.Path
 import Distribution.Version
 
 import Language.Haskell.Extension
 
+import Data.Bool (bool)
 import qualified Data.Map as Map (lookup)
 import System.Directory (canonicalizePath)
 
@@ -119,12 +126,19 @@ data Compiler = Compiler
   -- ^ Supported language standards.
   , compilerExtensions :: [(Extension, Maybe CompilerFlag)]
   -- ^ Supported extensions.
+  , compilerWiredInUnitIds :: Maybe [(PackageName, UnitId)]
+  -- ^ 'UnitId's that the compiler doesn't support reinstalling.
+  -- For instance, when using GHC plugins, one wants to use the exact same
+  -- version of the `ghc` package as the one the compiler was linked against.
+  -- 'Nothing' indicates that the compiler hasn't supplied this
+  -- information and that we should act pessimistically.
   , compilerProperties :: Map String String
   -- ^ A key-value map for properties not covered by the above fields.
   }
   deriving (Eq, Generic, Show, Read)
 
 instance Binary Compiler
+instance NFData Compiler
 instance Structured Compiler
 
 showCompilerId :: Compiler -> String
@@ -177,6 +191,7 @@ compilerInfo c =
     (Just . compilerCompat $ c)
     (Just . map fst . compilerLanguages $ c)
     (Just . map fst . compilerExtensions $ c)
+    (compilerWiredInUnitIds c)
 
 -- ------------------------------------------------------------
 
@@ -200,7 +215,17 @@ data PackageDBX fp
   deriving (Eq, Generic, Ord, Show, Read, Functor, Foldable, Traversable)
 
 instance Binary fp => Binary (PackageDBX fp)
+instance NFData fp => NFData (PackageDBX fp)
 instance Structured fp => Structured (PackageDBX fp)
+
+-- | Parse a PackageDB stack entry
+--
+-- @since 3.7.0.0
+readPackageDb :: String -> Maybe PackageDB
+readPackageDb "clear" = Nothing
+readPackageDb "global" = Just GlobalPackageDB
+readPackageDb "user" = Just UserPackageDB
+readPackageDb other = Just (SpecificPackageDB (makeSymbolicPath other))
 
 -- | We typically get packages from several databases, and stack them
 -- together. This type lets us be explicit about that stacking. For example
@@ -291,21 +316,38 @@ data OptimisationLevel
   deriving (Bounded, Enum, Eq, Generic, Read, Show)
 
 instance Binary OptimisationLevel
+instance NFData OptimisationLevel
 instance Structured OptimisationLevel
+
+instance Parsec OptimisationLevel where
+  parsec = parsecOptimisationLevel
+
+parsecOptimisationLevel :: CabalParsing m => m OptimisationLevel
+parsecOptimisationLevel = boolParser <|> intParser
+  where
+    boolParser = bool NoOptimisation NormalOptimisation <$> parsec
+    intParser = intToOptimisationLevel <$> integral
 
 flagToOptimisationLevel :: Maybe String -> OptimisationLevel
 flagToOptimisationLevel Nothing = NormalOptimisation
 flagToOptimisationLevel (Just s) = case reads s of
-  [(i, "")]
-    | i >= fromEnum (minBound :: OptimisationLevel)
-        && i <= fromEnum (maxBound :: OptimisationLevel) ->
-        toEnum i
-    | otherwise ->
-        error $
-          "Bad optimisation level: "
-            ++ show i
-            ++ ". Valid values are 0..2"
+  [(i, "")] -> intToOptimisationLevel i
   _ -> error $ "Can't parse optimisation level " ++ s
+
+intToOptimisationLevel :: Int -> OptimisationLevel
+intToOptimisationLevel i
+  | i >= minLevel && i <= maxLevel = toEnum i
+  | otherwise =
+      error $
+        "Bad optimisation level: "
+          ++ show i
+          ++ ". Valid values are "
+          ++ show minLevel
+          ++ ".."
+          ++ show maxLevel
+  where
+    minLevel = fromEnum (minBound :: OptimisationLevel)
+    maxLevel = fromEnum (maxBound :: OptimisationLevel)
 
 -- ------------------------------------------------------------
 
@@ -324,7 +366,14 @@ data DebugInfoLevel
   deriving (Bounded, Enum, Eq, Generic, Read, Show)
 
 instance Binary DebugInfoLevel
+instance NFData DebugInfoLevel
 instance Structured DebugInfoLevel
+
+instance Parsec DebugInfoLevel where
+  parsec = parsecDebugInfoLevel
+
+parsecDebugInfoLevel :: CabalParsing m => m DebugInfoLevel
+parsecDebugInfoLevel = flagToDebugInfoLevel . pure <$> parsecToken
 
 flagToDebugInfoLevel :: Maybe String -> DebugInfoLevel
 flagToDebugInfoLevel Nothing = NormalDebugInfo
@@ -432,6 +481,14 @@ jsemSupported comp = case compilerFlavor comp of
   where
     v = compilerVersion comp
 
+-- | Does the compiler support the -reexported-modules "A as B" syntax
+reexportedAsSupported :: Compiler -> Bool
+reexportedAsSupported comp = case compilerFlavor comp of
+  GHC -> v >= mkVersion [9, 12]
+  _ -> False
+  where
+    v = compilerVersion comp
+
 -- | Does this compiler support a package database entry with:
 -- "dynamic-library-dirs"?
 libraryDynDirSupported :: Compiler -> Bool
@@ -500,11 +557,13 @@ profilingVanillaSupported comp = waySupported "p" comp
 
 -- | Is the compiler distributed with profiling dynamic libraries
 profilingDynamicSupported :: Compiler -> Maybe Bool
-profilingDynamicSupported comp =
-  -- Certainly not before this version, as it was not implemented yet.
-  if compilerVersion comp <= mkVersion [9, 11, 0]
-    then Just False
-    else waySupported "p_dyn" comp
+profilingDynamicSupported comp
+  | GHC <- compilerFlavor comp
+  , -- Certainly not before 9.11, as prof+dyn was not implemented yet.
+    compilerVersion comp <= mkVersion [9, 11, 0] =
+      Just False
+  | otherwise =
+      waySupported "p_dyn" comp
 
 -- | Either profiling dynamic is definitely supported or we don't know (so assume
 -- it is)
@@ -561,7 +620,14 @@ data ProfDetailLevel
   deriving (Eq, Generic, Read, Show)
 
 instance Binary ProfDetailLevel
+instance NFData ProfDetailLevel
 instance Structured ProfDetailLevel
+
+instance Parsec ProfDetailLevel where
+  parsec = parsecProfDetailLevel
+
+parsecProfDetailLevel :: CabalParsing m => m ProfDetailLevel
+parsecProfDetailLevel = flagToProfDetailLevel <$> parsecToken
 
 flagToProfDetailLevel :: String -> ProfDetailLevel
 flagToProfDetailLevel "" = ProfDetailDefault

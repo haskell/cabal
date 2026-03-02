@@ -3,6 +3,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
@@ -109,7 +110,7 @@ import Distribution.Simple.Setup
   , CommonSetupFlags (..)
   , ConfigFlags (..)
   , DumpBuildInfo (DumpBuildInfo, NoDumpBuildInfo)
-  , Flag (..)
+  , Flag
   , HaddockFlags (..)
   , TestFlags (..)
   , benchmarkOptions'
@@ -126,6 +127,8 @@ import Distribution.Simple.Setup
   , splitArgs
   , testOptions'
   , toFlag
+  , pattern Flag
+  , pattern NoFlag
   )
 import Distribution.Simple.Utils
   ( debug
@@ -337,7 +340,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
                 <*> subpcs
                 <*> elseClauses
         pure (Just <$> condNode, rest)
-      _ -> (\r -> (pure Nothing, r)) <$> go [] x
+      _ -> (pure Nothing,) <$> go [] x
 
     -- We want a normalized path for @fieldsToConfig@. This eventually surfaces
     -- in solver rejection messages and build messages "this build was affected
@@ -768,6 +771,7 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
       { flagProjectDir = projectConfigProjectDir
       , flagProjectFile = projectConfigProjectFile
       , flagIgnoreProject = projectConfigIgnoreProject
+      , flagProjectFileParser = projectConfigProjectFileParser
       } = projectFlags
 
 -- | Helper used by other conversion functions that returns the
@@ -990,7 +994,6 @@ convertToLegacySharedConfig
           , globalLogsDir = projectConfigLogsDir
           , globalIgnoreExpiry = projectConfigIgnoreExpiry
           , globalHttpTransport = projectConfigHttpTransport
-          , globalNix = mempty
           , globalStoreDir = projectConfigStoreDir
           , globalProgPathExtra = projectConfigProgPathExtra
           }
@@ -1067,6 +1070,7 @@ convertToLegacySharedConfig
           { flagProjectDir = projectConfigProjectDir
           , flagProjectFile = projectConfigProjectFile
           , flagIgnoreProject = projectConfigIgnoreProject
+          , flagProjectFileParser = projectConfigProjectFileParser
           }
 
 convertToLegacyAllPackageConfig :: ProjectConfig -> LegacyPackageConfig
@@ -1440,7 +1444,7 @@ legacySharedConfigFieldDescrs constraintSrc =
           [ commaNewLineListFieldParsec
               "constraints"
               (pretty . fst)
-              (fmap (\constraint -> (constraint, constraintSrc)) parsec)
+              (fmap (,constraintSrc) parsec)
               configExConstraints
               (\v conf -> conf{configExConstraints = v})
           , commaNewLineListFieldParsec
@@ -1843,7 +1847,7 @@ packageRepoSectionDescr =
   FGSectionDescr
     { fgSectionName = "source-repository-package"
     , fgSectionGrammar = sourceRepositoryPackageGrammar
-    , fgSectionGet = map (\x -> ("", x)) . legacyPackagesRepo
+    , fgSectionGet = map ("",) . legacyPackagesRepo
     , fgSectionSet =
         \lineno unused pkgrepo projconf -> do
           unless (null unused) $
@@ -2099,5 +2103,5 @@ monoidFieldParsec name showF readF get' set =
 showTokenQ :: String -> Doc
 showTokenQ "" = Disp.empty
 showTokenQ x@('-' : '-' : _) = Disp.text (show x)
-showTokenQ x@('.' : []) = Disp.text (show x)
+showTokenQ x@['.'] = Disp.text (show x)
 showTokenQ x = showToken x

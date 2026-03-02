@@ -2,13 +2,10 @@
 {-# LANGUAGE CPP                 #-}
 {-# LANGUAGE Rank2Types          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-#if !MIN_VERSION_deepseq(1,4,0)
-{-# OPTIONS_GHC -Wno-orphans #-}
-#endif
+{-# OPTIONS_GHC -Wno-unused-pattern-binds #-} -- pattern match to assert field count
 
 module Main where
 
-import Distribution.Compat.Semigroup
 import Prelude ()
 import Prelude.Compat
 
@@ -23,7 +20,21 @@ import Data.Monoid                                 (Sum (..))
 import Distribution.PackageDescription.Check       (PackageCheck (..), checkPackage)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.PackageDescription.Quirks      (patchQuirks)
+import Distribution.PackageDescription
+  ( GenericPackageDescription(GenericPackageDescription)
+  , packageDescription
+  , gpdScannedVersion
+  , genPackageFlags
+  , condLibrary
+  , condSubLibraries
+  , condForeignLibs
+  , condExecutables
+  , condTestSuites
+  , condBenchmarks
+  )
 import Distribution.Simple.Utils                   (fromUTF8BS, toUTF8BS)
+import Distribution.Fields.ParseResult
+import Distribution.Parsec.Source
 import Numeric                                     (showFFloat)
 import System.Directory                            (getXdgDirectory, XdgDirectory(XdgCache, XdgConfig), getAppUserDataDirectory, doesDirectoryExist)
 import System.Environment                          (lookupEnv)
@@ -152,7 +163,7 @@ readFieldTest fpath bs = case Parsec.readFields bs' of
 parseParsecTest :: Bool -> FilePath -> B.ByteString -> IO ParsecResult
 parseParsecTest keepGoing fpath bs = do
     let (warnings, result) = Parsec.runParseResult $
-                             Parsec.parseGenericPackageDescription bs
+                             withSource (PCabalFile (fpath, bs)) $ Parsec.parseGenericPackageDescription bs
 
     let w | null warnings = 0
           | otherwise     = 1
@@ -163,10 +174,10 @@ parseParsecTest keepGoing fpath bs = do
             return (ParsecResult 1 w 0)
 
         Left (_, errors) | keepGoing -> do
-            traverse_ (putStrLn . Parsec.showPError fpath) errors
+            traverse_ (putStrLn . Parsec.showPErrorWithSource . fmap renderCabalFileSource) errors
             return (ParsecResult 1 w 1)
                          | otherwise -> do
-            traverse_ (putStrLn . Parsec.showPError fpath) errors
+            traverse_ (putStrLn . Parsec.showPErrorWithSource . fmap renderCabalFileSource) errors
             exitFailure
 
 -- | A hook to make queries on Hackage
@@ -197,7 +208,7 @@ instance NFData ParsecResult where
 parseCheckTest :: FilePath -> B.ByteString -> IO CheckResult
 parseCheckTest fpath bs = do
     let (warnings, parsec) = Parsec.runParseResult $
-                             Parsec.parseGenericPackageDescription bs
+                             withSource (PCabalFile (fpath, bs)) $ Parsec.parseGenericPackageDescription bs
     case parsec of
         Right gpd -> do
             let checks = checkPackage gpd
@@ -210,7 +221,7 @@ parseCheckTest fpath bs = do
             -- one for file, many checks
             return (CheckResult 1 (w warnings) 0 0 0 0 0 0 <> foldMap toCheckResult checks)
         Left (_, errors) -> do
-            traverse_ (putStrLn . Parsec.showPError fpath) errors
+            traverse_ (putStrLn . Parsec.showPErrorWithSource . fmap renderCabalFileSource) errors
             exitFailure
 
 -- checkCppFlags :: BuildInfo -> IO BuildInfo
@@ -255,7 +266,20 @@ roundtripTest testFieldsTransform fpath bs = do
     let y = y0 & L.packageDescription . L.description .~ mempty
     let x = x0 & L.packageDescription . L.description .~ mempty
 
-    assertEqual' bs' x y
+    -- Note: The pattern matching is to ensure this doesn't go unnoticed when new fields are added.
+    let checkField field = assertEqual' bs' (field x) (field y)
+    let (GenericPackageDescription _ _ _ _ _ _ _ _ _) = x0
+    sequence_
+      [ checkField packageDescription
+      , checkField gpdScannedVersion
+      , checkField genPackageFlags
+      , checkField condLibrary
+      , checkField condSubLibraries
+      , checkField condForeignLibs
+      , checkField condExecutables
+      , checkField condTestSuites
+      , checkField condBenchmarks
+      ]
 
     -- fromParsecField, "shallow" parser/pretty roundtrip
     when testFieldsTransform $
@@ -304,7 +328,7 @@ roundtripTest testFieldsTransform fpath bs = do
 {- FOURMOLU_DISABLE -}
     parse phase c = do
         let (_, x') = Parsec.runParseResult $
-                      Parsec.parseGenericPackageDescription c
+                      withSource (PCabalFile (fpath, c)) $ Parsec.parseGenericPackageDescription c
         case x' of
             Right gpd -> pure gpd
             Left (_, errs) -> do
@@ -449,12 +473,3 @@ foldIO :: forall a m. (Monoid m, NFData m) => (a -> IO m) -> [a] -> IO m
 foldIO f = go mempty where
     go !acc [] = acc
     go !acc (x:xs) = go (mappend acc (f x)) xs
-
--------------------------------------------------------------------------------
--- Orphans
--------------------------------------------------------------------------------
-
-#if !MIN_VERSION_deepseq(1,4,0)
-instance NFData a => NFData (Sum a) where
-    rnf (Sum a)  = rnf a
-#endif

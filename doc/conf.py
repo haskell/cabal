@@ -13,7 +13,7 @@ import sphinx_rtd_theme
 sys.path.insert(0, os.path.abspath('.'))
 import cabaldomain
 
-version = "3.15.0.0"
+version = "3.17.0.0"
 
 extensions = [
     'sphinx.ext.extlinks',
@@ -51,7 +51,7 @@ primary_domain = 'cabal'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ['.build', "*.gen.rst"]
+exclude_patterns = ['.build', '*.gen.rst', '.venv']
 
 # -- Options for HTML output ---------------------------------------------
 
@@ -63,9 +63,6 @@ html_theme = 'sphinx_rtd_theme'
 if on_rtd:
     html_style = None
     using_rtd_theme = True
-else:
-    import sphinx_rtd_theme
-    html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".

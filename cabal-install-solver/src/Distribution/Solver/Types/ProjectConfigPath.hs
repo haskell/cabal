@@ -9,13 +9,16 @@ module Distribution.Solver.Types.ProjectConfigPath
     , nullProjectConfigPath
     , consProjectConfigPath
     , unconsProjectConfigPath
+    , currentProjectConfigPath
 
     -- * Messages
     , docProjectConfigPath
+    , docProjectImportedBy
     , docProjectConfigFiles
     , cyclicalImportMsg
     , untrimmedUriImportMsg
     , docProjectConfigPathFailReason
+    , quoteUntrimmed
 
     -- * Checks and Normalization
     , isCyclicConfigPath
@@ -38,7 +41,7 @@ import qualified System.FilePath.Posix as Posix
 import qualified System.FilePath.Windows as Windows
 import qualified Data.List.NonEmpty as NE
 import Distribution.Solver.Modular.Version (VR)
-import Distribution.Pretty (prettyShow)
+import Distribution.Pretty (prettyShow, Pretty(..))
 import Distribution.Utils.String (trim)
 import Text.PrettyPrint
 import Distribution.Simple.Utils (ordNub)
@@ -57,6 +60,9 @@ import Distribution.System (OS(Windows), buildOS)
 -- relative to the directory of the project root.
 newtype ProjectConfigPath = ProjectConfigPath (NonEmpty FilePath)
     deriving (Eq, Show, Generic)
+
+instance Pretty ProjectConfigPath where
+  pretty = docProjectConfigPath
 
 -- | Sorts URIs after local file paths and longer file paths after shorter ones
 -- as measured by the number of path segments. If still equal, then sorting is
@@ -111,6 +117,7 @@ instance Ord ProjectConfigPath where
             bImporters = snd $ unconsProjectConfigPath pb
 
 instance Binary ProjectConfigPath
+instance NFData ProjectConfigPath
 instance Structured ProjectConfigPath
 
 -- | Renders the path like this;
@@ -126,6 +133,13 @@ docProjectConfigPath :: ProjectConfigPath -> Doc
 docProjectConfigPath (ProjectConfigPath (p :| [])) = quoteUntrimmed p
 docProjectConfigPath (ProjectConfigPath (p :| ps)) = vcat $ quoteUntrimmed p :
     [ text " " <+> text "imported by:" <+> quoteUntrimmed l | l <- ps ]
+
+-- | Render the paths which imports this config.
+docProjectImportedBy :: ProjectConfigPath -> Doc
+docProjectImportedBy (ProjectConfigPath (_ :| [])) = text ""
+docProjectImportedBy (ProjectConfigPath (_ :| ps)) = vcat $
+    [ text " " <+> text "imported by:" <+> quoteUntrimmed l | l <- ps ]
+
 
 -- | If the path has leading or trailing spaces then show it quoted.
 quoteUntrimmed :: FilePath -> Doc
@@ -232,6 +246,9 @@ consProjectConfigPath p ps = ProjectConfigPath (p <| coerce ps)
 -- | Split the path into the importee and the importer path.
 unconsProjectConfigPath :: ProjectConfigPath -> (FilePath, Maybe ProjectConfigPath)
 unconsProjectConfigPath ps = fmap ProjectConfigPath <$> NE.uncons (coerce ps)
+
+currentProjectConfigPath :: ProjectConfigPath -> FilePath
+currentProjectConfigPath (ProjectConfigPath (p :| _)) = p
 
 -- | Make paths relative to the directory of the root of the project, not
 -- relative to the file they were imported from.

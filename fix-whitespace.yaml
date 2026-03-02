@@ -29,7 +29,7 @@ excluded-dirs:
   - "**/dist*"   # matches every dist* in any directory
   - _darcs
   - .git
-  - .python-sphinx-virtualenv
+  - doc/.venv
   - .stack-work
   - .vscode
 

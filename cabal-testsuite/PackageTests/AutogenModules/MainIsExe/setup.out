@@ -1,0 +1,6 @@
+# Setup configure
+Configuring MainIsExe-0.1...
+# Setup sdist
+Building source dist for MainIsExe-0.1...
+Error: [Cabal-2115]
+MyDummy.hs doesn't exist

@@ -29,7 +29,7 @@ import qualified Text.PrettyPrint as Disp
 -- LicenseExceptionId
 -------------------------------------------------------------------------------
 
--- | SPDX License Exceptions identifiers list v3.25
+-- | SPDX License Exceptions identifiers list v3.26
 data LicenseExceptionId
 {{ licenseIds }}
   deriving (Eq, Ord, Enum, Bounded, Show, Read, Data, Generic)
@@ -44,7 +44,7 @@ instance Binary LicenseExceptionId where
 
 -- note: remember to bump version each time the definition changes
 instance Structured LicenseExceptionId where
-    structure p = set typeVersion 306 $ nominalStructure p
+    structure p = set typeVersion 307 $ nominalStructure p
 
 instance Pretty LicenseExceptionId where
     pretty = Disp.text . licenseExceptionId
@@ -104,6 +104,9 @@ licenseExceptionIdList LicenseListVersion_3_23 =
 licenseExceptionIdList LicenseListVersion_3_25 =
 {{licenseList_perv.v_3_25}}
     ++ bulkOfLicenses
+licenseExceptionIdList LicenseListVersion_3_26 =
+{{licenseList_perv.v_3_26}}
+    ++ bulkOfLicenses
 
 -- | Create a 'LicenseExceptionId' from a 'String'.
 mkLicenseExceptionId :: LicenseListVersion -> String -> Maybe LicenseExceptionId
@@ -115,6 +118,7 @@ mkLicenseExceptionId LicenseListVersion_3_10 s = Map.lookup s stringLookup_3_10
 mkLicenseExceptionId LicenseListVersion_3_16 s = Map.lookup s stringLookup_3_16
 mkLicenseExceptionId LicenseListVersion_3_23 s = Map.lookup s stringLookup_3_23
 mkLicenseExceptionId LicenseListVersion_3_25 s = Map.lookup s stringLookup_3_25
+mkLicenseExceptionId LicenseListVersion_3_26 s = Map.lookup s stringLookup_3_26
 
 stringLookup_3_0 :: Map String LicenseExceptionId
 stringLookup_3_0 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
@@ -147,6 +151,10 @@ stringLookup_3_23 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
 stringLookup_3_25 :: Map String LicenseExceptionId
 stringLookup_3_25 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
     licenseExceptionIdList LicenseListVersion_3_25
+
+stringLookup_3_26 :: Map String LicenseExceptionId
+stringLookup_3_26 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
+    licenseExceptionIdList LicenseListVersion_3_26
 
 --  | License exceptions in all SPDX License lists
 bulkOfLicenses :: [LicenseExceptionId]

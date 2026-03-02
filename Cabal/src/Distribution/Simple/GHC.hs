@@ -41,6 +41,8 @@
 module Distribution.Simple.GHC
   ( getGhcInfo
   , configure
+  , configureCompiler
+  , compilerProgramDb
   , getInstalledPackages
   , getInstalledPackagesMonitorFiles
   , getPackageDBContents
@@ -85,8 +87,8 @@ import Prelude ()
 
 import Control.Arrow ((***))
 import Control.Monad (forM_)
-import Data.List (stripPrefix)
 import qualified Data.Map as Map
+import Data.Maybe (fromJust)
 import Distribution.CabalSpecVersion
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
@@ -153,23 +155,38 @@ import Distribution.Simple.Setup.Build
 -- -----------------------------------------------------------------------------
 -- Configuring
 
+-- | Configure GHC, and then auxiliary programs such as @ghc-pkg@, @haddock@
+-- as well as toolchain programs such as @ar@, @ld.
 configure
   :: Verbosity
   -> Maybe FilePath
+  -- ^ user-specified @ghc@ path (optional)
   -> Maybe FilePath
+  -- ^ user-specified @ghc-pkg@ path (optional)
   -> ProgramDb
   -> IO (Compiler, Maybe Platform, ProgramDb)
 configure verbosity hcPath hcPkgPath conf0 = do
+  (comp, compPlatform, progdb1) <- configureCompiler verbosity hcPath conf0
+  compProgDb <- compilerProgramDb verbosity comp progdb1 hcPkgPath
+  return (comp, compPlatform, compProgDb)
+
+-- | Configure GHC.
+configureCompiler
+  :: Verbosity
+  -> Maybe FilePath
+  -- ^ user-specified @ghc@ path (optional)
+  -> ProgramDb
+  -> IO (Compiler, Maybe Platform, ProgramDb)
+configureCompiler verbosity hcPath conf0 = do
   (ghcProg, ghcVersion, progdb1) <-
     requireProgramVersion
       verbosity
       ghcProgram
       (orLaterVersion (mkVersion [7, 0, 1]))
       (userMaybeSpecifyPath "ghc" hcPath conf0)
-  let implInfo = ghcVersionImplInfo ghcVersion
 
   -- Cabal currently supports GHC less than `maxGhcVersion`
-  let maxGhcVersion = mkVersion [9, 14]
+  let maxGhcVersion = mkVersion [9, 16]
   unless (ghcVersion < maxGhcVersion) $
     warn verbosity $
       "Unknown/unsupported 'ghc' version detected "
@@ -181,6 +198,93 @@ configure verbosity hcPath hcPkgPath conf0 = do
         ++ programPath ghcProg
         ++ " is version "
         ++ prettyShow ghcVersion
+
+  let implInfo = ghcVersionImplInfo ghcVersion
+  languages <- Internal.getLanguages verbosity implInfo ghcProg
+  extensions0 <- Internal.getExtensions verbosity implInfo ghcProg
+
+  ghcInfo <- Internal.getGhcInfo verbosity implInfo ghcProg
+
+  let ghcInfoMap = Map.fromList ghcInfo
+      filterJS = if ghcVersion < mkVersion [9, 8] then filterExt JavaScriptFFI else id
+      extensions =
+        -- workaround https://gitlab.haskell.org/ghc/ghc/-/issues/11214
+        filterJS $
+          -- see 'filterExtTH' comment below
+          filterExtTH $
+            extensions0
+
+      -- starting with GHC 8.0, `TemplateHaskell` will be omitted from
+      -- `--supported-extensions` when it's not available.
+      -- for older GHCs we can use the "Have interpreter" property to
+      -- filter out `TemplateHaskell`
+      filterExtTH
+        | ghcVersion < mkVersion [8]
+        , Just "NO" <- Map.lookup "Have interpreter" ghcInfoMap =
+            filterExt TemplateHaskell
+        | otherwise = id
+
+      filterExt ext = filter ((/= EnableExtension ext) . fst)
+
+      compilerId :: CompilerId
+      compilerId = CompilerId GHC ghcVersion
+
+      projectUnitId :: Maybe String
+      projectUnitId = Map.lookup "Project Unit Id" ghcInfoMap
+
+      -- The @AbiTag@ is the @Project Unit Id@ but with redundant information from the compiler version removed.
+      -- For development versions of the compiler these look like:
+      -- @Project Unit Id@: "ghc-9.13-inplace"
+      -- @compilerId@: "ghc-9.13.20250413"
+      -- So, we need to be careful to only strip the /common/ prefix.
+      -- In this example, @AbiTag@ is "inplace".
+      compilerAbiTag :: AbiTag
+      compilerAbiTag =
+        maybe
+          NoAbiTag
+          AbiTag
+          ( dropWhile (== '-') . stripCommonPrefix (prettyShow compilerId)
+              <$> projectUnitId
+          )
+
+      wiredInUnitIds = do
+        ghcInternalUnitId <- Map.lookup "ghc-internal Unit Id" ghcInfoMap
+        ghcUnitId <- projectUnitId
+        pure
+          [ (mkPackageName "ghc", mkUnitId ghcUnitId)
+          , (mkPackageName "ghc-internal", mkUnitId ghcInternalUnitId)
+          ]
+
+  let comp =
+        Compiler
+          { compilerId
+          , compilerAbiTag
+          , compilerCompat = []
+          , compilerLanguages = languages
+          , compilerExtensions = extensions
+          , compilerProperties = ghcInfoMap
+          , compilerWiredInUnitIds = wiredInUnitIds
+          }
+      compPlatform = Internal.targetPlatform ghcInfo
+  return (comp, compPlatform, progdb1)
+
+-- | Given a configured @ghc@ program, configure auxiliary programs such
+-- as @ghc-pkg@ or @haddock@, as well as toolchain programs such as @ar@, @ld@,
+-- based on:
+--
+--  - the location of the @ghc@ executable,
+--  - toolchain information in the GHC settings file.
+compilerProgramDb
+  :: Verbosity
+  -> Compiler
+  -> ProgramDb
+  -> Maybe FilePath
+  -- ^ user-specified @ghc-pkg@ path (optional)
+  -> IO ProgramDb
+compilerProgramDb verbosity comp progdb1 hcPkgPath = do
+  let
+    ghcProg = fromJust $ lookupProgram ghcProgram progdb1
+    ghcVersion = compilerVersion comp
 
   -- This is slightly tricky, we have to configure ghc first, then we use the
   -- location of ghc to help find ghc-pkg in the case that the user did not
@@ -220,50 +324,15 @@ configure verbosity hcPath hcPkgPath conf0 = do
             addKnownProgram hpcProgram' $
               addKnownProgram runghcProgram' progdb2
 
-  languages <- Internal.getLanguages verbosity implInfo ghcProg
-  extensions0 <- Internal.getExtensions verbosity implInfo ghcProg
-
-  ghcInfo <- Internal.getGhcInfo verbosity implInfo ghcProg
-  let ghcInfoMap = Map.fromList ghcInfo
-      filterJS = if ghcVersion < mkVersion [9, 8] then filterExt JavaScriptFFI else id
-      extensions =
-        -- workaround https://gitlab.haskell.org/ghc/ghc/-/issues/11214
-        filterJS $
-          -- see 'filterExtTH' comment below
-          filterExtTH $
-            extensions0
-
-      -- starting with GHC 8.0, `TemplateHaskell` will be omitted from
-      -- `--supported-extensions` when it's not available.
-      -- for older GHCs we can use the "Have interpreter" property to
-      -- filter out `TemplateHaskell`
-      filterExtTH
-        | ghcVersion < mkVersion [8]
-        , Just "NO" <- Map.lookup "Have interpreter" ghcInfoMap =
-            filterExt TemplateHaskell
-        | otherwise = id
-
-      filterExt ext = filter ((/= EnableExtension ext) . fst)
-
-      compilerId :: CompilerId
-      compilerId = CompilerId GHC ghcVersion
-
-      compilerAbiTag :: AbiTag
-      compilerAbiTag = maybe NoAbiTag AbiTag (Map.lookup "Project Unit Id" ghcInfoMap >>= stripPrefix (prettyShow compilerId <> "-"))
-
-  let comp =
-        Compiler
-          { compilerId
-          , compilerAbiTag
-          , compilerCompat = []
-          , compilerLanguages = languages
-          , compilerExtensions = extensions
-          , compilerProperties = ghcInfoMap
-          }
-      compPlatform = Internal.targetPlatform ghcInfo
-      -- configure gcc and ld
-      progdb4 = Internal.configureToolchain implInfo ghcProg ghcInfoMap progdb3
-  return (comp, compPlatform, progdb4)
+      -- configure gcc, ld, ar etc... based on the paths stored
+      -- in the GHC settings file
+      progdb4 =
+        Internal.configureToolchain
+          (ghcVersionImplInfo ghcVersion)
+          ghcProg
+          (compilerProperties comp)
+          progdb3
+  return progdb4
 
 -- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find
 -- the corresponding tool; e.g. if the tool is ghc-pkg, we try looking
@@ -586,15 +655,16 @@ getInstalledPackagesMonitorFiles verbosity mbWorkDir platform progdb =
 -- Building a library
 
 buildLib
-  :: BuildFlags
+  :: VerbosityHandles
+  -> BuildFlags
   -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> Library
   -> ComponentLocalBuildInfo
   -> IO ()
-buildLib flags numJobs pkg lbi lib clbi =
-  GHC.build numJobs pkg $
+buildLib verbHandles flags numJobs pkg lbi lib clbi =
+  GHC.build numJobs verbHandles pkg $
     PreBuildComponentInputs
       { buildingWhat = BuildNormal flags
       , localBuildInfo = lbi
@@ -602,15 +672,16 @@ buildLib flags numJobs pkg lbi lib clbi =
       }
 
 replLib
-  :: ReplFlags
+  :: VerbosityHandles
+  -> ReplFlags
   -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> Library
   -> ComponentLocalBuildInfo
   -> IO ()
-replLib flags numJobs pkg lbi lib clbi =
-  GHC.build numJobs pkg $
+replLib verbHandles flags numJobs pkg lbi lib clbi =
+  GHC.build numJobs verbHandles pkg $
     PreBuildComponentInputs
       { buildingWhat = BuildRepl flags
       , localBuildInfo = lbi
@@ -650,28 +721,29 @@ buildFLib
   -> ComponentLocalBuildInfo
   -> IO ()
 buildFLib v numJobs pkg lbi flib clbi =
-  GHC.build numJobs pkg $
+  GHC.build numJobs (verbosityHandles v) pkg $
     PreBuildComponentInputs
       { buildingWhat =
           BuildNormal $
             mempty
               { buildCommonFlags =
-                  mempty{setupVerbosity = toFlag v}
+                  mempty{setupVerbosity = toFlag $ verbosityFlags v}
               }
       , localBuildInfo = lbi
       , targetInfo = TargetInfo clbi (CFLib flib)
       }
 
 replFLib
-  :: ReplFlags
+  :: VerbosityHandles
+  -> ReplFlags
   -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> ForeignLib
   -> ComponentLocalBuildInfo
   -> IO ()
-replFLib replFlags njobs pkg lbi flib clbi =
-  GHC.build njobs pkg $
+replFLib verbHandles replFlags njobs pkg lbi flib clbi =
+  GHC.build njobs verbHandles pkg $
     PreBuildComponentInputs
       { buildingWhat = BuildRepl replFlags
       , localBuildInfo = lbi
@@ -688,28 +760,29 @@ buildExe
   -> ComponentLocalBuildInfo
   -> IO ()
 buildExe v njobs pkg lbi exe clbi =
-  GHC.build njobs pkg $
+  GHC.build njobs (verbosityHandles v) pkg $
     PreBuildComponentInputs
       { buildingWhat =
           BuildNormal $
             mempty
               { buildCommonFlags =
-                  mempty{setupVerbosity = toFlag v}
+                  mempty{setupVerbosity = toFlag $ verbosityFlags v}
               }
       , localBuildInfo = lbi
       , targetInfo = TargetInfo clbi (CExe exe)
       }
 
 replExe
-  :: ReplFlags
+  :: VerbosityHandles
+  -> ReplFlags
   -> Flag ParStrat
   -> PackageDescription
   -> LocalBuildInfo
   -> Executable
   -> ComponentLocalBuildInfo
   -> IO ()
-replExe replFlags njobs pkg lbi exe clbi =
-  GHC.build njobs pkg $
+replExe verbHandles replFlags njobs pkg lbi exe clbi =
+  GHC.build njobs verbHandles pkg $
     PreBuildComponentInputs
       { buildingWhat = BuildRepl replFlags
       , localBuildInfo = lbi
@@ -732,7 +805,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
     platform = hostPlatform lbi
     mbWorkDir = mbWorkDirLBI lbi
     vanillaArgs =
-      (Internal.componentGhcOptions verbosity lbi libBi clbi (componentBuildDir lbi clbi))
+      (Internal.componentGhcOptions (verbosityLevel verbosity) lbi libBi clbi (componentBuildDir lbi clbi))
         `mappend` mempty
           { ghcOptMode = toFlag GhcModeAbiHash
           , ghcOptInputModules = toNubListR $ exposedModules lib
@@ -871,7 +944,7 @@ installFLib verbosity lbi targetDir builtDir _pkg flib =
         -- directory it's created in.
         -- Finally, we first create the symlinks in a temporary
         -- directory and then rename to simulate 'ln --force'.
-        withTempDirectory verbosity dstDir nm $ \tmpDir -> do
+        withTempDirectory dstDir nm $ \tmpDir -> do
             let link1 = flibBuildName lbi flib
                 link2 = "lib" ++ nm <.> "so"
             createSymbolicLink name (tmpDir </> link1)

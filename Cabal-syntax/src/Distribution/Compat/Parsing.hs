@@ -58,6 +58,7 @@ import Control.Monad.Trans.Writer.Lazy as Lazy
 import Control.Monad.Trans.Writer.Strict as Strict
 import Data.Foldable (asum)
 
+import Control.Monad (replicateM)
 import qualified Data.List.NonEmpty as NE
 import qualified Text.Parsec as Parsec
 
@@ -141,7 +142,7 @@ endBy p sep = many (p <* sep)
 count :: Applicative m => Int -> m a -> m [a]
 count n p
   | n <= 0 = pure []
-  | otherwise = sequenceA (replicate n p)
+  | otherwise = replicateM n p
 {-# INLINE count #-}
 
 -- | @chainr p op x@ parses /zero/ or more occurrences of @p@,

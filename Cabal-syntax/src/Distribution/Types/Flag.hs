@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TupleSections #-}
 
 module Distribution.Types.Flag
   ( -- * Package flag
@@ -170,7 +171,7 @@ mkFlagAssignment :: [(FlagName, Bool)] -> FlagAssignment
 mkFlagAssignment =
   FlagAssignment
     . Map.fromListWith (flip combineFlagValues)
-    . fmap (fmap (\b -> (1, b)))
+    . fmap (fmap (1,))
 
 -- | Deconstruct a 'FlagAssignment' into a list of flag/value pairs.
 --

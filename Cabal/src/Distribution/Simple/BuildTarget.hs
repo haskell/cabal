@@ -3,6 +3,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TupleSections #-}
 
 -----------------------------------------------------------------------------
 
@@ -40,6 +41,7 @@ module Distribution.Simple.BuildTarget
   , reportBuildTargetProblems
   ) where
 
+import Data.Bifunctor (second)
 import Distribution.Compat.Prelude
 import Prelude ()
 
@@ -228,12 +230,12 @@ readUserBuildTarget targetstr =
 
     tokens :: CabalParsing m => m (String, Maybe (String, Maybe String))
     tokens =
-      (\s -> (s, Nothing)) <$> parsecHaskellString
+      (,Nothing) <$> parsecHaskellString
         <|> (,) <$> token <*> P.optional (P.char ':' *> tokens2)
 
     tokens2 :: CabalParsing m => m (String, Maybe String)
     tokens2 =
-      (\s -> (s, Nothing)) <$> parsecHaskellString
+      (,Nothing) <$> parsecHaskellString
         <|> (,) <$> token <*> P.optional (P.char ':' *> (parsecHaskellString <|> token))
 
     token :: CabalParsing m => m String
@@ -407,7 +409,7 @@ reportBuildTargetProblems verbosity problems = do
     targets ->
       dieWithException verbosity $
         UnknownBuildTarget $
-          map (\(target, nosuch) -> (showUserBuildTarget target, nosuch)) targets
+          map (first showUserBuildTarget) targets
 
   case [(t, ts) | BuildTargetAmbiguous t ts <- problems] of
     [] -> return ()
@@ -652,7 +654,7 @@ matchComponentKindAndName cs ckind str =
   orNoSuchThing (showComponentKind ckind ++ " component") str $
     increaseConfidenceFor $
       matchInexactly
-        (\(ck, cn) -> (ck, caseFold cn))
+        (second caseFold)
         [((cinfoKind c, cinfoStrName c), c) | c <- cs]
         (ckind, str)
 

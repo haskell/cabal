@@ -85,6 +85,16 @@ architecture and version information from, which will force some
 commands (update, sdist) to require ghc present where otherwise it
 would not be necessitated.
 
+One use case for imports is to specify a `Stackage <https://www.stackage.org/>`
+snapshot, so that your cabal project can use the same set of packages as
+that snapshot. To use the ``lts-21.25`` resolver, you can write
+``import: https://www.stackage.org/lts-21.25/cabal.config`` in your
+``cabal.project``.
+
+There are a number of limitations that come with this approach however; please
+see :ref:`How can I have a reproducible set of versions for my dependencies?<how reproducible>` for
+more information.
+
 Specifying the local packages
 -----------------------------
 
@@ -400,6 +410,22 @@ package, and thus apply globally:
     look for the file relative to the current working directory,
     and then for the parent directory, until the project file is
     found or we have hit the top of the user's home directory.
+
+    This option can only be specified from the command line.
+
+.. _cmdoption-project-file-parser:
+.. option:: --project-file-parser=PARSER
+
+    :since: 3.18
+
+    Specifies the parser to use for reading the project file. The available
+    parsers are:
+
+    * ``legacy`` - the old parser (will be removed in a future release)
+    * ``default`` - the default parser (uses ``fallback`` unless compiled with ``-f+legacy-comparison``)
+    * ``parsec`` - the new parser using Parsec
+    * ``fallback`` - the new parser using Parsec, but falling back to the old parser if it fails
+    * ``compare`` - the new parser using Parsec, but comparing the results with the old parser
 
     This option can only be specified from the command line.
 
@@ -957,7 +983,7 @@ feature was added.
     The command line variant of this flag is ``--configure-option=arg``,
     which can be specified multiple times to pass multiple options.
 
-.. cfg-field:: compiler: ghc, ghcjs, jhc, lhc, uhc or haskell-suite
+.. cfg-field:: compiler: ghc, ghcjs, jhc, lhc, or uhc
                --compiler=compiler
     :synopsis: Compiler to build with.
 
@@ -1814,7 +1840,7 @@ Advanced global configuration options
     ``--build-summary=TEMPLATE``.
 
 Undocumented fields: ``root-cmd``, ``symlink-bindir``, ``build-log``,
-``remote-build-reporting``, ``report-planned-failure``, ``offline``.
+``remote-build-reporting``, ``report-planning-failure``, ``offline``.
 
 Advanced solver options
 ^^^^^^^^^^^^^^^^^^^^^^^

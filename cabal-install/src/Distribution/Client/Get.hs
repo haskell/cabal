@@ -1,6 +1,4 @@
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
+{-# LANGUAGE PatternSynonyms #-}
 
 -- |
 -- Module      :  Distribution.Client.Get
@@ -26,9 +24,6 @@ module Distribution.Client.Get
 
 import Distribution.Client.Compat.Prelude hiding (get)
 import Distribution.Client.Types.SourceRepo (SourceRepoProxy, SourceRepositoryPackage (..), srpToProxy)
-import Distribution.Compat.Directory
-  ( listDirectory
-  )
 import Distribution.Package
   ( PackageId
   , packageId
@@ -39,10 +34,10 @@ import Distribution.Simple.Program
   ( programName
   )
 import Distribution.Simple.Setup
-  ( Flag (..)
-  , flagToMaybe
+  ( flagToMaybe
   , fromFlag
   , fromFlagOrDefault
+  , pattern NoFlag
   )
 import Distribution.Simple.Utils
   ( dieWithException
@@ -85,6 +80,7 @@ import System.Directory
   ( createDirectoryIfMissing
   , doesDirectoryExist
   , doesFileExist
+  , listDirectory
   )
 import System.FilePath
   ( addTrailingPathSeparator

@@ -60,6 +60,7 @@ data TestShowDetails = Never | Failures | Always | Streaming | Direct
   deriving (Eq, Ord, Enum, Bounded, Generic, Show)
 
 instance Binary TestShowDetails
+instance NFData TestShowDetails
 instance Structured TestShowDetails
 
 knownTestShowDetails :: [TestShowDetails]
@@ -85,7 +86,7 @@ instance Monoid TestShowDetails where
   mappend = (<>)
 
 instance Semigroup TestShowDetails where
-  a <> b = if a < b then b else a
+  a <> b = max a b
 
 data TestFlags = TestFlags
   { testCommonFlags :: !CommonSetupFlags
@@ -101,7 +102,7 @@ data TestFlags = TestFlags
   deriving (Show, Generic)
 
 pattern TestCommonFlags
-  :: Flag Verbosity
+  :: Flag VerbosityFlags
   -> Flag (SymbolicPath Pkg (Dir Dist))
   -> Flag (SymbolicPath CWD (Dir Pkg))
   -> Flag (SymbolicPath Pkg File)
@@ -245,7 +246,8 @@ testOptions' showOrParseArgs =
         []
         ["test-options"]
         ( "give extra options to test executables "
-            ++ "(name templates can use $pkgid, $compiler, "
+            ++ "(split on spaces, use \"\" to prevent splitting; "
+            ++ "name templates can use $pkgid, $compiler, "
             ++ "$os, $arch, $test-suite)"
         )
         testOptions
@@ -259,7 +261,7 @@ testOptions' showOrParseArgs =
         []
         ["test-option"]
         ( "give extra option to test executables "
-            ++ "(no need to quote options containing spaces, "
+            ++ "(passed directly as a single argument; "
             ++ "name template can use $pkgid, $compiler, "
             ++ "$os, $arch, $test-suite)"
         )

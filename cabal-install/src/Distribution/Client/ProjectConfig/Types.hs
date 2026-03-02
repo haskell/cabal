@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
@@ -10,6 +11,8 @@ module Distribution.Client.ProjectConfig.Types
   , ProjectConfigShared (..)
   , ProjectConfigProvenance (..)
   , PackageConfig (..)
+  , ProjectFileParser (..)
+  , defaultProjectFileParser
 
     -- * Resolving configuration
   , SolverSettings (..)
@@ -97,6 +100,7 @@ import Distribution.Version
 import qualified Data.Map as Map
 import Distribution.Solver.Types.ProjectConfigPath (ProjectConfigPath)
 import Distribution.Types.ParStrat
+import Distribution.Verbosity (VerbosityFlags)
 
 -------------------------------
 -- Project config types
@@ -158,7 +162,7 @@ data ProjectConfig = ProjectConfig
 -- does not need to be tracked for changes since it does not affect the
 -- outcome.
 data ProjectConfigBuildOnly = ProjectConfigBuildOnly
-  { projectConfigVerbosity :: Flag Verbosity
+  { projectConfigVerbosity :: Flag VerbosityFlags
   , projectConfigDryRun :: Flag Bool
   , projectConfigOnlyDeps :: Flag Bool
   , projectConfigOnlyDownload :: Flag Bool
@@ -168,6 +172,7 @@ data ProjectConfigBuildOnly = ProjectConfigBuildOnly
   , projectConfigReportPlanningFailure :: Flag Bool
   , projectConfigSymlinkBinDir :: Flag FilePath
   , projectConfigNumJobs :: Flag (Maybe Int)
+  -- ^ Use 'Just n' for number of jobs, 'Nothing' for number of jobs equal to the number of CPUs and 'NoFlag' if flag is not given.
   , projectConfigUseSemaphore :: Flag Bool
   , projectConfigKeepGoing :: Flag Bool
   , projectConfigOfflineMode :: Flag Bool
@@ -187,6 +192,7 @@ data ProjectConfigShared = ProjectConfigShared
   , projectConfigConfigFile :: Flag FilePath
   , projectConfigProjectDir :: Flag FilePath
   , projectConfigProjectFile :: Flag FilePath
+  , projectConfigProjectFileParser :: Flag ProjectFileParser
   , projectConfigIgnoreProject :: Flag Bool
   , projectConfigHcFlavor :: Flag CompilerFlavor
   , projectConfigHcPath :: Flag FilePath
@@ -236,6 +242,22 @@ data ProjectConfigShared = ProjectConfigShared
   -- projectConfigUpgradeDeps       :: Flag Bool
   }
   deriving (Eq, Show, Generic)
+
+data ProjectFileParser
+  = LegacyParser
+  | ParsecParser
+  | FallbackParser
+  | CompareParser
+  deriving (Eq, Show, Generic)
+
+instance NFData ProjectFileParser
+
+defaultProjectFileParser :: ProjectFileParser
+#ifdef LEGACY_COMPARISON
+defaultProjectFileParser = CompareParser
+#else
+defaultProjectFileParser = FallbackParser
+#endif
 
 -- | Specifies the provenance of project configuration, whether defaults were
 -- used or if the configuration was read from an explicit file path.
@@ -327,12 +349,27 @@ instance Binary ProjectConfigBuildOnly
 instance Binary ProjectConfigShared
 instance Binary ProjectConfigProvenance
 instance Binary PackageConfig
+instance Binary ProjectFileParser
 
 instance Structured ProjectConfig
 instance Structured ProjectConfigBuildOnly
 instance Structured ProjectConfigShared
 instance Structured ProjectConfigProvenance
 instance Structured PackageConfig
+instance Structured ProjectFileParser
+
+instance NFData ProjectConfigToParse where
+  rnf (ProjectConfigToParse bs) = rnf bs
+
+instance NFData ProjectConfig
+instance NFData ProjectConfigBuildOnly
+instance NFData ProjectConfigShared
+
+instance NFData ProjectConfigProvenance where
+  rnf Implicit = ()
+  rnf (Explicit path) = rnf path
+
+instance NFData PackageConfig
 
 -- | Newtype wrapper for 'Map' that provides a 'Monoid' instance that takes
 -- the last value rather than the first value for overlapping keys.
@@ -340,6 +377,8 @@ newtype MapLast k v = MapLast {getMapLast :: Map k v}
   deriving (Eq, Show, Functor, Generic, Binary)
 
 instance (Structured k, Structured v) => Structured (MapLast k v)
+
+instance (NFData k, NFData v) => NFData (MapLast k v)
 
 instance Ord k => Monoid (MapLast k v) where
   mempty = MapLast Map.empty
@@ -356,6 +395,8 @@ newtype MapMappend k v = MapMappend {getMapMappend :: Map k v}
   deriving (Eq, Show, Functor, Generic, Binary)
 
 instance (Structured k, Structured v) => Structured (MapMappend k v)
+
+instance (NFData k, NFData v) => NFData (MapMappend k v)
 
 instance (Semigroup v, Ord k) => Monoid (MapMappend k v) where
   mempty = MapMappend Map.empty
@@ -441,6 +482,7 @@ data SolverSettings = SolverSettings
   deriving (Eq, Show, Generic)
 
 instance Binary SolverSettings
+instance NFData SolverSettings
 instance Structured SolverSettings
 
 -- | Resolved configuration for things that affect how we build and not the
@@ -480,3 +522,6 @@ data BuildTimeSettings = BuildTimeSettings
   , buildSettingProgPathExtra :: [FilePath]
   , buildSettingHaddockOpen :: Bool
   }
+  deriving (Generic)
+
+instance NFData BuildTimeSettings

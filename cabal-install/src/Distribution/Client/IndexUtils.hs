@@ -6,6 +6,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 
 -- |
 -- Module      :  Distribution.Client.IndexUtils
@@ -133,11 +134,10 @@ import Distribution.Client.Utils
   ( byteStringToFilePath
   , tryReadAddSourcePackageDesc
   )
-import Distribution.Compat.Directory (listDirectory)
 import Distribution.Compat.Time (getFileAge, getModTime)
 import Distribution.Utils.Generic (fstOf3)
 import Distribution.Utils.Structured (Structured (..), nominalStructure, structuredDecodeFileOrFail, structuredEncodeFile)
-import System.Directory (doesDirectoryExist, doesFileExist)
+import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath
   ( normalise
   , splitDirectories
@@ -166,7 +166,7 @@ getInstalledPackages
 getInstalledPackages verbosity comp packageDbs progdb =
   Configure.getInstalledPackages verbosity' comp Nothing (coercePackageDBStack packageDbs) progdb
   where
-    verbosity' = lessVerbose verbosity
+    verbosity' = modifyVerbosityFlags lessVerbose verbosity
 
 -- | Get filename base (i.e. without file extension) for index-related files
 --
@@ -257,7 +257,7 @@ getSourcePackagesAtIndexState verbosity repoCtxt _ _
   | null (repoContextRepos repoCtxt) = do
       -- In the test suite, we routinely don't have any remote package
       -- servers, so don't bleat about it
-      warn (verboseUnmarkOutput verbosity) $
+      warn (modifyVerbosityFlags verboseUnmarkOutput verbosity) $
         "No remote package servers have been specified. Usually "
           ++ "you would have one specified in the config file."
       return
@@ -353,7 +353,7 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState mb_activeRepos = do
 
   pkgss' <- case organizeByRepos activeRepos rdRepoName pkgss of
     Right x -> return x
-    Left err -> warn verbosity err >> return (map (\x -> (x, CombineStrategyMerge)) pkgss)
+    Left err -> warn verbosity err >> return (map (,CombineStrategyMerge) pkgss)
 
   let activeRepos' :: ActiveRepos
       activeRepos' =
@@ -1284,7 +1284,7 @@ hashConsCache cache0 =
     go pns pvs (x : xs) = x : go pns pvs xs
 
     mapIntern :: Ord k => k -> Map.Map k k -> (k, Map.Map k k)
-    mapIntern k m = maybe (k, Map.insert k k m) (\k' -> (k', m)) (Map.lookup k m)
+    mapIntern k m = maybe (k, Map.insert k k m) (,m) (Map.lookup k m)
 
 -- | Cabal caches various information about the Hackage index
 data Cache = Cache

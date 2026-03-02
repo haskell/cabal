@@ -1,10 +1,4 @@
 # cabal v2-configure
-Configuration is affected by the following files:
-- cabal.project
-- cabal.project.local
 'cabal.project.local' already exists, backing it up to 'cabal.project.local~'.
 # cabal v2-configure
-Configuration is affected by the following files:
-- foo.project
-- foo.project.local
 'foo.project.local' already exists, backing it up to 'foo.project.local~'.

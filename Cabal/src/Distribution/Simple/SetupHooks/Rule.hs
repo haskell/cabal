@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
@@ -124,11 +123,7 @@ import Control.Monad.Trans
   )
 import qualified Control.Monad.Trans.Reader as Reader
 import qualified Control.Monad.Trans.State as State
-#if MIN_VERSION_transformers(0,5,6)
 import qualified Control.Monad.Trans.Writer.CPS as Writer
-#else
-import qualified Control.Monad.Trans.Writer.Strict as Writer
-#endif
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map

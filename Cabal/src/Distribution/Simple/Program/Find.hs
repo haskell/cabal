@@ -46,7 +46,7 @@ import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Verbosity
 
-import qualified System.Directory as Directory
+import System.Directory
   ( findExecutable
   )
 import System.FilePath as FilePath
@@ -204,29 +204,6 @@ getSystemSearchPath = fmap nub $ do
     return path
 #else
     FilePath.getSearchPath
-#endif
-
-#ifdef MIN_VERSION_directory
-#if MIN_VERSION_directory(1,2,1)
-#define HAVE_directory_121
-#endif
-#endif
-
-findExecutable :: FilePath -> IO (Maybe FilePath)
-#ifdef HAVE_directory_121
-findExecutable = Directory.findExecutable
-#else
-findExecutable prog = do
-      -- With directory < 1.2.1 'findExecutable' doesn't check that the path
-      -- really refers to an executable.
-      mExe <- Directory.findExecutable prog
-      case mExe of
-        Just exe -> do
-          exeExists <- doesExecutableExist exe
-          if exeExists
-            then return mExe
-            else return Nothing
-        _     -> return mExe
 #endif
 
 -- | Make a simple named program.

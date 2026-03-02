@@ -56,8 +56,10 @@ import Language.Haskell.Extension
 import Distribution.Version (Version, mkVersion', nullVersion)
 
 import qualified Distribution.Compat.CharParsing as P
+import Distribution.Package (PackageName)
 import Distribution.Parsec (Parsec (..))
 import Distribution.Pretty (Pretty (..), prettyShow)
+import Distribution.Types.UnitId (UnitId)
 import qualified System.Info (compilerName, compilerVersion)
 import qualified Text.PrettyPrint as Disp
 
@@ -76,7 +78,6 @@ data CompilerFlavor
   | -- | @since 3.12.1.0
     -- MicroHS, see https://github.com/augustss/MicroHs
     MHS
-  | HaskellSuite String -- string is the id of the actual compiler
   | OtherCompiler String
   deriving (Generic, Show, Read, Eq, Ord, Data)
 
@@ -90,7 +91,6 @@ knownCompilerFlavors =
 
 instance Pretty CompilerFlavor where
   pretty (OtherCompiler name) = Disp.text name
-  pretty (HaskellSuite name) = Disp.text name
   pretty NHC = Disp.text "nhc98"
   pretty other = Disp.text (lowercase (show other))
 
@@ -215,6 +215,12 @@ data CompilerInfo = CompilerInfo
   -- ^ Supported language standards, if known.
   , compilerInfoExtensions :: Maybe [Extension]
   -- ^ Supported extensions, if known.
+  , compilerInfoWiredInUnitIds :: Maybe [(PackageName, UnitId)]
+  -- ^ 'UnitId's that the compiler doesn't support reinstalling.
+  -- 'Nothing' indicates that the compiler hasn't supplied this
+  -- information and that we should act pessimistically.
+  -- For instance, when using GHC plugins, one wants to use the exact same
+  -- version of the `ghc` package as the one the compiler was linked against.
   }
   deriving (Generic, Show, Read)
 
@@ -226,6 +232,7 @@ data AbiTag
   deriving (Eq, Generic, Show, Read)
 
 instance Binary AbiTag
+instance NFData AbiTag
 instance Structured AbiTag
 
 instance Pretty AbiTag where
@@ -246,4 +253,4 @@ abiTagString (AbiTag tag) = tag
 --   compiler id's.
 unknownCompilerInfo :: CompilerId -> AbiTag -> CompilerInfo
 unknownCompilerInfo compilerId abiTag =
-  CompilerInfo compilerId abiTag (Just []) Nothing Nothing
+  CompilerInfo compilerId abiTag (Just []) Nothing Nothing Nothing

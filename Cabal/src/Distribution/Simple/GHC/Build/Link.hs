@@ -7,9 +7,11 @@ module Distribution.Simple.GHC.Build.Link where
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Control.Monad
 import Control.Monad.IO.Class
 import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.Set as Set
+import Distribution.Backpack
 import Distribution.Compat.Binary (encode)
 import Distribution.Compat.ResponseFile
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
@@ -23,6 +25,7 @@ import Distribution.Pretty
 import Distribution.Simple.Build.Inputs
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
+import Distribution.Simple.Errors
 import Distribution.Simple.GHC.Build.Modules
 import Distribution.Simple.GHC.Build.Utils (exeTargetName, flibBuildName, flibTargetName, withDynFLib)
 import Distribution.Simple.GHC.ImplInfo
@@ -64,6 +67,8 @@ import System.FilePath
 linkOrLoadComponent
   :: ConfiguredProgram
   -- ^ The configured GHC program that will be used for linking
+  -> VerbosityHandles
+  -- ^ Handles used for logging
   -> PackageDescription
   -- ^ The package description containing the component being built
   -> [SymbolicPath Pkg File]
@@ -82,13 +87,14 @@ linkOrLoadComponent
   -> IO ()
 linkOrLoadComponent
   ghcProg
+  verbHandles
   pkg_descr
   extraSources
   (buildTargetDir, targetDir)
   ((wantedLibWays, wantedFLibWay, wantedExeWay), buildOpts)
   pbci = do
     let
-      verbosity = buildVerbosity pbci
+      verbosity = mkVerbosity verbHandles $ buildVerbosity pbci
       target = targetInfo pbci
       component = buildComponent pbci
       what = buildingWhat pbci
@@ -190,6 +196,7 @@ linkOrLoadComponent
           warn verbosity "No exposed modules"
         runReplOrWriteFlags
           ghcProg
+          verbHandles
           lbi
           replFlags
           replOpts_final
@@ -473,7 +480,15 @@ linkLibrary buildTargetDir cleanedExtraLibDirs pkg_descr verbosity runGhcProg li
   -- This would be simpler by not adding every object to the invocation, and
   -- rather using module names.
   unless (null staticObjectFiles) $ do
-    info verbosity (show (ghcOptPackages (Internal.componentGhcOptions verbosity lbi libBi clbi buildTargetDir)))
+    info verbosity $
+      show $
+        ghcOptPackages $
+          Internal.componentGhcOptions
+            (verbosityLevel verbosity)
+            lbi
+            libBi
+            clbi
+            buildTargetDir
     traverse_ linkWay wantedWays
 
 -- | Link the executable resulting from building this component, be it an
@@ -723,7 +738,7 @@ extractRtsInfo lbi =
 -- threaded RTS. This is used to determine which RTS to link against when
 -- building a foreign library with a GHC without support for @-flink-rts@.
 hasThreaded :: BuildInfo -> Bool
-hasThreaded bi = elem "-threaded" ghc
+hasThreaded bi = "-threaded" `elem` ghc
   where
     PerCompilerFlavor ghc _ = options bi
 
@@ -731,26 +746,28 @@ hasThreaded bi = elem "-threaded" ghc
 -- GHCi with the GHC options Cabal elaborated to load the component interactively.
 runReplOrWriteFlags
   :: ConfiguredProgram
+  -> VerbosityHandles
   -> LocalBuildInfo
   -> ReplFlags
   -> GhcOptions
   -> PackageName
   -> TargetInfo
   -> IO ()
-runReplOrWriteFlags ghcProg lbi rflags ghcOpts pkg_name target =
+runReplOrWriteFlags ghcProg verbHandles lbi rflags ghcOpts pkg_name target =
   let bi = componentBuildInfo $ targetComponent target
       clbi = targetCLBI target
+      cname = componentName (targetComponent target)
       comp = compiler lbi
       platform = hostPlatform lbi
       common = configCommonFlags $ configFlags lbi
       mbWorkDir = mbWorkDirLBI lbi
-      verbosity = fromFlag $ setupVerbosity common
+      verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
       tempFileOptions = commonSetupTempFileOptions common
    in case replOptionsFlagOutput (replReplOptions rflags) of
-        NoFlag ->
-          runGHCWithResponseFile
-            "ghc.rsp"
-            Nothing
+        NoFlag -> do
+          -- If a specific GHC implementation is specified, use it
+          runReplProgram
+            (flagToMaybe $ replWithRepl (replReplOptions rflags))
             tempFileOptions
             verbosity
             ghcProg
@@ -761,21 +778,32 @@ runReplOrWriteFlags ghcProg lbi rflags ghcOpts pkg_name target =
         Flag out_dir -> do
           let uid = componentUnitId clbi
               this_unit = prettyShow uid
+              getOpenModName (OpenModule _ mn) = Just mn
+              getOpenModName (OpenModuleVar{}) = Nothing
               reexported_modules =
-                [ mn | LibComponentLocalBuildInfo{componentExposedModules = exposed_mods} <- [clbi], IPI.ExposedModule mn (Just{}) <- exposed_mods
+                [ (from_mn, to_mn) | LibComponentLocalBuildInfo{componentExposedModules = exposed_mods} <- [clbi], IPI.ExposedModule to_mn (Just m) <- exposed_mods, Just from_mn <- [getOpenModName m]
                 ]
+              renderReexportedModule (from_mn, to_mn)
+                | reexportedAsSupported comp =
+                    pure $ prettyShow from_mn ++ " as " ++ prettyShow to_mn
+                | otherwise =
+                    if from_mn == to_mn
+                      then pure $ prettyShow to_mn
+                      else dieWithException verbosity (MultiReplDoesNotSupportComplexReexportedModules pkg_name cname)
               hidden_modules = otherModules bi
-              extra_opts =
-                concat $
-                  [ ["-this-package-name", prettyShow pkg_name]
-                  , case mbWorkDir of
-                      Nothing -> []
-                      Just wd -> ["-working-dir", getSymbolicPath wd]
-                  ]
-                    ++ [ ["-reexported-module", prettyShow m] | m <- reexported_modules
-                       ]
-                    ++ [ ["-hidden-module", prettyShow m] | m <- hidden_modules
-                       ]
+              render_extra_opts = do
+                rexp_mods <- mapM renderReexportedModule reexported_modules
+                pure $
+                  concat $
+                    [ ["-this-package-name", prettyShow pkg_name]
+                    , case mbWorkDir of
+                        Nothing -> []
+                        Just wd -> ["-working-dir", getSymbolicPath wd]
+                    ]
+                      ++ [ ["-reexported-module", m] | m <- rexp_mods
+                         ]
+                      ++ [ ["-hidden-module", prettyShow m] | m <- hidden_modules
+                         ]
           -- Create "paths" subdirectory if it doesn't exist. This is where we write
           -- information about how the PATH was augmented.
           createDirectoryIfMissing False (out_dir </> "paths")
@@ -783,6 +811,7 @@ runReplOrWriteFlags ghcProg lbi rflags ghcOpts pkg_name target =
           writeFileAtomic (out_dir </> "paths" </> this_unit) (encode ghcProg)
           -- Write out options for this component into a file ready for loading into
           -- the multi-repl
+          extra_opts <- render_extra_opts
           writeFileAtomic (out_dir </> this_unit) $
             BS.pack $
               escapeArgs $
