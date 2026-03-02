@@ -133,7 +133,7 @@ combine f t
     unDiff (Diff.Both _ a) = a -- important we prefer latter versions!
 
     addTags :: a -> (a, Set.Set tag)
-    addTags a = (a, fromMaybe Set.empty (Map.lookup (f a) tags))
+    addTags a = (a, Map.findWithDefault Set.empty (f a) tags)
 
     process :: tag -> [a] -> [a]
     process tag as = map unDiff $ Diff.getDiffBy (\x y -> f x == f y) (t tag) as
