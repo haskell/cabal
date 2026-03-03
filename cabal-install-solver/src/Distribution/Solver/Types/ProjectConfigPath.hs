@@ -6,6 +6,7 @@ module Distribution.Solver.Types.ProjectConfigPath
     -- * Project Config Path Manipulation
       ProjectConfigPath(..)
     , projectConfigPathRoot
+    , projectConfigPathCurrent
     , nullProjectConfigPath
     , consProjectConfigPath
     , unconsProjectConfigPath
@@ -214,8 +215,26 @@ docProjectConfigPathFailReason vr pcp
         constraint p = parens $ text "constraint from" <+> pathRequiresVersion p
 
 -- | The root of the path, the project itself.
+--
+-- Let's say @cabal.project@ imports @cabal.project.common@, which
+-- imports @cabal.project.windows@. Then we have a path, such as:
+--
+-- > ("cabal.project.windows" :| ["cabal.project.common", "cabal.project])
+--
+-- And we want @cabal.project@.
 projectConfigPathRoot :: ProjectConfigPath -> FilePath
 projectConfigPathRoot (ProjectConfigPath xs) = last xs
+
+-- | The "current" project file of the path, the project itself.
+--
+-- Let's say @cabal.project@ imports @cabal.project.common@, which
+-- imports @cabal.project.windows@. Then we have a path, such as:
+--
+-- > ("cabal.project.windows" :| ["cabal.project.common", "cabal.project])
+--
+-- And we want @cabal.project.windows@.
+projectConfigPathCurrent :: ProjectConfigPath -> FilePath
+projectConfigPathCurrent (ProjectConfigPath xs) = head xs
 
 -- | Used by some tests as a dummy "unused" project root.
 nullProjectConfigPath :: ProjectConfigPath
