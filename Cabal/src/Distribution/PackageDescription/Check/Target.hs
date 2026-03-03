@@ -61,8 +61,6 @@ checkLibrary
           _libVisibility_
           libBuildInfo_
         ) = do
-    mapM_ checkModuleName (explicitLibModules lib)
-
     checkP
       (libName_ == LMainLibName && isSub)
       (PackageBuildImpossible UnnamedInternal)
@@ -145,8 +143,6 @@ checkExecutable
     -- Target type/name (exe).
     let cet = CETExecutable exeName_
         modulePath_ = getSymbolicPath symbolicModulePath_
-
-    mapM_ checkModuleName (exeModules exe)
 
     -- § Exe specific checks
     checkP
@@ -260,8 +256,6 @@ checkBenchmark
       ) = do
     -- Target type/name (benchmark).
     let cet = CETBenchmark benchmarkName_
-
-    mapM_ checkModuleName (benchmarkModules bm)
 
     -- § Interface & bm specific tests.
     case benchmarkInterface_ of
