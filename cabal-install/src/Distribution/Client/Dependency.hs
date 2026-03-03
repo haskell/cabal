@@ -885,7 +885,7 @@ interpretPackagesPreference selected defaultPref prefs =
   where
     versionPref :: PackageName -> [VersionRange]
     versionPref pkgname =
-      fromMaybe [anyVersion] (Map.lookup pkgname versionPrefs)
+      Map.findWithDefault [anyVersion] pkgname versionPrefs
     versionPrefs =
       Map.fromListWith
         (++)
@@ -895,7 +895,7 @@ interpretPackagesPreference selected defaultPref prefs =
 
     installPref :: PackageName -> InstalledPreference
     installPref pkgname =
-      fromMaybe (installPrefDefault pkgname) (Map.lookup pkgname installPrefs)
+      Map.findWithDefault (installPrefDefault pkgname) pkgname installPrefs
     installPrefs =
       Map.fromList
         [ (pkgname, pref)
@@ -914,7 +914,7 @@ interpretPackagesPreference selected defaultPref prefs =
 
     stanzasPref :: PackageName -> [OptionalStanza]
     stanzasPref pkgname =
-      fromMaybe [] (Map.lookup pkgname stanzasPrefs)
+      Map.findWithDefault [] pkgname stanzasPrefs
     stanzasPrefs =
       Map.fromListWith
         (\a b -> nub (a ++ b))
