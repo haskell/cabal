@@ -205,7 +205,6 @@ checkTestSuite
       TestSuiteUnsupported tt ->
         tellP (PackageBuildWarning $ TestsuiteNotSupported tt)
       _ -> return ()
-
     checkP
       mainIsWrongExt
       (PackageBuildImpossible NoHsLhsMain)
@@ -294,7 +293,6 @@ checkBenchmark
         case benchmarkInterface_ of
           BenchmarkExeV10 _ f -> takeExtension (getSymbolicPath f) `notElem` [".hs", ".lhs"]
           _ -> False
-
 
 -- ------------------------------------------------------------
 -- Build info
