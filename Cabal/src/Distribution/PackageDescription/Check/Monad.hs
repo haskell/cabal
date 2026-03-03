@@ -39,6 +39,7 @@ module Distribution.PackageDescription.Check.Monad
   , liftInt
   , tellP
   , checkSpecVer
+  , checkSpecVerGte
   ) where
 
 import Distribution.Compat.Prelude
@@ -369,3 +370,16 @@ checkSpecVer
 checkSpecVer vc cond c = do
   vp <- asksCM ccSpecVersion
   unless (vp >= vc) (checkP cond c)
+
+-- | Like 'checkSpecVer', except performs the check when our
+-- spec version >= the param.
+checkSpecVerGte
+  :: Monad m
+  => CabalSpecVersion -- Perform this check only if our
+  -- spec version is >= than this.
+  -> Bool -- Check condition.
+  -> PackageCheck -- Check message.
+  -> CheckM m ()
+checkSpecVerGte vc cond c = do
+  vp <- asksCM ccSpecVersion
+  when (vp >= vc) (checkP cond c)

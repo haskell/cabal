@@ -47,9 +47,11 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Data.List (group)
+import qualified Data.List as L
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
 import Distribution.Compiler
+import Distribution.FieldGrammar.Parsec (freeTextIgnoreDotlineVers)
 import Distribution.License
 import Distribution.ModuleName (toFilePath)
 import Distribution.Package
@@ -85,6 +87,7 @@ import qualified System.FilePath.Windows as FilePath.Windows (isValid)
 
 import qualified Data.Set as Set
 import qualified Distribution.Utils.ShortText as ShortText
+import qualified Distribution.Utils.String as String
 
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
 
@@ -464,6 +467,20 @@ checkPackageDescription
       )
       (PackageDistSuspicious ShortDesc)
 
+    -- § Freeform fields no longer include "dotlines". Generally taken from
+    -- Distribution.PackageDescription.FieldGrammar fields that use some
+    -- freeTextField parser.
+    checkDotline "author" _author_
+    checkDotline "bug-reports" _bugReports_
+    checkDotline "category" category_
+    checkDotline "copyright" _copyright_
+    checkDotline "description" description_
+    checkDotline "homepage" _homepage_
+    checkDotline "maintainer" maintainer_
+    checkDotline "package-url" _pkgUrl_
+    checkDotline "stability" _stability_
+    checkDotline "synopsis" synopsis_
+
     -- § Paths.
     mapM_ (checkPath False "extra-source-files" PathKindGlob . getSymbolicPath) extraSrcFiles_
     mapM_ (checkPath False "extra-tmp-files" PathKindFile . getSymbolicPath) extraTmpFiles_
@@ -569,6 +586,19 @@ checkPackageDescription
                   ]
              in tellP (PackageDistInexcusable (InvalidTestWith dep))
           )
+
+-- | Issue a warning if the text contains any "dotlines".
+checkDotline :: Monad m => String -> ShortText.ShortText -> CheckM m ()
+checkDotline fieldName fieldVal = do
+  checkSpecVerGte
+    freeTextIgnoreDotlineVers
+    (hasDotline fieldVal)
+    (PackageDistSuspiciousWarn $ FreeTextDotline fieldName)
+  where
+    hasDotline =
+      L.any ((== ".") . String.trim)
+        . L.lines
+        . ShortText.fromShortText
 
 checkSetupBuildInfo :: Monad m => Maybe SetupBuildInfo -> CheckM m ()
 checkSetupBuildInfo Nothing = return ()

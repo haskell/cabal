@@ -1,0 +1,18 @@
+# cabal v2-build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - main-0.1 (lib) (first run)
+
+# cabal check
+These warnings may cause trouble when distributing the package:
+Warning: [free-text-dotline] Empty lines with a dot '.' in field 'author' are unnecessary for creating newlines (and treated literally) in cabal 3.0+
+Warning: [free-text-dotline] Empty lines with a dot '.' in field 'bug-reports' are unnecessary for creating newlines (and treated literally) in cabal 3.0+
+Warning: [free-text-dotline] Empty lines with a dot '.' in field 'category' are unnecessary for creating newlines (and treated literally) in cabal 3.0+
+Warning: [free-text-dotline] Empty lines with a dot '.' in field 'copyright' are unnecessary for creating newlines (and treated literally) in cabal 3.0+
+Warning: [free-text-dotline] Empty lines with a dot '.' in field 'description' are unnecessary for creating newlines (and treated literally) in cabal 3.0+
+Warning: [free-text-dotline] Empty lines with a dot '.' in field 'homepage' are unnecessary for creating newlines (and treated literally) in cabal 3.0+
+Warning: [free-text-dotline] Empty lines with a dot '.' in field 'maintainer' are unnecessary for creating newlines (and treated literally) in cabal 3.0+
+Warning: [free-text-dotline] Empty lines with a dot '.' in field 'package-url' are unnecessary for creating newlines (and treated literally) in cabal 3.0+
+Warning: [free-text-dotline] Empty lines with a dot '.' in field 'stability' are unnecessary for creating newlines (and treated literally) in cabal 3.0+
+Warning: [free-text-dotline] Empty lines with a dot '.' in field 'synopsis' are unnecessary for creating newlines (and treated literally) in cabal 3.0+
