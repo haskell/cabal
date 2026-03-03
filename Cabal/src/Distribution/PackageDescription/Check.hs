@@ -51,6 +51,7 @@ import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
 import Distribution.Compiler
 import Distribution.License
+import Distribution.ModuleName (toFilePath)
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Check.Common
@@ -350,6 +351,18 @@ checkGenericPackageDescription
 
       -- Duplicate modules.
       mapM_ tellP (checkDuplicateModules gpd)
+
+      -- Module name checks (path validity on Windows and tar).
+      -- We collect all unique module names from the GPD and check each
+      -- once, rather than re-checking in every conditional branch.
+      let allModuleNames =
+            Set.fromList $
+              maybe [] (explicitLibModules . fst . ignoreConditions) condLibrary_
+                ++ concatMap (explicitLibModules . fst . ignoreConditions . snd) condSubLibraries_
+                ++ concatMap (exeModules . fst . ignoreConditions . snd) condExecutables_
+                ++ concatMap (testModules . fst . ignoreConditions . snd) condTestSuites_
+                ++ concatMap (benchmarkModules . fst . ignoreConditions . snd) condBenchmarks_
+      mapM_ (\m -> checkPackageFileNamesWithGlob PathKindFile (toFilePath m)) allModuleNames
     where
       -- todo is this caught at parse time?
       checkFlagName :: Monad m => PackageFlag -> CheckM m ()
