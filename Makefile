@@ -5,9 +5,7 @@
 CABALBUILD := cabal build
 CABALRUN   := cabal run
 
-# We have to avoid allow-newer.
-# SEE: https://github.com/haskell/cabal/issues/6859
-DOCTEST := cabal doctest --allow-newer=False
+DOCTEST := cabal doctest
 
 # default rules
 
