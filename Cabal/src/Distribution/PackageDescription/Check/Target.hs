@@ -21,7 +21,7 @@ import Prelude ()
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
 import Distribution.Compiler
-import Distribution.ModuleName (ModuleName, toFilePath)
+import Distribution.ModuleName (ModuleName)
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Check.Common
