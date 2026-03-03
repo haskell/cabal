@@ -1,0 +1,21 @@
+synopsis: Warning for "dotlines" with cabal 3.0+.
+packages: cabal-install Cabal-syntax
+prs: #11571
+issues: #11518
+significance:
+
+description: {
+
+Cabal 3.0 changed the parser for "free text" fields (e.g. description) such
+that:
+
+  1. Empty lines and indentation are preserved.
+
+  2. Empty lines with a dot '.' (and possible whitespace) are
+      interpreted literally; they are no longer interpreted as an
+      empty line.
+
+Consequently, dotlines no longer serve a purpose and only add extra noise,
+hence these are now a warning with `cabal check`.
+
+}

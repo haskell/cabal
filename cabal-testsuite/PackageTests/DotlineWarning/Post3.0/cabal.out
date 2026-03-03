@@ -1,0 +1,12 @@
+# cabal v2-build
+Warning: The package description file ./main.cabal has warnings:
+main.cabal:21:3: Empty lines with a dot '.' are unnecessary for creating newlines (and treated literally) in cabal 3.0+
+main.cabal:19:3: Empty lines with a dot '.' are unnecessary for creating newlines (and treated literally) in cabal 3.0+
+main.cabal:17:3: Empty lines with a dot '.' are unnecessary for creating newlines (and treated literally) in cabal 3.0+
+main.cabal:15:3: Empty lines with a dot '.' are unnecessary for creating newlines (and treated literally) in cabal 3.0+
+main.cabal:12:3: Empty lines with a dot '.' are unnecessary for creating newlines (and treated literally) in cabal 3.0+
+main.cabal:10:3: Empty lines with a dot '.' are unnecessary for creating newlines (and treated literally) in cabal 3.0+
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - main-0.1 (lib) (first run)

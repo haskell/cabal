@@ -234,7 +234,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
 
       parseOne v (MkNamelessField pos fls)
         | null fls = pure Nothing
-        | v >= CabalSpecV3_0 = pure (Just (fieldlinesToFreeText3 pos fls))
+        | v >= CabalSpecV3_0 = Just <$> fieldlinesToFreeText3 pos fls
         | otherwise = pure (Just (fieldlinesToFreeText fls))
 
   freeTextFieldDef fn _ = ParsecFG (Set.singleton fn) Set.empty parser
@@ -249,7 +249,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
 
       parseOne v (MkNamelessField pos fls)
         | null fls = pure ""
-        | v >= CabalSpecV3_0 = pure (fieldlinesToFreeText3 pos fls)
+        | v >= CabalSpecV3_0 = fieldlinesToFreeText3 pos fls
         | otherwise = pure (fieldlinesToFreeText fls)
 
   -- freeTextFieldDefST = defaultFreeTextFieldDefST
@@ -267,7 +267,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
         [] -> pure mempty
         [FieldLine _ bs] -> pure (ShortText.unsafeFromUTF8BS bs)
         _
-          | v >= CabalSpecV3_0 -> pure (ShortText.toShortText $ fieldlinesToFreeText3 pos fls)
+          | v >= CabalSpecV3_0 -> ShortText.toShortText <$> fieldlinesToFreeText3 pos fls
           | otherwise -> pure (ShortText.toShortText $ fieldlinesToFreeText fls)
 
   monoidalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
@@ -411,45 +411,65 @@ fieldlinesToFreeText fls = intercalate "\n" (map go fls)
       where
         s = trim (fromUTF8BS bs)
 
-fieldlinesToFreeText3 :: Position -> [FieldLine Position] -> String
-fieldlinesToFreeText3 _ [] = ""
-fieldlinesToFreeText3 _ [FieldLine _ bs] = fromUTF8BS bs
+fieldlinesToFreeText3 :: Position -> [FieldLine Position] -> ParseResult src String
+fieldlinesToFreeText3 _ [] = pure ""
+fieldlinesToFreeText3 _ [FieldLine _ bs] = pure $ fromUTF8BS bs
 fieldlinesToFreeText3 pos (FieldLine pos1 bs1 : fls2@(FieldLine pos2 _ : _))
   -- if first line is on the same line with field name:
   -- the indentation level is either
   -- 1. the indentation of left most line in rest fields
   -- 2. the indentation of the first line
   -- whichever is leftmost
-  | positionRow pos == positionRow pos1 =
-      concat $
-        fromUTF8BS bs1
-          : mealy (mk mcol1) pos1 fls2
+  | positionRow pos == positionRow pos1 = do
+      s1 <- parseLine3 pos1 bs1
+      xs <- mealy (mk mcol1) pos1 fls2
+      pure $ concat (s1 : xs)
   -- otherwise, also indent the first line
-  | otherwise =
-      concat $
-        replicate (positionCol pos1 - mcol2) ' '
-          : fromUTF8BS bs1
-          : mealy (mk mcol2) pos1 fls2
+  | otherwise = do
+      s1 <- parseLine3 pos1 bs1
+      xs <- mealy (mk mcol2) pos1 fls2
+      pure $
+        concat $
+          replicate (positionCol pos1 - mcol2) ' '
+            : s1
+            : xs
   where
     mcol1 = foldl' (\a b -> min a $ positionCol $ fieldLineAnn b) (min (positionCol pos1) (positionCol pos2)) fls2
     mcol2 = foldl' (\a b -> min a $ positionCol $ fieldLineAnn b) (positionCol pos1) fls2
 
-    mk :: Int -> Position -> FieldLine Position -> (Position, String)
+    mk :: Int -> Position -> FieldLine Position -> ParseResult src (Position, String)
     mk col p (FieldLine q bs) =
-      ( q
-      , replicate newlines '\n'
-          ++ replicate indent ' '
-          ++ fromUTF8BS bs
+      ( \s ->
+          ( q
+          , replicate newlines '\n'
+              ++ replicate indent ' '
+              ++ s
+          )
       )
+        <$> parseLine3 q bs
       where
         newlines = positionRow q - positionRow p
         indent = positionCol q - col
 
-mealy :: (s -> a -> (s, b)) -> s -> [a] -> [b]
+    parseLine3 :: Position -> BS.ByteString -> ParseResult src String
+    parseLine3 p bs = do
+      when (s' == ".") $ parseWarning p PWTDotline msg
+      pure s
+      where
+        s = fromUTF8BS bs
+        s' = trim s
+
+        msg =
+          "Empty lines with a dot '.' are unnecessary for creating newlines "
+            ++ "(and treated literally) in cabal 3.0+"
+
+mealy :: Monad m => (s -> a -> m (s, b)) -> s -> [a] -> m [b]
 mealy f = go
   where
-    go _ [] = []
-    go s (x : xs) = let ~(s', y) = f s x in y : go s' xs
+    go _ [] = pure []
+    go s (x : xs) = do
+      ~(s', y) <- f s x
+      (y :) <$> go s' xs
 
 fieldLinesToStream :: [FieldLine ann] -> FieldLineStream
 fieldLinesToStream [] = fieldLineStreamEnd
