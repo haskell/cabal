@@ -1,7 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TypeApplications #-}
 
 -----------------------------------------------------------------------------
 
@@ -36,7 +35,6 @@ module Distribution.Simple.PreProcess
   , runSimplePreProcessor
   , ppCpp
   , ppCpp'
-  , ppGreenCard
   , ppC2hs
   , ppHsc2hs
   , ppHappy
@@ -347,8 +345,8 @@ preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinS
           createDirectoryIfMissingVerbose verbosity True destDir
           runPreProcessorWithHsBootHack
             pp
-            (getSymbolicPath $ psrcLoc, getSymbolicPath $ psrcRelFile)
-            (getSymbolicPath $ buildLoc, srcStem <.> "hs")
+            (psrcLoc, getSymbolicPath $ psrcRelFile)
+            (buildLoc, srcStem <.> "hs")
   where
     i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
     buildAsSrcLoc :: SymbolicPath Pkg (Dir Source)
@@ -363,40 +361,31 @@ preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinS
       pp
       (inBaseDir, inRelativeFile)
       (outBaseDir, outRelativeFile) = do
+        -- Preprocessors are expected to take into account the working
+        -- directory, e.g. using runProgramCwd with a working directory
+        -- computed with mbWorkDirLBI.
+        -- Hence the use of 'getSymbolicPath' here.
         runPreProcessor
           pp
-          (inBaseDir, inRelativeFile)
-          (outBaseDir, outRelativeFile)
+          (getSymbolicPath $ inBaseDir, inRelativeFile)
+          (getSymbolicPath $ outBaseDir, outRelativeFile)
           verbosity
 
-        exists <- doesFileExist inBoot
-        when exists $ copyFileVerbose verbosity inBoot outBoot
-        where
+        -- Here we interact directly with the file system, so we must
+        -- interpret symbolic paths with respect to the working directory.
+        let
+          inFile = normalise (i inBaseDir </> inRelativeFile)
+          outFile = normalise (i outBaseDir </> outRelativeFile)
           inBoot = replaceExtension inFile "hs-boot"
           outBoot = replaceExtension outFile "hs-boot"
-
-          inFile = normalise (inBaseDir </> inRelativeFile)
-          outFile = normalise (outBaseDir </> outRelativeFile)
+        exists <- doesFileExist inBoot
+        when exists $ copyFileVerbose verbosity inBoot outBoot
 
 -- ------------------------------------------------------------
 
 -- * known preprocessors
 
 -- ------------------------------------------------------------
-
-ppGreenCard :: BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
-ppGreenCard _ lbi _ =
-  PreProcessor
-    { platformIndependent = False
-    , ppOrdering = unsorted
-    , runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
-        runDbProgramCwd
-          verbosity
-          (mbWorkDirLBI lbi)
-          greencardProgram
-          (withPrograms lbi)
-          (["-tffi", "-o" ++ outFile, inFile])
-    }
 
 -- This one is useful for preprocessors that can't handle literate source.
 -- We also need a way to chain preprocessors.
@@ -529,101 +518,104 @@ ppHsc2hs bi lbi clbi =
     -- directly, or via a response file.
     genPureArgs :: Version -> ConfiguredProgram -> String -> String -> [String]
     genPureArgs hsc2hsVersion gccProg inFile outFile =
-      -- Additional gcc options
-      [ "--cflag=" ++ opt
-      | opt <-
-          programDefaultArgs gccProg
-            ++ programOverrideArgs gccProg
-      ]
-        ++ [ "--lflag=" ++ opt
-           | opt <-
-              programDefaultArgs gccProg
-                ++ programOverrideArgs gccProg
-           ]
-        -- OSX frameworks:
-        ++ [ what ++ "=-F" ++ opt
-           | isOSX
-           , opt <- nub (concatMap Installed.frameworkDirs pkgs)
-           , what <- ["--cflag", "--lflag"]
-           ]
-        ++ [ "--lflag=" ++ arg
-           | isOSX
-           , opt <- map getSymbolicPath (PD.frameworks bi) ++ concatMap Installed.frameworks pkgs
-           , arg <- ["-framework", opt]
-           ]
-        -- Note that on ELF systems, wherever we use -L, we must also use -R
-        -- because presumably that -L dir is not on the normal path for the
-        -- system's dynamic linker. This is needed because hsc2hs works by
-        -- compiling a C program and then running it.
-
-        ++ ["--cflag=" ++ opt | opt <- platformDefines lbi]
-        -- Options from the current package:
-        ++ ["--cflag=-I" ++ u dir | dir <- PD.includeDirs bi]
-        ++ [ "--cflag=-I" ++ u (buildDir lbi </> unsafeCoerceSymbolicPath relDir)
-           | relDir <- mapMaybe symbolicPathRelative_maybe $ PD.includeDirs bi
-           ]
-        ++ [ "--cflag=" ++ opt
-           | opt <-
-              PD.ccOptions bi
-                ++ PD.cppOptions bi
-                -- hsc2hs uses the C ABI
-                -- We assume that there are only C sources
-                -- and C++ functions are exported via a C
-                -- interface and wrapped in a C source file.
-                -- Therefore we do not supply C++ flags
-                -- because there will not be C++ sources.
-                --
-                -- DO NOT add PD.cxxOptions unless this changes!
-           ]
-        ++ [ "--cflag=" ++ opt
-           | opt <-
-              [ "-I" ++ u (autogenComponentModulesDir lbi clbi)
-              , "-I" ++ u (autogenPackageModulesDir lbi)
-              , "-include"
-              , u $ autogenComponentModulesDir lbi clbi </> makeRelativePathEx cppHeaderName
-              ]
-           ]
-        ++ [ "--lflag=-L" ++ u opt
-           | opt <-
-              if withFullyStaticExe lbi
-                then PD.extraLibDirsStatic bi
-                else PD.extraLibDirs bi
-           ]
-        ++ [ "--lflag=-Wl,-R," ++ u opt
-           | isELF
-           , opt <-
-              if withFullyStaticExe lbi
-                then PD.extraLibDirsStatic bi
-                else PD.extraLibDirs bi
-           ]
-        ++ ["--lflag=-l" ++ opt | opt <- PD.extraLibs bi]
-        ++ ["--lflag=" ++ opt | opt <- PD.ldOptions bi]
-        -- Options from dependent packages
-        ++ [ "--cflag=" ++ opt
-           | pkg <- pkgs
-           , opt <-
-              ["-I" ++ opt | opt <- Installed.includeDirs pkg]
-                ++ Installed.ccOptions pkg
-           ]
-        ++ [ "--lflag=" ++ opt
-           | pkg <- pkgs
-           , opt <-
-              ["-L" ++ opt | opt <- Installed.libraryDirs pkg]
-                ++ [ "-Wl,-R," ++ opt | isELF, opt <- Installed.libraryDirs pkg
-                   ]
-                ++ [ "-l" ++ opt
-                   | opt <-
-                      if withFullyStaticExe lbi
-                        then Installed.extraLibrariesStatic pkg
-                        else Installed.extraLibraries pkg
-                   ]
-                ++ Installed.ldOptions pkg
-           ]
+      cflags
+        ++ ldflags
         ++ preccldFlags
         ++ hsc2hsOptions bi
         ++ postccldFlags
         ++ ["-o", outFile, inFile]
       where
+        ldflags =
+          map ("--lflag=" ++) $
+            ordNub $
+              concat
+                [ programDefaultArgs gccProg ++ programOverrideArgs gccProg
+                , osxFrameworkDirs
+                , [ arg
+                  | isOSX
+                  , opt <- map getSymbolicPath (PD.frameworks bi) ++ concatMap Installed.frameworks pkgs
+                  , arg <- ["-framework", opt]
+                  ]
+                , -- Note that on ELF systems, wherever we use -L, we must also use -R
+                  -- because presumably that -L dir is not on the normal path for the
+                  -- system's dynamic linker. This is needed because hsc2hs works by
+                  -- compiling a C program and then running it.
+
+                  -- Options from the current package:
+                  [ "-L" ++ u opt
+                  | opt <-
+                      if withFullyStaticExe lbi
+                        then PD.extraLibDirsStatic bi
+                        else PD.extraLibDirs bi
+                  ]
+                , [ "-Wl,-R," ++ u opt
+                  | isELF
+                  , opt <-
+                      if withFullyStaticExe lbi
+                        then PD.extraLibDirsStatic bi
+                        else PD.extraLibDirs bi
+                  ]
+                , ["-l" ++ opt | opt <- PD.extraLibs bi]
+                , PD.ldOptions bi
+                , -- Options from dependent packages
+                  [ opt
+                  | pkg <- pkgs
+                  , opt <-
+                      ["-L" ++ opt | opt <- Installed.libraryDirs pkg]
+                        ++ [ "-Wl,-R," ++ opt | isELF, opt <- Installed.libraryDirs pkg
+                           ]
+                        ++ [ "-l" ++ opt
+                           | opt <-
+                              if withFullyStaticExe lbi
+                                then Installed.extraLibrariesStatic pkg
+                                else Installed.extraLibraries pkg
+                           ]
+                        ++ Installed.ldOptions pkg
+                  ]
+                ]
+
+        cflags =
+          map ("--cflag=" ++) $
+            ordNub $
+              concat
+                [ programDefaultArgs gccProg ++ programOverrideArgs gccProg
+                , osxFrameworkDirs
+                , platformDefines lbi
+                , -- Options from the current package:
+                  ["-I" ++ u dir | dir <- PD.includeDirs bi]
+                , [ "-I" ++ u (buildDir lbi </> unsafeCoerceSymbolicPath relDir)
+                  | relDir <- mapMaybe symbolicPathRelative_maybe $ PD.includeDirs bi
+                  ]
+                , -- hsc2hs uses the C ABI
+                  -- We assume that there are only C sources
+                  -- and C++ functions are exported via a C
+                  -- interface and wrapped in a C source file.
+                  -- Therefore we do not supply C++ flags
+                  -- because there will not be C++ sources.
+                  --
+                  -- DO NOT add PD.cxxOptions unless this changes!
+                  PD.ccOptions bi ++ PD.cppOptions bi
+                ,
+                  [ "-I" ++ u (autogenComponentModulesDir lbi clbi)
+                  , "-I" ++ u (autogenPackageModulesDir lbi)
+                  , "-include"
+                  , u $ autogenComponentModulesDir lbi clbi </> makeRelativePathEx cppHeaderName
+                  ]
+                , -- Options from dependent packages
+                  [ opt
+                  | pkg <- pkgs
+                  , opt <-
+                      ["-I" ++ opt | opt <- Installed.includeDirs pkg]
+                        ++ Installed.ccOptions pkg
+                  ]
+                ]
+
+        osxFrameworkDirs =
+          [ "-F" ++ opt
+          | isOSX
+          , opt <- ordNub (concatMap Installed.frameworkDirs pkgs)
+          ]
+
         -- hsc2hs flag parsing was wrong
         -- (see -- https://github.com/haskell/hsc2hs/issues/35)
         -- so we need to put -- --cc/--ld *after* hsc2hsOptions,
@@ -761,10 +753,6 @@ platformDefines lbi =
         ++ ["-D" ++ arch ++ "_BUILD_ARCH=1"]
         ++ map (\os' -> "-D" ++ os' ++ "_HOST_OS=1") osStr
         ++ map (\arch' -> "-D" ++ arch' ++ "_HOST_ARCH=1") archStr
-    HaskellSuite{} ->
-      ["-D__HASKELL_SUITE__"]
-        ++ map (\os' -> "-D" ++ os' ++ "_HOST_OS=1") osStr
-        ++ map (\arch' -> "-D" ++ arch' ++ "_HOST_ARCH=1") archStr
     _ -> []
   where
     comp = compiler lbi
@@ -874,11 +862,10 @@ standardPP lbi prog args =
 ppSuffixes :: [PPSuffixHandler] -> [Suffix]
 ppSuffixes = map fst
 
--- | Standard preprocessors: GreenCard, c2hs, hsc2hs, happy, alex and cpphs.
+-- | Standard preprocessors: c2hs, hsc2hs, happy, alex and cpphs.
 knownSuffixHandlers :: [PPSuffixHandler]
 knownSuffixHandlers =
-  [ (Suffix "gc", ppGreenCard)
-  , (Suffix "chs", ppC2hs)
+  [ (Suffix "chs", ppC2hs)
   , (Suffix "hsc", ppHsc2hs)
   , (Suffix "x", ppAlex)
   , (Suffix "y", ppHappy)

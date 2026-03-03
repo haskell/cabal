@@ -65,6 +65,7 @@ syn keyword cabalFieldName contained
   \ cmm-options
   \ cmm-sources
   \ copyright
+  \ jspp-options
   \ cpp-options
   \ cxx-options
   \ cxx-sources

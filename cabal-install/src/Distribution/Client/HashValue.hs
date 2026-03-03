@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 module Distribution.Client.HashValue
@@ -38,7 +36,7 @@ import System.IO (IOMode (..), withBinaryFile)
 -- package ids.
 
 newtype HashValue = HashValue BS.ByteString
-  deriving (Eq, Generic, Show, Typeable)
+  deriving (Eq, Generic, Show)
 
 -- Cannot do any sensible validation here. Although we use SHA256
 -- for stuff we hash ourselves, we can also get hashes from TUF
@@ -65,21 +63,13 @@ readFileHashValue tarball =
 --
 -- Note that TUF hashes don't necessarily have to be SHA256, since it can
 -- support new algorithms in future.
-{- FOURMOLU_DISABLE -}
 hashFromTUF :: Sec.Hash -> HashValue
 hashFromTUF (Sec.Hash hashstr) =
   -- TODO: [code cleanup] either we should get TUF to use raw bytestrings or
   -- perhaps we should also just use a base16 string as the internal rep.
   case Base16.decode (BS.pack hashstr) of
-#if MIN_VERSION_base16_bytestring(1,0,0)
-      Right hash -> HashValue hash
-      Left _ -> error "hashFromTUF: cannot decode base16"
-#else
-      (hash, trailing) | not (BS.null hash) && BS.null trailing
-        -> HashValue hash
-      _ -> error "hashFromTUF: cannot decode base16 hash"
-#endif
-{- FOURMOLU_ENABLE -}
+    Right hash -> HashValue hash
+    Left _ -> error "hashFromTUF: cannot decode base16"
 
 -- | Truncate a 32 byte SHA256 hash to
 --

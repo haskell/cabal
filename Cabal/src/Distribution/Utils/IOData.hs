@@ -80,7 +80,7 @@ instance KnownIODataMode LBS.ByteString where
 
 -- | 'IOData' Wrapper for 'System.IO.hPutStr' and 'System.IO.hClose'
 --
--- This is the dual operation ot 'hGetIODataContents',
+-- This is the dual operation to 'hGetIODataContents',
 -- and consequently the handle is closed with `hClose`.
 --
 -- /Note:/ this performs lazy-IO.

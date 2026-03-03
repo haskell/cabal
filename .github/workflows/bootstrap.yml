@@ -5,31 +5,11 @@ concurrency:
   group: ${{ github.ref }}-${{ github.workflow }}
   cancel-in-progress: true
 
-# Note: This workflow file contains the required job "Bootstrap post job". We are using path filtering
-# here to ignore PRs which only change documentation. This can cause a problem, see the workflow file
-# "bootstrap.skip.yml" for a description of the problem and the solution provided in that file.
 on:
   push:
-    paths-ignore:
-      - 'doc/**'
-      - '**/README.md'
-      - 'CONTRIBUTING.md'
-      - "changelog.d/**"
-      # only top level for these, because various test packages have them too
-      - "*/ChangeLog.md"
-      - "*/changelog.md"
-      - "release-notes/**"
     branches:
       - master
   pull_request:
-    paths-ignore:
-      - 'doc/**'
-      - '**/README.md'
-      - 'CONTRIBUTING.md'
-      - "changelog.d/**"
-      - "*/ChangeLog.md"
-      - "*/changelog.md"
-      - "release-notes/**"
   release:
     types:
       - created
@@ -39,7 +19,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        ghc: ["9.0.2", "9.2.8", "9.4.8", "9.6.6", "9.8.2"]
+        ghc: ["9.2.8", "9.4.8", "9.6.7", "9.8.4", "9.10.2", "9.12.2"]
         include:
           - os: macos-latest
             ghc: "9.2.8"
@@ -52,7 +32,7 @@ jobs:
           rm -rf ~/.config/cabal
           rm -rf ~/.cache/cabal
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         name: Cache the downloads
         id: bootstrap-cache
         with:
@@ -60,7 +40,7 @@ jobs:
           key: bootstrap-${{ runner.os }}-${{ matrix.ghc }}-20221115-${{ github.sha }}
           restore-keys: bootstrap-${{ runner.os }}-${{ matrix.ghc }}-20221115-
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: haskell-actions/setup@v2
         with:
           ghc-version: ${{ matrix.ghc }}
@@ -78,7 +58,7 @@ jobs:
         run: |
           _build/bin/cabal --version
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: cabal-${{ matrix.os }}-${{ matrix.ghc }}-bootstrapped
           path: _build/artifacts/*

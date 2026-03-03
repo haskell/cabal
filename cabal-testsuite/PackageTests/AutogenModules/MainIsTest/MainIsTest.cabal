@@ -1,0 +1,23 @@
+cabal-version: 3.12
+name: MainIsTest
+version: 0.1
+license: BSD-3-Clause
+license-file: LICENSE
+author: Federico Mastellone
+maintainer: Federico Mastellone
+synopsis: MainIsTest
+category: PackageTests
+build-type: Simple
+
+description:
+    Check if Cabal accepts an autogen-module in a test-suite as the main-is field.
+
+Test-Suite Test
+    default-language: Haskell2010
+    main-is: MyDummy.hs
+    type: exitcode-stdio-1.0
+    build-depends: base == 4.*
+    other-modules:
+        MyDummy
+    autogen-modules:
+        MyDummy

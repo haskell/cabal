@@ -9,3 +9,25 @@ verbose       = true
 cache_dir     = '.skjold_cache'
 cache_expires = 43200     # Cache max. age. (43200 = 12hrs)
 ignore_file   = '.skjoldignore'
+
+# CVE suggestions
+# certifi>=2023.07.22 by CVE-2023-37920
+# idna>=3.7 by CVE-2024-3651
+# jinja2>=3.1.4 by CVE-2024-34064
+# pygments>=2.7.4 by CVE-2021-20270 CVE-2021-27291
+# requests>=2.32.0 by CVE-2024-35195
+# urllib3>=2.0.7 by CVE-2023-45803
+[dependency-groups]
+dev = [
+    "certifi>=2023.7.22",
+    "idna>=3.7",
+    "jinja2>=3.1.4",
+    "packaging>=25.0",
+    "pygments>=2.7.4",
+    "requests>=2.32.0",
+    "sphinx>=8.2.3",
+    "sphinx-jsonschema>=1.19.2",
+    "sphinx-rtd-theme>=3.0.2",
+    "sphinxnotes-strike>=1.5",
+    "urllib3>=2.0.7",
+]

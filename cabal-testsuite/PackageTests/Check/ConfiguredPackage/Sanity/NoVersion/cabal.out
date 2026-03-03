@@ -1,4 +1,8 @@
 # cabal check
-Warning: pkg.cabal:0:0: "version" field missing
 Error: [Cabal-7035]
-parse error
+Error parsing cabal file pkg.cabal:
+
+pkg.cabal: error:
+  "version" field missing
+
+

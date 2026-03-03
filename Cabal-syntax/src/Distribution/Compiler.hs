@@ -1,6 +1,4 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveFoldable #-}
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
 
@@ -58,8 +56,10 @@ import Language.Haskell.Extension
 import Distribution.Version (Version, mkVersion', nullVersion)
 
 import qualified Distribution.Compat.CharParsing as P
+import Distribution.Package (PackageName)
 import Distribution.Parsec (Parsec (..))
 import Distribution.Pretty (Pretty (..), prettyShow)
+import Distribution.Types.UnitId (UnitId)
 import qualified System.Info (compilerName, compilerVersion)
 import qualified Text.PrettyPrint as Disp
 
@@ -75,10 +75,11 @@ data CompilerFlavor
   | LHC
   | UHC
   | Eta
-  | MHS -- MicroHS, see https://github.com/augustss/MicroHs
-  | HaskellSuite String -- string is the id of the actual compiler
+  | -- | @since 3.12.1.0
+    -- MicroHS, see https://github.com/augustss/MicroHs
+    MHS
   | OtherCompiler String
-  deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
+  deriving (Generic, Show, Read, Eq, Ord, Data)
 
 instance Binary CompilerFlavor
 instance Structured CompilerFlavor
@@ -90,7 +91,6 @@ knownCompilerFlavors =
 
 instance Pretty CompilerFlavor where
   pretty (OtherCompiler name) = Disp.text name
-  pretty (HaskellSuite name) = Disp.text name
   pretty NHC = Disp.text "nhc98"
   pretty other = Disp.text (lowercase (show other))
 
@@ -143,7 +143,6 @@ data PerCompilerFlavor v = PerCompilerFlavor v v
     , Read
     , Eq
     , Ord
-    , Typeable
     , Data
     , Functor
     , Foldable
@@ -174,7 +173,7 @@ instance (Semigroup a, Monoid a) => Monoid (PerCompilerFlavor a) where
 -- ------------------------------------------------------------
 
 data CompilerId = CompilerId CompilerFlavor Version
-  deriving (Eq, Generic, Ord, Read, Show, Typeable)
+  deriving (Eq, Generic, Ord, Read, Show)
 
 instance Binary CompilerId
 instance Structured CompilerId
@@ -216,6 +215,12 @@ data CompilerInfo = CompilerInfo
   -- ^ Supported language standards, if known.
   , compilerInfoExtensions :: Maybe [Extension]
   -- ^ Supported extensions, if known.
+  , compilerInfoWiredInUnitIds :: Maybe [(PackageName, UnitId)]
+  -- ^ 'UnitId's that the compiler doesn't support reinstalling.
+  -- 'Nothing' indicates that the compiler hasn't supplied this
+  -- information and that we should act pessimistically.
+  -- For instance, when using GHC plugins, one wants to use the exact same
+  -- version of the `ghc` package as the one the compiler was linked against.
   }
   deriving (Generic, Show, Read)
 
@@ -224,9 +229,10 @@ instance Binary CompilerInfo
 data AbiTag
   = NoAbiTag
   | AbiTag String
-  deriving (Eq, Generic, Show, Read, Typeable)
+  deriving (Eq, Generic, Show, Read)
 
 instance Binary AbiTag
+instance NFData AbiTag
 instance Structured AbiTag
 
 instance Pretty AbiTag where
@@ -247,4 +253,4 @@ abiTagString (AbiTag tag) = tag
 --   compiler id's.
 unknownCompilerInfo :: CompilerId -> AbiTag -> CompilerInfo
 unknownCompilerInfo compilerId abiTag =
-  CompilerInfo compilerId abiTag (Just []) Nothing Nothing
+  CompilerInfo compilerId abiTag (Just []) Nothing Nothing Nothing

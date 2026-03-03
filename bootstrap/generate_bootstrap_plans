@@ -15,9 +15,9 @@ run() {
   cabal run --with-ghc-pkg $PWD/boot_ghc/bin/ghc-pkg -w $PWD/boot_ghc/bin/ghc -v0 cabal-bootstrap-gen -- "plan-$ver.json" | jq --sort-keys | tee "linux-$(echo $ver | tr "_" ".").json"
 }
 
-run "8_10_7"
-run "9_0_2"
 run "9_2_8"
 run "9_4_8"
-run "9_6_4"
-run "9_8_2"
+run "9_6_7"
+run "9_8_4"
+run "9_10_1"
+run "9_12_2"

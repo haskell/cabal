@@ -1,9 +1,3 @@
-{-# LANGUAGE CPP #-}
-
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
-
 -- |
 -- Module      :  Distribution.Client.GenBounds
 -- Copyright   :  (c) Doug Beardsley 2015
@@ -16,6 +10,8 @@
 -- The cabal gen-bounds command for generating PVP-compliant version bounds.
 module Distribution.Client.GenBounds
   ( genBounds
+  , boundsNeededMsg
+  , showBounds
   ) where
 
 import Distribution.Client.Compat.Prelude

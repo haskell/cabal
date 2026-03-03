@@ -1,6 +1,3 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE PatternSynonyms #-}
-
 module Distribution.Compat.Binary
   ( decodeOrFailIO
   , decodeFileOrFail'

@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
@@ -9,10 +8,8 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE QuantifiedConstraints #-}
@@ -126,11 +123,7 @@ import Control.Monad.Trans
   )
 import qualified Control.Monad.Trans.Reader as Reader
 import qualified Control.Monad.Trans.State as State
-#if MIN_VERSION_transformers(0,5,6)
 import qualified Control.Monad.Trans.Writer.CPS as Writer
-#else
-import qualified Control.Monad.Trans.Writer.Strict as Writer
-#endif
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
@@ -612,9 +605,9 @@ mkCommand
   -> StaticPtr (arg -> res)
   -> arg
   -> Command arg res
-mkCommand dict actionPtr arg =
+mkCommand dict action arg =
   Command
-    { actionPtr = UserStatic actionPtr
+    { actionPtr = UserStatic action
     , actionArg = ScopedArgument arg
     , cmdInstances = UserStatic dict
     }
@@ -723,7 +716,7 @@ on the build-system side, we don't have access to any of the types, and thus don
 how much to read in order to reconstruct the associated opaque 'ByteString'.
 To ensure we always serialise/deserialise including the length of the data,
 the 'ScopedArgument' newtype is used, with a custom 'Binary' instance that always
-incldues the length. We use this newtype:
+includes the length. We use this newtype:
 
   - in the definition of 'CommandData', for arguments to rules,
   - in the definition of 'DepsRes', for the result of dynamic dependency computations.
@@ -824,9 +817,9 @@ runRuleDynDepsCmd = \case
     }
       | Dict <- deRefStaticPtr instsPtr ->
           Just $ do
-            (deps, depsRes) <- runCommand depsCmd
+            (deps, dynDeps) <- runCommand depsCmd
             -- See Note [Hooks Binary instances]
-            return $ (deps, Binary.encode $ ScopedArgument @User depsRes)
+            return $ (deps, Binary.encode $ ScopedArgument @User dynDeps)
 
 -- | Project out the command for running the rule, passing in the result of
 -- the dependency computation if there was one.

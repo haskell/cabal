@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 module UnitTests.Distribution.Utils.Structured (tests) where
 
 import Data.Proxy                    (Proxy (..))
@@ -19,7 +18,7 @@ tests = testGroup "Distribution.Utils.Structured"
     [ testCase "VersionRange" $
       md5Check (Proxy :: Proxy VersionRange) 0x39396fc4f2d751aaa1f94e6d843f03bd
     , testCase "SPDX.License" $
-      md5Check (Proxy :: Proxy License) 0xd3d4a09f517f9f75bc3d16370d5a853a
+      md5Check (Proxy :: Proxy License) 0xf90ab6c2e4ffbc71b2e8c12531e50356
     -- The difference is in encoding of newtypes
     , testCase "GenericPackageDescription" $ md5CheckGenericPackageDescription (Proxy :: Proxy GenericPackageDescription)
     , testCase "LocalBuildInfo" $ md5CheckLocalBuildInfo (Proxy :: Proxy LocalBuildInfo)
@@ -30,8 +29,9 @@ md5Check proxy md5Int = structureHash proxy @?= md5FromInteger md5Int
 
 md5CheckGenericPackageDescription :: Proxy GenericPackageDescription -> Assertion
 md5CheckGenericPackageDescription proxy = md5Check proxy
-    0x09251b46ffc5178a7526d31e794d9c62
+    0xc039c6741dead5203ad2b33bd3bf4dc8
 
 md5CheckLocalBuildInfo :: Proxy LocalBuildInfo -> Assertion
 md5CheckLocalBuildInfo proxy = md5Check proxy
-    0x93b7e8ebb5b9f879fa5fe49b1708b43b
+    0xe9c033a98273061c4a4cc8f9653193a2
+

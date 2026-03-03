@@ -33,7 +33,7 @@ type MD5 = Fingerprint
 -- >>> showMD5 $ md5 $ BS.pack [0..127]
 -- "37eff01866ba3f538421b30b7cbefcac"
 --
--- @since  3.2.0.0
+-- @since 3.2.0.0
 showMD5 :: MD5 -> String
 showMD5 (Fingerprint a b) = pad a' ++ pad b'
   where
@@ -41,18 +41,18 @@ showMD5 (Fingerprint a b) = pad a' ++ pad b'
     b' = showHex b ""
     pad s = replicate (16 - length s) '0' ++ s
 
--- | @since  3.2.0.0
+-- | @since 3.2.0.0
 md5 :: BS.ByteString -> MD5
 md5 bs = unsafeDupablePerformIO $ BS.unsafeUseAsCStringLen bs $ \(ptr, len) ->
   fingerprintData (castPtr ptr) len
 
--- | @since  3.2.0.0
+-- | @since 3.2.0.0
 binaryPutMD5 :: MD5 -> Put
 binaryPutMD5 (Fingerprint a b) = do
   putWord64le a
   putWord64le b
 
--- | @since  3.2.0.0
+-- | @since 3.2.0.0
 binaryGetMD5 :: Get MD5
 binaryGetMD5 = do
   a <- getWord64le

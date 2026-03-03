@@ -5,7 +5,7 @@ module Distribution.Deprecated.ViewAsFieldDescr
 import Distribution.Client.Compat.Prelude hiding (get)
 import Prelude ()
 
-import qualified Data.List.NonEmpty as NE
+import Data.Foldable (minimumBy)
 import Distribution.ReadE (parsecToReadE)
 import Distribution.Simple.Command
 import Text.PrettyPrint (cat, comma, punctuate, text)
@@ -20,7 +20,7 @@ viewAsFieldDescr (OptionField _n []) =
   error "Distribution.command.viewAsFieldDescr: unexpected"
 viewAsFieldDescr (OptionField n (d : dd)) = FieldDescr n get set
   where
-    optDescr = head $ NE.sortBy cmp (d :| dd)
+    optDescr = minimumBy cmp (d :| dd)
 
     cmp :: OptDescr a -> OptDescr a -> Ordering
     ReqArg{} `cmp` ReqArg{} = EQ

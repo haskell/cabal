@@ -29,7 +29,9 @@
 -- generation and the unregister feature are not well used or tested.
 module Distribution.Simple.Register
   ( register
+  , registerWithHandles
   , unregister
+  , unregisterWithHandles
   , internalPackageDBPath
   , initPackageDB
   , doesPackageDBExist
@@ -59,7 +61,6 @@ import Distribution.Simple.LocalBuildInfo
 
 import qualified Distribution.Simple.GHC as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
-import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 import qualified Distribution.Simple.PackageIndex as Index
 import qualified Distribution.Simple.UHC as UHC
 
@@ -78,6 +79,7 @@ import Distribution.Simple.Program
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import Distribution.Simple.Program.Script
 import Distribution.Simple.Setup.Common
+import Distribution.Simple.Setup.Haddock (HaddockTarget (ForDevelopment))
 import Distribution.Simple.Setup.Register
 import Distribution.Simple.Utils
 import Distribution.System
@@ -99,12 +101,21 @@ register
   -> RegisterFlags
   -- ^ Install in the user's database?; verbose
   -> IO ()
-register pkg_descr lbi0 flags = do
+register = registerWithHandles defaultVerbosityHandles
+
+registerWithHandles
+  :: VerbosityHandles
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> RegisterFlags
+  -- ^ Install in the user's database?; verbose
+  -> IO ()
+registerWithHandles verbHandles pkg_descr lbi0 flags = do
   -- Duncan originally asked for us to not register/install files
   -- when there was no public library.  But with per-component
   -- configure, we legitimately need to install internal libraries
   -- so that we can get them.  So just unconditionally install.
-  let verbosity = fromFlag $ registerVerbosity flags
+  let verbosity = mkVerbosity verbHandles (fromFlag $ registerVerbosity flags)
   targets <- readTargetInfos verbosity pkg_descr lbi0 $ registerTargets flags
 
   -- It's important to register in build order, because ghc-pkg
@@ -118,20 +129,21 @@ register pkg_descr lbi0 flags = do
         CLib lib -> do
           let clbi = targetCLBI tgt
               lbi = lbi0{installedPkgs = index}
-          ipi <- generateOne pkg_descr lib lbi clbi flags
+          ipi <- generateOne verbHandles pkg_descr lib lbi clbi flags
           return (Index.insert ipi index, Just ipi)
         _ -> return (index, Nothing)
 
-  registerAll pkg_descr lbi0 flags (catMaybes ipi_mbs)
+  registerAll verbHandles pkg_descr lbi0 flags (catMaybes ipi_mbs)
 
 generateOne
-  :: PackageDescription
+  :: VerbosityHandles
+  -> PackageDescription
   -> Library
   -> LocalBuildInfo
   -> ComponentLocalBuildInfo
   -> RegisterFlags
   -> IO InstalledPackageInfo
-generateOne pkg lib lbi clbi regFlags =
+generateOne verbHandles pkg lib lbi clbi regFlags =
   do
     absPackageDBs <- absolutePackageDBPaths mbWorkDir packageDbs
     installedPkgInfo <-
@@ -159,16 +171,17 @@ generateOne pkg lib lbi clbi regFlags =
         withPackageDB lbi
           ++ maybeToList (flagToMaybe (regPackageDB regFlags))
     distPref = fromFlag $ setupDistPref common
-    verbosity = fromFlag $ setupVerbosity common
+    verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
     mbWorkDir = flagToMaybe $ setupWorkingDir common
 
 registerAll
-  :: PackageDescription
+  :: VerbosityHandles
+  -> PackageDescription
   -> LocalBuildInfo
   -> RegisterFlags
   -> [InstalledPackageInfo]
   -> IO ()
-registerAll pkg lbi regFlags ipis =
+registerAll verbHandles pkg lbi regFlags ipis =
   do
     when (fromFlag (regPrintId regFlags)) $ do
       for_ ipis $ \installedPkgInfo ->
@@ -177,7 +190,8 @@ registerAll pkg lbi regFlags ipis =
           ( packageId installedPkgInfo == packageId pkg
               && IPI.sourceLibName installedPkgInfo == LMainLibName
           )
-          $ putStrLn (prettyShow (IPI.installedUnitId installedPkgInfo))
+          $ notice verbosity
+          $ prettyShow (IPI.installedUnitId installedPkgInfo)
 
     -- Three different modes:
     case () of
@@ -218,7 +232,7 @@ registerAll pkg lbi regFlags ipis =
         withPackageDB lbi
           ++ maybeToList (flagToMaybe (regPackageDB regFlags))
     common = registerCommonFlags regFlags
-    verbosity = fromFlag (setupVerbosity common)
+    verbosity = mkVerbosity verbHandles (fromFlag (setupVerbosity common))
     mbWorkDir = mbWorkDirLBI lbi
 
     writeRegistrationFileOrDirectory = do
@@ -371,7 +385,6 @@ createPackageDB verbosity comp progdb preferCompat dbPath =
     GHC -> HcPkg.init (GHC.hcPkgInfo progdb) verbosity preferCompat dbPath
     GHCJS -> HcPkg.init (GHCJS.hcPkgInfo progdb) verbosity False dbPath
     UHC -> return ()
-    HaskellSuite _ -> HaskellSuite.initPackageDB verbosity progdb dbPath
     _ -> dieWithException verbosity CreatePackageDB
 
 doesPackageDBExist :: FilePath -> IO Bool
@@ -436,8 +449,6 @@ registerPackage verbosity comp progdb mbWorkDir packageDbs installedPkgInfo regi
   case compilerFlavor comp of
     GHC -> GHC.registerPackage verbosity progdb mbWorkDir packageDbs installedPkgInfo registerOptions
     GHCJS -> GHCJS.registerPackage verbosity progdb mbWorkDir packageDbs installedPkgInfo registerOptions
-    HaskellSuite{} ->
-      HaskellSuite.registerPackage verbosity progdb packageDbs installedPkgInfo
     _
       | HcPkg.registerMultiInstance registerOptions ->
           dieWithException verbosity RegisMultiplePkgNotSupported
@@ -456,7 +467,7 @@ writeHcPkgRegisterScript verbosity mbWorkDir ipis packageDbs hpi = do
         let invocation =
               HcPkg.registerInvocation
                 hpi
-                Verbosity.normal
+                Verbosity.Normal
                 mbWorkDir
                 packageDbs
                 installedPkgInfo
@@ -549,8 +560,9 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     , IPI.ldOptions = ldOptions bi
     , IPI.frameworks = map getSymbolicPath $ frameworks bi
     , IPI.frameworkDirs = map getSymbolicPath $ extraFrameworkDirs bi
-    , IPI.haddockInterfaces = [haddockdir installDirs </> haddockLibraryPath pkg lib]
-    , IPI.haddockHTMLs = [htmldir installDirs]
+    , IPI.haddockInterfaces =
+        [haddockdir installDirs </> haddockLibraryPath pkg lib | hasModules]
+    , IPI.haddockHTMLs = [htmldir installDirs | hasModules]
     , IPI.pkgRoot = Nothing
     , IPI.libVisibility = libVisibility lib
     }
@@ -651,7 +663,10 @@ inplaceInstalledPackageInfo inplaceDir distPref pkg abi_hash lib lbi clbi =
         , haddockdir = inplaceHtmldir
         }
     inplaceDocdir = distPref </> makeRelativePathEx "doc"
-    inplaceHtmldir = i $ inplaceDocdir </> makeRelativePathEx ("html" </> prettyShow (packageName pkg))
+    inplaceHtmldir =
+      i $
+        (inplaceDocdir </> makeRelativePathEx "html")
+          </> makeRelativePathEx (haddockLibraryDirPath ForDevelopment pkg lib)
 
 -- | Construct 'InstalledPackageInfo' for the final install location of a
 -- library package.
@@ -715,11 +730,14 @@ relocatableInstalledPackageInfo pkg abi_hash lib lbi clbi pkgroot =
 -- Unregistration
 
 unregister :: PackageDescription -> LocalBuildInfo -> RegisterFlags -> IO ()
-unregister pkg lbi regFlags = do
+unregister = unregisterWithHandles defaultVerbosityHandles
+
+unregisterWithHandles :: VerbosityHandles -> PackageDescription -> LocalBuildInfo -> RegisterFlags -> IO ()
+unregisterWithHandles verbHandles pkg lbi regFlags = do
   let pkgid = packageId pkg
       common = registerCommonFlags regFlags
       genScript = fromFlag (regGenScript regFlags)
-      verbosity = fromFlag (setupVerbosity common)
+      verbosity = mkVerbosity verbHandles (fromFlag (setupVerbosity common))
       packageDb =
         fromFlagOrDefault
           (registrationPackageDB (withPackageDB lbi))
@@ -729,7 +747,7 @@ unregister pkg lbi regFlags = do
         let invocation =
               HcPkg.unregisterInvocation
                 hpi
-                Verbosity.normal
+                Verbosity.Normal
                 mbWorkDir
                 packageDb
                 pkgid

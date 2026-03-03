@@ -1,3 +1,5 @@
+.. _cabal-project-file:
+
 Project Description — cabal.project File
 ========================================
 
@@ -82,6 +84,16 @@ Using conditionals will force cabal to find a ghc to derive
 architecture and version information from, which will force some
 commands (update, sdist) to require ghc present where otherwise it
 would not be necessitated.
+
+One use case for imports is to specify a `Stackage <https://www.stackage.org/>`
+snapshot, so that your cabal project can use the same set of packages as
+that snapshot. To use the ``lts-21.25`` resolver, you can write
+``import: https://www.stackage.org/lts-21.25/cabal.config`` in your
+``cabal.project``.
+
+There are a number of limitations that come with this approach however; please
+see :ref:`How can I have a reproducible set of versions for my dependencies?<how reproducible>` for
+more information.
 
 Specifying the local packages
 -----------------------------
@@ -269,22 +281,32 @@ The :ref:`VCS fields<vcs-fields>` of ``source-repository-package`` are:
 
     This field is required.
 
+    .. include:: vcs/kind.rst
+
 .. cfg-field:: location: VCS location
 
     This field is required.
+
+    .. include:: vcs/location.rst
 
 .. cfg-field:: branch: VCS branch
 
     This field is optional.
 
+    .. include:: vcs/branch.rst
+
 .. cfg-field:: tag: VCS tag
 
     This field is optional.
+
+    .. include:: vcs/tag.rst
 
 .. cfg-field:: subdir: VCS subdirectory list
 
     Look in one or more subdirectories of the repository for cabal files, rather
     than the root. This field is optional.
+
+    .. include:: vcs/subdir.rst
 
 .. cfg-field:: post-checkout-command: command
 
@@ -388,6 +410,22 @@ package, and thus apply globally:
     look for the file relative to the current working directory,
     and then for the parent directory, until the project file is
     found or we have hit the top of the user's home directory.
+
+    This option can only be specified from the command line.
+
+.. _cmdoption-project-file-parser:
+.. option:: --project-file-parser=PARSER
+
+    :since: 3.18
+
+    Specifies the parser to use for reading the project file. The available
+    parsers are:
+
+    * ``legacy`` - the old parser (will be removed in a future release)
+    * ``default`` - the default parser (uses ``fallback`` unless compiled with ``-f+legacy-comparison``)
+    * ``parsec`` - the new parser using Parsec
+    * ``fallback`` - the new parser using Parsec, but falling back to the old parser if it fails
+    * ``compare`` - the new parser using Parsec, but comparing the results with the old parser
 
     This option can only be specified from the command line.
 
@@ -767,6 +805,7 @@ The following settings control the behavior of the dependency solver:
    explicitly constrained. When set to `none`, the solver will
    consider all packages.
 
+.. _package-configuration-options:
 
 Package configuration options
 -----------------------------
@@ -944,7 +983,7 @@ feature was added.
     The command line variant of this flag is ``--configure-option=arg``,
     which can be specified multiple times to pass multiple options.
 
-.. cfg-field:: compiler: ghc, ghcjs, jhc, lhc, uhc or haskell-suite
+.. cfg-field:: compiler: ghc, ghcjs, jhc, lhc, or uhc
                --compiler=compiler
     :synopsis: Compiler to build with.
 
@@ -1302,6 +1341,8 @@ Foreign function interface options
     ``--extra-framework-dirs=DIR``, which can be specified multiple
     times.
 
+.. _profiling-options:
+
 Profiling options
 ^^^^^^^^^^^^^^^^^
 
@@ -1327,6 +1368,8 @@ Profiling options
 
     The command line variant of this flag is ``--enable-profiling`` and
     ``--disable-profiling``.
+
+.. _profiling-detail:
 
 .. cfg-field:: profiling-detail: level
                --profiling-detail=level
@@ -1367,7 +1410,7 @@ Profiling options
     late-toplevel
         Like top-level but costs will be assigned to top level definitions after
         optimization. This lowers profiling overhead massively while giving similar
-        levels of detail as toplevle-functions. However it means functions introduced
+        levels of detail as toplevel-functions. However it means functions introduced
         by GHC during optimization will show up in profiles as well.
         Corresponds to ``-fprof-late`` if supported and ``-fprof-auto-top`` otherwise.
     late
@@ -1797,7 +1840,7 @@ Advanced global configuration options
     ``--build-summary=TEMPLATE``.
 
 Undocumented fields: ``root-cmd``, ``symlink-bindir``, ``build-log``,
-``remote-build-reporting``, ``report-planned-failure``, ``offline``.
+``remote-build-reporting``, ``report-planning-failure``, ``offline``.
 
 Advanced solver options
 ^^^^^^^^^^^^^^^^^^^^^^^

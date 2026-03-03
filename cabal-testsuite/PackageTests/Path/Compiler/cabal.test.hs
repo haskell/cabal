@@ -5,3 +5,4 @@ main = cabalTest $ do
   void $ cabal "path" ["-z", "--output-format=key-value", "--compiler-info"]
   void $ cabal "path" ["-z", "--output-format=json", "--compiler-info"]
   void $ cabal "path" ["-z", "--compiler-info"]
+  void $ cabalG ["--store-dir=fake-dir"] "path" ["-z", "--compiler-info"]

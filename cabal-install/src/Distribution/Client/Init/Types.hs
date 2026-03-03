@@ -3,6 +3,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TypeApplications #-}
 
 -- |
 -- Module      :  Distribution.Client.Init.Types
@@ -79,8 +80,8 @@ import Distribution.Client.Utils as P
 import Distribution.Fields.Pretty
 import Distribution.ModuleName
 import qualified Distribution.Package as P
-import Distribution.Simple.Setup (Flag (..))
-import Distribution.Verbosity (silent)
+import Distribution.Simple.Setup (Flag)
+import Distribution.Verbosity (VerbosityFlags, VerbosityLevel (..), verbosityLevel)
 import Distribution.Version
 import Language.Haskell.Extension (Extension, Language (..))
 import qualified System.IO
@@ -128,7 +129,7 @@ data InitFlags = InitFlags
   , initializeTestSuite :: Flag Bool
   , testDirs :: Flag [String]
   , initHcPath :: Flag FilePath
-  , initVerbosity :: Flag Verbosity
+  , initVerbosity :: Flag VerbosityFlags
   , overwrite :: Flag Bool
   }
   deriving (Eq, Show, Generic)
@@ -208,7 +209,7 @@ data WriteOpts = WriteOpts
   { _optOverwrite :: Bool
   , _optMinimal :: Bool
   , _optNoComments :: Bool
-  , _optVerbosity :: Verbosity
+  , _optVerbosity :: VerbosityFlags
   , _optPkgDir :: FilePath
   , _optPkgType :: PackageType
   , _optPkgName :: P.PackageName
@@ -346,6 +347,7 @@ class Monad m => Interactive m where
   doesFileExist :: FilePath -> m Bool
   canonicalizePathNoThrow :: FilePath -> m FilePath
   readProcessWithExitCode :: FilePath -> [String] -> String -> m (ExitCode, String, String)
+  maybeReadProcessWithExitCode :: FilePath -> [String] -> String -> m (Maybe (ExitCode, String, String))
   getEnvironment :: m [(String, String)]
   getCurrentYear :: m Integer
   listFilesInside :: (FilePath -> m Bool) -> FilePath -> m [FilePath]
@@ -389,6 +391,7 @@ instance Interactive PromptIO where
   doesFileExist = liftIO <$> P.doesFileExist
   canonicalizePathNoThrow = liftIO <$> P.canonicalizePathNoThrow
   readProcessWithExitCode a b c = liftIO $ Process.readProcessWithExitCode a b c
+  maybeReadProcessWithExitCode a b c = liftIO $ (Just <$> Process.readProcessWithExitCode a b c) `P.catch` const @_ @IOError (pure Nothing)
   getEnvironment = liftIO P.getEnvironment
   getCurrentYear = liftIO P.getCurrentYear
   listFilesInside test dir = do
@@ -407,7 +410,7 @@ instance Interactive PromptIO where
   renameDirectory a b = liftIO $ P.renameDirectory a b
   hFlush = liftIO <$> System.IO.hFlush
   message q severity msg
-    | q == silent = pure ()
+    | verbosityLevel q == Silent = pure ()
     | otherwise = putStrLn $ "[" ++ displaySeverity severity ++ "] " ++ msg
   break = return False
   throwPrompt = liftIO <$> throwM
@@ -438,6 +441,7 @@ instance Interactive PurePrompt where
   readProcessWithExitCode !_ !_ !_ = do
     input <- pop
     return (ExitSuccess, input, "")
+  maybeReadProcessWithExitCode a b c = Just <$> readProcessWithExitCode a b c
   getEnvironment = fmap (map read) popList
   getCurrentYear = fmap read pop
   listFilesInside pred' !_ = do
@@ -497,7 +501,7 @@ checkInvalidPath :: String -> a -> PurePrompt a
 checkInvalidPath path act =
   -- The check below is done this way so it's easier to append
   -- more invalid paths in the future, if necessary
-  if path `elem` ["."]
+  if path == "."
     then throwPrompt $ BreakException $ "Invalid path: " ++ path
     else return act
 

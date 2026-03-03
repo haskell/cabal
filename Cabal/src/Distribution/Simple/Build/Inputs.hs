@@ -1,7 +1,3 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PatternSynonyms #-}
-
 module Distribution.Simple.Build.Inputs
   ( -- * Inputs of actions for building components
     PreBuildComponentInputs (..)
@@ -48,7 +44,7 @@ data PreBuildComponentInputs = PreBuildComponentInputs
   }
 
 -- | Get the @'Verbosity'@ from the context the component being built is in.
-buildVerbosity :: PreBuildComponentInputs -> Verbosity
+buildVerbosity :: PreBuildComponentInputs -> VerbosityFlags
 buildVerbosity = buildingWhatVerbosity . buildingWhat
 
 -- | Get the @'Component'@ being built.

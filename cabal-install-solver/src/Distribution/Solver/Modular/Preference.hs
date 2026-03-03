@@ -135,7 +135,7 @@ preferPackagePreferences pcs =
     preferred pn opt =
       let PackagePreferences vrs _ _ = pcs pn
       in fromIntegral . negate . L.length $
-         L.filter (flip checkVR (version opt)) vrs
+         L.filter (`checkVR` version opt) vrs
 
     -- Prefer installed packages over non-installed packages.
     installed :: POption -> Weight
@@ -190,6 +190,9 @@ processPackageConstraintP qpn c i (LabeledPackageConstraint (PackageConstraint s
     go _       PackagePropertyInstalled
         | instI i       = r
         | otherwise     = Fail c (GlobalConstraintInstalled src)
+    go _       (PackagePropertyInstalledSpecificUnitId unitId)
+        | instUid unitId i       = r
+        | otherwise     = Fail c (GlobalConstraintInstalledSpecificUnitId unitId src)
     go _       PackagePropertySource
         | not (instI i) = r
         | otherwise     = Fail c (GlobalConstraintSource src)

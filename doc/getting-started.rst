@@ -72,7 +72,7 @@ The ``myapp.cabal`` file is a package description file, commonly referred to as 
 
 It contains metadata (package name and version, author name, license, etc.) and sections
 to define package components. Components can be used to split large codebases into smaller,
-more managable building blocks.
+more manageable building blocks.
 A component can be of one of several types (executable, library, etc.) and describes,
 among other things, the location of source files and its dependencies.
 The ``myapp.cabal`` file above defines a single component named ``myapp`` of the executable type.

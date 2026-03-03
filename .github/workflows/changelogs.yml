@@ -4,13 +4,7 @@ on:
   push:
     branches:
     - master
-    paths:
-    - 'changelog.d/*'
-    - '.github/workflows/changelogs.yml'
   pull_request:
-    paths:
-    - 'changelog.d/*'
-    - '.github/workflows/changelogs.yml'
   release:
     types:
       - created
@@ -35,7 +29,7 @@ jobs:
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Checkout cabal sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Run changelog-d
         run: |

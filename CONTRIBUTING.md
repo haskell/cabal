@@ -307,6 +307,25 @@ you push a fix of a whitespace violation, please do so in a _separate commit_. F
   #endif
   ```
 
+## Proposal Process
+
+For larger changes which require additional discussion or consensus building,
+the [proposal process](proposals.md) can be used. Proposals are discussed in
+the [`cabal-proposals`](http://github.com/haskell/cabal-proposals) repository.
+
+When does a change require a proposal?
+
+* Bug fixes or small improvements do not require proposals.
+* Improving features which already see wide agreement does not require
+  proposals (for example, migrating existing commands from v1- to v2-).
+* Larger features should be first discussed on a proposal (for example, a new
+  command, Hooks, private dependencies).
+* Significant changes to existing behaviour should be discussed on proposals.
+
+In general, most changes do not require proposals, developers are trusted to
+use their judgement about when seeking a broader consensus is necessary.
+
+
 ## GitHub Ticket Conventions
 
 Each major `Cabal`/`cabal-install` release (e.g. 3.4, 3.6, etc.) has a
@@ -360,6 +379,36 @@ If your PR is trivial you can omit this process (but explain in the PR why you
 think it does not warrant an issue). Feel free to open a new issue (or new
 issues) when appropriate.
 
+### Pull request size
+
+Keep your pull requests small, write one pull request per feature, let
+the content of the pull request match the title of the pull request.
+
+To get merged, your pull request needs to be reviewed by two other
+contributors. Large pull requests are daunting to inspect, and the
+back-and-forth between the author and reviewer can get frustrating and
+difficult to follow.
+
+Split your pull requests in multiple ones if possible (e.g. a refactor
+and a feature implementation should go in two different pull requests).
+This is *especially* important when we decide to backport a pull request
+(be it fix or a feature).
+
+Thorough reviews mean fewer regressions, keeping your pull requests small
+will improve Cabal codebase quality.
+
+### Pull requests for `gh` users
+
+Are you a [`gh`](https://cli.github.com/) (GitHub’s official command line tool)
+user? Input this command to create a pull request:
+
+```
+gh pr create --template pull_request_template.md
+```
+
+This way you will not erase the
+[PR template](https://github.com/haskell/cabal/blob/master/.github/pull_request_template.md)
+all contributors use.
 
 ## Changelog
 
@@ -395,9 +444,12 @@ description: {
 }
 ```
 
-Changelogs may also be written in "markdown-frontmatter" format. This is useful if your
-description contains braces, which must be escaped with backslashes in `.cabal` file
-format. The front matter is in YAML syntax, not `.cabal` file syntax, and the file
+Changelogs may also be written in "markdown-frontmatter" format. This is useful
+if your description contains braces, which must be escaped with backslashes in
+`.cabal` file format. Another benefit of using an `.md` extension with your
+changelog is that it will be checked for typos.
+
+The front matter is in YAML syntax, not `.cabal` file syntax, and the file
 _must_ begin with a line containing only hyphens.
 
 ```markdown
@@ -438,6 +490,18 @@ At release time, the entries will be merged with
 
 In addition, if you're changing the `.cabal` file format specification you should
 add an entry in `doc/file-format-changelog.rst`.
+
+### Is my change `significant`?
+
+Use your best judgement and if unsure ask other maintainers. If your PR fixes
+a specific ticket, how busy was the discussion there? A new command or option
+most likely warrants a `significance: significant` tag, same with command
+line changes that disrupts the workflow of many users or an API change
+that requires substantial time to integrate in a program.
+
+Put yourself in the shoes of the user: would you appreciate seeing this
+change highlighted in the announcement post or release notes overview? If
+so, add `significance: significant`.
 
 ## Communicating
 

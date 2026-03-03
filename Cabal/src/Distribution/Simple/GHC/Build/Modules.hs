@@ -1,9 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TupleSections #-}
 
 module Distribution.Simple.GHC.Build.Modules
   ( buildHaskellModules
@@ -43,6 +41,7 @@ import Distribution.Types.TestSuite
 import Distribution.Types.TestSuiteInterface
 import Distribution.Utils.NubList
 import Distribution.Utils.Path
+import Distribution.Verbosity (VerbosityHandles, mkVerbosity, verbosityLevel)
 import System.FilePath ()
 
 {-
@@ -112,6 +111,8 @@ buildHaskellModules
   -- has already been created.
   -> [BuildWay]
   -- ^ The set of needed build ways according to user options
+  -> VerbosityHandles
+  -- ^ Logging handles
   -> PreBuildComponentInputs
   -- ^ The context and component being built in it.
   -> IO (BuildWay -> GhcOptions)
@@ -119,11 +120,11 @@ buildHaskellModules
   -- invocation used to compile the component in that 'BuildWay'.
   -- This can be useful in, eg, a linker invocation, in which we want to use the
   -- same options and list the same inputs as those used for building.
-buildHaskellModules numJobs ghcProg mbMainFile inputModules buildTargetDir neededLibWays pbci = do
+buildHaskellModules numJobs ghcProg mbMainFile inputModules buildTargetDir neededLibWays verbHandles pbci = do
   -- See Note [Building Haskell Modules accounting for TH]
 
   let
-    verbosity = buildVerbosity pbci
+    verbosity = mkVerbosity verbHandles $ buildVerbosity pbci
     isLib = buildIsLib pbci
     clbi = buildCLBI pbci
     lbi = localBuildInfo pbci
@@ -137,20 +138,29 @@ buildHaskellModules numJobs ghcProg mbMainFile inputModules buildTargetDir neede
       | BuildRepl{} <- what = True
       | otherwise = False
 
-  -- TODO: do we need to put hs-boot files into place for mutually recursive
-  -- modules?  FIX: what about exeName.hi-boot?
+    -- TODO: do we need to put hs-boot files into place for mutually recursive
+    -- modules?  FIX: what about exeName.hi-boot?
 
-  -- Determine if program coverage should be enabled and if so, what
-  -- '-hpcdir' should be.
-  let isCoverageEnabled = if isLib then libCoverage lbi else exeCoverage lbi
-      hpcdir way
-        | forRepl = mempty -- HPC is not supported in ghci
-        | isCoverageEnabled = Flag $ Hpc.mixDir (coerceSymbolicPath $ coerceSymbolicPath buildTargetDir </> extraCompilationArtifacts) way
-        | otherwise = mempty
+    -- Determine if program coverage should be enabled and if so, what
+    -- '-hpcdir' should be.
+    isCoverageEnabled = if isLib then libCoverage lbi else exeCoverage lbi
+    hpcdir way
+      | forRepl = mempty -- HPC is not supported in ghci
+      | isCoverageEnabled = Flag $ Hpc.mixDir (coerceSymbolicPath $ coerceSymbolicPath buildTargetDir </> extraCompilationArtifacts) way
+      | otherwise = mempty
 
-  let
     mbWorkDir = mbWorkDirLBI lbi
-    runGhcProg = runGHC verbosity ghcProg comp platform mbWorkDir
+    tempFileOptions = commonSetupTempFileOptions $ buildingWhatCommonFlags what
+    runGhcProg =
+      runGHCWithResponseFile
+        "ghc.rsp"
+        Nothing
+        tempFileOptions
+        verbosity
+        ghcProg
+        comp
+        platform
+        mbWorkDir
     platform = hostPlatform lbi
 
     (hsMains, scriptMains) =
@@ -159,7 +169,7 @@ buildHaskellModules numJobs ghcProg mbMainFile inputModules buildTargetDir neede
     -- We define the base opts which are shared across different build ways in
     -- 'buildHaskellModules'
     baseOpts way =
-      (Internal.componentGhcOptions verbosity lbi bi clbi buildTargetDir)
+      (Internal.componentGhcOptions (verbosityLevel verbosity) lbi bi clbi buildTargetDir)
         `mappend` mempty
           { ghcOptMode = toFlag GhcModeMake
           , -- Previously we didn't pass -no-link when building libs,
@@ -357,12 +367,14 @@ buildWayExtraHcOptions = \case
 componentInputs
   :: SymbolicPath Pkg (Dir Artifacts)
   -- ^ Target build dir
+  -> VerbosityHandles
+  -- ^ Logging handles
   -> PD.PackageDescription
   -> PreBuildComponentInputs
   -- ^ The context and component being built in it.
   -> IO (Maybe (SymbolicPath Pkg File), [ModuleName])
   -- ^ The main input file, and the Haskell modules
-componentInputs buildTargetDir pkg_descr pbci =
+componentInputs buildTargetDir verbHandles pkg_descr pbci =
   case component of
     CLib lib ->
       pure (Nothing, allLibModules lib clbi)
@@ -377,7 +389,7 @@ componentInputs buildTargetDir pkg_descr pbci =
     CTest TestSuite{} -> error "testSuiteExeV10AsExe: wrong kind"
     CBench Benchmark{} -> error "benchmarkExeV10asExe: wrong kind"
   where
-    verbosity = buildVerbosity pbci
+    verbosity = mkVerbosity verbHandles $ buildVerbosity pbci
     component = buildComponent pbci
     clbi = buildCLBI pbci
     mbWorkDir = mbWorkDirLBI $ localBuildInfo pbci

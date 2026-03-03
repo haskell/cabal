@@ -58,9 +58,9 @@ isOutOfBounds :: Int -> String -> String -> Bool
 isOutOfBounds range a b = not $ withinRange range a b
 
 testRange :: Int -> [String] -> String ->  Assertion
-testRange range elems erronousElement = assertBool "String should be out of bounds to make a spelling suggestion" (isOutOfBounds range erronousElement suggestion)
+testRange range elems erroneousElement = assertBool "String should be out of bounds to make a spelling suggestion" (isOutOfBounds range erroneousElement suggestion)
   where
-    suggestion = mostSimilarElement erronousElement elems
+    suggestion = mostSimilarElement erroneousElement elems
 
 outOfBounds :: [String]
 outOfBounds =

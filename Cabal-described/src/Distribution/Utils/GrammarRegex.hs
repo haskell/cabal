@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveFoldable      #-}
-{-# LANGUAGE DeriveFunctor       #-}
 {-# LANGUAGE DeriveTraversable   #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -25,7 +23,7 @@ import Data.Monoid                   (Monoid (..))
 import Data.String                   (IsString (..))
 import Data.Traversable              (Traversable)
 import Data.Void                     (Void, vacuous)
-import Distribution.Compat.Semigroup (Semigroup (..))
+import Data.Semigroup                (Semigroup (..))
 import Prelude                       (Bool (..), Char, Eq (..), Functor, Int, Maybe (..), Ord (..), Show, String, fmap, length, map, otherwise, ($), (++), (.))
 
 import qualified Distribution.Utils.CharSet as CS
@@ -196,9 +194,10 @@ mathtt d = "\\mathtt{" <<>> d <<>> "}"
 
 charsetDoc :: CS.CharSet -> PP.Doc
 charsetDoc acs
-    | acs == CS.alpha    = terminalDoc "alpha"
-    | acs == CS.alphanum = terminalDoc "alpha-num"
-    | acs == CS.upper    = terminalDoc "upper"
+    | acs == CS.alpha            = terminalDoc "alpha"
+    | acs == CS.alphanum         = terminalDoc "alpha-num"
+    | acs == CS.alphanumNotDigit = terminalDoc "alpha-num-not-digit"
+    | acs == CS.upper            = terminalDoc "upper"
 charsetDoc acs = case CS.toIntervalList acs of
     []               -> "\\emptyset"
     [(x,y)] | x == y -> inquotes $ mathtt $ charDoc x

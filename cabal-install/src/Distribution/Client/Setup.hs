@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -----------------------------------------------------------------------------
@@ -170,7 +170,7 @@ import Distribution.Simple.Configure
   , interpretPackageDbFlags
   )
 import Distribution.Simple.Flag
-  ( Flag (..)
+  ( Flag
   , flagElim
   , flagToList
   , flagToMaybe
@@ -178,6 +178,8 @@ import Distribution.Simple.Flag
   , maybeToFlag
   , mergeListFlag
   , toFlag
+  , pattern Flag
+  , pattern NoFlag
   )
 import Distribution.Simple.InstallDirs
   ( InstallDirs (..)
@@ -225,7 +227,9 @@ import Distribution.Types.UnqualComponentName
   ( unqualComponentNameToPackageName
   )
 import Distribution.Verbosity
-  ( lessVerbose
+  ( VerbosityFlags
+  , defaultVerbosityHandles
+  , lessVerbose
   , normal
   , verboseNoFlags
   , verboseNoTimestamp
@@ -283,6 +287,7 @@ globalCommand commands =
               , "unpack"
               , "init"
               , "configure"
+              , "target"
               , "build"
               , "clean"
               , "run"
@@ -303,6 +308,7 @@ globalCommand commands =
               , "path"
               , "new-build"
               , "new-configure"
+              , "new-target"
               , "new-repl"
               , "new-freeze"
               , "new-run"
@@ -335,7 +341,8 @@ globalCommand commands =
               , "v1-register"
               , "v1-reconfigure"
               , -- v2 commands, nix-style
-                "v2-build"
+                "v2-target"
+              , "v2-build"
               , "v2-configure"
               , "v2-repl"
               , "v2-freeze"
@@ -380,6 +387,7 @@ globalCommand commands =
                 , addCmd "gen-bounds"
                 , addCmd "outdated"
                 , addCmd "path"
+                , addCmd "target"
                 , par
                 , startGroup "project building and installing"
                 , addCmd "build"
@@ -407,6 +415,7 @@ globalCommand commands =
                 , addCmd "hscolour"
                 , par
                 , startGroup "new-style projects (forwards-compatible aliases)"
+                , addCmd "v2-target"
                 , addCmd "v2-build"
                 , addCmd "v2-configure"
                 , addCmd "v2-repl"
@@ -508,32 +517,6 @@ globalCommand commands =
           globalHttpTransport
           (\v flags -> flags{globalHttpTransport = v})
           (reqArgFlag "HttpTransport")
-      , multiOption
-          "nix"
-          globalNix
-          (\v flags -> flags{globalNix = v})
-          [ optArg'
-              "(True or False)"
-              (maybeToFlag . (readMaybe =<<))
-              ( \case
-                  Flag True -> [Just "enable"]
-                  Flag False -> [Just "disable"]
-                  NoFlag -> []
-              )
-              ""
-              ["nix"] -- Must be empty because we need to return PP.empty from viewAsFieldDescr
-              "[DEPRECATED] Nix integration: run commands through nix-shell if a 'shell.nix' file exists (default is False)"
-          , noArg
-              (Flag True)
-              []
-              ["enable-nix"]
-              "[DEPRECATED] Enable Nix integration: run commands through nix-shell if a 'shell.nix' file exists"
-          , noArg
-              (Flag False)
-              []
-              ["disable-nix"]
-              "[DEPRECATED] Disable Nix integration"
-          ]
       , option
           []
           ["store-dir", "storedir"]
@@ -652,9 +635,11 @@ filterCommonFlags flags cabalLibVersion
     flags_latest = flags
     flags_3_13_0 =
       flags_latest
-        { setupWorkingDir = NoFlag
+        { -- Cabal < 3.13 does not support the --working-dir flag.
+          setupWorkingDir = NoFlag
+        , -- Or the --keep-temp-files flag.
+          setupKeepTempFiles = NoFlag
         }
-    -- Cabal < 3.13 does not support the --working-dir flag.
     flags_2_1_0 =
       flags_3_13_0
         { -- Cabal < 2.1 doesn't know about -v +timestamp modifier
@@ -888,6 +873,7 @@ configCompilerAux' :: ConfigFlags -> IO (Compiler, Platform, ProgramDb)
 configCompilerAux' configFlags = do
   let commonFlags = configCommonFlags configFlags
   configCompilerAuxEx
+    defaultVerbosityHandles
     configFlags
       { -- FIXME: make configCompilerAux use a sensible verbosity
         configCommonFlags =
@@ -1268,7 +1254,10 @@ filterReplFlags :: ReplFlags -> Version -> ReplFlags
 filterReplFlags flags cabalLibVersion =
   flags
     { replCommonFlags =
-        filterCommonFlags (replCommonFlags flags) cabalLibVersion
+        (filterCommonFlags (replCommonFlags flags) cabalLibVersion)
+          { -- `cabal repl` knew about `--keep-temp-files` before other commands did.
+            setupKeepTempFiles = setupKeepTempFiles (replCommonFlags flags)
+          }
     }
 
 -- ------------------------------------------------------------
@@ -1405,7 +1394,7 @@ data FetchFlags = FetchFlags
   , fetchOnlyConstrained :: Flag OnlyConstrained
   , fetchTests :: Flag Bool
   , fetchBenchmarks :: Flag Bool
-  , fetchVerbosity :: Flag Verbosity
+  , fetchVerbosity :: Flag VerbosityFlags
   }
 
 defaultFetchFlags :: FetchFlags
@@ -1538,7 +1527,7 @@ data FreezeFlags = FreezeFlags
   , freezeStrongFlags :: Flag StrongFlags
   , freezeAllowBootLibInstalls :: Flag AllowBootLibInstalls
   , freezeOnlyConstrained :: Flag OnlyConstrained
-  , freezeVerbosity :: Flag Verbosity
+  , freezeVerbosity :: Flag VerbosityFlags
   }
 
 defaultFreezeFlags :: FreezeFlags
@@ -1668,10 +1657,10 @@ genBoundsCommand =
 -- ------------------------------------------------------------
 
 data CheckFlags = CheckFlags
-  { checkVerbosity :: Flag Verbosity
+  { checkVerbosity :: Flag VerbosityFlags
   , checkIgnore :: [CheckExplanationIDString]
   }
-  deriving (Show, Typeable)
+  deriving (Show)
 
 defaultCheckFlags :: CheckFlags
 defaultCheckFlags =
@@ -1720,7 +1709,7 @@ checkOptions' _showOrParseArgs =
 -- ------------------------------------------------------------
 
 data UpdateFlags = UpdateFlags
-  { updateVerbosity :: Flag Verbosity
+  { updateVerbosity :: Flag VerbosityFlags
   , updateIndexState :: Flag TotalIndexState
   }
   deriving (Generic)
@@ -1745,7 +1734,7 @@ cleanCommand =
         "Usage: " ++ pname ++ " v1-clean [FLAGS]\n"
     }
 
-formatCommand :: CommandUI (Flag Verbosity)
+formatCommand :: CommandUI (Flag VerbosityFlags)
 formatCommand =
   CommandUI
     { commandName = "format"
@@ -1815,7 +1804,7 @@ data ReportFlags = ReportFlags
   { reportToken :: Flag Token
   , reportUsername :: Flag Username
   , reportPassword :: Flag Password
-  , reportVerbosity :: Flag Verbosity
+  , reportVerbosity :: Flag VerbosityFlags
   }
   deriving (Generic)
 
@@ -1897,7 +1886,7 @@ data GetFlags = GetFlags
   , getIndexState :: Flag TotalIndexState
   , getActiveRepos :: Flag ActiveRepos
   , getSourceRepository :: Flag (Maybe RepoKind)
-  , getVerbosity :: Flag Verbosity
+  , getVerbosity :: Flag VerbosityFlags
   }
   deriving (Generic)
 
@@ -2051,7 +2040,7 @@ data ListFlags = ListFlags
   { listInstalled :: Flag Bool
   , listSimpleOutput :: Flag Bool
   , listCaseInsensitive :: Flag Bool
-  , listVerbosity :: Flag Verbosity
+  , listVerbosity :: Flag VerbosityFlags
   , listPackageDBs :: [Maybe PackageDB]
   , listHcPath :: Flag FilePath
   }
@@ -2161,7 +2150,7 @@ instance Semigroup ListFlags where
 -- ------------------------------------------------------------
 
 data InfoFlags = InfoFlags
-  { infoVerbosity :: Flag Verbosity
+  { infoVerbosity :: Flag VerbosityFlags
   , infoPackageDBs :: [Maybe PackageDB]
   }
   deriving (Generic)
@@ -2471,7 +2460,10 @@ filterHaddockFlags flags cabalLibVersion
     flags_latest =
       flags
         { haddockCommonFlags =
-            filterCommonFlags (haddockCommonFlags flags) cabalLibVersion
+            (filterCommonFlags (haddockCommonFlags flags) cabalLibVersion)
+              { -- `cabal haddock` knew about `--keep-temp-files` before other commands did.
+                setupKeepTempFiles = setupKeepTempFiles (haddockCommonFlags flags)
+              }
         }
 
     flags_2_3_0 =
@@ -2865,7 +2857,7 @@ data UploadFlags = UploadFlags
   , uploadUsername :: Flag Username
   , uploadPassword :: Flag Password
   , uploadPasswordCmd :: Flag [String]
-  , uploadVerbosity :: Flag Verbosity
+  , uploadVerbosity :: Flag VerbosityFlags
   }
   deriving (Generic)
 
@@ -3462,7 +3454,7 @@ instance Semigroup ActAsSetupFlags where
 -- ------------------------------------------------------------
 
 data UserConfigFlags = UserConfigFlags
-  { userConfigVerbosity :: Flag Verbosity
+  { userConfigVerbosity :: Flag VerbosityFlags
   , userConfigForce :: Flag Bool
   , userConfigAppendLines :: Flag [String]
   }

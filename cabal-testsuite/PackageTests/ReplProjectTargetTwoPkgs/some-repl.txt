@@ -1,0 +1,4 @@
+Please pick a single [package:][ctype:]component (or all) as target for the REPL command. The packages in 'some.project' from which to select a component target are:
+ - pkg-one
+ - pkg-two
+

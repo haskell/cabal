@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE Rank2Types #-}
 -----------------------------------------------------------------------------
 -- This module is meant to be local-only to Distribution...
@@ -45,6 +44,7 @@ module Distribution.Deprecated.ParseUtils
   , showFreeText
   , field
   , simpleField
+  , monoidField
   , listField
   , listFieldWithSep
   , spaceListField
@@ -53,6 +53,7 @@ module Distribution.Deprecated.ParseUtils
   , readPToMaybe
   , fieldParsec
   , simpleFieldParsec
+  , monoidFieldParsec
   , listFieldParsec
   , commaListFieldParsec
   , commaNewLineListFieldParsec
@@ -91,6 +92,7 @@ data PError
   = AmbiguousParse String LineNo
   | NoParse String LineNo
   | TabsError LineNo
+  | FieldShouldBeStanza String LineNo
   | FromString String (Maybe LineNo)
   deriving (Eq, Show)
 
@@ -186,6 +188,10 @@ locatedErrorMsg (NoParse f n) =
   , "Parse of field '" ++ f ++ "' failed."
   )
 locatedErrorMsg (TabsError n) = (Just n, "Tab used as indentation.")
+locatedErrorMsg (FieldShouldBeStanza name lineNumber) =
+  ( Just lineNumber
+  , "'" ++ name ++ "' is a stanza, not a field. Remove the trailing ':' to parse a stanza."
+  )
 locatedErrorMsg (FromString s n) = (n, s)
 
 syntaxError :: LineNo -> String -> ParseResult a
@@ -249,6 +255,32 @@ simpleFieldParsec
   -> FieldDescr b
 simpleFieldParsec name showF readF get set =
   liftField get set $ fieldParsec name showF readF
+
+monoidField
+  :: Semigroup a
+  => String
+  -> (a -> Doc)
+  -> ReadP a a
+  -> (b -> a)
+  -> (a -> b -> b)
+  -> FieldDescr b
+monoidField name showF readF get set =
+  liftField get set' $ field name showF readF
+  where
+    set' xs b = set (get b <> xs) b
+
+monoidFieldParsec
+  :: Semigroup a
+  => String
+  -> (a -> Doc)
+  -> ParsecParser a
+  -> (b -> a)
+  -> (a -> b -> b)
+  -> FieldDescr b
+monoidFieldParsec name showF readF get set =
+  liftField get set' $ fieldParsec name showF readF
+  where
+    set' xs b = set (get b <> xs) b
 
 commaListFieldWithSepParsec
   :: Separator

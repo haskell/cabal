@@ -1,0 +1,7 @@
+packages:
+    no-pkg-1
+    no-pkg-2-dir
+    no-pkg-3
+    no-pkg-4-dir
+
+import: 0.config

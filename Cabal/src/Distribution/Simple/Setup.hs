@@ -1,12 +1,9 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Simple.Setup
@@ -41,6 +38,7 @@ module Distribution.Simple.Setup
   , globalCommand
   , CommonSetupFlags (..)
   , defaultCommonSetupFlags
+  , commonSetupTempFileOptions
   , ConfigFlags (..)
   , emptyConfigFlags
   , defaultConfigFlags
@@ -121,7 +119,9 @@ module Distribution.Simple.Setup
   , splitArgs
   , defaultDistPref
   , optionDistPref
-  , Flag (..)
+  , Flag
+  , pattern Flag
+  , pattern NoFlag
   , toFlag
   , fromFlag
   , fromFlagOrDefault
@@ -170,7 +170,7 @@ import Distribution.Simple.Setup.SDist
 import Distribution.Simple.Setup.Test
 import Distribution.Utils.Path
 
-import Distribution.Verbosity (Verbosity)
+import Distribution.Verbosity (VerbosityFlags)
 
 -- | What kind of build phase are we doing/hooking into?
 --
@@ -194,7 +194,7 @@ buildingWhatCommonFlags = \case
   BuildHaddock flags -> haddockCommonFlags flags
   BuildHscolour flags -> hscolourCommonFlags flags
 
-buildingWhatVerbosity :: BuildingWhat -> Verbosity
+buildingWhatVerbosity :: BuildingWhat -> VerbosityFlags
 buildingWhatVerbosity = fromFlag . setupVerbosity . buildingWhatCommonFlags
 
 buildingWhatWorkingDir :: BuildingWhat -> Maybe (SymbolicPath CWD (Dir Pkg))

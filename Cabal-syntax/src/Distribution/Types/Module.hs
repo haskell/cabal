@@ -1,6 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Distribution.Types.Module
   ( Module (..)
@@ -26,7 +25,7 @@ import qualified Text.PrettyPrint as Disp
 -- the 'InstalledPackageInfo'.
 data Module
   = Module DefUnitId ModuleName
-  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
+  deriving (Generic, Read, Show, Eq, Ord, Data)
 
 instance Binary Module
 instance Structured Module

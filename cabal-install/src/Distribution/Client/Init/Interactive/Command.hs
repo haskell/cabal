@@ -1,5 +1,5 @@
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 -----------------------------------------------------------------------------
 
@@ -59,13 +59,14 @@ import Distribution.Client.Types (SourcePackageDb (..))
 import Distribution.FieldGrammar.Newtypes (SpecLicense (..))
 import qualified Distribution.SPDX as SPDX
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
-import Distribution.Simple.Setup (Flag (..), fromFlagOrDefault)
+import Distribution.Simple.Setup (fromFlagOrDefault, pattern Flag, pattern NoFlag)
 import Distribution.Solver.Types.PackageIndex (elemByPackageName)
 import Distribution.Types.PackageName (PackageName, unPackageName)
 import Distribution.Version (Version)
 
 import Distribution.License (knownLicenses)
 import Distribution.Parsec (simpleParsec')
+import Distribution.Verbosity (verbosityFlags)
 import Language.Haskell.Extension (Language (..))
 
 -- | Main driver for interactive prompt code.
@@ -107,7 +108,7 @@ createProject v pkgIx srcDb initFlags = do
           doOverwrite
           isMinimal
           cs
-          v
+          (verbosityFlags v)
           pkgDir
           pkgType
           pkgName

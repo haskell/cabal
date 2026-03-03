@@ -26,7 +26,7 @@ data LegacyExeDependency
   = LegacyExeDependency
       String
       VersionRange
-  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
+  deriving (Generic, Read, Show, Eq, Ord, Data)
 
 instance Binary LegacyExeDependency
 instance Structured LegacyExeDependency

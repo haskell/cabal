@@ -1,0 +1,27 @@
+cabal-version:      2.4
+name:               datadir-test
+version:            0.1.0.0
+synopsis:           Test for datadir environment variable
+license:            BSD-3-Clause
+author:             Cabal Test Suite
+maintainer:         cabal-dev@haskell.org
+build-type:         Simple
+
+data-files:
+    testdata/sample.txt
+
+library
+    exposed-modules:     MyLib
+    build-depends:       base >=4.7 && <5
+    other-modules: Paths_datadir_test
+    hs-source-dirs:      src
+    default-language:    Haskell2010
+
+test-suite datadir-test
+    type:               exitcode-stdio-1.0
+    main-is:            DataDirTest.hs
+    hs-source-dirs:     test
+    build-depends:      base >=4.7 && <5,
+                        datadir-test,
+                        directory
+    default-language:   Haskell2010

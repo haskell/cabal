@@ -1,4 +1,5 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE TupleSections #-}
 
 module Distribution.Client.Init.NonInteractive.Command
   ( genPkgDescription
@@ -51,7 +52,7 @@ import Distribution.Client.Init.Utils
 import Distribution.Client.Types (SourcePackageDb (..))
 import Distribution.ModuleName (ModuleName, components)
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
-import Distribution.Simple.Setup (Flag (..), fromFlagOrDefault)
+import Distribution.Simple.Setup (fromFlagOrDefault, pattern Flag, pattern NoFlag)
 import Distribution.Solver.Types.PackageIndex (elemByPackageName)
 import Distribution.Types.Dependency (Dependency (..))
 import Distribution.Types.PackageName (PackageName, unPackageName)
@@ -112,7 +113,7 @@ createProject comp v pkgIx srcDb initFlags = do
           doOverwrite
           isMinimal
           cs
-          v
+          (verbosityFlags v)
           pkgDir
           pkgType
           pkgName
@@ -493,11 +494,12 @@ dependenciesHeuristics flags fp pkgIx = getDependencies flags $ do
         Flag x -> x
         NoFlag -> map moduleName sources
 
-      groupedDeps = concatMap (\s -> map (\i -> (moduleName s, i)) (imports s)) sources
+      groupedDeps = concatMap (\s -> map (moduleName s,) (imports s)) sources
       filteredDeps = filter ((`notElem` mods) . snd) groupedDeps
       preludeNub = nubBy (\a b -> snd a == snd b) $ (fromString "Prelude", fromString "Prelude") : filteredDeps
+      verbosity = mkVerbosity defaultVerbosityHandles (fromFlagOrDefault normal $ initVerbosity flags)
 
-  retrieveDependencies (fromFlagOrDefault normal $ initVerbosity flags) flags preludeNub pkgIx
+  retrieveDependencies verbosity flags preludeNub pkgIx
 
 -- | Retrieve the list of extensions
 otherExtsHeuristics :: Interactive m => InitFlags -> FilePath -> m [Extension]

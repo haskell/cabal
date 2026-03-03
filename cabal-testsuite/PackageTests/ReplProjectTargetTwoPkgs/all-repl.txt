@@ -1,0 +1,3 @@
+In order, the following will be built:
+ - pkg-one-0.1 (interactive) (first run)
+ - pkg-two-0.1 (interactive) (first run)

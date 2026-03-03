@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -93,7 +92,7 @@ data SolverInstallPlan = SolverInstallPlan
   { planIndex :: !SolverPlanIndex
   , planIndepGoals :: !IndependentGoals
   }
-  deriving (Typeable, Generic)
+  deriving (Generic)
 
 {-
 -- | Much like 'planPkgIdOf', but mapping back to full packages.
@@ -263,7 +262,7 @@ problems indepGoals index =
        | pkg <- Foldable.toList index
        , Just pkg' <-
           map
-            (flip Graph.lookup index)
+            (`Graph.lookup` index)
             (nodeNeighbors pkg)
        , not (stateDependencyRelation pkg pkg')
        ]

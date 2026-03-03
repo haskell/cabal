@@ -1,0 +1,3 @@
+package *
+    profiling-detail: all-functions
+    library-profiling-detail: exported-functions

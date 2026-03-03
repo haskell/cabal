@@ -7,7 +7,7 @@
 [![Matrix chat](https://img.shields.io/badge/chat-via%20matrix-brightgreen.svg)](https://matrix.to/#/#hackage:matrix.org)
 [![GitLab pipeline status](https://gitlab.haskell.org/haskell/cabal/badges/cabal-head/pipeline.svg?key_text=Release%20CI%20Early%20Warning&key_width=150)](https://gitlab.haskell.org/haskell/cabal/-/commits/cabal-head)
 
-<img src="https://www.haskell.org/cabal/images/Cabal-light.png" align="right">
+<img src="Cabal-light.png" align="right">
 
 This Cabal Git repository contains the following main packages:
 
@@ -19,6 +19,16 @@ This Cabal Git repository contains the following main packages:
 
 The canonical upstream repository is located at
 https://github.com/haskell/cabal.
+
+Proposals for the Cabal project
+-------------------------------
+
+The [proposals process](proposals.md) is the mechanism which developers can gain
+the necessary consensus to make larger changes to the Cabal ecosystem.
+
+* It is light-weight, a PR is opened and discussed on [cabal-proposals](https://github.com/haskell/cabal-proposals/) repo with a fixed discussion period.
+* It is developer-led, final decisions are made by developers at the Cabal developers meeting.
+* It is flexible, there is no formal voting procedure, decisions are made by [rough consensus](https://datatracker.ietf.org/doc/html/rfc7282).
 
 Ways to get the `cabal-install` binary
 --------------------------------
@@ -64,7 +74,7 @@ Currently, we only provide binaries for `x86_64` platforms.
 
 
 2. Even more cutting-edge binaries built from pull requests are always available
-   from the `Validate` worklow page on GitHub, at the very bottom of the page,
+   from the `Validate` workflow page on GitHub, at the very bottom of the page,
    or from the `build-alpine` workflow for statically linked Linux builds.
 
 Ways to build `cabal-install` for everyday use
@@ -106,3 +116,8 @@ Build for hacking and contributing to cabal
 -------------------------------------------
 
 Refer to [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Maintainers
+-------------------------------------------
+
+Refer to [MAINTAINERS.md](MAINTAINERS.md).

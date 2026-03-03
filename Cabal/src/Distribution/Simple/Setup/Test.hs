@@ -1,13 +1,9 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ViewPatterns #-}
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Simple.Test
@@ -61,9 +57,10 @@ import qualified Text.PrettyPrint as Disp
 -- ------------------------------------------------------------
 
 data TestShowDetails = Never | Failures | Always | Streaming | Direct
-  deriving (Eq, Ord, Enum, Bounded, Generic, Show, Typeable)
+  deriving (Eq, Ord, Enum, Bounded, Generic, Show)
 
 instance Binary TestShowDetails
+instance NFData TestShowDetails
 instance Structured TestShowDetails
 
 knownTestShowDetails :: [TestShowDetails]
@@ -89,7 +86,7 @@ instance Monoid TestShowDetails where
   mappend = (<>)
 
 instance Semigroup TestShowDetails where
-  a <> b = if a < b then b else a
+  a <> b = max a b
 
 data TestFlags = TestFlags
   { testCommonFlags :: !CommonSetupFlags
@@ -102,10 +99,10 @@ data TestFlags = TestFlags
   , -- TODO: think about if/how options are passed to test exes
     testOptions :: [PathTemplate]
   }
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic)
 
 pattern TestCommonFlags
-  :: Flag Verbosity
+  :: Flag VerbosityFlags
   -> Flag (SymbolicPath Pkg (Dir Dist))
   -> Flag (SymbolicPath CWD (Dir Pkg))
   -> Flag (SymbolicPath Pkg File)
@@ -249,7 +246,8 @@ testOptions' showOrParseArgs =
         []
         ["test-options"]
         ( "give extra options to test executables "
-            ++ "(name templates can use $pkgid, $compiler, "
+            ++ "(split on spaces, use \"\" to prevent splitting; "
+            ++ "name templates can use $pkgid, $compiler, "
             ++ "$os, $arch, $test-suite)"
         )
         testOptions
@@ -263,7 +261,7 @@ testOptions' showOrParseArgs =
         []
         ["test-option"]
         ( "give extra option to test executables "
-            ++ "(no need to quote options containing spaces, "
+            ++ "(passed directly as a single argument; "
             ++ "name template can use $pkgid, $compiler, "
             ++ "$os, $arch, $test-suite)"
         )
