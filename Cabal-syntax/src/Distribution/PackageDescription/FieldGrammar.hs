@@ -361,7 +361,7 @@ testSuiteFieldGrammar =
     <*> monoidalFieldAla "code-generators" (alaList' CommaFSep Token) testStanzaCodeGenerators
       ^^^ availableSince CabalSpecV3_8 []
 
-validateTestSuite :: CabalSpecVersion -> Position -> TestSuiteStanza -> ParseResult TestSuite
+validateTestSuite :: CabalSpecVersion -> Position -> TestSuiteStanza -> ParseResult src TestSuite
 validateTestSuite cabalSpecVersion pos stanza = case testSuiteType of
   Nothing -> pure basicTestSuite
   Just tt@(TestTypeUnknown _ _) ->
@@ -503,7 +503,7 @@ benchmarkFieldGrammar =
     <*> optionalField "benchmark-module" benchmarkStanzaBenchmarkModule
     <*> blurFieldGrammar benchmarkStanzaBuildInfo buildInfoFieldGrammar
 
-validateBenchmark :: CabalSpecVersion -> Position -> BenchmarkStanza -> ParseResult Benchmark
+validateBenchmark :: CabalSpecVersion -> Position -> BenchmarkStanza -> ParseResult src Benchmark
 validateBenchmark cabalSpecVersion pos stanza = case benchmarkStanzaType of
   Nothing ->
     pure
@@ -621,6 +621,8 @@ buildInfoFieldGrammar =
     <*> monoidalFieldAla "cc-options" (alaList' NoCommaFSep Token') L.ccOptions
     <*> monoidalFieldAla "cxx-options" (alaList' NoCommaFSep Token') L.cxxOptions
       ^^^ availableSince CabalSpecV2_2 []
+    <*> monoidalFieldAla "jspp-options" (alaList' NoCommaFSep Token') L.jsppOptions
+      ^^^ availableSince CabalSpecV3_16 []
     <*> monoidalFieldAla "ld-options" (alaList' NoCommaFSep Token') L.ldOptions
     <*> monoidalFieldAla "hsc2hs-options" (alaList' NoCommaFSep Token') L.hsc2hsOptions
       ^^^ availableSince CabalSpecV3_6 []

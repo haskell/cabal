@@ -1,0 +1,7 @@
+synopsis: Refactor cabal-install solver config log output
+packages: cabal-install-solver
+prs: #10854
+
+This refactoring is mainly cosmetic changes to the modular solver's
+code base. The main change is separating the detection of errors from
+the reporting of errors.

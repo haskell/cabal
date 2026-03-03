@@ -1,13 +1,9 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ViewPatterns #-}
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Simple.Setup.Repl
@@ -58,11 +54,12 @@ data ReplOptions = ReplOptions
   { replOptionsFlags :: [String]
   , replOptionsNoLoad :: Flag Bool
   , replOptionsFlagOutput :: Flag FilePath
+  , replWithRepl :: Flag FilePath
   }
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic)
 
 pattern ReplCommonFlags
-  :: Flag Verbosity
+  :: Flag VerbosityFlags
   -> Flag (SymbolicPath Pkg (Dir Dist))
   -> Flag (SymbolicPath CWD (Dir Pkg))
   -> Flag (SymbolicPath Pkg File)
@@ -89,7 +86,7 @@ instance Binary ReplOptions
 instance Structured ReplOptions
 
 instance Monoid ReplOptions where
-  mempty = ReplOptions mempty (Flag False) NoFlag
+  mempty = ReplOptions mempty (Flag False) NoFlag NoFlag
   mappend = (<>)
 
 instance Semigroup ReplOptions where
@@ -102,7 +99,7 @@ data ReplFlags = ReplFlags
   , replReload :: Flag Bool
   , replReplOptions :: ReplOptions
   }
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic)
 
 instance Binary ReplFlags
 instance Structured ReplFlags
@@ -133,8 +130,7 @@ replCommand progDb =
     , commandDescription = Just $ \pname ->
         wrapText $
           "If the current directory contains no package, ignores COMPONENT "
-            ++ "parameters and opens an interactive interpreter session; if a "
-            ++ "sandbox is present, its package database will be used.\n"
+            ++ "parameters and opens an interactive interpreter session.\n"
             ++ "\n"
             ++ "Otherwise, (re)configures with the given or default flags, and "
             ++ "loads the interpreter with the relevant modules. For executables, "
@@ -234,4 +230,11 @@ replOptions _ =
       replOptionsFlagOutput
       (\p flags -> flags{replOptionsFlagOutput = p})
       (reqArg "DIR" (succeedReadE Flag) flagToList)
+  , option
+      []
+      ["with-repl"]
+      "Give the path to a program to use for REPL"
+      replWithRepl
+      (\v flags -> flags{replWithRepl = v})
+      (reqArgFlag "PATH")
   ]

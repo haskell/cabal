@@ -17,7 +17,6 @@ import Distribution.Compat.Prelude
 import Distribution.Types.UnqualComponentName
 import Prelude ()
 
-import Distribution.Compat.Environment
 import Distribution.Compat.Internal.TempFile
 import Distribution.Compat.Process (proc)
 import Distribution.ModuleName
@@ -58,19 +57,19 @@ import System.IO (hClose, hPutStr)
 import qualified System.Process as Process
 
 runTest
-  :: PD.PackageDescription
+  :: VerbosityHandles
+  -> PD.PackageDescription
   -> LBI.LocalBuildInfo
   -> LBI.ComponentLocalBuildInfo
   -> HPCMarkupInfo
   -> TestFlags
   -> PD.TestSuite
   -> IO TestSuiteLog
-runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
+runTest verbHandles pkg_descr lbi clbi hpcMarkupInfo flags suite = do
   let isCoverageEnabled = LBI.testCoverage lbi
       way = guessWay lbi
 
   let mbWorkDir = LBI.mbWorkDirLBI lbi
-  existingEnv <- getEnvironment
 
   let cmd =
         interpretSymbolicPath mbWorkDir (LBI.buildDir lbi)
@@ -100,15 +99,17 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
         pathVar = progSearchPath progDb
         envOverrides = progOverrideEnv progDb
     newPath <- programSearchPathAsPATHVar pathVar
-    overrideEnv <- fromMaybe [] <$> getEffectiveEnvironment ([("PATH", Just newPath)] ++ envOverrides)
 
     -- Run test executable
     let opts = map (testOption pkg_descr lbi suite) $ testOptions flags
         tixFile = i $ tixFilePath distPref way testName'
-        shellEnv =
-          [("HPCTIXFILE", tixFile) | isCoverageEnabled]
-            ++ overrideEnv
-            ++ existingEnv
+
+    shellEnv <-
+      getFullEnvironment
+        ( [("PATH", Just newPath)]
+            ++ [("HPCTIXFILE", Just tixFile) | isCoverageEnabled]
+            ++ envOverrides
+        )
     -- Add (DY)LD_LIBRARY_PATH if needed
     shellEnv' <-
       if LBI.withDynExe lbi
@@ -183,9 +184,9 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
           when $
             (details > Never)
               && (not (suitePassed $ testLogs suiteLog) || details == Always)
-              && verbosity >= normal
+              && verbosityLevel verbosity >= Normal
     whenPrinting $ do
-      LBS.putStr logText
+      LBS.hPutStr (verbosityChosenOutputHandle verbosity) logText
       putChar '\n'
 
     return suiteLog
@@ -220,7 +221,7 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
       hClose h >> return f
 
     distPref = fromFlag $ setupDistPref common
-    verbosity = fromFlag $ setupVerbosity common
+    verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
 
 -- TODO: This is abusing the notion of a 'PathTemplate'.  The result isn't
 -- necessarily a path.
@@ -312,7 +313,7 @@ stubRunTests tests = do
   where
     stubRunTests' (Test t) = do
       l <- run t >>= finish
-      summarizeTest normal Always l
+      summarizeTest (mkVerbosity defaultVerbosityHandles normal) Always l
       return l
       where
         finish (Finished result) =

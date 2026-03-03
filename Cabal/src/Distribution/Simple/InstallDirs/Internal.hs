@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 module Distribution.Simple.InstallDirs.Internal
@@ -12,9 +11,10 @@ import Prelude ()
 data PathComponent
   = Ordinary FilePath
   | Variable PathTemplateVariable
-  deriving (Eq, Ord, Generic, Typeable)
+  deriving (Eq, Ord, Generic)
 
 instance Binary PathComponent
+instance NFData PathComponent
 instance Structured PathComponent
 
 data PathTemplateVariable
@@ -65,9 +65,10 @@ data PathTemplateVariable
     TestSuiteResultVar
   | -- | The name of the benchmark being run
     BenchmarkNameVar
-  deriving (Eq, Ord, Generic, Typeable)
+  deriving (Eq, Ord, Generic)
 
 instance Binary PathTemplateVariable
+instance NFData PathTemplateVariable
 instance Structured PathTemplateVariable
 
 instance Show PathTemplateVariable where

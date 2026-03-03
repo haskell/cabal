@@ -82,7 +82,7 @@ invocationAsBatchFile
         ++ ["cd \"" ++ cwd ++ "\"" | cwd <- maybeToList mcwd]
         ++ case minput of
           Nothing ->
-            [path ++ concatMap (' ' :) args]
+            [unwords (path : args)]
           Just input ->
             ["("]
               ++ ["echo " ++ escape line | line <- lines $ iodataToText input]

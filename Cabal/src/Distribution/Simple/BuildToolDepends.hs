@@ -13,7 +13,7 @@ import qualified Data.Map as Map
 import Distribution.Package
 import Distribution.PackageDescription
 
--- | Same as 'desugarBuildTool', but requires atomic informations (package
+-- | Same as 'desugarBuildTool', but requires atomic information (package
 -- name, executable names) instead of a whole 'PackageDescription'.
 desugarBuildToolSimple
   :: PackageName
@@ -34,7 +34,6 @@ desugarBuildToolSimple pname exeNames (LegacyExeDependency name reqVer)
       , "hsc2hs"
       , "c2hs"
       , "cpphs"
-      , "greencard"
       , "hspec-discover"
       ]
     allowMap = Map.fromList $ flip map allowlist $ \n ->

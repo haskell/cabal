@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 module Distribution.Client.Init.FlagExtractors
   ( -- * Flag extractors
@@ -51,7 +52,7 @@ import Distribution.Client.Init.Types
 import Distribution.FieldGrammar.Newtypes (SpecLicense)
 import Distribution.ModuleName (ModuleName)
 import Distribution.Simple.Flag (flagElim)
-import Distribution.Simple.Setup (Flag (..), flagToMaybe, fromFlagOrDefault)
+import Distribution.Simple.Setup (Flag, flagToMaybe, fromFlagOrDefault, pattern Flag, pattern NoFlag)
 import Distribution.Types.Dependency (Dependency (..))
 import Distribution.Types.PackageName (PackageName)
 import Distribution.Version (Version)
@@ -137,7 +138,7 @@ getExtraDocFiles :: Interactive m => InitFlags -> m (Maybe (Set String))
 getExtraDocFiles =
   pure
     . Just
-    . flagElim (Set.singleton defaultChangelog) Set.fromList
+    . flagElim (Set.fromList [defaultChangelog, defaultReadme]) Set.fromList
     . extraDoc
 
 -- | Ask whether the project builds a library or executable.

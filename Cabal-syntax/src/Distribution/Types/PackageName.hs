@@ -1,6 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Distribution.Types.PackageName
   ( PackageName
@@ -27,7 +26,7 @@ import qualified Text.PrettyPrint as Disp
 --
 -- @since 2.0.0.2
 newtype PackageName = PackageName ShortText
-  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
+  deriving (Generic, Read, Show, Eq, Ord, Data)
 
 -- | Convert 'PackageName' to 'String'
 unPackageName :: PackageName -> String

@@ -19,7 +19,7 @@ data ConfVar
   | Arch Arch
   | PackageFlag FlagName
   | Impl CompilerFlavor VersionRange
-  deriving (Eq, Show, Typeable, Data, Generic)
+  deriving (Eq, Show, Data, Generic)
 
 instance Binary ConfVar
 instance Structured ConfVar

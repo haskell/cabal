@@ -9,6 +9,7 @@ import Distribution.Simple.LocalBuildInfo (interpretSymbolicPathLBI)
 import Distribution.Simple.SetupHooks
 import Distribution.Simple.Utils (rewriteFileEx)
 import Distribution.Utils.Path
+import Distribution.Verbosity
 
 import qualified Data.List.NonEmpty as NE ( NonEmpty(..) )
 
@@ -25,18 +26,20 @@ invalidRuleOutputIndexRules :: PreBuildComponentInputs -> RulesM ()
 invalidRuleOutputIndexRules (PreBuildComponentInputs { buildingWhat = what, localBuildInfo = lbi, targetInfo = tgt }) = do
   let clbi = targetCLBI tgt
       autogenDir = autogenComponentModulesDir lbi clbi
-      verbosity = buildingWhatVerbosity what
+      verbosityFlags = buildingWhatVerbosity what
       action = mkCommand (static Dict) $ static (\ ((dir, modNm), verb) -> do
-        let loc = getSymbolicPath dir </> modNm <.> "hs"
-        rewriteFileEx verb loc $
+        let
+          verbosity = mkVerbosity defaultVerbosityHandles verb
+          loc = getSymbolicPath dir </> modNm <.> "hs"
+        rewriteFileEx verbosity loc $
           "module " ++ modNm ++ " where {}"
         )
 
   r1 <- registerRule "r1" $
           staticRule
-            (action ((autogenDir, "A"), verbosity))
+            (action ((autogenDir, "A"), verbosityFlags))
             [] ( Location autogenDir (makeRelativePathEx "A.hs") NE.:| [] )
   registerRule_ "r2" $
-    staticRule (action ((autogenDir, "B"), verbosity))
+    staticRule (action ((autogenDir, "B"), verbosityFlags))
       [ RuleDependency $ RuleOutput r1 7 ]
       ( Location autogenDir (makeRelativePathEx "B.hs") NE.:| [] )

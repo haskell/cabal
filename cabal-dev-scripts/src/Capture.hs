@@ -2,7 +2,6 @@ module Capture (capture) where
 
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax (NameFlavour (..), Name (..))
-import Control.Monad.IO.Class
 
 import Data.Generics as SYB
 

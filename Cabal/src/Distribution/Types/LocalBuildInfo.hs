@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -144,7 +143,7 @@ data LocalBuildInfo = NewLocalBuildInfo
   -- ^ Information about a package configuration
   -- that can be modified by the user at configuration time.
   }
-  deriving (Generic, Read, Show, Typeable)
+  deriving (Generic, Read, Show)
 
 {-# COMPLETE LocalBuildInfo #-}
 
@@ -447,7 +446,7 @@ buildWays lbi =
   let
     -- enable-library-profiling (enable (static profiling way)) .p_o
     -- enable-shared (enabled dynamic way)  .dyn_o
-    -- enable-profiling-shared (enable dyanmic profilng way) .p_dyn_o
+    -- enable-profiling-shared (enable dynamic profilng way) .p_dyn_o
     -- enable-library-vanilla (enable vanilla way) .o
     --
     -- enable-executable-dynamic => build dynamic executables

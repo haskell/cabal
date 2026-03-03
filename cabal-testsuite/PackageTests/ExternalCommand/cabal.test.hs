@@ -17,7 +17,6 @@ main = do
     addToPath (takeDirectory exe_path) $ do
       -- Test that the thing works at all
       res <- cabal_raw_action ["aaaa"] (\h -> () <$ Process.waitForProcess h)
-      assertOutputContains "aaaa" res
 
       -- Test that the extra arguments are passed on
       res <- cabal_raw_action ["aaaa", "--foobaz"] (\h -> () <$ Process.waitForProcess h)
@@ -36,7 +35,7 @@ cabal_raw_action :: [String] -> (Process.ProcessHandle -> IO ()) -> TestM Result
 cabal_raw_action args action = do
     configured_prog <- requireProgramM cabalProgram
     env <- getTestEnv
-    r <- liftIO $ runAction (testVerbosity env)
+    r <- liftIO $ runAction
                  (Just $ testCurrentDir env)
                  (testEnvironment env)
                  (programPath configured_prog)

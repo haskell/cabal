@@ -1,5 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
@@ -20,9 +21,6 @@ module Distribution.Client.CmdInstall
   ) where
 
 import Distribution.Client.Compat.Prelude
-import Distribution.Compat.Directory
-  ( doesPathExist
-  )
 import Prelude ()
 
 import Distribution.Client.CmdErrorMessages
@@ -62,6 +60,7 @@ import Distribution.Client.InstallSymlink
   )
 import Distribution.Client.NixStyleOptions
   ( NixStyleFlags (..)
+  , cfgVerbosity
   , defaultNixStyleFlags
   , nixStyleOptions
   )
@@ -97,8 +96,7 @@ import Distribution.Client.RebuildMonad
   ( runRebuild
   )
 import Distribution.Client.Setup
-  ( CommonSetupFlags (..)
-  , ConfigFlags (..)
+  ( ConfigFlags (..)
   , GlobalFlags (..)
   , InstallFlags (..)
   )
@@ -162,8 +160,10 @@ import Distribution.Simple.Program.Db
   , userSpecifyPaths
   )
 import Distribution.Simple.Setup
-  ( Flag (..)
+  ( Flag
   , installDirsOptions
+  , pattern Flag
+  , pattern NoFlag
   )
 import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose
@@ -215,6 +215,7 @@ import Distribution.Utils.Generic
   )
 import Distribution.Verbosity
   ( lessVerbose
+  , modifyVerbosityFlags
   , normal
   )
 
@@ -235,6 +236,7 @@ import System.Directory
   , createDirectoryIfMissing
   , doesDirectoryExist
   , doesFileExist
+  , doesPathExist
   , getTemporaryDirectory
   , makeAbsolute
   , removeDirectory
@@ -328,7 +330,7 @@ installCommand =
     }
   where
     -- install doesn't take installDirs flags, since it always installs into the store in a fixed way.
-    notInstallDirOpt x = not $ optionName x `elem` installDirOptNames
+    notInstallDirOpt x = optionName x `notElem` installDirOptNames
     installDirOptNames = map optionName installDirsOptions
 
 -- | The @install@ command actually serves four different needs. It installs:
@@ -390,7 +392,7 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
   -- NOTE: CmdInstall and project local packages.
   --
   -- CmdInstall always installs packages from a source distribution that, in case of unpackage
-  -- pacakges, is created automatically. This is implemented in getSpecsAndTargetSelectors.
+  -- packages, is created automatically. This is implemented in getSpecsAndTargetSelectors.
   --
   -- This has the inconvenience that the planner will consider all packages as non-local
   -- (see `ProjectPlanning.shouldBeLocal`) and that any project or cli configuration will
@@ -459,7 +461,7 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
   -- temporary dist directory.
   globalTmp <- getTemporaryDirectory
 
-  withTempDirectory verbosity globalTmp "cabal-install." $ \tmpDir -> do
+  withTempDirectory globalTmp "cabal-install." $ \tmpDir -> do
     distDirLayout <- establishDummyDistDirLayout verbosity config tmpDir
 
     uriSpecs <-
@@ -467,6 +469,7 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
         fetchAndReadSourcePackages
           verbosity
           distDirLayout
+          (Just compiler)
           (projectConfigShared config)
           (projectConfigBuildOnly config)
           [ProjectPackageRemoteTarball uri | uri <- uris]
@@ -542,7 +545,7 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
           traverseInstall (installCheckUnitExes InstallCheckInstall) installCfg
   where
     configFlags' = disableTestsBenchsByDefault . ignoreProgramAffixes $ configFlags
-    verbosity = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags')
+    verbosity = cfgVerbosity normal flags
     ignoreProject = flagIgnoreProject projectFlags
     cliConfig =
       commandLineFlagsToProjectConfig
@@ -591,7 +594,7 @@ withProject verbosity cliConfig targetStrings installLibs = do
           concatMap (targetPkgNames $ localPackages baseCtx) targetSelectors
   return (pkgSpecs, targetSelectors, config)
   where
-    reducedVerbosity = lessVerbose verbosity
+    reducedVerbosity = modifyVerbosityFlags lessVerbose verbosity
 
     -- We take the targets and try to parse them as package ids (with name and version).
     -- The ones who don't parse will have to be resolved in the project context.
@@ -621,7 +624,7 @@ resolveTargetSelectorsInProjectBaseContext
   -> Maybe ComponentKindFilter
   -> IO ([PackageSpecifier UnresolvedSourcePackage], [TargetSelector])
 resolveTargetSelectorsInProjectBaseContext verbosity baseCtx targetStrings targetFilter = do
-  let reducedVerbosity = lessVerbose verbosity
+  let reducedVerbosity = modifyVerbosityFlags lessVerbose verbosity
 
   sourcePkgDb <-
     projectConfigWithBuilderRepoContext
@@ -824,7 +827,7 @@ partitionToKnownTargetsAndHackagePackages
   -> IO (TargetsMap, [PackageName])
 partitionToKnownTargetsAndHackagePackages verbosity pkgDb elaboratedPlan targetSelectors = do
   let mTargets =
-        resolveTargets
+        resolveTargetsFromSolver
           selectPackageTargets
           selectComponentTarget
           elaboratedPlan
@@ -864,7 +867,7 @@ partitionToKnownTargetsAndHackagePackages verbosity pkgDb elaboratedPlan targetS
       -- removed (or we've given up).
       targets <-
         either (reportBuildTargetProblems verbosity) return $
-          resolveTargets
+          resolveTargetsFromSolver
             selectPackageTargets
             selectComponentTarget
             elaboratedPlan
@@ -884,7 +887,7 @@ constructProjectBuildContext verbosity baseCtx targetSelectors = do
     -- Interpret the targets on the command line as build targets
     targets <-
       either (reportBuildTargetProblems verbosity) return $
-        resolveTargets
+        resolveTargetsFromSolver
           selectPackageTargets
           selectComponentTarget
           elaboratedPlan
@@ -989,7 +992,7 @@ installLibraries
               . take 1
               . sortBy (comparing (Down . fst))
               . PI.lookupPackageName installedIndex
-          globalLatest = concat (getLatest <$> globalPackages)
+          globalLatest = concatMap getLatest globalPackages
           globalEntries = GhcEnvFilePackageId . installedUnitId <$> globalLatest
           baseEntries =
             GhcEnvFileClearPackageDbStack : fmap GhcEnvFilePackageDb packageDbs
@@ -1030,7 +1033,7 @@ installLibraries
 
 -- See ticket #8894. This is safe to include any nonreinstallable boot pkg,
 -- but the particular package users will always expect to be in scope without specific installation
--- is base, so that they can access prelude, regardles of if they specifically asked for it.
+-- is base, so that they can access prelude, regardless of if they specifically asked for it.
 globalPackages :: [PackageName]
 globalPackages = mkPackageName <$> ["base"]
 
@@ -1126,8 +1129,8 @@ symlink
       overwritePolicy
       installDir
       (mkSourceBinDir unit)
-      (mkExeName exe)
       (mkFinalExeName exe)
+      (mkExeName exe)
 
 -- |
 -- -- * When 'InstallCheckOnly', warn if install would fail overwrite policy
@@ -1172,7 +1175,7 @@ installCheckUnitExes
       errorMessage installdir exe = case overwritePolicy of
         NeverOverwrite ->
           "Path '"
-            <> (installdir </> prettyShow exe)
+            <> (installdir </> mkFinalExeName exe)
             <> "' already exists. "
             <> "Use --overwrite-policy=always to overwrite."
         -- This shouldn't even be possible, but we keep it in case symlinking or

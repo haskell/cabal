@@ -1,0 +1,46 @@
+# checking repl command with a 'cabal.project' and --ignore-project
+# cabal repl
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - fake-package-0 (interactive) (lib) (first run)
+Configuring library for fake-package-0...
+Warning: No exposed modules
+# checking repl command with a 'cabal.project' and no project options
+# cabal repl
+Error: [Cabal-7076]
+Please pick a single [package:][ctype:]component (or all) as target for the REPL command. The packages from which to select a component in 'cabal.project', the implicit default as if `--project-file=cabal.project` was added as a command option, are:
+ - pkg-one
+ - pkg-two
+# checking repl command using an explicit 'some.project'
+# cabal repl
+Error: [Cabal-7076]
+Please pick a single [package:][ctype:]component (or all) as target for the REPL command. The packages in 'some.project' from which to select a component target are:
+ - pkg-one
+ - pkg-two
+# checking repl command using an explicit 'reverse.project', listing packages in reverse order
+# cabal repl
+Error: [Cabal-7076]
+Please pick a single [package:][ctype:]component (or all) as target for the REPL command. The packages in 'reverse.project' from which to select a component target are:
+ - pkg-one
+ - pkg-two
+# checking repl command with an 'empty.project' with no packages
+# cabal repl
+Warning: There are no packages or optional-packages in the project
+Error: [Cabal-7076]
+There are no packages in 'empty.project'. Please add a package to the project and pick a single [package:][ctype:]component (or all) as target for the REPL command.
+# checking repl command with a missing 'missing.project'
+# cabal repl
+# checking repl command with a missing 'missing.project'
+# cabal repl
+# checking repl command with the 'all' target
+# cabal repl
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - pkg-one-0.1 (interactive) (first run)
+ - pkg-two-0.1 (interactive) (first run)
+Configuring pkg-one-0.1...
+Preprocessing library for pkg-one-0.1...
+Configuring pkg-two-0.1...
+Preprocessing library for pkg-two-0.1...

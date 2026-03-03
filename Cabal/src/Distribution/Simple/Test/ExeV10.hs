@@ -8,7 +8,6 @@ module Distribution.Simple.Test.ExeV10
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Compat.Environment
 import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
@@ -48,23 +47,21 @@ import System.Directory
   , doesFileExist
   , removeDirectoryRecursive
   )
-import System.IO (stderr, stdout)
 import System.Process (createPipe)
 
 runTest
-  :: PD.PackageDescription
+  :: VerbosityHandles
+  -> PD.PackageDescription
   -> LBI.LocalBuildInfo
   -> LBI.ComponentLocalBuildInfo
   -> HPCMarkupInfo
   -> TestFlags
   -> PD.TestSuite
   -> IO TestSuiteLog
-runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
+runTest verbHandles pkg_descr lbi clbi hpcMarkupInfo flags suite = do
   let isCoverageEnabled = LBI.testCoverage lbi
       way = guessWay lbi
       tixDir_ = i $ tixDir distPref way
-
-  existingEnv <- getEnvironment
 
   let cmd =
         i (LBI.buildDir lbi)
@@ -92,13 +89,18 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
       pathVar = progSearchPath progDb
       envOverrides = progOverrideEnv progDb
   newPath <- programSearchPathAsPATHVar pathVar
-  overrideEnv <- fromMaybe [] <$> getEffectiveEnvironment ([("PATH", Just newPath)] ++ envOverrides)
   let opts =
         map
           (testOption pkg_descr lbi suite)
           (testOptions flags)
       tixFile = packageRoot (testCommonFlags flags) </> getSymbolicPath (tixFilePath distPref way (testName'))
-      shellEnv = [("HPCTIXFILE", tixFile) | isCoverageEnabled] ++ overrideEnv ++ existingEnv
+
+  shellEnv <-
+    getFullEnvironment
+      ( [("PATH", Just newPath)]
+          ++ [("HPCTIXFILE", Just tixFile) | isCoverageEnabled]
+          ++ envOverrides
+      )
 
   -- Add (DY)LD_LIBRARY_PATH if needed
   shellEnv' <-
@@ -111,19 +113,24 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
 
   -- Output logger
   (wOut, wErr, getLogText) <- case details of
-    Direct -> return (stdout, stderr, return LBS.empty)
+    Direct -> return (Nothing, Nothing, return LBS.empty)
     _ -> do
       (rOut, wOut) <- createPipe
 
-      return $ (,,) wOut wOut $ do
+      return $ (,,) (Just wOut) (Just wOut) $ do
         -- Read test executables' output
         logText <- LBS.hGetContents rOut
 
         -- '--show-details=streaming': print the log output in another thread
-        when (details == Streaming) $ LBS.putStr logText
+        when (details == Streaming) $
+          LBS.hPutStr (verbosityChosenOutputHandle verbosity) logText
 
         -- drain the output.
         evaluate (force logText)
+
+  let mbWorkDir =
+        interpretSymbolicPathCWD
+          <$> flagToMaybe (setupWorkingDir (testCommonFlags flags))
 
   (exit, logText) <- case testWrapper flags of
     Flag path ->
@@ -131,25 +138,23 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
         verbosity
         path
         (cmd : opts)
-        Nothing
+        mbWorkDir
         (Just shellEnv')
-        getLogText
-        -- these handles are automatically closed
+        (\_ _ _ -> getLogText)
         Nothing
-        (Just wOut)
-        (Just wErr)
+        wOut
+        wErr
     NoFlag ->
       rawSystemIOWithEnvAndAction
         verbosity
         cmd
         opts
-        Nothing
+        mbWorkDir
         (Just shellEnv')
-        getLogText
-        -- these handles are automatically closed
+        (\_ _ _ -> getLogText)
         Nothing
-        (Just wOut)
-        (Just wErr)
+        wOut
+        wErr
 
   -- Generate TestSuiteLog from executable exit code and a machine-
   -- readable test log.
@@ -173,9 +178,9 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
               || details == Failures && not (suitePassed $ testLogs suiteLog)
           )
             -- verbosity overrides show-details
-            && verbosity >= normal
+            && verbosityLevel verbosity >= Normal
   whenPrinting $ do
-    LBS.putStr logText
+    LBS.hPutStr (verbosityChosenOutputHandle verbosity) logText
     putChar '\n'
 
   -- Write summary notice to terminal indicating end of test suite
@@ -200,7 +205,7 @@ runTest pkg_descr lbi clbi hpcMarkupInfo flags suite = do
     testName' = unUnqualComponentName $ PD.testName suite
 
     distPref = fromFlag $ setupDistPref commonFlags
-    verbosity = fromFlag $ setupVerbosity commonFlags
+    verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity commonFlags)
     details = fromFlag $ testShowDetails flags
     testLogDir = distPref </> makeRelativePathEx "test"
 

@@ -1,13 +1,9 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ViewPatterns #-}
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Simple.Setup.Clean
@@ -54,10 +50,10 @@ data CleanFlags = CleanFlags
   { cleanCommonFlags :: !CommonSetupFlags
   , cleanSaveConf :: Flag Bool
   }
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic)
 
 pattern CleanCommonFlags
-  :: Flag Verbosity
+  :: Flag VerbosityFlags
   -> Flag (SymbolicPath Pkg (Dir Dist))
   -> Flag (SymbolicPath CWD (Dir Pkg))
   -> Flag (SymbolicPath Pkg File)

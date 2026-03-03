@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -147,7 +146,7 @@ data PackageIndex a = PackageIndex
     -- preserved. See #1463 for discussion.
     packageIdIndex :: !(Map (PackageName, LibraryName) (Map Version [a]))
   }
-  deriving (Eq, Generic, Show, Read, Typeable)
+  deriving (Eq, Generic, Show, Read)
 
 instance Binary a => Binary (PackageIndex a)
 instance Structured a => Structured (PackageIndex a)
@@ -735,7 +734,7 @@ dependencyGraph index = (graph, vertex_to_pkg, id_to_vertex)
     graph =
       Array.listArray
         bounds
-        [ [v | Just v <- map id_to_vertex (installedDepends pkg)]
+        [ mapMaybe id_to_vertex (installedDepends pkg)
         | pkg <- pkgs
         ]
 

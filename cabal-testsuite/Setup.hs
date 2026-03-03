@@ -1,4 +1,5 @@
 {-# LANGUAGE Haskell2010 #-}
+{-# LANGUAGE CPP #-}
 module Main (main) where
 
 import Distribution.Backpack
@@ -51,7 +52,14 @@ generateScriptEnvModule lbi verbosity = do
       , "lbiPlatform = " ++ show (hostPlatform lbi)
       , ""
       , "lbiCompiler :: Compiler"
+      -- We added a new field to compiler so we need to be careful
+      -- to make sure that it is always defined,
+      -- even if the test suite is being built with an older Cabal
+#if MIN_VERSION_Cabal(3,15,0)
       , "lbiCompiler = " ++ show (compiler lbi)
+#else
+      , "lbiCompiler = " ++ init (show (compiler lbi)) ++ ", compilerWiredInUnitIds = Nothing}"
+#endif
       , ""
       , "lbiPackages :: [(OpenUnitId, ModuleRenaming)]"
       , "lbiPackages = read " ++ show (show (cabalTestsPackages lbi))

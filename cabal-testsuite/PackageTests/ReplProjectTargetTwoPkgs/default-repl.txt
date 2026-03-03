@@ -1,0 +1,3 @@
+Please pick a single [package:][ctype:]component (or all) as target for the REPL command. The packages from which to select a component in 'cabal.project', the implicit default as if `--project-file=cabal.project` was added as a command option, are:
+ - pkg-one
+ - pkg-two

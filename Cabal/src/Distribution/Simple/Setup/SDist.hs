@@ -1,13 +1,9 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ViewPatterns #-}
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Simple.Setup.SDist
@@ -57,10 +53,10 @@ data SDistFlags = SDistFlags
   , sDistDirectory :: Flag FilePath
   , sDistListSources :: Flag FilePath
   }
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic)
 
 pattern SDistCommonFlags
-  :: Flag Verbosity
+  :: Flag VerbosityFlags
   -> Flag (SymbolicPath Pkg (Dir Dist))
   -> Flag (SymbolicPath CWD (Dir Pkg))
   -> Flag (SymbolicPath Pkg File)

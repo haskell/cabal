@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- | An abstraction for re-running actions if values or files have changed.
@@ -42,6 +43,7 @@ module Distribution.Client.RebuildMonad
   , FileMonitor (..)
   , newFileMonitor
   , rerunIfChanged
+  , rerunConcurrentlyIfChanged
 
     -- * Utils
   , delayInitSharedResource
@@ -64,11 +66,13 @@ import Prelude ()
 import Distribution.Client.FileMonitor
 import Distribution.Client.Glob hiding (matchFileGlob)
 import qualified Distribution.Client.Glob as Glob (matchFileGlob)
+import Distribution.Client.JobControl
 import Distribution.Simple.PreProcess.Types (Suffix (..))
 
 import Distribution.Simple.Utils (debug)
 
 import Control.Concurrent.MVar (MVar, modifyMVar, newMVar)
+import Control.Monad
 import Control.Monad.Reader as Reader
 import Control.Monad.State as State
 import qualified Data.Map.Strict as Map
@@ -123,39 +127,61 @@ rerunIfChanged
   -> Rebuild b
   -> Rebuild b
 rerunIfChanged verbosity monitor key action = do
-  rootDir <- askRoot
-  changed <- liftIO $ checkFileMonitorChanged monitor rootDir key
-  case changed of
-    MonitorUnchanged result files -> do
-      liftIO $
-        debug verbosity $
-          "File monitor '"
-            ++ monitorName
-            ++ "' unchanged."
-      monitorFiles files
-      return result
-    MonitorChanged reason -> do
-      liftIO $
-        debug verbosity $
-          "File monitor '"
-            ++ monitorName
-            ++ "' changed: "
-            ++ showReason reason
-      startTime <- liftIO $ beginUpdateFileMonitor
-      (result, files) <- liftIO $ unRebuild rootDir action
-      liftIO $
-        updateFileMonitor
-          monitor
-          rootDir
-          (Just startTime)
-          files
-          key
-          result
-      monitorFiles files
-      return result
-  where
-    monitorName = takeFileName (fileMonitorCacheFile monitor)
+  -- rerunIfChanged is implemented in terms of rerunConcurrentlyIfChanged, but
+  -- nothing concurrent will happen since the list of concurrent actions has a
+  -- single value that will be waited for alone.
+  rerunConcurrentlyIfChanged verbosity newSerialJobControl [(monitor, key, action)] >>= \case
+    [x] -> return x
+    _ -> error "rerunIfChanged: impossible!"
 
+-- | Like 'rerunIfChanged' meets 'mapConcurrently': For when we want multiple actions
+-- that need to do be re-run-if-changed asynchronously. The function returns
+-- when all values have finished computing.
+rerunConcurrentlyIfChanged
+  :: (Binary a, Structured a, Binary b, Structured b)
+  => Verbosity
+  -> IO (JobControl IO (b, [MonitorFilePath]))
+  -> [(FileMonitor a b, a, Rebuild b)]
+  -> Rebuild [b]
+rerunConcurrentlyIfChanged verbosity mkJobControl triples = do
+  rootDir <- askRoot
+  dacts <- forM triples $ \(monitor, key, action) -> do
+    let monitorName = takeFileName (fileMonitorCacheFile monitor)
+    changed <- liftIO $ checkFileMonitorChanged monitor rootDir key
+    case changed of
+      MonitorUnchanged result files -> do
+        liftIO $
+          debug verbosity $
+            "File monitor '"
+              ++ monitorName
+              ++ "' unchanged."
+        monitorFiles files
+        return (return (result, []))
+      MonitorChanged reason -> do
+        liftIO $
+          debug verbosity $
+            "File monitor '"
+              ++ monitorName
+              ++ "' changed: "
+              ++ showReason reason
+        return $ do
+          startTime <- beginUpdateFileMonitor
+          (result, files) <- unRebuild rootDir action
+          updateFileMonitor
+            monitor
+            rootDir
+            (Just startTime)
+            files
+            key
+            result
+          return (result, files)
+
+  (results, files) <- liftIO $
+    withJobControl mkJobControl $ \jobControl -> do
+      unzip <$> mapConcurrentWithJobs jobControl id dacts
+  monitorFiles (concat files)
+  return results
+  where
     showReason (MonitoredFileChanged file) = "file " ++ file
     showReason (MonitoredValueChanged _) = "monitor value changed"
     showReason MonitorFirstRun = "first run"

@@ -1,13 +1,9 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ViewPatterns #-}
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Simple.Benchmark
@@ -56,10 +52,10 @@ data BenchmarkFlags = BenchmarkFlags
   { benchmarkCommonFlags :: !CommonSetupFlags
   , benchmarkOptions :: [PathTemplate]
   }
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic)
 
 pattern BenchmarkCommonFlags
-  :: Flag Verbosity
+  :: Flag VerbosityFlags
   -> Flag (SymbolicPath Pkg (Dir Dist))
   -> Flag (SymbolicPath CWD (Dir Pkg))
   -> Flag (SymbolicPath Pkg File)
@@ -122,7 +118,8 @@ benchmarkOptions' showOrParseArgs =
         []
         ["benchmark-options"]
         ( "give extra options to benchmark executables "
-            ++ "(name templates can use $pkgid, $compiler, "
+            ++ "(split on spaces, use \"\" to prevent splitting; "
+            ++ "name templates can use $pkgid, $compiler, "
             ++ "$os, $arch, $benchmark)"
         )
         benchmarkOptions
@@ -136,7 +133,7 @@ benchmarkOptions' showOrParseArgs =
         []
         ["benchmark-option"]
         ( "give extra option to benchmark executables "
-            ++ "(no need to quote options containing spaces, "
+            ++ "(passed directly as a single argument; "
             ++ "name template can use $pkgid, $compiler, "
             ++ "$os, $arch, $benchmark)"
         )

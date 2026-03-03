@@ -1,7 +1,6 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module UnitTests.Distribution.Solver.Modular.QuickCheck (tests) where
 
@@ -10,7 +9,6 @@ import Prelude ()
 
 import Control.Arrow ((&&&))
 import Data.Either (lefts)
-import Data.Hashable (Hashable (..))
 import Data.List (groupBy, isInfixOf)
 
 import Text.Show.Pretty (parseValue, valToStr)
@@ -20,7 +18,7 @@ import Test.QuickCheck.Instances.Cabal ()
 import Test.Tasty (TestTree)
 
 import Distribution.Types.Flag (FlagName)
-import Distribution.Utils.ShortText (ShortText)
+import Distribution.Utils.ShortText (ShortText, fromShortText)
 
 import Distribution.Client.Setup (defaultMaxBackjumps)
 
@@ -47,7 +45,8 @@ import Distribution.Version
 
 import UnitTests.Distribution.Solver.Modular.DSL
 import UnitTests.Distribution.Solver.Modular.QuickCheck.Utils
-  ( testPropertyWithSeed
+  ( ArbitraryOrd (..)
+  , testPropertyWithSeed
   )
 
 tests :: [TestTree]
@@ -223,6 +222,9 @@ newtype VarOrdering = VarOrdering
   { unVarOrdering :: Variable P.QPN -> Variable P.QPN -> Ordering
   }
 
+instance Arbitrary VarOrdering where
+  arbitrary = VarOrdering <$> arbitraryCompare
+
 solve
   :: EnableBackjumping
   -> FineGrainedConflicts
@@ -238,6 +240,7 @@ solve enableBj fineGrainedConflicts reorder countConflicts indep prefOldest goal
         runProgress $
           exResolve
             (unTestDb (testDb test))
+            Nothing
             Nothing
             Nothing
             (Just $ pkgConfigDbFromList [])
@@ -258,7 +261,7 @@ solve enableBj fineGrainedConflicts reorder countConflicts indep prefOldest goal
             (unVarOrdering <$> goalOrder)
             (testConstraints test)
             (testPreferences test)
-            normal
+            (mkVerbosity defaultVerbosityHandles normal)
             (EnableAllTests False)
 
       failure :: String -> Failure
@@ -618,22 +621,18 @@ instance Arbitrary OptionalStanza where
   shrink BenchStanzas = [TestStanzas]
   shrink TestStanzas = []
 
--- Randomly sorts solver variables using 'hash'.
--- TODO: Sorting goals with this function is very slow.
-instance Arbitrary VarOrdering where
-  arbitrary = do
-    f <- arbitrary :: Gen (Int -> Int)
-    return $ VarOrdering (comparing (f . hash))
-
-instance Hashable pn => Hashable (Variable pn)
-instance Hashable a => Hashable (P.Qualified a)
-instance Hashable P.PackagePath
-instance Hashable P.Qualifier
-instance Hashable P.Namespace
-instance Hashable OptionalStanza
-instance Hashable FlagName
-instance Hashable PackageName
-instance Hashable ShortText
+instance ArbitraryOrd pn => ArbitraryOrd (Variable pn)
+instance ArbitraryOrd a => ArbitraryOrd (P.Qualified a)
+instance ArbitraryOrd P.PackagePath
+instance ArbitraryOrd P.Qualifier
+instance ArbitraryOrd P.Namespace
+instance ArbitraryOrd OptionalStanza
+instance ArbitraryOrd FlagName
+instance ArbitraryOrd PackageName
+instance ArbitraryOrd ShortText where
+  arbitraryCompare = do
+    strc <- arbitraryCompare
+    pure $ \l r -> strc (fromShortText l) (fromShortText r)
 
 deriving instance Generic (Variable pn)
 deriving instance Generic (P.Qualified a)

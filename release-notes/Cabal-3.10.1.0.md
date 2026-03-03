@@ -46,7 +46,7 @@ are listed here.
 
 - Add `PackageInfo_` module [#8534](https://github.com/haskell/cabal/pull/8534)
 
-  - Add `PackageInfo_` module to embed portable package-related informations (issue #3909)
+  - Add `PackageInfo_` module to embed portable package-related information (issue #3909)
 
 - *Cabal-syntax* Add language extensions `DeepSubsumption` and `TypeData` [#8493](https://github.com/haskell/cabal/pull/8493)
 

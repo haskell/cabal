@@ -140,7 +140,7 @@ cabal-install 3.12.1.0 changelog and release notes.
 
     In particular this means that cabal-install will create a semaphore which it then
     passes to `./Setup build` (and hence `ghc`) which can be used by `ghc` in order to
-    control how much paralellism it uses, coordinating with other simultaneously running
+    control how much parallelism it uses, coordinating with other simultaneously running
     processes.
 
     This feature requires ghc-9.8 in order to use, as this is the first version of GHC

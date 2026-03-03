@@ -1,11 +1,6 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
-
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Client.Sandbox
@@ -53,7 +48,7 @@ import Distribution.Simple.Configure
 import qualified Distribution.Simple.LocalBuildInfo as LocalBuildInfo
 import Distribution.Simple.Program (ProgramDb)
 import Distribution.Simple.Setup
-  ( Flag (..)
+  ( Flag
   , flagToMaybe
   , fromFlagOrDefault
   )

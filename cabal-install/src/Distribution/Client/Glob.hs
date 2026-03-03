@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-
 module Distribution.Client.Glob
   ( -- * cabal-install globbing features
     RootedGlob (..)

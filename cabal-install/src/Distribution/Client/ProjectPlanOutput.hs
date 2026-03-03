@@ -1,8 +1,4 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -16,7 +12,7 @@ module Distribution.Client.ProjectPlanOutput
     -- | Several outputs rely on having a general overview of
   , PostBuildProjectStatus (..)
   , updatePostBuildProjectStatus
-  , createPackageEnvironment
+  , createPackageEnvironmentAndArgs
   , writePlanGhcEnvironment
   , argsEquivalentOfGhcEnvironmentFile
   ) where
@@ -70,8 +66,11 @@ import Distribution.Verbosity
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+import Control.Monad ((<=<))
+
 import qualified Data.ByteString.Builder as BB
 import qualified Data.ByteString.Lazy as BS
+import Data.Either (fromRight)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
@@ -113,6 +112,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
     , "compiler-id"
         J..= (J.String . showCompilerId . pkgConfigCompiler)
           elaboratedSharedConfig
+    , "compiler-abi" J..= jdisplay (compilerAbiTag (pkgConfigCompiler elaboratedSharedConfig))
     , "os" J..= jdisplay os
     , "arch" J..= jdisplay arch
     , "install-plan" J..= installPlanToJ elaboratedInstallPlan
@@ -162,6 +162,11 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
         , "id" J..= (jdisplay . installedUnitId) elab
         , "pkg-name" J..= (jdisplay . pkgName . packageId) elab
         , "pkg-version" J..= (jdisplay . pkgVersion . packageId) elab
+        , -- The `x-revision` field is a feature of repos (not cabal itself),
+          -- but it's needed for external tools to unambiguously fetch
+          -- packages without having to use index-state and go through
+          -- the whole repo index, so we include it in the plan file.
+          "pkg-revision" J..= J.Number (elaboratedPackageToRevision elab)
         , "flags"
             J..= J.object
               [ PD.unFlagName fn J..= v
@@ -269,6 +274,13 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
                 [ "type" J..= J.String "secure-repo"
                 , "uri" J..= J.String (show (remoteRepoURI repoRemote))
                 ]
+
+        elaboratedPackageToRevision :: ElaboratedConfiguredPackage -> Double
+        elaboratedPackageToRevision =
+          fromMaybe 0
+            . (readMaybe <=< lookup "x-revision")
+            . PD.customFieldsPD
+            . elabPkgDescription
 
         sourceRepoToJ :: SourceRepoMaybe -> J.Value
         sourceRepoToJ SourceRepositoryPackage{..} =
@@ -771,7 +783,7 @@ readPackagesUpToDateCacheFile DistDirLayout{distProjectCacheFile} =
       withBinaryFile (distProjectCacheFile "up-to-date") ReadMode $ \hnd ->
         Binary.decodeOrFailIO =<< BS.hGetContents hnd
   where
-    handleDecodeFailure = fmap (either (const Set.empty) id)
+    handleDecodeFailure = fmap (fromRight Set.empty)
 
 -- | Helper for writing the package up-to-date cache file.
 --
@@ -781,7 +793,7 @@ writePackagesUpToDateCacheFile DistDirLayout{distProjectCacheFile} upToDate =
   writeFileAtomic (distProjectCacheFile "up-to-date") $
     Binary.encode upToDate
 
--- | Prepare a package environment that includes all the library dependencies
+-- | Prepare a package environment and args that includes all the library dependencies
 -- for a plan.
 --
 -- When running cabal new-exec, we want to set things up so that the compiler
@@ -790,14 +802,17 @@ writePackagesUpToDateCacheFile DistDirLayout{distProjectCacheFile} upToDate =
 -- temporarily, in case the compiler wants to learn this information via the
 -- filesystem, and returns any environment variable overrides the compiler
 -- needs.
-createPackageEnvironment
+--
+-- The function returns both the arguments you need to pass to the compiler and
+-- the environment variables you need to set.
+createPackageEnvironmentAndArgs
   :: Verbosity
   -> FilePath
   -> ElaboratedInstallPlan
   -> ElaboratedSharedConfig
   -> PostBuildProjectStatus
-  -> IO [(String, Maybe String)]
-createPackageEnvironment
+  -> IO ([String], [(String, Maybe String)])
+createPackageEnvironmentAndArgs
   verbosity
   path
   elaboratedPlan
@@ -812,14 +827,14 @@ createPackageEnvironment
               elaboratedShared
               buildStatus
           case envFileM of
-            Just envFile -> return [("GHC_ENVIRONMENT", Just envFile)]
+            Just envFile -> return (["-package-env=" ++ envFile], [("GHC_ENVIRONMENT", Just envFile)])
             Nothing -> do
               warn verbosity "the configured version of GHC does not support reading package lists from the environment; commands that need the current project's package database are likely to fail"
-              return []
+              return ([], [])
     | otherwise =
         do
           warn verbosity "package environment configuration is not supported for the currently configured compiler; commands that need the current project's package database are likely to fail"
-          return []
+          return ([], [])
 
 -- Writing .ghc.environment files
 --

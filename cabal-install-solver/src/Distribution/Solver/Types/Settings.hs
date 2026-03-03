@@ -95,6 +95,18 @@ instance Structured AllowBootLibInstalls
 instance Structured OnlyConstrained
 instance Structured SolveExecutables
 
+instance NFData ReorderGoals
+instance NFData CountConflicts
+instance NFData FineGrainedConflicts
+instance NFData IndependentGoals
+instance NFData PreferOldest
+instance NFData MinimizeConflictSet
+instance NFData AvoidReinstalls
+instance NFData ShadowPkgs
+instance NFData StrongFlags
+instance NFData AllowBootLibInstalls
+instance NFData OnlyConstrained
+
 instance Pretty OnlyConstrained where
   pretty OnlyConstrainedAll  = PP.text "all"
   pretty OnlyConstrainedNone = PP.text "none"
@@ -105,3 +117,26 @@ instance Parsec OnlyConstrained where
     , P.string "none" >> return OnlyConstrainedNone
     ]
 
+instance Parsec ReorderGoals where
+  parsec = ReorderGoals <$> parsec
+
+instance Parsec CountConflicts where
+  parsec = CountConflicts <$> parsec
+
+instance Parsec FineGrainedConflicts where
+  parsec = FineGrainedConflicts <$> parsec
+
+instance Parsec MinimizeConflictSet where
+  parsec = MinimizeConflictSet <$> parsec
+
+instance Parsec StrongFlags where
+  parsec = StrongFlags <$> parsec
+
+instance Parsec AllowBootLibInstalls where
+  parsec = AllowBootLibInstalls <$> parsec
+
+instance Parsec PreferOldest where
+  parsec = PreferOldest <$> parsec
+
+instance Parsec IndependentGoals where
+  parsec = IndependentGoals <$> parsec

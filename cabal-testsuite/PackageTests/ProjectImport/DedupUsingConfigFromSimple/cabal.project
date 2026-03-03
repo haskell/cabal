@@ -1,0 +1,9 @@
+packages: no-pkg-dir
+import: z-empty.config
+import: an-extra.config
+import: an-extra.config
+import: a-very-extra.config
+import: a-very-extra.config
+import: https://www.stackage.org/lts-21.25/cabal.config
+import: https://www.stackage.org/lts-21.25/cabal.config
+import: with-ghc.config

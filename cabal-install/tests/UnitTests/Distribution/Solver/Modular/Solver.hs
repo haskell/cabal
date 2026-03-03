@@ -198,17 +198,39 @@ tests =
       , runTest $ mkTest db11s2 "baseShim8" ["A"] (solverSuccess [("A", 1)])
       ]
   , testGroup
-      "Base and non-reinstallable"
+      "Non-reinstallable base, template-haskell and ghc (GHC without wiredInUnitIds)"
       [ runTest $
           mkTest dbBase "Refuse to install base without --allow-boot-library-installs" ["base"] $
             solverFailure (isInfixOf "rejecting: base-1.0.0 (constraint from non-reinstallable package requires installed instance)")
       , runTest $
-          allowBootLibInstalls $
-            mkTest dbBase "Install base with --allow-boot-library-installs" ["base"] $
-              solverSuccess [("base", 1), ("ghc-prim", 1), ("integer-gmp", 1), ("integer-simple", 1)]
+          mkTest dbTH "Refuse to install template-haskell without --allow-boot-library-installs" ["template-haskell"] $
+            solverFailure (isInfixOf "rejecting: template-haskell-1.0.0 (constraint from non-reinstallable package requires installed instance)")
       , runTest $
           mkTest dbNonupgrade "Refuse to install newer ghc requested by another library" ["A"] $
             solverFailure (isInfixOf "rejecting: ghc-2.0.0 (constraint from non-reinstallable package requires installed instance)")
+      , runTest $
+          allowBootLibInstalls $
+            mkTest dbBase "Install base with --allow-boot-library-installs" ["base"] $
+              solverSuccess [("base", 1), ("ghc-prim", 1), ("integer-gmp", 1), ("integer-simple", 1)]
+      ]
+  , testGroup
+      "Reinstallable base, template-haskell, but not ghc{,-internal} (GHC with wiredInUnitIds)"
+      [ runTest $
+          wiredInUnitIds $
+            mkTest dbBase "Allows reinstalling base even without --allow-boot-library-installs" ["base"] $
+              solverSuccess [("base", 1), ("ghc-prim", 1), ("integer-gmp", 1), ("integer-simple", 1)]
+      , runTest $
+          wiredInUnitIds $
+            mkTest dbTH "Allows reinstalling template-haskell even without --allow-boot-library-installs" ["template-haskell"] $
+              solverSuccess [("base", 1), ("ghc-prim", 1), ("pretty", 1), ("template-haskell", 1)]
+      , runTest $
+          wiredInUnitIds $
+            mkTest dbGhcInternal "Fails to reinstall ghc-internal as its wired-in" ["ghc-internal"] $
+              solverFailure (isInfixOf "ghc-internal-1.0.0 (constraint from non-reinstallable package requires installed instance with unit id ghc-internal-1)")
+      , runTest $
+          wiredInUnitIds $
+            mkTest dbNonupgrade "Refuse to install newer ghc requested by another library" ["A"] $
+              solverFailure (isInfixOf "rejecting: ghc-2.0.0 (constraint from non-reinstallable package requires installed instance with unit id ghc-1)")
       ]
   , testGroup
       "reject-unconstrained"
@@ -1398,6 +1420,25 @@ dbBase =
   , Right $ exAv "ghc-prim" 1 []
   , Right $ exAv "integer-simple" 1 []
   , Right $ exAv "integer-gmp" 1 []
+  ]
+
+dbTH :: ExampleDb
+dbTH =
+  [ Right $
+      exAv
+        "template-haskell"
+        1
+        [ExAny "ghc-prim", ExAny "ghc-internal", ExAny "ghc-boot-th", ExAny "pretty", ExAny "base"]
+  , Right $ exAv "ghc-prim" 1 []
+  , Left $ exInst "ghc-internal" 1 "ghc-internal-1" []
+  , Left $ exInst "ghc-boot-th" 1 "ghc-boot-th-1" []
+  , Right $ exAv "pretty" 1 [ExAny "base"]
+  , Right $ exAv "base" 1 [ExAny "ghc-prim", ExAny "ghc-internal"]
+  ]
+
+dbGhcInternal :: ExampleDb
+dbGhcInternal =
+  [ Right $ exAv "ghc-internal" 1 []
   ]
 
 dbNonupgrade :: ExampleDb

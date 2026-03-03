@@ -1,8 +1,6 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# OPTIONS_GHC -fno-warn-incomplete-patterns
-                -fno-warn-deprecations
-                -fno-warn-unused-binds #-} --FIXME
+{-# OPTIONS_GHC -Wno-incomplete-patterns
+                -Wno-deprecations
+                -Wno-unused-binds #-} --FIXME
 module UnitTests.Distribution.Version (versionTests) where
 
 import Distribution.Compat.Prelude.Internal
@@ -197,7 +195,7 @@ prop_anyVersion v' =
 
 prop_noVersion :: Version -> Bool
 prop_noVersion v' =
-  withinRange v' noVersion == False
+  not (withinRange v' noVersion)
 
 prop_thisVersion :: Version -> Version -> Bool
 prop_thisVersion v v' =

@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module UnitTests.Distribution.Client.TreeDiffInstances () where
 
@@ -63,6 +63,7 @@ instance ToExpr ProjectConfig
 instance ToExpr ProjectConfigBuildOnly
 instance ToExpr ProjectConfigProvenance
 instance ToExpr ProjectConfigShared
+instance ToExpr ProjectFileParser
 instance ToExpr RelaxDepMod
 instance ToExpr RelaxDeps
 instance ToExpr RelaxDepScope

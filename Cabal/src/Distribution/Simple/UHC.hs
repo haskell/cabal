@@ -59,10 +59,9 @@ import System.FilePath (pathSeparator)
 configure
   :: Verbosity
   -> Maybe FilePath
-  -> Maybe FilePath
   -> ProgramDb
   -> IO (Compiler, Maybe Platform, ProgramDb)
-configure verbosity hcPath _hcPkgPath progdb = do
+configure verbosity hcPath progdb = do
   (_uhcProg, uhcVersion, progdb') <-
     requireProgramVersion
       verbosity
@@ -78,6 +77,7 @@ configure verbosity hcPath _hcPkgPath progdb = do
           , compilerLanguages = uhcLanguages
           , compilerExtensions = uhcLanguageExtensions
           , compilerProperties = Map.empty
+          , compilerWiredInUnitIds = Nothing
           }
       compPlatform = Nothing
   return (comp, compPlatform, progdb')
@@ -280,10 +280,10 @@ constructUHCCmdLine
   -> [String]
 constructUHCCmdLine user system lbi bi clbi odir verbosity =
   -- verbosity
-  ( if verbosity >= deafening
+  ( if verbosityLevel verbosity >= Deafening
       then ["-v4"]
       else
-        if verbosity >= normal
+        if verbosityLevel verbosity >= Normal
           then []
           else ["-v0"]
   )

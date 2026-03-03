@@ -19,7 +19,7 @@ without forking in the future.)
 main :: IO ()
 main = do
   skipIfWindows "depends on `unix`"
-  cabalTest $ do
+  cabalTest $ flakyIfCI 8416 $ do
     -- timestamped logging to aid with #8416
     let logIO msg = do
           ts <- Time.getCurrentTime
@@ -64,7 +64,7 @@ cabal_raw_action :: [String] -> (Process.ProcessHandle -> IO ()) -> TestM Result
 cabal_raw_action args action = do
     configured_prog <- requireProgramM cabalProgram
     env <- getTestEnv
-    r <- liftIO $ runAction (testVerbosity env)
+    r <- liftIO $ runAction
                  (Just $ testCurrentDir env)
                  (testEnvironment env)
                  (programPath configured_prog)

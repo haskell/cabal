@@ -1,6 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -258,7 +257,6 @@ data GenericInstallPlan ipkg srcpkg = GenericInstallPlan
   { planGraph :: !(Graph (GenericPlanPackage ipkg srcpkg))
   , planIndepGoals :: !IndependentGoals
   }
-  deriving (Typeable)
 
 -- | 'GenericInstallPlan' specialised to most commonly used types.
 type InstallPlan =
@@ -785,9 +783,9 @@ processingInvariant
   -> Bool
 processingInvariant plan (Processing processingSet completedSet failedSet) =
   -- All the packages in the three sets are actually in the graph
-  assert (Foldable.all (flip Graph.member (planGraph plan)) processingSet)
-    $ assert (Foldable.all (flip Graph.member (planGraph plan)) completedSet)
-    $ assert (Foldable.all (flip Graph.member (planGraph plan)) failedSet)
+  assert (Foldable.all (`Graph.member` planGraph plan) processingSet)
+    $ assert (Foldable.all (`Graph.member` planGraph plan) completedSet)
+    $ assert (Foldable.all (`Graph.member` planGraph plan) failedSet)
     $
     -- The processing, completed and failed sets are disjoint from each other
     assert (noIntersection processingSet completedSet)
@@ -1072,7 +1070,7 @@ problems graph =
        | pkg <- Foldable.toList graph
        , Just pkg' <-
           map
-            (flip Graph.lookup graph)
+            (`Graph.lookup` graph)
             (nodeNeighbors pkg)
        , not (stateDependencyRelation pkg pkg')
        ]

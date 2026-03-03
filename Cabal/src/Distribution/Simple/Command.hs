@@ -91,6 +91,7 @@ import Distribution.Compat.Prelude hiding (get)
 import Prelude ()
 
 import qualified Data.Array as Array
+import Data.Either (rights)
 import qualified Data.List as List
 import Distribution.Compat.Lens (ALens', (#~), (^#))
 import qualified Distribution.GetOpt as GetOpt
@@ -589,7 +590,7 @@ commandParseArgs command global args =
     -- Note: It is crucial to use reverse function composition here or to
     -- reverse the flags here as we want to process the flags left to right
     -- but data flow in function composition is right to left.
-    accum flags = foldr (flip (.)) id [f | Right f <- flags]
+    accum flags = foldr (flip (.)) id (rights flags)
     unrecognised opts =
       [ "unrecognized "
         ++ "'"
@@ -624,8 +625,8 @@ data Command action
 -- | Mark command as hidden. Hidden commands don't show up in the 'progname
 -- help' or 'progname --help' output.
 hiddenCommand :: Command action -> Command action
-hiddenCommand (Command name synopsys f _cmdType) =
-  Command name synopsys f HiddenCommand
+hiddenCommand (Command name synopsis f _cmdType) =
+  Command name synopsis f HiddenCommand
 
 commandAddAction
   :: CommandUI flags

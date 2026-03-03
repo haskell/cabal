@@ -101,7 +101,7 @@ guessExtraDocFiles flags = do
   return $
     Just $
       if null extraDocs
-        then Set.singleton defaultChangelog
+        then Set.fromList [defaultChangelog, defaultReadme]
         else Set.fromList extraDocs
 
 -- | Try to guess the package type from the files in the package directory,
@@ -165,14 +165,14 @@ guessAuthorEmail = guessGitInfo "user.email"
 
 guessGitInfo :: Interactive m => String -> m (Maybe String)
 guessGitInfo target = do
-  localInfo <- readProcessWithExitCode "git" ["config", "--local", target] ""
-  if null $ snd' localInfo
-    then do
-      globalInfo <- readProcessWithExitCode "git" ["config", "--global", target] ""
-      case fst' globalInfo of
-        ExitSuccess -> return $ Just (trim $ snd' globalInfo)
-        _ -> return Nothing
-    else return $ Just (trim $ snd' localInfo)
-  where
-    fst' (x, _, _) = x
-    snd' (_, x, _) = x
+  localInfo <- maybeReadProcessWithExitCode "git" ["config", "--local", target] ""
+  case localInfo of
+    Nothing -> return Nothing
+    Just (_, localStdout, _) ->
+      if null localStdout
+        then do
+          globalInfo <- maybeReadProcessWithExitCode "git" ["config", "--global", target] ""
+          case globalInfo of
+            Just (ExitSuccess, globalStdout, _) -> return $ Just (trim globalStdout)
+            _ -> return Nothing
+        else return $ Just (trim localStdout)

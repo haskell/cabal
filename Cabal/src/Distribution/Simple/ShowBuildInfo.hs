@@ -1,6 +1,5 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications #-}
 
 -- |
 -- This module defines a simple JSON-based format for exporting basic
@@ -216,5 +215,5 @@ getCompilerArgs bi lbi clbi =
     ghcArgs =
       GHC.renderGhcOptions (compiler lbi) (hostPlatform lbi) baseOpts
     baseOpts =
-      GHC.componentGhcOptions normal lbi bi clbi $
+      GHC.componentGhcOptions Normal lbi bi clbi $
         buildDir lbi

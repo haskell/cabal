@@ -59,6 +59,10 @@ class HasBuildInfo a where
   cxxOptions = buildInfo . cxxOptions
   {-# INLINE cxxOptions #-}
 
+  jsppOptions :: Lens' a [String]
+  jsppOptions = buildInfo . jsppOptions
+  {-# INLINE jsppOptions #-}
+
   ldOptions :: Lens' a [String]
   ldOptions = buildInfo . ldOptions
   {-# INLINE ldOptions #-}
@@ -243,6 +247,9 @@ instance HasBuildInfo BuildInfo where
   cxxOptions f s = fmap (\x -> s{T.cxxOptions = x}) (f (T.cxxOptions s))
   {-# INLINE cxxOptions #-}
 
+  jsppOptions f s = fmap (\x -> s{T.jsppOptions = x}) (f (T.jsppOptions s))
+  {-# INLINE jsppOptions #-}
+
   ldOptions f s = fmap (\x -> s{T.ldOptions = x}) (f (T.ldOptions s))
   {-# INLINE ldOptions #-}
 
@@ -267,7 +274,7 @@ instance HasBuildInfo BuildInfo where
   cSources f s = fmap (\x -> s{T.cSources = x}) (f (T.cSources s))
   {-# INLINE cSources #-}
 
-  cxxSources f s = fmap (\x -> s{T.cSources = x}) (f (T.cxxSources s))
+  cxxSources f s = fmap (\x -> s{T.cxxSources = x}) (f (T.cxxSources s))
   {-# INLINE cxxSources #-}
 
   jsSources f s = fmap (\x -> s{T.jsSources = x}) (f (T.jsSources s))

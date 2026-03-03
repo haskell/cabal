@@ -65,6 +65,7 @@ GenericPackageDescription {
           cmmOptions = [],
           ccOptions = [],
           cxxOptions = [],
+          jsppOptions = [],
           ldOptions = [],
           hsc2hsOptions = [],
           pkgconfigDepends = [],
