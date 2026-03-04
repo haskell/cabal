@@ -1,0 +1,6 @@
+packages: ./cabal-project-repro.cabal
+
+package *
+  Tests: True
+
+import: nested/hop.config
