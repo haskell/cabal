@@ -494,6 +494,7 @@ fieldGrammarFieldGoldenTests = testGroup "fieldgrammar-field-golden" $
           [ "packageDescription1.fragment"
           , "packageDescription2.fragment"
           , "packageDescription3.fragment"
+          , "packageDescription4.fragment"
           ]
        )
 
@@ -515,7 +516,10 @@ fieldGrammarFieldGoldenTest g fp = ediffGolden goldenTest fp exprFile $ do
           $ fieldGrammarParser g cabalSpecLatest fieldMap
 
   case res of
-    Left _ -> fail "fieldParser failed unrecoverably"
+    Left (_ver, errsWithSource) ->
+      fail $
+        "fieldParser failed unrecoverably\n"
+        <> foldMap showPErrorWithSource errsWithSource
     Right ok -> pure $ toExpr ok
   where
     input = "tests" </> "ParserTests" </> "trivia" </> fp
