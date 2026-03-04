@@ -8,6 +8,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE TupleSections #-}
 
 -- |
 -- Module: Distribution.Simple.SetupHooks.Internal
@@ -123,6 +125,8 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 
 import System.Directory (doesFileExist)
+import System.FilePath (takeExtension, splitExtension, splitDirectories)
+import Distribution.ModuleName (ModuleName)
 
 --------------------------------------------------------------------------------
 -- SetupHooks
@@ -890,20 +894,71 @@ executeRulesUserOrSystem scope runDepsCmdData runCmdData verbosity lbi tgtInfo a
             , map (fmap ruleFromVertex) (v : vs)
             )
 
-    -- Compute demanded rules.
+    -- Compute demanded rules: anything reachable from the roots, which are:
     --
-    -- SetupHooks TODO: maybe requiring all generated modules to appear
-    -- in autogen-modules is excessive; we can look through all modules instead.
+    --  - autogen modules
+    --  - autogen include files
+    --  - extra-c-sources, extra-asm-sources, ...
+    --    (there is no 'autogen' field for those, at least not yet)
+    autogenModPaths :: [RelativePath Source File]
     autogenModPaths =
       map (\m -> moduleNameSymbolicPath m <.> "hs") $
-        autogenModules $
-          componentBuildInfo $
-            targetComponent tgtInfo
-    leafRule_maybe (rId, r) =
-      if any ((r `ruleOutputsLocation`) . (Location compAutogenDir)) autogenModPaths
-        then vertexFromRuleId rId
-        else Nothing
-    leafRules = mapMaybe leafRule_maybe $ Map.toList allRules
+        autogenModules compBuildInfo
+    autogenInclPaths :: [RelativePath Source File]
+    autogenInclPaths =
+      map unsafeCoerceSymbolicPath $
+        autogenIncludes compBuildInfo
+    extraSourcesPaths :: [RelativePath Source File]
+    extraSourcesPaths =
+      map unsafeCoerceSymbolicPath . mapMaybe symbolicPathRelative_maybe $
+        concat
+          [ cSources   compBuildInfo
+          , cxxSources compBuildInfo
+          , cmmSources compBuildInfo
+          , asmSources compBuildInfo
+          , jsSources  compBuildInfo
+          ]
+    leafRule_maybe :: (RuleId, RuleData scope) -> Either NotDemandedRuleReasons Graph.Vertex
+    leafRule_maybe (rId, r)
+      | any ((r `ruleOutputsLocation`) . Location compAutogenDir) $
+           concat
+             [ autogenModPaths
+             , autogenInclPaths
+             , extraSourcesPaths
+             ]
+     = case vertexFromRuleId rId of
+          Just v -> Right v
+          Nothing -> error $ unlines
+            [ "internal error: no graph vertex for rule " ++ show rId
+            , "Rule: " ++ show rId
+            ]
+     | otherwise
+     = Left $
+         NDRR
+           { nonAutogenHaskellModules =
+              Map.singleton rId
+                [ fromString $ intercalate "." $ splitDirectories hsPath
+                | Location _ outPath <- NE.toList (results r)
+                , (hsPath, ".hs") <- [splitExtension (getSymbolicPath outPath)]
+                ]
+           , filesNotInAutogenFolders =
+              Map.singleton rId
+                [ unsafeCoerceSymbolicPath fp
+                | Location base fp <- NE.toList (results r)
+                , not (splitDirectories (getSymbolicPath compAutogenDir)
+                        `isPrefixOf` splitDirectories (getSymbolicPath base))
+                ]
+           , nonAutogenIncludes =
+              Map.singleton rId
+                [ unsafeCoerceSymbolicPath outPath
+                | Location _ outPath <- NE.toList (results r)
+                , let inclExt = takeExtension (getSymbolicPath outPath)
+                  -- Heuristic guess of what constitutes an include file based on
+                  -- the file extension, just for error messages.
+                , inclExt `elem` [".h", ".hpp", ".hxx", ".h++", ".hh", ".inc", ".mac", ".def", ".inl", ".tcc"]
+                ]
+           }
+    (nonDmdReasons, leafRules) = partitionEithers $ map leafRule_maybe $ Map.toList allRules
     demandedRuleVerts = Set.fromList $ concatMap (Graph.reachable ruleGraph) leafRules
     nonDemandedRuleVerts = Set.fromList (Graph.vertices ruleGraph) Set.\\ demandedRuleVerts
 
@@ -922,22 +977,7 @@ executeRulesUserOrSystem scope runDepsCmdData runCmdData verbosity lbi tgtInfo a
       -- Emit a warning if there are non-demanded rules.
       unless (null nonDemandedRuleVerts) $
         warn verbosity $
-          unlines $
-            "The following rules are not demanded and will not be run:"
-              : concat
-                [ [ "  - " ++ show rId ++ ","
-                  , "    generating " ++ show (NE.toList $ results r)
-                  ]
-                | v <- Set.toList nonDemandedRuleVerts
-                , let (r, rId, _) = ruleFromVertex v
-                ]
-              ++ [ "Possible reasons for this error:"
-                 , "  - Some autogenerated modules were not declared"
-                 , "    (in the package description or in the pre-configure hooks)"
-                 , "  - The output location for an autogenerated module is incorrect,"
-                 , "    (e.g. the file extension is incorrect, or"
-                 , "     it is not in the appropriate 'autogenComponentModules' directory)"
-                 ]
+          pprNotDemandedRuleReasons comp compAutogenDir (mconcat nonDmdReasons)
 
       -- Run all the demanded rules, in dependency order.
       for_ sccs $ \(Graph.Node ruleVertex _) ->
@@ -977,11 +1017,66 @@ executeRulesUserOrSystem scope runDepsCmdData runCmdData verbosity lbi tgtInfo a
       SSystem -> id
     clbi = targetCLBI tgtInfo
     mbWorkDir = mbWorkDirLBI lbi
+    comp = targetComponent tgtInfo
     compAutogenDir = autogenComponentModulesDir lbi clbi
+    compBuildInfo = componentBuildInfo comp
     errorOut e =
       dieWithException verbosity $
         SetupHooksException $
           RulesException e
+
+data NotDemandedRuleReasons
+  = NDRR
+  { nonAutogenHaskellModules :: Map RuleId [ModuleName]
+  , nonAutogenIncludes       :: Map RuleId [RelativePath Pkg File]
+  , filesNotInAutogenFolders :: Map RuleId [RelativePath Pkg File]
+  }
+instance Semigroup NotDemandedRuleReasons where
+  NDRR m1 i1 f1 <> NDRR m2 i2 f2 = NDRR (m1 <> m2) (i1 <> i2) (f1 <> f2)
+instance Monoid NotDemandedRuleReasons where
+  mempty = NDRR mempty mempty mempty
+
+pprNotDemandedRuleReasons
+  :: Component
+  -> SymbolicPath Pkg (Dir Source)
+  -> NotDemandedRuleReasons
+  -> String
+pprNotDemandedRuleReasons comp compAutogenDir
+  (NDRR mods_map incls_map mis_files_map) =
+  unlines $ mods_lines ++ files_lines ++ incl_lines
+  where
+    mods = aux mods_map
+    incls = aux incls_map
+    mis_files = aux mis_files_map
+
+    aux xs = concatMap (\(rId, x) -> map (rId,) x) $ Map.toList xs
+    ppr (rId, x) = "  - " ++ show x ++ "   (for rule " ++ show rId ++ ")"
+
+    mods_lines, files_lines, incl_lines :: [String]
+    mods_lines
+      | null mods
+      = []
+      | otherwise
+      = ("Perhaps add the following to the 'autogen-modules' field of '" ++ show comp ++ "'.") :
+        map ppr mods
+    files_lines
+      | null mis_files
+      = []
+      | otherwise
+      = ("The following autogenerated file" ++ s ++ " for " ++ show comp ++ " " ++ isOrAre ++ " misplaced.")
+      : (itOrThey ++ " should go in " ++ show compAutogenDir ++ "'.")
+      : map ppr mis_files
+      where
+        (s, isOrAre, itOrThey) =
+          case mis_files of
+            [_] -> ("" , "is" , "It"  )
+            _   -> ("s", "are", "They")
+    incl_lines
+      | null incls
+      = []
+      | otherwise
+      = ("Perhaps add the following to the 'autogen-includes' field of '" ++ show comp ++ "'.") :
+        map ppr incls
 
 directRuleDependencyMaybe :: Rule.Dependency -> Maybe RuleId
 directRuleDependencyMaybe (RuleDependency dep) = Just $ outputOfRule dep
