@@ -1525,10 +1525,10 @@ fetchAndReadSourcePackageRemoteTarball
     { distDownloadSrcDirectory
     }
   getTransport
-  tarballUri =
+  tarballUri = do
     -- The tarball download is expensive so we use another layer of file
     -- monitor to avoid it whenever possible.
-    rerunIfChanged verbosity monitor tarballUri $ do
+    r <- rerunIfChanged verbosity monitor tarballUri $ do
       -- Download
       transport <- getTransport
       liftIO $ do
@@ -1542,12 +1542,13 @@ fetchAndReadSourcePackageRemoteTarball
         return ()
 
       -- Read
-      monitorFiles [monitorFile tarballFile]
       let location = RemoteTarballPackage tarballUri tarballFile
       liftIO $
         fmap (mkSpecificSourcePackage location)
           . uncurry (readSourcePackageCabalFile verbosity)
           =<< extractTarballPackageCabalFile tarballFile
+    monitorFiles [monitorFile tarballFile]
+    pure r
     where
       tarballStem :: FilePath
       tarballStem =
