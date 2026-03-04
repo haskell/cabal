@@ -59,7 +59,6 @@ module Distribution.Client.ProjectConfig
   , fetchAndReadSourcePackages
 
     -- * Resolving configuration
-  , lookupLocalPackageConfig
   , projectConfigWithBuilderRepoContext
   , projectConfigWithSolverRepoContext
   , SolverSettings (..)
@@ -261,28 +260,6 @@ import Distribution.Solver.Types.ProjectConfigPath
 ----------------------------------------
 -- Resolving configuration to settings
 --
-
--- | Look up a 'PackageConfig' field in the 'ProjectConfig' for a specific
--- 'PackageName'. This returns the configuration that applies to all local
--- packages plus any package-specific configuration for this package.
-lookupLocalPackageConfig
-  :: (Semigroup a, Monoid a)
-  => (PackageConfig -> a)
-  -> ProjectConfig
-  -> PackageName
-  -> a
-lookupLocalPackageConfig
-  field
-  ProjectConfig
-    { projectConfigLocalPackages
-    , projectConfigSpecificPackage
-    }
-  pkgname =
-    field projectConfigLocalPackages
-      <> maybe
-        mempty
-        field
-        (Map.lookup pkgname (getMapMappend projectConfigSpecificPackage))
 
 -- | Use a 'RepoContext' based on the 'BuildTimeSettings'.
 projectConfigWithBuilderRepoContext
