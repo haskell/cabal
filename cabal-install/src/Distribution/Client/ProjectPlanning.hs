@@ -769,6 +769,9 @@ rebuildInstallPlan
         projectConfig@ProjectConfig
           { projectConfigShared
           , projectConfigBuildOnly
+          , projectConfigAllPackages
+          , projectConfigLocalPackages
+          , projectConfigSpecificPackage
           }
         (compiler, platform, progdb)
         localPackages
@@ -847,27 +850,32 @@ rebuildInstallPlan
                 -- and packages explicitly mentioned in the project
                 --
                 let pkgname = pkgSpecifierTarget pkg
-                    testsEnabled =
-                      lookupLocalPackageConfig
-                        packageConfigTests
-                        projectConfig
-                        pkgname
-                    benchmarksEnabled =
-                      lookupLocalPackageConfig
-                        packageConfigBenchmarks
-                        projectConfig
-                        pkgname
-                    isLocal = isJust (shouldBeLocal pkg)
-                    stanzas
-                      | isLocal =
-                          Map.fromList $
-                            [ (TestStanzas, enabled)
-                            | enabled <- flagToList testsEnabled
-                            ]
-                              ++ [ (BenchStanzas, enabled)
-                                 | enabled <- flagToList benchmarksEnabled
-                                 ]
-                      | otherwise = Map.fromList [(TestStanzas, False), (BenchStanzas, False)]
+                    stanzas = case shouldBeLocal pkg of
+                      Just pkgId ->
+                        let testsEnabled =
+                              lookupPerPkgOption
+                                pkgId
+                                packageConfigTests
+                                projectConfigAllPackages
+                                projectConfigLocalPackages
+                                (getMapMappend projectConfigSpecificPackage)
+                                (const True)
+                            benchmarksEnabled =
+                              lookupPerPkgOption
+                                pkgId
+                                packageConfigBenchmarks
+                                projectConfigAllPackages
+                                projectConfigLocalPackages
+                                (getMapMappend projectConfigSpecificPackage)
+                                (const True)
+                         in Map.fromList $
+                              [ (TestStanzas, enabled)
+                              | enabled <- flagToList testsEnabled
+                              ]
+                                ++ [ (BenchStanzas, enabled)
+                                   | enabled <- flagToList benchmarksEnabled
+                                   ]
+                      Nothing -> Map.fromList [(TestStanzas, False), (BenchStanzas, False)]
                 ]
 
       -- Elaborate the solver's install plan to get a fully detailed plan. This
@@ -2423,39 +2431,27 @@ elaborateInstallPlan
       perPkgOptionMaybe :: PackageId -> (PackageConfig -> Flag a) -> Maybe a
       perPkgOptionList :: PackageId -> (PackageConfig -> [a]) -> [a]
 
-      perPkgOptionFlag pkgid def f = fromFlagOrDefault def (lookupPerPkgOption pkgid f)
-      perPkgOptionMaybe pkgid f = flagToMaybe (lookupPerPkgOption pkgid f)
-      perPkgOptionList pkgid f = lookupPerPkgOption pkgid f
-      perPkgOptionNubList pkgid f = fromNubList (lookupPerPkgOption pkgid f)
-      perPkgOptionMapLast pkgid f = getMapLast (lookupPerPkgOption pkgid f)
-      perPkgOptionMapMappend pkgid f = getMapMappend (lookupPerPkgOption pkgid f)
+      perPkgOptionFlag pkgid def f = fromFlagOrDefault def (lookupPerPkgOption' pkgid f)
+      perPkgOptionMaybe pkgid f = flagToMaybe (lookupPerPkgOption' pkgid f)
+      perPkgOptionList pkgid f = lookupPerPkgOption' pkgid f
+      perPkgOptionNubList pkgid f = fromNubList (lookupPerPkgOption' pkgid f)
+      perPkgOptionMapLast pkgid f = getMapLast (lookupPerPkgOption' pkgid f)
+      perPkgOptionMapMappend pkgid f = getMapMappend (lookupPerPkgOption' pkgid f)
 
       perPkgOptionLibExeFlag pkgid def fboth flib = (exe, lib)
         where
           exe = fromFlagOrDefault def bothflag
           lib = fromFlagOrDefault def (bothflag <> libflag)
 
-          bothflag = lookupPerPkgOption pkgid fboth
-          libflag = lookupPerPkgOption pkgid flib
+          bothflag = lookupPerPkgOption' pkgid fboth
+          libflag = lookupPerPkgOption' pkgid flib
 
-      lookupPerPkgOption
+      lookupPerPkgOption'
         :: (Package pkg, Monoid m)
         => pkg
         -> (PackageConfig -> m)
         -> m
-      lookupPerPkgOption pkg f =
-        -- This is where we merge the options from the project config that
-        -- apply to all packages, all project local packages, and to specific
-        -- named packages
-        global `mappend` local `mappend` perpkg
-        where
-          global = f allPackagesConfig
-          local
-            | isLocalToProject pkg =
-                f localPackagesConfig
-            | otherwise =
-                mempty
-          perpkg = maybe mempty f (Map.lookup (packageName pkg) perPackageConfig)
+      lookupPerPkgOption' pkg f = lookupPerPkgOption pkg f allPackagesConfig localPackagesConfig perPackageConfig isLocalToProject
 
       inplacePackageDbs =
         corePackageDbs
@@ -2571,8 +2567,8 @@ elaborateInstallPlan
         fromFlagOrDefault compilerShouldUseProfilingLibByDefault (profBothFlag <> profLibFlag)
         where
           pkgid = packageId pkg
-          profBothFlag = lookupPerPkgOption pkgid packageConfigProf
-          profLibFlag = lookupPerPkgOption pkgid packageConfigProfLib
+          profBothFlag = lookupPerPkgOption' pkgid packageConfigProf
+          profLibFlag = lookupPerPkgOption' pkgid packageConfigProfLib
 
       pkgsUseProfilingLibraryShared :: Set PackageId
       pkgsUseProfilingLibraryShared =
@@ -4638,3 +4634,26 @@ determineCoverageFor configuredPkg plan =
 
     isIndefiniteOrInstantiation :: ModuleShape -> Bool
     isIndefiniteOrInstantiation = not . Set.null . modShapeRequires
+
+lookupPerPkgOption
+  :: (Package pkg, Monoid m)
+  => pkg
+  -> (PackageConfig -> m)
+  -> PackageConfig
+  -> PackageConfig
+  -> Map PackageName PackageConfig
+  -> (pkg -> Bool)
+  -> m
+lookupPerPkgOption pkg f allPackagesConfig localPackagesConfig perPackageConfig isLocalPkg =
+  -- This is where we merge the options from the project config that
+  -- apply to all packages, all project local packages, and to specific
+  -- named packages
+  global `mappend` local `mappend` perpkg
+  where
+    global = f allPackagesConfig
+    local
+      | isLocalPkg pkg =
+          f localPackagesConfig
+      | otherwise =
+          mempty
+    perpkg = maybe mempty f (Map.lookup (packageName pkg) perPackageConfig)
