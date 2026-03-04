@@ -1,17 +1,11 @@
-{-# LANGUAGE CApiFFI #-}
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 module Distribution.Compat.Time
-  ( ModTime (..) -- Needed for testing
+  ( ModTime
   , getModTime
   , getFileAge
   , getCurTime
-  , posixSecondsToModTime
   )
 where
 
@@ -21,28 +15,9 @@ import Prelude ()
 import System.Directory (getModificationTime)
 
 import Data.Time (diffUTCTime, getCurrentTime)
-import Data.Time.Clock.POSIX (POSIXTime, getPOSIXTime, posixDayLength)
+import Data.Time.Clock.POSIX (POSIXTime, getPOSIXTime, posixDayLength, utcTimeToPOSIXSeconds)
 
-#if defined mingw32_HOST_OS
-
-import qualified Prelude
-import Data.Bits          ((.|.), unsafeShiftL)
-import Data.Bits          (finiteBitSize)
-
-import Foreign            ( allocaBytes, peekByteOff )
-import System.IO.Error    ( mkIOError, doesNotExistErrorType )
-import System.Win32.Types ( BOOL, DWORD, LPCTSTR, LPVOID, withTString )
-
-#else
-
-import System.Posix.Files
-  ( FileStatus, getFileStatus
-  , modificationTimeHiRes
-  )
-
-#endif
-
--- | An opaque type representing a file's modification time, represented
+-- | File's modification time, represented
 -- internally as a 64-bit unsigned integer in the Windows UTC format.
 newtype ModTime = ModTime Word64
   deriving (Binary, Generic, Bounded, Eq, Ord)
@@ -55,74 +30,13 @@ instance Show ModTime where
 instance Read ModTime where
   readsPrec p str = map (first ModTime) (readsPrec p str)
 
--- | Return modification time of the given file. Works around the low clock
--- resolution problem that 'getModificationTime' has on GHC < 7.8.
---
--- This is a modified version of the code originally written for Shake by Neil
--- Mitchell. See module Development.Shake.FileInfo.
+-- | Return modification time of the given file.
 getModTime :: FilePath -> IO ModTime
-
-#if defined mingw32_HOST_OS
-
--- Directly against the Win32 API.
-getModTime path = allocaBytes size_WIN32_FILE_ATTRIBUTE_DATA $ \info -> do
-  res <- getFileAttributesEx path info
-  if not res
-    then do
-      let err = mkIOError doesNotExistErrorType
-                "Distribution.Compat.Time.getModTime"
-                Nothing (Just path)
-      ioError err
-    else do
-      dwLow  <- peekByteOff info
-                index_WIN32_FILE_ATTRIBUTE_DATA_ftLastWriteTime_dwLowDateTime
-      dwHigh <- peekByteOff info
-                index_WIN32_FILE_ATTRIBUTE_DATA_ftLastWriteTime_dwHighDateTime
-      let qwTime =
-            (fromIntegral (dwHigh :: DWORD) `unsafeShiftL` finiteBitSize dwHigh)
-            .|. (fromIntegral (dwLow :: DWORD))
-      return $! ModTime (qwTime :: Word64)
-
-foreign import capi "windows.h GetFileAttributesExW"
-  c_getFileAttributesEx :: LPCTSTR -> Int32 -> LPVOID -> Prelude.IO BOOL
-
-getFileAttributesEx :: String -> LPVOID -> IO BOOL
-getFileAttributesEx path lpFileInformation =
-  withTString path $ \c_path ->
-      c_getFileAttributesEx c_path getFileExInfoStandard lpFileInformation
-
-getFileExInfoStandard :: Int32
-getFileExInfoStandard = 0
-
-size_WIN32_FILE_ATTRIBUTE_DATA :: Int
-size_WIN32_FILE_ATTRIBUTE_DATA = 36
-
-index_WIN32_FILE_ATTRIBUTE_DATA_ftLastWriteTime_dwLowDateTime :: Int
-index_WIN32_FILE_ATTRIBUTE_DATA_ftLastWriteTime_dwLowDateTime = 20
-
-index_WIN32_FILE_ATTRIBUTE_DATA_ftLastWriteTime_dwHighDateTime :: Int
-index_WIN32_FILE_ATTRIBUTE_DATA_ftLastWriteTime_dwHighDateTime = 24
-
-#else
-
--- Directly against the unix library.
-getModTime path = do
-    st <- getFileStatus path
-    return $! (extractFileTime st)
-
-extractFileTime :: FileStatus -> ModTime
-extractFileTime x = posixTimeToModTime (modificationTimeHiRes x)
-
-#endif
+getModTime = fmap (posixTimeToModTime . utcTimeToPOSIXSeconds) . getModificationTime
 
 windowsTick, secToUnixEpoch :: Word64
 windowsTick = 10000000
 secToUnixEpoch = 11644473600
-
--- | Convert POSIX seconds to ModTime.
-posixSecondsToModTime :: Int64 -> ModTime
-posixSecondsToModTime s =
-  ModTime $ ((fromIntegral s :: Word64) + secToUnixEpoch) * windowsTick
 
 -- | Convert 'POSIXTime' to 'ModTime'.
 posixTimeToModTime :: POSIXTime -> ModTime
@@ -140,4 +54,4 @@ getFileAge file = do
 
 -- | Return the current time as 'ModTime'.
 getCurTime :: IO ModTime
-getCurTime = posixTimeToModTime `fmap` getPOSIXTime -- Uses 'gettimeofday'.
+getCurTime = posixTimeToModTime `fmap` getPOSIXTime
