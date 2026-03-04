@@ -676,8 +676,8 @@ instance Pretty SpecVersion where
     | otherwise = text ">=" <<>> text (showCabalSpecVersion csv)
 
 instance ExactPretty SpecVersion where
-  exactPretty t0 x =
-    let doc = pretty x
+  exactPretty t0 x@(SpecVersion csv) =
+    let doc = text (showCabalSpecVersion csv)
         t = unmarkTriviaTree x t0
     in  [DocAnn doc t]
 

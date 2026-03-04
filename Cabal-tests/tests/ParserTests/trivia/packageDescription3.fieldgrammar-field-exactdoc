@@ -6,7 +6,7 @@ Concat
         1
         (Concat
           (Text "cabal-version:")
-          (Place 1 16 (Text ">=1.0"))))
+          (Place 1 16 (Text "1.0"))))
       (Place
         3
         1

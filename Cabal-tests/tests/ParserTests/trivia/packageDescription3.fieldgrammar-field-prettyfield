@@ -10,7 +10,7 @@
           ExactFieldPosition
             (Position 1 1),
           ExactPosition (Position 1 16)]
-        >=1.0],
+        1.0],
   PrettyField
     [
       ExactFieldPosition
