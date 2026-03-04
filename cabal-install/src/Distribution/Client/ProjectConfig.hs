@@ -4,6 +4,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -Wno-unused-matches #-}
 
 -- | Handling project configuration.
@@ -59,7 +60,6 @@ module Distribution.Client.ProjectConfig
   , fetchAndReadSourcePackages
 
     -- * Resolving configuration
-  , lookupLocalPackageConfig
   , projectConfigWithBuilderRepoContext
   , projectConfigWithSolverRepoContext
   , SolverSettings (..)
@@ -853,18 +853,36 @@ readProjectFileSkeletonGen
       exists <- liftIO $ doesFileExist extensionFile
       if exists
         then do
+          -- Monitor the "main" project file (this could be e.g. 'cabal.project', 'cabal.project.freeze' or
+          -- 'cabal.project.local'.
           monitorFiles [monitorFileHashed extensionFile]
           pcs <- liftIO $ parseConfig extensionFile
+
+          -- We also need to monitor all the (possibly recursive) imports.
+          -- 'projectSkeletonImports' is a path per imported project file that starts with the leaf
+          -- and ends with the main project file that is the root. E.g. if 'cabal.project' imports
+          -- 'cabal.project.foo', which imports 'cabal.project.bar', then we get two paths:
+          --
+          -- > ("cabal.project.bar" :| ["cabal.project.foo", "cabal.project"])
+          -- > ("cabal.project.foo" :| ["cabal.project"])
+          --
+          -- Consequently, we just take the heads of all the paths.
           monitorFiles
-            [ monitorFileHashed (projectConfigPathRoot path)
-            | (Nothing, path) <- projectSkeletonImports pcs
+
+            [ monitorFileHashed $ makeAbsolute path
+            | (Nothing, currentProjectConfigPath -> path) <- projectSkeletonImports pcs
             ]
+
           return pcs
         else do
           monitorFiles [monitorNonExistentFile extensionFile]
           return mempty
     where
-      extensionFile = distProjectFile dir extensionName
+      -- Do we prefer absolute paths for cache monitoring?
+      makeAbsolute f
+        | isAbsolute f = f
+        | otherwise = distProjectRootDirectory dir </> f
+      extensionFile = (distProjectFile dir) extensionName
 
 -- There are 3 different variants of the project parsing function.
 -- 1. readProjectFileSkeletonLegacy: always uses the legacy parser
