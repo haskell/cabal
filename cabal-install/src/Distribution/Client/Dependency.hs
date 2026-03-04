@@ -638,7 +638,14 @@ addDefaultSetupDependencies defaultSetupDeps params =
                   pkgdesc
                     { PD.setupBuildInfo =
                         case PD.setupBuildInfo pkgdesc of
-                          Just sbi -> Just sbi
+                          Just sbi ->
+                            let
+                              sbi' =
+                                case PD.buildType pkgdesc of
+                                  PD.Hooks -> addCabalDepForHooks sbi
+                                  _ -> sbi
+                             in
+                              Just sbi'
                           Nothing -> case defaultSetupDeps srcpkg of
                             Nothing -> Nothing
                             Just deps
@@ -656,6 +663,21 @@ addDefaultSetupDependencies defaultSetupDeps params =
         isCustom = PD.buildType pkgdesc == PD.Custom || PD.buildType pkgdesc == PD.Hooks
         gpkgdesc = srcpkgDescription srcpkg
         pkgdesc = PD.packageDescription gpkgdesc
+
+-- | Add an implicit dependency on 'Cabal' for a @build-type: Hooks@ package
+-- that doesn't explicitly depend on 'Cabal'.
+--
+-- This ensures the solver picks a consistent version of 'Cabal' when other
+-- packages in the 'setup-depends' stanza depend on 'Cabal'.
+-- See https://github.com/haskell/cabal/issues/11331.
+addCabalDepForHooks :: PD.SetupBuildInfo -> PD.SetupBuildInfo
+addCabalDepForHooks sbi@(PD.SetupBuildInfo{PD.setupDepends = deps})
+  | any ((== cabalPkgName) . depPkgName) deps =
+      sbi
+  | otherwise =
+      sbi{PD.setupDepends = Dependency cabalPkgName anyVersion mainLibSet : deps}
+  where
+    cabalPkgName = mkPackageName "Cabal"
 
 -- | If a package has a custom setup then we need to add a setup-depends
 -- on Cabal.
