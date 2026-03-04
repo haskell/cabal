@@ -41,6 +41,8 @@ import qualified Data.Set as S
 import Distribution.Solver.Modular.Var
 import Distribution.Solver.Modular.Version
 import Distribution.Solver.Types.PackagePath
+import Distribution.Utils.ShortText (ShortText)
+import qualified Distribution.Utils.ShortText as ShortText
 
 -- | The set of variables involved in a solver conflict, each paired with
 -- details about the conflict.
@@ -81,11 +83,11 @@ data Conflict =
 
 -- | Version range with an 'Ord' instance. The show string is cached to avoid
 -- recomputing it on every comparison.
-data OrderedVersionRange = OVR !String !VR
+data OrderedVersionRange = OVR !ShortText !VR
 
 pattern OrderedVersionRange :: VR -> OrderedVersionRange
 pattern OrderedVersionRange vr <- OVR _ vr
-  where OrderedVersionRange vr = OVR (show vr) vr
+  where OrderedVersionRange vr = OVR (ShortText.toShortText (show vr)) vr
 {-# COMPLETE OrderedVersionRange #-}
 
 instance Eq OrderedVersionRange where

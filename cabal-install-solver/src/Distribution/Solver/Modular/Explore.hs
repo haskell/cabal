@@ -274,10 +274,10 @@ exploreLog mbj enableBj fineGrainedConflicts (CountConflicts countConflicts) idx
       let (PInfo deps _ _ _) = idx M.! pn M.! i
           qdeps = qualifyDeps qo currentQPN deps
 
-          -- Pre-index: map from QPN to list of version ranges (Constrained only)
-          depVRs :: M.Map QPN [VR]
-          depVRs = M.fromListWith (++)
-            [ (qpn, case ci of Constrained vr -> [vr]; _ -> [])
+          -- Pre-index: map from QPN to intersected version range (Constrained only)
+          depVRs :: M.Map QPN VR
+          depVRs = M.fromListWith (.&&.)
+            [ (qpn, case ci of Constrained vr -> vr; _ -> anyVersion)
             | Simple (LDep _ (Dep (PkgComponent qpn _) ci)) _ <- qdeps ]
 
           couldBeResolved :: CS.Conflict -> Maybe ConflictSet
@@ -285,14 +285,13 @@ exploreLog mbj enableBj fineGrainedConflicts (CountConflicts countConflicts) idx
           couldBeResolved (CS.GoalConflict conflictingDep) =
               -- Check whether this package instance also has 'conflictingDep'
               -- as a dependency (ignoring flag and stanza choices).
-              case M.lookup conflictingDep depVRs of
-                Nothing -> Nothing
-                Just _  -> Just CS.empty
+              if M.member conflictingDep depVRs
+                then Just CS.empty
+                else Nothing
           couldBeResolved (CS.VersionConstraintConflict dep excludedVersion) =
               -- Check whether this package instance also excludes version
               -- 'excludedVersion' of 'dep' (ignoring flag and stanza choices).
-              let vrs = M.findWithDefault [] dep depVRs
-                  vrIntersection = L.foldl' (.&&.) anyVersion vrs
+              let vrIntersection = M.findWithDefault anyVersion dep depVRs
               in if checkVR vrIntersection excludedVersion
                  then Nothing
                  else -- If we skip this package instance, we need to update the
