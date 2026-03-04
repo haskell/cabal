@@ -1,0 +1,16 @@
+cabal-version: 1.0
+
+name:   base
+version:           0.0.0
+
+copyright:   some copyright
+    text
+     foo
+      bar
+      .
+       baz
+      bar
+     foo
+    text
+
+build-type: Simple

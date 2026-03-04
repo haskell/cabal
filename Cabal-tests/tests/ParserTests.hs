@@ -543,6 +543,7 @@ fieldGrammarFieldPrettyFieldTests = testGroup "fieldgrammar-field-prettyfield" $
           [ "packageDescription1.fragment"
           , "packageDescription2.fragment"
           , "packageDescription3.fragment"
+          , "packageDescription4.fragment"
           ]
        )
 
@@ -596,6 +597,7 @@ fieldGrammarFieldExactDocTests = testGroup "fieldgrammar-field-exactdoc" $
           [ "packageDescription1.fragment"
           , "packageDescription2.fragment"
           , "packageDescription3.fragment"
+          , "packageDescription4.fragment"
           ]
        )
 

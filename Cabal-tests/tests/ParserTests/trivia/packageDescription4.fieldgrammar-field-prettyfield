@@ -1,0 +1,68 @@
+[
+  PrettyField
+    [
+      ExactFieldPosition
+        (Position 1 1)]
+    "cabal-version"
+    [
+      PrettyFieldLine
+        [
+          ExactFieldPosition
+            (Position 1 1),
+          ExactPosition (Position 1 16)]
+        1.0],
+  PrettyField
+    [
+      ExactFieldPosition
+        (Position 3 1)]
+    "name"
+    [
+      PrettyFieldLine
+        [ExactPosition (Position 3 9)]
+        base],
+  PrettyField
+    [
+      ExactFieldPosition
+        (Position 4 1)]
+    "version"
+    [
+      PrettyFieldLine
+        [ExactPosition (Position 4 20)]
+        0.0.0],
+  PrettyField
+    [
+      ExactFieldPosition
+        (Position 6 1)]
+    "copyright"
+    [
+      PrettyFieldLine
+        [ExactPosition (Position 6 14)]
+        `some copyright`,
+      PrettyFieldLine
+        [ExactPosition (Position 7 5)]
+        text,
+      PrettyFieldLine
+        [ExactPosition (Position 8 6)]
+        foo,
+      PrettyFieldLine
+        [ExactPosition (Position 9 7)]
+        bar,
+      PrettyFieldLine
+        [ExactPosition (Position 10 7)]
+        .,
+      PrettyFieldLine
+        [ExactPosition (Position 11 8)]
+        baz,
+      PrettyFieldLine
+        [ExactPosition (Position 12 7)]
+        bar,
+      PrettyFieldLine
+        [ExactPosition (Position 13 6)]
+        foo,
+      PrettyFieldLine
+        [ExactPosition (Position 14 5)]
+        text],
+  PrettyField
+    []
+    "build-type"
+    [PrettyFieldLine [] Simple]]

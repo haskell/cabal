@@ -1,0 +1,262 @@
+_×_
+  TriviaTree {
+    justAnnotation = [],
+    namedAnnotations =
+    Map.fromList
+      [
+        _×_
+          `SomeNamespace (Identity Simple)`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              []},
+        _×_
+          `SomeNamespace "author"`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              [
+                _×_
+                  `SomeNamespace "author"`
+                  TriviaTree {
+                    justAnnotation = [IsInjected],
+                    namedAnnotations = Map.fromList
+                      []}]},
+        _×_
+          `SomeNamespace "bug-reports"`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              [
+                _×_
+                  `SomeNamespace "bug-reports"`
+                  TriviaTree {
+                    justAnnotation = [IsInjected],
+                    namedAnnotations = Map.fromList
+                      []}]},
+        _×_
+          `SomeNamespace "cabal-version"`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              [
+                _×_
+                  `SomeNamespace (SpecVersion {getSpecVersion = CabalSpecV1_0})`
+                  TriviaTree {
+                    justAnnotation = [
+                      ExactFieldPosition
+                        (Position 1 1),
+                      ExactPosition (Position 1 16)],
+                    namedAnnotations = Map.fromList
+                      []}]},
+        _×_
+          `SomeNamespace "category"`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              [
+                _×_
+                  `SomeNamespace "category"`
+                  TriviaTree {
+                    justAnnotation = [IsInjected],
+                    namedAnnotations = Map.fromList
+                      []}]},
+        _×_
+          `SomeNamespace "copyright"`
+          TriviaTree {
+            justAnnotation = [
+              ExactFieldPosition
+                (Position 6 1)],
+            namedAnnotations =
+            Map.fromList
+              [
+                _×_
+                  `SomeNamespace "some copyright\\ntext\\n foo\\n  bar\\n  .\\n   baz\\n  bar\\n foo\\ntext"`
+                  TriviaTree {
+                    justAnnotation = [
+                      ExactRepr
+                        [
+                          _×_
+                            (Position 6 14)
+                            "some copyright",
+                          _×_ (Position 7 5) "text",
+                          _×_ (Position 8 6) "foo",
+                          _×_ (Position 9 7) "bar",
+                          _×_ (Position 10 7) ".",
+                          _×_ (Position 11 8) "baz",
+                          _×_ (Position 12 7) "bar",
+                          _×_ (Position 13 6) "foo",
+                          _×_ (Position 14 5) "text"]],
+                    namedAnnotations = Map.fromList
+                      []}]},
+        _×_
+          `SomeNamespace "data-dir"`
+          TriviaTree {
+            justAnnotation = [IsInjected],
+            namedAnnotations = Map.fromList
+              []},
+        _×_
+          `SomeNamespace "description"`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              [
+                _×_
+                  `SomeNamespace "description"`
+                  TriviaTree {
+                    justAnnotation = [IsInjected],
+                    namedAnnotations = Map.fromList
+                      []}]},
+        _×_
+          `SomeNamespace "homepage"`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              [
+                _×_
+                  `SomeNamespace "homepage"`
+                  TriviaTree {
+                    justAnnotation = [IsInjected],
+                    namedAnnotations = Map.fromList
+                      []}]},
+        _×_
+          `SomeNamespace "license"`
+          TriviaTree {
+            justAnnotation = [IsInjected],
+            namedAnnotations = Map.fromList
+              []},
+        _×_
+          `SomeNamespace "maintainer"`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              [
+                _×_
+                  `SomeNamespace "maintainer"`
+                  TriviaTree {
+                    justAnnotation = [IsInjected],
+                    namedAnnotations = Map.fromList
+                      []}]},
+        _×_
+          `SomeNamespace "name"`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              [
+                _×_
+                  `SomeNamespace (Identity (PackageName "base"))`
+                  TriviaTree {
+                    justAnnotation = [
+                      ExactFieldPosition
+                        (Position 3 1)],
+                    namedAnnotations = Map.fromList
+                      [
+                        _×_
+                          `SomeNamespace (PackageName "base")`
+                          TriviaTree {
+                            justAnnotation = [
+                              ExactPosition (Position 3 9)],
+                            namedAnnotations = Map.fromList
+                              []}]}]},
+        _×_
+          `SomeNamespace "package-url"`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              [
+                _×_
+                  `SomeNamespace "package-url"`
+                  TriviaTree {
+                    justAnnotation = [IsInjected],
+                    namedAnnotations = Map.fromList
+                      []}]},
+        _×_
+          `SomeNamespace "stability"`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              [
+                _×_
+                  `SomeNamespace "stability"`
+                  TriviaTree {
+                    justAnnotation = [IsInjected],
+                    namedAnnotations = Map.fromList
+                      []}]},
+        _×_
+          `SomeNamespace "synopsis"`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              [
+                _×_
+                  `SomeNamespace "synopsis"`
+                  TriviaTree {
+                    justAnnotation = [IsInjected],
+                    namedAnnotations = Map.fromList
+                      []}]},
+        _×_
+          `SomeNamespace "version"`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              [
+                _×_
+                  `SomeNamespace (Identity (mkVersion [0,0,0]))`
+                  TriviaTree {
+                    justAnnotation = [
+                      ExactFieldPosition
+                        (Position 4 1)],
+                    namedAnnotations = Map.fromList
+                      [
+                        _×_
+                          `SomeNamespace (mkVersion [0,0,0])`
+                          TriviaTree {
+                            justAnnotation = [
+                              ExactPosition (Position 4 20)],
+                            namedAnnotations = Map.fromList
+                              []}]}]}]}
+  PackageDescription {
+    specVersion = CabalSpecV1_0,
+    package = PackageIdentifier {
+      pkgName = PackageName "base",
+      pkgVersion = mkVersion
+        [0, 0, 0]},
+    licenseRaw = Left NONE,
+    licenseFiles = [],
+    copyright = concat
+      [
+        "some copyright\n",
+        "text\n",
+        " foo\n",
+        "  bar\n",
+        "  .\n",
+        "   baz\n",
+        "  bar\n",
+        " foo\n",
+        "text"],
+    maintainer = "",
+    author = "",
+    stability = "",
+    testedWith = [],
+    homepage = "",
+    pkgUrl = "",
+    bugReports = "",
+    sourceRepos = [],
+    synopsis = "",
+    description = "",
+    category = "",
+    customFieldsPD = [],
+    buildTypeRaw = Just Simple,
+    setupBuildInfo = Nothing,
+    library = Nothing,
+    subLibraries = [],
+    executables = [],
+    foreignLibs = [],
+    testSuites = [],
+    benchmarks = [],
+    dataFiles = [],
+    dataDir = SymbolicPath ".",
+    extraSrcFiles = [],
+    extraTmpFiles = [],
+    extraDocFiles = [],
+    extraFiles = []}
