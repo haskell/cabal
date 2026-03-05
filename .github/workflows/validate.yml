@@ -72,6 +72,10 @@ jobs:
             "8.8.4",
           ]
         exclude:
+          # ghc-pkg.exe starts silently failing for a few hours
+          - sys:
+              { os: windows-latest, shell: "C:/msys64/usr/bin/bash.exe -e {0}" }
+            ghc: "9.2.8"
           # Throws fatal "cabal-tests.exe: fd:8: hGetLine: end of file" exception
           # even with --io-manager=native
           - sys:
