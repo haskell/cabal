@@ -65,18 +65,29 @@
   PrettyField
     [
       ExactFieldPosition
-        (Position 0 0)]
+        (Position 18 1)]
     "tested-with"
     [
       PrettyFieldLine
-        []
-        `ghc ==9.4.8`,
+        [
+          ExactFieldPosition
+            (Position 18 1),
+          PostTrivia ""]
+        ghc==9.4.8,
       PrettyFieldLine
-        []
-        `ghc ==9.8.1`,
+        [
+          ExactFieldPosition
+            (Position 18 1),
+          PostTrivia "",
+          PreTrivia ", "]
+        `, ghc==9.8.1`,
       PrettyFieldLine
-        []
-        `ghc ==9.10.2`],
+        [
+          ExactFieldPosition
+            (Position 18 1),
+          PostTrivia "",
+          PreTrivia ", "]
+        `, ghc==9.10.2`],
   PrettyField
     [
       ExactFieldPosition

@@ -217,7 +217,36 @@ instance ExactSep VCat where
   exactParseSepNE _ p = NE.some1 (p <* P.spaces)
 
 instance ExactSep FSep where
-  exactPrettySep _ = mconcat . map (uncurry exactPretty)
+  exactPrettySep :: forall a sep. ExactPretty a => Proxy sep -> [(TriviaTree, a)] -> [DocAnn TriviaTree]
+  exactPrettySep _ docs =
+    -- There are no separators, we don't need to patch when there's no leading/trailing trivia
+    let atPositionOr0 = fromMaybe (Position 0 0) . atPosition . justAnnotation
+
+        sortedDocs :: [(TriviaTree, a)]
+        sortedDocs = sortOn (atPositionOr0 . fst) $ docs
+
+        -- Last, current, next
+        withNeighbors :: [(Maybe Trivia, (TriviaTree, a), Maybe Trivia)]
+        withNeighbors =
+          zip3
+            (Nothing : (Just . justAnnotation . fst <$> sortedDocs))
+            sortedDocs
+            (drop 1 (Just . justAnnotation . fst <$> sortedDocs) ++ [Nothing])
+
+    in  map
+          ( \( tPrev
+              , (t0, x)
+              , tNext
+              ) ->
+                let tLocal = justAnnotation t0
+                    docOut =
+                      triviaToDoc tLocal $
+                        mconcat . map unAnnDoc $
+                          exactPretty t0 x
+                 in  DocAnn docOut t0
+          )
+          withNeighbors
+
   exactParseSep _ p = do
     v <- askCabalSpecVersion
     if v >= CabalSpecV3_0 then triviaParsecLeadingOptCommaList p else triviaParsecOptCommaList p
