@@ -346,14 +346,11 @@ instance
             $ sortOn (fieldPositionOr0 . fst)
             $ map
               ( \o ->
-                  let n = (pack :: a -> b) o -- pack each element
-                  -- The numbering are associated under the newtype
-                  -- Move them upwards so we can sort
-                      numbering = justAnnotation (unmarkTriviaTree n t0)
-
-                      -- The positions are associated under the oldtype
-                      position = justAnnotation (unmarkTriviaTree o (unmarkTriviaTree n t0))
-                      t = TriviaTree (numbering <> position) mempty <> t0
+                  let n = (pack :: a -> b) o
+                      -- take the union of trivia associated with newtype and oldtype
+                      newTypeTrivia = justAnnotation (unmarkTriviaTree n t0)
+                      oldTypeTrivia = justAnnotation (unmarkTriviaTree o (unmarkTriviaTree n t0))
+                      t = TriviaTree (newTypeTrivia <> oldTypeTrivia) mempty <> t0
                    in (t, n)
               )
             $ unpack -- unpack the list
