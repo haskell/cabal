@@ -14,3 +14,8 @@ copyright:   some copyright
     text
 
 build-type: Simple
+
+tested-with:
+  , GHC==9.4.8
+  , GHC==9.8.1
+  , GHC==9.10.2

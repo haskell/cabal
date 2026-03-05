@@ -41,7 +41,14 @@ _×_
                       ExactFieldPosition
                         (Position 16 1)],
                     namedAnnotations = Map.fromList
-                      []}]},
+                      [
+                        _×_
+                          `SomeNamespace Simple`
+                          TriviaTree {
+                            justAnnotation = [
+                              ExactPosition (Position 16 13)],
+                            namedAnnotations = Map.fromList
+                              []}]}]},
         _×_
           `SomeNamespace "cabal-version"`
           TriviaTree {
@@ -203,6 +210,42 @@ _×_
                     namedAnnotations = Map.fromList
                       []}]},
         _×_
+          `SomeNamespace "tested-with"`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations =
+            Map.fromList
+              [
+                _×_
+                  `SomeNamespace (TestedWith {getTestedWith = (GHC,ThisVersion (mkVersion [9,4,8]))})`
+                  TriviaTree {
+                    justAnnotation = [
+                      ExactFieldPosition
+                        (Position 18 1),
+                      PostTrivia ""],
+                    namedAnnotations = Map.fromList
+                      []},
+                _×_
+                  `SomeNamespace (TestedWith {getTestedWith = (GHC,ThisVersion (mkVersion [9,8,1]))})`
+                  TriviaTree {
+                    justAnnotation = [
+                      ExactFieldPosition
+                        (Position 18 1),
+                      PostTrivia "",
+                      PreTrivia ", "],
+                    namedAnnotations = Map.fromList
+                      []},
+                _×_
+                  `SomeNamespace (TestedWith {getTestedWith = (GHC,ThisVersion (mkVersion [9,10,2]))})`
+                  TriviaTree {
+                    justAnnotation = [
+                      ExactFieldPosition
+                        (Position 18 1),
+                      PostTrivia "",
+                      PreTrivia ", "],
+                    namedAnnotations = Map.fromList
+                      []}]},
+        _×_
           `SomeNamespace "version"`
           TriviaTree {
             justAnnotation = [],
@@ -245,7 +288,19 @@ _×_
     maintainer = "",
     author = "",
     stability = "",
-    testedWith = [],
+    testedWith = [
+      _×_
+        GHC
+        (ThisVersion
+          (mkVersion [9, 4, 8])),
+      _×_
+        GHC
+        (ThisVersion
+          (mkVersion [9, 8, 1])),
+      _×_
+        GHC
+        (ThisVersion
+          (mkVersion [9, 10, 2]))],
     homepage = "",
     pkgUrl = "",
     bugReports = "",
