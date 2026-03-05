@@ -2,12 +2,35 @@ Concat
   (Concat
     (Concat
       (Concat
-        (Place
-          1
-          1
-          (Concat
-            (Text "cabal-version:")
-            (Place 1 16 (Text "1.0"))))
+        (Concat
+          (Place
+            0
+            0
+            (Concat
+              (Text "tested-with:")
+              (Place
+                19
+                5
+                (Concat
+                  (Concat
+                    (Concat
+                      (Concat
+                        (Concat
+                          (Place 19 5 (Text "ghc"))
+                          (Place 19 8 (Text "==9.4.8")))
+                        (Place 20 5 (Text "ghc")))
+                      (Place 20 8 (Text "==9.8.1")))
+                    (Place 21 5 (Text "ghc")))
+                  (Place
+                    21
+                    8
+                    (Text "==9.10.2"))))))
+          (Place
+            1
+            1
+            (Concat
+              (Text "cabal-version:")
+              (Place 1 16 (Text "1.0")))))
         (Place
           3
           1
@@ -53,4 +76,4 @@ Concat
     1
     (Concat
       (Text "build-type:")
-      (Text "Simple")))
+      (Place 16 13 (Text "Simple"))))
