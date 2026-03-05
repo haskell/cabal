@@ -18,6 +18,7 @@ import Distribution.Types.Annotation
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
+import qualified Text.Parsec as Parsec
 
 -- | The type of build system used by this package.
 data BuildType
@@ -44,9 +45,23 @@ knownBuildTypes = [Simple, Configure, Make, Custom, Hooks]
 instance Pretty BuildType where
   pretty = Disp.text . show
 
-instance ExactParsec BuildType
 instance Markable BuildType
-instance ExactPretty BuildType
+
+instance ExactParsec BuildType where
+  exactParsec = do
+    startPos <- getPosition
+    x <- parsec
+    let row = Parsec.sourceLine startPos
+        col = Parsec.sourceColumn startPos
+        posTrivia = [ExactPosition (Position row col)]
+        t = fromNamedTrivia x posTrivia
+    pure (t, x)
+
+instance ExactPretty BuildType where
+  exactPretty t x =
+    let t' = unmarkTriviaTree x t
+    in  [ DocAnn (triviaToDoc (justAnnotation t') (pretty x)) t'
+        ]
 
 instance Parsec BuildType where
   parsec = do
