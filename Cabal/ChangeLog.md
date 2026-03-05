@@ -589,7 +589,7 @@
   * Support module thinning and renaming (#2038).
   * Add a new license type: UnspecifiedLicense (#2141).
   * Remove support for Hugs and nhc98 (#2168).
-  * Invoke `tar` with `--formar ustar` if possible in `sdist` (#1903).
+  * Invoke `tar` with `--format ustar` if possible in `sdist` (#1903).
   * Replace `--enable-library-coverage` with `--enable-coverage`, which
   enables program coverage for all components (#1945).
   * Suggest that `ExitFailure 9` is probably due to memory

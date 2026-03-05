@@ -61,7 +61,7 @@ type AssocDep = (UnqualComponentName, [Dependency])
 -- be used together with checkPVP. Important: usually “base” or “Cabal”,
 -- as the error is slightly different.
 -- Note that `partitionDeps` will also filter out dependencies which are
--- already present in a inherithed fashion (e.g. an exe which imports the
+-- already present in a inherited fashion (e.g. an exe which imports the
 -- main library will not need to specify upper bounds on shared dependencies,
 -- hence we do not return those).
 --
