@@ -65,6 +65,24 @@
   PrettyField
     [
       ExactFieldPosition
+        (Position 0 0)]
+    "tested-with"
+    [
+      PrettyFieldLine
+        []
+        `ghc ==9.4.8`,
+      PrettyFieldLine
+        []
+        `ghc ==9.8.1`,
+      PrettyFieldLine
+        []
+        `ghc ==9.10.2`],
+  PrettyField
+    [
+      ExactFieldPosition
         (Position 16 1)]
     "build-type"
-    [PrettyFieldLine [] Simple]]
+    [
+      PrettyFieldLine
+        [ExactPosition (Position 16 13)]
+        Simple]]
