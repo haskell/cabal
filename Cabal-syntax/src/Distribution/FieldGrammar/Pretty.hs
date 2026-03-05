@@ -93,11 +93,17 @@ instance FieldGrammar ExactPretty PrettyFieldGrammar where
         where
           b = aview l s
 
-  optionalFieldAla fn _pack l = PrettyFG pp
-    where
-      pp v t s = case aview l s of
-        Nothing -> mempty
-        Just a -> ppTriviaField (fn, mempty) (exactPrettyVersioned v mempty (pack' _pack a))
+  optionalFieldAla fn _pack l = PrettyFG $ \v t0 s ->
+    case aview l s of
+      Nothing -> mempty
+      Just x ->
+        let x' = pack' _pack x
+            t = unmarkTriviaTree fn t0
+            tChildren = unmarkTriviaTree x' t
+            fieldPositionOr0 = fromMaybe (Position 0 0) . atFieldPosition . justAnnotation
+            fieldNamePos = fieldPositionOr0 tChildren
+        in  if isInjected (justAnnotation t) then mempty
+            else ppTriviaField (fn, [ExactFieldPosition fieldNamePos]) (exactPrettyVersioned v t x')
 
   optionalFieldDefAla fn _pack l def = PrettyFG $ \ v t0 s ->
       let x = aview l s

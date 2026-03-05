@@ -63,6 +63,8 @@
         [ExactPosition (Position 14 5)]
         text],
   PrettyField
-    []
+    [
+      ExactFieldPosition
+        (Position 16 1)]
     "build-type"
     [PrettyFieldLine [] Simple]]
