@@ -222,6 +222,7 @@ _×_
                     justAnnotation = [
                       ExactFieldPosition
                         (Position 18 1),
+                      ExactPosition (Position 19 5),
                       PostTrivia ""],
                     namedAnnotations = Map.fromList
                       []},
@@ -231,6 +232,7 @@ _×_
                     justAnnotation = [
                       ExactFieldPosition
                         (Position 18 1),
+                      ExactPosition (Position 20 5),
                       PostTrivia "",
                       PreTrivia ", "],
                     namedAnnotations = Map.fromList
@@ -241,6 +243,7 @@ _×_
                     justAnnotation = [
                       ExactFieldPosition
                         (Position 18 1),
+                      ExactPosition (Position 21 5),
                       PostTrivia "",
                       PreTrivia ", "],
                     namedAnnotations = Map.fromList

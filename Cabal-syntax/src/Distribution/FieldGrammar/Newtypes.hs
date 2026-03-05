@@ -714,15 +714,25 @@ newtype TestedWith = TestedWith {getTestedWith :: (CompilerFlavor, VersionRange)
 instance Newtype (CompilerFlavor, VersionRange) TestedWith
 
 instance Markable TestedWith
-instance Parsec TestedWith where parsec = snd <$> exactParsec
-instance ExactParsec TestedWith where
-  exactParsec = (mempty,) . pack <$> parsecTestedWith
 
 instance Pretty TestedWith where
   pretty x = case unpack x of
     (compiler, vr) -> pretty compiler <+> pretty vr
 
 instance ExactPretty TestedWith
+
+instance ExactParsec TestedWith where
+  exactParsec = do
+    startPos <- getPosition
+    x <- parsec
+    let row = Parsec.sourceLine startPos
+        col = Parsec.sourceColumn startPos
+        posTrivia = [ExactPosition (Position row col)]
+        t = fromNamedTrivia x posTrivia
+    pure (t, x)
+
+instance Parsec TestedWith where
+  parsec = TestedWith <$> parsecTestedWith
 
 parsecTestedWith :: CabalParsing m => m (CompilerFlavor, VersionRange)
 parsecTestedWith = do
