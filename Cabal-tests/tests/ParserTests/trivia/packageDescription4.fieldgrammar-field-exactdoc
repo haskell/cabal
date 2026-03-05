@@ -2,36 +2,32 @@ Concat
   (Concat
     (Concat
       (Concat
-        (Concat
-          (Text "build-type:")
-          (Text "Simple"))
         (Place
           1
           1
           (Concat
             (Text "cabal-version:")
-            (Place 1 16 (Text "1.0")))))
+            (Place 1 16 (Text "1.0"))))
+        (Place
+          3
+          1
+          (Concat
+            (Text "name:")
+            (Place 3 9 (Text "base")))))
       (Place
-        3
+        4
         1
         (Concat
-          (Text "name:")
-          (Place 3 9 (Text "base")))))
+          (Text "version:")
+          (Place 4 20 (Text "0.0.0")))))
     (Place
-      4
+      6
       1
       (Concat
-        (Text "version:")
-        (Place 4 20 (Text "0.0.0")))))
-  (Place
-    6
-    1
-    (Concat
-      (Text "copyright:")
-      (Place
-        6
-        14
-        (Concat
+        (Text "copyright:")
+        (Place
+          6
+          14
           (Concat
             (Concat
               (Concat
@@ -39,15 +35,22 @@ Concat
                   (Concat
                     (Concat
                       (Concat
-                        (Place
-                          6
-                          14
-                          (Text "some copyright"))
-                        (Place 7 5 (Text "text")))
-                      (Place 8 6 (Text "foo")))
-                    (Place 9 7 (Text "bar")))
-                  (Place 10 7 (Text ".")))
-                (Place 11 8 (Text "baz")))
-              (Place 12 7 (Text "bar")))
-            (Place 13 6 (Text "foo")))
-          (Place 14 5 (Text "text"))))))
+                        (Concat
+                          (Place
+                            6
+                            14
+                            (Text "some copyright"))
+                          (Place 7 5 (Text "text")))
+                        (Place 8 6 (Text "foo")))
+                      (Place 9 7 (Text "bar")))
+                    (Place 10 7 (Text ".")))
+                  (Place 11 8 (Text "baz")))
+                (Place 12 7 (Text "bar")))
+              (Place 13 6 (Text "foo")))
+            (Place 14 5 (Text "text")))))))
+  (Place
+    16
+    1
+    (Concat
+      (Text "build-type:")
+      (Text "Simple")))
