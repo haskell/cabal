@@ -1,0 +1,63 @@
+[files]
+ignore-files = true
+ignore-hidden = false
+extend-exclude = [
+    ".git/",
+    ".typos-docs.toml",
+    ".typos-srcs.toml",
+    "bootstrap/bootstrap.py", # has 'big-sur' when sur should be 'sure'
+    "*.rst",
+    "*.md",
+    "configure",
+    "**/project-stackage/*.config",
+    "**/Modular/MessageUtils.hs",
+    "dist-newstyle/",
+    "AUTHORS",
+    ".hlint.yaml",
+    "Cabal-tests/tests/ParserTests/errors/common1.cabal", # import: windo doesn't exist
+    "Cabal-tests/tests/ParserTests/errors/common1.errors",
+]
+
+[default]
+extend-ignore-re = [
+    "(?s)(#|//)\\s*spellchecker:off.*?\\n\\s*(#|//)\\s*spellchecker:on",
+]
+
+check-filename = true
+
+[default.extend-words]
+# Extinguish false positive in cabal-package-description-file.rst. 'Nd' is a
+# Unicode category, not a misspelling of 'And'.
+nd = "nd"
+
+# Some abbreviations and misspellings that we'll let pass in the *.hs sources..
+pn = "pn"
+caf = "caf"
+cafs = "cafs"
+inh = "inh"
+strat = "strat"
+thr = "thr"
+clos = "clos"
+bre = "bre"
+sie = "sie"
+onot = "onot"
+ba = "ba"
+nam = "nam"
+lits = "lits"
+benchs = "benchs"
+unexpect = "unexpect"
+existant = "existant"
+nonexistant = "nonexistant"
+reord = "reord"
+iif = "iif"
+matix = "matix" # IMatix
+tou = "tou" # termos of use
+unvalidate = "unvalidate"
+alph = "alph"
+wheres = "wheres"
+ket = "ket"
+fo = "fo"
+nto = "nto" # nto-qnx operating system
+dows = "dows" # win-dows
+bimap = "bimap"
+explitic = "explitic"
