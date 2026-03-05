@@ -431,6 +431,10 @@ parsecPrettyRoundTripTests = testGroup "parsec-pretty-roundtrip"
   , parsecPrettyRoundTripTest
       (Proxy :: Proxy (List CommaVCat (Identity Dependency) Dependency))
       "List_CommaVCat_Identity_Dependency1.fragment"
+
+  , parsecTriviaGoldenTest
+      (Proxy :: Proxy (List FSep TestedWith (CompilerFlavor, VersionRange)))
+      "TestedWith1.fragment"
   ]
 
 -- |
