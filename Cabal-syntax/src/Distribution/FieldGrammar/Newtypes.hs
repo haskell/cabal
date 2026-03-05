@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -719,23 +720,35 @@ instance Pretty TestedWith where
   pretty x = case unpack x of
     (compiler, vr) -> pretty compiler <+> pretty vr
 
-instance ExactPretty TestedWith
+instance ExactPretty TestedWith where
+  exactPretty t0 (getTestedWith->testedWith@(name, ver)) =
+    let t = unmarkTriviaTree testedWith t0
+
+        toDocAnn :: (Markable a, Pretty a) => a -> DocAnn TriviaTree
+        toDocAnn part =
+          let tPart = unmarkTriviaTree part t
+          in  DocAnn (triviaToDoc (justAnnotation tPart) $ pretty part) tPart
+
+    in  [ toDocAnn name
+        , toDocAnn ver
+        ]
 
 instance ExactParsec TestedWith where
-  exactParsec = do
-    startPos <- getPosition
-    x <- parsec
-    let row = Parsec.sourceLine startPos
-        col = Parsec.sourceColumn startPos
-        posTrivia = [ExactPosition (Position row col)]
-        t = fromNamedTrivia x posTrivia
-    pure (t, x)
+  exactParsec = fmap TestedWith <$> exactParsecTestedWith
 
 instance Parsec TestedWith where
-  parsec = TestedWith <$> parsecTestedWith
+  parsec = TestedWith . snd <$> exactParsecTestedWith
 
-parsecTestedWith :: CabalParsing m => m (CompilerFlavor, VersionRange)
-parsecTestedWith = do
+exactParsecTestedWith :: CabalParsing m => m (TriviaTree, (CompilerFlavor, VersionRange))
+exactParsecTestedWith = do
+  namePos <- getPosition'
   name <- lexemeParsec
+  verPos <- getPosition'
   ver <- parsec <|> pure anyVersion
-  return (name, ver)
+
+  let testedWith = (name, ver)
+      t = markTriviaTree testedWith
+          ( fromNamedTrivia name [ExactPosition namePos]
+          <> fromNamedTrivia ver [ExactPosition verPos]
+          )
+  return (t, testedWith)

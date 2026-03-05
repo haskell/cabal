@@ -46,6 +46,7 @@ module Distribution.Parsec
   , retPos
   , showPos
   , zeroPos
+  , getPosition'
 
     -- * Utilities
   , parsecToken
@@ -122,6 +123,15 @@ class (P.CharParsing m, MonadPlus m, Fail.MonadFail m) => CabalParsing m where
   askCabalSpecVersion :: m CabalSpecVersion
 
   getPosition :: m Parsec.SourcePos
+
+-- | Use the position datatype from cabal
+getPosition' :: CabalParsing m => m Position
+getPosition' = do
+  pos <- getPosition
+  let row = Parsec.sourceLine pos
+      col = Parsec.sourceColumn pos
+  pure (Position row col)
+
 
 -- | 'parsec' /could/ consume trailing spaces, this function /will/ consume.
 lexemeParsec :: (CabalParsing m, Parsec a) => m a
