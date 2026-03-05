@@ -38,7 +38,7 @@ common ffi-build-info
   -- the C header files here, the FFI preprocession (hsc2hs, c2hs,etc.) will fail to locate
   -- the requisite files.
   -- Note also, that the parent directory of the necessary C header files must be specified.
-  -- The preprocesser will not recursively look in subdirectories for C header files!
+  -- The preprocessor will not recursively look in subdirectories for C header files!
   include-dirs:     memoized-tcm
 
 

@@ -121,7 +121,7 @@ data CabalInstallException
   | BenchActionException
   | RenderBenchTargetProblem [String]
   | ReportUserTargetProblems [String]
-  | ReportUserTargerNonexistantFile [String]
+  | ReportUserTargetNonexistantFile [String]
   | ReportUserTargetUnexpectedFile [String]
   | ReportUserTargetUnexpectedUriScheme [String]
   | ReportUserTargetUnrecognisedUri [String]
@@ -277,7 +277,7 @@ exceptionCodeCabalInstall e = case e of
   BenchActionException{} -> 7092
   RenderBenchTargetProblem{} -> 7093
   ReportUserTargetProblems{} -> 7094
-  ReportUserTargerNonexistantFile{} -> 7095
+  ReportUserTargetNonexistantFile{} -> 7095
   ReportUserTargetUnexpectedFile{} -> 7096
   ReportUserTargetUnexpectedUriScheme{} -> 7097
   ReportUserTargetUnrecognisedUri{} -> 7098
@@ -528,7 +528,7 @@ exceptionMessageCabalInstall e = case e of
       ++ " - package names, e.g. 'pkgname', 'pkgname-1.0.1', 'pkgname < 2.0'\n"
       ++ " - cabal files 'pkgname.cabal' or package directories 'pkgname/'\n"
       ++ " - package tarballs 'pkgname.tar.gz' or 'http://example.com/pkgname.tar.gz'"
-  ReportUserTargerNonexistantFile target ->
+  ReportUserTargetNonexistantFile target ->
     unlines
       [ "The file does not exist '" ++ name ++ "'."
       | name <- target
