@@ -126,6 +126,7 @@ instance ToExpr TestShowDetails
 instance ToExpr TestSuite
 instance ToExpr TestSuiteInterface
 instance ToExpr TestType
+instance ToExpr TestedWith
 instance ToExpr UnitId
 instance ToExpr UnqualComponentName
 instance ToExpr Verbosity
@@ -144,5 +145,6 @@ instance ToExpr SomeNamespace where toExpr = defaultExprViaShow
 
 instance (ToExpr sep, ToExpr b, ToExpr a) => ToExpr (List sep b a)
 instance ToExpr CommaVCat
+instance ToExpr FSep
 
 instance ToExpr ShortText where toExpr = toExpr . fromShortText

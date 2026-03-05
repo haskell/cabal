@@ -20,6 +20,7 @@ import Control.Monad.State.Strict (runStateT)
 import Control.Monad                               (unless, void)
 import Data.Algorithm.Diff                         (PolyDiff (..), getGroupedDiff)
 import Data.Maybe                                  (isNothing)
+import Distribution.Compiler
 import Distribution.Fields                         (pwarning)
 import Distribution.Fields.Pretty                  (prettyFieldsToExactDoc)
 import Distribution.PackageDescription             (GenericPackageDescription)
@@ -342,6 +343,10 @@ parsecTriviaGoldenTests = testGroup "parsec-trivia-golden"
   , parsecTriviaGoldenTest
       (Proxy :: Proxy (List CommaVCat (Identity Dependency) Dependency))
       "List_CommaVCat_Identity_Dependency1.fragment"
+
+  , parsecTriviaGoldenTest
+      (Proxy :: Proxy (List FSep TestedWith (CompilerFlavor, VersionRange)))
+      "TestedWith1.fragment"
   ]
 
 parsecTriviaGoldenTest

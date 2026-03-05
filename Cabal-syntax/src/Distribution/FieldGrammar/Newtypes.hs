@@ -89,6 +89,7 @@ import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as M
 import Data.Maybe (maybeToList)
 import qualified Data.Set as Set
+import GHC.Generics
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.SPDX as SPDX
 
@@ -110,6 +111,7 @@ data VCat = VCat
 
 -- | Paragraph fill list with optional commas. Displayed with 'fsep'.
 data FSep = FSep
+  deriving (Generic)
 
 -- | Paragraph fill list without commas. Displayed with 'fsep'.
 data NoCommaFSep = NoCommaFSep
@@ -739,7 +741,7 @@ instance ExactPretty SpecLicense
 
 -- | Version range or just version
 newtype TestedWith = TestedWith {getTestedWith :: (CompilerFlavor, VersionRange)}
-  deriving (Ord, Eq, Show)
+  deriving (Ord, Eq, Show, Generic)
 
 instance Newtype (CompilerFlavor, VersionRange) TestedWith
 

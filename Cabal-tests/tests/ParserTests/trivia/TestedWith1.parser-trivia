@@ -1,0 +1,101 @@
+_×_
+  TriviaTree {
+    justAnnotation = [],
+    namedAnnotations =
+    Map.fromList
+      [
+        _×_
+          `SomeNamespace (TestedWith {getTestedWith = (GHC,ThisVersion (mkVersion [9,4,1]))})`
+          TriviaTree {
+            justAnnotation = [
+              PostTrivia ""],
+            namedAnnotations = Map.fromList
+              []},
+        _×_
+          `SomeNamespace (TestedWith {getTestedWith = (GHC,ThisVersion (mkVersion [9,8,4]))})`
+          TriviaTree {
+            justAnnotation = [
+              PostTrivia ""],
+            namedAnnotations = Map.fromList
+              []},
+        _×_
+          `SomeNamespace (TestedWith {getTestedWith = (GHC,ThisVersion (mkVersion [9,10,2]))})`
+          TriviaTree {
+            justAnnotation = [
+              PostTrivia ""],
+            namedAnnotations = Map.fromList
+              []},
+        _×_
+          `SomeNamespace (GHC,ThisVersion (mkVersion [9,4,1]))`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              [
+                _×_
+                  `SomeNamespace (ThisVersion (mkVersion [9,4,1]))`
+                  TriviaTree {
+                    justAnnotation = [
+                      ExactPosition (Position 1 5)],
+                    namedAnnotations = Map.fromList
+                      []},
+                _×_
+                  `SomeNamespace GHC`
+                  TriviaTree {
+                    justAnnotation = [
+                      ExactPosition (Position 1 1)],
+                    namedAnnotations = Map.fromList
+                      []}]},
+        _×_
+          `SomeNamespace (GHC,ThisVersion (mkVersion [9,8,4]))`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              [
+                _×_
+                  `SomeNamespace (ThisVersion (mkVersion [9,8,4]))`
+                  TriviaTree {
+                    justAnnotation = [
+                      ExactPosition (Position 2 9)],
+                    namedAnnotations = Map.fromList
+                      []},
+                _×_
+                  `SomeNamespace GHC`
+                  TriviaTree {
+                    justAnnotation = [
+                      ExactPosition (Position 2 5)],
+                    namedAnnotations = Map.fromList
+                      []}]},
+        _×_
+          `SomeNamespace (GHC,ThisVersion (mkVersion [9,10,2]))`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              [
+                _×_
+                  `SomeNamespace (ThisVersion (mkVersion [9,10,2]))`
+                  TriviaTree {
+                    justAnnotation = [
+                      ExactPosition (Position 3 9)],
+                    namedAnnotations = Map.fromList
+                      []},
+                _×_
+                  `SomeNamespace GHC`
+                  TriviaTree {
+                    justAnnotation = [
+                      ExactPosition (Position 3 5)],
+                    namedAnnotations = Map.fromList
+                      []}]}]}
+  (List
+    [
+      _×_
+        GHC
+        (ThisVersion
+          (mkVersion [9, 4, 1])),
+      _×_
+        GHC
+        (ThisVersion
+          (mkVersion [9, 8, 4])),
+      _×_
+        GHC
+        (ThisVersion
+          (mkVersion [9, 10, 2]))])
