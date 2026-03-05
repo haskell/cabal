@@ -217,17 +217,23 @@ instance FieldGrammar ExactParsec ParsecFieldGrammar where
 
   optionalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
+      markFieldName (t, x) = let t' = markTriviaTree fn t in  (t', x)
+      markInjected x = let t' = fromNamedTrivia fn [IsInjected] in  (t', x)
+
       parser v fields = case Map.lookup fn fields of
-        Nothing -> (pure . pure) Nothing
-        Just [] -> (pure . pure) Nothing
-        Just [x] -> parseOne v x
-        Just xs@(_ : y : ys) -> do
+        Nothing -> pure $ markInjected Nothing
+        Just [] -> pure $ markInjected Nothing
+        Just [x] -> markFieldName <$> parseOne v x
+        Just xs@(_ : y : ys) -> markFieldName <$> do
           warnMultipleSingularFields fn xs
           NE.last <$> traverse (parseOne v) (y :| ys)
 
       parseOne v (MkNamelessField pos fls)
-        | null fls = (pure . pure) Nothing
-        | otherwise = fmap (Just . unpack' _pack) <$> runFieldParser pos exactParsec v fls
+        | null fls = pure $ markInjected Nothing
+        | otherwise = do
+          (t, x) <- runFieldParser pos exactParsec v fls
+          let t' = fromNamedTrivia x [ExactFieldPosition pos] <> t
+          pure (t', Just $ unpack' _pack x)
 
   optionalFieldDefAla fn _pack _extract def = ParsecFG (Set.singleton fn) Set.empty parser
     where
@@ -243,7 +249,7 @@ instance FieldGrammar ExactParsec ParsecFieldGrammar where
           NE.last <$> traverse (parseOne v) (y :| ys)
 
       parseOne v (MkNamelessField pos fls)
-        | null fls = (pure . pure) def
+        | null fls = pure $ markInjected def
         | otherwise = do
           (t, x) <- runFieldParser pos exactParsec v fls
           let t' = fromNamedTrivia x [ExactFieldPosition pos] <> t

@@ -5,12 +5,6 @@ _×_
     Map.fromList
       [
         _×_
-          `SomeNamespace (Identity Simple)`
-          TriviaTree {
-            justAnnotation = [],
-            namedAnnotations = Map.fromList
-              []},
-        _×_
           `SomeNamespace "author"`
           TriviaTree {
             justAnnotation = [],
@@ -32,6 +26,20 @@ _×_
                   `SomeNamespace "bug-reports"`
                   TriviaTree {
                     justAnnotation = [IsInjected],
+                    namedAnnotations = Map.fromList
+                      []}]},
+        _×_
+          `SomeNamespace "build-type"`
+          TriviaTree {
+            justAnnotation = [],
+            namedAnnotations = Map.fromList
+              [
+                _×_
+                  `SomeNamespace (Identity Simple)`
+                  TriviaTree {
+                    justAnnotation = [
+                      ExactFieldPosition
+                        (Position 16 1)],
                     namedAnnotations = Map.fromList
                       []}]},
         _×_

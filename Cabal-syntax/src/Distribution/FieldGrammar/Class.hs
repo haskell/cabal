@@ -75,7 +75,7 @@ class
 
   -- | Optional field.
   optionalFieldAla
-    :: (c b, Newtype a b)
+    :: (c b, Newtype a b, Markable b)
     => FieldName
     -- ^ field name
     -> (a -> b)
@@ -206,7 +206,7 @@ uniqueField fn l = uniqueFieldAla fn Identity l
 
 -- | Field which can be defined at most once.
 optionalField
-  :: (FieldGrammar c g, c (Identity a))
+  :: (FieldGrammar c g, c (Identity a), Markable (Identity a))
   => FieldName
   -- ^ field name
   -> ALens' s (Maybe a)
