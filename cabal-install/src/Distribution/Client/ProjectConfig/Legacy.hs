@@ -133,7 +133,6 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Utils
   ( debug
   , lowercase
-  , noticeDoc
   )
 import Distribution.Types.CondTree
   ( CondBranch (..)
@@ -149,7 +148,6 @@ import Distribution.Utils.NubList
   , overNubList
   , toNubList
   )
-import Distribution.Utils.String (trim)
 
 import Distribution.Client.HttpUtils
 import Distribution.Client.ParseUtils
@@ -200,7 +198,7 @@ import qualified Data.ByteString.Char8 as BS
 import Data.Functor ((<&>))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Network.URI (URI (..), nullURIAuth, parseURI)
+import Network.URI (URI (..), nullURIAuth)
 import System.Directory (createDirectoryIfMissing, makeAbsolute)
 import System.FilePath (isAbsolute, isPathSeparator, makeValid, splitFileName, (</>))
 import Text.PrettyPrint
@@ -263,7 +261,7 @@ parseProject rootPath cacheDir httpTransport verbosity configToParse =
   do
     let (dir, projectFileName) = splitFileName rootPath
     projectDir <- makeAbsolute dir
-    projectPath <- canonicalizeConfigPath projectDir (ProjectConfigPath $ projectFileName :| [])
+    projectPath <- canonicalizeConfigPath projectDir (PCPWithoutImports projectFileName)
     parseProjectSkeleton cacheDir httpTransport verbosity projectDir projectPath configToParse
     -- NOTE: Reverse the warnings so they are in line number order.
     <&> \case ProjectParseOk ws x -> ProjectParseOk (reverse ws) x; x -> x
@@ -285,7 +283,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
     go :: [ParseUtils.Field] -> [ParseUtils.Field] -> IO (ProjectParseResult ProjectConfigSkeleton)
     go acc (x : xs) = case x of
       (ParseUtils.F _ "import" importLoc) -> do
-        let importLocPath = importLoc `consProjectConfigPath` source
+        importLocPath <- maybe (throwIO $ InvalidURIImport importLoc) pure $ parseLeaf importLoc `consProjectConfigPath` source
 
         -- Once we canonicalize the import path, we can check for cyclical imports
         normSource <- canonicalizeConfigPath projectDir source
@@ -295,9 +293,6 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
         if isCyclicConfigPath normLocPath
           then pure . projectParseFail Nothing (Just normSource) $ ParseUtils.FromString (render $ cyclicalImportMsg normLocPath) Nothing
           else do
-            when
-              (isUntrimmedUriConfigPath importLocPath)
-              (noticeDoc verbosity $ untrimmedUriImportMsg (Disp.text "Warning:") importLocPath)
             let fs = (\z -> CondNode z [normLocPath] mempty) <$> fieldsToConfig normSource (reverse acc)
             res <- parseProjectSkeleton cacheDir httpTransport verbosity projectDir importLocPath . ProjectConfigToParse =<< fetchImportConfig normLocPath
             rest <- go [] xs
@@ -367,20 +362,21 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
     liftPR p _ (ParseFailed e) = pure $ projectParseFail Nothing (Just p) e
 
     fetchImportConfig :: ProjectConfigPath -> IO BS.ByteString
-    fetchImportConfig (ProjectConfigPath (pci :| _)) = do
-      debug verbosity $ "fetching import: " ++ pci
-      fetch pci
-
-    fetch :: FilePath -> IO BS.ByteString
-    fetch pci = case parseURI $ trim pci of
-      Just uri -> do
-        let fp = cacheDir </> map (\x -> if isPathSeparator x then '_' else x) (makeValid $ show uri)
-        createDirectoryIfMissing True cacheDir
-        _ <- downloadURI httpTransport verbosity uri fp
-        BS.readFile fp
-      Nothing ->
-        BS.readFile $
-          if isAbsolute pci then pci else coerce projectDir </> pci
+    fetchImportConfig pcp = do
+      let readPFile pci = BS.readFile $ if isAbsolute pci then pci else coerce projectDir </> pci
+      case pcp of
+        PCPWithoutImports fp -> do
+          debug verbosity $ "reading import: " ++ fp
+          readPFile fp
+        PCPWithImports (PCPFilePath fp) _ -> do
+          debug verbosity $ "reading import: " ++ fp
+          readPFile fp
+        PCPWithImports (PCPURI uri) _ -> do
+          let fp = cacheDir </> map (\x -> if isPathSeparator x then '_' else x) (makeValid $ show uri)
+          debug verbosity $ "fetching import: " ++ show uri
+          createDirectoryIfMissing True cacheDir
+          _ <- downloadURI httpTransport verbosity uri fp
+          BS.readFile fp
 
     modifiesCompiler :: ProjectConfig -> Bool
     modifiesCompiler pc = isSet projectConfigHcFlavor || isSet projectConfigHcPath || isSet projectConfigHcPkg
@@ -1290,7 +1286,7 @@ parseLegacyProjectConfigFields (ConstraintSourceProjectConfig -> constraintSrc) 
 
 parseLegacyProjectConfig :: FilePath -> BS.ByteString -> ParseResult LegacyProjectConfig
 parseLegacyProjectConfig rootConfig bs =
-  parseLegacyProjectConfigFields (ProjectConfigPath $ rootConfig :| []) =<< ParseUtils.readFields bs
+  parseLegacyProjectConfigFields (PCPWithoutImports rootConfig) =<< ParseUtils.readFields bs
 
 showLegacyProjectConfig :: LegacyProjectConfig -> String
 showLegacyProjectConfig config =

@@ -76,6 +76,7 @@ module Distribution.Client.ProjectConfig
   ) where
 
 import Data.Bifunctor (second)
+import Data.Either (rights)
 import Distribution.Client.Compat.Prelude hiding (empty)
 import Distribution.Parsec.Source
 import Distribution.Simple.Utils
@@ -844,7 +845,10 @@ readProjectFileSkeletonGen
           -- > ("cabal.project.foo" :| ["cabal.project"])
           --
           -- Consequently, we just take the heads of all the paths.
-          monitorFiles $ map (monitorFileHashed . makeAbsolute) (projectConfigPathCurrent <$> projectSkeletonImports pcs)
+          monitorFiles $
+            map
+              (monitorFileHashed . makeAbsolute)
+              (rights . fmap (leafToEither . currentProjectConfigPath) . projectSkeletonImports $ pcs)
 
           return pcs
         else do
@@ -1011,7 +1015,7 @@ readGlobalConfig verbosity configFileFlag = do
 reportProjectParseWarningsLegacy :: Verbosity -> FilePath -> [ProjectParseWarning] -> IO ()
 reportProjectParseWarningsLegacy verbosity projectFile warnings =
   let msgs =
-        [ OldParser.showPWarning pFilename w
+        [ OldParser.showPWarning (prettyShow pFilename) w
         | (p, w) <- warnings
         , let pFilename = fst $ unconsProjectConfigPath p
         ]
@@ -1037,7 +1041,7 @@ reportParseResult verbosity filetype projectFile (OldParser.ProjectParseFailed (
         maybe
           (projectFile, empty)
           ( \p ->
-              ( currentProjectConfigPath p
+              ( prettyShow $ currentProjectConfigPath p
               , if isTopLevelConfigPath p then empty else docProjectConfigPath p
               )
           )
