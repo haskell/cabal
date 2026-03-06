@@ -403,8 +403,7 @@ unsupportedLanguages comp langs =
 languageToFlags :: Compiler -> Maybe Language -> [CompilerFlag]
 languageToFlags comp =
   filter (not . null)
-    . catMaybes
-    . map (languageToFlag comp)
+    . mapMaybe (languageToFlag comp)
     . maybe [Haskell98] (\x -> [x])
 
 languageToFlag :: Compiler -> Language -> Maybe CompilerFlag
@@ -423,8 +422,7 @@ extensionsToFlags :: Compiler -> [Extension] -> [CompilerFlag]
 extensionsToFlags comp =
   nub
     . filter (not . null)
-    . catMaybes
-    . map (extensionToFlag comp)
+    . mapMaybe (extensionToFlag comp)
 
 -- | Looks up the flag for a given extension, for a given compiler.
 -- Ignores the subtlety of extensions which lack associated flags.

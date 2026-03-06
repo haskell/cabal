@@ -467,7 +467,7 @@ languagePrompt flags pkgType = getLanguage flags $ do
     promptList
       ("Choose a language for your " ++ pkgType)
       [h2010, h98, ghc2021, ghc2024]
-      (DefaultPrompt (maybe h2010 id lastChosenLanguage))
+      (DefaultPrompt (fromMaybe h2010 lastChosenLanguage))
       Nothing
       True
 

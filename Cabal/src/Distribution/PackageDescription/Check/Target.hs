@@ -395,7 +395,7 @@ checkBuildInfoPathsContent bi = do
   mapM_ checkIntDep (targetBuildDepends bi)
   df <- asksCM ccDesugar
   -- This way we can use the same function for legacy&non exedeps.
-  let ds = buildToolDepends bi ++ catMaybes (map df $ buildTools bi)
+  let ds = buildToolDepends bi ++ mapMaybe df (buildTools bi)
   mapM_ checkBTDep ds
   where
     checkLang :: Monad m => Language -> CheckM m ()

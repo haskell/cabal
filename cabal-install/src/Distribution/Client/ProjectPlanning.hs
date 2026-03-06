@@ -2047,9 +2047,7 @@ elaborateInstallPlan
                   distDirLayout
                   elaboratedSharedConfig
                   elab
-                  $ case Cabal.componentNameString cname of
-                    Just n -> prettyShow n
-                    Nothing -> ""
+                  $ maybe "" prettyShow (Cabal.componentNameString cname)
 
       -- \| Given a 'SolverId' referencing a dependency on a library, return
       -- the 'ElaboratedPlanPackage' corresponding to the library.  This
@@ -2137,9 +2135,11 @@ elaborateInstallPlan
                       elab1
                 }
 
-            modShape = case find (matchElabPkg (== (CLibName LMainLibName))) comps of
-              Nothing -> emptyModuleShape
-              Just e -> Ty.elabModuleShape e
+            modShape =
+              maybe
+                emptyModuleShape
+                Ty.elabModuleShape
+                (find (matchElabPkg (== (CLibName LMainLibName))) comps)
 
             pkgInstalledId
               | shouldBuildInplaceOnly pkg =
@@ -2489,7 +2489,7 @@ elaborateInstallPlan
 
       pkgsLocalToProject :: Set PackageId
       pkgsLocalToProject =
-        Set.fromList (catMaybes (map shouldBeLocal localPackages))
+        Set.fromList (mapMaybe shouldBeLocal localPackages)
       -- TODO: localPackages is a misnomer, it's all project packages
       -- here is where we decide which ones will be local!
 
@@ -2612,8 +2612,7 @@ elaborateInstallPlan
 
       packagesWithLibDepsDownwardClosedProperty property =
         Set.fromList
-          . map packageId
-          . fromMaybe []
+          . maybe [] (map packageId)
           $ Graph.closure
             libDepGraph
             [ Graph.nodeKey pkg
@@ -3470,7 +3469,7 @@ pruneInstallPlanPass1 pkgs
 
     -- Make a closed graph by calculating the closure from the roots
     pruned_packages :: [ElaboratedPlanPackage]
-    pruned_packages = map (mapConfiguredPackage fromPrunedPackage) (fromMaybe [] $ Graph.closure graph roots)
+    pruned_packages = maybe [] (map (mapConfiguredPackage fromPrunedPackage)) (Graph.closure graph roots)
 
     closed_graph :: Graph.Graph ElaboratedPlanPackage
     closed_graph = Graph.fromDistinctList pruned_packages

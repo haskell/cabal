@@ -596,9 +596,7 @@ invoke verbosity path args options = do
       ]
         ++ progOverrideEnv progDb
 
-  let loggingHandle = case useLoggingHandle options of
-        Nothing -> Inherit
-        Just hdl -> UseHandle hdl
+  let loggingHandle = maybe Inherit UseHandle (useLoggingHandle options)
       cp =
         (proc path args)
           { Process.cwd = fmap getSymbolicPath $ useWorkingDir options

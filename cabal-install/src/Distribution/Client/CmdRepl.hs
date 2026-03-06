@@ -391,7 +391,7 @@ replAction flags@NixStyleFlags{extraFlags = replFlags@ReplFlags{..}, configFlags
             (unitId, _) = fromMaybe (error "panic: targets should be non-empty") $ safeHead $ Map.toList targets
             originalDeps = installedUnitId <$> InstallPlan.directDeps elaboratedPlan unitId
             oci = OriginalComponentInfo unitId originalDeps
-            pkgId = fromMaybe (error $ "cannot find " ++ prettyShow unitId) $ packageId <$> InstallPlan.lookup elaboratedPlan unitId
+            pkgId = maybe (error $ "cannot find " ++ prettyShow unitId) packageId (InstallPlan.lookup elaboratedPlan unitId)
             baseCtx'' = addDepsToProjectTarget (envPackages replEnvFlags) pkgId baseCtx'
 
           return (Just oci, baseCtx'')
