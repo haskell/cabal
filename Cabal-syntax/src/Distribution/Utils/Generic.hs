@@ -85,11 +85,12 @@ module Distribution.Utils.Generic
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Data.Char (isAsciiLower, isAsciiUpper)
-
+import Control.Concurrent (threadDelay)
+import qualified Control.Exception as Exception
 import Data.Bits (shiftL, (.&.), (.|.))
 import qualified Data.ByteString as SBS
 import qualified Data.ByteString.Lazy as LBS
+import Data.Char (isAsciiLower, isAsciiUpper)
 import Data.List
   ( isInfixOf
   )
@@ -99,8 +100,7 @@ import qualified Data.Text.Encoding as T
 import qualified Data.Text.Encoding.Error as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Encoding as TL
-
-import qualified Control.Exception as Exception
+import GHC.IO.Exception (IOErrorType (UnsupportedOperation))
 import System.Directory
   ( copyFile
   , getTemporaryDirectory
@@ -119,6 +119,7 @@ import System.IO
   , withBinaryFile
   , withFile
   )
+import System.IO.Error (ioeGetErrorType)
 
 -- -----------------------------------------------------------------------------
 -- Helper functions
@@ -197,13 +198,36 @@ writeFileAtomic targetPath content = do
     ( \(tmpPath, handle) -> do
         LBS.hPut handle content
         hClose handle
-        Exception.catch
-          (renameFile tmpPath targetPath)
-          ( \(_ :: Exception.SomeException) -> do
-              copyFile tmpPath targetPath
-              removeFile tmpPath
-          )
+        renameFileWithRetry tmpPath targetPath
     )
+
+-- | A robust 'renameFile' which retries with delay and
+-- switches to 'copyFile' as a backup implementation.
+renameFileWithRetry :: FilePath -> FilePath -> IO ()
+renameFileWithRetry srcPath targetPath =
+  renameFile srcPath targetPath `Exception.catch` retryRename 3
+  where
+    retryRename :: Word -> IOException -> IO ()
+    -- If no retries left then throw whatever exception we ended up with.
+    retryRename 0 exception = throwIO exception
+    retryRename retriesLeft exception
+      -- UnsupportedOperation means EXDEV from rename(2) with source and target
+      -- on different devices. In such case we resort to copying instead of renaming.
+      | ioeGetErrorType exception == UnsupportedOperation =
+          copyFile srcPath targetPath `Exception.catch` retryCopy (retriesLeft - 1)
+      | otherwise = do
+          -- Wait 1ms between retries: maybe device is busy, maybe antivirus locked srcPath.
+          threadDelay 1000
+          renameFile srcPath targetPath `Exception.catch` retryRename (retriesLeft - 1)
+
+    retryCopy :: Word -> IOException -> IO ()
+    retryCopy 0 exception = throwIO exception
+    retryCopy retriesLeft _ = do
+      -- Wait 1ms between retries: maybe device is busy, maybe antivirus locked srcPath.
+      threadDelay 1000
+      copyFile srcPath targetPath `Exception.catch` retryCopy retriesLeft
+      -- It's nice to clean up, but not critical, so ignoring any exceptions.
+      removeFile srcPath `Exception.catch` (\(_ :: IOException) -> pure ())
 
 -- ------------------------------------------------------------
 
