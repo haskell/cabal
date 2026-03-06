@@ -61,6 +61,9 @@ instance Structured GlobPiece
 -- Parsing & pretty-printing
 
 instance Pretty Glob where
+  pretty (GlobDir [Literal "/"] pathglob) =
+    Disp.char '/'
+      Disp.<> pretty pathglob
   pretty (GlobDir glob pathglob) =
     dispGlobPieces glob
       Disp.<> Disp.char '/'

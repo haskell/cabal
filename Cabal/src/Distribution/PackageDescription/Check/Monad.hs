@@ -37,7 +37,9 @@ module Distribution.PackageDescription.Check.Monad
   , checkP
   , checkPkg
   , liftInt
+  , liftCM
   , tellP
+  , tellCM
   , checkSpecVer
   ) where
 
