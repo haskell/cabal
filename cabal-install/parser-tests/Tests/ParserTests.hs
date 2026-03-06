@@ -208,7 +208,7 @@ testProjectConfigShared = do
       let
         bar = fromRight (error "error parsing bar") $ readUserConstraint "bar == 2.1"
         barFlags = fromRight (error "error parsing bar flags") $ readUserConstraint "bar +foo -baz"
-        source = ConstraintSourceProjectConfig $ ProjectConfigPath $ "cabal.project" :| []
+        source = ConstraintSourceProjectConfig $ PCPWithoutImports $ "cabal.project"
        in
         [(bar, source), (barFlags, source)]
     projectConfigPreferences = [PackageVersionConstraint (mkPackageName "foo") (ThisVersion (mkVersion [0, 9])), PackageVersionConstraint (mkPackageName "baz") (LaterVersion (mkVersion [2, 0]))]
@@ -318,7 +318,7 @@ testLocalNoIndexRepos = do
 
 testProjectConfigProvenance :: Assertion
 testProjectConfigProvenance = do
-  let expected = Set.singleton (Explicit (ProjectConfigPath $ "cabal.project" :| []))
+  let expected = Set.singleton (Explicit (PCPWithoutImports "cabal.project"))
   (config, legacy) <- readConfigDefault "empty"
   assertConfigEquals expected config legacy (projectConfigProvenance . condTreeData)
 
