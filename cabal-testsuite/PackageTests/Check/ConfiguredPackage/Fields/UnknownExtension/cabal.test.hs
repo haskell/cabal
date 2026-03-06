@@ -1,5 +1,5 @@
 import Test.Cabal.Prelude
 
--- Uknown extension.
+-- Unknown extension.
 main = cabalTest $
   fails $ cabal "check" []
