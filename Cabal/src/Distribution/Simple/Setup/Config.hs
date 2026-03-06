@@ -267,9 +267,7 @@ instance Structured ConfigFlags
 -- 'error' if internal invariant is violated.
 configPrograms :: WithCallStack (ConfigFlags -> ProgramDb)
 configPrograms =
-  fromMaybe (error "FIXME: remove configPrograms")
-    . fmap getLast
-    . configPrograms_
+  maybe (error "FIXME: remove configPrograms") getLast . configPrograms_
 
 instance Eq ConfigFlags where
   (==) a b =

@@ -212,9 +212,7 @@ packageSetupScriptSpecVersion _ pkg libDepGraph deps =
     Nothing -> mkVersion (cabalSpecMinimumLibraryVersion (specVersion pkg))
   where
     setupLibDeps =
-      map packageId $
-        fromMaybe [] $
-          Graph.closure libDepGraph (CD.setupDeps deps)
+      maybe [] (map packageId) (Graph.closure libDepGraph (CD.setupDeps deps))
 
 cabalPkgname :: PackageName
 cabalPkgname = mkPackageName "Cabal"

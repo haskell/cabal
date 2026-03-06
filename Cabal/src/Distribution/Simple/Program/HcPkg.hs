@@ -318,7 +318,7 @@ parsePackages lbs0 =
             go [] = [LBS.toStrict lbs]
             go (idx : idxs) =
               let (pfx, sfx) = LBS.splitAt idx lbs
-               in case foldr (<|>) Nothing $ map (`LBS.stripPrefix` sfx) separators of
+               in case foldr ((<|>) . (`LBS.stripPrefix` sfx)) Nothing separators of
                     Just sfx' -> LBS.toStrict pfx : doSplit sfx'
                     Nothing -> go idxs
 

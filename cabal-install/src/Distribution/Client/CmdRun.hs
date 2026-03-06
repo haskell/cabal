@@ -19,7 +19,6 @@ module Distribution.Client.CmdRun
 import Distribution.Client.Compat.Prelude hiding (toList)
 import Prelude ()
 
-import Data.List (group)
 import qualified Data.Set as Set
 import Distribution.Client.CmdErrorMessages
   ( plural
@@ -103,7 +102,7 @@ import Distribution.Simple.Utils
   ( dieWithException
   , info
   , notice
-  , safeHead
+  , sortNub
   , warn
   , wrapText
   )
@@ -400,16 +399,15 @@ matchingPackagesByUnitId
   -> ElaboratedInstallPlan
   -> [ElaboratedConfiguredPackage]
 matchingPackagesByUnitId uid =
-  catMaybes
-    . fmap
-      ( foldPlanPackage
-          (const Nothing)
-          ( \x ->
-              if elabUnitId x == uid
-                then Just x
-                else Nothing
-          )
-      )
+  mapMaybe
+    ( foldPlanPackage
+        (const Nothing)
+        ( \x ->
+            if elabUnitId x == uid
+              then Just x
+              else Nothing
+        )
+    )
     . toList
 
 -- | This defines what a 'TargetSelector' means for the @run@ command.
@@ -557,14 +555,12 @@ renderRunProblem (TargetProblemMatchesMultiple targetSelector targets) =
       ( (\(label, xs) -> "- " ++ label ++ ": " ++ renderListPretty xs)
           <$> zip
             ["executables", "test-suites", "benchmarks"]
-            ( filter (not . null) . map removeDuplicates $
+            ( filter (not . null) . map sortNub $
                 map (componentNameRaw . availableTargetComponentName)
-                  <$> (flip filterTargetsKind $ targets)
+                  <$> (`filterTargetsKind` targets)
                   <$> [ExeKind, TestKind, BenchKind]
             )
       )
-  where
-    removeDuplicates = catMaybes . map safeHead . group . sort
 renderRunProblem (TargetProblemMultipleTargets selectorMap) =
   "The run command is for running a single executable at once. The targets "
     ++ renderListCommaAnd

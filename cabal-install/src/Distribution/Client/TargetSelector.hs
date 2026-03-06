@@ -2500,10 +2500,7 @@ data MaybeAmbiguous a
 -- | A primitive matcher that looks up a value in a finite 'Map'. The
 -- value must match exactly.
 matchExactly :: Ord k => (a -> k) -> [a] -> (k -> Match a)
-matchExactly key xs =
-  \k -> case Map.lookup k m of
-    Nothing -> mzero
-    Just ys -> exactMatches ys
+matchExactly key xs = \k -> maybe mzero exactMatches (Map.lookup k m)
   where
     m = Map.fromListWith (++) [(key x, [x]) | x <- xs]
 
@@ -2524,9 +2521,7 @@ matchInexactly
 matchInexactly cannonicalise key xs =
   \k -> case Map.lookup k m of
     Just ys -> exactMatches ys
-    Nothing -> case Map.lookup (cannonicalise k) m' of
-      Just ys -> inexactMatches ys
-      Nothing -> mzero
+    Nothing -> maybe mzero inexactMatches (Map.lookup (cannonicalise k) m')
   where
     m = Map.fromListWith (++) [(key x, [x]) | x <- xs]
 

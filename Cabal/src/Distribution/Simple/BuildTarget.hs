@@ -907,10 +907,10 @@ instance Monad Match where
   NoMatch d ms >>= _ = NoMatch d ms
   ExactMatch d xs >>= f =
     addDepth d $
-      foldr matchPlus matchZero (map f xs)
+      foldr (matchPlus . f) matchZero xs
   InexactMatch d xs >>= f =
     addDepth d . forceInexact $
-      foldr matchPlus matchZero (map f xs)
+      foldr (matchPlus . f) matchZero xs
 
 addDepth :: Confidence -> Match a -> Match a
 addDepth d' (NoMatch d msgs) = NoMatch (d' + d) msgs
@@ -1018,9 +1018,7 @@ matchInexactly
 matchInexactly cannonicalise xs =
   \x -> case Map.lookup x m of
     Just ys -> exactMatches ys
-    Nothing -> case Map.lookup (cannonicalise x) m' of
-      Just ys -> inexactMatches ys
-      Nothing -> matchZero
+    Nothing -> maybe matchZero inexactMatches (Map.lookup (cannonicalise x) m')
   where
     m = Map.fromListWith (++) [(k, [x]) | (k, x) <- xs]
 
