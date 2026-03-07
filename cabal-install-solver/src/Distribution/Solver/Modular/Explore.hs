@@ -267,24 +267,31 @@ exploreLog mbj enableBj fineGrainedConflicts (CountConflicts countConflicts) idx
     -- is true, because it is always safe to explore a package instance.
     -- Skipping it is an optimization. If false, it returns a new conflict set
     -- to be merged with the previous one.
+    qo = defaultQualifyOptions idx
+
     couldResolveConflicts :: QPN -> POption -> S.Set CS.Conflict -> Maybe ConflictSet
     couldResolveConflicts currentQPN@(Q _ pn) (POption i@(I v _) _) conflicts =
       let (PInfo deps _ _ _) = idx M.! pn M.! i
-          qdeps = qualifyDeps (defaultQualifyOptions idx) currentQPN deps
+          qdeps = qualifyDeps qo currentQPN deps
+
+          -- Pre-index: map from QPN to intersected version range (Constrained only)
+          depVRs :: M.Map QPN VR
+          depVRs = M.fromListWith (.&&.)
+            [ (qpn, case ci of Constrained vr -> vr; _ -> anyVersion)
+            | Simple (LDep _ (Dep (PkgComponent qpn _) ci)) _ <- qdeps ]
 
           couldBeResolved :: CS.Conflict -> Maybe ConflictSet
           couldBeResolved CS.OtherConflict = Nothing
           couldBeResolved (CS.GoalConflict conflictingDep) =
               -- Check whether this package instance also has 'conflictingDep'
               -- as a dependency (ignoring flag and stanza choices).
-              if null [() | Simple (LDep _ (Dep (PkgComponent qpn _) _)) _ <- qdeps, qpn == conflictingDep]
-              then Nothing
-              else Just CS.empty
+              if M.member conflictingDep depVRs
+                then Just CS.empty
+                else Nothing
           couldBeResolved (CS.VersionConstraintConflict dep excludedVersion) =
               -- Check whether this package instance also excludes version
               -- 'excludedVersion' of 'dep' (ignoring flag and stanza choices).
-              let vrs = [vr | Simple (LDep _ (Dep (PkgComponent qpn _) (Constrained vr))) _ <- qdeps, qpn == dep ]
-                  vrIntersection = L.foldl' (.&&.) anyVersion vrs
+              let vrIntersection = M.findWithDefault anyVersion dep depVRs
               in if checkVR vrIntersection excludedVersion
                  then Nothing
                  else -- If we skip this package instance, we need to update the
