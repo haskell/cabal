@@ -1,0 +1,9 @@
+# cabal v2-build
+Configuration is affected by cabal.project at '<GBLTMPDIR>'.
+Error: [Cabal-7168]
+The project config '<ROOT>/cabal.project' requires at least one of the fields 'packages' or 'optional-packages', but neither was specified.
+
+# cabal v2-build
+Configuration is affected by cabal.project at '<GBLTMPDIR>'.
+Error: [Cabal-7168]
+The project config '<ROOT>/cabal.project' requires at least one of the fields 'packages' or 'optional-packages', but neither was specified.

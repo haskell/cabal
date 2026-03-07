@@ -26,9 +26,8 @@ Please pick a single [package:][ctype:]component (or all) as target for the REPL
  - pkg-two
 # checking repl command with an 'empty.project' with no packages
 # cabal repl
-Warning: There are no packages or optional-packages in the project
-Error: [Cabal-7076]
-There are no packages in 'empty.project'. Please add a package to the project and pick a single [package:][ctype:]component (or all) as target for the REPL command.
+Error: [Cabal-7168]
+The project config '<ROOT>/empty.project' requires at least one of the fields 'packages' or 'optional-packages', but neither was specified.
 # checking repl command with a missing 'missing.project'
 # cabal repl
 # checking repl command with a missing 'missing.project'

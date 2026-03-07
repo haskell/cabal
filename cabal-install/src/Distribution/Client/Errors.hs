@@ -192,6 +192,7 @@ data CabalInstallException
   | LegacyAndParsecParseResultsDiffer FilePath String String
   | CabalFileParseFailure CabalFileParseError
   | ProjectConfigParseFailure ProjectConfigParseError
+  | ProjectConfigNoPackages FilePath
   deriving (Show)
 
 exceptionCodeCabalInstall :: CabalInstallException -> Int
@@ -348,6 +349,7 @@ exceptionCodeCabalInstall e = case e of
   LegacyAndParsecParseResultsDiffer{} -> 7165
   CabalFileParseFailure{} -> 7166
   ProjectConfigParseFailure{} -> 7167
+  ProjectConfigNoPackages{} -> 7168
 
 exceptionMessageCabalInstall :: CabalInstallException -> String
 exceptionMessageCabalInstall e = case e of
@@ -885,6 +887,13 @@ exceptionMessageCabalInstall e = case e of
     renderCabalFileParseError cbfError
   ProjectConfigParseFailure pcfError ->
     renderProjectConfigParseError pcfError
+  ProjectConfigNoPackages configPath ->
+    concat
+      [ "The project config '"
+      , configPath
+      , "' requires at least one of the fields 'packages' "
+      , "or 'optional-packages', but neither was specified."
+      ]
 
 instance Exception (VerboseException CabalInstallException) where
   displayException :: VerboseException CabalInstallException -> [Char]

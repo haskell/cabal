@@ -9,6 +9,7 @@ module Distribution.Client.DistDirLayout
     DistDirLayout (..)
   , DistDirParams (..)
   , defaultDistDirLayout
+  , distProjectFileMain
 
     -- * 'ProjectRoot'
   , ProjectRoot (..)
@@ -316,3 +317,8 @@ mkCabalDirLayout mstoreDir mlogDir = do
   cabalLogsDirectory <-
     maybe defaultLogsDir pure mlogDir
   pure $ CabalDirLayout{..}
+
+-- | Given the 'DistDirLayout''s distProjectFile function, returns the
+-- main project file (i.e. cabal.project).
+distProjectFileMain :: (String -> FilePath) -> FilePath
+distProjectFileMain f = f ""
