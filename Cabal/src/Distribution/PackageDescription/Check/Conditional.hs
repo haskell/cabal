@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
 
@@ -252,6 +253,7 @@ checkDuplicateModules pkg =
               t
           dupLibsStrict = Map.keys $ Map.filter ((> 1) . fst) libMap
           dupLibsLax = Map.keys $ Map.filter ((> 1) . snd) libMap
-       in if not (null dupLibsLax)
-            then [PackageBuildImpossible (DuplicateModule s dupLibsLax)]
-            else [PackageDistSuspicious (PotentialDupModule s dupLibsStrict) | not (null dupLibsStrict)]
+       in if
+              | not (null dupLibsLax) -> [PackageBuildImpossible (DuplicateModule s dupLibsLax)]
+              | not (null dupLibsStrict) -> [PackageDistSuspicious (PotentialDupModule s dupLibsStrict)]
+              | otherwise -> []
