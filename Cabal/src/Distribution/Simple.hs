@@ -329,6 +329,7 @@ defaultMainHelperWithHandles verbHandles hooks args =
         case commandParse of
           _
             | fromFlag (globalVersion globalFlags) -> printVersion
+            | fromFlag (globalFullVersion globalFlags) -> printFullVersion
             | fromFlag (globalNumericVersion globalFlags) -> printNumericVersion
           CommandHelp help -> printHelp help
           CommandList opts -> printOptionsList opts
@@ -347,7 +348,16 @@ defaultMainHelperWithHandles verbHandles hooks args =
       hPutStrLn outHandle $
         "Cabal library version "
           ++ prettyShow cabalVersion
-
+    printFullVersion =
+      hPutStrLn outHandle $
+        "Cabal library version "
+          ++ prettyShow cabalVersion
+          ++ cabalGitInfo'
+          ++ "\nwith "
+          ++ cabalCompilerInfo
+    cabalGitInfo'
+      | null cabalGitInfo = []
+      | otherwise = ' ' : cabalGitInfo
     progs = addKnownPrograms (hookedPrograms hooks) defaultProgramDb
     addAction
       :: CommandUI flags
