@@ -282,10 +282,7 @@ constructUHCCmdLine user system lbi bi clbi odir verbosity =
   -- verbosity
   ( if verbosityLevel verbosity >= Deafening
       then ["-v4"]
-      else
-        if verbosityLevel verbosity >= Normal
-          then []
-          else ["-v0"]
+      else ["-v0" | verbosityLevel verbosity < Normal]
   )
     ++ hcOptions UHC bi
     -- flags for language extensions

@@ -2881,7 +2881,7 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
                               ElabComponent
                                 comp
                                   { compOrderLibDependencies =
-                                      (if Map.null insts then [] else [newSimpleUnitId cid])
+                                      [newSimpleUnitId cid | not (Map.null insts)]
                                         ++ ordNub
                                           ( map
                                               unDefUnitId

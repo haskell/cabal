@@ -1240,9 +1240,7 @@ renderPureArgs version comp platform args =
                 [ "--source-module=" ++ m
                 , "--source-entity=" ++ e
                 ]
-                  ++ if isVersion 2 14
-                    then ["--source-entity-line=" ++ l]
-                    else []
+                  ++ ["--source-entity-line=" ++ l | isVersion 2 14]
             )
             . flagToMaybe
             . argLinkSource
@@ -1316,13 +1314,7 @@ renderPureArgs version comp platform args =
                       | otherwise ->
                           ""
                 ]
-              , if haddockSupportsVisibility
-                  then
-                    [ case visibility of
-                        Visible -> "visible"
-                        Hidden -> "hidden"
-                    ]
-                  else []
+              , [case visibility of Visible -> "visible"; Hidden -> "hidden" | haddockSupportsVisibility]
               , [i]
               ]
           )

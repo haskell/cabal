@@ -465,10 +465,7 @@ ppCpphs extraArgs _bi lbi clbi =
             : inFile
             : "--noline"
             : "--strip"
-            : ( if cpphsVersion >= mkVersion [1, 6]
-                  then ["--include=" ++ u (autogenComponentModulesDir lbi clbi </> makeRelativePathEx cppHeaderName)]
-                  else []
-              )
+            : ["--include=" ++ u (autogenComponentModulesDir lbi clbi </> makeRelativePathEx cppHeaderName) | cpphsVersion >= mkVersion [1, 6]]
             ++ extraArgs
     }
   where

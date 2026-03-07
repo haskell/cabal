@@ -541,10 +541,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     , IPI.libraryDynDirs = dynlibdirs
     , IPI.dataDir = datadir installDirs
     , IPI.hsLibraries =
-        ( if hasLibrary
-            then [getHSLibraryName (componentUnitId clbi)]
-            else []
-        )
+        [getHSLibraryName (componentUnitId clbi) | hasLibrary]
           ++ extraBundledLibs bi
     , IPI.extraLibraries = extraLibs bi
     , IPI.extraLibrariesStatic = extraLibsStatic bi

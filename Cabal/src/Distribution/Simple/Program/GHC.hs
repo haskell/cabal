@@ -807,10 +807,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
             then case ghcOptNumJobs opts of
               NoFlag -> []
               Flag Serial -> []
-              Flag (UseSem name) ->
-                if jsemSupported comp
-                  then ["-jsem " ++ name]
-                  else []
+              Flag (UseSem name) -> ["-jsem " ++ name | jsemSupported comp]
               Flag (NumJobs n) -> ["-j" ++ maybe "" show n]
             else []
         , --------------------

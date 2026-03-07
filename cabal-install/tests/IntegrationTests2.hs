@@ -179,12 +179,9 @@ tests config =
       [ testCaseSteps "Setup script styles" (testSetupScriptStyles config)
       , testCase "keep-going" (testBuildKeepGoing config)
       ]
-        ++ if System.Info.os == "mingw32"
-          then -- disabled because https://github.com/haskell/cabal/issues/6272
-            []
-          else
-            [ testCase "local tarball" (testBuildLocalTarball config)
-            ]
+        ++
+        -- disabled because https://github.com/haskell/cabal/issues/6272
+        [testCase "local tarball" (testBuildLocalTarball config) | System.Info.os /= "mingw32"]
   , sequentialTestGroup "Regression tests" AllFinish $
       [ testCase "issue #3324" (testRegressionIssue3324 config)
       , testCase "program options scope all" (testProgramOptionsAll config)
