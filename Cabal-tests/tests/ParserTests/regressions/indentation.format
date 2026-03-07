@@ -1,3 +1,6 @@
+indentation.cabal:14:3: Empty lines with a dot '.' are unnecessary for creating newlines (and treated literally) in cabal 3.0+
+indentation.cabal:13:3: Empty lines with a dot '.' are unnecessary for creating newlines (and treated literally) in cabal 3.0+
+indentation.cabal:12:3: Empty lines with a dot '.' are unnecessary for creating newlines (and treated literally) in cabal 3.0+
 cabal-version: 3.0
 name:          indentation
 version:       0

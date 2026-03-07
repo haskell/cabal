@@ -1,3 +1,7 @@
+.:23:5: Empty lines with a dot '.' are unnecessary for creating newlines (and treated literally) in cabal 3.0+
+.:19:5: Empty lines with a dot '.' are unnecessary for creating newlines (and treated literally) in cabal 3.0+
+.:16:5: Empty lines with a dot '.' are unnecessary for creating newlines (and treated literally) in cabal 3.0+
+.:14:5: Empty lines with a dot '.' are unnecessary for creating newlines (and treated literally) in cabal 3.0+
 name:                 transformers
 version:              0.5.2.0
 visibility:           public

@@ -67,6 +67,11 @@ data PWarnType
     PWTInconsistentIndentation
   | -- | Experimental feature
     PWTExperimental
+  | -- | A line whose only non-whitespace is a dot '.'. Prior to cabal 3.0,
+    -- this was the only way to force a newline for haddock rendering. With
+    -- cabal 3.0, such dots no longer render as newlines hence should be
+    -- removed.
+    PWTDotline
   deriving (Eq, Ord, Show, Enum, Bounded, Generic)
 
 instance Binary PWarnType
