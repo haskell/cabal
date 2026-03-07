@@ -808,13 +808,7 @@ checkPrintPlan
               "The following packages are likely to be broken by the reinstalls:"
                 : map (prettyShow . mungedId) newBrokenPkgs
                 ++ if overrideReinstall
-                  then
-                    if dryRun
-                      then []
-                      else
-                        [ "Continuing even though "
-                            ++ "the plan contains dangerous reinstalls."
-                        ]
+                  then ["Continuing even though the plan contains dangerous reinstalls." | not dryRun]
                   else ["Use --force-reinstalls if you want to install anyway."]
       if breaksPkgs
         then do

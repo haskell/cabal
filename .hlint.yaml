@@ -1,6 +1,6 @@
 # Warnings currently triggered by your code
 - ignore: {name: "Avoid NonEmpty.unzip"} # 1 hint
-- ignore: {name: "Avoid lambda"} # 50 hints
+- ignore: {name: "Avoid lambda"} # 51 hints
 - ignore: {name: "Avoid lambda using `infix`"} # 23 hints
 - ignore: {name: "Eta reduce"} # 138 hints
 - ignore: {name: "Evaluate"} # 10 hints
@@ -12,7 +12,7 @@
 - ignore: {name: "Move guards forward"} # 4 hints
 - ignore: {name: "Redundant $!"} # 1 hint
 - ignore: {name: "Redundant <$>"} # 17 hints
-- ignore: {name: "Redundant bracket"} # 257 hints
+- ignore: {name: "Redundant bracket"} # 256 hints
 - ignore: {name: "Redundant guard"} # 2 hints
 - ignore: {name: "Redundant if"} # 6 hints
 - ignore: {name: "Redundant lambda"} # 19 hints
@@ -35,7 +35,6 @@
 - ignore: {name: "Use fold"} # 1 hint
 - ignore: {name: "Use fst"} # 2 hints
 - ignore: {name: "Use lambda-case"} # 58 hints
-- ignore: {name: "Use list comprehension"} # 19 hints
 - ignore: {name: "Use map once"} # 7 hints
 - ignore: {name: "Use map with tuple-section"} # 3 hints
 - ignore: {name: "Use newtype instead of data"} # 31 hints

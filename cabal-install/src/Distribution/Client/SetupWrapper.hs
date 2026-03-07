@@ -1142,9 +1142,7 @@ getExternalSetupMethod verbosity options pkg bt = do
                         ]
                   , ghcOptExtra = extraOpts
                   , ghcOptExtensions = toNubListR $
-                      if bt == Custom || any (isBasePkgId . snd) selectedDeps
-                      then []
-                      else [ Simple.DisableExtension Simple.ImplicitPrelude ]
+                      [Simple.DisableExtension Simple.ImplicitPrelude | not (bt == Custom || any (isBasePkgId . snd) selectedDeps)]
                         -- Pass -WNoImplicitPrelude to avoid depending on base
                         -- when compiling a Simple Setup.hs file.
                   , ghcOptExtensionMap = Map.fromList . Simple.compilerExtensions $ compiler
