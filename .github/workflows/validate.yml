@@ -228,7 +228,7 @@ jobs:
       # - Make it available in the workflow to make easier testing it locally
       - name: Upload cabal-install executable to workflow artifacts
         if: matrix.ghc == env.GHC_FOR_RELEASE
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: cabal-${{ runner.os }}-${{ env.CABAL_ARCH }}
           path: ${{ env.CABAL_EXEC_TAR }}
@@ -392,7 +392,7 @@ jobs:
           echo "CABAL_EXEC_TAR=$CABAL_EXEC_TAR" >> "$GITHUB_ENV"
 
       - name: Upload cabal-install executable to workflow artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: cabal-${{ runner.os }}-static-x86_64
           path: ${{ env.CABAL_EXEC_TAR }}
@@ -450,7 +450,7 @@ jobs:
           cabal-version: latest # default, we are not using it in this job
 
       - name: Download cabal executable from workflow artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: cabal-${{ runner.os }}-${{ env.CABAL_ARCH }}
           path: cabal-head
@@ -474,7 +474,7 @@ jobs:
     needs: [validate, validate-old-ghcs, build-alpine, dogfooding]
 
     steps:
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           pattern: cabal-*
           path: binaries
@@ -502,7 +502,7 @@ jobs:
     needs: [validate, validate-old-ghcs, build-alpine, dogfooding]
 
     steps:
-    - uses: actions/download-artifact@v7
+    - uses: actions/download-artifact@v8
       with:
         pattern: cabal-*
         path: binaries
