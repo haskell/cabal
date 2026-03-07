@@ -1,7 +1,6 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -36,6 +35,7 @@ module Distribution.Client.ProjectConfig.Legacy
   ) where
 
 import Data.Coerce (coerce)
+import Data.IORef
 import Distribution.Client.Compat.Prelude
 
 import Distribution.Types.Flag (FlagName, parsecFlagAssignment)
@@ -145,7 +145,8 @@ import Distribution.Types.CondTree
   )
 import Distribution.Types.SourceRepo (RepoType)
 import Distribution.Utils.NubList
-  ( fromNubList
+  ( NubList
+  , fromNubList
   , overNubList
   , toNubList
   )
@@ -197,18 +198,14 @@ import Distribution.Utils.Path hiding
   )
 
 import qualified Data.ByteString.Char8 as BS
-import Data.Functor ((<&>))
+import Data.List (sortOn)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Network.URI (URI (..), nullURIAuth, parseURI)
 import System.Directory (createDirectoryIfMissing, makeAbsolute)
 import System.FilePath (isAbsolute, isPathSeparator, makeValid, splitFileName, (</>))
-import Text.PrettyPrint
-  ( Doc
-  , render
-  , ($+$)
-  )
-import qualified Text.PrettyPrint as Disp
+import Text.PrettyPrint (Doc, int, render, semi, text, vcat, ($+$))
+import qualified Text.PrettyPrint as Disp (empty)
 
 ------------------------------------------------------------------
 -- Handle extended project config files with conditionals and imports.
@@ -259,19 +256,44 @@ parseProject
   -> ProjectConfigToParse
   -- ^ The contents of the file to parse
   -> IO (ProjectParseResult ProjectConfigSkeleton)
-parseProject rootPath cacheDir httpTransport verbosity configToParse =
-  do
-    let (dir, projectFileName) = splitFileName rootPath
-    projectDir <- makeAbsolute dir
-    projectPath <- canonicalizeConfigPath projectDir (ProjectConfigPath $ projectFileName :| [])
-    parseProjectSkeleton cacheDir httpTransport verbosity projectDir projectPath configToParse
-    -- NOTE: Reverse the warnings so they are in line number order.
-    <&> \case ProjectParseOk ws x -> ProjectParseOk (reverse ws) x; x -> x
+parseProject rootPath cacheDir httpTransport verbosity configToParse = do
+  let (dir, projectFileName) = splitFileName rootPath
+  projectDir <- makeAbsolute dir
+  projectPath@(ProjectConfigPath (canonicalRoot :| _)) <- canonicalizeConfigPath projectDir (ProjectConfigPath $ projectFileName :| [])
+  importsBy <- newIORef $ toNubList [ProjectImport canonicalRoot projectPath]
+  dupesMap <- newIORef mempty
+  result <- parseProjectSkeleton cacheDir httpTransport verbosity importsBy dupesMap projectDir projectPath configToParse
+  dupes <- Map.filter ((> 1) . length) <$> readIORef dupesMap
+  unless (Map.null dupes) (noticeDoc verbosity $ vcat (dupesMsg <$> Map.toList dupes))
+  return result
+
+data Dupes = Dupes
+  { dupesImport :: ProjectImport
+  -- ^ The import that we're checking for duplicates.
+  , dupesImports :: [ProjectImport]
+  -- ^ All the imports of this file.
+  }
+  deriving (Eq)
+
+instance Ord Dupes where
+  compare = compare `on` length . dupesImports
+
+type DupesMap = Map FilePath [Dupes]
+
+dupesMsg :: (FilePath, [Dupes]) -> Doc
+dupesMsg (duplicate, ds@(take 1 . sortOn (importBy . dupesImport) -> dupes)) =
+  vcat $
+    ((text "Warning:" <+> int (length ds) <+> text "imports of" <+> text duplicate) <> semi)
+      : ((\Dupes{..} -> duplicateImportMsg Disp.empty dupesImport dupesImports) <$> dupes)
 
 parseProjectSkeleton
   :: FilePath
   -> HttpTransport
   -> Verbosity
+  -> IORef (NubList ProjectImport)
+  -- ^ The imports seen so far, used to report on cycles and duplicates and to detect duplicates that are not cycles
+  -> IORef DupesMap
+  -- ^ The duplicates seen so far, used to defer reporting on duplicates
   -> FilePath
   -- ^ The directory of the project configuration, typically the directory of cabal.project
   -> ProjectConfigPath
@@ -279,7 +301,7 @@ parseProjectSkeleton
   -> ProjectConfigToParse
   -- ^ The contents of the file to parse
   -> IO (ProjectParseResult ProjectConfigSkeleton)
-parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (ProjectConfigToParse bs) =
+parseProjectSkeleton cacheDir httpTransport verbosity importsBy dupesMap projectDir source (ProjectConfigToParse bs) =
   (sanityWalkPCS False =<<) <$> liftPR source (go []) (ParseUtils.readFields bs)
   where
     go :: [ParseUtils.Field] -> [ParseUtils.Field] -> IO (ProjectParseResult ProjectConfigSkeleton)
@@ -287,20 +309,26 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
       (ParseUtils.F _ "import" importLoc) -> do
         let importLocPath = importLoc `consProjectConfigPath` source
 
-        -- Once we canonicalize the import path, we can check for cyclical imports
+        -- Once we canonicalize the import path, we can check for cyclical and duplicate imports
         normSource <- canonicalizeConfigPath projectDir source
-        normLocPath <- canonicalizeConfigPath projectDir importLocPath
+        normLocPath@(ProjectConfigPath (uniqueImport :| _)) <- canonicalizeConfigPath projectDir importLocPath
+        seenImportsBy@(fmap importOf -> seenImports) <- fromNubList <$> atomicModifyIORef' importsBy (\ibs -> (toNubList [ProjectImport uniqueImport normLocPath] <> ibs, ibs))
         debug verbosity $ "\nimport path, normalized\n=======================\n" ++ render (docProjectConfigPath normLocPath)
+        debug verbosity "\nseen unique paths\n================="
+        mapM_ (debug verbosity) seenImports
+        debug verbosity "\n"
 
         if isCyclicConfigPath normLocPath
           then pure . projectParseFail Nothing (Just normSource) $ ParseUtils.FromString (render $ cyclicalImportMsg normLocPath) Nothing
           else do
             when
               (isUntrimmedUriConfigPath importLocPath)
-              (noticeDoc verbosity $ untrimmedUriImportMsg (Disp.text "Warning:") importLocPath)
+              (noticeDoc verbosity $ untrimmedUriImportMsg (text "Warning:") importLocPath)
             let fs = (\z -> CondNode z [normLocPath] mempty) <$> fieldsToConfig normSource (reverse acc)
-            res <- parseProjectSkeleton cacheDir httpTransport verbosity projectDir importLocPath . ProjectConfigToParse =<< fetchImportConfig normLocPath
-            rest <- go [] xs
+            let uniqueFields = if uniqueImport `elem` seenImports then [] else xs
+            atomicModifyIORef' dupesMap $ \dm -> (Map.insertWith (++) uniqueImport [Dupes (ProjectImport uniqueImport normLocPath) seenImportsBy] dm, ())
+            res <- parseProjectSkeleton cacheDir httpTransport verbosity importsBy dupesMap projectDir importLocPath . ProjectConfigToParse =<< fetchImportConfig normLocPath
+            rest <- go [] uniqueFields
             pure . fmap mconcat . sequence $ [projectParse Nothing normSource fs, res, rest]
       (ParseUtils.Section l "if" p xs') -> do
         normSource <- canonicalizeConfigPath projectDir source
@@ -1294,13 +1322,13 @@ parseLegacyProjectConfig rootConfig bs =
 
 showLegacyProjectConfig :: LegacyProjectConfig -> String
 showLegacyProjectConfig config =
-  Disp.render $
+  render $
     showConfig
       (legacyProjectConfigFieldDescrs constraintSrc)
       legacyPackageConfigSectionDescrs
       legacyPackageConfigFGSectionDescrs
       config
-      $+$ Disp.text ""
+      $+$ text ""
   where
     -- Note: ConstraintSource is unused when pretty-printing. We fake
     -- it here to avoid having to pass it on call-sites. It's not great
@@ -1311,13 +1339,13 @@ legacyProjectConfigFieldDescrs :: ConstraintSource -> [FieldDescr LegacyProjectC
 legacyProjectConfigFieldDescrs constraintSrc =
   [ newLineListField
       "packages"
-      (Disp.text . renderPackageLocationToken)
+      (text . renderPackageLocationToken)
       parsePackageLocationTokenQ
       legacyPackages
       (\v flags -> flags{legacyPackages = v})
   , newLineListField
       "optional-packages"
-      (Disp.text . renderPackageLocationToken)
+      (text . renderPackageLocationToken)
       parsePackageLocationTokenQ
       legacyPackagesOptional
       (\v flags -> flags{legacyPackagesOptional = v})
@@ -1428,7 +1456,7 @@ legacySharedConfigFieldDescrs constraintSrc =
         . addFields
           [ commaNewLineListFieldParsec
               "package-dbs"
-              (Disp.text . showPackageDb)
+              (text . showPackageDb)
               (fmap readPackageDb parsecToken)
               configPackageDBs
               (\v conf -> conf{configPackageDBs = v})
@@ -1721,8 +1749,8 @@ legacyPackageConfigFieldDescrs =
            in FieldDescr
                 name
                 ( \f -> case f of
-                    Flag NoDumpBuildInfo -> Disp.text "False"
-                    Flag DumpBuildInfo -> Disp.text "True"
+                    Flag NoDumpBuildInfo -> text "False"
+                    Flag DumpBuildInfo -> text "True"
                     _ -> Disp.empty
                 )
                 ( \line str _ -> case () of
@@ -1749,9 +1777,9 @@ legacyPackageConfigFieldDescrs =
            in FieldDescr
                 name
                 ( \f -> case f of
-                    Flag NoOptimisation -> Disp.text "False"
-                    Flag NormalOptimisation -> Disp.text "True"
-                    Flag MaximumOptimisation -> Disp.text "2"
+                    Flag NoOptimisation -> text "False"
+                    Flag NormalOptimisation -> text "True"
+                    Flag MaximumOptimisation -> text "2"
                     _ -> Disp.empty
                 )
                 ( \line str _ -> case () of
@@ -1774,10 +1802,10 @@ legacyPackageConfigFieldDescrs =
          in FieldDescr
               name
               ( \f -> case f of
-                  Flag NoDebugInfo -> Disp.text "False"
-                  Flag MinimalDebugInfo -> Disp.text "1"
-                  Flag NormalDebugInfo -> Disp.text "True"
-                  Flag MaximalDebugInfo -> Disp.text "3"
+                  Flag NoDebugInfo -> text "False"
+                  Flag MinimalDebugInfo -> text "1"
+                  Flag NormalDebugInfo -> text "True"
+                  Flag MaximalDebugInfo -> text "3"
                   _ -> Disp.empty
               )
               ( \line str _ -> case () of
@@ -2102,6 +2130,6 @@ monoidFieldParsec name showF readF get' set =
 -- otherwise are special syntax.
 showTokenQ :: String -> Doc
 showTokenQ "" = Disp.empty
-showTokenQ x@('-' : '-' : _) = Disp.text (show x)
-showTokenQ x@['.'] = Disp.text (show x)
+showTokenQ x@('-' : '-' : _) = text (show x)
+showTokenQ x@['.'] = text (show x)
 showTokenQ x = showToken x
