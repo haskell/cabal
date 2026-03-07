@@ -24,6 +24,9 @@ module Distribution.Client.ProjectConfig.Types
     -- * Extra useful Monoids
   , MapLast (..)
   , MapMappend (..)
+
+    -- * Exceptions
+  , ProjectFileParseError (..)
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -525,3 +528,9 @@ data BuildTimeSettings = BuildTimeSettings
   deriving (Generic)
 
 instance NFData BuildTimeSettings
+
+data ProjectFileParseError = InvalidURIImport String
+  deriving (Show)
+
+instance Exception ProjectFileParseError where
+  displayException (InvalidURIImport uri) = "URI import " <> uri <> " not valid here. URI imports must be at the end of the import chain only."
