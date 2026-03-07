@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE RankNTypes #-}
 
 -----------------------------------------------------------------------------
@@ -279,11 +280,7 @@ constructUHCCmdLine
   -> Verbosity
   -> [String]
 constructUHCCmdLine user system lbi bi clbi odir verbosity =
-  -- verbosity
-  ( if verbosityLevel verbosity >= Deafening
-      then ["-v4"]
-      else ["-v0" | verbosityLevel verbosity < Normal]
-  )
+  vFlags
     ++ hcOptions UHC bi
     -- flags for language extensions
     ++ languageToFlags (compiler lbi) (defaultLanguage bi)
@@ -310,6 +307,11 @@ constructUHCCmdLine user system lbi bi clbi odir verbosity =
        )
   where
     u = interpretSymbolicPathCWD -- See Note [Symbolic paths] in Distribution.Utils.Path
+    vFlags =
+      if
+          | verbosityLevel verbosity >= Deafening -> ["-v4"]
+          | verbosityLevel verbosity < Normal -> ["-v0"]
+          | otherwise -> []
 
 uhcPackageDbOptions :: FilePath -> FilePath -> PackageDBStack -> [String]
 uhcPackageDbOptions user system db =
