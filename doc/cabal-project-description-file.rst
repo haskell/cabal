@@ -80,6 +80,17 @@ cabal.project files or v1-style cabal.config freeze files. As a usage example:
 
     import: /absolutepath/some-project.project
 
+.. warning::
+
+    Conditionals are resolved *last*, irrespective of their lexical position.
+
+    ::
+
+        if true-condition
+            optimization: True
+        optimization: False
+        -- Enables optimization since conditionals are resolved last.
+
 Using conditionals will force cabal to find a ghc to derive
 architecture and version information from, which will force some
 commands (update, sdist) to require ghc present where otherwise it

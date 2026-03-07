@@ -2539,6 +2539,17 @@ Since Cabal 2.2 conditional blocks support ``elif`` construct.
       else
            property-descriptions-or-conditionals
 
+.. warning::
+
+    Conditionals are resolved *last*, irrespective of their lexical position.
+
+    ::
+
+        if true-condition
+            buildable: True
+        buildable: False
+        -- The parent component is buildable since conditionals are resolved last.
+
 .. _conditions:
 
 Conditions
