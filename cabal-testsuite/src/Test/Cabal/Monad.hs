@@ -186,9 +186,9 @@ renderCommonArgs args =
     ++ maybe [] (\x -> ["--with-ghc", x]) (argGhcPath args)
     ++ maybe [] (\x -> ["--with-haddock", x]) (argHaddockPath args)
     ++ maybe [] (\x -> ["--with-hackage-repo-tool", x]) (argHackageRepoToolPath args)
-    ++ (if argAccept args then ["--accept"] else [])
-    ++ (if argKeepTmpFiles args then ["--keep-tmp-files"] else [])
-    ++ (if argSkipSetupTests args then ["--skip-setup-tests"] else [])
+    ++ ["--accept" | argAccept args]
+    ++ ["--keep-tmp-files" | argKeepTmpFiles args]
+    ++ ["--skip-setup-tests" | argSkipSetupTests args]
 
 data TestArgs = TestArgs
   { testArgDistDir :: FilePath

@@ -1062,13 +1062,10 @@ checkMissingDocs dgs esgs edgs efgs = do
       -> [FilePath] -- Actuals.
       -> [PackageCheck]
     checkDoc b ds as =
-      let fds = map ("." </>) $ filter (`notElem` as) ds
-       in if null fds
-            then []
-            else
-              [ PackageDistSuspiciousWarn $
-                  MissingExpectedDocFiles b fds
-              ]
+      [ PackageDistSuspiciousWarn $ MissingExpectedDocFiles b fds
+      | let fds = map ("." </>) $ filter (`notElem` as) ds
+      , not (null fds)
+      ]
 
     checkDocMove
       :: Bool -- Cabal spec ≥ 1.18?
@@ -1077,13 +1074,10 @@ checkMissingDocs dgs esgs edgs efgs = do
       -> [FilePath] -- Actuals.
       -> [PackageCheck]
     checkDocMove b field ds as =
-      let fds = filter (`elem` as) ds
-       in if null fds
-            then []
-            else
-              [ PackageDistSuspiciousWarn $
-                  WrongFieldForExpectedDocFiles b field fds
-              ]
+      [ PackageDistSuspiciousWarn $ WrongFieldForExpectedDocFiles b field fds
+      | let fds = filter (`elem` as) ds
+      , not (null fds)
+      ]
 
 -- Predicate for desirable documentation file on Hackage server.
 isDesirableExtraDocFile :: FilePath -> Bool

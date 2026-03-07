@@ -59,7 +59,4 @@ mkNamedPackage :: PackageIdentifier -> PackageSpecifier pkg
 mkNamedPackage pkgId =
   NamedPackage
     (pkgName pkgId)
-    ( if pkgVersion pkgId == nullVersion
-        then []
-        else [PackagePropertyVersion (thisVersion (pkgVersion pkgId))]
-    )
+    [PackagePropertyVersion (thisVersion $ pkgVersion pkgId) | pkgVersion pkgId /= nullVersion]
