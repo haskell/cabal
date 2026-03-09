@@ -82,7 +82,6 @@ import System.Directory
   ( canonicalizePath
   , doesDirectoryExist
   , doesFileExist
-  , getDirectoryContents
   , listDirectory
   , removeDirectoryRecursive
   , removeFile
@@ -220,4 +219,4 @@ cleanAction (ProjectFlags{..}, CleanFlags{..}) extraArgs _ = do
 removeEnvFiles :: FilePath -> IO ()
 removeEnvFiles dir =
   (traverse_ (removeFile . (dir </>)) . filter ((".ghc.environment" ==) . take 16))
-    =<< getDirectoryContents dir
+    =<< listDirectory dir

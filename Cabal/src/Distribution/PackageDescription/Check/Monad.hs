@@ -92,7 +92,7 @@ data CheckInterface m = CheckInterface
 data CheckPackageContentOps m = CheckPackageContentOps
   { doesFileExist :: FilePath -> m Bool
   , doesDirectoryExist :: FilePath -> m Bool
-  , getDirectoryContents :: FilePath -> m [FilePath]
+  , listDirectory :: FilePath -> m [FilePath]
   , getFileContents :: FilePath -> m BS.ByteString
   }
 
@@ -102,7 +102,7 @@ data CheckPackageContentOps m = CheckPackageContentOps
 -- (e.g. a VCS work tree).
 data CheckPreDistributionOps m = CheckPreDistributionOps
   { runDirFileGlobM :: FilePath -> Glob -> m [GlobResult FilePath]
-  , getDirectoryContentsM :: FilePath -> m [FilePath]
+  , listDirectoryM :: FilePath -> m [FilePath]
   }
 
 -- | Context to perform checks (will be the Reader part in your monad).

@@ -93,7 +93,7 @@ guessLicense flags = return . defaultLicense $ getCabalVersionNoPrompt flags
 guessExtraDocFiles :: Interactive m => InitFlags -> m (Maybe (Set FilePath))
 guessExtraDocFiles flags = do
   pkgDir <- fromFlagOrDefault getCurrentDirectory $ return <$> packageDir flags
-  files <- getDirectoryContents pkgDir
+  files <- listDirectory pkgDir
 
   let extraDocCandidates = ["CHANGES", "CHANGELOG", "README"]
       extraDocs = [y | x <- extraDocCandidates, y <- files, x == map toUpper (takeBaseName y)]

@@ -79,7 +79,7 @@ import qualified Data.ByteString.Lazy as BS
 import qualified Distribution.SPDX as SPDX
 import qualified System.Directory as System
 
-import qualified System.Directory (getDirectoryContents)
+import qualified System.Directory (listDirectory)
 import qualified System.FilePath.Windows as FilePath.Windows (isValid)
 
 import qualified Data.Set as Set
@@ -171,14 +171,14 @@ checkPackageFilesGPD verbosity gpd root =
       CheckPackageContentOps
         { doesFileExist = System.doesFileExist . relative
         , doesDirectoryExist = System.doesDirectoryExist . relative
-        , getDirectoryContents = System.Directory.getDirectoryContents . relative
+        , listDirectory = System.Directory.listDirectory . relative
         , getFileContents = BS.readFile . relative
         }
 
     checkPreIO =
       CheckPreDistributionOps
         { runDirFileGlobM = \fp g -> runDirFileGlob verbosity (Just . specVersion $ packageDescription gpd) (root </> fp) g
-        , getDirectoryContentsM = System.Directory.getDirectoryContents . relative
+        , listDirectoryM = System.Directory.listDirectory . relative
         }
 
     relative :: FilePath -> FilePath
@@ -754,7 +754,7 @@ checkGitProtocol mloc =
 findPackageDesc :: Monad m => CheckPackageContentOps m -> m [FilePath]
 findPackageDesc ops = do
   let dir = "."
-  files <- getDirectoryContents ops dir
+  files <- listDirectory ops dir
   -- to make sure we do not mistake a ~/.cabal/ dir for a <name>.cabal
   -- file we filter to exclude dirs and null base file names:
   cabalFiles <-
@@ -1024,8 +1024,8 @@ checkMissingDocs dgs esgs edgs efgs = do
     ciPreDistOps
     ( \ops -> do
         -- 1. Get root files, see if they are interesting to us.
-        rootContents <- getDirectoryContentsM ops "."
-        -- Recall getDirectoryContentsM arg is relative to root path.
+        rootContents <- listDirectoryM ops "."
+        -- Recall listDirectoryM arg is relative to root path.
         let des = filter isDesirableExtraDocFile rootContents
 
         -- 2. Realise Globs.

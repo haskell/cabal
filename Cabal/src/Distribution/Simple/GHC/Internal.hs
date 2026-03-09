@@ -86,7 +86,7 @@ import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version (Version)
 import Language.Haskell.Extension
-import System.Directory (getDirectoryContents)
+import System.Directory (listDirectory)
 import System.Environment (getEnv)
 import System.FilePath
   ( takeDirectory
@@ -673,7 +673,7 @@ getHaskellObjects _implInfo lib lbi clbi pref wanted_obj_ext allow_split_objs
             [ pref </> makeRelativePathEx (ModuleName.toFilePath x ++ splitSuffix)
             | x <- allLibModules lib clbi
             ]
-      objss <- traverse (getDirectoryContents . i) dirs
+      objss <- traverse (listDirectory . i) dirs
       let objs =
             [ dir </> makeRelativePathEx obj
             | (objs', dir) <- zip objss dirs

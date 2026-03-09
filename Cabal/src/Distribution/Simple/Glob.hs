@@ -389,7 +389,7 @@ runDirFileGlob verbosity mspec rawRoot pat = do
       Nothing -> if matchGlobPieces glob str then Just (GlobMatch ()) else Nothing
 
     go (GlobFile glob) dir = do
-      entries <- getDirectoryContents (root </> dir)
+      entries <- listDirectory (root </> dir)
       catMaybes
         <$> mapM
           ( \s -> do
@@ -420,7 +420,7 @@ runDirFileGlob verbosity mspec rawRoot pat = do
           )
           entries
     go (GlobDir glob globPath) dir = do
-      entries <- getDirectoryContents (root </> dir)
+      entries <- listDirectory (root </> dir)
       subdirs <-
         filterM
           ( \subdir ->
