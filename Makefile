@@ -265,17 +265,23 @@ tags: ## Generate editor tags, vim ctags and emacs etags.
 # bootstrapping
 ##############################################################################
 
+define BOOTSTRAP_JSON
+	cabal build --project-file=cabal.bootstrap.project --with-compiler=ghc-$(1) --dry-run cabal-install:exe:cabal && \
+	cp dist-newstyle/cache/plan.json bootstrap/linux-$(1).plan.json && \
+	( cd bootstrap && cabal run -v0 cabal-bootstrap-gen -- linux-$(1).plan.json | python3 -m json.tool > linux-$(1).json )
+endef
+
 bootstrap-json-%: phony
-	cabal build --project-file=cabal.bootstrap.project --with-compiler=ghc-$* --dry-run cabal-install:exe:cabal
-	cp dist-newstyle/cache/plan.json bootstrap/linux-$*.plan.json
-	@# -v0 to avoid build output on stdout
-	cd bootstrap && cabal run -v0 cabal-bootstrap-gen -- linux-$*.plan.json \
-		| python3 -m json.tool > linux-$*.json
+	$(call BOOTSTRAP_JSON,$*)
 
 BOOTSTRAP_GHC_VERSIONS := 9.2.8 9.4.8 9.6.7 9.8.4 9.10.2 9.12.2
 
 .PHONY: bootstrap-jsons
 bootstrap-jsons: $(BOOTSTRAP_GHC_VERSIONS:%=bootstrap-json-%)
+
+bootstrap-jsons-ghcup:
+	@$(foreach ver, $(BOOTSTRAP_GHC_VERSIONS), \
+	  ghcup run -i --cabal latest --ghc $(ver) -- $(call BOOTSTRAP_JSON,$(ver));)
 
 # documentation
 ##############################################################################
