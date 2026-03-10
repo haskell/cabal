@@ -8,19 +8,23 @@ Configuring library for fake-package-0...
 Warning: No exposed modules
 # checking repl command with a 'cabal.project' and no project options
 # cabal repl
-Error: [Cabal-7076]
-Please pick a single [package:][ctype:]component (or all) as target for the REPL command. The packages from which to select a component in 'cabal.project', the implicit default as if `--project-file=cabal.project` was added as a command option, are:
- - pkg-one
-# checking repl command with a single package in 'cabal.project'
-# cabal repl
-Error: [Cabal-7076]
-Please pick a single [package:][ctype:]component (or all) as target for the REPL command. The packages in 'cabal.project' from which to select a component target are:
- - pkg-one
-# checking repl command with the 'all' target
-# cabal repl
+No target specified, using package 'pkg-one' as the target for the REPL.
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - pkg-one-0.1 (interactive) (first run)
 Configuring pkg-one-0.1...
+Preprocessing library for pkg-one-0.1...
+# checking repl command with a single package in 'cabal.project'
+# cabal repl
+No target specified, using package 'pkg-one' as the target for the REPL.
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - pkg-one-0.1 (interactive) (first run)
+Preprocessing library for pkg-one-0.1...
+# checking repl command with the 'all' target
+# cabal repl
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - pkg-one-0.1 (interactive) (first run)
 Preprocessing library for pkg-one-0.1...

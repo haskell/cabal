@@ -12,6 +12,7 @@ module Distribution.Client.ScriptUtils
   , withContextAndSelectors
   , AcceptNoTargets (..)
   , TargetContext (..)
+  , TargetsAction
   , updateContextAndWriteProjectFile
   , updateContextAndWriteProjectFile'
   , fakeProjectSourcePackage
@@ -269,6 +270,9 @@ data TargetContext
     ScriptContext FilePath Executable
   deriving (Eq, Show)
 
+-- | An action working with selected targets within a context.
+type TargetsAction targets a = TargetContext -> ProjectBaseContext -> targets -> IO a
+
 -- | Determine whether the targets represent regular targets or a script
 -- and return the proper context and target selectors.
 -- Die with an error message if selectors are valid as neither regular targets or as a script.
@@ -289,8 +293,7 @@ withContextAndSelectors
   -- ^ Global flags.
   -> CurrentCommand
   -- ^ Current Command (usually for error reporting).
-  -> (TargetContext -> ProjectBaseContext -> [TargetSelector] -> IO b)
-  -- ^ The body of your command action.
+  -> TargetsAction [TargetSelector] b
   -> IO b
 withContextAndSelectors verbosity noTargets kind flags@NixStyleFlags{..} targetStrings globalFlags cmd act =
   withTemporaryTempDirectory $ \mkTmpDir -> do
