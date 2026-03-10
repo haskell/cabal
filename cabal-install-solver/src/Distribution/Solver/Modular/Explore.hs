@@ -262,13 +262,13 @@ exploreLog mbj enableBj fineGrainedConflicts (CountConflicts countConflicts) idx
       , esBackjumps = 0
       }
 
+    qo = defaultQualifyOptions idx
+
     -- Is it possible for this package instance (QPN and POption) to resolve any
     -- of the conflicts that were caused by the previous instance? The default
     -- is true, because it is always safe to explore a package instance.
     -- Skipping it is an optimization. If false, it returns a new conflict set
     -- to be merged with the previous one.
-    qo = defaultQualifyOptions idx
-
     couldResolveConflicts :: QPN -> POption -> S.Set CS.Conflict -> Maybe ConflictSet
     couldResolveConflicts currentQPN@(Q _ pn) (POption i@(I v _) _) conflicts =
       let (PInfo deps _ _ _) = idx M.! pn M.! i
@@ -278,14 +278,18 @@ exploreLog mbj enableBj fineGrainedConflicts (CountConflicts countConflicts) idx
           depVRs :: M.Map QPN VR
           depVRs = M.fromListWith (.&&.)
             [ (qpn, case ci of Constrained vr -> vr; _ -> anyVersion)
-            | Simple (LDep _ (Dep (PkgComponent qpn _) ci)) _ <- qdeps ]
+            | Simple (LDep _ (Dep (PkgComponent qpn _) ci)) _ <- qdeps
+            ]
+
+          depsWithVRs :: S.Set QPN
+          depsWithVRs = M.keysSet depVRs
 
           couldBeResolved :: CS.Conflict -> Maybe ConflictSet
           couldBeResolved CS.OtherConflict = Nothing
           couldBeResolved (CS.GoalConflict conflictingDep) =
               -- Check whether this package instance also has 'conflictingDep'
               -- as a dependency (ignoring flag and stanza choices).
-              if M.member conflictingDep depVRs
+              if S.member conflictingDep depsWithVRs
                 then Just CS.empty
                 else Nothing
           couldBeResolved (CS.VersionConstraintConflict dep excludedVersion) =
