@@ -1,0 +1,8 @@
+# Setup configure
+Configuring Fail4-0.1.0.0...
+Error:
+    Non-library component has unfilled requirements:
+        UnfilledSig
+            brought into scope by build-depends: Fail4:sig-lib-a
+            brought into scope by build-depends: Fail4:sig-lib-b
+    In the stanza executable foo
