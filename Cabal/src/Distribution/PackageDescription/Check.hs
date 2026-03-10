@@ -586,8 +586,7 @@ checkPackageId (PackageIdentifier pkgName_ _pkgVersion_) = do
   checkP
     (not . FilePath.Windows.isValid . prettyShow $ pkgName_)
     (PackageDistInexcusable $ InvalidNameWin pkgName_)
-  checkP (isPrefixOf "z-" . prettyShow $ pkgName_) $
-    (PackageDistInexcusable ZPrefix)
+  checkP (isPrefixOf "z-" . prettyShow $ pkgName_) (PackageDistInexcusable ZPrefix)
 
 checkNewLicense :: Monad m => SPDX.License -> CheckM m ()
 checkNewLicense lic = do
@@ -629,7 +628,7 @@ checkOldLicense nullLicFiles lic = do
         -- licenses so don't need license files.
         nullLicFiles
     )
-    $ (PackageDistSuspicious NoLicenseFile)
+    (PackageDistSuspicious NoLicenseFile)
   case unknownLicenseVersion lic of
     Just knownVersions ->
       tellP

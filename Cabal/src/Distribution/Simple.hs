@@ -458,7 +458,7 @@ getCommonFlags verbHandles globalFlags hooks commonFlags args = do
   let verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity commonFlags)
   lbi <- getBuildConfig globalFlags hooks verbosity distPref
   let common' = configCommonFlags $ configFlags lbi
-  return $
+  return
     ( lbi
     , commonFlags
         { setupDistPref = toFlag distPref
@@ -802,7 +802,7 @@ sanityCheckHookedBuildInfo
   verbosity
   (PackageDescription{library = Nothing})
   (Just _, _) =
-    dieWithException verbosity $ NoLibraryForPackage
+    dieWithException verbosity NoLibraryForPackage
 sanityCheckHookedBuildInfo verbosity pkg_descr (_, hookExes)
   | exe1 : _ <- nonExistant =
       dieWithException verbosity $ SanityCheckHookedBuildInfo exe1

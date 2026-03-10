@@ -178,7 +178,8 @@ haddockCommand =
         "Requires the program haddock, version 2.x.\n"
     , commandNotes = Nothing
     , commandUsage =
-        usageAlternatives "haddock" $
+        usageAlternatives
+          "haddock"
           [ "[FLAGS]"
           , "COMPONENTS [FLAGS]"
           ]
@@ -204,8 +205,7 @@ haddockCommand =
   where
     progDb =
       addKnownProgram haddockProgram $
-        addKnownProgram ghcProgram $
-          emptyProgramDb
+        addKnownProgram ghcProgram emptyProgramDb
 
 haddockOptions :: ShowOrParseArgs -> [OptionField HaddockFlags]
 haddockOptions showOrParseArgs =
@@ -473,7 +473,8 @@ haddockProjectCommand =
         "Requires the program haddock, version 2.26.\n"
     , commandNotes = Nothing
     , commandUsage =
-        usageAlternatives "haddock-project" $
+        usageAlternatives
+          "haddock-project"
           [ "[FLAGS]"
           , "COMPONENTS [FLAGS]"
           ]
@@ -499,8 +500,7 @@ haddockProjectCommand =
   where
     progDb =
       addKnownProgram haddockProgram $
-        addKnownProgram ghcProgram $
-          emptyProgramDb
+        addKnownProgram ghcProgram emptyProgramDb
 
 haddockProjectOptions :: ShowOrParseArgs -> [OptionField HaddockProjectFlags]
 haddockProjectOptions showOrParseArgs =

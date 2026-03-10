@@ -349,7 +349,7 @@ runAction flags targetAndArgs globalFlags =
             { progInvokePath = exePath
             , progInvokeArgs = args
             , progInvokeEnv =
-                ("PATH", Just $ progPath)
+                ("PATH", Just progPath)
                   : dataDirsEnvironmentForPlan
                     (distDirLayout baseCtx)
                     elaboratedPlan

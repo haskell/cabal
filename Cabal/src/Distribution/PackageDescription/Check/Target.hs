@@ -91,7 +91,7 @@ checkLibrary
             (flip elem (allExplicitIncludes lib) . getSymbolicPath)
             (view L.autogenIncludes lib)
       )
-      $ (PackageBuildImpossible AutogenIncludesNotIncluded)
+      (PackageBuildImpossible AutogenIncludesNotIncluded)
 
     -- § Build infos.
     checkBuildInfo
@@ -157,7 +157,7 @@ checkExecutable
     checkP
       ( pid /= fakePackageId
           && not (null modulePath_)
-          && not (fileExtensionSupportedLanguage $ modulePath_)
+          && not (fileExtensionSupportedLanguage modulePath_)
       )
       (PackageBuildImpossible NoHsLhsMain)
 
@@ -540,8 +540,7 @@ checkBuildInfoFeatures bi sv = do
     (not . null $ extraDynLibFlavours bi)
     (PackageDistInexcusable $ CVExtraDynamic [extraDynLibFlavours bi])
   -- virtual-modules requires ≥ 2.2
-  checkSpecVer CabalSpecV2_2 (not . null $ virtualModules bi) $
-    (PackageDistInexcusable CVVirtualModules)
+  checkSpecVer CabalSpecV2_2 (not . null $ virtualModules bi) (PackageDistInexcusable CVVirtualModules)
   -- Check use of thinning and renaming.
   checkSpecVer
     CabalSpecV2_0

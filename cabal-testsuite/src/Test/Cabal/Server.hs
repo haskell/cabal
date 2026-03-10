@@ -168,14 +168,14 @@ runOnServer s mb_cwd env_overrides script_path args = do
       write s $ ":load " ++ script_path
       -- Create a ref which will record the exit status of the command
       -- NB: do this after :load so it doesn't get dropped
-      write s $ "ref <- Data.IORef.newIORef Test.Cabal.TestCode.TestCodeFail"
+      write s "ref <- Data.IORef.newIORef Test.Cabal.TestCode.TestCodeFail"
       -- TODO: What if an async exception gets raised here?  At the
       -- moment, there is no way to recover until we get to the top-level
       -- bracket; then stopServer which correctly handles this case.
       -- If you do want to be able to abort this computation but KEEP
       -- USING THE SERVER SESSION, you will need to have a lot more
       -- sophisticated logic.
-      write s $ "Test.Cabal.Server.runMain ref Main.main"
+      write s "Test.Cabal.Server.runMain ref Main.main"
       -- Output end sigil.
       -- NB: We're line-oriented, so we MUST add an extra newline
       -- to ensure that we see the end sigil.
@@ -303,7 +303,7 @@ stopServer s = do
 
   let hardKiller = do
         threadDelay 2000000 -- 2sec
-        log ServerMeta s $ "Terminating..."
+        log ServerMeta s "Terminating..."
         terminateProcess (serverProcessHandle s)
       softKiller = do
         -- Ask to quit.  If we're in the middle of a computation,
@@ -319,7 +319,7 @@ stopServer s = do
         -- flushed.
         interruptProcessGroupOf (serverProcessHandle s)
 
-        log ServerMeta s $ "Waiting..."
+        log ServerMeta s "Waiting..."
         -- Close input BEFORE waiting, close output AFTER waiting.
         -- If you get either order wrong, deadlock!
         ignoreSigPipe $ hClose (serverStdin s)
@@ -337,10 +337,10 @@ stopServer s = do
     withAsync (drain serverStderr) $ \a_err -> do
       r <- case mb_exit of
         Nothing -> do
-          log ServerMeta s $ "Terminating GHCi"
+          log ServerMeta s "Terminating GHCi"
           race hardKiller softKiller
         Just exit -> do
-          log ServerMeta s $ "GHCi died unexpectedly"
+          log ServerMeta s "GHCi died unexpectedly"
           return (Right exit)
 
       -- Drain the output buffers
@@ -365,7 +365,7 @@ stopServer s = do
                 else ""
         else log ServerOut s rest_out
 
-      log ServerMeta s $ "Done"
+      log ServerMeta s "Done"
       return ()
   where
     verbosity = runnerVerbosity (serverScriptEnv s)
@@ -400,7 +400,7 @@ info ctor s msg =
 -- | Write a string to the prompt of the GHCi server.
 write :: Server -> String -> IO ()
 write s msg = do
-  log ServerIn s $ msg
+  log ServerIn s msg
   hPutStrLn (serverStdin s) msg
   hFlush (serverStdin s) -- line buffering should get it, but just for good luck
 

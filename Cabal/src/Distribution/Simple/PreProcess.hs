@@ -257,7 +257,7 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers =
         (coerceSymbolicPath outputDir : hsSourceDirs bi)
         outputDir
         isSrcDist
-        (dropExtensionsSymbolicPath $ exePath)
+        (dropExtensionsSymbolicPath exePath)
         verbosity
         builtinSuffixes
         biHandlers
@@ -345,7 +345,7 @@ preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinS
           createDirectoryIfMissingVerbose verbosity True destDir
           runPreProcessorWithHsBootHack
             pp
-            (psrcLoc, getSymbolicPath $ psrcRelFile)
+            (psrcLoc, getSymbolicPath psrcRelFile)
             (buildLoc, srcStem <.> "hs")
   where
     i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
@@ -367,8 +367,8 @@ preprocessFile mbWorkDir searchLoc buildLoc forSDist baseFile verbosity builtinS
         -- Hence the use of 'getSymbolicPath' here.
         runPreProcessor
           pp
-          (getSymbolicPath $ inBaseDir, inRelativeFile)
-          (getSymbolicPath $ outBaseDir, outRelativeFile)
+          (getSymbolicPath inBaseDir, inRelativeFile)
+          (getSymbolicPath outBaseDir, outRelativeFile)
           verbosity
 
         -- Here we interact directly with the file system, so we must

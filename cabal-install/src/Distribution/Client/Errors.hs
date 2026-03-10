@@ -835,7 +835,7 @@ exceptionMessageCabalInstall e = case e of
     "--enable-benchmarks was specified, but benchmarks can't "
       ++ "be enabled in a remote package"
   UnknownPackage hn name ->
-    concat $
+    concat
       [ "Unknown package \""
       , hn
       , "\". "

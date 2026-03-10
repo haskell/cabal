@@ -424,7 +424,7 @@ registerRule
 registerRule nm !newRule = RulesT $ do
   RulesEnv { rulesEnvNameSpace = ns
            , rulesEnvVerbosity = verbosity } <- Reader.ask
-  oldRules <- lift $ State.get
+  oldRules <- lift State.get
   let rId = RuleId { ruleNameSpace = ns, ruleName = nm }
       (mbDup, newRules) = Map.insertLookupWithKey (\ _ new _old -> new) rId newRule oldRules
   for_ mbDup $ \ oldRule ->

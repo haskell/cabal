@@ -1554,7 +1554,7 @@ dependencySatisfiable
          in if null $ PackageIndex.matchingDependencies vr allVersions
               then
                 if null eligibleVersions
-                  then Unsatisfied $ MissingPackage
+                  then Unsatisfied MissingPackage
                   else Unsatisfied $ WrongVersion eligibleVersions
               else Satisfied
 

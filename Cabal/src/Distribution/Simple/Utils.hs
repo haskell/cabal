@@ -636,8 +636,7 @@ notice verbosity msg = withFrozenCallStack $ do
     ts <- getPOSIXTime
     hPutStr h $
       withMetadata ts NormalMark FlagTrace flags $
-        wrapTextVerbosity flags $
-          msg
+        wrapTextVerbosity flags msg
 
 -- | Display a message at 'normal' verbosity level, but without
 -- wrapping.
@@ -659,8 +658,7 @@ noticeDoc verbosity msg = withFrozenCallStack $ do
     ts <- getPOSIXTime
     hPutStr h $
       withMetadata ts NormalMark FlagTrace flags $
-        Disp.renderStyle defaultStyle $
-          msg
+        Disp.renderStyle defaultStyle msg
 
 -- | Display a "setup status message".  Prefer using setupMessage'
 -- if possible.
@@ -679,8 +677,7 @@ info verbosity msg = withFrozenCallStack $
     ts <- getPOSIXTime
     hPutStr h $
       withMetadata ts NeverMark FlagTrace flags $
-        wrapTextVerbosity flags $
-          msg
+        wrapTextVerbosity flags msg
 
 infoNoWrap :: Verbosity -> String -> IO ()
 infoNoWrap verbosity msg = withFrozenCallStack $
@@ -689,8 +686,7 @@ infoNoWrap verbosity msg = withFrozenCallStack $
         flags = verbosityFlags verbosity
     ts <- getPOSIXTime
     hPutStr h $
-      withMetadata ts NeverMark FlagTrace flags $
-        msg
+      withMetadata ts NeverMark FlagTrace flags msg
 
 -- | Detailed internal debugging information
 --
@@ -703,8 +699,7 @@ debug verbosity msg = withFrozenCallStack $
     ts <- getPOSIXTime
     hPutStr h $
       withMetadata ts NeverMark FlagTrace flags $
-        wrapTextVerbosity flags $
-          msg
+        wrapTextVerbosity flags msg
     -- ensure that we don't lose output if we segfault/infinite loop
     hFlush stdout
 
@@ -716,8 +711,7 @@ debugNoWrap verbosity msg = withFrozenCallStack $
     let h = verbosityChosenOutputHandle verbosity
     ts <- getPOSIXTime
     hPutStr h $
-      withMetadata ts NeverMark FlagTrace (verbosityFlags verbosity) $
-        msg
+      withMetadata ts NeverMark FlagTrace (verbosityFlags verbosity) msg
     -- ensure that we don't lose output if we segfault/infinite loop
     hFlush stdout
 
@@ -1909,8 +1903,7 @@ withTempFileEx opts template action = do
           hClose handle
           unless (optKeepTempFiles opts) $
             handleDoesNotExist () $
-              removeFile $
-                name
+              removeFile name
       )
       (withLexicalCallStack (\(fn, h) -> action (mkRelToPkg tmp fn) h))
   where

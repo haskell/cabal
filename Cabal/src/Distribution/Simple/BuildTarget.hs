@@ -328,7 +328,7 @@ resolveBuildTarget pkg userTarget fexists =
               (things, got :| _) = unzip' expected'
            in BuildTargetExpected userTarget (NE.toList things) got
       | not (null nosuch) = BuildTargetNoSuch userTarget nosuch
-      | otherwise = error $ "resolveBuildTarget: internal error in matching"
+      | otherwise = error "resolveBuildTarget: internal error in matching"
       where
         expected = [(thing, got) | MatchErrorExpected thing got <- errs]
         nosuch = [(thing, got) | MatchErrorNoSuch thing got <- errs]

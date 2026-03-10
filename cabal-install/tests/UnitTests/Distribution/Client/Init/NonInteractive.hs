@@ -1427,7 +1427,7 @@ cliListParserTests =
         flags <- runParserTest ["--extra-doc-file", "README"]
         flags
           @?= emptyFlags
-            { extraDoc = Flag $ ["README"]
+            { extraDoc = Flag ["README"]
             }
     , testCase "Multiple extraDoc" $ do
         flags <-

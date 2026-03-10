@@ -729,8 +729,8 @@ withRemoteRepo repoDir m = do
             archiveTo srcPath (destPath <.> "tar.gz")
 
   -- 3. Create keys and bootstrap repository
-  hackageRepoTool "create-keys" $ ["--keys", keysDir]
-  hackageRepoTool "bootstrap" $ ["--keys", keysDir, "--repo", workDir]
+  hackageRepoTool "create-keys" ["--keys", keysDir]
+  hackageRepoTool "bootstrap" ["--keys", keysDir, "--repo", workDir]
 
   -- 4. Wire it up in .cabal/config
   let package_cache = testCabalDir env </> "packages"

@@ -8,8 +8,8 @@ main = do
   let (srcDirs, ghcArgs) = splitArgs rest
   let isGood = srcDirs == ["."] && "-outputdir" `elem` ghcArgs
   if isGood
-   then writeFile (tgt </> "Main.hs") $ "module Main where main = pure ()"
-   else writeFile (tgt </> "Main.hs") $ "module Main where main = error \"failure\""
+   then writeFile (tgt </> "Main.hs") "module Main where main = pure ()"
+   else writeFile (tgt </> "Main.hs") "module Main where main = error \"failure\""
 
 splitArgs = go []
   where

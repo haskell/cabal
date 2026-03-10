@@ -1037,7 +1037,7 @@ getExternalSetupMethod verbosity options pkg bt = do
                 debug verbosity $
                   "Found cached setup executable: " ++ cachedSetupProgFile
               else do
-                debug verbosity $ "Setup executable not found in the cache."
+                debug verbosity "Setup executable not found in the cache."
                 src <-
                   compileSetupExecutable
                     options'
@@ -1122,9 +1122,9 @@ getExternalSetupMethod verbosity options pkg bt = do
                     ghcOptVerbosity = Flag (min (verbosityLevel verbosity) Normal)
                   , ghcOptMode = Flag GhcModeMake
                   , ghcOptInputFiles = toNubListR [setupHs]
-                  , ghcOptOutputFile = Flag $ setupProgFile
-                  , ghcOptObjDir = Flag $ setupDir
-                  , ghcOptHiDir = Flag $ setupDir
+                  , ghcOptOutputFile = Flag setupProgFile
+                  , ghcOptObjDir = Flag setupDir
+                  , ghcOptHiDir = Flag setupDir
                   , ghcOptSourcePathClear = Flag True
                   , ghcOptSourcePath = case bt of
                       Custom -> toNubListR [sameDirectory]

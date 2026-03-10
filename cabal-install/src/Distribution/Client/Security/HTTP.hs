@@ -197,7 +197,6 @@ wrapCustomEx
   -> (HC.Throws HC.SomeRemoteError => IO a)
 wrapCustomEx act =
   HC.handleChecked (\(ex :: UnexpectedResponse) -> go ex) $
-    HC.handleChecked (\(ex :: IOException) -> go ex) $
-      act
+    HC.handleChecked (\(ex :: IOException) -> go ex) act
   where
     go ex = HC.throwChecked (HC.SomeRemoteError ex)

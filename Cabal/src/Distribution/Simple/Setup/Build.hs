@@ -128,7 +128,8 @@ buildCommand progDb =
       --        ++ "  " ++ pname ++ " build foo:Foo.Bar\n"
       --        ++ "  " ++ pname ++ " build testsuite1:Foo/Bar.hs\n"
       commandUsage =
-        usageAlternatives "build" $
+        usageAlternatives
+          "build"
           [ "[FLAGS]"
           , "COMPONENTS [FLAGS]"
           ]

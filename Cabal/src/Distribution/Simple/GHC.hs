@@ -209,10 +209,8 @@ configureCompiler verbosity hcPath conf0 = do
       filterJS = if ghcVersion < mkVersion [9, 8] then filterExt JavaScriptFFI else id
       extensions =
         -- workaround https://gitlab.haskell.org/ghc/ghc/-/issues/11214
-        filterJS $
-          -- see 'filterExtTH' comment below
-          filterExtTH $
-            extensions0
+        -- see 'filterExtTH' comment below
+        filterJS $ filterExtTH extensions0
 
       -- starting with GHC 8.0, `TemplateHaskell` will be omitted from
       -- `--supported-extensions` when it's not available.
@@ -933,9 +931,7 @@ installFLib verbosity lbi targetDir builtDir _pkg flib =
       -- Now install appropriate symlinks if library is versioned
       let (Platform _ os) = hostPlatform lbi
       when (not (null (foreignLibVersion flib os))) $ do
-        when (os /= Linux) $
-          dieWithException verbosity $
-            CantInstallForeignLib
+        when (os /= Linux) $ dieWithException verbosity CantInstallForeignLib
 #ifndef mingw32_HOST_OS
         -- 'createSymbolicLink file1 file2' creates a symbolic link
         -- named 'file2' which points to the file 'file1'.

@@ -182,8 +182,8 @@ tests =
       , runTest $ mkTest db9 "setupDeps7" ["F", "G"] (solverSuccess [("A", 1), ("B", 1), ("B", 2), ("C", 1), ("D", 1), ("E", 1), ("E", 2), ("F", 1), ("G", 1)])
       , runTest $ mkTest db10 "setupDeps8" ["C"] (solverSuccess [("C", 1)])
       , runTest $ indep $ mkTest dbSetupDeps "setupDeps9" ["A", "B"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2)])
-      , runTest $ setupStanzaTest1
-      , runTest $ setupStanzaTest2
+      , runTest setupStanzaTest1
+      , runTest setupStanzaTest2
       ]
   , testGroup
       "Base shim"
@@ -434,8 +434,7 @@ tests =
          in runTest $
               mkTest db "reject package that is missing required sub-library" ["A"] $
                 solverFailure $
-                  isInfixOf $
-                    "rejecting: B-1.0.0 (does not contain library 'sub-lib', which is required by A)"
+                  isInfixOf "rejecting: B-1.0.0 (does not contain library 'sub-lib', which is required by A)"
       , let db =
               [ Right $ exAv "A" 1 [ExSubLibAny "B" "sub-lib"]
               , Right $ exAvNoLibrary "B" 1 `withSubLibrary` exSubLib "sub-lib" []
@@ -443,8 +442,7 @@ tests =
          in runTest $
               mkTest db "reject package with private but required sub-library" ["A"] $
                 solverFailure $
-                  isInfixOf $
-                    "rejecting: B-1.0.0 (library 'sub-lib' is private, but it is required by A)"
+                  isInfixOf "rejecting: B-1.0.0 (library 'sub-lib' is private, but it is required by A)"
       , let db =
               [ Right $ exAv "A" 1 [ExSubLibAny "B" "sub-lib"]
               , Right $
@@ -455,8 +453,7 @@ tests =
               constraints [ExFlagConstraint (ScopeAnyQualifier "B") "make-lib-private" True] $
                 mkTest db "reject package with sub-library made private by flag constraint" ["A"] $
                   solverFailure $
-                    isInfixOf $
-                      "rejecting: B-1.0.0 (library 'sub-lib' is private, but it is required by A)"
+                    isInfixOf "rejecting: B-1.0.0 (library 'sub-lib' is private, but it is required by A)"
       , let db =
               [ Right $ exAv "A" 1 [ExSubLibAny "B" "sub-lib"]
               , Right $
@@ -481,8 +478,7 @@ tests =
               goalOrder goals $
                 mkTest db "reject package that requires a private sub-library" ["A", "C"] $
                   solverFailure $
-                    isInfixOf $
-                      "rejecting: C-1.0.0 (requires library 'sub-lib' from B, but the component is private)"
+                    isInfixOf "rejecting: C-1.0.0 (requires library 'sub-lib' from B, but the component is private)"
       , let db =
               [ Right $ exAv "A" 1 [ExSubLibAny "B" "sub-lib-v1"]
               , Right $ exAv "B" 2 [] `withSubLibrary` ExSubLib "sub-lib-v2" publicDependencies
@@ -1782,8 +1778,7 @@ twoLevelDeepCommonDependencyLogMessage :: String -> SolverTest
 twoLevelDeepCommonDependencyLogMessage name =
   mkTest db name ["A"] $
     solverFailure $
-      isInfixOf $
-        "unknown package: B (dependency of A +/-flagA +/-flagB)"
+      isInfixOf "unknown package: B (dependency of A +/-flagA +/-flagB)"
   where
     db :: ExampleDb
     db =

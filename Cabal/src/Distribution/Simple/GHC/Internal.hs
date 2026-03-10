@@ -571,8 +571,7 @@ componentGhcOptions verbosity lbi bi clbi odir =
         , ghcOptCppOptions = cppOptions bi
         , ghcOptJSppOptions = jsppOptions bi
         , ghcOptCppIncludes =
-            toNubListR $
-              [coerceSymbolicPath (autogenComponentModulesDir lbi clbi </> makeRelativePathEx cppHeaderName)]
+            toNubListR [coerceSymbolicPath (autogenComponentModulesDir lbi clbi </> makeRelativePathEx cppHeaderName)]
         , ghcOptFfiIncludes = toNubListR $ map getSymbolicPath $ includes bi
         , ghcOptObjDir = toFlag $ coerceSymbolicPath odir
         , ghcOptHiDir = toFlag $ coerceSymbolicPath odir
@@ -619,8 +618,7 @@ componentCmmGhcOptions verbosity lbi bi clbi odir filename =
     , ghcOptCppIncludePath = includePaths lbi bi clbi odir
     , ghcOptCppOptions = cppOptions bi
     , ghcOptCppIncludes =
-        toNubListR $
-          [autogenComponentModulesDir lbi clbi </> makeRelativePathEx cppHeaderName]
+        toNubListR [autogenComponentModulesDir lbi clbi </> makeRelativePathEx cppHeaderName]
     , ghcOptHideAllPackages = toFlag True
     , ghcOptPackageDBs = withPackageDB lbi
     , ghcOptPackages = toNubListR $ mkGhcOptPackages (promisedPkgs lbi) clbi

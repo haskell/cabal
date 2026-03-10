@@ -243,8 +243,7 @@ compilerProgramDb verbosity comp progdb1 hcPkgPath = do
       progdb3 =
         addKnownProgram haddockProgram' $
           addKnownProgram hsc2hsProgram' $
-            addKnownProgram hpcProgram' $
-              {- addKnownProgram runghcProgram' -} progdb2
+            addKnownProgram hpcProgram' {- addKnownProgram runghcProgram' -} progdb2
 
   return progdb3
 

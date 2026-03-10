@@ -132,8 +132,7 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
   if onlyPkgDescr
     then do
       when useSourceRepo $
-        warn verbosity $
-          "Ignoring --source-repository for --only-package-description"
+        warn verbosity "Ignoring --source-repository for --only-package-description"
 
       mapM_ (unpackOnlyPkgDescr verbosity prefix) pkgs
     else

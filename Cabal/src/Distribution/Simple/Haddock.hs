@@ -554,7 +554,7 @@ createHaddockIndex
 createHaddockIndex verbosity programDb comp platform mbWorkDir flags = do
   let args = fromHaddockProjectFlags flags
       tmpFileOpts =
-        commonSetupTempFileOptions $ haddockProjectCommonFlags $ flags
+        commonSetupTempFileOptions $ haddockProjectCommonFlags flags
   (haddockProg, _version) <-
     getHaddockProg verbosity programDb comp args (Flag True)
   runHaddock verbosity mbWorkDir tmpFileOpts comp platform haddockProg False args
@@ -629,7 +629,7 @@ fromPackageDescription :: HaddockTarget -> PackageDescription -> HaddockArgs
 fromPackageDescription _haddockTarget pkg_descr =
   mempty
     { argInterfaceFile = Flag $ haddockPath pkg_descr
-    , argPackageName = Flag $ packageId $ pkg_descr
+    , argPackageName = Flag $ packageId pkg_descr
     , argOutputDir = Dir $ "doc" </> "html"
     , argPrologue =
         Flag $
@@ -1282,7 +1282,7 @@ renderPureArgs version comp platform args =
       | r <- argReexports args
       , isVersion 2 19
       ]
-    , argTargets $ args
+    , argTargets args
     , maybe [] ((: []) . (resourcesDirFlag ++)) . flagToMaybe . argResourcesDir $ args
     , -- Do not re-direct compilation output to a temporary directory (--no-tmp-comp-dir)
       -- We pass this option by default to haddock to avoid recompilation
@@ -1373,7 +1373,7 @@ haddockPackagePaths ipkgs mkHtmlPath = do
               Just htmlPath -> do
                 let hypSrcPath = htmlPath </> defaultHyperlinkedSourceDirectory
                 hypSrcExists <- doesDirectoryExist hypSrcPath
-                return $
+                return
                   ( Just (fixFileUrl htmlPath)
                   , if hypSrcExists
                       then Just (fixFileUrl hypSrcPath)

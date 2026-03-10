@@ -893,7 +893,7 @@ readProjectFileSkeleton option =
 readProjectFileSkeletonLegacy :: Verbosity -> HttpTransport -> DistDirLayout -> String -> String -> Rebuild ProjectConfigSkeleton
 readProjectFileSkeletonLegacy verbosity httpTransport distDirLayout extensionName extensionDescription = do
   readProjectFileSkeletonGen verbosity httpTransport distDirLayout extensionName extensionDescription $ \fp -> do
-    debug verbosity $ "Reading project file using the legacy parser"
+    debug verbosity "Reading project file using the legacy parser"
     parseProjectFileSkeletonLegacy verbosity httpTransport distDirLayout extensionName extensionDescription fp
       >>= liftIO . reportParseResult verbosity extensionDescription fp
 
@@ -901,7 +901,7 @@ readProjectFileSkeletonLegacy verbosity httpTransport distDirLayout extensionNam
 readProjectFileSkeletonFallback :: Verbosity -> HttpTransport -> DistDirLayout -> String -> String -> Rebuild ProjectConfigSkeleton
 readProjectFileSkeletonFallback verbosity httpTransport distDirLayout extensionName extensionDescription = do
   readProjectFileSkeletonGen verbosity httpTransport distDirLayout extensionName extensionDescription $ \fp -> do
-    debug verbosity $ "Reading project file using the fallback parser"
+    debug verbosity "Reading project file using the fallback parser"
     (res, bs) <- parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout extensionName extensionDescription fp
     let (_, pres) = runParseResult res
     case pres of
@@ -914,7 +914,7 @@ readProjectFileSkeletonFallback verbosity httpTransport distDirLayout extensionN
           -- 3a. The legacy parser worked, but the parsec parser failed!
           -- Report a warning to the user that this happened.
           OldParser.ProjectParseOk{} -> do
-            warn verbosity $ "The new parsec parser failed, but the legacy parser worked. This is unexpected, please report this as a bug.\nThe legacy parser will be removed in the next major version."
+            warn verbosity "The new parsec parser failed, but the legacy parser worked. This is unexpected, please report this as a bug.\nThe legacy parser will be removed in the next major version."
             liftIO $ reportParseResult verbosity extensionDescription fp lres
           -- 3b. The legacy parser failed as well, report the original error.
           OldParser.ProjectParseFailed{} -> do
@@ -924,14 +924,14 @@ readProjectFileSkeletonFallback verbosity httpTransport distDirLayout extensionN
 readProjectFileSkeletonParsec :: Verbosity -> HttpTransport -> DistDirLayout -> String -> String -> Rebuild ProjectConfigSkeleton
 readProjectFileSkeletonParsec verbosity httpTransport distDirLayout extensionName extensionDescription = do
   readProjectFileSkeletonGen verbosity httpTransport distDirLayout extensionName extensionDescription $ \fp -> do
-    debug verbosity $ "Reading project file using the parsec parser"
+    debug verbosity "Reading project file using the parsec parser"
     (res, bs) <- parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout extensionName extensionDescription fp
     liftIO $ reportParseResultParsec verbosity fp bs res
 
 readProjectFileSkeletonCompare :: Verbosity -> HttpTransport -> DistDirLayout -> String -> String -> Rebuild ProjectConfigSkeleton
 readProjectFileSkeletonCompare verbosity httpTransport distDirLayout extensionName extensionDescription = do
   readProjectFileSkeletonGen verbosity httpTransport distDirLayout extensionName extensionDescription $ \fp -> do
-    debug verbosity $ "Reading project file using the comparative parser"
+    debug verbosity "Reading project file using the comparative parser"
     (pres, bs) <- parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout extensionName extensionDescription fp
     lres <- parseProjectFileSkeletonLegacy verbosity httpTransport distDirLayout extensionName extensionDescription fp
     let (_, ppres) = runParseResult pres
@@ -943,12 +943,12 @@ readProjectFileSkeletonCompare verbosity httpTransport distDirLayout extensionNa
       -- 2. The legacy parser failed, but the parsec parser succeeded.
       -- Report a warning to the user that this happened.
       (OldParser.ProjectParseFailed{}, Right{}) -> do
-        warn verbosity $ "The legacy parser failed, but the new parsec parser worked. This is unexpected, please report this as a bug.\nThe legacy parser will be removed in the next major version."
+        warn verbosity "The legacy parser failed, but the new parsec parser worked. This is unexpected, please report this as a bug.\nThe legacy parser will be removed in the next major version."
         liftIO $ reportParseResult verbosity extensionDescription fp lres
       -- 3. The legacy parser succeeded, but the parsec parser failed.
       -- Report a warning to the user that this happened.
       (OldParser.ProjectParseOk{}, Left{}) -> do
-        warn verbosity $ "The new parsec parser failed, but the legacy parser worked. This is unexpected, please report this as a bug.\nThe legacy parser will be removed in the next major version."
+        warn verbosity "The new parsec parser failed, but the legacy parser worked. This is unexpected, please report this as a bug.\nThe legacy parser will be removed in the next major version."
         liftIO $ reportParseResult verbosity extensionDescription fp lres
       (OldParser.ProjectParseFailed{}, Left{}) -> do
         -- 4. Both failed, report the original error. We don't check that the same errors are reported.

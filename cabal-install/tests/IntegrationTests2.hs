@@ -144,12 +144,16 @@ tests config =
   -- TODO: tests for:
   -- \* normal success
   -- \* dry-run tests with changes
-  [ sequentialTestGroup "Discovery and planning" AllFinish $
+  [ sequentialTestGroup
+      "Discovery and planning"
+      AllFinish
       [ testCase "no package" (testExceptionInFindingPackage config)
       , testCase "no package2" (testExceptionInFindingPackage2 config)
       , testCase "proj conf1" (testExceptionInProjectConfig config)
       ]
-  , sequentialTestGroup "Target selectors" AllFinish $
+  , sequentialTestGroup
+      "Target selectors"
+      AllFinish
       [ testCaseSteps "valid" testTargetSelectors
       , testCase "bad syntax" testTargetSelectorBadSyntax
       , testCaseSteps "ambiguous syntax" testTargetSelectorAmbiguous
@@ -166,7 +170,9 @@ tests config =
       , testCaseSteps "problems (bench)" (testTargetProblemsBench config)
       , testCaseSteps "problems (haddock)" (testTargetProblemsHaddock config)
       ]
-  , sequentialTestGroup "Exceptions during building (local inplace)" AllFinish $
+  , sequentialTestGroup
+      "Exceptions during building (local inplace)"
+      AllFinish
       [ testCase "configure" (testExceptionInConfigureStep config)
       , testCase "build" (testExceptionInBuildStep config)
       --    , testCase "register"   testExceptionInRegisterStep
@@ -185,13 +191,17 @@ tests config =
           else
             [ testCase "local tarball" (testBuildLocalTarball config)
             ]
-  , sequentialTestGroup "Regression tests" AllFinish $
+  , sequentialTestGroup
+      "Regression tests"
+      AllFinish
       [ testCase "issue #3324" (testRegressionIssue3324 config)
       , testCase "program options scope all" (testProgramOptionsAll config)
       , testCase "program options scope local" (testProgramOptionsLocal config)
       , testCase "program options scope specific" (testProgramOptionsSpecific config)
       ]
-  , sequentialTestGroup "Flag tests" AllFinish $
+  , sequentialTestGroup
+      "Flag tests"
+      AllFinish
       [ testCase "Test Config options for commented options" testConfigOptionComments
       , testCase "Test Ignore Project Flag" testIgnoreProjectFlag
       ]
