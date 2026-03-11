@@ -11,7 +11,7 @@ import Distribution.Verbosity
 import Data.IORef
 import System.Directory ( doesDirectoryExist, doesFileExist
                         , getTemporaryDirectory
-                        , removeDirectoryRecursive, removeFile )
+                        , removePathForcibly, removeFile )
 import System.FilePath ( (<.>) )
 import System.IO (hClose, localeEncoding, hPutStrLn)
 import System.IO.Error
@@ -47,8 +47,7 @@ withTempDirTest = do
 withTempDirRemovedTest :: Assertion
 withTempDirRemovedTest = do
   tempDir <- getTemporaryDirectory
-  withTempDirectory tempDir "foo" $ \dirPath -> do
-    removeDirectoryRecursive dirPath
+  withTempDirectory tempDir "foo" removePathForcibly
 
 rawSystemStdInOutTextDecodingTest :: FilePath -> Assertion
 rawSystemStdInOutTextDecodingTest ghcPath

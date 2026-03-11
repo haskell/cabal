@@ -824,8 +824,7 @@ execCommit vcsDriver@VCSTestDriver{..} (Commit fileUpdates) = do
 
 execFileUpdate :: CreateRepoAction FileUpdate
 execFileUpdate VCSTestDriver{..} (FileUpdate filename content) = do
-  isDir <- liftIO $ doesDirectoryExist (vcsRepoRoot </> filename)
-  liftIO . when isDir $ removeDirectoryRecursive (vcsRepoRoot </> filename)
+  liftIO $ removePathForcibly (vcsRepoRoot </> filename)
   liftIO $ writeFile (vcsRepoRoot </> filename) content
   state <- State.get -- existing state, not updated
   liftIO $ vcsAddFile state filename
@@ -927,8 +926,7 @@ vcsTestDriverGit
           when destExists $ gitQuiet ["rm", "--force", dest]
           -- If there is an old submodule git dir with the same name, remove it.
           -- It most likely has a different URL and `git submodule add` will fai.
-          submoduleGitDirExists <- doesDirectoryExist $ submoduleGitDir dest
-          when submoduleGitDirExists $ removeDirectoryRecursive (submoduleGitDir dest)
+          removePathForcibly (submoduleGitDir dest)
           gitQuiet ["submodule", "add", source, dest]
           gitQuiet ["submodule", "update", "--init", "--recursive", "--force"]
       , vcsSwitchBranch = \RepoState{allBranches} branchname -> do
@@ -1000,7 +998,7 @@ vcsTestDriverGit
         dotGitModulesExists <- doesDirectoryExist dotGitModulesPath
         when dotGitModulesExists $ do
           git $ ["submodule", "deinit", "--force", "--all"] ++ verboseArg
-          removeDirectoryRecursive dotGitModulesPath
+          removePathForcibly dotGitModulesPath
 
       updateSubmodulesAndCleanup = do
         gitModulesExists <- doesFileExist gitModulesPath

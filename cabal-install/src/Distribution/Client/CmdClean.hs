@@ -50,7 +50,6 @@ import Distribution.Simple.Setup
   )
 import Distribution.Simple.Utils
   ( dieWithException
-  , handleDoesNotExist
   , info
   , wrapText
   )
@@ -69,6 +68,9 @@ import Distribution.Verbosity
   , normal
   )
 
+import Control.Concurrent
+  ( threadDelay
+  )
 import Control.Exception
   ( throw
   )
@@ -83,7 +85,6 @@ import System.Directory
   , doesDirectoryExist
   , doesFileExist
   , listDirectory
-  , removeDirectoryRecursive
   , removeFile
   , removePathForcibly
   )
@@ -179,23 +180,20 @@ cleanAction (ProjectFlags{..}, CleanFlags{..}) extraArgs _ = do
 
         when buildRootExists $ do
           info verbosity ("Deleting build root (" ++ buildRoot ++ ")")
-          handleDoesNotExist () $ removeDirectoryRecursive buildRoot
+          removePathForcibly buildRoot
       else do
         let distRoot = distDirectory distLayout
 
         info verbosity ("Deleting dist-newstyle (" ++ distRoot ++ ")")
-        handleDoesNotExist () $ do
-          if buildOS == Windows
-            then do
-              -- Windows can't delete some git files #10182
-              void $
-                Process.createProcess_ "attrib" $
-                  Process.shell $
-                    "attrib -s -h -r " <> distRoot <> "\\*.* /s /d"
-              catch
-                (removePathForcibly distRoot)
-                (\e -> if isPermissionError e then removePathForcibly distRoot else throw e)
-            else removeDirectoryRecursive distRoot
+        -- Windows can't delete some git files #10182
+        when (buildOS == Windows) $
+          void $
+            Process.createProcess_ "attrib" $
+              Process.shell $
+                "attrib -s -h -r " <> distRoot <> "\\*.* /s /d"
+        catch
+          (removePathForcibly distRoot)
+          (\e -> if isPermissionError e then threadDelay 1000 >> removePathForcibly distRoot else throw e)
 
     removeEnvFiles $ distProjectRootDirectory distLayout
 
@@ -214,7 +212,7 @@ cleanAction (ProjectFlags{..}, CleanFlags{..}) extraArgs _ = do
     exists <- doesFileExist script
     when (not exists || script `Set.member` toClean) $ do
       info verbosity ("Deleting cache (" ++ cache ++ ") for script (" ++ script ++ ")")
-      removeDirectoryRecursive cache
+      removePathForcibly cache
 
 removeEnvFiles :: FilePath -> IO ()
 removeEnvFiles dir =

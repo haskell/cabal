@@ -135,12 +135,7 @@ import Language.Haskell.Extension
 
 -- Base
 import Data.List (unionBy, (\\))
-import System.Directory
-  ( doesDirectoryExist
-  , doesFileExist
-  , removeDirectoryRecursive
-  , removeFile
-  )
+import System.Directory (removePathForcibly)
 import System.Environment (getArgs, getProgName)
 import System.IO (hPutStr, hPutStrLn)
 
@@ -906,22 +901,13 @@ clean verbHandles pkg_descr flags = do
   -- remove the whole dist/ directory rather than tracking exactly what files
   -- we created in there.
   chattyTry verbosity "removing dist/" $ do
-    exists <- doesDirectoryExist distPath
-    when exists (removeDirectoryRecursive distPath)
+    removePathForcibly distPath
 
   -- Any extra files the user wants to remove
-  traverse_ (removeFileOrDirectory . i) (extraTmpFiles pkg_descr)
+  traverse_ (removePathForcibly . i) (extraTmpFiles pkg_descr)
 
   -- If the user wanted to save the config, write it back
   traverse_ (writePersistBuildConfig mbWorkDir distPref) maybeConfig
-  where
-    removeFileOrDirectory :: FilePath -> IO ()
-    removeFileOrDirectory fname = do
-      isDir <- doesDirectoryExist fname
-      isFile <- doesFileExist fname
-      if isDir
-        then removeDirectoryRecursive fname
-        else when isFile $ removeFile fname
 
 -- --------------------------------------------------------------------------
 -- Default hooks

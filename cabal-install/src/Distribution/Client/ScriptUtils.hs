@@ -132,7 +132,6 @@ import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose
   , createTempDirectory
   , dieWithException
-  , handleDoesNotExist
   , readUTF8File
   , warn
   , writeUTF8File
@@ -199,7 +198,7 @@ import System.Directory
   ( canonicalizePath
   , doesFileExist
   , getTemporaryDirectory
-  , removeDirectoryRecursive
+  , removePathForcibly
   )
 import System.FilePath
   ( makeRelative
@@ -410,7 +409,7 @@ withTemporaryTempDirectory act = newEmptyMVar >>= \m -> bracket (getMkTmp m) (rm
       let tmpDir = tmpBaseDir </> tmpRelDir
       putMVar m tmpDir
       return tmpDir
-    rmTmp m _ = tryTakeMVar m >>= maybe (return ()) (handleDoesNotExist () . removeDirectoryRecursive)
+    rmTmp m _ = tryTakeMVar m >>= maybe (return ()) removePathForcibly
 
 scriptComponentName :: IsString s => FilePath -> s
 scriptComponentName scriptPath = fromString cname

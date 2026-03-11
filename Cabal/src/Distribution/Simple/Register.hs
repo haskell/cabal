@@ -396,14 +396,9 @@ doesPackageDBExist dbPath = do
     else doesFileExist dbPath
 
 deletePackageDB :: FilePath -> IO ()
-deletePackageDB dbPath = do
+deletePackageDB =
   -- currently one impl for all compiler flavours, but could change if needed
-  dir_exists <- doesDirectoryExist dbPath
-  if dir_exists
-    then removeDirectoryRecursive dbPath
-    else do
-      file_exists <- doesFileExist dbPath
-      when file_exists $ removeFile dbPath
+  removePathForcibly
 
 -- | Run @hc-pkg@ using a given package DB stack, directly forwarding the
 -- provided command-line arguments to it.

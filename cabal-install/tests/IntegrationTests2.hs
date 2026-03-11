@@ -104,7 +104,7 @@ main = do
   cwd <- getCurrentDirectory
   let configDir = cwd </> basedir </> "config" </> "cabal-config"
   setEnv "CABAL_DIR" configDir
-  removeDirectoryRecursive configDir <|> return ()
+  removePathForcibly configDir <|> return ()
   createDirectoryIfMissing True configDir
   -- sigh
   -- NOTE: This is running the `cabal` from the user environment, which is
@@ -2284,9 +2284,7 @@ executePlan
     return (elaboratedPlan'', buildOutcomes)
 
 cleanProject :: FilePath -> IO ()
-cleanProject testdir = do
-  alreadyExists <- doesDirectoryExist distDir
-  when alreadyExists $ removePathForcibly distDir
+cleanProject testdir = removePathForcibly distDir
   where
     projectRoot = ProjectRootImplicit (basedir </> testdir)
     distDirLayout = defaultDistDirLayout projectRoot Nothing Nothing
@@ -2761,11 +2759,9 @@ cleanHaddockProject :: FilePath -> IO ()
 cleanHaddockProject testdir = do
   cleanProject testdir
   let haddocksdir = basedir </> testdir </> "haddocks"
-  alreadyExists <- doesDirectoryExist haddocksdir
-  when alreadyExists $ removePathForcibly haddocksdir
+  removePathForcibly haddocksdir
   let storedir = basedir </> testdir </> "store"
-  alreadyExists' <- doesDirectoryExist storedir
-  when alreadyExists' $ removePathForcibly storedir
+  removePathForcibly storedir
 
 testHaddockProjectDependencies :: ProjectConfig -> Assertion
 testHaddockProjectDependencies config = do

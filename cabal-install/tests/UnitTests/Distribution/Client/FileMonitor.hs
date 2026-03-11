@@ -833,7 +833,7 @@ createDir (RootPath root) dname = do
   IO.createDirectory path
 
 removeDir :: RootPath -> FilePath -> IO ()
-removeDir (RootPath root) dname = IO.removeDirectoryRecursive (root </> dname)
+removeDir (RootPath root) dname = IO.removePathForcibly (root </> dname)
 
 absoluteRoot :: RootPath -> IO FilePath
 absoluteRoot (RootPath root) = IO.canonicalizePath root
