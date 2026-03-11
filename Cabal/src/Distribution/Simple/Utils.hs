@@ -33,6 +33,7 @@
 module Distribution.Simple.Utils
   ( cabalVersion
   , cabalGitInfo
+  , cabalCompilerInfo
 
     -- * logging and errors
   , dieNoVerbosity
@@ -213,6 +214,7 @@ import Distribution.Compat.Internal.TempFile
 import Distribution.Compat.Lens (Lens', over)
 import Distribution.Compat.Prelude
 import Distribution.Compat.Stack
+import Distribution.Compat.SysInfo as SIC
 import Distribution.ModuleName as ModuleName
 import Distribution.Simple.Errors
 import Distribution.Simple.PreProcess.Types
@@ -244,6 +246,7 @@ import Data.Typeable
 
 import qualified Control.Exception as Exception
 import Data.Time.Clock.POSIX (POSIXTime, getPOSIXTime)
+import qualified Data.Version as DV
 import Distribution.Compat.Process (proc)
 import Foreign.C.Error (Errno (..), ePIPE)
 import qualified GHC.IO.Exception as GHC
@@ -294,6 +297,7 @@ import System.IO.Error
 import System.IO.Unsafe
   ( unsafeInterleaveIO
   )
+import qualified System.Info as SI
 import qualified System.Process as Process
 import qualified Text.PrettyPrint as Disp
 
@@ -331,19 +335,34 @@ cabalGitInfo = if giHash' == ""
                  else concat [ "(commit "
                              , giHash'
                              , branchInfo
-                             , ", "
-                             , either (const "") giCommitDate gi'
+                             , either (const "") ((", " ++) . giCommitDate) gi'
                              , ")"
                              ]
   where
     gi' = $$tGitInfoCwdTry
     giHash' = take 7 . either (const "") giHash $ gi'
+    branch = either id giBranch gi'
     branchInfo | isLeft gi' = ""
-               | either id giBranch gi' == "master" = ""
-               | otherwise = " on " <> either id giBranch gi'
+               | branch == "master" = ""
+               | otherwise = " on " <> branch
 #else
 cabalGitInfo = ""
 #endif
+
+-- |
+-- `Cabal` compiler information, reported by `--version-full` but otherwise
+-- unused.
+cabalCompilerInfo :: String
+cabalCompilerInfo =
+  concat
+    [ SI.compilerName
+    , " "
+    , intercalate "." (map show (DV.versionBranch SIC.fullCompilerVersion))
+    , " on "
+    , SI.os
+    , " "
+    , SI.arch
+    ]
 
 -- ----------------------------------------------------------------------------
 -- Exception and logging utils
