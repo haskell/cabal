@@ -21,7 +21,7 @@ import Prelude ()
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
 import Distribution.Compiler
-import Distribution.ModuleName (ModuleName, toFilePath)
+import Distribution.ModuleName (ModuleName)
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Check.Common
@@ -61,8 +61,6 @@ checkLibrary
           _libVisibility_
           libBuildInfo_
         ) = do
-    mapM_ checkModuleName (explicitLibModules lib)
-
     checkP
       (libName_ == LMainLibName && isSub)
       (PackageBuildImpossible UnnamedInternal)
@@ -146,8 +144,6 @@ checkExecutable
     let cet = CETExecutable exeName_
         modulePath_ = getSymbolicPath symbolicModulePath_
 
-    mapM_ checkModuleName (exeModules exe)
-
     -- § Exe specific checks
     checkP
       (null modulePath_)
@@ -209,9 +205,6 @@ checkTestSuite
       TestSuiteUnsupported tt ->
         tellP (PackageBuildWarning $ TestsuiteNotSupported tt)
       _ -> return ()
-
-    mapM_ checkModuleName (testModules ts)
-
     checkP
       mainIsWrongExt
       (PackageBuildImpossible NoHsLhsMain)
@@ -264,8 +257,6 @@ checkBenchmark
     -- Target type/name (benchmark).
     let cet = CETBenchmark benchmarkName_
 
-    mapM_ checkModuleName (benchmarkModules bm)
-
     -- § Interface & bm specific tests.
     case benchmarkInterface_ of
       BenchmarkUnsupported tt@(BenchmarkTypeUnknown _ _) ->
@@ -302,11 +293,6 @@ checkBenchmark
         case benchmarkInterface_ of
           BenchmarkExeV10 _ f -> takeExtension (getSymbolicPath f) `notElem` [".hs", ".lhs"]
           _ -> False
-
--- | Check if a module name is valid on both Windows and Posix systems
-checkModuleName :: Monad m => ModuleName -> CheckM m ()
-checkModuleName moduleName =
-  checkPackageFileNamesWithGlob PathKindFile (toFilePath moduleName)
 
 -- ------------------------------------------------------------
 -- Build info
