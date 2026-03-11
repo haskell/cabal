@@ -331,6 +331,7 @@ instance FieldGrammar ExactParsec ParsecFieldGrammar where
                   t = TriviaTree [ExactFieldPosition pos] mempty <> fromNamedTrivia processed [ExactRepr raw]
               in  pure (t, processed)
 
+  -- see [Note: Move grouping code into monoidalFieldAla]
   monoidalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
       parser v fields = case Map.lookup fn fields of

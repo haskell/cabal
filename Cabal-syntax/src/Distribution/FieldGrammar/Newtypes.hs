@@ -368,12 +368,17 @@ instance
   )
   => ExactPretty (List sep b a)
   where
+  -- [Note: Move grouping code into monoidalFieldAla]
+  --
+  -- 'monoidalFieldAla' only knows about a newtype.
+  -- It doesn't have the context of 'b' and 'a' here.
+  --
+  -- This means that it won't be able to lookup using the a and b types
+  exactPretty :: TriviaTree -> List sep b a -> [DocAnn TriviaTree]
   exactPretty t0 n =
     let fieldPositionOr0 = fromMaybe (Position 0 0) . atFieldPosition . justAnnotation
         docGroups :: [[(TriviaTree, b)]]
         docGroups =
-          -- TODO(leana8959): move the grouping code to monoidalField
-          -- With the Markable constraint I should be able to retrieve the order associated
           groupBy ((==) `on` (fieldPositionOr0 . fst))
             $ sortOn (fieldPositionOr0 . fst)
             $ map
