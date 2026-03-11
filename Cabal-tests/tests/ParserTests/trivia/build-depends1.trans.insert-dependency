@@ -1,0 +1,6 @@
+BS.concat
+  [
+    "build-depends:foo==1337.1&&(==1337.2||==1337.3),bar==1337.1&&(==1337.2||==1337.3),\n",
+    "build-depends:\n",
+    "    base > 1,\n",
+    "    text < 2,\n"]

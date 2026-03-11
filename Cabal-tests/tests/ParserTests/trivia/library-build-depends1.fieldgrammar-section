@@ -50,7 +50,13 @@ _×_
                                           TriviaTree {
                                             justAnnotation = [IsInjected],
                                             namedAnnotations = Map.fromList
-                                              []}]}]}]}]}]}
+                                              []}]}]}]},
+                _×_
+                  `SomeNamespace "default-language"`
+                  TriviaTree {
+                    justAnnotation = [IsInjected],
+                    namedAnnotations = Map.fromList
+                      []}]}]}
   GenericPackageDescription {
     packageDescription =
     PackageDescription {

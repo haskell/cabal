@@ -142,21 +142,23 @@ class ExactSep sep where
     -> m (TriviaTree, a)
     -> m (NonEmpty (TriviaTree, a))
 
+atPositionOr0 :: TriviaTree -> Position
+atPositionOr0 = fromMaybe (Position 0 0) . atPosition . justAnnotation
+
+
+-- Last, current, next
+withNeighbors :: [(TriviaTree, a)] -> [(Maybe Trivia, (TriviaTree, a), Maybe Trivia)]
+withNeighbors xs =
+  zip3
+    (Nothing : (Just . justAnnotation . fst <$> xs))
+    xs
+    (drop 1 (Just . justAnnotation . fst <$> xs) ++ [Nothing])
+
 instance ExactSep CommaVCat where
   exactPrettySep :: forall a sep. ExactPretty a => Proxy sep -> [(TriviaTree, a)] -> [DocAnn TriviaTree]
   exactPrettySep _ docs =
-    let atPositionOr0 = fromMaybe (Position 0 0) . atPosition . justAnnotation
-
-        sortedDocs :: [(TriviaTree, a)]
-        sortedDocs = sortOn (atPositionOr0 . fst) $ docs
-
-        -- Last, current, next
-        withNeighbors :: [(Maybe Trivia, (TriviaTree, a), Maybe Trivia)]
-        withNeighbors =
-          zip3
-            (Nothing : (Just . justAnnotation . fst <$> sortedDocs))
-            sortedDocs
-            (drop 1 (Just . justAnnotation . fst <$> sortedDocs) ++ [Nothing])
+    let sortedDocs :: [(TriviaTree, a)]
+        sortedDocs = sortOn (atPositionOr0 . fst) docs
      in map
           ( \( tPrev
               , (t0, x)
@@ -166,32 +168,26 @@ instance ExactSep CommaVCat where
                   -- tLocal /should/ contain the {leading,trailing} annotation
                   -- If it doesn't (programmatic modifications to gpd), then we fallback to patching the separators
                   tLocal = justAnnotation t0
-                  trim = dropWhile isSpace . dropWhileEnd isSpace
-                  isComma = (== ",") . trim
 
-                  docOut =
-                    triviaToDoc tLocal $
-                      mconcat . map unAnnDoc $
-                        exactPretty t0 x
+                  docOut = triviaToDoc tLocal $ mconcat . map unAnnDoc $ exactPretty t0 x
                  in
                   (flip DocAnn t0)
                     $ ( if tLocal == mempty
-                          then -- Fallback
-
+                          then
                             ( case tPrev of
                                 Nothing -> id -- isFirst
-                                Just t -> if not (hasTrailingSymbol isComma t) then (text "," <>) else id
+                                Just t -> if not (hasTrailingSymbol containsComma t) then (text "," <>) else id
                             )
-                              . ( case tPrev of
-                                    Nothing -> id -- isLast
-                                    Just t -> if not (hasTrailingSymbol isComma t) then (<> text ",") else id
-                                )
+                            . ( case tNext of
+                                  Nothing -> (<> text ",")
+                                  Just t -> id -- isLast
+                              )
                           else -- Separator already in the trivia
                             id
                       )
                     $ docOut
           )
-          $ withNeighbors
+          $ withNeighbors sortedDocs
 
   exactParseSep _ p = do
     v <- askCabalSpecVersion
@@ -222,24 +218,10 @@ instance ExactSep FSep where
   exactPrettySep :: forall a sep. ExactPretty a => Proxy sep -> [(TriviaTree, a)] -> [DocAnn TriviaTree]
   exactPrettySep _ docs =
     -- There are no separators, we don't need to patch when there's no leading/trailing trivia
-    let atPositionOr0 = fromMaybe (Position 0 0) . atPosition . justAnnotation
-
-        sortedDocs :: [(TriviaTree, a)]
+    let sortedDocs :: [(TriviaTree, a)]
         sortedDocs = sortOn (atPositionOr0 . fst) $ docs
-
-        -- Last, current, next
-        withNeighbors :: [(Maybe Trivia, (TriviaTree, a), Maybe Trivia)]
-        withNeighbors =
-          zip3
-            (Nothing : (Just . justAnnotation . fst <$> sortedDocs))
-            sortedDocs
-            (drop 1 (Just . justAnnotation . fst <$> sortedDocs) ++ [Nothing])
-
     in  map
-          ( \( tPrev
-              , (t0, x)
-              , tNext
-              ) ->
+          ( \(t0, x)->
                 let tLocal = justAnnotation t0
                     docOut =
                       triviaToDoc tLocal $
@@ -247,7 +229,7 @@ instance ExactSep FSep where
                           exactPretty t0 x
                  in  DocAnn docOut t0
           )
-          withNeighbors
+          $ sortedDocs
 
   exactParseSep _ p = do
     v <- askCabalSpecVersion

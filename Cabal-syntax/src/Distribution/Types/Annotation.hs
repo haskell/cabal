@@ -39,6 +39,7 @@ module Distribution.Types.Annotation
   , isInjected
   , hasTrailingSymbol
   , hasLeadingSymbol
+  , containsComma
   , patchPosition
   , triviaToDoc
   , triviumToDoc
@@ -191,12 +192,12 @@ hasLeadingSymbol f (t : ts) = case t of
   PreTrivia s -> f s || hasLeadingSymbol f ts
   _ -> hasLeadingSymbol f ts
 
--- There's no hardbreak primitive in printer
---
--- Precondition:
--- The previous element must be before current element
---
--- https://github.com/haskell/pretty/issues/26
+trim :: String -> String
+trim = dropWhile isSpace . dropWhileEnd isSpace
+
+containsComma :: String -> Bool
+containsComma = (== ",") . trim
+
 patchPosition :: Position -> Position -> Disp.Doc -> Disp.Doc
 patchPosition (Position prevRow _) (Position curRow _) =
   let rowDiff = curRow - prevRow
