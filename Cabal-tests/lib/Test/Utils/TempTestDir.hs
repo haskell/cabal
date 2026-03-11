@@ -72,7 +72,7 @@ removeDirectoryRecursiveHack verbosity dir | isWindows = go 1
               threadDelay 1000000
               go (n + 1)
 
-          -- but if we hit the limt warn and fail.
+          -- but if we hit the limit warn and fail.
           | isPermissionError e -> do
               warn verbosity $
                 "Windows file locking hack: hit the retry limit "

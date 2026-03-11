@@ -389,9 +389,7 @@ unitIdTarget' pkg_descr lbi@(LocalBuildInfo{componentGraph = compsGraph}) uid =
 -- In the presence of Backpack there may be more than one!
 componentNameCLBIs :: LocalBuildInfo -> ComponentName -> [ComponentLocalBuildInfo]
 componentNameCLBIs (LocalBuildInfo{componentNameMap = comps}) cname =
-  case Map.lookup cname comps of
-    Just clbis -> clbis
-    Nothing -> []
+  Map.findWithDefault [] cname comps
 
 -- TODO: Maybe cache topsort (Graph can do this)
 

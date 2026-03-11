@@ -5,9 +5,7 @@
 CABALBUILD := cabal build
 CABALRUN   := cabal run
 
-# We have to avoid allow-newer.
-# SEE: https://github.com/haskell/cabal/issues/6859
-DOCTEST := cabal doctest --allow-newer=False
+DOCTEST := cabal doctest
 
 # default rules
 
@@ -311,18 +309,26 @@ typos-install: ## Install typos-cli for typos target using cargo
 GREP_EXCLUDE := grep -v -E 'dist-|cabal-testsuite|python-'
 FIND_NAMED := find . -type f -name
 
+.PHONY: hs-typos
+hs-typos: ## Find typos in Haskell source files; .hs, .cabal, etc.
+	typos --config .typos-srcs.toml --force-exclude
+
+.PHONY: hs-fix-typos
+hs-fix-typos: ## Fix typos in Haskell source files; .hs, .cabal, etc.
+	typos --config .typos-srcs.toml --write-changes --force-exclude
+
 .PHONY: users-guide-typos
 users-guide-typos: ## Find typos in users guide
-	cd doc && $(FIND_NAMED) '*.rst' | xargs typos
+	cd doc && $(FIND_NAMED) '*.rst' | xargs typos --config ../.typos-docs.toml --force-exclude
 
 .PHONY: users-guide-fix-typos
 users-guide-fix-typos: ## Fix typos in users guide
-	cd doc && $(FIND_NAMED) '*.rst' | xargs typos --write-changes
+	cd doc && $(FIND_NAMED) '*.rst' | xargs typos --config ../.typos-docs.toml --write-changes --force-exclude 
 
 .PHONY: markdown-typos
 markdown-typos: ## Find typos in markdown files
-	$(FIND_NAMED) '*.md' | $(GREP_EXCLUDE) | xargs typos
+	$(FIND_NAMED) '*.md' | $(GREP_EXCLUDE) | xargs typos --config .typos-docs.toml --force-exclude
 
 .PHONY: markdown-fix-typos
 markdown-fix-typos: ## Fix typos in markdown files
-	$(FIND_NAMED) '*.md' | $(GREP_EXCLUDE) | xargs typos --write-changes
+	$(FIND_NAMED) '*.md' | $(GREP_EXCLUDE) | xargs typos --config .typos-docs.toml --write-changes --force-exclude

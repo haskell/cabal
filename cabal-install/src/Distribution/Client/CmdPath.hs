@@ -396,9 +396,7 @@ compilerInfoToJson pci =
 showAsKeyValuePair :: PathOutputs -> String
 showAsKeyValuePair pathOutputs =
   let
-    cInfo = case pathOutputsCompilerInfo pathOutputs of
-      Nothing -> []
-      Just pci -> compilerInfoToKeyValue pci
+    cInfo = maybe [] compilerInfoToKeyValue (pathOutputsCompilerInfo pathOutputs)
 
     paths = pathOutputsConfigPaths pathOutputs
 

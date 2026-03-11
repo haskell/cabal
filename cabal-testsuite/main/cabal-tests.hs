@@ -60,7 +60,7 @@ Where are these environments specified:
 1. The build-depends on `cabal-tests` executable in `cabal-testsuite.cabal`
 2. The build-depends of `test-runtime-deps` executable in `cabal-testsuite.cabal`
    These dependencies are injected in a special module (`Test.Cabal.ScriptEnv0`) which
-   then is consulted in `Test.Cabal.Monad` in order to pass the right environmnet.
+   then is consulted in `Test.Cabal.Monad` in order to pass the right environment.
    This is the mechanism by which the `./Setup` tests have access to the in-tree
    `Cabal`, `Cabal-syntax` and `Cabal-hooks` libraries.
 3. No specification, only the `GlobalPackageDb` is available (see

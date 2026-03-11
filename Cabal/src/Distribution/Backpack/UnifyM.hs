@@ -535,9 +535,7 @@ convertInclude
               <+> vcat (map pretty (v : vs))
           return v
 
-    let req_rename_fn k = case Map.lookup k req_rename of
-          Nothing -> k
-          Just v -> v
+    let req_rename_fn k = Map.findWithDefault k k req_rename
 
     -- Requirement substitution.
     --

@@ -433,12 +433,11 @@ dataDirsEnvironmentForPlan
   -> ElaboratedInstallPlan
   -> [(String, Maybe FilePath)]
 dataDirsEnvironmentForPlan distDirLayout =
-  catMaybes
-    . fmap
-      ( InstallPlan.foldPlanPackage
-          (const Nothing)
-          (dataDirEnvVarForPackage distDirLayout)
-      )
+  mapMaybe
+    ( InstallPlan.foldPlanPackage
+        (const Nothing)
+        (dataDirEnvVarForPackage distDirLayout)
+    )
     . InstallPlan.toList
 
 -- | Construct an environment variable that points
