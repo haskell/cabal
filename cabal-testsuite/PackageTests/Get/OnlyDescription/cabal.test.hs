@@ -8,5 +8,5 @@ main = cabalTest $ withRepo "repo" $ do
   cabal "update" []
   cabal
     "get"
-    [ "-Rtest-local-repo", "criterion", "--only-package-description" ]
+    [ "-R", "test-local-repo", "criterion", "--only-package-description" ]
   void (shell "rm" ["criterion-1.1.4.0.cabal"])

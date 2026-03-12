@@ -1589,7 +1589,7 @@ chooseRepo verbosity ctx mrepo = do
   let repos = repoContextRepos ctx
   let remoteRepositories = filter isRepoRemote repos
   filtered <- case mrepo of
-    Just name -> case find (maybe False ((name ==) . (unRepoName . remoteRepoName)) . maybeRepoRemote) repos of
+    Just name -> case find (\r -> name == (unRepoName . repoName) r) repos of
       Just found -> return [found]
       Nothing ->
         die' verbosity $
