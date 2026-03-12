@@ -55,7 +55,7 @@ import Distribution.Types.LocalBuildInfo (LocalBuildInfo (..))
 import System.Directory
   ( createDirectoryIfMissing
   , doesFileExist
-  , getDirectoryContents
+  , listDirectory
   , removeFile
   )
 
@@ -150,7 +150,7 @@ test args verbHandles pkg_descr lbi0 flags = do
   createDirectoryIfMissing True $ i testLogDir
 
   -- Delete ordinary files from test log directory.
-  getDirectoryContents (i testLogDir)
+  listDirectory (i testLogDir)
     >>= filterM doesFileExist . map (i testLogDir </>)
     >>= traverse_ removeFile
 

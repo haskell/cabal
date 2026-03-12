@@ -270,7 +270,7 @@ getDirectoryContentsMonitored :: FilePath -> Rebuild [FilePath]
 getDirectoryContentsMonitored dir = do
   exists <- monitorDirectoryStatus dir
   if exists
-    then liftIO $ getDirectoryContents dir
+    then liftIO $ listDirectory dir
     else return []
 
 createDirectoryMonitored :: Bool -> FilePath -> Rebuild ()

@@ -565,7 +565,7 @@ probeMonitorStateGlobRel
                  in liftIO $ doesDirectoryExist subdir
             )
             . filter (matchGlobPieces glob)
-            =<< liftIO (getDirectoryContents (root </> dirName))
+            =<< liftIO (listDirectory (root </> dirName))
 
         children' <-
           traverse probeMergeResult $
@@ -651,7 +651,7 @@ probeMonitorStateGlobRel
         -- a matching file may have been added or deleted
         matches <-
           return . filter (matchGlobPieces glob)
-            =<< liftIO (getDirectoryContents (root </> dirName))
+            =<< liftIO (listDirectory (root </> dirName))
 
         traverse_ probeMergeResult $
           mergeBy
@@ -913,7 +913,7 @@ buildMonitorStateGlobRel
   dir
   globPath = do
     let absdir = root </> dir
-    dirEntries <- getDirectoryContents absdir
+    dirEntries <- listDirectory absdir
     dirMTime <- getModTime absdir
     case globPath of
       GlobDirRecursive{} -> error "Monitoring directory-recursive globs (i.e. ../**/...) is currently unsupported"
