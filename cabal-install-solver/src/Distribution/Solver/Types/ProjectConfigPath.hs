@@ -1,10 +1,13 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ViewPatterns #-}
 
 module Distribution.Solver.Types.ProjectConfigPath
     (
     -- * Project Config Path Manipulation
-      ProjectConfigPath(..)
+      ProjectImport(..)
+    , ProjectConfigPath(..)
     , projectConfigPathRoot
     , nullProjectConfigPath
     , consProjectConfigPath
@@ -16,6 +19,7 @@ module Distribution.Solver.Types.ProjectConfigPath
     , docProjectImportedBy
     , docProjectConfigFiles
     , cyclicalImportMsg
+    , duplicateImportMsg
     , untrimmedUriImportMsg
     , docProjectConfigPathFailReason
     , quoteUntrimmed
@@ -47,6 +51,24 @@ import Text.PrettyPrint
 import Distribution.Simple.Utils (ordNub)
 import Distribution.System (OS(Windows), buildOS)
 
+-- | Isomorphic with 'ProjectConfigPath' but with the imported file separate.
+-- Cannot represent the root project, an unimported file.
+data ProjectImport =
+    ProjectImport
+        { importOf :: FilePath
+        , importBy :: ProjectConfigPath
+        }
+    deriving Eq
+
+instance Pretty ProjectImport where
+    pretty ProjectImport{..} = pretty $ consProjectConfigPath importOf importBy
+
+instance Show ProjectImport where show = prettyShow
+
+-- | Sorts the same as 'ProjectConfigPath' does.
+instance Ord ProjectImport where
+    compare = compare `on` (\ProjectImport{..} -> consProjectConfigPath importOf importBy)
+
 -- | Path to a configuration file, either a singleton project root, or a longer
 -- list representing a path to an import.  The path is a non-empty list that we
 -- build up by prepending relative imports with @consProjectConfigPath@.
@@ -59,10 +81,10 @@ import Distribution.System (OS(Windows), buildOS)
 -- List elements are relative to each other but once canonicalized, elements are
 -- relative to the directory of the project root.
 newtype ProjectConfigPath = ProjectConfigPath (NonEmpty FilePath)
-    deriving (Eq, Show, Generic)
+    deriving (Eq, Generic)
 
-instance Pretty ProjectConfigPath where
-  pretty = docProjectConfigPath
+instance Pretty ProjectConfigPath where pretty = docProjectConfigPath
+instance Show ProjectConfigPath where show = prettyShow
 
 -- | Sorts URIs after local file paths and longer file paths after shorter ones
 -- as measured by the number of path segments. If still equal, then sorting is
@@ -79,42 +101,91 @@ instance Pretty ProjectConfigPath where
 -- >>> let abBwd = ProjectConfigPath $ "a\\b.config" :| []
 -- >>> compare abFwd abBwd
 -- EQ
+--
+-- >>> let abc = ProjectConfigPath $ "a/b/c.config" :| []
+-- >>> let yz = ProjectConfigPath $ "y/z.config" :| []
+-- >>> (compare abc yz, let xs = [abc, yz] in xs == sort xs)
+-- (GT,False)
+--
+-- >>> let abc = ProjectConfigPath $ "C.config" :| ["B.config", "A.project"]
+-- >>> let bcd = ProjectConfigPath $ "D.config" :| ["C.config", "B.project"]
+-- >>> (compare abc bcd, let xs = [abc, bcd] in xs == sort xs)
+-- (LT,True)
+--
+-- >>> let abc = ProjectConfigPath $ "C.config" :| ["B.config", "A.project"]
+-- >>> let yz = ProjectConfigPath $ "Z.config" :| ["Y.project"]
+-- >>> (compare abc yz, let xs = [abc, yz] in xs == sort xs)
+-- (GT,False)
 instance Ord ProjectConfigPath where
-    compare pa@(ProjectConfigPath (NE.toList -> as)) pb@(ProjectConfigPath (NE.toList -> bs)) =
+    compare = compareSegmentally
+
+-- | A comparison that puts projects first, URLs last and sorts the other paths
+-- lexically.
+compareLexically :: ProjectConfigPath -> ProjectConfigPath -> Ordering
+compareLexically (ProjectConfigPath as) (ProjectConfigPath bs) =
+        case (as, bs) of
+            -- Single element paths are projects, they should always sort first.
+            (a :| [], b :| []) -> compare (splitPath a) (splitPath b)
+            (_ :| [], _) -> LT
+            (_, _ :| []) -> GT
+
+            (a :| aImporters, b :| bImporters) -> case (parseAbsoluteURI a, parseAbsoluteURI b) of
+                (Just ua, Just ub) -> compare ua ub P.<> compare aImporters bImporters
+                (Just _, Nothing) -> GT
+                (Nothing, Just _) -> LT
+                (Nothing, Nothing) -> compare (splitPath a) (splitPath b) P.<> compare aImporters bImporters
+
+-- | A comparison that puts projects first, URLs last and sorts the other paths
+-- by putting longer paths after shorter ones as measured by the number of path
+-- segments. If still equal, then sorting is lexical.
+compareSegmentally:: ProjectConfigPath -> ProjectConfigPath -> Ordering
+compareSegmentally pa@(ProjectConfigPath as) pb@(ProjectConfigPath bs) =
         case (as, bs) of
             -- There should only ever be one root project path, only one path
             -- with length 1. Comparing it to itself should be EQ. Don't assume
             -- this though, do a comparison anyway when both sides have length
             -- 1.  The root path, the project itself, should always be the first
             -- path in a sorted listing.
-            ([a], [b]) -> compare (splitPath a) (splitPath b)
-            ([_], _) -> LT
-            (_, [_]) -> GT
+            (a :| [], b :| []) ->
+                let aPaths = splitPath a
+                    bPaths = splitPath b
+                in
+                    compare (length aPaths) (length bPaths)
+                    P.<> compare aPaths bPaths
 
-            (a:_, b:_) -> case (parseAbsoluteURI a, parseAbsoluteURI b) of
+            (_ :| [], _) -> LT
+            (_, _ :| []) -> GT
+
+            (a :| _, b :| _) -> case (parseAbsoluteURI a, parseAbsoluteURI b) of
                 (Just ua, Just ub) -> compare ua ub P.<> compare aImporters bImporters
                 (Just _, Nothing) -> GT
                 (Nothing, Just _) -> LT
-                (Nothing, Nothing) -> compare (splitPath a) (splitPath b) P.<> compare aImporters bImporters
-            _ ->
-                compare (length as) (length bs)
-                P.<> compare (length aPaths) (length bPaths)
-                P.<> compare aPaths bPaths
+                (Nothing, Nothing) ->
+                    let aPaths = splitPath a
+                        bPaths = splitPath b
+                    in
+                        compare (length as) (length bs)
+                        P.<> compare (length asPaths) (length bsPaths)
+                        P.<> compare asPaths bsPaths
+                        P.<> compare (length aPaths) (length bPaths)
+                        P.<> compare aPaths bPaths
+                        P.<> compare aImporters bImporters
         where
-            splitPath = FP.splitPath . normSep where
-                normSep p =
-                    if buildOS == Windows
-                        then
-                            Windows.joinPath $ Windows.splitDirectories
-                            [if Posix.isPathSeparator c then Windows.pathSeparator else c| c <- p]
-                        else
-                            Posix.joinPath $ Posix.splitDirectories
-                            [if Windows.isPathSeparator c then Posix.pathSeparator else c| c <- p]
-
-            aPaths = splitPath <$> as
-            bPaths = splitPath <$> bs
+            asPaths = splitPath <$> as
+            bsPaths = splitPath <$> bs
             aImporters = snd $ unconsProjectConfigPath pa
             bImporters = snd $ unconsProjectConfigPath pb
+
+splitPath :: FilePath -> [FilePath]
+splitPath = FP.splitPath . normSep where
+    normSep p =
+        if buildOS == Windows
+            then
+                Windows.joinPath $ Windows.splitDirectories
+                [if Posix.isPathSeparator c then Windows.pathSeparator else c| c <- p]
+            else
+                Posix.joinPath $ Posix.splitDirectories
+                [if Windows.isPathSeparator c then Posix.pathSeparator else c| c <- p]
 
 instance Binary ProjectConfigPath
 instance NFData ProjectConfigPath
@@ -139,7 +210,6 @@ docProjectImportedBy :: ProjectConfigPath -> Doc
 docProjectImportedBy (ProjectConfigPath (_ :| [])) = text ""
 docProjectImportedBy (ProjectConfigPath (_ :| ps)) = vcat $
     [ text " " <+> text "imported by:" <+> quoteUntrimmed l | l <- ps ]
-
 
 -- | If the path has leading or trailing spaces then show it quoted.
 quoteUntrimmed :: FilePath -> Doc
@@ -179,8 +249,31 @@ quoteUntrimmed s = if trim s /= s then quotes (text s) else text s
 --     return . render $ docProjectConfigFiles ps
 -- :}
 -- "- cabal.project\n- project-cabal/constraints.config\n- project-cabal/ghc-latest.config\n- project-cabal/ghc-options.config\n- project-cabal/pkgs.config\n- project-cabal/pkgs/benchmarks.config\n- project-cabal/pkgs/buildinfo.config\n- project-cabal/pkgs/cabal.config\n- project-cabal/pkgs/install.config\n- project-cabal/pkgs/integration-tests.config\n- project-cabal/pkgs/tests.config"
+--
+-- The listing puts projects first, URLs last and sorts the other paths
+-- lexically, dropping any duplicates, like this:
+--
+-- >- cabal.project
+-- >- 0.config
+-- >- 2.config
+-- >- cfg/1.config
+-- >- cfg/3.config
+-- >- with-ghc.config
+-- >- https://www.stackage.org/lts-21.25/cabal.config
+--
+-- >>> let p = ProjectConfigPath $ "cabal.project" :| []
+-- >>> let a = ProjectConfigPath $ "0.config" :| ["cabal.project"]
+-- >>> let b = ProjectConfigPath $ "cfg/1.config" :| ["0.config", "cabal.project"]
+-- >>> let c = ProjectConfigPath $ "with.config" :| ["0.config", "cabal.project"]
+-- >>> let d = ProjectConfigPath $ "2.config" :| ["cfg/1.config", "0.config", "cabal.project"]
+-- >>> let e = ProjectConfigPath $ "cfg/3.config" :| ["2.config", "cfg/1.config", "0.config", "cabal.project"]
+-- >>> let f = ProjectConfigPath $ "https://www.stackage.org/lts-21.25/cabal.config" :| ["2.config", "cfg/1.config", "0.config", "cabal.project"]
+-- >>> let g = ProjectConfigPath $ "https://www.stackage.org/lts-21.25/cabal.config" :| ["cfg/3.config", "2.config", "cfg/1.config", "0.config", "cabal.project"]
+-- >>> let ps = [p, a, b, c, d, e, f, g]
+-- >>> render $ docProjectConfigFiles ps
+-- "- cabal.project\n- 0.config\n- 2.config\n- cfg/1.config\n- cfg/3.config\n- with.config\n- https://www.stackage.org/lts-21.25/cabal.config"
 docProjectConfigFiles :: [ProjectConfigPath] -> Doc
-docProjectConfigFiles ps = vcat
+docProjectConfigFiles (sortBy compareLexically -> ps) = vcat
     [ text "-" <+> text p
     | p <- ordNub [ p | ProjectConfigPath (p :| _) <- ps ]
     ]
@@ -188,9 +281,27 @@ docProjectConfigFiles ps = vcat
 -- | A message for a cyclical import, a "cyclical import of".
 cyclicalImportMsg :: ProjectConfigPath -> Doc
 cyclicalImportMsg path@(ProjectConfigPath (duplicate :| _)) =
+    seenImportMsg
+        (text "cyclical import of" <+> text duplicate <> semi)
+        (ProjectImport duplicate path)
+        []
+
+-- | A message for a duplicate import, a "duplicate import of". If a check for
+-- cyclical imports has already been made then this would report a duplicate
+-- import by two different paths.
+duplicateImportMsg :: Doc -> ProjectImport -> [ProjectImport] -> Doc
+duplicateImportMsg intro = seenImportMsg intro
+
+seenImportMsg :: Doc -> ProjectImport -> [ProjectImport] -> Doc
+seenImportMsg intro ProjectImport{importOf = duplicate, importBy = path} seenImports =
     vcat
-    [ text "cyclical import of" <+> text duplicate <> semi
+    [ intro
     , nest 2 (docProjectConfigPath path)
+    , nest 2 $
+        vcat
+        [ docProjectConfigPath importBy
+        | ProjectImport{importBy} <- filter ((duplicate ==) . importOf) seenImports
+        ]
     ]
 
 -- | A message for an import that has leading or trailing spaces.

@@ -3,6 +3,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -Wno-unused-matches #-}
 
@@ -973,15 +974,21 @@ reportParseResultParsec verbosity fpath contents pr = do
 
 -- | Reads a named extended (with imports and conditionals) config file in the given project root dir, or returns empty.
 parseProjectFileSkeletonLegacy :: Verbosity -> HttpTransport -> DistDirLayout -> String -> String -> FilePath -> IO (OldParser.ProjectParseResult ProjectConfigSkeleton)
-parseProjectFileSkeletonLegacy verbosity httpTransport distDirLayout extensionName extensionDescription extensionFile =
-  parseProject extensionFile (distDownloadSrcDirectory distDirLayout) httpTransport verbosity . ProjectConfigToParse
-    =<< BS.readFile extensionFile
+parseProjectFileSkeletonLegacy verbosity httpTransport distDirLayout extensionName extensionDescription extensionFile = do
+  bs <- BS.readFile extensionFile
+  res <- parseProject extensionFile (distDownloadSrcDirectory distDirLayout) httpTransport verbosity $ ProjectConfigToParse bs
+  case res of
+    x@(OldParser.ProjectParseOk _ skeleton) -> reportDuplicateImports verbosity skeleton >> pure x
+    x@OldParser.ProjectParseFailed{} -> pure x
 
 parseProjectFileSkeletonParsec :: Verbosity -> HttpTransport -> DistDirLayout -> String -> String -> FilePath -> IO (Parsec.ParseResult ProjectFileSource ProjectConfigSkeleton, BS.ByteString)
 parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout extensionName extensionDescription extensionFile = do
   bs <- BS.readFile extensionFile
   res <- Parsec.parseProject extensionFile (distDownloadSrcDirectory distDirLayout) httpTransport verbosity $ ProjectConfigToParse bs
-  return (res, bs)
+  let (_, ppres) = runParseResult res
+  case ppres of
+    x@(Right skeleton) -> reportDuplicateImports verbosity skeleton >> pure (res, bs)
+    x@Left{} -> pure (res, bs)
 
 -- | Render the 'ProjectConfig' format.
 --
