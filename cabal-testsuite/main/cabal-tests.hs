@@ -163,7 +163,7 @@ buildCabalLibsProject projString verb mbGhc dir = do
       ] ) { progInvokeCwd = Just dir })
 
   -- Determine the path to the packagedb in the store for this ghc version
-  storesByGhc <- getDirectoryContents storeRoot
+  storesByGhc <- listDirectory storeRoot
   case filter (prettyShow pv `isInfixOf`) storesByGhc of
     [] -> return [final_package_db]
     storeForGhc:_ -> do
@@ -284,7 +284,7 @@ main = do
             test_scripts <- if null user_paths
                                 then findTests
                                 else return user_paths
-            -- NB: getDirectoryContentsRecursive is lazy IO, but it
+            -- NB: listDirectory is lazy IO, but it
             -- doesn't handle directories disappearing gracefully. Fix
             -- this!
             (single_tests, multi_tests) <- evaluate (partitionTests testPattern test_scripts)

@@ -90,7 +90,7 @@ import System.Directory
   ( canonicalizePath
   , doesDirectoryExist
   , doesFileExist
-  , getDirectoryContents
+  , listDirectory
   , removeFile
   )
 import qualified System.Directory as Directory
@@ -508,12 +508,9 @@ listFilesInside test dir = ifNotM (test $ dropTrailingPathSeparator dir) (pure [
 listFilesRecursive :: FilePath -> IO [FilePath]
 listFilesRecursive = listFilesInside (const $ pure True)
 
--- | From System.Directory.Extra
---   https://hackage.haskell.org/package/extra-1.7.9
 listContents :: FilePath -> IO [FilePath]
-listContents dir = do
-  xs <- getDirectoryContents dir
-  pure $ sort [dir </> x | x <- xs, not $ all (== '.') x]
+listContents dir =
+  map (dir </>) . sort <$> listDirectory dir
 
 -- | From Control.Monad.Extra
 --   https://hackage.haskell.org/package/extra-1.7.9
