@@ -58,7 +58,7 @@ import Distribution.Client.ProjectConfig
   , withGlobalConfig
   , withProjectOrGlobalConfig
   )
-import Distribution.Client.ProjectConfig.Import (ProjectConfigSkeleton)
+import Distribution.Client.ProjectConfig.Import (ProjectConfigSkeleton, reportDuplicateImports)
 import Distribution.Client.ProjectConfig.Legacy
   ( instantiateProjectConfigSkeletonFetchingCompiler
   , parseProject
@@ -91,6 +91,9 @@ import Distribution.Client.Types
 import Distribution.Compiler
   ( CompilerId (..)
   , perCompilerFlavorToList
+  )
+import qualified Distribution.Deprecated.ProjectParseUtils as OldParser
+  ( ProjectParseResult (..)
   )
 import Distribution.FieldGrammar
   ( parseFieldGrammar
@@ -521,9 +524,12 @@ readProjectBlockFromScript :: Verbosity -> HttpTransport -> DistDirLayout -> Str
 readProjectBlockFromScript verbosity httpTransport DistDirLayout{distDownloadSrcDirectory} scriptName str = do
   case extractScriptBlock "project" str of
     Left _ -> return mempty
-    Right x ->
-      reportParseResult verbosity "script" scriptName
-        =<< parseProject scriptName distDownloadSrcDirectory httpTransport verbosity (ProjectConfigToParse x)
+    Right bs -> do
+      res <- parseProject scriptName distDownloadSrcDirectory httpTransport verbosity (ProjectConfigToParse bs)
+      case res of
+        OldParser.ProjectParseOk _ skeleton -> reportDuplicateImports verbosity skeleton
+        OldParser.ProjectParseFailed{} -> pure ()
+      reportParseResult verbosity "script" scriptName res
 
 -- | Extract the first encountered script metadata block started end
 -- terminated by the tokens

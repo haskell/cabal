@@ -1,3 +1,7 @@
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE NoImplicitPrelude #-}
@@ -13,31 +17,39 @@ module Distribution.Client.ProjectConfig.Import
   , docProjectConfigFiles
   , cyclicalImportMsg
   , untrimmedUriImportMsg
+
+    -- * Checks
+  , reportDuplicateImports
   ) where
 
-import Control.Arrow (Kleisli (..), arr, (>>>))
+import Control.Arrow (Kleisli (..), arr, second, (>>>))
 import qualified Data.ByteString.Char8 as BS
 import Data.Coerce (coerce)
+import Data.Function ((&))
+import Data.Functor ((<&>))
+import Data.List ((\\))
+import qualified Data.Map as Map
 import Distribution.Client.Compat.Prelude hiding (empty, (<>))
+import qualified Distribution.Client.Compat.Prelude as Prelude ((<>))
 import Distribution.Client.HttpUtils
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Compat.Lens (view)
 import Distribution.PackageDescription (ConfVar (..))
-import Distribution.Simple.Utils (debug, ordNub)
+import Distribution.Simple.Utils (debug, noticeDoc, ordNub)
 import Distribution.Solver.Types.ProjectConfigPath
 import Distribution.Types.CondTree (CondTree (..), traverseCondTreeA)
 import Distribution.Utils.String (trim)
 import Network.URI (URI (..), parseURI)
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath (isAbsolute, isPathSeparator, makeValid, (</>))
-import Text.PrettyPrint
+import Text.PrettyPrint (Doc, empty, int, nest, semi, text, vcat, (<>))
 
 -- | ProjectConfigSkeleton is a tree of conditional blocks and imports wrapping
 -- a config. It can be finalized by providing the conditional resolution info
 -- and then resolving and downloading the imports
-type ProjectConfigSkeleton = CondTree ConfVar ([ProjectConfigPath], ProjectConfig)
+type ProjectConfigSkeleton = CondTree ConfVar ([(Maybe URI, ProjectConfigPath)], ProjectConfig)
 
-projectSkeletonImports :: ProjectConfigSkeleton -> [ProjectConfigPath]
+projectSkeletonImports :: ProjectConfigSkeleton -> [(Maybe URI, ProjectConfigPath)]
 projectSkeletonImports = fst . view traverseCondTreeA
 
 -- | Fetch a local file import or remote URL import and parse it.
@@ -48,9 +60,9 @@ fetchImport
   -> Verbosity
   -> FilePath
   -> ProjectConfigPath
-  -> IO a
+  -> IO (Maybe URI, a)
 fetchImport parser cacheDir httpTransport verbosity projectDir normLocPath =
-  fetchImportConfig normLocPath >>= runKleisli (arr ProjectConfigToParse >>> Kleisli parser) . snd
+  fetchImportConfig normLocPath >>= runKleisli (second (arr ProjectConfigToParse >>> Kleisli parser))
   where
     fetchImportConfig :: ProjectConfigPath -> IO (Maybe URI, BS.ByteString)
     fetchImportConfig (ProjectConfigPath (pci :| _)) = do
@@ -65,6 +77,51 @@ fetchImport parser cacheDir httpTransport verbosity projectDir normLocPath =
         Nothing ->
           BS.readFile $
             if isAbsolute pci then pci else coerce projectDir </> pci
+
+-- | Not just any file path. The project itself.
+newtype ProjectFilePath = ProjectFilePath FilePath
+  deriving (Eq, Generic)
+
+-- | Isomorphic with 'ProjectConfigPath' but with separate constructors for the
+-- root, imported file and imported URI.
+data ProjectNode a where
+  ProjectRoot :: FilePath -> ProjectNode ProjectFilePath
+  ProjectFileImport :: FilePath -> ProjectConfigPath -> ProjectNode FilePath
+  ProjectUriImport :: URI -> ProjectConfigPath -> ProjectNode URI
+
+instance Eq (ProjectNode a) where
+  (==) a b
+    | ProjectRoot root <- a
+    , ProjectRoot root' <- b =
+        root == root'
+    | ProjectFileImport importOf importBy <- a
+    , ProjectFileImport importOf' importBy' <- b =
+        (==)
+          (consProjectConfigPath importOf importBy)
+          (consProjectConfigPath importOf' importBy')
+    | ProjectUriImport importOf importBy <- a
+    , ProjectUriImport importOf' importBy' <- b =
+        (==)
+          (consProjectConfigPath (show importOf) importBy)
+          (consProjectConfigPath (show importOf') importBy')
+
+instance Pretty (ProjectNode a) where
+  pretty = \case
+    ProjectRoot root -> text root
+    ProjectFileImport importOf importBy -> pretty $ consProjectConfigPath importOf importBy
+    ProjectUriImport importOf importBy -> pretty $ consProjectConfigPath (show importOf) importBy
+
+instance Show (ProjectNode a) where show = prettyShow
+
+-- | Sorts the same as 'ProjectConfigPath' does.
+instance Ord (ProjectNode a) where
+  compare =
+    (compare :: ProjectConfigPath -> ProjectConfigPath -> Ordering)
+      `on` ( \case
+              ProjectRoot root -> ProjectConfigPath $ root :| []
+              ProjectFileImport importOf importBy -> consProjectConfigPath importOf importBy
+              ProjectUriImport importOf importBy -> consProjectConfigPath (show importOf) importBy
+           )
 
 -- | Renders the paths as a list without showing which path imports another,
 -- like this;
@@ -133,10 +190,43 @@ docProjectConfigFiles (sortBy compareLexicographically -> ps) =
 -- | A message for a cyclical import, a "cyclical import of".
 cyclicalImportMsg :: ProjectConfigPath -> Doc
 cyclicalImportMsg path@(ProjectConfigPath (duplicate :| _)) =
+  seenImportMsg
+    (text "cyclical import of" <+> text duplicate <> semi)
+    (ProjectFileImport duplicate path)
+    []
+
+-- | A message for a duplicate import, a "duplicate import of". If a check for
+-- cyclical imports has already been made then this would report a duplicate
+-- import by two different paths.
+duplicateImportMsg :: Doc -> ProjectNode a -> [ProjectNode a] -> Doc
+duplicateImportMsg intro = seenImportMsg intro
+
+seenImportMsg :: Doc -> ProjectNode a -> [ProjectNode a] -> Doc
+seenImportMsg intro projectNode seenImports =
   vcat
-    [ text "cyclical import of" <+> text duplicate <> semi
-    , nest 2 (docProjectConfigPath path)
+    [ intro
+    , maybe empty (nest 2 . docProjectConfigPath) path
+    , nest 2 $
+        vcat
+          [ docProjectConfigPath i
+          | Just i <- importBy <$> filter ((duplicate ==) . importOf) seenImports
+          ]
     ]
+  where
+    duplicate = importOf projectNode
+    path = importBy projectNode
+
+    importOf :: ProjectNode a -> FilePath
+    importOf = \case
+      ProjectRoot dup -> dup
+      ProjectFileImport dup _ -> dup
+      ProjectUriImport dup _ -> show dup
+
+    importBy :: ProjectNode a -> Maybe ProjectConfigPath
+    importBy = \case
+      ProjectRoot _ -> Nothing
+      ProjectFileImport _ by -> Just by
+      ProjectUriImport _ by -> Just by
 
 -- | A message for an import that has leading or trailing spaces.
 untrimmedUriImportMsg :: Doc -> ProjectConfigPath -> Doc
@@ -145,3 +235,69 @@ untrimmedUriImportMsg intro path =
     [ intro <+> text "import has leading or trailing whitespace" <> semi
     , nest 2 (docProjectConfigPath path)
     ]
+
+-- | Detect and report any duplicate imports, including those missed when parsing.
+--
+-- Parsing catches cyclical imports and some but not all duplicate imports. In
+-- particular, it doesn't catch when the same project configuration is imported
+-- via different import paths.
+reportDuplicateImports :: Verbosity -> ProjectConfigSkeleton -> IO ()
+reportDuplicateImports verbosity skeleton = do
+  let (dupeRoots, dupeFiles, dupeUris) = detectDupes $ projectSkeletonImports skeleton
+  unless (Map.null dupeRoots) (noticeDoc verbosity $ vcat (dupesMsg <$> Map.toList dupeRoots))
+  unless (Map.null dupeFiles) (noticeDoc verbosity $ vcat (dupesMsg <$> Map.toList dupeFiles))
+  unless (Map.null dupeUris) (noticeDoc verbosity $ vcat (dupesMsg <$> Map.toList dupeUris))
+
+toDupes :: Ord k => [(k, [ProjectNode a])] -> Map k [Dupes a]
+toDupes xs =
+  xs
+    & Map.fromListWith (Prelude.<>)
+    & Map.filter ((> 1) . length)
+    <&> \ys -> [Dupes v ys | v <- ys]
+
+detectDupes :: [(Maybe URI, ProjectConfigPath)] -> (DupesMap ProjectFilePath, DupesMap FilePath, DupesMap URI)
+detectDupes xs = (toDupes roots, toDupes files, toDupes uris)
+  where
+    (<$$>) = fmap . fmap
+    roots =
+      [ (h, [ProjectRoot h])
+      | (Nothing, (h, Nothing)) <- unconsProjectConfigPath <$$> xs
+      ]
+    files =
+      [ (h, [ProjectFileImport h (consProjectConfigPath h t)])
+      | (Nothing, (h, Just t)) <- unconsProjectConfigPath <$$> xs
+      ]
+    uris =
+      [ (f, [ProjectUriImport u (consProjectConfigPath f t)])
+      | (Just u, (f, Just t)) <- unconsProjectConfigPath <$$> xs
+      , show u == f
+      ]
+
+data Dupes a = Dupes
+  { dupesImport :: ProjectNode a
+  -- ^ The import that we're checking for duplicates.
+  , dupesImports :: [ProjectNode a]
+  -- ^ All the imports of this file.
+  }
+  deriving (Eq)
+
+instance Ord (Dupes a) where
+  compare x y =
+    (compare `on` length . dupesImports) x y
+      `thenCmp` (compare `on` sort . dupesImports) x y
+      `thenCmp` (compare `on` dupesImport) x y
+    where
+      thenCmp :: Ordering -> Ordering -> Ordering
+      thenCmp EQ o2 = o2
+      thenCmp o1 _ = o1
+
+type DupesMap a = Map FilePath [Dupes a]
+
+dupesMsg :: (FilePath, [Dupes a]) -> Doc
+dupesMsg (duplicate, ds@(take 1 . sort -> dupes)) =
+  vcat $
+    ((text "Warning:" <+> int (length ds) <+> text "imports of" <+> text duplicate) <> semi)
+      : ((\Dupes{..} -> duplicateImportMsg empty dupesImport (sort $ dupesImports \\ [dupesImport])) <$> dupes)
+
+-- $setup
+-- >>> import Text.PrettyPrint (render)
