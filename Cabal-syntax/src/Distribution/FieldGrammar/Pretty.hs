@@ -76,7 +76,6 @@ instance FieldGrammar ExactPretty PrettyFieldGrammar where
 
   blurFieldGrammar f (PrettyFG pp) = PrettyFG (\v t -> pp v t . aview f)
 
-  -- TODO(leana8959): use the trivia in the methods implemented here
   uniqueFieldAla fn _pack l = PrettyFG $ \_v t0 s ->
     let t = unmarkTriviaTree fn t0
         x = pack' _pack (aview l s)
@@ -120,8 +119,7 @@ instance FieldGrammar ExactPretty PrettyFieldGrammar where
   freeTextField fn l = PrettyFG $ \v t0 s ->
     let mx = aview l s
         t = unmarkTriviaTree fn t0
-        fieldPositionOr0 = fromMaybe (Position 0 0) . atFieldPosition . justAnnotation
-        fieldNamePos = fieldPositionOr0 t
+        fieldNamePos = atFieldPositionOr0 (justAnnotation t)
         showFT
             | v >= CabalSpecV3_0 = showFreeTextV3
             | otherwise = showFreeText
@@ -136,8 +134,7 @@ instance FieldGrammar ExactPretty PrettyFieldGrammar where
     let x = aview l s
         t = unmarkTriviaTree fn t0
         tChildren = unmarkTriviaTree x t
-        fieldPositionOr0 = fromMaybe (Position 0 0) . atFieldPosition . justAnnotation
-        fieldNamePos = fieldPositionOr0 t
+        fieldNamePos = atFieldPositionOr0 (justAnnotation t)
         showFT
           | v >= CabalSpecV3_0 = showFreeTextV3
           | otherwise = showFreeText
@@ -147,8 +144,7 @@ instance FieldGrammar ExactPretty PrettyFieldGrammar where
     let x = aview l s
         t = unmarkTriviaTree fn t0
         tChildren = unmarkTriviaTree x t
-        fieldPositionOr0 = fromMaybe (Position 0 0) . atFieldPosition . justAnnotation
-        fieldNamePos = fieldPositionOr0 t
+        fieldNamePos = atFieldPositionOr0 (justAnnotation t)
         showFT
           | v >= CabalSpecV3_0 = showFreeTextV3
           | otherwise = showFreeText
@@ -161,18 +157,16 @@ instance FieldGrammar ExactPretty PrettyFieldGrammar where
 
         _ -> ppTriviaField (fn, [ExactFieldPosition fieldNamePos]) [DocAnn (showFT $ ST.fromShortText x) tChildren]
 
-
   monoidalFieldAla fn _pack l = PrettyFG pp
     where
       pp v t s =
         let t' = unmarkTriviaTree fn t
-            fieldPositionOr0 = fromMaybe (Position 0 0) . atFieldPosition . justAnnotation
          in concatMap
               ( \groupedDocAnn ->
-                  let fieldNamePos = fieldPositionOr0 $ mconcat $ map docAnn groupedDocAnn
+                  let fieldNamePos = atFieldPositionOr0 . justAnnotation $ mconcat $ map docAnn groupedDocAnn
                    in ppTriviaField (fn, [ExactFieldPosition fieldNamePos]) groupedDocAnn
               )
-              $ groupBy ((==) `on` (fieldPositionOr0 . docAnn))
+              $ groupBy ((==) `on` (atFieldPositionOr0 . justAnnotation . docAnn))
               $ exactPrettyVersioned v t' (pack' _pack (aview l s))
 
   prefixedFields _fnPfx l = PrettyFG (\_ t -> map noTrivia . pp . aview l)
@@ -213,3 +207,6 @@ filterEmptyFieldLine = filter (/= mempty)
 
 ppTriviaFieldLine :: DocAnn TriviaTree -> PrettyFieldLine Trivia
 ppTriviaFieldLine (DocAnn doc trivia) = PrettyFieldLine (justAnnotation trivia) doc
+
+atFieldPositionOr0 :: Trivia -> Position
+atFieldPositionOr0 = fromMaybe (Position 0 0) . atFieldPosition
