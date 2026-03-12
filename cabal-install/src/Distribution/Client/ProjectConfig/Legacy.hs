@@ -11,26 +11,33 @@
 
 -- | Project configuration, implementation in terms of legacy types.
 module Distribution.Client.ProjectConfig.Legacy
-  ( -- Project config skeletons
+  ( -- * Skeletons
     ProjectConfigSkeleton
-  , parseProject
   , instantiateProjectConfigSkeletonFetchingCompiler
   , instantiateProjectConfigSkeletonWithCompiler
   , singletonProjectConfigSkeleton
   , projectSkeletonImports
 
-    -- * Project config in terms of legacy types
-  , LegacyProjectConfig
+    -- * Parsing
+  , parseProject
   , parseLegacyProjectConfig
+
+    -- ** Duplicate Imports
+  , reportDuplicateImports
+
+    -- * Legacy Configuration
+  , LegacyProjectConfig
   , showLegacyProjectConfig
 
-    -- * Conversion to and from legacy config types
+    -- * Conversions
   , commandLineFlagsToProjectConfig
   , convertLegacyProjectConfig
   , convertLegacyGlobalConfig
   , convertToLegacyProjectConfig
 
-    -- * Internals, just for tests
+    -- * Internals
+
+    -- | These functions are exposed just for tests.
   , parsePackageLocationTokenQ
   , renderPackageLocationToken
   ) where
@@ -135,6 +142,7 @@ import Distribution.Simple.Utils
   , lowercase
   , noticeDoc
   )
+
 import Distribution.Types.CondTree
   ( CondBranch (..)
   , CondTree (..)
@@ -198,18 +206,61 @@ import Distribution.Utils.Path hiding
   )
 
 import qualified Data.ByteString.Char8 as BS
+import Data.Function ((&))
 import Data.Functor ((<&>))
+import Data.List ((\\))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Network.URI (URI (..), nullURIAuth, parseURI)
 import System.Directory (createDirectoryIfMissing, makeAbsolute)
 import System.FilePath (isAbsolute, isPathSeparator, makeValid, splitFileName, (</>))
-import Text.PrettyPrint
-  ( Doc
-  , render
-  , ($+$)
-  )
-import qualified Text.PrettyPrint as Disp
+import Text.PrettyPrint (Doc, int, render, semi, text, vcat, ($+$))
+import qualified Text.PrettyPrint as Disp (empty, render, text)
+
+-- | Detect and report any duplicate imports, including those missed when parsing.
+--
+-- Parsing catches cyclical imports and some but not all duplicate imports. In
+-- particular, it doesn't catch when the same project configuration is imported
+-- via different import paths.
+reportDuplicateImports :: Verbosity -> ProjectConfigSkeleton -> IO ()
+reportDuplicateImports verbosity skeleton = do
+  let dupes = detectDupes $ projectSkeletonImports skeleton
+  unless (Map.null dupes) (noticeDoc verbosity $ vcat (dupesMsg <$> Map.toList dupes))
+
+detectDupes :: [ProjectConfigPath] -> DupesMap
+detectDupes xs =
+  [ (h, [ProjectImport h (consProjectConfigPath h t)])
+  | (h, Just t) <- unconsProjectConfigPath <$> sort xs
+  ]
+    & Map.fromListWith (<>)
+    & Map.filter ((> 1) . length)
+    <&> \zs -> [Dupes v zs | v <- zs]
+
+data Dupes = Dupes
+  { dupesImport :: ProjectImport
+  -- ^ The import that we're checking for duplicates.
+  , dupesImports :: [ProjectImport]
+  -- ^ All the imports of this file.
+  }
+  deriving (Eq)
+
+instance Ord Dupes where
+  compare x y =
+    (compare `on` length . dupesImports) x y
+      `thenCmp` (compare `on` sort . dupesImports) x y
+      `thenCmp` (compare `on` dupesImport) x y
+    where
+      thenCmp :: Ordering -> Ordering -> Ordering
+      thenCmp EQ o2 = o2
+      thenCmp o1 _ = o1
+
+type DupesMap = Map FilePath [Dupes]
+
+dupesMsg :: (FilePath, [Dupes]) -> Doc
+dupesMsg (duplicate, ds@(take 1 . sort -> dupes)) =
+  vcat $
+    ((text "Warning:" <+> int (length ds) <+> text "imports of" <+> text duplicate) <> semi)
+      : ((\Dupes{..} -> duplicateImportMsg Disp.empty dupesImport (sort $ dupesImports \\ [dupesImport])) <$> dupes)
 
 ------------------------------------------------------------------
 -- Handle extended project config files with conditionals and imports.
@@ -261,8 +312,10 @@ parseProject rootPath cacheDir httpTransport verbosity configToParse =
     projectDir <- makeAbsolute dir
     projectPath <- canonicalizeConfigPath projectDir (ProjectConfigPath $ projectFileName :| [])
     parseProjectSkeleton cacheDir httpTransport verbosity projectDir projectPath configToParse
-    -- NOTE: Reverse the warnings so they are in line number order.
-    <&> \case ProjectParseOk ws x -> ProjectParseOk (reverse ws) x; x -> x
+    <&> \case
+      -- NOTE: Reverse the warnings so they are in line number order.
+      ProjectParseOk ws skeleton -> ProjectParseOk (reverse ws) skeleton
+      x@ProjectParseFailed{} -> x
 
 parseProjectSkeleton
   :: FilePath

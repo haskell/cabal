@@ -16,6 +16,7 @@ extend-exclude = [
     ".hlint.yaml",
     "Cabal-tests/tests/ParserTests/errors/common1.cabal", # import: windo doesn't exist
     "Cabal-tests/tests/ParserTests/errors/common1.errors",
+    "cabal-testsuite/PackageTests/ProjectImport/UniquePathDuplicates/www-stackage-org/lts-21.25.config",
 ]
 
 [default]
