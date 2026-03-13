@@ -814,12 +814,12 @@ sanityCheckHookedBuildInfo
   (Just _, _) =
     dieWithException verbosity NoLibraryForPackage
 sanityCheckHookedBuildInfo verbosity pkg_descr (_, hookExes)
-  | exe1 : _ <- nonExistant =
+  | exe1 : _ <- nonExistent =
       dieWithException verbosity $ SanityCheckHookedBuildInfo exe1
   where
     pkgExeNames = nub (map exeName (executables pkg_descr))
     hookExeNames = nub (map fst hookExes)
-    nonExistant = hookExeNames \\ pkgExeNames
+    nonExistent = hookExeNames \\ pkgExeNames
 sanityCheckHookedBuildInfo _ _ _ = return ()
 
 -- | Try to read the 'localBuildInfoFile'

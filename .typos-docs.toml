@@ -1,6 +1,7 @@
 [files]
 extend-exclude = [
     "changelog.d/pr-11501.md",
+    "changelog.d/pr-11602.md",
 ]
 
 [default]
