@@ -1095,7 +1095,7 @@ data BadPackageLocation
 
 data BadPackageLocationMatch
   = BadLocUnexpectedFile String
-  | BadLocNonexistantFile String
+  | BadLocNonexistentFile String
   | BadLocDirNoCabalFile String
   | BadLocDirManyCabalFiles String
   deriving (Show)
@@ -1188,7 +1188,7 @@ renderBadPackageLocationMatch bplm = case bplm of
       ++ "' is not recognised. The "
       ++ "supported file targets are .cabal files, .tar.gz tarballs or package "
       ++ "directories (i.e. directories containing a .cabal file)."
-  BadLocNonexistantFile pkglocstr ->
+  BadLocNonexistentFile pkglocstr ->
     "The package location '" ++ pkglocstr ++ "' does not exist."
   BadLocDirNoCabalFile pkglocstr ->
     "The package directory '"
@@ -1289,7 +1289,7 @@ findProjectPackages
                     return
                       ( Left
                           ( BadPackageLocationFile
-                              (BadLocNonexistantFile pkglocstr)
+                              (BadLocNonexistentFile pkglocstr)
                           )
                       )
               [] -> return (Left (BadLocGlobEmptyMatch pkglocstr))
@@ -1356,7 +1356,7 @@ findProjectPackages
             | isFile ->
                 return (Left (BadLocUnexpectedFile pkglocstr))
             | parentDirExists ->
-                return (Left (BadLocNonexistantFile pkglocstr))
+                return (Left (BadLocNonexistentFile pkglocstr))
             | otherwise ->
                 return (Left (BadLocUnexpectedFile pkglocstr))
 

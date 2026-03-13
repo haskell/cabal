@@ -173,7 +173,7 @@ readUserTargets verbosity targetStrs = do
 
 data UserTargetProblem
   = UserTargetUnexpectedFile String
-  | UserTargetNonexistantFile String
+  | UserTargetNonexistentFile String
   | UserTargetUnexpectedUriScheme String
   | UserTargetUnrecognisedUri String
   | UserTargetUnrecognised String
@@ -210,7 +210,7 @@ readUserTarget targetstr =
             | isFile =
                 Just (Left (UserTargetUnexpectedFile filename))
             | parentDirExists =
-                Just (Left (UserTargetNonexistantFile filename))
+                Just (Left (UserTargetNonexistentFile filename))
             | otherwise =
                 Nothing
       return result
@@ -242,10 +242,10 @@ reportUserTargetProblems verbosity problems = do
     [] -> return ()
     target ->
       dieWithException verbosity $ ReportUserTargetProblems target
-  case [target | UserTargetNonexistantFile target <- problems] of
+  case [target | UserTargetNonexistentFile target <- problems] of
     [] -> return ()
     target ->
-      dieWithException verbosity $ ReportUserTargetNonexistantFile target
+      dieWithException verbosity $ ReportUserTargetNonexistentFile target
 
   case [target | UserTargetUnexpectedFile target <- problems] of
     [] -> return ()
