@@ -85,7 +85,7 @@ renderProjectConfigParseError (ProjectConfigParseError errors warnings) =
   renderParseError displayProjectFileSource errors warnings
   where
     displayProjectFileSource (ProjectFileSource (path, contents)) =
-      renderParseErrorFile "project" (currentProjectConfigPath path) (if isTopLevelConfigPath path then Nothing else Just $ render (docProjectImportedBy path)) contents
+      renderParseErrorFile "project" (prettyShow $ currentProjectConfigPath path) (if isTopLevelConfigPath path then Nothing else Just $ render (docProjectImportedBy path)) contents
 
 data ProjectFileSource = ProjectFileSource (ProjectConfigPath, BS8.ByteString) deriving (Show, Generic)
 
@@ -97,7 +97,7 @@ instance Ord ProjectFileSource where
 
 renderProjectFileSource :: ProjectFileSource -> String
 renderProjectFileSource (ProjectFileSource (path, _contents)) =
-  currentProjectConfigPath path
+  prettyShow $ currentProjectConfigPath path
 
 renderParseErrorCabalFile :: NonEmpty (PErrorWithSource CabalFileSource) -> [PWarningWithSource CabalFileSource] -> String
 renderParseErrorCabalFile errors warnings =

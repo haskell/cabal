@@ -59,7 +59,6 @@ module Distribution.Client.ProjectConfig
   , fetchAndReadSourcePackages
 
     -- * Resolving configuration
-  , lookupLocalPackageConfig
   , projectConfigWithBuilderRepoContext
   , projectConfigWithSolverRepoContext
   , SolverSettings (..)
@@ -77,6 +76,7 @@ module Distribution.Client.ProjectConfig
   ) where
 
 import Data.Bifunctor (second)
+import Data.Either (rights)
 import Distribution.Client.Compat.Prelude hiding (empty)
 import Distribution.Parsec.Source
 import Distribution.Simple.Utils
@@ -261,28 +261,6 @@ import Distribution.Solver.Types.ProjectConfigPath
 ----------------------------------------
 -- Resolving configuration to settings
 --
-
--- | Look up a 'PackageConfig' field in the 'ProjectConfig' for a specific
--- 'PackageName'. This returns the configuration that applies to all local
--- packages plus any package-specific configuration for this package.
-lookupLocalPackageConfig
-  :: (Semigroup a, Monoid a)
-  => (PackageConfig -> a)
-  -> ProjectConfig
-  -> PackageName
-  -> a
-lookupLocalPackageConfig
-  field
-  ProjectConfig
-    { projectConfigLocalPackages
-    , projectConfigSpecificPackage
-    }
-  pkgname =
-    field projectConfigLocalPackages
-      <> maybe
-        mempty
-        field
-        (Map.lookup pkgname (getMapMappend projectConfigSpecificPackage))
 
 -- | Use a 'RepoContext' based on the 'BuildTimeSettings'.
 projectConfigWithBuilderRepoContext
@@ -853,14 +831,34 @@ readProjectFileSkeletonGen
       exists <- liftIO $ doesFileExist extensionFile
       if exists
         then do
+          -- Monitor the "main" project file (this could be e.g. 'cabal.project', 'cabal.project.freeze' or
+          -- 'cabal.project.local'.
           monitorFiles [monitorFileHashed extensionFile]
           pcs <- liftIO $ parseConfig extensionFile
-          monitorFiles $ map monitorFileHashed (projectConfigPathRoot <$> projectSkeletonImports pcs)
+
+          -- We also need to monitor all the (possibly recursive) imports.
+          -- 'projectSkeletonImports' is a path per imported project file that starts with the leaf
+          -- and ends with the main project file that is the root. E.g. if 'cabal.project' imports
+          -- 'cabal.project.foo', which imports 'cabal.project.bar', then we get two paths:
+          --
+          -- > ("cabal.project.bar" :| ["cabal.project.foo", "cabal.project"])
+          -- > ("cabal.project.foo" :| ["cabal.project"])
+          --
+          -- Consequently, we just take the heads of all the paths.
+          monitorFiles $
+            map
+              (monitorFileHashed . makeAbsolute)
+              (rights . fmap (leafToEither . currentProjectConfigPath) . projectSkeletonImports $ pcs)
+
           return pcs
         else do
           monitorFiles [monitorNonExistentFile extensionFile]
           return mempty
     where
+      -- do we prefer absolute paths for cache monitoring?
+      makeAbsolute f
+        | isAbsolute f = f
+        | otherwise = distProjectRootDirectory dir </> f
       extensionFile = (distProjectFile dir) extensionName
 
 -- There are 3 different variants of the project parsing function.
@@ -1017,7 +1015,7 @@ readGlobalConfig verbosity configFileFlag = do
 reportProjectParseWarningsLegacy :: Verbosity -> FilePath -> [ProjectParseWarning] -> IO ()
 reportProjectParseWarningsLegacy verbosity projectFile warnings =
   let msgs =
-        [ OldParser.showPWarning pFilename w
+        [ OldParser.showPWarning (prettyShow pFilename) w
         | (p, w) <- warnings
         , let pFilename = fst $ unconsProjectConfigPath p
         ]
@@ -1043,7 +1041,7 @@ reportParseResult verbosity filetype projectFile (OldParser.ProjectParseFailed (
         maybe
           (projectFile, empty)
           ( \p ->
-              ( currentProjectConfigPath p
+              ( prettyShow $ currentProjectConfigPath p
               , if isTopLevelConfigPath p then empty else docProjectConfigPath p
               )
           )

@@ -15,7 +15,6 @@ import Control.Monad
 import Data.Either (isRight)
 import Data.Foldable (for_)
 import Data.List (intercalate, isPrefixOf, (\\))
-import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
@@ -698,7 +697,7 @@ instance Arbitrary ProjectFileParser where
   arbitrary = elements [ParsecParser, LegacyParser, FallbackParser, CompareParser]
 
 instance Arbitrary ProjectConfigProvenance where
-  arbitrary = elements [Implicit, Explicit (ProjectConfigPath $ "cabal.project" :| [])]
+  arbitrary = elements [Implicit, Explicit (PCPWithoutImports "cabal.project")]
 
 instance Arbitrary PackageConfig where
   arbitrary =
