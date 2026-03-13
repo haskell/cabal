@@ -1,9 +1,16 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Distribution.Types.BuildInfo
-  ( BuildInfo (..)
+  ( BuildInfo
+  , BuildInfoAnn
+  , BuildInfoWith (..)
+  , unannotateDependencyAnn
   , emptyBuildInfo
   , allLanguages
   , allExtensions
@@ -30,8 +37,15 @@ import Distribution.Compiler
 import Distribution.ModuleName
 import Language.Haskell.Extension
 
+import Data.Kind
+
+import qualified Distribution.Types.Modify as Mod
+
+type BuildInfo = BuildInfoWith Mod.HasNoAnn
+type BuildInfoAnn = BuildInfoWith Mod.HasAnn
+
 -- Consider refactoring into executable and library versions.
-data BuildInfo = BuildInfo
+data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
   { buildable :: Bool
   -- ^ component is buildable here
   , buildTools :: [LegacyExeDependency]
@@ -142,15 +156,27 @@ data BuildInfo = BuildInfo
   -- ^ Custom fields starting
   --  with x-, stored in a
   --  simple assoc-list.
-  , targetBuildDepends :: [Dependency]
+  , targetBuildDepends :: [DependencyWith m]
   -- ^ Dependencies specific to a library or executable target
   , mixins :: [Mixin]
   }
-  deriving (Generic, Show, Read, Eq, Ord, Data)
+  deriving (Generic)
+
+deriving instance Show BuildInfo
+deriving instance Read BuildInfo
+deriving instance Eq BuildInfo
+deriving instance Ord BuildInfo
+deriving instance Data BuildInfo
 
 instance Binary BuildInfo
 instance Structured BuildInfo
 instance NFData BuildInfo where rnf = genericRnf
+
+unannotateBuildInfo :: BuildInfoAnn -> BuildInfo
+unannotateBuildInfo bi =
+  bi
+    { targetBuildDepends = map unannotateDependencyAnn (targetBuildDepends bi)
+    }
 
 instance Monoid BuildInfo where
   mempty =
@@ -259,6 +285,7 @@ instance Semigroup BuildInfo where
       , mixins = combine mixins
       }
     where
+      combine :: Monoid a => (BuildInfo -> a) -> a
       combine field = field a `mappend` field b
       combineNub field = nub (combine field)
       combineMby field = field b `mplus` field a

@@ -1,11 +1,19 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module Distribution.Types.CondTree
-  ( CondTree (..)
-  , CondBranch (..)
+  ( CondTree
+  , CondTreeWith (..)
+  , CondBranch
+  , CondBranchWith (..)
   , condIfThen
   , condIfThenElse
   , foldCondTree
@@ -25,9 +33,18 @@ module Distribution.Types.CondTree
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Distribution.Trivia
 import Distribution.Types.Condition
 
+import Control.Exception
+import Data.Kind
+
 import qualified Distribution.Compat.Lens as L
+
+type family Modify (f :: Type -> Type) (a :: Type) where
+  Modify Identity a = a
+  Modify Ann a = ([String], a)
+  Modify _ a = TypeError
 
 -- | A 'CondTree' is used to represent the conditional structure of
 -- a Cabal file, reflecting a syntax element subject to constraints,
@@ -53,11 +70,26 @@ import qualified Distribution.Compat.Lens as L
 -- derived off of 'targetBuildInfo' (perhaps a good refactoring
 -- would be to convert this into an opaque type, with a smart
 -- constructor that pre-computes the dependencies.)
-data CondTree v a = CondNode
-  { condTreeData :: a
+type CondTree = CondTreeWith Identity
+
+data CondTreeWith f v a = CondNode
+  { condTreeData :: Modify f a
   , condTreeComponents :: [CondBranch v a]
   }
-  deriving (Show, Eq, Data, Generic, Functor, Foldable, Traversable)
+
+deriving instance (Show v, Show a) => Show (CondTree v a)
+deriving instance (Eq v, Eq a) => Eq (CondTree v a)
+deriving instance (Data v, Data a) => Data (CondTree v a)
+deriving instance Generic (CondTree v a)
+
+instance Functor (CondTree v) where
+  fmap f (CondNode x bs) = CondNode (f x) ((fmap . fmap) f bs)
+
+instance Foldable (CondTree v) where
+  foldMap f (CondNode x bs) = f x <> (foldMap . foldMap) f bs
+
+instance Traversable (CondTree v) where
+  traverse f (CondNode x bs) = CondNode <$> f x <*> (traverse . traverse) f bs
 
 instance (Binary v, Binary a) => Binary (CondTree v a)
 instance (Structured v, Structured a) => Structured (CondTree v a)
@@ -73,12 +105,21 @@ instance (Semigroup a, Monoid a) => Monoid (CondTree v a) where
 -- | A 'CondBranch' represents a conditional branch, e.g., @if
 -- flag(foo)@ on some syntax @a@.  It also has an optional false
 -- branch.
-data CondBranch v a = CondBranch
+type CondBranch = CondBranchWith Identity
+
+data CondBranchWith (f :: Type -> Type) v a = CondBranch
   { condBranchCondition :: Condition v
-  , condBranchIfTrue :: CondTree v a
-  , condBranchIfFalse :: Maybe (CondTree v a)
+  , condBranchIfTrue :: CondTreeWith f v a
+  , condBranchIfFalse :: Maybe (CondTreeWith f v a)
   }
-  deriving (Show, Eq, Data, Generic, Functor, Traversable, Foldable)
+  deriving (Generic)
+
+deriving instance (Show v, Show a) => Show (CondBranch v a)
+deriving instance (Eq v, Eq a) => Eq (CondBranch v a)
+deriving instance (Data v, Data a) => Data (CondBranch v a)
+deriving instance Functor (CondBranch v)
+deriving instance Foldable (CondBranch v)
+deriving instance Traversable (CondBranch v)
 
 instance (Binary v, Binary a) => Binary (CondBranch v a)
 instance (Structured v, Structured a) => Structured (CondBranch v a)

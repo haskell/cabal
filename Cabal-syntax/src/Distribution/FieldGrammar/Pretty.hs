@@ -20,6 +20,7 @@ import Prelude ()
 
 import Distribution.FieldGrammar.Class
 
+-- TODO(leana8959): maybe we can compare this to [Field Position] and thus form a roundtrip test.
 newtype PrettyFieldGrammar s a = PrettyFG
   { fieldGrammarPretty :: CabalSpecVersion -> s -> [PrettyField ()]
   }

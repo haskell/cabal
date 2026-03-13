@@ -1,3 +1,7 @@
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+
+
 {-# LANGUAGE NamedFieldPuns #-}
 {-# OPTIONS_GHC -freduction-depth=0 #-}
 {-# OPTIONS_GHC -Wno-orphans #-}

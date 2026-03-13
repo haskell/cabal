@@ -70,7 +70,8 @@ import Distribution.ModuleName
 import Distribution.PackageDescription
   ( Benchmark (..)
   , BenchmarkInterface (..)
-  , BuildInfo (..)
+  , BuildInfo
+  , BuildInfoWith (..)
   , Executable (..)
   , PackageDescription
   , TestSuite (..)
