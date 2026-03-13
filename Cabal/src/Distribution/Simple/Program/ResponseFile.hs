@@ -1,7 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TypeApplications #-}
 
 ----------------------------------------------------------------------------
 
@@ -41,8 +40,7 @@ withResponseFile verbosity tmpFileOpts fileNameTemplate encoding arguments f =
     traverse_ (hSetEncoding hf) encoding
     let responseContents =
           unlines $
-            map escapeResponseFileArg $
-              arguments
+            map escapeResponseFileArg arguments
     hPutStr hf responseContents
     hClose hf
     debug verbosity $ responseFileName ++ " contents: <<<"

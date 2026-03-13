@@ -4,7 +4,7 @@ import Distribution.TestSuite
 import Child
 
 tests :: IO [Test]
-tests = return $ [Test $ TestInstance
+tests = return [Test $ TestInstance
           { run = return (Finished Pass)
           , name = "test"
           , tags = []

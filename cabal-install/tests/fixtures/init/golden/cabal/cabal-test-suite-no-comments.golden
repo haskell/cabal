@@ -11,14 +11,25 @@ maintainer:         foo-kmett@kmett.kmett
 -- copyright:
 category:           Data
 build-type:         Simple
-extra-doc-files:    CHANGELOG.md
+extra-doc-files:
+    CHANGELOG.md
+    README.md
+
 -- extra-source-files:
 
-common warnings
-    ghc-options: -Wall
+common extensions
+    default-language: GHC2021
+
+common ghc-options
+    ghc-options: -Wall -Widentities
+
+common rts-options
+    ghc-options: -rtsopts -threaded "-with-rtsopts=-N"
 
 test-suite y-test
-    import:           warnings
+    import:           extensions
+    import:           ghc-options
+    import:           rts-options
     default-language: Haskell2010
     -- other-modules:
     -- other-extensions:

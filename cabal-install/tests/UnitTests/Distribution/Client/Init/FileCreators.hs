@@ -36,7 +36,7 @@ tests _v _initFlags comp pkgIx srcDb =
                 , minimal = Flag False
                 , overwrite = Flag False
                 , packageDir = Flag "/home/test/test-package"
-                , extraDoc = Flag ["CHANGELOG.md"]
+                , extraDoc = Flag ["CHANGELOG.md", "README.md"]
                 , exposedModules = Flag []
                 , otherModules = Flag []
                 , otherExts = Flag []
@@ -82,7 +82,7 @@ tests _v _initFlags comp pkgIx srcDb =
               ]
 
         case flip runPrompt inputs $ do
-          projSettings <- createProject comp silent pkgIx srcDb dummyFlags'
+          projSettings <- createProject comp (mkVerbosity defaultVerbosityHandles silent) pkgIx srcDb dummyFlags'
           writeProject projSettings of
           Left (BreakException ex) -> assertFailure $ show ex
           Right _ -> return ()

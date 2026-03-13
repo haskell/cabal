@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TupleSections #-}
 
 -- | Fine-grained package dependencies
 --
@@ -119,7 +120,7 @@ componentNameToComponent (CN.CBenchName               s)  = ComponentBench  s
 -------------------------------------------------------------------------------}
 
 empty :: ComponentDeps a
-empty = ComponentDeps $ Map.empty
+empty = ComponentDeps Map.empty
 
 fromList :: Monoid a => [ComponentDep a] -> ComponentDeps a
 fromList = ComponentDeps . Map.fromListWith mappend
@@ -142,8 +143,8 @@ zip (ComponentDeps d1) (ComponentDeps d2) =
     ComponentDeps $
       Map.mergeWithKey
         (\_ a b -> Just (a,b))
-        (fmap (\a -> (a, mempty)))
-        (fmap (\b -> (mempty, b)))
+        (fmap (, mempty))
+        (fmap (mempty, ))
         d1 d2
 
 -- | Keep only selected components (and their associated deps info).

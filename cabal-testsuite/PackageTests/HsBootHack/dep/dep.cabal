@@ -1,0 +1,15 @@
+cabal-version: 3.0
+name:          dep
+version:       0.1.0.0
+license:       BSD-3-Clause
+author:        sheaf
+maintainer:    sheaf
+category:      Testing
+build-type:    Simple
+description:   Testing the preprocessor hs-boot hack
+
+library
+  hs-source-dirs:   src
+  exposed-modules:  DepA, DepB, DepC
+  build-depends:    base
+  default-language: Haskell2010

@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TupleSections #-}
 
 -----------------------------------------------------------------------------
 
@@ -55,7 +56,7 @@ import Distribution.Deprecated.ParseUtils
 import Distribution.Simple.InstallDirs (InstallDirs (..), PathTemplate)
 import Distribution.Simple.Setup
   ( ConfigFlags (..)
-  , Flag (..)
+  , Flag
   , HaddockFlags (..)
   )
 import Distribution.Simple.Utils (debug, warn)
@@ -172,7 +173,7 @@ pkgEnvFieldDescrs src =
   [ commaNewLineListFieldParsec
       "constraints"
       (pretty . fst)
-      ((\pc -> (pc, src)) `fmap` parsec)
+      ((,src) `fmap` parsec)
       ( sortConstraints
           . configExConstraints
           . savedConfigureExFlags

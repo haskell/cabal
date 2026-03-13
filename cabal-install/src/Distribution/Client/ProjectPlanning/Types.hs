@@ -1,10 +1,8 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- | Types used while planning how to build everything in a project.
@@ -59,6 +57,7 @@ module Distribution.Client.ProjectPlanning.Types
   , isTestComponentTarget
   , isBenchComponentTarget
   , componentOptionalStanza
+  , componentTargetName
 
     -- * Setup script
   , SetupScriptStyle (..)
@@ -117,13 +116,13 @@ import qualified Distribution.Types.LocalBuildConfig as LBC
 import Distribution.Types.PackageDescription (PackageDescription (..))
 import Distribution.Types.PkgconfigVersion
 import Distribution.Utils.Path (getSymbolicPath)
-import Distribution.Verbosity (normal)
 import Distribution.Version
 
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Monoid as Mon
+import Distribution.Verbosity
 import System.FilePath ((</>))
 import Text.PrettyPrint (hsep, parens, text)
 
@@ -146,7 +145,7 @@ type ElaboratedPlanPackage =
 -- | User-friendly display string for an 'ElaboratedPlanPackage'.
 elabPlanPackageName :: Verbosity -> ElaboratedPlanPackage -> String
 elabPlanPackageName verbosity (PreExisting ipkg)
-  | verbosity <= normal = prettyShow (packageName ipkg)
+  | verbosityLevel verbosity <= Normal = prettyShow (packageName ipkg)
   | otherwise = prettyShow (installedUnitId ipkg)
 elabPlanPackageName verbosity (Configured elab) =
   elabConfiguredName verbosity elab
@@ -193,7 +192,7 @@ data ElaboratedSharedConfig = ElaboratedSharedConfig
   -- used.
   , pkgConfigReplOptions :: ReplOptions
   }
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic)
 
 -- TODO: [code cleanup] no Eq instance
 
@@ -276,6 +275,7 @@ data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
   , elabProgramPaths :: Map String FilePath
   , elabProgramArgs :: Map String [String]
   , elabProgramPathExtra :: [FilePath]
+  , elabConfiguredPrograms :: [ConfiguredProgram]
   , elabConfigureScriptArgs :: [String]
   , elabExtraLibDirs :: [FilePath]
   , elabExtraLibDirsStatic :: [FilePath]
@@ -338,7 +338,7 @@ data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
     elabPkgOrComp :: ElaboratedPackageOrComponent
   -- ^ Component/package specific information
   }
-  deriving (Eq, Show, Generic, Typeable)
+  deriving (Eq, Show, Generic)
 
 normaliseConfiguredPackage
   :: ElaboratedSharedConfig
@@ -433,12 +433,11 @@ dataDirsEnvironmentForPlan
   -> ElaboratedInstallPlan
   -> [(String, Maybe FilePath)]
 dataDirsEnvironmentForPlan distDirLayout =
-  catMaybes
-    . fmap
-      ( InstallPlan.foldPlanPackage
-          (const Nothing)
-          (dataDirEnvVarForPackage distDirLayout)
-      )
+  mapMaybe
+    ( InstallPlan.foldPlanPackage
+        (const Nothing)
+        (dataDirEnvVarForPackage distDirLayout)
+    )
     . InstallPlan.toList
 
 -- | Construct an environment variable that points
@@ -518,7 +517,7 @@ elabComponentName elab =
 -- | A user-friendly descriptor for an 'ElaboratedConfiguredPackage'.
 elabConfiguredName :: Verbosity -> ElaboratedConfiguredPackage -> String
 elabConfiguredName verbosity elab
-  | verbosity <= normal =
+  | verbosityLevel verbosity <= Normal =
       ( case elabPkgOrComp elab of
           ElabPackage _ -> ""
           ElabComponent comp ->
@@ -863,6 +862,10 @@ data ComponentTarget = ComponentTarget ComponentName SubComponentTarget
 instance Binary ComponentTarget
 instance Structured ComponentTarget
 
+-- | Extract the component name from a 'ComponentTarget'.
+componentTargetName :: ComponentTarget -> ComponentName
+componentTargetName (ComponentTarget cname _) = cname
+
 -- | Unambiguously render a 'ComponentTarget', e.g., to pass
 -- to a Cabal Setup script.
 showComponentTarget :: PackageId -> ComponentTarget -> String
@@ -934,7 +937,7 @@ data SetupScriptStyle
   | SetupCustomImplicitDeps
   | SetupNonCustomExternalLib
   | SetupNonCustomInternalLib
-  deriving (Eq, Show, Generic, Typeable)
+  deriving (Eq, Show, Generic)
 
 instance Binary SetupScriptStyle
 instance Structured SetupScriptStyle

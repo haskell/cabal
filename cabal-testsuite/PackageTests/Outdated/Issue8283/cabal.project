@@ -1,0 +1,4 @@
+packages: package-a
+          package-b
+
+constraints: base == 3.0.3.2

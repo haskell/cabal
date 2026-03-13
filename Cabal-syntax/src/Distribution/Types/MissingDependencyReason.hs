@@ -7,7 +7,7 @@ import Distribution.Types.LibraryName (LibraryName)
 import Distribution.Types.PackageName (PackageName)
 import Distribution.Types.Version (Version)
 
--- | A reason for a depency failing to solve.
+-- | A reason for a dependency failing to solve.
 --
 -- This helps pinpoint dependencies that are installed with an incorrect
 -- version vs. dependencies that are not installed at all.

@@ -134,11 +134,11 @@ zipDefault ad bd (a : as) (b : bs) = (a, b) : zipDefault ad bd as bs
 -- | Pretty printing of short options.
 -- * With required arguments can be given as:
 --    @-w PATH or -wPATH (but not -w=PATH)@
---   This is dislayed as:
+--   This is displayed as:
 --    @-w PATH or -wPATH@
 -- * With optional but default arguments can be given as:
 --    @-j or -jNUM (but not -j=NUM or -j NUM)@
---   This is dislayed as:
+--   This is displayed as:
 --    @-j[NUM]@
 fmtShort :: ArgDescr a -> Char -> String
 fmtShort (NoArg _) so = "-" ++ [so]
@@ -152,11 +152,11 @@ fmtShort (OptArg _ _ ad) so =
 -- | Pretty printing of long options.
 -- * With required arguments can be given as:
 --    @--with-compiler=PATH (but not --with-compiler PATH)@
---   This is dislayed as:
+--   This is displayed as:
 --    @--with-compiler=PATH@
 -- * With optional but default arguments can be given as:
 --    @--jobs or --jobs=NUM (but not --jobs NUM)@
---   This is dislayed as:
+--   This is displayed as:
 --    @--jobs[=NUM]@
 fmtLong :: ArgDescr a -> String -> String
 fmtLong (NoArg _) lo = "--" ++ lo
@@ -230,7 +230,7 @@ getOpt' ordering optDescr (arg : args) = procNextOpt opt ordering
 
 -- take a look at the next cmd line arg and decide what to do with it
 getNext :: String -> [String] -> [OptDescr a] -> (OptKind a, [String])
-getNext ('-' : '-' : []) rest _ = (EndOfOpts, rest)
+getNext ['-', '-'] rest _ = (EndOfOpts, rest)
 getNext ('-' : '-' : xs) rest optDescr = longOpt xs rest optDescr
 getNext ('-' : x : xs) rest optDescr = shortOpt x xs rest optDescr
 getNext a rest _ = (NonOpt a, rest)

@@ -52,8 +52,8 @@ main = do
                         "String as in Haskell; it's recommended to avoid using Haskell-specific escapes."
                     , zproduction "unqual-name"     reUnqualComponent $ unwords
                         [ "Unqualified component names are used for package names, component names etc. but not flag names."
-                        , "Unqualified component name consist of components separated by dash, each component is non-empty alphanumeric string, with at least one alphabetic character."
-                        , "In other words, component may not look like a number."
+                        , "An unqualified component name consists of components separated by a hyphen, each component is a non-empty alphanumeric string, with at least one character that is not the digits ``0`` to ``9``."
+                        , "In other words, a component may not look like a number."
                         ]
 
                     , zproduction "module-name"     (describe (Proxy :: Proxy ModuleName))

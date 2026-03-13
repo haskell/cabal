@@ -1,11 +1,10 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 -- TODO
-{-# OPTIONS_GHC -fno-warn-incomplete-uni-patterns #-}
+{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 
 -----------------------------------------------------------------------------
 
@@ -101,6 +100,7 @@ import Control.Arrow ((&&&))
 import Control.Monad hiding
   ( mfilter
   )
+import Data.Bifunctor (second)
 #if MIN_VERSION_base(4,20,0)
 import Data.Functor as UZ (unzip)
 #else
@@ -828,7 +828,7 @@ reportTargetSelectorProblems verbosity problems = do
     targets ->
       dieWithException verbosity $
         NoSuchTargetSelectorErr $
-          map (\(target, nosuch) -> (showTargetString target, nosuch)) targets
+          map (first showTargetString) targets
 
   case [(t, ts) | TargetSelectorAmbiguous t ts <- problems] of
     [] -> return ()
@@ -2187,7 +2187,7 @@ matchComponentKindAndName cs ckind str =
     (map render cs)
     $ increaseConfidenceFor
     $ matchInexactly
-      (\(ck, cn) -> (ck, caseFold cn))
+      (second caseFold)
       (\c -> (cinfoKind c, cinfoStrName c))
       cs
       (ckind, str)
@@ -2500,10 +2500,7 @@ data MaybeAmbiguous a
 -- | A primitive matcher that looks up a value in a finite 'Map'. The
 -- value must match exactly.
 matchExactly :: Ord k => (a -> k) -> [a] -> (k -> Match a)
-matchExactly key xs =
-  \k -> case Map.lookup k m of
-    Nothing -> mzero
-    Just ys -> exactMatches ys
+matchExactly key xs = \k -> maybe mzero exactMatches (Map.lookup k m)
   where
     m = Map.fromListWith (++) [(key x, [x]) | x <- xs]
 
@@ -2524,9 +2521,7 @@ matchInexactly
 matchInexactly cannonicalise key xs =
   \k -> case Map.lookup k m of
     Just ys -> exactMatches ys
-    Nothing -> case Map.lookup (cannonicalise k) m' of
-      Just ys -> inexactMatches ys
-      Nothing -> mzero
+    Nothing -> maybe mzero inexactMatches (Map.lookup (cannonicalise k) m')
   where
     m = Map.fromListWith (++) [(key x, [x]) | x <- xs]
 

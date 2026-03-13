@@ -1,11 +1,11 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 
 -----------------------------------------------------------------------------
 
@@ -49,8 +49,10 @@ module Distribution.Simple.Configure
   , getInstalledPackagesMonitorFiles
   , getInstalledPackagesById
   , getPackageDBContents
+  , configCompiler
   , configCompilerEx
   , configCompilerAuxEx
+  , configCompilerProgDb
   , computeEffectiveProfiling
   , ccLdOptionsBuildInfo
   , checkForeignDeps
@@ -76,7 +78,7 @@ import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Package
 import Distribution.PackageDescription
-import Distribution.PackageDescription.Check hiding (doesFileExist)
+import Distribution.PackageDescription.Check hiding (doesFileExist, listDirectory)
 import Distribution.PackageDescription.Configuration
 import Distribution.PackageDescription.PrettyPrint
 import Distribution.Simple.BuildTarget
@@ -114,12 +116,12 @@ import Distribution.Types.MissingDependencyReason (MissingDependencyReason (..))
 import Distribution.Types.PackageVersionConstraint
 import Distribution.Utils.LogProgress
 import Distribution.Utils.NubList
+import Distribution.Utils.String (trim)
 import Distribution.Verbosity
 import Distribution.Version
 
 import qualified Distribution.Simple.GHC as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
-import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 import qualified Distribution.Simple.UHC as UHC
 
 import Control.Exception
@@ -135,10 +137,6 @@ import Data.List
   )
 import qualified Data.List.NonEmpty as NEL
 import qualified Data.Map as Map
-import Distribution.Compat.Directory
-  ( doesPathExist
-  , listDirectory
-  )
 import Distribution.Compat.Environment (lookupEnv)
 import Distribution.Parsec
   ( simpleParsec
@@ -156,6 +154,8 @@ import System.Directory
   ( canonicalizePath
   , createDirectoryIfMissing
   , doesFileExist
+  , doesPathExist
+  , listDirectory
   , removeFile
   )
 import System.FilePath
@@ -203,7 +203,6 @@ data ConfigStateFileError
       PackageIdentifier
       PackageIdentifier
       (Either ConfigStateFileError LocalBuildInfo)
-  deriving (Typeable)
 
 -- | Format a 'ConfigStateFileError' as a user-facing error message.
 dispConfigStateFileError :: ConfigStateFileError -> Doc
@@ -450,22 +449,24 @@ configure
   :: (GenericPackageDescription, HookedBuildInfo)
   -> ConfigFlags
   -> IO LocalBuildInfo
-configure = configure_setupHooks noConfigureHooks
+configure p = configure_setupHooks noConfigureHooks p defaultVerbosityHandles
 
 configure_setupHooks
   :: ConfigureHooks
   -> (GenericPackageDescription, HookedBuildInfo)
+  -> VerbosityHandles
   -> ConfigFlags
   -> IO LocalBuildInfo
 configure_setupHooks
   (ConfigureHooks{preConfPackageHook, postConfPackageHook, preConfComponentHook})
   (g_pkg_descr, hookedBuildInfo)
+  verbHandles
   cfg = do
     -- Cabal pre-configure
-    let verbosity = fromFlag (configVerbosity cfg)
+    let verbosity = mkVerbosity verbHandles (fromFlag (configVerbosity cfg))
         distPref = fromFlag $ configDistPref cfg
         mbWorkDir = flagToMaybe $ configWorkingDir cfg
-    (lbc0, comp, platform, enabledComps) <- preConfigurePackage cfg g_pkg_descr
+    (lbc0, comp, platform, enabledComps) <- preConfigurePackage verbHandles cfg g_pkg_descr
 
     -- Package-wide pre-configure hook
     lbc1 <-
@@ -504,7 +505,14 @@ configure_setupHooks
 
     -- Cabal package-wide configure
     (lbc2, pbd2, pkg_info) <-
-      finalizeAndConfigurePackage cfg lbc1 g_pkg_descr comp platform enabledComps
+      finalizeAndConfigurePackage
+        verbHandles
+        cfg
+        lbc1
+        g_pkg_descr
+        comp
+        platform
+        enabledComps
 
     -- Package-wide post-configure hook
     for_ postConfPackageHook $ \postConfPkg -> do
@@ -537,19 +545,20 @@ configure_setupHooks
     let pbd3 = pbd2{LBC.localPkgDescr = pkg_descr}
 
     -- Cabal per-component configure
-    externalPkgDeps <- finalCheckPackage g_pkg_descr pbd3 hookedBuildInfo pkg_info
-    lbi <- configureComponents lbc2 pbd3 pkg_info externalPkgDeps
+    externalPkgDeps <- finalCheckPackage verbHandles g_pkg_descr pbd3 hookedBuildInfo pkg_info
+    lbi <- configureComponents verbHandles lbc2 pbd3 pkg_info externalPkgDeps
 
     writePersistBuildConfig mbWorkDir distPref lbi
 
     return lbi
 
 preConfigurePackage
-  :: ConfigFlags
+  :: VerbosityHandles
+  -> ConfigFlags
   -> GenericPackageDescription
   -> IO (LBC.LocalBuildConfig, Compiler, Platform, ComponentRequestedSpec)
-preConfigurePackage cfg g_pkg_descr = do
-  let verbosity = fromFlag $ configVerbosity cfg
+preConfigurePackage verbHandles cfg g_pkg_descr = do
+  let verbosity = mkVerbosity verbHandles (fromFlag $ configVerbosity cfg)
 
   -- Determine the component we are configuring, if a user specified
   -- one on the command line.  We use a fake, flattened version of
@@ -584,9 +593,8 @@ preConfigurePackage cfg g_pkg_descr = do
 
   -- Make a data structure describing what components are enabled.
   let enabled :: ComponentRequestedSpec
-      enabled = case mb_cname of
-        Just cname -> OneComponentRequestedSpec cname
-        Nothing ->
+      enabled =
+        maybe
           ComponentRequestedSpec
             { -- The flag name (@--enable-tests@) is a
               -- little bit of a misnomer, because
@@ -596,9 +604,10 @@ preConfigurePackage cfg g_pkg_descr = do
               -- @buildable: False@ might make it
               -- not possible to enable.
               testsRequested = fromFlag (configTests cfg)
-            , benchmarksRequested =
-                fromFlag (configBenchmarks cfg)
+            , benchmarksRequested = fromFlag (configBenchmarks cfg)
             }
+          OneComponentRequestedSpec
+          mb_cname
   -- Some sanity checks related to enabling components.
   when
     ( isJust mb_cname
@@ -609,7 +618,7 @@ preConfigurePackage cfg g_pkg_descr = do
   checkDeprecatedFlags verbosity cfg
   checkExactConfiguration verbosity g_pkg_descr cfg
 
-  programDbPre <- mkProgramDb cfg (configPrograms cfg)
+  programDbPre <- mkProgramDb verbHandles cfg (configPrograms cfg)
   -- comp:            the compiler we're building with
   -- compPlatform:    the platform we're building for
   -- programDb:  location and args of all programs we're
@@ -623,7 +632,7 @@ preConfigurePackage cfg g_pkg_descr = do
       (flagToMaybe (configHcPath cfg))
       (flagToMaybe (configHcPkg cfg))
       programDbPre
-      (lessVerbose verbosity)
+      (modifyVerbosityFlags lessVerbose verbosity)
 
   -- Where to build the package
   let builddir :: SymbolicPath Pkg (Dir Build) -- e.g. dist/build
@@ -632,20 +641,21 @@ preConfigurePackage cfg g_pkg_descr = do
   -- NB: create this directory now so that all configure hooks get
   -- to see it. (In practice, the Configure build-type needs it before
   -- the postConfPackageHook runs.)
-  createDirectoryIfMissingVerbose (lessVerbose verbosity) True $
+  createDirectoryIfMissingVerbose (modifyVerbosityFlags lessVerbose verbosity) True $
     interpretSymbolicPath mbWorkDir builddir
 
-  lbc <- computeLocalBuildConfig cfg comp programDb00
+  lbc <- computeLocalBuildConfig verbHandles cfg comp programDb00
   return (lbc, comp, compPlatform, enabled)
 
 computeLocalBuildConfig
-  :: ConfigFlags
+  :: VerbosityHandles
+  -> ConfigFlags
   -> Compiler
   -> ProgramDb
   -> IO LBC.LocalBuildConfig
-computeLocalBuildConfig cfg comp programDb = do
+computeLocalBuildConfig verbHandles cfg comp programDb = do
   let common = configCommonFlags cfg
-      verbosity = fromFlag $ setupVerbosity common
+      verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
   -- Decide if we're going to compile with split sections.
   split_sections :: Bool <-
     if not (fromFlag $ configSplitSections cfg)
@@ -711,7 +721,7 @@ computeLocalBuildConfig cfg comp programDb = do
             -- rely on them. By the time that bug was fixed, ghci had
             -- been changed to read shared libraries instead of archive
             -- files (see next code block).
-            not (GHC.compilerBuildWay comp `elem` [DynWay, ProfDynWay])
+            GHC.compilerBuildWay comp `notElem` [DynWay, ProfDynWay]
           CompilerId GHCJS _ ->
             not (GHCJS.isDynamic comp)
           _ -> False
@@ -835,7 +845,8 @@ data PackageInfo = PackageInfo
   }
 
 configurePackage
-  :: ConfigFlags
+  :: VerbosityHandles
+  -> ConfigFlags
   -> LBC.LocalBuildConfig
   -> PackageDescription
   -> FlagAssignment
@@ -845,9 +856,9 @@ configurePackage
   -> ProgramDb
   -> PackageDBStack
   -> IO (LBC.LocalBuildConfig, LBC.PackageBuildDescr)
-configurePackage cfg lbc0 pkg_descr00 flags enabled comp platform programDb0 packageDbs = do
+configurePackage verbHandles cfg lbc0 pkg_descr00 flags enabled comp platform programDb0 packageDbs = do
   let common = configCommonFlags cfg
-      verbosity = fromFlag $ setupVerbosity common
+      verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
 
       -- add extra include/lib dirs as specified in cfg
       pkg_descr0 = addExtraIncludeLibDirsFromConfigFlags pkg_descr00 cfg
@@ -883,12 +894,12 @@ configurePackage cfg lbc0 pkg_descr00 flags enabled comp platform programDb0 pac
             let unknownBuildTools =
                   [ buildTool
                   | buildTool <- buildTools bi
-                  , Nothing == desugarBuildTool pkg_descr0 buildTool
+                  , isNothing (desugarBuildTool pkg_descr0 buildTool)
                   ]
             externBuildToolDeps ++ unknownBuildTools
 
   programDb1 <-
-    configureAllKnownPrograms (lessVerbose verbosity) programDb0
+    configureAllKnownPrograms (modifyVerbosityFlags lessVerbose verbosity) programDb0
       >>= configureRequiredPrograms verbosity requiredBuildTools
 
   (pkg_descr2, programDb2) <-
@@ -937,16 +948,17 @@ configurePackage cfg lbc0 pkg_descr00 flags enabled comp platform programDb0 pac
   return (lbc, pbd)
 
 finalizeAndConfigurePackage
-  :: ConfigFlags
+  :: VerbosityHandles
+  -> ConfigFlags
   -> LBC.LocalBuildConfig
   -> GenericPackageDescription
   -> Compiler
   -> Platform
   -> ComponentRequestedSpec
   -> IO (LBC.LocalBuildConfig, LBC.PackageBuildDescr, PackageInfo)
-finalizeAndConfigurePackage cfg lbc0 g_pkg_descr comp platform enabled = do
+finalizeAndConfigurePackage verbHandles cfg lbc0 g_pkg_descr comp platform enabled = do
   let common = configCommonFlags cfg
-      verbosity = fromFlag $ setupVerbosity common
+      verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
       mbWorkDir = flagToMaybe $ setupWorkingDir common
 
   let programDb0 = LBC.withPrograms lbc0
@@ -960,7 +972,7 @@ finalizeAndConfigurePackage cfg lbc0 g_pkg_descr comp platform enabled = do
   -- The InstalledPackageIndex of all installed packages
   installedPackageSet :: InstalledPackageIndex <-
     getInstalledPackages
-      (lessVerbose verbosity)
+      (modifyVerbosityFlags lessVerbose verbosity)
       comp
       mbWorkDir
       packageDbs
@@ -1049,6 +1061,7 @@ finalizeAndConfigurePackage cfg lbc0 g_pkg_descr comp platform enabled = do
 
   (lbc, pbd) <-
     configurePackage
+      verbHandles
       cfg
       lbc0
       pkg_descr0
@@ -1110,12 +1123,14 @@ addExtraIncludeLibDirsFromConfigFlags pkg_descr cfg =
         }
 
 finalCheckPackage
-  :: GenericPackageDescription
+  :: VerbosityHandles
+  -> GenericPackageDescription
   -> LBC.PackageBuildDescr
   -> HookedBuildInfo
   -> PackageInfo
   -> IO ([PreExistingComponent], [ConfiguredPromisedComponent])
 finalCheckPackage
+  verbHandles
   g_pkg_descr
   ( LBC.PackageBuildDescr
       { configFlags = cfg
@@ -1129,7 +1144,7 @@ finalCheckPackage
   (PackageInfo{internalPackageSet, promisedDepsSet, installedPackageSet, requiredDepsMap}) =
     do
       let common = configCommonFlags cfg
-          verbosity = fromFlag $ setupVerbosity common
+          verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
           cabalFileDir = packageRoot common
           use_external_internal_deps =
             case enabled of
@@ -1151,10 +1166,7 @@ finalCheckPackage
       -- TODO: Move this into a helper function.
       let langlist =
             nub $
-              catMaybes $
-                map
-                  defaultLanguage
-                  (enabledBuildInfos pkg_descr enabled)
+              mapMaybe defaultLanguage (enabledBuildInfos pkg_descr enabled)
       let langs = unsupportedLanguages comp langlist
       when (not (null langs)) $
         dieWithException verbosity $
@@ -1208,12 +1220,14 @@ finalCheckPackage
         enabled
 
 configureComponents
-  :: LBC.LocalBuildConfig
+  :: VerbosityHandles
+  -> LBC.LocalBuildConfig
   -> LBC.PackageBuildDescr
   -> PackageInfo
   -> ([PreExistingComponent], [ConfiguredPromisedComponent])
   -> IO LocalBuildInfo
 configureComponents
+  verbHandles
   lbc@(LBC.LocalBuildConfig{withPrograms = programDb})
   pbd0@( LBC.PackageBuildDescr
           { configFlags = cfg
@@ -1226,7 +1240,7 @@ configureComponents
   externalPkgDeps =
     do
       let common = configCommonFlags cfg
-          verbosity = fromFlag $ setupVerbosity common
+          verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
           use_external_internal_deps =
             case enabled of
               OneComponentRequestedSpec{} -> True
@@ -1380,16 +1394,17 @@ mkPromisedDepsSet comps = Map.fromList [((packageName pn, CLibName ln), p) | p@(
 -- | Adds the extra program paths from the flags provided to @configure@ as
 -- well as specified locations for certain known programs and their default
 -- arguments.
-mkProgramDb :: ConfigFlags -> ProgramDb -> IO ProgramDb
-mkProgramDb cfg initialProgramDb = do
+mkProgramDb :: VerbosityHandles -> ConfigFlags -> ProgramDb -> IO ProgramDb
+mkProgramDb verbHandles cfg initialProgramDb = do
   programDb <-
     modifyProgramSearchPath (getProgramSearchPath initialProgramDb ++) -- We need to have the paths to programs installed by build-tool-depends before all other paths
-      <$> prependProgramSearchPath (fromFlagOrDefault normal (configVerbosity cfg)) searchpath [] initialProgramDb
+      <$> prependProgramSearchPath verbosity searchpath [] initialProgramDb
   pure
     . userSpecifyArgss (configProgramArgs cfg)
     . userSpecifyPaths (configProgramPaths cfg)
     $ programDb
   where
+    verbosity = mkVerbosity verbHandles $ fromFlagOrDefault normal (configVerbosity cfg)
     searchpath = fromNubList (configProgramPathExtra cfg)
 
 -- Note. We try as much as possible to _prepend_ rather than postpend the extra-prog-path
@@ -1539,7 +1554,7 @@ dependencySatisfiable
          in if null $ PackageIndex.matchingDependencies vr allVersions
               then
                 if null eligibleVersions
-                  then Unsatisfied $ MissingPackage
+                  then Unsatisfied MissingPackage
                   else Unsatisfied $ WrongVersion eligibleVersions
               else Satisfied
 
@@ -1679,7 +1694,7 @@ configureDependencies
         (failedDeps, allPkgDeps) =
           partitionEithers $
             concat
-              [ fmap (\s -> (dep, s)) <$> status
+              [ fmap (dep,) <$> status
               | dep <- enabledBuildDepends pkg_descr enableSpec
               , let status =
                       selectDependency
@@ -2070,8 +2085,6 @@ getInstalledPackages verbosity comp mbWorkDir packageDBs progdb = do
     GHC -> GHC.getInstalledPackages verbosity comp mbWorkDir packageDBs' progdb
     GHCJS -> GHCJS.getInstalledPackages verbosity mbWorkDir packageDBs' progdb
     UHC -> UHC.getInstalledPackages verbosity comp mbWorkDir packageDBs' progdb
-    HaskellSuite{} ->
-      HaskellSuite.getInstalledPackages verbosity packageDBs' progdb
     flv ->
       dieWithException verbosity $ HowToFindInstalledPackages flv
   where
@@ -2365,7 +2378,7 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
   | otherwise = do
       (_, _, progdb') <-
         requireProgramVersion
-          (lessVerbose verbosity)
+          (modifyVerbosityFlags lessVerbose verbosity)
           pkgConfigProgram
           (orLaterVersion $ mkVersion [0, 9, 0])
           progdb
@@ -2388,7 +2401,7 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
     allpkgs = concatMap pkgconfigDepends (enabledBuildInfos pkg_descr enabled)
     pkgconfig =
       getDbProgramOutput
-        (lessVerbose verbosity)
+        (modifyVerbosityFlags lessVerbose verbosity)
         pkgConfigProgram
         progdb
 
@@ -2397,7 +2410,6 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
         pkgconfig ["--modversion", pkg]
           `catchIO` (\_ -> dieWithException verbosity $ PkgConfigNotFound pkg versionRequirement)
           `catchExit` (\_ -> dieWithException verbosity $ PkgConfigNotFound pkg versionRequirement)
-      let trim = dropWhile isSpace . dropWhileEnd isSpace
       let v = PkgconfigVersion (toUTF8BS $ trim version)
       if not (withinPkgconfigVersionRange v range)
         then dieWithException verbosity $ BadVersion pkg versionRequirement v
@@ -2476,12 +2488,13 @@ ccLdOptionsBuildInfo cflags ldflags ldflags_static =
 -- Determining the compiler details
 
 configCompilerAuxEx
-  :: ConfigFlags
+  :: VerbosityHandles
+  -> ConfigFlags
   -> IO (Compiler, Platform, ProgramDb)
-configCompilerAuxEx cfg = do
-  programDb <- mkProgramDb cfg defaultProgramDb
+configCompilerAuxEx verbHandles cfg = do
+  programDb <- mkProgramDb verbHandles cfg defaultProgramDb
   let common = configCommonFlags cfg
-      verbosity = fromFlag $ setupVerbosity common
+      verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
   configCompilerEx
     (flagToMaybe $ configHcFlavor cfg)
     (flagToMaybe $ configHcPath cfg)
@@ -2489,10 +2502,14 @@ configCompilerAuxEx cfg = do
     programDb
     verbosity
 
+-- | Configure the compiler and associated programs such as @hc-pkg@, @haddock@
+-- and toolchain program such as @ar@, @ld@.
 configCompilerEx
   :: Maybe CompilerFlavor
   -> Maybe FilePath
+  -- ^ user-specified @hc@ path (optional)
   -> Maybe FilePath
+  -- ^ user-specified @hc-pkg@ path (optional)
   -> ProgramDb
   -> Verbosity
   -> IO (Compiler, Platform, ProgramDb)
@@ -2501,10 +2518,45 @@ configCompilerEx (Just hcFlavor) hcPath hcPkg progdb verbosity = do
   (comp, maybePlatform, programDb) <- case hcFlavor of
     GHC -> GHC.configure verbosity hcPath hcPkg progdb
     GHCJS -> GHCJS.configure verbosity hcPath hcPkg progdb
-    UHC -> UHC.configure verbosity hcPath hcPkg progdb
-    HaskellSuite{} -> HaskellSuite.configure verbosity hcPath hcPkg progdb
+    UHC -> UHC.configure verbosity hcPath progdb
     _ -> dieWithException verbosity UnknownCompilerException
   return (comp, fromMaybe buildPlatform maybePlatform, programDb)
+
+-- | Configure the compiler ONLY.
+configCompiler
+  :: Maybe CompilerFlavor
+  -> Maybe FilePath
+  -- ^ user-specified @hc@ path (optional)
+  -> ProgramDb
+  -> Verbosity
+  -> IO (Compiler, Platform, ProgramDb)
+configCompiler mbFlavor hcPath progdb verbosity = do
+  (comp, maybePlatform, programDb) <-
+    case mbFlavor of
+      Nothing -> dieWithException verbosity UnknownCompilerException
+      Just hcFlavor ->
+        case hcFlavor of
+          GHC -> GHC.configureCompiler verbosity hcPath progdb
+          GHCJS -> GHCJS.configureCompiler verbosity hcPath progdb
+          UHC -> UHC.configure verbosity hcPath progdb
+          _ -> dieWithException verbosity UnknownCompilerException
+  return (comp, fromMaybe buildPlatform maybePlatform, programDb)
+
+-- | Configure programs associated to the compiler, such as @hc-pkg@, @haddock@
+-- and toolchain program such as @ar@, @ld@.
+configCompilerProgDb
+  :: Verbosity
+  -> Compiler
+  -> ProgramDb
+  -- ^ program database containing the compiler
+  -> Maybe FilePath
+  -- ^ user-specified @hc-pkg@ path (optional)
+  -> IO ProgramDb
+configCompilerProgDb verbosity comp hcProgDb hcPkgPath = do
+  case compilerFlavor comp of
+    GHC -> GHC.compilerProgramDb verbosity comp hcProgDb hcPkgPath
+    GHCJS -> GHCJS.compilerProgramDb verbosity comp hcProgDb hcPkgPath
+    _ -> return hcProgDb
 
 -- -----------------------------------------------------------------------------
 -- Testing C lib and header dependencies
@@ -2730,7 +2782,7 @@ checkPackageProblems verbosity dir gpkg pkg = do
       (errors, warnings) =
         partitionEithers (M.mapMaybe classEW $ pureChecks ++ ioChecks)
   if null errors
-    then traverse_ (warn verbosity) (map ppPackageCheck warnings)
+    then traverse_ (warn verbosity . ppPackageCheck) warnings
     else dieWithException verbosity $ CheckPackageProblems (map ppPackageCheck errors)
   where
     -- Classify error/warnings. Left: error, Right: warning.
@@ -2773,7 +2825,7 @@ checkRelocatable verbosity pkg lbi =
     -- and RPATH, make sure you add your OS to RPATH-support list of:
     -- Distribution.Simple.GHC.getRPaths
     checkOS =
-      unless (os `elem` [OSX, Linux]) $
+      unless (os `elem` [OSX, Linux, FreeBSD]) $
         dieWithException verbosity $
           NoOSSupport os "relocatable builds"
       where
@@ -2781,7 +2833,7 @@ checkRelocatable verbosity pkg lbi =
 
     -- Check if the Compiler support relocatable builds
     checkCompiler =
-      unless (compilerFlavor comp `elem` [GHC]) $
+      unless (compilerFlavor comp == GHC) $
         dieWithException verbosity $
           NoCompilerSupport (show comp)
       where
@@ -2800,22 +2852,19 @@ checkRelocatable verbosity pkg lbi =
         p = prefix installDirs
         relativeInstallDirs (InstallDirs{..}) =
           all
-            isJust
-            ( fmap
-                (stripPrefix p)
-                [ bindir
-                , libdir
-                , dynlibdir
-                , libexecdir
-                , includedir
-                , datadir
-                , docdir
-                , mandir
-                , htmldir
-                , haddockdir
-                , sysconfdir
-                ]
-            )
+            (isJust . stripPrefix p)
+            [ bindir
+            , libdir
+            , dynlibdir
+            , libexecdir
+            , includedir
+            , datadir
+            , docdir
+            , mandir
+            , htmldir
+            , haddockdir
+            , sysconfdir
+            ]
 
     -- Check if the library dirs of the dependencies that are in the package
     -- database to which the package is installed are relative to the
@@ -2825,7 +2874,7 @@ checkRelocatable verbosity pkg lbi =
       traverse_ (doCheck $ getSymbolicPath pkgr) ipkgs
       where
         doCheck pkgr ipkg
-          | maybe False (== pkgr) (IPI.pkgRoot ipkg) =
+          | Just pkgr == IPI.pkgRoot ipkg =
               for_ (IPI.libraryDirs ipkg) $ \libdir -> do
                 -- When @prefix@ is not under @pkgroot@,
                 -- @shortRelativePath prefix pkgroot@ will return a path with
@@ -2873,6 +2922,7 @@ checkForeignLibSupported comp platform flib = go (compilerFlavor comp)
     goGhcPlatform :: Platform -> Maybe String
     goGhcPlatform (Platform _ OSX) = goGhcOsx (foreignLibType flib)
     goGhcPlatform (Platform _ Linux) = goGhcLinux (foreignLibType flib)
+    goGhcPlatform (Platform _ FreeBSD) = goGhcLinux (foreignLibType flib)
     goGhcPlatform (Platform I386 Windows) = goGhcWindows (foreignLibType flib)
     goGhcPlatform (Platform X86_64 Windows) = goGhcWindows (foreignLibType flib)
     goGhcPlatform _ =

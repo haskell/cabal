@@ -1,5 +1,5 @@
 -- to suppress WARNING in "Distribution.Compat.Prelude.Internal"
-{-# OPTIONS_GHC -fno-warn-deprecations #-}
+{-# OPTIONS_GHC -Wno-deprecations #-}
 module UnitTests.Distribution.Utils.NubList
     ( tests
     ) where

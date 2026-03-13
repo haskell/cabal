@@ -1,0 +1,10 @@
+# cabal v2-build
+Warnings found while parsing the project file, cabal.project:
+ - dir-x/a.config:1:1: Invalid subsection "-"
+ - dir-x/a.config:2:1: Invalid subsection "-"
+ - dir-x/a.config:3:1: Invalid subsection "-"
+ - dir-y/a.config:123:1: Invalid subsection "-"
+ - x.config:1:1: Invalid subsection "-"
+ - x.config:2:1: Invalid subsection "-"
+ - x.config:3:1: Invalid subsection "-"
+ - y.config:123:1: Invalid subsection "-"

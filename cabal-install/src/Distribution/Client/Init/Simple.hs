@@ -1,3 +1,5 @@
+{-# LANGUAGE PatternSynonyms #-}
+
 module Distribution.Client.Init.Simple
   ( -- * Project creation
     createProject
@@ -16,7 +18,7 @@ import Distribution.Client.Init.FlagExtractors
 import Distribution.Client.Init.Types
 import Distribution.Client.Init.Utils (currentDirPkgName, fixupDocFiles, mkPackageNameDep)
 import Distribution.Client.Types.SourcePackageDb (SourcePackageDb (..))
-import Distribution.Simple.Flag (Flag (..), flagElim, fromFlagOrDefault)
+import Distribution.Simple.Flag (flagElim, fromFlagOrDefault, pattern Flag, pattern NoFlag)
 import Distribution.Simple.PackageIndex
 import Distribution.Types.Dependency
 import Distribution.Types.PackageName (unPackageName)
@@ -43,7 +45,7 @@ createProject v pkgIx _srcDb initFlags = do
           doOverwrite
           isMinimal
           cs
-          v
+          (verbosityFlags v)
           pkgDir
           pkgType
           pkgName
@@ -110,7 +112,7 @@ createProject v pkgIx _srcDb initFlags = do
 genSimplePkgDesc :: Interactive m => InitFlags -> m PkgDescription
 genSimplePkgDesc flags = mkPkgDesc <$> currentDirPkgName
   where
-    defaultExtraDoc = Just $ Set.singleton defaultChangelog
+    defaultExtraDoc = Just $ Set.fromList [defaultChangelog, defaultReadme]
 
     extractExtraDoc [] = defaultExtraDoc
     extractExtraDoc fs = Just $ Set.fromList fs

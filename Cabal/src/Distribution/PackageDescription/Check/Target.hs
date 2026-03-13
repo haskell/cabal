@@ -77,7 +77,7 @@ checkLibrary
     checkP
       ( not $
           all
-            (flip elem (explicitLibModules lib))
+            (`elem` explicitLibModules lib)
             (libModulesAutogen lib)
       )
       (PackageBuildImpossible AutogenNotExposed)
@@ -89,7 +89,7 @@ checkLibrary
             (flip elem (allExplicitIncludes lib) . getSymbolicPath)
             (view L.autogenIncludes lib)
       )
-      $ (PackageBuildImpossible AutogenIncludesNotIncluded)
+      (PackageBuildImpossible AutogenIncludesNotIncluded)
 
     -- § Build infos.
     checkBuildInfo
@@ -153,7 +153,7 @@ checkExecutable
     checkP
       ( pid /= fakePackageId
           && not (null modulePath_)
-          && not (fileExtensionSupportedLanguage $ modulePath_)
+          && not (fileExtensionSupportedLanguage modulePath_)
       )
       (PackageBuildImpossible NoHsLhsMain)
 
@@ -168,7 +168,7 @@ checkExecutable
     -- Alas exeModules ad exeModulesAutogen (exported from
     -- Distribution.Types.Executable) take `Executable` as a parameter.
     checkP
-      (not $ all (flip elem (exeModules exe)) (exeModulesAutogen exe))
+      (not $ all (`elem` exeModules exe) (exeModulesAutogen exe))
       (PackageBuildImpossible $ AutogenNoOther cet)
     checkP
       ( not $
@@ -211,7 +211,7 @@ checkTestSuite
     checkP
       ( not $
           all
-            (flip elem (testModules ts))
+            (`elem` testModules ts)
             (testModulesAutogen ts)
       )
       (PackageBuildImpossible $ AutogenNoOther cet)
@@ -271,7 +271,7 @@ checkBenchmark
     checkP
       ( not $
           all
-            (flip elem (benchmarkModules bm))
+            (`elem` benchmarkModules bm)
             (benchmarkModulesAutogen bm)
       )
       (PackageBuildImpossible $ AutogenNoOther cet)
@@ -331,17 +331,30 @@ checkBuildInfo cet ams ads bi = do
   checkAutogenModules ams bi
 
   -- PVP: we check for base and all other deps.
+  let ds = mergeDependencies $ targetBuildDepends bi
   (ids, rds) <-
     partitionDeps
       ads
       [mkUnqualComponentName "base"]
-      (mergeDependencies $ targetBuildDepends bi)
+      ds
   let ick = const (PackageDistInexcusable BaseNoUpperBounds)
       rck = PackageDistSuspiciousWarn . MissingUpperBounds cet
-  checkPVP ick ids
+      leuck = PackageDistSuspiciousWarn . LEUpperBounds cet
+      tzuck = PackageDistSuspiciousWarn . TrailingZeroUpperBounds cet
+      gtlck = PackageDistSuspiciousWarn . GTLowerBounds cet
+  checkPVP (checkDependencyVersionRange $ not . hasUpperBound) ick ids
   unless
     (isInternalTarget cet)
-    (checkPVPs rck rds)
+    (checkPVPs (checkDependencyVersionRange $ not . hasUpperBound) rck rds)
+  unless
+    (isInternalTarget cet)
+    (checkPVPs (checkDependencyVersionRange hasLEUpperBound) leuck ds)
+  unless
+    (isInternalTarget cet)
+    (checkPVPs (checkDependencyVersionRange hasTrailingZeroUpperBound) tzuck ds)
+  unless
+    (isInternalTarget cet)
+    (checkPVPs (checkDependencyVersionRange hasGTLowerBound) gtlck ds)
 
   -- Custom fields well-formedness (ASCII).
   mapM_ checkCustomField (customFieldsBI bi)
@@ -368,7 +381,7 @@ checkBuildInfoPathsContent bi = do
   mapM_ checkIntDep (targetBuildDepends bi)
   df <- asksCM ccDesugar
   -- This way we can use the same function for legacy&non exedeps.
-  let ds = buildToolDepends bi ++ catMaybes (map df $ buildTools bi)
+  let ds = buildToolDepends bi ++ mapMaybe df (buildTools bi)
   mapM_ checkBTDep ds
   where
     checkLang :: Monad m => Language -> CheckM m ()
@@ -513,8 +526,7 @@ checkBuildInfoFeatures bi sv = do
     (not . null $ extraDynLibFlavours bi)
     (PackageDistInexcusable $ CVExtraDynamic [extraDynLibFlavours bi])
   -- virtual-modules requires ≥ 2.2
-  checkSpecVer CabalSpecV2_2 (not . null $ virtualModules bi) $
-    (PackageDistInexcusable CVVirtualModules)
+  checkSpecVer CabalSpecV2_2 (not . null $ virtualModules bi) (PackageDistInexcusable CVVirtualModules)
   -- Check use of thinning and renaming.
   checkSpecVer
     CabalSpecV2_0
@@ -665,7 +677,7 @@ checkAutogenModules ams bi = do
   -- PackageBuildImpossible and not merely PackageDistInexcusable.
   checkSpecVer
     CabalSpecV3_12
-    (elem autoInfoModuleName allModsForAuto)
+    (autoInfoModuleName `elem` allModsForAuto)
     (PackageBuildImpossible CVAutogenPackageInfoGuard)
   where
     allModsForAuto :: [ModuleName]
@@ -787,6 +799,7 @@ checkBuildInfoOptions t bi = do
   checkCLikeOptions LangC "cc-options" (ccOptions bi) ldOpts
   checkCLikeOptions LangCPlusPlus "cxx-options" (cxxOptions bi) ldOpts
   checkCPPOptions (cppOptions bi)
+  checkJSPOptions (jsppOptions bi)
 
 -- | Checks GHC options for commonly misused or non-portable flags.
 checkGHCOptions
@@ -874,6 +887,12 @@ checkGHCOptions title t opts = do
       checkAlternatives
         title
         "cpp-options"
+        ( [(flag, flag) | flag@('-' : 'D' : _) <- ghcNoRts]
+            ++ [(flag, flag) | flag@('-' : 'U' : _) <- ghcNoRts]
+        )
+      checkAlternatives
+        title
+        "jspp-options"
         ( [(flag, flag) | flag@('-' : 'D' : _) <- ghcNoRts]
             ++ [(flag, flag) | flag@('-' : 'U' : _) <- ghcNoRts]
         )
@@ -1064,5 +1083,22 @@ checkCPPOptions opts = do
         checkP
           (not $ any (`isPrefixOf` opt) ["-D", "-U", "-I"])
           (PackageBuildWarning (COptCPP opt))
+    )
+    opts
+
+checkJSPOptions
+  :: Monad m
+  => [String] -- Options in String form.
+  -> CheckM m ()
+checkJSPOptions opts = do
+  checkAlternatives
+    "jspp-options"
+    "include-dirs"
+    [(flag, dir) | flag@('-' : 'I' : dir) <- opts]
+  mapM_
+    ( \opt ->
+        checkP
+          (not $ any (`isPrefixOf` opt) ["-D", "-U", "-I"])
+          (PackageBuildWarning (OptJSPP opt))
     )
     opts

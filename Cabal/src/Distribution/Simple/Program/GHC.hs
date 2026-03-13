@@ -5,7 +5,6 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 
 module Distribution.Simple.Program.GHC
   ( GhcOptions (..)
@@ -16,6 +15,8 @@ module Distribution.Simple.Program.GHC
   , ghcInvocation
   , renderGhcOptions
   , runGHC
+  , runGHCWithResponseFile
+  , runReplProgram
   , packageDbArgsDb
   , normaliseGhcArgs
   ) where
@@ -23,8 +24,8 @@ module Distribution.Simple.Program.GHC
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Data.Semigroup (First (..), Last (..))
 import Distribution.Backpack
-import Distribution.Compat.Semigroup (First' (..), Last' (..), Option' (..))
 import Distribution.ModuleName
 import Distribution.PackageDescription
 import Distribution.Pretty
@@ -32,8 +33,10 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Flag
 import Distribution.Simple.GHC.ImplInfo
 import Distribution.Simple.Program.Find (getExtraPathEnv)
+import Distribution.Simple.Program.ResponseFile
 import Distribution.Simple.Program.Run
 import Distribution.Simple.Program.Types
+import Distribution.Simple.Utils (TempFileOptions, infoNoWrap)
 import Distribution.System
 import Distribution.Types.ComponentId
 import Distribution.Types.ParStrat
@@ -42,17 +45,19 @@ import Distribution.Utils.Path
 import Distribution.Verbosity
 import Distribution.Version
 
+import GHC.IO.Encoding (TextEncoding)
 import Language.Haskell.Extension
 
 import Data.List (stripPrefix)
 import qualified Data.Map as Map
 import Data.Monoid (All (..), Any (..), Endo (..))
 import qualified Data.Set as Set
+import qualified System.Process as Process
 
 normaliseGhcArgs :: Maybe Version -> PackageDescription -> [String] -> [String]
 normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
   | ghcVersion `withinRange` supportedGHCVersions =
-      argumentFilters . filter simpleFilters . filterRtsOpts $ ghcArgs
+      argumentFilters . filter simpleFilters . filterRtsArgs $ ghcArgs
   where
     supportedGHCVersions :: VersionRange
     supportedGHCVersions = orLaterVersion (mkVersion [8, 0])
@@ -141,15 +146,15 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
     flagArgumentFilter :: [String] -> [String] -> [String]
     flagArgumentFilter flags = go
       where
-        makeFilter :: String -> String -> Option' (First' ([String] -> [String]))
-        makeFilter flag arg = Option' $ First' . filterRest <$> stripPrefix flag arg
+        makeFilter :: String -> String -> Maybe (First ([String] -> [String]))
+        makeFilter flag arg = First . filterRest <$> stripPrefix flag arg
           where
             filterRest leftOver = case dropEq leftOver of
               [] -> drop 1
               _ -> id
 
         checkFilter :: String -> Maybe ([String] -> [String])
-        checkFilter = fmap getFirst' . getOption' . foldMap makeFilter flags
+        checkFilter = fmap getFirst . foldMap makeFilter flags
 
         go :: [String] -> [String]
         go [] = []
@@ -162,18 +167,9 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
       flagArgumentFilter
         ["-ghci-script", "-H", "-interactive-print"]
 
-    filterRtsOpts :: [String] -> [String]
-    filterRtsOpts = go False
-      where
-        go :: Bool -> [String] -> [String]
-        go _ [] = []
-        go _ ("+RTS" : opts) = go True opts
-        go _ ("-RTS" : opts) = go False opts
-        go isRTSopts (opt : opts) = addOpt $ go isRTSopts opts
-          where
-            addOpt
-              | isRTSopts = id
-              | otherwise = (opt :)
+    -- \| Remove RTS arguments from a list.
+    filterRtsArgs :: [String] -> [String]
+    filterRtsArgs = snd . splitRTSArgs
 
     simpleFilters :: String -> Bool
     simpleFilters =
@@ -368,12 +364,12 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
     safeToFilterHoles :: Bool
     safeToFilterHoles =
       getAll . checkGhcFlags $
-        All . fromMaybe True . fmap getLast' . getOption' . foldMap notDeferred
+        All . maybe True getLast . foldMap notDeferred
       where
-        notDeferred :: String -> Option' (Last' Bool)
-        notDeferred "-fdefer-typed-holes" = Option' . Just . Last' $ False
-        notDeferred "-fno-defer-typed-holes" = Option' . Just . Last' $ True
-        notDeferred _ = Option' Nothing
+        notDeferred :: String -> Maybe (Last Bool)
+        notDeferred "-fdefer-typed-holes" = Just . Last $ False
+        notDeferred "-fno-defer-typed-holes" = Just . Last $ True
+        notDeferred _ = Nothing
 
     isTypedHoleFlag :: String -> Any
     isTypedHoleFlag =
@@ -442,6 +438,8 @@ data GhcOptions = GhcOptions
   -- the @ghc -i@ flag (@-i@ on its own with no path argument).
   , ghcOptSourcePath :: NubListR (SymbolicPath Pkg (Dir Source))
   -- ^ Search path for Haskell source files; the @ghc -i@ flag.
+  , ghcOptUnitFiles :: [FilePath]
+  -- ^ Unit files to load; the @ghc -unit@ flag.
   , -------------
     -- Packages
 
@@ -510,6 +508,8 @@ data GhcOptions = GhcOptions
   -- ^ Options to pass through to the Assembler.
   , ghcOptCppOptions :: [String]
   -- ^ Options to pass through to CPP; the @ghc -optP@ flag.
+  , ghcOptJSppOptions :: [String]
+  -- ^ Options to pass through to CPP; the @ghc -optJSP@ flag. @since 3.16.0.0
   , ghcOptCppIncludePath :: NubListR (SymbolicPath Pkg (Dir Include))
   -- ^ Search path for CPP includes like header files; the @ghc -I@ flag.
   , ghcOptCppIncludes :: NubListR (SymbolicPath Pkg File)
@@ -578,7 +578,7 @@ data GhcOptions = GhcOptions
   , ---------------
     -- Misc flags
 
-    ghcOptVerbosity :: Flag Verbosity
+    ghcOptVerbosity :: Flag VerbosityLevel
   -- ^ Get GHC to be quiet or verbose with what it's doing; the @ghc -v@ flag.
   , ghcOptExtraPath :: NubListR (SymbolicPath Pkg (Dir Build))
   -- ^ Put the extra folders in the PATH environment variable we invoke
@@ -646,6 +646,69 @@ runGHC
 runGHC verbosity ghcProg comp platform mbWorkDir opts = do
   runProgramInvocation verbosity
     =<< ghcInvocation verbosity ghcProg comp platform mbWorkDir opts
+
+runGHCWithResponseFile
+  :: FilePath
+  -> Maybe TextEncoding
+  -> TempFileOptions
+  -> Verbosity
+  -> ConfiguredProgram
+  -> Compiler
+  -> Platform
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -> GhcOptions
+  -> IO ()
+runGHCWithResponseFile fileNameTemplate encoding tempFileOptions verbosity ghcProg comp platform maybeWorkDir opts = do
+  invocation <- ghcInvocation verbosity ghcProg comp platform maybeWorkDir opts
+
+  let compilerSupportsResponseFiles =
+        case compilerCompatVersion GHC comp of
+          -- GHC 9.4 is the first version which supports response files.
+          Just version -> version >= mkVersion [9, 4]
+          Nothing -> False
+
+      args = progInvokeArgs invocation
+
+  if not compilerSupportsResponseFiles
+    then runProgramInvocation verbosity invocation
+    else do
+      let (rtsArgs, otherArgs) = splitRTSArgs args
+
+      withResponseFile
+        verbosity
+        tempFileOptions
+        fileNameTemplate
+        encoding
+        otherArgs
+        $ \responseFile -> do
+          let newInvocation =
+                invocation{progInvokeArgs = ('@' : responseFile) : rtsArgs}
+
+          infoNoWrap verbosity $
+            "GHC response file arguments: "
+              <> case otherArgs of
+                [] -> ""
+                arg : args' -> Process.showCommandForUser arg args'
+
+          runProgramInvocation verbosity newInvocation
+
+-- Start the repl.  Either use `ghc`, or the program specified by the --with-repl flag.
+runReplProgram
+  :: Maybe FilePath
+  -- ^ --with-repl argument
+  -> TempFileOptions
+  -> Verbosity
+  -> ConfiguredProgram
+  -> Compiler
+  -> Platform
+  -> Maybe (SymbolicPath CWD (Dir Pkg))
+  -> GhcOptions
+  -> IO ()
+runReplProgram withReplProg tempFileOptions verbosity ghcProg comp platform mbWorkDir ghcOpts =
+  let replProg = case withReplProg of
+        Just path -> ghcProg{programLocation = FoundOnSystem path}
+        Nothing -> ghcProg
+   in runGHCWithResponseFile "ghci.rsp" Nothing tempFileOptions verbosity replProg comp platform mbWorkDir ghcOpts
 
 ghcInvocation
   :: Verbosity
@@ -786,6 +849,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
 
           ["-I" ++ u dir | dir <- flags ghcOptCppIncludePath]
         , ["-optP" ++ opt | opt <- ghcOptCppOptions opts]
+        , ["-optJSP" ++ opt | opt <- ghcOptJSppOptions opts]
         , concat
             [ ["-optP-include", "-optP" ++ u inc]
             | inc <- flags ghcOptCppIncludes
@@ -841,8 +905,8 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         , if null (ghcOptInstantiatedWith opts)
             then []
             else
-              "-instantiated-with"
-                : intercalate
+              [ "-instantiated-with"
+              , intercalate
                   ","
                   ( map
                       ( \(n, m) ->
@@ -852,7 +916,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
                       )
                       (ghcOptInstantiatedWith opts)
                   )
-                : []
+              ]
         , concat [["-fno-code", "-fwrite-interface"] | flagBool ghcOptNoCode]
         , ["-hide-all-packages" | flagBool ghcOptHideAllPackages]
         , ["-Wmissing-home-modules" | flagBool ghcOptWarnMissingHomeModules]
@@ -897,6 +961,8 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         , [prettyShow modu | modu <- flags ghcOptInputModules]
         , concat [["-o", u out] | out <- flag ghcOptOutputFile]
         , concat [["-dyno", out] | out <- flag ghcOptOutputDynFile]
+        , -- unit files
+          concat [["-unit", "@" ++ unit] | unit <- ghcOptUnitFiles opts]
         , ---------------
           -- Extra
 
@@ -912,10 +978,10 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
     flags flg = fromNubListR . flg $ opts
     flagBool flg = fromFlagOrDefault False (flg opts)
 
-verbosityOpts :: Verbosity -> [String]
+verbosityOpts :: VerbosityLevel -> [String]
 verbosityOpts verbosity
-  | verbosity >= deafening = ["-v"]
-  | verbosity >= normal = []
+  | verbosity >= Deafening = ["-v"]
+  | verbosity >= Normal = []
   | otherwise = ["-w", "-v0"]
 
 -- | GHC <7.6 uses '-package-conf' instead of '-package-db'.
@@ -959,6 +1025,26 @@ packageDbArgs :: GhcImplInfo -> PackageDBStackCWD -> [String]
 packageDbArgs implInfo
   | flagPackageConf implInfo = packageDbArgsConf
   | otherwise = packageDbArgsDb
+
+-- | Split a list of command-line arguments into RTS arguments and non-RTS
+-- arguments.
+splitRTSArgs :: [String] -> ([String], [String])
+splitRTSArgs args =
+  let addRTSArg arg ~(rtsArgs, nonRTSArgs) = (arg : rtsArgs, nonRTSArgs)
+      addNonRTSArg arg ~(rtsArgs, nonRTSArgs) = (rtsArgs, arg : nonRTSArgs)
+
+      go _ [] = ([], [])
+      go isRTSArg (arg : rest) =
+        case arg of
+          "+RTS" -> addRTSArg arg $ go True rest
+          "-RTS" -> addRTSArg arg $ go False rest
+          "--RTS" -> ([arg], rest)
+          "--" -> ([], arg : rest)
+          _ ->
+            if isRTSArg
+              then addRTSArg arg $ go isRTSArg rest
+              else addNonRTSArg arg $ go isRTSArg rest
+   in go False args
 
 -- -----------------------------------------------------------------------------
 -- Boilerplate Monoid instance for GhcOptions

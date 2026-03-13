@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 
 module Distribution.Client.IndexUtils.ActiveRepos
   ( ActiveRepos (..)
@@ -11,6 +12,7 @@ module Distribution.Client.IndexUtils.ActiveRepos
   , organizeByRepos
   ) where
 
+import Data.Bifunctor (second)
 import Distribution.Client.Compat.Prelude
 import Distribution.Client.Types.RepoName (RepoName (..))
 import Prelude ()
@@ -168,7 +170,7 @@ organizeByRepos
   -> [a]
   -> Either String [(a, CombineStrategy)]
 organizeByRepos (ActiveRepos xs0) sel ys0 =
-  -- here we use lazyness to do only one traversal
+  -- here we use laziness to do only one traversal
   let (rest, result) = case go rest xs0 ys0 of
         Right (rest', result') -> (rest', Right result')
         Left err -> ([], Left err)
@@ -177,12 +179,10 @@ organizeByRepos (ActiveRepos xs0) sel ys0 =
     go :: [a] -> [ActiveRepoEntry] -> [a] -> Either String ([a], [(a, CombineStrategy)])
     go _rest [] ys = Right (ys, [])
     go rest (ActiveRepoRest s : xs) ys =
-      go rest xs ys <&> \(rest', result) ->
-        (rest', map (\x -> (x, s)) rest ++ result)
+      go rest xs ys <&> second (map (,s) rest ++)
     go rest (ActiveRepo r s : xs) ys = do
       (z, zs) <- extract r ys
-      go rest xs zs <&> \(rest', result) ->
-        (rest', (z, s) : result)
+      go rest xs zs <&> second ((z, s) :)
 
     extract :: RepoName -> [a] -> Either String (a, [a])
     extract r = loop id

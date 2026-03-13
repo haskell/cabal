@@ -2,7 +2,6 @@
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -86,12 +85,8 @@ import Control.Exception (ErrorCall (..), catch, evaluate)
 import GHC.Generics
 
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy as LBS
-#if MIN_VERSION_bytestring(0,10,4)
-import qualified Data.ByteString.Builder      as Builder
-#else
-import qualified Data.ByteString.Lazy.Builder as Builder
-#endif
 import qualified Data.IntMap as IM
 import qualified Data.IntSet as IS
 import qualified Data.Map as Map
@@ -111,7 +106,8 @@ import Data.Typeable (TypeRep, Typeable, typeRep)
 
 import Distribution.Utils.MD5
 
-import Data.Monoid (mconcat)
+import qualified Data.Monoid as Monoid
+import qualified Data.Semigroup as Semigroup
 
 import qualified Data.Foldable
 import qualified Data.Semigroup
@@ -203,7 +199,7 @@ structureBuilder s0 = State.evalState (go s0) Map.empty
 
     part (cn, s) = do
       s' <- traverse go s
-      return $ Data.Monoid.mconcat [Builder.stringUtf8 cn, mconcat s']
+      return $ Monoid.mconcat [Builder.stringUtf8 cn, Monoid.mconcat s']
 
     insert :: TypeRep -> Map.Map String (NonEmpty TypeRep) -> Maybe (Map.Map String (NonEmpty TypeRep))
     insert tr m = case Map.lookup trShown m of
@@ -414,6 +410,8 @@ instance Structured Float where structure = nominalStructure
 instance Structured Double where structure = nominalStructure
 
 instance Structured a => Structured (Maybe a)
+instance Structured a => Structured (Semigroup.Last a)
+instance Structured a => Structured (Monoid.Last a)
 instance (Structured a, Structured b) => Structured (Either a b)
 instance Structured a => Structured (Ratio a) where structure = containerStructure
 instance Structured a => Structured [a] where structure = containerStructure

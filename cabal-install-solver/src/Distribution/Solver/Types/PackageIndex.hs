@@ -120,7 +120,7 @@ internalError name = error ("PackageIndex." ++ name ++ ": internal error")
 -- case-sensitively.
 --
 lookup :: PackageIndex pkg -> PackageName -> [pkg]
-lookup (PackageIndex m) name = fromMaybe [] $ Map.lookup name m
+lookup (PackageIndex m) name = Map.findWithDefault [] name m
 
 --
 -- * Construction
@@ -227,8 +227,8 @@ deletePackageName name =
 deleteDependency :: Package pkg
                  => PackageName -> VersionRange -> PackageIndex pkg
                  -> PackageIndex pkg
-deleteDependency name verstionRange =
-  delete name (\pkg -> packageVersion pkg `withinRange` verstionRange)
+deleteDependency name versionRange =
+  delete name (\pkg -> packageVersion pkg `withinRange` versionRange)
 
 --
 -- * Bulk queries

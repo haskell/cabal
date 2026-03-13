@@ -17,13 +17,13 @@ executable gen-spdx
   hs-source-dirs:   src
   ghc-options:      -Wall
   build-depends:
-    , aeson                 ^>=1.4.1.0 || ^>=1.5.2.0 || ^>=2.2.1.0
-    , base                  >=4.13     && <4.20
+    , aeson                 ^>=2.2.3.0
+    , base                  >=4.13 && <4.21
     , bytestring
     , containers
     , Diff                  ^>=0.4
-    , lens                  ^>=4.18.1 || ^>=4.19.1 || ^>=5.0.1 || ^>=5.2
-    , optparse-applicative  ^>=0.15.1.0 || ^>=0.16.0.0
+    , lens                  ^>=5.3
+    , optparse-applicative  ^>=0.19.0.0
     , text
     , zinza                 ^>=0.2
 
@@ -34,13 +34,13 @@ executable gen-spdx-exc
   hs-source-dirs:   src
   ghc-options:      -Wall
   build-depends:
-    , aeson                 ^>=1.4.1.0 || ^>=1.5.2.0 || ^>=2.2.1.0
-    , base                  >=4.13     && <4.20
+    , aeson                 ^>=2.2.3.0
+    , base                  >=4.13 && <4.21
     , bytestring
     , containers
     , Diff                  ^>=0.4
-    , lens                  ^>=4.18.1 || ^>=4.19.1 || ^>=5.0.1 || ^>=5.2
-    , optparse-applicative  ^>=0.15.1.0 || ^>=0.16.0.0
+    , lens                  ^>=5.3
+    , optparse-applicative  ^>=0.19.0.0
     , text
     , zinza                 ^>=0.2
 

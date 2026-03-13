@@ -25,7 +25,7 @@ data TestType
     TestTypeLib Version
   | -- | Some unknown test type e.g. \"type: foo\"
     TestTypeUnknown String Version
-  deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
+  deriving (Generic, Show, Read, Eq, Ord, Data)
 
 instance Binary TestType
 instance Structured TestType

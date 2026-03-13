@@ -2,12 +2,8 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE StaticPointers #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE OverloadedStrings #-}
 
 {-|
 Module: Distribution.Simple.SetupHooks
@@ -228,11 +224,7 @@ import Control.Monad.Trans.Class
   ( lift )
 import qualified Control.Monad.Trans.Reader as Reader
 import qualified Control.Monad.Trans.State as State
-#if MIN_VERSION_transformers(0,5,6)
 import qualified Control.Monad.Trans.Writer.CPS as Writer
-#else
-import qualified Control.Monad.Trans.Writer.Strict as Writer
-#endif
 import Data.Foldable
   ( for_ )
 import Data.Map.Strict as Map
@@ -260,7 +252,7 @@ Usage example:
 > custom-setup
 >   setup-depends:
 >     base        >= 4.18 && < 5,
->     Cabal-hooks >= 0.1  && < 0.2
+>     Cabal-hooks >= 3.14 && < 3.15
 >
 > The declared Cabal version should also be at least 3.14.
 
@@ -432,7 +424,7 @@ registerRule
 registerRule nm !newRule = RulesT $ do
   RulesEnv { rulesEnvNameSpace = ns
            , rulesEnvVerbosity = verbosity } <- Reader.ask
-  oldRules <- lift $ State.get
+  oldRules <- lift State.get
   let rId = RuleId { ruleNameSpace = ns, ruleName = nm }
       (mbDup, newRules) = Map.insertLookupWithKey (\ _ new _old -> new) rId newRule oldRules
   for_ mbDup $ \ oldRule ->

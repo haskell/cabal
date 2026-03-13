@@ -11,9 +11,7 @@ module Distribution.Solver.Types.PackageConstraint (
     scopeToPackageName,
     constraintScopeMatches,
     PackageProperty(..),
-    dispPackageProperty,
     PackageConstraint(..),
-    dispPackageConstraint,
     showPackageConstraint,
     packageConstraintToDependency
   ) where
@@ -21,9 +19,9 @@ module Distribution.Solver.Types.PackageConstraint (
 import Distribution.Solver.Compat.Prelude
 import Prelude ()
 
-import Distribution.Package                        (PackageName)
+import Distribution.Package                        (PackageName, UnitId)
 import Distribution.PackageDescription             (FlagAssignment, dispFlagAssignment)
-import Distribution.Pretty                         (flatStyle, pretty)
+import Distribution.Pretty                         (flatStyle, Pretty(pretty))
 import Distribution.Types.PackageVersionConstraint (PackageVersionConstraint (..))
 import Distribution.Version                        (VersionRange, simplifyVersionRange)
 
@@ -82,43 +80,43 @@ constraintScopeMatches (ScopeAnySetupQualifier pn) (Q pp pn') =
   in setup pp && pn == pn'
 constraintScopeMatches (ScopeAnyQualifier pn) (Q _ pn') = pn == pn'
 
--- | Pretty-prints a constraint scope.
-dispConstraintScope :: ConstraintScope -> Disp.Doc
-dispConstraintScope (ScopeTarget pn) = pretty pn <<>> Disp.text "." <<>> pretty pn
-dispConstraintScope (ScopeQualified q pn) = dispQualifier q <<>> pretty pn
-dispConstraintScope (ScopeAnySetupQualifier pn) = Disp.text "setup." <<>> pretty pn
-dispConstraintScope (ScopeAnyQualifier pn) = Disp.text "any." <<>> pretty pn
+instance Pretty ConstraintScope where
+  pretty (ScopeTarget pn) = pretty pn <<>> Disp.text "." <<>> pretty pn
+  pretty (ScopeQualified q pn) = dispQualifier q <<>> pretty pn
+  pretty (ScopeAnySetupQualifier pn) = Disp.text "setup." <<>> pretty pn
+  pretty (ScopeAnyQualifier pn) = Disp.text "any." <<>> pretty pn
 
 -- | A package property is a logical predicate on packages.
 data PackageProperty
    = PackagePropertyVersion   VersionRange
    | PackagePropertyInstalled
+   | PackagePropertyInstalledSpecificUnitId UnitId
    | PackagePropertySource
    | PackagePropertyFlags     FlagAssignment
    | PackagePropertyStanzas   [OptionalStanza]
   deriving (Eq, Show, Generic)
 
 instance Binary PackageProperty
+instance NFData PackageProperty
 instance Structured PackageProperty
 
--- | Pretty-prints a package property.
-dispPackageProperty :: PackageProperty -> Disp.Doc
-dispPackageProperty (PackagePropertyVersion verrange) = pretty verrange
-dispPackageProperty PackagePropertyInstalled          = Disp.text "installed"
-dispPackageProperty PackagePropertySource             = Disp.text "source"
-dispPackageProperty (PackagePropertyFlags flags)      = dispFlagAssignment flags
-dispPackageProperty (PackagePropertyStanzas stanzas)  =
-  Disp.hsep $ map (Disp.text . showStanza) stanzas
+instance Pretty PackageProperty where
+  pretty (PackagePropertyVersion verrange) = pretty verrange
+  pretty PackagePropertyInstalled          = Disp.text "installed"
+  pretty (PackagePropertyInstalledSpecificUnitId unitId) = Disp.text "installed(" <> pretty unitId <> Disp.text ")"
+  pretty PackagePropertySource             = Disp.text "source"
+  pretty (PackagePropertyFlags flags)      = dispFlagAssignment flags
+  pretty (PackagePropertyStanzas stanzas)  =
+    Disp.hsep $ map (Disp.text . showStanza) stanzas
 
 -- | A package constraint consists of a scope plus a property
 -- that must hold for all packages within that scope.
 data PackageConstraint = PackageConstraint ConstraintScope PackageProperty
   deriving (Eq, Show)
 
--- | Pretty-prints a package constraint.
-dispPackageConstraint :: PackageConstraint -> Disp.Doc
-dispPackageConstraint (PackageConstraint scope prop) =
-  dispConstraintScope scope <+> dispPackageProperty prop
+instance Pretty PackageConstraint where
+  pretty (PackageConstraint scope prop) =
+    pretty scope <+> pretty prop
 
 -- | Alternative textual representation of a package constraint
 -- for debugging purposes (slightly more verbose than that
@@ -126,7 +124,7 @@ dispPackageConstraint (PackageConstraint scope prop) =
 --
 showPackageConstraint :: PackageConstraint -> String
 showPackageConstraint pc@(PackageConstraint scope prop) =
-  Disp.renderStyle flatStyle . postprocess $ dispPackageConstraint pc2
+  Disp.renderStyle flatStyle . postprocess $ pretty pc2
   where
     pc2 = case prop of
       PackagePropertyVersion vr ->
@@ -143,6 +141,7 @@ packageConstraintToDependency (PackageConstraint scope prop) = toDep prop
   where
     toDep (PackagePropertyVersion vr) = Just $ PackageVersionConstraint (scopeToPackageName scope) vr
     toDep (PackagePropertyInstalled)  = Nothing
+    toDep (PackagePropertyInstalledSpecificUnitId {}) = Nothing
     toDep (PackagePropertySource)     = Nothing
     toDep (PackagePropertyFlags _)    = Nothing
     toDep (PackagePropertyStanzas _)  = Nothing

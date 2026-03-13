@@ -1,13 +1,9 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ViewPatterns #-}
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Simple.Setup.Build
@@ -62,10 +58,10 @@ data BuildFlags = BuildFlags
   , buildNumJobs :: Flag (Maybe Int)
   , buildUseSemaphore :: Flag String
   }
-  deriving (Read, Show, Generic, Typeable)
+  deriving (Read, Show, Generic)
 
 pattern BuildCommonFlags
-  :: Flag Verbosity
+  :: Flag VerbosityFlags
   -> Flag (SymbolicPath Pkg (Dir Dist))
   -> Flag (SymbolicPath CWD (Dir Pkg))
   -> Flag (SymbolicPath Pkg File)
@@ -132,7 +128,8 @@ buildCommand progDb =
       --        ++ "  " ++ pname ++ " build foo:Foo.Bar\n"
       --        ++ "  " ++ pname ++ " build testsuite1:Foo/Bar.hs\n"
       commandUsage =
-        usageAlternatives "build" $
+        usageAlternatives
+          "build"
           [ "[FLAGS]"
           , "COMPONENTS [FLAGS]"
           ]
@@ -155,7 +152,7 @@ buildOptions progDb showOrParseArgs =
       , option
           []
           ["semaphore"]
-          "semaphore"
+          "Use the specified semaphore so GHC can compile components in parallel"
           buildUseSemaphore
           (\v flags -> flags{buildUseSemaphore = v})
           (reqArg' "SEMAPHORE" Flag flagToList)

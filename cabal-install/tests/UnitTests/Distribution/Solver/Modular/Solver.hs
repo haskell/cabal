@@ -182,8 +182,8 @@ tests =
       , runTest $ mkTest db9 "setupDeps7" ["F", "G"] (solverSuccess [("A", 1), ("B", 1), ("B", 2), ("C", 1), ("D", 1), ("E", 1), ("E", 2), ("F", 1), ("G", 1)])
       , runTest $ mkTest db10 "setupDeps8" ["C"] (solverSuccess [("C", 1)])
       , runTest $ indep $ mkTest dbSetupDeps "setupDeps9" ["A", "B"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2)])
-      , runTest $ setupStanzaTest1
-      , runTest $ setupStanzaTest2
+      , runTest setupStanzaTest1
+      , runTest setupStanzaTest2
       ]
   , testGroup
       "Base shim"
@@ -198,17 +198,39 @@ tests =
       , runTest $ mkTest db11s2 "baseShim8" ["A"] (solverSuccess [("A", 1)])
       ]
   , testGroup
-      "Base and non-reinstallable"
+      "Non-reinstallable base, template-haskell and ghc (GHC without wiredInUnitIds)"
       [ runTest $
           mkTest dbBase "Refuse to install base without --allow-boot-library-installs" ["base"] $
             solverFailure (isInfixOf "rejecting: base-1.0.0 (constraint from non-reinstallable package requires installed instance)")
       , runTest $
-          allowBootLibInstalls $
-            mkTest dbBase "Install base with --allow-boot-library-installs" ["base"] $
-              solverSuccess [("base", 1), ("ghc-prim", 1), ("integer-gmp", 1), ("integer-simple", 1)]
+          mkTest dbTH "Refuse to install template-haskell without --allow-boot-library-installs" ["template-haskell"] $
+            solverFailure (isInfixOf "rejecting: template-haskell-1.0.0 (constraint from non-reinstallable package requires installed instance)")
       , runTest $
           mkTest dbNonupgrade "Refuse to install newer ghc requested by another library" ["A"] $
             solverFailure (isInfixOf "rejecting: ghc-2.0.0 (constraint from non-reinstallable package requires installed instance)")
+      , runTest $
+          allowBootLibInstalls $
+            mkTest dbBase "Install base with --allow-boot-library-installs" ["base"] $
+              solverSuccess [("base", 1), ("ghc-prim", 1), ("integer-gmp", 1), ("integer-simple", 1)]
+      ]
+  , testGroup
+      "Reinstallable base, template-haskell, but not ghc{,-internal} (GHC with wiredInUnitIds)"
+      [ runTest $
+          wiredInUnitIds $
+            mkTest dbBase "Allows reinstalling base even without --allow-boot-library-installs" ["base"] $
+              solverSuccess [("base", 1), ("ghc-prim", 1), ("integer-gmp", 1), ("integer-simple", 1)]
+      , runTest $
+          wiredInUnitIds $
+            mkTest dbTH "Allows reinstalling template-haskell even without --allow-boot-library-installs" ["template-haskell"] $
+              solverSuccess [("base", 1), ("ghc-prim", 1), ("pretty", 1), ("template-haskell", 1)]
+      , runTest $
+          wiredInUnitIds $
+            mkTest dbGhcInternal "Fails to reinstall ghc-internal as its wired-in" ["ghc-internal"] $
+              solverFailure (isInfixOf "ghc-internal-1.0.0 (constraint from non-reinstallable package requires installed instance with unit id ghc-internal-1)")
+      , runTest $
+          wiredInUnitIds $
+            mkTest dbNonupgrade "Refuse to install newer ghc requested by another library" ["A"] $
+              solverFailure (isInfixOf "rejecting: ghc-2.0.0 (constraint from non-reinstallable package requires installed instance with unit id ghc-1)")
       ]
   , testGroup
       "reject-unconstrained"
@@ -412,8 +434,7 @@ tests =
          in runTest $
               mkTest db "reject package that is missing required sub-library" ["A"] $
                 solverFailure $
-                  isInfixOf $
-                    "rejecting: B-1.0.0 (does not contain library 'sub-lib', which is required by A)"
+                  isInfixOf "rejecting: B-1.0.0 (does not contain library 'sub-lib', which is required by A)"
       , let db =
               [ Right $ exAv "A" 1 [ExSubLibAny "B" "sub-lib"]
               , Right $ exAvNoLibrary "B" 1 `withSubLibrary` exSubLib "sub-lib" []
@@ -421,8 +442,7 @@ tests =
          in runTest $
               mkTest db "reject package with private but required sub-library" ["A"] $
                 solverFailure $
-                  isInfixOf $
-                    "rejecting: B-1.0.0 (library 'sub-lib' is private, but it is required by A)"
+                  isInfixOf "rejecting: B-1.0.0 (library 'sub-lib' is private, but it is required by A)"
       , let db =
               [ Right $ exAv "A" 1 [ExSubLibAny "B" "sub-lib"]
               , Right $
@@ -433,8 +453,7 @@ tests =
               constraints [ExFlagConstraint (ScopeAnyQualifier "B") "make-lib-private" True] $
                 mkTest db "reject package with sub-library made private by flag constraint" ["A"] $
                   solverFailure $
-                    isInfixOf $
-                      "rejecting: B-1.0.0 (library 'sub-lib' is private, but it is required by A)"
+                    isInfixOf "rejecting: B-1.0.0 (library 'sub-lib' is private, but it is required by A)"
       , let db =
               [ Right $ exAv "A" 1 [ExSubLibAny "B" "sub-lib"]
               , Right $
@@ -459,8 +478,7 @@ tests =
               goalOrder goals $
                 mkTest db "reject package that requires a private sub-library" ["A", "C"] $
                   solverFailure $
-                    isInfixOf $
-                      "rejecting: C-1.0.0 (requires library 'sub-lib' from B, but the component is private)"
+                    isInfixOf "rejecting: C-1.0.0 (requires library 'sub-lib' from B, but the component is private)"
       , let db =
               [ Right $ exAv "A" 1 [ExSubLibAny "B" "sub-lib-v1"]
               , Right $ exAv "B" 2 [] `withSubLibrary` ExSubLib "sub-lib-v2" publicDependencies
@@ -1400,6 +1418,25 @@ dbBase =
   , Right $ exAv "integer-gmp" 1 []
   ]
 
+dbTH :: ExampleDb
+dbTH =
+  [ Right $
+      exAv
+        "template-haskell"
+        1
+        [ExAny "ghc-prim", ExAny "ghc-internal", ExAny "ghc-boot-th", ExAny "pretty", ExAny "base"]
+  , Right $ exAv "ghc-prim" 1 []
+  , Left $ exInst "ghc-internal" 1 "ghc-internal-1" []
+  , Left $ exInst "ghc-boot-th" 1 "ghc-boot-th-1" []
+  , Right $ exAv "pretty" 1 [ExAny "base"]
+  , Right $ exAv "base" 1 [ExAny "ghc-prim", ExAny "ghc-internal"]
+  ]
+
+dbGhcInternal :: ExampleDb
+dbGhcInternal =
+  [ Right $ exAv "ghc-internal" 1 []
+  ]
+
 dbNonupgrade :: ExampleDb
 dbNonupgrade =
   [ Left $ exInst "ghc" 1 "ghc-1" []
@@ -1741,8 +1778,7 @@ twoLevelDeepCommonDependencyLogMessage :: String -> SolverTest
 twoLevelDeepCommonDependencyLogMessage name =
   mkTest db name ["A"] $
     solverFailure $
-      isInfixOf $
-        "unknown package: B (dependency of A +/-flagA +/-flagB)"
+      isInfixOf "unknown package: B (dependency of A +/-flagA +/-flagB)"
   where
     db :: ExampleDb
     db =

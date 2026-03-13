@@ -37,6 +37,8 @@ module Distribution.Utils.Path
   , SymbolicPath
   , AbsolutePath (..)
   , SymbolicPathX -- NB: constructor not exposed, to retain type safety.
+  , FileLike (..)
+  , PathLike (..)
 
     -- ** Symbolic path API
   , getSymbolicPath
@@ -53,8 +55,6 @@ module Distribution.Utils.Path
   , interpretSymbolicPathAbsolute
 
     -- ** General filepath API
-  , (</>)
-  , (<.>)
   , takeDirectorySymbolicPath
   , dropExtensionsSymbolicPath
   , replaceExtensionSymbolicPath
@@ -201,7 +201,7 @@ data AllowAbsolute
 -- until we interpret them (using e.g. 'interpretSymbolicPath').
 newtype SymbolicPathX (allowAbsolute :: AllowAbsolute) (from :: Type) (to :: FileOrDir)
   = SymbolicPath FilePath
-  deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
+  deriving (Generic, Show, Read, Eq, Ord, Data)
 
 type role SymbolicPathX nominal nominal nominal
 

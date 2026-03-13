@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 
 -- |
 -- Module      :  Distribution.PackageDescription.Check.Conditional
@@ -92,7 +93,7 @@ annotateCondTree fs ta (CondNode a c bs) =
     -- \*off* by default.
     isPkgFlagCond :: Condition ConfVar -> Bool
     isPkgFlagCond (Lit _) = False
-    isPkgFlagCond (Var (PackageFlag f)) = elem f defOffFlags
+    isPkgFlagCond (Var (PackageFlag f)) = f `elem` defOffFlags
     isPkgFlagCond (Var _) = False
     isPkgFlagCond (CNot cn) = not (isPkgFlagCond cn)
     isPkgFlagCond (CAnd ca cb) = isPkgFlagCond ca || isPkgFlagCond cb
@@ -228,9 +229,9 @@ checkCondVars cond =
 checkDuplicateModules :: GenericPackageDescription -> [PackageCheck]
 checkDuplicateModules pkg =
   concatMap checkLib (maybe id (:) (condLibrary pkg) . map snd $ condSubLibraries pkg)
-    ++ concatMap checkExe (map snd $ condExecutables pkg)
-    ++ concatMap checkTest (map snd $ condTestSuites pkg)
-    ++ concatMap checkBench (map snd $ condBenchmarks pkg)
+    ++ concatMap (checkExe . snd) (condExecutables pkg)
+    ++ concatMap (checkTest . snd) (condTestSuites pkg)
+    ++ concatMap (checkBench . snd) (condBenchmarks pkg)
   where
     -- the duplicate modules check is has not been thoroughly vetted for backpack
     checkLib = checkDups "library" (\l -> explicitLibModules l ++ map moduleReexportName (reexportedModules l))
@@ -245,7 +246,7 @@ checkDuplicateModules pkg =
           libMap =
             foldCondTree
               Map.empty
-              (\(_, v) -> Map.fromListWith sumPair . map (\x -> (x, (1, 1))) $ getModules v)
+              (\(_, v) -> Map.fromListWith sumPair . map (,(1, 1)) $ getModules v)
               (Map.unionWith mergePair) -- if a module may occur in nonexclusive branches count it twice strictly and once loosely.
               (Map.unionWith maxPair) -- a module occurs the max of times it might appear in exclusive branches
               t

@@ -1,7 +1,9 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 {- FOURMOLU_DISABLE -}
 
 -----------------------------------------------------------------------------
@@ -143,7 +145,10 @@ import Distribution.Simple.Program.GHC
   , renderGhcOptions
   )
 import Distribution.Simple.Setup
-  ( Flag (..), CommonSetupFlags (..), GlobalFlags (..)
+  ( CommonSetupFlags (..)
+  , pattern Flag
+  , GlobalFlags (..)
+  , globalCommand
   )
 import Distribution.Simple.Utils
   ( cabalVersion
@@ -175,8 +180,7 @@ import Distribution.Verbosity
 
 import Data.List (foldl1')
 import qualified Data.Map.Lazy as Map
-import Distribution.Simple.Setup (globalCommand)
-import Distribution.Client.Compat.ExecutablePath (getExecutablePath)
+import System.Environment (getExecutablePath)
 import Distribution.Compat.Process (proc)
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
@@ -312,6 +316,12 @@ data SetupScriptOptions = SetupScriptOptions
   -- ^ Is the task we are going to run an interactive foreground task,
   -- or an non-interactive background task? Based on this flag we
   -- decide whether or not to delegate ctrl+c to the spawned task
+  , isMainLibOrExeComponent :: Bool
+  -- ^ Let the setup script logic know if it is being run to build a main
+  -- library or executable component.  This is used to determine if we should
+  -- use the configure command, if the build-type is 'Configure'.  For
+  -- configure, only the main library and execomponents have 'configure'
+  -- support, and thus we can skip running configure for other components.
   }
 
 defaultSetupScriptOptions :: SetupScriptOptions
@@ -336,6 +346,7 @@ defaultSetupScriptOptions =
     , forceExternalSetupMethod = False
     , setupCacheLock = Nothing
     , isInteractive = False
+    , isMainLibOrExeComponent = True
     }
 
 workingDir :: SetupScriptOptions -> FilePath
@@ -372,7 +383,14 @@ getSetup verbosity options mpkg = do
                 (useCabalVersion options)
                 (orLaterVersion (mkVersion (cabalSpecMinimumLibraryVersion (specVersion pkg))))
           }
-      buildType' = buildType pkg
+      -- We retain Configure only for the main library and executable components.
+      -- For other components, we rewrite the buildType to Simple to skip the
+      -- configure step.  This is because the configure step is not supported for
+      -- other components.  Configure can only impact MainLib and Exe through
+      -- .buildinfo files.
+      buildType' = case (buildType pkg, isMainLibOrExeComponent options) of
+        (Configure, False) -> Simple
+        (bt, _) -> bt
   (version, method, options'') <-
     getSetupMethod verbosity options' pkg buildType'
   return
@@ -405,10 +423,9 @@ getSetupMethod verbosity options pkg buildType'
       || maybe False (cabalVersion /=) (useCabalSpecVersion options)
       || not (cabalVersion `withinRange` useCabalVersion options) =
       getExternalSetupMethod verbosity options pkg buildType'
-  | isJust (useLoggingHandle options)
-      -- Forcing is done to use an external process e.g. due to parallel
-      -- build concerns.
-      || forceExternalSetupMethod options =
+  | -- Forcing is done to use an external process e.g. due to parallel
+    -- build concerns.
+    forceExternalSetupMethod options =
       return (cabalVersion, SelfExecMethod, options)
   | otherwise = return (cabalVersion, InternalMethod, options)
 
@@ -429,8 +446,8 @@ runSetup verbosity setup args0 = do
       options = setupScriptOptions setup
       bt = setupBuildType setup
       args = verbosityHack (setupVersion setup) args0
-  when (verbosity >= deafening {- avoid test if not debug -} && args /= args0) $
-    infoNoWrap verbose $
+  when (verbosityLevel verbosity >= Deafening {- avoid test if not debug -} && args /= args0) $
+    infoNoWrap (verbosity { verbosityFlags = verbose }) $
       "Applied verbosity hack:\n"
         ++ "  Before: "
         ++ show args0
@@ -545,16 +562,20 @@ internalSetupMethod verbosity options bt args = do
   withEnv "HASKELL_DIST_DIR" (getSymbolicPath $ useDistPref options) $
     withExtraPathEnv (useExtraPathEnv options) $
       withEnvOverrides (useExtraEnvOverrides options) $
-        buildTypeAction bt args
+        buildTypeAction (verbosityHandles verbosity) bt args
 
-buildTypeAction :: BuildType -> ([String] -> IO ())
-buildTypeAction Simple = Simple.defaultMainArgs
-buildTypeAction Configure =
-  Simple.defaultMainWithSetupHooksArgs
-    Simple.autoconfSetupHooks
-buildTypeAction Make = Make.defaultMainArgs
-buildTypeAction Hooks  = error "buildTypeAction Hooks"
-buildTypeAction Custom = error "buildTypeAction Custom"
+buildTypeAction :: VerbosityHandles -> BuildType -> ([String] -> IO ())
+buildTypeAction verbHandles = \ case
+  Simple ->
+    Simple.defaultMainArgsWithHandles verbHandles
+  Configure ->
+    Simple.defaultMainWithSetupHooksArgs Simple.autoconfSetupHooks verbHandles
+  Make ->
+    Make.defaultMainArgsWithHandles verbHandles
+  Hooks ->
+    error "buildTypeAction Hooks"
+  Custom ->
+    error "buildTypeAction Custom"
 
 invoke :: Verbosity -> FilePath -> [String] -> SetupScriptOptions -> IO ()
 invoke verbosity path args options = do
@@ -575,9 +596,7 @@ invoke verbosity path args options = do
       ]
         ++ progOverrideEnv progDb
 
-  let loggingHandle = case useLoggingHandle options of
-        Nothing -> Inherit
-        Just hdl -> UseHandle hdl
+  let loggingHandle = maybe Inherit UseHandle (useLoggingHandle options)
       cp =
         (proc path args)
           { Process.cwd = fmap getSymbolicPath $ useWorkingDir options
@@ -635,7 +654,7 @@ externalSetupMethod path verbosity options _ args =
     invokeWithWin32CleanHack origPath = do
       info verbosity $ "Using the Win32 clean hack."
       -- Recursively removes the temp dir on exit.
-      withTempDirectory verbosity (workingDir options) "cabal-tmp" $ \tmpDir ->
+      withTempDirectory (workingDir options) "cabal-tmp" $ \tmpDir ->
         bracket
           (moveOutOfTheWay tmpDir origPath)
           (\tmpPath -> maybeRestore origPath tmpPath)
@@ -1018,7 +1037,7 @@ getExternalSetupMethod verbosity options pkg bt = do
                 debug verbosity $
                   "Found cached setup executable: " ++ cachedSetupProgFile
               else do
-                debug verbosity $ "Setup executable not found in the cache."
+                debug verbosity "Setup executable not found in the cache."
                 src <-
                   compileSetupExecutable
                     options'
@@ -1100,12 +1119,12 @@ getExternalSetupMethod verbosity options pkg bt = do
                   { -- Respect -v0, but don't crank up verbosity on GHC if
                     -- Cabal verbosity is requested. For that, use
                     -- --ghc-option=-v instead!
-                    ghcOptVerbosity = Flag (min verbosity normal)
+                    ghcOptVerbosity = Flag (min (verbosityLevel verbosity) Normal)
                   , ghcOptMode = Flag GhcModeMake
                   , ghcOptInputFiles = toNubListR [setupHs]
-                  , ghcOptOutputFile = Flag $ setupProgFile
-                  , ghcOptObjDir = Flag $ setupDir
-                  , ghcOptHiDir = Flag $ setupDir
+                  , ghcOptOutputFile = Flag setupProgFile
+                  , ghcOptObjDir = Flag setupDir
+                  , ghcOptHiDir = Flag setupDir
                   , ghcOptSourcePathClear = Flag True
                   , ghcOptSourcePath = case bt of
                       Custom -> toNubListR [sameDirectory]

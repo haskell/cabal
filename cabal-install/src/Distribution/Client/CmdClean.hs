@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Distribution.Client.CmdClean (cleanCommand, cleanAction) where
@@ -38,13 +39,14 @@ import Distribution.Simple.Command
   , option
   )
 import Distribution.Simple.Setup
-  ( Flag (..)
+  ( Flag
   , falseArg
   , flagToMaybe
   , fromFlagOrDefault
   , optionDistPref
   , optionVerbosity
   , toFlag
+  , pattern NoFlag
   )
 import Distribution.Simple.Utils
   ( dieWithException
@@ -61,7 +63,10 @@ import Distribution.Utils.Path hiding
   , (</>)
   )
 import Distribution.Verbosity
-  ( normal
+  ( VerbosityFlags
+  , defaultVerbosityHandles
+  , mkVerbosity
+  , normal
   )
 
 import Control.Exception
@@ -77,7 +82,6 @@ import System.Directory
   ( canonicalizePath
   , doesDirectoryExist
   , doesFileExist
-  , getDirectoryContents
   , listDirectory
   , removeDirectoryRecursive
   , removeFile
@@ -93,7 +97,7 @@ import qualified System.Process as Process
 
 data CleanFlags = CleanFlags
   { cleanSaveConfig :: Flag Bool
-  , cleanVerbosity :: Flag Verbosity
+  , cleanVerbosity :: Flag VerbosityFlags
   , cleanDistDir :: Flag (SymbolicPath Pkg (Dir Dist))
   }
   deriving (Eq)
@@ -147,7 +151,7 @@ cleanOptions showOrParseArgs =
 
 cleanAction :: (ProjectFlags, CleanFlags) -> [String] -> GlobalFlags -> IO ()
 cleanAction (ProjectFlags{..}, CleanFlags{..}) extraArgs _ = do
-  let verbosity = fromFlagOrDefault normal cleanVerbosity
+  let verbosity = mkVerbosity defaultVerbosityHandles $ fromFlagOrDefault normal cleanVerbosity
       saveConfig = fromFlagOrDefault False cleanSaveConfig
       mdistDirectory = fmap getSymbolicPath $ flagToMaybe cleanDistDir
       mprojectDir = flagToMaybe flagProjectDir
@@ -215,4 +219,4 @@ cleanAction (ProjectFlags{..}, CleanFlags{..}) extraArgs _ = do
 removeEnvFiles :: FilePath -> IO ()
 removeEnvFiles dir =
   (traverse_ (removeFile . (dir </>)) . filter ((".ghc.environment" ==) . take 16))
-    =<< getDirectoryContents dir
+    =<< listDirectory dir

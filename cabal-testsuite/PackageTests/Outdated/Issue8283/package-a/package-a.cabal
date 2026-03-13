@@ -1,0 +1,24 @@
+cabal-version:      2.4
+name:               package-a
+version:            0.1.0.0
+synopsis:           Package A for outdated command testing
+license:            BSD-3-Clause
+license-file:       LICENSE
+author:             Cabal Test Suite
+maintainer:         cabal-dev@haskell.org
+build-type:         Simple
+
+flag foo
+  description: test flag
+
+library
+  exposed-modules:    ModuleA
+  build-depends:      base >=3.2 && <3.3,
+                      binary == 0.8.6.0
+  if flag(foo)
+    build-depends: template-haskell == 2.3.0.*
+  else
+    build-depends: template-haskell == 2.3.*
+
+  hs-source-dirs:     src
+  default-language:   Haskell2010

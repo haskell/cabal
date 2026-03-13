@@ -1,6 +1,5 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 
 -----------------------------------------------------------------------------
@@ -23,7 +22,6 @@ module Distribution.Simple.Bench
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Compat.Environment
 import qualified Distribution.PackageDescription as PD
 import Distribution.Pretty
 import Distribution.Simple.Build (addInternalBuildTools)
@@ -43,6 +41,7 @@ import Distribution.System (Platform (Platform))
 import Distribution.Types.Benchmark (Benchmark (benchmarkBuildInfo))
 import Distribution.Types.UnqualComponentName
 import Distribution.Utils.Path
+import Distribution.Verbosity
 
 import System.Directory (doesFileExist)
 
@@ -50,6 +49,7 @@ import System.Directory (doesFileExist)
 bench
   :: Args
   -- ^ positional command-line arguments
+  -> VerbosityHandles
   -> PD.PackageDescription
   -- ^ information from the .cabal file
   -> LBI.LocalBuildInfo
@@ -57,8 +57,9 @@ bench
   -> BenchmarkFlags
   -- ^ flags sent to benchmark
   -> IO ()
-bench args pkg_descr lbi flags = do
-  let verbosity = fromFlag $ benchmarkVerbosity flags
+bench args verbHandles pkg_descr lbi flags = do
+  curDir <- LBI.absoluteWorkingDirLBI lbi
+  let verbosity = mkVerbosity verbHandles (fromFlag $ benchmarkVerbosity flags)
       benchmarkNames = args
       pkgBenchmarks = PD.benchmarks pkg_descr
       enabledBenchmarks = LBI.enabledBenchLBIs pkg_descr lbi
@@ -73,6 +74,7 @@ bench args pkg_descr lbi flags = do
                 { -- Include any build-tool-depends on build tools internal to the current package.
                   LBI.withPrograms =
                     addInternalBuildTools
+                      curDir
                       pkg_descr
                       lbi
                       (benchmarkBuildInfo bm)
@@ -90,15 +92,12 @@ bench args pkg_descr lbi flags = do
               dieWithException verbosity $
                 NoBenchMarkProgram cmd
 
-            existingEnv <- getEnvironment
-
             -- Compute the appropriate environment for running the benchmark
             let progDb = LBI.withPrograms lbiForBench
                 pathVar = progSearchPath progDb
                 envOverrides = progOverrideEnv progDb
             newPath <- programSearchPathAsPATHVar pathVar
-            overrideEnv <- fromMaybe [] <$> getEffectiveEnvironment ([("PATH", Just newPath)] ++ envOverrides)
-            let shellEnv = overrideEnv ++ existingEnv
+            shellEnv <- getFullEnvironment ([("PATH", Just newPath)] ++ envOverrides)
 
             -- Add (DY)LD_LIBRARY_PATH if needed
             shellEnv' <-

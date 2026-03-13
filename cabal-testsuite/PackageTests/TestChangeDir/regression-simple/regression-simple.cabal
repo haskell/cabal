@@ -1,0 +1,27 @@
+cabal-version:   3.14
+name:            regression-simple
+version:         0.1.0.0
+license:         NONE
+author:          Matthew Pickering
+maintainer:      matthewtpickering@gmail.com
+build-type:      Simple
+extra-doc-files: CHANGELOG.md
+
+common warnings
+    ghc-options: -Wall
+
+test-suite regression-simple-test
+    import:           warnings
+    default-language: Haskell2010
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          Main.hs
+    build-depends:    base
+
+benchmark regression-simple-bench
+    import:           warnings
+    default-language: Haskell2010
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   bench
+    main-is:          Main.hs
+    build-depends:    base

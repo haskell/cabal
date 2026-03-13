@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -147,7 +146,7 @@ data PackageIndex a = PackageIndex
     -- preserved. See #1463 for discussion.
     packageIdIndex :: !(Map (PackageName, LibraryName) (Map Version [a]))
   }
-  deriving (Eq, Generic, Show, Read, Typeable)
+  deriving (Eq, Generic, Show, Read)
 
 instance Binary a => Binary (PackageIndex a)
 instance Structured a => Structured (PackageIndex a)
@@ -185,7 +184,7 @@ invariant (PackageIndex pids pnames) =
                 all
                   (\g -> length g == 1)
                   (groupBy (equating installedUnitId) pinsts')
-        , pinst <- assert pinstsOk $ pinsts'
+        , pinst <- assert pinstsOk pinsts'
         , let pinstOk =
                 packageName pinst == pname
                   && packageVersion pinst == pver
@@ -370,8 +369,8 @@ deletePackageName name original@(PackageIndex pids pnames) =
 -- | Removes all packages satisfying this dependency from the index.
 --
 deleteDependency :: Dependency -> PackageIndex -> PackageIndex
-deleteDependency (Dependency name verstionRange) =
-  delete' name (\pkg -> packageVersion pkg `withinRange` verstionRange)
+deleteDependency (Dependency name versionRange) =
+  delete' name (\pkg -> packageVersion pkg `withinRange` versionRange)
 -}
 
 --
@@ -460,9 +459,7 @@ lookupSourcePackageId index pkgid =
   -- Do not lookup internal libraries
   case Map.lookup (packageName pkgid, LMainLibName) (packageIdIndex index) of
     Nothing -> []
-    Just pvers -> case Map.lookup (packageVersion pkgid) pvers of
-      Nothing -> []
-      Just pkgs -> pkgs -- in preference order
+    Just pvers -> fromMaybe [] (Map.lookup (packageVersion pkgid) pvers) -- in preference order
 
 -- | Convenient alias of 'lookupSourcePackageId', but assuming only
 -- one package per package ID.
@@ -490,9 +487,7 @@ lookupInternalPackageName
   -> LibraryName
   -> [(Version, [a])]
 lookupInternalPackageName index name library =
-  case Map.lookup (name, library) (packageIdIndex index) of
-    Nothing -> []
-    Just pvers -> Map.toList pvers
+  maybe [] Map.toList (Map.lookup (name, library) (packageIdIndex index))
 
 -- | Does a lookup by source package name and a range of versions.
 --
@@ -735,7 +730,7 @@ dependencyGraph index = (graph, vertex_to_pkg, id_to_vertex)
     graph =
       Array.listArray
         bounds
-        [ [v | Just v <- map id_to_vertex (installedDepends pkg)]
+        [ mapMaybe id_to_vertex (installedDepends pkg)
         | pkg <- pkgs
         ]
 

@@ -14,7 +14,6 @@ on:
     paths:
     - 'doc/Makefile'
     - 'doc/pyproject.toml'
-    - 'doc/requirements.in'
     - 'doc/*.inc'
     - 'doc/*.py'
     - 'doc/*.rst'
@@ -24,7 +23,6 @@ on:
     paths:
     - 'doc/Makefile'
     - 'doc/pyproject.toml'
-    - 'doc/requirements.in'
     - 'doc/*.inc'
     - 'doc/*.py'
     - 'doc/*.rst'
@@ -44,41 +42,31 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.10']
+        python-version: ['3.13']
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         submodules: recursive
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Install pip-compile
-      run: |
-        pip install pip-tools
-
-    - name: Create requirements.txt from requirements.in
-      run: |
-        make users-guide-requirements
-
-    # Subsumed by make users-guide
-    # - name: Install dependencies
-    #   run: |
-    #     pip install -r doc/requirements.txt
+    - name: Install the latest version of uv
+      uses: astral-sh/setup-uv@v7
 
     - name: Build User's Guide in HTML
       run: |
         make SPHINX_HTML_OUTDIR=html users-guide
 
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v7
       with:
         name: users-guide-html
         path: html/
 
-    - name: Check security of requirements.txt
+    - name: Check security of requirements (dependencies)
       env:
         SKJOLD_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |

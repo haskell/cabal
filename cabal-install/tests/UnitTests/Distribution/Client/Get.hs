@@ -40,7 +40,8 @@ tests =
       ]
   , askOption $ \(RunNetworkTests doRunNetTests) ->
       testGroup "forkPackages, network tests" $
-        includeTestsIf doRunNetTests $
+        includeTestsIf
+          doRunNetTests
           [ testCase "git clone" testNetworkGitClone
           ]
   ]
@@ -49,7 +50,7 @@ tests =
     includeTestsIf False _ = []
 
 verbosity :: Verbosity
-verbosity = Verbosity.silent -- for debugging try verbose
+verbosity = Verbosity.mkVerbosity Verbosity.defaultVerbosityHandles Verbosity.silent -- for debugging try verbose
 
 pkgidfoo :: PackageId
 pkgidfoo = PackageIdentifier (mkPackageName "foo") (mkVersion [1, 0])

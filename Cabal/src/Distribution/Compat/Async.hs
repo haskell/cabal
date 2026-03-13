@@ -1,6 +1,3 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-
 -- | 'Async', yet using 'MVar's.
 --
 -- Adopted from @async@ library
@@ -40,7 +37,6 @@ import Control.Exception
   , uninterruptibleMask_
   )
 import Control.Monad (void)
-import Data.Typeable (Typeable)
 import GHC.Exts (inline)
 
 -- | Async, but based on 'MVar', as we don't depend on @stm@.
@@ -143,7 +139,6 @@ data AsyncCancelled = AsyncCancelled
   deriving
     ( Show
     , Eq
-    , Typeable
     )
 
 instance Exception AsyncCancelled where

@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE PatternGuards #-}
 
 -- This is a quick hack for uploading build reports to Hackage.
 
@@ -22,6 +21,7 @@ import Network.TCP (HandleStream)
 -}
 import Network.URI (URI, uriPath) -- parseRelativeReference, relativeTo)
 
+import Data.Foldable (forM_)
 import Distribution.Client.BuildReports.Anonymous (BuildReport, showBuildReport)
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
 import Distribution.Client.Errors
@@ -42,9 +42,7 @@ uploadReports :: Verbosity -> RepoContext -> Auth -> URI -> [(BuildReport, Maybe
 uploadReports verbosity repoCtxt auth uri reports = do
   for_ reports $ \(report, mbBuildLog) -> do
     buildId <- postBuildReport verbosity repoCtxt auth uri report
-    case mbBuildLog of
-      Just buildLog -> putBuildLog verbosity repoCtxt auth buildId buildLog
-      Nothing -> return ()
+    forM_ mbBuildLog (putBuildLog verbosity repoCtxt auth buildId)
 
 postBuildReport :: Verbosity -> RepoContext -> Auth -> URI -> BuildReport -> IO BuildReportId
 postBuildReport verbosity repoCtxt auth uri buildReport = do

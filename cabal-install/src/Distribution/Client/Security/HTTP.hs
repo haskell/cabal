@@ -1,8 +1,5 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
@@ -180,7 +177,6 @@ mkReqHeaders reqHeaders mRange' =
 -------------------------------------------------------------------------------}
 
 data UnexpectedResponse = UnexpectedResponse URI Int
-  deriving (Typeable)
 
 instance HC.Pretty UnexpectedResponse where
   pretty (UnexpectedResponse uri code) =
@@ -201,7 +197,6 @@ wrapCustomEx
   -> (HC.Throws HC.SomeRemoteError => IO a)
 wrapCustomEx act =
   HC.handleChecked (\(ex :: UnexpectedResponse) -> go ex) $
-    HC.handleChecked (\(ex :: IOException) -> go ex) $
-      act
+    HC.handleChecked (\(ex :: IOException) -> go ex) act
   where
     go ex = HC.throwChecked (HC.SomeRemoteError ex)

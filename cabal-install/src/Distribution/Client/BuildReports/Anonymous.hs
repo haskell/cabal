@@ -31,6 +31,7 @@ module Distribution.Client.BuildReports.Anonymous
   --    showList,
   ) where
 
+import Data.Either (rights)
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
@@ -140,10 +141,10 @@ fieldDescrs =
 
 parseBuildReport :: BS.ByteString -> Either String BuildReport
 parseBuildReport s = case snd $ runParseResult $ parseFields s of
-  Left (_, perrors) -> Left $ unlines [err | PError _ err <- toList perrors]
+  Left (_, perrors) -> Left $ unlines [err | PErrorWithSource _ (PError _ err) <- toList perrors]
   Right report -> Right report
 
-parseFields :: BS.ByteString -> ParseResult BuildReport
+parseFields :: BS.ByteString -> ParseResult src BuildReport
 parseFields input = do
   fields <- either (parseFatalFailure zeroPos . show) pure $ readFields input
   case partitionFields fields of
@@ -152,7 +153,7 @@ parseFields input = do
 
 parseBuildReportList :: BS.ByteString -> [BuildReport]
 parseBuildReportList str =
-  [report | Right report <- map parseBuildReport (split str)]
+  rights (map parseBuildReport $ split str)
   where
     split :: BS.ByteString -> [BS.ByteString]
     split = filter (not . BS.null) . unfoldr chunk . BS8.lines

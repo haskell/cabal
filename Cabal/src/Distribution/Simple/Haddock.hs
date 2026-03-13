@@ -5,7 +5,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 
 -----------------------------------------------------------------------------
 
@@ -41,9 +40,9 @@ import qualified Distribution.Simple.GHCJS as GHCJS
 
 -- local
 
+import Data.Semigroup (All (..), Any (..))
 import Distribution.Backpack (OpenModule)
 import Distribution.Backpack.DescribeUnitId
-import Distribution.Compat.Semigroup (All (..), Any (..))
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
 import qualified Distribution.ModuleName as ModuleName
@@ -67,12 +66,9 @@ import Distribution.Simple.Program.GHC
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import Distribution.Simple.Program.ResponseFile
 import Distribution.Simple.Register
-import Distribution.Simple.Setup.Common
-import Distribution.Simple.Setup.Haddock
-import Distribution.Simple.Setup.Hscolour
+import Distribution.Simple.Setup
 import Distribution.Simple.SetupHooks.Internal
   ( BuildHooks (..)
-  , BuildingWhat (..)
   , noBuildHooks
   )
 import qualified Distribution.Simple.SetupHooks.Internal as SetupHooks
@@ -93,7 +89,7 @@ import Distribution.Version
 
 import Control.Monad
 import Data.Bool (bool)
-import Data.Either (rights)
+import Data.Either (lefts, rights)
 import System.Directory (doesDirectoryExist, doesFileExist)
 import System.FilePath (isAbsolute, normalise)
 import System.IO (hClose, hPutStrLn, hSetEncoding, utf8)
@@ -231,10 +227,11 @@ haddock
   -> [PPSuffixHandler]
   -> HaddockFlags
   -> IO ()
-haddock = haddock_setupHooks noBuildHooks
+haddock = haddock_setupHooks noBuildHooks defaultVerbosityHandles
 
 haddock_setupHooks
   :: BuildHooks
+  -> VerbosityHandles
   -> PackageDescription
   -> LocalBuildInfo
   -> [PPSuffixHandler]
@@ -242,6 +239,7 @@ haddock_setupHooks
   -> IO ()
 haddock_setupHooks
   _
+  verbHandles
   pkg_descr
   _
   _
@@ -251,20 +249,22 @@ haddock_setupHooks
         && not (fromFlag $ haddockTestSuites haddockFlags)
         && not (fromFlag $ haddockBenchmarks haddockFlags)
         && not (fromFlag $ haddockForeignLibs haddockFlags) =
-        warn (fromFlag $ setupVerbosity $ haddockCommonFlags haddockFlags) $
+        warn (mkVerbosity verbHandles $ fromFlag $ setupVerbosity $ haddockCommonFlags haddockFlags) $
           "No documentation was generated as this package does not contain "
             ++ "a library. Perhaps you want to use the --executables, --tests,"
             ++ " --benchmarks or --foreign-libraries flags."
 haddock_setupHooks
   (BuildHooks{preBuildComponentRules = mbPbcRules})
+  verbHandles
   pkg_descr
   lbi
   suffixes
   flags' = do
-    let verbosity = fromFlag $ haddockVerbosity flags
+    let verbosity = mkVerbosity verbHandles (fromFlag $ haddockVerbosity flags)
         mbWorkDir = flagToMaybe $ haddockWorkingDir flags
         comp = compiler lbi
         platform = hostPlatform lbi
+        config = configFlags lbi
 
         quickJmpFlag = haddockQuickJump flags'
         flags = case haddockTarget of
@@ -282,9 +282,7 @@ haddock_setupHooks
         flag f = fromFlag $ f flags
 
         tmpFileOpts =
-          defaultTempFileOptions
-            { optKeepTempFiles = flag haddockKeepTempFiles
-            }
+          commonSetupTempFileOptions $ configCommonFlags config
         htmlTemplate =
           fmap toPathTemplate . flagToMaybe . haddockHtmlLocation $
             flags
@@ -317,6 +315,7 @@ haddock_setupHooks
         -- NB: we are not passing the user BuildHooks here,
         -- because we are already running the pre/post build hooks
         -- for Haddock.
+        verbHandles
         (warn verbosity)
         haddockTarget
         pkg_descr
@@ -336,12 +335,13 @@ haddock_setupHooks
       createInternalPackageDB verbosity lbi (flag $ setupDistPref . haddockCommonFlags)
 
     (\f -> foldM_ f (installedPkgs lbi) targets') $ \index target -> do
+      curDir <- absoluteWorkingDirLBI lbi
       let
         component = targetComponent target
         clbi = targetCLBI target
         bi = componentBuildInfo component
         -- Include any build-tool-depends on build tools internal to the current package.
-        progs' = addInternalBuildTools pkg_descr lbi bi (withPrograms lbi)
+        progs' = addInternalBuildTools curDir pkg_descr lbi bi (withPrograms lbi)
         lbi' =
           lbi
             { withPrograms = progs'
@@ -553,9 +553,11 @@ createHaddockIndex
   -> IO ()
 createHaddockIndex verbosity programDb comp platform mbWorkDir flags = do
   let args = fromHaddockProjectFlags flags
+      tmpFileOpts =
+        commonSetupTempFileOptions $ haddockProjectCommonFlags flags
   (haddockProg, _version) <-
     getHaddockProg verbosity programDb comp args (Flag True)
-  runHaddock verbosity mbWorkDir defaultTempFileOptions comp platform haddockProg False args
+  runHaddock verbosity mbWorkDir tmpFileOpts comp platform haddockProg False args
 
 -- ------------------------------------------------------------------------------
 -- Contributions to HaddockArgs (see also Doctest.hs for very similar code).
@@ -593,7 +595,7 @@ fromFlags env flags =
     , argBaseUrl = haddockBaseUrl flags
     , argResourcesDir = haddockResourcesDir flags
     , argVerbose =
-        maybe mempty (Any . (>= deafening))
+        maybe mempty (Any . (>= Deafening) . vLevel)
           . flagToMaybe
           $ setupVerbosity commonFlags
     , argOutput =
@@ -620,13 +622,14 @@ fromHaddockProjectFlags flags =
     , argInterfaces = fromFlagOrDefault [] (haddockProjectInterfaces flags)
     , argLinkedSource = Flag True
     , argResourcesDir = haddockProjectResourcesDir flags
+    , argCssFile = haddockProjectCss flags
     }
 
 fromPackageDescription :: HaddockTarget -> PackageDescription -> HaddockArgs
 fromPackageDescription _haddockTarget pkg_descr =
   mempty
     { argInterfaceFile = Flag $ haddockPath pkg_descr
-    , argPackageName = Flag $ packageId $ pkg_descr
+    , argPackageName = Flag $ packageId pkg_descr
     , argOutputDir = Dir $ "doc" </> "html"
     , argPrologue =
         Flag $
@@ -644,7 +647,7 @@ fromPackageDescription _haddockTarget pkg_descr =
       | otherwise = ": " ++ ShortText.fromShortText (synopsis pkg_descr)
 
 componentGhcOptions
-  :: Verbosity
+  :: VerbosityLevel
   -> LocalBuildInfo
   -> BuildInfo
   -> ComponentLocalBuildInfo
@@ -707,7 +710,7 @@ mkHaddockArgs
 mkHaddockArgs verbosity (tmpObjDir, tmpHiDir, tmpStubDir) lbi clbi htmlTemplate inFiles bi = do
   let
     vanillaOpts' =
-      componentGhcOptions normal lbi bi clbi (buildDir lbi)
+      componentGhcOptions Normal lbi bi clbi (buildDir lbi)
     vanillaOpts =
       vanillaOpts'
         { -- See Note [Hi Haddock Recompilation Avoidance]
@@ -1019,7 +1022,7 @@ getInterfaces
   -> IO HaddockArgs
 getInterfaces verbosity lbi clbi htmlTemplate = do
   (packageFlags, warnings) <- haddockPackageFlags verbosity lbi clbi htmlTemplate
-  traverse_ (warn (verboseUnmarkOutput verbosity)) warnings
+  traverse_ (warn (modifyVerbosityFlags verboseUnmarkOutput verbosity)) warnings
   return $
     mempty
       { argInterfaces = packageFlags
@@ -1065,21 +1068,27 @@ reusingGHCCompilationArtifacts
   -> IO r
 reusingGHCCompilationArtifacts verbosity tmpFileOpts mbWorkDir lbi bi clbi version act
   | version >= mkVersion [2, 28, 0] = do
-      withTempDirectoryCwdEx verbosity tmpFileOpts mbWorkDir (distPrefLBI lbi) "haddock-objs" $ \tmpObjDir ->
-        withTempDirectoryCwdEx verbosity tmpFileOpts mbWorkDir (distPrefLBI lbi) "haddock-his" $ \tmpHiDir -> do
+      withTempDirectoryCwdEx tmpFileOpts mbWorkDir (distPrefLBI lbi) "haddock-objs" $ \tmpObjDir ->
+        withTempDirectoryCwdEx tmpFileOpts mbWorkDir (distPrefLBI lbi) "haddock-his" $ \tmpHiDir -> do
           -- Re-use ghc's interface and obj files, but first copy them to
           -- somewhere where it is safe if haddock overwrites them
           let
-            vanillaOpts = componentGhcOptions normal lbi bi clbi (buildDir lbi)
+            vanillaOpts = componentGhcOptions Normal lbi bi clbi (buildDir lbi)
             i = interpretSymbolicPath mbWorkDir
-            copyDir ghcDir tmpDir = copyDirectoryRecursive verbosity (i $ fromFlag $ ghcDir vanillaOpts) (i tmpDir)
+            copyDir getGhcDir tmpDir = do
+              let ghcDir = i $ fromFlag $ getGhcDir vanillaOpts
+              ghcDirExists <- doesDirectoryExist ghcDir
+              -- Don't try to copy artifacts if they don't exist, e.g. if
+              -- we have not yet run the 'build' command.
+              when ghcDirExists $
+                copyDirectoryRecursive verbosity ghcDir (i tmpDir)
           copyDir ghcOptObjDir tmpObjDir
           copyDir ghcOptHiDir tmpHiDir
           -- copyDir ghcOptStubDir tmpStubDir -- (see W.1 in Note [Hi Haddock Recompilation Avoidance])
 
           act (tmpObjDir, tmpHiDir, fromFlag $ ghcOptHiDir vanillaOpts)
   | otherwise = do
-      withTempDirectoryCwdEx verbosity tmpFileOpts mbWorkDir (distPrefLBI lbi) "tmp" $
+      withTempDirectoryCwdEx tmpFileOpts mbWorkDir (distPrefLBI lbi) "tmp" $
         \tmpFallback -> act (tmpFallback, tmpFallback, tmpFallback)
 
 -- ------------------------------------------------------------------------------
@@ -1273,7 +1282,7 @@ renderPureArgs version comp platform args =
       | r <- argReexports args
       , isVersion 2 19
       ]
-    , argTargets $ args
+    , argTargets args
     , maybe [] ((: []) . (resourcesDirFlag ++)) . flagToMaybe . argResourcesDir $ args
     , -- Do not re-direct compilation output to a temporary directory (--no-tmp-comp-dir)
       -- We pass this option by default to haddock to avoid recompilation
@@ -1364,7 +1373,7 @@ haddockPackagePaths ipkgs mkHtmlPath = do
               Just htmlPath -> do
                 let hypSrcPath = htmlPath </> defaultHyperlinkedSourceDirectory
                 hypSrcExists <- doesDirectoryExist hypSrcPath
-                return $
+                return
                   ( Just (fixFileUrl htmlPath)
                   , if hypSrcExists
                       then Just (fixFileUrl hypSrcPath)
@@ -1381,9 +1390,9 @@ haddockPackagePaths ipkgs mkHtmlPath = do
       , pkgName pkgid `notElem` noHaddockWhitelist
       ]
 
-  let missing = [pkgid | Left pkgid <- interfaces]
+  let missing = lefts interfaces
       warning =
-        "The documentation for the following packages are not "
+        "The following packages have no Haddock documentation "
           ++ "installed. No links will be generated to these packages: "
           ++ intercalate ", " (map prettyShow missing)
       flags = rights interfaces
@@ -1470,20 +1479,22 @@ hscolour
   -> [PPSuffixHandler]
   -> HscolourFlags
   -> IO ()
-hscolour = hscolour_setupHooks noBuildHooks
+hscolour = hscolour_setupHooks noBuildHooks defaultVerbosityHandles
 
 hscolour_setupHooks
   :: BuildHooks
+  -> VerbosityHandles
   -> PackageDescription
   -> LocalBuildInfo
   -> [PPSuffixHandler]
   -> HscolourFlags
   -> IO ()
-hscolour_setupHooks setupHooks =
-  hscolour' setupHooks dieNoVerbosity ForDevelopment
+hscolour_setupHooks setupHooks verbHandles =
+  hscolour' setupHooks verbHandles dieNoVerbosity ForDevelopment
 
 hscolour'
   :: BuildHooks
+  -> VerbosityHandles
   -> (String -> IO ())
   -- ^ Called when the 'hscolour' exe is not found.
   -> HaddockTarget
@@ -1494,6 +1505,7 @@ hscolour'
   -> IO ()
 hscolour'
   (BuildHooks{preBuildComponentRules = mbPbcRules})
+  verbHandles
   onNoHsColour
   haddockTarget
   pkg_descr
@@ -1508,7 +1520,7 @@ hscolour'
         (withPrograms lbi)
     where
       common = hscolourCommonFlags flags
-      verbosity = fromFlag $ setupVerbosity common
+      verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
       distPref = fromFlag $ setupDistPref common
       mbWorkDir = mbWorkDirLBI lbi
       i = interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path

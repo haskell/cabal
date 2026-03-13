@@ -20,7 +20,7 @@ module Distribution.Fields.Lexer
   ,mkLexState) where
 
 import Prelude ()
-import qualified Prelude as Prelude
+import qualified Prelude
 import Distribution.Compat.Prelude
 
 import Distribution.Fields.LexerMonad

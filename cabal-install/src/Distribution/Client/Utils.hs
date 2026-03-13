@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Distribution.Client.Utils
@@ -69,7 +70,7 @@ import Data.List
 import Distribution.Client.Errors
 import Distribution.Compat.Environment
 import Distribution.Compat.Time (getModTime)
-import Distribution.Simple.Setup (Flag (..))
+import Distribution.Simple.Setup (Flag, pattern Flag, pattern NoFlag)
 import Distribution.Simple.Utils (dieWithException, findPackageDesc, noticeNoWrap)
 import Distribution.Utils.Path
   ( CWD
@@ -89,7 +90,7 @@ import System.Directory
   ( canonicalizePath
   , doesDirectoryExist
   , doesFileExist
-  , getDirectoryContents
+  , listDirectory
   , removeFile
   )
 import qualified System.Directory as Directory
@@ -103,10 +104,13 @@ import System.IO
   )
 import System.IO.Unsafe (unsafePerformIO)
 
+import qualified Data.Set as Set
 import Data.Time (utcToLocalTime)
 import Data.Time.Calendar (toGregorian)
 import Data.Time.Clock.POSIX (getCurrentTime)
 import Data.Time.LocalTime (getCurrentTimeZone, localDay)
+import Distribution.Simple.PackageDescription (readGenericPackageDescription)
+import Distribution.Types.GenericPackageDescription (GenericPackageDescription)
 import GHC.Conc.Sync (getNumProcessors)
 import GHC.IO.Encoding
   ( TextEncoding (TextEncoding)
@@ -116,13 +120,8 @@ import GHC.IO.Encoding.Failure
   ( CodingFailureMode (TransliterateCodingFailure)
   , recoverEncode
   )
-#if defined(mingw32_HOST_OS) || MIN_VERSION_directory(1,2,3)
 import qualified System.Directory as Dir
 import qualified System.IO.Error as IOError
-#endif
-import qualified Data.Set as Set
-import Distribution.Simple.PackageDescription (readGenericPackageDescription)
-import Distribution.Types.GenericPackageDescription (GenericPackageDescription)
 
 -- | Generic merging utility. For sorted input lists this is a full outer join.
 mergeBy :: forall a b. (a -> b -> Ordering) -> [a] -> [b] -> [MergeResult a b]
@@ -238,6 +237,7 @@ logDirChange l (Just d) m = do
 -- program, so unsafePerformIO is safe here.
 numberOfProcessors :: Int
 numberOfProcessors = unsafePerformIO getNumProcessors
+{-# NOINLINE numberOfProcessors #-}
 
 -- | Determine the number of jobs to use given the value of the '-j' flag.
 determineNumJobs :: Flag (Maybe Int) -> Int
@@ -304,7 +304,7 @@ filePathToByteString p =
     conv :: Word32 -> [Word8] -> [Word8]
     conv w32 rest = b0 : b1 : b2 : b3 : rest
       where
-        b0 = fromIntegral $ w32
+        b0 = fromIntegral w32
         b1 = fromIntegral $ w32 `shiftR` 8
         b2 = fromIntegral $ w32 `shiftR` 16
         b3 = fromIntegral $ w32 `shiftR` 24
@@ -331,18 +331,18 @@ byteStringToFilePath bs
 
 -- | Workaround for the inconsistent behaviour of 'canonicalizePath'. Always
 -- throws an error if the path refers to a non-existent file.
-{- FOURMOLU_DISABLE -}
 tryCanonicalizePath :: FilePath -> IO FilePath
 tryCanonicalizePath path = do
   ret <- canonicalizePath path
-#if defined(mingw32_HOST_OS) || MIN_VERSION_directory(1,2,3)
   exists <- liftM2 (||) (doesFileExist ret) (Dir.doesDirectoryExist ret)
   unless exists $
-    IOError.ioError $ IOError.mkIOError IOError.doesNotExistErrorType "canonicalizePath"
-                        Nothing (Just ret)
-#endif
+    IOError.ioError $
+      IOError.mkIOError
+        IOError.doesNotExistErrorType
+        "canonicalizePath"
+        Nothing
+        (Just ret)
   return ret
-{- FOURMOLU_ENABLE -}
 
 -- | A non-throwing wrapper for 'canonicalizePath'. If 'canonicalizePath' throws
 -- an exception, returns the path argument unmodified.
@@ -508,12 +508,9 @@ listFilesInside test dir = ifNotM (test $ dropTrailingPathSeparator dir) (pure [
 listFilesRecursive :: FilePath -> IO [FilePath]
 listFilesRecursive = listFilesInside (const $ pure True)
 
--- | From System.Directory.Extra
---   https://hackage.haskell.org/package/extra-1.7.9
 listContents :: FilePath -> IO [FilePath]
-listContents dir = do
-  xs <- getDirectoryContents dir
-  pure $ sort [dir </> x | x <- xs, not $ all (== '.') x]
+listContents dir =
+  map (dir </>) . sort <$> listDirectory dir
 
 -- | From Control.Monad.Extra
 --   https://hackage.haskell.org/package/extra-1.7.9

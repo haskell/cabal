@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -144,7 +143,7 @@ data LocalBuildInfo = NewLocalBuildInfo
   -- ^ Information about a package configuration
   -- that can be modified by the user at configuration time.
   }
-  deriving (Generic, Read, Show, Typeable)
+  deriving (Generic, Read, Show)
 
 {-# COMPLETE LocalBuildInfo #-}
 
@@ -390,9 +389,7 @@ unitIdTarget' pkg_descr lbi@(LocalBuildInfo{componentGraph = compsGraph}) uid =
 -- In the presence of Backpack there may be more than one!
 componentNameCLBIs :: LocalBuildInfo -> ComponentName -> [ComponentLocalBuildInfo]
 componentNameCLBIs (LocalBuildInfo{componentNameMap = comps}) cname =
-  case Map.lookup cname comps of
-    Just clbis -> clbis
-    Nothing -> []
+  Map.findWithDefault [] cname comps
 
 -- TODO: Maybe cache topsort (Graph can do this)
 
@@ -447,7 +444,7 @@ buildWays lbi =
   let
     -- enable-library-profiling (enable (static profiling way)) .p_o
     -- enable-shared (enabled dynamic way)  .dyn_o
-    -- enable-profiling-shared (enable dyanmic profilng way) .p_dyn_o
+    -- enable-profiling-shared (enable dynamic profilng way) .p_dyn_o
     -- enable-library-vanilla (enable vanilla way) .o
     --
     -- enable-executable-dynamic => build dynamic executables

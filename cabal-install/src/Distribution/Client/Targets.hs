@@ -1,13 +1,6 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveFoldable #-}
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Client.Targets
@@ -252,7 +245,7 @@ reportUserTargetProblems verbosity problems = do
   case [target | UserTargetNonexistantFile target <- problems] of
     [] -> return ()
     target ->
-      dieWithException verbosity $ ReportUserTargerNonexistantFile target
+      dieWithException verbosity $ ReportUserTargetNonexistantFile target
 
   case [target | UserTargetUnexpectedFile target <- problems] of
     [] -> return ()
@@ -616,6 +609,7 @@ data UserQualifier
   deriving (Eq, Show, Generic)
 
 instance Binary UserQualifier
+instance NFData UserQualifier
 instance Structured UserQualifier
 
 -- | Version of 'ConstraintScope' that a user may specify on the
@@ -630,6 +624,7 @@ data UserConstraintScope
   deriving (Eq, Show, Generic)
 
 instance Binary UserConstraintScope
+instance NFData UserConstraintScope
 instance Structured UserConstraintScope
 
 fromUserQualifier :: UserQualifier -> Qualifier
@@ -650,6 +645,7 @@ data UserConstraint
   deriving (Eq, Show, Generic)
 
 instance Binary UserConstraint
+instance NFData UserConstraint
 instance Structured UserConstraint
 
 userConstraintPackageName :: UserConstraint -> PackageName
@@ -676,7 +672,7 @@ readUserConstraint str =
 
 instance Pretty UserConstraint where
   pretty (UserConstraint scope prop) =
-    dispPackageConstraint $ PackageConstraint (fromUserConstraintScope scope) prop
+    pretty $ PackageConstraint (fromUserConstraintScope scope) prop
 
 instance Parsec UserConstraint where
   parsec = do

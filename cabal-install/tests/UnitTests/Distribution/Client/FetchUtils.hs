@@ -30,15 +30,15 @@ tests =
       [ testCase "handles an empty package list" testEmpty
       , testCase "passes an unpacked local package through" testPassLocalPackage
       , testCase "handles http" testHttp
-      , testCase "aborts on interrupt in GET" $ testGetInterrupt
-      , testCase "aborts on other exception in GET" $ testGetException
-      , testCase "aborts on interrupt in GET (uncollected download)" $ testUncollectedInterrupt
-      , testCase "continues on other exception in GET (uncollected download)" $ testUncollectedException
+      , testCase "aborts on interrupt in GET" testGetInterrupt
+      , testCase "aborts on other exception in GET" testGetException
+      , testCase "aborts on interrupt in GET (uncollected download)" testUncollectedInterrupt
+      , testCase "continues on other exception in GET (uncollected download)" testUncollectedException
       ]
   ]
 
 verbosity :: Verbosity.Verbosity
-verbosity = Verbosity.silent
+verbosity = Verbosity.mkVerbosity Verbosity.defaultVerbosityHandles Verbosity.silent
 
 -- | An interval that we use to assert that something happens "immediately".
 -- Must be shorter than 'longSleep' to ensure those are interrupted.

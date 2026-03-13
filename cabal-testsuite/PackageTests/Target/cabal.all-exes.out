@@ -1,0 +1,6 @@
+# cabal v2-target
+Resolving dependencies...
+Fully qualified target forms:
+ - a:exe:a-exe
+ - b:exe:b-exe
+Found 2 targets matching all:exes.

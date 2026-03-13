@@ -2,8 +2,8 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TupleSections #-}
 
 -----------------------------------------------------------------------------
 
@@ -41,6 +41,7 @@ module Distribution.Simple.BuildTarget
   , reportBuildTargetProblems
   ) where
 
+import Data.Bifunctor (second)
 import Distribution.Compat.Prelude
 import Prelude ()
 
@@ -229,12 +230,12 @@ readUserBuildTarget targetstr =
 
     tokens :: CabalParsing m => m (String, Maybe (String, Maybe String))
     tokens =
-      (\s -> (s, Nothing)) <$> parsecHaskellString
+      (,Nothing) <$> parsecHaskellString
         <|> (,) <$> token <*> P.optional (P.char ':' *> tokens2)
 
     tokens2 :: CabalParsing m => m (String, Maybe String)
     tokens2 =
-      (\s -> (s, Nothing)) <$> parsecHaskellString
+      (,Nothing) <$> parsecHaskellString
         <|> (,) <$> token <*> P.optional (P.char ':' *> (parsecHaskellString <|> token))
 
     token :: CabalParsing m => m String
@@ -327,7 +328,7 @@ resolveBuildTarget pkg userTarget fexists =
               (things, got :| _) = unzip' expected'
            in BuildTargetExpected userTarget (NE.toList things) got
       | not (null nosuch) = BuildTargetNoSuch userTarget nosuch
-      | otherwise = error $ "resolveBuildTarget: internal error in matching"
+      | otherwise = error "resolveBuildTarget: internal error in matching"
       where
         expected = [(thing, got) | MatchErrorExpected thing got <- errs]
         nosuch = [(thing, got) | MatchErrorNoSuch thing got <- errs]
@@ -408,7 +409,7 @@ reportBuildTargetProblems verbosity problems = do
     targets ->
       dieWithException verbosity $
         UnknownBuildTarget $
-          map (\(target, nosuch) -> (showUserBuildTarget target, nosuch)) targets
+          map (first showUserBuildTarget) targets
 
   case [(t, ts) | BuildTargetAmbiguous t ts <- problems] of
     [] -> return ()
@@ -653,7 +654,7 @@ matchComponentKindAndName cs ckind str =
   orNoSuchThing (showComponentKind ckind ++ " component") str $
     increaseConfidenceFor $
       matchInexactly
-        (\(ck, cn) -> (ck, caseFold cn))
+        (second caseFold)
         [((cinfoKind c, cinfoStrName c), c) | c <- cs]
         (ckind, str)
 
@@ -906,10 +907,10 @@ instance Monad Match where
   NoMatch d ms >>= _ = NoMatch d ms
   ExactMatch d xs >>= f =
     addDepth d $
-      foldr matchPlus matchZero (map f xs)
+      foldr (matchPlus . f) matchZero xs
   InexactMatch d xs >>= f =
     addDepth d . forceInexact $
-      foldr matchPlus matchZero (map f xs)
+      foldr (matchPlus . f) matchZero xs
 
 addDepth :: Confidence -> Match a -> Match a
 addDepth d' (NoMatch d msgs) = NoMatch (d' + d) msgs
@@ -1017,9 +1018,7 @@ matchInexactly
 matchInexactly cannonicalise xs =
   \x -> case Map.lookup x m of
     Just ys -> exactMatches ys
-    Nothing -> case Map.lookup (cannonicalise x) m' of
-      Just ys -> inexactMatches ys
-      Nothing -> matchZero
+    Nothing -> maybe matchZero inexactMatches (Map.lookup (cannonicalise x) m')
   where
     m = Map.fromListWith (++) [(k, [x]) | (k, x) <- xs]
 

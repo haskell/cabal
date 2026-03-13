@@ -59,10 +59,9 @@ import System.FilePath (pathSeparator)
 configure
   :: Verbosity
   -> Maybe FilePath
-  -> Maybe FilePath
   -> ProgramDb
   -> IO (Compiler, Maybe Platform, ProgramDb)
-configure verbosity hcPath _hcPkgPath progdb = do
+configure verbosity hcPath progdb = do
   (_uhcProg, uhcVersion, progdb') <-
     requireProgramVersion
       verbosity
@@ -78,6 +77,7 @@ configure verbosity hcPath _hcPkgPath progdb = do
           , compilerLanguages = uhcLanguages
           , compilerExtensions = uhcLanguageExtensions
           , compilerProperties = Map.empty
+          , compilerWiredInUnitIds = Nothing
           }
       compPlatform = Nothing
   return (comp, compPlatform, progdb')
@@ -126,13 +126,12 @@ getInstalledPackages verbosity comp mbWorkDir packagedbs progdb = do
   pkgs <-
     liftM (map addBuiltinVersions . concat) $
       traverse
-        (\d -> getDirectoryContents d >>= filterM (isPkgDir (prettyShow compilerid) d))
+        (\d -> listDirectory d >>= filterM (isPkgDir (prettyShow compilerid) d))
         pkgDirs
   -- putStrLn $ "pkgs: " ++ show pkgs
   let iPkgs =
         map mkInstalledPackageInfo $
-          concatMap parsePackage $
-            pkgs
+          concatMap parsePackage pkgs
   -- putStrLn $ "installed pkgs: " ++ show iPkgs
   return (fromList iPkgs)
 
@@ -266,7 +265,7 @@ buildExe verbosity _pkg_descr lbi exe clbi = do
           -- output file
           ++ ["--output", u $ buildDir lbi </> makeRelativePathEx (prettyShow (exeName exe))]
           -- main source module
-          ++ [u $ srcMainPath]
+          ++ [u srcMainPath]
   runUhcProg uhcArgs
 
 constructUHCCmdLine
@@ -280,10 +279,10 @@ constructUHCCmdLine
   -> [String]
 constructUHCCmdLine user system lbi bi clbi odir verbosity =
   -- verbosity
-  ( if verbosity >= deafening
+  ( if verbosityLevel verbosity >= Deafening
       then ["-v4"]
       else
-        if verbosity >= normal
+        if verbosityLevel verbosity >= Normal
           then []
           else ["-v0"]
   )

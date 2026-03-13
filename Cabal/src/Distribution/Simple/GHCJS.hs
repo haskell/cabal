@@ -1,12 +1,12 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TupleSections #-}
 
 module Distribution.Simple.GHCJS
   ( getGhcInfo
   , configure
+  , configureCompiler
+  , compilerProgramDb
   , getInstalledPackages
   , getInstalledPackagesMonitorFiles
   , getPackageDBContents
@@ -62,6 +62,8 @@ import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
 import Distribution.Simple.Errors
 import Distribution.Simple.Flag
+import Distribution.Simple.GHC.Build.Link (hasThreaded)
+import Distribution.Simple.GHC.Build.Utils (isCxx, isHaskell)
 import Distribution.Simple.GHC.EnvironmentParser
 import Distribution.Simple.GHC.ImplInfo
 import qualified Distribution.Simple.GHC.Internal as Internal
@@ -82,13 +84,14 @@ import Distribution.Types.PackageName.Magic
 import Distribution.Types.ParStrat
 import Distribution.Utils.NubList
 import Distribution.Utils.Path
-import Distribution.Verbosity (Verbosity)
+import Distribution.Verbosity (Verbosity (..), VerbosityLevel, verbosityLevel)
 import Distribution.Version
 
 import Control.Arrow ((***))
 import Control.Monad (msum)
 import Data.Char (isLower)
 import qualified Data.Map as Map
+import Data.Maybe (fromJust)
 import System.Directory
   ( canonicalizePath
   , createDirectoryIfMissing
@@ -108,13 +111,29 @@ import qualified System.Info
 -- -----------------------------------------------------------------------------
 -- Configuring
 
+-- | Configure GHCJS, and then auxiliary programs such as @ghc-pkg@, @haddock@
+-- as well as toolchain programs such as @ar@, @ld.
 configure
   :: Verbosity
   -> Maybe FilePath
+  -- ^ user-specified @ghcjs@ path (optional)
   -> Maybe FilePath
+  -- ^ user-specified @ghcjs-pkg@ path (optional)
   -> ProgramDb
   -> IO (Compiler, Maybe Platform, ProgramDb)
 configure verbosity hcPath hcPkgPath conf0 = do
+  (comp, compPlatform, progdb1) <- configureCompiler verbosity hcPath conf0
+  compProgDb <- compilerProgramDb verbosity comp progdb1 hcPkgPath
+  return (comp, compPlatform, compProgDb)
+
+-- | Configure GHCJS.
+configureCompiler
+  :: Verbosity
+  -> Maybe FilePath
+  -- ^ user-specified @ghc@ path (optional)
+  -> ProgramDb
+  -> IO (Compiler, Maybe Platform, ProgramDb)
+configureCompiler verbosity hcPath conf0 = do
   (ghcjsProg, ghcjsVersion, progdb1) <-
     requireProgramVersion
       verbosity
@@ -134,6 +153,44 @@ configure verbosity hcPath hcPkgPath conf0 = do
         ++ prettyShow ghcjsGhcVersion
 
   let implInfo = ghcjsVersionImplInfo ghcjsVersion ghcjsGhcVersion
+
+  languages <- Internal.getLanguages verbosity implInfo ghcjsProg
+  extensions <- Internal.getExtensions verbosity implInfo ghcjsProg
+
+  ghcjsInfo <- Internal.getGhcInfo verbosity implInfo ghcjsProg
+  let ghcInfoMap = Map.fromList ghcjsInfo
+
+  let comp =
+        Compiler
+          { compilerId = CompilerId GHCJS ghcjsVersion
+          , compilerAbiTag =
+              AbiTag $
+                "ghc" ++ intercalate "_" (map show . versionNumbers $ ghcjsGhcVersion)
+          , compilerCompat = [CompilerId GHC ghcjsGhcVersion]
+          , compilerLanguages = languages
+          , compilerExtensions = extensions
+          , compilerProperties = ghcInfoMap
+          , compilerWiredInUnitIds = Nothing
+          }
+      compPlatform = Internal.targetPlatform ghcjsInfo
+  return (comp, compPlatform, progdb1)
+
+-- | Given a configured @ghcjs@ program, configure auxiliary programs such
+-- as @ghcjs-pkg@ or @haddock@, based on the location of the @ghcjs@ executable.
+compilerProgramDb
+  :: Verbosity
+  -> Compiler
+  -> ProgramDb
+  -> Maybe FilePath
+  -- ^ user-specified @ghc-pkg@ path (optional)
+  -> IO ProgramDb
+compilerProgramDb verbosity comp progdb1 hcPkgPath = do
+  let
+    ghcjsProg = fromJust $ lookupProgram ghcjsProgram progdb1
+    ghcjsVersion = compilerVersion comp
+    ghcjsGhcVersion = case compilerCompat comp of
+      [CompilerId GHC ghcjsGhcVer] -> ghcjsGhcVer
+      compat -> error $ "could not parse ghcjsGhcVersion:" ++ show compat
 
   -- This is slightly tricky, we have to configure ghc first, then we use the
   -- location of ghc to help find ghc-pkg in the case that the user did not
@@ -186,28 +243,9 @@ configure verbosity hcPath hcPkgPath conf0 = do
       progdb3 =
         addKnownProgram haddockProgram' $
           addKnownProgram hsc2hsProgram' $
-            addKnownProgram hpcProgram' $
-              {- addKnownProgram runghcProgram' -} progdb2
+            addKnownProgram hpcProgram' {- addKnownProgram runghcProgram' -} progdb2
 
-  languages <- Internal.getLanguages verbosity implInfo ghcjsProg
-  extensions <- Internal.getExtensions verbosity implInfo ghcjsProg
-
-  ghcjsInfo <- Internal.getGhcInfo verbosity implInfo ghcjsProg
-  let ghcInfoMap = Map.fromList ghcjsInfo
-
-  let comp =
-        Compiler
-          { compilerId = CompilerId GHCJS ghcjsVersion
-          , compilerAbiTag =
-              AbiTag $
-                "ghc" ++ intercalate "_" (map show . versionNumbers $ ghcjsGhcVersion)
-          , compilerCompat = [CompilerId GHC ghcjsGhcVersion]
-          , compilerLanguages = languages
-          , compilerExtensions = extensions
-          , compilerProperties = ghcInfoMap
-          }
-      compPlatform = Internal.targetPlatform ghcjsInfo
-  return (comp, compPlatform, progdb3)
+  return progdb3
 
 guessGhcjsPkgFromGhcjsPath
   :: ConfiguredProgram
@@ -501,7 +539,7 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
       whenStaticLib forceStatic =
         when (forceStatic || withStaticLib lbi)
       -- whenGHCiLib = when (withGHCiLib lbi)
-      forRepl = maybe False (const True) mReplFlags
+      forRepl = isJust mReplFlags
       -- ifReplLib = when forRepl
       comp = compiler lbi
       implInfo = getImplInfo comp
@@ -541,7 +579,7 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
   let cLikeFiles = fromNubListR $ toNubListR (cSources libBi) <> toNubListR (cxxSources libBi)
       jsSrcs = jsSources libBi
       cObjs = map ((`replaceExtensionSymbolicPath` objExtension)) cLikeFiles
-      baseOpts = componentGhcOptions verbosity lbi libBi clbi libTargetDir
+      baseOpts = componentGhcOptions (verbosityLevel verbosity) lbi libBi clbi libTargetDir
       linkJsLibOpts =
         mempty
           { ghcOptExtra =
@@ -1206,13 +1244,6 @@ gbuildSources verbosity mbWorkDir pkgId specVer tmpDir bm =
         , inputSourceModules = foreignLibModules flib
         }
 
-    isCxx :: FilePath -> Bool
-    isCxx fp = elem (takeExtension fp) [".cpp", ".cxx", ".c++"]
-
--- | FilePath has a Haskell extension: .hs or .lhs
-isHaskell :: FilePath -> Bool
-isHaskell fp = elem (takeExtension fp) [".hs", ".lhs"]
-
 -- | Generic build function. See comment for 'GBuildMode'.
 gbuild
   :: Verbosity
@@ -1282,7 +1313,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
         TestComponentLocalBuildInfo{} -> True
         BenchComponentLocalBuildInfo{} -> True
       baseOpts =
-        (componentGhcOptions verbosity lbi bnfo clbi tmpDir)
+        (componentGhcOptions (verbosityLevel verbosity) lbi bnfo clbi tmpDir)
           `mappend` mempty
             { ghcOptMode = toFlag GhcModeMake
             , ghcOptInputFiles =
@@ -1439,7 +1470,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
       [ do
         let baseCxxOpts =
               Internal.componentCxxGhcOptions
-                verbosity
+                (verbosityLevel verbosity)
                 lbi
                 bnfo
                 clbi
@@ -1485,7 +1516,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
       [ do
         let baseCcOpts =
               Internal.componentCcGhcOptions
-                verbosity
+                (verbosityLevel verbosity)
                 lbi
                 bnfo
                 clbi
@@ -1740,7 +1771,7 @@ getRPaths _ _ = return mempty
 popThreadedFlag :: BuildInfo -> (BuildInfo, Bool)
 popThreadedFlag bi =
   ( bi{options = filterHcOptions (/= "-threaded") (options bi)}
-  , hasThreaded (options bi)
+  , hasThreaded bi
   )
   where
     filterHcOptions
@@ -1749,9 +1780,6 @@ popThreadedFlag bi =
       -> PerCompilerFlavor [String]
     filterHcOptions p (PerCompilerFlavor ghc ghcjs) =
       PerCompilerFlavor (filter p ghc) ghcjs
-
-    hasThreaded :: PerCompilerFlavor [String] -> Bool
-    hasThreaded (PerCompilerFlavor ghc _) = elem "-threaded" ghc
 
 -- | Extracts a String representing a hash of the ABI of a built
 -- library.  It can fail if the library has not yet been built.
@@ -1769,7 +1797,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
     platform = hostPlatform lbi
     mbWorkDir = mbWorkDirLBI lbi
     vanillaArgs =
-      (componentGhcOptions verbosity lbi libBi clbi (componentBuildDir lbi clbi))
+      (componentGhcOptions (verbosityLevel verbosity) lbi libBi clbi (componentBuildDir lbi clbi))
         `mappend` mempty
           { ghcOptMode = toFlag GhcModeAbiHash
           , ghcOptInputModules = toNubListR $ exposedModules lib
@@ -1809,7 +1837,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
   return (takeWhile (not . isSpace) hash)
 
 componentGhcOptions
-  :: Verbosity
+  :: VerbosityLevel
   -> LocalBuildInfo
   -> BuildInfo
   -> ComponentLocalBuildInfo

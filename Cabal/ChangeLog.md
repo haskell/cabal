@@ -1,3 +1,15 @@
+# 3.16.1.0 [Artem Pelenitsyn](mailto:a@pelenitsyn.top) December 2025
+* See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.16.1.0.md
+
+# 3.16.0.0 [Artem Pelenitsyn](mailto:a@pelenitsyn.top) July 2025
+* See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.16.0.0.md
+
+# 3.14.2.0 [Mikolaj Konarski](mailto:mikolaj@well-typed.com) April 2025
+* See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.14.2.0.md
+
+# 3.14.1.0 [Hécate](mailto:hecate+github@glitchbra.in) November 2024
+* See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.14.1.0.md
+
 # 3.14.0.0 [Hécate](mailto:hecate+github@glitchbra.in) September 2024
 * See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.14.0.0.md
 
@@ -5,7 +17,6 @@
 * See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.12.1.0.md
 
 # 3.12.0.0 [Francesco Ariis](mailto:fa-ml@ariis.it) May 2024
-# 3.12.0.0 [Francesco Ariis](mailto:fa-ml@ariis.it) March 2024
 * See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.12.0.0.md
 
 # 3.10.3.0 [Hécate](mailto:hecate+github@glitchbra.in) January 2024
@@ -578,7 +589,7 @@
   * Support module thinning and renaming (#2038).
   * Add a new license type: UnspecifiedLicense (#2141).
   * Remove support for Hugs and nhc98 (#2168).
-  * Invoke `tar` with `--formar ustar` if possible in `sdist` (#1903).
+  * Invoke `tar` with `--format ustar` if possible in `sdist` (#1903).
   * Replace `--enable-library-coverage` with `--enable-coverage`, which
   enables program coverage for all components (#1945).
   * Suggest that `ExitFailure 9` is probably due to memory
@@ -771,7 +782,7 @@
   * Many checks added for common mistakes
   * New `--package-db=` option for specific package databases
   * Many internal changes to support cabal-install
-  * Stricter parsing for version strings, eg dissalows "1.05"
+  * Stricter parsing for version strings, eg disallows "1.05"
   * Improved user guide introduction
   * Programatica support removed
   * New options `--program-prefix/suffix` allows eg versioned programs

@@ -1,4 +1,5 @@
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TupleSections #-}
 
 -- | This module provides very basic lens functionality, without extra dependencies.
 --
@@ -154,7 +155,7 @@ lens sa sbt afb s = sbt s <$> afb (sa s)
 -------------------------------------------------------------------------------
 
 _1 :: Lens (a, c) (b, c) a b
-_1 f (a, c) = flip (,) c <$> f a
+_1 f (a, c) = (,c) <$> f a
 
 _2 :: Lens (c, a) (c, b) a b
 _2 f (c, a) = (,) c <$> f a

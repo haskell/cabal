@@ -3,7 +3,6 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 
 -----------------------------------------------------------------------------
 
@@ -30,6 +29,7 @@ module Distribution.Simple.Program.Run
   , getProgramInvocationOutputAndErrors
   , getProgramInvocationLBSAndErrors
   , getEffectiveEnvironment
+  , getFullEnvironment
   ) where
 
 import Distribution.Compat.Prelude
@@ -61,6 +61,7 @@ data ProgramInvocation = ProgramInvocation
   , progInvokeInputEncoding :: IOEncoding
   -- ^ TODO: remove this, make user decide when constructing 'progInvokeInput'.
   , progInvokeOutputEncoding :: IOEncoding
+  , progInvokeWhen :: IO Bool
   }
 
 data IOEncoding
@@ -82,6 +83,7 @@ emptyProgramInvocation =
     , progInvokeInput = Nothing
     , progInvokeInputEncoding = IOEncodingText
     , progInvokeOutputEncoding = IOEncodingText
+    , progInvokeWhen = pure True
     }
 
 simpleProgramInvocation
@@ -128,8 +130,7 @@ runProgramInvocation
     , progInvokeEnv = []
     , progInvokeCwd = Nothing
     , progInvokeInput = Nothing
-    } =
-    rawSystemExit verbosity Nothing path args
+    } = rawSystemExit verbosity Nothing path args
 runProgramInvocation
   verbosity
   ProgramInvocation
@@ -236,6 +237,12 @@ getProgramInvocationIODataAndErrors
 -- | Return the current environment extended with the given overrides.
 -- If an entry is specified twice in @overrides@, the second entry takes
 -- precedence.
+--
+-- getEffectiveEnvironment returns 'Nothing' when there are no overrides.
+-- It returns an argument that is suitable to pass directly to 'CreateProcess' to
+-- override the environment.
+-- If you need the full environment to manipulate further, even when there are no overrides,
+-- then call 'getFullEnvironment'.
 getEffectiveEnvironment
   :: [(String, Maybe String)]
   -> IO (Maybe [(String, String)])
@@ -246,6 +253,15 @@ getEffectiveEnvironment overrides =
     apply os env = foldl' (flip update) env os
     update (var, Nothing) = Map.delete var
     update (var, Just val) = Map.insert var val
+
+-- | Like 'getEffectiveEnvironment', but when no overrides are specified,
+-- returns the full environment instead of 'Nothing'.
+getFullEnvironment
+  :: [(String, Maybe String)]
+  -> IO [(String, String)]
+getFullEnvironment overrides = do
+  menv <- getEffectiveEnvironment overrides
+  maybe getEnvironment return menv
 
 -- | Like the unix xargs program. Useful for when we've got very long command
 -- lines that might overflow an OS limit on command line length and so you

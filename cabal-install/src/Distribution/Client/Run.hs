@@ -35,6 +35,7 @@ import Distribution.Simple.Flag (fromFlag)
 import Distribution.Simple.LocalBuildInfo
   ( ComponentName (..)
   , LocalBuildInfo (..)
+  , absoluteWorkingDirLBI
   , buildDir
   , depLibraryPaths
   , interpretSymbolicPathLBI
@@ -59,7 +60,6 @@ import Distribution.Types.UnqualComponentName
 import qualified Distribution.Simple.GHCJS as GHCJS
 
 import Distribution.Client.Errors
-import Distribution.Compat.Environment (getEnvironment)
 import Distribution.Utils.Path
 
 -- | Return the executable to run and any extra arguments that should be
@@ -80,7 +80,7 @@ splitRunArgs verbosity lbi args =
             " Interpreting all parameters to `run` as a parameter to"
               ++ " the default executable."
       -- If there is a warning, print it together with the addition.
-      warn verbosity `traverse_` fmap (++ addition) maybeWarning
+      traverse_ (warn verbosity . (++ addition)) maybeWarning
       return (exe, xs)
   where
     pkg_descr = localPkgDescr lbi
@@ -143,6 +143,7 @@ splitRunArgs verbosity lbi args =
 -- | Run a given executable.
 run :: Verbosity -> LocalBuildInfo -> Executable -> [String] -> IO ()
 run verbosity lbi exe exeArgs = do
+  curDir <- absoluteWorkingDirLBI lbi
   let distPref = fromFlag $ configDistPref $ configFlags lbi
       buildPref = buildDir lbi
       pkg_descr = localPkgDescr lbi
@@ -155,6 +156,7 @@ run verbosity lbi exe exeArgs = do
           , -- Include any build-tool-depends on build tools internal to the current package.
             withPrograms =
               addInternalBuildTools
+                curDir
                 pkg_descr
                 lbi
                 (buildInfo exe)
@@ -178,13 +180,11 @@ run verbosity lbi exe exeArgs = do
             return (p, [])
 
   -- Compute the appropriate environment for running the executable
-  existingEnv <- getEnvironment
   let progDb = withPrograms lbiForExe
       pathVar = progSearchPath progDb
       envOverrides = progOverrideEnv progDb
   newPath <- programSearchPathAsPATHVar pathVar
-  overrideEnv <- fromMaybe [] <$> getEffectiveEnvironment ([("PATH", Just newPath)] ++ envOverrides)
-  let env = overrideEnv ++ existingEnv
+  env <- getFullEnvironment ([("PATH", Just newPath)] ++ envOverrides)
 
   -- Add (DY)LD_LIBRARY_PATH if needed
   env' <-

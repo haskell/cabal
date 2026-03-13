@@ -1,11 +1,7 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Simple.Setup.Global
@@ -48,15 +44,17 @@ import Distribution.Utils.Path
 -- | Flags that apply at the top level, not to any sub-command.
 data GlobalFlags = GlobalFlags
   { globalVersion :: Flag Bool
+  , globalFullVersion :: Flag Bool
   , globalNumericVersion :: Flag Bool
   , globalWorkingDir :: Flag (SymbolicPath CWD (Dir Pkg))
   }
-  deriving (Generic, Typeable)
+  deriving (Generic)
 
 defaultGlobalFlags :: GlobalFlags
 defaultGlobalFlags =
   GlobalFlags
     { globalVersion = Flag False
+    , globalFullVersion = Flag False
     , globalNumericVersion = Flag False
     , globalWorkingDir = NoFlag
     }
@@ -104,6 +102,13 @@ globalCommand commands =
             "Print version information"
             globalVersion
             (\v flags -> flags{globalVersion = v})
+            trueArg
+        , option
+            []
+            ["full-version"]
+            "Print the version, Git revision if available, and compiler information"
+            globalFullVersion
+            (\v flags -> flags{globalFullVersion = v})
             trueArg
         , option
             []

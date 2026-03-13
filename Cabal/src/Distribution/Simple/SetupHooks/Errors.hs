@@ -170,7 +170,7 @@ rulesExceptionMessage = \case
             "The index is too large."
       plural = if nbOutputs == 1 then "" else "s"
   DuplicateRuleId rId r1 r2 ->
-    unlines $
+    unlines
       [ "Duplicate pre-build rule (" <> show rId <> ")"
       , "  - " <> showRule (ruleBinary r1)
       , "  - " <> showRule (ruleBinary r2)

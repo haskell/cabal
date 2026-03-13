@@ -1,0 +1,7 @@
+---
+synopsis: Fix mistake in BuildInfo/Lens.hs mixing up `c-sources` and `cxx-sources`
+packages: [Cabal-syntax]
+prs: 10609
+---
+
+Fix a typo that would cause cxx-source and c-sources get mixed up.

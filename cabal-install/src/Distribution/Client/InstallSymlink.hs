@@ -1,11 +1,5 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
-
------------------------------------------------------------------------------
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Client.InstallSymlink
@@ -81,7 +75,10 @@ import Distribution.Types.UnqualComponentName
 
 import System.Directory
   ( canonicalizePath
+  , createFileLink
+  , getSymbolicLinkTarget
   , getTemporaryDirectory
+  , pathIsSymbolicLink
   , removeFile
   )
 import System.FilePath
@@ -100,7 +97,6 @@ import System.IO.Error
   , isDoesNotExistError
   )
 
-import Distribution.Client.Compat.Directory (createFileLink, getSymbolicLinkTarget, pathIsSymbolicLink)
 import Distribution.Client.Init.Prompt (promptYesNo)
 import Distribution.Client.Init.Types (DefaultPrompt (MandatoryPrompt), runPromptIO)
 import Distribution.Client.Types.OverwritePolicy
@@ -400,7 +396,7 @@ makeRelative a b =
 trySymlink :: Verbosity -> IO Bool
 trySymlink verbosity = do
   tmp <- getTemporaryDirectory
-  withTempDirectory verbosity tmp "cabal-symlink-test" $ \tmpDirPath -> do
+  withTempDirectory tmp "cabal-symlink-test" $ \tmpDirPath -> do
     let from = tmpDirPath </> "file.txt"
     let to = tmpDirPath </> "file2.txt"
 
@@ -411,7 +407,7 @@ trySymlink verbosity = do
     let create :: IO Bool
         create = do
           createFileLink from to
-          info verbosity $ "Symlinking seems to work"
+          info verbosity "Symlinking seems to work"
           return True
 
     create `catchIO` \exc -> do

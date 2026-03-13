@@ -1,5 +1,3 @@
-{-# LANGUAGE PatternGuards #-}
-
 -- | See <https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst>
 module Distribution.Backpack.ConfiguredComponent
   ( ConfiguredComponent (..)
@@ -85,7 +83,7 @@ dispConfiguredComponent cc =
     (text "component" <+> pretty (cc_cid cc))
     4
     ( vcat
-        [ hsep $
+        [ hsep
           [ text "include"
           , pretty (ci_id incl)
           , pretty (ci_renaming incl)

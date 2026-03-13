@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 
 -- | Utilities to help commands with scripts
@@ -11,6 +12,7 @@ module Distribution.Client.ScriptUtils
   , withContextAndSelectors
   , AcceptNoTargets (..)
   , TargetContext (..)
+  , TargetsAction
   , updateContextAndWriteProjectFile
   , updateContextAndWriteProjectFile'
   , fakeProjectSourcePackage
@@ -75,9 +77,7 @@ import Distribution.Client.RebuildMonad
   ( runRebuild
   )
 import Distribution.Client.Setup
-  ( CommonSetupFlags (..)
-  , ConfigFlags (..)
-  , GlobalFlags (..)
+  ( GlobalFlags (..)
   )
 import Distribution.Client.TargetSelector
   ( TargetSelectorProblem (..)
@@ -117,7 +117,6 @@ import qualified Distribution.SPDX.License as SPDX
 import Distribution.Simple.Compiler
   ( Compiler (..)
   , OptimisationLevel (..)
-  , compilerInfo
   )
 import Distribution.Simple.Flag
   ( flagToMaybe
@@ -127,7 +126,7 @@ import Distribution.Simple.PackageDescription
   ( parseString
   )
 import Distribution.Simple.Setup
-  ( Flag (..)
+  ( pattern Flag
   )
 import Distribution.Simple.Utils
   ( createDirectoryIfMissingVerbose
@@ -176,9 +175,6 @@ import Distribution.Types.UnqualComponentName
   )
 import Distribution.Utils.NubList
   ( fromNubList
-  )
-import Distribution.Verbosity
-  ( normal
   )
 import Language.Haskell.Extension
   ( Language (..)
@@ -274,6 +270,9 @@ data TargetContext
     ScriptContext FilePath Executable
   deriving (Eq, Show)
 
+-- | An action working with selected targets within a context.
+type TargetsAction targets a = TargetContext -> ProjectBaseContext -> targets -> IO a
+
 -- | Determine whether the targets represent regular targets or a script
 -- and return the proper context and target selectors.
 -- Die with an error message if selectors are valid as neither regular targets or as a script.
@@ -281,7 +280,8 @@ data TargetContext
 -- In the case that the context refers to a temporary directory,
 -- delete it after the action finishes.
 withContextAndSelectors
-  :: AcceptNoTargets
+  :: Verbosity
+  -> AcceptNoTargets
   -- ^ What your command should do when no targets are found.
   -> Maybe ComponentKind
   -- ^ A target filter
@@ -293,10 +293,9 @@ withContextAndSelectors
   -- ^ Global flags.
   -> CurrentCommand
   -- ^ Current Command (usually for error reporting).
-  -> (TargetContext -> ProjectBaseContext -> [TargetSelector] -> IO b)
-  -- ^ The body of your command action.
+  -> TargetsAction [TargetSelector] b
   -> IO b
-withContextAndSelectors noTargets kind flags@NixStyleFlags{..} targetStrings globalFlags cmd act =
+withContextAndSelectors verbosity noTargets kind flags@NixStyleFlags{..} targetStrings globalFlags cmd act =
   withTemporaryTempDirectory $ \mkTmpDir -> do
     (tc, ctx) <-
       withProjectOrGlobalConfig
@@ -318,13 +317,13 @@ withContextAndSelectors noTargets kind flags@NixStyleFlags{..} targetStrings glo
           Left (TargetSelectorNoTargetsInCwd{} : _)
             | [] <- targetStrings
             , AcceptNoTargets <- noTargets ->
-                return (tc, ctx, defaultTarget)
+                return (tc, ctx, [])
           Left err@(TargetSelectorNoTargetsInProject : _)
             -- If there are no target selectors and no targets are fine, return
             -- the context
             | [] <- targetStrings
             , AcceptNoTargets <- noTargets ->
-                return (tc, ctx, defaultTarget)
+                return (tc, ctx, [])
             | (script : _) <- targetStrings -> scriptOrError script err
           Left err@(TargetSelectorNoSuch t _ : _)
             | TargetString1 script <- t -> scriptOrError script err
@@ -337,7 +336,6 @@ withContextAndSelectors noTargets kind flags@NixStyleFlags{..} targetStrings glo
 
     act tc' ctx' sels
   where
-    verbosity = fromFlagOrDefault normal (setupVerbosity $ configCommonFlags configFlags)
     ignoreProject = flagIgnoreProject projectFlags
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
@@ -381,7 +379,7 @@ withContextAndSelectors noTargets kind flags@NixStyleFlags{..} targetStrings glo
           createDirectoryIfMissingVerbose verbosity True (distProjectCacheDirectory $ distDirLayout ctx)
           (compiler, platform@(Platform arch os), _) <- runRebuild projectRoot $ configureCompiler verbosity (distDirLayout ctx) (fst (ignoreConditions projectCfgSkeleton) <> projectConfig ctx)
 
-          projectCfg <- instantiateProjectConfigSkeletonFetchingCompiler (pure (os, arch, compilerInfo compiler)) mempty projectCfgSkeleton
+          (projectCfg, _) <- instantiateProjectConfigSkeletonFetchingCompiler (pure (os, arch, compiler)) mempty projectCfgSkeleton
 
           let ctx' = ctx & lProjectConfig %~ (<> projectCfg)
 
@@ -414,8 +412,8 @@ withTemporaryTempDirectory act = newEmptyMVar >>= \m -> bracket (getMkTmp m) (rm
       return tmpDir
     rmTmp m _ = tryTakeMVar m >>= maybe (return ()) (handleDoesNotExist () . removeDirectoryRecursive)
 
-scriptComponenetName :: IsString s => FilePath -> s
-scriptComponenetName scriptPath = fromString cname
+scriptComponentName :: IsString s => FilePath -> s
+scriptComponentName scriptPath = fromString cname
   where
     cname = "script-" ++ map censor (takeFileName scriptPath)
     censor c
@@ -437,7 +435,7 @@ scriptDistDirParams scriptPath ctx compiler platform =
     , distParamOptimization = fromFlagOrDefault NormalOptimisation optimization
     }
   where
-    cn = scriptComponenetName scriptPath
+    cn = scriptComponentName scriptPath
     cid = mkComponentId $ prettyShow fakePackageId <> "-inplace-" <> prettyShow cn
     optimization = (packageConfigOptimization . projectConfigLocalPackages . projectConfig) ctx
 
@@ -475,14 +473,14 @@ updateContextAndWriteProjectFile ctx scriptPath scriptExecutable = do
     sourcePackage =
       fakeProjectSourcePackage projectRoot
         & lSrcpkgDescription . L.condExecutables
-          .~ [(scriptComponenetName scriptPath, CondNode executable (targetBuildDepends $ buildInfo executable) [])]
+          .~ [(scriptComponentName scriptPath, CondNode executable (targetBuildDepends $ buildInfo executable) [])]
     executable =
       scriptExecutable
         & L.modulePath .~ absScript
 
   updateContextAndWriteProjectFile' ctx sourcePackage
 
-parseScriptBlock :: BS.ByteString -> ParseResult Executable
+parseScriptBlock :: BS.ByteString -> ParseResult src Executable
 parseScriptBlock str =
   case readFields str of
     Right fs -> do

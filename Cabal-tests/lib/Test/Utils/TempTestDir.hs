@@ -72,7 +72,7 @@ removeDirectoryRecursiveHack verbosity dir | isWindows = go 1
               threadDelay 1000000
               go (n + 1)
 
-          -- but if we hit the limt warn and fail.
+          -- but if we hit the limit warn and fail.
           | isPermissionError e -> do
               warn verbosity $
                 "Windows file locking hack: hit the retry limit "
@@ -91,29 +91,3 @@ removeDirectoryRecursiveHack verbosity dir | isWindows = go 1
                 ++ " times to remove "
                 ++ dir
 removeDirectoryRecursiveHack _ dir = removeDirectoryRecursive dir
-
-#if !(MIN_VERSION_directory(1,2,7))
--- A simplified version that ought to work for our use case here, and does
--- not rely on directory internals.
-removePathForcibly :: FilePath -> IO ()
-removePathForcibly path = do
-    makeRemovable path `catchIOError` \ _ -> pure ()
-    isDir <- doesDirectoryExist path
-    if isDir
-       then do
-         entries <- getDirectoryContents path
-         sequence_
-           [ removePathForcibly (path </> entry)
-           | entry <- entries, entry /= ".", entry /= ".." ]
-         removeDirectory path
-       else
-         removeFile path
-  where
-    makeRemovable :: FilePath -> IO ()
-    makeRemovable p =
-      setPermissions p emptyPermissions {
-        readable   = True,
-        searchable = True,
-        writable   = True
-      }
-#endif
