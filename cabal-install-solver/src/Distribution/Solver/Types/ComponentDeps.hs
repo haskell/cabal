@@ -120,7 +120,7 @@ componentNameToComponent (CN.CBenchName               s)  = ComponentBench  s
 -------------------------------------------------------------------------------}
 
 empty :: ComponentDeps a
-empty = ComponentDeps $ Map.empty
+empty = ComponentDeps Map.empty
 
 fromList :: Monoid a => [ComponentDep a] -> ComponentDeps a
 fromList = ComponentDeps . Map.fromListWith mappend

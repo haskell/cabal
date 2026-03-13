@@ -819,7 +819,7 @@ runRuleDynDepsCmd = \case
           Just $ do
             (deps, dynDeps) <- runCommand depsCmd
             -- See Note [Hooks Binary instances]
-            return $ (deps, Binary.encode $ ScopedArgument @User dynDeps)
+            return (deps, Binary.encode $ ScopedArgument @User dynDeps)
 
 -- | Project out the command for running the rule, passing in the result of
 -- the dependency computation if there was one.

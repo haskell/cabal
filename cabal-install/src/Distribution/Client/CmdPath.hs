@@ -359,7 +359,7 @@ showAsJson pathOutputs =
 
     pathsJson = Json.object $ map (\(k, v) -> k .= Json.String v) (pathOutputsConfigPaths pathOutputs)
    in
-    mergeJsonObjects $
+    mergeJsonObjects
       [ cabalInstallJson
       , compilerInfoJson
       , pathsJson

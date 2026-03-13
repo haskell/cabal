@@ -69,8 +69,7 @@ toCPs (A pa fa sa) rdm =
     fapp :: Map QPN FlagAssignment
     fapp = M.fromListWith mappend $
            L.map (\ ((FN qpn fn), b) -> (qpn, mkFlagAssignment [(fn, b)])) $
-           M.toList $
-           fa
+           M.toList fa
     -- Stanzas per package.
     sapp :: Map QPN OptionalStanzaSet
     sapp = M.fromListWith mappend

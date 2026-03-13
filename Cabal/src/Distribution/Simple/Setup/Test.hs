@@ -132,8 +132,8 @@ defaultTestFlags :: TestFlags
 defaultTestFlags =
   TestFlags
     { testCommonFlags = defaultCommonSetupFlags
-    , testHumanLog = toFlag $ toPathTemplate $ "$pkgid-$test-suite.log"
-    , testMachineLog = toFlag $ toPathTemplate $ "$pkgid.log"
+    , testHumanLog = toFlag $ toPathTemplate "$pkgid-$test-suite.log"
+    , testMachineLog = toFlag $ toPathTemplate "$pkgid.log"
     , testShowDetails = toFlag Direct
     , testKeepTix = toFlag False
     , testWrapper = NoFlag

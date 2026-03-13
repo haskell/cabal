@@ -285,7 +285,8 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
         sourceRepoToJ :: SourceRepoMaybe -> J.Value
         sourceRepoToJ SourceRepositoryPackage{..} =
           J.object $
-            filter ((/= J.Null) . snd) $
+            filter
+              ((/= J.Null) . snd)
               [ "type" J..= jdisplay srpType
               , "location" J..= J.String srpLocation
               , "branch" J..= fmap J.String srpBranch

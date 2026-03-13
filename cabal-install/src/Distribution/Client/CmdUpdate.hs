@@ -103,8 +103,7 @@ updateCommand =
     , commandSynopsis = "Updates list of known packages."
     , commandUsage = usageAlternatives "v2-update" ["[FLAGS] [REPOS]"]
     , commandDescription = Just $ \_ ->
-        wrapText $
-          "For all known remote repositories, download the package list."
+        wrapText "For all known remote repositories, download the package list."
     , commandNotes = Just $ \pname ->
         "REPO has the format <repo-id>[,<index-state>] where index-state follows\n"
           ++ "the same format and syntax that is supported by the --index-state flag.\n\n"

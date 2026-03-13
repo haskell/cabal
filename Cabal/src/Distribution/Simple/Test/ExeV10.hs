@@ -82,7 +82,7 @@ runTest verbHandles pkg_descr lbi clbi hpcMarkupInfo flags suite = do
   createDirectoryIfMissing True tixDir_
 
   -- Write summary notices indicating start of test suite
-  notice verbosity $ summarizeSuiteStart $ testName'
+  notice verbosity $ summarizeSuiteStart testName'
 
   -- Run the test executable (with the appropriate environment set)
   let progDb = LBI.withPrograms lbi

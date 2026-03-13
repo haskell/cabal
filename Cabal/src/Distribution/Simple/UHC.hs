@@ -131,8 +131,7 @@ getInstalledPackages verbosity comp mbWorkDir packagedbs progdb = do
   -- putStrLn $ "pkgs: " ++ show pkgs
   let iPkgs =
         map mkInstalledPackageInfo $
-          concatMap parsePackage $
-            pkgs
+          concatMap parsePackage pkgs
   -- putStrLn $ "installed pkgs: " ++ show iPkgs
   return (fromList iPkgs)
 
@@ -266,7 +265,7 @@ buildExe verbosity _pkg_descr lbi exe clbi = do
           -- output file
           ++ ["--output", u $ buildDir lbi </> makeRelativePathEx (prettyShow (exeName exe))]
           -- main source module
-          ++ [u $ srcMainPath]
+          ++ [u srcMainPath]
   runUhcProg uhcArgs
 
 constructUHCCmdLine

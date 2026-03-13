@@ -398,7 +398,7 @@ linkLibrary buildTargetDir cleanedExtraLibDirs pkg_descr verbosity runGhcProg li
               then toFlag sharedLibInstallPath
               else mempty
         , ghcOptLinkLibs = extraLibs libBi
-        , ghcOptLinkLibPath = toNubListR $ cleanedExtraLibDirs
+        , ghcOptLinkLibPath = toNubListR cleanedExtraLibDirs
         , ghcOptLinkFrameworks = toNubListR $ map getSymbolicPath $ PD.frameworks libBi
         , ghcOptLinkFrameworkDirs =
             toNubListR $ PD.extraFrameworkDirs libBi
@@ -424,7 +424,7 @@ linkLibrary buildTargetDir cleanedExtraLibDirs pkg_descr verbosity runGhcProg li
               then toFlag profSharedLibInstallPath
               else mempty
         , ghcOptLinkLibs = extraLibs libBi
-        , ghcOptLinkLibPath = toNubListR $ cleanedExtraLibDirs
+        , ghcOptLinkLibPath = toNubListR cleanedExtraLibDirs
         , ghcOptLinkFrameworks = toNubListR $ map getSymbolicPath $ PD.frameworks libBi
         , ghcOptLinkFrameworkDirs =
             toNubListR $ PD.extraFrameworkDirs libBi
@@ -437,7 +437,7 @@ linkLibrary buildTargetDir cleanedExtraLibDirs pkg_descr verbosity runGhcProg li
         , ghcOptOutputFile = toFlag staticLibFilePath
         , ghcOptLinkLibs = extraLibs libBi
         , -- TODO: Shouldn't this use cleanedExtraLibDirsStatic instead?
-          ghcOptLinkLibPath = toNubListR $ cleanedExtraLibDirs
+          ghcOptLinkLibPath = toNubListR cleanedExtraLibDirs
         }
 
   staticObjectFiles <- getObjFiles StaticWay

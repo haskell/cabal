@@ -1002,7 +1002,7 @@ convertToLegacySharedConfig
       commonFlags =
         mempty
           { setupVerbosity = projectConfigVerbosity
-          , setupDistPref = fmap makeSymbolicPath $ projectConfigDistDir
+          , setupDistPref = fmap makeSymbolicPath projectConfigDistDir
           , setupKeepTempFiles = projectConfigKeepTempFiles
           }
 
@@ -1201,13 +1201,13 @@ convertToLegacyPerPackageConfig PackageConfig{..} =
         , configSplitObjs = packageConfigSplitObjs
         , configStripExes = packageConfigStripExes
         , configStripLibs = packageConfigStripLibs
-        , configExtraLibDirs = fmap makeSymbolicPath $ packageConfigExtraLibDirs
-        , configExtraLibDirsStatic = fmap makeSymbolicPath $ packageConfigExtraLibDirsStatic
-        , configExtraFrameworkDirs = fmap makeSymbolicPath $ packageConfigExtraFrameworkDirs
+        , configExtraLibDirs = fmap makeSymbolicPath packageConfigExtraLibDirs
+        , configExtraLibDirsStatic = fmap makeSymbolicPath packageConfigExtraLibDirsStatic
+        , configExtraFrameworkDirs = fmap makeSymbolicPath packageConfigExtraFrameworkDirs
         , configConstraints = mempty
         , configDependencies = mempty
         , configPromisedDependencies = mempty
-        , configExtraIncludeDirs = fmap makeSymbolicPath $ packageConfigExtraIncludeDirs
+        , configExtraIncludeDirs = fmap makeSymbolicPath packageConfigExtraIncludeDirs
         , configIPID = mempty
         , configCID = mempty
         , configDeterministic = mempty

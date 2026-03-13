@@ -212,15 +212,12 @@ regressionTests = testGroup "regressions"
     ]
 
 regressionTest :: FilePath -> TestTree
-regressionTest fp = testGroup fp
-{- FOURMOLU_DISABLE -}
-    [ formatGoldenTest fp
-    , formatRoundTripTest fp
+regressionTest fp = let formatTests = [ formatGoldenTest fp, formatRoundTripTest fp ] in
 #ifdef MIN_VERSION_tree_diff
-    , treeDiffGoldenTest fp
+    testGroup fp $ formatTests ++ [ treeDiffGoldenTest fp ]
+#else
+    testGroup fp formatTests
 #endif
-    ]
-{- FOURMOLU_ENABLE -}
 
 formatGoldenTest :: FilePath -> TestTree
 formatGoldenTest fp = cabalGoldenTest "format" correct $ do
@@ -264,7 +261,6 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
 
     let checkField field =
           field x == field y @?
-{- FOURMOLU_DISABLE -}
 #ifdef MIN_VERSION_tree_diff
             unlines
                 [ "re-parsed doesn't match"
@@ -301,7 +297,6 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
                 void $ assertFailure $ unlines (map (showPErrorWithSource . fmap renderCabalFileSource) $ NE.toList errs)
                 fail "failure"
     input = "tests" </> "ParserTests" </> "regressions" </> fp
-{- FOURMOLU_ENABLE -}
 
 -------------------------------------------------------------------------------
 -- InstalledPackageInfo regressions
@@ -316,15 +311,12 @@ ipiTests = testGroup "ipis"
     ]
 
 ipiTest :: FilePath -> TestTree
-{- FOURMOLU_DISABLE -}
-ipiTest fp = testGroup fp $
+ipiTest fp = let formatTests = [ ipiFormatGoldenTest fp , ipiFormatRoundTripTest fp ] in
 #ifdef MIN_VERSION_tree_diff
-    [ ipiTreeDiffGoldenTest fp ] ++
+    testGroup fp $ [ ipiTreeDiffGoldenTest fp ] ++ formatTests
+#else
+    testGroup fp formatTests
 #endif
-    [ ipiFormatGoldenTest fp
-    , ipiFormatRoundTripTest fp
-    ]
-{- FOURMOLU_ENABLE -}
 
 ipiFormatGoldenTest :: FilePath -> TestTree
 ipiFormatGoldenTest fp = cabalGoldenTest "format" correct $ do

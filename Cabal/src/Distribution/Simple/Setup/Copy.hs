@@ -111,7 +111,8 @@ copyCommand =
           ++ " copy foo       "
           ++ "    A component (i.e. lib, exe, test suite)"
     , commandUsage =
-        usageAlternatives "copy" $
+        usageAlternatives
+          "copy"
           [ "[FLAGS]"
           , "COMPONENTS [FLAGS]"
           ]

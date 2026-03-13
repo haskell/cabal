@@ -371,7 +371,7 @@ rebuildProjectConfig
     , distProjectFile
     }
   cliConfig = do
-    progsearchpath <- liftIO $ getSystemSearchPath
+    progsearchpath <- liftIO getSystemSearchPath
 
     let fileMonitorProjectConfig = newFileMonitor (distProjectCacheFile "config")
 
@@ -404,7 +404,7 @@ rebuildProjectConfig
                 pure (os, arch, compiler)
 
           (projectConfig, compiler) <- instantiateProjectConfigSkeletonFetchingCompiler fetchCompiler mempty projectConfigSkeleton
-          when (projectConfigDistDir (projectConfigShared $ projectConfig) /= NoFlag) $
+          when (projectConfigDistDir (projectConfigShared projectConfig) /= NoFlag) $
             liftIO $
               warn verbosity "The builddir option is not supported in project and config files. It will be ignored."
           localPackages <- phaseReadLocalPackages compiler (projectConfig <> cliConfig)
@@ -526,7 +526,7 @@ configureCompiler
     } = do
     let fileMonitorCompiler = newFileMonitor $ distProjectCacheFile "compiler"
 
-    progsearchpath <- liftIO $ getSystemSearchPath
+    progsearchpath <- liftIO getSystemSearchPath
 
     (hc, plat, hcProgDb) <-
       rerunIfChanged
@@ -657,7 +657,7 @@ rebuildInstallPlan
     { cabalStoreDirLayout
     } = \projectConfig localPackages mbInstalledPackages ->
     runRebuild distProjectRootDirectory $ do
-      progsearchpath <- liftIO $ getSystemSearchPath
+      progsearchpath <- liftIO getSystemSearchPath
       let projectConfigMonitored = projectConfig{projectConfigBuildOnly = mempty}
 
       -- The overall improved plan is cached
@@ -1907,7 +1907,7 @@ elaborateInstallPlan
                 -- correctly.
                 let elab1 =
                       elab0
-                        { elabPkgOrComp = ElabComponent $ elab_comp
+                        { elabPkgOrComp = ElabComponent elab_comp
                         }
                     cid = case elabBuildStyle elab0 of
                       BuildInplaceOnly{} ->
@@ -4119,10 +4119,10 @@ setupHsConfigureFlags
 
       configConfigurationsFlags = elabFlagAssignment
       configConfigureArgs = elabConfigureScriptArgs
-      configExtraLibDirs = fmap makeSymbolicPath $ elabExtraLibDirs
-      configExtraLibDirsStatic = fmap makeSymbolicPath $ elabExtraLibDirsStatic
-      configExtraFrameworkDirs = fmap makeSymbolicPath $ elabExtraFrameworkDirs
-      configExtraIncludeDirs = fmap makeSymbolicPath $ elabExtraIncludeDirs
+      configExtraLibDirs = fmap makeSymbolicPath elabExtraLibDirs
+      configExtraLibDirsStatic = fmap makeSymbolicPath elabExtraLibDirsStatic
+      configExtraFrameworkDirs = fmap makeSymbolicPath elabExtraFrameworkDirs
+      configExtraIncludeDirs = fmap makeSymbolicPath elabExtraIncludeDirs
       configProgPrefix = maybe mempty toFlag elabProgPrefix
       configProgSuffix = maybe mempty toFlag elabProgSuffix
 

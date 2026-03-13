@@ -270,7 +270,7 @@ goSections specVer = traverse_ process
     parseSection (Name pos name) args fields
       | hasCommonStanzas == NoCommonStanzas
       , name == "common" = lift $ do
-          parseWarning pos PWTUnknownSection $ "Ignoring section: common. You should set cabal-version: 2.2 or larger to use common stanzas."
+          parseWarning pos PWTUnknownSection "Ignoring section: common. You should set cabal-version: 2.2 or larger to use common stanzas."
       | name == "common" = do
           commonStanzas <- use stateCommonStanzas
           name' <- lift $ parseCommonName pos args
@@ -286,8 +286,7 @@ goSections specVer = traverse_ process
           prev <- use $ stateGpd . L.condLibrary
           when (isJust prev) $
             lift $
-              parseFailure pos $
-                "Multiple main libraries; have you forgotten to specify a name for an internal library?"
+              parseFailure pos "Multiple main libraries; have you forgotten to specify a name for an internal library?"
 
           commonStanzas <- use stateCommonStanzas
           let name'' = LMainLibName
@@ -440,7 +439,7 @@ parseCommonName pos args = case args of
   [SecArgStr _pos secName] ->
     pure $ fromUTF8BS secName
   [] -> do
-    parseFailure pos $ "name required"
+    parseFailure pos "name required"
     pure ""
   _ -> do
     -- TODO: pretty print args
@@ -528,7 +527,7 @@ parseCondTree v hasElif grammar commonStanzas fromBuildInfo cond = go
           a <- parseFieldGrammar v mempty grammar
           return (Just $ CondNode a (cond a) [CondBranch test' fields' elseFields], sections')
     parseElseIfs (MkSection (Name pos name) _ _ : sections) | name == "elif" = do
-      parseWarning pos PWTInvalidSubsection $ "invalid subsection \"elif\". You should set cabal-version: 2.2 or larger to use elif-conditionals."
+      parseWarning pos PWTInvalidSubsection "invalid subsection \"elif\". You should set cabal-version: 2.2 or larger to use elif-conditionals."
       (,) Nothing <$> parseIfs sections
     parseElseIfs sections = (,) Nothing <$> parseIfs sections
 
@@ -682,7 +681,7 @@ processImports v fromBuildInfo commonStanzas = go []
     -- parse actual CondTree
     go acc fields = do
       fields' <- catMaybes <$> traverse (warnImport v) fields
-      pure $ (fields', \x -> foldr (mergeCommonStanza fromBuildInfo) x acc)
+      pure (fields', \x -> foldr (mergeCommonStanza fromBuildInfo) x acc)
 
 -- | Warn on "import" fields, also map to Maybe, so erroneous fields can be filtered
 warnImport :: CabalSpecVersion -> Field Position -> ParseResult src (Maybe (Field Position))
@@ -763,12 +762,10 @@ checkForUndefinedCustomSetup gpd = do
 
   when (buildType pd == Custom && isNothing (setupBuildInfo pd)) $
     when (csv >= CabalSpecV1_24) $
-      parseFailure zeroPos $
-        "Since cabal-version: 1.24 specifying custom-setup section is mandatory"
+      parseFailure zeroPos "Since cabal-version: 1.24 specifying custom-setup section is mandatory"
 
   when (buildType pd == Hooks && isNothing (setupBuildInfo pd)) $
-    parseFailure zeroPos $
-      "Packages with build-type: Hooks require a custom-setup stanza"
+    parseFailure zeroPos "Packages with build-type: Hooks require a custom-setup stanza"
 
 -------------------------------------------------------------------------------
 -- Post processing of internal dependencies

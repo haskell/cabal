@@ -203,27 +203,27 @@ instance Structured BuildOptions
 buildOptionsConfigFlags :: BuildOptions -> ConfigFlags
 buildOptionsConfigFlags (BuildOptions{..}) =
   mempty
-    { configVanillaLib = toFlag $ withVanillaLib
-    , configSharedLib = toFlag $ withSharedLib
-    , configStaticLib = toFlag $ withStaticLib
-    , configDynExe = toFlag $ withDynExe
-    , configFullyStaticExe = toFlag $ withFullyStaticExe
-    , configGHCiLib = toFlag $ withGHCiLib
-    , configProfExe = toFlag $ withProfExe
-    , configProfLib = toFlag $ withProfLib
-    , configProfShared = toFlag $ withProfLibShared
+    { configVanillaLib = toFlag withVanillaLib
+    , configSharedLib = toFlag withSharedLib
+    , configStaticLib = toFlag withStaticLib
+    , configDynExe = toFlag withDynExe
+    , configFullyStaticExe = toFlag withFullyStaticExe
+    , configGHCiLib = toFlag withGHCiLib
+    , configProfExe = toFlag withProfExe
+    , configProfLib = toFlag withProfLib
+    , configProfShared = toFlag withProfLibShared
     , configProf = mempty
     , -- configProfDetail is for exe+lib, but overridden by configProfLibDetail
       -- so we specify both so we can specify independently
-      configProfDetail = toFlag $ withProfExeDetail
-    , configProfLibDetail = toFlag $ withProfLibDetail
-    , configCoverage = toFlag $ exeCoverage
+      configProfDetail = toFlag withProfExeDetail
+    , configProfLibDetail = toFlag withProfLibDetail
+    , configCoverage = toFlag exeCoverage
     , configLibCoverage = mempty
-    , configRelocatable = toFlag $ relocatable
-    , configOptimization = toFlag $ withOptimization
-    , configSplitSections = toFlag $ splitSections
-    , configSplitObjs = toFlag $ splitObjs
-    , configStripExes = toFlag $ stripExes
-    , configStripLibs = toFlag $ stripLibs
-    , configDebugInfo = toFlag $ withDebugInfo
+    , configRelocatable = toFlag relocatable
+    , configOptimization = toFlag withOptimization
+    , configSplitSections = toFlag splitSections
+    , configSplitObjs = toFlag splitObjs
+    , configStripExes = toFlag stripExes
+    , configStripLibs = toFlag stripLibs
+    , configDebugInfo = toFlag withDebugInfo
     }

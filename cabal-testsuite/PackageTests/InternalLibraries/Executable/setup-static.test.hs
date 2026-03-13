@@ -28,9 +28,9 @@ main = setupAndCabalTest $ do
     withPackageDb $ do
         -- MULTI
         forM_ [False, True] $ \is_dynamic -> do
-            setup_install $ [ if is_dynamic then "--enable-executable-dynamic"
-                                            else "--disable-executable-dynamic"
-                            , "--enable-shared"]
+            setup_install [ if is_dynamic then "--enable-executable-dynamic"
+                                          else "--disable-executable-dynamic"
+                          , "--enable-shared"]
             dist_dir <- fmap testDistDir getTestEnv
             lbi <- liftIO $
                      getPersistBuildConfig

@@ -994,7 +994,7 @@ resolveDependency verbosity rId allRules = \case
     case Map.lookup depId allRules of
       Nothing ->
         error $
-          unlines $
+          unlines
             [ "Internal error: missing rule dependency."
             , "Rule: " ++ show rId
             , "Dependency: " ++ show depId

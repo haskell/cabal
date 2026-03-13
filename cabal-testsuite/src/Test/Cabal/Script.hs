@@ -93,7 +93,7 @@ runnerCommand
   -> IO (FilePath, [String])
 runnerCommand senv mb_cwd _env_overrides script_path args = do
   (prog, _) <- requireProgram verbosity runghcProgram (runnerProgramDb senv)
-  return $
+  return
     ( programPath prog
     , runghc_args ++ ["--"] ++ map ("--ghc-arg=" ++) ghc_args ++ [script_path] ++ args
     )

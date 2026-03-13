@@ -134,8 +134,7 @@ ghcProgram =
               -- Workaround for https://gitlab.haskell.org/ghc/ghc/-/issues/8825
               -- (spurious warning on non-english locales)
               $
-                applyWhen (withinRange v affectedVersionRange) setLanguageEnv $
-                  ghcProg
+                applyWhen (withinRange v affectedVersionRange) setLanguageEnv ghcProg
           )
           (programVersion ghcProg)
 

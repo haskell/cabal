@@ -92,16 +92,11 @@ dropExeExtensionTest =
 
 tests :: FilePath -> [TestTree]
 tests ghcPath =
-    [ testCase "withTempFile works as expected" $
-      withTempFileTest
-    , testCase "withTempFile can handle removed files" $
-      withTempFileRemovedTest
-    , testCase "withTempDirectory works as expected" $
-      withTempDirTest
-    , testCase "withTempDirectory can handle removed directories" $
-      withTempDirRemovedTest
+    [ testCase "withTempFile works as expected" withTempFileTest
+    , testCase "withTempFile can handle removed files" withTempFileRemovedTest
+    , testCase "withTempDirectory works as expected" withTempDirTest
+    , testCase "withTempDirectory can handle removed directories" withTempDirRemovedTest
     , testCase "rawSystemStdInOut reports text decoding errors" $
       rawSystemStdInOutTextDecodingTest ghcPath
-    , testCase "dropExeExtension drops exe extension" $
-      dropExeExtensionTest
+    , testCase "dropExeExtension drops exe extension" dropExeExtensionTest
     ]

@@ -75,7 +75,7 @@ main = cabalTest $ do
                             cabal "v2-install" $ "--force-reinstalls" : installOptions
                         let exIPID s = takeWhile (/= '\n') . head . filter (\t -> any (`isPrefixOf` t) ["basic-0.1-", "bsc-0.1-"]) $ tails s
                         hashedIpid <- exIPID <$> liftIO (readFile packageEnv)
-                        return $ ((idx, linking), hashedIpid)
+                        return ((idx, linking), hashedIpid)
         -- Phase 2: make sure we have different hashes iff we have different config flags.
         -- In particular make sure the dynamic config flags weren't silently
         -- dropped and ignored, since this is the bug that prompted this test.

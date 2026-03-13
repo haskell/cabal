@@ -689,8 +689,7 @@ ready
   => GenericInstallPlan ipkg srcpkg
   -> ([GenericReadyPackage srcpkg], Processing)
 ready plan =
-  assert (processingInvariant plan processing) $
-    (readyPackages, processing)
+  assert (processingInvariant plan processing) (readyPackages, processing)
   where
     !processing =
       Processing
@@ -720,7 +719,8 @@ completed
   -> ([GenericReadyPackage srcpkg], Processing)
 completed plan (Processing processingSet completedSet failedSet) pkgid =
   assert (pkgid `Set.member` processingSet) $
-    assert (processingInvariant plan processing') $
+    assert
+      (processingInvariant plan processing')
       ( map asReadyPackage newlyReady
       , processing'
       )
@@ -760,7 +760,8 @@ failed plan (Processing processingSet completedSet failedSet) pkgid =
         -- but note that some newlyFailed may already be in the failed set
         -- since one package can depend on two packages that both fail and
         -- so would be in the rev-dep closure for both.
-        assert (processingInvariant plan processing') $
+        assert
+          (processingInvariant plan processing')
           ( map asConfiguredPackage (drop 1 newlyFailed)
           , processing'
           )

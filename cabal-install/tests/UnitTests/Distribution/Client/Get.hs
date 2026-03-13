@@ -40,7 +40,8 @@ tests =
       ]
   , askOption $ \(RunNetworkTests doRunNetTests) ->
       testGroup "forkPackages, network tests" $
-        includeTestsIf doRunNetTests $
+        includeTestsIf
+          doRunNetTests
           [ testCase "git clone" testNetworkGitClone
           ]
   ]

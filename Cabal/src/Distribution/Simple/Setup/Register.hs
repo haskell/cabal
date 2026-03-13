@@ -111,54 +111,54 @@ registerCommand =
           registerCommonFlags
           (\c f -> f{registerCommonFlags = c})
           showOrParseArgs
-          $ [ option
-                ""
-                ["packageDB"]
-                ""
-                regPackageDB
-                (\v flags -> flags{regPackageDB = v})
-                ( choiceOpt
-                    [
-                      ( Flag UserPackageDB
-                      , ([], ["user"])
-                      , "upon registration, register this package in the user's local package database"
-                      )
-                    ,
-                      ( Flag GlobalPackageDB
-                      , ([], ["global"])
-                      , "(default)upon registration, register this package in the system-wide package database"
-                      )
-                    ]
-                )
-            , option
-                ""
-                ["inplace"]
-                "register the package in the build location, so it can be used without being installed"
-                regInPlace
-                (\v flags -> flags{regInPlace = v})
-                trueArg
-            , option
-                ""
-                ["gen-script"]
-                "instead of registering, generate a script to register later"
-                regGenScript
-                (\v flags -> flags{regGenScript = v})
-                trueArg
-            , option
-                ""
-                ["gen-pkg-config"]
-                "instead of registering, generate a package registration file/directory"
-                regGenPkgConf
-                (\v flags -> flags{regGenPkgConf = v})
-                (optArg' "PKG" (Flag . fmap makeSymbolicPath) (flagToList . fmap (fmap getSymbolicPath)))
-            , option
-                ""
-                ["print-ipid"]
-                "print the installed package ID calculated for this package"
-                regPrintId
-                (\v flags -> flags{regPrintId = v})
-                trueArg
-            ]
+          [ option
+              ""
+              ["packageDB"]
+              ""
+              regPackageDB
+              (\v flags -> flags{regPackageDB = v})
+              ( choiceOpt
+                  [
+                    ( Flag UserPackageDB
+                    , ([], ["user"])
+                    , "upon registration, register this package in the user's local package database"
+                    )
+                  ,
+                    ( Flag GlobalPackageDB
+                    , ([], ["global"])
+                    , "(default)upon registration, register this package in the system-wide package database"
+                    )
+                  ]
+              )
+          , option
+              ""
+              ["inplace"]
+              "register the package in the build location, so it can be used without being installed"
+              regInPlace
+              (\v flags -> flags{regInPlace = v})
+              trueArg
+          , option
+              ""
+              ["gen-script"]
+              "instead of registering, generate a script to register later"
+              regGenScript
+              (\v flags -> flags{regGenScript = v})
+              trueArg
+          , option
+              ""
+              ["gen-pkg-config"]
+              "instead of registering, generate a package registration file/directory"
+              regGenPkgConf
+              (\v flags -> flags{regGenPkgConf = v})
+              (optArg' "PKG" (Flag . fmap makeSymbolicPath) (flagToList . fmap (fmap getSymbolicPath)))
+          , option
+              ""
+              ["print-ipid"]
+              "print the installed package ID calculated for this package"
+              regPrintId
+              (\v flags -> flags{regPrintId = v})
+              trueArg
+          ]
     }
 
 unregisterCommand :: CommandUI RegisterFlags
@@ -177,33 +177,33 @@ unregisterCommand =
           registerCommonFlags
           (\c f -> f{registerCommonFlags = c})
           showOrParseArgs
-          $ [ option
-                ""
-                ["user"]
-                ""
-                regPackageDB
-                (\v flags -> flags{regPackageDB = v})
-                ( choiceOpt
-                    [
-                      ( Flag UserPackageDB
-                      , ([], ["user"])
-                      , "unregister this package in the user's local package database"
-                      )
-                    ,
-                      ( Flag GlobalPackageDB
-                      , ([], ["global"])
-                      , "(default) unregister this package in the  system-wide package database"
-                      )
-                    ]
-                )
-            , option
-                ""
-                ["gen-script"]
-                "Instead of performing the unregister command, generate a script to unregister later"
-                regGenScript
-                (\v flags -> flags{regGenScript = v})
-                trueArg
-            ]
+          [ option
+              ""
+              ["user"]
+              ""
+              regPackageDB
+              (\v flags -> flags{regPackageDB = v})
+              ( choiceOpt
+                  [
+                    ( Flag UserPackageDB
+                    , ([], ["user"])
+                    , "unregister this package in the user's local package database"
+                    )
+                  ,
+                    ( Flag GlobalPackageDB
+                    , ([], ["global"])
+                    , "(default) unregister this package in the  system-wide package database"
+                    )
+                  ]
+              )
+          , option
+              ""
+              ["gen-script"]
+              "Instead of performing the unregister command, generate a script to unregister later"
+              regGenScript
+              (\v flags -> flags{regGenScript = v})
+              trueArg
+          ]
     }
 
 emptyRegisterFlags :: RegisterFlags

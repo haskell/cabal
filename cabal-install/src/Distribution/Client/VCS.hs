@@ -600,7 +600,7 @@ vcsGit =
         git localDir $ ["submodule", "update", "--force", "--init", "--recursive"] ++ verboseArg
         git localDir $ ["submodule", "foreach", "--recursive"] ++ verboseArg ++ ["git clean -ffxdq"]
 
-      git localDir $ ["clean", "-ffxdq"]
+      git localDir ["clean", "-ffxdq"]
       where
         git :: FilePath -> [String] -> IO ()
         git cwd args =

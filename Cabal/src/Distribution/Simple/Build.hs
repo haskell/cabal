@@ -222,7 +222,7 @@ build_setupHooks
         toFlag <$> case buildUseSemaphore flags of
           Flag sem_name -> case numJobs of
             Flag{} -> do
-              warn verbosity $ "Ignoring -j due to --semaphore"
+              warn verbosity "Ignoring -j due to --semaphore"
               return $ UseSem sem_name
             NoFlag -> return $ UseSem sem_name
           NoFlag -> return $ case numJobs of
@@ -367,9 +367,9 @@ repl_setupHooks
         -- This seems DEEPLY questionable.
         [] -> case allTargetsInBuildOrder' pkg_descr lbi of
           (target : _) -> return target
-          [] -> dieWithException verbosity $ FailedToDetermineTarget
+          [] -> dieWithException verbosity FailedToDetermineTarget
         [target] -> return target
-        _ -> dieWithException verbosity $ NoMultipleTargets
+        _ -> dieWithException verbosity NoMultipleTargets
     let componentsToBuild = neededTargetsInBuildOrder' pkg_descr lbi [nodeKey target]
     debug verbosity $
       "Component build order: "
@@ -549,8 +549,7 @@ buildComponent
                         flip addExtraCmmSources extras $
                           flip addExtraCxxSources extras $
                             flip addExtraCSources extras $
-                              flip addExtraJsSources extras $
-                                libbi
+                              addExtraJsSources libbi extras
                   }
 
           buildLib verbHandles flags numJobs pkg_descr lbi lib' clbi

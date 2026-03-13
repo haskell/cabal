@@ -83,7 +83,7 @@ dispConfiguredComponent cc =
     (text "component" <+> pretty (cc_cid cc))
     4
     ( vcat
-        [ hsep $
+        [ hsep
           [ text "include"
           , pretty (ci_id incl)
           , pretty (ci_renaming incl)

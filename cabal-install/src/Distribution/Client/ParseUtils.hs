@@ -321,12 +321,12 @@ parseFieldsAndSections fieldDescrs sectionDescrs fgSectionDescrs =
                 ++ show line'
           case runParseResult $ parseFieldGrammar cabalSpecLatest fields2 grammar of
             (warnings, Right b) -> do
-              for_ warnings $ \w -> warning $ showPWarningWithSource $ w
+              for_ warnings $ \w -> warning $ showPWarningWithSource w
               setter line param b a
             (warnings, Left (_, errs)) -> do
-              for_ warnings $ \w -> warning $ showPWarningWithSource $ w
+              for_ warnings $ \w -> warning $ showPWarningWithSource w
               case errs of
-                err :| _errs -> fail $ showPErrorWithSource $ err
+                err :| _errs -> fail $ showPErrorWithSource err
         Nothing -> do
           warning $
             "Unrecognized section '"

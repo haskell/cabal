@@ -184,7 +184,7 @@ invariant (PackageIndex pids pnames) =
                 all
                   (\g -> length g == 1)
                   (groupBy (equating installedUnitId) pinsts')
-        , pinst <- assert pinstsOk $ pinsts'
+        , pinst <- assert pinstsOk pinsts'
         , let pinstOk =
                 packageName pinst == pname
                   && packageVersion pinst == pver
