@@ -232,7 +232,7 @@ report verbosity repoCtxt mToken mUsername mPassword = do
     -- from this repo yet.
     srcExists <- doesDirectoryExist srcDir
     when srcExists $ do
-      contents <- getDirectoryContents srcDir
+      contents <- listDirectory srcDir
       for_ (filter (\c -> takeExtension c == ".log") contents) $ \logFile ->
         do
           inp <- readFile (srcDir </> logFile)

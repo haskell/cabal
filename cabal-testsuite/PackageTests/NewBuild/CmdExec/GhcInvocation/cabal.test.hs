@@ -1,5 +1,5 @@
 import Test.Cabal.Prelude
-import System.Directory-- (getDirectoryContents, removeFile)
+import System.Directory -- (listDirectory, removeFile)
 main = cabalTest $ do
     cabal "v2-build" ["inplace-dep"]
     env <- getTestEnv
@@ -14,4 +14,4 @@ main = cabalTest $ do
 removeEnvFiles :: FilePath -> IO ()
 removeEnvFiles dir =
   (mapM_ (removeFile . (dir </>)) . filter ((".ghc.environment" ==) . take 16))
-  =<< getDirectoryContents dir
+  =<< listDirectory dir

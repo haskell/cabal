@@ -257,10 +257,10 @@ import System.Directory
   , createDirectory
   , doesDirectoryExist
   , doesFileExist
-  , getDirectoryContents
   , getModificationTime
   , getPermissions
   , getTemporaryDirectory
+  , listDirectory
   , removeDirectoryRecursive
   , removeFile
   )
@@ -1591,7 +1591,7 @@ getDirectoryContentsRecursive topdir = recurseDirectories [""]
     recurseDirectories :: [FilePath] -> IO [FilePath]
     recurseDirectories [] = return []
     recurseDirectories (dir : dirs) = unsafeInterleaveIO $ do
-      (files, dirs') <- collect [] [] =<< getDirectoryContents (topdir </> dir)
+      (files, dirs') <- collect [] [] =<< listDirectory (topdir </> dir)
       files' <- recurseDirectories (dirs' ++ dirs)
       return (files ++ files')
       where
@@ -1600,19 +1600,12 @@ getDirectoryContentsRecursive topdir = recurseDirectories [""]
             ( reverse files
             , reverse dirs'
             )
-        collect files dirs' (entry : entries)
-          | ignore entry =
-              collect files dirs' entries
         collect files dirs' (entry : entries) = do
           let dirEntry = dir </> entry
           isDirectory <- doesDirectoryExist (topdir </> dirEntry)
           if isDirectory
             then collect files (dirEntry : dirs') entries
             else collect (dirEntry : files) dirs' entries
-
-        ignore ['.'] = True
-        ignore ['.', '.'] = True
-        ignore _ = False
 
 ------------------------
 -- Environment variables
@@ -2127,7 +2120,7 @@ findPackageDesc
 findPackageDesc mbPkgDir =
   do
     let pkgDir = maybe "." getSymbolicPath mbPkgDir
-    files <- getDirectoryContents pkgDir
+    files <- listDirectory pkgDir
     -- to make sure we do not mistake a ~/.cabal/ dir for a <pkgname>.cabal
     -- file we filter to exclude dirs and null base file names:
     cabalFiles <-
@@ -2163,7 +2156,7 @@ findHookedPackageDesc
   -> IO (Maybe (SymbolicPath Pkg File))
   -- ^ /dir/@\/@/pkgname/@.buildinfo@, if present
 findHookedPackageDesc verbosity mbWorkDir dir = do
-  files <- getDirectoryContents $ interpretSymbolicPath mbWorkDir dir
+  files <- listDirectory $ interpretSymbolicPath mbWorkDir dir
   buildInfoFiles <-
     filterM
       (doesFileExist . interpretSymbolicPath mbWorkDir)

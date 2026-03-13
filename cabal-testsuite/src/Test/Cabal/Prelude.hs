@@ -621,7 +621,7 @@ withRepoNoUpdate repo_dir m = do
   liftIO $ createDirectoryIfMissing True package_dir
 
   -- 2. Create tarballs
-  pkgs <- liftIO $ getDirectoryContents (testCurrentDir env </> repo_dir)
+  pkgs <- liftIO $ listDirectory (testCurrentDir env </> repo_dir)
   forM_ pkgs $ \pkg -> do
     let srcPath = testCurrentDir env </> repo_dir </> pkg
     let destPath = package_dir </> pkg
@@ -708,7 +708,7 @@ withRemoteRepo repoDir m = do
   liftIO $ createDirectoryIfMissing True keysDir
 
   -- 2. Create tarballs
-  entries <- liftIO $ getDirectoryContents (testCurrentDir env </> repoDir)
+  entries <- liftIO $ listDirectory (testCurrentDir env </> repoDir)
   forM_ entries $ \entry -> do
     let srcPath = testCurrentDir env </> repoDir </> entry
     let destPath = packageDir </> entry

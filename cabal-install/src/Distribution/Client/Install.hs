@@ -49,8 +49,8 @@ import System.Directory
   ( createDirectoryIfMissing
   , doesDirectoryExist
   , doesFileExist
-  , getDirectoryContents
   , getTemporaryDirectory
+  , listDirectory
   , removeFile
   , renameDirectory
   )
@@ -2038,7 +2038,7 @@ installUnpackedPackage
             -- configurations is well formed
 
               traverse (readPkgConf (getSymbolicPath pkgConfDest)) . sort . filter notHidden
-                =<< getDirectoryContents (getSymbolicPath pkgConfDest)
+                =<< listDirectory (getSymbolicPath pkgConfDest)
             else fmap (: []) $ readPkgConf "." (getSymbolicPath pkgConfDest)
 
       readPkgConf

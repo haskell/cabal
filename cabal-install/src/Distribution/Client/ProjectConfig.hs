@@ -245,8 +245,8 @@ import System.Directory
   , doesFileExist
   , doesPathExist
   , getCurrentDirectory
-  , getDirectoryContents
   , getHomeDirectory
+  , listDirectory
   , pathIsSymbolicLink
   )
 import System.FilePath hiding (combine)
@@ -1700,7 +1700,7 @@ syncAndReadSourcePackagesRemoteRepos
         let packageDir :: FilePath
             packageDir = maybe repoPath (repoPath </>) (srpSubdir repo)
 
-        entries <- liftIO $ getDirectoryContents packageDir
+        entries <- liftIO $ listDirectory packageDir
         -- TODO: dcoutts 2018-06-23: wrap exceptions
         case filter (\e -> takeExtension e == ".cabal") entries of
           [] -> liftIO $ throwIO $ NoCabalFileFound packageDir

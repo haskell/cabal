@@ -142,7 +142,7 @@ import System.Directory
   , doesDirectoryExist
   , doesFileExist
   , getAppUserDataDirectory
-  , getDirectoryContents
+  , listDirectory
 #ifndef mingw32_HOST_OS
   , renameFile
 #endif
@@ -1039,7 +1039,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
                   ]
                 sequence_
                   [ do
-                    files <- getDirectoryContents (i builtDir)
+                    files <- listDirectory (i builtDir)
                     let l' =
                           mkGenericSharedBundledLibName
                             platform

@@ -738,7 +738,7 @@ getDirectoryContentsRecursive
   -> FilePath
   -> IO [(FilePath, Bool)]
 getDirectoryContentsRecursive ignore dir0 dir = do
-  entries <- getDirectoryContents (dir0 </> dir)
+  entries <- listDirectory (dir0 </> dir)
   entries' <-
     sequence
       [ do

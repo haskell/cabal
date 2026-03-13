@@ -341,7 +341,6 @@ class Monad m => Interactive m where
   readFile :: FilePath -> m String
   getCurrentDirectory :: m FilePath
   getHomeDirectory :: m FilePath
-  getDirectoryContents :: FilePath -> m [FilePath]
   listDirectory :: FilePath -> m [FilePath]
   doesDirectoryExist :: FilePath -> m Bool
   doesFileExist :: FilePath -> m Bool
@@ -385,7 +384,6 @@ instance Interactive PromptIO where
   readFile = liftIO <$> P.readFile
   getCurrentDirectory = liftIO P.getCurrentDirectory
   getHomeDirectory = liftIO P.getHomeDirectory
-  getDirectoryContents = liftIO <$> P.getDirectoryContents
   listDirectory = liftIO <$> P.listDirectory
   doesDirectoryExist = liftIO <$> P.doesDirectoryExist
   doesFileExist = liftIO <$> P.doesFileExist
@@ -433,7 +431,6 @@ instance Interactive PurePrompt where
   getHomeDirectory = popAbsolute
 
   -- expects stack input of form "[\"foo\", \"bar\", \"baz\"]"
-  getDirectoryContents !_ = popList
   listDirectory !_ = popList
   doesDirectoryExist !_ = popBool
   doesFileExist !_ = popBool

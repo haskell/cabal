@@ -17,7 +17,7 @@ main = setupAndCabalTest $ do
                 notHidden = not . isHidden
                 isHidden name = "." `isPrefixOf` name
             confs <- fmap (sort . filter notHidden)
-                   . liftIO $ getDirectoryContents (cwd </> dir)
+                   . liftIO $ listDirectory (cwd </> dir)
             forM_ confs $ \conf -> ghcPkg "register" [cwd </> dir </> conf]
 
         -- Make sure we can see p
