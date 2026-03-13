@@ -15,7 +15,6 @@ module Distribution.Client.Utils
   , withExtraPathEnv
   , determineNumJobs
   , numberOfProcessors
-  , removeExistingFile
   , withTempFileName
   , makeAbsoluteToCwd
   , makeRelativeToCwd
@@ -71,7 +70,7 @@ import Distribution.Client.Errors
 import Distribution.Compat.Environment
 import Distribution.Compat.Time (getModTime)
 import Distribution.Simple.Setup (Flag, pattern Flag, pattern NoFlag)
-import Distribution.Simple.Utils (dieWithException, findPackageDesc, noticeNoWrap)
+import Distribution.Simple.Utils (dieWithException, findPackageDesc, noticeNoWrap, removeFileForcibly)
 import Distribution.Utils.Path
   ( CWD
   , FileOrDir (..)
@@ -91,7 +90,6 @@ import System.Directory
   , doesDirectoryExist
   , doesFileExist
   , listDirectory
-  , removeFile
   )
 import qualified System.Directory as Directory
 import System.FilePath
@@ -151,14 +149,6 @@ duplicatesBy cmp = filter moreThanOne . groupBy eq . sortBy cmp
     moreThanOne (_ : _ : _) = True
     moreThanOne _ = False
 
--- | Like 'removeFile', but does not throw an exception when the file does not
--- exist.
-removeExistingFile :: FilePath -> IO ()
-removeExistingFile path = do
-  exists <- doesFileExist path
-  when exists $
-    removeFile path
-
 -- | A variant of 'withTempFile' that only gives us the file name, and while
 -- it will clean up the file afterwards, it's lenient if the file is
 -- moved\/deleted.
@@ -170,7 +160,7 @@ withTempFileName
 withTempFileName tmpDir template action =
   Safe.bracket
     (openTempFile tmpDir template)
-    (\(name, _) -> removeExistingFile name)
+    (\(name, _) -> removeFileForcibly name)
     (\(name, h) -> hClose h >> action name)
 
 -- | Executes the action with an environment variable set to some

@@ -48,7 +48,6 @@ import System.Directory
   , createDirectoryIfMissing
   , doesFileExist
   , getCurrentDirectory
-  , removeFile
   , removePathForcibly
   , setCurrentDirectory
   )
@@ -91,7 +90,7 @@ runTest verbHandles pkg_descr lbi clbi hpcMarkupInfo flags suite = do
   -- Write summary notices indicating start of test suite
   notice verbosity $ summarizeSuiteStart testName'
 
-  suiteLog <- CE.bracket openCabalTemp deleteIfExists $ \tempLog -> do
+  suiteLog <- CE.bracket openCabalTemp removeFileForcibly $ \tempLog -> do
     -- Compute the appropriate environment for running the test suite
     let progDb = LBI.withPrograms lbi
         pathVar = progSearchPath progDb
@@ -208,10 +207,6 @@ runTest verbHandles pkg_descr lbi clbi hpcMarkupInfo flags suite = do
     i = LBI.interpretSymbolicPathLBI lbi
     common = testCommonFlags flags
     testName' = unUnqualComponentName $ PD.testName suite
-
-    deleteIfExists file = do
-      exists <- doesFileExist file
-      when exists $ removeFile file
 
     testLogDir = distPref </> makeRelativePathEx "test"
     openCabalTemp = do

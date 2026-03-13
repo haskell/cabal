@@ -64,7 +64,7 @@ import Distribution.Simple.Setup
   , fromFlag
   , fromFlagOrDefault
   )
-import Distribution.Simple.Utils (info, withTempDirectory)
+import Distribution.Simple.Utils (info, removeFileForcibly, withTempDirectory)
 import Distribution.System
   ( Platform
   )
@@ -79,7 +79,6 @@ import System.Directory
   , getSymbolicLinkTarget
   , getTemporaryDirectory
   , pathIsSymbolicLink
-  , removeFile
   )
 import System.FilePath
   ( isAbsolute
@@ -322,7 +321,7 @@ symlinkBinary inputs@Symlink{publicBindir, privateBindir, publicName, privateNam
     mkLink = True <$ createFileLink (relativeBindir </> privateName) (publicBindir </> publicName)
 
     rmLink :: IO Bool
-    rmLink = True <$ removeFile (publicBindir </> publicName)
+    rmLink = True <$ removeFileForcibly (publicBindir </> publicName)
 
     overwrite :: IO Bool
     overwrite = rmLink *> mkLink

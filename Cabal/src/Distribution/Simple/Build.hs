@@ -128,7 +128,6 @@ import Control.Monad
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Map as Map
 
-import System.Directory (doesFileExist, removeFile)
 import System.FilePath (takeDirectory)
 
 -- -----------------------------------------------------------------------------
@@ -307,10 +306,9 @@ dumpBuildInfo verbosity distPref dumpBuildInfoFlag pkg_descr lbi flags = do
           ++ unlines warns
     LBS.writeFile buildInfoFile buildInfoText
 
-  when (not shouldDumpBuildInfo) $ do
+  when (not shouldDumpBuildInfo) $
     -- Remove existing build-info.json as it might be outdated now.
-    exists <- doesFileExist buildInfoFile
-    when exists $ removeFile buildInfoFile
+    removeFileForcibly buildInfoFile
   where
     buildInfoFile = interpretSymbolicPathLBI lbi $ buildInfoPref distPref
     shouldDumpBuildInfo = fromFlagOrDefault NoDumpBuildInfo dumpBuildInfoFlag == DumpBuildInfo

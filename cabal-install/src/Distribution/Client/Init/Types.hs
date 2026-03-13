@@ -81,6 +81,7 @@ import Distribution.Fields.Pretty
 import Distribution.ModuleName
 import qualified Distribution.Package as P
 import Distribution.Simple.Setup (Flag)
+import qualified Distribution.Simple.Utils as P
 import Distribution.Verbosity (VerbosityFlags, VerbosityLevel (..), verbosityLevel)
 import Distribution.Version
 import Language.Haskell.Extension (Extension, Language (..))
@@ -403,7 +404,7 @@ instance Interactive PromptIO where
   createDirectory = liftIO <$> P.createDirectory
   removeDirectory = liftIO <$> P.removePathForcibly
   writeFile a b = liftIO $ P.writeFile a b
-  removeExistingFile = liftIO <$> P.removeExistingFile
+  removeExistingFile = liftIO <$> P.removeFileForcibly
   copyFile a b = liftIO $ P.copyFile a b
   renameDirectory a b = liftIO $ P.renameDirectory a b
   hFlush = liftIO <$> System.IO.hFlush

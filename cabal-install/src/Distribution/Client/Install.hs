@@ -51,7 +51,6 @@ import System.Directory
   , doesFileExist
   , getTemporaryDirectory
   , listDirectory
-  , removeFile
   , renameDirectory
   )
 import System.FilePath
@@ -237,6 +236,7 @@ import Distribution.Simple.Utils as Utils
   , dieWithException
   , info
   , notice
+  , removeFileForcibly
   , warn
   , withTempDirectory
   )
@@ -2061,8 +2061,7 @@ installUnpackedPackage
             let logFileName = mkLogFileName (packageId pkg) uid
                 logDir = takeDirectory logFileName
             unless (null logDir) $ createDirectoryIfMissing True logDir
-            logFileExists <- doesFileExist logFileName
-            when logFileExists $ removeFile logFileName
+            removeFileForcibly logFileName
             return (Just logFileName)
 
       setup cmd getCommonFlags flags mLogPath =
