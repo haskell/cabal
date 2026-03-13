@@ -1069,7 +1069,7 @@ relaxDepsParser = do
 relaxDepsPrinter :: (Maybe RelaxDeps) -> [Maybe String]
 relaxDepsPrinter Nothing = []
 relaxDepsPrinter (Just RelaxDepsAll) = [Nothing]
-relaxDepsPrinter (Just (RelaxDepsSome pkgs)) = map (Just . prettyShow) $ pkgs
+relaxDepsPrinter (Just (RelaxDepsSome pkgs)) = map (Just . prettyShow) pkgs
 
 instance Monoid ConfigExFlags where
   mempty = gmempty
@@ -1124,8 +1124,7 @@ buildCommand =
             ++ "Affected by configuration options, see `v1-configure`.\n"
     , commandDefaultFlags = commandDefaultFlags parent
     , commandUsage =
-        usageAlternatives "v1-build" $
-          ["[FLAGS]", "COMPONENTS [FLAGS]"]
+        usageAlternatives "v1-build" ["[FLAGS]", "COMPONENTS [FLAGS]"]
     , commandOptions = commandOptions parent
     , commandNotes = Just $ \pname ->
         "Examples:\n"
@@ -2435,8 +2434,7 @@ haddockCommand :: CommandUI HaddockFlags
 haddockCommand =
   Cabal.haddockCommand
     { commandUsage =
-        usageAlternatives "v1-haddock" $
-          ["[FLAGS]", "COMPONENTS [FLAGS]"]
+        usageAlternatives "v1-haddock" ["[FLAGS]", "COMPONENTS [FLAGS]"]
     }
 
 filterHaddockArgs :: [String] -> Version -> [String]
@@ -3361,7 +3359,8 @@ copyCommand =
           ++ " v1-copy foo       "
           ++ "    A component (i.e. lib, exe, test suite)"
     , commandUsage =
-        usageAlternatives "v1-copy" $
+        usageAlternatives
+          "v1-copy"
           [ "[FLAGS]"
           , "COMPONENTS [FLAGS]"
           ]

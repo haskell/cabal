@@ -49,8 +49,7 @@ tests =
         UnitTests.Distribution.Simple.Utils.tests ghcPath
     , testGroup "Distribution.Utils.Generic"
         UnitTests.Distribution.Utils.Generic.tests
-    , testGroup "Distribution.Utils.Json" $
-        UnitTests.Distribution.Utils.Json.tests
+    , testGroup "Distribution.Utils.Json" UnitTests.Distribution.Utils.Json.tests
     , testGroup "Distribution.Utils.NubList"
         UnitTests.Distribution.Utils.NubList.tests
     , testGroup "Distribution.PackageDescription.Check"

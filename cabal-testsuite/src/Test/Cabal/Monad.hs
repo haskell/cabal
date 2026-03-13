@@ -708,7 +708,7 @@ mkNormalizerEnv = do
         (programPath ghc_pkg_program)
         ["list", "--global", "--simple-output"]
         ""
-  tmpDir <- liftIO $ getTemporaryDirectory
+  tmpDir <- liftIO getTemporaryDirectory
 
   canonicalizedTestTmpDir <- liftIO $ canonicalizePath (testTmpDir env)
   canonicalizedGblDir <- liftIO $ canonicalizePath tmpDir

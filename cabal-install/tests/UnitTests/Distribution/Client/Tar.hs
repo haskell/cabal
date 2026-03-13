@@ -47,8 +47,7 @@ filterTest = do
           Next e2 Done
   assertEqual "Unexpected result for filter" "z" $
     entriesToString $
-      filterEntries p $
-        Done
+      filterEntries p Done
   assertEqual "Unexpected result for filter" "xf" $
     entriesToString $
       filterEntries p $
@@ -72,7 +71,7 @@ filterMTest = do
   assertEqual "Unexpected result for filterM" "xz" $ entriesToString r
   assertEqual "Unexpected result for filterM w" "tt" w
 
-  (r1, w1) <- runWriterT $ filterEntriesM p $ Done
+  (r1, w1) <- runWriterT $ filterEntriesM p Done
   assertEqual "Unexpected result for filterM" "z" $ entriesToString r1
   assertEqual "Unexpected result for filterM w" "" w1
 

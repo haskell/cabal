@@ -12,5 +12,5 @@ main = setupAndCabalTest $ do
             withDirectory "P2" $ setup "build" []
             r2 <- withDirectory "P2" $ setup' "register" ["--print-ipid", "--inplace"]
             let exIPID s = takeWhile (/= '\n') $
-                     head . filter (isPrefixOf $ "UniqueIPID-0.1-") $ (tails s)
+                     head . filter (isPrefixOf "UniqueIPID-0.1-") $ (tails s)
             assertNotEqual "ipid match" (exIPID $ resultOutput r1) (exIPID $ resultOutput r2)

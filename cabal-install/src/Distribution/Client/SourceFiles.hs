@@ -186,7 +186,7 @@ needBuildInfo pkg_descr bi modules = do
       , map getSymbolicPath $ jsSources bi
       , map getSymbolicPath $ cmmSources bi
       , map getSymbolicPath $ asmSources bi
-      , map getSymbolicPath $ expandedExtraSrcFiles
+      , map getSymbolicPath expandedExtraSrcFiles
       ]
   for_ (fmap getSymbolicPath $ installIncludes bi) $ \f ->
     findFileMonitored ("." : fmap getSymbolicPath (includeDirs bi)) f

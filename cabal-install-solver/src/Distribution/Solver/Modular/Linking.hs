@@ -145,7 +145,7 @@ newtype UpdateState a = UpdateState {
   deriving (Functor, Applicative, Monad)
 
 instance MonadState ValidateState UpdateState where
-  get    = UpdateState $ get
+  get    = UpdateState get
   put st = UpdateState $ do
              expensiveAssert (lgInvariant $ vsLinks st) $ return ()
              put st

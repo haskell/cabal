@@ -304,7 +304,7 @@ filePathToByteString p =
     conv :: Word32 -> [Word8] -> [Word8]
     conv w32 rest = b0 : b1 : b2 : b3 : rest
       where
-        b0 = fromIntegral $ w32
+        b0 = fromIntegral w32
         b1 = fromIntegral $ w32 `shiftR` 8
         b2 = fromIntegral $ w32 `shiftR` 16
         b3 = fromIntegral $ w32 `shiftR` 24

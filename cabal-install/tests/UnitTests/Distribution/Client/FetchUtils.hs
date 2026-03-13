@@ -30,10 +30,10 @@ tests =
       [ testCase "handles an empty package list" testEmpty
       , testCase "passes an unpacked local package through" testPassLocalPackage
       , testCase "handles http" testHttp
-      , testCase "aborts on interrupt in GET" $ testGetInterrupt
-      , testCase "aborts on other exception in GET" $ testGetException
-      , testCase "aborts on interrupt in GET (uncollected download)" $ testUncollectedInterrupt
-      , testCase "continues on other exception in GET (uncollected download)" $ testUncollectedException
+      , testCase "aborts on interrupt in GET" testGetInterrupt
+      , testCase "aborts on other exception in GET" testGetException
+      , testCase "aborts on interrupt in GET (uncollected download)" testUncollectedInterrupt
+      , testCase "continues on other exception in GET (uncollected download)" testUncollectedException
       ]
   ]
 

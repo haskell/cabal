@@ -1068,7 +1068,7 @@ vcsTestDriverPijul
       , vcsRepoRoot = repoRoot
       , vcsIgnoreFiles = Set.empty
       , vcsInit =
-          pijul $ ["init"]
+          pijul ["init"]
       , vcsAddFile = \_ filename ->
           pijul ["add", filename]
       , vcsSubmoduleDriver = \_ ->
@@ -1076,7 +1076,7 @@ vcsTestDriverPijul
       , vcsAddSubmodule = \_ _ _ ->
           fail "vcsAddSubmodule: pijul does not support submodules"
       , vcsCommitChanges = \_state -> do
-          pijul $
+          pijul
             [ "record"
             , "-a"
             , "-m 'a patch'"
@@ -1092,9 +1092,9 @@ vcsTestDriverPijul
       , vcsSwitchBranch = \_ branchname -> do
           --        unless (branchname `Map.member` allBranches) $
           --          pijul ["from-branch", branchname]
-          pijul $ ["checkout", branchname]
+          pijul ["checkout", branchname]
       , vcsCheckoutTag = Left $ \tagname ->
-          pijul $ ["checkout", tagname]
+          pijul ["checkout", tagname]
       }
     where
       gitInvocation args =

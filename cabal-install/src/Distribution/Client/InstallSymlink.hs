@@ -407,7 +407,7 @@ trySymlink verbosity = do
     let create :: IO Bool
         create = do
           createFileLink from to
-          info verbosity $ "Symlinking seems to work"
+          info verbosity "Symlinking seems to work"
           return True
 
     create `catchIO` \exc -> do

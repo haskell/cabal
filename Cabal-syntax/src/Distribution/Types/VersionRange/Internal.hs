@@ -401,8 +401,7 @@ versionRangeParser digitParser csv = expr
           ( do
               (wild, v) <- verOrWild
               when wild $
-                P.unexpected $
-                  "wild-card version after ^>= operator"
+                P.unexpected "wild-card version after ^>= operator"
               majorBoundVersion' v
               <|> (verSet' majorBoundVersion =<< verSet)
             )
