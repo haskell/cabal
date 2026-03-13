@@ -6,6 +6,7 @@ main = putStrLn "Old GHC, no nothunks"
 #else
 
 {-# LANGUAGE DerivingVia         #-}
+{-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving  #-}

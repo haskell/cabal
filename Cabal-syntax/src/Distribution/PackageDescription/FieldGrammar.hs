@@ -1,9 +1,12 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 -- | 'GenericPackageDescription' Field descriptions
 module Distribution.PackageDescription.FieldGrammar
@@ -85,6 +88,8 @@ import Distribution.Pretty (Pretty (..), prettyShow, showToken)
 import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
 
+import qualified Distribution.Types.Modify as Mod
+
 import qualified Data.ByteString.Char8 as BS8
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.SPDX as SPDX
@@ -165,14 +170,16 @@ packageDescriptionFieldGrammar =
 -------------------------------------------------------------------------------
 
 libraryFieldGrammar
-  :: ( FieldGrammar c g
-     , Applicative (g Library)
-     , Applicative (g BuildInfo)
+  :: forall mod c g
+   . ( FieldGrammar c g
+     , Applicative (g (LibraryWith mod))
+     , Applicative (g (BuildInfoWith mod))
+     , L.HasBuildInfoWith mod (BuildInfoWith mod)
      , c (Identity LibraryVisibility)
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
      , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
      , c (List CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
-     , c (List CommaVCat (Identity Dependency) Dependency)
+     , c (List CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
      , c (List CommaVCat (Identity Mixin) Mixin)
      , c (List CommaVCat (Identity ModuleReexport) ModuleReexport)
      , c (List FSep (MQuoted Extension) Extension)
@@ -187,7 +194,7 @@ libraryFieldGrammar
      , c (MQuoted Language)
      )
   => LibraryName
-  -> g Library Library
+  -> g (LibraryWith mod) (LibraryWith mod)
 libraryFieldGrammar n =
   Library n
     <$> monoidalFieldAla "exposed-modules" formatExposedModules L.exposedModules
@@ -205,8 +212,8 @@ libraryFieldGrammar n =
       LSubLibName _ ->
         optionalFieldDef "visibility" L.libVisibility LibraryVisibilityPrivate
           ^^^ availableSince CabalSpecV3_0 LibraryVisibilityPrivate
-{-# SPECIALIZE libraryFieldGrammar :: LibraryName -> ParsecFieldGrammar' Library #-}
-{-# SPECIALIZE libraryFieldGrammar :: LibraryName -> PrettyFieldGrammar' Library #-}
+{-# SPECIALIZE libraryFieldGrammar :: LibraryName -> ParsecFieldGrammar' LibraryAnn #-}
+{-# SPECIALIZE libraryFieldGrammar :: LibraryName -> PrettyFieldGrammar' LibraryAnn #-}
 
 -------------------------------------------------------------------------------
 -- Foreign library
@@ -304,7 +311,7 @@ data TestSuiteStanza = TestSuiteStanza
   , _testStanzaCodeGenerators :: [String]
   }
 
-instance L.HasBuildInfo TestSuiteStanza where
+instance L.HasBuildInfoWith Mod.HasNoAnn TestSuiteStanza where
   buildInfo = testStanzaBuildInfo
 
 testStanzaTestType :: Lens' TestSuiteStanza (Maybe TestType)
@@ -453,7 +460,7 @@ data BenchmarkStanza = BenchmarkStanza
   , _benchmarkStanzaBuildInfo :: BuildInfo
   }
 
-instance L.HasBuildInfo BenchmarkStanza where
+instance L.HasBuildInfoWith Mod.HasNoAnn BenchmarkStanza where
   buildInfo = benchmarkStanzaBuildInfo
 
 benchmarkStanzaBenchmarkType :: Lens' BenchmarkStanza (Maybe BenchmarkType)
@@ -578,12 +585,14 @@ unvalidateBenchmark b =
 -------------------------------------------------------------------------------
 
 buildInfoFieldGrammar
-  :: ( FieldGrammar c g
-     , Applicative (g BuildInfo)
+  :: forall mod c g
+   . ( FieldGrammar c g
+     , Applicative (g (BuildInfoWith mod))
+     , L.HasBuildInfoWith mod (BuildInfoWith mod)
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
      , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
      , c (List CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
-     , c (List CommaVCat (Identity Dependency) Dependency)
+     , c (List CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
      , c (List CommaVCat (Identity Mixin) Mixin)
      , c (List FSep (MQuoted Extension) Extension)
      , c (List FSep (MQuoted Language) Language)
@@ -596,7 +605,7 @@ buildInfoFieldGrammar
      , c (List VCat Token String)
      , c (MQuoted Language)
      )
-  => g BuildInfo BuildInfo
+  => g (BuildInfoWith mod) (BuildInfoWith mod)
 buildInfoFieldGrammar =
   BuildInfo
     <$> booleanFieldDef "buildable" L.buildable True
@@ -680,18 +689,20 @@ buildInfoFieldGrammar =
     <*> profSharedOptionsFieldGrammar
     <*> pure mempty -- static-options ???
     <*> prefixedFields "x-" L.customFieldsBI
-    <*> monoidalFieldAla "build-depends" formatDependencyList L.targetBuildDepends
+    <*> monoidalFieldAla "build-depends" (formatDependencyList @mod) L.targetBuildDepends
     <*> monoidalFieldAla "mixins" formatMixinList L.mixins
       ^^^ availableSince CabalSpecV2_0 []
-{-# SPECIALIZE buildInfoFieldGrammar :: ParsecFieldGrammar' BuildInfo #-}
-{-# SPECIALIZE buildInfoFieldGrammar :: PrettyFieldGrammar' BuildInfo #-}
+{-# SPECIALIZE buildInfoFieldGrammar :: ParsecFieldGrammar' BuildInfoAnn #-}
+{-# SPECIALIZE buildInfoFieldGrammar :: PrettyFieldGrammar' BuildInfoAnn #-}
 
 hsSourceDirsGrammar
-  :: ( FieldGrammar c g
-     , Applicative (g BuildInfo)
+  :: forall mod c g
+   . ( FieldGrammar c g
+     , Applicative (g (BuildInfoWith mod))
+     , L.HasBuildInfoWith mod (BuildInfoWith mod)
      , forall from to. c (List FSep (SymbolicPathNT from to) (SymbolicPath from to))
      )
-  => g BuildInfo [SymbolicPath Pkg (Dir Source)]
+  => g (BuildInfoWith mod) [SymbolicPath Pkg (Dir Source)]
 hsSourceDirsGrammar =
   (++)
     <$> monoidalFieldAla "hs-source-dirs" formatHsSourceDirs L.hsSourceDirs
@@ -700,13 +711,19 @@ hsSourceDirsGrammar =
       ^^^ deprecatedSince CabalSpecV1_2 "Please use 'hs-source-dirs'"
       ^^^ removedIn CabalSpecV3_0 "Please use 'hs-source-dirs' field."
   where
-    -- TODO: make pretty printer aware of CabalSpecVersion
-    wrongLens :: Functor f => LensLike' f BuildInfo [SymbolicPath Pkg (Dir Source)]
-    wrongLens f bi = (\fps -> set L.hsSourceDirs fps bi) <$> f []
+    -- -- TODO: make pretty printer aware of CabalSpecVersion
+    wrongLens f bi = (\fps -> set (L.hsSourceDirs @mod) fps bi) <$> f []
+{-# SPECIALIZE hsSourceDirsGrammar :: ParsecFieldGrammar BuildInfoAnn [SymbolicPath Pkg (Dir Source)] #-}
+{-# SPECIALIZE hsSourceDirsGrammar :: PrettyFieldGrammar BuildInfoAnn [SymbolicPath Pkg (Dir Source)] #-}
 
 optionsFieldGrammar
-  :: (FieldGrammar c g, Applicative (g BuildInfo), c (List NoCommaFSep Token' String))
-  => g BuildInfo (PerCompilerFlavor [String])
+  :: forall mod c g
+   . ( FieldGrammar c g
+     , Applicative (g (BuildInfoWith mod))
+     , c (List NoCommaFSep Token' String)
+     , L.HasBuildInfoWith mod (BuildInfoWith mod)
+     )
+  => g (BuildInfoWith mod) (PerCompilerFlavor [String])
 optionsFieldGrammar =
   PerCompilerFlavor
     <$> monoidalFieldAla "ghc-options" (alaList' NoCommaFSep Token') (extract GHC)
@@ -718,34 +735,50 @@ optionsFieldGrammar =
     <* knownField "hugs-options"
     <* knownField "nhc98-options"
   where
-    extract :: CompilerFlavor -> ALens' BuildInfo [String]
-    extract flavor = L.options . lookupLens flavor
+    extract flavor = L.options @mod . lookupLens flavor
+{-# SPECIALIZE optionsFieldGrammar :: ParsecFieldGrammar BuildInfoAnn (PerCompilerFlavor [String]) #-}
+{-# SPECIALIZE optionsFieldGrammar :: PrettyFieldGrammar BuildInfoAnn (PerCompilerFlavor [String]) #-}
 
 profOptionsFieldGrammar
-  :: (FieldGrammar c g, Applicative (g BuildInfo), c (List NoCommaFSep Token' String))
-  => g BuildInfo (PerCompilerFlavor [String])
+  :: forall mod c g
+   . ( FieldGrammar c g
+     , Applicative (g (BuildInfoWith mod))
+     , c (List NoCommaFSep Token' String)
+     , L.HasBuildInfoWith mod (BuildInfoWith mod)
+     )
+  => g (BuildInfoWith mod) (PerCompilerFlavor [String])
 profOptionsFieldGrammar =
   PerCompilerFlavor
     <$> monoidalFieldAla "ghc-prof-options" (alaList' NoCommaFSep Token') (extract GHC)
     <*> monoidalFieldAla "ghcjs-prof-options" (alaList' NoCommaFSep Token') (extract GHCJS)
   where
-    extract :: CompilerFlavor -> ALens' BuildInfo [String]
-    extract flavor = L.profOptions . lookupLens flavor
+    extract flavor = L.profOptions @mod . lookupLens flavor
+{-# SPECIALIZE profOptionsFieldGrammar :: ParsecFieldGrammar BuildInfoAnn (PerCompilerFlavor [String]) #-}
+{-# SPECIALIZE profOptionsFieldGrammar :: PrettyFieldGrammar BuildInfoAnn (PerCompilerFlavor [String]) #-}
 
 sharedOptionsFieldGrammar
-  :: (FieldGrammar c g, Applicative (g BuildInfo), c (List NoCommaFSep Token' String))
-  => g BuildInfo (PerCompilerFlavor [String])
+  :: forall mod c g
+   . ( FieldGrammar c g
+     , Applicative (g (BuildInfoWith mod))
+     , c (List NoCommaFSep Token' String)
+     , L.HasBuildInfoWith mod (BuildInfoWith mod)
+     )
+  => g (BuildInfoWith mod) (PerCompilerFlavor [String])
 sharedOptionsFieldGrammar =
   PerCompilerFlavor
     <$> monoidalFieldAla "ghc-shared-options" (alaList' NoCommaFSep Token') (extract GHC)
     <*> monoidalFieldAla "ghcjs-shared-options" (alaList' NoCommaFSep Token') (extract GHCJS)
   where
-    extract :: CompilerFlavor -> ALens' BuildInfo [String]
-    extract flavor = L.sharedOptions . lookupLens flavor
+    extract flavor = L.sharedOptions @mod . lookupLens flavor
 
 profSharedOptionsFieldGrammar
-  :: (FieldGrammar c g, Applicative (g BuildInfo), c (List NoCommaFSep Token' String))
-  => g BuildInfo (PerCompilerFlavor [String])
+  :: forall mod c g
+   . ( FieldGrammar c g
+     , Applicative (g (BuildInfoWith mod))
+     , c (List NoCommaFSep Token' String)
+     , L.HasBuildInfoWith mod (BuildInfoWith mod)
+     )
+  => g (BuildInfoWith mod) (PerCompilerFlavor [String])
 profSharedOptionsFieldGrammar =
   PerCompilerFlavor
     <$> monoidalFieldAla "ghc-prof-shared-options" (alaList' NoCommaFSep Token') (extract GHC)
@@ -753,8 +786,7 @@ profSharedOptionsFieldGrammar =
     <*> monoidalFieldAla "ghcjs-prof-shared-options" (alaList' NoCommaFSep Token') (extract GHCJS)
       ^^^ availableSince CabalSpecV3_14 []
   where
-    extract :: CompilerFlavor -> ALens' BuildInfo [String]
-    extract flavor = L.profSharedOptions . lookupLens flavor
+    extract flavor = L.profSharedOptions @mod . lookupLens flavor
 
 lookupLens :: (Functor f, Monoid v) => CompilerFlavor -> LensLike' f (PerCompilerFlavor v) v
 lookupLens k f p@(PerCompilerFlavor ghc ghcjs)
@@ -815,7 +847,8 @@ setupBInfoFieldGrammar def =
 -- Define how field values should be formatted for 'pretty'.
 -------------------------------------------------------------------------------
 
-formatDependencyList :: [Dependency] -> List CommaVCat (Identity Dependency) Dependency
+-- TODO(leana8959): implement this
+formatDependencyList :: [DependencyWith mod] -> List CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod)
 formatDependencyList = alaList CommaVCat
 
 formatMixinList :: [Mixin] -> List CommaVCat (Identity Mixin) Mixin
@@ -897,7 +930,7 @@ _syntaxFieldNames =
           sort $
             mconcat
               [ fieldGrammarKnownFieldList packageDescriptionFieldGrammar
-              , fieldGrammarKnownFieldList $ libraryFieldGrammar LMainLibName
+              , fieldGrammarKnownFieldList $ (libraryFieldGrammar @Mod.HasNoAnn) LMainLibName
               , fieldGrammarKnownFieldList $ executableFieldGrammar "exe"
               , fieldGrammarKnownFieldList $ foreignLibFieldGrammar "flib"
               , fieldGrammarKnownFieldList testSuiteFieldGrammar

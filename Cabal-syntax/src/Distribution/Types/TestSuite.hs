@@ -1,5 +1,7 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Distribution.Types.TestSuite
   ( TestSuite (..)
@@ -20,6 +22,7 @@ import Distribution.Types.UnqualComponentName
 import Distribution.ModuleName
 
 import qualified Distribution.Types.BuildInfo.Lens as L
+import qualified Distribution.Types.Modify as Mod
 
 -- | A \"test-suite\" stanza in a cabal file.
 data TestSuite = TestSuite
@@ -30,7 +33,7 @@ data TestSuite = TestSuite
   }
   deriving (Generic, Show, Read, Eq, Ord, Data)
 
-instance L.HasBuildInfo TestSuite where
+instance L.HasBuildInfoWith Mod.HasNoAnn TestSuite where
   buildInfo f l = (\x -> l{testBuildInfo = x}) <$> f (testBuildInfo l)
 
 instance Binary TestSuite

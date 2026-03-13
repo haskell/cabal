@@ -1,4 +1,6 @@
+{-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 -----------------------------------------------------------------------------
@@ -27,9 +29,13 @@ module Distribution.Compat.Parsing
   , some -- from Control.Applicative, parsec many1
   , many -- from Control.Applicative
   , sepBy
+  , sepByAnn
   , sepByNonEmpty
+  , sepByNonEmptyAnn
   , sepEndByNonEmpty
+  , sepEndByNonEmptyAnn
   , sepEndBy
+  , sepEndByAnn
   , endByNonEmpty
   , endBy
   , count
@@ -44,6 +50,7 @@ module Distribution.Compat.Parsing
   ) where
 
 import Distribution.Compat.Prelude
+import Distribution.Trivia
 import Prelude ()
 
 import Control.Applicative (optional, (<**>))
@@ -101,17 +108,41 @@ sepBy :: Alternative m => m a -> m sep -> m [a]
 sepBy p sep = toList <$> sepByNonEmpty p sep <|> pure []
 {-# INLINE sepBy #-}
 
+sepByAnn :: Alternative m => m (Ann a) -> m String -> m [Ann a]
+sepByAnn p sep = toList <$> sepByNonEmptyAnn p sep <|> pure []
+{-# INLINE sepByAnn #-}
+
 -- | @sepByNonEmpty p sep@ parses /one/ or more occurrences of @p@, separated
 -- by @sep@. Returns a non-empty list of values returned by @p@.
 sepByNonEmpty :: Alternative m => m a -> m sep -> m (NonEmpty a)
 sepByNonEmpty p sep = (:|) <$> p <*> many (sep *> p)
 {-# INLINE sepByNonEmpty #-}
 
+sepByNonEmptyAnn :: forall m a. Alternative m => m (Ann a) -> m String -> m (NonEmpty (Ann a))
+sepByNonEmptyAnn p sep =
+  (:|)
+    <$> p
+    <*> many
+      ( do
+          leading <- sep
+          x <- p
+          pure (mapAnn (preTrivia leading <>) x)
+      )
+
 -- | @sepEndByNonEmpty p sep@ parses /one/ or more occurrences of @p@,
 -- separated and optionally ended by @sep@. Returns a non-empty list of values
 -- returned by @p@.
 sepEndByNonEmpty :: Alternative m => m a -> m sep -> m (NonEmpty a)
 sepEndByNonEmpty p sep = (:|) <$> p <*> ((sep *> sepEndBy p sep) <|> pure [])
+
+sepEndByNonEmptyAnn :: Alternative m => m (Ann a) -> m String -> m (NonEmpty (Ann a))
+sepEndByNonEmptyAnn p sep = do
+  x <- p
+  (trailing, xs) <-
+    ( (,) <$> sep <*> sepEndByAnn p sep
+      )
+      <|> pure (mempty, [])
+  pure (mapAnn (<> postTrivia trailing) x :| xs)
 
 -- | @sepEndBy p sep@ parses /zero/ or more occurrences of @p@,
 -- separated and optionally ended by @sep@, ie. haskell style
@@ -121,6 +152,10 @@ sepEndByNonEmpty p sep = (:|) <$> p <*> ((sep *> sepEndBy p sep) <|> pure [])
 sepEndBy :: Alternative m => m a -> m sep -> m [a]
 sepEndBy p sep = toList <$> sepEndByNonEmpty p sep <|> pure []
 {-# INLINE sepEndBy #-}
+
+-- | @sepEndByAnn@ is like @sepEndBy@, but it keeps the trivia.
+sepEndByAnn :: Alternative m => m (Ann a) -> m String -> m [Ann a]
+sepEndByAnn p sep = toList <$> sepEndByNonEmptyAnn p sep <|> pure []
 
 -- | @endByNonEmpty p sep@ parses /one/ or more occurrences of @p@, separated
 -- and ended by @sep@. Returns a non-empty list of values returned by @p@.

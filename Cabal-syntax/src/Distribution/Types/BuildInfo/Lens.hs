@@ -1,9 +1,23 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ExplicitForAll #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Distribution.Types.BuildInfo.Lens
   ( BuildInfo
-  , HasBuildInfo (..)
-  , HasBuildInfos (..)
+  , HasBuildInfo
+  , HasBuildInfoAnn
+  , HasBuildInfoWith (..)
+  , HasBuildInfos
+  , HasBuildInfosAnn
+  , HasBuildInfosWith (..)
   ) where
 
 import Distribution.Compat.Lens
@@ -12,8 +26,8 @@ import Prelude ()
 
 import Distribution.Compiler (PerCompilerFlavor)
 import Distribution.ModuleName (ModuleName)
-import Distribution.Types.BuildInfo (BuildInfo)
-import Distribution.Types.Dependency (Dependency)
+import Distribution.Types.BuildInfo (BuildInfo, BuildInfoWith)
+import Distribution.Types.Dependency (DependencyWith)
 import Distribution.Types.ExeDependency (ExeDependency)
 import Distribution.Types.LegacyExeDependency (LegacyExeDependency)
 import Distribution.Types.Mixin (Mixin)
@@ -22,204 +36,159 @@ import Distribution.Utils.Path
 import Language.Haskell.Extension (Extension, Language)
 
 import qualified Distribution.Types.BuildInfo as T
+import qualified Distribution.Types.Modify as Mod
 
--- | Classy lenses for 'BuildInfo'.
-class HasBuildInfo a where
-  buildInfo :: Lens' a BuildInfo
+type HasBuildInfo = HasBuildInfoWith Mod.HasNoAnn
+type HasBuildInfoAnn = HasBuildInfoWith Mod.HasAnn
 
-  buildable :: Lens' a Bool
-  buildable = buildInfo . buildable
-  {-# INLINE buildable #-}
+class HasBuildInfoWith mod a | a -> mod where
+  buildInfo :: Lens' a (BuildInfoWith mod)
 
-  buildTools :: Lens' a [LegacyExeDependency]
-  buildTools = buildInfo . buildTools
-  {-# INLINE buildTools #-}
+  buildable :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a Bool
+  buildable = buildInfo @mod . buildable @mod
 
-  buildToolDepends :: Lens' a [ExeDependency]
-  buildToolDepends = buildInfo . buildToolDepends
-  {-# INLINE buildToolDepends #-}
+  buildTools :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [LegacyExeDependency]
+  buildTools = buildInfo @mod . buildTools @mod
 
-  cppOptions :: Lens' a [String]
-  cppOptions = buildInfo . cppOptions
-  {-# INLINE cppOptions #-}
+  buildToolDepends :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [ExeDependency]
+  buildToolDepends = buildInfo @mod . buildToolDepends @mod
 
-  asmOptions :: Lens' a [String]
-  asmOptions = buildInfo . asmOptions
-  {-# INLINE asmOptions #-}
+  cppOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [String]
+  cppOptions = buildInfo @mod . cppOptions @mod
 
-  cmmOptions :: Lens' a [String]
-  cmmOptions = buildInfo . cmmOptions
-  {-# INLINE cmmOptions #-}
+  asmOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [String]
+  asmOptions = buildInfo @mod . asmOptions @mod
 
-  ccOptions :: Lens' a [String]
-  ccOptions = buildInfo . ccOptions
-  {-# INLINE ccOptions #-}
+  cmmOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [String]
+  cmmOptions = buildInfo @mod . cmmOptions @mod
 
-  cxxOptions :: Lens' a [String]
-  cxxOptions = buildInfo . cxxOptions
-  {-# INLINE cxxOptions #-}
+  ccOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [String]
+  ccOptions = buildInfo @mod . ccOptions @mod
 
-  jsppOptions :: Lens' a [String]
-  jsppOptions = buildInfo . jsppOptions
-  {-# INLINE jsppOptions #-}
+  cxxOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [String]
+  cxxOptions = buildInfo @mod . cxxOptions @mod
 
-  ldOptions :: Lens' a [String]
-  ldOptions = buildInfo . ldOptions
-  {-# INLINE ldOptions #-}
+  jsppOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [String]
+  jsppOptions = buildInfo @mod . jsppOptions @mod
 
-  hsc2hsOptions :: Lens' a [String]
-  hsc2hsOptions = buildInfo . hsc2hsOptions
-  {-# INLINE hsc2hsOptions #-}
+  ldOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [String]
+  ldOptions = buildInfo @mod . ldOptions @mod
 
-  pkgconfigDepends :: Lens' a [PkgconfigDependency]
-  pkgconfigDepends = buildInfo . pkgconfigDepends
-  {-# INLINE pkgconfigDepends #-}
+  hsc2hsOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [String]
+  hsc2hsOptions = buildInfo @mod . hsc2hsOptions @mod
 
-  frameworks :: Lens' a [RelativePath Framework File]
-  frameworks = buildInfo . frameworks
-  {-# INLINE frameworks #-}
+  pkgconfigDepends :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [PkgconfigDependency]
+  pkgconfigDepends = buildInfo @mod . pkgconfigDepends @mod
 
-  extraFrameworkDirs :: Lens' a [SymbolicPath Pkg (Dir Framework)]
-  extraFrameworkDirs = buildInfo . extraFrameworkDirs
-  {-# INLINE extraFrameworkDirs #-}
+  frameworks :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [RelativePath Framework File]
+  frameworks = buildInfo @mod . frameworks @mod
 
-  asmSources :: Lens' a [SymbolicPath Pkg File]
-  asmSources = buildInfo . asmSources
-  {-# INLINE asmSources #-}
+  extraFrameworkDirs :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [SymbolicPath Pkg (Dir Framework)]
+  extraFrameworkDirs = buildInfo @mod . extraFrameworkDirs @mod
 
-  cmmSources :: Lens' a [SymbolicPath Pkg File]
-  cmmSources = buildInfo . cmmSources
-  {-# INLINE cmmSources #-}
+  asmSources :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [SymbolicPath Pkg File]
+  asmSources = buildInfo @mod . asmSources @mod
 
-  cSources :: Lens' a [SymbolicPath Pkg File]
-  cSources = buildInfo . cSources
-  {-# INLINE cSources #-}
+  cmmSources :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [SymbolicPath Pkg File]
+  cmmSources = buildInfo @mod . cmmSources @mod
 
-  cxxSources :: Lens' a [SymbolicPath Pkg File]
-  cxxSources = buildInfo . cxxSources
-  {-# INLINE cxxSources #-}
+  cSources :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [SymbolicPath Pkg File]
+  cSources = buildInfo @mod . cSources @mod
 
-  jsSources :: Lens' a [SymbolicPath Pkg File]
-  jsSources = buildInfo . jsSources
-  {-# INLINE jsSources #-}
+  cxxSources :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [SymbolicPath Pkg File]
+  cxxSources = buildInfo @mod . cxxSources @mod
 
-  hsSourceDirs :: Lens' a [SymbolicPath Pkg (Dir Source)]
-  hsSourceDirs = buildInfo . hsSourceDirs
-  {-# INLINE hsSourceDirs #-}
+  jsSources :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [SymbolicPath Pkg File]
+  jsSources = buildInfo @mod . jsSources @mod
 
-  otherModules :: Lens' a [ModuleName]
-  otherModules = buildInfo . otherModules
-  {-# INLINE otherModules #-}
+  hsSourceDirs :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [SymbolicPath Pkg (Dir Source)]
+  hsSourceDirs = buildInfo @mod . hsSourceDirs @mod
 
-  virtualModules :: Lens' a [ModuleName]
-  virtualModules = buildInfo . virtualModules
-  {-# INLINE virtualModules #-}
+  otherModules :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [ModuleName]
+  otherModules = buildInfo @mod . otherModules @mod
 
-  autogenModules :: Lens' a [ModuleName]
-  autogenModules = buildInfo . autogenModules
-  {-# INLINE autogenModules #-}
+  virtualModules :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [ModuleName]
+  virtualModules = buildInfo @mod . virtualModules @mod
 
-  defaultLanguage :: Lens' a (Maybe Language)
-  defaultLanguage = buildInfo . defaultLanguage
-  {-# INLINE defaultLanguage #-}
+  autogenModules :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [ModuleName]
+  autogenModules = buildInfo @mod . autogenModules @mod
 
-  otherLanguages :: Lens' a [Language]
-  otherLanguages = buildInfo . otherLanguages
-  {-# INLINE otherLanguages #-}
+  defaultLanguage :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (Maybe Language)
+  defaultLanguage = buildInfo @mod . defaultLanguage @mod
 
-  defaultExtensions :: Lens' a [Extension]
-  defaultExtensions = buildInfo . defaultExtensions
-  {-# INLINE defaultExtensions #-}
+  otherLanguages :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [Language]
+  otherLanguages = buildInfo @mod . otherLanguages @mod
 
-  otherExtensions :: Lens' a [Extension]
-  otherExtensions = buildInfo . otherExtensions
-  {-# INLINE otherExtensions #-}
+  defaultExtensions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [Extension]
+  defaultExtensions = buildInfo @mod . defaultExtensions @mod
 
-  oldExtensions :: Lens' a [Extension]
-  oldExtensions = buildInfo . oldExtensions
-  {-# INLINE oldExtensions #-}
+  otherExtensions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [Extension]
+  otherExtensions = buildInfo @mod . otherExtensions @mod
 
-  extraLibs :: Lens' a [String]
-  extraLibs = buildInfo . extraLibs
-  {-# INLINE extraLibs #-}
+  oldExtensions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [Extension]
+  oldExtensions = buildInfo @mod . oldExtensions @mod
 
-  extraLibsStatic :: Lens' a [String]
-  extraLibsStatic = buildInfo . extraLibsStatic
-  {-# INLINE extraLibsStatic #-}
+  extraLibs :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [String]
+  extraLibs = buildInfo @mod . extraLibs @mod
 
-  extraGHCiLibs :: Lens' a [String]
-  extraGHCiLibs = buildInfo . extraGHCiLibs
-  {-# INLINE extraGHCiLibs #-}
+  extraLibsStatic :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [String]
+  extraLibsStatic = buildInfo @mod . extraLibsStatic @mod
 
-  extraBundledLibs :: Lens' a [String]
-  extraBundledLibs = buildInfo . extraBundledLibs
-  {-# INLINE extraBundledLibs #-}
+  extraGHCiLibs :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [String]
+  extraGHCiLibs = buildInfo @mod . extraGHCiLibs @mod
 
-  extraLibFlavours :: Lens' a [String]
-  extraLibFlavours = buildInfo . extraLibFlavours
-  {-# INLINE extraLibFlavours #-}
+  extraBundledLibs :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [String]
+  extraBundledLibs = buildInfo @mod . extraBundledLibs @mod
 
-  extraDynLibFlavours :: Lens' a [String]
-  extraDynLibFlavours = buildInfo . extraDynLibFlavours
-  {-# INLINE extraDynLibFlavours #-}
+  extraLibFlavours :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [String]
+  extraLibFlavours = buildInfo @mod . extraLibFlavours @mod
 
-  extraLibDirs :: Lens' a [SymbolicPath Pkg (Dir Lib)]
-  extraLibDirs = buildInfo . extraLibDirs
-  {-# INLINE extraLibDirs #-}
+  extraDynLibFlavours :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [String]
+  extraDynLibFlavours = buildInfo @mod . extraDynLibFlavours @mod
 
-  extraLibDirsStatic :: Lens' a [SymbolicPath Pkg (Dir Lib)]
-  extraLibDirsStatic = buildInfo . extraLibDirsStatic
-  {-# INLINE extraLibDirsStatic #-}
+  extraLibDirs :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [SymbolicPath Pkg (Dir Lib)]
+  extraLibDirs = buildInfo @mod . extraLibDirs @mod
 
-  includeDirs :: Lens' a [SymbolicPath Pkg (Dir Include)]
-  includeDirs = buildInfo . includeDirs
-  {-# INLINE includeDirs #-}
+  extraLibDirsStatic :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [SymbolicPath Pkg (Dir Lib)]
+  extraLibDirsStatic = buildInfo @mod . extraLibDirsStatic @mod
 
-  includes :: Lens' a [SymbolicPath Include File]
-  includes = buildInfo . includes
-  {-# INLINE includes #-}
+  includeDirs :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [SymbolicPath Pkg (Dir Include)]
+  includeDirs = buildInfo @mod . includeDirs @mod
 
-  autogenIncludes :: Lens' a [RelativePath Include File]
-  autogenIncludes = buildInfo . autogenIncludes
-  {-# INLINE autogenIncludes #-}
+  includes :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [SymbolicPath Include File]
+  includes = buildInfo @mod . includes @mod
 
-  installIncludes :: Lens' a [RelativePath Include File]
-  installIncludes = buildInfo . installIncludes
-  {-# INLINE installIncludes #-}
+  autogenIncludes :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [RelativePath Include File]
+  autogenIncludes = buildInfo @mod . autogenIncludes @mod
 
-  options :: Lens' a (PerCompilerFlavor [String])
-  options = buildInfo . options
-  {-# INLINE options #-}
+  installIncludes :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [RelativePath Include File]
+  installIncludes = buildInfo @mod . installIncludes @mod
 
-  profOptions :: Lens' a (PerCompilerFlavor [String])
-  profOptions = buildInfo . profOptions
-  {-# INLINE profOptions #-}
+  options :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PerCompilerFlavor [String])
+  options = buildInfo @mod . options @mod
 
-  sharedOptions :: Lens' a (PerCompilerFlavor [String])
-  sharedOptions = buildInfo . sharedOptions
-  {-# INLINE sharedOptions #-}
+  profOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PerCompilerFlavor [String])
+  profOptions = buildInfo @mod . profOptions @mod
 
-  profSharedOptions :: Lens' a (PerCompilerFlavor [String])
-  profSharedOptions = buildInfo . profSharedOptions
-  {-# INLINE profSharedOptions #-}
+  sharedOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PerCompilerFlavor [String])
+  sharedOptions = buildInfo @mod . sharedOptions @mod
 
-  staticOptions :: Lens' a (PerCompilerFlavor [String])
-  staticOptions = buildInfo . staticOptions
-  {-# INLINE staticOptions #-}
+  profSharedOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PerCompilerFlavor [String])
+  profSharedOptions = buildInfo @mod . profSharedOptions @mod
 
-  customFieldsBI :: Lens' a [(String, String)]
-  customFieldsBI = buildInfo . customFieldsBI
-  {-# INLINE customFieldsBI #-}
+  staticOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PerCompilerFlavor [String])
+  staticOptions = buildInfo @mod . staticOptions @mod
 
-  targetBuildDepends :: Lens' a [Dependency]
-  targetBuildDepends = buildInfo . targetBuildDepends
-  {-# INLINE targetBuildDepends #-}
+  customFieldsBI :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [(String, String)]
+  customFieldsBI = buildInfo @mod . customFieldsBI @mod
 
-  mixins :: Lens' a [Mixin]
-  mixins = buildInfo . mixins
-  {-# INLINE mixins #-}
+  targetBuildDepends :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [DependencyWith mod]
+  targetBuildDepends = buildInfo @mod . targetBuildDepends @mod
 
-instance HasBuildInfo BuildInfo where
+  mixins :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [Mixin]
+  mixins = buildInfo @mod . mixins @mod
+
+instance HasBuildInfoWith Mod.HasNoAnn (BuildInfoWith Mod.HasNoAnn) where
   buildInfo = id
   {-# INLINE buildInfo #-}
 
@@ -367,5 +336,156 @@ instance HasBuildInfo BuildInfo where
   mixins f s = fmap (\x -> s{T.mixins = x}) (f (T.mixins s))
   {-# INLINE mixins #-}
 
-class HasBuildInfos a where
-  traverseBuildInfos :: Traversal' a BuildInfo
+type HasBuildInfos = HasBuildInfoWith Mod.HasNoAnn
+type HasBuildInfosAnn = HasBuildInfoWith Mod.HasAnn
+
+instance HasBuildInfoWith Mod.HasAnn (BuildInfoWith Mod.HasAnn) where
+  buildInfo = id
+  {-# INLINE buildInfo #-}
+
+  buildable f s = fmap (\x -> s{T.buildable = x}) (f (T.buildable s))
+  {-# INLINE buildable #-}
+
+  buildTools f s = fmap (\x -> s{T.buildTools = x}) (f (T.buildTools s))
+  {-# INLINE buildTools #-}
+
+  buildToolDepends f s = fmap (\x -> s{T.buildToolDepends = x}) (f (T.buildToolDepends s))
+  {-# INLINE buildToolDepends #-}
+
+  cppOptions f s = fmap (\x -> s{T.cppOptions = x}) (f (T.cppOptions s))
+  {-# INLINE cppOptions #-}
+
+  asmOptions f s = fmap (\x -> s{T.asmOptions = x}) (f (T.asmOptions s))
+  {-# INLINE asmOptions #-}
+
+  cmmOptions f s = fmap (\x -> s{T.cmmOptions = x}) (f (T.cmmOptions s))
+  {-# INLINE cmmOptions #-}
+
+  ccOptions f s = fmap (\x -> s{T.ccOptions = x}) (f (T.ccOptions s))
+  {-# INLINE ccOptions #-}
+
+  cxxOptions f s = fmap (\x -> s{T.cxxOptions = x}) (f (T.cxxOptions s))
+  {-# INLINE cxxOptions #-}
+
+  jsppOptions f s = fmap (\x -> s{T.jsppOptions = x}) (f (T.jsppOptions s))
+  {-# INLINE jsppOptions #-}
+
+  ldOptions f s = fmap (\x -> s{T.ldOptions = x}) (f (T.ldOptions s))
+  {-# INLINE ldOptions #-}
+
+  hsc2hsOptions f s = fmap (\x -> s{T.hsc2hsOptions = x}) (f (T.hsc2hsOptions s))
+  {-# INLINE hsc2hsOptions #-}
+
+  pkgconfigDepends f s = fmap (\x -> s{T.pkgconfigDepends = x}) (f (T.pkgconfigDepends s))
+  {-# INLINE pkgconfigDepends #-}
+
+  frameworks f s = fmap (\x -> s{T.frameworks = x}) (f (T.frameworks s))
+  {-# INLINE frameworks #-}
+
+  extraFrameworkDirs f s = fmap (\x -> s{T.extraFrameworkDirs = x}) (f (T.extraFrameworkDirs s))
+  {-# INLINE extraFrameworkDirs #-}
+
+  asmSources f s = fmap (\x -> s{T.asmSources = x}) (f (T.asmSources s))
+  {-# INLINE asmSources #-}
+
+  cmmSources f s = fmap (\x -> s{T.cmmSources = x}) (f (T.cmmSources s))
+  {-# INLINE cmmSources #-}
+
+  cSources f s = fmap (\x -> s{T.cSources = x}) (f (T.cSources s))
+  {-# INLINE cSources #-}
+
+  cxxSources f s = fmap (\x -> s{T.cxxSources = x}) (f (T.cxxSources s))
+  {-# INLINE cxxSources #-}
+
+  jsSources f s = fmap (\x -> s{T.jsSources = x}) (f (T.jsSources s))
+  {-# INLINE jsSources #-}
+
+  hsSourceDirs f s = fmap (\x -> s{T.hsSourceDirs = x}) (f (T.hsSourceDirs s))
+  {-# INLINE hsSourceDirs #-}
+
+  otherModules f s = fmap (\x -> s{T.otherModules = x}) (f (T.otherModules s))
+  {-# INLINE otherModules #-}
+
+  virtualModules f s = fmap (\x -> s{T.virtualModules = x}) (f (T.virtualModules s))
+  {-# INLINE virtualModules #-}
+
+  autogenModules f s = fmap (\x -> s{T.autogenModules = x}) (f (T.autogenModules s))
+  {-# INLINE autogenModules #-}
+
+  defaultLanguage f s = fmap (\x -> s{T.defaultLanguage = x}) (f (T.defaultLanguage s))
+  {-# INLINE defaultLanguage #-}
+
+  otherLanguages f s = fmap (\x -> s{T.otherLanguages = x}) (f (T.otherLanguages s))
+  {-# INLINE otherLanguages #-}
+
+  defaultExtensions f s = fmap (\x -> s{T.defaultExtensions = x}) (f (T.defaultExtensions s))
+  {-# INLINE defaultExtensions #-}
+
+  otherExtensions f s = fmap (\x -> s{T.otherExtensions = x}) (f (T.otherExtensions s))
+  {-# INLINE otherExtensions #-}
+
+  oldExtensions f s = fmap (\x -> s{T.oldExtensions = x}) (f (T.oldExtensions s))
+  {-# INLINE oldExtensions #-}
+
+  extraLibs f s = fmap (\x -> s{T.extraLibs = x}) (f (T.extraLibs s))
+  {-# INLINE extraLibs #-}
+
+  extraLibsStatic f s = fmap (\x -> s{T.extraLibsStatic = x}) (f (T.extraLibsStatic s))
+  {-# INLINE extraLibsStatic #-}
+
+  extraGHCiLibs f s = fmap (\x -> s{T.extraGHCiLibs = x}) (f (T.extraGHCiLibs s))
+  {-# INLINE extraGHCiLibs #-}
+
+  extraBundledLibs f s = fmap (\x -> s{T.extraBundledLibs = x}) (f (T.extraBundledLibs s))
+  {-# INLINE extraBundledLibs #-}
+
+  extraLibFlavours f s = fmap (\x -> s{T.extraLibFlavours = x}) (f (T.extraLibFlavours s))
+  {-# INLINE extraLibFlavours #-}
+
+  extraDynLibFlavours f s = fmap (\x -> s{T.extraDynLibFlavours = x}) (f (T.extraDynLibFlavours s))
+  {-# INLINE extraDynLibFlavours #-}
+
+  extraLibDirs f s = fmap (\x -> s{T.extraLibDirs = x}) (f (T.extraLibDirs s))
+  {-# INLINE extraLibDirs #-}
+
+  extraLibDirsStatic f s = fmap (\x -> s{T.extraLibDirsStatic = x}) (f (T.extraLibDirsStatic s))
+  {-# INLINE extraLibDirsStatic #-}
+
+  includeDirs f s = fmap (\x -> s{T.includeDirs = x}) (f (T.includeDirs s))
+  {-# INLINE includeDirs #-}
+
+  includes f s = fmap (\x -> s{T.includes = x}) (f (T.includes s))
+  {-# INLINE includes #-}
+
+  autogenIncludes f s = fmap (\x -> s{T.autogenIncludes = x}) (f (T.autogenIncludes s))
+  {-# INLINE autogenIncludes #-}
+
+  installIncludes f s = fmap (\x -> s{T.installIncludes = x}) (f (T.installIncludes s))
+  {-# INLINE installIncludes #-}
+
+  options f s = fmap (\x -> s{T.options = x}) (f (T.options s))
+  {-# INLINE options #-}
+
+  profOptions f s = fmap (\x -> s{T.profOptions = x}) (f (T.profOptions s))
+  {-# INLINE profOptions #-}
+
+  sharedOptions f s = fmap (\x -> s{T.sharedOptions = x}) (f (T.sharedOptions s))
+  {-# INLINE sharedOptions #-}
+
+  profSharedOptions f s = fmap (\x -> s{T.profSharedOptions = x}) (f (T.profSharedOptions s))
+  {-# INLINE profSharedOptions #-}
+
+  staticOptions f s = fmap (\x -> s{T.staticOptions = x}) (f (T.staticOptions s))
+  {-# INLINE staticOptions #-}
+
+  customFieldsBI f s = fmap (\x -> s{T.customFieldsBI = x}) (f (T.customFieldsBI s))
+  {-# INLINE customFieldsBI #-}
+
+  targetBuildDepends f s = fmap (\x -> s{T.targetBuildDepends = x}) (f (T.targetBuildDepends s))
+  {-# INLINE targetBuildDepends #-}
+
+  mixins f s = fmap (\x -> s{T.mixins = x}) (f (T.mixins s))
+  {-# INLINE mixins #-}
+
+class HasBuildInfosWith mod a where
+  traverseBuildInfos :: Traversal' a (BuildInfoWith mod)

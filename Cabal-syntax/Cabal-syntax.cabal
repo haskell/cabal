@@ -104,6 +104,7 @@ library
     Distribution.PackageDescription.Quirks
     Distribution.PackageDescription.Utils
     Distribution.Parsec
+    Distribution.Trivia
     Distribution.Parsec.Error
     Distribution.Parsec.FieldLineStream
     Distribution.Parsec.Position
@@ -126,6 +127,7 @@ library
     Distribution.Types.BenchmarkInterface
     Distribution.Types.BenchmarkType
     Distribution.Types.BuildInfo
+    Distribution.Types.Modify
     Distribution.Types.BuildInfo.Lens
     Distribution.Types.BuildType
     Distribution.Types.Component

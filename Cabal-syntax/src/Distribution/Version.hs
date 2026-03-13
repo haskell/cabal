@@ -24,9 +24,12 @@ module Distribution.Version
 
     -- * Version ranges
   , VersionRange
+  , VersionRangeAnn
+  , VersionRangeWith (..)
 
     -- ** Constructing
   , anyVersion
+  , anyVersionAnn
   , noVersion
   , thisVersion
   , notThisVersion

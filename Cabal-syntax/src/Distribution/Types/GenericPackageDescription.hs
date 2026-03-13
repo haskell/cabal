@@ -1,10 +1,23 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Distribution.Types.GenericPackageDescription
-  ( GenericPackageDescription (..)
+  ( GenericPackageDescription
+  , GenericPackageDescriptionAnn
+  , GenericPackageDescriptionWith (..)
   , emptyGenericPackageDescription
   ) where
 
@@ -29,10 +42,16 @@ import Distribution.Types.TestSuite
 import Distribution.Types.UnqualComponentName
 import Distribution.Version
 
+import Data.Kind
+import qualified Distribution.Types.Modify as Mod
+
 -- ---------------------------------------------------------------------------
 -- The 'GenericPackageDescription' type
 
-data GenericPackageDescription = GenericPackageDescription
+type GenericPackageDescription = GenericPackageDescriptionWith Mod.HasNoAnn
+type GenericPackageDescriptionAnn = GenericPackageDescriptionWith Mod.HasAnn
+
+data GenericPackageDescriptionWith (m :: Mod.HasAnnotation) = GenericPackageDescription
   { packageDescription :: PackageDescription
   , gpdScannedVersion :: Maybe Version
   -- ^ This is a version as specified in source.
@@ -44,39 +63,29 @@ data GenericPackageDescription = GenericPackageDescription
   --   Perfectly, PackageIndex should have sum type, so we don't need to
   --   have dummy GPDs.
   , genPackageFlags :: [PackageFlag]
-  , condLibrary :: Maybe (CondTree ConfVar Library)
+  , condLibrary :: (Maybe (CondTree ConfVar (LibraryWith m)))
   , condSubLibraries
-      :: [ ( UnqualComponentName
-           , CondTree ConfVar Library
-           )
-         ]
+      :: [(UnqualComponentName, CondTree ConfVar Library)]
   , condForeignLibs
-      :: [ ( UnqualComponentName
-           , CondTree ConfVar ForeignLib
-           )
-         ]
+      :: [(UnqualComponentName, CondTree ConfVar ForeignLib)]
   , condExecutables
-      :: [ ( UnqualComponentName
-           , CondTree ConfVar Executable
-           )
-         ]
+      :: [(UnqualComponentName, CondTree ConfVar Executable)]
   , condTestSuites
-      :: [ ( UnqualComponentName
-           , CondTree ConfVar TestSuite
-           )
-         ]
+      :: [(UnqualComponentName, CondTree ConfVar TestSuite)]
   , condBenchmarks
-      :: [ ( UnqualComponentName
-           , CondTree ConfVar Benchmark
-           )
-         ]
+      :: [(UnqualComponentName, CondTree ConfVar Benchmark)]
   }
-  deriving (Show, Eq, Data, Generic)
 
-instance Package GenericPackageDescription where
+deriving instance Eq (GenericPackageDescriptionWith Mod.HasNoAnn)
+deriving instance Show (GenericPackageDescriptionWith Mod.HasNoAnn)
+deriving instance Data (GenericPackageDescriptionWith Mod.HasNoAnn)
+deriving instance Generic (GenericPackageDescriptionWith Mod.HasNoAnn)
+
+instance Package (GenericPackageDescriptionWith Mod.HasNoAnn) where
   packageId = packageId . packageDescription
 
-instance Binary GenericPackageDescription
+deriving instance Binary (GenericPackageDescriptionWith Mod.HasNoAnn)
+
 instance Structured GenericPackageDescription
 instance NFData GenericPackageDescription where rnf = genericRnf
 
@@ -86,7 +95,7 @@ emptyGenericPackageDescription = GenericPackageDescription emptyPackageDescripti
 -- -----------------------------------------------------------------------------
 -- Traversal Instances
 
-instance L.HasBuildInfos GenericPackageDescription where
+instance L.HasBuildInfosWith Mod.HasNoAnn GenericPackageDescription where
   traverseBuildInfos f (GenericPackageDescription p v a1 x1 x2 x3 x4 x5 x6) =
     GenericPackageDescription
       <$> L.traverseBuildInfos f p

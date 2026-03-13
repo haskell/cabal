@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
@@ -129,23 +130,27 @@ import Distribution.Solver.Types.SourcePackage
   ( SourcePackage (..)
   )
 import Distribution.Types.BuildInfo
-  ( BuildInfo (..)
+  ( BuildInfo
+  , BuildInfoWith (..)
   , emptyBuildInfo
   )
 import Distribution.Types.ComponentName
   ( componentNameString
   )
 import Distribution.Types.CondTree
-  ( CondTree (..)
+  ( CondTreeWith (..)
   )
 import Distribution.Types.Dependency
-  ( Dependency (..)
+  ( Dependency
+  , DependencyWith (..)
   , mainLibSet
   )
 import Distribution.Types.Library
-  ( Library (..)
+  ( Library
+  , LibraryWith (..)
   , emptyLibrary
   )
+import qualified Distribution.Types.Modify as Mod
 import Distribution.Types.ParStrat
 import Distribution.Types.Version
   ( Version
@@ -730,7 +735,7 @@ addDepsToProjectTarget deps pkgId ctx =
                   -- occurrences of the field `targetBuildDepends`. It ensures that
                   -- fields depending on the latter are also consistently updated.
                   srcpkgDescription
-                    & (L.traverseBuildInfos . L.targetBuildDepends)
+                    & (L.traverseBuildInfos @Mod.HasNoAnn . L.targetBuildDepends @Mod.HasNoAnn)
                       %~ (deps ++)
               }
     addDeps spec = spec

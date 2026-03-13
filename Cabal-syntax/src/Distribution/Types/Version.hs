@@ -1,10 +1,15 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module Distribution.Types.Version
   ( -- * Package versions
     Version
+  , VersionAnn
   , mkVersion
+  , mkVersionAnn
   , mkVersion'
   , versionNumbers
   , nullVersion
@@ -22,6 +27,7 @@ import Prelude ()
 
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.Trivia
 
 import qualified Data.Version as Base
 import qualified Distribution.Compat.CharParsing as P
@@ -39,6 +45,8 @@ import qualified Text.Read as Read
 -- 'Binary' instance using a different (and more compact) encoding.
 --
 -- @since 2.0.0.2
+type VersionAnn = Ann Version
+
 data Version
   = PV0 {-# UNPACK #-} !Word64
   | PV1 !Int [Int]
@@ -97,6 +105,12 @@ instance Pretty Version where
           (Disp.char '.')
           (map Disp.int $ versionNumbers ver)
       )
+
+instance Pretty VersionAnn where
+  pretty (Ann t ver) = applyTrivia $ fmap pretty (t, ver)
+    where
+      applyTrivia :: (Trivia, Disp.Doc) -> Disp.Doc
+      applyTrivia = uncurry applyTriviaDoc
 
 instance Parsec Version where
   parsec = mkVersion <$> toList <$> P.sepByNonEmpty versionDigitParser (P.char '.') <* tags
@@ -190,6 +204,9 @@ mkVersion (v1 : vs@[v2, v3, v4])
         )
     mkWord64VerRep4 y1 y2 y3 y4 = mkWord64VerRep (y1 + 1) (y2 + 1) (y3 + 1) (y4 + 1)
 mkVersion (v1 : vs) = PV1 v1 vs
+
+mkVersionAnn :: Trivia -> [Int] -> VersionAnn
+mkVersionAnn t vs = Ann t (mkVersion vs)
 
 -- | Version 0. A lower bound of 'Version'.
 --
