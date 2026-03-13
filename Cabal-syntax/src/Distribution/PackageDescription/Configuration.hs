@@ -28,7 +28,6 @@ module Distribution.PackageDescription.Configuration
   , mapCondTree
   , mapTreeData
   , mapTreeConds
-  , mapTreeConstrs
   , transformAllBuildInfos
   , transformAllBuildDepends
   , transformAllBuildDependsN
@@ -39,6 +38,7 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 -- lens
+import qualified Distribution.Compat.Lens as L
 import qualified Distribution.Types.BuildInfo.Lens as L
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
 import qualified Distribution.Types.PackageDescription.Lens as L
@@ -64,6 +64,7 @@ import Distribution.Utils.Path (sameDirectory)
 import Distribution.Version
 
 import Data.Tree (Tree (Node))
+import Data.Tuple
 
 ------------------------------------------------------------------------------
 
@@ -192,7 +193,7 @@ resolveWithFlags
   -- ^ Compiler information
   -> [PackageVersionConstraint]
   -- ^ Additional constraints
-  -> [CondTree ConfVar [Dependency] PDTagged]
+  -> [CondTree ConfVar PDTagged]
   -> ([Dependency] -> DepTestRslt)
   -- ^ Dependency test function.
   -> Either [MissingDependency] (TargetSet PDTagged, FlagAssignment)
@@ -203,10 +204,10 @@ resolveWithFlags dom enabled os arch impl constrs trees checkDeps =
   where
     -- simplify trees by (partially) evaluating all conditions and converting
     -- dependencies to dependency maps.
-    simplifiedTrees :: [CondTree FlagName DependencyMap PDTagged]
+    simplifiedTrees :: [CondTree FlagName (PDTagged, DependencyMap)]
     simplifiedTrees =
       map
-        ( mapTreeConstrs toDepMap -- convert to maps
+        ( mapTreeData (\x -> (x, toDepMap $ L.view L.targetBuildDepends x))
             . addBuildableConditionPDTagged
             . mapTreeConds (fst . simplifyWithSysParams os arch impl)
         )
@@ -226,6 +227,7 @@ resolveWithFlags dom enabled os arch impl constrs trees checkDeps =
               flip map simplifiedTrees $
                 -- apply additional constraints to all dependencies
                 first (`constrainBy` constrs)
+                  . swap
                   . simplifyCondTree (env flags)
           deps = overallDependencies enabled targetSet
        in case checkDeps (fromDepMap deps) of
@@ -262,15 +264,15 @@ resolveWithFlags dom enabled os arch impl constrs trees checkDeps =
 -- can determine that Buildable is always True, it returns the input unchanged.
 -- If Buildable is always False, it returns the empty 'CondTree'.
 addBuildableCondition
-  :: (Eq v, Monoid a, Monoid c)
+  :: (Eq v, Monoid a)
   => (a -> BuildInfo)
-  -> CondTree v c a
-  -> CondTree v c a
+  -> CondTree v a
+  -> CondTree v a
 addBuildableCondition getInfo t =
   case extractCondition (buildable . getInfo) t of
     Lit True -> t
-    Lit False -> CondNode mempty mempty []
-    c -> CondNode mempty mempty [condIfThen c t]
+    Lit False -> CondNode mempty []
+    c -> CondNode mempty [condIfThen c t]
 
 -- | This is a special version of 'addBuildableCondition' for the 'PDTagged'
 -- type.
@@ -282,16 +284,18 @@ addBuildableCondition getInfo t =
 --
 -- See <https://github.com/haskell/cabal/pull/4094> for more details.
 addBuildableConditionPDTagged
-  :: (Eq v, Monoid c)
-  => CondTree v c PDTagged
-  -> CondTree v c PDTagged
+  :: Eq v
+  => CondTree v PDTagged
+  -> CondTree v PDTagged
 addBuildableConditionPDTagged t =
   case extractCondition (buildable . getInfo) t of
     Lit True -> t
-    Lit False -> deleteConstraints t
-    c -> CondNode mempty mempty [condIfThenElse c t (deleteConstraints t)]
+    Lit False -> mapTreeData deleteConstraints t
+    c -> CondNode mempty [condIfThenElse c t (mapTreeData deleteConstraints t)]
   where
-    deleteConstraints = mapTreeConstrs (const mempty)
+    deleteConstraints (Lib lib) = Lib (L.set L.targetBuildDepends mempty lib)
+    deleteConstraints (SubComp unqualName comp) = SubComp unqualName (L.set L.targetBuildDepends mempty comp)
+    deleteConstraints PDNull = PDNull
 
     getInfo :: PDTagged -> BuildInfo
     getInfo (Lib l) = libBuildInfo l
@@ -326,10 +330,10 @@ extractConditions f gpkg =
     , extractCondition (f . benchmarkBuildInfo) . snd <$> condBenchmarks gpkg
     ]
 
-freeVars :: CondTree ConfVar c a -> [FlagName]
+freeVars :: CondTree ConfVar a -> [FlagName]
 freeVars t = [f | PackageFlag f <- freeVars' t]
   where
-    freeVars' (CondNode _ _ ifs) = concatMap compfv ifs
+    freeVars' (CondNode _ ifs) = concatMap compfv ifs
     compfv (CondBranch c ct mct) = condfv c ++ freeVars' ct ++ maybe [] freeVars' mct
     condfv c = case c of
       Var v -> [v]
@@ -405,6 +409,12 @@ instance Semigroup PDTagged where
   Lib l <> Lib l' = Lib (l <> l')
   SubComp n x <> SubComp n' x' | n == n' = SubComp n (x <> x')
   _ <> _ = cabalBug "Cannot combine incompatible tags"
+
+instance L.HasBuildInfo PDTagged where
+  buildInfo f x = case x of
+    Lib lib -> Lib <$> L.buildInfo f lib
+    SubComp name comp -> SubComp name <$> L.buildInfo f comp
+    PDNull -> PDNull <$ f mempty
 
 -- | Create a package description with all configurations resolved.
 --
@@ -554,36 +564,47 @@ flattenPackageDescription
     where
       mlib = f <$> mlib0
         where
-          f lib = (libFillInDefaults . fst . ignoreConditions $ lib){libName = LMainLibName}
+          f :: CondTree ConfVar Library -> Library
+          f lib = (libFillInDefaults . ignoreConditions $ lib){libName = LMainLibName}
       sub_libs = flattenLib <$> sub_libs0
       flibs = flattenFLib <$> flibs0
       exes = flattenExe <$> exes0
       tests = flattenTst <$> tests0
       bms = flattenBm <$> bms0
+
+      flattenLib :: (UnqualComponentName, CondTree ConfVar Library) -> Library
       flattenLib (n, t) =
         libFillInDefaults $
-          (fst $ ignoreConditions t)
+          (ignoreConditions t)
             { libName = LSubLibName n
             , libExposed = False
             }
+
+      flattenFLib :: (UnqualComponentName, CondTree ConfVar ForeignLib) -> ForeignLib
       flattenFLib (n, t) =
         flibFillInDefaults $
-          (fst $ ignoreConditions t)
+          (ignoreConditions t)
             { foreignLibName = n
             }
+
+      flattenExe :: (UnqualComponentName, CondTree ConfVar Executable) -> Executable
       flattenExe (n, t) =
         exeFillInDefaults $
-          (fst $ ignoreConditions t)
+          (ignoreConditions t)
             { exeName = n
             }
+
+      flattenTst :: (UnqualComponentName, CondTree ConfVar TestSuite) -> TestSuite
       flattenTst (n, t) =
         testFillInDefaults $
-          (fst $ ignoreConditions t)
+          (ignoreConditions t)
             { testName = n
             }
+
+      flattenBm :: (UnqualComponentName, CondTree ConfVar Benchmark) -> Benchmark
       flattenBm (n, t) =
         benchFillInDefaults $
-          (fst $ ignoreConditions t)
+          (ignoreConditions t)
             { benchmarkName = n
             }
 
@@ -640,8 +661,6 @@ transformAllBuildDepends
 transformAllBuildDepends f =
   over (L.traverseBuildInfos . L.targetBuildDepends . traverse) f
     . over (L.packageDescription . L.setupBuildInfo . traverse . L.setupDepends . traverse) f
-    -- cannot be point-free as normal because of higher rank
-    . over (\f' -> L.allCondTrees $ traverseCondTreeC f') (map f)
 
 -- | Walk a 'GenericPackageDescription' and apply @f@ to all nested
 -- @build-depends@ fields.
@@ -652,5 +671,3 @@ transformAllBuildDependsN
 transformAllBuildDependsN f =
   over (L.traverseBuildInfos . L.targetBuildDepends) f
     . over (L.packageDescription . L.setupBuildInfo . traverse . L.setupDepends) f
-    -- cannot be point-free as normal because of higher rank
-    . over (\f' -> L.allCondTrees $ traverseCondTreeC f') f

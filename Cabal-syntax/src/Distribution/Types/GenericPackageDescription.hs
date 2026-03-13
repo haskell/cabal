@@ -44,30 +44,30 @@ data GenericPackageDescription = GenericPackageDescription
   --   Perfectly, PackageIndex should have sum type, so we don't need to
   --   have dummy GPDs.
   , genPackageFlags :: [PackageFlag]
-  , condLibrary :: Maybe (CondTree ConfVar [Dependency] Library)
+  , condLibrary :: Maybe (CondTree ConfVar Library)
   , condSubLibraries
       :: [ ( UnqualComponentName
-           , CondTree ConfVar [Dependency] Library
+           , CondTree ConfVar Library
            )
          ]
   , condForeignLibs
       :: [ ( UnqualComponentName
-           , CondTree ConfVar [Dependency] ForeignLib
+           , CondTree ConfVar ForeignLib
            )
          ]
   , condExecutables
       :: [ ( UnqualComponentName
-           , CondTree ConfVar [Dependency] Executable
+           , CondTree ConfVar Executable
            )
          ]
   , condTestSuites
       :: [ ( UnqualComponentName
-           , CondTree ConfVar [Dependency] TestSuite
+           , CondTree ConfVar TestSuite
            )
          ]
   , condBenchmarks
       :: [ ( UnqualComponentName
-           , CondTree ConfVar [Dependency] Benchmark
+           , CondTree ConfVar Benchmark
            )
          ]
   }
@@ -92,29 +92,9 @@ instance L.HasBuildInfos GenericPackageDescription where
       <$> L.traverseBuildInfos f p
       <*> pure v
       <*> pure a1
-      <*> (traverse . traverseCondTreeBuildInfo) f x1
-      <*> (traverse . L._2 . traverseCondTreeBuildInfo) f x2
-      <*> (traverse . L._2 . traverseCondTreeBuildInfo) f x3
-      <*> (traverse . L._2 . traverseCondTreeBuildInfo) f x4
-      <*> (traverse . L._2 . traverseCondTreeBuildInfo) f x5
-      <*> (traverse . L._2 . traverseCondTreeBuildInfo) f x6
-
--- We use this traversal to keep [Dependency] field in CondTree up to date.
-traverseCondTreeBuildInfo
-  :: forall f comp v
-   . (Applicative f, L.HasBuildInfo comp)
-  => LensLike' f (CondTree v [Dependency] comp) L.BuildInfo
-traverseCondTreeBuildInfo g = node
-  where
-    mkCondNode :: comp -> [CondBranch v [Dependency] comp] -> CondTree v [Dependency] comp
-    mkCondNode comp = CondNode comp (view L.targetBuildDepends comp)
-
-    node (CondNode comp _ branches) =
-      mkCondNode
-        <$> L.buildInfo g comp
-        <*> traverse branch branches
-
-    branch (CondBranch v x y) =
-      CondBranch v
-        <$> node x
-        <*> traverse node y
+      <*> (traverse . traverse . L.buildInfo) f x1
+      <*> (traverse . L._2 . traverse . L.buildInfo) f x2
+      <*> (traverse . L._2 . traverse . L.buildInfo) f x3
+      <*> (traverse . L._2 . traverse . L.buildInfo) f x4
+      <*> (traverse . L._2 . traverse . L.buildInfo) f x5
+      <*> (traverse . L._2 . traverse . L.buildInfo) f x6

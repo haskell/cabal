@@ -159,25 +159,6 @@ GenericPackageDescription {
                 (mkVersion [2, 4, 0]))
               mainLibSet],
           mixins = []}},
-      condTreeConstraints = [
-        Dependency
-          (PackageName "base")
-          (IntersectVersionRanges
-            (OrLaterVersion
-              (mkVersion [4, 0]))
-            (EarlierVersion
-              (mkVersion [4, 7])))
-          mainLibSet,
-        Dependency
-          (PackageName "AC-Vector")
-          (OrLaterVersion
-            (mkVersion [2, 3, 0]))
-          mainLibSet,
-        Dependency
-          (PackageName "QuickCheck")
-          (OrLaterVersion
-            (mkVersion [2, 4, 0]))
-          mainLibSet],
       condTreeComponents = []},
   condSubLibraries = [],
   condForeignLibs = [],
@@ -269,25 +250,6 @@ GenericPackageDescription {
                 mainLibSet],
             mixins = []},
           testCodeGenerators = []},
-        condTreeConstraints = [
-          Dependency
-            (PackageName "base")
-            (IntersectVersionRanges
-              (OrLaterVersion
-                (mkVersion [4, 0]))
-              (EarlierVersion
-                (mkVersion [4, 7])))
-            mainLibSet,
-          Dependency
-            (PackageName "AC-Vector")
-            (OrLaterVersion
-              (mkVersion [2, 3, 0]))
-            mainLibSet,
-          Dependency
-            (PackageName "QuickCheck")
-            (OrLaterVersion
-              (mkVersion [2, 4, 0]))
-            mainLibSet],
         condTreeComponents = []},
     _×_
       (UnqualComponentName "readme")
@@ -377,28 +339,5 @@ GenericPackageDescription {
                 mainLibSet],
             mixins = []},
           testCodeGenerators = []},
-        condTreeConstraints = [
-          Dependency
-            (PackageName "base")
-            (IntersectVersionRanges
-              (OrLaterVersion
-                (mkVersion [4, 0]))
-              (EarlierVersion
-                (mkVersion [4, 7])))
-            mainLibSet,
-          Dependency
-            (PackageName "AC-Vector")
-            (OrLaterVersion
-              (mkVersion [2, 3, 0]))
-            mainLibSet,
-          Dependency
-            (PackageName "QuickCheck")
-            (OrLaterVersion
-              (mkVersion [2, 4, 0]))
-            mainLibSet,
-          Dependency
-            (PackageName "markdown-unlit")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet],
         condTreeComponents = []}],
   condBenchmarks = []}

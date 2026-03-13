@@ -123,11 +123,6 @@ GenericPackageDescription {
               (OrLaterVersion (mkVersion [0]))
               mainLibSet],
           mixins = []}},
-      condTreeConstraints = [
-        Dependency
-          (PackageName "ghc-prim")
-          (OrLaterVersion (mkVersion [0]))
-          mainLibSet],
       condTreeComponents = []},
   condSubLibraries = [],
   condForeignLibs = [],
@@ -203,10 +198,5 @@ GenericPackageDescription {
                 mainLibSet],
             mixins = []},
           testCodeGenerators = []},
-        condTreeConstraints = [
-          Dependency
-            (PackageName "HUnit")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet],
         condTreeComponents = []}],
   condBenchmarks = []}

@@ -263,7 +263,7 @@ goSections specVer = traverse_ process
       -> Map String CondTreeBuildInfo
       -- \^ common stanzas
       -> [Field Position]
-      -> ParseResult src (CondTree ConfVar [Dependency] a)
+      -> ParseResult src (CondTree ConfVar a)
     parseCondTree' = parseCondTreeWithCommonStanzas specVer
 
     parseSection :: Name Position -> [SectionArg Position] -> [Field Position] -> SectionParser src ()
@@ -478,11 +478,9 @@ parseCondTree
   -- ^ common stanzas
   -> (BuildInfo -> a)
   -- ^ constructor from buildInfo
-  -> (a -> [Dependency])
-  -- ^ condition extractor
   -> [Field Position]
-  -> ParseResult src (CondTree ConfVar [Dependency] a)
-parseCondTree v hasElif grammar commonStanzas fromBuildInfo cond = go
+  -> ParseResult src (CondTree ConfVar a)
+parseCondTree v hasElif grammar commonStanzas fromBuildInfo = go
   where
     go fields0 = do
       (fields, endo) <-
@@ -493,9 +491,9 @@ parseCondTree v hasElif grammar commonStanzas fromBuildInfo cond = go
       let (fs, ss) = partitionFields fields
       x <- parseFieldGrammar v fs grammar
       branches <- concat <$> traverse parseIfs ss
-      return $ endo $ CondNode x (cond x) branches
+      return $ endo $ CondNode x branches
 
-    parseIfs :: [Section Position] -> ParseResult src [CondBranch ConfVar [Dependency] a]
+    parseIfs :: [Section Position] -> ParseResult src [CondBranch ConfVar a]
     parseIfs [] = return []
     parseIfs (MkSection (Name pos name) test fields : sections) | name == "if" = do
       test' <- parseConditionConfVar (startOfSection (incPos 2 pos) test) test
@@ -508,7 +506,7 @@ parseCondTree v hasElif grammar commonStanzas fromBuildInfo cond = go
 
     parseElseIfs
       :: [Section Position]
-      -> ParseResult src (Maybe (CondTree ConfVar [Dependency] a), [CondBranch ConfVar [Dependency] a])
+      -> ParseResult src (Maybe (CondTree ConfVar a), [CondBranch ConfVar a])
     parseElseIfs [] = return (Nothing, [])
     parseElseIfs (MkSection (Name pos name) args fields : sections) | name == "else" = do
       unless (null args) $
@@ -525,7 +523,7 @@ parseCondTree v hasElif grammar commonStanzas fromBuildInfo cond = go
           (elseFields, sections') <- parseElseIfs sections
           -- we parse an empty 'Fields', to get empty value for a node
           a <- parseFieldGrammar v mempty grammar
-          return (Just $ CondNode a (cond a) [CondBranch test' fields' elseFields], sections')
+          return (Just $ CondNode a [CondBranch test' fields' elseFields], sections')
     parseElseIfs (MkSection (Name pos name) _ _ : sections) | name == "elif" = do
       parseWarning pos PWTInvalidSubsection "invalid subsection \"elif\". You should set cabal-version: 2.2 or larger to use elif-conditionals."
       (,) Nothing <$> parseIfs sections
@@ -593,7 +591,7 @@ with new AST, this all need to be rewritten.
 -- The approach is simple, and have good properties:
 --
 -- * Common stanzas are parsed exactly once, even if not-used. Thus we report errors in them.
-type CondTreeBuildInfo = CondTree ConfVar [Dependency] BuildInfo
+type CondTreeBuildInfo = CondTree ConfVar BuildInfo
 
 -- | Create @a@ from 'BuildInfo'.
 -- This class is used to implement common stanza parsing.
@@ -635,10 +633,10 @@ parseCondTreeWithCommonStanzas
   -> Map String CondTreeBuildInfo
   -- ^ common stanzas
   -> [Field Position]
-  -> ParseResult src (CondTree ConfVar [Dependency] a)
+  -> ParseResult src (CondTree ConfVar a)
 parseCondTreeWithCommonStanzas v grammar fromBuildInfo commonStanzas fields = do
   (fields', endo) <- processImports v fromBuildInfo commonStanzas fields
-  x <- parseCondTree v hasElif grammar commonStanzas fromBuildInfo (view L.targetBuildDepends) fields'
+  x <- parseCondTree v hasElif grammar commonStanzas fromBuildInfo fields'
   return (endo x)
   where
     hasElif = specHasElif v
@@ -652,7 +650,7 @@ processImports
   -> Map String CondTreeBuildInfo
   -- ^ common stanzas
   -> [Field Position]
-  -> ParseResult src ([Field Position], CondTree ConfVar [Dependency] a -> CondTree ConfVar [Dependency] a)
+  -> ParseResult src ([Field Position], CondTree ConfVar a -> CondTree ConfVar a)
 processImports v fromBuildInfo commonStanzas = go []
   where
     hasCommonStanzas = specHasCommonStanzas v
@@ -695,11 +693,11 @@ warnImport _ f = pure (Just f)
 mergeCommonStanza
   :: L.HasBuildInfo a
   => (BuildInfo -> a)
-  -> CondTree ConfVar [Dependency] BuildInfo
-  -> CondTree ConfVar [Dependency] a
-  -> CondTree ConfVar [Dependency] a
-mergeCommonStanza fromBuildInfo (CondNode bi _ bis) (CondNode x _ cs) =
-  CondNode x' (x' ^. L.targetBuildDepends) cs'
+  -> CondTree ConfVar BuildInfo
+  -> CondTree ConfVar a
+  -> CondTree ConfVar a
+mergeCommonStanza fromBuildInfo (CondNode bi bis) (CondNode x cs) =
+  CondNode x' cs'
   where
     -- new value is old value with buildInfo field _prepended_.
     x' = x & L.buildInfo %~ (bi <>)
@@ -712,7 +710,7 @@ mergeCommonStanza fromBuildInfo (CondNode bi _ bis) (CondNode x _ cs) =
 -------------------------------------------------------------------------------
 
 -- Check that a property holds on all branches of a condition tree
-onAllBranches :: forall v c a. Monoid a => (a -> Bool) -> CondTree v c a -> Bool
+onAllBranches :: forall v a. Monoid a => (a -> Bool) -> CondTree v a -> Bool
 onAllBranches p = go mempty
   where
     -- If the current level of the tree satisfies the property, then we are
@@ -720,13 +718,13 @@ onAllBranches p = go mempty
     -- must satisfy it. Each node may have multiple immediate children; we only
     -- one need one to satisfy the property because the configure step uses
     -- 'mappend' to join together the results of flag resolution.
-    go :: a -> CondTree v c a -> Bool
+    go :: a -> CondTree v a -> Bool
     go acc ct =
       let acc' = acc `mappend` condTreeData ct
        in p acc' || any (goBranch acc') (condTreeComponents ct)
 
     -- Both the 'true' and the 'false' block must satisfy the property.
-    goBranch :: a -> CondBranch v c a -> Bool
+    goBranch :: a -> CondBranch v a -> Bool
     goBranch _ (CondBranch _ _ Nothing) = False
     goBranch acc (CondBranch _ t (Just e)) = go acc t && go acc e
 
@@ -750,7 +748,7 @@ checkForUndefinedFlags gpd = do
       "These flags are used without having been defined: "
         ++ intercalate ", " [unFlagName fn | fn <- Set.toList $ usedFlags `Set.difference` definedFlags]
   where
-    f :: CondTree ConfVar c a -> Const (Set.Set FlagName) (CondTree ConfVar c a)
+    f :: CondTree ConfVar a -> Const (Set.Set FlagName) (CondTree ConfVar a)
     f ct = Const (Set.fromList (freeVars ct))
 
 -- | Since @cabal-version: 1.24@ one can specify @custom-setup@.

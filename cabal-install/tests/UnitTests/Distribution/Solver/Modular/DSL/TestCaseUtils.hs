@@ -34,6 +34,7 @@ import Distribution.Solver.Compat.Prelude
 import Prelude ()
 
 import Data.List (elemIndex)
+import GHC.Stack (withFrozenCallStack)
 
 -- test-framework
 import Test.Tasty as TF
@@ -252,7 +253,7 @@ mkTestExtLangPC exts langs mPkgConfigDb db label targets result =
     }
 
 runTest :: SolverTest -> TF.TestTree
-runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
+runTest SolverTest{..} = withFrozenCallStack $ askOption $ \(OptionShowSolverLog showSolverLog) ->
   testCase testLabel $ do
     let progress =
           exResolve

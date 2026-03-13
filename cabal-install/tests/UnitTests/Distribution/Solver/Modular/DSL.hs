@@ -78,6 +78,9 @@ import qualified Distribution.Verbosity as C
 import qualified Distribution.Version as C
 import Language.Haskell.Extension (Extension (..), Language (..))
 
+import qualified Distribution.Compat.Lens as L
+import qualified Distribution.Types.BuildInfo.Lens as L
+
 -- cabal-install
 import Distribution.Client.Dependency
 import qualified Distribution.Client.SolverInstallPlan as CI.SolverInstallPlan
@@ -392,9 +395,9 @@ exInst pn v hash deps = ExInst pn v hash (map exInstHash deps)
 -- these packages.
 type ExampleDb = [Either ExampleInstalled ExampleAvailable]
 
-type DependencyTree a = C.CondTree C.ConfVar [C.Dependency] a
+type DependencyTree a = C.CondTree C.ConfVar a
 
-type DependencyComponent a = C.CondBranch C.ConfVar [C.Dependency] a
+type DependencyComponent a = C.CondBranch C.ConfVar a
 
 exDbPkgs :: ExampleDb -> [ExamplePkgName]
 exDbPkgs = map (either exInstName exAvName)
@@ -610,18 +613,19 @@ exAvSrcPkg ex =
     -- any level.
     mkTopLevelCondTree
       :: forall a
-       . Semigroup a
+       . (Semigroup a, L.HasBuildInfo a)
       => a
       -> (C.LibraryVisibility -> C.BuildInfo -> a)
       -> Dependencies
       -> DependencyTree a
     mkTopLevelCondTree defaultTopLevel mkComponent deps =
-      let condNode = mkCondTree mkComponent deps
+      let condNode :: DependencyTree a
+          condNode = mkCondTree mkComponent deps
        in condNode{C.condTreeData = defaultTopLevel <> C.condTreeData condNode}
 
     -- Convert 'Dependencies' into a tree of a specific component type, using
     -- the given function to generate each component.
-    mkCondTree :: (C.LibraryVisibility -> C.BuildInfo -> a) -> Dependencies -> DependencyTree a
+    mkCondTree :: forall a. L.HasBuildInfo a => (C.LibraryVisibility -> C.BuildInfo -> a) -> Dependencies -> DependencyTree a
     mkCondTree mkComponent deps =
       let (libraryDeps, exts, mlang, pcpkgs, buildTools, legacyBuildTools) = splitTopLevel (depsExampleDependencies deps)
           (directDeps, flaggedDeps) = splitDeps libraryDeps
@@ -647,11 +651,7 @@ exAvSrcPkg ex =
               , C.buildable = depsIsBuildable deps
               }
        in C.CondNode
-            { C.condTreeData = component
-            , -- TODO: Arguably, build-tools dependencies should also
-              -- effect constraints on conditional tree. But no way to
-              -- distinguish between them
-              C.condTreeConstraints = map mkDirect directDeps
+            { C.condTreeData = L.set L.targetBuildDepends (map mkDirect directDeps) component
             , C.condTreeComponents = map (mkFlagged mkComponent) flaggedDeps
             }
 
@@ -659,7 +659,9 @@ exAvSrcPkg ex =
     mkDirect (dep, name, vr) = C.Dependency (C.mkPackageName dep) vr (NonEmptySet.singleton name)
 
     mkFlagged
-      :: (C.LibraryVisibility -> C.BuildInfo -> a)
+      :: forall a
+       . L.HasBuildInfo a
+      => (C.LibraryVisibility -> C.BuildInfo -> a)
       -> (ExampleFlagName, Dependencies, Dependencies)
       -> DependencyComponent a
     mkFlagged mkComponent (f, a, b) =
@@ -719,7 +721,7 @@ exAvSrcPkg ex =
       _ -> False
 
 mkSimpleVersion :: ExamplePkgVersion -> C.Version
-mkSimpleVersion n = C.mkVersion [n, 0, 0]
+mkSimpleVersion n = C.mkVersion [n]
 
 mkSimplePkgconfigVersion :: ExamplePkgVersion -> C.PkgconfigVersion
 mkSimplePkgconfigVersion = C.versionToPkgconfigVersion . mkSimpleVersion
@@ -755,7 +757,7 @@ exAvPkgId :: ExampleAvailable -> C.PackageIdentifier
 exAvPkgId ex =
   C.PackageIdentifier
     { pkgName = C.mkPackageName (exAvName ex)
-    , pkgVersion = C.mkVersion [exAvVersion ex, 0, 0]
+    , pkgVersion = C.mkVersion [exAvVersion ex]
     }
 
 exInstInfo :: ExampleInstalled -> IPI.InstalledPackageInfo
@@ -770,7 +772,7 @@ exInstPkgId :: ExampleInstalled -> C.PackageIdentifier
 exInstPkgId ex =
   C.PackageIdentifier
     { pkgName = C.mkPackageName (exInstName ex)
-    , pkgVersion = C.mkVersion [exInstVersion ex, 0, 0]
+    , pkgVersion = C.mkVersion [exInstVersion ex]
     }
 
 exAvIdx :: [ExampleAvailable] -> CI.PackageIndex.PackageIndex UnresolvedSourcePackage

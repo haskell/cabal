@@ -157,7 +157,7 @@ configureAction' flags@NixStyleFlags{..} _extraArgs globalFlags = do
               v
               (fromNubList . projectConfigProgPathExtra $ projectConfigShared cliConfig)
               (flagToMaybe . projectConfigHttpTransport $ projectConfigBuildOnly cliConfig)
-          (CondNode conf imps bs) <-
+          (CondNode (imps, conf) bs) <-
             runRebuild (distProjectRootDirectory . distDirLayout $ baseCtx) $
               readProjectLocalExtraConfig
                 v

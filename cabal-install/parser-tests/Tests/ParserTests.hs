@@ -99,18 +99,18 @@ testPackages :: Assertion
 testPackages = do
   let expected = [".", "packages/packages.cabal"]
   (config, legacy) <- readConfigDefault "packages"
-  assertConfigEquals expected config legacy (projectPackages . condTreeData)
+  assertConfigEquals expected config legacy (projectPackages . snd . condTreeData)
 
 testOptionalPackages :: Assertion
 testOptionalPackages = do
   let expected = [".", "packages/packages.cabal"]
   (config, legacy) <- readConfigDefault "optional-packages"
-  assertConfigEquals expected config legacy (projectPackagesOptional . condTreeData)
+  assertConfigEquals expected config legacy (projectPackagesOptional . snd . condTreeData)
 
 testSourceRepoList :: Assertion
 testSourceRepoList = do
   (config, legacy) <- readConfigDefault "source-repository-packages"
-  assertConfigEquals expected config legacy (projectPackagesRepo . condTreeData)
+  assertConfigEquals expected config legacy (projectPackagesRepo . snd . condTreeData)
   where
     expected =
       [ SourceRepositoryPackage
@@ -134,7 +134,7 @@ testSourceRepoList = do
 testExtraPackages :: Assertion
 testExtraPackages = do
   (config, legacy) <- readConfigDefault "extra-packages"
-  assertConfigEquals expected config legacy (projectPackagesNamed . condTreeData)
+  assertConfigEquals expected config legacy (projectPackagesNamed . snd . condTreeData)
   where
     expected =
       [ PackageVersionConstraint (mkPackageName "a") (OrLaterVersion (mkVersion [0]))
@@ -144,7 +144,7 @@ testExtraPackages = do
 testProjectConfigBuildOnly :: Assertion
 testProjectConfigBuildOnly = do
   (config, legacy) <- readConfigDefault "project-config-build-only"
-  assertConfigEquals expected config legacy (projectConfigBuildOnly . condTreeData)
+  assertConfigEquals expected config legacy (projectConfigBuildOnly . snd . condTreeData)
   where
     expected = ProjectConfigBuildOnly{..}
     projectConfigVerbosity = toFlag (mkVerbosityFlags Verbose)
@@ -177,7 +177,7 @@ testProjectConfigBuildOnly = do
 testProjectConfigShared :: Assertion
 testProjectConfigShared = do
   (config, legacy) <- readConfigDefault "project-config-shared"
-  assertConfigEquals expected config legacy (projectConfigShared . condTreeData)
+  assertConfigEquals expected config legacy (projectConfigShared . snd . condTreeData)
   where
     expected = ProjectConfigShared{..}
     projectConfigDistDir = toFlag "something"
@@ -234,7 +234,7 @@ testProjectConfigShared = do
 testInstallDirs :: Assertion
 testInstallDirs = do
   (config, legacy) <- readConfigDefault "install-dirs"
-  assertConfigEquals expected config legacy (projectConfigInstallDirs . projectConfigShared . condTreeData)
+  assertConfigEquals expected config legacy (projectConfigInstallDirs . projectConfigShared . snd . condTreeData)
   where
     expected =
       InstallDirs
@@ -260,9 +260,9 @@ testInstallDirs = do
 testRemoteRepos :: Assertion
 testRemoteRepos = do
   (config, legacy) <- readConfigDefault "remote-repos"
-  let actualRemoteRepos = (fromNubList . projectConfigRemoteRepos . projectConfigShared . condTreeData) config
+  let actualRemoteRepos = (fromNubList . projectConfigRemoteRepos . projectConfigShared . snd . condTreeData) config
   assertBool "Expected RemoteRepos do not match parsed values" $ compareLists expected actualRemoteRepos compareRemoteRepos
-  assertConfigEquals mempty config legacy (projectConfigLocalNoIndexRepos . projectConfigShared . condTreeData)
+  assertConfigEquals mempty config legacy (projectConfigLocalNoIndexRepos . projectConfigShared . snd . condTreeData)
   where
     expected = [packagesRepository, morePackagesRepository, secureLocalRepository]
     packagesRepository =
@@ -296,9 +296,9 @@ testRemoteRepos = do
 testLocalNoIndexRepos :: Assertion
 testLocalNoIndexRepos = do
   (config, legacy) <- readConfigDefault "local-no-index-repos"
-  let actualLocalRepos = (fromNubList . projectConfigLocalNoIndexRepos . projectConfigShared . condTreeData) config
+  let actualLocalRepos = (fromNubList . projectConfigLocalNoIndexRepos . projectConfigShared . snd . condTreeData) config
   assertBool "Expected LocalNoIndexRepos do not match parsed values" $ compareLists expected actualLocalRepos compareLocalRepos
-  assertConfigEquals mempty config legacy (projectConfigRemoteRepos . projectConfigShared . condTreeData)
+  assertConfigEquals mempty config legacy (projectConfigRemoteRepos . projectConfigShared . snd . condTreeData)
   where
     expected = [myRepository, mySecureRepository]
     myRepository =
@@ -321,12 +321,12 @@ testProjectConfigProvenance :: Assertion
 testProjectConfigProvenance = do
   let expected = Set.singleton (Explicit (ProjectConfigPath $ "cabal.project" :| []))
   (config, legacy) <- readConfigDefault "empty"
-  assertConfigEquals expected config legacy (projectConfigProvenance . condTreeData)
+  assertConfigEquals expected config legacy (projectConfigProvenance . snd . condTreeData)
 
 testProjectConfigLocalPackages :: Assertion
 testProjectConfigLocalPackages = do
   (config, legacy) <- readConfigDefault "project-config-local-packages"
-  assertConfigEquals expected config legacy (projectConfigLocalPackages . condTreeData)
+  assertConfigEquals expected config legacy (projectConfigLocalPackages . snd . condTreeData)
   where
     expected = PackageConfig{..}
     packageConfigProgramPaths = MapLast $ Map.fromList [("ghc", "/tmp/bin/ghc"), ("gcc", "/tmp/bin/gcc")]
@@ -398,7 +398,7 @@ testProjectConfigLocalPackages = do
 testProjectConfigAllPackages :: Assertion
 testProjectConfigAllPackages = do
   (config, legacy) <- readConfigDefault "project-config-all-packages"
-  assertConfigEquals expected config legacy (projectConfigAllPackages . condTreeData)
+  assertConfigEquals expected config legacy (projectConfigAllPackages . snd . condTreeData)
   where
     expected :: PackageConfig
     expected =
@@ -410,7 +410,7 @@ testProjectConfigAllPackages = do
 testProjectConfigSpecificPackages :: Assertion
 testProjectConfigSpecificPackages = do
   (config, legacy) <- readConfigDefault "project-config-specific-packages"
-  assertConfigEquals expected config legacy (projectConfigSpecificPackage . condTreeData)
+  assertConfigEquals expected config legacy (projectConfigSpecificPackage . snd . condTreeData)
   where
     expected = MapMappend $ Map.fromList [("foo", expectedFoo), ("bar", expectedBar), ("baz", expectedBaz)]
     expectedFoo :: PackageConfig
@@ -436,7 +436,7 @@ testProjectConfigSpecificPackages = do
 testAllPackagesConcat :: Assertion
 testAllPackagesConcat = do
   (config, legacy) <- readConfigDefault "all-packages-concat"
-  assertConfigEquals expected config legacy (projectConfigAllPackages . condTreeData)
+  assertConfigEquals expected config legacy (projectConfigAllPackages . snd . condTreeData)
   where
     expected :: PackageConfig
     expected =
@@ -453,7 +453,7 @@ testAllPackagesConcat = do
 testSpecificPackagesConcat :: Assertion
 testSpecificPackagesConcat = do
   (config, legacy) <- readConfigDefault "specific-packages-concat"
-  assertConfigEquals expected config legacy (projectConfigSpecificPackage . condTreeData)
+  assertConfigEquals expected config legacy (projectConfigSpecificPackage . snd . condTreeData)
   where
     expected = MapMappend $ Map.fromList [("foo", expectedFoo)]
     expectedFoo :: PackageConfig
@@ -467,7 +467,7 @@ testSpecificPackagesConcat = do
 testProgramLocationsConcat :: Assertion
 testProgramLocationsConcat = do
   (config, legacy) <- readConfigDefault "program-locations-concat"
-  assertConfigEquals expected config legacy (projectConfigLocalPackages . condTreeData)
+  assertConfigEquals expected config legacy (projectConfigLocalPackages . snd . condTreeData)
   where
     expected :: PackageConfig
     expected =
@@ -478,7 +478,7 @@ testProgramLocationsConcat = do
 testProgramOptionsConcat :: Assertion
 testProgramOptionsConcat = do
   (config, legacy) <- readConfigDefault "program-options-concat"
-  assertConfigEquals expected config legacy (projectConfigLocalPackages . condTreeData)
+  assertConfigEquals expected config legacy (projectConfigLocalPackages . snd . condTreeData)
   where
     expected :: PackageConfig
     expected =
@@ -496,8 +496,8 @@ testProgramOptionsConcat = do
 testRelaxDepsConcat :: Assertion
 testRelaxDepsConcat = do
   (config, legacy) <- readConfigDefault "relax-deps-concat"
-  assertConfigEquals expectedAllowNewer config legacy (projectConfigAllowNewer . projectConfigShared . condTreeData)
-  assertConfigEquals expectedAllowOlder config legacy (projectConfigAllowOlder . projectConfigShared . condTreeData)
+  assertConfigEquals expectedAllowNewer config legacy (projectConfigAllowNewer . projectConfigShared . snd . condTreeData)
+  assertConfigEquals expectedAllowOlder config legacy (projectConfigAllowOlder . projectConfigShared . snd . condTreeData)
   where
     expectedAllowNewer :: Maybe AllowNewer
     expectedAllowNewer =
@@ -522,32 +522,32 @@ testRelaxDepsConcat = do
 testLibraryCoverage :: Assertion
 testLibraryCoverage = do
   (config, legacy) <- readConfigDefault "library-coverage"
-  assertConfigEquals (Flag False) config legacy (packageConfigCoverage . projectConfigLocalPackages . condTreeData)
+  assertConfigEquals (Flag False) config legacy (packageConfigCoverage . projectConfigLocalPackages . snd . condTreeData)
 
 testHaddockAll :: Assertion
 testHaddockAll = do
   (config, legacy) <- readConfigDefault "haddock-all"
-  assertConfigEquals (Flag True) config legacy (packageConfigHaddockExecutables . projectConfigLocalPackages . condTreeData)
-  assertConfigEquals (Flag True) config legacy (packageConfigHaddockTestSuites . projectConfigLocalPackages . condTreeData)
-  assertConfigEquals (Flag True) config legacy (packageConfigHaddockBenchmarks . projectConfigLocalPackages . condTreeData)
-  assertConfigEquals (Flag True) config legacy (packageConfigHaddockForeignLibs . projectConfigLocalPackages . condTreeData)
+  assertConfigEquals (Flag True) config legacy (packageConfigHaddockExecutables . projectConfigLocalPackages . snd . condTreeData)
+  assertConfigEquals (Flag True) config legacy (packageConfigHaddockTestSuites . projectConfigLocalPackages . snd . condTreeData)
+  assertConfigEquals (Flag True) config legacy (packageConfigHaddockBenchmarks . projectConfigLocalPackages . snd . condTreeData)
+  assertConfigEquals (Flag True) config legacy (packageConfigHaddockForeignLibs . projectConfigLocalPackages . snd . condTreeData)
 
 -- | Tests that an explicitly set field can override a value inherited from haddock-all.
 testHaddockAllOverwriteTrue :: Assertion
 testHaddockAllOverwriteTrue = do
   (config, legacy) <- readConfigDefault "haddock-all-overwrite-true"
-  assertConfigEquals (Flag True) config legacy (packageConfigHaddockExecutables . projectConfigLocalPackages . condTreeData)
-  assertConfigEquals (Flag True) config legacy (packageConfigHaddockTestSuites . projectConfigLocalPackages . condTreeData)
-  assertConfigEquals (Flag True) config legacy (packageConfigHaddockBenchmarks . projectConfigLocalPackages . condTreeData)
-  assertConfigEquals (Flag False) config legacy (packageConfigHaddockForeignLibs . projectConfigLocalPackages . condTreeData)
+  assertConfigEquals (Flag True) config legacy (packageConfigHaddockExecutables . projectConfigLocalPackages . snd . condTreeData)
+  assertConfigEquals (Flag True) config legacy (packageConfigHaddockTestSuites . projectConfigLocalPackages . snd . condTreeData)
+  assertConfigEquals (Flag True) config legacy (packageConfigHaddockBenchmarks . projectConfigLocalPackages . snd . condTreeData)
+  assertConfigEquals (Flag False) config legacy (packageConfigHaddockForeignLibs . projectConfigLocalPackages . snd . condTreeData)
 
 testHaddockAllOverwriteFalse :: Assertion
 testHaddockAllOverwriteFalse = do
   (config, legacy) <- readConfigDefault "haddock-all-overwrite-false"
-  assertConfigEquals (Flag True) config legacy (packageConfigHaddockExecutables . projectConfigLocalPackages . condTreeData)
-  assertConfigEquals (Flag False) config legacy (packageConfigHaddockTestSuites . projectConfigLocalPackages . condTreeData)
-  assertConfigEquals (Flag False) config legacy (packageConfigHaddockBenchmarks . projectConfigLocalPackages . condTreeData)
-  assertConfigEquals (Flag False) config legacy (packageConfigHaddockForeignLibs . projectConfigLocalPackages . condTreeData)
+  assertConfigEquals (Flag True) config legacy (packageConfigHaddockExecutables . projectConfigLocalPackages . snd . condTreeData)
+  assertConfigEquals (Flag False) config legacy (packageConfigHaddockTestSuites . projectConfigLocalPackages . snd . condTreeData)
+  assertConfigEquals (Flag False) config legacy (packageConfigHaddockBenchmarks . projectConfigLocalPackages . snd . condTreeData)
+  assertConfigEquals (Flag False) config legacy (packageConfigHaddockForeignLibs . projectConfigLocalPackages . snd . condTreeData)
 
 -------------------------------------------------------------------------------
 -- Test Utilities
