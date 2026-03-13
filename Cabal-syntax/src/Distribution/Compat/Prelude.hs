@@ -13,7 +13,7 @@ module Distribution.Compat.Prelude
 
   --
   -- Prelude is re-exported, following is hidden:
-      module BasePrelude
+    module BasePrelude
 
     -- * Common type-classes
   , Semigroup (..)

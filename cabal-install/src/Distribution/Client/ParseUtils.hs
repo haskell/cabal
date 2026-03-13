@@ -160,7 +160,8 @@ aliasField oldName newName fields =
 
 -- | The description of a section in a config file. It can contain both
 -- fields and optionally further subsections. See also 'FieldDescr'.
-data SectionDescr a = forall b.
+data SectionDescr a
+  = forall b.
   SectionDescr
   { sectionName :: String
   , sectionFields :: [FieldDescr b]
@@ -171,7 +172,8 @@ data SectionDescr a = forall b.
   }
 
 -- | 'FieldGrammar' section description
-data FGSectionDescr g a = forall s.
+data FGSectionDescr g a
+  = forall s.
   FGSectionDescr
   { fgSectionName :: String
   , fgSectionGrammar :: g s s
@@ -245,8 +247,8 @@ ppField name mdef cur
         ( \def ->
             Disp.text "--"
               <+> Disp.text name
-                Disp.<> Disp.colon
-              <+> def
+              Disp.<> Disp.colon
+                <+> def
         )
         mdef
   | otherwise = Disp.text name Disp.<> Disp.colon <+> cur
@@ -432,7 +434,7 @@ ppFgSection secName arg grammar x
     fieldsDoc =
       Disp.vcat
         [ Disp.text fname' <<>> Disp.colon <<>> doc
-        | F.PrettyField _ fname doc <- prettyFields -- TODO: this skips sections
+        | F.PrettyField fname doc <- prettyFields -- TODO: this skips sections
         , let fname' = fromUTF8BS fname
         ]
 

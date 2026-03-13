@@ -2,7 +2,11 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 -----------------------------------------------------------------------------
 
@@ -28,11 +32,13 @@
 -- feature was introduced. It could probably do with being rationalised at some
 -- point to make it simpler.
 module Distribution.Types.PackageDescription
-  ( PackageDescription (..)
+  ( PackageDescription
+  , PackageDescriptionWith (..)
   , license
   , license'
   , buildType
   , emptyPackageDescription
+  , emptyPackageDescriptionAnn
   , hasPublicLib
   , hasLibs
   , allLibraries
@@ -92,7 +98,12 @@ import Distribution.Utils.Path
 import Distribution.Utils.ShortText
 import Distribution.Version
 
+import Distribution.Types.Annotation
+import Distribution.Types.Trivia
+
 import qualified Distribution.SPDX as SPDX
+
+type PackageDescription = PackageDescriptionWith Abst
 
 -- -----------------------------------------------------------------------------
 -- The PackageDescription type
@@ -102,12 +113,12 @@ import qualified Distribution.SPDX as SPDX
 -- which is needed for all packages, such as the package name and version, and
 -- information which is needed for the simple build system only, such as
 -- the compiler options and library name.
-data PackageDescription = PackageDescription
+data PackageDescriptionWith (mod :: ParsingPhase) = PackageDescription
   { -- the following are required by all packages:
 
-    specVersion :: CabalSpecVersion
+    specVersion :: AnnotateWith Positions mod CabalSpecVersion
   -- ^ The version of the Cabal spec that this package description uses.
-  , package :: PackageIdentifier
+  , package :: PackageIdentifierWith mod
   , licenseRaw :: Either SPDX.License License
   , licenseFiles :: [RelativePath Pkg File]
   , copyright :: !ShortText
@@ -151,7 +162,15 @@ data PackageDescription = PackageDescription
   , extraDocFiles :: [RelativePath Pkg File]
   , extraFiles :: [RelativePath Pkg File]
   }
-  deriving (Generic, Show, Read, Eq, Ord, Data)
+
+deriving instance Generic PackageDescription
+deriving instance Show PackageDescription
+deriving instance Read PackageDescription
+deriving instance Eq PackageDescription
+deriving instance Ord PackageDescription
+deriving instance Data PackageDescription
+
+deriving instance Show (PackageDescriptionWith Conc)
 
 instance Binary PackageDescription
 instance Structured PackageDescription
@@ -210,6 +229,45 @@ emptyPackageDescription =
     , licenseRaw = Right UnspecifiedLicense -- TODO:
     , licenseFiles = []
     , specVersion = CabalSpecV1_0
+    , buildTypeRaw = Nothing
+    , copyright = mempty
+    , maintainer = mempty
+    , author = mempty
+    , stability = mempty
+    , testedWith = []
+    , homepage = mempty
+    , pkgUrl = mempty
+    , bugReports = mempty
+    , sourceRepos = []
+    , synopsis = mempty
+    , description = mempty
+    , category = mempty
+    , customFieldsPD = []
+    , setupBuildInfo = Nothing
+    , library = Nothing
+    , subLibraries = []
+    , foreignLibs = []
+    , executables = []
+    , testSuites = []
+    , benchmarks = []
+    , dataFiles = []
+    , dataDir = sameDirectory
+    , extraSrcFiles = []
+    , extraTmpFiles = []
+    , extraDocFiles = []
+    , extraFiles = []
+    }
+
+emptyPackageDescriptionAnn :: PackageDescriptionWith Conc
+emptyPackageDescriptionAnn =
+  PackageDescription
+    { package =
+        PackageIdentifier
+          (Ann IsInserted $ mkPackageName "")
+          (Ann IsInserted $ nullVersion)
+    , licenseRaw = Right UnspecifiedLicense -- TODO:
+    , licenseFiles = []
+    , specVersion = Ann IsInserted CabalSpecV1_0
     , buildTypeRaw = Nothing
     , copyright = mempty
     , maintainer = mempty
@@ -456,7 +514,7 @@ getComponent pkg cname = fromMaybe missingComponent (lookupComponent pkg cname)
 -- -----------------------------------------------------------------------------
 -- Traversal Instances
 
-instance L.HasBuildInfos PackageDescription where
+instance L.HasBuildInfosWith Abst PackageDescription where
   traverseBuildInfos
     f
     ( PackageDescription

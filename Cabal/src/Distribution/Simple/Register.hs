@@ -284,7 +284,6 @@ generateRegistrationInfo verbosity pkg lib lbi clbi inplace reloc distPref packa
       then -- NB: With an inplace installation, the user may run './Setup
       -- build' to update the library files, without reregistering.
       -- In this case, it is critical that the ABI hash not flip.
-
         return
           ( inplaceInstalledPackageInfo
               inplaceDir

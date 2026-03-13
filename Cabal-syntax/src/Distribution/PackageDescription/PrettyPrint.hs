@@ -1,4 +1,8 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 -----------------------------------------------------------------------------
 
@@ -18,7 +22,9 @@ module Distribution.PackageDescription.PrettyPrint
   ( -- * Generic package descriptions
     writeGenericPackageDescription
   , showGenericPackageDescription
+  , showGenericPackageDescriptionAnn
   , ppGenericPackageDescription
+  , ppGenericPackageDescriptionAnn
 
     -- * Package descriptions
   , writePackageDescription
@@ -34,7 +40,8 @@ import Prelude ()
 
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
-import Distribution.FieldGrammar (PrettyFieldGrammar', prettyFieldGrammar)
+import Distribution.FieldGrammar (PrettyFieldGrammar', PrettyFieldGrammarWith', prettyFieldGrammar)
+import Distribution.Fields.Field
 import Distribution.Fields.Pretty
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration (transformAllBuildInfos)
@@ -50,17 +57,21 @@ import Distribution.PackageDescription.FieldGrammar
   , sourceRepoFieldGrammar
   , testSuiteFieldGrammar
   )
+import Distribution.Parsec.Position
 import Distribution.Pretty
 import Distribution.Utils.Generic (writeFileAtomic, writeUTF8File)
 
 import qualified Distribution.PackageDescription.FieldGrammar as FG
 import qualified Distribution.Types.BuildInfo.Lens as L
 import qualified Distribution.Types.SetupBuildInfo.Lens as L
+import Distribution.Types.Trivia
 
 import Text.PrettyPrint (Doc, char, hsep, parens, text)
 
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import qualified Distribution.Compat.NonEmptySet as NES
+
+import Distribution.Types.Annotation
 
 -- | Writes a .cabal file from a generic package description
 writeGenericPackageDescription :: FilePath -> GenericPackageDescription -> IO ()
@@ -72,8 +83,17 @@ showGenericPackageDescription gpd = showFields (const NoComment) $ ppGenericPack
   where
     v = specVersion $ packageDescription gpd
 
+-- | Writes a generic package description to a string
+showGenericPackageDescriptionAnn :: GenericPackageDescriptionWith Conc -> String
+showGenericPackageDescriptionAnn gpd =
+  exactShowFields $
+    filterFields $
+      ppGenericPackageDescriptionAnn v gpd
+  where
+    v = unAnn $ specVersion $ packageDescription gpd
+
 -- | Convert a generic package description to 'PrettyField's.
-ppGenericPackageDescription :: CabalSpecVersion -> GenericPackageDescription -> [PrettyField ()]
+ppGenericPackageDescription :: CabalSpecVersion -> GenericPackageDescription -> [PrettyField]
 ppGenericPackageDescription v gpd0 =
   concat
     [ ppPackageDescription v (packageDescription gpd)
@@ -89,39 +109,113 @@ ppGenericPackageDescription v gpd0 =
   where
     gpd = preProcessInternalDeps (specVersion (packageDescription gpd0)) gpd0
 
-ppPackageDescription :: CabalSpecVersion -> PackageDescription -> [PrettyField ()]
+-- | Convert a generic package description to 'PrettyField's.
+ppGenericPackageDescriptionAnn :: CabalSpecVersion -> GenericPackageDescriptionWith Conc -> [PrettyFieldWith Conc]
+ppGenericPackageDescriptionAnn v gpd0 =
+  concat
+    [ ppPackageDescriptionAnn v (packageDescription gpd)
+    , ppSetupBInfoAnn v (setupBuildInfo (packageDescription gpd))
+    , ppGenPackageFlagsAnn v (genPackageFlags gpd)
+    , ppCondLibraryAnn v (condLibrary gpd)
+    , ppCondSubLibrariesAnn v (condSubLibraries gpd)
+    , ppCondForeignLibsAnn v (condForeignLibs gpd)
+    , ppCondExecutablesAnn v (condExecutables gpd)
+    -- TODO(leana8959): think of a strategy to handle endomorphisms
+    -- , ppCondTestSuitesAnn v (condTestSuites gpd)
+    -- , ppCondBenchmarksAnn v (condBenchmarks gpd)
+    ]
+  where
+    -- TODO(leana8959): handle endomorphisms conversions / validations
+    -- gpd = preProcessInternalDeps (specVersion (packageDescription gpd0)) gpd0
+    gpd = gpd0
+
+ppPackageDescription :: CabalSpecVersion -> PackageDescription -> [PrettyField]
 ppPackageDescription v pd =
   prettyFieldGrammar v packageDescriptionFieldGrammar pd
     ++ ppSourceRepos v (sourceRepos pd)
 
-ppSourceRepos :: CabalSpecVersion -> [SourceRepo] -> [PrettyField ()]
+ppPackageDescriptionAnn :: CabalSpecVersion -> PackageDescriptionWith Conc -> [PrettyFieldWith Conc]
+ppPackageDescriptionAnn v pd =
+  map
+    (\(fname, fdoc) -> PrettyField fname fdoc)
+    (prettyFieldGrammar v packageDescriptionFieldGrammar pd)
+    ++ ppSourceReposAnn v (sourceRepos pd)
+
+ppSourceRepos :: CabalSpecVersion -> [SourceRepo] -> [PrettyField]
 ppSourceRepos = map . ppSourceRepo
 
-ppSourceRepo :: CabalSpecVersion -> SourceRepo -> PrettyField ()
+ppSourceReposAnn :: CabalSpecVersion -> [SourceRepo] -> [PrettyFieldWith Conc]
+ppSourceReposAnn v = concatMap (ppSourceRepoAnn v)
+
+ppSourceRepo :: CabalSpecVersion -> SourceRepo -> PrettyField
 ppSourceRepo v repo =
-  PrettySection () "source-repository" [pretty kind] $
-    prettyFieldGrammar v (sourceRepoFieldGrammar kind) repo
+  PrettySection "source-repository" [pretty kind] $
+    prettyFieldGrammar v (sourceRepoFieldGrammar @Abst kind) repo
   where
     kind = repoKind repo
 
-ppSetupBInfo :: CabalSpecVersion -> Maybe SetupBuildInfo -> [PrettyField ()]
+intoFields
+  :: [((Position, FieldName), (Position, Doc))]
+  -> [PrettyFieldWith Conc]
+intoFields xs = map intoField xs
+  where
+    intoField (name, doc) = (PrettyField name doc)
+
+intoSection
+  :: FieldName
+  -> Maybe Position
+  -> [Doc]
+  -> [((Position, FieldName), (Position, Doc))]
+  -> [PrettyFieldWith Conc]
+intoSection sectionName sectionPos_ sectionArgs xs =
+  let
+    -- all group members have the same sectionPos, drop it.
+    withoutSectionPos = intoFields xs
+   in
+    [ PrettySection (fromMaybe zeroPos sectionPos_, sectionName) sectionArgs withoutSectionPos
+    ]
+
+ppSourceRepoAnn :: CabalSpecVersion -> SourceRepo -> [PrettyFieldWith Conc]
+ppSourceRepoAnn v repo =
+  let field = prettyFieldGrammar v (sourceRepoFieldGrammar @Conc kind) repo
+   in intoSection "source-repository" Nothing [pretty kind] field
+  where
+    kind = repoKind repo
+
+ppSetupBInfo :: CabalSpecVersion -> Maybe SetupBuildInfo -> [PrettyField]
 ppSetupBInfo _ Nothing = mempty
 ppSetupBInfo v (Just sbi)
   | defaultSetupDepends sbi = mempty
   | otherwise =
       pure $
-        PrettySection () "custom-setup" [] $
-          prettyFieldGrammar v (setupBInfoFieldGrammar False) sbi
+        PrettySection "custom-setup" [] $
+          prettyFieldGrammar v (setupBInfoFieldGrammar @Abst False) sbi
 
-ppGenPackageFlags :: CabalSpecVersion -> [PackageFlag] -> [PrettyField ()]
+ppSetupBInfoAnn :: CabalSpecVersion -> Maybe SetupBuildInfo -> [PrettyFieldWith Conc]
+ppSetupBInfoAnn _ Nothing = mempty
+ppSetupBInfoAnn v (Just sbi)
+  | defaultSetupDepends sbi = mempty
+  | otherwise =
+      let fields = prettyFieldGrammar v (setupBInfoFieldGrammar @Conc False) sbi
+       in intoSection "custom-setup" Nothing [] fields
+
+ppGenPackageFlags :: CabalSpecVersion -> [PackageFlag] -> [PrettyField]
 ppGenPackageFlags = map . ppFlag
 
-ppFlag :: CabalSpecVersion -> PackageFlag -> PrettyField ()
-ppFlag v flag@(MkPackageFlag name _ _ _) =
-  PrettySection () "flag" [ppFlagName name] $
-    prettyFieldGrammar v (flagFieldGrammar name) flag
+ppGenPackageFlagsAnn :: CabalSpecVersion -> [PackageFlag] -> [PrettyFieldWith Conc]
+ppGenPackageFlagsAnn v = concatMap (ppFlagAnn v)
 
-ppCondTree2 :: CabalSpecVersion -> PrettyFieldGrammar' s -> CondTree ConfVar s -> [PrettyField ()]
+ppFlag :: CabalSpecVersion -> PackageFlag -> PrettyField
+ppFlag v flag@(MkPackageFlag name _ _ _) =
+  PrettySection "flag" [ppFlagName name] $
+    prettyFieldGrammar v (flagFieldGrammar @Abst name) flag
+
+ppFlagAnn :: CabalSpecVersion -> PackageFlag -> [PrettyFieldWith Conc]
+ppFlagAnn v flag@(MkPackageFlag name _ _ _) =
+  let fields = prettyFieldGrammar v (flagFieldGrammar @Conc name) flag
+   in intoSection "flag" Nothing [ppFlagName name] fields
+
+ppCondTree2 :: CabalSpecVersion -> PrettyFieldGrammar' s -> CondTree ConfVar s -> [PrettyField]
 ppCondTree2 v grammar = go
   where
     -- TODO: recognise elif opportunities
@@ -137,50 +231,118 @@ ppCondTree2 v grammar = go
     ppIf (CondBranch c thenTree (Just elseTree)) =
       -- See #6193
       [ ppIfCondition c (go thenTree)
-      , PrettySection () "else" [] (go elseTree)
+      , PrettySection "else" [] (go elseTree)
       ]
 
-ppCondLibrary :: CabalSpecVersion -> Maybe (CondTree ConfVar Library) -> [PrettyField ()]
+ppCondTree2Ann
+  :: CabalSpecVersion
+  -> PrettyFieldGrammarWith' Conc s
+  -> CondTree ConfVar s
+  -> [PrettyFieldWith Conc]
+ppCondTree2Ann v grammar = go
+  where
+    go (CondNode it ifs) =
+      -- The fields are not contained within conditions
+      let fields = intoFields $ prettyFieldGrammar v grammar it
+       in fields ++ concatMap ppIf ifs
+
+    ppIf (CondBranch c thenTree Nothing)
+      --        | isEmpty thenDoc = mempty
+      | otherwise = [ppIfConditionAnn c thenDoc]
+      where
+        thenDoc = go thenTree
+    ppIf (CondBranch c thenTree (Just elseTree)) =
+      -- See #6193
+      [ ppIfConditionAnn c (go thenTree)
+      , PrettySection (zeroPos, "else") [] (go elseTree)
+      ]
+
+ppCondLibrary :: CabalSpecVersion -> Maybe (CondTree ConfVar Library) -> [PrettyField]
 ppCondLibrary _ Nothing = mempty
 ppCondLibrary v (Just condTree) =
   pure $
-    PrettySection () "library" [] $
+    PrettySection "library" [] $
       ppCondTree2 v (libraryFieldGrammar LMainLibName) condTree
 
-ppCondSubLibraries :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar Library)] -> [PrettyField ()]
+ppCondLibraryAnn :: CabalSpecVersion -> Maybe (CondTree ConfVar (LibraryWith Conc)) -> [PrettyFieldWith Conc]
+ppCondLibraryAnn _ Nothing = mempty
+ppCondLibraryAnn v (Just condTree) =
+  let fields = ppCondTree2Ann v (libraryFieldGrammar LMainLibName) condTree
+      sectionPos_ = sectionPosition $ condTreeData condTree
+   in -- TODO(leana8959): assert that there are no more than one library ?
+      [ PrettySection (fromMaybe zeroPos sectionPos_, "library") [] fields
+      ]
+
+ppCondSubLibraries :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar Library)] -> [PrettyField]
 ppCondSubLibraries v libs =
-  [ PrettySection () "library" [pretty n] $
+  [ PrettySection "library" [pretty n] $
     ppCondTree2 v (libraryFieldGrammar $ LSubLibName n) condTree
   | (n, condTree) <- libs
   ]
 
-ppCondForeignLibs :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar ForeignLib)] -> [PrettyField ()]
+ppCondSubLibrariesAnn :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar (LibraryWith Conc))] -> [PrettyFieldWith Conc]
+ppCondSubLibrariesAnn v libs =
+  [ PrettySection (fromMaybe zeroPos sectionPos_, "library") [pretty n] fields
+  | (n, condTree) <- libs
+  , let fields = ppCondTree2Ann v (libraryFieldGrammar $ LSubLibName n) condTree
+  , let sectionPos_ = sectionPosition $ condTreeData condTree
+  ]
+
+ppCondForeignLibs :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar ForeignLib)] -> [PrettyField]
 ppCondForeignLibs v flibs =
-  [ PrettySection () "foreign-library" [pretty n] $
+  [ PrettySection "foreign-library" [pretty n] $
     ppCondTree2 v (foreignLibFieldGrammar n) condTree
   | (n, condTree) <- flibs
   ]
 
-ppCondExecutables :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar Executable)] -> [PrettyField ()]
+ppCondForeignLibsAnn :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar (ForeignLibWith Conc))] -> [PrettyFieldWith Conc]
+ppCondForeignLibsAnn v flibs =
+  [ PrettySection (zeroPos, "foreign-library") [pretty n] fields
+  | (n, condTree) <- flibs
+  , let fields = ppCondTree2Ann v (foreignLibFieldGrammar n) condTree
+  ]
+
+ppCondExecutables :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar Executable)] -> [PrettyField]
 ppCondExecutables v exes =
-  [ PrettySection () "executable" [pretty n] $
+  [ PrettySection "executable" [pretty n] $
     ppCondTree2 v (executableFieldGrammar n) condTree
   | (n, condTree) <- exes
   ]
 
-ppCondTestSuites :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar TestSuite)] -> [PrettyField ()]
+ppCondExecutablesAnn :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar (ExecutableWith Conc))] -> [PrettyFieldWith Conc]
+ppCondExecutablesAnn v exes =
+  [ PrettySection (zeroPos, "executable") [pretty n] fields
+  | (n, condTree) <- exes
+  , let fields = ppCondTree2Ann v (executableFieldGrammar n) condTree
+  ]
+
+ppCondTestSuites :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar TestSuite)] -> [PrettyField]
 ppCondTestSuites v suites =
-  [ PrettySection () "test-suite" [pretty n] $
+  [ PrettySection "test-suite" [pretty n] $
     ppCondTree2 v testSuiteFieldGrammar (fmap FG.unvalidateTestSuite condTree)
   | (n, condTree) <- suites
   ]
 
-ppCondBenchmarks :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar Benchmark)] -> [PrettyField ()]
+-- ppCondTestSuitesAnn :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar (TestSuiteWith Conc))] -> [PrettyFieldWith Conc]
+-- ppCondTestSuitesAnn v suites =
+--   [ PrettySection "test-suite" [pretty n] $
+--     ppCondTree2Ann v testSuiteFieldGrammar (fmap FG.unvalidateTestSuite condTree)
+--   | (n, condTree) <- suites
+--   ]
+
+ppCondBenchmarks :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar Benchmark)] -> [PrettyField]
 ppCondBenchmarks v suites =
-  [ PrettySection () "benchmark" [pretty n] $
+  [ PrettySection "benchmark" [pretty n] $
     ppCondTree2 v benchmarkFieldGrammar (fmap FG.unvalidateBenchmark condTree)
   | (n, condTree) <- suites
   ]
+
+-- ppCondBenchmarksAnn :: CabalSpecVersion -> [(UnqualComponentName, CondTree ConfVar (BenchmarkWith Conc))] -> [PrettyFieldWith Conc]
+-- ppCondBenchmarksAnn v suites =
+--   [ PrettySection "benchmark" [pretty n] $
+--     ppCondTree2 v benchmarkFieldGrammar (fmap FG.unvalidateBenchmark condTree)
+--   | (n, condTree) <- suites
+--   ]
 
 ppCondition :: Condition ConfVar -> Doc
 ppCondition (Var x) = ppConfVar x
@@ -211,8 +373,11 @@ ppConfVar (Impl c v) = text "impl" <<>> parens (pretty c <+> pretty v)
 ppFlagName :: FlagName -> Doc
 ppFlagName = text . unFlagName
 
-ppIfCondition :: Condition ConfVar -> [PrettyField ()] -> PrettyField ()
-ppIfCondition c = PrettySection () "if" [ppCondition c]
+ppIfCondition :: Condition ConfVar -> [PrettyField] -> PrettyField
+ppIfCondition c = PrettySection "if" [ppCondition c]
+
+ppIfConditionAnn :: Condition ConfVar -> [PrettyFieldWith Conc] -> PrettyFieldWith Conc
+ppIfConditionAnn c = PrettySection (zeroPos, "if") [ppCondition c]
 
 -- | @since 2.0.0.2
 writePackageDescription :: FilePath -> PackageDescription -> IO ()
@@ -310,7 +475,7 @@ showHookedBuildInfo :: HookedBuildInfo -> String
 showHookedBuildInfo (mb_lib_bi, ex_bis) =
   showFields (const NoComment) $
     maybe mempty (prettyFieldGrammar cabalSpecLatest buildInfoFieldGrammar) mb_lib_bi
-      ++ [ PrettySection () "executable:" [pretty name] $
+      ++ [ PrettySection "executable:" [pretty name] $
           prettyFieldGrammar cabalSpecLatest buildInfoFieldGrammar bi
          | (name, bi) <- ex_bis
          ]

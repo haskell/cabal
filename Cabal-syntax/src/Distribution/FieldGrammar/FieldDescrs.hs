@@ -1,5 +1,7 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -26,6 +28,8 @@ import qualified Distribution.Fields as P
 import qualified Distribution.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
+import Distribution.Types.Annotation
+
 -- strict pair
 data SP s = SP
   { pPretty :: !(s -> Disp.Doc)
@@ -33,34 +37,34 @@ data SP s = SP
   }
 
 -- | A collection of field parsers and pretty-printers.
-newtype FieldDescrs s a = F {runF :: Map P.FieldName (SP s)}
+newtype FieldDescrs (m :: ParsingPhase) s a = F {runF :: Map P.FieldName (SP s)}
   deriving (Functor)
 
-instance Applicative (FieldDescrs s) where
+instance Applicative (FieldDescrs m s) where
   pure _ = F mempty
   f <*> x = F (mappend (runF f) (runF x))
 
-singletonF :: P.FieldName -> (s -> Disp.Doc) -> (forall m. P.CabalParsing m => s -> m s) -> FieldDescrs s a
+singletonF :: P.FieldName -> (s -> Disp.Doc) -> (forall m. P.CabalParsing m => s -> m s) -> FieldDescrs phase s a
 singletonF fn f g = F $ Map.singleton fn (SP f g)
 
 -- | Lookup a field value pretty-printer.
-fieldDescrPretty :: FieldDescrs s a -> P.FieldName -> Maybe (s -> Disp.Doc)
+fieldDescrPretty :: FieldDescrs m s a -> P.FieldName -> Maybe (s -> Disp.Doc)
 fieldDescrPretty (F m) fn = pPretty <$> Map.lookup fn m
 
 -- | Lookup a field value parser.
-fieldDescrParse :: P.CabalParsing m => FieldDescrs s a -> P.FieldName -> Maybe (s -> m s)
+fieldDescrParse :: P.CabalParsing m => FieldDescrs mod s a -> P.FieldName -> Maybe (s -> m s)
 fieldDescrParse (F m) fn = (\f -> pParse f) <$> Map.lookup fn m
 
 fieldDescrsToList
   :: P.CabalParsing m
-  => FieldDescrs s a
+  => FieldDescrs mod s a
   -> [(P.FieldName, s -> Disp.Doc, s -> m s)]
 fieldDescrsToList = map mk . Map.toList . runF
   where
     mk (name, SP ppr parse) = (name, ppr, parse)
 
 -- | /Note:/ default values are printed.
-instance FieldGrammar ParsecPretty FieldDescrs where
+instance FieldGrammarWith Abst ParsecPretty FieldDescrs where
   blurFieldGrammar l (F m) = F (fmap blur m)
     where
       blur (SP f g) = SP (f . aview l) (cloneLens l g)
@@ -110,6 +114,11 @@ instance FieldGrammar ParsecPretty FieldDescrs where
   removedIn _ _ x = x
   availableSince _ _ = id
   hiddenField _ = F mempty
+
+  optionalFieldDefAla' = optionalFieldDefAla
+  uniqueFieldAla' = uniqueFieldAla
+  booleanFieldDef' = booleanFieldDef
+  monoidalFieldAla' = monoidalFieldAla
 
 parsecFreeText :: P.CabalParsing m => m String
 parsecFreeText = dropDotLines <$ C.spaces <*> many C.anyChar

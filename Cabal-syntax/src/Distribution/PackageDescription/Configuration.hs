@@ -1,4 +1,8 @@
 -- -Wno-deprecations for use of Map.foldWithKey
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -Wno-deprecations #-}
 
 -----------------------------------------------------------------------------
@@ -53,6 +57,7 @@ import Distribution.PackageDescription.Utils
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.System
+import Distribution.Types.Annotation
 import Distribution.Types.Component
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.DependencyMap
@@ -410,7 +415,7 @@ instance Semigroup PDTagged where
   SubComp n x <> SubComp n' x' | n == n' = SubComp n (x <> x')
   _ <> _ = cabalBug "Cannot combine incompatible tags"
 
-instance L.HasBuildInfo PDTagged where
+instance L.HasBuildInfoWith Abst PDTagged where
   buildInfo f x = case x of
     Lib lib -> Lib <$> L.buildInfo f lib
     SubComp name comp -> SubComp name <$> L.buildInfo f comp
@@ -659,7 +664,7 @@ transformAllBuildDepends
   -> GenericPackageDescription
   -> GenericPackageDescription
 transformAllBuildDepends f =
-  over (L.traverseBuildInfos . L.targetBuildDepends . traverse) f
+  over (L.traverseBuildInfos @Abst . L.targetBuildDepends @Abst . traverse) f
     . over (L.packageDescription . L.setupBuildInfo . traverse . L.setupDepends . traverse) f
 
 -- | Walk a 'GenericPackageDescription' and apply @f@ to all nested
@@ -669,5 +674,5 @@ transformAllBuildDependsN
   -> GenericPackageDescription
   -> GenericPackageDescription
 transformAllBuildDependsN f =
-  over (L.traverseBuildInfos . L.targetBuildDepends) f
+  over (L.traverseBuildInfos @Abst . L.targetBuildDepends @Abst) f
     . over (L.packageDescription . L.setupBuildInfo . traverse . L.setupDepends) f

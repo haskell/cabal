@@ -1287,7 +1287,7 @@ addExtraIncludeLibDirsFromConfigFlags
   :: PackageDescription -> ConfigFlags -> PackageDescription
 addExtraIncludeLibDirsFromConfigFlags pkg_descr cfg =
   let extraBi =
-        mempty
+        (mempty :: BuildInfo)
           { extraLibDirs = configExtraLibDirs cfg
           , extraLibDirsStatic = configExtraLibDirsStatic cfg
           , extraFrameworkDirs = configExtraFrameworkDirs cfg
@@ -1693,7 +1693,6 @@ dependencySatisfiable
           -- those are just True.
             internalDepSatisfiable
           else -- Backward compatibility for the old sublibrary syntax
-
             let depComponentName =
                   CLibName $ LSubLibName $ packageNameToUnqualComponentName depName
                 invisibleLibraries = NES.filter (not . visible) sublibs
@@ -2020,27 +2019,27 @@ configureProfiling verbosity cfg comp = do
           if compilerSupportsProfilingDynamic
             then -- Case 1: We support profiled shared libraries so turn on shared profiling
             -- libraries if the user asked for it.
-            return $ \buildOptions -> apply buildOptions{LBC.withProfLibShared = tryLibProfilingShared}
+              return $ \buildOptions -> apply buildOptions{LBC.withProfLibShared = tryLibProfilingShared}
             else -- Case 2: Compiler doesn't support profiling shared so turn them off
-            do
-              -- If we wanted to enable profiling shared libraries.. tell the
-              -- user we couldn't.
-              when (profilingVanillaSupportedOrUnknown comp && tryLibProfilingShared) $
-                warn
-                  verbosity
-                  ( "The compiler "
-                      ++ showCompilerId comp
-                      ++ " does not support "
-                      ++ "profiling shared objects. Static profiled objects "
-                      ++ "will be built."
-                  )
-              return $ \buildOptions ->
-                let original_options = apply buildOptions
-                 in original_options
-                      { LBC.withProfLibShared = False
-                      , LBC.withProfLib = profilingVanillaSupportedOrUnknown comp && (tryLibProfilingShared || LBC.withProfLib original_options)
-                      , LBC.withDynExe = if LBC.withProfExe original_options then False else LBC.withDynExe original_options
-                      }
+              do
+                -- If we wanted to enable profiling shared libraries.. tell the
+                -- user we couldn't.
+                when (profilingVanillaSupportedOrUnknown comp && tryLibProfilingShared) $
+                  warn
+                    verbosity
+                    ( "The compiler "
+                        ++ showCompilerId comp
+                        ++ " does not support "
+                        ++ "profiling shared objects. Static profiled objects "
+                        ++ "will be built."
+                    )
+                return $ \buildOptions ->
+                  let original_options = apply buildOptions
+                   in original_options
+                        { LBC.withProfLibShared = False
+                        , LBC.withProfLib = profilingVanillaSupportedOrUnknown comp && (tryLibProfilingShared || LBC.withProfLib original_options)
+                        , LBC.withDynExe = if LBC.withProfExe original_options then False else LBC.withDynExe original_options
+                        }
 
         when (tryExeProfiling && not (tryLibProfiling || tryLibProfilingShared)) $ do
           warn
@@ -2630,7 +2629,7 @@ ccLdOptionsBuildInfo cflags ldflags ldflags_static =
       (extraLibDirs', ldflags'') = partition ("-L" `isPrefixOf`) ldflags'
       (extraLibsStatic') = filter ("-l" `isPrefixOf`) ldflags_static
       (extraLibDirsStatic') = filter ("-L" `isPrefixOf`) ldflags_static
-   in mempty
+   in (mempty :: BuildInfo)
         { includeDirs = map (makeSymbolicPath . drop 2) includeDirs'
         , extraLibs = map (drop 2) extraLibs'
         , extraLibDirs = map (makeSymbolicPath . drop 2) extraLibDirs'

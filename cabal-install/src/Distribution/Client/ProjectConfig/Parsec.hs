@@ -43,7 +43,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Utils (debug, noticeDoc)
 import Distribution.Solver.Types.ProjectConfigPath
 import Distribution.System (buildOS)
-import Distribution.Types.CondTree (CondBranch (..), CondTree (..))
+import Distribution.Types.CondTree (CondBranch, CondBranchWith (..), CondTreeWith (..))
 import Distribution.Types.ConfVar (ConfVar (..))
 import Distribution.Types.PackageName (PackageName)
 import Distribution.Utils.Generic (fromUTF8BS, toUTF8BS, validateUTF8)

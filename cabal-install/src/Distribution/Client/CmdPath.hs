@@ -230,7 +230,6 @@ pathAction flags@NixStyleFlags{extraFlags = pathFlags'} cliTargetStrings globalF
   let pathFlags =
         if pathCompiler pathFlags' == NoFlag && pathDirectories pathFlags' == NoFlag
           then -- if not a single key to query is given, query everything!
-
             pathFlags'
               { pathCompiler = Flag True
               , pathDirectories = Flag [minBound .. maxBound]

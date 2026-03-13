@@ -49,6 +49,7 @@ GenericPackageDescription {
   condLibrary = Just
     CondNode {
       condTreeData = Library {
+        sectionPosition = Nothing,
         libName = LMainLibName,
         exposedModules = [
           ModuleName "ElseIf"],
@@ -120,6 +121,7 @@ GenericPackageDescription {
           `Var (OS Linux)`,
           condBranchIfTrue = CondNode {
             condTreeData = Library {
+              sectionPosition = Nothing,
               libName = LMainLibName,
               exposedModules = [],
               reexportedModules = [],
@@ -191,6 +193,7 @@ GenericPackageDescription {
           condBranchIfFalse = Just
             CondNode {
               condTreeData = Library {
+                sectionPosition = Nothing,
                 libName = LMainLibName,
                 exposedModules = [],
                 reexportedModules = [],
@@ -260,6 +263,7 @@ GenericPackageDescription {
                   `Var (OS Windows)`,
                   condBranchIfTrue = CondNode {
                     condTreeData = Library {
+                      sectionPosition = Nothing,
                       libName = LMainLibName,
                       exposedModules = [],
                       reexportedModules = [],
@@ -331,6 +335,7 @@ GenericPackageDescription {
                   condBranchIfFalse = Just
                     CondNode {
                       condTreeData = Library {
+                        sectionPosition = Nothing,
                         libName = LMainLibName,
                         exposedModules = [],
                         reexportedModules = [],

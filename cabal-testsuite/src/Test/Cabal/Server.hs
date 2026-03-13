@@ -450,10 +450,10 @@ readUntilEnd s outerr = go []
       log (outOrErrMsgType outerr) s l
       if end_sigil `isPrefixOf` l
         then -- NB: NOT unlines, we don't want the trailing newline!
-        do
-          exit <- evaluate (parseExit l)
-          _ <- flush (serverAccum s outerr) -- TODO: don't toss this out
-          return (exit, intercalate "\n" (reverse rs))
+          do
+            exit <- evaluate (parseExit l)
+            _ <- flush (serverAccum s outerr) -- TODO: don't toss this out
+            return (exit, intercalate "\n" (reverse rs))
         else do
           accumulate (serverAccum s outerr) l
           go (l : rs)

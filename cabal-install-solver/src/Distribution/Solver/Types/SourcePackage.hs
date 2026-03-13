@@ -10,7 +10,7 @@ import Prelude ()
 import Distribution.Package
          ( PackageId, Package(..) )
 import Distribution.PackageDescription
-         ( GenericPackageDescription(..) )
+         ( GenericPackageDescription )
 
 import Data.ByteString.Lazy (ByteString)
 

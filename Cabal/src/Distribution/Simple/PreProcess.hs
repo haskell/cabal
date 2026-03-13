@@ -688,8 +688,9 @@ ppC2hs bi lbi clbi =
                    | pkg <- pkgs
                    , opt <-
                       ["-I" ++ opt | opt <- Installed.includeDirs pkg]
-                        ++ [ opt | opt@('-' : c : _) <- Installed.ccOptions pkg,
-                           -- c2hs uses the C ABI
+                        ++ [ opt
+                           | opt@('-' : c : _) <- Installed.ccOptions pkg
+                           , -- c2hs uses the C ABI
                            -- We assume that there are only C sources
                            -- and C++ functions are exported via a C
                            -- interface and wrapped in a C source file.

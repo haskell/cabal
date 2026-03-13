@@ -234,7 +234,6 @@ list verbosity packageDBs repos mcompProgdb listFlags pats = do
     else -- Note: this only works because for 'list', one cannot currently
     -- specify any version constraints, so listing all installed
     -- and source ones works.
-
       if null matches
         then notice verbosity "No matches found."
         else putStr $ unlines (map showPackageSummaryInfo matches)
@@ -454,9 +453,9 @@ showPackageDetailedInfo pkginfo =
   renderStyle (style{lineLength = 80, ribbonsPerLine = 1}) $
     char '*'
       <+> pretty (pkgName pkginfo)
-        <<>> maybe Disp.empty (\v -> char '-' Disp.<> pretty v) (selectedVersion pkginfo)
+      <<>> maybe Disp.empty (\v -> char '-' Disp.<> pretty v) (selectedVersion pkginfo)
       <+> text (replicate (16 - length (prettyShow (pkgName pkginfo))) ' ')
-        <<>> parens pkgkind
+      <<>> parens pkgkind
       $+$ nest
         4
         ( vcat

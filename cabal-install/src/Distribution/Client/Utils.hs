@@ -518,7 +518,7 @@ concatMapM :: Monad m => (a -> m [b]) -> [a] -> m [b]
 {-# INLINE concatMapM #-}
 concatMapM op = foldr f (pure [])
   where
-    f x xs = do x' <- op x; if null x' then xs else do { xs' <- xs; pure $ x' ++ xs' }
+    f x xs = do x' <- op x; if null x' then xs else do xs' <- xs; pure $ x' ++ xs'
 
 -- | From Control.Monad.Extra
 --   https://hackage.haskell.org/package/extra-1.7.9

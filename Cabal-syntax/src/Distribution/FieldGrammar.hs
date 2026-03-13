@@ -1,24 +1,32 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- | This module provides a way to specify a grammar of @.cabal@ -like files.
 module Distribution.FieldGrammar
   ( -- * Field grammar type
-    FieldGrammar (..)
+    FieldGrammar
+  , FieldGrammarWith (..)
   , uniqueField
+  , uniqueField'
   , optionalField
   , optionalFieldDef
   , monoidalField
 
     -- * Concrete grammar implementations
   , ParsecFieldGrammar
+  , ParsecFieldGrammarWith
   , ParsecFieldGrammar'
+  , ParsecFieldGrammarWith'
   , parseFieldGrammar
   , parseFieldGrammarCheckingStanzas
   , fieldGrammarKnownFieldList
   , PrettyFieldGrammar
+  , PrettyFieldGrammarWith
   , PrettyFieldGrammar'
+  , PrettyFieldGrammarWith'
   , prettyFieldGrammar
 
     -- * Auxiliary
@@ -47,10 +55,14 @@ import Distribution.FieldGrammar.Newtypes
 import Distribution.FieldGrammar.Parsec
 import Distribution.FieldGrammar.Pretty
 import Distribution.Fields.Field
+import Distribution.Types.Annotation
 import Distribution.Utils.Generic (spanMaybe)
 
-type ParsecFieldGrammar' a = ParsecFieldGrammar a a
-type PrettyFieldGrammar' a = PrettyFieldGrammar a a
+type ParsecFieldGrammarWith' (mod :: ParsingPhase) a = ParsecFieldGrammarWith mod a a
+type PrettyFieldGrammarWith' (mod :: ParsingPhase) a = PrettyFieldGrammarWith mod a a
+
+type ParsecFieldGrammar' a = ParsecFieldGrammarWith Abst a a
+type PrettyFieldGrammar' a = PrettyFieldGrammarWith Abst a a
 
 infixl 5 ^^^
 

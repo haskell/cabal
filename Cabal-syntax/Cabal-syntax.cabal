@@ -113,12 +113,14 @@ library
     Distribution.PackageDescription.Quirks
     Distribution.PackageDescription.Utils
     Distribution.Parsec
+    Distribution.Types.Trivia
     Distribution.Parsec.Error
     Distribution.Parsec.FieldLineStream
     Distribution.Parsec.Position
     Distribution.Parsec.Warning
     Distribution.Parsec.Source
     Distribution.Pretty
+    Distribution.Pretty.ExactDoc
     Distribution.SPDX
     Distribution.SPDX.License
     Distribution.SPDX.LicenseExceptionId
@@ -135,6 +137,7 @@ library
     Distribution.Types.BenchmarkInterface
     Distribution.Types.BenchmarkType
     Distribution.Types.BuildInfo
+    Distribution.Types.Annotation
     Distribution.Types.BuildInfo.Lens
     Distribution.Types.BuildType
     Distribution.Types.Component

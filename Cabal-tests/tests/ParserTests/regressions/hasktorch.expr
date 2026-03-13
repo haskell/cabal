@@ -73,6 +73,7 @@ GenericPackageDescription {
   condLibrary = Just
     CondNode {
       condTreeData = Library {
+        sectionPosition = Nothing,
         libName = LMainLibName,
         exposedModules = [
           ModuleName
@@ -409,6 +410,7 @@ GenericPackageDescription {
           `CNot (Var (PackageFlag (FlagName "lite")))`,
           condBranchIfTrue = CondNode {
             condTreeData = Library {
+              sectionPosition = Nothing,
               libName = LMainLibName,
               exposedModules = [],
               reexportedModules = [
@@ -588,6 +590,7 @@ GenericPackageDescription {
           `Var (PackageFlag (FlagName "cuda"))`,
           condBranchIfTrue = CondNode {
             condTreeData = Library {
+              sectionPosition = Nothing,
               libName = LMainLibName,
               exposedModules = [],
               reexportedModules = [
@@ -840,6 +843,7 @@ GenericPackageDescription {
                 `CNot (Var (PackageFlag (FlagName "lite")))`,
                 condBranchIfTrue = CondNode {
                   condTreeData = Library {
+                    sectionPosition = Nothing,
                     libName = LMainLibName,
                     exposedModules = [],
                     reexportedModules = [
@@ -1029,6 +1033,8 @@ GenericPackageDescription {
       CondNode {
         condTreeData =
         Library {
+          sectionPosition = Just
+            (Position 152 1),
           libName = LSubLibName
             (UnqualComponentName
               "hasktorch-cpu"),
@@ -2520,6 +2526,8 @@ GenericPackageDescription {
             `Var (PackageFlag (FlagName "lite"))`,
             condBranchIfTrue = CondNode {
               condTreeData = Library {
+                sectionPosition = Just
+                  (Position 152 1),
                 libName = LSubLibName
                   (UnqualComponentName
                     "hasktorch-cpu"),
@@ -2591,6 +2599,8 @@ GenericPackageDescription {
               CondNode {
                 condTreeData =
                 Library {
+                  sectionPosition = Just
+                    (Position 152 1),
                   libName = LSubLibName
                     (UnqualComponentName
                       "hasktorch-cpu"),
@@ -4689,6 +4699,8 @@ GenericPackageDescription {
       CondNode {
         condTreeData =
         Library {
+          sectionPosition = Just
+            (Position 246 1),
           libName = LSubLibName
             (UnqualComponentName
               "hasktorch-gpu"),
@@ -6084,6 +6096,8 @@ GenericPackageDescription {
             `Var (PackageFlag (FlagName "lite"))`,
             condBranchIfTrue = CondNode {
               condTreeData = Library {
+                sectionPosition = Just
+                  (Position 246 1),
                 libName = LSubLibName
                   (UnqualComponentName
                     "hasktorch-gpu"),
@@ -6155,6 +6169,8 @@ GenericPackageDescription {
               CondNode {
                 condTreeData =
                 Library {
+                  sectionPosition = Just
+                    (Position 246 1),
                   libName = LSubLibName
                     (UnqualComponentName
                       "hasktorch-gpu"),
@@ -7551,6 +7567,8 @@ GenericPackageDescription {
         "hasktorch-indef-unsigned")
       CondNode {
         condTreeData = Library {
+          sectionPosition = Just
+            (Position 323 1),
           libName = LSubLibName
             (UnqualComponentName
               "hasktorch-indef-unsigned"),
@@ -7999,6 +8017,8 @@ GenericPackageDescription {
         "hasktorch-indef-signed")
       CondNode {
         condTreeData = Library {
+          sectionPosition = Just
+            (Position 367 1),
           libName = LSubLibName
             (UnqualComponentName
               "hasktorch-indef-signed"),
@@ -8458,6 +8478,8 @@ GenericPackageDescription {
         "hasktorch-indef-floating")
       CondNode {
         condTreeData = Library {
+          sectionPosition = Just
+            (Position 413 1),
           libName = LSubLibName
             (UnqualComponentName
               "hasktorch-indef-floating"),

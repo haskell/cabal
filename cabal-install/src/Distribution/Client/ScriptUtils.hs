@@ -143,19 +143,21 @@ import Distribution.System
   ( Platform (..)
   )
 import Distribution.Types.BuildInfo
-  ( BuildInfo (..)
+  ( BuildInfo
+  , BuildInfoWith (..)
   )
 import Distribution.Types.ComponentId
   ( mkComponentId
   )
 import Distribution.Types.CondTree
-  ( CondTree (..)
+  ( CondTreeWith (..)
   )
 import Distribution.Types.Executable
   ( Executable (..)
   )
 import Distribution.Types.GenericPackageDescription as GPD
-  ( GenericPackageDescription (..)
+  ( GenericPackageDescription
+  , GenericPackageDescriptionWith (..)
   , emptyGenericPackageDescription
   )
 import Distribution.Types.PackageDescription

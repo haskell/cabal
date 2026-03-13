@@ -49,14 +49,14 @@ import Distribution.Solver.Types.Settings
   , StrongFlags (..)
   )
 import Distribution.System (OS (..), buildOS)
-import Distribution.Types.CondTree (CondTree (..))
+import Distribution.Types.CondTree (CondTreeWith (..))
 import Distribution.Types.Flag (mkFlagAssignment)
 import Distribution.Types.PackageId (PackageIdentifier (..))
 import Distribution.Types.PackageName
 import Distribution.Types.PackageVersionConstraint (PackageVersionConstraint (..))
 import Distribution.Types.SourceRepo (KnownRepoType (..), RepoType (..))
 import Distribution.Types.Version (mkVersion)
-import Distribution.Types.VersionRange.Internal (VersionRange (..))
+import Distribution.Types.VersionRange.Internal (VersionRange, VersionRangeWith (..))
 import Distribution.Utils.NubList
 import Distribution.Verbosity
 import Network.URI (parseURI)

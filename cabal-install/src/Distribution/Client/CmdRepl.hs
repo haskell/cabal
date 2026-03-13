@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
@@ -129,21 +130,24 @@ import Distribution.Solver.Types.SourcePackage
   ( SourcePackage (..)
   )
 import Distribution.Types.BuildInfo
-  ( BuildInfo (..)
+  ( BuildInfo
+  , BuildInfoWith (..)
   , emptyBuildInfo
   )
 import Distribution.Types.ComponentName
   ( componentNameString
   )
 import Distribution.Types.CondTree
-  ( CondTree (..)
+  ( CondTreeWith (..)
   )
 import Distribution.Types.Dependency
-  ( Dependency (..)
+  ( Dependency
+  , DependencyWith (..)
   , mainLibSet
   )
 import Distribution.Types.Library
-  ( Library (..)
+  ( Library
+  , LibraryWith (..)
   , emptyLibrary
   )
 import Distribution.Types.ParStrat
@@ -441,18 +445,18 @@ targetedRepl
         else -- Unfortunately, the best way to do this is to let the normal solver
         -- help us resolve the targets, but that isn't ideal for performance,
         -- especially in the no-project case.
-        withInstallPlan (modifyVerbosityFlags lessVerbose verbosity) baseCtx' $ \elaboratedPlan sharedConfig -> do
-          -- targets should be non-empty map, but there's no NonEmptyMap yet.
-          targets <- validatedTargets' (projectConfigShared (projectConfig ctx)) (pkgConfigCompiler sharedConfig) elaboratedPlan targetSelectors
+          withInstallPlan (modifyVerbosityFlags lessVerbose verbosity) baseCtx' $ \elaboratedPlan sharedConfig -> do
+            -- targets should be non-empty map, but there's no NonEmptyMap yet.
+            targets <- validatedTargets' (projectConfigShared (projectConfig ctx)) (pkgConfigCompiler sharedConfig) elaboratedPlan targetSelectors
 
-          let
-            (unitId, _) = fromMaybe (error "panic: targets should be non-empty") $ safeHead $ Map.toList targets
-            originalDeps = installedUnitId <$> InstallPlan.directDeps elaboratedPlan unitId
-            oci = OriginalComponentInfo unitId originalDeps
-            pkgId = maybe (error $ "cannot find " ++ prettyShow unitId) packageId (InstallPlan.lookup elaboratedPlan unitId)
-            baseCtx'' = addDepsToProjectTarget (envPackages replEnvFlags) pkgId baseCtx'
+            let
+              (unitId, _) = fromMaybe (error "panic: targets should be non-empty") $ safeHead $ Map.toList targets
+              originalDeps = installedUnitId <$> InstallPlan.directDeps elaboratedPlan unitId
+              oci = OriginalComponentInfo unitId originalDeps
+              pkgId = maybe (error $ "cannot find " ++ prettyShow unitId) packageId (InstallPlan.lookup elaboratedPlan unitId)
+              baseCtx'' = addDepsToProjectTarget (envPackages replEnvFlags) pkgId baseCtx'
 
-          return (Just oci, baseCtx'')
+            return (Just oci, baseCtx'')
 
     -- Now, we run the solver again with the added packages. While the graph
     -- won't actually reflect the addition of transitive dependencies,
@@ -730,7 +734,7 @@ addDepsToProjectTarget deps pkgId ctx =
                   -- occurrences of the field `targetBuildDepends`. It ensures that
                   -- fields depending on the latter are also consistently updated.
                   srcpkgDescription
-                    & (L.traverseBuildInfos . L.targetBuildDepends)
+                    & (L.traverseBuildInfos @Abst . L.targetBuildDepends @Abst)
                       %~ (deps ++)
               }
     addDeps spec = spec

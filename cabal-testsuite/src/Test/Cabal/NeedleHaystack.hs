@@ -192,11 +192,11 @@ normalizePathSeparators =
   where
     normalizePathSeparator p =
       if
-          | any (isJust . parseURI) (tails p) -> p
-          | buildOS == Windows ->
-              [if Posix.isPathSeparator c then Windows.pathSeparator else c | c <- p]
-          | otherwise ->
-              [if Windows.isPathSeparator c then Posix.pathSeparator else c | c <- p]
+        | any (isJust . parseURI) (tails p) -> p
+        | buildOS == Windows ->
+            [if Posix.isPathSeparator c then Windows.pathSeparator else c | c <- p]
+        | otherwise ->
+            [if Windows.isPathSeparator c then Posix.pathSeparator else c | c <- p]
 
 -- | @unlines@ from base will add a trailing newline if there isn't one already
 -- but this one doesn't
@@ -260,9 +260,9 @@ delimitLines output =
       ( \c acc ->
           c
             : if
-                | "\n" == acc -> "$\n"
-                | ("\n" `isPrefixOf` acc) -> "$\n^" ++ drop 1 acc
-                | otherwise -> acc
+              | "\n" == acc -> "$\n"
+              | ("\n" `isPrefixOf` acc) -> "$\n^" ++ drop 1 acc
+              | otherwise -> acc
       )
       ""
       output

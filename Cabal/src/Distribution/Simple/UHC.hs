@@ -306,9 +306,9 @@ constructUHCCmdLine user system lbi bi clbi odir verbosity =
     u = interpretSymbolicPathCWD -- See Note [Symbolic paths] in Distribution.Utils.Path
     vFlags =
       if
-          | verbosityLevel verbosity >= Deafening -> ["-v4"]
-          | verbosityLevel verbosity < Normal -> ["-v0"]
-          | otherwise -> []
+        | verbosityLevel verbosity >= Deafening -> ["-v4"]
+        | verbosityLevel verbosity < Normal -> ["-v0"]
+        | otherwise -> []
 
 uhcPackageDbOptions :: FilePath -> FilePath -> PackageDBStack -> [String]
 uhcPackageDbOptions user system db =

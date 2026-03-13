@@ -16,7 +16,7 @@ import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 import Distribution.Parsec (parsecLeadingCommaNonEmpty)
-import Distribution.Types.PackageId (PackageId, PackageIdentifier (..))
+import Distribution.Types.PackageId (PackageId, PackageIdentifier, PackageIdentifierWith (..))
 import Distribution.Types.PackageName (PackageName, mkPackageName)
 import Distribution.Types.Version (nullVersion)
 

@@ -250,9 +250,9 @@ outdatedAction flags targetStrings globalFlags =
     $ \_targetCtx ctx targetSelectors -> do
       deps <-
         if
-            | freezeFile -> depsFromFreezeFile verbosity
-            | newFreezeFile -> depsFromProjectContext verbosity (projectConfig ctx)
-            | otherwise -> depsFromLocalPackages verbosity ctx targetSelectors
+          | freezeFile -> depsFromFreezeFile verbosity
+          | newFreezeFile -> depsFromProjectContext verbosity (projectConfig ctx)
+          | otherwise -> depsFromLocalPackages verbosity ctx targetSelectors
 
       debug verbosity $
         "Dependencies loaded: "

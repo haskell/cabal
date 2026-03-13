@@ -24,7 +24,7 @@ import Distribution.Package
   , packageVersion
   , unPackageName
   )
-import Distribution.Types.PackageDescription (PackageDescription (..))
+import Distribution.Types.PackageDescription (PackageDescription, PackageDescriptionWith (..))
 import Distribution.Types.Version (versionNumbers)
 import Distribution.Utils.ShortText (fromShortText)
 

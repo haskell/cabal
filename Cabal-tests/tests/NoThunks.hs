@@ -6,6 +6,7 @@ main = putStrLn "Old GHC, no nothunks"
 #else
 
 {-# LANGUAGE DerivingVia         #-}
+{-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving  #-}
@@ -35,6 +36,7 @@ import Test.Tasty                             (defaultMain, testGroup)
 import Test.Tasty.HUnit                       (assertFailure, testCase)
 
 import Distribution.PackageDescription
+import Distribution.Parsec.Position
 
 import qualified Data.ByteString      as BS
 import qualified Distribution.License as License

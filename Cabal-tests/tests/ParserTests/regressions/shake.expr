@@ -162,6 +162,7 @@ GenericPackageDescription {
   condLibrary = Just
     CondNode {
       condTreeData = Library {
+        sectionPosition = Nothing,
         libName = LMainLibName,
         exposedModules = [
           ModuleName "Development.Shake",
@@ -394,6 +395,7 @@ GenericPackageDescription {
           `Var (PackageFlag (FlagName "portable"))`,
           condBranchIfTrue = CondNode {
             condTreeData = Library {
+              sectionPosition = Nothing,
               libName = LMainLibName,
               exposedModules = [],
               reexportedModules = [],
@@ -463,6 +465,7 @@ GenericPackageDescription {
                 `Var (Impl GHC (EarlierVersion (mkVersion [7,6])))`,
                 condBranchIfTrue = CondNode {
                   condTreeData = Library {
+                    sectionPosition = Nothing,
                     libName = LMainLibName,
                     exposedModules = [],
                     reexportedModules = [],
@@ -535,6 +538,7 @@ GenericPackageDescription {
           condBranchIfFalse = Just
             CondNode {
               condTreeData = Library {
+                sectionPosition = Nothing,
                 libName = LMainLibName,
                 exposedModules = [],
                 reexportedModules = [],
@@ -604,6 +608,7 @@ GenericPackageDescription {
                   `CNot (Var (OS Windows))`,
                   condBranchIfTrue = CondNode {
                     condTreeData = Library {
+                      sectionPosition = Nothing,
                       libName = LMainLibName,
                       exposedModules = [],
                       reexportedModules = [],
@@ -679,6 +684,7 @@ GenericPackageDescription {
           `CNot (Var (OS Windows))`,
           condBranchIfTrue = CondNode {
             condTreeData = Library {
+              sectionPosition = Nothing,
               libName = LMainLibName,
               exposedModules = [],
               reexportedModules = [],

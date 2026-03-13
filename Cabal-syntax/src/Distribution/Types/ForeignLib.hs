@@ -1,9 +1,14 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 module Distribution.Types.ForeignLib
-  ( ForeignLib (..)
+  ( ForeignLib
+  , ForeignLibWith (..)
   , emptyForeignLib
   , foreignLibModules
   , foreignLibIsShared
@@ -30,6 +35,8 @@ import Distribution.Types.UnqualComponentName
 import Distribution.Utils.Path
 import Distribution.Version
 
+import Distribution.Types.Annotation
+
 import Data.Monoid
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
@@ -37,9 +44,11 @@ import qualified Text.Read as Read
 
 import qualified Distribution.Types.BuildInfo.Lens as L
 
+type ForeignLib = ForeignLibWith Abst
+
 -- | A foreign library stanza is like a library stanza, except that
 -- the built code is intended for consumption by a non-Haskell client.
-data ForeignLib = ForeignLib
+data ForeignLibWith (m :: ParsingPhase) = ForeignLib
   { foreignLibName :: UnqualComponentName
   -- ^ Name of the foreign library
   , foreignLibType :: ForeignLibType
@@ -47,7 +56,7 @@ data ForeignLib = ForeignLib
   , foreignLibOptions :: [ForeignLibOption]
   -- ^ What options apply to this foreign library (e.g., are we
   -- merging in all foreign dependencies.)
-  , foreignLibBuildInfo :: BuildInfo
+  , foreignLibBuildInfo :: BuildInfoWith m
   -- ^ Build information for this foreign library.
   , foreignLibVersionInfo :: Maybe LibVersionInfo
   -- ^ Libtool-style version-info data to compute library version.
@@ -61,7 +70,15 @@ data ForeignLib = ForeignLib
   -- This is a list rather than a maybe field so that we can flatten
   -- the condition trees (for instance, when creating an sdist)
   }
-  deriving (Generic, Show, Read, Eq, Ord, Data)
+
+deriving instance Generic ForeignLib
+deriving instance Show ForeignLib
+deriving instance Read ForeignLib
+deriving instance Eq ForeignLib
+deriving instance Ord ForeignLib
+deriving instance Data ForeignLib
+
+deriving instance Show (ForeignLibWith Conc)
 
 data LibVersionInfo = LibVersionInfo Int Int Int deriving (Data, Eq, Generic)
 
@@ -133,7 +150,7 @@ libVersionNumberShow v =
 libVersionMajor :: LibVersionInfo -> Int
 libVersionMajor (LibVersionInfo c _ a) = c - a
 
-instance L.HasBuildInfo ForeignLib where
+instance L.HasBuildInfoWith mod (ForeignLibWith mod) where
   buildInfo f l = (\x -> l{foreignLibBuildInfo = x}) <$> f (foreignLibBuildInfo l)
 
 instance Binary ForeignLib
@@ -141,6 +158,22 @@ instance Structured ForeignLib
 instance NFData ForeignLib where rnf = genericRnf
 
 instance Semigroup ForeignLib where
+  a <> b =
+    ForeignLib
+      { foreignLibName = combineNames a b foreignLibName "foreign library"
+      , foreignLibType = combine foreignLibType
+      , foreignLibOptions = combine foreignLibOptions
+      , foreignLibBuildInfo = combine foreignLibBuildInfo
+      , foreignLibVersionInfo = chooseLast foreignLibVersionInfo
+      , foreignLibVersionLinux = chooseLast foreignLibVersionLinux
+      , foreignLibModDefFile = combine foreignLibModDefFile
+      }
+    where
+      combine field = field a `mappend` field b
+      -- chooseLast: the second field overrides the first, unless it is Nothing
+      chooseLast field = getLast (Last (field a) <> Last (field b))
+
+instance Semigroup (ForeignLibWith Conc) where
   a <> b =
     ForeignLib
       { foreignLibName = combineNames a b foreignLibName "foreign library"
@@ -169,9 +202,24 @@ instance Monoid ForeignLib where
       }
   mappend = (<>)
 
+instance Monoid (ForeignLibWith Conc) where
+  mempty = emptyForeignLib'
+
 -- | An empty foreign library.
 emptyForeignLib :: ForeignLib
 emptyForeignLib = mempty
+
+emptyForeignLib' :: ForeignLibWith Conc
+emptyForeignLib' =
+  ForeignLib
+    { foreignLibName = mempty
+    , foreignLibType = ForeignLibTypeUnknown
+    , foreignLibOptions = []
+    , foreignLibBuildInfo = mempty
+    , foreignLibVersionInfo = Nothing
+    , foreignLibVersionLinux = Nothing
+    , foreignLibModDefFile = []
+    }
 
 -- | Modules defined by a foreign library.
 foreignLibModules :: ForeignLib -> [ModuleName]

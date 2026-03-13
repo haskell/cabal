@@ -1,0 +1,18 @@
+cabal-version: 3.0
+
+name: small-cabal-file
+version: 0.0.0
+
+library foo
+
+
+
+
+
+  buildable: True
+
+
+  build-depends:
+    text
+     ,
+    base >  4

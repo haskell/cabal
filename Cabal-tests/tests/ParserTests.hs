@@ -1,4 +1,10 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
+
 module Main
     ( main
     ) where
@@ -13,8 +19,9 @@ import Test.Tasty.HUnit
 import Control.Monad                               (void, unless)
 import Data.Algorithm.Diff                         (PolyDiff (..), getGroupedDiff)
 import Data.Maybe                                  (isNothing)
-import Distribution.Fields                         (pwarning)
+import Distribution.Fields                         (pwarning, readFields)
 import Distribution.Fields.Parser                  (readFieldsWithComments', formatError)
+import Distribution.CabalSpecVersion
 import Distribution.PackageDescription
   ( GenericPackageDescription
   , packageDescription
@@ -27,28 +34,50 @@ import Distribution.PackageDescription
   , condTestSuites
   , condBenchmarks
   )
-import Distribution.PackageDescription.Parsec
-  ( parseGenericPackageDescription
-  , parseCommentedGenericPackageDescription
-  )
+import Distribution.PackageDescription.PrettyPrint (ppGenericPackageDescriptionAnn)
+import Distribution.PackageDescription.FieldGrammar(buildInfoFieldGrammar, miniBuildInfoFieldGrammar, MiniBuildInfo (..))
+import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription, parseGenericPackageDescriptionPrim, sectionizeFields, takeFields,  parseCommentedGenericPackageDescription)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
-import Distribution.Parsec                         (PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
-import Distribution.Pretty                         (prettyShow)
+import Distribution.Parsec                         (Parsec (..), explicitEitherParsec', PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
+import Distribution.Pretty                         (Pretty (..), prettyShow)
+import Distribution.Fields.Parser                  (readFields')
 import Distribution.Fields.ParseResult
+import Distribution.Fields.Pretty                  (PrettyFieldWith (..), exactShowFields, filterFields)
+import Distribution.FieldGrammar.Parsec            (ParsecFieldGrammar, parseFieldGrammar)
+import Distribution.FieldGrammar.Pretty            (prettyFieldGrammar)
 import Distribution.Utils.Generic                  (fromUTF8BS, toUTF8BS)
 import System.Directory                            (setCurrentDirectory)
 import System.Environment                          (getArgs, withArgs)
 import System.FilePath                             (replaceExtension, (</>))
 import Distribution.Parsec.Source
 
+import Distribution.Types.Annotation
+import Distribution.Types.Dependency (DependencyAnn)
+import Distribution.Types.PackageName (PackageName)
+import Distribution.FieldGrammar.Newtypes
+  ( CommaVCat
+  , CommaFSep
+  , VCat
+  , FSep
+  , NoCommaFSep
+  , ListAnn
+  )
+
+import Data.Functor ((<&>))
+import Data.Functor.Identity (Identity)
+import Control.Monad (unless)
 import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.List.NonEmpty    as NE
 
+-- NOTE(leana8959): remove this after demo is done
+import Text.Pretty.Simple
+
 import qualified Distribution.InstalledPackageInfo as IPI
 
 #ifdef MIN_VERSION_tree_diff
-import Data.TreeDiff                 (ansiWlEditExpr, ediff, toExpr)
+import Data.TreeDiff                 (ansiWlEditExpr, ansiWlEditExprCompact, ediff, toExpr)
+import Data.TreeDiff.Class           (ToExpr)
 import Data.TreeDiff.Golden          (ediffGolden)
 import Data.TreeDiff.Instances.Cabal ()
 #endif
@@ -60,6 +89,10 @@ tests = testGroup "parsec tests"
     , commentTests
     , errorTests
     , ipiTests
+    , parsecPrettyTests
+    -- , miniBuildInfoAnnTest
+    -- , miniBuildInfoTest
+    , smallCabalFileTest
     ]
 
 -------------------------------------------------------------------------------
@@ -228,6 +261,166 @@ errorTest fp = cabalGoldenTest fp correct $ do
     correct = replaceExtension input "errors"
 
 -------------------------------------------------------------------------------
+-- Parsec/Pretty roundtrip test
+-------------------------------------------------------------------------------
+parsecPrettyTests :: TestTree
+parsecPrettyTests = testGroup "parsec pretty roundtrip" $
+  [ CabalSpecV1_0 .. ] <&> \specVer -> testGroup (show specVer) $
+    optionals (specVer >= CabalSpecV2_0)
+      [ parsecPrettyTest @DependencyAnn specVer "Dependency ^>=" "text ^>=   1"
+      , parsecPrettyTest @DependencyAnn specVer "Dependency || and &&" "text (^>=   1 ||    >  2) && == 3"
+      , parsecPrettyTest @DependencyAnn specVer "Dependency ||" "text ^>=   1 ||    >  2"
+      ]
+    ++
+      [ parsecPrettyTest @DependencyAnn specVer "Dependency ==" "text   == 1"
+      , parsecPrettyTest @DependencyAnn specVer "Dependency >" "text >   1"
+      , parsecPrettyTest @DependencyAnn specVer "Dependency >=" "text >=   1"
+      , parsecPrettyTest @DependencyAnn specVer "Dependency <" "text<   1"
+      , parsecPrettyTest @DependencyAnn specVer "Dependency <=" "text  <=  1"
+      , parsecPrettyTest @DependencyAnn specVer "Dependency || and &&" "text (>=   1 ||    >  2) && == 3"
+      , parsecPrettyTest @DependencyAnn specVer "Dependency ||" "text >=   1 ||    >  2"
+      , parsecPrettyTest @DependencyAnn specVer "Dependency inserted -any" "text"
+      ]
+    ++
+      optionals (specVer < CabalSpecV3_0)
+      [ parsecPrettyTest @DependencyAnn specVer "Dependency -any" "text -any"
+      ]
+    ++ optionals (specVer >= CabalSpecV1_22 && specVer < CabalSpecV3_4)
+      [ parsecPrettyTest @DependencyAnn specVer "Dependency -none" "text -none"
+      ]
+    ++
+      -- Test list combinators using PackageName because it has a simple Parsec instance.
+      parsecPrettyTest @PackageName specVer "PackageName simple" "foo" -- make sure PackageName itself parses.
+      :
+      optionals (specVer >= CabalSpecV2_2)
+        [ parsecPrettyTest @(ListAnn CommaVCat (Identity PackageName) PackageName) specVer "CommaVCat leading" ", foo , bar"
+        , parsecPrettyTest @(ListAnn CommaFSep (Identity PackageName) PackageName) specVer "CommaFSep leading" ", foo , bar"
+        , parsecPrettyTest @(ListAnn CommaVCat (Identity PackageName) PackageName) specVer "CommaVCat trailing" "foo \n , bar  \n, "
+        , parsecPrettyTest @(ListAnn CommaFSep (Identity PackageName) PackageName) specVer "CommaFSep trailing" "foo \n , bar , "
+        ]
+      ++
+      optionals (specVer >= CabalSpecV3_0)
+        [ parsecPrettyTest @(ListAnn VCat (Identity PackageName) PackageName) specVer "VCat leading" ", foo , bar"
+        , parsecPrettyTest @(ListAnn FSep (Identity PackageName) PackageName) specVer "FSep leading" ", foo , bar"
+        ]
+      ++
+        [ parsecPrettyTest @(ListAnn CommaVCat (Identity PackageName) PackageName) specVer "CommaVCat simple" "foo , bar ,   baz"
+        , parsecPrettyTest @(ListAnn CommaVCat (Identity PackageName) PackageName) specVer "CommaVCat newline" "foo ,\n bar ,   baz"
+        , parsecPrettyTest @(ListAnn CommaVCat (Identity PackageName) PackageName) specVer "CommaVCat newline" "foo ,\n bar \n,   baz"
+
+        , parsecPrettyTest @(ListAnn CommaFSep (Identity PackageName) PackageName) specVer "CommaFSep simple" "foo , bar ,   baz"
+        , parsecPrettyTest @(ListAnn CommaFSep (Identity PackageName) PackageName) specVer "CommaFSep newline" "foo ,\n bar ,   baz"
+        , parsecPrettyTest @(ListAnn CommaFSep (Identity PackageName) PackageName) specVer "CommaFSep newline" "foo ,\n bar \n,   baz"
+
+        , parsecPrettyTest @(ListAnn VCat (Identity PackageName) PackageName) specVer "VCat simple" "foo \n bar"
+        , parsecPrettyTest @(ListAnn VCat (Identity PackageName) PackageName) specVer "VCat trailing" "foo \n bar   \n"
+        , parsecPrettyTest @(ListAnn VCat (Identity PackageName) PackageName) specVer "VCat trailing" "foo \n bar  \n\n"
+        , parsecPrettyTest @(ListAnn VCat (Identity PackageName) PackageName) specVer "VCat optional comma" "foo , \n bar  \n\n"
+
+        , parsecPrettyTest @(ListAnn FSep (Identity PackageName) PackageName) specVer "FSep simple" "foo \n bar"
+        , parsecPrettyTest @(ListAnn FSep (Identity PackageName) PackageName) specVer "FSep trailing" "foo \n bar   \n"
+        , parsecPrettyTest @(ListAnn FSep (Identity PackageName) PackageName) specVer "FSep trailing" "foo \n bar  \n\n"
+        , parsecPrettyTest @(ListAnn FSep (Identity PackageName) PackageName) specVer "FSep optional comma" "foo , \n bar  \n\n"
+
+        , parsecPrettyTest @(ListAnn NoCommaFSep (Identity PackageName) PackageName) specVer "NoCommaFSep simple" "foo \n bar"
+        , parsecPrettyTest @(ListAnn NoCommaFSep (Identity PackageName) PackageName) specVer "NoCommaFSep trailing" "foo \n bar   \n"
+        , parsecPrettyTest @(ListAnn NoCommaFSep (Identity PackageName) PackageName) specVer "NoCommaFSep trailing" "foo \n bar  \n\n"
+        , parsecPrettyTest @(ListAnn NoCommaFSep (Identity PackageName) PackageName) specVer "NoCommaFSep optional comma" "foo  \n bar  \n\n"
+      ]
+
+  where
+    optionals cond ifTrue = if cond then ifTrue else []
+
+-- miniBuildInfoAnnTest :: TestTree
+-- miniBuildInfoAnnTest = testCase "miniBuildInfo Ann" $ do
+--   fields <- readFields <$> BS.readFile input >>= \case
+--       Left err -> fail $ "readFields: err"
+--       Right ok -> pure ok
+--
+--   -- We ignore sections now, which necessite goSections to dispatch field gramamr parsers
+--   let (frontFields, _sections) = takeFields fields
+--       pr :: ParseResult src (MiniBuildInfo Conc)
+--       pr = parseFieldGrammar CabalSpecV3_0 Nothing frontFields miniBuildInfoFieldGrammar
+--
+--       (_warns, pr') = runParseResult pr
+--
+--   pr'' <- case pr' of
+--     Left (_, errs) -> fail "ERROR in running field grammar"
+--     Right ok -> pure $ ok
+--
+--   let prettyFields :: [PrettyFieldWith Conc] = prettyFieldGrammar CabalSpecV3_0 miniBuildInfoFieldGrammar pr''
+--   putStrLn
+--     $ exactShowFields prettyFields
+--   where
+--     input = "tests" </> "ParserTests" </> "miniBuildInfoDemo.cabal"
+
+smallCabalFileTest :: TestTree
+smallCabalFileTest = testCase "smallCabalFile" $ do
+  contents <- BS.readFile input
+  let res = withSource (PCabalFile (fp, contents)) $ (parseGenericPackageDescriptionPrim @Conc) contents
+  let (_, x) = runParseResult res
+  gpd <- case x of
+      Right ok -> pure ok
+      Left (_, errs) -> fail $ unlines $ "ERROR" : map (showPErrorWithSource . fmap renderCabalFileSource) (NE.toList errs)
+
+  let prettyFields = ppGenericPackageDescriptionAnn CabalSpecV3_0 gpd
+      prettyFields' = filterFields prettyFields
+
+  pPrint $ prettyFields'
+  putStrLn $ exactShowFields prettyFields'
+  where
+    input = "tests" </> "ParserTests" </> fp
+    fp = "smallCabalFile.cabal"
+
+-- miniBuildInfoTest :: TestTree
+-- miniBuildInfoTest = testCase "miniBuildInfo NoAnn" $ do
+--   fields <- readFields <$> BS.readFile input >>= \case
+--       Left err -> fail $ "readFields: err"
+--       Right ok -> pure ok
+--
+--   -- We ignore sections now, which necessite goSections to dispatch field gramamr parsers
+--   let (frontFields, _sections) = takeFields fields
+--       pr :: ParseResult src (MiniBuildInfo Abst)
+--       pr = parseFieldGrammar CabalSpecV3_0 Nothing frontFields miniBuildInfoFieldGrammar
+--
+--       (_warns, pr') = runParseResult pr
+--
+--   pr'' <- case pr' of
+--     Left (_, errs) -> fail "ERROR in running field grammar"
+--     Right ok -> pure $ ok
+--
+--   pPrint pr''
+--   where
+--     input = "tests" </> "ParserTests" </> "miniBuildInfoDemo.cabal"
+
+parsecPrettyTest :: forall a. (Parsec a, Pretty a) => CabalSpecVersion -> String -> String -> TestTree
+parsecPrettyTest specVer testName input = testCase testName $ do
+    parsed <- case explicitEitherParsec' specVer parsec input of
+      Left err -> fail $ unlines $ "ERROR" : show err : []
+      Right ok -> pure $ ok
+
+    -- TODO(leana8959): should we handle different layout configurations?
+    let reprinted = show (pretty @a parsed)
+
+{- FOURMOLU_DISABLE -}
+    unless (input == reprinted) $
+#ifdef MIN_VERSION_tree_diff
+        assertFailure $ unlines
+            [ "re-parsed doesn't match"
+            , show $ ansiWlEditExpr $ ediff input reprinted
+            ]
+#else
+        assertFailure $ unlines
+            [ "re-printed doesn't match"
+            , "expected"
+            , show input
+            , "actual"
+            , show reprinted
+            ]
+#endif
+{- FOURMOLU_ENABLE -}
+
+-------------------------------------------------------------------------------
 -- Regressions
 -------------------------------------------------------------------------------
 
@@ -280,7 +473,7 @@ regressionTests = testGroup "regressions"
 regressionTest :: FilePath -> TestTree
 regressionTest fp = let formatTests = [ formatGoldenTest fp, formatRoundTripTest fp ] in
 #ifdef MIN_VERSION_tree_diff
-    testGroup fp $ formatTests ++ [ treeDiffGoldenTest fp ]
+    testGroup fp $ formatTests ++ [ mkTreeDiffGoldenTest "regressions" fp ]
 #else
     testGroup fp formatTests
 #endif
@@ -305,8 +498,8 @@ formatGoldenTest fp = cabalGoldenTest "format" correct $ do
     correct = replaceExtension input "format"
 
 #ifdef MIN_VERSION_tree_diff
-treeDiffGoldenTest :: FilePath -> TestTree
-treeDiffGoldenTest fp = ediffGolden goldenTest "expr" exprFile $ do
+mkTreeDiffGoldenTest :: FilePath -> FilePath -> TestTree
+mkTreeDiffGoldenTest goldenFileDir fp = ediffGolden goldenTest "expr" exprFile $ do
   contents <- BS.readFile input
   let res = withSource (PCabalFile (fp, contents)) $ parseGenericPackageDescription contents
   let (_, x) = runParseResult res
@@ -314,7 +507,7 @@ treeDiffGoldenTest fp = ediffGolden goldenTest "expr" exprFile $ do
       Right gpd -> pure (toExpr gpd)
       Left (_, errs) -> fail $ unlines $ "ERROR" : map (showPErrorWithSource . fmap renderCabalFileSource) (NE.toList errs)
   where
-    input = "tests" </> "ParserTests" </> "regressions" </> fp
+    input = "tests" </> "ParserTests" </> goldenFileDir </> fp
     exprFile = replaceExtension input "expr"
 #endif
 
@@ -330,7 +523,7 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
 #ifdef MIN_VERSION_tree_diff
             unlines
                 [ "re-parsed doesn't match"
-                , show $ ansiWlEditExpr $ ediff x y
+                , show $ ansiWlEditExprCompact $ ediff x y
                 ]
 #else
             unlines

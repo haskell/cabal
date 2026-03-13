@@ -1,5 +1,8 @@
 {-# LANGUAGE BangPatterns        #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE CPP                 #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE Rank2Types          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-unused-pattern-binds #-} -- pattern match to assert field count
@@ -18,10 +21,10 @@ import Data.List                                   (isPrefixOf, isSuffixOf)
 import Data.Maybe                                  (mapMaybe)
 import Data.Monoid                                 (Sum (..))
 import Distribution.PackageDescription.Check       (PackageCheck (..), checkPackage)
-import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
+import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription, showGenericPackageDescriptionAnn)
 import Distribution.PackageDescription.Quirks      (patchQuirks)
 import Distribution.PackageDescription
-  ( GenericPackageDescription(GenericPackageDescription)
+  ( GenericPackageDescriptionWith(GenericPackageDescription)
   , packageDescription
   , gpdScannedVersion
   , genPackageFlags
@@ -54,6 +57,8 @@ import qualified Distribution.PackageDescription.Parsec as Parsec
 import qualified Distribution.Parsec                    as Parsec
 import qualified Options.Applicative                    as O
 import qualified System.Clock                           as Clock
+
+import Distribution.Types.Annotation
 
 import           Distribution.Compat.Lens
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
@@ -180,9 +185,34 @@ parseParsecTest keepGoing fpath bs = do
             traverse_ (putStrLn . Parsec.showPErrorWithSource . fmap renderCabalFileSource) errors
             exitFailure
 
+-- Whether we can parse everything with annotation
+parseParsecTest' :: Bool -> FilePath -> B.ByteString -> IO ParsecResult
+parseParsecTest' keepGoing fpath bs = do
+    let (warnings, result) = Parsec.runParseResult $
+                             withSource (PCabalFile (fpath, bs)) $ Parsec.parseGenericPackageDescriptionPrim @Conc bs
+
+    let w | null warnings = 0
+          | otherwise     = 1
+
+    case result of
+        Right gpd                    -> do
+            forEachGPD' fpath bs gpd
+            return (ParsecResult 1 w 0)
+
+        Left (_, errors) | keepGoing -> do
+            traverse_ (putStrLn . Parsec.showPErrorWithSource . fmap renderCabalFileSource) errors
+            return (ParsecResult 1 w 1)
+                         | otherwise -> do
+            traverse_ (putStrLn . Parsec.showPErrorWithSource . fmap renderCabalFileSource) errors
+            exitFailure
+
 -- | A hook to make queries on Hackage
 forEachGPD :: FilePath -> B8.ByteString -> L.GenericPackageDescription -> IO ()
 forEachGPD _ _ _ = return ()
+
+-- | A hook to make queries on Hackage
+forEachGPD' :: FilePath -> B8.ByteString -> (GenericPackageDescriptionWith Conc) -> IO ()
+forEachGPD' _ _ _ = return ()
 
 -------------------------------------------------------------------------------
 -- ParsecResult
@@ -259,45 +289,50 @@ toCheckResult PackageDistInexcusable {}    = CheckResult 0 0 1 0 0 0 0 1
 roundtripTest :: Bool -> FilePath -> B.ByteString -> IO (Sum Int)
 roundtripTest testFieldsTransform fpath bs = do
     x0 <- parse "1st" bs
-    let bs' = showGenericPackageDescription x0
+    let bs' = veryBadExactPrint x0
     y0 <- parse "2nd" (toUTF8BS bs')
+    let bs'' = veryBadExactPrint y0
 
-    -- strip description, there are format variations
-    let y = y0 & L.packageDescription . L.description .~ mempty
-    let x = x0 & L.packageDescription . L.description .~ mempty
+    -- -- strip description, there are format variations
+    -- let y = y0 & L.packageDescription . L.description .~ mempty
+    -- let x = x0 & L.packageDescription . L.description .~ mempty
 
     -- Note: The pattern matching is to ensure this doesn't go unnoticed when new fields are added.
-    let checkField field = assertEqual' bs' (field x) (field y)
-    let (GenericPackageDescription _ _ _ _ _ _ _ _ _) = x0
-    sequence_
-      [ checkField packageDescription
-      , checkField gpdScannedVersion
-      , checkField genPackageFlags
-      , checkField condLibrary
-      , checkField condSubLibraries
-      , checkField condForeignLibs
-      , checkField condExecutables
-      , checkField condTestSuites
-      , checkField condBenchmarks
-      ]
+    -- let checkField field = assertEqual' bs' (field x) (field y)
+    -- let (GenericPackageDescription _ _ _ _ _ _ _ _ _) = x0
+    -- sequence_
+    --   [ checkField packageDescription
+    --   , checkField gpdScannedVersion
+    --   , checkField genPackageFlags
+    --   , checkField condLibrary
+    --   , checkField condSubLibraries
+    --   , checkField condForeignLibs
+    --   , checkField condExecutables
+    --   , checkField condTestSuites
+    --   , checkField condBenchmarks
+    --   ]
 
-    -- fromParsecField, "shallow" parser/pretty roundtrip
-    when testFieldsTransform $
-        if checkUTF8 patchedBs
-        then do
-            parsecFields <- assertRight $ Parsec.readFields patchedBs
-            let prettyFields = PP.fromParsecFields parsecFields
-            let bs'' = PP.showFields (return PP.NoComment) prettyFields
-            z0 <- parse "3rd" (toUTF8BS bs'')
+    -- -- fromParsecField, "shallow" parser/pretty roundtrip
+    -- when testFieldsTransform $
+    --     if checkUTF8 patchedBs
+    --     then do
+    --         parsecFields <- assertRight $ Parsec.readFields patchedBs
+    --         let prettyFields = PP.fromParsecFields parsecFields
+    --         let bs'' = PP.showFields (return PP.NoComment) prettyFields
+    --         z0 <- parse "3rd" (toUTF8BS bs'')
+    --
+    --         -- note: we compare "raw" GPDs, on purpose; stricter equality
+    --         assertEqual' bs'' x0 z0
+    --     else
+    --         putStrLn $ fpath ++ " : looks like invalid UTF8"
 
-            -- note: we compare "raw" GPDs, on purpose; stricter equality
-            assertEqual' bs'' x0 z0
-        else
-            putStrLn $ fpath ++ " : looks like invalid UTF8"
+    let assertEqual u v = unless (u == v) exitFailure
+    assertEqual (B8.unpack bs) bs'
+    -- assertEqual bs' bs''
 
     return (Sum 1)
   where
-    patchedBs = snd (patchQuirks bs)
+    -- patchedBs = snd (patchQuirks bs)
 
     checkUTF8 bs' = replacementChar `notElem` fromUTF8BS bs' where
         replacementChar = '\xfffd'
@@ -326,9 +361,10 @@ roundtripTest testFieldsTransform fpath bs = do
         exitFailure
 
 {- FOURMOLU_DISABLE -}
+    parse :: String -> B8.ByteString -> IO (GenericPackageDescriptionWith Conc)
     parse phase c = do
         let (_, x') = Parsec.runParseResult $
-                      withSource (PCabalFile (fpath, c)) $ Parsec.parseGenericPackageDescription c
+                      withSource (PCabalFile (fpath, c)) $ (Parsec.parseGenericPackageDescriptionPrim @Conc) c
         case x' of
             Right gpd -> pure gpd
             Left (_, errs) -> do
@@ -336,6 +372,12 @@ roundtripTest testFieldsTransform fpath bs = do
                 traverse_ print errs
                 B.putStr c
                 fail "parse error"
+
+    -- When a field doesn't roundtrip, the entire file doesn't roundtrip.
+    -- We only implement very few fields in field grammar and in parsec/pretty instances.
+    -- I'd be lucky that this even works. But Jappie wants this and I'm waiting for the comment parser PR so why not.
+    veryBadExactPrint :: GenericPackageDescriptionWith Conc -> String
+    veryBadExactPrint = showGenericPackageDescriptionAnn
 {- FOURMOLU_ENABLE -}
 
 -------------------------------------------------------------------------------
@@ -361,6 +403,7 @@ main = join (O.execParser opts)
         [ command "read-fields" readFieldsP
           "Parse outer format (to '[Field]', TODO: apply Quirks)"
         , command "parsec"      parsecP     "Parse GPD with parsec"
+        , command "parsec-ann"  parsecP'    "Parse GPD with parsec (with annotation)"
         , command "roundtrip"   roundtripP  "parse . pretty . parse = parse"
         , command "check"       checkP      "Check GPD"
         ] <|> pure defaultA
@@ -373,6 +416,7 @@ main = join (O.execParser opts)
     readFieldsA pfx idx = parseIndex (mkPredicate pfx idx) readFieldTest
 
     parsecP = parsecA <$> prefixP <*> keepGoingP <*> indexP
+    parsecP' = parsecA' <$> prefixP <*> keepGoingP <*> indexP
     keepGoingP =
         O.flag' True  (O.long "keep-going") <|>
         O.flag' False (O.long "no-keep-going") <|>
@@ -381,6 +425,18 @@ main = join (O.execParser opts)
     parsecA pfx keepGoing idx = do
         begin <- Clock.getTime Clock.Monotonic
         ParsecResult n w f <- parseIndex (mkPredicate pfx idx) (parseParsecTest keepGoing)
+        end <- Clock.getTime Clock.Monotonic
+        let diff = Clock.toNanoSecs $ Clock.diffTimeSpec end begin
+
+        putStrLn $ show n ++ " files processed"
+        putStrLn $ show w ++ " files contained warnings"
+        putStrLn $ show f ++ " files failed to parse"
+        putStrLn $ showFFloat (Just 6) (fromInteger diff / 1e9                  :: Double) " seconds elapsed"
+        putStrLn $ showFFloat (Just 6) (fromInteger diff / 1e6 / fromIntegral n :: Double) " milliseconds per file"
+
+    parsecA' pfx keepGoing idx = do
+        begin <- Clock.getTime Clock.Monotonic
+        ParsecResult n w f <- parseIndex (mkPredicate pfx idx) (parseParsecTest' keepGoing)
         end <- Clock.getTime Clock.Monotonic
         let diff = Clock.toNanoSecs $ Clock.diffTimeSpec end begin
 

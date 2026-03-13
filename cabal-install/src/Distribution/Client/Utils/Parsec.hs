@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -73,10 +75,10 @@ alaNubList' _ _ = NubList'
 
 instance Newtype (NubList a) (NubList' sep wrapper a)
 
-instance (Newtype a b, Ord a, Sep sep, Parsec b) => Parsec (NubList' sep b a) where
+instance (Newtype a b, Ord a, Sep Abst sep, Parsec b) => Parsec (NubList' sep b a) where
   parsec = pack . NubList.toNubList . map (unpack :: b -> a) <$> parseSep (Proxy :: Proxy sep) parsec
 
-instance (Newtype a b, Sep sep, Pretty b) => Pretty (NubList' sep b a) where
+instance (Newtype a b, Sep Abst sep, Pretty b) => Pretty (NubList' sep b a) where
   pretty = prettySep (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . NubList.fromNubList . unpack
 
 remoteRepoGrammar :: RepoName -> ParsecFieldGrammar RemoteRepo RemoteRepo

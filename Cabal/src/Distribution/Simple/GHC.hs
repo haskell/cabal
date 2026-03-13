@@ -364,11 +364,11 @@ guessToolFromGhcPath tool ghcProg verbosity searchpath =
         guessGhcVersioned dir suf =
           dir
             </> (toolname ++ "-ghc" ++ suf)
-              <.> exeExtension buildPlatform
+            <.> exeExtension buildPlatform
         guessVersioned dir suf =
           dir
             </> (toolname ++ suf)
-              <.> exeExtension buildPlatform
+            <.> exeExtension buildPlatform
         mkGuesses dir suf
           | null suf = [guessNormal dir]
           | otherwise =
@@ -994,48 +994,48 @@ installLib verbosity lbi targetDir dynlibTargetDir bytecodeTargetDir _builtDir p
           (mkProfSharedLibName platform compiler_id uid)
       DynWay -> do
         if
-            -- The behavior for "extra-bundled-libraries" changed in version 2.5.0.
-            -- See ghc issue #15837 and Cabal PR #5855.
-            | specVersion pkg < CabalSpecV3_0 -> do
-                sequence_
-                  [ installShared
-                    builtDir
-                    dynlibTargetDir
-                    (mkGenericSharedLibName platform compiler_id (l ++ f))
-                  | l <- getHSLibraryName uid : extraBundledLibs (libBuildInfo lib)
-                  , f <- "" : extraDynLibFlavours (libBuildInfo lib)
-                  ]
-            | otherwise -> do
-                sequence_
-                  [ installShared
-                    builtDir
-                    dynlibTargetDir
-                    ( mkGenericSharedLibName
-                        platform
-                        compiler_id
-                        (getHSLibraryName uid ++ f)
-                    )
-                  | f <- "" : extraDynLibFlavours (libBuildInfo lib)
-                  ]
-                sequence_
-                  [ do
-                    files <- listDirectory (i builtDir)
-                    let l' =
-                          mkGenericSharedBundledLibName
-                            platform
-                            compiler_id
-                            (l ++ f)
-                    forM_ files $ \file ->
-                      when (l' `isPrefixOf` file) $ do
-                        isFile <- doesFileExist (i $ builtDir </> makeRelativePathEx file)
-                        when isFile $ do
-                          installShared
-                            builtDir
-                            dynlibTargetDir
-                            file
-                  | l <- extraBundledLibs (libBuildInfo lib)
-                  , f <- "" : extraDynLibFlavours (libBuildInfo lib)
-                  ]
+          -- The behavior for "extra-bundled-libraries" changed in version 2.5.0.
+          -- See ghc issue #15837 and Cabal PR #5855.
+          | specVersion pkg < CabalSpecV3_0 -> do
+              sequence_
+                [ installShared
+                  builtDir
+                  dynlibTargetDir
+                  (mkGenericSharedLibName platform compiler_id (l ++ f))
+                | l <- getHSLibraryName uid : extraBundledLibs (libBuildInfo lib)
+                , f <- "" : extraDynLibFlavours (libBuildInfo lib)
+                ]
+          | otherwise -> do
+              sequence_
+                [ installShared
+                  builtDir
+                  dynlibTargetDir
+                  ( mkGenericSharedLibName
+                      platform
+                      compiler_id
+                      (getHSLibraryName uid ++ f)
+                  )
+                | f <- "" : extraDynLibFlavours (libBuildInfo lib)
+                ]
+              sequence_
+                [ do
+                  files <- listDirectory (i builtDir)
+                  let l' =
+                        mkGenericSharedBundledLibName
+                          platform
+                          compiler_id
+                          (l ++ f)
+                  forM_ files $ \file ->
+                    when (l' `isPrefixOf` file) $ do
+                      isFile <- doesFileExist (i $ builtDir </> makeRelativePathEx file)
+                      when isFile $ do
+                        installShared
+                          builtDir
+                          dynlibTargetDir
+                          file
+                | l <- extraBundledLibs (libBuildInfo lib)
+                , f <- "" : extraDynLibFlavours (libBuildInfo lib)
+                ]
   where
     -- See Note [Symbolic paths] in Distribution.Utils.Path
     i = interpretSymbolicPathLBI lbi

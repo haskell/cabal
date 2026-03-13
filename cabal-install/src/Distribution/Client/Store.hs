@@ -196,28 +196,28 @@ newStoreEntry
         if exists
           then -- If the entry exists then we lost the race and we must abandon,
           -- unlock and re-use the existing store entry.
-          do
-            info verbosity $
-              "Concurrent build race: abandoning build in favour of existing "
-                ++ "store entry "
-                ++ prettyShow compid
-                </> prettyShow unitid
-            return UseExistingStoreEntry
+            do
+              info verbosity $
+                "Concurrent build race: abandoning build in favour of existing "
+                  ++ "store entry "
+                  ++ prettyShow compid
+                  </> prettyShow unitid
+              return UseExistingStoreEntry
           else -- If the entry does not exist then we won the race and can proceed.
-          do
-            -- Register the package into the package db (if appropriate).
-            register
+            do
+              -- Register the package into the package db (if appropriate).
+              register
 
-            -- Atomically rename the temp dir to the final store entry location.
-            renameDirectory incomingEntryDir finalEntryDir
-            for_ otherFiles $ \file -> do
-              let finalStoreFile = storeDirectory compiler </> makeRelative (normalise $ incomingTmpDir </> (dropDrive (storeDirectory compiler))) file
-              createDirectoryIfMissing True (takeDirectory finalStoreFile)
-              renameFile file finalStoreFile
+              -- Atomically rename the temp dir to the final store entry location.
+              renameDirectory incomingEntryDir finalEntryDir
+              for_ otherFiles $ \file -> do
+                let finalStoreFile = storeDirectory compiler </> makeRelative (normalise $ incomingTmpDir </> (dropDrive (storeDirectory compiler))) file
+                createDirectoryIfMissing True (takeDirectory finalStoreFile)
+                renameFile file finalStoreFile
 
-            debug verbosity $
-              "Installed store entry " ++ prettyShow compid </> prettyShow unitid
-            return UseNewStoreEntry
+              debug verbosity $
+                "Installed store entry " ++ prettyShow compid </> prettyShow unitid
+              return UseNewStoreEntry
     where
       compid = compilerId compiler
 

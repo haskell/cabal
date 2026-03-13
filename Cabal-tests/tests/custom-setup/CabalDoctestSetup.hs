@@ -98,8 +98,8 @@ import Data.String
 import Distribution.Package
        (InstalledPackageId, Package (..))
 import Distribution.PackageDescription
-       (BuildInfo (..), Executable (..), GenericPackageDescription,
-       Library (..), PackageDescription, TestSuite (..))
+       (BuildInfoWith (..), Executable, ExecutableWith (..), GenericPackageDescription,
+       Library, LibraryWith (..), PackageDescription, TestSuiteWith (..), BuildInfoWith (..))
 import Distribution.Simple
        (UserHooks (..), autoconfUserHooks, defaultMainWithHooks,
        simpleUserHooks)
@@ -144,7 +144,7 @@ import Distribution.Types.UnqualComponentName
 import Distribution.PackageDescription
        (CondTree (..))
 import Distribution.Types.GenericPackageDescription
-       (GenericPackageDescription (condTestSuites))
+       (GenericPackageDescriptionWith (condTestSuites))
 
 import Distribution.Version
        (mkVersion)

@@ -50,6 +50,7 @@ GenericPackageDescription {
   condLibrary = Just
     CondNode {
       condTreeData = Library {
+        sectionPosition = Nothing,
         libName = LMainLibName,
         exposedModules = [
           ModuleName "ElseIf"],
@@ -137,6 +138,7 @@ GenericPackageDescription {
           `Var (OS Windows)`,
           condBranchIfTrue = CondNode {
             condTreeData = Library {
+              sectionPosition = Nothing,
               libName = LMainLibName,
               exposedModules = [],
               reexportedModules = [],
@@ -211,6 +213,8 @@ GenericPackageDescription {
       (UnqualComponentName "internal")
       CondNode {
         condTreeData = Library {
+          sectionPosition = Just
+            (Position 32 1),
           libName = LSubLibName
             (UnqualComponentName
               "internal"),
@@ -300,6 +304,8 @@ GenericPackageDescription {
             `Var (OS Windows)`,
             condBranchIfTrue = CondNode {
               condTreeData = Library {
+                sectionPosition = Just
+                  (Position 32 1),
                 libName = LSubLibName
                   (UnqualComponentName
                     "internal"),

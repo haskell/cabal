@@ -61,11 +61,11 @@ linkProvision mod_name ret@(prov : provs) (req : reqs) = do
           text "Ambiguous module"
             <+> quotes (pretty mod_name)
             $$ text "It could refer to"
-            <+> ( text "  "
-                    <+> (quotes (pretty mod) $$ in_scope_by (getSource prov))
-                    $$ text "or"
-                    <+> (quotes (pretty mod') $$ in_scope_by (getSource prov'))
-                )
+              <+> ( text "  "
+                      <+> (quotes (pretty mod) $$ in_scope_by (getSource prov))
+                      $$ text "or"
+                        <+> (quotes (pretty mod') $$ in_scope_by (getSource prov'))
+                  )
             $$ link_doc
   mod <- convertModuleU (unWithSource prov)
   req_mod <- convertModuleU (unWithSource req)
@@ -78,7 +78,7 @@ linkProvision mod_name ret@(prov : provs) (req : reqs) = do
               <+> quotes (pretty mod_name)
               <+> in_scope_by (getSource req)
               $$ text "with locally defined module"
-              <+> in_scope_by (getSource prov)
+                <+> in_scope_by (getSource prov)
               $$ text "as this would create a cyclic dependency, which GHC does not support."
               $$ text "Try moving this module to a separate library, e.g.,"
               $$ text "create a new stanza: library 'sublib'."
@@ -96,7 +96,7 @@ linkProvision mod_name ret@(prov : provs) (req : reqs) = do
             ( text "Expected:"
                 <+> pretty mod
                 $$ text "Actual:  "
-                <+> pretty req_mod
+                  <+> pretty req_mod
             )
           $$ parens
             ( text "This can occur if an exposed module of"
@@ -144,7 +144,7 @@ unifyUnitId uid1_u uid2_u
                   ( text "   "
                       <+> pretty u1
                       $$ text "and"
-                      <+> pretty u2
+                        <+> pretty u2
                   )
         (UnitIdThunkU uid1, UnitIdU _ cid2 insts2) ->
           unifyThunkWith cid2 insts2 uid2_u uid1 uid1_u
@@ -185,7 +185,7 @@ unifyInner cid1 insts1 uid1_u cid2 insts2 uid2_u = do
         ( text "   "
             <+> pretty cid1
             $$ text "and"
-            <+> pretty cid2
+              <+> pretty cid2
         )
   -- The KEY STEP which makes this a Huet-style unification
   -- algorithm.  (Also a payoff of using union-find.)
@@ -213,7 +213,7 @@ unifyModule mod1_u mod2_u
                 text "   "
                   <+> pretty mod_name1
                   $$ text "and"
-                  <+> pretty mod_name2
+                    <+> pretty mod_name2
           -- NB: this is not actually necessary (because we'll
           -- detect loops eventually in 'unifyUnitId'), but it
           -- seems harmless enough

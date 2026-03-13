@@ -56,6 +56,7 @@ GenericPackageDescription {
   condLibrary = Just
     CondNode {
       condTreeData = Library {
+        sectionPosition = Nothing,
         libName = LMainLibName,
         exposedModules = [
           ModuleName "\937"],
@@ -127,6 +128,7 @@ GenericPackageDescription {
           `CNot (Var (PackageFlag (FlagName "\\28961")))`,
           condBranchIfTrue = CondNode {
             condTreeData = Library {
+              sectionPosition = Nothing,
               libName = LMainLibName,
               exposedModules = [],
               reexportedModules = [],

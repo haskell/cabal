@@ -41,6 +41,7 @@ GenericPackageDescription {
   condLibrary = Just
     CondNode {
       condTreeData = Library {
+        sectionPosition = Nothing,
         libName = LMainLibName,
         exposedModules = [
           ModuleName "ElseIf"],
@@ -116,6 +117,8 @@ GenericPackageDescription {
       (UnqualComponentName "public")
       CondNode {
         condTreeData = Library {
+          sectionPosition = Just
+            (Position 13 1),
           libName = LSubLibName
             (UnqualComponentName "public"),
           exposedModules = [

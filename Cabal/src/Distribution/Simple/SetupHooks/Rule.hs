@@ -1044,17 +1044,17 @@ instance
       0 -> do
         Typeable.SomeTypeRep (trArg :: Typeable.TypeRep arg) <- get
         if
-            | Just HRefl <- Typeable.eqTypeRep (Typeable.typeRepKind trArg) (Typeable.typeRep @Hs.Type) ->
-                do
-                  ruleCmd <- get @(ruleCmd User arg (IO ()))
-                  return $
-                    Typeable.withTypeable trArg $
-                      StaticRuleCommand
-                        { staticRuleCommand = ruleCmd
-                        , staticRuleArgRep = trArg
-                        }
-            | otherwise ->
-                error "internal error when decoding static rule command"
+          | Just HRefl <- Typeable.eqTypeRep (Typeable.typeRepKind trArg) (Typeable.typeRep @Hs.Type) ->
+              do
+                ruleCmd <- get @(ruleCmd User arg (IO ()))
+                return $
+                  Typeable.withTypeable trArg $
+                    StaticRuleCommand
+                      { staticRuleCommand = ruleCmd
+                      , staticRuleArgRep = trArg
+                      }
+          | otherwise ->
+              error "internal error when decoding static rule command"
       _ -> do
         Typeable.SomeTypeRep (tr :: Typeable.TypeRep ty) <- get
         case tr of

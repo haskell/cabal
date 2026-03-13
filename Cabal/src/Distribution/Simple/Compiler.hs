@@ -24,7 +24,7 @@
 -- not yet fully support this latter feature.
 module Distribution.Simple.Compiler
   ( -- * Haskell implementations
-      module Distribution.Compiler
+    module Distribution.Compiler
   , Compiler (..)
   , showCompilerId
   , showCompilerIdWithAbi

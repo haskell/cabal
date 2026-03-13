@@ -130,6 +130,7 @@ GenericPackageDescription {
   condLibrary = Just
     CondNode {
       condTreeData = Library {
+        sectionPosition = Nothing,
         libName = LMainLibName,
         exposedModules = [
           ModuleName "Generics.SOP",
@@ -289,6 +290,7 @@ GenericPackageDescription {
           `CNot (Var (Impl GHC (OrLaterVersion (mkVersion [7,8]))))`,
           condBranchIfTrue = CondNode {
             condTreeData = Library {
+              sectionPosition = Nothing,
               libName = LMainLibName,
               exposedModules = [],
               reexportedModules = [],
@@ -367,6 +369,7 @@ GenericPackageDescription {
           `CNot (Var (Impl GHC (OrLaterVersion (mkVersion [8,0]))))`,
           condBranchIfTrue = CondNode {
             condTreeData = Library {
+              sectionPosition = Nothing,
               libName = LMainLibName,
               exposedModules = [],
               reexportedModules = [],
@@ -454,6 +457,7 @@ GenericPackageDescription {
           `Var (Impl GHC (OrLaterVersion (mkVersion [7,8])))`,
           condBranchIfTrue = CondNode {
             condTreeData = Library {
+              sectionPosition = Nothing,
               libName = LMainLibName,
               exposedModules = [],
               reexportedModules = [],
@@ -526,6 +530,7 @@ GenericPackageDescription {
           `Var (Impl GHC (EarlierVersion (mkVersion [7,10])))`,
           condBranchIfTrue = CondNode {
             condTreeData = Library {
+              sectionPosition = Nothing,
               libName = LMainLibName,
               exposedModules = [],
               reexportedModules = [],

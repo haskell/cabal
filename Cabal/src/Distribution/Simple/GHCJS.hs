@@ -294,15 +294,15 @@ guessToolFromGhcjsPath tool ghcjsProg verbosity searchpath =
         guessGhcjs dir =
           dir
             </> (toolname ++ "-ghcjs")
-              <.> exeExtension buildPlatform
+            <.> exeExtension buildPlatform
         guessGhcjsVersioned dir suf =
           dir
             </> (toolname ++ "-ghcjs" ++ suf)
-              <.> exeExtension buildPlatform
+            <.> exeExtension buildPlatform
         guessVersioned dir suf =
           dir
             </> (toolname ++ suf)
-              <.> exeExtension buildPlatform
+            <.> exeExtension buildPlatform
         mkGuesses dir suf
           | null suf = [guessGhcjs dir, guessNormal dir]
           | otherwise =

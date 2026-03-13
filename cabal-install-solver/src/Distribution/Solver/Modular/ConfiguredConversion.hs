@@ -9,6 +9,7 @@ import Data.Either (partitionEithers)
 import Distribution.Package (UnitId, packageId)
 
 import qualified Distribution.Simple.PackageIndex as SI
+import Distribution.Types.PackageId (PackageIdentifierWith (..))
 
 import Distribution.Solver.Modular.Configured
 import Distribution.Solver.Modular.Package

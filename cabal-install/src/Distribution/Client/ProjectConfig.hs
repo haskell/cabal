@@ -510,7 +510,7 @@ resolveBuildTimeSettings
           cabalLogsDirectory
             </> "$compiler"
             </> "$libname"
-            <.> "log"
+              <.> "log"
       givenTemplate = flagToMaybe projectConfigLogFile
 
       useDefaultTemplate

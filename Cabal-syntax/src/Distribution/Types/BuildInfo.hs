@@ -1,9 +1,18 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Distribution.Types.BuildInfo
-  ( BuildInfo (..)
+  ( BuildInfo
+  , BuildInfoAnn
+  , BuildInfoWith (..)
+  , unannotateBuildInfo
+  , unannotateDependencyAnn
   , emptyBuildInfo
   , allLanguages
   , allExtensions
@@ -24,17 +33,27 @@ import Distribution.Types.ExeDependency
 import Distribution.Types.LegacyExeDependency
 import Distribution.Types.Mixin
 import Distribution.Types.PkgconfigDependency
+import Distribution.Types.Trivia
 import Distribution.Utils.Path
 
 import Distribution.Compiler
 import Distribution.ModuleName
 import Language.Haskell.Extension
 
+import Distribution.Types.Annotation
+
+type BuildInfo = BuildInfoWith Abst
+type BuildInfoAnn = BuildInfoWith Conc
+
+-- type family TargetBuildDepends (mod :: ParsingPhase) where
+--   TargetBuildDepends Conc = [(Positions, [DependencyWith Conc])]
+--   TargetBuildDepends Abst = [DependencyWith Abst]
+
 -- Consider refactoring into executable and library versions.
-data BuildInfo = BuildInfo
-  { buildable :: Bool
+data BuildInfoWith (m :: ParsingPhase) = BuildInfo
+  { buildable :: PreserveGrouping m (AnnotateWith Positions m Bool)
   -- ^ component is buildable here
-  , buildTools :: [LegacyExeDependency]
+  , buildTools :: MonoidalFieldAla m [AttachPosition m (Annotate m LegacyExeDependency)]
   -- ^ Tools needed to build this bit.
   --
   -- This is a legacy field that 'buildToolDepends' largely supersedes.
@@ -42,7 +61,7 @@ data BuildInfo = BuildInfo
   -- Unless use are very sure what you are doing, use the functions in
   -- "Distribution.Simple.BuildToolDepends" rather than accessing this
   -- field directly.
-  , buildToolDepends :: [ExeDependency]
+  , buildToolDepends :: MonoidalFieldAla m [AttachPosition m (Annotate m ExeDependency)]
   -- ^ Haskell tools needed to build this bit
   --
   -- This field is better than 'buildTools' because it allows one to
@@ -51,40 +70,40 @@ data BuildInfo = BuildInfo
   -- Unless use are very sure what you are doing, use the functions in
   -- "Distribution.Simple.BuildToolDepends" rather than accessing this
   -- field directly.
-  , cppOptions :: [String]
+  , cppOptions :: MonoidalFieldAla m [AttachPosition m (Annotate m String)]
   -- ^ options for pre-processing Haskell code
-  , asmOptions :: [String]
+  , asmOptions :: MonoidalFieldAla m [AttachPosition m (Annotate m String)]
   -- ^ options for assembler
-  , cmmOptions :: [String]
+  , cmmOptions :: MonoidalFieldAla m [AttachPosition m (Annotate m String)]
   -- ^ options for C-- compiler
-  , ccOptions :: [String]
+  , ccOptions :: MonoidalFieldAla m [AttachPosition m (Annotate m String)]
   -- ^ options for C compiler
-  , cxxOptions :: [String]
+  , cxxOptions :: MonoidalFieldAla m [AttachPosition m (Annotate m String)]
   -- ^ options for C++ compiler
-  , jsppOptions :: [String]
+  , jsppOptions :: MonoidalFieldAla m [AttachPosition m (Annotate m String)]
   -- ^ options for pre-processing JavaScript code @since 3.16.0.0
-  , ldOptions :: [String]
+  , ldOptions :: MonoidalFieldAla m [AttachPosition m (Annotate m String)]
   -- ^ options for linker
-  , hsc2hsOptions :: [String]
+  , hsc2hsOptions :: MonoidalFieldAla m [AttachPosition m (Annotate m String)]
   -- ^ options for hsc2hs
-  , pkgconfigDepends :: [PkgconfigDependency]
+  , pkgconfigDepends :: MonoidalFieldAla m [AttachPosition m (Annotate m PkgconfigDependency)]
   -- ^ pkg-config packages that are used
-  , frameworks :: [RelativePath Framework File]
+  , frameworks :: MonoidalFieldAla m [AttachPosition m (Annotate m (RelativePath Framework File))]
   -- ^ support frameworks for Mac OS X
-  , extraFrameworkDirs :: [SymbolicPath Pkg (Dir Framework)]
+  , extraFrameworkDirs :: MonoidalFieldAla m [AttachPosition m (Annotate m (SymbolicPath Pkg (Dir Framework)))]
   -- ^ extra locations to find frameworks.
-  , asmSources :: [SymbolicPath Pkg File]
+  , asmSources :: MonoidalFieldAla m [AttachPosition m (Annotate m (SymbolicPath Pkg File))]
   -- ^ Assembly files.
-  , cmmSources :: [SymbolicPath Pkg File]
+  , cmmSources :: MonoidalFieldAla m [AttachPosition m (Annotate m (SymbolicPath Pkg File))]
   -- ^ C-- files.
-  , cSources :: [SymbolicPath Pkg File]
-  , cxxSources :: [SymbolicPath Pkg File]
-  , jsSources :: [SymbolicPath Pkg File]
-  , hsSourceDirs :: [SymbolicPath Pkg (Dir Source)]
+  , cSources :: MonoidalFieldAla m [AttachPosition m (Annotate m (SymbolicPath Pkg File))]
+  , cxxSources :: MonoidalFieldAla m [AttachPosition m (Annotate m (SymbolicPath Pkg File))]
+  , jsSources :: MonoidalFieldAla m [AttachPosition m (Annotate m (SymbolicPath Pkg File))]
+  , hsSourceDirs :: MonoidalFieldAla m [AttachPosition m (Annotate m (SymbolicPath Pkg (Dir Source)))]
   -- ^ where to look for the Haskell module hierarchy
   , -- NB: these are symbolic paths are not relative paths,
     -- because autogenerated modules might end up in an absolute path
-    otherModules :: [ModuleName]
+    otherModules :: MonoidalFieldAla m [AttachPosition m (Annotate m ModuleName)]
   -- ^ non-exposed or non-main modules
   , virtualModules :: [ModuleName]
   -- ^ exposed modules that do not have a source file (e.g. @GHC.Prim@ from @ghc-prim@ package)
@@ -142,15 +161,54 @@ data BuildInfo = BuildInfo
   -- ^ Custom fields starting
   --  with x-, stored in a
   --  simple assoc-list.
-  , targetBuildDepends :: [Dependency]
+  , targetBuildDepends :: MonoidalFieldAla m [AttachPosition m (Annotate m (DependencyWith m))]
   -- ^ Dependencies specific to a library or executable target
   , mixins :: [Mixin]
   }
-  deriving (Generic, Show, Read, Eq, Ord, Data)
+  deriving (Generic)
+
+deriving instance Show BuildInfo
+deriving instance Read BuildInfo
+deriving instance Eq BuildInfo
+deriving instance Ord BuildInfo
+deriving instance Data BuildInfo
+
+deriving instance Show (BuildInfoWith Conc)
 
 instance Binary BuildInfo
 instance Structured BuildInfo
 instance NFData BuildInfo where rnf = genericRnf
+
+unannotateBuildInfo :: BuildInfoAnn -> BuildInfo
+unannotateBuildInfo bi =
+  let unannotateMonoidalField = map (unAnn . snd) . join . map snd
+   in bi
+        { buildable = foldl (&&) False $ map unAnn $ buildable bi
+        , buildTools = unannotateMonoidalField $ buildTools bi
+        , buildToolDepends = unannotateMonoidalField $ buildToolDepends bi
+        , cppOptions = unannotateMonoidalField $ cppOptions bi
+        , asmOptions = unannotateMonoidalField $ asmOptions bi
+        , cmmOptions = unannotateMonoidalField $ cmmOptions bi
+        , ccOptions = unannotateMonoidalField $ ccOptions bi
+        , cxxOptions = unannotateMonoidalField $ cxxOptions bi
+        , jsppOptions = unannotateMonoidalField $ jsppOptions bi
+        , ldOptions = unannotateMonoidalField $ ldOptions bi
+        , hsc2hsOptions = unannotateMonoidalField $ hsc2hsOptions bi
+        , pkgconfigDepends = unannotateMonoidalField $ pkgconfigDepends bi
+        , frameworks = unannotateMonoidalField $ frameworks bi
+        , extraFrameworkDirs = unannotateMonoidalField $ extraFrameworkDirs bi
+        , asmSources = unannotateMonoidalField $ asmSources bi
+        , cmmSources = unannotateMonoidalField $ cmmSources bi
+        , cSources = unannotateMonoidalField $ cSources bi
+        , cxxSources = unannotateMonoidalField $ cxxSources bi
+        , jsSources = unannotateMonoidalField $ jsSources bi
+        , hsSourceDirs = unannotateMonoidalField $ hsSourceDirs bi
+        , otherModules = unannotateMonoidalField $ otherModules bi
+        , -- TODO(leana8959): add more fields here
+
+          -- [(Positions, (Position, Ann t dep))]
+          targetBuildDepends = map (unannotateDependencyAnn . unAnn . snd) $ join $ map snd $ targetBuildDepends bi
+        }
 
 instance Monoid BuildInfo where
   mempty =
@@ -206,6 +264,9 @@ instance Monoid BuildInfo where
       }
   mappend = (<>)
 
+instance Monoid (BuildInfoWith Conc) where
+  mempty = emptyBuildInfo'
+
 instance Semigroup BuildInfo where
   a <> b =
     BuildInfo
@@ -259,12 +320,124 @@ instance Semigroup BuildInfo where
       , mixins = combine mixins
       }
     where
+      combine :: Monoid a => (BuildInfo -> a) -> a
+      combine field = field a `mappend` field b
+      combineNub field = nub (combine field)
+      combineMby field = field b `mplus` field a
+
+instance Semigroup (BuildInfoWith Conc) where
+  a <> b =
+    BuildInfo
+      { buildable = combine buildable
+      , buildTools = combine buildTools
+      , buildToolDepends = combine buildToolDepends
+      , cppOptions = combine cppOptions
+      , asmOptions = combine asmOptions
+      , cmmOptions = combine cmmOptions
+      , ccOptions = combine ccOptions
+      , cxxOptions = combine cxxOptions
+      , jsppOptions = combine jsppOptions
+      , ldOptions = combine ldOptions
+      , hsc2hsOptions = combine hsc2hsOptions
+      , pkgconfigDepends = combine pkgconfigDepends
+      , frameworks = combineNub frameworks
+      , extraFrameworkDirs = combineNub extraFrameworkDirs
+      , asmSources = combineNub asmSources
+      , cmmSources = combineNub cmmSources
+      , cSources = combineNub cSources
+      , cxxSources = combineNub cxxSources
+      , jsSources = combineNub jsSources
+      , hsSourceDirs = combineNub hsSourceDirs
+      , otherModules = combineNub otherModules
+      , virtualModules = combineNub virtualModules
+      , autogenModules = combineNub autogenModules
+      , defaultLanguage = combineMby defaultLanguage
+      , otherLanguages = combineNub otherLanguages
+      , defaultExtensions = combineNub defaultExtensions
+      , otherExtensions = combineNub otherExtensions
+      , oldExtensions = combineNub oldExtensions
+      , extraLibs = combine extraLibs
+      , extraLibsStatic = combine extraLibsStatic
+      , extraGHCiLibs = combine extraGHCiLibs
+      , extraBundledLibs = combine extraBundledLibs
+      , extraLibFlavours = combine extraLibFlavours
+      , extraDynLibFlavours = combine extraDynLibFlavours
+      , extraLibDirs = combineNub extraLibDirs
+      , extraLibDirsStatic = combineNub extraLibDirsStatic
+      , includeDirs = combineNub includeDirs
+      , includes = combineNub includes
+      , autogenIncludes = combineNub autogenIncludes
+      , installIncludes = combineNub installIncludes
+      , options = combine options
+      , profOptions = combine profOptions
+      , sharedOptions = combine sharedOptions
+      , profSharedOptions = combine profSharedOptions
+      , staticOptions = combine staticOptions
+      , customFieldsBI = combine customFieldsBI
+      , targetBuildDepends = combineNub targetBuildDepends
+      , mixins = combine mixins
+      }
+    where
+      combine :: Monoid a => (BuildInfoWith Conc -> a) -> a
       combine field = field a `mappend` field b
       combineNub field = nub (combine field)
       combineMby field = field b `mplus` field a
 
 emptyBuildInfo :: BuildInfo
 emptyBuildInfo = mempty
+
+emptyBuildInfo' :: BuildInfoWith Conc
+emptyBuildInfo' =
+  BuildInfo
+    { buildable = []
+    , buildTools = []
+    , buildToolDepends = []
+    , cppOptions = []
+    , asmOptions = []
+    , cmmOptions = []
+    , ccOptions = []
+    , cxxOptions = []
+    , jsppOptions = []
+    , ldOptions = []
+    , hsc2hsOptions = []
+    , pkgconfigDepends = []
+    , frameworks = []
+    , extraFrameworkDirs = []
+    , asmSources = []
+    , cmmSources = []
+    , cSources = []
+    , cxxSources = []
+    , jsSources = []
+    , hsSourceDirs = []
+    , otherModules = []
+    , virtualModules = []
+    , autogenModules = []
+    , defaultLanguage = Nothing
+    , otherLanguages = []
+    , defaultExtensions = []
+    , otherExtensions = []
+    , oldExtensions = []
+    , extraLibs = []
+    , extraLibsStatic = []
+    , extraGHCiLibs = []
+    , extraBundledLibs = []
+    , extraLibFlavours = []
+    , extraDynLibFlavours = []
+    , extraLibDirs = []
+    , extraLibDirsStatic = []
+    , includeDirs = []
+    , includes = []
+    , autogenIncludes = []
+    , installIncludes = []
+    , options = mempty
+    , profOptions = mempty
+    , sharedOptions = mempty
+    , profSharedOptions = mempty
+    , staticOptions = mempty
+    , customFieldsBI = []
+    , targetBuildDepends = []
+    , mixins = []
+    }
 
 -- | The 'Language's used by this component
 allLanguages :: BuildInfo -> [Language]

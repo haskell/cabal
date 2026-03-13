@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 -- |
 -- Module      :  Distribution.PackageDescription.Check.Target
 -- Copyright   :  Lennart Kolmodin 2008, Francesco Ariis 2023
@@ -53,6 +55,7 @@ checkLibrary
   isSub
   ads
   lib@( Library
+          _
           libName_
           _exposedModules_
           reexportedModules_

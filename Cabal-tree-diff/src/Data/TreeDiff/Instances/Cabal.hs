@@ -1,3 +1,7 @@
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+
+
 {-# LANGUAGE NamedFieldPuns #-}
 {-# OPTIONS_GHC -freduction-depth=0 #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
@@ -35,6 +39,7 @@ import Distribution.Utils.Path                     (SymbolicPathX)
 import Distribution.Utils.ShortText                (ShortText, fromShortText)
 import Distribution.Verbosity
 import Distribution.Verbosity.Internal
+import Distribution.Parsec.Position
 
 import qualified Distribution.Compat.NonEmptySet as NES
 
