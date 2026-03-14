@@ -211,8 +211,9 @@ replCommand =
     , commandUsage = usageAlternatives "v2-repl" ["[TARGET] [FLAGS]"]
     , commandDescription = Just $ \_ ->
         wrapText $
-          "Open an interactive session for a component within the project. The "
-            ++ "available targets are the same as for the 'v2-build' command: "
+          "Open an interactive session for a single component within the project "
+            ++ "or for multiple components at once if multi-repl is enabled.\n\n"
+            ++ "The available targets are the same as for the 'v2-build' command: "
             ++ "individual components within packages in the project, including "
             ++ "libraries, executables, test-suites or benchmarks. Packages can "
             ++ "also be specified in which case the library component in the "
@@ -254,6 +255,10 @@ replCommand =
           ++ " v2-repl --build-depends \"lens >= 4.15 && < 4.18\"\n"
           ++ "    add a version (constrained between 4.15 and 4.18) of the library 'lens' "
           ++ "to the default component (or no component if there is no project present)\n"
+          ++ "  "
+          ++ pname
+          ++ " repl pkg:cabal-install-solver pkg:Cabal-syntax --enable-multi-repl\n"
+          ++ "    for default (in this case library) components in two packages\n"
     , commandDefaultFlags = defaultNixStyleFlags defaultReplFlags
     , commandOptions = nixStyleOptions topReplOptions
     }
