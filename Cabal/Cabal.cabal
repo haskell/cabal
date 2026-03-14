@@ -48,7 +48,8 @@ library
     , directory  >= 1.2.7    && < 1.4
     , filepath   >= 1.4.2    && < 1.6
     , pretty     >= 1.1.1    && < 1.2
-    , process    >= 1.2.1.0  && < 1.7
+    -- segfaults on older macOS versions #11465
+    , process    >= 1.2.1.0  && < 1.6.24 || == 1.6.26.0 || >= 1.6.26.2 && < 1.7
     , time       >= 1.4.0.1  && < 1.16
 
   if os(windows)
