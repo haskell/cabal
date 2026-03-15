@@ -1,0 +1,8 @@
+Cabal-Version: 3.8
+Name: library-bytecode-standalone
+Version: 0.1
+Build-Type: Simple
+
+library
+    exposed-modules: Lib
+    build-depends: base

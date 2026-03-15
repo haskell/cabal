@@ -94,6 +94,7 @@ data InstallDirs dir = InstallDirs
   , libdir :: dir
   , libsubdir :: dir
   , dynlibdir :: dir
+  , bytecodelibdir :: dir
   , flibdir :: dir
   -- ^ foreign libraries
   , libexecdir :: dir
@@ -132,6 +133,7 @@ combineInstallDirs combine a b =
     , libdir = libdir a `combine` libdir b
     , libsubdir = libsubdir a `combine` libsubdir b
     , dynlibdir = dynlibdir a `combine` dynlibdir b
+    , bytecodelibdir = bytecodelibdir a `combine` bytecodelibdir b
     , flibdir = flibdir a `combine` flibdir b
     , libexecdir = libexecdir a `combine` libexecdir b
     , libexecsubdir = libexecsubdir a `combine` libexecsubdir b
@@ -230,6 +232,7 @@ defaultInstallDirs' False comp userInstall _hasLibs = do
             "$libdir" </> case comp of
               UHC -> "$pkgid"
               _other -> "$abi"
+        , bytecodelibdir = "$libdir" </> "$libsubdir"
         , libexecsubdir = "$abi" </> "$pkgid"
         , flibdir = "$libdir"
         , libexecdir = case buildOS of
@@ -285,6 +288,8 @@ substituteInstallDirTemplates env dirs = dirs'
         , libdir = subst libdir [prefixVar, bindirVar]
         , libsubdir = subst libsubdir []
         , dynlibdir = subst dynlibdir [prefixVar, bindirVar, libdirVar]
+        , bytecodelibdir =
+            subst bytecodelibdir [prefixVar, bindirVar, libdirVar, libsubdirVar]
         , flibdir = subst flibdir [prefixVar, bindirVar, libdirVar]
         , libexecdir = subst libexecdir prefixBinLibVars
         , libexecsubdir = subst libexecsubdir []
@@ -490,6 +495,7 @@ installDirsTemplateEnv dirs =
   , (LibdirVar, libdir dirs)
   , (LibsubdirVar, libsubdir dirs)
   , (DynlibdirVar, dynlibdir dirs)
+  , (BytecodelibdirVar, bytecodelibdir dirs)
   , (DatadirVar, datadir dirs)
   , (DatasubdirVar, datasubdir dirs)
   , (DocdirVar, docdir dirs)
@@ -571,6 +577,7 @@ installDirsGrammar =
     <*> optionalFieldDef "libdir" installDirsLibdirLens mempty
     <*> optionalFieldDef "libsubdir" installDirsLibsubdirLens mempty
     <*> optionalFieldDef "dynlibdir" installDirsDynlibdirLens mempty
+    <*> optionalFieldDef "bytecodelibdir" installDirsBytecodelibdirLens mempty
     <*> pure NoFlag -- flibdir
     <*> optionalFieldDef "libexecdir" installDirsLibexecdirLens mempty
     <*> optionalFieldDef "libexecsubdir" installDirsLibexecsubdirLens mempty
@@ -605,6 +612,10 @@ installDirsLibsubdirLens f c = fmap (\x -> c{libsubdir = x}) (f (libsubdir c))
 installDirsDynlibdirLens :: Lens' (InstallDirs a) a
 installDirsDynlibdirLens f c = fmap (\x -> c{dynlibdir = x}) (f (dynlibdir c))
 {-# INLINEABLE installDirsDynlibdirLens #-}
+
+installDirsBytecodelibdirLens :: Lens' (InstallDirs a) a
+installDirsBytecodelibdirLens f c = fmap (\x -> c{bytecodelibdir = x}) (f (bytecodelibdir c))
+{-# INLINEABLE installDirsBytecodelibdirLens #-}
 
 installDirsLibexecdirLens :: Lens' (InstallDirs a) a
 installDirsLibexecdirLens f c = fmap (\x -> c{libexecdir = x}) (f (libexecdir c))

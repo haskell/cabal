@@ -234,6 +234,7 @@ copyComponent verbosity pkg_descr lbi (CLib lib) clbi copydest = do
   let InstallDirs
         { libdir = libPref
         , dynlibdir = dynlibPref
+        , bytecodelibdir = bytecodeLibPref
         , includedir = incPref
         } = absoluteInstallCommandDirs pkg_descr lbi (componentUnitId clbi) copydest
       buildPref = interpretSymbolicPathLBI lbi $ componentBuildDir lbi clbi
@@ -247,9 +248,9 @@ copyComponent verbosity pkg_descr lbi (CLib lib) clbi copydest = do
   installIncludeFiles verbosity (libBuildInfo lib) lbi buildPref incPref
 
   case compilerFlavor (compiler lbi) of
-    GHC -> GHC.installLib verbosity lbi libPref dynlibPref buildPref pkg_descr lib clbi
-    GHCJS -> GHCJS.installLib verbosity lbi libPref dynlibPref buildPref pkg_descr lib clbi
-    UHC -> UHC.installLib verbosity lbi libPref dynlibPref buildPref pkg_descr lib clbi
+    GHC -> GHC.installLib verbosity lbi libPref dynlibPref bytecodeLibPref buildPref pkg_descr lib clbi
+    GHCJS -> GHCJS.installLib verbosity lbi libPref dynlibPref bytecodeLibPref buildPref pkg_descr lib clbi
+    UHC -> UHC.installLib verbosity lbi libPref dynlibPref bytecodeLibPref buildPref pkg_descr lib clbi
     _ ->
       dieWithException verbosity $ CompilerNotInstalled (compilerFlavor (compiler lbi))
 copyComponent verbosity pkg_descr lbi (CFLib flib) clbi copydest = do

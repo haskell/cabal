@@ -282,6 +282,7 @@ data PackageConfig = PackageConfig
   , packageConfigVanillaLib :: Flag Bool
   , packageConfigSharedLib :: Flag Bool
   , packageConfigStaticLib :: Flag Bool
+  , packageConfigBytecodeLib :: Flag Bool
   , packageConfigDynExe :: Flag Bool
   , packageConfigFullyStaticExe :: Flag Bool
   , packageConfigProf :: Flag Bool -- TODO: [code cleanup] sort out

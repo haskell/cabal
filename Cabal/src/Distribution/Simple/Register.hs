@@ -539,6 +539,8 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     , IPI.libraryDirs = libdirs
     , IPI.libraryDirsStatic = libdirsStatic
     , IPI.libraryDynDirs = dynlibdirs
+    , IPI.libraryBytecodeDirs =
+        [bytecodelibdir installDirs | hasLibrary && withBytecodeLib lbi]
     , IPI.dataDir = datadir installDirs
     , IPI.hsLibraries =
         [getHSLibraryName (componentUnitId clbi) | hasLibrary]
@@ -650,6 +652,7 @@ inplaceInstalledPackageInfo inplaceDir distPref pkg abi_hash lib lbi clbi =
       (absoluteComponentInstallDirs pkg lbi (componentUnitId clbi) NoCopyDest)
         { libdir = i libTargetDir
         , dynlibdir = i libTargetDir
+        , bytecodelibdir = i libTargetDir
         , datadir =
             let rawDataDir = dataDir pkg
              in if null $ getSymbolicPath rawDataDir

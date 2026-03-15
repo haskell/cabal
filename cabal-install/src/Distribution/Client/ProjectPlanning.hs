@@ -2331,6 +2331,7 @@ elaborateInstallPlan
                 , withProfExe = profExe
                 , withProfLib = canBuildProfilingLibs && pkgid `Set.member` pkgsUseProfilingLibrary
                 , withProfLibShared = canBuildProfilingSharedLibs && pkgid `Set.member` pkgsUseProfilingLibraryShared
+                , withBytecodeLib = perPkgOptionFlag pkgid False packageConfigBytecodeLib
                 , exeCoverage = perPkgOptionFlag pkgid False packageConfigCoverage
                 , libCoverage = perPkgOptionFlag pkgid False packageConfigCoverage
                 , withOptimization = perPkgOptionFlag pkgid NormalOptimisation packageConfigOptimization
@@ -3982,6 +3983,7 @@ storePackageInstallDirs'
       dynlibdir
         | buildOS == OSX = store </> "lib"
         | otherwise = libdir
+      bytecodelibdir = libdir
       flibdir = libdir
       libexecdir = prefix </> "libexec"
       libexecsubdir = ""
@@ -4057,6 +4059,7 @@ setupHsConfigureFlags
         { configVanillaLib
         , configSharedLib
         , configStaticLib
+        , configBytecodeLib
         , configDynExe
         , configFullyStaticExe
         , configGHCiLib
@@ -4505,6 +4508,7 @@ packageHashConfigInputs shared@ElaboratedSharedConfig{..} pkg =
     , pkgHashProfExe = withProfExe
     , pkgHashProfLibDetail = withProfLibDetail
     , pkgHashProfExeDetail = withProfExeDetail
+    , pkgHashBytecodeLib = withBytecodeLib
     , pkgHashCoverage = exeCoverage
     , pkgHashOptimization = withOptimization
     , pkgHashSplitSections = splitSections

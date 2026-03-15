@@ -153,6 +153,7 @@ InstalledPackageInfo {
   libraryDirsStatic = [],
   libraryDynDirs = [
     "/opt/ghc/8.2.2/lib/ghc-8.2.2/transformers-0.5.2.0"],
+  libraryBytecodeDirs = [],
   dataDir =
   "/opt/ghc/8.2.2/share/x86_64-linux-ghc-8.2.2/transformers-0.5.2.0",
   hsLibraries = [

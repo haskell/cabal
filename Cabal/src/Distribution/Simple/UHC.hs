@@ -327,11 +327,12 @@ installLib
   -> FilePath
   -> FilePath
   -> FilePath
+  -> FilePath
   -> PackageDescription
   -> Library
   -> ComponentLocalBuildInfo
   -> IO ()
-installLib verbosity _lbi targetDir _dynlibTargetDir builtDir pkg _library _clbi = do
+installLib verbosity _lbi targetDir _dynlibTargetDir _bytecodeTargetDir builtDir pkg _library _clbi = do
   -- putStrLn $ "dest:  " ++ targetDir
   -- putStrLn $ "built: " ++ builtDir
   installDirectoryContents verbosity (builtDir </> prettyShow (packageId pkg)) targetDir
