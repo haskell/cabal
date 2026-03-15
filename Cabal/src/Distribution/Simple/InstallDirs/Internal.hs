@@ -28,6 +28,8 @@ data PathTemplateVariable
     LibsubdirVar
   | -- | The @$dynlibdir@ path variable
     DynlibdirVar
+  | -- | The @$bytecodelibdir@ path variable
+    BytecodelibdirVar
   | -- | The @$datadir@ path variable
     DatadirVar
   | -- | The @$datasubdir@ path variable
@@ -78,6 +80,7 @@ instance Show PathTemplateVariable where
   show LibdirVar = "libdir"
   show LibsubdirVar = "libsubdir"
   show DynlibdirVar = "dynlibdir"
+  show BytecodelibdirVar = "bytecodelibdir"
   show DatadirVar = "datadir"
   show DatasubdirVar = "datasubdir"
   show DocdirVar = "docdir"
@@ -111,6 +114,7 @@ instance Read PathTemplateVariable where
         , ("libdir", LibdirVar)
         , ("libsubdir", LibsubdirVar)
         , ("dynlibdir", DynlibdirVar)
+        , ("bytecodelibdir", BytecodelibdirVar)
         , ("datadir", DatadirVar)
         , ("datasubdir", DatasubdirVar)
         , ("docdir", DocdirVar)

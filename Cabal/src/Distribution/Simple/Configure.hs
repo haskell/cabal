@@ -762,6 +762,10 @@ computeLocalBuildConfig verbHandles cfg comp programDb = do
         -- into a huge .a archive) via GHCs -staticlib flag.
         fromFlagOrDefault False $ configStaticLib cfg
 
+      -- See doc/internal/bytecode-libraries.md for the end-to-end story.
+      withBytecodeLib_ =
+        fromFlagOrDefault False $ configBytecodeLib cfg
+
       withDynExe_ = fromFlag $ configDynExe cfg
 
       withFullyStaticExe_ = fromFlag $ configFullyStaticExe cfg
@@ -789,12 +793,21 @@ computeLocalBuildConfig verbHandles cfg comp programDb = do
   strip_lib <- strip_libexe "library" configStripLibs
   strip_exe <- strip_libexe "executable" configStripExes
 
+  checkedWithBytecodeLib <-
+    if bytecodeArtifactsSupported comp
+      then return withBytecodeLib_
+      else do
+        when withBytecodeLib_ $
+          warn verbosity "This compiler does not support bytecode libraries; ignoring --enable-library-bytecode"
+        return False
+
   let buildOptions =
         setCoverage . setProfiling $
           LBC.BuildOptions
             { withVanillaLib = fromFlag $ configVanillaLib cfg
             , withSharedLib = withSharedLib_
             , withStaticLib = withStaticLib_
+            , withBytecodeLib = checkedWithBytecodeLib
             , withDynExe = withDynExe_
             , withFullyStaticExe = withFullyStaticExe_
             , withProfLib = False
@@ -1376,6 +1389,7 @@ configureComponents
       dirinfo "Executables" (bindir dirs) (bindir relative)
       dirinfo "Libraries" (libdir dirs) (libdir relative)
       dirinfo "Dynamic Libraries" (dynlibdir dirs) (dynlibdir relative)
+      dirinfo "Bytecode Libraries" (bytecodelibdir dirs) (bytecodelibdir relative)
       dirinfo "Private executables" (libexecdir dirs) (libexecdir relative)
       dirinfo "Data files" (datadir dirs) (datadir relative)
       dirinfo "Documentation" (docdir dirs) (docdir relative)
@@ -2856,6 +2870,7 @@ checkRelocatable verbosity pkg lbi =
             [ bindir
             , libdir
             , dynlibdir
+            , bytecodelibdir
             , libexecdir
             , includedir
             , datadir
