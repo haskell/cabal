@@ -1,0 +1,13 @@
+# cabal v2-build
+Warning: cannot determine version of <ROOT>/fake-ghc-pkg-bin/ghc-pkg :
+""
+Error: [Cabal-1008]
+The program 'ghc-pkg' is required but the version of <ROOT>/fake-ghc-pkg-bin/ghc-pkg could not be determined.
+# cabal v2-build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - with-ghc-pkg-0.1.0.0 (exe:with-ghc-pkg) (first run)
+Configuring executable 'with-ghc-pkg' for with-ghc-pkg-0.1.0.0...
+Preprocessing executable 'with-ghc-pkg' for with-ghc-pkg-0.1.0.0...
+Building executable 'with-ghc-pkg' for with-ghc-pkg-0.1.0.0...
