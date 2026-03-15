@@ -601,6 +601,7 @@ instance Semigroup SavedConfig where
           , uploadPassword = combine uploadPassword
           , uploadPasswordCmd = combine uploadPasswordCmd
           , uploadVerbosity = combine uploadVerbosity
+          , uploadRepoName = combine uploadRepoName
           }
         where
           combine = combine' savedUploadFlags
@@ -611,6 +612,7 @@ instance Semigroup SavedConfig where
           , reportUsername = combine reportUsername
           , reportPassword = combine reportPassword
           , reportVerbosity = combine reportVerbosity
+          , reportRepoName = combine reportRepoName
           }
         where
           combine = combine' savedReportFlags
