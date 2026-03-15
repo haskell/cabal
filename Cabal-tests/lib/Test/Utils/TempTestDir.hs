@@ -90,4 +90,4 @@ removeDirectoryRecursiveHack verbosity dir | isWindows = go 1
                 ++ show n
                 ++ " times to remove "
                 ++ dir
-removeDirectoryRecursiveHack _ dir = removeDirectoryRecursive dir
+removeDirectoryRecursiveHack _ dir = removePathForcibly dir

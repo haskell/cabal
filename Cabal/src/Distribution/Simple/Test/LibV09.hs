@@ -46,11 +46,10 @@ import qualified Data.ByteString.Lazy as LBS
 import System.Directory
   ( canonicalizePath
   , createDirectoryIfMissing
-  , doesDirectoryExist
   , doesFileExist
   , getCurrentDirectory
-  , removeDirectoryRecursive
   , removeFile
+  , removePathForcibly
   , setCurrentDirectory
   )
 import System.IO (hClose, hPutStr)
@@ -83,9 +82,8 @@ runTest verbHandles pkg_descr lbi clbi hpcMarkupInfo flags suite = do
       Couldn'tFindTestProgLibV09 cmd
 
   -- Remove old .tix files if appropriate.
-  unless (fromFlag $ testKeepTix flags) $ do
-    exists' <- doesDirectoryExist tDir
-    when exists' $ removeDirectoryRecursive tDir
+  unless (fromFlag $ testKeepTix flags) $
+    removePathForcibly tDir
 
   -- Create directory for HPC files.
   createDirectoryIfMissing True tDir

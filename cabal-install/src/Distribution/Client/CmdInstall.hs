@@ -239,8 +239,7 @@ import System.Directory
   , doesPathExist
   , getTemporaryDirectory
   , makeAbsolute
-  , removeDirectory
-  , removeFile
+  , removePathForcibly
   )
 import System.FilePath
   ( takeBaseName
@@ -1236,14 +1235,9 @@ installBuiltExe
     where
       source = sourceDir </> exeName
       destination = installdir </> finalExeName
-      remove = do
-        isDir <- doesDirectoryExist destination
-        if isDir
-          then removeDirectory destination
-          else removeFile destination
       copy = copyFile source destination >> pure True
       overwrite :: IO Bool
-      overwrite = remove >> copy
+      overwrite = removePathForcibly destination >> copy
       maybeOverwrite :: IO Bool
       maybeOverwrite =
         promptRun

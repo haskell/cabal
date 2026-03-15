@@ -401,7 +401,7 @@ instance Interactive PromptIO where
   putStr = liftIO <$> P.putStr
   putStrLn = liftIO <$> P.putStrLn
   createDirectory = liftIO <$> P.createDirectory
-  removeDirectory = liftIO <$> P.removeDirectoryRecursive
+  removeDirectory = liftIO <$> P.removePathForcibly
   writeFile a b = liftIO $ P.writeFile a b
   removeExistingFile = liftIO <$> P.removeExistingFile
   copyFile a b = liftIO $ P.copyFile a b
