@@ -261,8 +261,8 @@ import System.Directory
   , getPermissions
   , getTemporaryDirectory
   , listDirectory
-  , removeDirectoryRecursive
   , removeFile
+  , removePathForcibly
   )
 import System.Environment
   ( getProgName
@@ -2006,8 +2006,7 @@ withTempDirectoryCwdEx opts mbWorkDir targetDir template f =
       (createTempDirectory (i targetDir) template)
       ( \tmpDirRelPath ->
           unless (optKeepTempFiles opts) $
-            handleDoesNotExist () $
-              removeDirectoryRecursive (i targetDir </> tmpDirRelPath)
+            removePathForcibly (i targetDir </> tmpDirRelPath)
       )
       (withLexicalCallStack (\tmpDirRelPath -> f $ targetDir </> makeRelativePathEx tmpDirRelPath))
   where

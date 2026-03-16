@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
@@ -80,11 +79,9 @@ import Distribution.Version
   ( mkVersion
   )
 
-#if !MIN_VERSION_base(4,18,0)
-import Control.Applicative
-         ( liftA2 )
-#endif
-
+import Control.Concurrent
+  ( threadDelay
+  )
 import Control.Exception
   ( throw
   , try
@@ -98,7 +95,6 @@ import qualified Data.Map as Map
 import System.Directory
   ( doesDirectoryExist
   , doesFileExist
-  , removeDirectoryRecursive
   , removePathForcibly
   )
 import System.FilePath
@@ -413,7 +409,7 @@ vcsDarcs =
               pure ()
         Left e | not (isDoesNotExistError e) -> throw e
         _ -> do
-          removeDirectoryRecursive localDir `catch` liftA2 unless isDoesNotExistError throw
+          removePathForcibly localDir
           darcs (takeDirectory localDir) cloneArgs
       where
         darcs :: FilePath -> [String] -> IO ()
@@ -534,18 +530,15 @@ vcsGit =
       dotGitModulesExists <- doesDirectoryExist dotGitModulesPath
       when dotGitModulesExists $ do
         git localDir $ ["submodule", "deinit", "--force", "--all"] ++ verboseArg
-        if buildOS == Windows
-          then do
-            -- Windows can't delete some git files #10182
-            void $
-              Process.createProcess_ "attrib" $
-                Process.shell $
-                  "attrib -s -h -r " <> dotGitModulesPath <> "\\*.* /s /d"
-
-            catch
-              (removePathForcibly dotGitModulesPath)
-              (\e -> if isPermissionError e then removePathForcibly dotGitModulesPath else throw e)
-          else removeDirectoryRecursive dotGitModulesPath
+        -- Windows can't delete some git files #10182
+        when (buildOS == Windows) $
+          void $
+            Process.createProcess_ "attrib" $
+              Process.shell $
+                "attrib -s -h -r " <> dotGitModulesPath <> "\\*.* /s /d"
+        catch
+          (removePathForcibly dotGitModulesPath)
+          (\e -> if isPermissionError e then threadDelay 1000 >> removePathForcibly dotGitModulesPath else throw e)
 
       -- If we want a particular branch or tag, fetch it.
       ref <- case srpBranch `mplus` srpTag of
