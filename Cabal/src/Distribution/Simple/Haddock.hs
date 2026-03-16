@@ -1392,7 +1392,7 @@ haddockPackagePaths ipkgs mkHtmlPath = do
   return (flags, if null missing then Nothing else Just warning)
   where
     -- Don't warn about missing documentation for these packages. See #1231.
-    noHaddockWhitelist = map mkPackageName ["rts"]
+    noHaddockWhitelist = [mkPackageName "rts"]
 
     -- Actually extract interface and HTML paths from an 'InstalledPackageInfo'.
     interfaceAndHtmlPath
