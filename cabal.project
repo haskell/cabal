@@ -12,3 +12,6 @@ package cabal-install
 
 package Cabal
   flags: +git-rev
+
+package semaphore-compat
+  flags: -build-testing

@@ -90,7 +90,7 @@ import qualified Text.PrettyPrint as Disp
 import Control.Exception (assert, handle)
 import System.Directory (doesDirectoryExist, doesFileExist, renameDirectory)
 import System.FilePath (makeRelative, normalise, takeDirectory, (<.>), (</>))
-import System.Semaphore (SemaphoreName (..))
+import System.Semaphore (SemaphoreIdentifier)
 
 import Distribution.Client.Errors
 import Distribution.Simple.Flag (fromFlagOrDefault)
@@ -481,7 +481,7 @@ rebuildTarget
   :: Verbosity
   -> DistDirLayout
   -> StoreDirLayout
-  -> Maybe SemaphoreName
+  -> Maybe SemaphoreIdentifier
   -> BuildTimeSettings
   -> AsyncFetchMap
   -> Lock
