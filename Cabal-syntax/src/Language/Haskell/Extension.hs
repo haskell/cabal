@@ -556,6 +556,12 @@ data KnownExtension
   | -- | Allow use of or-pattern syntax, condensing multiple patterns
     -- into a single one.
     OrPatterns
+  | -- | Along with 'ImplicitStagePersistence', this gives fine-grained control
+    -- over which modules are needed at each stage of execution.
+    ExplicitLevelImports
+  | -- | Allow identifiers to be used at different levels than where they’re
+    -- defined, using path-based persistence.
+    ImplicitStagePersistence
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Data)
 
 instance Binary KnownExtension
