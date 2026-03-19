@@ -137,6 +137,11 @@ data MonitorStateGlobRel
       !GlobPieces
       !ModTime
       ![(FilePath, MonitorStateFileStatus)] -- invariant: sorted
+  | MonitorStateGlobRecursive
+      !GlobPieces
+      !ModTime
+      ![(FilePath, MonitorStateFileStatus)] -- invariant: sorted
+      ![(FilePath, MonitorStateGlobRel)]
   | MonitorStateGlobDirTrailing
   deriving (Show, Generic)
 
@@ -164,6 +169,7 @@ reconstructMonitorFilePaths (MonitorStateFileSet singlePaths globPaths) =
           case gstate of
             MonitorStateGlobDirs glob globs _ _ -> GlobDir glob globs
             MonitorStateGlobFiles glob _ _ -> GlobFile glob
+            MonitorStateGlobRecursive glob _ _ _ -> GlobDirRecursive glob
             MonitorStateGlobDirTrailing -> GlobDirTrailing
 
 ------------------------------------------------------------------------------
@@ -522,7 +528,58 @@ probeMonitorStateGlob
           MonitorStateGlob kindfile kinddir globroot
             <$> probeMonitorStateGlobRel kindfile kinddir root "" glob
 
-probeMonitorStateGlobRel
+probeMonitorStateFiles
+  :: FilePath
+  -- ^ root path
+  -> FilePath
+  -- ^ path of the directory we are
+  --   looking in relative to @root@
+  -> GlobPieces
+  -> ModTime
+  -> [(FilePath, MonitorStateFileStatus)]
+  -> ChangedM (ModTime, [(FilePath, MonitorStateFileStatus)])
+probeMonitorStateFiles
+  root
+  dirName
+  glob
+  mtime
+  children = do
+    change <- liftIO $ checkDirectoryModificationTime (root </> dirName) mtime
+    mtime' <- case change of
+      Nothing -> return mtime
+      Just mtime' -> do
+        -- directory modification time changed:
+        -- a matching file may have been added or deleted
+        matches <-
+          return . filter (matchGlobPieces glob)
+            =<< liftIO (getDirectoryContents (root </> dirName))
+
+        traverse_ probeMergeResult $
+          mergeBy
+            (\(path1, _) path2 -> compare path1 path2)
+            children
+            (sort matches)
+        return mtime'
+
+    -- Check that none of the children have changed
+    for_ children $ \(file, status) ->
+      probeMonitorStateFileStatus root (dirName </> file) status
+
+    return (mtime', children)
+    where
+      -- Again, we don't force a cache rewrite with 'cacheChanged', but we do use
+      -- the new mtime' if any.
+
+      probeMergeResult
+        :: MergeResult (FilePath, MonitorStateFileStatus) FilePath
+        -> ChangedM ()
+      probeMergeResult mr = case mr of
+        InBoth _ _ -> return ()
+        -- this is just to be able to accurately report which file changed:
+        OnlyInLeft (path, _) -> somethingChanged (dirName </> path)
+        OnlyInRight path -> somethingChanged (dirName </> path)
+
+probeMonitorStateDirs
   :: MonitorKindFile
   -> MonitorKindDir
   -> FilePath
@@ -530,14 +587,20 @@ probeMonitorStateGlobRel
   -> FilePath
   -- ^ path of the directory we are
   --   looking in relative to @root@
-  -> MonitorStateGlobRel
-  -> ChangedM MonitorStateGlobRel
-probeMonitorStateGlobRel
+  -> GlobPieces
+  -> Glob
+  -> ModTime
+  -> [(FilePath, MonitorStateGlobRel)]
+  -> ChangedM (ModTime, [(FilePath, MonitorStateGlobRel)])
+probeMonitorStateDirs
   kindfile
   kinddir
   root
   dirName
-  (MonitorStateGlobDirs glob globPath mtime children) = do
+  glob
+  globPath
+  mtime
+  children = do
     change <- liftIO $ checkDirectoryModificationTime (root </> dirName) mtime
     case change of
       Nothing -> do
@@ -554,7 +617,7 @@ probeMonitorStateGlobRel
               return (fname, fstate')
             | (fname, fstate) <- children
             ]
-        return $! MonitorStateGlobDirs glob globPath mtime children'
+        return $! (mtime, children')
       Just mtime' -> do
         -- directory modification time changed:
         -- a matching subdir may have been added or deleted
@@ -573,7 +636,7 @@ probeMonitorStateGlobRel
               (\(path1, _) path2 -> compare path1 path2)
               children
               (sort matches)
-        return $! MonitorStateGlobDirs glob globPath mtime' children'
+        return $! (mtime', children')
     where
       -- Note that just because the directory has changed, we don't force
       -- a cache rewrite with 'cacheChanged' since that has some cost, and
@@ -626,17 +689,56 @@ probeMonitorStateGlobRel
             fstate
         return (path, fstate')
 
-      -- \| Does a 'MonitorStateGlob' have any relevant files within it?
-      allMatchingFiles :: FilePath -> MonitorStateGlobRel -> [FilePath]
-      allMatchingFiles dir (MonitorStateGlobFiles _ _ entries) =
+      allMatchingFilesFromGlobFiles :: FilePath -> [(FilePath, a)] -> [FilePath]
+      allMatchingFilesFromGlobFiles dir entries =
         [dir </> fname | (fname, _) <- entries]
-      allMatchingFiles dir (MonitorStateGlobDirs _ _ _ entries) =
+
+      allMatchingFilesFromGlobDirs :: FilePath -> [(FilePath, MonitorStateGlobRel)] -> [FilePath]
+      allMatchingFilesFromGlobDirs dir entries =
         [ res
         | (subdir, fstate) <- entries
         , res <- allMatchingFiles (dir </> subdir) fstate
         ]
+
+      -- \| Does a 'MonitorStateGlob' have any relevant files within it?
+      allMatchingFiles :: FilePath -> MonitorStateGlobRel -> [FilePath]
+      allMatchingFiles dir (MonitorStateGlobFiles _ _ entries) =
+        allMatchingFilesFromGlobFiles dir entries
+      allMatchingFiles dir (MonitorStateGlobDirs _ _ _ entries) =
+        allMatchingFilesFromGlobDirs dir entries
+      allMatchingFiles dir (MonitorStateGlobRecursive _ _ fileEntries dirEntries) =
+        allMatchingFilesFromGlobFiles dir fileEntries ++
+        allMatchingFilesFromGlobDirs dir dirEntries
       allMatchingFiles dir MonitorStateGlobDirTrailing =
         [dir]
+
+probeMonitorStateGlobRel
+  :: MonitorKindFile
+  -> MonitorKindDir
+  -> FilePath
+  -- ^ root path
+  -> FilePath
+  -- ^ path of the directory we are
+  --   looking in relative to @root@
+  -> MonitorStateGlobRel
+  -> ChangedM MonitorStateGlobRel
+probeMonitorStateGlobRel
+  kindfile
+  kinddir
+  root
+  dirName
+  (MonitorStateGlobDirs glob globPath mtime children) = do
+    (mtime', children') <-
+      probeMonitorStateDirs
+        kindfile
+        kinddir
+        root
+        dirName
+        glob
+        globPath
+        mtime
+        children
+    return $! MonitorStateGlobDirs glob globPath mtime' children'
 probeMonitorStateGlobRel
   _
   _
@@ -677,6 +779,30 @@ probeMonitorStateGlobRel
         -- this is just to be able to accurately report which file changed:
         OnlyInLeft (path, _) -> somethingChanged (dirName </> path)
         OnlyInRight path -> somethingChanged (dirName </> path)
+probeMonitorStateGlobRel
+  kindfile
+  kinddir
+  root
+  dirName
+  (MonitorStateGlobRecursive glob mtime fileChildren dirChildren) = do
+    (_, fileChildren') <-
+      probeMonitorStateFiles
+        root
+        dirName
+        glob
+        mtime
+        fileChildren
+    (mtime', dirChildren') <-
+      probeMonitorStateDirs
+        kindfile
+        kinddir
+        root
+        dirName
+        glob
+        (GlobDirRecursive glob)
+        mtime
+        dirChildren
+    return $! MonitorStateGlobRecursive glob mtime' fileChildren' dirChildren'
 probeMonitorStateGlobRel _ _ _ _ MonitorStateGlobDirTrailing =
   return MonitorStateGlobDirTrailing
 
@@ -916,7 +1042,38 @@ buildMonitorStateGlobRel
     dirEntries <- listDirectory absdir
     dirMTime <- getModTime absdir
     case globPath of
-      GlobDirRecursive{} -> error "Monitoring directory-recursive globs (i.e. ../**/...) is currently unsupported"
+      GlobDirRecursive glob -> do
+        -- evaluate globPath' over the current directory
+        let files = filter (matchGlobPieces glob) dirEntries
+        filesStates <-
+          for (sort files) $ \file -> do
+            fstate <-
+              buildMonitorStateFile
+                mstartTime
+                hashcache
+                kindfile
+                kinddir
+                root
+                (dir </> file)
+            return (file, fstate)
+        -- evaluate globPath' over every subdirectory
+        subdirs <-
+          filterM (\subdir -> doesDirectoryExist (absdir </> subdir)) dirEntries
+        subdirStates <-
+          for (sort subdirs) $ \subdir -> do
+            fstate <-
+              buildMonitorStateGlobRel
+                mstartTime
+                hashcache
+                kindfile
+                kinddir
+                root
+                (dir </> subdir)
+                globPath
+            return (subdir, fstate)
+
+        return $! MonitorStateGlobRecursive glob dirMTime filesStates subdirStates
+        
       GlobDir glob globPath' -> do
         subdirs <-
           filterM (\subdir -> doesDirectoryExist (absdir </> subdir)) $
@@ -1015,16 +1172,27 @@ readCacheFileHashes monitor =
         , (fpath, (mtime, hash)) <- collectGlobHashes "" gstate
         ]
 
-    collectGlobHashes :: FilePath -> MonitorStateGlobRel -> [(FilePath, (ModTime, HashValue))]
-    collectGlobHashes dir (MonitorStateGlobDirs _ _ _ entries) =
+    collectDirHashes :: FilePath -> [(FilePath, MonitorStateGlobRel)] -> [(FilePath, (ModTime, HashValue))]
+    collectDirHashes dir entries =
       [ res
       | (subdir, fstate) <- entries
       , res <- collectGlobHashes (dir </> subdir) fstate
       ]
-    collectGlobHashes dir (MonitorStateGlobFiles _ _ entries) =
+
+    collectFileHashes :: FilePath -> [(FilePath, MonitorStateFileStatus)] -> [(FilePath, (ModTime, HashValue))]
+    collectFileHashes dir entries =
       [ (dir </> fname, (mtime, hash))
       | (fname, MonitorStateFileHashed mtime hash) <- entries
       ]
+
+    collectGlobHashes :: FilePath -> MonitorStateGlobRel -> [(FilePath, (ModTime, HashValue))]
+    collectGlobHashes dir (MonitorStateGlobDirs _ _ _ entries) =
+      collectDirHashes dir entries
+    collectGlobHashes dir (MonitorStateGlobFiles _ _ entries) =
+      collectFileHashes dir entries
+    collectGlobHashes dir (MonitorStateGlobRecursive _ _ fileEntries dirEntries) =
+      collectFileHashes dir fileEntries ++
+      collectDirHashes dir dirEntries
     collectGlobHashes _dir MonitorStateGlobDirTrailing =
       []
 
