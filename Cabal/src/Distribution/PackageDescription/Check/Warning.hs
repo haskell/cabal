@@ -170,6 +170,7 @@ data CheckExplanation
   | UnknownExtensions [String]
   | LanguagesAsExtension [String]
   | DeprecatedExtensions [(Extension, Maybe Extension)]
+  | FreeTextDotline String
   | MissingFieldCategory
   | MissingFieldMaintainer
   | MissingFieldSynopsis
@@ -337,6 +338,7 @@ data CheckExplanationID
   | CIUnknownExtensions
   | CILanguagesAsExtension
   | CIDeprecatedExtensions
+  | CIFreeTextDotline
   | CIMissingFieldCategory
   | CIMissingFieldMaintainer
   | CIMissingFieldSynopsis
@@ -483,6 +485,7 @@ checkExplanationId (UnknownLanguages{}) = CIUnknownLanguages
 checkExplanationId (UnknownExtensions{}) = CIUnknownExtensions
 checkExplanationId (LanguagesAsExtension{}) = CILanguagesAsExtension
 checkExplanationId (DeprecatedExtensions{}) = CIDeprecatedExtensions
+checkExplanationId (FreeTextDotline{}) = CIFreeTextDotline
 checkExplanationId (MissingFieldCategory{}) = CIMissingFieldCategory
 checkExplanationId (MissingFieldMaintainer{}) = CIMissingFieldMaintainer
 checkExplanationId (MissingFieldSynopsis{}) = CIMissingFieldSynopsis
@@ -636,6 +639,7 @@ ppCheckExplanationId CIUnknownLanguages = "unknown-languages"
 ppCheckExplanationId CIUnknownExtensions = "unknown-extension"
 ppCheckExplanationId CILanguagesAsExtension = "languages-as-extensions"
 ppCheckExplanationId CIDeprecatedExtensions = "deprecated-extensions"
+ppCheckExplanationId CIFreeTextDotline = "free-text-dotline"
 ppCheckExplanationId CIMissingFieldCategory = "no-category"
 ppCheckExplanationId CIMissingFieldMaintainer = "no-maintainer"
 ppCheckExplanationId CIMissingFieldSynopsis = "no-synopsis"
@@ -910,6 +914,11 @@ ppExplanation (DeprecatedExtensions ourDeprecatedExtensions) =
         ++ "'."
       | (ext, Just replacement) <- ourDeprecatedExtensions
       ]
+ppExplanation (FreeTextDotline field) =
+  "Empty lines with a dot '.' in field '"
+    ++ field
+    ++ "' are unnecessary for creating newlines "
+    ++ "(and treated literally) in cabal 3.0+"
 ppExplanation MissingFieldCategory = "No 'category' field."
 ppExplanation MissingFieldMaintainer = "No 'maintainer' field."
 ppExplanation MissingFieldSynopsis = "No 'synopsis' field."

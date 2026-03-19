@@ -66,6 +66,7 @@ module Distribution.FieldGrammar.Parsec
   , runFieldParser
   , runFieldParser'
   , fieldLinesToStream
+  , freeTextIgnoreDotlineVers
   ) where
 
 import Distribution.Compat.Newtype
@@ -234,7 +235,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
 
       parseOne v (MkNamelessField pos fls)
         | null fls = pure Nothing
-        | v >= CabalSpecV3_0 = pure (Just (fieldlinesToFreeText3 pos fls))
+        | v >= freeTextIgnoreDotlineVers = pure (Just (fieldlinesToFreeText3 pos fls))
         | otherwise = pure (Just (fieldlinesToFreeText fls))
 
   freeTextFieldDef fn _ = ParsecFG (Set.singleton fn) Set.empty parser
@@ -249,7 +250,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
 
       parseOne v (MkNamelessField pos fls)
         | null fls = pure ""
-        | v >= CabalSpecV3_0 = pure (fieldlinesToFreeText3 pos fls)
+        | v >= freeTextIgnoreDotlineVers = pure (fieldlinesToFreeText3 pos fls)
         | otherwise = pure (fieldlinesToFreeText fls)
 
   -- freeTextFieldDefST = defaultFreeTextFieldDefST
@@ -267,7 +268,7 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
         [] -> pure mempty
         [FieldLine _ bs] -> pure (ShortText.unsafeFromUTF8BS bs)
         _
-          | v >= CabalSpecV3_0 -> pure (ShortText.toShortText $ fieldlinesToFreeText3 pos fls)
+          | v >= freeTextIgnoreDotlineVers -> pure (ShortText.toShortText $ fieldlinesToFreeText3 pos fls)
           | otherwise -> pure (ShortText.toShortText $ fieldlinesToFreeText fls)
 
   monoidalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
@@ -410,6 +411,11 @@ fieldlinesToFreeText fls = intercalate "\n" (map go fls)
       | otherwise = s
       where
         s = trim (fromUTF8BS bs)
+
+-- | Cabal version where we switch from the old free text parser that had
+-- special logic for "dotlines" to a new parser that has no such logic.
+freeTextIgnoreDotlineVers :: CabalSpecVersion
+freeTextIgnoreDotlineVers = CabalSpecV3_0
 
 fieldlinesToFreeText3 :: Position -> [FieldLine Position] -> String
 fieldlinesToFreeText3 _ [] = ""

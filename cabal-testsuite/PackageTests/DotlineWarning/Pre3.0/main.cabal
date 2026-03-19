@@ -1,0 +1,57 @@
+cabal-version: 2.4
+
+name: main
+version: 0.1
+build-type: Simple
+category:
+  Some
+  .
+  Category
+author:
+  Joe
+  .
+  Author
+stability:
+  Some
+  .
+  Stability
+homepage:
+  Some
+  .
+  homepace
+package-url:
+  Some
+  .
+  url
+maintainer:
+  Joe
+  .
+  Maintainer
+copyright:
+  Some
+  .
+  text
+bug-reports:
+  Some
+  .
+  bugs
+synopsis:
+  Test input
+  .
+  with
+  .
+  lines
+description:
+  .
+  Some . description
+  .
+  spanning .
+  .
+  multiple lines.
+  .
+license: BSD-3-Clause
+
+library
+  exposed-modules: Lib
+  build-depends: base <6
+  default-language: Haskell2010

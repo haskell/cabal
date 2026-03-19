@@ -1,0 +1,8 @@
+# cabal v2-build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - main-0.1 (lib) (first run)
+
+# cabal check
+No errors or warnings could be found in the package.
