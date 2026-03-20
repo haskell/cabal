@@ -7,6 +7,6 @@ import Control.Monad
 main :: IO ()
 main | fooTest [] = do
         -- Make sure that the output buffer is drained
-        replicateM 10000 $ putStrLn "The quick brown fox jumps over the lazy dog"
+        replicateM_ 10000 $ putStrLn "The quick brown fox jumps over the lazy dog"
         exitSuccess
      | otherwise = exitFailure
