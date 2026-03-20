@@ -138,6 +138,8 @@ import System.Directory (removePathForcibly)
 import System.Environment (getArgs, getProgName)
 import System.IO (hPutStr, hPutStrLn)
 
+import GHC.Stack
+
 -- | A simple implementation of @main@ for a Cabal setup script.
 -- It reads the package description file using IO, and performs the
 -- action specified on the command line.
@@ -146,7 +148,7 @@ defaultMain = getArgs >>= defaultMainHelper simpleUserHooks
 
 -- | A version of 'defaultMain' that is passed the command line
 -- arguments, rather than getting them from the environment.
-defaultMainArgs :: [String] -> IO ()
+defaultMainArgs :: HasCallStack => [String] -> IO ()
 defaultMainArgs = defaultMainHelper simpleUserHooks
 
 -- | A version of 'defaultMainArgs' that allows passing explicit verbosity handles.
@@ -319,11 +321,11 @@ defaultMainWithHooksNoReadArgs hooks pkg_descr =
 -- Given hooks and args, this runs 'commandsRun' onto the args,
 -- getting 'CommandParse' data back, which is then pattern-matched into
 -- IO actions for execution, with arguments applied by the parser.
-defaultMainHelper :: UserHooks -> Args -> IO ()
+defaultMainHelper :: HasCallStack => UserHooks -> Args -> IO ()
 defaultMainHelper = defaultMainHelperWithHandles defaultVerbosityHandles
 
 -- | A version of 'defaultMainHelper' that allows setting the logging handles.
-defaultMainHelperWithHandles :: VerbosityHandles -> UserHooks -> Args -> IO ()
+defaultMainHelperWithHandles :: HasCallStack => VerbosityHandles -> UserHooks -> Args -> IO ()
 defaultMainHelperWithHandles verbHandles hooks args =
   topHandler (isUserException (Proxy @(VerboseException CabalException))) $ do
     args' <- expandResponse args
@@ -401,7 +403,7 @@ allSuffixHandlers hooks =
     overridesPP :: [PPSuffixHandler] -> [PPSuffixHandler] -> [PPSuffixHandler]
     overridesPP = unionBy (\x y -> fst x == fst y)
 
-configureAction :: VerbosityHandles -> GlobalFlags -> UserHooks -> ConfigFlags -> Args -> IO LocalBuildInfo
+configureAction :: HasCallStack => VerbosityHandles -> GlobalFlags -> UserHooks -> ConfigFlags -> Args -> IO LocalBuildInfo
 configureAction verbHandles globalFlags hooks flags args = do
   distPref <- findDistPrefOrDefault (setupDistPref $ configCommonFlags flags)
   let commonFlags = configCommonFlags flags
@@ -926,11 +928,11 @@ clean verbHandles pkg_descr flags = do
 
 -- | Hooks that correspond to a plain instantiation of the
 -- \"simple\" build system
-simpleUserHooks :: UserHooks
+simpleUserHooks :: HasCallStack => UserHooks
 simpleUserHooks = simpleUserHooksWithHandles defaultVerbosityHandles
 
 -- | A version of 'simpleUserHooks' that allows setting custom logging handles.
-simpleUserHooksWithHandles :: VerbosityHandles -> UserHooks
+simpleUserHooksWithHandles :: HasCallStack => VerbosityHandles -> UserHooks
 simpleUserHooksWithHandles verbHandles =
   emptyUserHooks
     { confHook = \p -> configure_setupHooks SetupHooks.noConfigureHooks p verbHandles

@@ -197,6 +197,8 @@ import qualified Data.Maybe as M
 import qualified Data.Set as Set
 import qualified Distribution.Compat.NonEmptySet as NES
 
+import GHC.Stack (HasCallStack)
+
 type UseExternalInternalDeps = Bool
 
 -- | The errors that can be thrown when reading the @setup-config@ file.
@@ -332,7 +334,8 @@ maybeGetPersistBuildConfig mbWorkDir =
 -- | After running configure, output the 'LocalBuildInfo' to the
 -- 'localBuildInfoFile'.
 writePersistBuildConfig
-  :: Maybe (SymbolicPath CWD (Dir Pkg))
+  :: HasCallStack
+  => Maybe (SymbolicPath CWD (Dir Pkg))
   -- ^ Working directory
   -> SymbolicPath Pkg (Dir Dist)
   -- ^ The @dist@ directory path.
@@ -341,8 +344,24 @@ writePersistBuildConfig
   -> IO ()
 writePersistBuildConfig mbWorkDir distPref lbi = do
   createDirectoryIfMissing False (i distPref)
-  writeFileAtomic (i $ localBuildInfoFile distPref) $
-    BLC8.unlines [showHeader pkgId, structuredEncode lbi]
+  let filename = i $ localBuildInfoFile distPref
+      content = BLC8.unlines [showHeader pkgId, structuredEncode lbi]
+      logFile = "/Users/andrew/programs/cabal/setup-config.log"
+  existsAlready <- doesFileExist filename
+  unless existsAlready $ do
+    let msg = "Build config " ++ filename ++ " does not exist yet!"
+    traceM msg
+    appendFile logFile (msg ++ "\n")
+  when existsAlready $ do
+    existingContent <- BLC8.readFile filename
+    let sameContent = content == existingContent
+        trailing = BLC8.stripPrefix existingContent content
+        msg = if sameContent
+          then "Build config " ++ filename ++ " already exists and contains the same data!"
+          else "Build config " ++ filename ++ " already exists and contains different data! Old was " ++ show (BLC8.length existingContent) ++ " bytes, new is " ++ show (BLC8.length content) ++ " bytes. Trailing are " ++ show trailing
+    traceM msg
+    appendFile logFile (msg ++ "\n")
+  writeFileAtomic filename content
   where
     i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
     pkgId = localPackage lbi
@@ -466,7 +485,8 @@ configure
 configure p = configure_setupHooks noConfigureHooks p defaultVerbosityHandles
 
 configure_setupHooks
-  :: ConfigureHooks
+  :: HasCallStack
+  => ConfigureHooks
   -> (GenericPackageDescription, HookedBuildInfo)
   -> VerbosityHandles
   -> ConfigFlags

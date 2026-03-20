@@ -290,6 +290,8 @@ import System.IO
   )
 import System.Process (createProcess, env, proc, waitForProcess)
 
+import GHC.Stack
+
 -- | Entry point
 --
 -- This does three things.
@@ -306,7 +308,7 @@ import System.Process (createProcess, env, proc, waitForProcess)
 -- Three, it calls the 'mainWorker', which calls the argument parser,
 -- producing 'CommandParse' data, which mainWorker pattern-matches
 -- into IO actions for execution.
-main :: [String] -> IO ()
+main :: HasCallStack => [String] -> IO ()
 main args = do
   installTerminationHandler
   -- Enable line buffering so that we can get fast feedback even when piped.
@@ -344,7 +346,7 @@ warnIfAssertionsAreEnabled =
 -- With an exception-handler @topHandler@, mainWorker calls commandsRun
 -- to parse arguments, then pattern-matches the CommandParse data
 -- into IO actions for execution.
-mainWorker :: [String] -> IO ()
+mainWorker :: HasCallStack => [String] -> IO ()
 mainWorker args = do
   topHandler (isUserException (Proxy @(VerboseException CabalInstallException))) $ do
     command <- commandsRunWithFallback (globalCommand commands) commands delegateToExternal args
@@ -1565,7 +1567,7 @@ userConfigAction ucflags extraArgs globalFlags = do
 
 -- | Used as an entry point when cabal-install needs to invoke itself
 -- as a setup script. This can happen e.g. when doing parallel builds.
-actAsSetupAction :: ActAsSetupFlags -> [String] -> Action
+actAsSetupAction :: HasCallStack => ActAsSetupFlags -> [String] -> Action
 actAsSetupAction actAsSetupFlags args _globalFlags =
   let bt = fromFlag (actAsSetupBuildType actAsSetupFlags)
    in case bt of
