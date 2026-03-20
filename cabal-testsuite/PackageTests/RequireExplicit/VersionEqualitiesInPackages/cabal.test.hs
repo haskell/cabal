@@ -12,6 +12,6 @@ main = do
   --   - a-0 (lib) (first run)
   cabalTest . withRepo "repo" $ do
     let opts = [ "all", "--dry-run" ]
-    cabal "build" $ opts
+    cabal "build" opts
     cabal "build" $ "--reject-unconstrained-dependencies=all" : opts
     cabal "build" $ "--reject-unconstrained-dependencies=eq" : opts
