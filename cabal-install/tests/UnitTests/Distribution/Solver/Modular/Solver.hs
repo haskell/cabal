@@ -442,8 +442,7 @@ tests =
                           ["A"]
                           (solverFailure . isInfixOf $ solverMsg "all")
                     ]
-            , testGroup "=eq" $
-                [ runTest . whenEq $ mkTest db17 "goal A B backtracking" ["A", "B"] solveAB
+            , testGroup "=eq" [ runTest . whenEq $ mkTest db17 "goal A B backtracking" ["A", "B"] solveAB
                 , runTest . whenEq $
                     (mkTest db17 "goal A with B ==1, C ==1" ["A"] solveABC)
                       { testConstraints = eqConstraints
