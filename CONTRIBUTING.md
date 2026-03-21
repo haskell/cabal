@@ -407,7 +407,7 @@ gh pr create --template pull_request_template.md
 ```
 
 This way you will not erase the
-[PR template](https://github.com/haskell/cabal/blob/master/.github/pull_request_template.md)
+[PR template](.github/pull_request_template.md)
 all contributors use.
 
 ## Changelog
