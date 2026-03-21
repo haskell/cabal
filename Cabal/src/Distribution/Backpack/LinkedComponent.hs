@@ -260,12 +260,12 @@ toLinkedComponent
           4
           ( vcat
               [ case Map.lookup req (modScopeRequires linked_shape0) of
-                  Just srcs@(_ : _) ->
-                    hang
-                      (pretty req)
-                      4
-                      (vcat [text "brought into scope by" <+> dispModuleSource (getSource src) | src <- srcs])
-                  _ -> pretty req
+                Just srcs@(_ : _) ->
+                  hang
+                    (pretty req)
+                    4
+                    (vcat [text "brought into scope by" <+> dispModuleSource (getSource src) | src <- srcs])
+                _ -> pretty req
               | req <- Set.toList reqs
               ]
           )
