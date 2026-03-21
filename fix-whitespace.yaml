@@ -19,7 +19,7 @@
 # 3) included-files is a white-list of files,
 # 4) excluded-files is a black-list of included-files.
 #
-# The extended glob pattern can be used to specify file/direcotory names.
+# The extended glob pattern can be used to specify file and directory names.
 # For details, see http://hackage.haskell.org/package/filemanip-0.3.6.3/docs/System-FilePath-GlobPattern.html
 #
 included-dirs:
@@ -32,6 +32,7 @@ excluded-dirs:
   - doc/.venv
   - .stack-work
   - .vscode
+  - haddocks
 
 # Every matched filename is included unless it is matched by excluded-files.
 included-files:
