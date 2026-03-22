@@ -1,16 +1,16 @@
-Please read [Github PR Conventions](https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#github-pull-request-conventions) and then fill in *one* of these two templates.
+Please read [Github PR Conventions](CONTRIBUTING.md#github-pull-request-conventions) and then fill in *one* of these two templates.
 
 ---
 
-**Template Α: This PR modifies [behaviour or interface](https://github.com/cabalism/cabal/blob/master/CONTRIBUTING.md#changelog)**
+**Template Α: This PR modifies [behaviour or interface](CONTRIBUTING.md#changelog)**
 
 Include the following checklist in your PR:
 
-* [ ] Patches conform to the [coding conventions](https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#other-conventions).
-* [ ] Any changes that could be relevant to users [have been recorded in the changelog](https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#changelog).
-  * [ ] [Is the change significant?](https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#is-my-change-significant) If so, remember to add `significance: significant` in the changelog file.
+* [ ] Patches conform to the [coding conventions](CONTRIBUTING.md#other-conventions).
+* [ ] Any changes that could be relevant to users [have been recorded in the changelog](CONTRIBUTING.md#changelog).
+  * [ ] [Is the change significant?](CONTRIBUTING.md#is-my-change-significant) If so, remember to add `significance: significant` in the changelog file.
 * [ ] The documentation has been updated, if necessary.
-* [ ] [Manual QA notes](https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#qa-notes) have been included.
+* [ ] [Manual QA notes](CONTRIBUTING.md#qa-notes) have been included.
 * [ ] Tests have been added. (*Ask for help if you don’t know how to write them! Ask for an exemption if tests are too complex for too little coverage!*)
 
 ---
@@ -21,5 +21,5 @@ Include the following checklist in your PR:
 
 Include the following checklist in your PR:
 
-* [ ] Patches conform to the [coding conventions](https://github.com/haskell/cabal/blob/master/CONTRIBUTING.md#other-conventions).
+* [ ] Patches conform to the [coding conventions](CONTRIBUTING.md#other-conventions).
 * [ ] Is this a PR that fixes CI? If so, it will need to be backported to older cabal release branches (ask maintainers for directions).
