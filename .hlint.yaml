@@ -3,16 +3,15 @@
 - ignore: {name: "Avoid lambda"} # 51 hints
 - ignore: {name: "Avoid lambda using `infix`"} # 23 hints
 - ignore: {name: "Eta reduce"} # 138 hints
-- ignore: {name: "Evaluate"} # 10 hints
 - ignore: {name: "Functor law"} # 10 hints
 - ignore: {name: "Hoist not"} # 16 hints
 - ignore: {name: "Monoid law, left identity"} # 3 hints
 - ignore: {name: "Monoid law, right identity"} # 3 hints
 - ignore: {name: "Move filter"} # 4 hints
-- ignore: {name: "Move guards forward"} # 4 hints
+- ignore: {name: "Move guards forward"} # 5 hints
 - ignore: {name: "Redundant $!"} # 1 hint
 - ignore: {name: "Redundant <$>"} # 17 hints
-- ignore: {name: "Redundant bracket"} # 256 hints
+- ignore: {name: "Redundant bracket"} # 257 hints
 - ignore: {name: "Redundant guard"} # 2 hints
 - ignore: {name: "Redundant if"} # 6 hints
 - ignore: {name: "Redundant lambda"} # 19 hints
@@ -58,6 +57,8 @@
     - --ignore-glob=Cabal-syntax/src/Distribution/Fields/Lexer.hs
     - --ignore-glob=Cabal-tests/tests/custom-setup/CabalDoctestSetup.hs
     - --ignore-glob=Cabal-tests/tests/custom-setup/IdrisSetup.hs
+    # TODO: Remove --ignore-glob for ghc-supported-languages.hs when this module compiles
+    - --ignore-glob=Cabal-tests/tests/misc/ghc-supported-languages.hs
     - --ignore-glob=cabal-testsuite/PackageTests/BuildWays/q/app/Main.hs
     - --ignore-glob=cabal-testsuite/PackageTests/CMain/10168/src/Lib.hs
     - --ignore-glob=cabal-testsuite/PackageTests/CmmSources/src/Demo.hs
