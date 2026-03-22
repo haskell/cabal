@@ -307,8 +307,10 @@ establishProjectBaseContextWithRoot verbosity cliConfig projectRoot currentComma
           projectConfig
 
   -- https://github.com/haskell/cabal/issues/6013
+  -- https://github.com/haskell/cabal/issues/7401
+  let projPath = distProjectFileMain (distProjectFile distDirLayout)
   when (null (projectPackages projectConfig) && null (projectPackagesOptional projectConfig)) $
-    warn verbosity "There are no packages or optional-packages in the project"
+    dieWithException verbosity (ProjectConfigNoPackages projPath)
 
   return
     ProjectBaseContext

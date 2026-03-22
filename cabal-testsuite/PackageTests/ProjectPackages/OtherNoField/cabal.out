@@ -1,0 +1,7 @@
+# cabal v2-build
+Error: [Cabal-7168]
+The project config '<ROOT>/dir/cabal.project' requires at least one of the fields 'packages' or 'optional-packages', but neither was specified.
+
+# cabal v2-build
+Error: [Cabal-7168]
+The project config '<ROOT>/dir/cabal.project' requires at least one of the fields 'packages' or 'optional-packages', but neither was specified.
