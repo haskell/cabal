@@ -511,10 +511,7 @@ haddockProjectOptions showOrParseArgs =
     [ option
         ""
         ["hackage"]
-        ( concat
-            [ "A short-cut option to build documentation linked to hackage."
-            ]
-        )
+        "A short-cut option to build documentation linked to hackage."
         haddockProjectHackage
         (\v flags -> flags{haddockProjectHackage = v})
         trueArg

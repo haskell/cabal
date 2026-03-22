@@ -393,7 +393,7 @@ driverFunctionTest pkgIx srcDb comp =
                 _libSourceDirs lib @?= ["src"]
                 _libLanguage lib @?= Haskell2010
                 _libExposedModules lib @?= NEL.fromList (map fromString ["Foo", "Bar"])
-                _libOtherModules lib @?= map fromString ["Baz.Internal"]
+                _libOtherModules lib @?= [fromString "Baz.Internal"]
                 _libOtherExts lib @?= map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards]
                 _libDependencies lib @?! []
                 _libBuildTools lib @?= [mkStringyDep "happy:happy"]
@@ -545,7 +545,7 @@ driverFunctionTest pkgIx srcDb comp =
                 _libSourceDirs lib @?= ["src"]
                 _libLanguage lib @?= Haskell2010
                 _libExposedModules lib @?= NEL.fromList (map fromString ["Foo", "Bar"])
-                _libOtherModules lib @?= map fromString ["Baz.Internal"]
+                _libOtherModules lib @?= [fromString "Baz.Internal"]
                 _libOtherExts lib @?= map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards]
                 _libDependencies lib @?! []
                 _libBuildTools lib @?= [mkStringyDep "happy:happy"]
@@ -689,7 +689,7 @@ driverFunctionTest pkgIx srcDb comp =
                 _libSourceDirs lib @?= ["src"]
                 _libLanguage lib @?= Haskell2010
                 _libExposedModules lib @?= NEL.fromList (map fromString ["Foo", "Bar"])
-                _libOtherModules lib @?= map fromString ["Baz.Internal"]
+                _libOtherModules lib @?= [fromString "Baz.Internal"]
                 _libOtherExts lib @?= map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards]
                 _libDependencies lib @?! []
                 _libBuildTools lib @?= [mkStringyDep "happy:happy"]
@@ -799,7 +799,7 @@ driverFunctionTest pkgIx srcDb comp =
                 _libSourceDirs lib @?= ["src"]
                 _libLanguage lib @?= Haskell2010
                 _libExposedModules lib @?= NEL.fromList (map fromString ["Foo", "Bar"])
-                _libOtherModules lib @?= map fromString ["Baz.Internal"]
+                _libOtherModules lib @?= [fromString "Baz.Internal"]
                 _libOtherExts lib @?= map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards]
                 _libDependencies lib @?! []
                 _libBuildTools lib @?= [mkStringyDep "happy:happy"]
@@ -1268,7 +1268,7 @@ nonInteractiveTests pkgIx srcDb comp =
             [ testSimple
                 "Library directory exists"
                 libOtherModulesHeuristics
-                (map fromString ["Baz.Internal"])
+                [fromString "Baz.Internal"]
                 [ "test-package"
                 , "True"
                 , "[\"src/Foo.hs\", \"src/Bar.hs\", \"src/Baz/Internal.hs\"]"
@@ -1447,7 +1447,7 @@ cliListParserTests =
         flags <- runParserTest ["-o", "Test"]
         flags
           @?= emptyFlags
-            { exposedModules = Flag $ map fromString ["Test"]
+            { exposedModules = Flag [fromString "Test"]
             }
     , testCase "Multiple exposedModules" $ do
         flags <- runParserTest ["-o", "Test", "-o", "Test2", "-o", "Test3"]
