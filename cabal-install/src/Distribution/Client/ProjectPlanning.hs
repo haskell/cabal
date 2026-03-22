@@ -379,7 +379,7 @@ rebuildProjectConfig
       configPath <- getConfigFilePath verbosity projectConfigConfigFile
       return
         ( configPath
-        , distProjectFile ""
+        , distProjectFileMain distProjectFile
         , (projectConfigHcFlavor, projectConfigHcPath, projectConfigHcPkg)
         , projectConfigProjectFileParser
         , progsearchpath
