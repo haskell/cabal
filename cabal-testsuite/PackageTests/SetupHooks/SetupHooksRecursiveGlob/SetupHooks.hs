@@ -4,17 +4,27 @@
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE StaticPointers #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
 
 module SetupHooks where
 
+import Control.Monad (forM_)
 import Control.Monad.IO.Class (liftIO)
 import Distribution.CabalSpecVersion
-import Distribution.Simple.SetupHooks
+import Distribution.Compat.Binary
 import Distribution.Simple.Glob
-import Distribution.Utils.Path
 import Distribution.Simple.LocalBuildInfo (componentBuildInfo, mbWorkDirLBI)
+import Distribution.Simple.SetupHooks
+import Distribution.Simple.Utils
+import Distribution.Utils.Path
+import Distribution.Utils.ShortText (toShortText)
 
+import System.FilePath
+import Data.List.NonEmpty ( NonEmpty ( (:|) ) )
 import Data.Traversable ( for )
+import GHC.Generics
 
 setupHooks :: SetupHooks
 setupHooks =
@@ -25,6 +35,15 @@ setupHooks =
           }
     }
 
+data PPArgs =
+  PPArgs
+    { verbosity :: Verbosity
+    , srcPath :: FilePath
+    , dstPath :: FilePath
+    }
+  deriving stock (Show, Generic)
+  deriving anyclass Binary
+
 -- Register a pre-build rule that uses a recursive glob.
 preBuildRules :: PreBuildComponentInputs -> RulesM ()
 preBuildRules PreBuildComponentInputs {..} = do
@@ -33,13 +52,17 @@ preBuildRules PreBuildComponentInputs {..} = do
         comp = targetComponent targetInfo
         bi = componentBuildInfo comp
         mbWorkDir = mbWorkDirLBI localBuildInfo
+        clbi = targetCLBI targetInfo
+        autogenDir = autogenComponentModulesDir localBuildInfo clbi
+        -- buildDir = componentBuildDir localBuildInfo clbi
+
     let globFilename = "**/*.ppExt" 
     let glob = case parseFileGlob cabalVersion globFilename of
                 Left err ->
                   error $ explainGlobSyntaxError globFilename err
                 Right glob ->
                   glob
-    myPpFiles <- liftIO $ for ( hsSourceDirs bi ) $ \ srcDir -> do
+    myPpFiles <- fmap concat $ liftIO $ for ( hsSourceDirs bi ) $ \ srcDir -> do
       let root = interpretSymbolicPath mbWorkDir srcDir
       matches <- runDirFileGlob verbosity Nothing root glob
       return
@@ -48,3 +71,33 @@ preBuildRules PreBuildComponentInputs {..} = do
         ]
     -- Monitor existence of file glob to handle new input files getting added.
     addRuleMonitors [ monitorFileGlobExistence $ RootedGlob FilePathRelative glob ]
+
+    let preprocessFile PPArgs {..} = do
+          warn verbosity $ "Preprocessing: " ++ srcPath ++ " -> " ++ dstPath
+          (modLine : inputLines) <- lines <$> readFile srcPath
+          let hsSrc = unlines
+                [ modLine
+                , ""
+                , "str :: String"
+                , "str = " ++ show (unlines inputLines)
+                ]
+          createDirectoryIfMissingVerbose verbosity True (takeDirectory dstPath)
+          rewriteFileEx verbosity dstPath hsSrc
+
+    -- Register preprocessor rules
+    forM_ myPpFiles $ \ppFile@(Location _ relPath) -> do
+      let ppFile' = Location
+                        autogenDir
+                        (replaceExtensionSymbolicPath (unsafeCoerceSymbolicPath relPath) "hs")
+
+      let action = mkCommand (static Dict) (static preprocessFile)
+                    PPArgs
+                      { srcPath = interpretSymbolicPath mbWorkDir (location ppFile)
+                      , dstPath = interpretSymbolicPath mbWorkDir (location ppFile')
+                      , ..
+                      }
+
+      registerRule ("myPP " <> toShortText (getSymbolicPath relPath)) $
+        staticRule action
+          [FileDependency ppFile]
+          (ppFile' :| [])
