@@ -51,6 +51,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Utils
   ( dieWithException
   , info
+  , removeFileForcibly
   , wrapText
   )
 import Distribution.System
@@ -85,7 +86,6 @@ import System.Directory
   , doesDirectoryExist
   , doesFileExist
   , listDirectory
-  , removeFile
   , removePathForcibly
   )
 import System.FilePath
@@ -216,5 +216,5 @@ cleanAction (ProjectFlags{..}, CleanFlags{..}) extraArgs _ = do
 
 removeEnvFiles :: FilePath -> IO ()
 removeEnvFiles dir =
-  (traverse_ (removeFile . (dir </>)) . filter ((".ghc.environment" ==) . take 16))
+  (traverse_ (removeFileForcibly . (dir </>)) . filter ((".ghc.environment" ==) . take 16))
     =<< listDirectory dir

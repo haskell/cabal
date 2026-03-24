@@ -97,7 +97,6 @@ import System.Directory
   , createDirectoryIfMissing
   , doesFileExist
   , getAppUserDataDirectory
-  , removeFile
   , renameFile
   )
 import System.FilePath
@@ -1570,10 +1569,8 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
       -- Work around old GHCs not relinking in this
       -- situation, see #3294
       let target = targetDir </> makeRelativePathEx targetName
-      when (compilerVersion comp < mkVersion [7, 7]) $ do
-        let targetPath = i target
-        e <- doesFileExist targetPath
-        when e (removeFile targetPath)
+      when (compilerVersion comp < mkVersion [7, 7]) $
+        removeFileForcibly (i target)
       runGhcProg linkOpts{ghcOptOutputFile = toFlag target}
     GBuildFLib flib -> do
       let rtsInfo = extractRtsInfo lbi
