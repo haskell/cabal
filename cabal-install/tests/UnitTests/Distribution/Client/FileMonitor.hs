@@ -13,7 +13,7 @@ import Prelude hiding (writeFile)
 import qualified Prelude as IO (writeFile)
 
 import Distribution.Compat.Binary
-import Distribution.Simple.Utils (withTempDirectory)
+import Distribution.Simple.Utils (removeFileForcibly, withTempDirectory)
 import Distribution.System (OS (Windows), buildOS)
 
 import Distribution.Client.FileMonitor
@@ -818,7 +818,7 @@ touchFileContent (RootPath root) fname = do
   IO.writeFile path "different"
 
 removeFile :: RootPath -> FilePath -> IO ()
-removeFile (RootPath root) fname = IO.removeFile (root </> fname)
+removeFile (RootPath root) fname = removeFileForcibly (root </> fname)
 
 touchDir :: RootPath -> FilePath -> IO ()
 touchDir root@(RootPath rootdir) dname = do
@@ -905,5 +905,4 @@ withFileMonitor action = do
     let file = root <.> "monitor"
         monitor = newFileMonitor file
     finally (action (RootPath root) monitor) $ do
-      exists <- IO.doesFileExist file
-      when exists $ IO.removeFile file
+      removeFileForcibly file

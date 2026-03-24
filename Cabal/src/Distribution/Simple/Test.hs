@@ -54,9 +54,7 @@ import Distribution.Types.InstalledPackageInfo (InstalledPackageInfo (libraryDir
 import Distribution.Types.LocalBuildInfo (LocalBuildInfo (..))
 import System.Directory
   ( createDirectoryIfMissing
-  , doesFileExist
   , listDirectory
-  , removeFile
   )
 
 -- | Perform the \"@.\/setup test@\" action.
@@ -151,8 +149,7 @@ test args verbHandles pkg_descr lbi0 flags = do
 
   -- Delete ordinary files from test log directory.
   listDirectory (i testLogDir)
-    >>= filterM doesFileExist . map (i testLogDir </>)
-    >>= traverse_ removeFile
+    >>= traverse_ (removeFileForcibly . (i testLogDir </>))
 
   -- We configured the unit-ids of libraries we should cover in our coverage
   -- report at configure time into the local build info. At build time, we built

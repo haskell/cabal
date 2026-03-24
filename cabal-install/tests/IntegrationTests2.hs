@@ -95,6 +95,7 @@ import System.IO.Silently
 
 import qualified Data.ByteString as BS
 import Distribution.Simple.Flag (pattern Flag)
+import Distribution.Simple.Utils (removeFileForcibly)
 import Distribution.Types.ParStrat
 import Distribution.Verbosity
 
@@ -1929,7 +1930,7 @@ testSetupScriptStyles config reportSubCase = do
       hasDefaultSetupDeps pkg1 @?= Just False
       marker1 <- readFile (basedir </> testdir1 </> "marker")
       marker1 @?= "ok"
-      removeFile (basedir </> testdir1 </> "marker")
+      removeFileForcibly (basedir </> testdir1 </> "marker")
 
       -- implicit deps implies 'Cabal < 2' which conflicts w/ GHC 8.2 or later
       when (compilerVersion (pkgConfigCompiler sharedConfig) < mkVersion [8, 2]) $ do
@@ -1940,7 +1941,7 @@ testSetupScriptStyles config reportSubCase = do
         hasDefaultSetupDeps pkg2 @?= Just True
         marker2 <- readFile (basedir </> testdir2 </> "marker")
         marker2 @?= "ok"
-        removeFile (basedir </> testdir2 </> "marker")
+        removeFileForcibly (basedir </> testdir2 </> "marker")
 
       reportSubCase (show SetupNonCustomInternalLib)
       (plan3, res3) <- executePlan =<< planProject testdir3 config

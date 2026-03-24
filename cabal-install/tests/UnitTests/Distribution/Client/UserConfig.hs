@@ -19,9 +19,8 @@ import Test.Tasty.HUnit
 
 import Distribution.Client.Config
 import Distribution.Client.Setup (GlobalFlags (..), InstallFlags (..))
-import Distribution.Client.Utils (removeExistingFile)
 import Distribution.Simple.Setup (ConfigFlags (..), fromFlag, pattern Flag)
-import Distribution.Simple.Utils (withTempDirectory)
+import Distribution.Simple.Utils (removeFileForcibly, withTempDirectory)
 import Distribution.Utils.NubList (fromNubList)
 import Distribution.Verbosity
 
@@ -104,4 +103,4 @@ bracketTest =
 
     testTearDown :: FilePath -> IO ()
     testTearDown configFile =
-      mapM_ removeExistingFile [configFile, configFile ++ ".backup"]
+      mapM_ removeFileForcibly [configFile, configFile ++ ".backup"]

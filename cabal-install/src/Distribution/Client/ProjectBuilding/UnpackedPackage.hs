@@ -105,7 +105,7 @@ import qualified Data.ByteString.Lazy.Char8 as LBS.Char8
 import qualified Data.List.NonEmpty as NE
 
 import Control.Exception (ErrorCall, Handler (..), SomeAsyncException, assert, catches, onException)
-import System.Directory (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, listDirectory, removeFile)
+import System.Directory (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, listDirectory)
 import System.FilePath (dropDrive, normalise, takeDirectory, (<.>), (</>))
 import System.IO (Handle, IOMode (AppendMode), withFile)
 import System.Semaphore (SemaphoreName (..))
@@ -799,8 +799,7 @@ buildAndInstallUnpackedPackage
           Nothing -> return ()
           Just logFile -> do
             createDirectoryIfMissing True (takeDirectory logFile)
-            exists <- doesFileExist logFile
-            when exists $ removeFile logFile
+            removeFileForcibly logFile
 
 -- | The copy part of the installation phase when doing build-and-install
 copyPkgFiles

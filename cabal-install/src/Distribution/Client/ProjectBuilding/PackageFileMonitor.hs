@@ -24,9 +24,9 @@ import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Simple.LocalBuildInfo
   ( ComponentName (..)
   )
+import Distribution.Simple.Utils (removeFileForcibly)
 
 import qualified Data.Set as Set
-import Distribution.Client.Init.Types (removeExistingFile, runPromptIO)
 
 -----------------------------
 -- Package change detection
@@ -291,4 +291,4 @@ updatePackageRegFileMonitor
 
 invalidatePackageRegFileMonitor :: PackageFileMonitor -> IO ()
 invalidatePackageRegFileMonitor PackageFileMonitor{pkgFileMonitorReg} =
-  runPromptIO $ removeExistingFile (fileMonitorCacheFile pkgFileMonitorReg)
+  removeFileForcibly (fileMonitorCacheFile pkgFileMonitorReg)
