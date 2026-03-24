@@ -97,6 +97,9 @@ module Distribution.Simple.Utils
   , copyFileTo
   , copyFileToCwd
 
+    -- * removing files
+  , removeFileForcibly
+
     -- * installing files
   , installOrdinaryFile
   , installExecutableFile
@@ -244,6 +247,7 @@ import Data.Typeable
   ( cast
   )
 
+import Control.Concurrent (threadDelay)
 import qualified Control.Exception as Exception
 import Data.Time.Clock.POSIX (POSIXTime, getPOSIXTime)
 import qualified Data.Version as DV
@@ -1811,6 +1815,26 @@ copyFilesWith doCopy verbosity targetDir srcFiles = withFrozenCallStack $ do
 -- anything goes wrong.
 copyFiles :: Verbosity -> FilePath -> [(FilePath, FilePath)] -> IO ()
 copyFiles v fp fs = withFrozenCallStack (copyFilesWith copyFileVerbose v fp fs)
+
+-- | A robust helper to remove an existing file, which does not throw
+-- an exception if such file never existed, thus akin to removePathForcibly.
+removeFileForcibly :: FilePath -> IO ()
+removeFileForcibly fp = catch (removeFile fp) $ \case
+  e
+    -- If the file never existed in the first place, we are golden.
+    | isDoesNotExistError e -> pure ()
+    -- If we got a permission error, chances are that it's a read-only
+    -- file on Windows. Removing read-only attribute ourselves requires
+    -- reaching out for internal API, so instead of it we call 'removePathForcibly',
+    -- which is a bit of overkill for a single file, but well.
+    | isPermissionError e -> removePathForcibly fp
+    -- If device is busy, wait 1ms and give it another go.
+    -- EBUSY from unlink(2) is mapped to UnsatisfiedConstraints.
+    | ioeGetErrorType e == GHC.UnsatisfiedConstraints -> do
+        threadDelay 1000
+        removeFile fp
+    -- Else we give up.
+    | otherwise -> throwIO e
 
 -- | This is like 'copyFiles' but uses 'installOrdinaryFile'.
 installOrdinaryFiles :: Verbosity -> FilePath -> [(FilePath, FilePath)] -> IO ()

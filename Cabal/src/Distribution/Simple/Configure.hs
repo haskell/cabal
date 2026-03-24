@@ -156,7 +156,6 @@ import System.Directory
   , doesFileExist
   , doesPathExist
   , listDirectory
-  , removeFile
   )
 import System.FilePath
   ( isAbsolute
@@ -2634,7 +2633,7 @@ checkForeignDeps pkg lbi verbosity =
             ++ (baseDir </> hdr)
             ++ "; removing "
             ++ (baseDir </> hdr)
-        removeFile (baseDir </> hdr)
+        removeFileForcibly (baseDir </> hdr)
 
     findOffendingHdr =
       ifBuildsWith

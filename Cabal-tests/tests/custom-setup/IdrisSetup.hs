@@ -301,8 +301,8 @@ idrisPostSDist args flags desc lbi = do
                               let targetFile = "src" </> "Target_idris" Px.<.> "hs"
                               putStrLn $ "Removing generated modules:\n "
                                         ++ file ++ "\n" ++ targetFile
-                              removeFile file
-                              removeFile targetFile)
+                              removeFileForcible file
+                              removeFileForcible targetFile)
              (\e -> let e' = (e :: SomeException) in return ())
   postSDist simpleUserHooks args flags desc lbi
 #endif
