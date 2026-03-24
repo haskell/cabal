@@ -13,9 +13,6 @@ import Distribution.Utils.Path
 -- Don't bother with the cabal-install test as the build-depends
 -- is updated by this point so that we lost the caret parsing.
 main = setupTest $ do
-    -- Don't run this for GHC 7.0/7.2, which doesn't have a recent
-    -- enough version of pretty. (But this is pretty dumb.)
-    skipUnlessGhcVersion ">= 7.3"
     assertOutputDoesNotContain "Parse of field 'build-depends' failed"
         =<< setup' "configure" []
     lbi <- getLocalBuildInfoM

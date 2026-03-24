@@ -71,6 +71,4 @@ test-suite doctests
     , doctest >= 0.9.1
     , filepath
   ghc-options: -Wall -threaded
-  if impl(ghc<7.6.1)
-    ghc-options: -Werror
   hs-source-dirs: tests

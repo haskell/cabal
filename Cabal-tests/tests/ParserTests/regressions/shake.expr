@@ -532,86 +532,7 @@ GenericPackageDescription {
                 targetBuildDepends = [],
                 mixins = []}},
             condTreeConstraints = [],
-            condTreeComponents = [
-              CondBranch {
-                condBranchCondition =
-                `Var (Impl GHC (EarlierVersion (mkVersion [7,6])))`,
-                condBranchIfTrue = CondNode {
-                  condTreeData = Library {
-                    libName = LMainLibName,
-                    exposedModules = [],
-                    reexportedModules = [],
-                    signatures = [],
-                    libExposed = True,
-                    libVisibility =
-                    LibraryVisibilityPublic,
-                    libBuildInfo = BuildInfo {
-                      buildable = True,
-                      buildTools = [],
-                      buildToolDepends = [],
-                      cppOptions = [],
-                      asmOptions = [],
-                      cmmOptions = [],
-                      ccOptions = [],
-                      cxxOptions = [],
-                      jsppOptions = [],
-                      ldOptions = [],
-                      hsc2hsOptions = [],
-                      pkgconfigDepends = [],
-                      frameworks = [],
-                      extraFrameworkDirs = [],
-                      asmSources = [],
-                      cmmSources = [],
-                      cSources = [],
-                      cxxSources = [],
-                      jsSources = [],
-                      hsSourceDirs = [],
-                      otherModules = [],
-                      virtualModules = [],
-                      autogenModules = [],
-                      defaultLanguage = Nothing,
-                      otherLanguages = [],
-                      defaultExtensions = [],
-                      otherExtensions = [],
-                      oldExtensions = [],
-                      extraLibs = [],
-                      extraLibsStatic = [],
-                      extraGHCiLibs = [],
-                      extraBundledLibs = [],
-                      extraLibFlavours = [],
-                      extraDynLibFlavours = [],
-                      extraLibDirs = [],
-                      extraLibDirsStatic = [],
-                      includeDirs = [],
-                      includes = [],
-                      autogenIncludes = [],
-                      installIncludes = [],
-                      options = PerCompilerFlavor
-                        []
-                        [],
-                      profOptions = PerCompilerFlavor
-                        []
-                        [],
-                      sharedOptions =
-                      PerCompilerFlavor [] [],
-                      profSharedOptions =
-                      PerCompilerFlavor [] [],
-                      staticOptions =
-                      PerCompilerFlavor [] [],
-                      customFieldsBI = [],
-                      targetBuildDepends = [
-                        Dependency
-                          (PackageName "old-time")
-                          (OrLaterVersion (mkVersion [0]))
-                          mainLibSet],
-                      mixins = []}},
-                  condTreeConstraints = [
-                    Dependency
-                      (PackageName "old-time")
-                      (OrLaterVersion (mkVersion [0]))
-                      mainLibSet],
-                  condTreeComponents = []},
-                condBranchIfFalse = Nothing}]},
+            condTreeComponents = []},
           condBranchIfFalse = Just
             CondNode {
               condTreeData = Library {
@@ -995,7 +916,9 @@ GenericPackageDescription {
               [
                 "-main-is",
                 "Run.main",
-                "-rtsopts"]
+                "-rtsopts",
+                "-threaded",
+                "-with-rtsopts=-I0 -qg -qb"]
               [],
             profOptions = PerCompilerFlavor
               []
@@ -1171,76 +1094,6 @@ GenericPackageDescription {
         condTreeComponents = [
           CondBranch {
             condBranchCondition =
-            `Var (Impl GHC (OrLaterVersion (mkVersion [7,8])))`,
-            condBranchIfTrue = CondNode {
-              condTreeData = Executable {
-                exeName = UnqualComponentName
-                  "shake",
-                modulePath = SymbolicPath "",
-                exeScope = ExecutablePublic,
-                buildInfo = BuildInfo {
-                  buildable = True,
-                  buildTools = [],
-                  buildToolDepends = [],
-                  cppOptions = [],
-                  asmOptions = [],
-                  cmmOptions = [],
-                  ccOptions = [],
-                  cxxOptions = [],
-                  jsppOptions = [],
-                  ldOptions = [],
-                  hsc2hsOptions = [],
-                  pkgconfigDepends = [],
-                  frameworks = [],
-                  extraFrameworkDirs = [],
-                  asmSources = [],
-                  cmmSources = [],
-                  cSources = [],
-                  cxxSources = [],
-                  jsSources = [],
-                  hsSourceDirs = [],
-                  otherModules = [],
-                  virtualModules = [],
-                  autogenModules = [],
-                  defaultLanguage = Nothing,
-                  otherLanguages = [],
-                  defaultExtensions = [],
-                  otherExtensions = [],
-                  oldExtensions = [],
-                  extraLibs = [],
-                  extraLibsStatic = [],
-                  extraGHCiLibs = [],
-                  extraBundledLibs = [],
-                  extraLibFlavours = [],
-                  extraDynLibFlavours = [],
-                  extraLibDirs = [],
-                  extraLibDirsStatic = [],
-                  includeDirs = [],
-                  includes = [],
-                  autogenIncludes = [],
-                  installIncludes = [],
-                  options = PerCompilerFlavor
-                    [
-                      "-threaded",
-                      "-with-rtsopts=-I0 -qg -qb"]
-                    [],
-                  profOptions = PerCompilerFlavor
-                    []
-                    [],
-                  sharedOptions =
-                  PerCompilerFlavor [] [],
-                  profSharedOptions =
-                  PerCompilerFlavor [] [],
-                  staticOptions =
-                  PerCompilerFlavor [] [],
-                  customFieldsBI = [],
-                  targetBuildDepends = [],
-                  mixins = []}},
-              condTreeConstraints = [],
-              condTreeComponents = []},
-            condBranchIfFalse = Nothing},
-          CondBranch {
-            condBranchCondition =
             `Var (PackageFlag (FlagName "portable"))`,
             condBranchIfTrue = CondNode {
               condTreeData = Executable {
@@ -1305,83 +1158,7 @@ GenericPackageDescription {
                   targetBuildDepends = [],
                   mixins = []}},
               condTreeConstraints = [],
-              condTreeComponents = [
-                CondBranch {
-                  condBranchCondition =
-                  `Var (Impl GHC (EarlierVersion (mkVersion [7,6])))`,
-                  condBranchIfTrue = CondNode {
-                    condTreeData = Executable {
-                      exeName = UnqualComponentName
-                        "shake",
-                      modulePath = SymbolicPath "",
-                      exeScope = ExecutablePublic,
-                      buildInfo = BuildInfo {
-                        buildable = True,
-                        buildTools = [],
-                        buildToolDepends = [],
-                        cppOptions = [],
-                        asmOptions = [],
-                        cmmOptions = [],
-                        ccOptions = [],
-                        cxxOptions = [],
-                        jsppOptions = [],
-                        ldOptions = [],
-                        hsc2hsOptions = [],
-                        pkgconfigDepends = [],
-                        frameworks = [],
-                        extraFrameworkDirs = [],
-                        asmSources = [],
-                        cmmSources = [],
-                        cSources = [],
-                        cxxSources = [],
-                        jsSources = [],
-                        hsSourceDirs = [],
-                        otherModules = [],
-                        virtualModules = [],
-                        autogenModules = [],
-                        defaultLanguage = Nothing,
-                        otherLanguages = [],
-                        defaultExtensions = [],
-                        otherExtensions = [],
-                        oldExtensions = [],
-                        extraLibs = [],
-                        extraLibsStatic = [],
-                        extraGHCiLibs = [],
-                        extraBundledLibs = [],
-                        extraLibFlavours = [],
-                        extraDynLibFlavours = [],
-                        extraLibDirs = [],
-                        extraLibDirsStatic = [],
-                        includeDirs = [],
-                        includes = [],
-                        autogenIncludes = [],
-                        installIncludes = [],
-                        options = PerCompilerFlavor
-                          []
-                          [],
-                        profOptions = PerCompilerFlavor
-                          []
-                          [],
-                        sharedOptions =
-                        PerCompilerFlavor [] [],
-                        profSharedOptions =
-                        PerCompilerFlavor [] [],
-                        staticOptions =
-                        PerCompilerFlavor [] [],
-                        customFieldsBI = [],
-                        targetBuildDepends = [
-                          Dependency
-                            (PackageName "old-time")
-                            (OrLaterVersion (mkVersion [0]))
-                            mainLibSet],
-                        mixins = []}},
-                    condTreeConstraints = [
-                      Dependency
-                        (PackageName "old-time")
-                        (OrLaterVersion (mkVersion [0]))
-                        mainLibSet],
-                    condTreeComponents = []},
-                  condBranchIfFalse = Nothing}]},
+              condTreeComponents = []},
             condBranchIfFalse = Just
               CondNode {
                 condTreeData = Executable {
@@ -1798,7 +1575,9 @@ GenericPackageDescription {
               [
                 "-main-is",
                 "Test.main",
-                "-rtsopts"]
+                "-rtsopts",
+                "-with-rtsopts=-K1K",
+                "-threaded"]
               [],
             profOptions = PerCompilerFlavor
               []
@@ -1977,150 +1756,6 @@ GenericPackageDescription {
         condTreeComponents = [
           CondBranch {
             condBranchCondition =
-            `Var (Impl GHC (OrLaterVersion (mkVersion [7,6])))`,
-            condBranchIfTrue = CondNode {
-              condTreeData = TestSuite {
-                testName = UnqualComponentName
-                  "",
-                testInterface =
-                TestSuiteUnsupported
-                  (TestTypeUnknown
-                    ""
-                    (mkVersion [])),
-                testBuildInfo = BuildInfo {
-                  buildable = True,
-                  buildTools = [],
-                  buildToolDepends = [],
-                  cppOptions = [],
-                  asmOptions = [],
-                  cmmOptions = [],
-                  ccOptions = [],
-                  cxxOptions = [],
-                  jsppOptions = [],
-                  ldOptions = [],
-                  hsc2hsOptions = [],
-                  pkgconfigDepends = [],
-                  frameworks = [],
-                  extraFrameworkDirs = [],
-                  asmSources = [],
-                  cmmSources = [],
-                  cSources = [],
-                  cxxSources = [],
-                  jsSources = [],
-                  hsSourceDirs = [],
-                  otherModules = [],
-                  virtualModules = [],
-                  autogenModules = [],
-                  defaultLanguage = Nothing,
-                  otherLanguages = [],
-                  defaultExtensions = [],
-                  otherExtensions = [],
-                  oldExtensions = [],
-                  extraLibs = [],
-                  extraLibsStatic = [],
-                  extraGHCiLibs = [],
-                  extraBundledLibs = [],
-                  extraLibFlavours = [],
-                  extraDynLibFlavours = [],
-                  extraLibDirs = [],
-                  extraLibDirsStatic = [],
-                  includeDirs = [],
-                  includes = [],
-                  autogenIncludes = [],
-                  installIncludes = [],
-                  options = PerCompilerFlavor
-                    ["-with-rtsopts=-K1K"]
-                    [],
-                  profOptions = PerCompilerFlavor
-                    []
-                    [],
-                  sharedOptions =
-                  PerCompilerFlavor [] [],
-                  profSharedOptions =
-                  PerCompilerFlavor [] [],
-                  staticOptions =
-                  PerCompilerFlavor [] [],
-                  customFieldsBI = [],
-                  targetBuildDepends = [],
-                  mixins = []},
-                testCodeGenerators = []},
-              condTreeConstraints = [],
-              condTreeComponents = []},
-            condBranchIfFalse = Nothing},
-          CondBranch {
-            condBranchCondition =
-            `Var (Impl GHC (OrLaterVersion (mkVersion [7,8])))`,
-            condBranchIfTrue = CondNode {
-              condTreeData = TestSuite {
-                testName = UnqualComponentName
-                  "",
-                testInterface =
-                TestSuiteUnsupported
-                  (TestTypeUnknown
-                    ""
-                    (mkVersion [])),
-                testBuildInfo = BuildInfo {
-                  buildable = True,
-                  buildTools = [],
-                  buildToolDepends = [],
-                  cppOptions = [],
-                  asmOptions = [],
-                  cmmOptions = [],
-                  ccOptions = [],
-                  cxxOptions = [],
-                  jsppOptions = [],
-                  ldOptions = [],
-                  hsc2hsOptions = [],
-                  pkgconfigDepends = [],
-                  frameworks = [],
-                  extraFrameworkDirs = [],
-                  asmSources = [],
-                  cmmSources = [],
-                  cSources = [],
-                  cxxSources = [],
-                  jsSources = [],
-                  hsSourceDirs = [],
-                  otherModules = [],
-                  virtualModules = [],
-                  autogenModules = [],
-                  defaultLanguage = Nothing,
-                  otherLanguages = [],
-                  defaultExtensions = [],
-                  otherExtensions = [],
-                  oldExtensions = [],
-                  extraLibs = [],
-                  extraLibsStatic = [],
-                  extraGHCiLibs = [],
-                  extraBundledLibs = [],
-                  extraLibFlavours = [],
-                  extraDynLibFlavours = [],
-                  extraLibDirs = [],
-                  extraLibDirsStatic = [],
-                  includeDirs = [],
-                  includes = [],
-                  autogenIncludes = [],
-                  installIncludes = [],
-                  options = PerCompilerFlavor
-                    ["-threaded"]
-                    [],
-                  profOptions = PerCompilerFlavor
-                    []
-                    [],
-                  sharedOptions =
-                  PerCompilerFlavor [] [],
-                  profSharedOptions =
-                  PerCompilerFlavor [] [],
-                  staticOptions =
-                  PerCompilerFlavor [] [],
-                  customFieldsBI = [],
-                  targetBuildDepends = [],
-                  mixins = []},
-                testCodeGenerators = []},
-              condTreeConstraints = [],
-              condTreeComponents = []},
-            condBranchIfFalse = Nothing},
-          CondBranch {
-            condBranchCondition =
             `Var (PackageFlag (FlagName "portable"))`,
             condBranchIfTrue = CondNode {
               condTreeData = TestSuite {
@@ -2189,87 +1824,7 @@ GenericPackageDescription {
                   mixins = []},
                 testCodeGenerators = []},
               condTreeConstraints = [],
-              condTreeComponents = [
-                CondBranch {
-                  condBranchCondition =
-                  `Var (Impl GHC (EarlierVersion (mkVersion [7,6])))`,
-                  condBranchIfTrue = CondNode {
-                    condTreeData = TestSuite {
-                      testName = UnqualComponentName
-                        "",
-                      testInterface =
-                      TestSuiteUnsupported
-                        (TestTypeUnknown
-                          ""
-                          (mkVersion [])),
-                      testBuildInfo = BuildInfo {
-                        buildable = True,
-                        buildTools = [],
-                        buildToolDepends = [],
-                        cppOptions = [],
-                        asmOptions = [],
-                        cmmOptions = [],
-                        ccOptions = [],
-                        cxxOptions = [],
-                        jsppOptions = [],
-                        ldOptions = [],
-                        hsc2hsOptions = [],
-                        pkgconfigDepends = [],
-                        frameworks = [],
-                        extraFrameworkDirs = [],
-                        asmSources = [],
-                        cmmSources = [],
-                        cSources = [],
-                        cxxSources = [],
-                        jsSources = [],
-                        hsSourceDirs = [],
-                        otherModules = [],
-                        virtualModules = [],
-                        autogenModules = [],
-                        defaultLanguage = Nothing,
-                        otherLanguages = [],
-                        defaultExtensions = [],
-                        otherExtensions = [],
-                        oldExtensions = [],
-                        extraLibs = [],
-                        extraLibsStatic = [],
-                        extraGHCiLibs = [],
-                        extraBundledLibs = [],
-                        extraLibFlavours = [],
-                        extraDynLibFlavours = [],
-                        extraLibDirs = [],
-                        extraLibDirsStatic = [],
-                        includeDirs = [],
-                        includes = [],
-                        autogenIncludes = [],
-                        installIncludes = [],
-                        options = PerCompilerFlavor
-                          []
-                          [],
-                        profOptions = PerCompilerFlavor
-                          []
-                          [],
-                        sharedOptions =
-                        PerCompilerFlavor [] [],
-                        profSharedOptions =
-                        PerCompilerFlavor [] [],
-                        staticOptions =
-                        PerCompilerFlavor [] [],
-                        customFieldsBI = [],
-                        targetBuildDepends = [
-                          Dependency
-                            (PackageName "old-time")
-                            (OrLaterVersion (mkVersion [0]))
-                            mainLibSet],
-                        mixins = []},
-                      testCodeGenerators = []},
-                    condTreeConstraints = [
-                      Dependency
-                        (PackageName "old-time")
-                        (OrLaterVersion (mkVersion [0]))
-                        mainLibSet],
-                    condTreeComponents = []},
-                  condBranchIfFalse = Nothing}]},
+              condTreeComponents = []},
             condBranchIfFalse = Just
               CondNode {
                 condTreeData = TestSuite {

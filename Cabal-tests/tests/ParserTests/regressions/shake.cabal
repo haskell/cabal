@@ -104,8 +104,6 @@ library
 
     if flag(portable)
         cpp-options: -DPORTABLE
-        if impl(ghc < 7.6)
-            build-depends: old-time
     else
         if !os(windows)
             build-depends: unix >= 2.5.1
@@ -172,10 +170,7 @@ executable shake
     hs-source-dirs:   src
     ghc-options: -main-is Run.main
     main-is: Run.hs
-    ghc-options: -rtsopts
-    -- GHC bug 7646 means -threaded causes errors
-    if impl(ghc >= 7.8)
-        ghc-options: -threaded "-with-rtsopts=-I0 -qg -qb"
+    ghc-options: -rtsopts -threaded "-with-rtsopts=-I0 -qg -qb"
     build-depends:
         base == 4.*,
         directory,
@@ -197,8 +192,6 @@ executable shake
 
     if flag(portable)
         cpp-options: -DPORTABLE
-        if impl(ghc < 7.6)
-            build-depends: old-time
     else
         if !os(windows)
             build-depends: unix >= 2.5.1
@@ -269,13 +262,7 @@ test-suite shake-test
     main-is: Test.hs
     hs-source-dirs: src
 
-    ghc-options: -main-is Test.main -rtsopts
-    if impl(ghc >= 7.6)
-        -- space leak introduced by -O1 in 7.4, see #445
-        ghc-options: -with-rtsopts=-K1K
-    if impl(ghc >= 7.8)
-        -- GHC bug 7646 (fixed in 7.8) means -threaded causes errors
-        ghc-options: -threaded
+    ghc-options: -main-is Test.main -rtsopts  -with-rtsopts=-K1K -threaded
 
     build-depends:
         base == 4.*,
@@ -298,8 +285,6 @@ test-suite shake-test
 
     if flag(portable)
         cpp-options: -DPORTABLE
-        if impl(ghc < 7.6)
-            build-depends: old-time
     else
         if !os(windows)
             build-depends: unix >= 2.5.1

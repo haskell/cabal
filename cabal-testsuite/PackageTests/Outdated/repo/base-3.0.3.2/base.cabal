@@ -23,10 +23,6 @@ Library {
     extensions: PackageImports,CPP
     ghc-options: -fno-warn-deprecations
 
-    if impl(ghc < 6.9) {
-        buildable: False
-    }
-
     if impl(ghc) {
         exposed-modules:
             Data.Generics,

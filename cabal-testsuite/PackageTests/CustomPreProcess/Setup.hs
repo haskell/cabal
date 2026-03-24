@@ -27,13 +27,8 @@ main :: IO ()
 main = defaultMainWithHooks
        simpleUserHooks { hookedPreProcessors = [("pre", myCustomPreprocessor)] }
   where
-#if MIN_VERSION_Cabal(2,0,0)
     myCustomPreprocessor :: BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
     myCustomPreprocessor _bi lbi _clbi =
-#else
-    myCustomPreprocessor :: BuildInfo -> LocalBuildInfo -> PreProcessor
-    myCustomPreprocessor _bi lbi =
-#endif
       PreProcessor {
         platformIndependent = True,
         runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->

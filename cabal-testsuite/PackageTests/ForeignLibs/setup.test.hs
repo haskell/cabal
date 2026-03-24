@@ -24,9 +24,6 @@ import Test.Cabal.Prelude
 -- Recording is turned off because versionedlib will or will not
 -- be installed depending on if we're on Linux or not.
 main = setupAndCabalTest . recordMode DoNotRecord $ do
-  -- Foreign libraries don't work with GHC 7.6 and earlier
-  skipUnlessGhcVersion ">= 7.8"
-  ghc94 <- isGhcVersion ">= 9.4.1"
   withPackageDb $ do
         setup_install []
         setup "copy" [] -- regression test #4156
