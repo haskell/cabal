@@ -274,6 +274,7 @@ import Distribution.Version
   )
 
 import qualified Data.ByteString as BS
+import Data.Foldable (fold)
 import Distribution.Client.Errors
 
 -- TODO:
@@ -1002,7 +1003,7 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
                 )
             )
           _ <-
-          CD.flatDeps (confPkgDeps cpkg)
+          fold (confPkgDeps cpkg)
       ]
 
     revDeps :: Map.Map PackageId [PackageId]

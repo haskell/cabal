@@ -16,6 +16,7 @@ import Distribution.Types.Flag (FlagAssignment)
 import Distribution.Types.LibraryName (LibraryName (..))
 import Distribution.Types.MungedPackageId (computeCompatPackageId)
 
+import Data.Foldable (fold)
 import Distribution.Client.Types.ConfiguredId
 import Distribution.Solver.Types.OptionalStanza (OptionalStanzaSet)
 import Distribution.Solver.Types.PackageFixedDeps
@@ -65,7 +66,7 @@ instance IsNode (ConfiguredPackage loc) where
   -- TODO: if we update ConfiguredPackage to support order-only
   -- dependencies, need to include those here.
   -- NB: have to deduplicate, otherwise the planner gets confused
-  nodeNeighbors = ordNub . CD.flatDeps . depends
+  nodeNeighbors = ordNub . fold . depends
 
 instance Binary loc => Binary (ConfiguredPackage loc)
 
@@ -80,4 +81,4 @@ instance HasUnitId (ConfiguredPackage loc) where
   installedUnitId = newSimpleUnitId . confPkgId
 
 instance PackageInstalled (ConfiguredPackage loc) where
-  installedDepends = CD.flatDeps . depends
+  installedDepends = fold . depends

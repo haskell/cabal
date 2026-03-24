@@ -11,6 +11,7 @@ import Control.Exception (try)
 import Data.ByteString as BS (null)
 import Data.ByteString.Lazy as BSL (pack, toChunks)
 import Data.ByteString.Lazy.Char8 as BSLL (init, length, pack)
+import Data.Either (isLeft)
 import Distribution.Client.GZipUtils (maybeDecompress)
 
 import Test.Tasty
@@ -55,8 +56,3 @@ prop_maybeDecompress_gzip ws = property $ maybeDecompress compressedGZip === ori
   where
     original = BSL.pack ws
     compressedGZip = GZip.compress original
-
--- (Only available from "Data.Either" since 7.8.)
-isLeft :: Either a b -> Bool
-isLeft (Right _) = False
-isLeft (Left _) = True
