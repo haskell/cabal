@@ -419,8 +419,7 @@ prop_roundtrip_printparse_RelaxDeps' rdep =
 
 instance Arbitrary ProjectConfig where
   arbitrary =
-    ProjectConfig
-      <$> (map getPackageLocationString <$> arbitrary)
+    (ProjectConfig . map getPackageLocationString <$> arbitrary)
       <*> (map getPackageLocationString <$> arbitrary)
       <*> shortListOf 3 arbitrary
       <*> arbitrary
@@ -702,15 +701,14 @@ instance Arbitrary ProjectConfigProvenance where
 
 instance Arbitrary PackageConfig where
   arbitrary =
-    PackageConfig
-      <$> ( MapLast . Map.fromList
-              <$> shortListOf
-                10
-                ( (,)
-                    <$> arbitraryProgramName
-                    <*> arbitraryShortToken
-                )
+    ( PackageConfig . MapLast . Map.fromList
+        <$> shortListOf
+          10
+          ( (,)
+              <$> arbitraryProgramName
+              <*> arbitraryShortToken
           )
+    )
       <*> ( MapMappend . Map.fromList
               <$> shortListOf
                 10
