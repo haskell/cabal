@@ -20,11 +20,12 @@ import Distribution.Simple.SetupHooks
 import Distribution.Simple.Utils
 import Distribution.Utils.Path
 import Distribution.Utils.ShortText (toShortText)
+import Distribution.Verbosity
 
-import System.FilePath
 import Data.List.NonEmpty ( NonEmpty ( (:|) ) )
 import Data.Traversable ( for )
 import GHC.Generics
+import System.FilePath
 
 setupHooks :: SetupHooks
 setupHooks =
@@ -37,18 +38,18 @@ setupHooks =
 
 data PPArgs =
   PPArgs
-    { verbosity :: Verbosity
+    { verbosityFlags :: VerbosityFlags
     , srcPath :: FilePath
     , dstPath :: FilePath
     }
-  deriving stock (Show, Generic)
+  deriving stock ( Show, Generic )
   deriving anyclass Binary
 
 -- Register a pre-build rule that uses a recursive glob.
 preBuildRules :: PreBuildComponentInputs -> RulesM ()
 preBuildRules PreBuildComponentInputs {..} = do
     let cabalVersion = CabalSpecV3_16
-        verbosity = buildingWhatVerbosity buildingWhat
+        verbosityFlags = buildingWhatVerbosity buildingWhat
         comp = targetComponent targetInfo
         bi = componentBuildInfo comp
         mbWorkDir = mbWorkDirLBI localBuildInfo
@@ -64,6 +65,7 @@ preBuildRules PreBuildComponentInputs {..} = do
                   glob
     myPpFiles <- fmap concat $ liftIO $ for ( hsSourceDirs bi ) $ \ srcDir -> do
       let root = interpretSymbolicPath mbWorkDir srcDir
+      let verbosity = mkVerbosity defaultVerbosityHandles verbosityFlags
       matches <- runDirFileGlob verbosity Nothing root glob
       return
         [ Location srcDir ( makeRelativePathEx match )
@@ -73,6 +75,7 @@ preBuildRules PreBuildComponentInputs {..} = do
     addRuleMonitors [ monitorFileGlobExistence $ RootedGlob FilePathRelative glob ]
 
     let preprocessFile PPArgs {..} = do
+          let verbosity = mkVerbosity defaultVerbosityHandles verbosityFlags
           warn verbosity $ "Preprocessing: " ++ srcPath ++ " -> " ++ dstPath
           (modLine : inputLines) <- lines <$> readFile srcPath
           let hsSrc = unlines
@@ -86,6 +89,7 @@ preBuildRules PreBuildComponentInputs {..} = do
 
     -- Register preprocessor rules
     forM_ myPpFiles $ \ppFile@(Location _ relPath) -> do
+      let verbosity = mkVerbosity defaultVerbosityHandles verbosityFlags
       let ppFile' = Location
                         autogenDir
                         (replaceExtensionSymbolicPath (unsafeCoerceSymbolicPath relPath) "hs")
