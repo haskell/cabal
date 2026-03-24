@@ -2096,7 +2096,7 @@ getInstalledPackages verbosity comp mbWorkDir packageDBs progdb = do
   -- do not check empty packagedbs (ghc-pkg would error out)
   packageDBs' <- filterM packageDBExists packageDBs
   case compilerFlavor comp of
-    GHC -> GHC.getInstalledPackages verbosity comp mbWorkDir packageDBs' progdb
+    GHC -> GHC.getInstalledPackages verbosity mbWorkDir packageDBs' progdb
     GHCJS -> GHCJS.getInstalledPackages verbosity mbWorkDir packageDBs' progdb
     UHC -> UHC.getInstalledPackages verbosity comp mbWorkDir packageDBs' progdb
     flv ->
@@ -2923,12 +2923,7 @@ checkForeignLibSupported :: Compiler -> Platform -> ForeignLib -> Maybe String
 checkForeignLibSupported comp platform flib = go (compilerFlavor comp)
   where
     go :: CompilerFlavor -> Maybe String
-    go GHC
-      | compilerVersion comp < mkVersion [7, 8] =
-          unsupported
-            [ "Building foreign libraries is only supported with GHC >= 7.8"
-            ]
-      | otherwise = goGhcPlatform platform
+    go GHC = goGhcPlatform platform
     go _ =
       unsupported
         [ "Building foreign libraries is currently only supported with ghc"

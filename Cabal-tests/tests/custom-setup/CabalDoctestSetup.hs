@@ -41,6 +41,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 {-# LANGUAGE CPP               #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase #-}
 -- | The provided 'generateBuildModule' generates 'Build_doctests' module.
 -- That module exports enough configuration, so your doctests could be simply
 --
@@ -81,9 +82,7 @@ module CabalDoctestSetup (
     ) where
 
 -- Hacky way to suppress few deprecation warnings.
-#if MIN_VERSION_Cabal(1,24,0)
 #define InstalledPackageId UnitId
-#endif
 
 import Control.Monad
        (when)
@@ -126,15 +125,9 @@ import qualified Data.Foldable    as F
 import qualified Data.Traversable as T
                  (traverse)
 
-#if MIN_VERSION_Cabal(1,25,0)
 import Distribution.Simple.BuildPaths
        (autogenComponentModulesDir)
-#else
-import Distribution.Simple.BuildPaths
-       (autogenModulesDir)
-#endif
 
-#if MIN_VERSION_Cabal(2,0,0)
 import Distribution.Types.MungedPackageId
        (MungedPackageId)
 import Distribution.Types.UnqualComponentName
@@ -148,12 +141,6 @@ import Distribution.Types.GenericPackageDescription
 
 import Distribution.Version
        (mkVersion)
-#else
-import Data.Version
-       (Version (..))
-import Distribution.Package
-       (PackageId)
-#endif
 
 #if MIN_VERSION_Cabal(3,11,0)
 import Distribution.Utils.Path
@@ -198,11 +185,6 @@ findFile' verbosity searchPath fileName
 #else
 findFile' _verbosity searchPath fileName
   = findFile searchPath fileName
-#endif
-
-#if !MIN_VERSION_Cabal(2,0,0)
-mkVersion :: [Int] -> Version
-mkVersion ds = Version ds []
 #endif
 
 class CompatPath p where
@@ -332,18 +314,14 @@ generateBuildModule testSuiteName flags pkg lbi = do
 
   -- Package DBs & environments
   let dbStack = withPackageDB lbi ++ [ SpecificPackageDB $ distPref </>  makeRelativePathEx "package.conf.inplace" ]
-  let dbFlags = "-hide-all-packages" : packageDbArgs dbStack
+  let dbFlags = "-hide-all-packages" : packageDbArgsDb dbStack
   let envFlags
         | ghcCanBeToldToIgnorePkgEnvs = [ "-package-env=-" ]
         | otherwise = []
 
   withTestLBI pkg lbi $ \suite suitecfg -> when (testName suite == fromString testSuiteName) $ do
     let testAutogenDir = toFilePath $
-#if MIN_VERSION_Cabal(1,25,0)
           autogenComponentModulesDir lbi suitecfg
-#else
-          autogenModulesDir lbi
-#endif
 
     createDirectoryIfMissingVerbose verbosity True testAutogenDir
 
@@ -398,11 +376,7 @@ generateBuildModule testSuiteName flags pkg lbi = do
 
            let compAutogenDir =
                  toFilePath $
-#if MIN_VERSION_Cabal(1,25,0)
                  autogenComponentModulesDir lbi compCfg
-#else
-                 autogenModulesDir lbi
-#endif
 
            -- Lib sources and includes
            iArgsNoPrefix
@@ -500,7 +474,7 @@ generateBuildModule testSuiteName flags pkg lbi = do
 
     -- we do this check in Setup, as then doctests don't need to depend on Cabal
     isNewCompiler = case compilerId $ compiler lbi of
-      CompilerId GHC v -> v >= mkVersion [7,6]
+      CompilerId GHC v -> True
       _                -> False
 
     ghcCanBeToldToIgnorePkgEnvs :: Bool
@@ -521,29 +495,10 @@ generateBuildModule testSuiteName flags pkg lbi = do
       | display (packageId pkg) == display pkgId = "-package=" ++ display pkgId
       | otherwise              = "-package-id=" ++ display installedPkgId
 
-    -- From Distribution.Simple.Program.GHC
-    packageDbArgs :: [PackageDB] -> [String]
-    packageDbArgs | isNewCompiler = packageDbArgsDb
-                  | otherwise     = packageDbArgsConf
-
-    -- GHC <7.6 uses '-package-conf' instead of '-package-db'.
-    packageDbArgsConf :: [PackageDB] -> [String]
-    packageDbArgsConf dbstack = case dbstack of
-      (GlobalPackageDB:UserPackageDB:dbs) -> concatMap specific dbs
-      (GlobalPackageDB:dbs)               -> ("-no-user-package-conf")
-                                           : concatMap specific dbs
-      _ -> ierror
-      where
-        specific (SpecificPackageDB db) = [ "-package-conf=" ++ interpretSymbolicPathCWD db ]
-        specific _                      = ierror
-        ierror = error $ "internal error: unexpected package db stack: "
-                      ++ show dbstack
-
-    -- GHC >= 7.6 uses the '-package-db' flag. See
     -- https://ghc.haskell.org/trac/ghc/ticket/5977.
     packageDbArgsDb :: [PackageDB] -> [String]
     -- special cases to make arguments prettier in common scenarios
-    packageDbArgsDb dbstack = case dbstack of
+    packageDbArgsDb = \case
       (GlobalPackageDB:UserPackageDB:dbs)
         | all isSpecific dbs              -> concatMap single dbs
       (GlobalPackageDB:dbs)
@@ -558,42 +513,26 @@ generateBuildModule testSuiteName flags pkg lbi = do
        isSpecific (SpecificPackageDB _) = True
        isSpecific _                     = False
 
-    mbLibraryName :: Library -> Name
 #if MIN_VERSION_Cabal(3,0,0)
     mbLibraryName = NameLib . fmap unUnqualComponentName . libraryNameString . libName
-#elif MIN_VERSION_Cabal(2,0,0)
+#else
     -- Cabal-2.0 introduced internal libraries, which are named.
     mbLibraryName = NameLib . fmap unUnqualComponentName . libName
-#else
-    -- Before that, there was only ever at most one library per
-    -- .cabal file, which has no name.
-    mbLibraryName _ = NameLib Nothing
 #endif
 
     executableName :: Executable -> String
-#if MIN_VERSION_Cabal(2,0,0)
     executableName = unUnqualComponentName . exeName
-#else
-    executableName = exeName
-#endif
 {- FOURMOLU_ENABLE -}
 
 -- | In compat settings it's better to omit the type-signature
 testDeps :: ComponentLocalBuildInfo -> ComponentLocalBuildInfo
-#if MIN_VERSION_Cabal(2,0,0)
          -> [(InstalledPackageId, MungedPackageId)]
-#else
-         -> [(InstalledPackageId, PackageId)]
-#endif
 testDeps xs ys = nub $ componentPackageDeps xs ++ componentPackageDeps ys
 
 amendGPD
     :: String -- ^ doctests test-suite name
     -> GenericPackageDescription
     -> GenericPackageDescription
-#if !(MIN_VERSION_Cabal(2,0,0))
-amendGPD _ gpd = gpd
-#else
 amendGPD testSuiteName gpd = gpd
     { condTestSuites = map f (condTestSuites gpd)
     }
@@ -623,4 +562,3 @@ amendGPD testSuiteName gpd = gpd
         bi' = bi { otherModules = om', autogenModules = am' }
         testSuite' = testSuite { testBuildInfo = bi' }
         condTree' = condTree { condTreeData = testSuite' }
-#endif

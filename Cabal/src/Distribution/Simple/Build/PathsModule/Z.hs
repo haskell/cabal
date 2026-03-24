@@ -5,8 +5,6 @@ import Distribution.ZinzaPrelude
 data Z
     = Z {zPackageName :: PackageName,
          zVersionDigits :: String,
-         zSupportsCpp :: Bool,
-         zSupportsNoRebindableSyntax :: Bool,
          zAbsolute :: Bool,
          zRelocatable :: Bool,
          zIsWindows :: Bool,
@@ -25,18 +23,8 @@ data Z
     deriving Generic
 render :: Z -> String
 render z_root = execWriter $ do
-  if (zSupportsCpp z_root)
-  then do
-    tell "{-# LANGUAGE CPP #-}\n"
-    return ()
-  else do
-    return ()
-  if (zSupportsNoRebindableSyntax z_root)
-  then do
-    tell "{-# LANGUAGE NoRebindableSyntax #-}\n"
-    return ()
-  else do
-    return ()
+  tell "{-# LANGUAGE CPP #-}\n"
+  tell "{-# LANGUAGE NoRebindableSyntax #-}\n"
   if (zNot z_root (zAbsolute z_root))
   then do
     tell "{-# LANGUAGE ForeignFunctionInterface #-}\n"
@@ -91,25 +79,8 @@ render z_root = execWriter $ do
   else do
     return ()
   tell "\n"
-  if (zSupportsCpp z_root)
-  then do
-    tell "#if defined(VERSION_base)\n"
-    tell "\n"
-    tell "#if MIN_VERSION_base(4,0,0)\n"
-    tell "catchIO :: IO a -> (Exception.IOException -> IO a) -> IO a\n"
-    tell "#else\n"
-    tell "catchIO :: IO a -> (Exception.Exception -> IO a) -> IO a\n"
-    tell "#endif\n"
-    tell "\n"
-    tell "#else\n"
-    tell "catchIO :: IO a -> (Exception.IOException -> IO a) -> IO a\n"
-    tell "#endif\n"
-    tell "catchIO = Exception.catch\n"
-    return ()
-  else do
-    tell "catchIO :: IO a -> (Exception.IOException -> IO a) -> IO a\n"
-    tell "catchIO = Exception.catch\n"
-    return ()
+  tell "catchIO :: IO a -> (Exception.IOException -> IO a) -> IO a\n"
+  tell "catchIO = Exception.catch\n"
   tell "\n"
   tell "-- |The package version.\n"
   tell "version :: Version\n"

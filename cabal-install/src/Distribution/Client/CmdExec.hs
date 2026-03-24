@@ -46,7 +46,6 @@ import Distribution.Client.ProjectOrchestration
   )
 import Distribution.Client.ProjectPlanOutput
   ( PostBuildProjectStatus
-  , argsEquivalentOfGhcEnvironmentFile
   , createPackageEnvironmentAndArgs
   , updatePostBuildProjectStatus
   )
@@ -63,10 +62,6 @@ import Distribution.Client.Setup
   )
 import Distribution.Simple.Command
   ( CommandUI (..)
-  )
-import Distribution.Simple.GHC
-  ( GhcImplInfo (supportsPkgEnvFiles)
-  , getImplInfo
   )
 import Distribution.Simple.Program
   ( ConfiguredProgram
@@ -181,28 +176,16 @@ execAction flags extraArgs globalFlags = do
   -- point at the file.
   -- In case ghc is too old to support environment files,
   -- we pass the same info as arguments
-  let compiler = pkgConfigCompiler $ elaboratedShared buildCtx
-      envFilesSupported = supportsPkgEnvFiles (getImplInfo compiler)
   case extraArgs of
     [] -> dieWithException verbosity SpecifyAnExecutable
     exe : args -> do
       (program, _) <- requireProgram verbosity (simpleProgram exe) programDb
-      let environmentPackageArgs =
-            argsEquivalentOfGhcEnvironmentFile
-              compiler
-              (distDirLayout baseCtx)
-              (elaboratedPlanOriginal buildCtx)
-              buildStatus
-          programIsConfiguredCompiler =
+      let programIsConfiguredCompiler =
             matchCompilerPath
               (elaboratedShared buildCtx)
               program
-
-      ( if envFilesSupported
-          then withTempEnvFile verbosity baseCtx buildCtx buildStatus
-          else \f -> f environmentPackageArgs []
-        )
-        $ \argOverrides envOverrides -> do
+      (withTempEnvFile verbosity baseCtx buildCtx buildStatus) $
+        \argOverrides envOverrides -> do
           let program' =
                 withOverrides
                   envOverrides

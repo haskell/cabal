@@ -17,5 +17,4 @@ library
 
     ghc-options: -Wall -Werror
 
-    if impl(ghc >= 6.12.1)
-        ghc-options: -fno-warn-unused-do-bind
+    ghc-options: -fno-warn-unused-do-bind

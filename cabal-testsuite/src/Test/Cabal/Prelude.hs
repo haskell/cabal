@@ -70,7 +70,7 @@ import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Char as Char
 import Data.List (isInfixOf, isPrefixOf, stripPrefix)
-import Data.Maybe (fromMaybe, isJust, mapMaybe)
+import Data.Maybe (isJust, mapMaybe)
 import Network.Wait (waitTcpVerbose)
 import System.Directory
 import System.Environment
@@ -485,31 +485,20 @@ ghcPkg' cmd args = do
   unless (testHavePackageDb env) $
     error "Must initialize package database using withPackageDb"
   -- NB: testDBStack already has the local database
-  ghcConfProg <- requireProgramM ghcProgram
   let db_stack = testPackageDBStack env
-      extraArgs =
-        ghcPkgPackageDBParams
-          ( fromMaybe
-              (error "ghc-pkg: cannot detect version")
-              (programVersion ghcConfProg)
-          )
-          db_stack
+      extraArgs = ghcPkgPackageDBParams db_stack
   recordHeader ["ghc-pkg", cmd]
   runProgramM ghcPkgProgram (cmd : extraArgs ++ args) Nothing
 
-ghcPkgPackageDBParams :: Version -> PackageDBStackCWD -> [String]
-ghcPkgPackageDBParams version dbs = concatMap convert dbs
+ghcPkgPackageDBParams :: PackageDBStackCWD -> [String]
+ghcPkgPackageDBParams dbs = concatMap convert dbs
   where
     convert :: PackageDBCWD -> [String]
     -- Ignoring global/user is dodgy but there's no way good
     -- way to give ghc-pkg the correct flags in this case.
     convert GlobalPackageDB = []
     convert UserPackageDB = []
-    convert (SpecificPackageDB path)
-      | version >= mkVersion [7, 6] =
-          ["--package-db=" ++ path]
-      | otherwise =
-          ["--package-conf=" ++ path]
+    convert (SpecificPackageDB path) = ["--package-db=" ++ path]
 
 ------------------------------------------------------------------------
 
@@ -1349,17 +1338,7 @@ getIPID pn = do
 delay :: TestM ()
 delay = do
   env <- getTestEnv
-  is_old_ghc <- isGhcVersion "< 7.7"
-  -- For old versions of GHC, we only had second-level precision,
-  -- so we need to sleep a full second.  Newer versions use
-  -- millisecond level precision, so we only have to wait
-  -- the granularity of the underlying filesystem.
-  -- TODO: cite commit when GHC got better precision; this
-  -- version bound was empirically generated.
-  liftIO . threadDelay $
-    if is_old_ghc
-      then 1000000
-      else (testMtimeChangeDelay env)
+  liftIO . threadDelay $ testMtimeChangeDelay env
 
 -- | Create a symlink for the duration of the provided action. If the symlink
 -- already exists, it is deleted.

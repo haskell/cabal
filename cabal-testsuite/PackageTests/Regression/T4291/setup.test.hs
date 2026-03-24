@@ -6,7 +6,6 @@ import Test.Cabal.Prelude
 main = do
   skipIfWindows "no relocatable builds"
   setupAndCabalTest $ withPackageDb $ do
-    skipUnlessGhcVersion ">= 7.6"
     env <- getTestEnv
     let pkgroot = takeDirectory $ testPackageDbDir env
         prefix = testTmpDir env </> "prefix"

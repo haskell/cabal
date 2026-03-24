@@ -7,7 +7,6 @@ module GenUtils where
 
 import Control.Lens (each, ix, (%~), (&))
 import Data.Char    (toUpper)
-import Data.Maybe   (fromMaybe)
 import Data.Proxy   (Proxy (..))
 import Data.Text    (Text)
 import GHC.Generics (Generic)

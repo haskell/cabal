@@ -1190,7 +1190,7 @@ builtinAutogenFiles pkg lbi clbi =
     pathsFile = AutogenModule (autogenPathsModuleName pkg) (Suffix "hs")
     pathsContents = toUTF8LBS $ generatePathsModule pkg lbi clbi
     packageInfoFile = AutogenModule (autogenPackageInfoModuleName pkg) (Suffix "hs")
-    packageInfoContents = toUTF8LBS $ generatePackageInfoModule pkg lbi
+    packageInfoContents = toUTF8LBS $ generatePackageInfoModule pkg
     cppHeaderFile = AutogenFile $ toShortText cppHeaderName
     cppHeaderContents = toUTF8LBS $ generateCabalMacrosHeader pkg lbi clbi
 

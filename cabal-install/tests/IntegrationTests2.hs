@@ -1913,16 +1913,11 @@ testSetupScriptStyles config reportSubCase = do
 
   plan0@(_, _, sharedConfig) <- planProject testdir1 config
 
-  let isOSX (Platform _ OSX) = True
-      isOSX _ = False
-      compilerVer = compilerVersion (pkgConfigCompiler sharedConfig)
+  let compilerVer = compilerVersion (pkgConfigCompiler sharedConfig)
   -- Skip the Custom tests when the shipped Cabal library is buggy
-  unless
-    ( (isOSX (pkgConfigPlatform sharedConfig) && (compilerVer < mkVersion [7, 10]))
-        -- 9.10 ships Cabal 3.12.0.0 affected by #9940
-        || (mkVersion [9, 10] <= compilerVer && compilerVer < mkVersion [9, 11])
-    )
-    $ do
+  -- 9.10 ships Cabal 3.12.0.0 affected by #9940
+  unless (mkVersion [9, 10] <= compilerVer && compilerVer < mkVersion [9, 11]) $
+    do
       (plan1, res1) <- executePlan plan0
       pkg1 <- expectPackageInstalled plan1 res1 pkgidA
       elabSetupScriptStyle pkg1 @?= SetupCustomExplicitDeps

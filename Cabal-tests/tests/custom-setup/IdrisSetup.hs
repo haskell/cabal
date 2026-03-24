@@ -152,11 +152,6 @@ isFreestanding flags =
     Just False -> False
     Nothing -> False
 
-#if !(MIN_VERSION_Cabal(2,0,0))
-mkFlagName :: String -> FlagName
-mkFlagName = FlagName
-#endif
-
 mkVerbosity
   ::
 #if MIN_VERSION_Cabal(3,17,0)
@@ -271,9 +266,6 @@ idrisConfigure _ flags pkgdesc local = do
       -- the file after configure.
       configureRTS = make verbosity "rts" ["clean"]
 
-#if !(MIN_VERSION_Cabal(2,0,0))
-      autogenComponentModulesDir lbi _ = autogenModulesDir lbi
-#endif
 {- FOURMOLU_ENABLE -}
 
 #if !MIN_VERSION_Cabal(3,0,0)

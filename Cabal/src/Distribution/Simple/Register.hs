@@ -423,7 +423,7 @@ withHcPkg
   -> String
   -> Compiler
   -> ProgramDb
-  -> (HcPkg.HcPkgInfo -> IO a)
+  -> (HcPkg.ConfiguredProgram -> IO a)
   -> IO a
 withHcPkg verbosity name comp progdb f =
   case compilerFlavor comp of
@@ -455,7 +455,7 @@ writeHcPkgRegisterScript
   -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> [InstalledPackageInfo]
   -> PackageDBStack
-  -> HcPkg.HcPkgInfo
+  -> HcPkg.ConfiguredProgram
   -> IO ()
 writeHcPkgRegisterScript verbosity mbWorkDir ipis packageDbs hpi = do
   let genScript installedPkgInfo =
