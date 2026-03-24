@@ -194,7 +194,7 @@ assign tree = go tree (A M.empty M.empty M.empty)
         where f k             r = r (A pa (M.insert qfn k fa) sa)
     go (SChoice qsn rdm y t     ts) (A pa fa sa) = SChoice qsn rdm y t     $ W.mapWithKey f (fmap go ts)
         where f k             r = r (A pa fa (M.insert qsn k sa))
-    go (GoalChoice  rdm         ts) a            = GoalChoice  rdm         $ fmap ($ a) (fmap go ts)
+    go (GoalChoice  rdm         ts) a            = GoalChoice  rdm         $ fmap (`go` a) ts
 
 -- | A tree traversal that simultaneously propagates conflict sets up
 -- the tree from the leaves and creates a log.
