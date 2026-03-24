@@ -6,5 +6,5 @@ main = setupTest $ do
   env <- getTestEnv
   liftIO $ do
     let srcDir = testSourceDir env
-    writeFile (srcDir </> "src/Foo/B.hs") "module Foo.B where\nModified text"
+    writeFile (srcDir </> "src/Foo/B.ppExt") "module Foo.B where\nModified text"
   setup "build" []
