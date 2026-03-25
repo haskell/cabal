@@ -712,8 +712,7 @@ exceptionMessageCabalInstall e = case e of
                   | (thing, _got, alts@(_ : _)) <- nosuch'
                   ]
           ]
-      | (target, nosuch) <- targets
-      , let groupByContainer =
+      | let groupByContainer =
               map
                 ( \g@((inside, _, _, _) : _) ->
                     ( inside
@@ -724,6 +723,7 @@ exceptionMessageCabalInstall e = case e of
                 )
                 . groupBy ((==) `on` (\(x, _, _, _) -> x))
                 . sortBy (compare `on` (\(x, _, _, _) -> x))
+      , (target, nosuch) <- targets
       ]
     where
       mungeThing "file" = "file target"

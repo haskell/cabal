@@ -852,7 +852,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         , concat [["-odir", u dir] | dir <- flag ghcOptObjDir]
         , concat [["-hidir", u dir] | dir <- flag ghcOptHiDir]
         , concat [["-hiedir", u dir] | dir <- flag ghcOptHieDir]
-        , concat [["-gbcdir", u dir] | dir <- flag ghcOptBytecodeDir, bytecodeArtifactsSupported comp]
+        , concat [["-gbcdir", u dir] | bytecodeArtifactsSupported comp, dir <- flag ghcOptBytecodeDir]
         , concat [["-stubdir", u dir] | dir <- flag ghcOptStubDir]
         , -----------------------
           -- Source search path
@@ -965,9 +965,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         , ----------------
           -- GHCi
 
-          concat
-            [ ["-ghci-script", script] | script <- ghcOptGHCiScripts opts, flagGhciScript implInfo
-            ]
+          concat [["-ghci-script", script] | flagGhciScript implInfo, script <- ghcOptGHCiScripts opts]
         , ---------------
           -- Inputs
 
