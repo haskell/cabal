@@ -57,7 +57,7 @@ preBuildRules PreBuildComponentInputs {..} = do
         autogenDir = autogenComponentModulesDir localBuildInfo clbi
         -- buildDir = componentBuildDir localBuildInfo clbi
 
-    let globFilename = "**/*.ppExt" 
+    let globFilename = "**/*.ppExt"
     let glob = case parseFileGlob cabalVersion globFilename of
                 Left err ->
                   error $ explainGlobSyntaxError globFilename err

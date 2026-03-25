@@ -552,7 +552,7 @@ probeMonitorStateFiles
         -- a matching file may have been added or deleted
         matches <-
           return . filter (matchGlobPieces glob)
-            =<< liftIO (getDirectoryContents (root </> dirName))
+            =<< liftIO (listDirectory (root </> dirName))
 
         traverse_ probeMergeResult $
           mergeBy
@@ -587,7 +587,7 @@ probeMonitorStateDirs
   -> FilePath
   -- ^ path of the directory we are
   --   looking in relative to @root@
-  -> GlobPieces
+  -> Maybe GlobPieces
   -> Glob
   -> ModTime
   -> [(FilePath, MonitorStateGlobRel)]
@@ -597,7 +597,7 @@ probeMonitorStateDirs
   kinddir
   root
   dirName
-  glob
+  globMaybe
   globPath
   mtime
   children = do
@@ -627,7 +627,7 @@ probeMonitorStateDirs
                 let subdir = root </> dirName </> entry
                  in liftIO $ doesDirectoryExist subdir
             )
-            . filter (matchGlobPieces glob)
+            . maybe id (filter . matchGlobPieces) globMaybe
             =<< liftIO (listDirectory (root </> dirName))
 
         children' <-
@@ -734,7 +734,7 @@ probeMonitorStateGlobRel
         kinddir
         root
         dirName
-        glob
+        (Just glob)
         globPath
         mtime
         children
@@ -798,7 +798,7 @@ probeMonitorStateGlobRel
         kinddir
         root
         dirName
-        glob
+        Nothing
         (GlobDirRecursive glob)
         mtime
         dirChildren
