@@ -115,7 +115,7 @@ main = do
   defaultMainWithIngredients
     (defaultIngredients ++ [includingOptions projectConfigOptionDescriptions])
     ( localOption (NumThreads 1) $ withProjectConfig $ \config ->
-        sequentialTestGroup
+        dependentTestGroup
           "Integration tests (internal)"
           AllFinish
           (tests config)
@@ -145,14 +145,14 @@ tests config =
   -- TODO: tests for:
   -- \* normal success
   -- \* dry-run tests with changes
-  [ sequentialTestGroup
+  [ dependentTestGroup
       "Discovery and planning"
       AllFinish
       [ testCase "no package" (testExceptionInFindingPackage config)
       , testCase "no package2" (testExceptionInFindingPackage2 config)
       , testCase "proj conf1" (testExceptionInProjectConfig config)
       ]
-  , sequentialTestGroup
+  , dependentTestGroup
       "Target selectors"
       AllFinish
       [ testCaseSteps "valid" testTargetSelectors
@@ -171,7 +171,7 @@ tests config =
       , testCaseSteps "problems (bench)" (testTargetProblemsBench config)
       , testCaseSteps "problems (haddock)" (testTargetProblemsHaddock config)
       ]
-  , sequentialTestGroup
+  , dependentTestGroup
       "Exceptions during building (local inplace)"
       AllFinish
       [ testCase "configure" (testExceptionInConfigureStep config)
@@ -182,14 +182,14 @@ tests config =
     -- TODO: need to check we can build sub-libs, foreign libs and exes
     -- components for non-local packages / packages in the store.
 
-    sequentialTestGroup "Successful builds" AllFinish $
+    dependentTestGroup "Successful builds" AllFinish $
       [ testCaseSteps "Setup script styles" (testSetupScriptStyles config)
       , testCase "keep-going" (testBuildKeepGoing config)
       ]
         ++
         -- disabled because https://github.com/haskell/cabal/issues/6272
         [testCase "local tarball" (testBuildLocalTarball config) | System.Info.os /= "mingw32"]
-  , sequentialTestGroup
+  , dependentTestGroup
       "Regression tests"
       AllFinish
       [ testCase "issue #3324" (testRegressionIssue3324 config)
@@ -197,13 +197,13 @@ tests config =
       , testCase "program options scope local" (testProgramOptionsLocal config)
       , testCase "program options scope specific" (testProgramOptionsSpecific config)
       ]
-  , sequentialTestGroup
+  , dependentTestGroup
       "Flag tests"
       AllFinish
       [ testCase "Test Config options for commented options" testConfigOptionComments
       , testCase "Test Ignore Project Flag" testIgnoreProjectFlag
       ]
-  , sequentialTestGroup
+  , dependentTestGroup
       "haddock-project"
       AllFinish
       [ testCase "dependencies" (testHaddockProjectDependencies config)
