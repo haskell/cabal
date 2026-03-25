@@ -782,7 +782,7 @@ resolveTargets
         -> [(b, ComponentName)]
         -> [(b, ComponentTarget)]
       componentTargets subtarget =
-        map (fmap (\cname -> ComponentTarget cname subtarget))
+        map (fmap (`ComponentTarget` subtarget))
 
       selectComponentTargets
         :: SubComponentTarget

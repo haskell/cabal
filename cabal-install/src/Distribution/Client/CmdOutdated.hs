@@ -281,14 +281,14 @@ outdatedAction flags targetStrings globalFlags =
     exitCode = fromFlagOrDefault quiet outdatedExitCode
     ignorePred =
       let ignoreSet = S.fromList outdatedIgnore
-       in \pkgname -> pkgname `S.member` ignoreSet
+       in (`S.member` ignoreSet)
     minorPred = case outdatedMinor of
       Nothing -> const False
       Just IgnoreMajorVersionBumpsNone -> const False
       Just IgnoreMajorVersionBumpsAll -> const True
       Just (IgnoreMajorVersionBumpsSome pkgs) ->
         let minorSet = S.fromList pkgs
-         in \pkgname -> pkgname `S.member` minorSet
+         in (`S.member` minorSet)
 
 reportOutdatedTargetProblem :: Verbosity -> [TargetProblem'] -> IO a
 reportOutdatedTargetProblem verbosity problems =

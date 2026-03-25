@@ -46,7 +46,7 @@ wrapperCmd
   -> (flags -> Setup.CommonSetupFlags)
   -> CommandSpec (Client.GlobalFlags -> IO ())
 wrapperCmd ui getCommonFlags =
-  CommandSpec ui (\ui' -> wrapperAction ui' getCommonFlags) NormalCommand
+  CommandSpec ui (`wrapperAction` getCommonFlags) NormalCommand
 
 wrapperAction
   :: Monoid flags
