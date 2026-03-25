@@ -24,4 +24,4 @@ mapAccumM
   -> a
   -> t b
   -> m (a, t c)
-mapAccumM f s t = runStateM (traverse (\x -> StateM (\s' -> f s' x)) t) s
+mapAccumM f s t = runStateM (traverse (\x -> StateM (`f` x)) t) s
