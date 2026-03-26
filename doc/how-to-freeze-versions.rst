@@ -48,6 +48,38 @@ on:
 - that upper bounds are not missing
 - that upper bounds are not missing for ``base``
 
+.. Note::
+
+    Missing an upper bound on ``base`` is more serious than it is for other
+    packages:
+
+    - when upper bounds are missing for ``base``:
+
+        .. code-block:: text
+
+            $ cabal check
+            The following errors will cause portability problems on other environments:
+            Error: [missing-bounds-important] The dependency 'build-depends: base' does
+            not specify an upper bound on the version number. Each major release of the
+            'base' package changes the API in various ways and most packages will need
+            some changes to compile with it. The recommended practice is to specify an
+            upper bound on the version of the 'base' package. This ensures your package
+            will continue to build when a new major version of the 'base' package is
+            released. If you are not sure what upper bound to use then use the next major
+            version. For example if you have tested your package with 'base' version 4.5
+            and 4.6 then use 'build-depends: base >= 4.5 && < 4.7'.
+            Error: Hackage would reject this package.
+
+    - when upper bounds are missing on ``array``:
+
+        .. code-block:: text
+
+            $ cabal check
+            These warnings may cause trouble when distributing the package:
+            Warning: [missing-upper-bounds] On library, these packages miss upper bounds:
+            - array
+            Please add them. There is more information at https://pvp.haskell.org/
+
 For large projects with many packages, it would be a lot of work to keep all
 package dependency version ranges up to date. Ways of overcoming this are:
 
