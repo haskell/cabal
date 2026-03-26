@@ -1,4 +1,5 @@
 import Test.Cabal.Prelude
+
 main = setupTest $ do
   setup "configure" []
   setup "build" []
@@ -8,3 +9,6 @@ main = setupTest $ do
     let srcDir = testSourceDir env
     writeFile (srcDir </> "src/Foo/B.ppExt") "module Foo.B where\nModified text"
   setup "build" []
+  liftIO $ do
+    let srcDir = testSourceDir env
+    writeFile (srcDir </> "src/Foo/B.ppExt") "module Foo.B where\nOriginal text"
