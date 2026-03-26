@@ -18,7 +18,7 @@ Mandatory version constraints
 
 Curated version sets
     A project can import curated sets of packages and versions that are known to
-    work together, such as those Stackage provides for Cabal's use.
+    work together.
 
 Capped repository versions
     Adding ``index-state`` to a project limits versions coming from Hackage to
@@ -75,8 +75,25 @@ Curated version sets
 
 Stackage provides curated sets of packages and versions that are known to work
 together and are updated regularly.  The latest resolver is the nightly and this
-typically lags a bit behind the latest available GHC version. The LTS resolvers
-will each follow a specific GHC version and are updated less frequently.
+typically lags a bit behind the latest available GHC version. The long term
+support (LTS) resolvers will each follow a specific GHC version and are updated
+less frequently.
+
+- https://www.stackage.org/lts-24.34/cabal.config
+- https://www.stackage.org/nightly-2026-03-25/cabal.config
+
+These ``*.config`` files set the compiler version and warn about cabal not
+yet having revisions.
+
+.. code-block::
+
+    $ curl -s https://www.stackage.org/lts-24.34/cabal.config | grep "with-compiler"
+    with-compiler: ghc-9.10.3
+
+If importing directly causes a version conflict, we recommend; downloading
+the package set locally, committing to source control and then commenting
+out conflicting package constraint lines. Each constraint is on its own line
+and can be prefixed with ``--`` to comment it out.
 
 Capped repository versions
 --------------------------
