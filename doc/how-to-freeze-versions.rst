@@ -10,11 +10,7 @@ dependencies.
 
 :ref:`Version constraints <version-constraints>`
     Within a project, version constraints for dependencies limit the versions
-    that the solver can pick.
-
-Mandatory version constraints
-    With :cfg-field:`reject-unconstrained-dependencies` set to ``all``
-    dependencies must have version constraints.
+    that the solver can pick. These can be :ref:`mandated <mandated-versions>`.
 
 :ref:`Curated version sets <curated-versions>`
     A project can import curated sets of packages and versions that are known to
@@ -127,6 +123,17 @@ Version constraints can be applied to the project or command line.
     Version constraints are additive. If I add a constraint it doesn't remove or
     replace prior constraints on versions. Constraints don't have override
     semantics.
+
+.. _mandated-versions:
+
+Mandated version constraints
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Version constraints can be mandated with
+:cfg-field:`reject-unconstrained-dependencies`.  When this flag is set to
+``all``, each dependency must have some version constraint, even if this is just
+``>0``. This flag can be made stricter and set to ``eq``, requiring each
+dependency to have an equality version constraint.
 
 .. _curated-versions:
 
