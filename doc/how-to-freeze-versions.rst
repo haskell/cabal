@@ -81,10 +81,11 @@ on:
             Please add them. There is more information at https://pvp.haskell.org/
 
 For large projects with many packages, it would be a lot of work to keep all
-package dependency version ranges up to date. Ways of overcoming this are:
+package dependency version ranges up to date. Ways of overcoming, in worse to
+better order, are:
 
 - use a bash script to replace or update version ranges in all package descriptions
-- use a package generator like ``hpack-dhall-cabal`` to import sets of dependencies with version ranges
+- use a package generator like `dhall-hpack-cabal <https://github.com/cabalism/hpack-dhall/blob/3d464cddea0aa0a7f268c45556e0daafa8ac06ff/hpack-dhall.cabal#L148>`_ to import sets of dependencies with version ranges
 - use a ``cabal.project`` file to specify version constraints for some or all dependencies
 - use a curated set of packages and versions and import these into the project
 
