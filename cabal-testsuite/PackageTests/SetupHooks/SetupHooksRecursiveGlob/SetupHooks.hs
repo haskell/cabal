@@ -1,12 +1,12 @@
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE StaticPointers #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveAnyClass #-}
 
 module SetupHooks where
 
@@ -22,8 +22,8 @@ import Distribution.Utils.Path
 import Distribution.Utils.ShortText (toShortText)
 import Distribution.Verbosity
 
-import Data.List.NonEmpty ( NonEmpty ( (:|) ) )
-import Data.Traversable ( for )
+import Data.List.NonEmpty (NonEmpty ((:|)))
+import Data.Traversable (for)
 import GHC.Generics
 import System.FilePath
 
@@ -36,72 +36,78 @@ setupHooks =
           }
     }
 
-data PPArgs =
-  PPArgs
-    { verbosityFlags :: VerbosityFlags
-    , srcPath :: FilePath
-    , dstPath :: FilePath
-    }
-  deriving stock ( Show, Generic )
-  deriving anyclass Binary
+data PPArgs
+  = PPArgs
+  { verbosityFlags :: VerbosityFlags
+  , srcPath :: FilePath
+  , dstPath :: FilePath
+  }
+  deriving stock (Show, Generic)
+  deriving anyclass (Binary)
 
 -- Register a pre-build rule that uses a recursive glob.
 preBuildRules :: PreBuildComponentInputs -> RulesM ()
-preBuildRules PreBuildComponentInputs {..} = do
-    let cabalVersion = CabalSpecV3_16
-        verbosityFlags = buildingWhatVerbosity buildingWhat
-        comp = targetComponent targetInfo
-        bi = componentBuildInfo comp
-        mbWorkDir = mbWorkDirLBI localBuildInfo
-        clbi = targetCLBI targetInfo
-        autogenDir = autogenComponentModulesDir localBuildInfo clbi
-        -- buildDir = componentBuildDir localBuildInfo clbi
+preBuildRules PreBuildComponentInputs{..} = do
+  let cabalVersion = CabalSpecV3_16
+      verbosityFlags = buildingWhatVerbosity buildingWhat
+      comp = targetComponent targetInfo
+      bi = componentBuildInfo comp
+      mbWorkDir = mbWorkDirLBI localBuildInfo
+      clbi = targetCLBI targetInfo
+      autogenDir = autogenComponentModulesDir localBuildInfo clbi
+  -- buildDir = componentBuildDir localBuildInfo clbi
 
-    let globFilename = "**/*.ppExt"
-    let glob = case parseFileGlob cabalVersion globFilename of
-                Left err ->
-                  error $ explainGlobSyntaxError globFilename err
-                Right glob ->
-                  glob
-    myPpFiles <- fmap concat $ liftIO $ for ( hsSourceDirs bi ) $ \ srcDir -> do
-      let root = interpretSymbolicPath mbWorkDir srcDir
-      let verbosity = mkVerbosity defaultVerbosityHandles verbosityFlags
-      matches <- runDirFileGlob verbosity Nothing root glob
-      return
-        [ Location srcDir ( makeRelativePathEx match )
-        | match <- globMatches matches
-        ]
-    -- Monitor existence of file glob to handle new input files getting added.
-    addRuleMonitors [ monitorFileGlobExistence $ RootedGlob FilePathRelative glob ]
+  let globFilename = "**/*.ppExt"
+  let glob = case parseFileGlob cabalVersion globFilename of
+        Left err ->
+          error $ explainGlobSyntaxError globFilename err
+        Right glob ->
+          glob
+  myPpFiles <- fmap concat $ liftIO $ for (hsSourceDirs bi) $ \srcDir -> do
+    let root = interpretSymbolicPath mbWorkDir srcDir
+    let verbosity = mkVerbosity defaultVerbosityHandles verbosityFlags
+    matches <- runDirFileGlob verbosity Nothing root glob
+    return
+      [ Location srcDir (makeRelativePathEx match)
+      | match <- globMatches matches
+      ]
+  -- Monitor existence of file glob to handle new input files getting added.
+  addRuleMonitors [monitorFileGlobExistence $ RootedGlob FilePathRelative glob]
 
-    let preprocessFile PPArgs {..} = do
-          let verbosity = mkVerbosity defaultVerbosityHandles verbosityFlags
-          warn verbosity $ "Preprocessing: " ++ srcPath ++ " -> " ++ dstPath
-          (modLine : inputLines) <- lines <$> readFile srcPath
-          let hsSrc = unlines
+  let preprocessFile PPArgs{..} = do
+        let verbosity = mkVerbosity defaultVerbosityHandles verbosityFlags
+        warn verbosity $ "Preprocessing: " ++ srcPath ++ " -> " ++ dstPath
+        (modLine : inputLines) <- lines <$> readFile srcPath
+        let hsSrc =
+              unlines
                 [ modLine
                 , ""
                 , "str :: String"
                 , "str = " ++ show (unlines inputLines)
                 ]
-          createDirectoryIfMissingVerbose verbosity True (takeDirectory dstPath)
-          rewriteFileEx verbosity dstPath hsSrc
+        createDirectoryIfMissingVerbose verbosity True (takeDirectory dstPath)
+        rewriteFileEx verbosity dstPath hsSrc
 
-    -- Register preprocessor rules
-    forM_ myPpFiles $ \ppFile@(Location _ relPath) -> do
-      let verbosity = mkVerbosity defaultVerbosityHandles verbosityFlags
-      let ppFile' = Location
-                        autogenDir
-                        (replaceExtensionSymbolicPath (unsafeCoerceSymbolicPath relPath) "hs")
+  -- Register preprocessor rules
+  forM_ myPpFiles $ \ppFile@(Location _ relPath) -> do
+    let verbosity = mkVerbosity defaultVerbosityHandles verbosityFlags
+    let ppFile' =
+          Location
+            autogenDir
+            (replaceExtensionSymbolicPath (unsafeCoerceSymbolicPath relPath) "hs")
 
-      let action = mkCommand (static Dict) (static preprocessFile)
-                    PPArgs
-                      { srcPath = interpretSymbolicPath mbWorkDir (location ppFile)
-                      , dstPath = interpretSymbolicPath mbWorkDir (location ppFile')
-                      , ..
-                      }
+    let action =
+          mkCommand
+            (static Dict)
+            (static preprocessFile)
+            PPArgs
+              { srcPath = interpretSymbolicPath mbWorkDir (location ppFile)
+              , dstPath = interpretSymbolicPath mbWorkDir (location ppFile')
+              , ..
+              }
 
-      registerRule ("myPP " <> toShortText (getSymbolicPath relPath)) $
-        staticRule action
-          [FileDependency ppFile]
-          (ppFile' :| [])
+    registerRule ("myPP " <> toShortText (getSymbolicPath relPath)) $
+      staticRule
+        action
+        [FileDependency ppFile]
+        (ppFile' :| [])

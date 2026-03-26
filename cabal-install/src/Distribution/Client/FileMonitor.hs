@@ -10,7 +10,7 @@
 -- input values they depend on have changed.
 module Distribution.Client.FileMonitor
   ( -- * Declaring files to monitor
-      module Distribution.Simple.FileMonitor.Types
+    module Distribution.Simple.FileMonitor.Types
 
     -- * Creating and checking sets of monitored files
   , FileMonitor (..)
@@ -607,14 +607,14 @@ probeMonitorStateDirs
         children' <-
           sequence
             [ do
-              fstate' <-
-                probeMonitorStateGlobRel
-                  kindfile
-                  kinddir
-                  root
-                  (dirName </> fname)
-                  fstate
-              return (fname, fstate')
+                fstate' <-
+                  probeMonitorStateGlobRel
+                    kindfile
+                    kinddir
+                    root
+                    (dirName </> fname)
+                    fstate
+                return (fname, fstate')
             | (fname, fstate) <- children
             ]
         return $! (mtime, children')
@@ -707,8 +707,8 @@ probeMonitorStateDirs
       allMatchingFiles dir (MonitorStateGlobDirs _ _ _ entries) =
         allMatchingFilesFromGlobDirs dir entries
       allMatchingFiles dir (MonitorStateGlobRecursive _ _ fileEntries dirEntries) =
-        allMatchingFilesFromGlobFiles dir fileEntries ++
-        allMatchingFilesFromGlobDirs dir dirEntries
+        allMatchingFilesFromGlobFiles dir fileEntries
+          ++ allMatchingFilesFromGlobDirs dir dirEntries
       allMatchingFiles dir MonitorStateGlobDirTrailing =
         [dir]
 
@@ -1073,7 +1073,6 @@ buildMonitorStateGlobRel
             return (subdir, fstate)
 
         return $! MonitorStateGlobRecursive glob dirMTime filesStates subdirStates
-        
       GlobDir glob globPath' -> do
         subdirs <-
           filterM (\subdir -> doesDirectoryExist (absdir </> subdir)) $
@@ -1191,8 +1190,8 @@ readCacheFileHashes monitor =
     collectGlobHashes dir (MonitorStateGlobFiles _ _ entries) =
       collectFileHashes dir entries
     collectGlobHashes dir (MonitorStateGlobRecursive _ _ fileEntries dirEntries) =
-      collectFileHashes dir fileEntries ++
-      collectDirHashes dir dirEntries
+      collectFileHashes dir fileEntries
+        ++ collectDirHashes dir dirEntries
     collectGlobHashes _dir MonitorStateGlobDirTrailing =
       []
 
