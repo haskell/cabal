@@ -508,7 +508,7 @@ cabal freeze
 
 generates ``cabal.project.freeze`` file, which describes the exact dependency
 tree as it was resolved at that moment by Cabal.  This means it captures an
-exact version of every dependency, including dependencies of dependencies,
+exact versions and flags of every dependency, including dependencies of dependencies,
 recursively all the way.
 
 Since ``cabal`` reads ``cabal.project.freeze`` when present, and takes into
