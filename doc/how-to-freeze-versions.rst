@@ -4,11 +4,11 @@ How to control versions
 There are various ways and places to limit what versions the solver can pick for
 dependencies.
 
-Version ranges
+:ref:`Version ranges <version-ranges>`
     Within a package description, version ranges for dependencies can be; tight
     or loose or missing altogether.
 
-Version constraints
+:ref:`Version constraints <version-constraints>`
     Within a project, version constraints for dependencies limit the versions
     that the solver can pick.
 
@@ -16,21 +16,23 @@ Mandatory version constraints
     With :cfg-field:`reject-unconstrained-dependencies` set to ``all``
     dependencies must have version constraints.
 
-:ref:`Curated version sets <curated_version_sets>`
+:ref:`Curated version sets <curated-versions>`
     A project can import curated sets of packages and versions that are known to
     work together.
 
-Capped repository versions
+:ref:`Capped repository versions <capped-versions>`
     Adding ``index-state`` to a project limits versions coming from Hackage to
     include only those that were available at the cutoff time.
 
-Frozen versions
+:ref:`Frozen versions <frozen-versions>`
     Pins the versions picked by the solver for all dependencies. This is a way
     to preserve a set of versions found by the solver, a solver-curated set, if
     you will.
 
-Version exceptions
+:ref:`Version exceptions <version-exceptions>`
     Allow newer or older dependencies.
+
+.. _version-ranges:
 
 Version ranges
 --------------
@@ -54,6 +56,8 @@ package dependency version ranges up to date. Ways of overcoming this are:
 - use a ``cabal.project`` file to specify version constraints for some or all dependencies
 - use a curated set of packages and versions and import these into the project
 
+.. _version-constraints:
+
 Version constraints
 -------------------
 
@@ -70,7 +74,7 @@ Version constraints can be applied to the project or command line.
     replace prior constraints on versions. Constraints don't have override
     semantics.
 
-.. _curated_version_sets:
+.. _curated-versions:
 
 Curated version sets
 --------------------
@@ -97,10 +101,12 @@ the package set locally, committing to source control and then commenting
 out conflicting package constraint lines. Each constraint is on its own line
 and can be prefixed with ``--`` to comment it out.
 
+.. _capped-versions:
+
 Capped repository versions
 --------------------------
 
-.. _freeze-versions:
+.. _frozen-versions:
 
 Frozen versions
 ---------------
@@ -282,3 +288,10 @@ versions are frozen.
     cabal freeze || exit 1
     NEW_FREEZE_SUM=$(md5sum cabal.project.freeze)
     exit [[ "$NEW_FREEZE_SUM" == "$OLD_FREEZE_SUM" ]]
+
+.. _version-exceptions:
+
+Version Exceptions
+^^^^^^^^^^^^^^^^^^
+
+Version constraints can be lifted with ``allow-newer`` and ``allow-older``.
