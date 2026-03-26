@@ -16,7 +16,7 @@ Mandatory version constraints
     With :cfg-field:`reject-unconstrained-dependencies` set to ``all``
     dependencies must have version constraints.
 
-Curated version sets
+:ref:`Curated version sets <curated_version_sets>`
     A project can import curated sets of packages and versions that are known to
     work together.
 
@@ -69,6 +69,8 @@ Version constraints can be applied to the project or command line.
     Version constraints are additive. If I add a constraint it doesn't remove or
     replace prior constraints on versions. Constraints don't have override
     semantics.
+
+.. _curated_version_sets:
 
 Curated version sets
 --------------------
