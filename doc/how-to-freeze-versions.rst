@@ -66,7 +66,28 @@ Version constraints can be applied to the project or command line.
 .. Note::
 
     While they do not directly restrain dependency versions, flag constraints
-    can alter the set of dependencies of a package.
+    can alter the set of dependencies of a package. This can happen when a
+    dependency is behind a flag. For example, the `directory
+    <https://hackage.haskell.org/package/directory-1.3.10.1/directory.cabal>`_
+    package description has a flag that brings in the `os-string
+    <https://hackage.haskell.org/package/os-string>`_ as a dependency and
+    changes the version range for `filepath
+    <https://hackage.haskell.org/package/filepath>`_:
+
+    .. code-block:: cabal
+
+        name: directory
+
+        flag os-string
+          description: Use the new os-string package
+          default: False
+          manual: False
+
+        library
+          if flag(os-string)
+            build-depends: filepath >= 1.5.0.0, os-string >= 2.0.0
+          else
+            build-depends: filepath >= 1.4.100.0 && < 1.5.0.0
 
 .. Warning::
 
