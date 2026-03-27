@@ -389,7 +389,7 @@ sourcesGhcOptions
   -> SymbolicPath Pkg File
   -> GhcOptions
 sourcesGhcOptions verbosity lbi bi clbi odir filename =
-  (componentGhcOptions (verbosityLevel verbosity) lbi bi clbi odir)
+  (componentGhcOptions verbosity lbi bi clbi odir)
     { ghcOptVerbosity = toFlag (min verbosity Normal)
     , ghcOptMode = toFlag GhcModeCompile
     , ghcOptInputFiles = toNubListR [filename]
@@ -461,10 +461,11 @@ componentGhcOptions verbosity lbi bi clbi odir =
         , ghcOptHieDir = bool NoFlag (toFlag $ coerceSymbolicPath odir </> (extraCompilationArtifacts </> makeRelativePathEx "hie")) $ flagHie implInfo
         , ghcOptStubDir = toFlag $ coerceSymbolicPath odir
         , ghcOptOutputDir = toFlag $ coerceSymbolicPath odir
+        , ghcOptBytecodeDir = toFlag $ coerceSymbolicPath odir
         }
 
 linkGhcOptions
-  :: Verbosity
+  :: VerbosityLevel
   -> LocalBuildInfo
   -> BuildInfo
   -> ComponentLocalBuildInfo
@@ -524,7 +525,6 @@ linkGhcOptions verbosity lbi bi clbi =
         , ghcOptCppIncludes =
             toNubListR [coerceSymbolicPath (autogenComponentModulesDir lbi clbi </> makeRelativePathEx cppHeaderName)]
         , ghcOptFfiIncludes = toNubListR $ map getSymbolicPath $ includes bi
-        , ghcOptBytecodeDir = toFlag $ coerceSymbolicPath odir
         , ghcOptOptimisation = toGhcOptimisation (withOptimization lbi)
         , ghcOptDebugInfo = toFlag (withDebugInfo lbi)
         , ghcOptExtraPath = toNubListR exe_paths
@@ -545,7 +545,6 @@ toGhcOptimisation :: OptimisationLevel -> Flag GhcOptimisation
 toGhcOptimisation NoOptimisation = mempty -- TODO perhaps override?
 toGhcOptimisation NormalOptimisation = toFlag GhcNormalOptimisation
 toGhcOptimisation MaximumOptimisation = toFlag GhcMaximumOptimisation
-
 
 -- | Strip out flags that are not supported in ghci
 filterGhciFlags :: [String] -> [String]

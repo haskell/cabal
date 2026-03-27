@@ -355,7 +355,7 @@ linkLibrary buildTargetDir cleanedExtraLibDirs pkg_descr verbosity runGhcProg li
     -- Right now, instead, we pass the path to each object file.
     ghcBaseLinkArgs :: GhcOptions
     ghcBaseLinkArgs =
-      Internal.linkGhcOptions verbosity lbi libBi clbi
+      Internal.linkGhcOptions (verbosityLevel verbosity) lbi libBi clbi
         <> mempty
           { ghcOptExtra = hcStaticOptions GHC libBi
           , ghcOptNoAutoLinkPackages = toFlag True
