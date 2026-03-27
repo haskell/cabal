@@ -202,6 +202,12 @@ import, same as the ``.local`` file for projects.
     ``.local`` file is imported last, after the ``.freeze`` file, giving the
     user a final say in the setting of any fields that have override semantics.
 
+    The ``.local`` and ``.freeze`` extensions are specialized and quirky. In
+    general, it is better to use a ``.project`` extension for any project and a
+    ``.config`` extension for any project configuration that is imported. It is
+    of course possible to have multiple ``.project`` files and for these to have
+    import relationships.
+
 .. Warning::
 
     A project or package that may build with a variety of compiler versions will
