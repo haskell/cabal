@@ -1277,8 +1277,8 @@ renderPureArgs version comp platform args =
         flagToMaybe (argGhcLibDir args) -- error if Nothing?
     , -- https://github.com/haskell/haddock/pull/547
       [ "--reexport=" ++ prettyShow r
-      | r <- argReexports args
-      , isVersion 2 19
+      | isVersion 2 19
+      , r <- argReexports args
       ]
     , argTargets args
     , maybe [] ((: []) . (resourcesDirFlag ++)) . flagToMaybe . argResourcesDir $ args

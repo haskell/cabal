@@ -1198,8 +1198,8 @@ storeDetailedBuildReports verbosity logsDir reports =
         createDirectoryIfMissing True reportsDir -- FIXME
         writeFile reportFile (show (showBuildReport report, buildLog))
     | (report, Just repo) <- reports
-    , Just remoteRepo <- [maybeRepoRemote repo]
     , isLikelyToHaveLogFile (BuildReports.installOutcome report)
+    , Just remoteRepo <- [maybeRepoRemote repo]
     ]
   where
     isLikelyToHaveLogFile BuildReports.ConfigureFailed{} = True
