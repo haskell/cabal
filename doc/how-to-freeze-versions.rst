@@ -2,7 +2,7 @@ How to control versions
 =======================
 
 There are various ways and places to limit what versions the solver can pick for
-dependencies.
+dependencies. Ways to control versions are:
 
 :ref:`Version ranges <version-ranges>`
     Within a package description, version ranges for dependencies can be; tight
@@ -27,6 +27,23 @@ dependencies.
 
 :ref:`Version exceptions <version-exceptions>`
     Allow newer or older dependencies.
+
+Places to control versions are the files and command line options related to
+versioning but how to use these also depend on what we're building. If we're
+building a product for its own sake then we're free to manage versions wherever
+and however we please. If we're publishing a package to Hackage then that
+platform places restrictions on how loose we can be when specifying
+dependencies. Before publishing to Hackage, ``cabal check`` will warn about
+loose versioning that Hackage will reject.
+
+:ref:`Hackage versions <hackage-versions>`
+    Not all dependency version ranges are accepted by Hackage. After publishing,
+    a package on Hackage can be revised to change version ranges of its
+    dependencies.
+
+:ref:`Project versions <project-versions>`
+    Almost any way and any place imaginable for setting versions is available
+    when configuring a project.
 
 .. _version-ranges:
 
@@ -356,3 +373,20 @@ Version Exceptions
 ^^^^^^^^^^^^^^^^^^
 
 Version constraints can be lifted with ``allow-newer`` and ``allow-older``.
+
+Places for Versioning
+---------------------
+
+.. _hackage-versions:
+
+Hackage versions
+^^^^^^^^^^^^^^^^^^
+
+TODO
+
+.. _project-versions:
+
+Project versions
+^^^^^^^^^^^^^^^^^^
+
+TODO
