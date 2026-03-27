@@ -785,6 +785,9 @@ probeMonitorStateGlobRel
   root
   dirName
   (MonitorStateGlobRecursive glob mtime fileChildren dirChildren) = do
+    -- For recursive globs, we check the file children first, then recurse
+    -- into subdirectories, applying the same logic as 'MonitorStateGlobFiles'
+    -- and 'MonitorStateGlobDirs', respectively.
     (_, fileChildren') <-
       probeMonitorStateFiles
         root
