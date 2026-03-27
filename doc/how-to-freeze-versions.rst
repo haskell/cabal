@@ -431,7 +431,7 @@ will use the exact same set of dependencies, regardless of any updates (even
 patches) that might get published for these dependencies in the meantime.
 Therefore, we have effectively "frozen" the dependencies in place.
 
-``cabal.project.freeze`` is intended to be committed to the version control.
+``cabal.project.freeze`` is intended to be committed to version control.
 
 Project environments
 ^^^^^^^^^^^^^^^^^^^^
