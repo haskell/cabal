@@ -5,7 +5,6 @@
 - ignore: {name: "Eta reduce"} # 138 hints
 - ignore: {name: "Hoist not"} # 16 hints
 - ignore: {name: "Move filter"} # 4 hints
-- ignore: {name: "Move guards forward"} # 5 hints
 - ignore: {name: "Redundant $!"} # 1 hint
 - ignore: {name: "Redundant <$>"} # 17 hints
 - ignore: {name: "Redundant bracket"} # 257 hints
