@@ -1,6 +1,7 @@
 ---
 synopsis: "Improve Backpack broken-package error to show unfilled signatures"
 packages: [Cabal]
+pr: 11669
 ---
 
 When an indefinite Backpack package is installed separately (e.g. via
