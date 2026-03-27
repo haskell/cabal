@@ -262,11 +262,13 @@ toComponentLocalBuildInfos
       packageDependsIndex = PackageIndex.fromList (lefts local_graph)
       fullIndex = Graph.fromDistinctList local_graph
 
-    let -- Map from dependency UnitId to its PackageId, built from includes
-        -- of all ready components.  Used to resolve opaque hashed UnitIds
-        -- in broken-package error messages.
-        depPkgMap :: Map UnitId PackageId
-        depPkgMap = Map.fromList
+    let
+      -- Map from dependency UnitId to its PackageId, built from includes
+      -- of all ready components.  Used to resolve opaque hashed UnitIds
+      -- in broken-package error messages.
+      depPkgMap :: Map UnitId PackageId
+      depPkgMap =
+        Map.fromList
           [ (unDefUnitId (ci_id ci), ci_pkgid ci)
           | rc <- graph
           , Right instc <- [rc_i rc]
@@ -286,21 +288,29 @@ toComponentLocalBuildInfos
               text "The following packages are broken because other"
                 <+> text "packages they depend on are missing. These broken"
                 <+> text "packages must be rebuilt before they can be used."
-                $$ nest 2 (vcat $
-                  [ hang (text "installed package" <+> pretty (packageId pkg)) 4
-                      (text "is broken due to missing package"
-                        <+> hsep (punctuate comma (map pretty deps)))
-                  | (Left pkg, deps) <- broken
-                  ]
-                  ++
-                  [ hang (text "planned package" <+> pretty (packageId pkg)) 4
-                      (vcat $
-                        text "is broken due to missing package"
-                        : [ nest 2 (dispMissingDep installedPackageSet depPkgMap dep)
-                          | dep <- deps
-                          ])
-                  | (Right pkg, deps) <- broken
-                  ])
+                $$ nest
+                  2
+                  ( vcat $
+                      [ hang
+                        (text "installed package" <+> pretty (packageId pkg))
+                        4
+                        ( text "is broken due to missing package"
+                            <+> hsep (punctuate comma (map pretty deps))
+                        )
+                      | (Left pkg, deps) <- broken
+                      ]
+                        ++ [ hang
+                            (text "planned package" <+> pretty (packageId pkg))
+                            4
+                            ( vcat $
+                                text "is broken due to missing package"
+                                  : [ nest 2 (dispMissingDep installedPackageSet depPkgMap dep)
+                                    | dep <- deps
+                                    ]
+                            )
+                           | (Right pkg, deps) <- broken
+                           ]
+                  )
 
     -- In this section, we'd like to look at the 'packageDependsIndex'
     -- and see if we've picked multiple versions of the same
@@ -358,28 +368,37 @@ toComponentLocalBuildInfos
 -- which was never built.  The fix is to add both packages to the same
 -- cabal project so cabal can fill the signatures.
 dispMissingDep
-  :: InstalledPackageIndex  -- ^ all installed packages
-  -> Map UnitId PackageId  -- ^ dep UnitId to its PackageId (from includes)
-  -> UnitId  -- ^ the missing dependency
+  :: InstalledPackageIndex
+  -- ^ all installed packages
+  -> Map UnitId PackageId
+  -- ^ dep UnitId to its PackageId (from includes)
+  -> UnitId
+  -- ^ the missing dependency
   -> Doc
 dispMissingDep installedPkgSet depPkgMap uid =
   case Map.lookup uid depPkgMap of
     Just pkgid ->
-      let ipiSigs = [ sigs
-                     | ipi <- PackageIndex.lookupSourcePackageId installedPkgSet pkgid
-                     , let sigs = requiredSignatures ipi
-                     , not (Set.null sigs)
-                     ]
-      in case ipiSigs of
-        (sigs : _) ->
-          pretty pkgid
-            <+> parens (text "has unfilled"
-              <+> (if Set.size sigs > 1 then text "signatures:" else text "signature:")
-              <+> hsep (punctuate comma (map pretty (Set.toList sigs))))
-            $$ nest 2 (text "The package is installed as indefinite."
-              $$ text "To use it, rebuild it in the same cabal project as the"
-              <+> text "consumer so cabal can fill the signatures.")
-        [] -> pretty pkgid <+> parens (pretty uid)
+      let ipiSigs =
+            [ sigs
+            | ipi <- PackageIndex.lookupSourcePackageId installedPkgSet pkgid
+            , let sigs = requiredSignatures ipi
+            , not (Set.null sigs)
+            ]
+       in case ipiSigs of
+            (sigs : _) ->
+              pretty pkgid
+                <+> parens
+                  ( text "has unfilled"
+                      <+> (if Set.size sigs > 1 then text "signatures:" else text "signature:")
+                      <+> hsep (punctuate comma (map pretty (Set.toList sigs)))
+                  )
+                $$ nest
+                  2
+                  ( text "The package is installed as indefinite."
+                      $$ text "To use it, rebuild it in the same cabal project as the"
+                      <+> text "consumer so cabal can fill the signatures."
+                  )
+            [] -> pretty pkgid <+> parens (pretty uid)
     Nothing -> pretty uid
 
 -- Build ComponentLocalBuildInfo for each component we are going
