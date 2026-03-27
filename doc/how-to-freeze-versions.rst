@@ -196,7 +196,7 @@ with a extra ``.freeze`` extension, so the freeze file for ``cabal.project`` is
 ``cabal.project.freeze``. Effectively a ``.freeze`` file is an implicit project
 import, same as the ``.local`` file for projects.
 
-.. Warning::
+.. Note::
 
     The order of imports of ``.local`` and ``.freeze`` files is important.  The
     ``.local`` file is imported last, after the ``.freeze`` file, giving the
