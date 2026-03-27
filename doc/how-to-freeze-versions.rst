@@ -401,15 +401,28 @@ developed against.
 Hackage versions
 ^^^^^^^^^^^^^^^^
 
-TODO
+The unit of distribution to Hackage is the package but each package component
+has their own dependencies. The Hackage website shows dependencies in summary
+form, like those for `hpack-dhall-0.5.7
+<https://hackage.haskell.org/package/hpack-dhall-0.5.7>`_, a package with
+multiple executables.  Clicking on the "[details]" link at the end of the
+summary of dependencies list will show the dependencies for each component:
+
+.. raw:: html
+
+    <div class="highlight" style="padding: 4px">
+    <b>Dependencies</b><br/>
+    <div style="padding-left: 0.8em">
+    <span style="white-space: nowrap"><a href="https://hackage.haskell.org/package/aeson">aeson</a></span>, <span style="white-space: nowrap"><a href="https://hackage.haskell.org/package/aeson-pretty">aeson-pretty</a></span>, <span style="white-space: nowrap"><a href="https://hackage.haskell.org/package/base">base</a> (&gt;=4.13 &amp;&amp; &lt;5)</span>, <span style="white-space: nowrap"><a href="https://hackage.haskell.org/package/bytestring">bytestring</a></span>, <span style="white-space: nowrap"><a href="https://hackage.haskell.org/package/dhall">dhall</a> (&gt;=1.41.1)</span>, <span style="white-space: nowrap"><a href="https://hackage.haskell.org/package/dhall-json">dhall-json</a> (&gt;=1.7.10)</span>, <span style="white-space: nowrap"><a href="https://hackage.haskell.org/package/filepath">filepath</a></span>, <span style="white-space: nowrap"><a href="https://hackage.haskell.org/package/hpack">hpack</a> (&gt;=0.35 &amp;&amp; &lt;0.36)</span>, <span style="white-space: nowrap"><a href="https://hackage.haskell.org/package/megaparsec">megaparsec</a> (&gt;=9.2)</span>, <span style="white-space: nowrap"><a href="https://hackage.haskell.org/package/microlens">microlens</a></span>, <span style="white-space: nowrap"><a href="https://hackage.haskell.org/package/optparse-applicative">optparse-applicative</a></span>, <span style="white-space: nowrap"><a href="https://hackage.haskell.org/package/prettyprinter">prettyprinter</a></span>, <span style="white-space: nowrap"><a href="https://hackage.haskell.org/package/text">text</a></span>, <span style="white-space: nowrap"><a href="https://hackage.haskell.org/package/transformers">transformers</a></span>, <span style="white-space: nowrap"><a href="https://hackage.haskell.org/package/yaml">yaml</a></span><span style="font-size: small"> [<a href="https://hackage.haskell.org/package/hpack-dhall-0.5.7/dependencies">details</a>]</span>
+    <div>
+    </div>
 
 .. _project-versions:
 
 Project versions
 ^^^^^^^^^^^^^^^^
 
-The unit of distribution to Hackage is the package. Projects are shared by
-*source code* repository.
+Projects are shared by *source code* repository.
 
 Since ``cabal`` reads ``cabal.project.freeze`` when present, and takes into
 consideration the version constraints in it, this means that by producing
