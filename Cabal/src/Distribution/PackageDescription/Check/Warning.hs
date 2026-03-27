@@ -245,7 +245,7 @@ data CheckExplanation
   | CVSourceRepository
   | CVExtensions CabalSpecVersion [Extension]
   | CVCustomSetup
-  | CVExpliticDepsCustomSetup
+  | CVExplicitDepsCustomSetup
   | CVAutogenPaths
   | CVAutogenPackageInfo
   | CVAutogenPackageInfoGuard
@@ -413,7 +413,7 @@ data CheckExplanationID
   | CICVSourceRepository
   | CICVExtensions
   | CICVCustomSetup
-  | CICVExpliticDepsCustomSetup
+  | CICVExplicitDepsCustomSetup
   | CICVAutogenPaths
   | CICVAutogenPackageInfo
   | CICVAutogenPackageInfoGuard
@@ -560,7 +560,7 @@ checkExplanationId (CVVirtualModules{}) = CICVVirtualModules
 checkExplanationId (CVSourceRepository{}) = CICVSourceRepository
 checkExplanationId (CVExtensions{}) = CICVExtensions
 checkExplanationId (CVCustomSetup{}) = CICVCustomSetup
-checkExplanationId (CVExpliticDepsCustomSetup{}) = CICVExpliticDepsCustomSetup
+checkExplanationId (CVExplicitDepsCustomSetup{}) = CICVExplicitDepsCustomSetup
 checkExplanationId (CVAutogenPaths{}) = CICVAutogenPaths
 checkExplanationId (CVAutogenPackageInfo{}) = CICVAutogenPackageInfo
 checkExplanationId (CVAutogenPackageInfoGuard{}) = CICVAutogenPackageInfoGuard
@@ -714,7 +714,7 @@ ppCheckExplanationId CICVVirtualModules = "virtual-modules"
 ppCheckExplanationId CICVSourceRepository = "source-repository"
 ppCheckExplanationId CICVExtensions = "incompatible-extension"
 ppCheckExplanationId CICVCustomSetup = "no-setup-depends"
-ppCheckExplanationId CICVExpliticDepsCustomSetup = "dependencies-setup"
+ppCheckExplanationId CICVExplicitDepsCustomSetup = "dependencies-setup"
 ppCheckExplanationId CICVAutogenPaths = "no-autogen-paths"
 ppCheckExplanationId CICVAutogenPackageInfo = "no-autogen-pinfo"
 ppCheckExplanationId CICVAutogenPackageInfoGuard = "autogen-guard"
@@ -1258,7 +1258,7 @@ ppExplanation CVCustomSetup =
     ++ "that specifies the dependencies of the Setup.hs script itself. "
     ++ "The 'setup-depends' field uses the same syntax as 'build-depends', "
     ++ "so a simple example would be 'setup-depends: base, Cabal'."
-ppExplanation CVExpliticDepsCustomSetup =
+ppExplanation CVExplicitDepsCustomSetup =
   "From version 1.24 cabal supports specifying explicit dependencies "
     ++ "for Custom setup scripts. Consider using 'cabal-version: 1.24' or "
     ++ "higher and adding a 'custom-setup' section with a 'setup-depends' "

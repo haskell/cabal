@@ -2,6 +2,7 @@
 extend-exclude = [
     "changelog.d/pr-11501.md",
     "changelog.d/pr-11602.md",
+    "changelog.d/pr-11621.md",
 ]
 
 [default]

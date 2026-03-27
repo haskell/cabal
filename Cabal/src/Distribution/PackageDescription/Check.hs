@@ -537,7 +537,7 @@ checkPackageDescription
       ( isNothing setupBuildInfo_
           && buildTypeRaw_ == Just Custom
       )
-      (PackageDistSuspiciousWarn CVExpliticDepsCustomSetup)
+      (PackageDistSuspiciousWarn CVExplicitDepsCustomSetup)
     checkP
       (isNothing buildTypeRaw_ && specVersion_ < CabalSpecV2_2)
       (PackageBuildWarning NoBuildType)
