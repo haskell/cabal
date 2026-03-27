@@ -320,7 +320,7 @@ For the versions of all dependencies at once:
     project's package descriptions, in any ``.cabal`` file, then delete the
     ``cabal.project.freeze`` file if it already exists and run ``cabal freeze``
     to generate fresh version of ``cabal.project.freeze``.  The steps of this
-    workflow are delete and freeze. The solver is let free to choose versions of
+    workflow are delete and freeze. The solver is left free to choose versions of
     all dependencies but once it has decided, those versions are immediately
     pinned.
 
