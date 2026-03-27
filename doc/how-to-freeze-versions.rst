@@ -383,16 +383,30 @@ Version constraints can be lifted with ``allow-newer`` and ``allow-older``.
 Places for Versioning
 ---------------------
 
+For end-user executables, it is recommended that you distribute the
+``cabal.project.freeze`` file in your source repository so that all users see a
+consistent set of dependencies. For libraries, this is not recommended: users
+often need to build against different versions of libraries than what you
+developed against.
+
 .. _hackage-versions:
 
 Hackage versions
-^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^
 
 TODO
 
 .. _project-versions:
 
 Project versions
-^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^
 
 TODO
+
+Project environments
+^^^^^^^^^^^^^^^^^^^^
+
+If a package is built in several environments, such as a development
+environment, a staging environment and a production environment, it may be
+necessary or desirable to ensure that the same dependency versions are selected
+in each environment. This can be done with a **freeze file**.
