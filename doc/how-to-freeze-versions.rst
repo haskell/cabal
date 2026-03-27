@@ -1,3 +1,5 @@
+.. _how-to-control-versions:
+
 How to control versions
 =======================
 
@@ -189,12 +191,17 @@ Capped repository versions
 Frozen versions
 ---------------
 
-Pinning adds a version equality constraint for each package in the set of
-project dependencies, explicit and transitive.  The ``cabal freeze`` command
-saves these to a file named the same as the whole of the project file name but
-with a extra ``.freeze`` extension, so the freeze file for ``cabal.project`` is
-``cabal.project.freeze``. Effectively a ``.freeze`` file is an implicit project
-import, same as the ``.local`` file for projects.
+The :ref:`cabal freeze <cabal-freeze>` command generates **freeze file** that
+describes the exact dependency tree as it was resolved at that moment by Cabal's
+dependency solver.  It captures exact versions and flags of every dependency,
+including dependencies of dependencies, exhaustively and recursively.
+
+In practice, freezing adds a version equality constraint for each package in the
+set of project dependencies, explicit and transitive.  The ``cabal freeze``
+command saves these to a file named the same as the whole of the project file
+name but with a extra ``.freeze`` extension, so the freeze file for
+``cabal.project`` is ``cabal.project.freeze``. Effectively a ``.freeze`` file is
+an implicit project import, same as the ``.local`` file for projects.
 
 .. Note::
 
@@ -401,7 +408,17 @@ TODO
 Project versions
 ^^^^^^^^^^^^^^^^
 
-TODO
+The unit of distribution to Hackage is the package. Projects are shared by
+*source code* repository.
+
+Since ``cabal`` reads ``cabal.project.freeze`` when present, and takes into
+consideration the version constraints in it, this means that by producing
+``cabal.project.freeze`` you are guaranteed that every future ``cabal`` call
+will use the exact same set of dependencies, regardless of any updates (even
+patches) that might get published for these dependencies in the meantime.
+Therefore, we have effectively "frozen" the dependencies in place.
+
+``cabal.project.freeze`` is intended to be committed to the version control.
 
 Project environments
 ^^^^^^^^^^^^^^^^^^^^
