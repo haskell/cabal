@@ -499,6 +499,8 @@ is in place, which moves the old configuration to a ``cabal.project.local~``
 file, this feature can also be disabled by using the ``--disable-backup``
 flag.
 
+.. _cabal-freeze:
+
 cabal freeze
 ^^^^^^^^^^^^
 
@@ -506,19 +508,29 @@ cabal freeze
 
     $ cabal freeze
 
-generates ``cabal.project.freeze`` file, which describes the exact dependency
-tree as it was resolved at that moment by Cabal.  This means it captures an
-exact versions and flags of every dependency, including dependencies of dependencies,
-recursively all the way.
+``cabal freeze`` writes out a **freeze file** which records all of
+the versions and flags that are picked by the solver under the
+current index and flags.  Default name of this file is
+``cabal.project.freeze`` but in combination with a
+``--project-file=my.project`` flag (see :ref:`project-file
+<cmdoption-project-file>`)
+the name will be ``my.project.freeze``.
+A freeze file has the same syntax as ``cabal.project`` and looks
+something like this:
 
-Since ``cabal`` reads ``cabal.project.freeze`` when present, and takes into
-consideration the version constraints in it, this means that by producing
-``cabal.project.freeze`` you are guaranteed that every future ``cabal`` call
-will use the exact same set of dependencies, regardless of any updates (even
-patches) that might get published for these dependencies in the meantime.
-Therefore, we have effectively "frozen" the dependencies in place.
+.. highlight:: cabal
 
-``cabal.project.freeze`` is intended to be committed to the version control.
+::
+
+    constraints: HTTP ==4000.3.3,
+                 HTTP +warp-tests -warn-as-error -network23 +network-uri -mtl1 -conduit10,
+                 QuickCheck ==2.9.1,
+                 QuickCheck +templatehaskell,
+                 -- etc...
+
+For more detail, please see the guide on how to :ref:`control versions
+<how-to-control-versions>` with its section on :ref:`freezing
+<frozen-versions>`.
 
 .. _cabal-gen-bounds:
 
