@@ -1,6 +1,5 @@
 import Test.Cabal.Prelude
 main = setupAndCabalTest $ do
-    skipUnlessGhcVersion ">= 8.1"
     withPackageDb $ do
       -- Install framework WITHOUT instantiation (simulates nix callCabal2nix)
       recordMode DoNotRecord $
