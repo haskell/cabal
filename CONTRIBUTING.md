@@ -247,7 +247,46 @@ you push a fix of a whitespace violation, please do so in a _separate commit_. F
 `make whitespace` will show violations and `make fix-whitespace` will fix them, if the
 `fix-whitespace` utility is installed.
 
+## API Changes and Check API job
+-----------------------------
+
+The `Check API` job tests the `Cabal`, `Cabal-syntax`, and `cabal-install-solver`
+packages for API changes. It's useful to indicate when a changelog is needed and
+which PRs aren't appropriate for backports.
+
+If the `Check API` job fails, you will find in its build artifacts (at the bottom
+of the "upload artifacts" step, immediately before the actual API check) a ZIP file
+containing the new API records. You can download this and replace the existing API
+descriptions, which can be found in the package top level directories, with `.api`
+suffixes. Generating them locally is possible with the [check-api tool](https://github.com/Kleidukos/print-api), but
+is not guaranteed to produce the same result as the CI job does.
+
+If you do wish to generate a local API record, install [`print-api`](https://github.com/Kleidukos/print-api/releases/tag/v0.1.0.1) and
+run it on the `Cabal`, `Cabal-syntax`, and `cabal-install-solver` packages, from
+the top level directory of the Cabal repo:
+
+    make generate-api
+
+You will need `ghc-9.10.1` to be on `$PATH`; `ghcup` is the easiest way to do this.
+
+The resulting `Cabal-syntax.api`, `Cabal.api`, and `cabal-install-solver` files
+can then be compared to the ones in the `Cabal-syntax`, `Cabal`, and
+`cabal-install-solver` package directories.
+
+    make check-api
+
+If necessary, you can then install the API records:
+
+    make update-api
+
+It is also possible to do this individually; see the `Makefile`.
+
+Note that different compiler versions and different architectures will alter the
+output. It is not expected that different Linux distributions will, but you may
+need to use the static build if you aren't using Ubuntu 22.04.
+
 ## Other Conventions
+-----------------
 
 * Format your commit messages [in the standard way](https://chris.beams.io/posts/git-commit/#seven-rules).
 
