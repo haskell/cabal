@@ -288,7 +288,7 @@ copyComponent verbosity pkg_descr lbi (CExe exe) clbi copydest = do
         ++ binPref
     )
   inPath <- isInSearchPath binPref
-  when (not inPath) $
+  unless inPath $
     warn
       verbosity
       ( "The directory "

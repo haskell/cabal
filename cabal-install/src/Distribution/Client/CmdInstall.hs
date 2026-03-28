@@ -852,7 +852,7 @@ partitionToKnownTargetsAndHackagePackages verbosity pkgDb elaboratedPlan targetS
               dieWithException verbosity $ UnknownPackage (unPackageName hn) (("- " ++) . unPackageName . fst <$> xs)
         _ -> return ()
 
-      when (not . null $ errs') $ reportBuildTargetProblems verbosity errs'
+      unless (null errs') $ reportBuildTargetProblems verbosity errs'
 
       let
         targetSelectors' = flip filter targetSelectors $ \case

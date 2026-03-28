@@ -306,7 +306,7 @@ dumpBuildInfo verbosity distPref dumpBuildInfoFlag pkg_descr lbi flags = do
           ++ unlines warns
     LBS.writeFile buildInfoFile buildInfoText
 
-  when (not shouldDumpBuildInfo) $
+  unless shouldDumpBuildInfo $
     -- Remove existing build-info.json as it might be outdated now.
     removeFileForcibly buildInfoFile
   where
@@ -624,7 +624,7 @@ generateCode
   -> Verbosity
   -> IO (SymbolicPath Pkg (Dir Source), [ModuleName.ModuleName])
 generateCode codeGens nm pdesc bi lbi clbi verbosity = do
-  when (not . null $ codeGens) $ createDirectoryIfMissingVerbose verbosity True $ i tgtDir
+  unless (null codeGens) $ createDirectoryIfMissingVerbose verbosity True $ i tgtDir
   (tgtDir,) . concat <$> mapM go codeGens
   where
     allLibs = (maybe id (:) $ library pdesc) (subLibraries pdesc)

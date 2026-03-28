@@ -217,7 +217,7 @@ linkOrLoadComponent
           get_rpaths ways =
             if DynWay `Set.member` ways then getRPaths pbci else return (toNubListR [])
          in
-          when (not $ componentIsIndefinite clbi) $ do
+          unless (componentIsIndefinite clbi) $ do
             -- If not building dynamically, we don't pass any runtime paths.
             liftIO $ do
               info verbosity "Linking..."

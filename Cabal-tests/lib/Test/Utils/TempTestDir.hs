@@ -12,7 +12,7 @@ import Distribution.Verbosity
 
 import Control.Concurrent (threadDelay)
 import Control.Exception (throwIO, try)
-import Control.Monad (when)
+import Control.Monad (unless, when)
 import Control.Monad.Catch ( bracket, MonadMask)
 import Control.Monad.IO.Class
 
@@ -40,7 +40,7 @@ withTestDir' verbosity tempFileOpts template action = do
     (liftIO
       -- This ensures that the temp files are not deleted at the end of the test.
       -- It replicates the behavior of @withTempDirectoryEx@.
-      . when (not (optKeepTempFiles tempFileOpts))
+      . unless (optKeepTempFiles tempFileOpts)
       -- This is the bit that helps with Windows deleting all files.
       . removeDirectoryRecursiveHack verbosity
       )

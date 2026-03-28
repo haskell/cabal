@@ -1180,7 +1180,7 @@ finalCheckPackage
             nub $
               mapMaybe defaultLanguage (enabledBuildInfos pkg_descr enabled)
       let langs = unsupportedLanguages comp langlist
-      when (not (null langs)) $
+      unless (null langs) $
         dieWithException verbosity $
           UnsupportedLanguages (packageId g_pkg_descr) (compilerId comp) (map prettyShow langs)
       let extlist =
@@ -1189,14 +1189,14 @@ finalCheckPackage
                 allExtensions
                 (enabledBuildInfos pkg_descr enabled)
       let exts = unsupportedExtensions comp extlist
-      when (not (null exts)) $
+      unless (null exts) $
         dieWithException verbosity $
           UnsupportedLanguageExtension (packageId g_pkg_descr) (compilerId comp) (map prettyShow exts)
 
       -- Check foreign library build requirements
       let flibs = [flib | CFLib flib <- enabledComponents pkg_descr enabled]
       let unsupportedFLibs = unsupportedForeignLibs comp compPlatform flibs
-      when (not (null unsupportedFLibs)) $
+      unless (null unsupportedFLibs) $
         dieWithException verbosity $
           CantFindForeignLibraries unsupportedFLibs
 
@@ -1470,7 +1470,7 @@ checkExactConfiguration verbosity pkg_descr0 cfg =
     let cmdlineFlags = map fst (unFlagAssignment (configConfigurationsFlags cfg))
         allFlags = map flagName . genPackageFlags $ pkg_descr0
         diffFlags = allFlags \\ cmdlineFlags
-    when (not . null $ diffFlags) $
+    unless (null diffFlags) $
       dieWithException verbosity $
         FlagsNotSpecified diffFlags
 
@@ -2221,7 +2221,7 @@ combinedConstraints
       , Map (PackageName, ComponentName) InstalledPackageInfo
       )
 combinedConstraints constraints dependencies installedPackages = do
-  when (not (null badComponentIds)) $
+  unless (null badComponentIds) $
     Left $
       CombinedConstraints (dispDependencies badComponentIds)
 

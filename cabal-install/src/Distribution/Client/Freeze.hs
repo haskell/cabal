@@ -184,7 +184,7 @@ getFreezePkgs
     where
       sanityCheck :: [PackageSpecifier UnresolvedSourcePackage] -> IO ()
       sanityCheck pkgSpecifiers = do
-        when (not . null $ [n | n@(NamedPackage _ _) <- pkgSpecifiers]) $
+        unless (null [n | n@(NamedPackage _ _) <- pkgSpecifiers]) $
           dieWithException verbosity UnexpectedNamedPkgSpecifiers
         when (length pkgSpecifiers /= 1) $
           dieWithException verbosity UnexpectedSourcePkgSpecifiers
