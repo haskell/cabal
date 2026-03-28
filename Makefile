@@ -50,7 +50,7 @@ FORMAT_DIRS_TODO := \
 	solver-benchmarks
 
 .PHONY: style-todo
-style-todo: ## Configured for fourmolu, avoiding GHC parser failures
+style-todo: ## Configured for fourmolu, avoiding GHC parser failures.
 	@fourmolu -q $(FORMAT_DIRS_TODO) > /dev/null
 
 .PHONY: style
@@ -86,7 +86,7 @@ lint-json: ## Run HLint in JSON mode.
 # local checks
 
 .PHONY: checks
-checks: whitespace users-guide-typos markdown-typos style lint-json  ## Run all local checks; whitespace, typos, style, and lint.
+checks: whitespace users-guide-typos markdown-typos style lint-json  ## Run all local checks: whitespace, typos, style, and lint.
 
 # source generation: SPDX
 
@@ -266,17 +266,55 @@ tags: ## Generate editor tags, vim ctags and emacs etags.
 # bootstrapping
 ##############################################################################
 
+BOOT_GHCUP := $(shell ghcup --version 2>/dev/null)
+BOOT_NIX := $(shell nix-shell --version 2>/dev/null)
+CABALCONF := $(shell if test -f $$HOME/.config/cabal/config; then echo CABAL_CONFIG=$$HOME/.config/cabal/config; fi)
+
 bootstrap-json-%: phony
-	cabal build --project-file=cabal.bootstrap.project --with-compiler=ghc-$* --dry-run cabal-install:exe:cabal
-	cp dist-newstyle/cache/plan.json bootstrap/linux-$*.plan.json
+	ghcup install ghc "$*" --no-verbose --no-guess-version
+	$(MAKE) "bootstrap-subr-$*"
+
+# "subroutine", make style
+bootstrap-subr-%: phony
+	rm -rf dist-bootstrap
+	$(CABALBUILD) --distdir=dist-bootstrap --project-file=cabal.bootstrap.project --with-compiler=ghc-$* --dry-run \
+		cabal-install:exe:cabal
+	cp dist-bootstrap/cache/plan.json bootstrap/linux-$*.plan.json
 	@# -v0 to avoid build output on stdout
-	cd bootstrap && cabal run -v0 cabal-bootstrap-gen -- linux-$*.plan.json \
+	cd bootstrap && $(CABALCONF) $(CABALRUN) -v0 cabal-bootstrap-gen -- linux-$*.plan.json \
 		| python3 -m json.tool > linux-$*.json
 
-BOOTSTRAP_GHC_VERSIONS := 9.2.8 9.4.8 9.6.7 9.8.4 9.10.2 9.12.2
+BOOTSTRAP_GHC_VERSIONS := 9.2.8 9.4.8 9.6.7 9.8.4 9.10.3 9.12.2
 
 .PHONY: bootstrap-jsons
-bootstrap-jsons: $(BOOTSTRAP_GHC_VERSIONS:%=bootstrap-json-%)
+bootstrap-jsons: ## Generate bootstrap JSONs for Linux (autodetects method).
+ifeq ($(BOOT_GHCUP), )
+ifeq ($(BOOT_NIX), )
+	@echo If you do not have the following ghc versions, you will need to install them manually.
+	@echo They can be obtained from https://downloads.haskell.org/ghc.
+	@echo "   " $(BOOTSTRAP_GHC_VERSIONS)
+	$(MAKE) bootstrap-jsons-no-dl
+else
+	$(MAKE) bootstrap-jsons-nix
+endif
+else
+	$(MAKE) bootstrap-jsons-ghcup
+endif
+
+.PHONY: bootstrap-jsons-no-dl
+bootstrap-jsons-no-dl: $(BOOTSTRAP_GHC_VERSIONS:%=bootstrap-subr-%) ## Generate bootstrap JSONs for Linux using existing ghcs.
+
+.PHONY: bootstrap-jsons-nix
+bootstrap-jsons-nix: ## Generate bootstrap JSONs for Linux using Nix-provided ghcs.
+	cd ./bootstrap && $(CABALCONF) ./generate_bootstrap_plans
+
+.PHONY: bootstrap-jsons-ghcup
+bootstrap-jsons-ghcup: $(BOOTSTRAP_GHC_VERSIONS:%=bootstrap-json-%) ## Generate bootstrap JSONs for Linux using ghcup.
+
+# this lets the Nix bootstrap script use the Makefile's definitions instead of hardcoding them itself
+.PHONY: bootstrap-jsons-nix-helper
+bootstrap-jsons-nix-helper:
+	@echo "$(BOOTSTRAP_GHC_VERSIONS)"
 
 # documentation
 ##############################################################################
@@ -291,12 +329,12 @@ else
 PROCS := $(shell nproc)
 endif
 
-PHONY: help
+.PHONY: help
 help: ## Show the commented targets.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 	sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-PHONY: help-banner
+.PHONY: help-banner
 help-banner: ## Show the help banner.
 	@echo "===================================================================="
 	@echo "§ all                  make with no arguments also shows this banner"
@@ -304,32 +342,32 @@ help-banner: ## Show the help banner.
 	@echo "===================================================================="
 
 .PHONY: typos-install
-typos-install: ## Install typos-cli for typos target using cargo
+typos-install: ## Install typos-cli for typos target using cargo.
 	cargo install typos-cli
 
 GREP_EXCLUDE := grep -v -E 'dist-|cabal-testsuite|python-'
 FIND_NAMED := find . -type f -name
 
 .PHONY: hs-typos
-hs-typos: ## Find typos in Haskell source files; .hs, .cabal, etc.
+hs-typos: ## Find typos in Haskell source files: .hs, .cabal, etc.
 	typos --config .typos-srcs.toml --force-exclude
 
 .PHONY: hs-fix-typos
-hs-fix-typos: ## Fix typos in Haskell source files; .hs, .cabal, etc.
+hs-fix-typos: ## Fix typos in Haskell source files: .hs, .cabal, etc.
 	typos --config .typos-srcs.toml --write-changes --force-exclude
 
 .PHONY: users-guide-typos
-users-guide-typos: ## Find typos in users guide
+users-guide-typos: ## Find typos in users guide.
 	cd doc && $(FIND_NAMED) '*.rst' | xargs typos --config ../.typos-docs.toml --force-exclude
 
 .PHONY: users-guide-fix-typos
-users-guide-fix-typos: ## Fix typos in users guide
+users-guide-fix-typos: ## Fix typos in users guide.
 	cd doc && $(FIND_NAMED) '*.rst' | xargs typos --config ../.typos-docs.toml --write-changes --force-exclude 
 
 .PHONY: markdown-typos
-markdown-typos: ## Find typos in markdown files
+markdown-typos: ## Find typos in markdown files.
 	$(FIND_NAMED) '*.md' | $(GREP_EXCLUDE) | xargs typos --config .typos-docs.toml --force-exclude
 
 .PHONY: markdown-fix-typos
-markdown-fix-typos: ## Fix typos in markdown files
+markdown-fix-typos: ## Fix typos in markdown files.
 	$(FIND_NAMED) '*.md' | $(GREP_EXCLUDE) | xargs typos --config .typos-docs.toml --write-changes --force-exclude
