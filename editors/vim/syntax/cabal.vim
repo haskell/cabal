@@ -162,8 +162,8 @@ syn keyword cabalExtension contained
   \ ConstraintKinds
   \ DataKinds
   \ DatatypeContexts
-  \ DefaultSignatures
   \ DeepSubsumption
+  \ DefaultSignatures
   \ DeriveAnyClass
   \ DeriveDataTypeable
   \ DeriveFoldable
@@ -182,6 +182,7 @@ syn keyword cabalExtension contained
   \ EmptyDataDeriving
   \ ExistentialQuantification
   \ ExplicitForAll
+  \ ExplicitLevelImports
   \ ExplicitNamespaces
   \ ExtendedDefaultRules
   \ ExtendedLiterals
@@ -201,6 +202,7 @@ syn keyword cabalExtension contained
   \ HexFloatLiterals
   \ ImplicitParams
   \ ImplicitPrelude
+  \ ImplicitStagePersistence
   \ ImportQualifiedPost
   \ ImpredicativeTypes
   \ IncoherentInstances
@@ -213,16 +215,15 @@ syn keyword cabalExtension contained
   \ LiberalTypeSynonyms
   \ LinearTypes
   \ ListTuplePuns
-  \ RequiredTypeArguments
   \ MagicHash
   \ MonadComprehensions
   \ MonadFailDesugaring
   \ MonoLocalBinds
   \ MonoPatBinds
   \ MonomorphismRestriction
-  \ MultilineStrings
   \ MultiParamTypeClasses
   \ MultiWayIf
+  \ MultilineStrings
   \ NPlusKPatterns
   \ NamedDefaults
   \ NamedFieldPuns
@@ -260,6 +261,7 @@ syn keyword cabalExtension contained
   \ RecursiveDo
   \ RegularPatterns
   \ RelaxedPolyRec
+  \ RequiredTypeArguments
   \ RestrictedTypeSynonyms
   \ RoleAnnotations
   \ SafeImports
@@ -307,8 +309,8 @@ syn keyword cabalExtension contained
   \ NoConstraintKinds
   \ NoDataKinds
   \ NoDatatypeContexts
-  \ NoDefaultSignatures
   \ NoDeepSubsumption
+  \ NoDefaultSignatures
   \ NoDeriveAnyClass
   \ NoDeriveDataTypeable
   \ NoDeriveFoldable
@@ -327,6 +329,7 @@ syn keyword cabalExtension contained
   \ NoEmptyDataDeriving
   \ NoExistentialQuantification
   \ NoExplicitForAll
+  \ NoExplicitLevelImports
   \ NoExplicitNamespaces
   \ NoExtendedDefaultRules
   \ NoExtendedLiterals
@@ -346,6 +349,7 @@ syn keyword cabalExtension contained
   \ NoHexFloatLiterals
   \ NoImplicitParams
   \ NoImplicitPrelude
+  \ NoImplicitStagePersistence
   \ NoImportQualifiedPost
   \ NoImpredicativeTypes
   \ NoIncoherentInstances
@@ -357,16 +361,15 @@ syn keyword cabalExtension contained
   \ NoLexicalNegation
   \ NoLiberalTypeSynonyms
   \ NoLinearTypes
-  \ NoRequiredTypeArguments
   \ NoMagicHash
   \ NoMonadComprehensions
   \ NoMonadFailDesugaring
   \ NoMonoLocalBinds
   \ NoMonoPatBinds
   \ NoMonomorphismRestriction
-  \ NoMultilineStrings
   \ NoMultiParamTypeClasses
   \ NoMultiWayIf
+  \ NoMultilineStrings
   \ NoNPlusKPatterns
   \ NoNamedDefaults
   \ NoNamedFieldPuns
@@ -377,12 +380,12 @@ syn keyword cabalExtension contained
   \ NoNullaryTypeClasses
   \ NoNumDecimals
   \ NoNumericUnderscores
+  \ NoOrPatterns
   \ NoOverlappingInstances
   \ NoOverloadedLabels
   \ NoOverloadedLists
   \ NoOverloadedRecordDot
   \ NoOverloadedStrings
-  \ NoOrPatterns
   \ NoPackageImports
   \ NoParallelArrays
   \ NoParallelListComp
@@ -404,6 +407,7 @@ syn keyword cabalExtension contained
   \ NoRecursiveDo
   \ NoRegularPatterns
   \ NoRelaxedPolyRec
+  \ NoRequiredTypeArguments
   \ NoRestrictedTypeSynonyms
   \ NoRoleAnnotations
   \ NoSafeImports
