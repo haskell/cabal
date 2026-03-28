@@ -33,7 +33,7 @@ in the same way as it is shown for Linux above. On a system with functional `cab
 
 1. Install the same GHC version as you will use to bootstrap on the host system.
 
-2. Build a dependency description file (`$PLATFORM-$GHCVER.json`, e.g. `macosx-8.8.4.json`) by running:
+2. Build a dependency description file (`$PLATFORM-$GHCVER.json`, e.g. `macosx-8.8.4.json`).
 
    ```sh
    cabal build --with-compiler=/path/to/ghc --dry-run cabal-install:exe:cabal
@@ -45,15 +45,8 @@ in the same way as it is shown for Linux above. On a system with functional `cab
 3. You may need to tweak `bootstrap/$PLATFORM-$GHCVER.json` file manually,
      for example, to toggle flags.
 
-There are rules in the top-level `Makefile` for generation of these files.
-
-# Updating Bootstrap Plans
-
-In order to update the bootstrap plans on linux there is the convenient `./generate_bootstrap_plans`
-script. You can modify this script with the GHC versions you want to generate the plans for and
-then run it to generate the plans.
-
-```
-./generate_bootstrap_plans
-```
-
+The top level `Makefile` has a rule `bootstrap-jsons` to generate Linux bootstrap files for all
+supported ghc versions, or `bootstrap-json-$GHCVER` for a single ghc version. The rules know
+how to obtain the requisite ghc versions via `ghcup` or Nix; if you have neither, you will
+have to obtain versioned ghc binaries from `downloads.haskell.org` or other suitable
+repository.
