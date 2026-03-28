@@ -31,7 +31,8 @@ FORMAT_DIRS := \
 	Cabal-syntax \
 	cabal-install \
 	cabal-testsuite/src \
-	cabal-validate
+	cabal-validate \
+	Cabal-tests/exes
 
 FORMAT_DIRS_TODO := \
 	Cabal-QuickCheck \
