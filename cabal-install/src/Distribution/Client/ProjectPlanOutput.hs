@@ -26,6 +26,7 @@ import Distribution.Client.Types.PackageLocation (PackageLocation (..))
 import Distribution.Client.Types.Repo (RemoteRepo (..), Repo (..))
 import Distribution.Client.Types.SourceRepo (SourceRepoMaybe, SourceRepositoryPackage (..))
 import Distribution.Client.Version (cabalInstallVersion)
+import Distribution.ModuleName hiding (components)
 
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import qualified Distribution.Client.Utils.Json as J
@@ -65,6 +66,7 @@ import Distribution.Verbosity
 
 import Distribution.Client.Compat.Prelude
 import Prelude ()
+import qualified GHC.IsList as IL
 
 import Control.Monad ((<=<))
 
@@ -174,6 +176,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
               ]
         , "style" J..= J.String (style2str (elabLocalToProject elab) (elabBuildStyle elab))
         , "pkg-src" J..= packageLocationToJ (elabPkgSourceLocation elab)
+        , "instantiated-with" J..= instantiationsToJ (elabInstantiatedWith elab)
         ]
           ++ [ "pkg-cabal-sha256" J..= J.String (showHashValue hash)
              | Just hash <- [fmap hashValue (elabPkgDescriptionOverride elab)]
@@ -208,6 +211,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
                in ["components" J..= components]
             ElabComponent comp ->
               [ "depends" J..= map (jdisplay . confInstId) (map fst $ elabLibDependencies elab)
+              , "order-depends" J..= map jdisplay (compOrderLibDependencies comp)
               , "exe-depends" J..= map jdisplay (elabExeDependencies elab)
               , "component-name" J..= J.String (comp2str (compSolverName comp))
               ]
@@ -255,6 +259,15 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
                 [ "type" J..= J.String "source-repo"
                 , "source-repo" J..= sourceRepoToJ srcRepo
                 ]
+
+        instantiationsToJ :: Map ModuleName Module -> J.Value
+        instantiationsToJ m = J.object (instantiationToJ <$> IL.toList m)
+
+        instantiationToJ :: (ModuleName, Module) -> J.Pair
+        instantiationToJ (nm, (Module duid nm')) = prettyShow nm J..= J.object
+          [ "unit-id" J..= jdisplay duid
+          , "module" J..= jdisplay nm'
+          ]
 
         repoToJ :: Repo -> J.Value
         repoToJ repo =
