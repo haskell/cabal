@@ -4,7 +4,6 @@ module UnitTests.Distribution.Client.Configure (tests) where
 
 import Distribution.Client.CmdConfigure
 
-import Control.Monad
 import qualified Data.Map as Map
 import Distribution.Client.NixStyleOptions
 import Distribution.Client.ProjectConfig.Types
@@ -12,6 +11,7 @@ import Distribution.Client.ProjectFlags
 import Distribution.Client.Setup
 import Distribution.Simple
 import Distribution.Simple.Flag
+import Distribution.Simple.Utils (removeFileForcibly)
 import Distribution.Verbosity
 import System.Directory
 import System.FilePath
@@ -109,9 +109,7 @@ configureTests =
                 }
             backup = projectDir </> "cabal.project.local~"
 
-        exists <- doesFileExist backup
-        when exists $
-          removeFile backup
+        removeFileForcibly backup
 
         _ <- configureAction' flags [] defaultGlobalFlags
 

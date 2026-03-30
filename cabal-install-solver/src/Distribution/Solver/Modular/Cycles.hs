@@ -23,11 +23,11 @@ detectCyclesPhase = go
     -- Only check children of choice nodes.
     go :: Tree d c -> Tree d c
     go (PChoice qpn rdm gr                         cs) =
-        PChoice qpn rdm gr     $ fmap (checkChild qpn)   (fmap go cs)
+        PChoice qpn rdm gr     $ fmap (checkChild qpn . go) cs
     go (FChoice qfn@(FN qpn _) rdm gr w m d cs) =
-        FChoice qfn rdm gr w m d $ fmap (checkChild qpn) (fmap go cs)
+        FChoice qfn rdm gr w m d $ fmap (checkChild qpn . go) cs
     go (SChoice qsn@(SN qpn _) rdm gr w     cs) =
-        SChoice qsn rdm gr w   $ fmap (checkChild qpn)   (fmap go cs)
+        SChoice qsn rdm gr w   $ fmap (checkChild qpn . go) cs
     go (GoalChoice rdm cs) = GoalChoice rdm (fmap go cs)
     go x@(Fail _ _) = x
     go x@(Done _ _) = x

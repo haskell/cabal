@@ -454,7 +454,7 @@ test-suite integration-tests2
     , directory
     , filepath
     , process
-    , tasty >= 1.5 && <1.6
+    , tasty >= 1.5.4 && <1.6
     , tasty-hunit >= 0.10
     , tasty-expected-failure
     , silently

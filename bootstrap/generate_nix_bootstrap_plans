@@ -1,0 +1,30 @@
+#! /bin/sh
+# You should probably use `make bootstrap-jsons` from the top level directory
+# instead of running this script directly; it will automatically detect
+# ghcup and Nix, or tell you where to download the necessary ghcs.
+nix build nixpkgs#jq.bin -o jq --extra-experimental-features nix-command --extra-experimental-features flakes
+PATH="$PATH:$PWD/jq-bin/bin"
+
+ghcs_nix="https://gitlab.haskell.org/bgamari/ghcs-nix/-/archive/master/ghcs-nix-master.tar.gz"
+
+nix build -f "$ghcs_nix" ghc-9_6_5 -o boot_ghc --extra-experimental-features nix-command
+
+run() {
+  local ver="$1"
+  local drv="ghc-$ver"
+  echo "$ver"
+  nix build -f "$ghcs_nix" $drv --extra-experimental-features nix-command
+  (cd .. && rm -rf dist-bootstrap && cabal --distdir=dist-bootstrap build --project-file=cabal.bootstrap.project --dry-run cabal-install:exe:cabal -w bootstrap/result/bin/ghc)
+  jq --sort-keys < ../dist-bootstrap/cache/plan.json > "plan-$ver.json"
+  cabal run --with-ghc-pkg $PWD/boot_ghc/bin/ghc-pkg -w $PWD/boot_ghc/bin/ghc -v0 cabal-bootstrap-gen -- "plan-$ver.json" | jq --sort-keys | tee "linux-$(echo $ver | tr "_" ".").json"
+}
+
+if [ $# -eq 0 ]; then
+  # get bootstrap ghc list from Makefile instead of hardcoded
+  # MAKELEVEL silences sub-make output if this is run from the top level Makefile
+  set -- $(cd ..; MAKELEVEL= make bootstrap-jsons-nix-helper)
+fi
+
+for ghc in "$@"; do
+  run $(echo "$ghc" | tr . _)
+done

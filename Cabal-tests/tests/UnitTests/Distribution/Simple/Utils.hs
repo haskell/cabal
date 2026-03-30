@@ -11,7 +11,7 @@ import Distribution.Verbosity
 import Data.IORef
 import System.Directory ( doesDirectoryExist, doesFileExist
                         , getTemporaryDirectory
-                        , removePathForcibly, removeFile )
+                        , removePathForcibly )
 import System.FilePath ( (<.>) )
 import System.IO (hClose, localeEncoding, hPutStrLn)
 import System.IO.Error
@@ -32,7 +32,7 @@ withTempFileRemovedTest :: Assertion
 withTempFileRemovedTest = do
   withTempFile ".foo" $ \fileName handle -> do
     hClose handle
-    removeFile fileName
+    removeFileForcibly fileName
 
 withTempDirTest :: Assertion
 withTempDirTest = do

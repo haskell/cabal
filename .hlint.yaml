@@ -3,12 +3,8 @@
 - ignore: {name: "Avoid lambda"} # 51 hints
 - ignore: {name: "Avoid lambda using `infix`"} # 23 hints
 - ignore: {name: "Eta reduce"} # 138 hints
-- ignore: {name: "Functor law"} # 10 hints
 - ignore: {name: "Hoist not"} # 16 hints
-- ignore: {name: "Monoid law, left identity"} # 3 hints
-- ignore: {name: "Monoid law, right identity"} # 3 hints
 - ignore: {name: "Move filter"} # 4 hints
-- ignore: {name: "Move guards forward"} # 5 hints
 - ignore: {name: "Redundant $!"} # 1 hint
 - ignore: {name: "Redundant <$>"} # 17 hints
 - ignore: {name: "Redundant bracket"} # 257 hints
@@ -39,10 +35,13 @@
 - ignore: {name: "Use newtype instead of data"} # 31 hints
 - ignore: {name: "Use null"} # 2 hints
 - ignore: {name: "Use record patterns"} # 16 hints
-- ignore: {name: "Use replicateM_"} # 2 hints
 - ignore: {name: "Use typeRep"} # 2 hints
 - ignore: {name: "Use unless"} # 23 hints
 - ignore: {name: "Use void"} # 23 hints
+
+- ignore: {name: "Functor law", within: [Test.Laws]}
+- ignore: {name: "Monoid law, left identity", within: [Test.Laws, UnitTests.Distribution.Utils.NubList]}
+- ignore: {name: "Monoid law, right identity", within: [Test.Laws, UnitTests.Distribution.Utils.NubList]}
 
 - group:
     name: cabal-suggestions

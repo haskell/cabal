@@ -19,7 +19,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        ghc: ["9.2.8", "9.4.8", "9.6.7", "9.8.4", "9.10.2", "9.12.2"]
+        ghc: ["9.2.8", "9.4.8", "9.6.7", "9.8.4", "9.10.3", "9.12.2"]
         include:
           - os: macos-latest
             ghc: "9.2.8"
@@ -32,6 +32,8 @@ jobs:
           rm -rf ~/.config/cabal
           rm -rf ~/.cache/cabal
 
+      - uses: actions/checkout@v6
+
       # runner.os isn't sufficient for binary compatible caches
       - name: Get runner OS/version for cache keys
         id: get-osver
@@ -42,10 +44,9 @@ jobs:
         id: bootstrap-cache
         with:
           path: "/home/runner/work/cabal/cabal/_build"
-          key: bootstrap-${{ steps.get-osver.outputs.osver }}-${{ matrix.ghc }}-20221115-${{ github.sha }}
-          restore-keys: bootstrap-${{ steps.get-osver.outputs.osver }}-${{ matrix.ghc }}-20221115-
+          key: bootstrap-${{ steps.get-osver.outputs.osver }}-${{ matrix.ghc }}-${{ hashFiles(format('bootstrap/linux-{0}.json', matrix.ghc)) }}-${{ github.sha }}
+          restore-keys: bootstrap-${{ steps.get-osver.outputs.osver }}-${{ matrix.ghc }}-${{ hashFiles(format('bootstrap/linux-{0}.json', matrix.ghc)) }}-
 
-      - uses: actions/checkout@v6
       - uses: haskell-actions/setup@v2
         with:
           ghc-version: ${{ matrix.ghc }}

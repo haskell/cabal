@@ -387,9 +387,8 @@ instance Arbitrary Glob where
       take
         (max 1 sz)
         [ pure GlobDirTrailing
-        , GlobFile <$> (getGlobPieces <$> arbitrary)
-        , GlobDir
-            <$> (getGlobPieces <$> arbitrary)
+        , GlobFile . getGlobPieces <$> arbitrary
+        , (GlobDir . getGlobPieces <$> arbitrary)
             <*> resize (sz `div` 2) arbitrary
         ]
 

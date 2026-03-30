@@ -51,8 +51,6 @@ import Distribution.Version
 import System.Directory
   ( createDirectoryIfMissing
   , doesDirectoryExist
-  , doesFileExist
-  , removeFile
   , renameFile
   )
 import System.FilePath
@@ -551,10 +549,8 @@ linkExecutable linkerOpts (way, buildOpts) targetDir targetName runGhcProg lbi =
   -- situation, see #3294
   let target =
         targetDir </> makeRelativePathEx (exeTargetName (hostPlatform lbi) targetName)
-  when (compilerVersion comp < mkVersion [7, 7]) $ do
-    let targetPath = interpretSymbolicPathLBI lbi target
-    e <- doesFileExist targetPath
-    when e (removeFile targetPath)
+  when (compilerVersion comp < mkVersion [7, 7]) $
+    removeFileForcibly (interpretSymbolicPathLBI lbi target)
   runGhcProg linkOpts{ghcOptOutputFile = toFlag target}
 
 -- | Link a foreign library component
