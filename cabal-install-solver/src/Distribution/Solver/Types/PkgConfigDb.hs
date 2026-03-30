@@ -94,7 +94,7 @@ readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
               -- in multi-byte UTF-8 sequences.
               . map (LBS.takeWhile (not . isAsciiSpace))
               $ pkgList
-        when (not (null failedPkgNames)) $
+        unless (null failedPkgNames) $
           info verbosity ("Some pkg-config packages have names containing invalid unicode: " ++ intercalate ", " failedPkgNames)
         (outs, _errs, exitCode) <-
                      getProgramInvocationOutputAndErrors verbosity
