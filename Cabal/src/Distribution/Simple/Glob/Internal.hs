@@ -31,6 +31,8 @@ data Glob
     GlobDir !GlobPieces !Glob
   | -- | @**/<glob>@, where @**@ denotes recursively traversing
     -- all directories and matching filenames on <glob>.
+    -- Note that the @<glob>@ portion can only match on filenames, not paths,
+    -- so for example @**/foo/*.txt@ is not supported.
     GlobDirRecursive !GlobPieces
   | -- | A file glob.
     GlobFile !GlobPieces
