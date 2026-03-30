@@ -127,22 +127,46 @@ data MonitorStateGlob
       !MonitorStateGlobRel
   deriving (Show, Generic)
 
+-- | Monitoring state for a 'Glob'. Constructors mirror those of Glob
 data MonitorStateGlobRel
-  = MonitorStateGlobDirs
+  = -- | Monitoring state for 'GlobDir'
+    MonitorStateGlobDirs
       !GlobPieces
+      -- ^ Glob matching on subdirectory in current directory
       !Glob
+      -- ^ Glob tail matching on anything below subdirectory
       !ModTime
-      ![(FilePath, MonitorStateGlobRel)] -- invariant: sorted
-  | MonitorStateGlobFiles
-      !GlobPieces
-      !ModTime
-      ![(FilePath, MonitorStateFileStatus)] -- invariant: sorted
-  | MonitorStateGlobRecursive
-      !GlobPieces
-      !ModTime
-      ![(FilePath, MonitorStateFileStatus)] -- invariant: sorted
+      -- ^ Cached directory modification time
       ![(FilePath, MonitorStateGlobRel)]
-  | MonitorStateGlobDirTrailing
+      -- ^ Per-file monitoring state.
+      -- Invariant: sorted
+  | -- | Monitoring state for 'GlobFile'
+    MonitorStateGlobFiles
+      !GlobPieces
+      -- ^ Glob matching on file in current directory
+      !ModTime
+      -- ^ Cached directory modification time
+      ![(FilePath, MonitorStateFileStatus)] -- invariant: sorted
+      -- ^ Per-file monitoring state.
+      -- Invariant: sorted
+  | -- | Monitoring state for 'GlobDirRecursive'
+    MonitorStateGlobRecursive
+      !GlobPieces
+      -- ^ Glob matching on file in current directory subtree (current
+      -- directory and all of its descendants).
+      !ModTime
+      -- ^ Cached directory modification time
+      ![(FilePath, MonitorStateFileStatus)]
+      -- ^ Per-file monitoring state for files immediately below the current
+      -- directory.
+      -- Invariant: sorted
+      ![(FilePath, MonitorStateGlobRel)]
+      -- ^ Monitoring state for immediate subdirectories. Transient
+      -- subdirectories are represented recursively within these.
+      -- Invariant: sorted
+  | -- | Monitoring state for 'GlobDirTrailing'
+    -- (Trivial, because there is no data in 'GlobDirTrailing')
+    MonitorStateGlobDirTrailing
   deriving (Show, Generic)
 
 instance Binary MonitorStateGlob
@@ -165,12 +189,18 @@ reconstructMonitorFilePaths (MonitorStateFileSet singlePaths globPaths) =
     getGlobPath :: MonitorStateGlob -> MonitorFilePath
     getGlobPath (MonitorStateGlob kindfile kinddir root gstate) =
       MonitorFileGlob kindfile kinddir $
-        RootedGlob root $
-          case gstate of
-            MonitorStateGlobDirs glob globs _ _ -> GlobDir glob globs
-            MonitorStateGlobFiles glob _ _ -> GlobFile glob
-            MonitorStateGlobRecursive glob _ _ _ -> GlobDirRecursive glob
-            MonitorStateGlobDirTrailing -> GlobDirTrailing
+        RootedGlob root $ monitorStateGlobRelGlob gstate
+
+-- | Reconstruct a 'Glob' from a 'MonitorStateGlobRel'. This simply erases the
+-- additional information in 'MonitorStateGlobRel' added via
+-- 'buildMonitorStateGlobRel'.
+monitorStateGlobRelGlob :: MonitorStateGlobRel -> Glob
+monitorStateGlobRelGlob gstate =
+  case gstate of
+    MonitorStateGlobDirs glob globs _ _ -> GlobDir glob globs
+    MonitorStateGlobFiles glob _ _ -> GlobFile glob
+    MonitorStateGlobRecursive glob _ _ _ -> GlobDirRecursive glob
+    MonitorStateGlobDirTrailing -> GlobDirTrailing
 
 ------------------------------------------------------------------------------
 -- Checking the status of monitored files
@@ -535,7 +565,9 @@ probeMonitorStateFiles
   -- ^ path of the directory we are
   --   looking in relative to @root@
   -> GlobPieces
+  -- ^ file glob to filter monitored files
   -> ModTime
+  -- ^ cached directory modification time
   -> [(FilePath, MonitorStateFileStatus)]
   -> ChangedM (ModTime, [(FilePath, MonitorStateFileStatus)])
 probeMonitorStateFiles
@@ -588,8 +620,11 @@ probeMonitorStateDirs
   -- ^ path of the directory we are
   --   looking in relative to @root@
   -> Maybe GlobPieces
+  -- ^ optional glob to filter filenames by
   -> Glob
+  -- ^ glob to filter subdirectories by
   -> ModTime
+  -- ^ cached directory modification time
   -> [(FilePath, MonitorStateGlobRel)]
   -> ChangedM (ModTime, [(FilePath, MonitorStateGlobRel)])
 probeMonitorStateDirs
