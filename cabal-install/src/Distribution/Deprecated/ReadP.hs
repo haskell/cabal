@@ -212,9 +212,7 @@ eof :: ReadP r ()
 -- ^ Succeeds iff we are at the end of input
 eof = do
   s <- look
-  if null s
-    then return ()
-    else pfail
+  unless (null s) pfail
 
 (+++) :: ReadP r a -> ReadP r a -> ReadP r a
 -- ^ Symmetric choice.

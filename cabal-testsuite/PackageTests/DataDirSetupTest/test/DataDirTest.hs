@@ -1,7 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Main where
 
-import Control.Monad (when)
+import Control.Monad (unless)
 import System.Directory (createDirectory, doesFileExist, getCurrentDirectory, setCurrentDirectory)
 import System.Environment (getEnv)
 import System.Exit (exitFailure, exitSuccess)
@@ -39,7 +39,7 @@ main = do
     putStrLn $ "File exists after cd: " ++ show fileExistsAfterCd
 
     -- Exit with error if we can't find the file
-    when (not fileExistsAfterCd) $ do
+    unless fileExistsAfterCd $ do
         hPutStrLn stderr "ERROR: Could not find data file after changing directory!"
         hPutStrLn stderr $ "datadir_test_datadir was set to: " ++ dataDirEnv
         exitFailure

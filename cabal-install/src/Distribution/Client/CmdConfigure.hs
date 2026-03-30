@@ -164,7 +164,7 @@ configureAction' flags@NixStyleFlags{..} _extraArgs globalFlags = do
                 (fromFlagOrDefault defaultProjectFileParser $ projectConfigProjectFileParser $ projectConfigShared cliConfig)
                 httpTransport
                 (distDirLayout baseCtx)
-          when (not (null imps && null bs)) $ dieWithException v UnableToPerformInplaceUpdate
+          unless (null imps && null bs) $ dieWithException v UnableToPerformInplaceUpdate
           return (baseCtx, conf <> cliConfig)
         else return (baseCtx, cliConfig)
   where

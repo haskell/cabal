@@ -186,7 +186,7 @@ failIfErrs :: UnifyM s ()
 failIfErrs = do
   env <- getUnifEnv
   errs <- liftST $ readSTRef (unify_errs env)
-  when (not (null errs)) failM
+  unless (null errs) failM
 
 tryM :: UnifyM s a -> UnifyM s (Maybe a)
 tryM m =

@@ -328,7 +328,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
       --
 
       let (missingHaddocks, packageInfos') = partitionEithers packageInfos
-      when (not (null missingHaddocks)) $ do
+      unless (null missingHaddocks) $ do
         warn verbosity "missing haddocks for some packages from the store"
         -- Show the package list if `-v1` is passed; it's usually a long list.
         -- One needs to add `package` stantza in `cabal.project` file for

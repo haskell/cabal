@@ -264,7 +264,7 @@ outdatedAction flags targetStrings globalFlags =
               deps
               sourcePkgDb
               (ListOutdatedSettings ignorePred minorPred)
-      when (not quiet) $
+      unless quiet $
         showResult verbosity outdatedDeps simpleOutput
       when (exitCode && (not . null $ outdatedDeps)) exitFailure
   where
@@ -300,7 +300,7 @@ showResult :: Verbosity -> [OutdatedDependency] -> Bool -> IO ()
 showResult verbosity outdatedDeps simpleOutput =
   if not . null $ outdatedDeps
     then do
-      when (not simpleOutput) $
+      unless simpleOutput $
         notice verbosity "Outdated dependencies:"
       if simpleOutput
         then -- Simple output just prints package names, one per line

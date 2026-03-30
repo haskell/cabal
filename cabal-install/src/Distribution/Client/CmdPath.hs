@@ -236,7 +236,7 @@ pathAction flags@NixStyleFlags{extraFlags = pathFlags'} cliTargetStrings globalF
               , pathDirectories = Flag [minBound .. maxBound]
               }
           else pathFlags'
-  when (not $ null cliTargetStrings) $
+  unless (null cliTargetStrings) $
     dieWithException verbosity CmdPathAcceptsNoTargets
   when (buildSettingDryRun (buildSettings baseCtx)) $
     dieWithException verbosity CmdPathCommandDoesn'tSupportDryRun
