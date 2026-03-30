@@ -147,6 +147,7 @@ data MonitorStateGlobRel
       !ModTime
       -- ^ Cached directory modification time
       ![(FilePath, MonitorStateFileStatus)] -- invariant: sorted
+
       -- ^ Per-file monitoring state.
       -- Invariant: sorted
   | -- | Monitoring state for 'GlobDirRecursive'
@@ -189,7 +190,8 @@ reconstructMonitorFilePaths (MonitorStateFileSet singlePaths globPaths) =
     getGlobPath :: MonitorStateGlob -> MonitorFilePath
     getGlobPath (MonitorStateGlob kindfile kinddir root gstate) =
       MonitorFileGlob kindfile kinddir $
-        RootedGlob root $ monitorStateGlobRelGlob gstate
+        RootedGlob root $
+          monitorStateGlobRelGlob gstate
 
 -- | Reconstruct a 'Glob' from a 'MonitorStateGlobRel'. This simply erases the
 -- additional information in 'MonitorStateGlobRel' added via
