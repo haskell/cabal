@@ -142,6 +142,7 @@ filterPackageChecksByIdString cs ss =
 data CheckExplanation
   = ParseWarning FilePath PWarning
   | NoNameField
+  | NonASCIIName
   | NoVersionField
   | NoTarget
   | UnnamedInternal
@@ -310,6 +311,7 @@ extractCheckExplanation (PackageDistInexcusable e) = e
 data CheckExplanationID
   = CIParseWarning
   | CINoNameField
+  | CINonASCIIName
   | CINoVersionField
   | CINoTarget
   | CIUnnamedInternal
@@ -457,6 +459,7 @@ data CheckExplanationID
 checkExplanationId :: CheckExplanation -> CheckExplanationID
 checkExplanationId (ParseWarning{}) = CIParseWarning
 checkExplanationId (NoNameField{}) = CINoNameField
+checkExplanationId (NonASCIIName{}) = CINonASCIIName
 checkExplanationId (NoVersionField{}) = CINoVersionField
 checkExplanationId (NoTarget{}) = CINoTarget
 checkExplanationId (UnnamedInternal{}) = CIUnnamedInternal
@@ -611,6 +614,7 @@ ppCheckExplanationId :: CheckExplanationID -> CheckExplanationIDString
 --   $ cabal run Cabal-tests:unit-tests -- --pattern=Parsimonious
 ppCheckExplanationId CIParseWarning = "parser-warning"
 ppCheckExplanationId CINoNameField = "no-name-field"
+ppCheckExplanationId CINonASCIIName = "non-ascii-name"
 ppCheckExplanationId CINoVersionField = "no-version-field"
 ppCheckExplanationId CINoTarget = "no-target"
 ppCheckExplanationId CIUnnamedInternal = "unnamed-internal-library"
@@ -799,6 +803,7 @@ ppWarnLang LangCPlusPlus = "C++"
 ppExplanation :: CheckExplanation -> String
 ppExplanation (ParseWarning fp pp) = showPWarning fp pp
 ppExplanation NoNameField = "No 'name' field."
+ppExplanation NonASCIIName = "Non-ASCII characters in 'name' field."
 ppExplanation NoVersionField = "No 'version' field."
 ppExplanation NoTarget =
   "No executables, libraries, tests, or benchmarks found. Nothing to do."
