@@ -73,6 +73,7 @@ import Distribution.Package
 import qualified Distribution.Simple.GHC as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
 import qualified Distribution.Simple.PackageIndex as Index
+import qualified Distribution.Simple.MHS as MHS
 import qualified Distribution.Simple.UHC as UHC
 
 import Distribution.Simple.Build.Macros (generateCabalMacrosHeader)
@@ -320,6 +321,7 @@ dumpBuildInfo verbosity distPref dumpBuildInfoFlag pkg_descr lbi flags = do
     flavorToProgram GHCJS = Just ghcjsProgram
     flavorToProgram UHC = Just uhcProgram
     flavorToProgram JHC = Just jhcProgram
+    flavorToProgram MHS = Just mhsProgram
     flavorToProgram _ = Nothing
 
 repl
@@ -986,6 +988,7 @@ buildLib verbHandles flags numJobs pkg_descr lbi lib clbi =
         GHC -> GHC.buildLib verbHandles flags numJobs pkg_descr lbi lib clbi
         GHCJS -> GHCJS.buildLib verbosity numJobs pkg_descr lbi lib clbi
         UHC -> UHC.buildLib verbosity pkg_descr lbi lib clbi
+        MHS -> MHS.buildLib verbosity pkg_descr lbi lib clbi
         _ -> dieWithException verbosity BuildingNotSupportedWithCompiler
 
 -- | Build a foreign library
@@ -1018,6 +1021,7 @@ buildExe verbosity numJobs pkg_descr lbi exe clbi =
     GHC -> GHC.buildExe verbosity numJobs pkg_descr lbi exe clbi
     GHCJS -> GHCJS.buildExe verbosity numJobs pkg_descr lbi exe clbi
     UHC -> UHC.buildExe verbosity pkg_descr lbi exe clbi
+    MHS -> MHS.buildExe verbosity pkg_descr lbi exe clbi
     _ -> dieWithException verbosity BuildingNotSupportedWithCompiler
 
 replLib
