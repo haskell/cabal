@@ -58,11 +58,11 @@ import Distribution.Client.ProjectConfig
   , withGlobalConfig
   , withProjectOrGlobalConfig
   )
+import Distribution.Client.ProjectConfig.Import (reportDuplicateImports)
 import Distribution.Client.ProjectConfig.Legacy
   ( ProjectConfigSkeleton
   , instantiateProjectConfigSkeletonFetchingCompiler
   , parseProject
-  , reportDuplicateImports
   )
 import Distribution.Client.ProjectConfig.Types (ProjectConfigToParse (..))
 import Distribution.Client.ProjectFlags
@@ -140,6 +140,7 @@ import Distribution.Simple.Utils
   , warn
   , writeUTF8File
   )
+import Distribution.Solver.Types.ProjectConfigPath (ProjectFilePath (..))
 import Distribution.Solver.Types.SourcePackage as SP
   ( SourcePackage (..)
   )
@@ -526,7 +527,7 @@ readProjectBlockFromScript verbosity httpTransport DistDirLayout{distDownloadSrc
   case extractScriptBlock "project" str of
     Left _ -> return mempty
     Right bs -> do
-      res <- parseProject scriptName distDownloadSrcDirectory httpTransport verbosity (ProjectConfigToParse bs)
+      res <- parseProject (ProjectFilePath scriptName) distDownloadSrcDirectory httpTransport verbosity (ProjectConfigToParse bs)
       case res of
         OldParser.ProjectParseOk _ skeleton -> reportDuplicateImports verbosity skeleton
         OldParser.ProjectParseFailed{} -> pure ()

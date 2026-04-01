@@ -121,6 +121,7 @@ import Distribution.Client.HttpUtils
 import Distribution.Client.JobControl
 import Distribution.Client.PackageHash
 import Distribution.Client.ProjectConfig
+import Distribution.Client.ProjectConfig.Import
 import Distribution.Client.ProjectConfig.Legacy
 import Distribution.Client.ProjectConfig.Types (defaultProjectFileParser)
 import Distribution.Client.ProjectPlanOutput
