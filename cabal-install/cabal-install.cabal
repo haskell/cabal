@@ -184,6 +184,7 @@ library
         Distribution.Client.ProjectBuilding.Types
         Distribution.Client.ProjectConfig
         Distribution.Client.ProjectConfig.FieldGrammar
+        Distribution.Client.ProjectConfig.Import
         Distribution.Client.ProjectConfig.Legacy
         Distribution.Client.ProjectConfig.Lens
         Distribution.Client.ProjectConfig.Parsec

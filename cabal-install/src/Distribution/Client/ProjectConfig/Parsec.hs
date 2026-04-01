@@ -4,9 +4,7 @@
 -- | Parsing project configuration.
 module Distribution.Client.ProjectConfig.Parsec
   ( -- * Package configuration
-    parseProjectSkeleton
-  , parseProject
-  , ProjectConfigSkeleton
+    parseProject
   , ProjectConfig (..)
 
     -- ** Parsing
@@ -14,10 +12,11 @@ module Distribution.Client.ProjectConfig.Parsec
   , runParseResult
   ) where
 
+import Control.Arrow (Kleisli (..), arr, second, (>>>))
 import Distribution.CabalSpecVersion
 import Distribution.Client.HttpUtils
 import Distribution.Client.ProjectConfig.FieldGrammar (packageConfigFieldGrammar, projectConfigFieldGrammar)
-import Distribution.Client.ProjectConfig.Legacy (ProjectConfigSkeleton)
+import Distribution.Client.ProjectConfig.Import
 import qualified Distribution.Client.ProjectConfig.Lens as L
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Types.Repo hiding (repoName)
@@ -48,19 +47,17 @@ import Distribution.Types.ConfVar (ConfVar (..))
 import Distribution.Types.PackageName (PackageName)
 import Distribution.Utils.Generic (fromUTF8BS, toUTF8BS, validateUTF8)
 import Distribution.Utils.NubList (toNubList)
-import Distribution.Utils.String (trim)
 import Distribution.Verbosity
 
 import Control.Monad.State.Strict (StateT, execStateT, lift)
 import qualified Data.ByteString as BS
-import Data.Coerce (coerce)
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import Distribution.Client.Errors.Parser (ProjectFileSource (..))
 import qualified Distribution.Compat.CharParsing as P
-import Network.URI (parseURI, uriFragment, uriPath, uriScheme)
-import System.Directory (createDirectoryIfMissing, makeAbsolute)
-import System.FilePath (isAbsolute, isPathSeparator, makeValid, splitFileName, (</>))
+import Network.URI (URI, uriFragment, uriPath, uriScheme)
+import System.Directory (makeAbsolute)
+import System.FilePath (splitFileName)
 import qualified Text.Parsec
 import Text.PrettyPrint (render)
 import qualified Text.PrettyPrint as Disp
@@ -88,7 +85,7 @@ readPreprocessFields bs = do
 
 -- | Parses a project from its root config file, typically cabal.project.
 parseProject
-  :: FilePath
+  :: ProjectFilePath
   -- ^ The root of the project configuration, typically cabal.project
   -> FilePath
   -> HttpTransport
@@ -96,7 +93,7 @@ parseProject
   -> ProjectConfigToParse
   -- ^ The contents of the file to parse
   -> IO (ParseResult ProjectFileSource ProjectConfigSkeleton)
-parseProject rootPath cacheDir httpTransport verbosity configToParse = do
+parseProject (ProjectFilePath rootPath) cacheDir httpTransport verbosity configToParse = do
   let (dir, projectFileName) = splitFileName rootPath
   projectDir <- makeAbsolute dir
   projectPath <- canonicalizeConfigPath projectDir (ProjectConfigPath $ projectFileName :| [])
@@ -136,10 +133,13 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
                   when
                     (isUntrimmedUriConfigPath importLocPath)
                     (noticeDoc verbosity $ untrimmedUriImportMsg (Disp.text "Warning:") importLocPath)
-                  let fs = (\z -> CondNode ([normLocPath], z) mempty) <$> fieldsToConfig normSource (reverse acc)
-                  importParseResult <- parseProjectSkeleton cacheDir httpTransport verbosity projectDir importLocPath . ProjectConfigToParse =<< fetchImportConfig normLocPath
+                  let parser = parseProjectSkeleton cacheDir httpTransport verbosity projectDir importLocPath
+                  (mbUri, importParseResult) <-
+                    fetchImportConfig cacheDir httpTransport verbosity projectDir normLocPath
+                      >>= runKleisli (second (arr ProjectConfigToParse >>> Kleisli parser))
 
                   rest <- go [] xs
+                  let fs = (\z -> CondNode ([(mbUri, normLocPath)], z) mempty) <$> fieldsToConfig normSource (reverse acc)
                   pure . fmap mconcat . sequence $ [fs, importParseResult, rest]
           )
           (parseImport pos importLines)
@@ -191,22 +191,6 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
       config' <- view stateConfig <$> execStateT (goSections programDb sections) (SectionS config)
       return config'
 
-    fetchImportConfig :: ProjectConfigPath -> IO BS.ByteString
-    fetchImportConfig (ProjectConfigPath (pci :| _)) = do
-      debug verbosity $ "fetching import: " ++ pci
-      fetch pci
-
-    fetch :: FilePath -> IO BS.ByteString
-    fetch pci = case parseURI (trim pci) of
-      Just uri -> do
-        let fp = cacheDir </> map (\x -> if isPathSeparator x then '_' else x) (makeValid $ show uri)
-        createDirectoryIfMissing True cacheDir
-        _ <- downloadURI httpTransport verbosity uri fp
-        BS.readFile fp
-      Nothing ->
-        BS.readFile $
-          if isAbsolute pci then pci else coerce projectDir </> pci
-
     modifiesCompiler :: ProjectConfig -> Bool
     modifiesCompiler pc = isSet projectConfigHcFlavor || isSet projectConfigHcPath || isSet projectConfigHcPkg
       where
@@ -217,7 +201,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
       | underConditional && modifiesCompiler d = parseFatalFailure zeroPos "Cannot set compiler in a conditional clause of a cabal project file"
       | otherwise = mapM_ sanityWalkBranch comps >> pure t
 
-    sanityWalkBranch :: CondBranch ConfVar ([ProjectConfigPath], ProjectConfig) -> ParseResult ProjectFileSource ()
+    sanityWalkBranch :: CondBranch ConfVar ([(Maybe URI, ProjectConfigPath)], ProjectConfig) -> ParseResult ProjectFileSource ()
     sanityWalkBranch (CondBranch _c t f) = traverse_ (sanityWalkPCS True) f >> sanityWalkPCS True t >> pure ()
 
     programDb = defaultProgramDb

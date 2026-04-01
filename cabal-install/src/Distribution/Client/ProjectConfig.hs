@@ -256,6 +256,7 @@ import System.IO
   , withBinaryFile
   )
 
+import Distribution.Client.ProjectConfig.Import
 import Distribution.Deprecated.ProjectParseUtils (ProjectParseError (..), ProjectParseWarning)
 import Distribution.Solver.Types.ProjectConfigPath
 
@@ -856,7 +857,7 @@ readProjectFileSkeletonGen
         then do
           monitorFiles [monitorFileHashed extensionFile]
           pcs <- liftIO $ parseConfig extensionFile
-          monitorFiles $ map monitorFileHashed (projectConfigPathRoot <$> projectSkeletonImports pcs)
+          monitorFiles $ map monitorFileHashed (projectConfigPathRoot <$> map snd (projectSkeletonImports pcs))
           return pcs
         else do
           monitorFiles [monitorNonExistentFile extensionFile]
@@ -895,7 +896,7 @@ readProjectFileSkeletonLegacy :: Verbosity -> HttpTransport -> DistDirLayout -> 
 readProjectFileSkeletonLegacy verbosity httpTransport distDirLayout extensionName extensionDescription = do
   readProjectFileSkeletonGen verbosity httpTransport distDirLayout extensionName extensionDescription $ \fp -> do
     debug verbosity "Reading project file using the legacy parser"
-    parseProjectFileSkeletonLegacy verbosity httpTransport distDirLayout extensionName extensionDescription fp
+    parseProjectFileSkeletonLegacy verbosity httpTransport distDirLayout extensionName extensionDescription (ProjectFilePath fp)
       >>= liftIO . reportParseResult verbosity extensionDescription fp
 
 -- | Read a project file using the parsec parser, but if that fails, it falls back to the legacy parser.
@@ -903,14 +904,14 @@ readProjectFileSkeletonFallback :: Verbosity -> HttpTransport -> DistDirLayout -
 readProjectFileSkeletonFallback verbosity httpTransport distDirLayout extensionName extensionDescription = do
   readProjectFileSkeletonGen verbosity httpTransport distDirLayout extensionName extensionDescription $ \fp -> do
     debug verbosity "Reading project file using the fallback parser"
-    (res, bs) <- parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout extensionName extensionDescription fp
+    (res, bs) <- parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout extensionName extensionDescription (ProjectFilePath fp)
     let (_, pres) = runParseResult res
     case pres of
       -- 1. Successful parse with parsec parser, handle the result as normal.
       Right{} -> liftIO $ reportParseResultParsec verbosity fp bs res
       -- 2. The parse failed with the parsec parser, fallback to the legacy parser.
       Left{} -> do
-        lres <- parseProjectFileSkeletonLegacy verbosity httpTransport distDirLayout extensionName extensionDescription fp
+        lres <- parseProjectFileSkeletonLegacy verbosity httpTransport distDirLayout extensionName extensionDescription (ProjectFilePath fp)
         case lres of
           -- 3a. The legacy parser worked, but the parsec parser failed!
           -- Report a warning to the user that this happened.
@@ -926,15 +927,15 @@ readProjectFileSkeletonParsec :: Verbosity -> HttpTransport -> DistDirLayout -> 
 readProjectFileSkeletonParsec verbosity httpTransport distDirLayout extensionName extensionDescription = do
   readProjectFileSkeletonGen verbosity httpTransport distDirLayout extensionName extensionDescription $ \fp -> do
     debug verbosity "Reading project file using the parsec parser"
-    (res, bs) <- parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout extensionName extensionDescription fp
+    (res, bs) <- parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout extensionName extensionDescription (ProjectFilePath fp)
     liftIO $ reportParseResultParsec verbosity fp bs res
 
 readProjectFileSkeletonCompare :: Verbosity -> HttpTransport -> DistDirLayout -> String -> String -> Rebuild ProjectConfigSkeleton
 readProjectFileSkeletonCompare verbosity httpTransport distDirLayout extensionName extensionDescription = do
   readProjectFileSkeletonGen verbosity httpTransport distDirLayout extensionName extensionDescription $ \fp -> do
     debug verbosity "Reading project file using the comparative parser"
-    (pres, bs) <- parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout extensionName extensionDescription fp
-    lres <- parseProjectFileSkeletonLegacy verbosity httpTransport distDirLayout extensionName extensionDescription fp
+    (pres, bs) <- parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout extensionName extensionDescription (ProjectFilePath fp)
+    lres <- parseProjectFileSkeletonLegacy verbosity httpTransport distDirLayout extensionName extensionDescription (ProjectFilePath fp)
     let (_, ppres) = runParseResult pres
     case (lres, ppres) of
       -- 1. Both succeed, compare the results
@@ -973,18 +974,18 @@ reportParseResultParsec verbosity fpath contents pr = do
       dieWithException verbosity $ ProjectConfigParseFailure $ ProjectConfigParseError errors warnings
 
 -- | Reads a named extended (with imports and conditionals) config file in the given project root dir, or returns empty.
-parseProjectFileSkeletonLegacy :: Verbosity -> HttpTransport -> DistDirLayout -> String -> String -> FilePath -> IO (OldParser.ProjectParseResult ProjectConfigSkeleton)
-parseProjectFileSkeletonLegacy verbosity httpTransport distDirLayout extensionName extensionDescription extensionFile = do
+parseProjectFileSkeletonLegacy :: Verbosity -> HttpTransport -> DistDirLayout -> String -> String -> ProjectFilePath -> IO (OldParser.ProjectParseResult ProjectConfigSkeleton)
+parseProjectFileSkeletonLegacy verbosity httpTransport distDirLayout extensionName extensionDescription project@(ProjectFilePath extensionFile) = do
   bs <- BS.readFile extensionFile
-  res <- parseProject extensionFile (distDownloadSrcDirectory distDirLayout) httpTransport verbosity $ ProjectConfigToParse bs
+  res <- parseProject project (distDownloadSrcDirectory distDirLayout) httpTransport verbosity $ ProjectConfigToParse bs
   case res of
     x@(OldParser.ProjectParseOk _ skeleton) -> reportDuplicateImports verbosity skeleton >> pure x
     x@OldParser.ProjectParseFailed{} -> pure x
 
-parseProjectFileSkeletonParsec :: Verbosity -> HttpTransport -> DistDirLayout -> String -> String -> FilePath -> IO (Parsec.ParseResult ProjectFileSource ProjectConfigSkeleton, BS.ByteString)
-parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout extensionName extensionDescription extensionFile = do
+parseProjectFileSkeletonParsec :: Verbosity -> HttpTransport -> DistDirLayout -> String -> String -> ProjectFilePath -> IO (Parsec.ParseResult ProjectFileSource ProjectConfigSkeleton, BS.ByteString)
+parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout extensionName extensionDescription project@(ProjectFilePath extensionFile) = do
   bs <- BS.readFile extensionFile
-  res <- Parsec.parseProject extensionFile (distDownloadSrcDirectory distDirLayout) httpTransport verbosity $ ProjectConfigToParse bs
+  res <- Parsec.parseProject project (distDownloadSrcDirectory distDirLayout) httpTransport verbosity $ ProjectConfigToParse bs
   let (_, ppres) = runParseResult res
   case ppres of
     x@(Right skeleton) -> reportDuplicateImports verbosity skeleton >> pure (res, bs)
