@@ -258,7 +258,17 @@ toLinkedComponent
         hang
           (text "Non-library component has unfilled requirements:")
           4
-          (vcat [pretty req | req <- Set.toList reqs])
+          ( vcat
+              [ case Map.lookup req (modScopeRequires linked_shape0) of
+                Just srcs@(_ : _) ->
+                  hang
+                    (pretty req)
+                    4
+                    (vcat [text "brought into scope by" <+> dispModuleSource (getSource src) | src <- srcs])
+                _ -> pretty req
+              | req <- Set.toList reqs
+              ]
+          )
 
     -- NB: do NOT include hidden modules here: GHC 7.10's ghc-pkg
     -- won't allow it (since someone could directly synthesize
