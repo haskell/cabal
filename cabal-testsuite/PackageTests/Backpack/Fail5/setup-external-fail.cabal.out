@@ -1,0 +1,9 @@
+# Setup configure
+Configuring consumer-0.1.0.0...
+Error:
+    The following packages are broken because other packages they depend on are missing. These broken packages must be rebuilt before they can be used.
+      planned package consumer-0.1.0.0
+          is broken due to missing package
+            framework-0.1.0.0 (has unfilled signature: App)
+              The package is installed as indefinite.
+              To use it, rebuild it in the same cabal project as the consumer so cabal can fill the signatures.
