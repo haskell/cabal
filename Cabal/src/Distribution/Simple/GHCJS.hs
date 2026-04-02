@@ -153,8 +153,8 @@ configureCompiler verbosity hcPath conf0 = do
 
   let implInfo = ghcjsVersionImplInfo ghcjsVersion ghcjsGhcVersion
 
-  languages <- Internal.getLanguages verbosity implInfo ghcjsProg
-  extensions <- Internal.getExtensions verbosity implInfo ghcjsProg
+  languages <- Internal.getLanguages implInfo
+  extensions <- Internal.getExtensions verbosity ghcjsProg
 
   ghcjsInfo <- Internal.getGhcInfo verbosity implInfo ghcjsProg
   let ghcInfoMap = Map.fromList ghcjsInfo
@@ -750,23 +750,6 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
     let stubObjs = []
         stubSharedObjs = []
 
-    {-
-        stubObjs <- catMaybes <$> sequenceA
-          [ findFileWithExtension [objExtension] [libTargetDir]
-              (ModuleName.toFilePath x ++"_stub")
-          | ghcVersion < mkVersion [7,2] -- ghc-7.2+ does not make _stub.o files
-          , x <- allLibModules lib clbi ]
-        stubProfObjs <- catMaybes <$> sequenceA
-          [ findFileWithExtension ["p_" ++ objExtension] [libTargetDir]
-              (ModuleName.toFilePath x ++"_stub")
-          | ghcVersion < mkVersion [7,2] -- ghc-7.2+ does not make _stub.o files
-          , x <- allLibModules lib clbi ]
-        stubSharedObjs <- catMaybes <$> sequenceA
-          [ findFileWithExtension ["dyn_" ++ objExtension] [libTargetDir]
-              (ModuleName.toFilePath x ++"_stub")
-          | ghcVersion < mkVersion [7,2] -- ghc-7.2+ does not make _stub.o files
-          , x <- allLibModules lib clbi ]
-    -}
     hObjs <-
       Internal.getHaskellObjects
         implInfo
@@ -810,15 +793,7 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
               , ghcOptInputFiles = toNubListR dynamicObjectFiles
               , ghcOptOutputFile = toFlag sharedLibFilePath
               , ghcOptExtra = hcOptions GHC libBi ++ hcSharedOptions GHC libBi
-              , -- For dynamic libs, Mac OS/X needs to know the install location
-                -- at build time. This only applies to GHC < 7.8 - see the
-                -- discussion in #1660.
-                {-
-                    ghcOptDylibName          = if hostOS == OSX
-                                                  && ghcVersion < mkVersion [7,8]
-                                                then toFlag sharedLibInstallPath
-                                                else mempty, -}
-                ghcOptHideAllPackages = toFlag True
+              , ghcOptHideAllPackages = toFlag True
               , ghcOptNoAutoLinkPackages = toFlag True
               , ghcOptPackageDBs = withPackageDB lbi
               , ghcOptThisUnitId = case clbi of
@@ -1569,8 +1544,6 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
       -- Work around old GHCs not relinking in this
       -- situation, see #3294
       let target = targetDir </> makeRelativePathEx targetName
-      when (compilerVersion comp < mkVersion [7, 7]) $
-        removeFileForcibly (i target)
       runGhcProg linkOpts{ghcOptOutputFile = toFlag target}
     GBuildFLib flib -> do
       let rtsInfo = extractRtsInfo lbi
@@ -1739,7 +1712,7 @@ getRPaths lbi clbi | supportRPaths hostOS = do
     supportRPaths OSX = True
     supportRPaths FreeBSD =
       case compid of
-        CompilerId GHC ver | ver >= mkVersion [7, 10, 2] -> True
+        CompilerId GHC _ -> True
         _ -> False
     supportRPaths OpenBSD = False
     supportRPaths NetBSD = False
@@ -2032,23 +2005,9 @@ findGhcjsPkgGhcjsVersion verbosity pgm =
 -- -----------------------------------------------------------------------------
 -- Registering
 
-hcPkgInfo :: ProgramDb -> HcPkg.HcPkgInfo
+hcPkgInfo :: ProgramDb -> HcPkg.ConfiguredProgram
 hcPkgInfo progdb =
-  HcPkg.HcPkgInfo
-    { HcPkg.hcPkgProgram = ghcjsPkgProg
-    , HcPkg.noPkgDbStack = False
-    , HcPkg.noVerboseFlag = False
-    , HcPkg.flagPackageConf = False
-    , HcPkg.supportsDirDbs = True
-    , HcPkg.requiresDirDbs = ver >= v7_10
-    , HcPkg.nativeMultiInstance = ver >= v7_10
-    , HcPkg.recacheMultiInstance = True
-    , HcPkg.suppressFilesCheck = True
-    }
-  where
-    v7_10 = mkVersion [7, 10]
-    ghcjsPkgProg = fromMaybe (error "GHCJS.hcPkgInfo no ghcjs program") $ lookupProgram ghcjsPkgProgram progdb
-    ver = fromMaybe (error "GHCJS.hcPkgInfo no ghcjs version") $ programVersion ghcjsPkgProg
+  fromMaybe (error "GHCJS.hcPkgInfo no ghcjs program") $ lookupProgram ghcjsPkgProgram progdb
 
 registerPackage
   :: Verbosity

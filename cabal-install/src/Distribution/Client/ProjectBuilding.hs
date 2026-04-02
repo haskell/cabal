@@ -473,7 +473,7 @@ createPackageDBIfMissing
     exists <- Cabal.doesPackageDBExist dbPath
     unless exists $ do
       createDirectoryIfMissingVerbose verbosity True (takeDirectory dbPath)
-      Cabal.createPackageDB verbosity compiler progdb False dbPath
+      Cabal.createPackageDB verbosity compiler progdb dbPath
 createPackageDBIfMissing _ _ _ _ = return ()
 
 -- | Given all the context and resources, (re)build an individual package.

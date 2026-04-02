@@ -47,8 +47,6 @@ import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
 import Distribution.Simple.GHC
   ( GhcEnvironmentFileEntry (..)
-  , GhcImplInfo (supportsPkgEnvFiles)
-  , getImplInfo
   , simpleGhcEnvironmentFile
   , writeGhcEnvironmentFile
   )
@@ -854,8 +852,7 @@ writePlanGhcEnvironment
     , pkgConfigPlatform = platform
     }
   postBuildStatus
-    | compilerFlavor compiler == GHC
-    , supportsPkgEnvFiles (getImplInfo compiler) =
+    | compilerFlavor compiler == GHC =
         -- TODO: check ghcjs compat
         fmap Just $
           writeGhcEnvironmentFile

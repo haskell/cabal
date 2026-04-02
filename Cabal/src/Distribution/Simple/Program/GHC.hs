@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -796,18 +797,12 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
               | not (flagBool ghcOptProfilingMode) ->
                   []
             Nothing -> []
-            Just GhcProfAutoAll
-              | flagProfAuto implInfo -> ["-fprof-auto"]
-              | otherwise -> ["-auto-all"] -- not the same, but close
+            Just GhcProfAutoAll -> ["-fprof-auto"]
             Just GhcProfLate
               | flagProfLate implInfo -> ["-fprof-late"]
               | otherwise -> ["-fprof-auto-top"] -- not the same, not very close, but what we have.
-            Just GhcProfAutoToplevel
-              | flagProfAuto implInfo -> ["-fprof-auto-top"]
-              | otherwise -> ["-auto-all"]
-            Just GhcProfAutoExported
-              | flagProfAuto implInfo -> ["-fprof-auto-exported"]
-              | otherwise -> ["-auto"]
+            Just GhcProfAutoToplevel -> ["-fprof-auto-top"]
+            Just GhcProfAutoExported -> ["-fprof-auto-exported"]
         , ["-split-sections" | flagBool ghcOptSplitSections]
         , case compilerCompatVersion GHC comp of
             -- the -split-objs flag was removed in GHC 9.8
@@ -938,7 +933,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         , ["-hide-all-packages" | flagBool ghcOptHideAllPackages]
         , ["-Wmissing-home-modules" | flagBool ghcOptWarnMissingHomeModules]
         , ["-no-auto-link-packages" | flagBool ghcOptNoAutoLinkPackages]
-        , packageDbArgs implInfo (interpretPackageDBStack Nothing (ghcOptPackageDBs opts))
+        , packageDbArgsDb (interpretPackageDBStack Nothing (ghcOptPackageDBs opts))
         , concat $
             let space "" = ""
                 space xs = ' ' : xs
@@ -948,9 +943,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         , ----------------------------
           -- Language and extensions
 
-          if supportsHaskell2010 implInfo
-            then ["-X" ++ prettyShow lang | lang <- flag ghcOptLanguage]
-            else []
+          ["-X" ++ prettyShow lang | lang <- flag ghcOptLanguage]
         , [ ext'
           | ext <- flags ghcOptExtensions
           , ext' <- case Map.lookup ext (ghcOptExtensionMap opts) of
@@ -965,7 +958,9 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         , ----------------
           -- GHCi
 
-          concat [["-ghci-script", script] | flagGhciScript implInfo, script <- ghcOptGHCiScripts opts]
+          concat
+            [ ["-ghci-script", script] | script <- ghcOptGHCiScripts opts
+            ]
         , ---------------
           -- Inputs
 
@@ -999,27 +994,9 @@ verbosityOpts verbosity
   | verbosity >= Normal = []
   | otherwise = ["-w", "-v0"]
 
--- | GHC <7.6 uses '-package-conf' instead of '-package-db'.
-packageDbArgsConf :: PackageDBStackCWD -> [String]
-packageDbArgsConf dbstack = case dbstack of
-  (GlobalPackageDB : UserPackageDB : dbs) -> concatMap specific dbs
-  (GlobalPackageDB : dbs) ->
-    ("-no-user-package-conf")
-      : concatMap specific dbs
-  _ -> ierror
-  where
-    specific (SpecificPackageDB db) = ["-package-conf", db]
-    specific _ = ierror
-    ierror =
-      error $
-        "internal error: unexpected package db stack: "
-          ++ show dbstack
-
--- | GHC >= 7.6 uses the '-package-db' flag. See
--- https://gitlab.haskell.org/ghc/ghc/-/issues/5977.
 packageDbArgsDb :: PackageDBStackCWD -> [String]
 -- special cases to make arguments prettier in common scenarios
-packageDbArgsDb dbstack = case dbstack of
+packageDbArgsDb = \case
   (GlobalPackageDB : UserPackageDB : dbs)
     | all isSpecific dbs -> concatMap single dbs
   (GlobalPackageDB : dbs)
@@ -1035,11 +1012,6 @@ packageDbArgsDb dbstack = case dbstack of
     single UserPackageDB = ["-user-package-db"]
     isSpecific (SpecificPackageDB _) = True
     isSpecific _ = False
-
-packageDbArgs :: GhcImplInfo -> PackageDBStackCWD -> [String]
-packageDbArgs implInfo
-  | flagPackageConf implInfo = packageDbArgsConf
-  | otherwise = packageDbArgsDb
 
 -- | Split a list of command-line arguments into RTS arguments and non-RTS
 -- arguments.
