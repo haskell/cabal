@@ -39,7 +39,7 @@ module Distribution.Described (
 
 import Prelude
        ( Bool (..), Char, Either (..), Enum (..), Eq (..), Ord (..), Show (..), String
-       , elem, fmap, foldr, id, map, maybe, otherwise, return, reverse, undefined
+       , elem, fmap, foldr, id, map, maybe, otherwise, return, reverse
        , ($), (.), (<$>)
        )
 
@@ -47,7 +47,7 @@ import Data.Functor.Identity (Identity (..))
 import Data.Maybe            (fromMaybe)
 import Data.Proxy            (Proxy (..))
 import Data.String           (IsString (..))
-import Data.Typeable         (Typeable, typeOf)
+import Data.Typeable         (Typeable, typeRep)
 import Data.Void             (Void, vacuous)
 import Test.QuickCheck       (Arbitrary (..), Property, counterexample)
 import Test.Tasty            (TestTree, testGroup)
@@ -294,7 +294,7 @@ testDescribed _ = testGroup name
     , testProperty "roundtrip" propRoundtrip
     ]
   where
-    name = show (typeOf (undefined :: a))
+    name = show (typeRep (Proxy :: Proxy a))
 
     propParsec :: Ex a -> Property
     propParsec (Example str) = counterexample (show res) $ case res of
