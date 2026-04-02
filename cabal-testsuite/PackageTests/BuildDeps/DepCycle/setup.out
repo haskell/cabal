@@ -4,4 +4,4 @@ Error:
     Components in the package DepCycle-1.0 depend on each other in a cyclic way:
     'library 'bar'' depends on 'library 'foo'' depends on 'library 'bar''
     CallStack (from HasCallStack):
-  dieProgress, called at src/Distribution/Backpack/Configure.hs:93:22 in Cabal-3.17.0.0-inplace:Distribution.Backpack.Configure
+      dieProgress, called at src/Distribution/Backpack/Configure.hs:_:_ in Cabal-3.17.0.0-inplace:Distribution.Backpack.Configure
