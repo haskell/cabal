@@ -109,6 +109,7 @@ import Text.PrettyPrint
   , text
   , vcat
   , ($$)
+  , ($+$)
   )
 import Prelude ()
 
@@ -137,7 +138,7 @@ import Distribution.Client.SetupWrapper
 import Distribution.Client.Store
 import Distribution.Client.Targets (userToPackageConstraint)
 import Distribution.Client.Types
-import Distribution.Client.Utils (concatMapM, incVersion)
+import Distribution.Client.Utils (concatMapM, duplicatesBy, incVersion)
 
 import qualified Distribution.Client.BuildReports.Storage as BuildReports
 import qualified Distribution.Client.IndexUtils as IndexUtils
@@ -451,13 +452,29 @@ rebuildProjectConfig
             createDirectoryIfMissingVerbose verbosity True distDirectory
             createDirectoryIfMissingVerbose verbosity True distProjectCacheDirectory
 
-          fetchAndReadSourcePackages
-            verbosity
-            distDirLayout
-            compiler
-            projectConfigShared
-            projectConfigBuildOnly
-            pkgLocations
+          sourcePackages <-
+            fetchAndReadSourcePackages
+              verbosity
+              distDirLayout
+              compiler
+              projectConfigShared
+              projectConfigBuildOnly
+              pkgLocations
+
+          case duplicatesBy (comparing srcpkgPackageId) [pkg | SpecificSourcePackage pkg <- sourcePackages] of
+            [] -> return ()
+            duplicateSourcePkgs ->
+              liftIO $
+                noticeDoc verbosity $
+                  vcat
+                    [ text "cabal project has multiple sources for"
+                      <+> (pretty (srcpkgPackageId (head dupeGroup)) <> text ":")
+                      $+$ Disp.nest 2 (vcat [pretty (srcpkgSource srcpkg) | srcpkg <- toList dupeGroup])
+                      $+$ text "the choice of source that will be used is undefined."
+                    | dupeGroup <- duplicateSourcePkgs
+                    ]
+
+          return sourcePackages
 
       informAboutConfigFiles projectConfig = do
         cwd <- getCurrentDirectory
