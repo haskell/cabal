@@ -262,7 +262,7 @@ assertException action = do
     Right _ ->
       assertFailure $
         "expected exception of type "
-          ++ show (typeOf (undefined :: e))
+          ++ show (typeRep (Proxy :: Proxy e))
 
 -- | Expect that one line in a file matches exactly the given words (i.e. at
 -- least insensitive to whitespace)
