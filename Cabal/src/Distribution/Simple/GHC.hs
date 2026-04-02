@@ -91,7 +91,6 @@ import qualified Data.Map as Map
 import Data.Maybe (fromJust)
 import Distribution.CabalSpecVersion
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
-import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
 import Distribution.Package
 import Distribution.PackageDescription as PD
 import Distribution.Pretty
@@ -504,7 +503,7 @@ getInstalledPackages verbosity comp mbWorkDir packagedbs progdb = do
     hackRtsPackage index =
       case PackageIndex.lookupPackageName index (mkPackageName "rts") of
         [(_, [rts])] ->
-          PackageIndex.insert (removeMingwIncludeDir rts) index
+          PackageIndex.insert rts index
         _ -> index -- No (or multiple) ghc rts package is registered!!
         -- Feh, whatever, the ghc test suite does some crazy stuff.
 
@@ -600,15 +599,6 @@ checkPackageDbStackPre76 verbosity rest
       dieWithException verbosity CheckPackageDbStackPre76
 checkPackageDbStackPre76 verbosity _ =
   dieWithException verbosity GlobalPackageDbSpecifiedFirst
-
--- GHC < 6.10 put "$topdir/include/mingw" in rts's installDirs. This
--- breaks when you want to use a different gcc, so we need to filter
--- it out.
-removeMingwIncludeDir :: InstalledPackageInfo -> InstalledPackageInfo
-removeMingwIncludeDir pkg =
-  let ids = InstalledPackageInfo.includeDirs pkg
-      ids' = filter (not . ("mingw" `isSuffixOf`)) ids
-   in pkg{InstalledPackageInfo.includeDirs = ids'}
 
 -- | Get the packages from specific PackageDBs, not cumulative.
 getInstalledPackages'
