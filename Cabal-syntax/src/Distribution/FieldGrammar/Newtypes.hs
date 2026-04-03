@@ -120,7 +120,7 @@ data NoCommaFSepAnn = NoCommaFSepAnn
 
 type family Modify (mod :: Mod.HasAnnotation) (a :: Type) where
   Modify Mod.HasNoAnn a = a
-  Modify Mod.HasAnn a = Ann a
+  Modify Mod.HasAnn a = Ann SurroundingText a
 
 -- TODO(leana8959): Relax Sep to return a list of annotated docs with position
 -- Use the position propagated back from applyTriviaDoc
@@ -251,7 +251,7 @@ alaList' :: sep -> (a -> b) -> [a] -> List sep b a
 alaList' _ _ = List
 
 instance Newtype [a] (List sep wrapper a)
-instance Newtype [Ann a] (ListAnn sep wrapper a)
+instance Newtype [Ann SurroundingText a] (ListAnn sep wrapper a)
 
 instance (Newtype a b, Sep Mod.HasNoAnn sep, Parsec b) => Parsec (List sep b a) where
   parsec = pack . map (unpack :: b -> a) <$> parseSep (Proxy :: Proxy sep) parsec

@@ -318,17 +318,17 @@ parsecStandard f = do
 -- |
 -- Parse parser @p@ and some trailing spaces.
 -- The trivia is stored.
-parsecSpacesAnn :: (CabalParsing m) => m (Ann a) -> m (Ann a)
+parsecSpacesAnn :: CabalParsing m => m (Ann SurroundingText a) -> m (Ann SurroundingText a)
 parsecSpacesAnn p = do
   x <- p
   post <- P.spaces'
   pure (mapAnn (<> postTrivia post) x)
-{-# INLINABLE parsecSpacesAnn #-}
+{-# INLINEABLE parsecSpacesAnn #-}
 
 parsecCommaList :: CabalParsing m => m a -> m [a]
 parsecCommaList p = P.sepBy (p <* P.spaces) (P.char ',' *> P.spaces P.<?> "comma")
 
-parsecCommaListAnn :: forall m a. CabalParsing m => m (Ann a) -> m [Ann a]
+parsecCommaListAnn :: forall m a. CabalParsing m => m (Ann SurroundingText a) -> m [Ann SurroundingText a]
 parsecCommaListAnn p = P.sepByAnn (parsecSpacesAnn p) comma
   where
     comma :: m String
@@ -338,7 +338,7 @@ parsecCommaNonEmpty :: CabalParsing m => m a -> m (NonEmpty a)
 parsecCommaNonEmpty p = P.sepByNonEmpty (p <* P.spaces) (P.char ',' *> P.spaces P.<?> "comma")
 
 -- | Like @parsecCommaNonEmpty@ but stores trivia.
-parsecCommaNonEmptyAnn :: forall m a. CabalParsing m => m (Ann a) -> m (NonEmpty (Ann a))
+parsecCommaNonEmptyAnn :: forall m a. CabalParsing m => m (Ann SurroundingText a) -> m (NonEmpty (Ann SurroundingText a))
 parsecCommaNonEmptyAnn p = P.sepByNonEmptyAnn (parsecSpacesAnn p) comma
   where
     comma :: m String
@@ -362,14 +362,15 @@ parsecLeadingCommaList p = do
     comma = P.char ',' *> P.spaces P.<?> "comma"
 
 -- | Like 'parsecCommaList' but stores trivia.
-parsecLeadingCommaListAnn :: forall m a. CabalParsing m => m (Ann a) -> m [Ann a]
-parsecLeadingCommaListAnn p = P.optional comma >>= \case
-  Nothing -> toList <$> P.sepEndByNonEmptyAnn lp comma <|> pure []
-  Just c ->
-    let insertTriviaHead (x :| xs) = mapAnn (preTrivia c <>) x :| xs
-     in toList . insertTriviaHead <$> P.sepByNonEmptyAnn lp comma
+parsecLeadingCommaListAnn :: forall m a. CabalParsing m => m (Ann SurroundingText a) -> m [Ann SurroundingText a]
+parsecLeadingCommaListAnn p =
+  P.optional comma >>= \case
+    Nothing -> toList <$> P.sepEndByNonEmptyAnn lp comma <|> pure []
+    Just c ->
+      let insertTriviaHead (x :| xs) = mapAnn (preTrivia c <>) x :| xs
+       in toList . insertTriviaHead <$> P.sepByNonEmptyAnn lp comma
   where
-    lp :: m (Ann a)
+    lp :: m (Ann SurroundingText a)
     lp = parsecSpacesAnn p
 
     comma :: m String
@@ -389,12 +390,13 @@ parsecLeadingCommaNonEmpty p = do
     comma = P.char ',' *> P.spaces P.<?> "comma"
 
 -- | Like @parsecLeadingCommaNonEmpty@ but stores trivia.
-parsecLeadingCommaNonEmptyAnn :: forall m a. CabalParsing m => m (Ann a) -> m (NonEmpty (Ann a))
-parsecLeadingCommaNonEmptyAnn p = P.optional comma >>= \case
-  Nothing -> P.sepEndByNonEmptyAnn lp comma
-  Just _ -> P.sepByNonEmptyAnn lp comma
+parsecLeadingCommaNonEmptyAnn :: forall m a. CabalParsing m => m (Ann SurroundingText a) -> m (NonEmpty (Ann SurroundingText a))
+parsecLeadingCommaNonEmptyAnn p =
+  P.optional comma >>= \case
+    Nothing -> P.sepEndByNonEmptyAnn lp comma
+    Just _ -> P.sepByNonEmptyAnn lp comma
   where
-    lp :: m (Ann a)
+    lp :: m (Ann SurroundingText a)
     lp = parsecSpacesAnn p
 
     comma :: m String
@@ -405,10 +407,10 @@ parsecOptCommaList p = P.sepBy (p <* P.spaces) (P.optional comma)
   where
     comma = P.char ',' *> P.spaces
 
-parsecOptCommaListAnn :: forall m a. CabalParsing m => m (Ann a) -> m [Ann a]
+parsecOptCommaListAnn :: forall m a. CabalParsing m => m (Ann SurroundingText a) -> m [Ann SurroundingText a]
 parsecOptCommaListAnn p = P.sepByAnn lp (comma <|> pure "")
   where
-    lp :: m (Ann a)
+    lp :: m (Ann SurroundingText a)
     lp = parsecSpacesAnn p
 
     comma :: m String
@@ -444,20 +446,21 @@ parsecLeadingOptCommaList p = do
         Nothing -> (x :) <$> many lp
         Just _ -> (x :) <$> P.sepEndBy lp comma
 
-parsecLeadingOptCommaListAnn :: forall m a. CabalParsing m => m (Ann a) -> m [Ann a]
-parsecLeadingOptCommaListAnn p = P.optional comma >>= \case
-  Nothing -> sepEndBy1StartAnn <|> pure []
-  Just c ->
-    let insertTriviaHead (x :| xs) = mapAnn (preTrivia c <>) x :| xs
-     in toList . insertTriviaHead <$> P.sepByNonEmptyAnn lp comma
+parsecLeadingOptCommaListAnn :: forall m a. CabalParsing m => m (Ann SurroundingText a) -> m [Ann SurroundingText a]
+parsecLeadingOptCommaListAnn p =
+  P.optional comma >>= \case
+    Nothing -> sepEndBy1StartAnn <|> pure []
+    Just c ->
+      let insertTriviaHead (x :| xs) = mapAnn (preTrivia c <>) x :| xs
+       in toList . insertTriviaHead <$> P.sepByNonEmptyAnn lp comma
   where
-    lp :: m (Ann a)
+    lp :: m (Ann SurroundingText a)
     lp = parsecSpacesAnn p
 
     comma :: m String
     comma = (:) <$> (P.char ',') <*> P.spaces' P.<?> "comma"
 
-    sepEndBy1StartAnn :: m [Ann a]
+    sepEndBy1StartAnn :: m [Ann SurroundingText a]
     sepEndBy1StartAnn = do
       x <- lp
       P.optional comma >>= \case

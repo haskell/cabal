@@ -44,7 +44,7 @@ type PackageNameAnn = PackageNameWith Mod.HasAnn
 
 type family ModifyPackageName (m :: Mod.HasAnnotation) (a :: Type) where
   ModifyPackageName Mod.HasNoAnn a = a
-  ModifyPackageName Mod.HasAnn a = Ann a
+  ModifyPackageName Mod.HasAnn a = Ann SurroundingText a
 
 newtype PackageNameWith (m :: Mod.HasAnnotation) = PackageName (ModifyPackageName m ShortText)
   deriving (Generic)
