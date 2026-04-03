@@ -59,6 +59,7 @@ module Distribution.Utils.Path
   , dropExtensionsSymbolicPath
   , replaceExtensionSymbolicPath
   , normaliseSymbolicPath
+  , relativePathMaybe
 
     -- ** Working directory handling
   , interpretSymbolicPathCWD
@@ -89,6 +90,9 @@ import qualified System.FilePath as FilePath
 
 import Data.Kind
   ( Type
+  )
+import Data.List
+  ( stripPrefix
   )
 import GHC.Stack
   ( HasCallStack
@@ -337,6 +341,22 @@ interpretSymbolicPathAbsolute (AbsolutePath p) sym = interpretSymbolicPath (Just
 -- | Change what a symbolic path is pointing to.
 coerceSymbolicPath :: SymbolicPathX allowAbsolute from to1 -> SymbolicPathX allowAbsolute from to2
 coerceSymbolicPath = coerce
+
+-- | Does the second argument point to a sub-directory of the first one?
+-- If so, return the relative portion of the path, relative to the first argument.
+relativePathMaybe :: SymbolicPath from (Dir dir) -> SymbolicPath from to -> Maybe (RelativePath dir to)
+relativePathMaybe base fp =
+  let dirPieces =
+        FilePath.splitDirectories $
+          FilePath.dropTrailingPathSeparator $
+            FilePath.normalise $
+              getSymbolicPath base
+      pathPieces =
+        FilePath.splitDirectories $
+          FilePath.normalise $
+            getSymbolicPath fp
+   in unsafeMakeSymbolicPath . FilePath.joinPath
+        <$> stripPrefix dirPieces pathPieces
 
 -- | Change both what a symbolic path is pointing from and pointing to.
 --
