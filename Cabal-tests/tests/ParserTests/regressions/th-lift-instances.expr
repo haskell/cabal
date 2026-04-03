@@ -185,56 +185,6 @@ GenericPackageDescription {
                   (mkVersion [0, 11])))
               mainLibSet],
           mixins = []}},
-      condTreeConstraints = [
-        Dependency
-          (PackageName "base")
-          (IntersectVersionRanges
-            (OrLaterVersion
-              (mkVersion [4, 4]))
-            (EarlierVersion
-              (mkVersion [5])))
-          mainLibSet,
-        Dependency
-          (PackageName "template-haskell")
-          (EarlierVersion
-            (mkVersion [2, 10]))
-          mainLibSet,
-        Dependency
-          (PackageName "th-lift")
-          (OrLaterVersion (mkVersion [0]))
-          mainLibSet,
-        Dependency
-          (PackageName "containers")
-          (IntersectVersionRanges
-            (OrLaterVersion
-              (mkVersion [0, 4]))
-            (EarlierVersion
-              (mkVersion [0, 6])))
-          mainLibSet,
-        Dependency
-          (PackageName "vector")
-          (IntersectVersionRanges
-            (OrLaterVersion
-              (mkVersion [0, 9]))
-            (EarlierVersion
-              (mkVersion [0, 11])))
-          mainLibSet,
-        Dependency
-          (PackageName "text")
-          (IntersectVersionRanges
-            (OrLaterVersion
-              (mkVersion [0, 11]))
-            (EarlierVersion
-              (mkVersion [1, 3])))
-          mainLibSet,
-        Dependency
-          (PackageName "bytestring")
-          (IntersectVersionRanges
-            (OrLaterVersion
-              (mkVersion [0, 9]))
-            (EarlierVersion
-              (mkVersion [0, 11])))
-          mainLibSet],
       condTreeComponents = []},
   condSubLibraries = [],
   condForeignLibs = [],
@@ -365,61 +315,6 @@ GenericPackageDescription {
                 mainLibSet],
             mixins = []},
           testCodeGenerators = []},
-        condTreeConstraints = [
-          Dependency
-            (PackageName "base")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName "template-haskell")
-            (EarlierVersion
-              (mkVersion [2, 10]))
-            mainLibSet,
-          Dependency
-            (PackageName "containers")
-            (IntersectVersionRanges
-              (OrLaterVersion
-                (mkVersion [0, 4]))
-              (EarlierVersion
-                (mkVersion [0, 6])))
-            mainLibSet,
-          Dependency
-            (PackageName "vector")
-            (IntersectVersionRanges
-              (OrLaterVersion
-                (mkVersion [0, 9]))
-              (EarlierVersion
-                (mkVersion [0, 11])))
-            mainLibSet,
-          Dependency
-            (PackageName "text")
-            (IntersectVersionRanges
-              (OrLaterVersion
-                (mkVersion [0, 11]))
-              (EarlierVersion
-                (mkVersion [1, 2])))
-            mainLibSet,
-          Dependency
-            (PackageName "bytestring")
-            (IntersectVersionRanges
-              (OrLaterVersion
-                (mkVersion [0, 9]))
-              (EarlierVersion
-                (mkVersion [0, 11])))
-            mainLibSet,
-          Dependency
-            (PackageName
-              "th-lift-instances")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName "QuickCheck")
-            (IntersectVersionRanges
-              (OrLaterVersion
-                (mkVersion [2, 6]))
-              (EarlierVersion
-                (mkVersion [2, 8])))
-            mainLibSet],
         condTreeComponents = []},
     _×_
       (UnqualComponentName "doctests")
@@ -507,25 +402,6 @@ GenericPackageDescription {
                 mainLibSet],
             mixins = []},
           testCodeGenerators = []},
-        condTreeConstraints = [
-          Dependency
-            (PackageName "base")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName "directory")
-            (OrLaterVersion
-              (mkVersion [1, 0]))
-            mainLibSet,
-          Dependency
-            (PackageName "doctest")
-            (OrLaterVersion
-              (mkVersion [0, 9, 1]))
-            mainLibSet,
-          Dependency
-            (PackageName "filepath")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet],
         condTreeComponents = [
           CondBranch {
             condBranchCondition =
@@ -596,7 +472,6 @@ GenericPackageDescription {
                   targetBuildDepends = [],
                   mixins = []},
                 testCodeGenerators = []},
-              condTreeConstraints = [],
               condTreeComponents = []},
             condBranchIfFalse = Nothing}]}],
   condBenchmarks = []}

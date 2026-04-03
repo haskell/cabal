@@ -129,8 +129,8 @@ deriving via (OnlyCheckWhnf LicenseId) instance NoThunks LicenseId
 deriving via (OnlyCheckWhnf LicenseExceptionId) instance NoThunks LicenseExceptionId
 deriving via (CheckFoldableNamed NonEmptySet a) instance NoThunks a => NoThunks (NonEmptySet a)
 
-instance (NoThunks v, NoThunks c, NoThunks a) => NoThunks (CondTree v c a)
-instance (NoThunks v, NoThunks c, NoThunks a) => NoThunks (CondBranch v c a)
+instance (NoThunks v, NoThunks a) => NoThunks (CondTree v a)
+instance (NoThunks v, NoThunks a) => NoThunks (CondBranch v a)
 instance (NoThunks c) => NoThunks (Condition c)
 
 -------------------------------------------------------------------------------

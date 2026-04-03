@@ -108,7 +108,6 @@ GenericPackageDescription {
           customFieldsBI = [],
           targetBuildDepends = [],
           mixins = []}},
-      condTreeConstraints = [],
       condTreeComponents = []},
   condSubLibraries = [],
   condForeignLibs = [],

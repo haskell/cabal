@@ -668,7 +668,7 @@ testTargetSelectorAmbiguous reportSubCase = do
               , condSubLibraries = []
               , condForeignLibs = []
               , condExecutables =
-                  [ (exeName exe, CondNode exe [] [])
+                  [ (exeName exe, CondNode exe [])
                   | exe <- exes
                   ]
               , condTestSuites = []

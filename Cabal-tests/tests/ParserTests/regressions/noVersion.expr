@@ -110,11 +110,6 @@ GenericPackageDescription {
               (EarlierVersion (mkVersion [0]))
               mainLibSet],
           mixins = []}},
-      condTreeConstraints = [
-        Dependency
-          (PackageName "bad-package")
-          (EarlierVersion (mkVersion [0]))
-          mainLibSet],
       condTreeComponents = []},
   condSubLibraries = [],
   condForeignLibs = [],

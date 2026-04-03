@@ -66,7 +66,7 @@ import Text.PrettyPrint (render)
 import qualified Text.PrettyPrint as Disp
 
 singletonProjectConfigSkeleton :: ProjectConfig -> ProjectConfigSkeleton
-singletonProjectConfigSkeleton x = CondNode x mempty mempty
+singletonProjectConfigSkeleton x = CondNode (mempty, x) mempty
 
 readPreprocessFields :: BS.ByteString -> ParseResult src [Field Position]
 readPreprocessFields bs = do
@@ -136,7 +136,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
                   when
                     (isUntrimmedUriConfigPath importLocPath)
                     (noticeDoc verbosity $ untrimmedUriImportMsg (Disp.text "Warning:") importLocPath)
-                  let fs = (\z -> CondNode z [normLocPath] mempty) <$> fieldsToConfig normSource (reverse acc)
+                  let fs = (\z -> CondNode ([normLocPath], z) mempty) <$> fieldsToConfig normSource (reverse acc)
                   importParseResult <- parseProjectSkeleton cacheDir httpTransport verbosity projectDir importLocPath . ProjectConfigToParse =<< fetchImportConfig normLocPath
 
                   rest <- go [] xs
@@ -148,7 +148,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
         let fs = fmap singletonProjectConfigSkeleton $ fieldsToConfig source (reverse acc)
         (elseClauses, rest) <- parseElseClauses xs
         let condNode =
-              (\c pcs e -> CondNode mempty mempty [CondBranch c pcs e])
+              (\c pcs e -> CondNode mempty [CondBranch c pcs e])
                 <$> parseConditionConfVar (startOfSection (incPos 2 pos) args) args
                 <*> subpcs
                 <*> elseClauses
@@ -168,7 +168,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
         subpcs <- go [] xs'
         (elseClauses, rest) <- parseElseClauses xs
         let condNode =
-              (\c pcs e -> CondNode mempty mempty [CondBranch c pcs e])
+              (\c pcs e -> CondNode mempty [CondBranch c pcs e])
                 <$> parseConditionConfVar (startOfSection (incPos 4 pos) args) args
                 <*> subpcs
                 <*> elseClauses
@@ -213,11 +213,11 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
         isSet f = f (projectConfigShared pc) /= NoFlag
 
     sanityWalkPCS :: Bool -> ProjectConfigSkeleton -> ParseResult ProjectFileSource ProjectConfigSkeleton
-    sanityWalkPCS underConditional t@(CondNode d _c comps)
+    sanityWalkPCS underConditional t@(CondNode (_c, d) comps)
       | underConditional && modifiesCompiler d = parseFatalFailure zeroPos "Cannot set compiler in a conditional clause of a cabal project file"
       | otherwise = mapM_ sanityWalkBranch comps >> pure t
 
-    sanityWalkBranch :: CondBranch ConfVar [ProjectConfigPath] ProjectConfig -> ParseResult ProjectFileSource ()
+    sanityWalkBranch :: CondBranch ConfVar ([ProjectConfigPath], ProjectConfig) -> ParseResult ProjectFileSource ()
     sanityWalkBranch (CondBranch _c t f) = traverse_ (sanityWalkPCS True) f >> sanityWalkPCS True t >> pure ()
 
     programDb = defaultProgramDb

@@ -388,80 +388,6 @@ GenericPackageDescription {
                 (mkVersion [1, 1]))
               mainLibSet],
           mixins = []}},
-      condTreeConstraints = [
-        Dependency
-          (PackageName "base")
-          (OrLaterVersion
-            (mkVersion [4, 5]))
-          mainLibSet,
-        Dependency
-          (PackageName "directory")
-          (OrLaterVersion (mkVersion [0]))
-          mainLibSet,
-        Dependency
-          (PackageName "hashable")
-          (OrLaterVersion
-            (mkVersion [1, 1, 2, 3]))
-          mainLibSet,
-        Dependency
-          (PackageName "binary")
-          (OrLaterVersion (mkVersion [0]))
-          mainLibSet,
-        Dependency
-          (PackageName "filepath")
-          (OrLaterVersion (mkVersion [0]))
-          mainLibSet,
-        Dependency
-          (PackageName "process")
-          (OrLaterVersion
-            (mkVersion [1, 1]))
-          mainLibSet,
-        Dependency
-          (PackageName
-            "unordered-containers")
-          (OrLaterVersion
-            (mkVersion [0, 2, 1]))
-          mainLibSet,
-        Dependency
-          (PackageName "bytestring")
-          (OrLaterVersion (mkVersion [0]))
-          mainLibSet,
-        Dependency
-          (PackageName "utf8-string")
-          (OrLaterVersion
-            (mkVersion [0, 3]))
-          mainLibSet,
-        Dependency
-          (PackageName "time")
-          (OrLaterVersion (mkVersion [0]))
-          mainLibSet,
-        Dependency
-          (PackageName "random")
-          (OrLaterVersion (mkVersion [0]))
-          mainLibSet,
-        Dependency
-          (PackageName "js-jquery")
-          (OrLaterVersion (mkVersion [0]))
-          mainLibSet,
-        Dependency
-          (PackageName "js-flot")
-          (OrLaterVersion (mkVersion [0]))
-          mainLibSet,
-        Dependency
-          (PackageName "transformers")
-          (OrLaterVersion
-            (mkVersion [0, 2]))
-          mainLibSet,
-        Dependency
-          (PackageName "extra")
-          (OrLaterVersion
-            (mkVersion [1, 4, 8]))
-          mainLibSet,
-        Dependency
-          (PackageName "deepseq")
-          (OrLaterVersion
-            (mkVersion [1, 1]))
-          mainLibSet],
       condTreeComponents = [
         CondBranch {
           condBranchCondition =
@@ -531,7 +457,6 @@ GenericPackageDescription {
                 customFieldsBI = [],
                 targetBuildDepends = [],
                 mixins = []}},
-            condTreeConstraints = [],
             condTreeComponents = [
               CondBranch {
                 condBranchCondition =
@@ -605,11 +530,6 @@ GenericPackageDescription {
                           (OrLaterVersion (mkVersion [0]))
                           mainLibSet],
                       mixins = []}},
-                  condTreeConstraints = [
-                    Dependency
-                      (PackageName "old-time")
-                      (OrLaterVersion (mkVersion [0]))
-                      mainLibSet],
                   condTreeComponents = []},
                 condBranchIfFalse = Nothing}]},
           condBranchIfFalse = Just
@@ -678,7 +598,6 @@ GenericPackageDescription {
                   customFieldsBI = [],
                   targetBuildDepends = [],
                   mixins = []}},
-              condTreeConstraints = [],
               condTreeComponents = [
                 CondBranch {
                   condBranchCondition =
@@ -753,12 +672,6 @@ GenericPackageDescription {
                               (mkVersion [2, 5, 1]))
                             mainLibSet],
                         mixins = []}},
-                    condTreeConstraints = [
-                      Dependency
-                        (PackageName "unix")
-                        (OrLaterVersion
-                          (mkVersion [2, 5, 1]))
-                        mainLibSet],
                     condTreeComponents = []},
                   condBranchIfFalse = Nothing}]}},
         CondBranch {
@@ -833,11 +746,6 @@ GenericPackageDescription {
                     (OrLaterVersion (mkVersion [0]))
                     mainLibSet],
                 mixins = []}},
-            condTreeConstraints = [
-              Dependency
-                (PackageName "unix")
-                (OrLaterVersion (mkVersion [0]))
-                mainLibSet],
             condTreeComponents = []},
           condBranchIfFalse = Nothing}]},
   condSubLibraries = [],
@@ -1088,86 +996,6 @@ GenericPackageDescription {
                 (OrLaterVersion (mkVersion [0]))
                 mainLibSet],
             mixins = []}},
-        condTreeConstraints = [
-          Dependency
-            (PackageName "base")
-            (IntersectVersionRanges
-              (OrLaterVersion (mkVersion [4]))
-              (EarlierVersion
-                (mkVersion [5])))
-            mainLibSet,
-          Dependency
-            (PackageName "directory")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName "hashable")
-            (OrLaterVersion
-              (mkVersion [1, 1, 2, 3]))
-            mainLibSet,
-          Dependency
-            (PackageName "binary")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName "filepath")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName "process")
-            (OrLaterVersion
-              (mkVersion [1, 1]))
-            mainLibSet,
-          Dependency
-            (PackageName
-              "unordered-containers")
-            (OrLaterVersion
-              (mkVersion [0, 2, 1]))
-            mainLibSet,
-          Dependency
-            (PackageName "bytestring")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName "utf8-string")
-            (OrLaterVersion
-              (mkVersion [0, 3]))
-            mainLibSet,
-          Dependency
-            (PackageName "time")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName "random")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName "js-jquery")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName "js-flot")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName "transformers")
-            (OrLaterVersion
-              (mkVersion [0, 2]))
-            mainLibSet,
-          Dependency
-            (PackageName "extra")
-            (OrLaterVersion
-              (mkVersion [1, 4, 8]))
-            mainLibSet,
-          Dependency
-            (PackageName "deepseq")
-            (OrLaterVersion
-              (mkVersion [1, 1]))
-            mainLibSet,
-          Dependency
-            (PackageName "primitive")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet],
         condTreeComponents = [
           CondBranch {
             condBranchCondition =
@@ -1236,7 +1064,6 @@ GenericPackageDescription {
                   customFieldsBI = [],
                   targetBuildDepends = [],
                   mixins = []}},
-              condTreeConstraints = [],
               condTreeComponents = []},
             condBranchIfFalse = Nothing},
           CondBranch {
@@ -1304,7 +1131,6 @@ GenericPackageDescription {
                   customFieldsBI = [],
                   targetBuildDepends = [],
                   mixins = []}},
-              condTreeConstraints = [],
               condTreeComponents = [
                 CondBranch {
                   condBranchCondition =
@@ -1375,11 +1201,6 @@ GenericPackageDescription {
                             (OrLaterVersion (mkVersion [0]))
                             mainLibSet],
                         mixins = []}},
-                    condTreeConstraints = [
-                      Dependency
-                        (PackageName "old-time")
-                        (OrLaterVersion (mkVersion [0]))
-                        mainLibSet],
                     condTreeComponents = []},
                   condBranchIfFalse = Nothing}]},
             condBranchIfFalse = Just
@@ -1445,7 +1266,6 @@ GenericPackageDescription {
                     customFieldsBI = [],
                     targetBuildDepends = [],
                     mixins = []}},
-                condTreeConstraints = [],
                 condTreeComponents = [
                   CondBranch {
                     condBranchCondition =
@@ -1517,12 +1337,6 @@ GenericPackageDescription {
                                 (mkVersion [2, 5, 1]))
                               mainLibSet],
                           mixins = []}},
-                      condTreeConstraints = [
-                        Dependency
-                          (PackageName "unix")
-                          (OrLaterVersion
-                            (mkVersion [2, 5, 1]))
-                          mainLibSet],
                       condTreeComponents = []},
                     condBranchIfFalse = Nothing}]}},
           CondBranch {
@@ -1594,11 +1408,6 @@ GenericPackageDescription {
                       (OrLaterVersion (mkVersion [0]))
                       mainLibSet],
                   mixins = []}},
-              condTreeConstraints = [
-                Dependency
-                  (PackageName "unix")
-                  (OrLaterVersion (mkVersion [0]))
-                  mainLibSet],
               condTreeComponents = []},
             condBranchIfFalse = Nothing}]}],
   condTestSuites = [
@@ -1893,87 +1702,6 @@ GenericPackageDescription {
                 mainLibSet],
             mixins = []},
           testCodeGenerators = []},
-        condTreeConstraints = [
-          Dependency
-            (PackageName "base")
-            (IntersectVersionRanges
-              (OrLaterVersion (mkVersion [4]))
-              (EarlierVersion
-                (mkVersion [5])))
-            mainLibSet,
-          Dependency
-            (PackageName "directory")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName "hashable")
-            (OrLaterVersion
-              (mkVersion [1, 1, 2, 3]))
-            mainLibSet,
-          Dependency
-            (PackageName "binary")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName "filepath")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName "process")
-            (OrLaterVersion
-              (mkVersion [1, 1]))
-            mainLibSet,
-          Dependency
-            (PackageName
-              "unordered-containers")
-            (OrLaterVersion
-              (mkVersion [0, 2, 1]))
-            mainLibSet,
-          Dependency
-            (PackageName "bytestring")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName "utf8-string")
-            (OrLaterVersion
-              (mkVersion [0, 3]))
-            mainLibSet,
-          Dependency
-            (PackageName "time")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName "random")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName "js-jquery")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName "js-flot")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName "transformers")
-            (OrLaterVersion
-              (mkVersion [0, 2]))
-            mainLibSet,
-          Dependency
-            (PackageName "deepseq")
-            (OrLaterVersion
-              (mkVersion [1, 1]))
-            mainLibSet,
-          Dependency
-            (PackageName "extra")
-            (OrLaterVersion
-              (mkVersion [1, 4, 8]))
-            mainLibSet,
-          Dependency
-            (PackageName "QuickCheck")
-            (OrLaterVersion
-              (mkVersion [2, 0]))
-            mainLibSet],
         condTreeComponents = [
           CondBranch {
             condBranchCondition =
@@ -2044,7 +1772,6 @@ GenericPackageDescription {
                   targetBuildDepends = [],
                   mixins = []},
                 testCodeGenerators = []},
-              condTreeConstraints = [],
               condTreeComponents = []},
             condBranchIfFalse = Nothing},
           CondBranch {
@@ -2116,7 +1843,6 @@ GenericPackageDescription {
                   targetBuildDepends = [],
                   mixins = []},
                 testCodeGenerators = []},
-              condTreeConstraints = [],
               condTreeComponents = []},
             condBranchIfFalse = Nothing},
           CondBranch {
@@ -2188,7 +1914,6 @@ GenericPackageDescription {
                   targetBuildDepends = [],
                   mixins = []},
                 testCodeGenerators = []},
-              condTreeConstraints = [],
               condTreeComponents = [
                 CondBranch {
                   condBranchCondition =
@@ -2263,11 +1988,6 @@ GenericPackageDescription {
                             mainLibSet],
                         mixins = []},
                       testCodeGenerators = []},
-                    condTreeConstraints = [
-                      Dependency
-                        (PackageName "old-time")
-                        (OrLaterVersion (mkVersion [0]))
-                        mainLibSet],
                     condTreeComponents = []},
                   condBranchIfFalse = Nothing}]},
             condBranchIfFalse = Just
@@ -2337,7 +2057,6 @@ GenericPackageDescription {
                     targetBuildDepends = [],
                     mixins = []},
                   testCodeGenerators = []},
-                condTreeConstraints = [],
                 condTreeComponents = [
                   CondBranch {
                     condBranchCondition =
@@ -2413,12 +2132,6 @@ GenericPackageDescription {
                               mainLibSet],
                           mixins = []},
                         testCodeGenerators = []},
-                      condTreeConstraints = [
-                        Dependency
-                          (PackageName "unix")
-                          (OrLaterVersion
-                            (mkVersion [2, 5, 1]))
-                          mainLibSet],
                       condTreeComponents = []},
                     condBranchIfFalse = Nothing}]}},
           CondBranch {
@@ -2494,11 +2207,6 @@ GenericPackageDescription {
                       mainLibSet],
                   mixins = []},
                 testCodeGenerators = []},
-              condTreeConstraints = [
-                Dependency
-                  (PackageName "unix")
-                  (OrLaterVersion (mkVersion [0]))
-                  mainLibSet],
               condTreeComponents = []},
             condBranchIfFalse = Nothing}]}],
   condBenchmarks = []}

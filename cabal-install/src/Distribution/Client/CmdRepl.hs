@@ -360,7 +360,7 @@ resolveGlobalTarget flags@NixStyleFlags{extraFlags = ReplFlags{..}} targetString
       sourcePackage =
         fakeProjectSourcePackage projectRoot
           & ( (lSrcpkgDescription . L.condLibrary)
-                ?~ (CondNode library [baseDep] [])
+                ?~ (CondNode library [])
             )
       library = emptyLibrary{libBuildInfo = lBuildInfo}
       lBuildInfo =

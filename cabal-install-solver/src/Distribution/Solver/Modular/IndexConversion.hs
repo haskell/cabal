@@ -42,6 +42,9 @@ import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.Tree
 import Distribution.Solver.Modular.Version
 
+import qualified Distribution.Compat.Lens as L
+import qualified Distribution.Types.BuildInfo.Lens as L
+
 -- | Convert both the installed package index and the source package
 -- index into one uniform solver index.
 --
@@ -182,7 +185,7 @@ convGPD os arch cinfo constraints strfl solveExes pn
 
 
     conv :: Monoid a => Component -> (a -> BuildInfo) -> DependencyReason PN ->
-            CondTree ConfVar [Dependency] a -> FlaggedDeps PN
+            CondTree ConfVar a -> FlaggedDeps PN
     conv comp getInfo dr =
         convCondTree M.empty dr pkg os arch cinfo pn fds comp getInfo solveExes .
         addBuildableCondition getInfo
@@ -251,7 +254,7 @@ testConditionForComponent :: OS
                           -> CompilerInfo
                           -> [LabeledPackageConstraint]
                           -> (a -> Bool)
-                          -> CondTree ConfVar [Dependency] a
+                          -> CondTree ConfVar a
                           -> Maybe Bool
 testConditionForComponent os arch cinfo constraints p tree =
     case go $ extractCondition p tree of
@@ -329,8 +332,8 @@ convCondTree :: Map FlagName Bool -> DependencyReason PN -> PackageDescription -
                 Component ->
                 (a -> BuildInfo) ->
                 SolveExecutables ->
-                CondTree ConfVar [Dependency] a -> FlaggedDeps PN
-convCondTree flags dr pkg os arch cinfo pn fds comp getInfo solveExes@(SolveExecutables solveExes') (CondNode info ds branches) =
+                CondTree ConfVar a -> FlaggedDeps PN
+convCondTree flags dr pkg os arch cinfo pn fds comp getInfo solveExes@(SolveExecutables solveExes') (CondNode info branches) =
              -- Merge all library and build-tool dependencies at every level in
              -- the tree of flagged dependencies. Otherwise 'extractCommon'
              -- could create duplicate dependencies, and the number of
@@ -338,7 +341,7 @@ convCondTree flags dr pkg os arch cinfo pn fds comp getInfo solveExes@(SolveExec
              -- of the tree.
              mergeSimpleDeps $
                  [ D.Simple singleDep comp
-                 | dep <- ds
+                 | dep <- L.view (L.targetBuildDepends) (getInfo info)
                  , singleDep <- convLibDeps dr dep ]  -- unconditional package dependencies
 
               ++ L.map (\e -> D.Simple (LDep dr (Ext  e)) comp) (allExtensions bi) -- unconditional extension dependencies
@@ -461,7 +464,7 @@ convBranch :: Map FlagName Bool
            -> Component
            -> (a -> BuildInfo)
            -> SolveExecutables
-           -> CondBranch ConfVar [Dependency] a
+           -> CondBranch ConfVar a
            -> FlaggedDeps PN
 convBranch flags dr pkg os arch cinfo pn fds comp getInfo solveExes (CondBranch c' t' mf') =
     go c'

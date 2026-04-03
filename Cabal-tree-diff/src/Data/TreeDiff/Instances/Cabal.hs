@@ -41,8 +41,8 @@ import qualified Distribution.Compat.NonEmptySet as NES
 -------------------------------------------------------------------------------
 
 instance (Eq a, Show a) => ToExpr (Condition a) where toExpr = defaultExprViaShow
-instance (Show a, ToExpr b, ToExpr c, Show b, Show c, Eq a, Eq c, Eq b) => ToExpr (CondTree a b c)
-instance (Show a, ToExpr b, ToExpr c, Show b, Show c, Eq a, Eq c, Eq b) => ToExpr (CondBranch a b c)
+instance (Show a, ToExpr c, Show c, Eq a, Eq c) => ToExpr (CondTree a c)
+instance (Show a, ToExpr c, Show c, Eq a, Eq c) => ToExpr (CondBranch a c)
 instance (ToExpr a) => ToExpr (NubList a)
 instance ToExpr a => ToExpr (NES.NonEmptySet a) where
     toExpr xs = App "NonEmptySet.fromNonEmpty" [toExpr $ NES.toNonEmpty xs]

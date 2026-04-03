@@ -89,6 +89,8 @@ import qualified Data.Set as Set
 import qualified Distribution.Utils.ShortText as ShortText
 import qualified Distribution.Utils.String as String
 
+import qualified Distribution.Compat.Lens as L
+import qualified Distribution.Types.BuildInfo.Lens as L
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
 
 import Control.Monad
@@ -358,11 +360,11 @@ checkGenericPackageDescription
       -- once, rather than re-checking in every conditional branch.
       let allModuleNames =
             Set.fromList $
-              maybe [] (explicitLibModules . fst . ignoreConditions) condLibrary_
-                ++ concatMap (explicitLibModules . fst . ignoreConditions . snd) condSubLibraries_
-                ++ concatMap (exeModules . fst . ignoreConditions . snd) condExecutables_
-                ++ concatMap (testModules . fst . ignoreConditions . snd) condTestSuites_
-                ++ concatMap (benchmarkModules . fst . ignoreConditions . snd) condBenchmarks_
+              maybe [] (explicitLibModules . ignoreConditions) condLibrary_
+                ++ concatMap (explicitLibModules . ignoreConditions . snd) condSubLibraries_
+                ++ concatMap (exeModules . ignoreConditions . snd) condExecutables_
+                ++ concatMap (testModules . ignoreConditions . snd) condTestSuites_
+                ++ concatMap (benchmarkModules . ignoreConditions . snd) condBenchmarks_
       mapM_ (\m -> checkPackageFileNamesWithGlob PathKindFile (toFilePath m)) allModuleNames
     where
       -- todo is this caught at parse time?
@@ -980,14 +982,14 @@ wrapParseWarning fp pw = PackageDistSuspicious (ParseWarning fp pw)
 -- each of those branch will be checked one by one.
 extractAssocDeps
   :: UnqualComponentName -- Name of the target library
-  -> CondTree ConfVar [Dependency] Library
+  -> CondTree ConfVar Library
   -> AssocDep
 extractAssocDeps n ct =
   let a = ignoreConditions ct
    in -- Merging is fine here, remember the specific
       -- library dependencies will be checked branch
       -- by branch.
-      (n, snd a)
+      (n, L.view L.targetBuildDepends a)
 
 -- | August 2022: this function is an oddity due to the historical
 -- GenericPackageDescription/PackageDescription split (check
@@ -1023,8 +1025,8 @@ pd2gpd pd = gpd
         }
 
     -- From target to simple, unconditional CondTree.
-    t2c :: a -> CondTree ConfVar [Dependency] a
-    t2c a = CondNode a [] []
+    t2c :: a -> CondTree ConfVar a
+    t2c a = CondNode a []
 
     -- From named target to unconditional CondTree. Notice we have
     -- a function to extract the name *and* a function to modify
@@ -1034,7 +1036,7 @@ pd2gpd pd = gpd
       :: (a -> UnqualComponentName)
       -> (a -> a)
       -> a
-      -> (UnqualComponentName, CondTree ConfVar [Dependency] a)
+      -> (UnqualComponentName, CondTree ConfVar a)
     t2cName nf mf a = (nf a, t2c . mf $ a)
 
     ln :: Library -> UnqualComponentName

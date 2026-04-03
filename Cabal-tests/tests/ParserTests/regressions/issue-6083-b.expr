@@ -116,20 +116,6 @@ GenericPackageDescription {
                       (UnqualComponentName
                         "sublib")]))],
           mixins = []}},
-      condTreeConstraints = [
-        Dependency
-          (PackageName "base")
-          (OrLaterVersion (mkVersion [0]))
-          mainLibSet,
-        Dependency
-          (PackageName "issue")
-          (OrLaterVersion (mkVersion [0]))
-          (NonEmptySet.fromNonEmpty
-            (NE.fromList
-              [
-                LSubLibName
-                  (UnqualComponentName
-                    "sublib")]))],
       condTreeComponents = []},
   condSubLibraries = [
     _×_
@@ -201,7 +187,6 @@ GenericPackageDescription {
             customFieldsBI = [],
             targetBuildDepends = [],
             mixins = []}},
-        condTreeConstraints = [],
         condTreeComponents = []}],
   condForeignLibs = [],
   condExecutables = [
@@ -283,20 +268,6 @@ GenericPackageDescription {
                         (UnqualComponentName
                           "sublib")]))],
             mixins = []}},
-        condTreeConstraints = [
-          Dependency
-            (PackageName "issue")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName "issue")
-            (OrLaterVersion (mkVersion [0]))
-            (NonEmptySet.fromNonEmpty
-              (NE.fromList
-                [
-                  LSubLibName
-                    (UnqualComponentName
-                      "sublib")]))],
         condTreeComponents = []},
     _×_
       (UnqualComponentName "demo-b")
@@ -376,20 +347,6 @@ GenericPackageDescription {
                         (UnqualComponentName
                           "sublib")]))],
             mixins = []}},
-        condTreeConstraints = [
-          Dependency
-            (PackageName "issue")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName "issue")
-            (OrLaterVersion (mkVersion [0]))
-            (NonEmptySet.fromNonEmpty
-              (NE.fromList
-                [
-                  LSubLibName
-                    (UnqualComponentName
-                      "sublib")]))],
         condTreeComponents = []}],
   condTestSuites = [],
   condBenchmarks = []}
