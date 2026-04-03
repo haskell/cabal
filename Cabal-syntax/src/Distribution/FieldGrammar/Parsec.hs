@@ -1,4 +1,6 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -69,12 +71,14 @@ module Distribution.FieldGrammar.Parsec
   , freeTextIgnoreDotlineVers
   ) where
 
+import Distribution.Compat.Lens
 import Distribution.Compat.Newtype
 import Distribution.Compat.Prelude
 import Distribution.Utils.Generic (fromUTF8BS)
 import Distribution.Utils.String (trim)
 import Prelude ()
 
+import Data.Monoid (Last (..))
 import qualified Data.ByteString as BS
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
@@ -88,6 +92,7 @@ import Distribution.FieldGrammar.Class
 import Distribution.Fields.Field
 import Distribution.Fields.ParseResult
 import Distribution.Parsec
+import Distribution.Trivia
 import Distribution.Parsec.FieldLineStream
 import Distribution.Parsec.Position (positionCol, positionRow)
 
@@ -271,13 +276,46 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
           | v >= freeTextIgnoreDotlineVers -> pure (ShortText.toShortText $ fieldlinesToFreeText3 pos fls)
           | otherwise -> pure (ShortText.toShortText $ fieldlinesToFreeText fls)
 
+  monoidalFieldAla
+    :: forall b a s
+     . (Parsec b, Monoid a, Newtype a b)
+    => FieldName
+    -> (a -> b)
+    -> ALens' s a
+    -> ParsecFieldGrammar s a
   monoidalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
+      parser :: CabalSpecVersion -> Fields Position -> ParseResult src a
       parser v fields = case Map.lookup fn fields of
         Nothing -> pure mempty
         Just xs -> foldMap (unpack' _pack) <$> traverse (parseOne v) xs
 
+      parseOne :: CabalSpecVersion -> NamelessField Position -> ParseResult src b
       parseOne v (MkNamelessField pos fls) = runFieldParser pos parsec v fls
+
+  -- TODO(leana8959): maybe define monoidalFieldAla base on monoidalFieldAlaAnn
+  --
+  -- This function allows us to manage the position coming from a parsed field
+  -- In the printer, it can... IDK? Annotate the pretty doc position?
+  monoidalFieldAlaAnn
+    :: forall b a s u
+     . (Parsec b, Monoid u, Newtype a b)
+    => FieldName
+    -> (a -> b)
+    -> ALens' s a
+    -> (Positions -> a -> u)
+    -> ParsecFieldGrammar s u
+  monoidalFieldAlaAnn fn _pack _extract attachPos = ParsecFG (Set.singleton fn) Set.empty parser
+    where
+      parser :: CabalSpecVersion -> Fields Position -> ParseResult src u
+      parser v fields = case Map.lookup fn fields of
+        Nothing -> pure mempty
+        Just xs -> foldMap (\(p, b) -> attachPos p $ unpack' _pack b) <$> traverse (parseOne v) xs
+
+      parseOne :: CabalSpecVersion -> NamelessField Position -> ParseResult src (Positions, b)
+      parseOne v (MkNamelessField pos fls) = do
+        (linePos, x) <- runFieldParser pos (liftA2 (,) (liftParsec P.getPosition) parsec) v fls
+        pure (Positions (Just pos) (undefined linePos) Nothing, x)
 
   prefixedFields fnPfx _extract = ParsecFG mempty (Set.singleton fnPfx) (\_ fs -> pure (parser fs))
     where

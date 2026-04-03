@@ -19,6 +19,8 @@ import Prelude ()
 
 import Distribution.CabalSpecVersion (CabalSpecVersion)
 import Distribution.Compat.Newtype (Newtype)
+import Distribution.Trivia
+import Distribution.Parsec.Position (Position)
 import Distribution.FieldGrammar.Newtypes
 import Distribution.Fields.Field
 import Distribution.Utils.ShortText
@@ -131,6 +133,22 @@ class
     -> ALens' s a
     -- ^ lens into the field
     -> g s a
+
+  -- | Monoidal field.
+  --
+  -- Values are combined with 'mappend'.
+  --
+  -- /Note:/ 'optionalFieldAla' is a @monoidalField@ with 'Last' monoid.
+  monoidalFieldAlaAnn
+    :: (c b, Monoid u, Newtype a b)
+    => FieldName
+    -- ^ field name
+    -> (a -> b)
+    -- ^ 'pack'
+    -> ALens' s a
+    -- ^ lens into the field
+    -> (Positions -> a -> u)
+    -> g s u
 
   -- | Parser matching all fields with a name starting with a prefix.
   prefixedFields
