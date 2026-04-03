@@ -140,7 +140,8 @@ import Distribution.Types.CondTree
   , CondTree (..)
   , ignoreConditions
   , mapTreeConds
-  , traverseCondTreeC
+  , mapTreeData
+  , traverseCondTreeA
   , traverseCondTreeV
   )
 import Distribution.Types.SourceRepo (RepoType)
@@ -216,14 +217,14 @@ import qualified Text.PrettyPrint as Disp
 
 -- | ProjectConfigSkeleton is a tree of conditional blocks and imports wrapping a config. It can be finalized by providing the conditional resolution info
 -- and then resolving and downloading the imports
-type ProjectConfigSkeleton = CondTree ConfVar [ProjectConfigPath] ProjectConfig
+type ProjectConfigSkeleton = CondTree ConfVar ([ProjectConfigPath], ProjectConfig)
 
 singletonProjectConfigSkeleton :: ProjectConfig -> ProjectConfigSkeleton
-singletonProjectConfigSkeleton x = CondNode x mempty mempty
+singletonProjectConfigSkeleton x = CondNode (mempty, x) mempty
 
 instantiateProjectConfigSkeletonFetchingCompiler :: Monad m => m (OS, Arch, Compiler) -> FlagAssignment -> ProjectConfigSkeleton -> m (ProjectConfig, Maybe Compiler)
 instantiateProjectConfigSkeletonFetchingCompiler fetch flags skel
-  | null (toListOf traverseCondTreeV skel) = pure (fst (ignoreConditions skel), Nothing)
+  | null (toListOf traverseCondTreeV skel) = pure (ignoreConditions $ mapTreeData snd skel, Nothing)
   | otherwise = do
       (os, arch, comp) <- fetch
       let conf = instantiateProjectConfigSkeletonWithCompiler os arch (compilerInfo comp) flags skel
@@ -232,13 +233,8 @@ instantiateProjectConfigSkeletonFetchingCompiler fetch flags skel
 instantiateProjectConfigSkeletonWithCompiler :: OS -> Arch -> CompilerInfo -> FlagAssignment -> ProjectConfigSkeleton -> ProjectConfig
 instantiateProjectConfigSkeletonWithCompiler os arch impl _flags skel = go $ mapTreeConds (fst . simplifyWithSysParams os arch impl) skel
   where
-    go
-      :: CondTree
-          FlagName
-          [ProjectConfigPath]
-          ProjectConfig
-      -> ProjectConfig
-    go (CondNode l _imps ts) =
+    go :: CondTree FlagName ([ProjectConfigPath], ProjectConfig) -> ProjectConfig
+    go (CondNode (_, l) ts) =
       let branches = concatMap processBranch ts
        in l <> mconcat branches
     processBranch (CondBranch cnd t mf) = case cnd of
@@ -247,7 +243,7 @@ instantiateProjectConfigSkeletonWithCompiler os arch impl _flags skel = go $ map
       _ -> error $ "unable to process condition: " ++ show cnd -- TODO it would be nice if there were a pretty printer
 
 projectSkeletonImports :: ProjectConfigSkeleton -> [ProjectConfigPath]
-projectSkeletonImports = view traverseCondTreeC
+projectSkeletonImports = fst . view traverseCondTreeA
 
 -- | Parses a project from its root config file, typically cabal.project.
 parseProject
@@ -298,7 +294,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
             when
               (isUntrimmedUriConfigPath importLocPath)
               (noticeDoc verbosity $ untrimmedUriImportMsg (Disp.text "Warning:") importLocPath)
-            let fs = (\z -> CondNode z [normLocPath] mempty) <$> fieldsToConfig normSource (reverse acc)
+            let fs = (\z -> CondNode ([normLocPath], z) mempty) <$> fieldsToConfig normSource (reverse acc)
             res <- parseProjectSkeleton cacheDir httpTransport verbosity projectDir importLocPath . ProjectConfigToParse =<< fetchImportConfig normLocPath
             rest <- go [] xs
             pure . fmap mconcat . sequence $ [projectParse Nothing normSource fs, res, rest]
@@ -308,7 +304,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
         let fs = singletonProjectConfigSkeleton <$> fieldsToConfig source (reverse acc)
         (elseClauses, rest) <- parseElseClauses xs
         let condNode =
-              (\c pcs e -> CondNode mempty mempty [CondBranch c pcs e])
+              (\c pcs e -> CondNode mempty [CondBranch c pcs e])
                 <$>
                 -- we rewrap as as a section so the readFields lexer of the conditional parser doesn't get confused
                 ( let s = "if(" <> p <> ")"
@@ -333,7 +329,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
         subpcs <- go [] xs'
         (elseClauses, rest) <- parseElseClauses xs
         let condNode =
-              (\c pcs e -> CondNode mempty mempty [CondBranch c pcs e])
+              (\c pcs e -> CondNode mempty [CondBranch c pcs e])
                 <$> ( let s = "elif(" <> p <> ")"
                        in projectParse (Just s) normSource (adaptParseError l (parseConditionConfVarFromClause $ BS.pack s))
                     )
@@ -388,13 +384,13 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
         isSet f = f (projectConfigShared pc) /= NoFlag
 
     sanityWalkPCS :: Bool -> ProjectConfigSkeleton -> ProjectParseResult ProjectConfigSkeleton
-    sanityWalkPCS underConditional t@(CondNode d (listToMaybe -> c) comps)
+    sanityWalkPCS underConditional t@(CondNode (listToMaybe -> c, d) comps)
       | underConditional && modifiesCompiler d =
           projectParseFail Nothing c $ ParseUtils.FromString "Cannot set compiler in a conditional clause of a cabal project file" Nothing
       | otherwise =
           mapM_ sanityWalkBranch comps >> pure t
 
-    sanityWalkBranch :: CondBranch ConfVar [ProjectConfigPath] ProjectConfig -> ProjectParseResult ()
+    sanityWalkBranch :: CondBranch ConfVar ([ProjectConfigPath], ProjectConfig) -> ProjectParseResult ()
     sanityWalkBranch (CondBranch _c t f) = traverse_ (sanityWalkPCS True) f >> sanityWalkPCS True t >> pure ()
 
 ------------------------------------------------------------------

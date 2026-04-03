@@ -121,7 +121,6 @@ GenericPackageDescription {
           customFieldsBI = [],
           targetBuildDepends = [],
           mixins = []}},
-      condTreeConstraints = [],
       condTreeComponents = [
         CondBranch {
           condBranchCondition =
@@ -191,7 +190,6 @@ GenericPackageDescription {
                 customFieldsBI = [],
                 targetBuildDepends = [],
                 mixins = []}},
-            condTreeConstraints = [],
             condTreeComponents = []},
           condBranchIfFalse = Nothing}]},
   condSubLibraries = [],

@@ -114,7 +114,6 @@ GenericPackageDescription {
           customFieldsBI = [],
           targetBuildDepends = [],
           mixins = []}},
-      condTreeConstraints = [],
       condTreeComponents = [
         CondBranch {
           condBranchCondition =
@@ -188,11 +187,6 @@ GenericPackageDescription {
                     (OrLaterVersion (mkVersion [0]))
                     mainLibSet],
                 mixins = []}},
-            condTreeConstraints = [
-              Dependency
-                (PackageName "unix")
-                (OrLaterVersion (mkVersion [0]))
-                mainLibSet],
             condTreeComponents = []},
           condBranchIfFalse = Just
             CondNode {
@@ -260,7 +254,6 @@ GenericPackageDescription {
                   customFieldsBI = [],
                   targetBuildDepends = [],
                   mixins = []}},
-              condTreeConstraints = [],
               condTreeComponents = [
                 CondBranch {
                   condBranchCondition =
@@ -334,11 +327,6 @@ GenericPackageDescription {
                             (OrLaterVersion (mkVersion [0]))
                             mainLibSet],
                         mixins = []}},
-                    condTreeConstraints = [
-                      Dependency
-                        (PackageName "Win32")
-                        (OrLaterVersion (mkVersion [0]))
-                        mainLibSet],
                     condTreeComponents = []},
                   condBranchIfFalse = Just
                     CondNode {
@@ -406,7 +394,6 @@ GenericPackageDescription {
                           customFieldsBI = [],
                           targetBuildDepends = [],
                           mixins = []}},
-                      condTreeConstraints = [],
                       condTreeComponents = []}}]}}]},
   condSubLibraries = [],
   condForeignLibs = [],

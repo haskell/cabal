@@ -147,19 +147,6 @@ GenericPackageDescription {
                         (ModuleName "Str.ByteString")],
                   includeRequiresRn =
                   DefaultRenaming}}]}},
-        condTreeConstraints = [
-          Dependency
-            (PackageName "base")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName "str-string")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet,
-          Dependency
-            (PackageName "str-bytestring")
-            (OrLaterVersion (mkVersion [0]))
-            mainLibSet],
         condTreeComponents = []}],
   condTestSuites = [],
   condBenchmarks = []}

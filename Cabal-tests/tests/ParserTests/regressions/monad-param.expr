@@ -141,19 +141,6 @@ GenericPackageDescription {
               (OrLaterVersion (mkVersion [0]))
               mainLibSet],
           mixins = []}},
-      condTreeConstraints = [
-        Dependency
-          (PackageName "base")
-          (OrLaterVersion (mkVersion [0]))
-          mainLibSet,
-        Dependency
-          (PackageName "mtl")
-          (OrLaterVersion (mkVersion [0]))
-          mainLibSet,
-        Dependency
-          (PackageName "stm")
-          (OrLaterVersion (mkVersion [0]))
-          mainLibSet],
       condTreeComponents = []},
   condSubLibraries = [],
   condForeignLibs = [],

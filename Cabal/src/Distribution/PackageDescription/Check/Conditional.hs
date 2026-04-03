@@ -23,7 +23,6 @@ import Prelude ()
 
 import Distribution.Compiler
 import Distribution.ModuleName (ModuleName)
-import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Check.Monad
 import Distribution.System
@@ -63,21 +62,18 @@ annotateCondTree
    . (Eq a, Monoid a)
   => [PackageFlag] -- User flags.
   -> TargetAnnotation a
-  -> CondTree ConfVar [Dependency] a
-  -> CondTree ConfVar [Dependency] (TargetAnnotation a)
-annotateCondTree fs ta (CondNode a c bs) =
+  -> CondTree ConfVar a
+  -> CondTree ConfVar (TargetAnnotation a)
+annotateCondTree fs ta (CondNode a bs) =
   let ta' = updateTargetAnnotation a ta
       bs' = map (annotateBranch ta') bs
       bs'' = crossAnnotateBranches defTrueFlags bs'
-   in CondNode ta' c bs''
+   in CondNode ta' bs''
   where
     annotateBranch
       :: TargetAnnotation a
-      -> CondBranch ConfVar [Dependency] a
-      -> CondBranch
-          ConfVar
-          [Dependency]
-          (TargetAnnotation a)
+      -> CondBranch ConfVar a
+      -> CondBranch ConfVar (TargetAnnotation a)
     annotateBranch wta (CondBranch k t mf) =
       let uf = isPkgFlagCond k
           wta' = wta{taPackageFlag = taPackageFlag wta || uf}
@@ -119,13 +115,13 @@ crossAnnotateBranches
   :: forall a
    . (Eq a, Monoid a)
   => [PackageFlag] -- `default: true` flags.
-  -> [CondBranch ConfVar [Dependency] (TargetAnnotation a)]
-  -> [CondBranch ConfVar [Dependency] (TargetAnnotation a)]
+  -> [CondBranch ConfVar (TargetAnnotation a)]
+  -> [CondBranch ConfVar (TargetAnnotation a)]
 crossAnnotateBranches fs bs = map crossAnnBranch bs
   where
     crossAnnBranch
-      :: CondBranch ConfVar [Dependency] (TargetAnnotation a)
-      -> CondBranch ConfVar [Dependency] (TargetAnnotation a)
+      :: CondBranch ConfVar (TargetAnnotation a)
+      -> CondBranch ConfVar (TargetAnnotation a)
     crossAnnBranch wr =
       let
         rs = filter (/= wr) bs
@@ -133,24 +129,23 @@ crossAnnotateBranches fs bs = map crossAnnBranch bs
        in
         updateTargetAnnBranch (mconcat ts) wr
 
-    realiseBranch :: CondBranch ConfVar [Dependency] (TargetAnnotation a) -> Maybe a
+    realiseBranch :: CondBranch ConfVar (TargetAnnotation a) -> Maybe a
     realiseBranch b =
       let
         -- We are only interested in True by default package flags.
         realiseBranchFunction :: ConfVar -> Either ConfVar Bool
         realiseBranchFunction (PackageFlag n) | elem n (map flagName fs) = Right True
         realiseBranchFunction _ = Right False
-        ms = simplifyCondBranch realiseBranchFunction (fmap taTarget b)
        in
-        fmap snd ms
+        simplifyCondBranch realiseBranchFunction (fmap taTarget b)
 
     updateTargetAnnBranch
       :: a
-      -> CondBranch ConfVar [Dependency] (TargetAnnotation a)
-      -> CondBranch ConfVar [Dependency] (TargetAnnotation a)
+      -> CondBranch ConfVar (TargetAnnotation a)
+      -> CondBranch ConfVar (TargetAnnotation a)
     updateTargetAnnBranch a (CondBranch k t mt) =
-      let updateTargetAnnTree (CondNode ka c wbs) =
-            (CondNode (updateTargetAnnotation a ka) c wbs)
+      let updateTargetAnnTree (CondNode ka wbs) =
+            (CondNode (updateTargetAnnotation a ka) wbs)
        in CondBranch k (updateTargetAnnTree t) (updateTargetAnnTree <$> mt)
 
 -- | A conditional target is a library, exe, benchmark etc., destructured
@@ -165,7 +160,7 @@ checkCondTarget
   -- Naming function (some targets
   -- need to have their name
   -- spoonfed to them.
-  -> (UnqualComponentName, CondTree ConfVar [Dependency] a)
+  -> (UnqualComponentName, CondTree ConfVar a)
   -- Target name/condtree.
   -> CheckM m ()
 checkCondTarget fs cf nf (unqualName, ct) =
@@ -174,9 +169,9 @@ checkCondTarget fs cf nf (unqualName, ct) =
     -- Walking the tree. Remember that CondTree is not a binary
     -- tree but a /rose/tree.
     wTree
-      :: CondTree ConfVar [Dependency] (TargetAnnotation a)
+      :: CondTree ConfVar (TargetAnnotation a)
       -> CheckM m ()
-    wTree (CondNode ta _ bs)
+    wTree (CondNode ta bs)
       -- There are no branches ([] == True) *or* every branch
       -- is “simple” (i.e. missing a 'condBranchIfFalse' part).
       -- This is convenient but not necessarily correct in all
@@ -192,13 +187,13 @@ checkCondTarget fs cf nf (unqualName, ct) =
           mapM_ wBranch bs
 
     isSimple
-      :: CondBranch ConfVar [Dependency] (TargetAnnotation a)
+      :: CondBranch ConfVar (TargetAnnotation a)
       -> Bool
     isSimple (CondBranch _ _ Nothing) = True
     isSimple (CondBranch _ _ (Just _)) = False
 
     wBranch
-      :: CondBranch ConfVar [Dependency] (TargetAnnotation a)
+      :: CondBranch ConfVar (TargetAnnotation a)
       -> CheckM m ()
     wBranch (CondBranch k t mf) = do
       checkCondVars k
@@ -239,15 +234,16 @@ checkDuplicateModules pkg =
     checkExe = checkDups "executable" exeModules
     checkTest = checkDups "test suite" testModules
     checkBench = checkDups "benchmark" benchmarkModules
-    checkDups :: String -> (a -> [ModuleName]) -> CondTree v c a -> [PackageCheck]
+    checkDups :: String -> (a -> [ModuleName]) -> CondTree v a -> [PackageCheck]
     checkDups s getModules t =
       let sumPair (x, x') (y, y') = (x + x' :: Int, y + y' :: Int)
           mergePair (x, x') (y, y') = (x + x', max y y')
           maxPair (x, x') (y, y') = (max x x', max y y')
+          libMap :: Map ModuleName (Int, Int)
           libMap =
             foldCondTree
               Map.empty
-              (\(_, v) -> Map.fromListWith sumPair . map (,(1, 1)) $ getModules v)
+              (\v -> Map.fromListWith sumPair . map (,(1, 1)) $ getModules v)
               (Map.unionWith mergePair) -- if a module may occur in nonexclusive branches count it twice strictly and once loosely.
               (Map.unionWith maxPair) -- a module occurs the max of times it might appear in exclusive branches
               t
