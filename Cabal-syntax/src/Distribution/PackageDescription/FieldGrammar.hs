@@ -695,6 +695,20 @@ buildInfoFieldGrammar =
 {-# SPECIALIZE buildInfoFieldGrammar :: ParsecFieldGrammar' BuildInfoAnn #-}
 {-# SPECIALIZE buildInfoFieldGrammar :: PrettyFieldGrammar' BuildInfoAnn #-}
 
+
+onlyBuildDepends
+  :: forall mod c g
+   . ( FieldGrammar c g
+     , Applicative (g (BuildInfoWith mod))
+     , L.HasBuildInfoWith mod (BuildInfoWith mod)
+     , L.HasBuildInfoWith mod [DependencyWith mod]
+     , c (List CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
+     )
+  => g [DependencyWith mod] [DependencyWith mod]
+onlyBuildDepends = monoidalFieldAla "build-depends" (formatDependencyList @mod) L.targetBuildDepends
+{-# SPECIALIZE onlyBuildDepends :: ParsecFieldGrammar' [DependencyAnn] #-}
+{-# SPECIALIZE onlyBuildDepends :: PrettyFieldGrammar' [DependencyAnn] #-}
+
 hsSourceDirsGrammar
   :: forall mod c g
    . ( FieldGrammar c g

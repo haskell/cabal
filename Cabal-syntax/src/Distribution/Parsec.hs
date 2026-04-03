@@ -64,6 +64,7 @@ module Distribution.Parsec
   , parsecLeadingOptCommaListAnn
   , parsecStandard
   , parsecUnqualComponentName
+  , liftParsec
   ) where
 
 import Data.ByteString (ByteString)
