@@ -3,8 +3,10 @@
 {-# LANGUAGE TupleSections #-}
 
 module Distribution.Trivia
-  ( Trivia (..)
-  , SurroundingText (..)
+  ( SurroundingText (..)
+  , Positions (..)
+  , Trivia (..)
+
   , preTrivia
   , postTrivia
   , Ann (..)
@@ -15,6 +17,7 @@ module Distribution.Trivia
 where
 
 import Control.Applicative
+import Data.Monoid (Last (..))
 import Data.Data
 import Distribution.Parsec.Position
 import qualified Text.PrettyPrint as Disp
@@ -25,6 +28,28 @@ data SurroundingText = SurroundingText String String
 
 instance Semigroup SurroundingText where
   SurroundingText s t <> SurroundingText a b = SurroundingText (s <> a) (t <> b)
+
+-- | A collection of different kinds of 'Position's, describing
+-- the provenance of a data.
+data Positions = Positions
+  { fieldNamePos :: Maybe Position
+  , fieldLinePos :: Maybe Position
+  , fieldSectionPos :: Maybe Position
+  }
+  deriving (Show, Eq, Ord, Read, Data)
+
+instance Semigroup Positions where
+  i <> j =
+    Positions
+      { fieldNamePos = field fieldNamePos
+      , fieldLinePos = field fieldLinePos
+      , fieldSectionPos = field fieldSectionPos
+      }
+    where
+      field a = getLast (Last (a i) <> Last (a j))
+
+instance Monoid Positions where
+  mempty = Positions Nothing Nothing Nothing
 
 data Trivia t
   = HasTrivia t
