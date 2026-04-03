@@ -33,18 +33,12 @@ module Distribution.Types.CondTree
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Trivia
 import Distribution.Types.Condition
 
 import Control.Exception
 import Data.Kind
 
 import qualified Distribution.Compat.Lens as L
-
-type family Modify (f :: Type -> Type) (a :: Type) where
-  Modify Identity a = a
-  Modify Ann a = ([String], a)
-  Modify _ a = TypeError
 
 -- | A 'CondTree' is used to represent the conditional structure of
 -- a Cabal file, reflecting a syntax element subject to constraints,
@@ -73,7 +67,7 @@ type family Modify (f :: Type -> Type) (a :: Type) where
 type CondTree = CondTreeWith Identity
 
 data CondTreeWith f v a = CondNode
-  { condTreeData :: Modify f a
+  { condTreeData :: a
   , condTreeComponents :: [CondBranch v a]
   }
 

@@ -108,7 +108,7 @@ sepBy :: Alternative m => m a -> m sep -> m [a]
 sepBy p sep = toList <$> sepByNonEmpty p sep <|> pure []
 {-# INLINE sepBy #-}
 
-sepByAnn :: Alternative m => m (Ann a) -> m String -> m [Ann a]
+sepByAnn :: Alternative m => m (Ann SurroundingText a) -> m String -> m [Ann SurroundingText a]
 sepByAnn p sep = toList <$> sepByNonEmptyAnn p sep <|> pure []
 {-# INLINE sepByAnn #-}
 
@@ -118,7 +118,7 @@ sepByNonEmpty :: Alternative m => m a -> m sep -> m (NonEmpty a)
 sepByNonEmpty p sep = (:|) <$> p <*> many (sep *> p)
 {-# INLINE sepByNonEmpty #-}
 
-sepByNonEmptyAnn :: forall m a. Alternative m => m (Ann a) -> m String -> m (NonEmpty (Ann a))
+sepByNonEmptyAnn :: forall m a. Alternative m => m (Ann SurroundingText a) -> m String -> m (NonEmpty (Ann SurroundingText a))
 sepByNonEmptyAnn p sep =
   (:|)
     <$> p
@@ -135,7 +135,7 @@ sepByNonEmptyAnn p sep =
 sepEndByNonEmpty :: Alternative m => m a -> m sep -> m (NonEmpty a)
 sepEndByNonEmpty p sep = (:|) <$> p <*> ((sep *> sepEndBy p sep) <|> pure [])
 
-sepEndByNonEmptyAnn :: Alternative m => m (Ann a) -> m String -> m (NonEmpty (Ann a))
+sepEndByNonEmptyAnn :: Alternative m => m (Ann SurroundingText a) -> m String -> m (NonEmpty (Ann SurroundingText a))
 sepEndByNonEmptyAnn p sep = do
   x <- p
   (trailing, xs) <-
@@ -154,7 +154,7 @@ sepEndBy p sep = toList <$> sepEndByNonEmpty p sep <|> pure []
 {-# INLINE sepEndBy #-}
 
 -- | @sepEndByAnn@ is like @sepEndBy@, but it keeps the trivia.
-sepEndByAnn :: Alternative m => m (Ann a) -> m String -> m [Ann a]
+sepEndByAnn :: Alternative m => m (Ann SurroundingText a) -> m String -> m [Ann SurroundingText a]
 sepEndByAnn p sep = toList <$> sepEndByNonEmptyAnn p sep <|> pure []
 
 -- | @endByNonEmpty p sep@ parses /one/ or more occurrences of @p@, separated

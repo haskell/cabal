@@ -45,7 +45,7 @@ import qualified Text.Read as Read
 -- 'Binary' instance using a different (and more compact) encoding.
 --
 -- @since 2.0.0.2
-type VersionAnn = Ann Version
+type VersionAnn = Ann SurroundingText Version
 
 data Version
   = PV0 {-# UNPACK #-} !Word64
@@ -109,7 +109,7 @@ instance Pretty Version where
 instance Pretty VersionAnn where
   pretty (Ann t ver) = applyTrivia $ fmap pretty (t, ver)
     where
-      applyTrivia :: (Trivia, Disp.Doc) -> Disp.Doc
+      applyTrivia :: (Trivia SurroundingText, Disp.Doc) -> Disp.Doc
       applyTrivia = uncurry applyTriviaDoc
 
 instance Parsec Version where
@@ -205,7 +205,7 @@ mkVersion (v1 : vs@[v2, v3, v4])
     mkWord64VerRep4 y1 y2 y3 y4 = mkWord64VerRep (y1 + 1) (y2 + 1) (y3 + 1) (y4 + 1)
 mkVersion (v1 : vs) = PV1 v1 vs
 
-mkVersionAnn :: Trivia -> [Int] -> VersionAnn
+mkVersionAnn :: Trivia SurroundingText -> [Int] -> VersionAnn
 mkVersionAnn t vs = Ann t (mkVersion vs)
 
 -- | Version 0. A lower bound of 'Version'.

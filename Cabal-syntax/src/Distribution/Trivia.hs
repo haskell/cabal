@@ -1,12 +1,12 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE TupleSections #-}
 
 module Distribution.Trivia
   ( Trivia (..)
+  , SurroundingText (..)
   , preTrivia
   , postTrivia
-  , posTrivia
   , Ann (..)
   , mapAnn
   , mapAnnA
@@ -14,70 +14,69 @@ module Distribution.Trivia
   )
 where
 
-import Data.Data
 import Control.Applicative
+import Data.Data
 import Distribution.Parsec.Position
 import qualified Text.PrettyPrint as Disp
 
--- TODO(leana8959): implement position trivia somewhere
-data Trivia
-  = HasTrivia (Maybe Position) String String
+-- | Leading and trailing whitespaces
+data SurroundingText = SurroundingText String String
+  deriving (Show, Eq, Ord, Read, Data)
+
+instance Semigroup SurroundingText where
+  SurroundingText s t <> SurroundingText a b = SurroundingText (s <> a) (t <> b)
+
+data Trivia t
+  = HasTrivia t
   | ExactRepresentation String
   | IsInserted
   | NoTrivia
   deriving (Show, Eq, Ord, Read, Data)
 
-preTrivia :: String -> Trivia
-preTrivia s = HasTrivia Nothing s mempty
+preTrivia :: String -> Trivia SurroundingText
+preTrivia s = HasTrivia (SurroundingText s mempty)
 
-postTrivia :: String -> Trivia
-postTrivia s = HasTrivia Nothing mempty s
+postTrivia :: String -> Trivia SurroundingText
+postTrivia s = HasTrivia (SurroundingText mempty s)
 
-posTrivia :: Position -> Trivia
-posTrivia pos = HasTrivia (Just pos) mempty mempty
-
-instance Semigroup Trivia where
-  HasTrivia mpos s t <> HasTrivia mpos' a b = HasTrivia (mpos <|> mpos') (s <> a) (t <> b)
-
+instance Semigroup t => Semigroup (Trivia t) where
+  HasTrivia x <> HasTrivia y = HasTrivia (x <> y)
   ExactRepresentation u <> ExactRepresentation v = ExactRepresentation (u <> v)
   u@(ExactRepresentation _) <> _ = u
   _ <> v@(ExactRepresentation _) = v
-
   NoTrivia <> v = v
   u <> NoTrivia = u
-
   IsInserted <> _ = IsInserted
   _ <> IsInserted = IsInserted
 
-instance Monoid Trivia where
+instance Semigroup t => Monoid (Trivia t) where
   mempty = NoTrivia
 
-data Ann a = Ann
-  { getAnn :: Trivia
+data Ann t a = Ann
+  { getAnn :: Trivia t
   , unAnn :: a
   }
   deriving (Show, Eq, Ord, Functor, Read, Data)
 
 mapAnn
-  :: (Trivia -> Trivia)
-  -> Ann a
-  -> Ann a
+  :: (Trivia s -> Trivia t)
+  -> Ann s a
+  -> Ann t a
 mapAnn f (Ann t x) = Ann (f t) x
 
 mapAnnA
-  :: (Trivia -> Trivia)
-  -> (a -> a)
-  -> Ann a
-  -> Ann a
+  :: (Trivia s -> Trivia t)
+  -> (a -> b)
+  -> Ann s a
+  -> Ann t b
 mapAnnA f g (Ann t x) = Ann (f t) (g x)
 
 applyTriviaDoc
-  :: Trivia
+  :: Trivia SurroundingText
   -> Disp.Doc
   -> Disp.Doc
 applyTriviaDoc t = case t of
-  -- TODO(leana8959): do not ignore the position here
-  HasTrivia _ pre post -> \d -> Disp.text pre <> d <> Disp.text post
+  HasTrivia (SurroundingText pre post) -> \d -> Disp.text pre <> d <> Disp.text post
   ExactRepresentation repr -> const (Disp.text repr)
   IsInserted -> const Disp.empty
   NoTrivia -> id
