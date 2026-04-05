@@ -758,8 +758,8 @@ profSharedOptionsFieldGrammar =
 
 lookupLens :: (Functor f, Monoid v) => CompilerFlavor -> LensLike' f (PerCompilerFlavor v) v
 lookupLens k f p@(PerCompilerFlavor ghc ghcjs)
-  | k == GHC = (\n -> PerCompilerFlavor n ghcjs) <$> f ghc
-  | k == GHCJS = (\n -> PerCompilerFlavor ghc n) <$> f ghcjs
+  | k == GHC = (`PerCompilerFlavor` ghcjs) <$> f ghc
+  | k == GHCJS = (ghc `PerCompilerFlavor`) <$> f ghcjs
   | otherwise = p <$ f mempty
 
 -------------------------------------------------------------------------------

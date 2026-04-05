@@ -381,7 +381,7 @@ renderListBinProblem (TargetProblemMatchesMultiple targetSelector targets) =
           <$> showComponentName
           <$> availableTargetComponentName
           <$> foldMap
-            (\kind -> filterTargetsKind kind targets)
+            (`filterTargetsKind` targets)
             [ExeKind, TestKind, BenchKind]
       )
     ++ "."

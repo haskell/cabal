@@ -381,7 +381,7 @@ toLinkedComponent
         , lc_component = component
         , lc_public = is_public
         , -- These must be executables
-          lc_exe_deps = map (fmap (\cid -> IndefFullUnitId cid Map.empty)) exe_deps
+          lc_exe_deps = map (fmap (`IndefFullUnitId` Map.empty)) exe_deps
         , lc_shape = final_linked_shape
         , lc_includes = linked_includes
         , lc_sig_includes = linked_sig_includes

@@ -1,7 +1,6 @@
 # Warnings currently triggered by your code
 - ignore: {name: "Avoid NonEmpty.unzip"} # 1 hint
 - ignore: {name: "Avoid lambda"} # 51 hints
-- ignore: {name: "Avoid lambda using `infix`"} # 23 hints
 - ignore: {name: "Eta reduce"} # 138 hints
 - ignore: {name: "Hoist not"} # 16 hints
 - ignore: {name: "Move filter"} # 4 hints
