@@ -5,3 +5,5 @@ Error:
     Ensure "build-depends:" doesn't include any library with signatures: 'A'
     as this creates a cyclic dependency, which GHC does not support.
     In the stanza executable exe
+    CallStack (from HasCallStack):
+  dieProgress, called at src/Distribution/Backpack/LinkedComponent.hs:167:30 in Cabal-3.17.0.0-inplace:Distribution.Backpack.LinkedComponent
