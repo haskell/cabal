@@ -56,6 +56,7 @@ import Distribution.Types.UnqualComponentName
     ( unUnqualComponentName )
 
 import Text.PrettyPrint ( nest, render )
+import Distribution.Solver.Types.Settings (OnlyConstrained(..))
 
 -- A data type to hold log information from the modular solver.
 data Message =
@@ -311,7 +312,7 @@ showFR _ (PackageRequiresMissingComponent qpn comp) = " (requires " ++ showExpos
 showFR _ (PackageRequiresPrivateComponent qpn comp) = " (requires " ++ showExposedComponent comp ++ " from " ++ showQPN qpn ++ ", but the component is private)"
 showFR _ (PackageRequiresUnbuildableComponent qpn comp) = " (requires " ++ showExposedComponent comp ++ " from " ++ showQPN qpn ++ ", but the component is not buildable in the current environment)"
 showFR _ CannotReinstall                  = " (avoiding to reinstall a package with same version but new dependencies)"
-showFR _ NotExplicit                      = " (not a user-provided goal nor mentioned as a constraint, but reject-unconstrained-dependencies was set)"
+showFR _ (NotExplicit oc)                 = showNotExplicit oc
 showFR _ Shadowed                         = " (shadowed by another installed package with same version)"
 showFR _ (Broken u)                       = " (package is broken, missing dependency " ++ prettyShow u ++ ")"
 showFR _ UnknownPackage                   = " (unknown package)"
@@ -333,6 +334,11 @@ showFR _ (UnsupportedSpecVer ver)         = " (unsupported spec-version " ++ pre
 showFR _ (MalformedFlagChoice qfn)        = " (INTERNAL ERROR: MALFORMED FLAG CHOICE: " ++ showQFN qfn ++ ")"
 showFR _ (MalformedStanzaChoice qsn)      = " (INTERNAL ERROR: MALFORMED STANZA CHOICE: " ++ showQSN qsn ++ ")"
 showFR _ EmptyGoalChoice                  = " (INTERNAL ERROR: EMPTY GOAL CHOICE)"
+
+showNotExplicit :: OnlyConstrained -> String
+showNotExplicit oc = if oc == OnlyConstrainedNone
+  then " (INTERNAL ERROR: NOT EXPLICIT when reject-unconstrained-dependencies=" ++ prettyShow oc ++ " was set)"
+  else " (not a user-provided goal nor mentioned as a constraint, but reject-unconstrained-dependencies=" ++ prettyShow oc ++ " was set)"
 
 showExposedComponent :: ExposedComponent -> String
 showExposedComponent (ExposedLib LMainLibName)       = "library"
