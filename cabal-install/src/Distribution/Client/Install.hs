@@ -116,7 +116,8 @@ import Distribution.Client.Setup
   , filterTestFlags
   )
 import Distribution.Client.SetupWrapper
-  ( SetupScriptOptions (..)
+  ( SetupRunnerArgs (NotInLibrary)
+  , SetupScriptOptions (..)
   , defaultSetupScriptOptions
   , setupWrapper
   )
@@ -336,7 +337,7 @@ install
           ++ "see https://github.com/haskell/cabal/issues/3353"
           ++ " (if you didn't type --root-cmd, comment out root-cmd"
           ++ " in your ~/.config/cabal/config file)"
-    let userOrSandbox = fromFlag (configUserInstall configFlags)
+    let userOrSandbox = fromFlagOrDefault defaultUserInstall (configUserInstall configFlags)
     unless userOrSandbox $
       warn verbosity $
         "the --global flag is deprecated -- "
@@ -1240,7 +1241,7 @@ regenerateHaddockIndex
         defaultDirs <-
           InstallDirs.defaultInstallDirs
             (compilerFlavor comp)
-            (fromFlag (configUserInstall configFlags))
+            (fromFlagOrDefault defaultUserInstall (configUserInstall configFlags))
             True
         let indexFileTemplate = fromFlag (installHaddockIndex installFlags)
             indexFile = substHaddockIndexFileName defaultDirs indexFileTemplate
@@ -1494,7 +1495,6 @@ performInstallations
           distPref
           (chooseCabalVersion configExFlags (libVersion miscOptions))
           (Just lock)
-          parallelInstall
           index
           (Just rpkg)
 
@@ -1959,7 +1959,7 @@ installUnpackedPackage
                     _ -> ipkgs
               let packageDBs =
                     interpretPackageDbFlags
-                      (fromFlag (configUserInstall configFlags))
+                      (fromFlagOrDefault defaultUserInstall (configUserInstall configFlags))
                       (configPackageDBs configFlags)
               for_ ipkgs' $ \ipkg' ->
                 registerPackage
@@ -2080,6 +2080,7 @@ installUnpackedPackage
                 getCommonFlags
                 flags
                 (const [])
+                NotInLibrary
           )
 
 -- helper
@@ -2114,7 +2115,7 @@ withWin32SelfUpgrade verbosity uid configFlags cinfo platform pkg action = do
   defaultDirs <-
     InstallDirs.defaultInstallDirs
       compFlavor
-      (fromFlag (configUserInstall configFlags))
+      (fromFlagOrDefault defaultUserInstall (configUserInstall configFlags))
       (PackageDescription.hasLibs pkg)
 
   Win32SelfUpgrade.possibleSelfUpgrade

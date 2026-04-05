@@ -61,7 +61,6 @@ import Distribution.Client.ProjectPlanning.Types
   , dataDirsEnvironmentForPlan
   , elabExeDependencyPaths
   )
-
 import Distribution.Client.ScriptUtils
   ( AcceptNoTargets (..)
   , TargetContext (..)

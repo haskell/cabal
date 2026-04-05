@@ -1,7 +1,4 @@
 -----------------------------------------------------------------------------
-{-# LANGUAGE LambdaCase #-}
-
------------------------------------------------------------------------------
 
 -- |
 -- Module      :  Distribution.Client.Dependency
@@ -66,6 +63,8 @@ module Distribution.Client.Dependency
   , addSetupCabalMinVersionConstraint
   , addSetupCabalMaxVersionConstraint
   , addSetupCabalProfiledDynamic
+  , setImplicitSetupInfo
+  , extendSetupBuildInfoSetupDepends
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -615,54 +614,47 @@ removeBound RelaxUpper RelaxDepModNone = removeUpperBound
 removeBound RelaxLower RelaxDepModCaret = transformCaretLower
 removeBound RelaxUpper RelaxDepModCaret = transformCaretUpper
 
--- | Supply defaults for packages without explicit Setup dependencies
+-- | Supply defaults for packages without explicit Setup dependencies.
+-- It also serves to add the implicit dependency on @hooks-exe@ needed to
+-- compile the @Setup.hs@ executable produced from 'SetupHooks' when
+-- @build-type: Hooks@. The first argument function determines which implicit
+-- dependencies are needed (including the one on @hooks-exe@).
 --
 -- Note: It's important to apply 'addDefaultSetupDepends' after
 -- 'addSourcePackages'. Otherwise, the packages inserted by
 -- 'addSourcePackages' won't have upper bounds in dependencies relaxed.
 addDefaultSetupDependencies
-  :: (UnresolvedSourcePackage -> Maybe [Dependency])
+  :: (Maybe [Dependency] -> PD.BuildType -> Maybe PD.SetupBuildInfo -> Maybe PD.SetupBuildInfo)
+  -- ^ Function to update the SetupBuildInfo of the package using those dependencies
+  -> (UnresolvedSourcePackage -> Maybe [Dependency])
+  -- ^ Function to determine extra setup dependencies
   -> DepResolverParams
   -> DepResolverParams
-addDefaultSetupDependencies defaultSetupDeps params =
+addDefaultSetupDependencies applyDefaultSetupDeps defaultSetupDeps params =
   params
     { depResolverSourcePkgIndex =
-        fmap applyDefaultSetupDeps (depResolverSourcePkgIndex params)
+        fmap go (depResolverSourcePkgIndex params)
     }
   where
-    applyDefaultSetupDeps :: UnresolvedSourcePackage -> UnresolvedSourcePackage
-    applyDefaultSetupDeps srcpkg =
+    go :: UnresolvedSourcePackage -> UnresolvedSourcePackage
+    go srcpkg =
       srcpkg
         { srcpkgDescription =
             gpkgdesc
               { PD.packageDescription =
                   pkgdesc
                     { PD.setupBuildInfo =
-                        applyDefaultSetupBuildInfo
-                          (PD.setupBuildInfo pkgdesc)
+                        addCabalDepForHooks (PD.buildType pkgdesc) $
+                          applyDefaultSetupDeps
+                            (defaultSetupDeps srcpkg)
+                            (PD.buildType pkgdesc)
+                            (PD.setupBuildInfo pkgdesc)
                     }
               }
         }
       where
-        mbSetupDeps = defaultSetupDeps srcpkg
         gpkgdesc = srcpkgDescription srcpkg
         pkgdesc = PD.packageDescription gpkgdesc
-
-        applyDefaultSetupBuildInfo :: Maybe PD.SetupBuildInfo -> Maybe PD.SetupBuildInfo
-        applyDefaultSetupBuildInfo = \case
-          Just sbi
-            | PD.Hooks <- PD.buildType pkgdesc ->
-                -- Fix for #11331; see 'addCabalDepForHooks' for more details.
-                Just $ addCabalDepForHooks sbi
-          Nothing
-            | Just deps <- mbSetupDeps
-            , PD.buildType pkgdesc == PD.Custom || PD.buildType pkgdesc == PD.Hooks ->
-                Just $
-                  PD.SetupBuildInfo
-                    { PD.defaultSetupDepends = True
-                    , PD.setupDepends = deps
-                    }
-          mbSBI -> mbSBI
 
 -- | Add an implicit dependency on @Cabal@ for a @build-type: Hooks@ package
 -- that doesn't explicitly depend on @Cabal@. Rationale: we need the @Cabal@
@@ -675,14 +667,57 @@ addDefaultSetupDependencies defaultSetupDeps params =
 -- NB: don't do this for @build-type: Custom@, as it is possible for such
 -- packages to not depend on @Cabal@ at all (although basically unheard of
 -- in practice).
-addCabalDepForHooks :: PD.SetupBuildInfo -> PD.SetupBuildInfo
-addCabalDepForHooks sbi@(PD.SetupBuildInfo{PD.setupDepends = deps})
-  | any ((== cabalPkgName) . depPkgName) deps =
-      sbi
-  | otherwise =
-      sbi{PD.setupDepends = Dependency cabalPkgName anyVersion mainLibSet : deps}
+addCabalDepForHooks :: PD.BuildType -> Maybe PD.SetupBuildInfo -> Maybe PD.SetupBuildInfo
+addCabalDepForHooks PD.Hooks = fmap addDep
   where
+    addDep sbi@(PD.SetupBuildInfo{PD.setupDepends = deps})
+      | any ((== cabalPkgName) . depPkgName) deps =
+          sbi
+      | otherwise =
+          sbi{PD.setupDepends = Dependency cabalPkgName anyVersion mainLibSet : deps}
     cabalPkgName = mkPackageName "Cabal"
+addCabalDepForHooks _ = id
+
+-- | Provides the fallback default "setup-depends", when:
+--
+--  1. There is no 'SetupBuildInfo' to start with,
+--  2. The passed-in optional default dependencies are not @Nothing@.
+setImplicitSetupInfo
+  :: Maybe [Dependency]
+  -- ^ optional default dependencies
+  -> PD.BuildType
+  -> Maybe PD.SetupBuildInfo
+  -> Maybe PD.SetupBuildInfo
+setImplicitSetupInfo mdeps buildty msetupinfo =
+  case msetupinfo of
+    Just sbi -> Just sbi
+    Nothing -> case mdeps of
+      Nothing -> Nothing
+      Just deps
+        | hasSetupStanza ->
+            Just
+              PD.SetupBuildInfo
+                { PD.defaultSetupDepends = True
+                , PD.setupDepends = deps
+                }
+        | otherwise -> Nothing
+  where
+    hasSetupStanza = buildty == PD.Custom || buildty == PD.Hooks
+
+-- | Extends the 'setupDepends' field of 'SetupBuildInfo' with the given
+-- dependencies.
+extendSetupBuildInfoSetupDepends
+  :: Maybe [Dependency]
+  -> PD.BuildType
+  -> Maybe PD.SetupBuildInfo
+  -> Maybe PD.SetupBuildInfo
+extendSetupBuildInfoSetupDepends mDeps buildTy mSetupInfo
+  | Nothing <- mSetupInfo =
+      assert
+        (buildTy /= PD.Hooks) -- Hooks needs explicit setup-depends
+        Nothing
+  | Just setupInfo <- mSetupInfo =
+      Just setupInfo{PD.setupDepends = PD.setupDepends setupInfo ++ fromMaybe [] mDeps}
 
 -- | If a package has a custom setup then we need to add a setup-depends
 -- on Cabal.
@@ -779,7 +814,7 @@ standardInstallPolicy
   -> [PackageSpecifier UnresolvedSourcePackage]
   -> DepResolverParams
 standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers =
-  addDefaultSetupDependencies mkDefaultSetupDeps $
+  addDefaultSetupDependencies setImplicitSetupInfo mkDefaultSetupDeps $
     basicInstallPolicy
       installedPkgIndex
       sourcePkgDb
