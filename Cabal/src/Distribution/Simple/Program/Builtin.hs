@@ -105,20 +105,7 @@ ghcProgram =
     }
   where
     ghcPostConf _verbosity ghcProg = do
-      let setLanguageEnv prog =
-            prog
-              { programOverrideEnv =
-                  ("LANGUAGE", Just "en")
-                    : programOverrideEnv ghcProg
-              }
-
-          ignorePackageEnv prog = prog{programDefaultArgs = "-package-env=-" : programDefaultArgs prog}
-
-          -- Only the 7.8 branch seems to be affected. Fixed in 7.8.4.
-          affectedVersionRange =
-            intersectVersionRanges
-              (laterVersion $ mkVersion [7, 8, 0])
-              (earlierVersion $ mkVersion [7, 8, 4])
+      let ignorePackageEnv prog = prog{programDefaultArgs = "-package-env=-" : programDefaultArgs prog}
 
           canIgnorePackageEnv = orLaterVersion $ mkVersion [8, 4, 4]
 
@@ -130,11 +117,7 @@ ghcProgram =
           ( \v ->
               -- By default, ignore GHC_ENVIRONMENT variable of any package environment
               -- files. See #10759
-              applyWhen (withinRange v canIgnorePackageEnv) ignorePackageEnv
-              -- Workaround for https://gitlab.haskell.org/ghc/ghc/-/issues/8825
-              -- (spurious warning on non-english locales)
-              $
-                applyWhen (withinRange v affectedVersionRange) setLanguageEnv ghcProg
+              applyWhen (withinRange v canIgnorePackageEnv) ignorePackageEnv ghcProg
           )
           (programVersion ghcProg)
 

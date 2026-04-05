@@ -2,7 +2,7 @@
 
 module Distribution.Simple.Build.PackageInfoModule.Z (render, Z (..)) where
 
-import Distribution.ZinzaPrelude
+import Distribution.ZinzaPrelude (Generic, execWriter, tell)
 
 data Z = Z
   { zPackageName :: String
@@ -10,18 +10,12 @@ data Z = Z
   , zSynopsis :: String
   , zCopyright :: String
   , zHomepage :: String
-  , zSupportsNoRebindableSyntax :: Bool
   }
   deriving (Generic)
 
 render :: Z -> String
 render z_root = execWriter $ do
-  if (zSupportsNoRebindableSyntax z_root)
-    then do
-      tell "{-# LANGUAGE NoRebindableSyntax #-}\n"
-      return ()
-    else do
-      return ()
+  tell "{-# LANGUAGE NoRebindableSyntax #-}\n"
   tell "{-# OPTIONS_GHC -w #-}\n"
   tell "\n"
   tell "{-|\n"

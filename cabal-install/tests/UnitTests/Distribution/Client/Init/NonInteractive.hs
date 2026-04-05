@@ -1179,11 +1179,6 @@ nonInteractiveTests pkgIx srcDb comp =
                 (`languageHeuristics` (comp{compilerId = CompilerId GHC $ mkVersion [8, 10, 4]}))
                 Haskell2010
                 []
-            , testSimple
-                "Lower version compiler"
-                (`languageHeuristics` (comp{compilerId = CompilerId GHC $ mkVersion [6, 0, 1]}))
-                Haskell98
-                []
             ]
         , testGroup
             "Check extraDocFileHeuristics output"

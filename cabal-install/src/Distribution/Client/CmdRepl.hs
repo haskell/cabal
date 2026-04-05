@@ -522,7 +522,7 @@ targetedRepl
         -- into the multi-out directory.
         replOpts'' <- case targetCtx of
           ProjectContext -> return $ replOpts'{replOptionsFlagOutput = Flag dir}
-          _ -> usingGhciScript compiler projectRoot replOpts'
+          _ -> usingGhciScript projectRoot replOpts'
 
         let buildCtx' = buildCtx & lElaboratedShared . lPkgConfigReplOptions .~ replOpts''
         printPlan verbosity baseCtx'' buildCtx'
@@ -591,7 +591,7 @@ targetedRepl
         -- single target repl
         replOpts'' <- case targetCtx of
           ProjectContext -> return replOpts'
-          _ -> usingGhciScript compiler projectRoot replOpts'
+          _ -> usingGhciScript projectRoot replOpts'
 
         let buildCtx' = buildCtx & lElaboratedShared . lPkgConfigReplOptions .~ replOpts''
         printPlan verbosity baseCtx'' buildCtx'
@@ -761,20 +761,13 @@ generateReplFlags includeTransitive elaboratedPlan OriginalComponentInfo{..} = f
 -- so we need to tell ghci to change back to the correct directory.
 --
 -- The @-ghci-script@ flag is path to the ghci script responsible for changing to the
--- correct directory. Only works on GHC >= 7.6, though. 🙁
-usingGhciScript :: Compiler -> FilePath -> ReplOptions -> IO ReplOptions
-usingGhciScript compiler projectRoot replOpts
-  | compilerCompatVersion GHC compiler >= Just minGhciScriptVersion = do
-      let ghciScriptPath = projectRoot </> "setcwd.ghci"
-      cwd <- getCurrentDirectory
-      writeFile ghciScriptPath (":cd " ++ cwd)
-      return $ replOpts & lReplOptionsFlags %~ (("-ghci-script" ++ ghciScriptPath) :)
-  | otherwise = return replOpts
-
--- | First version of GHC where GHCi supported the flag we need.
--- https://downloads.haskell.org/~ghc/7.6.1/docs/html/users_guide/release-7-6-1.html
-minGhciScriptVersion :: Version
-minGhciScriptVersion = mkVersion [7, 6]
+-- correct directory.
+usingGhciScript :: FilePath -> ReplOptions -> IO ReplOptions
+usingGhciScript projectRoot replOpts = do
+  let ghciScriptPath = projectRoot </> "setcwd.ghci"
+  cwd <- getCurrentDirectory
+  writeFile ghciScriptPath (":cd " ++ cwd)
+  return $ replOpts & lReplOptionsFlags %~ (("-ghci-script" ++ ghciScriptPath) :)
 
 -- | This defines what a 'TargetSelector' means for the @repl@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,

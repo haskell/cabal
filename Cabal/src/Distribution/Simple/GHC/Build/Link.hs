@@ -17,7 +17,6 @@ import Distribution.Compat.ResponseFile
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as IPI
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-import qualified Distribution.ModuleName as ModuleName
 import Distribution.Package
 import Distribution.PackageDescription as PD
 import Distribution.PackageDescription.Utils (cabalBug)
@@ -32,7 +31,6 @@ import Distribution.Simple.GHC.ImplInfo
 import qualified Distribution.Simple.GHC.Internal as Internal
 import Distribution.Simple.LocalBuildInfo
 import qualified Distribution.Simple.PackageIndex as PackageIndex
-import Distribution.Simple.PreProcess.Types
 import Distribution.Simple.Program
 import qualified Distribution.Simple.Program.Ar as Ar
 import Distribution.Simple.Program.GHC
@@ -228,7 +226,7 @@ linkOrLoadComponent
                 CLib lib -> do
                   let libWays = wantedLibWays isIndef
                   rpaths <- get_rpaths (Set.fromList libWays)
-                  linkLibrary buildTargetDir cleanedExtraLibDirs pkg_descr verbosity runGhcProg lib lbi clbi extraSources rpaths libWays
+                  linkLibrary buildTargetDir cleanedExtraLibDirs verbosity runGhcProg lib lbi clbi extraSources rpaths libWays
                 CFLib flib -> do
                   let flib_way = wantedFLibWay (withDynFLib flib)
                   rpaths <- get_rpaths (Set.singleton flib_way)
@@ -243,8 +241,6 @@ linkLibrary
   -- ^ The library target build directory
   -> [SymbolicPath Pkg (Dir Lib)]
   -- ^ The list of extra lib dirs that exist (aka "cleaned")
-  -> PackageDescription
-  -- ^ The package description containing this library
   -> Verbosity
   -> (GhcOptions -> IO ())
   -- ^ Run the configured Ghc program
@@ -258,18 +254,13 @@ linkLibrary
   -> [BuildWay]
   -- ^ Wanted build ways and corresponding build options
   -> IO ()
-linkLibrary buildTargetDir cleanedExtraLibDirs pkg_descr verbosity runGhcProg lib lbi clbi extraSources rpaths wantedWays = do
+linkLibrary buildTargetDir cleanedExtraLibDirs verbosity runGhcProg lib lbi clbi extraSources rpaths wantedWays = do
   let
-    common = configCommonFlags $ configFlags lbi
-    mbWorkDir = flagToMaybe $ setupWorkingDir common
-
     compiler_id = compilerId comp
     comp = compiler lbi
-    ghcVersion = compilerVersion comp
     implInfo = getImplInfo comp
     uid = componentUnitId clbi
     libBi = libBuildInfo lib
-    Platform _hostArch hostOS = hostPlatform lbi
     vanillaLibFilePath = buildTargetDir </> makeRelativePathEx (mkLibName uid)
     profileLibFilePath = buildTargetDir </> makeRelativePathEx (mkProfLibName uid)
     sharedLibFilePath =
@@ -286,19 +277,6 @@ linkLibrary buildTargetDir cleanedExtraLibDirs pkg_descr verbosity runGhcProg li
         </> makeRelativePathEx (mkBytecodeLibName compiler_id uid)
     ghciLibFilePath = buildTargetDir </> makeRelativePathEx (Internal.mkGHCiLibName uid)
     ghciProfLibFilePath = buildTargetDir </> makeRelativePathEx (Internal.mkGHCiProfLibName uid)
-    libInstallPath =
-      libdir $
-        absoluteComponentInstallDirs
-          pkg_descr
-          lbi
-          uid
-          NoCopyDest
-    sharedLibInstallPath =
-      libInstallPath
-        </> mkSharedLibName (hostPlatform lbi) compiler_id uid
-    profSharedLibInstallPath =
-      libInstallPath
-        </> mkProfSharedLibName (hostPlatform lbi) compiler_id uid
 
     getObjWayFiles :: BuildWay -> IO [SymbolicPath Pkg File]
     getObjWayFiles w = getObjFiles (buildWayObjectExtension objExtension w) (buildWayObjectExtension objExtension w)
@@ -318,18 +296,6 @@ linkLibrary buildTargetDir cleanedExtraLibDirs pkg_descr verbosity runGhcProg li
             hs_ext
             True
         , pure $ map (srcObjPath obj_ext) extraSources
-        , catMaybes
-            <$> sequenceA
-              [ findFileCwdWithExtension
-                mbWorkDir
-                [Suffix obj_ext]
-                [buildTargetDir]
-                xPath
-              | ghcVersion < mkVersion [7, 2] -- ghc-7.2+ does not make _stub.o files
-              , x <- allLibModules lib clbi
-              , let xPath :: RelativePath Artifacts File
-                    xPath = makeRelativePathEx $ ModuleName.toFilePath x ++ "_stub"
-              ]
         ]
 
     -- Get the @.o@ path from a source path (e.g. @.hs@),
@@ -397,14 +363,7 @@ linkLibrary buildTargetDir cleanedExtraLibDirs pkg_descr verbosity runGhcProg li
         , ghcOptDynLinkMode = toFlag GhcDynamicOnly
         , ghcOptInputFiles = toNubListR $ map coerceSymbolicPath dynObjectFiles
         , ghcOptOutputFile = toFlag sharedLibFilePath
-        , -- For dynamic libs, Mac OS/X needs to know the install location
-          -- at build time. This only applies to GHC < 7.8 - see the
-          -- discussion in #1660.
-          ghcOptDylibName =
-            if hostOS == OSX
-              && ghcVersion < mkVersion [7, 8]
-              then toFlag sharedLibInstallPath
-              else mempty
+        , ghcOptDylibName = mempty
         , ghcOptLinkLibs = extraLibs libBi
         , ghcOptLinkLibPath = toNubListR cleanedExtraLibDirs
         , ghcOptLinkFrameworks = toNubListR $ map getSymbolicPath $ PD.frameworks libBi
@@ -423,14 +382,7 @@ linkLibrary buildTargetDir cleanedExtraLibDirs pkg_descr verbosity runGhcProg li
         , ghcOptDynLinkMode = toFlag GhcDynamicOnly
         , ghcOptInputFiles = toNubListR pdynObjectFiles
         , ghcOptOutputFile = toFlag profSharedLibFilePath
-        , -- For dynamic libs, Mac OS/X needs to know the install location
-          -- at build time. This only applies to GHC < 7.8 - see the
-          -- discussion in #1660.
-          ghcOptDylibName =
-            if hostOS == OSX
-              && ghcVersion < mkVersion [7, 8]
-              then toFlag profSharedLibInstallPath
-              else mempty
+        , ghcOptDylibName = mempty
         , ghcOptLinkLibs = extraLibs libBi
         , ghcOptLinkLibPath = toNubListR cleanedExtraLibDirs
         , ghcOptLinkFrameworks = toNubListR $ map getSymbolicPath $ PD.frameworks libBi
@@ -543,14 +495,11 @@ linkExecutable linkerOpts (way, buildOpts) targetDir targetName runGhcProg lbi =
               -- assume there is a main function in another non-haskell object
               ghcOptLinkNoHsMain = toFlag (ghcOptInputFiles baseOpts == mempty && ghcOptInputScripts baseOpts == mempty)
             }
-      comp = compiler lbi
 
   -- Work around old GHCs not relinking in this
   -- situation, see #3294
   let target =
         targetDir </> makeRelativePathEx (exeTargetName (hostPlatform lbi) targetName)
-  when (compilerVersion comp < mkVersion [7, 7]) $
-    removeFileForcibly (interpretSymbolicPathLBI lbi target)
   runGhcProg linkOpts{ghcOptOutputFile = toFlag target}
 
 -- | Link a foreign library component
@@ -657,7 +606,7 @@ getRPaths pbci = do
     supportRPaths OSX = True
     supportRPaths FreeBSD =
       case compid of
-        CompilerId GHC ver | ver >= mkVersion [7, 10, 2] -> True
+        CompilerId GHC _ver -> True
         _ -> False
     supportRPaths OpenBSD = False
     supportRPaths NetBSD = False

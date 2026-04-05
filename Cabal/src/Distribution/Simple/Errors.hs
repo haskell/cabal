@@ -96,8 +96,7 @@ data CabalException
   | AmbiguousBuildTarget [(String, [(String, String)])]
   | CheckBuildTargets String
   | VersionMismatchGHC FilePath Version FilePath Version
-  | CheckPackageDbStackPost76
-  | CheckPackageDbStackPre76
+  | CheckPackageDbStack
   | GlobalPackageDbSpecifiedFirst
   | CantInstallForeignLib
   | NoSupportForPreProcessingTest TestType
@@ -230,8 +229,7 @@ exceptionCode e = case e of
   AmbiguousBuildTarget{} -> 7865
   CheckBuildTargets{} -> 4733
   VersionMismatchGHC{} -> 4000
-  CheckPackageDbStackPost76{} -> 3000
-  CheckPackageDbStackPre76{} -> 5640
+  CheckPackageDbStack{} -> 3000
   GlobalPackageDbSpecifiedFirst{} -> 2345
   CantInstallForeignLib{} -> 8221
   NoSupportForPreProcessingTest{} -> 3008
@@ -470,13 +468,9 @@ exceptionMessage e = case e of
       ++ ghcPkgProgPath
       ++ " is version "
       ++ prettyShow ghcPkgVersion
-  CheckPackageDbStackPost76 ->
+  CheckPackageDbStack ->
     "If the global package db is specified, it must be "
       ++ "specified first and cannot be specified multiple times"
-  CheckPackageDbStackPre76 ->
-    "With current ghc versions the global package db is always used "
-      ++ "and must be listed first. This ghc limitation is lifted in GHC 7.6,"
-      ++ "see https://gitlab.haskell.org/ghc/ghc/-/issues/5977"
   GlobalPackageDbSpecifiedFirst ->
     "If the global package db is specified, it must be "
       ++ "specified first and cannot be specified multiple times"

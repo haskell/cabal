@@ -44,10 +44,6 @@ library
 
   if flag(some-flag)
     build-depends: containers
-  elif !impl(ghc >=8.0) && True
-    build-depends: semigroups
-    if flag(some-flag)
-       build-depends: nested
   else
     build-depends: void
 

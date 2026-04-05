@@ -192,10 +192,8 @@ configureToolchain _implInfo ghcProg ghcInfo =
 
     ccFlags = getFlags "C compiler flags"
     cxxFlags = getFlags "C++ compiler flags"
-    -- GHC 7.8 renamed "Gcc Linker flags" to "C compiler link flags"
-    -- and "Ld Linker flags" to "ld flags" (GHC #4862).
-    gccLinkerFlags = getFlags "Gcc Linker flags" ++ getFlags "C compiler link flags"
-    ldLinkerFlags = getFlags "Ld Linker flags" ++ getFlags "ld flags"
+    gccLinkerFlags = getFlags "C compiler link flags"
+    ldLinkerFlags = getFlags "ld flags"
 
     -- It appears that GHC 7.6 and earlier encode the tokenized flags as a
     -- [String] in these settings whereas later versions just encode the flags as
@@ -271,11 +269,9 @@ configureToolchain _implInfo ghcProg ghcInfo =
         else return ldProg
 
 getLanguages
-  :: Verbosity
-  -> GhcImplInfo
-  -> ConfiguredProgram
+  :: GhcImplInfo
   -> IO [(Language, String)]
-getLanguages _ implInfo _
+getLanguages implInfo
   -- TODO: should be using --supported-languages rather than hard coding
   | supportsGHC2024 implInfo =
       return
@@ -290,12 +286,11 @@ getLanguages _ implInfo _
         , (Haskell2010, "-XHaskell2010")
         , (Haskell98, "-XHaskell98")
         ]
-  | supportsHaskell2010 implInfo =
+  | otherwise =
       return
         [ (Haskell98, "-XHaskell98")
         , (Haskell2010, "-XHaskell2010")
         ]
-  | otherwise = return [(Haskell98, "")]
 
 getGhcInfo
   :: Verbosity
@@ -317,45 +312,18 @@ getGhcInfo verbosity _implInfo ghcProg = do
 
 getExtensions
   :: Verbosity
-  -> GhcImplInfo
   -> ConfiguredProgram
   -> IO [(Extension, Maybe String)]
-getExtensions verbosity implInfo ghcProg = do
+getExtensions verbosity ghcProg = do
   str <-
     getProgramOutput
       verbosity
       (suppressOverrideArgs ghcProg)
       ["--supported-languages"]
-  let extStrs =
-        if reportsNoExt implInfo
-          then lines str
-          else -- Older GHCs only gave us either Foo or NoFoo,
-          -- so we have to work out the other one ourselves
-
-            [ extStr''
-            | extStr <- lines str
-            , let extStr' = case extStr of
-                    'N' : 'o' : xs -> xs
-                    _ -> "No" ++ extStr
-            , extStr'' <- [extStr, extStr']
-            ]
-  let extensions0 =
-        [ (ext, Just $ "-X" ++ prettyShow ext)
-        | Just ext <- map simpleParsec extStrs
-        ]
-      extensions1 =
-        if alwaysNondecIndent implInfo
-          then -- ghc-7.2 split NondecreasingIndentation off
-          -- into a proper extension. Before that it
-          -- was always on.
-          -- Since it was not a proper extension, it could
-          -- not be turned off, hence we omit a
-          -- DisableExtension entry here.
-
-            (EnableExtension NondecreasingIndentation, Nothing)
-              : extensions0
-          else extensions0
-  return extensions1
+  return
+    [ (ext, Just $ "-X" ++ prettyShow ext)
+    | Just ext <- map simpleParsec $ lines str
+    ]
 
 includePaths
   :: LocalBuildInfo

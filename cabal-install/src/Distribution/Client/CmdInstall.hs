@@ -143,10 +143,8 @@ import Distribution.Simple.Flag
   )
 import Distribution.Simple.GHC
   ( GhcEnvironmentFileEntry (..)
-  , GhcImplInfo (..)
   , ParseErrorExc
   , getGhcAppDir
-  , getImplInfo
   , ghcPlatformAndVersionString
   , readGhcEnvironmentFile
   , renderGhcEnvironmentFile
@@ -442,12 +440,9 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
   (compiler@Compiler{compilerId = CompilerId compilerFlavor compilerVersion}, platform, progDb) <-
     configCompilerEx hcFlavor hcPath hcPkg preProgDb verbosity
 
-  let
-    GhcImplInfo{supportsPkgEnvFiles} = getImplInfo compiler
-
   (usedPackageEnvFlag, envFile) <- getEnvFile clientInstallFlags platform compilerVersion
   (usedExistingPkgEnvFile, existingEnvEntries) <-
-    getExistingEnvEntries verbosity compilerFlavor supportsPkgEnvFiles envFile
+    getExistingEnvEntries verbosity compilerFlavor envFile
   packageDbs <- getPackageDbStack compiler projectConfigStoreDir projectConfigLogsDir projectConfigPackageDBs
   installedIndex <- getInstalledPackages verbosity compiler packageDbs progDb
 
@@ -534,7 +529,6 @@ installAction flags@NixStyleFlags{extraFlags, configFlags, installFlags, project
             verbosity
             buildCtx
             installedIndex
-            compiler
             packageDbs
             envFile
             nonGlobalEnvEntries'
@@ -960,7 +954,6 @@ installLibraries
   :: Verbosity
   -> ProjectBuildContext
   -> PI.PackageIndex InstalledPackageInfo
-  -> Compiler
   -> PackageDBStackCWD
   -> FilePath
   -- ^ Environment file
@@ -973,62 +966,54 @@ installLibraries
   verbosity
   buildCtx
   installedIndex
-  compiler
   packageDbs'
   envFile
   envEntries
   showWarning = do
-    if supportsPkgEnvFiles $ getImplInfo compiler
-      then do
-        let validDb (SpecificPackageDB fp) = doesPathExist fp
-            validDb _ = pure True
-        -- if a user "installs" a global package and no existing cabal db exists, none will be created.
-        -- this ensures we don't add the "phantom" path to the file.
-        packageDbs <- filterM validDb packageDbs'
-        let
-          getLatest =
-            (=<<) (maybeToList . safeHead . snd)
-              . take 1
-              . sortBy (comparing (Down . fst))
-              . PI.lookupPackageName installedIndex
-          globalLatest = concatMap getLatest globalPackages
-          globalEntries = GhcEnvFilePackageId . installedUnitId <$> globalLatest
-          baseEntries =
-            GhcEnvFileClearPackageDbStack : fmap GhcEnvFilePackageDb packageDbs
-          pkgEntries =
-            ordNub $
-              globalEntries
-                ++ envEntries
-                ++ entriesForLibraryComponents (targetsMap buildCtx)
-          contents' = renderGhcEnvironmentFile (baseEntries ++ pkgEntries)
-        createDirectoryIfMissing True (takeDirectory envFile)
-        writeFileAtomic envFile (BS.pack contents')
-        when showWarning $
-          warn verbosity $
-            "The libraries were installed by creating a global GHC environment file at:\n"
-              ++ envFile
-              ++ "\n"
-              ++ "\n"
-              ++ "The presence of such an environment file is likely to confuse or break other "
-              ++ "tools because it changes GHC's behaviour: it changes the default package set in "
-              ++ "ghc and ghci from its normal value (which is \"all boot libraries\"). GHC "
-              ++ "environment files are little-used and often not tested for.\n"
-              ++ "\n"
-              ++ "Furthermore, management of these environment files is still more difficult than "
-              ++ "it could be; see e.g. https://github.com/haskell/cabal/issues/6481 .\n"
-              ++ "\n"
-              ++ "Double-check that creating a global GHC environment file is really what you "
-              ++ "wanted! You can limit the effects of the environment file by creating it in a "
-              ++ "specific directory using the --package-env flag. For example, use:\n"
-              ++ "\n"
-              ++ "cabal install --lib <packages...> --package-env .\n"
-              ++ "\n"
-              ++ "to create the file in the current directory."
-      else
-        warn verbosity $
-          "The current compiler doesn't support safely installing libraries, "
-            ++ "so only executables will be available. (Library installation is "
-            ++ "supported on GHC 8.0+ only)"
+    let validDb (SpecificPackageDB fp) = doesPathExist fp
+        validDb _ = pure True
+    -- if a user "installs" a global package and no existing cabal db exists, none will be created.
+    -- this ensures we don't add the "phantom" path to the file.
+    packageDbs <- filterM validDb packageDbs'
+    let
+      getLatest =
+        (=<<) (maybeToList . safeHead . snd)
+          . take 1
+          . sortBy (comparing (Down . fst))
+          . PI.lookupPackageName installedIndex
+      globalLatest = concatMap getLatest globalPackages
+      globalEntries = GhcEnvFilePackageId . installedUnitId <$> globalLatest
+      baseEntries =
+        GhcEnvFileClearPackageDbStack : fmap GhcEnvFilePackageDb packageDbs
+      pkgEntries =
+        ordNub $
+          globalEntries
+            ++ envEntries
+            ++ entriesForLibraryComponents (targetsMap buildCtx)
+      contents' = renderGhcEnvironmentFile (baseEntries ++ pkgEntries)
+    createDirectoryIfMissing True (takeDirectory envFile)
+    writeFileAtomic envFile (BS.pack contents')
+    when showWarning $
+      warn verbosity $
+        "The libraries were installed by creating a global GHC environment file at:\n"
+          ++ envFile
+          ++ "\n"
+          ++ "\n"
+          ++ "The presence of such an environment file is likely to confuse or break other "
+          ++ "tools because it changes GHC's behaviour: it changes the default package set in "
+          ++ "ghc and ghci from its normal value (which is \"all boot libraries\"). GHC "
+          ++ "environment files are little-used and often not tested for.\n"
+          ++ "\n"
+          ++ "Furthermore, management of these environment files is still more difficult than "
+          ++ "it could be; see e.g. https://github.com/haskell/cabal/issues/6481 .\n"
+          ++ "\n"
+          ++ "Double-check that creating a global GHC environment file is really what you "
+          ++ "wanted! You can limit the effects of the environment file by creating it in a "
+          ++ "specific directory using the --package-env flag. For example, use:\n"
+          ++ "\n"
+          ++ "cabal install --lib <packages...> --package-env .\n"
+          ++ "\n"
+          ++ "to create the file in the current directory."
 
 -- See ticket #8894. This is safe to include any nonreinstallable boot pkg,
 -- but the particular package users will always expect to be in scope without specific installation
@@ -1287,12 +1272,11 @@ getEnvFile clientInstallFlags platform compilerVersion = do
 -- | Returns the list of @GhcEnvFilePackageId@ values already existing in the
 --   environment being operated on. The @Bool@ is @True@ if we took settings
 --   from an existing file, @False@ otherwise.
-getExistingEnvEntries :: Verbosity -> CompilerFlavor -> Bool -> FilePath -> IO (Bool, [GhcEnvironmentFileEntry FilePath])
-getExistingEnvEntries verbosity compilerFlavor supportsPkgEnvFiles envFile = do
+getExistingEnvEntries :: Verbosity -> CompilerFlavor -> FilePath -> IO (Bool, [GhcEnvironmentFileEntry FilePath])
+getExistingEnvEntries verbosity compilerFlavor envFile = do
   envFileExists <- doesFileExist envFile
   (usedExisting, allEntries) <-
     if (compilerFlavor == GHC || compilerFlavor == GHCJS)
-      && supportsPkgEnvFiles
       && envFileExists
       then catch ((True,) <$> readGhcEnvironmentFile envFile) $ \(_ :: ParseErrorExc) ->
         warn
