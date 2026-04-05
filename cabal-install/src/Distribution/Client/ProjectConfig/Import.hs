@@ -287,3 +287,6 @@ dupesMsg (duplicate, ds@(take 1 . sort -> dupes)) =
   vcat $
     ((text "Warning:" <+> int (length ds) <+> text "imports of" <+> text duplicate) <> semi)
       : ((\Dupes{..} -> duplicateImportMsg Disp.empty dupesImport (sort $ dupesImports \\ [dupesImport])) <$> dupes)
+
+-- $setup
+-- >>> import Text.PrettyPrint (render)
