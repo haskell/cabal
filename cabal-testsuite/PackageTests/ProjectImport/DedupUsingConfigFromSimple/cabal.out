@@ -1,1 +1,40 @@
 # cabal v2-build
+Warning: 2 imports of a-very-extra.config;
+  a-very-extra.config
+    imported by: cabal.project
+  a-very-extra.config
+    imported by: cabal.project
+Warning: 2 imports of an-extra.config;
+  an-extra.config
+    imported by: cabal.project
+  an-extra.config
+    imported by: cabal.project
+Warning: 10 imports of https://www.stackage.org/lts-21.25/cabal.config;
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: cabal.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: cabal.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: a-very-extra.config
+    imported by: cabal.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: a-very-extra.config
+    imported by: cabal.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: a-very-extra.config
+    imported by: cabal.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: a-very-extra.config
+    imported by: cabal.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: an-extra.config
+    imported by: cabal.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: an-extra.config
+    imported by: cabal.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: an-extra.config
+    imported by: cabal.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: an-extra.config
+    imported by: cabal.project
