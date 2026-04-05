@@ -162,7 +162,7 @@ import Distribution.Package
   , packageVersion
   )
 import Distribution.PackageDescription
-  ( GenericPackageDescription (..)
+  ( GenericPackageDescriptionWith (..)
   , PackageDescription
   )
 import qualified Distribution.PackageDescription as PackageDescription

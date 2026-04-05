@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -30,6 +32,8 @@ import Distribution.FieldGrammar
 import Distribution.Simple.Flag
 import Distribution.Utils.NubList (NubList (..))
 import qualified Distribution.Utils.NubList as NubList
+
+import qualified Distribution.Types.Modify as Mod
 
 -- | Like 'List' for usage with a 'FieldGrammar', but for 'Flag'.
 -- This enables to parse type aliases such as 'FilePath' that do not have 'Parsec' instances
@@ -73,10 +77,10 @@ alaNubList' _ _ = NubList'
 
 instance Newtype (NubList a) (NubList' sep wrapper a)
 
-instance (Newtype a b, Ord a, Sep sep, Parsec b) => Parsec (NubList' sep b a) where
+instance (Newtype a b, Ord a, Sep Mod.HasNoAnn sep, Parsec b) => Parsec (NubList' sep b a) where
   parsec = pack . NubList.toNubList . map (unpack :: b -> a) <$> parseSep (Proxy :: Proxy sep) parsec
 
-instance (Newtype a b, Sep sep, Pretty b) => Pretty (NubList' sep b a) where
+instance (Newtype a b, Sep Mod.HasNoAnn sep, Pretty b) => Pretty (NubList' sep b a) where
   pretty = prettySep (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . NubList.fromNubList . unpack
 
 remoteRepoGrammar :: RepoName -> ParsecFieldGrammar RemoteRepo RemoteRepo

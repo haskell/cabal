@@ -1,8 +1,17 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module Distribution.Types.PackageName
   ( PackageName
+  , PackageNameAnn
+  , PackageNameWith (..)
+  , unannotatePackageName
   , unPackageName
   , mkPackageName
   , unPackageNameST
@@ -15,7 +24,11 @@ import Prelude ()
 
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.Trivia
 import qualified Text.PrettyPrint as Disp
+
+import Data.Kind
+import qualified Distribution.Types.Modify as Mod
 
 -- | A package name.
 --
@@ -25,8 +38,31 @@ import qualified Text.PrettyPrint as Disp
 -- This type is opaque since @Cabal-2.0@
 --
 -- @since 2.0.0.2
-newtype PackageName = PackageName ShortText
-  deriving (Generic, Read, Show, Eq, Ord, Data)
+type PackageName = PackageNameWith Mod.HasNoAnn
+
+type PackageNameAnn = PackageNameWith Mod.HasAnn
+
+type family ModifyPackageName (m :: Mod.HasAnnotation) (a :: Type) where
+  ModifyPackageName Mod.HasNoAnn a = a
+  ModifyPackageName Mod.HasAnn a = Ann SurroundingText a
+
+newtype PackageNameWith (m :: Mod.HasAnnotation) = PackageName (ModifyPackageName m ShortText)
+  deriving (Generic)
+
+deriving instance Show PackageName
+deriving instance Read PackageName
+deriving instance Eq PackageName
+deriving instance Ord PackageName
+deriving instance Data PackageName
+
+deriving instance Show PackageNameAnn
+deriving instance Read PackageNameAnn
+deriving instance Eq PackageNameAnn
+deriving instance Ord PackageNameAnn
+deriving instance Data PackageNameAnn
+
+unannotatePackageName :: PackageNameWith Mod.HasAnn -> PackageName
+unannotatePackageName (PackageName pname) = PackageName (unAnn pname)
 
 -- | Convert 'PackageName' to 'String'
 unPackageName :: PackageName -> String
@@ -68,8 +104,14 @@ instance Structured PackageName
 instance Pretty PackageName where
   pretty = Disp.text . unPackageName
 
+instance Pretty PackageNameAnn where
+  pretty (PackageName (Ann t x)) = applyTriviaDoc t $ Disp.text $ fromShortText x
+
 instance Parsec PackageName where
   parsec = mkPackageName <$> parsecUnqualComponentName
+
+instance Parsec (PackageNameWith Mod.HasAnn) where
+  parsec = PackageName . Ann mempty . toShortText <$> parsecUnqualComponentName
 
 instance NFData PackageName where
   rnf (PackageName pkg) = rnf pkg

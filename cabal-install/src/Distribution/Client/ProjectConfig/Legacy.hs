@@ -136,8 +136,10 @@ import Distribution.Simple.Utils
   , noticeDoc
   )
 import Distribution.Types.CondTree
-  ( CondBranch (..)
-  , CondTree (..)
+  ( CondBranch
+  , CondBranchWith (..)
+  , CondTree
+  , CondTreeWith (..)
   , ignoreConditions
   , mapTreeConds
   , mapTreeData

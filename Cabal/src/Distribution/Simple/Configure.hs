@@ -1089,7 +1089,7 @@ addExtraIncludeLibDirsFromConfigFlags
   :: PackageDescription -> ConfigFlags -> PackageDescription
 addExtraIncludeLibDirsFromConfigFlags pkg_descr cfg =
   let extraBi =
-        mempty
+        (mempty :: BuildInfo)
           { extraLibDirs = configExtraLibDirs cfg
           , extraLibDirsStatic = configExtraLibDirsStatic cfg
           , extraFrameworkDirs = configExtraFrameworkDirs cfg
@@ -2487,7 +2487,7 @@ ccLdOptionsBuildInfo cflags ldflags ldflags_static =
       (extraLibDirs', ldflags'') = partition ("-L" `isPrefixOf`) ldflags'
       (extraLibsStatic') = filter ("-l" `isPrefixOf`) ldflags_static
       (extraLibDirsStatic') = filter ("-L" `isPrefixOf`) ldflags_static
-   in mempty
+   in (mempty :: BuildInfo)
         { includeDirs = map (makeSymbolicPath . drop 2) includeDirs'
         , extraLibs = map (drop 2) extraLibs'
         , extraLibDirs = map (makeSymbolicPath . drop 2) extraLibDirs'

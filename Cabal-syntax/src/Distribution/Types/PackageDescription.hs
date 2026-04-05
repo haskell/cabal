@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 
 -----------------------------------------------------------------------------
@@ -78,6 +79,7 @@ import Distribution.Types.ComponentName
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.Dependency
 import Distribution.Types.HookedBuildInfo
+import qualified Distribution.Types.Modify as Mod
 import Distribution.Types.PackageId
 import Distribution.Types.PackageName
 import Distribution.Types.SetupBuildInfo
@@ -456,7 +458,7 @@ getComponent pkg cname = fromMaybe missingComponent (lookupComponent pkg cname)
 -- -----------------------------------------------------------------------------
 -- Traversal Instances
 
-instance L.HasBuildInfos PackageDescription where
+instance L.HasBuildInfosWith Mod.HasNoAnn PackageDescription where
   traverseBuildInfos
     f
     ( PackageDescription

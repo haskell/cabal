@@ -22,7 +22,8 @@ import Distribution.Client.Utils (tryCanonicalizePath)
 
 import Distribution.PackageDescription
   ( Benchmark (..)
-  , BuildInfo (buildable)
+  , BuildInfo
+  , BuildInfoWith (buildable)
   , Executable (..)
   , PackageDescription (..)
   , TestSuite (..)

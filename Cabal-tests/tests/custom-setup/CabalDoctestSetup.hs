@@ -98,8 +98,8 @@ import Data.String
 import Distribution.Package
        (InstalledPackageId, Package (..))
 import Distribution.PackageDescription
-       (BuildInfo (..), Executable (..), GenericPackageDescription,
-       Library (..), PackageDescription, TestSuite (..))
+       (BuildInfo, Executable (..), GenericPackageDescription,
+       Library, LibraryWith (..), PackageDescription, TestSuite (..), BuildInfoWith (..))
 import Distribution.Simple
        (UserHooks (..), autoconfUserHooks, defaultMainWithHooks,
        simpleUserHooks)
@@ -142,9 +142,9 @@ import Distribution.Types.UnqualComponentName
 
 -- For amendGPD
 import Distribution.PackageDescription
-       (CondTree (..))
+       (CondTreeWith (..))
 import Distribution.Types.GenericPackageDescription
-       (GenericPackageDescription (condTestSuites))
+       (GenericPackageDescriptionWith (condTestSuites))
 
 import Distribution.Version
        (mkVersion)
