@@ -105,7 +105,7 @@ instance Show (ProjectNode a) where show = prettyShow
 -- | Sorts the same as 'ProjectConfigPath' does.
 instance Ord (ProjectNode a) where
   compare =
-    compare
+    (compare :: ProjectConfigPath -> ProjectConfigPath -> Ordering)
       `on` ( \case
               ProjectRoot root -> ProjectConfigPath $ root :| []
               ProjectFileImport importOf importBy -> consProjectConfigPath importOf importBy
@@ -204,10 +204,14 @@ seenImportMsg intro projectNode seenImports =
   where
     duplicate = importOf projectNode
     path = importBy projectNode
+
+    importOf :: ProjectNode a -> FilePath
     importOf = \case
       ProjectRoot dup -> dup
       ProjectFileImport dup _ -> dup
       ProjectUriImport dup _ -> show dup
+
+    importBy :: ProjectNode a -> Maybe ProjectConfigPath
     importBy = \case
       ProjectRoot _ -> Nothing
       ProjectFileImport _ by -> Just by
