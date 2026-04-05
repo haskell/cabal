@@ -3,6 +3,7 @@ import: project-cabal/pkgs/cabal.config
 import: project-cabal/pkgs/tests.config
 import: project-cabal/pkgs/integration-tests.config
 import: project-cabal/constraints.config
+import: project-cabal/source-deps.config
 
 tests: True
 write-ghc-environment-files: never

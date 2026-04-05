@@ -2,6 +2,7 @@ import: project-cabal/ghc-options.config
 import: project-cabal/ghc-latest.config
 import: project-cabal/pkgs.config
 import: project-cabal/constraints.config
+import: project-cabal/source-deps.config
 
 tests: True
 write-ghc-environment-files: never
