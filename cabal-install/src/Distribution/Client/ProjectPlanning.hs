@@ -2380,6 +2380,17 @@ elaborateInstallPlan
                     ]
                 )
                 (perPkgOptionMapMappend pkgid packageConfigProgramArgs)
+            elabNormalisedProgramArgs =
+              Map.unionWith
+                (++)
+                ( Map.fromList
+                    [ (programId prog, args)
+                    | prog <- configuredPrograms compilerprogdb
+                    , let args = programOverrideArgs $ addHaddockIfDocumentationEnabled prog
+                    , not (null args)
+                    ]
+                )
+                (perPkgOptionMapMappend pkgid packageConfigProgramArgs)
             elabProgramPathExtra = perPkgOptionNubList pkgid packageConfigProgramPathExtra
             elabConfiguredPrograms = configuredPrograms compilerprogdb
             elabConfigureScriptArgs = perPkgOptionList pkgid packageConfigConfigureArgs
@@ -4516,7 +4527,7 @@ packageHashConfigInputs shared@ElaboratedSharedConfig{..} pkg =
     , pkgHashStripLibs = stripLibs
     , pkgHashStripExes = stripExes
     , pkgHashDebugInfo = withDebugInfo
-    , pkgHashProgramArgs = elabProgramArgs
+    , pkgHashProgramArgs = elabNormalisedProgramArgs
     , pkgHashExtraLibDirs = elabExtraLibDirs
     , pkgHashExtraLibDirsStatic = elabExtraLibDirsStatic
     , pkgHashExtraFrameworkDirs = elabExtraFrameworkDirs
