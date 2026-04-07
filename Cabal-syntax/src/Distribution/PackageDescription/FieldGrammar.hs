@@ -1,4 +1,5 @@
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -177,6 +178,7 @@ libraryFieldGrammar
      , Applicative (g (LibraryWith mod))
      , Applicative (g (BuildInfoWith mod))
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
+     , TargetBuildDepends mod [DependencyWith mod] ~ [DependencyWith mod]
      , c (Identity LibraryVisibility)
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
      , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
@@ -214,8 +216,8 @@ libraryFieldGrammar n =
       LSubLibName _ ->
         optionalFieldDef "visibility" L.libVisibility LibraryVisibilityPrivate
           ^^^ availableSince CabalSpecV3_0 LibraryVisibilityPrivate
-{-# SPECIALIZE libraryFieldGrammar :: LibraryName -> ParsecFieldGrammar' LibraryAnn #-}
-{-# SPECIALIZE libraryFieldGrammar :: LibraryName -> PrettyFieldGrammar' LibraryAnn #-}
+-- {-# SPECIALIZE libraryFieldGrammar :: LibraryName -> ParsecFieldGrammar' LibraryAnn #-}
+-- {-# SPECIALIZE libraryFieldGrammar :: LibraryName -> PrettyFieldGrammar' LibraryAnn #-}
 
 -------------------------------------------------------------------------------
 -- Foreign library
@@ -591,6 +593,13 @@ buildInfoFieldGrammar
    . ( FieldGrammar c g
      , Applicative (g (BuildInfoWith mod))
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
+     -- NOTE(leana8959): This constraint is here for the time being to parse legacy BuildInfo without Annotation.
+     -- To make this fully polymorphic (and lift this constraint), we need to choose between monoidalFieldAla and monoidalFieldAlaAnn using the type.
+     -- This might force us to add one more new type param to the FieldGrammar type class and render things more complicated,
+     -- so we leave it for later and ponder on it.
+     --
+     -- Also, do we need the legacy parser? I think we can reimplement the old behaviour by "fmap unannotate" into the Field Grammar.
+     , TargetBuildDepends mod [DependencyWith mod] ~ [DependencyWith mod]
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
      , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
      , c (List CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
@@ -694,22 +703,8 @@ buildInfoFieldGrammar =
     <*> monoidalFieldAla "build-depends" (formatDependencyList @mod) L.targetBuildDepends
     <*> monoidalFieldAla "mixins" formatMixinList L.mixins
       ^^^ availableSince CabalSpecV2_0 []
-{-# SPECIALIZE buildInfoFieldGrammar :: ParsecFieldGrammar' BuildInfoAnn #-}
-{-# SPECIALIZE buildInfoFieldGrammar :: PrettyFieldGrammar' BuildInfoAnn #-}
-
-
-onlyBuildDepends
-  :: forall mod c g
-   . ( FieldGrammar c g
-     , Applicative (g (BuildInfoWith mod))
-     , L.HasBuildInfoWith mod (BuildInfoWith mod)
-     , L.HasBuildInfoWith mod [DependencyWith mod]
-     , c (List CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
-     )
-  => g [DependencyWith mod] [DependencyWith mod]
-onlyBuildDepends = monoidalFieldAla "build-depends" (formatDependencyList @mod) L.targetBuildDepends
-{-# SPECIALIZE onlyBuildDepends :: ParsecFieldGrammar' [DependencyAnn] #-}
-{-# SPECIALIZE onlyBuildDepends :: PrettyFieldGrammar' [DependencyAnn] #-}
+-- {-# SPECIALIZE buildInfoFieldGrammar :: ParsecFieldGrammar' BuildInfoAnn #-}
+-- {-# SPECIALIZE buildInfoFieldGrammar :: PrettyFieldGrammar' BuildInfoAnn #-}
 
 onlyBuildDependsPos
   :: forall mod c g
@@ -718,11 +713,7 @@ onlyBuildDependsPos
      , c (List CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
      )
   => g [(Positions, [DependencyWith mod])] [(Positions, [DependencyWith mod])]
-onlyBuildDependsPos =
-  monoidalFieldAlaAnn
-    "build-depends"
-    (formatDependencyList @mod)
-    id
+onlyBuildDependsPos = monoidalFieldAlaAnn "build-depends" (formatDependencyList @mod) id
 
 hsSourceDirsGrammar
   :: forall mod c g
@@ -741,8 +732,8 @@ hsSourceDirsGrammar =
       ^^^ removedIn CabalSpecV3_0 "Please use 'hs-source-dirs' field."
   where
     wrongLens f bi = (\fps -> set (L.hsSourceDirs @mod) fps bi) <$> f []
-{-# SPECIALIZE hsSourceDirsGrammar :: ParsecFieldGrammar BuildInfoAnn [SymbolicPath Pkg (Dir Source)] #-}
-{-# SPECIALIZE hsSourceDirsGrammar :: PrettyFieldGrammar BuildInfoAnn [SymbolicPath Pkg (Dir Source)] #-}
+-- {-# SPECIALIZE hsSourceDirsGrammar :: ParsecFieldGrammar BuildInfoAnn [SymbolicPath Pkg (Dir Source)] #-}
+-- {-# SPECIALIZE hsSourceDirsGrammar :: PrettyFieldGrammar BuildInfoAnn [SymbolicPath Pkg (Dir Source)] #-}
 
 optionsFieldGrammar
   :: forall mod c g
@@ -764,8 +755,8 @@ optionsFieldGrammar =
     <* knownField "nhc98-options"
   where
     extract flavor = L.options @mod . lookupLens flavor
-{-# SPECIALIZE optionsFieldGrammar :: ParsecFieldGrammar BuildInfoAnn (PerCompilerFlavor [String]) #-}
-{-# SPECIALIZE optionsFieldGrammar :: PrettyFieldGrammar BuildInfoAnn (PerCompilerFlavor [String]) #-}
+-- {-# SPECIALIZE optionsFieldGrammar :: ParsecFieldGrammar BuildInfoAnn (PerCompilerFlavor [String]) #-}
+-- {-# SPECIALIZE optionsFieldGrammar :: PrettyFieldGrammar BuildInfoAnn (PerCompilerFlavor [String]) #-}
 
 profOptionsFieldGrammar
   :: forall mod c g
@@ -781,8 +772,8 @@ profOptionsFieldGrammar =
     <*> monoidalFieldAla "ghcjs-prof-options" (alaList' NoCommaFSep Token') (extract GHCJS)
   where
     extract flavor = L.profOptions @mod . lookupLens flavor
-{-# SPECIALIZE profOptionsFieldGrammar :: ParsecFieldGrammar BuildInfoAnn (PerCompilerFlavor [String]) #-}
-{-# SPECIALIZE profOptionsFieldGrammar :: PrettyFieldGrammar BuildInfoAnn (PerCompilerFlavor [String]) #-}
+-- {-# SPECIALIZE profOptionsFieldGrammar :: ParsecFieldGrammar BuildInfoAnn (PerCompilerFlavor [String]) #-}
+-- {-# SPECIALIZE profOptionsFieldGrammar :: PrettyFieldGrammar BuildInfoAnn (PerCompilerFlavor [String]) #-}
 
 sharedOptionsFieldGrammar
   :: forall mod c g

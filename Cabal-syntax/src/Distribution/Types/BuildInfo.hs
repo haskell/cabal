@@ -10,6 +10,7 @@ module Distribution.Types.BuildInfo
   ( BuildInfo
   , BuildInfoAnn
   , BuildInfoWith (..)
+  , TargetBuildDepends
   , unannotateDependencyAnn
   , emptyBuildInfo
   , allLanguages
@@ -26,6 +27,7 @@ module Distribution.Types.BuildInfo
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Distribution.Trivia
 import Distribution.Types.Dependency
 import Distribution.Types.ExeDependency
 import Distribution.Types.LegacyExeDependency
@@ -43,6 +45,10 @@ import qualified Distribution.Types.Modify as Mod
 
 type BuildInfo = BuildInfoWith Mod.HasNoAnn
 type BuildInfoAnn = BuildInfoWith Mod.HasAnn
+
+type family TargetBuildDepends (mod :: Mod.HasAnnotation) (a :: Type) where
+  TargetBuildDepends Mod.HasAnn a = (Positions, a)
+  TargetBuildDepends Mod.HasNoAnn a = a
 
 -- Consider refactoring into executable and library versions.
 data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
@@ -156,7 +162,7 @@ data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
   -- ^ Custom fields starting
   --  with x-, stored in a
   --  simple assoc-list.
-  , targetBuildDepends :: [DependencyWith m]
+  , targetBuildDepends :: TargetBuildDepends m [DependencyWith m]
   -- ^ Dependencies specific to a library or executable target
   , mixins :: [Mixin]
   }
@@ -175,7 +181,7 @@ instance NFData BuildInfo where rnf = genericRnf
 unannotateBuildInfo :: BuildInfoAnn -> BuildInfo
 unannotateBuildInfo bi =
   bi
-    { targetBuildDepends = map unannotateDependencyAnn (targetBuildDepends bi)
+    { targetBuildDepends = map unannotateDependencyAnn $ snd (targetBuildDepends bi)
     }
 
 instance Monoid BuildInfo where

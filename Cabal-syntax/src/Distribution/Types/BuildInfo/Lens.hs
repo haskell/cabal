@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ExplicitForAll #-}
@@ -182,7 +183,7 @@ class HasBuildInfoWith mod a | a -> mod where
   customFieldsBI :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [(String, String)]
   customFieldsBI = buildInfo @mod . customFieldsBI @mod
 
-  targetBuildDepends :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [DependencyWith mod]
+  targetBuildDepends :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (T.TargetBuildDepends mod [DependencyWith mod])
   targetBuildDepends = buildInfo @mod . targetBuildDepends @mod
 
   mixins :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [Mixin]
