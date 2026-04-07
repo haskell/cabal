@@ -739,6 +739,29 @@ miniBuildInfoFieldGrammarAnn =
   MiniBuildInfo <$>
     monoidalFieldAlaAnn "build-depends" (formatDependencyList @Mod.HasAnn) miniTargetBuildDependsLens
 
+convertTargetBuildDepends
+  :: TargetBuildDepends Mod.HasAnn
+  -> TargetBuildDepends Mod.HasNoAnn
+convertTargetBuildDepends = join . map (map unannotateDependencyAnn . snd)
+
+unannotateMiniBuildInfo
+  :: MiniBuildInfo Mod.HasAnn
+  -> MiniBuildInfo Mod.HasNoAnn
+unannotateMiniBuildInfo (MiniBuildInfo x) = MiniBuildInfo (convertTargetBuildDepends x)
+
+miniBuildInfoFieldGrammarAnn'
+  :: forall c g
+   . ( FieldGrammar c g
+     , Applicative (g (MiniBuildInfo Mod.HasAnn))
+     , c (List CommaVCat (Identity (DependencyWith Mod.HasAnn)) (DependencyWith Mod.HasAnn))
+     )
+  => g (MiniBuildInfo Mod.HasAnn) (MiniBuildInfo Mod.HasNoAnn)
+miniBuildInfoFieldGrammarAnn' = fmap unannotateMiniBuildInfo miniBuildInfoFieldGrammarAnn
+
+-- NOTE(leana8959):
+-- For the parser, this parses with HasNoAnn (post processes the parse result)
+-- For the printer, this prints with HasNoAnn (shifts the focus)
+
 hsSourceDirsGrammar
   :: forall mod c g
    . ( FieldGrammar c g
