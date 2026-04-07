@@ -76,15 +76,6 @@ instance Pretty Glob where
 instance Parsec Glob where
   parsec = parsecPath
     where
-      parsecPath :: CabalParsing m => m Glob
-      parsecPath = do
-        globOrRec <- parsecGlobOrRec
-        case globOrRec of
-          Left glob ->
-            dirSep *> (GlobDir glob <$> parsecPath <|> pure (GlobDir glob GlobDirTrailing)) <|> pure (GlobFile glob)
-          Right () -> do
-            dirSep *> (GlobDirRecursive <$> parsecGlob)
-
       dirSep :: CabalParsing m => m ()
       dirSep =
         () <$ P.char '/'
@@ -95,10 +86,16 @@ instance Parsec Glob where
                 P.notFollowedBy (P.satisfy isGlobEscapedChar)
             )
 
-      parsecGlobOrRec :: CabalParsing m => m (Either GlobPieces ())
-      parsecGlobOrRec =
-        Right () <$ P.try (P.string "**")
-          <|> Left <$> parsecGlob
+      parsecPath :: CabalParsing m => m Glob
+      parsecPath =
+        P.choice
+          [ do
+              P.try (P.string "**" *> dirSep)
+              GlobDirRecursive <$> parsecGlob
+          , do
+              glob <- parsecGlob
+              dirSep *> (GlobDir glob <$> parsecPath <|> pure (GlobDir glob GlobDirTrailing)) <|> pure (GlobFile glob)
+          ]
 
       parsecGlob :: CabalParsing m => m GlobPieces
       parsecGlob = some parsecPiece
