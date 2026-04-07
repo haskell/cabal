@@ -712,11 +712,11 @@ data MiniBuildInfo (m :: Mod.HasAnnotation) = MiniBuildInfo
   }
 
 miniTargetBuildDependsLens
-  :: forall f
+  :: forall mod f
    . Functor f
-  => (TargetBuildDepends Mod.HasAnn -> f (TargetBuildDepends Mod.HasAnn))
-  -> (MiniBuildInfo Mod.HasAnn)
-  -> f (MiniBuildInfo Mod.HasAnn)
+  => (TargetBuildDepends mod -> f (TargetBuildDepends mod))
+  -> (MiniBuildInfo mod)
+  -> f (MiniBuildInfo mod)
 miniTargetBuildDependsLens f s = fmap (\x -> s{miniTargetBuildDepends = x}) (f (miniTargetBuildDepends s))
 
 onlyBuildDependsPos
@@ -728,17 +728,16 @@ onlyBuildDependsPos
   => g (TargetBuildDepends Mod.HasAnn) (TargetBuildDepends Mod.HasAnn)
 onlyBuildDependsPos = monoidalFieldAlaAnn "build-depends" (formatDependencyList @Mod.HasAnn) id
 
-miniBuildInfoFieldGrammar
+miniBuildInfoFieldGrammarAnn
   :: forall c g
    . ( FieldGrammar c g
      , Applicative (g (MiniBuildInfo Mod.HasAnn))
      , c (List CommaVCat (Identity (DependencyWith Mod.HasAnn)) (DependencyWith Mod.HasAnn))
      )
   => g (MiniBuildInfo Mod.HasAnn) (MiniBuildInfo Mod.HasAnn)
-miniBuildInfoFieldGrammar =
-  -- blurFieldGrammar (miniTargetBuildDepends) onlyBuildDependsPos
+miniBuildInfoFieldGrammarAnn =
   MiniBuildInfo <$>
-    monoidalFieldAlaAnn "build-depends" (formatDependencyList @Mod.HasAnn) (miniTargetBuildDependsLens)
+    monoidalFieldAlaAnn "build-depends" (formatDependencyList @Mod.HasAnn) miniTargetBuildDependsLens
 
 hsSourceDirsGrammar
   :: forall mod c g
