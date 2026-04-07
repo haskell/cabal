@@ -33,16 +33,17 @@ import Data.List (isInfixOf)
 --  +-- yops/yops-9.config (no further imports)
 main = do
   -- NOTE: Options are --project-file-parser=<legacy|default|parsec|fallback|compare>
-  cabalTest' "parser-legacy" . recordMode RecordMarked $ runTest (yProjectOpts "legacy") (wProjectOpts "legacy")
-  cabalTest' "parser-default" . recordMode RecordMarked $ runTest (yProjectOpts "default") (wProjectOpts "default")
-  cabalTest' "parser-parsec" . recordMode RecordMarked $ runTest (yProjectOpts "parsec") (wProjectOpts "parsec")
-  cabalTest' "parser-fallback" . recordMode RecordMarked $ runTest (yProjectOpts "fallback") (wProjectOpts "fallback")
+  cabalTest' "parser-legacy" $ recordTest (yProjectOpts "legacy") (wProjectOpts "legacy")
+  cabalTest' "parser-default" $ recordTest (yProjectOpts "default") (wProjectOpts "default")
+  cabalTest' "parser-parsec" $ recordTest (yProjectOpts "parsec") (wProjectOpts "parsec")
+  cabalTest' "parser-fallback" $ recordTest (yProjectOpts "fallback") (wProjectOpts "fallback")
 
-  cabalTest' "script-parser-legacy" . recordMode RecordMarked $ runTest (yScriptOpts "legacy") (wScriptOpts "legacy")
-  cabalTest' "script-parser-default" . recordMode RecordMarked $ runTest (yScriptOpts "default") (wScriptOpts "default")
-  cabalTest' "script-parser-parsec" . recordMode RecordMarked $ runTest (yScriptOpts "parsec") (wScriptOpts "parsec")
-  cabalTest' "script-parser-fallback" . recordMode RecordMarked $ runTest (yScriptOpts "fallback") (wScriptOpts "fallback")
+  cabalTest' "script-parser-legacy" $ recordTest (yScriptOpts "legacy") (wScriptOpts "legacy")
+  cabalTest' "script-parser-default" $ recordTest (yScriptOpts "default") (wScriptOpts "default")
+  cabalTest' "script-parser-parsec" $ recordTest (yScriptOpts "parsec") (wScriptOpts "parsec")
+  cabalTest' "script-parser-fallback" $ recordTest (yScriptOpts "fallback") (wScriptOpts "fallback")
   where
+    recordTest yOpts wOpts = recordMode RecordMarked $ runTest yOpts wOpts
     log = recordHeader . pure
 
     yProjectOpts parser = [ "--project-file=yops-0.project", "--project-file-parser=" ++ parser, "--dry-run" ]
