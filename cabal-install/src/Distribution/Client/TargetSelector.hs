@@ -165,8 +165,8 @@ import qualified Prelude (foldr1)
 
 -- ------------------------------------------------------------
 
--- | A target selector is expression selecting a set of components (as targets
--- for a actions like @build@, @run@, @test@ etc). A target selector
+-- | A target selector is an expression selecting a set of components (as targets
+-- for actions like @build@, @run@, @test@ etc). A target selector
 -- corresponds to the user syntax for referring to targets on the command line.
 --
 -- From the users point of view a target can be many things: packages, dirs,
