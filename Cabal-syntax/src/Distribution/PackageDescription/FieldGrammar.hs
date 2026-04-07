@@ -1,4 +1,5 @@
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DataKinds #-}
@@ -706,16 +707,16 @@ buildInfoFieldGrammar =
 -- {-# SPECIALIZE buildInfoFieldGrammar :: ParsecFieldGrammar' BuildInfoAnn #-}
 -- {-# SPECIALIZE buildInfoFieldGrammar :: PrettyFieldGrammar' BuildInfoAnn #-}
 
-data MiniBuildInfo = MiniBuildInfo
-  { miniTargetBuildDepends :: TargetBuildDepends Mod.HasAnn
+data MiniBuildInfo (m :: Mod.HasAnnotation) = MiniBuildInfo
+  { miniTargetBuildDepends :: TargetBuildDepends m
   }
 
-miniTargetBuildDependsLens 
+miniTargetBuildDependsLens
   :: forall f
    . Functor f
-  => ([(Positions, [DependencyWith Mod.HasAnn])] -> f [(Positions, [DependencyWith Mod.HasAnn])])
-  -> MiniBuildInfo
-  -> f MiniBuildInfo
+  => (TargetBuildDepends Mod.HasAnn -> f (TargetBuildDepends Mod.HasAnn))
+  -> (MiniBuildInfo Mod.HasAnn)
+  -> f (MiniBuildInfo Mod.HasAnn)
 miniTargetBuildDependsLens f s = fmap (\x -> s{miniTargetBuildDepends = x}) (f (miniTargetBuildDepends s))
 
 onlyBuildDependsPos
@@ -730,11 +731,10 @@ onlyBuildDependsPos = monoidalFieldAlaAnn "build-depends" (formatDependencyList 
 miniBuildInfoFieldGrammar
   :: forall c g
    . ( FieldGrammar c g
-     , Applicative (g MiniBuildInfo)
-     , Applicative (g (BuildInfoWith Mod.HasAnn))
+     , Applicative (g (MiniBuildInfo Mod.HasAnn))
      , c (List CommaVCat (Identity (DependencyWith Mod.HasAnn)) (DependencyWith Mod.HasAnn))
      )
-  => g MiniBuildInfo MiniBuildInfo
+  => g (MiniBuildInfo Mod.HasAnn) (MiniBuildInfo Mod.HasAnn)
 miniBuildInfoFieldGrammar =
   -- blurFieldGrammar (miniTargetBuildDepends) onlyBuildDependsPos
   MiniBuildInfo <$>
