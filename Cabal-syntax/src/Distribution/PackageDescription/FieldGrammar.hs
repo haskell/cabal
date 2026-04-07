@@ -178,7 +178,7 @@ libraryFieldGrammar
      , Applicative (g (LibraryWith mod))
      , Applicative (g (BuildInfoWith mod))
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
-     , TargetBuildDepends mod [DependencyWith mod] ~ [DependencyWith mod]
+     , TargetBuildDepends mod ~ [DependencyWith mod]
      , c (Identity LibraryVisibility)
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
      , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
@@ -599,7 +599,7 @@ buildInfoFieldGrammar
      -- so we leave it for later and ponder on it.
      --
      -- Also, do we need the legacy parser? I think we can reimplement the old behaviour by "fmap unannotate" into the Field Grammar.
-     , TargetBuildDepends mod [DependencyWith mod] ~ [DependencyWith mod]
+     , TargetBuildDepends mod ~ [DependencyWith mod]
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
      , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
      , c (List CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)

@@ -47,9 +47,9 @@ import qualified Distribution.Types.Modify as Mod
 type BuildInfo = BuildInfoWith Mod.HasNoAnn
 type BuildInfoAnn = BuildInfoWith Mod.HasAnn
 
-type family TargetBuildDepends (mod :: Mod.HasAnnotation) (a :: Type) where
-  TargetBuildDepends Mod.HasAnn a = [(Positions, a)]
-  TargetBuildDepends Mod.HasNoAnn a = a
+type family TargetBuildDepends (mod :: Mod.HasAnnotation) where
+  TargetBuildDepends Mod.HasAnn = [(Positions, [DependencyWith Mod.HasAnn])]
+  TargetBuildDepends Mod.HasNoAnn = [DependencyWith Mod.HasNoAnn]
 
 -- Consider refactoring into executable and library versions.
 data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
@@ -163,7 +163,7 @@ data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
   -- ^ Custom fields starting
   --  with x-, stored in a
   --  simple assoc-list.
-  , targetBuildDepends :: TargetBuildDepends m [DependencyWith m]
+  , targetBuildDepends :: TargetBuildDepends m
   -- ^ Dependencies specific to a library or executable target
   , mixins :: [Mixin]
   }

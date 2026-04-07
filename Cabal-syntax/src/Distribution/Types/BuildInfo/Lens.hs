@@ -183,7 +183,7 @@ class HasBuildInfoWith mod a | a -> mod where
   customFieldsBI :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [(String, String)]
   customFieldsBI = buildInfo @mod . customFieldsBI @mod
 
-  targetBuildDepends :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (T.TargetBuildDepends mod [DependencyWith mod])
+  targetBuildDepends :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (T.TargetBuildDepends mod)
   targetBuildDepends = buildInfo @mod . targetBuildDepends @mod
 
   mixins :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [Mixin]
