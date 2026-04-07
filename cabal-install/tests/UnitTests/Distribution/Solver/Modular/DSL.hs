@@ -86,6 +86,7 @@ import Distribution.Client.Dependency
 import qualified Distribution.Client.SolverInstallPlan as CI.SolverInstallPlan
 import Distribution.Client.Types
 
+import Data.Foldable (fold)
 import Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.ConstraintSource
@@ -417,7 +418,7 @@ exAvSrcPkg ex =
             usedFlags :: Map ExampleFlagName C.PackageFlag
             usedFlags = Map.fromList [(fn, mkDefaultFlag fn) | fn <- names]
               where
-                names = extractFlags $ CD.flatDeps (exAvDeps ex)
+                names = extractFlags $ fold (exAvDeps ex)
          in -- 'declaredFlags' overrides 'usedFlags' to give flags non-default settings:
             Map.elems $ declaredFlags `Map.union` usedFlags
 

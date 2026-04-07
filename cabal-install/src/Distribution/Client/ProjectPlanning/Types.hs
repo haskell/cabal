@@ -119,6 +119,7 @@ import Distribution.Utils.Path (getSymbolicPath)
 import Distribution.Version
 
 import qualified Data.ByteString.Lazy as LBS
+import Data.Foldable (fold)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Monoid as Mon
@@ -558,7 +559,7 @@ elabOrderDependencies elab =
   case elabPkgOrComp elab of
     -- Important not to have duplicates: otherwise InstallPlan gets
     -- confused.
-    ElabPackage pkg -> ordNub (CD.flatDeps (pkgOrderDependencies pkg))
+    ElabPackage pkg -> ordNub (fold (pkgOrderDependencies pkg))
     ElabComponent comp -> compOrderDependencies comp
 
 -- | Like 'elabOrderDependencies', but only returns dependencies on
@@ -569,7 +570,7 @@ elabOrderLibDependencies elab =
     ElabPackage pkg ->
       map (newSimpleUnitId . confInstId) $
         ordNub $
-          CD.flatDeps (map fst <$> pkgLibDependencies pkg)
+          fold (map fst <$> pkgLibDependencies pkg)
     ElabComponent comp -> compOrderLibDependencies comp
 
 -- | The library dependencies (i.e., the libraries we depend on, NOT
