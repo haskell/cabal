@@ -1,10 +1,10 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
--- TODO
-{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -----------------------------------------------------------------------------
 
@@ -765,9 +765,7 @@ disambiguateTargetSelectors matcher matchInput exactMatch matchResults =
           Left
             ( originalMatch
             , [ (forgetFileStatus rendering, matches)
-              | rendering <- matchRenderings
-              , let Match m _ matches =
-                      memoisedMatches Map.! rendering
+              | rendering@((memoisedMatches Map.!?) -> Just (Match m _ matches)) <- matchRenderings
               , m /= Inexact
               ]
             )
@@ -1107,7 +1105,7 @@ syntaxForm1File ps =
   -- all the other forms we don't require that.
   syntaxForm1 render $ \str1 fstatus1 ->
     expecting "file" str1 $ do
-      (pkgfile, ~KnownPackage{pinfoId, pinfoComponents}) <-
+      (pkgfile, KnownPackage{pinfoId, pinfoComponents}) <-
         -- always returns the KnownPackage case
         matchPackageDirectoryPrefix ps fstatus1
       orNoThingIn "package" (prettyShow (packageName pinfoId)) $ do
@@ -1722,44 +1720,41 @@ syntaxForm3 :: Renderer -> Match3 -> Syntax
 syntaxForm4 :: Renderer -> Match4 -> Syntax
 syntaxForm5 :: Renderer -> Match5 -> Syntax
 syntaxForm7 :: Renderer -> Match7 -> Syntax
-syntaxForm1 render f =
-  Syntax QL1 match render
+syntaxForm1 render f = Syntax QL1 match render
   where
-    match = \(TargetStringFileStatus1 str1 fstatus1) ->
-      f str1 fstatus1
+    match = \case
+      TargetStringFileStatus1 str1 fstatus1 -> f str1 fstatus1
+      _ -> mzero
 
-syntaxForm2 render f =
-  Syntax QL2 match render
+syntaxForm2 render f = Syntax QL2 match render
   where
-    match = \(TargetStringFileStatus2 str1 fstatus1 str2) ->
-      f str1 fstatus1 str2
+    match = \case
+      TargetStringFileStatus2 str1 fstatus1 str2 -> f str1 fstatus1 str2
+      _ -> mzero
 
-syntaxForm3 render f =
-  Syntax QL3 match render
+syntaxForm3 render f = Syntax QL3 match render
   where
-    match = \(TargetStringFileStatus3 str1 fstatus1 str2 str3) ->
-      f str1 fstatus1 str2 str3
+    match = \case
+      TargetStringFileStatus3 str1 fstatus1 str2 str3 -> f str1 fstatus1 str2 str3
+      _ -> mzero
 
-syntaxForm4 render f =
-  Syntax QLFull match render
+syntaxForm4 render f = Syntax QLFull match render
   where
-    match (TargetStringFileStatus4 str1 str2 str3 str4) =
-      f str1 str2 str3 str4
-    match _ = mzero
+    match = \case
+      TargetStringFileStatus4 str1 str2 str3 str4 -> f str1 str2 str3 str4
+      _ -> mzero
 
-syntaxForm5 render f =
-  Syntax QLFull match render
+syntaxForm5 render f = Syntax QLFull match render
   where
-    match (TargetStringFileStatus5 str1 str2 str3 str4 str5) =
-      f str1 str2 str3 str4 str5
-    match _ = mzero
+    match = \case
+      TargetStringFileStatus5 str1 str2 str3 str4 str5 -> f str1 str2 str3 str4 str5
+      _ -> mzero
 
-syntaxForm7 render f =
-  Syntax QLFull match render
+syntaxForm7 render f = Syntax QLFull match render
   where
-    match (TargetStringFileStatus7 str1 str2 str3 str4 str5 str6 str7) =
-      f str1 str2 str3 str4 str5 str6 str7
-    match _ = mzero
+    match = \case
+      TargetStringFileStatus7 str1 str2 str3 str4 str5 str6 str7 -> f str1 str2 str3 str4 str5 str6 str7
+      _ -> mzero
 
 dispP :: Package p => p -> String
 dispP = prettyShow . packageName
@@ -2390,6 +2385,9 @@ instance Monad Match where
 instance MonadPlus Match where
   mzero = empty
   mplus = matchPlus
+
+instance MonadFail Match where
+  fail _ = mzero
 
 (</>) :: Match a -> Match a -> Match a
 (</>) = matchPlusShadowing
