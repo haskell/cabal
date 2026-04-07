@@ -587,7 +587,6 @@ testRecursiveGlobRemoveMatchSubSubdir mtimeChange =
     reason <- expectMonitorChanged root monitor ()
     reason @?= MonitoredFileChanged ("dir" </> "a" </> "a" </> "good-a")
 
-
 testGlobChangeMatchSubdir :: Int -> Assertion
 testGlobChangeMatchSubdir mtimeChange =
   withFileMonitor $ \root monitor -> do
