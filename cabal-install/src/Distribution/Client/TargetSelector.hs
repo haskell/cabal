@@ -1132,7 +1132,7 @@ syntaxForm2MetaAll =
       [TargetStringFileStatus2 "" noFileStatus "all"]
     render _ = []
 
--- | Syntax:  all : filer
+-- | Syntax:  all : filter
 --
 -- > cabal build all:tests
 syntaxForm2AllFilter :: Syntax
@@ -1146,7 +1146,7 @@ syntaxForm2AllFilter =
       [TargetStringFileStatus2 "all" noFileStatus (dispF kfilter)]
     render _ = []
 
--- | Syntax:  package : filer
+-- | Syntax:  package : filter
 --
 -- > cabal build foo:tests
 syntaxForm2PackageFilter :: [KnownPackage] -> Syntax
