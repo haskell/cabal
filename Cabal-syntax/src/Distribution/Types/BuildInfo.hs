@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -47,7 +48,7 @@ type BuildInfo = BuildInfoWith Mod.HasNoAnn
 type BuildInfoAnn = BuildInfoWith Mod.HasAnn
 
 type family TargetBuildDepends (mod :: Mod.HasAnnotation) (a :: Type) where
-  TargetBuildDepends Mod.HasAnn a = (Positions, a)
+  TargetBuildDepends Mod.HasAnn a = [(Positions, a)]
   TargetBuildDepends Mod.HasNoAnn a = a
 
 -- Consider refactoring into executable and library versions.
@@ -181,7 +182,11 @@ instance NFData BuildInfo where rnf = genericRnf
 unannotateBuildInfo :: BuildInfoAnn -> BuildInfo
 unannotateBuildInfo bi =
   bi
-    { targetBuildDepends = map unannotateDependencyAnn $ snd (targetBuildDepends bi)
+    { targetBuildDepends =
+                  mconcat
+                $ (fmap . fmap) unannotateDependencyAnn
+                $ map snd
+                $ targetBuildDepends bi
     }
 
 instance Monoid BuildInfo where
