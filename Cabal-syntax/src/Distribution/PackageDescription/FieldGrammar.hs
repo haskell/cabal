@@ -1,4 +1,5 @@
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -87,6 +88,7 @@ import Distribution.Parsec
 import Distribution.Pretty (Pretty (..), prettyShow, showToken)
 import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
+import Distribution.Trivia (Positions (..))
 
 import qualified Distribution.Types.Modify as Mod
 
@@ -709,6 +711,19 @@ onlyBuildDepends = monoidalFieldAla "build-depends" (formatDependencyList @mod) 
 {-# SPECIALIZE onlyBuildDepends :: ParsecFieldGrammar' [DependencyAnn] #-}
 {-# SPECIALIZE onlyBuildDepends :: PrettyFieldGrammar' [DependencyAnn] #-}
 
+onlyBuildDependsPos
+  :: forall mod c g
+   . ( FieldGrammar c g
+     , Applicative (g (BuildInfoWith mod))
+     , c (List CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
+     )
+  => g [(Positions, [DependencyWith mod])] [(Positions, [DependencyWith mod])]
+onlyBuildDependsPos =
+  monoidalFieldAlaAnn
+    "build-depends"
+    (formatDependencyList @mod)
+    id
+
 hsSourceDirsGrammar
   :: forall mod c g
    . ( FieldGrammar c g
@@ -725,7 +740,6 @@ hsSourceDirsGrammar =
       ^^^ deprecatedSince CabalSpecV1_2 "Please use 'hs-source-dirs'"
       ^^^ removedIn CabalSpecV3_0 "Please use 'hs-source-dirs' field."
   where
-    -- -- TODO: make pretty printer aware of CabalSpecVersion
     wrongLens f bi = (\fps -> set (L.hsSourceDirs @mod) fps bi) <$> f []
 {-# SPECIALIZE hsSourceDirsGrammar :: ParsecFieldGrammar BuildInfoAnn [SymbolicPath Pkg (Dir Source)] #-}
 {-# SPECIALIZE hsSourceDirsGrammar :: PrettyFieldGrammar BuildInfoAnn [SymbolicPath Pkg (Dir Source)] #-}

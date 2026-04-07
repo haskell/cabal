@@ -140,15 +140,14 @@ class
   --
   -- /Note:/ 'optionalFieldAla' is a @monoidalField@ with 'Last' monoid.
   monoidalFieldAlaAnn
-    :: (c b, Monoid u, Newtype a b)
+    :: (c b, Newtype a b)
     => FieldName
     -- ^ field name
     -> (a -> b)
     -- ^ 'pack'
-    -> ALens' s a
+    -> ALens' s [(Positions, a)]
     -- ^ lens into the field
-    -> (Positions -> a -> u)
-    -> g s u
+    -> g s [(Positions, a)]
 
   -- | Parser matching all fields with a name starting with a prefix.
   prefixedFields

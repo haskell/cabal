@@ -78,7 +78,6 @@ import Distribution.Utils.Generic (fromUTF8BS)
 import Distribution.Utils.String (trim)
 import Prelude ()
 
-import Data.Monoid (Last (..))
 import qualified Data.ByteString as BS
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
@@ -297,25 +296,27 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
   --
   -- This function allows us to manage the position coming from a parsed field
   -- In the printer, it can... IDK? Annotate the pretty doc position?
+  --
+  -- - merging is defered
+  -- - position is retained in each result
   monoidalFieldAlaAnn
-    :: forall b a s u
-     . (Parsec b, Monoid u, Newtype a b)
+    :: forall b a s
+     . (Parsec b, Newtype a b)
     => FieldName
     -> (a -> b)
-    -> ALens' s a
-    -> (Positions -> a -> u)
-    -> ParsecFieldGrammar s u
-  monoidalFieldAlaAnn fn _pack _extract attachPos = ParsecFG (Set.singleton fn) Set.empty parser
+    -> ALens' s [(Positions, a)]
+    -> ParsecFieldGrammar s [(Positions, a)]
+  monoidalFieldAlaAnn fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
-      parser :: CabalSpecVersion -> Fields Position -> ParseResult src u
+      parser :: CabalSpecVersion -> Fields Position -> ParseResult src [(Positions, a)]
       parser v fields = case Map.lookup fn fields of
         Nothing -> pure mempty
-        Just xs -> foldMap (\(p, b) -> attachPos p $ unpack' _pack b) <$> traverse (parseOne v) xs
+        Just xs -> map (\(p, a) -> (p,) $ unpack' _pack a) <$> traverse (parseOne v) xs
 
       parseOne :: CabalSpecVersion -> NamelessField Position -> ParseResult src (Positions, b)
       parseOne v (MkNamelessField pos fls) = do
         (linePos, x) <- runFieldParser pos (liftA2 (,) (liftParsec P.getPosition) parsec) v fls
-        pure (Positions (Just pos) (undefined linePos) Nothing, x)
+        pure (Positions (Just pos) (error "convert linePos" linePos) Nothing, x)
 
   prefixedFields fnPfx _extract = ParsecFG mempty (Set.singleton fnPfx) (\_ fs -> pure (parser fs))
     where
