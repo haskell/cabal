@@ -57,10 +57,14 @@ tests mtimeChange =
       , testCase "add match sub-subdir, recursive glob" $ testRecursiveGlobAddMatchSubSubdir mtimeChange
       , testCase "add match new sub-subdir, recursive glob" $ testRecursiveGlobAddMatchNewSubSubdir mtimeChange
       , testCase "remove match subdir" $ testGlobRemoveMatchSubdir mtimeChange
+      , testCase "remove match subdir, recursive glob" $ testRecursiveGlobRemoveMatchSubdir mtimeChange
+      , testCase "remove match sub-subdir, recursive glob" $ testRecursiveGlobRemoveMatchSubSubdir mtimeChange
       , testCase "change match subdir" $ testGlobChangeMatchSubdir mtimeChange
+      , testCase "change match subdir, recursive glob" $ testRecursiveGlobChangeMatchSubdir mtimeChange
       , testCase "match toplevel dir" $ testGlobMatchTopDir mtimeChange
       , testCase "add non-match" $ testGlobAddNonMatch mtimeChange
       , testCase "remove non-match" $ testGlobRemoveNonMatch mtimeChange
+      , testCase "remove non-match, recursive glob" $ testRecursiveGlobRemoveNonMatch mtimeChange
       , knownBrokenInWindows "See issue #3126" $
           testCase "add non-match subdir" $
             testGlobAddNonMatchSubdir mtimeChange
@@ -536,9 +540,9 @@ testRecursiveGlobAddMatchSubSubdir mtimeChange =
     touchFile root ("dir" </> "a" </> "b" </> "good-b")
     updateMonitor root monitor [monitorFileGlobStr "dir/**/good-*"] () ()
     threadDelay mtimeChange
-    touchFile root ("dir" </> "a" </> "b" </> "good-b")
+    touchFile root ("dir" </> "a" </> "b" </> "good-c")
     reason <- expectMonitorChanged root monitor ()
-    reason @?= MonitoredFileChanged ("dir" </> "a" </> "b" </> "good-b")
+    reason @?= MonitoredFileChanged ("dir" </> "a" </> "b" </> "good-c")
 
 testRecursiveGlobAddMatchNewSubSubdir :: Int -> Assertion
 testRecursiveGlobAddMatchNewSubSubdir mtimeChange =
@@ -561,6 +565,29 @@ testGlobRemoveMatchSubdir mtimeChange =
     reason <- expectMonitorChanged root monitor ()
     reason @?= MonitoredFileChanged ("dir" </> "a" </> "good-a")
 
+testRecursiveGlobRemoveMatchSubdir :: Int -> Assertion
+testRecursiveGlobRemoveMatchSubdir mtimeChange =
+  withFileMonitor $ \root monitor -> do
+    touchFile root ("dir" </> "a" </> "a" </> "good-a")
+    touchFile root ("dir" </> "b" </> "b" </> "good-b")
+    updateMonitor root monitor [monitorFileGlobStr "dir/**/good-*"] () ()
+    threadDelay mtimeChange
+    removeDir root ("dir" </> "a")
+    reason <- expectMonitorChanged root monitor ()
+    reason @?= MonitoredFileChanged ("dir" </> "a" </> "a" </> "good-a")
+
+testRecursiveGlobRemoveMatchSubSubdir :: Int -> Assertion
+testRecursiveGlobRemoveMatchSubSubdir mtimeChange =
+  withFileMonitor $ \root monitor -> do
+    touchFile root ("dir" </> "a" </> "a" </> "good-a")
+    touchFile root ("dir" </> "a" </> "b" </> "good-b")
+    updateMonitor root monitor [monitorFileGlobStr "dir/**/good-*"] () ()
+    threadDelay mtimeChange
+    removeDir root ("dir" </> "a" </> "a")
+    reason <- expectMonitorChanged root monitor ()
+    reason @?= MonitoredFileChanged ("dir" </> "a" </> "a" </> "good-a")
+
+
 testGlobChangeMatchSubdir :: Int -> Assertion
 testGlobChangeMatchSubdir mtimeChange =
   withFileMonitor $ \root monitor -> do
@@ -576,6 +603,22 @@ testGlobChangeMatchSubdir mtimeChange =
     touchFileContent root "dir/b/good-b"
     reason <- expectMonitorChanged root monitor ()
     reason @?= MonitoredFileChanged ("dir" </> "b" </> "good-b")
+
+testRecursiveGlobChangeMatchSubdir :: Int -> Assertion
+testRecursiveGlobChangeMatchSubdir mtimeChange =
+  withFileMonitor $ \root monitor -> do
+    touchFile root ("dir" </> "a" </> "c" </> "good-a")
+    touchFile root ("dir" </> "b" </> "c" </> "good-b")
+    updateMonitor root monitor [monitorFileGlobStr "dir/**/good-*"] () ()
+    threadDelay mtimeChange
+    touchFile root ("dir" </> "b" </> "c" </> "good-b")
+    (res, files) <- expectMonitorUnchanged root monitor ()
+    res @?= ()
+    files @?= [monitorFileGlobStr "dir/**/good-*"]
+
+    touchFileContent root "dir/b/c/good-b"
+    reason <- expectMonitorChanged root monitor ()
+    reason @?= MonitoredFileChanged ("dir" </> "b" </> "c" </> "good-b")
 
 -- check nothing goes squiffy with matching in the top dir
 testGlobMatchTopDir :: Int -> Assertion
@@ -609,6 +652,18 @@ testGlobRemoveNonMatch mtimeChange =
     (res, files) <- expectMonitorUnchanged root monitor ()
     res @?= ()
     files @?= [monitorFileGlobStr "dir/good-*"]
+
+testRecursiveGlobRemoveNonMatch :: Int -> Assertion
+testRecursiveGlobRemoveNonMatch mtimeChange =
+  withFileMonitor $ \root monitor -> do
+    touchFile root ("dir" </> "a" </> "good-a")
+    touchFile root ("dir" </> "b" </> "bad")
+    updateMonitor root monitor [monitorFileGlobStr "dir/**/good-*"] () ()
+    threadDelay mtimeChange
+    removeFile root "dir/b/bad"
+    (res, files) <- expectMonitorUnchanged root monitor ()
+    res @?= ()
+    files @?= [monitorFileGlobStr "dir/**/good-*"]
 
 testGlobAddNonMatchSubdir :: Int -> Assertion
 testGlobAddNonMatchSubdir mtimeChange =
