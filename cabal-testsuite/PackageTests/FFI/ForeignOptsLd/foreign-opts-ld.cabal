@@ -1,0 +1,15 @@
+cabal-version:       2.2
+name:                foreign-opts-ld
+version:             0.1
+build-type:          Simple
+
+executable foreign-opts-ld-exe
+  main-is:             Main.hs
+  build-depends:       base
+  default-language:    Haskell2010
+  include-dirs:        cbits
+  c-sources:           cbits/ldlib.c
+  -- Redirect calls to meaning_of_life_ld_real to __wrap_meaning_of_life_ld_real.
+  -- If ld-options are not passed the real function (returning 0) is called instead
+  -- of the wrapper (returning 55), and the test fails at runtime.
+  ld-options:          -Wl,--wrap=meaning_of_life_ld_real

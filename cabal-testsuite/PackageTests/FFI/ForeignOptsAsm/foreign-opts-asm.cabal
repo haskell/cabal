@@ -1,0 +1,17 @@
+cabal-version:       3.0
+name:                foreign-opts-asm
+version:             0.1
+build-type:          Simple
+
+executable foreign-opts-asm-exe
+  main-is:             Main.hs
+  build-depends:       base
+  default-language:    Haskell2010
+  include-dirs:        abits
+  if os(windows)
+    asm-sources:       abits/asmlib_x86_64_windows.S
+  elif os(darwin)
+    asm-sources:       abits/asmlib_x86_64_darwin.S
+  elif os(linux)
+    asm-sources:       abits/asmlib_x86_64_linux.S
+  asm-options:         -DMEANING_OF_LIFE_VAL=33
