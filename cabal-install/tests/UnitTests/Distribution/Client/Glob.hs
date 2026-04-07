@@ -120,7 +120,6 @@ testParseCases = do
     FilePathRelative
     (GlobFile [WildCard, WildCard]) <-
     testparse "**" -- not helpful, but valid (?)
-
   RootedGlob
     FilePathRelative
     (GlobFile [WildCard, Literal "foo", WildCard]) <-
