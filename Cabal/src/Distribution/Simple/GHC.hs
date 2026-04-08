@@ -60,7 +60,6 @@ module Distribution.Simple.GHC
   , hcPkgInfo
   , registerPackage
   , Internal.componentGhcOptions
-  , Internal.componentCcGhcOptions
   , getGhcAppDir
   , getLibDir
   , compilerBuildWay
@@ -825,7 +824,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
           , ghcOptFPic = toFlag True
           , ghcOptHiSuffix = toFlag "dyn_hi"
           , ghcOptObjSuffix = toFlag "dyn_o"
-          , ghcOptExtra = hcOptions GHC libBi ++ hcSharedOptions GHC libBi
+          , ghcOptExtra = hcSharedOptions GHC libBi
           }
     profArgs =
       vanillaArgs
@@ -837,7 +836,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
                 (withProfLibDetail lbi)
           , ghcOptHiSuffix = toFlag "p_hi"
           , ghcOptObjSuffix = toFlag "p_o"
-          , ghcOptExtra = hcOptions GHC libBi ++ hcProfOptions GHC libBi
+          , ghcOptExtra = hcProfOptions GHC libBi
           }
     profDynArgs =
       vanillaArgs
@@ -851,7 +850,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
           , ghcOptFPic = toFlag True
           , ghcOptHiSuffix = toFlag "p_dyn_hi"
           , ghcOptObjSuffix = toFlag "p_dyn_o"
-          , ghcOptExtra = hcOptions GHC libBi ++ hcProfSharedOptions GHC libBi
+          , ghcOptExtra = hcProfSharedOptions GHC libBi
           }
     ghcArgs =
       let (libWays, _, _) = buildWays lbi
