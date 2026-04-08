@@ -174,6 +174,8 @@ warnMultipleSingularFields fn (x : xs) = do
 instance FieldGrammar Parsec ParsecFieldGrammar where
   blurFieldGrammar _ (ParsecFG s s' parser) = ParsecFG s s' parser
 
+  contramapFieldGrammar _ (ParsecFG fs prefs p) = ParsecFG fs prefs p
+
   uniqueFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
       parser v fields = case Map.lookup fn fields of

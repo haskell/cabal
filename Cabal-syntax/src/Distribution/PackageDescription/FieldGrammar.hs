@@ -758,10 +758,6 @@ miniBuildInfoFieldGrammarAnn'
   => g (MiniBuildInfo Mod.HasAnn) (MiniBuildInfo Mod.HasNoAnn)
 miniBuildInfoFieldGrammarAnn' = fmap unannotateMiniBuildInfo miniBuildInfoFieldGrammarAnn
 
--- NOTE(leana8959):
--- For the parser, this parses with HasNoAnn (post processes the parse result)
--- For the printer, this prints with HasNoAnn (shifts the focus)
-
 hsSourceDirsGrammar
   :: forall mod c g
    . ( FieldGrammar c g

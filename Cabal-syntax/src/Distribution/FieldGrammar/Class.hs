@@ -47,6 +47,12 @@ class
   -- | Unfocus, zoom out, /blur/ 'FieldGrammar'.
   blurFieldGrammar :: ALens' a b -> g b d -> g a d
 
+  -- NOTE(leana8959): this is not what I wanted
+  -- This allows turning a printer with annotation to one without annotation,
+  -- but would mean that we insert dummy annotations and it's up to the Pretty instances to figure that out.
+  -- Very not ideal.
+  contramapFieldGrammar :: (a -> b) -> g b d -> g a d
+
   -- | Field which should be defined, exactly once.
   uniqueFieldAla
     :: (c b, Newtype a b)

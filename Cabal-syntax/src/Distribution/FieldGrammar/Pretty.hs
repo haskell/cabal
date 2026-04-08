@@ -42,6 +42,8 @@ prettyFieldGrammar = flip fieldGrammarPretty
 instance FieldGrammar Pretty PrettyFieldGrammar where
   blurFieldGrammar f (PrettyFG pp) = PrettyFG (\v -> pp v . aview f)
 
+  contramapFieldGrammar f (PrettyFG pp) = PrettyFG $ \v -> pp v . f
+
   uniqueFieldAla fn _pack l = PrettyFG $ \_v s ->
     ppField fn (pretty (pack' _pack (aview l s)))
 
