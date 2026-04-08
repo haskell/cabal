@@ -74,7 +74,7 @@ preBuildRules PreBuildComponentInputs{..} = do
 
   let preprocessFile PPArgs{..} = do
         let verbosity = mkVerbosity defaultVerbosityHandles verbosityFlags
-        warn verbosity $ "Preprocessing: " ++ srcPath ++ " -> " ++ dstPath
+        warn verbosity $ "Preprocessing: " ++ normalise srcPath ++ " -> " ++ normalise dstPath
         (modLine : inputLines) <- lines <$> readFile srcPath
         let hsSrc =
               unlines
