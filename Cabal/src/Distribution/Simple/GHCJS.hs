@@ -24,7 +24,6 @@ module Distribution.Simple.GHCJS
   , hcPkgInfo
   , registerPackage
   , componentGhcOptions
-  , Internal.componentCcGhcOptions
   , getLibDir
   , isDynamic
   , getGlobalPackageDB
@@ -1443,13 +1442,24 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
     sequence_
       [ do
         let baseCxxOpts =
-              Internal.componentCxxGhcOptions
-                (verbosityLevel verbosity)
-                lbi
-                bnfo
-                clbi
-                tmpDir
-                filename
+              (Internal.sourcesGhcOptions (verbosityLevel verbosity) lbi bnfo clbi odir filename)
+                { -- C++ compiler options: GHC >= 8.10 requires -optcxx, older requires -optc
+                  -- we want to be able to support cxx-options and cc-options separately
+                  -- https://gitlab.haskell.org/ghc/ghc/-/issues/16477
+                  -- see example in cabal-testsuite/PackageTests/FFI/ForeignOptsCxx
+                  ghcOptCcOptions =
+                    Internal.ghcOptionsSince
+                      (mkVersion [8, 10])
+                      (compiler lbi)
+                      (Internal.optimizationCFlags lbi ++ ccOptions bnfo)
+                , -- Use -pgmc to ensure that Cabal always passes cc-options, ld-options to GHC (#4435, #9801)
+                  -- We can only do this on GHC >= 9.4, as we need https://gitlab.haskell.org/ghc/ghc/-/merge_requests/6949
+                  -- Without that GHC MR, this change would cause GHC to never pass -no-pie when linking,
+                  -- which can cause breakage depending on the C toolchain use. Otherwise,
+                  -- we pass the flag only to source files #11712
+                  -- see example in cabal-testsuite/PackageTests/FFI/ForeignOptsPgmc
+                  ghcOptCcProgram = maybeToFlag $ programPath <$> lookupProgram gccProgram (withPrograms lbi)
+                }
             vanillaCxxOpts =
               if isGhcDynamic
                 then -- Dynamic GHC requires C++ sources to be built
@@ -1489,13 +1499,24 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
     sequence_
       [ do
         let baseCcOpts =
-              Internal.componentCcGhcOptions
-                (verbosityLevel verbosity)
-                lbi
-                bnfo
-                clbi
-                tmpDir
-                filename
+              (Internal.sourcesGhcOptions (verbosityLevel verbosity) lbi bnfo clbi tmpDir filename)
+                { -- C++ compiler options: GHC >= 8.10 requires -optcxx, older requires -optc
+                  -- we want to be able to support cxx-options and cc-options separately
+                  -- https://gitlab.haskell.org/ghc/ghc/-/issues/16477
+                  -- see example in cabal-testsuite/PackageTests/FFI/ForeignOptsC
+                  ghcOptCxxOptions =
+                    Internal.ghcOptionsSince
+                      (mkVersion [8, 10])
+                      (compiler lbi)
+                      (Internal.optimizationCFlags lbi ++ cxxOptions bnfo)
+                , -- Use -pgmc to ensure that Cabal always passes cc-options, ld-options to GHC (#4435, #9801)
+                  -- We can only do this on GHC >= 9.4, as we need https://gitlab.haskell.org/ghc/ghc/-/merge_requests/6949
+                  -- Without that GHC MR, this change would cause GHC to never pass -no-pie when linking,
+                  -- which can cause breakage depending on the C toolchain use. Otherwise,
+                  -- we pass the flag only to source files #11712
+                  -- see example in cabal-testsuite/PackageTests/FFI/ForeignOptsPgmc
+                  ghcOptCcProgram = maybeToFlag $ programPath <$> lookupProgram gccProgram (withPrograms lbi)
+                }
             vanillaCcOpts =
               if isGhcDynamic
                 then -- Dynamic GHC requires C sources to be built

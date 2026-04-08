@@ -10,6 +10,7 @@ import Control.Monad
 import Data.Foldable
 import Distribution.Simple.Flag
 import qualified Distribution.Simple.GHC.Internal as Internal
+import Distribution.Simple.Program
 import Distribution.Simple.Program.GHC
 import Distribution.Simple.Utils
 import Distribution.Utils.NubList
@@ -17,12 +18,12 @@ import Distribution.Utils.NubList
 import Distribution.Types.BuildInfo
 import Distribution.Types.Component
 import Distribution.Types.TargetInfo
+import Distribution.Types.Version
 
 import Distribution.Simple.Build.Inputs
-import Distribution.Simple.GHC.Build.Modules
+import Distribution.Simple.BuildWay
 import Distribution.Simple.GHC.Build.Utils
 import Distribution.Simple.LocalBuildInfo
-import Distribution.Simple.Program.Types
 import Distribution.Simple.Setup.Common (commonSetupTempFileOptions)
 import Distribution.System (Arch (JavaScript), Platform (..))
 import Distribution.Types.ComponentLocalBuildInfo
@@ -77,7 +78,26 @@ buildCSources
 buildCSources mbMainFile =
   buildExtraSources
     "C Sources"
-    Internal.componentCcGhcOptions
+    ( \verbosity lbi bi clbi odir filename ->
+        (Internal.sourcesGhcOptions verbosity lbi bi clbi odir filename)
+          { -- C++ compiler options: GHC >= 8.10 requires -optcxx, older requires -optc
+            -- we want to be able to support cxx-options and cc-options separately
+            -- https://gitlab.haskell.org/ghc/ghc/-/issues/16477
+            -- see example in cabal-testsuite/PackageTests/FFI/ForeignOptsC
+            ghcOptCxxOptions =
+              Internal.ghcOptionsSince
+                (mkVersion [8, 10])
+                (compiler lbi)
+                (Internal.optimizationCFlags lbi ++ cxxOptions bi)
+          , -- Use -pgmc to ensure that Cabal always passes cc-options, ld-options to GHC (#4435, #9801)
+            -- We can only do this on GHC >= 9.4, as we need https://gitlab.haskell.org/ghc/ghc/-/merge_requests/6949
+            -- Without that GHC MR, this change would cause GHC to never pass -no-pie when linking,
+            -- which can cause breakage depending on the C toolchain use. Otherwise,
+            -- we pass the flag only to source files #11712
+            -- see example in cabal-testsuite/PackageTests/FFI/ForeignOptsPgmc
+            ghcOptCcProgram = maybeToFlag $ programPath <$> lookupProgram gccProgram (withPrograms lbi)
+          }
+    )
     ( \c -> do
         let cFiles = cSources (componentBuildInfo c)
         case c of
@@ -90,7 +110,26 @@ buildCSources mbMainFile =
 buildCxxSources mbMainFile =
   buildExtraSources
     "C++ Sources"
-    Internal.componentCxxGhcOptions
+    ( \verbosity lbi bi clbi odir filename ->
+        (Internal.sourcesGhcOptions verbosity lbi bi clbi odir filename)
+          { -- C++ compiler options: GHC >= 8.10 requires -optcxx, older requires -optc
+            -- we want to be able to support cxx-options and cc-options separately
+            -- https://gitlab.haskell.org/ghc/ghc/-/issues/16477
+            -- see example in cabal-testsuite/PackageTests/FFI/ForeignOptsCxx
+            ghcOptCcOptions =
+              Internal.ghcOptionsSince
+                (mkVersion [8, 10])
+                (compiler lbi)
+                (Internal.optimizationCFlags lbi ++ ccOptions bi)
+          , -- Use -pgmc to ensure that Cabal always passes cc-options, ld-options to GHC (#4435, #9801)
+            -- We can only do this on GHC >= 9.4, as we need https://gitlab.haskell.org/ghc/ghc/-/merge_requests/6949
+            -- Without that GHC MR, this change would cause GHC to never pass -no-pie when linking,
+            -- which can cause breakage depending on the C toolchain use. Otherwise,
+            -- we pass the flag only to source files #11712
+            -- see example in cabal-testsuite/PackageTests/FFI/ForeignOptsPgmc
+            ghcOptCcProgram = maybeToFlag $ programPath <$> lookupProgram gccProgram (withPrograms lbi)
+          }
+    )
     ( \c -> do
         let cxxFiles = cxxSources (componentBuildInfo c)
         case c of
@@ -105,7 +144,7 @@ buildJsSources _mbMainFile ghcProg buildTargetDir neededWays verbHandles = do
   let hasJsSupport = hostArch == JavaScript
   buildExtraSources
     "JS Sources"
-    Internal.componentJsGhcOptions
+    Internal.sourcesGhcOptions
     ( \c ->
         if hasJsSupport
           then -- JS files are C-like with GHC's JS backend: they are
@@ -122,12 +161,12 @@ buildJsSources _mbMainFile ghcProg buildTargetDir neededWays verbHandles = do
 buildAsmSources _mbMainFile =
   buildExtraSources
     "Assembler Sources"
-    Internal.componentAsmGhcOptions
+    Internal.sourcesGhcOptions
     (asmSources . componentBuildInfo)
 buildCmmSources _mbMainFile =
   buildExtraSources
     "C-- Sources"
-    Internal.componentCmmGhcOptions
+    Internal.sourcesGhcOptions
     (cmmSources . componentBuildInfo)
 
 -- | Create 'PreBuildComponentRules' for a given type of extra build sources
@@ -145,9 +184,7 @@ buildExtraSources
        -> GhcOptions
      )
   -- ^ Function to determine the @'GhcOptions'@ for the
-  -- invocation of GHC when compiling these extra sources (e.g.
-  -- @'Internal.componentCxxGhcOptions'@,
-  -- @'Internal.componentCmmGhcOptions'@)
+  -- invocation of GHC when compiling these extra sources
   -> (Component -> [SymbolicPath Pkg File])
   -- ^ View the extra sources of a component, typically from
   -- the build info (e.g. @'asmSources'@, @'cSources'@).
