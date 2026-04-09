@@ -86,7 +86,8 @@ tests = testGroup "parsec tests"
     , errorTests
     , ipiTests
     , parsecPrettyTests
-    , miniBulidInfoDemoTest
+    , miniBuildInfoAnnTest
+    , miniBuildInfoTest
     ]
 
 -------------------------------------------------------------------------------
@@ -256,8 +257,8 @@ parsecPrettyTests = testGroup "parsec pretty roundtrip" $
   where
     optionals cond ifTrue = if cond then ifTrue else []
 
-miniBulidInfoDemoTest :: TestTree
-miniBulidInfoDemoTest = testCase "miniBuildInfo" $ do
+miniBuildInfoAnnTest :: TestTree
+miniBuildInfoAnnTest = testCase "miniBuildInfo Ann" $ do
   fields <- readFields <$> BS.readFile input >>= \case
       Left err -> fail $ "readFields: err"
       Right ok -> pure ok
@@ -265,6 +266,27 @@ miniBulidInfoDemoTest = testCase "miniBuildInfo" $ do
   -- We ignore sections now, which necessite goSections to dispatch field gramamr parsers
   let (frontFields, _sections) = takeFields fields
       pr :: ParseResult src (MiniBuildInfo Mod.HasAnn)
+      pr = parseFieldGrammar CabalSpecV3_0 frontFields miniBuildInfoFieldGrammar
+
+      (_warns, pr') = runParseResult pr
+
+  pr'' <- case pr' of
+    Left (_, errs) -> fail "ERROR in running field grammar"
+    Right ok -> pure $ ok
+
+  pPrint pr''
+  where
+    input = "tests" </> "ParserTests" </> "miniBuildInfoDemo.cabal"
+
+miniBuildInfoTest :: TestTree
+miniBuildInfoTest = testCase "miniBuildInfo NoAnn" $ do
+  fields <- readFields <$> BS.readFile input >>= \case
+      Left err -> fail $ "readFields: err"
+      Right ok -> pure ok
+
+  -- We ignore sections now, which necessite goSections to dispatch field gramamr parsers
+  let (frontFields, _sections) = takeFields fields
+      pr :: ParseResult src (MiniBuildInfo Mod.HasNoAnn)
       pr = parseFieldGrammar CabalSpecV3_0 frontFields miniBuildInfoFieldGrammar
 
       (_warns, pr') = runParseResult pr

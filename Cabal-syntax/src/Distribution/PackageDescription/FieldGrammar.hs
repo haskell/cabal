@@ -717,6 +717,7 @@ data MiniBuildInfo (m :: Mod.HasAnnotation) = MiniBuildInfo
   }
 
 deriving instance Show (MiniBuildInfo Mod.HasAnn)
+deriving instance Show (MiniBuildInfo Mod.HasNoAnn)
 
 miniTargetBuildDependsPolyLens
   :: forall mod f

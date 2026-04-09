@@ -296,6 +296,7 @@ instance FieldGrammarWith Mod.HasNoAnn Parsec ParsecFieldGrammar where
       parseOne :: CabalSpecVersion -> NamelessField Position -> ParseResult src b
       parseOne v (MkNamelessField pos fls) = runFieldParser pos parsec v fls
 
+  monoidalFieldAla' = monoidalFieldAla
 
   prefixedFields fnPfx _extract = ParsecFG mempty (Set.singleton fnPfx) (\_ fs -> pure (parser fs))
     where
