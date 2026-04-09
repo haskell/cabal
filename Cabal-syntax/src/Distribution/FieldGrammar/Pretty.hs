@@ -1,4 +1,6 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -22,27 +24,26 @@ import qualified Text.PrettyPrint as PP
 import Prelude ()
 
 import Distribution.FieldGrammar.Class
+import qualified Distribution.Types.Modify as Mod
 
 -- TODO(leana8959): maybe we can compare this to [Field Position] and thus form a roundtrip test.
-newtype PrettyFieldGrammar s a = PrettyFG
+newtype PrettyFieldGrammar (m :: Mod.HasAnnotation) s a = PrettyFG
   { fieldGrammarPretty :: CabalSpecVersion -> s -> [PrettyField ()]
   }
   deriving (Functor)
 
-instance Applicative (PrettyFieldGrammar s) where
+instance Applicative (PrettyFieldGrammar m s) where
   pure _ = PrettyFG (\_ _ -> mempty)
   PrettyFG f <*> PrettyFG x = PrettyFG (\v s -> f v s <> x v s)
 
 -- | We can use 'PrettyFieldGrammar' to pp print the @s@.
 --
 -- /Note:/ there is not trailing @($+$ text "")@.
-prettyFieldGrammar :: CabalSpecVersion -> PrettyFieldGrammar s a -> s -> [PrettyField ()]
+prettyFieldGrammar :: CabalSpecVersion -> PrettyFieldGrammar m s a -> s -> [PrettyField ()]
 prettyFieldGrammar = flip fieldGrammarPretty
 
-instance FieldGrammar Pretty PrettyFieldGrammar where
+instance FieldGrammarWith Mod.HasNoAnn Pretty PrettyFieldGrammar where
   blurFieldGrammar f (PrettyFG pp) = PrettyFG (\v -> pp v . aview f)
-
-  contramapFieldGrammar f (PrettyFG pp) = PrettyFG $ \v -> pp v . f
 
   uniqueFieldAla fn _pack l = PrettyFG $ \_v s ->
     ppField fn (pretty (pack' _pack (aview l s)))
@@ -94,12 +95,12 @@ instance FieldGrammar Pretty PrettyFieldGrammar where
 
   -- TODO(leana8959): push out the Position
   monoidalFieldAlaAnn
-    :: forall b a s
+    :: forall m b a s
      . (Pretty b, Newtype a b)
     => FieldName
     -> (a -> b)
     -> ALens' s [(Positions, a)]
-    -> PrettyFieldGrammar s [(Positions, a)]
+    -> PrettyFieldGrammar m s [(Positions, a)]
   monoidalFieldAlaAnn fn _pack l = PrettyFG pp
     where
       pp v s =

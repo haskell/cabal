@@ -1,11 +1,13 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- | This module provides a way to specify a grammar of @.cabal@ -like files.
 module Distribution.FieldGrammar
   ( -- * Field grammar type
-    FieldGrammar (..)
+    FieldGrammar
+  , FieldGrammarWith (..)
   , uniqueField
   , optionalField
   , optionalFieldDef
@@ -47,8 +49,10 @@ import Distribution.FieldGrammar.Pretty
 import Distribution.Fields.Field
 import Distribution.Utils.Generic (spanMaybe)
 
-type ParsecFieldGrammar' a = ParsecFieldGrammar a a
-type PrettyFieldGrammar' a = PrettyFieldGrammar a a
+import qualified Distribution.Types.Modify as Mod
+
+type ParsecFieldGrammar' a = ParsecFieldGrammar Mod.HasNoAnn a a
+type PrettyFieldGrammar' a = PrettyFieldGrammar Mod.HasNoAnn a a
 
 infixl 5 ^^^
 

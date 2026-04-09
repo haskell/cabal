@@ -1,4 +1,6 @@
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -35,6 +37,7 @@ import qualified Distribution.SPDX as SPDX
 import qualified Text.PrettyPrint as Disp
 
 import Distribution.Types.InstalledPackageInfo
+import qualified Distribution.Types.Modify as Mod
 
 import qualified Distribution.Types.InstalledPackageInfo.Lens as L
 import qualified Distribution.Types.PackageId.Lens as L
@@ -55,8 +58,8 @@ f <@> x = f <*> x
 
 ipiFieldGrammar
   :: ( FieldGrammar c g
-     , Applicative (g InstalledPackageInfo)
-     , Applicative (g Basic)
+     , Applicative (g Mod.HasNoAnn InstalledPackageInfo)
+     , Applicative (g Mod.HasNoAnn Basic)
      , c (Identity AbiHash)
      , c (Identity LibraryVisibility)
      , c (Identity PackageName)
@@ -74,7 +77,7 @@ ipiFieldGrammar
      , c InstWith
      , c SpecLicenseLenient
      )
-  => g InstalledPackageInfo InstalledPackageInfo
+  => g Mod.HasNoAnn InstalledPackageInfo InstalledPackageInfo
 ipiFieldGrammar =
   mkInstalledPackageInfo
     -- Deprecated fields
@@ -137,9 +140,9 @@ ipiFieldGrammar =
         _basicLibVisibility
       where
         MungedPackageName pn ln = _basicName
-{-# SPECIALIZE ipiFieldGrammar :: FieldDescrs InstalledPackageInfo InstalledPackageInfo #-}
-{-# SPECIALIZE ipiFieldGrammar :: ParsecFieldGrammar InstalledPackageInfo InstalledPackageInfo #-}
-{-# SPECIALIZE ipiFieldGrammar :: PrettyFieldGrammar InstalledPackageInfo InstalledPackageInfo #-}
+{-# SPECIALIZE ipiFieldGrammar :: FieldDescrs Mod.HasNoAnn InstalledPackageInfo InstalledPackageInfo #-}
+{-# SPECIALIZE ipiFieldGrammar :: ParsecFieldGrammar Mod.HasNoAnn InstalledPackageInfo InstalledPackageInfo #-}
+{-# SPECIALIZE ipiFieldGrammar :: PrettyFieldGrammar Mod.HasNoAnn InstalledPackageInfo InstalledPackageInfo #-}
 
 -- (forall b. [b]) ~ ()
 unitedList :: Lens' a [b]
@@ -301,14 +304,14 @@ basicLibVisibility f b =
 
 basicFieldGrammar
   :: ( FieldGrammar c g
-     , Applicative (g Basic)
+     , Applicative (g Mod.HasNoAnn Basic)
      , c (Identity LibraryVisibility)
      , c (Identity PackageName)
      , c (Identity UnqualComponentName)
      , c (MQuoted MungedPackageName)
      , c (MQuoted Version)
      )
-  => g Basic Basic
+  => g Mod.HasNoAnn Basic Basic
 basicFieldGrammar =
   mkBasic
     <$> optionalFieldDefAla "name" MQuoted basicName (mungedPackageName emptyInstalledPackageInfo)

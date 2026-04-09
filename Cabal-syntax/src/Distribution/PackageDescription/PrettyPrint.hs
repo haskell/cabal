@@ -1,4 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeApplications #-}
 
 -----------------------------------------------------------------------------
 
@@ -62,6 +64,8 @@ import Text.PrettyPrint (Doc, char, hsep, parens, text)
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import qualified Distribution.Compat.NonEmptySet as NES
 
+import qualified Distribution.Types.Modify as Mod
+
 -- | Writes a .cabal file from a generic package description
 writeGenericPackageDescription :: FilePath -> GenericPackageDescription -> IO ()
 writeGenericPackageDescription fpath pkg = writeUTF8File fpath (showGenericPackageDescription pkg)
@@ -100,7 +104,7 @@ ppSourceRepos = map . ppSourceRepo
 ppSourceRepo :: CabalSpecVersion -> SourceRepo -> PrettyField ()
 ppSourceRepo v repo =
   PrettySection () "source-repository" [pretty kind] $
-    prettyFieldGrammar v (sourceRepoFieldGrammar kind) repo
+    prettyFieldGrammar v (sourceRepoFieldGrammar @Mod.HasNoAnn kind) repo
   where
     kind = repoKind repo
 
@@ -111,7 +115,7 @@ ppSetupBInfo v (Just sbi)
   | otherwise =
       pure $
         PrettySection () "custom-setup" [] $
-          prettyFieldGrammar v (setupBInfoFieldGrammar False) sbi
+          prettyFieldGrammar v (setupBInfoFieldGrammar @Mod.HasNoAnn False) sbi
 
 ppGenPackageFlags :: CabalSpecVersion -> [PackageFlag] -> [PrettyField ()]
 ppGenPackageFlags = map . ppFlag
@@ -119,7 +123,7 @@ ppGenPackageFlags = map . ppFlag
 ppFlag :: CabalSpecVersion -> PackageFlag -> PrettyField ()
 ppFlag v flag@(MkPackageFlag name _ _ _) =
   PrettySection () "flag" [ppFlagName name] $
-    prettyFieldGrammar v (flagFieldGrammar name) flag
+    prettyFieldGrammar v (flagFieldGrammar @Mod.HasNoAnn name) flag
 
 ppCondTree2 :: CabalSpecVersion -> PrettyFieldGrammar' s -> CondTree ConfVar s -> [PrettyField ()]
 ppCondTree2 v grammar = go

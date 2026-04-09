@@ -106,8 +106,8 @@ import qualified Distribution.Types.Lens as L
 
 packageDescriptionFieldGrammar
   :: ( FieldGrammar c g
-     , Applicative (g PackageDescription)
-     , Applicative (g PackageIdentifier)
+     , Applicative (g Mod.HasNoAnn PackageDescription)
+     , Applicative (g Mod.HasNoAnn PackageIdentifier)
      , c (Identity BuildType)
      , c (Identity PackageName)
      , c (Identity Version)
@@ -117,7 +117,7 @@ packageDescriptionFieldGrammar
      , c CompatLicenseFile
      , c CompatDataDir
      )
-  => g PackageDescription PackageDescription
+  => g Mod.HasNoAnn PackageDescription PackageDescription
 packageDescriptionFieldGrammar =
   PackageDescription
     <$> optionalFieldDefAla "cabal-version" SpecVersion L.specVersion CabalSpecV1_0
@@ -176,9 +176,9 @@ packageDescriptionFieldGrammar =
 
 libraryFieldGrammar
   :: forall mod c g
-   . ( FieldGrammar c g
-     , Applicative (g (LibraryWith mod))
-     , Applicative (g (BuildInfoWith mod))
+   . ( FieldGrammarWith mod c g
+     , Applicative (g mod (LibraryWith mod))
+     , Applicative (g mod (BuildInfoWith mod))
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
      , AttachPos mod [DependencyWith mod] ~ [DependencyWith mod]
      , c (Identity LibraryVisibility)
@@ -200,7 +200,7 @@ libraryFieldGrammar
      , c (MQuoted Language)
      )
   => LibraryName
-  -> g (LibraryWith mod) (LibraryWith mod)
+  -> g mod (LibraryWith mod) (LibraryWith mod)
 libraryFieldGrammar n =
   Library n
     <$> monoidalFieldAla "exposed-modules" formatExposedModules L.exposedModules
@@ -227,8 +227,8 @@ libraryFieldGrammar n =
 
 foreignLibFieldGrammar
   :: ( FieldGrammar c g
-     , Applicative (g ForeignLib)
-     , Applicative (g BuildInfo)
+     , Applicative (g Mod.HasNoAnn ForeignLib)
+     , Applicative (g Mod.HasNoAnn BuildInfo)
      , c (Identity ForeignLibType)
      , c (Identity LibVersionInfo)
      , c (Identity Version)
@@ -250,7 +250,7 @@ foreignLibFieldGrammar
      , c (MQuoted Language)
      )
   => UnqualComponentName
-  -> g ForeignLib ForeignLib
+  -> g Mod.HasNoAnn ForeignLib ForeignLib
 foreignLibFieldGrammar n =
   ForeignLib n
     <$> optionalFieldDef "type" L.foreignLibType ForeignLibTypeUnknown
@@ -268,8 +268,8 @@ foreignLibFieldGrammar n =
 
 executableFieldGrammar
   :: ( FieldGrammar c g
-     , Applicative (g Executable)
-     , Applicative (g BuildInfo)
+     , Applicative (g Mod.HasNoAnn Executable)
+     , Applicative (g Mod.HasNoAnn BuildInfo)
      , c (Identity ExecutableScope)
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
      , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
@@ -292,7 +292,7 @@ executableFieldGrammar
      , c (MQuoted Language)
      )
   => UnqualComponentName
-  -> g Executable Executable
+  -> g Mod.HasNoAnn Executable Executable
 executableFieldGrammar n =
   Executable n
     -- main-is is optional as conditional blocks don't have it
@@ -342,8 +342,8 @@ testStanzaCodeGenerators f s = fmap (\x -> s{_testStanzaCodeGenerators = x}) (f 
 
 testSuiteFieldGrammar
   :: ( FieldGrammar c g
-     , Applicative (g TestSuiteStanza)
-     , Applicative (g BuildInfo)
+     , Applicative (g Mod.HasNoAnn TestSuiteStanza)
+     , Applicative (g Mod.HasNoAnn BuildInfo)
      , c (Identity ModuleName)
      , c (Identity TestType)
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
@@ -364,7 +364,7 @@ testSuiteFieldGrammar
      , c (List VCat Token String)
      , c (MQuoted Language)
      )
-  => g TestSuiteStanza TestSuiteStanza
+  => g Mod.HasNoAnn TestSuiteStanza TestSuiteStanza
 testSuiteFieldGrammar =
   TestSuiteStanza
     <$> optionalField "type" testStanzaTestType
@@ -487,8 +487,8 @@ benchmarkStanzaBuildInfo f s = fmap (\x -> s{_benchmarkStanzaBuildInfo = x}) (f 
 
 benchmarkFieldGrammar
   :: ( FieldGrammar c g
-     , Applicative (g BenchmarkStanza)
-     , Applicative (g BuildInfo)
+     , Applicative (g Mod.HasNoAnn BenchmarkStanza)
+     , Applicative (g Mod.HasNoAnn BuildInfo)
      , c (Identity BenchmarkType)
      , c (Identity ModuleName)
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
@@ -508,7 +508,7 @@ benchmarkFieldGrammar
      , c (List VCat Token String)
      , c (MQuoted Language)
      )
-  => g BenchmarkStanza BenchmarkStanza
+  => g Mod.HasNoAnn BenchmarkStanza BenchmarkStanza
 benchmarkFieldGrammar =
   BenchmarkStanza
     <$> optionalField "type" benchmarkStanzaBenchmarkType
@@ -592,8 +592,8 @@ unvalidateBenchmark b =
 
 buildInfoFieldGrammar
   :: forall mod c g
-   . ( FieldGrammar c g
-     , Applicative (g (BuildInfoWith mod))
+   . ( FieldGrammarWith mod c g
+     , Applicative (g mod (BuildInfoWith mod))
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
      -- NOTE(leana8959): This constraint is here for the time being to parse legacy BuildInfo without Annotation.
      -- To make this fully polymorphic (and lift this constraint), we need to choose between monoidalFieldAla and monoidalFieldAlaAnn using the type.
@@ -618,7 +618,7 @@ buildInfoFieldGrammar
      , c (List VCat Token String)
      , c (MQuoted Language)
      )
-  => g (BuildInfoWith mod) (BuildInfoWith mod)
+  => g mod (BuildInfoWith mod) (BuildInfoWith mod)
 buildInfoFieldGrammar =
   BuildInfo
     <$> booleanFieldDef "buildable" L.buildable True
@@ -720,52 +720,32 @@ miniTargetBuildDependsLens
   -> f (MiniBuildInfo mod)
 miniTargetBuildDependsLens f s = fmap (\x -> s{miniTargetBuildDepends = x}) (f (miniTargetBuildDepends s))
 
-onlyBuildDependsPos
-  :: forall c g
-   . ( FieldGrammar c g
-     , Applicative (g (BuildInfoWith Mod.HasAnn))
-     , c (List CommaVCat (Identity (DependencyWith Mod.HasAnn)) (DependencyWith Mod.HasAnn))
-     )
-  => g (AttachPos Mod.HasAnn [DependencyWith Mod.HasAnn]) (AttachPos Mod.HasAnn [DependencyWith Mod.HasAnn])
-onlyBuildDependsPos = monoidalFieldAlaAnn "build-depends" (formatDependencyList @Mod.HasAnn) id
+-- miniBuildInfoFieldGrammarTypeApp
+--   :: forall c g
+--    . ( FieldGrammar Mod.HasAnn c g
+--      , Applicative (g Mod.HasAnn (MiniBuildInfo Mod.HasAnn))
+--      , c (List CommaVCat (Identity (DependencyWith Mod.HasAnn)) (DependencyWith Mod.HasAnn))
+--      )
+--   => g Mod.HasAnn (MiniBuildInfo Mod.HasAnn) (MiniBuildInfo Mod.HasAnn)
+-- miniBuildInfoFieldGrammarTypeApp =
+--   MiniBuildInfo <$>
+--     monoidalFieldAlaAnnProxy (Proxy :: Proxy Mod.HasAnn) "build-depends" (formatDependencyList @Mod.HasAnn) miniTargetBuildDependsLens
 
-miniBuildInfoFieldGrammarAnn
-  :: forall c g
-   . ( FieldGrammar c g
-     , Applicative (g (MiniBuildInfo Mod.HasAnn))
-     , c (List CommaVCat (Identity (DependencyWith Mod.HasAnn)) (DependencyWith Mod.HasAnn))
-     )
-  => g (MiniBuildInfo Mod.HasAnn) (MiniBuildInfo Mod.HasAnn)
-miniBuildInfoFieldGrammarAnn =
-  MiniBuildInfo <$>
-    monoidalFieldAlaAnn "build-depends" (formatDependencyList @Mod.HasAnn) miniTargetBuildDependsLens
-
-miniBuildInfoFieldGrammarTypeApp
-  :: forall c g
-   . ( FieldGrammar c g
-     , Applicative (g (MiniBuildInfo Mod.HasAnn))
-     , c (List CommaVCat (Identity (DependencyWith Mod.HasAnn)) (DependencyWith Mod.HasAnn))
-     )
-  => g (MiniBuildInfo Mod.HasAnn) (MiniBuildInfo Mod.HasAnn)
-miniBuildInfoFieldGrammarTypeApp =
-  MiniBuildInfo <$>
-    monoidalFieldAlaAnnProxy (Proxy :: Proxy Mod.HasAnn) "build-depends" (formatDependencyList @Mod.HasAnn) miniTargetBuildDependsLens
-
-miniBuildInfoFieldGrammarTypeApp'
-  :: forall mod c g
-   . ( FieldGrammar c g
-
-     -- NOTE(leana8959): this exists due to two different type class used to describe "with position"
-     -- Could be simplified
-     , AttachPos mod [DependencyWith mod] ~ [DependencyWith mod]
-
-     , Applicative (g (MiniBuildInfo mod))
-     , c (List CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
-     )
-  => g (MiniBuildInfo mod) (MiniBuildInfo mod)
-miniBuildInfoFieldGrammarTypeApp' =
-  MiniBuildInfo <$>
-    monoidalFieldAlaAnnProxy (Proxy :: Proxy mod) "build-depends" (formatDependencyList @mod) miniTargetBuildDependsLens
+-- miniBuildInfoFieldGrammarTypeApp'
+--   :: forall mod c g
+--    . ( FieldGrammar c g
+--
+--      -- NOTE(leana8959): this exists due to two different type class used to describe "with position"
+--      -- Could be simplified
+--      , AttachPos mod [DependencyWith mod] ~ [DependencyWith mod]
+--
+--      , Applicative (g mod (MiniBuildInfo mod))
+--      , c (List CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
+--      )
+--   => g mod (MiniBuildInfo mod) (MiniBuildInfo mod)
+-- miniBuildInfoFieldGrammarTypeApp' =
+--   MiniBuildInfo <$>
+--     monoidalFieldAlaAnnProxy (Proxy :: Proxy mod) "build-depends" (formatDependencyList @mod) miniTargetBuildDependsLens
 
 convertTargetBuildDepends
   :: AttachPos Mod.HasAnn [DependencyWith Mod.HasAnn]
@@ -777,23 +757,14 @@ unannotateMiniBuildInfo
   -> MiniBuildInfo Mod.HasNoAnn
 unannotateMiniBuildInfo (MiniBuildInfo x) = MiniBuildInfo (convertTargetBuildDepends x)
 
-miniBuildInfoFieldGrammarAnn'
-  :: forall c g
-   . ( FieldGrammar c g
-     , Applicative (g (MiniBuildInfo Mod.HasAnn))
-     , c (List CommaVCat (Identity (DependencyWith Mod.HasAnn)) (DependencyWith Mod.HasAnn))
-     )
-  => g (MiniBuildInfo Mod.HasAnn) (MiniBuildInfo Mod.HasNoAnn)
-miniBuildInfoFieldGrammarAnn' = fmap unannotateMiniBuildInfo miniBuildInfoFieldGrammarAnn
-
 hsSourceDirsGrammar
   :: forall mod c g
-   . ( FieldGrammar c g
-     , Applicative (g (BuildInfoWith mod))
+   . ( FieldGrammarWith mod c g
+     , Applicative (g mod (BuildInfoWith mod))
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
      , forall from to. c (List FSep (SymbolicPathNT from to) (SymbolicPath from to))
      )
-  => g (BuildInfoWith mod) [SymbolicPath Pkg (Dir Source)]
+  => g mod (BuildInfoWith mod) [SymbolicPath Pkg (Dir Source)]
 hsSourceDirsGrammar =
   (++)
     <$> monoidalFieldAla "hs-source-dirs" formatHsSourceDirs L.hsSourceDirs
@@ -808,12 +779,12 @@ hsSourceDirsGrammar =
 
 optionsFieldGrammar
   :: forall mod c g
-   . ( FieldGrammar c g
-     , Applicative (g (BuildInfoWith mod))
+   . ( FieldGrammarWith mod c g
+     , Applicative (g mod (BuildInfoWith mod))
      , c (List NoCommaFSep Token' String)
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
      )
-  => g (BuildInfoWith mod) (PerCompilerFlavor [String])
+  => g mod (BuildInfoWith mod) (PerCompilerFlavor [String])
 optionsFieldGrammar =
   PerCompilerFlavor
     <$> monoidalFieldAla "ghc-options" (alaList' NoCommaFSep Token') (extract GHC)
@@ -831,12 +802,12 @@ optionsFieldGrammar =
 
 profOptionsFieldGrammar
   :: forall mod c g
-   . ( FieldGrammar c g
-     , Applicative (g (BuildInfoWith mod))
+   . ( FieldGrammarWith mod c g
+     , Applicative (g mod (BuildInfoWith mod))
      , c (List NoCommaFSep Token' String)
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
      )
-  => g (BuildInfoWith mod) (PerCompilerFlavor [String])
+  => g mod (BuildInfoWith mod) (PerCompilerFlavor [String])
 profOptionsFieldGrammar =
   PerCompilerFlavor
     <$> monoidalFieldAla "ghc-prof-options" (alaList' NoCommaFSep Token') (extract GHC)
@@ -848,12 +819,12 @@ profOptionsFieldGrammar =
 
 sharedOptionsFieldGrammar
   :: forall mod c g
-   . ( FieldGrammar c g
-     , Applicative (g (BuildInfoWith mod))
+   . ( FieldGrammarWith mod c g
+     , Applicative (g mod (BuildInfoWith mod))
      , c (List NoCommaFSep Token' String)
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
      )
-  => g (BuildInfoWith mod) (PerCompilerFlavor [String])
+  => g mod (BuildInfoWith mod) (PerCompilerFlavor [String])
 sharedOptionsFieldGrammar =
   PerCompilerFlavor
     <$> monoidalFieldAla "ghc-shared-options" (alaList' NoCommaFSep Token') (extract GHC)
@@ -863,12 +834,12 @@ sharedOptionsFieldGrammar =
 
 profSharedOptionsFieldGrammar
   :: forall mod c g
-   . ( FieldGrammar c g
-     , Applicative (g (BuildInfoWith mod))
+   . ( FieldGrammarWith mod c g
+     , Applicative (g mod (BuildInfoWith mod))
      , c (List NoCommaFSep Token' String)
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
      )
-  => g (BuildInfoWith mod) (PerCompilerFlavor [String])
+  => g mod (BuildInfoWith mod) (PerCompilerFlavor [String])
 profSharedOptionsFieldGrammar =
   PerCompilerFlavor
     <$> monoidalFieldAla "ghc-prof-shared-options" (alaList' NoCommaFSep Token') (extract GHC)
@@ -889,25 +860,25 @@ lookupLens k f p@(PerCompilerFlavor ghc ghcjs)
 -------------------------------------------------------------------------------
 
 flagFieldGrammar
-  :: (FieldGrammar c g, Applicative (g PackageFlag))
+  :: (FieldGrammarWith mod c g, Applicative (g mod PackageFlag))
   => FlagName
-  -> g PackageFlag PackageFlag
+  -> g mod PackageFlag PackageFlag
 flagFieldGrammar name =
   MkPackageFlag name
     <$> freeTextFieldDef "description" L.flagDescription
     <*> booleanFieldDef "default" L.flagDefault True
     <*> booleanFieldDef "manual" L.flagManual False
-{-# SPECIALIZE flagFieldGrammar :: FlagName -> ParsecFieldGrammar' PackageFlag #-}
-{-# SPECIALIZE flagFieldGrammar :: FlagName -> PrettyFieldGrammar' PackageFlag #-}
+-- {-# SPECIALIZE flagFieldGrammar :: FlagName -> ParsecFieldGrammar' PackageFlag #-}
+-- {-# SPECIALIZE flagFieldGrammar :: FlagName -> PrettyFieldGrammar' PackageFlag #-}
 
 -------------------------------------------------------------------------------
 -- SourceRepo
 -------------------------------------------------------------------------------
 
 sourceRepoFieldGrammar
-  :: (FieldGrammar c g, Applicative (g SourceRepo), c (Identity RepoType), c Token, c FilePathNT)
+  :: (FieldGrammarWith mod c g, Applicative (g mod SourceRepo), c (Identity RepoType), c Token, c FilePathNT)
   => RepoKind
-  -> g SourceRepo SourceRepo
+  -> g mod SourceRepo SourceRepo
 sourceRepoFieldGrammar kind =
   SourceRepo kind
     <$> optionalField "type" L.repoType
@@ -916,22 +887,22 @@ sourceRepoFieldGrammar kind =
     <*> optionalFieldAla "branch" Token L.repoBranch
     <*> optionalFieldAla "tag" Token L.repoTag
     <*> optionalFieldAla "subdir" FilePathNT L.repoSubdir
-{-# SPECIALIZE sourceRepoFieldGrammar :: RepoKind -> ParsecFieldGrammar' SourceRepo #-}
-{-# SPECIALIZE sourceRepoFieldGrammar :: RepoKind -> PrettyFieldGrammar' SourceRepo #-}
+-- {-# SPECIALIZE sourceRepoFieldGrammar :: RepoKind -> ParsecFieldGrammar' SourceRepo #-}
+-- {-# SPECIALIZE sourceRepoFieldGrammar :: RepoKind -> PrettyFieldGrammar' SourceRepo #-}
 
 -------------------------------------------------------------------------------
 -- SetupBuildInfo
 -------------------------------------------------------------------------------
 
 setupBInfoFieldGrammar
-  :: (FieldGrammar c g, Functor (g SetupBuildInfo), c (List CommaVCat (Identity Dependency) Dependency))
+  :: (FieldGrammarWith mod c g, Functor (g mod SetupBuildInfo), c (List CommaVCat (Identity Dependency) Dependency))
   => Bool
-  -> g SetupBuildInfo SetupBuildInfo
+  -> g mod SetupBuildInfo SetupBuildInfo
 setupBInfoFieldGrammar def =
   flip SetupBuildInfo def
     <$> monoidalFieldAla "setup-depends" (alaList CommaVCat) L.setupDepends
-{-# SPECIALIZE setupBInfoFieldGrammar :: Bool -> ParsecFieldGrammar' SetupBuildInfo #-}
-{-# SPECIALIZE setupBInfoFieldGrammar :: Bool -> PrettyFieldGrammar' SetupBuildInfo #-}
+-- {-# SPECIALIZE setupBInfoFieldGrammar :: Bool -> ParsecFieldGrammar' SetupBuildInfo #-}
+-- {-# SPECIALIZE setupBInfoFieldGrammar :: Bool -> PrettyFieldGrammar' SetupBuildInfo #-}
 
 -------------------------------------------------------------------------------
 -- Define how field values should be formatted for 'pretty'.
@@ -1025,9 +996,9 @@ _syntaxFieldNames =
               , fieldGrammarKnownFieldList $ foreignLibFieldGrammar "flib"
               , fieldGrammarKnownFieldList testSuiteFieldGrammar
               , fieldGrammarKnownFieldList benchmarkFieldGrammar
-              , fieldGrammarKnownFieldList $ flagFieldGrammar (error "flagname")
-              , fieldGrammarKnownFieldList $ sourceRepoFieldGrammar (error "repokind")
-              , fieldGrammarKnownFieldList $ setupBInfoFieldGrammar True
+              , fieldGrammarKnownFieldList $ (flagFieldGrammar @Mod.HasNoAnn) (error "flagname")
+              , fieldGrammarKnownFieldList $ (sourceRepoFieldGrammar @Mod.HasNoAnn) (error "repokind")
+              , fieldGrammarKnownFieldList $ (setupBInfoFieldGrammar @Mod.HasNoAnn) True
               ]
     ]
 
