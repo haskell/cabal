@@ -21,3 +21,7 @@ data HasAnnotation
 type family Annotate (m :: HasAnnotation) (a :: Type) where
   Annotate HasNoAnn a = a
   Annotate HasAnn a = Ann SurroundingText a
+
+type family AttachPos (m :: HasAnnotation) (a :: Type) where
+  AttachPos HasAnn a = [(Positions, a)]
+  AttachPos HasNoAnn a = a

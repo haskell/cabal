@@ -92,6 +92,7 @@ import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
 import Distribution.Trivia (Positions (..))
 
+import Distribution.Types.Modify (AttachPos)
 import qualified Distribution.Types.Modify as Mod
 
 import qualified Data.ByteString.Char8 as BS8
@@ -756,7 +757,7 @@ miniBuildInfoFieldGrammarTypeApp'
 
      -- NOTE(leana8959): this exists due to two different type class used to describe "with position"
      -- Could be simplified
-     , TargetBuildDepends mod ~ Annotate mod [DependencyWith mod]
+     , TargetBuildDepends mod ~ AttachPos mod [DependencyWith mod]
 
      , Applicative (g (MiniBuildInfo mod))
      , c (List CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))

@@ -10,7 +10,6 @@
 
 module Distribution.FieldGrammar.Class
   ( FieldGrammar (..)
-  , Annotate
   , uniqueField
   , optionalField
   , optionalFieldDef
@@ -31,11 +30,8 @@ import Distribution.Fields.Field
 import Distribution.Utils.ShortText
 
 import Data.Kind
+import Distribution.Types.Modify (AttachPos)
 import qualified Distribution.Types.Modify as Mod
-
-type family Annotate (m :: Mod.HasAnnotation) (a :: Type) where
-  Annotate Mod.HasAnn a = [(Positions, a)]
-  Annotate Mod.HasNoAnn a = a
 
 -- | 'FieldGrammar' is parametrised by
 --
@@ -174,9 +170,9 @@ class
     -- ^ field name
     -> (a -> b)
     -- ^ 'pack'
-    -> ALens' s (Annotate m a)
+    -> ALens' s (AttachPos m a)
     -- ^ lens into the field
-    -> g s (Annotate m a)
+    -> g s (AttachPos m a)
 
   -- | Parser matching all fields with a name starting with a prefix.
   prefixedFields
