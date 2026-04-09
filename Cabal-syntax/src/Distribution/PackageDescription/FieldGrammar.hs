@@ -709,43 +709,37 @@ buildInfoFieldGrammar =
 -- {-# SPECIALIZE buildInfoFieldGrammar :: PrettyFieldGrammar' BuildInfoAnn #-}
 
 data MiniBuildInfo (m :: Mod.HasAnnotation) = MiniBuildInfo
-  { miniTargetBuildDepends :: AttachPos m [DependencyWith m]
+  { miniTargetBuildDependsPoly :: AttachPos m [DependencyWith m]
+  , miniTargetBuildDepends :: [DependencyWith m]
   }
 
-miniTargetBuildDependsLens
+miniTargetBuildDependsPolyLens
   :: forall mod f
    . Functor f
   => (AttachPos mod [DependencyWith mod] -> f (AttachPos mod [DependencyWith mod]))
   -> (MiniBuildInfo mod)
   -> f (MiniBuildInfo mod)
+miniTargetBuildDependsPolyLens f s = fmap (\x -> s{miniTargetBuildDependsPoly = x}) (f (miniTargetBuildDependsPoly s))
+
+miniTargetBuildDependsLens
+  :: forall mod f
+   . Functor f
+  => ([DependencyWith mod] -> f [DependencyWith mod])
+  -> (MiniBuildInfo mod)
+  -> f (MiniBuildInfo mod)
 miniTargetBuildDependsLens f s = fmap (\x -> s{miniTargetBuildDepends = x}) (f (miniTargetBuildDepends s))
 
--- miniBuildInfoFieldGrammarTypeApp
---   :: forall c g
---    . ( FieldGrammar Mod.HasAnn c g
---      , Applicative (g Mod.HasAnn (MiniBuildInfo Mod.HasAnn))
---      , c (List CommaVCat (Identity (DependencyWith Mod.HasAnn)) (DependencyWith Mod.HasAnn))
---      )
---   => g Mod.HasAnn (MiniBuildInfo Mod.HasAnn) (MiniBuildInfo Mod.HasAnn)
--- miniBuildInfoFieldGrammarTypeApp =
---   MiniBuildInfo <$>
---     monoidalFieldAlaAnnProxy (Proxy :: Proxy Mod.HasAnn) "build-depends" (formatDependencyList @Mod.HasAnn) miniTargetBuildDependsLens
-
--- miniBuildInfoFieldGrammarTypeApp'
---   :: forall mod c g
---    . ( FieldGrammar c g
---
---      -- NOTE(leana8959): this exists due to two different type class used to describe "with position"
---      -- Could be simplified
---      , AttachPos mod [DependencyWith mod] ~ [DependencyWith mod]
---
---      , Applicative (g mod (MiniBuildInfo mod))
---      , c (List CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
---      )
---   => g mod (MiniBuildInfo mod) (MiniBuildInfo mod)
--- miniBuildInfoFieldGrammarTypeApp' =
---   MiniBuildInfo <$>
---     monoidalFieldAlaAnnProxy (Proxy :: Proxy mod) "build-depends" (formatDependencyList @mod) miniTargetBuildDependsLens
+miniBuildInfoFieldGrammarTypeApp'
+  :: forall mod c g
+   . ( FieldGrammarWith mod c g
+     , Applicative (g mod (MiniBuildInfo mod))
+     , c (List CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
+     )
+  => g mod (MiniBuildInfo mod) (MiniBuildInfo mod)
+miniBuildInfoFieldGrammarTypeApp' =
+  MiniBuildInfo
+    <$> monoidalFieldAla' "build-depends" (formatDependencyList @mod) miniTargetBuildDependsPolyLens
+    <*> monoidalFieldAla "build-depends" (formatDependencyList @mod) miniTargetBuildDependsLens
 
 convertTargetBuildDepends
   :: AttachPos Mod.HasAnn [DependencyWith Mod.HasAnn]
@@ -755,7 +749,7 @@ convertTargetBuildDepends = join . map (map unannotateDependencyAnn . snd)
 unannotateMiniBuildInfo
   :: MiniBuildInfo Mod.HasAnn
   -> MiniBuildInfo Mod.HasNoAnn
-unannotateMiniBuildInfo (MiniBuildInfo x) = MiniBuildInfo (convertTargetBuildDepends x)
+unannotateMiniBuildInfo (MiniBuildInfo x y) = MiniBuildInfo (convertTargetBuildDepends x) (map unannotateDependencyAnn y)
 
 hsSourceDirsGrammar
   :: forall mod c g
