@@ -2169,7 +2169,7 @@ elaborateInstallPlan
 
             -- TODO: Why is this flat?
             pkgPkgConfigDependencies =
-              CD.flatDeps $ buildComponentDeps compPkgConfigDependencies
+              fold $ buildComponentDeps compPkgConfigDependencies
 
             pkgDependsOnSelfLib =
               CD.fromList
@@ -3577,7 +3577,7 @@ pruneInstallPlanPass1 pkgs
     pruneOptionalDependencies elab@ElaboratedConfiguredPackage{elabPkgOrComp = ElabComponent _} =
       InstallPlan.depends elab -- no pruning
     pruneOptionalDependencies ElaboratedConfiguredPackage{elabPkgOrComp = ElabPackage pkg} =
-      (CD.flatDeps . CD.filterDeps keepNeeded) (pkgOrderDependencies pkg)
+      (fold . CD.filterDeps keepNeeded) (pkgOrderDependencies pkg)
       where
         keepNeeded (CD.ComponentTest _) _ = TestStanzas `optStanzaSetMember` stanzas
         keepNeeded (CD.ComponentBench _) _ = BenchStanzas `optStanzaSetMember` stanzas
