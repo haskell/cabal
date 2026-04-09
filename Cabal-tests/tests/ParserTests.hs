@@ -1,4 +1,6 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -18,7 +20,7 @@ import Control.Monad                               (void)
 import Data.Algorithm.Diff                         (PolyDiff (..), getGroupedDiff)
 import Data.Maybe                                  (isNothing)
 import Distribution.CabalSpecVersion
-import Distribution.Fields                         (pwarning)
+import Distribution.Fields                         (pwarning, readFields)
 import Distribution.PackageDescription
   ( GenericPackageDescription
   , packageDescription
@@ -31,7 +33,7 @@ import Distribution.PackageDescription
   , condTestSuites
   , condBenchmarks
   )
-import Distribution.PackageDescription.FieldGrammar(buildInfoFieldGrammar)
+import Distribution.PackageDescription.FieldGrammar(buildInfoFieldGrammar, miniBuildInfoFieldGrammar, MiniBuildInfo (..))
 import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription, sectionizeFields, takeFields)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.Parsec                         (Parsec (..), explicitEitherParsec', PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
@@ -65,6 +67,9 @@ import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.List.NonEmpty    as NE
 
+-- NOTE(leana8959): remove this after demo is done
+import Text.Pretty.Simple
+
 import qualified Distribution.InstalledPackageInfo as IPI
 
 #ifdef MIN_VERSION_tree_diff
@@ -81,6 +86,7 @@ tests = testGroup "parsec tests"
     , errorTests
     , ipiTests
     , parsecPrettyTests
+    , miniBulidInfoDemoTest
     ]
 
 -------------------------------------------------------------------------------
@@ -249,6 +255,27 @@ parsecPrettyTests = testGroup "parsec pretty roundtrip" $
 
   where
     optionals cond ifTrue = if cond then ifTrue else []
+
+miniBulidInfoDemoTest :: TestTree
+miniBulidInfoDemoTest = testCase "miniBuildInfo" $ do
+  fields <- readFields <$> BS.readFile input >>= \case
+      Left err -> fail $ "readFields: err"
+      Right ok -> pure ok
+
+  -- We ignore sections now, which necessite goSections to dispatch field gramamr parsers
+  let (frontFields, _sections) = takeFields fields
+      pr :: ParseResult src (MiniBuildInfo Mod.HasAnn)
+      pr = parseFieldGrammar CabalSpecV3_0 frontFields miniBuildInfoFieldGrammar
+
+      (_warns, pr') = runParseResult pr
+
+  pr'' <- case pr' of
+    Left (_, errs) -> fail "ERROR in running field grammar"
+    Right ok -> pure $ ok
+
+  pPrint pr''
+  where
+    input = "tests" </> "ParserTests" </> "miniBuildInfoDemo.cabal"
 
 parsecPrettyTest :: forall a. (Parsec a, Pretty a) => CabalSpecVersion -> String -> String -> TestTree
 parsecPrettyTest specVer testName input = testCase testName $ do

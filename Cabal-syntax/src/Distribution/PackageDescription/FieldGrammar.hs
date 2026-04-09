@@ -1,4 +1,5 @@
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TupleSections #-}
@@ -712,8 +713,10 @@ buildInfoFieldGrammar =
 
 data MiniBuildInfo (m :: Mod.HasAnnotation) = MiniBuildInfo
   { miniTargetBuildDependsPoly :: AttachPos m [DependencyWith m]
-  , miniTargetBuildDepends :: [DependencyWith m]
+  -- , miniTargetBuildDepends :: [DependencyWith m]
   }
+
+deriving instance Show (MiniBuildInfo Mod.HasAnn)
 
 miniTargetBuildDependsPolyLens
   :: forall mod f
@@ -723,13 +726,13 @@ miniTargetBuildDependsPolyLens
   -> f (MiniBuildInfo mod)
 miniTargetBuildDependsPolyLens f s = fmap (\x -> s{miniTargetBuildDependsPoly = x}) (f (miniTargetBuildDependsPoly s))
 
-miniTargetBuildDependsLens
-  :: forall mod f
-   . Functor f
-  => ([DependencyWith mod] -> f [DependencyWith mod])
-  -> (MiniBuildInfo mod)
-  -> f (MiniBuildInfo mod)
-miniTargetBuildDependsLens f s = fmap (\x -> s{miniTargetBuildDepends = x}) (f (miniTargetBuildDepends s))
+-- miniTargetBuildDependsLens
+--   :: forall mod f
+--    . Functor f
+--   => ([DependencyWith mod] -> f [DependencyWith mod])
+--   -> (MiniBuildInfo mod)
+--   -> f (MiniBuildInfo mod)
+-- miniTargetBuildDependsLens f s = fmap (\x -> s{miniTargetBuildDepends = x}) (f (miniTargetBuildDepends s))
 
 miniBuildInfoFieldGrammar
   :: forall mod c g
@@ -741,7 +744,6 @@ miniBuildInfoFieldGrammar
 miniBuildInfoFieldGrammar =
   MiniBuildInfo
     <$> monoidalFieldAla' "build-depends" (formatDependencyList @mod) miniTargetBuildDependsPolyLens
-    <*> monoidalFieldAla "build-depends" (formatDependencyList @mod) miniTargetBuildDependsLens
 
 hsSourceDirsGrammar
   :: forall mod c g

@@ -403,7 +403,7 @@ instance FieldGrammarWith Mod.HasAnn Parsec ParsecFieldGrammar where
       parseOne :: CabalSpecVersion -> NamelessField Position -> ParseResult src (Positions, b)
       parseOne v (MkNamelessField pos fls) = do
         (linePos, x) <- runFieldParser pos (liftA2 (,) (liftParsec P.getPosition) parsec) v fls
-        pure (Positions (Just pos) (error "convert linePos" linePos) Nothing, x)
+        pure (Positions (Just pos) (Nothing {- TODO(leana8959): "convert linePos" linePos -}) Nothing, x)
 
 -------------------------------------------------------------------------------
 -- Parsec

@@ -1,0 +1,7 @@
+
+
+
+build-depends:
+  foo > 2,
+    bar > 3,
+  baz > 4,
