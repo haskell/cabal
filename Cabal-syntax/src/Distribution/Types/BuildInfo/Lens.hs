@@ -52,7 +52,7 @@ class HasBuildInfoWith mod a | a -> mod where
   buildTools :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [LegacyExeDependency]))
   buildTools = buildInfo @mod . buildTools @mod
 
-  buildToolDepends :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [ExeDependency]
+  buildToolDepends :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [ExeDependency]))
   buildToolDepends = buildInfo @mod . buildToolDepends @mod
 
   cppOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [String]

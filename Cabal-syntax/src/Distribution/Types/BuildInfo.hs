@@ -63,7 +63,7 @@ data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
   -- Unless use are very sure what you are doing, use the functions in
   -- "Distribution.Simple.BuildToolDepends" rather than accessing this
   -- field directly.
-  , buildToolDepends :: [ExeDependency]
+  , buildToolDepends :: PreserveGrouping m (AttachPos m [ExeDependency])
   -- ^ Haskell tools needed to build this bit
   --
   -- This field is better than 'buildTools' because it allows one to
@@ -187,6 +187,10 @@ unannotateBuildInfo bi =
                   mconcat
                 $ map snd
                 $ buildTools bi
+    , buildToolDepends =
+                  mconcat
+                $ map snd
+                $ buildToolDepends bi
     , targetBuildDepends =
                   mconcat
                 $ (fmap . fmap) unannotateDependencyAnn

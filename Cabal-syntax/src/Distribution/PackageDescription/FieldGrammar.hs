@@ -190,6 +190,8 @@ libraryFieldGrammar
      , PreserveGrouping mod [DependencyWith mod] ~ [DependencyWith mod]
      , AttachPos mod [LegacyExeDependency] ~ [LegacyExeDependency]
      , PreserveGrouping mod [LegacyExeDependency] ~ [LegacyExeDependency]
+     , AttachPos mod [ExeDependency] ~ [ExeDependency]
+     , PreserveGrouping mod [ExeDependency] ~ [ExeDependency]
      , AttachPos mod Bool ~ Bool
 
      , c (Identity LibraryVisibility)
@@ -617,6 +619,8 @@ buildInfoFieldGrammar
      , PreserveGrouping mod [DependencyWith mod] ~ [DependencyWith mod]
      , AttachPos mod [LegacyExeDependency] ~ [LegacyExeDependency]
      , PreserveGrouping mod [LegacyExeDependency] ~ [LegacyExeDependency]
+     , AttachPos mod [ExeDependency] ~ [ExeDependency]
+     , PreserveGrouping mod [ExeDependency] ~ [ExeDependency]
      , AttachPos mod Bool ~ Bool
 
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
@@ -732,13 +736,15 @@ buildInfoFieldGrammar'
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
      -- TODO(leana8959): implement dispatch to list with annotation when needed
      , c (ListWith Mod.HasNoAnn CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
-     , c (ListWith Mod.HasNoAnn CommaVCat (Identity LegacyExeDependency) LegacyExeDependency)
+     , c (ListWith Mod.HasNoAnn CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
+     , c (ListWith Mod.HasNoAnn CommaFSep (Identity ExeDependency) ExeDependency)
      )
   => g mod (BuildInfoWith mod) (BuildInfoWith mod)
 buildInfoFieldGrammar' = do
   buildable <- booleanFieldDef' "buildable" L.buildable True
   -- NOTE(leana8959): adding a binding for the lens formatters help type inference
   buildTools <- monoidalFieldAla' "build-tools" formatBuildTools L.buildTools
+  buildToolDepends <- monoidalFieldAla' "build-tool-depends" formatBuildToolDepends L.buildToolDepends
   targetBuildDepends <- monoidalFieldAla' "build-depends" (formatDependencyList @mod) L.targetBuildDepends
   pure (BuildInfo {..})
 
@@ -923,8 +929,11 @@ setupBInfoFieldGrammar def =
 formatDependencyList :: [DependencyWith mod] -> List CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod)
 formatDependencyList = alaList CommaVCat
 
-formatBuildTools :: [LegacyExeDependency] -> List CommaVCat (Identity LegacyExeDependency) LegacyExeDependency
-formatBuildTools = alaList CommaVCat
+formatBuildTools :: [LegacyExeDependency] -> List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency
+formatBuildTools = alaList CommaFSep
+
+formatBuildToolDepends :: [ExeDependency] -> List CommaFSep (Identity ExeDependency) ExeDependency
+formatBuildToolDepends = alaList CommaFSep
 
 formatMixinList :: [Mixin] -> List CommaVCat (Identity Mixin) Mixin
 formatMixinList = alaList CommaVCat
