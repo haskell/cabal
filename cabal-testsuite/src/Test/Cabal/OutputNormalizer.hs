@@ -125,6 +125,10 @@ normalizeOutput nenv =
       resub
         ("\"path\":\"" <> posixRegexEscape (normalizerGhcPath nenv) <> "\"")
         "\"path\":\"<GHCPATH>\""
+        -- Normalize the C compiler path embedded in -pgmc.
+        . resub
+          ("\"-pgmc\",\"[^\"]+\"")
+          "\"-pgmc\",\"<CCPATH>\""
         -- Remove cabal version output from show-build-info output
         . resub
           ("{\"cabal-lib-version\":\"" ++ posixRegexEscape (display (normalizerCabalVersion nenv)) ++ "\"")
