@@ -163,10 +163,11 @@ class
     -- ^ lens into the field
     -> g s [(Positions, a)]
 
-  monoidalFieldAlaAnnTypeApp
+  monoidalFieldAlaAnnProxy
     :: forall (m :: Mod.HasAnnotation) b s a
      . (c b, Newtype a b)
-    => FieldName
+    => Proxy m
+    -> FieldName
     -- ^ field name
     -> (a -> b)
     -- ^ 'pack'

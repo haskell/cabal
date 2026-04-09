@@ -749,7 +749,7 @@ miniBuildInfoFieldGrammarTypeApp
   => g (MiniBuildInfo Mod.HasAnn) (MiniBuildInfo Mod.HasAnn)
 miniBuildInfoFieldGrammarTypeApp =
   MiniBuildInfo <$>
-    monoidalFieldAlaAnnTypeApp @_ @_ @Mod.HasAnn "build-depends" (formatDependencyList @Mod.HasAnn) miniTargetBuildDependsLens
+    monoidalFieldAlaAnnProxy (Proxy :: Proxy Mod.HasAnn) "build-depends" (formatDependencyList @Mod.HasAnn) miniTargetBuildDependsLens
 
 miniBuildInfoFieldGrammarTypeApp'
   :: forall mod c g
@@ -765,7 +765,7 @@ miniBuildInfoFieldGrammarTypeApp'
   => g (MiniBuildInfo mod) (MiniBuildInfo mod)
 miniBuildInfoFieldGrammarTypeApp' =
   MiniBuildInfo <$>
-    monoidalFieldAlaAnnTypeApp @_ @_ @mod "build-depends" (formatDependencyList @mod) miniTargetBuildDependsLens
+    monoidalFieldAlaAnnProxy (Proxy :: Proxy mod) "build-depends" (formatDependencyList @mod) miniTargetBuildDependsLens
 
 convertTargetBuildDepends
   :: AttachPos Mod.HasAnn [DependencyWith Mod.HasAnn]
