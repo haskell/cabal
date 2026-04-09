@@ -377,36 +377,33 @@ instance FieldGrammarWith Mod.HasNoAnn Parsec ParsecFieldGrammar where
 
   hiddenField = id
 
--- instance FieldGrammarWith Mod.HasAnn Parsec ParsecFieldGrammar where
+instance FieldGrammarWith Mod.HasAnn Parsec ParsecFieldGrammar where
   -- TODO(leana8959): implement monoidalFieldAla
   -- TODO(leana8959): implement all methods
 
-
-  -- -- TODO(leana8959): maybe define monoidalFieldAla base on monoidalFieldAlaAnn
-  -- --
-  -- -- This function allows us to manage the position coming from a parsed field
-  -- -- In the printer, it can... IDK? Annotate the pretty doc position?
-  -- --
-  -- -- - merging is defered
-  -- -- - position is retained in each result
-  -- monoidalFieldAla
-  --   :: forall m b a s
-  --    . (Parsec b, Newtype a b)
-  --   => FieldName
-  --   -> (a -> b)
-  --   -> ALens' s [(Positions, a)]
-  --   -> ParsecFieldGrammar m s [(Positions, a)]
-  -- monoidalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
-  --   where
-  --     parser :: CabalSpecVersion -> Fields Position -> ParseResult src [(Positions, a)]
-  --     parser v fields = case Map.lookup fn fields of
-  --       Nothing -> pure mempty
-  --       Just xs -> map (\(p, a) -> (p,) $ unpack' _pack a) <$> traverse (parseOne v) xs
+  -- This function allows us to manage the position coming from a parsed field
+  -- In the printer, it can... IDK? Annotate the pretty doc position?
   --
-  --     parseOne :: CabalSpecVersion -> NamelessField Position -> ParseResult src (Positions, b)
-  --     parseOne v (MkNamelessField pos fls) = do
-  --       (linePos, x) <- runFieldParser pos (liftA2 (,) (liftParsec P.getPosition) parsec) v fls
-  --       pure (Positions (Just pos) (error "convert linePos" linePos) Nothing, x)
+  -- - merging is defered
+  -- - position is retained in each result
+  monoidalFieldAla'
+    :: forall b a s
+     . (Parsec b, Newtype a b)
+    => FieldName
+    -> (a -> b)
+    -> ALens' s [(Positions, a)]
+    -> ParsecFieldGrammar Mod.HasAnn s [(Positions, a)]
+  monoidalFieldAla' fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
+    where
+      parser :: CabalSpecVersion -> Fields Position -> ParseResult src [(Positions, a)]
+      parser v fields = case Map.lookup fn fields of
+        Nothing -> pure mempty
+        Just xs -> map (\(p, a) -> (p,) $ unpack' _pack a) <$> traverse (parseOne v) xs
+
+      parseOne :: CabalSpecVersion -> NamelessField Position -> ParseResult src (Positions, b)
+      parseOne v (MkNamelessField pos fls) = do
+        (linePos, x) <- runFieldParser pos (liftA2 (,) (liftParsec P.getPosition) parsec) v fls
+        pure (Positions (Just pos) (error "convert linePos" linePos) Nothing, x)
 
 -------------------------------------------------------------------------------
 -- Parsec
