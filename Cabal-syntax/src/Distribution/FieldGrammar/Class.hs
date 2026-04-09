@@ -10,6 +10,7 @@
 
 module Distribution.FieldGrammar.Class
   ( FieldGrammar (..)
+  , Annotate
   , uniqueField
   , optionalField
   , optionalFieldDef

@@ -6,6 +6,7 @@
 module Distribution.FieldGrammar
   ( -- * Field grammar type
     FieldGrammar (..)
+  , Annotate
   , uniqueField
   , optionalField
   , optionalFieldDef

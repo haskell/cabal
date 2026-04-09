@@ -750,6 +750,22 @@ miniBuildInfoFieldGrammarTypeApp =
   MiniBuildInfo <$>
     monoidalFieldAlaAnnTypeApp @_ @_ @Mod.HasAnn "build-depends" (formatDependencyList @Mod.HasAnn) miniTargetBuildDependsLens
 
+miniBuildInfoFieldGrammarTypeApp'
+  :: forall mod c g
+   . ( FieldGrammar c g
+
+     -- NOTE(leana8959): this exists due to two different type class used to describe "with position"
+     -- Could be simplified
+     , TargetBuildDepends mod ~ Annotate mod [DependencyWith mod]
+
+     , Applicative (g (MiniBuildInfo mod))
+     , c (List CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
+     )
+  => g (MiniBuildInfo mod) (MiniBuildInfo mod)
+miniBuildInfoFieldGrammarTypeApp' =
+  MiniBuildInfo <$>
+    monoidalFieldAlaAnnTypeApp @_ @_ @mod "build-depends" (formatDependencyList @mod) miniTargetBuildDependsLens
+
 convertTargetBuildDepends
   :: TargetBuildDepends Mod.HasAnn
   -> TargetBuildDepends Mod.HasNoAnn
