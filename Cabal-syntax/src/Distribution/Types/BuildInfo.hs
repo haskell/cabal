@@ -53,7 +53,7 @@ type BuildInfoAnn = BuildInfoWith Mod.HasAnn
 
 -- Consider refactoring into executable and library versions.
 data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
-  { buildable :: Bool
+  { buildable :: AttachPos m Bool
   -- ^ component is buildable here
   , buildTools :: [LegacyExeDependency]
   -- ^ Tools needed to build this bit.
@@ -182,7 +182,11 @@ instance NFData BuildInfo where rnf = genericRnf
 unannotateBuildInfo :: BuildInfoAnn -> BuildInfo
 unannotateBuildInfo bi =
   bi
-    { targetBuildDepends =
+    { buildable = case map snd $ buildable bi of
+      -- TODO(leana8959): remove multiplicity here
+        [u] -> u
+        _ -> undefined
+    , targetBuildDepends =
                   mconcat
                 $ (fmap . fmap) unannotateDependencyAnn
                 $ map snd

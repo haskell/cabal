@@ -1,4 +1,6 @@
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TypeOperators #-}
@@ -184,6 +186,7 @@ libraryFieldGrammar
      , Applicative (g mod (BuildInfoWith mod))
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
      , AttachPos mod [DependencyWith mod] ~ [DependencyWith mod]
+     , AttachPos mod Bool ~ Bool
      , c (Identity LibraryVisibility)
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
      , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
@@ -598,6 +601,7 @@ buildInfoFieldGrammar
    . ( FieldGrammarWith mod c g
      , Applicative (g mod (BuildInfoWith mod))
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
+
      -- NOTE(leana8959): This constraint is here for the time being to parse legacy BuildInfo without Annotation.
      -- To make this fully polymorphic (and lift this constraint), we need to choose between monoidalFieldAla and monoidalFieldAlaAnn using the type.
      -- This might force us to add one more new type param to the FieldGrammar type class and render things more complicated,
@@ -605,6 +609,8 @@ buildInfoFieldGrammar
      --
      -- Also, do we need the legacy parser? I think we can reimplement the old behaviour by "fmap unannotate" into the Field Grammar.
      , AttachPos mod [DependencyWith mod] ~ [DependencyWith mod]
+     , AttachPos mod Bool ~ Bool
+
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
      , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
      , c (List CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
@@ -711,22 +717,18 @@ buildInfoFieldGrammar =
 -- {-# SPECIALIZE buildInfoFieldGrammar :: ParsecFieldGrammar' BuildInfoAnn #-}
 -- {-# SPECIALIZE buildInfoFieldGrammar :: PrettyFieldGrammar' BuildInfoAnn #-}
 
--- Some fields of BuildInfo so I construct the record incrementally and find type errors
-type SubBuildInfo mod =
-  ( {-buildable-}          AttachPos mod Bool
-  , {-targetBuildDepends-} AttachPos mod [DependencyWith mod]
-  )
 buildInfoFieldGrammar'
   :: forall mod c g
    . ( FieldGrammarWith mod c g
-     , Applicative (g mod (AttachPos mod Bool, AttachPos mod [DependencyWith mod]))
+     , Applicative (g mod (BuildInfoWith mod))
+     , L.HasBuildInfoWith mod (BuildInfoWith mod)
      , c (ListWith Mod.HasNoAnn CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
      )
-  => g mod (SubBuildInfo mod) (SubBuildInfo mod)
-buildInfoFieldGrammar' =
-  (,)
-    <$> booleanFieldDef' "buildable" _1 True
-    <*> monoidalFieldAla' "build-depends" (formatDependencyList @mod) _2
+  => g mod (BuildInfoWith mod) (BuildInfoWith mod)
+buildInfoFieldGrammar' = do
+  buildable <- booleanFieldDef' "buildable" (L.buildable @mod) True
+  buildDepends <- monoidalFieldAla' "build-depends" (formatDependencyList @mod) (L.targetBuildDepends @mod)
+  pure (BuildInfo {..})
 
 data MiniBuildInfo (m :: Mod.HasAnnotation) = MiniBuildInfo
   { miniTargetBuildDependsPoly :: AttachPos m [DependencyWith m]
