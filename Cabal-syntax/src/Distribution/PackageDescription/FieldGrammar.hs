@@ -711,6 +711,23 @@ buildInfoFieldGrammar =
 -- {-# SPECIALIZE buildInfoFieldGrammar :: ParsecFieldGrammar' BuildInfoAnn #-}
 -- {-# SPECIALIZE buildInfoFieldGrammar :: PrettyFieldGrammar' BuildInfoAnn #-}
 
+-- Some fields of BuildInfo so I construct the record incrementally and find type errors
+type SubBuildInfo mod =
+  ( {-buildable-}          AttachPos mod Bool
+  , {-targetBuildDepends-} AttachPos mod [DependencyWith mod]
+  )
+buildInfoFieldGrammar'
+  :: forall mod c g
+   . ( FieldGrammarWith mod c g
+     , Applicative (g mod (AttachPos mod Bool, AttachPos mod [DependencyWith mod]))
+     , c (ListWith Mod.HasNoAnn CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
+     )
+  => g mod (SubBuildInfo mod) (SubBuildInfo mod)
+buildInfoFieldGrammar' =
+  (,)
+    <$> booleanFieldDef' "buildable" _1 True
+    <*> monoidalFieldAla' "build-depends" (formatDependencyList @mod) _2
+
 data MiniBuildInfo (m :: Mod.HasAnnotation) = MiniBuildInfo
   { miniTargetBuildDependsPoly :: AttachPos m [DependencyWith m]
   -- , miniTargetBuildDepends :: [DependencyWith m]
@@ -726,14 +743,6 @@ miniTargetBuildDependsPolyLens
   -> (MiniBuildInfo mod)
   -> f (MiniBuildInfo mod)
 miniTargetBuildDependsPolyLens f s = fmap (\x -> s{miniTargetBuildDependsPoly = x}) (f (miniTargetBuildDependsPoly s))
-
--- miniTargetBuildDependsLens
---   :: forall mod f
---    . Functor f
---   => ([DependencyWith mod] -> f [DependencyWith mod])
---   -> (MiniBuildInfo mod)
---   -> f (MiniBuildInfo mod)
--- miniTargetBuildDependsLens f s = fmap (\x -> s{miniTargetBuildDepends = x}) (f (miniTargetBuildDepends s))
 
 miniBuildInfoFieldGrammar
   :: forall mod c g

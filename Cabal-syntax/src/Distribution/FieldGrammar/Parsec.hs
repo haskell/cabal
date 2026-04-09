@@ -97,6 +97,7 @@ import Distribution.Trivia
 import Distribution.Parsec.FieldLineStream
 import Distribution.Parsec.Position (positionCol, positionRow)
 
+import Distribution.Types.Modify (AttachPos)
 import qualified Distribution.Types.Modify as Mod
 
 -------------------------------------------------------------------------------
@@ -379,6 +380,37 @@ instance FieldGrammarWith Mod.HasNoAnn Parsec ParsecFieldGrammar where
   hiddenField = id
 
 instance FieldGrammarWith Mod.HasAnn Parsec ParsecFieldGrammar where
+
+  -- TODO(leana8959): remove multiplicity here because it doesn't have merging
+
+  booleanFieldDef'
+    :: forall s
+     . FieldName
+    -- ^ field name
+    -> ALens' s [(Positions, Bool)]
+    -- ^ lens into the field
+    -> Bool
+    -- ^ default
+    -> ParsecFieldGrammar Mod.HasAnn s [(Positions, Bool)]
+  booleanFieldDef' fn _extract def = ParsecFG (Set.singleton fn) Set.empty parser
+    where
+      -- TODO(leana8959): implement position
+
+      parser :: CabalSpecVersion -> Fields Position -> ParseResult src [(Positions, Bool)]
+      parser v fields = case Map.lookup fn fields of
+        Nothing -> (pure . pure) (noPos, def)
+        Just [] -> (pure . pure) (noPos, def)
+        Just [x] -> pure <$> parseOne v x
+        Just xs@(_ : y : ys) -> do
+          warnMultipleSingularFields fn xs
+          pure . NE.last <$> traverse (parseOne v) (y :| ys)
+
+      parseOne :: CabalSpecVersion -> NamelessField Position -> ParseResult src (Positions, Bool)
+      parseOne v (MkNamelessField pos fls) = do
+        (noPos,) <$> runFieldParser pos parsec v fls
+
+      noPos = Positions Nothing Nothing Nothing
+
   -- TODO(leana8959): implement monoidalFieldAla
   -- TODO(leana8959): implement all methods
 

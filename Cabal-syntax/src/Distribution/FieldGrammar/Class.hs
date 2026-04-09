@@ -81,6 +81,16 @@ class
     -- ^ default
     -> g m s Bool
 
+  -- | Boolean field with a default value.
+  booleanFieldDef'
+    :: FieldName
+    -- ^ field name
+    -> ALens' s (AttachPos m Bool)
+    -- ^ lens into the field
+    -> Bool
+    -- ^ default
+    -> g m s (AttachPos m Bool)
+
   -- | Optional field.
   optionalFieldAla
     :: (c b, Newtype a b)
