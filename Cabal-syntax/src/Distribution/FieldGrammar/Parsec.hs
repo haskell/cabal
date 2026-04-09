@@ -377,7 +377,7 @@ instance FieldGrammarWith Mod.HasNoAnn Parsec ParsecFieldGrammar where
 
   hiddenField = id
 
-instance FieldGrammarWith Mod.HasAnn Parsec ParsecFieldGrammar where
+-- instance FieldGrammarWith Mod.HasAnn Parsec ParsecFieldGrammar where
   -- TODO(leana8959): implement monoidalFieldAla
   -- TODO(leana8959): implement all methods
 

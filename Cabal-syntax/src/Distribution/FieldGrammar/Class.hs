@@ -1,4 +1,5 @@
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -145,6 +146,22 @@ class
     -> ALens' s a
     -- ^ lens into the field
     -> g m s a
+
+  -- | Monoidal field.
+  --
+  -- Values are combined with 'mappend'.
+  --
+  -- /Note:/ 'optionalFieldAla' is a @monoidalField@ with 'Last' monoid.
+  monoidalFieldAla'
+    :: forall s a b
+     . (c b, Monoid a, Newtype a b)
+    => FieldName
+    -- ^ field name
+    -> (a -> b)
+    -- ^ 'pack'
+    -> ALens' s (AttachPos m a)
+    -- ^ lens into the field
+    -> g m s (AttachPos m a)
 
   -- | Monoidal field.
   --
