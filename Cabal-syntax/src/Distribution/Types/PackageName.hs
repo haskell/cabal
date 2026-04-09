@@ -28,6 +28,7 @@ import Distribution.Trivia
 import qualified Text.PrettyPrint as Disp
 
 import Data.Kind
+import Distribution.Types.Modify (Annotate)
 import qualified Distribution.Types.Modify as Mod
 
 -- | A package name.
@@ -39,14 +40,9 @@ import qualified Distribution.Types.Modify as Mod
 --
 -- @since 2.0.0.2
 type PackageName = PackageNameWith Mod.HasNoAnn
-
 type PackageNameAnn = PackageNameWith Mod.HasAnn
 
-type family ModifyPackageName (m :: Mod.HasAnnotation) (a :: Type) where
-  ModifyPackageName Mod.HasNoAnn a = a
-  ModifyPackageName Mod.HasAnn a = Ann SurroundingText a
-
-newtype PackageNameWith (m :: Mod.HasAnnotation) = PackageName (ModifyPackageName m ShortText)
+newtype PackageNameWith (m :: Mod.HasAnnotation) = PackageName (Annotate m ShortText)
   deriving (Generic)
 
 deriving instance Show PackageName

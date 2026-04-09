@@ -70,6 +70,7 @@ import Distribution.License (License)
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Trivia
+import Distribution.Types.Modify (Annotate)
 import qualified Distribution.Types.Modify as Mod
 import Distribution.Utils.Path
 import Distribution.Version
@@ -118,17 +119,13 @@ data NoCommaFSep = NoCommaFSep
 
 data NoCommaFSepAnn = NoCommaFSepAnn
 
-type family Modify (mod :: Mod.HasAnnotation) (a :: Type) where
-  Modify Mod.HasNoAnn a = a
-  Modify Mod.HasAnn a = Ann SurroundingText a
-
 -- TODO(leana8959): Relax Sep to return a list of annotated docs with position
 -- Use the position propagated back from applyTriviaDoc
 class Sep (mod :: Mod.HasAnnotation) sep | sep -> mod where
-  prettySep :: Proxy sep -> [Modify mod Doc] -> Doc
+  prettySep :: Proxy sep -> [Annotate mod Doc] -> Doc
 
-  parseSep :: CabalParsing m => Proxy sep -> m a -> m [Modify mod a]
-  parseSepNE :: CabalParsing m => Proxy sep -> m a -> m (NonEmpty (Modify mod a))
+  parseSep :: CabalParsing m => Proxy sep -> m a -> m [Annotate mod a]
+  parseSepNE :: CabalParsing m => Proxy sep -> m a -> m (NonEmpty (Annotate mod a))
 
 instance Sep Mod.HasNoAnn CommaVCat where
   prettySep _ = vcat . punctuate comma
@@ -230,7 +227,7 @@ instance Sep Mod.HasAnn NoCommaFSepAnn where
 
 -- | List separated with optional commas. Displayed with @sep@, arguments of
 -- type @a@ are parsed and pretty-printed as @b@.
-newtype ListWith mod sep b a = List {_getList :: [Modify mod a]}
+newtype ListWith mod sep b a = List {_getList :: [Annotate mod a]}
 
 type List = ListWith Mod.HasNoAnn
 type ListAnn = ListWith Mod.HasAnn

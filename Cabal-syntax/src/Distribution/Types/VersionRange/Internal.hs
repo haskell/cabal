@@ -70,10 +70,11 @@ import Data.Kind
 type VersionRange = VersionRangeWith Mod.HasNoAnn
 type VersionRangeAnn = VersionRangeWith Mod.HasAnn
 
+-- | Dependending on whether the data is a leaf, we annotate differently
 type family Modify (m :: Mod.HasAnnotation) (a :: Type) where
   Modify Mod.HasNoAnn a = a
   Modify Mod.HasAnn Version = (Trivia SurroundingText, VersionAnn)
-  Modify Mod.HasAnn VersionRangeAnn = (Trivia SurroundingText, VersionRangeAnn)
+  Modify Mod.HasAnn (VersionRangeWith Mod.HasAnn) = (Trivia SurroundingText, VersionRangeWith Mod.HasAnn)
 
 data VersionRangeWith (m :: Mod.HasAnnotation)
   = ThisVersion (Modify m Version) -- = version
