@@ -750,23 +750,6 @@ buildOrReplLib mReplFlags verbosity numJobs _pkg_descr lbi lib clbi = do
     let stubObjs = []
         stubSharedObjs = []
 
-    {-
-        stubObjs <- catMaybes <$> sequenceA
-          [ findFileWithExtension [objExtension] [libTargetDir]
-              (ModuleName.toFilePath x ++"_stub")
-          | ghcVersion < mkVersion [7,2] -- ghc-7.2+ does not make _stub.o files
-          , x <- allLibModules lib clbi ]
-        stubProfObjs <- catMaybes <$> sequenceA
-          [ findFileWithExtension ["p_" ++ objExtension] [libTargetDir]
-              (ModuleName.toFilePath x ++"_stub")
-          | ghcVersion < mkVersion [7,2] -- ghc-7.2+ does not make _stub.o files
-          , x <- allLibModules lib clbi ]
-        stubSharedObjs <- catMaybes <$> sequenceA
-          [ findFileWithExtension ["dyn_" ++ objExtension] [libTargetDir]
-              (ModuleName.toFilePath x ++"_stub")
-          | ghcVersion < mkVersion [7,2] -- ghc-7.2+ does not make _stub.o files
-          , x <- allLibModules lib clbi ]
-    -}
     hObjs <-
       Internal.getHaskellObjects
         implInfo
