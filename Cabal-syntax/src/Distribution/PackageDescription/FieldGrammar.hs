@@ -180,7 +180,7 @@ libraryFieldGrammar
      , Applicative (g (LibraryWith mod))
      , Applicative (g (BuildInfoWith mod))
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
-     , TargetBuildDepends mod ~ [DependencyWith mod]
+     , AttachPos mod [DependencyWith mod] ~ [DependencyWith mod]
      , c (Identity LibraryVisibility)
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
      , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
@@ -601,7 +601,7 @@ buildInfoFieldGrammar
      -- so we leave it for later and ponder on it.
      --
      -- Also, do we need the legacy parser? I think we can reimplement the old behaviour by "fmap unannotate" into the Field Grammar.
-     , TargetBuildDepends mod ~ [DependencyWith mod]
+     , AttachPos mod [DependencyWith mod] ~ [DependencyWith mod]
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
      , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
      , c (List CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
@@ -709,13 +709,13 @@ buildInfoFieldGrammar =
 -- {-# SPECIALIZE buildInfoFieldGrammar :: PrettyFieldGrammar' BuildInfoAnn #-}
 
 data MiniBuildInfo (m :: Mod.HasAnnotation) = MiniBuildInfo
-  { miniTargetBuildDepends :: TargetBuildDepends m
+  { miniTargetBuildDepends :: AttachPos m [DependencyWith m]
   }
 
 miniTargetBuildDependsLens
   :: forall mod f
    . Functor f
-  => (TargetBuildDepends mod -> f (TargetBuildDepends mod))
+  => (AttachPos mod [DependencyWith mod] -> f (AttachPos mod [DependencyWith mod]))
   -> (MiniBuildInfo mod)
   -> f (MiniBuildInfo mod)
 miniTargetBuildDependsLens f s = fmap (\x -> s{miniTargetBuildDepends = x}) (f (miniTargetBuildDepends s))
@@ -726,7 +726,7 @@ onlyBuildDependsPos
      , Applicative (g (BuildInfoWith Mod.HasAnn))
      , c (List CommaVCat (Identity (DependencyWith Mod.HasAnn)) (DependencyWith Mod.HasAnn))
      )
-  => g (TargetBuildDepends Mod.HasAnn) (TargetBuildDepends Mod.HasAnn)
+  => g (AttachPos Mod.HasAnn [DependencyWith Mod.HasAnn]) (AttachPos Mod.HasAnn [DependencyWith Mod.HasAnn])
 onlyBuildDependsPos = monoidalFieldAlaAnn "build-depends" (formatDependencyList @Mod.HasAnn) id
 
 miniBuildInfoFieldGrammarAnn
@@ -757,7 +757,7 @@ miniBuildInfoFieldGrammarTypeApp'
 
      -- NOTE(leana8959): this exists due to two different type class used to describe "with position"
      -- Could be simplified
-     , TargetBuildDepends mod ~ AttachPos mod [DependencyWith mod]
+     , AttachPos mod [DependencyWith mod] ~ [DependencyWith mod]
 
      , Applicative (g (MiniBuildInfo mod))
      , c (List CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
@@ -768,8 +768,8 @@ miniBuildInfoFieldGrammarTypeApp' =
     monoidalFieldAlaAnnTypeApp @_ @_ @mod "build-depends" (formatDependencyList @mod) miniTargetBuildDependsLens
 
 convertTargetBuildDepends
-  :: TargetBuildDepends Mod.HasAnn
-  -> TargetBuildDepends Mod.HasNoAnn
+  :: AttachPos Mod.HasAnn [DependencyWith Mod.HasAnn]
+  -> AttachPos Mod.HasNoAnn [DependencyWith Mod.HasNoAnn]
 convertTargetBuildDepends = join . map (map unannotateDependencyAnn . snd)
 
 unannotateMiniBuildInfo

@@ -11,7 +11,6 @@ module Distribution.Types.BuildInfo
   ( BuildInfo
   , BuildInfoAnn
   , BuildInfoWith (..)
-  , TargetBuildDepends
   , unannotateDependencyAnn
   , emptyBuildInfo
   , allLanguages
@@ -42,14 +41,15 @@ import Language.Haskell.Extension
 
 import Data.Kind
 
+import Distribution.Types.Modify (AttachPos)
 import qualified Distribution.Types.Modify as Mod
 
 type BuildInfo = BuildInfoWith Mod.HasNoAnn
 type BuildInfoAnn = BuildInfoWith Mod.HasAnn
 
-type family TargetBuildDepends (mod :: Mod.HasAnnotation) where
-  TargetBuildDepends Mod.HasAnn = [(Positions, [DependencyWith Mod.HasAnn])]
-  TargetBuildDepends Mod.HasNoAnn = [DependencyWith Mod.HasNoAnn]
+-- type family TargetBuildDepends (mod :: Mod.HasAnnotation) where
+--   TargetBuildDepends Mod.HasAnn = [(Positions, [DependencyWith Mod.HasAnn])]
+--   TargetBuildDepends Mod.HasNoAnn = [DependencyWith Mod.HasNoAnn]
 
 -- Consider refactoring into executable and library versions.
 data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
@@ -163,7 +163,7 @@ data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
   -- ^ Custom fields starting
   --  with x-, stored in a
   --  simple assoc-list.
-  , targetBuildDepends :: TargetBuildDepends m
+  , targetBuildDepends :: AttachPos m ([DependencyWith m])
   -- ^ Dependencies specific to a library or executable target
   , mixins :: [Mixin]
   }
