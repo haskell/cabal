@@ -34,6 +34,8 @@ instance Semigroup SurroundingText where
 data Positions = Positions
   { fieldNamePos :: Maybe Position
   , fieldLinePos :: Maybe Position
+  -- TODO(leana8959): will need to be patched at goSection
+  -- field grammar don't see sections
   , fieldSectionPos :: Maybe Position
   }
   deriving (Show, Eq, Ord, Read, Data)
