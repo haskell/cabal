@@ -33,7 +33,7 @@ import Distribution.Fields.Field
 import Distribution.Utils.ShortText
 
 import Data.Kind
-import Distribution.Types.Modify (AttachPos)
+import Distribution.Types.Modify (AttachPos, PreserveGrouping)
 import qualified Distribution.Types.Modify as Mod
 
 type FieldGrammar = FieldGrammarWith Mod.HasNoAnn
@@ -169,9 +169,9 @@ class
     -- ^ field name
     -> (a -> b)
     -- ^ 'pack'
-    -> ALens' s (AttachPos m a)
+    -> ALens' s (PreserveGrouping m (AttachPos m a))
     -- ^ lens into the field
-    -> g m s (AttachPos m a)
+    -> g m s (PreserveGrouping m (AttachPos m a))
 
   -- | Monoidal field.
   --

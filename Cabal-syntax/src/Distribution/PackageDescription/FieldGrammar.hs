@@ -97,7 +97,7 @@ import Distribution.Pretty (Pretty (..), prettyShow, showToken)
 import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
 
-import Distribution.Types.Modify (AttachPos)
+import Distribution.Types.Modify (AttachPos, PreserveGrouping)
 import qualified Distribution.Types.Modify as Mod
 
 import qualified Data.ByteString.Char8 as BS8
@@ -186,6 +186,7 @@ libraryFieldGrammar
      , Applicative (g mod (BuildInfoWith mod))
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
      , AttachPos mod [DependencyWith mod] ~ [DependencyWith mod]
+     , PreserveGrouping mod [DependencyWith mod] ~ [DependencyWith mod]
      , AttachPos mod Bool ~ Bool
      , c (Identity LibraryVisibility)
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
@@ -609,6 +610,7 @@ buildInfoFieldGrammar
      --
      -- Also, do we need the legacy parser? I think we can reimplement the old behaviour by "fmap unannotate" into the Field Grammar.
      , AttachPos mod [DependencyWith mod] ~ [DependencyWith mod]
+     , PreserveGrouping mod [DependencyWith mod] ~ [DependencyWith mod]
      , AttachPos mod Bool ~ Bool
 
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
@@ -731,20 +733,19 @@ buildInfoFieldGrammar' = do
   pure (BuildInfo {..})
 
 data MiniBuildInfo (m :: Mod.HasAnnotation) = MiniBuildInfo
-  { miniTargetBuildDependsPoly :: AttachPos m [DependencyWith m]
-  -- , miniTargetBuildDepends :: [DependencyWith m]
+  { miniTargetBuildDepends :: PreserveGrouping m (AttachPos m [DependencyWith m])
   }
 
 deriving instance Show (MiniBuildInfo Mod.HasAnn)
 deriving instance Show (MiniBuildInfo Mod.HasNoAnn)
 
-miniTargetBuildDependsPolyLens
+miniTargetBuildDependsLens
   :: forall mod f
    . Functor f
-  => (AttachPos mod [DependencyWith mod] -> f (AttachPos mod [DependencyWith mod]))
+  => (PreserveGrouping mod (AttachPos mod [DependencyWith mod]) -> f (PreserveGrouping mod (AttachPos mod [DependencyWith mod])))
   -> (MiniBuildInfo mod)
   -> f (MiniBuildInfo mod)
-miniTargetBuildDependsPolyLens f s = fmap (\x -> s{miniTargetBuildDependsPoly = x}) (f (miniTargetBuildDependsPoly s))
+miniTargetBuildDependsLens f s = fmap (\x -> s{miniTargetBuildDepends = x}) (f (miniTargetBuildDepends s))
 
 miniBuildInfoFieldGrammar
   :: forall mod c g
@@ -755,7 +756,7 @@ miniBuildInfoFieldGrammar
   => g mod (MiniBuildInfo mod) (MiniBuildInfo mod)
 miniBuildInfoFieldGrammar =
   MiniBuildInfo
-    <$> monoidalFieldAla' "build-depends" (formatDependencyList @mod) miniTargetBuildDependsPolyLens
+    <$> monoidalFieldAla' "build-depends" (formatDependencyList @mod) miniTargetBuildDependsLens
 
 hsSourceDirsGrammar
   :: forall mod c g

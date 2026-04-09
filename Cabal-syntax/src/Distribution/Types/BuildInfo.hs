@@ -41,7 +41,7 @@ import Language.Haskell.Extension
 
 import Data.Kind
 
-import Distribution.Types.Modify (AttachPos)
+import Distribution.Types.Modify (AttachPos, PreserveGrouping)
 import qualified Distribution.Types.Modify as Mod
 
 type BuildInfo = BuildInfoWith Mod.HasNoAnn
@@ -163,7 +163,7 @@ data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
   -- ^ Custom fields starting
   --  with x-, stored in a
   --  simple assoc-list.
-  , targetBuildDepends :: AttachPos m ([DependencyWith m])
+  , targetBuildDepends :: PreserveGrouping m (AttachPos m [DependencyWith m])
   -- ^ Dependencies specific to a library or executable target
   , mixins :: [Mixin]
   }
@@ -182,10 +182,7 @@ instance NFData BuildInfo where rnf = genericRnf
 unannotateBuildInfo :: BuildInfoAnn -> BuildInfo
 unannotateBuildInfo bi =
   bi
-    { buildable = case map snd $ buildable bi of
-      -- TODO(leana8959): remove multiplicity here
-        [u] -> u
-        _ -> undefined
+    { buildable = snd $ buildable bi
     , targetBuildDepends =
                   mconcat
                 $ (fmap . fmap) unannotateDependencyAnn

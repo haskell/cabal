@@ -23,5 +23,9 @@ type family Annotate (m :: HasAnnotation) (a :: Type) where
   Annotate HasAnn a = Ann SurroundingText a
 
 type family AttachPos (m :: HasAnnotation) (a :: Type) where
-  AttachPos HasAnn a = [(Positions, a)]
+  AttachPos HasAnn a = (Positions, a)
   AttachPos HasNoAnn a = a
+
+type family PreserveGrouping (m :: HasAnnotation) (a :: Type) where
+  PreserveGrouping HasAnn a = [a]
+  PreserveGrouping HasNoAnn a = a

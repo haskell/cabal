@@ -387,23 +387,23 @@ instance FieldGrammarWith Mod.HasAnn Parsec ParsecFieldGrammar where
     :: forall s
      . FieldName
     -- ^ field name
-    -> ALens' s [(Positions, Bool)]
+    -> ALens' s (Positions, Bool)
     -- ^ lens into the field
     -> Bool
     -- ^ default
-    -> ParsecFieldGrammar Mod.HasAnn s [(Positions, Bool)]
+    -> ParsecFieldGrammar Mod.HasAnn s (Positions, Bool)
   booleanFieldDef' fn _extract def = ParsecFG (Set.singleton fn) Set.empty parser
     where
       -- TODO(leana8959): implement position
 
-      parser :: CabalSpecVersion -> Fields Position -> ParseResult src [(Positions, Bool)]
+      parser :: CabalSpecVersion -> Fields Position -> ParseResult src (Positions, Bool)
       parser v fields = case Map.lookup fn fields of
-        Nothing -> (pure . pure) (noPos, def)
-        Just [] -> (pure . pure) (noPos, def)
-        Just [x] -> pure <$> parseOne v x
+        Nothing -> pure (noPos, def)
+        Just [] -> pure (noPos, def)
+        Just [x] -> parseOne v x
         Just xs@(_ : y : ys) -> do
           warnMultipleSingularFields fn xs
-          pure . NE.last <$> traverse (parseOne v) (y :| ys)
+          NE.last <$> traverse (parseOne v) (y :| ys)
 
       parseOne :: CabalSpecVersion -> NamelessField Position -> ParseResult src (Positions, Bool)
       parseOne v (MkNamelessField pos fls) = do
