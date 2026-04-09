@@ -71,6 +71,9 @@ module Distribution.PackageDescription.FieldGrammar
 
     -- * Component build info
   , buildInfoFieldGrammar
+
+  , MiniBuildInfo (..)
+  , miniBuildInfoFieldGrammar
   ) where
 
 import Distribution.Compat.Lens
@@ -90,7 +93,6 @@ import Distribution.Parsec
 import Distribution.Pretty (Pretty (..), prettyShow, showToken)
 import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
-import Distribution.Trivia (Positions (..))
 
 import Distribution.Types.Modify (AttachPos)
 import qualified Distribution.Types.Modify as Mod
@@ -729,27 +731,17 @@ miniTargetBuildDependsLens
   -> f (MiniBuildInfo mod)
 miniTargetBuildDependsLens f s = fmap (\x -> s{miniTargetBuildDepends = x}) (f (miniTargetBuildDepends s))
 
-miniBuildInfoFieldGrammarTypeApp'
+miniBuildInfoFieldGrammar
   :: forall mod c g
    . ( FieldGrammarWith mod c g
      , Applicative (g mod (MiniBuildInfo mod))
      , c (List CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
      )
   => g mod (MiniBuildInfo mod) (MiniBuildInfo mod)
-miniBuildInfoFieldGrammarTypeApp' =
+miniBuildInfoFieldGrammar =
   MiniBuildInfo
     <$> monoidalFieldAla' "build-depends" (formatDependencyList @mod) miniTargetBuildDependsPolyLens
     <*> monoidalFieldAla "build-depends" (formatDependencyList @mod) miniTargetBuildDependsLens
-
-convertTargetBuildDepends
-  :: AttachPos Mod.HasAnn [DependencyWith Mod.HasAnn]
-  -> AttachPos Mod.HasNoAnn [DependencyWith Mod.HasNoAnn]
-convertTargetBuildDepends = join . map (map unannotateDependencyAnn . snd)
-
-unannotateMiniBuildInfo
-  :: MiniBuildInfo Mod.HasAnn
-  -> MiniBuildInfo Mod.HasNoAnn
-unannotateMiniBuildInfo (MiniBuildInfo x y) = MiniBuildInfo (convertTargetBuildDepends x) (map unannotateDependencyAnn y)
 
 hsSourceDirsGrammar
   :: forall mod c g
