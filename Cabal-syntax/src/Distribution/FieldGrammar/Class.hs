@@ -1,4 +1,8 @@
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -24,6 +28,13 @@ import Distribution.Parsec.Position (Position)
 import Distribution.FieldGrammar.Newtypes
 import Distribution.Fields.Field
 import Distribution.Utils.ShortText
+
+import Data.Kind
+import qualified Distribution.Types.Modify as Mod
+
+type family Annotate (m :: Mod.HasAnnotation) (a :: Type) where
+  Annotate Mod.HasAnn a = a
+  Annotate Mod.HasNoAnn a = a
 
 -- | 'FieldGrammar' is parametrised by
 --
@@ -154,6 +165,17 @@ class
     -> ALens' s [(Positions, a)]
     -- ^ lens into the field
     -> g s [(Positions, a)]
+
+  monoidalFieldAlaAnnProxy
+    :: forall (m :: Mod.HasAnnotation) b s a
+     . (c b, Newtype a b)
+    => FieldName
+    -- ^ field name
+    -> (a -> b)
+    -- ^ 'pack'
+    -> ALens' s (Annotate m a)
+    -- ^ lens into the field
+    -> g s (Annotate m a)
 
   -- | Parser matching all fields with a name starting with a prefix.
   prefixedFields
