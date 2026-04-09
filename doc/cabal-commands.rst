@@ -354,8 +354,8 @@ Initialization and download
 cabal init
 ^^^^^^^^^^
 
-``cabal init [FLAGS]`` initialises a Cabal package, prompting the user for inputs or choosing 
-  sensible defaults to create a minimal project. Run it in your project folder.
+``cabal init [FLAGS]`` initialises a Cabal package, by default prompting the user for inputs, or choosing 
+  sensible defaults to create a minimal project if specified. Run it in your project folder.
 
 .. option:: -i, --interactive
 
