@@ -736,10 +736,10 @@ buildInfoFieldGrammar'
      )
   => g mod (BuildInfoWith mod) (BuildInfoWith mod)
 buildInfoFieldGrammar' = do
-  buildable <- booleanFieldDef' "buildable" (L.buildable @mod) True
+  buildable <- booleanFieldDef' "buildable" L.buildable True
   -- NOTE(leana8959): adding a binding for the lens formatters help type inference
-  buildTools <- monoidalFieldAla' "build-tools" formatBuildTools (L.buildTools @mod)
-  targetBuildDepends <- monoidalFieldAla' "build-depends" (formatDependencyList @mod) (L.targetBuildDepends @mod)
+  buildTools <- monoidalFieldAla' "build-tools" formatBuildTools L.buildTools
+  targetBuildDepends <- monoidalFieldAla' "build-depends" (formatDependencyList @mod) L.targetBuildDepends
   pure (BuildInfo {..})
 
 data MiniBuildInfo (m :: Mod.HasAnnotation) = MiniBuildInfo
