@@ -55,7 +55,7 @@ type BuildInfoAnn = BuildInfoWith Mod.HasAnn
 data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
   { buildable :: AttachPos m Bool
   -- ^ component is buildable here
-  , buildTools :: PreserveGrouping m (AttachPos m [LegacyExeDependency])
+  , buildTools :: PreserveGrouping m (AttachPos m [Annotate m LegacyExeDependency])
   -- ^ Tools needed to build this bit.
   --
   -- This is a legacy field that 'buildToolDepends' largely supersedes.
@@ -63,7 +63,7 @@ data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
   -- Unless use are very sure what you are doing, use the functions in
   -- "Distribution.Simple.BuildToolDepends" rather than accessing this
   -- field directly.
-  , buildToolDepends :: PreserveGrouping m (AttachPos m [ExeDependency])
+  , buildToolDepends :: PreserveGrouping m (AttachPos m [Annotate m ExeDependency])
   -- ^ Haskell tools needed to build this bit
   --
   -- This field is better than 'buildTools' because it allows one to
@@ -184,11 +184,13 @@ unannotateBuildInfo bi =
   bi
     { buildable = snd $ buildable bi
     , buildTools =
-                  mconcat
+                map unAnn
+                $ join
                 $ map snd
                 $ buildTools bi
     , buildToolDepends =
-                  mconcat
+                map unAnn
+                $ join
                 $ map snd
                 $ buildToolDepends bi
     , targetBuildDepends =

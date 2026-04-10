@@ -187,14 +187,8 @@ libraryFieldGrammar
      , Applicative (g mod (BuildInfoWith mod))
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
 
-     , AttachPos mod [DependencyWith mod] ~ [DependencyWith mod]
-     , Annotate mod (DependencyWith mod) ~ DependencyWith mod
-     , PreserveGrouping mod [DependencyWith mod] ~ [DependencyWith mod]
-     , AttachPos mod [LegacyExeDependency] ~ [LegacyExeDependency]
-     , PreserveGrouping mod [LegacyExeDependency] ~ [LegacyExeDependency]
-     , AttachPos mod [ExeDependency] ~ [ExeDependency]
-     , PreserveGrouping mod [ExeDependency] ~ [ExeDependency]
-     , AttachPos mod Bool ~ Bool
+     -- TODO(leana8959): use legacy for now, not completely polymorphic
+     , mod ~ Mod.HasNoAnn
 
      , c (Identity LibraryVisibility)
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
@@ -611,20 +605,8 @@ buildInfoFieldGrammar
      , Applicative (g mod (BuildInfoWith mod))
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
 
-     -- NOTE(leana8959): This constraint is here for the time being to parse legacy BuildInfo without Annotation.
-     -- To make this fully polymorphic (and lift this constraint), we need to choose between monoidalFieldAla and monoidalFieldAlaAnn using the type.
-     -- This might force us to add one more new type param to the FieldGrammar type class and render things more complicated,
-     -- so we leave it for later and ponder on it.
-     --
-     -- Also, do we need the legacy parser? I think we can reimplement the old behaviour by "fmap unannotate" into the Field Grammar.
-     , AttachPos mod [DependencyWith mod] ~ [DependencyWith mod]
-     , Annotate mod (DependencyWith mod) ~ DependencyWith mod
-     , PreserveGrouping mod [DependencyWith mod] ~ [DependencyWith mod]
-     , AttachPos mod [LegacyExeDependency] ~ [LegacyExeDependency]
-     , PreserveGrouping mod [LegacyExeDependency] ~ [LegacyExeDependency]
-     , AttachPos mod [ExeDependency] ~ [ExeDependency]
-     , PreserveGrouping mod [ExeDependency] ~ [ExeDependency]
-     , AttachPos mod Bool ~ Bool
+     -- TODO(leana8959): use legacy for now, not completely polymorphic
+     , mod ~ Mod.HasNoAnn
 
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
      , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
@@ -732,24 +714,27 @@ buildInfoFieldGrammar =
 -- {-# SPECIALIZE buildInfoFieldGrammar :: ParsecFieldGrammar' BuildInfoAnn #-}
 -- {-# SPECIALIZE buildInfoFieldGrammar :: PrettyFieldGrammar' BuildInfoAnn #-}
 
--- buildInfoFieldGrammar'
---   :: forall mod c g
---    . ( FieldGrammarWith mod c g
---      , Applicative (g mod (BuildInfoWith mod))
---      , L.HasBuildInfoWith mod (BuildInfoWith mod)
---      -- TODO(leana8959): implement dispatch to list with annotation when needed
---      , c (ListWith Mod.HasNoAnn CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
---      , c (ListWith Mod.HasNoAnn CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
---      , c (ListWith Mod.HasNoAnn CommaFSep (Identity ExeDependency) ExeDependency)
---      )
---   => g mod (BuildInfoWith mod) (BuildInfoWith mod)
--- buildInfoFieldGrammar' = do
---   buildable <- booleanFieldDef' "buildable" L.buildable True
---   -- NOTE(leana8959): adding a binding for the lens formatters help type inference
---   buildTools <- monoidalFieldAla' "build-tools" formatBuildTools L.buildTools
---   buildToolDepends <- monoidalFieldAla' "build-tool-depends" formatBuildToolDepends L.buildToolDepends
---   targetBuildDepends <- monoidalFieldAla' "build-depends" (formatDependencyList @mod) L.targetBuildDepends
---   pure (BuildInfo {..})
+buildInfoFieldGrammar'
+  :: forall mod c g
+   . ( FieldGrammarWith mod c g
+     , Applicative (g mod (BuildInfoWith mod))
+     , L.HasBuildInfoWith mod (BuildInfoWith mod)
+
+     , Newtype [Annotate mod (DependencyWith mod)] (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
+     , c (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
+     , Newtype [Annotate mod LegacyExeDependency] (ListWith mod CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
+     , c (ListWith mod CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
+     , Newtype [Annotate mod ExeDependency] (ListWith mod CommaFSep (Identity ExeDependency) ExeDependency)
+     , c (ListWith mod CommaFSep (Identity ExeDependency) ExeDependency)
+     )
+  => g mod (BuildInfoWith mod) (BuildInfoWith mod)
+buildInfoFieldGrammar' = do
+  buildable <- booleanFieldDef' "buildable" L.buildable True
+  -- NOTE(leana8959): adding a binding for the lens formatters help type inference
+  buildTools <- monoidalFieldAla' "build-tools" (formatBuildTools @mod) L.buildTools
+  buildToolDepends <- monoidalFieldAla' "build-tool-depends" (formatBuildToolDepends @mod) L.buildToolDepends
+  targetBuildDepends <- monoidalFieldAla' "build-depends" (formatDependencyList @mod) L.targetBuildDepends
+  pure (BuildInfo {..})
 
 data MiniBuildInfo (m :: Mod.HasAnnotation) = MiniBuildInfo
   { miniTargetBuildDepends :: PreserveGrouping m (AttachPos m [Annotate m (DependencyWith m)])
@@ -780,7 +765,7 @@ miniBuildInfoFieldGrammar
   => g mod (MiniBuildInfo mod) (MiniBuildInfo mod)
 miniBuildInfoFieldGrammar =
   MiniBuildInfo
-    <$> monoidalFieldAla' "build-depends" (formatDependencyList' @mod) miniTargetBuildDependsLens
+    <$> monoidalFieldAla' "build-depends" (formatDependencyList @mod) miniTargetBuildDependsLens
 
 hsSourceDirsGrammar
   :: forall mod c g
@@ -933,18 +918,14 @@ setupBInfoFieldGrammar def =
 -- Define how field values should be formatted for 'pretty'.
 -------------------------------------------------------------------------------
 
--- TODO(leana8959): implement this
-formatDependencyList :: [DependencyWith mod] -> List CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod)
-formatDependencyList = alaList CommaVCat
+formatDependencyList :: [Annotate mod (DependencyWith mod)] -> ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod)
+formatDependencyList = List
 
-formatDependencyList' :: [Annotate mod (DependencyWith mod)] -> ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod)
-formatDependencyList' = List
+formatBuildTools :: [Annotate mod LegacyExeDependency] -> ListWith mod CommaFSep (Identity LegacyExeDependency) LegacyExeDependency
+formatBuildTools = List
 
-formatBuildTools :: [LegacyExeDependency] -> List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency
-formatBuildTools = alaList CommaFSep
-
-formatBuildToolDepends :: [ExeDependency] -> List CommaFSep (Identity ExeDependency) ExeDependency
-formatBuildToolDepends = alaList CommaFSep
+formatBuildToolDepends :: [Annotate mod ExeDependency] -> ListWith mod CommaFSep (Identity ExeDependency) ExeDependency
+formatBuildToolDepends = List
 
 formatMixinList :: [Mixin] -> List CommaVCat (Identity Mixin) Mixin
 formatMixinList = alaList CommaVCat
