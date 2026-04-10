@@ -739,6 +739,7 @@ buildInfoFieldGrammar' = do
   buildTools <- monoidalFieldAla' "build-tools" (formatBuildTools @mod) L.buildTools
   buildToolDepends <- monoidalFieldAla' "build-tool-depends" (formatBuildToolDepends @mod) L.buildToolDepends
   cppOptions <- monoidalFieldAla' "cpp-options" (formatCppOptions @mod) L.cppOptions
+  asmOptions <- monoidalFieldAla' "asm-options" (formatAsmOptions @mod) L.asmOptions
 
   -- TODO(leana8959): add more
 
@@ -938,6 +939,9 @@ formatBuildToolDepends = List
 
 formatCppOptions :: [Annotate mod String] -> ListWith mod NoCommaFSep Token' String
 formatCppOptions = List
+
+formatAsmOptions :: [Annotate mod String] -> ListWith mod NoCommaFSep Token' String
+formatAsmOptions = List
 
 formatMixinList :: [Mixin] -> List CommaVCat (Identity Mixin) Mixin
 formatMixinList = alaList CommaVCat
