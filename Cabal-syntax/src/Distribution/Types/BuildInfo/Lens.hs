@@ -97,7 +97,7 @@ class HasBuildInfoWith mod a | a -> mod where
   cSources :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod (SymbolicPath Pkg File)]))
   cSources = buildInfo @mod . cSources @mod
 
-  cxxSources :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [SymbolicPath Pkg File]
+  cxxSources :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod (SymbolicPath Pkg File)]))
   cxxSources = buildInfo @mod . cxxSources @mod
 
   jsSources :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [SymbolicPath Pkg File]

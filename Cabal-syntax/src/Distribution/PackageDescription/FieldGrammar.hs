@@ -759,6 +759,7 @@ buildInfoFieldGrammar' = do
   astSources <- monoidalFieldAla' "asm-sources" (alaListWith' @mod @VCat @(SymbolicPathNT Pkg File) @(SymbolicPath Pkg File)) L.asmSources
   cmmSources <- monoidalFieldAla' "cmm-sources" (alaListWith' @mod @VCat @(SymbolicPathNT Pkg File) @(SymbolicPath Pkg File)) L.cmmSources
   cSources <- monoidalFieldAla' "c-sources" (alaListWith' @mod @VCat @(SymbolicPathNT Pkg File) @(SymbolicPath Pkg File)) L.cSources
+  cxxSources <- monoidalFieldAla' "cxx-sources" (alaListWith' @mod @VCat @(SymbolicPathNT Pkg File) @(SymbolicPath Pkg File)) L.cxxSources
 
   -- TODO(leana8959): add more
 
