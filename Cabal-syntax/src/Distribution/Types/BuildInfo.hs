@@ -92,7 +92,7 @@ data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
   -- ^ pkg-config packages that are used
   , frameworks :: PreserveGrouping m (AttachPos m [Annotate m (RelativePath Framework File)])
   -- ^ support frameworks for Mac OS X
-  , extraFrameworkDirs :: [SymbolicPath Pkg (Dir Framework)]
+  , extraFrameworkDirs :: PreserveGrouping m (AttachPos m [Annotate m (SymbolicPath Pkg (Dir Framework))])
   -- ^ extra locations to find frameworks.
   , asmSources :: [SymbolicPath Pkg File]
   -- ^ Assembly files.
@@ -195,6 +195,7 @@ unannotateBuildInfo bi =
     , hsc2hsOptions = map unAnn $ join $ map snd $ hsc2hsOptions bi
     , pkgconfigDepends = map unAnn $ join $ map snd $ pkgconfigDepends bi
     , frameworks = map unAnn $ join $ map snd $ frameworks bi
+    , extraFrameworkDirs = map unAnn $ join $ map snd $ extraFrameworkDirs bi
 
     -- TODO(leana8959): add more fields here
 

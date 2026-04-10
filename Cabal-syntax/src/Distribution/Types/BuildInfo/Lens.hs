@@ -85,7 +85,7 @@ class HasBuildInfoWith mod a | a -> mod where
   frameworks :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod (RelativePath Framework File)]))
   frameworks = buildInfo @mod . frameworks @mod
 
-  extraFrameworkDirs :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [SymbolicPath Pkg (Dir Framework)]
+  extraFrameworkDirs :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod (SymbolicPath Pkg (Dir Framework))]))
   extraFrameworkDirs = buildInfo @mod . extraFrameworkDirs @mod
 
   asmSources :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [SymbolicPath Pkg File]
