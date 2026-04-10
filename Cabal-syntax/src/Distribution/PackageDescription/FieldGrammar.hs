@@ -734,7 +734,7 @@ buildInfoFieldGrammar'
      , c (ListWith mod FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
      , Newtype [Annotate mod (SymbolicPath Pkg File)] (ListWith mod VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
      , c (ListWith mod VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
-
+     , c (List FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
      -- TODO(leana8959): constraints go here
 
      , Newtype [Annotate mod (DependencyWith mod)] (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
@@ -761,6 +761,7 @@ buildInfoFieldGrammar' = do
   cSources <- monoidalFieldAla' "c-sources" (alaListWith' @mod @VCat @(SymbolicPathNT Pkg File) @(SymbolicPath Pkg File)) L.cSources
   cxxSources <- monoidalFieldAla' "cxx-sources" (alaListWith' @mod @VCat @(SymbolicPathNT Pkg File) @(SymbolicPath Pkg File)) L.cxxSources
   jsSources <- monoidalFieldAla' "js-sources" (alaListWith' @mod @VCat @(SymbolicPathNT Pkg File) @(SymbolicPath Pkg File)) L.jsSources
+  hsSourceDirs <- hsSourceDirsGrammar
 
   -- TODO(leana8959): add more
 
@@ -808,7 +809,7 @@ hsSourceDirsGrammar
    . ( FieldGrammarWith mod c g
      , Applicative (g mod (BuildInfoWith mod))
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
-     , forall from to. c (List FSep (SymbolicPathNT from to) (SymbolicPath from to))
+     , c (List FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
      )
   => g mod (BuildInfoWith mod) [SymbolicPath Pkg (Dir Source)]
 hsSourceDirsGrammar =
