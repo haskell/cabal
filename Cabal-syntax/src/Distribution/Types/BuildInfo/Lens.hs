@@ -67,7 +67,7 @@ class HasBuildInfoWith mod a | a -> mod where
   ccOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod String]))
   ccOptions = buildInfo @mod . ccOptions @mod
 
-  cxxOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [String]
+  cxxOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod String]))
   cxxOptions = buildInfo @mod . cxxOptions @mod
 
   jsppOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [String]
