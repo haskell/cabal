@@ -82,7 +82,7 @@ data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
   -- ^ options for C compiler
   , cxxOptions :: PreserveGrouping m (AttachPos m [Annotate m String])
   -- ^ options for C++ compiler
-  , jsppOptions :: [String]
+  , jsppOptions :: PreserveGrouping m (AttachPos m [Annotate m String])
   -- ^ options for pre-processing JavaScript code @since 3.16.0.0
   , ldOptions :: [String]
   -- ^ options for linker
@@ -190,6 +190,7 @@ unannotateBuildInfo bi =
     , cmmOptions = map unAnn $ join $ map snd $ cmmOptions bi
     , ccOptions = map unAnn $ join $ map snd $ ccOptions bi
     , cxxOptions = map unAnn $ join $ map snd $ cxxOptions bi
+    , jsppOptions = map unAnn $ join $ map snd $ jsppOptions bi
 
     -- TODO(leana8959): add more fields here
 

@@ -742,6 +742,7 @@ buildInfoFieldGrammar' = do
   cmmOptions <- monoidalFieldAla' "cmm-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.cmmOptions
   ccOptions <- monoidalFieldAla' "cc-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.ccOptions
   cxxOptions <- monoidalFieldAla' "cxx-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.cxxOptions
+  jsppOptions <- monoidalFieldAla' "jspp-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.jsppOptions
 
   -- TODO(leana8959): add more
 
