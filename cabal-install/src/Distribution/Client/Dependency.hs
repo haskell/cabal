@@ -167,6 +167,7 @@ import Distribution.Solver.Types.Variable
 import Control.Exception
   ( assert
   )
+import Data.Foldable (fold)
 import Data.List
   ( maximumBy
   )
@@ -1099,9 +1100,6 @@ configuredPackageProblems
       specifiedDeps1 :: ComponentDeps [PackageId]
       specifiedDeps1 = fmap (map solverSrcId) specifiedDeps0
 
-      specifiedDeps :: [PackageId]
-      specifiedDeps = CD.flatDeps specifiedDeps1
-
       mergedFlags :: [MergeResult PD.FlagName PD.FlagName]
       mergedFlags =
         mergeBy
@@ -1118,7 +1116,7 @@ configuredPackageProblems
       dependencyName (Dependency name _ _) = name
 
       mergedDeps :: [MergeResult Dependency PackageId]
-      mergedDeps = mergeDeps requiredDeps specifiedDeps
+      mergedDeps = mergeDeps requiredDeps (fold specifiedDeps1)
 
       mergeDeps
         :: [Dependency]
