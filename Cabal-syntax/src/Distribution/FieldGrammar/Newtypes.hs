@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
@@ -22,11 +23,6 @@ module Distribution.FieldGrammar.Newtypes
   , VCat (..)
   , FSep (..)
   , NoCommaFSep (..)
-  , CommaVCatAnn (..)
-  , CommaFSepAnn (..)
-  , VCatAnn (..)
-  , FSepAnn (..)
-  , NoCommaFSepAnn (..)
 
     -- ** Separator class
   , Sep (..)
@@ -34,7 +30,7 @@ module Distribution.FieldGrammar.Newtypes
     -- ** Type
   , List
   , ListAnn
-  , ListWith
+  , ListWith (..)
 
     -- ** Set
   , alaSet
@@ -97,31 +93,21 @@ import qualified Distribution.SPDX as SPDX
 -- | Vertical list with commas. Displayed with 'vcat'
 data CommaVCat = CommaVCat
 
-data CommaVCatAnn = CommaVCatAnn
-
 -- | Paragraph fill list with commas. Displayed with 'fsep'
 data CommaFSep = CommaFSep
-
-data CommaFSepAnn = CommaFSepAnn
 
 -- | Vertical list with optional commas. Displayed with 'vcat'.
 data VCat = VCat
 
-data VCatAnn = VCatAnn
-
 -- | Paragraph fill list with optional commas. Displayed with 'fsep'.
 data FSep = FSep
-
-data FSepAnn = FSepAnn
 
 -- | Paragraph fill list without commas. Displayed with 'fsep'.
 data NoCommaFSep = NoCommaFSep
 
-data NoCommaFSepAnn = NoCommaFSepAnn
-
 -- TODO(leana8959): Relax Sep to return a list of annotated docs with position
 -- Use the position propagated back from applyTriviaDoc
-class Sep (mod :: Mod.HasAnnotation) sep | sep -> mod where
+class Sep (mod :: Mod.HasAnnotation) sep where
   prettySep :: Proxy sep -> [Annotate mod Doc] -> Doc
 
   parseSep :: CabalParsing m => Proxy sep -> m a -> m [Annotate mod a]
@@ -136,7 +122,7 @@ instance Sep Mod.HasNoAnn CommaVCat where
     v <- askCabalSpecVersion
     if v >= CabalSpecV2_2 then parsecLeadingCommaNonEmpty p else parsecCommaNonEmpty p
 
-instance Sep Mod.HasAnn CommaVCatAnn where
+instance Sep Mod.HasAnn CommaVCat where
   prettySep _ = mconcat . map (\(Ann t doc) -> applyTriviaDoc t doc)
   parseSep _ p = do
     v <- askCabalSpecVersion
@@ -156,7 +142,7 @@ instance Sep Mod.HasNoAnn CommaFSep where
     v <- askCabalSpecVersion
     if v >= CabalSpecV2_2 then parsecLeadingCommaNonEmpty p else parsecCommaNonEmpty p
 
-instance Sep Mod.HasAnn CommaFSepAnn where
+instance Sep Mod.HasAnn CommaFSep where
   prettySep _ = mconcat . map (\(Ann t doc) -> applyTriviaDoc t doc)
   parseSep _ p = do
     v <- askCabalSpecVersion
@@ -174,7 +160,7 @@ instance Sep Mod.HasNoAnn VCat where
     if v >= CabalSpecV3_0 then parsecLeadingOptCommaList p else parsecOptCommaList p
   parseSepNE _ p = NE.some1 (p <* P.spaces)
 
-instance Sep Mod.HasAnn VCatAnn where
+instance Sep Mod.HasAnn VCat where
   prettySep _ = mconcat . map (\(Ann t doc) -> applyTriviaDoc t doc)
   parseSep _ p = do
     v <- askCabalSpecVersion
@@ -195,7 +181,7 @@ instance Sep Mod.HasNoAnn FSep where
     if v >= CabalSpecV3_0 then parsecLeadingOptCommaList p else parsecOptCommaList p
   parseSepNE _ p = NE.some1 (p <* P.spaces)
 
-instance Sep Mod.HasAnn FSepAnn where
+instance Sep Mod.HasAnn FSep where
   prettySep _ = mconcat . map (\(Ann t doc) -> applyTriviaDoc t doc)
   parseSep _ p = do
     v <- askCabalSpecVersion
@@ -214,7 +200,7 @@ instance Sep Mod.HasNoAnn NoCommaFSep where
   parseSep _ p = many (p <* P.spaces)
   parseSepNE _ p = NE.some1 (p <* P.spaces)
 
-instance Sep Mod.HasAnn NoCommaFSepAnn where
+instance Sep Mod.HasAnn NoCommaFSep where
   prettySep _ = mconcat . map (\(Ann t doc) -> applyTriviaDoc t doc)
   parseSep _ p = many $ do
     x <- p
@@ -247,20 +233,20 @@ alaList _ = List
 alaList' :: sep -> (a -> b) -> [a] -> List sep b a
 alaList' _ _ = List
 
-instance Newtype [a] (List sep wrapper a)
-instance Newtype [Ann SurroundingText a] (ListAnn sep wrapper a)
+instance Newtype [a] (ListWith Mod.HasNoAnn sep wrapper a)
+instance Newtype [Ann SurroundingText a] (ListWith Mod.HasAnn sep wrapper a)
 
 instance (Newtype a b, Sep Mod.HasNoAnn sep, Parsec b) => Parsec (List sep b a) where
-  parsec = pack . map (unpack :: b -> a) <$> parseSep (Proxy :: Proxy sep) parsec
+  parsec = pack . map (unpack :: b -> a) <$> parseSep @Mod.HasNoAnn (Proxy :: Proxy sep) parsec
 
 instance (Newtype a b, Sep Mod.HasAnn sep, Parsec b) => Parsec (ListAnn sep b a) where
-  parsec = pack . (map . fmap) (unpack :: b -> a) <$> parseSep (Proxy :: Proxy sep) parsec
+  parsec = pack . (map . fmap) (unpack :: b -> a) <$> parseSep @Mod.HasAnn (Proxy :: Proxy sep) parsec
 
 instance (Newtype a b, Sep Mod.HasNoAnn sep, Pretty b) => Pretty (List sep b a) where
-  pretty = prettySep (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . unpack
+  pretty = prettySep @Mod.HasNoAnn (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . unpack
 
 instance (Newtype a b, Sep Mod.HasAnn sep, Pretty b) => Pretty (ListAnn sep b a) where
-  pretty = prettySep (Proxy :: Proxy sep) . (map . fmap) (pretty . (pack :: a -> b)) . unpack
+  pretty = prettySep @Mod.HasAnn (Proxy :: Proxy sep) . (map . fmap) (pretty . (pack :: a -> b)) . unpack
 
 -- | Like 'List', but for 'Set'.
 --
@@ -292,10 +278,10 @@ alaSet' _ _ = Set'
 instance Newtype (Set a) (Set' sep wrapper a)
 
 instance (Newtype a b, Ord a, Sep Mod.HasNoAnn sep, Parsec b) => Parsec (Set' sep b a) where
-  parsec = pack . Set.fromList . map (unpack :: b -> a) <$> parseSep (Proxy :: Proxy sep) parsec
+  parsec = pack . Set.fromList . map (unpack :: b -> a) <$> parseSep @Mod.HasNoAnn (Proxy :: Proxy sep) parsec
 
 instance (Newtype a b, Sep Mod.HasNoAnn sep, Pretty b) => Pretty (Set' sep b a) where
-  pretty = prettySep (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . Set.toList . unpack
+  pretty = prettySep @Mod.HasNoAnn (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . Set.toList . unpack
 
 --
 
@@ -326,10 +312,10 @@ alaNonEmpty' _ _ = NonEmpty'
 instance Newtype (NonEmpty a) (NonEmpty' sep wrapper a)
 
 instance (Newtype a b, Sep Mod.HasNoAnn sep, Parsec b) => Parsec (NonEmpty' sep b a) where
-  parsec = pack . fmap (unpack :: b -> a) <$> parseSepNE (Proxy :: Proxy sep) parsec
+  parsec = pack . fmap (unpack :: b -> a) <$> parseSepNE @Mod.HasNoAnn (Proxy :: Proxy sep) parsec
 
 instance (Newtype a b, Sep Mod.HasNoAnn sep, Pretty b) => Pretty (NonEmpty' sep b a) where
-  pretty = prettySep (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . NE.toList . unpack
+  pretty = prettySep @Mod.HasNoAnn (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . NE.toList . unpack
 
 -------------------------------------------------------------------------------
 -- Identifiers

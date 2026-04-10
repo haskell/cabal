@@ -37,7 +37,7 @@ import Distribution.Utils.Path
 import Language.Haskell.Extension (Extension, Language)
 
 import qualified Distribution.Types.BuildInfo as T
-import Distribution.Types.Modify (AttachPos, PreserveGrouping)
+import Distribution.Types.Modify (AttachPos, PreserveGrouping, Annotate)
 import qualified Distribution.Types.Modify as Mod
 
 type HasBuildInfo = HasBuildInfoWith Mod.HasNoAnn
@@ -184,7 +184,7 @@ class HasBuildInfoWith mod a | a -> mod where
   customFieldsBI :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [(String, String)]
   customFieldsBI = buildInfo @mod . customFieldsBI @mod
 
-  targetBuildDepends :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [DependencyWith mod]))
+  targetBuildDepends :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod (DependencyWith mod)]))
   targetBuildDepends = buildInfo @mod . targetBuildDepends @mod
 
   mixins :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [Mixin]

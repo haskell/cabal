@@ -41,7 +41,7 @@ import Language.Haskell.Extension
 
 import Data.Kind
 
-import Distribution.Types.Modify (AttachPos, PreserveGrouping)
+import Distribution.Types.Modify (AttachPos, PreserveGrouping, Annotate)
 import qualified Distribution.Types.Modify as Mod
 
 type BuildInfo = BuildInfoWith Mod.HasNoAnn
@@ -163,7 +163,7 @@ data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
   -- ^ Custom fields starting
   --  with x-, stored in a
   --  simple assoc-list.
-  , targetBuildDepends :: PreserveGrouping m (AttachPos m [DependencyWith m])
+  , targetBuildDepends :: PreserveGrouping m (AttachPos m [Annotate m (DependencyWith m)])
   -- ^ Dependencies specific to a library or executable target
   , mixins :: [Mixin]
   }
@@ -192,8 +192,8 @@ unannotateBuildInfo bi =
                 $ map snd
                 $ buildToolDepends bi
     , targetBuildDepends =
-                  mconcat
-                $ (fmap . fmap) unannotateDependencyAnn
+                map (unannotateDependencyAnn . unAnn)
+                $ join
                 $ map snd
                 $ targetBuildDepends bi
     }
