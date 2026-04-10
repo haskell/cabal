@@ -757,6 +757,7 @@ buildInfoFieldGrammar' = do
   frameworks <- monoidalFieldAla' "frameworks" (alaListWith' @mod @FSep @(RelativePathNT Framework File) @(RelativePath Framework File)) L.frameworks
   extraFrameworkDirs <- monoidalFieldAla' "extra-framework-dirs" (alaListWith' @mod @FSep @(SymbolicPathNT Pkg (Dir Framework)) @(SymbolicPath Pkg (Dir Framework))) L.extraFrameworkDirs
   astSources <- monoidalFieldAla' "asm-sources" (alaListWith' @mod @VCat @(SymbolicPathNT Pkg File) @(SymbolicPath Pkg File)) L.asmSources
+  cmmSources <- monoidalFieldAla' "cmm-sources" (alaListWith' @mod @VCat @(SymbolicPathNT Pkg File) @(SymbolicPath Pkg File)) L.cmmSources
 
   -- TODO(leana8959): add more
 
