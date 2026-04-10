@@ -29,6 +29,7 @@ module Distribution.Client.IndexUtils
   , getSourcePackagesAtIndexState
   , ActiveRepos
   , filterSkippedActiveRepos
+  , applyStrategy
   , Index (..)
   , RepoIndexState (..)
   , PackageEntry (..)
@@ -372,16 +373,8 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState mb_activeRepos = do
             ts /= NoTimestamp
             ]
 
-  let addIndex
-        :: PackageIndex UnresolvedSourcePackage
-        -> (RepoData, CombineStrategy)
-        -> PackageIndex UnresolvedSourcePackage
-      addIndex acc (RepoData _ _ _ _, CombineStrategySkip) = acc
-      addIndex acc (RepoData _ _ idx _, CombineStrategyMerge) = PackageIndex.merge acc idx
-      addIndex acc (RepoData _ _ idx _, CombineStrategyOverride) = PackageIndex.override acc idx
-
   let pkgs :: PackageIndex UnresolvedSourcePackage
-      pkgs = foldl' addIndex mempty pkgss'
+      pkgs = foldl' (\acc (rd, s) -> applyStrategy acc (rdIndex rd, s)) mempty pkgss'
 
   -- Note: preferences combined without using CombineStrategy
   let prefs :: Map PackageName VersionRange
@@ -412,6 +405,19 @@ data RepoData = RepoData
   , rdIndex :: PackageIndex UnresolvedSourcePackage
   , rdPreferences :: [Dependency]
   }
+
+-- | Fold one package index into an accumulator according to a 'CombineStrategy'.
+--
+-- This is the per-repository step used by 'getSourcePackagesAtIndexState' when
+-- building the combined 'PackageIndex' from multiple repositories.
+applyStrategy
+  :: Package pkg
+  => PackageIndex pkg
+  -> (PackageIndex pkg, CombineStrategy)
+  -> PackageIndex pkg
+applyStrategy acc (_, CombineStrategySkip) = acc
+applyStrategy acc (idx, CombineStrategyMerge) = PackageIndex.merge acc idx
+applyStrategy acc (idx, CombineStrategyOverride) = PackageIndex.override acc idx
 
 -- | Read a repository index from disk, from the local file specified by
 -- the 'Repo'.
