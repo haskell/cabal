@@ -735,6 +735,12 @@ buildInfoFieldGrammar'
      , Newtype [Annotate mod (SymbolicPath Pkg File)] (ListWith mod VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
      , c (ListWith mod VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
      , c (List FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+
+     -- is a monoid with or without annotation, for hsSourceDirs compat
+     , Monoid (PreserveGrouping mod (AttachPos mod [Annotate mod (SymbolicPath Pkg (Dir Source))]))
+     , Newtype [Annotate mod (SymbolicPath Pkg (Dir Source))] (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+     , c (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+
      -- TODO(leana8959): constraints go here
 
      , Newtype [Annotate mod (DependencyWith mod)] (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
@@ -761,7 +767,7 @@ buildInfoFieldGrammar' = do
   cSources <- monoidalFieldAla' "c-sources" (alaListWith' @mod @VCat @(SymbolicPathNT Pkg File) @(SymbolicPath Pkg File)) L.cSources
   cxxSources <- monoidalFieldAla' "cxx-sources" (alaListWith' @mod @VCat @(SymbolicPathNT Pkg File) @(SymbolicPath Pkg File)) L.cxxSources
   jsSources <- monoidalFieldAla' "js-sources" (alaListWith' @mod @VCat @(SymbolicPathNT Pkg File) @(SymbolicPath Pkg File)) L.jsSources
-  hsSourceDirs <- hsSourceDirsGrammar
+  hsSourceDirs <- hsSourceDirsGrammar @mod
 
   -- TODO(leana8959): add more
 
@@ -809,18 +815,23 @@ hsSourceDirsGrammar
    . ( FieldGrammarWith mod c g
      , Applicative (g mod (BuildInfoWith mod))
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
-     , c (List FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+
+     -- is a monoid with or without annotation
+     , Monoid (PreserveGrouping mod (AttachPos mod [Annotate mod (SymbolicPath Pkg (Dir Source))]))
+
+     , Newtype [Annotate mod (SymbolicPath Pkg (Dir Source))] (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+     , c (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
      )
-  => g mod (BuildInfoWith mod) [SymbolicPath Pkg (Dir Source)]
+  => g mod (BuildInfoWith mod) (PreserveGrouping mod (AttachPos mod [Annotate mod (SymbolicPath Pkg (Dir Source))]))
 hsSourceDirsGrammar =
-  (++)
-    <$> monoidalFieldAla "hs-source-dirs" formatHsSourceDirs L.hsSourceDirs
-    <*> monoidalFieldAla "hs-source-dir" (alaList' FSep SymbolicPathNT) wrongLens
-      --- https://github.com/haskell/cabal/commit/49e3cdae3bdf21b017ccd42e66670ca402e22b44
-      ^^^ deprecatedSince CabalSpecV1_2 "Please use 'hs-source-dirs'"
-      ^^^ removedIn CabalSpecV3_0 "Please use 'hs-source-dirs' field."
-  where
-    wrongLens f bi = (\fps -> set (L.hsSourceDirs @mod) fps bi) <$> f []
+    (<>)
+      <$> monoidalFieldAla' "hs-source-dirs" (alaListWith' @mod @FSep @(SymbolicPathNT Pkg (Dir Source)) @(SymbolicPath Pkg (Dir Source))) L.hsSourceDirs
+      <*> monoidalFieldAla' "hs-source-dir" (alaListWith' @mod @FSep @(SymbolicPathNT Pkg (Dir Source)) @(SymbolicPath Pkg (Dir Source))) wrongLens
+              --- https://github.com/haskell/cabal/commit/49e3cdae3bdf21b017ccd42e66670ca402e22b44
+              ^^^ deprecatedSince CabalSpecV1_2 "Please use 'hs-source-dirs'"
+              ^^^ removedIn CabalSpecV3_0 "Please use 'hs-source-dirs' field."
+    where
+      wrongLens f bi = (\fps -> set (L.hsSourceDirs @mod) fps bi) <$> f mempty
 -- {-# SPECIALIZE hsSourceDirsGrammar :: ParsecFieldGrammar BuildInfoAnn [SymbolicPath Pkg (Dir Source)] #-}
 -- {-# SPECIALIZE hsSourceDirsGrammar :: PrettyFieldGrammar BuildInfoAnn [SymbolicPath Pkg (Dir Source)] #-}
 
