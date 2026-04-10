@@ -746,6 +746,11 @@ buildInfoFieldGrammar' = do
   targetBuildDepends <- monoidalFieldAla' "build-depends" (formatDependencyList @mod) L.targetBuildDepends
   pure (BuildInfo {..})
 
+-- {-# SPECIALIZE buildInfoFieldGrammar' :: ParsecFieldGrammar   Mod.HasAnn BuildInfoAnn BuildInfoAnn #-}
+-- {-# SPECIALIZE buildInfoFieldGrammar' :: ParsecFieldGrammar Mod.HasNoAnn    BuildInfo    BuildInfo #-}
+-- {-# SPECIALIZE buildInfoFieldGrammar' :: PrettyFieldGrammar   Mod.HasAnn BuildInfoAnn BuildInfoAnn #-}
+-- {-# SPECIALIZE buildInfoFieldGrammar' :: PrettyFieldGrammar Mod.HasNoAnn    BuildInfo    BuildInfo #-}
+
 data MiniBuildInfo (m :: Mod.HasAnnotation) = MiniBuildInfo
   { miniTargetBuildDepends :: PreserveGrouping m (AttachPos m [Annotate m (DependencyWith m)])
   }
