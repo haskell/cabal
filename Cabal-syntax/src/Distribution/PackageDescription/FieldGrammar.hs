@@ -666,7 +666,7 @@ buildInfoFieldGrammar =
       ^^^ availableSince CabalSpecV2_2 []
     <*> monoidalFieldAla "js-sources" (alaList' VCat SymbolicPathNT) L.jsSources
     <*> hsSourceDirsGrammar
-    <*> monoidalFieldAla "other-modules" formatOtherModules L.otherModules
+    <*> monoidalFieldAla "other-modules" (formatOtherModules @Mod.HasNoAnn) L.otherModules
     <*> monoidalFieldAla "virtual-modules" (alaList' VCat MQuoted) L.virtualModules
       ^^^ availableSince CabalSpecV2_2 []
     <*> monoidalFieldAla "autogen-modules" (alaList' VCat MQuoted) L.autogenModules
@@ -741,6 +741,9 @@ buildInfoFieldGrammar'
      , Newtype [Annotate mod (SymbolicPath Pkg (Dir Source))] (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
      , c (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
 
+     , Newtype [Annotate mod ModuleName] (ListWith mod VCat (MQuoted ModuleName) ModuleName)
+     , c (ListWith mod VCat (MQuoted ModuleName) ModuleName)
+
      -- TODO(leana8959): constraints go here
 
      , Newtype [Annotate mod (DependencyWith mod)] (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
@@ -768,6 +771,7 @@ buildInfoFieldGrammar' = do
   cxxSources <- monoidalFieldAla' "cxx-sources" (alaListWith' @mod @VCat @(SymbolicPathNT Pkg File) @(SymbolicPath Pkg File)) L.cxxSources
   jsSources <- monoidalFieldAla' "js-sources" (alaListWith' @mod @VCat @(SymbolicPathNT Pkg File) @(SymbolicPath Pkg File)) L.jsSources
   hsSourceDirs <- hsSourceDirsGrammar @mod
+  otherModules <- monoidalFieldAla' "other-modules" (formatOtherModules @mod) L.otherModules
 
   -- TODO(leana8959): add more
 
@@ -984,8 +988,8 @@ formatHsSourceDirs = alaList' FSep SymbolicPathNT
 formatOtherExtensions :: [Extension] -> List FSep (MQuoted Extension) Extension
 formatOtherExtensions = alaList' FSep MQuoted
 
-formatOtherModules :: [ModuleName] -> List VCat (MQuoted ModuleName) ModuleName
-formatOtherModules = alaList' VCat MQuoted
+formatOtherModules :: [Annotate mod ModuleName] -> ListWith mod VCat (MQuoted ModuleName) ModuleName
+formatOtherModules = List
 
 -------------------------------------------------------------------------------
 -- newtypes

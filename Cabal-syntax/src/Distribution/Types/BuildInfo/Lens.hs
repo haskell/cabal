@@ -106,7 +106,7 @@ class HasBuildInfoWith mod a | a -> mod where
   hsSourceDirs :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod (SymbolicPath Pkg (Dir Source))]))
   hsSourceDirs = buildInfo @mod . hsSourceDirs @mod
 
-  otherModules :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [ModuleName]
+  otherModules :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod ModuleName]))
   otherModules = buildInfo @mod . otherModules @mod
 
   virtualModules :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [ModuleName]
