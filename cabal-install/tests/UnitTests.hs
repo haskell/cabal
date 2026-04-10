@@ -9,6 +9,7 @@ import qualified UnitTests.Distribution.Client.GZipUtils
 import qualified UnitTests.Distribution.Client.Get
 import qualified UnitTests.Distribution.Client.Glob
 import qualified UnitTests.Distribution.Client.IndexUtils
+import qualified UnitTests.Distribution.Client.IndexUtils.ActiveRepos
 import qualified UnitTests.Distribution.Client.IndexUtils.Timestamp
 import qualified UnitTests.Distribution.Client.Init
 import qualified UnitTests.Distribution.Client.InstallPlan
@@ -52,6 +53,9 @@ main = do
       , testGroup
           "UnitTests.Distribution.Client.IndexUtils"
           UnitTests.Distribution.Client.IndexUtils.tests
+      , testGroup
+          "UnitTests.Distribution.Client.IndexUtils.ActiveRepos"
+          UnitTests.Distribution.Client.IndexUtils.ActiveRepos.tests
       , testGroup
           "UnitTests.Distribution.Client.IndexUtils.Timestamp"
           UnitTests.Distribution.Client.IndexUtils.Timestamp.tests
