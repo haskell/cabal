@@ -98,7 +98,7 @@ data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
   -- ^ Assembly files.
   , cmmSources :: PreserveGrouping m (AttachPos m [Annotate m (SymbolicPath Pkg File)])
   -- ^ C-- files.
-  , cSources :: [SymbolicPath Pkg File]
+  , cSources :: PreserveGrouping m (AttachPos m [Annotate m (SymbolicPath Pkg File)])
   , cxxSources :: [SymbolicPath Pkg File]
   , jsSources :: [SymbolicPath Pkg File]
   , hsSourceDirs :: [SymbolicPath Pkg (Dir Source)]
@@ -198,6 +198,7 @@ unannotateBuildInfo bi =
     , extraFrameworkDirs = map unAnn $ join $ map snd $ extraFrameworkDirs bi
     , asmSources = map unAnn $ join $ map snd $ asmSources bi
     , cmmSources = map unAnn $ join $ map snd $ cmmSources bi
+    , cSources = map unAnn $ join $ map snd $ cSources bi
 
     -- TODO(leana8959): add more fields here
 
