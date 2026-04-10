@@ -730,9 +730,10 @@ buildInfoFieldGrammar'
      , c (ListWith mod CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
      , Newtype [Annotate mod (RelativePath Framework File)] (ListWith mod FSep (RelativePathNT Framework File) (RelativePath Framework File))
      , c (ListWith mod FSep (RelativePathNT Framework File) (RelativePath Framework File))
-
      , Newtype [Annotate mod (SymbolicPath Pkg (Dir Framework))] (ListWith mod FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
      , c (ListWith mod FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
+     , Newtype [Annotate mod (SymbolicPath Pkg File)] (ListWith mod VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
+     , c (ListWith mod VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
 
      -- TODO(leana8959): constraints go here
 
@@ -753,9 +754,9 @@ buildInfoFieldGrammar' = do
   ldOptions <- monoidalFieldAla' "ld-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.ldOptions
   hsc2hsOptions <- monoidalFieldAla' "hsc2hsOptions" (alaListWith' @mod @NoCommaFSep @Token' @String) L.hsc2hsOptions
   pkgconfigDepends <- monoidalFieldAla' "pkgconfig-depends" (alaListWith @mod @CommaFSep @PkgconfigDependency) L.pkgconfigDepends
-
   frameworks <- monoidalFieldAla' "frameworks" (alaListWith' @mod @FSep @(RelativePathNT Framework File) @(RelativePath Framework File)) L.frameworks
   extraFrameworkDirs <- monoidalFieldAla' "extra-framework-dirs" (alaListWith' @mod @FSep @(SymbolicPathNT Pkg (Dir Framework)) @(SymbolicPath Pkg (Dir Framework))) L.extraFrameworkDirs
+  astSources <- monoidalFieldAla' "asm-sources" (alaListWith' @mod @VCat @(SymbolicPathNT Pkg File) @(SymbolicPath Pkg File)) L.asmSources
 
   -- TODO(leana8959): add more
 
