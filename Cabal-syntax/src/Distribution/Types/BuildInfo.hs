@@ -100,7 +100,7 @@ data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
   -- ^ C-- files.
   , cSources :: PreserveGrouping m (AttachPos m [Annotate m (SymbolicPath Pkg File)])
   , cxxSources :: PreserveGrouping m (AttachPos m [Annotate m (SymbolicPath Pkg File)])
-  , jsSources :: [SymbolicPath Pkg File]
+  , jsSources :: PreserveGrouping m (AttachPos m [Annotate m (SymbolicPath Pkg File)])
   , hsSourceDirs :: [SymbolicPath Pkg (Dir Source)]
   -- ^ where to look for the Haskell module hierarchy
   , -- NB: these are symbolic paths are not relative paths,
@@ -200,6 +200,7 @@ unannotateBuildInfo bi =
     , cmmSources = map unAnn $ join $ map snd $ cmmSources bi
     , cSources = map unAnn $ join $ map snd $ cSources bi
     , cxxSources = map unAnn $ join $ map snd $ cxxSources bi
+    , jsSources = map unAnn $ join $ map snd $ jsSources bi
 
     -- TODO(leana8959): add more fields here
 
