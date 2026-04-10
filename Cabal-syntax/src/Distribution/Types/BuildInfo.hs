@@ -76,7 +76,7 @@ data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
   -- ^ options for pre-processing Haskell code
   , asmOptions :: PreserveGrouping m (AttachPos m [Annotate m String])
   -- ^ options for assembler
-  , cmmOptions :: [String]
+  , cmmOptions :: PreserveGrouping m (AttachPos m [Annotate m String])
   -- ^ options for C-- compiler
   , ccOptions :: [String]
   -- ^ options for C compiler
@@ -187,6 +187,7 @@ unannotateBuildInfo bi =
     , buildToolDepends = map unAnn $ join $ map snd $ buildToolDepends bi
     , cppOptions = map unAnn $ join $ map snd $ cppOptions bi
     , asmOptions = map unAnn $ join $ map snd $ asmOptions bi
+    , cmmOptions = map unAnn $ join $ map snd $ cmmOptions bi
 
     -- TODO(leana8959): add more fields here
 
