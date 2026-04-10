@@ -76,7 +76,7 @@ class HasBuildInfoWith mod a | a -> mod where
   ldOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod String]))
   ldOptions = buildInfo @mod . ldOptions @mod
 
-  hsc2hsOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [String]
+  hsc2hsOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod String]))
   hsc2hsOptions = buildInfo @mod . hsc2hsOptions @mod
 
   pkgconfigDepends :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [PkgconfigDependency]

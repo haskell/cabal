@@ -86,7 +86,7 @@ data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
   -- ^ options for pre-processing JavaScript code @since 3.16.0.0
   , ldOptions :: PreserveGrouping m (AttachPos m [Annotate m String])
   -- ^ options for linker
-  , hsc2hsOptions :: [String]
+  , hsc2hsOptions :: PreserveGrouping m (AttachPos m [Annotate m String])
   -- ^ options for hsc2hs
   , pkgconfigDepends :: [PkgconfigDependency]
   -- ^ pkg-config packages that are used
@@ -192,6 +192,7 @@ unannotateBuildInfo bi =
     , cxxOptions = map unAnn $ join $ map snd $ cxxOptions bi
     , jsppOptions = map unAnn $ join $ map snd $ jsppOptions bi
     , ldOptions = map unAnn $ join $ map snd $ ldOptions bi
+    , hsc2hsOptions = map unAnn $ join $ map snd $ hsc2hsOptions bi
 
     -- TODO(leana8959): add more fields here
 
