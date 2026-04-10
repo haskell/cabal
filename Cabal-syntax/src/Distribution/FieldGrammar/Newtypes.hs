@@ -16,6 +16,8 @@ module Distribution.FieldGrammar.Newtypes
   ( -- * List
     alaList
   , alaList'
+  , alaListWith
+  , alaListWith'
 
     -- ** Modifiers
   , CommaVCat (..)
@@ -229,9 +231,22 @@ type ListAnn = ListWith Mod.HasAnn
 alaList :: sep -> [a] -> List sep (Identity a) a
 alaList _ = List
 
+-- | Use Type Application to create a ListWith data
+alaListWith
+  :: forall (mod :: Mod.HasAnnotation) (sep :: Type) (a :: Type)
+   . [Annotate mod a]
+  -> ListWith mod sep (Identity a) a
+alaListWith = List
+
 -- | More general version of 'alaList'.
 alaList' :: sep -> (a -> b) -> [a] -> List sep b a
 alaList' _ _ = List
+
+alaListWith'
+  :: forall (mod :: Mod.HasAnnotation) (sep :: Type) (b :: Type) (a :: Type)
+   . [Annotate mod a]
+  -> ListWith mod sep b a
+alaListWith' = List
 
 instance Newtype [a] (ListWith Mod.HasNoAnn sep wrapper a)
 instance Newtype [Ann SurroundingText a] (ListWith Mod.HasAnn sep wrapper a)

@@ -735,12 +735,11 @@ buildInfoFieldGrammar'
   => g mod (BuildInfoWith mod) (BuildInfoWith mod)
 buildInfoFieldGrammar' = do
   buildable <- booleanFieldDef' "buildable" L.buildable True
-  -- NOTE(leana8959): adding a binding for the lens formatters help type inference
-  buildTools <- monoidalFieldAla' "build-tools" (formatBuildTools @mod) L.buildTools
-  buildToolDepends <- monoidalFieldAla' "build-tool-depends" (formatBuildToolDepends @mod) L.buildToolDepends
-  cppOptions <- monoidalFieldAla' "cpp-options" (formatCppOptions @mod) L.cppOptions
-  asmOptions <- monoidalFieldAla' "asm-options" (formatAsmOptions @mod) L.asmOptions
-  cmmOptions <- monoidalFieldAla' "cmm-options" (formatCmmOptions @mod) L.cmmOptions
+  buildTools <- monoidalFieldAla' "build-tools" (alaListWith @mod @CommaFSep @LegacyExeDependency) L.buildTools
+  buildToolDepends <- monoidalFieldAla' "build-tool-depends" (alaListWith @mod @CommaFSep @ExeDependency) L.buildToolDepends
+  cppOptions <- monoidalFieldAla' "cpp-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.cppOptions
+  asmOptions <- monoidalFieldAla' "asm-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.asmOptions
+  cmmOptions <- monoidalFieldAla' "cmm-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.cmmOptions
 
   -- TODO(leana8959): add more
 
@@ -931,21 +930,6 @@ setupBInfoFieldGrammar def =
 
 formatDependencyList :: [Annotate mod (DependencyWith mod)] -> ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod)
 formatDependencyList = List
-
-formatBuildTools :: [Annotate mod LegacyExeDependency] -> ListWith mod CommaFSep (Identity LegacyExeDependency) LegacyExeDependency
-formatBuildTools = List
-
-formatBuildToolDepends :: [Annotate mod ExeDependency] -> ListWith mod CommaFSep (Identity ExeDependency) ExeDependency
-formatBuildToolDepends = List
-
-formatCppOptions :: [Annotate mod String] -> ListWith mod NoCommaFSep Token' String
-formatCppOptions = List
-
-formatAsmOptions :: [Annotate mod String] -> ListWith mod NoCommaFSep Token' String
-formatAsmOptions = List
-
-formatCmmOptions :: [Annotate mod String] -> ListWith mod NoCommaFSep Token' String
-formatCmmOptions = List
 
 formatMixinList :: [Mixin] -> List CommaVCat (Identity Mixin) Mixin
 formatMixinList = alaList CommaVCat
