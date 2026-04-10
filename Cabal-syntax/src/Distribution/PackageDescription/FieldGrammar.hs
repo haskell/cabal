@@ -106,6 +106,8 @@ import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.SPDX as SPDX
 import qualified Distribution.Types.Lens as L
 
+import Data.Kind
+
 -------------------------------------------------------------------------------
 -- PackageDescription
 -------------------------------------------------------------------------------
@@ -720,38 +722,49 @@ buildInfoFieldGrammar'
      , Applicative (g mod (BuildInfoWith mod))
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
 
-     , Newtype [Annotate mod LegacyExeDependency] (ListWith mod CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
-     , c (ListWith mod CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
-     , Newtype [Annotate mod ExeDependency] (ListWith mod CommaFSep (Identity ExeDependency) ExeDependency)
-     , c (ListWith mod CommaFSep (Identity ExeDependency) ExeDependency)
-     , Newtype [Annotate mod String] (ListWith mod NoCommaFSep Token' String)
-     , c (ListWith mod NoCommaFSep Token' String)
-     , Newtype [Annotate mod PkgconfigDependency] (ListWith mod CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
-     , c (ListWith mod CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
+     -- , Newtype [Annotate mod LegacyExeDependency] (ListWith mod CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
+     -- , c (ListWith mod CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
+     -- , Newtype [Annotate mod ExeDependency] (ListWith mod CommaFSep (Identity ExeDependency) ExeDependency)
+     -- , c (ListWith mod CommaFSep (Identity ExeDependency) ExeDependency)
+     -- , Newtype [Annotate mod String] (ListWith mod NoCommaFSep Token' String)
+     -- , c (ListWith mod NoCommaFSep Token' String)
+     -- , Newtype [Annotate mod PkgconfigDependency] (ListWith mod CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
+     -- , c (ListWith mod CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
+
+     -- , forall (from :: Type) (to :: FileOrDir).
+     --    Newtype
+     --      [Annotate mod (SymbolicPathX 'OnlyRelative from to)]
+     --      (ListWith mod FSep (RelativePathNT from to) (SymbolicPathX 'OnlyRelative from to))
+
+     , forall (from :: Type) (to :: FileOrDir).
+        c (ListWith mod FSep (RelativePathNT from to) (RelativePath from to))
+
 
      -- TODO(leana8959): constraints go here
 
-     , Newtype [Annotate mod (DependencyWith mod)] (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
-     , c (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
+     -- , Newtype [Annotate mod (DependencyWith mod)] (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
+     -- , c (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
      )
   => g mod (BuildInfoWith mod) (BuildInfoWith mod)
 buildInfoFieldGrammar' = do
-  buildable <- booleanFieldDef' "buildable" L.buildable True
-  buildTools <- monoidalFieldAla' "build-tools" (alaListWith @mod @CommaFSep @LegacyExeDependency) L.buildTools
-  buildToolDepends <- monoidalFieldAla' "build-tool-depends" (alaListWith @mod @CommaFSep @ExeDependency) L.buildToolDepends
-  cppOptions <- monoidalFieldAla' "cpp-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.cppOptions
-  asmOptions <- monoidalFieldAla' "asm-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.asmOptions
-  cmmOptions <- monoidalFieldAla' "cmm-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.cmmOptions
-  ccOptions <- monoidalFieldAla' "cc-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.ccOptions
-  cxxOptions <- monoidalFieldAla' "cxx-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.cxxOptions
-  jsppOptions <- monoidalFieldAla' "jspp-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.jsppOptions
-  ldOptions <- monoidalFieldAla' "ld-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.ldOptions
-  hsc2hsOptions <- monoidalFieldAla' "hsc2hsOptions" (alaListWith' @mod @NoCommaFSep @Token' @String) L.hsc2hsOptions
-  pkgconfigDepends <- monoidalFieldAla' "pkgconfig-depends" (alaListWith @mod @CommaFSep @PkgconfigDependency) L.pkgconfigDepends
+  -- buildable <- booleanFieldDef' "buildable" L.buildable True
+  -- buildTools <- monoidalFieldAla' "build-tools" (alaListWith @mod @CommaFSep @LegacyExeDependency) L.buildTools
+  -- buildToolDepends <- monoidalFieldAla' "build-tool-depends" (alaListWith @mod @CommaFSep @ExeDependency) L.buildToolDepends
+  -- cppOptions <- monoidalFieldAla' "cpp-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.cppOptions
+  -- asmOptions <- monoidalFieldAla' "asm-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.asmOptions
+  -- cmmOptions <- monoidalFieldAla' "cmm-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.cmmOptions
+  -- ccOptions <- monoidalFieldAla' "cc-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.ccOptions
+  -- cxxOptions <- monoidalFieldAla' "cxx-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.cxxOptions
+  -- jsppOptions <- monoidalFieldAla' "jspp-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.jsppOptions
+  -- ldOptions <- monoidalFieldAla' "ld-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.ldOptions
+  -- hsc2hsOptions <- monoidalFieldAla' "hsc2hsOptions" (alaListWith' @mod @NoCommaFSep @Token' @String) L.hsc2hsOptions
+  -- pkgconfigDepends <- monoidalFieldAla' "pkgconfig-depends" (alaListWith @mod @CommaFSep @PkgconfigDependency) L.pkgconfigDepends
+
+  frameworks <- monoidalFieldAla' "frameworks" (alaList' FSep RelativePathNT) L.frameworks
 
   -- TODO(leana8959): add more
 
-  targetBuildDepends <- monoidalFieldAla' "build-depends" (formatDependencyList @mod) L.targetBuildDepends
+  -- targetBuildDepends <- monoidalFieldAla' "build-depends" (formatDependencyList @mod) L.targetBuildDepends
   pure (BuildInfo {..})
 
 -- {-# SPECIALIZE buildInfoFieldGrammar' :: ParsecFieldGrammar   Mod.HasAnn BuildInfoAnn BuildInfoAnn #-}

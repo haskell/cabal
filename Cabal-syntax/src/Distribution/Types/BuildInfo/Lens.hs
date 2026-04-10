@@ -82,7 +82,7 @@ class HasBuildInfoWith mod a | a -> mod where
   pkgconfigDepends :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod PkgconfigDependency]))
   pkgconfigDepends = buildInfo @mod . pkgconfigDepends @mod
 
-  frameworks :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [RelativePath Framework File]
+  frameworks :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod (RelativePath Framework File)]))
   frameworks = buildInfo @mod . frameworks @mod
 
   extraFrameworkDirs :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [SymbolicPath Pkg (Dir Framework)]
