@@ -88,7 +88,7 @@ data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
   -- ^ options for linker
   , hsc2hsOptions :: PreserveGrouping m (AttachPos m [Annotate m String])
   -- ^ options for hsc2hs
-  , pkgconfigDepends :: [PkgconfigDependency]
+  , pkgconfigDepends :: PreserveGrouping m (AttachPos m [Annotate m PkgconfigDependency])
   -- ^ pkg-config packages that are used
   , frameworks :: [RelativePath Framework File]
   -- ^ support frameworks for Mac OS X
@@ -193,6 +193,7 @@ unannotateBuildInfo bi =
     , jsppOptions = map unAnn $ join $ map snd $ jsppOptions bi
     , ldOptions = map unAnn $ join $ map snd $ ldOptions bi
     , hsc2hsOptions = map unAnn $ join $ map snd $ hsc2hsOptions bi
+    , pkgconfigDepends = map unAnn $ join $ map snd $ pkgconfigDepends bi
 
     -- TODO(leana8959): add more fields here
 

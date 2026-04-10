@@ -79,7 +79,7 @@ class HasBuildInfoWith mod a | a -> mod where
   hsc2hsOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod String]))
   hsc2hsOptions = buildInfo @mod . hsc2hsOptions @mod
 
-  pkgconfigDepends :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [PkgconfigDependency]
+  pkgconfigDepends :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod PkgconfigDependency]))
   pkgconfigDepends = buildInfo @mod . pkgconfigDepends @mod
 
   frameworks :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [RelativePath Framework File]

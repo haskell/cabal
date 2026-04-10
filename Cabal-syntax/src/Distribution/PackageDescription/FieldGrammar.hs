@@ -726,6 +726,8 @@ buildInfoFieldGrammar'
      , c (ListWith mod CommaFSep (Identity ExeDependency) ExeDependency)
      , Newtype [Annotate mod String] (ListWith mod NoCommaFSep Token' String)
      , c (ListWith mod NoCommaFSep Token' String)
+     , Newtype [Annotate mod PkgconfigDependency] (ListWith mod CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
+     , c (ListWith mod CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
 
      -- TODO(leana8959): constraints go here
 
@@ -745,6 +747,7 @@ buildInfoFieldGrammar' = do
   jsppOptions <- monoidalFieldAla' "jspp-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.jsppOptions
   ldOptions <- monoidalFieldAla' "ld-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.ldOptions
   hsc2hsOptions <- monoidalFieldAla' "hsc2hsOptions" (alaListWith' @mod @NoCommaFSep @Token' @String) L.hsc2hsOptions
+  pkgconfigDepends <- monoidalFieldAla' "pkgconfig-depends" (alaListWith @mod @CommaFSep @PkgconfigDependency) L.pkgconfigDepends
 
   -- TODO(leana8959): add more
 
