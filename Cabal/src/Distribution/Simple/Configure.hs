@@ -2607,14 +2607,10 @@ checkForeignDeps pkg lbi verbosity =
     -- in either the generated (most likely by `configure`)
     -- build directory (e.g. `dist/build`) or in the source directory.
     --
-    -- If it exists in both, we'll remove the one in the source
-    -- directory, as the generated should take precedence.
+    -- If it exists in both, issue a warning, because C compilers are
+    -- not guaranteed to pick the correct one and there appears to be
+    -- no way to control which is picked.
     --
-    -- C compilers like to prefer source local relative includes,
-    -- so the search paths provided to the compiler via -I are
-    -- ignored if the included file can be found relative to the
-    -- including file.  As such we need to take drastic measures
-    -- and delete the offending file in the source directory.
     checkDuplicateHeaders = do
       let relIncDirs = filter (not . isAbsolute) (collectField (fmap getSymbolicPath . includeDirs))
           isHeader = isSuffixOf ".h"
@@ -2631,9 +2627,7 @@ checkForeignDeps pkg lbi verbosity =
             ++ (getSymbolicPath (buildDir lbi) </> hdr)
             ++ " and "
             ++ (baseDir </> hdr)
-            ++ "; removing "
-            ++ (baseDir </> hdr)
-        removeFileForcibly (baseDir </> hdr)
+            ++ ". Which one the C compiler will use is unspecified."
 
     findOffendingHdr =
       ifBuildsWith
