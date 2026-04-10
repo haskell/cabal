@@ -72,7 +72,7 @@ data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
   -- Unless use are very sure what you are doing, use the functions in
   -- "Distribution.Simple.BuildToolDepends" rather than accessing this
   -- field directly.
-  , cppOptions :: [String]
+  , cppOptions :: PreserveGrouping m (AttachPos m [Annotate m String])
   -- ^ options for pre-processing Haskell code
   , asmOptions :: [String]
   -- ^ options for assembler
@@ -193,6 +193,14 @@ unannotateBuildInfo bi =
                 $ join
                 $ map snd
                 $ buildToolDepends bi
+    , cppOptions =
+                map unAnn
+                $ join
+                $ map snd
+                $ cppOptions bi
+
+    -- TODO(leana8959): add more fields here
+
     , targetBuildDepends =
                 map (unannotateDependencyAnn . unAnn)
                 $ join
