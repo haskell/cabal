@@ -2067,7 +2067,7 @@ installUnpackedPackage
 
       setup cmd getCommonFlags flags mLogPath =
         Exception.bracket
-          (traverse (\path -> openFile path AppendMode) mLogPath)
+          (traverse (`openFile` AppendMode) mLogPath)
           (traverse_ hClose)
           ( \logFileHandle ->
               setupWrapper
