@@ -1394,7 +1394,7 @@ withShorterPathForNewBuildStore test =
   withTestDir
     (mkVerbosity defaultVerbosityHandles normal)
     "cabal-test-store"
-    (\f -> withStoreDir f test)
+    (`withStoreDir` test)
 
 -- | Find where a package locates in the store dir. This works only if there is exactly one 1 ghc version
 -- and exactly 1 directory for the given package in the store dir.

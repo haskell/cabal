@@ -245,8 +245,8 @@ resolveOpts opts = do
         maybe
           -- If neither `--hide-successes` or `--no-hide-successes` was given, then
           -- only `--hide-successes` if `--quiet` is given.
-          (optional (rawVerbosity opts <= Quiet) "--hide-successes")
-          (\hideSuccesses -> optional hideSuccesses "--hide-successes")
+          ((rawVerbosity opts <= Quiet) `optional` "--hide-successes")
+          (`optional` "--hide-successes")
           (rawTastyHideSuccesses opts)
           ++ maybe
             []

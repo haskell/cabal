@@ -49,7 +49,7 @@ interpModuleRenaming :: ModuleRenaming -> ModuleName -> Maybe ModuleName
 interpModuleRenaming DefaultRenaming = Just
 interpModuleRenaming (ModuleRenaming rns) =
   let m = Map.fromList rns
-   in \k -> Map.lookup k m
+   in (`Map.lookup` m)
 interpModuleRenaming (HidingRenaming hs) =
   let s = Set.fromList hs
    in \k -> if k `Set.member` s then Nothing else Just k

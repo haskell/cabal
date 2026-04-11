@@ -527,7 +527,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
         expectLibraryComponent (maybeComponentExposedModules clbi)
           -- add virtual modules into the list of exposed modules for the
           -- package database as well.
-          ++ map (\name -> IPI.ExposedModule name Nothing) (virtualModules bi)
+          ++ map (`IPI.ExposedModule` Nothing) (virtualModules bi)
     , IPI.hiddenModules = otherModules bi
     , IPI.trusted = IPI.trusted IPI.emptyInstalledPackageInfo
     , IPI.importDirs = [libdir installDirs | hasModules]
