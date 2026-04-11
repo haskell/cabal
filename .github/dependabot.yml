@@ -18,3 +18,8 @@ updates:
         patterns:
           - "*"
 
+  - package-ecosystem: "uv"
+    directory: "/doc"
+    schedule:
+      interval: "weekly"
+
