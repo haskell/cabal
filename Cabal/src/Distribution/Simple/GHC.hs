@@ -488,14 +488,13 @@ getPackageDBContents verbosity mbWorkDir packagedb progdb = do
 -- | Given a package DB stack, return all installed packages.
 getInstalledPackages
   :: Verbosity
-  -> Compiler
   -> Maybe (SymbolicPath CWD (Dir from))
   -> PackageDBStackX (SymbolicPath from (Dir PkgDB))
   -> ProgramDb
   -> IO InstalledPackageIndex
-getInstalledPackages verbosity comp mbWorkDir packagedbs progdb = do
+getInstalledPackages verbosity mbWorkDir packagedbs progdb = do
   checkPackageDbEnvVar verbosity
-  checkPackageDbStack verbosity comp packagedbs
+  checkPackageDbStack verbosity packagedbs
   pkgss <- getInstalledPackages' verbosity mbWorkDir packagedbs progdb
   index <- toPackageIndex verbosity pkgss progdb
   return $! hackRtsPackage index
@@ -575,30 +574,13 @@ checkPackageDbEnvVar :: Verbosity -> IO ()
 checkPackageDbEnvVar verbosity =
   Internal.checkPackageDbEnvVar verbosity "GHC" "GHC_PACKAGE_PATH"
 
-checkPackageDbStack :: Eq fp => Verbosity -> Compiler -> PackageDBStackX fp -> IO ()
-checkPackageDbStack verbosity comp =
-  if flagPackageConf implInfo
-    then checkPackageDbStackPre76 verbosity
-    else checkPackageDbStackPost76 verbosity
-  where
-    implInfo = ghcVersionImplInfo (compilerVersion comp)
-
-checkPackageDbStackPost76 :: Eq fp => Verbosity -> PackageDBStackX fp -> IO ()
-checkPackageDbStackPost76 _ (GlobalPackageDB : rest)
+checkPackageDbStack :: Eq fp => Verbosity -> PackageDBStackX fp -> IO ()
+checkPackageDbStack _ (GlobalPackageDB : rest)
   | GlobalPackageDB `notElem` rest = return ()
-checkPackageDbStackPost76 verbosity rest
+checkPackageDbStack verbosity rest
   | GlobalPackageDB `elem` rest =
-      dieWithException verbosity CheckPackageDbStackPost76
-checkPackageDbStackPost76 _ _ = return ()
-
-checkPackageDbStackPre76 :: Eq fp => Verbosity -> PackageDBStackX fp -> IO ()
-checkPackageDbStackPre76 _ (GlobalPackageDB : rest)
-  | GlobalPackageDB `notElem` rest = return ()
-checkPackageDbStackPre76 verbosity rest
-  | GlobalPackageDB `notElem` rest =
-      dieWithException verbosity CheckPackageDbStackPre76
-checkPackageDbStackPre76 verbosity _ =
-  dieWithException verbosity GlobalPackageDbSpecifiedFirst
+      dieWithException verbosity CheckPackageDbStack
+checkPackageDbStack _ _ = return ()
 
 -- | Get the packages from specific PackageDBs, not cumulative.
 getInstalledPackages'
@@ -700,7 +682,7 @@ startInterpreter verbosity progdb comp platform packageDBs = do
           { ghcOptMode = toFlag GhcModeInteractive
           , ghcOptPackageDBs = packageDBs
           }
-  checkPackageDbStack verbosity comp packageDBs
+  checkPackageDbStack verbosity packageDBs
   (ghcProg, _) <- requireProgram verbosity ghcProgram progdb
   -- This doesn't pass source file arguments to GHC, so we don't have to worry
   -- about using a response file here.
