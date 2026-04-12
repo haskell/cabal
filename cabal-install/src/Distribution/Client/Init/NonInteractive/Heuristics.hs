@@ -22,7 +22,6 @@ module Distribution.Client.Init.NonInteractive.Heuristics
   , guessAuthorName
   , guessAuthorEmail
   , guessCabalSpecVersion
-  , guessLanguage
   , guessPackageType
   , guessSourceDirectories
   , guessApplicationDirectories
@@ -40,10 +39,8 @@ import Distribution.Client.Init.FlagExtractors (getCabalVersionNoPrompt)
 import Distribution.Client.Init.Types
 import Distribution.Client.Init.Utils
 import Distribution.FieldGrammar.Newtypes
-import Distribution.Simple.Compiler
 import Distribution.Types.PackageName (PackageName)
 import Distribution.Version
-import Language.Haskell.Extension
 import System.FilePath
 
 -- | Guess the main file, returns a default value if none is found.
@@ -70,15 +67,6 @@ guessCabalSpecVersion = do
       [x, y, _] -> cabalSpecFromVersionDigits [x, y]
       _ -> Just defaultCabalVersion
     Nothing -> pure defaultCabalVersion
-
--- | Guess the language specification based on the GHC version
-guessLanguage :: Interactive m => Compiler -> m Language
-guessLanguage Compiler{compilerId = CompilerId GHC ver} =
-  return $
-    if ver < mkVersion [7, 0, 1]
-      then Haskell98
-      else Haskell2010
-guessLanguage _ = return defaultLanguage
 
 -- | Guess the package name based on the given root directory.
 guessPackageName :: Interactive m => FilePath -> m PackageName

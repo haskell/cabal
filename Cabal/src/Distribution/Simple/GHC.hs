@@ -199,8 +199,8 @@ configureCompiler verbosity hcPath conf0 = do
         ++ prettyShow ghcVersion
 
   let implInfo = ghcVersionImplInfo ghcVersion
-  languages <- Internal.getLanguages verbosity implInfo ghcProg
-  extensions0 <- Internal.getExtensions verbosity implInfo ghcProg
+  languages <- Internal.getLanguages implInfo
+  extensions0 <- Internal.getExtensions verbosity ghcProg
 
   ghcInfo <- Internal.getGhcInfo verbosity implInfo ghcProg
 
@@ -1106,23 +1106,9 @@ installLib verbosity lbi targetDir dynlibTargetDir bytecodeTargetDir _builtDir p
 -- -----------------------------------------------------------------------------
 -- Registering
 
-hcPkgInfo :: ProgramDb -> HcPkg.HcPkgInfo
+hcPkgInfo :: ProgramDb -> HcPkg.ConfiguredProgram
 hcPkgInfo progdb =
-  HcPkg.HcPkgInfo
-    { HcPkg.hcPkgProgram = ghcPkgProg
-    , HcPkg.noPkgDbStack = v < [6, 9]
-    , HcPkg.noVerboseFlag = v < [6, 11]
-    , HcPkg.flagPackageConf = v < [7, 5]
-    , HcPkg.supportsDirDbs = v >= [6, 8]
-    , HcPkg.requiresDirDbs = v >= [7, 10]
-    , HcPkg.nativeMultiInstance = v >= [7, 10]
-    , HcPkg.recacheMultiInstance = v >= [6, 12]
-    , HcPkg.suppressFilesCheck = v >= [6, 6]
-    }
-  where
-    v = versionNumbers ver
-    ghcPkgProg = fromMaybe (error "GHC.hcPkgInfo: no ghc program") $ lookupProgram ghcPkgProgram progdb
-    ver = fromMaybe (error "GHC.hcPkgInfo: no ghc version") $ programVersion ghcPkgProg
+  fromMaybe (error "GHC.hcPkgInfo: no ghc program") $ lookupProgram ghcPkgProgram progdb
 
 registerPackage
   :: Verbosity

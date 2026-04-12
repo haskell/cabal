@@ -2922,12 +2922,7 @@ checkForeignLibSupported :: Compiler -> Platform -> ForeignLib -> Maybe String
 checkForeignLibSupported comp platform flib = go (compilerFlavor comp)
   where
     go :: CompilerFlavor -> Maybe String
-    go GHC
-      | compilerVersion comp < mkVersion [7, 8] =
-          unsupported
-            [ "Building foreign libraries is only supported with GHC >= 7.8"
-            ]
-      | otherwise = goGhcPlatform platform
+    go GHC = goGhcPlatform platform
     go _ =
       unsupported
         [ "Building foreign libraries is currently only supported with ghc"

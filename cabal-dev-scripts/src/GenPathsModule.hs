@@ -25,8 +25,6 @@ $(capture "decls" [d|
     data Z = Z
         { zPackageName                :: PackageName
         , zVersionDigits              :: String
-        , zSupportsCpp                :: Bool
-        , zSupportsNoRebindableSyntax :: Bool
         , zAbsolute                   :: Bool
         , zRelocatable                :: Bool
         , zIsWindows                  :: Bool
