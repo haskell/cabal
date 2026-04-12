@@ -312,7 +312,7 @@ maybeGetPersistBuildConfig
   -- ^ The @dist@ directory path.
   -> IO (Maybe LocalBuildInfo)
 maybeGetPersistBuildConfig mbWorkDir =
-  liftM (either (const Nothing) Just) . tryGetPersistBuildConfig mbWorkDir
+  fmap (either (const Nothing) Just) . tryGetPersistBuildConfig mbWorkDir
 
 -- | After running configure, output the 'LocalBuildInfo' to the
 -- 'localBuildInfoFile'.
@@ -422,7 +422,7 @@ findDistPref
   -- ^ override \"dist\" prefix
   -> IO (SymbolicPath Pkg (Dir Dist))
 findDistPref defDistPref overrideDistPref = do
-  envDistPref <- liftM parseEnvDistPref (lookupEnv "CABAL_BUILDDIR")
+  envDistPref <- parseEnvDistPref <$> lookupEnv "CABAL_BUILDDIR"
   return $ fromFlagOrDefault defDistPref (mappend envDistPref overrideDistPref)
   where
     parseEnvDistPref env =

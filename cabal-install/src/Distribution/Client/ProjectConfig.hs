@@ -1281,28 +1281,29 @@ findProjectPackages
       checkIsFileGlobPackage pkglocstr =
         case simpleParsec pkglocstr of
           Nothing -> return Nothing
-          Just glob -> liftM Just $ do
-            matches <- matchFileGlob glob
-            case matches of
-              []
-                | isJust (isTrivialRootedGlob glob) ->
-                    return
-                      ( Left
-                          ( BadPackageLocationFile
-                              (BadLocNonexistentFile pkglocstr)
-                          )
-                      )
-              [] -> return (Left (BadLocGlobEmptyMatch pkglocstr))
-              _ -> do
-                (failures, pkglocs) <-
-                  partitionEithers
-                    <$> traverse checkFilePackageMatch matches
-                return $! case (failures, pkglocs) of
-                  ([failure], [])
-                    | isJust (isTrivialRootedGlob glob) ->
-                        Left (BadPackageLocationFile failure)
-                  (_, []) -> Left (BadLocGlobBadMatches pkglocstr failures)
-                  _ -> Right pkglocs
+          Just glob ->
+            Just <$> do
+              matches <- matchFileGlob glob
+              case matches of
+                []
+                  | isJust (isTrivialRootedGlob glob) ->
+                      return
+                        ( Left
+                            ( BadPackageLocationFile
+                                (BadLocNonexistentFile pkglocstr)
+                            )
+                        )
+                [] -> return (Left (BadLocGlobEmptyMatch pkglocstr))
+                _ -> do
+                  (failures, pkglocs) <-
+                    partitionEithers
+                      <$> traverse checkFilePackageMatch matches
+                  return $! case (failures, pkglocs) of
+                    ([failure], [])
+                      | isJust (isTrivialRootedGlob glob) ->
+                          Left (BadPackageLocationFile failure)
+                    (_, []) -> Left (BadLocGlobBadMatches pkglocstr failures)
+                    _ -> Right pkglocs
 
       checkIsSingleFilePackage pkglocstr = do
         let filename = distProjectRootDirectory </> pkglocstr
