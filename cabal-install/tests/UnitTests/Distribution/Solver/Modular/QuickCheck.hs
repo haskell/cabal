@@ -558,7 +558,7 @@ instance Arbitrary Component where
 -- internal libraries.
 arbitraryUQN :: Gen UnqualComponentName
 arbitraryUQN =
-  mkUnqualComponentName <$> (\c -> "component-" ++ [c]) <$> elements "ABC"
+  mkUnqualComponentName . (\c -> "component-" ++ [c]) <$> elements "ABC"
 
 instance Arbitrary ExampleInstalled where
   arbitrary = error "arbitrary not implemented: ExampleInstalled"

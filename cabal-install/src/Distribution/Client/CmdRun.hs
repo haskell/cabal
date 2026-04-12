@@ -556,9 +556,7 @@ renderRunProblem (TargetProblemMatchesMultiple targetSelector targets) =
           <$> zip
             ["executables", "test-suites", "benchmarks"]
             ( filter (not . null) . map sortNub $
-                map (componentNameRaw . availableTargetComponentName)
-                  <$> (`filterTargetsKind` targets)
-                  <$> [ExeKind, TestKind, BenchKind]
+                (map (componentNameRaw . availableTargetComponentName) . (`filterTargetsKind` targets) <$> [ExeKind, TestKind, BenchKind])
             )
       )
 renderRunProblem (TargetProblemMultipleTargets selectorMap) =

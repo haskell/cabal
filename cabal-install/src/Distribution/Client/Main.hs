@@ -322,7 +322,7 @@ main args = do
   -- for more information.
   let (args0, args1) = break (== "--") args
 
-  mainWorker =<< (++ args1) <$> expandResponse args0
+  mainWorker . (++ args1) =<< expandResponse args0
 
 -- | Check whether assertions are enabled and print a warning in that case.
 warnIfAssertionsAreEnabled :: IO ()
