@@ -33,7 +33,7 @@ import Distribution.Trivia
 import Distribution.Utils.ShortText
 
 import Data.Kind
-import Distribution.Types.Modify (Annotate, AnnotateWith, AttachPos, PreserveGrouping)
+import Distribution.Types.Modify (Annotate, AnnotateWith, AttachPositions, PreserveGrouping)
 import qualified Distribution.Types.Modify as Mod
 
 type FieldGrammar = FieldGrammarWith Mod.HasNoAnn
@@ -169,9 +169,9 @@ class
     -- ^ field name
     -> (a -> b)
     -- ^ 'pack'
-    -> ALens' s (PreserveGrouping m (AttachPos m a))
+    -> ALens' s (PreserveGrouping m (AttachPositions m a))
     -- ^ lens into the field
-    -> g m s (PreserveGrouping m (AttachPos m a))
+    -> g m s (PreserveGrouping m (AttachPositions m a))
 
   -- | Monoidal field.
   --
@@ -196,9 +196,9 @@ class
     -- ^ field name
     -> (a -> b)
     -- ^ 'pack'
-    -> ALens' s (AttachPos m a)
+    -> ALens' s (AttachPositions m a)
     -- ^ lens into the field
-    -> g m s (AttachPos m a)
+    -> g m s (AttachPositions m a)
 
   -- | Parser matching all fields with a name starting with a prefix.
   prefixedFields

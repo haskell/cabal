@@ -97,7 +97,7 @@ import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
 
 import Distribution.Trivia
-import Distribution.Types.Modify (Annotate, AttachPos, PreserveGrouping)
+import Distribution.Types.Modify (Annotate, AttachPositions, PreserveGrouping)
 import qualified Distribution.Types.Modify as Mod
 
 import qualified Data.ByteString.Char8 as BS8
@@ -732,7 +732,7 @@ buildInfoFieldGrammar'
      , c (ListWith mod VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
      , c (List FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
      , -- is a monoid with or without annotation, for hsSourceDirs compat
-       Monoid (PreserveGrouping mod (AttachPos mod [Annotate mod (SymbolicPath Pkg (Dir Source))]))
+       Monoid (PreserveGrouping mod (AttachPositions mod [Annotate mod (SymbolicPath Pkg (Dir Source))]))
      , Newtype [Annotate mod (SymbolicPath Pkg (Dir Source))] (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
      , c (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
      , Newtype [Annotate mod ModuleName] (ListWith mod VCat (MQuoted ModuleName) ModuleName)
@@ -777,7 +777,7 @@ buildInfoFieldGrammar' = do
 -- {-# SPECIALIZE buildInfoFieldGrammar' :: PrettyFieldGrammar Mod.HasNoAnn    BuildInfo    BuildInfo #-}
 
 data MiniBuildInfo (m :: Mod.HasAnnotation) = MiniBuildInfo
-  { miniTargetBuildDepends :: PreserveGrouping m (AttachPos m [Annotate m (DependencyWith m)])
+  { miniTargetBuildDepends :: PreserveGrouping m (AttachPositions m [Annotate m (DependencyWith m)])
   }
 
 deriving instance Show (MiniBuildInfo Mod.HasAnn)
@@ -786,7 +786,7 @@ deriving instance Show (MiniBuildInfo Mod.HasNoAnn)
 miniTargetBuildDependsLens
   :: forall mod f
    . Functor f
-  => (PreserveGrouping mod (AttachPos mod [Annotate mod (DependencyWith mod)]) -> f (PreserveGrouping mod (AttachPos mod [Annotate mod (DependencyWith mod)])))
+  => (PreserveGrouping mod (AttachPositions mod [Annotate mod (DependencyWith mod)]) -> f (PreserveGrouping mod (AttachPositions mod [Annotate mod (DependencyWith mod)])))
   -> MiniBuildInfo mod
   -> f (MiniBuildInfo mod)
 miniTargetBuildDependsLens f s = fmap (\x -> s{miniTargetBuildDepends = x}) (f (miniTargetBuildDepends s))
@@ -811,11 +811,11 @@ hsSourceDirsGrammar
      , Applicative (g mod (BuildInfoWith mod))
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
      , -- is a monoid with or without annotation
-       Monoid (PreserveGrouping mod (AttachPos mod [Annotate mod (SymbolicPath Pkg (Dir Source))]))
+       Monoid (PreserveGrouping mod (AttachPositions mod [Annotate mod (SymbolicPath Pkg (Dir Source))]))
      , Newtype [Annotate mod (SymbolicPath Pkg (Dir Source))] (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
      , c (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
      )
-  => g mod (BuildInfoWith mod) (PreserveGrouping mod (AttachPos mod [Annotate mod (SymbolicPath Pkg (Dir Source))]))
+  => g mod (BuildInfoWith mod) (PreserveGrouping mod (AttachPositions mod [Annotate mod (SymbolicPath Pkg (Dir Source))]))
 hsSourceDirsGrammar =
   (<>)
     <$> monoidalFieldAla' "hs-source-dirs" (alaListWith' @mod @FSep @(SymbolicPathNT Pkg (Dir Source)) @(SymbolicPath Pkg (Dir Source))) L.hsSourceDirs

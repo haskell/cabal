@@ -97,7 +97,7 @@ import Distribution.Parsec.FieldLineStream
 import Distribution.Parsec.Position (positionCol, positionRow)
 import Distribution.Trivia
 
-import Distribution.Types.Modify (AttachPos)
+import Distribution.Types.Modify (AttachPositions)
 import qualified Distribution.Types.Modify as Mod
 
 -------------------------------------------------------------------------------

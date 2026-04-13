@@ -38,7 +38,7 @@ import Language.Haskell.Extension (Extension, Language)
 
 import Distribution.Trivia
 import qualified Distribution.Types.BuildInfo as T
-import Distribution.Types.Modify (Annotate, AnnotateWith, AttachPos, PreserveGrouping)
+import Distribution.Types.Modify (Annotate, AnnotateWith, AttachPositions, PreserveGrouping)
 import qualified Distribution.Types.Modify as Mod
 
 type HasBuildInfo = HasBuildInfoWith Mod.HasNoAnn
@@ -50,64 +50,64 @@ class HasBuildInfoWith mod a | a -> mod where
   buildable :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (AnnotateWith Positions mod Bool)
   buildable = buildInfo @mod . buildable @mod
 
-  buildTools :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod LegacyExeDependency]))
+  buildTools :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPositions mod [Annotate mod LegacyExeDependency]))
   buildTools = buildInfo @mod . buildTools @mod
 
-  buildToolDepends :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod ExeDependency]))
+  buildToolDepends :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPositions mod [Annotate mod ExeDependency]))
   buildToolDepends = buildInfo @mod . buildToolDepends @mod
 
-  cppOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod String]))
+  cppOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPositions mod [Annotate mod String]))
   cppOptions = buildInfo @mod . cppOptions @mod
 
-  asmOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod String]))
+  asmOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPositions mod [Annotate mod String]))
   asmOptions = buildInfo @mod . asmOptions @mod
 
-  cmmOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod String]))
+  cmmOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPositions mod [Annotate mod String]))
   cmmOptions = buildInfo @mod . cmmOptions @mod
 
-  ccOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod String]))
+  ccOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPositions mod [Annotate mod String]))
   ccOptions = buildInfo @mod . ccOptions @mod
 
-  cxxOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod String]))
+  cxxOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPositions mod [Annotate mod String]))
   cxxOptions = buildInfo @mod . cxxOptions @mod
 
-  jsppOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod String]))
+  jsppOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPositions mod [Annotate mod String]))
   jsppOptions = buildInfo @mod . jsppOptions @mod
 
-  ldOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod String]))
+  ldOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPositions mod [Annotate mod String]))
   ldOptions = buildInfo @mod . ldOptions @mod
 
-  hsc2hsOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod String]))
+  hsc2hsOptions :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPositions mod [Annotate mod String]))
   hsc2hsOptions = buildInfo @mod . hsc2hsOptions @mod
 
-  pkgconfigDepends :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod PkgconfigDependency]))
+  pkgconfigDepends :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPositions mod [Annotate mod PkgconfigDependency]))
   pkgconfigDepends = buildInfo @mod . pkgconfigDepends @mod
 
-  frameworks :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod (RelativePath Framework File)]))
+  frameworks :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPositions mod [Annotate mod (RelativePath Framework File)]))
   frameworks = buildInfo @mod . frameworks @mod
 
-  extraFrameworkDirs :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod (SymbolicPath Pkg (Dir Framework))]))
+  extraFrameworkDirs :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPositions mod [Annotate mod (SymbolicPath Pkg (Dir Framework))]))
   extraFrameworkDirs = buildInfo @mod . extraFrameworkDirs @mod
 
-  asmSources :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod (SymbolicPath Pkg File)]))
+  asmSources :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPositions mod [Annotate mod (SymbolicPath Pkg File)]))
   asmSources = buildInfo @mod . asmSources @mod
 
-  cmmSources :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod (SymbolicPath Pkg File)]))
+  cmmSources :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPositions mod [Annotate mod (SymbolicPath Pkg File)]))
   cmmSources = buildInfo @mod . cmmSources @mod
 
-  cSources :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod (SymbolicPath Pkg File)]))
+  cSources :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPositions mod [Annotate mod (SymbolicPath Pkg File)]))
   cSources = buildInfo @mod . cSources @mod
 
-  cxxSources :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod (SymbolicPath Pkg File)]))
+  cxxSources :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPositions mod [Annotate mod (SymbolicPath Pkg File)]))
   cxxSources = buildInfo @mod . cxxSources @mod
 
-  jsSources :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod (SymbolicPath Pkg File)]))
+  jsSources :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPositions mod [Annotate mod (SymbolicPath Pkg File)]))
   jsSources = buildInfo @mod . jsSources @mod
 
-  hsSourceDirs :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod (SymbolicPath Pkg (Dir Source))]))
+  hsSourceDirs :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPositions mod [Annotate mod (SymbolicPath Pkg (Dir Source))]))
   hsSourceDirs = buildInfo @mod . hsSourceDirs @mod
 
-  otherModules :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod ModuleName]))
+  otherModules :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPositions mod [Annotate mod ModuleName]))
   otherModules = buildInfo @mod . otherModules @mod
 
   virtualModules :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [ModuleName]
@@ -185,7 +185,7 @@ class HasBuildInfoWith mod a | a -> mod where
   customFieldsBI :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [(String, String)]
   customFieldsBI = buildInfo @mod . customFieldsBI @mod
 
-  targetBuildDepends :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod (DependencyWith mod)]))
+  targetBuildDepends :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPositions mod [Annotate mod (DependencyWith mod)]))
   targetBuildDepends = buildInfo @mod . targetBuildDepends @mod
 
   mixins :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a [Mixin]

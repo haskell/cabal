@@ -15,7 +15,7 @@ import Distribution.Compat.Lens
 import Distribution.Compat.Newtype
 import Distribution.Compat.Prelude
 import Distribution.Fields.Field (FieldName)
-import Distribution.Fields.Pretty (PrettyField (..))
+import Distribution.Fields.Pretty (PrettyField, PrettyFieldWith (..))
 import Distribution.Parsec.Position
 import Distribution.Pretty (Pretty (..), showFreeText, showFreeTextV3)
 import Distribution.Trivia
@@ -30,7 +30,7 @@ import qualified Distribution.Types.Modify as Mod
 
 -- TODO(leana8959): maybe we can compare this to [Field Position] and thus form a roundtrip test.
 newtype PrettyFieldGrammar (m :: Mod.HasAnnotation) s a = PrettyFG
-  { fieldGrammarPretty :: CabalSpecVersion -> s -> [PrettyField (WithPos m)]
+  { fieldGrammarPretty :: CabalSpecVersion -> s -> [PrettyFieldWith m]
   }
   deriving (Functor)
 
@@ -41,7 +41,7 @@ instance Applicative (PrettyFieldGrammar m s) where
 -- | We can use 'PrettyFieldGrammar' to pp print the @s@.
 --
 -- /Note:/ there is not trailing @($+$ text "")@.
-prettyFieldGrammar :: CabalSpecVersion -> PrettyFieldGrammar m s a -> s -> [PrettyField (WithPos m)]
+prettyFieldGrammar :: CabalSpecVersion -> PrettyFieldGrammar m s a -> s -> [PrettyFieldWith m]
 prettyFieldGrammar = flip fieldGrammarPretty
 
 instance FieldGrammarWith Mod.HasNoAnn Pretty PrettyFieldGrammar where
@@ -100,7 +100,7 @@ instance FieldGrammarWith Mod.HasNoAnn Pretty PrettyFieldGrammar where
       pp xs =
         -- always print the field, even its Doc is empty.
         -- i.e. don't use ppField
-        [ PrettyField () (toUTF8BS n) $ PP.vcat $ map PP.text $ lines s
+        [ PrettyField (toUTF8BS n) $ PP.vcat $ map PP.text $ lines s
         | (n, s) <- xs
         -- fnPfx `isPrefixOf` n
         ]
@@ -126,14 +126,14 @@ instance FieldGrammarWith Mod.HasAnn Pretty PrettyFieldGrammar where
           HasTrivia pos -> ppFieldPos fn [(pos, PP.text (show b))]
           IsInserted -> mempty
 
-ppField :: FieldName -> Doc -> [PrettyField ()]
+ppField :: FieldName -> Doc -> [PrettyField]
 ppField name fielddoc
   | PP.isEmpty fielddoc = []
-  | otherwise = [PrettyField () name fielddoc]
+  | otherwise = [PrettyField name fielddoc]
 
 -- TODO(leana8959): push out doc position
-ppFieldPos :: FieldName -> [(Positions, Doc)] -> [PrettyField Position]
+ppFieldPos :: FieldName -> [(Positions, Doc)] -> [PrettyFieldWith Mod.HasAnn]
 ppFieldPos name possFieldDocs =
-  [ PrettyField (fieldNamePos poss) name fieldDoc
+  [ PrettyField (fieldNamePos poss, name) fieldDoc
   | (poss, fieldDoc) <- possFieldDocs
   ]

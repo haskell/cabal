@@ -41,7 +41,7 @@ import Language.Haskell.Extension
 
 import Data.Kind
 
-import Distribution.Types.Modify (Annotate, AnnotateWith, AttachPos, PreserveGrouping)
+import Distribution.Types.Modify (Annotate, AnnotateWith, AttachPositions, PreserveGrouping)
 import qualified Distribution.Types.Modify as Mod
 
 type BuildInfo = BuildInfoWith Mod.HasNoAnn
@@ -55,7 +55,7 @@ type BuildInfoAnn = BuildInfoWith Mod.HasAnn
 data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
   { buildable :: AnnotateWith Positions m Bool
   -- ^ component is buildable here
-  , buildTools :: PreserveGrouping m (AttachPos m [Annotate m LegacyExeDependency])
+  , buildTools :: PreserveGrouping m (AttachPositions m [Annotate m LegacyExeDependency])
   -- ^ Tools needed to build this bit.
   --
   -- This is a legacy field that 'buildToolDepends' largely supersedes.
@@ -63,7 +63,7 @@ data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
   -- Unless use are very sure what you are doing, use the functions in
   -- "Distribution.Simple.BuildToolDepends" rather than accessing this
   -- field directly.
-  , buildToolDepends :: PreserveGrouping m (AttachPos m [Annotate m ExeDependency])
+  , buildToolDepends :: PreserveGrouping m (AttachPositions m [Annotate m ExeDependency])
   -- ^ Haskell tools needed to build this bit
   --
   -- This field is better than 'buildTools' because it allows one to
@@ -72,40 +72,40 @@ data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
   -- Unless use are very sure what you are doing, use the functions in
   -- "Distribution.Simple.BuildToolDepends" rather than accessing this
   -- field directly.
-  , cppOptions :: PreserveGrouping m (AttachPos m [Annotate m String])
+  , cppOptions :: PreserveGrouping m (AttachPositions m [Annotate m String])
   -- ^ options for pre-processing Haskell code
-  , asmOptions :: PreserveGrouping m (AttachPos m [Annotate m String])
+  , asmOptions :: PreserveGrouping m (AttachPositions m [Annotate m String])
   -- ^ options for assembler
-  , cmmOptions :: PreserveGrouping m (AttachPos m [Annotate m String])
+  , cmmOptions :: PreserveGrouping m (AttachPositions m [Annotate m String])
   -- ^ options for C-- compiler
-  , ccOptions :: PreserveGrouping m (AttachPos m [Annotate m String])
+  , ccOptions :: PreserveGrouping m (AttachPositions m [Annotate m String])
   -- ^ options for C compiler
-  , cxxOptions :: PreserveGrouping m (AttachPos m [Annotate m String])
+  , cxxOptions :: PreserveGrouping m (AttachPositions m [Annotate m String])
   -- ^ options for C++ compiler
-  , jsppOptions :: PreserveGrouping m (AttachPos m [Annotate m String])
+  , jsppOptions :: PreserveGrouping m (AttachPositions m [Annotate m String])
   -- ^ options for pre-processing JavaScript code @since 3.16.0.0
-  , ldOptions :: PreserveGrouping m (AttachPos m [Annotate m String])
+  , ldOptions :: PreserveGrouping m (AttachPositions m [Annotate m String])
   -- ^ options for linker
-  , hsc2hsOptions :: PreserveGrouping m (AttachPos m [Annotate m String])
+  , hsc2hsOptions :: PreserveGrouping m (AttachPositions m [Annotate m String])
   -- ^ options for hsc2hs
-  , pkgconfigDepends :: PreserveGrouping m (AttachPos m [Annotate m PkgconfigDependency])
+  , pkgconfigDepends :: PreserveGrouping m (AttachPositions m [Annotate m PkgconfigDependency])
   -- ^ pkg-config packages that are used
-  , frameworks :: PreserveGrouping m (AttachPos m [Annotate m (RelativePath Framework File)])
+  , frameworks :: PreserveGrouping m (AttachPositions m [Annotate m (RelativePath Framework File)])
   -- ^ support frameworks for Mac OS X
-  , extraFrameworkDirs :: PreserveGrouping m (AttachPos m [Annotate m (SymbolicPath Pkg (Dir Framework))])
+  , extraFrameworkDirs :: PreserveGrouping m (AttachPositions m [Annotate m (SymbolicPath Pkg (Dir Framework))])
   -- ^ extra locations to find frameworks.
-  , asmSources :: PreserveGrouping m (AttachPos m [Annotate m (SymbolicPath Pkg File)])
+  , asmSources :: PreserveGrouping m (AttachPositions m [Annotate m (SymbolicPath Pkg File)])
   -- ^ Assembly files.
-  , cmmSources :: PreserveGrouping m (AttachPos m [Annotate m (SymbolicPath Pkg File)])
+  , cmmSources :: PreserveGrouping m (AttachPositions m [Annotate m (SymbolicPath Pkg File)])
   -- ^ C-- files.
-  , cSources :: PreserveGrouping m (AttachPos m [Annotate m (SymbolicPath Pkg File)])
-  , cxxSources :: PreserveGrouping m (AttachPos m [Annotate m (SymbolicPath Pkg File)])
-  , jsSources :: PreserveGrouping m (AttachPos m [Annotate m (SymbolicPath Pkg File)])
-  , hsSourceDirs :: PreserveGrouping m (AttachPos m [Annotate m (SymbolicPath Pkg (Dir Source))])
+  , cSources :: PreserveGrouping m (AttachPositions m [Annotate m (SymbolicPath Pkg File)])
+  , cxxSources :: PreserveGrouping m (AttachPositions m [Annotate m (SymbolicPath Pkg File)])
+  , jsSources :: PreserveGrouping m (AttachPositions m [Annotate m (SymbolicPath Pkg File)])
+  , hsSourceDirs :: PreserveGrouping m (AttachPositions m [Annotate m (SymbolicPath Pkg (Dir Source))])
   -- ^ where to look for the Haskell module hierarchy
   , -- NB: these are symbolic paths are not relative paths,
     -- because autogenerated modules might end up in an absolute path
-    otherModules :: PreserveGrouping m (AttachPos m [Annotate m ModuleName])
+    otherModules :: PreserveGrouping m (AttachPositions m [Annotate m ModuleName])
   -- ^ non-exposed or non-main modules
   , virtualModules :: [ModuleName]
   -- ^ exposed modules that do not have a source file (e.g. @GHC.Prim@ from @ghc-prim@ package)
@@ -163,7 +163,7 @@ data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
   -- ^ Custom fields starting
   --  with x-, stored in a
   --  simple assoc-list.
-  , targetBuildDepends :: PreserveGrouping m (AttachPos m [Annotate m (DependencyWith m)])
+  , targetBuildDepends :: PreserveGrouping m (AttachPositions m [Annotate m (DependencyWith m)])
   -- ^ Dependencies specific to a library or executable target
   , mixins :: [Mixin]
   }
