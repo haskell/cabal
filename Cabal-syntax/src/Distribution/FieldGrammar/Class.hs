@@ -33,7 +33,7 @@ import Distribution.Fields.Field
 import Distribution.Utils.ShortText
 
 import Data.Kind
-import Distribution.Types.Modify (AttachPos, PreserveGrouping)
+import Distribution.Types.Modify (AttachPos, PreserveGrouping, Annotate)
 import qualified Distribution.Types.Modify as Mod
 
 type FieldGrammar = FieldGrammarWith Mod.HasNoAnn
@@ -85,11 +85,11 @@ class
   booleanFieldDef'
     :: FieldName
     -- ^ field name
-    -> ALens' s (AttachPos m Bool)
+    -> ALens' s (AttachPos m (Annotate m Bool))
     -- ^ lens into the field
     -> Bool
     -- ^ default
-    -> g m s (AttachPos m Bool)
+    -> g m s (AttachPos m (Annotate m Bool))
 
   -- | Optional field.
   optionalFieldAla

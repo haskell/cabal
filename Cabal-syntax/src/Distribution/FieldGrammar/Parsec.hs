@@ -387,25 +387,28 @@ instance FieldGrammarWith Mod.HasAnn Parsec ParsecFieldGrammar where
     :: forall s
      . FieldName
     -- ^ field name
-    -> ALens' s (Positions, Bool)
+    -> ALens' s (Positions, Ann SurroundingText Bool)
     -- ^ lens into the field
     -> Bool
     -- ^ default
-    -> ParsecFieldGrammar Mod.HasAnn s (Positions, Bool)
+    -> ParsecFieldGrammar Mod.HasAnn s (Positions, Ann SurroundingText Bool)
   booleanFieldDef' fn _extract def = ParsecFG (Set.singleton fn) Set.empty parser
     where
-      parser :: CabalSpecVersion -> Fields Position -> ParseResult src (Positions, Bool)
+      parser :: CabalSpecVersion -> Fields Position -> ParseResult src (Positions, Ann SurroundingText Bool)
       parser v fields = case Map.lookup fn fields of
-        Nothing -> pure (noPos, def)
-        Just [] -> pure (noPos, def)
+        Nothing -> pure def'
+        Just [] -> pure def'
         Just [x] -> parseOne v x
         Just xs@(_ : y : ys) -> do
           warnMultipleSingularFields fn xs
           NE.last <$> traverse (parseOne v) (y :| ys)
+        where
+          def' = (noPos, Ann IsInserted def)
 
-      parseOne :: CabalSpecVersion -> NamelessField Position -> ParseResult src (Positions, Bool)
+      parseOne :: CabalSpecVersion -> NamelessField Position -> ParseResult src (Positions, Ann SurroundingText Bool)
       parseOne v (MkNamelessField pos fls) = do
-        (noPos,) <$> runFieldParser pos parsec v fls
+        -- TODO(leana8959): always print the casing correct one, it's not a whitespace crisis
+        (noPos,) . Ann mempty <$> runFieldParser pos parsec v fls
 
       noPos = Positions Nothing Nothing Nothing
 

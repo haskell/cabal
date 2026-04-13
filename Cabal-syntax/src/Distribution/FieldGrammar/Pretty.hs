@@ -118,6 +118,11 @@ instance FieldGrammarWith Mod.HasAnn Pretty PrettyFieldGrammar where
       let bs :: [(Positions, Doc)] = fmap (prettyVersioned v . pack' _pack) <$> (aview l s)
        in ppField fn mempty
 
+  booleanFieldDef' fn l def = PrettyFG $ \_v s ->
+      let (pos, Ann t b) = aview l s
+       in -- TODO(leana8959): push out position
+           ppField fn $ applyTriviaDoc t (PP.text (show b))
+
 ppField :: FieldName -> Doc -> [PrettyField ()]
 ppField name fielddoc
   | PP.isEmpty fielddoc = []

@@ -53,7 +53,7 @@ type BuildInfoAnn = BuildInfoWith Mod.HasAnn
 
 -- Consider refactoring into executable and library versions.
 data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
-  { buildable :: AttachPos m Bool
+  { buildable :: AttachPos m (Annotate m Bool)
   -- ^ component is buildable here
   , buildTools :: PreserveGrouping m (AttachPos m [Annotate m LegacyExeDependency])
   -- ^ Tools needed to build this bit.
@@ -182,7 +182,7 @@ instance NFData BuildInfo where rnf = genericRnf
 unannotateBuildInfo :: BuildInfoAnn -> BuildInfo
 unannotateBuildInfo bi =
   bi
-    { buildable = snd $ buildable bi
+    { buildable = unAnn $ snd $ buildable bi
     , buildTools = map unAnn $ join $ map snd $ buildTools bi
     , buildToolDepends = map unAnn $ join $ map snd $ buildToolDepends bi
     , cppOptions = map unAnn $ join $ map snd $ cppOptions bi
