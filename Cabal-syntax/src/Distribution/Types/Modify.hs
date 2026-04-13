@@ -20,9 +20,11 @@ data HasAnnotation
 
 -- Type family combinators that can compose and attach concrete syntax informations conditionally.
 
-type family Annotate (m :: HasAnnotation) (a :: Type) where
-  Annotate HasNoAnn a = a
-  Annotate HasAnn a = Ann SurroundingText a
+type family AnnotateWith (trivia :: Type) (m :: HasAnnotation) (a :: Type) where
+  AnnotateWith t HasNoAnn a = a
+  AnnotateWith t HasAnn a = Ann t a
+
+type Annotate (m :: HasAnnotation) (a :: Type) = AnnotateWith SurroundingText m a
 
 type family AttachPos (m :: HasAnnotation) (a :: Type) where
   AttachPos HasAnn a = (Positions, a)

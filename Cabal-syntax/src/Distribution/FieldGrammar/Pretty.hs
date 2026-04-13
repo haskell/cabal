@@ -121,7 +121,7 @@ instance FieldGrammarWith Mod.HasAnn Pretty PrettyFieldGrammar where
           []
 
   booleanFieldDef' fn l def = PrettyFG $ \_v s ->
-      let (pos, Ann t b) = aview l s
+      let Ann t b = aview l s
        in -- TODO(leana8959): push out position
            -- ppField fn $ applyTriviaDoc t (PP.text (show b))
            []

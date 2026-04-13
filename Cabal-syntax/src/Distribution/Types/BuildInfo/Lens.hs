@@ -36,8 +36,9 @@ import Distribution.Types.PkgconfigDependency (PkgconfigDependency)
 import Distribution.Utils.Path
 import Language.Haskell.Extension (Extension, Language)
 
+import Distribution.Trivia
 import qualified Distribution.Types.BuildInfo as T
-import Distribution.Types.Modify (AttachPos, PreserveGrouping, Annotate)
+import Distribution.Types.Modify (AttachPos, PreserveGrouping, Annotate, AnnotateWith)
 import qualified Distribution.Types.Modify as Mod
 
 type HasBuildInfo = HasBuildInfoWith Mod.HasNoAnn
@@ -46,7 +47,7 @@ type HasBuildInfoAnn = HasBuildInfoWith Mod.HasAnn
 class HasBuildInfoWith mod a | a -> mod where
   buildInfo :: Lens' a (BuildInfoWith mod)
 
-  buildable :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (AttachPos mod (Annotate mod Bool))
+  buildable :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (AnnotateWith Positions mod Bool)
   buildable = buildInfo @mod . buildable @mod
 
   buildTools :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPos mod [Annotate mod LegacyExeDependency]))

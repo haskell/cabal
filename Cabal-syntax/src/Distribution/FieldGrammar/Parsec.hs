@@ -387,14 +387,14 @@ instance FieldGrammarWith Mod.HasAnn Parsec ParsecFieldGrammar where
     :: forall s
      . FieldName
     -- ^ field name
-    -> ALens' s (Positions, Ann SurroundingText Bool)
+    -> ALens' s (Ann Positions Bool)
     -- ^ lens into the field
     -> Bool
     -- ^ default
-    -> ParsecFieldGrammar Mod.HasAnn s (Positions, Ann SurroundingText Bool)
+    -> ParsecFieldGrammar Mod.HasAnn s (Ann Positions Bool)
   booleanFieldDef' fn _extract def = ParsecFG (Set.singleton fn) Set.empty parser
     where
-      parser :: CabalSpecVersion -> Fields Position -> ParseResult src (Positions, Ann SurroundingText Bool)
+      parser :: CabalSpecVersion -> Fields Position -> ParseResult src (Ann Positions Bool)
       parser v fields = case Map.lookup fn fields of
         Nothing -> pure def'
         Just [] -> pure def'
@@ -403,19 +403,12 @@ instance FieldGrammarWith Mod.HasAnn Parsec ParsecFieldGrammar where
           warnMultipleSingularFields fn xs
           NE.last <$> traverse (parseOne v) (y :| ys)
         where
-          def' = (noPos, Ann IsInserted def)
+          def' = Ann IsInserted def
 
-      parseOne :: CabalSpecVersion -> NamelessField Position -> ParseResult src (Positions, Ann SurroundingText Bool)
+      parseOne :: CabalSpecVersion -> NamelessField Position -> ParseResult src (Ann Positions Bool)
       parseOne v (MkNamelessField pos fls) = do
         (fieldLinePos, x) <- runFieldParser pos (liftA2 (,) getPosition parsec) v fls
-        pure (Positions pos fieldLinePos, Ann mempty x)
-
-        -- TODO(leana8959): the model doesn't fit here
-        --
-        -- we don't care about the position if the thing is inserted anyways
-        -- actually the model should be more like `Ann Positions Bool`
-
-      noPos = undefined
+        pure $ Ann (HasTrivia $ Positions pos fieldLinePos) x
 
   -- TODO(leana8959): implement all methods
 
