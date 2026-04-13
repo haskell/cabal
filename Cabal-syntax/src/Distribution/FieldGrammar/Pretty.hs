@@ -130,3 +130,16 @@ ppField :: FieldName -> Doc -> [PrettyField ()]
 ppField name fielddoc
   | PP.isEmpty fielddoc = []
   | otherwise = [PrettyField () name fielddoc]
+
+-- NOTE(leana8959): do we need position"s"
+ppFieldPos :: FieldName -> Trivia SurroundingText -> [(Positions, Doc)] -> [PrettyField Positions]
+ppFieldPos name trivia possFieldDocs = case trivia of
+  -- TODO(leana8959): should position always exist (it's a maybe now)
+
+  -- TODO(leana8959): Each fieldDoc should carry their associated fieldname's position
+  -- because they don't always have the same position
+  -- We then do a post process sorting
+  IsInserted -> [] -- Absorb
+  _notInserted ->
+    possFieldDocs
+      >>= \(_, fieldDoc) -> [ PrettyField undefined name fieldDoc ]
