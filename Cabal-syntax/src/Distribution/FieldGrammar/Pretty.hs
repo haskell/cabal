@@ -93,26 +93,6 @@ instance FieldGrammarWith Mod.HasNoAnn Pretty PrettyFieldGrammar where
     where
       pp v s = ppField fn (prettyVersioned v (pack' _pack (aview l s)))
 
-  -- -- TODO(leana8959): push out the Position
-  -- monoidalFieldAlaAnn
-  --   :: forall m b a s
-  --    . (Pretty b, Newtype a b)
-  --   => FieldName
-  --   -> (a -> b)
-  --   -> ALens' s [(Positions, a)]
-  --   -> PrettyFieldGrammar m s [(Positions, a)]
-  -- monoidalFieldAlaAnn fn _pack l = PrettyFG pp
-  --   where
-  --     pp v s =
-  --       -- TODO(leana8959): implement more than one field printing
-  --       --
-  --       -- Here the list represents the "groups" of fields that are defined separately but merged by
-  --       -- monoidal field.
-  --       --
-  --       -- They should be displayed separately anyway.
-  --       let bs :: [(Positions, Doc)] = fmap (prettyVersioned v . pack' _pack) <$> (aview l s)
-  --        in ppField fn mempty
-
   prefixedFields _fnPfx l = PrettyFG (\_ -> pp . aview l)
     where
       pp xs =
@@ -132,6 +112,11 @@ instance FieldGrammarWith Mod.HasNoAnn Pretty PrettyFieldGrammar where
   removedIn _ _ x = x
   availableSince _ _ = id
   hiddenField _ = PrettyFG (\_ -> mempty)
+
+instance FieldGrammarWith Mod.HasAnn Pretty PrettyFieldGrammar where
+  monoidalFieldAla' fn _pack l = PrettyFG $ \v s ->
+      let bs :: [(Positions, Doc)] = fmap (prettyVersioned v . pack' _pack) <$> (aview l s)
+       in ppField fn mempty
 
 ppField :: FieldName -> Doc -> [PrettyField ()]
 ppField name fielddoc

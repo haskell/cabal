@@ -394,8 +394,6 @@ instance FieldGrammarWith Mod.HasAnn Parsec ParsecFieldGrammar where
     -> ParsecFieldGrammar Mod.HasAnn s (Positions, Bool)
   booleanFieldDef' fn _extract def = ParsecFG (Set.singleton fn) Set.empty parser
     where
-      -- TODO(leana8959): implement position
-
       parser :: CabalSpecVersion -> Fields Position -> ParseResult src (Positions, Bool)
       parser v fields = case Map.lookup fn fields of
         Nothing -> pure (noPos, def)
@@ -411,7 +409,6 @@ instance FieldGrammarWith Mod.HasAnn Parsec ParsecFieldGrammar where
 
       noPos = Positions Nothing Nothing Nothing
 
-  -- TODO(leana8959): implement monoidalFieldAla
   -- TODO(leana8959): implement all methods
 
   -- This function allows us to manage the position coming from a parsed field
@@ -436,7 +433,8 @@ instance FieldGrammarWith Mod.HasAnn Parsec ParsecFieldGrammar where
       parseOne :: CabalSpecVersion -> NamelessField Position -> ParseResult src (Positions, b)
       parseOne v (MkNamelessField pos fls) = do
         (linePos, x) <- runFieldParser pos (liftA2 (,) (liftParsec P.getPosition) parsec) v fls
-        pure (Positions (Just pos) (Nothing {- TODO(leana8959): "convert linePos" linePos -}) Nothing, x)
+        -- NOTE(leana8959): do we need all three positions here
+        pure (Positions (Just pos) Nothing Nothing, x)
 
 -------------------------------------------------------------------------------
 -- Parsec
