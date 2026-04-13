@@ -274,7 +274,7 @@ miniBuildInfoAnnTest = testCase "miniBuildInfo Ann" $ do
     Left (_, errs) -> fail "ERROR in running field grammar"
     Right ok -> pure $ ok
 
-  pPrint pr''
+  print $ prettyFieldGrammar CabalSpecV3_0 miniBuildInfoFieldGrammar pr''
   where
     input = "tests" </> "ParserTests" </> "miniBuildInfoDemo.cabal"
 

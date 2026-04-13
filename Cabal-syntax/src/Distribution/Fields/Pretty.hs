@@ -1,4 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveTraversable #-}
@@ -50,10 +52,15 @@ type PrettyField = PrettyFieldWith Mod.HasNoAnn
 -- NOTE(leana8959): some pretty field considerations
 --  - do section args need to be a _list_ of PP.Doc
 --  - do we need pretty empty with exact doc
+--
+-- TODO(leana8959): we need to reproduce the field line
+--  - each Doc in field (FieldLine) should come with its positioning
 data PrettyFieldWith (mod :: Mod.HasAnnotation)
   = PrettyField (AttachPosition mod FieldName) PP.Doc
   | PrettySection FieldName [PP.Doc] [PrettyFieldWith mod]
   | PrettyEmpty
+
+deriving instance Show (PrettyFieldWith Mod.HasAnn)
 
 -- | Prettyprint a list of fields.
 --
