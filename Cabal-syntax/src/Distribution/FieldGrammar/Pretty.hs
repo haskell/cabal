@@ -95,6 +95,8 @@ instance FieldGrammarWith Mod.HasNoAnn Pretty PrettyFieldGrammar where
     where
       pp v s = ppField fn (prettyVersioned v (pack' _pack (aview l s)))
 
+  monoidalFieldAla' = monoidalFieldAla
+
   prefixedFields _fnPfx l = PrettyFG (\_ -> pp . aview l)
     where
       pp xs =
