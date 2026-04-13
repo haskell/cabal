@@ -7,6 +7,7 @@
 -- Types that can be used as modifiers
 module Distribution.Types.Modify where
 
+import Distribution.Parsec.Position
 import Distribution.Trivia
 
 import Data.Data
@@ -31,7 +32,7 @@ type family AttachPos (m :: HasAnnotation) (a :: Type) where
   AttachPos HasNoAnn a = a
 
 type family WithPos (m :: HasAnnotation) where
-  WithPos HasAnn = Positions
+  WithPos HasAnn = Position
   WithPos HasNoAnn = ()
 
 type family PreserveGrouping (m :: HasAnnotation) (a :: Type) where

@@ -14,6 +14,7 @@ import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
 import Distribution.Compat.Newtype
 import Distribution.Compat.Prelude
+import Distribution.Parsec.Position
 import Distribution.Trivia
 import Distribution.Types.Modify
 import Distribution.Fields.Field (FieldName)
@@ -117,29 +118,22 @@ instance FieldGrammarWith Mod.HasNoAnn Pretty PrettyFieldGrammar where
 instance FieldGrammarWith Mod.HasAnn Pretty PrettyFieldGrammar where
   monoidalFieldAla' fn _pack l = PrettyFG $ \v s ->
       let bs :: [(Positions, Doc)] = fmap (prettyVersioned v . pack' _pack) <$> (aview l s)
-       in -- ppField fn mempty
-          []
+       in ppFieldPos fn bs
 
   booleanFieldDef' fn l def = PrettyFG $ \_v s ->
       let Ann t b = aview l s
-       in -- TODO(leana8959): push out position
-           -- ppField fn $ applyTriviaDoc t (PP.text (show b))
-           []
+       in case t of
+            HasTrivia pos -> ppFieldPos fn [(pos, PP.text (show b))]
+            IsInserted -> mempty
 
 ppField :: FieldName -> Doc -> [PrettyField ()]
 ppField name fielddoc
   | PP.isEmpty fielddoc = []
   | otherwise = [PrettyField () name fielddoc]
 
--- NOTE(leana8959): do we need position"s"
-ppFieldPos :: FieldName -> Trivia SurroundingText -> [(Positions, Doc)] -> [PrettyField Positions]
-ppFieldPos name trivia possFieldDocs = case trivia of
-  -- TODO(leana8959): should position always exist (it's a maybe now)
-
-  -- TODO(leana8959): Each fieldDoc should carry their associated fieldname's position
-  -- because they don't always have the same position
-  -- We then do a post process sorting
-  IsInserted -> [] -- Absorb
-  _notInserted ->
-    possFieldDocs
-      >>= \(poss, fieldDoc) -> [ PrettyField undefined name fieldDoc ]
+-- TODO(leana8959): push out doc position
+ppFieldPos :: FieldName -> [(Positions, Doc)] -> [PrettyField Position]
+ppFieldPos name possFieldDocs =
+    [ PrettyField (fieldNamePos poss) name fieldDoc
+    | (poss, fieldDoc) <- possFieldDocs
+    ]
