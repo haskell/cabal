@@ -380,9 +380,6 @@ instance FieldGrammarWith Mod.HasNoAnn Parsec ParsecFieldGrammar where
   hiddenField = id
 
 instance FieldGrammarWith Mod.HasAnn Parsec ParsecFieldGrammar where
-
-  -- TODO(leana8959): remove multiplicity here because it doesn't have merging
-
   booleanFieldDef'
     :: forall s
      . FieldName
@@ -424,8 +421,6 @@ instance FieldGrammarWith Mod.HasAnn Parsec ParsecFieldGrammar where
     -> (a -> b)
     -> ALens' s [(Positions, a)]
     -> ParsecFieldGrammar Mod.HasAnn s [(Positions, a)]
-    -- (Position, a)
-    -- (Position, Truc Ann)
   monoidalFieldAla' fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
       parser :: CabalSpecVersion -> Fields Position -> ParseResult src [(Positions, a)]
