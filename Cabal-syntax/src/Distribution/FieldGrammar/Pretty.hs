@@ -142,4 +142,4 @@ ppFieldPos name trivia possFieldDocs = case trivia of
   IsInserted -> [] -- Absorb
   _notInserted ->
     possFieldDocs
-      >>= \(_, fieldDoc) -> [ PrettyField undefined name fieldDoc ]
+      >>= \(poss, fieldDoc) -> [ PrettyField undefined name fieldDoc ]

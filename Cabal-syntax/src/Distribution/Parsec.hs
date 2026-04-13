@@ -76,7 +76,7 @@ import Distribution.Parsec.Error (PError (..), PErrorWithSource (..), showPError
 import Distribution.Trivia
 
 import Data.Monoid (Last (..))
-import Distribution.Parsec.FieldLineStream (FieldLineStream, fieldLineStreamFromBS, fieldLineStreamFromString)
+import Distribution.Parsec.FieldLineStream (FieldLineStream, fieldLineStreamFromBS, fieldLineStreamFromString, fieldLineStreamPosition)
 import Distribution.Parsec.Position (Position (..), incPos, retPos, showPos, zeroPos)
 import Distribution.Parsec.Warning
 import Numeric (showIntAtBase)
@@ -109,6 +109,8 @@ class (P.CharParsing m, MonadPlus m, Fail.MonadFail m) => CabalParsing m where
   parsecHaskellString = stringLiteral
 
   askCabalSpecVersion :: m CabalSpecVersion
+
+  getPosition :: m Position
 
 -- | 'parsec' /could/ consume trailing spaces, this function /will/ consume.
 lexemeParsec :: (CabalParsing m, Parsec a) => m a
@@ -190,6 +192,13 @@ instance CabalParsing ParsecParser where
     Parsec.modifyState
       (PWarning t (Position (Parsec.sourceLine spos) (Parsec.sourceColumn spos)) w :)
   askCabalSpecVersion = PP pure
+
+  getPosition = liftParsec $ do
+    (Position realRow colOffset) <- fieldLineStreamPosition <$> Parsec.getInput
+    col <- Parsec.sourceColumn <$> Parsec.getPosition
+    -- Fix up the source position
+    -- Override the line due to line jumps, and offset the column due to dropped leading spaced
+    pure $ Position realRow (col + colOffset - 1)
 
 -- | Parse a 'String' with 'lexemeParsec'.
 simpleParsec :: Parsec a => String -> Maybe a
