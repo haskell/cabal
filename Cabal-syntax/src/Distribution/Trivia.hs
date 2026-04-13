@@ -32,26 +32,10 @@ instance Semigroup SurroundingText where
 -- | A collection of different kinds of 'Position's, describing
 -- the provenance of a data.
 data Positions = Positions
-  { fieldNamePos :: Maybe Position
-  , fieldLinePos :: Maybe Position
-  -- TODO(leana8959): will need to be patched at goSection
-  -- field grammar don't see sections
-  , fieldSectionPos :: Maybe Position
+  { fieldNamePos :: Position
+  , fieldLinePos :: Position
   }
   deriving (Show, Eq, Ord, Read, Data)
-
-instance Semigroup Positions where
-  i <> j =
-    Positions
-      { fieldNamePos = field fieldNamePos
-      , fieldLinePos = field fieldLinePos
-      , fieldSectionPos = field fieldSectionPos
-      }
-    where
-      field a = getLast (Last (a i) <> Last (a j))
-
-instance Monoid Positions where
-  mempty = Positions Nothing Nothing Nothing
 
 data Trivia t
   = HasTrivia t

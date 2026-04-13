@@ -407,10 +407,15 @@ instance FieldGrammarWith Mod.HasAnn Parsec ParsecFieldGrammar where
 
       parseOne :: CabalSpecVersion -> NamelessField Position -> ParseResult src (Positions, Ann SurroundingText Bool)
       parseOne v (MkNamelessField pos fls) = do
-        -- TODO(leana8959): always print the casing correct one, it's not a whitespace crisis
-        (noPos,) . Ann mempty <$> runFieldParser pos parsec v fls
+        (fieldLinePos, x) <- runFieldParser pos (liftA2 (,) getPosition parsec) v fls
+        pure (Positions pos fieldLinePos, Ann mempty x)
 
-      noPos = Positions Nothing Nothing Nothing
+        -- TODO(leana8959): the model doesn't fit here
+        --
+        -- we don't care about the position if the thing is inserted anyways
+        -- actually the model should be more like `Ann Positions Bool`
+
+      noPos = undefined
 
   -- TODO(leana8959): implement all methods
 
@@ -426,6 +431,8 @@ instance FieldGrammarWith Mod.HasAnn Parsec ParsecFieldGrammar where
     -> (a -> b)
     -> ALens' s [(Positions, a)]
     -> ParsecFieldGrammar Mod.HasAnn s [(Positions, a)]
+    -- (Position, a)
+    -- (Position, Truc Ann)
   monoidalFieldAla' fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
       parser :: CabalSpecVersion -> Fields Position -> ParseResult src [(Positions, a)]
@@ -435,9 +442,8 @@ instance FieldGrammarWith Mod.HasAnn Parsec ParsecFieldGrammar where
 
       parseOne :: CabalSpecVersion -> NamelessField Position -> ParseResult src (Positions, b)
       parseOne v (MkNamelessField pos fls) = do
-        (linePos, x) <- runFieldParser pos (liftA2 (,) (liftParsec P.getPosition) parsec) v fls
-        -- NOTE(leana8959): do we need all three positions here
-        pure (Positions (Just pos) Nothing Nothing, x)
+        (fieldLinePos, x) <- runFieldParser pos (liftA2 (,) getPosition parsec) v fls
+        pure (Positions pos fieldLinePos, x)
 
 -------------------------------------------------------------------------------
 -- Parsec
