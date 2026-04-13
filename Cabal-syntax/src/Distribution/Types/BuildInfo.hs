@@ -1,9 +1,9 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -41,7 +41,7 @@ import Language.Haskell.Extension
 
 import Data.Kind
 
-import Distribution.Types.Modify (AttachPos, PreserveGrouping, Annotate, AnnotateWith)
+import Distribution.Types.Modify (Annotate, AnnotateWith, AttachPos, PreserveGrouping)
 import qualified Distribution.Types.Modify as Mod
 
 type BuildInfo = BuildInfoWith Mod.HasNoAnn
@@ -203,14 +203,13 @@ unannotateBuildInfo bi =
     , jsSources = map unAnn $ join $ map snd $ jsSources bi
     , hsSourceDirs = map unAnn $ join $ map snd $ hsSourceDirs bi
     , otherModules = map unAnn $ join $ map snd $ otherModules bi
+    , -- TODO(leana8959): add more fields here
 
-    -- TODO(leana8959): add more fields here
-
-    , targetBuildDepends =
-                map (unannotateDependencyAnn . unAnn)
-                $ join
-                $ map snd
-                $ targetBuildDepends bi
+      targetBuildDepends =
+        map (unannotateDependencyAnn . unAnn) $
+          join $
+            map snd $
+              targetBuildDepends bi
     }
 
 instance Monoid BuildInfo where

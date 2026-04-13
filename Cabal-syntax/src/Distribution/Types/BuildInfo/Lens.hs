@@ -1,11 +1,11 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ExplicitForAll #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -38,7 +38,7 @@ import Language.Haskell.Extension (Extension, Language)
 
 import Distribution.Trivia
 import qualified Distribution.Types.BuildInfo as T
-import Distribution.Types.Modify (AttachPos, PreserveGrouping, Annotate, AnnotateWith)
+import Distribution.Types.Modify (Annotate, AnnotateWith, AttachPos, PreserveGrouping)
 import qualified Distribution.Types.Modify as Mod
 
 type HasBuildInfo = HasBuildInfoWith Mod.HasNoAnn

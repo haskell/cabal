@@ -6,7 +6,6 @@ module Distribution.Trivia
   ( SurroundingText (..)
   , Positions (..)
   , Trivia (..)
-
   , preTrivia
   , postTrivia
   , Ann (..)
@@ -17,8 +16,8 @@ module Distribution.Trivia
 where
 
 import Control.Applicative
-import Data.Monoid (Last (..))
 import Data.Data
+import Data.Monoid (Last (..))
 import Distribution.Parsec.Position
 import qualified Text.PrettyPrint as Disp
 

@@ -1,9 +1,9 @@
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Distribution.FieldGrammar.Pretty
   ( PrettyFieldGrammar
@@ -14,12 +14,12 @@ import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
 import Distribution.Compat.Newtype
 import Distribution.Compat.Prelude
-import Distribution.Parsec.Position
-import Distribution.Trivia
-import Distribution.Types.Modify
 import Distribution.Fields.Field (FieldName)
 import Distribution.Fields.Pretty (PrettyField (..))
+import Distribution.Parsec.Position
 import Distribution.Pretty (Pretty (..), showFreeText, showFreeTextV3)
+import Distribution.Trivia
+import Distribution.Types.Modify
 import Distribution.Utils.Generic (toUTF8BS)
 import Text.PrettyPrint (Doc)
 import qualified Text.PrettyPrint as PP
@@ -117,14 +117,14 @@ instance FieldGrammarWith Mod.HasNoAnn Pretty PrettyFieldGrammar where
 
 instance FieldGrammarWith Mod.HasAnn Pretty PrettyFieldGrammar where
   monoidalFieldAla' fn _pack l = PrettyFG $ \v s ->
-      let bs :: [(Positions, Doc)] = fmap (prettyVersioned v . pack' _pack) <$> (aview l s)
-       in ppFieldPos fn bs
+    let bs = fmap (prettyVersioned v . pack' _pack) <$> aview l s
+     in ppFieldPos fn bs
 
   booleanFieldDef' fn l def = PrettyFG $ \_v s ->
-      let Ann t b = aview l s
-       in case t of
-            HasTrivia pos -> ppFieldPos fn [(pos, PP.text (show b))]
-            IsInserted -> mempty
+    let Ann t b = aview l s
+     in case t of
+          HasTrivia pos -> ppFieldPos fn [(pos, PP.text (show b))]
+          IsInserted -> mempty
 
 ppField :: FieldName -> Doc -> [PrettyField ()]
 ppField name fielddoc
@@ -134,6 +134,6 @@ ppField name fielddoc
 -- TODO(leana8959): push out doc position
 ppFieldPos :: FieldName -> [(Positions, Doc)] -> [PrettyField Position]
 ppFieldPos name possFieldDocs =
-    [ PrettyField (fieldNamePos poss) name fieldDoc
-    | (poss, fieldDoc) <- possFieldDocs
-    ]
+  [ PrettyField (fieldNamePos poss) name fieldDoc
+  | (poss, fieldDoc) <- possFieldDocs
+  ]

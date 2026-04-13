@@ -40,6 +40,7 @@ import qualified Distribution.Types.Modify as Mod
 --
 -- @since 2.0.0.2
 type PackageName = PackageNameWith Mod.HasNoAnn
+
 type PackageNameAnn = PackageNameWith Mod.HasAnn
 
 newtype PackageNameWith (m :: Mod.HasAnnotation) = PackageName (Annotate m ShortText)

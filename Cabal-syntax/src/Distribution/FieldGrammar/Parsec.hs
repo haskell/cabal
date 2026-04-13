@@ -1,12 +1,12 @@
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 
 -- | This module provides a 'FieldGrammarParser', one way to parse
 -- @.cabal@ -like files.
@@ -93,9 +93,9 @@ import Distribution.FieldGrammar.Class
 import Distribution.Fields.Field
 import Distribution.Fields.ParseResult
 import Distribution.Parsec
-import Distribution.Trivia
 import Distribution.Parsec.FieldLineStream
 import Distribution.Parsec.Position (positionCol, positionRow)
+import Distribution.Trivia
 
 import Distribution.Types.Modify (AttachPos)
 import qualified Distribution.Types.Modify as Mod
@@ -383,11 +383,11 @@ instance FieldGrammarWith Mod.HasAnn Parsec ParsecFieldGrammar where
   booleanFieldDef'
     :: forall s
      . FieldName
-    -- ^ field name
+    -- \^ field name
     -> ALens' s (Ann Positions Bool)
-    -- ^ lens into the field
+    -- \^ lens into the field
     -> Bool
-    -- ^ default
+    -- \^ default
     -> ParsecFieldGrammar Mod.HasAnn s (Ann Positions Bool)
   booleanFieldDef' fn _extract def = ParsecFG (Set.singleton fn) Set.empty parser
     where

@@ -1,18 +1,18 @@
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ApplicativeDo #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeOperators #-}
 
 -- | 'GenericPackageDescription' Field descriptions
 module Distribution.PackageDescription.FieldGrammar
@@ -74,7 +74,6 @@ module Distribution.PackageDescription.FieldGrammar
 
     -- * Component build info
   , buildInfoFieldGrammar
-
   , MiniBuildInfo (..)
   , miniBuildInfoFieldGrammar
   ) where
@@ -98,7 +97,7 @@ import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
 
 import Distribution.Trivia
-import Distribution.Types.Modify (AttachPos, PreserveGrouping, Annotate)
+import Distribution.Types.Modify (Annotate, AttachPos, PreserveGrouping)
 import qualified Distribution.Types.Modify as Mod
 
 import qualified Data.ByteString.Char8 as BS8
@@ -186,10 +185,8 @@ libraryFieldGrammar
      , Applicative (g mod (LibraryWith mod))
      , Applicative (g mod (BuildInfoWith mod))
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
-
-     -- TODO(leana8959): use legacy for now, not completely polymorphic
-     , mod ~ Mod.HasNoAnn
-
+     , -- TODO(leana8959): use legacy for now, not completely polymorphic
+       mod ~ Mod.HasNoAnn
      , c (Identity LibraryVisibility)
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
      , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
@@ -227,6 +224,7 @@ libraryFieldGrammar n =
       LSubLibName _ ->
         optionalFieldDef "visibility" L.libVisibility LibraryVisibilityPrivate
           ^^^ availableSince CabalSpecV3_0 LibraryVisibilityPrivate
+
 -- {-# SPECIALIZE libraryFieldGrammar :: LibraryName -> ParsecFieldGrammar' LibraryAnn #-}
 -- {-# SPECIALIZE libraryFieldGrammar :: LibraryName -> PrettyFieldGrammar' LibraryAnn #-}
 
@@ -604,10 +602,8 @@ buildInfoFieldGrammar
    . ( FieldGrammarWith mod c g
      , Applicative (g mod (BuildInfoWith mod))
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
-
-     -- TODO(leana8959): use legacy for now, not completely polymorphic
-     , mod ~ Mod.HasNoAnn
-
+     , -- TODO(leana8959): use legacy for now, not completely polymorphic
+       mod ~ Mod.HasNoAnn
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
      , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
      , c (List CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
@@ -711,6 +707,7 @@ buildInfoFieldGrammar =
     <*> monoidalFieldAla "build-depends" (formatDependencyList @mod) L.targetBuildDepends
     <*> monoidalFieldAla "mixins" formatMixinList L.mixins
       ^^^ availableSince CabalSpecV2_0 []
+
 -- {-# SPECIALIZE buildInfoFieldGrammar :: ParsecFieldGrammar' BuildInfoAnn #-}
 -- {-# SPECIALIZE buildInfoFieldGrammar :: PrettyFieldGrammar' BuildInfoAnn #-}
 
@@ -719,7 +716,6 @@ buildInfoFieldGrammar'
    . ( FieldGrammarWith mod c g
      , Applicative (g mod (BuildInfoWith mod))
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
-
      , Newtype [Annotate mod LegacyExeDependency] (ListWith mod CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
      , c (ListWith mod CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
      , Newtype [Annotate mod ExeDependency] (ListWith mod CommaFSep (Identity ExeDependency) ExeDependency)
@@ -735,18 +731,15 @@ buildInfoFieldGrammar'
      , Newtype [Annotate mod (SymbolicPath Pkg File)] (ListWith mod VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
      , c (ListWith mod VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
      , c (List FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
-
-     -- is a monoid with or without annotation, for hsSourceDirs compat
-     , Monoid (PreserveGrouping mod (AttachPos mod [Annotate mod (SymbolicPath Pkg (Dir Source))]))
+     , -- is a monoid with or without annotation, for hsSourceDirs compat
+       Monoid (PreserveGrouping mod (AttachPos mod [Annotate mod (SymbolicPath Pkg (Dir Source))]))
      , Newtype [Annotate mod (SymbolicPath Pkg (Dir Source))] (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
      , c (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
-
      , Newtype [Annotate mod ModuleName] (ListWith mod VCat (MQuoted ModuleName) ModuleName)
      , c (ListWith mod VCat (MQuoted ModuleName) ModuleName)
+     , -- TODO(leana8959): constraints go here
 
-     -- TODO(leana8959): constraints go here
-
-     , Newtype [Annotate mod (DependencyWith mod)] (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
+       Newtype [Annotate mod (DependencyWith mod)] (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
      , c (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
      )
   => g mod (BuildInfoWith mod) (BuildInfoWith mod)
@@ -776,7 +769,7 @@ buildInfoFieldGrammar' = do
   -- TODO(leana8959): add more
 
   targetBuildDepends <- monoidalFieldAla' "build-depends" (formatDependencyList @mod) L.targetBuildDepends
-  pure (BuildInfo {..})
+  pure (BuildInfo{..})
 
 -- {-# SPECIALIZE buildInfoFieldGrammar' :: ParsecFieldGrammar   Mod.HasAnn BuildInfoAnn BuildInfoAnn #-}
 -- {-# SPECIALIZE buildInfoFieldGrammar' :: ParsecFieldGrammar Mod.HasNoAnn    BuildInfo    BuildInfo #-}
@@ -802,11 +795,9 @@ miniBuildInfoFieldGrammar
   :: forall mod c g
    . ( FieldGrammarWith mod c g
      , Applicative (g mod (MiniBuildInfo mod))
-
      , Newtype
         [Annotate mod (DependencyWith mod)]
         (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
-
      , c (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
      )
   => g mod (MiniBuildInfo mod) (MiniBuildInfo mod)
@@ -819,23 +810,22 @@ hsSourceDirsGrammar
    . ( FieldGrammarWith mod c g
      , Applicative (g mod (BuildInfoWith mod))
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
-
-     -- is a monoid with or without annotation
-     , Monoid (PreserveGrouping mod (AttachPos mod [Annotate mod (SymbolicPath Pkg (Dir Source))]))
-
+     , -- is a monoid with or without annotation
+       Monoid (PreserveGrouping mod (AttachPos mod [Annotate mod (SymbolicPath Pkg (Dir Source))]))
      , Newtype [Annotate mod (SymbolicPath Pkg (Dir Source))] (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
      , c (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
      )
   => g mod (BuildInfoWith mod) (PreserveGrouping mod (AttachPos mod [Annotate mod (SymbolicPath Pkg (Dir Source))]))
 hsSourceDirsGrammar =
-    (<>)
-      <$> monoidalFieldAla' "hs-source-dirs" (alaListWith' @mod @FSep @(SymbolicPathNT Pkg (Dir Source)) @(SymbolicPath Pkg (Dir Source))) L.hsSourceDirs
-      <*> monoidalFieldAla' "hs-source-dir" (alaListWith' @mod @FSep @(SymbolicPathNT Pkg (Dir Source)) @(SymbolicPath Pkg (Dir Source))) wrongLens
-              --- https://github.com/haskell/cabal/commit/49e3cdae3bdf21b017ccd42e66670ca402e22b44
-              ^^^ deprecatedSince CabalSpecV1_2 "Please use 'hs-source-dirs'"
-              ^^^ removedIn CabalSpecV3_0 "Please use 'hs-source-dirs' field."
-    where
-      wrongLens f bi = (\fps -> set (L.hsSourceDirs @mod) fps bi) <$> f mempty
+  (<>)
+    <$> monoidalFieldAla' "hs-source-dirs" (alaListWith' @mod @FSep @(SymbolicPathNT Pkg (Dir Source)) @(SymbolicPath Pkg (Dir Source))) L.hsSourceDirs
+    <*> monoidalFieldAla' "hs-source-dir" (alaListWith' @mod @FSep @(SymbolicPathNT Pkg (Dir Source)) @(SymbolicPath Pkg (Dir Source))) wrongLens
+      --- https://github.com/haskell/cabal/commit/49e3cdae3bdf21b017ccd42e66670ca402e22b44
+      ^^^ deprecatedSince CabalSpecV1_2 "Please use 'hs-source-dirs'"
+      ^^^ removedIn CabalSpecV3_0 "Please use 'hs-source-dirs' field."
+  where
+    wrongLens f bi = (\fps -> set (L.hsSourceDirs @mod) fps bi) <$> f mempty
+
 -- {-# SPECIALIZE hsSourceDirsGrammar :: ParsecFieldGrammar BuildInfoAnn [SymbolicPath Pkg (Dir Source)] #-}
 -- {-# SPECIALIZE hsSourceDirsGrammar :: PrettyFieldGrammar BuildInfoAnn [SymbolicPath Pkg (Dir Source)] #-}
 
@@ -859,6 +849,7 @@ optionsFieldGrammar =
     <* knownField "nhc98-options"
   where
     extract flavor = L.options @mod . lookupLens flavor
+
 -- {-# SPECIALIZE optionsFieldGrammar :: ParsecFieldGrammar BuildInfoAnn (PerCompilerFlavor [String]) #-}
 -- {-# SPECIALIZE optionsFieldGrammar :: PrettyFieldGrammar BuildInfoAnn (PerCompilerFlavor [String]) #-}
 
@@ -876,6 +867,7 @@ profOptionsFieldGrammar =
     <*> monoidalFieldAla "ghcjs-prof-options" (alaList' NoCommaFSep Token') (extract GHCJS)
   where
     extract flavor = L.profOptions @mod . lookupLens flavor
+
 -- {-# SPECIALIZE profOptionsFieldGrammar :: ParsecFieldGrammar BuildInfoAnn (PerCompilerFlavor [String]) #-}
 -- {-# SPECIALIZE profOptionsFieldGrammar :: PrettyFieldGrammar BuildInfoAnn (PerCompilerFlavor [String]) #-}
 
@@ -930,6 +922,7 @@ flagFieldGrammar name =
     <$> freeTextFieldDef "description" L.flagDescription
     <*> booleanFieldDef "default" L.flagDefault True
     <*> booleanFieldDef "manual" L.flagManual False
+
 -- {-# SPECIALIZE flagFieldGrammar :: FlagName -> ParsecFieldGrammar' PackageFlag #-}
 -- {-# SPECIALIZE flagFieldGrammar :: FlagName -> PrettyFieldGrammar' PackageFlag #-}
 
@@ -949,6 +942,7 @@ sourceRepoFieldGrammar kind =
     <*> optionalFieldAla "branch" Token L.repoBranch
     <*> optionalFieldAla "tag" Token L.repoTag
     <*> optionalFieldAla "subdir" FilePathNT L.repoSubdir
+
 -- {-# SPECIALIZE sourceRepoFieldGrammar :: RepoKind -> ParsecFieldGrammar' SourceRepo #-}
 -- {-# SPECIALIZE sourceRepoFieldGrammar :: RepoKind -> PrettyFieldGrammar' SourceRepo #-}
 
@@ -963,6 +957,7 @@ setupBInfoFieldGrammar
 setupBInfoFieldGrammar def =
   flip SetupBuildInfo def
     <$> monoidalFieldAla "setup-depends" (alaList CommaVCat) L.setupDepends
+
 -- {-# SPECIALIZE setupBInfoFieldGrammar :: Bool -> ParsecFieldGrammar' SetupBuildInfo #-}
 -- {-# SPECIALIZE setupBInfoFieldGrammar :: Bool -> PrettyFieldGrammar' SetupBuildInfo #-}
 

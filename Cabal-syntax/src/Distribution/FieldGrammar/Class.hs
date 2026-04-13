@@ -1,13 +1,13 @@
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
 
 module Distribution.FieldGrammar.Class
@@ -26,14 +26,14 @@ import Prelude ()
 
 import Distribution.CabalSpecVersion (CabalSpecVersion)
 import Distribution.Compat.Newtype (Newtype)
-import Distribution.Trivia
-import Distribution.Parsec.Position (Position)
 import Distribution.FieldGrammar.Newtypes
 import Distribution.Fields.Field
+import Distribution.Parsec.Position (Position)
+import Distribution.Trivia
 import Distribution.Utils.ShortText
 
 import Data.Kind
-import Distribution.Types.Modify (AttachPos, PreserveGrouping, Annotate, AnnotateWith)
+import Distribution.Types.Modify (Annotate, AnnotateWith, AttachPos, PreserveGrouping)
 import qualified Distribution.Types.Modify as Mod
 
 type FieldGrammar = FieldGrammarWith Mod.HasNoAnn
