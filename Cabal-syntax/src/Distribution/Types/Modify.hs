@@ -18,6 +18,8 @@ data HasAnnotation
   | HasNoAnn
   deriving (Show, Read, Eq, Ord, Data)
 
+-- Type family combinators that can compose and attach concrete syntax informations conditionally.
+
 type family Annotate (m :: HasAnnotation) (a :: Type) where
   Annotate HasNoAnn a = a
   Annotate HasAnn a = Ann SurroundingText a
@@ -25,6 +27,10 @@ type family Annotate (m :: HasAnnotation) (a :: Type) where
 type family AttachPos (m :: HasAnnotation) (a :: Type) where
   AttachPos HasAnn a = (Positions, a)
   AttachPos HasNoAnn a = a
+
+type family WithPos (m :: HasAnnotation) where
+  WithPos HasAnn = Positions
+  WithPos HasNoAnn = ()
 
 type family PreserveGrouping (m :: HasAnnotation) (a :: Type) where
   PreserveGrouping HasAnn a = [a]

@@ -15,6 +15,7 @@ import Distribution.Compat.Lens
 import Distribution.Compat.Newtype
 import Distribution.Compat.Prelude
 import Distribution.Trivia
+import Distribution.Types.Modify
 import Distribution.Fields.Field (FieldName)
 import Distribution.Fields.Pretty (PrettyField (..))
 import Distribution.Pretty (Pretty (..), showFreeText, showFreeTextV3)
@@ -28,7 +29,7 @@ import qualified Distribution.Types.Modify as Mod
 
 -- TODO(leana8959): maybe we can compare this to [Field Position] and thus form a roundtrip test.
 newtype PrettyFieldGrammar (m :: Mod.HasAnnotation) s a = PrettyFG
-  { fieldGrammarPretty :: CabalSpecVersion -> s -> [PrettyField ()]
+  { fieldGrammarPretty :: CabalSpecVersion -> s -> [PrettyField (WithPos m)]
   }
   deriving (Functor)
 
@@ -39,7 +40,7 @@ instance Applicative (PrettyFieldGrammar m s) where
 -- | We can use 'PrettyFieldGrammar' to pp print the @s@.
 --
 -- /Note:/ there is not trailing @($+$ text "")@.
-prettyFieldGrammar :: CabalSpecVersion -> PrettyFieldGrammar m s a -> s -> [PrettyField ()]
+prettyFieldGrammar :: CabalSpecVersion -> PrettyFieldGrammar m s a -> s -> [PrettyField (WithPos m)]
 prettyFieldGrammar = flip fieldGrammarPretty
 
 instance FieldGrammarWith Mod.HasNoAnn Pretty PrettyFieldGrammar where
@@ -116,12 +117,14 @@ instance FieldGrammarWith Mod.HasNoAnn Pretty PrettyFieldGrammar where
 instance FieldGrammarWith Mod.HasAnn Pretty PrettyFieldGrammar where
   monoidalFieldAla' fn _pack l = PrettyFG $ \v s ->
       let bs :: [(Positions, Doc)] = fmap (prettyVersioned v . pack' _pack) <$> (aview l s)
-       in ppField fn mempty
+       in -- ppField fn mempty
+          []
 
   booleanFieldDef' fn l def = PrettyFG $ \_v s ->
       let (pos, Ann t b) = aview l s
        in -- TODO(leana8959): push out position
-           ppField fn $ applyTriviaDoc t (PP.text (show b))
+           -- ppField fn $ applyTriviaDoc t (PP.text (show b))
+           []
 
 ppField :: FieldName -> Doc -> [PrettyField ()]
 ppField name fielddoc
