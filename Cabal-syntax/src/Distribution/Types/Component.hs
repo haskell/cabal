@@ -1,4 +1,6 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Distribution.Types.Component
   ( Component (..)
@@ -22,6 +24,7 @@ import Distribution.Types.BuildInfo
 import Distribution.Types.ComponentName
 
 import qualified Distribution.Types.BuildInfo.Lens as L
+import qualified Distribution.Types.Modify as Mod
 
 data Component
   = CLib Library
@@ -42,7 +45,7 @@ instance Semigroup Component where
   CBench b <> CBench b' = CBench (b <> b')
   _ <> _ = error "Cannot merge Component"
 
-instance L.HasBuildInfo Component where
+instance L.HasBuildInfoWith Mod.HasNoAnn Component where
   buildInfo f (CLib l) = CLib <$> L.buildInfo f l
   buildInfo f (CFLib l) = CFLib <$> L.buildInfo f l
   buildInfo f (CExe e) = CExe <$> L.buildInfo f e

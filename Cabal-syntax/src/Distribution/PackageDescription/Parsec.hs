@@ -1,7 +1,10 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 -- |
 -- Module      :  Distribution.PackageDescription.Parsec
@@ -28,6 +31,10 @@ module Distribution.PackageDescription.Parsec
 
     -- ** Supplementary build information
   , parseHookedBuildInfo
+
+    -- * Pre-processing utilities
+  , sectionizeFields
+  , takeFields
   ) where
 
 import Distribution.Compat.Prelude
@@ -53,6 +60,7 @@ import Distribution.Parsec.FieldLineStream (fieldLineStreamFromBS)
 import Distribution.Parsec.Position (Position (..), incPos, zeroPos)
 import Distribution.Parsec.Warning (PWarnType (..))
 import Distribution.Pretty (prettyShow)
+import qualified Distribution.Types.Modify as Mod
 import Distribution.Utils.Generic (breakMaybe, fromUTF8BS, toUTF8BS, unfoldrM, validateUTF8)
 import Distribution.Version (Version, mkVersion, versionNumbers)
 
@@ -920,7 +928,7 @@ data Syntax = OldSyntax | NewSyntax
 
 -- TODO:
 libFieldNames :: [FieldName]
-libFieldNames = fieldGrammarKnownFieldList (libraryFieldGrammar LMainLibName)
+libFieldNames = fieldGrammarKnownFieldList (libraryFieldGrammar @Mod.HasNoAnn LMainLibName)
 
 -------------------------------------------------------------------------------
 -- Supplementary build information

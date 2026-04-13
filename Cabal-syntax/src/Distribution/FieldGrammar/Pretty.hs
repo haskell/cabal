@@ -1,4 +1,8 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module Distribution.FieldGrammar.Pretty
@@ -10,6 +14,8 @@ import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
 import Distribution.Compat.Newtype
 import Distribution.Compat.Prelude
+import Distribution.Trivia
+import Distribution.Types.Modify
 import Distribution.Fields.Field (FieldName)
 import Distribution.Fields.Pretty (PrettyField (..))
 import Distribution.Pretty (Pretty (..), showFreeText, showFreeTextV3)
@@ -19,23 +25,25 @@ import qualified Text.PrettyPrint as PP
 import Prelude ()
 
 import Distribution.FieldGrammar.Class
+import qualified Distribution.Types.Modify as Mod
 
-newtype PrettyFieldGrammar s a = PrettyFG
-  { fieldGrammarPretty :: CabalSpecVersion -> s -> [PrettyField ()]
+-- TODO(leana8959): maybe we can compare this to [Field Position] and thus form a roundtrip test.
+newtype PrettyFieldGrammar (m :: Mod.HasAnnotation) s a = PrettyFG
+  { fieldGrammarPretty :: CabalSpecVersion -> s -> [PrettyField (WithPos m)]
   }
   deriving (Functor)
 
-instance Applicative (PrettyFieldGrammar s) where
+instance Applicative (PrettyFieldGrammar m s) where
   pure _ = PrettyFG (\_ _ -> mempty)
   PrettyFG f <*> PrettyFG x = PrettyFG (\v s -> f v s <> x v s)
 
 -- | We can use 'PrettyFieldGrammar' to pp print the @s@.
 --
 -- /Note:/ there is not trailing @($+$ text "")@.
-prettyFieldGrammar :: CabalSpecVersion -> PrettyFieldGrammar s a -> s -> [PrettyField ()]
+prettyFieldGrammar :: CabalSpecVersion -> PrettyFieldGrammar m s a -> s -> [PrettyField (WithPos m)]
 prettyFieldGrammar = flip fieldGrammarPretty
 
-instance FieldGrammar Pretty PrettyFieldGrammar where
+instance FieldGrammarWith Mod.HasNoAnn Pretty PrettyFieldGrammar where
   blurFieldGrammar f (PrettyFG pp) = PrettyFG (\v -> pp v . aview f)
 
   uniqueFieldAla fn _pack l = PrettyFG $ \_v s ->
@@ -106,7 +114,32 @@ instance FieldGrammar Pretty PrettyFieldGrammar where
   availableSince _ _ = id
   hiddenField _ = PrettyFG (\_ -> mempty)
 
+instance FieldGrammarWith Mod.HasAnn Pretty PrettyFieldGrammar where
+  monoidalFieldAla' fn _pack l = PrettyFG $ \v s ->
+      let bs :: [(Positions, Doc)] = fmap (prettyVersioned v . pack' _pack) <$> (aview l s)
+       in -- ppField fn mempty
+          []
+
+  booleanFieldDef' fn l def = PrettyFG $ \_v s ->
+      let (pos, Ann t b) = aview l s
+       in -- TODO(leana8959): push out position
+           -- ppField fn $ applyTriviaDoc t (PP.text (show b))
+           []
+
 ppField :: FieldName -> Doc -> [PrettyField ()]
 ppField name fielddoc
   | PP.isEmpty fielddoc = []
   | otherwise = [PrettyField () name fielddoc]
+
+-- NOTE(leana8959): do we need position"s"
+ppFieldPos :: FieldName -> Trivia SurroundingText -> [(Positions, Doc)] -> [PrettyField Positions]
+ppFieldPos name trivia possFieldDocs = case trivia of
+  -- TODO(leana8959): should position always exist (it's a maybe now)
+
+  -- TODO(leana8959): Each fieldDoc should carry their associated fieldname's position
+  -- because they don't always have the same position
+  -- We then do a post process sorting
+  IsInserted -> [] -- Absorb
+  _notInserted ->
+    possFieldDocs
+      >>= \(_, fieldDoc) -> [ PrettyField undefined name fieldDoc ]

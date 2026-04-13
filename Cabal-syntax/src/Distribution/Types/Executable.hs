@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Distribution.Types.Executable
   ( Executable (..)
@@ -18,6 +19,8 @@ import Distribution.Types.ExecutableScope
 import Distribution.Types.UnqualComponentName
 import Distribution.Utils.Path
 
+import qualified Distribution.Types.Modify as Mod
+
 import qualified Distribution.Types.BuildInfo.Lens as L
 
 data Executable = Executable
@@ -28,7 +31,7 @@ data Executable = Executable
   }
   deriving (Generic, Show, Read, Eq, Ord, Data)
 
-instance L.HasBuildInfo Executable where
+instance L.HasBuildInfoWith Mod.HasNoAnn Executable where
   buildInfo f l = (\x -> l{buildInfo = x}) <$> f (buildInfo l)
 
 instance Binary Executable

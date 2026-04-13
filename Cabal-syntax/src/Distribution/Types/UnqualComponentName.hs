@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -8,6 +9,7 @@ module Distribution.Types.UnqualComponentName
   , unUnqualComponentNameST
   , mkUnqualComponentName
   , packageNameToUnqualComponentName
+  , packageNameToUnqualComponentNameWith
   , unqualComponentNameToPackageName
   , combineNames
   ) where
@@ -17,6 +19,8 @@ import Distribution.Utils.ShortText
 
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.Trivia
+import qualified Distribution.Types.Modify as Mod
 import Distribution.Types.PackageName
 
 -- | An unqualified component name, for any kind of component.
@@ -92,6 +96,9 @@ instance NFData UnqualComponentName where
 -- @since 2.0.0.2
 packageNameToUnqualComponentName :: PackageName -> UnqualComponentName
 packageNameToUnqualComponentName = UnqualComponentName . unPackageNameST
+
+packageNameToUnqualComponentNameWith :: PackageNameWith Mod.HasAnn -> Ann SurroundingText UnqualComponentName
+packageNameToUnqualComponentNameWith (PackageName u) = fmap UnqualComponentName u
 
 -- | Converts an unqualified component name to a package name
 --

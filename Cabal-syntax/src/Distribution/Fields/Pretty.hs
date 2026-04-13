@@ -25,7 +25,7 @@ import Distribution.Compat.Prelude
 import Distribution.Pretty (showToken)
 import Prelude ()
 
-import Distribution.Fields.Field (FieldName)
+import Distribution.Fields.Field (FieldName, Name)
 import Distribution.Utils.Generic (fromUTF8BS)
 
 import qualified Distribution.Fields.Parser as P
@@ -39,6 +39,9 @@ import qualified Text.PrettyPrint as PP
 --   conjunction with @PrettyField@.
 data CommentPosition = CommentBefore [String] | CommentAfter [String] | NoComment
 
+-- NOTE(leana8959): some pretty field considerations
+--  - do section args need to be a _list_ of PP.Doc
+--  - do we need pretty empty with exact doc
 data PrettyField ann
   = PrettyField ann FieldName PP.Doc
   | PrettySection ann FieldName [PP.Doc] [PrettyField ann]

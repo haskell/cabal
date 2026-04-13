@@ -4,6 +4,9 @@
 module Distribution.Types.VersionRange
   ( -- * Version Range
     VersionRange
+  , VersionRangeAnn
+  , VersionRangeWith (..)
+  , unAnnVersionRange
 
     -- ** Predicates
     -- $predicate-examples
@@ -23,6 +26,7 @@ module Distribution.Types.VersionRange
 
     -- ** Constructing
   , anyVersion
+  , anyVersionAnn
   , noVersion
   , thisVersion
   , notThisVersion

@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 
 module Distribution.Parsec.Position
   ( Position (..)
@@ -18,7 +19,7 @@ data Position
   = Position
       {-# UNPACK #-} !Int -- row
       {-# UNPACK #-} !Int -- column
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show, Generic, Data, Read)
 
 instance Binary Position
 instance NFData Position where rnf = genericRnf

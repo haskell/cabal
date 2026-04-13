@@ -1,9 +1,17 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Distribution.Types.BuildInfo
-  ( BuildInfo (..)
+  ( BuildInfo
+  , BuildInfoAnn
+  , BuildInfoWith (..)
+  , unannotateDependencyAnn
   , emptyBuildInfo
   , allLanguages
   , allExtensions
@@ -19,6 +27,7 @@ module Distribution.Types.BuildInfo
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Distribution.Trivia
 import Distribution.Types.Dependency
 import Distribution.Types.ExeDependency
 import Distribution.Types.LegacyExeDependency
@@ -30,11 +39,23 @@ import Distribution.Compiler
 import Distribution.ModuleName
 import Language.Haskell.Extension
 
+import Data.Kind
+
+import Distribution.Types.Modify (AttachPos, PreserveGrouping, Annotate)
+import qualified Distribution.Types.Modify as Mod
+
+type BuildInfo = BuildInfoWith Mod.HasNoAnn
+type BuildInfoAnn = BuildInfoWith Mod.HasAnn
+
+-- type family TargetBuildDepends (mod :: Mod.HasAnnotation) where
+--   TargetBuildDepends Mod.HasAnn = [(Positions, [DependencyWith Mod.HasAnn])]
+--   TargetBuildDepends Mod.HasNoAnn = [DependencyWith Mod.HasNoAnn]
+
 -- Consider refactoring into executable and library versions.
-data BuildInfo = BuildInfo
-  { buildable :: Bool
+data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
+  { buildable :: AttachPos m (Annotate m Bool)
   -- ^ component is buildable here
-  , buildTools :: [LegacyExeDependency]
+  , buildTools :: PreserveGrouping m (AttachPos m [Annotate m LegacyExeDependency])
   -- ^ Tools needed to build this bit.
   --
   -- This is a legacy field that 'buildToolDepends' largely supersedes.
@@ -42,7 +63,7 @@ data BuildInfo = BuildInfo
   -- Unless use are very sure what you are doing, use the functions in
   -- "Distribution.Simple.BuildToolDepends" rather than accessing this
   -- field directly.
-  , buildToolDepends :: [ExeDependency]
+  , buildToolDepends :: PreserveGrouping m (AttachPos m [Annotate m ExeDependency])
   -- ^ Haskell tools needed to build this bit
   --
   -- This field is better than 'buildTools' because it allows one to
@@ -51,40 +72,40 @@ data BuildInfo = BuildInfo
   -- Unless use are very sure what you are doing, use the functions in
   -- "Distribution.Simple.BuildToolDepends" rather than accessing this
   -- field directly.
-  , cppOptions :: [String]
+  , cppOptions :: PreserveGrouping m (AttachPos m [Annotate m String])
   -- ^ options for pre-processing Haskell code
-  , asmOptions :: [String]
+  , asmOptions :: PreserveGrouping m (AttachPos m [Annotate m String])
   -- ^ options for assembler
-  , cmmOptions :: [String]
+  , cmmOptions :: PreserveGrouping m (AttachPos m [Annotate m String])
   -- ^ options for C-- compiler
-  , ccOptions :: [String]
+  , ccOptions :: PreserveGrouping m (AttachPos m [Annotate m String])
   -- ^ options for C compiler
-  , cxxOptions :: [String]
+  , cxxOptions :: PreserveGrouping m (AttachPos m [Annotate m String])
   -- ^ options for C++ compiler
-  , jsppOptions :: [String]
+  , jsppOptions :: PreserveGrouping m (AttachPos m [Annotate m String])
   -- ^ options for pre-processing JavaScript code @since 3.16.0.0
-  , ldOptions :: [String]
+  , ldOptions :: PreserveGrouping m (AttachPos m [Annotate m String])
   -- ^ options for linker
-  , hsc2hsOptions :: [String]
+  , hsc2hsOptions :: PreserveGrouping m (AttachPos m [Annotate m String])
   -- ^ options for hsc2hs
-  , pkgconfigDepends :: [PkgconfigDependency]
+  , pkgconfigDepends :: PreserveGrouping m (AttachPos m [Annotate m PkgconfigDependency])
   -- ^ pkg-config packages that are used
-  , frameworks :: [RelativePath Framework File]
+  , frameworks :: PreserveGrouping m (AttachPos m [Annotate m (RelativePath Framework File)])
   -- ^ support frameworks for Mac OS X
-  , extraFrameworkDirs :: [SymbolicPath Pkg (Dir Framework)]
+  , extraFrameworkDirs :: PreserveGrouping m (AttachPos m [Annotate m (SymbolicPath Pkg (Dir Framework))])
   -- ^ extra locations to find frameworks.
-  , asmSources :: [SymbolicPath Pkg File]
+  , asmSources :: PreserveGrouping m (AttachPos m [Annotate m (SymbolicPath Pkg File)])
   -- ^ Assembly files.
-  , cmmSources :: [SymbolicPath Pkg File]
+  , cmmSources :: PreserveGrouping m (AttachPos m [Annotate m (SymbolicPath Pkg File)])
   -- ^ C-- files.
-  , cSources :: [SymbolicPath Pkg File]
-  , cxxSources :: [SymbolicPath Pkg File]
-  , jsSources :: [SymbolicPath Pkg File]
-  , hsSourceDirs :: [SymbolicPath Pkg (Dir Source)]
+  , cSources :: PreserveGrouping m (AttachPos m [Annotate m (SymbolicPath Pkg File)])
+  , cxxSources :: PreserveGrouping m (AttachPos m [Annotate m (SymbolicPath Pkg File)])
+  , jsSources :: PreserveGrouping m (AttachPos m [Annotate m (SymbolicPath Pkg File)])
+  , hsSourceDirs :: PreserveGrouping m (AttachPos m [Annotate m (SymbolicPath Pkg (Dir Source))])
   -- ^ where to look for the Haskell module hierarchy
   , -- NB: these are symbolic paths are not relative paths,
     -- because autogenerated modules might end up in an absolute path
-    otherModules :: [ModuleName]
+    otherModules :: PreserveGrouping m (AttachPos m [Annotate m ModuleName])
   -- ^ non-exposed or non-main modules
   , virtualModules :: [ModuleName]
   -- ^ exposed modules that do not have a source file (e.g. @GHC.Prim@ from @ghc-prim@ package)
@@ -142,15 +163,55 @@ data BuildInfo = BuildInfo
   -- ^ Custom fields starting
   --  with x-, stored in a
   --  simple assoc-list.
-  , targetBuildDepends :: [Dependency]
+  , targetBuildDepends :: PreserveGrouping m (AttachPos m [Annotate m (DependencyWith m)])
   -- ^ Dependencies specific to a library or executable target
   , mixins :: [Mixin]
   }
-  deriving (Generic, Show, Read, Eq, Ord, Data)
+  deriving (Generic)
+
+deriving instance Show BuildInfo
+deriving instance Read BuildInfo
+deriving instance Eq BuildInfo
+deriving instance Ord BuildInfo
+deriving instance Data BuildInfo
 
 instance Binary BuildInfo
 instance Structured BuildInfo
 instance NFData BuildInfo where rnf = genericRnf
+
+unannotateBuildInfo :: BuildInfoAnn -> BuildInfo
+unannotateBuildInfo bi =
+  bi
+    { buildable = unAnn $ snd $ buildable bi
+    , buildTools = map unAnn $ join $ map snd $ buildTools bi
+    , buildToolDepends = map unAnn $ join $ map snd $ buildToolDepends bi
+    , cppOptions = map unAnn $ join $ map snd $ cppOptions bi
+    , asmOptions = map unAnn $ join $ map snd $ asmOptions bi
+    , cmmOptions = map unAnn $ join $ map snd $ cmmOptions bi
+    , ccOptions = map unAnn $ join $ map snd $ ccOptions bi
+    , cxxOptions = map unAnn $ join $ map snd $ cxxOptions bi
+    , jsppOptions = map unAnn $ join $ map snd $ jsppOptions bi
+    , ldOptions = map unAnn $ join $ map snd $ ldOptions bi
+    , hsc2hsOptions = map unAnn $ join $ map snd $ hsc2hsOptions bi
+    , pkgconfigDepends = map unAnn $ join $ map snd $ pkgconfigDepends bi
+    , frameworks = map unAnn $ join $ map snd $ frameworks bi
+    , extraFrameworkDirs = map unAnn $ join $ map snd $ extraFrameworkDirs bi
+    , asmSources = map unAnn $ join $ map snd $ asmSources bi
+    , cmmSources = map unAnn $ join $ map snd $ cmmSources bi
+    , cSources = map unAnn $ join $ map snd $ cSources bi
+    , cxxSources = map unAnn $ join $ map snd $ cxxSources bi
+    , jsSources = map unAnn $ join $ map snd $ jsSources bi
+    , hsSourceDirs = map unAnn $ join $ map snd $ hsSourceDirs bi
+    , otherModules = map unAnn $ join $ map snd $ otherModules bi
+
+    -- TODO(leana8959): add more fields here
+
+    , targetBuildDepends =
+                map (unannotateDependencyAnn . unAnn)
+                $ join
+                $ map snd
+                $ targetBuildDepends bi
+    }
 
 instance Monoid BuildInfo where
   mempty =
@@ -259,6 +320,7 @@ instance Semigroup BuildInfo where
       , mixins = combine mixins
       }
     where
+      combine :: Monoid a => (BuildInfo -> a) -> a
       combine field = field a `mappend` field b
       combineNub field = nub (combine field)
       combineMby field = field b `mplus` field a
