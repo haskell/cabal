@@ -164,10 +164,10 @@ inn (DoneF       x s           ) = Done       x s
 inn (FailF       c x           ) = Fail       c x
 
 innM :: Monad m => TreeF d c (m (Tree d c)) -> m (Tree d c)
-innM (PChoiceF    p s i       ts) = liftM (PChoice    p s i      ) (sequence ts)
-innM (FChoiceF    p s i b m d ts) = liftM (FChoice    p s i b m d) (sequence ts)
-innM (SChoiceF    p s i b     ts) = liftM (SChoice    p s i b    ) (sequence ts)
-innM (GoalChoiceF   s         ts) = liftM (GoalChoice   s        ) (sequence ts)
+innM (PChoiceF    p s i       ts) = PChoice    p s i       <$> sequence ts
+innM (FChoiceF    p s i b m d ts) = FChoice    p s i b m d <$> sequence ts
+innM (SChoiceF    p s i b     ts) = SChoice    p s i b     <$> sequence ts
+innM (GoalChoiceF   s         ts) = GoalChoice   s         <$> sequence ts
 innM (DoneF       x s           ) = return $ Done     x s
 innM (FailF       c x           ) = return $ Fail     c x
 
