@@ -39,6 +39,7 @@ module Distribution.Parsec
 
     -- * Position
   , Position (..)
+  , parsecWithPosition
   , incPos
   , retPos
   , showPos
@@ -325,15 +326,18 @@ parsecStandard f = do
 -- each component must contain an alphabetic character, to avoid
 -- ambiguity in identifiers like foo-1 (the 1 is the version number).
 
--- |
--- Parse parser @p@ and some trailing spaces.
--- The trivia is stored.
+-- | Parse parser @p@ and some trailing spaces.
+--   The trivia is stored.
 parsecSpacesAnn :: CabalParsing m => m (Ann SurroundingText a) -> m (Ann SurroundingText a)
 parsecSpacesAnn p = do
   x <- p
   post <- P.spaces'
   pure (mapAnn (<> postTrivia post) x)
 {-# INLINEABLE parsecSpacesAnn #-}
+
+-- | Parse parser @p@ and store its /starting/ position.
+parsecWithPosition :: CabalParsing m => m a -> m (Position, a)
+parsecWithPosition = liftA2 (,) getPosition
 
 parsecCommaList :: CabalParsing m => m a -> m [a]
 parsecCommaList p = P.sepBy (p <* P.spaces) (P.char ',' *> P.spaces P.<?> "comma")
