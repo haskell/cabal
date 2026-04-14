@@ -46,6 +46,7 @@ module Distribution.Parsec
   , zeroPos
 
     -- * Utilities
+  , extractPosition
   , parsecToken
   , parsecToken'
   , parsecFilePath
@@ -338,6 +339,14 @@ parsecSpacesAnn p = do
 -- | Parse parser @p@ and store its /starting/ position.
 parsecWithPosition :: CabalParsing m => m a -> m (Position, a)
 parsecWithPosition = liftA2 (,) getPosition
+
+-- Ann SurroundingText (Position, a)
+-- (Position, Ann SurroundingText a)
+
+extractPosition
+  :: Ann t (Position, a)
+  -> (Position, Ann t a)
+extractPosition (Ann t (pos, x)) = (pos, Ann t x)
 
 parsecCommaList :: CabalParsing m => m a -> m [a]
 parsecCommaList p = P.sepBy (p <* P.spaces) (P.char ',' *> P.spaces P.<?> "comma")

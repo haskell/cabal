@@ -68,6 +68,10 @@ data Ann t a = Ann
   }
   deriving (Show, Eq, Ord, Functor, Read, Data)
 
+instance Semigroup t => Applicative (Ann t) where
+  pure = Ann mempty
+  Ann u x <*> Ann v y = Ann (u <> v) (x y)
+
 mapAnn
   :: (Trivia s -> Trivia t)
   -> Ann s a
