@@ -97,7 +97,7 @@ import Distribution.Utils.Path
 import Distribution.Version (Version, VersionRange)
 
 import Distribution.Trivia
-import Distribution.Types.Modify (Annotate, AttachPositions, PreserveGrouping)
+import Distribution.Types.Modify (Annotate, AttachPositions, AttachPosition, PreserveGrouping)
 import qualified Distribution.Types.Modify as Mod
 
 import qualified Data.ByteString.Char8 as BS8
@@ -715,6 +715,9 @@ buildInfoFieldGrammar'
   :: forall mod c g
    . ( FieldGrammarWith mod c g
      , Applicative (g mod (BuildInfoWith mod))
+
+     , mod ~ Mod.HasNoAnn
+
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
      , Newtype [Annotate mod LegacyExeDependency] (ListWith mod CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
      , c (ListWith mod CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
@@ -777,7 +780,7 @@ buildInfoFieldGrammar' = do
 -- {-# SPECIALIZE buildInfoFieldGrammar' :: PrettyFieldGrammar Mod.HasNoAnn    BuildInfo    BuildInfo #-}
 
 data MiniBuildInfo (m :: Mod.HasAnnotation) = MiniBuildInfo
-  { miniTargetBuildDepends :: PreserveGrouping m (AttachPositions m [Annotate m (DependencyWith m)])
+  { miniTargetBuildDepends :: PreserveGrouping m (AttachPositions m [AttachPosition m (Annotate m (DependencyWith m))])
   }
 
 deriving instance Show (MiniBuildInfo Mod.HasAnn)
@@ -786,7 +789,7 @@ deriving instance Show (MiniBuildInfo Mod.HasNoAnn)
 miniTargetBuildDependsLens
   :: forall mod f
    . Functor f
-  => (PreserveGrouping mod (AttachPositions mod [Annotate mod (DependencyWith mod)]) -> f (PreserveGrouping mod (AttachPositions mod [Annotate mod (DependencyWith mod)])))
+  => (PreserveGrouping mod (AttachPositions mod [AttachPosition mod (Annotate mod (DependencyWith mod))]) -> f (PreserveGrouping mod (AttachPositions mod [AttachPosition mod (Annotate mod (DependencyWith mod))])))
   -> MiniBuildInfo mod
   -> f (MiniBuildInfo mod)
 miniTargetBuildDependsLens f s = fmap (\x -> s{miniTargetBuildDepends = x}) (f (miniTargetBuildDepends s))
@@ -796,7 +799,7 @@ miniBuildInfoFieldGrammar
    . ( FieldGrammarWith mod c g
      , Applicative (g mod (MiniBuildInfo mod))
      , Newtype
-        [Annotate mod (DependencyWith mod)]
+        [AttachPosition mod (Annotate mod (DependencyWith mod))]
         (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
      , c (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
      )
@@ -810,6 +813,7 @@ hsSourceDirsGrammar
    . ( FieldGrammarWith mod c g
      , Applicative (g mod (BuildInfoWith mod))
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
+     , mod ~ Mod.HasNoAnn
      , -- is a monoid with or without annotation
        Monoid (PreserveGrouping mod (AttachPositions mod [Annotate mod (SymbolicPath Pkg (Dir Source))]))
      , Newtype [Annotate mod (SymbolicPath Pkg (Dir Source))] (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
@@ -965,7 +969,7 @@ setupBInfoFieldGrammar def =
 -- Define how field values should be formatted for 'pretty'.
 -------------------------------------------------------------------------------
 
-formatDependencyList :: [Annotate mod (DependencyWith mod)] -> ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod)
+formatDependencyList :: [AttachPosition mod (Annotate mod (DependencyWith mod))] -> ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod)
 formatDependencyList = List
 
 formatMixinList :: [Mixin] -> List CommaVCat (Identity Mixin) Mixin
@@ -983,7 +987,7 @@ formatHsSourceDirs = alaList' FSep SymbolicPathNT
 formatOtherExtensions :: [Extension] -> List FSep (MQuoted Extension) Extension
 formatOtherExtensions = alaList' FSep MQuoted
 
-formatOtherModules :: [Annotate mod ModuleName] -> ListWith mod VCat (MQuoted ModuleName) ModuleName
+formatOtherModules :: [AttachPosition mod (Annotate mod ModuleName)] -> ListWith mod VCat (MQuoted ModuleName) ModuleName
 formatOtherModules = List
 
 -------------------------------------------------------------------------------

@@ -41,7 +41,7 @@ import Language.Haskell.Extension
 
 import Data.Kind
 
-import Distribution.Types.Modify (Annotate, AnnotateWith, AttachPositions, PreserveGrouping)
+import Distribution.Types.Modify (Annotate, AnnotateWith, AttachPositions, PreserveGrouping, AttachPosition)
 import qualified Distribution.Types.Modify as Mod
 
 type BuildInfo = BuildInfoWith Mod.HasNoAnn
@@ -163,7 +163,7 @@ data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
   -- ^ Custom fields starting
   --  with x-, stored in a
   --  simple assoc-list.
-  , targetBuildDepends :: PreserveGrouping m (AttachPositions m [Annotate m (DependencyWith m)])
+  , targetBuildDepends :: PreserveGrouping m (AttachPositions m [AttachPosition m (Annotate m (DependencyWith m))])
   -- ^ Dependencies specific to a library or executable target
   , mixins :: [Mixin]
   }
@@ -205,8 +205,9 @@ unannotateBuildInfo bi =
     , otherModules = map unAnn $ join $ map snd $ otherModules bi
     , -- TODO(leana8959): add more fields here
 
+      -- [(Positions, (Position, Ann t dep))]
       targetBuildDepends =
-        map (unannotateDependencyAnn . unAnn) $
+        map (unannotateDependencyAnn . unAnn . snd) $
           join $
             map snd $
               targetBuildDepends bi
