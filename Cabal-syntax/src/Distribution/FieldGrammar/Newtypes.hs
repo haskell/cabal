@@ -68,7 +68,7 @@ import Distribution.License (License)
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Trivia
-import Distribution.Types.Modify (Annotate, AttachPosition)
+import Distribution.Types.Modify (Annotate, AttachPosition, PreserveGrouping)
 import qualified Distribution.Types.Modify as Mod
 import Distribution.Utils.Path
 import Distribution.Version
@@ -110,7 +110,7 @@ data NoCommaFSep = NoCommaFSep
 class Sep (mod :: Mod.HasAnnotation) sep where
   -- TODO(leana8959): Relax Sep to return a list of annotated docs with position
   -- Use the position propagated back from applyTriviaDoc
-  prettySep :: Proxy sep -> [AttachPosition mod (Annotate mod Doc)] -> Doc
+  prettySep :: Proxy sep -> [AttachPosition mod (Annotate mod Doc)] -> PreserveGrouping mod (AttachPosition mod Doc)
 
   parseSep :: CabalParsing m => Proxy sep -> m a -> m [AttachPosition mod (Annotate mod a)]
   parseSepNE :: CabalParsing m => Proxy sep -> m a -> m (NonEmpty (AttachPosition mod (Annotate mod a)))
@@ -125,7 +125,7 @@ instance Sep Mod.HasNoAnn CommaVCat where
     if v >= CabalSpecV2_2 then parsecLeadingCommaNonEmpty p else parsecCommaNonEmpty p
 
 instance Sep Mod.HasAnn CommaVCat where
-  prettySep _ = mconcat . map (\(Ann t doc) -> applyTriviaDoc t doc) . map snd
+  prettySep _ = (map . fmap) (\(Ann t doc) -> applyTriviaDoc t doc)
   parseSep _ p = do
     v <- askCabalSpecVersion
     let p' = Ann mempty <$> parsecWithPosition p
@@ -148,7 +148,7 @@ instance Sep Mod.HasNoAnn CommaFSep where
     if v >= CabalSpecV2_2 then parsecLeadingCommaNonEmpty p else parsecCommaNonEmpty p
 
 instance Sep Mod.HasAnn CommaFSep where
-  prettySep _ = mconcat . map (\(Ann t doc) -> applyTriviaDoc t doc) . map snd
+  prettySep _ = (map . fmap) (\(Ann t doc) -> applyTriviaDoc t doc)
   parseSep _ p = do
     v <- askCabalSpecVersion
     let p' = Ann mempty <$> parsecWithPosition p
@@ -168,7 +168,7 @@ instance Sep Mod.HasNoAnn VCat where
   parseSepNE _ p = NE.some1 (p <* P.spaces)
 
 instance Sep Mod.HasAnn VCat where
-  prettySep _ = mconcat . map (\(Ann t doc) -> applyTriviaDoc t doc) . map snd
+  prettySep _ = (map . fmap) (\(Ann t doc) -> applyTriviaDoc t doc)
   parseSep _ p = do
     v <- askCabalSpecVersion
     let p' = Ann mempty <$> parsecWithPosition p
@@ -191,7 +191,7 @@ instance Sep Mod.HasNoAnn FSep where
   parseSepNE _ p = NE.some1 (p <* P.spaces)
 
 instance Sep Mod.HasAnn FSep where
-  prettySep _ = mconcat . map (\(Ann t doc) -> applyTriviaDoc t doc) . map snd
+  prettySep _ = (map . fmap) (\(Ann t doc) -> applyTriviaDoc t doc)
   parseSep _ p = do
     v <- askCabalSpecVersion
     let p' = Ann mempty <$> parsecWithPosition p
@@ -212,7 +212,7 @@ instance Sep Mod.HasNoAnn NoCommaFSep where
   parseSepNE _ p = NE.some1 (p <* P.spaces)
 
 instance Sep Mod.HasAnn NoCommaFSep where
-  prettySep _ = mconcat . map (\(Ann t doc) -> applyTriviaDoc t doc) . map snd
+  prettySep _ = (map . fmap) (\(Ann t doc) -> applyTriviaDoc t doc)
   parseSep _ p = (fmap . fmap) extractPosition $ many $ do
     x <- parsecWithPosition p
     post <- P.spaces'
@@ -270,7 +270,13 @@ instance (Newtype a b, Sep Mod.HasNoAnn sep, Pretty b) => Pretty (List sep b a) 
   pretty = prettySep @Mod.HasNoAnn (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . unpack
 
 instance (Newtype a b, Sep Mod.HasAnn sep, Pretty b) => Pretty (ListAnn sep b a) where
-  pretty = prettySep @Mod.HasAnn (Proxy :: Proxy sep) . (map . fmap . fmap) (pretty . (pack :: a -> b)) . unpack
+  -- TODO(leana8959):
+  -- what do we do with the positioning when prettifying every element?
+  -- what about the grouping?
+  --
+  -- The parser was run locally, so the context of the line number is also local
+  -- We can implement a local exact print, and push out the resulting doc.
+  pretty = mconcat . map snd . prettySep @Mod.HasAnn (Proxy :: Proxy sep) . (map . fmap . fmap) (pretty . (pack :: a -> b)) . unpack
 
 -- | Like 'List', but for 'Set'.
 --
