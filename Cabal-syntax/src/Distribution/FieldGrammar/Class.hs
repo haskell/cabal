@@ -173,33 +173,6 @@ class
     -- ^ lens into the field
     -> g m s (PreserveGrouping m (AttachPositions m a))
 
-  -- | Monoidal field.
-  --
-  -- Values are combined with 'mappend'.
-  --
-  -- /Note:/ 'optionalFieldAla' is a @monoidalField@ with 'Last' monoid.
-  monoidalFieldAlaAnn
-    :: (c b, Newtype a b)
-    => FieldName
-    -- ^ field name
-    -> (a -> b)
-    -- ^ 'pack'
-    -> ALens' s [(Positions, a)]
-    -- ^ lens into the field
-    -> g m s [(Positions, a)]
-
-  monoidalFieldAlaAnnProxy
-    :: forall (m :: Mod.HasAnnotation) b s a
-     . (c b, Newtype a b)
-    => Proxy m
-    -> FieldName
-    -- ^ field name
-    -> (a -> b)
-    -- ^ 'pack'
-    -> ALens' s (AttachPositions m a)
-    -- ^ lens into the field
-    -> g m s (AttachPositions m a)
-
   -- | Parser matching all fields with a name starting with a prefix.
   prefixedFields
     :: FieldName
