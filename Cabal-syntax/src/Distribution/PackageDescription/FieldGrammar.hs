@@ -813,13 +813,16 @@ hsSourceDirsGrammar
    . ( FieldGrammarWith mod c g
      , Applicative (g mod (BuildInfoWith mod))
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
-     , mod ~ Mod.HasNoAnn
      , -- is a monoid with or without annotation
-       Monoid (PreserveGrouping mod (AttachPositions mod [Annotate mod (SymbolicPath Pkg (Dir Source))]))
-     , Newtype [Annotate mod (SymbolicPath Pkg (Dir Source))] (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+       Monoid
+        (PreserveGrouping mod (AttachPositions mod [AttachPosition mod (Annotate mod (SymbolicPath Pkg (Dir Source)))]))
+
+     , Newtype
+        [AttachPosition mod (Annotate mod (SymbolicPath Pkg (Dir Source)))]
+        (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
      , c (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
      )
-  => g mod (BuildInfoWith mod) (PreserveGrouping mod (AttachPositions mod [Annotate mod (SymbolicPath Pkg (Dir Source))]))
+  => g mod (BuildInfoWith mod) (PreserveGrouping mod (AttachPositions mod [AttachPosition mod (Annotate mod (SymbolicPath Pkg (Dir Source)))]))
 hsSourceDirsGrammar =
   (<>)
     <$> monoidalFieldAla' "hs-source-dirs" (alaListWith' @mod @FSep @(SymbolicPathNT Pkg (Dir Source)) @(SymbolicPath Pkg (Dir Source))) L.hsSourceDirs
