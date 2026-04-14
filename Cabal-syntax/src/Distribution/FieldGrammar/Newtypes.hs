@@ -271,11 +271,12 @@ instance (Newtype a b, Sep Mod.HasNoAnn sep, Pretty b) => Pretty (List sep b a) 
 
 instance (Newtype a b, Sep Mod.HasAnn sep, Pretty b) => Pretty (ListAnn sep b a) where
   -- TODO(leana8959):
-  -- what do we do with the positioning when prettifying every element?
-  -- what about the grouping?
+  -- Currently we lose the leading spaces because they are dropped by the field lexer / parser.
+  -- However, we still have the position information to reconstruct them.
   --
-  -- The parser was run locally, so the context of the line number is also local
-  -- We can implement a local exact print, and push out the resulting doc.
+  -- For the complete implementation we need to
+  -- - handle comments interleaved between the lines here, they are removed early on.
+  -- - indent each line and then mconcat them to restore exact horizontal spacing. whitespaces are removed at lexer stage.
   pretty = mconcat . map snd . prettySep @Mod.HasAnn (Proxy :: Proxy sep) . (map . fmap . fmap) (pretty . (pack :: a -> b)) . unpack
 
 -- | Like 'List', but for 'Set'.
