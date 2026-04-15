@@ -53,8 +53,6 @@
     - --ignore-glob=Cabal-syntax/src/Distribution/Fields/Lexer.hs
     - --ignore-glob=Cabal-tests/tests/custom-setup/CabalDoctestSetup.hs
     - --ignore-glob=Cabal-tests/tests/custom-setup/IdrisSetup.hs
-    # TODO: Remove --ignore-glob for ghc-supported-languages.hs when this module compiles
-    - --ignore-glob=Cabal-tests/tests/misc/ghc-supported-languages.hs
     - --ignore-glob=cabal-testsuite/PackageTests/BuildWays/q/app/Main.hs
     - --ignore-glob=cabal-testsuite/PackageTests/CMain/10168/src/Lib.hs
     - --ignore-glob=cabal-testsuite/PackageTests/CmmSources/src/Demo.hs
