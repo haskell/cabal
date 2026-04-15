@@ -1,0 +1,18 @@
+cabal-version:       3.0
+name:                foreign-opts-asm
+version:             0.1
+build-type:          Simple
+
+executable foreign-opts-asm-exe
+  main-is:             Main.hs
+  build-depends:       base
+  default-language:    Haskell2010
+  include-dirs:        abits
+  if arch(x86_64)
+    asm-sources:       abits/asmlib_x86_64.s
+  elif arch(aarch64)
+    asm-sources:       abits/asmlib_aarch64.s
+  -- The value 33 is passed to the assembler via -Wa,--defsym (which routes
+  -- through gcc into the actual assembler) and used as an immediate operand
+  -- in the assembly source.
+  asm-options:         -Wa,--defsym,meaning_of_life_val=33

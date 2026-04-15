@@ -56,10 +56,11 @@
     # TODO: Remove --ignore-glob for ghc-supported-languages.hs when this module compiles
     - --ignore-glob=Cabal-tests/tests/misc/ghc-supported-languages.hs
     - --ignore-glob=cabal-testsuite/PackageTests/BuildWays/q/app/Main.hs
+    - --ignore-glob=cabal-testsuite/PackageTests/CppOptions/CppOpts/Main.hs
     - --ignore-glob=cabal-testsuite/PackageTests/CMain/10168/src/Lib.hs
-    - --ignore-glob=cabal-testsuite/PackageTests/CmmSources/src/Demo.hs
-    - --ignore-glob=cabal-testsuite/PackageTests/CmmSourcesDyn/src/Demo.hs
-    - --ignore-glob=cabal-testsuite/PackageTests/CmmSourcesExe/src/Demo.hs
+    - --ignore-glob=cabal-testsuite/PackageTests/Cmm/CmmSources/src/Demo.hs
+    - --ignore-glob=cabal-testsuite/PackageTests/Cmm/CmmSourcesDyn/src/Demo.hs
+    - --ignore-glob=cabal-testsuite/PackageTests/Cmm/CmmSourcesExe/src/Demo.hs
     - --ignore-glob=cabal-testsuite/PackageTests/NewBuild/CmdRun/Script/script.hs
     - --ignore-glob=cabal-testsuite/PackageTests/NewBuild/CmdRun/ScriptLiterate/script.lhs
     - --ignore-glob=cabal-testsuite/PackageTests/Regression/T5309/lib/Bio/Character/Exportable/Class.hs
