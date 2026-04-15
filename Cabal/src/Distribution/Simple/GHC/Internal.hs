@@ -377,6 +377,26 @@ includePaths lbi bi clbi odir =
          | dir <- mapMaybe (symbolicPathRelative_maybe . unsafeCoerceSymbolicPath) $ includeDirs bi
          ]
 
+optimizationCFlags :: LocalBuildInfo -> [String]
+optimizationCFlags lbi =
+  ( case withOptimization lbi of
+      -- see --disable-optimization
+      NoOptimisation -> []
+      -- '*-options: -O[n]' is generally not needed. When building with
+      -- optimisations Cabal automatically adds '-O2' for * code. Setting it
+      -- yourself interferes with the --disable-optimization flag.
+      -- see https://github.com/haskell/cabal/pull/8250
+      NormalOptimisation -> ["-O2"]
+      -- see --enable-optimization
+      MaximumOptimisation -> ["-O2"]
+  )
+    ++ ( case withDebugInfo lbi of
+          NoDebugInfo -> []
+          MinimalDebugInfo -> ["-g1"]
+          NormalDebugInfo -> ["-g"]
+          MaximalDebugInfo -> ["-g3"]
+       )
+
 componentCcGhcOptions
   :: VerbosityLevel
   -> LocalBuildInfo
@@ -396,18 +416,7 @@ componentCcGhcOptions verbosity lbi bi clbi odir filename =
     , ghcOptHideAllPackages = toFlag True
     , ghcOptPackageDBs = withPackageDB lbi
     , ghcOptPackages = toNubListR $ mkGhcOptPackages (promisedPkgs lbi) clbi
-    , ghcOptCcOptions =
-        ( case withOptimization lbi of
-            NoOptimisation -> []
-            _ -> ["-O2"]
-        )
-          ++ ( case withDebugInfo lbi of
-                NoDebugInfo -> []
-                MinimalDebugInfo -> ["-g1"]
-                NormalDebugInfo -> ["-g"]
-                MaximalDebugInfo -> ["-g3"]
-             )
-          ++ ccOptions bi
+    , ghcOptCcOptions = optimizationCFlags lbi ++ ccOptions bi
     , ghcOptCcProgram =
         maybeToFlag $
           programPath
@@ -435,18 +444,7 @@ componentCxxGhcOptions verbosity lbi bi clbi odir filename =
     , ghcOptHideAllPackages = toFlag True
     , ghcOptPackageDBs = withPackageDB lbi
     , ghcOptPackages = toNubListR $ mkGhcOptPackages (promisedPkgs lbi) clbi
-    , ghcOptCxxOptions =
-        ( case withOptimization lbi of
-            NoOptimisation -> []
-            _ -> ["-O2"]
-        )
-          ++ ( case withDebugInfo lbi of
-                NoDebugInfo -> []
-                MinimalDebugInfo -> ["-g1"]
-                NormalDebugInfo -> ["-g"]
-                MaximalDebugInfo -> ["-g3"]
-             )
-          ++ cxxOptions bi
+    , ghcOptCxxOptions = optimizationCFlags lbi ++ cxxOptions bi
     , ghcOptCcProgram =
         maybeToFlag $
           programPath
@@ -474,18 +472,7 @@ componentAsmGhcOptions verbosity lbi bi clbi odir filename =
     , ghcOptHideAllPackages = toFlag True
     , ghcOptPackageDBs = withPackageDB lbi
     , ghcOptPackages = toNubListR $ mkGhcOptPackages (promisedPkgs lbi) clbi
-    , ghcOptAsmOptions =
-        ( case withOptimization lbi of
-            NoOptimisation -> []
-            _ -> ["-O2"]
-        )
-          ++ ( case withDebugInfo lbi of
-                NoDebugInfo -> []
-                MinimalDebugInfo -> ["-g1"]
-                NormalDebugInfo -> ["-g"]
-                MaximalDebugInfo -> ["-g3"]
-             )
-          ++ asmOptions bi
+    , ghcOptAsmOptions = optimizationCFlags lbi ++ asmOptions bi
     , ghcOptObjDir = toFlag odir
     , ghcOptExtra = hcOptions GHC bi
     }
@@ -587,6 +574,9 @@ componentGhcOptions verbosity lbi bi clbi odir =
         , -- Unsupported extensions have already been checked by configure
           ghcOptExtensions = toNubListR $ usedExtensions bi
         , ghcOptExtensionMap = Map.fromList . compilerExtensions $ (compiler lbi)
+        , ghcOptCcOptions = optimizationCFlags lbi ++ ccOptions bi
+        , ghcOptCxxOptions = optimizationCFlags lbi ++ cxxOptions bi
+        , ghcOptAsmOptions = optimizationCFlags lbi ++ asmOptions bi
         }
   where
     exe_paths =
