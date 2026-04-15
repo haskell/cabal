@@ -19,11 +19,14 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Package
-import Distribution.PackageDescription
-import Distribution.Simple.Compiler
-import Distribution.Simple.LocalBuildInfo
-import Distribution.Utils.ShortText
-import Distribution.Version
+  ( PackageName
+  , packageName
+  , packageVersion
+  , unPackageName
+  )
+import Distribution.Types.PackageDescription (PackageDescription (..))
+import Distribution.Types.Version (versionNumbers)
+import Distribution.Utils.ShortText (fromShortText)
 
 import qualified Distribution.Simple.Build.PackageInfoModule.Z as Z
 
@@ -33,8 +36,8 @@ import qualified Distribution.Simple.Build.PackageInfoModule.Z as Z
 
 -- ------------------------------------------------------------
 
-generatePackageInfoModule :: PackageDescription -> LocalBuildInfo -> String
-generatePackageInfoModule pkg_descr lbi =
+generatePackageInfoModule :: PackageDescription -> String
+generatePackageInfoModule pkg_descr =
   Z.render
     Z.Z
       { Z.zPackageName = showPkgName $ packageName pkg_descr
@@ -42,15 +45,7 @@ generatePackageInfoModule pkg_descr lbi =
       , Z.zSynopsis = fromShortText $ synopsis pkg_descr
       , Z.zCopyright = fromShortText $ copyright pkg_descr
       , Z.zHomepage = fromShortText $ homepage pkg_descr
-      , Z.zSupportsNoRebindableSyntax = supports_rebindable_syntax
       }
-  where
-    supports_rebindable_syntax = ghc_newer_than (mkVersion [7, 0, 1])
-
-    ghc_newer_than minVersion =
-      case compilerCompatVersion GHC (compiler lbi) of
-        Nothing -> False
-        Just version -> version `withinRange` orLaterVersion minVersion
 
 showPkgName :: PackageName -> String
 showPkgName = map fixchar . unPackageName

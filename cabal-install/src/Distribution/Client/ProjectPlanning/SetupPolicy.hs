@@ -237,9 +237,5 @@ legacyCustomSetupPkgs compiler (Platform _ os) =
       ++ ["unix" | os /= Windows]
       ++ ["ghc-prim" | isGHC]
       ++ ["template-haskell" | isGHC]
-      ++ ["old-time" | notGHC710]
   where
     isGHC = compilerCompatFlavor GHC compiler
-    notGHC710 = case compilerCompatVersion GHC compiler of
-      Nothing -> False
-      Just v -> v <= mkVersion [7, 9]

@@ -44,11 +44,11 @@ tests _v _initFlags comp pkgIx srcDb =
     "Distribution.Client.Init.NonInteractive.Command"
     [ testGroup
         "driver function test"
-        [ driverFunctionTest pkgIx srcDb comp
+        [ driverFunctionTest pkgIx srcDb
         ]
     , testGroup
         "target creator tests"
-        [ fileCreatorTests pkgIx srcDb comp
+        [ fileCreatorTests pkgIx srcDb
         ]
     , testGroup
         "non-interactive tests"
@@ -63,9 +63,8 @@ tests _v _initFlags comp pkgIx srcDb =
 driverFunctionTest
   :: InstalledPackageIndex
   -> SourcePackageDb
-  -> Compiler
   -> TestTree
-driverFunctionTest pkgIx srcDb comp =
+driverFunctionTest pkgIx srcDb =
   testGroup
     "createProject"
     [ testGroup
@@ -93,7 +92,7 @@ driverFunctionTest pkgIx srcDb comp =
                     , "[\"quxTest/Main.hs\"]"
                     ]
 
-            case (runPrompt $ createProject comp (mkVerbosity defaultVerbosityHandles silent) pkgIx srcDb dummyFlags') inputs of
+            case (runPrompt $ createProject (mkVerbosity defaultVerbosityHandles silent) pkgIx srcDb dummyFlags') inputs of
               Right (ProjectSettings opts desc (Just lib) (Just exe) (Just test), _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False
@@ -180,7 +179,7 @@ driverFunctionTest pkgIx srcDb comp =
                       "False"
                     ]
 
-            case (runPrompt $ createProject comp (mkVerbosity defaultVerbosityHandles silent) pkgIx srcDb dummyFlags') inputs of
+            case (runPrompt $ createProject (mkVerbosity defaultVerbosityHandles silent) pkgIx srcDb dummyFlags') inputs of
               Right (ProjectSettings opts desc (Just lib) (Just exe) (Just test), _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False
@@ -358,7 +357,6 @@ driverFunctionTest pkgIx srcDb comp =
 
             case ( runPrompt $
                     createProject
-                      comp
                       (mkVerbosity defaultVerbosityHandles silent)
                       pkgIx
                       srcDb
@@ -510,7 +508,6 @@ driverFunctionTest pkgIx srcDb comp =
 
             case ( runPrompt $
                     createProject
-                      comp
                       (mkVerbosity defaultVerbosityHandles silent)
                       pkgIx
                       srcDb
@@ -664,7 +661,7 @@ driverFunctionTest pkgIx srcDb comp =
                     , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
                     ]
 
-            case (runPrompt $ createProject comp (mkVerbosity defaultVerbosityHandles silent) pkgIx srcDb emptyFlags) inputs of
+            case (runPrompt $ createProject (mkVerbosity defaultVerbosityHandles silent) pkgIx srcDb emptyFlags) inputs of
               Right (ProjectSettings opts desc (Just lib) (Just exe) Nothing, _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False
@@ -774,7 +771,7 @@ driverFunctionTest pkgIx srcDb comp =
                     , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
                     ]
 
-            case (runPrompt $ createProject comp (mkVerbosity defaultVerbosityHandles silent) pkgIx srcDb emptyFlags) inputs of
+            case (runPrompt $ createProject (mkVerbosity defaultVerbosityHandles silent) pkgIx srcDb emptyFlags) inputs of
               Right (ProjectSettings opts desc (Just lib) Nothing Nothing, _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False
@@ -865,7 +862,7 @@ driverFunctionTest pkgIx srcDb comp =
                     , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
                     ]
 
-            case (runPrompt $ createProject comp (mkVerbosity defaultVerbosityHandles silent) pkgIx srcDb emptyFlags) inputs of
+            case (runPrompt $ createProject (mkVerbosity defaultVerbosityHandles silent) pkgIx srcDb emptyFlags) inputs of
               Right (ProjectSettings opts desc Nothing (Just exe) Nothing, _) -> do
                 _optOverwrite opts @?= False
                 _optMinimal opts @?= False
@@ -905,9 +902,8 @@ driverFunctionTest pkgIx srcDb comp =
 fileCreatorTests
   :: InstalledPackageIndex
   -> SourcePackageDb
-  -> Compiler
   -> TestTree
-fileCreatorTests pkgIx srcDb comp =
+fileCreatorTests pkgIx srcDb =
   testGroup
     "generators"
     [ testGroup
@@ -980,7 +976,7 @@ fileCreatorTests pkgIx srcDb comp =
                     , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
                     ]
 
-            case (runPrompt $ genLibTarget emptyFlags comp pkgIx defaultCabalVersion) inputs of
+            case (runPrompt $ genLibTarget emptyFlags pkgIx defaultCabalVersion) inputs of
               Left e -> assertFailure $ show e
               Right{} -> return ()
         ]
@@ -1021,7 +1017,7 @@ fileCreatorTests pkgIx srcDb comp =
                     , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
                     ]
 
-            case (runPrompt $ genExeTarget emptyFlags comp pkgIx defaultCabalVersion) inputs of
+            case (runPrompt $ genExeTarget emptyFlags pkgIx defaultCabalVersion) inputs of
               Left e -> assertFailure $ show e
               Right{} -> return ()
         ]
@@ -1058,7 +1054,7 @@ fileCreatorTests pkgIx srcDb comp =
                     ]
                 flags = emptyFlags{initializeTestSuite = Flag True}
 
-            case (runPrompt $ genTestTarget flags comp pkgIx defaultCabalVersion) inputs of
+            case (runPrompt $ genTestTarget flags pkgIx defaultCabalVersion) inputs of
               Left e -> assertFailure $ show e
               Right{} -> return ()
         ]
@@ -1166,24 +1162,6 @@ nonInteractiveTests pkgIx srcDb comp =
                 cabalVersionHeuristics
                 CabalSpecV2_4
                 ["cabal-install version 2.4.0.0\ncompiled using version 2.4.0.0 of the Cabal library \n"]
-            ]
-        , testGroup
-            "Check languageHeuristics output"
-            [ testSimple
-                "Non GHC compiler"
-                (`languageHeuristics` (comp{compilerId = CompilerId Helium $ mkVersion [1, 8, 1]}))
-                Haskell2010
-                []
-            , testSimple
-                "Higher version compiler"
-                (`languageHeuristics` (comp{compilerId = CompilerId GHC $ mkVersion [8, 10, 4]}))
-                Haskell2010
-                []
-            , testSimple
-                "Lower version compiler"
-                (`languageHeuristics` (comp{compilerId = CompilerId GHC $ mkVersion [6, 0, 1]}))
-                Haskell98
-                []
             ]
         , testGroup
             "Check extraDocFileHeuristics output"

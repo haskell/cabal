@@ -920,7 +920,7 @@ createInternalPackageDB
 createInternalPackageDB verbosity lbi distPref = do
   existsAlready <- doesPackageDBExist dbPath
   when existsAlready $ deletePackageDB dbPath
-  createPackageDB verbosity (compiler lbi) (withPrograms lbi) False dbPath
+  createPackageDB verbosity (compiler lbi) (withPrograms lbi) dbPath
   return (SpecificPackageDB dbRelPath)
   where
     dbRelPath = internalPackageDBPath lbi distPref
@@ -1188,7 +1188,7 @@ builtinAutogenFiles pkg lbi clbi =
     pathsFile = AutogenModule (autogenPathsModuleName pkg) (Suffix "hs")
     pathsContents = toUTF8LBS $ generatePathsModule pkg lbi clbi
     packageInfoFile = AutogenModule (autogenPackageInfoModuleName pkg) (Suffix "hs")
-    packageInfoContents = toUTF8LBS $ generatePackageInfoModule pkg lbi
+    packageInfoContents = toUTF8LBS $ generatePackageInfoModule pkg
     cppHeaderFile = AutogenFile $ toShortText cppHeaderName
     cppHeaderContents = toUTF8LBS $ generateCabalMacrosHeader pkg lbi clbi
 

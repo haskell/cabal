@@ -797,18 +797,12 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
               | not (flagBool ghcOptProfilingMode) ->
                   []
             Nothing -> []
-            Just GhcProfAutoAll
-              | flagProfAuto implInfo -> ["-fprof-auto"]
-              | otherwise -> ["-auto-all"] -- not the same, but close
+            Just GhcProfAutoAll -> ["-fprof-auto"]
             Just GhcProfLate
               | flagProfLate implInfo -> ["-fprof-late"]
               | otherwise -> ["-fprof-auto-top"] -- not the same, not very close, but what we have.
-            Just GhcProfAutoToplevel
-              | flagProfAuto implInfo -> ["-fprof-auto-top"]
-              | otherwise -> ["-auto-all"]
-            Just GhcProfAutoExported
-              | flagProfAuto implInfo -> ["-fprof-auto-exported"]
-              | otherwise -> ["-auto"]
+            Just GhcProfAutoToplevel -> ["-fprof-auto-top"]
+            Just GhcProfAutoExported -> ["-fprof-auto-exported"]
         , ["-split-sections" | flagBool ghcOptSplitSections]
         , case compilerCompatVersion GHC comp of
             -- the -split-objs flag was removed in GHC 9.8
@@ -949,9 +943,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         , ----------------------------
           -- Language and extensions
 
-          if supportsHaskell2010 implInfo
-            then ["-X" ++ prettyShow lang | lang <- flag ghcOptLanguage]
-            else []
+          ["-X" ++ prettyShow lang | lang <- flag ghcOptLanguage]
         , [ ext'
           | ext <- flags ghcOptExtensions
           , ext' <- case Map.lookup ext (ghcOptExtensionMap opts) of
@@ -966,7 +958,9 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         , ----------------
           -- GHCi
 
-          concat [["-ghci-script", script] | flagGhciScript implInfo, script <- ghcOptGHCiScripts opts]
+          concat
+            [ ["-ghci-script", script] | script <- ghcOptGHCiScripts opts
+            ]
         , ---------------
           -- Inputs
 
