@@ -235,14 +235,18 @@ configureCompiler verbosity hcPath conf0 = do
       -- @compilerId@: "ghc-9.13.20250413"
       -- So, we need to be careful to only strip the /common/ prefix.
       -- In this example, @AbiTag@ is "inplace".
+      -- If the @Project Unit Id@ exactly matches @compilerId@, stripping the
+      -- common prefix yields the empty string, which should be treated as
+      -- @NoAbiTag@ rather than @AbiTag ""@.
       compilerAbiTag :: AbiTag
       compilerAbiTag =
-        maybe
-          NoAbiTag
-          AbiTag
-          ( dropWhile (== '-') . stripCommonPrefix (prettyShow compilerId)
-              <$> projectUnitId
-          )
+        let abiTagSuffix =
+              dropWhile (== '-') . stripCommonPrefix (prettyShow compilerId)
+                <$> projectUnitId
+         in case abiTagSuffix of
+              Nothing -> NoAbiTag
+              Just "" -> NoAbiTag
+              Just tag -> AbiTag tag
 
       wiredInUnitIds = do
         ghcInternalUnitId <- Map.lookup "ghc-internal Unit Id" ghcInfoMap
