@@ -42,7 +42,7 @@ maybeDecompress bytes = runST (go bytes decompressor)
     -- (https://en.wikipedia.org/wiki/Gzip#File_structure)
     -- at the beginning of the gzip header.  (not an option for zlib, though.)
     go :: Monad m => ByteString -> DecompressStream m -> m ByteString
-    go cs (DecompressOutputAvailable bs k) = liftM (Chunk bs) $ go' cs =<< k
+    go cs (DecompressOutputAvailable bs k) = Chunk bs <$> (go' cs =<< k)
     go _ (DecompressStreamEnd _bs) = return Empty
     go _ (DecompressStreamError _err) = return bytes
     go cs (DecompressInputRequired k) = go cs' =<< k c
@@ -53,7 +53,7 @@ maybeDecompress bytes = runST (go bytes decompressor)
     -- and we throw them (as pure exceptions).
     -- TODO: We could (and should) avoid these pure exceptions.
     go' :: Monad m => ByteString -> DecompressStream m -> m ByteString
-    go' cs (DecompressOutputAvailable bs k) = liftM (Chunk bs) $ go' cs =<< k
+    go' cs (DecompressOutputAvailable bs k) = Chunk bs <$> (go' cs =<< k)
     go' _ (DecompressStreamEnd _bs) = return Empty
     go' _ (DecompressStreamError err) = throw err
     go' cs (DecompressInputRequired k) = go' cs' =<< k c

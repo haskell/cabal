@@ -164,10 +164,7 @@ data UserTarget
 
 readUserTargets :: Verbosity -> [String] -> IO [UserTarget]
 readUserTargets verbosity targetStrs = do
-  (problems, targets) <-
-    liftM
-      partitionEithers
-      (traverse readUserTarget targetStrs)
+  (problems, targets) <- partitionEithers <$> traverse readUserTarget targetStrs
   reportUserTargetProblems verbosity problems
   return targets
 

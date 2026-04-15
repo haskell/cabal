@@ -1,12 +1,12 @@
 # Warnings currently triggered by your code
 - ignore: {name: "Avoid NonEmpty.unzip"} # 1 hint
-- ignore: {name: "Avoid lambda"} # 51 hints
-- ignore: {name: "Eta reduce"} # 138 hints
+- ignore: {name: "Avoid lambda"} # 49 hints
+- ignore: {name: "Eta reduce"} # 139 hints
 - ignore: {name: "Hoist not"} # 16 hints
 - ignore: {name: "Move filter"} # 4 hints
 - ignore: {name: "Redundant $!"} # 1 hint
-- ignore: {name: "Redundant <$>"} # 17 hints
-- ignore: {name: "Redundant bracket"} # 257 hints
+- ignore: {name: "Redundant <$>"} # 18 hints
+- ignore: {name: "Redundant bracket"} # 279 hints
 - ignore: {name: "Redundant guard"} # 2 hints
 - ignore: {name: "Redundant if"} # 6 hints
 - ignore: {name: "Redundant lambda"} # 19 hints
@@ -23,9 +23,8 @@
 - ignore: {name: "Use >=>"} # 3 hints
 - ignore: {name: "Use Down"} # 3 hints
 - ignore: {name: "Use bimap"} # 7 hints
-- ignore: {name: "Use camelCase"} # 96 hints
+- ignore: {name: "Use camelCase"} # 97 hints
 - ignore: {name: "Use const"} # 36 hints
-- ignore: {name: "Use fmap"} # 23 hints
 - ignore: {name: "Use fold"} # 1 hint
 - ignore: {name: "Use fst"} # 2 hints
 - ignore: {name: "Use lambda-case"} # 58 hints
@@ -39,6 +38,7 @@
 - ignore: {name: "Functor law", within: [Test.Laws]}
 - ignore: {name: "Monoid law, left identity", within: [Test.Laws, UnitTests.Distribution.Utils.NubList]}
 - ignore: {name: "Monoid law, right identity", within: [Test.Laws, UnitTests.Distribution.Utils.NubList]}
+- ignore: {name: "Use fmap", within: [Distribution.Client.HttpUtils, Distribution.Simple.SrcDist]}
 
 - group:
     name: cabal-suggestions
