@@ -370,20 +370,19 @@ relocRegistrationInfo verbosity pkg lib lbi clbi abi_hash packageDb =
 
 initPackageDB :: Verbosity -> Compiler -> ProgramDb -> FilePath -> IO ()
 initPackageDB verbosity comp progdb dbPath =
-  createPackageDB verbosity comp progdb False dbPath
+  createPackageDB verbosity comp progdb dbPath
 
 -- | Create an empty package DB at the specified location.
 createPackageDB
   :: Verbosity
   -> Compiler
   -> ProgramDb
-  -> Bool
   -> FilePath
   -> IO ()
-createPackageDB verbosity comp progdb preferCompat dbPath =
+createPackageDB verbosity comp progdb dbPath =
   case compilerFlavor comp of
-    GHC -> HcPkg.init (GHC.hcPkgInfo progdb) verbosity preferCompat dbPath
-    GHCJS -> HcPkg.init (GHCJS.hcPkgInfo progdb) verbosity False dbPath
+    GHC -> HcPkg.init (GHC.hcPkgInfo progdb) verbosity dbPath
+    GHCJS -> HcPkg.init (GHCJS.hcPkgInfo progdb) verbosity dbPath
     UHC -> return ()
     _ -> dieWithException verbosity CreatePackageDB
 
@@ -423,7 +422,7 @@ withHcPkg
   -> String
   -> Compiler
   -> ProgramDb
-  -> (HcPkg.HcPkgInfo -> IO a)
+  -> (HcPkg.ConfiguredProgram -> IO a)
   -> IO a
 withHcPkg verbosity name comp progdb f =
   case compilerFlavor comp of
@@ -455,7 +454,7 @@ writeHcPkgRegisterScript
   -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> [InstalledPackageInfo]
   -> PackageDBStack
-  -> HcPkg.HcPkgInfo
+  -> HcPkg.ConfiguredProgram
   -> IO ()
 writeHcPkgRegisterScript verbosity mbWorkDir ipis packageDbs hpi = do
   let genScript installedPkgInfo =

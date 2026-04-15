@@ -55,5 +55,5 @@ initCmd v packageDBs repoCtxt comp progdb initFlags = do
       | fromFlagOrDefault False (simpleProject initFlags) =
           Simple.createProject
       | otherwise = case interactive initFlags of
-          Flag False -> NonInteractive.createProject comp
+          Flag False -> NonInteractive.createProject
           _ -> Interactive.createProject

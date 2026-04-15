@@ -14,7 +14,6 @@ import Distribution.Client.Init.FileCreators
 import Distribution.Client.Init.NonInteractive.Command
 import Distribution.Client.Init.Types
 import Distribution.Client.Types
-import Distribution.Simple
 import Distribution.Simple.Flag
 import Distribution.Simple.PackageIndex
 import Distribution.Verbosity
@@ -22,11 +21,10 @@ import Distribution.Verbosity
 tests
   :: Verbosity
   -> InitFlags
-  -> Compiler
   -> InstalledPackageIndex
   -> SourcePackageDb
   -> TestTree
-tests _v _initFlags comp pkgIx srcDb =
+tests _v _initFlags pkgIx srcDb =
   testGroup
     "Distribution.Client.Init.FileCreators"
     [ testCase "Check . as source directory" $ do
@@ -82,7 +80,7 @@ tests _v _initFlags comp pkgIx srcDb =
               ]
 
         case flip runPrompt inputs $ do
-          projSettings <- createProject comp (mkVerbosity defaultVerbosityHandles silent) pkgIx srcDb dummyFlags'
+          projSettings <- createProject (mkVerbosity defaultVerbosityHandles silent) pkgIx srcDb dummyFlags'
           writeProject projSettings of
           Left (BreakException ex) -> assertFailure $ show ex
           Right _ -> return ()
