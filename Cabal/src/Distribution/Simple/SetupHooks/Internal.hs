@@ -6,6 +6,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
@@ -79,6 +80,7 @@ module Distribution.Simple.SetupHooks.Internal
 
     -- ** Executing build rules
   , executeRules
+  , executeRulesUserOrSystem
 
     -- ** HookedBuildInfo compatibility code
   , hookedBuildInfoComponents
@@ -129,6 +131,7 @@ import qualified Data.Graph as Graph
 import Data.IORef (IORef, modifyIORef', newIORef, readIORef)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
+import Data.Monoid (Ap (..))
 import qualified Data.Set as Set
 
 import System.Directory (doesFileExist, getModificationTime)
@@ -798,8 +801,8 @@ applyComponentDiffs verbosity f = traverseComponents apply_diff
         Just diff -> applyComponentDiff verbosity c diff
         Nothing -> return c
 
-forComponents_ :: PackageDescription -> (Component -> IO ()) -> IO ()
-forComponents_ pd f = getConst $ traverseComponents (Const . f) pd
+forComponents_ :: Applicative m => PackageDescription -> (Component -> m ()) -> m ()
+forComponents_ pd f = getAp . getConst $ traverseComponents (Const . Ap . f) pd
 
 applyComponentDiff
   :: Verbosity
