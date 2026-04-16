@@ -222,7 +222,7 @@ import qualified Distribution.Solver.Types.ComponentDeps as CD
 import qualified Distribution.Compat.Graph as Graph
 
 import Control.Exception (assert)
-import Control.Monad (sequence)
+import Control.Monad (mapM_, sequence)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.State as State (State, execState, runState, state)
 import Data.Foldable (fold)
@@ -1369,6 +1369,7 @@ planPackages
           . removeLowerBounds solverSettingAllowOlder
           . removeUpperBounds solverSettingAllowNewer
           . addDefaultSetupDependencies
+            setImplicitSetupInfo
             ( mkDefaultSetupDeps comp platform
                 . PD.packageDescription
                 . srcpkgDescription
@@ -1755,6 +1756,7 @@ elaborateInstallPlan
               -- new 'ElabSetup' type, and teach all of the code paths how to
               -- handle it.
               -- Once you've implemented this, swap it for the code below.
+              -- (See #9986 for more information about this task.)
               cuz_buildtype =
                 case bt of
                   PD.Configure -> []
@@ -1762,9 +1764,12 @@ elaborateInstallPlan
                   -- main library in cabal. Other components will need to depend
                   -- on the main library for configured data.
                   PD.Custom -> [CuzBuildType CuzCustomBuildType]
-                  PD.Hooks -> [CuzBuildType CuzHooksBuildType]
                   PD.Make -> [CuzBuildType CuzMakeBuildType]
                   PD.Simple -> []
+                  -- TODO: remove the following, once we make Setup a separate
+                  -- component (task tracked at #9986).
+                  PD.Hooks -> [CuzBuildType CuzHooksBuildType]
+
               -- cabal-format versions prior to 1.8 have different build-depends semantics
               -- for now it's easier to just fallback to legacy-mode when specVersion < 1.8
               -- see, https://github.com/haskell/cabal/issues/4121
@@ -2207,9 +2212,17 @@ elaborateInstallPlan
                 deps0
                 _exe_deps0
               ) =
-          (elaboratedPackage, wayWarnings pkgid)
+          (elaboratedPackage, wayWarnings pkgid >> buildOptionsAdjustmentWarnings)
           where
             elaboratedPackage = ElaboratedConfiguredPackage{..}
+
+            buildOptionsAdjustmentWarnings :: LogProgress ()
+            buildOptionsAdjustmentWarnings =
+              mapM_ (warnProgress . text) $
+                Cabal.buildOptionsAdjustmentWarnings
+                  compiler
+                  elabBuildOptionsRaw
+                  elabBuildOptions
 
             -- These get filled in later
             elabUnitId = error "elaborateSolverToCommon: elabUnitId"
@@ -2232,6 +2245,7 @@ elaborateInstallPlan
               gdesc of
               Right (desc, _) -> desc
               Left _ -> error "Failed to finalizePD in elaborateSolverToCommon"
+            elabGPkgDescription = gdesc
             elabFlagAssignment = flags
             elabFlagDefaults =
               PD.mkFlagAssignment
@@ -2312,7 +2326,14 @@ elaborateInstallPlan
 
             elabPkgDescriptionOverride = descOverride
 
-            elabBuildOptions =
+            -- Raw build options derived from per-package config.
+            -- This is the cabal-install equivalent of Cabal's 'buildOptionsFromConfigFlags',
+            -- except we have more information to go on than just ConfigFlags.
+            --
+            -- Options that depend on compiler and toolchain capabilities are
+            -- passed through 'Cabal.adjustBuildOptions', so that
+            -- 'elabBuildOptions' accurately reflects what will actually be built.
+            elabBuildOptionsRaw =
               LBC.BuildOptions
                 { withVanillaLib = perPkgOptionFlag pkgid True packageConfigVanillaLib -- TODO: [required feature]: also needs to be handled recursively
                 , withSharedLib = canBuildSharedLibs && pkgid `Set.member` pkgsUseSharedLibrary
@@ -2344,6 +2365,8 @@ elaborateInstallPlan
             okProfDyn = profilingDynamicSupportedOrUnknown compiler
             profExe = perPkgOptionFlag pkgid False packageConfigProf
 
+            elabBuildOptions = Cabal.adjustBuildOptions compiler compilerprogdb elabBuildOptionsRaw
+
             ( elabProfExeDetail
               , elabProfLibDetail
               ) =
@@ -2367,16 +2390,30 @@ elaborateInstallPlan
                 ]
                 <> perPkgOptionMapLast pkgid packageConfigProgramPaths
             elabProgramArgs =
-              Map.unionWith
-                (++)
-                ( Map.fromList
-                    [ (programId prog, args)
-                    | prog <- configuredPrograms compilerprogdb
-                    , let args = programOverrideArgs $ addHaddockIfDocumentationEnabled prog
-                    , not (null args)
-                    ]
-                )
-                (perPkgOptionMapMappend pkgid packageConfigProgramArgs)
+              -- Workaround for <https://github.com/haskell/cabal/issues/4010>
+              --
+              -- It turns out that, even with Cabal 2.0, there's still cases such as e.g.
+              -- custom Setup.hs scripts calling out to GHC even when going via
+              -- @runProgram ghcProgram@, as e.g. happy does in its
+              -- <http://hackage.haskell.org/package/happy-1.19.5/src/Setup.lhs>
+              -- (see also <https://github.com/haskell/cabal/pull/4433#issuecomment-299396099>)
+              --
+              -- So for now, let's pass the rather harmless and idempotent
+              -- `-hide-all-packages` flag to all invocations (which has
+              -- the benefit that every GHC invocation starts with a
+              -- consistently well-defined clean slate) until we find a
+              -- better way.
+              Map.insertWith (++) "ghc" ["-hide-all-packages"] $
+                Map.unionWith
+                  (++)
+                  ( Map.fromList
+                      [ (programId prog, args)
+                      | prog <- configuredPrograms compilerprogdb
+                      , let args = programOverrideArgs $ addHaddockIfDocumentationEnabled prog
+                      , not (null args)
+                      ]
+                  )
+                  (perPkgOptionMapMappend pkgid packageConfigProgramArgs)
             elabProgramPathExtra = perPkgOptionNubList pkgid packageConfigProgramPathExtra
             elabConfiguredPrograms = configuredPrograms compilerprogdb
             elabConfigureScriptArgs = perPkgOptionList pkgid packageConfigConfigureArgs
@@ -3874,11 +3911,10 @@ setupHsScriptOptions
   -> DistDirLayout
   -> SymbolicPath CWD (Dir Pkg)
   -> SymbolicPath Pkg (Dir Dist)
-  -> Bool
   -> Lock
   -> SetupScriptOptions
 -- TODO: Fix this so custom is a separate component.  Custom can ALWAYS
--- be a separate component!!!
+-- be a separate component!!! See #9986.
 setupHsScriptOptions
   (ReadyPackage elab@ElaboratedConfiguredPackage{..})
   plan
@@ -3886,7 +3922,6 @@ setupHsScriptOptions
   distdir
   srcdir
   builddir
-  isParallelBuild
   cacheLock =
     SetupScriptOptions
       { useCabalVersion = thisVersion elabSetupScriptCliVersion
@@ -3919,7 +3954,6 @@ setupHsScriptOptions
         -- for build-tools-depends.
         useExtraEnvOverrides = dataDirsEnvironmentForPlan distdir plan
       , useWin32CleanHack = False -- TODO: [required eventually]
-      , forceExternalSetupMethod = isParallelBuild
       , setupCacheLock = Just cacheLock
       , isInteractive = False
       , isMainLibOrExeComponent = case elabPkgOrComp of
@@ -4060,7 +4094,7 @@ setupHsConfigureFlags
         , configDynExe
         , configFullyStaticExe
         , configGHCiLib
-        , -- , configProfExe -- overridden
+        , -- configProfExe -- overridden
         configProfLib
         , configProfShared
         , -- , configProf -- overridden
@@ -4090,13 +4124,7 @@ setupHsConfigureFlags
         ElabComponent _ -> toFlag elabComponentId
 
       configProgramPaths = Map.toList elabProgramPaths
-      configProgramArgs =
-        Map.toList $
-          Map.insertWith
-            (++)
-            "ghc"
-            ["-hide-all-packages"]
-            elabProgramArgs
+      configProgramArgs = Map.toList elabProgramArgs
       configProgramPathExtra = toNubList elabProgramPathExtra
       configHcFlavor = toFlag (compilerFlavor pkgConfigCompiler)
       configHcPath = mempty -- we use configProgramPaths instead
@@ -4109,8 +4137,8 @@ setupHsConfigureFlags
       configExtraLibDirsStatic = fmap makeSymbolicPath elabExtraLibDirsStatic
       configExtraFrameworkDirs = fmap makeSymbolicPath elabExtraFrameworkDirs
       configExtraIncludeDirs = fmap makeSymbolicPath elabExtraIncludeDirs
-      configProgPrefix = maybe mempty toFlag elabProgPrefix
-      configProgSuffix = maybe mempty toFlag elabProgSuffix
+      configProgPrefix = maybe (Flag (Cabal.toPathTemplate "")) toFlag elabProgPrefix
+      configProgSuffix = maybe (Flag (Cabal.toPathTemplate "")) toFlag elabProgSuffix
 
       configInstallDirs =
         fmap
@@ -4194,15 +4222,16 @@ setupHsCommonFlags
   :: Verbosity
   -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> SymbolicPath Pkg (Dir Dist)
+  -> [String]
   -> Bool
   -> Cabal.CommonSetupFlags
-setupHsCommonFlags verbosity mbWorkDir builddir keepTempFiles =
+setupHsCommonFlags verbosity mbWorkDir builddir targets keepTempFiles =
   Cabal.CommonSetupFlags
     { setupDistPref = toFlag builddir
     , setupVerbosity = toFlag $ verbosityFlags verbosity
     , setupCabalFilePath = mempty
     , setupWorkingDir = maybeToFlag mbWorkDir
-    , setupTargets = []
+    , setupTargets = targets
     , setupKeepTempFiles = toFlag keepTempFiles
     }
 
@@ -4242,11 +4271,11 @@ setupHsTestFlags
 setupHsTestFlags (ElaboratedConfiguredPackage{..}) common =
   Cabal.TestFlags
     { testCommonFlags = common
-    , testMachineLog = maybe mempty toFlag elabTestMachineLog
-    , testHumanLog = maybe mempty toFlag elabTestHumanLog
+    , testMachineLog = maybeToFlag elabTestMachineLog
+    , testHumanLog = maybeToFlag elabTestHumanLog
     , testShowDetails = maybe (Flag Cabal.Always) toFlag elabTestShowDetails
     , testKeepTix = toFlag elabTestKeepTix
-    , testWrapper = maybe mempty toFlag elabTestWrapper
+    , testWrapper = maybeToFlag elabTestWrapper
     , testFailWhenNoTestSuites = toFlag elabTestFailWhenNoTestSuites
     , testOptions = elabTestTestOptions
     }
@@ -4348,18 +4377,18 @@ setupHsHaddockFlags
       , haddockProgramArgs = mempty -- unused, set at configure time
       , haddockHoogle = toFlag elabHaddockHoogle
       , haddockHtml = toFlag elabHaddockHtml
-      , haddockHtmlLocation = maybe mempty toFlag elabHaddockHtmlLocation
+      , haddockHtmlLocation = maybeToFlag elabHaddockHtmlLocation
       , haddockForHackage = toFlag elabHaddockForHackage
       , haddockForeignLibs = toFlag elabHaddockForeignLibs
       , haddockExecutables = toFlag elabHaddockExecutables
       , haddockTestSuites = toFlag elabHaddockTestSuites
       , haddockBenchmarks = toFlag elabHaddockBenchmarks
       , haddockInternal = toFlag elabHaddockInternal
-      , haddockCss = maybe mempty toFlag elabHaddockCss
+      , haddockCss = maybeToFlag elabHaddockCss
       , haddockLinkedSource = toFlag elabHaddockLinkedSource
       , haddockQuickJump = toFlag elabHaddockQuickJump
-      , haddockHscolourCss = maybe mempty toFlag elabHaddockHscolourCss
-      , haddockContents = maybe mempty toFlag elabHaddockContents
+      , haddockHscolourCss = maybeToFlag elabHaddockHscolourCss
+      , haddockContents = maybeToFlag elabHaddockContents
       , haddockIndex = maybe mempty toFlag elabHaddockIndex
       , haddockBaseUrl = maybe mempty toFlag elabHaddockBaseUrl
       , haddockResourcesDir = maybe mempty toFlag elabHaddockResourcesDir

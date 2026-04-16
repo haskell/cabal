@@ -675,6 +675,10 @@ data
        }
     -> RuleCommands scope deps ruleCmd
 
+-- NB: whenever you change this datatype, you **must** also update its
+-- 'Structured' instance. The structure hash is used as a handshake when
+-- communicating with an external hooks executable.
+
 {- Note [Hooks Binary instances]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 The Hooks API is strongly typed: users can declare rule commands with varying
