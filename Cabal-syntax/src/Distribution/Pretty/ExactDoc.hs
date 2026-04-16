@@ -1,0 +1,171 @@
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
+
+-- |
+-- This module is a twist on the existing pretty library, mainly making it
+-- possible to place elements relatively.
+module Distribution.Pretty.ExactDoc
+  ( -- * Type
+    ExactDoc (..)
+  -- TODO: hide the constructors in an internal module
+
+    -- * Constructors
+  , text
+  , multilineText
+  , nil
+
+    -- * Primitive combinators
+  , concatDoc
+  , stickyConcatDoc
+  , place
+  , nest
+
+    -- * Helpers
+  , newline
+  , sep
+
+    -- * Rendering
+  , renderText
+  )
+where
+
+import Distribution.Parsec.Position
+
+import Control.Applicative
+import Control.Monad
+import Control.Monad.Trans.State.Strict
+import Data.List (intersperse)
+import Data.Text (Text)
+import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
+import GHC.Generics
+
+data ExactDoc where
+  -- | Turn a Text into a document
+  Text :: !T.Text -> ExactDoc
+  -- | The empty document, 0 in width and height
+  Nil :: ExactDoc
+  -- | Force the layout engine to render a newline
+  Newline :: ExactDoc
+  -- | Join two documents together loosely.
+  Concat :: !ExactDoc -> !ExactDoc -> ExactDoc
+  -- | Stick to documents together. Placement and nesting distributes over this operator.
+  StickyConcat :: !ExactDoc -> !ExactDoc -> ExactDoc
+  -- | The document should be placed at (Row, Col)
+  Place :: !Int -> !Int -> !ExactDoc -> ExactDoc
+  -- | The document should be indented with n more spaces
+  Nest :: !Int -> !ExactDoc -> ExactDoc
+  deriving (Show, Eq, Generic)
+
+instance Semigroup ExactDoc where
+  (<>) = concatDoc
+
+instance Monoid ExactDoc where
+  mempty = Nil
+  mconcat = foldl concatDoc Nil
+
+type RenderState = Position
+
+-- |
+-- Outputs the padding Text to currect the cursor position if needed,
+-- changes the state otherwise.
+updateCursorRow :: Int -> State RenderState Text
+updateCursorRow row = do
+  Position currentRow currentCol <- get
+  let rowDiff = row - currentRow
+      padding = T.replicate rowDiff "\n"
+
+  when (rowDiff /= 0) $
+    -- Jumped, we move cursor forward (or also backward) to desired row and reset col.
+    -- It is important to move the cursor back in case of a backward jump, because it
+    -- guarantees the rest of the document to be agnostic to this jump.
+    put (Position row 1)
+
+  pure padding
+
+updateCursorCol :: Int -> State RenderState Text
+updateCursorCol col = do
+  Position currentRow currentCol <- get
+  let colDiff = col - currentCol
+      padding = T.replicate colDiff " "
+
+  when (colDiff > 0) $
+    put (Position currentRow col)
+
+  pure padding
+
+renderText :: ExactDoc -> Text
+renderText doc = evalState (renderTextStep doc) state0
+  where
+    state0 = Position 1 1 -- the parser is 1,1 indexed
+
+renderTextStep :: ExactDoc -> State RenderState Text
+renderTextStep d0 = case d0 of
+  Nil -> pure mempty
+  Place atRow atCol d ->
+    liftA3
+      (\x y z -> x <> y <> z)
+      (updateCursorRow atRow)
+      (updateCursorCol atCol)
+      (renderTextStep d)
+  Nest indentSize d ->
+    get >>= \(Position row col) ->
+      liftA2 (<>) (updateCursorCol (col + indentSize)) (renderTextStep d)
+  Text t -> do
+    modify $
+      \(Position row col) -> Position row (col + T.length t)
+    pure t
+  Concat d1 d2 -> liftA2 (<>) (renderTextStep d1) (renderTextStep d2)
+  StickyConcat d1 d2 -> liftA2 (<>) (renderTextStep d1) (renderTextStep d2)
+  Newline -> get >>= \(Position row col) -> updateCursorRow (row + 1)
+
+-- | Invariant: this assumes the input text doesn't have more than one line
+text :: T.Text -> ExactDoc
+text = Text
+
+-- TODO(leana8959): this was made for multiline fieldline content, but is no longer used.
+-- multiline fieldlines are individual strings with exact positioning
+multilineText :: [T.Text] -> ExactDoc
+multilineText = foldr stickyConcatDoc Nil . intersperse Newline . map Text
+
+-- We use the exact offset primitive to define the newline primitive
+newline :: ExactDoc
+newline = Newline
+
+nil :: ExactDoc
+nil = Nil
+
+concatDoc :: ExactDoc -> ExactDoc -> ExactDoc
+concatDoc d1 d2 = case (d1, d2) of
+  (Nil, _) -> d2
+  (_, Nil) -> d1
+  _ -> d1 `Concat` d2
+
+stickyConcatDoc :: ExactDoc -> ExactDoc -> ExactDoc
+stickyConcatDoc d1 d2 = case (d1, d2) of
+  (Nil, _) -> d2
+  (_, Nil) -> d1
+  _ -> d1 `StickyConcat` d2
+
+-- | Absolute offset "row, col" from the previous item
+place :: Int -> Int -> ExactDoc -> ExactDoc
+place s t d0 = case d0 of
+  Nil -> Nil
+  Place u v d -> place u v d -- Once placed, can't be moved
+  StickyConcat d1 d2 -> place s t d1 `StickyConcat` place s t d2
+  _ -> Place s t d0
+
+nest :: Int -> ExactDoc -> ExactDoc
+nest k d0 = case d0 of
+  Nest m d -> nest (k + m) d
+  Nil -> Nil
+  Place u v d -> Place u v d -- Once placed, can't be moved
+  Concat d1 d2 -> nest k d1 <> nest k d2
+  StickyConcat d1 d2 -> nest k d1 `StickyConcat` nest k d2
+  _ -> Nest k d0
+
+sep :: ExactDoc -> [ExactDoc] -> ExactDoc
+sep by = mconcat . intersperse by
