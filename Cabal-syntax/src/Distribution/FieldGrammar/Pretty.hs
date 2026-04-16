@@ -133,9 +133,8 @@ ppField name fielddoc
   | PP.isEmpty fielddoc = []
   | otherwise = [PrettyField name fielddoc]
 
--- TODO(leana8959): push out doc position
 ppFieldPos :: FieldName -> [(Positions, Doc)] -> [PrettyFieldWith Mod.HasAnn]
 ppFieldPos name possFieldDocs =
-  [ PrettyField (fieldNamePos poss, name) fieldDoc
+  [ PrettyField (fieldNamePos poss, name) (fieldLinePos poss, fieldDoc)
   | (poss, fieldDoc) <- possFieldDocs
   ]

@@ -29,13 +29,22 @@ module Distribution.Fields.Pretty
 import Distribution.Compat.Prelude
 import Distribution.Pretty (showToken)
 import Prelude ()
+import Control.Monad ((<=<))
 
 import Distribution.Parsec.Position
 import Distribution.Fields.Field (FieldName, Name)
-import Distribution.Utils.Generic (fromUTF8BS)
+import Distribution.Utils.Generic (fromUTF8BS, safeHead)
 
+import qualified Data.List as List
+import qualified Data.Text as T
+
+import Distribution.Trivia
 import qualified Distribution.Types.Modify as Mod
 import Distribution.Types.Modify (AttachPosition, AnnotateWith)
+import Distribution.Pretty.ExactDoc (ExactDoc)
+import qualified Distribution.Pretty.ExactDoc as EPP
+import Text.PrettyPrint (Doc)
+import qualified Text.PrettyPrint as PP
 import qualified Distribution.Fields.Parser as P
 
 import qualified Data.ByteString as BS
@@ -49,6 +58,8 @@ data CommentPosition = CommentBefore [String] | CommentAfter [String] | NoCommen
 
 type PrettyField = PrettyFieldWith Mod.HasNoAnn
 
+deriving instance Eq (PrettyFieldWith Mod.HasAnn)
+
 -- NOTE(leana8959): some pretty field considerations
 --  - do section args need to be a _list_ of PP.Doc
 --  - do we need pretty empty with exact doc
@@ -56,9 +67,17 @@ type PrettyField = PrettyFieldWith Mod.HasNoAnn
 -- TODO(leana8959): we need to reproduce the field line
 --  - each Doc in field (FieldLine) should come with its positioning
 data PrettyFieldWith (mod :: Mod.HasAnnotation)
-  = PrettyField (AttachPosition mod FieldName) PP.Doc
-  | PrettySection FieldName [PP.Doc] [PrettyFieldWith mod]
+  = PrettyField (AttachPosition mod FieldName) (AttachPosition mod PP.Doc)
+  | PrettySection (AttachPosition mod FieldName) [PP.Doc] [PrettyFieldWith mod]
   | PrettyEmpty
+
+prettyFieldPosition :: PrettyFieldWith Mod.HasAnn -> Maybe Position
+prettyFieldPosition (PrettyField (pos, _) _) = Just pos
+prettyFieldPosition _ = Nothing
+
+prettySectionPosition :: PrettyFieldWith Mod.HasAnn -> Maybe Position
+prettySectionPosition (PrettySection (pos, _) _ _) = Just pos
+prettySectionPosition _ = Nothing
 
 deriving instance Show (PrettyFieldWith Mod.HasAnn)
 
@@ -70,6 +89,20 @@ deriving instance Show (PrettyFieldWith Mod.HasAnn)
 -- between comment lines.
 showFields :: (ann -> CommentPosition) -> [PrettyField] -> String
 showFields rann = showFields' rann (const id) 4
+
+exactShowFields :: [PrettyFieldWith Mod.HasAnn] -> String
+exactShowFields =
+      T.unpack
+    . EPP.renderText
+    . prettyFieldsToExactDoc
+  where
+    ctx0 = (Nothing, Nothing)
+
+prettyFieldsToExactDoc :: [PrettyFieldWith Mod.HasAnn] -> ExactDoc
+prettyFieldsToExactDoc = mconcat . snd . exactRenderPrettyFields ctx0
+  where
+    ctx0 = (Nothing, Nothing)
+
 
 -- | 'showFields' with user specified indentation.
 showFields'
@@ -215,3 +248,134 @@ fromParsecFields =
   where
     (.:) :: (a -> b) -> (c -> d -> a) -> (c -> d -> b)
     (f .: g) x y = f (g x y)
+
+
+type PrettyFieldPositionContext =
+  ( Maybe (PrettyFieldWith Mod.HasAnn)
+  , Maybe (Position, PP.Doc)
+  )
+
+placeAt :: Position -> ExactDoc -> ExactDoc
+placeAt (Position r c) = EPP.place r c
+
+-- | Post condition: Fields are sorted in ascending order
+exactRenderPrettyFields
+  :: PrettyFieldPositionContext
+  -> [PrettyFieldWith Mod.HasAnn]
+  -> (PrettyFieldPositionContext, [ExactDoc])
+exactRenderPrettyFields ctx0 = fmap reverse . foldl go state0 . sortPrettyFields
+  where
+    state0 :: (PrettyFieldPositionContext, [ExactDoc])
+    state0 = (ctx0, [])
+
+    go (ctx, processed) field =
+      let (ctx', field') = exactRenderPrettyField ctx field
+       in (ctx', field' : processed)
+
+exactRenderPrettyField
+  :: PrettyFieldPositionContext
+  -> PrettyFieldWith Mod.HasAnn
+  -> (PrettyFieldPositionContext, ExactDoc)
+exactRenderPrettyField ctx0@(lastField, lastFieldLine) field = case field of
+  -- Absorb empty
+  PrettyEmpty -> (ctx0, mempty)
+  PrettyField (pos, fieldName) fieldLines ->
+    let ctx' :: PrettyFieldPositionContext
+        fieldLines' :: ExactDoc
+        (ctx', fieldLines') =
+          exactRenderPrettyFieldLines (Just field, lastFieldLine) fieldLines
+
+        fieldNamePosition :: Position
+        fieldNamePosition = pos
+
+        fieldLinesFirstPos :: Position
+        fieldLinesFirstPos = fst fieldLines
+
+        -- The fieldLines are all patched and we only need to concat them together
+        fieldLinesFinal :: ExactDoc
+        fieldLinesFinal = placeAt fieldLinesFirstPos $ fieldLines'
+
+        lastPosition :: Maybe Position
+        lastPosition = fst <$> lastFieldLine <|> (prettyFieldPosition =<< lastField)
+
+        isFirst = lastField == Nothing && lastFieldLine == Nothing
+
+        docOut :: ExactDoc
+        docOut = placeAt fieldNamePosition $
+            EPP.text (T.pack $ fromUTF8BS fieldName <> ":") <> fieldLinesFinal
+     in (ctx', docOut)
+  PrettySection (pos, fieldName) sectionArgs fields ->
+    let ctx' :: PrettyFieldPositionContext
+        fields' :: [ExactDoc]
+        (ctx', fields') = exactRenderPrettyFields (Just field, lastFieldLine) fields
+
+        sectionNamePosition :: Maybe Position
+        sectionNamePosition = prettySectionPosition field
+
+        lastPosition :: Maybe Position
+        lastPosition = fst <$> lastFieldLine <|> (prettyFieldPosition =<< lastField)
+
+        fieldsFirstPosition :: Maybe Position
+        fieldsFirstPosition = prettyFieldPosition <=< safeHead $ fields
+
+        guessedIndentation :: Int
+        guessedIndentation = fromMaybe 4 $ subtract 1 . positionCol <$> fieldsFirstPosition
+
+        -- TODO(leana8959): section args are currently not exactly positioned
+        fieldsFinal :: ExactDoc
+        fieldsFinal =
+          maybe id placeAt fieldsFirstPosition $
+            mconcat fields'
+
+        isFirst = lastField == Nothing && lastFieldLine == Nothing
+
+        docOut :: ExactDoc
+        docOut =
+          maybe id placeAt sectionNamePosition $
+            EPP.text (T.pack $ fromUTF8BS fieldName)
+              <> mconcat (map docToExactDoc sectionArgs)
+              <> EPP.nest guessedIndentation fieldsFinal
+     in ( ctx'
+        , docOut
+        )
+
+-- | Post condition: fieldlines are sorted in ascending order
+-- exactRenderPrettyFieldLines
+--   :: PrettyFieldPositionContext
+--   -> (Position, Doc)
+--   -> (PrettyFieldPositionContext, [ExactDoc])
+-- exactRenderPrettyFieldLines ctx0 = fmap reverse . foldl go state0
+--   where
+--     state0 :: (PrettyFieldPositionContext, [ExactDoc])
+--     state0 = (ctx0, [])
+--
+--     go (ctx, processed) fieldLine =
+--       let (ctx', fieldLine') = exactRenderPrettyFieldLine ctx fieldLine
+--        in (ctx', fieldLine' : processed)
+
+exactRenderPrettyFieldLines
+  :: PrettyFieldPositionContext
+  -> (Position, Doc)
+  -> (PrettyFieldPositionContext, ExactDoc)
+exactRenderPrettyFieldLines (lastField, lastFieldLine) fieldLine@(_, doc) =
+  let lastPosition :: Maybe Position
+      lastPosition = liftA2 max (fst <$> lastFieldLine) (prettyFieldPosition =<< lastField)
+
+      fieldLinePosition :: Position
+      fieldLinePosition = fst fieldLine
+
+      ctx' :: PrettyFieldPositionContext
+      ctx' = (lastField, Just fieldLine)
+
+      fieldLine' :: ExactDoc
+      fieldLine' = placeAt fieldLinePosition $ docToExactDoc doc
+   in (ctx', fieldLine')
+
+sortPrettyFields :: [PrettyFieldWith Mod.HasAnn] -> [PrettyFieldWith Mod.HasAnn]
+sortPrettyFields = List.sortOn $ fromMaybe zeroPos . prettyFieldPosition
+
+-- sortPrettyFieldLines :: [(Position, Doc)] -> [(Position, Doc)]
+-- sortPrettyFieldLines = List.sortOn (fromMaybe zeroPos . fst)
+
+docToExactDoc :: PP.Doc -> ExactDoc
+docToExactDoc = EPP.multilineText . T.lines . T.pack . PP.renderStyle PP.style
