@@ -40,6 +40,7 @@ import Distribution.Parsec                         (Parsec (..), explicitEitherP
 import Distribution.Pretty                         (Pretty (..), prettyShow)
 import Distribution.Fields.Parser                  (readFields')
 import Distribution.Fields.ParseResult
+import Distribution.Fields.Pretty                  (PrettyFieldWith (..), exactShowFields)
 import Distribution.FieldGrammar.Parsec            (ParsecFieldGrammar, parseFieldGrammar)
 import Distribution.FieldGrammar.Pretty            (prettyFieldGrammar)
 import Distribution.Utils.Generic                  (fromUTF8BS, toUTF8BS)
@@ -274,7 +275,9 @@ miniBuildInfoAnnTest = testCase "miniBuildInfo Ann" $ do
     Left (_, errs) -> fail "ERROR in running field grammar"
     Right ok -> pure $ ok
 
-  print $ prettyFieldGrammar CabalSpecV3_0 miniBuildInfoFieldGrammar pr''
+  let prettyFields :: [PrettyFieldWith Mod.HasAnn] = prettyFieldGrammar CabalSpecV3_0 miniBuildInfoFieldGrammar pr''
+  putStrLn
+    $ exactShowFields prettyFields
   where
     input = "tests" </> "ParserTests" </> "miniBuildInfoDemo.cabal"
 

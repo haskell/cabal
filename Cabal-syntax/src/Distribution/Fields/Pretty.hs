@@ -17,6 +17,7 @@ module Distribution.Fields.Pretty
   , PrettyField
   , PrettyFieldWith (..)
   , showFields
+  , exactShowFields
   , showFields'
 
     -- * Transformation from 'P.Field'
