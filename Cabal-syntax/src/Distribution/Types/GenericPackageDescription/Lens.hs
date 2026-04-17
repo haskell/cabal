@@ -26,7 +26,7 @@ import Distribution.Types.Executable (Executable)
 import Distribution.Types.Flag (FlagName, PackageFlag (MkPackageFlag))
 import Distribution.Types.ForeignLib (ForeignLib)
 import Distribution.Types.GenericPackageDescription (GenericPackageDescription, GenericPackageDescriptionWith (..))
-import Distribution.Types.Library (Library, LibraryWith)
+import Distribution.Types.Library (Library)
 import Distribution.Types.PackageDescription (PackageDescription)
 import Distribution.Types.TestSuite (TestSuite)
 import Distribution.Types.UnqualComponentName (UnqualComponentName)
@@ -36,7 +36,7 @@ import Distribution.Version (Version, VersionRange)
 -- GenericPackageDescription
 -------------------------------------------------------------------------------
 
-packageDescription :: Lens' (GenericPackageDescriptionWith mod) PackageDescription
+packageDescription :: Lens' GenericPackageDescription PackageDescription
 packageDescription f s = fmap (\x -> s{T.packageDescription = x}) (f (T.packageDescription s))
 {-# INLINE packageDescription #-}
 
@@ -48,7 +48,7 @@ genPackageFlags :: Lens' GenericPackageDescription [PackageFlag]
 genPackageFlags f s = fmap (\x -> s{T.genPackageFlags = x}) (f (T.genPackageFlags s))
 {-# INLINE genPackageFlags #-}
 
-condLibrary :: Lens' (GenericPackageDescriptionWith mod) (Maybe (CondTree ConfVar (LibraryWith mod)))
+condLibrary :: Lens' GenericPackageDescription (Maybe (CondTree ConfVar Library))
 condLibrary f s = fmap (\x -> s{T.condLibrary = x}) (f (T.condLibrary s))
 {-# INLINE condLibrary #-}
 
