@@ -89,6 +89,7 @@ tests = testGroup "parsec tests"
     , parsecPrettyTests
     , miniBuildInfoAnnTest
     , miniBuildInfoTest
+    , smallCabalFileTest
     ]
 
 -------------------------------------------------------------------------------
@@ -280,6 +281,29 @@ miniBuildInfoAnnTest = testCase "miniBuildInfo Ann" $ do
     $ exactShowFields prettyFields
   where
     input = "tests" </> "ParserTests" </> "miniBuildInfoDemo.cabal"
+
+smallCabalFileTest :: TestTree
+smallCabalFileTest = testCase "smallCabalFile" $ do
+  fields <- readFields <$> BS.readFile input >>= \case
+      Left err -> fail $ "readFields: err"
+      Right ok -> pure ok
+
+  -- We ignore sections now, which necessite goSections to dispatch field gramamr parsers
+  let (frontFields, _sections) = takeFields fields
+      pr :: ParseResult src (MiniBuildInfo Mod.HasAnn)
+      pr = parseFieldGrammar CabalSpecV3_0 frontFields miniBuildInfoFieldGrammar
+
+      (_warns, pr') = runParseResult pr
+
+  pr'' <- case pr' of
+    Left (_, errs) -> fail "ERROR in running field grammar"
+    Right ok -> pure $ ok
+
+  let prettyFields :: [PrettyFieldWith Mod.HasAnn] = prettyFieldGrammar CabalSpecV3_0 miniBuildInfoFieldGrammar pr''
+  putStrLn
+    $ exactShowFields prettyFields
+  where
+    input = "tests" </> "ParserTests" </> "smallCabalFile.cabal"
 
 miniBuildInfoTest :: TestTree
 miniBuildInfoTest = testCase "miniBuildInfo NoAnn" $ do
