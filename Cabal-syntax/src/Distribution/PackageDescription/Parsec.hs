@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -132,19 +133,19 @@ fieldlinesToBS :: [FieldLine ann] -> BS.ByteString
 fieldlinesToBS = BS.intercalate "\n" . map (\(FieldLine _ bs) -> bs)
 
 -- Monad in which sections are parsed
-type SectionParser src = StateT SectionS (ParseResult src)
+type SectionParser src mod = StateT (SectionS mod) (ParseResult src)
 
 -- | State of section parser
-data SectionS = SectionS
-  { _stateGpd :: !GenericPackageDescription
-  , _stateCommonStanzas :: !(Map String CondTreeBuildInfo)
+data SectionS mod = SectionS
+  { _stateGpd :: !(GenericPackageDescriptionWith mod)
+  , _stateCommonStanzas :: !(Map String (CondTreeBuildInfoWith mod))
   }
 
-stateGpd :: Lens' SectionS GenericPackageDescription
+stateGpd :: Lens' (SectionS mod) (GenericPackageDescriptionWith mod)
 stateGpd f (SectionS gpd cs) = (\x -> SectionS x cs) <$> f gpd
 {-# INLINE stateGpd #-}
 
-stateCommonStanzas :: Lens' SectionS (Map String CondTreeBuildInfo)
+stateCommonStanzas :: Lens' (SectionS mod) (Map String (CondTreeBuildInfoWith mod))
 stateCommonStanzas f (SectionS gpd cs) = SectionS gpd <$> f cs
 {-# INLINE stateCommonStanzas #-}
 
@@ -156,11 +157,12 @@ stateCommonStanzas f (SectionS gpd cs) = SectionS gpd <$> f cs
 
 -- * then we parse sections (libraries, executables, etc)
 parseGenericPackageDescription'
-  :: Maybe CabalSpecVersion
+  :: forall mod src
+   . Maybe CabalSpecVersion
   -> [LexWarning]
   -> Maybe Int
   -> [Field Position]
-  -> ParseResult src GenericPackageDescription
+  -> ParseResult src (GenericPackageDescriptionWith mod)
 parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
   parseWarnings (toPWarnings lexWarnings)
   for_ utf8WarnPos $ \pos ->
@@ -208,21 +210,29 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
   maybeWarnCabalVersion syntax pd
 
   -- Sections
-  let gpd =
+  let gpd :: GenericPackageDescriptionWith mod
+      gpd =
         emptyGenericPackageDescription
           & L.packageDescription .~ pd
   gpd1 <- view stateGpd <$> execStateT (goSections specVer sectionFields) (SectionS gpd Map.empty)
 
-  let gpd2 = postProcessInternalDeps specVer gpd1
-  checkForUndefinedFlags gpd2
-  checkForUndefinedCustomSetup gpd2
+  -- TODO(leana8959): we need a way to convert any validation endomorphism over GPD to endomorphism over GPD Annotated
+  -- This way, we don't redefine all the validation logic, or make them messy because now the trivia is there.
+  --
+  -- Or, we could push out this validation at a later phase, only concerned with the plain GPD.
+  --
+  -- let gpd2 = postProcessInternalDeps specVer gpd1
+  -- checkForUndefinedFlags gpd2
+  -- checkForUndefinedCustomSetup gpd2
+
   -- See nothunks test, without this deepseq we get (at least):
   -- Thunk in ThunkInfo {thunkContext = ["PackageIdentifier","PackageDescription","GenericPackageDescription"]}
   --
   -- TODO: re-benchmark, whether `deepseq` is important (both cabal-benchmarks and solver-benchmarks)
   -- TODO: remove the need for deepseq if `deepseq` in fact matters
   -- NOTE: IIRC it does affect (maximal) memory usage, which causes less GC pressure
-  gpd2 `deepseq` return gpd2
+  -- gpd2 `deepseq` return gpd2
+  pure gpd1
   where
     safeLast :: [a] -> Maybe a
     safeLast = listToMaybe . reverse
@@ -248,7 +258,7 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
 cabalFormatVersionsDesc :: String
 cabalFormatVersionsDesc = "Current cabal-version values are listed at https://cabal.readthedocs.io/en/stable/file-format-changelog.html."
 
-goSections :: CabalSpecVersion -> [Field Position] -> SectionParser src ()
+goSections :: CabalSpecVersion -> [Field Position] -> SectionParser mod src ()
 goSections specVer = traverse_ process
   where
     process (Field (Name pos name) _) =
@@ -268,24 +278,24 @@ goSections specVer = traverse_ process
       => ParsecFieldGrammar' a
       -- \^ grammar
       -> (BuildInfo -> a)
-      -> Map String CondTreeBuildInfo
+      -> Map String CondTreeBuildInfoAnn
       -- \^ common stanzas
       -> [Field Position]
       -> ParseResult src (CondTree ConfVar a)
     parseCondTree' = parseCondTreeWithCommonStanzas specVer
 
-    parseSection :: Name Position -> [SectionArg Position] -> [Field Position] -> SectionParser src ()
+    parseSection :: Name Position -> [SectionArg Position] -> [Field Position] -> SectionParser mod src ()
     parseSection (Name pos name) args fields
       | hasCommonStanzas == NoCommonStanzas
       , name == "common" = lift $ do
           parseWarning pos PWTUnknownSection "Ignoring section: common. You should set cabal-version: 2.2 or larger to use common stanzas."
       | name == "common" = do
-          commonStanzas <- use stateCommonStanzas
+          commonStanzas :: Map String (CondTreeBuildInfoWith mod) <- use stateCommonStanzas
           name' <- lift $ parseCommonName pos args
           biTree <- lift $ parseCondTree' buildInfoFieldGrammar id commonStanzas fields
 
           case Map.lookup name' commonStanzas of
-            Nothing -> stateCommonStanzas .= Map.insert name' biTree commonStanzas
+            Nothing -> stateCommonStanzas .= Map.insert name' (biTree :: CondTreeBuildInfoWith mod) commonStanzas
             Just _ ->
               lift $
                 parseFailure pos $
@@ -422,10 +432,10 @@ goSections specVer = traverse_ process
             parseWarning pos PWTUnknownSection $
               "Ignoring section: " ++ show name
 
-parseName :: Position -> [SectionArg Position] -> SectionParser src String
+parseName :: Position -> [SectionArg Position] -> SectionParser mod src String
 parseName pos args = fromUTF8BS <$> parseNameBS pos args
 
-parseNameBS :: Position -> [SectionArg Position] -> SectionParser src BS.ByteString
+parseNameBS :: Position -> [SectionArg Position] -> SectionParser mod src BS.ByteString
 -- TODO: use strict parser
 parseNameBS pos args = case args of
   [SecArgName _pos secName] ->
@@ -455,7 +465,7 @@ parseCommonName pos args = case args of
     pure ""
 
 -- TODO: avoid conversion to 'String'.
-parseUnqualComponentName :: Position -> [SectionArg Position] -> SectionParser src UnqualComponentName
+parseUnqualComponentName :: Position -> [SectionArg Position] -> SectionParser mod src UnqualComponentName
 parseUnqualComponentName pos args = mkUnqualComponentName <$> parseName pos args
 
 -- | Parse a non-recursive list of fields.
@@ -599,7 +609,9 @@ with new AST, this all need to be rewritten.
 -- The approach is simple, and have good properties:
 --
 -- * Common stanzas are parsed exactly once, even if not-used. Thus we report errors in them.
-type CondTreeBuildInfo = CondTree ConfVar BuildInfo
+type CondTreeBuildInfoWith (mod :: Mod.HasAnnotation) = CondTree ConfVar (BuildInfoWith mod)
+type CondTreeBuildInfo = CondTreeBuildInfoWith Mod.HasNoAnn
+type CondTreeBuildInfoAnn = CondTreeBuildInfoWith Mod.HasAnn
 
 -- | Create @a@ from 'BuildInfo'.
 -- This class is used to implement common stanza parsing.
@@ -638,7 +650,7 @@ parseCondTreeWithCommonStanzas
   -- ^ grammar
   -> (BuildInfo -> a)
   -- ^ construct fromBuildInfo
-  -> Map String CondTreeBuildInfo
+  -> Map String CondTreeBuildInfoAnn
   -- ^ common stanzas
   -> [Field Position]
   -> ParseResult src (CondTree ConfVar a)
