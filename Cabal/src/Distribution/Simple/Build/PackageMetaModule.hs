@@ -19,13 +19,14 @@ module Distribution.Simple.Build.PackageMetaModule
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Compiler (CompilerId (..), compilerId)
+import Distribution.Compiler (CompilerId (..))
 import Distribution.Package
   ( PackageName
   , packageName
   , unPackageName
   )
 import Distribution.Pretty (prettyShow)
+import Distribution.Simple.Compiler (compilerId)
 import Distribution.System (Platform (..))
 import Distribution.Types.Flag (FlagName, unFlagAssignment, unFlagName)
 import Distribution.Types.LocalBuildInfo (LocalBuildInfo (..))
