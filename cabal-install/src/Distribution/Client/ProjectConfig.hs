@@ -612,8 +612,7 @@ findProjectRoot verbosity mprojectDir mprojectFile = do
 
           getProjectRootUsability file >>= \case
             ProjectRootUsabilityPresentAndUsable ->
-              uncurry projectRoot
-                =<< first dropTrailingPathSeparator . splitFileName <$> canonicalizePath file
+              uncurry projectRoot . first dropTrailingPathSeparator . splitFileName =<< canonicalizePath file
             ProjectRootUsabilityNotPresent ->
               left (BadProjectRootExplicitFileNotFound file)
             ProjectRootUsabilityPresentAndUnusable ->

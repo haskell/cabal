@@ -5,18 +5,17 @@
 - ignore: {name: "Hoist not"} # 16 hints
 - ignore: {name: "Move filter"} # 4 hints
 - ignore: {name: "Redundant $!"} # 1 hint
-- ignore: {name: "Redundant <$>"} # 18 hints
-- ignore: {name: "Redundant bracket"} # 279 hints
-- ignore: {name: "Redundant guard"} # 2 hints
+- ignore: {name: "Redundant bracket"} # 273 hints
+- ignore: {name: "Redundant guard"} # 1 hint
 - ignore: {name: "Redundant if"} # 6 hints
-- ignore: {name: "Redundant lambda"} # 19 hints
+- ignore: {name: "Redundant lambda"} # 16 hints
 - ignore: {name: "Redundant multi-way if"} # 1 hint
 - ignore: {name: "Redundant return"} # 9 hints
 - ignore: {name: "Use $>"} # 5 hints
 - ignore: {name: "Use ++"} # 4 hints
 - ignore: {name: "Use :"} # 29 hints
 - ignore: {name: "Use <$"} # 2 hints
-- ignore: {name: "Use <$>"} # 78 hints
+- ignore: {name: "Use <$>"} # 82 hints
 - ignore: {name: "Use <&>"} # 16 hints
 - ignore: {name: "Use <=<"} # 4 hints
 - ignore: {name: "Use =<<"} # 7 hints
@@ -28,7 +27,7 @@
 - ignore: {name: "Use fold"} # 1 hint
 - ignore: {name: "Use fst"} # 2 hints
 - ignore: {name: "Use lambda-case"} # 58 hints
-- ignore: {name: "Use map once"} # 7 hints
+- ignore: {name: "Use map once"} # 6 hints
 - ignore: {name: "Use map with tuple-section"} # 3 hints
 - ignore: {name: "Use newtype instead of data"} # 31 hints
 - ignore: {name: "Use null"} # 2 hints

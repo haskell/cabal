@@ -111,8 +111,7 @@ instance Arbitrary URI where
 
 instance Arbitrary URIAuth where
   arbitrary =
-    URIAuth
-      <$> pure "" -- no password as this does not roundtrip
+    pure (URIAuth "") -- no password as this does not roundtrip
       <*> arbitraryURIToken
       <*> arbitraryURIPort
 
