@@ -453,7 +453,7 @@ instance Arbitrary RepoDirSet where
   arbitrary =
     sized $ \n ->
       oneof $
-        [RepoDirSet <$> pure 1]
+        [pure (RepoDirSet 1)]
           ++ [RepoDirSet <$> choose (2, 5) | n >= 3]
   shrink (RepoDirSet n) =
     [RepoDirSet i | i <- shrink n, i > 0]

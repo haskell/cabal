@@ -125,8 +125,7 @@ traverseCondTreeV f (CondNode a ifs) =
 -- | @@Traversal@@ for the data
 traverseCondBranchA :: L.Traversal (CondBranch v a) (CondBranch v b) a b
 traverseCondBranchA f (CondBranch cnd t me) =
-  CondBranch
-    <$> pure cnd
+  pure (CondBranch cnd)
     <*> traverseCondTreeA f t
     <*> traverse (traverseCondTreeA f) me
 
