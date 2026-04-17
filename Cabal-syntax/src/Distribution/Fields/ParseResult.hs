@@ -147,12 +147,12 @@ getCabalSpecVersion = PR $ \s@(PRState _ _ v) _fp _failure success ->
 -- | Add a warning. This doesn't fail the parsing process.
 parseWarning :: Position -> PWarnType -> String -> ParseResult src ()
 parseWarning pos t msg = PR $ \(PRState warns errs v) ctx _failure success ->
-  success (PRState (PWarningWithSource (prContextSource ctx) (PWarning t pos msg) : warns) errs v) ()
+  success (PRState (warns ++ [PWarningWithSource (prContextSource ctx) (PWarning t pos msg)]) errs v) ()
 
 -- | Add multiple warnings at once.
 parseWarnings :: [PWarning] -> ParseResult src ()
 parseWarnings newWarns = PR $ \(PRState warns errs v) ctx _failure success ->
-  success (PRState (map (PWarningWithSource (prContextSource ctx)) newWarns ++ warns) errs v) ()
+  success (PRState (warns ++ map (PWarningWithSource (prContextSource ctx)) newWarns) errs v) ()
 
 -- | Add an error, but not fail the parser yet.
 --
