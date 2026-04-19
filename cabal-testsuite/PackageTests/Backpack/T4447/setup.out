@@ -7,3 +7,5 @@ Error:
     Try moving this module to a separate library, e.g.,
     create a new stanza: library 'sublib'.
     In the stanza executable foo-exe
+    CallStack (from HasCallStack):
+  dieProgress, called at src/Distribution/Backpack/LinkedComponent.hs:_:_ in Cabal-3.17.0.0-inplace:Distribution.Backpack.LinkedComponent
