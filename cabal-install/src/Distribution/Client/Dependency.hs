@@ -833,36 +833,37 @@ resolveDependencies
   -> Maybe PkgConfigDb
   -> DepResolverParams
   -> Progress String String SolverInstallPlan
-resolveDependencies platform comp pkgConfigDB params =
-  Step (showDepResolverParams finalparams) $
-    fmap (validateSolverResult platform comp indGoals) $
-      formatProgress $
-        runSolver
-          ( SolverConfig
-              reordGoals
-              cntConflicts
-              fineGrained
-              minimize
-              indGoals
-              noReinstalls
-              shadowing
-              strFlags
-              onlyConstrained_
-              maxBkjumps
-              enableBj
-              solveExes
-              order
-              verbosity
-              (PruneAfterFirstSuccess False)
-          )
-          platform
-          comp
-          installedPkgIndex
-          sourcePkgIndex
-          pkgConfigDB
-          preferences
-          constraints
-          targets
+resolveDependencies platform comp pkgConfigDB params = do
+  step (showDepResolverParams finalparams)
+  pkgs <-
+    formatProgress $
+      runSolver
+        ( SolverConfig
+            reordGoals
+            cntConflicts
+            fineGrained
+            minimize
+            indGoals
+            noReinstalls
+            shadowing
+            strFlags
+            onlyConstrained_
+            maxBkjumps
+            enableBj
+            solveExes
+            order
+            verbosity
+            (PruneAfterFirstSuccess False)
+        )
+        platform
+        comp
+        installedPkgIndex
+        sourcePkgIndex
+        pkgConfigDB
+        preferences
+        constraints
+        targets
+  validateSolverResult platform comp indGoals pkgs
   where
     finalparams@( DepResolverParams
                     targets
@@ -963,13 +964,13 @@ validateSolverResult
   -> CompilerInfo
   -> IndependentGoals
   -> [ResolverPackage UnresolvedPkgLoc]
-  -> SolverInstallPlan
+  -> Progress String String SolverInstallPlan
 validateSolverResult platform comp indepGoals pkgs =
   case planPackagesProblems platform comp pkgs of
     [] -> case SolverInstallPlan.new indepGoals graph of
-      Right plan -> plan
-      Left problems -> error (formatPlanProblems problems)
-    problems -> error (formatPkgProblems problems)
+      Right plan -> return plan
+      Left problems -> fail (formatPlanProblems problems)
+    problems -> fail (formatPkgProblems problems)
   where
     graph :: Graph.Graph (ResolverPackage UnresolvedPkgLoc)
     graph = Graph.fromDistinctList pkgs
