@@ -1021,7 +1021,7 @@ planPackagesProblems platform cinfo pkgs =
   , not (null packageProblems)
   ]
     ++ [ DuplicatePackageSolverId (Graph.nodeKey aDup) dups
-       | dups <- duplicatesBy (comparing Graph.nodeKey) pkgs
+       | dups <- fmap toList $ duplicatesBy (comparing Graph.nodeKey) pkgs
        , aDup <- case dups of
           [] -> []
           (ad : _) -> [ad]
@@ -1083,7 +1083,7 @@ configuredPackageProblems
          | pkgs <-
             CD.nonSetupDeps
               ( fmap
-                  (duplicatesBy (comparing packageName))
+                  (fmap toList . duplicatesBy (comparing packageName))
                   specifiedDeps1
               )
          ]
