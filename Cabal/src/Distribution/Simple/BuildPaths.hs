@@ -29,6 +29,7 @@ module Distribution.Simple.BuildPaths
   , autogenComponentModulesDir
   , autogenPathsModuleName
   , autogenPackageInfoModuleName
+  , autogenPackageMetaModuleName
   , cppHeaderName
   , haddockPath
   , haddockPackageLibraryName
@@ -180,6 +181,15 @@ autogenPackageInfoModuleName :: PackageDescription -> ModuleName
 autogenPackageInfoModuleName pkg_descr =
   ModuleName.fromString $
     "PackageInfo_" ++ map fixchar (prettyShow (packageName pkg_descr))
+  where
+    fixchar '-' = '_'
+    fixchar c = c
+
+-- | The name of the auto-generated PackageMeta_* module associated with a package
+autogenPackageMetaModuleName :: PackageDescription -> ModuleName
+autogenPackageMetaModuleName pkg_descr =
+  ModuleName.fromString $
+    "PackageMeta_" ++ map fixchar (prettyShow (packageName pkg_descr))
   where
     fixchar '-' = '_'
     fixchar c = c

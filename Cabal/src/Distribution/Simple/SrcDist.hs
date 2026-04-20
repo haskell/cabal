@@ -428,9 +428,11 @@ filterAutogenModules pkg_descr0 =
         }
     pathsModule = autogenPathsModuleName pkg_descr0
     packageInfoModule = autogenPackageInfoModuleName pkg_descr0
+    packageMetaModule = autogenPackageMetaModuleName pkg_descr0
     filterFunction bi = \mn ->
       mn /= pathsModule
         && mn /= packageInfoModule
+        && mn /= packageMetaModule
         && notElem mn (autogenModules bi)
 
 -- | Prepare a directory tree of source files for a snapshot version.

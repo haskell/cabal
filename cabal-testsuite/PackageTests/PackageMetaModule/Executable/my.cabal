@@ -1,0 +1,18 @@
+Cabal-version: 3.12
+name: PackageMetaModule
+version: 0.1
+license: BSD-3-Clause
+author: Moritz Angermann
+stability: stable
+category: PackageTests
+build-type: Simple
+
+description:
+    Check that the generated package meta module compiles.
+
+Executable TestPackageMetaModule
+    main-is: Main.hs
+    other-modules:
+        PackageMeta_PackageMetaModule
+        Paths_PackageMetaModule
+    build-depends: base

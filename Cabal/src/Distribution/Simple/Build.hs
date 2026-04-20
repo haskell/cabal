@@ -77,6 +77,7 @@ import qualified Distribution.Simple.UHC as UHC
 
 import Distribution.Simple.Build.Macros (generateCabalMacrosHeader)
 import Distribution.Simple.Build.PackageInfoModule (generatePackageInfoModule)
+import Distribution.Simple.Build.PackageMetaModule (generatePackageMetaModule)
 import Distribution.Simple.Build.PathsModule (generatePathsModule, pkgPathEnvVar)
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 
@@ -1157,6 +1158,7 @@ preBuildComponent preBuildHook verbosity lbi tgt = do
 --
 --  - @Paths_<pkg>.hs@,
 --  - @PackageInfo_<pkg>.hs@,
+--  - @PackageMeta_<pkg>.hs@,
 --  - Backpack signature files for components that are not fully instantiated,
 --  - @cabal_macros.h@.
 writeBuiltinAutogenFiles
@@ -1172,6 +1174,7 @@ writeBuiltinAutogenFiles verbosity pkg lbi clbi =
 --
 --  - @Paths_<pkg>.hs@,
 --  - @PackageInfo_<pkg>.hs@,
+--  - @PackageMeta_<pkg>.hs@,
 --  - Backpack signature files for components that are not fully instantiated,
 --  - @cabal_macros.h@.
 builtinAutogenFiles
@@ -1182,13 +1185,19 @@ builtinAutogenFiles
 builtinAutogenFiles pkg lbi clbi =
   Map.insert pathsFile pathsContents $
     Map.insert packageInfoFile packageInfoContents $
-      Map.insert cppHeaderFile cppHeaderContents $
-        emptySignatureModules clbi
+      Map.insert packageMetaFile packageMetaContents $
+        Map.insert cppHeaderFile cppHeaderContents $
+          emptySignatureModules clbi
   where
     pathsFile = AutogenModule (autogenPathsModuleName pkg) (Suffix "hs")
     pathsContents = toUTF8LBS $ generatePathsModule pkg lbi clbi
     packageInfoFile = AutogenModule (autogenPackageInfoModuleName pkg) (Suffix "hs")
     packageInfoContents = toUTF8LBS $ generatePackageInfoModule pkg
+    packageMetaFile = AutogenModule (autogenPackageMetaModuleName pkg) (Suffix "hs")
+    -- TODO: Git revision info requires IO (running git commands) but
+    -- builtinAutogenFiles is pure. Pass empty git info for now; a follow-up
+    -- will wire up the IO-based git revision lookup at the call site.
+    packageMetaContents = toUTF8LBS $ generatePackageMetaModule pkg lbi "" False
     cppHeaderFile = AutogenFile $ toShortText cppHeaderName
     cppHeaderContents = toUTF8LBS $ generateCabalMacrosHeader pkg lbi clbi
 
