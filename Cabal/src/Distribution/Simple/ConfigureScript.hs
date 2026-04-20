@@ -56,8 +56,11 @@ runConfigureScript
   -> ProgramDb
   -> Platform
   -- ^ host platform
+  -> Maybe String
+  -- ^ original target triple from compiler info (e.g. @"x86_64-w64-mingw32"@),
+  -- used for the @--host=@ flag instead of the pretty-printed 'Platform'
   -> IO ()
-runConfigureScript verbHandles cfg flags programDb hp = do
+runConfigureScript verbHandles cfg flags programDb hp targetTriple = do
   let commonCfg = configCommonFlags cfg
       verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity commonCfg)
   dist_dir <- findDistPrefOrDefault $ setupDistPref commonCfg
@@ -183,7 +186,7 @@ runConfigureScript verbHandles cfg flags programDb hp = do
           : [("CXXFLAGS", Just (mkFlagsEnv cxxFlags "CXXFLAGS")) | Just cxxFlags <- [mcxxFlags]]
           ++ [("PATH", Just pathEnv) | not (null extraPath)]
           ++ cabalFlagEnv
-      maybeHostFlag = ["--host=" ++ show (pretty hp) | hp /= buildPlatform]
+      maybeHostFlag = ["--host=" ++ fromMaybe (show (pretty hp)) targetTriple | hp /= buildPlatform]
       args' =
         configureFile'
           : args
