@@ -183,7 +183,7 @@ registerAll
   -> IO ()
 registerAll verbHandles pkg lbi regFlags ipis =
   do
-    when (fromFlag (regPrintId regFlags)) $ do
+    when (Just True == flagToMaybe (regPrintId regFlags)) $ do
       for_ ipis $ \installedPkgInfo ->
         -- Only print the public library's IPI
         when

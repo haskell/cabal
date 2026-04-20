@@ -25,6 +25,7 @@ module Distribution.Simple.Build
   ( -- * Build
     build
   , build_setupHooks
+  , buildComponent
 
     -- * Repl
   , repl
@@ -33,6 +34,8 @@ module Distribution.Simple.Build
 
     -- * Build preparation
   , preBuildComponent
+  , runPreBuildHooks
+  , builtinPreBuildHooks
   , AutogenFile (..)
   , AutogenFileContents
   , writeBuiltinAutogenFiles
@@ -105,9 +108,8 @@ import Distribution.Simple.Setup.Common
 import Distribution.Simple.Setup.Config
 import Distribution.Simple.Setup.Repl
 import Distribution.Simple.SetupHooks.Internal
-  ( BuildHooks (..)
-  , BuildingWhat (..)
-  , noBuildHooks
+  ( BuildingWhat (..)
+  , buildingWhatVerbosity
   )
 import qualified Distribution.Simple.SetupHooks.Internal as SetupHooks
 import qualified Distribution.Simple.SetupHooks.Rule as SetupHooks
@@ -143,10 +145,16 @@ build
   -> [PPSuffixHandler]
   -- ^ preprocessors to run before compiling
   -> IO ()
-build = build_setupHooks noBuildHooks defaultVerbosityHandles
+build pkg lbi flags pps =
+  void $ build_setupHooks noHooks defaultVerbosityHandles pkg lbi flags pps
+  where
+    noHooks = (const $ return [], const $ return ())
 
 build_setupHooks
-  :: BuildHooks
+  :: ( SetupHooks.PreBuildComponentInputs -> IO [SetupHooks.MonitorFilePath]
+     , SetupHooks.PostBuildComponentInputs -> IO ()
+     )
+  -- ^ build hooks
   -> VerbosityHandles
   -> PackageDescription
   -- ^ Mostly information from the .cabal file
@@ -156,14 +164,16 @@ build_setupHooks
   -- ^ Flags that the user passed to build
   -> [PPSuffixHandler]
   -- ^ preprocessors to run before compiling
-  -> IO ()
+  -> IO [SetupHooks.MonitorFilePath]
 build_setupHooks
-  (BuildHooks{preBuildComponentRules = mbPbcRules, postBuildComponentHook = mbPostBuild})
+  (preBuildHook, postBuildHook)
   verbHandles
   pkg_descr
   lbi
   flags
   suffixHandlers = do
+    let verbosity = mkVerbosity verbHandles (fromFlag $ buildVerbosity flags)
+        distPref = fromFlag $ buildDistPref flags
     checkSemaphoreSupport verbosity (compiler lbi) flags
 
     targets <- readTargetInfos verbosity pkg_descr lbi (buildTargets flags)
@@ -192,7 +202,7 @@ build_setupHooks
     curDir <- absoluteWorkingDirLBI lbi
 
     -- Now do the actual building
-    (\f -> foldM_ f (installedPkgs lbi) componentsToBuild) $ \index target -> do
+    (mons, _) <- (\f -> foldM f ([], installedPkgs lbi) componentsToBuild) $ \(monsAcc, index) target -> do
       let comp = targetComponent target
           clbi = targetCLBI target
           bi = componentBuildInfo comp
@@ -204,18 +214,8 @@ build_setupHooks
               , withPackageDB = withPackageDB lbi ++ [internalPackageDB]
               , installedPkgs = index
               }
-          runPreBuildHooks :: LocalBuildInfo -> TargetInfo -> IO ()
-          runPreBuildHooks lbi2 tgt =
-            let inputs =
-                  SetupHooks.PreBuildComponentInputs
-                    { SetupHooks.buildingWhat = BuildNormal flags
-                    , SetupHooks.localBuildInfo = lbi2
-                    , SetupHooks.targetInfo = tgt
-                    }
-             in for_ mbPbcRules $ \pbcRules -> do
-                  (ruleFromId, _mons) <- SetupHooks.computeRules verbosity inputs pbcRules
-                  SetupHooks.executeRules verbosity lbi2 tgt ruleFromId
-      preBuildComponent runPreBuildHooks verbosity lbi' target
+          pbci = SetupHooks.PreBuildComponentInputs (BuildNormal flags) lbi' target
+      mons <- preBuildComponent (preBuildHook pbci) verbosity lbi' target
       let numJobs = buildNumJobs flags
       par_strat <-
         toFlag <$> case buildUseSemaphore flags of
@@ -244,13 +244,10 @@ build_setupHooks
               , SetupHooks.localBuildInfo = lbi'
               , SetupHooks.targetInfo = target
               }
-      for_ mbPostBuild ($ postBuildInputs)
-      return (maybe index (`Index.insert` index) mb_ipi)
+      postBuildHook postBuildInputs
+      return (monsAcc <> mons, maybe index (`Index.insert` index) mb_ipi)
 
-    return ()
-    where
-      distPref = fromFlag (buildDistPref flags)
-      verbosity = mkVerbosity verbHandles (fromFlag (buildVerbosity flags))
+    return mons
 
 -- | Check for conditions that would prevent the build from succeeding.
 checkSemaphoreSupport
@@ -333,11 +330,20 @@ repl
   -- ^ preprocessors to run before compiling
   -> [String]
   -> IO ()
-repl = repl_setupHooks noBuildHooks defaultVerbosityHandles
+repl pkg lbi flags pps args =
+  void $
+    repl_setupHooks
+      (const $ return [])
+      defaultVerbosityHandles
+      pkg
+      lbi
+      flags
+      pps
+      args
 
 repl_setupHooks
-  :: BuildHooks
-  -- ^ build hook
+  :: (SetupHooks.PreBuildComponentInputs -> IO [SetupHooks.MonitorFilePath])
+  -- ^ pre-build hook
   -> VerbosityHandles
   -> PackageDescription
   -- ^ Mostly information from the .cabal file
@@ -348,9 +354,9 @@ repl_setupHooks
   -> [PPSuffixHandler]
   -- ^ preprocessors to run before compiling
   -> [String]
-  -> IO ()
+  -> IO [SetupHooks.MonitorFilePath]
 repl_setupHooks
-  (BuildHooks{preBuildComponentRules = mbPbcRules})
+  preBuildHook
   verbHandles
   pkg_descr
   lbi
@@ -394,25 +400,16 @@ repl_setupHooks
                     (componentBuildInfo comp)
                     (withPrograms lbi')
               }
-        runPreBuildHooks :: LocalBuildInfo -> TargetInfo -> IO ()
-        runPreBuildHooks lbi2 tgt =
-          let inputs =
-                SetupHooks.PreBuildComponentInputs
-                  { SetupHooks.buildingWhat = BuildRepl flags
-                  , SetupHooks.localBuildInfo = lbi2
-                  , SetupHooks.targetInfo = tgt
-                  }
-           in for_ mbPbcRules $ \pbcRules -> do
-                (ruleFromId, _mons) <- SetupHooks.computeRules verbosity inputs pbcRules
-                SetupHooks.executeRules verbosity lbi2 tgt ruleFromId
+        pbci lbi' tgt = SetupHooks.PreBuildComponentInputs (BuildRepl flags) lbi' tgt
 
-    -- build any dependent components
-    sequence_
-      [ do
-        let clbi = targetCLBI subtarget
-            comp = targetComponent subtarget
-        lbi' <- lbiForComponent comp lbi
-        preBuildComponent runPreBuildHooks verbosity lbi' subtarget
+    -- build any dependent components and collect their monitored file paths
+    depMonitors <- fmap concat $ for (safeInit componentsToBuild) $ \subtarget -> do
+      let clbi = targetCLBI subtarget
+          comp = targetComponent subtarget
+      lbi' <- lbiForComponent comp lbi
+      monitors <- preBuildComponent (preBuildHook (pbci lbi' subtarget)) verbosity lbi' subtarget
+
+      _mb_ipi <-
         buildComponent
           verbHandles
           (mempty{buildCommonFlags = mempty{setupVerbosity = toFlag $ verbosityFlags verbosity}})
@@ -423,15 +420,20 @@ repl_setupHooks
           comp
           clbi
           distPref
-      | subtarget <- safeInit componentsToBuild
-      ]
+
+      return monitors
 
     -- REPL for target components
     let clbi = targetCLBI target
         comp = targetComponent target
     lbi' <- lbiForComponent comp lbi
-    preBuildComponent runPreBuildHooks verbosity lbi' target
+
+    targetMonitors <-
+      preBuildComponent (preBuildHook (pbci lbi' target)) verbosity lbi' target
+
     replComponent flags verbosity pkg_descr lbi' suffixHandlers comp clbi distPref
+
+    return (depMonitors <> targetMonitors)
 
 -- | Start an interpreter without loading any package files.
 startInterpreter
@@ -1133,20 +1135,53 @@ componentInitialBuildSteps _distPref pkg_descr lbi clbi verbosity = do
 -- | Creates the autogenerated files for a particular configured component,
 -- and runs the pre-build hook.
 preBuildComponent
-  :: (LocalBuildInfo -> TargetInfo -> IO ())
+  :: IO r
   -- ^ pre-build hook
   -> Verbosity
   -> LocalBuildInfo
   -- ^ Configuration information
   -> TargetInfo
-  -> IO ()
+  -> IO r
 preBuildComponent preBuildHook verbosity lbi tgt = do
   let pkg_descr = localPkgDescr lbi
       clbi = targetCLBI tgt
       compBuildDir = interpretSymbolicPathLBI lbi $ componentBuildDir lbi clbi
   createDirectoryIfMissingVerbose verbosity True compBuildDir
   writeBuiltinAutogenFiles verbosity pkg_descr lbi clbi
-  preBuildHook lbi tgt
+  preBuildHook
+
+-- | Compute and execute 'PreBuildComponentRules', returning the monitored
+-- files declared by the rules.
+runPreBuildHooks
+  :: VerbosityHandles
+  -> SetupHooks.PreBuildComponentInputs
+  -> SetupHooks.PreBuildComponentRules
+  -> IO [SetupHooks.MonitorFilePath]
+runPreBuildHooks
+  verbHandles
+  pbci@( SetupHooks.PreBuildComponentInputs
+          { SetupHooks.buildingWhat = what
+          , SetupHooks.localBuildInfo = lbi
+          , SetupHooks.targetInfo = tgt
+          }
+        )
+  pbcRules = do
+    let verbosity = mkVerbosity verbHandles $ buildingWhatVerbosity what
+    (rules, mons) <- SetupHooks.computeRules verbosity pbci pbcRules
+    SetupHooks.executeRules verbosity lbi tgt rules
+    return mons
+
+-- | Built-in pre-build 'SetupHooks' for a given 'BuildType'.
+builtinPreBuildHooks
+  :: BuildType
+  -> SetupHooks.PreBuildComponentInputs
+  -> IO [SetupHooks.MonitorFilePath]
+builtinPreBuildHooks _ =
+  -- NB: currently there are no built-in pre-build hooks.
+  --
+  -- In the future, we may want to migrate built-in preprocessors (such as
+  -- @hsc2hs@, @alex@, @happy@) to pre-build hooks.
+  const (return [])
 
 -- | Generate and write to disk all built-in autogenerated files
 -- for the specified component. These files will be put in the

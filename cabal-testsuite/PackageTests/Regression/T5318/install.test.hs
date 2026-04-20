@@ -1,3 +1,3 @@
 import Test.Cabal.Prelude
-main = cabalTest $
+main = cabalTest $ recordMode DoNotRecord $
   cabal "v1-install" []

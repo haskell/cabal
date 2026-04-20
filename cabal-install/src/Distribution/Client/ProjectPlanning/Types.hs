@@ -224,6 +224,8 @@ data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
   , elabFlagDefaults :: Cabal.FlagAssignment
   -- ^ The original default flag assignment, used only for reporting.
   , elabPkgDescription :: Cabal.PackageDescription
+  , elabGPkgDescription :: Cabal.GenericPackageDescription
+  -- ^ Original 'GenericPackageDescription' (just used to report errors/warnings)
   , elabPkgSourceLocation :: PackageLocation (Maybe FilePath)
   -- ^ Where the package comes from, e.g. tarball, local dir etc. This
   --   is not the same as where it may be unpacked to for the build.
