@@ -230,6 +230,7 @@ import System.Directory
   , getAppUserDataDirectory
   , getHomeDirectory
   , getXdgDirectory
+  , renameFile
   )
 import System.FilePath
   ( normalise
