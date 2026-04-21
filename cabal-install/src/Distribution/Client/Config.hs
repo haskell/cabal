@@ -114,6 +114,7 @@ import Distribution.Utils.NubList
   )
 
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Map as M
 import Distribution.Client.Errors
 import Distribution.Client.HttpUtils
@@ -208,6 +209,7 @@ import Distribution.Simple.Utils
   , notice
   , toUTF8BS
   , warn
+  , writeFileAtomic
   )
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Utils.Path (getSymbolicPath, unsafeMakeSymbolicPath)
@@ -228,12 +230,10 @@ import System.Directory
   , getAppUserDataDirectory
   , getHomeDirectory
   , getXdgDirectory
-  , renameFile
   )
 import System.FilePath
   ( normalise
   , takeDirectory
-  , (<.>)
   , (</>)
   )
 import System.IO.Error
@@ -1078,11 +1078,10 @@ createDefaultConfigFile verbosity extraLines filePath = do
 
 writeConfigFile :: FilePath -> SavedConfig -> SavedConfig -> IO ()
 writeConfigFile file comments vals = do
-  let tmpFile = file <.> "tmp"
   createDirectoryIfMissing True (takeDirectory file)
-  writeFile tmpFile $
-    explanation ++ showConfigWithComments comments vals ++ "\n"
-  renameFile tmpFile file
+  writeFileAtomic file $
+    LBS.fromStrict . toUTF8BS $
+      explanation ++ showConfigWithComments comments vals ++ "\n"
   where
     explanation =
       unlines
