@@ -6,7 +6,7 @@ module UnitTests.Distribution.Client.UserConfig
 
 import Control.Concurrent (forkIO, newEmptyMVar, putMVar, takeMVar)
 import Control.Exception (IOException, bracket, try)
-import Control.Monad (replicateM_)
+import Control.Monad (replicateM, replicateM_)
 import Data.List (nub, sort)
 import System.Directory
   ( doesFileExist
