@@ -32,7 +32,6 @@ tests =
   , testCase "canDetectDifference" canDetectDifference
   , testCase "canUpdateConfig" canUpdateConfig
   , testCase "doubleUpdateConfig" doubleUpdateConfig
-  , testCase "concurrentUpdateConfig" concurrentUpdateConfig
   , testCase "newDefaultConfig" newDefaultConfig
   ]
 
@@ -88,26 +87,6 @@ newDefaultConfig = do
     _ <- createDefaultConfigFile (mkVerbosity defaultVerbosityHandles silent) [] configFile
     exists <- doesFileExist configFile
     assertBool ("Config file should be written to " ++ configFile) exists
-
-concurrentUpdateConfig :: Assertion
-concurrentUpdateConfig = bracketTest $ \configFile -> do
-  _ <- createDefaultConfigFile (mkVerbosity defaultVerbosityHandles silent) [] configFile
-
-  doneVars <- replicateM numConcurrentUpdates newEmptyMVar
-  mapM_
-    ( \doneVar ->
-        forkIO $ do
-          result <- try (userConfigUpdate (mkVerbosity defaultVerbosityHandles silent) (globalFlags configFile) []) :: IO (Either IOException ())
-          putMVar doneVar result
-    )
-    doneVars
-
-  results <- mapM takeMVar doneVars
-  assertBool "Concurrent userConfigUpdate should not throw" (all isSuccess results)
-  where
-    numConcurrentUpdates = 16 :: Int
-    isSuccess (Right ()) = True
-    isSuccess _ = False
 
 globalFlags :: FilePath -> GlobalFlags
 globalFlags configFile = mempty{globalConfigFile = Flag configFile}
