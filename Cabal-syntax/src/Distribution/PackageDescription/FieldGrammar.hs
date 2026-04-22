@@ -749,12 +749,27 @@ buildInfoFieldGrammar'
      , Newtype [AttachPosition mod (Annotate mod ModuleName)] (ListWith mod VCat (MQuoted ModuleName) ModuleName)
      , c (ListWith mod VCat (MQuoted ModuleName) ModuleName)
 
-     -- TODO(leana8959): constraints go here
+     , c (List VCat (MQuoted ModuleName) ModuleName)
+
+     , c (MQuoted Language)
+
+     , c (List FSep (MQuoted Language) Language)
+
+     , c (List FSep (MQuoted Extension) Extension)
+
+     , c (List VCat Token String)
+
+     , forall from to. c (List FSep (SymbolicPathNT from to) (SymbolicPath from to))
+     , forall from to. c (List FSep (RelativePathNT from to) (RelativePath from to))
+
+     , c (List NoCommaFSep Token' String)
 
      , Newtype
         [AttachPosition mod (Annotate mod (DependencyWith mod))]
         (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
      , c (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
+
+     , c (List CommaVCat (Identity Mixin) Mixin)
      )
   => g mod (BuildInfoWith mod) (BuildInfoWith mod)
 buildInfoFieldGrammar' = do
@@ -780,9 +795,36 @@ buildInfoFieldGrammar' = do
   hsSourceDirs <- hsSourceDirsGrammar @mod
   otherModules <- monoidalFieldAla' "other-modules" (formatOtherModules @mod) L.otherModules
 
-  -- TODO(leana8959): add more
-
   targetBuildDepends <- monoidalFieldAla' "build-depends" (formatDependencyList @mod) L.targetBuildDepends
+
+  -- This section uses legacy monoidalFieldAla and doesn't handle trivia
+  virtualModules <- monoidalFieldAla "virtual-modules" (alaList' VCat MQuoted) L.virtualModules
+  autogenModules <- monoidalFieldAla "autogen-modules" (alaList' VCat MQuoted) L.autogenModules
+  defaultLanguage <- optionalFieldAla "default-language" MQuoted L.defaultLanguage
+  otherLanguages <- monoidalFieldAla "other-languages" (alaList' FSep MQuoted) L.otherLanguages
+  defaultExtensions <- monoidalFieldAla "default-extensions" (alaList' FSep MQuoted) L.defaultExtensions
+  otherExtensions <- monoidalFieldAla "other-extensions" formatOtherExtensions L.otherExtensions
+  oldExtensions <- monoidalFieldAla "extensions" (alaList' FSep MQuoted) L.oldExtensions
+  extraLibs <- monoidalFieldAla "extra-libraries" (alaList' VCat Token) L.extraLibs
+  extraLibsStatic <- monoidalFieldAla "extra-libraries-static" (alaList' VCat Token) L.extraLibsStatic
+  extraGHCiLibs <- monoidalFieldAla "extra-ghci-libraries" (alaList' VCat Token) L.extraGHCiLibs
+  extraBundledLibs <- monoidalFieldAla "extra-bundled-libraries" (alaList' VCat Token) L.extraBundledLibs
+  extraLibFlavours <- monoidalFieldAla "extra-library-flavours" (alaList' VCat Token) L.extraLibFlavours
+  extraDynLibFlavours <- monoidalFieldAla "extra-dynamic-library-flavours" (alaList' VCat Token) L.extraDynLibFlavours
+  extraLibDirs <- monoidalFieldAla "extra-lib-dirs" (alaList' FSep SymbolicPathNT) L.extraLibDirs
+  extraLibDirsStatic <- monoidalFieldAla "extra-lib-dirs-static" (alaList' FSep SymbolicPathNT) L.extraLibDirsStatic
+  includeDirs <- monoidalFieldAla "include-dirs" (alaList' FSep SymbolicPathNT) L.includeDirs
+  includes <- monoidalFieldAla "includes" (alaList' FSep SymbolicPathNT) L.includes
+  autogenIncludes <- monoidalFieldAla "autogen-includes" (alaList' FSep RelativePathNT) L.autogenIncludes
+  installIncludes <- monoidalFieldAla "install-includes" (alaList' FSep RelativePathNT) L.installIncludes
+  options <- optionsFieldGrammar
+  profOptions <- profOptionsFieldGrammar
+  sharedOptions <- sharedOptionsFieldGrammar
+  profSharedOptions <- profSharedOptionsFieldGrammar
+  let staticOptions = mempty
+  customFieldsBI <- prefixedFields "x-" L.customFieldsBI
+  mixins <- monoidalFieldAla "mixins" formatMixinList L.mixins
+
   pure (BuildInfo{..})
 
 -- {-# SPECIALIZE buildInfoFieldGrammar' :: ParsecFieldGrammar   Mod.HasAnn BuildInfoAnn BuildInfoAnn #-}
