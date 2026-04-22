@@ -717,27 +717,38 @@ buildInfoFieldGrammar'
      , Applicative (g mod (BuildInfoWith mod))
 
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
-     -- , Newtype [Annotate mod LegacyExeDependency] (ListWith mod CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
-     -- , c (ListWith mod CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
-     -- , Newtype [Annotate mod ExeDependency] (ListWith mod CommaFSep (Identity ExeDependency) ExeDependency)
-     -- , c (ListWith mod CommaFSep (Identity ExeDependency) ExeDependency)
-     -- , Newtype [Annotate mod String] (ListWith mod NoCommaFSep Token' String)
-     -- , c (ListWith mod NoCommaFSep Token' String)
-     -- , Newtype [Annotate mod PkgconfigDependency] (ListWith mod CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
-     -- , c (ListWith mod CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
-     -- , Newtype [Annotate mod (RelativePath Framework File)] (ListWith mod FSep (RelativePathNT Framework File) (RelativePath Framework File))
-     -- , c (ListWith mod FSep (RelativePathNT Framework File) (RelativePath Framework File))
-     -- , Newtype [Annotate mod (SymbolicPath Pkg (Dir Framework))] (ListWith mod FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
-     -- , c (ListWith mod FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
-     -- , Newtype [Annotate mod (SymbolicPath Pkg File)] (ListWith mod VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
-     -- , c (ListWith mod VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
-     -- , c (List FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
-     -- , -- is a monoid with or without annotation, for hsSourceDirs compat
-     --   Monoid (PreserveGrouping mod (AttachPositions mod [Annotate mod (SymbolicPath Pkg (Dir Source))]))
-     -- , Newtype [Annotate mod (SymbolicPath Pkg (Dir Source))] (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
-     -- , c (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
-     -- , Newtype [Annotate mod ModuleName] (ListWith mod VCat (MQuoted ModuleName) ModuleName)
-     -- , c (ListWith mod VCat (MQuoted ModuleName) ModuleName)
+
+     , Newtype [AttachPosition mod (Annotate mod LegacyExeDependency)] (ListWith mod CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
+     , c (ListWith mod CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
+
+     , Newtype [AttachPosition mod (Annotate mod ExeDependency)] (ListWith mod CommaFSep (Identity ExeDependency) ExeDependency)
+     , c (ListWith mod CommaFSep (Identity ExeDependency) ExeDependency)
+
+     , Newtype [AttachPosition mod (Annotate mod String)] (ListWith mod NoCommaFSep Token' String)
+     , c (ListWith mod NoCommaFSep Token' String)
+
+     , Newtype [AttachPosition mod (Annotate mod PkgconfigDependency)] (ListWith mod CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
+     , c (ListWith mod CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
+
+     , Newtype [AttachPosition mod (Annotate mod (RelativePath Framework File))] (ListWith mod FSep (RelativePathNT Framework File) (RelativePath Framework File))
+     , c (ListWith mod FSep (RelativePathNT Framework File) (RelativePath Framework File))
+
+     , Newtype [AttachPosition mod (Annotate mod (SymbolicPath Pkg (Dir Framework)))] (ListWith mod FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
+     , c (ListWith mod FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
+
+     , Newtype [AttachPosition mod (Annotate mod (SymbolicPath Pkg File))] (ListWith mod VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
+     , c (ListWith mod VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
+
+     , c (List FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+
+     , -- is a monoid with or without annotation, for hsSourceDirs compat
+       Monoid (PreserveGrouping mod (AttachPositions mod [AttachPosition mod (Annotate mod (SymbolicPath Pkg (Dir Source)))]))
+     , Newtype [AttachPosition mod (Annotate mod (SymbolicPath Pkg (Dir Source)))] (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+     , c (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+
+     , Newtype [AttachPosition mod (Annotate mod ModuleName)] (ListWith mod VCat (MQuoted ModuleName) ModuleName)
+     , c (ListWith mod VCat (MQuoted ModuleName) ModuleName)
+
      -- TODO(leana8959): constraints go here
 
      , Newtype
@@ -748,26 +759,26 @@ buildInfoFieldGrammar'
   => g mod (BuildInfoWith mod) (BuildInfoWith mod)
 buildInfoFieldGrammar' = do
   buildable <- booleanFieldDef' "buildable" L.buildable True
-  -- buildTools <- monoidalFieldAla' "build-tools" (alaListWith @mod @CommaFSep @LegacyExeDependency) L.buildTools
-  -- buildToolDepends <- monoidalFieldAla' "build-tool-depends" (alaListWith @mod @CommaFSep @ExeDependency) L.buildToolDepends
-  -- cppOptions <- monoidalFieldAla' "cpp-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.cppOptions
-  -- asmOptions <- monoidalFieldAla' "asm-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.asmOptions
-  -- cmmOptions <- monoidalFieldAla' "cmm-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.cmmOptions
-  -- ccOptions <- monoidalFieldAla' "cc-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.ccOptions
-  -- cxxOptions <- monoidalFieldAla' "cxx-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.cxxOptions
-  -- jsppOptions <- monoidalFieldAla' "jspp-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.jsppOptions
-  -- ldOptions <- monoidalFieldAla' "ld-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.ldOptions
-  -- hsc2hsOptions <- monoidalFieldAla' "hsc2hsOptions" (alaListWith' @mod @NoCommaFSep @Token' @String) L.hsc2hsOptions
-  -- pkgconfigDepends <- monoidalFieldAla' "pkgconfig-depends" (alaListWith @mod @CommaFSep @PkgconfigDependency) L.pkgconfigDepends
-  -- frameworks <- monoidalFieldAla' "frameworks" (alaListWith' @mod @FSep @(RelativePathNT Framework File) @(RelativePath Framework File)) L.frameworks
-  -- extraFrameworkDirs <- monoidalFieldAla' "extra-framework-dirs" (alaListWith' @mod @FSep @(SymbolicPathNT Pkg (Dir Framework)) @(SymbolicPath Pkg (Dir Framework))) L.extraFrameworkDirs
-  -- astSources <- monoidalFieldAla' "asm-sources" (alaListWith' @mod @VCat @(SymbolicPathNT Pkg File) @(SymbolicPath Pkg File)) L.asmSources
-  -- cmmSources <- monoidalFieldAla' "cmm-sources" (alaListWith' @mod @VCat @(SymbolicPathNT Pkg File) @(SymbolicPath Pkg File)) L.cmmSources
-  -- cSources <- monoidalFieldAla' "c-sources" (alaListWith' @mod @VCat @(SymbolicPathNT Pkg File) @(SymbolicPath Pkg File)) L.cSources
-  -- cxxSources <- monoidalFieldAla' "cxx-sources" (alaListWith' @mod @VCat @(SymbolicPathNT Pkg File) @(SymbolicPath Pkg File)) L.cxxSources
-  -- jsSources <- monoidalFieldAla' "js-sources" (alaListWith' @mod @VCat @(SymbolicPathNT Pkg File) @(SymbolicPath Pkg File)) L.jsSources
-  -- hsSourceDirs <- hsSourceDirsGrammar @mod
-  -- otherModules <- monoidalFieldAla' "other-modules" (formatOtherModules @mod) L.otherModules
+  buildTools <- monoidalFieldAla' "build-tools" (alaListWith @mod @CommaFSep @LegacyExeDependency) L.buildTools
+  buildToolDepends <- monoidalFieldAla' "build-tool-depends" (alaListWith @mod @CommaFSep @ExeDependency) L.buildToolDepends
+  cppOptions <- monoidalFieldAla' "cpp-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.cppOptions
+  asmOptions <- monoidalFieldAla' "asm-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.asmOptions
+  cmmOptions <- monoidalFieldAla' "cmm-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.cmmOptions
+  ccOptions <- monoidalFieldAla' "cc-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.ccOptions
+  cxxOptions <- monoidalFieldAla' "cxx-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.cxxOptions
+  jsppOptions <- monoidalFieldAla' "jspp-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.jsppOptions
+  ldOptions <- monoidalFieldAla' "ld-options" (alaListWith' @mod @NoCommaFSep @Token' @String) L.ldOptions
+  hsc2hsOptions <- monoidalFieldAla' "hsc2hsOptions" (alaListWith' @mod @NoCommaFSep @Token' @String) L.hsc2hsOptions
+  pkgconfigDepends <- monoidalFieldAla' "pkgconfig-depends" (alaListWith @mod @CommaFSep @PkgconfigDependency) L.pkgconfigDepends
+  frameworks <- monoidalFieldAla' "frameworks" (alaListWith' @mod @FSep @(RelativePathNT Framework File) @(RelativePath Framework File)) L.frameworks
+  extraFrameworkDirs <- monoidalFieldAla' "extra-framework-dirs" (alaListWith' @mod @FSep @(SymbolicPathNT Pkg (Dir Framework)) @(SymbolicPath Pkg (Dir Framework))) L.extraFrameworkDirs
+  asmSources <- monoidalFieldAla' "asm-sources" (alaListWith' @mod @VCat @(SymbolicPathNT Pkg File) @(SymbolicPath Pkg File)) L.asmSources
+  cmmSources <- monoidalFieldAla' "cmm-sources" (alaListWith' @mod @VCat @(SymbolicPathNT Pkg File) @(SymbolicPath Pkg File)) L.cmmSources
+  cSources <- monoidalFieldAla' "c-sources" (alaListWith' @mod @VCat @(SymbolicPathNT Pkg File) @(SymbolicPath Pkg File)) L.cSources
+  cxxSources <- monoidalFieldAla' "cxx-sources" (alaListWith' @mod @VCat @(SymbolicPathNT Pkg File) @(SymbolicPath Pkg File)) L.cxxSources
+  jsSources <- monoidalFieldAla' "js-sources" (alaListWith' @mod @VCat @(SymbolicPathNT Pkg File) @(SymbolicPath Pkg File)) L.jsSources
+  hsSourceDirs <- hsSourceDirsGrammar @mod
+  otherModules <- monoidalFieldAla' "other-modules" (formatOtherModules @mod) L.otherModules
 
   -- TODO(leana8959): add more
 

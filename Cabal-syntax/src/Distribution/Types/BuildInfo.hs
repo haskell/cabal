@@ -55,7 +55,7 @@ type BuildInfoAnn = BuildInfoWith Mod.HasAnn
 data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
   { buildable :: AnnotateWith Positions m Bool
   -- ^ component is buildable here
-  , buildTools :: PreserveGrouping m (AttachPositions m [Annotate m LegacyExeDependency])
+  , buildTools :: PreserveGrouping m (AttachPositions m [AttachPosition m (Annotate m LegacyExeDependency)])
   -- ^ Tools needed to build this bit.
   --
   -- This is a legacy field that 'buildToolDepends' largely supersedes.
@@ -63,7 +63,7 @@ data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
   -- Unless use are very sure what you are doing, use the functions in
   -- "Distribution.Simple.BuildToolDepends" rather than accessing this
   -- field directly.
-  , buildToolDepends :: PreserveGrouping m (AttachPositions m [Annotate m ExeDependency])
+  , buildToolDepends :: PreserveGrouping m (AttachPositions m [AttachPosition m (Annotate m ExeDependency)])
   -- ^ Haskell tools needed to build this bit
   --
   -- This field is better than 'buildTools' because it allows one to
@@ -72,40 +72,40 @@ data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
   -- Unless use are very sure what you are doing, use the functions in
   -- "Distribution.Simple.BuildToolDepends" rather than accessing this
   -- field directly.
-  , cppOptions :: PreserveGrouping m (AttachPositions m [Annotate m String])
+  , cppOptions :: PreserveGrouping m (AttachPositions m [AttachPosition m (Annotate m String)])
   -- ^ options for pre-processing Haskell code
-  , asmOptions :: PreserveGrouping m (AttachPositions m [Annotate m String])
+  , asmOptions :: PreserveGrouping m (AttachPositions m [AttachPosition m (Annotate m String)])
   -- ^ options for assembler
-  , cmmOptions :: PreserveGrouping m (AttachPositions m [Annotate m String])
+  , cmmOptions :: PreserveGrouping m (AttachPositions m [AttachPosition m (Annotate m String)])
   -- ^ options for C-- compiler
-  , ccOptions :: PreserveGrouping m (AttachPositions m [Annotate m String])
+  , ccOptions :: PreserveGrouping m (AttachPositions m [AttachPosition m (Annotate m String)])
   -- ^ options for C compiler
-  , cxxOptions :: PreserveGrouping m (AttachPositions m [Annotate m String])
+  , cxxOptions :: PreserveGrouping m (AttachPositions m [AttachPosition m (Annotate m String)])
   -- ^ options for C++ compiler
-  , jsppOptions :: PreserveGrouping m (AttachPositions m [Annotate m String])
+  , jsppOptions :: PreserveGrouping m (AttachPositions m [AttachPosition m (Annotate m String)])
   -- ^ options for pre-processing JavaScript code @since 3.16.0.0
-  , ldOptions :: PreserveGrouping m (AttachPositions m [Annotate m String])
+  , ldOptions :: PreserveGrouping m (AttachPositions m [AttachPosition m (Annotate m String)])
   -- ^ options for linker
-  , hsc2hsOptions :: PreserveGrouping m (AttachPositions m [Annotate m String])
+  , hsc2hsOptions :: PreserveGrouping m (AttachPositions m [AttachPosition m (Annotate m String)])
   -- ^ options for hsc2hs
-  , pkgconfigDepends :: PreserveGrouping m (AttachPositions m [Annotate m PkgconfigDependency])
+  , pkgconfigDepends :: PreserveGrouping m (AttachPositions m [AttachPosition m (Annotate m PkgconfigDependency)])
   -- ^ pkg-config packages that are used
-  , frameworks :: PreserveGrouping m (AttachPositions m [Annotate m (RelativePath Framework File)])
+  , frameworks :: PreserveGrouping m (AttachPositions m [AttachPosition m (Annotate m (RelativePath Framework File))])
   -- ^ support frameworks for Mac OS X
-  , extraFrameworkDirs :: PreserveGrouping m (AttachPositions m [Annotate m (SymbolicPath Pkg (Dir Framework))])
+  , extraFrameworkDirs :: PreserveGrouping m (AttachPositions m [AttachPosition m (Annotate m (SymbolicPath Pkg (Dir Framework)))])
   -- ^ extra locations to find frameworks.
-  , asmSources :: PreserveGrouping m (AttachPositions m [Annotate m (SymbolicPath Pkg File)])
+  , asmSources :: PreserveGrouping m (AttachPositions m [AttachPosition m (Annotate m (SymbolicPath Pkg File))])
   -- ^ Assembly files.
-  , cmmSources :: PreserveGrouping m (AttachPositions m [Annotate m (SymbolicPath Pkg File)])
+  , cmmSources :: PreserveGrouping m (AttachPositions m [AttachPosition m (Annotate m (SymbolicPath Pkg File))])
   -- ^ C-- files.
-  , cSources :: PreserveGrouping m (AttachPositions m [Annotate m (SymbolicPath Pkg File)])
-  , cxxSources :: PreserveGrouping m (AttachPositions m [Annotate m (SymbolicPath Pkg File)])
-  , jsSources :: PreserveGrouping m (AttachPositions m [Annotate m (SymbolicPath Pkg File)])
+  , cSources :: PreserveGrouping m (AttachPositions m [AttachPosition m (Annotate m (SymbolicPath Pkg File))])
+  , cxxSources :: PreserveGrouping m (AttachPositions m [AttachPosition m (Annotate m (SymbolicPath Pkg File))])
+  , jsSources :: PreserveGrouping m (AttachPositions m [AttachPosition m (Annotate m (SymbolicPath Pkg File))])
   , hsSourceDirs :: PreserveGrouping m (AttachPositions m [AttachPosition m (Annotate m (SymbolicPath Pkg (Dir Source)))])
   -- ^ where to look for the Haskell module hierarchy
   , -- NB: these are symbolic paths are not relative paths,
     -- because autogenerated modules might end up in an absolute path
-    otherModules :: PreserveGrouping m (AttachPositions m [Annotate m ModuleName])
+    otherModules :: PreserveGrouping m (AttachPositions m [AttachPosition m (Annotate m ModuleName)])
   -- ^ non-exposed or non-main modules
   , virtualModules :: [ModuleName]
   -- ^ exposed modules that do not have a source file (e.g. @GHC.Prim@ from @ghc-prim@ package)
@@ -181,36 +181,34 @@ instance NFData BuildInfo where rnf = genericRnf
 
 unannotateBuildInfo :: BuildInfoAnn -> BuildInfo
 unannotateBuildInfo bi =
+  let unannotateMonoidalField = map (unAnn . snd) . join . map snd
+  in
   bi
     { buildable = unAnn $ buildable bi
-    , buildTools = map unAnn $ join $ map snd $ buildTools bi
-    , buildToolDepends = map unAnn $ join $ map snd $ buildToolDepends bi
-    , cppOptions = map unAnn $ join $ map snd $ cppOptions bi
-    , asmOptions = map unAnn $ join $ map snd $ asmOptions bi
-    , cmmOptions = map unAnn $ join $ map snd $ cmmOptions bi
-    , ccOptions = map unAnn $ join $ map snd $ ccOptions bi
-    , cxxOptions = map unAnn $ join $ map snd $ cxxOptions bi
-    , jsppOptions = map unAnn $ join $ map snd $ jsppOptions bi
-    , ldOptions = map unAnn $ join $ map snd $ ldOptions bi
-    , hsc2hsOptions = map unAnn $ join $ map snd $ hsc2hsOptions bi
-    , pkgconfigDepends = map unAnn $ join $ map snd $ pkgconfigDepends bi
-    , frameworks = map unAnn $ join $ map snd $ frameworks bi
-    , extraFrameworkDirs = map unAnn $ join $ map snd $ extraFrameworkDirs bi
-    , asmSources = map unAnn $ join $ map snd $ asmSources bi
-    , cmmSources = map unAnn $ join $ map snd $ cmmSources bi
-    , cSources = map unAnn $ join $ map snd $ cSources bi
-    , cxxSources = map unAnn $ join $ map snd $ cxxSources bi
-    , jsSources = map unAnn $ join $ map snd $ jsSources bi
-    , hsSourceDirs = map (unAnn . snd) $ join $ map snd $ hsSourceDirs bi
-    , otherModules = map unAnn $ join $ map snd $ otherModules bi
+    , buildTools = unannotateMonoidalField $ buildTools bi
+    , buildToolDepends = unannotateMonoidalField $ buildToolDepends bi
+    , cppOptions = unannotateMonoidalField $ cppOptions bi
+    , asmOptions = unannotateMonoidalField $ asmOptions bi
+    , cmmOptions = unannotateMonoidalField $ cmmOptions bi
+    , ccOptions = unannotateMonoidalField $ ccOptions bi
+    , cxxOptions = unannotateMonoidalField $ cxxOptions bi
+    , jsppOptions = unannotateMonoidalField $ jsppOptions bi
+    , ldOptions = unannotateMonoidalField $ ldOptions bi
+    , hsc2hsOptions = unannotateMonoidalField $ hsc2hsOptions bi
+    , pkgconfigDepends = unannotateMonoidalField $ pkgconfigDepends bi
+    , frameworks = unannotateMonoidalField $ frameworks bi
+    , extraFrameworkDirs = unannotateMonoidalField $ extraFrameworkDirs bi
+    , asmSources = unannotateMonoidalField $ asmSources bi
+    , cmmSources = unannotateMonoidalField $ cmmSources bi
+    , cSources = unannotateMonoidalField $ cSources bi
+    , cxxSources = unannotateMonoidalField $ cxxSources bi
+    , jsSources = unannotateMonoidalField $ jsSources bi
+    , hsSourceDirs = unannotateMonoidalField $ hsSourceDirs bi
+    , otherModules = unannotateMonoidalField $ otherModules bi
     , -- TODO(leana8959): add more fields here
 
       -- [(Positions, (Position, Ann t dep))]
-      targetBuildDepends =
-        map (unannotateDependencyAnn . unAnn . snd) $
-          join $
-            map snd $
-              targetBuildDepends bi
+      targetBuildDepends = map (unannotateDependencyAnn . unAnn . snd) $ join $ map snd $ targetBuildDepends bi
     }
 
 instance Monoid BuildInfo where
