@@ -185,8 +185,47 @@ libraryFieldGrammar
      , Applicative (g mod (LibraryWith mod))
      , Applicative (g mod (BuildInfoWith mod))
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
-     , -- TODO(leana8959): use legacy for now, not completely polymorphic
-       mod ~ Mod.HasNoAnn
+
+
+-- new bounds
+     , Newtype [AttachPosition mod (Annotate mod LegacyExeDependency)] (ListWith mod CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
+     , c (ListWith mod CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
+
+     , Newtype [AttachPosition mod (Annotate mod ExeDependency)] (ListWith mod CommaFSep (Identity ExeDependency) ExeDependency)
+     , c (ListWith mod CommaFSep (Identity ExeDependency) ExeDependency)
+
+     , Newtype [AttachPosition mod (Annotate mod String)] (ListWith mod NoCommaFSep Token' String)
+     , c (ListWith mod NoCommaFSep Token' String)
+
+     , Newtype [AttachPosition mod (Annotate mod PkgconfigDependency)] (ListWith mod CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
+     , c (ListWith mod CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
+
+     , Newtype [AttachPosition mod (Annotate mod (RelativePath Framework File))] (ListWith mod FSep (RelativePathNT Framework File) (RelativePath Framework File))
+     , c (ListWith mod FSep (RelativePathNT Framework File) (RelativePath Framework File))
+
+     , Newtype [AttachPosition mod (Annotate mod (SymbolicPath Pkg (Dir Framework)))] (ListWith mod FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
+     , c (ListWith mod FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
+
+     , Newtype [AttachPosition mod (Annotate mod (SymbolicPath Pkg File))] (ListWith mod VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
+     , c (ListWith mod VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
+
+     , c (List FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+
+     , -- is a monoid with or without annotation, for hsSourceDirs compat
+       Monoid (PreserveGrouping mod (AttachPositions mod [AttachPosition mod (Annotate mod (SymbolicPath Pkg (Dir Source)))]))
+     , Newtype [AttachPosition mod (Annotate mod (SymbolicPath Pkg (Dir Source)))] (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+     , c (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+
+     , Newtype [AttachPosition mod (Annotate mod ModuleName)] (ListWith mod VCat (MQuoted ModuleName) ModuleName)
+     , c (ListWith mod VCat (MQuoted ModuleName) ModuleName)
+
+     , Newtype
+        [AttachPosition mod (Annotate mod (DependencyWith mod))]
+        (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
+     , c (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
+---
+
+
      , c (Identity LibraryVisibility)
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
      , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
@@ -215,7 +254,7 @@ libraryFieldGrammar n =
       ^^^ availableSince CabalSpecV2_0 []
     <*> booleanFieldDef "exposed" L.libExposed True
     <*> visibilityField
-    <*> blurFieldGrammar L.libBuildInfo buildInfoFieldGrammar
+    <*> blurFieldGrammar L.libBuildInfo (buildInfoFieldGrammar @mod)
   where
     visibilityField = case n of
       -- nameless/"main" libraries are public
