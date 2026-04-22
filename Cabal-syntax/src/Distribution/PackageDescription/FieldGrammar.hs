@@ -31,7 +31,8 @@ module Distribution.PackageDescription.FieldGrammar
   , executableFieldGrammar
 
     -- * Test suite
-  , TestSuiteStanza (..)
+  , TestSuiteStanza
+  , TestSuiteStanzaWith (..)
   , testSuiteFieldGrammar
   , validateTestSuite
   , unvalidateTestSuite
@@ -272,9 +273,53 @@ libraryFieldGrammar n =
 -------------------------------------------------------------------------------
 
 foreignLibFieldGrammar
-  :: ( FieldGrammar c g
-     , Applicative (g Mod.HasNoAnn ForeignLib)
-     , Applicative (g Mod.HasNoAnn BuildInfo)
+  :: forall (mod :: Mod.HasAnnotation) c g
+   . ( FieldGrammarWith mod c g
+     , Applicative (g mod (ForeignLibWith mod))
+     , Applicative (g mod (BuildInfoWith mod))
+
+     , L.HasBuildInfoWith mod (BuildInfoWith mod)
+
+-- new bounds
+
+     , Newtype [AttachPosition mod (Annotate mod LegacyExeDependency)] (ListWith mod CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
+     , c (ListWith mod CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
+
+     , Newtype [AttachPosition mod (Annotate mod ExeDependency)] (ListWith mod CommaFSep (Identity ExeDependency) ExeDependency)
+     , c (ListWith mod CommaFSep (Identity ExeDependency) ExeDependency)
+
+     , Newtype [AttachPosition mod (Annotate mod String)] (ListWith mod NoCommaFSep Token' String)
+     , c (ListWith mod NoCommaFSep Token' String)
+
+     , Newtype [AttachPosition mod (Annotate mod PkgconfigDependency)] (ListWith mod CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
+     , c (ListWith mod CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
+
+     , Newtype [AttachPosition mod (Annotate mod (RelativePath Framework File))] (ListWith mod FSep (RelativePathNT Framework File) (RelativePath Framework File))
+     , c (ListWith mod FSep (RelativePathNT Framework File) (RelativePath Framework File))
+
+     , Newtype [AttachPosition mod (Annotate mod (SymbolicPath Pkg (Dir Framework)))] (ListWith mod FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
+     , c (ListWith mod FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
+
+     , Newtype [AttachPosition mod (Annotate mod (SymbolicPath Pkg File))] (ListWith mod VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
+     , c (ListWith mod VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
+
+     , c (List FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+
+     , -- is a monoid with or without annotation, for hsSourceDirs compat
+       Monoid (PreserveGrouping mod (AttachPositions mod [AttachPosition mod (Annotate mod (SymbolicPath Pkg (Dir Source)))]))
+     , Newtype [AttachPosition mod (Annotate mod (SymbolicPath Pkg (Dir Source)))] (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+     , c (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+
+     , Newtype [AttachPosition mod (Annotate mod ModuleName)] (ListWith mod VCat (MQuoted ModuleName) ModuleName)
+     , c (ListWith mod VCat (MQuoted ModuleName) ModuleName)
+
+     , Newtype
+        [AttachPosition mod (Annotate mod (DependencyWith mod))]
+        (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
+     , c (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
+
+--
+
      , c (Identity ForeignLibType)
      , c (Identity LibVersionInfo)
      , c (Identity Version)
@@ -296,26 +341,73 @@ foreignLibFieldGrammar
      , c (MQuoted Language)
      )
   => UnqualComponentName
-  -> g Mod.HasNoAnn ForeignLib ForeignLib
+  -> g mod (ForeignLibWith mod) (ForeignLibWith mod)
 foreignLibFieldGrammar n =
   ForeignLib n
     <$> optionalFieldDef "type" L.foreignLibType ForeignLibTypeUnknown
     <*> monoidalFieldAla "options" (alaList FSep) L.foreignLibOptions
-    <*> blurFieldGrammar L.foreignLibBuildInfo buildInfoFieldGrammar
+    <*> blurFieldGrammar (L.foreignLibBuildInfo @mod) (buildInfoFieldGrammar @mod)
     <*> optionalField "lib-version-info" L.foreignLibVersionInfo
     <*> optionalField "lib-version-linux" L.foreignLibVersionLinux
     <*> monoidalFieldAla "mod-def-file" (alaList' FSep RelativePathNT) L.foreignLibModDefFile
-{-# SPECIALIZE foreignLibFieldGrammar :: UnqualComponentName -> ParsecFieldGrammar' ForeignLib #-}
-{-# SPECIALIZE foreignLibFieldGrammar :: UnqualComponentName -> PrettyFieldGrammar' ForeignLib #-}
+-- {-# SPECIALIZE foreignLibFieldGrammar :: UnqualComponentName -> ParsecFieldGrammar' ForeignLib #-}
+-- {-# SPECIALIZE foreignLibFieldGrammar :: UnqualComponentName -> PrettyFieldGrammar' ForeignLib #-}
 
 -------------------------------------------------------------------------------
 -- Executable
 -------------------------------------------------------------------------------
 
 executableFieldGrammar
-  :: ( FieldGrammar c g
-     , Applicative (g Mod.HasNoAnn Executable)
-     , Applicative (g Mod.HasNoAnn BuildInfo)
+  :: forall mod c g
+   . ( FieldGrammarWith mod c g
+     , Applicative (g mod (ExecutableWith mod))
+     , Applicative (g mod (BuildInfoWith mod))
+
+     , Monoid (ExecutableWith mod)
+
+     , L.HasBuildInfoWith mod (ExecutableWith mod)
+     , L.HasBuildInfoWith mod (BuildInfoWith mod)
+
+-- new bounds
+
+     , Newtype [AttachPosition mod (Annotate mod LegacyExeDependency)] (ListWith mod CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
+     , c (ListWith mod CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
+
+     , Newtype [AttachPosition mod (Annotate mod ExeDependency)] (ListWith mod CommaFSep (Identity ExeDependency) ExeDependency)
+     , c (ListWith mod CommaFSep (Identity ExeDependency) ExeDependency)
+
+     , Newtype [AttachPosition mod (Annotate mod String)] (ListWith mod NoCommaFSep Token' String)
+     , c (ListWith mod NoCommaFSep Token' String)
+
+     , Newtype [AttachPosition mod (Annotate mod PkgconfigDependency)] (ListWith mod CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
+     , c (ListWith mod CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
+
+     , Newtype [AttachPosition mod (Annotate mod (RelativePath Framework File))] (ListWith mod FSep (RelativePathNT Framework File) (RelativePath Framework File))
+     , c (ListWith mod FSep (RelativePathNT Framework File) (RelativePath Framework File))
+
+     , Newtype [AttachPosition mod (Annotate mod (SymbolicPath Pkg (Dir Framework)))] (ListWith mod FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
+     , c (ListWith mod FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
+
+     , Newtype [AttachPosition mod (Annotate mod (SymbolicPath Pkg File))] (ListWith mod VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
+     , c (ListWith mod VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
+
+     , c (List FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+
+     , -- is a monoid with or without annotation, for hsSourceDirs compat
+       Monoid (PreserveGrouping mod (AttachPositions mod [AttachPosition mod (Annotate mod (SymbolicPath Pkg (Dir Source)))]))
+     , Newtype [AttachPosition mod (Annotate mod (SymbolicPath Pkg (Dir Source)))] (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+     , c (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+
+     , Newtype [AttachPosition mod (Annotate mod ModuleName)] (ListWith mod VCat (MQuoted ModuleName) ModuleName)
+     , c (ListWith mod VCat (MQuoted ModuleName) ModuleName)
+
+     , Newtype
+        [AttachPosition mod (Annotate mod (DependencyWith mod))]
+        (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
+     , c (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
+
+--
+
      , c (Identity ExecutableScope)
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
      , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
@@ -338,14 +430,14 @@ executableFieldGrammar
      , c (MQuoted Language)
      )
   => UnqualComponentName
-  -> g Mod.HasNoAnn Executable Executable
+  -> g mod (ExecutableWith mod) (ExecutableWith mod)
 executableFieldGrammar n =
   Executable n
     -- main-is is optional as conditional blocks don't have it
-    <$> optionalFieldDefAla "main-is" RelativePathNT L.modulePath (modulePath mempty)
+    <$> optionalFieldDefAla "main-is" RelativePathNT L.modulePath (unsafeMakeSymbolicPath "")
     <*> optionalFieldDef "scope" L.exeScope ExecutablePublic
       ^^^ availableSince CabalSpecV2_0 ExecutablePublic
-    <*> blurFieldGrammar L.buildInfo buildInfoFieldGrammar
+    <*> blurFieldGrammar (L.buildInfo @mod) (buildInfoFieldGrammar @mod)
 {-# SPECIALIZE executableFieldGrammar :: UnqualComponentName -> ParsecFieldGrammar' Executable #-}
 {-# SPECIALIZE executableFieldGrammar :: UnqualComponentName -> PrettyFieldGrammar' Executable #-}
 
@@ -353,43 +445,89 @@ executableFieldGrammar n =
 -- TestSuite
 -------------------------------------------------------------------------------
 
+type TestSuiteStanza = TestSuiteStanzaWith Mod.HasNoAnn
+
 -- | An intermediate type just used for parsing the test-suite stanza.
 -- After validation it is converted into the proper 'TestSuite' type.
-data TestSuiteStanza = TestSuiteStanza
+data TestSuiteStanzaWith (mod :: Mod.HasAnnotation) = TestSuiteStanza
   { _testStanzaTestType :: Maybe TestType
   , _testStanzaMainIs :: Maybe (RelativePath Source File)
   , _testStanzaTestModule :: Maybe ModuleName
-  , _testStanzaBuildInfo :: BuildInfo
+  , _testStanzaBuildInfo :: BuildInfoWith mod
   , _testStanzaCodeGenerators :: [String]
   }
 
 instance L.HasBuildInfoWith Mod.HasNoAnn TestSuiteStanza where
   buildInfo = testStanzaBuildInfo
 
-testStanzaTestType :: Lens' TestSuiteStanza (Maybe TestType)
+testStanzaTestType :: Lens' (TestSuiteStanzaWith mod) (Maybe TestType)
 testStanzaTestType f s = fmap (\x -> s{_testStanzaTestType = x}) (f (_testStanzaTestType s))
 {-# INLINE testStanzaTestType #-}
 
-testStanzaMainIs :: Lens' TestSuiteStanza (Maybe (RelativePath Source File))
+testStanzaMainIs :: Lens' (TestSuiteStanzaWith mod) (Maybe (RelativePath Source File))
 testStanzaMainIs f s = fmap (\x -> s{_testStanzaMainIs = x}) (f (_testStanzaMainIs s))
 {-# INLINE testStanzaMainIs #-}
 
-testStanzaTestModule :: Lens' TestSuiteStanza (Maybe ModuleName)
+testStanzaTestModule :: Lens' (TestSuiteStanzaWith mod) (Maybe ModuleName)
 testStanzaTestModule f s = fmap (\x -> s{_testStanzaTestModule = x}) (f (_testStanzaTestModule s))
 {-# INLINE testStanzaTestModule #-}
 
-testStanzaBuildInfo :: Lens' TestSuiteStanza BuildInfo
+testStanzaBuildInfo :: Lens' (TestSuiteStanzaWith mod) (BuildInfoWith mod)
 testStanzaBuildInfo f s = fmap (\x -> s{_testStanzaBuildInfo = x}) (f (_testStanzaBuildInfo s))
 {-# INLINE testStanzaBuildInfo #-}
 
-testStanzaCodeGenerators :: Lens' TestSuiteStanza [String]
+testStanzaCodeGenerators :: Lens' (TestSuiteStanzaWith mod) [String]
 testStanzaCodeGenerators f s = fmap (\x -> s{_testStanzaCodeGenerators = x}) (f (_testStanzaCodeGenerators s))
 {-# INLINE testStanzaCodeGenerators #-}
 
 testSuiteFieldGrammar
-  :: ( FieldGrammar c g
-     , Applicative (g Mod.HasNoAnn TestSuiteStanza)
-     , Applicative (g Mod.HasNoAnn BuildInfo)
+  :: forall mod c g
+   . ( FieldGrammarWith mod c g
+     , Applicative (g mod (TestSuiteStanzaWith mod))
+     , Applicative (g mod (BuildInfoWith mod))
+
+     , L.HasBuildInfoWith mod (BuildInfoWith mod)
+
+-- new bounds
+
+     , Newtype [AttachPosition mod (Annotate mod LegacyExeDependency)] (ListWith mod CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
+     , c (ListWith mod CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
+
+     , Newtype [AttachPosition mod (Annotate mod ExeDependency)] (ListWith mod CommaFSep (Identity ExeDependency) ExeDependency)
+     , c (ListWith mod CommaFSep (Identity ExeDependency) ExeDependency)
+
+     , Newtype [AttachPosition mod (Annotate mod String)] (ListWith mod NoCommaFSep Token' String)
+     , c (ListWith mod NoCommaFSep Token' String)
+
+     , Newtype [AttachPosition mod (Annotate mod PkgconfigDependency)] (ListWith mod CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
+     , c (ListWith mod CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
+
+     , Newtype [AttachPosition mod (Annotate mod (RelativePath Framework File))] (ListWith mod FSep (RelativePathNT Framework File) (RelativePath Framework File))
+     , c (ListWith mod FSep (RelativePathNT Framework File) (RelativePath Framework File))
+
+     , Newtype [AttachPosition mod (Annotate mod (SymbolicPath Pkg (Dir Framework)))] (ListWith mod FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
+     , c (ListWith mod FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
+
+     , Newtype [AttachPosition mod (Annotate mod (SymbolicPath Pkg File))] (ListWith mod VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
+     , c (ListWith mod VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
+
+     , c (List FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+
+     , -- is a monoid with or without annotation, for hsSourceDirs compat
+       Monoid (PreserveGrouping mod (AttachPositions mod [AttachPosition mod (Annotate mod (SymbolicPath Pkg (Dir Source)))]))
+     , Newtype [AttachPosition mod (Annotate mod (SymbolicPath Pkg (Dir Source)))] (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+     , c (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+
+     , Newtype [AttachPosition mod (Annotate mod ModuleName)] (ListWith mod VCat (MQuoted ModuleName) ModuleName)
+     , c (ListWith mod VCat (MQuoted ModuleName) ModuleName)
+
+     , Newtype
+        [AttachPosition mod (Annotate mod (DependencyWith mod))]
+        (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
+     , c (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
+
+--
+
      , c (Identity ModuleName)
      , c (Identity TestType)
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
@@ -410,13 +548,13 @@ testSuiteFieldGrammar
      , c (List VCat Token String)
      , c (MQuoted Language)
      )
-  => g Mod.HasNoAnn TestSuiteStanza TestSuiteStanza
+  => g mod (TestSuiteStanzaWith mod) (TestSuiteStanzaWith mod)
 testSuiteFieldGrammar =
   TestSuiteStanza
     <$> optionalField "type" testStanzaTestType
     <*> optionalFieldAla "main-is" RelativePathNT testStanzaMainIs
     <*> optionalField "test-module" testStanzaTestModule
-    <*> blurFieldGrammar testStanzaBuildInfo buildInfoFieldGrammar
+    <*> blurFieldGrammar testStanzaBuildInfo (buildInfoFieldGrammar @mod)
     <*> monoidalFieldAla "code-generators" (alaList' CommaFSep Token) testStanzaCodeGenerators
       ^^^ availableSince CabalSpecV3_8 []
 
@@ -503,38 +641,85 @@ unvalidateTestSuite t =
 -- Benchmark
 -------------------------------------------------------------------------------
 
+type BenchmarkStanza = BenchmarkStanzaWith Mod.HasNoAnn
+
 -- | An intermediate type just used for parsing the benchmark stanza.
 -- After validation it is converted into the proper 'Benchmark' type.
-data BenchmarkStanza = BenchmarkStanza
+data BenchmarkStanzaWith (mod :: Mod.HasAnnotation) = BenchmarkStanza
   { _benchmarkStanzaBenchmarkType :: Maybe BenchmarkType
   , _benchmarkStanzaMainIs :: Maybe (RelativePath Source File)
   , _benchmarkStanzaBenchmarkModule :: Maybe ModuleName
-  , _benchmarkStanzaBuildInfo :: BuildInfo
+  , _benchmarkStanzaBuildInfo :: BuildInfoWith mod
   }
 
 instance L.HasBuildInfoWith Mod.HasNoAnn BenchmarkStanza where
   buildInfo = benchmarkStanzaBuildInfo
 
-benchmarkStanzaBenchmarkType :: Lens' BenchmarkStanza (Maybe BenchmarkType)
+benchmarkStanzaBenchmarkType :: Lens' (BenchmarkStanzaWith mod) (Maybe BenchmarkType)
 benchmarkStanzaBenchmarkType f s = fmap (\x -> s{_benchmarkStanzaBenchmarkType = x}) (f (_benchmarkStanzaBenchmarkType s))
 {-# INLINE benchmarkStanzaBenchmarkType #-}
 
-benchmarkStanzaMainIs :: Lens' BenchmarkStanza (Maybe (RelativePath Source File))
+benchmarkStanzaMainIs :: Lens' (BenchmarkStanzaWith mod) (Maybe (RelativePath Source File))
 benchmarkStanzaMainIs f s = fmap (\x -> s{_benchmarkStanzaMainIs = x}) (f (_benchmarkStanzaMainIs s))
 {-# INLINE benchmarkStanzaMainIs #-}
 
-benchmarkStanzaBenchmarkModule :: Lens' BenchmarkStanza (Maybe ModuleName)
+benchmarkStanzaBenchmarkModule :: Lens' (BenchmarkStanzaWith mod) (Maybe ModuleName)
 benchmarkStanzaBenchmarkModule f s = fmap (\x -> s{_benchmarkStanzaBenchmarkModule = x}) (f (_benchmarkStanzaBenchmarkModule s))
 {-# INLINE benchmarkStanzaBenchmarkModule #-}
 
-benchmarkStanzaBuildInfo :: Lens' BenchmarkStanza BuildInfo
+benchmarkStanzaBuildInfo :: Lens' (BenchmarkStanzaWith mod) (BuildInfoWith mod)
 benchmarkStanzaBuildInfo f s = fmap (\x -> s{_benchmarkStanzaBuildInfo = x}) (f (_benchmarkStanzaBuildInfo s))
 {-# INLINE benchmarkStanzaBuildInfo #-}
 
 benchmarkFieldGrammar
-  :: ( FieldGrammar c g
-     , Applicative (g Mod.HasNoAnn BenchmarkStanza)
-     , Applicative (g Mod.HasNoAnn BuildInfo)
+  :: forall mod c g
+   . ( FieldGrammarWith mod c g
+     , Applicative (g mod (BenchmarkStanzaWith mod))
+     , Applicative (g mod (BuildInfoWith mod))
+
+     , L.HasBuildInfoWith mod (BuildInfoWith mod)
+
+-- new bounds
+
+     , Newtype [AttachPosition mod (Annotate mod LegacyExeDependency)] (ListWith mod CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
+     , c (ListWith mod CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
+
+     , Newtype [AttachPosition mod (Annotate mod ExeDependency)] (ListWith mod CommaFSep (Identity ExeDependency) ExeDependency)
+     , c (ListWith mod CommaFSep (Identity ExeDependency) ExeDependency)
+
+     , Newtype [AttachPosition mod (Annotate mod String)] (ListWith mod NoCommaFSep Token' String)
+     , c (ListWith mod NoCommaFSep Token' String)
+
+     , Newtype [AttachPosition mod (Annotate mod PkgconfigDependency)] (ListWith mod CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
+     , c (ListWith mod CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
+
+     , Newtype [AttachPosition mod (Annotate mod (RelativePath Framework File))] (ListWith mod FSep (RelativePathNT Framework File) (RelativePath Framework File))
+     , c (ListWith mod FSep (RelativePathNT Framework File) (RelativePath Framework File))
+
+     , Newtype [AttachPosition mod (Annotate mod (SymbolicPath Pkg (Dir Framework)))] (ListWith mod FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
+     , c (ListWith mod FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
+
+     , Newtype [AttachPosition mod (Annotate mod (SymbolicPath Pkg File))] (ListWith mod VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
+     , c (ListWith mod VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
+
+     , c (List FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+
+     , -- is a monoid with or without annotation, for hsSourceDirs compat
+       Monoid (PreserveGrouping mod (AttachPositions mod [AttachPosition mod (Annotate mod (SymbolicPath Pkg (Dir Source)))]))
+     , Newtype [AttachPosition mod (Annotate mod (SymbolicPath Pkg (Dir Source)))] (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+     , c (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+
+     , Newtype [AttachPosition mod (Annotate mod ModuleName)] (ListWith mod VCat (MQuoted ModuleName) ModuleName)
+     , c (ListWith mod VCat (MQuoted ModuleName) ModuleName)
+
+     , Newtype
+        [AttachPosition mod (Annotate mod (DependencyWith mod))]
+        (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
+     , c (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
+
+
+--
+
      , c (Identity BenchmarkType)
      , c (Identity ModuleName)
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
@@ -554,7 +739,7 @@ benchmarkFieldGrammar
      , c (List VCat Token String)
      , c (MQuoted Language)
      )
-  => g Mod.HasNoAnn BenchmarkStanza BenchmarkStanza
+  => g mod (BenchmarkStanzaWith mod) (BenchmarkStanzaWith mod)
 benchmarkFieldGrammar =
   BenchmarkStanza
     <$> optionalField "type" benchmarkStanzaBenchmarkType
@@ -1152,10 +1337,10 @@ _syntaxFieldNames =
             mconcat
               [ fieldGrammarKnownFieldList packageDescriptionFieldGrammar
               , fieldGrammarKnownFieldList $ (libraryFieldGrammar @Mod.HasNoAnn) LMainLibName
-              , fieldGrammarKnownFieldList $ executableFieldGrammar "exe"
-              , fieldGrammarKnownFieldList $ foreignLibFieldGrammar "flib"
-              , fieldGrammarKnownFieldList testSuiteFieldGrammar
-              , fieldGrammarKnownFieldList benchmarkFieldGrammar
+              , fieldGrammarKnownFieldList $ (executableFieldGrammar @Mod.HasNoAnn) "exe"
+              , fieldGrammarKnownFieldList $ (foreignLibFieldGrammar @Mod.HasNoAnn) "flib"
+              , fieldGrammarKnownFieldList (testSuiteFieldGrammar @Mod.HasNoAnn)
+              , fieldGrammarKnownFieldList (benchmarkFieldGrammar @Mod.HasNoAnn)
               , fieldGrammarKnownFieldList $ (flagFieldGrammar @Mod.HasNoAnn) (error "flagname")
               , fieldGrammarKnownFieldList $ (sourceRepoFieldGrammar @Mod.HasNoAnn) (error "repokind")
               , fieldGrammarKnownFieldList $ (setupBInfoFieldGrammar @Mod.HasNoAnn) True

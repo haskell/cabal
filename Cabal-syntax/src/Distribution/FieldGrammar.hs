@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -16,11 +17,13 @@ module Distribution.FieldGrammar
     -- * Concrete grammar implementations
   , ParsecFieldGrammar
   , ParsecFieldGrammar'
+  , ParsecFieldGrammarWith'
   , parseFieldGrammar
   , parseFieldGrammarCheckingStanzas
   , fieldGrammarKnownFieldList
   , PrettyFieldGrammar
   , PrettyFieldGrammar'
+  , PrettyFieldGrammarWith'
   , prettyFieldGrammar
 
     -- * Auxiliary
@@ -50,6 +53,9 @@ import Distribution.Fields.Field
 import Distribution.Utils.Generic (spanMaybe)
 
 import qualified Distribution.Types.Modify as Mod
+
+type ParsecFieldGrammarWith' (mod :: Mod.HasAnnotation) a = ParsecFieldGrammar mod a a
+type PrettyFieldGrammarWith' (mod :: Mod.HasAnnotation) a = PrettyFieldGrammar mod a a
 
 type ParsecFieldGrammar' a = ParsecFieldGrammar Mod.HasNoAnn a a
 type PrettyFieldGrammar' a = PrettyFieldGrammar Mod.HasNoAnn a a

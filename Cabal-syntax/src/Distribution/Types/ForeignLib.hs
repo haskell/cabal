@@ -1,10 +1,14 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module Distribution.Types.ForeignLib
-  ( ForeignLib (..)
+  ( ForeignLib
+  , ForeignLibWith (..)
   , emptyForeignLib
   , foreignLibModules
   , foreignLibIsShared
@@ -40,9 +44,11 @@ import qualified Text.Read as Read
 
 import qualified Distribution.Types.BuildInfo.Lens as L
 
+type ForeignLib = ForeignLibWith Mod.HasNoAnn
+
 -- | A foreign library stanza is like a library stanza, except that
 -- the built code is intended for consumption by a non-Haskell client.
-data ForeignLib = ForeignLib
+data ForeignLibWith (m :: Mod.HasAnnotation) = ForeignLib
   { foreignLibName :: UnqualComponentName
   -- ^ Name of the foreign library
   , foreignLibType :: ForeignLibType
@@ -50,7 +56,7 @@ data ForeignLib = ForeignLib
   , foreignLibOptions :: [ForeignLibOption]
   -- ^ What options apply to this foreign library (e.g., are we
   -- merging in all foreign dependencies.)
-  , foreignLibBuildInfo :: BuildInfo
+  , foreignLibBuildInfo :: BuildInfoWith m
   -- ^ Build information for this foreign library.
   , foreignLibVersionInfo :: Maybe LibVersionInfo
   -- ^ Libtool-style version-info data to compute library version.
@@ -64,7 +70,12 @@ data ForeignLib = ForeignLib
   -- This is a list rather than a maybe field so that we can flatten
   -- the condition trees (for instance, when creating an sdist)
   }
-  deriving (Generic, Show, Read, Eq, Ord, Data)
+deriving instance Generic ForeignLib
+deriving instance Show ForeignLib
+deriving instance Read ForeignLib
+deriving instance Eq ForeignLib
+deriving instance Ord ForeignLib
+deriving instance Data ForeignLib
 
 data LibVersionInfo = LibVersionInfo Int Int Int deriving (Data, Eq, Generic)
 

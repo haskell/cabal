@@ -10,10 +10,8 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 
 module Distribution.Types.CondTree
-  ( CondTree
-  , CondTreeWith (..)
-  , CondBranch
-  , CondBranchWith (..)
+  ( CondTree (..)
+  , CondBranch (..)
   , condIfThen
   , condIfThenElse
   , foldCondTree
@@ -64,9 +62,7 @@ import qualified Distribution.Compat.Lens as L
 -- derived off of 'targetBuildInfo' (perhaps a good refactoring
 -- would be to convert this into an opaque type, with a smart
 -- constructor that pre-computes the dependencies.)
-type CondTree = CondTreeWith Identity
-
-data CondTreeWith f v a = CondNode
+data CondTree v a = CondNode
   { condTreeData :: a
   , condTreeComponents :: [CondBranch v a]
   }
@@ -99,12 +95,10 @@ instance (Semigroup a, Monoid a) => Monoid (CondTree v a) where
 -- | A 'CondBranch' represents a conditional branch, e.g., @if
 -- flag(foo)@ on some syntax @a@.  It also has an optional false
 -- branch.
-type CondBranch = CondBranchWith Identity
-
-data CondBranchWith (f :: Type -> Type) v a = CondBranch
+data CondBranch v a = CondBranch
   { condBranchCondition :: Condition v
-  , condBranchIfTrue :: CondTreeWith f v a
-  , condBranchIfFalse :: Maybe (CondTreeWith f v a)
+  , condBranchIfTrue :: CondTree v a
+  , condBranchIfFalse :: Maybe (CondTree v a)
   }
   deriving (Generic)
 

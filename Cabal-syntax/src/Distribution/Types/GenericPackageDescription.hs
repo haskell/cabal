@@ -65,15 +65,15 @@ data GenericPackageDescriptionWith (m :: Mod.HasAnnotation) = GenericPackageDesc
   , genPackageFlags :: [PackageFlag]
   , condLibrary :: (Maybe (CondTree ConfVar (LibraryWith m)))
   , condSubLibraries
-      :: [(UnqualComponentName, CondTree ConfVar Library)]
+      :: [(UnqualComponentName, CondTree ConfVar (LibraryWith m))]
   , condForeignLibs
-      :: [(UnqualComponentName, CondTree ConfVar ForeignLib)]
+      :: [(UnqualComponentName, CondTree ConfVar (ForeignLibWith m))]
   , condExecutables
-      :: [(UnqualComponentName, CondTree ConfVar Executable)]
+      :: [(UnqualComponentName, CondTree ConfVar (ExecutableWith m))]
   , condTestSuites
-      :: [(UnqualComponentName, CondTree ConfVar TestSuite)]
+      :: [(UnqualComponentName, CondTree ConfVar (TestSuiteWith m))]
   , condBenchmarks
-      :: [(UnqualComponentName, CondTree ConfVar Benchmark)]
+      :: [(UnqualComponentName, CondTree ConfVar (BenchmarkWith m))]
   }
 
 deriving instance Eq (GenericPackageDescriptionWith Mod.HasNoAnn)
@@ -89,7 +89,7 @@ deriving instance Binary (GenericPackageDescriptionWith Mod.HasNoAnn)
 instance Structured GenericPackageDescription
 instance NFData GenericPackageDescription where rnf = genericRnf
 
-emptyGenericPackageDescription :: GenericPackageDescription
+emptyGenericPackageDescription :: GenericPackageDescriptionWith mod
 emptyGenericPackageDescription = GenericPackageDescription emptyPackageDescription Nothing [] Nothing [] [] [] [] []
 
 -- -----------------------------------------------------------------------------

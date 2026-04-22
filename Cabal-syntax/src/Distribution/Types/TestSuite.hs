@@ -1,10 +1,15 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module Distribution.Types.TestSuite
-  ( TestSuite (..)
+  ( TestSuite
+  , TestSuiteWith (..)
   , emptyTestSuite
   , testType
   , testModules
@@ -24,16 +29,23 @@ import Distribution.ModuleName
 import qualified Distribution.Types.BuildInfo.Lens as L
 import qualified Distribution.Types.Modify as Mod
 
+type TestSuite = TestSuiteWith Mod.HasNoAnn
+
 -- | A \"test-suite\" stanza in a cabal file.
-data TestSuite = TestSuite
+data TestSuiteWith (mod :: Mod.HasAnnotation) = TestSuite
   { testName :: UnqualComponentName
   , testInterface :: TestSuiteInterface
-  , testBuildInfo :: BuildInfo
+  , testBuildInfo :: BuildInfoWith mod
   , testCodeGenerators :: [String]
   }
-  deriving (Generic, Show, Read, Eq, Ord, Data)
+deriving instance Generic TestSuite
+deriving instance Show TestSuite
+deriving instance Read TestSuite
+deriving instance Eq TestSuite
+deriving instance Ord TestSuite
+deriving instance Data TestSuite
 
-instance L.HasBuildInfoWith Mod.HasNoAnn TestSuite where
+instance forall (mod :: Mod.HasAnnotation). L.HasBuildInfoWith mod (TestSuiteWith mod) where
   buildInfo f l = (\x -> l{testBuildInfo = x}) <$> f (testBuildInfo l)
 
 instance Binary TestSuite

@@ -1,10 +1,15 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module Distribution.Types.Benchmark
-  ( Benchmark (..)
+  ( Benchmark
+  , BenchmarkWith (..)
   , emptyBenchmark
   , benchmarkType
   , benchmarkModules
@@ -24,19 +29,26 @@ import Distribution.ModuleName
 
 import qualified Distribution.Types.BuildInfo.Lens as L
 
+type Benchmark = BenchmarkWith Mod.HasNoAnn
+
 -- | A \"benchmark\" stanza in a cabal file.
-data Benchmark = Benchmark
+data BenchmarkWith (mod :: Mod.HasAnnotation) = Benchmark
   { benchmarkName :: UnqualComponentName
   , benchmarkInterface :: BenchmarkInterface
-  , benchmarkBuildInfo :: BuildInfo
+  , benchmarkBuildInfo :: BuildInfoWith mod
   }
-  deriving (Generic, Show, Read, Eq, Ord, Data)
+deriving instance Generic Benchmark
+deriving instance Show Benchmark
+deriving instance Read Benchmark
+deriving instance Eq Benchmark
+deriving instance Ord Benchmark
+deriving instance Data Benchmark
 
 instance Binary Benchmark
 instance Structured Benchmark
 instance NFData Benchmark where rnf = genericRnf
 
-instance L.HasBuildInfoWith Mod.HasNoAnn Benchmark where
+instance forall (mod :: Mod.HasAnnotation). L.HasBuildInfoWith mod (BenchmarkWith mod) where
   buildInfo f (Benchmark x1 x2 x3) = fmap (\y1 -> Benchmark x1 x2 y1) (f x3)
 
 instance Monoid Benchmark where

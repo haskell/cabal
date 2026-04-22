@@ -11,6 +11,7 @@ module Distribution.Types.BuildInfo
   ( BuildInfo
   , BuildInfoAnn
   , BuildInfoWith (..)
+  , unannotateBuildInfo
   , unannotateDependencyAnn
   , emptyBuildInfo
   , allLanguages

@@ -1,10 +1,14 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module Distribution.Types.Executable
-  ( Executable (..)
+  ( Executable
+  , ExecutableWith (..)
   , emptyExecutable
   , exeModules
   , exeModulesAutogen
@@ -23,13 +27,20 @@ import qualified Distribution.Types.Modify as Mod
 
 import qualified Distribution.Types.BuildInfo.Lens as L
 
-data Executable = Executable
+type Executable = ExecutableWith Mod.HasNoAnn
+
+data ExecutableWith (mod :: Mod.HasAnnotation) = Executable
   { exeName :: UnqualComponentName
   , modulePath :: RelativePath Source File
   , exeScope :: ExecutableScope
-  , buildInfo :: BuildInfo
+  , buildInfo :: BuildInfoWith mod
   }
-  deriving (Generic, Show, Read, Eq, Ord, Data)
+deriving instance Generic Executable
+deriving instance Show Executable
+deriving instance Read Executable
+deriving instance Eq Executable
+deriving instance Ord Executable
+deriving instance Data Executable
 
 instance L.HasBuildInfoWith Mod.HasNoAnn Executable where
   buildInfo f l = (\x -> l{buildInfo = x}) <$> f (buildInfo l)
