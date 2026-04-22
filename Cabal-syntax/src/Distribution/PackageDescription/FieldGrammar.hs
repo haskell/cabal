@@ -597,6 +597,8 @@ unvalidateBenchmark b =
 -- Build info
 -------------------------------------------------------------------------------
 
+{-
+
 buildInfoFieldGrammar
   :: forall mod c g
    . ( FieldGrammarWith mod c g
@@ -711,7 +713,9 @@ buildInfoFieldGrammar =
 -- {-# SPECIALIZE buildInfoFieldGrammar :: ParsecFieldGrammar' BuildInfoAnn #-}
 -- {-# SPECIALIZE buildInfoFieldGrammar :: PrettyFieldGrammar' BuildInfoAnn #-}
 
-buildInfoFieldGrammar'
+-}
+
+buildInfoFieldGrammar
   :: forall mod c g
    . ( FieldGrammarWith mod c g
      , Applicative (g mod (BuildInfoWith mod))
@@ -772,7 +776,7 @@ buildInfoFieldGrammar'
      , c (List CommaVCat (Identity Mixin) Mixin)
      )
   => g mod (BuildInfoWith mod) (BuildInfoWith mod)
-buildInfoFieldGrammar' = do
+buildInfoFieldGrammar = do
   buildable <- booleanFieldDef' "buildable" L.buildable True
   buildTools <- monoidalFieldAla' "build-tools" (alaListWith @mod @CommaFSep @LegacyExeDependency) L.buildTools
   buildToolDepends <- monoidalFieldAla' "build-tool-depends" (alaListWith @mod @CommaFSep @ExeDependency) L.buildToolDepends
@@ -794,8 +798,6 @@ buildInfoFieldGrammar' = do
   jsSources <- monoidalFieldAla' "js-sources" (alaListWith' @mod @VCat @(SymbolicPathNT Pkg File) @(SymbolicPath Pkg File)) L.jsSources
   hsSourceDirs <- hsSourceDirsGrammar @mod
   otherModules <- monoidalFieldAla' "other-modules" (formatOtherModules @mod) L.otherModules
-
-  targetBuildDepends <- monoidalFieldAla' "build-depends" (formatDependencyList @mod) L.targetBuildDepends
 
   -- This section uses legacy monoidalFieldAla and doesn't handle trivia
   virtualModules <- monoidalFieldAla "virtual-modules" (alaList' VCat MQuoted) L.virtualModules
@@ -823,6 +825,9 @@ buildInfoFieldGrammar' = do
   profSharedOptions <- profSharedOptionsFieldGrammar
   let staticOptions = mempty
   customFieldsBI <- prefixedFields "x-" L.customFieldsBI
+
+  targetBuildDepends <- monoidalFieldAla' "build-depends" (formatDependencyList @mod) L.targetBuildDepends
+
   mixins <- monoidalFieldAla "mixins" formatMixinList L.mixins
 
   pure (BuildInfo{..})

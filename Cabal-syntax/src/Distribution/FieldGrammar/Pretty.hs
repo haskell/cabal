@@ -58,6 +58,8 @@ instance FieldGrammarWith Mod.HasNoAnn Pretty PrettyFieldGrammar where
         where
           b = aview l s
 
+  booleanFieldDef' = booleanFieldDef
+
   optionalFieldAla fn _pack l = PrettyFG pp
     where
       pp v s = case aview l s of

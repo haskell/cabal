@@ -204,6 +204,8 @@ instance FieldGrammarWith Mod.HasNoAnn Parsec ParsecFieldGrammar where
 
       parseOne v (MkNamelessField pos fls) = runFieldParser pos parsec v fls
 
+  booleanFieldDef' = booleanFieldDef
+
   optionalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
       parser v fields = case Map.lookup fn fields of
