@@ -170,6 +170,22 @@ instance Semigroup ForeignLib where
       -- chooseLast: the second field overrides the first, unless it is Nothing
       chooseLast field = getLast (Last (field a) <> Last (field b))
 
+instance Semigroup (ForeignLibWith Mod.HasAnn) where
+  a <> b =
+    ForeignLib
+      { foreignLibName = combineNames a b foreignLibName "foreign library"
+      , foreignLibType = combine foreignLibType
+      , foreignLibOptions = combine foreignLibOptions
+      , foreignLibBuildInfo = combine foreignLibBuildInfo
+      , foreignLibVersionInfo = chooseLast foreignLibVersionInfo
+      , foreignLibVersionLinux = chooseLast foreignLibVersionLinux
+      , foreignLibModDefFile = combine foreignLibModDefFile
+      }
+    where
+      combine field = field a `mappend` field b
+      -- chooseLast: the second field overrides the first, unless it is Nothing
+      chooseLast field = getLast (Last (field a) <> Last (field b))
+
 instance Monoid ForeignLib where
   mempty =
     ForeignLib
@@ -183,9 +199,24 @@ instance Monoid ForeignLib where
       }
   mappend = (<>)
 
+instance Monoid (ForeignLibWith Mod.HasAnn) where
+  mempty = emptyForeignLib'
+
 -- | An empty foreign library.
 emptyForeignLib :: ForeignLib
 emptyForeignLib = mempty
+
+emptyForeignLib' :: ForeignLibWith Mod.HasAnn
+emptyForeignLib' =
+  ForeignLib
+    { foreignLibName = mempty
+    , foreignLibType = ForeignLibTypeUnknown
+    , foreignLibOptions = []
+    , foreignLibBuildInfo = mempty
+    , foreignLibVersionInfo = Nothing
+    , foreignLibVersionLinux = Nothing
+    , foreignLibModDefFile = []
+    }
 
 -- | Modules defined by a foreign library.
 foreignLibModules :: ForeignLib -> [ModuleName]

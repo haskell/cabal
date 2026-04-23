@@ -44,7 +44,8 @@ module Distribution.PackageDescription.FieldGrammar
   , testStanzaBuildInfo
 
     -- * Benchmark
-  , BenchmarkStanza (..)
+  , BenchmarkStanza
+  , BenchmarkStanzaWith (..)
   , benchmarkFieldGrammar
   , validateBenchmark
   , unvalidateBenchmark
@@ -77,6 +78,7 @@ module Distribution.PackageDescription.FieldGrammar
   , buildInfoFieldGrammar
   , MiniBuildInfo (..)
   , miniBuildInfoFieldGrammar
+  , BuildInfoConstraint
   ) where
 
 import Distribution.Compat.Lens
@@ -938,6 +940,67 @@ buildInfoFieldGrammar =
 -- {-# SPECIALIZE buildInfoFieldGrammar :: PrettyFieldGrammar' BuildInfoAnn #-}
 
 -}
+
+
+type BuildInfoConstraint (mod :: Mod.HasAnnotation) c =
+     ( Newtype [AttachPosition mod (Annotate mod LegacyExeDependency)] (ListWith mod CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
+     , c (ListWith mod CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
+
+     , Newtype [AttachPosition mod (Annotate mod ExeDependency)] (ListWith mod CommaFSep (Identity ExeDependency) ExeDependency)
+     , c (ListWith mod CommaFSep (Identity ExeDependency) ExeDependency)
+
+     , Newtype [AttachPosition mod (Annotate mod String)] (ListWith mod NoCommaFSep Token' String)
+     , c (ListWith mod NoCommaFSep Token' String)
+
+     , Newtype [AttachPosition mod (Annotate mod PkgconfigDependency)] (ListWith mod CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
+     , c (ListWith mod CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
+
+     , Newtype [AttachPosition mod (Annotate mod (RelativePath Framework File))] (ListWith mod FSep (RelativePathNT Framework File) (RelativePath Framework File))
+     , c (ListWith mod FSep (RelativePathNT Framework File) (RelativePath Framework File))
+
+     , Newtype [AttachPosition mod (Annotate mod (SymbolicPath Pkg (Dir Framework)))] (ListWith mod FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
+     , c (ListWith mod FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
+
+     , Newtype [AttachPosition mod (Annotate mod (SymbolicPath Pkg File))] (ListWith mod VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
+     , c (ListWith mod VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
+
+     , c (List FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+
+     , -- is a monoid with or without annotation, for hsSourceDirs compat
+       Monoid (PreserveGrouping mod (AttachPositions mod [AttachPosition mod (Annotate mod (SymbolicPath Pkg (Dir Source)))]))
+     , Newtype [AttachPosition mod (Annotate mod (SymbolicPath Pkg (Dir Source)))] (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+     , c (ListWith mod FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+
+     , Newtype [AttachPosition mod (Annotate mod ModuleName)] (ListWith mod VCat (MQuoted ModuleName) ModuleName)
+     , c (ListWith mod VCat (MQuoted ModuleName) ModuleName)
+
+     , c (List VCat (MQuoted ModuleName) ModuleName)
+
+     , c (MQuoted Language)
+
+     , c (List FSep (MQuoted Language) Language)
+
+     , c (List FSep (MQuoted Extension) Extension)
+
+     , c (List VCat Token String)
+
+     , c (List FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
+     , c (List FSep (SymbolicPathNT Pkg (Dir Lib)) (SymbolicPath Pkg (Dir Lib)))
+     , c (List FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+     , c (List FSep (SymbolicPathNT Pkg (Dir Include)) (SymbolicPath Pkg (Dir Include)))
+     , c (List FSep (SymbolicPathNT Include File) (SymbolicPath Include File))
+     , c (List FSep (RelativePathNT Framework File) (RelativePath Framework File))
+     , c (List FSep (RelativePathNT Include File) (RelativePath Include File))
+
+     , c (List NoCommaFSep Token' String)
+
+     , Newtype
+        [AttachPosition mod (Annotate mod (DependencyWith mod))]
+        (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
+     , c (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
+
+     , c (List CommaVCat (Identity Mixin) Mixin)
+     )
 
 buildInfoFieldGrammar
   :: forall mod c g

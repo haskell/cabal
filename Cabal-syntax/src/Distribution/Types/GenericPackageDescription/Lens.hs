@@ -44,7 +44,7 @@ gpdScannedVersion :: Lens' GenericPackageDescription (Maybe Version)
 gpdScannedVersion f s = fmap (\x -> s{T.gpdScannedVersion = x}) (f (T.gpdScannedVersion s))
 {-# INLINE gpdScannedVersion #-}
 
-genPackageFlags :: Lens' GenericPackageDescription [PackageFlag]
+genPackageFlags :: Lens' (GenericPackageDescriptionWith mod) [PackageFlag]
 genPackageFlags f s = fmap (\x -> s{T.genPackageFlags = x}) (f (T.genPackageFlags s))
 {-# INLINE genPackageFlags #-}
 

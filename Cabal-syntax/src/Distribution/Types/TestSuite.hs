@@ -74,8 +74,31 @@ instance Semigroup TestSuite where
     where
       combine field = field a `mappend` field b
 
+instance Semigroup (TestSuiteWith Mod.HasAnn) where
+  a <> b =
+    TestSuite
+      { testName = combineNames a b testName "test"
+      , testInterface = combine testInterface
+      , testBuildInfo = combine testBuildInfo
+      , testCodeGenerators = combine testCodeGenerators
+      }
+    where
+      combine field = field a `mappend` field b
+
+instance Monoid (TestSuiteWith Mod.HasAnn) where
+  mempty = emptyTestSuite'
+
 emptyTestSuite :: TestSuite
 emptyTestSuite = mempty
+
+emptyTestSuite' :: TestSuiteWith Mod.HasAnn
+emptyTestSuite' =
+  TestSuite
+    { testName = mempty
+    , testInterface = mempty
+    , testBuildInfo = mempty
+    , testCodeGenerators = mempty
+    }
 
 testType :: TestSuite -> TestType
 testType test = case testInterface test of

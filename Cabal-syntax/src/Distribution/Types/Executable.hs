@@ -70,8 +70,31 @@ instance Semigroup Executable where
     where
       combine field = field a `mappend` field b
 
+instance Monoid (ExecutableWith Mod.HasAnn) where
+  mempty = emptyExecutable'
+
+instance Semigroup (ExecutableWith Mod.HasAnn) where
+  a <> b =
+    Executable
+      { exeName = combineNames a b exeName "executable"
+      , modulePath = unsafeMakeSymbolicPath $ combineNames a b (getSymbolicPath . modulePath) "modulePath"
+      , exeScope = combine exeScope
+      , buildInfo = combine buildInfo
+      }
+    where
+      combine field = field a `mappend` field b
+
 emptyExecutable :: Executable
 emptyExecutable = mempty
+
+emptyExecutable' :: ExecutableWith Mod.HasAnn
+emptyExecutable' =
+  Executable
+    { exeName = mempty
+    , modulePath = unsafeMakeSymbolicPath ""
+    , exeScope = mempty
+    , buildInfo = mempty
+    }
 
 -- | Get all the module names from an exe
 exeModules :: Executable -> [ModuleName]

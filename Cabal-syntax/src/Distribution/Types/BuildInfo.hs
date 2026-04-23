@@ -25,6 +25,9 @@ module Distribution.Types.BuildInfo
   , hcStaticOptions
   ) where
 
+import qualified Data.Semigroup as Semigroup (Last(..))
+import Data.Monoid (All (..))
+
 import Distribution.Compat.Prelude
 import Prelude ()
 
@@ -266,6 +269,9 @@ instance Monoid BuildInfo where
       }
   mappend = (<>)
 
+instance Monoid (BuildInfoWith Mod.HasAnn) where
+  mempty = emptyBuildInfo'
+
 instance Semigroup BuildInfo where
   a <> b =
     BuildInfo
@@ -324,8 +330,122 @@ instance Semigroup BuildInfo where
       combineNub field = nub (combine field)
       combineMby field = field b `mplus` field a
 
+instance Semigroup (BuildInfoWith Mod.HasAnn) where
+  a <> b =
+    BuildInfo
+      { buildable =
+          mapAnnA (fmap Semigroup.getLast) getAll $
+              mapAnnA (fmap Semigroup.Last) All (buildable a)
+              <> mapAnnA (fmap Semigroup.Last) All (buildable b)
+      , buildTools = combine buildTools
+      , buildToolDepends = combine buildToolDepends
+      , cppOptions = combine cppOptions
+      , asmOptions = combine asmOptions
+      , cmmOptions = combine cmmOptions
+      , ccOptions = combine ccOptions
+      , cxxOptions = combine cxxOptions
+      , jsppOptions = combine jsppOptions
+      , ldOptions = combine ldOptions
+      , hsc2hsOptions = combine hsc2hsOptions
+      , pkgconfigDepends = combine pkgconfigDepends
+      , frameworks = combineNub frameworks
+      , extraFrameworkDirs = combineNub extraFrameworkDirs
+      , asmSources = combineNub asmSources
+      , cmmSources = combineNub cmmSources
+      , cSources = combineNub cSources
+      , cxxSources = combineNub cxxSources
+      , jsSources = combineNub jsSources
+      , hsSourceDirs = combineNub hsSourceDirs
+      , otherModules = combineNub otherModules
+      , virtualModules = combineNub virtualModules
+      , autogenModules = combineNub autogenModules
+      , defaultLanguage = combineMby defaultLanguage
+      , otherLanguages = combineNub otherLanguages
+      , defaultExtensions = combineNub defaultExtensions
+      , otherExtensions = combineNub otherExtensions
+      , oldExtensions = combineNub oldExtensions
+      , extraLibs = combine extraLibs
+      , extraLibsStatic = combine extraLibsStatic
+      , extraGHCiLibs = combine extraGHCiLibs
+      , extraBundledLibs = combine extraBundledLibs
+      , extraLibFlavours = combine extraLibFlavours
+      , extraDynLibFlavours = combine extraDynLibFlavours
+      , extraLibDirs = combineNub extraLibDirs
+      , extraLibDirsStatic = combineNub extraLibDirsStatic
+      , includeDirs = combineNub includeDirs
+      , includes = combineNub includes
+      , autogenIncludes = combineNub autogenIncludes
+      , installIncludes = combineNub installIncludes
+      , options = combine options
+      , profOptions = combine profOptions
+      , sharedOptions = combine sharedOptions
+      , profSharedOptions = combine profSharedOptions
+      , staticOptions = combine staticOptions
+      , customFieldsBI = combine customFieldsBI
+      , targetBuildDepends = combineNub targetBuildDepends
+      , mixins = combine mixins
+      }
+    where
+      combine :: Monoid a => (BuildInfoWith Mod.HasAnn -> a) -> a
+      combine field = field a `mappend` field b
+      combineNub field = nub (combine field)
+      combineMby field = field b `mplus` field a
+
 emptyBuildInfo :: BuildInfo
 emptyBuildInfo = mempty
+
+emptyBuildInfo' :: BuildInfoWith Mod.HasAnn
+emptyBuildInfo' =
+  BuildInfo
+    { buildable = Ann NoTrivia True
+    , buildTools = []
+    , buildToolDepends = []
+    , cppOptions = []
+    , asmOptions = []
+    , cmmOptions = []
+    , ccOptions = []
+    , cxxOptions = []
+    , jsppOptions = []
+    , ldOptions = []
+    , hsc2hsOptions = []
+    , pkgconfigDepends = []
+    , frameworks = []
+    , extraFrameworkDirs = []
+    , asmSources = []
+    , cmmSources = []
+    , cSources = []
+    , cxxSources = []
+    , jsSources = []
+    , hsSourceDirs = []
+    , otherModules = []
+    , virtualModules = []
+    , autogenModules = []
+    , defaultLanguage = Nothing
+    , otherLanguages = []
+    , defaultExtensions = []
+    , otherExtensions = []
+    , oldExtensions = []
+    , extraLibs = []
+    , extraLibsStatic = []
+    , extraGHCiLibs = []
+    , extraBundledLibs = []
+    , extraLibFlavours = []
+    , extraDynLibFlavours = []
+    , extraLibDirs = []
+    , extraLibDirsStatic = []
+    , includeDirs = []
+    , includes = []
+    , autogenIncludes = []
+    , installIncludes = []
+    , options = mempty
+    , profOptions = mempty
+    , sharedOptions = mempty
+    , profSharedOptions = mempty
+    , staticOptions = mempty
+    , customFieldsBI = []
+    , targetBuildDepends = []
+    , mixins = []
+    }
 
 -- | The 'Language's used by this component
 allLanguages :: BuildInfo -> [Language]

@@ -1,4 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE TupleSections #-}
 
@@ -41,7 +43,7 @@ data Trivia t
   | ExactRepresentation String
   | IsInserted
   | NoTrivia
-  deriving (Show, Eq, Ord, Read, Data)
+  deriving (Show, Eq, Ord, Read, Data, Functor)
 
 preTrivia :: String -> Trivia SurroundingText
 preTrivia s = HasTrivia (SurroundingText s mempty)
@@ -58,6 +60,9 @@ instance Semigroup t => Semigroup (Trivia t) where
   u <> NoTrivia = u
   IsInserted <> _ = IsInserted
   _ <> IsInserted = IsInserted
+
+instance (Semigroup t, Semigroup u) => Semigroup (Ann t u) where
+  Ann u x <> Ann v y = Ann (u <> v) (x <> y)
 
 instance Semigroup t => Monoid (Trivia t) where
   mempty = NoTrivia
