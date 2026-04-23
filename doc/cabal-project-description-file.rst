@@ -782,6 +782,13 @@ The following settings control the behavior of the dependency solver:
     present in my-repository only in version 2.0, and the :override forbids
     searching for other versions of X further up the list.
 
+    There is one exception: if all versions of a package in the overriding
+    repository are deprecated (i.e. excluded by that repository's
+    ``preferred-versions``), :override falls back to merge semantics for that
+    package, so versions from earlier repositories remain visible. This avoids
+    a situation where a fully-deprecated override inadvertently hides all
+    usable versions of a package.
+
     :override has no effect for package names that aren't present in the
     overriding repository.
 
