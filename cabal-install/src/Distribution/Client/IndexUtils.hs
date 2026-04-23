@@ -30,6 +30,8 @@ module Distribution.Client.IndexUtils
   , ActiveRepos
   , filterSkippedActiveRepos
   , applyStrategy
+  , addIndex
+  , deprecationAwareStrategy
   , Index (..)
   , RepoIndexState (..)
   , PackageEntry (..)
@@ -374,7 +376,7 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState mb_activeRepos = do
             ]
 
   let pkgs :: PackageIndex UnresolvedSourcePackage
-      pkgs = foldl' (\acc (rd, s) -> applyStrategy acc (rdIndex rd, s)) mempty pkgss'
+      pkgs = foldl' (\acc (rd, s) -> addIndex acc (rdIndex rd, rdPreferences rd, s)) mempty pkgss'
 
   -- Note: preferences combined without using CombineStrategy
   let prefs :: Map PackageName VersionRange
@@ -418,6 +420,45 @@ applyStrategy
 applyStrategy acc (_, CombineStrategySkip) = acc
 applyStrategy acc (idx, CombineStrategyMerge) = PackageIndex.merge acc idx
 applyStrategy acc (idx, CombineStrategyOverride) = PackageIndex.override acc idx
+
+-- | Fold one package index and its preferred-versions into an accumulator
+-- according to a 'CombineStrategy'.
+--
+-- Like 'applyStrategy', but for 'CombineStrategyOverride' consults the
+-- repo's @preferred-versions@ via 'deprecationAwareStrategy': if all
+-- versions of a package are deprecated in the override repo, merge
+-- semantics are used for that package instead of override semantics.
+addIndex
+  :: Package pkg
+  => PackageIndex pkg
+  -> (PackageIndex pkg, [Dependency], CombineStrategy)
+  -> PackageIndex pkg
+addIndex acc (idx, prefs, CombineStrategyOverride) =
+  PackageIndex.overrideOrMerge (deprecationAwareStrategy idx prefsByPkg) acc idx
+  where
+    prefsByPkg =
+      Map.fromListWith
+        intersectVersionRanges
+        [(name, range) | Dependency name range _ <- prefs]
+addIndex acc (idx, _, s) = applyStrategy acc (idx, s)
+
+-- | Per-package override-or-merge decision for a 'CombineStrategyOverride' repo.
+--
+-- Returns 'PackageIndex.Merge' when every version of the package in the
+-- override index is deprecated (i.e. excluded by the repo's
+-- @preferred-versions@), so that versions from earlier repos remain visible.
+-- Returns 'PackageIndex.Override' otherwise.
+deprecationAwareStrategy
+  :: Package pkg
+  => PackageIndex pkg
+  -> Map PackageName VersionRange
+  -> PackageName
+  -> PackageIndex.OverrideOrMerge
+deprecationAwareStrategy idx prefsByPkg pkgname
+  | Just pkgPrefs <- Map.lookup pkgname prefsByPkg
+  , null $ PackageIndex.lookupDependency idx pkgname pkgPrefs =
+      PackageIndex.Merge
+  | otherwise = PackageIndex.Override
 
 -- | Read a repository index from disk, from the local file specified by
 -- the 'Repo'.
