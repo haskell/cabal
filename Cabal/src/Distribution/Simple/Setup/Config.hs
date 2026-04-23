@@ -208,8 +208,6 @@ data ConfigFlags = ConfigFlags
   , configExactConfiguration :: Flag Bool
   -- ^ All direct dependencies and flags are provided on the command line by
   --  the user via the '--dependency' and '--flags' options.
-  , configFlagError :: Flag String
-  -- ^ Halt and show an error message indicating an error in flag assignment
   , configRelocatable :: Flag Bool
   -- ^ Enable relocatable package built
   , configDebugInfo :: Flag DebugInfoLevel
@@ -320,7 +318,6 @@ instance Eq ConfigFlags where
       && equal configCoverage
       && equal configLibCoverage
       && equal configExactConfiguration
-      && equal configFlagError
       && equal configRelocatable
       && equal configDebugInfo
       && equal configDumpBuildInfo
@@ -368,7 +365,6 @@ defaultConfigFlags progDb =
     , configCoverage = Flag False
     , configLibCoverage = NoFlag
     , configExactConfiguration = Flag False
-    , configFlagError = NoFlag
     , configRelocatable = Flag False
     , configDebugInfo = Flag NoDebugInfo
     , configDumpBuildInfo = NoFlag
