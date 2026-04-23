@@ -2,9 +2,11 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
@@ -12,7 +14,8 @@
 -- |
 -- Module: Distribution.Simple.SetupHooks.Internal
 --
--- Internal implementation module.
+-- Internal implementation module for 'SetupHooks'.
+--
 -- Users of @build-type: Hooks@ should import "Distribution.Simple.SetupHooks"
 -- instead.
 module Distribution.Simple.SetupHooks.Internal
@@ -109,20 +112,27 @@ import qualified Distribution.Simple.SetupHooks.Rule as Rule
 import Distribution.Simple.Utils
 import Distribution.System (Platform (..))
 import Distribution.Utils.Path
+import Distribution.Utils.Structured
+  ( structuredDecodeOrFailIO
+  , structuredEncodeFile
+  )
 
 import qualified Distribution.Types.BuildInfo.Lens as BI (buildInfo)
 import Distribution.Types.LocalBuildConfig as LBC
 import Distribution.Types.TargetInfo
 import Distribution.Verbosity
 
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import Data.Coerce (coerce)
+import Data.Either (fromRight)
 import qualified Data.Graph as Graph
+import Data.IORef (IORef, modifyIORef', newIORef, readIORef)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
-import System.Directory (doesFileExist)
+import System.Directory (doesFileExist, getModificationTime)
 
 --------------------------------------------------------------------------------
 -- SetupHooks
@@ -849,7 +859,11 @@ executeRules =
 -- an external hooks executable.
 executeRulesUserOrSystem
   :: forall userOrSystem
-   . SScope userOrSystem
+   . ( Binary (RuleData userOrSystem)
+     , Structured (RuleData userOrSystem)
+     , Eq (RuleData userOrSystem)
+     )
+  => SScope userOrSystem
   -> (RuleId -> RuleDynDepsCmd userOrSystem -> IO (Maybe ([Rule.Dependency], LBS.ByteString)))
   -> (RuleId -> RuleExecCmd userOrSystem -> IO ())
   -> Verbosity
@@ -858,6 +872,12 @@ executeRulesUserOrSystem
   -> Map RuleId (RuleData userOrSystem)
   -> IO ()
 executeRulesUserOrSystem scope runDepsCmdData runCmdData verbosity lbi tgtInfo allRules = do
+  -- Load the rule cache from the previous build.
+  -- Used to detect when rule definitions have changed.
+  oldRules <- handleDoesNotExist Map.empty $ do
+    -- NB: do a strict read to avoid retaining the file handle.
+    bs <- BS.readFile rulesCacheFile
+    fromRight Map.empty <$> structuredDecodeOrFailIO (LBS.fromStrict bs)
   -- Compute all extra dynamic dependency edges.
   dynDepsEdges <-
     flip Map.traverseMaybeWithKey allRules $
@@ -939,37 +959,39 @@ executeRulesUserOrSystem scope runDepsCmdData runCmdData verbosity lbi tgtInfo a
                  , "     it is not in the appropriate 'autogenComponentModules' directory)"
                  ]
 
-      -- Run all the demanded rules, in dependency order.
+      -- Run all the demanded rules, in dependency order, propagating staleness.
+      staleRulesRef <- newIORef Set.empty
       for_ sccs $ \(Graph.Node ruleVertex _) ->
         -- Don't run a rule unless it is demanded.
         unless (ruleVertex `Set.member` nonDemandedRuleVerts) $ do
-          let ( r@Rule
-                  { ruleCommands = cmds
-                  , staticDependencies = staticDeps
-                  , results = reslts
-                  }
-                , rId
-                , _staticRuleDepIds
-                ) =
-                  ruleFromVertex ruleVertex
-              mbDyn = Map.lookup rId dynDepsEdges
-              allDeps = staticDeps ++ maybe [] fst mbDyn
+          let (r, rId, _staticRuleDepIds) = ruleFromVertex ruleVertex
+              Rule{ruleCommands, staticDependencies, results} = r
+              mbDynDeps = Map.lookup rId dynDepsEdges
+              allDeps = staticDependencies ++ maybe [] fst mbDynDeps
           -- Check that the dependencies the rule expects are indeed present.
           resolvedDeps <- traverse (resolveDependency verbosity rId allRules) allDeps
           missingRuleDeps <- filterM (missingDep mbWorkDir) resolvedDeps
           case NE.nonEmpty missingRuleDeps of
             Just missingDeps ->
               errorOut $ CantFindSourceForRuleDependencies (toRuleBinary r) missingDeps
-            -- Dependencies OK: run the associated action.
+            -- Dependencies OK: check whether the rule is up to date before
+            -- deciding to run it.
             Nothing -> do
-              let execCmd = ruleExecCmd scope cmds (snd <$> mbDyn)
-              runCmdData rId execCmd
-              -- Throw an error if running the action did not result in
-              -- the generation of outputs that we expected it to.
-              missingRuleResults <- filterM (missingDep mbWorkDir) $ NE.toList reslts
-              for_ (NE.nonEmpty missingRuleResults) $ \missingResults ->
-                errorOut $ MissingRuleOutputs (toRuleBinary r) missingResults
-              return ()
+              let dynDeps = maybe [] fst mbDynDeps
+              ruleUpToDate mbWorkDir oldRules staleRulesRef rId r dynDeps >>= \case
+                True ->
+                  info verbosity $
+                    "Rule " ++ show rId ++ " is up to date; skipping."
+                False -> do
+                  modifyIORef' staleRulesRef (Set.insert rId)
+                  runCmdData rId $ ruleExecCmd scope ruleCommands (snd <$> mbDynDeps)
+                  -- Throw an error if running the action did not result in
+                  -- the generation of outputs that we expected it to.
+                  missingRuleResults <- filterM (missingDep mbWorkDir) $ NE.toList results
+                  for_ (NE.nonEmpty missingRuleResults) $ \missingResults ->
+                    errorOut $ MissingRuleOutputs (toRuleBinary r) missingResults
+      -- Save the current rules to the cache for use in the next build.
+      structuredEncodeFile rulesCacheFile allRules
   where
     toRuleBinary :: RuleData userOrSystem -> RuleBinary
     toRuleBinary = case scope of
@@ -978,6 +1000,7 @@ executeRulesUserOrSystem scope runDepsCmdData runCmdData verbosity lbi tgtInfo a
     clbi = targetCLBI tgtInfo
     mbWorkDir = mbWorkDirLBI lbi
     compAutogenDir = autogenComponentModulesDir lbi clbi
+    rulesCacheFile = interpretSymbolicPath mbWorkDir (preBuildRulesCacheFile lbi clbi)
     errorOut e =
       dieWithException verbosity $
         SetupHooksException $
@@ -986,6 +1009,59 @@ executeRulesUserOrSystem scope runDepsCmdData runCmdData verbosity lbi tgtInfo a
 directRuleDependencyMaybe :: Rule.Dependency -> Maybe RuleId
 directRuleDependencyMaybe (RuleDependency dep) = Just $ outputOfRule dep
 directRuleDependencyMaybe (FileDependency{}) = Nothing
+
+-- | Is the rule up to date (so that we can skip re-running it)?
+--
+-- As per the SetupHooks documentation, a rule must be re-run if:
+--
+--  - [N] the rule is new, or
+--  - [S] the rule matches with an old rule, and either:
+--    - [S1] an input to the rule has changed (either a file or rule dependency)
+--    - [S2] the rule itself has changed
+ruleUpToDate
+  :: Eq (RuleData userOrSystem)
+  => Maybe (SymbolicPath CWD (Dir Pkg))
+  -- ^ working directory
+  -> Map RuleId (RuleData userOrSystem)
+  -- ^ old rules from the previous build
+  -> IORef (Set RuleId)
+  -- ^ rules that have been re-run
+  -> RuleId
+  -> RuleData userOrSystem
+  -> [Rule.Dependency]
+  -- ^ dynamic dependencies of this rule
+  -> IO Bool
+ruleUpToDate mbWorkDir oldRules staleRulesRef rId rule dynDeps = do
+  staleRules <- readIORef staleRulesRef
+  if ruleChanged || any (`Set.member` staleRules) ruleDeps
+    then return False
+    else do
+      let maybeModTime fp = handleDoesNotExist Nothing $ Just <$> getModificationTime fp
+      outMtimes <- traverse maybeModTime outputPaths
+      case sequenceA outMtimes of
+        -- At least one output is missing: must run the rule.
+        Nothing -> return False
+        Just outs ->
+          -- Re-run if an input is more recent than the oldest output.
+          case inputPaths of
+            [] -> return True
+            _ -> do
+              inMtimes <- traverse getModificationTime inputPaths
+              return (minimum outs >= maximum inMtimes)
+  where
+    i (Location dir file) = interpretSymbolicPath mbWorkDir (dir </> file)
+    allDeps = staticDependencies rule ++ dynDeps
+    ruleDeps = [outputOfRule ro | RuleDependency ro <- allDeps]
+    fileDeps = [loc | FileDependency loc <- allDeps]
+    inputPaths = map i fileDeps
+    outputPaths = fmap i (results rule)
+    ruleChanged =
+      case Map.lookup rId oldRules of
+        Just oldRule ->
+          -- Use the Eq instance to determine if the rule has changed
+          -- (as documented in the API).
+          oldRule /= rule
+        Nothing -> True
 
 resolveDependency :: Verbosity -> RuleId -> Map RuleId (RuleData scope) -> Rule.Dependency -> IO Location
 resolveDependency verbosity rId allRules = \case

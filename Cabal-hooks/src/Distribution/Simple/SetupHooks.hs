@@ -237,7 +237,7 @@ import Data.Map.Strict as Map
 A Cabal package with @Hooks@ @build-type@ must define the Haskell module
 @SetupHooks@ which defines a value @setupHooks :: 'SetupHooks'@.
 
-These *setup hooks* allow package authors to customise the configuration and
+These __setup hooks__ allow package authors to customise the configuration and
 building of a package by providing certain hooks that get folded into the
 general package configuration and building logic within @Cabal@.
 
