@@ -146,7 +146,6 @@ compareSegmentally pa@(ProjectConfigPath as) pb@(ProjectConfigPath bs) =
                         bPaths = splitPath b
                     in
                         compare (length as) (length bs)
-                        P.<> compare (length asPaths) (length bsPaths)
                         P.<> compare asPaths bsPaths
                         P.<> compare (length aPaths) (length bPaths)
                         P.<> compare aPaths bPaths
