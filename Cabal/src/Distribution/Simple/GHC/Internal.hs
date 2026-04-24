@@ -415,10 +415,19 @@ componentCxxGhcOptions verbosity lbi bi clbi odir filename =
                 MaximalDebugInfo -> ["-g3"]
              )
           ++ cxxOptions bi
-    , ghcOptCcProgram =
-        maybeToFlag $
-          programPath
-            <$> lookupProgram gccProgram (withPrograms lbi)
+    , -- Similarly, you need to add a split for cxx-sources in the configure script.
+      -- The configure split can be found here: https://github.com/haskell/cabal/pull/10844
+      ghcOptGppProgram =
+        ghcOptionsSince
+          (mkVersion [9, 4])
+          (compiler lbi)
+          (maybeToFlag $ programPath <$> lookupProgram gppProgram (withPrograms lbi))
+    , -- The assumption that the C++ compiler is part of the toolchain is only since ghc-9.4.
+      ghcOptCcProgram =
+        ghcOptionsBefore
+          (mkVersion [9, 4])
+          (compiler lbi)
+          (maybeToFlag $ programPath <$> lookupProgram gccProgram (withPrograms lbi))
     , ghcOptObjDir = toFlag odir
     , ghcOptExtra = hcOptions GHC bi
     }
@@ -489,6 +498,15 @@ ghcOptionsSince ver comp defOptions =
   case compilerCompatVersion GHC comp of
     Just v
       | v >= ver -> defOptions
+      | otherwise -> mempty
+    Nothing -> mempty
+
+-- Applies options only if the GHC version is less than the given one.
+ghcOptionsBefore :: Monoid a => Version -> Compiler -> a -> a
+ghcOptionsBefore ver comp defOptions =
+  case compilerCompatVersion GHC comp of
+    Just v
+      | v < ver -> defOptions
       | otherwise -> mempty
     Nothing -> mempty
 
@@ -575,6 +593,12 @@ componentGhcOptions verbosity lbi bi clbi odir =
               (mkVersion [9, 4])
               (compiler lbi)
               (maybeToFlag $ programPath <$> lookupProgram gccProgram (withPrograms lbi))
+        , -- The assumption that the C++ compiler is part of the toolchain is only since ghc-9.4.
+          ghcOptGppProgram =
+            ghcOptionsSince
+              (mkVersion [9, 4])
+              (compiler lbi)
+              (maybeToFlag $ programPath <$> lookupProgram gppProgram (withPrograms lbi))
         }
   where
     exe_paths =
