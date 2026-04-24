@@ -1,0 +1,15 @@
+---
+synopsis: don't delete duplicate C header files
+packages: [Cabal]
+prs: 11733
+issues: 11176
+significance: significant
+---
+
+PR 4874 introduced a change which removes C headers that duplicate `autogen-includes`.
+This is unacceptable behavior, and in addition can be exploited on Windows to remove
+any file on the system. Issue a warning about undefined C compiler behavior instead.
+
+Original PR: https://github.com/haskell/cabal/pull/4874/changes#diff-e3cd8c042e1d9d4f3d54c4ec03a508cc2e61598aa7f88033d1cf847e5b712647R1658
+
+Security advisory for arbitrary file removal: https://haskell.github.io/security-advisories/advisory/HSEC-2026-0006.html

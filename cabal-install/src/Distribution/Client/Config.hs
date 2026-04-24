@@ -1046,7 +1046,7 @@ getConfigFilePathAndSource verbosity configFileFlag =
 
     sources =
       [ (CommandlineOption, return . flagToMaybe $ configFileFlag)
-      , (EnvironmentVariable, lookup "CABAL_CONFIG" `liftM` getEnvironment)
+      , (EnvironmentVariable, lookup "CABAL_CONFIG" <$> getEnvironment)
       , (Default, defaultSource)
       ]
 

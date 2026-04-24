@@ -1480,7 +1480,6 @@ planPackages
       -- GHC 8.4   needs  Cabal >= 2.2
       -- GHC 8.2   needs  Cabal >= 2.0
       -- GHC 8.0   needs  Cabal >= 1.24
-      -- GHC 7.10  needs  Cabal >= 1.22
       --
       -- (NB: we don't need to consider older GHCs as Cabal >= 1.20 is
       -- the absolute lower bound)
@@ -1498,9 +1497,7 @@ planPackages
         | isGHC, compVer >= mkVersion [8, 6] = mkVersion [2, 4]
         | isGHC, compVer >= mkVersion [8, 4] = mkVersion [2, 2]
         | isGHC, compVer >= mkVersion [8, 2] = mkVersion [2, 0]
-        | isGHC, compVer >= mkVersion [8, 0] = mkVersion [1, 24]
-        | isGHC, compVer >= mkVersion [7, 10] = mkVersion [1, 22]
-        | otherwise = mkVersion [1, 20]
+        | otherwise = mkVersion [1, 24]
         where
           isGHC = compFlav `elem` [GHC, GHCJS]
           compFlav = compilerFlavor comp
@@ -2169,7 +2166,7 @@ elaborateInstallPlan
 
             -- TODO: Why is this flat?
             pkgPkgConfigDependencies =
-              CD.flatDeps $ buildComponentDeps compPkgConfigDependencies
+              fold $ buildComponentDeps compPkgConfigDependencies
 
             pkgDependsOnSelfLib =
               CD.fromList
@@ -3577,7 +3574,7 @@ pruneInstallPlanPass1 pkgs
     pruneOptionalDependencies elab@ElaboratedConfiguredPackage{elabPkgOrComp = ElabComponent _} =
       InstallPlan.depends elab -- no pruning
     pruneOptionalDependencies ElaboratedConfiguredPackage{elabPkgOrComp = ElabPackage pkg} =
-      (CD.flatDeps . CD.filterDeps keepNeeded) (pkgOrderDependencies pkg)
+      (fold . CD.filterDeps keepNeeded) (pkgOrderDependencies pkg)
       where
         keepNeeded (CD.ComponentTest _) _ = TestStanzas `optStanzaSetMember` stanzas
         keepNeeded (CD.ComponentBench _) _ = BenchStanzas `optStanzaSetMember` stanzas
@@ -4093,27 +4090,13 @@ setupHsConfigureFlags
         ElabComponent _ -> toFlag elabComponentId
 
       configProgramPaths = Map.toList elabProgramPaths
-      configProgramArgs
-        | {- elabSetupScriptCliVersion < mkVersion [1,24,3] -} True =
-            -- workaround for <https://github.com/haskell/cabal/issues/4010>
-            --
-            -- It turns out, that even with Cabal 2.0, there's still cases such as e.g.
-            -- custom Setup.hs scripts calling out to GHC even when going via
-            -- @runProgram ghcProgram@, as e.g. happy does in its
-            -- <http://hackage.haskell.org/package/happy-1.19.5/src/Setup.lhs>
-            -- (see also <https://github.com/haskell/cabal/pull/4433#issuecomment-299396099>)
-            --
-            -- So for now, let's pass the rather harmless and idempotent
-            -- `-hide-all-packages` flag to all invocations (which has
-            -- the benefit that every GHC invocation starts with a
-            -- consistently well-defined clean slate) until we find a
-            -- better way.
-            Map.toList $
-              Map.insertWith
-                (++)
-                "ghc"
-                ["-hide-all-packages"]
-                elabProgramArgs
+      configProgramArgs =
+        Map.toList $
+          Map.insertWith
+            (++)
+            "ghc"
+            ["-hide-all-packages"]
+            elabProgramArgs
       configProgramPathExtra = toNubList elabProgramPathExtra
       configHcFlavor = toFlag (compilerFlavor pkgConfigCompiler)
       configHcPath = mempty -- we use configProgramPaths instead

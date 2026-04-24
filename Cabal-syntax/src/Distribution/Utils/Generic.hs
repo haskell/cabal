@@ -544,7 +544,7 @@ unfoldrM f = go
       m <- f b
       case m of
         Nothing -> return []
-        Just (a, b') -> liftM (a :) (go b')
+        Just (a, b') -> (a :) <$> (go b')
 
 -- | The opposite of 'snoc', which is the reverse of 'cons'
 --

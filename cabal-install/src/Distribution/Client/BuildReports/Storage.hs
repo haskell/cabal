@@ -1,5 +1,3 @@
-{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
-
 -----------------------------------------------------------------------------
 
 -----------------------------------------------------------------------------
@@ -91,13 +89,15 @@ storeAnonymous reports =
     separate
       :: [(BuildReport, Maybe Repo)]
       -> [(Repo, [BuildReport])]
-    separate =
-      map (\rs@((_, repo, _) : _) -> (repo, [r | (r, _, _) <- rs]))
-        . map (concatMap toList)
-        . L.groupBy (equating (repoName' . head))
-        . sortBy (comparing (repoName' . head))
-        . groupBy (equating repoName')
-        . onlyRemote
+    separate xs =
+      [ (repo, [r | (r, _, _) <- rs])
+      | rs@((_, repo, _) : _) <-
+          map (concatMap toList)
+            . L.groupBy (equating (repoName' . head))
+            . sortBy (comparing (repoName' . head))
+            . groupBy (equating repoName')
+            $ onlyRemote xs
+      ]
 
     repoName' (_, _, rrepo) = remoteRepoName rrepo
 
@@ -148,10 +148,10 @@ storeLocal cinfo templates reports platform =
             cinfo
             platform
 
-    groupByFileName =
-      map (\grp@((filename, _) : _) -> (filename, map snd grp))
-        . L.groupBy (equating fst)
-        . sortBy (comparing fst)
+    groupByFileName xs =
+      [ (filename, map snd grp)
+      | grp@((filename, _) : _) <- L.groupBy (equating fst) $ sortBy (comparing fst) xs
+      ]
 
 -- ------------------------------------------------------------
 

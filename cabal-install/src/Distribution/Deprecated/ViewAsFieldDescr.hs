@@ -53,7 +53,7 @@ viewAsFieldDescr (OptionField n (d : dd)) = FieldDescr n get set
     --    set :: LineNo -> String -> a -> ParseResult a
     set line val a =
       case optDescr of
-        ReqArg _ _ _ readE _ -> ($ a) `liftM` runE line n readE val
+        ReqArg _ _ _ readE _ -> ($ a) <$> runE line n readE val
         -- We parse for a single value instead of a
         -- list, as one can't really implement
         -- parseList :: ReadE a -> ReadE [a] with
@@ -62,8 +62,8 @@ viewAsFieldDescr (OptionField n (d : dd)) = FieldDescr n get set
           case getChoiceByLongFlag optDescr val of
             Just f -> return (f a)
             _ -> syntaxError line val
-        BoolOpt _ _ _ setV _ -> (`setV` a) `liftM` runE line n (parsecToReadE ("<viewAsFieldDescr>" ++) parsec) val
-        OptArg _ _ _ readE _ _ -> ($ a) `liftM` runE line n readE val
+        BoolOpt _ _ _ setV _ -> (`setV` a) <$> runE line n (parsecToReadE ("<viewAsFieldDescr>" ++) parsec) val
+        OptArg _ _ _ readE _ _ -> ($ a) <$> runE line n readE val
 
 -- Optional arguments are parsed just like
 -- required arguments here; we don't

@@ -404,8 +404,7 @@ getSetup verbosity options mpkg = do
   where
     mbWorkDir = useWorkingDir options
     getPkg =
-      (relativeSymbolicPath <$> tryFindPackageDesc verbosity mbWorkDir)
-        >>= readGenericPackageDescription verbosity mbWorkDir
+      (tryFindPackageDesc verbosity mbWorkDir >>= readGenericPackageDescription verbosity mbWorkDir . relativeSymbolicPath)
         >>= return . packageDescription
 
 -- | Decide if we're going to be able to do a direct internal call to the

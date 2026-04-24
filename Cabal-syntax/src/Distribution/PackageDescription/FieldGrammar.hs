@@ -3,7 +3,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE QuantifiedConstraints #-}
 
 -- | 'GenericPackageDescription' Field descriptions
 module Distribution.PackageDescription.FieldGrammar
@@ -101,8 +100,9 @@ packageDescriptionFieldGrammar
      , c (Identity BuildType)
      , c (Identity PackageName)
      , c (Identity Version)
-     , forall from to. c (List FSep (RelativePathNT from to) (RelativePath from to))
-     , forall from to. c (List VCat (RelativePathNT from to) (RelativePath from to))
+     , c (List FSep (RelativePathNT Pkg File) (SymbolicPathX OnlyRelative Pkg File))
+     , c (List VCat (RelativePathNT DataDir File) (RelativePath DataDir File))
+     , c (List VCat (RelativePathNT Pkg File) (RelativePath Pkg File))
      , c (List FSep TestedWith (CompilerFlavor, VersionRange))
      , c CompatLicenseFile
      , c CompatDataDir
@@ -180,9 +180,15 @@ libraryFieldGrammar
      , c (List FSep Token String)
      , c (List NoCommaFSep Token' String)
      , c (List VCat (MQuoted ModuleName) ModuleName)
-     , forall from to. c (List FSep (SymbolicPathNT from to) (SymbolicPath from to))
-     , forall from to. c (List FSep (RelativePathNT from to) (RelativePath from to))
-     , forall from to. c (List VCat (SymbolicPathNT from to) (SymbolicPath from to))
+     , c (List VCat (RelativePathNT Pkg File) (RelativePath Pkg File))
+     , c (List FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
+     , c (List FSep (SymbolicPathNT Pkg (Dir Lib)) (SymbolicPath Pkg (Dir Lib)))
+     , c (List FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+     , c (List FSep (SymbolicPathNT Pkg (Dir Include)) (SymbolicPath Pkg (Dir Include)))
+     , c (List FSep (SymbolicPathNT Include File) (SymbolicPath Include File))
+     , c (List FSep (RelativePathNT Framework File) (RelativePath Framework File))
+     , c (List FSep (RelativePathNT Include File) (RelativePath Include File))
+     , c (List VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
      , c (List VCat Token String)
      , c (MQuoted Language)
      )
@@ -228,9 +234,15 @@ foreignLibFieldGrammar
      , c (List FSep (MQuoted Extension) Extension)
      , c (List FSep (MQuoted Language) Language)
      , c (List FSep Token String)
-     , forall from to. c (List FSep (SymbolicPathNT from to) (SymbolicPath from to))
-     , forall from to. c (List FSep (RelativePathNT from to) (RelativePath from to))
-     , forall from to. c (List VCat (SymbolicPathNT from to) (SymbolicPath from to))
+     , c (List FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
+     , c (List FSep (SymbolicPathNT Pkg (Dir Lib)) (SymbolicPath Pkg (Dir Lib)))
+     , c (List FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+     , c (List FSep (SymbolicPathNT Pkg (Dir Include)) (SymbolicPath Pkg (Dir Include)))
+     , c (List FSep (SymbolicPathNT Include File) (SymbolicPath Include File))
+     , c (List FSep (RelativePathNT Framework File) (RelativePath Framework File))
+     , c (List FSep (RelativePathNT Include File) (RelativePath Include File))
+     , c (List FSep (RelativePathNT Source File) (RelativePath Source File))
+     , c (List VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
      , c (List NoCommaFSep Token' String)
      , c (List VCat (MQuoted ModuleName) ModuleName)
      , c (List VCat Token String)
@@ -266,13 +278,15 @@ executableFieldGrammar
      , c (List FSep (MQuoted Extension) Extension)
      , c (List FSep (MQuoted Language) Language)
      , c (List FSep Token String)
-     , forall from to. c (List FSep (SymbolicPathNT from to) (SymbolicPath from to))
-     , forall from to. c (List FSep (RelativePathNT from to) (RelativePath from to))
-     , forall from to. c (List FSep (SymbolicPathNT from to) (SymbolicPath from to))
-     , forall from to. c (List FSep (RelativePathNT from to) (RelativePath from to))
-     , forall from to. c (List VCat (SymbolicPathNT from to) (SymbolicPath from to))
-     , forall from to. c (SymbolicPathNT from to)
-     , forall from to. c (RelativePathNT from to)
+     , c (List FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
+     , c (List FSep (SymbolicPathNT Pkg (Dir Lib)) (SymbolicPath Pkg (Dir Lib)))
+     , c (List FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+     , c (List FSep (SymbolicPathNT Pkg (Dir Include)) (SymbolicPath Pkg (Dir Include)))
+     , c (List FSep (SymbolicPathNT Include File) (SymbolicPath Include File))
+     , c (List FSep (RelativePathNT Framework File) (RelativePath Framework File))
+     , c (List FSep (RelativePathNT Include File) (RelativePath Include File))
+     , c (List VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
+     , c (RelativePathNT Source File)
      , c (List NoCommaFSep Token' String)
      , c (List VCat (MQuoted ModuleName) ModuleName)
      , c (List VCat Token String)
@@ -344,10 +358,15 @@ testSuiteFieldGrammar
      , c (List FSep Token String)
      , c (List NoCommaFSep Token' String)
      , c (List VCat (MQuoted ModuleName) ModuleName)
-     , forall from to. c (List FSep (SymbolicPathNT from to) (SymbolicPath from to))
-     , forall from to. c (List FSep (RelativePathNT from to) (RelativePath from to))
-     , forall from to. c (List VCat (SymbolicPathNT from to) (SymbolicPath from to))
-     , forall from to. c (RelativePathNT from to)
+     , c (List FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
+     , c (List FSep (SymbolicPathNT Pkg (Dir Lib)) (SymbolicPath Pkg (Dir Lib)))
+     , c (List FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+     , c (List FSep (SymbolicPathNT Pkg (Dir Include)) (SymbolicPath Pkg (Dir Include)))
+     , c (List FSep (SymbolicPathNT Include File) (SymbolicPath Include File))
+     , c (List FSep (RelativePathNT Framework File) (RelativePath Framework File))
+     , c (List FSep (RelativePathNT Include File) (RelativePath Include File))
+     , c (List VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
+     , c (RelativePathNT Source File)
      , c (List VCat Token String)
      , c (MQuoted Language)
      )
@@ -488,10 +507,15 @@ benchmarkFieldGrammar
      , c (List FSep Token String)
      , c (List NoCommaFSep Token' String)
      , c (List VCat (MQuoted ModuleName) ModuleName)
-     , forall from to. c (List FSep (SymbolicPathNT from to) (SymbolicPath from to))
-     , forall from to. c (List FSep (RelativePathNT from to) (RelativePath from to))
-     , forall from to. c (List VCat (SymbolicPathNT from to) (SymbolicPath from to))
-     , forall from to. c (RelativePathNT from to)
+     , c (List FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
+     , c (List FSep (SymbolicPathNT Pkg (Dir Lib)) (SymbolicPath Pkg (Dir Lib)))
+     , c (List FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+     , c (List FSep (SymbolicPathNT Pkg (Dir Include)) (SymbolicPath Pkg (Dir Include)))
+     , c (List FSep (SymbolicPathNT Include File) (SymbolicPath Include File))
+     , c (List FSep (RelativePathNT Framework File) (RelativePath Framework File))
+     , c (List FSep (RelativePathNT Include File) (RelativePath Include File))
+     , c (List VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
+     , c (RelativePathNT Source File)
      , c (List VCat Token String)
      , c (MQuoted Language)
      )
@@ -590,9 +614,14 @@ buildInfoFieldGrammar
      , c (List FSep Token String)
      , c (List NoCommaFSep Token' String)
      , c (List VCat (MQuoted ModuleName) ModuleName)
-     , forall from to. c (List FSep (SymbolicPathNT from to) (SymbolicPath from to))
-     , forall from to. c (List FSep (RelativePathNT from to) (RelativePath from to))
-     , forall from to. c (List VCat (SymbolicPathNT from to) (SymbolicPath from to))
+     , c (List FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
+     , c (List FSep (SymbolicPathNT Pkg (Dir Lib)) (SymbolicPath Pkg (Dir Lib)))
+     , c (List FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
+     , c (List FSep (SymbolicPathNT Pkg (Dir Include)) (SymbolicPath Pkg (Dir Include)))
+     , c (List FSep (SymbolicPathNT Include File) (SymbolicPath Include File))
+     , c (List FSep (RelativePathNT Framework File) (RelativePath Framework File))
+     , c (List FSep (RelativePathNT Include File) (RelativePath Include File))
+     , c (List VCat (SymbolicPathNT Pkg File) (SymbolicPath Pkg File))
      , c (List VCat Token String)
      , c (MQuoted Language)
      )
@@ -689,7 +718,7 @@ buildInfoFieldGrammar =
 hsSourceDirsGrammar
   :: ( FieldGrammar c g
      , Applicative (g BuildInfo)
-     , forall from to. c (List FSep (SymbolicPathNT from to) (SymbolicPath from to))
+     , c (List FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
      )
   => g BuildInfo [SymbolicPath Pkg (Dir Source)]
 hsSourceDirsGrammar =
@@ -758,8 +787,8 @@ profSharedOptionsFieldGrammar =
 
 lookupLens :: (Functor f, Monoid v) => CompilerFlavor -> LensLike' f (PerCompilerFlavor v) v
 lookupLens k f p@(PerCompilerFlavor ghc ghcjs)
-  | k == GHC = (\n -> PerCompilerFlavor n ghcjs) <$> f ghc
-  | k == GHCJS = (\n -> PerCompilerFlavor ghc n) <$> f ghcjs
+  | k == GHC = (`PerCompilerFlavor` ghcjs) <$> f ghc
+  | k == GHCJS = (ghc `PerCompilerFlavor`) <$> f ghcjs
   | otherwise = p <$ f mempty
 
 -------------------------------------------------------------------------------

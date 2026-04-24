@@ -31,4 +31,4 @@ expandResponse = go recursionLimit "."
     expand _n _dir x = return [x]
 
     readRecursively :: Int -> FilePath -> IO [String]
-    readRecursively n f = go (n - 1) (takeDirectory f) =<< unescapeArgs <$> readFile f
+    readRecursively n f = go (n - 1) (takeDirectory f) . unescapeArgs =<< readFile f

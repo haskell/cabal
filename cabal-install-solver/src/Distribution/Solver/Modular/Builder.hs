@@ -217,7 +217,7 @@ addChildren bs@(BS { next = Instance qpn (PInfo fdeps _ fdefs _) }) =
 addLinking :: LinkingState -> TreeF () c a -> TreeF () c (Linker a)
 -- The only nodes of interest are package nodes
 addLinking ls (PChoiceF qpn@(Q pp pn) rdm gr cs) =
-  let linkedCs = fmap (\bs -> Linker bs ls) $
+  let linkedCs = fmap (`Linker` ls) $
                  W.fromList $ concatMap (linkChoices ls qpn) (W.toList cs)
       unlinkedCs = W.mapWithKey goP cs
       allCs = unlinkedCs `W.union` linkedCs
@@ -228,7 +228,7 @@ addLinking ls (PChoiceF qpn@(Q pp pn) rdm gr cs) =
       goP (POption i Nothing) bs = Linker bs $ M.insertWith (++) (pn, i) [pp] ls
       goP _                   _  = alreadyLinked
   in PChoiceF qpn rdm gr allCs
-addLinking ls t = fmap (\bs -> Linker bs ls) t
+addLinking ls t = fmap (`Linker` ls) t
 
 linkChoices :: forall a w . LinkingState
             -> QPN

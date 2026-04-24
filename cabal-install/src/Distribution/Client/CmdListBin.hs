@@ -377,12 +377,8 @@ renderListBinProblem (TargetProblemMatchesMultiple targetSelector targets) =
     ++ renderTargetSelector targetSelector
     ++ " which includes "
     ++ renderListCommaAnd
-      ( ("the " ++)
-          <$> showComponentName
-          <$> availableTargetComponentName
-          <$> foldMap
-            (\kind -> filterTargetsKind kind targets)
-            [ExeKind, TestKind, BenchKind]
+      ( (("the " ++) <$> showComponentName) . availableTargetComponentName
+          <$> foldMap (`filterTargetsKind` targets) [ExeKind, TestKind, BenchKind]
       )
     ++ "."
 renderListBinProblem (TargetProblemMultipleTargets selectorMap) =

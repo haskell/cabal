@@ -176,7 +176,7 @@ retrieveModuleImports m = do
 -- | Given a module, retrieve all of its language pragmas
 retrieveModuleExtensions :: Interactive m => FilePath -> m [Extension]
 retrieveModuleExtensions m = do
-  catMaybes <$> map (simpleParsec . trim) . grabModuleExtensions <$> readFile m
+  mapMaybe (simpleParsec . trim) . grabModuleExtensions <$> readFile m
   where
     stop c = (c /= '\n') && (c /= ' ') && (c /= ',') && (c /= '#')
 
