@@ -100,12 +100,11 @@ targetPlatform ghcInfo = platformFromTriple =<< lookup "Target platform" ghcInfo
 
 -- | Adjust the way we find and configure gcc and ld
 configureToolchain
-  :: GhcImplInfo
-  -> ConfiguredProgram
+  :: ConfiguredProgram
   -> Map String String
   -> ProgramDb
   -> ProgramDb
-configureToolchain _implInfo ghcProg ghcInfo =
+configureToolchain ghcProg ghcInfo =
   addKnownProgram
     gccProgram
       { programFindLocation = findProg gccProgramName extraGccPath
@@ -440,17 +439,15 @@ componentAsmGhcOptions
   -> SymbolicPath Pkg (Dir Artifacts)
   -> SymbolicPath Pkg File
   -> GhcOptions
-componentAsmGhcOptions verbosity lbi bi clbi odir filename =
+componentAsmGhcOptions verbosity lbi bi _clbi odir filename =
   mempty
     { -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
       ghcOptVerbosity = toFlag (min verbosity Normal)
     , ghcOptMode = toFlag GhcModeCompile
     , ghcOptInputFiles = toNubListR [filename]
-    , ghcOptCppIncludePath = includePaths lbi bi clbi odir
     , ghcOptHideAllPackages = toFlag True
     , ghcOptPackageDBs = withPackageDB lbi
-    , ghcOptPackages = toNubListR $ mkGhcOptPackages (promisedPkgs lbi) clbi
     , ghcOptAsmOptions =
         ( case withOptimization lbi of
             NoOptimisation -> []
@@ -463,6 +460,7 @@ componentAsmGhcOptions verbosity lbi bi clbi odir filename =
                 MaximalDebugInfo -> ["-g3"]
              )
           ++ asmOptions bi
+    , ghcOptAsProgram = maybeToFlag $ programPath <$> lookupProgram gccProgram (withPrograms lbi)
     , ghcOptObjDir = toFlag odir
     , ghcOptExtra = hcOptions GHC bi
     }
@@ -599,6 +597,7 @@ componentGhcOptions verbosity lbi bi clbi odir =
               (mkVersion [9, 4])
               (compiler lbi)
               (maybeToFlag $ programPath <$> lookupProgram gppProgram (withPrograms lbi))
+        , ghcOptAsProgram = maybeToFlag $ programPath <$> lookupProgram gccProgram (withPrograms lbi)
         }
   where
     exe_paths =
@@ -621,20 +620,16 @@ componentCmmGhcOptions
   -> SymbolicPath Pkg (Dir Artifacts)
   -> SymbolicPath Pkg File
   -> GhcOptions
-componentCmmGhcOptions verbosity lbi bi clbi odir filename =
+componentCmmGhcOptions verbosity lbi bi _clbi odir filename =
   mempty
     { -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
       ghcOptVerbosity = toFlag (min verbosity Normal)
     , ghcOptMode = toFlag GhcModeCompile
     , ghcOptInputFiles = toNubListR [filename]
-    , ghcOptCppIncludePath = includePaths lbi bi clbi odir
     , ghcOptCppOptions = cppOptions bi
-    , ghcOptCppIncludes =
-        toNubListR [autogenComponentModulesDir lbi clbi </> makeRelativePathEx cppHeaderName]
     , ghcOptHideAllPackages = toFlag True
     , ghcOptPackageDBs = withPackageDB lbi
-    , ghcOptPackages = toNubListR $ mkGhcOptPackages (promisedPkgs lbi) clbi
     , ghcOptOptimisation = toGhcOptimisation (withOptimization lbi)
     , ghcOptDebugInfo = toFlag (withDebugInfo lbi)
     , ghcOptExtra = hcOptions GHC bi <> cmmOptions bi

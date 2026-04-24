@@ -523,6 +523,8 @@ data GhcOptions = GhcOptions
   -- program to use for the C++ compiler before 9.4.
   , ghcOptGppProgram :: Flag FilePath
   -- ^ Program to use for the C++ compiler; the @ghc -pgmcxx@ flag.
+  , ghcOptAsProgram :: Flag FilePath
+  -- ^ Program to use for the Assembler; the @ghc -pgma@ flag.
   , ----------------------------
     -- Language and extensions
 
@@ -878,6 +880,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         , ["-opta" ++ opt | opt <- ghcOptAsmOptions opts]
         , concat [["-pgmc", cc] | cc <- flag ghcOptCcProgram]
         , concat [["-pgmcxx", cxx] | cxx <- flag ghcOptGppProgram]
+        , concat [["-pgma", as] | as <- flag ghcOptAsProgram]
         , -----------------
           -- Linker stuff
 
