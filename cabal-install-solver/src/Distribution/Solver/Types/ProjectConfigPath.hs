@@ -158,10 +158,10 @@ compareSegmentally pa@(ProjectConfigPath as) pb@(ProjectConfigPath bs) =
             bImporters = snd $ unconsProjectConfigPath pb
 
 splitPath :: FilePath -> [FilePath]
-splitPath = FP.splitPath . normSep where
-    normSep p =
-        if buildOS == Windows
-            then
+splitPath = FP.splitPath . normSep
+    where
+        normSep p =
+            if buildOS == Windows then
                 Windows.joinPath $ Windows.splitDirectories
                 [if Posix.isPathSeparator c then Windows.pathSeparator else c| c <- p]
             else
