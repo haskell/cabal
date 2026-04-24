@@ -354,21 +354,21 @@ Initialization and download
 cabal init
 ^^^^^^^^^^
 
-``cabal init [FLAGS]`` initialises a Cabal package, by default prompting the user for inputs, or choosing 
+``cabal init [FLAGS]`` initialises a Cabal package, by default prompting the user for inputs, or choosing
   sensible defaults to create a minimal project if specified. Run it in your project folder.
 
 .. option:: -i, --interactive
 
-    Enable interactive mode. This will prompt the user for inputs to help create the a minimal project. 
+    Enable interactive mode. This will prompt the user for inputs to help create the a minimal project.
 
-.. option:: -n, --non-interactive 
+.. option:: -n, --non-interactive
 
-    Enable non-interactive mode. This will attempt to infer project details from a user configuration 
+    Enable non-interactive mode. This will attempt to infer project details from a user configuration
     or from basic environment variables, such as $PATH.
 
-.. option:: --simple 
+.. option:: --simple
 
-    Create a simple, minimal project of a user-defined project type with sensible defaults.   
+    Create a simple, minimal project of a user-defined project type with sensible defaults.
 
 .. option:: -m, --minimal
 
