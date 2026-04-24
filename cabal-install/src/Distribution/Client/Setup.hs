@@ -3038,9 +3038,10 @@ initOptions _ =
   [ option
       ['i']
       ["interactive"]
-      ("Interactive mode. Creates a prompt tree for project creation. \n"
-      ++ "If -n/--non-interactive is issued, a simple project with inferred defaults \n"
-      ++ "is created. If --simple is issued, then sensible defaults will be chosen as well.")
+      ( "Interactive mode. Creates a prompt tree for project creation. \n"
+          ++ "If -n/--non-interactive is issued, a simple project with inferred defaults \n"
+          ++ "is created. If --simple is issued, then sensible defaults will be chosen as well."
+      )
       IT.interactive
       (\v flags -> flags{IT.interactive = v})
       (boolOpt' (['i'], ["interactive"]) (['n'], ["non-interactive"]))
