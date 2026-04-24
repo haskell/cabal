@@ -1,0 +1,12 @@
+cabal-version:       2.2
+name:                foreign-opts-pgmc
+version:             0.1
+build-type:          Simple
+
+executable foreign-opts-pgmc-exe
+  main-is:             Main.hs
+  build-depends:       base
+  default-language:    Haskell2010
+  include-dirs:        cbits
+  c-sources:           cbits/pgmclib.c
+  ghc-options:         -pgmc scripts/cc-wrapper.sh
