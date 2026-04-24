@@ -27,7 +27,6 @@ import System.IO.Unsafe (unsafePerformIO)
 import Distribution.Deprecated.ParseUtils
 import qualified Distribution.Deprecated.ReadP as Parse
 
-import Distribution.Compiler
 import Distribution.Package
 import Distribution.PackageDescription
 import qualified Distribution.Simple.InstallDirs as InstallDirs
@@ -36,7 +35,6 @@ import Distribution.Simple.Program.Types
 import Distribution.Simple.Utils (toUTF8BS)
 import Distribution.System (OS (Windows), buildOS)
 import Distribution.Types.PackageVersionConstraint
-import Distribution.Version
 
 import Distribution.Parsec
 import Distribution.Pretty
@@ -74,16 +72,10 @@ tests =
       , testProperty "buildonly" prop_roundtrip_legacytypes_buildonly
       , testProperty "specific" prop_roundtrip_legacytypes_specific
       ]
-        ++
-        -- a couple tests seem to trigger a RTS fault in ghc-7.6 and older
-        -- unclear why as of yet
-        concat
-          [ [ testProperty "shared" prop_roundtrip_legacytypes_shared
-            , testProperty "local" prop_roundtrip_legacytypes_local
-            , testProperty "all" prop_roundtrip_legacytypes_all
-            ]
-          | not usingGhc76orOlder
-          ]
+        ++ [ testProperty "shared" prop_roundtrip_legacytypes_shared
+           , testProperty "local" prop_roundtrip_legacytypes_local
+           , testProperty "all" prop_roundtrip_legacytypes_all
+           ]
   , testGroup
       "individual parser tests"
       [ testProperty "package location" prop_parsePackageLocationTokenQ
@@ -103,11 +95,6 @@ tests =
   , testGetProjectRootUsability
   , testFindProjectRoot
   ]
-  where
-    usingGhc76orOlder =
-      case buildCompilerId of
-        CompilerId GHC v -> v < mkVersion [7, 7]
-        _ -> False
 
 testGetProjectRootUsability :: TestTree
 testGetProjectRootUsability =

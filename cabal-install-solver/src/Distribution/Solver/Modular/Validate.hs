@@ -566,7 +566,7 @@ extendRequiredComponents eqpn available = foldM extendSingle
 validateTree :: CompilerInfo -> Index -> Maybe PkgConfigDb -> Tree d c -> Tree d c
 validateTree cinfo idx pkgConfigDb t = runValidate (validate t) VS {
     supportedExt        = maybe (const True) -- if compiler has no list of extensions, we assume everything is supported
-                                (\ es -> let s = S.fromList es in \ x -> S.member x s)
+                                (\ es -> let s = S.fromList es in (`S.member` s))
                                 (compilerInfoExtensions cinfo)
   , supportedLang       = maybe (const True)
                                 (flip L.elem) -- use list lookup because language list is small and no Ord instance

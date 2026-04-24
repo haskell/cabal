@@ -31,7 +31,6 @@ module Distribution.Solver.Types.ComponentDeps (
   , fromInstalled
     -- ** Deconstructing ComponentDeps
   , toList
-  , flatDeps
   , nonSetupDeps
   , libraryDeps
   , setupDeps
@@ -44,7 +43,6 @@ import Distribution.Types.UnqualComponentName
 import Distribution.Solver.Compat.Prelude hiding (empty,toList,zip)
 
 import qualified Data.Map as Map
-import Data.Foldable (fold)
 
 import Distribution.Pretty (Pretty (..))
 import qualified Distribution.Types.ComponentName as CN
@@ -175,14 +173,6 @@ fromInstalled = fromLibraryDeps
 
 toList :: ComponentDeps a -> [ComponentDep a]
 toList = Map.toList . unComponentDeps
-
--- | All dependencies of a package.
---
--- This is just a synonym for 'fold', but perhaps a use of 'flatDeps' is more
--- obvious than a use of 'fold', and moreover this avoids introducing lots of
--- @#ifdef@s for 7.10 just for the use of 'fold'.
-flatDeps :: Monoid a => ComponentDeps a -> a
-flatDeps = fold
 
 -- | All dependencies except the setup dependencies.
 --

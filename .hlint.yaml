@@ -1,36 +1,33 @@
 # Warnings currently triggered by your code
 - ignore: {name: "Avoid NonEmpty.unzip"} # 1 hint
-- ignore: {name: "Avoid lambda"} # 51 hints
-- ignore: {name: "Avoid lambda using `infix`"} # 23 hints
-- ignore: {name: "Eta reduce"} # 138 hints
+- ignore: {name: "Avoid lambda"} # 49 hints
+- ignore: {name: "Eta reduce"} # 139 hints
 - ignore: {name: "Hoist not"} # 16 hints
 - ignore: {name: "Move filter"} # 4 hints
 - ignore: {name: "Redundant $!"} # 1 hint
-- ignore: {name: "Redundant <$>"} # 17 hints
-- ignore: {name: "Redundant bracket"} # 257 hints
-- ignore: {name: "Redundant guard"} # 2 hints
+- ignore: {name: "Redundant bracket"} # 273 hints
+- ignore: {name: "Redundant guard"} # 1 hint
 - ignore: {name: "Redundant if"} # 6 hints
-- ignore: {name: "Redundant lambda"} # 19 hints
+- ignore: {name: "Redundant lambda"} # 16 hints
 - ignore: {name: "Redundant multi-way if"} # 1 hint
 - ignore: {name: "Redundant return"} # 9 hints
 - ignore: {name: "Use $>"} # 5 hints
 - ignore: {name: "Use ++"} # 4 hints
 - ignore: {name: "Use :"} # 29 hints
 - ignore: {name: "Use <$"} # 2 hints
-- ignore: {name: "Use <$>"} # 78 hints
+- ignore: {name: "Use <$>"} # 82 hints
 - ignore: {name: "Use <&>"} # 16 hints
 - ignore: {name: "Use <=<"} # 4 hints
 - ignore: {name: "Use =<<"} # 7 hints
 - ignore: {name: "Use >=>"} # 3 hints
 - ignore: {name: "Use Down"} # 3 hints
 - ignore: {name: "Use bimap"} # 7 hints
-- ignore: {name: "Use camelCase"} # 96 hints
+- ignore: {name: "Use camelCase"} # 97 hints
 - ignore: {name: "Use const"} # 36 hints
-- ignore: {name: "Use fmap"} # 23 hints
 - ignore: {name: "Use fold"} # 1 hint
 - ignore: {name: "Use fst"} # 2 hints
 - ignore: {name: "Use lambda-case"} # 58 hints
-- ignore: {name: "Use map once"} # 7 hints
+- ignore: {name: "Use map once"} # 6 hints
 - ignore: {name: "Use map with tuple-section"} # 3 hints
 - ignore: {name: "Use newtype instead of data"} # 31 hints
 - ignore: {name: "Use null"} # 2 hints
@@ -40,6 +37,7 @@
 - ignore: {name: "Functor law", within: [Test.Laws]}
 - ignore: {name: "Monoid law, left identity", within: [Test.Laws, UnitTests.Distribution.Utils.NubList]}
 - ignore: {name: "Monoid law, right identity", within: [Test.Laws, UnitTests.Distribution.Utils.NubList]}
+- ignore: {name: "Use fmap", within: [Distribution.Client.HttpUtils, Distribution.Simple.SrcDist]}
 
 - group:
     name: cabal-suggestions
@@ -54,8 +52,6 @@
     - --ignore-glob=Cabal-syntax/src/Distribution/Fields/Lexer.hs
     - --ignore-glob=Cabal-tests/tests/custom-setup/CabalDoctestSetup.hs
     - --ignore-glob=Cabal-tests/tests/custom-setup/IdrisSetup.hs
-    # TODO: Remove --ignore-glob for ghc-supported-languages.hs when this module compiles
-    - --ignore-glob=Cabal-tests/tests/misc/ghc-supported-languages.hs
     - --ignore-glob=cabal-testsuite/PackageTests/BuildWays/q/app/Main.hs
     - --ignore-glob=cabal-testsuite/PackageTests/CMain/10168/src/Lib.hs
     - --ignore-glob=cabal-testsuite/PackageTests/CmmSources/src/Demo.hs

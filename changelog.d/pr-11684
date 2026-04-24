@@ -1,0 +1,12 @@
+---
+synopsis: Add unit tests for active-repositories feature
+packages: [cabal-install]
+prs: 11684
+---
+
+Add unit tests for the `active-repositories` cabal configuration field:
+
+- `organizeByRepos`: ordering and strategy assignment with `:rest`, named repos, and error cases
+- `filterSkippedActiveRepos`: filtering of skipped entries in the absence of `:rest`
+- `CombineStrategy` index-combining logic (Skip/Merge/Override)
+- Parse/pretty roundtrip for `ActiveRepos` (QuickCheck)

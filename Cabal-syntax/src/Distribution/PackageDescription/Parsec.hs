@@ -133,7 +133,7 @@ data SectionS = SectionS
   }
 
 stateGpd :: Lens' SectionS GenericPackageDescription
-stateGpd f (SectionS gpd cs) = (\x -> SectionS x cs) <$> f gpd
+stateGpd f (SectionS gpd cs) = (`SectionS` cs) <$> f gpd
 {-# INLINE stateGpd #-}
 
 stateCommonStanzas :: Lens' SectionS (Map String CondTreeBuildInfo)

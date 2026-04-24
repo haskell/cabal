@@ -80,6 +80,7 @@ testdb/intree/store/*/incoming/alex-*.lock
 testdb/intree/store/*/incoming/lx-*.lock
 testdb/intree/store/*/package.db/package.cache
 testdb/intree/store/*/package.db/package.cache.lock
+testdb/intree/store/ghc-*/
 
 # windows test artifacts
 cabal-testsuite/**/*.exe

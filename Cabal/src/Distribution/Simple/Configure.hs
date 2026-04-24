@@ -312,7 +312,7 @@ maybeGetPersistBuildConfig
   -- ^ The @dist@ directory path.
   -> IO (Maybe LocalBuildInfo)
 maybeGetPersistBuildConfig mbWorkDir =
-  liftM (either (const Nothing) Just) . tryGetPersistBuildConfig mbWorkDir
+  fmap (either (const Nothing) Just) . tryGetPersistBuildConfig mbWorkDir
 
 -- | After running configure, output the 'LocalBuildInfo' to the
 -- 'localBuildInfoFile'.
@@ -422,7 +422,7 @@ findDistPref
   -- ^ override \"dist\" prefix
   -> IO (SymbolicPath Pkg (Dir Dist))
 findDistPref defDistPref overrideDistPref = do
-  envDistPref <- liftM parseEnvDistPref (lookupEnv "CABAL_BUILDDIR")
+  envDistPref <- parseEnvDistPref <$> lookupEnv "CABAL_BUILDDIR"
   return $ fromFlagOrDefault defDistPref (mappend envDistPref overrideDistPref)
   where
     parseEnvDistPref env =
@@ -2095,7 +2095,7 @@ getInstalledPackages verbosity comp mbWorkDir packageDBs progdb = do
   -- do not check empty packagedbs (ghc-pkg would error out)
   packageDBs' <- filterM packageDBExists packageDBs
   case compilerFlavor comp of
-    GHC -> GHC.getInstalledPackages verbosity comp mbWorkDir packageDBs' progdb
+    GHC -> GHC.getInstalledPackages verbosity mbWorkDir packageDBs' progdb
     GHCJS -> GHCJS.getInstalledPackages verbosity mbWorkDir packageDBs' progdb
     UHC -> UHC.getInstalledPackages verbosity comp mbWorkDir packageDBs' progdb
     flv ->
@@ -2607,14 +2607,10 @@ checkForeignDeps pkg lbi verbosity =
     -- in either the generated (most likely by `configure`)
     -- build directory (e.g. `dist/build`) or in the source directory.
     --
-    -- If it exists in both, we'll remove the one in the source
-    -- directory, as the generated should take precedence.
+    -- If it exists in both, issue a warning, because C compilers are
+    -- not guaranteed to pick the correct one and there appears to be
+    -- no way to control which is picked.
     --
-    -- C compilers like to prefer source local relative includes,
-    -- so the search paths provided to the compiler via -I are
-    -- ignored if the included file can be found relative to the
-    -- including file.  As such we need to take drastic measures
-    -- and delete the offending file in the source directory.
     checkDuplicateHeaders = do
       let relIncDirs = filter (not . isAbsolute) (collectField (fmap getSymbolicPath . includeDirs))
           isHeader = isSuffixOf ".h"
@@ -2631,9 +2627,7 @@ checkForeignDeps pkg lbi verbosity =
             ++ (getSymbolicPath (buildDir lbi) </> hdr)
             ++ " and "
             ++ (baseDir </> hdr)
-            ++ "; removing "
-            ++ (baseDir </> hdr)
-        removeFileForcibly (baseDir </> hdr)
+            ++ ". Which one the C compiler will use is unspecified."
 
     findOffendingHdr =
       ifBuildsWith
@@ -2922,12 +2916,7 @@ checkForeignLibSupported :: Compiler -> Platform -> ForeignLib -> Maybe String
 checkForeignLibSupported comp platform flib = go (compilerFlavor comp)
   where
     go :: CompilerFlavor -> Maybe String
-    go GHC
-      | compilerVersion comp < mkVersion [7, 8] =
-          unsupported
-            [ "Building foreign libraries is only supported with GHC >= 7.8"
-            ]
-      | otherwise = goGhcPlatform platform
+    go GHC = goGhcPlatform platform
     go _ =
       unsupported
         [ "Building foreign libraries is currently only supported with ghc"
