@@ -115,6 +115,18 @@
             "version": "3.17.0.0"
         },
         {
+            "cabal_sha256": "9e9590572cc6bdb0d7ccb8835f7f9302f1c11a36c972a4c4a97aeb789be42cd9",
+            "component": "lib:process",
+            "flags": [
+                "-os-string"
+            ],
+            "package": "process",
+            "revision": 0,
+            "source": "hackage",
+            "src_sha256": "da03911abf6bbdc68342f8f25698b0d3780964ed591f1c7d7f9b688c1097fda1",
+            "version": "1.6.26.0"
+        },
+        {
             "cabal_sha256": null,
             "component": "lib:Cabal",
             "flags": [
@@ -418,6 +430,16 @@
             "source": "hackage",
             "src_sha256": "1def1a524cc894351e28e86a91cf2d043f18eeaba79070e1cc1304c9f79e4c17",
             "version": "0.6.3.1"
+        },
+        {
+            "cabal_sha256": null,
+            "component": "lib:hooks-exe",
+            "flags": [],
+            "package": "hooks-exe",
+            "revision": null,
+            "source": "local",
+            "src_sha256": null,
+            "version": "0.1"
         },
         {
             "cabal_sha256": "a5effff3d14a0bbfde51dd62e72cff069b56be4298f16a78db7d3cc0c678c859",

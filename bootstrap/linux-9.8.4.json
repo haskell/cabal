@@ -432,6 +432,16 @@
             "version": "0.6.3.1"
         },
         {
+            "cabal_sha256": null,
+            "component": "lib:hooks-exe",
+            "flags": [],
+            "package": "hooks-exe",
+            "revision": null,
+            "source": "local",
+            "src_sha256": null,
+            "version": "0.1"
+        },
+        {
             "cabal_sha256": "a5effff3d14a0bbfde51dd62e72cff069b56be4298f16a78db7d3cc0c678c859",
             "component": "lib:open-browser",
             "flags": [
