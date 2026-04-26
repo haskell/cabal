@@ -1,0 +1,15 @@
+cabal-version:       2.2
+name:                foreign-opts-pgmcxx
+version:             0.1
+build-type:          Simple
+
+executable foreign-opts-pgmcxx-exe
+  main-is:             Main.hs
+  build-depends:       base
+  default-language:    Haskell2010
+  include-dirs:        cxxbits
+  -- The following options can be ignore with -pgmcxx by default.
+  -- Only gcc need stdc++ for C++ code, g++ doesn't need it.
+  -- extra-libraries:     stdc++
+  cxx-sources:         cxxbits/pgmcxxlib.cpp
+  ghc-options:         -pgmcxx scripts/cxx-wrapper.sh
