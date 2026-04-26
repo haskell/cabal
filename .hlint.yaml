@@ -37,6 +37,7 @@
 - ignore: {name: "Functor law", within: [Test.Laws]}
 - ignore: {name: "Monoid law, left identity", within: [Test.Laws, UnitTests.Distribution.Utils.NubList]}
 - ignore: {name: "Monoid law, right identity", within: [Test.Laws, UnitTests.Distribution.Utils.NubList]}
+- ignore: {name: "Replace case with maybe", within: [Distribution.Client.InLibrary]}
 - ignore: {name: "Use fmap", within: [Distribution.Client.HttpUtils, Distribution.Simple.SrcDist]}
 
 - group:
