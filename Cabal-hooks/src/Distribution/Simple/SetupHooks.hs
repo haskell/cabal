@@ -237,7 +237,7 @@ import Data.Map.Strict as Map
 A Cabal package with @Hooks@ @build-type@ must define the Haskell module
 @SetupHooks@ which defines a value @setupHooks :: 'SetupHooks'@.
 
-These *setup hooks* allow package authors to customise the configuration and
+These __setup hooks__ allow package authors to customise the configuration and
 building of a package by providing certain hooks that get folded into the
 general package configuration and building logic within @Cabal@.
 
@@ -359,8 +359,8 @@ following conditions apply:
   [N] the rule is new, or
   [S] the rule matches with an old rule, and either:
 
-    [S1] a file dependency of the rule has been modified/created/deleted, or
-         a (transitive) rule dependency of the rule is itself stale, or
+    [S1] a file dependency of the rule has been modified\/created\/deleted,
+         or a (transitive) rule dependency of the rule is itself stale, or
     [S2] the rule is different from the old rule, e.g. the argument stored in
          the rule command has changed, or the pointer to the action to run the
          rule has changed. (This is determined using the @Eq Rule@ instance.)
