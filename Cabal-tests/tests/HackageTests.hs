@@ -1,4 +1,6 @@
 {-# LANGUAGE BangPatterns        #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE CPP                 #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE Rank2Types          #-}
@@ -33,6 +35,7 @@ import Distribution.PackageDescription
   , condTestSuites
   , condBenchmarks
   )
+import qualified Distribution.Types.Modify as Mod
 import Distribution.Simple.Utils                   (fromUTF8BS, toUTF8BS)
 import Distribution.Fields.ParseResult
 import Distribution.Parsec.Source
@@ -181,9 +184,34 @@ parseParsecTest keepGoing fpath bs = do
             traverse_ (putStrLn . Parsec.showPErrorWithSource . fmap renderCabalFileSource) errors
             exitFailure
 
+-- Whether we can parse everything with annotation
+parseParsecTest' :: Bool -> FilePath -> B.ByteString -> IO ParsecResult
+parseParsecTest' keepGoing fpath bs = do
+    let (warnings, result) = Parsec.runParseResult $
+                             withSource (PCabalFile (fpath, bs)) $ Parsec.parseGenericPackageDescription @Mod.HasAnn bs
+
+    let w | null warnings = 0
+          | otherwise     = 1
+
+    case result of
+        Right gpd                    -> do
+            forEachGPD' fpath bs gpd
+            return (ParsecResult 1 w 0)
+
+        Left (_, errors) | keepGoing -> do
+            traverse_ (putStrLn . Parsec.showPErrorWithSource . fmap renderCabalFileSource) errors
+            return (ParsecResult 1 w 1)
+                         | otherwise -> do
+            traverse_ (putStrLn . Parsec.showPErrorWithSource . fmap renderCabalFileSource) errors
+            exitFailure
+
 -- | A hook to make queries on Hackage
 forEachGPD :: FilePath -> B8.ByteString -> L.GenericPackageDescription -> IO ()
 forEachGPD _ _ _ = return ()
+
+-- | A hook to make queries on Hackage
+forEachGPD' :: FilePath -> B8.ByteString -> (GenericPackageDescriptionWith Mod.HasAnn) -> IO ()
+forEachGPD' _ _ _ = return ()
 
 -------------------------------------------------------------------------------
 -- ParsecResult
@@ -362,6 +390,7 @@ main = join (O.execParser opts)
         [ command "read-fields" readFieldsP
           "Parse outer format (to '[Field]', TODO: apply Quirks)"
         , command "parsec"      parsecP     "Parse GPD with parsec"
+        , command "parsec-ann"  parsecP'    "Parse GPD with parsec (with annotation)"
         , command "roundtrip"   roundtripP  "parse . pretty . parse = parse"
         , command "check"       checkP      "Check GPD"
         ] <|> pure defaultA
@@ -374,6 +403,7 @@ main = join (O.execParser opts)
     readFieldsA pfx idx = parseIndex (mkPredicate pfx idx) readFieldTest
 
     parsecP = parsecA <$> prefixP <*> keepGoingP <*> indexP
+    parsecP' = parsecA' <$> prefixP <*> keepGoingP <*> indexP
     keepGoingP =
         O.flag' True  (O.long "keep-going") <|>
         O.flag' False (O.long "no-keep-going") <|>
@@ -382,6 +412,18 @@ main = join (O.execParser opts)
     parsecA pfx keepGoing idx = do
         begin <- Clock.getTime Clock.Monotonic
         ParsecResult n w f <- parseIndex (mkPredicate pfx idx) (parseParsecTest keepGoing)
+        end <- Clock.getTime Clock.Monotonic
+        let diff = Clock.toNanoSecs $ Clock.diffTimeSpec end begin
+
+        putStrLn $ show n ++ " files processed"
+        putStrLn $ show w ++ " files contained warnings"
+        putStrLn $ show f ++ " files failed to parse"
+        putStrLn $ showFFloat (Just 6) (fromInteger diff / 1e9                  :: Double) " seconds elapsed"
+        putStrLn $ showFFloat (Just 6) (fromInteger diff / 1e6 / fromIntegral n :: Double) " milliseconds per file"
+
+    parsecA' pfx keepGoing idx = do
+        begin <- Clock.getTime Clock.Monotonic
+        ParsecResult n w f <- parseIndex (mkPredicate pfx idx) (parseParsecTest' keepGoing)
         end <- Clock.getTime Clock.Monotonic
         let diff = Clock.toNanoSecs $ Clock.diffTimeSpec end begin
 

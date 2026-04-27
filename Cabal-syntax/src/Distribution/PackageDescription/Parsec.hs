@@ -774,10 +774,16 @@ instance
   ) => FromBuildInfoWith mod (ExecutableWith mod) where
   fromBuildInfo' n bi = set L.exeName n $ set L.buildInfo bi (mempty :: ExecutableWith mod)
 
-instance L.HasBuildInfoWith mod (TestSuiteStanzaWith mod) => FromBuildInfoWith mod (TestSuiteStanzaWith mod) where
+instance L.HasBuildInfoWith mod (TestSuiteStanzaWith mod) where
+  buildInfo f t = (\x -> t{_testStanzaBuildInfo = x}) <$> f (_testStanzaBuildInfo t)
+
+instance L.HasBuildInfoWith mod (BenchmarkStanzaWith mod) where
+  buildInfo f b = (\x -> b{_benchmarkStanzaBuildInfo = x}) <$> f (_benchmarkStanzaBuildInfo b)
+
+instance FromBuildInfoWith mod (TestSuiteStanzaWith mod) where
   fromBuildInfo' _ bi = TestSuiteStanza Nothing Nothing Nothing bi []
 
-instance L.HasBuildInfoWith mod (BenchmarkStanzaWith mod) => FromBuildInfoWith mod (BenchmarkStanzaWith mod) where
+instance FromBuildInfoWith mod (BenchmarkStanzaWith mod) where
   fromBuildInfo' _ bi = BenchmarkStanza Nothing Nothing Nothing bi
 
 parseCondTreeWithCommonStanzas

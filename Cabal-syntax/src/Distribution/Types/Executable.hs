@@ -42,7 +42,7 @@ deriving instance Eq Executable
 deriving instance Ord Executable
 deriving instance Data Executable
 
-instance L.HasBuildInfoWith Mod.HasNoAnn Executable where
+instance L.HasBuildInfoWith mod (ExecutableWith mod) where
   buildInfo f l = (\x -> l{buildInfo = x}) <$> f (buildInfo l)
 
 instance Binary Executable

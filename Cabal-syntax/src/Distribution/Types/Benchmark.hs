@@ -60,7 +60,26 @@ instance Monoid Benchmark where
       }
   mappend = (<>)
 
+instance Monoid (BenchmarkWith Mod.HasAnn) where
+  mempty =
+    Benchmark
+      { benchmarkName = mempty
+      , benchmarkInterface = mempty
+      , benchmarkBuildInfo = mempty
+      }
+  mappend = (<>)
+
 instance Semigroup Benchmark where
+  a <> b =
+    Benchmark
+      { benchmarkName = combineNames a b benchmarkName "benchmark"
+      , benchmarkInterface = combine benchmarkInterface
+      , benchmarkBuildInfo = combine benchmarkBuildInfo
+      }
+    where
+      combine field = field a `mappend` field b
+
+instance Semigroup (BenchmarkWith Mod.HasAnn) where
   a <> b =
     Benchmark
       { benchmarkName = combineNames a b benchmarkName "benchmark"

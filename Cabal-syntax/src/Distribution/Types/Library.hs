@@ -1,4 +1,6 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -51,7 +53,7 @@ deriving instance Ord Library
 deriving instance Read Library
 deriving instance Data Library
 
-instance L.HasBuildInfoWith Mod.HasNoAnn Library where
+instance L.HasBuildInfoWith mod (LibraryWith mod) where
   buildInfo f l = (\x -> l{libBuildInfo = x}) <$> f (libBuildInfo l)
 
 instance Binary Library
@@ -60,6 +62,18 @@ instance NFData Library where rnf = genericRnf
 
 emptyLibrary :: Library
 emptyLibrary =
+  Library
+    { libName = LMainLibName
+    , exposedModules = mempty
+    , reexportedModules = mempty
+    , signatures = mempty
+    , libExposed = True
+    , libVisibility = mempty
+    , libBuildInfo = mempty
+    }
+
+emptyLibraryAnn :: LibraryWith Mod.HasAnn
+emptyLibraryAnn =
   Library
     { libName = LMainLibName
     , exposedModules = mempty
@@ -80,6 +94,24 @@ emptyLibrary =
 instance Monoid Library where
   mempty = emptyLibrary
   mappend = (<>)
+
+instance Monoid (LibraryWith Mod.HasAnn) where
+  mempty = emptyLibraryAnn
+  mappend = (<>)
+
+instance Semigroup (LibraryWith Mod.HasAnn) where
+  a <> b =
+    Library
+      { libName = combineLibraryName (libName a) (libName b)
+      , exposedModules = combine exposedModules
+      , reexportedModules = combine reexportedModules
+      , signatures = combine signatures
+      , libExposed = libExposed a && libExposed b -- so False propagates
+      , libVisibility = combine libVisibility
+      , libBuildInfo = combine libBuildInfo
+      }
+    where
+      combine field = field a `mappend` field b
 
 instance Semigroup Library where
   a <> b =

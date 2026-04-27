@@ -459,9 +459,6 @@ data TestSuiteStanzaWith (mod :: Mod.HasAnnotation) = TestSuiteStanza
   , _testStanzaCodeGenerators :: [String]
   }
 
-instance L.HasBuildInfoWith Mod.HasNoAnn TestSuiteStanza where
-  buildInfo = testStanzaBuildInfo
-
 testStanzaTestType :: Lens' (TestSuiteStanzaWith mod) (Maybe TestType)
 testStanzaTestType f s = fmap (\x -> s{_testStanzaTestType = x}) (f (_testStanzaTestType s))
 {-# INLINE testStanzaTestType #-}
@@ -653,9 +650,6 @@ data BenchmarkStanzaWith (mod :: Mod.HasAnnotation) = BenchmarkStanza
   , _benchmarkStanzaBenchmarkModule :: Maybe ModuleName
   , _benchmarkStanzaBuildInfo :: BuildInfoWith mod
   }
-
-instance L.HasBuildInfoWith Mod.HasNoAnn BenchmarkStanza where
-  buildInfo = benchmarkStanzaBuildInfo
 
 benchmarkStanzaBenchmarkType :: Lens' (BenchmarkStanzaWith mod) (Maybe BenchmarkType)
 benchmarkStanzaBenchmarkType f s = fmap (\x -> s{_benchmarkStanzaBenchmarkType = x}) (f (_benchmarkStanzaBenchmarkType s))
