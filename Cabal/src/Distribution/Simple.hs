@@ -982,14 +982,14 @@ autoconfUserHooks =
         let common = configCommonFlags flags
             verbosity = mkVerbosity defaultVerbosityHandles (fromFlag $ setupVerbosity common)
             mbWorkDir = flagToMaybe $ setupWorkingDir common
-            targetTriple = Map.lookup "Target platform" (compilerProperties (compiler lbi))
+            compilerTargetTriple = Map.lookup "Target platform" (compilerProperties (compiler lbi))
         runConfigureScript
           defaultVerbosityHandles
           flags
           (flagAssignment lbi)
           (withPrograms lbi)
           (hostPlatform lbi)
-          targetTriple
+          compilerTargetTriple
         pbi <- getHookedBuildInfo verbosity mbWorkDir (buildDir lbi)
         sanityCheckHookedBuildInfo verbosity pkg_descr pbi
         let pkg_descr' = updatePackageDescription pbi pkg_descr
@@ -1062,8 +1062,8 @@ autoconfSetupHooks =
               }
           }
         ) =
-        let targetTriple = Map.lookup "Target platform" (compilerProperties compiler)
-         in runConfigureScript defaultVerbosityHandles cfg flags progs plat targetTriple
+        let compilerTargetTriple = Map.lookup "Target platform" (compilerProperties compiler)
+         in runConfigureScript defaultVerbosityHandles cfg flags progs plat compilerTargetTriple
 
     pre_conf_comp
       :: SetupHooks.PreConfComponentInputs
