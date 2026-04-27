@@ -23,7 +23,6 @@ import Prelude ()
 
 -- local
 import Distribution.PackageDescription
-import Distribution.Pretty
 import Distribution.Simple.Configure (findDistPrefOrDefault)
 import Distribution.Simple.Errors
 import Distribution.Simple.LocalBuildInfo
@@ -186,7 +185,14 @@ runConfigureScript verbHandles cfg flags programDb hp targetTriple = do
           : [("CXXFLAGS", Just (mkFlagsEnv cxxFlags "CXXFLAGS")) | Just cxxFlags <- [mcxxFlags]]
           ++ [("PATH", Just pathEnv) | not (null extraPath)]
           ++ cabalFlagEnv
-      maybeHostFlag = ["--host=" ++ fromMaybe (show (pretty hp)) targetTriple | hp /= buildPlatform]
+      maybeHostFlag =
+            case targetTriple of
+              Just host ->
+                ["--host=" ++ host |
+                          -- the hp =/ buildPlatform guard is too restrictive,
+                          -- e.g. for glibc -> musl cross-compilation we don't want to omit x86_64-unknown-linux-musl.
+                          hp /= buildPlatform]
+              Nothing -> []
       args' =
         configureFile'
           : args
