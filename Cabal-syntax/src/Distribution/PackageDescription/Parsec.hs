@@ -271,7 +271,7 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
   setCabalSpecVersion (Just specVer')
 
   -- Package description
-  pd <- parseFieldGrammar specVer fields packageDescriptionFieldGrammar
+  pd <- parseFieldGrammar specVer fields (packageDescriptionFieldGrammar @mod)
 
   -- Check that scanned and parsed versions match.
   unless (specVer == specVersion pd) $

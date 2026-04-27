@@ -113,9 +113,10 @@ import qualified Distribution.Types.Lens as L
 -------------------------------------------------------------------------------
 
 packageDescriptionFieldGrammar
-  :: ( FieldGrammar c g
-     , Applicative (g Mod.HasNoAnn PackageDescription)
-     , Applicative (g Mod.HasNoAnn PackageIdentifier)
+  :: forall mod c g
+   . ( FieldGrammarWith mod c g
+     , Applicative (g mod PackageDescription)
+     , Applicative (g mod PackageIdentifier)
      , c (Identity BuildType)
      , c (Identity PackageName)
      , c (Identity Version)
@@ -125,7 +126,7 @@ packageDescriptionFieldGrammar
      , c CompatLicenseFile
      , c CompatDataDir
      )
-  => g Mod.HasNoAnn PackageDescription PackageDescription
+  => g mod PackageDescription PackageDescription
 packageDescriptionFieldGrammar =
   PackageDescription
     <$> optionalFieldDefAla "cabal-version" SpecVersion L.specVersion CabalSpecV1_0
@@ -1392,7 +1393,7 @@ _syntaxFieldNames =
         nub $
           sort $
             mconcat
-              [ fieldGrammarKnownFieldList packageDescriptionFieldGrammar
+              [ fieldGrammarKnownFieldList (packageDescriptionFieldGrammar @Mod.HasNoAnn)
               , fieldGrammarKnownFieldList $ (libraryFieldGrammar @Mod.HasNoAnn) LMainLibName
               , fieldGrammarKnownFieldList $ (executableFieldGrammar @Mod.HasNoAnn) "exe"
               , fieldGrammarKnownFieldList $ (foreignLibFieldGrammar @Mod.HasNoAnn) "flib"
