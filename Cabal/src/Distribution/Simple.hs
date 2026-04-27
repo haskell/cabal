@@ -1058,11 +1058,11 @@ autoconfSetupHooks =
               { LBC.configFlags = cfg
               , LBC.flagAssignment = flags
               , LBC.hostPlatform = plat
-              , LBC.compiler = compiler
+              , LBC.compiler = compiler'
               }
           }
         ) =
-        let compilerTargetTriple = Map.lookup "Target platform" (compilerProperties compiler)
+        let compilerTargetTriple = Map.lookup "Target platform" (compilerProperties compiler')
          in runConfigureScript defaultVerbosityHandles cfg flags progs plat compilerTargetTriple
 
     pre_conf_comp
