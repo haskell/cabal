@@ -81,6 +81,8 @@ deriving instance Show (GenericPackageDescriptionWith Mod.HasNoAnn)
 deriving instance Data (GenericPackageDescriptionWith Mod.HasNoAnn)
 deriving instance Generic (GenericPackageDescriptionWith Mod.HasNoAnn)
 
+deriving instance Show (GenericPackageDescriptionWith Mod.HasAnn)
+
 instance Package (GenericPackageDescriptionWith Mod.HasNoAnn) where
   packageId = packageId . packageDescription
 

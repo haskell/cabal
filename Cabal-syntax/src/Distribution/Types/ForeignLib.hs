@@ -77,6 +77,8 @@ deriving instance Eq ForeignLib
 deriving instance Ord ForeignLib
 deriving instance Data ForeignLib
 
+deriving instance Show (ForeignLibWith Mod.HasAnn)
+
 data LibVersionInfo = LibVersionInfo Int Int Int deriving (Data, Eq, Generic)
 
 instance Ord LibVersionInfo where

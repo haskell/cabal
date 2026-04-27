@@ -53,6 +53,8 @@ deriving instance Ord Library
 deriving instance Read Library
 deriving instance Data Library
 
+deriving instance Show (LibraryWith Mod.HasAnn)
+
 instance L.HasBuildInfoWith mod (LibraryWith mod) where
   buildInfo f l = (\x -> l{libBuildInfo = x}) <$> f (libBuildInfo l)
 

@@ -179,6 +179,8 @@ deriving instance Eq BuildInfo
 deriving instance Ord BuildInfo
 deriving instance Data BuildInfo
 
+deriving instance Show (BuildInfoWith Mod.HasAnn)
+
 instance Binary BuildInfo
 instance Structured BuildInfo
 instance NFData BuildInfo where rnf = genericRnf

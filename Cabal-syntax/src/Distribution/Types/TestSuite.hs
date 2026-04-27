@@ -45,6 +45,8 @@ deriving instance Eq TestSuite
 deriving instance Ord TestSuite
 deriving instance Data TestSuite
 
+deriving instance Show (TestSuiteWith Mod.HasAnn)
+
 instance forall (mod :: Mod.HasAnnotation). L.HasBuildInfoWith mod (TestSuiteWith mod) where
   buildInfo f l = (\x -> l{testBuildInfo = x}) <$> f (testBuildInfo l)
 

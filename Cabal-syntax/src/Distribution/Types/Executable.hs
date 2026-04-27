@@ -42,6 +42,8 @@ deriving instance Eq Executable
 deriving instance Ord Executable
 deriving instance Data Executable
 
+deriving instance Show (ExecutableWith Mod.HasAnn)
+
 instance L.HasBuildInfoWith mod (ExecutableWith mod) where
   buildInfo f l = (\x -> l{buildInfo = x}) <$> f (buildInfo l)
 

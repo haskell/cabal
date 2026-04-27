@@ -44,6 +44,8 @@ deriving instance Eq Benchmark
 deriving instance Ord Benchmark
 deriving instance Data Benchmark
 
+deriving instance Show (BenchmarkWith Mod.HasAnn)
+
 instance Binary Benchmark
 instance Structured Benchmark
 instance NFData Benchmark where rnf = genericRnf
