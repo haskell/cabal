@@ -56,8 +56,15 @@ runConfigureScript
   -> Platform
   -- ^ host platform
   -> Maybe String
-  -- ^ original target triple from compiler info (e.g. @"x86_64-w64-mingw32"@),
-  -- used for the @--host=@ flag instead of the pretty-printed 'Platform'
+  -- ^ The GHC target platform triple (e.g. @"x86_64-w64-mingw32"@),
+  -- passed as the autoconf @--host=@ flag.
+  --
+  -- Note: GHC's \"target\" is the platform that compiled Haskell code
+  -- runs on, which corresponds to autoconf's \"host\" (the platform
+  -- where the compiled artifact runs). Autoconf reserves \"target\"
+  -- for compiler toolchains only. See the
+  -- [GHC wiki on cross-compilation](https://gitlab.haskell.org/ghc/ghc/-/wikis/cross-compilation)
+  -- for details on GHC's platform terminology.
   -> IO ()
 runConfigureScript verbHandles cfg flags programDb hp targetTriple = do
   let commonCfg = configCommonFlags cfg
