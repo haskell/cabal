@@ -103,8 +103,8 @@ parseGenericPackageDescription
      , Monoid (ExecutableWith mod)
      , Monoid (TestSuiteWith mod)
      , Monoid (BenchmarkWith mod)
-     , Monoid (TestSuiteStanzaWith mod)
-     , Monoid (BenchmarkStanzaWith mod)
+     -- , Monoid (TestSuiteStanzaWith mod)
+     -- , Monoid (BenchmarkStanzaWith mod)
 
      , Parsec (DependencyWith mod)
 
@@ -166,8 +166,8 @@ parseGenericPackageDescriptionMaybe
      , Monoid (ExecutableWith mod)
      , Monoid (TestSuiteWith mod)
      , Monoid (BenchmarkWith mod)
-     , Monoid (TestSuiteStanzaWith mod)
-     , Monoid (BenchmarkStanzaWith mod)
+     -- , Monoid (TestSuiteStanzaWith mod)
+     -- , Monoid (BenchmarkStanzaWith mod)
 
      , Parsec (DependencyWith mod)
 
@@ -221,8 +221,8 @@ parseGenericPackageDescription'
      , Monoid (ExecutableWith mod)
      , Monoid (TestSuiteWith mod)
      , Monoid (BenchmarkWith mod)
-     , Monoid (TestSuiteStanzaWith mod)
-     , Monoid (BenchmarkStanzaWith mod)
+     -- , Monoid (TestSuiteStanzaWith mod)
+     -- , Monoid (BenchmarkStanzaWith mod)
 
 
 -- Why this bound
@@ -479,25 +479,25 @@ goSections specVer = traverse_ process
           -- testSuite <- lift $ traverse (validateTestSuite specVer pos) testStanza
           let testSuite = mempty
 
-          let hasType ts = testInterface ts /= testInterface (mempty :: TestSuiteWith mod)
-          unless (onAllBranches hasType testSuite) $
-            lift $
-              parseFailure pos $
-                concat
-                  [ "Test suite " ++ show (prettyShow name')
-                  , concat $ case specVer of
-                      v
-                        | v >= CabalSpecV3_8 ->
-                            [ " is missing required field \"main-is\" or the field "
-                            , "is not present in all conditional branches."
-                            ]
-                      _ ->
-                        [ " is missing required field \"type\" or the field "
-                        , "is not present in all conditional branches. The "
-                        , "available test types are: "
-                        , intercalate ", " (map prettyShow knownTestTypes)
-                        ]
-                  ]
+          -- let hasType ts = testInterface ts /= testInterface (mempty :: TestSuiteWith mod)
+          -- unless (onAllBranches hasType testSuite) $
+          --   lift $
+          --     parseFailure pos $
+          --       concat
+          --         [ "Test suite " ++ show (prettyShow name')
+          --         , concat $ case specVer of
+          --             v
+          --               | v >= CabalSpecV3_8 ->
+          --                   [ " is missing required field \"main-is\" or the field "
+          --                   , "is not present in all conditional branches."
+          --                   ]
+          --             _ ->
+          --               [ " is missing required field \"type\" or the field "
+          --               , "is not present in all conditional branches. The "
+          --               , "available test types are: "
+          --               , intercalate ", " (map prettyShow knownTestTypes)
+          --               ]
+          --         ]
 
           -- TODO check duplicate name here?
           stateGpd . L.condTestSuites %= snoc (name', testSuite)

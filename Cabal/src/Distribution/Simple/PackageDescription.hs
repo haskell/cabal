@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeApplications #-}
 
 -----------------------------------------------------------------------------
 
@@ -48,13 +49,15 @@ import Distribution.Verbosity (Verbosity, VerbosityLevel (..), verbosityLevel)
 import System.Directory (doesFileExist)
 import Text.Printf (printf)
 
+import qualified Distribution.Types.Modify as Mod
+
 readGenericPackageDescription
   :: Verbosity
   -> Maybe (SymbolicPath CWD (Dir Pkg))
   -> SymbolicPath Pkg File
   -> IO GenericPackageDescription
 readGenericPackageDescription =
-  readAndParseFile parseGenericPackageDescription
+  readAndParseFile (parseGenericPackageDescription @Mod.HasNoAnn)
 
 readHookedBuildInfo
   :: Verbosity

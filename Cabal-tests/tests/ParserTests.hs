@@ -127,7 +127,7 @@ warningTest :: PWarnType -> FilePath -> TestTree
 warningTest wt fp = testCase (show wt) $ do
     contents <- BS.readFile $ "tests" </> "ParserTests" </> "warnings" </> fp
 
-    let res =  withSource (PCabalFile (fp, contents)) $ parseGenericPackageDescription contents
+    let res =  withSource (PCabalFile (fp, contents)) $ (parseGenericPackageDescription @Mod.HasNoAnn) contents
     let (warns, x) = runParseResult res
 
     assertBool ("should parse successfully: " ++ show x) $ isRight x
@@ -434,7 +434,7 @@ formatGoldenTest fp = cabalGoldenTest "format" correct $ do
 mkTreeDiffGoldenTest :: FilePath -> FilePath -> TestTree
 mkTreeDiffGoldenTest goldenFileDir fp = ediffGolden goldenTest "expr" exprFile $ do
   contents <- BS.readFile input
-  let res = withSource (PCabalFile (fp, contents)) $ parseGenericPackageDescription contents
+  let res = withSource (PCabalFile (fp, contents)) $ (parseGenericPackageDescription @Mod.HasNoAnn) contents
   let (_, x) = runParseResult res
   case x of
       Right gpd -> pure (toExpr gpd)

@@ -32,7 +32,8 @@ import Prelude ()
 
 import Distribution.ModuleName (ModuleName, main)
 import Distribution.PackageDescription
-  ( TestSuite (..)
+  ( TestSuite
+  , TestSuiteWith (..)
   , testModules
   )
 import qualified Distribution.PackageDescription as PD

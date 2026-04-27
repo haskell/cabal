@@ -38,7 +38,7 @@ import Distribution.Simple.Setup.Common
 import Distribution.Simple.UserHooks
 import Distribution.Simple.Utils
 import Distribution.System (Platform (Platform))
-import Distribution.Types.Benchmark (Benchmark (benchmarkBuildInfo))
+import Distribution.Types.Benchmark (Benchmark, BenchmarkWith (benchmarkBuildInfo))
 import Distribution.Types.UnqualComponentName
 import Distribution.Utils.Path
 import Distribution.Verbosity
