@@ -111,6 +111,7 @@ library
     Distribution.Simple.Build.Inputs
     Distribution.Simple.Build.Macros
     Distribution.Simple.Build.PackageInfoModule
+    Distribution.Simple.Build.PackageMetaModule
     Distribution.Simple.Build.PathsModule
     Distribution.Simple.BuildPaths
     Distribution.Simple.BuildTarget
@@ -355,6 +356,7 @@ library
     Distribution.PackageDescription.Check.Warning
     Distribution.Simple.Build.Macros.Z
     Distribution.Simple.Build.PackageInfoModule.Z
+    Distribution.Simple.Build.PackageMetaModule.Z
     Distribution.Simple.Build.PathsModule.Z
     Distribution.Simple.GHC.Build
     Distribution.Simple.GHC.Build.ExtraSources
