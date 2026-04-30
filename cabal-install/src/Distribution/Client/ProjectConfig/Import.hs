@@ -1,6 +1,6 @@
 {-# LANGUAGE TupleSections #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 
 -- | Project configuration imports.
 module Distribution.Client.ProjectConfig.Import
