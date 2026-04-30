@@ -115,6 +115,19 @@ class
     -- ^ default value
     -> g m s a
 
+  -- | Optional field with default value.
+  optionalFieldDefAla'
+    :: (c b, Newtype a b)
+    => FieldName
+    -- ^ field name
+    -> (a -> b)
+    -- ^ 'Newtype' pack
+    -> ALens' s (AnnotateWith Positions m a)
+    -- ^ @'Lens'' s a@: lens into the field
+    -> a
+    -- ^ default value
+    -> g m s (AnnotateWith Positions m a)
+
   --  | Free text field is essentially 'optionalFieldDefAla` with @""@
   --  as the default and "accept everything" parser.
   --

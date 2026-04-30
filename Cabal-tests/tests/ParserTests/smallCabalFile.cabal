@@ -5,6 +5,9 @@ version: 0.0.0
 
 library foo
   main-is: Main.hs
+
+  buildable: True
+
   build-depends:
     text
      ,

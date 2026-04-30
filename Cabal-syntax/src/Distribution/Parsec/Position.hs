@@ -35,6 +35,7 @@ retPos (Position row _col) = Position (row + 1) 1
 showPos :: Position -> String
 showPos (Position row col) = show row ++ ":" ++ show col
 
+-- | Only used for error values
 zeroPos :: Position
 zeroPos = Position 0 0
 

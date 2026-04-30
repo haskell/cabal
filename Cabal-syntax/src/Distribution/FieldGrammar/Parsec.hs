@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE KindSignatures #-}
@@ -97,7 +98,7 @@ import Distribution.Parsec.FieldLineStream
 import Distribution.Parsec.Position (positionCol, positionRow)
 import Distribution.Trivia
 
-import Distribution.Types.Modify (AttachPositions)
+import Distribution.Types.Modify (AttachPositions, AnnotateWith)
 import qualified Distribution.Types.Modify as Mod
 
 -------------------------------------------------------------------------------
@@ -609,6 +610,39 @@ instance FieldGrammarWith Mod.HasAnn Parsec ParsecFieldGrammar where
       parseOne v (MkNamelessField pos fls) = do
         (fieldLinePos, x) <- runFieldParser pos (liftA2 (,) getPosition parsec) v fls
         pure (Positions pos fieldLinePos, x)
+
+  optionalFieldDefAla'
+    :: forall b a s
+     . (Parsec b, Newtype a b)
+    => FieldName
+    -- ^ field name
+    -> (a -> b)
+    -- ^ 'Newtype' pack
+    -> ALens' s (Ann Positions a)
+    -- ^ @'Lens'' s a@: lens into the field
+    -> a
+    -- ^ default value
+    -> ParsecFieldGrammar Mod.HasAnn s (Ann Positions a)
+  optionalFieldDefAla' fn _pack _extract def = ParsecFG (Set.singleton fn) Set.empty parser
+    where
+      parser :: CabalSpecVersion -> Fields Position -> ParseResult src (Ann Positions a)
+      parser v fields = case Map.lookup fn fields of
+        Nothing -> pure def'
+        Just [] -> pure def'
+        Just [x] -> parseOne v x
+        Just xs@(_ : y : ys) -> do
+          warnMultipleSingularFields fn xs
+          NE.last <$> traverse (parseOne v) (y :| ys)
+
+      def' :: Ann Positions a
+      def' = Ann IsInserted def
+
+      parseOne :: CabalSpecVersion -> NamelessField Position -> ParseResult src (Ann Positions a)
+      parseOne v (MkNamelessField pos fls)
+        | null fls = pure def'
+        | otherwise = do
+          (fieldLinePos, x) <- runFieldParser pos (liftA2 (,) getPosition (parsec @b)) v fls
+          pure (Ann (HasTrivia $ Positions pos fieldLinePos) (unpack' _pack x))
 
 -------------------------------------------------------------------------------
 -- Parsec
