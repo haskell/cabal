@@ -37,7 +37,6 @@ import Distribution.Client.Compat.Prelude
 
 import Distribution.Types.Flag (FlagName, parsecFlagAssignment)
 
-import Control.Arrow (Kleisli (..), arr, (>>>))
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Types.AllowNewer (AllowNewer (..), AllowOlder (..))
 import Distribution.Client.Types.Repo (LocalRepo (..), RemoteRepo (..), emptyRemoteRepo, normaliseFileNoIndexURI)
@@ -62,7 +61,7 @@ import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.ProjectConfigPath
 
 import Distribution.Client.NixStyleOptions (NixStyleFlags (..))
-import Distribution.Client.ProjectConfig.Import (ProjectConfigSkeleton, fetchImportConfig)
+import Distribution.Client.ProjectConfig.Import (ProjectConfigSkeleton, fetchImportParse)
 import Distribution.Client.ProjectFlags (ProjectFlags (..), defaultProjectFlags, projectFlagsOptions)
 import Distribution.Client.Setup
   ( ConfigExFlags (..)
@@ -285,9 +284,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
               (isUntrimmedUriConfigPath importLocPath)
               (noticeDoc verbosity $ untrimmedUriImportMsg (Disp.text "Warning:") importLocPath)
             let parser = parseProjectSkeleton cacheDir httpTransport verbosity projectDir importLocPath
-            res <-
-              (snd <$> fetchImportConfig cacheDir httpTransport verbosity projectDir normLocPath)
-                >>= runKleisli (arr ProjectConfigToParse >>> Kleisli parser)
+            res <- fetchImportParse parser cacheDir httpTransport verbosity projectDir normLocPath
             rest <- go [] xs
             let fs = (\z -> CondNode ([normLocPath], z) mempty) <$> fieldsToConfig normSource (reverse acc)
             pure . fmap mconcat . sequence $ [projectParse Nothing normSource fs, res, rest]

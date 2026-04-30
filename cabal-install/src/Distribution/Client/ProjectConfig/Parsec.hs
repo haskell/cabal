@@ -12,11 +12,10 @@ module Distribution.Client.ProjectConfig.Parsec
   , runParseResult
   ) where
 
-import Control.Arrow (Kleisli (..), arr, (>>>))
 import Distribution.CabalSpecVersion
 import Distribution.Client.HttpUtils
 import Distribution.Client.ProjectConfig.FieldGrammar (packageConfigFieldGrammar, projectConfigFieldGrammar)
-import Distribution.Client.ProjectConfig.Import (ProjectConfigSkeleton, fetchImportConfig)
+import Distribution.Client.ProjectConfig.Import (ProjectConfigSkeleton, fetchImportParse)
 import qualified Distribution.Client.ProjectConfig.Lens as L
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Types.Repo hiding (repoName)
@@ -134,9 +133,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
                     (isUntrimmedUriConfigPath importLocPath)
                     (noticeDoc verbosity $ untrimmedUriImportMsg (Disp.text "Warning:") importLocPath)
                   let parser = parseProjectSkeleton cacheDir httpTransport verbosity projectDir importLocPath
-                  importParseResult <-
-                    (snd <$> fetchImportConfig cacheDir httpTransport verbosity projectDir normLocPath)
-                      >>= runKleisli (arr ProjectConfigToParse >>> Kleisli parser)
+                  importParseResult <- fetchImportParse parser cacheDir httpTransport verbosity projectDir normLocPath
                   rest <- go [] xs
                   let fs = (\z -> CondNode ([normLocPath], z) mempty) <$> fieldsToConfig normSource (reverse acc)
                   pure . fmap mconcat . sequence $ [fs, importParseResult, rest]
