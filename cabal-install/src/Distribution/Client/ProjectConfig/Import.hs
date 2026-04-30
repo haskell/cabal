@@ -1,4 +1,5 @@
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 
 -- | Project configuration imports.
 module Distribution.Client.ProjectConfig.Import
@@ -6,12 +7,15 @@ module Distribution.Client.ProjectConfig.Import
     ProjectConfigSkeleton
   , projectSkeletonImports
   , fetchImportParse
+
+    -- * Messages
+  , cyclicalImportMsg
   ) where
 
 import Control.Arrow (Kleisli (..), arr, (>>>))
 import qualified Data.ByteString.Char8 as BS
 import Data.Coerce (coerce)
-import Distribution.Client.Compat.Prelude
+import Distribution.Client.Compat.Prelude hiding (empty, (<>))
 import Distribution.Client.HttpUtils
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Compat.Lens (view)
@@ -23,6 +27,7 @@ import Distribution.Utils.String (trim)
 import Network.URI (URI (..), parseURI)
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath (isAbsolute, isPathSeparator, makeValid, (</>))
+import Text.PrettyPrint (Doc, nest, semi, text, vcat, (<>))
 
 -- | ProjectConfigSkeleton is a tree of conditional blocks and imports wrapping
 -- a config. It can be finalized by providing the conditional resolution info
@@ -57,3 +62,11 @@ fetchImportParse parser cacheDir httpTransport verbosity projectDir normLocPath 
         Nothing ->
           BS.readFile $
             if isAbsolute pci then pci else coerce projectDir </> pci
+
+-- | A message for a cyclical import, a "cyclical import of".
+cyclicalImportMsg :: ProjectConfigPath -> Doc
+cyclicalImportMsg path@(ProjectConfigPath (duplicate :| _)) =
+  vcat
+    [ text "cyclical import of" <+> text duplicate <> semi
+    , nest 2 (docProjectConfigPath path)
+    ]

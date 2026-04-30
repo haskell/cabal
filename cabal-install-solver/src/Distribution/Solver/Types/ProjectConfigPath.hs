@@ -15,7 +15,6 @@ module Distribution.Solver.Types.ProjectConfigPath
     , docProjectConfigPath
     , docProjectImportedBy
     , docProjectConfigFiles
-    , cyclicalImportMsg
     , untrimmedUriImportMsg
     , docProjectConfigPathFailReason
     , quoteUntrimmed
@@ -183,14 +182,6 @@ docProjectConfigFiles :: [ProjectConfigPath] -> Doc
 docProjectConfigFiles ps = vcat
     [ text "-" <+> text p
     | p <- ordNub [ p | ProjectConfigPath (p :| _) <- ps ]
-    ]
-
--- | A message for a cyclical import, a "cyclical import of".
-cyclicalImportMsg :: ProjectConfigPath -> Doc
-cyclicalImportMsg path@(ProjectConfigPath (duplicate :| _)) =
-    vcat
-    [ text "cyclical import of" <+> text duplicate <> semi
-    , nest 2 (docProjectConfigPath path)
     ]
 
 -- | A message for an import that has leading or trailing spaces.

@@ -15,7 +15,7 @@ module Distribution.Client.ProjectConfig.Parsec
 import Distribution.CabalSpecVersion
 import Distribution.Client.HttpUtils
 import Distribution.Client.ProjectConfig.FieldGrammar (packageConfigFieldGrammar, projectConfigFieldGrammar)
-import Distribution.Client.ProjectConfig.Import (ProjectConfigSkeleton, fetchImportParse)
+import Distribution.Client.ProjectConfig.Import (ProjectConfigSkeleton, cyclicalImportMsg, fetchImportParse)
 import qualified Distribution.Client.ProjectConfig.Lens as L
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Types.Repo hiding (repoName)
