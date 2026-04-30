@@ -14,7 +14,6 @@ module Distribution.Solver.Types.ProjectConfigPath
     -- * Messages
     , docProjectConfigPath
     , docProjectImportedBy
-    , docProjectConfigFiles
     , docProjectConfigPathFailReason
     , quoteUntrimmed
 
@@ -42,7 +41,6 @@ import Distribution.Solver.Modular.Version (VR)
 import Distribution.Pretty (prettyShow, Pretty(..))
 import Distribution.Utils.String (trim)
 import Text.PrettyPrint
-import Distribution.Simple.Utils (ordNub)
 import Distribution.System (OS(Windows), buildOS)
 
 -- | Path to a configuration file, either a singleton project root, or a longer
@@ -141,46 +139,6 @@ docProjectImportedBy (ProjectConfigPath (_ :| ps)) = vcat $
 -- | If the path has leading or trailing spaces then show it quoted.
 quoteUntrimmed :: FilePath -> Doc
 quoteUntrimmed s = if trim s /= s then quotes (text s) else text s
-
--- | Renders the paths as a list without showing which path imports another,
--- like this;
---
--- >- cabal.project
--- >- project-cabal/constraints.config
--- >- project-cabal/ghc-latest.config
--- >- project-cabal/ghc-options.config
--- >- project-cabal/pkgs.config
--- >- project-cabal/pkgs/benchmarks.config
--- >- project-cabal/pkgs/buildinfo.config
--- >- project-cabal/pkgs/cabal.config
--- >- project-cabal/pkgs/install.config
--- >- project-cabal/pkgs/integration-tests.config
--- >- project-cabal/pkgs/tests.config
---
---
--- >>> :{
---   do
---     let ps =
---              [ ProjectConfigPath ("cabal.project" :| [])
---              , ProjectConfigPath ("project-cabal/constraints.config" :| ["cabal.project"])
---              , ProjectConfigPath ("project-cabal/ghc-latest.config" :| ["cabal.project"])
---              , ProjectConfigPath ("project-cabal/ghc-options.config" :| ["cabal.project"])
---              , ProjectConfigPath ("project-cabal/pkgs.config" :| ["cabal.project"])
---              , ProjectConfigPath ("project-cabal/pkgs/benchmarks.config" :| ["project-cabal/pkgs.config","cabal.project"])
---              , ProjectConfigPath ("project-cabal/pkgs/buildinfo.config" :| ["project-cabal/pkgs.config","cabal.project"])
---              , ProjectConfigPath ("project-cabal/pkgs/cabal.config" :| ["project-cabal/pkgs.config","cabal.project"])
---              , ProjectConfigPath ("project-cabal/pkgs/install.config" :| ["project-cabal/pkgs.config","cabal.project"])
---              , ProjectConfigPath ("project-cabal/pkgs/integration-tests.config" :| ["project-cabal/pkgs.config","cabal.project"])
---              , ProjectConfigPath ("project-cabal/pkgs/tests.config" :| ["project-cabal/pkgs.config","cabal.project"])
---              ]
---     return . render $ docProjectConfigFiles ps
--- :}
--- "- cabal.project\n- project-cabal/constraints.config\n- project-cabal/ghc-latest.config\n- project-cabal/ghc-options.config\n- project-cabal/pkgs.config\n- project-cabal/pkgs/benchmarks.config\n- project-cabal/pkgs/buildinfo.config\n- project-cabal/pkgs/cabal.config\n- project-cabal/pkgs/install.config\n- project-cabal/pkgs/integration-tests.config\n- project-cabal/pkgs/tests.config"
-docProjectConfigFiles :: [ProjectConfigPath] -> Doc
-docProjectConfigFiles ps = vcat
-    [ text "-" <+> text p
-    | p <- ordNub [ p | ProjectConfigPath (p :| _) <- ps ]
-    ]
 
 docProjectConfigPathFailReason :: VR -> ProjectConfigPath -> Doc
 docProjectConfigPathFailReason vr pcp
