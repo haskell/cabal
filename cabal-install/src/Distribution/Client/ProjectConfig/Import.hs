@@ -1,5 +1,6 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- | Project configuration imports.
 module Distribution.Client.ProjectConfig.Import
@@ -99,8 +100,31 @@ fetchImportParse parser cacheDir httpTransport verbosity projectDir normLocPath 
 --     return . render $ docProjectConfigFiles ps
 -- :}
 -- "- cabal.project\n- project-cabal/constraints.config\n- project-cabal/ghc-latest.config\n- project-cabal/ghc-options.config\n- project-cabal/pkgs.config\n- project-cabal/pkgs/benchmarks.config\n- project-cabal/pkgs/buildinfo.config\n- project-cabal/pkgs/cabal.config\n- project-cabal/pkgs/install.config\n- project-cabal/pkgs/integration-tests.config\n- project-cabal/pkgs/tests.config"
+--
+-- The listing puts projects first, URLs last and sorts the other paths
+-- lexically, dropping any duplicates, like this:
+--
+-- >- cabal.project
+-- >- 0.config
+-- >- 2.config
+-- >- cfg/1.config
+-- >- cfg/3.config
+-- >- with-ghc.config
+-- >- https://www.stackage.org/lts-21.25/cabal.config
+--
+-- >>> let p = ProjectConfigPath $ "cabal.project" :| []
+-- >>> let a = ProjectConfigPath $ "0.config" :| ["cabal.project"]
+-- >>> let b = ProjectConfigPath $ "cfg/1.config" :| ["0.config", "cabal.project"]
+-- >>> let c = ProjectConfigPath $ "with.config" :| ["0.config", "cabal.project"]
+-- >>> let d = ProjectConfigPath $ "2.config" :| ["cfg/1.config", "0.config", "cabal.project"]
+-- >>> let e = ProjectConfigPath $ "cfg/3.config" :| ["2.config", "cfg/1.config", "0.config", "cabal.project"]
+-- >>> let f = ProjectConfigPath $ "https://www.stackage.org/lts-21.25/cabal.config" :| ["2.config", "cfg/1.config", "0.config", "cabal.project"]
+-- >>> let g = ProjectConfigPath $ "https://www.stackage.org/lts-21.25/cabal.config" :| ["cfg/3.config", "2.config", "cfg/1.config", "0.config", "cabal.project"]
+-- >>> let ps = [p, a, b, c, d, e, f, g]
+-- >>> render $ docProjectConfigFiles ps
+-- "- cabal.project\n- 0.config\n- 2.config\n- cfg/1.config\n- cfg/3.config\n- with.config\n- https://www.stackage.org/lts-21.25/cabal.config"
 docProjectConfigFiles :: [ProjectConfigPath] -> Doc
-docProjectConfigFiles ps =
+docProjectConfigFiles (sortBy compareLexically -> ps) =
   vcat
     [ text "-" <+> text p
     | p <- ordNub [p | ProjectConfigPath (p :| _) <- ps]

@@ -5,6 +5,8 @@ module Distribution.Solver.Types.ProjectConfigPath
     (
     -- * Project Config Path Manipulation
       ProjectConfigPath(..)
+    , compareLexically
+    , compareSegmentally
     , projectConfigPathRoot
     , nullProjectConfigPath
     , consProjectConfigPath
@@ -55,10 +57,10 @@ import Distribution.System (OS(Windows), buildOS)
 -- List elements are relative to each other but once canonicalized, elements are
 -- relative to the directory of the project root.
 newtype ProjectConfigPath = ProjectConfigPath (NonEmpty FilePath)
-    deriving (Eq, Show, Generic)
+    deriving (Eq, Generic)
 
-instance Pretty ProjectConfigPath where
-  pretty = docProjectConfigPath
+instance Pretty ProjectConfigPath where pretty = docProjectConfigPath
+instance Show ProjectConfigPath where show = prettyShow
 
 -- | Sorts URIs after local file paths and longer file paths after shorter ones
 -- as measured by the number of path segments. If still equal, then sorting is
@@ -75,42 +77,90 @@ instance Pretty ProjectConfigPath where
 -- >>> let abBwd = ProjectConfigPath $ "a\\b.config" :| []
 -- >>> compare abFwd abBwd
 -- EQ
+--
+-- >>> let abc = ProjectConfigPath $ "a/b/c.config" :| []
+-- >>> let yz = ProjectConfigPath $ "y/z.config" :| []
+-- >>> (compare abc yz, let xs = [abc, yz] in xs == sort xs)
+-- (GT,False)
+--
+-- >>> let abc = ProjectConfigPath $ "C.config" :| ["B.config", "A.project"]
+-- >>> let bcd = ProjectConfigPath $ "D.config" :| ["C.config", "B.project"]
+-- >>> (compare abc bcd, let xs = [abc, bcd] in xs == sort xs)
+-- (LT,True)
+--
+-- >>> let abc = ProjectConfigPath $ "C.config" :| ["B.config", "A.project"]
+-- >>> let yz = ProjectConfigPath $ "Z.config" :| ["Y.project"]
+-- >>> (compare abc yz, let xs = [abc, yz] in xs == sort xs)
+-- (GT,False)
 instance Ord ProjectConfigPath where
-    compare pa@(ProjectConfigPath (NE.toList -> as)) pb@(ProjectConfigPath (NE.toList -> bs)) =
+    compare = compareSegmentally
+
+-- | A comparison that puts projects first, URLs last and sorts the other paths
+-- lexically.
+compareLexically :: ProjectConfigPath -> ProjectConfigPath -> Ordering
+compareLexically (ProjectConfigPath as) (ProjectConfigPath bs) =
+        case (as, bs) of
+            -- Single element paths are projects, they should always sort first.
+            (a :| [], b :| []) -> compare (splitPath a) (splitPath b)
+            (_ :| [], _) -> LT
+            (_, _ :| []) -> GT
+
+            (a :| aImporters, b :| bImporters) -> case (parseAbsoluteURI a, parseAbsoluteURI b) of
+                (Just ua, Just ub) -> compare ua ub P.<> compare aImporters bImporters
+                (Just _, Nothing) -> GT
+                (Nothing, Just _) -> LT
+                (Nothing, Nothing) -> compare (splitPath a) (splitPath b) P.<> compare aImporters bImporters
+
+-- | A comparison that puts projects first, URLs last and sorts the other paths
+-- by putting longer paths after shorter ones as measured by the number of path
+-- segments. If still equal, then sorting is lexical.
+compareSegmentally:: ProjectConfigPath -> ProjectConfigPath -> Ordering
+compareSegmentally pa@(ProjectConfigPath as) pb@(ProjectConfigPath bs) =
         case (as, bs) of
             -- There should only ever be one root project path, only one path
             -- with length 1. Comparing it to itself should be EQ. Don't assume
             -- this though, do a comparison anyway when both sides have length
             -- 1.  The root path, the project itself, should always be the first
             -- path in a sorted listing.
-            ([a], [b]) -> compare (splitPath a) (splitPath b)
-            ([_], _) -> LT
-            (_, [_]) -> GT
+            (a :| [], b :| []) ->
+                let aPaths = splitPath a
+                    bPaths = splitPath b
+                in
+                    compare (length aPaths) (length bPaths)
+                    P.<> compare aPaths bPaths
 
-            (a:_, b:_) -> case (parseAbsoluteURI a, parseAbsoluteURI b) of
+            (_ :| [], _) -> LT
+            (_, _ :| []) -> GT
+
+            (a :| _, b :| _) -> case (parseAbsoluteURI a, parseAbsoluteURI b) of
                 (Just ua, Just ub) -> compare ua ub P.<> compare aImporters bImporters
                 (Just _, Nothing) -> GT
                 (Nothing, Just _) -> LT
-                (Nothing, Nothing) -> compare (splitPath a) (splitPath b) P.<> compare aImporters bImporters
-            _ ->
-                compare (length as) (length bs)
-                P.<> compare (length aPaths) (length bPaths)
-                P.<> compare aPaths bPaths
+                (Nothing, Nothing) ->
+                    let aPaths = splitPath a
+                        bPaths = splitPath b
+                    in
+                        compare (length as) (length bs)
+                        P.<> compare asPaths bsPaths
+                        P.<> compare (length aPaths) (length bPaths)
+                        P.<> compare aPaths bPaths
+                        P.<> compare aImporters bImporters
         where
-            splitPath = FP.splitPath . normSep where
-                normSep p =
-                    if buildOS == Windows
-                        then
-                            Windows.joinPath $ Windows.splitDirectories
-                            [if Posix.isPathSeparator c then Windows.pathSeparator else c| c <- p]
-                        else
-                            Posix.joinPath $ Posix.splitDirectories
-                            [if Windows.isPathSeparator c then Posix.pathSeparator else c| c <- p]
-
-            aPaths = splitPath <$> as
-            bPaths = splitPath <$> bs
+            asPaths = splitPath <$> as
+            bsPaths = splitPath <$> bs
             aImporters = snd $ unconsProjectConfigPath pa
             bImporters = snd $ unconsProjectConfigPath pb
+
+splitPath :: FilePath -> [FilePath]
+splitPath = FP.splitPath . normSep
+    where
+        normSep p =
+            if buildOS == Windows then
+                Windows.joinPath $ Windows.splitDirectories
+                [if Posix.isPathSeparator c then Windows.pathSeparator else c| c <- p]
+            else
+                Posix.joinPath $ Posix.splitDirectories
+                [if Windows.isPathSeparator c then Posix.pathSeparator else c| c <- p]
 
 instance Binary ProjectConfigPath
 instance NFData ProjectConfigPath
