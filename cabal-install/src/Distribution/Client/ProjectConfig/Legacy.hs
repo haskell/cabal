@@ -33,11 +33,11 @@ module Distribution.Client.ProjectConfig.Legacy
   , renderPackageLocationToken
   ) where
 
-import Data.Coerce (coerce)
 import Distribution.Client.Compat.Prelude
 
 import Distribution.Types.Flag (FlagName, parsecFlagAssignment)
 
+import Control.Arrow (Kleisli (..), arr, (>>>))
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Types.AllowNewer (AllowNewer (..), AllowOlder (..))
 import Distribution.Client.Types.Repo (LocalRepo (..), RemoteRepo (..), emptyRemoteRepo, normaliseFileNoIndexURI)
@@ -56,13 +56,13 @@ import Distribution.Client.CmdInstall.ClientInstallFlags
   , defaultClientInstallFlags
   )
 
-import Distribution.Compat.Lens (toListOf, view)
+import Distribution.Compat.Lens (toListOf)
 
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.ProjectConfigPath
 
 import Distribution.Client.NixStyleOptions (NixStyleFlags (..))
-import Distribution.Client.ProjectConfig.Import (ProjectConfigSkeleton)
+import Distribution.Client.ProjectConfig.Import (ProjectConfigSkeleton, fetchImportConfig)
 import Distribution.Client.ProjectFlags (ProjectFlags (..), defaultProjectFlags, projectFlagsOptions)
 import Distribution.Client.Setup
   ( ConfigExFlags (..)
@@ -148,7 +148,6 @@ import Distribution.Utils.NubList
   , overNubList
   , toNubList
   )
-import Distribution.Utils.String (trim)
 
 import Distribution.Client.HttpUtils
 import Distribution.Client.ParseUtils
@@ -199,9 +198,9 @@ import qualified Data.ByteString.Char8 as BS
 import Data.Functor ((<&>))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Network.URI (URI (..), nullURIAuth, parseURI)
-import System.Directory (createDirectoryIfMissing, makeAbsolute)
-import System.FilePath (isAbsolute, isPathSeparator, makeValid, splitFileName, (</>))
+import Network.URI (URI (..), nullURIAuth)
+import System.Directory (makeAbsolute)
+import System.FilePath (splitFileName)
 import Text.PrettyPrint
   ( Doc
   , render
@@ -285,9 +284,12 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
             when
               (isUntrimmedUriConfigPath importLocPath)
               (noticeDoc verbosity $ untrimmedUriImportMsg (Disp.text "Warning:") importLocPath)
-            let fs = (\z -> CondNode ([normLocPath], z) mempty) <$> fieldsToConfig normSource (reverse acc)
-            res <- parseProjectSkeleton cacheDir httpTransport verbosity projectDir importLocPath . ProjectConfigToParse =<< fetchImportConfig normLocPath
+            let parser = parseProjectSkeleton cacheDir httpTransport verbosity projectDir importLocPath
+            res <-
+              (snd <$> fetchImportConfig cacheDir httpTransport verbosity projectDir normLocPath)
+                >>= runKleisli (arr ProjectConfigToParse >>> Kleisli parser)
             rest <- go [] xs
+            let fs = (\z -> CondNode ([normLocPath], z) mempty) <$> fieldsToConfig normSource (reverse acc)
             pure . fmap mconcat . sequence $ [projectParse Nothing normSource fs, res, rest]
       (ParseUtils.Section l "if" p xs') -> do
         normSource <- canonicalizeConfigPath projectDir source
@@ -352,22 +354,6 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
         addWarnings (ProjectParseOk ws' x') = ProjectParseOk (ws' ++ ((p,) <$> ws)) x'
         addWarnings x' = x'
     liftPR p _ (ParseFailed e) = pure $ projectParseFail Nothing (Just p) e
-
-    fetchImportConfig :: ProjectConfigPath -> IO BS.ByteString
-    fetchImportConfig (ProjectConfigPath (pci :| _)) = do
-      debug verbosity $ "fetching import: " ++ pci
-      fetch pci
-
-    fetch :: FilePath -> IO BS.ByteString
-    fetch pci = case parseURI $ trim pci of
-      Just uri -> do
-        let fp = cacheDir </> map (\x -> if isPathSeparator x then '_' else x) (makeValid $ show uri)
-        createDirectoryIfMissing True cacheDir
-        _ <- downloadURI httpTransport verbosity uri fp
-        BS.readFile fp
-      Nothing ->
-        BS.readFile $
-          if isAbsolute pci then pci else coerce projectDir </> pci
 
     modifiesCompiler :: ProjectConfig -> Bool
     modifiesCompiler pc = isSet projectConfigHcFlavor || isSet projectConfigHcPath || isSet projectConfigHcPkg
