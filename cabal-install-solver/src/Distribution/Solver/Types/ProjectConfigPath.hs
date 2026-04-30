@@ -15,7 +15,6 @@ module Distribution.Solver.Types.ProjectConfigPath
     , docProjectConfigPath
     , docProjectImportedBy
     , docProjectConfigFiles
-    , untrimmedUriImportMsg
     , docProjectConfigPathFailReason
     , quoteUntrimmed
 
@@ -139,7 +138,6 @@ docProjectImportedBy (ProjectConfigPath (_ :| [])) = text ""
 docProjectImportedBy (ProjectConfigPath (_ :| ps)) = vcat $
     [ text " " <+> text "imported by:" <+> quoteUntrimmed l | l <- ps ]
 
-
 -- | If the path has leading or trailing spaces then show it quoted.
 quoteUntrimmed :: FilePath -> Doc
 quoteUntrimmed s = if trim s /= s then quotes (text s) else text s
@@ -182,14 +180,6 @@ docProjectConfigFiles :: [ProjectConfigPath] -> Doc
 docProjectConfigFiles ps = vcat
     [ text "-" <+> text p
     | p <- ordNub [ p | ProjectConfigPath (p :| _) <- ps ]
-    ]
-
--- | A message for an import that has leading or trailing spaces.
-untrimmedUriImportMsg :: Doc -> ProjectConfigPath -> Doc
-untrimmedUriImportMsg intro path =
-    vcat
-    [ intro <+> text "import has leading or trailing whitespace" <> semi
-    , nest 2 (docProjectConfigPath path)
     ]
 
 docProjectConfigPathFailReason :: VR -> ProjectConfigPath -> Doc
