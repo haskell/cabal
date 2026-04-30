@@ -85,11 +85,11 @@ class
   booleanFieldDef'
     :: FieldName
     -- ^ field name
-    -> ALens' s (AnnotateWith Positions m Bool)
+    -> ALens' s (PreserveGrouping m (AnnotateWith Positions m Bool))
     -- ^ lens into the field
     -> Bool
     -- ^ default
-    -> g m s (AnnotateWith Positions m Bool)
+    -> g m s (PreserveGrouping m (AnnotateWith Positions m Bool))
 
   -- | Optional field.
   optionalFieldAla

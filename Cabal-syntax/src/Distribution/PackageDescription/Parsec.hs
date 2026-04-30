@@ -340,6 +340,7 @@ goSections
      , L.HasBuildInfoWith mod (ForeignLibWith mod)
      , L.HasBuildInfoWith mod (ExecutableWith mod)
      , Monoid (BuildInfoWith mod)
+     , Monoid (LibraryWith mod)
      , Monoid (ForeignLibWith mod)
      , Monoid (ExecutableWith mod)
      , Monoid (TestSuiteWith mod)
@@ -360,6 +361,7 @@ goSections specVer = traverse_ process
        --   )
        -- =>
        ( Semigroup (BuildInfoWith mod)
+       , Monoid (LibraryWith mod)
        ) =>
          Field Position -> SectionParser mod src ()
     process (Field (Name pos name) _) =
@@ -381,6 +383,7 @@ goSections specVer = traverse_ process
 
 
       ( L.HasBuildInfoWith mod a
+      , Monoid (LibraryWith mod)
       , Semigroup (BuildInfoWith mod)
       ) =>
 
@@ -401,7 +404,8 @@ goSections specVer = traverse_ process
       --    , L.HasBuildInfoWith mod (BuildInfoWith mod)
       --    )
       -- =>
-      ( Semigroup (BuildInfoWith mod) 
+      ( Semigroup (BuildInfoWith mod)
+      , Monoid (LibraryWith mod)
       ) => 
          Name Position
       -> [SectionArg Position]
@@ -750,9 +754,9 @@ type CondTreeBuildInfoAnn = CondTreeBuildInfoWith Mod.HasAnn
 class L.HasBuildInfoWith mod a => FromBuildInfoWith mod a where
   fromBuildInfo' :: UnqualComponentName -> BuildInfoWith mod -> a
 
-libraryFromBuildInfo :: LibraryName -> BuildInfoWith mod -> LibraryWith mod
+libraryFromBuildInfo :: forall mod. Monoid (LibraryWith mod) => LibraryName -> BuildInfoWith mod -> LibraryWith mod
 libraryFromBuildInfo n bi =
-  emptyLibrary
+  (mempty :: LibraryWith mod)
     { libName = n
     , libVisibility = case n of
         LMainLibName -> LibraryVisibilityPublic

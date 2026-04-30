@@ -47,7 +47,7 @@ type HasBuildInfoAnn = HasBuildInfoWith Mod.HasAnn
 class HasBuildInfoWith mod a | a -> mod where
   buildInfo :: Lens' a (BuildInfoWith mod)
 
-  buildable :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (AnnotateWith Positions mod Bool)
+  buildable :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AnnotateWith Positions mod Bool))
   buildable = buildInfo @mod . buildable @mod
 
   buildTools :: HasBuildInfoWith mod (BuildInfoWith mod) => Lens' a (PreserveGrouping mod (AttachPositions mod [AttachPosition mod (Annotate mod LegacyExeDependency)]))

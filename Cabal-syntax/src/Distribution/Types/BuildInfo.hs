@@ -57,7 +57,7 @@ type BuildInfoAnn = BuildInfoWith Mod.HasAnn
 
 -- Consider refactoring into executable and library versions.
 data BuildInfoWith (m :: Mod.HasAnnotation) = BuildInfo
-  { buildable :: AnnotateWith Positions m Bool
+  { buildable :: PreserveGrouping m (AnnotateWith Positions m Bool)
   -- ^ component is buildable here
   , buildTools :: PreserveGrouping m (AttachPositions m [AttachPosition m (Annotate m LegacyExeDependency)])
   -- ^ Tools needed to build this bit.
@@ -190,7 +190,7 @@ unannotateBuildInfo bi =
   let unannotateMonoidalField = map (unAnn . snd) . join . map snd
   in
   bi
-    { buildable = unAnn $ buildable bi
+    { buildable = foldl (&&) False $ map unAnn $ buildable bi
     , buildTools = unannotateMonoidalField $ buildTools bi
     , buildToolDepends = unannotateMonoidalField $ buildToolDepends bi
     , cppOptions = unannotateMonoidalField $ cppOptions bi
@@ -335,10 +335,7 @@ instance Semigroup BuildInfo where
 instance Semigroup (BuildInfoWith Mod.HasAnn) where
   a <> b =
     BuildInfo
-      { buildable =
-          mapAnnA (fmap Semigroup.getLast) getAll $
-              mapAnnA (fmap Semigroup.Last) All (buildable a)
-              <> mapAnnA (fmap Semigroup.Last) All (buildable b)
+      { buildable = combine buildable
       , buildTools = combine buildTools
       , buildToolDepends = combine buildToolDepends
       , cppOptions = combine cppOptions
@@ -399,7 +396,7 @@ emptyBuildInfo = mempty
 emptyBuildInfo' :: BuildInfoWith Mod.HasAnn
 emptyBuildInfo' =
   BuildInfo
-    { buildable = Ann NoTrivia True
+    { buildable = []
     , buildTools = []
     , buildToolDepends = []
     , cppOptions = []

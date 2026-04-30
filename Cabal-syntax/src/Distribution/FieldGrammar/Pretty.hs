@@ -198,8 +198,7 @@ instance FieldGrammarWith Mod.HasAnn Pretty PrettyFieldGrammar where
      in ppFieldPos fn bs
 
   booleanFieldDef' fn l def = PrettyFG $ \_v s ->
-    let Ann t b = aview l s
-     in case t of
+      aview l s >>= \(Ann t b) -> case t of
           HasTrivia pos -> ppFieldPos fn [(pos, PP.text (show b))]
           IsInserted -> mempty
 

@@ -28,7 +28,9 @@ import Distribution.Types.ModuleReexport
 
 import qualified Distribution.Types.BuildInfo.Lens as L
 
+import Distribution.Trivia
 import qualified Distribution.Types.Modify as Mod
+import Distribution.Types.Modify (AnnotateWith, PreserveGrouping)
 
 type Library = LibraryWith Mod.HasNoAnn
 type LibraryAnn = LibraryWith Mod.HasAnn
@@ -39,7 +41,8 @@ data LibraryWith (m :: Mod.HasAnnotation) = Library
   , reexportedModules :: [ModuleReexport]
   , signatures :: [ModuleName]
   -- ^ What sigs need implementations?
-  , libExposed :: Bool
+  , libExposed :: PreserveGrouping m (AnnotateWith Positions m Bool)
+  -- [(Positions, Bool)]
   -- ^ Is the lib to be exposed by default? (i.e. whether its modules available in GHCi for example)
   , libVisibility :: LibraryVisibility
   -- ^ Whether this multilib can be used as a dependency for other packages.
@@ -81,7 +84,7 @@ emptyLibraryAnn =
     , exposedModules = mempty
     , reexportedModules = mempty
     , signatures = mempty
-    , libExposed = True
+    , libExposed = []
     , libVisibility = mempty
     , libBuildInfo = mempty
     }
@@ -108,7 +111,7 @@ instance Semigroup (LibraryWith Mod.HasAnn) where
       , exposedModules = combine exposedModules
       , reexportedModules = combine reexportedModules
       , signatures = combine signatures
-      , libExposed = libExposed a && libExposed b -- so False propagates
+      , libExposed = libExposed a <> libExposed b -- so False propagates
       , libVisibility = combine libVisibility
       , libBuildInfo = combine libBuildInfo
       }

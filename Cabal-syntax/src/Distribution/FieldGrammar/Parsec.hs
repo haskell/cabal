@@ -561,14 +561,14 @@ instance FieldGrammarWith Mod.HasAnn Parsec ParsecFieldGrammar where
     :: forall s
      . FieldName
     -- \^ field name
-    -> ALens' s (Ann Positions Bool)
+    -> ALens' s [Ann Positions Bool]
     -- \^ lens into the field
     -> Bool
     -- \^ default
-    -> ParsecFieldGrammar Mod.HasAnn s (Ann Positions Bool)
+    -> ParsecFieldGrammar Mod.HasAnn s [Ann Positions Bool]
   booleanFieldDef' fn _extract def = ParsecFG (Set.singleton fn) Set.empty parser
     where
-      parser :: CabalSpecVersion -> Fields Position -> ParseResult src (Ann Positions Bool)
+      parser :: CabalSpecVersion -> Fields Position -> ParseResult src [Ann Positions Bool]
       parser v fields = case Map.lookup fn fields of
         Nothing -> pure def'
         Just [] -> pure def'
@@ -577,12 +577,12 @@ instance FieldGrammarWith Mod.HasAnn Parsec ParsecFieldGrammar where
           warnMultipleSingularFields fn xs
           NE.last <$> traverse (parseOne v) (y :| ys)
         where
-          def' = Ann IsInserted def
+          def' = [Ann IsInserted def]
 
-      parseOne :: CabalSpecVersion -> NamelessField Position -> ParseResult src (Ann Positions Bool)
+      parseOne :: CabalSpecVersion -> NamelessField Position -> ParseResult src [Ann Positions Bool]
       parseOne v (MkNamelessField pos fls) = do
         (fieldLinePos, x) <- runFieldParser pos (liftA2 (,) getPosition parsec) v fls
-        pure $ Ann (HasTrivia $ Positions pos fieldLinePos) x
+        pure . (:[]) $ Ann (HasTrivia $ Positions pos fieldLinePos) x
 
   -- TODO(leana8959): implement all methods
 

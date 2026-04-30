@@ -256,7 +256,7 @@ libraryFieldGrammar n =
     <*> monoidalFieldAla "reexported-modules" (alaList CommaVCat) L.reexportedModules
     <*> monoidalFieldAla "signatures" (alaList' VCat MQuoted) L.signatures
       ^^^ availableSince CabalSpecV2_0 []
-    <*> booleanFieldDef "exposed" L.libExposed True
+    <*> booleanFieldDef' "exposed" L.libExposed True
     <*> visibilityField
     <*> blurFieldGrammar L.libBuildInfo (buildInfoFieldGrammar @mod)
   where

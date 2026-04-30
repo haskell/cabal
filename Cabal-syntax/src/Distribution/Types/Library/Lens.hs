@@ -7,6 +7,9 @@ import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Distribution.Types.Modify (AnnotateWith, PreserveGrouping)
+import Distribution.Trivia
+
 import Distribution.ModuleName (ModuleName)
 import Distribution.Types.BuildInfo (BuildInfoWith)
 import Distribution.Types.Library (Library, LibraryWith)
@@ -32,7 +35,7 @@ signatures :: Lens' (LibraryWith mod) [ModuleName]
 signatures f s = fmap (\x -> s{T.signatures = x}) (f (T.signatures s))
 {-# INLINE signatures #-}
 
-libExposed :: Lens' (LibraryWith mod) Bool
+libExposed :: Lens' (LibraryWith mod) (PreserveGrouping mod (AnnotateWith Positions mod Bool))
 libExposed f s = fmap (\x -> s{T.libExposed = x}) (f (T.libExposed s))
 {-# INLINE libExposed #-}
 
