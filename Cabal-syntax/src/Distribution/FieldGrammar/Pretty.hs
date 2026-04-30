@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE KindSignatures #-}
@@ -120,6 +121,78 @@ instance FieldGrammarWith Mod.HasNoAnn Pretty PrettyFieldGrammar where
   hiddenField _ = PrettyFG (\_ -> mempty)
 
 instance FieldGrammarWith Mod.HasAnn Pretty PrettyFieldGrammar where
+  blurFieldGrammar f (PrettyFG pp) = PrettyFG (\v -> pp v . aview f)
+
+  uniqueFieldAla fn _pack l = PrettyFG $ \_v s ->
+    ppFieldFakePos fn (pretty (pack' _pack (aview l s)))
+
+  booleanFieldDef fn l def = PrettyFG pp
+    where
+      pp _v s
+        | b == def = mempty
+        | otherwise = ppFieldFakePos fn (PP.text (show b))
+        where
+          b = aview l s
+
+  optionalFieldAla fn _pack l = PrettyFG pp
+    where
+      pp v s = case aview l s of
+        Nothing -> mempty
+        Just a -> ppFieldFakePos fn (prettyVersioned v (pack' _pack a))
+
+  optionalFieldDefAla fn _pack l def = PrettyFG pp
+    where
+      pp v s
+        | x == def = mempty
+        | otherwise = ppFieldFakePos fn (prettyVersioned v (pack' _pack x))
+        where
+          x = aview l s
+
+  freeTextField fn l = PrettyFG pp
+    where
+      pp v s = maybe mempty (ppFieldFakePos fn . showFT) (aview l s)
+        where
+          showFT
+            | v >= CabalSpecV3_0 = showFreeTextV3
+            | otherwise = showFreeText
+
+  -- it's ok to just show, as showFreeText of empty string is empty.
+  freeTextFieldDef fn l = PrettyFG pp
+    where
+      pp v s = ppFieldFakePos fn (showFT (aview l s))
+        where
+          showFT
+            | v >= CabalSpecV3_0 = showFreeTextV3
+            | otherwise = showFreeText
+
+  freeTextFieldDefST = defaultFreeTextFieldDefST
+
+  monoidalFieldAla fn _pack l = PrettyFG pp
+    where
+      pp v s = ppFieldFakePos fn (prettyVersioned v (pack' _pack (aview l s)))
+
+  prefixedFields _fnPfx l = PrettyFG (\_ -> pp . aview l)
+    where
+      pp xs =
+        -- always print the field, even its Doc is empty.
+        -- i.e. don't use ppField
+        [ PrettyField (zeroPos, toUTF8BS n) (zeroPos, PP.vcat $ map PP.text $ lines s)
+        | (n, s) <- xs
+        -- fnPfx `isPrefixOf` n
+        ]
+
+  knownField _ = pure ()
+  deprecatedSince _ _ x = x
+
+  -- TODO: as PrettyFieldGrammar isn't aware of cabal-version: we output the field
+  -- this doesn't affect roundtrip as `removedIn` fields cannot be parsed
+  -- so invalid documents can be only manually constructed.
+  removedIn _ _ x = x
+  availableSince _ _ = id
+  hiddenField _ = PrettyFG (\_ -> mempty)
+
+  -- New methods
+
   monoidalFieldAla' fn _pack l = PrettyFG $ \v s ->
     let bs = fmap (prettyVersioned v . pack' _pack) <$> aview l s
      in ppFieldPos fn bs
@@ -139,4 +212,11 @@ ppFieldPos :: FieldName -> [(Positions, Doc)] -> [PrettyFieldWith Mod.HasAnn]
 ppFieldPos name possFieldDocs =
   [ PrettyField (fieldNamePos poss, name) (fieldLinePos poss, fieldDoc)
   | (poss, fieldDoc) <- possFieldDocs
+  ]
+
+-- TODO(leana8959): push out position
+-- | Doesn't push out real position, tbd
+ppFieldFakePos :: FieldName -> Doc -> [PrettyFieldWith Mod.HasAnn]
+ppFieldFakePos name fieldDoc =
+  [ PrettyField (zeroPos, name) (zeroPos, fieldDoc)
   ]

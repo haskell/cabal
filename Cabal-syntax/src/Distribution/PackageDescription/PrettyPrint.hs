@@ -21,6 +21,7 @@ module Distribution.PackageDescription.PrettyPrint
     writeGenericPackageDescription
   , showGenericPackageDescription
   , ppGenericPackageDescription
+  , ppGenericPackageDescriptionAnn
 
     -- * Package descriptions
   , writePackageDescription

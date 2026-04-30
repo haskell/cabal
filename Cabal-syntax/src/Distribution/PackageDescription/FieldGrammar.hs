@@ -558,6 +558,7 @@ testSuiteFieldGrammar =
     <*> monoidalFieldAla "code-generators" (alaList' CommaFSep Token) testStanzaCodeGenerators
       ^^^ availableSince CabalSpecV3_8 []
 
+-- validateTestSuite :: CabalSpecVersion -> Position -> TestSuiteStanzaWith Mod.HasAnn -> ParseResult src (TestSuiteWith Mod.HasAnn)
 validateTestSuite :: CabalSpecVersion -> Position -> TestSuiteStanza -> ParseResult src TestSuite
 validateTestSuite cabalSpecVersion pos stanza = case testSuiteType of
   Nothing -> pure basicTestSuite

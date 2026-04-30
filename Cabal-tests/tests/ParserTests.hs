@@ -33,6 +33,7 @@ import Distribution.PackageDescription
   , condTestSuites
   , condBenchmarks
   )
+import Distribution.PackageDescription.PrettyPrint (ppGenericPackageDescriptionAnn)
 import Distribution.PackageDescription.FieldGrammar(buildInfoFieldGrammar, miniBuildInfoFieldGrammar, MiniBuildInfo (..))
 import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription, sectionizeFields, takeFields)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
@@ -287,13 +288,11 @@ smallCabalFileTest = testCase "smallCabalFile" $ do
   contents <- BS.readFile input
   let res = withSource (PCabalFile (fp, contents)) $ (parseGenericPackageDescription @Mod.HasAnn) contents
   let (_, x) = runParseResult res
-  case x of
-      Right gpd -> pPrint gpd
+  gpd <- case x of
+      Right ok -> pPrint ok >> pure ok
       Left (_, errs) -> fail $ unlines $ "ERROR" : map (showPErrorWithSource . fmap renderCabalFileSource) (NE.toList errs)
 
-  -- let prettyFields :: [PrettyFieldWith Mod.HasAnn] = prettyFieldGrammar CabalSpecV3_0 miniBuildInfoFieldGrammar 
-  -- putStrLn
-  --   $ exactShowFields prettyFields
+  pPrint (ppGenericPackageDescriptionAnn CabalSpecV3_0 gpd)
   where
     input = "tests" </> "ParserTests" </> fp
     fp = "smallCabalFile.cabal"

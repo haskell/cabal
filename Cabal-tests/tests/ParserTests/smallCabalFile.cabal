@@ -1,4 +1,11 @@
 cabal-version: 3.0
 
-name: samll-cabal-file
+name: small-cabal-file
 version: 0.0.0
+
+library foo
+  main-is: Main.hs
+  build-depends:
+    text
+     ,
+    base >  4
