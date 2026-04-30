@@ -255,6 +255,7 @@ import System.IO
   , withBinaryFile
   )
 
+import Distribution.Client.ProjectConfig.Import (ProjectConfigSkeleton, projectSkeletonImports)
 import Distribution.Deprecated.ProjectParseUtils (ProjectParseError (..), ProjectParseWarning)
 import Distribution.Solver.Types.ProjectConfigPath
 

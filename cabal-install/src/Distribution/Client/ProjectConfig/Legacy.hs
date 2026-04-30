@@ -12,12 +12,10 @@
 -- | Project configuration, implementation in terms of legacy types.
 module Distribution.Client.ProjectConfig.Legacy
   ( -- Project config skeletons
-    ProjectConfigSkeleton
-  , parseProject
+    parseProject
   , instantiateProjectConfigSkeletonFetchingCompiler
   , instantiateProjectConfigSkeletonWithCompiler
   , singletonProjectConfigSkeleton
-  , projectSkeletonImports
 
     -- * Project config in terms of legacy types
   , LegacyProjectConfig
@@ -64,6 +62,7 @@ import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.ProjectConfigPath
 
 import Distribution.Client.NixStyleOptions (NixStyleFlags (..))
+import Distribution.Client.ProjectConfig.Import (ProjectConfigSkeleton)
 import Distribution.Client.ProjectFlags (ProjectFlags (..), defaultProjectFlags, projectFlagsOptions)
 import Distribution.Client.Setup
   ( ConfigExFlags (..)
@@ -141,7 +140,6 @@ import Distribution.Types.CondTree
   , ignoreConditions
   , mapTreeConds
   , mapTreeData
-  , traverseCondTreeA
   , traverseCondTreeV
   )
 import Distribution.Types.SourceRepo (RepoType)
@@ -215,10 +213,6 @@ import qualified Text.PrettyPrint as Disp
 -- Handle extended project config files with conditionals and imports.
 --
 
--- | ProjectConfigSkeleton is a tree of conditional blocks and imports wrapping a config. It can be finalized by providing the conditional resolution info
--- and then resolving and downloading the imports
-type ProjectConfigSkeleton = CondTree ConfVar ([ProjectConfigPath], ProjectConfig)
-
 singletonProjectConfigSkeleton :: ProjectConfig -> ProjectConfigSkeleton
 singletonProjectConfigSkeleton x = CondNode (mempty, x) mempty
 
@@ -241,9 +235,6 @@ instantiateProjectConfigSkeletonWithCompiler os arch impl _flags skel = go $ map
       (Lit True) -> [go t]
       (Lit False) -> maybe ([]) ((: []) . go) mf
       _ -> error $ "unable to process condition: " ++ show cnd -- TODO it would be nice if there were a pretty printer
-
-projectSkeletonImports :: ProjectConfigSkeleton -> [ProjectConfigPath]
-projectSkeletonImports = fst . view traverseCondTreeA
 
 -- | Parses a project from its root config file, typically cabal.project.
 parseProject
