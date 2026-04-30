@@ -25,7 +25,7 @@ import Distribution.Types.ForeignLib (ForeignLib, foreignLibModules)
 import Distribution.Types.ForeignLib.Lens (foreignLibBuildInfo, foreignLibName)
 import Distribution.Types.Library (Library, explicitLibModules)
 import Distribution.Types.Library.Lens (libBuildInfo, libName)
-import Distribution.Types.PackageDescription (PackageDescription)
+import Distribution.Types.PackageDescription (PackageDescription, PackageDescriptionWith)
 import Distribution.Types.PackageId (PackageIdentifier)
 import Distribution.Types.SetupBuildInfo (SetupBuildInfo)
 import Distribution.Types.SourceRepo (SourceRepo)
@@ -38,138 +38,142 @@ import Distribution.Version (VersionRange)
 import qualified Distribution.SPDX as SPDX
 import qualified Distribution.Types.PackageDescription as T
 
-package :: Lens' PackageDescription PackageIdentifier
+import qualified Distribution.Types.Modify as Mod
+import Distribution.Types.Modify (AnnotateWith)
+import Distribution.Trivia
+
+package :: Lens' (PackageDescriptionWith mod) PackageIdentifier
 package f s = fmap (\x -> s{T.package = x}) (f (T.package s))
 {-# INLINE package #-}
 
-licenseRaw :: Lens' PackageDescription (Either SPDX.License License)
+licenseRaw :: Lens' (PackageDescriptionWith mod) (Either SPDX.License License)
 licenseRaw f s = fmap (\x -> s{T.licenseRaw = x}) (f (T.licenseRaw s))
 {-# INLINE licenseRaw #-}
 
-licenseFiles :: Lens' PackageDescription [RelativePath Pkg File]
+licenseFiles :: Lens' (PackageDescriptionWith mod) [RelativePath Pkg File]
 licenseFiles f s = fmap (\x -> s{T.licenseFiles = x}) (f (T.licenseFiles s))
 {-# INLINE licenseFiles #-}
 
-copyright :: Lens' PackageDescription ShortText
+copyright :: Lens' (PackageDescriptionWith mod) ShortText
 copyright f s = fmap (\x -> s{T.copyright = x}) (f (T.copyright s))
 {-# INLINE copyright #-}
 
-maintainer :: Lens' PackageDescription ShortText
+maintainer :: Lens' (PackageDescriptionWith mod) ShortText
 maintainer f s = fmap (\x -> s{T.maintainer = x}) (f (T.maintainer s))
 {-# INLINE maintainer #-}
 
-author :: Lens' PackageDescription ShortText
+author :: Lens' (PackageDescriptionWith mod) ShortText
 author f s = fmap (\x -> s{T.author = x}) (f (T.author s))
 {-# INLINE author #-}
 
-stability :: Lens' PackageDescription ShortText
+stability :: Lens' (PackageDescriptionWith mod) ShortText
 stability f s = fmap (\x -> s{T.stability = x}) (f (T.stability s))
 {-# INLINE stability #-}
 
-testedWith :: Lens' PackageDescription [(CompilerFlavor, VersionRange)]
+testedWith :: Lens' (PackageDescriptionWith mod) [(CompilerFlavor, VersionRange)]
 testedWith f s = fmap (\x -> s{T.testedWith = x}) (f (T.testedWith s))
 {-# INLINE testedWith #-}
 
-homepage :: Lens' PackageDescription ShortText
+homepage :: Lens' (PackageDescriptionWith mod) ShortText
 homepage f s = fmap (\x -> s{T.homepage = x}) (f (T.homepage s))
 {-# INLINE homepage #-}
 
-pkgUrl :: Lens' PackageDescription ShortText
+pkgUrl :: Lens' (PackageDescriptionWith mod) ShortText
 pkgUrl f s = fmap (\x -> s{T.pkgUrl = x}) (f (T.pkgUrl s))
 {-# INLINE pkgUrl #-}
 
-bugReports :: Lens' PackageDescription ShortText
+bugReports :: Lens' (PackageDescriptionWith mod) ShortText
 bugReports f s = fmap (\x -> s{T.bugReports = x}) (f (T.bugReports s))
 {-# INLINE bugReports #-}
 
-sourceRepos :: Lens' PackageDescription [SourceRepo]
+sourceRepos :: Lens' (PackageDescriptionWith mod) [SourceRepo]
 sourceRepos f s = fmap (\x -> s{T.sourceRepos = x}) (f (T.sourceRepos s))
 {-# INLINE sourceRepos #-}
 
-synopsis :: Lens' PackageDescription ShortText
+synopsis :: Lens' (PackageDescriptionWith mod) ShortText
 synopsis f s = fmap (\x -> s{T.synopsis = x}) (f (T.synopsis s))
 {-# INLINE synopsis #-}
 
-description :: Lens' PackageDescription ShortText
+description :: Lens' (PackageDescriptionWith mod) ShortText
 description f s = fmap (\x -> s{T.description = x}) (f (T.description s))
 {-# INLINE description #-}
 
-category :: Lens' PackageDescription ShortText
+category :: Lens' (PackageDescriptionWith mod) ShortText
 category f s = fmap (\x -> s{T.category = x}) (f (T.category s))
 {-# INLINE category #-}
 
-customFieldsPD :: Lens' PackageDescription [(String, String)]
+customFieldsPD :: Lens' (PackageDescriptionWith mod) [(String, String)]
 customFieldsPD f s = fmap (\x -> s{T.customFieldsPD = x}) (f (T.customFieldsPD s))
 {-# INLINE customFieldsPD #-}
 
-specVersion :: Lens' PackageDescription CabalSpecVersion
+specVersion :: Lens' (PackageDescriptionWith mod) (AnnotateWith Positions mod CabalSpecVersion)
 specVersion f s = fmap (\x -> s{T.specVersion = x}) (f (T.specVersion s))
 {-# INLINE specVersion #-}
 
-buildTypeRaw :: Lens' PackageDescription (Maybe BuildType)
+buildTypeRaw :: Lens' (PackageDescriptionWith mod) (Maybe BuildType)
 buildTypeRaw f s = fmap (\x -> s{T.buildTypeRaw = x}) (f (T.buildTypeRaw s))
 {-# INLINE buildTypeRaw #-}
 
-setupBuildInfo :: Lens' PackageDescription (Maybe SetupBuildInfo)
+setupBuildInfo :: Lens' (PackageDescriptionWith mod) (Maybe SetupBuildInfo)
 setupBuildInfo f s = fmap (\x -> s{T.setupBuildInfo = x}) (f (T.setupBuildInfo s))
 {-# INLINE setupBuildInfo #-}
 
-library :: Lens' PackageDescription (Maybe Library)
+library :: Lens' (PackageDescriptionWith mod) (Maybe Library)
 library f s = fmap (\x -> s{T.library = x}) (f (T.library s))
 {-# INLINE library #-}
 
-subLibraries :: Lens' PackageDescription [Library]
+subLibraries :: Lens' (PackageDescriptionWith mod) [Library]
 subLibraries f s = fmap (\x -> s{T.subLibraries = x}) (f (T.subLibraries s))
 {-# INLINE subLibraries #-}
 
-executables :: Lens' PackageDescription [Executable]
+executables :: Lens' (PackageDescriptionWith mod) [Executable]
 executables f s = fmap (\x -> s{T.executables = x}) (f (T.executables s))
 {-# INLINE executables #-}
 
-foreignLibs :: Lens' PackageDescription [ForeignLib]
+foreignLibs :: Lens' (PackageDescriptionWith mod) [ForeignLib]
 foreignLibs f s = fmap (\x -> s{T.foreignLibs = x}) (f (T.foreignLibs s))
 {-# INLINE foreignLibs #-}
 
-testSuites :: Lens' PackageDescription [TestSuite]
+testSuites :: Lens' (PackageDescriptionWith mod) [TestSuite]
 testSuites f s = fmap (\x -> s{T.testSuites = x}) (f (T.testSuites s))
 {-# INLINE testSuites #-}
 
-benchmarks :: Lens' PackageDescription [Benchmark]
+benchmarks :: Lens' (PackageDescriptionWith mod) [Benchmark]
 benchmarks f s = fmap (\x -> s{T.benchmarks = x}) (f (T.benchmarks s))
 {-# INLINE benchmarks #-}
 
-dataFiles :: Lens' PackageDescription [RelativePath DataDir File]
+dataFiles :: Lens' (PackageDescriptionWith mod) [RelativePath DataDir File]
 dataFiles f s = fmap (\x -> s{T.dataFiles = x}) (f (T.dataFiles s))
 {-# INLINE dataFiles #-}
 
-dataDir :: Lens' PackageDescription (SymbolicPath Pkg (Dir DataDir))
+dataDir :: Lens' (PackageDescriptionWith mod) (SymbolicPath Pkg (Dir DataDir))
 dataDir f s = fmap (\x -> s{T.dataDir = x}) (f (T.dataDir s))
 {-# INLINE dataDir #-}
 
-extraSrcFiles :: Lens' PackageDescription [RelativePath Pkg File]
+extraSrcFiles :: Lens' (PackageDescriptionWith mod) [RelativePath Pkg File]
 extraSrcFiles f s = fmap (\x -> s{T.extraSrcFiles = x}) (f (T.extraSrcFiles s))
 {-# INLINE extraSrcFiles #-}
 
-extraTmpFiles :: Lens' PackageDescription [RelativePath Pkg File]
+extraTmpFiles :: Lens' (PackageDescriptionWith mod) [RelativePath Pkg File]
 extraTmpFiles f s = fmap (\x -> s{T.extraTmpFiles = x}) (f (T.extraTmpFiles s))
 {-# INLINE extraTmpFiles #-}
 
-extraDocFiles :: Lens' PackageDescription [RelativePath Pkg File]
+extraDocFiles :: Lens' (PackageDescriptionWith mod) [RelativePath Pkg File]
 extraDocFiles f s = fmap (\x -> s{T.extraDocFiles = x}) (f (T.extraDocFiles s))
 {-# INLINE extraDocFiles #-}
 
-extraFiles :: Lens' PackageDescription [RelativePath Pkg File]
+extraFiles :: Lens' (PackageDescriptionWith mod) [RelativePath Pkg File]
 extraFiles f s = fmap (\x -> s{T.extraFiles = x}) (f (T.extraFiles s))
 {-# INLINE extraFiles #-}
 
 -- | @since 3.0.0.0
-allLibraries :: Traversal' PackageDescription Library
+allLibraries :: Traversal' (PackageDescriptionWith mod) Library
 allLibraries f pd = mk <$> traverse f (T.library pd) <*> traverse f (T.subLibraries pd)
   where
     mk l ls = pd{T.library = l, T.subLibraries = ls}
 
 -- | @since 2.4
-componentModules :: Monoid r => ComponentName -> Getting r PackageDescription [ModuleName]
+componentModules :: Monoid r => ComponentName -> Getting r (PackageDescriptionWith mod) [ModuleName]
 componentModules cname = case cname of
   CLibName name ->
     componentModules' name allLibraries libName explicitLibModules
@@ -185,10 +189,10 @@ componentModules cname = case cname of
     componentModules'
       :: (Eq name, Monoid r)
       => name
-      -> Traversal' PackageDescription a
+      -> Traversal' (PackageDescriptionWith mod) a
       -> Lens' a name
       -> (a -> [ModuleName])
-      -> Getting r PackageDescription [ModuleName]
+      -> Getting r (PackageDescriptionWith mod) [ModuleName]
     componentModules' name pdL nameL modules =
       pdL
         . filtered ((== name) . view nameL)
@@ -198,7 +202,7 @@ componentModules cname = case cname of
     filtered p f s = if p s then f s else pure s
 
 -- | @since 2.4
-componentBuildInfo :: ComponentName -> Traversal' PackageDescription BuildInfo
+componentBuildInfo :: ComponentName -> Traversal' (PackageDescriptionWith mod) BuildInfo
 componentBuildInfo cname = case cname of
   CLibName name ->
     componentBuildInfo' name allLibraries libName libBuildInfo
@@ -214,10 +218,10 @@ componentBuildInfo cname = case cname of
     componentBuildInfo'
       :: Eq name
       => name
-      -> Traversal' PackageDescription a
+      -> Traversal' (PackageDescriptionWith mod) a
       -> Lens' a name
       -> Traversal' a BuildInfo
-      -> Traversal' PackageDescription BuildInfo
+      -> Traversal' (PackageDescriptionWith mod) BuildInfo
     componentBuildInfo' name pdL nameL biL =
       pdL
         . filtered ((== name) . view nameL)

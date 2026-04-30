@@ -27,7 +27,7 @@ import Distribution.Types.Flag (FlagName, PackageFlag (MkPackageFlag))
 import Distribution.Types.ForeignLib (ForeignLib, ForeignLibWith)
 import Distribution.Types.GenericPackageDescription (GenericPackageDescription, GenericPackageDescriptionWith (..))
 import Distribution.Types.Library (Library, LibraryWith)
-import Distribution.Types.PackageDescription (PackageDescription)
+import Distribution.Types.PackageDescription (PackageDescription, PackageDescriptionWith)
 import Distribution.Types.TestSuite (TestSuite, TestSuiteWith)
 import Distribution.Types.UnqualComponentName (UnqualComponentName)
 import Distribution.Version (Version, VersionRange)
@@ -36,7 +36,7 @@ import Distribution.Version (Version, VersionRange)
 -- GenericPackageDescription
 -------------------------------------------------------------------------------
 
-packageDescription :: Lens' (GenericPackageDescriptionWith mod) PackageDescription
+packageDescription :: Lens' (GenericPackageDescriptionWith mod) (PackageDescriptionWith mod)
 packageDescription f s = fmap (\x -> s{T.packageDescription = x}) (f (T.packageDescription s))
 {-# INLINE packageDescription #-}
 

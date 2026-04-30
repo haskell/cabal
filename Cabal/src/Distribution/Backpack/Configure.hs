@@ -35,7 +35,7 @@ import Distribution.InstalledPackageInfo
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.ModuleName
 import Distribution.Package
-import Distribution.PackageDescription (FlagAssignment, PackageDescription (..), libName)
+import Distribution.PackageDescription (FlagAssignment, PackageDescription, PackageDescriptionWith (..), libName)
 import Distribution.Simple.Compiler
 import Distribution.Simple.Flag
 import Distribution.Simple.LocalBuildInfo

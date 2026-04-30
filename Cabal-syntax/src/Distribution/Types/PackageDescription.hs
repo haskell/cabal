@@ -1,4 +1,7 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -29,11 +32,13 @@
 -- feature was introduced. It could probably do with being rationalised at some
 -- point to make it simpler.
 module Distribution.Types.PackageDescription
-  ( PackageDescription (..)
+  ( PackageDescription
+  , PackageDescriptionWith (..)
   , license
   , license'
   , buildType
   , emptyPackageDescription
+  , emptyPackageDescriptionAnn
   , hasPublicLib
   , hasLibs
   , allLibraries
@@ -94,7 +99,13 @@ import Distribution.Utils.Path
 import Distribution.Utils.ShortText
 import Distribution.Version
 
+import qualified Distribution.Types.Modify as Mod
+import Distribution.Types.Modify (AnnotateWith)
+import Distribution.Trivia
+
 import qualified Distribution.SPDX as SPDX
+
+type PackageDescription = PackageDescriptionWith Mod.HasNoAnn
 
 -- -----------------------------------------------------------------------------
 -- The PackageDescription type
@@ -104,10 +115,10 @@ import qualified Distribution.SPDX as SPDX
 -- which is needed for all packages, such as the package name and version, and
 -- information which is needed for the simple build system only, such as
 -- the compiler options and library name.
-data PackageDescription = PackageDescription
+data PackageDescriptionWith (mod :: Mod.HasAnnotation) = PackageDescription
   { -- the following are required by all packages:
 
-    specVersion :: CabalSpecVersion
+    specVersion :: AnnotateWith Positions mod CabalSpecVersion
   -- ^ The version of the Cabal spec that this package description uses.
   , package :: PackageIdentifier
   , licenseRaw :: Either SPDX.License License
@@ -153,7 +164,15 @@ data PackageDescription = PackageDescription
   , extraDocFiles :: [RelativePath Pkg File]
   , extraFiles :: [RelativePath Pkg File]
   }
-  deriving (Generic, Show, Read, Eq, Ord, Data)
+
+deriving instance Generic PackageDescription
+deriving instance Show PackageDescription
+deriving instance Read PackageDescription
+deriving instance Eq PackageDescription
+deriving instance Ord PackageDescription
+deriving instance Data PackageDescription
+
+deriving instance Show (PackageDescriptionWith Mod.HasAnn)
 
 instance Binary PackageDescription
 instance Structured PackageDescription
@@ -212,6 +231,45 @@ emptyPackageDescription =
     , licenseRaw = Right UnspecifiedLicense -- TODO:
     , licenseFiles = []
     , specVersion = CabalSpecV1_0
+    , buildTypeRaw = Nothing
+    , copyright = mempty
+    , maintainer = mempty
+    , author = mempty
+    , stability = mempty
+    , testedWith = []
+    , homepage = mempty
+    , pkgUrl = mempty
+    , bugReports = mempty
+    , sourceRepos = []
+    , synopsis = mempty
+    , description = mempty
+    , category = mempty
+    , customFieldsPD = []
+    , setupBuildInfo = Nothing
+    , library = Nothing
+    , subLibraries = []
+    , foreignLibs = []
+    , executables = []
+    , testSuites = []
+    , benchmarks = []
+    , dataFiles = []
+    , dataDir = sameDirectory
+    , extraSrcFiles = []
+    , extraTmpFiles = []
+    , extraDocFiles = []
+    , extraFiles = []
+    }
+
+emptyPackageDescriptionAnn :: PackageDescriptionWith Mod.HasAnn
+emptyPackageDescriptionAnn =
+  PackageDescription
+    { package =
+        PackageIdentifier
+          (mkPackageName "")
+          nullVersion
+    , licenseRaw = Right UnspecifiedLicense -- TODO:
+    , licenseFiles = []
+    , specVersion = Ann IsInserted CabalSpecV1_0
     , buildTypeRaw = Nothing
     , copyright = mempty
     , maintainer = mempty

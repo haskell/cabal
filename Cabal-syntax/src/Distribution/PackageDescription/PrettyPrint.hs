@@ -120,7 +120,7 @@ ppPackageDescription v pd =
   prettyFieldGrammar v packageDescriptionFieldGrammar pd
     ++ ppSourceRepos v (sourceRepos pd)
 
-ppPackageDescriptionAnn :: CabalSpecVersion -> PackageDescription -> [PrettyFieldWith Mod.HasAnn]
+ppPackageDescriptionAnn :: CabalSpecVersion -> PackageDescriptionWith Mod.HasAnn -> [PrettyFieldWith Mod.HasAnn]
 ppPackageDescriptionAnn v pd =
   prettyFieldGrammar v packageDescriptionFieldGrammar pd
     ++ ppSourceReposAnn v (sourceRepos pd)

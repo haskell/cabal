@@ -97,6 +97,8 @@ parseGenericPackageDescription
      , L.HasBuildInfoWith mod (TestSuiteStanzaWith mod)
      , L.HasBuildInfoWith mod (BenchmarkStanzaWith mod)
 
+     , EmptyGPD mod
+
      , Monoid (BuildInfoWith mod)
      , Monoid (LibraryWith mod)
      , Monoid (ForeignLibWith mod)
@@ -160,6 +162,9 @@ parseGenericPackageDescriptionMaybe
      , L.HasBuildInfoWith mod (TestSuiteStanzaWith mod)
      , L.HasBuildInfoWith mod (BenchmarkStanzaWith mod)
 
+
+     , EmptyGPD mod
+
      , Monoid (BuildInfoWith mod)
      , Monoid (LibraryWith mod)
      , Monoid (ForeignLibWith mod)
@@ -207,6 +212,8 @@ stateCommonStanzas f (SectionS gpd cs) = SectionS gpd <$> f cs
 parseGenericPackageDescription'
   :: forall mod src
    . ( Semigroup (BuildInfoWith mod)
+
+     , EmptyGPD mod
 
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
      , L.HasBuildInfoWith mod (LibraryWith mod)
@@ -273,20 +280,20 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
   -- Package description
   pd <- parseFieldGrammar specVer fields (packageDescriptionFieldGrammar @mod)
 
-  -- Check that scanned and parsed versions match.
-  unless (specVer == specVersion pd) $
-    parseFailure zeroPos $
-      "Scanned and parsed cabal-versions don't match "
-        ++ prettyShow (SpecVersion specVer)
-        ++ " /= "
-        ++ prettyShow (SpecVersion (specVersion pd))
+  -- -- Check that scanned and parsed versions match.
+  -- unless (specVer == specVersion pd) $
+  --   parseFailure zeroPos $
+  --     "Scanned and parsed cabal-versions don't match "
+  --       ++ prettyShow (SpecVersion specVer)
+  --       ++ " /= "
+  --       ++ prettyShow (SpecVersion (specVersion pd))
 
-  maybeWarnCabalVersion syntax pd
+  -- maybeWarnCabalVersion syntax pd
 
   -- Sections
   let gpd :: GenericPackageDescriptionWith mod
       gpd =
-        emptyGenericPackageDescription
+        (emptyGPD @mod)
           & L.packageDescription .~ pd
   gpd1 <- view stateGpd <$> execStateT (goSections @mod specVer sectionFields) (SectionS gpd Map.empty)
 

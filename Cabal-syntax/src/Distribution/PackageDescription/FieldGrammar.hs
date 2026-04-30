@@ -115,6 +115,7 @@ import qualified Distribution.Types.Lens as L
 packageDescriptionFieldGrammar
   :: forall mod c g
    . ( FieldGrammarWith mod c g
+     , Applicative (g mod (PackageDescriptionWith mod))
      , Applicative (g mod PackageDescription)
      , Applicative (g mod PackageIdentifier)
      , c (Identity BuildType)
@@ -126,10 +127,10 @@ packageDescriptionFieldGrammar
      , c CompatLicenseFile
      , c CompatDataDir
      )
-  => g mod PackageDescription PackageDescription
+  => g mod (PackageDescriptionWith mod) (PackageDescriptionWith mod)
 packageDescriptionFieldGrammar =
   PackageDescription
-    <$> optionalFieldDefAla "cabal-version" SpecVersion L.specVersion CabalSpecV1_0
+    <$> optionalFieldDefAla' "cabal-version" SpecVersion L.specVersion CabalSpecV1_0
     <*> blurFieldGrammar L.package packageIdentifierGrammar
     <*> optionalFieldDefAla "license" SpecLicense L.licenseRaw (Left SPDX.NONE)
     <*> licenseFilesGrammar

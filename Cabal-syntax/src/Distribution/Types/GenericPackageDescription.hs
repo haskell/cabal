@@ -19,6 +19,7 @@ module Distribution.Types.GenericPackageDescription
   , GenericPackageDescriptionAnn
   , GenericPackageDescriptionWith (..)
   , emptyGenericPackageDescription
+  , EmptyGPD (..)
   ) where
 
 import Distribution.Compat.Prelude
@@ -52,7 +53,7 @@ type GenericPackageDescription = GenericPackageDescriptionWith Mod.HasNoAnn
 type GenericPackageDescriptionAnn = GenericPackageDescriptionWith Mod.HasAnn
 
 data GenericPackageDescriptionWith (m :: Mod.HasAnnotation) = GenericPackageDescription
-  { packageDescription :: PackageDescription
+  { packageDescription :: PackageDescriptionWith m
   , gpdScannedVersion :: Maybe Version
   -- ^ This is a version as specified in source.
   --   We populate this field in index reading for dummy GPDs,
@@ -91,8 +92,21 @@ deriving instance Binary (GenericPackageDescriptionWith Mod.HasNoAnn)
 instance Structured GenericPackageDescription
 instance NFData GenericPackageDescription where rnf = genericRnf
 
-emptyGenericPackageDescription :: GenericPackageDescriptionWith mod
+class EmptyGPD (mod :: Mod.HasAnnotation) where
+  emptyGPD :: GenericPackageDescriptionWith mod
+
+-- | BAD: this is for prototyping =D
+instance EmptyGPD Mod.HasNoAnn where
+  emptyGPD = emptyGenericPackageDescription
+
+instance EmptyGPD Mod.HasAnn where
+  emptyGPD = emptyGenericPackageDescriptionAnn
+
+emptyGenericPackageDescription :: GenericPackageDescription
 emptyGenericPackageDescription = GenericPackageDescription emptyPackageDescription Nothing [] Nothing [] [] [] [] []
+
+emptyGenericPackageDescriptionAnn :: GenericPackageDescriptionWith Mod.HasAnn
+emptyGenericPackageDescriptionAnn = GenericPackageDescription emptyPackageDescriptionAnn Nothing [] Nothing [] [] [] [] []
 
 -- -----------------------------------------------------------------------------
 -- Traversal Instances
