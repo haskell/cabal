@@ -1,9 +1,21 @@
 Configuration is affected by the following files:
 - hops-0.project
+- hops/hops-1.config
+    imported by: hops-0.project
 - hops-2.config
     imported by: hops/hops-1.config
     imported by: hops-0.project
+- hops/hops-3.config
+    imported by: hops-2.config
+    imported by: hops/hops-1.config
+    imported by: hops-0.project
 - hops-4.config
+    imported by: hops/hops-3.config
+    imported by: hops-2.config
+    imported by: hops/hops-1.config
+    imported by: hops-0.project
+- hops/hops-5.config
+    imported by: hops-4.config
     imported by: hops/hops-3.config
     imported by: hops-2.config
     imported by: hops/hops-1.config
@@ -15,8 +27,7 @@ Configuration is affected by the following files:
     imported by: hops-2.config
     imported by: hops/hops-1.config
     imported by: hops-0.project
-- hops-8.config
-    imported by: hops/hops-7.config
+- hops/hops-7.config
     imported by: hops-6.config
     imported by: hops/hops-5.config
     imported by: hops-4.config
@@ -24,19 +35,8 @@ Configuration is affected by the following files:
     imported by: hops-2.config
     imported by: hops/hops-1.config
     imported by: hops-0.project
-- hops/hops-1.config
-    imported by: hops-0.project
-- hops/hops-3.config
-    imported by: hops-2.config
-    imported by: hops/hops-1.config
-    imported by: hops-0.project
-- hops/hops-5.config
-    imported by: hops-4.config
-    imported by: hops/hops-3.config
-    imported by: hops-2.config
-    imported by: hops/hops-1.config
-    imported by: hops-0.project
-- hops/hops-7.config
+- hops-8.config
+    imported by: hops/hops-7.config
     imported by: hops-6.config
     imported by: hops/hops-5.config
     imported by: hops-4.config
