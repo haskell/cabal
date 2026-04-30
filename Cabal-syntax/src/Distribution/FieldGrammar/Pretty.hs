@@ -202,6 +202,16 @@ instance FieldGrammarWith Mod.HasAnn Pretty PrettyFieldGrammar where
           HasTrivia pos -> ppFieldPos fn [(pos, PP.text (show b))]
           IsInserted -> mempty
 
+  optionalFieldDefAla' fn _pack l def = PrettyFG pp
+    where
+      pp v s =
+        let Ann t u :: Ann Positions Doc = prettyVersioned v . pack' _pack <$> x
+        in  case t of
+          HasTrivia pos -> ppFieldPos fn [(pos, u)]
+          IsInserted -> mempty
+        where
+          x = aview l s
+
 ppField :: FieldName -> Doc -> [PrettyField]
 ppField name fielddoc
   | PP.isEmpty fielddoc = []
