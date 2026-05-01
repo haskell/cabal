@@ -5,8 +5,11 @@ module Distribution.Solver.Modular.ConfiguredConversion
 import Data.Maybe
 import Prelude hiding (pi)
 import Data.Either (partitionEithers)
+import Data.Set (Set)
+import qualified Data.Set as S
 
 import Distribution.Package (UnitId, packageId)
+import Distribution.Types.InstalledPackageInfo (InstalledPackageInfo(installedSublibs))
 
 import qualified Distribution.Simple.PackageIndex as SI
 
@@ -30,9 +33,10 @@ convCP :: SI.InstalledPackageIndex ->
           CP QPN -> ResolverPackage loc
 convCP iidx sidx (CP qpi fa es ds) =
   case convPI qpi of
-    Left  pi -> PreExisting $
+    Left (pi, subPis) ->
+                PreExisting $
                   InstSolverPackage {
-                    instSolverPkgIPI = fromJust $ SI.lookupUnitId iidx pi,
+                    instSolverPkgIPI = addSublibs iidx subPis $ fromJust $ SI.lookupUnitId iidx pi,
                     instSolverPkgLibDeps = fmap fst ds',
                     instSolverPkgExeDeps = fmap snd ds'
                   }
@@ -50,15 +54,29 @@ convCP iidx sidx (CP qpi fa es ds) =
     ds' :: ComponentDeps ([SolverId] {- lib -}, [SolverId] {- exe -})
     ds' = fmap (partitionEithers . map convConfId) ds
 
-convPI :: PI QPN -> Either UnitId PackageId
-convPI (PI _ (I _ (Inst pi))) = Left pi
-convPI pi                     = Right (packageId (either id id (convConfId pi)))
+    addSublibs
+      :: SI.InstalledPackageIndex
+      -> Set UnitId
+      -> InstalledPackageInfo
+      -> InstalledPackageInfo
+    addSublibs idx subPis info =
+      info { installedSublibs =
+               mapMaybe
+                 (SI.lookupUnitId idx)
+                 (S.toList subPis)
+           }
+
+convPI :: PI QPN -> Either (UnitId, Set UnitId) PackageId
+convPI (PI _ (I _ (Inst pi)))             = Left (pi, mempty)
+convPI (PI _ (I _ (InstGroup pi subPis))) = Left (pi, subPis)
+convPI pi                                 = Right (packageId (either id id (convConfId pi)))
 
 convConfId :: PI QPN -> Either SolverId {- is lib -} SolverId {- is exe -}
 convConfId (PI (Q (PackagePath _ q) pn) (I v loc)) =
     case loc of
         Inst pi -> Left (PreExistingId sourceId pi)
-        _otherwise
+        InstGroup pi _subPis -> Left (PreExistingId sourceId pi)
+        InRepo
           | QualExe _ pn' <- q
           -- NB: the dependencies of the executable are also
           -- qualified.  So the way to tell if this is an executable

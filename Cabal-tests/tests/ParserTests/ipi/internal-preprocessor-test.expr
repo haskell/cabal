@@ -8,6 +8,7 @@ InstalledPackageInfo {
   sourceLibName = LMainLibName,
   installedComponentId_ =
   ComponentId "",
+  installedSublibs = [],
   libVisibility =
   LibraryVisibilityPublic,
   installedUnitId = UnitId

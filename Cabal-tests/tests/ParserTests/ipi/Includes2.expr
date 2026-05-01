@@ -9,6 +9,7 @@ InstalledPackageInfo {
     (UnqualComponentName "mylib"),
   installedComponentId_ =
   ComponentId "",
+  installedSublibs = [],
   libVisibility =
   LibraryVisibilityPrivate,
   installedUnitId = UnitId
