@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE StandaloneDeriving #-}
 module Distribution.Solver.Modular.Dependency (
     -- * Variables
     Var(..)
@@ -94,6 +95,8 @@ data FlaggedDep qpn =
     -- | Dependencies which are always enabled, for the component 'comp'.
   | Simple (LDep qpn) Component
 
+deriving instance Show qpn => Show (FlaggedDep qpn)
+
 -- | Conservatively flatten out flagged dependencies
 --
 -- NOTE: We do not filter out duplicates.
@@ -115,6 +118,7 @@ type FalseFlaggedDeps qpn = FlaggedDeps qpn
 -- depending; having a 'Functor' instance makes bugs where we don't distinguish
 -- these two far too likely. (By rights 'LDep' ought to have two type variables.)
 data LDep qpn = LDep (DependencyReason qpn) (Dep qpn)
+  deriving Show
 
 -- | A dependency (constraint) associates a package name with a constrained
 -- instance. It can also represent other types of dependencies, such as
@@ -123,7 +127,7 @@ data Dep qpn = Dep (PkgComponent qpn) CI  -- ^ dependency on a package component
              | Ext Extension              -- ^ dependency on a language extension
              | Lang Language              -- ^ dependency on a language version
              | Pkg PkgconfigName PkgconfigVersionRange  -- ^ dependency on a pkg-config package
-  deriving Functor
+  deriving (Functor, Show)
 
 -- | An exposed component within a package. This type is used to represent
 -- build-depends and build-tool-depends dependencies.
