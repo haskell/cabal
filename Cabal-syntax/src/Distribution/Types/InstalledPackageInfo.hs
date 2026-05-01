@@ -42,6 +42,7 @@ data InstalledPackageInfo = InstalledPackageInfo
     sourcePackageId :: PackageId
   , sourceLibName :: LibraryName
   , installedComponentId_ :: ComponentId
+  , installedSublibs :: [InstalledPackageInfo]
   , libVisibility :: LibraryVisibility
   , installedUnitId :: UnitId
   , -- INVARIANT: if this package is definite, OpenModule's
@@ -135,6 +136,7 @@ emptyInstalledPackageInfo =
     , sourceLibName = LMainLibName
     , installedComponentId_ = mkComponentId ""
     , installedUnitId = mkUnitId ""
+    , installedSublibs = mempty
     , instantiatedWith = []
     , compatPackageKey = ""
     , license = Left SPDX.NONE

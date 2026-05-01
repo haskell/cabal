@@ -502,6 +502,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     { IPI.sourcePackageId = packageId pkg
     , IPI.installedUnitId = componentUnitId clbi
     , IPI.installedComponentId_ = componentComponentId clbi
+    , IPI.installedSublibs = mempty
     , IPI.instantiatedWith = expectLibraryComponent (maybeComponentInstantiatedWith clbi)
     , IPI.sourceLibName = libName lib
     , IPI.compatPackageKey = expectLibraryComponent (maybeComponentCompatPackageKey clbi)

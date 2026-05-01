@@ -134,6 +134,7 @@ ipiFieldGrammar =
         (PackageIdentifier pn _basicVersion)
         (combineLibraryName ln _basicLibName)
         (mkComponentId "") -- installedComponentId_, not in use
+        mempty -- installedSublibs
         _basicLibVisibility
       where
         MungedPackageName pn ln = _basicName

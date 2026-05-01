@@ -289,7 +289,7 @@ showOptions q [x] = showOption q x
 showOptions q xs = showQPN q ++ "; " ++ (L.intercalate ", "
   [if isJust linkedTo
     then showOption q x
-    else showI i -- Don't show the package, just the version
+    else showI q i -- Don't show the package, just the version
   | x@(POption i linkedTo) <- xs
   ])
 
@@ -351,7 +351,7 @@ showConflictingDep (ConflictingDep dr (PkgComponent qpn comp) ci) =
                        ExposedLib (LSubLibName lib) -> " (lib " ++ unUnqualComponentName lib ++ ")"
   in case ci of
        Fixed i        -> (if qpn /= qpn' then showDependencyReason dr ++ " => " else "") ++
-                         showQPN qpn ++ componentStr ++ "==" ++ showI i
+                         showQPN qpn ++ componentStr ++ "==" ++ showI qpn i
        Constrained vr -> showDependencyReason dr ++ " => " ++ showQPN qpn ++
                          componentStr ++ showVR vr
 

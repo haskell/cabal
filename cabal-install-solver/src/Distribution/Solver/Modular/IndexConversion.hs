@@ -6,6 +6,7 @@ import Distribution.Solver.Compat.Prelude
 import Prelude ()
 
 import qualified Data.List as L
+import qualified Data.Maybe
 import qualified Data.Map.Strict as M
 import qualified Distribution.Compat.NonEmptySet as NonEmptySet
 import qualified Data.Set as S
@@ -62,7 +63,80 @@ convPIs :: OS -> Arch -> CompilerInfo -> Map PN [LabeledPackageConstraint]
         -> Index
 convPIs os arch comp constraints sip strfl solveExes iidx sidx =
   mkIndex $
-  convIPI' sip iidx ++ convSPI' os arch comp constraints strfl solveExes sidx
+       groupInstalledSublibs (convIPI' sip iidx)
+    ++ (convSPI' os arch comp constraints strfl solveExes sidx)
+
+-- | Group packages with the same package name and version,
+-- merge their sub-libraries and dependencies so we get
+-- a similar looking package as if it came from repository.
+groupInstalledSublibs
+  :: [(PN, I, PInfo)]
+  -> [(PN, I, PInfo)]
+groupInstalledSublibs xs =
+    remapPInfoDepsToInstGroups
+  $ M.elems
+  $ foldl
+      (\acc x@(pn, I ver _, _) ->
+        M.insertWith
+          (\(_, newI, newInfo) (_, oldI, oldInfo) ->
+            (pn, mergeIs oldI newI, mergeInfos oldInfo newInfo)
+          )
+          (pn, ver)
+          x
+          acc
+      )
+      M.empty
+      xs
+  where
+  -- flags are probably safe to ignore here as they are fixed for installed anyway
+  mergeInfos :: PInfo -> PInfo -> PInfo
+  mergeInfos (PInfo deps comps flagNfo fr) (PInfo deps' comps' _flagNfo _fr) =
+    PInfo
+      (deps <> deps')
+      (comps <> comps')
+      flagNfo
+      fr
+
+  -- this pass creates InstGroup(s)
+  mergeIs :: I -> I -> I
+  mergeIs (I ver (Inst pId)) (I _ver (Inst subPId)) =
+    I ver (InstGroup pId (S.singleton subPId))
+  mergeIs (I ver (InstGroup pId subPIds)) (I _ver (Inst subPId)) =
+    I ver (InstGroup pId (S.insert subPId subPIds))
+  -- XXX/srk, can't really happen as they are lexicographically ordered
+  mergeIs a b = error $ "Absurd mergeIs" <> show (a,b)
+
+  -- now some deps from convIP/convIPId pass refer to Inst when they should refer to InstGroup
+  remapPInfoDepsToInstGroups :: [(PN, I, PInfo)] -> [(PN, I, PInfo)]
+  remapPInfoDepsToInstGroups ps =
+    let
+      -- Inst -> InstGroup mapping, other Loc(s) are preserved
+      locMap :: Map Loc Loc
+      locMap =
+          M.fromList
+        $ concatMap
+            (\(_pn, I _ver loc, _pInfo) -> case loc of
+              ip@(Inst _pId) ->
+                pure (ip, ip)
+              g@(InstGroup pId subPIds) ->
+                (Inst pId, g):(map (\x -> (Inst x, g)) (S.toList subPIds))
+              InRepo ->
+                pure (InRepo, InRepo)
+            )
+            ps
+
+      remapDep :: FlaggedDep PN -> FlaggedDep PN
+      remapDep (D.Simple (LDep dr (Dep depComp (Fixed (I ver loc)))) comp) =
+        let newLoc = Data.Maybe.fromJust $ M.lookup loc locMap
+        in  (D.Simple (LDep dr (Dep depComp (Fixed (I ver newLoc)))) comp)
+      remapDep x = x
+
+    in map
+        (\(pn, i, PInfo deps comps flagNfo fr) ->
+          (pn, i, PInfo (map remapDep deps) comps flagNfo fr)
+        )
+        ps
+
 
 -- | Convert a Cabal installed package index to the simpler,
 -- more uniform index format of the solver.
@@ -85,20 +159,26 @@ convIPI' (ShadowPkgs sip) idx =
 -- | Extract/recover the package ID from an installed package info, and convert it to a solver's I.
 convId :: IPI.InstalledPackageInfo -> (PN, I)
 convId ipi = (pn, I ver $ Inst $ IPI.installedUnitId ipi)
+--  where (MungedPackageId (MungedPackageName pn _) ver) = mungedId ipi
   where MungedPackageId mpn ver = mungedId ipi
         -- HACK. See Note [Index conversion with internal libraries]
-        pn = encodeCompatPackageName mpn
+        pn = case IPI.libVisibility ipi of
+--          LibraryVisibilityPrivate -> encodeCompatPackageName mpn
+          LibraryVisibilityPrivate -> pkgName $ IPI.sourcePackageId ipi
+          LibraryVisibilityPublic -> pkgName $ IPI.sourcePackageId ipi
 
 -- | Convert a single installed package into the solver-specific format.
-convIP :: SI.InstalledPackageIndex -> IPI.InstalledPackageInfo -> (PN, I, PInfo)
+convIP
+  :: SI.InstalledPackageIndex
+  -> IPI.InstalledPackageInfo
+  -> (PN, I, PInfo)
 convIP idx ipi =
   case traverse (convIPId (DependencyReason pn M.empty S.empty) comp idx) (IPI.depends ipi) of
         Left u    -> (pn, i, PInfo [] M.empty M.empty (Just (Broken u)))
         Right fds -> (pn, i, PInfo fds components M.empty Nothing)
  where
-  -- TODO: Handle sub-libraries and visibility.
   components =
-      M.singleton (ExposedLib LMainLibName)
+      M.singleton (ExposedLib $ IPI.sourceLibName ipi)
                   ComponentInfo {
                       compIsVisible = IsVisible True
                     , compIsBuildable = IsBuildable True
@@ -144,12 +224,16 @@ convIP idx ipi =
 -- May return Nothing if the package can't be found in the index. That
 -- indicates that the original package having this dependency is broken
 -- and should be ignored.
-convIPId :: DependencyReason PN -> Component -> SI.InstalledPackageIndex -> UnitId -> Either UnitId (FlaggedDep PN)
+convIPId :: DependencyReason PN
+  -> Component
+  -> SI.InstalledPackageIndex
+  -> UnitId
+  -> Either UnitId (FlaggedDep PN)
 convIPId dr comp idx ipid =
   case SI.lookupUnitId idx ipid of
     Nothing  -> Left ipid
     Just ipi -> let (pn, i) = convId ipi
-                    name = ExposedLib LMainLibName  -- TODO: Handle sub-libraries.
+                    name = ExposedLib $ IPI.sourceLibName ipi
                 in  Right (D.Simple (LDep dr (Dep (PkgComponent pn name) (Fixed i))) comp)
                 -- NB: something we pick up from the
                 -- InstalledPackageIndex is NEVER an executable

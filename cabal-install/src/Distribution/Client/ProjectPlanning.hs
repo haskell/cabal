@@ -1673,18 +1673,19 @@ elaborateInstallPlan
 
       preexistingInstantiatedPkgs :: Map UnitId FullUnitId
       preexistingInstantiatedPkgs =
-        Map.fromList (mapMaybe f (SolverInstallPlan.toList solverPlan))
+        Map.fromList (concat $ mapMaybe f (SolverInstallPlan.toList solverPlan))
         where
           f (SolverInstallPlan.PreExisting inst)
             | let ipkg = instSolverPkgIPI inst
             , not (IPI.indefinite ipkg) =
-                Just
-                  ( IPI.installedUnitId ipkg
-                  , ( FullUnitId
-                        (IPI.installedComponentId ipkg)
-                        (Map.fromList (IPI.instantiatedWith ipkg))
-                    )
-                  )
+                let mkEntry x =
+                      ( IPI.installedUnitId x
+                      , ( FullUnitId
+                            (IPI.installedComponentId x)
+                            (Map.fromList (IPI.instantiatedWith x))
+                        )
+                      )
+                 in Just $ (mkEntry ipkg) : (map mkEntry (IPI.installedSublibs ipkg))
           f _ = Nothing
 
       elaboratedInstallPlan
@@ -1693,7 +1694,9 @@ elaborateInstallPlan
         flip InstallPlan.fromSolverInstallPlanWithProgress solverPlan $ \mapDep planpkg ->
           case planpkg of
             SolverInstallPlan.PreExisting pkg ->
-              return [InstallPlan.PreExisting (instSolverPkgIPI pkg)]
+              return $
+                [InstallPlan.PreExisting (instSolverPkgIPI pkg)]
+                  ++ map InstallPlan.PreExisting (IPI.installedSublibs (instSolverPkgIPI pkg))
             SolverInstallPlan.Configured pkg ->
               let inplace_doc
                     | shouldBuildInplaceOnly pkg = text "inplace"
@@ -3175,7 +3178,7 @@ availableInstalledTargets ipkg =
       status = TargetBuildable (unitid, cname) TargetRequestedByDefault
       target = AvailableTarget (packageId ipkg) cname status False
       fake = False
-   in [(packageId ipkg, cname, fake, target)]
+   in (packageId ipkg, cname, fake, target) : (concatMap availableInstalledTargets (IPI.installedSublibs ipkg))
 
 availableSourceTargets
   :: ElaboratedConfiguredPackage
@@ -3637,10 +3640,11 @@ pruneInstallPlanPass1 pkgs
         ]
 
     availablePkgs =
-      Set.fromList
-        [ installedUnitId pkg
-        | InstallPlan.PreExisting pkg <- pkgs
-        ]
+      Set.fromList $
+        concat
+          [ (installedUnitId pkg) : (map installedUnitId (IPI.installedSublibs pkg))
+          | InstallPlan.PreExisting pkg <- pkgs
+          ]
 
 {-
 Note [Pruning for Multi Repl]
