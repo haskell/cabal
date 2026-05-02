@@ -123,7 +123,7 @@ sdist verbHandles pkg flags mkTmpDir pps = do
         overwriteSnapshotPackageDesc verbosity pkg' targetDir
 
     common = sDistCommonFlags flags
-    verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
+    CommonSetupVerbosity verbosity = (verbHandles, common)
     mbWorkDir = flagToMaybe $ setupWorkingDir common
     i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
     snapshot = fromFlag (sDistSnapshot flags)

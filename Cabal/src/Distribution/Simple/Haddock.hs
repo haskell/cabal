@@ -58,7 +58,6 @@ import Distribution.Simple.Errors
 import Distribution.Simple.FileMonitor.Types
   ( MonitorFilePath
   )
-import Distribution.Simple.Flag
 import Distribution.Simple.Glob (matchDirFileGlob)
 import Distribution.Simple.InstallDirs
 import Distribution.Simple.LocalBuildInfo hiding (substPathTemplate)
@@ -1529,7 +1528,7 @@ hscolour'
         onNoHsColour $ exceptionMessage excep
         return []
       common = hscolourCommonFlags flags
-      verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
+      CommonSetupVerbosity verbosity = (verbHandles, common)
       distPref = fromFlag $ setupDistPref common
       mbWorkDir = mbWorkDirLBI lbi
       i = interpretSymbolicPathLBI lbi -- See Note [Symbolic paths] in Distribution.Utils.Path
