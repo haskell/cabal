@@ -19,8 +19,6 @@ import Distribution.Types.ExeDependency              -- from Cabal
 import Distribution.Types.PkgconfigDependency        -- from Cabal
 import Distribution.Types.ComponentName              -- from Cabal
 import Distribution.Types.CondTree                   -- from Cabal
-import Distribution.Types.MungedPackageId            -- from Cabal
-import Distribution.Types.MungedPackageName          -- from Cabal
 import Distribution.PackageDescription               -- from Cabal
 import Distribution.PackageDescription.Configuration
 import qualified Distribution.Simple.PackageIndex as SI
@@ -145,8 +143,7 @@ convIPI' (ShadowPkgs sip) idx =
     -- apply shadowing whenever there are multiple installed packages with
     -- the same version
     [ maybeShadow (convIP idx pkg)
-    -- IMPORTANT to get internal libraries. See
-    -- Note [Index conversion with internal libraries]
+    -- IMPORTANT to use @allPackagesBySourcePackageIdAndLibName@ to get internal libraries
     | (_, pkgs) <- SI.allPackagesBySourcePackageIdAndLibName idx
     , (maybeShadow, pkg) <- zip (id : repeat shadow) pkgs ]
   where
@@ -158,14 +155,10 @@ convIPI' (ShadowPkgs sip) idx =
 
 -- | Extract/recover the package ID from an installed package info, and convert it to a solver's I.
 convId :: IPI.InstalledPackageInfo -> (PN, I)
-convId ipi = (pn, I ver $ Inst $ IPI.installedUnitId ipi)
---  where (MungedPackageId (MungedPackageName pn _) ver) = mungedId ipi
-  where MungedPackageId mpn ver = mungedId ipi
-        -- HACK. See Note [Index conversion with internal libraries]
-        pn = case IPI.libVisibility ipi of
---          LibraryVisibilityPrivate -> encodeCompatPackageName mpn
-          LibraryVisibilityPrivate -> pkgName $ IPI.sourcePackageId ipi
-          LibraryVisibilityPublic -> pkgName $ IPI.sourcePackageId ipi
+convId ipi = ( pkgName spi
+             , I (pkgVersion spi) $ Inst $ IPI.installedUnitId ipi
+             )
+ where spi = IPI.sourcePackageId ipi
 
 -- | Convert a single installed package into the solver-specific format.
 convIP
@@ -190,33 +183,6 @@ convIP idx ipi =
   -- primary libs anyways
   comp = componentNameToComponent $ CLibName $ IPI.sourceLibName ipi
 -- TODO: Installed packages should also store their encapsulations!
-
--- Note [Index conversion with internal libraries]
--- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
--- Something very interesting happens when we have internal libraries
--- in our index.  In this case, we maybe have p-0.1, which itself
--- depends on the internal library p-internal ALSO from p-0.1.
--- Here's the danger:
---
---      - If we treat both of these packages as having PN "p",
---        then the solver will try to pick one or the other,
---        but never both.
---
---      - If we drop the internal packages, now p-0.1 has a
---        dangling dependency on an "installed" package we know
---        nothing about. Oops.
---
--- An expedient hack is to put p-internal into cabal-install's
--- index as a MUNGED package name, so that it doesn't conflict
--- with anyone else (except other instances of itself).  But
--- yet, we ought NOT to say that PNs in the solver are munged
--- package names, because they're not; for source packages,
--- we really will never see munged package names.
---
--- The tension here is that the installed package index is actually
--- per library, but the solver is per package.  We need to smooth
--- it over, and munging the package names is a pretty good way to
--- do it.
 
 -- | Convert dependencies specified by an installed package id into
 -- flagged dependencies of the solver.
