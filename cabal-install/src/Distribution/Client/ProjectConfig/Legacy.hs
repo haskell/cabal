@@ -1,41 +1,43 @@
 {-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ViewPatterns #-}
 
 -- | Project configuration, implementation in terms of legacy types.
 module Distribution.Client.ProjectConfig.Legacy
-  ( -- Project config skeletons
+  ( -- * Skeletons
     ProjectConfigSkeleton
-  , parseProject
   , instantiateProjectConfigSkeletonFetchingCompiler
   , instantiateProjectConfigSkeletonWithCompiler
   , singletonProjectConfigSkeleton
   , projectSkeletonImports
 
-    -- * Project config in terms of legacy types
-  , LegacyProjectConfig
+    -- * Parsing
+  , parseProject
   , parseLegacyProjectConfig
+
+    -- * Legacy Configuration
+  , LegacyProjectConfig
   , showLegacyProjectConfig
 
-    -- * Conversion to and from legacy config types
+    -- * Conversions
   , commandLineFlagsToProjectConfig
   , convertLegacyProjectConfig
   , convertLegacyGlobalConfig
   , convertToLegacyProjectConfig
 
-    -- * Internals, just for tests
+    -- * Internals
+
+    -- | These functions are exposed just for tests.
   , parsePackageLocationTokenQ
   , renderPackageLocationToken
   ) where
 
-import Data.Coerce (coerce)
+import Control.Arrow (Kleisli (..), arr, second, (>>>))
 import Distribution.Client.Compat.Prelude
 
 import Distribution.Types.Flag (FlagName, parsecFlagAssignment)
@@ -58,13 +60,17 @@ import Distribution.Client.CmdInstall.ClientInstallFlags
   , defaultClientInstallFlags
   )
 
-import Distribution.Compat.Lens (toListOf, view)
+import Distribution.Compat.Lens (toListOf)
 
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.ProjectConfigPath
 
+import Distribution.Client.HttpUtils
 import Distribution.Client.NixStyleOptions (NixStyleFlags (..))
+import Distribution.Client.ParseUtils
+import Distribution.Client.ProjectConfig.Import
 import Distribution.Client.ProjectFlags (ProjectFlags (..), defaultProjectFlags, projectFlagsOptions)
+import Distribution.Client.ReplFlags (multiReplOption)
 import Distribution.Client.Setup
   ( ConfigExFlags (..)
   , GlobalFlags (..)
@@ -75,15 +81,49 @@ import Distribution.Client.Setup
   , globalCommand
   , installOptions
   )
+import Distribution.Deprecated.ParseUtils
+  ( PError (..)
+  , PWarning (..)
+  , ParseResult (..)
+  , commaNewLineListFieldParsec
+  , newLineListField
+  , parseFail
+  , parseHaskellString
+  , parseTokenQ
+  , showToken
+  , simpleFieldParsec
+  , syntaxError
+  )
+import qualified Distribution.Deprecated.ParseUtils as ParseUtils
+import Distribution.Deprecated.ProjectParseUtils
+  ( ProjectParseResult (..)
+  , projectParse
+  , projectParseFail
+  )
+import Distribution.Deprecated.ReadP
+  ( ReadP
+  , (+++)
+  )
+import qualified Distribution.Deprecated.ReadP as Parse
 import Distribution.FieldGrammar
+import Distribution.Fields.ConfVar (parseConditionConfVarFromClause)
 import Distribution.Package
 import Distribution.PackageDescription
   ( Condition (..)
   , ConfVar (..)
   , FlagAssignment
   , dispFlagAssignment
+  , mapTreeData
   )
 import Distribution.PackageDescription.Configuration (simplifyWithSysParams)
+import Distribution.Parsec (ParsecParser, parsecToken)
+import Distribution.Simple.Command
+  ( CommandUI (commandOptions)
+  , OptionField (..)
+  , ShowOrParseArgs (..)
+  , option
+  , reqArg'
+  )
 import Distribution.Simple.Compiler
   ( Compiler (..)
   , CompilerInfo (..)
@@ -135,62 +175,22 @@ import Distribution.Simple.Utils
   , lowercase
   , noticeDoc
   )
+import Distribution.System (Arch, OS, buildOS)
 import Distribution.Types.CondTree
   ( CondBranch (..)
   , CondTree (..)
   , ignoreConditions
   , mapTreeConds
-  , mapTreeData
-  , traverseCondTreeA
   , traverseCondTreeV
+  )
+import Distribution.Types.PackageVersionConstraint
+  ( PackageVersionConstraint
   )
 import Distribution.Types.SourceRepo (RepoType)
 import Distribution.Utils.NubList
   ( fromNubList
   , overNubList
   , toNubList
-  )
-import Distribution.Utils.String (trim)
-
-import Distribution.Client.HttpUtils
-import Distribution.Client.ParseUtils
-import Distribution.Client.ReplFlags (multiReplOption)
-import Distribution.Deprecated.ParseUtils
-  ( PError (..)
-  , PWarning (..)
-  , ParseResult (..)
-  , commaNewLineListFieldParsec
-  , newLineListField
-  , parseFail
-  , parseHaskellString
-  , parseTokenQ
-  , showToken
-  , simpleFieldParsec
-  , syntaxError
-  )
-import qualified Distribution.Deprecated.ParseUtils as ParseUtils
-import Distribution.Deprecated.ProjectParseUtils
-  ( ProjectParseResult (..)
-  , projectParse
-  , projectParseFail
-  )
-import Distribution.Deprecated.ReadP
-  ( ReadP
-  , (+++)
-  )
-import qualified Distribution.Deprecated.ReadP as Parse
-import Distribution.Fields.ConfVar (parseConditionConfVarFromClause)
-import Distribution.Parsec (ParsecParser, parsecToken)
-import Distribution.Simple.Command
-  ( CommandUI (commandOptions)
-  , OptionField (..)
-  , ShowOrParseArgs (..)
-  , option
-  , reqArg'
-  )
-import Distribution.System (Arch, OS, buildOS)
-import Distribution.Types.PackageVersionConstraint
-  ( PackageVersionConstraint
   )
 import Distribution.Utils.Path hiding
   ( (<.>)
@@ -201,23 +201,15 @@ import qualified Data.ByteString.Char8 as BS
 import Data.Functor ((<&>))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Network.URI (URI (..), nullURIAuth, parseURI)
-import System.Directory (createDirectoryIfMissing, makeAbsolute)
-import System.FilePath (isAbsolute, isPathSeparator, makeValid, splitFileName, (</>))
-import Text.PrettyPrint
-  ( Doc
-  , render
-  , ($+$)
-  )
-import qualified Text.PrettyPrint as Disp
+import Network.URI (URI (..), nullURIAuth)
+import System.Directory (makeAbsolute)
+import System.FilePath (splitFileName)
+import Text.PrettyPrint (Doc, render, ($+$))
+import qualified Text.PrettyPrint as Disp (empty, render, text)
 
 ------------------------------------------------------------------
 -- Handle extended project config files with conditionals and imports.
 --
-
--- | ProjectConfigSkeleton is a tree of conditional blocks and imports wrapping a config. It can be finalized by providing the conditional resolution info
--- and then resolving and downloading the imports
-type ProjectConfigSkeleton = CondTree ConfVar ([ProjectConfigPath], ProjectConfig)
 
 singletonProjectConfigSkeleton :: ProjectConfig -> ProjectConfigSkeleton
 singletonProjectConfigSkeleton x = CondNode (mempty, x) mempty
@@ -233,7 +225,7 @@ instantiateProjectConfigSkeletonFetchingCompiler fetch flags skel
 instantiateProjectConfigSkeletonWithCompiler :: OS -> Arch -> CompilerInfo -> FlagAssignment -> ProjectConfigSkeleton -> ProjectConfig
 instantiateProjectConfigSkeletonWithCompiler os arch impl _flags skel = go $ mapTreeConds (fst . simplifyWithSysParams os arch impl) skel
   where
-    go :: CondTree FlagName ([ProjectConfigPath], ProjectConfig) -> ProjectConfig
+    go :: CondTree FlagName ([(Maybe URI, ProjectConfigPath)], ProjectConfig) -> ProjectConfig
     go (CondNode (_, l) ts) =
       let branches = concatMap processBranch ts
        in l <> mconcat branches
@@ -242,12 +234,9 @@ instantiateProjectConfigSkeletonWithCompiler os arch impl _flags skel = go $ map
       (Lit False) -> maybe ([]) ((: []) . go) mf
       _ -> error $ "unable to process condition: " ++ show cnd -- TODO it would be nice if there were a pretty printer
 
-projectSkeletonImports :: ProjectConfigSkeleton -> [ProjectConfigPath]
-projectSkeletonImports = fst . view traverseCondTreeA
-
 -- | Parses a project from its root config file, typically cabal.project.
 parseProject
-  :: FilePath
+  :: ProjectFilePath
   -- ^ The root of the project configuration, typically cabal.project
   -> FilePath
   -> HttpTransport
@@ -255,14 +244,16 @@ parseProject
   -> ProjectConfigToParse
   -- ^ The contents of the file to parse
   -> IO (ProjectParseResult ProjectConfigSkeleton)
-parseProject rootPath cacheDir httpTransport verbosity configToParse =
+parseProject (ProjectFilePath rootPath) cacheDir httpTransport verbosity configToParse =
   do
     let (dir, projectFileName) = splitFileName rootPath
     projectDir <- makeAbsolute dir
     projectPath <- canonicalizeConfigPath projectDir (ProjectConfigPath $ projectFileName :| [])
     parseProjectSkeleton cacheDir httpTransport verbosity projectDir projectPath configToParse
-    -- NOTE: Reverse the warnings so they are in line number order.
-    <&> \case ProjectParseOk ws x -> ProjectParseOk (reverse ws) x; x -> x
+    <&> \case
+      -- NOTE: Reverse the warnings so they are in line number order.
+      ProjectParseOk ws skeleton -> ProjectParseOk (reverse ws) skeleton
+      x@ProjectParseFailed{} -> x
 
 parseProjectSkeleton
   :: FilePath
@@ -294,9 +285,12 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
             when
               (isUntrimmedUriConfigPath importLocPath)
               (noticeDoc verbosity $ untrimmedUriImportMsg (Disp.text "Warning:") importLocPath)
-            let fs = (\z -> CondNode ([normLocPath], z) mempty) <$> fieldsToConfig normSource (reverse acc)
-            res <- parseProjectSkeleton cacheDir httpTransport verbosity projectDir importLocPath . ProjectConfigToParse =<< fetchImportConfig normLocPath
+            let parser = parseProjectSkeleton cacheDir httpTransport verbosity projectDir importLocPath
+            (mbUri, res) <-
+              fetchImportConfig cacheDir httpTransport verbosity projectDir normLocPath
+                >>= runKleisli (second (arr ProjectConfigToParse >>> Kleisli parser))
             rest <- go [] xs
+            let fs = (\z -> CondNode ([(mbUri, normLocPath)], z) mempty) <$> fieldsToConfig normSource (reverse acc)
             pure . fmap mconcat . sequence $ [projectParse Nothing normSource fs, res, rest]
       (ParseUtils.Section l "if" p xs') -> do
         normSource <- canonicalizeConfigPath projectDir source
@@ -362,35 +356,19 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
         addWarnings x' = x'
     liftPR p _ (ParseFailed e) = pure $ projectParseFail Nothing (Just p) e
 
-    fetchImportConfig :: ProjectConfigPath -> IO BS.ByteString
-    fetchImportConfig (ProjectConfigPath (pci :| _)) = do
-      debug verbosity $ "fetching import: " ++ pci
-      fetch pci
-
-    fetch :: FilePath -> IO BS.ByteString
-    fetch pci = case parseURI $ trim pci of
-      Just uri -> do
-        let fp = cacheDir </> map (\x -> if isPathSeparator x then '_' else x) (makeValid $ show uri)
-        createDirectoryIfMissing True cacheDir
-        _ <- downloadURI httpTransport verbosity uri fp
-        BS.readFile fp
-      Nothing ->
-        BS.readFile $
-          if isAbsolute pci then pci else coerce projectDir </> pci
-
     modifiesCompiler :: ProjectConfig -> Bool
     modifiesCompiler pc = isSet projectConfigHcFlavor || isSet projectConfigHcPath || isSet projectConfigHcPkg
       where
         isSet f = f (projectConfigShared pc) /= NoFlag
 
     sanityWalkPCS :: Bool -> ProjectConfigSkeleton -> ProjectParseResult ProjectConfigSkeleton
-    sanityWalkPCS underConditional t@(CondNode (listToMaybe -> c, d) comps)
+    sanityWalkPCS underConditional t@(CondNode (fmap snd . listToMaybe -> c, d) comps)
       | underConditional && modifiesCompiler d =
           projectParseFail Nothing c $ ParseUtils.FromString "Cannot set compiler in a conditional clause of a cabal project file" Nothing
       | otherwise =
           mapM_ sanityWalkBranch comps >> pure t
 
-    sanityWalkBranch :: CondBranch ConfVar ([ProjectConfigPath], ProjectConfig) -> ProjectParseResult ()
+    sanityWalkBranch :: CondBranch ConfVar ([(Maybe URI, ProjectConfigPath)], ProjectConfig) -> ProjectParseResult ()
     sanityWalkBranch (CondBranch _c t f) = traverse_ (sanityWalkPCS True) f >> sanityWalkPCS True t >> pure ()
 
 ------------------------------------------------------------------
