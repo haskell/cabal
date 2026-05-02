@@ -2,10 +2,12 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -----------------------------------------------------------------------------
 
@@ -197,6 +199,10 @@ import Text.PrettyPrint
 import qualified Data.Maybe as M
 import qualified Data.Set as Set
 import qualified Distribution.Compat.NonEmptySet as NES
+
+pattern ConfigVerbosity :: Verbosity -> (VerbosityHandles, ConfigFlags)
+pattern ConfigVerbosity v <- (fmap configCommonFlags -> CommonSetupVerbosity v)
+{-# COMPLETE ConfigVerbosity #-}
 
 type UseExternalInternalDeps = Bool
 
@@ -785,8 +791,7 @@ computeLocalBuildConfig
   -> ProgramDb
   -> IO LBC.LocalBuildConfig
 computeLocalBuildConfig verbHandles cfg comp programDb = do
-  let common = configCommonFlags cfg
-      verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
+  let ConfigVerbosity verbosity = (verbHandles, cfg)
   rawBuildOptions <- buildOptionsFromConfigFlags verbosity cfg comp
   buildOptions <- adjustBuildOptionsAndWarn verbosity comp programDb rawBuildOptions
   return $
@@ -1062,8 +1067,7 @@ configurePackage
   -> PackageDBStack
   -> IO (LBC.LocalBuildConfig, LBC.PackageBuildDescr)
 configurePackage verbHandles cfg lbc0 pkg_descr00 flags enabled comp platform packageDbs = do
-  let common = configCommonFlags cfg
-      verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
+  let ConfigVerbosity verbosity = (verbHandles, cfg)
       programDb0 = LBC.withPrograms lbc0
 
       -- add extra include/lib dirs as specified in cfg
@@ -1161,9 +1165,8 @@ computePackageInfo
   -> Compiler
   -> IO ([PackageVersionConstraint], PackageInfo)
 computePackageInfo verbHandles cfg lbc0 g_pkg_descr comp = do
-  let common = configCommonFlags cfg
-      verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
-      mbWorkDir = flagToMaybe $ setupWorkingDir common
+  let ConfigVerbosity verbosity = (verbHandles, cfg)
+      mbWorkDir = flagToMaybe . setupWorkingDir $ configCommonFlags cfg
 
   let programDb0 = LBC.withPrograms lbc0
       -- What package database(s) to use
@@ -1248,8 +1251,7 @@ finalizePackageDescription
   -> PackageInfo
   -> IO (PackageDBStack, PackageDescription, FlagAssignment)
 finalizePackageDescription verbHandles cfg g_pkg_descr comp platform enabled allConstraints pkgInfo = do
-  let common = configCommonFlags cfg
-      verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
+  let ConfigVerbosity verbosity = (verbHandles, cfg)
 
   -- What package database(s) to use
   let packageDbs :: PackageDBStack
@@ -1364,9 +1366,8 @@ finalCheckPackage
     )
   hookedBuildInfo =
     do
-      let common = configCommonFlags cfg
-          verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
-          cabalFileDir = packageRoot common
+      let ConfigVerbosity verbosity = (verbHandles, cfg)
+          cabalFileDir = packageRoot $ configCommonFlags cfg
 
       checkCompilerProblems verbosity comp pkg_descr enabled
       checkPackageProblems
@@ -1427,8 +1428,7 @@ configureComponents
   promisedDepsSet
   externalPkgDeps =
     do
-      let common = configCommonFlags cfg
-          verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
+      let ConfigVerbosity verbosity = (verbHandles, cfg)
           use_external_internal_deps =
             case enabled of
               OneComponentRequestedSpec{} -> True
@@ -2662,8 +2662,7 @@ configCompilerAuxEx
   -> IO (Compiler, Platform, ProgramDb)
 configCompilerAuxEx verbHandles cfg = do
   programDb <- mkProgramDb verbHandles cfg defaultProgramDb
-  let common = configCommonFlags cfg
-      verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
+  let ConfigVerbosity verbosity = (verbHandles, cfg)
   configCompilerEx
     (flagToMaybe $ configHcFlavor cfg)
     (flagToMaybe $ configHcPath cfg)
