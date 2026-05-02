@@ -499,14 +499,14 @@ is in place, which moves the old configuration to a ``cabal.project.local~``
 file, this feature can also be disabled by using the ``--disable-backup``
 flag.
 
+.. _cabal-freeze:
+
 cabal freeze
 ^^^^^^^^^^^^
 
-If a package is built in several different environments, such as a
-development environment, a staging environment and a production
-environment, it may be necessary or desirable to ensure that the same
-dependency versions are selected in each environment. This can be done
-with the ``freeze`` command:
+.. code-block:: console
+
+    $ cabal freeze
 
 ``cabal freeze`` writes out a **freeze file** which records all of
 the versions and flags that are picked by the solver under the
@@ -528,12 +528,9 @@ something like this:
                  QuickCheck +templatehaskell,
                  -- etc...
 
-
-For end-user executables, it is recommended that you distribute the
-``cabal.project.freeze`` file in your source repository so that all
-users see a consistent set of dependencies. For libraries, this is not
-recommended: users often need to build against different versions of
-libraries than what you developed against.
+For more detail, please see the guide on how to :ref:`control versions
+<how-to-control-versions>` with its section on :ref:`freezing
+<frozen-versions>`.
 
 .. _cabal-gen-bounds:
 
