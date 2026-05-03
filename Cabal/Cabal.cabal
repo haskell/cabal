@@ -49,7 +49,7 @@ library
     , filepath   >= 1.4.2    && < 1.6
     , pretty     >= 1.1.1    && < 1.2
     , process    >= 1.6.20.0 && < 1.6.24 || == 1.6.26.0 || >= 1.6.26.2 && < 1.7
-    , time       >= 1.4.0.1  && < 1.16
+    , time       >= 1.4.0.1  && < 1.17
 
   if os(windows)
     build-depends:
