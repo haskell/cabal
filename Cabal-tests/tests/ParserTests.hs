@@ -10,10 +10,11 @@ import Test.Tasty
 import Test.Tasty.Golden.Advanced (goldenTest)
 import Test.Tasty.HUnit
 
-import Control.Monad                               (void)
+import Control.Monad                               (void, unless)
 import Data.Algorithm.Diff                         (PolyDiff (..), getGroupedDiff)
 import Data.Maybe                                  (isNothing)
 import Distribution.Fields                         (pwarning)
+import Distribution.Fields.Parser                  (readFieldsWithComments', formatError)
 import Distribution.PackageDescription
   ( GenericPackageDescription
   , packageDescription
@@ -26,7 +27,10 @@ import Distribution.PackageDescription
   , condTestSuites
   , condBenchmarks
   )
-import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription)
+import Distribution.PackageDescription.Parsec
+  ( parseGenericPackageDescription
+  , parseCommentedGenericPackageDescription
+  )
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.Parsec                         (PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
 import Distribution.Pretty                         (prettyShow)
@@ -53,6 +57,7 @@ tests :: TestTree
 tests = testGroup "parsec tests"
     [ regressionTests
     , warningTests
+    , commentTests
     , errorTests
     , ipiTests
     ]
@@ -104,6 +109,67 @@ warningTest wt fp = testCase (show wt) $ do
   where
     isRight (Right _) = True
     isRight _         = False
+
+
+-------------------------------------------------------------------------------
+-- comment
+-------------------------------------------------------------------------------
+
+
+#ifdef MIN_VERSION_tree_diff
+-- Verify that comments are parsed correctly
+commentTests :: TestTree
+commentTests = testGroup "comments"
+    [
+    -- Imported from hackage integration test
+      readFieldTest "layout-complex-indented-comments.cabal"
+    , readFieldTest "layout-comment-in-fieldline.cabal" -- aligned leading comma after comment
+
+    , commentTest "layout-nosections-before.cabal"
+    , commentTest "layout-nosections-after.cabal"
+    , commentTest "layout-nosections-mixed.cabal"
+    , commentTest "layout-many-sections.cabal"
+    , commentTest "layout-interleaved-in-section.cabal"
+    , commentTest "layout-fieldline-is-flag.cabal"
+
+    , commentTest "hasktorch.cabal" -- Imported from regression test, has a lot of comments
+    ]
+
+-- Use this test to bypass the more sophisticated checks of whether a cabal file is valid
+readFieldTest :: FilePath -> TestTree
+readFieldTest fname = ediffGolden goldenTest fname exprFile $ do
+  contents <- BS.readFile input
+  let res = readFieldsWithComments' contents
+
+  case res of
+    Left perr -> fail $ formatError contents perr
+    Right (fs, warns) -> do
+      unless (null warns) (fail $ unlines (map show warns))
+      pure fs
+
+  where
+    input = "tests" </> "ParserTests" </> "comments" </> fname
+    exprFile = replaceExtension input "expr"
+
+commentTest :: FilePath -> TestTree
+commentTest fname = ediffGolden goldenTest fname exprFile $ do
+  contents <- BS.readFile input
+  let res = withSource (PCabalFile (input, contents)) $ parseCommentedGenericPackageDescription contents
+  let (warns, x) = runParseResult res
+
+  unless (null warns) (fail $
+      unlines (map (showPWarningWithSource . fmap renderCabalFileSource) warns)
+    )
+
+  case x of
+    Right (cmts, _) -> pure (toExpr cmts)
+    Left (v, errs) ->
+      fail $
+        unlines $ ("VERSION: " ++ show v) : map (showPErrorWithSource . fmap renderCabalFileSource) (NE.toList errs)
+  where
+    input = "tests" </> "ParserTests" </> "comments" </> fname
+    exprFile = replaceExtension input "expr"
+#endif
 
 -------------------------------------------------------------------------------
 -- Errors
