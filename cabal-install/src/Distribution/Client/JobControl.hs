@@ -183,26 +183,34 @@ newSemaphoreJobControl _ n
   | n < 1 || n > 1000 =
       error $ "newParallelJobControl: not a sensible number of jobs: " ++ show n
 newSemaphoreJobControl verbosity maxJobLimit = do
-  sem <- freshSemaphore "cabal_semaphore" maxJobLimit
-  info verbosity $
-    "Created semaphore called "
-      ++ getSemaphoreName (semaphoreName sem)
-      ++ " with "
-      ++ show maxJobLimit
-      ++ " slots."
-  outqVar <- newTChanIO
-  inqVar <- newTChanIO
-  countVar <- newTVarIO 0
-  void (forkIO (worker sem inqVar outqVar))
-  return
-    JobControl
-      { spawnJob = spawn inqVar countVar
-      , collectJob = collect outqVar countVar
-      , remainingJobs = remaining countVar
-      , cancelJobs = cancel inqVar countVar
-      , cleanupJobControl = destroySemaphore sem
-      , jobControlSemaphore = Just (semaphoreName sem)
-      }
+  mbServer <- freshSemaphore "cabal_semaphore" maxJobLimit
+  case mbServer of
+    Left err -> do
+      warn verbosity $
+        "Failed to create semaphore: " ++ show err
+          ++ "; falling back to normal parallelism control."
+      newParallelJobControl maxJobLimit
+    Right server -> do
+      let sem = serverSemaphore server
+      info verbosity $
+        "Created semaphore called "
+          ++ getSemaphoreName (semaphoreName sem)
+          ++ " with "
+          ++ show maxJobLimit
+          ++ " slots."
+      outqVar <- newTChanIO
+      inqVar <- newTChanIO
+      countVar <- newTVarIO 0
+      void (forkIO (worker sem inqVar outqVar))
+      return
+        JobControl
+          { spawnJob = spawn inqVar countVar
+          , collectJob = collect outqVar countVar
+          , remainingJobs = remaining countVar
+          , cancelJobs = cancel inqVar countVar
+          , cleanupJobControl = destroySemaphoreServer server
+          , jobControlSemaphore = Just (semaphoreName sem)
+          }
   where
     worker :: Semaphore -> TChan (IO a) -> TChan (Either SomeException a) -> IO ()
     worker sem inqVar outqVar =
@@ -291,8 +299,18 @@ newJobControlFromParStrat verbosity mcompiler parStrat numJobsCap = case parStra
   UseSem n ->
     case mcompiler of
       Just compiler
-        | jsemSupported compiler ->
+        | jsemSupported compiler
+        , isJsemCompatible compiler ->
             newSemaphoreJobControl verbosity (capJobs n)
+        | jsemSupported compiler ->
+            do
+              warn verbosity $
+                "Semaphore version mismatch (cabal-install uses v"
+                ++ show semaphoreVersion
+                ++ ", but the selected GHC reports "
+                ++ maybe "no version (assumed v1)" (\v -> "v" ++ show v) (jsemVersion compiler)
+                ++ "); not using -jsem, GHC will be invoked without semaphore-based parallelism."
+              newParallelJobControl (capJobs n)
         | otherwise ->
             do
               warn verbosity "-jsem is not supported by the selected compiler, falling back to normal parallelism control."
@@ -302,6 +320,17 @@ newJobControlFromParStrat verbosity mcompiler parStrat numJobsCap = case parStra
         newParallelJobControl (capJobs n)
   where
     capJobs n = min (fromMaybe maxBound numJobsCap) n
+
+-- | Check if the compiler's semaphore version is compatible with ours.
+--
+-- If the compiler doesn't report a "Semaphore version" field (GHC 9.8–9.14),
+-- we assume v1. On POSIX, v1 and v2 are incompatible (different mechanisms).
+-- On Windows, all versions are compatible (same Win32 API).
+isJsemCompatible :: Compiler -> Bool
+isJsemCompatible compiler =
+  case jsemVersion compiler of
+    Just v  -> versionsAreCompatible v semaphoreVersion
+    Nothing -> versionsAreCompatible 1 semaphoreVersion
 
 withJobControl :: IO (JobControl IO a) -> (JobControl IO a -> IO b) -> IO b
 withJobControl mkJC = bracket mkJC cleanupJobControl
