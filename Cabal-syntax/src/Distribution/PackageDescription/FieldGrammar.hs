@@ -116,8 +116,7 @@ packageDescriptionFieldGrammar
   :: forall mod c g
    . ( FieldGrammarWith mod c g
      , Applicative (g mod (PackageDescriptionWith mod))
-     , Applicative (g mod PackageDescription)
-     , Applicative (g mod PackageIdentifier)
+     , Applicative (g mod (PackageIdentifierWith mod))
      , c (Identity BuildType)
      , c (Identity PackageName)
      , c (Identity Version)
@@ -168,7 +167,7 @@ packageDescriptionFieldGrammar =
   where
     packageIdentifierGrammar =
       PackageIdentifier
-        <$> uniqueField "name" L.pkgName
+        <$> uniqueField' @mod @c @g @_ @PackageName "name" (L.pkgName @mod)
         <*> uniqueField "version" L.pkgVersion
 
     licenseFilesGrammar =

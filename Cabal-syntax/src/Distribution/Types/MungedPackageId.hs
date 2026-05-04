@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 module Distribution.Types.MungedPackageId
@@ -66,7 +67,7 @@ instance Pretty MungedPackageId where
 -- Nothing
 instance Parsec MungedPackageId where
   parsec = do
-    PackageIdentifier pn v <- parsec
+    PackageIdentifier pn v <- parsec @PackageIdentifier
     return $ MungedPackageId (decodeCompatPackageName pn) v
 
 instance NFData MungedPackageId where

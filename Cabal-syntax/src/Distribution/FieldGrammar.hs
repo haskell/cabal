@@ -10,6 +10,7 @@ module Distribution.FieldGrammar
     FieldGrammar
   , FieldGrammarWith (..)
   , uniqueField
+  , uniqueField'
   , optionalField
   , optionalFieldDef
   , monoidalField

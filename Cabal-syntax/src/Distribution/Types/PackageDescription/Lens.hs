@@ -26,7 +26,7 @@ import Distribution.Types.ForeignLib.Lens (foreignLibBuildInfo, foreignLibName)
 import Distribution.Types.Library (Library, explicitLibModules)
 import Distribution.Types.Library.Lens (libBuildInfo, libName)
 import Distribution.Types.PackageDescription (PackageDescription, PackageDescriptionWith)
-import Distribution.Types.PackageId (PackageIdentifier)
+import Distribution.Types.PackageId (PackageIdentifier, PackageIdentifierWith)
 import Distribution.Types.SetupBuildInfo (SetupBuildInfo)
 import Distribution.Types.SourceRepo (SourceRepo)
 import Distribution.Types.TestSuite (TestSuite, testModules)
@@ -42,7 +42,7 @@ import qualified Distribution.Types.Modify as Mod
 import Distribution.Types.Modify (AnnotateWith)
 import Distribution.Trivia
 
-package :: Lens' (PackageDescriptionWith mod) PackageIdentifier
+package :: Lens' (PackageDescriptionWith mod) (PackageIdentifierWith mod)
 package f s = fmap (\x -> s{T.package = x}) (f (T.package s))
 {-# INLINE package #-}
 

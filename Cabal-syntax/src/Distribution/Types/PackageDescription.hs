@@ -120,7 +120,7 @@ data PackageDescriptionWith (mod :: Mod.HasAnnotation) = PackageDescription
 
     specVersion :: AnnotateWith Positions mod CabalSpecVersion
   -- ^ The version of the Cabal spec that this package description uses.
-  , package :: PackageIdentifier
+  , package :: PackageIdentifierWith mod
   , licenseRaw :: Either SPDX.License License
   , licenseFiles :: [RelativePath Pkg File]
   , copyright :: !ShortText
@@ -265,7 +265,7 @@ emptyPackageDescriptionAnn =
   PackageDescription
     { package =
         PackageIdentifier
-          (mkPackageName "")
+          (Ann IsInserted $ mkPackageName "")
           nullVersion
     , licenseRaw = Right UnspecifiedLicense -- TODO:
     , licenseFiles = []
