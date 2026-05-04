@@ -168,7 +168,7 @@ packageDescriptionFieldGrammar =
     packageIdentifierGrammar =
       PackageIdentifier
         <$> uniqueField' @mod @c @g @_ @PackageName "name" (L.pkgName @mod)
-        <*> uniqueField "version" L.pkgVersion
+        <*> uniqueField' @mod @c @g @_ @Version "version" L.pkgVersion
 
     licenseFilesGrammar =
       (++)

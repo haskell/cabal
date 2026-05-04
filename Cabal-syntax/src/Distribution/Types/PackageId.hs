@@ -36,7 +36,7 @@ type PackageIdentifier = PackageIdentifierWith Mod.HasNoAnn
 data PackageIdentifierWith (mod :: Mod.HasAnnotation) = PackageIdentifier
   { pkgName :: AnnotateWith Positions mod PackageName
   -- ^ The name of this package, eg. foo
-  , pkgVersion :: Version
+  , pkgVersion :: AnnotateWith Positions mod Version
   -- ^ the version of this package, eg 1.2
   }
 

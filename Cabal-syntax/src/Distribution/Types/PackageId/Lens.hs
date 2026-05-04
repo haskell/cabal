@@ -20,6 +20,6 @@ pkgName :: Lens' (PackageIdentifierWith mod) (AnnotateWith Positions mod Package
 pkgName f s = fmap (\x -> s{T.pkgName = x}) (f (T.pkgName s))
 {-# INLINE pkgName #-}
 
-pkgVersion :: Lens' (PackageIdentifierWith mod) Version
+pkgVersion :: Lens' (PackageIdentifierWith mod) (AnnotateWith Positions mod Version)
 pkgVersion f s = fmap (\x -> s{T.pkgVersion = x}) (f (T.pkgVersion s))
 {-# INLINE pkgVersion #-}

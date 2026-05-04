@@ -266,7 +266,7 @@ emptyPackageDescriptionAnn =
     { package =
         PackageIdentifier
           (Ann IsInserted $ mkPackageName "")
-          nullVersion
+          (Ann IsInserted $ nullVersion)
     , licenseRaw = Right UnspecifiedLicense -- TODO:
     , licenseFiles = []
     , specVersion = Ann IsInserted CabalSpecV1_0
