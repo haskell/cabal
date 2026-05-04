@@ -33,6 +33,7 @@ module Distribution.Simple.Program.Db
     -- ** Query and manipulate the program db
   , addKnownProgram
   , addKnownPrograms
+  , clearUnconfiguredPrograms
   , prependProgramSearchPath
   , prependProgramSearchPathNoLogging
   , lookupKnownProgram
@@ -201,6 +202,14 @@ addKnownProgram prog =
 addKnownPrograms :: [Program] -> ProgramDb -> ProgramDb
 addKnownPrograms progs progdb = foldl' (flip addKnownProgram) progdb progs
 
+-- | Drop all unconfigured programs from a 'ProgramDb', retaining only
+-- configured programs, the search path, and environment overrides.
+--
+-- This mirrors round-tripping via the @'Binary' 'ProgramDb'@ instance, which
+-- drops unconfigured programs.
+clearUnconfiguredPrograms :: ProgramDb -> ProgramDb
+clearUnconfiguredPrograms progdb = progdb{unconfiguredProgs = Map.empty}
+
 lookupKnownProgram :: String -> ProgramDb -> Maybe Program
 lookupKnownProgram name =
   fmap (\(p, _, _) -> p) . Map.lookup name . unconfiguredProgs
@@ -258,8 +267,14 @@ prependProgramSearchPathNoLogging
   -> ProgramDb
   -> ProgramDb
 prependProgramSearchPathNoLogging extraPaths extraEnv db =
-  let db' = modifyProgramSearchPath (nub . (map ProgramSearchPathDir extraPaths ++)) db
-      db'' = db'{progOverrideEnv = extraEnv ++ progOverrideEnv db'}
+  let db' =
+        if null extraPaths
+          then db -- skip work if nothing to do
+          else modifyProgramSearchPath (nub . (map ProgramSearchPathDir extraPaths ++)) db
+      db'' =
+        if null extraEnv
+          then db' -- skip work if nothing to do
+          else db'{progOverrideEnv = extraEnv ++ progOverrideEnv db'}
    in db''
 
 -- | User-specify this path.  Basically override any path information

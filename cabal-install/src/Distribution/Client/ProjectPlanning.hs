@@ -500,6 +500,16 @@ rebuildProjectConfig
                   $ projectConfigProvenance projectConfig
             ]
 
+-- | Configure the compiler. This results in a program database that contains
+-- the **configured** compiler (which is stored in a cache)
+-- and **unconfigured** related programs (cannot be cached, as unconfigured).
+--
+-- This will be re-run when the compiler or @hc-pkg@ change, and when the
+-- program search path or @extra-prog-path@ or @program-locations@ change.
+--
+-- In the case of @GHC@, we configure @ghc@ and @ghc-pkg@, and provide
+-- unconfigured attendant programs such as @hsc2hs@, @haddock@ and toolchain
+-- programs such as @ar@, @ld@. See 'Distribution.Simple.GHC.configure'.
 configureCompiler
   :: Verbosity
   -> DistDirLayout
@@ -564,11 +574,15 @@ configureCompiler
           monitorFiles (programsMonitorFiles progdb')
           return result
 
-    -- Now, **outside** of the caching logic of 'rerunIfChanged', add on
-    -- auxiliary unconfigured programs to the ProgramDb (e.g. hc-pkg, haddock, ar, ld...).
+    -- Now, **outside** of the caching logic of 'rerunIfChanged':
+    --
+    --  1. Call 'clearUnconfiguredPrograms' to ensure the consistency between
+    --     the first run (in-memory) and when deserialising from cache.
+    --  2. Add on auxiliary unconfigured programs to the ProgramDb
+    --     (e.g. hsc2hs, haddock, ar, ld...).
     --
     -- See Note [Caching the result of configuring the compiler]
-    finalProgDb <- liftIO $ Cabal.configCompilerProgDb verbosity hc hcProgDb hcPkg
+    finalProgDb <- liftIO $ Cabal.configCompilerProgDb verbosity hc (clearUnconfiguredPrograms hcProgDb) hcPkg
     return (hc, plat, finalProgDb)
     where
       hcFlavor = flagToMaybe projectConfigHcFlavor
@@ -597,6 +611,9 @@ To solve this, we cache the ProgramDb containing the compiler (which will be
 a configured program, hence properly serialised/deserialised), and then
 re-compute any attendant unconfigured programs (such as hc-pkg, haddock or build
 tools such as ar, ld) using 'configCompilerProgDb'.
+We also call 'clearUnconfiguredPrograms' on the ProgramDb returned by
+'rerunIfChanged', so that the first-run (in-memory) result behaves the same as
+the cache hit result: always drop unconfigured programs.
 
 Another idea would be to simply eagerly configure all unconfigured programs,
 as was originally attempted. But this doesn't work, for a couple of reasons:
@@ -740,14 +757,14 @@ rebuildInstallPlan
         :: ProjectConfig
         -> (Compiler, Platform, ProgramDb)
         -> Rebuild ()
-      phaseConfigurePrograms projectConfig (_, _, compilerprogdb) = do
+      phaseConfigurePrograms projectConfig (_, _, compilerProgDb) = do
         -- Users are allowed to specify program locations independently for
         -- each package (e.g. to use a particular version of a pre-processor
         -- for some packages). However they cannot do this for the compiler
         -- itself as that's just not going to work. So we check for this.
         liftIO $
           checkBadPerPackageCompilerPaths
-            (configuredPrograms compilerprogdb)
+            (configuredPrograms compilerProgDb)
             (getMapMappend (projectConfigSpecificPackage projectConfig))
 
       -- TODO: [required eventually] find/configure other programs that the
@@ -891,7 +908,7 @@ rebuildInstallPlan
           , projectConfigSpecificPackage
           , projectConfigBuildOnly
           }
-        (compiler, platform, progdb)
+        (compiler, platform, compilerProgDb)
         pkgConfigDB
         solverPlan
         localPackages = do
@@ -906,13 +923,16 @@ rebuildInstallPlan
 
           defaultInstallDirs <- liftIO $ userInstallDirTemplates compiler
           let installDirs = fmap Cabal.fromFlag $ (fmap Flag defaultInstallDirs) <> (projectConfigInstallDirs projectConfigShared)
+          -- Configure the compiler ProgramDb now (once for the entire project),
+          -- to avoid repeatedly doing this once per package.
+          configuredCompilerProgDb <- liftIO $ configureAllKnownPrograms verbosity compilerProgDb
           (elaboratedPlan, elaboratedShared) <-
             liftIO . runLogProgress verbosity $
               elaborateInstallPlan
                 verbosity
                 platform
                 compiler
-                progdb
+                configuredCompilerProgDb
                 pkgConfigDB
                 distDirLayout
                 cabalStoreDirLayout
@@ -1631,6 +1651,7 @@ elaborateInstallPlan
   -> Platform
   -> Compiler
   -> ProgramDb
+  -- ^ __Configured__ compiler program database (ghc, ghc-pkg, haddock, ld, etc)
   -> Maybe PkgConfigDb
   -> DistDirLayout
   -> StoreDirLayout
@@ -1647,7 +1668,7 @@ elaborateInstallPlan
   verbosity
   platform
   compiler
-  compilerprogdb
+  compilerProgDb
   pkgConfigDB
   distDirLayout@DistDirLayout{..}
   storeDirLayout@StoreDirLayout{storePackageDBStack}
@@ -1666,7 +1687,7 @@ elaborateInstallPlan
         ElaboratedSharedConfig
           { pkgConfigPlatform = platform
           , pkgConfigCompiler = compiler
-          , pkgConfigCompilerProgs = compilerprogdb
+          , pkgConfigCompilerProgs = compilerProgDb
           , pkgConfigReplOptions = mempty
           }
 
@@ -2365,7 +2386,7 @@ elaborateInstallPlan
             okProfDyn = profilingDynamicSupportedOrUnknown compiler
             profExe = perPkgOptionFlag pkgid False packageConfigProf
 
-            elabBuildOptions = Cabal.adjustBuildOptions compiler compilerprogdb elabBuildOptionsRaw
+            elabBuildOptions = Cabal.adjustBuildOptions compiler compilerProgDb elabBuildOptionsRaw
 
             ( elabProfExeDetail
               , elabProfLibDetail
@@ -2386,7 +2407,7 @@ elaborateInstallPlan
             elabProgramPaths =
               Map.fromList
                 [ (programId prog, programPath prog)
-                | prog <- configuredPrograms compilerprogdb
+                | prog <- configuredPrograms compilerProgDb
                 ]
                 <> perPkgOptionMapLast pkgid packageConfigProgramPaths
             elabProgramArgs =
@@ -2408,14 +2429,14 @@ elaborateInstallPlan
                   (++)
                   ( Map.fromList
                       [ (programId prog, args)
-                      | prog <- configuredPrograms compilerprogdb
+                      | prog <- configuredPrograms compilerProgDb
                       , let args = programOverrideArgs $ addHaddockIfDocumentationEnabled prog
                       , not (null args)
                       ]
                   )
                   (perPkgOptionMapMappend pkgid packageConfigProgramArgs)
             elabProgramPathExtra = perPkgOptionNubList pkgid packageConfigProgramPathExtra
-            elabConfiguredPrograms = configuredPrograms compilerprogdb
+            elabConfiguredPrograms = configuredPrograms compilerProgDb
             elabConfigureScriptArgs = perPkgOptionList pkgid packageConfigConfigureArgs
             elabExtraLibDirs = perPkgOptionList pkgid packageConfigExtraLibDirs
             elabExtraLibDirsStatic = perPkgOptionList pkgid packageConfigExtraLibDirsStatic

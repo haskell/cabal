@@ -188,9 +188,10 @@ data ElaboratedSharedConfig = ElaboratedSharedConfig
   { pkgConfigPlatform :: Platform
   , pkgConfigCompiler :: Compiler -- TODO: [code cleanup] replace with CompilerInfo
   , pkgConfigCompilerProgs :: ProgramDb
-  -- ^ The programs that the compiler configured (e.g. for GHC, the progs
-  -- ghc & ghc-pkg). Once constructed, only the 'configuredPrograms' are
-  -- used.
+  -- ^ All known programs configured once for the project: the compiler
+  -- (e.g. ghc & ghc-pkg) plus associated tools (hsc2hs, haddock, hpc,
+  -- runghc) and toolchain programs (ar, ld, strip). Once constructed,
+  -- only the 'configuredPrograms' are used.
   , pkgConfigReplOptions :: ReplOptions
   }
   deriving (Show, Generic)
