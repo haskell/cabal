@@ -1,5 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -----------------------------------------------------------------------------
 
@@ -65,6 +67,7 @@ module Distribution.Make
   , defaultMainArgsWithHandles
   ) where
 
+import Data.Monoid (Last (..))
 import Distribution.Compat.Prelude
 import Prelude ()
 
@@ -149,7 +152,7 @@ defaultMainHelperWithHandles verbHandles args = do
 configureAction :: VerbosityHandles -> ConfigFlags -> [String] -> IO ()
 configureAction verbHandles flags args = do
   noExtraFlags args
-  let verbosity = mkVerbosity verbHandles $ fromFlag $ configVerbosity flags
+  let FlagVerbosity verbosity = (verbHandles, configVerbosity flags)
       mbWorkDir = flagToMaybe $ configWorkingDir flags
   rawSystemExit verbosity mbWorkDir "sh" $
     "configure"
@@ -160,7 +163,7 @@ configureAction verbHandles flags args = do
 copyAction :: VerbosityHandles -> CopyFlags -> [String] -> IO ()
 copyAction verbHandles flags args = do
   noExtraFlags args
-  let verbosity = mkVerbosity verbHandles $ fromFlag $ copyVerbosity flags
+  let FlagVerbosity verbosity = (verbHandles, copyVerbosity flags)
       mbWorkDir = flagToMaybe $ copyWorkingDir flags
       destArgs = case fromFlag $ copyDest flags of
         NoCopyDest -> ["install"]
@@ -172,7 +175,7 @@ copyAction verbHandles flags args = do
 installAction :: VerbosityHandles -> InstallFlags -> [String] -> IO ()
 installAction verbHandles flags args = do
   noExtraFlags args
-  let verbosity = mkVerbosity verbHandles $ fromFlag $ installVerbosity flags
+  let FlagVerbosity verbosity = (verbHandles, installVerbosity flags)
       mbWorkDir = flagToMaybe $ installWorkingDir flags
   rawSystemExit verbosity mbWorkDir "make" ["install"]
   rawSystemExit verbosity mbWorkDir "make" ["register"]
@@ -180,7 +183,7 @@ installAction verbHandles flags args = do
 haddockAction :: VerbosityHandles -> HaddockFlags -> [String] -> IO ()
 haddockAction verbHandles flags args = do
   noExtraFlags args
-  let verbosity = mkVerbosity verbHandles $ fromFlag $ haddockVerbosity flags
+  let FlagVerbosity verbosity = (verbHandles, haddockVerbosity flags)
       mbWorkDir = flagToMaybe $ haddockWorkingDir flags
   rawSystemExit verbosity mbWorkDir "make" ["docs"]
     `catchIO` \_ ->
@@ -189,34 +192,38 @@ haddockAction verbHandles flags args = do
 buildAction :: VerbosityHandles -> BuildFlags -> [String] -> IO ()
 buildAction verbHandles flags args = do
   noExtraFlags args
-  let verbosity = mkVerbosity verbHandles $ fromFlag $ buildVerbosity flags
+  let FlagVerbosity verbosity = (verbHandles, buildVerbosity flags)
       mbWorkDir = flagToMaybe $ buildWorkingDir flags
   rawSystemExit verbosity mbWorkDir "make" []
 
 cleanAction :: VerbosityHandles -> CleanFlags -> [String] -> IO ()
 cleanAction verbHandles flags args = do
   noExtraFlags args
-  let verbosity = mkVerbosity verbHandles $ fromFlag $ cleanVerbosity flags
+  let FlagVerbosity verbosity = (verbHandles, cleanVerbosity flags)
       mbWorkDir = flagToMaybe $ cleanWorkingDir flags
   rawSystemExit verbosity mbWorkDir "make" ["clean"]
 
 sdistAction :: VerbosityHandles -> SDistFlags -> [String] -> IO ()
 sdistAction verbHandles flags args = do
   noExtraFlags args
-  let verbosity = mkVerbosity verbHandles $ fromFlag $ sDistVerbosity flags
+  let FlagVerbosity verbosity = (verbHandles, sDistVerbosity flags)
       mbWorkDir = flagToMaybe $ sDistWorkingDir flags
   rawSystemExit verbosity mbWorkDir "make" ["dist"]
 
 registerAction :: VerbosityHandles -> RegisterFlags -> [String] -> IO ()
 registerAction verbHandles flags args = do
   noExtraFlags args
-  let verbosity = mkVerbosity verbHandles $ fromFlag $ registerVerbosity flags
+  let FlagVerbosity verbosity = (verbHandles, registerVerbosity flags)
       mbWorkDir = flagToMaybe $ registerWorkingDir flags
   rawSystemExit verbosity mbWorkDir "make" ["register"]
 
 unregisterAction :: VerbosityHandles -> RegisterFlags -> [String] -> IO ()
 unregisterAction verbHandles flags args = do
   noExtraFlags args
-  let verbosity = mkVerbosity verbHandles $ fromFlag $ registerVerbosity flags
+  let FlagVerbosity verbosity = (verbHandles, registerVerbosity flags)
       mbWorkDir = flagToMaybe $ registerWorkingDir flags
   rawSystemExit verbosity mbWorkDir "make" ["unregister"]
+
+pattern FlagVerbosity :: Verbosity -> (VerbosityHandles, Last VerbosityFlags)
+pattern FlagVerbosity v <- (uncurry mkVerbosity . fmap fromFlag -> v)
+{-# COMPLETE FlagVerbosity #-}
