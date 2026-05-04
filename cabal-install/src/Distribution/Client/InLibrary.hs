@@ -30,6 +30,7 @@ import qualified Distribution.Simple.Configure as Cabal
 import Distribution.Simple.Haddock (haddock_setupHooks)
 import Distribution.Simple.Install (install_setupHooks)
 import Distribution.Simple.LocalBuildInfo (mbWorkDirLBI)
+import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PreProcess as Cabal
 import Distribution.Simple.Program.Db
 import qualified Distribution.Simple.Register as Cabal
@@ -68,6 +69,7 @@ data LibraryConfigureInputs = LibraryConfigureInputs
   , packageDescription :: PD.PackageDescription
   , gPackageDescription :: PD.GenericPackageDescription
   , flagAssignment :: PD.FlagAssignment
+  , installedPkgIndex :: InstalledPackageIndex
   }
 
 libraryConfigureInputsFromElabPackage
@@ -76,6 +78,7 @@ libraryConfigureInputsFromElabPackage
   -> ProgramDb
   -> ElaboratedSharedConfig
   -> ElaboratedReadyPackage
+  -> InstalledPackageIndex
   -> [String]
   -- ^ targets
   -> LibraryConfigureInputs
@@ -90,6 +93,7 @@ libraryConfigureInputsFromElabPackage
     , pkgConfigCompiler = compil
     }
   (ReadyPackage pkg)
+  ipi
   userTargets =
     LibraryConfigureInputs
       { verbosityHandles = verbHandles
@@ -119,6 +123,7 @@ libraryConfigureInputsFromElabPackage
       , packageDescription = pkgDescr
       , gPackageDescription = gpkgDescr
       , flagAssignment = elabFlagAssignment pkg
+      , installedPkgIndex = ipi
       }
     where
       pkgDescr = elabPkgDescription pkg
@@ -140,6 +145,7 @@ configure
     , packageDescription = pkgDescr
     , gPackageDescription = gpkgDescr
     , flagAssignment = flagAssgn
+    , installedPkgIndex = ipi
     }
   cfg = do
     -- Here, we essentially want to call the Cabal library 'configure' function,
@@ -157,14 +163,15 @@ configure
           configureHooks $
             ExternalHooksExe.buildTypeSetupHooks verbosity mbWorkDir distPref bt
 
+    let pkgId :: PD.PackageIdentifier
+        pkgId = PD.package pkgDescr
+
     -- cabal-install uses paths relative to the current working directory,
     -- while the Cabal library expects symbolic paths. Perform the conversion here
     -- by making the paths absolute.
     packageDBs' <- traverse (traverse $ fmap makeSymbolicPath . canonicalizePath) packageDBs
 
     -- Configure package
-    let pkgId :: PD.PackageIdentifier
-        pkgId = PD.package pkgDescr
     case mbComp of
       Nothing -> setupMessage verbosity "Configuring" pkgId
       Just cname ->
@@ -188,11 +195,17 @@ configure
               { testsRequested = Cabal.fromFlag (Cabal.configTests cfg)
               , benchmarksRequested = Cabal.fromFlag (Cabal.configBenchmarks cfg)
               }
-    (_allConstraints, pkgInfo) <-
-      Cabal.computePackageInfo verbHandles cfg lbc1 gpkgDescr compil
-    -- It's OK to discard constraints here: we already have a finalized PackageDescription
+
+    -- NB: it's OK to discard constraints here: we already have a finalized PackageDescription
     -- in hand, and we are using exact UnitIds for all dependencies (this corresponds
     -- to using --exact-configuration and --dependency flags with the Setup CLI).
+    (_allConstraints, pkgInfo) <-
+      -- Use cabal-install's running InstalledPackageIndex 'ipi' to skip over
+      -- having to invoke ghc-pkg once per package.
+      --
+      -- See (ProjIPI4) from Note [Per-project InstalledPackageIndex]
+      -- in Distribution.Client.ProjectBuilding.
+      Cabal.computePackageInfoFromIndex verbHandles cfg gpkgDescr ipi
 
     -- Post-configure hooks & per-component configure
     lbi1 <-

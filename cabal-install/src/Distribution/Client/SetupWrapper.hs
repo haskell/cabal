@@ -172,6 +172,9 @@ import Distribution.Simple.SetupHooks.HooksMain
   ( hooksVersion )
 import Distribution.Client.SetupHooks.CallHooksExe
   ( externalSetupHooksABI, hooksProgFilePath )
+
+import Control.Concurrent.STM (TVar, readTVarIO)
+import qualified Data.ByteString.Lazy as BS
 import Data.List (foldl1')
 import Data.Kind (Type, Constraint)
 import qualified Data.Map.Lazy as Map
@@ -183,8 +186,6 @@ import System.IO (Handle, hPutStr)
 import System.Process (StdStream (..))
 import qualified System.Process as Process
 
-import qualified Data.ByteString.Lazy as BS
-
 #ifdef mingw32_HOST_OS
 import Distribution.Simple.Utils
          ( withTempDirectory )
@@ -194,6 +195,8 @@ import System.Directory    ( doesDirectoryExist )
 import System.FilePath     ( equalFilePath, takeDirectory, takeFileName )
 import qualified System.Win32 as Win32
 #endif
+
+--------------------------------------------------------------------------------
 
 data AllowInLibrary
   = AllowInLibrary
@@ -243,6 +246,7 @@ data InLibraryArgs (flags :: Type) where
   InLibraryConfigureArgs
     :: ElaboratedSharedConfig
     -> ElaboratedReadyPackage
+    -> TVar InstalledPackageIndex
     -> InLibraryArgs ConfigFlags
   InLibraryPostConfigureArgs
     :: SPostConfigurePhase flags
@@ -642,7 +646,7 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
       case wrapperArgs of
         InLibraryArgs libArgs ->
           case libArgs of
-            InLibraryConfigureArgs elabSharedConfig elabReadyPkg -> do
+            InLibraryConfigureArgs elabSharedConfig elabReadyPkg ipiTVar -> do
               -- See (1)(a) in Note [Constructing the ProgramDb]
               baseProgDb <-
                 prependProgramSearchPath verbosity
@@ -658,6 +662,12 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
                   (pkgConfigCompiler elabSharedConfig)
                   baseProgDb
                   Nothing -- we use configProgramPaths instead
+              -- Read the project InstalledPackageIndex to avoid needing to query
+              -- @ghc-pkg@ to obtain it.
+              --
+              -- See (ProjIPI4) from Note [Per-project InstalledPackageIndex]
+              -- in Distribution.Client.ProjectBuilding.
+              ipi <- readTVarIO ipiTVar
               lbi0 <-
                 InLibrary.configure
                   (InLibrary.libraryConfigureInputsFromElabPackage
@@ -666,6 +676,7 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
                      setupProgDb
                      elabSharedConfig
                      elabReadyPkg
+                     ipi
                      extraArgs
                   )
                   flags

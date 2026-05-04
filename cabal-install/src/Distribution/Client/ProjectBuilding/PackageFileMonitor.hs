@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -26,6 +27,7 @@ import Distribution.Simple.LocalBuildInfo
   )
 import Distribution.Simple.Utils (removeFileForcibly)
 
+import Data.Functor ((<&>))
 import qualified Data.Set as Set
 
 -----------------------------
@@ -292,3 +294,13 @@ updatePackageRegFileMonitor
 invalidatePackageRegFileMonitor :: PackageFileMonitor -> IO ()
 invalidatePackageRegFileMonitor PackageFileMonitor{pkgFileMonitorReg} =
   removeFileForcibly (fileMonitorCacheFile pkgFileMonitorReg)
+
+-- | Read the 'InstalledPackageInfo' cached by the registration file monitor
+-- (from the previous build). Returns 'Nothing' if the cache doesn't exist
+-- or the unit has no library component.
+readCachedRegistration :: PackageFileMonitor -> IO (Maybe InstalledPackageInfo)
+readCachedRegistration PackageFileMonitor{pkgFileMonitorReg} =
+  checkFileMonitorChanged pkgFileMonitorReg "." ()
+    <&> \case
+      MonitorUnchanged mbIpi _ -> mbIpi
+      MonitorChanged _ -> Nothing
