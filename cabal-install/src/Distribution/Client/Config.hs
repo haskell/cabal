@@ -453,6 +453,7 @@ instance Semigroup SavedConfig where
           , installKeepGoing = combine installKeepGoing
           , installRunTests = combine installRunTests
           , installOfflineMode = combine installOfflineMode
+          , installBuildTimings = combine installBuildTimings
           }
         where
           combine = combine' savedInstallFlags
