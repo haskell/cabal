@@ -8,7 +8,7 @@ on:
         type: string
       ghc:
         type: string
-        default: 9.10.2
+        default: 9.10.3
       # speed up installation by skipping docs
       # starting with GHC 9.10.x, we also need to pass the 'install_extra' target
       ghc_targets:
@@ -25,7 +25,7 @@ env:
   GHC_VERSION: ${{ inputs.ghc }}
   GHC_TARGETS: ${{ inputs.ghc_targets }}
   # This shouldn't be necessary, but cabal developers
-  # want to build with 9.10.2, which causes test failures
+  # want to build with 9.10.3, which causes test failures
   # when used as runtime GHC version as well.
   GHC_TEST_VERSION: 9.6.7
   GHC_TEST_TARGETS: "install_bin install_lib update_package_db"
