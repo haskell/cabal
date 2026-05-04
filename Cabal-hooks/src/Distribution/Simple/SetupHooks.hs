@@ -1,9 +1,12 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE StaticPointers #-}
+
+{-# OPTIONS_GHC -Wno-unticked-promoted-constructors #-}
 
 {-|
 Module: Distribution.Simple.SetupHooks
@@ -16,7 +19,9 @@ a module @SetupHooks.hs@ which exports a value @setupHooks :: 'SetupHooks'@.
 This is a record that declares actions that should be hooked into the
 cabal build process.
 
-See 'SetupHooks' for more details.
+See 'SetupHooks' for more details, as well as the
+[introductory blog post](https://well-typed.com/blog/2025/01/cabal-hooks) for
+the feature.
 -}
 module Distribution.Simple.SetupHooks
   ( -- * Hooks
@@ -24,6 +29,9 @@ module Distribution.Simple.SetupHooks
     -- $setupHooks
     SetupHooks(..)
   , noSetupHooks
+
+     -- * Usage overview
+     -- $usage
 
      -- * Configure hooks
 
@@ -66,33 +74,74 @@ module Distribution.Simple.SetupHooks
   , Rules
   , rules
   , noRules
-  , Rule
-  , Dependency (..)
-  , RuleOutput (..)
-  , RuleId
-  , staticRule, dynamicRule
-    -- *** Rule inputs/outputs
-
-    -- $rulesDemand
-  , Location(..)
-  , location
-  , autogenComponentModulesDir
-  , componentBuildDir
-
-    -- *** Actions
-  , RuleCommands(..)
-  , Command
-  , mkCommand
-  , Dict(..)
 
     -- *** Rules API
 
     -- $rulesAPI
   , RulesM
+    -- | Rule names (use @OverloadedStrings@ or 'Data.String.fromString')
+  , ShortText
   , registerRule
   , registerRule_
 
-  -- **** File/directory monitoring
+    -- *** Rule construction
+  , Rule
+  , staticRule, dynamicRule
+
+    -- **** Example usage of 'dynamicRule'
+    -- $dynamicRules
+
+    -- *** Rule inputs/outputs
+
+    -- **** Rule dependencies
+    -- $rulesDemand
+  , Dependency (..)
+  , RuleOutput (..)
+  , RuleId
+
+    -- **** Filesystem locations
+  , Location(..)
+  , location
+  , autogenComponentModulesDir
+  , componentBuildDir
+
+    -- **** Path types and utilities
+  , RelativePath
+  , sameDirectory
+  , getSymbolicPath
+  , makeRelativePathEx
+  , moduleNameSymbolicPath
+  , FileLike(..)
+  , PathLike(..)
+
+    -- ***** Directory types
+  , Source, Build, Pkg, CWD
+
+    -- **** File search
+  , findAndMonitorDirFileGlob
+  , findAndMonitorSourceDirsFileExt
+
+    -- ***** File glob patterns
+  , Glob
+  , GlobSyntaxError(..)
+  , parseFileGlob
+
+    -- *** Actions
+  , RuleCommands -- gnarly constructors not exposed; API is via 'staticRule' and 'dynamicRule'
+  , Command
+  , mkCommand
+  , Dict(..)
+    -- | Custom datatypes used as rule command arguments must implement
+    -- serialisation. Derive these instances using @DeriveAnyClass@ and
+    -- @DeriveGeneric@:
+    --
+    -- > data MyInput = MyInput { .. }
+    -- >   deriving stock    ( Eq, Show, Generic )
+    -- >   deriving anyclass Binary
+  , Binary
+
+
+  -- *** File/directory monitoring
   , addRuleMonitors
   , module Distribution.Simple.FileMonitor.Types
 
@@ -125,10 +174,21 @@ module Distribution.Simple.SetupHooks
   , ProgramDb
   , addKnownPrograms
   , configureUnconfiguredProgram
+  , lookupProgram
   , simpleProgram
+  , runProgramCwd
+
+    -- *** IO utilities
+  , warn
+  , createDirectoryIfMissingVerbose
+  , rewriteFileEx
 
     -- ** General @Cabal@ datatypes
-  , Verbosity, Compiler(..), Platform(..), Suffix(..)
+  , Compiler(..), Platform(..), Suffix(..)
+
+    -- *** Verbosity
+  , Verbosity, VerbosityFlags, VerbosityHandles
+  , mkVerbosity, defaultVerbosityHandles
 
     -- *** Package information
   , LocalBuildConfig, LocalBuildInfo, PackageBuildDescr
@@ -139,8 +199,16 @@ module Distribution.Simple.SetupHooks
 
   , PackageDescription(..)
 
+    -- **** LocalBuildInfo utilities
+  , localPkgDescr
+  , mbWorkDirLBI
+  , withPrograms
+  , interpretSymbolicPathLBI
+  , componentBuildInfo
+
     -- *** Component information
   , Component(..), ComponentName(..), componentName
+  , ModuleName
   , BuildInfo(..), emptyBuildInfo
   , TargetInfo(..), ComponentLocalBuildInfo(..)
 
@@ -153,6 +221,10 @@ module Distribution.Simple.SetupHooks
 
   )
 where
+import Distribution.Compat.Binary
+  ( Binary )
+import Distribution.ModuleName
+  ( ModuleName )
 import Distribution.PackageDescription
   ( PackageDescription(..)
   , Library(..), ForeignLib(..)
@@ -169,15 +241,25 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Errors
   ( CabalException(SetupHooksException) )
 import Distribution.Simple.FileMonitor.Types
+  hiding ( Glob )
+import Distribution.Simple.Glob
+  ( Glob, GlobSyntaxError(..)
+  , globMatches, runDirFileGlob, parseFileGlob
+  )
 import Distribution.Simple.Install
   ( installFileGlob )
 import Distribution.Simple.LocalBuildInfo
-  ( componentBuildDir )
+  ( componentBuildDir, componentBuildInfo
+  , mbWorkDirLBI, interpretSymbolicPathLBI
+  )
 import Distribution.Simple.PreProcess.Types
   ( Suffix(..) )
+import Distribution.Simple.Program
+  ( runProgramCwd )
 import Distribution.Simple.Program.Db
   ( ProgramDb, addKnownPrograms
   , configureUnconfiguredProgram
+  , lookupProgram
   )
 import Distribution.Simple.Program.Find
   ( simpleProgram )
@@ -198,7 +280,11 @@ import Distribution.Simple.SetupHooks.Errors
 import Distribution.Simple.SetupHooks.Internal
 import Distribution.Simple.SetupHooks.Rule as Rule
 import Distribution.Simple.Utils
-  ( dieWithException )
+  ( dieWithException
+  , warn
+  , createDirectoryIfMissingVerbose
+  , rewriteFileEx
+  )
 import Distribution.System
   ( Platform(..) )
 import Distribution.Types.Component
@@ -206,15 +292,25 @@ import Distribution.Types.Component
 import Distribution.Types.ComponentLocalBuildInfo
   ( ComponentLocalBuildInfo(..) )
 import Distribution.Types.LocalBuildInfo
-  ( LocalBuildInfo(..) )
+  ( LocalBuildInfo(..), withPrograms )
 import Distribution.Types.LocalBuildConfig
   ( LocalBuildConfig, PackageBuildDescr )
 import Distribution.Types.TargetInfo
   ( TargetInfo(..) )
+import Distribution.Utils.Path
+  ( SymbolicPath, CWD, Pkg, FileOrDir(..)
+  , interpretSymbolicPath, makeRelativePathEx
+  , RelativePath, Source, Build
+  , getSymbolicPath, sameDirectory, moduleNameSymbolicPath
+  , FileLike(..), PathLike(..)
+  )
 import Distribution.Utils.ShortText
   ( ShortText )
 import Distribution.Verbosity
-  ( Verbosity )
+  ( Verbosity
+  , VerbosityFlags, VerbosityHandles
+  , mkVerbosity, defaultVerbosityHandles
+  )
 
 import Control.Monad
   ( void )
@@ -227,6 +323,8 @@ import qualified Control.Monad.Trans.State as State
 import qualified Control.Monad.Trans.Writer.CPS as Writer
 import Data.Foldable
   ( for_ )
+import Data.Traversable
+  ( for )
 import Data.Map.Strict as Map
   ( insertLookupWithKey )
 
@@ -279,6 +377,65 @@ Note that 'SetupHooks' can be monoidally combined, e.g.:
 > mySetupHooks = ...
 -}
 
+{- $usage
+'SetupHooks' allow hooks into the following phases:
+
+  * The configure phase, via 'ConfigureHooks'.
+
+      There are three hooks into the configure phase:
+
+        * Package-wide pre-configure hook.
+
+            This hook enables custom logic in the style of traditional @./configure@
+            scripts, e.g. finding out information about the system and configuring
+            dependencies.
+
+        * Package-wide post-configure hook.
+
+            This hook is mostly used to write write custom package-wide information
+            to disk so that the next step can read it without repeating work.
+
+        * Per-component pre-configure hooks.
+
+            These hooks are used to modify individual components, e.g. declaring
+            new modules (such as autogenerated modules whose module names are not
+            statically known) or specifying per-component flags to be used when
+            building each component.
+
+            You can think of this step as dynamically updating the stanza for a
+            single component in the .cabal file of a package.
+
+  * The build phase, via 'BuildHooks'.
+
+      There are two hooks into the build phase:
+
+        * Per-component pre-build rules.
+
+            A rule can be thought of an invocation of a code generator; each rule
+            specifies how to build a particular output.
+
+            You can have rules that don't depend on any inputs (e.g. directly
+            generate a collection of modules programmatically, perhaps from some
+            kind of parsed schema), as well as preprocessor-like rules that take in
+            input files, e.g. the Happy parser generator that takes in a .y
+            file and generates a corresponding .hs file.
+
+            This rather elaborate setup (compared to a one-shot program that
+            generates the required modules) allows proper recompilation checking.
+            See also <https://well-typed.com/blog/2025/01/cabal-hooks/#pre-build-rules>
+            for some worked examples of pre-build rules.
+
+        * Per-component post-build hooks.
+
+            These can be thought of as "pre-linking hooks" and allow injecting
+            additional data into the final executable.
+
+  * The install phase, via 'InstallHooks'.
+
+      There is a single, per-component install hook. This allows copying over
+      additional files when installing a component (library/executable).
+-}
+
 {- $configureHooks
 Configure hooks can be used to augment the Cabal configure logic with
 package-specific logic. The main principle is that the configure hooks can
@@ -314,18 +471,24 @@ Each t'Rule' consists of:
   - a specification of its static dependencies and outputs,
   - the commands that execute the rule.
 
+You can think of a t'Rule' as describing a particular invocation of a code
+generator or preprocessor, with the t'Command' specifying the particular
+command that will be executed.
+
 Rules are constructed using either one of the 'staticRule' or 'dynamicRule'
 smart constructors. Directly constructing a t'Rule' using the constructors of
 that data type is not advised, as this relies on internal implementation details
-which are subject to change in between versions of the `Cabal-hooks` library.
+which are subject to change in between versions of the @Cabal-hooks@ library.
 
 Note that:
 
   - To declare the dependency on the output of a rule, one must refer to the
     rule directly, and not to the path to the output executing that rule will
     eventually produce.
-    To do so, registering a t'Rule' with the API returns a unique identifier
-    for that rule, in the form of a t'RuleId'.
+
+      This is achieved by using the t'RuleId' returned by 'registerRule', which
+      is the unique identifier for that rule.
+
   - File dependencies and outputs are not specified directly by
     'FilePath', but rather use the 'Location' type (which is more convenient
     when working with preprocessors).
@@ -335,11 +498,97 @@ Note that:
     when to re-compute the entire set of rules.
 -}
 
+{- $dynamicRules
+The 'dynamicRule' smart constructor allows specifying rules that have dynamic
+dependencies. This is the most complex part of the API, so let's work through
+a representative example.
+
+Suppose for example that we have preprocessor for files that may depend on
+each other via explicit import statements at the start of the file. To properly
+preprocess these, we need two commands:
+
+  1. A "find dependencies" command that parses the header to find the dependencies.
+  2. A "run preprocessor" command. This command might need to be passed the
+     dependencies as arguments, so the command in (1) should make that information
+     available to (2).
+
+This is exactly what 'dynamicRule' allows us to do. The first command is (1),
+which returns dynamic dependencies and additional data passed to the second
+command, (2).
+
+The rules for such a preprocessor would thus look something like (sketch):
+
+@
+ppDynPreBuildRules :: PreBuildComponentInputs -> RulesM ()
+ppDynPreBuildRules pbci = mdo -- NB: using RecursiveDo
+
+  -- Scan filesystem for files to preprocess, e.g. with a monitored file glob.
+  inputModNms <- ...
+
+  let
+
+    -- (1): the "find dependencies" action
+    computeDepsAction
+      :: (Map ModuleName RuleId, FilePath)
+      -> IO ([Dependency], [ModuleName])
+    computeDepsAction (modNmToRuleId, inFile) = do
+      src <- readFile inFile
+      let dynDeps = parseHeaderImports src
+      return
+        ( [ RuleDependency $ RuleOutput rId 1
+          | dep <- dynDeps
+          , let rId = modNmToRuleId Map.! dep ]
+        , dynDeps )
+
+    -- (2): the "run preprocessor" action
+    runPPAction :: (FilePath, FilePath) -> [ModuleName] -> IO ()
+    runPPAction (inFile, outFile) dynDeps = do
+      src <- readFile inFile
+      let ppResult = preprocessWithDependencies dynDeps src
+      writeFile outFile ppResult
+
+    -- Construct a rule with dynamic dependencies using 'dynamicRule'
+    mkRule modNm =
+      dynamicRule (static Dict)
+        (mkCommand (static Dict) (static computeDepsAction) (allRuleIDs, inFile))
+        (mkCommand (static Dict) (static runPPAction) (inFile, outFile))
+        [ FileDependency $ Location sameDirectory (modPath <.> "myPp") ]
+        ( Location autogenDir (modPath <.> "hs" )
+        NE.:| [ Location buildDir (unsafeCoerceSymbolicPath modPath <.> "myPpIface") ] )
+      where
+        modPath = moduleNameSymbolicPath modNm
+        inFile  = getSymbolicPath (sameDirectory </> modPath <.> "myPp")
+        outFile = getSymbolicPath (autogenDir    </> modPath <.> "hs")
+
+    autogenDir = ... -- derived from pbci
+    buildDir   = ... -- derived from pbci
+
+    registerOne :: ModuleName -> RulesM (ModuleName, RuleId)
+    registerOne modNm = do
+      rId <- registerRule ("MyPP: " <> show modNm) (mkRule modNm)
+      return (modNm, rId)
+
+  -- Return a map from ModuleName to RuleId (used above via RecursiveDo).
+  allRuleIDs <- Map.fromList <$> traverse registerOne inputModNms
+  return ()
+@
+
+Note the usage of @RecursiveDo@ to allow indexing into the set of all registered
+rules in order to declare the dynamic dependencies of the rules.
+
+In this example we use tuples for the command arguments and @[ModuleName]@ for
+the result of the dynamic dependency command; these have the required instances
+needed for serialisation. If you use custom datatypes for these, you will need
+to derive @Binary@, @Show@, @Eq@ to satisfy the API requirements (enforced by
+the various calls to @static Dict@).
+
+-}
+
 {- $rulesDemand
 Rules can declare various kinds of dependencies:
 
-  - 'staticDependencies': files or other rules that a rule statically depends on,
-  - extra dynamic dependencies, using the 'DynamicRuleCommands' constructor,
+  - static dependencies: files or other rules that a rule statically depends on,
+  - extra dynamic dependencies, using 'dynamicRule' smart constructor,
   - 'MonitorFilePath': additional files and directories to monitor.
 
 Rules are considered __out-of-date__ precisely when any of the following
@@ -398,7 +647,8 @@ datatypes, respectively.
 We use 'addRuleMonitors' to declare a monitored directory that the collection
 of rules as a whole depends on. In this case, we declare that they depend on the
 contents of the "searchDir" directory. This means that the rules will be
-computed anew whenever the contents of this directory change.
+computed anew whenever the contents of this directory change. (This does not
+mean all the rules will be re-run; only the out-of-date rules will be re-run.)
 -}
 
 {- Note [Not hiding SetupHooks constructors]
@@ -450,9 +700,61 @@ registerRule_ i r = void $ registerRule i r
 -- | Declare additional monitored objects for the collection of all rules.
 --
 -- When these monitored objects change, the rules are re-computed.
+--
+-- See also 'findAndMonitorDirFileGlob' which combines the search and the
+-- monitoring.
 addRuleMonitors :: Monad m => [MonitorFilePath] -> RulesT m ()
 addRuleMonitors = RulesT . lift . lift . Writer.tell
 {-# INLINEABLE addRuleMonitors #-}
 
--- TODO: add API functions that search and declare the appropriate monitoring
--- at the same time.
+-- | Retrieve all files matching the given 'Glob' in the specified search
+-- directories.
+--
+-- See also the canned 'findAndMonitorSourceDirsFileExt' for the simple
+-- case of monitoring a file extension in the source directories of a component.
+findAndMonitorDirFileGlob
+  :: MonadIO m
+  => Maybe (SymbolicPath CWD (Dir Pkg))
+  -> Verbosity
+  -> [SymbolicPath Pkg (Dir dir)]
+     -- ^ search directories
+  -> Glob
+     -- ^ pattern to match against
+  -> RulesT m [Location]
+findAndMonitorDirFileGlob mbWorkDir verb searchDirs glob = do
+  matchingFiles <- fmap concat $ liftIO $ for searchDirs $ \srcDir -> do
+    let root = interpretSymbolicPath mbWorkDir srcDir
+    matches <- runDirFileGlob verb Nothing root glob
+    return
+      [ Location srcDir (makeRelativePathEx match)
+      | match <- globMatches matches
+      ]
+  addRuleMonitors [monitorFileGlobExistence $ RootedGlob FilePathRelative glob]
+  return matchingFiles
+{-# INLINEABLE findAndMonitorDirFileGlob #-}
+
+-- | Scans the component source directories for files with the given extension,
+-- and monitors the resulting file glob.
+findAndMonitorSourceDirsFileExt
+  :: MonadIO m
+  => PreBuildComponentInputs
+  -> String -- ^ extension (not including the @.@)
+  -> RulesT m [Location]
+findAndMonitorSourceDirsFileExt
+  PreBuildComponentInputs
+    { localBuildInfo = lbi
+    , buildingWhat = what
+    , targetInfo = tgt
+    } ext =
+  let
+    comp       = targetComponent tgt
+    verbosity  = mkVerbosity defaultVerbosityHandles (buildingWhatVerbosity what)
+    mbWorkDir  = mbWorkDirLBI lbi
+    searchDirs = hsSourceDirs $ componentBuildInfo comp
+    glob       = either (error . show) id $
+                   parseFileGlob
+                     (specVersion $ localPkgDescr lbi)
+                     ("**/*." ++ ext)
+  in
+    findAndMonitorDirFileGlob mbWorkDir verbosity searchDirs glob
+{-# INLINEABLE findAndMonitorSourceDirsFileExt #-}
