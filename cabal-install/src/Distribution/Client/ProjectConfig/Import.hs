@@ -124,7 +124,7 @@ fetchImportParse parser cacheDir httpTransport verbosity projectDir normLocPath 
 -- >>> render $ docProjectConfigFiles ps
 -- "- cabal.project\n- 0.config\n- 2.config\n- cfg/1.config\n- cfg/3.config\n- with.config\n- https://www.stackage.org/lts-21.25/cabal.config"
 docProjectConfigFiles :: [ProjectConfigPath] -> Doc
-docProjectConfigFiles (sortBy compareLexically -> ps) =
+docProjectConfigFiles (sortBy compareLexicographically -> ps) =
   vcat
     [ text "-" <+> text p
     | p <- ordNub [p | ProjectConfigPath (p :| _) <- ps]

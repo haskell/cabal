@@ -5,7 +5,7 @@ module Distribution.Solver.Types.ProjectConfigPath
     (
     -- * Project Config Path Manipulation
       ProjectConfigPath(..)
-    , compareLexically
+    , compareLexicographically
     , compareSegmentally
     , projectConfigPathRoot
     , nullProjectConfigPath
@@ -97,8 +97,8 @@ instance Ord ProjectConfigPath where
 
 -- | A comparison that puts projects first, URLs last and sorts the other paths
 -- lexically.
-compareLexically :: ProjectConfigPath -> ProjectConfigPath -> Ordering
-compareLexically (ProjectConfigPath as) (ProjectConfigPath bs) =
+compareLexicographically :: ProjectConfigPath -> ProjectConfigPath -> Ordering
+compareLexicographically (ProjectConfigPath as) (ProjectConfigPath bs) =
         case (as, bs) of
             -- Single element paths are projects, they should always sort first.
             (a :| [], b :| []) -> compare (splitPath a) (splitPath b)
