@@ -223,7 +223,7 @@ runExternalPreBuildRules verbHandles hooksExe
       DynamicRuleCommands {} -> hook "runPreBuildRuleDeps" (rId, cmd)
     )
     ( \ rId cmd -> hook "runPreBuildRule" (rId, cmd) )
-    verbosity lbi tgt rulesMap
+    verbosity lbi tgt monitors rulesMap
   return monitors
 
 -- | The path to the external hooks executable.
