@@ -26,6 +26,8 @@ import Text.PrettyPrint (Doc)
 import qualified Text.PrettyPrint as PP
 import Prelude ()
 
+import Data.Kind
+
 import Distribution.FieldGrammar.Class
 import qualified Distribution.Types.Modify as Mod
 
@@ -50,6 +52,8 @@ instance FieldGrammarWith Mod.HasNoAnn Pretty PrettyFieldGrammar where
 
   uniqueFieldAla fn _pack l = PrettyFG $ \_v s ->
     ppField fn (pretty (pack' _pack (aview l s)))
+
+  uniqueFieldAla' = uniqueFieldAla
 
   booleanFieldDef fn l def = PrettyFG pp
     where
@@ -204,6 +208,7 @@ instance FieldGrammarWith Mod.HasAnn Pretty PrettyFieldGrammar where
 
   optionalFieldDefAla' fn _pack l def = PrettyFG pp
     where
+        -- We absorb fields that have no position for the prototype
       pp v s =
         let Ann t u :: Ann Positions Doc = prettyVersioned v . pack' _pack <$> x
         in  case t of
@@ -211,6 +216,28 @@ instance FieldGrammarWith Mod.HasAnn Pretty PrettyFieldGrammar where
           IsInserted -> mempty
         where
           x = aview l s
+
+  uniqueFieldAla'
+    :: forall (b :: Type) (s :: Type) (a :: Type)
+     . ( Newtype a b
+       , Pretty b
+       )
+    => FieldName
+    -- ^ field name
+    -> (a -> b)
+    -- ^ 'Newtype' pack
+    -> ALens' s (Ann Positions a)
+    -- ^ lens into the field
+    -> PrettyFieldGrammar Mod.HasAnn s (Ann Positions a)
+  uniqueFieldAla' fn _pack l = PrettyFG pp
+    where
+      pp v s =
+        let Ann t u :: Ann Positions Doc = prettyVersioned v . pack' _pack <$> x
+        in case t of
+        -- We absorb fields that have no position for the prototype
+          HasTrivia pos -> ppFieldPos fn [(pos, u)]
+          IsInserted -> mempty
+        where x = aview l s
 
 ppField :: FieldName -> Doc -> [PrettyField]
 ppField name fielddoc

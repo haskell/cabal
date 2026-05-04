@@ -14,6 +14,7 @@ module Distribution.FieldGrammar.Class
   ( FieldGrammar
   , FieldGrammarWith (..)
   , uniqueField
+  , uniqueField'
   , optionalField
   , optionalFieldDef
   , monoidalField
@@ -70,6 +71,20 @@ class
     -> ALens' s a
     -- ^ lens into the field
     -> g m s a
+
+  -- | Field which should be defined, exactly once.
+  uniqueFieldAla'
+    :: forall (b :: Type) (s :: Type) (a :: Type)
+     . ( Newtype a b
+       , c b
+       )
+    => FieldName
+    -- ^ field name
+    -> (a -> b)
+    -- ^ 'Newtype' pack
+    -> ALens' s (AnnotateWith Positions m a)
+    -- ^ lens into the field
+    -> g m s (AnnotateWith Positions m a)
 
   -- | Boolean field with a default value.
   booleanFieldDef
@@ -250,6 +265,19 @@ uniqueField
   -- ^ lens into the field
   -> g m s a
 uniqueField fn l = uniqueFieldAla fn Identity l
+
+-- | Field which can be defined at most once.
+uniqueField'
+  :: forall m c g s (a :: Type)
+   . ( FieldGrammarWith m c g
+     , c (Identity a)
+     )
+  => FieldName
+  -- ^ field name
+  -> ALens' s (AnnotateWith Positions m a)
+  -- ^ lens into the field
+  -> g m s (AnnotateWith Positions m a)
+uniqueField' fn l = uniqueFieldAla' @m @c @g @(Identity a) @s @a fn Identity l
 
 -- | Field which can be defined at most once.
 optionalField

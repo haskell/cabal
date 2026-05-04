@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE InstanceSigs #-}
@@ -98,7 +99,9 @@ import Distribution.Parsec.FieldLineStream
 import Distribution.Parsec.Position (positionCol, positionRow)
 import Distribution.Trivia
 
-import Distribution.Types.Modify (AttachPositions, AnnotateWith)
+import Data.Kind
+
+import Distribution.Types.Modify (AttachPositions, AnnotateWith, PreserveGrouping)
 import qualified Distribution.Types.Modify as Mod
 
 -------------------------------------------------------------------------------
@@ -192,6 +195,8 @@ instance FieldGrammarWith Mod.HasNoAnn Parsec ParsecFieldGrammar where
 
       parseOne v (MkNamelessField pos fls) =
         unpack' _pack <$> runFieldParser pos parsec v fls
+
+  uniqueFieldAla' = uniqueFieldAla
 
   booleanFieldDef fn _extract def = ParsecFG (Set.singleton fn) Set.empty parser
     where
@@ -643,6 +648,34 @@ instance FieldGrammarWith Mod.HasAnn Parsec ParsecFieldGrammar where
         | otherwise = do
           (fieldLinePos, x) <- runFieldParser pos (liftA2 (,) getPosition (parsec @b)) v fls
           pure (Ann (HasTrivia $ Positions pos fieldLinePos) (unpack' _pack x))
+
+  uniqueFieldAla'
+    :: forall (b :: Type) (s :: Type) (a :: Type)
+     . ( Newtype a b
+       , Parsec b
+       )
+    => FieldName
+    -- ^ field name
+    -> (a -> b)
+    -- ^ 'Newtype' pack
+    -> ALens' s (Ann Positions a)
+    -- ^ lens into the field
+    -> ParsecFieldGrammar Mod.HasAnn s (Ann Positions a)
+  uniqueFieldAla' fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
+    where
+      parser :: CabalSpecVersion -> Fields Position -> ParseResult src (Ann Positions a)
+      parser v fields = case Map.lookup fn fields of
+        Nothing -> parseFatalFailure zeroPos $ show fn ++ " field missing"
+        Just [] -> parseFatalFailure zeroPos $ show fn ++ " field missing"
+        Just [x] -> parseOne v x
+        Just xs@(_ : y : ys) -> do
+          warnMultipleSingularFields fn xs
+          NE.last <$> traverse (parseOne v) (y :| ys)
+
+      parseOne :: CabalSpecVersion -> NamelessField Position -> ParseResult src (Ann Positions a)
+      parseOne v (MkNamelessField pos fls) = do
+        (fieldLinePos, x) <- runFieldParser pos (liftA2 (,) getPosition (parsec @b)) v fls
+        pure (Ann (HasTrivia $ Positions pos fieldLinePos) (unpack' _pack x))
 
 -------------------------------------------------------------------------------
 -- Parsec
