@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
@@ -113,10 +114,12 @@ import qualified Data.ByteString.Lazy.Char8 as LBS.Char8
 import qualified Data.List.NonEmpty as NE
 
 import Control.Exception (ErrorCall, Handler (..), SomeAsyncException, assert, catches, onException)
+import GHC.Clock (getMonotonicTime)
 import System.Directory (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, listDirectory)
 import System.FilePath (dropDrive, normalise, takeDirectory, (<.>), (</>))
 import System.IO (Handle, IOMode (AppendMode), withFile)
 import System.Semaphore (SemaphoreName (..))
+import Text.Printf (printf)
 
 import GHC.Stack
 import Web.Browser (openBrowser)
@@ -178,7 +181,10 @@ buildAndRegisterUnpackedPackage
   verbosity
   distDirLayout@DistDirLayout{distTempDirectory}
   maybe_semaphore
-  buildTimeSettings@BuildTimeSettings{buildSettingKeepTempFiles}
+  buildTimeSettings@BuildTimeSettings
+    { buildSettingKeepTempFiles
+    , buildSettingBuildTimings
+    }
   registerLock
   cacheLock
   pkgshared@ElaboratedSharedConfig
@@ -193,7 +199,7 @@ buildAndRegisterUnpackedPackage
   delegate = do
     -- Configure phase
     mbLBI <-
-      delegate $
+      timedDelegate $
         PBConfigurePhase $
           annotateFailure mlogFile ConfigureFailed $
             setup
@@ -204,7 +210,7 @@ buildAndRegisterUnpackedPackage
               (InLibraryArgs $ InLibraryConfigureArgs pkgshared rpkg)
 
     -- Build phase
-    delegate $
+    timedDelegate $
       PBBuildPhase $
         annotateFailure mlogFile BuildFailed $ do
           setup
@@ -216,7 +222,7 @@ buildAndRegisterUnpackedPackage
 
     -- Haddock phase
     whenHaddock $
-      delegate $
+      timedDelegate $
         PBHaddockPhase $
           annotateFailure mlogFile HaddocksFailed $ do
             setup
@@ -227,7 +233,7 @@ buildAndRegisterUnpackedPackage
               (InLibraryArgs $ InLibraryPostConfigureArgs SHaddockPhase mbLBI)
 
     -- Install phase
-    delegate $
+    timedDelegate $
       PBInstallPhase
         { runCopy = \destdir ->
             annotateFailure mlogFile InstallFailed $
@@ -258,7 +264,7 @@ buildAndRegisterUnpackedPackage
 
     -- Test phase
     whenTest $
-      delegate $
+      timedDelegate $
         PBTestPhase $
           annotateFailure mlogFile TestsFailed $
             setup
@@ -270,7 +276,7 @@ buildAndRegisterUnpackedPackage
 
     -- Bench phase
     whenBench $
-      delegate $
+      timedDelegate $
         PBBenchPhase $
           annotateFailure mlogFile BenchFailed $
             setup
@@ -282,7 +288,7 @@ buildAndRegisterUnpackedPackage
 
     -- Repl phase
     whenRepl $
-      delegate $
+      timedDelegate $
         PBReplPhase $
           annotateFailure mlogFile ReplFailed $
             setupInteractive
@@ -295,6 +301,33 @@ buildAndRegisterUnpackedPackage
     return ()
     where
       uid = installedUnitId rpkg
+
+      timedDelegate :: forall r. PackageBuildingPhase r -> IO r
+      timedDelegate phase
+        | buildSettingBuildTimings = do
+            t0 <- getMonotonicTime
+            let
+              printTiming :: String -> IO ()
+              printTiming suffix = do
+                t1 <- getMonotonicTime
+                let
+                  elapsed = t1 - t0
+                  pkgstr = prettyShow (packageId rpkg)
+                  msg =
+                    unwords
+                      [ "[build-timings]"
+                      , buildPhaseName phase
+                      , pkgstr
+                      , -- Print milliseconds (3 decimal places)
+                        printf "%.3fs" elapsed
+                      , suffix
+                      ]
+                notice verbosity msg
+            r <- delegate phase `onException` printTiming "(failed)"
+            !_ <- evaluate r
+            printTiming ""
+            return r
+        | otherwise = delegate phase
 
       comp_par_strat = case maybe_semaphore of
         Just sem_name -> Cabal.toFlag (getSemaphoreName sem_name)
@@ -956,6 +989,16 @@ annotateFailure mlogFile annotate action =
 --------------------------------------------------------------------------------
 -- * Other Utils
 --------------------------------------------------------------------------------
+
+-- | Display name for each build phase, used in timing output.
+buildPhaseName :: PackageBuildingPhase r -> String
+buildPhaseName PBConfigurePhase{} = "configure"
+buildPhaseName PBBuildPhase{} = "build"
+buildPhaseName PBHaddockPhase{} = "haddock"
+buildPhaseName PBReplPhase{} = "repl"
+buildPhaseName PBInstallPhase{} = "install"
+buildPhaseName PBTestPhase{} = "test"
+buildPhaseName PBBenchPhase{} = "bench"
 
 hasValidHaddockTargets :: ElaboratedConfiguredPackage -> Bool
 hasValidHaddockTargets ElaboratedConfiguredPackage{..}
