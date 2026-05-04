@@ -289,12 +289,17 @@ instance Show RuleBinary where
 -- | A rule with static dependencies.
 --
 -- Prefer using this smart constructor instead of v'Rule' whenever possible.
+--
+-- See also 'dynamicRule' which adds support for dynamic dependencies.
 staticRule
   :: forall arg
    . Typeable arg
   => Command arg (IO ())
+  -- ^ command to execute the rule
   -> [Dependency]
+  -- ^ static dependencies of the rule
   -> NE.NonEmpty Location
+  -- ^ rule results
   -> Rule
 staticRule cmd dep res =
   Rule
@@ -307,17 +312,32 @@ staticRule cmd dep res =
     , results = res
     }
 
--- | A rule with dynamic dependencies.
+-- | A rule with dynamic dependencies, which consists of two parts:
+--
+--  - a dynamic dependency computation, that returns additional edges to
+--    be added to the build graph, together with an additional piece of data,
+--  - the command to execute the rule itself, which receives the additional
+--    piece of data returned by the dependency computation.
 --
 -- Prefer using this smart constructor instead of v'Rule' whenever possible.
+--
+-- Use 'staticRule' if you do not have any dynamic dependencies.
 dynamicRule
   :: forall depsArg depsRes arg
    . (Typeable depsArg, Typeable depsRes, Typeable arg)
   => StaticPtr (Dict (Binary depsRes, Show depsRes, Eq depsRes))
+  -- ^ evidence that the result of the dynamic dependency command
+  -- is serialisable
   -> Command depsArg (IO ([Dependency], depsRes))
+  -- ^ dynamic dependency computation, returning dynamic dependencies
+  -- and an additional piece of data to be consumed by the main rule command
   -> Command arg (depsRes -> IO ())
+  -- ^ main rule command; takes in the piece of data returned by the dyn-deps
+  -- command
   -> [Dependency]
+  -- ^ static dependencies of the rule
   -> NE.NonEmpty Location
+  -- ^ rule results
   -> Rule
 dynamicRule dict depsCmd action dep res =
   Rule
@@ -624,6 +644,9 @@ runCommand (Command{actionPtr = UserStatic ptr, actionArg = ScopedArgument arg})
 --   - for a rule with static dependencies, a single command,
 --   - for a rule with dynamic dependencies, a command for computing dynamic
 --     dependencies, and a command for executing the rule.
+--
+-- Prefer using 'staticRule' and 'dynamicRule' instead of the (internal)
+-- constructors of 'RuleCommands'.
 data
   RuleCommands
     (scope :: Scope)
