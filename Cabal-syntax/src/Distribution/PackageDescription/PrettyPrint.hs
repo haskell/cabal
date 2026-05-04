@@ -1,4 +1,6 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -38,6 +40,7 @@ import Prelude ()
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
 import Distribution.FieldGrammar (PrettyFieldGrammarWith', PrettyFieldGrammar', prettyFieldGrammar)
+import Distribution.Fields.Field
 import Distribution.Fields.Pretty
 import Distribution.Parsec.Position
 import Distribution.PackageDescription
@@ -63,10 +66,13 @@ import qualified Distribution.Types.SetupBuildInfo.Lens as L
 
 import Text.PrettyPrint (Doc, char, hsep, parens, text)
 
+import Data.List (groupBy, sortBy)
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import qualified Distribution.Compat.NonEmptySet as NES
 
 import qualified Distribution.Types.Modify as Mod
+import qualified Text.PrettyPrint as PP
+import Distribution.Types.Modify (AttachPosition)
 
 -- | Writes a .cabal file from a generic package description
 writeGenericPackageDescription :: FilePath -> GenericPackageDescription -> IO ()
@@ -122,7 +128,9 @@ ppPackageDescription v pd =
 
 ppPackageDescriptionAnn :: CabalSpecVersion -> PackageDescriptionWith Mod.HasAnn -> [PrettyFieldWith Mod.HasAnn]
 ppPackageDescriptionAnn v pd =
-  prettyFieldGrammar v packageDescriptionFieldGrammar pd
+  map
+    (\(_, fname, fdoc) -> PrettyField fname fdoc)
+    (prettyFieldGrammar v packageDescriptionFieldGrammar pd)
     ++ ppSourceReposAnn v (sourceRepos pd)
 
 ppSourceRepos :: CabalSpecVersion -> [SourceRepo] -> [PrettyField]
@@ -140,9 +148,22 @@ ppSourceRepo v repo =
 
 ppSourceRepoAnn :: CabalSpecVersion -> SourceRepo -> PrettyFieldWith Mod.HasAnn
 ppSourceRepoAnn v repo =
-  -- TODO(leana8959): push out position
-  PrettySection (zeroPos, "source-repository") [pretty kind] $
-    prettyFieldGrammar v (sourceRepoFieldGrammar @Mod.HasAnn kind) repo
+  let fields = prettyFieldGrammar v (sourceRepoFieldGrammar @Mod.HasAnn kind) repo
+
+      groupedFields :: [[(Maybe Position, (Position, FieldName), (Position, Doc))]]
+      groupedFields = groupBy (\u v -> fst3 u == fst3 v) $ sortBy (\u v -> fst3 u `compare` fst3 v) fields
+        where fst3 (a, _, _) = a
+
+      toSection :: [(Maybe Position, (Position, FieldName), (Position, Doc))] -> [PrettyFieldWith Mod.HasAnn]
+      toSection ((sectionPos, fname, fdoc) : xs) =
+        let withoutSectionPos = map (\(_, name, doc) -> PrettyField name doc) xs
+        in  [ PrettySection (fromMaybe zeroPos sectionPos, "source-repository") [pretty kind] withoutSectionPos
+            ]
+  in  case concatMap toSection groupedFields of
+        [] -> mempty
+        [x] -> x
+        -- TODO(leana8959): think of a way to guarantee this invariant
+        _ -> error "should only have one group"
   where
     kind = repoKind repo
 
@@ -231,6 +252,7 @@ ppCondLibraryAnn :: CabalSpecVersion -> Maybe (CondTree ConfVar (LibraryWith Mod
 ppCondLibraryAnn _ Nothing = mempty
 ppCondLibraryAnn v (Just condTree) =
   pure $
+    -- TODO(leana8959): assert that there are no more than one library ?
     PrettySection (zeroPos, "library") [] $
       ppCondTree2Ann v (libraryFieldGrammar LMainLibName) condTree
 

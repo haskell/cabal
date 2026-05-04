@@ -1,4 +1,6 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE InstanceSigs #-}
@@ -33,18 +35,37 @@ import qualified Distribution.Types.Modify as Mod
 
 -- TODO(leana8959): maybe we can compare this to [Field Position] and thus form a roundtrip test.
 newtype PrettyFieldGrammar (m :: Mod.HasAnnotation) s a = PrettyFG
-  { fieldGrammarPretty :: CabalSpecVersion -> s -> [PrettyFieldWith m]
+  { fieldGrammarPretty :: CabalSpecVersion -> s -> PrettyFieldGrammarOut m
   }
   deriving (Functor)
 
-instance Applicative (PrettyFieldGrammar m s) where
+-- Toggle between legacy print and new exact print
+--
+-- Sections are not modeled in Field grammar.
+-- PrettyFieldGrammar should output a field and not think about sections.
+--
+-- Outputting sections in field grammar would require us to fuse elements of the same section together.
+type family PrettyFieldGrammarOut (m :: Mod.HasAnnotation) where
+  PrettyFieldGrammarOut Mod.HasNoAnn = [PrettyField]
+  PrettyFieldGrammarOut Mod.HasAnn =
+      [ ( Maybe Position
+        , (Position, FieldName)
+        , (Position, PP.Doc)
+        )
+      ]
+
+instance Applicative (PrettyFieldGrammar Mod.HasNoAnn s) where
+  pure _ = PrettyFG (\_ _ -> mempty)
+  PrettyFG f <*> PrettyFG x = PrettyFG (\v s -> f v s <> x v s)
+
+instance Applicative (PrettyFieldGrammar Mod.HasAnn s) where
   pure _ = PrettyFG (\_ _ -> mempty)
   PrettyFG f <*> PrettyFG x = PrettyFG (\v s -> f v s <> x v s)
 
 -- | We can use 'PrettyFieldGrammar' to pp print the @s@.
 --
 -- /Note:/ there is not trailing @($+$ text "")@.
-prettyFieldGrammar :: CabalSpecVersion -> PrettyFieldGrammar m s a -> s -> [PrettyFieldWith m]
+prettyFieldGrammar :: CabalSpecVersion -> PrettyFieldGrammar m s a -> s -> PrettyFieldGrammarOut m
 prettyFieldGrammar = flip fieldGrammarPretty
 
 instance FieldGrammarWith Mod.HasNoAnn Pretty PrettyFieldGrammar where
@@ -180,7 +201,7 @@ instance FieldGrammarWith Mod.HasAnn Pretty PrettyFieldGrammar where
       pp xs =
         -- always print the field, even its Doc is empty.
         -- i.e. don't use ppField
-        [ PrettyField (zeroPos, toUTF8BS n) (zeroPos, PP.vcat $ map PP.text $ lines s)
+        [ (Just zeroPos,,) (zeroPos, toUTF8BS n) (zeroPos, PP.vcat $ map PP.text $ lines s)
         | (n, s) <- xs
         -- fnPfx `isPrefixOf` n
         ]
@@ -244,15 +265,21 @@ ppField name fielddoc
   | PP.isEmpty fielddoc = []
   | otherwise = [PrettyField name fielddoc]
 
-ppFieldPos :: FieldName -> [(Positions, Doc)] -> [PrettyFieldWith Mod.HasAnn]
+ppFieldPos :: FieldName -> [(Positions, Doc)] -> PrettyFieldGrammarOut Mod.HasAnn
 ppFieldPos name possFieldDocs =
-  [ PrettyField (fieldNamePos poss, name) (fieldLinePos poss, fieldDoc)
+  [ (,,)
+      (sectionPos poss)
+      (fieldNamePos poss, name)
+      (fieldLinePos poss, fieldDoc)
   | (poss, fieldDoc) <- possFieldDocs
   ]
 
 -- TODO(leana8959): push out position
 -- | Doesn't push out real position, tbd
-ppFieldFakePos :: FieldName -> Doc -> [PrettyFieldWith Mod.HasAnn]
+ppFieldFakePos :: FieldName -> Doc -> PrettyFieldGrammarOut Mod.HasAnn
 ppFieldFakePos name fieldDoc =
-  [ PrettyField (zeroPos, name) (zeroPos, fieldDoc)
+  [ (,,)
+      (Just zeroPos)
+      (zeroPos, name)
+      (zeroPos, fieldDoc)
   ]
