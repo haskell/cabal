@@ -16,6 +16,7 @@ module Distribution.Fields.Pretty
     CommentPosition (..)
   , PrettyField
   , PrettyFieldWith (..)
+  , filterFields
   , showFields
   , exactShowFields
   , showFields'
@@ -90,6 +91,19 @@ deriving instance Show (PrettyFieldWith Mod.HasAnn)
 -- between comment lines.
 showFields :: (ann -> CommentPosition) -> [PrettyField] -> String
 showFields rann = showFields' rann (const id) 4
+
+-- | Only for the prototype.
+--   We use zeroPos (Position 0 0) as a marker for data that shouldn't be printed.
+--   This function filters them out.
+filterFields :: [PrettyFieldWith Mod.HasAnn] -> [PrettyFieldWith Mod.HasAnn]
+filterFields = mapMaybe $ \field -> case field of
+  PrettyField (fnamePos, _) _ -> do
+    guard (fnamePos /= zeroPos)
+    pure field
+  PrettySection sname@(snamePos, _) args fields -> do
+    let fields' = filterFields fields
+    guard (not (null fields'))
+    pure (PrettySection sname args fields')
 
 exactShowFields :: [PrettyFieldWith Mod.HasAnn] -> String
 exactShowFields =
