@@ -5,7 +5,7 @@ variables:
   # Commit of ghc/ci-images repository from which to pull Docker images
   DOCKER_REV: "be4ac2cd18f38e63b263e2a27c76a7c279385796"
 
-  GHC_VERSION: 9.10.2
+  GHC_VERSION: 9.10.3
   CABAL_INSTALL_VERSION: 3.14.2.0
 
 workflow:
