@@ -1,9 +1,12 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE StaticPointers #-}
+
+{-# OPTIONS_GHC -Wno-unticked-promoted-constructors #-}
 
 {-|
 Module: Distribution.Simple.SetupHooks
@@ -76,6 +79,8 @@ module Distribution.Simple.SetupHooks
 
     -- $rulesAPI
   , RulesM
+    -- | Rule names (use @OverloadedStrings@ or 'Data.String.fromString')
+  , ShortText
   , registerRule
   , registerRule_
 
@@ -100,11 +105,40 @@ module Distribution.Simple.SetupHooks
   , autogenComponentModulesDir
   , componentBuildDir
 
+    -- **** Path types and utilities
+  , RelativePath
+  , sameDirectory
+  , getSymbolicPath
+  , makeRelativePathEx
+  , moduleNameSymbolicPath
+  , FileLike(..)
+  , PathLike(..)
+
+    -- ***** Directory types
+  , Source, Build, Pkg, CWD
+
+    -- **** File search
+  , findAndMonitorDirFileGlob
+  , findAndMonitorSourceDirsFileExt
+
+    -- ***** File glob patterns
+  , Glob
+  , GlobSyntaxError(..)
+  , parseFileGlob
+
     -- *** Actions
   , RuleCommands -- gnarly constructors not exposed; API is via 'staticRule' and 'dynamicRule'
   , Command
   , mkCommand
   , Dict(..)
+    -- | Custom datatypes used as rule command arguments must implement
+    -- serialisation. Derive these instances using @DeriveAnyClass@ and
+    -- @DeriveGeneric@:
+    --
+    -- > data MyInput = MyInput { .. }
+    -- >   deriving stock    ( Eq, Show, Generic )
+    -- >   deriving anyclass Binary
+  , Binary
 
 
   -- *** File/directory monitoring
@@ -140,10 +174,21 @@ module Distribution.Simple.SetupHooks
   , ProgramDb
   , addKnownPrograms
   , configureUnconfiguredProgram
+  , lookupProgram
   , simpleProgram
+  , runProgramCwd
+
+    -- *** IO utilities
+  , warn
+  , createDirectoryIfMissingVerbose
+  , rewriteFileEx
 
     -- ** General @Cabal@ datatypes
-  , Verbosity, Compiler(..), Platform(..), Suffix(..)
+  , Compiler(..), Platform(..), Suffix(..)
+
+    -- *** Verbosity
+  , Verbosity, VerbosityFlags, VerbosityHandles
+  , mkVerbosity, defaultVerbosityHandles
 
     -- *** Package information
   , LocalBuildConfig, LocalBuildInfo, PackageBuildDescr
@@ -154,8 +199,16 @@ module Distribution.Simple.SetupHooks
 
   , PackageDescription(..)
 
+    -- **** LocalBuildInfo utilities
+  , localPkgDescr
+  , mbWorkDirLBI
+  , withPrograms
+  , interpretSymbolicPathLBI
+  , componentBuildInfo
+
     -- *** Component information
   , Component(..), ComponentName(..), componentName
+  , ModuleName
   , BuildInfo(..), emptyBuildInfo
   , TargetInfo(..), ComponentLocalBuildInfo(..)
 
@@ -168,6 +221,10 @@ module Distribution.Simple.SetupHooks
 
   )
 where
+import Distribution.Compat.Binary
+  ( Binary )
+import Distribution.ModuleName
+  ( ModuleName )
 import Distribution.PackageDescription
   ( PackageDescription(..)
   , Library(..), ForeignLib(..)
@@ -184,15 +241,25 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Errors
   ( CabalException(SetupHooksException) )
 import Distribution.Simple.FileMonitor.Types
+  hiding ( Glob )
+import Distribution.Simple.Glob
+  ( Glob, GlobSyntaxError(..)
+  , globMatches, runDirFileGlob, parseFileGlob
+  )
 import Distribution.Simple.Install
   ( installFileGlob )
 import Distribution.Simple.LocalBuildInfo
-  ( componentBuildDir )
+  ( componentBuildDir, componentBuildInfo
+  , mbWorkDirLBI, interpretSymbolicPathLBI
+  )
 import Distribution.Simple.PreProcess.Types
   ( Suffix(..) )
+import Distribution.Simple.Program
+  ( runProgramCwd )
 import Distribution.Simple.Program.Db
   ( ProgramDb, addKnownPrograms
   , configureUnconfiguredProgram
+  , lookupProgram
   )
 import Distribution.Simple.Program.Find
   ( simpleProgram )
@@ -213,7 +280,11 @@ import Distribution.Simple.SetupHooks.Errors
 import Distribution.Simple.SetupHooks.Internal
 import Distribution.Simple.SetupHooks.Rule as Rule
 import Distribution.Simple.Utils
-  ( dieWithException )
+  ( dieWithException
+  , warn
+  , createDirectoryIfMissingVerbose
+  , rewriteFileEx
+  )
 import Distribution.System
   ( Platform(..) )
 import Distribution.Types.Component
@@ -221,15 +292,25 @@ import Distribution.Types.Component
 import Distribution.Types.ComponentLocalBuildInfo
   ( ComponentLocalBuildInfo(..) )
 import Distribution.Types.LocalBuildInfo
-  ( LocalBuildInfo(..) )
+  ( LocalBuildInfo(..), withPrograms )
 import Distribution.Types.LocalBuildConfig
   ( LocalBuildConfig, PackageBuildDescr )
 import Distribution.Types.TargetInfo
   ( TargetInfo(..) )
+import Distribution.Utils.Path
+  ( SymbolicPath, CWD, Pkg, FileOrDir(..)
+  , interpretSymbolicPath, makeRelativePathEx
+  , RelativePath, Source, Build
+  , getSymbolicPath, sameDirectory, moduleNameSymbolicPath
+  , FileLike(..), PathLike(..)
+  )
 import Distribution.Utils.ShortText
   ( ShortText )
 import Distribution.Verbosity
-  ( Verbosity )
+  ( Verbosity
+  , VerbosityFlags, VerbosityHandles
+  , mkVerbosity, defaultVerbosityHandles
+  )
 
 import Control.Monad
   ( void )
@@ -242,6 +323,8 @@ import qualified Control.Monad.Trans.State as State
 import qualified Control.Monad.Trans.Writer.CPS as Writer
 import Data.Foldable
   ( for_ )
+import Data.Traversable
+  ( for )
 import Data.Map.Strict as Map
   ( insertLookupWithKey )
 
@@ -617,9 +700,61 @@ registerRule_ i r = void $ registerRule i r
 -- | Declare additional monitored objects for the collection of all rules.
 --
 -- When these monitored objects change, the rules are re-computed.
+--
+-- See also 'findAndMonitorDirFileGlob' which combines the search and the
+-- monitoring.
 addRuleMonitors :: Monad m => [MonitorFilePath] -> RulesT m ()
 addRuleMonitors = RulesT . lift . lift . Writer.tell
 {-# INLINEABLE addRuleMonitors #-}
 
--- TODO: add API functions that search and declare the appropriate monitoring
--- at the same time.
+-- | Retrieve all files matching the given 'Glob' in the specified search
+-- directories.
+--
+-- See also the canned 'findAndMonitorSourceDirsFileExt' for the simple
+-- case of monitoring a file extension in the source directories of a component.
+findAndMonitorDirFileGlob
+  :: MonadIO m
+  => Maybe (SymbolicPath CWD (Dir Pkg))
+  -> Verbosity
+  -> [SymbolicPath Pkg (Dir dir)]
+     -- ^ search directories
+  -> Glob
+     -- ^ pattern to match against
+  -> RulesT m [Location]
+findAndMonitorDirFileGlob mbWorkDir verb searchDirs glob = do
+  matchingFiles <- fmap concat $ liftIO $ for searchDirs $ \srcDir -> do
+    let root = interpretSymbolicPath mbWorkDir srcDir
+    matches <- runDirFileGlob verb Nothing root glob
+    return
+      [ Location srcDir (makeRelativePathEx match)
+      | match <- globMatches matches
+      ]
+  addRuleMonitors [monitorFileGlobExistence $ RootedGlob FilePathRelative glob]
+  return matchingFiles
+{-# INLINEABLE findAndMonitorDirFileGlob #-}
+
+-- | Scans the component source directories for files with the given extension,
+-- and monitors the resulting file glob.
+findAndMonitorSourceDirsFileExt
+  :: MonadIO m
+  => PreBuildComponentInputs
+  -> String -- ^ extension (not including the @.@)
+  -> RulesT m [Location]
+findAndMonitorSourceDirsFileExt
+  PreBuildComponentInputs
+    { localBuildInfo = lbi
+    , buildingWhat = what
+    , targetInfo = tgt
+    } ext =
+  let
+    comp       = targetComponent tgt
+    verbosity  = mkVerbosity defaultVerbosityHandles (buildingWhatVerbosity what)
+    mbWorkDir  = mbWorkDirLBI lbi
+    searchDirs = hsSourceDirs $ componentBuildInfo comp
+    glob       = either (error . show) id $
+                   parseFileGlob
+                     (specVersion $ localPkgDescr lbi)
+                     ("**/*." ++ ext)
+  in
+    findAndMonitorDirFileGlob mbWorkDir verbosity searchDirs glob
+{-# INLINEABLE findAndMonitorSourceDirsFileExt #-}
