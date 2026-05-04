@@ -612,8 +612,8 @@ setupWrapper
   -> IO (SetupRunnerRes setupSpec)
 setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wrapperArgs = do
   let allowInLibrary = case wrapperArgs of
-        NotInLibrary -> Don'tAllowInLibrary
         InLibraryArgs {} -> AllowInLibrary
+        NotInLibrary -> Don'tAllowInLibrary
   ASetup (setup :: Setup kind) <- getSetup verbosity options mpkg allowInLibrary
   let version = setupVersion setup
   flags <- getFlags version
@@ -643,21 +643,30 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
         InLibraryArgs libArgs ->
           case libArgs of
             InLibraryConfigureArgs elabSharedConfig elabReadyPkg -> do
-              -- See (1)(a) in Note [Constructing the ProgramDb]
+              -- Start from the pre-configured compiler ProgramDb, augmented
+              -- with all builtin programs (restored as unconfigured).
+              -- This ensures:
+              --   (a) configureAllKnownPrograms inside configureFinal skips
+              --       compiler programs (already configured at project level),
+              --   (b) builtin preprocessors like alex and happy are present as
+              --       unconfigured programs, so configureFinal's
+              --       configureAllKnownPrograms can find them using the
+              --       per-package search path (respecting extra-prog-path).
+              -- See (1) in Note [Constructing the ProgramDb].
+
+              -- Apply per-package user-supplied program args/paths.
+              -- See (2)(a) in Note [Constructing the ProgramDb]
               baseProgDb <-
+                -- Use 'mkProgramDb' to pass user-supplied per-package
+                -- program options (--PROG-options=...).
+                mkProgramDb verbHandles flags
+                  (restoreProgramDb builtinPrograms $
+                    pkgConfigCompilerProgs elabSharedConfig)
+              setupProgDb <-
                 prependProgramSearchPath verbosity
                   (useExtraPathEnv options)
-                  (useExtraEnvOverrides options) =<<
-                  mkProgramDb verbHandles flags -- Passes user-supplied arguments to e.g. GHC
-                    (restoreProgramDb builtinPrograms $
-                      useProgramDb options) -- Recall that 'useProgramDb' is set to 'pkgConfigCompilerProgs'
-              -- See (2) in Note [Constructing the ProgramDb]
-              setupProgDb <-
-                configCompilerProgDb
-                  verbosity
-                  (pkgConfigCompiler elabSharedConfig)
+                  (useExtraEnvOverrides options)
                   baseProgDb
-                  Nothing -- we use configProgramPaths instead
               lbi0 <-
                 InLibrary.configure
                   (InLibrary.libraryConfigureInputsFromElabPackage
@@ -670,7 +679,7 @@ setupWrapper verbosity options mpkg cmd getCommonFlags getFlags getExtraArgs wra
                   )
                   flags
               let progs0 = LBI.withPrograms lbi0
-              -- See (1)(b) in Note [Constructing the ProgramDb]
+              -- See (2)(b) in Note [Constructing the ProgramDb]
               progs1 <- updatePathProgDb verbosity progs0
               let
                   lbi =
@@ -715,7 +724,24 @@ includes the call to 'configCompilerEx'.
 To obtain a program database with all the required information, we do a few
 things:
 
-  (1)
+  (1) We retrieve the pre-configured compiler program database (typically
+      containing ghc, ghc-pkg, haddock, and toolchain programs such as ar, ld),
+      and restore all builtin programs (alex, happy, hsc2hs, ...) as unconfigured
+      entries on top of it.
+
+      This serves two purposes:
+
+        (a) The compiler programs (ghc, ghc-pkg, haddock, hsc2hs, ...) that were
+            already configured at the project level appear in 'configuredProgs'.
+            The 'configureAllKnownPrograms' call inside the Cabal per-package
+            'configureFinal' skips them, saving redundant work.
+
+        (b) Builtin preprocessors (e.g. alex, happy) are NOT configured at the
+            project level; restoring them here means the call to
+            'configureAllKnownPrograms' in 'configureFinal' can find them using
+            the per-package search path (including 'extra-prog-path').
+
+  (2)
     (a) When building a package with internal build tools, we must ensure that
         these build tools are available in PATH, with appropriate environment
         variable overrides for their data directory. To do this, we call
@@ -724,12 +750,6 @@ things:
     (b) Moreover, these programs must be available in the search paths for the
         compiler itself, in case they are run at compile-time (e.g. with a Template
         Haskell splice). We achieve this using 'updatePathProgDb'.
-
-  (2) Given the compiler, we must compute the ProgramDb of programs that are
-      specified alongside the compiler, such as ghc-pkg, haddock, and toolchain
-      programs such as ar, ld.
-
-      We do this using the function 'configCompilerProgDb'.
 -}
 
 -- ------------------------------------------------------------
