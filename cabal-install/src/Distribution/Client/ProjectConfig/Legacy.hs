@@ -12,12 +12,10 @@
 -- | Project configuration, implementation in terms of legacy types.
 module Distribution.Client.ProjectConfig.Legacy
   ( -- Project config skeletons
-    ProjectConfigSkeleton
-  , parseProject
+    parseProject
   , instantiateProjectConfigSkeletonFetchingCompiler
   , instantiateProjectConfigSkeletonWithCompiler
   , singletonProjectConfigSkeleton
-  , projectSkeletonImports
 
     -- * Project config in terms of legacy types
   , LegacyProjectConfig
@@ -35,7 +33,6 @@ module Distribution.Client.ProjectConfig.Legacy
   , renderPackageLocationToken
   ) where
 
-import Data.Coerce (coerce)
 import Distribution.Client.Compat.Prelude
 
 import Distribution.Types.Flag (FlagName, parsecFlagAssignment)
@@ -58,12 +55,13 @@ import Distribution.Client.CmdInstall.ClientInstallFlags
   , defaultClientInstallFlags
   )
 
-import Distribution.Compat.Lens (toListOf, view)
+import Distribution.Compat.Lens (toListOf)
 
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.ProjectConfigPath
 
 import Distribution.Client.NixStyleOptions (NixStyleFlags (..))
+import Distribution.Client.ProjectConfig.Import (ProjectConfigSkeleton, cyclicalImportMsg, fetchImport, untrimmedUriImportMsg)
 import Distribution.Client.ProjectFlags (ProjectFlags (..), defaultProjectFlags, projectFlagsOptions)
 import Distribution.Client.Setup
   ( ConfigExFlags (..)
@@ -141,7 +139,6 @@ import Distribution.Types.CondTree
   , ignoreConditions
   , mapTreeConds
   , mapTreeData
-  , traverseCondTreeA
   , traverseCondTreeV
   )
 import Distribution.Types.SourceRepo (RepoType)
@@ -150,7 +147,6 @@ import Distribution.Utils.NubList
   , overNubList
   , toNubList
   )
-import Distribution.Utils.String (trim)
 
 import Distribution.Client.HttpUtils
 import Distribution.Client.ParseUtils
@@ -201,9 +197,9 @@ import qualified Data.ByteString.Char8 as BS
 import Data.Functor ((<&>))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Network.URI (URI (..), nullURIAuth, parseURI)
-import System.Directory (createDirectoryIfMissing, makeAbsolute)
-import System.FilePath (isAbsolute, isPathSeparator, makeValid, splitFileName, (</>))
+import Network.URI (URI (..), nullURIAuth)
+import System.Directory (makeAbsolute)
+import System.FilePath (splitFileName)
 import Text.PrettyPrint
   ( Doc
   , render
@@ -214,10 +210,6 @@ import qualified Text.PrettyPrint as Disp
 ------------------------------------------------------------------
 -- Handle extended project config files with conditionals and imports.
 --
-
--- | ProjectConfigSkeleton is a tree of conditional blocks and imports wrapping a config. It can be finalized by providing the conditional resolution info
--- and then resolving and downloading the imports
-type ProjectConfigSkeleton = CondTree ConfVar ([ProjectConfigPath], ProjectConfig)
 
 singletonProjectConfigSkeleton :: ProjectConfig -> ProjectConfigSkeleton
 singletonProjectConfigSkeleton x = CondNode (mempty, x) mempty
@@ -241,9 +233,6 @@ instantiateProjectConfigSkeletonWithCompiler os arch impl _flags skel = go $ map
       (Lit True) -> [go t]
       (Lit False) -> maybe ([]) ((: []) . go) mf
       _ -> error $ "unable to process condition: " ++ show cnd -- TODO it would be nice if there were a pretty printer
-
-projectSkeletonImports :: ProjectConfigSkeleton -> [ProjectConfigPath]
-projectSkeletonImports = fst . view traverseCondTreeA
 
 -- | Parses a project from its root config file, typically cabal.project.
 parseProject
@@ -294,9 +283,10 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
             when
               (isUntrimmedUriConfigPath importLocPath)
               (noticeDoc verbosity $ untrimmedUriImportMsg (Disp.text "Warning:") importLocPath)
-            let fs = (\z -> CondNode ([normLocPath], z) mempty) <$> fieldsToConfig normSource (reverse acc)
-            res <- parseProjectSkeleton cacheDir httpTransport verbosity projectDir importLocPath . ProjectConfigToParse =<< fetchImportConfig normLocPath
+            let parser = parseProjectSkeleton cacheDir httpTransport verbosity projectDir importLocPath
+            res <- fetchImport parser cacheDir httpTransport verbosity projectDir normLocPath
             rest <- go [] xs
+            let fs = (\z -> CondNode ([normLocPath], z) mempty) <$> fieldsToConfig normSource (reverse acc)
             pure . fmap mconcat . sequence $ [projectParse Nothing normSource fs, res, rest]
       (ParseUtils.Section l "if" p xs') -> do
         normSource <- canonicalizeConfigPath projectDir source
@@ -361,22 +351,6 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
         addWarnings (ProjectParseOk ws' x') = ProjectParseOk (ws' ++ ((p,) <$> ws)) x'
         addWarnings x' = x'
     liftPR p _ (ParseFailed e) = pure $ projectParseFail Nothing (Just p) e
-
-    fetchImportConfig :: ProjectConfigPath -> IO BS.ByteString
-    fetchImportConfig (ProjectConfigPath (pci :| _)) = do
-      debug verbosity $ "fetching import: " ++ pci
-      fetch pci
-
-    fetch :: FilePath -> IO BS.ByteString
-    fetch pci = case parseURI $ trim pci of
-      Just uri -> do
-        let fp = cacheDir </> map (\x -> if isPathSeparator x then '_' else x) (makeValid $ show uri)
-        createDirectoryIfMissing True cacheDir
-        _ <- downloadURI httpTransport verbosity uri fp
-        BS.readFile fp
-      Nothing ->
-        BS.readFile $
-          if isAbsolute pci then pci else coerce projectDir </> pci
 
     modifiesCompiler :: ProjectConfig -> Bool
     modifiesCompiler pc = isSet projectConfigHcFlavor || isSet projectConfigHcPath || isSet projectConfigHcPkg

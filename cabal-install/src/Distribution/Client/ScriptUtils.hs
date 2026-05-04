@@ -58,9 +58,9 @@ import Distribution.Client.ProjectConfig
   , withGlobalConfig
   , withProjectOrGlobalConfig
   )
+import Distribution.Client.ProjectConfig.Import (ProjectConfigSkeleton)
 import Distribution.Client.ProjectConfig.Legacy
-  ( ProjectConfigSkeleton
-  , instantiateProjectConfigSkeletonFetchingCompiler
+  ( instantiateProjectConfigSkeletonFetchingCompiler
   , parseProject
   )
 import Distribution.Client.ProjectConfig.Types (ProjectConfigToParse (..))
