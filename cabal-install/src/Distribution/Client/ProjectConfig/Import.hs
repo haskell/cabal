@@ -7,7 +7,7 @@ module Distribution.Client.ProjectConfig.Import
   ( -- * Parsing skeleton
     ProjectConfigSkeleton
   , projectSkeletonImports
-  , fetchImportParse
+  , fetchImport
 
     -- * Messages
   , docProjectConfigFiles
@@ -41,7 +41,7 @@ projectSkeletonImports :: ProjectConfigSkeleton -> [ProjectConfigPath]
 projectSkeletonImports = fst . view traverseCondTreeA
 
 -- | Fetch a local file import or remote URL import and parse it.
-fetchImportParse
+fetchImport
   :: (ProjectConfigToParse -> IO a)
   -> FilePath
   -> HttpTransport
@@ -49,7 +49,7 @@ fetchImportParse
   -> FilePath
   -> ProjectConfigPath
   -> IO a
-fetchImportParse parser cacheDir httpTransport verbosity projectDir normLocPath =
+fetchImport parser cacheDir httpTransport verbosity projectDir normLocPath =
   fetchImportConfig normLocPath >>= runKleisli (arr ProjectConfigToParse >>> Kleisli parser) . snd
   where
     fetchImportConfig :: ProjectConfigPath -> IO (Maybe URI, BS.ByteString)

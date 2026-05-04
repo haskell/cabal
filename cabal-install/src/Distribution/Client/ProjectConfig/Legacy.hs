@@ -61,7 +61,7 @@ import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.ProjectConfigPath
 
 import Distribution.Client.NixStyleOptions (NixStyleFlags (..))
-import Distribution.Client.ProjectConfig.Import (ProjectConfigSkeleton, cyclicalImportMsg, fetchImportParse, untrimmedUriImportMsg)
+import Distribution.Client.ProjectConfig.Import (ProjectConfigSkeleton, cyclicalImportMsg, fetchImport, untrimmedUriImportMsg)
 import Distribution.Client.ProjectFlags (ProjectFlags (..), defaultProjectFlags, projectFlagsOptions)
 import Distribution.Client.Setup
   ( ConfigExFlags (..)
@@ -284,7 +284,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
               (isUntrimmedUriConfigPath importLocPath)
               (noticeDoc verbosity $ untrimmedUriImportMsg (Disp.text "Warning:") importLocPath)
             let parser = parseProjectSkeleton cacheDir httpTransport verbosity projectDir importLocPath
-            res <- fetchImportParse parser cacheDir httpTransport verbosity projectDir normLocPath
+            res <- fetchImport parser cacheDir httpTransport verbosity projectDir normLocPath
             rest <- go [] xs
             let fs = (\z -> CondNode ([normLocPath], z) mempty) <$> fieldsToConfig normSource (reverse acc)
             pure . fmap mconcat . sequence $ [projectParse Nothing normSource fs, res, rest]

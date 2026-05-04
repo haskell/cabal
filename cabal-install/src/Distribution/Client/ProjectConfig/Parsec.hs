@@ -15,7 +15,7 @@ module Distribution.Client.ProjectConfig.Parsec
 import Distribution.CabalSpecVersion
 import Distribution.Client.HttpUtils
 import Distribution.Client.ProjectConfig.FieldGrammar (packageConfigFieldGrammar, projectConfigFieldGrammar)
-import Distribution.Client.ProjectConfig.Import (ProjectConfigSkeleton, cyclicalImportMsg, fetchImportParse, untrimmedUriImportMsg)
+import Distribution.Client.ProjectConfig.Import (ProjectConfigSkeleton, cyclicalImportMsg, fetchImport, untrimmedUriImportMsg)
 import qualified Distribution.Client.ProjectConfig.Lens as L
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Types.Repo hiding (repoName)
@@ -133,7 +133,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
                     (isUntrimmedUriConfigPath importLocPath)
                     (noticeDoc verbosity $ untrimmedUriImportMsg (Disp.text "Warning:") importLocPath)
                   let parser = parseProjectSkeleton cacheDir httpTransport verbosity projectDir importLocPath
-                  importParseResult <- fetchImportParse parser cacheDir httpTransport verbosity projectDir normLocPath
+                  importParseResult <- fetchImport parser cacheDir httpTransport verbosity projectDir normLocPath
                   rest <- go [] xs
                   let fs = (\z -> CondNode ([normLocPath], z) mempty) <$> fieldsToConfig normSource (reverse acc)
                   pure . fmap mconcat . sequence $ [fs, importParseResult, rest]
