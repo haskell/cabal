@@ -1168,7 +1168,7 @@ runPreBuildHooks
   pbcRules = do
     let verbosity = mkVerbosity verbHandles $ buildingWhatVerbosity what
     (rules, mons) <- SetupHooks.computeRules verbosity pbci pbcRules
-    SetupHooks.executeRules verbosity lbi tgt rules
+    SetupHooks.executeRules verbosity lbi tgt mons rules
     return mons
 
 -- | Built-in pre-build 'SetupHooks' for a given 'BuildType'.
