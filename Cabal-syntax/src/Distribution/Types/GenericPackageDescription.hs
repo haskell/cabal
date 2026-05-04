@@ -64,7 +64,7 @@ data GenericPackageDescriptionWith (m :: Mod.HasAnnotation) = GenericPackageDesc
   --   Perfectly, PackageIndex should have sum type, so we don't need to
   --   have dummy GPDs.
   , genPackageFlags :: [PackageFlag]
-  , condLibrary :: (Maybe (CondTree ConfVar (LibraryWith m)))
+  , condLibrary :: Maybe (CondTree ConfVar (LibraryWith m))
   , condSubLibraries
       :: [(UnqualComponentName, CondTree ConfVar (LibraryWith m))]
   , condForeignLibs

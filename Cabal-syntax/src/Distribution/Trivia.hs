@@ -33,7 +33,8 @@ instance Semigroup SurroundingText where
 -- | A collection of different kinds of 'Position's, describing
 -- the provenance of a data.
 data Positions = Positions
-  { fieldNamePos :: Position
+  { sectionPos :: Maybe Position
+  , fieldNamePos :: Position
   , fieldLinePos :: Position
   }
   deriving (Show, Eq, Ord, Read, Data)

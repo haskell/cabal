@@ -269,7 +269,7 @@ miniBuildInfoAnnTest = testCase "miniBuildInfo Ann" $ do
   -- We ignore sections now, which necessite goSections to dispatch field gramamr parsers
   let (frontFields, _sections) = takeFields fields
       pr :: ParseResult src (MiniBuildInfo Mod.HasAnn)
-      pr = parseFieldGrammar CabalSpecV3_0 frontFields miniBuildInfoFieldGrammar
+      pr = parseFieldGrammar CabalSpecV3_0 Nothing frontFields miniBuildInfoFieldGrammar
 
       (_warns, pr') = runParseResult pr
 
@@ -295,8 +295,8 @@ smallCabalFileTest = testCase "smallCabalFile" $ do
   let prettyFields = ppGenericPackageDescriptionAnn CabalSpecV3_0 gpd
       prettyFields' = filterFields prettyFields
 
-  putStrLn $
-    exactShowFields prettyFields'
+  pPrint $ prettyFields'
+  putStrLn $ exactShowFields prettyFields'
   where
     input = "tests" </> "ParserTests" </> fp
     fp = "smallCabalFile.cabal"
@@ -310,7 +310,7 @@ miniBuildInfoTest = testCase "miniBuildInfo NoAnn" $ do
   -- We ignore sections now, which necessite goSections to dispatch field gramamr parsers
   let (frontFields, _sections) = takeFields fields
       pr :: ParseResult src (MiniBuildInfo Mod.HasNoAnn)
-      pr = parseFieldGrammar CabalSpecV3_0 frontFields miniBuildInfoFieldGrammar
+      pr = parseFieldGrammar CabalSpecV3_0 Nothing frontFields miniBuildInfoFieldGrammar
 
       (_warns, pr') = runParseResult pr
 
