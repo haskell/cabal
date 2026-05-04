@@ -87,7 +87,10 @@ import qualified Data.Set as Set
 
 import qualified Text.PrettyPrint as Disp
 
+import Control.Concurrent.STM (TVar, newTVarIO)
 import Control.Exception (assert, handle)
+import Distribution.Simple.PackageIndex (InstalledPackageIndex)
+import qualified Distribution.Simple.PackageIndex as PackageIndex
 import System.Directory (doesDirectoryExist, doesFileExist, renameDirectory)
 import System.FilePath (makeRelative, normalise, takeDirectory, (<.>), (</>))
 import System.Semaphore (SemaphoreName (..))
@@ -367,6 +370,25 @@ rebuildTargets
         createDirectoryIfMissingVerbose verbosity True distTempDirectory
         traverse_ (createPackageDBIfMissing verbosity compiler progdb) packageDBsToUse
 
+        -- Keep a running InstalledPackageIndex to avoid repeatedly querying
+        -- @ghc-pkg@. See Note [Per-project InstalledPackageIndex]
+        let collectIpi planPkg =
+              case planPkg of
+                InstallPlan.PreExisting ipi ->
+                  -- (ProjIPI1): InstalledPackageInfo available directly.
+                  return (Just ipi)
+                InstallPlan.Installed pkg ->
+                  -- (ProjIPI2): InstalledPackageInfo obtained from file monitor.
+                  readCachedRegistration $
+                    newPackageFileMonitor sharedPackageConfig distDirLayout $
+                      elabDistDirParams sharedPackageConfig pkg
+                InstallPlan.Configured{} ->
+                  -- No InstalledPackageInfo: not yet built.
+                  return Nothing
+        initialIpis <-
+          catMaybes <$> traverse collectIpi (InstallPlan.reverseTopologicalOrder installPlan)
+        ipiTVar <- newTVarIO $ PackageIndex.fromList initialIpis
+
         -- Concurrency control: create the job controller and concurrency limits
         -- for downloading, building and installing.
         withJobControl (newJobControlFromParStrat verbosity (Just compiler) buildSettingNumJobs Nothing) $ \jobControl -> do
@@ -401,6 +423,7 @@ rebuildTargets
                       cacheLock
                       sharedPackageConfig
                       installPlan
+                      ipiTVar
                       pkg
                       pkgBuildStatus
     where
@@ -457,6 +480,45 @@ rebuildTargets
           isRemote (RemoteSourceRepoPackage _ _) = True
           isRemote _ = False
 
+{- Note [Per-project InstalledPackageIndex]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In cabal-install, we keep a running InstalledPackageIndex, used for the whole
+project, containing all registered units for the project.
+
+We do this to avoid repeatedly querying @ghc-pkg@ on a per-package basis when
+configuring individual packages.
+
+We initialise it with:
+
+  (ProjIPI1)
+    Packages already in the plan as 'PreExisting'.
+    These come from e.g. the global/store package DBs.
+
+  (ProjIPI2)
+    Packages already built in a previous run (now 'Installed' in the plan,
+    skipped entirely by 'InstallPlan.execute').
+    The IPIs for these are cached by registration file monitoring logic.
+
+We keep it up to date during execution:
+
+  (ProjIPI3)
+    Each time we register a library, we insert its InstalledPackageInfo into
+    the index.
+
+  (ProjIPI3b)
+    When registration is skipped because the library was already registered in
+    a previous run, we still need to insert that cached IPI into the index,
+    since the package is 'Configured' in the plan (not 'Installed'), so it was
+    not covered by (ProjIPI2).
+
+Finally, we make use of it when we configure a package:
+
+  (ProjIPI4)
+    Retrieve the running InstalledPackageIndex before configuring the package,
+    and then use Cabal's 'computePackageInfoFromIndex' function instead of
+    'computePackageInfo', skipping expensive @ghc-pkg@ calls.
+-}
+
 -- | Create a package DB if it does not currently exist. Note that this action
 -- is /not/ safe to run concurrently.
 createPackageDBIfMissing
@@ -488,6 +550,7 @@ rebuildTarget
   -> Lock
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
+  -> TVar InstalledPackageIndex
   -> ElaboratedReadyPackage
   -> BuildStatus
   -> IO BuildResult
@@ -502,6 +565,7 @@ rebuildTarget
   cacheLock
   sharedPackageConfig
   plan
+  ipiTVar
   rpkg@(ReadyPackage pkg)
   pkgBuildStatus
     -- Technically, doing the --only-download filtering only in this function is
@@ -588,6 +652,7 @@ rebuildTarget
           sharedPackageConfig
           plan
           rpkg
+          ipiTVar
           srcdir
           builddir
 
@@ -604,6 +669,7 @@ rebuildTarget
           sharedPackageConfig
           plan
           rpkg
+          ipiTVar
           buildStatus
           srcdir
           builddir

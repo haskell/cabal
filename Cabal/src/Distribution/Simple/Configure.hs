@@ -34,6 +34,7 @@ module Distribution.Simple.Configure
   ( configure
   , configure_setupHooks
   , computePackageInfo
+  , computePackageInfoFromIndex
   , configureFinal
   , runPreConfPackageHook
   , runPostConfPackageHook
@@ -1180,10 +1181,22 @@ computePackageInfo verbHandles cfg lbc0 g_pkg_descr comp = do
       mbWorkDir
       packageDbs
       programDb0
+  computePackageInfoFromIndex verbHandles cfg g_pkg_descr installedPackageSet
 
-  -- The set of package names which are "shadowed" by internal
-  -- packages, and which component they map to
-  let internalPackageSet :: Set LibraryName
+-- | Like 'computePackageInfo' but takes a given 'InstalledPackageIndex'
+-- instead of needing to query the @hc-pkg@ program to obtain it.
+computePackageInfoFromIndex
+  :: VerbosityHandles
+  -> ConfigFlags
+  -> GenericPackageDescription
+  -> InstalledPackageIndex
+  -> IO ([PackageVersionConstraint], PackageInfo)
+computePackageInfoFromIndex verbHandles cfg g_pkg_descr installedPackageSet = do
+  let common = configCommonFlags cfg
+      verbosity = mkVerbosity verbHandles (fromFlag $ setupVerbosity common)
+      -- The set of package names which are "shadowed" by internal
+      -- packages, and which component they map to
+      internalPackageSet :: Set LibraryName
       internalPackageSet = getInternalLibraries g_pkg_descr
 
   -- Some sanity checks related to dynamic/static linking.
