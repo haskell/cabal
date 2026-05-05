@@ -199,7 +199,9 @@ runCommand =
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 runAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
-runAction flags targetAndArgs globalFlags =
+runAction flags targetAndArgs globalFlags = do
+  fullArgs <- getFullArgs
+  let (targetStr, args) = splitTargetAndArgs fullArgs
   withContextAndSelectors (cfgVerbosity normal flags) RejectNoTargets (Just ExeKind) flags targetStr globalFlags OtherCommand $ \targetCtx ctx targetSelectors -> do
     (baseCtx, defaultVerbosity) <- case targetCtx of
       ProjectContext -> return (ctx, normal)
@@ -213,7 +215,6 @@ runAction flags targetAndArgs globalFlags =
         when (buildSettingOnlyDeps (buildSettings baseCtx)) $
           dieWithException verbosity NoSupportForRunCommand
 
-        fullArgs <- getFullArgs
         when (occursOnlyOrBefore fullArgs "+RTS" "--") $
           warn verbosity $
             giveRTSWarning "run"
@@ -354,7 +355,16 @@ runAction flags targetAndArgs globalFlags =
                     elaboratedPlan
             }
   where
-    (targetStr, args) = splitAt 1 targetAndArgs
+    -- split target(s) and target exe arguments in a way that's robust to the empty target
+    splitTargetAndArgs fullArgs = case dropWhile (/= "--") fullArgs of
+      ("--" : exeArgs) ->
+        -- targetAndArgs contains targets (>=0) and args; exeArgs contains only args; so
+        -- the difference (>=0) is the number of targets
+        let numTargets = length targetAndArgs - length exeArgs
+         in splitAt numTargets targetAndArgs
+      _ ->
+        -- No '--': first element (if any) is the target.
+        splitAt 1 targetAndArgs
 
 -- | Used by the main CLI parser as heuristic to decide whether @cabal@ was
 -- invoked as a script interpreter, i.e. via
