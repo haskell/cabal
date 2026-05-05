@@ -220,12 +220,12 @@ updateAction flags@NixStyleFlags{..} extraArgs globalFlags = do
 
 updateRepo :: Verbosity -> RepoContext -> (Repo, RepoIndexState) -> IO ()
 updateRepo verbosity repoCtxt (repo, indexState) = do
-  transport <- repoContextGetTransport repoCtxt
   case repo of
     RepoLocalNoIndex{} -> do
       let index = RepoIndex repoCtxt repo
       updatePackageIndexCacheFile verbosity index
     RepoRemote{..} -> do
+      transport <- repoContextGetTransport repoCtxt
       downloadResult <-
         downloadIndex
           transport
