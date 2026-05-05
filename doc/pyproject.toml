@@ -19,7 +19,7 @@ ignore_file   = '.skjoldignore'
 # urllib3>=2.0.7 by CVE-2023-45803
 [dependency-groups]
 dev = [
-    "certifi>=2023.7.22",
+    "certifi>=2026.4.22",
     "idna>=3.7",
     "jinja2>=3.1.4",
     "packaging>=25.0",
