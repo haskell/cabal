@@ -10,16 +10,16 @@ module Distribution.FieldGrammar.Newtypes
   , NonEmpty'
 
     -- * List
-  -- $alaList
-  -- $alaListFSepTokenDoctest
-  -- $alaListFSepTokenDoctestBroken
+    -- $alaList
+    -- $alaListFSepTokenDoctest
+    -- $alaListFSepTokenDoctestBroken
   , alaList
   , alaList'
 
     -- * Set
-  -- $alaSet
-  -- $alaSetFSepTokenDoctest
-  -- $alaSetFSepTokenDoctestBroken
+    -- $alaSet
+    -- $alaSetFSepTokenDoctest
+    -- $alaSetFSepTokenDoctestBroken
   , alaSet
   , alaSet'
 
@@ -450,8 +450,6 @@ parsecTestedWith = do
 -- $alaListFSepTokenDoctest
 -- >>> :t alaList VCat
 -- alaList VCat :: [a] -> List VCat (Identity a) a
---
--- $alaListFSepTokenDoctest
 
 -- TODO: Find out why GHCi stops using the String type alias.
 #if MIN_VERSION_base(4,22,0)
