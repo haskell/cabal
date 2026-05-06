@@ -36,13 +36,14 @@ import Distribution.Simple.Flag
 import Distribution.Utils.NubList (NubList (..))
 import qualified Distribution.Utils.NubList as NubList
 
--- | Like 'List' for usage with a 'FieldGrammar', but for 'Flag'.
--- This enables to parse type aliases such as 'FilePath' that do not have 'Parsec' instances
+-- | Like 'List' for usage with a 'FieldGrammar', but for a 'Flag'.
+-- This enables parsing type aliases such as 'FilePath' that do not have 'Parsec' instances
 -- by using newtype variants such as 'FilePathNT'.
--- For example, if you need to parse a 'Flag FilePath', you can use 'alaFlag' FilePathNT'.
+-- For example, if you need to parse a 'Flag' 'FilePath', you can use 'alaFlag' 'FilePathNT'.
 newtype Flag' b a = Flag' {_getFlag :: Flag a}
 
--- | 'Flag'' constructor, with additional phantom argument to constrain the resulting type
+-- | 'Flag'' constructor, with additional phantom argument to constrain the
+-- resulting type.
 alaFlag :: (a -> b) -> Flag a -> Flag' b a
 alaFlag _ = Flag'
 
@@ -82,8 +83,8 @@ remoteRepoGrammar name =
     <*> pure False -- we don't parse remoteRepoShouldTryHttps
 
 -- $alaNubList
--- 'alaNubList' and 'alaNubList'' are simply 'NubList'' constructor, with additional phantom
--- arguments to constrain the resulting type
+-- 'alaNubList' and 'alaNubList'' are simply 'NubList'' constructor, with
+-- additional phantom arguments to constrain the resulting type.
 
 -- $alaNubListFSepTokenDoctest
 -- >>> :t alaNubList VCat
