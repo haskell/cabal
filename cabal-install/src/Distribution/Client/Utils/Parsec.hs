@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -52,18 +53,18 @@ instance (Newtype a b, Pretty b) => Pretty (Flag' b a) where
 -- | Like 'List' for usage with a 'FieldGrammar', but for 'NubList'.
 newtype NubList' sep b a = NubList' {_getNubList :: NubList a}
 
+{- FOURMOLU_DISABLE -}
 -- | 'alaNubList' and 'alaNubList'' are simply 'NubList'' constructor, with additional phantom
 -- arguments to constrain the resulting type
 --
 -- >>> :t alaNubList VCat
 -- alaNubList VCat :: NubList a -> NubList' VCat (Identity a) a
 --
--- >>> :t alaNubList' FSep Token
--- alaNubList' FSep Token
---   :: NubList String -> NubList' FSep Token String
+-- $alaNubListFSepTokenDoctest
 --
 -- >>> unpack' (alaNubList' FSep Token) <$> eitherParsec "foo bar foo"
 -- Right ["foo","bar"]
+{- FOURMOLU_ENABLE -}
 alaNubList :: sep -> NubList a -> NubList' sep (Identity a) a
 alaNubList _ = NubList'
 
@@ -87,3 +88,16 @@ remoteRepoGrammar name =
     <*> monoidalFieldAla "root-keys" (alaList' FSep Token) remoteRepoRootKeysLens
     <*> optionalFieldDefAla "key-threshold" KeyThreshold remoteRepoKeyThresholdLens 0
     <*> pure False -- we don't parse remoteRepoShouldTryHttps
+
+-- TODO: Find out why GHCi stops using the String type alias.
+#if MIN_VERSION_base(4,22,0)
+-- $alaNubListFSepTokenDoctest
+-- >>> :t alaNubList' FSep Token
+-- alaNubList' FSep Token
+--   :: NubList [Char] -> NubList' FSep Token [Char]
+#else
+-- $alaNubListFSepTokenDoctest
+-- >>> :t alaNubList' FSep Token
+-- alaNubList' FSep Token
+--   :: NubList String -> NubList' FSep Token String
+#endif
