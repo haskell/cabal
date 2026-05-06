@@ -85,10 +85,10 @@ import qualified Data.Set as Set
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.SPDX as SPDX
 
--- | Vertical list with commas. Displayed with 'vcat'
+-- | Vertical list with commas. Displayed with 'vcat'.
 data CommaVCat = CommaVCat
 
--- | Paragraph fill list with commas. Displayed with 'fsep'
+-- | Paragraph fill list with commas. Displayed with 'fsep'.
 data CommaFSep = CommaFSep
 
 -- | Vertical list with optional commas. Displayed with 'vcat'.
@@ -186,8 +186,8 @@ instance (Newtype a b, Sep sep, Pretty b) => Pretty (Set' sep b a) where
 -- @since 3.2.0.0
 newtype NonEmpty' sep b a = NonEmpty' {_getNonEmpty :: NonEmpty a}
 
--- | 'alaNonEmpty' and 'alaNonEmpty'' are simply 'NonEmpty'' constructor, with additional phantom
--- arguments to constrain the resulting type
+-- | 'alaNonEmpty' and 'alaNonEmpty'' are simply 'NonEmpty'' constructor, with
+-- additional phantom arguments to constrain the resulting type.
 --
 -- >>> :t alaNonEmpty VCat
 -- alaNonEmpty VCat :: NonEmpty a -> NonEmpty' VCat (Identity a) a
@@ -217,7 +217,7 @@ instance (Newtype a b, Sep sep, Pretty b) => Pretty (NonEmpty' sep b a) where
 -- Identifiers
 -------------------------------------------------------------------------------
 
--- | Haskell string or @[^ ,]+@
+-- | Haskell string or @[^ ,]+@.
 newtype Token = Token {getToken :: String}
 
 instance Newtype String Token
@@ -228,7 +228,7 @@ instance Parsec Token where
 instance Pretty Token where
   pretty = showToken . unpack
 
--- | Haskell string or @[^ ]+@
+-- | Haskell string or @[^ ]+@.
 newtype Token' = Token' {getToken' :: String}
 
 instance Newtype String Token'
@@ -281,9 +281,10 @@ instance Parsec (SymbolicPathNT from to) where
 instance Pretty (SymbolicPathNT from to) where
   pretty = showFilePath . getSymbolicPath . getSymbolicPathNT
 
--- | Newtype for 'RelativePath', with a different 'Parsec' instance
--- to disallow empty paths but allow non-relative paths (which get rejected
--- later with a different error message, see 'Distribution.PackageDescription.Check.Paths.checkPath')
+-- | Newtype for 'RelativePath', with a different 'Parsec' instance to disallow
+-- empty paths but allow non-relative paths (which get rejected later with a
+-- different error message, see
+-- 'Distribution.PackageDescription.Check.Paths.checkPath').
 newtype RelativePathNT from to = RelativePathNT {getRelativePathNT :: RelativePath from to}
 
 instance Newtype (RelativePath from to) (RelativePathNT from to)
@@ -304,14 +305,17 @@ instance Pretty (RelativePathNT from to) where
 -- SpecVersion
 -------------------------------------------------------------------------------
 
--- | Version range or just version, i.e. @cabal-version@ field.
+-- | An exact version of the Cabal specification as a value of the
+-- @cabal-version@ field. Earlier Cabal specifications allowed a version range
+-- here. For more details, see the
+-- [cabal-version](https://cabal.readthedocs.io/en/latest/cabal-package-description-file.html#pkg-field-cabal-version)
+-- section of the Cabal User Guide and
+-- [issue #4899](https://github.com/haskell/cabal/issues/4899).
 --
--- There are few things to consider:
+-- For @cabal-version: v@:
 --
--- * Starting with 2.2 the cabal-version field should be the first field in the
---   file and only exact version is accepted. Therefore if we get e.g.
---   @>= 2.2@, we fail.
---   See <https://github.com/haskell/cabal/issues/4899>
+--  * the @cabal-version@ field should be the first field in the file,
+--  * only an exact version is accepted for @v@.
 --
 -- We have this newtype, as writing Parsec and Pretty instances
 -- for CabalSpecVersion would cause cycle in modules:
@@ -400,7 +404,7 @@ instance Pretty SpecVersion where
 -- SpecLicense
 -------------------------------------------------------------------------------
 
--- | SPDX License expression or legacy license
+-- | SPDX License expression or legacy license.
 newtype SpecLicense = SpecLicense {getSpecLicense :: Either SPDX.License License}
   deriving (Show, Eq)
 
@@ -420,7 +424,7 @@ instance Pretty SpecLicense where
 -- TestedWith
 -------------------------------------------------------------------------------
 
--- | Version range or just version
+-- | Version range or just version.
 newtype TestedWith = TestedWith {getTestedWith :: (CompilerFlavor, VersionRange)}
 
 instance Newtype (CompilerFlavor, VersionRange) TestedWith
@@ -440,7 +444,7 @@ parsecTestedWith = do
 
 -- $alaSet
 -- 'alaSet' and 'alaSet'' are simply 'Set'' constructor, with additional phantom
--- arguments to constrain the resulting type
+-- arguments to constrain the resulting type.
 
 -- $alaSetFSepTokenDoctest
 -- >>> :t alaSet VCat
@@ -451,7 +455,7 @@ parsecTestedWith = do
 
 -- $alaList
 -- 'alaList' and 'alaList'' are simply 'List', with additional phantom arguments
--- to constrain the resulting type
+-- to constrain the resulting type.
 
 -- $alaListFSepTokenDoctest
 -- >>> :t alaList VCat
