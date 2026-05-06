@@ -7,9 +7,9 @@
 module Distribution.Client.Utils.Parsec
   ( -- * NubList
     NubList'
-  -- $alaNubList
-  -- $alaNubListFSepTokenDoctest
-  -- $alaNubListFSepTokenDoctestBroken
+    -- $alaNubList
+    -- $alaNubListFSepTokenDoctest
+    -- $alaNubListFSepTokenDoctestBroken
   , alaNubList
   , alaNubList'
 
