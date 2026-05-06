@@ -158,14 +158,32 @@ ghcid-lib: ## Run ghcid for the Cabal library.
 ghcid-cli: ## Run ghcid for the cabal-install executable.
 	ghcid -c 'cabal repl cabal-install'
 
-.PHONY: doctest
-doctest: ## Run doctests.
+# doctests
+
+# To find package directories that might have doctests:
+# $ grep --exclude generics-sop-lens.hs -E "\- >>>" **/*.hs | awk -F/ '{print $1}' | sort -u
+DOCTEST_PACKAGES := \
+  Cabal \
+  Cabal-described \
+  Cabal-syntax \
+  cabal-install \
+  cabal-install-solver \
+  cabal-testsuite
+
+DOCTEST_TARGETS := $(addprefix doctest-, $(DOCTEST_PACKAGES))
+
+doctest-%: ## Run doctests for a specific package.
+	@echo "Running doctests for $*:"
 	cabal --numeric-version
-	cd Cabal-syntax && $(DOCTEST)
-	cd Cabal-described && $(DOCTEST)
-	cd Cabal && $(DOCTEST)
-	cd cabal-install-solver && $(DOCTEST)
-	cd cabal-install && $(DOCTEST)
+	@$(DOCTEST) $*
+
+doctest-PACKAGENAME: ## Run doctests for a single package (replace PACKAGENAME).
+	@echo 'Please use one of the following targets:'
+	@printf "%s\n" $(DOCTEST_TARGETS)
+
+.PHONY: doctest
+doctest: ## Run doctests in all packages.
+doctest: $(DOCTEST_TARGETS)
 
 # If we pin and periodically bump the version of doctest, we get more
 # reproducible testing. Initially we pinned to doctest-0.25.0 to avoid failures
