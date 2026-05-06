@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -136,14 +137,15 @@ instance Sep NoCommaFSep where
 -- type @a@ are parsed and pretty-printed as @b@.
 newtype List sep b a = List {_getList :: [a]}
 
+{- FOURMOLU_DISABLE -}
 -- | 'alaList' and 'alaList'' are simply 'List', with additional phantom
 -- arguments to constrain the resulting type
 --
 -- >>> :t alaList VCat
 -- alaList VCat :: [a] -> List VCat (Identity a) a
 --
--- >>> :t alaList' FSep Token
--- alaList' FSep Token :: [String] -> List FSep Token String
+-- $alaListFSepTokenDoctest
+{- FOURMOLU_ENABLE -}
 alaList :: sep -> [a] -> List sep (Identity a) a
 alaList _ = List
 
@@ -166,19 +168,20 @@ instance (Newtype a b, Sep sep, Pretty b) => Pretty (List sep b a) where
 -- @since 3.2.0.0
 newtype Set' sep b a = Set' {_getSet :: Set a}
 
+{- FOURMOLU_DISABLE -}
 -- | 'alaSet' and 'alaSet'' are simply 'Set'' constructor, with additional phantom
 -- arguments to constrain the resulting type
 --
 -- >>> :t alaSet VCat
 -- alaSet VCat :: Set a -> Set' VCat (Identity a) a
 --
--- >>> :t alaSet' FSep Token
--- alaSet' FSep Token :: Set String -> Set' FSep Token String
+-- $alaSetFSepTokenDoctest
 --
 -- >>> unpack' (alaSet' FSep Token) <$> eitherParsec "foo bar foo"
 -- Right (fromList ["bar","foo"])
 --
 -- @since 3.2.0.0
+{- FOURMOLU_ENABLE -}
 alaSet :: sep -> Set a -> Set' sep (Identity a) a
 alaSet _ = Set'
 
@@ -454,3 +457,20 @@ parsecTestedWith = do
   name <- lexemeParsec
   ver <- parsec <|> pure anyVersion
   return (name, ver)
+
+-- TODO: Find out why GHCi stops using the String type alias.
+#if MIN_VERSION_base(4,22,0)
+-- $alaListFSepTokenDoctest
+-- >>> :t alaList' FSep Token
+-- alaList' FSep Token :: [[Char]] -> List FSep Token [Char]
+-- $alaSetFSepTokenDoctest
+-- >>> :t alaSet' FSep Token
+-- alaSet' FSep Token :: Set [Char] -> Set' FSep Token [Char]
+#else
+-- $alaListFSepTokenDoctest
+-- >>> :t alaList' FSep Token
+-- alaList' FSep Token :: [String] -> List FSep Token String
+-- $alaSetFSepTokenDoctest
+-- >>> :t alaSet' FSep Token
+-- alaSet' FSep Token :: Set String -> Set' FSep Token String
+#endif
