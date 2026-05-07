@@ -5,7 +5,8 @@
 CABALBUILD := cabal build
 CABALRUN   := cabal run
 
-DOCTEST := cabal doctest
+CABAL_DOCTEST := cabal doctest
+REPL_WITH_DOCTEST := cabal repl --with-compiler=doctest --build-depends=QuickCheck --verbose=0 --repl-options='-w -Wdefault -Wno-inconsistent-flags'
 
 # default rules
 
@@ -164,9 +165,11 @@ DOCTEST_PACKAGES := \
 DOCTEST_TARGETS := $(addprefix doctest-, $(DOCTEST_PACKAGES))
 
 doctest-%: ## Run doctests for a specific package.
-	@echo "Running doctests for $*:"
 	cabal --numeric-version
-	@$(DOCTEST) $*
+	@echo "Running doctests for $*:" && cd $* && $(CABAL_DOCTEST) $*
+
+doctest-cabal-testsuite: ## Run doctests for a specific package.
+	@echo "Running doctests for cabal-testsuite:" && $(REPL_WITH_DOCTEST) cabal-testsuite
 
 doctest-PACKAGENAME: ## Run doctests for a single package (replace PACKAGENAME).
 	@echo 'Please use one of the following targets:'
