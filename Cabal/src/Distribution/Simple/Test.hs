@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ViewPatterns #-}
 
 -----------------------------------------------------------------------------
@@ -132,7 +133,7 @@ test args verbHandles pkg_descr lbi0 flags = do
     dieWithException verbosity NoTestSuitesEnabled
 
   testsToRun <- case testNames of
-    [] -> return $ zip enabledTests $ repeat Nothing
+    [] -> return $ map (,Nothing) enabledTests
     names -> for names $ \tName ->
       let testMap = zip enabledNames enabledTests
           enabledNames = map (PD.testName . fst) enabledTests

@@ -3305,8 +3305,7 @@ nubComponentTargets =
   concatMap (wholeComponentOverrides . map snd)
     . groupBy ((==) `on` fst)
     . sortBy (compare `on` fst)
-    . map (\t@((ComponentTarget cname _, _)) -> (cname, t))
-    . map compatSubComponentTargets
+    . map ((\t@((ComponentTarget cname _, _)) -> (cname, t)) . compatSubComponentTargets)
   where
     -- If we're building the whole component then that the only target all we
     -- need, otherwise we can have several targets within the component.

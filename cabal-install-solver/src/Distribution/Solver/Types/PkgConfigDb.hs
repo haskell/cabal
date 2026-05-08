@@ -82,17 +82,16 @@ readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
               . filter (either (const True) (not . null))
               -- Try decoding strictly; if it fails, put the lenient
               -- decoding in a Left for later reporting.
-              . map (\bsname ->
-                       let sbsname = LBS.toStrict bsname
-                       in case T.decodeUtf8' sbsname of
-                            Left _ -> Left (T.unpack (decodeUtf8LenientCompat sbsname))
-                            Right name -> Right (T.unpack name))
               -- The output of @pkg-config --list-all@ also includes a
               -- description for each package, which we do not need.
               -- We don't use Data.Char.isSpace because that would also
               -- include 0xA0, the non-breaking space, which can occur
               -- in multi-byte UTF-8 sequences.
-              . map (LBS.takeWhile (not . isAsciiSpace))
+              . map ((\bsname ->
+                       let sbsname = LBS.toStrict bsname
+                       in case T.decodeUtf8' sbsname of
+                            Left _ -> Left (T.unpack (decodeUtf8LenientCompat sbsname))
+                            Right name -> Right (T.unpack name)) . LBS.takeWhile (not . isAsciiSpace))
               $ pkgList
         unless (null failedPkgNames) $
           info verbosity ("Some pkg-config packages have names containing invalid unicode: " ++ intercalate ", " failedPkgNames)

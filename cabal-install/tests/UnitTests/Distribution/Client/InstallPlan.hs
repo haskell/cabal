@@ -1,4 +1,5 @@
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE NoMonoLocalBinds #-}
 
@@ -136,7 +137,7 @@ isReversePartialTopologicalOrder g vs =
     | let ixs =
             array
               (bounds g)
-              ( zip (range (bounds g)) (repeat Nothing)
+              ( map (,Nothing) (range (bounds g))
                   ++ zip vs (map Just [0 :: Int ..])
               )
     , (u, v) <- edges g

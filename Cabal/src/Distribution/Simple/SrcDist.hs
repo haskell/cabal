@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TupleSections #-}
 
 -----------------------------------------------------------------------------
 
@@ -311,7 +312,7 @@ prepareTree
   -> IO ()
 prepareTree verbosity mbWorkDir pkg_descr0 targetDir pps = do
   ordinary <- listPackageSources verbosity mbWorkDir pkg_descr pps
-  installOrdinaryFiles verbosity targetDir (zip (repeat []) $ map i ordinary)
+  installOrdinaryFiles verbosity targetDir (map (([],) . i) ordinary)
   maybeCreateDefaultSetupScript targetDir
   where
     i = interpretSymbolicPath mbWorkDir -- See Note [Symbolic paths] in Distribution.Utils.Path
