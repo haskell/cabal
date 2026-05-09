@@ -157,11 +157,6 @@ doctest: ## Run doctests.
 	cd cabal-install-solver && $(DOCTEST)
 	cd cabal-install && $(DOCTEST)
 
-# This is not run as part of validate.sh (we need hackage-security, which is tricky to get).
-.PHONY: doctest-cli
-doctest-cli :
-	doctest -D__DOCTEST__ --fast cabal-install/src cabal-install-solver/src cabal-install-solver/src-assertion
-
 .PHONY: doctest-install
 doctest-install: ## Install doctest tool needed for running doctests.
 	cabal install doctest --overwrite-policy=always --ignore-project --flag cabal-doctest
