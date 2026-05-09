@@ -1,0 +1,10 @@
+cabal-version:       2.2
+name:                cpp-opts
+version:             0.1
+build-type:          Simple
+
+executable cpp-opts-exe
+  main-is:             Main.hs
+  build-depends:       base
+  default-language:    Haskell2010
+  cpp-options:         -D__TESTOPT_CPP__=44
