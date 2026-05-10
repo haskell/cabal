@@ -1212,8 +1212,9 @@ When ``TARGET`` is one of the following:
 - Empty target: Same as package target, implicitly using the package from the current
   working directory.
 
-Except in the case of the empty target, the strings after it will be
-passed to the executable as arguments.
+With a non-empty target, the strings after it are passed to the
+executable as arguments.  With an empty target you must use ``--`` to
+separate executable arguments from cabal flags.
 
 If one of the arguments starts with ``-`` it will be interpreted as
 a cabal flag, so if you need to pass flags to the executable you
@@ -1222,6 +1223,10 @@ have to separate them with ``--``.
 ::
 
     $ cabal run target -- -a -bcd --argument
+    $ cabal run -- +RTS -s -RTS
+
+The second form (empty target with ``--``) runs the single executable
+in the current package and passes the RTS options to it.
 
 ``run`` supports running script files that use a certain format.
 Scripts look like:
