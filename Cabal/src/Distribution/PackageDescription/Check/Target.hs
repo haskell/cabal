@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 -- |
 -- Module      :  Distribution.PackageDescription.Check.Target
 -- Copyright   :  Lennart Kolmodin 2008, Francesco Ariis 2023
@@ -953,7 +955,7 @@ checkGHCOptions title t opts = do
         )
         (PackageDistInexcusable . DynamicUnneeded)
       checkFlagsP
-        ( \opt -> case opt of
+        ( \case
             "-j" -> True
             ('-' : 'j' : d : _) -> isDigit d
             _ -> False

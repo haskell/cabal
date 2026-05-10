@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -665,27 +666,24 @@ postBuildProjectStatus
 
       packagesBuildLocal :: Set UnitId
       packagesBuildLocal =
-        selectPlanPackageIdSet $ \pkg ->
-          case pkg of
-            InstallPlan.PreExisting _ -> False
-            InstallPlan.Installed _ -> False
-            InstallPlan.Configured srcpkg -> elabLocalToProject srcpkg
+        selectPlanPackageIdSet $ \case
+          InstallPlan.PreExisting _ -> False
+          InstallPlan.Installed _ -> False
+          InstallPlan.Configured srcpkg -> elabLocalToProject srcpkg
 
       packagesBuildInplace :: Set UnitId
       packagesBuildInplace =
-        selectPlanPackageIdSet $ \pkg ->
-          case pkg of
-            InstallPlan.PreExisting _ -> False
-            InstallPlan.Installed _ -> False
-            InstallPlan.Configured srcpkg -> isInplaceBuildStyle (elabBuildStyle srcpkg)
+        selectPlanPackageIdSet $ \case
+          InstallPlan.PreExisting _ -> False
+          InstallPlan.Installed _ -> False
+          InstallPlan.Configured srcpkg -> isInplaceBuildStyle (elabBuildStyle srcpkg)
 
       packagesAlreadyInStore :: Set UnitId
       packagesAlreadyInStore =
-        selectPlanPackageIdSet $ \pkg ->
-          case pkg of
-            InstallPlan.PreExisting _ -> True
-            InstallPlan.Installed _ -> True
-            InstallPlan.Configured _ -> False
+        selectPlanPackageIdSet $ \case
+          InstallPlan.PreExisting _ -> True
+          InstallPlan.Installed _ -> True
+          InstallPlan.Configured _ -> False
 
       selectPlanPackageIdSet
         :: ( InstallPlan.GenericPlanPackage InstalledPackageInfo ElaboratedConfiguredPackage

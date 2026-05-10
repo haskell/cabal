@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE LambdaCase #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module UnitTests.Distribution.Client.ArbitraryInstances
@@ -319,7 +320,7 @@ instance Arbitrary a => Arbitrary (OptionalStanzaMap a) where
   arbitrary = do
     x1 <- arbitrary
     x2 <- arbitrary
-    return $ optStanzaTabulate $ \x -> case x of
+    return $ optStanzaTabulate $ \case
       TestStanzas -> x1
       BenchStanzas -> x2
 

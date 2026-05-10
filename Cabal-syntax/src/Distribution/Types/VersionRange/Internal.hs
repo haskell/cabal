@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -560,7 +561,7 @@ versionRangeParser digitParser csv = expr
 --
 -- @since 2.2
 majorUpperBound :: Version -> Version
-majorUpperBound = alterVersion $ \numbers -> case numbers of
+majorUpperBound = alterVersion $ \case
   [] -> [0, 1] -- should not happen
   [m1] -> [m1, 1] -- e.g. version '1'
   (m1 : m2 : _) -> [m1, m2 + 1]
