@@ -241,7 +241,7 @@ tests =
       "reject-unconstrained"
       $ let solverMsg condition =
               "Could not resolve dependencies:\n"
-                ++ "[__0] trying: A-3.0.0 (user goal)\n"
+                ++ "[__0] trying: A-3 (user goal)\n"
                 ++ "[__1] next goal: C (dependency of A)\n"
                 ++ "[__1] fail (not a user-provided goal nor mentioned as a constraint, "
                 ++ "but reject-unconstrained-dependencies="
