@@ -29,5 +29,5 @@ dev = [
     "sphinx-jsonschema>=1.19.2",
     "sphinx-rtd-theme>=3.0.2",
     "sphinxnotes-strike>=1.5",
-    "urllib3>=2.0.7",
+    "urllib3>=2.7.0",
 ]
