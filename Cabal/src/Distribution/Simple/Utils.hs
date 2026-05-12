@@ -464,7 +464,7 @@ data VerboseException a = VerboseException CallStack POSIXTime VerbosityFlags a
   deriving (Show)
 
 -- Function which will replace the existing die' call sites
-dieWithException :: (HasCallStack, Show a1, Typeable a1, Exception (VerboseException a1)) => Verbosity -> a1 -> IO a
+dieWithException :: (HasCallStack, Exception (VerboseException a1)) => Verbosity -> a1 -> IO a
 dieWithException verbosity exception = do
   ts <- getPOSIXTime
   throwIO $ VerboseException callStack ts (verbosityFlags verbosity) exception

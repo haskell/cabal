@@ -36,7 +36,7 @@ import Control.Exception
 import qualified Data.Text as T
 
 -- Tweaked versions of code from Main.
-regularCmd :: HasVerbosity flags => CommandUI flags -> (flags -> [String] -> globals -> IO action) -> CommandSpec (globals -> IO action)
+regularCmd :: CommandUI flags -> (flags -> [String] -> globals -> IO action) -> CommandSpec (globals -> IO action)
 regularCmd ui action =
   CommandSpec ui ((flip commandAddAction) (\flags extra globals -> action flags extra globals)) NormalCommand
 
@@ -156,7 +156,7 @@ toLegacyCmd mkSpec = [toLegacy mkSpec]
                 Nothing -> legacyNote commandName
             }
 
-legacyCmd :: HasVerbosity flags => CommandUI flags -> (flags -> [String] -> globals -> IO action) -> [CommandSpec (globals -> IO action)]
+legacyCmd :: CommandUI flags -> (flags -> [String] -> globals -> IO action) -> [CommandSpec (globals -> IO action)]
 legacyCmd ui action = toLegacyCmd (regularCmd ui action)
 
 legacyWrapperCmd

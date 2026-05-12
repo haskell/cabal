@@ -227,7 +227,7 @@ structureBuilder s0 = State.evalState (go s0) Map.empty
 -- @since 3.2.0.0
 class Typeable a => Structured a where
   structure :: Proxy a -> Structure
-  default structure :: (Generic a, GStructured (Rep a)) => Proxy a -> Structure
+  default structure :: GStructured (Rep a) => Proxy a -> Structure
   structure = genericStructure
 
   -- This member is hidden. It's there to precalc
@@ -332,7 +332,7 @@ containerStructure _ =
 -------------------------------------------------------------------------------
 
 -- | Derive 'structure' generically.
-genericStructure :: forall a. (Typeable a, Generic a, GStructured (Rep a)) => Proxy a -> Structure
+genericStructure :: forall a. (Typeable a, GStructured (Rep a)) => Proxy a -> Structure
 genericStructure _ = gstructured (typeRep (Proxy :: Proxy a)) (Proxy :: Proxy (Rep a)) 0
 
 -- | Used to implement 'genericStructure'.

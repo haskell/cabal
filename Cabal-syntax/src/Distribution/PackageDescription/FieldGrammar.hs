@@ -177,10 +177,8 @@ libraryFieldGrammar
      , c (List CommaVCat (Identity ModuleReexport) ModuleReexport)
      , c (List FSep (MQuoted Extension) Extension)
      , c (List FSep (MQuoted Language) Language)
-     , c (List FSep Token String)
      , c (List NoCommaFSep Token' String)
      , c (List VCat (MQuoted ModuleName) ModuleName)
-     , c (List VCat (RelativePathNT Pkg File) (RelativePath Pkg File))
      , c (List FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
      , c (List FSep (SymbolicPathNT Pkg (Dir Lib)) (SymbolicPath Pkg (Dir Lib)))
      , c (List FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
@@ -233,7 +231,6 @@ foreignLibFieldGrammar
      , c (List FSep (Identity ForeignLibOption) ForeignLibOption)
      , c (List FSep (MQuoted Extension) Extension)
      , c (List FSep (MQuoted Language) Language)
-     , c (List FSep Token String)
      , c (List FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
      , c (List FSep (SymbolicPathNT Pkg (Dir Lib)) (SymbolicPath Pkg (Dir Lib)))
      , c (List FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
@@ -277,7 +274,6 @@ executableFieldGrammar
      , c (List CommaVCat (Identity Mixin) Mixin)
      , c (List FSep (MQuoted Extension) Extension)
      , c (List FSep (MQuoted Language) Language)
-     , c (List FSep Token String)
      , c (List FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
      , c (List FSep (SymbolicPathNT Pkg (Dir Lib)) (SymbolicPath Pkg (Dir Lib)))
      , c (List FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
@@ -355,7 +351,6 @@ testSuiteFieldGrammar
      , c (List CommaVCat (Identity Mixin) Mixin)
      , c (List FSep (MQuoted Extension) Extension)
      , c (List FSep (MQuoted Language) Language)
-     , c (List FSep Token String)
      , c (List NoCommaFSep Token' String)
      , c (List VCat (MQuoted ModuleName) ModuleName)
      , c (List FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
@@ -504,7 +499,6 @@ benchmarkFieldGrammar
      , c (List CommaVCat (Identity Mixin) Mixin)
      , c (List FSep (MQuoted Extension) Extension)
      , c (List FSep (MQuoted Language) Language)
-     , c (List FSep Token String)
      , c (List NoCommaFSep Token' String)
      , c (List VCat (MQuoted ModuleName) ModuleName)
      , c (List FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
@@ -611,7 +605,6 @@ buildInfoFieldGrammar
      , c (List CommaVCat (Identity Mixin) Mixin)
      , c (List FSep (MQuoted Extension) Extension)
      , c (List FSep (MQuoted Language) Language)
-     , c (List FSep Token String)
      , c (List NoCommaFSep Token' String)
      , c (List VCat (MQuoted ModuleName) ModuleName)
      , c (List FSep (SymbolicPathNT Pkg (Dir Framework)) (SymbolicPath Pkg (Dir Framework)))
@@ -812,7 +805,7 @@ flagFieldGrammar name =
 -------------------------------------------------------------------------------
 
 sourceRepoFieldGrammar
-  :: (FieldGrammar c g, Applicative (g SourceRepo), c (Identity RepoType), c Token, c FilePathNT)
+  :: (FieldGrammar c g, Applicative (g SourceRepo), c (Identity RepoType))
   => RepoKind
   -> g SourceRepo SourceRepo
 sourceRepoFieldGrammar kind =
