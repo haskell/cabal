@@ -75,7 +75,7 @@ instance (Ord a, Binary a) => Binary (NubList a) where
 
 instance Structured a => Structured (NubList a)
 
-instance (Ord a, NFData a) => NFData (NubList a) where
+instance NFData a => NFData (NubList a) where
   rnf (NubList xs) = rnf xs
 
 -- | NubListR : A right-biased version of 'NubList'. That is @toNubListR

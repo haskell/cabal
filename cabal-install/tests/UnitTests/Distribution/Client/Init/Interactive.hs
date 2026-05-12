@@ -1105,8 +1105,7 @@ testSimplePrompt label f target =
   testPrompt label f (assertFailure . show) (\(a, _) -> target @=? a)
 
 testPromptBreak
-  :: Eq a
-  => Show a
+  :: Show a
   => String
   -> (InitFlags -> PurePrompt a)
   -> [String]
@@ -1118,9 +1117,7 @@ testPromptBreak label f =
       return ()
 
 testPrompt
-  :: Eq a
-  => Show a
-  => String
+  :: String
   -> (InitFlags -> PurePrompt a)
   -> (BreakException -> Assertion)
   -> ((a, NonEmpty String) -> Assertion)

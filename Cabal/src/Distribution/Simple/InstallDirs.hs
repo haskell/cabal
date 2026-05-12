@@ -114,7 +114,7 @@ instance Binary dir => Binary (InstallDirs dir)
 instance NFData dir => NFData (InstallDirs dir)
 instance Structured dir => Structured (InstallDirs dir)
 
-instance (Semigroup dir, Monoid dir) => Monoid (InstallDirs dir) where
+instance Monoid dir => Monoid (InstallDirs dir) where
   mempty = gmempty
   mappend = (<>)
 

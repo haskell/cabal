@@ -47,7 +47,7 @@ gmempty = to gmempty'
 class GSemigroup f => GMonoid f where
   gmempty' :: f p
 
-instance (Semigroup a, Monoid a) => GMonoid (K1 i a) where
+instance Monoid a => GMonoid (K1 i a) where
   gmempty' = K1 mempty
 
 instance GMonoid f => GMonoid (M1 i c f) where
