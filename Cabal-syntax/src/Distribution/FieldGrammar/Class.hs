@@ -1,5 +1,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
@@ -13,6 +15,7 @@ module Distribution.FieldGrammar.Class
   , defaultFreeTextFieldDefST
   ) where
 
+import Data.Kind (Constraint, Type)
 import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Prelude ()
@@ -23,14 +26,12 @@ import Distribution.FieldGrammar.Newtypes
 import Distribution.Fields.Field
 import Distribution.Utils.ShortText
 
--- | 'FieldGrammar' is parametrised by
+-- | @g@ is parametrised by
 --
 -- * @s@ which is a structure we are parsing. We need this to provide prettyprinter
 -- functionality
 --
 -- * @a@ type of the field.
---
--- /Note:/ We'd like to have @forall s. Applicative (f s)@ context.
 class
   ( c SpecVersion
   , c TestedWith
@@ -38,8 +39,9 @@ class
   , c Token
   , c Token'
   , c FilePathNT
+  , forall s. Applicative (g s)
   ) =>
-  FieldGrammar c g
+  FieldGrammar (c :: Type -> Constraint) (g :: Type -> Type -> Type)
     | g -> c
   where
   -- | Unfocus, zoom out, /blur/ 'FieldGrammar'.
@@ -231,7 +233,7 @@ monoidalField fn l = monoidalFieldAla fn Identity l
 
 -- | Default implementation for 'freeTextFieldDefST'.
 defaultFreeTextFieldDefST
-  :: (Functor (g s), FieldGrammar c g)
+  :: FieldGrammar c g
   => FieldName
   -> ALens' s ShortText
   -- ^ lens into the field

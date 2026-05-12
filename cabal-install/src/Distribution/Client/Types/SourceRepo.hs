@@ -102,7 +102,6 @@ srpCommandLensNE f s = fmap (\x -> s{srpCommand = maybe [] toList x}) (f (nonEmp
 
 sourceRepositoryPackageGrammar
   :: ( FieldGrammar c g
-     , Applicative (g SourceRepoList)
      , c (Identity RepoType)
      , c (List NoCommaFSep FilePathNT String)
      , c (NonEmpty' NoCommaFSep Token String)
