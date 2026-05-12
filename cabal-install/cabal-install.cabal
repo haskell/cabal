@@ -57,6 +57,7 @@ common warnings
       -Wincomplete-uni-patterns
       -Wincomplete-record-updates
       -Wno-unticked-promoted-constructors
+      -Wredundant-constraints
 
     if impl(ghc < 8.8)
       ghc-options: -Wnoncanonical-monadfail-instances
