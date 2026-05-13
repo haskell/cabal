@@ -10,7 +10,7 @@ import Prelude ()
 import Distribution.Backpack (OpenModule)
 import Distribution.License (License)
 import Distribution.ModuleName (ModuleName)
-import Distribution.Package (AbiHash, ComponentId, PackageIdentifier, UnitId)
+import Distribution.Package (AbiHash, ComponentId, InstanceUnitId, PackageIdentifier, UnitId)
 import Distribution.Types.InstalledPackageInfo (AbiDependency, ExposedModule, InstalledPackageInfo)
 import Distribution.Types.LibraryName (LibraryName)
 import Distribution.Types.LibraryVisibility (LibraryVisibility)
@@ -26,6 +26,10 @@ sourcePackageId f s = fmap (\x -> s{T.sourcePackageId = x}) (f (T.sourcePackageI
 installedUnitId :: Lens' InstalledPackageInfo UnitId
 installedUnitId f s = fmap (\x -> s{T.installedUnitId = x}) (f (T.installedUnitId s))
 {-# INLINE installedUnitId #-}
+
+installedInstanceUnitId :: Lens' InstalledPackageInfo InstanceUnitId
+installedInstanceUnitId f s = fmap (\x -> s{T.installedInstanceUnitId = x}) (f (T.installedInstanceUnitId s))
+{-# INLINE installedInstanceUnitId #-}
 
 installedComponentId_ :: Lens' InstalledPackageInfo ComponentId
 installedComponentId_ f s = fmap (\x -> s{T.installedComponentId_ = x}) (f (T.installedComponentId_ s))

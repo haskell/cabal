@@ -1707,7 +1707,28 @@ elaborateInstallPlan
                         <+> text "package"
                         <+> quotes (pretty (packageId pkg))
                     )
-                    $ map InstallPlan.Configured <$> elaborateSolverToComponents mapDep pkg
+                    $ map InstallPlan.Configured . setCommonInstanceUnitId <$> elaborateSolverToComponents mapDep pkg
+
+      -- Set a common 'InstanceUnitId' for all components so they can be
+      -- identified as belonging to the same group.
+      --
+      -- If the package has a main library, its 'InstanceUnitId' is used.
+      -- Otherwise, an arbitrary component's 'InstanceUnitId' is used.
+      setCommonInstanceUnitId
+        :: [ElaboratedConfiguredPackage]
+        -> [ElaboratedConfiguredPackage]
+      setCommonInstanceUnitId [] = []
+      setCommonInstanceUnitId [single] = [single]
+      setCommonInstanceUnitId elabPkgs@(elabPkg : _rest) =
+        let
+          assignAll instanceUnitId = map (\x -> x{elabInstanceUnitId = instanceUnitId}) elabPkgs
+         in
+          case find (matchElabPkg (== (CLibName LMainLibName))) elabPkgs of
+            Nothing ->
+              -- no main library, use arbitrary (first one) for elabInstanceUnitID assignment
+              assignAll (elabInstanceUnitId elabPkg)
+            Just mainLib ->
+              assignAll (elabInstanceUnitId mainLib)
 
       -- NB: We don't INSTANTIATE packages at this point.  That's
       -- a post-pass.  This makes it simpler to compute dependencies.
@@ -1822,6 +1843,7 @@ elaborateInstallPlan
                   elab0
                     { elabModuleShape = emptyModuleShape
                     , elabUnitId = notImpl "elabUnitId"
+                    , elabInstanceUnitId = notImpl "elabInstanceUnitId"
                     , elabComponentId = notImpl "elabComponentId"
                     , elabLinkedInstantiatedWith = Map.empty
                     , elabInstallDirs = notImpl "elabInstallDirs"
@@ -1881,6 +1903,7 @@ elaborateInstallPlan
                   toConfiguredComponent
                     pd
                     (error "Distribution.Client.ProjectPlanning.cc_cid: filled in later")
+                    (error "Distribution.Client.ProjectPlanning.cc_instance_unit_id: filled in later")
                     (Map.unionWith Map.union external_lib_cc_map cc_map)
                     (Map.unionWith Map.union external_exe_cc_map cc_map)
                     comp
@@ -1930,7 +1953,11 @@ elaborateInstallPlan
                               elaboratedSharedConfig
                               elab1 -- knot tied
                           )
-                    cc = cc0{cc_ann_id = fmap (const cid) (cc_ann_id cc0)}
+                    cc =
+                      cc0
+                        { cc_ann_id = fmap (const cid) (cc_ann_id cc0)
+                        , cc_instance_unit_id = mkInstanceUnitId $ mkUnitId $ unComponentId cid
+                        }
                 infoProgress $ dispConfiguredComponent cc
 
                 -- 4. Perform mix-in linking
@@ -1958,6 +1985,7 @@ elaborateInstallPlan
                     elab1
                       { elabModuleShape = lc_shape lc
                       , elabUnitId = abstractUnitId (lc_uid lc)
+                      , elabInstanceUnitId = lc_instance_id lc
                       , elabComponentId = lc_cid lc
                       , elabLinkedInstantiatedWith = Map.fromList (lc_insts lc)
                       , elabPkgOrComp =
@@ -2126,6 +2154,7 @@ elaborateInstallPlan
               elab0
                 { elabUnitId = newSimpleUnitId pkgInstalledId
                 , elabComponentId = pkgInstalledId
+                , elabInstanceUnitId = mkInstanceUnitId $ newSimpleUnitId pkgInstalledId
                 , elabLinkedInstantiatedWith = Map.empty
                 , elabPkgOrComp = ElabPackage $ ElaboratedPackage{..}
                 , elabModuleShape = modShape
@@ -2230,6 +2259,7 @@ elaborateInstallPlan
 
             -- These get filled in later
             elabUnitId = error "elaborateSolverToCommon: elabUnitId"
+            elabInstanceUnitId = error "elaborateSolverToCommon: elabInstanceUnitId"
             elabComponentId = error "elaborateSolverToCommon: elabComponentId"
             elabInstantiatedWith = Map.empty
             elabLinkedInstantiatedWith = error "elaborateSolverToCommon: elabLinkedInstantiatedWith"
@@ -4121,6 +4151,7 @@ setupHsConfigureFlags
       configCID = case elabPkgOrComp of
         ElabPackage _ -> mempty
         ElabComponent _ -> toFlag elabComponentId
+      configIUID = toFlag elabInstanceUnitId
 
       configProgramPaths = Map.toList elabProgramPaths
       configProgramArgs = Map.toList elabProgramArgs

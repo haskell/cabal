@@ -13,6 +13,9 @@ module Distribution.Types.UnitId
   , newSimpleUnitId
   , mkLegacyUnitId
   , getHSLibraryName
+  , InstanceUnitId
+  , mkInstanceUnitId
+  , unInstanceUnitId
   ) where
 
 import Distribution.Compat.Prelude
@@ -131,3 +134,16 @@ instance Parsec DefUnitId where
 -- is to ensure that the 'DefUnitId' invariant holds.
 unsafeMkDefUnitId :: UnitId -> DefUnitId
 unsafeMkDefUnitId = DefUnitId
+
+-- | A 'UnitId' for an instance (group of components). Typically
+-- this matches a main library 'UnitId'
+newtype InstanceUnitId = InstanceUnitId {unInstanceUnitId :: UnitId}
+  deriving (Generic, Read, Show, Eq, Ord, Data, Binary, NFData, Pretty)
+
+instance Structured InstanceUnitId
+
+instance Parsec InstanceUnitId where
+  parsec = InstanceUnitId <$> parsec
+
+mkInstanceUnitId :: UnitId -> InstanceUnitId
+mkInstanceUnitId = InstanceUnitId

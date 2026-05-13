@@ -45,6 +45,7 @@ data InstalledPackageInfo = InstalledPackageInfo
   , installedSublibs :: [InstalledPackageInfo]
   , libVisibility :: LibraryVisibility
   , installedUnitId :: UnitId
+  , installedInstanceUnitId :: InstanceUnitId
   , -- INVARIANT: if this package is definite, OpenModule's
     -- OpenUnitId directly records UnitId.  If it is
     -- indefinite, OpenModule is always an OpenModuleVar
@@ -136,6 +137,7 @@ emptyInstalledPackageInfo =
     , sourceLibName = LMainLibName
     , installedComponentId_ = mkComponentId ""
     , installedUnitId = mkUnitId ""
+    , installedInstanceUnitId = mkInstanceUnitId $ mkUnitId ""
     , installedSublibs = mempty
     , instantiatedWith = []
     , compatPackageKey = ""

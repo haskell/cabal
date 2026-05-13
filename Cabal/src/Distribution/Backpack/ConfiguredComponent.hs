@@ -1,3 +1,5 @@
+{-# LANGUAGE PatternSynonyms #-}
+
 -- | See <https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst>
 module Distribution.Backpack.ConfiguredComponent
   ( ConfiguredComponent (..)
@@ -22,7 +24,7 @@ import Distribution.CabalSpecVersion
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Simple.BuildToolDepends
-import Distribution.Simple.Flag (Flag)
+import Distribution.Simple.Flag (Flag, pattern Flag, pattern NoFlag)
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.AnnotatedId
 import Distribution.Types.ComponentInclude
@@ -43,6 +45,7 @@ import qualified Text.PrettyPrint as PP
 data ConfiguredComponent = ConfiguredComponent
   { cc_ann_id :: AnnotatedId ComponentId
   -- ^ Unique identifier of component, plus extra useful info.
+  , cc_instance_unit_id :: InstanceUnitId
   , cc_component :: Component
   -- ^ The fragment of syntax from the Cabal file describing this
   -- component.
@@ -98,11 +101,12 @@ dispConfiguredComponent cc =
 mkConfiguredComponent
   :: PackageDescription
   -> ComponentId
+  -> InstanceUnitId
   -> [AnnotatedId ComponentId] -- lib deps
   -> [AnnotatedId ComponentId] -- exe deps
   -> Component
   -> LogProgress ConfiguredComponent
-mkConfiguredComponent pkg_descr this_cid lib_deps exe_deps component = do
+mkConfiguredComponent pkg_descr this_cid this_iuid lib_deps exe_deps component = do
   -- Resolve each @mixins@ into the actual dependency
   -- from @lib_deps@.
   explicit_includes <- forM (mixins bi) $ \(Mixin pn ln rns) -> do
@@ -142,6 +146,7 @@ mkConfiguredComponent pkg_descr this_cid lib_deps exe_deps component = do
             , ann_pid = package pkg_descr
             , ann_cname = componentName component
             }
+      , cc_instance_unit_id = this_iuid
       , cc_component = component
       , cc_public = is_public
       , cc_exe_deps = exe_deps
@@ -170,11 +175,12 @@ type ConfiguredComponentMap =
 toConfiguredComponent
   :: PackageDescription
   -> ComponentId
+  -> InstanceUnitId
   -> ConfiguredComponentMap
   -> ConfiguredComponentMap
   -> Component
   -> LogProgress ConfiguredComponent
-toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
+toConfiguredComponent pkg_descr this_cid this_iuid lib_dep_map exe_dep_map component = do
   lib_deps <-
     if newPackageDepsBehaviour pkg_descr
       then fmap concat $
@@ -202,6 +208,7 @@ toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
   mkConfiguredComponent
     pkg_descr
     this_cid
+    this_iuid
     lib_deps
     exe_deps
     component
@@ -246,6 +253,7 @@ toConfiguredComponent'
   -> Bool -- deterministic
   -> Flag String -- configIPID (todo: remove me)
   -> Flag ComponentId -- configCID
+  -> Flag InstanceUnitId -- configIUID
   -> ConfiguredComponentMap
   -> Component
   -> LogProgress ConfiguredComponent
@@ -256,12 +264,14 @@ toConfiguredComponent'
   deterministic
   ipid_flag
   cid_flag
+  iuid_flag
   dep_map
   component = do
     cc <-
       toConfiguredComponent
         pkg_descr
         this_cid
+        this_iuid
         dep_map
         dep_map
         component
@@ -279,6 +289,10 @@ toConfiguredComponent'
           (package pkg_descr)
           (componentName component)
           (Just (deps, flags))
+      this_iuid =
+        case iuid_flag of
+          Flag iuid -> iuid
+          NoFlag -> mkInstanceUnitId $ mkUnitId $ unComponentId this_cid
       deps =
         [ ann_id aid | m <- Map.elems dep_map, aid <- Map.elems m
         ]
@@ -308,6 +322,7 @@ toConfiguredComponents
   -> Bool -- deterministic
   -> Flag String -- configIPID
   -> Flag ComponentId -- configCID
+  -> Flag InstanceUnitId -- configIUID
   -> PackageDescription
   -> ConfiguredComponentMap
   -> [Component]
@@ -318,6 +333,7 @@ toConfiguredComponents
   deterministic
   ipid_flag
   cid_flag
+  iuid_flag
   pkg_descr
   dep_map
   comps =
@@ -332,6 +348,7 @@ toConfiguredComponents
             deterministic
             ipid_flag
             cid_flag
+            iuid_flag
             m
             component
         return (extendConfiguredComponentMap cc m, cc)

@@ -115,6 +115,7 @@ data CabalException
   | NoValidComponent
   | ConfigureEitherSingleOrAll
   | ConfigCIDValidForPreComponent
+  | ConfigIUIDValidForPreComponent
   | SanityCheckForEnableComponents
   | SanityCheckForDynamicStaticLinking
   | UnsupportedLanguages PackageIdentifier CompilerId [String]
@@ -249,6 +250,7 @@ exceptionCode e = case e of
   NoValidComponent{} -> 5680
   ConfigureEitherSingleOrAll{} -> 2001
   ConfigCIDValidForPreComponent{} -> 7006
+  ConfigIUIDValidForPreComponent{} -> 7007
   SanityCheckForEnableComponents{} -> 5004
   SanityCheckForDynamicStaticLinking{} -> 4007
   UnsupportedLanguages{} -> 8074
@@ -510,6 +512,7 @@ exceptionMessage e = case e of
   NoValidComponent -> "No valid component targets found"
   ConfigureEitherSingleOrAll -> "Can only configure either a single component or all of them"
   ConfigCIDValidForPreComponent -> "--cid is only supported for per-component configure"
+  ConfigIUIDValidForPreComponent -> "--iuid is only supported for per-component configure"
   SanityCheckForEnableComponents ->
     "--enable-tests/--enable-benchmarks are incompatible with"
       ++ " explicitly specifying a component to configure."

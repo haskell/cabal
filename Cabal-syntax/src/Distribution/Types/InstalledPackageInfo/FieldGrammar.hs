@@ -61,6 +61,7 @@ ipiFieldGrammar
      , c (Identity LibraryVisibility)
      , c (Identity PackageName)
      , c (Identity UnitId)
+     , c (Identity InstanceUnitId)
      , c (Identity UnqualComponentName)
      , c (List FSep (Identity AbiDependency) AbiDependency)
      , c (List FSep (Identity UnitId) UnitId)
@@ -85,6 +86,7 @@ ipiFieldGrammar =
     <@> blurFieldGrammar basic basicFieldGrammar
     -- Basic fields
     <@> optionalFieldDef "id" L.installedUnitId (mkUnitId "")
+    <@> optionalFieldDef "instance-id" L.installedInstanceUnitId (mkInstanceUnitId $ mkUnitId "")
     <@> optionalFieldDefAla "instantiated-with" InstWith L.instantiatedWith []
     <@> optionalFieldDefAla "key" CompatPackageKey L.compatPackageKey ""
     <@> optionalFieldDefAla "license" SpecLicenseLenient L.license (Left SPDX.NONE)
