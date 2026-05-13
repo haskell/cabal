@@ -179,3 +179,33 @@ So, you cannot have
         `#123 <https://github.com/haskell/cabal/issues/123>`__
 
   See `conf.py` for list of currently defined link shorteners.
+
+### UV setup details
+
+The documentation build process uses [UV](https://github.com/astral-sh/uv) to manage Python dependencies.
+UV is a fast Python package installer and resolver, written in Rust.
+
+The following UV commands are used in the Makefile and documentation:
+
+- `uv sync`: Installs the dependencies listed in `uv.lock` (or resolves them from `pyproject.toml` if the lock file is missing).
+- `uv export --frozen --format requirements.txt`: Exports the resolved dependencies to a `requirements.txt` file (used for skjold checks).
+- `uv pip list --outdated`: Lists outdated dependencies (for updating).
+- `uv sync --upgrade`: Upgrades the dependencies to the latest versions allowed by `pyproject.toml` and updates the lock file.
+- `uvx skjold`: Runs the skjold tool (for security vulnerability checks) in an isolated environment.
+
+To get started with UV, you can install it via the official installer:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Or via Homebrew (on macOS):
+
+```bash
+brew install uv
+```
+
+After installing UV, you can run the documentation build as usual.
+
+Note: The `uv.lock` file in the `doc/` directory is committed to the repository to ensure reproducible builds.
+When updating dependencies, remember to commit the updated `uv.lock` and `pyproject.toml` (if bounds are changed).
