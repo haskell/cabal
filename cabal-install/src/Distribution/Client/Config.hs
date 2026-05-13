@@ -519,6 +519,7 @@ instance Semigroup SavedConfig where
           , configDeterministic = combine configDeterministic
           , configIPID = combine configIPID
           , configCID = combine configCID
+          , configIUID = combine configIUID
           , configUserInstall = combine configUserInstall
           , -- TODO: NubListify
             configPackageDBs = lastNonEmpty configPackageDBs

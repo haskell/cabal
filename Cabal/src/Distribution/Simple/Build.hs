@@ -846,6 +846,7 @@ testSuiteLibV09AsLibAndExe
           , componentIsPublic = False
           , componentIncludes = componentIncludes clbi
           , componentUnitId = componentUnitId clbi
+          , componentInstanceUnitId = mkInstanceUnitId $ componentUnitId clbi
           , componentComponentId = componentComponentId clbi
           , componentInstantiatedWith = []
           , componentCompatPackageName = compat_name
