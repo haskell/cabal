@@ -5,8 +5,7 @@ import Test.Cabal.Prelude
 
 main = cabalTest $ do
   -- the With GHC-9.2+ output contains -this-unit-id
-  -- the With GHC-9.4+ output contains -pgmc by default
-  skipUnlessGhcVersion ">= 9.4"
+  skipUnlessGhcVersion "^>= 9.2"
   withRepo "repo" $ do
     runShowBuildInfo ["exe:Complex"]
       >> withPlan

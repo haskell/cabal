@@ -316,7 +316,6 @@ compilerProgramDb verbosity comp progdb1 hcPkgPath = do
       -- in the GHC settings file
       progdb3 =
         Internal.configureToolchain
-          (ghcVersionImplInfo ghcVersion)
           ghcProg
           (compilerProperties comp)
           progdb2
