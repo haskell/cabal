@@ -1,4 +1,6 @@
 {-# LANGUAGE FlexibleInstances   #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Distribution.Described (
@@ -71,6 +73,7 @@ import Distribution.PackageDescription.FieldGrammar (CompatLicenseFile, CompatDa
 import Distribution.FieldGrammar.Newtypes
 import Distribution.ModuleName                     (ModuleName)
 import Distribution.System                         (Arch, OS, knownArches, knownOSs)
+import Distribution.Types.Annotation
 import Distribution.Types.AbiDependency            (AbiDependency)
 import Distribution.Types.AbiHash                  (AbiHash)
 import Distribution.Types.BenchmarkType            (BenchmarkType)
@@ -546,7 +549,7 @@ instance Described UnqualComponentName where
 -- Instances: Newtypes
 -------------------------------------------------------------------------------
 
-class Sep sep => DescribeSep sep where
+class Sep Abst sep => DescribeSep sep where
     describeSep :: Proxy sep -> GrammarRegex a -> GrammarRegex a
 
 instance DescribeSep CommaVCat   where describeSep _ = reCommaList

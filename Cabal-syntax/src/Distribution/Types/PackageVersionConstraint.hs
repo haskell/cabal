@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Distribution.Types.PackageVersionConstraint
   ( PackageVersionConstraint (..)
@@ -53,7 +54,7 @@ instance Pretty PackageVersionConstraint where
 -- Just (PackageVersionConstraint (PackageName "foo") (ThisVersion (mkVersion [2,0])))
 instance Parsec PackageVersionConstraint where
   parsec = do
-    PackageIdentifier name ver <- parsec
+    PackageIdentifier name ver <- parsec @PackageIdentifier
     if ver == nullVersion
       then do
         P.spaces

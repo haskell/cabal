@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 module Distribution.Parsec.Position
@@ -18,8 +19,9 @@ data Position
   = Position
       {-# UNPACK #-} !Int -- row
       {-# UNPACK #-} !Int -- column
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show, Generic, Data, Read)
 
+instance Structured Position
 instance Binary Position
 instance NFData Position where rnf = genericRnf
 
@@ -34,6 +36,7 @@ retPos (Position row _col) = Position (row + 1) 1
 showPos :: Position -> String
 showPos (Position row col) = show row ++ ":" ++ show col
 
+-- | Only used for error values
 zeroPos :: Position
 zeroPos = Position 0 0
 

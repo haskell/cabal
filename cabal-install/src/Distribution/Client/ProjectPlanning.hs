@@ -1800,7 +1800,7 @@ elaborateInstallPlan
               dieProgress $
                 text "Internal libraries only supported with per-component builds."
                   $$ text "Per-component builds were disabled because"
-                  <+> fsep (punctuate comma $ map (text . whyNotPerComponent) $ toList reasons)
+                    <+> fsep (punctuate comma $ map (text . whyNotPerComponent) $ toList reasons)
           -- TODO: Maybe exclude Backpack too
 
           (elab0, elaborationWarnings) = elaborateSolverToCommon spkg

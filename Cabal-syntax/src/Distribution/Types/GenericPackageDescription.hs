@@ -1,11 +1,25 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Distribution.Types.GenericPackageDescription
-  ( GenericPackageDescription (..)
+  ( GenericPackageDescription
+  , GenericPackageDescriptionAnn
+  , GenericPackageDescriptionWith (..)
   , emptyGenericPackageDescription
+  , EmptyGPD (..)
   ) where
 
 import Distribution.Compat.Prelude
@@ -18,6 +32,7 @@ import qualified Distribution.Types.BuildInfo.Lens as L
 import Distribution.Types.PackageDescription
 
 import Distribution.Package
+import Distribution.Types.Annotation
 import Distribution.Types.Benchmark
 import Distribution.Types.CondTree
 import Distribution.Types.ConfVar
@@ -32,8 +47,11 @@ import Distribution.Version
 -- ---------------------------------------------------------------------------
 -- The 'GenericPackageDescription' type
 
-data GenericPackageDescription = GenericPackageDescription
-  { packageDescription :: PackageDescription
+type GenericPackageDescription = GenericPackageDescriptionWith Abst
+type GenericPackageDescriptionAnn = GenericPackageDescriptionWith Conc
+
+data GenericPackageDescriptionWith (m :: ParsingPhase) = GenericPackageDescription
+  { packageDescription :: PackageDescriptionWith m
   , gpdScannedVersion :: Maybe Version
   -- ^ This is a version as specified in source.
   --   We populate this field in index reading for dummy GPDs,
@@ -44,49 +62,54 @@ data GenericPackageDescription = GenericPackageDescription
   --   Perfectly, PackageIndex should have sum type, so we don't need to
   --   have dummy GPDs.
   , genPackageFlags :: [PackageFlag]
-  , condLibrary :: Maybe (CondTree ConfVar Library)
+  , condLibrary :: Maybe (CondTree ConfVar (LibraryWith m))
   , condSubLibraries
-      :: [ ( UnqualComponentName
-           , CondTree ConfVar Library
-           )
-         ]
+      :: [(UnqualComponentName, CondTree ConfVar (LibraryWith m))]
   , condForeignLibs
-      :: [ ( UnqualComponentName
-           , CondTree ConfVar ForeignLib
-           )
-         ]
+      :: [(UnqualComponentName, CondTree ConfVar (ForeignLibWith m))]
   , condExecutables
-      :: [ ( UnqualComponentName
-           , CondTree ConfVar Executable
-           )
-         ]
+      :: [(UnqualComponentName, CondTree ConfVar (ExecutableWith m))]
   , condTestSuites
-      :: [ ( UnqualComponentName
-           , CondTree ConfVar TestSuite
-           )
-         ]
+      :: [(UnqualComponentName, CondTree ConfVar (TestSuiteWith m))]
   , condBenchmarks
-      :: [ ( UnqualComponentName
-           , CondTree ConfVar Benchmark
-           )
-         ]
+      :: [(UnqualComponentName, CondTree ConfVar (BenchmarkWith m))]
   }
-  deriving (Show, Eq, Data, Generic)
 
-instance Package GenericPackageDescription where
+deriving instance Eq (GenericPackageDescriptionWith Abst)
+deriving instance Show (GenericPackageDescriptionWith Abst)
+deriving instance Data (GenericPackageDescriptionWith Abst)
+deriving instance Generic (GenericPackageDescriptionWith Abst)
+
+deriving instance Show (GenericPackageDescriptionWith Conc)
+
+instance Package (GenericPackageDescriptionWith Abst) where
   packageId = packageId . packageDescription
 
-instance Binary GenericPackageDescription
+deriving instance Binary (GenericPackageDescriptionWith Abst)
+
 instance Structured GenericPackageDescription
 instance NFData GenericPackageDescription where rnf = genericRnf
+
+class EmptyGPD (mod :: ParsingPhase) where
+  emptyGPD :: GenericPackageDescriptionWith mod
+
+-- | BAD: this is for prototyping =D
+instance EmptyGPD Abst where
+  emptyGPD = emptyGenericPackageDescription
+
+instance EmptyGPD Conc where
+  emptyGPD = emptyGenericPackageDescriptionAnn
 
 emptyGenericPackageDescription :: GenericPackageDescription
 emptyGenericPackageDescription = GenericPackageDescription emptyPackageDescription Nothing [] Nothing [] [] [] [] []
 
+emptyGenericPackageDescriptionAnn :: GenericPackageDescriptionWith Conc
+emptyGenericPackageDescriptionAnn = GenericPackageDescription emptyPackageDescriptionAnn Nothing [] Nothing [] [] [] [] []
+
 -- -----------------------------------------------------------------------------
 -- Traversal Instances
 
-instance L.HasBuildInfos GenericPackageDescription where
+instance L.HasBuildInfosWith Abst GenericPackageDescription where
   traverseBuildInfos f (GenericPackageDescription p v a1 x1 x2 x3 x4 x5 x6) =
     GenericPackageDescription
       <$> L.traverseBuildInfos f p

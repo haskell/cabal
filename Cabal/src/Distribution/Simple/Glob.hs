@@ -482,7 +482,6 @@ checkNameMatches spec glob candidate
       if enableMultidot spec
         then pure (GlobMatch ())
         else -- if not, issue a warning saying multidot is needed for the match
-
           let (_, candidateExts) = splitExtensions $ takeFileName candidate
               extractExts :: GlobPieces -> Maybe String
               extractExts [] = Nothing

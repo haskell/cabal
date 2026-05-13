@@ -1,7 +1,13 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module Distribution.Types.CondTree
   ( CondTree (..)
@@ -57,7 +63,20 @@ data CondTree v a = CondNode
   { condTreeData :: a
   , condTreeComponents :: [CondBranch v a]
   }
-  deriving (Show, Eq, Data, Generic, Functor, Foldable, Traversable)
+
+deriving instance (Show v, Show a) => Show (CondTree v a)
+deriving instance (Eq v, Eq a) => Eq (CondTree v a)
+deriving instance (Data v, Data a) => Data (CondTree v a)
+deriving instance Generic (CondTree v a)
+
+instance Functor (CondTree v) where
+  fmap f (CondNode x bs) = CondNode (f x) ((fmap . fmap) f bs)
+
+instance Foldable (CondTree v) where
+  foldMap f (CondNode x bs) = f x <> (foldMap . foldMap) f bs
+
+instance Traversable (CondTree v) where
+  traverse f (CondNode x bs) = CondNode <$> f x <*> (traverse . traverse) f bs
 
 instance (Binary v, Binary a) => Binary (CondTree v a)
 instance (Structured v, Structured a) => Structured (CondTree v a)
@@ -78,7 +97,14 @@ data CondBranch v a = CondBranch
   , condBranchIfTrue :: CondTree v a
   , condBranchIfFalse :: Maybe (CondTree v a)
   }
-  deriving (Show, Eq, Data, Generic, Functor, Traversable, Foldable)
+  deriving (Generic)
+
+deriving instance (Show v, Show a) => Show (CondBranch v a)
+deriving instance (Eq v, Eq a) => Eq (CondBranch v a)
+deriving instance (Data v, Data a) => Data (CondBranch v a)
+deriving instance Functor (CondBranch v)
+deriving instance Foldable (CondBranch v)
+deriving instance Traversable (CondBranch v)
 
 instance (Binary v, Binary a) => Binary (CondBranch v a)
 instance (Structured v, Structured a) => Structured (CondBranch v a)

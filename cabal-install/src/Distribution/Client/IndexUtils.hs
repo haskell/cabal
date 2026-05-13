@@ -78,7 +78,8 @@ import Distribution.Package
   , packageVersion
   )
 import Distribution.PackageDescription
-  ( GenericPackageDescription (..)
+  ( GenericPackageDescription
+  , GenericPackageDescriptionWith (..)
   , PackageDescription (..)
   , emptyPackageDescription
   )

@@ -135,7 +135,6 @@ fetch
       then -- TODO: when we add support for remote tarballs then this message
       -- will need to be changed because for remote tarballs we fetch them
       -- at the earlier phase.
-
         notice verbosity $
           "No packages need to be fetched. "
             ++ "All the requested packages are already local "

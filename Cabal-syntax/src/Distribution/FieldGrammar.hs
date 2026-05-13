@@ -1,24 +1,32 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- | This module provides a way to specify a grammar of @.cabal@ -like files.
 module Distribution.FieldGrammar
   ( -- * Field grammar type
-    FieldGrammar (..)
+    FieldGrammar
+  , FieldGrammarWith (..)
   , uniqueField
+  , uniqueField'
   , optionalField
   , optionalFieldDef
   , monoidalField
 
     -- * Concrete grammar implementations
   , ParsecFieldGrammar
+  , ParsecFieldGrammarWith
   , ParsecFieldGrammar'
+  , ParsecFieldGrammarWith'
   , parseFieldGrammar
   , parseFieldGrammarCheckingStanzas
   , fieldGrammarKnownFieldList
   , PrettyFieldGrammar
+  , PrettyFieldGrammarWith
   , PrettyFieldGrammar'
+  , PrettyFieldGrammarWith'
   , prettyFieldGrammar
 
     -- * Auxiliary
@@ -26,6 +34,7 @@ module Distribution.FieldGrammar
   , Section (..)
   , Fields
   , partitionFields
+  , extractComments
   , takeFields
   , runFieldParser
   , runFieldParser'
@@ -38,6 +47,7 @@ module Distribution.FieldGrammar
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import qualified Data.Bifunctor as Bi
 import qualified Data.Map.Strict as Map
 
 import Distribution.FieldGrammar.Class
@@ -45,10 +55,14 @@ import Distribution.FieldGrammar.Newtypes
 import Distribution.FieldGrammar.Parsec
 import Distribution.FieldGrammar.Pretty
 import Distribution.Fields.Field
+import Distribution.Types.Annotation
 import Distribution.Utils.Generic (spanMaybe)
 
-type ParsecFieldGrammar' a = ParsecFieldGrammar a a
-type PrettyFieldGrammar' a = PrettyFieldGrammar a a
+type ParsecFieldGrammarWith' (mod :: ParsingPhase) a = ParsecFieldGrammarWith mod a a
+type PrettyFieldGrammarWith' (mod :: ParsingPhase) a = PrettyFieldGrammarWith mod a a
+
+type ParsecFieldGrammar' a = ParsecFieldGrammarWith Abst a a
+type PrettyFieldGrammar' a = PrettyFieldGrammarWith Abst a a
 
 infixl 5 ^^^
 
@@ -99,6 +113,7 @@ partitionFields = finalize . foldl' f (PS mempty mempty mempty)
       PS fs (MkSection name sargs sfields : s) ss
 
 -- | Take all fields from the front.
+-- Returns a tuple containing the comments, nameless fields, and sections
 takeFields :: [Field ann] -> (Fields ann, [Field ann])
 takeFields = finalize . spanMaybe match
   where
@@ -106,3 +121,9 @@ takeFields = finalize . spanMaybe match
 
     match (Field (Name ann name) fs) = Just (name, [MkNamelessField ann fs])
     match _ = Nothing
+
+extractComments :: (Foldable f, Functor f) => [f (WithComments ann)] -> ([Comment ann], [f ann])
+extractComments = Bi.first mconcat . unzip . map extractCommentsStep
+
+extractCommentsStep :: (Foldable f, Functor f) => f (WithComments ann) -> ([Comment ann], f ann)
+extractCommentsStep f = (foldMap justComments f, fmap unComments f)

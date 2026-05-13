@@ -178,12 +178,12 @@ downloadURI transport verbosity uri path = do
         Left err ->
           dieWithException verbosity $ CannotParseURIFragment uriFrag err
       else -- if there are no uri fragment, use ETag
-      do
-        etagPathExists <- doesFileExist etagPath
-        -- In rare cases the target file doesn't exist, but the etag does.
-        if targetExists && etagPathExists
-          then return (CheckETag etagPath)
-          else return (NeedsDownload Nothing)
+        do
+          etagPathExists <- doesFileExist etagPath
+          -- In rare cases the target file doesn't exist, but the etag does.
+          if targetExists && etagPathExists
+            then return (CheckETag etagPath)
+            else return (NeedsDownload Nothing)
 
   -- Only use the external http transports if we actually have to
   -- (or have been told to do so)

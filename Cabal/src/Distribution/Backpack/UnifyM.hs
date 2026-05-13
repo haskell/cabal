@@ -422,7 +422,7 @@ failWithMutuallyRecursiveUnitsError required_mod_name mod_names =
         text "Cannot instantiate requirement"
           <+> quotes required_mod_name
           $$ text "Ensure \"build-depends:\" doesn't include any library with signatures:"
-          <+> sigsList
+            <+> sigsList
           $$ text "as this creates a cyclic dependency, which GHC does not support."
 
 -- Helper functions
@@ -532,7 +532,7 @@ convertInclude
             text "Conflicting renamings of requirement"
               <+> quotes (pretty k)
               $$ text "Renamed to: "
-              <+> vcat (map pretty (v : vs))
+                <+> vcat (map pretty (v : vs))
           return v
 
     let req_rename_fn k = Map.findWithDefault k k req_rename

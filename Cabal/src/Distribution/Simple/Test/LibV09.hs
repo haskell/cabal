@@ -72,7 +72,8 @@ runTest verbHandles pkg_descr lbi clbi hpcMarkupInfo flags suite = do
   let cmd =
         interpretSymbolicPath mbWorkDir (LBI.buildDir lbi)
           </> stubName suite
-          </> stubName suite <.> exeExtension (LBI.hostPlatform lbi)
+          </> stubName suite
+          <.> exeExtension (LBI.hostPlatform lbi)
       tDir = i $ tixDir distPref way
   -- Check that the test executable exists.
   exists <- doesFileExist cmd

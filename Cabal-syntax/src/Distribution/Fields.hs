@@ -38,7 +38,8 @@ module Distribution.Fields
 
     -- * Pretty printing
   , CommentPosition (..)
-  , PrettyField (..)
+  , PrettyField
+  , PrettyFieldWith (..)
   , showFields
 
     -- ** Transformation from Field

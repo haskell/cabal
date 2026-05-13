@@ -1758,7 +1758,7 @@ testTargetProblemsHaddock config reportSubCase = do
 
 assertProjectDistinctTargets
   :: forall err
-   . (Eq err, Show err)
+   . Show err
   => ElaboratedInstallPlan
   -> (forall k. TargetSelector -> [AvailableTarget k] -> Either (TargetProblem err) [k])
   -> (forall k. SubComponentTarget -> AvailableTarget k -> Either (TargetProblem err) k)

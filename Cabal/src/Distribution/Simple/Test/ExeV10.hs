@@ -66,7 +66,8 @@ runTest verbHandles pkg_descr lbi clbi hpcMarkupInfo flags suite = do
   let cmd =
         i (LBI.buildDir lbi)
           </> testName'
-          </> testName' <.> exeExtension (LBI.hostPlatform lbi)
+          </> testName'
+          <.> exeExtension (LBI.hostPlatform lbi)
   -- Check that the test executable exists.
   exists <- doesFileExist cmd
   unless exists $

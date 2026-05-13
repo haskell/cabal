@@ -163,7 +163,7 @@ import Distribution.Package
   , packageVersion
   )
 import Distribution.PackageDescription
-  ( GenericPackageDescription (..)
+  ( GenericPackageDescriptionWith (..)
   , PackageDescription
   )
 import qualified Distribution.PackageDescription as PackageDescription
@@ -2031,7 +2031,6 @@ installUnpackedPackage
           if is_dir
             then -- Sort so that each prefix of the package
             -- configurations is well formed
-
               traverse (readPkgConf (getSymbolicPath pkgConfDest)) . sort . filter notHidden
                 =<< listDirectory (getSymbolicPath pkgConfDest)
             else fmap (: []) $ readPkgConf "." (getSymbolicPath pkgConfDest)

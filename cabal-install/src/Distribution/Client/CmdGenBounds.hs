@@ -184,7 +184,6 @@ getBoundsForComponent tgt pkg pkgVersionMap =
   if null needBounds
     then boundsResult Nothing
     else -- All the things we depend on.
-
       let componentDeps = elabLibDependencies pkg
           -- Match these up to package names, this is a list of Package name to versions.
           -- Now just match that up with what the user wrote in the build-depends section.

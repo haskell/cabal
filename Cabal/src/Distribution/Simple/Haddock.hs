@@ -1623,7 +1623,7 @@ hscolour'
           outFile m =
             i outputDir
               </> intercalate "-" (ModuleName.components m)
-                <.> "html"
+              <.> "html"
 
 haddockToHscolour :: HaddockFlags -> HscolourFlags
 haddockToHscolour flags =

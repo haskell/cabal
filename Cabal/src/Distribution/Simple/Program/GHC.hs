@@ -903,9 +903,9 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
 
           concat
             [ [ if
-                    | unitIdSupported comp -> "-this-unit-id"
-                    | packageKeySupported comp -> "-this-package-key"
-                    | otherwise -> "-package-name"
+                  | unitIdSupported comp -> "-this-unit-id"
+                  | packageKeySupported comp -> "-this-package-key"
+                  | otherwise -> "-package-name"
               , this_arg
               ]
             | this_arg <- flag ghcOptThisUnitId

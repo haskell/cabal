@@ -12,7 +12,7 @@
 -- about @.cabal@ files.
 module Distribution.PackageDescription
   ( -- * PD and GPD
-      module Distribution.Types.PackageDescription
+    module Distribution.Types.PackageDescription
   , module Distribution.Types.GenericPackageDescription
 
     -- * Components

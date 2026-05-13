@@ -1,8 +1,14 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeApplications #-}
 
 -- | This module provides a 'FieldGrammarParser', one way to parse
 -- @.cabal@ -like files.
@@ -54,6 +60,7 @@
 -- to report unknown fields and save custom @x-fields@.
 module Distribution.FieldGrammar.Parsec
   ( ParsecFieldGrammar
+  , ParsecFieldGrammarWith
   , parseFieldGrammar
   , parseFieldGrammarCheckingStanzas
   , fieldGrammarKnownFieldList
@@ -69,6 +76,7 @@ module Distribution.FieldGrammar.Parsec
   , freeTextIgnoreDotlineVers
   ) where
 
+import Distribution.Compat.Lens
 import Distribution.Compat.Newtype
 import Distribution.Compat.Prelude
 import Distribution.Utils.Generic (fromUTF8BS)
@@ -90,6 +98,11 @@ import Distribution.Fields.ParseResult
 import Distribution.Parsec
 import Distribution.Parsec.FieldLineStream
 import Distribution.Parsec.Position (positionCol, positionRow)
+import Distribution.Types.Trivia
+
+import Data.Kind
+
+import Distribution.Types.Annotation
 
 -------------------------------------------------------------------------------
 -- Auxiliary types
@@ -112,14 +125,16 @@ data Section ann = MkSection !(Name ann) [SectionArg ann] [Field ann]
 -- ParsecFieldGrammar
 -------------------------------------------------------------------------------
 
-data ParsecFieldGrammar s a = ParsecFG
+type ParsecFieldGrammar = ParsecFieldGrammarWith Abst
+
+data ParsecFieldGrammarWith (m :: ParsingPhase) s a = ParsecFG
   { fieldGrammarKnownFields :: !(Set FieldName)
   , fieldGrammarKnownPrefixes :: !(Set FieldName)
   , fieldGrammarParser :: forall src. (CabalSpecVersion -> Fields Position -> ParseResult src a)
   }
   deriving (Functor)
 
-parseFieldGrammar :: CabalSpecVersion -> Fields Position -> ParsecFieldGrammar s a -> ParseResult src a
+parseFieldGrammar :: CabalSpecVersion -> Fields Position -> ParsecFieldGrammarWith m s a -> ParseResult src a
 parseFieldGrammar v fields grammar = do
   for_ (Map.toList (Map.filterWithKey (isUnknownField grammar) fields)) $ \(name, nfields) ->
     for_ nfields $ \(MkNamelessField pos _) ->
@@ -129,14 +144,14 @@ parseFieldGrammar v fields grammar = do
   -- parse
   fieldGrammarParser grammar v fields
 
-isUnknownField :: ParsecFieldGrammar s a -> FieldName -> [NamelessField Position] -> Bool
+isUnknownField :: ParsecFieldGrammarWith m s a -> FieldName -> [NamelessField Position] -> Bool
 isUnknownField grammar k _ =
   not $
     k `Set.member` fieldGrammarKnownFields grammar
       || any (`BS.isPrefixOf` k) (fieldGrammarKnownPrefixes grammar)
 
 -- | Parse a ParsecFieldGrammar and check for fields that should be stanzas.
-parseFieldGrammarCheckingStanzas :: CabalSpecVersion -> Fields Position -> ParsecFieldGrammar s a -> Set BS.ByteString -> ParseResult src a
+parseFieldGrammarCheckingStanzas :: CabalSpecVersion -> Fields Position -> ParsecFieldGrammarWith m s a -> Set BS.ByteString -> ParseResult src a
 parseFieldGrammarCheckingStanzas v fields grammar sections = do
   for_ (Map.toList (Map.filterWithKey (isUnknownField grammar) fields)) $ \(name, nfields) ->
     for_ nfields $ \(MkNamelessField pos _) ->
@@ -145,10 +160,10 @@ parseFieldGrammarCheckingStanzas v fields grammar sections = do
         else parseWarning pos PWTUnknownField $ "Unknown field: " ++ show name
   fieldGrammarParser grammar v fields
 
-fieldGrammarKnownFieldList :: ParsecFieldGrammar s a -> [FieldName]
+fieldGrammarKnownFieldList :: ParsecFieldGrammarWith m s a -> [FieldName]
 fieldGrammarKnownFieldList = Set.toList . fieldGrammarKnownFields
 
-instance Applicative (ParsecFieldGrammar s) where
+instance Applicative (ParsecFieldGrammarWith m s) where
   pure x = ParsecFG mempty mempty (\_ _ -> pure x)
   {-# INLINE pure #-}
 
@@ -167,7 +182,7 @@ warnMultipleSingularFields fn (x : xs) = do
   parseWarning pos PWTMultipleSingularField $
     "The field " <> show fn <> " is specified more than once at positions " ++ intercalate ", " (map showPos (pos : poss))
 
-instance FieldGrammar Parsec ParsecFieldGrammar where
+instance FieldGrammarWith Abst Parsec ParsecFieldGrammarWith where
   blurFieldGrammar _ (ParsecFG s s' parser) = ParsecFG s s' parser
 
   uniqueFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
@@ -183,6 +198,8 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
       parseOne v (MkNamelessField pos fls) =
         unpack' _pack <$> runFieldParser pos parsec v fls
 
+  uniqueFieldAla' = uniqueFieldAla
+
   booleanFieldDef fn _extract def = ParsecFG (Set.singleton fn) Set.empty parser
     where
       parser v fields = case Map.lookup fn fields of
@@ -194,6 +211,8 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
           NE.last <$> traverse (parseOne v) (y :| ys)
 
       parseOne v (MkNamelessField pos fls) = runFieldParser pos parsec v fls
+
+  booleanFieldDef' = booleanFieldDef
 
   optionalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
@@ -208,6 +227,8 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
       parseOne v (MkNamelessField pos fls)
         | null fls = pure Nothing
         | otherwise = Just . unpack' _pack <$> runFieldParser pos parsec v fls
+
+  optionalFieldDefAla' = optionalFieldDefAla
 
   optionalFieldDefAla fn _pack _extract def = ParsecFG (Set.singleton fn) Set.empty parser
     where
@@ -271,15 +292,26 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
           | v >= freeTextIgnoreDotlineVers -> pure (ShortText.toShortText $ fieldlinesToFreeText3 pos fls)
           | otherwise -> pure (ShortText.toShortText $ fieldlinesToFreeText fls)
 
+  monoidalFieldAla
+    :: forall m b a s
+     . (Parsec b, Monoid a, Newtype a b)
+    => FieldName
+    -> (a -> b)
+    -> ALens' s a
+    -> ParsecFieldGrammarWith m s a
   monoidalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
     where
+      parser :: CabalSpecVersion -> Fields Position -> ParseResult src a
       parser v fields = case Map.lookup fn fields of
         Nothing -> pure mempty
         Just xs -> foldMap (unpack' _pack) <$> traverse (parseOne v) xs
 
+      parseOne :: CabalSpecVersion -> NamelessField Position -> ParseResult src b
       parseOne v (MkNamelessField pos fls) = runFieldParser pos parsec v fls
 
-  prefixedFields fnPfx _extract = ParsecFG mempty (Set.singleton fnPfx) (\_ fs -> pure (parser fs))
+  monoidalFieldAla' = monoidalFieldAla
+
+  prefixedFields fnPfx _extract = ParsecFG mempty (Set.singleton fnPfx) (\_v -> pure . parser)
     where
       parser :: Fields Position -> [(String, String)]
       parser values = reorder $ concatMap convert $ filter match $ Map.toList values
@@ -358,6 +390,297 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
   knownField fn = ParsecFG (Set.singleton fn) Set.empty (\_ _ -> pure ())
 
   hiddenField = id
+
+instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
+  -- Old methods
+  blurFieldGrammar _ (ParsecFG s s' parser) = ParsecFG s s' parser
+  uniqueFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
+    where
+      parser v fields = case Map.lookup fn fields of
+        Nothing -> parseFatalFailure zeroPos $ show fn ++ " field missing"
+        Just [] -> parseFatalFailure zeroPos $ show fn ++ " field missing"
+        Just [x] -> parseOne v x
+        Just xs@(_ : y : ys) -> do
+          warnMultipleSingularFields fn xs
+          NE.last <$> traverse (parseOne v) (y :| ys)
+      parseOne v (MkNamelessField pos fls) =
+        unpack' _pack <$> runFieldParser pos parsec v fls
+  booleanFieldDef fn _extract def = ParsecFG (Set.singleton fn) Set.empty parser
+    where
+      parser v fields = case Map.lookup fn fields of
+        Nothing -> pure def
+        Just [] -> pure def
+        Just [x] -> parseOne v x
+        Just xs@(_ : y : ys) -> do
+          warnMultipleSingularFields fn xs
+          NE.last <$> traverse (parseOne v) (y :| ys)
+      parseOne v (MkNamelessField pos fls) = runFieldParser pos parsec v fls
+  optionalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
+    where
+      parser v fields = case Map.lookup fn fields of
+        Nothing -> pure Nothing
+        Just [] -> pure Nothing
+        Just [x] -> parseOne v x
+        Just xs@(_ : y : ys) -> do
+          warnMultipleSingularFields fn xs
+          NE.last <$> traverse (parseOne v) (y :| ys)
+      parseOne v (MkNamelessField pos fls)
+        | null fls = pure Nothing
+        | otherwise = Just . unpack' _pack <$> runFieldParser pos parsec v fls
+  optionalFieldDefAla fn _pack _extract def = ParsecFG (Set.singleton fn) Set.empty parser
+    where
+      parser v fields = case Map.lookup fn fields of
+        Nothing -> pure def
+        Just [] -> pure def
+        Just [x] -> parseOne v x
+        Just xs@(_ : y : ys) -> do
+          warnMultipleSingularFields fn xs
+          NE.last <$> traverse (parseOne v) (y :| ys)
+      parseOne v (MkNamelessField pos fls)
+        | null fls = pure def
+        | otherwise = unpack' _pack <$> runFieldParser pos parsec v fls
+  freeTextField fn _ = ParsecFG (Set.singleton fn) Set.empty parser
+    where
+      parser v fields = case Map.lookup fn fields of
+        Nothing -> pure Nothing
+        Just [] -> pure Nothing
+        Just [x] -> parseOne v x
+        Just xs@(_ : y : ys) -> do
+          warnMultipleSingularFields fn xs
+          NE.last <$> traverse (parseOne v) (y :| ys)
+      parseOne v (MkNamelessField pos fls)
+        | null fls = pure Nothing
+        | v >= freeTextIgnoreDotlineVers = pure (Just (fieldlinesToFreeText3 pos fls))
+        | otherwise = pure (Just (fieldlinesToFreeText fls))
+  freeTextFieldDef fn _ = ParsecFG (Set.singleton fn) Set.empty parser
+    where
+      parser v fields = case Map.lookup fn fields of
+        Nothing -> pure ""
+        Just [] -> pure ""
+        Just [x] -> parseOne v x
+        Just xs@(_ : y : ys) -> do
+          warnMultipleSingularFields fn xs
+          NE.last <$> traverse (parseOne v) (y :| ys)
+      parseOne v (MkNamelessField pos fls)
+        | null fls = pure ""
+        | v >= freeTextIgnoreDotlineVers = pure (fieldlinesToFreeText3 pos fls)
+        | otherwise = pure (fieldlinesToFreeText fls)
+  freeTextFieldDefST fn _ = ParsecFG (Set.singleton fn) Set.empty parser
+    where
+      parser v fields = case Map.lookup fn fields of
+        Nothing -> pure mempty
+        Just [] -> pure mempty
+        Just [x] -> parseOne v x
+        Just xs@(_ : y : ys) -> do
+          warnMultipleSingularFields fn xs
+          NE.last <$> traverse (parseOne v) (y :| ys)
+      parseOne v (MkNamelessField pos fls) = case fls of
+        [] -> pure mempty
+        [FieldLine _ bs] -> pure (ShortText.unsafeFromUTF8BS bs)
+        _
+          | v >= freeTextIgnoreDotlineVers -> pure (ShortText.toShortText $ fieldlinesToFreeText3 pos fls)
+          | otherwise -> pure (ShortText.toShortText $ fieldlinesToFreeText fls)
+  monoidalFieldAla
+    :: forall m b a s
+     . (Parsec b, Monoid a, Newtype a b)
+    => FieldName
+    -> (a -> b)
+    -> ALens' s a
+    -> ParsecFieldGrammarWith m s a
+  monoidalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
+    where
+      parser :: CabalSpecVersion -> Fields Position -> ParseResult src a
+      parser v fields = case Map.lookup fn fields of
+        Nothing -> pure mempty
+        Just xs -> foldMap (unpack' _pack) <$> traverse (parseOne v) xs
+      parseOne :: CabalSpecVersion -> NamelessField Position -> ParseResult src b
+      parseOne v (MkNamelessField pos fls) = runFieldParser pos parsec v fls
+
+  prefixedFields fnPfx _extract = ParsecFG mempty (Set.singleton fnPfx) (\_ fs -> pure (parser fs))
+    where
+      parser :: Fields Position -> [(String, String)]
+      parser values = reorder $ concatMap convert $ filter match $ Map.toList values
+      match (fn, _) = fnPfx `BS.isPrefixOf` fn
+      convert (fn, fields) =
+        [ (pos, (fromUTF8BS fn, trim $ fromUTF8BS $ fieldlinesToBS fls))
+        | MkNamelessField pos fls <- fields
+        ]
+      -- hack: recover the order of prefixed fields
+      reorder = map snd . sortBy (comparing fst)
+  availableSince vs def (ParsecFG names prefixes parser) = ParsecFG names prefixes parser'
+    where
+      parser' v values
+        | v >= vs = parser v values
+        | otherwise = do
+            let unknownFields = Map.intersection values $ Map.fromSet (const ()) names
+            for_ (Map.toList unknownFields) $ \(name, fields) ->
+              for_ fields $ \(MkNamelessField pos _) ->
+                parseWarning pos PWTUnknownField $
+                  "The field " <> show name <> " is available only since the Cabal specification version " ++ showCabalSpecVersion vs ++ ". This field will be ignored."
+            pure def
+
+  availableSinceWarn vs (ParsecFG names prefixes parser) = ParsecFG names prefixes parser'
+    where
+      parser' v values
+        | v >= vs = parser v values
+        | otherwise = do
+            let unknownFields = Map.intersection values $ Map.fromSet (const ()) names
+            for_ (Map.toList unknownFields) $ \(name, fields) ->
+              for_ fields $ \(MkNamelessField pos _) ->
+                parseWarning pos PWTUnknownField $
+                  "The field " <> show name <> " is available only since the Cabal specification version " ++ showCabalSpecVersion vs ++ "."
+            parser v values
+
+  deprecatedSince vs msg (ParsecFG names prefixes parser) = ParsecFG names prefixes parser'
+    where
+      parser' v values
+        | v >= vs = do
+            let deprecatedFields = Map.intersection values $ Map.fromSet (const ()) names
+            for_ (Map.toList deprecatedFields) $ \(name, fields) ->
+              for_ fields $ \(MkNamelessField pos _) ->
+                parseWarning pos PWTDeprecatedField $
+                  "The field " <> show name <> " is deprecated in the Cabal specification version " ++ showCabalSpecVersion vs ++ ". " ++ msg
+            parser v values
+        | otherwise = parser v values
+  removedIn vs msg (ParsecFG names prefixes parser) = ParsecFG names prefixes parser'
+    where
+      parser' v values
+        | v >= vs = do
+            let msg' = if null msg then "" else ' ' : msg
+            let unknownFields = Map.intersection values $ Map.fromSet (const ()) names
+            let namePos =
+                  [ (name, pos)
+                  | (name, fields) <- Map.toList unknownFields
+                  , MkNamelessField pos _ <- fields
+                  ]
+            let makeMsg name = "The field " <> show name <> " is removed in the Cabal specification version " ++ showCabalSpecVersion vs ++ "." ++ msg'
+            case namePos of
+              -- no fields => proceed (with empty values, to be sure)
+              [] -> parser v mempty
+              -- if there's single field: fail fatally with it
+              ((name, pos) : rest) -> do
+                for_ rest $ \(name', pos') -> parseFailure pos' $ makeMsg name'
+                parseFatalFailure pos $ makeMsg name
+        | otherwise = parser v values
+  knownField fn = ParsecFG (Set.singleton fn) Set.empty (\_ _ -> pure ())
+  hiddenField = id
+
+  -- New methods
+
+  booleanFieldDef'
+    :: forall s
+     . FieldName
+    -- \^ field name
+    -> ALens' s [Ann Positions Bool]
+    -- \^ lens into the field
+    -> Bool
+    -- \^ default
+    -> ParsecFieldGrammarWith Conc s [Ann Positions Bool]
+  booleanFieldDef' fn _extract def = ParsecFG (Set.singleton fn) Set.empty parser
+    where
+      parser :: CabalSpecVersion -> Fields Position -> ParseResult src [Ann Positions Bool]
+      parser v fields = case Map.lookup fn fields of
+        Nothing -> pure def'
+        Just [] -> pure def'
+        Just [x] -> parseOne v x
+        Just xs@(_ : y : ys) -> do
+          warnMultipleSingularFields fn xs
+          NE.last <$> traverse (parseOne v) (y :| ys)
+        where
+          def' = [Ann IsInserted def]
+
+      parseOne :: CabalSpecVersion -> NamelessField Position -> ParseResult src [Ann Positions Bool]
+      parseOne v (MkNamelessField pos fls) = do
+        (flPos, x) <- runFieldParser pos (liftA2 (,) getPosition parsec) v fls
+        pure . (: []) $ Ann (HasTrivia $ Positions Nothing pos flPos) x
+
+  -- TODO(leana8959): implement all methods
+
+  -- This function allows us to manage the position coming from a parsed field
+  -- In the printer, it can... IDK? Annotate the pretty doc position?
+  --
+  -- - merging is defered
+  -- - position is retained in each result
+  monoidalFieldAla'
+    :: forall b a s
+     . (Parsec b, Newtype a b)
+    => FieldName
+    -> (a -> b)
+    -> ALens' s [(Positions, a)]
+    -> ParsecFieldGrammarWith Conc s [(Positions, a)]
+  monoidalFieldAla' fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
+    where
+      parser :: CabalSpecVersion -> Fields Position -> ParseResult src [(Positions, a)]
+      parser v fields = case Map.lookup fn fields of
+        Nothing -> pure mempty
+        Just xs -> map (\(p, a) -> (p,) $ unpack' _pack a) <$> traverse (parseOne v) xs
+
+      parseOne :: CabalSpecVersion -> NamelessField Position -> ParseResult src (Positions, b)
+      parseOne v (MkNamelessField pos fls) = do
+        (flPos, x) <- runFieldParser pos (liftA2 (,) getPosition parsec) v fls
+        pure (Positions Nothing pos flPos, x)
+
+  optionalFieldDefAla'
+    :: forall b a s
+     . (Parsec b, Newtype a b)
+    => FieldName
+    -- \^ field name
+    -> (a -> b)
+    -- \^ 'Newtype' pack
+    -> ALens' s (Ann Positions a)
+    -- \^ @'Lens'' s a@: lens into the field
+    -> a
+    -- \^ default value
+    -> ParsecFieldGrammarWith Conc s (Ann Positions a)
+  optionalFieldDefAla' fn _pack _extract def = ParsecFG (Set.singleton fn) Set.empty parser
+    where
+      parser :: CabalSpecVersion -> Fields Position -> ParseResult src (Ann Positions a)
+      parser v fields = case Map.lookup fn fields of
+        Nothing -> pure def'
+        Just [] -> pure def'
+        Just [x] -> parseOne v x
+        Just xs@(_ : y : ys) -> do
+          warnMultipleSingularFields fn xs
+          NE.last <$> traverse (parseOne v) (y :| ys)
+
+      parseOne :: CabalSpecVersion -> NamelessField Position -> ParseResult src (Ann Positions a)
+      parseOne v (MkNamelessField pos fls)
+        | null fls = pure def'
+        | otherwise = do
+            (flPos, x) <- runFieldParser pos (liftA2 (,) getPosition (parsec @b)) v fls
+            pure (Ann (HasTrivia $ Positions Nothing pos flPos) (unpack' _pack x))
+
+      def' :: Ann Positions a
+      def' = Ann IsInserted def
+
+  uniqueFieldAla'
+    :: forall (b :: Type) (s :: Type) (a :: Type)
+     . ( Newtype a b
+       , Parsec b
+       )
+    => FieldName
+    -- \^ field name
+    -> (a -> b)
+    -- \^ 'Newtype' pack
+    -> ALens' s (Ann Positions a)
+    -- \^ lens into the field
+    -> ParsecFieldGrammarWith Conc s (Ann Positions a)
+  uniqueFieldAla' fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
+    where
+      parser :: CabalSpecVersion -> Fields Position -> ParseResult src (Ann Positions a)
+      parser v fields = case Map.lookup fn fields of
+        Nothing -> parseFatalFailure zeroPos $ show fn ++ " field missing"
+        Just [] -> parseFatalFailure zeroPos $ show fn ++ " field missing"
+        Just [x] -> parseOne v x
+        Just xs@(_ : y : ys) -> do
+          warnMultipleSingularFields fn xs
+          NE.last <$> traverse (parseOne v) (y :| ys)
+        where
+
+      parseOne :: CabalSpecVersion -> NamelessField Position -> ParseResult src (Ann Positions a)
+      parseOne v (MkNamelessField pos fls) = do
+        (flPos, x) <- runFieldParser pos (liftA2 (,) getPosition (parsec @b)) v fls
+        pure (Ann (HasTrivia $ Positions Nothing pos flPos) (unpack' _pack x))
 
 -------------------------------------------------------------------------------
 -- Parsec
@@ -457,7 +780,10 @@ mealy f = go
     go _ [] = []
     go s (x : xs) = let ~(s', y) = f s x in y : go s' xs
 
-fieldLinesToStream :: [FieldLine ann] -> FieldLineStream
-fieldLinesToStream [] = fieldLineStreamEnd
-fieldLinesToStream [FieldLine _ bs] = FLSLast bs
-fieldLinesToStream (FieldLine _ bs : fs) = FLSCons bs (fieldLinesToStream fs)
+fieldLinesToStream :: [FieldLine Position] -> FieldLineStream
+fieldLinesToStream = fieldLinesToStream' (Position 1 1)
+
+-- | Fallback to last position when there's no 'FieldLine'
+fieldLinesToStream' :: Position -> [FieldLine Position] -> FieldLineStream
+fieldLinesToStream' defaultPos [] = FLSLast mempty defaultPos
+fieldLinesToStream' defaultPos (FieldLine pos bs : fs) = FLSCons bs pos (fieldLinesToStream' defaultPos fs)

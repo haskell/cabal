@@ -39,6 +39,7 @@ GenericPackageDescription {
   condLibrary = Just
     CondNode {
       condTreeData = Library {
+        sectionPosition = Nothing,
         libName = LMainLibName,
         exposedModules = [],
         reexportedModules = [],
@@ -122,6 +123,8 @@ GenericPackageDescription {
       (UnqualComponentName "sublib")
       CondNode {
         condTreeData = Library {
+          sectionPosition = Just
+            (Position 10 1),
           libName = LSubLibName
             (UnqualComponentName "sublib"),
           exposedModules = [],

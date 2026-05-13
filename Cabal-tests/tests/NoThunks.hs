@@ -6,6 +6,7 @@ main = putStrLn "Old GHC, no nothunks"
 #else
 
 {-# LANGUAGE DerivingVia         #-}
+{-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving  #-}
@@ -20,6 +21,7 @@ import Distribution.CabalSpecVersion          (CabalSpecVersion)
 import Distribution.Compat.NonEmptySet        (NonEmptySet)
 import Distribution.Compiler                  (CompilerFlavor, PerCompilerFlavor)
 import Distribution.Fields                    (runParseResult)
+import Distribution.Parsec.Position           (Position)
 import Distribution.ModuleName                (ModuleName)
 import Distribution.PackageDescription.Parsec (parseGenericPackageDescription, withSource)
 import Distribution.Parsec.Source
@@ -34,6 +36,7 @@ import Test.Tasty                             (defaultMain, testGroup)
 import Test.Tasty.HUnit                       (assertFailure, testCase)
 
 import Distribution.PackageDescription
+import Distribution.Parsec.Position
 
 import qualified Data.ByteString      as BS
 import qualified Distribution.License as License
@@ -94,6 +97,7 @@ instance NoThunks PackageDescription
 instance NoThunks PackageFlag
 instance NoThunks PackageIdentifier
 instance NoThunks PackageName
+instance NoThunks Position
 instance NoThunks LegacyExeDependency
 instance NoThunks ExeDependency
 instance NoThunks PkgconfigName

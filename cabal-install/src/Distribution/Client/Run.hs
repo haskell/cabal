@@ -16,11 +16,16 @@ import Distribution.Types.TargetInfo (targetCLBI)
 import Distribution.Client.Utils (tryCanonicalizePath)
 
 import Distribution.PackageDescription
-  ( Benchmark (..)
-  , BuildInfo (buildable)
-  , Executable (..)
-  , PackageDescription (..)
-  , TestSuite (..)
+  ( Benchmark
+  , BenchmarkWith (..)
+  , BuildInfo
+  , BuildInfoWith (buildable)
+  , Executable
+  , ExecutableWith (..)
+  , PackageDescription
+  , PackageDescriptionWith (..)
+  , TestSuite
+  , TestSuiteWith (..)
   )
 import Distribution.Simple (PackageDBX (..))
 import Distribution.Simple.Build (addInternalBuildTools)

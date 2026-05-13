@@ -1,3 +1,7 @@
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+
+
 {-# LANGUAGE NamedFieldPuns #-}
 {-# OPTIONS_GHC -freduction-depth=0 #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
@@ -15,9 +19,11 @@ import Data.TreeDiff.Instances.CabalVersion ()
 import Distribution.Backpack                       (OpenModule, OpenUnitId)
 import Distribution.CabalSpecVersion               (CabalSpecVersion)
 import Distribution.Compiler                       (CompilerFlavor, CompilerId, PerCompilerFlavor)
+import Distribution.Fields.Field                   (Field, Name, FieldLine, SectionArg, Comment, WithComments)
 import Distribution.InstalledPackageInfo           (AbiDependency, ExposedModule, InstalledPackageInfo)
 import Distribution.ModuleName                     (ModuleName)
 import Distribution.PackageDescription
+import Distribution.Parsec.Position                (Position)
 import Distribution.Simple.Compiler                (DebugInfoLevel, OptimisationLevel, ProfDetailLevel)
 import Distribution.Simple.InstallDirs
 import Distribution.Simple.InstallDirs.Internal
@@ -33,6 +39,7 @@ import Distribution.Utils.Path                     (SymbolicPathX)
 import Distribution.Utils.ShortText                (ShortText, fromShortText)
 import Distribution.Verbosity
 import Distribution.Verbosity.Internal
+import Distribution.Parsec.Position
 
 import qualified Distribution.Compat.NonEmptySet as NES
 
@@ -40,7 +47,7 @@ import qualified Distribution.Compat.NonEmptySet as NES
 -- instances
 -------------------------------------------------------------------------------
 
-instance (Eq a, Show a) => ToExpr (Condition a) where toExpr = defaultExprViaShow
+instance (Show a) => ToExpr (Condition a) where toExpr = defaultExprViaShow
 instance (Show a, ToExpr c, Show c, Eq a, Eq c) => ToExpr (CondTree a c)
 instance (Show a, ToExpr c, Show c, Eq a, Eq c) => ToExpr (CondBranch a c)
 instance (ToExpr a) => ToExpr (NubList a)
@@ -87,6 +94,12 @@ instance ToExpr GenericPackageDescription where
               ]
           )
 
+instance (ToExpr ann) => ToExpr (Comment ann)
+instance (ToExpr ann) => ToExpr (WithComments ann)
+instance (ToExpr ann) => ToExpr (Field ann)
+instance (ToExpr ann) => ToExpr (FieldLine ann)
+instance (ToExpr ann) => ToExpr (Name ann)
+instance (ToExpr ann) => ToExpr (SectionArg ann)
 instance ToExpr AbiDependency
 instance ToExpr AbiHash
 instance ToExpr Arch
@@ -140,6 +153,7 @@ instance ToExpr PkgconfigDependency
 instance ToExpr PkgconfigName
 instance ToExpr PkgconfigVersion
 instance ToExpr PkgconfigVersionRange
+instance ToExpr Position
 instance ToExpr ProfDetailLevel
 instance ToExpr RepoKind
 instance ToExpr RepoType

@@ -1,12 +1,20 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
 
 module Distribution.FieldGrammar.Class
-  ( FieldGrammar (..)
+  ( FieldGrammar
+  , FieldGrammarWith (..)
   , uniqueField
+  , uniqueField'
   , optionalField
   , optionalFieldDef
   , monoidalField
@@ -21,7 +29,13 @@ import Distribution.CabalSpecVersion (CabalSpecVersion)
 import Distribution.Compat.Newtype (Newtype)
 import Distribution.FieldGrammar.Newtypes
 import Distribution.Fields.Field
+import Distribution.Types.Trivia
 import Distribution.Utils.ShortText
+
+import Data.Kind
+import Distribution.Types.Annotation
+
+type FieldGrammar = FieldGrammarWith Abst
 
 -- | 'FieldGrammar' is parametrised by
 --
@@ -39,11 +53,11 @@ class
   , c Token'
   , c FilePathNT
   ) =>
-  FieldGrammar c g
+  FieldGrammarWith (m :: ParsingPhase) c g
     | g -> c
   where
   -- | Unfocus, zoom out, /blur/ 'FieldGrammar'.
-  blurFieldGrammar :: ALens' a b -> g b d -> g a d
+  blurFieldGrammar :: ALens' a b -> g m b d -> g m a d
 
   -- | Field which should be defined, exactly once.
   uniqueFieldAla
@@ -54,7 +68,21 @@ class
     -- ^ 'Newtype' pack
     -> ALens' s a
     -- ^ lens into the field
-    -> g s a
+    -> g m s a
+
+  -- | Field which should be defined, exactly once.
+  uniqueFieldAla'
+    :: forall (b :: Type) (s :: Type) (a :: Type)
+     . ( Newtype a b
+       , c b
+       )
+    => FieldName
+    -- ^ field name
+    -> (a -> b)
+    -- ^ 'Newtype' pack
+    -> ALens' s (AnnotateWith Positions m a)
+    -- ^ lens into the field
+    -> g m s (AnnotateWith Positions m a)
 
   -- | Boolean field with a default value.
   booleanFieldDef
@@ -64,7 +92,17 @@ class
     -- ^ lens into the field
     -> Bool
     -- ^ default
-    -> g s Bool
+    -> g m s Bool
+
+  -- | Boolean field with a default value.
+  booleanFieldDef'
+    :: FieldName
+    -- ^ field name
+    -> ALens' s (PreserveGrouping m (AnnotateWith Positions m Bool))
+    -- ^ lens into the field
+    -> Bool
+    -- ^ default
+    -> g m s (PreserveGrouping m (AnnotateWith Positions m Bool))
 
   -- | Optional field.
   optionalFieldAla
@@ -75,7 +113,7 @@ class
     -- ^ 'pack'
     -> ALens' s (Maybe a)
     -- ^ lens into the field
-    -> g s (Maybe a)
+    -> g m s (Maybe a)
 
   -- | Optional field with default value.
   optionalFieldDefAla
@@ -88,7 +126,22 @@ class
     -- ^ @'Lens'' s a@: lens into the field
     -> a
     -- ^ default value
-    -> g s a
+    -> g m s a
+
+  -- | Optional field with default value.
+  optionalFieldDefAla'
+    :: (Eq a, c b, Newtype a b)
+    => -- TODO(leana8959): remove Eq a
+    -- It is in the legacy counterpart's constraints
+    FieldName
+    -- ^ field name
+    -> (a -> b)
+    -- ^ 'Newtype' pack
+    -> ALens' s (AnnotateWith Positions m a)
+    -- ^ @'Lens'' s a@: lens into the field
+    -> a
+    -- ^ default value
+    -> g m s (AnnotateWith Positions m a)
 
   --  | Free text field is essentially 'optionalFieldDefAla` with @""@
   --  as the default and "accept everything" parser.
@@ -98,7 +151,7 @@ class
     :: FieldName
     -> ALens' s (Maybe String)
     -- ^ lens into the field
-    -> g s (Maybe String)
+    -> g m s (Maybe String)
 
   --  | Free text field is essentially 'optionalFieldDefAla` with @""@
   --  as the default and "accept everything" parser.
@@ -108,14 +161,14 @@ class
     :: FieldName
     -> ALens' s String
     -- ^ lens into the field
-    -> g s String
+    -> g m s String
 
   -- | @since 3.2.0.0
   freeTextFieldDefST
     :: FieldName
     -> ALens' s ShortText
     -- ^ lens into the field
-    -> g s ShortText
+    -> g m s ShortText
 
   -- | Monoidal field.
   --
@@ -130,7 +183,23 @@ class
     -- ^ 'pack'
     -> ALens' s a
     -- ^ lens into the field
-    -> g s a
+    -> g m s a
+
+  -- | Monoidal field.
+  --
+  -- Values are combined with 'mappend'.
+  --
+  -- /Note:/ 'optionalFieldAla' is a @monoidalField@ with 'Last' monoid.
+  monoidalFieldAla'
+    :: forall s a b
+     . (c b, Monoid a, Newtype a b)
+    => FieldName
+    -- ^ field name
+    -> (a -> b)
+    -- ^ 'pack'
+    -> ALens' s (MonoidalFieldAla m a)
+    -- ^ lens into the field
+    -> g m s (MonoidalFieldAla m a)
 
   -- | Parser matching all fields with a name starting with a prefix.
   prefixedFields
@@ -138,13 +207,13 @@ class
     -- ^ field name prefix
     -> ALens' s [(String, String)]
     -- ^ lens into the field
-    -> g s [(String, String)]
+    -> g m s [(String, String)]
 
   -- | Known field, which we don't parse, nor pretty print.
-  knownField :: FieldName -> g s ()
+  knownField :: FieldName -> g m s ()
 
   -- | Field which is parsed but not pretty printed.
-  hiddenField :: g s a -> g s a
+  hiddenField :: g m s a -> g m s a
 
   -- | Deprecated since
   deprecatedSince
@@ -152,8 +221,8 @@ class
     -- ^ version
     -> String
     -- ^ deprecation message
-    -> g s a
-    -> g s a
+    -> g m s a
+    -> g m s a
 
   -- | Removed in. If we encounter removed field, parsing fails.
   removedIn
@@ -161,8 +230,8 @@ class
     -- ^ version
     -> String
     -- ^ removal message
-    -> g s a
-    -> g s a
+    -> g m s a
+    -> g m s a
 
   -- | Annotate field with since spec-version.
   availableSince
@@ -170,8 +239,8 @@ class
     -- ^ spec version
     -> a
     -- ^ default value
-    -> g s a
-    -> g s a
+    -> g m s a
+    -> g m s a
 
   -- | Annotate field with since spec-version.
   -- This is used to recognise, but warn about the field.
@@ -183,59 +252,72 @@ class
   availableSinceWarn
     :: CabalSpecVersion
     -- ^ spec version
-    -> g s a
-    -> g s a
+    -> g m s a
+    -> g m s a
   availableSinceWarn _ = id
 
 -- | Field which can be defined at most once.
 uniqueField
-  :: (FieldGrammar c g, c (Identity a))
+  :: (FieldGrammarWith m c g, c (Identity a))
   => FieldName
   -- ^ field name
   -> ALens' s a
   -- ^ lens into the field
-  -> g s a
+  -> g m s a
 uniqueField fn l = uniqueFieldAla fn Identity l
 
 -- | Field which can be defined at most once.
+uniqueField'
+  :: forall m c g s (a :: Type)
+   . ( FieldGrammarWith m c g
+     , c (Identity a)
+     )
+  => FieldName
+  -- ^ field name
+  -> ALens' s (AnnotateWith Positions m a)
+  -- ^ lens into the field
+  -> g m s (AnnotateWith Positions m a)
+uniqueField' fn l = uniqueFieldAla' @m @c @g @(Identity a) @s @a fn Identity l
+
+-- | Field which can be defined at most once.
 optionalField
-  :: (FieldGrammar c g, c (Identity a))
+  :: (FieldGrammarWith m c g, c (Identity a))
   => FieldName
   -- ^ field name
   -> ALens' s (Maybe a)
   -- ^ lens into the field
-  -> g s (Maybe a)
+  -> g m s (Maybe a)
 optionalField fn l = optionalFieldAla fn Identity l
 
 -- | Optional field with default value.
 optionalFieldDef
-  :: (FieldGrammar c g, Functor (g s), c (Identity a), Eq a)
+  :: (FieldGrammarWith m c g, c (Identity a), Eq a)
   => FieldName
   -- ^ field name
   -> ALens' s a
   -- ^ @'Lens'' s a@: lens into the field
   -> a
   -- ^ default value
-  -> g s a
+  -> g m s a
 optionalFieldDef fn l x = optionalFieldDefAla fn Identity l x
 
 -- | Field which can be define multiple times, and the results are @mappend@ed.
 monoidalField
-  :: (FieldGrammar c g, c (Identity a), Monoid a)
+  :: (FieldGrammarWith m c g, c (Identity a), Monoid a)
   => FieldName
   -- ^ field name
   -> ALens' s a
   -- ^ lens into the field
-  -> g s a
+  -> g m s a
 monoidalField fn l = monoidalFieldAla fn Identity l
 
 -- | Default implementation for 'freeTextFieldDefST'.
 defaultFreeTextFieldDefST
-  :: (Functor (g s), FieldGrammar c g)
+  :: (Functor (g m s), FieldGrammarWith m c g)
   => FieldName
   -> ALens' s ShortText
   -- ^ lens into the field
-  -> g s ShortText
+  -> g m s ShortText
 defaultFreeTextFieldDefST fn l =
   toShortText <$> freeTextFieldDef fn (cloneLens l . st)
   where

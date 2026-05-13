@@ -1,9 +1,17 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 module Distribution.Types.TestSuite
-  ( TestSuite (..)
+  ( TestSuite
+  , TestSuiteWith (..)
   , emptyTestSuite
+  , emptyTestSuite'
   , testType
   , testModules
   , testModulesAutogen
@@ -17,20 +25,32 @@ import Distribution.Types.TestSuiteInterface
 import Distribution.Types.TestType
 import Distribution.Types.UnqualComponentName
 
+import Distribution.Types.Annotation
+
 import Distribution.ModuleName
 
 import qualified Distribution.Types.BuildInfo.Lens as L
 
+type TestSuite = TestSuiteWith Abst
+
 -- | A \"test-suite\" stanza in a cabal file.
-data TestSuite = TestSuite
+data TestSuiteWith (mod :: ParsingPhase) = TestSuite
   { testName :: UnqualComponentName
   , testInterface :: TestSuiteInterface
-  , testBuildInfo :: BuildInfo
+  , testBuildInfo :: BuildInfoWith mod
   , testCodeGenerators :: [String]
   }
-  deriving (Generic, Show, Read, Eq, Ord, Data)
 
-instance L.HasBuildInfo TestSuite where
+deriving instance Generic TestSuite
+deriving instance Show TestSuite
+deriving instance Read TestSuite
+deriving instance Eq TestSuite
+deriving instance Ord TestSuite
+deriving instance Data TestSuite
+
+deriving instance Show (TestSuiteWith Conc)
+
+instance forall (mod :: ParsingPhase). L.HasBuildInfoWith mod (TestSuiteWith mod) where
   buildInfo f l = (\x -> l{testBuildInfo = x}) <$> f (testBuildInfo l)
 
 instance Binary TestSuite
@@ -48,7 +68,7 @@ instance Monoid TestSuite where
       }
   mappend = (<>)
 
-instance Semigroup TestSuite where
+instance Semigroup (TestSuiteWith Abst) where
   a <> b =
     TestSuite
       { testName = combineNames a b testName "test"
@@ -59,8 +79,31 @@ instance Semigroup TestSuite where
     where
       combine field = field a `mappend` field b
 
+instance Semigroup (TestSuiteWith Conc) where
+  a <> b =
+    TestSuite
+      { testName = combineNames a b testName "test"
+      , testInterface = combine testInterface
+      , testBuildInfo = combine testBuildInfo
+      , testCodeGenerators = combine testCodeGenerators
+      }
+    where
+      combine field = field a `mappend` field b
+
+instance Monoid (TestSuiteWith Conc) where
+  mempty = emptyTestSuite'
+
 emptyTestSuite :: TestSuite
 emptyTestSuite = mempty
+
+emptyTestSuite' :: TestSuiteWith Conc
+emptyTestSuite' =
+  TestSuite
+    { testName = mempty
+    , testInterface = mempty
+    , testBuildInfo = mempty
+    , testCodeGenerators = mempty
+    }
 
 testType :: TestSuite -> TestType
 testType test = case testInterface test of

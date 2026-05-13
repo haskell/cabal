@@ -1,8 +1,18 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Distribution.Types.Library
-  ( Library (..)
+  ( Library
+  , LibraryAnn
+  , LibraryWith (..)
   , emptyLibrary
   , explicitLibModules
   , libModulesAutogen
@@ -12,6 +22,7 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.ModuleName
+import Distribution.Parsec.Position
 import Distribution.Types.BuildInfo
 import Distribution.Types.LibraryName
 import Distribution.Types.LibraryVisibility
@@ -19,21 +30,39 @@ import Distribution.Types.ModuleReexport
 
 import qualified Distribution.Types.BuildInfo.Lens as L
 
-data Library = Library
-  { libName :: LibraryName
+import Distribution.Types.Annotation
+import Distribution.Types.Trivia
+
+type Library = LibraryWith Abst
+type LibraryAnn = LibraryWith Conc
+
+data LibraryWith (m :: ParsingPhase) = Library
+  { sectionPosition :: Maybe Position
+  -- ^ spiritually an extension point.
+  , libName :: LibraryName
   , exposedModules :: [ModuleName]
   , reexportedModules :: [ModuleReexport]
   , signatures :: [ModuleName]
   -- ^ What sigs need implementations?
-  , libExposed :: Bool
+  , libExposed :: PreserveGrouping m (AnnotateWith Positions m Bool)
   -- ^ Is the lib to be exposed by default? (i.e. whether its modules available in GHCi for example)
-  , libVisibility :: LibraryVisibility
-  -- ^ Whether this multilib can be used as a dependency for other packages.
-  , libBuildInfo :: BuildInfo
-  }
-  deriving (Generic, Show, Eq, Ord, Read, Data)
+  , -- [(Positions, Bool)]
 
-instance L.HasBuildInfo Library where
+    libVisibility :: LibraryVisibility
+  -- ^ Whether this multilib can be used as a dependency for other packages.
+  , libBuildInfo :: BuildInfoWith m
+  }
+  deriving (Generic)
+
+deriving instance Show Library
+deriving instance Eq Library
+deriving instance Ord Library
+deriving instance Read Library
+deriving instance Data Library
+
+deriving instance Show (LibraryWith Conc)
+
+instance L.HasBuildInfoWith mod (LibraryWith mod) where
   buildInfo f l = (\x -> l{libBuildInfo = x}) <$> f (libBuildInfo l)
 
 instance Binary Library
@@ -44,10 +73,24 @@ emptyLibrary :: Library
 emptyLibrary =
   Library
     { libName = LMainLibName
+    , sectionPosition = Nothing
     , exposedModules = mempty
     , reexportedModules = mempty
     , signatures = mempty
     , libExposed = True
+    , libVisibility = mempty
+    , libBuildInfo = mempty
+    }
+
+emptyLibraryAnn :: LibraryWith Conc
+emptyLibraryAnn =
+  Library
+    { libName = LMainLibName
+    , sectionPosition = Nothing
+    , exposedModules = mempty
+    , reexportedModules = mempty
+    , signatures = mempty
+    , libExposed = []
     , libVisibility = mempty
     , libBuildInfo = mempty
     }
@@ -63,16 +106,37 @@ instance Monoid Library where
   mempty = emptyLibrary
   mappend = (<>)
 
+instance Monoid (LibraryWith Conc) where
+  mempty = emptyLibraryAnn
+  mappend = (<>)
+
+instance Semigroup (LibraryWith Conc) where
+  a <> b =
+    Library
+      { sectionPosition = undefined
+      , -- TODO(leana8959): bad instance
+        libName = combineLibraryName (libName a) (libName b)
+      , exposedModules = combine exposedModules
+      , reexportedModules = reexportedModules a <> reexportedModules b
+      , signatures = combine signatures
+      , libExposed = libExposed a <> libExposed b -- so False propagates
+      , libVisibility = libVisibility a <> libVisibility b
+      , libBuildInfo = libBuildInfo a <> libBuildInfo b
+      }
+    where
+      combine field = field a `mappend` field b
+
 instance Semigroup Library where
   a <> b =
     Library
-      { libName = combineLibraryName (libName a) (libName b)
-      , exposedModules = combine exposedModules
+      { sectionPosition = sectionPosition a <|> sectionPosition b
+      , libName = combineLibraryName (libName a) (libName b)
+      , exposedModules = exposedModules a <> exposedModules b
       , reexportedModules = combine reexportedModules
-      , signatures = combine signatures
+      , signatures = signatures a <> signatures b
       , libExposed = libExposed a && libExposed b -- so False propagates
-      , libVisibility = combine libVisibility
-      , libBuildInfo = combine libBuildInfo
+      , libVisibility = libVisibility a <> libVisibility b
+      , libBuildInfo = libBuildInfo a <> libBuildInfo b
       }
     where
       combine field = field a `mappend` field b

@@ -1,4 +1,6 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Distribution.Types.Component
   ( Component (..)
@@ -12,14 +14,14 @@ module Distribution.Types.Component
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Distribution.Types.Annotation
 import Distribution.Types.Benchmark
+import Distribution.Types.BuildInfo
+import Distribution.Types.ComponentName
 import Distribution.Types.Executable
 import Distribution.Types.ForeignLib
 import Distribution.Types.Library
 import Distribution.Types.TestSuite
-
-import Distribution.Types.BuildInfo
-import Distribution.Types.ComponentName
 
 import qualified Distribution.Types.BuildInfo.Lens as L
 
@@ -42,7 +44,7 @@ instance Semigroup Component where
   CBench b <> CBench b' = CBench (b <> b')
   _ <> _ = error "Cannot merge Component"
 
-instance L.HasBuildInfo Component where
+instance L.HasBuildInfoWith Abst Component where
   buildInfo f (CLib l) = CLib <$> L.buildInfo f l
   buildInfo f (CFLib l) = CFLib <$> L.buildInfo f l
   buildInfo f (CExe e) = CExe <$> L.buildInfo f e

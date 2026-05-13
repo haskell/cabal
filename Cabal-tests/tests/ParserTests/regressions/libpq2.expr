@@ -128,6 +128,7 @@ GenericPackageDescription {
   condLibrary = Just
     CondNode {
       condTreeData = Library {
+        sectionPosition = Nothing,
         libName = LMainLibName,
         exposedModules = [
           ModuleName
@@ -226,6 +227,7 @@ GenericPackageDescription {
           `CNot (Var (OS Windows))`,
           condBranchIfTrue = CondNode {
             condTreeData = Library {
+              sectionPosition = Nothing,
               libName = LMainLibName,
               exposedModules = [],
               reexportedModules = [],
@@ -304,6 +306,7 @@ GenericPackageDescription {
           `Var (OS Windows)`,
           condBranchIfTrue = CondNode {
             condTreeData = Library {
+              sectionPosition = Nothing,
               libName = LMainLibName,
               exposedModules = [],
               reexportedModules = [],
@@ -382,6 +385,7 @@ GenericPackageDescription {
           `Var (PackageFlag (FlagName "use-pkg-config"))`,
           condBranchIfTrue = CondNode {
             condTreeData = Library {
+              sectionPosition = Nothing,
               libName = LMainLibName,
               exposedModules = [],
               reexportedModules = [],
@@ -453,6 +457,7 @@ GenericPackageDescription {
           condBranchIfFalse = Just
             CondNode {
               condTreeData = Library {
+                sectionPosition = Nothing,
                 libName = LMainLibName,
                 exposedModules = [],
                 reexportedModules = [],
@@ -522,6 +527,7 @@ GenericPackageDescription {
                   `Var (OS Windows)`,
                   condBranchIfTrue = CondNode {
                     condTreeData = Library {
+                      sectionPosition = Nothing,
                       libName = LMainLibName,
                       exposedModules = [],
                       reexportedModules = [],
@@ -589,6 +595,7 @@ GenericPackageDescription {
                   condBranchIfFalse = Just
                     CondNode {
                       condTreeData = Library {
+                        sectionPosition = Nothing,
                         libName = LMainLibName,
                         exposedModules = [],
                         reexportedModules = [],
@@ -658,6 +665,7 @@ GenericPackageDescription {
                           `Var (OS OpenBSD)`,
                           condBranchIfTrue = CondNode {
                             condTreeData = Library {
+                              sectionPosition = Nothing,
                               libName = LMainLibName,
                               exposedModules = [],
                               reexportedModules = [],

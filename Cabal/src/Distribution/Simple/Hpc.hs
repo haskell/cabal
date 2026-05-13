@@ -32,7 +32,8 @@ import Prelude ()
 
 import Distribution.ModuleName (ModuleName, main)
 import Distribution.PackageDescription
-  ( TestSuite (..)
+  ( TestSuite
+  , TestSuiteWith (..)
   , testModules
   )
 import qualified Distribution.PackageDescription as PD
@@ -182,7 +183,7 @@ markupPackage verbosity HPCMarkupInfo{pathsToLibsArtifacts, libsModulesToInclude
     notice verbosity $
       "Package coverage report written to "
         ++ i htmlDir'
-        </> "hpc_index.html"
+          </> "hpc_index.html"
   where
     way = guessWay lbi
     testNames = fmap (unUnqualComponentName . testName) suites

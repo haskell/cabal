@@ -70,7 +70,8 @@ import Distribution.ModuleName
 import Distribution.PackageDescription
   ( Benchmark (..)
   , BenchmarkInterface (..)
-  , BuildInfo (..)
+  , BuildInfo
+  , BuildInfoWith (..)
   , Executable (..)
   , PackageDescription
   , TestSuite (..)
@@ -258,7 +259,7 @@ readTargetSelectors
 readTargetSelectors = readTargetSelectorsWith defaultDirActions
 
 readTargetSelectorsWith
-  :: (Applicative m, Monad m)
+  :: Monad m
   => DirActions m
   -> [PackageSpecifier (SourcePackage (PackageLocation a))]
   -> Maybe ComponentKindFilter
@@ -455,7 +456,7 @@ noFileStatus :: FileStatus
 noFileStatus = FileStatusNotExists False
 
 getTargetStringFileStatus
-  :: (Applicative m, Monad m)
+  :: Monad m
   => DirActions m
   -> TargetString
   -> m TargetStringFileStatus
@@ -1832,7 +1833,7 @@ emptyKnownTargets = KnownTargets [] [] [] [] [] []
 
 getKnownTargets
   :: forall m a
-   . (Applicative m, Monad m)
+   . Monad m
   => DirActions m
   -> [PackageSpecifier (SourcePackage (PackageLocation a))]
   -> m KnownTargets
@@ -1868,7 +1869,7 @@ getKnownTargets dirActions@DirActions{..} pkgs = do
       [c | KnownPackage{pinfoComponents} <- ps, c <- pinfoComponents]
 
 collectKnownPackageInfo
-  :: (Applicative m, Monad m)
+  :: Monad m
   => DirActions m
   -> PackageSpecifier (SourcePackage (PackageLocation a))
   -> m KnownPackage
@@ -2285,7 +2286,7 @@ matchComponentModuleFile cs str = do
 -- | Compare two filepaths for equality using DirActions' canonicalizePath
 -- to normalize AND canonicalize filepaths before comparison.
 compareFilePath
-  :: (Applicative m, Monad m)
+  :: Monad m
   => DirActions m
   -> FilePath
   -> FilePath

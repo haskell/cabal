@@ -118,7 +118,6 @@ import System.FilePath (dropDrive, normalise, takeDirectory, (<.>), (</>))
 import System.IO (Handle, IOMode (AppendMode), withFile)
 import System.Semaphore (SemaphoreName (..))
 
-import GHC.Stack
 import Web.Browser (openBrowser)
 
 -- | Each unpacked package is processed in the following phases:
@@ -401,7 +400,7 @@ buildAndRegisterUnpackedPackage
           cacheLock
 
       setup
-        :: (HasCallStack, RightFlagsForPhase flags setupSpec)
+        :: RightFlagsForPhase flags setupSpec
         => CommandUI flags
         -> (flags -> CommonSetupFlags)
         -> (Version -> IO flags)
