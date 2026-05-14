@@ -39,6 +39,7 @@ import Distribution.Client.Init.FlagExtractors (getCabalVersionNoPrompt)
 import Distribution.Client.Init.Types
 import Distribution.Client.Init.Utils
 import Distribution.FieldGrammar.Newtypes
+import Distribution.Simple.Utils (ordNub)
 import Distribution.Types.PackageName (PackageName)
 import Distribution.Version
 import System.FilePath
@@ -132,7 +133,7 @@ guessApplicationDirectories flags = do
   let candidates = [defaultApplicationDir, "app", "src-exe"]
    in return $ case [y | x <- candidates, y <- pkgDirsContents, x == y] of
         [] -> [defaultApplicationDir]
-        x -> map (</> pkgDirs) . nub $ x
+        x -> map (</> pkgDirs) (ordNub x)
 
 -- | Try to guess the source directories, using a default value as fallback.
 guessSourceDirectories :: Interactive m => InitFlags -> m [FilePath]

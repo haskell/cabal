@@ -82,6 +82,7 @@ import Distribution.PackageDescription
 import Distribution.Simple.Utils
   ( dieWithException
   , lowercase
+  , ordNub
   )
 import Distribution.Types.Flag
   ( parsecFlagAssignmentNonEmpty
@@ -556,7 +557,7 @@ disambiguatePackageName
   -> PackageName
   -> MaybeAmbiguous PackageName
 disambiguatePackageName (PackageNameEnv pkgNameLookup) name =
-  case nub (pkgNameLookup name) of
+  case ordNub (pkgNameLookup name) of
     [] -> None
     names -> case find (name ==) names of
       Just name' -> Unambiguous name'

@@ -559,8 +559,8 @@ checkBuildInfoFeatures bi sv = do
 checkBuildInfoExtensions :: Monad m => BuildInfo -> CheckM m ()
 checkBuildInfoExtensions bi = do
   let exts = allExtensions bi
-      extCabal1_2 = nub $ filter (`elem` compatExtensionsExtra) exts
-      extCabal1_4 = nub $ filter (`notElem` compatExtensions) exts
+      extCabal1_2 = ordNub $ filter (`elem` compatExtensionsExtra) exts
+      extCabal1_4 = ordNub $ filter (`notElem` compatExtensions) exts
   -- As of Cabal-1.4 we can add new extensions without worrying
   -- about breaking old versions of cabal.
   checkSpecVer

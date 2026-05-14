@@ -37,6 +37,10 @@
 - ignore: {name: "Use fmap", within: [Distribution.Client.HttpUtils, Distribution.Simple.SrcDist]}
 - ignore: {name: "Use fold", within: [Test.Laws]}
 
+# For lists in these rules we use single letter variables like x rather than xs,
+# because "hlint considers only single-letter identifiers as rules' variables.
+# Anything longer will match literally".
+# SEE: https://github.com/ndmitchell/hlint/issues/1612
 - group:
     name: cabal-suggestions
     enabled: true
@@ -45,6 +49,14 @@
         lhs: fromMaybe x (Data.Map.lookup k m)
         rhs: Map.findWithDefault x k m
         name: Use findWithDefault
+    - hint:
+        lhs: nub x
+        rhs: ordNub x
+        name: Use ordNub
+        note: |
+            The growth rate of nub is O(n^2) and for ordNub it is O(n log n).  May require adding import of either;
+              - Distribution.Utils.Generic from Cabal-syntax, or
+              - Distribution.Simple.Utils from Cabal.
 
 - arguments:
     - --ignore-glob=Cabal-syntax/src/Distribution/Fields/Lexer.hs
