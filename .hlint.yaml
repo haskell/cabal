@@ -27,8 +27,6 @@
 - ignore: {name: "Use fold"} # 1 hint
 - ignore: {name: "Use fst"} # 2 hints
 - ignore: {name: "Use lambda-case"} # 58 hints
-- ignore: {name: "Use map once"} # 6 hints
-- ignore: {name: "Use map with tuple-section"} # 3 hints
 - ignore: {name: "Use newtype instead of data"} # 31 hints
 - ignore: {name: "Use null"} # 2 hints
 - ignore: {name: "Use record patterns"} # 16 hints
@@ -37,6 +35,7 @@
 - ignore: {name: "Functor law", within: [Test.Laws]}
 - ignore: {name: "Monoid law, left identity", within: [Test.Laws, UnitTests.Distribution.Utils.NubList]}
 - ignore: {name: "Monoid law, right identity", within: [Test.Laws, UnitTests.Distribution.Utils.NubList]}
+- ignore: {name: "Replace case with maybe", within: [Distribution.Client.InLibrary]}
 - ignore: {name: "Use fmap", within: [Distribution.Client.HttpUtils, Distribution.Simple.SrcDist]}
 
 - group:

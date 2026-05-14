@@ -1,10 +1,13 @@
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE FlexibleInstances #-}
 module Distribution.Solver.Types.Progress
     ( Progress(..)
     , foldProgress
+    , step
     ) where
 
 import Prelude ()
-import Distribution.Solver.Compat.Prelude hiding (fail)
+import Distribution.Solver.Compat.Prelude
 
 -- | A type to represent the unfolding of an expensive long running
 -- calculation that may fail. We may get intermediate steps before the final
@@ -13,14 +16,10 @@ import Distribution.Solver.Compat.Prelude hiding (fail)
 data Progress step fail done = Step step (Progress step fail done)
                              | Fail fail
                              | Done done
+  deriving (Functor)
 
--- This Functor instance works around a bug in GHC 7.6.3.
--- See https://gitlab.haskell.org/ghc/ghc/-/issues/7436#note_66637.
--- The derived functor instance caused a space leak in the solver.
-instance Functor (Progress step fail) where
-  fmap f (Step s p) = Step s (fmap f p)
-  fmap _ (Fail x)   = Fail x
-  fmap f (Done r)   = Done (f r)
+step :: step -> Progress step fail ()
+step s = Step s (Done ())
 
 -- | Consume a 'Progress' calculation. Much like 'foldr' for lists but with two
 -- base cases, one for a final result and one for failure.
@@ -31,14 +30,17 @@ instance Functor (Progress step fail) where
 --
 foldProgress :: (step -> a -> a) -> (fail -> a) -> (done -> a)
              -> Progress step fail done -> a
-foldProgress step fail done = fold
-  where fold (Step s p) = step s (fold p)
-        fold (Fail f)   = fail f
-        fold (Done r)   = done r
+foldProgress step' fail' done' = fold
+  where fold (Step s p) = step' s (fold p)
+        fold (Fail f)   = fail' f
+        fold (Done r)   = done' r
 
 instance Monad (Progress step fail) where
   return   = pure
   p >>= f  = foldProgress Step Fail f p
+
+instance MonadFail (Progress step String) where
+  fail = Fail
 
 instance Applicative (Progress step fail) where
   pure a  = Done a

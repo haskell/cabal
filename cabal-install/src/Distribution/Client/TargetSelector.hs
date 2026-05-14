@@ -165,8 +165,8 @@ import qualified Prelude (foldr1)
 
 -- ------------------------------------------------------------
 
--- | A target selector is expression selecting a set of components (as targets
--- for a actions like @build@, @run@, @test@ etc). A target selector
+-- | A target selector is an expression selecting a set of components (as targets
+-- for actions like @build@, @run@, @test@ etc). A target selector
 -- corresponds to the user syntax for referring to targets on the command line.
 --
 -- From the users point of view a target can be many things: packages, dirs,
@@ -1132,7 +1132,7 @@ syntaxForm2MetaAll =
       [TargetStringFileStatus2 "" noFileStatus "all"]
     render _ = []
 
--- | Syntax:  all : filer
+-- | Syntax:  all : filter
 --
 -- > cabal build all:tests
 syntaxForm2AllFilter :: Syntax
@@ -1146,7 +1146,7 @@ syntaxForm2AllFilter =
       [TargetStringFileStatus2 "all" noFileStatus (dispF kfilter)]
     render _ = []
 
--- | Syntax:  package : filer
+-- | Syntax:  package : filter
 --
 -- > cabal build foo:tests
 syntaxForm2PackageFilter :: [KnownPackage] -> Syntax

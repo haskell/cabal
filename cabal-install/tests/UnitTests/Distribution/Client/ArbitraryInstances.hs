@@ -419,6 +419,11 @@ instance Arbitrary GlobPieces where
 mergeLiterals :: [GlobPiece] -> [GlobPiece]
 mergeLiterals (Literal a : Literal b : ps) = mergeLiterals (Literal (a ++ b) : ps)
 mergeLiterals (Union as : ps) = Union (map mergeLiterals as) : mergeLiterals ps
+-- Two consecutive wildcards are semantically equivalent to a single one, but
+-- would syntactically produce a recursive wildcard when pretty-printed, so
+-- whenever we end up generating two or more consecutive wildcards, we merge
+-- them together to avoid this problem.
+mergeLiterals (WildCard : WildCard : ps) = mergeLiterals (WildCard : ps)
 mergeLiterals (p : ps) = p : mergeLiterals ps
 mergeLiterals [] = []
 

@@ -171,6 +171,15 @@ defaultMainWithSetupHooksArgs setupHooks verbHandles =
       , hscolourHook = setup_hscolourHook
       }
   where
+    preBuildHook =
+      case SetupHooks.preBuildComponentRules (SetupHooks.buildHooks setupHooks) of
+        Nothing -> const $ return []
+        Just pbcRules -> \pbci -> runPreBuildHooks verbHandles pbci pbcRules
+    postBuildHook =
+      case SetupHooks.postBuildComponentHook (SetupHooks.buildHooks setupHooks) of
+        Nothing -> const $ return ()
+        Just hk -> hk
+
     setup_confHook
       :: (GenericPackageDescription, HookedBuildInfo)
       -> ConfigFlags
@@ -188,13 +197,14 @@ defaultMainWithSetupHooksArgs setupHooks verbHandles =
       -> BuildFlags
       -> IO ()
     setup_buildHook pkg_descr lbi hooks flags =
-      build_setupHooks
-        (SetupHooks.buildHooks setupHooks)
-        verbHandles
-        pkg_descr
-        lbi
-        flags
-        (allSuffixHandlers hooks)
+      void $
+        build_setupHooks
+          (preBuildHook, postBuildHook)
+          verbHandles
+          pkg_descr
+          lbi
+          flags
+          (allSuffixHandlers hooks)
 
     setup_copyHook
       :: PackageDescription
@@ -229,14 +239,15 @@ defaultMainWithSetupHooksArgs setupHooks verbHandles =
       -> [String]
       -> IO ()
     setup_replHook pkg_descr lbi hooks flags args =
-      repl_setupHooks
-        (SetupHooks.buildHooks setupHooks)
-        verbHandles
-        pkg_descr
-        lbi
-        flags
-        (allSuffixHandlers hooks)
-        args
+      void $
+        repl_setupHooks
+          preBuildHook
+          verbHandles
+          pkg_descr
+          lbi
+          flags
+          (allSuffixHandlers hooks)
+          args
 
     setup_haddockHook
       :: PackageDescription
@@ -245,13 +256,14 @@ defaultMainWithSetupHooksArgs setupHooks verbHandles =
       -> HaddockFlags
       -> IO ()
     setup_haddockHook pkg_descr lbi hooks flags =
-      haddock_setupHooks
-        (SetupHooks.buildHooks setupHooks)
-        verbHandles
-        pkg_descr
-        lbi
-        (allSuffixHandlers hooks)
-        flags
+      void $
+        haddock_setupHooks
+          preBuildHook
+          verbHandles
+          pkg_descr
+          lbi
+          (allSuffixHandlers hooks)
+          flags
 
     setup_hscolourHook
       :: PackageDescription
@@ -260,13 +272,14 @@ defaultMainWithSetupHooksArgs setupHooks verbHandles =
       -> HscolourFlags
       -> IO ()
     setup_hscolourHook pkg_descr lbi hooks flags =
-      hscolour_setupHooks
-        (SetupHooks.buildHooks setupHooks)
-        verbHandles
-        pkg_descr
-        lbi
-        (allSuffixHandlers hooks)
-        flags
+      void $
+        hscolour_setupHooks
+          preBuildHook
+          verbHandles
+          pkg_descr
+          lbi
+          (allSuffixHandlers hooks)
+          flags
 
 -- | A customizable version of 'defaultMain'.
 defaultMainWithHooks :: UserHooks -> IO ()
@@ -930,12 +943,16 @@ simpleUserHooksWithHandles verbHandles =
     , testHook = defaultTestHook verbHandles
     , benchHook = defaultBenchHook verbHandles
     , cleanHook = \p _ _ f -> clean verbHandles p f
-    , hscolourHook = \p l h f -> hscolour_setupHooks SetupHooks.noBuildHooks verbHandles p l (allSuffixHandlers h) f
-    , haddockHook = \p l h f -> haddock_setupHooks SetupHooks.noBuildHooks verbHandles p l (allSuffixHandlers h) f
+    , hscolourHook = \p l h f -> void $ hscolour_setupHooks noBuildHooks verbHandles p l (allSuffixHandlers h) f
+    , haddockHook = \p l h f -> void $ haddock_setupHooks noBuildHooks verbHandles p l (allSuffixHandlers h) f
     , regHook = defaultRegHook verbHandles
     , unregHook = \p l _ f -> unregisterWithHandles verbHandles p l f
     }
   where
+    noBuildHooks pbci@(SetupHooks.PreBuildComponentInputs{SetupHooks.localBuildInfo = lbi}) =
+      builtinPreBuildHooks
+        (buildType (localPkgDescr lbi))
+        pbci
     finalChecks _args flags pkg_descr lbi =
       checkForeignDeps pkg_descr lbi (modifyVerbosityFlags lessVerbose verbosity)
       where
@@ -1155,13 +1172,14 @@ defaultBuildHook
   -> BuildFlags
   -> IO ()
 defaultBuildHook verbHandles pkg_descr localbuildinfo hooks flags =
-  build_setupHooks
-    SetupHooks.noBuildHooks
-    verbHandles
-    pkg_descr
-    localbuildinfo
-    flags
-    (allSuffixHandlers hooks)
+  void $
+    build_setupHooks
+      (builtinPreBuildHooks (buildType pkg_descr), const $ pure ())
+      verbHandles
+      pkg_descr
+      localbuildinfo
+      flags
+      (allSuffixHandlers hooks)
 
 defaultReplHook
   :: VerbosityHandles
@@ -1172,14 +1190,15 @@ defaultReplHook
   -> [String]
   -> IO ()
 defaultReplHook verbHandles pkg_descr localbuildinfo hooks flags args =
-  repl_setupHooks
-    SetupHooks.noBuildHooks
-    verbHandles
-    pkg_descr
-    localbuildinfo
-    flags
-    (allSuffixHandlers hooks)
-    args
+  void $
+    repl_setupHooks
+      (builtinPreBuildHooks (buildType pkg_descr))
+      verbHandles
+      pkg_descr
+      localbuildinfo
+      flags
+      (allSuffixHandlers hooks)
+      args
 
 defaultRegHook
   :: VerbosityHandles

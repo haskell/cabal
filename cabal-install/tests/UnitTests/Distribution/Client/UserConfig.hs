@@ -13,6 +13,7 @@ import System.Directory
   , getTemporaryDirectory
   )
 import System.FilePath ((</>))
+import System.IO (hClose, openTempFile)
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -99,7 +100,11 @@ bracketTest =
   bracket testSetup testTearDown
   where
     testSetup :: IO FilePath
-    testSetup = fmap (</> "test-user-config") getCurrentDirectory
+    testSetup = do
+      cwd <- getCurrentDirectory
+      (configFile, h) <- openTempFile cwd "test-user-config"
+      hClose h
+      pure configFile
 
     testTearDown :: FilePath -> IO ()
     testTearDown configFile =

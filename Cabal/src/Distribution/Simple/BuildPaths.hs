@@ -27,6 +27,7 @@ module Distribution.Simple.BuildPaths
   , haddockPref
   , autogenPackageModulesDir
   , autogenComponentModulesDir
+  , preBuildRulesCacheFile
   , autogenPathsModuleName
   , autogenPackageInfoModuleName
   , cppHeaderName
@@ -159,6 +160,15 @@ autogenPackageModulesDir lbi = buildDir lbi </> makeRelativePathEx "global-autog
 -- particular component.
 autogenComponentModulesDir :: LocalBuildInfo -> ComponentLocalBuildInfo -> SymbolicPath Pkg (Dir Source)
 autogenComponentModulesDir lbi clbi = componentBuildDir lbi clbi </> makeRelativePathEx "autogen"
+
+-- | The path to the pre-build rules cache file for a component, used to
+-- compute rule staleness across runs.
+preBuildRulesCacheFile
+  :: LocalBuildInfo
+  -> ComponentLocalBuildInfo
+  -> SymbolicPath Pkg File
+preBuildRulesCacheFile lbi clbi =
+  componentBuildDir lbi clbi </> makeRelativePathEx "setup-hooks-rules.cache"
 
 -- NB: Look at 'checkForeignDeps' for where a simplified version of this
 -- has been copy-pasted.

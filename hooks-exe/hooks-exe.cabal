@@ -1,0 +1,56 @@
+cabal-version: 3.0
+name:          hooks-exe
+version:       0.1
+copyright:     2024, Cabal Development Team
+license:       BSD-3-Clause
+author:        Cabal Development Team <cabal-devel@haskell.org>
+maintainer:    cabal-devel@haskell.org
+homepage:      http://www.haskell.org/cabal/
+bug-reports:   https://github.com/haskell/cabal/issues
+synopsis:      cabal-install integration for Hooks build-type
+description:
+  Layer for integrating Hooks build-type with cabal-install
+category:      Distribution
+build-type:    Simple
+
+extra-source-files:
+  readme.md changelog.md
+
+common warnings
+  ghc-options:
+    -Wall
+    -Wcompat
+    -Wnoncanonical-monad-instances -Wincomplete-uni-patterns
+    -Wincomplete-record-updates
+    -fno-warn-unticked-promoted-constructors
+  if impl(ghc < 8.8)
+    ghc-options: -Wnoncanonical-monadfail-instances
+  if impl(ghc >=9.0)
+    -- Warning: even though introduced with GHC 8.10, -Wunused-packages
+    -- gives false positives with GHC 8.10.
+    ghc-options: -Wunused-packages
+
+-- Library imported by cabal-install to interface with an external
+-- hooks executable.
+library
+  import: warnings
+  hs-source-dirs:
+    cli
+  build-depends:
+    base
+      >= 4.10     && < 5,
+    bytestring
+      >= 0.10.6.0 && < 0.13,
+    filepath
+      >= 1.4.0.0  && < 1.6 ,
+    process
+      >= 1.6.20.0 && < 1.7 ,
+    Cabal-syntax, Cabal
+
+  exposed-modules:
+    Distribution.Client.SetupHooks.CallHooksExe
+  other-modules:
+    Distribution.Client.SetupHooks.CallHooksExe.Errors
+
+  default-language:
+    Haskell2010
