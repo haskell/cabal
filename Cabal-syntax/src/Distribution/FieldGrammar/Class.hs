@@ -9,6 +9,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
+{-# LANGUAGE QuantifiedConstraints #-}
 
 module Distribution.FieldGrammar.Class
   ( FieldGrammar
@@ -52,6 +53,7 @@ class
   , c Token
   , c Token'
   , c FilePathNT
+  , forall s. Applicative (g m s)
   ) =>
   FieldGrammarWith (m :: ParsingPhase) c g
     | g -> c

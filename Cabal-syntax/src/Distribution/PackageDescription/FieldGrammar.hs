@@ -117,8 +117,6 @@ import qualified Distribution.Types.Lens as L
 packageDescriptionFieldGrammar
   :: forall mod c g
    . ( FieldGrammarWith mod c g
-     , Applicative (g mod (PackageDescriptionWith mod))
-     , Applicative (g mod (PackageIdentifierWith mod))
      , c (Identity BuildType)
      , c (Identity PackageName)
      , c (Identity Version)
@@ -189,9 +187,7 @@ packageDescriptionFieldGrammar =
 libraryFieldGrammar
   :: forall mod c g
    . ( FieldGrammarWith mod c g
-     , Applicative (g mod (BuildInfoWith mod))
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
-     , Applicative (g mod (LibraryWith mod))
      , BuildInfoConstraint mod c g
      , c (Identity LibraryVisibility)
      , c (List CommaVCat (Identity ModuleReexport) ModuleReexport)
@@ -227,10 +223,8 @@ libraryFieldGrammar n =
 
 foreignLibFieldGrammar
   :: forall (mod :: ParsingPhase) c g
-   . ( Applicative (g mod (ForeignLibWith mod))
-     , BuildInfoConstraint mod c g
+   . ( BuildInfoConstraint mod c g
      , FieldGrammarWith mod c g
-     , Applicative (g mod (BuildInfoWith mod))
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
      , c (Identity ForeignLibType)
      , c (Identity LibVersionInfo)
@@ -260,8 +254,6 @@ executableFieldGrammar
   :: forall mod c g
    . ( FieldGrammarWith mod c g
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
-     , Applicative (g mod (ExecutableWith mod))
-     , Applicative (g mod (BuildInfoWith mod))
      , BuildInfoConstraint mod c g
      , c (Identity ExecutableScope)
      , c (RelativePathNT Source File)
@@ -321,8 +313,6 @@ testSuiteFieldGrammar
   :: forall mod c g
    . ( FieldGrammarWith mod c g
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
-     , Applicative (g mod (TestSuiteStanzaWith mod))
-     , Applicative (g mod (BuildInfoWith mod))
      , c (Identity ModuleName)
      , c (Identity TestType)
      , c (List CommaFSep Token String)
@@ -461,8 +451,6 @@ benchmarkFieldGrammar
   :: forall mod c g
    . ( FieldGrammarWith mod c g
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
-     , Applicative (g mod (BenchmarkStanzaWith mod))
-     , Applicative (g mod (BuildInfoWith mod))
      , BuildInfoConstraint mod c g
      , c (Identity BenchmarkType)
      , c (Identity ModuleName)
@@ -599,7 +587,6 @@ type BuildInfoConstraint (mod :: ParsingPhase) (c :: Type -> Constraint) (g :: P
 buildInfoFieldGrammar
   :: forall mod c g
    . ( FieldGrammarWith mod c g
-     , Applicative (g mod (BuildInfoWith mod))
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
      , BuildInfoConstraint mod c g
      )
@@ -733,7 +720,6 @@ miniTargetBuildDependsLens f s = fmap (\x -> s{miniTargetBuildDepends = x}) (f (
 miniBuildInfoFieldGrammar
   :: forall mod c g
    . ( FieldGrammarWith mod c g
-     , Applicative (g mod (MiniBuildInfo mod))
      , Newtype
         [AttachPosition mod (Annotate mod (DependencyWith mod))]
         (ListWith mod CommaVCat (Identity (DependencyWith mod)) (DependencyWith mod))
@@ -746,7 +732,6 @@ miniBuildInfoFieldGrammar =
 
 type HsSourceDirsGrammarConstr (ph :: ParsingPhase) (c :: Type -> Constraint) (g :: ParsingPhase -> Type -> Type -> Type) =
   ( FieldGrammarWith ph c g
-  , Applicative (g ph (BuildInfoWith ph))
   , L.HasBuildInfoWith ph (BuildInfoWith ph)
   , -- is a monoid with or without annotation
     Monoid
@@ -777,7 +762,6 @@ hsSourceDirsGrammar =
 optionsFieldGrammar
   :: forall mod c g
    . ( FieldGrammarWith mod c g
-     , Applicative (g mod (BuildInfoWith mod))
      , c (List NoCommaFSep Token' String)
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
      )
@@ -801,7 +785,6 @@ optionsFieldGrammar =
 profOptionsFieldGrammar
   :: forall mod c g
    . ( FieldGrammarWith mod c g
-     , Applicative (g mod (BuildInfoWith mod))
      , c (List NoCommaFSep Token' String)
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
      )
@@ -819,7 +802,6 @@ profOptionsFieldGrammar =
 sharedOptionsFieldGrammar
   :: forall mod c g
    . ( FieldGrammarWith mod c g
-     , Applicative (g mod (BuildInfoWith mod))
      , c (List NoCommaFSep Token' String)
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
      )
@@ -834,7 +816,6 @@ sharedOptionsFieldGrammar =
 profSharedOptionsFieldGrammar
   :: forall mod c g
    . ( FieldGrammarWith mod c g
-     , Applicative (g mod (BuildInfoWith mod))
      , c (List NoCommaFSep Token' String)
      , L.HasBuildInfoWith mod (BuildInfoWith mod)
      )
@@ -859,7 +840,7 @@ lookupLens k f p@(PerCompilerFlavor ghc ghcjs)
 -------------------------------------------------------------------------------
 
 flagFieldGrammar
-  :: (FieldGrammarWith mod c g, Applicative (g mod PackageFlag))
+  :: (FieldGrammarWith mod c g)
   => FlagName
   -> g mod PackageFlag PackageFlag
 flagFieldGrammar name =
@@ -876,7 +857,7 @@ flagFieldGrammar name =
 -------------------------------------------------------------------------------
 
 sourceRepoFieldGrammar
-  :: (FieldGrammarWith mod c g, Applicative (g mod SourceRepo), c (Identity RepoType))
+  :: (FieldGrammarWith mod c g, c (Identity RepoType))
   => RepoKind
   -> g mod SourceRepo SourceRepo
 sourceRepoFieldGrammar kind =
