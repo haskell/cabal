@@ -68,18 +68,19 @@ convPIs os arch comp constraints sip strfl solveExes iidx sidx =
 -- merge their sub-libraries and dependencies so we get
 -- a similar looking package as if it came from repository.
 groupInstalledSublibs
-  :: [(PN, I, PInfo)]
+  :: [(PN, I, InstanceUnitId, PInfo)]
   -> [(PN, I, PInfo)]
 groupInstalledSublibs xs =
     remapPInfoDepsToInstGroups
   $ M.elems
+  $ M.map (\(pn, i, _instId, pInfo) -> (pn, i, pInfo))
   $ foldl
-      (\acc x@(pn, I ver _, _) ->
+      (\acc x@(pn, I ver _, instId, _) ->
         M.insertWith
-          (\(_, newI, newInfo) (_, oldI, oldInfo) ->
-            (pn, mergeIs oldI newI, mergeInfos oldInfo newInfo)
+          (\(_, newI, newInstId, newInfo) (_, oldI, _oldInstId, oldInfo) ->
+            (pn, mergeIs oldI newI, newInstId, mergeInfos oldInfo newInfo)
           )
-          (pn, ver)
+          (pn, ver, instId)
           x
           acc
       )
@@ -138,7 +139,7 @@ groupInstalledSublibs xs =
 
 -- | Convert a Cabal installed package index to the simpler,
 -- more uniform index format of the solver.
-convIPI' :: ShadowPkgs -> SI.InstalledPackageIndex -> [(PN, I, PInfo)]
+convIPI' :: ShadowPkgs -> SI.InstalledPackageIndex -> [(PN, I, InstanceUnitId, PInfo)]
 convIPI' (ShadowPkgs sip) idx =
     -- apply shadowing whenever there are multiple installed packages with
     -- the same version
@@ -149,8 +150,8 @@ convIPI' (ShadowPkgs sip) idx =
   where
 
     -- shadowing is recorded in the package info
-    shadow (pn, i, PInfo fdeps comps fds _)
-      | sip = (pn, i, PInfo fdeps comps fds (Just Shadowed))
+    shadow (pn, i, instId, PInfo fdeps comps fds _)
+      | sip = (pn, i, instId, PInfo fdeps comps fds (Just Shadowed))
     shadow x                                     = x
 
 -- | Extract/recover the package ID from an installed package info, and convert it to a solver's I.
@@ -164,11 +165,11 @@ convId ipi = ( pkgName spi
 convIP
   :: SI.InstalledPackageIndex
   -> IPI.InstalledPackageInfo
-  -> (PN, I, PInfo)
+  -> (PN, I, InstanceUnitId, PInfo)
 convIP idx ipi =
   case traverse (convIPId (DependencyReason pn M.empty S.empty) comp idx) (IPI.depends ipi) of
-        Left u    -> (pn, i, PInfo [] M.empty M.empty (Just (Broken u)))
-        Right fds -> (pn, i, PInfo fds components M.empty Nothing)
+        Left u    -> (pn, i, IPI.installedInstanceUnitId ipi, PInfo [] M.empty M.empty (Just (Broken u)))
+        Right fds -> (pn, i, IPI.installedInstanceUnitId ipi, PInfo fds components M.empty Nothing)
  where
   components =
       M.singleton (ExposedLib $ IPI.sourceLibName ipi)
