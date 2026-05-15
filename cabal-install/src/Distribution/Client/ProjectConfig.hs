@@ -266,7 +266,7 @@ import Distribution.Solver.Types.ProjectConfigPath
 -- 'PackageName'. This returns the configuration that applies to all local
 -- packages plus any package-specific configuration for this package.
 lookupLocalPackageConfig
-  :: (Semigroup a, Monoid a)
+  :: Monoid a
   => (PackageConfig -> a)
   -> ProjectConfig
   -> PackageName

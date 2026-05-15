@@ -469,7 +469,7 @@ fieldLinesToString fieldLines =
 -- | We assume that monoid is commutative.
 --
 -- First we chunk input (as single cabal file is little work)
-foldIO :: forall a m. (Monoid m, NFData m) => (a -> IO m) -> [a] -> IO m
+foldIO :: forall a m. (Monoid m) => (a -> IO m) -> [a] -> IO m
 foldIO f = go mempty where
     go !acc [] = acc
     go !acc (x:xs) = go (mappend acc (f x)) xs
