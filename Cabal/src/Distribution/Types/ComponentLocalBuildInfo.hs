@@ -24,7 +24,6 @@ import Distribution.Types.UnitId
 
 import qualified Distribution.InstalledPackageInfo as Installed
 
--- | The first five fields are common across all algebraic variants.
 data ComponentLocalBuildInfo
   = LibComponentLocalBuildInfo
       { componentLocalName :: ComponentName
