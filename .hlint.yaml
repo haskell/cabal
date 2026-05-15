@@ -24,7 +24,6 @@
 - ignore: {name: "Use bimap"} # 7 hints
 - ignore: {name: "Use camelCase"} # 97 hints
 - ignore: {name: "Use const"} # 36 hints
-- ignore: {name: "Use fold"} # 1 hint
 - ignore: {name: "Use fst"} # 2 hints
 - ignore: {name: "Use lambda-case"} # 58 hints
 - ignore: {name: "Use newtype instead of data"} # 31 hints
@@ -37,6 +36,7 @@
 - ignore: {name: "Monoid law, right identity", within: [Test.Laws, UnitTests.Distribution.Utils.NubList]}
 - ignore: {name: "Replace case with maybe", within: [Distribution.Client.InLibrary]}
 - ignore: {name: "Use fmap", within: [Distribution.Client.HttpUtils, Distribution.Simple.SrcDist]}
+- ignore: {name: "Use fold", within: [Test.Laws]}
 
 - group:
     name: cabal-suggestions
