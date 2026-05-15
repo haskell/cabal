@@ -106,7 +106,7 @@ renderParseErrorCabalFile errors warnings =
 -- | Render parse error highlighting the part of the input file.
 renderParseError
   :: forall src
-   . (Ord src, Eq src)
+   . Ord src
   => (src -> ([PError], [PWarning]) -> String)
   -> NonEmpty (PErrorWithSource src)
   -> [PWarningWithSource src]

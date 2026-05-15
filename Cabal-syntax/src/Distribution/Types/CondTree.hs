@@ -66,7 +66,7 @@ instance (NFData v, NFData a) => NFData (CondTree v a) where rnf = genericRnf
 instance Semigroup a => Semigroup (CondTree v a) where
   (CondNode a bs) <> (CondNode a' bs') = CondNode (a <> a') (bs <> bs')
 
-instance (Semigroup a, Monoid a) => Monoid (CondTree v a) where
+instance Monoid a => Monoid (CondTree v a) where
   mappend = (<>)
   mempty = CondNode mempty mempty
 

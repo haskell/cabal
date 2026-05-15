@@ -1372,9 +1372,7 @@ testBool label f target input =
   testSimple label f target [input]
 
 testGo
-  :: Eq a
-  => Show a
-  => String
+  :: String
   -> (InitFlags -> PurePrompt a)
   -> (BreakException -> Assertion)
   -> ((a, NEL.NonEmpty String) -> Assertion)

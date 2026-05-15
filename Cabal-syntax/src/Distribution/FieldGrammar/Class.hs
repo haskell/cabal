@@ -209,7 +209,7 @@ optionalField fn l = optionalFieldAla fn Identity l
 
 -- | Optional field with default value.
 optionalFieldDef
-  :: (FieldGrammar c g, Functor (g s), c (Identity a), Eq a)
+  :: (FieldGrammar c g, c (Identity a), Eq a)
   => FieldName
   -- ^ field name
   -> ALens' s a
