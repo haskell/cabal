@@ -136,8 +136,7 @@ data CheckCtx m = CheckCtx
 -- | Creates a pristing 'CheckCtx'. With pristine we mean everything that
 -- can be deduced by GPD but *not* user flags information.
 pristineCheckCtx
-  :: Monad m
-  => CheckInterface m
+  :: CheckInterface m
   -> GenericPackageDescription
   -> CheckCtx m
 pristineCheckCtx ci gpd =
@@ -151,7 +150,7 @@ pristineCheckCtx ci gpd =
 
 -- | Adds useful bits to 'CheckCtx' (as now, whether we are operating under
 -- a user off-by-default flag).
-initCheckCtx :: Monad m => TargetAnnotation a -> CheckCtx m -> CheckCtx m
+initCheckCtx :: TargetAnnotation a -> CheckCtx m -> CheckCtx m
 initCheckCtx t c = c{ccFlag = taPackageFlag t}
 
 -- | 'TargetAnnotation' collects contextual information on the target we are
@@ -323,7 +322,7 @@ checkIntDep acc mck = do
   po <- asksCM (acc . ccInterface)
   maybe (return ()) (lc . mck) po
   where
-    lc :: Monad m => m (Maybe PackageCheck) -> CheckM m ()
+    lc :: m (Maybe PackageCheck) -> CheckM m ()
     lc wmck = do
       b <- liftCM wmck
       maybe (return ()) (check True) b

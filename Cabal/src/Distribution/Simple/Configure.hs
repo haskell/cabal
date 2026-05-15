@@ -2307,7 +2307,7 @@ getInstalledPackagesMonitorFiles verbosity comp mbWorkDir packageDBs progdb plat
 -- | Looks up the 'InstalledPackageInfo' of the given 'UnitId's from the
 -- 'PackageDBStack' in the 'LocalBuildInfo'.
 getInstalledPackagesById
-  :: (Exception (VerboseException exception), Show exception, Typeable exception)
+  :: Exception (VerboseException exception)
   => Verbosity
   -> LocalBuildInfo
   -> (UnitId -> exception)

@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# OPTIONS_GHC -Wno-redundant-constraints #-}
 
 module Distribution.Client.CmdLegacy (legacyCmd, legacyWrapperCmd, newCmd) where
 

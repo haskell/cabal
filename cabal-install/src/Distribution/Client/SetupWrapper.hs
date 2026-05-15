@@ -6,6 +6,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# OPTIONS_GHC -Wno-redundant-constraints #-}
 {- FOURMOLU_DISABLE -}
 
 -----------------------------------------------------------------------------
