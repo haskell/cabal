@@ -22,4 +22,7 @@ updates:
     directory: "/doc"
     schedule:
       interval: "weekly"
-
+    groups:
+      github-actions:
+        patterns:
+          - "*"
