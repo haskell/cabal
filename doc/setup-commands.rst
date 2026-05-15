@@ -57,18 +57,16 @@ root directory:
     $ runhaskell Setup.hs copy --destdir=/tmp/mypkg
     $ tar -czf mypkg.tar.gz /tmp/mypkg/
 
-If the package contains a library, you need two additional steps:
+If the package contains a library, you need an additional step:
 
 ::
 
-    $ runhaskell Setup.hs register --gen-script
-    $ runhaskell Setup.hs unregister --gen-script
+    $ runhaskell Setup.hs register --gen-pkg-config
 
-This creates shell scripts ``register.sh`` and ``unregister.sh``, which
+This creates a configuration file ``mypkg.conf`` which
 must also be sent to the target system. After unpacking there, the
-package must be registered by running the ``register.sh`` script. The
-``unregister.sh`` script would be used in the uninstall procedure of the
-package. Similar steps may be used for creating binary packages for
+package must be registered by running the ``ghc-pkg register mypkg.conf``.
+Similar steps may be used for creating binary packages for
 Windows.
 
 The following options are understood by all commands:
@@ -1292,14 +1290,6 @@ This command takes the following options:
 
     Register this package in the user's local package database.
 
-.. option:: --gen-script
-
-    Instead of registering the package, generate a script containing
-    commands to perform the registration. On Unix, this file is called
-    ``register.sh``, on Windows, ``register.bat``. This script might be
-    included in a binary bundle, to be run after the bundle is unpacked
-    on the target system.
-
 .. option:: --gen-pkg-config[=path]
 
     Instead of registering the package, generate a package registration
@@ -1307,8 +1297,7 @@ This command takes the following options:
     compilers that support package registration files which at the
     moment is only GHC. The file should be used with the compiler's
     mechanism for registering packages. This option is mainly intended
-    for packaging systems. If possible use the :option:`--gen-script` option
-    instead since it is more portable across Haskell implementations.
+    for packaging systems.
     The *path* is optional and can be used to specify a particular
     output file to generate. Otherwise, by default the file is the
     package name and version with a ``.conf`` extension.
@@ -1352,13 +1341,6 @@ This command takes the following options:
 .. option:: --user
 
     Deregister this package in the user's local package database.
-
-.. option:: --gen-script
-
-    Instead of deregistering the package, generate a script containing
-    commands to perform the deregistration. On Unix, this file is called
-    ``unregister.sh``, on Windows, ``unregister.bat``. This script might
-    be included in a binary bundle, to be run on the target system.
 
 .. _setup-clean:
 

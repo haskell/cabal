@@ -2,8 +2,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 
------------------------------------------------------------------------------
-
 -- |
 -- Module      :  Distribution.Simple.Register
 -- Copyright   :  Isaac Jones 2003-2004
@@ -14,10 +12,7 @@
 --
 -- This module deals with registering and unregistering packages. There are a
 -- couple ways it can do this, one is to do it directly. Another is to generate
--- a script that can be run later to do it. The idea here being that the user
--- is shielded from the details of what command to use for package registration
--- for a particular compiler. In practice this aspect was not especially
--- popular so we also provide a way to simply generate the package registration
+-- the package registration
 -- file which then must be manually passed to @ghc-pkg@. It is possible to
 -- generate registration information for where the package is to be installed,
 -- or alternatively to register the package in place in the build tree. The
@@ -25,8 +20,8 @@
 -- build multi-package systems.
 --
 -- This module does not delegate anything to the per-compiler modules but just
--- mixes it all in this module, which is rather unsatisfactory. The script
--- generation and the unregister feature are not well used or tested.
+-- mixes it all in this module, which is rather unsatisfactory. The
+-- unregister feature is not well used or tested.
 module Distribution.Simple.Register
   ( register
   , registerWithHandles
@@ -77,7 +72,6 @@ import Distribution.Simple.Errors
 import Distribution.Simple.Flag
 import Distribution.Simple.Program
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
-import Distribution.Simple.Program.Script
 import Distribution.Simple.Setup.Common
 import Distribution.Simple.Setup.Haddock (HaddockTarget (ForDevelopment))
 import Distribution.Simple.Setup.Register
@@ -89,8 +83,6 @@ import Distribution.Verbosity as Verbosity
 import Distribution.Version
 import System.Directory
 import System.FilePath (isAbsolute)
-
-import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 
 -- -----------------------------------------------------------------------------
 -- Registration
@@ -197,7 +189,6 @@ registerAll verbHandles pkg lbi regFlags ipis =
     case () of
       _
         | modeGenerateRegFile -> writeRegistrationFileOrDirectory
-        | modeGenerateRegScript -> writeRegisterScript
         | otherwise -> do
             for_ ipis $ \ipi -> do
               setupMessage'
@@ -222,8 +213,6 @@ registerAll verbHandles pkg lbi regFlags ipis =
           (makeSymbolicPath (prettyShow (packageId pkg) <.> "conf"))
           (fromFlag (regGenPkgConf regFlags))
 
-    modeGenerateRegScript = fromFlag (regGenScript regFlags)
-
     -- FIXME: there's really no guarantee this will work.
     -- registering into a totally different db stack can
     -- fail if dependencies cannot be satisfied.
@@ -233,7 +222,6 @@ registerAll verbHandles pkg lbi regFlags ipis =
           ++ maybeToList (flagToMaybe (regPackageDB regFlags))
     common = registerCommonFlags regFlags
     verbosity = mkVerbosity verbHandles (fromFlag (setupVerbosity common))
-    mbWorkDir = mbWorkDirLBI lbi
 
     writeRegistrationFileOrDirectory = do
       -- Handles overwriting both directory and file
@@ -254,17 +242,6 @@ registerAll verbHandles pkg lbi regFlags ipis =
             writeUTF8File
               (regFile </> (number i ++ "-" ++ prettyShow (IPI.installedUnitId installedPkgInfo)))
               (IPI.showInstalledPackageInfo installedPkgInfo)
-
-    writeRegisterScript =
-      case compilerFlavor (compiler lbi) of
-        UHC -> notice verbosity "Registration scripts not needed for uhc"
-        _ ->
-          withHcPkg
-            verbosity
-            "Registration scripts are not implemented for this compiler"
-            (compiler lbi)
-            (withPrograms lbi)
-            (writeHcPkgRegisterScript verbosity mbWorkDir ipis packageDbs)
 
 generateRegistrationInfo
   :: Verbosity
@@ -448,38 +425,6 @@ registerPackage verbosity comp progdb mbWorkDir packageDbs installedPkgInfo regi
           dieWithException verbosity RegisMultiplePkgNotSupported
     UHC -> UHC.registerPackage verbosity mbWorkDir comp progdb packageDbs installedPkgInfo
     _ -> dieWithException verbosity RegisteringNotImplemented
-
-writeHcPkgRegisterScript
-  :: Verbosity
-  -> Maybe (SymbolicPath CWD (Dir Pkg))
-  -> [InstalledPackageInfo]
-  -> PackageDBStack
-  -> HcPkg.ConfiguredProgram
-  -> IO ()
-writeHcPkgRegisterScript verbosity mbWorkDir ipis packageDbs hpi = do
-  let genScript installedPkgInfo =
-        let invocation =
-              HcPkg.registerInvocation
-                hpi
-                Verbosity.Normal
-                mbWorkDir
-                packageDbs
-                installedPkgInfo
-                HcPkg.defaultRegisterOptions
-         in invocationAsSystemScript buildOS invocation
-      scripts = map genScript ipis
-      -- TODO: Do something more robust here
-      regScript = unlines scripts
-
-  let out_file = interpretSymbolicPath mbWorkDir regScriptFileName
-  info verbosity ("Creating package registration script: " ++ out_file)
-  writeUTF8File out_file regScript
-  setFileExecutable out_file
-
-regScriptFileName :: SymbolicPath Pkg File
-regScriptFileName = case buildOS of
-  Windows -> makeSymbolicPath "register.bat"
-  _ -> makeSymbolicPath "register.sh"
 
 -- -----------------------------------------------------------------------------
 -- Making the InstalledPackageInfo
@@ -730,7 +675,6 @@ unregisterWithHandles :: VerbosityHandles -> PackageDescription -> LocalBuildInf
 unregisterWithHandles verbHandles pkg lbi regFlags = do
   let pkgid = packageId pkg
       common = registerCommonFlags regFlags
-      genScript = fromFlag (regGenScript regFlags)
       verbosity = mkVerbosity verbHandles (fromFlag (setupVerbosity common))
       packageDb =
         fromFlagOrDefault
@@ -745,12 +689,7 @@ unregisterWithHandles verbHandles pkg lbi regFlags = do
                 mbWorkDir
                 packageDb
                 pkgid
-         in if genScript
-              then
-                writeFileAtomic
-                  unregScriptFileName
-                  (BS.Char8.pack $ invocationAsSystemScript buildOS invocation)
-              else runProgramInvocation verbosity invocation
+         in runProgramInvocation verbosity invocation
   setupMessage verbosity "Unregistering" pkgid
   withHcPkg
     verbosity
@@ -758,11 +697,6 @@ unregisterWithHandles verbHandles pkg lbi regFlags = do
     (compiler lbi)
     (withPrograms lbi)
     unreg
-
-unregScriptFileName :: FilePath
-unregScriptFileName = case buildOS of
-  Windows -> "unregister.bat"
-  _ -> "unregister.sh"
 
 internalPackageDBPath :: LocalBuildInfo -> SymbolicPath Pkg (Dir Dist) -> SymbolicPath Pkg (Dir PkgDB)
 internalPackageDBPath lbi distPref =

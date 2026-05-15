@@ -53,7 +53,6 @@ import Distribution.Verbosity
 data RegisterFlags = RegisterFlags
   { registerCommonFlags :: !CommonSetupFlags
   , regPackageDB :: Flag PackageDB
-  , regGenScript :: Flag Bool
   , regGenPkgConf :: Flag (Maybe (SymbolicPath Pkg (Dir PkgConf)))
   , regInPlace :: Flag Bool
   , regPrintId :: Flag Bool
@@ -89,7 +88,6 @@ defaultRegisterFlags =
   RegisterFlags
     { registerCommonFlags = defaultCommonSetupFlags
     , regPackageDB = NoFlag
-    , regGenScript = Flag False
     , regGenPkgConf = NoFlag
     , regInPlace = Flag False
     , regPrintId = Flag False
@@ -136,13 +134,6 @@ registerCommand =
               "register the package in the build location, so it can be used without being installed"
               regInPlace
               (\v flags -> flags{regInPlace = v})
-              trueArg
-          , option
-              ""
-              ["gen-script"]
-              "instead of registering, generate a script to register later"
-              regGenScript
-              (\v flags -> flags{regGenScript = v})
               trueArg
           , option
               ""
@@ -196,13 +187,6 @@ unregisterCommand =
                     )
                   ]
               )
-          , option
-              ""
-              ["gen-script"]
-              "Instead of performing the unregister command, generate a script to unregister later"
-              regGenScript
-              (\v flags -> flags{regGenScript = v})
-              trueArg
           ]
     }
 

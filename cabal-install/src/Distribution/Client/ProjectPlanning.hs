@@ -4343,7 +4343,6 @@ setupHsRegisterFlags
     Cabal.RegisterFlags
       { registerCommonFlags = common
       , regPackageDB = mempty -- misfeature
-      , regGenScript = mempty -- never use
       , regGenPkgConf = toFlag (Just (makeSymbolicPath pkgConfFile))
       , regInPlace = case elabBuildStyle of
           BuildInplaceOnly{} -> toFlag True
