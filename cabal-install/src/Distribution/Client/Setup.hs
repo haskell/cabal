@@ -3020,12 +3020,12 @@ initCommand =
         wrapText $
           "Create a .cabal, CHANGELOG.md, minimal initial Haskell code and optionally a LICENSE file.\n"
             ++ "\n"
-            ++ "Calling init with no arguments runs interactive mode, "
+            ++ "Calling init with no arguments runs interactive mode by default, "
             ++ "which will try to guess as much as possible and prompt you for the rest.\n"
             ++ "Non-interactive mode can be invoked by the -n/--non-interactive flag, "
-            ++ "which will let you specify the options via flags and will use the defaults for the rest.\n"
-            ++ "It is also possible to call init with a single argument, which denotes the project's desired "
-            ++ "root directory.\n"
+            ++ "which will let you specify the options via flags and will either use the defaults for the rest, "
+            ++ "or attempt to infer sensible defaults from your local development environment (e.g. $PATH).\n"
+            ++ "For a basic simple project with minimal prompting and sensible defaults, issue the --simple flag.\n"
     , commandNotes = Nothing
     , commandUsage = \pname ->
         "Usage: " ++ pname ++ " init [PROJECT ROOT] [FLAGS]\n"
@@ -3038,7 +3038,10 @@ initOptions _ =
   [ option
       ['i']
       ["interactive"]
-      "interactive mode."
+      ( "Interactive mode. Creates a prompt tree for project creation. \n"
+          ++ "If -n/--non-interactive is issued, a simple project with inferred defaults \n"
+          ++ "is created. If --simple is issued, then sensible defaults will be chosen as well."
+      )
       IT.interactive
       (\v flags -> flags{IT.interactive = v})
       (boolOpt' (['i'], ["interactive"]) (['n'], ["non-interactive"]))
