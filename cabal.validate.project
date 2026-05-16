@@ -13,7 +13,7 @@ program-options
 -- The +legacy-comparison flag is to set the default project file parser to compare
 -- the result of the legacy and parsec parser and fail if they are not equal.
 package cabal-install
-  flags: +git-rev +legacy-comparison
+  flags: +git-rev
 
 package Cabal
   flags: +git-rev
