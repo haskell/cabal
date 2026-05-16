@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
@@ -955,7 +956,7 @@ installLib verbosity lbi targetDir dynlibTargetDir bytecodeTargetDir _builtDir p
   info verbosity ("Wanted install ways: " ++ show libWays)
 
   -- copy .hi files over:
-  forM_ (wantedLibWays isIndef) $ \w -> case w of
+  forM_ (wantedLibWays isIndef) $ \case
     StaticWay -> copyModuleFiles (Suffix "hi")
     DynWay -> copyModuleFiles (Suffix "dyn_hi")
     ProfWay -> copyModuleFiles (Suffix "p_hi")
@@ -970,7 +971,7 @@ installLib verbosity lbi targetDir dynlibTargetDir bytecodeTargetDir _builtDir p
     -- without stripping; see doc/internal/bytecode-libraries.md.
     whenBytecodeLib $ installOrdinaryNoStrip builtDir bytecodeTargetDir bytecodeLibName
 
-    forM_ libWays $ \w -> case w of
+    forM_ libWays $ \case
       StaticWay -> do
         sequence_
           [ installOrdinary

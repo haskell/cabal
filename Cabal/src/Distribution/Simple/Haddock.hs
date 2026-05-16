@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -1256,7 +1257,7 @@ renderPureArgs version comp platform args =
     , bool [] ["--gen-index"] . fromFlagOrDefault False . argGenIndex $ args
     , maybe [] ((: []) . ("--base-url=" ++)) . flagToMaybe . argBaseUrl $ args
     , bool [verbosityFlag] [] . getAny . argVerbose $ args
-    , map (\o -> case o of Hoogle -> "--hoogle"; Html -> "--html")
+    , map (\case Hoogle -> "--hoogle"; Html -> "--html")
         . fromFlagOrDefault []
         . argOutput
         $ args

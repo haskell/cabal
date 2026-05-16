@@ -220,12 +220,11 @@ delayInitSharedResource action = do
   where
     getOrInitResource :: MVar (Maybe a) -> IO a
     getOrInitResource var =
-      modifyMVar var $ \mx ->
-        case mx of
-          Just x -> return (Just x, x)
-          Nothing -> do
-            x <- action
-            return (Just x, x)
+      modifyMVar var $ \case
+        Just x -> return (Just x, x)
+        Nothing -> do
+          x <- action
+          return (Just x, x)
 
 -- | Much like 'delayInitSharedResource' but for a keyed set of resources.
 --

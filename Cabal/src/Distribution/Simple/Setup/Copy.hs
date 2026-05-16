@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -117,7 +118,7 @@ copyCommand =
           , "COMPONENTS [FLAGS]"
           ]
     , commandDefaultFlags = defaultCopyFlags
-    , commandOptions = \showOrParseArgs -> case showOrParseArgs of
+    , commandOptions = \case
         ShowArgs ->
           filter
             ( (`notElem` ["target-package-db"])
@@ -145,7 +146,7 @@ copyOptions showOrParseArgs =
         ( reqArg
             "DIR"
             (succeedReadE (Flag . CopyTo))
-            (\f -> case f of Flag (CopyTo p) -> [p]; _ -> [])
+            (\case Flag (CopyTo p) -> [p]; _ -> [])
         )
     , option
         ""
@@ -160,7 +161,7 @@ copyOptions showOrParseArgs =
         ( reqArg
             "DATABASE"
             (succeedReadE (Flag . CopyToDb))
-            (\f -> case f of Flag (CopyToDb p) -> [p]; _ -> [])
+            (\case Flag (CopyToDb p) -> [p]; _ -> [])
         )
     ]
 

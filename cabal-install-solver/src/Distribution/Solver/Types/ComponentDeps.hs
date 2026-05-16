@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE LambdaCase #-}
 
 -- | Fine-grained package dependencies
 --
@@ -184,9 +185,10 @@ nonSetupDeps = select (/= ComponentSetup)
 -- | Library dependencies proper only.  (Includes dependencies
 -- of internal libraries.)
 libraryDeps :: Monoid a => ComponentDeps a -> a
-libraryDeps = select (\c -> case c of ComponentSubLib _ -> True
-                                      ComponentLib -> True
-                                      _ -> False)
+libraryDeps = select (\case
+  ComponentSubLib _ -> True
+  ComponentLib -> True
+  _ -> False)
 
 -- | List components
 components :: ComponentDeps a -> Set Component

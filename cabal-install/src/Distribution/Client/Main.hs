@@ -990,7 +990,7 @@ testAction (buildFlags, testFlags) extraArgs globalFlags = do
       mbWorkDir
       distPref
       "test suites"
-      (\c -> case c of LBI.CTest{} -> True; _ -> False)
+      (\case LBI.CTest{} -> True; _ -> False)
 
   let extraArgs'
         | null extraArgs = case names of
@@ -1114,7 +1114,7 @@ benchmarkAction
         mbWorkDir
         distPref
         "benchmarks"
-        (\c -> case c of LBI.CBench{} -> True; _ -> False)
+        (\case LBI.CBench{} -> True; _ -> False)
 
     let extraArgs'
           | null extraArgs = case names of

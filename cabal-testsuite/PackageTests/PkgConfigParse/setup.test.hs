@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 import System.Directory
 import Test.Cabal.Prelude
 
@@ -8,7 +9,7 @@ main = cabalTest $ do
         case sh of
             Nothing -> skip "no sh"
             Just sh' -> do
-                let sh'' = concatMap (\c -> case c of
+                let sh'' = concatMap (\case
                             '\\' -> "\\\\\\\\"
                             x -> [x]) sh'
                 void $ shell "sed" [ "-i", "-e", "s/FINDSH/" <> sh'' <> "/g", "pkg-config.shim"]
