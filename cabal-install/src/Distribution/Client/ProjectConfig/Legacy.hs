@@ -1720,7 +1720,7 @@ legacyPackageConfigFieldDescrs =
         $ let name = "build-info"
            in FieldDescr
                 name
-                ( \f -> case f of
+                ( \case
                     Flag NoDumpBuildInfo -> Disp.text "False"
                     Flag DumpBuildInfo -> Disp.text "True"
                     _ -> Disp.empty
@@ -1748,7 +1748,7 @@ legacyPackageConfigFieldDescrs =
         $ let name = "optimization"
            in FieldDescr
                 name
-                ( \f -> case f of
+                ( \case
                     Flag NoOptimisation -> Disp.text "False"
                     Flag NormalOptimisation -> Disp.text "True"
                     Flag MaximumOptimisation -> Disp.text "2"
@@ -1773,7 +1773,7 @@ legacyPackageConfigFieldDescrs =
         let name = "debug-info"
          in FieldDescr
               name
-              ( \f -> case f of
+              ( \case
                   Flag NoDebugInfo -> Disp.text "False"
                   Flag MinimalDebugInfo -> Disp.text "1"
                   Flag NormalDebugInfo -> Disp.text "True"

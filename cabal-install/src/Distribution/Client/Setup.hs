@@ -2637,7 +2637,7 @@ installOptions showOrParseArgs =
       ( reqArg
           "DATABASE"
           (succeedReadE (Flag . Cabal.CopyToDb))
-          (\f -> case f of Flag (Cabal.CopyToDb p) -> [p]; _ -> [])
+          (\case Flag (Cabal.CopyToDb p) -> [p]; _ -> [])
       )
   ]
     ++ optionSolverFlags

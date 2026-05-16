@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
@@ -1181,10 +1182,9 @@ readCacheFileHashes
 readCacheFileHashes monitor =
   handleDoesNotExist Map.empty $
     handleErrorCall Map.empty $
-      withCacheFile monitor $ \res ->
-        case res of
-          Left _ -> return Map.empty
-          Right (msfs, _, _) -> return (mkFileHashCache msfs)
+      withCacheFile monitor $ \case
+        Left _ -> return Map.empty
+        Right (msfs, _, _) -> return (mkFileHashCache msfs)
   where
     mkFileHashCache :: MonitorStateFileSet -> FileHashCache
     mkFileHashCache (MonitorStateFileSet singlePaths globPaths) =

@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -470,7 +471,7 @@ runProjectBuildPhase
     where
       previousBuildOutcomes :: BuildStatusMap -> BuildOutcomes
       previousBuildOutcomes =
-        Map.mapMaybe $ \status -> case status of
+        Map.mapMaybe $ \case
           BuildStatusUpToDate buildSuccess -> Just (Right buildSuccess)
           -- TODO: [nice to have] record build failures persistently
           _ -> Nothing

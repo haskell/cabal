@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -124,15 +125,15 @@ tokIndent :: Parser Int
 tokColon, tokCloseBrace :: Parser ()
 tokOpenBrace :: Parser Position
 tokFieldLine :: Parser (FieldLine Position)
-tokSym = getTokenWithPos $ \t -> case t of L pos (TokSym x) -> Just (mkName pos x); _ -> Nothing
-tokSym' = getTokenWithPos $ \t -> case t of L pos (TokSym x) -> Just (SecArgName pos x); _ -> Nothing
-tokStr = getTokenWithPos $ \t -> case t of L pos (TokStr x) -> Just (SecArgStr pos x); _ -> Nothing
-tokOther = getTokenWithPos $ \t -> case t of L pos (TokOther x) -> Just (SecArgOther pos x); _ -> Nothing
-tokIndent = getToken $ \t -> case t of Indent x -> Just x; _ -> Nothing
-tokColon = getToken $ \t -> case t of Colon -> Just (); _ -> Nothing
-tokOpenBrace = getTokenWithPos $ \t -> case t of L pos OpenBrace -> Just pos; _ -> Nothing
-tokCloseBrace = getToken $ \t -> case t of CloseBrace -> Just (); _ -> Nothing
-tokFieldLine = getTokenWithPos $ \t -> case t of L pos (TokFieldLine s) -> Just (FieldLine pos s); _ -> Nothing
+tokSym = getTokenWithPos $ \case L pos (TokSym x) -> Just (mkName pos x); _ -> Nothing
+tokSym' = getTokenWithPos $ \case L pos (TokSym x) -> Just (SecArgName pos x); _ -> Nothing
+tokStr = getTokenWithPos $ \case L pos (TokStr x) -> Just (SecArgStr pos x); _ -> Nothing
+tokOther = getTokenWithPos $ \case L pos (TokOther x) -> Just (SecArgOther pos x); _ -> Nothing
+tokIndent = getToken $ \case Indent x -> Just x; _ -> Nothing
+tokColon = getToken $ \case Colon -> Just (); _ -> Nothing
+tokOpenBrace = getTokenWithPos $ \case L pos OpenBrace -> Just pos; _ -> Nothing
+tokCloseBrace = getToken $ \case CloseBrace -> Just (); _ -> Nothing
+tokFieldLine = getTokenWithPos $ \case L pos (TokFieldLine s) -> Just (FieldLine pos s); _ -> Nothing
 
 colon, openBrace, closeBrace :: Parser ()
 sectionArg :: Parser (SectionArg Position)

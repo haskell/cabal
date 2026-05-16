@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Distribution.Fields.ConfVar (parseConditionConfVar, parseConditionConfVarFromClause) where
@@ -35,7 +36,7 @@ import qualified Text.Parsec.Pos as P
 
 parseConditionConfVarFromClause :: B8.ByteString -> Either P.ParseError (Condition ConfVar)
 parseConditionConfVarFromClause x =
-  readFields x >>= \r -> case r of
+  readFields x >>= \case
     (Section _ xs _ : _) -> P.runParser (parser <* P.eof) () "<condition>" xs
     _ -> Left $ P.newErrorMessage (P.Message "No fields in clause") (P.initialPos "<condition>")
 
@@ -124,11 +125,11 @@ parser = condOr
           ]
 
     -- Number token can have many dots in it: SecArgNum (Position 65 15) "7.6.1"
-    identBS = tokenPrim $ \t -> case t of
+    identBS = tokenPrim $ \case
       SecArgName _ s -> Just s
       _ -> Nothing
 
-    boolLiteral' = tokenPrim $ \t -> case t of
+    boolLiteral' = tokenPrim $ \case
       SecArgName _ s
         | s == "True" -> Just True
         | s == "true" -> Just True
@@ -137,11 +138,11 @@ parser = condOr
       _ -> Nothing
 
     string :: B8.ByteString -> Parser ()
-    string s = tokenPrim $ \t -> case t of
+    string s = tokenPrim $ \case
       SecArgName _ s' | s == s' -> Just ()
       _ -> Nothing
 
-    oper o = tokenPrim $ \t -> case t of
+    oper o = tokenPrim $ \case
       SecArgOther _ o' | o == o' -> Just ()
       _ -> Nothing
 
