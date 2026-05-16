@@ -81,10 +81,10 @@ import Distribution.Types.GivenComponent
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.TargetInfo
 import Distribution.Types.UnitId
+import Distribution.Types.Version
 import Distribution.Utils.NubList (NubListR, toNubListR)
 import Distribution.Utils.Path
 import Distribution.Verbosity
-import Distribution.Version (Version)
 import Language.Haskell.Extension
 import System.Directory (listDirectory)
 import System.Environment (getEnv)
@@ -482,6 +482,16 @@ componentJsGhcOptions verbosity lbi bi clbi odir filename =
     , ghcOptExtra = hcOptions GHC bi
     }
 
+-- Applies options only if the GHC version is greater than or
+-- equal to the given one.
+ghcOptionsSince :: Monoid a => Version -> Compiler -> a -> a
+ghcOptionsSince ver comp defOptions =
+  case compilerCompatVersion GHC comp of
+    Just v
+      | v >= ver -> defOptions
+      | otherwise -> mempty
+    Nothing -> mempty
+
 componentGhcOptions
   :: VerbosityLevel
   -> LocalBuildInfo
@@ -555,6 +565,16 @@ componentGhcOptions verbosity lbi bi clbi odir =
         , -- Unsupported extensions have already been checked by configure
           ghcOptExtensions = toNubListR $ usedExtensions bi
         , ghcOptExtensionMap = Map.fromList . compilerExtensions $ (compiler lbi)
+        , -- Use -pgmc to ensure that Cabal always passes cc-options, ld-options to GHC (#4435, #9801)
+          -- We can only do this on GHC >= 9.4, as we need https://gitlab.haskell.org/ghc/ghc/-/merge_requests/6949
+          -- Without that GHC MR, this change would cause GHC to never pass -no-pie when linking,
+          -- which can cause breakage depending on the C toolchain use. We would have to appropriately
+          -- pass -pgmc-supports-no-pie as appropriate to avoid this regression.
+          ghcOptCcProgram =
+            ghcOptionsSince
+              (mkVersion [9, 4])
+              (compiler lbi)
+              (maybeToFlag $ programPath <$> lookupProgram gccProgram (withPrograms lbi))
         }
   where
     exe_paths =
