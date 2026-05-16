@@ -1,0 +1,10 @@
+packages: cabal-install-solver cabal-install
+prs: #11773
+issues: #9562 #10512
+synopsis: Move project configuration import path functions to `cabal-install`
+description:
+  Move these functions from `cabal-install-solver` to `cabal-install`:
+
+  - `docProjectConfigFiles`
+  - `cyclicalImportMsg`
+  - `untrimmedUriImportMsg`
