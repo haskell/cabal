@@ -2,6 +2,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TupleSections #-}
 
@@ -367,7 +368,7 @@ repl_setupHooks
         verbosity = mkVerbosity verbHandles $ fromFlag (replVerbosity flags)
 
     target <-
-      readTargetInfos verbosity pkg_descr lbi args >>= \r -> case r of
+      readTargetInfos verbosity pkg_descr lbi args >>= \case
         -- This seems DEEPLY questionable.
         [] -> case allTargetsInBuildOrder' pkg_descr lbi of
           (target : _) -> return target

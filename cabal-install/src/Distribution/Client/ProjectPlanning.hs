@@ -2257,7 +2257,7 @@ elaborateInstallPlan
             elabStanzasAvailable = stanzas
 
             elabStanzasRequested :: OptionalStanzaMap (Maybe Bool)
-            elabStanzasRequested = optStanzaTabulate $ \o -> case o of
+            elabStanzasRequested = optStanzaTabulate $ \case
               -- NB: even if a package stanza is requested, if the package
               -- doesn't actually have any of that stanza we omit it from
               -- the request, to ensure that we don't decide that this

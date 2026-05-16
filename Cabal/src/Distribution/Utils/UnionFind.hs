@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NondecreasingIndentation #-}
 
 -- | A simple mutable union-find data structure.
@@ -50,14 +51,13 @@ fresh desc = do
 -- which points directly to the canonical representation.
 repr :: Point s a -> ST s (Point s a)
 repr point =
-  readPoint point >>= \r ->
-    case r of
-      Link point' -> do
-        point'' <- repr point'
-        when (point'' /= point') $ do
-          writePoint point =<< readPoint point'
-        return point''
-      Info _ _ -> return point
+  readPoint point >>= \case
+    Link point' -> do
+      point'' <- repr point'
+      when (point'' /= point') $ do
+        writePoint point =<< readPoint point'
+      return point''
+    Info _ _ -> return point
 
 -- | Return the canonical element of an equivalence
 -- class 'Point'.
@@ -65,14 +65,12 @@ find :: Point s a -> ST s a
 find point =
   -- Optimize length 0 and 1 case at expense of
   -- general case
-  readPoint point >>= \r ->
-    case r of
-      Info _ d_ref -> readSTRef d_ref
-      Link point' ->
-        readPoint point' >>= \r' ->
-          case r' of
-            Info _ d_ref -> readSTRef d_ref
-            Link _ -> repr point >>= find
+  readPoint point >>= \case
+    Info _ d_ref -> readSTRef d_ref
+    Link point' ->
+      readPoint point' >>= \case
+        Info _ d_ref -> readSTRef d_ref
+        Link _ -> repr point >>= find
 
 -- | Unify two equivalence classes, so that they share
 -- a canonical element. Keeps the descriptor of point2.

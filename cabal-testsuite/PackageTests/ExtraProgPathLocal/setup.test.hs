@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 import Test.Cabal.Prelude
 import System.Directory
 
@@ -20,7 +21,7 @@ main = cabalTest $ do
       case mb_sh of
           Nothing -> skip "no sh"
           Just sh -> do
-            let escape = concatMap (\c -> case c of '\\' -> "\\\\\\\\"; x -> [x])
+            let escape = concatMap (\case '\\' -> "\\\\\\\\"; x -> [x])
             void $ shell "sed" [ "-i", "-e", "s/FINDSH/" <> escape sh <> "/g", escape (scripts1 </> "alex.shim"), escape (scripts2 </> "alex.shim") ]
             void $ shell "sed" [ "-i", "-e", "s/SCRIPTSDIR/" <> escape scripts1 <> "/g", escape (scripts1 </> "alex.shim") ]
             void $ shell "sed" [ "-i", "-e", "s/SCRIPTS2DIR/" <> escape scripts2 <> "/g", escape (scripts2 </> "alex.shim") ]

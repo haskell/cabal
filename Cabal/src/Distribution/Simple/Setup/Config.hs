@@ -2,6 +2,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -572,7 +573,7 @@ configureOptions showOrParseArgs =
           [ optArgDef'
               "n"
               (show NoOptimisation, Flag . flagToOptimisationLevel)
-              ( \f -> case f of
+              ( \case
                   Flag NoOptimisation -> []
                   Flag NormalOptimisation -> [Nothing]
                   Flag MaximumOptimisation -> [Just "2"]
@@ -594,7 +595,7 @@ configureOptions showOrParseArgs =
           [ optArg'
               "n"
               (Flag . flagToDebugInfoLevel)
-              ( \f -> case f of
+              ( \case
                   Flag NoDebugInfo -> []
                   Flag MinimalDebugInfo -> [Just "1"]
                   Flag NormalDebugInfo -> [Nothing]

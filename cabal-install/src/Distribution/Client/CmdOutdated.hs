@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -523,7 +524,7 @@ depsFromLocalPackages verbosity ctx targetSelectors = do
         selectComponentTargetForOutdated
         (localPackages ctx)
         targetSelectors
-  fmap concat <$> forM (localPackages ctx) $ \pkg -> case pkg of
+  fmap concat <$> forM (localPackages ctx) $ \case
     SpecificSourcePackage pkg' -> do
       -- Find the package in the resolved targets
       let pkgId = packageId pkg'

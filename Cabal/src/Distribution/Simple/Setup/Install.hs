@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -168,7 +169,7 @@ installOptions =
       ( reqArg
           "DATABASE"
           (succeedReadE (Flag . CopyToDb))
-          (\f -> case f of Flag (CopyToDb p) -> [p]; _ -> [])
+          (\case Flag (CopyToDb p) -> [p]; _ -> [])
       )
   ]
 
