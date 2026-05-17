@@ -111,8 +111,7 @@ cabalInstallID =
 -------------------------------------------------------------------------------
 
 fieldDescrs
-  :: ( Applicative (g BuildReport)
-     , FieldGrammar c g
+  :: ( FieldGrammar c g
      , c (Identity Arch)
      , c (Identity CompilerId)
      , c (Identity FlagAssignment)
