@@ -45,7 +45,7 @@ GenericPackageDescription {
     synopsis =
     "Generate flamegraphs from Jaeger .json dumps.",
     description =
-    concat
+    T.concat
       [
         "This is a small tool to convert JSON dumps obtained from a Jaeger\n",
         "server (<https://www.jaegertracing.io/>) into a format consumable\n",

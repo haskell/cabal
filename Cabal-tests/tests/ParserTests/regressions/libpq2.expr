@@ -14,7 +14,7 @@ GenericPackageDescription {
           Nothing)),
     licenseFiles = [
       SymbolicPath "LICENSE"],
-    copyright = concat
+    copyright = T.concat
       [
         "(c) 2010 Grant Monroe\n",
         "(c) 2011 Leon P Smith"],
@@ -71,7 +71,7 @@ GenericPackageDescription {
     sourceRepos = [],
     synopsis =
     "low-level binding to libpq",
-    description = concat
+    description = T.concat
       [
         "This is a binding to libpq: the C application\n",
         "programmer's interface to PostgreSQL. libpq is a\n",

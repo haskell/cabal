@@ -18,7 +18,7 @@ GenericPackageDescription {
     bugReports = "",
     sourceRepos = [],
     synopsis = "",
-    description = concat
+    description = T.concat
       [
         "foo\n",
         "  indent2\n",

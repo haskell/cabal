@@ -27,7 +27,7 @@ InstalledPackageInfo {
   synopsis =
   "Concrete functor and monad transformers",
   description =
-  concat
+  T.concat
     [
       "A portable library of functor and monad transformers, inspired by\n",
       "the paper \\\"Functional Programming with Overloading and Higher-Order\n",
