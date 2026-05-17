@@ -55,8 +55,6 @@ f <@> x = f <*> x
 
 ipiFieldGrammar
   :: ( FieldGrammar c g
-     , Applicative (g InstalledPackageInfo)
-     , Applicative (g Basic)
      , c (Identity AbiHash)
      , c (Identity LibraryVisibility)
      , c (Identity PackageName)
@@ -301,7 +299,6 @@ basicLibVisibility f b =
 
 basicFieldGrammar
   :: ( FieldGrammar c g
-     , Applicative (g Basic)
      , c (Identity LibraryVisibility)
      , c (Identity PackageName)
      , c (Identity UnqualComponentName)

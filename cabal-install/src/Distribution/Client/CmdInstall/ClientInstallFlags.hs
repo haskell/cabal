@@ -123,7 +123,6 @@ clientInstallOptions _ =
 
 clientInstallFlagsGrammar
   :: ( FieldGrammar c g
-     , Applicative (g ClientInstallFlags)
      , c (Identity (Flag Bool))
      , c (Flag' FilePathNT FilePath)
      , c (Identity (Flag OverwritePolicy))

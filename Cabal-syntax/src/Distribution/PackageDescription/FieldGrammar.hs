@@ -95,8 +95,6 @@ import qualified Distribution.Types.Lens as L
 
 packageDescriptionFieldGrammar
   :: ( FieldGrammar c g
-     , Applicative (g PackageDescription)
-     , Applicative (g PackageIdentifier)
      , c (Identity BuildType)
      , c (Identity PackageName)
      , c (Identity Version)
@@ -166,8 +164,6 @@ packageDescriptionFieldGrammar =
 
 libraryFieldGrammar
   :: ( FieldGrammar c g
-     , Applicative (g Library)
-     , Applicative (g BuildInfo)
      , c (Identity LibraryVisibility)
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
      , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
@@ -218,8 +214,6 @@ libraryFieldGrammar n =
 
 foreignLibFieldGrammar
   :: ( FieldGrammar c g
-     , Applicative (g ForeignLib)
-     , Applicative (g BuildInfo)
      , c (Identity ForeignLibType)
      , c (Identity LibVersionInfo)
      , c (Identity Version)
@@ -264,8 +258,6 @@ foreignLibFieldGrammar n =
 
 executableFieldGrammar
   :: ( FieldGrammar c g
-     , Applicative (g Executable)
-     , Applicative (g BuildInfo)
      , c (Identity ExecutableScope)
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
      , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
@@ -339,8 +331,6 @@ testStanzaCodeGenerators f s = fmap (\x -> s{_testStanzaCodeGenerators = x}) (f 
 
 testSuiteFieldGrammar
   :: ( FieldGrammar c g
-     , Applicative (g TestSuiteStanza)
-     , Applicative (g BuildInfo)
      , c (Identity ModuleName)
      , c (Identity TestType)
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
@@ -488,8 +478,6 @@ benchmarkStanzaBuildInfo f s = fmap (\x -> s{_benchmarkStanzaBuildInfo = x}) (f 
 
 benchmarkFieldGrammar
   :: ( FieldGrammar c g
-     , Applicative (g BenchmarkStanza)
-     , Applicative (g BuildInfo)
      , c (Identity BenchmarkType)
      , c (Identity ModuleName)
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
@@ -597,7 +585,6 @@ unvalidateBenchmark b =
 
 buildInfoFieldGrammar
   :: ( FieldGrammar c g
-     , Applicative (g BuildInfo)
      , c (List CommaFSep (Identity ExeDependency) ExeDependency)
      , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
      , c (List CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
@@ -710,7 +697,6 @@ buildInfoFieldGrammar =
 
 hsSourceDirsGrammar
   :: ( FieldGrammar c g
-     , Applicative (g BuildInfo)
      , c (List FSep (SymbolicPathNT Pkg (Dir Source)) (SymbolicPath Pkg (Dir Source)))
      )
   => g BuildInfo [SymbolicPath Pkg (Dir Source)]
@@ -727,7 +713,7 @@ hsSourceDirsGrammar =
     wrongLens f bi = (\fps -> set L.hsSourceDirs fps bi) <$> f []
 
 optionsFieldGrammar
-  :: (FieldGrammar c g, Applicative (g BuildInfo), c (List NoCommaFSep Token' String))
+  :: (FieldGrammar c g, c (List NoCommaFSep Token' String))
   => g BuildInfo (PerCompilerFlavor [String])
 optionsFieldGrammar =
   PerCompilerFlavor
@@ -744,7 +730,7 @@ optionsFieldGrammar =
     extract flavor = L.options . lookupLens flavor
 
 profOptionsFieldGrammar
-  :: (FieldGrammar c g, Applicative (g BuildInfo), c (List NoCommaFSep Token' String))
+  :: (FieldGrammar c g, c (List NoCommaFSep Token' String))
   => g BuildInfo (PerCompilerFlavor [String])
 profOptionsFieldGrammar =
   PerCompilerFlavor
@@ -755,7 +741,7 @@ profOptionsFieldGrammar =
     extract flavor = L.profOptions . lookupLens flavor
 
 sharedOptionsFieldGrammar
-  :: (FieldGrammar c g, Applicative (g BuildInfo), c (List NoCommaFSep Token' String))
+  :: (FieldGrammar c g, c (List NoCommaFSep Token' String))
   => g BuildInfo (PerCompilerFlavor [String])
 sharedOptionsFieldGrammar =
   PerCompilerFlavor
@@ -766,7 +752,7 @@ sharedOptionsFieldGrammar =
     extract flavor = L.sharedOptions . lookupLens flavor
 
 profSharedOptionsFieldGrammar
-  :: (FieldGrammar c g, Applicative (g BuildInfo), c (List NoCommaFSep Token' String))
+  :: (FieldGrammar c g, c (List NoCommaFSep Token' String))
   => g BuildInfo (PerCompilerFlavor [String])
 profSharedOptionsFieldGrammar =
   PerCompilerFlavor
@@ -789,7 +775,7 @@ lookupLens k f p@(PerCompilerFlavor ghc ghcjs)
 -------------------------------------------------------------------------------
 
 flagFieldGrammar
-  :: (FieldGrammar c g, Applicative (g PackageFlag))
+  :: FieldGrammar c g
   => FlagName
   -> g PackageFlag PackageFlag
 flagFieldGrammar name =
@@ -805,7 +791,7 @@ flagFieldGrammar name =
 -------------------------------------------------------------------------------
 
 sourceRepoFieldGrammar
-  :: (FieldGrammar c g, Applicative (g SourceRepo), c (Identity RepoType))
+  :: (FieldGrammar c g, c (Identity RepoType))
   => RepoKind
   -> g SourceRepo SourceRepo
 sourceRepoFieldGrammar kind =
@@ -824,7 +810,7 @@ sourceRepoFieldGrammar kind =
 -------------------------------------------------------------------------------
 
 setupBInfoFieldGrammar
-  :: (FieldGrammar c g, Functor (g SetupBuildInfo), c (List CommaVCat (Identity Dependency) Dependency))
+  :: (FieldGrammar c g, c (List CommaVCat (Identity Dependency) Dependency))
   => Bool
   -> g SetupBuildInfo SetupBuildInfo
 setupBInfoFieldGrammar def =

@@ -1779,7 +1779,6 @@ legacyPackageConfigFieldDescrs =
 
 legacyPackageConfigFGSectionDescrs
   :: ( FieldGrammar c g
-     , Applicative (g SourceRepoList)
      , c (Identity RepoType)
      , c (List NoCommaFSep FilePathNT String)
      , c (NonEmpty' NoCommaFSep Token String)
@@ -1811,7 +1810,6 @@ legacyPackageConfigSectionDescrs =
 
 packageRepoSectionDescr
   :: ( FieldGrammar c g
-     , Applicative (g SourceRepoList)
      , c (Identity RepoType)
      , c (List NoCommaFSep FilePathNT String)
      , c (NonEmpty' NoCommaFSep Token String)
