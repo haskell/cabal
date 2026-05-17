@@ -3,6 +3,7 @@ import qualified System.Process as Process
 import Control.Concurrent (threadDelay)
 import System.Directory (removeFile)
 import Control.Exception (catch, throwIO)
+import Control.Monad (void)
 import System.IO.Error (isDoesNotExistError)
 import qualified Data.Time.Clock as Time
 import qualified Data.Time.Format as Time
@@ -17,7 +18,7 @@ main = do
     exe_path <- withPlan $ planExePath "setup-test" "cabal-aaaa"
     addToPath (takeDirectory exe_path) $ do
       -- Test that the thing works at all
-      res <- fails $ cabal_raw_action ["aaaa"] (\h -> () <$ Process.waitForProcess h)
+      res <- fails $ cabal_raw_action ["aaaa"] (\h -> void (Process.waitForProcess h))
       -- Check the exit code is the one returned by subcommand
       unless (resultExitCode res == ExitFailure 99) (assertFailure $ "Incorrect exit code: " ++ show (resultExitCode res))
 

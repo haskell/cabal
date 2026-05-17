@@ -3048,15 +3048,11 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
 
     ready_map = execState work Map.empty
 
-    work = for_ pkgs $ \pkg ->
-      case pkg of
-        InstallPlan.Configured elab
-          | not (Map.null (elabLinkedInstantiatedWith elab)) ->
-              indefiniteUnitId (elabComponentId elab)
-                >> return ()
-        _ ->
-          instantiateUnitId (getComponentId pkg) Map.empty
-            >> return ()
+    work = for_ pkgs $ \case
+      InstallPlan.Configured elab
+        | not (Map.null (elabLinkedInstantiatedWith elab)) ->
+            void $ indefiniteUnitId (elabComponentId elab)
+      pkg -> void $ instantiateUnitId (getComponentId pkg) Map.empty
 
 ---------------------------
 -- Build targets

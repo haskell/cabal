@@ -403,11 +403,9 @@ toReadyComponents pid_map subst0 comps =
       -- Top-level instantiation per subst0
       | not (Map.null subst0)
       , [lc] <- filter lc_public (Map.elems cmap) =
-          do
-            _ <- instantiateUnitId (lc_cid lc) subst0
-            return ()
+          void $ instantiateUnitId (lc_cid lc) subst0
       | otherwise =
           forM_ (Map.elems cmap) $ \lc ->
             if null (lc_insts lc)
-              then instantiateUnitId (lc_cid lc) Map.empty >> return ()
-              else indefiniteUnitId (lc_cid lc) >> return ()
+              then void $ instantiateUnitId (lc_cid lc) Map.empty
+              else void $ indefiniteUnitId (lc_cid lc)
