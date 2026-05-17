@@ -5,7 +5,8 @@ module Distribution.Simple.GHC.Build where
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Control.Monad.IO.Class
+import qualified Distribution.Compat.Graph as Graph
+
 import Distribution.PackageDescription as PD hiding (buildInfo)
 import Distribution.Simple.Build.Inputs
 import Distribution.Simple.Flag (Flag)
@@ -25,6 +26,8 @@ import Distribution.Utils.NubList (fromNubListR)
 import Distribution.Utils.Path
 
 import Distribution.Verbosity (VerbosityHandles, mkVerbosity, verbosityHandles)
+
+import Control.Monad.IO.Class
 import System.FilePath (splitDirectories)
 
 {- Note [Build Target Dir vs Target Dir]
@@ -75,7 +78,7 @@ build numJobs verbHandles pkg_descr pbci = do
     verbosity = mkVerbosity verbHandles $ buildVerbosity pbci
     isLib = buildIsLib pbci
     lbi = localBuildInfo pbci
-    bi = buildBI pbci
+    comp = buildComponent pbci
     clbi = buildCLBI pbci
     isIndef = componentIsIndefinite clbi
     mbWorkDir = mbWorkDirLBI lbi
@@ -118,9 +121,35 @@ build numJobs verbHandles pkg_descr pbci = do
   let wantedWays@(wantedLibWays, wantedFLibWay, wantedExeWay) = buildWays lbi
 
   -- Ways which are needed due to the compiler configuration
-  let doingTH = usesTemplateHaskellOrQQ bi
+  let doingTH =
+        -- Does this component, or another component that (transitively) depends
+        -- on this component, use TemplateHaskell or QuasiQuotes?
+        --
+        -- Ticket #7684 showed that we need to take into account intra-package
+        -- dependencies.
+        any usesTemplateHaskellOrQQ thisCompAndReverseDepsBuildInfos
+
+      -- The BuildInfos for this component and all of the components that
+      -- transitively depend on it (its reverse dependencies).
+      thisCompAndReverseDepsBuildInfos =
+        [ componentBuildInfo revDepComp
+        | let compUnitId = componentUnitId clbi
+        , -- 'revClosure' retrieves components that depend on this component.
+        revDepCLBI <- fromMaybe [clbi] $ Graph.revClosure (componentGraph lbi) [compUnitId]
+        , -- Use 'lookupComponent' here; don't use any function that goes via
+        -- 'getComponent' (e.g. mkTargetInfo or unitIdTarget'), as that will
+        -- tiresomely cause an error for 'detailed-0.9' test-suites because
+        -- 'testSuiteLibV09AsLibAndExe' creates a stub PackageDescription with
+        -- most components zeroed out.
+        --
+        -- The implementation below means we will get 'Nothing' when the
+        -- current component is a 'detailed-0.9' test-suite, which is fine
+        -- as nothing can depend on a test-suite.
+        Just revDepComp <- [lookupComponent pkg_descr $ componentLocalName revDepCLBI]
+        ]
+
       defaultGhcWay = compilerBuildWay (buildCompiler pbci)
-      wantedModBuildWays = case buildComponent pbci of
+      wantedModBuildWays = case comp of
         CLib _ -> wantedLibWays isIndef
         CFLib fl -> [wantedFLibWay (withDynFLib fl)]
         CExe _ -> [wantedExeWay]
@@ -129,7 +158,7 @@ build numJobs verbHandles pkg_descr pbci = do
       finalModBuildWays =
         wantedModBuildWays
           ++ [defaultGhcWay | doingTH && defaultGhcWay `notElem` wantedModBuildWays]
-      compNameStr = showComponentName $ componentName $ buildComponent pbci
+      compNameStr = showComponentName $ componentName comp
 
   liftIO $ info verbosity ("Wanted module build ways(" ++ compNameStr ++ "): " ++ show wantedModBuildWays)
   liftIO $ info verbosity ("Final module build ways(" ++ compNameStr ++ "): " ++ show finalModBuildWays)
