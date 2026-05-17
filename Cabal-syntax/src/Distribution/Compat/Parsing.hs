@@ -82,7 +82,7 @@ option x p = p <|> pure x
 -- It only fails if @p@ fails after consuming input. It discards the result
 -- of @p@. (Plays the role of parsec's optional, which conflicts with Applicative's optional)
 skipOptional :: Alternative m => m a -> m ()
-skipOptional p = (() <$ p) <|> pure ()
+skipOptional p = void p <|> pure ()
 {-# INLINE skipOptional #-}
 
 -- | @between open close p@ parses @open@, followed by @p@ and @close@.
@@ -224,7 +224,7 @@ class Alternative m => Parsing m where
   -- | A version of many that discards its input. Specialized because it
   -- can often be implemented more cheaply.
   skipMany :: m a -> m ()
-  skipMany p = () <$ many p
+  skipMany p = void $ many p
   {-# INLINE skipMany #-}
 
   -- | @skipSome p@ applies the parser @p@ /one/ or more times, skipping
