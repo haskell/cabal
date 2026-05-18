@@ -7,6 +7,7 @@ module Test.Cabal.Monad
   , setupTest
   , cabalTest
   , cabalTest'
+  , withBuildCompiler
 
     -- * The monad
   , TestM
@@ -127,6 +128,7 @@ import Test.Cabal.Run
 data CommonArgs = CommonArgs
   { argCabalInstallPath :: Maybe FilePath
   , argGhcPath :: Maybe FilePath
+  , argBuildCompilerPath :: Maybe FilePath
   , argHackageRepoToolPath :: Maybe FilePath
   , argHaddockPath :: Maybe FilePath
   , argKeepTmpFiles :: Bool
@@ -151,6 +153,14 @@ commonArgParser =
           ( help "GHC to ask Cabal to use via --with-ghc flag"
               <> short 'w'
               <> long "with-ghc"
+              <> metavar "PATH"
+          )
+      )
+    <*> optional
+      ( option
+          str
+          ( help "Path to the build compiler (cross-compile build stage). If omitted, tests requiring a separate build compiler are skipped."
+              <> long "with-build-compiler"
               <> metavar "PATH"
           )
       )
@@ -184,6 +194,7 @@ renderCommonArgs :: CommonArgs -> [String]
 renderCommonArgs args =
   maybe [] (\x -> ["--with-cabal", x]) (argCabalInstallPath args)
     ++ maybe [] (\x -> ["--with-ghc", x]) (argGhcPath args)
+    ++ maybe [] (\x -> ["--with-build-compiler", x]) (argBuildCompilerPath args)
     ++ maybe [] (\x -> ["--with-haddock", x]) (argHaddockPath args)
     ++ maybe [] (\x -> ["--with-hackage-repo-tool", x]) (argHackageRepoToolPath args)
     ++ ["--accept" | argAccept args]
@@ -329,6 +340,15 @@ cabalTest' mode m = runTestM mode $ do
   skipUnless "no cabal-install" =<< isAvailableProgram cabalProgram
   withReaderT (\nenv -> nenv{testCabalInstallAsSetup = True}) m
 
+-- | Run a test only when @--with-build-compiler@ was supplied, passing the
+-- build-compiler path to the action.  Skips the test otherwise.
+withBuildCompiler :: (FilePath -> TestM ()) -> TestM ()
+withBuildCompiler f = do
+  env <- getTestEnv
+  case testBuildCompilerPath env of
+    Nothing -> skip "no build compiler (pass --with-build-compiler)"
+    Just p -> f p
+
 type TestM = ReaderT TestEnv IO
 
 gitProgram :: Program
@@ -444,6 +464,7 @@ runTestM mode m =
                 , testSetupPath = dist_dir </> "build" </> "setup" </> "setup"
                 , testPackageDbPath = case testArgPackageDb args of [] -> Nothing; xs -> Just xs
                 , testSkipSetupTests = argSkipSetupTests (testCommonArgs args)
+                , testBuildCompilerPath = argBuildCompilerPath cargs
                 , testHaveCabalShared = runnerWithSharedLib senv
                 , testEnvironment =
                     -- Use UTF-8 output on all platforms.
@@ -859,6 +880,8 @@ data TestEnv = TestEnv
   -- use when compiling custom setups, plus the store with possible dependencies of those setup packages.
   , testSkipSetupTests :: Bool
   -- ^ Skip Setup tests?
+  , testBuildCompilerPath :: Maybe FilePath
+  -- ^ Path to the build compiler for cross-compile tests; 'Nothing' means skip such tests.
   , testHaveCabalShared :: Bool
   -- ^ Do we have shared libraries for the Cabal-under-tests?
   -- This is used for example to determine whether we can build
