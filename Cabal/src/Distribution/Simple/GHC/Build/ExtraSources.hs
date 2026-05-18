@@ -18,7 +18,6 @@ import Distribution.Utils.NubList
 import Distribution.Types.BuildInfo
 import Distribution.Types.Component
 import Distribution.Types.TargetInfo
-import Distribution.Types.Version
 
 import Distribution.Simple.Build.Inputs
 import Distribution.Simple.BuildWay
@@ -78,26 +77,7 @@ buildCSources
 buildCSources mbMainFile =
   buildExtraSources
     "C Sources"
-    ( \verbosity lbi bi clbi odir filename ->
-        (Internal.sourcesGhcOptions verbosity lbi bi clbi odir filename)
-          { -- C++ compiler options: GHC >= 8.10 requires -optcxx, older requires -optc
-            -- we want to be able to support cxx-options and cc-options separately
-            -- https://gitlab.haskell.org/ghc/ghc/-/issues/16477
-            -- see example in cabal-testsuite/PackageTests/FFI/ForeignOptsC
-            ghcOptCxxOptions =
-              Internal.ghcOptionsSince
-                (mkVersion [8, 10])
-                (compiler lbi)
-                (Internal.optimizationCFlags lbi ++ cxxOptions bi)
-          , -- Use -pgmc to ensure that Cabal always passes cc-options, ld-options to GHC (#4435, #9801)
-            -- We can only do this on GHC >= 9.4, as we need https://gitlab.haskell.org/ghc/ghc/-/merge_requests/6949
-            -- Without that GHC MR, this change would cause GHC to never pass -no-pie when linking,
-            -- which can cause breakage depending on the C toolchain use. Otherwise,
-            -- we pass the flag only to source files #11712
-            -- see example in cabal-testsuite/PackageTests/FFI/ForeignOptsPgmc
-            ghcOptCcProgram = maybeToFlag $ programPath <$> lookupProgram gccProgram (withPrograms lbi)
-          }
-    )
+    (Internal.splitCandCxxOptions Internal.CcProgram)
     ( \c -> do
         let cFiles = cSources (componentBuildInfo c)
         case c of
@@ -110,26 +90,7 @@ buildCSources mbMainFile =
 buildCxxSources mbMainFile =
   buildExtraSources
     "C++ Sources"
-    ( \verbosity lbi bi clbi odir filename ->
-        (Internal.sourcesGhcOptions verbosity lbi bi clbi odir filename)
-          { -- C++ compiler options: GHC >= 8.10 requires -optcxx, older requires -optc
-            -- we want to be able to support cxx-options and cc-options separately
-            -- https://gitlab.haskell.org/ghc/ghc/-/issues/16477
-            -- see example in cabal-testsuite/PackageTests/FFI/ForeignOptsCxx
-            ghcOptCcOptions =
-              Internal.ghcOptionsSince
-                (mkVersion [8, 10])
-                (compiler lbi)
-                (Internal.optimizationCFlags lbi ++ ccOptions bi)
-          , -- Use -pgmc to ensure that Cabal always passes cc-options, ld-options to GHC (#4435, #9801)
-            -- We can only do this on GHC >= 9.4, as we need https://gitlab.haskell.org/ghc/ghc/-/merge_requests/6949
-            -- Without that GHC MR, this change would cause GHC to never pass -no-pie when linking,
-            -- which can cause breakage depending on the C toolchain use. Otherwise,
-            -- we pass the flag only to source files #11712
-            -- see example in cabal-testsuite/PackageTests/FFI/ForeignOptsPgmc
-            ghcOptCcProgram = maybeToFlag $ programPath <$> lookupProgram gccProgram (withPrograms lbi)
-          }
-    )
+    (Internal.splitCandCxxOptions Internal.CxxProgram)
     ( \c -> do
         let cxxFiles = cxxSources (componentBuildInfo c)
         case c of

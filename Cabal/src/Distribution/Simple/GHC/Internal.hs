@@ -33,6 +33,8 @@ module Distribution.Simple.GHC.Internal
   , ghcOptionsSince
   , linkGhcOptions
   , optimizationCFlags
+  , splitCandCxxOptions
+  , SplitSource (..)
 
     -- * GHC platform and version strings
   , ghcArchString
@@ -345,6 +347,65 @@ includePaths lbi bi clbi odir =
       ++ [ buildDir lbi </> dir
          | dir <- mapMaybe (symbolicPathRelative_maybe . unsafeCoerceSymbolicPath) $ includeDirs bi
          ]
+
+data SplitSource = CcProgram | CxxProgram
+
+splitCandCxxOptions
+  :: SplitSource
+  -> VerbosityLevel
+  -> LocalBuildInfo
+  -> BuildInfo
+  -> ComponentLocalBuildInfo
+  -> SymbolicPathX 'AllowAbsolute Pkg (Dir Artifacts)
+  -> SymbolicPathX 'AllowAbsolute Pkg File
+  -> GhcOptions
+splitCandCxxOptions source verbosity lbi bi clbi odir filename = case source of
+  CxxProgram ->
+    setCcProgram $ setCcOptions $ sourcesGhcOptions verbosity lbi bi clbi odir filename
+  CcProgram ->
+    setCcProgram $ setCxxOptions $ sourcesGhcOptions verbosity lbi bi clbi odir filename
+  where
+    setCcOptions xxx =
+      xxx
+        { -- C compiler options: GHC >= 8.10 requires -optcxx, older requires -optc
+          -- we want to be able to support cxx-options and cc-options separately
+          -- https://gitlab.haskell.org/ghc/ghc/-/issues/16477
+          -- see example in cabal-testsuite/PackageTests/FFI/ForeignOptsCxx
+          ghcOptCcOptions =
+            ghcOptionsSince
+              (mkVersion [8, 10])
+              (compiler lbi)
+              (optimizationCFlags lbi ++ ccOptions bi)
+        }
+    setCxxOptions xxx =
+      xxx
+        { -- C++ compiler options: GHC >= 8.10 requires -optcxx, older requires -optc
+          -- we want to be able to support cxx-options and cc-options separately
+          -- https://gitlab.haskell.org/ghc/ghc/-/issues/16477
+          -- see example in cabal-testsuite/PackageTests/FFI/ForeignOptsC
+          ghcOptCxxOptions =
+            ghcOptionsSince
+              (mkVersion [8, 10])
+              (compiler lbi)
+              (optimizationCFlags lbi ++ cxxOptions bi)
+        }
+    setCcProgram xxx =
+      xxx
+        { -- We pass -pgmc to ensure that GHC respects cc-options and ld-options (#4435, #9801).
+          -- However, we deliberately restrict this flag ONLY to C and C++ source files.
+          -- We do not pass it globally (e.g., during linking or ordinary Haskell compilation)
+          -- for two reasons:
+          -- 1. Status quo: This preserves Cabal's historical behavior.
+          -- 2. GHC < 9.4 bug (https://gitlab.haskell.org/ghc/ghc/-/issues/15319): Before GHC 9.4,
+          --    passing a custom C compiler via -pgmc caused GHC to automatically disable the
+          --    -no-pie flag (which is critical during linking on auto-hardened toolchains).
+          --    Passing -pgmc globally would therefore break linking on older GHCs.
+          --    https://gitlab.haskell.org/ghc/ghc/-/merge_requests/6949 fixed this by moving
+          --    the -no-pie check to -pgml, but scoping -pgmc exclusively to C/C++ compilation
+          --    protects older GHC versions from this link-time breakage.
+          -- see example in cabal-testsuite/PackageTests/FFI/ForeignOptsPgmc
+          ghcOptCcProgram = maybeToFlag $ programPath <$> lookupProgram gccProgram (withPrograms lbi)
+        }
 
 sourcesGhcOptions
   :: VerbosityLevel
