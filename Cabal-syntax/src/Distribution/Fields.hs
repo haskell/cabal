@@ -13,6 +13,8 @@ module Distribution.Fields
   -- See "Distribution.Fields.Parser" for grammar.
   , readFields
   , readFields'
+  , readFieldsWithComments
+  , readFieldsWithComments'
 
     -- ** ParseResult
   , ParseResult

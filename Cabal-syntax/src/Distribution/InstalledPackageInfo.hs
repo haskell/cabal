@@ -97,7 +97,7 @@ sourceComponentName = CLibName . sourceLibName
 parseInstalledPackageInfo
   :: ByteString
   -> Either (NonEmpty String) ([String], InstalledPackageInfo)
-parseInstalledPackageInfo s = case P.readFields s of
+parseInstalledPackageInfo s = case P.readFieldsWithComments s of
   Left err -> Left (show err :| [])
   Right fs -> case partitionFields fs of
     (fs', _) -> case P.runParseResult $ withSource PInstalledPackageInfo $ parseFieldGrammar cabalSpecLatest fs' ipiFieldGrammar of
