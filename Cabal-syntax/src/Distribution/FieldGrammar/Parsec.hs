@@ -812,5 +812,13 @@ fieldLinesToStream = fieldLinesToStream' (Position 1 1)
 
 -- | Fallback to last position when there's no 'FieldLine'
 fieldLinesToStream' :: Position -> [FieldLine (WithComments Position)] -> FieldLineStream
-fieldLinesToStream' defaultPos [] = FLSLast mempty (WithComments mempty defaultPos)
-fieldLinesToStream' defaultPos (FieldLine pos bs : fs) = FLSCons bs pos (fieldLinesToStream' defaultPos fs)
+fieldLinesToStream' defaultPos [] = FLSLast (SBFieldLine mempty) defaultPos
+fieldLinesToStream' defaultPos (FieldLine ann bs : fs) =
+  let WithComments (cmts :: [Comment Position]) pos = ann
+  in  commentLinesToStream cmts
+      $ FLSCons (SBFieldLine bs) pos
+      $ fieldLinesToStream' defaultPos fs
+
+commentLinesToStream :: [Comment Position] -> FieldLineStream -> FieldLineStream
+commentLinesToStream [] = id
+commentLinesToStream (Comment cmt pos : cmts) = FLSCons (SBComment cmt) pos . commentLinesToStream cmts
