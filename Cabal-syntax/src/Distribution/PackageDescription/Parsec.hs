@@ -342,7 +342,7 @@ parseGenericPackageDescriptionPrim' scannedVer lexWarnings utf8WarnPos fs = do
             Newtype.unpack' SpecVersion
               <$>
               -- Use version with || and && but before addition of ^>= and removal of -any
-              runFieldParser pos parsec CabalSpecV1_24 ((map . fmap) unComments fls)
+              runFieldParser pos parsec CabalSpecV1_24 fls
 
         -- if it were at the beginning, scanner would found it
         when (v >= CabalSpecV2_2) $
@@ -858,8 +858,7 @@ processImports v fromBuildInfo commonStanzas = go []
     -- supported:
     go acc (Field (Name ann name) fls : fields) | name == "import" = do
       let pos = unComments ann
-      -- TODO(leana8959): relax input type
-      names <- getList' <$> runFieldParser pos parsec v ((map . fmap) unComments fls)
+      names <- getList' <$> runFieldParser pos parsec v fls
       names' <- for names $ \commonName ->
         case Map.lookup commonName commonStanzas of
           Nothing -> do
@@ -1173,7 +1172,7 @@ parseHookedBuildInfo' lexWarnings fs = do
       :: ([FieldLine Position], [Field Position])
       -> ParseResult src ((UnqualComponentName, Fields Position), Maybe ([FieldLine Position], [Field Position]))
     toExe (fss, fields) = do
-      name <- runFieldParser zeroPos parsec cabalSpecLatest fss
+      name <- runFieldParser zeroPos parsec cabalSpecLatest ((map . fmap) (WithComments mempty) fss)
       let (hdr0, rest) = breakMaybe isExecutableField fields
       hdr <- toFields hdr0
       pure ((name, hdr), rest)
