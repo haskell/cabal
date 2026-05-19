@@ -739,6 +739,7 @@ runFieldParser' inputPoss p v str = case P.runParser p' [] "<field>" str of
         go n (Position row col : _) | n <= 0 = Position row (col + pcol - 1)
         go n (_ : ps) = go (n - 1) ps
 
+-- TODO(leana8959): relax the argument to take in comments
 runFieldParser :: Position -> ParsecParser a -> CabalSpecVersion -> [FieldLine Position] -> ParseResult src a
 runFieldParser pp p v ls = runFieldParser' poss p v (fieldLinesToStream ls)
   where
