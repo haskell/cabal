@@ -1,0 +1,5 @@
+# cabal check
+The following errors will cause portability problems on other environments:
+Error: [name-no-match] The filename './pkg.cabal' does not match package name (expected: 'pkg-?.cabal')
+Error: [non-ascii-name] Non-ASCII characters in 'name' field.
+Error: Hackage would reject this package.
