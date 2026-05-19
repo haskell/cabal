@@ -147,7 +147,7 @@ parseResultFail s = parseFail (FromString s Nothing)
 parseFail :: PError -> ParseResult a
 parseFail = ParseFailed
 
-runP :: LineNo -> String -> ReadP a a -> String -> ParseResult a
+runP :: LineNo -> String -> ReadP a -> String -> ParseResult a
 runP line fieldname p s =
   case [x | (x, "") <- results] of
     [a] -> ParseOk (utf8Warnings line fieldname s) a
@@ -211,7 +211,7 @@ data FieldDescr a = FieldDescr
   -- successful.  Otherwise, reports an error on line number @n@.
   }
 
-field :: String -> (a -> Doc) -> ReadP a a -> FieldDescr a
+field :: String -> (a -> Doc) -> ReadP a -> FieldDescr a
 field name showF readF =
   FieldDescr name showF (\line val _st -> runP line name readF val)
 
@@ -239,7 +239,7 @@ liftField get set (FieldDescr name showF parseF) =
 simpleField
   :: String
   -> (a -> Doc)
-  -> ReadP a a
+  -> ReadP a
   -> (b -> a)
   -> (a -> b -> b)
   -> FieldDescr b
@@ -260,7 +260,7 @@ monoidField
   :: Semigroup a
   => String
   -> (a -> Doc)
-  -> ReadP a a
+  -> ReadP a
   -> (b -> a)
   -> (a -> b -> b)
   -> FieldDescr b
@@ -318,7 +318,7 @@ commaNewLineListFieldParsec = commaListFieldWithSepParsec sep
 spaceListField
   :: String
   -> (a -> Doc)
-  -> ReadP [a] a
+  -> ReadP a
   -> (b -> [a])
   -> ([a] -> b -> b)
   -> FieldDescr b
@@ -334,7 +334,7 @@ spaceListField name showF readF get set =
 newLineListField
   :: String
   -> (a -> Doc)
-  -> ReadP [a] a
+  -> ReadP a
   -> (b -> [a])
   -> ([a] -> b -> b)
   -> FieldDescr b
@@ -344,7 +344,7 @@ listFieldWithSep
   :: Separator
   -> String
   -> (a -> Doc)
-  -> ReadP [a] a
+  -> ReadP a
   -> (b -> [a])
   -> ([a] -> b -> b)
   -> FieldDescr b
@@ -373,7 +373,7 @@ listFieldWithSepParsec separator name showF readF get set =
 listField
   :: String
   -> (a -> Doc)
-  -> ReadP [a] a
+  -> ReadP a
   -> (b -> [a])
   -> ([a] -> b -> b)
   -> FieldDescr b
@@ -462,23 +462,23 @@ posToLineNo (Parsec.Position row _) = row
 -- Different than the naive version. it turns out Read instance for String accepts
 -- the ['a', 'b'] syntax, which we do not want. In particular it messes
 -- up any token starting with [].
-parseHaskellString :: ReadP r String
+parseHaskellString :: ReadP String
 parseHaskellString =
   readS_to_P $
     Read.readPrec_to_S (do Read.String s <- Read.lexP; return s) 0
 
-parseTokenQ :: ReadP r String
+parseTokenQ :: ReadP String
 parseTokenQ = parseHaskellString <++ munch1 (\x -> not (isSpace x) && x /= ',')
 
 parseSpaceList
-  :: ReadP r a
+  :: ReadP a
   -- ^ The parser for the stuff between commas
-  -> ReadP r [a]
+  -> ReadP [a]
 parseSpaceList p = sepBy p skipSpaces
 
 -- This version avoid parse ambiguity for list element parsers
 -- that have multiple valid parses of prefixes.
-parseOptCommaList :: ReadP r a -> ReadP r [a]
+parseOptCommaList :: ReadP a -> ReadP [a]
 parseOptCommaList p = sepBy p localSep
   where
     -- The separator must not be empty or it introduces ambiguity
@@ -486,7 +486,7 @@ parseOptCommaList p = sepBy p localSep
       (skipSpaces >> char ',' >> skipSpaces)
         +++ (satisfy isSpace >> skipSpaces)
 
-readPToMaybe :: ReadP a a -> String -> Maybe a
+readPToMaybe :: ReadP a -> String -> Maybe a
 readPToMaybe p str =
   listToMaybe
     [ r | (r, s) <- readP_to_S p str, all isSpace s

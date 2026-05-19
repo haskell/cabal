@@ -364,7 +364,7 @@ prop_roundtrip_printparse_specific config =
 -- | Helper to parse a given string
 --
 -- Succeeds only if there is a unique complete parse
-runReadP :: Parse.ReadP a a -> String -> Maybe a
+runReadP :: Parse.ReadP a -> String -> Maybe a
 runReadP parser s = case [x | (x, "") <- Parse.readP_to_S parser s] of
   [x'] -> Just x'
   _ -> Nothing
