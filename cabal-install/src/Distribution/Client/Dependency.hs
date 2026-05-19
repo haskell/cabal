@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
-
+{-# LANGUAGE LambdaCase #-}
 -- |
 -- Module      :  Distribution.Client.Dependency
 -- Copyright   :  (c) David Himmelstrup 2005,
@@ -873,7 +873,7 @@ resolveDependencies toolchains pkgConfigDB installedPkgIndex params =
           )
           toolchains
           pkgConfigDB
-          (fmap installedPkgIndexM installedPkgIndex)
+          installedPkgIndex'
           sourcePkgIndex
           preferences
           constraints
@@ -907,6 +907,10 @@ resolveDependencies toolchains pkgConfigDB installedPkgIndex params =
           else dontInstallNonReinstallablePackages params
 
     comp = fst (getStage toolchains Host)
+
+    installedPkgIndex' = Staged $ \case
+      Build -> getStage installedPkgIndex Build
+      Host  -> installedPkgIndexM (getStage installedPkgIndex Host)
 
     formatProgress :: Progress SummarizedMessage String a -> Progress String String a
     formatProgress p = foldProgress (\x xs -> Step (renderSummarizedMessage x) xs) Fail Done p
