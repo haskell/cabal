@@ -18,7 +18,20 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- Package installation plan
+-- Package installation plan.
+--
+-- === Warning
+--
+-- 'ConfiguredPackage', 'GenericReadyPackage' and 'GenericPlanPackage'
+-- intentionally have no 'Distribution.Package.PackageInstalled' instance.
+--
+-- @PackageInstalled@ returns only library dependencies, but for a package that
+-- isn't yet installed we know many more kinds of dependencies (setup
+-- dependencies, exe, test-suite, benchmark, ..). Any functions that operate on
+-- dependencies in @cabal-install@ should consider what to do with these
+-- dependencies; if we give a @PackageInstalled@ instance it would be too easy
+-- to get this wrong (and, for instance, call graph traversal functions from
+-- @Cabal@ rather than from @cabal-install@).
 module Distribution.Client.InstallPlan
   ( InstallPlan
   , GenericInstallPlan
@@ -158,21 +171,18 @@ import qualified Distribution.Compat.Graph as Graph
 -- have problems with inconsistent dependencies.
 -- On the other hand it is true that every closed sub plan is valid.
 
--- | Packages in an install plan
---
--- NOTE: 'ConfiguredPackage', 'GenericReadyPackage' and 'GenericPlanPackage'
--- intentionally have no 'PackageInstalled' instance. `This is important:
--- PackageInstalled returns only library dependencies, but for package that
--- aren't yet installed we know many more kinds of dependencies (setup
--- dependencies, exe, test-suite, benchmark, ..). Any functions that operate on
--- dependencies in cabal-install should consider what to do with these
--- dependencies; if we give a 'PackageInstalled' instance it would be too easy
--- to get this wrong (and, for instance, call graph traversal functions from
--- Cabal rather than from cabal-install). Instead, see 'PackageInstalled'.
+-- | Packages in an install plan, either pre-existing installed `ipkg` packages
+-- or source `srcpkg` packages.
 data GenericPlanPackage ipkg srcpkg
-  = PreExisting ipkg
-  | Configured srcpkg
-  | Installed srcpkg
+  = -- | A package that is already installed. These have fixed dependencies
+    -- having already been built.
+    PreExisting ipkg
+  | -- | A package that is not yet installed but is configured and constrained
+    -- in its dependencies.
+    Configured srcpkg
+  | -- | An installed package that is also available as a source package meaning
+    -- that it could be re-installed if required.
+    Installed srcpkg
   deriving (Eq, Show, Generic)
 
 displayGenericPlanPackage :: (IsUnit ipkg, IsUnit srcpkg) => GenericPlanPackage ipkg srcpkg -> String
