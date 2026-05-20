@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -87,6 +88,8 @@ import qualified Distribution.Types.GenericPackageDescription.Lens as L
 import qualified Distribution.Types.PackageDescription.Lens as L
 import qualified Distribution.Types.SetupBuildInfo.Lens as L
 import qualified Text.Parsec as P
+
+import Debug.Pretty.Simple
 
 ------------------------------------------------------------------------------
 
@@ -189,8 +192,10 @@ parseGenericPackageDescriptionPrim bs = do
     Right (fs, lexWarnings) -> do
       when patched $
         parseWarning zeroPos PWTQuirkyCabalFile "Legacy cabal file"
+
       -- UTF8 is validated in a prepass step, afterwards parsing is lenient.
       (_syntax, _csv, _comments, gpd) <- parseGenericPackageDescriptionPrim' @mod csv lexWarnings invalidUtf8 fs
+      -- pTrace (show fs) $
       pure gpd
     -- TODO: better marshalling of errors
     Left perr -> parseFatalFailure pos (show perr)
@@ -329,6 +334,8 @@ parseGenericPackageDescriptionPrim' scannedVer lexWarnings utf8WarnPos fs = do
 
   let (syntax, fs') = sectionizeFields fs
       (fields, sectionFields) = takeFields fs'
+
+  let !() = pTrace ("parseGenericPackageDescriptionPrim' \"fs\" = " <> show fs <> "\n") ()
 
   -- cabal-version
   specVer <- case scannedVer of

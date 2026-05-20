@@ -105,6 +105,8 @@ import Data.Kind
 
 import Distribution.Types.Annotation
 
+import Debug.Pretty.Simple
+
 -------------------------------------------------------------------------------
 -- Auxiliary types
 -------------------------------------------------------------------------------
@@ -742,7 +744,10 @@ runFieldParser' inputPoss p v str = case P.runParser p' [] "<field>" str of
 
 -- TODO(leana8959): relax the argument to take in comments
 runFieldParser :: Position -> ParsecParser a -> CabalSpecVersion -> [FieldLine (WithComments Position)] -> ParseResult src a
-runFieldParser pp p v ls = runFieldParser' poss p v (fieldLinesToStream ls)
+runFieldParser pp p v ls =
+  runFieldParser' poss p v
+  $ (\x -> pTrace ("runFieldParser got = " <> show x <> "\n") x) 
+  $ fieldLinesToStream ls
   where
     poss :: [Position]
     poss = map (\(FieldLine ann _) -> unComments ann) ls ++ [pp] -- add "default" position

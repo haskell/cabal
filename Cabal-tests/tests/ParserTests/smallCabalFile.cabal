@@ -11,7 +11,7 @@ library foo
 
 
   build-depends:
-    text
      -- foo
+    text
      ,
     base >  4
