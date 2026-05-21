@@ -136,18 +136,18 @@ mergeBy cmp = merge
 
 data MergeResult a b = OnlyInLeft a | InBoth a b | OnlyInRight b
 
-duplicates :: Ord a => [a] -> [[a]]
+duplicates :: Ord a => [a] -> [NonEmpty a]
 duplicates = duplicatesBy compare
 
-duplicatesBy :: forall a. (a -> a -> Ordering) -> [a] -> [[a]]
-duplicatesBy cmp = filter moreThanOne . groupBy eq . sortBy cmp
+duplicatesBy :: forall a. (a -> a -> Ordering) -> [a] -> [NonEmpty a]
+duplicatesBy cmp = mapMaybe moreThanOne . groupBy eq . sortBy cmp
   where
     eq :: a -> a -> Bool
     eq a b = case cmp a b of
       EQ -> True
       _ -> False
-    moreThanOne (_ : _ : _) = True
-    moreThanOne _ = False
+    moreThanOne (x : xs@(_ : _)) = Just (x :| xs)
+    moreThanOne _ = Nothing
 
 -- | A variant of 'withTempFile' that only gives us the file name, and while
 -- it will clean up the file afterwards, it's lenient if the file is
