@@ -6,6 +6,8 @@
 
 module Distribution.Parsec.FieldLineStream
   ( FieldLineStream (..)
+  , FLSAnn (..)
+  , FlsAnnToken (..)
   , StreamBody (..)
   , fieldLineStreamFromString
   , fieldLineStreamPosition
@@ -40,12 +42,14 @@ data FieldLineStream
 
 -- | Isomorphic to FieldLineStream, for prototyping the Stream instance.
 newtype FLSAnn = FLSAnn { unFLSAnn :: FieldLineStream }
+  deriving (Show)
 
 data FlsAnnToken
   -- | Comment is retrieved as a single token
   = FlsAnnTComment {-# UNPACK #-} !ByteString
   -- | Normal fieldline is taken as a char
   | FLSAnnTChar {-# UNPACK #-} !Char
+    deriving (Show)
 
 fieldLineStreamPosition :: FieldLineStream -> Position
 fieldLineStreamPosition (FLSLast _ pos) = pos

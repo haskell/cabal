@@ -3,6 +3,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -78,7 +79,7 @@ import Distribution.Parsec.Error (PError (..), PErrorWithSource (..), showPError
 import Distribution.Types.Trivia
 
 import Data.Monoid (Last (..))
-import Distribution.Parsec.FieldLineStream (FieldLineStream, fieldLineStreamFromBS, fieldLineStreamFromString, fieldLineStreamPosition)
+import Distribution.Parsec.FieldLineStream (FLSAnn (..), FlsAnnToken (..), FieldLineStream, fieldLineStreamFromBS, fieldLineStreamFromString, fieldLineStreamPosition)
 import Distribution.Parsec.Position (Position (..), incPos, retPos, showPos, zeroPos)
 import Distribution.Parsec.Warning
 import Numeric (showIntAtBase)
@@ -88,6 +89,7 @@ import qualified Control.Monad.Fail as Fail
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.DList as DList
 import qualified Text.Parsec as Parsec
+import qualified Text.Parsec.Pos as Parsec.Pos
 
 -------------------------------------------------------------------------------
 -- Class
@@ -124,8 +126,18 @@ newtype ParsecParser a = PP
       -> Parsec.Parsec FieldLineStream [PWarning] a
   }
 
+-- | For the instances that understand comments
+newtype ParsecParserAnn a = PPAnn
+  { unPPAnn
+      :: CabalSpecVersion
+      -> Parsec.Parsec FLSAnn [PWarning] a
+  }
+
 liftParsec :: Parsec.Parsec FieldLineStream [PWarning] a -> ParsecParser a
 liftParsec p = PP $ \_ -> p
+
+liftParsecAnn :: Parsec.Parsec FLSAnn [PWarning] a -> ParsecParserAnn a
+liftParsecAnn p = PPAnn $ \_ -> p
 
 instance Functor ParsecParser where
   fmap f p = PP $ \v -> fmap f (unPP p v)
@@ -187,6 +199,76 @@ instance P.CharParsing ParsecParser where
   notChar = liftParsec . P.notChar
   anyChar = liftParsec P.anyChar
   string = liftParsec . P.string
+
+instance Functor ParsecParserAnn where
+  fmap f p = PPAnn $ \v -> fmap f (unPPAnn p v)
+  {-# INLINE fmap #-}
+
+  x <$ p = PPAnn $ \v -> x <$ unPPAnn p v
+  {-# INLINE (<$) #-}
+
+instance Applicative ParsecParserAnn where
+  pure = liftParsecAnn . pure
+  {-# INLINE pure #-}
+
+  f <*> x = PPAnn $ \v -> unPPAnn f v <*> unPPAnn x v
+  {-# INLINE (<*>) #-}
+  f *> x = PPAnn $ \v -> unPPAnn f v *> unPPAnn x v
+  {-# INLINE (*>) #-}
+  f <* x = PPAnn $ \v -> unPPAnn f v <* unPPAnn x v
+  {-# INLINE (<*) #-}
+
+instance Alternative ParsecParserAnn where
+  empty = liftParsecAnn empty
+
+  a <|> b = PPAnn $ \v -> unPPAnn a v <|> unPPAnn b v
+  {-# INLINE (<|>) #-}
+
+  many p = PPAnn $ \v -> many (unPPAnn p v)
+  {-# INLINE many #-}
+
+  some p = PPAnn $ \v -> some (unPPAnn p v)
+  {-# INLINE some #-}
+
+instance Monad ParsecParserAnn where
+  return = pure
+
+  m >>= k = PPAnn $ \v -> unPPAnn m v >>= \x -> unPPAnn (k x) v
+  {-# INLINE (>>=) #-}
+  (>>) = (*>)
+  {-# INLINE (>>) #-}
+
+instance MonadPlus ParsecParserAnn where
+  mzero = empty
+  mplus = (<|>)
+
+instance Fail.MonadFail ParsecParserAnn where
+  fail = P.unexpected
+
+instance P.Parsing ParsecParserAnn where
+  try p = PPAnn $ \v -> P.try (unPPAnn p v)
+  p <?> d = PPAnn $ \v -> unPPAnn p v P.<?> d
+  skipMany p = PPAnn $ \v -> P.skipMany (unPPAnn p v)
+  skipSome p = PPAnn $ \v -> P.skipSome (unPPAnn p v)
+  unexpected = liftParsecAnn . P.unexpected
+  eof = liftParsecAnn P.eof
+  notFollowedBy p = PPAnn $ \v -> P.notFollowedBy (unPPAnn p v)
+
+instance P.CharParsing ParsecParserAnn where
+  satisfy = liftParsecAnn . satisfyAnn
+
+satisfyAnn :: (Parsec.Stream s m FlsAnnToken) => (Char -> Bool) -> Parsec.ParsecT s u m Char
+{-# INLINABLE satisfyAnn #-}
+satisfyAnn f           = Parsec.tokenPrim (\c -> show [c])
+                                -- not sure if this really matters
+                                ( \pos tok _cs -> case tok of
+                                    FLSAnnTChar c -> Parsec.Pos.updatePosChar pos c
+                                    _ -> error "this \"satisfy\" shouldn't be used on comments"
+                                )
+                                ( \tok -> case tok of
+                                    FLSAnnTChar c | f c -> Just c
+                                    _ -> Nothing
+                                )
 
 instance CabalParsing ParsecParser where
   parsecWarning t w = liftParsec $ do
