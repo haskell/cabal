@@ -79,7 +79,7 @@ import Distribution.Parsec.Error (PError (..), PErrorWithSource (..), showPError
 import Distribution.Types.Trivia
 
 import Data.Monoid (Last (..))
-import Distribution.Parsec.FieldLineStream (FLSAnn (..), FlsAnnToken (..), FieldLineStream, fieldLineStreamFromBS, fieldLineStreamFromString, fieldLineStreamPosition)
+import Distribution.Parsec.FieldLineStream (FlsAnn (..), FlsAnnToken (..), FieldLineStream, fieldLineStreamFromBS, fieldLineStreamFromString, fieldLineStreamPosition)
 import Distribution.Parsec.Position (Position (..), incPos, retPos, showPos, zeroPos)
 import Distribution.Parsec.Warning
 import Numeric (showIntAtBase)
@@ -130,13 +130,13 @@ newtype ParsecParser a = PP
 newtype ParsecParserAnn a = PPAnn
   { unPPAnn
       :: CabalSpecVersion
-      -> Parsec.Parsec FLSAnn [PWarning] a
+      -> Parsec.Parsec FlsAnn [PWarning] a
   }
 
 liftParsec :: Parsec.Parsec FieldLineStream [PWarning] a -> ParsecParser a
 liftParsec p = PP $ \_ -> p
 
-liftParsecAnn :: Parsec.Parsec FLSAnn [PWarning] a -> ParsecParserAnn a
+liftParsecAnn :: Parsec.Parsec FlsAnn [PWarning] a -> ParsecParserAnn a
 liftParsecAnn p = PPAnn $ \_ -> p
 
 instance Functor ParsecParser where
@@ -262,11 +262,11 @@ satisfyAnn :: (Parsec.Stream s m FlsAnnToken) => (Char -> Bool) -> Parsec.Parsec
 satisfyAnn f           = Parsec.tokenPrim (\c -> show [c])
                                 -- not sure if this really matters
                                 ( \pos tok _cs -> case tok of
-                                    FLSAnnTChar c -> Parsec.Pos.updatePosChar pos c
+                                    FlsAnnTChar c -> Parsec.Pos.updatePosChar pos c
                                     _ -> error "this \"satisfy\" shouldn't be used on comments"
                                 )
                                 ( \tok -> case tok of
-                                    FLSAnnTChar c | f c -> Just c
+                                    FlsAnnTChar c | f c -> Just c
                                     _ -> Nothing
                                 )
 

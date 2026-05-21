@@ -6,7 +6,7 @@
 
 module Distribution.Parsec.FieldLineStream
   ( FieldLineStream (..)
-  , FLSAnn (..)
+  , FlsAnn (..)
   , FlsAnnToken (..)
   , StreamBody (..)
   , fieldLineStreamFromString
@@ -41,14 +41,14 @@ data FieldLineStream
   deriving (Show)
 
 -- | Isomorphic to FieldLineStream, for prototyping the Stream instance.
-newtype FLSAnn = FLSAnn { unFLSAnn :: FieldLineStream }
+newtype FlsAnn = FlsAnn { unFlsAnn :: FieldLineStream }
   deriving (Show)
 
 data FlsAnnToken
   -- | Comment is retrieved as a single token
   = FlsAnnTComment {-# UNPACK #-} !ByteString
   -- | Normal fieldline is taken as a char
-  | FLSAnnTChar {-# UNPACK #-} !Char
+  | FlsAnnTChar {-# UNPACK #-} !Char
     deriving (Show)
 
 fieldLineStreamPosition :: FieldLineStream -> Position
@@ -89,23 +89,23 @@ flsUncons (FLSCons (SBComment cmt) pos s) =
   flsUncons s
 
 
-instance Monad m => Parsec.Stream FLSAnn m FlsAnnToken where
-  -- FLSAnn -> m ( Maybe (FlsAnnToken, FLSAnn) )
-  uncons (unFLSAnn->FLSLast (SBFieldLine bs) pos) = return $ case BS.uncons bs of
+instance Monad m => Parsec.Stream FlsAnn m FlsAnnToken where
+  -- FlsAnn -> m ( Maybe (FlsAnnToken, FlsAnn) )
+  uncons (unFlsAnn->FLSLast (SBFieldLine bs) pos) = return $ case BS.uncons bs of
     Nothing -> Nothing
     Just (c, bs') ->
-      let (c', bs''') = unconsChar c bs' (\bs'' -> FLSAnn $ FLSLast (SBFieldLine bs'') pos) (FLSAnn $ fieldLineStreamEnd pos)
-      in  Just (FLSAnnTChar c', bs''')
-  uncons (unFLSAnn->FLSCons (SBFieldLine bs) pos s) = return $ case BS.uncons bs of
-    Nothing -> Just (FLSAnnTChar '\n', FLSAnn s)
+      let (c', bs''') = unconsChar c bs' (\bs'' -> FlsAnn $ FLSLast (SBFieldLine bs'') pos) (FlsAnn $ fieldLineStreamEnd pos)
+      in  Just (FlsAnnTChar c', bs''')
+  uncons (unFlsAnn->FLSCons (SBFieldLine bs) pos s) = return $ case BS.uncons bs of
+    Nothing -> Just (FlsAnnTChar '\n', FlsAnn s)
     Just (c, bs') ->
-      let (c', bs''') = unconsChar c bs' (\bs'' -> FLSAnn $ FLSCons (SBFieldLine bs'') pos s) (FLSAnn s)
-      in  Just (FLSAnnTChar c', bs''')
+      let (c', bs''') = unconsChar c bs' (\bs'' -> FlsAnn $ FLSCons (SBFieldLine bs'') pos s) (FlsAnn s)
+      in  Just (FlsAnnTChar c', bs''')
 
-  uncons (unFLSAnn->FLSLast (SBComment cmt) pos) = return $
-    Just (FlsAnnTComment cmt, FLSAnn $ fieldLineStreamEnd pos)
-  uncons (unFLSAnn->FLSCons (SBComment cmt) pos s) = return $
-    Just (FlsAnnTComment cmt, FLSAnn $ s)
+  uncons (unFlsAnn->FLSLast (SBComment cmt) pos) = return $
+    Just (FlsAnnTComment cmt, FlsAnn $ fieldLineStreamEnd pos)
+  uncons (unFlsAnn->FLSCons (SBComment cmt) pos s) = return $
+    Just (FlsAnnTComment cmt, FlsAnn $ s)
 
 
 unconsChar :: forall a. Word8 -> ByteString -> (ByteString -> a) -> a -> (Char, a)
