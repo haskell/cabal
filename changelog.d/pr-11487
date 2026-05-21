@@ -1,0 +1,7 @@
+---
+synopsis: Log if there are multiple local packages with the same ID in a project
+packages: [cabal-install]
+prs: 11487
+---
+
+Log duplicate local packages with the same package identifier, so that the user knows that only one will be picked.
