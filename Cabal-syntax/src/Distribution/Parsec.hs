@@ -23,6 +23,7 @@ module Distribution.Parsec
 
     -- * CabalParsing and diagnostics
   , CabalParsing (..)
+  , CommentParsing (..)
 
     -- ** Warnings
   , PWarnType (..)
@@ -255,11 +256,10 @@ instance P.Parsing ParsecParserAnn where
   notFollowedBy p = PPAnn $ \v -> P.notFollowedBy (unPPAnn p v)
 
 instance P.CharParsing ParsecParserAnn where
-  satisfy = liftParsecAnn . satisfyAnn
+  satisfy = liftParsecAnn . satisfyFieldLine
 
-satisfyAnn :: (Parsec.Stream s m FlsAnnToken) => (Char -> Bool) -> Parsec.ParsecT s u m Char
-{-# INLINABLE satisfyAnn #-}
-satisfyAnn f           = Parsec.tokenPrim (\c -> show [c])
+satisfyFieldLine :: (Parsec.Stream s m FlsAnnToken) => (Char -> Bool) -> Parsec.ParsecT s u m Char
+satisfyFieldLine f           = Parsec.tokenPrim (\c -> show [c])
                                 -- not sure if this really matters
                                 ( \pos tok _cs -> case tok of
                                     FlsAnnTChar c -> Parsec.Pos.updatePosChar pos c
@@ -267,6 +267,22 @@ satisfyAnn f           = Parsec.tokenPrim (\c -> show [c])
                                 )
                                 ( \tok -> case tok of
                                     FlsAnnTChar c | f c -> Just c
+                                    _ -> Nothing
+                                )
+
+class P.Parsing m => CommentParsing m where
+  acceptComment :: Parsec.ParsecT FlsAnn u m ByteString
+
+instance CommentParsing ParsecParserAnn where
+    acceptComment            = Parsec.tokenPrim (\cmt -> show cmt)
+                                -- not sure if this really matters
+                                ( \pos tok _cs -> case tok of
+                                    -- TODO(leana8959): compute char position properly
+                                    FlsAnnTComment _cmt -> pos
+                                    _ -> error "this \"satisfy\" shouldn't be used on tokens"
+                                )
+                                ( \tok -> case tok of
+                                    FlsAnnTComment cmt -> Just cmt
                                     _ -> Nothing
                                 )
 
