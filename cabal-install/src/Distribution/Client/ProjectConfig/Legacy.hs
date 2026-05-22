@@ -1319,12 +1319,12 @@ legacyProjectConfigFieldDescrs constraintSrc =
 -- allow http urls which don't parse as globs, and possibly some
 -- system-dependent file paths. So we parse fairly liberally as a token, but
 -- we allow @,@ inside matched @{}@ braces.
-parsePackageLocationTokenQ :: ReadP r String
+parsePackageLocationTokenQ :: ReadP String
 parsePackageLocationTokenQ =
   parseHaskellString
     Parse.<++ parsePackageLocationToken
   where
-    parsePackageLocationToken :: ReadP r String
+    parsePackageLocationToken :: ReadP String
     parsePackageLocationToken = fmap fst (Parse.gather outerTerm)
       where
         outerTerm = alternateEither1 outerToken (braces innerTerm)
@@ -1341,7 +1341,7 @@ parsePackageLocationTokenQ =
       , alternate1PQs
       , alternateQsP
       , alternate1QsP
-        :: ReadP r () -> ReadP r () -> ReadP r ()
+        :: ReadP () -> ReadP () -> ReadP ()
 
     alternateEither1 p q = alternate1PQs p q +++ alternate1QsP q p
     alternateEither p q = alternateEither1 p q +++ return ()

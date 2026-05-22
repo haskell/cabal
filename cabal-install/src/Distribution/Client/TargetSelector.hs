@@ -326,7 +326,7 @@ parseTargetString :: String -> Maybe TargetString
 parseTargetString =
   readPToMaybe parseTargetApprox
   where
-    parseTargetApprox :: Parse.ReadP r TargetString
+    parseTargetApprox :: Parse.ReadP TargetString
     parseTargetApprox =
       ( do
           a <- tokenQEnd
@@ -391,7 +391,7 @@ parseTargetString =
     tokenQ0 = parseHaskellString <++ token0
     tokenEnd = Parse.munch1 (/= ':')
     tokenQEnd = parseHaskellString <++ tokenEnd
-    parseHaskellString :: Parse.ReadP r String
+    parseHaskellString :: Parse.ReadP String
     parseHaskellString = Parse.readS_to_P reads
 
 -- | Render a 'TargetString' back as the external syntax. This is mainly for
