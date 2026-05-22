@@ -25,7 +25,7 @@ module Distribution.Parsec
 
     -- * CabalParsing and diagnostics
   , CabalParsing (..)
-  , acceptComment
+  , parseComment
 
     -- ** Warnings
   , PWarnType (..)
@@ -272,19 +272,22 @@ satisfyFieldLine f           = Parsec.tokenPrim (\c -> show [c])
                                     _ -> Nothing
                                 )
 
-acceptComment :: ParsecParserAnn ByteString
-acceptComment              = PPAnn $ \_ ->
-                                Parsec.tokenPrim (\cmt -> show cmt)
-                                -- not sure if this really matters
-                                ( \pos tok _cs -> case tok of
-                                    -- TODO(leana8959): compute char position properly
-                                    FlsAnnTComment _cmt -> pos
-                                    _ -> error "this \"satisfy\" shouldn't be used on tokens"
-                                )
-                                ( \tok -> case tok of
-                                    FlsAnnTComment cmt -> Just cmt
-                                    _ -> Nothing
-                                )
+class CommentParsing m where
+  parseComment :: m ByteString
+
+instance CommentParsing ParsecParserAnn where
+  parseComment              = PPAnn $ \_ ->
+                                  Parsec.tokenPrim (\cmt -> show cmt)
+                                  -- not sure if this really matters
+                                  ( \pos tok _cs -> case tok of
+                                      -- TODO(leana8959): compute char position properly
+                                      FlsAnnTComment _cmt -> pos
+                                      _ -> error "this \"satisfy\" shouldn't be used on tokens"
+                                  )
+                                  ( \tok -> case tok of
+                                      FlsAnnTComment cmt -> Just cmt
+                                      _ -> Nothing
+                                  )
 
 instance CabalParsing ParsecParser where
   parsecWarning t w = liftParsec $ do

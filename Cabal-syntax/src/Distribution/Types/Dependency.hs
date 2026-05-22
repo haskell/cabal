@@ -218,9 +218,9 @@ versionGuardMultilibs = do
 dependencyParser :: ParsecParserAnn ([ByteString], Dependency, [ByteString])
 dependencyParser =
       (,,)
-        <$> many acceptComment
+        <$> many parseComment
         <*> parsec @Dependency
-        <*> many acceptComment
+        <*> many parseComment
 
 -- | Library set with main library.
 --
