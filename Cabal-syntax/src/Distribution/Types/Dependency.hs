@@ -215,7 +215,7 @@ versionGuardMultilibs = do
         , "directly the library name as it were a package."
         ]
 
-dependencyParser :: ParsecParserAnn ([ByteString], Dependency, [ByteString])
+dependencyParser :: (CabalParsing m, CommentParsing m) => ([ByteString], Dependency, [ByteString])
 dependencyParser =
       (,,)
         <$> many parseComment

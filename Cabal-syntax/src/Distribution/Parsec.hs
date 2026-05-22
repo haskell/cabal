@@ -25,7 +25,7 @@ module Distribution.Parsec
 
     -- * CabalParsing and diagnostics
   , CabalParsing (..)
-  , parseComment
+  , CommentParsing (..)
 
     -- ** Warnings
   , PWarnType (..)
