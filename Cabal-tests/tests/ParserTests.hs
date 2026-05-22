@@ -39,7 +39,7 @@ import Distribution.PackageDescription.PrettyPrint (ppGenericPackageDescriptionA
 import Distribution.PackageDescription.FieldGrammar(buildInfoFieldGrammar, miniBuildInfoFieldGrammar, MiniBuildInfo (..))
 import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription, parseGenericPackageDescriptionPrim, sectionizeFields, takeFields,  parseCommentedGenericPackageDescription)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
-import Distribution.Parsec                         (ParsecParserAnn (..), Parsec (..), explicitEitherParsec', PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
+import Distribution.Parsec                         (CommentParsec (..), ParsecParserAnn (..), Parsec (..), explicitEitherParsec', PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
 import Distribution.Pretty                         (Pretty (..), prettyShow)
 import Distribution.Fields.Parser                  (readFields', readFieldsWithComments)
 import Distribution.Fields.ParseResult
@@ -53,7 +53,7 @@ import System.FilePath                             (replaceExtension, (</>))
 import Distribution.Parsec.Source
 
 import Distribution.Types.Annotation
-import Distribution.Types.Dependency (DependencyAnn, dependencyParser)
+import Distribution.Types.Dependency (DependencyAnn, Dependency)
 import Distribution.Types.PackageName (PackageName)
 import Distribution.FieldGrammar.Newtypes
   ( CommaVCat
@@ -409,7 +409,7 @@ buildDependParserWithCommentsTest :: TestTree
 buildDependParserWithCommentsTest = testCase "buildDependFieldsWithComments" $ do
   let dummyInput :: FlsAnn = FlsAnn $ fieldLinesToStream [buildDependFieldLineWithComments]
 
-  parseOutput <- case Parsec.runParser (unPPAnn dependencyParser CabalSpecV3_0) [] "<dummy>" dummyInput of
+  parseOutput <- case Parsec.runParser (unPPAnn (commentParsec @Dependency) CabalSpecV3_0) [] "<dummy>" dummyInput of
                    Left err -> fail $ "PARSE FAILURE: " <> show err
                    Right ok -> pure ok
 
