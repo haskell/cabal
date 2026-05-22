@@ -24,7 +24,8 @@ and instead set `LC_ALL=en_US.UTF-8`.
 ### How to update dependencies
 
 The list of transitive dependencies (`requirements.txt`) is generated from the
-list of direct dependencies in `pyproject.toml`. Find outdated dependencies with:
+list of direct dependencies in `pyproject.toml`. Find outdated dependencies using UV
+(see also "UV setup details" section at the bottom) with:
 
 ```console
 > cd doc
@@ -184,6 +185,7 @@ So, you cannot have
 
 The documentation build process uses [UV](https://github.com/astral-sh/uv) to manage Python dependencies.
 UV is a fast Python package installer and resolver, written in Rust.
+To get started with UV, you can install it following the [official instructions]([url](https://docs.astral.sh/uv/getting-started/installation/#installation-methods)).
 
 The following UV commands are used in the Makefile and documentation:
 
@@ -193,19 +195,6 @@ The following UV commands are used in the Makefile and documentation:
 - `uv sync --upgrade`: Upgrades the dependencies to the latest versions allowed by `pyproject.toml` and updates the lock file.
 - `uvx skjold`: Runs the skjold tool (for security vulnerability checks) in an isolated environment.
 
-To get started with UV, you can install it via the official installer:
-
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
-Or via Homebrew (on macOS):
-
-```bash
-brew install uv
-```
-
-After installing UV, you can run the documentation build as usual.
 
 Note: The `uv.lock` file in the `doc/` directory is committed to the repository to ensure reproducible builds.
 When updating dependencies, remember to commit the updated `uv.lock` and `pyproject.toml` (if bounds are changed).
