@@ -217,6 +217,13 @@ versionGuardMultilibs = do
 instance CommentParsec Dependency where
   commentParsec = dependencyCommentParser
 
+instance CommentParsec DependencyAnn where
+  commentParsec =
+    (,,)
+      <$> many parseComment
+      <*> parsec @DependencyAnn
+      <*> many parseComment
+
 dependencyCommentParser :: (CabalParsing m, CommentParsing m) => m ([ByteString], Dependency, [ByteString])
 dependencyCommentParser =
       (,,)

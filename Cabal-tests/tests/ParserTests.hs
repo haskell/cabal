@@ -409,7 +409,7 @@ buildDependParserWithCommentsTest :: TestTree
 buildDependParserWithCommentsTest = testCase "buildDependFieldsWithComments" $ do
   let dummyInput :: FlsAnn = FlsAnn $ fieldLinesToStream [buildDependFieldLineWithComments]
 
-  parseOutput <- case Parsec.runParser (unPPAnn (commentParsec @Dependency) CabalSpecV3_0) [] "<dummy>" dummyInput of
+  parseOutput <- case Parsec.runParser (unPPAnn (commentParsec @DependencyAnn) CabalSpecV3_0) [] "<dummy>" dummyInput of
                    Left err -> fail $ "PARSE FAILURE: " <> show err
                    Right ok -> pure ok
 
