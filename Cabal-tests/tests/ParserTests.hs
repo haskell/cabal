@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
@@ -40,7 +41,7 @@ import Distribution.PackageDescription.Parsec      (parseGenericPackageDescripti
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.Parsec                         (Parsec (..), explicitEitherParsec', PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
 import Distribution.Pretty                         (Pretty (..), prettyShow)
-import Distribution.Fields.Parser                  (readFields')
+import Distribution.Fields.Parser                  (readFields', readFieldsWithComments)
 import Distribution.Fields.ParseResult
 import Distribution.Fields.Pretty                  (PrettyFieldWith (..), exactShowFields, filterFields)
 import Distribution.FieldGrammar.Parsec            (ParsecFieldGrammar, parseFieldGrammar)
@@ -75,6 +76,18 @@ import Text.Pretty.Simple
 
 import qualified Distribution.InstalledPackageInfo as IPI
 
+-- For the mock "buildDependFieldsWithComments"
+import Distribution.Fields.Field 
+  ( WithComments (..)
+  , Name (..)
+  , Comment (..)
+  , Field (..)
+  , FieldLine (..)
+  )
+import Distribution.Parsec.Position
+  ( Position (..)
+  )
+
 #ifdef MIN_VERSION_tree_diff
 import Data.TreeDiff                 (ansiWlEditExpr, ansiWlEditExprCompact, ediff, toExpr)
 import Data.TreeDiff.Class           (ToExpr)
@@ -93,6 +106,7 @@ tests = testGroup "parsec tests"
     -- , miniBuildInfoAnnTest
     -- , miniBuildInfoTest
     , smallCabalFileTest
+    , parsecParserAnnTest
     ]
 
 -------------------------------------------------------------------------------
@@ -368,6 +382,51 @@ smallCabalFileTest = testCase "smallCabalFile" $ do
 
   pPrint $ prettyFields'
   putStrLn $ exactShowFields prettyFields'
+  where
+    input = "tests" </> "ParserTests" </> fp
+    fp = "smallCabalFile.cabal"
+
+buildDependFieldsWithComments :: Field (WithComments Position)
+buildDependFieldsWithComments =
+   Field
+        ( Name
+            ( WithComments
+                { justComments =
+                    [ Comment "     -- foo"
+                        ( Position 14 1 )
+                    ]
+                , unComments = Position 13 3
+                }
+            ) "build-depends"
+        )
+        [ FieldLine
+            ( WithComments
+                { justComments = []
+                , unComments = Position 15 5
+                }
+            ) "text"
+        , FieldLine
+            ( WithComments
+                { justComments = []
+                , unComments = Position 16 6
+                }
+            ) ","
+        , FieldLine
+            ( WithComments
+                { justComments = []
+                , unComments = Position 17 5
+                }
+            ) "base >  4"
+        ]
+
+parsecParserAnnTest :: TestTree
+parsecParserAnnTest = testCase "parsecParserAnn" $ do
+  contents <- BS.readFile input
+  fieldsWithComments <- case readFieldsWithComments contents of
+                 Left err -> fail $ "ERROR: " <> show err
+                 Right ok -> pure ok
+
+  pPrint fieldsWithComments
   where
     input = "tests" </> "ParserTests" </> fp
     fp = "smallCabalFile.cabal"
