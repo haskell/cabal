@@ -39,12 +39,12 @@ import Distribution.PackageDescription.PrettyPrint (ppGenericPackageDescriptionA
 import Distribution.PackageDescription.FieldGrammar(buildInfoFieldGrammar, miniBuildInfoFieldGrammar, MiniBuildInfo (..))
 import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription, parseGenericPackageDescriptionPrim, sectionizeFields, takeFields,  parseCommentedGenericPackageDescription)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
-import Distribution.Parsec                         (Parsec (..), explicitEitherParsec', PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
+import Distribution.Parsec                         (ParsecParserAnn (..), Parsec (..), explicitEitherParsec', PWarnType (..), PWarning (..), showPErrorWithSource, showPWarningWithSource)
 import Distribution.Pretty                         (Pretty (..), prettyShow)
 import Distribution.Fields.Parser                  (readFields', readFieldsWithComments)
 import Distribution.Fields.ParseResult
 import Distribution.Fields.Pretty                  (PrettyFieldWith (..), exactShowFields, filterFields)
-import Distribution.FieldGrammar.Parsec            (ParsecFieldGrammar, parseFieldGrammar)
+import Distribution.FieldGrammar.Parsec            (ParsecFieldGrammar, parseFieldGrammar, fieldLinesToStream)
 import Distribution.FieldGrammar.Pretty            (prettyFieldGrammar)
 import Distribution.Utils.Generic                  (fromUTF8BS, toUTF8BS)
 import System.Directory                            (setCurrentDirectory)
@@ -53,7 +53,7 @@ import System.FilePath                             (replaceExtension, (</>))
 import Distribution.Parsec.Source
 
 import Distribution.Types.Annotation
-import Distribution.Types.Dependency (DependencyAnn)
+import Distribution.Types.Dependency (DependencyAnn, dependencyParser)
 import Distribution.Types.PackageName (PackageName)
 import Distribution.FieldGrammar.Newtypes
   ( CommaVCat
@@ -71,19 +71,22 @@ import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.List.NonEmpty    as NE
 
+import qualified Text.Parsec as Parsec
+
 -- NOTE(leana8959): remove this after demo is done
 import Text.Pretty.Simple
 
 import qualified Distribution.InstalledPackageInfo as IPI
 
 -- For the mock "buildDependFieldsWithComments"
-import Distribution.Fields.Field 
+import Distribution.Fields.Field
   ( WithComments (..)
   , Name (..)
   , Comment (..)
   , Field (..)
   , FieldLine (..)
   )
+import Distribution.Parsec.FieldLineStream (FlsAnn (..))
 import Distribution.Parsec.Position
   ( Position (..)
   )
@@ -107,6 +110,7 @@ tests = testGroup "parsec tests"
     -- , miniBuildInfoTest
     , smallCabalFileTest
     , parsecParserAnnTest
+    , buildDependParserWithCommentsTest
     ]
 
 -------------------------------------------------------------------------------
@@ -397,6 +401,19 @@ buildDependFieldLineWithComments =
                 , unComments = Position 15 5
                 }
             ) "text"
+
+
+
+
+buildDependParserWithCommentsTest :: TestTree
+buildDependParserWithCommentsTest = testCase "buildDependFieldsWithComments" $ do
+  let dummyInput :: FlsAnn = FlsAnn $ fieldLinesToStream [buildDependFieldLineWithComments]
+
+  parseOutput <- case Parsec.runParser (unPPAnn dependencyParser CabalSpecV3_0) [] "<dummy>" dummyInput of
+                   Left err -> fail $ "PARSE FAILURE: " <> show err
+                   Right ok -> pure ok
+
+  pPrint parseOutput
 
 buildDependFieldsWithComments :: Field (WithComments Position)
 buildDependFieldsWithComments =

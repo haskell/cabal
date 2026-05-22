@@ -20,6 +20,7 @@ module Distribution.Types.Dependency
   , depLibraries
   , simplifyDependency
   , mainLibSet
+  , dependencyParser
   ) where
 
 import Distribution.Compat.Prelude
