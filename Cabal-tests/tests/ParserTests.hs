@@ -386,6 +386,18 @@ smallCabalFileTest = testCase "smallCabalFile" $ do
     input = "tests" </> "ParserTests" </> fp
     fp = "smallCabalFile.cabal"
 
+buildDependFieldLineWithComments :: FieldLine (WithComments Position)
+buildDependFieldLineWithComments =
+    FieldLine
+            ( WithComments
+                { justComments =
+                    [ Comment "     -- foo"
+                        ( Position 14 1 )
+                    ]
+                , unComments = Position 15 5
+                }
+            ) "text"
+
 buildDependFieldsWithComments :: Field (WithComments Position)
 buildDependFieldsWithComments =
    Field

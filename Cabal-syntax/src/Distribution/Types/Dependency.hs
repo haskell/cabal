@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -40,6 +41,8 @@ import Distribution.Types.UnqualComponentName
 
 import qualified Distribution.Compat.NonEmptySet as NES
 import qualified Text.PrettyPrint as PP
+
+import Data.ByteString (ByteString)
 
 -- | Describes a dependency on a source package (API)
 --
@@ -210,6 +213,13 @@ versionGuardMultilibs = do
         , "Alternatively, if you are depending on an internal library, you can write"
         , "directly the library name as it were a package."
         ]
+
+dependencyParser :: ParsecParserAnn ([ByteString], Dependency, [ByteString])
+dependencyParser =
+      (,,)
+        <$> many acceptComment
+        <*> parsec @Dependency
+        <*> many acceptComment
 
 -- | Library set with main library.
 --

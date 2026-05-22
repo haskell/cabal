@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
@@ -10,6 +11,7 @@
 module Distribution.Parsec
   ( Parsec (..)
   , ParsecParser (..)
+  , ParsecParserAnn (..)
   , runParsecParser
   , runParsecParser'
   , simpleParsec
@@ -23,7 +25,7 @@ module Distribution.Parsec
 
     -- * CabalParsing and diagnostics
   , CabalParsing (..)
-  , CommentParsing (..)
+  , acceptComment
 
     -- ** Warnings
   , PWarnType (..)
@@ -80,7 +82,7 @@ import Distribution.Parsec.Error (PError (..), PErrorWithSource (..), showPError
 import Distribution.Types.Trivia
 
 import Data.Monoid (Last (..))
-import Distribution.Parsec.FieldLineStream (FlsAnn (..), FlsAnnToken (..), FieldLineStream, fieldLineStreamFromBS, fieldLineStreamFromString, fieldLineStreamPosition)
+import Distribution.Parsec.FieldLineStream (FlsAnn (..), FlsAnnToken (..), FieldLineStream (..), StreamBody (..), fieldLineStreamFromBS, fieldLineStreamFromString, fieldLineStreamPosition)
 import Distribution.Parsec.Position (Position (..), incPos, retPos, showPos, zeroPos)
 import Distribution.Parsec.Warning
 import Numeric (showIntAtBase)
@@ -270,11 +272,9 @@ satisfyFieldLine f           = Parsec.tokenPrim (\c -> show [c])
                                     _ -> Nothing
                                 )
 
-class P.Parsing m => CommentParsing m where
-  acceptComment :: Parsec.ParsecT FlsAnn u m ByteString
-
-instance CommentParsing ParsecParserAnn where
-    acceptComment            = Parsec.tokenPrim (\cmt -> show cmt)
+acceptComment :: ParsecParserAnn ByteString
+acceptComment              = PPAnn $ \_ ->
+                                Parsec.tokenPrim (\cmt -> show cmt)
                                 -- not sure if this really matters
                                 ( \pos tok _cs -> case tok of
                                     -- TODO(leana8959): compute char position properly
@@ -299,6 +299,17 @@ instance CabalParsing ParsecParser where
     -- Fix up the source position
     -- Override the line due to line jumps, and offset the column due to dropped leading spaced
     pure $ Position realRow (col + colOffset - 1)
+
+instance CabalParsing ParsecParserAnn where
+  parsecWarning t w = liftParsecAnn $ do
+    spos <- Parsec.getPosition
+    Parsec.modifyState
+      (PWarning t (Position (Parsec.sourceLine spos) (Parsec.sourceColumn spos)) w :)
+  askCabalSpecVersion = PPAnn pure
+
+  getPosition = liftParsecAnn $
+    -- TODO(leana8959): We fake the position for now
+    pure $ Position 0 0
 
 -- | Parse a 'String' with 'lexemeParsec'.
 simpleParsec :: Parsec a => String -> Maybe a
