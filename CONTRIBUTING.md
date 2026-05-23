@@ -249,6 +249,36 @@ formatting:
 
 [issue-9230]: https://github.com/haskell/cabal/issues/9230
 
+## Code Linting
+
+We check for HLint warnings and suggestions in CI. Where possible, configuration
+is all kept in one place, in [.hlint.yaml](/.hlint.yaml).
+
+The `make lint` recipe is `hlint -j .` but if checking a single file, it is
+quicker to `hlint <.../filename.hs>`. It is possible to have HLint do the
+refactoring itself with:
+
+[^rel-path-file]: Where `.../` is the elided path to the file.
+
+```
+$ hlint --refactor --refactor-options=--inplace <.../filename.hs>
+```
+
+> [!NOTE]
+> We use `hlint-3.10` for linting. As of writing, this compiles with `ghc-9.12`
+> but not with `ghc-9.14`.
+>
+> ```
+> $ cabal install hlint-3.10 --overwrite-policy=always --ignore-project --with-compiler=ghc-9.12
+> $ cabal install apply-refact --overwrite-policy=always --ignore-project
+> ```
+>
+> Use of `hlint --refactor` has some gotchas. It obliterates `-XCPP`
+> conditionals, duplicates comments and sometimes does nothing. Its refactoring is
+> not recursive. Any linting failures it introduces will not be fixed until it
+> is run again.
+
+
 ## Whitespace Conventions
 
 We use automated whitespace convention checking. Violations can be fixed by
