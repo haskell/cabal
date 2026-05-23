@@ -24,7 +24,6 @@ module Distribution.Simple.GHCJS
   , hcPkgInfo
   , registerPackage
   , componentGhcOptions
-  , Internal.componentCcGhcOptions
   , getLibDir
   , isDynamic
   , getGlobalPackageDB
@@ -1443,13 +1442,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
     sequence_
       [ do
         let baseCxxOpts =
-              Internal.componentCxxGhcOptions
-                (verbosityLevel verbosity)
-                lbi
-                bnfo
-                clbi
-                tmpDir
-                filename
+              (Internal.splitCandCxxOptions Internal.CxxProgram (verbosityLevel verbosity) lbi bnfo clbi odir filename)
             vanillaCxxOpts =
               if isGhcDynamic
                 then -- Dynamic GHC requires C++ sources to be built
@@ -1489,13 +1482,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
     sequence_
       [ do
         let baseCcOpts =
-              Internal.componentCcGhcOptions
-                (verbosityLevel verbosity)
-                lbi
-                bnfo
-                clbi
-                tmpDir
-                filename
+              (Internal.splitCandCxxOptions Internal.CcProgram (verbosityLevel verbosity) lbi bnfo clbi tmpDir filename)
             vanillaCcOpts =
               if isGhcDynamic
                 then -- Dynamic GHC requires C sources to be built

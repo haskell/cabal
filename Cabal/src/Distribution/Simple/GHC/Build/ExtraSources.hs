@@ -10,6 +10,7 @@ import Control.Monad
 import Data.Foldable
 import Distribution.Simple.Flag
 import qualified Distribution.Simple.GHC.Internal as Internal
+import Distribution.Simple.Program
 import Distribution.Simple.Program.GHC
 import Distribution.Simple.Utils
 import Distribution.Utils.NubList
@@ -19,10 +20,9 @@ import Distribution.Types.Component
 import Distribution.Types.TargetInfo
 
 import Distribution.Simple.Build.Inputs
-import Distribution.Simple.GHC.Build.Modules
+import Distribution.Simple.BuildWay
 import Distribution.Simple.GHC.Build.Utils
 import Distribution.Simple.LocalBuildInfo
-import Distribution.Simple.Program.Types
 import Distribution.Simple.Setup.Common (commonSetupTempFileOptions)
 import Distribution.System (Arch (JavaScript), Platform (..))
 import Distribution.Types.ComponentLocalBuildInfo
@@ -77,7 +77,7 @@ buildCSources
 buildCSources mbMainFile =
   buildExtraSources
     "C Sources"
-    Internal.componentCcGhcOptions
+    (Internal.splitCandCxxOptions Internal.CcProgram)
     ( \c -> do
         let cFiles = cSources (componentBuildInfo c)
         case c of
@@ -90,7 +90,7 @@ buildCSources mbMainFile =
 buildCxxSources mbMainFile =
   buildExtraSources
     "C++ Sources"
-    Internal.componentCxxGhcOptions
+    (Internal.splitCandCxxOptions Internal.CxxProgram)
     ( \c -> do
         let cxxFiles = cxxSources (componentBuildInfo c)
         case c of
@@ -105,7 +105,7 @@ buildJsSources _mbMainFile ghcProg buildTargetDir neededWays verbHandles = do
   let hasJsSupport = hostArch == JavaScript
   buildExtraSources
     "JS Sources"
-    Internal.componentJsGhcOptions
+    Internal.sourcesGhcOptions
     ( \c ->
         if hasJsSupport
           then -- JS files are C-like with GHC's JS backend: they are
@@ -122,12 +122,12 @@ buildJsSources _mbMainFile ghcProg buildTargetDir neededWays verbHandles = do
 buildAsmSources _mbMainFile =
   buildExtraSources
     "Assembler Sources"
-    Internal.componentAsmGhcOptions
+    Internal.sourcesGhcOptions
     (asmSources . componentBuildInfo)
 buildCmmSources _mbMainFile =
   buildExtraSources
     "C-- Sources"
-    Internal.componentCmmGhcOptions
+    Internal.sourcesGhcOptions
     (cmmSources . componentBuildInfo)
 
 -- | Create 'PreBuildComponentRules' for a given type of extra build sources
@@ -145,9 +145,7 @@ buildExtraSources
        -> GhcOptions
      )
   -- ^ Function to determine the @'GhcOptions'@ for the
-  -- invocation of GHC when compiling these extra sources (e.g.
-  -- @'Internal.componentCxxGhcOptions'@,
-  -- @'Internal.componentCmmGhcOptions'@)
+  -- invocation of GHC when compiling these extra sources
   -> (Component -> [SymbolicPath Pkg File])
   -- ^ View the extra sources of a component, typically from
   -- the build info (e.g. @'asmSources'@, @'cSources'@).
