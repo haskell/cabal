@@ -6,6 +6,7 @@ module Distribution.Compat.Binary
 
 import Control.Exception (ErrorCall (..), catch, evaluate)
 import Data.ByteString.Lazy (ByteString)
+import Data.Functor ((<&>))
 
 import Data.Binary
 
@@ -15,6 +16,6 @@ decodeFileOrFail' f = either (Left . snd) Right `fmap` decodeFileOrFail f
 
 decodeOrFailIO :: Binary a => ByteString -> IO (Either String a)
 decodeOrFailIO bs =
-  catch (evaluate (decode bs) >>= return . Right) handler
+  catch (evaluate (decode bs) <&> Right) handler
   where
     handler (ErrorCall str) = return $ Left str
