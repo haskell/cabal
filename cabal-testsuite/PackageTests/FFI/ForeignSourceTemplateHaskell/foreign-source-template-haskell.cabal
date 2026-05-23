@@ -1,0 +1,18 @@
+cabal-version:       3.8
+name:                foreign-source-template-haskell
+version:             0.1
+build-type:          Simple
+
+executable addForeignSourceC
+  build-depends: base, template-haskell
+
+  main-is:       addForeignSourceC.hs
+
+  cc-options:    -DONE=1
+
+executable addForeignSourceCxx
+  build-depends: base, template-haskell
+
+  main-is:       addForeignSourceCxx.hs
+
+  cxx-options:   -DTWO=2
