@@ -27,6 +27,7 @@ import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Flag
 import Distribution.Solver.Modular.LabeledGraph
 import Distribution.Solver.Modular.Package
+import Distribution.Simple.Utils (ordNub)
 
 -- | A (partial) package assignment. Qualified package names
 -- are associated with instances.
@@ -53,7 +54,7 @@ toCPs (A pa fa sa) rdm =
     vm  :: Vertex -> ((), QPN, [(Component, QPN)])
     cvm :: QPN -> Maybe Vertex
     -- Note that the RevDepMap contains duplicate dependencies. Therefore the nub.
-    (g, vm, cvm) = graphFromEdges (L.map (\ (x, xs) -> ((), x, nub xs))
+    (g, vm, cvm) = graphFromEdges (L.map (\ (x, xs) -> ((), x, ordNub xs))
                                   (M.toList rdm))
     tg :: Graph Component
     tg = transposeG g

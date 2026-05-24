@@ -159,7 +159,7 @@ test args verbHandles pkg_descr lbi0 flags = do
   -- Now, we get the path to the HPC artifacts and exposed modules of each
   -- library by querying the package database keyed by unit-id:
   let coverageFor =
-        nub $
+        ordNub $
           fromFlagOrDefault [] (configCoverageFor (configFlags lbi))
             <> extraCoverageFor lbi
   ipkginfos <- getInstalledPackagesById verbosity lbi MissingCoveredInstalledLibrary coverageFor
