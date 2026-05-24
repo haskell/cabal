@@ -1,0 +1,17 @@
+---
+synopsis: "active-repositories: don't override fully-deprecated packages"
+packages: [cabal-install, cabal-install-solver]
+prs: 11760
+---
+
+When `active-repositories` includes a repo with `:override`, and that
+repo's `preferred-versions` marks all its versions of a package as
+deprecated, the index-combining step previously still applied full
+override semantics, hiding all versions of that package from earlier
+repos.
+
+Fix by consulting `preferred-versions` when combining indexes: if no
+version of the package in the override repo is preferred, fall back to
+merge semantics so earlier-repo versions remain visible.
+
+Fixes https://github.com/haskell/cabal/issues/8502
