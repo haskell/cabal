@@ -1018,7 +1018,7 @@ selectBuildableTargetsWith' p =
   (fmap . map) forgetTargetDetail . unzip . zipBuildableTargetsWith p
 
 forgetTargetDetail :: AvailableTarget k -> AvailableTarget ()
-forgetTargetDetail = fmap (const ())
+forgetTargetDetail = void
 
 forgetTargetsDetail :: [AvailableTarget k] -> [AvailableTarget ()]
 forgetTargetsDetail = map forgetTargetDetail

@@ -79,7 +79,7 @@ instance Parsec Glob where
     where
       dirSep :: CabalParsing m => m ()
       dirSep =
-        () <$ P.char '/'
+        void (P.char '/')
           <|> P.try
             ( do
                 _ <- P.char '\\'
