@@ -1,4 +1,320 @@
 # check "using config from message" with URI imports
 # cabal v2-build
+Warning: 2 imports of 4.config;
+  4.config
+    imported by: cfg/3.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  4.config
+    imported by: cfg/3.config
+    imported by: 2.config
+    imported by: cfg/1.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+Warning: 3 imports of 6.config;
+  6.config
+    imported by: cfg/5.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  6.config
+    imported by: cfg/5.config
+    imported by: 4.config
+    imported by: cfg/3.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  6.config
+    imported by: cfg/5.config
+    imported by: 4.config
+    imported by: cfg/3.config
+    imported by: 2.config
+    imported by: cfg/1.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+Warning: 4 imports of 8.config;
+  8.config
+    imported by: cfg/7.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  8.config
+    imported by: cfg/7.config
+    imported by: 6.config
+    imported by: cfg/5.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  8.config
+    imported by: cfg/7.config
+    imported by: 6.config
+    imported by: cfg/5.config
+    imported by: 4.config
+    imported by: cfg/3.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  8.config
+    imported by: cfg/7.config
+    imported by: 6.config
+    imported by: cfg/5.config
+    imported by: 4.config
+    imported by: cfg/3.config
+    imported by: 2.config
+    imported by: cfg/1.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+Warning: 2 imports of cfg/3.config;
+  cfg/3.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  cfg/3.config
+    imported by: 2.config
+    imported by: cfg/1.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+Warning: 3 imports of cfg/5.config;
+  cfg/5.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  cfg/5.config
+    imported by: 4.config
+    imported by: cfg/3.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  cfg/5.config
+    imported by: 4.config
+    imported by: cfg/3.config
+    imported by: 2.config
+    imported by: cfg/1.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+Warning: 4 imports of cfg/7.config;
+  cfg/7.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  cfg/7.config
+    imported by: 6.config
+    imported by: cfg/5.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  cfg/7.config
+    imported by: 6.config
+    imported by: cfg/5.config
+    imported by: 4.config
+    imported by: cfg/3.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  cfg/7.config
+    imported by: 6.config
+    imported by: cfg/5.config
+    imported by: 4.config
+    imported by: cfg/3.config
+    imported by: 2.config
+    imported by: cfg/1.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+Warning: 5 imports of cfg/9.config;
+  cfg/9.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  cfg/9.config
+    imported by: 8.config
+    imported by: cfg/7.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  cfg/9.config
+    imported by: 8.config
+    imported by: cfg/7.config
+    imported by: 6.config
+    imported by: cfg/5.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  cfg/9.config
+    imported by: 8.config
+    imported by: cfg/7.config
+    imported by: 6.config
+    imported by: cfg/5.config
+    imported by: 4.config
+    imported by: cfg/3.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  cfg/9.config
+    imported by: 8.config
+    imported by: cfg/7.config
+    imported by: 6.config
+    imported by: cfg/5.config
+    imported by: 4.config
+    imported by: cfg/3.config
+    imported by: 2.config
+    imported by: cfg/1.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+Warning: 25 imports of https://www.stackage.org/lts-21.25/cabal.config;
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: cfg/1.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: cfg/3.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: cfg/5.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: cfg/7.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: cfg/9.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: 2.config
+    imported by: cfg/1.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: 4.config
+    imported by: cfg/3.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: 6.config
+    imported by: cfg/5.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: 8.config
+    imported by: cfg/7.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: cfg/3.config
+    imported by: 2.config
+    imported by: cfg/1.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: cfg/5.config
+    imported by: 4.config
+    imported by: cfg/3.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: cfg/7.config
+    imported by: 6.config
+    imported by: cfg/5.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: cfg/9.config
+    imported by: 8.config
+    imported by: cfg/7.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: 4.config
+    imported by: cfg/3.config
+    imported by: 2.config
+    imported by: cfg/1.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: 6.config
+    imported by: cfg/5.config
+    imported by: 4.config
+    imported by: cfg/3.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: 8.config
+    imported by: cfg/7.config
+    imported by: 6.config
+    imported by: cfg/5.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: cfg/5.config
+    imported by: 4.config
+    imported by: cfg/3.config
+    imported by: 2.config
+    imported by: cfg/1.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: cfg/7.config
+    imported by: 6.config
+    imported by: cfg/5.config
+    imported by: 4.config
+    imported by: cfg/3.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: cfg/9.config
+    imported by: 8.config
+    imported by: cfg/7.config
+    imported by: 6.config
+    imported by: cfg/5.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: 6.config
+    imported by: cfg/5.config
+    imported by: 4.config
+    imported by: cfg/3.config
+    imported by: 2.config
+    imported by: cfg/1.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: 8.config
+    imported by: cfg/7.config
+    imported by: 6.config
+    imported by: cfg/5.config
+    imported by: 4.config
+    imported by: cfg/3.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: cfg/7.config
+    imported by: 6.config
+    imported by: cfg/5.config
+    imported by: 4.config
+    imported by: cfg/3.config
+    imported by: 2.config
+    imported by: cfg/1.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: cfg/9.config
+    imported by: 8.config
+    imported by: cfg/7.config
+    imported by: 6.config
+    imported by: cfg/5.config
+    imported by: 4.config
+    imported by: cfg/3.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: 8.config
+    imported by: cfg/7.config
+    imported by: 6.config
+    imported by: cfg/5.config
+    imported by: 4.config
+    imported by: cfg/3.config
+    imported by: 2.config
+    imported by: cfg/1.config
+    imported by: 0.config
+    imported by: no-pkgs.project
+  https://www.stackage.org/lts-21.25/cabal.config
+    imported by: cfg/9.config
+    imported by: 8.config
+    imported by: cfg/7.config
+    imported by: 6.config
+    imported by: cfg/5.config
+    imported by: 4.config
+    imported by: cfg/3.config
+    imported by: 2.config
+    imported by: cfg/1.config
+    imported by: 0.config
+    imported by: no-pkgs.project
 # check project configuration with URI imports is listed in full and
 # check package directories and locations are reported in order

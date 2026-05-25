@@ -54,7 +54,7 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import Distribution.Client.Errors.Parser (ProjectFileSource (..))
 import qualified Distribution.Compat.CharParsing as P
-import Network.URI (uriFragment, uriPath, uriScheme)
+import Network.URI (URI, uriFragment, uriPath, uriScheme)
 import System.Directory (makeAbsolute)
 import System.FilePath (splitFileName)
 import qualified Text.Parsec
@@ -133,9 +133,9 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
                     (isUntrimmedUriConfigPath importLocPath)
                     (noticeDoc verbosity $ untrimmedUriImportMsg (Disp.text "Warning:") importLocPath)
                   let parser = parseProjectSkeleton cacheDir httpTransport verbosity projectDir importLocPath
-                  importParseResult <- fetchImport parser cacheDir httpTransport verbosity projectDir normLocPath
+                  (mbUri, importParseResult) <- fetchImport parser cacheDir httpTransport verbosity projectDir normLocPath
                   rest <- go [] xs
-                  let fs = (\z -> CondNode ([normLocPath], z) mempty) <$> fieldsToConfig normSource (reverse acc)
+                  let fs = (\z -> CondNode ([(mbUri, normLocPath)], z) mempty) <$> fieldsToConfig normSource (reverse acc)
                   pure . fmap mconcat . sequence $ [fs, importParseResult, rest]
           )
           (parseImport pos importLines)
@@ -186,7 +186,6 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
       config <- parseFieldGrammarCheckingStanzas cabalSpec fs (projectConfigFieldGrammar sourceConfigPath (knownProgramNames programDb)) stanzas
       config' <- view stateConfig <$> execStateT (goSections programDb sections) (SectionS config)
       return config'
-
     modifiesCompiler :: ProjectConfig -> Bool
     modifiesCompiler pc = isSet projectConfigHcFlavor || isSet projectConfigHcPath || isSet projectConfigHcPkg
       where
@@ -197,7 +196,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
       | underConditional && modifiesCompiler d = parseFatalFailure zeroPos "Cannot set compiler in a conditional clause of a cabal project file"
       | otherwise = mapM_ sanityWalkBranch comps >> pure t
 
-    sanityWalkBranch :: CondBranch ConfVar ([ProjectConfigPath], ProjectConfig) -> ParseResult ProjectFileSource ()
+    sanityWalkBranch :: CondBranch ConfVar ([(Maybe URI, ProjectConfigPath)], ProjectConfig) -> ParseResult ProjectFileSource ()
     sanityWalkBranch (CondBranch _c t f) = traverse_ (sanityWalkPCS True) f >> sanityWalkPCS True t >> pure ()
 
     programDb = defaultProgramDb
