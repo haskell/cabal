@@ -4,30 +4,34 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ViewPatterns #-}
 
 -- | Project configuration, implementation in terms of legacy types.
 module Distribution.Client.ProjectConfig.Legacy
-  ( -- Project config skeletons
-    parseProject
+  ( -- * Skeletons
+    ProjectConfigSkeleton
   , instantiateProjectConfigSkeletonFetchingCompiler
   , instantiateProjectConfigSkeletonWithCompiler
   , singletonProjectConfigSkeleton
 
-    -- * Project config in terms of legacy types
-  , LegacyProjectConfig
+    -- * Parsing
+  , parseProject
   , parseLegacyProjectConfig
+
+    -- * Legacy Configuration
+  , LegacyProjectConfig
   , showLegacyProjectConfig
 
-    -- * Conversion to and from legacy config types
+    -- * Conversions
   , commandLineFlagsToProjectConfig
   , convertLegacyProjectConfig
   , convertLegacyGlobalConfig
   , convertToLegacyProjectConfig
 
-    -- * Internals, just for tests
+    -- * Internals
+
+    -- | These functions are exposed just for tests.
   , parsePackageLocationTokenQ
   , renderPackageLocationToken
   ) where
@@ -224,7 +228,7 @@ instantiateProjectConfigSkeletonFetchingCompiler fetch flags skel
 instantiateProjectConfigSkeletonWithCompiler :: OS -> Arch -> CompilerInfo -> FlagAssignment -> ProjectConfigSkeleton -> ProjectConfig
 instantiateProjectConfigSkeletonWithCompiler os arch impl _flags skel = go $ mapTreeConds (fst . simplifyWithSysParams os arch impl) skel
   where
-    go :: CondTree FlagName ([ProjectConfigPath], ProjectConfig) -> ProjectConfig
+    go :: CondTree FlagName ([(Maybe URI, ProjectConfigPath)], ProjectConfig) -> ProjectConfig
     go (CondNode (_, l) ts) =
       let branches = concatMap processBranch ts
        in l <> mconcat branches
@@ -249,8 +253,10 @@ parseProject rootPath cacheDir httpTransport verbosity configToParse =
     projectDir <- makeAbsolute dir
     projectPath <- canonicalizeConfigPath projectDir (ProjectConfigPath $ projectFileName :| [])
     parseProjectSkeleton cacheDir httpTransport verbosity projectDir projectPath configToParse
-    -- NOTE: Reverse the warnings so they are in line number order.
-    <&> \case ProjectParseOk ws x -> ProjectParseOk (reverse ws) x; x -> x
+    <&> \case
+      -- NOTE: Reverse the warnings so they are in line number order.
+      ProjectParseOk ws skeleton -> ProjectParseOk (reverse ws) skeleton
+      x@ProjectParseFailed{} -> x
 
 parseProjectSkeleton
   :: FilePath
@@ -283,9 +289,9 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
               (isUntrimmedUriConfigPath importLocPath)
               (noticeDoc verbosity $ untrimmedUriImportMsg (Disp.text "Warning:") importLocPath)
             let parser = parseProjectSkeleton cacheDir httpTransport verbosity projectDir importLocPath
-            res <- fetchImport parser cacheDir httpTransport verbosity projectDir normLocPath
+            (mbUri, res) <- fetchImport parser cacheDir httpTransport verbosity projectDir normLocPath
             rest <- go [] xs
-            let fs = (\z -> CondNode ([normLocPath], z) mempty) <$> fieldsToConfig normSource (reverse acc)
+            let fs = (\z -> CondNode ([(mbUri, normLocPath)], z) mempty) <$> fieldsToConfig normSource (reverse acc)
             pure . fmap mconcat . sequence $ [projectParse Nothing normSource fs, res, rest]
       (ParseUtils.Section l "if" p xs') -> do
         normSource <- canonicalizeConfigPath projectDir source
@@ -350,20 +356,19 @@ parseProjectSkeleton cacheDir httpTransport verbosity projectDir source (Project
         addWarnings (ProjectParseOk ws' x') = ProjectParseOk (ws' ++ ((p,) <$> ws)) x'
         addWarnings x' = x'
     liftPR p _ (ParseFailed e) = pure $ projectParseFail Nothing (Just p) e
-
     modifiesCompiler :: ProjectConfig -> Bool
     modifiesCompiler pc = isSet projectConfigHcFlavor || isSet projectConfigHcPath || isSet projectConfigHcPkg
       where
         isSet f = f (projectConfigShared pc) /= NoFlag
 
     sanityWalkPCS :: Bool -> ProjectConfigSkeleton -> ProjectParseResult ProjectConfigSkeleton
-    sanityWalkPCS underConditional t@(CondNode (listToMaybe -> c, d) comps)
+    sanityWalkPCS underConditional t@(CondNode (fmap snd . listToMaybe -> c, d) comps)
       | underConditional && modifiesCompiler d =
           projectParseFail Nothing c $ ParseUtils.FromString "Cannot set compiler in a conditional clause of a cabal project file" Nothing
       | otherwise =
           mapM_ sanityWalkBranch comps >> pure t
 
-    sanityWalkBranch :: CondBranch ConfVar ([ProjectConfigPath], ProjectConfig) -> ProjectParseResult ()
+    sanityWalkBranch :: CondBranch ConfVar ([(Maybe URI, ProjectConfigPath)], ProjectConfig) -> ProjectParseResult ()
     sanityWalkBranch (CondBranch _c t f) = traverse_ (sanityWalkPCS True) f >> sanityWalkPCS True t >> pure ()
 
 ------------------------------------------------------------------
