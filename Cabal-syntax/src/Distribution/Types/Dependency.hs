@@ -20,6 +20,7 @@ module Distribution.Types.Dependency
   , depLibraries
   , simplifyDependency
   , mainLibSet
+  , dependencyCommentParser
   ) where
 
 import Distribution.Compat.Prelude
@@ -213,16 +214,6 @@ versionGuardMultilibs = do
         , "Alternatively, if you are depending on an internal library, you can write"
         , "directly the library name as it were a package."
         ]
-
-instance CommentParsec Dependency where
-  commentParsec = dependencyCommentParser
-
-instance CommentParsec DependencyAnn where
-  commentParsec =
-    (,,)
-      <$> many parseComment
-      <*> parsec @DependencyAnn
-      <*> many parseComment
 
 dependencyCommentParser :: (CabalParsing m, CommentParsing m) => m ([ByteString], Dependency, [ByteString])
 dependencyCommentParser =

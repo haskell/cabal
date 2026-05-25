@@ -10,7 +10,6 @@
 
 module Distribution.Parsec
   ( Parsec (..)
-  , CommentParsec (..)
   , ParsecParser (..)
   , ParsecParserAnn (..)
   , runParsecParser
@@ -104,9 +103,6 @@ import qualified Text.Parsec.Pos as Parsec.Pos
 -- For parsing @.cabal@ like file structure, see "Distribution.Fields".
 class Parsec a where
   parsec :: CabalParsing m => m a
-
-class CommentParsec a where
-  commentParsec :: (CabalParsing m, CommentParsing m) => m ([ByteString], a, [ByteString])
 
 -- | Parsing class which
 --
