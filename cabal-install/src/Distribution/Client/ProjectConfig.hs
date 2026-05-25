@@ -868,7 +868,6 @@ readProjectFileSkeletonGen
           --
           -- Consequently, we just take the heads of all the paths.
           monitorFiles
-
             [ monitorFileHashed $ makeAbsolute path
             | (Nothing, currentProjectConfigPath -> path) <- projectSkeletonImports pcs
             ]
