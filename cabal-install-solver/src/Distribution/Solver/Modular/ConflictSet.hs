@@ -1,3 +1,4 @@
+{-# LANGUAGE PatternSynonyms #-}
 -- | Conflict sets
 --
 -- Intended for double import
@@ -8,7 +9,7 @@ module Distribution.Solver.Modular.ConflictSet (
     ConflictSet -- opaque
   , Conflict(..)
   , ConflictMap
-  , OrderedVersionRange(..)
+  , OrderedVersionRange(OrderedVersionRange)
   , showConflictSet
   , showCSSortedByFrequency
   , showCSWithFrequency
@@ -40,6 +41,8 @@ import qualified Data.Set as S
 import Distribution.Solver.Modular.Var
 import Distribution.Solver.Modular.Version
 import Distribution.Solver.Types.PackagePath
+import Distribution.Utils.ShortText (ShortText)
+import qualified Distribution.Utils.ShortText as ShortText
 
 -- | The set of variables involved in a solver conflict, each paired with
 -- details about the conflict.
@@ -78,13 +81,24 @@ data Conflict =
   | OtherConflict
   deriving (Eq, Ord, Show)
 
--- | Version range with an 'Ord' instance.
-newtype OrderedVersionRange = OrderedVersionRange VR
-  deriving (Eq, Show)
+-- | Version range with an 'Ord' instance. The show string is cached to avoid
+-- recomputing it on every comparison.
+data OrderedVersionRange = OVR !ShortText !VR
 
--- TODO: Avoid converting the version ranges to strings.
+pattern OrderedVersionRange :: VR -> OrderedVersionRange
+pattern OrderedVersionRange vr <- OVR _ vr
+  where OrderedVersionRange vr = OVR (ShortText.toShortText (show vr)) vr
+{-# COMPLETE OrderedVersionRange #-}
+
+instance Eq OrderedVersionRange where
+  OVR _ a == OVR _ b = a == b
+
 instance Ord OrderedVersionRange where
-  compare = compare `on` show
+  compare (OVR sa _) (OVR sb _) = compare sa sb
+
+instance Show OrderedVersionRange where
+  showsPrec d (OVR _ vr) = showParen (d > 10) $
+    showString "OrderedVersionRange " . showsPrec 11 vr
 
 showConflictSet :: ConflictSet -> String
 showConflictSet = intercalate ", " . map showVar . toList

@@ -22,6 +22,7 @@ import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackagePath
 
+import Distribution.Simple.Utils (ordNub)
 import Distribution.Solver.Modular.Configured
 import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Flag
@@ -52,8 +53,8 @@ toCPs (A pa fa sa) rdm =
     g   :: Graph Component
     vm  :: Vertex -> ((), QPN, [(Component, QPN)])
     cvm :: QPN -> Maybe Vertex
-    -- Note that the RevDepMap contains duplicate dependencies. Therefore the nub.
-    (g, vm, cvm) = graphFromEdges (L.map (\ (x, xs) -> ((), x, nub xs))
+    -- Note that the RevDepMap contains duplicate dependencies. Therefore the dedup.
+    (g, vm, cvm) = graphFromEdges (L.map (\ (x, xs) -> ((), x, ordNub xs))
                                   (M.toList rdm))
     tg :: Graph Component
     tg = transposeG g

@@ -301,7 +301,7 @@ checkComponentsInNewPackage :: ComponentDependencyReasons
                             -> Map ExposedComponent ComponentInfo
                             -> Either Conflict ()
 checkComponentsInNewPackage required qpn providedComps =
-    case M.toList $ deleteKeys (M.keys providedComps) required of
+    case M.toList $ M.difference required providedComps of
       (missingComp, dr) : _ ->
           Left $ mkConflict missingComp dr NewPackageIsMissingRequiredComponent
       []                    ->
@@ -324,9 +324,6 @@ checkComponentsInNewPackage required qpn providedComps =
                -> Conflict
     mkConflict comp dr mkFailure =
         (CS.insert (P qpn) (dependencyReasonToConflictSet dr), mkFailure comp dr)
-
-    deleteKeys :: Ord k => [k] -> Map k v -> Map k v
-    deleteKeys ks m = L.foldr M.delete m ks
 
 -- | We try to extract as many concrete dependencies from the given flagged
 -- dependencies as possible. We make use of all the flag knowledge we have
