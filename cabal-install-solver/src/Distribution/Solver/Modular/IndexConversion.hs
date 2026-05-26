@@ -6,6 +6,7 @@ import Distribution.Solver.Compat.Prelude
 import Prelude ()
 
 import qualified Data.List as L
+import qualified Data.Maybe
 import qualified Data.Map.Strict as M
 import qualified Distribution.Compat.NonEmptySet as NonEmptySet
 import qualified Data.Set as S
@@ -18,8 +19,6 @@ import Distribution.Types.ExeDependency              -- from Cabal
 import Distribution.Types.PkgconfigDependency        -- from Cabal
 import Distribution.Types.ComponentName              -- from Cabal
 import Distribution.Types.CondTree                   -- from Cabal
-import Distribution.Types.MungedPackageId            -- from Cabal
-import Distribution.Types.MungedPackageName          -- from Cabal
 import Distribution.PackageDescription               -- from Cabal
 import Distribution.PackageDescription.Configuration
 import qualified Distribution.Simple.PackageIndex as SI
@@ -62,43 +61,118 @@ convPIs :: OS -> Arch -> CompilerInfo -> Map PN [LabeledPackageConstraint]
         -> Index
 convPIs os arch comp constraints sip strfl solveExes iidx sidx =
   mkIndex $
-  convIPI' sip iidx ++ convSPI' os arch comp constraints strfl solveExes sidx
+       groupInstalledSublibs (convIPI' sip iidx)
+    ++ (convSPI' os arch comp constraints strfl solveExes sidx)
+
+-- | Group packages with the same package name and version,
+-- merge their sub-libraries and dependencies so we get
+-- a similar looking package as if it came from repository.
+groupInstalledSublibs
+  :: [(PN, I, InstanceUnitId, PInfo)]
+  -> [(PN, I, PInfo)]
+groupInstalledSublibs xs =
+    remapPInfoDepsToInstGroups
+  $ M.elems
+  $ M.map (\(pn, i, _instId, pInfo) -> (pn, i, pInfo))
+  $ foldl
+      (\acc x@(pn, I ver _, instId, _) ->
+        M.insertWith
+          (\(_, newI, newInstId, newInfo) (_, oldI, _oldInstId, oldInfo) ->
+            (pn, mergeIs oldI newI, newInstId, mergeInfos oldInfo newInfo)
+          )
+          (pn, ver, instId)
+          x
+          acc
+      )
+      M.empty
+      xs
+  where
+  -- flags are probably safe to ignore here as they are fixed for installed anyway
+  mergeInfos :: PInfo -> PInfo -> PInfo
+  mergeInfos (PInfo deps comps flagNfo fr) (PInfo deps' comps' _flagNfo _fr) =
+    PInfo
+      (deps <> deps')
+      (comps <> comps')
+      flagNfo
+      fr
+
+  -- this pass creates InstGroup(s)
+  mergeIs :: I -> I -> I
+  mergeIs (I ver (Inst pId)) (I _ver (Inst subPId)) =
+    I ver (InstGroup pId (S.singleton subPId))
+  mergeIs (I ver (InstGroup pId subPIds)) (I _ver (Inst subPId)) =
+    I ver (InstGroup pId (S.insert subPId subPIds))
+  -- XXX/srk, can't really happen as they are lexicographically ordered
+  mergeIs a b = error $ "Absurd mergeIs" <> show (a,b)
+
+  -- now some deps from convIP/convIPId pass refer to Inst when they should refer to InstGroup
+  remapPInfoDepsToInstGroups :: [(PN, I, PInfo)] -> [(PN, I, PInfo)]
+  remapPInfoDepsToInstGroups ps =
+    let
+      -- Inst -> InstGroup mapping, other Loc(s) are preserved
+      locMap :: Map Loc Loc
+      locMap =
+          M.fromList
+        $ concatMap
+            (\(_pn, I _ver loc, _pInfo) -> case loc of
+              ip@(Inst _pId) ->
+                pure (ip, ip)
+              g@(InstGroup pId subPIds) ->
+                (Inst pId, g):(map (\x -> (Inst x, g)) (S.toList subPIds))
+              InRepo ->
+                pure (InRepo, InRepo)
+            )
+            ps
+
+      remapDep :: FlaggedDep PN -> FlaggedDep PN
+      remapDep (D.Simple (LDep dr (Dep depComp (Fixed (I ver loc)))) comp) =
+        let newLoc = Data.Maybe.fromJust $ M.lookup loc locMap
+        in  (D.Simple (LDep dr (Dep depComp (Fixed (I ver newLoc)))) comp)
+      remapDep x = x
+
+    in map
+        (\(pn, i, PInfo deps comps flagNfo fr) ->
+          (pn, i, PInfo (map remapDep deps) comps flagNfo fr)
+        )
+        ps
+
 
 -- | Convert a Cabal installed package index to the simpler,
 -- more uniform index format of the solver.
-convIPI' :: ShadowPkgs -> SI.InstalledPackageIndex -> [(PN, I, PInfo)]
+convIPI' :: ShadowPkgs -> SI.InstalledPackageIndex -> [(PN, I, InstanceUnitId, PInfo)]
 convIPI' (ShadowPkgs sip) idx =
     -- apply shadowing whenever there are multiple installed packages with
     -- the same version
     [ maybeShadow (convIP idx pkg)
-    -- IMPORTANT to get internal libraries. See
-    -- Note [Index conversion with internal libraries]
+    -- IMPORTANT to use @allPackagesBySourcePackageIdAndLibName@ to get internal libraries
     | (_, pkgs) <- SI.allPackagesBySourcePackageIdAndLibName idx
     , (maybeShadow, pkg) <- zip (id : repeat shadow) pkgs ]
   where
 
     -- shadowing is recorded in the package info
-    shadow (pn, i, PInfo fdeps comps fds _)
-      | sip = (pn, i, PInfo fdeps comps fds (Just Shadowed))
+    shadow (pn, i, instId, PInfo fdeps comps fds _)
+      | sip = (pn, i, instId, PInfo fdeps comps fds (Just Shadowed))
     shadow x                                     = x
 
 -- | Extract/recover the package ID from an installed package info, and convert it to a solver's I.
 convId :: IPI.InstalledPackageInfo -> (PN, I)
-convId ipi = (pn, I ver $ Inst $ IPI.installedUnitId ipi)
-  where MungedPackageId mpn ver = mungedId ipi
-        -- HACK. See Note [Index conversion with internal libraries]
-        pn = encodeCompatPackageName mpn
+convId ipi = ( pkgName spi
+             , I (pkgVersion spi) $ Inst $ IPI.installedUnitId ipi
+             )
+ where spi = IPI.sourcePackageId ipi
 
 -- | Convert a single installed package into the solver-specific format.
-convIP :: SI.InstalledPackageIndex -> IPI.InstalledPackageInfo -> (PN, I, PInfo)
+convIP
+  :: SI.InstalledPackageIndex
+  -> IPI.InstalledPackageInfo
+  -> (PN, I, InstanceUnitId, PInfo)
 convIP idx ipi =
   case traverse (convIPId (DependencyReason pn M.empty S.empty) comp idx) (IPI.depends ipi) of
-        Left u    -> (pn, i, PInfo [] M.empty M.empty (Just (Broken u)))
-        Right fds -> (pn, i, PInfo fds components M.empty Nothing)
+        Left u    -> (pn, i, IPI.installedInstanceUnitId ipi, PInfo [] M.empty M.empty (Just (Broken u)))
+        Right fds -> (pn, i, IPI.installedInstanceUnitId ipi, PInfo fds components M.empty Nothing)
  where
-  -- TODO: Handle sub-libraries and visibility.
   components =
-      M.singleton (ExposedLib LMainLibName)
+      M.singleton (ExposedLib $ IPI.sourceLibName ipi)
                   ComponentInfo {
                       compIsVisible = IsVisible True
                     , compIsBuildable = IsBuildable True
@@ -111,45 +185,22 @@ convIP idx ipi =
   comp = componentNameToComponent $ CLibName $ IPI.sourceLibName ipi
 -- TODO: Installed packages should also store their encapsulations!
 
--- Note [Index conversion with internal libraries]
--- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
--- Something very interesting happens when we have internal libraries
--- in our index.  In this case, we maybe have p-0.1, which itself
--- depends on the internal library p-internal ALSO from p-0.1.
--- Here's the danger:
---
---      - If we treat both of these packages as having PN "p",
---        then the solver will try to pick one or the other,
---        but never both.
---
---      - If we drop the internal packages, now p-0.1 has a
---        dangling dependency on an "installed" package we know
---        nothing about. Oops.
---
--- An expedient hack is to put p-internal into cabal-install's
--- index as a MUNGED package name, so that it doesn't conflict
--- with anyone else (except other instances of itself).  But
--- yet, we ought NOT to say that PNs in the solver are munged
--- package names, because they're not; for source packages,
--- we really will never see munged package names.
---
--- The tension here is that the installed package index is actually
--- per library, but the solver is per package.  We need to smooth
--- it over, and munging the package names is a pretty good way to
--- do it.
-
 -- | Convert dependencies specified by an installed package id into
 -- flagged dependencies of the solver.
 --
 -- May return Nothing if the package can't be found in the index. That
 -- indicates that the original package having this dependency is broken
 -- and should be ignored.
-convIPId :: DependencyReason PN -> Component -> SI.InstalledPackageIndex -> UnitId -> Either UnitId (FlaggedDep PN)
+convIPId :: DependencyReason PN
+  -> Component
+  -> SI.InstalledPackageIndex
+  -> UnitId
+  -> Either UnitId (FlaggedDep PN)
 convIPId dr comp idx ipid =
   case SI.lookupUnitId idx ipid of
     Nothing  -> Left ipid
     Just ipi -> let (pn, i) = convId ipi
-                    name = ExposedLib LMainLibName  -- TODO: Handle sub-libraries.
+                    name = ExposedLib $ IPI.sourceLibName ipi
                 in  Right (D.Simple (LDep dr (Dep (PkgComponent pn name) (Fixed i))) comp)
                 -- NB: something we pick up from the
                 -- InstalledPackageIndex is NEVER an executable

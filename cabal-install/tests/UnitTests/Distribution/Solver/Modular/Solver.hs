@@ -932,7 +932,7 @@ tests =
       , runTest $
           let db =
                 [ Right $ exAv "my-package" 1 [ExFix "other-package" 3]
-                , Left $ exInst "other-package" 2 "other-package-AbCdEfGhIj0123456789" []
+                , Left $ exInst "other-package" 2 "other-package-2-AbCdEfGhIj0123456789" []
                 ]
               msg = "rejecting: other-package-2/installed-AbCdEfGhIj0123456789"
            in mkTest db "show full installed package ABI hash (issue #5892)" ["my-package"] $

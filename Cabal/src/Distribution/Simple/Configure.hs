@@ -721,6 +721,10 @@ preConfigurePackage verbHandles cfg g_pkg_descr = do
   when (isJust (flagToMaybe (configCID cfg)) && isNothing mb_cname) $
     dieWithException verbosity ConfigCIDValidForPreComponent
 
+  -- configIUID is only valid for per-component configure
+  when (isJust (flagToMaybe (configIUID cfg)) && isNothing mb_cname) $
+    dieWithException verbosity ConfigIUIDValidForPreComponent
+
   -- Make a data structure describing what components are enabled.
   let enabled :: ComponentRequestedSpec
       enabled =
@@ -1427,7 +1431,7 @@ configureComponents
       -- components (which may build-depends on each other) and form a graph.
       -- From there, we build a ComponentLocalBuildInfo for each of the
       -- components, which lets us actually build each component.
-      ( buildComponents :: [ComponentLocalBuildInfo]
+      ( buildComponents0 :: [ComponentLocalBuildInfo]
         , packageDependsIndex :: InstalledPackageIndex
         ) <-
         runLogProgress verbosity $
@@ -1438,12 +1442,54 @@ configureComponents
             (fromFlagOrDefault False (configDeterministic cfg))
             (configIPID cfg)
             (configCID cfg)
+            (configIUID cfg)
             pkg_descr
             externalPkgDeps
             (configConfigurationsFlags cfg)
             (configInstantiateWith cfg)
             installedPackageSet
             comp
+
+      -- Set a common 'InstanceUnitId' for all components so they can be
+      -- identified as belonging to the same group.
+      --
+      -- If the package has a main library, its 'InstanceUnitId' is used.
+      -- Otherwise, an arbitrary component's 'InstanceUnitId' is used.
+      --
+      -- Only for 'ComponentRequestedSpec'.
+      -- For 'OneComponentRequestedSpec', 'InstanceUnitId' is passed via 'configIUID' flag.
+      let maybeSetCommonInstanceUnitId =
+            case enabled of
+              -- Whole package configure, set InstanceUnitIDs
+              ComponentRequestedSpec{} ->
+                let
+                  setCommonInstanceUnitId
+                    :: [ComponentLocalBuildInfo]
+                    -> [ComponentLocalBuildInfo]
+                  setCommonInstanceUnitId [] = []
+                  setCommonInstanceUnitId [single] = [single]
+                  setCommonInstanceUnitId comps@(fstComp : _rest) =
+                    let
+                      assignOne newId LibComponentLocalBuildInfo{..} = LibComponentLocalBuildInfo{componentInstanceUnitId = newId, ..}
+                      assignOne _newId other = other
+
+                      assignAll newId = map (assignOne newId) comps
+
+                      matchMainLib lclbi@(LibComponentLocalBuildInfo{}) = componentLocalName lclbi == CLibName LMainLibName
+                      matchMainLib _ = False
+                     in
+                      case find matchMainLib comps of
+                        Nothing ->
+                          -- no main library, use arbitrary (first one) for componentInstanceUnitId assignment
+                          assignAll (componentInstanceUnitId fstComp)
+                        Just mainLib ->
+                          assignAll (componentInstanceUnitId mainLib)
+                 in
+                  setCommonInstanceUnitId
+              -- Component configure, InstanceUnitID passed via flag
+              OneComponentRequestedSpec{} -> id
+
+      let buildComponents = maybeSetCommonInstanceUnitId buildComponents0
 
       let buildComponentsMap =
             foldl'

@@ -203,6 +203,9 @@ instance Structured ElaboratedSharedConfig
 data ElaboratedConfiguredPackage = ElaboratedConfiguredPackage
   { elabUnitId :: UnitId
   -- ^ The 'UnitId' which uniquely identifies this item in a build plan
+  , elabInstanceUnitId :: InstanceUnitId
+  -- ^ The 'InstanceUnitId' which uniquely identifies package instance
+  -- (equal to elabUnitId for main component, sub components inherit it from main)
   , elabComponentId :: ComponentId
   , elabInstantiatedWith :: Map ModuleName Module
   , elabLinkedInstantiatedWith :: Map ModuleName OpenModule

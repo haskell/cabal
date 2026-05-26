@@ -164,6 +164,8 @@ data ConfigFlags = ConfigFlags
   -- ^ explicit IPID to be used
   , configCID :: Flag ComponentId
   -- ^ explicit CID to be used
+  , configIUID :: Flag InstanceUnitId
+  -- ^ explicit InstanceUnitID to be used
   , configDeterministic :: Flag Bool
   -- ^ be as deterministic as possible
   -- (e.g., invariant over GHC, database,

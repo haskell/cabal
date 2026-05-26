@@ -129,6 +129,7 @@ type PPreAssignment = Map QPN MergedPkgDep
 
 -- | A dependency on a component, including its DependencyReason.
 data PkgDep = PkgDep (DependencyReason QPN) (PkgComponent QPN) CI
+  deriving Show
 
 -- | Map from component name to one of the reasons that the component is
 -- required.
@@ -146,6 +147,7 @@ type ComponentDependencyReasons = Map ExposedComponent (DependencyReason QPN)
 data MergedPkgDep =
     MergedDepFixed ExposedComponent (DependencyReason QPN) I
   | MergedDepConstrained [VROrigin]
+  deriving Show
 
 -- | Version ranges paired with origins.
 type VROrigin = (VR, ExposedComponent, DependencyReason QPN)

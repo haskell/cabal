@@ -8,10 +8,13 @@ InstalledPackageInfo {
   sourceLibName = LMainLibName,
   installedComponentId_ =
   ComponentId "",
+  installedSublibs = [],
   libVisibility =
   LibraryVisibilityPublic,
   installedUnitId = UnitId
     "internal-preprocessor-test-0.1.0.0",
+  installedInstanceUnitId = InstanceUnitId
+    (UnitId ""),
   instantiatedWith = [],
   compatPackageKey =
   "internal-preprocessor-test-0.1.0.0",

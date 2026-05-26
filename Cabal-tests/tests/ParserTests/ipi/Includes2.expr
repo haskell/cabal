@@ -9,10 +9,13 @@ InstalledPackageInfo {
     (UnqualComponentName "mylib"),
   installedComponentId_ =
   ComponentId "",
+  installedSublibs = [],
   libVisibility =
   LibraryVisibilityPrivate,
   installedUnitId = UnitId
     "Includes2-0.1.0.0-inplace-mylib+3gY9SyjX86dBypHcOaev1n",
+  installedInstanceUnitId = InstanceUnitId
+    (UnitId "Includes2-0.1.0.0-inplace-mylib+3gY9SyjX86dBypHcOaev1n"),
   instantiatedWith = [
     _×_
       (ModuleName "Database")

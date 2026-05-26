@@ -719,6 +719,7 @@ filterConfigureFlags' flags cabalLibVersion
       flags_latest
         { configBytecodeLib = NoFlag
         , configInstallDirs = (configInstallDirs flags){bytecodelibdir = NoFlag}
+        , configIUID = NoFlag
         }
 
     flags_3_13_0 =

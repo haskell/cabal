@@ -68,6 +68,7 @@ configureComponentLocalBuildInfos
   -> Bool -- deterministic
   -> Flag String -- configIPID
   -> Flag ComponentId -- configCID
+  -> Flag InstanceUnitId -- configIUID
   -> PackageDescription
   -> ([PreExistingComponent], [ConfiguredPromisedComponent])
   -> FlagAssignment -- configConfigurationsFlags
@@ -82,6 +83,7 @@ configureComponentLocalBuildInfos
   deterministic
   ipid_flag
   cid_flag
+  iuid_flag
   pkg_descr
   (prePkgDeps, promisedPkgDeps)
   flags
@@ -128,6 +130,7 @@ configureComponentLocalBuildInfos
         deterministic
         ipid_flag
         cid_flag
+        iuid_flag
         pkg_descr
         conf_pkg_map
         (map fst graph0)
@@ -454,6 +457,7 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
            in LibComponentLocalBuildInfo
                 { componentPackageDeps = cpds
                 , componentUnitId = this_uid
+                , componentInstanceUnitId = this_instance_uid
                 , componentComponentId = this_cid
                 , componentInstantiatedWith = insts
                 , componentIsIndefinite_ = is_indefinite
@@ -508,6 +512,7 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
             }
       where
         this_uid = rc_uid rc
+        this_instance_uid = rc_instance_id rc
         this_open_uid = rc_open_uid rc
         this_cid = rc_cid rc
         cname = componentName (rc_component rc)

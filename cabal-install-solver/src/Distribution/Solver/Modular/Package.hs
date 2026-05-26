@@ -22,11 +22,15 @@ module Distribution.Solver.Modular.Package
 import Prelude ()
 import Distribution.Solver.Compat.Prelude
 
+import qualified Data.List as L
+import qualified Data.Set as S
+
 import Distribution.Package -- from Cabal
 import Distribution.Pretty (prettyShow)
 
 import Distribution.Solver.Modular.Version
 import Distribution.Solver.Types.PackagePath
+
 
 -- | A package name.
 type PN = PackageName
@@ -49,7 +53,10 @@ type PId = UnitId
 -- package instance via its 'PId'.
 --
 -- TODO: More information is needed about the repo.
-data Loc = Inst PId | InRepo
+data Loc
+  = Inst PId
+  | InstGroup PId (Set PId)
+  | InRepo
   deriving (Eq, Ord, Show)
 
 -- | Instance. A version number and a location.
@@ -57,14 +64,29 @@ data I = I Ver Loc
   deriving (Eq, Ord, Show)
 
 -- | String representation of an instance.
-showI :: I -> String
-showI (I v InRepo)   = showVer v
-showI (I v (Inst uid)) = showVer v ++ "/installed" ++ extractPackageAbiHash uid
-  where
-    extractPackageAbiHash xs =
-      case first reverse $ break (=='-') $ reverse (prettyShow xs) of
-        (ys, []) -> ys
-        (ys, _)  -> '-' : ys
+showI :: QPN -> I -> String
+showI _qpn (I v InRepo)   = showVer v
+showI qpn (I v (Inst uid)) =
+  let
+    uidPrefix = showQPN qpn <> "-" <> showVer v <> "-"
+    renderUid u =
+      case L.stripPrefix uidPrefix (prettyShow u) of
+        Nothing -> showVer v
+        Just stripped -> stripped
+  in
+    showVer v <> "/installed-" <> renderUid uid
+showI qpn (I v (InstGroup uid subUids)) =
+  let
+    uidPrefix = showQPN qpn <> "-" <> showVer v <> "-"
+    renderUid u =
+      case L.stripPrefix uidPrefix (prettyShow u) of
+        Nothing -> prettyShow u
+        Just stripped -> stripped
+  in
+     showI qpn (I v (Inst uid))
+  <> " installed package group ["
+  <> unwords (map renderUid $ S.toList subUids)
+  <> "]"
 
 -- | Package instance. A package name and an instance.
 data PI qpn = PI qpn I
@@ -72,7 +94,7 @@ data PI qpn = PI qpn I
 
 -- | String representation of a package instance.
 showPI :: PI QPN -> String
-showPI (PI qpn i) = showQPN qpn ++ "-" ++ showI i
+showPI (PI qpn i) = showQPN qpn ++ "-" ++ showI qpn i
 
 instI :: I -> Bool
 instI (I _ (Inst _)) = True
