@@ -886,7 +886,7 @@ rebuildInstallPlan
 
             localPackagesEnabledStanzas =
               Map.fromList
-                [ (pkgname, Map.fromList $ stanzas)
+                [ (pkgname, Map.fromList stanzas)
                 | pkg <- localPackages
                 , -- TODO: misnomer: we should separate
                 -- builtin/global/inplace/local packages
@@ -894,9 +894,9 @@ rebuildInstallPlan
                 --
                 let pkgname = pkgSpecifierTarget pkg
                     stanzas = case shouldBeLocal pkg of
-                      Just pkgId ->
-                        ((TestStanzas,) <$> flagToList (perPkgOption pkgId packageConfigTests))
-                          ++ ((BenchStanzas,) <$> flagToList (perPkgOption pkgId packageConfigBenchmarks))
+                      Just (fmap flagToList . perPkgOption -> f) ->
+                        ((TestStanzas,) <$> f packageConfigTests)
+                          ++ ((BenchStanzas,) <$> f packageConfigBenchmarks)
                       Nothing -> [(TestStanzas, False), (BenchStanzas, False)]
                 ]
 
