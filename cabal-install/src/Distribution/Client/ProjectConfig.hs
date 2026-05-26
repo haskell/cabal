@@ -884,7 +884,7 @@ readProjectFileSkeletonGen
           monitorFiles [monitorNonExistentFile extensionFile]
           return mempty
     where
-      -- Do we prefer absolute paths for cache monitoring?
+      -- REVIEW: Do we prefer absolute paths for cache monitoring?
       makeAbsolute f
         | isAbsolute f = f
         | otherwise = distProjectRootDirectory dir </> f
