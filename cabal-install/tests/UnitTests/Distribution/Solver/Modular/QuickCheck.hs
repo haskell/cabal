@@ -43,6 +43,7 @@ import Distribution.Solver.Types.Variable
 import Distribution.Verbosity
 import Distribution.Version
 
+import Distribution.Simple.Utils (ordNub)
 import UnitTests.Distribution.Solver.Modular.DSL
 import UnitTests.Distribution.Solver.Modular.QuickCheck.Utils
   ( ArbitraryOrd (..)
@@ -343,8 +344,8 @@ instance Show SolverTest where
 instance Arbitrary SolverTest where
   arbitrary = do
     db <- arbitrary
-    let pkgVersions = nub $ map (getName &&& getVersion) (unTestDb db)
-        pkgs = nub $ map fst pkgVersions
+    let pkgVersions = ordNub $ map (getName &&& getVersion) (unTestDb db)
+        pkgs = ordNub $ map fst pkgVersions
     Positive n <- arbitrary
     targets <- randomSubset n pkgs
     constraints <- case pkgVersions of

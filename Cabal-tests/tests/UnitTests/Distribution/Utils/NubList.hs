@@ -8,6 +8,7 @@ import Prelude ()
 import Distribution.Compat.Prelude.Internal
 
 import Distribution.Utils.NubList
+import Distribution.Simple.Utils (ordNub)
 import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
@@ -46,25 +47,25 @@ prop_Ordering :: [Int] -> Property
 prop_Ordering xs =
     mempty <> toNubList xs' === toNubList xs' <> mempty
   where
-    xs' = nub xs
+    xs' = ordNub xs
 
 prop_DeDupe :: [Int] -> Property
 prop_DeDupe xs =
     fromNubList (toNubList (xs' ++ xs)) === xs' -- Note, we append primeless xs
   where
-    xs' = nub xs
+    xs' = ordNub xs
 
 prop_DeDupeR :: [Int] -> Property
 prop_DeDupeR xs =
     fromNubListR (toNubListR (xs ++ xs')) === xs' -- Note, we prepend primeless xs
   where
-    xs' = nub xs
+    xs' = ordNub xs
 
 prop_Nub :: [Int] -> Property
 prop_Nub xs = rhs === lhs
   where
     rhs = fromNubList (toNubList xs)
-    lhs = nub xs
+    lhs = ordNub xs
 
 prop_Identity :: [Int] -> Bool
 prop_Identity xs =

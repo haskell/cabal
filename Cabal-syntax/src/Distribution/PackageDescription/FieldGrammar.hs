@@ -88,6 +88,7 @@ import qualified Data.ByteString.Char8 as BS8
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.SPDX as SPDX
 import qualified Distribution.Types.Lens as L
+import Distribution.Utils.Generic (ordNub)
 
 -------------------------------------------------------------------------------
 -- PackageDescription
@@ -901,7 +902,7 @@ _syntaxFieldNames =
   sequence_
     [ BS8.putStrLn $ " \\ " <> n
     | n <-
-        nub $
+        ordNub $
           sort $
             mconcat
               [ fieldGrammarKnownFieldList packageDescriptionFieldGrammar
@@ -927,7 +928,7 @@ _syntaxExtensions =
     ]
   where
     es =
-      nub $
+      ordNub $
         sort
           [ prettyShow e
           | e <- [minBound .. maxBound]

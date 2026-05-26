@@ -68,7 +68,7 @@ import qualified Distribution.Client.Glob as Glob (matchFileGlob)
 import Distribution.Client.JobControl
 import Distribution.Simple.PreProcess.Types (Suffix (..))
 
-import Distribution.Simple.Utils (debug)
+import Distribution.Simple.Utils (debug, ordNub)
 
 import Control.Concurrent.MVar (MVar, modifyMVar, newMVar)
 import Control.Monad
@@ -330,8 +330,8 @@ findFileWithExtensionMonitored extensions searchPath baseName =
   findFirstFileMonitored
     id
     [ path </> baseName <.> ext
-    | path <- nub searchPath
-    , Suffix ext <- nub extensions
+    | path <- ordNub searchPath
+    , Suffix ext <- ordNub extensions
     ]
 
 -- | Like 'findFirstFile', but in the 'Rebuild' monad.
@@ -352,5 +352,5 @@ findFileMonitored searchPath fileName =
   findFirstFileMonitored
     id
     [ path </> fileName
-    | path <- nub searchPath
+    | path <- ordNub searchPath
     ]
