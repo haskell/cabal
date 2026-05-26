@@ -713,7 +713,7 @@ instance FieldGrammarWith Conc Parsec ParsecFieldGrammarWith where
 -- Parsec
 -------------------------------------------------------------------------------
 
-runFieldParser' :: [Position] -> ParsecParser a -> CabalSpecVersion -> FieldLineStream -> ParseResult src a
+runFieldParser' :: [Position] -> ParsecParser a -> CabalSpecVersion -> FlsAnn -> ParseResult src a
 runFieldParser' inputPoss p v str = case P.runParser p' [] "<field>" str of
   Right (pok, ws) -> do
     traverse_ (\(PWarning t pos w) -> parseWarning (mapPosition pos) t w) ws

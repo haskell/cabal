@@ -89,8 +89,13 @@ flsUncons (FLSCons (SBComment cmt) pos s) =
   flsUncons s
 
 
+-- Newlines are consumed but never produced by the Field Parser.
+-- We insert them back at each cons constructor consumed via 'Text.Parsec.uncons'.
+--
+-- This stream is consumed by the ParsecParser
 instance Monad m => Parsec.Stream FlsAnn m FlsAnnToken where
   -- FlsAnn -> m ( Maybe (FlsAnnToken, FlsAnn) )
+  --
   uncons (unFlsAnn->FLSLast (SBFieldLine bs) pos) = return $ case BS.uncons bs of
     Nothing -> Nothing
     Just (c, bs') ->

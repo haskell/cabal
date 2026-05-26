@@ -15,3 +15,8 @@ library foo
     text
      ,
     base >  4
+
+
+"text,base > 4"
+
+"text\n,\nbase > 4"
