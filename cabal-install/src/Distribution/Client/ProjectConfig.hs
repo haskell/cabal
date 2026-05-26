@@ -867,9 +867,7 @@ readProjectFileSkeletonGen
           -- aren't normally imported but there's nothing stopping the user from
           -- importing them, so we throw them in with the other project files.
           let additional =
-                if (isExtensionOf "local" extensionName || isExtensionOf "freeze" extensionName)
-                  then [extensionFile]
-                  else []
+                ([extensionFile | isExtensionOf "local" extensionName || isExtensionOf "freeze" extensionName])
 
           -- We need to monitor the project and all of its local imports, We
           -- can't monitor remote URI imports.
