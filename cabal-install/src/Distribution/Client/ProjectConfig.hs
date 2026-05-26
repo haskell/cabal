@@ -848,30 +848,49 @@ readProjectFileSkeletonGen
   verbosity
   httpTransport
   dir
-  extensionName
+  extensionName@(distProjectFile dir -> extensionFile)
   extensionDescription
   parseConfig =
     do
       exists <- liftIO $ doesFileExist extensionFile
       if exists
         then do
-          -- Monitor the "main" project file (this could be e.g. 'cabal.project', 'cabal.project.freeze' or
-          -- 'cabal.project.local'.
-          monitorFiles [monitorFileHashed extensionFile]
-          pcs <- liftIO $ parseConfig extensionFile
+          pcs@(projectSkeletonImports -> allProjectFiles) <- liftIO $ parseConfig extensionFile
 
-          -- We also need to monitor all the (possibly recursive) imports.
-          -- 'projectSkeletonImports' is a path per imported project file that starts with the leaf
-          -- and ends with the main project file that is the root. E.g. if 'cabal.project' imports
-          -- 'importee-1.config', which imports 'importee-2.config', then we get two paths:
+          -- If we have <extensionName> with .local or .freeze extension, these
+          -- aren't normally imported but there's nothing stopping the user from
+          -- importing them, so we throw them in with the other project files.
+          let additional =
+                if (isExtensionOf "local" extensionName || isExtensionOf "freeze" extensionName)
+                  then [extensionFile]
+                  else []
+
+          -- We need to monitor the project and all of its local imports, We
+          -- can't monitor remote URI imports.
+          --
+          -- We don't allow duplicate import paths but we do allow multiple
+          -- imports of the same file by different paths so we'll want to take
+          -- care to only monitor each file once.  There should only ever be one
+          -- root 'cabal.project' file.
+          --
+          -- In the simple case, if 'cabal.project' imports 'importee-1.config',
+          -- which imports 'importee-2.config', then we get these paths from
+          -- 'projectSkeletonImports':
           --
           -- > ("importee-2.config" :| ["importee-1.config", "cabal.project"])
           -- > ("importee-1.config" :| ["cabal.project"])
+          -- > ("cabal.project" :| [])
           --
-          -- Consequently, we just take the heads of all the paths.
+          -- 'currentProjectConfigPath' gives us the head of the path, an
+          -- importee or the root project file.
           monitorFiles
-            [ monitorFileHashed $ makeAbsolute path
-            | (Nothing, currentProjectConfigPath -> path) <- projectSkeletonImports pcs
+            [ monitorFileHashed path
+            | path <-
+                ordNub $
+                  additional
+                    ++ [ p
+                       | (Nothing, makeAbsolute . currentProjectConfigPath -> p) <- allProjectFiles
+                       ]
             ]
 
           return pcs
@@ -883,7 +902,6 @@ readProjectFileSkeletonGen
       makeAbsolute f
         | isAbsolute f = f
         | otherwise = distProjectRootDirectory dir </> f
-      extensionFile = (distProjectFile dir) extensionName
 
 -- There are 3 different variants of the project parsing function.
 -- 1. readProjectFileSkeletonLegacy: always uses the legacy parser
