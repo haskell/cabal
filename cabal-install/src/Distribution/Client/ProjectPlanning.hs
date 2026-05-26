@@ -2514,12 +2514,12 @@ elaborateInstallPlan
       perPkgOptionFlag :: a -> PackageId -> (PackageConfig -> Flag a) -> a
       perPkgOptionMaybe :: PackageId -> (PackageConfig -> Flag a) -> Maybe a
       perPkgOptionList :: PackageId -> (PackageConfig -> [a]) -> [a]
-      perPkgOptionFlag def pkgid f = fromFlagOrDefault def (perPkgOption pkgid f)
-      perPkgOptionMaybe pkgid f = flagToMaybe (perPkgOption pkgid f)
-      perPkgOptionList pkgid f = perPkgOption pkgid f
-      perPkgOptionNubList pkgid f = fromNubList (perPkgOption pkgid f)
-      perPkgOptionMapLast pkgid f = getMapLast (perPkgOption pkgid f)
-      perPkgOptionMapMappend pkgid f = getMapMappend (perPkgOption pkgid f)
+      perPkgOptionFlag def = fmap (fromFlagOrDefault def) . perPkgOption
+      perPkgOptionMaybe = fmap flagToMaybe . perPkgOption
+      perPkgOptionList = perPkgOption
+      perPkgOptionNubList = fmap fromNubList . perPkgOption
+      perPkgOptionMapLast = fmap getMapLast . perPkgOption
+      perPkgOptionMapMappend = fmap getMapMappend . perPkgOption
 
       perPkgOptionLibExeFlag pkgid def fboth flib = (exe, lib)
         where
