@@ -26,7 +26,6 @@ import Distribution.Parsec.Source
 import Distribution.SPDX                      (License, LicenseExceptionId, LicenseExpression, LicenseId, LicenseRef, SimpleLicenseExpression)
 import Distribution.System                    (Arch, OS)
 import Distribution.Utils.Path                (SymbolicPathX)
-import Distribution.Utils.ShortText           (ShortText)
 import Distribution.Version                   (Version, VersionRange)
 import Language.Haskell.Extension             (Extension, KnownExtension, Language)
 import NoThunks.Class                         (NoThunks (..), OnlyCheckWhnf (..), noThunksInValues)
@@ -117,8 +116,6 @@ instance NoThunks TestType
 instance NoThunks UnqualComponentName
 instance NoThunks Version
 instance NoThunks VersionRange
-
-instance NoThunks ShortText where
 
 instance NoThunks a => NoThunks (PerCompilerFlavor a)
 

@@ -56,7 +56,7 @@ GenericPackageDescription {
     synopsis =
     "Build system library, like Make, but more accurate dependencies.",
     description =
-    concat
+    T.concat
       [
         "Shake is a Haskell library for writing build systems - designed as a\n",
         "replacement for @make@. See \"Development.Shake\" for an introduction,\n",
