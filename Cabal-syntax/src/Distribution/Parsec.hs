@@ -11,6 +11,7 @@
 module Distribution.Parsec
   ( Parsec (..)
   , ParsecParser (..)
+  , ParsecParserAnn (..)
   , runParsecParser
   , runParsecParser'
   , simpleParsec
@@ -125,42 +126,21 @@ lexemeParsec = parsec <* P.spaces
 newtype ParsecParser a = PP
   { unPP
       :: CabalSpecVersion
+      -> Parsec.Parsec FieldLineStream [PWarning] a
+  }
+
+-- | For the instances that understand comments
+newtype ParsecParserAnn a = PPAnn
+  { unPPAnn
+      :: CabalSpecVersion
       -> Parsec.Parsec FlsAnn [PWarning] a
   }
 
--- -- Outer Maybe represents whether the stream has ended
--- -- Inner Maybe represents whether the next token is a token
--- unconsCharFromFlsAnn :: FlsAnn -> Maybe (Maybe Char)
--- unconsCharFromFlsAnn fls = case uncons fls of
---   Just tok -> case tok of
---     FlsAnnTChar c -> Just (Just c)
---     _ -> Just (Nothing)
---   Nothing -> c
-
-fromCharParser
-    :: ( Parsec.Stream sChar m Char
-       , Parsec.Stream sToken m FlsAnnToken
-       )
-    => Parsec.ParsecT sChar u m a
-    -> Parsec.ParsecT sToken u m a
-fromCharParser = undefined -- do
-  -- tok <- lookAhead anyToken
-  -- case tok of
-  --   FlsAnnTComment _ -> fail
-  --   FlsAnnTChar c -> 
--- Parsec.tokenPrim (\c -> show [c])
---                                 -- not sure if this really matters
---                                 ( \pos tok _cs -> case tok of
---                                     FlsAnnTChar c -> Parsec.Pos.updatePosChar pos c
---                                     _ -> error "this \"satisfy\" shouldn't be used on comments"
---                                 )
---                                 ( \tok -> case tok of
---                                     FlsAnnTChar c | f c -> Just c
---                                     _ -> Nothing
---                                 )
-
-liftParsec :: Parsec.Parsec FlsAnn [PWarning] a -> ParsecParser a
+liftParsec :: Parsec.Parsec FieldLineStream [PWarning] a -> ParsecParser a
 liftParsec p = PP $ \_ -> p
+
+liftParsecAnn :: Parsec.Parsec FlsAnn [PWarning] a -> ParsecParserAnn a
+liftParsecAnn p = PPAnn $ \_ -> p
 
 instance Functor ParsecParser where
   fmap f p = PP $ \v -> fmap f (unPP p v)
@@ -217,7 +197,68 @@ instance P.Parsing ParsecParser where
   notFollowedBy p = PP $ \v -> P.notFollowedBy (unPP p v)
 
 instance P.CharParsing ParsecParser where
-  satisfy = liftParsec . satisfyFieldLine
+  satisfy = liftParsec . P.satisfy
+  char = liftParsec . P.char
+  notChar = liftParsec . P.notChar
+  anyChar = liftParsec P.anyChar
+  string = liftParsec . P.string
+
+instance Functor ParsecParserAnn where
+  fmap f p = PPAnn $ \v -> fmap f (unPPAnn p v)
+  {-# INLINE fmap #-}
+
+  x <$ p = PPAnn $ \v -> x <$ unPPAnn p v
+  {-# INLINE (<$) #-}
+
+instance Applicative ParsecParserAnn where
+  pure = liftParsecAnn . pure
+  {-# INLINE pure #-}
+
+  f <*> x = PPAnn $ \v -> unPPAnn f v <*> unPPAnn x v
+  {-# INLINE (<*>) #-}
+  f *> x = PPAnn $ \v -> unPPAnn f v *> unPPAnn x v
+  {-# INLINE (*>) #-}
+  f <* x = PPAnn $ \v -> unPPAnn f v <* unPPAnn x v
+  {-# INLINE (<*) #-}
+
+instance Alternative ParsecParserAnn where
+  empty = liftParsecAnn empty
+
+  a <|> b = PPAnn $ \v -> unPPAnn a v <|> unPPAnn b v
+  {-# INLINE (<|>) #-}
+
+  many p = PPAnn $ \v -> many (unPPAnn p v)
+  {-# INLINE many #-}
+
+  some p = PPAnn $ \v -> some (unPPAnn p v)
+  {-# INLINE some #-}
+
+instance Monad ParsecParserAnn where
+  return = pure
+
+  m >>= k = PPAnn $ \v -> unPPAnn m v >>= \x -> unPPAnn (k x) v
+  {-# INLINE (>>=) #-}
+  (>>) = (*>)
+  {-# INLINE (>>) #-}
+
+instance MonadPlus ParsecParserAnn where
+  mzero = empty
+  mplus = (<|>)
+
+instance Fail.MonadFail ParsecParserAnn where
+  fail = P.unexpected
+
+instance P.Parsing ParsecParserAnn where
+  try p = PPAnn $ \v -> P.try (unPPAnn p v)
+  p <?> d = PPAnn $ \v -> unPPAnn p v P.<?> d
+  skipMany p = PPAnn $ \v -> P.skipMany (unPPAnn p v)
+  skipSome p = PPAnn $ \v -> P.skipSome (unPPAnn p v)
+  unexpected = liftParsecAnn . P.unexpected
+  eof = liftParsecAnn P.eof
+  notFollowedBy p = PPAnn $ \v -> P.notFollowedBy (unPPAnn p v)
+
+instance P.CharParsing ParsecParserAnn where
+  satisfy = liftParsecAnn . satisfyFieldLine
 
 satisfyFieldLine :: (Parsec.Stream s m FlsAnnToken) => (Char -> Bool) -> Parsec.ParsecT s u m Char
 satisfyFieldLine f           = Parsec.tokenPrim (\c -> show [c])
@@ -234,8 +275,8 @@ satisfyFieldLine f           = Parsec.tokenPrim (\c -> show [c])
 class CommentParsing m where
   parseComment :: m ByteString
 
-instance CommentParsing ParsecParser where
-  parseComment              = PP $ \_ ->
+instance CommentParsing ParsecParserAnn where
+  parseComment              = PPAnn $ \_ ->
                                   Parsec.tokenPrim (\cmt -> show cmt)
                                   -- not sure if this really matters
                                   ( \pos tok _cs -> case tok of
@@ -256,20 +297,28 @@ instance CabalParsing ParsecParser where
   askCabalSpecVersion = PP pure
 
   getPosition = liftParsec $ do
-    -- (Position realRow colOffset) <- fieldLineStreamPosition <$> Parsec.getInput
-    -- col <- Parsec.sourceColumn <$> Parsec.getPosition
-    -- -- Fix up the source position
-    -- -- Override the line due to line jumps, and offset the column due to dropped leading spaced
-    -- pure $ Position realRow (col + colOffset - 1)
-    -- TODO: not sure if this needed
-    pure $ zeroPos
+    (Position realRow colOffset) <- fieldLineStreamPosition <$> Parsec.getInput
+    col <- Parsec.sourceColumn <$> Parsec.getPosition
+    -- Fix up the source position
+    -- Override the line due to line jumps, and offset the column due to dropped leading spaced
+    pure $ Position realRow (col + colOffset - 1)
+
+instance CabalParsing ParsecParserAnn where
+  parsecWarning t w = liftParsecAnn $ do
+    spos <- Parsec.getPosition
+    Parsec.modifyState
+      (PWarning t (Position (Parsec.sourceLine spos) (Parsec.sourceColumn spos)) w :)
+  askCabalSpecVersion = PPAnn pure
+
+  getPosition = liftParsecAnn $
+    -- TODO(leana8959): We fake the position for now
+    pure $ Position 0 0
 
 -- | Parse a 'String' with 'lexemeParsec'.
 simpleParsec :: Parsec a => String -> Maybe a
 simpleParsec =
   either (const Nothing) Just
     . runParsecParser lexemeParsec "<simpleParsec>"
-    . FlsAnn
     . fieldLineStreamFromString
 
 -- | Like 'simpleParsec' but for 'ByteString'
@@ -277,7 +326,6 @@ simpleParsecBS :: Parsec a => ByteString -> Maybe a
 simpleParsecBS =
   either (const Nothing) Just
     . runParsecParser lexemeParsec "<simpleParsec>"
-    . FlsAnn
     . fieldLineStreamFromBS
 
 -- | Parse a 'String' with 'lexemeParsec' using specific 'CabalSpecVersion'.
@@ -287,7 +335,6 @@ simpleParsec' :: Parsec a => CabalSpecVersion -> String -> Maybe a
 simpleParsec' spec =
   either (const Nothing) Just
     . runParsecParser' spec lexemeParsec "<simpleParsec>"
-    . FlsAnn
     . fieldLineStreamFromString
 
 -- | Parse a 'String' with 'lexemeParsec' using specific 'CabalSpecVersion'.
@@ -298,7 +345,6 @@ simpleParsecW' :: Parsec a => CabalSpecVersion -> String -> Maybe a
 simpleParsecW' spec =
   either (const Nothing) (\(x, ws) -> if null ws then Just x else Nothing)
     . runParsecParser' spec ((,) <$> lexemeParsec <*> liftParsec Parsec.getState) "<simpleParsec>"
-    . FlsAnn
     . fieldLineStreamFromString
 
 -- | Parse a 'String' with 'lexemeParsec'.
@@ -310,7 +356,6 @@ explicitEitherParsec :: ParsecParser a -> String -> Either String a
 explicitEitherParsec parser =
   either (Left . show) Right
     . runParsecParser (parser <* P.spaces) "<eitherParsec>"
-    . FlsAnn
     . fieldLineStreamFromString
 
 -- | Parse a 'String' with given 'ParsecParser' and 'CabalSpecVersion'. Trailing whitespace is accepted.
@@ -321,17 +366,16 @@ explicitEitherParsec' :: CabalSpecVersion -> ParsecParser a -> String -> Either 
 explicitEitherParsec' spec parser =
   either (Left . show) Right
     . runParsecParser' spec (parser <* P.spaces) "<eitherParsec>"
-    . FlsAnn
     . fieldLineStreamFromString
 
 -- | Run 'ParsecParser' with 'cabalSpecLatest'.
-runParsecParser :: ParsecParser a -> FilePath -> FlsAnn -> Either Parsec.ParseError a
+runParsecParser :: ParsecParser a -> FilePath -> FieldLineStream -> Either Parsec.ParseError a
 runParsecParser = runParsecParser' cabalSpecLatest
 
 -- | Like 'runParsecParser' but lets specify 'CabalSpecVersion' used.
 --
 -- @since 3.0.0.0
-runParsecParser' :: CabalSpecVersion -> ParsecParser a -> FilePath -> FlsAnn -> Either Parsec.ParseError a
+runParsecParser' :: CabalSpecVersion -> ParsecParser a -> FilePath -> FieldLineStream -> Either Parsec.ParseError a
 runParsecParser' v p n = Parsec.runParser (unPP p v <* P.eof) [] n
 
 instance Parsec a => Parsec (Identity a) where
