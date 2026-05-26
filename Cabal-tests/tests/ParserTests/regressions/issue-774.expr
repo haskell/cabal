@@ -18,7 +18,7 @@ GenericPackageDescription {
     sourceRepos = [],
     synopsis =
     "Package description parser interprets curly braces in the description field",
-    description = concat
+    description = T.concat
       [
         "Here is some C code:\n",
         "\n",

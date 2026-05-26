@@ -61,7 +61,7 @@ GenericPackageDescription {
     synopsis =
     "Generic Programming using True Sums of Products",
     description =
-    concat
+    T.concat
       [
         "A library to support the definition of generic functions.\n",
         "Datatypes are viewed in a uniform, structured way:\n",

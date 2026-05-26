@@ -30,7 +30,6 @@ import Distribution.Types.PackageVersionConstraint
 import Distribution.Types.UnitId                   (DefUnitId, UnitId)
 import Distribution.Utils.NubList                  (NubList)
 import Distribution.Utils.Path                     (SymbolicPathX)
-import Distribution.Utils.ShortText                (ShortText, fromShortText)
 import Distribution.Verbosity
 import Distribution.Verbosity.Internal
 
@@ -154,5 +153,3 @@ instance ToExpr UnqualComponentName
 instance ToExpr VerbosityFlags
 instance ToExpr VerbosityFlag
 instance ToExpr VerbosityLevel
-
-instance ToExpr ShortText where toExpr = toExpr . fromShortText

@@ -37,7 +37,7 @@ GenericPackageDescription {
     synopsis =
     "Lift instances for template-haskell for common data types.",
     description =
-    concat
+    T.concat
       [
         "Most data types in haskell platform do not have Lift instances. This package provides orphan instances\n",
         "for containers, text, bytestring and vector."],
