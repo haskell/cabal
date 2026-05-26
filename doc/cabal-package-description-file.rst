@@ -472,13 +472,7 @@ describe the package as a whole:
         import Distribution.Simple
         main = defaultMainWithHooks autoconfUserHooks
 
-    For build type ``Make`` (see the section on `more complex packages`_ below),
-    the contents of ``Setup.hs`` must be:
-
-    .. code-block:: haskell
-
-        import Distribution.Make
-        main = defaultMain
+    Build type ``Make`` is no longer supported.
 
     For build type ``Custom``, the file ``Setup.hs`` can be customized,
     and will be used both by ``cabal`` and other tools.
@@ -3431,24 +3425,6 @@ a few options:
    adding a :pkg-section:`custom-setup` stanza with a
    :pkg-field:`custom-setup:setup-depends` field to ensure that your setup
    script does not break with future dependency versions.
-
--  You could delegate all the work to ``make``, though this is unlikely
-   to be very portable. Cabal supports this with the :pkg-field:`build-type`
-   ``Make`` and a trivial setup library
-   `Distribution.Make <https://hackage.haskell.org/package/Cabal/docs/Distribution-Make.html>`__,
-   which simply parses the command line arguments and invokes ``make``.
-   Here ``Setup.hs`` should look like this:
-
-   .. code-block:: haskell
-
-       import Distribution.Make
-       main = defaultMain
-
-   The root directory of the package should contain a ``configure``
-   script, and, after that has run, a ``Makefile`` with a default target
-   that builds the package, plus targets ``install``, ``register``,
-   ``unregister``, ``clean``, ``dist`` and ``docs``. Some options to
-   commands are passed through as follows:
 
    -  The ``--with-hc-pkg``, ``--prefix``, ``--bindir``, ``--libdir``,
       ``--dynlibdir``, ``--datadir``, ``--libexecdir`` and ``--sysconfdir`` options to

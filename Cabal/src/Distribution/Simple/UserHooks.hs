@@ -13,7 +13,7 @@
 --
 -- This defines the API that @Setup.hs@ scripts can use to customise the way
 -- the build works. This module just defines the 'UserHooks' type. The
--- predefined sets of hooks that implement the @Simple@, @Make@ and @Configure@
+-- predefined sets of hooks that implement the @Simple@ and @Configure@
 -- build systems are defined in "Distribution.Simple". The 'UserHooks' is a big
 -- record of functions. There are 3 for each action, a pre, post and the action
 -- itself. There are few other miscellaneous hooks, ones to extend the set of

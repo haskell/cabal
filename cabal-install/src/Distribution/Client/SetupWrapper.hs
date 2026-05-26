@@ -367,8 +367,8 @@ data SetupScriptOptions = SetupScriptOptions
     -- overhead, we use a shared setup script cache
     -- ('$XDG_CACHE_HOME/cabal/setup-exe-cache'). For each (compiler, platform, Cabal
     -- version) combination the cache holds a compiled setup script
-    -- executable. This only affects the Simple build type; for the Custom,
-    -- Configure and Make build types we always compile the setup script anew.
+    -- executable. This only affects the Simple build type; for the Custom
+    -- and Configure build types we always compile the setup script anew.
     setupCacheLock :: Maybe Lock
   , isInteractive :: Bool
   -- ^ Is the task we are going to run an interactive foreground task,
@@ -816,7 +816,7 @@ externalSetupMethod path verbosity options _ args NotInLibrary =
 
 useCachedSetupExecutable :: BuildType -> Bool
 useCachedSetupExecutable bt =
-  bt == Simple || bt == Configure || bt == Make
+  bt == Simple || bt == Configure
 
 data ExternalExe = HooksExe | SetupExe
 data WantedExternalExe (meth :: ExternalExe) where
@@ -971,7 +971,7 @@ buildTypeScript bt cabalLibVersion = "{-# LANGUAGE NoImplicitPrelude #-}\n" <> c
     -> "import Distribution.Simple; main = defaultMainWithHooks autoconfUserHooks\n"
     | otherwise
     -> "import Distribution.Simple; main = defaultMainWithHooks defaultUserHooks\n"
-  Make -> "import Distribution.Make; main = defaultMain\n"
+  Make -> error "buildtypeScript Make is no longer supported"
   Hooks
     | cabalLibVersion >= mkVersion [3, 13, 0]
     -> "import Distribution.Simple; import SetupHooks; main = defaultMainWithSetupHooks setupHooks\n"
