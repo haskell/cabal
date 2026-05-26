@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE StandaloneDeriving  #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -16,7 +17,7 @@ module HackageBenchmark (
 import Control.Concurrent.Async (concurrently)
 import Control.Monad (forM, replicateM, unless, when)
 import qualified Data.ByteString as BS
-import Data.List (nub, unzip4)
+import Data.List (unzip4)
 import Data.Maybe (isJust, catMaybes)
 import Data.String (fromString)
 import Data.Function ((&))
@@ -41,6 +42,7 @@ import Text.Printf (printf)
 import qualified Data.Map.Strict as Map
 
 import Distribution.Package (PackageName, mkPackageName, unPackageName)
+import Distribution.Utils.Generic (ordNub)
 
 data Args = Args {
     argCabal1                      :: FilePath
@@ -71,6 +73,9 @@ data CabalResult
   | Timeout
   | Unknown
   deriving (Eq, Show)
+
+-- | @since 3.18
+deriving instance Ord CabalResult
 
 hackageBenchmarkMain :: IO ()
 hackageBenchmarkMain = do
@@ -185,7 +190,7 @@ hackageBenchmarkMain = do
           then do
             putStrLn $ "Obtaining the package list (using " ++ argCabal1 ++ ") ..."
             list <- readProcess argCabal1 ["list", "--simple-output"] ""
-            return $ nub [mkPackageName n | n : _ <- words <$> lines list]
+            return $ ordNub ([mkPackageName n | n : _ <- words <$> lines list])
           else do
             putStrLn "Using given package list ..."
             return argPackages
@@ -348,8 +353,8 @@ combineTrialResults rs
   | allEqual [r | r <- rs, r /= Timeout] = Timeout
   | otherwise                            = Unknown
   where
-    allEqual :: Eq a => [a] -> Bool
-    allEqual xs = length (nub xs) == 1
+    allEqual :: Ord a => [a] -> Bool
+    allEqual xs = length (ordNub xs) == 1
 
 timeEvent :: IO a -> IO (a, NominalDiffTime)
 timeEvent task = do

@@ -28,6 +28,7 @@ import Distribution.Utils.Path
 
 import Distribution.Compiler
 import Distribution.ModuleName
+import Distribution.Utils.Generic (ordNub)
 import Language.Haskell.Extension
 
 -- Consider refactoring into executable and library versions.
@@ -260,7 +261,7 @@ instance Semigroup BuildInfo where
       }
     where
       combine field = field a `mappend` field b
-      combineNub field = nub (combine field)
+      combineNub field = ordNub (combine field)
       combineMby field = field b `mplus` field a
 
 emptyBuildInfo :: BuildInfo

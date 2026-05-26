@@ -6,7 +6,7 @@ module UnitTests.Distribution.Client.UserConfig
 
 import Control.Exception (bracket)
 import Control.Monad (replicateM_)
-import Data.List (nub, sort)
+import Data.List (sort)
 import System.Directory
   ( doesFileExist
   , getCurrentDirectory
@@ -21,7 +21,7 @@ import Test.Tasty.HUnit
 import Distribution.Client.Config
 import Distribution.Client.Setup (GlobalFlags (..), InstallFlags (..))
 import Distribution.Simple.Setup (ConfigFlags (..), fromFlag, pattern Flag)
-import Distribution.Simple.Utils (removeFileForcibly, withTempDirectory)
+import Distribution.Simple.Utils (ordNub, removeFileForcibly, withTempDirectory)
 import Distribution.Utils.NubList (fromNubList)
 import Distribution.Verbosity
 
@@ -93,7 +93,7 @@ globalFlags configFile = mempty{globalConfigFile = Flag configFile}
 listUnique :: Ord a => [a] -> Bool
 listUnique xs =
   let sorted = sort xs
-   in nub sorted == xs
+   in ordNub sorted == xs
 
 bracketTest :: (FilePath -> IO ()) -> Assertion
 bracketTest =
