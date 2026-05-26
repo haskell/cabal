@@ -2508,27 +2508,26 @@ elaborateInstallPlan
 
             elabBenchmarkOptions = perPkgOptionList pkgid packageConfigBenchmarkOptions
 
+      perPkgOption :: (Package pkg, Monoid m) => pkg -> (PackageConfig -> m) -> m
+      perPkgOption = lookupPerPkgOption isLocalToProject allPackagesConfig localPackagesConfig perPackageConfig
+
       perPkgOptionFlag :: PackageId -> a -> (PackageConfig -> Flag a) -> a
       perPkgOptionMaybe :: PackageId -> (PackageConfig -> Flag a) -> Maybe a
       perPkgOptionList :: PackageId -> (PackageConfig -> [a]) -> [a]
-
-      perPkgOptionFlag pkgid def f = fromFlagOrDefault def (lookupPerPkgOption' pkgid f)
-      perPkgOptionMaybe pkgid f = flagToMaybe (lookupPerPkgOption' pkgid f)
-      perPkgOptionList pkgid f = lookupPerPkgOption' pkgid f
-      perPkgOptionNubList pkgid f = fromNubList (lookupPerPkgOption' pkgid f)
-      perPkgOptionMapLast pkgid f = getMapLast (lookupPerPkgOption' pkgid f)
-      perPkgOptionMapMappend pkgid f = getMapMappend (lookupPerPkgOption' pkgid f)
+      perPkgOptionFlag pkgid def f = fromFlagOrDefault def (perPkgOption pkgid f)
+      perPkgOptionMaybe pkgid f = flagToMaybe (perPkgOption pkgid f)
+      perPkgOptionList pkgid f = perPkgOption pkgid f
+      perPkgOptionNubList pkgid f = fromNubList (perPkgOption pkgid f)
+      perPkgOptionMapLast pkgid f = getMapLast (perPkgOption pkgid f)
+      perPkgOptionMapMappend pkgid f = getMapMappend (perPkgOption pkgid f)
 
       perPkgOptionLibExeFlag pkgid def fboth flib = (exe, lib)
         where
           exe = fromFlagOrDefault def bothflag
           lib = fromFlagOrDefault def (bothflag <> libflag)
 
-          bothflag = lookupPerPkgOption' pkgid fboth
-          libflag = lookupPerPkgOption' pkgid flib
-
-      lookupPerPkgOption' :: (Package pkg, Monoid m) => pkg -> (PackageConfig -> m) -> m
-      lookupPerPkgOption' = lookupPerPkgOption isLocalToProject allPackagesConfig localPackagesConfig perPackageConfig
+          bothflag = perPkgOption pkgid fboth
+          libflag = perPkgOption pkgid flib
 
       inplacePackageDbs =
         corePackageDbs
@@ -2644,8 +2643,8 @@ elaborateInstallPlan
         fromFlagOrDefault compilerShouldUseProfilingLibByDefault (profBothFlag <> profLibFlag)
         where
           pkgid = packageId pkg
-          profBothFlag = lookupPerPkgOption' pkgid packageConfigProf
-          profLibFlag = lookupPerPkgOption' pkgid packageConfigProfLib
+          profBothFlag = perPkgOption pkgid packageConfigProf
+          profLibFlag = perPkgOption pkgid packageConfigProfLib
 
       pkgsUseProfilingLibraryShared :: Set PackageId
       pkgsUseProfilingLibraryShared =
