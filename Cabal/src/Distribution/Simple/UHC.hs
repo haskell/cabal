@@ -122,7 +122,7 @@ getInstalledPackages verbosity comp mbWorkDir packagedbs progdb = do
   let compilerid = compilerId comp
   systemPkgDir <- getGlobalPackageDir verbosity progdb
   userPkgDir <- getUserPackageDir
-  let pkgDirs = nub (concatMap (packageDbPaths userPkgDir systemPkgDir mbWorkDir) packagedbs)
+  let pkgDirs = ordNub (concatMap (packageDbPaths userPkgDir systemPkgDir mbWorkDir) packagedbs)
   -- putStrLn $ "pkgdirs: " ++ show pkgDirs
   pkgs <-
     map addBuiltinVersions . concat
@@ -289,7 +289,7 @@ constructUHCCmdLine user system lbi bi clbi odir verbosity =
     ++ ["--package=" ++ prettyShow (mungedName pkgid) | (_, pkgid) <- componentPackageDeps clbi]
     -- search paths
     ++ ["-i" ++ u odir]
-    ++ ["-i" ++ u l | l <- nub (hsSourceDirs bi)]
+    ++ ["-i" ++ u l | l <- ordNub (hsSourceDirs bi)]
     ++ ["-i" ++ u (autogenComponentModulesDir lbi clbi)]
     ++ ["-i" ++ u (autogenPackageModulesDir lbi)]
     -- cpp options

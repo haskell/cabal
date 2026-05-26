@@ -114,6 +114,7 @@ import Distribution.Simple.SrcDist
 import Distribution.Simple.Utils
   ( dieWithException
   , notice
+  , ordNub
   , withOutputMarker
   , wrapText
   )
@@ -364,7 +365,7 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
               gpd = srcpkgDescription pkg
 
           files' <- listPackageSourcesWithDie verbosity dieWithException (Just $ makeSymbolicPath dir) (flattenPackageDescription gpd) knownSuffixHandlers
-          let files = nub $ sort $ map (normalise . getSymbolicPath) files'
+          let files = ordNub $ sort $ map (normalise . getSymbolicPath) files'
           let prefix = makeRelative (normalise projectRootDir) dir
           write $ concat [prefix </> i ++ [nulSep] | i <- files]
         TarGzArchive -> do

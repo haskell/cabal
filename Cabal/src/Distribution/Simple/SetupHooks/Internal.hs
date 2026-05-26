@@ -892,7 +892,7 @@ executeRulesUserOrSystem scope runDepsCmdData runCmdData verbosity lbi tgtInfo a
   let
     (ruleGraph, ruleFromVertex, vertexFromRuleId) =
       Graph.graphFromEdges
-        [ (rule, rId, nub $ mapMaybe directRuleDependencyMaybe allDeps)
+        [ (rule, rId, ordNub $ mapMaybe directRuleDependencyMaybe allDeps)
         | (rId, rule) <- Map.toList allRules
         , let dynDeps = maybe [] fst (Map.lookup rId dynDepsEdges)
               allDeps = staticDependencies rule ++ dynDeps

@@ -1369,14 +1369,14 @@ finalCheckPackage
       -- Check languages and extensions
       -- TODO: Move this into a helper function.
       let langlist =
-            nub $
+            ordNub $
               mapMaybe defaultLanguage (enabledBuildInfos pkg_descr enabled)
       let langs = unsupportedLanguages comp langlist
       unless (null langs) $
         dieWithException verbosity $
           UnsupportedLanguages (packageId pkg_descr) (compilerId comp) (map prettyShow langs)
       let extlist =
-            nub $
+            ordNub $
               concatMap
                 allExtensions
                 (enabledBuildInfos pkg_descr enabled)
@@ -2607,7 +2607,7 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
     pkgconfigBuildInfo :: [PkgconfigDependency] -> IO BuildInfo
     pkgconfigBuildInfo [] = return mempty
     pkgconfigBuildInfo pkgdeps = do
-      let pkgs = nub [prettyShow pkg | PkgconfigDependency pkg _ <- pkgdeps]
+      let pkgs = ordNub [prettyShow pkg | PkgconfigDependency pkg _ <- pkgdeps]
       ccflags <- pkgconfig ("--cflags" : pkgs)
       ldflags <- pkgconfig ("--libs" : pkgs)
       ldflags_static <- pkgconfig ("--libs" : "--static" : pkgs)

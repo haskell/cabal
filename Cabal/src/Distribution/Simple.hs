@@ -824,8 +824,8 @@ sanityCheckHookedBuildInfo verbosity pkg_descr (_, hookExes)
   | exe1 : _ <- nonExistent =
       dieWithException verbosity $ SanityCheckHookedBuildInfo exe1
   where
-    pkgExeNames = nub (map exeName (executables pkg_descr))
-    hookExeNames = nub (map fst hookExes)
+    pkgExeNames = ordNub (map exeName (executables pkg_descr))
+    hookExeNames = ordNub (map fst hookExes)
     nonExistent = hookExeNames \\ pkgExeNames
 sanityCheckHookedBuildInfo _ _ _ = return ()
 

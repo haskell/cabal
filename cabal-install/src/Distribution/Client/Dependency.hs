@@ -140,6 +140,7 @@ import Distribution.Verbosity
   )
 import Distribution.Version
 
+import Distribution.Simple.Utils (ordNub)
 import Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.ConstraintSource
@@ -965,7 +966,7 @@ interpretPackagesPreference selected defaultPref prefs =
       Map.findWithDefault [] pkgname stanzasPrefs
     stanzasPrefs =
       Map.fromListWith
-        (\a b -> nub (a ++ b))
+        (\a b -> ordNub (a ++ b))
         [ (pkgname, pref)
         | PackageStanzasPreference pkgname pref <- prefs
         ]

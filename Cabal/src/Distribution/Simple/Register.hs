@@ -167,7 +167,7 @@ generateOne verbHandles pkg lib lbi clbi regFlags =
     -- registering into a totally different db stack can
     -- fail if dependencies cannot be satisfied.
     packageDbs =
-      nub $
+      ordNub $
         withPackageDB lbi
           ++ maybeToList (flagToMaybe (regPackageDB regFlags))
     distPref = fromFlag $ setupDistPref common
@@ -228,7 +228,7 @@ registerAll verbHandles pkg lbi regFlags ipis =
     -- registering into a totally different db stack can
     -- fail if dependencies cannot be satisfied.
     packageDbs =
-      nub $
+      ordNub $
         withPackageDB lbi
           ++ maybeToList (flagToMaybe (regPackageDB regFlags))
     common = registerCommonFlags regFlags

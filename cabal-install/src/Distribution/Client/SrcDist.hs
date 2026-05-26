@@ -20,7 +20,7 @@ import Distribution.Package (Package (packageId))
 import Distribution.PackageDescription.Configuration (flattenPackageDescription)
 import Distribution.Simple.PreProcess (knownSuffixHandlers)
 import Distribution.Simple.SrcDist (listPackageSourcesWithDie)
-import Distribution.Simple.Utils (dieWithException)
+import Distribution.Simple.Utils (dieWithException, ordNub)
 import Distribution.Types.GenericPackageDescription (GenericPackageDescription)
 import Distribution.Utils.Path
   ( getSymbolicPath
@@ -70,7 +70,7 @@ packageDirToSdist verbosity gpd dir = do
   absDir <- canonicalizePath dir
   files' <- listPackageSourcesWithDie verbosity dieWithException (Just $ makeSymbolicPath absDir) (flattenPackageDescription gpd) knownSuffixHandlers
   let files :: [FilePath]
-      files = nub $ sort $ map (normalise . getSymbolicPath) files'
+      files = ordNub $ sort $ map (normalise . getSymbolicPath) files'
 
   let entriesM :: StateT (Set.Set FilePath) (WriterT [Tar.Entry] IO) ()
       entriesM = do

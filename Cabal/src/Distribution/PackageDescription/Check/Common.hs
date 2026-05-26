@@ -26,6 +26,7 @@ import Distribution.Compat.NonEmptySet (toNonEmpty)
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Check.Monad
+import Distribution.Simple.Utils (ordNub)
 import Distribution.Utils.Generic (isAscii)
 import Distribution.Version
 
@@ -80,7 +81,7 @@ partitionDeps ads ns ds = do
     -- shared targets that match
     fads = filter (flip elem dqs . fst) ads
     -- the names of such targets
-    inName = nub $ map fst fads :: [UnqualComponentName]
+    inName = ordNub $ map fst fads :: [UnqualComponentName]
     -- the dependencies of such targets
     inDep = concatMap snd fads :: [Dependency]
 

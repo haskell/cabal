@@ -229,6 +229,7 @@ import Distribution.Utils.Path hiding
 import Distribution.Simple.Utils
   ( VerboseException
   , createDirectoryIfMissingVerbose
+  , ordNub
   , writeFileAtomic
   )
 import Distribution.Simple.Utils as Utils
@@ -712,7 +713,7 @@ pruneInstallPlan pkgSpecifiers =
         ++ "required by a dependency of one of the other targets."
       where
         pkgids =
-          nub
+          ordNub
             [ depid
             | SolverInstallPlan.PackageMissingDeps _ depids <- problems
             , depid <- depids
