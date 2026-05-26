@@ -884,18 +884,17 @@ rebuildInstallPlan
             logMsg message rest = debugNoWrap verbosity message >> rest
             perPkgOption = lookupPerPkgOption (const True) projectConfigAllPackages projectConfigLocalPackages (getMapMappend projectConfigSpecificPackage)
 
+            -- TODO: "local" misnomer: we should separate
+            -- builtin/global/inplace/local packages and packages explicitly
+            -- mentioned in the project.
             localPackagesEnabledStanzas =
               Map.fromList
                 [ (pkgname, Map.fromList $ ((TestStanzas,) <$> tests) ++ ((BenchStanzas,) <$> benches))
                 | pkg <- localPackages
-                , -- TODO: misnomer: we should separate
-                -- builtin/global/inplace/local packages
-                -- and packages explicitly mentioned in the project
-                --
-                let pkgname = pkgSpecifierTarget pkg
-                    (tests, benches) = case shouldBeLocal pkg of
-                      Just (fmap flagToList . perPkgOption -> f) -> (f packageConfigTests, f packageConfigBenchmarks)
-                      Nothing -> ([False], [False])
+                , let pkgname = pkgSpecifierTarget pkg
+                , let (tests, benches) = case shouldBeLocal pkg of
+                        Just (fmap flagToList . perPkgOption -> f) -> (f packageConfigTests, f packageConfigBenchmarks)
+                        Nothing -> ([False], [False])
                 ]
 
       -- Elaborate the solver's install plan to get a fully detailed plan. This
