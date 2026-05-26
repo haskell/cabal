@@ -2436,7 +2436,8 @@ elaborateInstallPlan
                 [ (programId prog, programPath prog)
                 | prog <- configuredPrograms compilerProgDb
                 ]
-                <> perPkgOptionMapLast pkgid packageConfigProgramPaths
+                <> (getMapLast $ perPkgOption pkgid packageConfigProgramPaths)
+
             elabProgramArgs =
               -- Workaround for <https://github.com/haskell/cabal/issues/4010>
               --
@@ -2461,8 +2462,9 @@ elaborateInstallPlan
                       , not (null args)
                       ]
                   )
-                  (perPkgOptionMapMappend pkgid packageConfigProgramArgs)
-            elabProgramPathExtra = perPkgOptionNubList pkgid packageConfigProgramPathExtra
+                  (getMapMappend $ perPkgOption pkgid packageConfigProgramArgs)
+
+            elabProgramPathExtra = fromNubList $ perPkgOption pkgid packageConfigProgramPathExtra
             elabConfiguredPrograms = configuredPrograms compilerProgDb
             elabConfigureScriptArgs = perPkgOptionList pkgid packageConfigConfigureArgs
             elabExtraLibDirs = perPkgOptionList pkgid packageConfigExtraLibDirs
@@ -2513,15 +2515,6 @@ elaborateInstallPlan
 
       perPkgOptionList :: PackageId -> (PackageConfig -> [a]) -> [a]
       perPkgOptionList = perPkgOption
-
-      perPkgOptionNubList :: PackageId -> (PackageConfig -> NubList FilePath) -> [FilePath]
-      perPkgOptionNubList = fmap fromNubList . perPkgOption
-
-      perPkgOptionMapLast :: Ord k => PackageId -> (PackageConfig -> MapLast k v) -> Map k v
-      perPkgOptionMapLast = fmap getMapLast . perPkgOption
-
-      perPkgOptionMapMappend :: (Ord k, Semigroup v) => PackageId -> (PackageConfig -> MapMappend k v) -> Map k v
-      perPkgOptionMapMappend = fmap getMapMappend . perPkgOption
 
       perPkgOptionLibExeFlag :: a -> PackageId -> (PackageConfig -> Flag a) -> (PackageConfig -> Flag a) -> (a, a)
       perPkgOptionLibExeFlag def pkgid fboth flib = (exe, lib)
