@@ -847,8 +847,9 @@ readProjectLocalFreezeConfig verbosity parserOption httpTransport distDirLayout 
     distDirLayout
     ProjectFileKeyFreeze
 
--- | Reads a named extended (with imports and conditionals) config file in the given project root dir, or returns empty.
--- This function is generic and can be used with the legacy or parsec parser, or a combination of both.
+-- | Reads a named extended (with imports and conditionals) config file in the
+-- given project root dir, or returns empty.  This function is generic and can
+-- be used with the legacy or parsec parser, or a combination of both.
 readProjectFileSkeletonGen :: Verbosity -> HttpTransport -> DistDirLayout -> ProjectFileKey -> (FilePath -> IO ProjectConfigSkeleton) -> Rebuild ProjectConfigSkeleton
 readProjectFileSkeletonGen
   verbosity
