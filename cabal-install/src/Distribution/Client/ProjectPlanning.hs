@@ -890,28 +890,19 @@ rebuildInstallPlan
                 let pkgname = pkgSpecifierTarget pkg
                     stanzas = case shouldBeLocal pkg of
                       Just pkgId ->
-                        let testsEnabled =
+                        let perPkgOption =
                               lookupPerPkgOption
                                 (const True)
                                 projectConfigAllPackages
                                 projectConfigLocalPackages
                                 (getMapMappend projectConfigSpecificPackage)
                                 pkgId
-                                packageConfigTests
-                            benchmarksEnabled =
-                              lookupPerPkgOption
-                                (const True)
-                                projectConfigAllPackages
-                                projectConfigLocalPackages
-                                (getMapMappend projectConfigSpecificPackage)
-                                pkgId
-                                packageConfigBenchmarks
                          in Map.fromList $
                               [ (TestStanzas, enabled)
-                              | enabled <- flagToList testsEnabled
+                              | enabled <- flagToList $ perPkgOption packageConfigTests
                               ]
                                 ++ [ (BenchStanzas, enabled)
-                                   | enabled <- flagToList benchmarksEnabled
+                                   | enabled <- flagToList $ perPkgOption packageConfigBenchmarks
                                    ]
                       Nothing -> Map.fromList [(TestStanzas, False), (BenchStanzas, False)]
                 ]
