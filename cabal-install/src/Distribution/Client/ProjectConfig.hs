@@ -868,10 +868,10 @@ readProjectFileSkeletonGen
           -- We also need to monitor all the (possibly recursive) imports.
           -- 'projectSkeletonImports' is a path per imported project file that starts with the leaf
           -- and ends with the main project file that is the root. E.g. if 'cabal.project' imports
-          -- 'cabal.project.foo', which imports 'cabal.project.bar', then we get two paths:
+          -- 'importee-1.config', which imports 'importee-2.config', then we get two paths:
           --
-          -- > ("cabal.project.bar" :| ["cabal.project.foo", "cabal.project"])
-          -- > ("cabal.project.foo" :| ["cabal.project"])
+          -- > ("importee-2.config" :| ["importee-1.config", "cabal.project"])
+          -- > ("importee-1.config" :| ["cabal.project"])
           --
           -- Consequently, we just take the heads of all the paths.
           monitorFiles
