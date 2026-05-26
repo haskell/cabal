@@ -4706,8 +4706,6 @@ lookupPerPkgOption pkg f allPackagesConfig localPackagesConfig perPackageConfig 
   where
     global = f allPackagesConfig
     local
-      | isLocalPkg pkg =
-          f localPackagesConfig
-      | otherwise =
-          mempty
+      | isLocalPkg pkg = f localPackagesConfig
+      | otherwise = mempty
     perpkg = maybe mempty f (Map.lookup (packageName pkg) perPackageConfig)
