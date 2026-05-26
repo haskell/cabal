@@ -32,7 +32,7 @@ GenericPackageDescription {
     synopsis =
     "The Wadler/Leijen Pretty Printer",
     description =
-    concat
+    T.concat
       [
         "This is a pretty printing library based on Wadler's paper \"A Prettier\n",
         "Printer\".  See the haddocks for full info.  This version allows the\n",
