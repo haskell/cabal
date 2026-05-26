@@ -2425,8 +2425,8 @@ elaborateInstallPlan
               , elabProfLibDetail
               ) =
                 perPkgOptionLibExeFlag
-                  pkgid
                   ProfDetailDefault
+                  pkgid
                   packageConfigProfDetail
                   packageConfigProfLibDetail
 
@@ -2512,16 +2512,25 @@ elaborateInstallPlan
       perPkgOption = lookupPerPkgOption isLocalToProject allPackagesConfig localPackagesConfig perPackageConfig
 
       perPkgOptionFlag :: a -> PackageId -> (PackageConfig -> Flag a) -> a
-      perPkgOptionMaybe :: PackageId -> (PackageConfig -> Flag a) -> Maybe a
-      perPkgOptionList :: PackageId -> (PackageConfig -> [a]) -> [a]
       perPkgOptionFlag def = fmap (fromFlagOrDefault def) . perPkgOption
+
+      perPkgOptionMaybe :: PackageId -> (PackageConfig -> Flag a) -> Maybe a
       perPkgOptionMaybe = fmap flagToMaybe . perPkgOption
+
+      perPkgOptionList :: PackageId -> (PackageConfig -> [a]) -> [a]
       perPkgOptionList = perPkgOption
+
+      perPkgOptionNubList :: PackageId -> (PackageConfig -> NubList FilePath) -> [FilePath]
       perPkgOptionNubList = fmap fromNubList . perPkgOption
+
+      perPkgOptionMapLast :: Ord k => PackageId -> (PackageConfig -> MapLast k v) -> Map k v
       perPkgOptionMapLast = fmap getMapLast . perPkgOption
+
+      perPkgOptionMapMappend :: (Ord k, Semigroup v) => PackageId -> (PackageConfig -> MapMappend k v) -> Map k v
       perPkgOptionMapMappend = fmap getMapMappend . perPkgOption
 
-      perPkgOptionLibExeFlag pkgid def fboth flib = (exe, lib)
+      perPkgOptionLibExeFlag :: a -> PackageId -> (PackageConfig -> Flag a) -> (PackageConfig -> Flag a) -> (a, a)
+      perPkgOptionLibExeFlag def pkgid fboth flib = (exe, lib)
         where
           exe = fromFlagOrDefault def bothflag
           lib = fromFlagOrDefault def (bothflag <> libflag)
