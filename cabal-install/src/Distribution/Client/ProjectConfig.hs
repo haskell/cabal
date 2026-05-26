@@ -230,6 +230,7 @@ import Control.Exception (handle)
 import Control.Monad.Trans (liftIO)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
+import Data.List ((\\))
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -838,12 +839,13 @@ readProjectFileSkeletonGen
       exists <- liftIO $ doesFileExist extensionFile
       if exists
         then do
+          monitorFiles [monitorFileHashed extensionFile]
           pcs@(projectSkeletonImports -> allProjectFiles) <- liftIO $ parseConfig extensionFile
 
           -- If we have <extensionName> with .local or .freeze extension, these
           -- aren't normally imported but there's nothing stopping the user from
-          -- importing them, so we throw them in with the other project files.
-          let additional =
+          -- importing them. We're already monitoring this one.
+          let localOrFreeze =
                 ([extensionFile | isExtensionOf "local" extensionName || isExtensionOf "freeze" extensionName])
 
           -- We need to monitor the project and all of its local imports, We
@@ -868,10 +870,10 @@ readProjectFileSkeletonGen
             [ monitorFileHashed path
             | path <-
                 ordNub $
-                  additional
-                    ++ [ p
-                       | (Nothing, makeAbsolute . currentProjectConfigPath -> p) <- allProjectFiles
-                       ]
+                  [ p
+                  | (Nothing, makeAbsolute . currentProjectConfigPath -> p) <- allProjectFiles
+                  ]
+                    \\ localOrFreeze
             ]
 
           return pcs
