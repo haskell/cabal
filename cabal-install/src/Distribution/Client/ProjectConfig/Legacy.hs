@@ -1334,8 +1334,8 @@ parsePackageLocationTokenQ =
       where
         outerTerm = alternateEither1 outerToken (braces innerTerm)
         innerTerm = alternateEither innerToken (braces innerTerm)
-        outerToken = Parse.munch1 outerChar >> return ()
-        innerToken = Parse.munch1 innerChar >> return ()
+        outerToken = void $ Parse.munch1 outerChar
+        innerToken = void $ Parse.munch1 innerChar
         outerChar c = not (isSpace c || c == '{' || c == '}' || c == ',')
         innerChar c = not (isSpace c || c == '{' || c == '}')
         braces = Parse.between (Parse.char '{') (Parse.char '}')
