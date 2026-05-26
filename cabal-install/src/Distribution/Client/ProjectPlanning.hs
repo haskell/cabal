@@ -5,6 +5,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -881,10 +882,11 @@ rebuildInstallPlan
 
             solverSettings = resolveSolverSettings projectConfig
             logMsg message rest = debugNoWrap verbosity message >> rest
+            perPkgOption = lookupPerPkgOption (const True) projectConfigAllPackages projectConfigLocalPackages (getMapMappend projectConfigSpecificPackage)
 
             localPackagesEnabledStanzas =
               Map.fromList
-                [ (pkgname, stanzas)
+                [ (pkgname, Map.fromList $ stanzas)
                 | pkg <- localPackages
                 , -- TODO: misnomer: we should separate
                 -- builtin/global/inplace/local packages
@@ -893,21 +895,9 @@ rebuildInstallPlan
                 let pkgname = pkgSpecifierTarget pkg
                     stanzas = case shouldBeLocal pkg of
                       Just pkgId ->
-                        let perPkgOption =
-                              lookupPerPkgOption
-                                (const True)
-                                projectConfigAllPackages
-                                projectConfigLocalPackages
-                                (getMapMappend projectConfigSpecificPackage)
-                                pkgId
-                         in Map.fromList $
-                              [ (TestStanzas, enabled)
-                              | enabled <- flagToList $ perPkgOption packageConfigTests
-                              ]
-                                ++ [ (BenchStanzas, enabled)
-                                   | enabled <- flagToList $ perPkgOption packageConfigBenchmarks
-                                   ]
-                      Nothing -> Map.fromList [(TestStanzas, False), (BenchStanzas, False)]
+                        ((TestStanzas,) <$> flagToList (perPkgOption pkgId packageConfigTests))
+                          ++ ((BenchStanzas,) <$> flagToList (perPkgOption pkgId packageConfigBenchmarks))
+                      Nothing -> [(TestStanzas, False), (BenchStanzas, False)]
                 ]
 
       -- Elaborate the solver's install plan to get a fully detailed plan. This
