@@ -229,7 +229,6 @@ import Control.Exception (handle)
 import Control.Monad.Trans (liftIO)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
-import Data.List ((\\))
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -836,12 +835,6 @@ readProjectFileSkeletonGen
           monitorFiles [monitorFileHashed extensionFile]
           pcs@(projectSkeletonImports -> allProjectFiles) <- liftIO $ parseConfig extensionFile
 
-          -- If we have <extensionName> with .local or .freeze extension, these
-          -- aren't normally imported but there's nothing stopping the user from
-          -- importing them. We're already monitoring this one.
-          let localOrFreeze =
-                ([extensionFile | isExtensionOf "local" extensionName || isExtensionOf "freeze" extensionName])
-
           -- We need to monitor the project and all of its local imports, We
           -- can't monitor remote URI imports.
           --
@@ -860,14 +853,20 @@ readProjectFileSkeletonGen
           --
           -- 'currentProjectConfigPath' gives us the head of the path, an
           -- importee or the root project file.
+          --
+          -- If we have <extensionName> with .local or .freeze extension, these
+          -- aren't normally imported but there's nothing stopping the user from
+          -- importing them. We're already monitoring this one.
           monitorFiles
             [ monitorFileHashed path
-            | path <-
-                ordNub $
-                  [ p
-                  | (Nothing, makeAbsolute . currentProjectConfigPath -> p) <- allProjectFiles
-                  ]
-                    \\ localOrFreeze
+            | let localOrFreeze = isExtensionOf "local" extensionName || isExtensionOf "freeze" extensionName
+            , let excludeExtension = if localOrFreeze then id else filter (/= makeAbsolute extensionFile)
+            , path <-
+                excludeExtension $
+                  ordNub
+                    [ p
+                    | (Nothing, makeAbsolute . currentProjectConfigPath -> p) <- allProjectFiles
+                    ]
             ]
 
           return pcs
