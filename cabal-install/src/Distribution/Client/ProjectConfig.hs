@@ -821,20 +821,14 @@ readProjectLocalFreezeConfig verbosity parserOption httpTransport distDirLayout 
 -- given project root dir, or returns empty.  This function is generic and can
 -- be used with the legacy or parsec parser, or a combination of both.
 readProjectFileSkeletonGen
-  :: Verbosity
-  -> HttpTransport
-  -> DistDirLayout
+  :: DistDirLayout
   -> String
   -- ^ "" for the main project file, or one of "local" or "freeze"
-  -> String
   -> (FilePath -> IO ProjectConfigSkeleton)
   -> Rebuild ProjectConfigSkeleton
 readProjectFileSkeletonGen
-  _verbosity
-  _httpTransport
   DistDirLayout{distProjectFile, distProjectRootDirectory}
   extensionName@(distProjectFile -> extensionFile)
-  _extensionDescription
   parseConfig =
     do
       exists <- liftIO $ doesFileExist absExtensionFile
@@ -917,7 +911,7 @@ readProjectFileSkeleton option =
 -- | Read a project file using the legacy parser.
 readProjectFileSkeletonLegacy :: Verbosity -> HttpTransport -> DistDirLayout -> String -> String -> Rebuild ProjectConfigSkeleton
 readProjectFileSkeletonLegacy verbosity httpTransport distDirLayout extensionName extensionDescription = do
-  readProjectFileSkeletonGen verbosity httpTransport distDirLayout extensionName extensionDescription $ \fp -> do
+  readProjectFileSkeletonGen distDirLayout extensionName $ \fp -> do
     debug verbosity "Reading project file using the legacy parser"
     parseProjectFileSkeletonLegacy verbosity httpTransport distDirLayout extensionName extensionDescription fp
       >>= liftIO . reportParseResult verbosity extensionDescription fp
@@ -925,7 +919,7 @@ readProjectFileSkeletonLegacy verbosity httpTransport distDirLayout extensionNam
 -- | Read a project file using the parsec parser, but if that fails, it falls back to the legacy parser.
 readProjectFileSkeletonFallback :: Verbosity -> HttpTransport -> DistDirLayout -> String -> String -> Rebuild ProjectConfigSkeleton
 readProjectFileSkeletonFallback verbosity httpTransport distDirLayout extensionName extensionDescription = do
-  readProjectFileSkeletonGen verbosity httpTransport distDirLayout extensionName extensionDescription $ \fp -> do
+  readProjectFileSkeletonGen distDirLayout extensionName $ \fp -> do
     debug verbosity "Reading project file using the fallback parser"
     (res, bs) <- parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout extensionName extensionDescription fp
     let (_, pres) = runParseResult res
@@ -948,14 +942,14 @@ readProjectFileSkeletonFallback verbosity httpTransport distDirLayout extensionN
 -- | Read a project file using the parsec parser.
 readProjectFileSkeletonParsec :: Verbosity -> HttpTransport -> DistDirLayout -> String -> String -> Rebuild ProjectConfigSkeleton
 readProjectFileSkeletonParsec verbosity httpTransport distDirLayout extensionName extensionDescription = do
-  readProjectFileSkeletonGen verbosity httpTransport distDirLayout extensionName extensionDescription $ \fp -> do
+  readProjectFileSkeletonGen distDirLayout extensionName $ \fp -> do
     debug verbosity "Reading project file using the parsec parser"
     (res, bs) <- parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout extensionName extensionDescription fp
     liftIO $ reportParseResultParsec verbosity fp bs res
 
 readProjectFileSkeletonCompare :: Verbosity -> HttpTransport -> DistDirLayout -> String -> String -> Rebuild ProjectConfigSkeleton
 readProjectFileSkeletonCompare verbosity httpTransport distDirLayout extensionName extensionDescription = do
-  readProjectFileSkeletonGen verbosity httpTransport distDirLayout extensionName extensionDescription $ \fp -> do
+  readProjectFileSkeletonGen distDirLayout extensionName $ \fp -> do
     debug verbosity "Reading project file using the comparative parser"
     (pres, bs) <- parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout extensionName extensionDescription fp
     lres <- parseProjectFileSkeletonLegacy verbosity httpTransport distDirLayout extensionName extensionDescription fp
