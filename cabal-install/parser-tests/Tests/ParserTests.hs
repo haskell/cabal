@@ -173,6 +173,7 @@ testProjectConfigBuildOnly = do
         , cinstInstallMethod = Flag InstallMethodSymlink
         , cinstInstalldir = Flag "path/to/installdir"
         }
+    projectConfigBuildTimings = mempty
 
 testProjectConfigShared :: Assertion
 testProjectConfigShared = do

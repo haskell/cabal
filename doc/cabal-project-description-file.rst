@@ -511,6 +511,14 @@ package, and thus apply globally:
     The command line variant of this flag is ``--package-db=DB`` which can be
     specified multiple times.
 
+.. option:: --build-timings
+
+    Log timing information to stdout, in the following format::
+
+        [build-timings] configure aeson-2.2.3.0 0.042s
+        [build-timings] build     aeson-2.2.3.0 3.284s
+        [build-timings] install   aeson-2.2.3.0 0.123s
+
 Phase control
 -------------
 
