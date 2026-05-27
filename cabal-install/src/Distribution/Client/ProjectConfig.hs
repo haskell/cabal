@@ -831,15 +831,18 @@ readProjectFileSkeletonGen :: Verbosity -> HttpTransport -> DistDirLayout -> Pro
 readProjectFileSkeletonGen
   verbosity
   httpTransport
-  dir
-  key@(distProjectFile dir -> extensionFile)
+  DistDirLayout{distProjectFile, distProjectRootDirectory}
+  key@(distProjectFile -> extensionFile)
+
   parseConfig =
     do
-      exists <- liftIO $ doesFileExist extensionFile
+      exists <- liftIO $ doesFileExist absExtensionFile
       if exists
         then do
-          monitorFiles [monitorFileHashed extensionFile]
-          pcs@(projectSkeletonImports -> allProjectFiles) <- liftIO $ parseConfig extensionFile
+          -- REVIEW: Shouldn't we always be monitoring the main project, its
+          -- freeze file and its local file?
+          monitorFiles [monitorFileHashed absExtensionFile]
+          pcs@(projectSkeletonImports -> allProjectFiles) <- liftIO $ parseConfig absExtensionFile
 
           -- We need to monitor the project and all of its local imports, We
           -- can't monitor remote URI imports.
@@ -860,15 +863,13 @@ readProjectFileSkeletonGen
           -- 'currentProjectConfigPath' gives us the head of the path, an
           -- importee or the root project file.
           --
-          -- If we have <extensionName> with .local or .freeze extension, these
-          -- aren't normally imported but there's nothing stopping the user from
-          -- importing them. We're already monitoring this one.
+          -- If we have extensionName of "local or "freeze", these aren't
+          -- normally imported but there's nothing stopping the user from
+          -- importing them.
           monitorFiles
             [ monitorFileHashed path
-            | let localOrFreeze = isExtensionOf "local" extensionName || isExtensionOf "freeze" extensionName
-            , let excludeExtension = if localOrFreeze then id else filter (/= makeAbsolute extensionFile)
-            , path <-
-                excludeExtension $
+            | path <-
+                filter (/= absExtensionFile) $
                   ordNub
                     [ p
                     | (Nothing, makeAbsolute . currentProjectConfigPath -> p) <- allProjectFiles
@@ -883,7 +884,8 @@ readProjectFileSkeletonGen
       -- REVIEW: Do we prefer absolute paths for cache monitoring?
       makeAbsolute f
         | isAbsolute f = f
-        | otherwise = distProjectRootDirectory dir </> f
+        | otherwise = distProjectRootDirectory </> f
+      absExtensionFile = makeAbsolute extensionFile
 
 -- There are 3 different variants of the project parsing function.
 -- 1. readProjectFileSkeletonLegacy: always uses the legacy parser
