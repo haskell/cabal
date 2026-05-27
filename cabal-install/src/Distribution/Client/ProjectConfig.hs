@@ -827,17 +827,16 @@ readProjectFileSkeletonGen
   -> Rebuild ProjectConfigSkeleton
 readProjectFileSkeletonGen
   DistDirLayout{distProjectFile, distProjectRootDirectory}
-  (distProjectFile -> extensionFile)
+  extensionName@(distProjectFile -> extensionFile)
   parseConfig =
     do
       exists <- liftIO $ doesFileExist absExtensionFile
       if exists
         then do
-          -- REVIEW: Shouldn't we always be monitoring the main project, its
-          -- freeze file and its local file?
           monitorFiles [monitorFileHashed absExtensionFile]
-          pcs@(projectSkeletonImports -> allProjectFiles) <- liftIO $ parseConfig absExtensionFile
+          pcs <- liftIO $ parseConfig absExtensionFile
 
+          -- If its the main project then we have the local imports to monitor.
           -- We need to monitor the project and all of its local imports, We
           -- can't monitor remote URI imports.
           --
@@ -850,9 +849,9 @@ readProjectFileSkeletonGen
           -- which imports 'importee-2.config', then we get these paths from
           -- 'projectSkeletonImports':
           --
-          -- > ("importee-2.config" :| ["importee-1.config", "cabal.project"])
-          -- > ("importee-1.config" :| ["cabal.project"])
-          -- > ("cabal.project" :| [])
+          -- > ("importee-2.config" :| ["importee-1.config", "cabal.project"]) >
+          -- ("importee-1.config" :| ["cabal.project"]) > ("cabal.project" :|
+          -- [])
           --
           -- 'currentProjectConfigPath' gives us the head of the path, an
           -- importee or the root project file.
@@ -860,15 +859,16 @@ readProjectFileSkeletonGen
           -- If we have extensionName of "local or "freeze", these aren't
           -- normally imported but there's nothing stopping the user from
           -- importing them.
-          monitorFiles
-            [ monitorFileHashed path
-            | path <-
-                filter (/= absExtensionFile) $
-                  ordNub
-                    [ p
-                    | (Nothing, makeAbsolute . currentProjectConfigPath -> p) <- allProjectFiles
-                    ]
-            ]
+          when (null extensionName) $ do
+            monitorFiles
+              [ monitorFileHashed path
+              | path <-
+                  filter (/= absExtensionFile) $
+                    ordNub
+                      [ p
+                      | (Nothing, makeAbsolute . currentProjectConfigPath -> p) <- projectSkeletonImports pcs
+                      ]
+              ]
 
           return pcs
         else do
