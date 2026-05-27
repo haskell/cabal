@@ -52,8 +52,6 @@ import Distribution.Client.ProjectOrchestration
 import Distribution.Client.Setup
   ( GlobalFlags
   , RepoContext (..)
-  , UpdateFlags
-  , defaultUpdateFlags
   )
 import Distribution.Client.Types
   ( RemoteRepo (..)
@@ -212,7 +210,7 @@ updateAction flags@NixStyleFlags{..} extraArgs globalFlags = do
       unless (null reposToUpdate) $ do
         jobCtrl <- newParallelJobControl (length reposToUpdate)
         traverse_
-          (spawnJob jobCtrl . updateRepo verbosity defaultUpdateFlags repoCtxt)
+          (spawnJob jobCtrl . updateRepo verbosity repoCtxt)
           reposToUpdate
         traverse_ (\_ -> collectJob jobCtrl) reposToUpdate
   where
@@ -220,19 +218,14 @@ updateAction flags@NixStyleFlags{..} extraArgs globalFlags = do
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty -- ClientInstallFlags, not needed here
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 
-updateRepo
-  :: Verbosity
-  -> UpdateFlags
-  -> RepoContext
-  -> (Repo, RepoIndexState)
-  -> IO ()
-updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
-  transport <- repoContextGetTransport repoCtxt
+updateRepo :: Verbosity -> RepoContext -> (Repo, RepoIndexState) -> IO ()
+updateRepo verbosity repoCtxt (repo, indexState) = do
   case repo of
     RepoLocalNoIndex{} -> do
       let index = RepoIndex repoCtxt repo
       updatePackageIndexCacheFile verbosity index
     RepoRemote{..} -> do
+      transport <- repoContextGetTransport repoCtxt
       downloadResult <-
         downloadIndex
           transport
