@@ -45,7 +45,7 @@ import Control.Concurrent (forkIO, forkIOWithUnmask, threadDelay)
 import Control.Concurrent.MVar
 import Control.Concurrent.STM (STM, TVar, atomically, modifyTVar', newTVarIO, readTVar)
 import Control.Concurrent.STM.TChan
-import Control.Exception (bracket, bracket_, mask_, try)
+import Control.Exception (bracket, bracket_, finally, mask_, try)
 import Control.Monad (forever, replicateM_)
 import Distribution.Client.Compat.Semaphore
 import Distribution.Client.Utils (numberOfProcessors)
@@ -72,9 +72,9 @@ data JobControl m a = JobControl
   , cleanupJobControl :: m ()
   -- ^ cleanup any resources created by the JobControl, intended to be used
   -- as the finaliser for `bracket`.
-  , jobControlSemaphore :: Maybe SemaphoreName
-  -- ^ Name of the semaphore which can be used to control parallelism, if one
-  -- is available for that job control type.
+  , jobControlSemaphore :: Maybe SemaphoreIdentifier
+  -- ^ Identifier of the semaphore which can be used to control parallelism,
+  -- if one is available for that job control type.
   }
 
 -- | Make a 'JobControl' that executes all jobs serially and in order.
@@ -183,40 +183,48 @@ newSemaphoreJobControl _ n
   | n < 1 || n > 1000 =
       error $ "newParallelJobControl: not a sensible number of jobs: " ++ show n
 newSemaphoreJobControl verbosity maxJobLimit = do
-  sem <- freshSemaphore "cabal_semaphore" maxJobLimit
-  info verbosity $
-    "Created semaphore called "
-      ++ getSemaphoreName (semaphoreName sem)
-      ++ " with "
-      ++ show maxJobLimit
-      ++ " slots."
-  outqVar <- newTChanIO
-  inqVar <- newTChanIO
-  countVar <- newTVarIO 0
-  void (forkIO (worker sem inqVar outqVar))
-  return
-    JobControl
-      { spawnJob = spawn inqVar countVar
-      , collectJob = collect outqVar countVar
-      , remainingJobs = remaining countVar
-      , cancelJobs = cancel inqVar countVar
-      , cleanupJobControl = destroySemaphore sem
-      , jobControlSemaphore = Just (semaphoreName sem)
-      }
+  mbServer <- freshSemaphore "cabal_semaphore" maxJobLimit
+  case mbServer of
+    Left err -> do
+      warn verbosity $
+        "Failed to create semaphore: "
+          ++ show err
+          ++ "; falling back to -j"
+          ++ show maxJobLimit
+          ++ "."
+      newParallelJobControl maxJobLimit
+    Right server -> do
+      let sem = serverClientSemaphore server
+      info verbosity $
+        "Created semaphore called "
+          ++ semaphoreIdentifier (clientSemaphoreName sem)
+          ++ " with "
+          ++ show maxJobLimit
+          ++ " slots."
+      outqVar <- newTChanIO
+      inqVar <- newTChanIO
+      countVar <- newTVarIO 0
+      void (forkIO (worker sem inqVar outqVar))
+      return
+        JobControl
+          { spawnJob = spawn inqVar countVar
+          , collectJob = collect outqVar countVar
+          , remainingJobs = remaining countVar
+          , cancelJobs = cancel inqVar countVar
+          , cleanupJobControl = destroyServerSemaphore server
+          , jobControlSemaphore = Just (semaphoreIdentifier (clientSemaphoreName sem))
+          }
   where
-    worker :: Semaphore -> TChan (IO a) -> TChan (Either SomeException a) -> IO ()
+    worker :: ClientSemaphore -> TChan (IO a) -> TChan (Either SomeException a) -> IO ()
     worker sem inqVar outqVar =
       forever $ do
         job <- atomically $ readTChan inqVar
-        -- mask here, as we need to ensure that the thread which contains the
-        -- release action is spawned. Otherwise, there is the chance that an
-        -- async exception is thrown between the semaphore being taken and the
-        -- thread being spawned.
+        -- mask so that the fork happens atomically with the acquire.
         mask_ $ do
-          waitOnSemaphore sem
+          -- waitOnSemaphore is interruptible under mask_
+          tok <- waitOnSemaphore sem
           void $ forkIOWithUnmask $ \unmask -> do
-            res <- try (unmask job)
-            releaseSemaphore sem 1
+            res <- try (unmask job) `finally` releaseSemaphoreToken tok
             atomically $ writeTChan outqVar res
         -- Try to give GHC enough time to compute the module graph and then
         -- request some additional capabilities if it can make use of them. The
@@ -291,17 +299,39 @@ newJobControlFromParStrat verbosity mcompiler parStrat numJobsCap = case parStra
   UseSem n ->
     case mcompiler of
       Just compiler
-        | jsemSupported compiler ->
+        | jsemSupported compiler
+        , isJsemCompatible compiler ->
             newSemaphoreJobControl verbosity (capJobs n)
+        | jsemSupported compiler ->
+            do
+              warn verbosity $
+                "Semaphore version mismatch (cabal-install uses v"
+                  ++ show (getSemaphoreProtocolVersion semaphoreVersion)
+                  ++ ", but the selected GHC reports "
+                  ++ maybe "no version (assumed v1)" (\v -> "v" ++ show v) (jsemVersion compiler)
+                  ++ "); not using -jsem, GHC will be invoked without semaphore-based parallelism."
+              newParallelJobControl (capJobs n)
         | otherwise ->
             do
-              warn verbosity "-jsem is not supported by the selected compiler, falling back to normal parallelism control."
+              warn verbosity $
+                "-jsem is not supported by the selected compiler; falling back to -j"
+                  ++ show (capJobs n)
+                  ++ "."
               newParallelJobControl (capJobs n)
       Nothing ->
         -- Don't warn in the Nothing case, as there isn't really a "selected" compiler.
         newParallelJobControl (capJobs n)
   where
     capJobs n = min (fromMaybe maxBound numJobsCap) n
+
+-- | Check if the compiler's semaphore version is compatible with ours,
+-- per 'versionsAreCompatible'. A compiler that doesn't report a
+-- @"Semaphore version"@ field is treated as v1.
+isJsemCompatible :: Compiler -> Bool
+isJsemCompatible compiler =
+  versionsAreCompatible (SemaphoreProtocolVersion v) semaphoreVersion
+  where
+    v = fromMaybe 1 (jsemVersion compiler)
 
 withJobControl :: IO (JobControl IO a) -> (JobControl IO a -> IO b) -> IO b
 withJobControl mkJC = bracket mkJC cleanupJobControl
