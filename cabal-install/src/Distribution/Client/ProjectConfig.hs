@@ -851,9 +851,9 @@ readProjectFileSkeletonGen
           -- which imports 'importee-2.config', then we get these paths from
           -- 'projectSkeletonImports':
           --
-          -- > ("importee-2.config" :| ["importee-1.config", "cabal.project"]) >
-          -- ("importee-1.config" :| ["cabal.project"]) > ("cabal.project" :|
-          -- [])
+          -- "importee-2.config" :| ["importee-1.config", "cabal.project"]
+          -- "importee-1.config" :| ["cabal.project"]
+          -- "cabal.project" :| []
           --
           -- 'currentProjectConfigPath' gives us the head of the path, an
           -- importee or the root project file.
