@@ -830,11 +830,11 @@ readProjectFileSkeletonGen
   -> (FilePath -> IO ProjectConfigSkeleton)
   -> Rebuild ProjectConfigSkeleton
 readProjectFileSkeletonGen
-  verbosity
-  httpTransport
+  _verbosity
+  _httpTransport
   DistDirLayout{distProjectFile, distProjectRootDirectory}
   extensionName@(distProjectFile -> extensionFile)
-  extensionDescription
+  _extensionDescription
   parseConfig =
     do
       exists <- liftIO $ doesFileExist absExtensionFile
