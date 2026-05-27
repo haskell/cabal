@@ -829,8 +829,8 @@ readProjectLocalFreezeConfig verbosity parserOption httpTransport distDirLayout 
 -- be used with the legacy or parsec parser, or a combination of both.
 readProjectFileSkeletonGen :: Verbosity -> HttpTransport -> DistDirLayout -> ProjectFileKey -> (FilePath -> IO ProjectConfigSkeleton) -> Rebuild ProjectConfigSkeleton
 readProjectFileSkeletonGen
-  verbosity
-  httpTransport
+  _verbosity
+  _httpTransport
   DistDirLayout{distProjectFile, distProjectRootDirectory}
   key@(distProjectFile -> extensionFile)
 
