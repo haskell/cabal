@@ -827,14 +827,14 @@ readProjectFileSkeletonGen
   -> Rebuild ProjectConfigSkeleton
 readProjectFileSkeletonGen
   DistDirLayout{distProjectFile, distProjectRootDirectory}
-  extensionName@(distProjectFile -> extensionFile)
+  extensionName@(distProjectFile -> possiblyRelativeExtensionFile)
   parseConfig =
     do
-      exists <- liftIO $ doesFileExist absExtensionFile
+      exists <- liftIO $ doesFileExist extensionFile
       if exists
         then do
-          monitorFiles [monitorFileHashed absExtensionFile]
-          pcs <- liftIO $ parseConfig absExtensionFile
+          monitorFiles [monitorFileHashed extensionFile]
+          pcs <- liftIO $ parseConfig extensionFile
 
           -- If its the main project then we have the local imports to monitor.
           -- We need to monitor the project and all of its local imports, We
@@ -856,14 +856,18 @@ readProjectFileSkeletonGen
           -- 'currentProjectConfigPath' gives us the head of the path, an
           -- importee or the root project file.
           --
-          -- If we have extensionName of "local or "freeze", these aren't
+          -- If we have an extensionName of "" it is still possible for the main
+          -- project to import the .local or .freeze explicitly. These aren't
           -- normally imported but there's nothing stopping the user from
-          -- importing them.
+          -- importing them. They're read separately and we don't want to
+          -- monitor them twice, so we filter them out. We're already monitoring
+          -- the main project file (above), so we filter that out.
           when (null extensionName) $ do
             monitorFiles
               [ monitorFileHashed path
-              | path <-
-                  filter (/= absExtensionFile) $
+              | let projFile = makeAbsolute . distProjectFile
+              , path <-
+                  filter (`notElem` [extensionFile, projFile "freeze", projFile "local"]) $
                     ordNub
                       [ p
                       | (Nothing, makeAbsolute . currentProjectConfigPath -> p) <- projectSkeletonImports pcs
@@ -879,7 +883,7 @@ readProjectFileSkeletonGen
       makeAbsolute f
         | isAbsolute f = f
         | otherwise = distProjectRootDirectory </> f
-      absExtensionFile = makeAbsolute extensionFile
+      extensionFile = makeAbsolute possiblyRelativeExtensionFile
 
 -- There are 3 different variants of the project parsing function.
 -- 1. readProjectFileSkeletonLegacy: always uses the legacy parser
