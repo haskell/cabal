@@ -5,7 +5,6 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-unused-matches #-}
 
 -- | Handling project configuration.
 module Distribution.Client.ProjectConfig
@@ -747,7 +746,7 @@ readProjectConfig
   -> Flag FilePath
   -> DistDirLayout
   -> Rebuild ProjectConfigSkeleton
-readProjectConfig verbosity parserOption _ (Flag True) configFileFlag _ = do
+readProjectConfig verbosity _parserOption _ (Flag True) configFileFlag _ = do
   global <- singletonProjectConfigSkeleton <$> readGlobalConfig verbosity configFileFlag
   return (global <> singletonProjectConfigSkeleton defaultImplicitProjectConfig)
 readProjectConfig verbosity parserOption httpTransport _ configFileFlag distDirLayout = do
@@ -958,7 +957,7 @@ readProjectFileSkeletonCompare verbosity httpTransport distDirLayout key = do
     let (_, ppres) = runParseResult pres
     case (lres, ppres) of
       -- 1. Both succeed, compare the results
-      (OldParser.ProjectParseOk lwarns lpcs, Right ppcs) -> do
+      (OldParser.ProjectParseOk _lwarns lpcs, Right ppcs) -> do
         unless (lpcs == ppcs) (dieWithException verbosity $ LegacyAndParsecParseResultsDiffer fp (show lpcs) (show ppcs))
         liftIO $ reportParseResultParsec verbosity fp bs pres
       -- 2. The legacy parser failed, but the parsec parser succeeded.
@@ -981,7 +980,7 @@ reportParseResultParsec
   -> BS.ByteString
   -> Parsec.ParseResult ProjectFileSource a
   -> IO a
-reportParseResultParsec verbosity fpath contents pr = do
+reportParseResultParsec verbosity fpath _contents pr = do
   let (warnings, result) = runParseResult pr
   case result of
     Right x -> do
@@ -1006,8 +1005,8 @@ parseProjectFileSkeletonParsec verbosity httpTransport distDirLayout key extensi
   bs <- BS.readFile extensionFile
   res <- Parsec.parseProject extensionFile (distDownloadSrcDirectory distDirLayout) httpTransport verbosity $ ProjectConfigToParse bs
   case snd $ runParseResult res of
-    x@(Right skeleton) -> reportDuplicateImports verbosity skeleton >> pure (res, bs)
-    x@Left{} -> pure (res, bs)
+    Right skeleton -> reportDuplicateImports verbosity skeleton >> pure (res, bs)
+    Left{} -> pure (res, bs)
 
 -- | Render the 'ProjectConfig' format.
 --
