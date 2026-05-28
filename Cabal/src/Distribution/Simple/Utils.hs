@@ -653,6 +653,9 @@ logMsg markWhen verbosity msg = do
   hPutStr h $
     withMetadata ts markWhen FlagTrace flags $
       wrapTextVerbosity flags msg
+  -- REVIEW: Should we always flush or only for the debug functions?
+  -- ensure that we don't lose output if we segfault/infinite loop
+  hFlush stdout
 
 logMsgNoWrap :: MarkWhen -> Verbosity -> String -> IO ()
 logMsgNoWrap markWhen verbosity msg = do
@@ -660,6 +663,8 @@ logMsgNoWrap markWhen verbosity msg = do
       flags = verbosityFlags verbosity
   ts <- getPOSIXTime
   hPutStr h . withMetadata ts markWhen FlagTrace flags $ msg
+  -- REVIEW: Should we always flush or only for the debug functions?
+  hFlush stdout
 
 -- | Useful status messages.
 --
@@ -714,28 +719,16 @@ infoNoWrap verbosity
 --
 -- We display these messages when the verbosity level is 'deafening'
 debug :: Verbosity -> String -> IO ()
-debug verbosity msg = withFrozenCallStack $
-  when (verbosityLevel verbosity >= Deafening) $ do
-    let h = verbosityChosenOutputHandle verbosity
-        flags = verbosityFlags verbosity
-    ts <- getPOSIXTime
-    hPutStr h $
-      withMetadata ts NeverMark FlagTrace flags $
-        wrapTextVerbosity flags msg
-    -- ensure that we don't lose output if we segfault/infinite loop
-    hFlush stdout
+debug verbosity
+  | verbosityLevel verbosity >= Deafening = withFrozenCallStack . logMsg NeverMark verbosity
+  | otherwise = const $ pure ()
 
 -- | A variant of 'debug' that doesn't perform the automatic line
 -- wrapping. Produces better output in some cases.
 debugNoWrap :: Verbosity -> String -> IO ()
-debugNoWrap verbosity msg = withFrozenCallStack $
-  when (verbosityLevel verbosity >= Deafening) $ do
-    let h = verbosityChosenOutputHandle verbosity
-    ts <- getPOSIXTime
-    hPutStr h $
-      withMetadata ts NeverMark FlagTrace (verbosityFlags verbosity) msg
-    -- ensure that we don't lose output if we segfault/infinite loop
-    hFlush stdout
+debugNoWrap verbosity
+  | verbosityLevel verbosity >= Deafening = withFrozenCallStack . logMsgNoWrap NeverMark verbosity
+  | otherwise = const $ pure ()
 
 -- | Perform an IO action, catching any IO exceptions and printing an error
 --   if one occurs.
