@@ -645,6 +645,22 @@ warnMessage l verbosity msg = withFrozenCallStack $ do
   where
     flags = verbosityFlags verbosity
 
+logMsg :: Verbosity -> String -> IO ()
+logMsg verbosity msg = do
+  let h = verbosityChosenOutputHandle verbosity
+      flags = verbosityFlags verbosity
+  ts <- getPOSIXTime
+  hPutStr h $
+    withMetadata ts NormalMark FlagTrace flags $
+      wrapTextVerbosity flags msg
+
+logMsgNoWrap :: Verbosity -> String -> IO ()
+logMsgNoWrap verbosity msg = do
+  let h = verbosityChosenOutputHandle verbosity
+      flags = verbosityFlags verbosity
+  ts <- getPOSIXTime
+  hPutStr h . withMetadata ts NormalMark FlagTrace flags $ msg
+
 -- | Useful status messages.
 --
 -- We display these at the 'normal' verbosity level.
@@ -652,24 +668,16 @@ warnMessage l verbosity msg = withFrozenCallStack $ do
 -- This is for the ordinary helpful status messages that users see. Just
 -- enough information to know that things are working but not floods of detail.
 notice :: Verbosity -> String -> IO ()
-notice verbosity msg = withFrozenCallStack $ do
-  when (verbosityLevel verbosity >= Normal) $ do
-    let h = verbosityChosenOutputHandle verbosity
-        flags = verbosityFlags verbosity
-    ts <- getPOSIXTime
-    hPutStr h $
-      withMetadata ts NormalMark FlagTrace flags $
-        wrapTextVerbosity flags msg
+notice verbosity
+  | verbosityLevel verbosity >= Normal = withFrozenCallStack . logMsg verbosity
+  | otherwise = const $ pure ()
 
 -- | Display a message at 'normal' verbosity level, but without
 -- wrapping.
 noticeNoWrap :: Verbosity -> String -> IO ()
-noticeNoWrap verbosity msg = withFrozenCallStack $ do
-  when (verbosityLevel verbosity >= Normal) $ do
-    let h = verbosityChosenOutputHandle verbosity
-        flags = verbosityFlags verbosity
-    ts <- getPOSIXTime
-    hPutStr h . withMetadata ts NormalMark FlagTrace flags $ msg
+noticeNoWrap verbosity
+  | verbosityLevel verbosity >= Normal = withFrozenCallStack . logMsgNoWrap verbosity
+  | otherwise = const $ pure ()
 
 -- | Pretty-print a 'Disp.Doc' status message at 'normal' verbosity
 -- level.  Use this if you need fancy formatting.
