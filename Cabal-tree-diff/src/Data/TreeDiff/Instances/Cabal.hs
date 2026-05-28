@@ -153,3 +153,4 @@ instance ToExpr UnqualComponentName
 instance ToExpr VerbosityFlags
 instance ToExpr VerbosityFlag
 instance ToExpr VerbosityLevel
+instance ToExpr Platform

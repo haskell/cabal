@@ -580,6 +580,8 @@ instance Described SpecLicense where
 instance Described TestedWith where
     describe _ = RETodo
 
+instance Described SupportedPlatforms where
+    describe _ = RETodo
 
 instance Described (SymbolicPath from to) where
     describe _ = describe ([] :: [Token])

@@ -87,6 +87,7 @@ import Distribution.Version (Version, VersionRange)
 import qualified Data.ByteString.Char8 as BS8
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.SPDX as SPDX
+import Distribution.System (Platform)
 import qualified Distribution.Types.Lens as L
 import Distribution.Utils.Generic (ordNub)
 
@@ -103,6 +104,7 @@ packageDescriptionFieldGrammar
      , c (List VCat (RelativePathNT DataDir File) (RelativePath DataDir File))
      , c (List VCat (RelativePathNT Pkg File) (RelativePath Pkg File))
      , c (List FSep TestedWith (CompilerFlavor, VersionRange))
+     , c (List FSep SupportedPlatforms Platform)
      , c CompatLicenseFile
      , c CompatDataDir
      )
@@ -118,6 +120,7 @@ packageDescriptionFieldGrammar =
     <*> freeTextFieldDefST "author" L.author
     <*> freeTextFieldDefST "stability" L.stability
     <*> monoidalFieldAla "tested-with" (alaList' FSep TestedWith) L.testedWith
+    <*> monoidalFieldAla "supported-platforms" (alaList' FSep SupportedPlatforms) L.supportedPlatforms
     <*> freeTextFieldDefST "homepage" L.homepage
     <*> freeTextFieldDefST "package-url" L.pkgUrl
     <*> freeTextFieldDefST "bug-reports" L.bugReports

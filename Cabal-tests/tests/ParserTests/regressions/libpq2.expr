@@ -66,6 +66,7 @@ GenericPackageDescription {
           (mkVersion [8, 6, 1]))],
     homepage =
     "https://github.com/phadej/postgresql-libpq",
+    supportedPlatforms = [],
     pkgUrl = "",
     bugReports = "",
     sourceRepos = [],

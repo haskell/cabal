@@ -20,6 +20,7 @@ GenericPackageDescription {
     testedWith = [],
     homepage =
     "http://github.com/bennofs/th-lift-instances/",
+    supportedPlatforms = [],
     pkgUrl = "",
     bugReports =
     "http://github.com/bennofs/th-lift-instances/issues",

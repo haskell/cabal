@@ -93,6 +93,7 @@ import Distribution.Utils.ShortText
 import Distribution.Version
 
 import qualified Distribution.SPDX as SPDX
+import Distribution.System (Platform)
 
 -- -----------------------------------------------------------------------------
 -- The PackageDescription type
@@ -115,6 +116,7 @@ data PackageDescription = PackageDescription
   , author :: !ShortText
   , stability :: !ShortText
   , testedWith :: [(CompilerFlavor, VersionRange)]
+  , supportedPlatforms :: [Platform]
   , homepage :: !ShortText
   , pkgUrl :: !ShortText
   , bugReports :: !ShortText
@@ -216,6 +218,7 @@ emptyPackageDescription =
     , author = mempty
     , stability = mempty
     , testedWith = []
+    , supportedPlatforms = []
     , homepage = mempty
     , pkgUrl = mempty
     , bugReports = mempty
@@ -479,29 +482,30 @@ instance L.HasBuildInfos PackageDescription where
         a17
         a18
         a19
+        a20
         x1
         x2
         x3
         x4
         x5
         x6
-        a20
         a21
         a22
         a23
         a24
         a25
+        a26
       ) =
-      PackageDescription a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19
+      PackageDescription a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19 a20
         <$> (traverse . L.buildInfo) f x1 -- library
         <*> (traverse . L.buildInfo) f x2 -- sub libraries
         <*> (traverse . L.buildInfo) f x3 -- executables
         <*> (traverse . L.buildInfo) f x4 -- foreign libs
         <*> (traverse . L.buildInfo) f x5 -- test suites
         <*> (traverse . L.buildInfo) f x6 -- benchmarks
-        <*> pure a20 -- data files
-        <*> pure a21 -- data dir
-        <*> pure a22 -- extra src files
-        <*> pure a23 -- extra temp files
-        <*> pure a24 -- extra doc files
-        <*> pure a25 -- extra files
+        <*> pure a21 -- data files
+        <*> pure a22 -- data dir
+        <*> pure a23 -- extra src files
+        <*> pure a24 -- extra temp files
+        <*> pure a25 -- extra doc files
+        <*> pure a26 -- extra files

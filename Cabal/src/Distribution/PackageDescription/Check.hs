@@ -94,6 +94,8 @@ import qualified Distribution.Types.BuildInfo.Lens as L
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
 
 import Control.Monad
+import Distribution.System (Platform)
+import qualified Distribution.System as System
 
 -- $setup
 -- >>> import Control.Arrow ((&&&))
@@ -404,6 +406,7 @@ checkPackageDescription
           _author_
           _stability_
           testedWith_
+          supportedPlatforms_
           _homepage_
           _pkgUrl_
           _bugReports_
@@ -512,6 +515,7 @@ checkPackageDescription
     -- § Datafield checks.
     checkSetupBuildInfo setupBuildInfo_
     mapM_ checkTestedWith testedWith_
+    mapM_ checkSupportedPlatforms supportedPlatforms_
     either
       checkNewLicense
       (checkOldLicense $ null licenseFiles_)
@@ -571,6 +575,15 @@ checkPackageDescription
         tellP (PackageBuildWarning $ UnknownCompilers [n])
       checkTestedWith (compiler, versionRange) =
         checkVersionRange compiler versionRange
+
+      checkSupportedPlatforms
+        :: Monad m
+        => Platform
+        -> CheckM m ()
+      checkSupportedPlatforms platform =
+        checkP
+          (platform `notElem` System.supportedPlatforms)
+          (PackageDistInexcusable $ UnsupportedPlatform [prettyShow platform])
 
       checkVersionRange
         :: Monad m

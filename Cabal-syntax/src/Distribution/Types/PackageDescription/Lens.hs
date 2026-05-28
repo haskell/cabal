@@ -36,6 +36,7 @@ import Distribution.Utils.ShortText (ShortText)
 import Distribution.Version (VersionRange)
 
 import qualified Distribution.SPDX as SPDX
+import Distribution.System (Platform)
 import qualified Distribution.Types.PackageDescription as T
 
 package :: Lens' PackageDescription PackageIdentifier
@@ -69,6 +70,10 @@ stability f s = fmap (\x -> s{T.stability = x}) (f (T.stability s))
 testedWith :: Lens' PackageDescription [(CompilerFlavor, VersionRange)]
 testedWith f s = fmap (\x -> s{T.testedWith = x}) (f (T.testedWith s))
 {-# INLINE testedWith #-}
+
+supportedPlatforms :: Lens' PackageDescription [Platform]
+supportedPlatforms f s = fmap (\x -> s{T.supportedPlatforms = x}) (f (T.supportedPlatforms s))
+{-# INLINE supportedPlatforms #-}
 
 homepage :: Lens' PackageDescription ShortText
 homepage f s = fmap (\x -> s{T.homepage = x}) (f (T.homepage s))

@@ -15,6 +15,7 @@ GenericPackageDescription {
     stability = "",
     testedWith = [],
     homepage = "",
+    supportedPlatforms = [],
     pkgUrl = "",
     bugReports = "",
     sourceRepos = [],

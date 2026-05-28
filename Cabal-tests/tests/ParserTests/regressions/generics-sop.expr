@@ -45,6 +45,7 @@ GenericPackageDescription {
           (EarlierVersion
             (mkVersion [8, 4])))],
     homepage = "",
+    supportedPlatforms = [],
     pkgUrl = "",
     bugReports = "",
     sourceRepos = [

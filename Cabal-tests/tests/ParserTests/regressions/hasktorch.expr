@@ -21,6 +21,7 @@ GenericPackageDescription {
     testedWith = [],
     homepage =
     "https://github.com/hasktorch/hasktorch#readme",
+    supportedPlatforms = [],
     pkgUrl = "",
     bugReports =
     "https://github.com/hasktorch/hasktorch/issues",

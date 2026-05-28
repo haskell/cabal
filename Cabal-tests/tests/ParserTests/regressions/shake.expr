@@ -39,6 +39,7 @@ GenericPackageDescription {
           (mkVersion [7, 4, 2]))],
     homepage =
     "http://shakebuild.com",
+    supportedPlatforms = [],
     pkgUrl = "",
     bugReports =
     "https://github.com/ndmitchell/shake/issues",

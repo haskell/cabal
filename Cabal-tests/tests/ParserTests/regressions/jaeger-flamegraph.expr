@@ -28,6 +28,7 @@ GenericPackageDescription {
           (MajorBoundVersion
             (mkVersion [8, 6, 2])))],
     homepage = "",
+    supportedPlatforms = [],
     pkgUrl = "",
     bugReports =
     "https://github.com/symbiont-io/jaeger-flamegraph/pulls",

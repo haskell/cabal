@@ -33,6 +33,7 @@ GenericPackageDescription {
           (mkVersion [7, 6, 0]))],
     homepage =
     "https://github.com/mgajda/octree",
+    supportedPlatforms = [],
     pkgUrl =
     "http://hackage.haskell.org/package/octree",
     bugReports =

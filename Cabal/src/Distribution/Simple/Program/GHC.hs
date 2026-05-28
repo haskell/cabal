@@ -39,7 +39,7 @@ import Distribution.Simple.Program.ResponseFile
 import Distribution.Simple.Program.Run
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Utils (TempFileOptions, infoNoWrap)
-import Distribution.System
+import Distribution.System (OS (..), Platform (..))
 import Distribution.Types.ComponentId
 import Distribution.Types.ParStrat
 import Distribution.Utils.NubList

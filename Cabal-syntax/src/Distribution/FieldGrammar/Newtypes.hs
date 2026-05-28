@@ -38,6 +38,7 @@ module Distribution.FieldGrammar.Newtypes
   , SpecVersion (..)
   , TestedWith (..)
   , SpecLicense (..)
+  , SupportedPlatforms (..)
 
     -- * Identifiers
   , Token (..)
@@ -77,6 +78,7 @@ import qualified Data.List.NonEmpty as NE
 import qualified Data.Set as Set
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.SPDX as SPDX
+import Distribution.System (Platform)
 
 -- | Vertical list with commas. Displayed with 'vcat'
 data CommaVCat = CommaVCat
@@ -454,3 +456,18 @@ parsecTestedWith = do
   name <- lexemeParsec
   ver <- parsec <|> pure anyVersion
   return (name, ver)
+
+-------------------------------------------------------------------------------
+-- SupportedPlatforms
+-------------------------------------------------------------------------------
+
+-- | Version range or just version
+newtype SupportedPlatforms = SupportedPlatforms {getSupportedPlatforms :: Platform}
+
+instance Newtype Platform SupportedPlatforms
+
+instance Parsec SupportedPlatforms where
+  parsec = pack <$> parsec
+
+instance Pretty SupportedPlatforms where
+  pretty = pretty . unpack

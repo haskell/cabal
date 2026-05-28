@@ -33,6 +33,7 @@ import Test.Tasty                             (defaultMain, testGroup)
 import Test.Tasty.HUnit                       (assertFailure, testCase)
 
 import Distribution.PackageDescription
+import Distribution.System(Platform)
 
 import qualified Data.ByteString      as BS
 import qualified Distribution.License as License
@@ -116,6 +117,7 @@ instance NoThunks TestType
 instance NoThunks UnqualComponentName
 instance NoThunks Version
 instance NoThunks VersionRange
+instance NoThunks Platform
 
 instance NoThunks a => NoThunks (PerCompilerFlavor a)
 

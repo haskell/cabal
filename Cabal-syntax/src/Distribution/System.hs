@@ -28,6 +28,7 @@ module Distribution.System
   , Platform (..)
   , buildPlatform
   , platformFromTriple
+  , supportedPlatforms
 
     -- * Internal
   , knownOSs
@@ -286,6 +287,9 @@ data Platform = Platform Arch OS
 instance Binary Platform
 instance Structured Platform
 instance NFData Platform where rnf = genericRnf
+
+supportedPlatforms :: [Platform]
+supportedPlatforms = [Platform arcg os | arcg <- knownArches, os <- knownOSs]
 
 instance Pretty Platform where
   pretty (Platform arch os) = pretty arch <<>> Disp.char '-' <<>> pretty os

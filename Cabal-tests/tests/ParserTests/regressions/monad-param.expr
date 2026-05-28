@@ -20,6 +20,7 @@ GenericPackageDescription {
     testedWith = [],
     homepage =
     "http://comonad.com/haskell/monad-param/dist/doc/html/Control-Monad-Parameterized.html",
+    supportedPlatforms = [],
     pkgUrl =
     "http://comonad.com/haskell/monad-param",
     bugReports = "",

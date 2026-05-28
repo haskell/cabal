@@ -37,6 +37,7 @@ import Distribution.License (License, knownLicenses)
 import Distribution.ModuleName (ModuleName)
 import Distribution.Parsec.Warning (PWarning, showPWarning)
 import Distribution.Pretty (prettyShow)
+import Distribution.System (supportedPlatforms)
 import Distribution.Types.BenchmarkType (BenchmarkType, knownBenchmarkTypes)
 import Distribution.Types.Dependency (Dependency (..))
 import Distribution.Types.ExeDependency (ExeDependency)
@@ -166,6 +167,7 @@ data CheckExplanation
   | NoBuildType
   | NoCustomSetup
   | UnknownCompilers [String]
+  | UnsupportedPlatform [String]
   | UnknownLanguages [String]
   | UnknownExtensions [String]
   | LanguagesAsExtension [String]
@@ -334,6 +336,7 @@ data CheckExplanationID
   | CINoBuildType
   | CINoCustomSetup
   | CIUnknownCompilers
+  | CIUnsupportedPlatform
   | CIUnknownLanguages
   | CIUnknownExtensions
   | CILanguagesAsExtension
@@ -481,6 +484,7 @@ checkExplanationId (ZPrefix{}) = CIZPrefix
 checkExplanationId (NoBuildType{}) = CINoBuildType
 checkExplanationId (NoCustomSetup{}) = CINoCustomSetup
 checkExplanationId (UnknownCompilers{}) = CIUnknownCompilers
+checkExplanationId (UnsupportedPlatform{}) = CIUnsupportedPlatform
 checkExplanationId (UnknownLanguages{}) = CIUnknownLanguages
 checkExplanationId (UnknownExtensions{}) = CIUnknownExtensions
 checkExplanationId (LanguagesAsExtension{}) = CILanguagesAsExtension
@@ -635,6 +639,7 @@ ppCheckExplanationId CIZPrefix = "reserved-z-prefix"
 ppCheckExplanationId CINoBuildType = "no-build-type"
 ppCheckExplanationId CINoCustomSetup = "undeclared-custom-setup"
 ppCheckExplanationId CIUnknownCompilers = "unknown-compiler-tested"
+ppCheckExplanationId CIUnsupportedPlatform = "unsupported-platform"
 ppCheckExplanationId CIUnknownLanguages = "unknown-languages"
 ppCheckExplanationId CIUnknownExtensions = "unknown-extension"
 ppCheckExplanationId CILanguagesAsExtension = "languages-as-extensions"
@@ -893,6 +898,11 @@ ppExplanation (UnknownCompilers unknownCompilers) =
   "Unknown compiler "
     ++ commaSep (map quote unknownCompilers)
     ++ " in 'tested-with' field."
+ppExplanation (UnsupportedPlatform platforms) =
+  "Unsupported platform: "
+    ++ commaSep (map quote platforms)
+    ++ ". The supported platforms are: "
+    ++ commaSep (map (quote . prettyShow) supportedPlatforms)
 ppExplanation (UnknownLanguages unknownLanguages) =
   "Unknown languages: " ++ commaSep unknownLanguages
 ppExplanation (UnknownExtensions unknownExtensions) =
