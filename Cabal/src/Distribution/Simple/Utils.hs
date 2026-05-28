@@ -645,21 +645,21 @@ warnMessage l verbosity msg = withFrozenCallStack $ do
   where
     flags = verbosityFlags verbosity
 
-logMsg :: Verbosity -> String -> IO ()
-logMsg verbosity msg = do
+logMsg :: MarkWhen -> Verbosity -> String -> IO ()
+logMsg markWhen verbosity msg = do
   let h = verbosityChosenOutputHandle verbosity
       flags = verbosityFlags verbosity
   ts <- getPOSIXTime
   hPutStr h $
-    withMetadata ts NormalMark FlagTrace flags $
+    withMetadata ts markWhen FlagTrace flags $
       wrapTextVerbosity flags msg
 
-logMsgNoWrap :: Verbosity -> String -> IO ()
-logMsgNoWrap verbosity msg = do
+logMsgNoWrap :: MarkWhen -> Verbosity -> String -> IO ()
+logMsgNoWrap markWhen verbosity msg = do
   let h = verbosityChosenOutputHandle verbosity
       flags = verbosityFlags verbosity
   ts <- getPOSIXTime
-  hPutStr h . withMetadata ts NormalMark FlagTrace flags $ msg
+  hPutStr h . withMetadata ts markWhen FlagTrace flags $ msg
 
 -- | Useful status messages.
 --
@@ -669,14 +669,14 @@ logMsgNoWrap verbosity msg = do
 -- enough information to know that things are working but not floods of detail.
 notice :: Verbosity -> String -> IO ()
 notice verbosity
-  | verbosityLevel verbosity >= Normal = withFrozenCallStack . logMsg verbosity
+  | verbosityLevel verbosity >= Normal = withFrozenCallStack . logMsg NormalMark verbosity
   | otherwise = const $ pure ()
 
 -- | Display a message at 'normal' verbosity level, but without
 -- wrapping.
 noticeNoWrap :: Verbosity -> String -> IO ()
 noticeNoWrap verbosity
-  | verbosityLevel verbosity >= Normal = withFrozenCallStack . logMsgNoWrap verbosity
+  | verbosityLevel verbosity >= Normal = withFrozenCallStack . logMsgNoWrap NeverMark verbosity
   | otherwise = const $ pure ()
 
 -- | Pretty-print a 'Disp.Doc' status message at 'normal' verbosity
@@ -701,23 +701,14 @@ setupMessage verbosity msg pkgid = withFrozenCallStack $ do
 --
 -- We display these messages when the verbosity level is 'verbose'
 info :: Verbosity -> String -> IO ()
-info verbosity msg = withFrozenCallStack $
-  when (verbosityLevel verbosity >= Verbose) $ do
-    let h = verbosityChosenOutputHandle verbosity
-        flags = verbosityFlags verbosity
-    ts <- getPOSIXTime
-    hPutStr h $
-      withMetadata ts NeverMark FlagTrace flags $
-        wrapTextVerbosity flags msg
+info verbosity
+  | verbosityLevel verbosity >= Verbose = withFrozenCallStack . logMsg NeverMark verbosity
+  | otherwise = const $ pure ()
 
 infoNoWrap :: Verbosity -> String -> IO ()
-infoNoWrap verbosity msg = withFrozenCallStack $
-  when (verbosityLevel verbosity >= Verbose) $ do
-    let h = verbosityChosenOutputHandle verbosity
-        flags = verbosityFlags verbosity
-    ts <- getPOSIXTime
-    hPutStr h $
-      withMetadata ts NeverMark FlagTrace flags msg
+infoNoWrap verbosity
+  | verbosityLevel verbosity >= Verbose = withFrozenCallStack . logMsgNoWrap NeverMark verbosity
+  | otherwise = const $ pure ()
 
 -- | Detailed internal debugging information
 --
