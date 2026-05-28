@@ -646,12 +646,12 @@ warnMessage l verbosity msg = withFrozenCallStack $ do
   where
     flags = verbosityFlags verbosity
 
-logMsg :: MarkWhen -> Verbosity -> String -> IO ()
-logMsg markWhen verbosity@(verbosityFlags -> flags) (wrapTextVerbosity flags -> msg) =
-  logMsgNoWrap markWhen verbosity msg
+logMsgWrap :: MarkWhen -> Verbosity -> String -> IO ()
+logMsgWrap markWhen verbosity@(verbosityFlags -> flags) (wrapTextVerbosity flags -> msg) =
+  logMsg markWhen verbosity msg
 
-logMsgNoWrap :: MarkWhen -> Verbosity -> String -> IO ()
-logMsgNoWrap markWhen verbosity@(verbosityFlags -> flags) msg = do
+logMsg :: MarkWhen -> Verbosity -> String -> IO ()
+logMsg markWhen verbosity@(verbosityFlags -> flags) msg = do
   let h = verbosityChosenOutputHandle verbosity
   ts <- getPOSIXTime
   hPutStr h . withMetadata ts markWhen FlagTrace flags $ msg
@@ -666,14 +666,14 @@ logMsgNoWrap markWhen verbosity@(verbosityFlags -> flags) msg = do
 -- enough information to know that things are working but not floods of detail.
 notice :: Verbosity -> String -> IO ()
 notice verbosity
-  | verbosityLevel verbosity >= Normal = withFrozenCallStack . logMsg NormalMark verbosity
+  | verbosityLevel verbosity >= Normal = withFrozenCallStack . logMsgWrap NormalMark verbosity
   | otherwise = const $ pure ()
 
 -- | Display a message at 'normal' verbosity level, but without
 -- wrapping.
 noticeNoWrap :: Verbosity -> String -> IO ()
 noticeNoWrap verbosity
-  | verbosityLevel verbosity >= Normal = withFrozenCallStack . logMsgNoWrap NeverMark verbosity
+  | verbosityLevel verbosity >= Normal = withFrozenCallStack . logMsg NormalMark verbosity
   | otherwise = const $ pure ()
 
 -- | Pretty-print a 'Disp.Doc' status message at 'normal' verbosity
@@ -699,12 +699,12 @@ setupMessage verbosity msg pkgid = withFrozenCallStack $ do
 -- We display these messages when the verbosity level is 'verbose'
 info :: Verbosity -> String -> IO ()
 info verbosity
-  | verbosityLevel verbosity >= Verbose = withFrozenCallStack . logMsg NeverMark verbosity
+  | verbosityLevel verbosity >= Verbose = withFrozenCallStack . logMsgWrap NeverMark verbosity
   | otherwise = const $ pure ()
 
 infoNoWrap :: Verbosity -> String -> IO ()
 infoNoWrap verbosity
-  | verbosityLevel verbosity >= Verbose = withFrozenCallStack . logMsgNoWrap NeverMark verbosity
+  | verbosityLevel verbosity >= Verbose = withFrozenCallStack . logMsg NeverMark verbosity
   | otherwise = const $ pure ()
 
 -- | Detailed internal debugging information
@@ -712,14 +712,14 @@ infoNoWrap verbosity
 -- We display these messages when the verbosity level is 'deafening'
 debug :: Verbosity -> String -> IO ()
 debug verbosity
-  | verbosityLevel verbosity >= Deafening = withFrozenCallStack . logMsg NeverMark verbosity
+  | verbosityLevel verbosity >= Deafening = withFrozenCallStack . logMsgWrap NeverMark verbosity
   | otherwise = const $ pure ()
 
 -- | A variant of 'debug' that doesn't perform the automatic line
 -- wrapping. Produces better output in some cases.
 debugNoWrap :: Verbosity -> String -> IO ()
 debugNoWrap verbosity
-  | verbosityLevel verbosity >= Deafening = withFrozenCallStack . logMsgNoWrap NeverMark verbosity
+  | verbosityLevel verbosity >= Deafening = withFrozenCallStack . logMsg NeverMark verbosity
   | otherwise = const $ pure ()
 
 -- | Perform an IO action, catching any IO exceptions and printing an error
