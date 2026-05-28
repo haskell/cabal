@@ -651,10 +651,9 @@ logMsgWrap markWhen verbosity@(verbosityFlags -> flags) (wrapTextVerbosity flags
   logMsg markWhen verbosity msg
 
 logMsg :: MarkWhen -> Verbosity -> String -> IO ()
-logMsg markWhen verbosity@(verbosityFlags -> flags) msg = do
-  let h = verbosityChosenOutputHandle verbosity
+logMsg markWhen verbosity@(verbosityChosenOutputHandle -> h) msg = do
   ts <- getPOSIXTime
-  hPutStr h . withMetadata ts markWhen FlagTrace flags $ msg
+  hPutStr h . withMetadata ts markWhen FlagTrace (verbosityFlags verbosity) $ msg
   -- REVIEW: Should we always flush or only for the debug functions?
   hFlush stdout
 
