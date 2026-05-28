@@ -13,6 +13,7 @@
 #ifdef GIT_REV
 {-# LANGUAGE TemplateHaskell #-}
 #endif
+{-# LANGUAGE ViewPatterns #-}
 
 -----------------------------------------------------------------------------
 
@@ -646,21 +647,12 @@ warnMessage l verbosity msg = withFrozenCallStack $ do
     flags = verbosityFlags verbosity
 
 logMsg :: MarkWhen -> Verbosity -> String -> IO ()
-logMsg markWhen verbosity msg = do
-  let h = verbosityChosenOutputHandle verbosity
-      flags = verbosityFlags verbosity
-  ts <- getPOSIXTime
-  hPutStr h $
-    withMetadata ts markWhen FlagTrace flags $
-      wrapTextVerbosity flags msg
-  -- REVIEW: Should we always flush or only for the debug functions?
-  -- ensure that we don't lose output if we segfault/infinite loop
-  hFlush stdout
+logMsg markWhen verbosity@(verbosityFlags -> flags) (wrapTextVerbosity flags -> msg) =
+  logMsgNoWrap markWhen verbosity msg
 
 logMsgNoWrap :: MarkWhen -> Verbosity -> String -> IO ()
-logMsgNoWrap markWhen verbosity msg = do
+logMsgNoWrap markWhen verbosity@(verbosityFlags -> flags) msg = do
   let h = verbosityChosenOutputHandle verbosity
-      flags = verbosityFlags verbosity
   ts <- getPOSIXTime
   hPutStr h . withMetadata ts markWhen FlagTrace flags $ msg
   -- REVIEW: Should we always flush or only for the debug functions?
