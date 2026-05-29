@@ -94,7 +94,7 @@ module Distribution.Simple.SetupHooks
     -- *** Rule inputs/outputs
 
     -- **** Rule dependencies
-    -- $rulesDemand
+    -- $rulesDeps
   , Dependency (..)
   , RuleOutput (..)
   , RuleId
@@ -590,10 +590,9 @@ the result of the dynamic dependency command; these have the required instances
 needed for serialisation. If you use custom datatypes for these, you will need
 to derive @Binary@, @Show@, @Eq@ to satisfy the API requirements (enforced by
 the various calls to @static Dict@).
-
 -}
 
-{- $rulesDemand
+{- $rulesDeps
 Rules can declare various kinds of dependencies:
 
   - static dependencies: files or other rules that a rule statically depends on,
@@ -631,6 +630,30 @@ to behave as follows:
   1. Any time the rules are out-of-date, query the rules to obtain
      up-to-date rules.
   2. Re-run stale rules.
+
+Cabal will execute all **demanded** rules in dependency order. A rule is
+demanded if it satisfies one of the following conditions:
+
+  1. It is a dependency of another demanded rule.
+  2. The rule generates a Haskell file declared in the autogen-modules field.
+     In this case, the rule **must** place the generated source file in the
+     'autogenComponentModulesDir' appropriate for the component.
+  3. (Since Cabal 3.18 only) The rule generates a non-Haskell source file, such
+     as a C or JavaScript source. In this case (because there is no
+     "autogen-c-sources" field), the following steps must be taken:
+       a. Add the file to the 'c-sources' (or 'js-sources', etc) field of the
+          package description in a per-component pre-configure hook, declaring it
+          in the same 'autogenComponentModulesDir' directory (as if it was a @.hs@ file).
+       b. Add a pre-build rule that generates the source file and puts it in
+          this same 'autogenComponentModulesDir' directory.
+     Note that any file declared in the 'includes'/'autogen-includes' fields
+     must be present at **configure** time, so cannot be generated in a
+     pre-build rule. In that case, either use a pre-configure hook or don't
+     declare it under the 'includes' field (if possible).
+  4. (Since Cabal 3.18 only) The rule generates an extra bundled library file,
+     placed in the 'autogenComponentModulesDir' and with a filename matching
+     one of the libraries named in the 'extra-bundled-libraries' field (ignoring
+     file extension).
 -}
 
 {- $rulesAPI

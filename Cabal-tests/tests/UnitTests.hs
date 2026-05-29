@@ -20,6 +20,7 @@ import qualified UnitTests.Distribution.Utils.CharSet
 import qualified UnitTests.Distribution.Utils.Generic
 import qualified UnitTests.Distribution.Utils.Json
 import qualified UnitTests.Distribution.Utils.NubList
+import qualified UnitTests.Distribution.Utils.Path
 import qualified UnitTests.Distribution.Utils.ShortText
 import qualified UnitTests.Distribution.Utils.Structured
 import qualified UnitTests.Distribution.Version (versionTests)
@@ -52,6 +53,8 @@ tests =
     , testGroup "Distribution.Utils.Json" UnitTests.Distribution.Utils.Json.tests
     , testGroup "Distribution.Utils.NubList"
         UnitTests.Distribution.Utils.NubList.tests
+    , testGroup "Distribution.Utils.Path"
+        UnitTests.Distribution.Utils.Path.tests
     , testGroup "Distribution.PackageDescription.Check"
         UnitTests.Distribution.PackageDescription.Check.tests
     , testGroup "Distribution.Utils.ShortText"
