@@ -87,7 +87,10 @@ import qualified Data.Set as Set
 
 import qualified Text.PrettyPrint as Disp
 
+import Control.Concurrent.STM (TVar, newTVarIO)
 import Control.Exception (assert, handle)
+import qualified Distribution.Client.IndexUtils as IndexUtils
+import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import System.Directory (doesDirectoryExist, doesFileExist, renameDirectory)
 import System.FilePath (makeRelative, normalise, takeDirectory, (<.>), (</>))
 import System.Semaphore (SemaphoreIdentifier)
@@ -367,6 +370,19 @@ rebuildTargets
         createDirectoryIfMissingVerbose verbosity True distTempDirectory
         traverse_ (createPackageDBIfMissing verbosity compiler progdb) packageDBsToUse
 
+        -- Populate the running InstalledPackageIndex by doing a single
+        -- bulk read at startup. This allows us to obtain the
+        -- InstalledPackageInfo of every 'PreExisting' and 'Installed' unit
+        -- in the plan, regardless of how they ended up in the PackageDBs.
+        -- See (ProjIPI1) in Note [Per-project InstalledPackageIndex].
+        initialIPI <-
+          -- NB: 'getInstalledPackages' returns an error when there are no
+          -- PackageDBs, so we handle that case explicitly first.
+          if null packageDBsToUse
+            then return mempty
+            else IndexUtils.getInstalledPackages verbosity compiler packageDBsToUse progdb
+        ipiTVar <- newTVarIO initialIPI
+
         -- Concurrency control: create the job controller and concurrency limits
         -- for downloading, building and installing.
         withJobControl (newJobControlFromParStrat verbosity (Just compiler) buildSettingNumJobs Nothing) $ \jobControl -> do
@@ -401,6 +417,7 @@ rebuildTargets
                       cacheLock
                       sharedPackageConfig
                       installPlan
+                      ipiTVar
                       pkg
                       pkgBuildStatus
     where
@@ -457,6 +474,34 @@ rebuildTargets
           isRemote (RemoteSourceRepoPackage _ _) = True
           isRemote _ = False
 
+{- Note [Per-project InstalledPackageIndex]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In cabal-install, we keep a running InstalledPackageIndex, used for the whole
+project, containing all registered units relevant to the project.
+
+We do this to avoid repeatedly querying @ghc-pkg@ on a per-package basis when
+configuring individual packages.
+
+  (ProjIPI1)
+    We initialise the index with a single @ghc-pkg dump@ invocation, which
+    queries all the package DBs that the plan touches. This single read
+    replaces the per-package query that 'computePackageInfo' would otherwise
+    perform.
+
+    This robustly handles the case of resuming an interrupted build.
+
+  (ProjIPI2)
+    During execution, each time we register a library, we insert its
+    InstalledPackageInfo into the index, so that subsequent packages that
+    depend on it have it available, without needing to re-query @ghc-pkg@.
+
+  (ProjIPI3)
+    Before configuring a package, we read the running InstalledPackageIndex
+    and pass it to Cabal's 'computePackageInfoFromIndex' instead of
+    'computePackageInfo', skipping the expensive per-package @ghc-pkg dump@
+    invocation.
+-}
+
 -- | Create a package DB if it does not currently exist. Note that this action
 -- is /not/ safe to run concurrently.
 createPackageDBIfMissing
@@ -488,6 +533,7 @@ rebuildTarget
   -> Lock
   -> ElaboratedSharedConfig
   -> ElaboratedInstallPlan
+  -> TVar InstalledPackageIndex
   -> ElaboratedReadyPackage
   -> BuildStatus
   -> IO BuildResult
@@ -502,6 +548,7 @@ rebuildTarget
   cacheLock
   sharedPackageConfig
   plan
+  ipiTVar
   rpkg@(ReadyPackage pkg)
   pkgBuildStatus
     -- Technically, doing the --only-download filtering only in this function is
@@ -588,6 +635,7 @@ rebuildTarget
           sharedPackageConfig
           plan
           rpkg
+          ipiTVar
           srcdir
           builddir
 
@@ -604,6 +652,7 @@ rebuildTarget
           sharedPackageConfig
           plan
           rpkg
+          ipiTVar
           buildStatus
           srcdir
           builddir
