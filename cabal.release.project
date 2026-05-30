@@ -7,7 +7,7 @@ index-state: hackage.haskell.org 2026-05-25T10:36:08Z
 
 -- never include this or its TH dependency in a release!
 package cabal-install
-  flags: -git-rev -lukko
+  flags: -git-rev
 
 package Cabal
   flags: -git-rev
