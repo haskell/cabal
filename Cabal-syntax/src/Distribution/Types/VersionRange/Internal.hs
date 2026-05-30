@@ -37,6 +37,7 @@ module Distribution.Types.VersionRange.Internal
   , wildcardUpperBound
   ) where
 
+import Data.Functor (($>))
 import Distribution.Compat.Prelude
 import Distribution.Types.Version
 import Prelude ()
@@ -526,7 +527,7 @@ versionRangeParser digitParser csv = expr
     verLoop :: DList.DList Int -> m (Bool, Version)
     verLoop acc =
       verLoop' acc
-        <|> (tags *> pure (False, mkVersion (DList.toList acc)))
+        <|> (tags $> (False, mkVersion (DList.toList acc)))
 
     verLoop' :: DList.DList Int -> m (Bool, Version)
     verLoop' acc = do
