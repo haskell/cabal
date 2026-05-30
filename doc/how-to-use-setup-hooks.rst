@@ -233,7 +233,7 @@ register one pre-build rule for each such file:
           autogenDir = autogenComponentModulesDir lbi clbi
 
       -- Scan the source directories for .ppExt files, registering one rule each.
-      inputFiles <- findAndMonitorSourceDirsFileExt pbci "ppExt"
+      inputFiles <- findAndMonitorSourceDirsFileExts pbci ("ppExt" NE.:| [])
       for_ inputFiles $ \loc@(Location srcDir relPath) -> do
         let baseName = dropExtension (getSymbolicPath relPath)
         registerRule_ (fromString $ "myPP:" ++ baseName) $
@@ -273,3 +273,7 @@ For rules with dynamic dependencies (e.g. parsing dependencies from the
 input files), you can use ``dynamicRule``. The API for this is more complex;
 refer to `the Hackage documentation <https://hackage-content.haskell.org/package/Cabal-hooks-3.16/docs/Distribution-Simple-SetupHooks.html#v:dynamicRule>`__
 for details.
+
+A fully worked out representative example usage of pre-build rules, for
+preprocessing LBNF grammars, can be found
+`here <https://github.com/wenkokke/cabal-hooks-example/blob/main/SetupHooks.hs>`__.
