@@ -423,7 +423,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
     -- provide location of the documentation of dependencies.
     localStyle =
       let hackage = fromFlagOrDefault False (haddockProjectHackage flags)
-          location = fromFlagOrDefault False (const True <$> haddockProjectHtmlLocation flags)
+          location = fromFlagOrDefault False (True <$ haddockProjectHtmlLocation flags)
        in not hackage && not location
 
     reportTargetProblems :: Show x => [x] -> IO a
