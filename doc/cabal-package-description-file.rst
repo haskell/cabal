@@ -1957,11 +1957,11 @@ system-dependent values for these fields.
    A list of libraries that are supposed to be copied from the build
    directory alongside the produced Haskell libraries.  Note that you
    are under the obligation to produce those libraries in the build
-   directory (e.g. via a custom setup).  Libraries listed here will
-   be included when ``copy``-ing packages and be listed in the
-   ``hs-libraries`` of the package configuration in the package database.
-   Library names must either be prefixed with "HS" or "C" and corresponding
-   library file names must match:
+   directory (e.g. via a custom setup or pre-build rules).
+   Libraries listed here will be included when ``copy``-ing packages and be
+   listed in the ``hs-libraries`` of the package configuration in the package
+   database. Library names must either be prefixed with "HS" or "C" and
+   corresponding library file names must match:
 
       - Libraries with name "HS<library-name>":
          - `libHS<library-name>.a`
