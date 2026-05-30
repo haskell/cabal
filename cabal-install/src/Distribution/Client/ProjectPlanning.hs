@@ -2400,6 +2400,8 @@ elaborateInstallPlan
                 , relocatable = perPkgOptionFlag pkgid False packageConfigRelocatable
                 , withProfLibDetail = elabProfExeDetail
                 , withProfExeDetail = elabProfLibDetail
+                , programPrefix = elabProgPrefix
+                , programSuffix = elabProgSuffix
                 }
             okProfDyn = profilingDynamicSupportedOrUnknown compiler
             profExe = perPkgOptionFlag pkgid False packageConfigProf

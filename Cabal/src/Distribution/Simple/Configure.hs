@@ -903,6 +903,8 @@ buildOptionsFromConfigFlags verbosity cfg comp = do
         , exeCoverage = False
         , libCoverage = False
         , relocatable = fromFlagOrDefault False $ configRelocatable cfg
+        , programPrefix = flagToMaybe $ configProgPrefix cfg
+        , programSuffix = flagToMaybe $ configProgSuffix cfg
         }
 
 -- | Adjust 'LBC.BuildOptions' to be compatible with the given 'Compiler' and
