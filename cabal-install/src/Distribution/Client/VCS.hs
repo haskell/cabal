@@ -497,19 +497,25 @@ vcsGit =
       -> [(SourceRepositoryPackage f, FilePath)]
       -> IO [MonitorFilePath]
     vcsSyncRepos _ _ [] = return []
-    vcsSyncRepos
-      verbosity
-      gitProg
-      ((primaryRepo, primaryLocalDir) : secondaryRepos) = do
-        vcsSyncRepo verbosity gitProg primaryRepo primaryLocalDir Nothing
-        sequence_
-          [ vcsSyncRepo verbosity gitProg repo localDir (Just primaryLocalDir)
-          | (repo, localDir) <- secondaryRepos
-          ]
-        return
-          [ monitorDirectoryExistence dir
-          | dir <- (primaryLocalDir : map snd secondaryRepos)
-          ]
+    vcsSyncRepos verbosity gitProg repos =
+      fmap reverse $
+        snd
+          <$> foldM syncRepo (Map.empty, []) repos
+      where
+        syncRepo (referenceRepos, monitors) (repo, localDir) = do
+          let refKey = (srpBranch repo, srpTag repo)
+              peer = Map.lookup refKey referenceRepos
+          -- `git clone --reference` cannot use a shallow checkout as a peer for
+          -- a different target ref, so only share checkouts between identical
+          -- branch/tag selections within the same source location group.
+          vcsSyncRepo verbosity gitProg repo localDir peer
+          let referenceRepos'
+                | isJust peer = referenceRepos
+                | otherwise = Map.insert refKey localDir referenceRepos
+          return
+            ( referenceRepos'
+            , monitorDirectoryExistence localDir : monitors
+            )
 
     -- NOTE: Repositories are cloned once, but can be synchronized multiple times.
     -- Therefore, this code has to work with both `git clone` and `git fetch`.
