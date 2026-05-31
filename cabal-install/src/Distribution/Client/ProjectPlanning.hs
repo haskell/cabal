@@ -1803,7 +1803,7 @@ elaborateInstallPlan
                   -- main library in cabal. Other components will need to depend
                   -- on the main library for configured data.
                   PD.Custom -> [CuzBuildType CuzCustomBuildType]
-                  PD.Make -> [CuzBuildType CuzMakeBuildType]
+                  PD.Make -> error "build-type: Make is no longer supported"
                   PD.Simple -> []
                   -- TODO: remove the following, once we make Setup a separate
                   -- component (task tracked at #9986).

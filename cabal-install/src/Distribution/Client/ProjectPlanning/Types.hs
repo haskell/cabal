@@ -767,7 +767,6 @@ data NotPerComponentBuildType
   = CuzConfigureBuildType
   | CuzCustomBuildType
   | CuzHooksBuildType
-  | CuzMakeBuildType
   deriving (Eq, Show, Generic)
 
 instance Binary NotPerComponentBuildType
@@ -785,7 +784,6 @@ whyNotPerComponent = \case
       CuzConfigureBuildType -> "Configure"
       CuzCustomBuildType -> "Custom"
       CuzHooksBuildType -> "Hooks"
-      CuzMakeBuildType -> "Make"
   CuzCabalSpecVersion -> "cabal-version is less than 1.8"
   CuzNoBuildableComponents -> "there are no buildable components"
   CuzDisablePerComponent -> "you passed --disable-per-component"
